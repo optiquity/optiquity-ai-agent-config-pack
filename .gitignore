@@ -1,0 +1,48 @@
+# ── Machine-local Claude overrides ──────────────────────────────────────────
+# May contain local paths or tokens — never commit
+.claude/settings.local.json
+
+# ── Machine-local MCP config ─────────────────────────────────────────────────
+# May contain API keys or local server paths — never commit
+.mcp.json
+
+# ── Generated Protobuf output ─────────────────────────────────────────────────
+# Regenerate with scripts/proto-gen.sh
+generated/
+**/generated/swift/
+**/generated/python/
+
+# ── iOS 26 API reference docs ─────────────────────────────────────────────────
+# Local only — sync with sync-xcode-docs.sh after each Xcode update
+shared-docs/ios26/
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+._*
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.env
+dist/
+build/
+
+# ── Swift / Xcode ─────────────────────────────────────────────────────────────
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# ── Editor ────────────────────────────────────────────────────────────────────
+*.swp
+*.swo
+.vscode/
+.idea/
