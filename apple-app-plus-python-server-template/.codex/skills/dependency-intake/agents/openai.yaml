@@ -1,0 +1,5 @@
+interface:
+  display_name: "Architecture Review"
+  short_description: "Architecture and state-ownership review"
+policy:
+  allow_implicit_invocation: true
