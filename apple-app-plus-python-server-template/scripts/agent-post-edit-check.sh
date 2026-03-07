@@ -1,9 +1,12 @@
-#!/bin/sh
-set -eu
-if [ -x ./scripts/lint.sh ]; then
-  ./scripts/lint.sh || true
+#!/usr/bin/env bash
+set -euo pipefail
+
+if command -v swift >/dev/null 2>&1; then
+  echo "[agent-post-edit-check] swift found"
 fi
-if [ -x ./scripts/test-fast.sh ]; then
-  ./scripts/test-fast.sh || true
+
+if [ -f Package.swift ]; then
+  echo "[agent-post-edit-check] package detected"
 fi
-exit 0
+
+echo "[agent-post-edit-check] customize this script for lint, tests, or fast validation"

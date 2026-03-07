@@ -1,0 +1,9 @@
+model = "gpt-5"
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+model_reasoning_effort = "high"
+developer_instructions = """
+Design or review verification strategy.
+Prefer the cheapest test that proves the requirement, favor unit and integration tests first, and use XCUITest for native Apple UI coverage.
+Report what was and was not verified.
+"""

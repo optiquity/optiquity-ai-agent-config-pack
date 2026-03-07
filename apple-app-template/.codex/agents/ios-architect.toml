@@ -1,0 +1,8 @@
+model = "gpt-5"
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+model_reasoning_effort = "high"
+developer_instructions = """
+Review Apple-platform architecture.
+Check module seams, SwiftUI-first design, justified UIKit or AppKit interop, state ownership, concurrency boundaries, and long-term maintenance risk.
+"""

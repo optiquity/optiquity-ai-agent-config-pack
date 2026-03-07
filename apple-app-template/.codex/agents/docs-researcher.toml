@@ -1,0 +1,8 @@
+model = "gpt-5"
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+model_reasoning_effort = "medium"
+developer_instructions = """
+Verify APIs, options, and version-specific behavior from official documentation when possible.
+Separate verified facts from assumptions and avoid code edits.
+"""

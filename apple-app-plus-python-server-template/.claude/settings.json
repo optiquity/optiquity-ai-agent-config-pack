@@ -1,35 +1,24 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "includeGitInstructions": true,
   "permissions": {
     "allow": [
+      "Bash(xcodebuild *)",
+      "Bash(swift test *)",
+      "Bash(swift build *)",
       "Bash(git status)",
       "Bash(git diff *)",
-      "Bash(git add *)",
-      "Bash(git commit *)",
-      "Bash(xcodebuild *)",
-      "Bash(swift build *)",
-      "Bash(swift test *)",
-      "Bash(swift package *)",
-      "Bash(python3 -m pytest *)",
-      "Bash(make *)"
+      "Bash(git add *)"
     ],
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",
-      "Read(./secrets/**)",
-      "Read(./**/*.p12)",
-      "Read(./**/*.mobileprovision)",
-      "Bash(curl *)",
-      "Bash(wget *)",
-      "Bash(rm -rf /)",
-      "Bash(sudo *)"
+      "Read(./secrets/**)"
     ]
   },
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
             "type": "command",
@@ -38,5 +27,8 @@
         ]
       }
     ]
+  },
+  "env": {
+    "AGENT_CAPABILITIES": "planning,architecture,implementation,refactoring,debugging,testing,review,dependency-review,repo-ops,documentation"
   }
 }

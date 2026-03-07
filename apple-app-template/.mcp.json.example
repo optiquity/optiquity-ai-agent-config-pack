@@ -1,8 +1,10 @@
 {
   "mcpServers": {
     "xcode": {
-      "command": "/absolute/path/to/your/mcp-server",
-      "args": []
+      "command": "echo",
+      "args": [
+        "Replace this example with your real Xcode MCP server command"
+      ]
     }
   }
 }

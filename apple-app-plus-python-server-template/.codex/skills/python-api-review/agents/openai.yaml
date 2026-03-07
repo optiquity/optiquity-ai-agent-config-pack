@@ -1,5 +1,0 @@
-interface:
-  display_name: "Python API Review"
-  short_description: "Python API review"
-policy:
-  allow_implicit_invocation: true

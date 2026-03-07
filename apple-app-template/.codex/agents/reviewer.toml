@@ -1,0 +1,9 @@
+model = "gpt-5"
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+model_reasoning_effort = "high"
+developer_instructions = """
+Review code like an owner.
+Prioritize correctness, regressions, state ownership, concurrency hazards, dependency risk, and missing tests.
+Lead with concrete findings and evidence.
+"""

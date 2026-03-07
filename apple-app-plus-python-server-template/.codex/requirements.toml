@@ -1,5 +1,16 @@
-allowed_approval_policies = ["on-request", "never"]
-allowed_sandbox_modes = ["workspace-write", "read-only"]
-allowed_web_search_modes = ["on", "off"]
+# Project requirements for Codex
 
-[features]
+[session]
+require_plan_for_non_trivial_work = true
+require_tests_for_behavior_changes = true
+
+[policy]
+prefer_small_diffs = true
+prefer_spm = true
+disallow_cocoapods_without_justification = true
+swiftui_first = true
+enforce_explicit_verification = true
+
+[models]
+cloud_first_for_correctness_sensitive_work = true
+local_models_allowed_for_low_risk_work = true

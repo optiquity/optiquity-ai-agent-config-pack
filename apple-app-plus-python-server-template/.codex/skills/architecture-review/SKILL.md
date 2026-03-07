@@ -1,10 +1,11 @@
 ---
 name: architecture-review
-description: Use when evaluating Apple-platform architecture, module boundaries, concurrency choices, state ownership, or whether UIKit or AppKit interop is justified.
+description: Use when assessing architecture, module boundaries, concurrency decisions, ownership of mutable state, or whether UIKit or AppKit interop is justified.
 ---
 
-1. Inspect the relevant modules and seams.
-2. Identify mutable state, ownership, and threading assumptions.
-3. Check whether value semantics, final classes, builders, or validated factories would improve correctness.
-4. Check whether the design keeps UI thin and orchestration outside views.
-5. Produce a recommendation with concrete tradeoffs and suggested tests.
+1. Identify the modules, layers, and ownership boundaries involved.
+2. Locate mutable state and decide whether it is justified.
+3. Check whether value semantics, final classes, builders, or factories would improve correctness.
+4. Check whether the proposed design keeps SwiftUI views thin.
+5. Flag dependency, testability, and concurrency risks.
+6. Give a recommendation with explicit tradeoffs.

@@ -1,0 +1,8 @@
+model = "gpt-5"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+model_reasoning_effort = "medium"
+developer_instructions = """
+Handle repository operations safely.
+Prefer repeatable scripts, keep changes reviewable, avoid destructive commands unless required, and never introduce secrets or machine-specific state.
+"""

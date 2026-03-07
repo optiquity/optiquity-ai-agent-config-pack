@@ -4,6 +4,12 @@ approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 web_search_mode = "on"
 oss_provider = "lmstudio"
+developer_instructions = """
+All major work categories are allowed in this repository: planning, architecture, implementation, refactoring, debugging, testing, review, dependency review, repo operations, and documentation.
+No task category is reserved exclusively for another tool.
+Prefer a stronger cloud model for correctness-sensitive work.
+Use local models only where the verification path is strong and the likely result is equivalent.
+"""
 
 [sandbox_workspace_write]
 network_access = true
@@ -36,3 +42,35 @@ env_key = "OLLAMA_API_KEY"
 name = "LM Studio"
 base_url = "http://localhost:1234/v1"
 env_key = "LMSTUDIO_API_KEY"
+
+[agents]
+max_threads = 6
+max_depth = 1
+
+[agents.planner]
+description = "Planning specialist for scoping work, sequencing changes, and defining verification steps before non-trivial edits."
+config_file = "agents/planner.toml"
+
+[agents.coder]
+description = "Implementation specialist for targeted code changes, refactors, and test updates."
+config_file = "agents/coder.toml"
+
+[agents.reviewer]
+description = "Read-only reviewer focused on correctness, regressions, concurrency, and missing tests."
+config_file = "agents/reviewer.toml"
+
+[agents.tester]
+description = "Read-only test strategist for unit, integration, UI, and end-to-end verification."
+config_file = "agents/tester.toml"
+
+[agents.ios_architect]
+description = "Read-only Apple-platform architect for SwiftUI-first design and UIKit or AppKit interop decisions."
+config_file = "agents/ios-architect.toml"
+
+[agents.repo_ops]
+description = "Repository operations specialist for scripts, command sequencing, and Git-safe automation."
+config_file = "agents/repo-ops.toml"
+
+[agents.docs_researcher]
+description = "Read-only documentation specialist for verifying APIs, options, and config behavior from official docs."
+config_file = "agents/docs-researcher.toml"

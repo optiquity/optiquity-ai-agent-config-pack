@@ -1,7 +1,7 @@
 ---
 name: architecture-review
 description: Use when assessing architecture, module boundaries, concurrency decisions, ownership of mutable state, or whether UIKit or AppKit interop is justified.
-allowed-tools: Read, Grep, Glob
+allowed-tools: Read, Grep, Glob, Bash
 ---
 
 1. Identify the modules, layers, and ownership boundaries involved.

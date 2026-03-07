@@ -2,13 +2,34 @@
 
 This repository targets Apple platforms and is optimized for Xcode 26.3, GitHub, and Swift Package Manager.
 
-## Default operating mode
+## Capability policy
 
-- Correctness before speed.
-- Small diffs before sweeping rewrites.
-- Buildable, testable, reviewable changes only.
-- Cloud models are preferred for correctness-sensitive work.
-- Local OSS models are acceptable for low-risk implementation, repetitive edits, and documentation.
+Codex may perform all major engineering tasks in this repository:
+
+- planning
+- architecture
+- implementation
+- refactoring
+- debugging
+- testing
+- code review
+- dependency review
+- repo operations
+- documentation
+
+These are all allowed. No task category is reserved exclusively for another tool.
+
+Default preference only:
+- use a stronger cloud model for architecture, concurrency, security, review, and other correctness-sensitive work
+- use local models only where results are already likely to be equivalent and the verification path is strong
+
+## Core priorities
+
+1. Correctness before speed.
+2. Preserve buildability and testability after every change.
+3. Prefer small, reviewable changes over broad rewrites.
+4. Keep architecture explicit. Do not hide complexity behind clever abstractions.
+5. Verify assumptions against the code, tests, docs, or tooling output. Do not guess.
 
 ## Platform defaults
 
@@ -16,6 +37,7 @@ This repository targets Apple platforms and is optimized for Xcode 26.3, GitHub,
 - UIKit or AppKit interop only when justified by platform gaps, third-party framework constraints, or measurable performance reasons.
 - SPM first. Do not introduce CocoaPods unless the dependency is unavailable through SPM and the value is proven.
 - New code should follow Swift 6 strict concurrency expectations. Be pragmatic at legacy and third-party boundaries.
+- In the server template variant, Python is the default backend, but boundaries should stay portable enough for services that may later run on macOS, Linux, and Windows.
 
 ## Design rules
 
@@ -57,16 +79,9 @@ Before adding a third-party package or API:
 
 ## Agent behavior
 
+- Planning, coding, testing, review, refactoring, and repo operations are all allowed.
 - Read existing code before adding new abstractions.
 - Do not invent package APIs or Xcode settings.
 - Prefer the smallest correct change.
 - State uncertainty explicitly.
 - When using a local model, avoid high-risk architectural changes unless a stronger model has already reviewed the plan.
-
-
-## Python server additions
-
-- Prefer cross-platform Python tooling and scripts.
-- Avoid shell steps that assume zsh, Homebrew, or macOS-specific paths for server workflows.
-- Keep API contracts explicit and versionable.
-- Isolate vendor SDKs behind small adapters.

@@ -1,24 +1,43 @@
 # Recommendations
 
-## Default tool split
+## Default operating model
 
-### Claude
-Use Claude first for:
+Both Claude and Codex are configured to support:
 
 - planning
 - architecture
+- implementation
+- refactoring
+- debugging
+- testing
+- code review
+- dependency review
+- repo operations
+- documentation
+
+No category is reserved exclusively for one tool.
+
+## Suggested defaults, not hard limits
+
+### Claude
+Prefer Claude first when you want:
+
+- stronger up-front planning
+- architecture analysis
 - design review
-- cross-file reasoning
-- review of concurrency, API design, state ownership, and dependency boundaries
+- high-scrutiny code review
+- correctness-sensitive reasoning across many files
 
 ### Codex
-Use Codex first for:
+Prefer Codex first when you want:
 
 - implementation
 - repo operations
 - shell-driven transformations
-- low-risk generation against local models
-- repetitive edits and test iteration
+- local model fallback
+- role-driven worker orchestration through project config
+
+These are preferences only. Both tools should remain viable for all major phases.
 
 ## Model routing policy
 
@@ -32,7 +51,7 @@ Cloud first is the safer default for correctness-sensitive work. For Codex, swit
 Do not default local models for:
 
 - security-sensitive changes
-- architecture decisions
+- architecture decisions without strong verification
 - deep cross-file refactors without tests
 - API migration plans
 - nuanced UIKit or AppKit edge cases
@@ -54,6 +73,5 @@ Recommended baseline:
 - linter: SwiftLint
 
 Reason:
-
-- `swift-format` is tied to the Swift project and is the safest neutral formatter choice. citeturn6search0turn6search8
-- SwiftLint is still the practical choice for rule-driven style and semantic lint checks. citeturn6search1
+- `swift-format` is part of the Swift project and is the safest neutral formatter choice.
+- SwiftLint remains the practical choice for rule-driven style and semantic lint checks.
