@@ -1,8 +1,11 @@
 # AGENTS.md
 
 This repository is a terminal-first Python server repository.
-Both Codex and Claude may perform planning, implementation, testing, review, debugging, repo operations, and documentation work here.
-No work category is exclusive to one tool.
+It may serve gRPC, REST, WebSocket, or a combination.
+When communicating with first-party clients, it uses gRPC + Proto3 as the shared schema.
+
+Both Codex and Claude may perform planning, implementation, testing, review, debugging,
+repo operations, and documentation work here. No work category is exclusive to one tool.
 
 ## Default workflow
 
@@ -14,12 +17,46 @@ No work category is exclusive to one tool.
 
 ## Python defaults
 
-- Prefer `uv` for environment and dependency management.
-- Prefer `ruff check` and `ruff format`.
-- Prefer `pyright` for static analysis.
-- Prefer `pytest` for tests.
+- Python 3.12+. Use `uv` for environment and dependency management.
+- `ruff check` and `ruff format` for linting and formatting.
+- `pyright --strict` for static analysis. All public functions and methods must have type annotations.
+- `pytest` + `pytest-asyncio` for tests.
 - Keep code cross-platform.
-- Keep shell scripts POSIX-friendly where practical. If Windows-specific automation is needed later, add PowerShell equivalents.
+- Keep shell scripts POSIX-friendly. Add PowerShell equivalents if Windows-specific automation is needed.
+
+## gRPC and Proto3 defaults
+
+- Generated servicer classes are never called from business logic. Use thin adapter servicers delegating to injected services.
+- Never hand-edit generated Protobuf or gRPC Python code.
+- Run `buf lint` and `buf breaking` before every proto schema merge.
+- Proto3 field numbers are inviolable. Use `reserved` on deletion.
+- Auth tokens in gRPC metadata, never in message fields.
+- Every call has an explicit deadline. Handle DEADLINE_EXCEEDED explicitly.
+- Use gRPC interceptors for auth, logging, and metrics.
+- Log every RPC: method name, status code, latency.
+- Return google.rpc.Status with error_details for all gRPC errors.
+- Use grpcio-testing for server-side unit tests.
+- Pin grpcio and grpcio-tools versions explicitly.
+
+## Architecture defaults
+
+- Constructor dependency injection. No module-level globals for services.
+- Async context managers for resource lifecycle.
+- pydantic-settings for environment-based configuration.
+- Pydantic for input validation at I/O boundaries.
+- Structured logging. Never print() in production code.
+- Cursor-based pagination for large collections.
+- Background tasks must be idempotent.
+- Prevent N+1 queries.
+
+## Security defaults
+
+- No hardcoded secrets, API keys, or credentials.
+- TLS required for all gRPC connections.
+- Validate all incoming data at I/O boundaries.
+- Rate limiting with RESOURCE_EXHAUSTED for violations.
+- Parameterized queries only. No user input concatenated into SQL.
+- JWT or OAuth for auth. Validate tokens server-side on every request.
 
 ## Safety and correctness
 
@@ -27,3 +64,20 @@ No work category is exclusive to one tool.
 - Do not rewrite lockfiles or dependency constraints casually.
 - Do not add networked services or background daemons without documenting the reason.
 - Do not state that an external API or framework supports a feature unless that support was verified.
+- Do not commit generated Protobuf or gRPC Python code.
+
+## Anti-patterns — never introduce
+
+- Hand-editing generated Protobuf or gRPC Python code.
+- Reusing deleted Proto3 field numbers.
+- Auth tokens in Protobuf message fields.
+- Business logic in gRPC servicers — delegate to injected services.
+- Magic duration literals for gRPC deadlines.
+- Skipping buf lint or buf breaking before schema merges.
+- Module-level mutable globals as service registries.
+- N+1 database queries.
+- Blocking synchronous I/O in async handlers.
+- Type annotations omitted on public APIs.
+- print() in production code.
+- Hardcoded secrets in source or config.
+- User input concatenated into SQL queries.

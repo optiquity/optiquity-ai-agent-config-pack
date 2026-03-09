@@ -74,3 +74,7 @@ config_file = "agents/repo-ops.toml"
 [agents.docs_researcher]
 description = "Read-only documentation specialist for verifying APIs, options, and config behavior from official docs."
 config_file = "agents/docs-researcher.toml"
+
+[agents.grpc_schema]
+description = "Read-only Proto3 schema specialist for field evolution, breaking-change detection, buf validation, and gRPC service contract review."
+config_file = "agents/grpc-schema.toml"

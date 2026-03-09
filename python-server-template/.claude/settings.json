@@ -13,6 +13,7 @@
       "Bash(python *)",
       "Bash(pyright *)",
       "Bash(ruff *)",
+      "Bash(buf *)",
       "Bash(./scripts/*)"
     ],
     "deny": [

@@ -1,27 +1,19 @@
 # AGENTS.md
 
-This repository targets Apple platforms and is optimized for Xcode 26.3, GitHub, and Swift Package Manager.
+This repository targets Apple platforms (iOS, iPadOS, macOS), Xcode 26.3, GitHub, and Swift Package Manager.
+When this repo communicates with a first-party backend, it uses gRPC + Proto3.
 
 ## Capability policy
 
 Codex may perform all major engineering tasks in this repository:
+planning, architecture, implementation, refactoring, debugging, testing, code review,
+dependency review, repo operations, documentation.
 
-- planning
-- architecture
-- implementation
-- refactoring
-- debugging
-- testing
-- code review
-- dependency review
-- repo operations
-- documentation
-
-These are all allowed. No task category is reserved exclusively for another tool.
+All are allowed. No task category is reserved exclusively for another tool.
 
 Default preference only:
-- use a stronger cloud model for architecture, concurrency, security, review, and other correctness-sensitive work
-- use local models only where results are already likely to be equivalent and the verification path is strong
+- Use a stronger cloud model for correctness-sensitive work (architecture, concurrency, security, review).
+- Use local models only where the verification path is strong and results are likely equivalent.
 
 ## Core priorities
 
@@ -29,28 +21,45 @@ Default preference only:
 2. Preserve buildability and testability after every change.
 3. Prefer small, reviewable changes over broad rewrites.
 4. Keep architecture explicit. Do not hide complexity behind clever abstractions.
-5. Verify assumptions against the code, tests, docs, or tooling output. Do not guess.
+5. Verify assumptions against code, tests, docs, or tooling output. Do not guess.
 
 ## Platform defaults
 
-- SwiftUI first.
-- UIKit or AppKit interop only when justified by platform gaps, third-party framework constraints, or measurable performance reasons.
-- SPM first. Do not introduce CocoaPods unless the dependency is unavailable through SPM and the value is proven.
-- New code should follow Swift 6 strict concurrency expectations. Be pragmatic at legacy and third-party boundaries.
-- In the server template variant, Python is the default backend, but boundaries should stay portable enough for services that may later run on macOS, Linux, and Windows.
+- SwiftUI first. UIKit or AppKit interop only when justified by platform gaps, third-party constraints, or measurable performance reasons.
+- SPM first. No CocoaPods unless unavailable in SPM and value is proven.
+- New code follows Swift 6 strict concurrency. Be pragmatic at legacy and third-party boundaries.
+- Client-server schema: gRPC + Proto3 for all first-party communication.
 
 ## Design rules
 
 - Prefer immutable types by default.
-- Use mutable state only for clearly stateful roles such as stores, coordinators, caches, or boundary adapters.
+- Use mutable state only for clearly stateful roles: stores, coordinators, caches, boundary adapters.
 - Prefer value semantics for models unless reference semantics are required.
 - Mark classes `final` unless subclassing is required.
-- Prefer builders or validated factories when object creation is complex or order-sensitive.
 - Make invalid states unrepresentable.
-- Keep SwiftUI views thin and move orchestration elsewhere.
+- Keep SwiftUI views thin. Move orchestration elsewhere.
 - Prefer dependency injection over global state.
 - Avoid force unwraps outside tightly justified cases.
 - Avoid inheritance unless framework requirements or a stable abstraction clearly justify it.
+
+## gRPC client rules
+
+- Never call generated gRPC stubs directly from views or view models. Wrap stubs behind a protocol.
+- Map Protobuf messages to domain types at the transport boundary. Never pass domain types to stubs.
+- Never hand-edit generated Protobuf or gRPC Swift code. Regenerate from .proto source.
+- Auth tokens go in gRPC call metadata, never in Protobuf message fields.
+- Every gRPC call must have an explicit deadline using a named constant.
+- Map gRPC status codes to typed domain errors at the boundary. Never surface raw gRPC status in UI.
+- Track cancellation for streaming calls. Do not leak stream references across scene lifecycle.
+- Use GRPCChannelPool. Tie channel lifecycle to app or scene lifecycle.
+
+## Security rules
+
+- Credentials, tokens, and certificates go in Keychain. Never in UserDefaults or source code.
+- No hardcoded secrets or API keys.
+- TLS required for all gRPC connections.
+- Validate all network data before use in domain logic or UI.
+- Privacy Manifests required for all required reason APIs and third-party SDKs.
 
 ## Dependency and API policy
 
@@ -64,6 +73,7 @@ Before adding a third-party package or API:
 ## Testing policy
 
 - Add or update tests for non-trivial changes.
+- Use protocol-based test doubles for gRPC stubs. Never hit real endpoints in unit or integration tests.
 - Prefer unit tests for domain logic.
 - Use integration tests at module seams.
 - Use XCUITest for native UI coverage.
@@ -76,6 +86,20 @@ Before adding a third-party package or API:
 - Separate formatting-only changes from behavior changes where practical.
 - Preserve existing behavior during refactors unless the task says otherwise.
 - Document setup changes.
+- Do not commit generated Protobuf or gRPC Swift files.
+
+## Anti-patterns — never introduce
+
+- Calling gRPC stubs directly from ViewModels or Views.
+- Auth tokens in Protobuf message fields.
+- @unchecked Sendable without audited justification.
+- Force unwraps as convenience.
+- print() in production code.
+- Singleton sprawl for injectable services.
+- Mutable global state undocumented as such.
+- Magic duration literals for gRPC deadlines.
+- Editing generated Protobuf or gRPC code by hand.
+- Leaking gRPC stream references across scene lifecycle.
 
 ## Agent behavior
 

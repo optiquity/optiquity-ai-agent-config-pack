@@ -10,6 +10,10 @@ prefer_spm = true
 disallow_cocoapods_without_justification = true
 swiftui_first = true
 enforce_explicit_verification = true
+grpc_stubs_behind_protocol = true
+auth_tokens_in_metadata_not_messages = true
+no_hand_editing_generated_proto_code = true
+grpc_calls_require_explicit_deadline = true
 
 [models]
 cloud_first_for_correctness_sensitive_work = true

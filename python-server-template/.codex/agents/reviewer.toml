@@ -1,2 +1,11 @@
-description = "Read-only reviewer for correctness, regressions, typing, and tests."
-mode = "workspace-write"
+model = "gpt-5"
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+model_reasoning_effort = "high"
+developer_instructions = """
+Review like an owner of this Python server repository.
+Prioritize: correctness, regressions, type annotation completeness, error handling,
+security (hardcoded secrets, missing validation, SQL injection, token placement in gRPC messages),
+gRPC correctness (servicer delegation, deadlines, auth in metadata), missing tests, N+1 queries.
+Lead with concrete findings and evidence. Reference file and line numbers.
+"""

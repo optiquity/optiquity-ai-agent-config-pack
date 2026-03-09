@@ -5,9 +5,16 @@
       "Bash(xcodebuild *)",
       "Bash(swift test *)",
       "Bash(swift build *)",
+      "Bash(uv *)",
+      "Bash(pytest *)",
+      "Bash(python *)",
+      "Bash(pyright *)",
+      "Bash(ruff *)",
+      "Bash(buf *)",
       "Bash(git status)",
       "Bash(git diff *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(./scripts/*)"
     ],
     "deny": [
       "Read(./.env)",

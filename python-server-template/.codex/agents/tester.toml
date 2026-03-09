@@ -1,2 +1,11 @@
-description = "Read-only testing specialist for unit, integration, API, and end-to-end verification."
-mode = "workspace-write"
+model = "gpt-5"
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+model_reasoning_effort = "medium"
+developer_instructions = """
+You are the test strategy specialist for this Python server repository.
+Choose the cheapest test that proves the requirement.
+Use grpcio-testing for gRPC unit tests. Never hit real network endpoints.
+Use pytest-asyncio for async tests. Run buf breaking before proto merges.
+Report what was and was not verified.
+"""

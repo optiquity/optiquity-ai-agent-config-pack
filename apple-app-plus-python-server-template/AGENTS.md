@@ -1,27 +1,19 @@
 # AGENTS.md
 
-This repository targets Apple platforms and is optimized for Xcode 26.3, GitHub, and Swift Package Manager.
+This is a monorepo with an Apple platform client (iOS, iPadOS, macOS) and a Python server.
+All first-party communication uses gRPC + Proto3. Third-party APIs use their own native protocols.
 
 ## Capability policy
 
 Codex may perform all major engineering tasks in this repository:
+planning, architecture, implementation, refactoring, debugging, testing, code review,
+dependency review, repo operations, documentation.
 
-- planning
-- architecture
-- implementation
-- refactoring
-- debugging
-- testing
-- code review
-- dependency review
-- repo operations
-- documentation
-
-These are all allowed. No task category is reserved exclusively for another tool.
+All are allowed. No task category is reserved exclusively for another tool.
 
 Default preference only:
-- use a stronger cloud model for architecture, concurrency, security, review, and other correctness-sensitive work
-- use local models only where results are already likely to be equivalent and the verification path is strong
+- Use a stronger cloud model for correctness-sensitive work (architecture, concurrency, security, review).
+- Use local models only where the verification path is strong and results are likely equivalent.
 
 ## Core priorities
 
@@ -29,59 +21,103 @@ Default preference only:
 2. Preserve buildability and testability after every change.
 3. Prefer small, reviewable changes over broad rewrites.
 4. Keep architecture explicit. Do not hide complexity behind clever abstractions.
-5. Verify assumptions against the code, tests, docs, or tooling output. Do not guess.
+5. Verify assumptions against code, tests, docs, or tooling output. Do not guess.
 
-## Platform defaults
+## Apple client defaults
 
-- SwiftUI first.
-- UIKit or AppKit interop only when justified by platform gaps, third-party framework constraints, or measurable performance reasons.
-- SPM first. Do not introduce CocoaPods unless the dependency is unavailable through SPM and the value is proven.
-- New code should follow Swift 6 strict concurrency expectations. Be pragmatic at legacy and third-party boundaries.
-- In the server template variant, Python is the default backend, but boundaries should stay portable enough for services that may later run on macOS, Linux, and Windows.
+- SwiftUI first. UIKit or AppKit interop only when justified by platform gaps, third-party constraints, or measurable performance reasons.
+- SPM first. No CocoaPods unless unavailable in SPM.
+- Swift 6 strict concurrency for new code. Be pragmatic at legacy and third-party boundaries.
+
+## Python server defaults
+
+- Python 3.12+. Use `uv` for environment and dependency management.
+- Prefer `ruff`, `pyright --strict`, `pytest`, `pytest-asyncio`.
+- Server code must run on macOS, Linux, and Windows unless explicitly documented otherwise.
+- All public functions and methods have type annotations.
+
+## Shared schema defaults
+
+- gRPC + Proto3 for all first-party communication. Source of truth lives in `proto/`.
+- Use `buf lint` and `buf breaking` before every schema merge.
+- Never hand-edit generated Protobuf or gRPC code.
+- Proto3 field numbers are inviolable. Use `reserved` on deletion.
+- `google.protobuf.Timestamp` for all date/time fields.
+- `google.rpc.Status` + error_details for all gRPC errors.
 
 ## Design rules
 
 - Prefer immutable types by default.
-- Use mutable state only for clearly stateful roles such as stores, coordinators, caches, or boundary adapters.
-- Prefer value semantics for models unless reference semantics are required.
-- Mark classes `final` unless subclassing is required.
-- Prefer builders or validated factories when object creation is complex or order-sensitive.
+- Use mutable state only for clearly stateful roles: stores, coordinators, caches, boundary adapters.
 - Make invalid states unrepresentable.
-- Keep SwiftUI views thin and move orchestration elsewhere.
-- Prefer dependency injection over global state.
-- Avoid force unwraps outside tightly justified cases.
-- Avoid inheritance unless framework requirements or a stable abstraction clearly justify it.
+- Prefer dependency injection over global state on both client and server.
+- Keep UI, domain, persistence, and networking concerns separate.
 
-## Dependency and API policy
+## gRPC client rules (Swift)
 
-Before adding a third-party package or API:
+- Never call gRPC stubs from ViewModels or Views. Always wrap stubs behind a protocol.
+- Map Protobuf messages to domain types at the boundary. Never pass domain types to stubs.
+- Auth tokens in gRPC metadata, never in message fields.
+- Every gRPC call has an explicit deadline using a named constant.
+- Use GRPCChannelPool. Tie channel lifecycle to app or scene lifecycle.
 
-1. Check whether Apple frameworks already solve the problem.
-2. Prefer actively maintained SPM packages.
-3. Evaluate license, security, binary size, lock-in, and cross-platform impact.
-4. Capture rationale, alternatives, and rollback plan in docs or PR notes.
+## gRPC server rules (Python)
+
+- Servicers are thin adapters delegating to injected service objects.
+- Return google.rpc.Status with error_details for all errors.
+- Log every RPC: method name, status code, latency. Use structured logging.
+- Use gRPC interceptors for auth, logging, and metrics.
+- Set and enforce deadlines. Handle DEADLINE_EXCEEDED explicitly.
+
+## Security rules
+
+- Credentials go in Keychain (Apple) or environment/secrets managers (Python). No hardcoded secrets.
+- TLS required for all gRPC connections.
+- Auth tokens in metadata, never in message fields.
+- Validate all incoming data at I/O boundaries.
+- Rate limit server-side. Return RESOURCE_EXHAUSTED for violations.
+- Parameterized queries only. Never concatenate user input into SQL.
 
 ## Testing policy
 
 - Add or update tests for non-trivial changes.
-- Prefer unit tests for domain logic.
-- Use integration tests at module seams.
-- Use XCUITest for native UI coverage.
-- Consider Maestro for black-box simulator flows only when it reduces effort.
-- Do not claim code works without an actual verification path.
+- Protocol-based test doubles for gRPC stubs (client). grpcio-testing for server-side unit tests.
+- Never hit real network endpoints in unit or integration tests.
+- Use pytest + pytest-asyncio for Python async tests.
+- Run buf breaking before every proto schema merge.
+- XCUITest for native Apple UI coverage.
 
 ## Git and review policy
 
 - Keep commits coherent.
-- Separate formatting-only changes from behavior changes where practical.
+- Separate formatting-only changes from behavior changes.
 - Preserve existing behavior during refactors unless the task says otherwise.
 - Document setup changes.
+- Do not commit generated Protobuf or gRPC code.
+- Flag proto schema changes as high-risk in PR notes.
+
+## Anti-patterns — never introduce
+
+- Hand-editing generated Protobuf or gRPC code.
+- Reusing deleted Proto3 field numbers.
+- Auth tokens in Protobuf message fields.
+- gRPC stubs called directly from ViewModels, Views, or business logic.
+- Magic duration literals for gRPC deadlines.
+- Skipping buf lint and buf breaking before schema merges.
+- @unchecked Sendable without audited justification.
+- Force unwraps as convenience.
+- print() in production code.
+- Module-level mutable globals as service registries.
+- N+1 database queries.
+- Blocking synchronous I/O in async handlers.
+- Hardcoded secrets in source or config files.
 
 ## Agent behavior
 
 - Planning, coding, testing, review, refactoring, and repo operations are all allowed.
 - Read existing code before adding new abstractions.
-- Do not invent package APIs or Xcode settings.
+- Do not invent package APIs, Xcode settings, or Python library behavior.
 - Prefer the smallest correct change.
 - State uncertainty explicitly.
+- For proto schema changes, always plan first and run buf lint + buf breaking before proposing a merge.
 - When using a local model, avoid high-risk architectural changes unless a stronger model has already reviewed the plan.

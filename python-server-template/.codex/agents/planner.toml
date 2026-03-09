@@ -1,2 +1,10 @@
-description = "Planning specialist for Python server work."
-mode = "workspace-write"
+model = "gpt-5"
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+model_reasoning_effort = "high"
+developer_instructions = """
+You are the planning specialist for this Python server repository.
+Understand the task, break it into ordered steps, name risks and verification points.
+Flag proto schema changes as high-risk — they require buf lint and buf breaking.
+Output: goal, affected files/modules, ordered plan, verification plan, open risks.
+"""

@@ -1,12 +1,21 @@
-[project]
-name = "python-server-template"
-description = "Project-level constraints for a Python server repository using Codex and Claude."
+# Project requirements for Codex
 
-[requirements]
-notes = [
-  "Prefer uv for Python runtime and dependency management.",
-  "Prefer ruff for lint and formatting.",
-  "Prefer pyright for static type checking.",
-  "Prefer pytest for tests.",
-  "Keep runtime code cross-platform unless explicitly documented otherwise."
-]
+[session]
+require_plan_for_non_trivial_work = true
+require_tests_for_behavior_changes = true
+
+[policy]
+prefer_small_diffs = true
+type_annotations_required_on_public_apis = true
+pyright_strict_mode = true
+constructor_dependency_injection = true
+no_hand_editing_generated_proto_code = true
+auth_tokens_in_metadata_not_messages = true
+grpc_calls_require_explicit_deadline = true
+buf_lint_before_proto_merge = true
+buf_breaking_before_proto_merge = true
+enforce_explicit_verification = true
+
+[models]
+cloud_first_for_correctness_sensitive_work = true
+local_models_allowed_for_low_risk_work = true

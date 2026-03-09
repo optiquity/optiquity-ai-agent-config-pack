@@ -9,8 +9,10 @@ dependencies = []
 [dependency-groups]
 dev = [
   "pytest>=8.0",
+  "pytest-asyncio>=0.24",
   "pyright>=1.1.0",
   "ruff>=0.15.0",
+  "grpcio-testing>=1.60.0",
 ]
 
 [build-system]
@@ -28,3 +30,4 @@ select = ["E", "F", "I", "UP", "B"]
 minversion = "8.0"
 addopts = "-q"
 testpaths = ["tests"]
+asyncio_mode = "auto"

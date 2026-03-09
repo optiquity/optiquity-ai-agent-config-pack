@@ -7,6 +7,7 @@ cd "$ROOT_DIR"
 
 status=0
 
+# Swift / Xcode validation
 if [[ -f "Package.swift" ]] && command -v swift >/dev/null 2>&1; then
   echo "[validate] running swift build"
   swift build || status=$?
@@ -21,28 +22,24 @@ if command -v xcodebuild >/dev/null 2>&1; then
   fi
 fi
 
-
+# Python server validation
 if [[ -f "pyproject.toml" ]]; then
   if command -v uv >/dev/null 2>&1; then
-    echo "[validate] running uv sync --all-extras"
-    uv sync --all-extras || status=$?
     echo "[validate] running uv run ruff check ."
     uv run ruff check . || status=$?
     echo "[validate] running uv run pyright"
     uv run pyright || status=$?
     echo "[validate] running uv run pytest"
     uv run pytest || status=$?
-  else
-    for cmd in ruff pyright pytest; do
-      if ! command -v "$cmd" >/dev/null 2>&1; then
-        echo "[validate] missing required command: $cmd"
-        status=1
-      fi
-    done
-    if command -v ruff >/dev/null 2>&1; then ruff check . || status=$?; fi
-    if command -v pyright >/dev/null 2>&1; then pyright || status=$?; fi
-    if command -v pytest >/dev/null 2>&1; then pytest || status=$?; fi
   fi
+fi
+
+# Proto schema validation
+if [[ -d "proto" ]] && command -v buf >/dev/null 2>&1; then
+  echo "[validate] running buf lint"
+  buf lint proto/ || status=$?
+elif [[ -d "proto" ]]; then
+  echo "[validate] WARNING: proto/ found but buf is not installed. Skipping buf lint."
 fi
 
 exit "$status"

@@ -33,4 +33,14 @@ else
   if command -v pytest >/dev/null 2>&1; then pytest || status=$?; fi
 fi
 
+# Proto schema validation
+if [[ -d "proto" ]] && command -v buf >/dev/null 2>&1; then
+  echo "[validate] running buf lint"
+  buf lint proto/ || status=$?
+  echo "[validate] buf lint complete"
+elif [[ -d "proto" ]]; then
+  echo "[validate] WARNING: proto/ directory found but buf is not installed. Skipping buf lint."
+  echo "[validate] Install buf: https://buf.build/docs/installation"
+fi
+
 exit "$status"

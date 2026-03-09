@@ -1,6 +1,6 @@
 {
-  "include": ["server/src", "server/tests"],
-  "typeCheckingMode": "standard",
+  "include": ["src", "tests"],
+  "typeCheckingMode": "strict",
   "venvPath": ".",
   "venv": ".venv"
 }
