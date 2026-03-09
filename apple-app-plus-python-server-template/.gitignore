@@ -1,0 +1,51 @@
+# Agent local overrides
+.claude/settings.local.json
+.mcp.json
+
+# Secrets and environment
+.env
+.env.*
+*.secret
+*.secrets
+secrets/
+*.pem
+*.p12
+*.mobileprovision
+
+# macOS
+.DS_Store
+
+# Xcode and Swift
+DerivedData/
+.build/
+build/
+Packages/
+Package.resolved
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+
+# Test artifacts
+xcresult/
+*.xcresult
+coverage/
+coverage.xml
+htmlcov/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyright/
+.dist/
+dist/
+site/
+*.egg-info/
+.python-version
+uv.lock.bak

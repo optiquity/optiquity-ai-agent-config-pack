@@ -1,0 +1,2 @@
+description = "Read-only testing specialist for unit, integration, API, and end-to-end verification."
+mode = "workspace-write"

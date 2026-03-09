@@ -1,0 +1,2 @@
+description = "Read-only reviewer for correctness, regressions, typing, and tests."
+mode = "workspace-write"

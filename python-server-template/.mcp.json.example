@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "xcode": {
+      "command": "echo",
+      "args": [
+        "Replace this example with your real Xcode MCP server command"
+      ]
+    }
+  }
+}

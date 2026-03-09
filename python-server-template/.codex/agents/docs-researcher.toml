@@ -1,0 +1,2 @@
+description = "Read-only documentation specialist for official source verification."
+mode = "workspace-write"

@@ -5,21 +5,16 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 
-status=0
-
-echo "[agent-post-edit-check] repo root: $ROOT_DIR"
+echo "[bootstrap] repo root: $ROOT_DIR"
 
 if [[ -f "Package.swift" ]] && command -v swift >/dev/null 2>&1; then
-  echo "[agent-post-edit-check] swift package detected - running swift build"
-  swift build || status=$?
+  echo "[bootstrap] resolving Swift package dependencies"
+  swift package resolve
 fi
 
 if command -v xcodebuild >/dev/null 2>&1; then
   if find . -maxdepth 2 \( -name "*.xcodeproj" -o -name "*.xcworkspace" \) | grep -q .; then
-    echo "[agent-post-edit-check] Xcode project or workspace detected - listing schemes"
-    xcodebuild -list >/dev/null || status=$?
+    echo "[bootstrap] Xcode project detected. Open the project in Xcode to finish signing and simulator setup if needed."
   fi
 fi
 
-
-exit "$status"

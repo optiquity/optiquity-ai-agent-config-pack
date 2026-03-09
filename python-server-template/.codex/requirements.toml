@@ -1,0 +1,12 @@
+[project]
+name = "python-server-template"
+description = "Project-level constraints for a Python server repository using Codex and Claude."
+
+[requirements]
+notes = [
+  "Prefer uv for Python runtime and dependency management.",
+  "Prefer ruff for lint and formatting.",
+  "Prefer pyright for static type checking.",
+  "Prefer pytest for tests.",
+  "Keep runtime code cross-platform unless explicitly documented otherwise."
+]
