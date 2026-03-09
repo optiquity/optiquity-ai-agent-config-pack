@@ -1,8 +1,8 @@
-# Agent local overrides
+# ─── Agent local overrides ─────────────────────────────────────────────────
 .claude/settings.local.json
 .mcp.json
 
-# Secrets and environment
+# ─── Secrets and credentials ───────────────────────────────────────────────
 .env
 .env.*
 *.secret
@@ -11,11 +11,14 @@ secrets/
 *.pem
 *.p12
 *.mobileprovision
+GoogleService-Info.plist
 
-# macOS
+# ─── macOS ─────────────────────────────────────────────────────────────────
 .DS_Store
+.AppleDouble
+.LSOverride
 
-# Xcode and Swift
+# ─── Xcode and Swift ───────────────────────────────────────────────────────
 DerivedData/
 .build/
 build/
@@ -26,13 +29,28 @@ xcuserdata/
 *.moved-aside
 *.xccheckout
 *.xcscmblueprint
+*.xcworkspace/xcuserdata/
+*.xcworkspace/xcshareddata/
 
-# Test artifacts
+# ─── Test and coverage artifacts ───────────────────────────────────────────
 xcresult/
 *.xcresult
 coverage/
+coverage.xml
+htmlcov/
 
-# Python noise just in case tooling scripts create it
+# ─── Generated Protobuf and gRPC Swift code ────────────────────────────────
+# Regenerate from .proto source using buf or your gen script.
+# Only commit generated code if your build system cannot run buf at build time.
+proto/gen/
+Sources/Generated/
+**/Generated/*.pb.swift
+**/Generated/*.grpc.swift
+
+# ─── buf artifacts ─────────────────────────────────────────────────────────
+.buf/
+
+# ─── Python tooling (if scripts use Python) ────────────────────────────────
 .venv/
 venv/
 __pycache__/

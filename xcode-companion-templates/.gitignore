@@ -1,0 +1,6 @@
+# These files are user-local. Never commit real copies of the installed versions.
+# This folder contains TEMPLATES only — not the installed files at
+# ~/Library/Developer/Xcode/CodingAssistant/
+
+# macOS
+.DS_Store

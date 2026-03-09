@@ -1,19 +1,23 @@
-# Agent local overrides
+# ─── Agent local overrides ─────────────────────────────────────────────────
 .claude/settings.local.json
 .mcp.json
 
-# Secrets and environment
+# ─── Secrets and credentials ───────────────────────────────────────────────
 .env
 .env.*
 *.secret
 *.secrets
 secrets/
+*.pem
+*.p12
+*.key
+*.crt
 
-# macOS and editors
+# ─── macOS and editors ─────────────────────────────────────────────────────
 .DS_Store
 .vscode/settings.json
 
-# Python
+# ─── Python environment and build ──────────────────────────────────────────
 .venv/
 venv/
 __pycache__/
@@ -22,14 +26,33 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .pyright/
-coverage/
-coverage.xml
-htmlcov/
 dist/
 build/
 site/
 *.egg-info/
 .python-version
 
-# Local logs
+# uv.lock SHOULD be committed for reproducible installs (like package-lock.json).
+# Remove the line below if you want to commit it (recommended).
+# uv.lock
+
+# ─── Test and coverage artifacts ───────────────────────────────────────────
+coverage/
+coverage.xml
+htmlcov/
+
+# ─── Generated Protobuf and gRPC Python code ───────────────────────────────
+# Regenerate from .proto source using buf or your gen script.
+# Only commit generated code if your build system cannot run buf at build time.
+proto/gen/
+src/**/generated/
+src/**/*_pb2.py
+src/**/*_pb2_grpc.py
+src/**/*_pb2.pyi
+
+# ─── buf artifacts ─────────────────────────────────────────────────────────
+.buf/
+
+# ─── Logs and runtime state ────────────────────────────────────────────────
 *.log
+*.pid
