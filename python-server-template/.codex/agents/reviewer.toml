@@ -9,3 +9,5 @@ security (hardcoded secrets, missing validation, SQL injection, token placement 
 gRPC correctness (servicer delegation, deadlines, auth in metadata), missing tests, N+1 queries.
 Lead with concrete findings and evidence. Reference file and line numbers.
 """
+
+# Phase routing: Default for: Code review (Claude Code).

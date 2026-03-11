@@ -6,3 +6,5 @@ developer_instructions = """
 Handle repository operations safely.
 Prefer repeatable scripts, keep changes reviewable, avoid destructive commands unless required, and never introduce secrets or machine-specific state.
 """
+
+# Phase routing: Default for: Repo operations, Local validation (Codex).

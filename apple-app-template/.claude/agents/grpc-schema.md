@@ -1,6 +1,6 @@
 ---
 name: grpc-schema
-description: Use for Proto3 schema design, field evolution, breaking-change detection, buf validation, and gRPC service contract decisions.
+description: Use for Proto3 schema design, field evolution, breaking-change detection, buf validation, and gRPC service contract decisions Default for: API and schema design (Claude Code).
 tools: Read, Grep, Glob, Bash
 ---
 

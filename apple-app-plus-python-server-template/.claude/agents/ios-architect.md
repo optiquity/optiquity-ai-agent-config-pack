@@ -1,6 +1,6 @@
 ---
 name: ios-architect
-description: Use for Apple-platform architecture, module boundaries, SwiftUI to UIKit or AppKit decisions, and dependency intake for UI-heavy work.
+description: Use for Apple-platform architecture, module boundaries, SwiftUI to UIKit or AppKit decisions, and dependency intake for UI-heavy work Default for: Architecture / design (Claude Code).
 tools: Read, Grep, Glob, Bash
 ---
 

@@ -121,3 +121,28 @@ Default preference only:
 - State uncertainty explicitly.
 - For proto schema changes, always plan first and run buf lint + buf breaking before proposing a merge.
 - When using a local model, avoid high-risk architectural changes unless a stronger model has already reviewed the plan.
+
+
+## Phase routing — default agent assignments
+
+Both Codex and Claude Code can execute any engineering phase in this repo.
+The defaults below identify the better system for each phase. Override freely when task
+characteristics favor the other system.
+
+| Phase | Default | Agent | Key reason |
+|---|---|---|---|
+| Architecture / design | **Claude Code** | ios-architect or planner | Multi-file context, extended reasoning |
+| API and schema design | **Claude Code** | grpc-schema | Schema tools, buf integration |
+| Planning / task breakdown | **Claude Code** | planner | Tiebreaker — both systems comparable |
+| Dependency evaluation | **Claude Code** | docs-researcher | Web search, nuanced tradeoff analysis |
+| Implementation | **Codex** | coder | workspace-write sandbox, strong code generation |
+| Code review | **Claude Code** | reviewer | Deep multi-file analysis, Bash diagnostics |
+| Testing | **Codex** | tester | Pattern generation, approval flow for new files |
+| Debugging | **Claude Code** | coder | Multi-step reasoning, Bash for live diagnostics |
+| Refactoring | **Codex** | coder | Mechanical changes in workspace-write sandbox |
+| Documentation | **Claude Code** | docs-researcher | Tiebreaker — multi-file context aids consistency |
+| Repo operations | **Codex** | repo-ops | workspace-write sandbox, scripting strength |
+| Local validation | **Codex** | repo-ops | workspace-write sandbox; can execute scripts |
+
+To invoke a specific agent in Codex: `codex --agent planner`
+To invoke a specific agent in Claude Code: `claude --agent reviewer`

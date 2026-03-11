@@ -15,3 +15,15 @@ allowed-tools: Read, Grep, Glob, Bash
 9. Verify structured logging is used (not print()).
 10. Flag security risks: hardcoded credentials, missing input validation, SQL injection surface.
 11. Give a recommendation with explicit tradeoffs.
+
+## Layer Boundary Review
+
+Apply these checks on all architecture reviews:
+
+1. Verify domain layer has no imports of UIKit, AppKit, SwiftUI, CoreData, SwiftData, GRPCCore, grpcio, or any networking framework.
+2. Verify generated Protobuf types do not appear in domain-layer or presentation-layer type signatures.
+3. Verify every cross-layer dependency is expressed as a protocol; concrete types are injected.
+4. Verify shared mutable state has documented ownership: owner type, actor/thread, lifecycle, and mutation contract.
+5. Verify navigation logic is not embedded in View or ViewModel types.
+6. Verify services are stateless or explicitly document their state and threading guarantees.
+7. Verify the architecture pattern is documented (README or ARCHITECTURE.md) before flagging pattern inconsistencies.

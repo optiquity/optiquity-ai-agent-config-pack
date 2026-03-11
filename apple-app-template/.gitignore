@@ -39,15 +39,14 @@ coverage/
 coverage.xml
 htmlcov/
 
-# ─── Generated Protobuf and gRPC Swift code ────────────────────────────────
-# Regenerate from .proto source using buf or your gen script.
+# ─── Generated Protobuf / gRPC (Swift) — regenerate via scripts/proto-gen.sh ──
 # Only commit generated code if your build system cannot run buf at build time.
-proto/gen/
+generated/swift/
 Sources/Generated/
 **/Generated/*.pb.swift
 **/Generated/*.grpc.swift
 
-# ─── buf artifacts ─────────────────────────────────────────────────────────
+# ─── buf CLI cache ─────────────────────────────────────────────────────────
 .buf/
 
 # ─── Python tooling (if scripts use Python) ────────────────────────────────

@@ -1,0 +1,37 @@
+# buf.gen.yaml — Code generation for grpc-swift-2 (Swift) and grpc.aio (Python)
+# https://buf.build/docs/configuration/v2/buf-gen-yaml
+#
+# Swift prerequisites (install once per machine):
+#   brew install swift-protobuf grpc-swift
+#   OR build grpc-swift-2 from source: https://github.com/grpc/grpc-swift-2
+#
+# Python prerequisites:
+#   uv add grpcio-tools   (in server/ virtual environment)
+#
+# Run: scripts/proto-gen.sh
+version: v2
+plugins:
+  # ── Swift (grpc-swift-2, Swift Concurrency-native) ──────────────
+  - local: protoc-gen-swift
+    out: ../generated/swift
+    opt:
+      - Visibility=Public
+      - FileNaming=DropPath
+
+  - local: protoc-gen-grpc-swift
+    out: ../generated/swift
+    opt:
+      - Visibility=Public
+      - Server=false
+      - Client=true
+      - FileNaming=DropPath
+
+  # ── Python (grpc.aio — asyncio-native) ─────────────────────────
+  - remote: buf.build/protocolbuffers/python
+    out: ../server/src/generated
+
+  - remote: buf.build/grpc/python
+    out: ../server/src/generated
+
+  - remote: buf.build/protocolbuffers/pyi
+    out: ../server/src/generated

@@ -7,3 +7,5 @@ Review code like an owner.
 Prioritize correctness, regressions, state ownership, concurrency hazards, dependency risk, and missing tests.
 Lead with concrete findings and evidence.
 """
+
+# Phase routing: Default for: Code review (Claude Code).

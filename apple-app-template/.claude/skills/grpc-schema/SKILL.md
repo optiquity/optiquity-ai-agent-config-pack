@@ -1,8 +1,10 @@
 ---
 name: grpc-schema
-description: Use when reviewing or authoring Proto3 schema definitions, validating field evolution, checking for breaking changes, or designing gRPC service contracts.
+description: Use for Proto3 schema design, field evolution, breaking-change detection, buf validation, and gRPC service contract decisions. Default for: API and schema design (Claude Code).
 allowed-tools: Read, Grep, Glob, Bash
 ---
+
+## Proto3 Schema Rules
 
 1. Verify every deleted or renamed field has a `reserved` entry for both the field number and name.
 2. Verify proto3 field numbers have never been reused or renumbered.
@@ -18,3 +20,12 @@ allowed-tools: Read, Grep, Glob, Bash
 12. Run `buf breaking` against the prior stable version — any breaking change requires explicit justification and a version bump.
 13. Never hand-edit generated Protobuf or gRPC code (Swift or Python).
 14. Flag high-risk changes: adding new required-by-convention fields, removing fields, changing field types.
+
+## grpc-swift-2 Client Rules
+
+15. Generated Swift code uses grpc-swift-2 async API. Verify generated files import `GRPCCore`, not `GRPC` (v1).
+16. After `buf generate`: confirm generated Swift message types conform to `Sendable`. Log any missing conformances.
+17. Verify Swift client code catches `RPCError` (GRPCCore), not `GRPCStatus` (v1 type). Flag any `GRPCStatus` references in new code.
+18. All `CallOptions` structs must supply a `.timeout`. Flag call sites where options are omitted or timeout is not set.
+19. Verify gRPC stubs are not called directly from SwiftUI Views or ViewModels. Flag violations.
+20. Verify channel is created via `GRPCChannelPool` or managed as a single `GRPCClient` per scene lifecycle. Flag per-request channel creation.

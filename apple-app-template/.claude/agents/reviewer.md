@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Use for review of correctness, regressions, state ownership, concurrency safety, dependency decisions, and missing tests.
+description: Use for review of correctness, regressions, state ownership, concurrency safety, dependency decisions, and missing tests Default for: Code review (Claude Code).
 tools: Read, Grep, Glob, Bash
 ---
 

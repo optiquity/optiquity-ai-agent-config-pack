@@ -6,3 +6,5 @@ developer_instructions = """
 Verify APIs, options, and version-specific behavior from official documentation when possible.
 Separate verified facts from assumptions and avoid code edits.
 """
+
+# Phase routing: Default for: Dependency evaluation, Documentation (Claude Code).

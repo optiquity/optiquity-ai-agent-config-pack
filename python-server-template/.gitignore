@@ -8,16 +8,13 @@
 *.secret
 *.secrets
 secrets/
-*.pem
-*.p12
-*.key
-*.crt
 
-# ─── macOS and editors ─────────────────────────────────────────────────────
+# ─── macOS ─────────────────────────────────────────────────────────────────
 .DS_Store
-.vscode/settings.json
+.AppleDouble
+.LSOverride
 
-# ─── Python environment and build ──────────────────────────────────────────
+# ─── Python tooling ────────────────────────────────────────────────────────
 .venv/
 venv/
 __pycache__/
@@ -26,33 +23,19 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .pyright/
-dist/
-build/
-site/
-*.egg-info/
-.python-version
 
-# uv.lock SHOULD be committed for reproducible installs (like package-lock.json).
-# Remove the line below if you want to commit it (recommended).
-# uv.lock
+# ─── Generated Protobuf / gRPC (Python) — regenerate via scripts/proto-gen.sh ─
+# Only commit generated code if your build system cannot run buf at build time.
+server/src/generated/
+src/**/generated/
+*_pb2.py
+*_pb2_grpc.py
+*_pb2.pyi
+
+# ─── buf CLI cache ─────────────────────────────────────────────────────────
+.buf/
 
 # ─── Test and coverage artifacts ───────────────────────────────────────────
 coverage/
 coverage.xml
 htmlcov/
-
-# ─── Generated Protobuf and gRPC Python code ───────────────────────────────
-# Regenerate from .proto source using buf or your gen script.
-# Only commit generated code if your build system cannot run buf at build time.
-proto/gen/
-src/**/generated/
-src/**/*_pb2.py
-src/**/*_pb2_grpc.py
-src/**/*_pb2.pyi
-
-# ─── buf artifacts ─────────────────────────────────────────────────────────
-.buf/
-
-# ─── Logs and runtime state ────────────────────────────────────────────────
-*.log
-*.pid

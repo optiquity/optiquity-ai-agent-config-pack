@@ -1,8 +1,10 @@
 ---
 name: grpc-schema
-description: Use when reviewing or authoring Proto3 schema definitions, validating field evolution, checking for breaking changes, or designing gRPC service contracts.
+description: Use for Proto3 schema design, field evolution, breaking-change detection, buf validation, and gRPC service contract decisions. Default for: API and schema design (Claude Code).
 allowed-tools: Read, Grep, Glob, Bash
 ---
+
+## Proto3 Schema Rules
 
 1. Verify every deleted or renamed field has a `reserved` entry for both the field number and name.
 2. Verify proto3 field numbers have never been reused or renumbered.
@@ -16,5 +18,15 @@ allowed-tools: Read, Grep, Glob, Bash
 10. Use `FieldMask` for partial update RPCs.
 11. Run `buf lint` — fix all violations before merging.
 12. Run `buf breaking` against the prior stable version — any breaking change requires explicit justification and a version bump.
-13. Never hand-edit generated Protobuf or gRPC code (Swift or Python).
-14. Flag high-risk changes: adding new required-by-convention fields, removing fields, changing field types.
+13. Never hand-edit generated Protobuf or gRPC Python code.
+14. Flag high-risk changes: removing fields, changing field types, renaming RPC methods.
+
+## grpc.aio Server Rules
+
+15. Verify generated Python servicer classes are used with `grpc.aio.server(...)`, not `grpc.server(...)`. Flag synchronous server usage.
+16. Verify all servicer handler methods are `async def`. Flag any synchronous handler implementations.
+17. Verify handlers call `await context.abort(...)` for error responses, not raise bare Python exceptions.
+18. Verify `grpcio-status` is used for rich error responses; flag direct string-only abort calls for error cases requiring structured detail.
+19. Verify `grpcio`, `grpcio-tools`, `grpcio-status`, and `grpcio-reflection` are all pinned to the same version in pyproject.toml.
+20. Verify server interceptors subclass `grpc.aio.ServerInterceptor`, not the synchronous base class.
+21. Verify `asyncio.CancelledError` is not swallowed in streaming handlers.

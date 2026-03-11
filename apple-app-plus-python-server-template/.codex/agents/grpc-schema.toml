@@ -11,3 +11,5 @@ Run buf lint and buf breaking. One service per .proto file.
 Never hand-edit generated code.
 Output: issues with field/line references, breaking-change verdict, recommended fixes.
 """
+
+# Phase routing: Default for: API and schema design (Claude Code).

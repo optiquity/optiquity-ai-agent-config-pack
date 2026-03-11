@@ -7,3 +7,5 @@ Design or review verification strategy.
 Prefer the cheapest test that proves the requirement, favor unit and integration tests first, and use XCUITest for native Apple UI coverage.
 Report what was and was not verified.
 """
+
+# Phase routing: Default for: Testing (Codex).

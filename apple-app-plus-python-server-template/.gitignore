@@ -32,29 +32,7 @@ xcuserdata/
 *.xcworkspace/xcuserdata/
 *.xcworkspace/xcshareddata/
 
-# ─── Test and coverage artifacts ───────────────────────────────────────────
-xcresult/
-*.xcresult
-coverage/
-coverage.xml
-htmlcov/
-
-# ─── Generated Protobuf and gRPC code (Swift + Python) ─────────────────────
-# Regenerate from .proto source using buf or your gen script.
-# Only commit generated code if your build system cannot run buf at build time.
-proto/gen/
-Sources/Generated/
-**/Generated/*.pb.swift
-**/Generated/*.grpc.swift
-server/src/**/generated/
-server/src/**/*_pb2.py
-server/src/**/*_pb2_grpc.py
-server/src/**/*_pb2.pyi
-
-# ─── buf artifacts ─────────────────────────────────────────────────────────
-.buf/
-
-# ─── Python environment and build ──────────────────────────────────────────
+# ─── Python tooling ────────────────────────────────────────────────────────
 .venv/
 venv/
 __pycache__/
@@ -63,13 +41,26 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .pyright/
-dist/
-*.egg-info/
-.python-version
 
-# uv.lock SHOULD be committed for reproducible installs (like package-lock.json).
-# Remove the line below if you want to commit it (recommended).
-# uv.lock
+# ─── Generated Protobuf / gRPC — regenerate via scripts/proto-gen.sh ───────
+# Only commit generated code if your build system cannot run buf at build time.
+# Swift output
+generated/swift/
+Sources/Generated/
+**/Generated/*.pb.swift
+**/Generated/*.grpc.swift
+# Python output
+server/src/generated/
+*_pb2.py
+*_pb2_grpc.py
+*_pb2.pyi
 
-# ─── Logs ──────────────────────────────────────────────────────────────────
-*.log
+# ─── buf CLI cache ─────────────────────────────────────────────────────────
+.buf/
+
+# ─── Test and coverage artifacts ───────────────────────────────────────────
+xcresult/
+*.xcresult
+coverage/
+coverage.xml
+htmlcov/

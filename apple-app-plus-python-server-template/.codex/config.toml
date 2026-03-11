@@ -48,33 +48,38 @@ max_threads = 6
 max_depth = 1
 
 [agents.planner]
-description = "Planning specialist for scoping work, sequencing changes, and defining verification steps before non-trivial edits."
+description = "Planning specialist for scoping work, sequencing changes, and defining verification steps before non-trivial edits. Default for: Planning / task breakdown (Claude Code). Also: Architecture / design."
 config_file = "agents/planner.toml"
 
 [agents.coder]
-description = "Implementation specialist for targeted code changes, refactors, and test updates."
+description = "Implementation specialist for targeted code changes, refactors, and test updates. Default for: Implementation (Codex). Also: Debugging, Refactoring (Codex)."
 config_file = "agents/coder.toml"
 
 [agents.reviewer]
-description = "Read-only reviewer focused on correctness, regressions, concurrency, and missing tests."
+description = "Read-only reviewer focused on correctness, regressions, concurrency, and missing tests. Default for: Code review (Claude Code)."
 config_file = "agents/reviewer.toml"
 
 [agents.tester]
-description = "Read-only test strategist for unit, integration, UI, and end-to-end verification."
+description = "Read-only test strategist for unit, integration, UI, and end-to-end verification. Default for: Testing (Codex)."
 config_file = "agents/tester.toml"
 
 [agents.ios_architect]
-description = "Read-only Apple-platform architect for SwiftUI-first design and UIKit or AppKit interop decisions."
+description = "Read-only Apple-platform architect for SwiftUI-first design and UIKit or AppKit interop decisions. Default for: Architecture / design (Claude Code)."
 config_file = "agents/ios-architect.toml"
 
 [agents.repo_ops]
-description = "Repository operations specialist for scripts, command sequencing, and Git-safe automation."
+description = "Repository operations specialist for scripts, command sequencing, and Git-safe automation. Default for: Repo operations, Local validation (Codex)."
 config_file = "agents/repo-ops.toml"
 
 [agents.docs_researcher]
-description = "Read-only documentation specialist for verifying APIs, options, and config behavior from official docs."
+description = "Read-only documentation specialist for verifying APIs, options, and config behavior from official docs. Default for: Dependency evaluation, Documentation (Claude Code)."
 config_file = "agents/docs-researcher.toml"
 
 [agents.grpc_schema]
-description = "Read-only Proto3 schema specialist for field evolution, breaking-change detection, buf validation, and gRPC service contract review."
+description = "Read-only Proto3 schema specialist for field evolution, breaking-change detection, buf validation, and gRPC service contract review. Default for: API and schema design (Claude Code)."
 config_file = "agents/grpc-schema.toml"
+
+# Available skills (invoke via --skill flag):
+# planning, implementation, review, testing, debugging, documentation,
+# architecture-review, dependency-intake, grpc-schema, repo-ops,
+# error-handling  (NEW: domain error design, gRPC status mapping, retry logic)

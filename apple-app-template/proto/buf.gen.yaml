@@ -1,0 +1,28 @@
+# buf.gen.yaml — Code generation for grpc-swift-2 (Swift Concurrency-native gRPC)
+# https://buf.build/docs/configuration/v2/buf-gen-yaml
+#
+# Prerequisites (install once per machine):
+#   brew install swift-protobuf     # installs protoc-gen-swift
+#   brew install grpc-swift         # installs protoc-gen-grpc-swift (v2)
+#   OR build from source:
+#     git clone https://github.com/grpc/grpc-swift-2 && swift build -c release
+#     (copy .build/release/protoc-gen-grpc-swift to /usr/local/bin or $PATH)
+#
+# Run: scripts/proto-gen.sh
+version: v2
+plugins:
+  # Protobuf message types (SwiftProtobuf)
+  - local: protoc-gen-swift
+    out: ../generated/swift
+    opt:
+      - Visibility=Public
+      - FileNaming=DropPath
+
+  # gRPC service stubs (grpc-swift-2 async API)
+  - local: protoc-gen-grpc-swift
+    out: ../generated/swift
+    opt:
+      - Visibility=Public
+      - Server=false
+      - Client=true
+      - FileNaming=DropPath

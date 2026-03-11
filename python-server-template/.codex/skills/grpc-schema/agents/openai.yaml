@@ -1,1 +1,4 @@
-enabled: true
+name: grpc-schema
+description: Proto3 schema design, field evolution, breaking-change detection, buf validation, and gRPC service contract review. Default for API and schema design phase.
+instructions: Follow the grpc-schema SKILL.md in the same directory.
+model: gpt-5

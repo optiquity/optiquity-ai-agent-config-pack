@@ -1,6 +1,6 @@
 ---
 name: tester
-description: Use for test design, verification planning, debugging failing tests, and deciding between unit, integration, UI, and end-to-end coverage.
+description: Use for test design, verification planning, debugging failing tests, and deciding between unit, integration, UI, and end-to-end coverage Default for: Testing (Codex).
 tools: Read, Grep, Glob, Bash
 ---
 

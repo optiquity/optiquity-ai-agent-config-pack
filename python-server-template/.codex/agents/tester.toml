@@ -9,3 +9,5 @@ Use grpcio-testing for gRPC unit tests. Never hit real network endpoints.
 Use pytest-asyncio for async tests. Run buf breaking before proto merges.
 Report what was and was not verified.
 """
+
+# Phase routing: Default for: Testing (Codex).

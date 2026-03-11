@@ -1,10 +1,11 @@
-# AGENTS.md
-
-This configuration is for Xcode 26.3's Codex integration.
-It mirrors the repo-level policy but lives in the user-local Xcode customization directory:
-  ~/Library/Developer/Xcode/CodingAssistant/codex/
-
-Do not commit this file into app repositories. It is user-local.
+# AGENTS.md — Xcode 26.3 Codex Configuration
+#
+# This file lives at:
+#   ~/Library/Developer/Xcode/CodingAssistant/codex/AGENTS.md
+#
+# It applies to every Xcode project on this machine.
+# Do NOT commit this file into any app repository. It is user-local.
+# Repo-level AGENTS.md files in each project take precedence for project-specific rules.
 
 ## Capability policy
 
@@ -28,7 +29,7 @@ Default preference only:
 
 ## Platform defaults
 
-- SwiftUI first. UIKit or AppKit interop only when justified.
+- SwiftUI first. UIKit or AppKit interop only when justified by platform gaps or measurable performance reasons.
 - SPM first. No CocoaPods unless unavailable in SPM.
 - Swift 6 strict concurrency for new code.
 
@@ -41,13 +42,42 @@ Default preference only:
 - Prefer dependency injection over global state.
 - Avoid force unwraps outside tightly justified cases.
 
-## gRPC client rules
+## Architecture — universal layer rules
 
-When the active project communicates with a first-party backend over gRPC:
-- Never call gRPC stubs from ViewModels or Views.
-- Auth tokens in gRPC metadata, never in message fields.
+- Separate presentation, domain, and data/transport layers. No layer skips its immediate neighbor.
+- The domain layer has zero import dependencies on UIKit, AppKit, SwiftUI, CoreData, SwiftData, GRPCCore, or any networking or persistence framework.
+- Generated Protobuf and gRPC types are transport types. They live in the data layer only. Never in domain or presentation type signatures.
+- Every cross-layer dependency is expressed as a protocol. Concrete types are injected.
+- Every shared mutable state declaration documents owner, actor/thread, lifecycle, and mutation contract.
+- Services are stateless by default. Stateful services document their state and threading guarantees.
+- Navigation logic lives outside View and ViewModel types.
+
+## gRPC client rules (grpc-swift-2)
+
+This machine uses grpc-swift-2 (https://github.com/grpc/grpc-swift-2).
+Do not use grpc-swift v1 APIs in new code.
+
+- Never call gRPC stubs from ViewModels or Views. Wrap behind a protocol.
+- Auth tokens in gRPC call metadata, never in Protobuf message fields.
 - Every gRPC call has an explicit deadline using a named constant.
+- Catch RPCError (GRPCCore), not GRPCStatus (v1). Map to domain errors at the boundary.
 - Never hand-edit generated Protobuf or gRPC Swift code.
+- One GRPCClient per app or scene lifecycle.
+
+## Phase routing — default agent assignments
+
+| Phase | Default | Key reason |
+|---|---|---|
+| Architecture / design | Claude Code | Multi-file context, extended reasoning |
+| API and schema design | Claude Code | Schema tools, buf integration |
+| Planning / task breakdown | Claude Code | Tiebreaker |
+| Dependency evaluation | Claude Code | Web search, tradeoff analysis |
+| Implementation | Codex | workspace-write sandbox |
+| Code review | Claude Code | Deep multi-file analysis |
+| Testing | Codex | Pattern generation |
+| Debugging | Claude Code | Multi-step reasoning, Bash diagnostics |
+| Refactoring | Codex | Mechanical changes in sandbox |
+| Repo operations | Codex | workspace-write sandbox |
 
 ## Agent behavior
 
@@ -55,4 +85,4 @@ When the active project communicates with a first-party backend over gRPC:
 - Do not invent package APIs or Xcode settings.
 - Prefer the smallest correct change.
 - State uncertainty explicitly.
-- When using a local model, avoid high-risk changes unless a stronger model has already reviewed the plan.
+- When using a local model, avoid high-risk changes unless a stronger model has reviewed the plan.

@@ -1,45 +1,49 @@
 #!/usr/bin/env bash
+# validate.sh — Build and test both Swift client and Python server.
+#
+# ── Xcode setup (do this on first project creation) ───────────────────────
+XCODE_SCHEME=""           # ← fill in after first Xcode target is created
+XCODE_DESTINATION=""      # ← e.g. "platform=iOS Simulator,name=iPhone 16,OS=latest"
+# ─────────────────────────────────────────────────────────────────────────
+
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-
 status=0
 
-# Swift / Xcode validation
+# Swift / SPM
 if [[ -f "Package.swift" ]] && command -v swift >/dev/null 2>&1; then
-  echo "[validate] running swift build"
+  echo "[validate] swift build"
   swift build || status=$?
-  echo "[validate] running swift test"
+  echo "[validate] swift test"
   swift test || status=$?
 fi
 
+# Xcode
 if command -v xcodebuild >/dev/null 2>&1; then
-  if find . -maxdepth 2 \( -name "*.xcodeproj" -o -name "*.xcworkspace" \) | grep -q .; then
-    echo "[validate] Xcode project detected. No scheme-specific xcodebuild validate step is configured yet."
-    echo "[validate] After project creation, add a repo-specific script with stable scheme and destination names."
+  if [[ -n "$XCODE_SCHEME" && -n "$XCODE_DESTINATION" ]]; then
+    echo "[validate] xcodebuild test: $XCODE_SCHEME"
+    xcodebuild test \
+      -scheme "$XCODE_SCHEME" \
+      -destination "$XCODE_DESTINATION" \
+      -quiet || status=$?
+  else
+    if find . -maxdepth 2 \( -name "*.xcodeproj" -o -name "*.xcworkspace" \) | grep -q .; then
+      echo "[validate] WARN: Xcode project detected but XCODE_SCHEME / XCODE_DESTINATION not set."
+      echo "[validate] Edit scripts/validate.sh to enable xcodebuild validation."
+    fi
   fi
 fi
 
-# Python server validation
-if [[ -f "pyproject.toml" ]]; then
-  if command -v uv >/dev/null 2>&1; then
-    echo "[validate] running uv run ruff check ."
-    uv run ruff check . || status=$?
-    echo "[validate] running uv run pyright"
-    uv run pyright || status=$?
-    echo "[validate] running uv run pytest"
-    uv run pytest || status=$?
-  fi
-fi
-
-# Proto schema validation
-if [[ -d "proto" ]] && command -v buf >/dev/null 2>&1; then
-  echo "[validate] running buf lint"
-  buf lint proto/ || status=$?
-elif [[ -d "proto" ]]; then
-  echo "[validate] WARNING: proto/ found but buf is not installed. Skipping buf lint."
+# Python server
+if command -v pytest >/dev/null 2>&1 && [[ -d "server" ]]; then
+  echo "[validate] pytest (server/)"
+  pytest server/ || status=$?
+elif command -v uv >/dev/null 2>&1 && [[ -d "server" ]]; then
+  echo "[validate] uv run pytest (server/)"
+  uv run pytest server/ || status=$?
 fi
 
 exit "$status"

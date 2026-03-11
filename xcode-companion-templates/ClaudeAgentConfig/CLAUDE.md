@@ -1,10 +1,11 @@
-# CLAUDE.md
-
-This configuration is for Xcode 26.3's Claude Agent integration.
-It mirrors the repo-level policy but lives in the user-local Xcode customization directory:
-  ~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/
-
-Do not commit this file into app repositories. It is user-local.
+# CLAUDE.md — Xcode 26.3 Claude Agent Configuration
+#
+# This file lives at:
+#   ~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/CLAUDE.md
+#
+# It applies to every Xcode project on this machine.
+# Do NOT commit this file into any app repository. It is user-local.
+# Repo-level CLAUDE.md files in each project take precedence for project-specific rules.
 
 ## Capability policy
 
@@ -15,7 +16,7 @@ dependency review, repo operations, documentation.
 All are allowed. No task category is reserved exclusively for another tool.
 
 Default preference only:
-- Use a stronger cloud model for correctness-sensitive work.
+- Use a stronger cloud model for correctness-sensitive work (architecture, concurrency, security, review).
 - Use local models only where results are likely equivalent and the verification path is strong.
 
 ## Core priorities
@@ -43,14 +44,44 @@ Default preference only:
 - Prefer dependency injection over global state.
 - Avoid force unwraps outside tightly justified cases.
 
-## gRPC client rules
+## Architecture — universal layer rules
 
-When the active project communicates with a first-party backend over gRPC:
-- Never call gRPC stubs from ViewModels or Views. Wrap stubs behind a protocol.
-- Map Protobuf messages to domain types at the transport boundary.
+- Separate presentation, domain, and data/transport layers. No layer skips its immediate neighbor.
+- The domain layer has zero import dependencies on UIKit, AppKit, SwiftUI, CoreData, SwiftData, GRPCCore, or any networking or persistence framework.
+- Generated Protobuf and gRPC types are transport types. They live in the data layer only. They must never appear in domain-layer or presentation-layer type signatures.
+- Every cross-layer dependency is expressed as a protocol. Concrete types are injected.
+- Every shared mutable state declaration documents: owner type, owning actor or thread, lifecycle, and mutation contract.
+- Services are stateless by default. Stateful services explicitly document their state and threading guarantees.
+- Navigation logic lives outside View and ViewModel types.
+
+## gRPC client rules (grpc-swift-2)
+
+This machine uses grpc-swift-2 (https://github.com/grpc/grpc-swift-2) — Swift Concurrency-native.
+Do not use grpc-swift v1 APIs in new code.
+
+- Never call generated gRPC stubs directly from ViewModels or Views. Wrap stubs behind a protocol.
+- Map Protobuf messages to domain types at the transport boundary. Domain types must never be passed to stubs.
+- Never hand-edit generated Protobuf or gRPC Swift code. Regenerate from .proto source.
 - Auth tokens in gRPC call metadata, never in Protobuf message fields.
-- Every gRPC call has an explicit deadline using a named constant.
-- Never hand-edit generated Protobuf or gRPC Swift code.
+- Every gRPC call must have an explicit deadline using a named constant, not a magic duration literal.
+- Map gRPC status codes to typed domain errors at the boundary (catch RPCError, not GRPCStatus).
+- Manage one GRPCClient per app or scene lifecycle. Never create channels per request.
+- Swift Task cancellation propagates automatically to grpc-swift-2 calls.
+
+## Phase routing — default agent assignments
+
+| Phase | Default | Key reason |
+|---|---|---|
+| Architecture / design | Claude Code | Multi-file context, extended reasoning |
+| API and schema design | Claude Code | Schema tools, buf integration |
+| Planning / task breakdown | Claude Code | Tiebreaker |
+| Dependency evaluation | Claude Code | Web search, tradeoff analysis |
+| Implementation | Codex | workspace-write sandbox |
+| Code review | Claude Code | Deep multi-file analysis |
+| Testing | Codex | Pattern generation |
+| Debugging | Claude Code | Multi-step reasoning, Bash diagnostics |
+| Refactoring | Codex | Mechanical changes in sandbox |
+| Repo operations | Codex | workspace-write sandbox |
 
 ## Agent behavior
 
@@ -59,3 +90,4 @@ When the active project communicates with a first-party backend over gRPC:
 - Do not invent APIs, Apple behavior, package capabilities, or build flags.
 - Read existing code before introducing new patterns.
 - Prefer the smallest correct change.
+- For high-risk changes (concurrency, security, gRPC schema), produce a plan and name remaining risks.

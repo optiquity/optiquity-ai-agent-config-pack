@@ -1,28 +1,39 @@
 #!/usr/bin/env bash
+# format.sh — Format Swift (swift-format) and Python (ruff) source files.
+# Install: brew install swift-format && uv add --dev ruff
+# If a formatter is not installed, the script warns and continues.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT_DIR"
 
+cd "$ROOT_DIR"
 
 status=0
 
-if [[ -f "Package.swift" ]] && command -v swift >/dev/null 2>&1; then
-  echo "[format] Swift package detected. No formatter is configured yet."
+# Swift
+if command -v swift-format >/dev/null 2>&1; then
+  echo "[format] Running swift-format..."
+  for dir in Sources Tests client/Sources client/Tests ios/Sources ios/Tests; do
+    if [[ -d "$dir" ]]; then
+      swift-format format --recursive --in-place "$dir" || status=$?
+      echo "[format] Formatted: $dir/"
+    fi
+  done
+else
+  echo "[format] WARN: swift-format not found — skipping Swift formatting."
+  echo "[format] Install: brew install swift-format"
 fi
 
-
-if [[ -f "pyproject.toml" ]]; then
-  if command -v uv >/dev/null 2>&1; then
-    echo "[format] running uv run ruff format ."
-    uv run ruff format . || status=$?
-  elif command -v ruff >/dev/null 2>&1; then
-    echo "[format] running ruff format ."
-    ruff format . || status=$?
-  else
-    echo "[format] ruff is not installed"
-    status=1
+# Python
+if command -v ruff >/dev/null 2>&1; then
+  echo "[format] Running ruff format (server/)..."
+  if [[ -d "server" ]]; then
+    ruff format server/ || status=$?
+    ruff check --fix server/ || status=$?
   fi
+else
+  echo "[format] WARN: ruff not found — skipping Python formatting."
+  echo "[format] Install: uv add --dev ruff"
 fi
 
 exit "$status"

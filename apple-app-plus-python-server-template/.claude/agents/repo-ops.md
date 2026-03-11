@@ -1,6 +1,6 @@
 ---
 name: repo-ops
-description: Use for repo operations, branch-safe scripted edits, local automation, Git hygiene, and repeatable command sequences.
+description: Use for repo operations, branch-safe scripted edits, local automation, Git hygiene, and repeatable command sequences Default for: Repo operations, Local validation (Codex).
 tools: Read, Grep, Glob, Edit, Write, MultiEdit, Bash
 ---
 

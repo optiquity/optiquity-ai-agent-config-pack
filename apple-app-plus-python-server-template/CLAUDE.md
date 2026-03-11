@@ -58,6 +58,20 @@ Default preference only:
 - Enum zero value must always be `UNSPECIFIED` (e.g., `STATUS_UNSPECIFIED = 0`).
 
 ## Architecture rules
+## Architecture — universal layer discipline
+
+These rules apply regardless of which architecture pattern this project uses.
+
+- Choose one primary architecture pattern per app target before writing production code. Document the choice and rationale in README.md or ARCHITECTURE.md before implementation begins.
+- Once chosen, apply the pattern consistently within its target. Any seam between two different patterns must be documented and justified.
+- Separate presentation, domain, and data/transport layers into distinct types, files, or modules. No layer may reach past its immediate neighbor (presentation → domain → data; never presentation → data directly).
+- Domain layer has zero import dependencies on UIKit, AppKit, SwiftUI, CoreData, SwiftData, gRPC, grpcio, or any persistence or networking framework.
+- Generated Protobuf and gRPC types are transport types. They live in the data layer only. They must never appear in domain-layer type signatures or in presentation/view-model types.
+- Every cross-layer dependency is expressed as a protocol abstraction. Concrete implementations are injected; they are never instantiated inline by the consuming layer.
+- Shared mutable state declares its owner type, owning actor or thread, lifecycle (who creates it, who destroys it), and mutation contract at the definition site. Undocumented shared mutable state is a defect.
+- Services are stateless by default. Stateful services explicitly document their state variables, threading guarantees, and invalidation policy.
+- Navigation logic lives outside view and view-model types. Use Coordinator, NavigationStack with a typed path, or a Router depending on the chosen pattern.
+
 
 - Default to immutable value types and immutable reference types.
 - Allow mutation only when it clearly models evolving state, system boundaries, caches, stores, coordinators, or UI state holders.
@@ -113,6 +127,44 @@ Default preference only:
 - Prevent N+1 queries. Use eager loading or batch queries at the repository layer.
 - Background tasks must be idempotent.
 - ML model inference must be isolated from business logic. Version models and document rollback procedures.
+
+
+## grpc-swift-2 API rules
+
+This repo uses grpc-swift-2 (https://github.com/grpc/grpc-swift-2), the Swift Concurrency-native gRPC implementation.
+Do not use grpc-swift v1 APIs in new code.
+
+- Import `GRPCCore` and the transport package (`GRPCNIOTransportHTTP2` or its NIO Posix variant).
+- Unary calls: `let response = try await client.someMethod(request, options: callOptions)`
+- Server-streaming: `for try await message in client.serverStream(request, options: callOptions).messages { ... }`
+- Client-streaming: `try await client.clientStream { writer in try await writer.write(request) }`
+- Bidirectional: manage the writer in a closure; iterate responses with `for try await msg in stream.messages { ... }`
+- Always supply `CallOptions` with a timeout. Define timeouts as named constants — never inline duration literals.
+- Error handling: catch `RPCError` (GRPCCore). Inspect `.code` and `.message`. Map to domain errors at the repository or service boundary. `RPCError` must not propagate past that boundary.
+- Cancellation: Swift Task cancellation propagates automatically to the underlying gRPC call. Explicit `call.cancel()` is not required for Task-scoped calls.
+- Interceptors: use `ClientInterceptor` protocol (GRPCCore) for auth, logging, retry, and tracing. Register at channel construction, not per-call.
+- Channel lifecycle: manage one `GRPCClient` instance per app or scene lifecycle. Never create a new channel per request.
+- After every `buf generate` run: verify generated Protobuf Swift types still conform to `Sendable`.
+
+
+## grpc.aio API rules (asyncio-native gRPC)
+
+This repo uses `grpc.aio` (asyncio-native) for all gRPC server and client code.
+Do not use synchronous `grpc.server()` or synchronous stubs in production code.
+
+- Start the server with `grpc.aio.server(interceptors=[...])`, not `grpc.server(...)`.
+- All servicer handler methods are `async def`. Blocking code inside a handler stalls the event loop — offload CPU-bound work with `asyncio.run_in_executor(executor, ...)`.
+- Unary handler: `async def MethodName(self, request: RequestType, context: grpc.aio.ServicerContext) -> ResponseType`
+- Server-streaming: `async def` + `await context.write(response)` in a loop; return `None`.
+- Client-streaming: `async for request in context: ...`
+- Bidirectional: combine `async for request in context` with `await context.write(response)`.
+- Return gRPC errors: `await context.abort(grpc.StatusCode.CODE, "detail string")`. Never raise bare Python exceptions from handlers — they become `INTERNAL` status with no visible detail.
+- Rich error details: use `grpcio-status`. Attach `google.rpc.Status` with error_details via `context.abort_with_status(...)`.
+- Server interceptors: subclass `grpc.aio.ServerInterceptor`. Implement `async def intercept(self, continuation, call_details)`.
+- Client channels: use `grpc.aio.secure_channel()` (production) or `grpc.aio.insecure_channel()` (local dev) inside `async with` blocks.
+- Client errors: catch `grpc.aio.AioRpcError`. Inspect `.code()` and `.details()`. Map to domain exceptions at the service or repository boundary.
+- Streaming cancellation: handle `asyncio.CancelledError` in streaming handlers — clean up resources, then re-raise. Do not swallow it.
+- Dependency pinning: `grpcio`, `grpcio-tools`, `grpcio-status`, and `grpcio-reflection` must be pinned to the same version.
 
 ## Security
 
@@ -210,3 +262,28 @@ When acting in this repo:
 - Match local style when it does not violate these rules.
 - Prefer changing the smallest correct surface area.
 - For high-risk changes (proto schema changes, concurrency, security), produce a plan, identify verification steps, and name the remaining risks.
+
+
+## Phase routing — default agent assignments
+
+Both Claude Code and Codex can execute any engineering phase in this repo.
+The defaults below identify the better system for each phase. Override freely when task
+characteristics favor the other system.
+
+| Phase | Default | Agent | Key reason |
+|---|---|---|---|
+| Architecture / design | **Claude Code** | ios-architect or planner | Multi-file context, extended reasoning |
+| API and schema design | **Claude Code** | grpc-schema | Schema tools, buf integration |
+| Planning / task breakdown | **Claude Code** | planner | Tiebreaker — both systems comparable |
+| Dependency evaluation | **Claude Code** | docs-researcher | Web search, nuanced tradeoff analysis |
+| Implementation | **Codex** | coder | workspace-write sandbox, strong code generation |
+| Code review | **Claude Code** | reviewer | Deep multi-file analysis, Bash diagnostics |
+| Testing | **Codex** | tester | Pattern generation, approval flow for new files |
+| Debugging | **Claude Code** | coder | Multi-step reasoning, Bash for live diagnostics |
+| Refactoring | **Codex** | coder | Mechanical changes in workspace-write sandbox |
+| Documentation | **Claude Code** | docs-researcher | Tiebreaker — multi-file context aids consistency |
+| Repo operations | **Codex** | repo-ops | workspace-write sandbox, scripting strength |
+| Local validation | **Codex** | repo-ops | workspace-write sandbox; can execute scripts |
+
+To invoke a specific agent in Claude Code: `claude --agent planner`
+To invoke a specific agent in Codex: `codex --agent coder`

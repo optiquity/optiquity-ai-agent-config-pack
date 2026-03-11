@@ -41,8 +41,21 @@ Default preference only:
 - Prefer builders or dedicated factory helpers when initialization is complex, correctness-sensitive, or requires staged validation.
 - Prefer protocol abstractions at boundaries, not everywhere.
 - Avoid inheritance unless required by Apple frameworks or a stable abstraction clearly justifies it. Composition is the default.
-- Keep UI, domain, persistence, and networking concerns separate.
 - Avoid singleton sprawl. If shared state is necessary, document ownership, lifecycle, and thread-safety.
+## Architecture — universal layer discipline
+
+These rules apply regardless of which architecture pattern this project uses.
+
+- Choose one primary architecture pattern per app target before writing production code. Document the choice and rationale in README.md or ARCHITECTURE.md before implementation begins.
+- Once chosen, apply the pattern consistently within its target. Any seam between two different patterns must be documented and justified.
+- Separate presentation, domain, and data/transport layers into distinct types, files, or modules. No layer may reach past its immediate neighbor (presentation → domain → data; never presentation → data directly).
+- Domain layer has zero import dependencies on UIKit, AppKit, SwiftUI, CoreData, SwiftData, gRPC, grpcio, or any persistence or networking framework.
+- Generated Protobuf and gRPC types are transport types. They live in the data layer only. They must never appear in domain-layer type signatures or in presentation/view-model types.
+- Every cross-layer dependency is expressed as a protocol abstraction. Concrete implementations are injected; they are never instantiated inline by the consuming layer.
+- Shared mutable state declares its owner type, owning actor or thread, lifecycle (who creates it, who destroys it), and mutation contract at the definition site. Undocumented shared mutable state is a defect.
+- Services are stateless by default. Stateful services explicitly document their state variables, threading guarantees, and invalidation policy.
+- Navigation logic lives outside view and view-model types. Use Coordinator, NavigationStack with a typed path, or a Router depending on the chosen pattern.
+
 
 ## Swift and Apple coding rules
 
@@ -122,6 +135,24 @@ Before adding any third-party framework or API:
 - Separate mechanical formatting from semantic changes when practical.
 - Surface risky migrations early.
 
+
+## grpc-swift-2 API rules
+
+This repo uses grpc-swift-2 (https://github.com/grpc/grpc-swift-2), the Swift Concurrency-native gRPC implementation.
+Do not use grpc-swift v1 APIs in new code.
+
+- Import `GRPCCore` and the transport package (`GRPCNIOTransportHTTP2` or `GRPCNIOTransportHTTP2NIOPosix`).
+- Unary calls: `let response = try await client.someMethod(request, options: callOptions)`
+- Server-streaming: `for try await message in client.serverStream(request, options: callOptions).messages { ... }`
+- Client-streaming: `try await client.clientStream { writer in try await writer.write(request) }`
+- Bidirectional streaming: manage the writer in a closure; iterate responses with `for try await msg in stream.messages { ... }`
+- Always supply `CallOptions` with a timeout. Define timeouts as named constants — never inline duration literals.
+- Error handling: catch `RPCError` (GRPCCore). Inspect `.code` (type `RPCError.Code`) and `.message`. Map to domain errors at the repository or service boundary. `RPCError` must not cross that boundary.
+- Cancellation: Swift Task cancellation propagates automatically to the underlying gRPC call in grpc-swift-2. Explicit `call.cancel()` is not required for Task-scoped calls.
+- Interceptors: use `ClientInterceptor` protocol (GRPCCore) for auth, logging, retry, and tracing. Register interceptors at channel construction, not per-call.
+- Channel lifecycle: manage one `GRPCClient` instance per app or scene lifecycle. Never create a new channel per request.
+- After every `buf generate` run: verify generated Protobuf Swift types still conform to `Sendable`.
+
 ## Anti-patterns — never introduce these
 
 - Massive view controllers or God ViewModels accumulating unrelated logic.
@@ -139,6 +170,31 @@ Before adding any third-party framework or API:
 - Magic duration literals for gRPC deadlines — use named constants.
 - Ignoring scene lifecycle transitions in long-lived gRPC streaming connections.
 - Editing generated Protobuf or gRPC Swift code by hand.
+
+
+## Phase routing — default agent assignments
+
+Both Claude Code and Codex can execute any engineering phase in this repo.
+The defaults below identify the better system for each phase. Override freely when task
+characteristics favor the other system.
+
+| Phase | Default | Agent | Key reason |
+|---|---|---|---|
+| Architecture / design | **Claude Code** | ios-architect or planner | Multi-file context, extended reasoning |
+| API and schema design | **Claude Code** | grpc-schema | Schema tools, buf integration |
+| Planning / task breakdown | **Claude Code** | planner | Tiebreaker — both systems comparable |
+| Dependency evaluation | **Claude Code** | docs-researcher | Web search, nuanced tradeoff analysis |
+| Implementation | **Codex** | coder | workspace-write sandbox, strong code generation |
+| Code review | **Claude Code** | reviewer | Deep multi-file analysis, Bash diagnostics |
+| Testing | **Codex** | tester | Pattern generation, approval flow for new files |
+| Debugging | **Claude Code** | coder | Multi-step reasoning, Bash for live diagnostics |
+| Refactoring | **Codex** | coder | Mechanical changes in workspace-write sandbox |
+| Documentation | **Claude Code** | docs-researcher | Tiebreaker — multi-file context aids consistency |
+| Repo operations | **Codex** | repo-ops | workspace-write sandbox, scripting strength |
+| Local validation | **Codex** | repo-ops | workspace-write sandbox; can execute scripts |
+
+To invoke a specific agent in Claude Code: `claude --agent planner`
+To invoke a specific agent in Codex: `codex --agent coder`
 
 ## Agent behavior
 

@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Use for review of correctness, regressions, type safety, error handling, security, and missing tests.
+description: Use for review of correctness, regressions, type safety, error handling, security, and missing tests Default for: Code review (Claude Code).
 tools: Read, Grep, Glob, Bash
 ---
 

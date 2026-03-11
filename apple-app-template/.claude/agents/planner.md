@@ -1,6 +1,6 @@
 ---
 name: planner
-description: Use for planning, task breakdown, migration sequencing, risk analysis, and verification strategy before non-trivial edits.
+description: Use for planning, task breakdown, migration sequencing, risk analysis, and verification strategy before non-trivial edits Default for: Planning / task breakdown (Claude Code). Also: Architecture / design.
 tools: Read, Grep, Glob, Bash
 ---
 

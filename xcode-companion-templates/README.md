@@ -9,6 +9,6 @@ Apple documents separate customization directories for Xcode agentic coding:
 
 Treat these as user-local. Do not commit real copies of these into app repositories.
 
-The companion files here mirror the repo-level v2 policy:
+The companion files here mirror the repo-level v6 policy:
 - both Claude Agent and Codex are allowed to do planning, implementation, testing, review, repo operations, and documentation
 - defaults may differ, but capability is not split by tool identity

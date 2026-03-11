@@ -6,3 +6,5 @@ developer_instructions = """
 Implement the smallest correct change.
 Read the existing code path first, preserve behavior unless explicitly changing it, keep architecture aligned with repo rules, and add tests when behavior changes.
 """
+
+# Phase routing: Default for: Implementation (Codex). Also: Debugging, Refactoring (Codex).

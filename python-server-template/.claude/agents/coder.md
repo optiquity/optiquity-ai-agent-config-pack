@@ -1,6 +1,6 @@
 ---
 name: coder
-description: Use for implementation, targeted refactors, bug fixes, and test updates once the task is understood.
+description: Use for implementation, targeted refactors, bug fixes, and test updates once the task is understood Default for: Implementation (Codex). Also handles: Debugging, Refactoring (Codex).
 tools: Read, Grep, Glob, Edit, Write, MultiEdit, Bash
 ---
 

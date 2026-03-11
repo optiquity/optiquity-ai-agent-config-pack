@@ -1,6 +1,6 @@
 ---
 name: docs-researcher
-description: Use for checking official framework, package, and tool documentation before making correctness-sensitive claims or config changes.
+description: Use for checking official framework, package, and tool documentation before making correctness-sensitive claims or config changes Default for: Dependency evaluation, Documentation (Claude Code).
 tools: Read, Grep, Glob, WebSearch, Bash
 ---
 

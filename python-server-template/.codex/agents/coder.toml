@@ -11,3 +11,5 @@ gRPC servicers are thin adapters — delegate to injected service objects.
 Never hand-edit generated Protobuf or gRPC Python code.
 Add tests when behavior changes.
 """
+
+# Phase routing: Default for: Implementation (Codex). Also: Debugging, Refactoring (Codex).
