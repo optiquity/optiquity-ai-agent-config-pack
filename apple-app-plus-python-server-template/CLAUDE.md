@@ -57,6 +57,13 @@ Default preference only:
 - Proto3 field numbers are inviolable. Never reuse a deleted field number. Use `reserved` on deletion.
 - Enum zero value must always be `UNSPECIFIED` (e.g., `STATUS_UNSPECIFIED = 0`).
 
+## iOS 26 / Xcode 26.3 platform features
+
+- **Liquid Glass** is the current iOS 26 / macOS 26 design language for materials and visual effects. Use `.glassEffect()` and related modifiers rather than custom `Material` or `UIVisualEffectView` implementations. Evaluate Liquid Glass before reaching for any third-party visual effects library.
+- **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Treat it as the Apple-first option for any on-device language model need. Evaluate it before reaching for third-party ML inference frameworks. It does not require network access and respects App Sandbox.
+- **Check Apple frameworks before third-party packages.** For any new capability, verify whether an iOS 26 Apple framework covers the need before adding a dependency. This applies especially to ML, visual effects, and system integration features.
+- For implementation details on any iOS 26 API, the `docs-researcher` agent reads from `shared-docs/ios26/` before web search.
+
 ## Architecture rules
 ## Architecture — universal layer discipline
 

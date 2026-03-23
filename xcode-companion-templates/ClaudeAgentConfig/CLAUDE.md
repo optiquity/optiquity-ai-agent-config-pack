@@ -34,6 +34,13 @@ Default preference only:
 - Swift Package Manager first. No CocoaPods unless unavailable in SPM.
 - Swift 6 strict concurrency for new code. Be pragmatic at legacy and third-party boundaries.
 
+## iOS 26 / Xcode 26.3 platform features
+
+- **Liquid Glass** is the current design language for iOS 26 / macOS 26. Use `.glassEffect()` and related SwiftUI modifiers for materials and visual effects. Prefer this over custom `Material`, `UIVisualEffectView`, or third-party visual effect libraries.
+- **FoundationModels** (iOS 26+) is Apple's on-device LLM framework. It is the Apple-first option for language model features. Evaluate it before any third-party ML framework. No network access required.
+- **Apple-first dependency rule:** Before recommending any third-party package for a new capability, verify whether an iOS 26 or macOS 26 Apple framework already covers the need. Avoid recommending third-party packages unless they are already in use in the project or no Apple framework addresses the requirement.
+- For iOS 26 API details, reference `shared-docs/ios26/` in the local config pack (not in the project repo). Run `sync-xcode-docs.sh` to populate it from the Xcode bundle.
+
 ## Design rules
 
 - Prefer immutable types by default.

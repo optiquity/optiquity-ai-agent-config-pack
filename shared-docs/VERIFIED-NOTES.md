@@ -16,6 +16,11 @@
 - `google.protobuf.Timestamp` is the documented Protobuf type for date/time fields. Source: Protocol Buffers docs.
 - Proto3 field number stability and the use of `reserved` on deletion are explicitly documented requirements. Source: Protocol Buffers Language Guide.
 - `GRPCNIOTransportHTTP2` (Swift gRPC NIO stack) supports TLS and is the recommended transport for production. Source: grpc-swift docs.
+- Xcode 26.3 uses a planner/executor architecture internally for its AI coding agent, confirmed by `PlannerExecutorStylePlannerSystemPrompt-gpt_5.idechatprompttemplate` inside the IDEIntelligenceChat framework. Source: Xcode 26.3 app bundle (verified March 2026).
+- Xcode's AI base system prompt explicitly instructs the model to prefer Apple frameworks and avoid recommending third-party packages unless already in use. Source: `BasicSystemPrompt.idechatprompttemplate` from Xcode 26.3 app bundle (verified March 2026 via artemnovichkov/xcode-26-system-prompts).
+- Xcode 26.3 ships `AdditionalDocumentation/` markdown files inside the IDEIntelligenceChat framework as supplemental AI context. These are the same files used in `shared-docs/ios26/`. Path: `Xcode.app/Contents/PlugIns/IDEIntelligenceChat.framework/Versions/A/Resources/AdditionalDocumentation/`. Source: direct inspection of Xcode 26.3 app bundle (verified March 2026).
+- Liquid Glass is the iOS 26 / macOS 26 design language for materials and visual effects, available via `.glassEffect()` and related modifiers in SwiftUI. Source: `shared-docs/ios26/SwiftUI-Implementing-Liquid-Glass-Design.md` (Apple internal documentation, Xcode 26.3).
+- FoundationModels is Apple's on-device LLM framework available in iOS 26+. It requires no network access and operates within App Sandbox. Source: `shared-docs/ios26/FoundationModels-Using-on-device-LLM-in-your-app.md` (Apple internal documentation, Xcode 26.3).
 
 ## Not fully verified
 
@@ -23,3 +28,5 @@
 - I did not verify an Apple or LM Studio source that explicitly names LM Studio as a supported Xcode provider by name. The verified statement is that Xcode supports locally hosted providers by port and LM Studio exposes a compatible local API.
 - The specific `GRPCChannelPool` API surface in grpc-swift may vary by version. Verify against the version pinned in Package.swift before referencing specific method names.
 - `pyright --strict` behavior for specific rules may vary between versions. Pin the pyright version in dev dependencies.
+- The exact Liquid Glass modifier API (`.glassEffect()` parameter variants) should be verified against the installed SDK before use in production code — Apple may refine the API in Xcode point releases.
+- FoundationModels API surface should be verified against the installed SDK. The framework is new in iOS 26 and may have breaking changes in point releases.
