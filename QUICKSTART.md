@@ -157,11 +157,54 @@ Replace v6 companion files if previously installed.
 
 ```bash
 git add -A && git status   # verify nothing sensitive is staged
-git commit -m "Add AI agent configuration (v7)"
+git commit -m "Add AI agent configuration (v8)"
 ```
 
 The `.gitignore` automatically excludes `.claude/settings.local.json`, `.mcp.json`,
 and all generated Protobuf output.
+
+---
+
+## Step 11 — Create the app's Claude project
+
+1. Go to claude.ai → Projects → New Project
+2. Name it after your app (e.g., "MyApp — PM")
+3. Connect your GitHub repo via the GitHub connector (gives the PM chat read access to all repo docs)
+4. Upload these files to **Project Knowledge**:
+   - `METHODOLOGY.md` from your project repo root (or from `supporting-docs/METHODOLOGY.md` in the pack)
+   - `supporting-docs/PROMPT-TEMPLATES.md` from the pack
+
+These two files give the PM chat the methodology context and prompt templates it needs
+without bloating every conversation. They are searched on demand, not injected wholesale.
+
+---
+
+## Step 12 — Start the PM chat
+
+Open a new chat in your Claude project. Paste the **PM Chat Kickoff Prompt** from
+`supporting-docs/PROMPT-TEMPLATES.md` (Template 1), with all [PLACEHOLDERS] filled in.
+
+The PM chat will confirm it can see your project documents and tell you what to do next.
+
+---
+
+## Step 13 — Generate SETUP.md and AGENT_KICKOFF.md
+
+Use the PM chat with Templates 13 and 14 from `PROMPT-TEMPLATES.md` to generate
+project-specific versions of these files. The PM chat reads the templates and fills
+in all values from your planning conversation.
+
+The resulting files go in your project repo root:
+- `SETUP.md` — step-by-step setup guide for this specific project (and second machine)
+- `AGENT_KICKOFF.md` — architecture phase kickoff prompt to paste into the architect agent
+
+Commit both files, then run the architecture kickoff:
+
+```bash
+cd ~/Developer/YourProject
+claude --agent apple-architect   # or python-architect for Python projects
+# Paste the full contents of AGENT_KICKOFF.md as your first message
+```
 
 ---
 
