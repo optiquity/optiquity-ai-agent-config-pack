@@ -298,3 +298,41 @@ correctly implements this pattern.
 ## Deferred
 
 *(Items move here when pushed to a future version, with the target version noted)*
+
+---
+
+### BD-019 — Document Desktop Commander usage and fallback pattern in METHODOLOGY.md
+
+**Files:** `supporting-docs/METHODOLOGY.md` (BD-008)
+**Reason:** Desktop Commander (available as an MCP tool in the Claude desktop app) allows
+the PM chat and other Claude chats to make direct file edits and git commits without
+requiring the human to open a terminal. This changes the workflow: instead of the PM chat
+generating a prompt for the human to paste into a CLI session, it can write the file and
+commit directly.
+
+However, Desktop Commander is not always available:
+- May not be installed or enabled on all machines
+- Web version of Claude (claude.ai) does not have Desktop Commander
+- Multi-developer or multi-machine setups where Desktop Commander is not present on
+  every machine
+- Permission errors or path issues
+
+**Required pattern in METHODOLOGY.md:**
+Every workflow step that involves writing a file or committing to the repo must document
+both paths:
+
+1. **With Desktop Commander (preferred when available):** Claude writes the file directly
+   via Desktop Commander, then runs git add/commit/push. Confirm success before proceeding.
+
+2. **Manual fallback (always provide):** Claude outputs the file content in the chat.
+   Human copies it, writes to the correct path, then runs the git commands shown.
+
+**Sync discipline:** After any file edit — whether done by Desktop Commander or manually —
+the human must sync the GitHub connector in the Claude project before the next session
+that depends on that content. METHODOLOGY.md should make this explicit: file edits are
+not visible to the PM chat's project knowledge until a sync occurs.
+
+**Multi-machine and multi-developer note:** If multiple machines or developers are active,
+always pull before editing and push promptly after committing to avoid conflicts.
+
+**Source:** v8 design session — Desktop Commander observed working in Claude desktop app
