@@ -45,4 +45,7 @@ DerivedData/
 *.swp
 *.swo
 .vscode/
+# Exception: the VS Code companion template files are intentionally committed
+!vscode-companion-templates/.vscode/
+!vscode-companion-templates/.vscode/**
 .idea/

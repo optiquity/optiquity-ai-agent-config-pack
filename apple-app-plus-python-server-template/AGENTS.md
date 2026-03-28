@@ -160,7 +160,7 @@ characteristics favor the other system.
 
 | Phase | Default | Agent | Key reason |
 |---|---|---|---|
-| Architecture / design | **Claude Code** | apple-architect or planner | Multi-file context, extended reasoning |
+| Architecture / design | **Claude Code** | apple-architect (Swift), python-architect (Python), or planner | Multi-file context, extended reasoning |
 | API and schema design | **Claude Code** | grpc-schema | Schema tools, buf integration |
 | Planning / task breakdown | **Claude Code** | planner | Tiebreaker — both systems comparable |
 | Dependency evaluation | **Claude Code** | docs-researcher | Web search, nuanced tradeoff analysis |

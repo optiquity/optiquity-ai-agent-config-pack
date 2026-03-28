@@ -1,0 +1,47 @@
+{
+  // ── Python interpreter ──────────────────────────────────────────────────────
+  // Adjust this path if your virtualenv is not at .venv in the project root.
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+
+  // ── Linting and formatting (Ruff) ──────────────────────────────────────────
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+
+  // ── Type checking (Pyright) ─────────────────────────────────────────────────
+  "python.analysis.typeCheckingMode": "strict",
+  "python.analysis.diagnosticMode": "workspace",
+  "python.analysis.autoImportCompletions": true,
+
+  // ── Proto / gRPC ────────────────────────────────────────────────────────────
+  "files.associations": {
+    "*.proto": "proto3"
+  },
+
+  // ── Editor defaults ─────────────────────────────────────────────────────────
+  "editor.rulers": [100],
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.trimAutoWhitespace": true,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+
+  // ── Exclude noisy directories from explorer and search ──────────────────────
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/.ruff_cache": true,
+    "**/.venv": true
+  },
+  "search.exclude": {
+    "**/__pycache__": true,
+    "**/.venv": true,
+    "**/generated": true
+  }
+}

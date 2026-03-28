@@ -1,0 +1,25 @@
+{
+  "recommendations": [
+    // ── Python ─────────────────────────────────────────────────────────────
+    "ms-python.python",           // Python language support
+    "ms-python.vscode-pylance",   // Pyright-based IntelliSense (Pylance)
+    "charliermarsh.ruff",         // Ruff linter and formatter
+
+    // ── gRPC / Protobuf ─────────────────────────────────────────────────────
+    "zxh404.vscode-proto3",       // .proto syntax highlighting and validation
+
+    // ── API testing ─────────────────────────────────────────────────────────
+    "humao.rest-client",          // REST Client — test HTTP endpoints inline
+    "rangav.vscode-thunder-client", // Thunder Client — lightweight Postman alternative
+
+    // ── Containers ──────────────────────────────────────────────────────────
+    "ms-azuretools.vscode-docker", // Docker support
+
+    // ── Git ──────────────────────────────────────────────────────────────────
+    "eamodio.gitlens",            // Enhanced Git history and blame annotations
+
+    // ── Productivity ─────────────────────────────────────────────────────────
+    "streetsidesoftware.code-spell-checker", // Spell check in code and comments
+    "usernamehw.errorlens"        // Inline error and warning display
+  ]
+}

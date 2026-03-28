@@ -48,6 +48,10 @@ env_key = "LMSTUDIO_API_KEY"
 max_threads = 6
 max_depth = 1
 
+[agents.python_architect]
+description = "Read-only Python server architect for service layer design, grpc.aio patterns, repository boundaries, and long-term maintainability. Default for: Architecture / design — Python server (Claude Code)."
+config_file = "agents/python-architect.toml"
+
 [agents.planner]
 description = "Planning specialist for scoping work, sequencing changes, and defining verification steps before non-trivial edits. Default for: Planning / task breakdown (Claude Code). Also: Architecture / design."
 config_file = "agents/planner.toml"

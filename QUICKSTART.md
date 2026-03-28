@@ -186,7 +186,7 @@ and all generated Protobuf output.
 
 | Phase | Default | Agent |
 |---|---|---|
-| Architecture / design | Claude Code | `apple-architect` or `planner` |
+| Architecture / design | Claude Code | `apple-architect` or `planner` (Swift); `python-architect` or `planner` (Python) |
 | API and schema design | Claude Code | `grpc-schema` |
 | Planning | Claude Code | `planner` |
 | Dependency evaluation | Claude Code | `docs-researcher` |
