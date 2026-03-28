@@ -38,8 +38,8 @@ if command -v xcodebuild >/dev/null 2>&1; then
     xcodebuild test       -scheme "$XCODE_SCHEME"       -destination "$XCODE_DESTINATION"       -quiet || status=$?
   else
     if find . -maxdepth 2 \( -name "*.xcodeproj" -o -name "*.xcworkspace" \) | grep -q .; then
-      echo "[validate] WARN: Xcode project detected but XCODE_SCHEME and XCODE_DESTINATION are not set."
-      echo "[validate] Edit scripts/validate.sh and fill in those two variables to enable xcodebuild validation."
+      echo "[validate] ⚠️  XCODE_SCHEME is not set — xcodebuild steps skipped."
+      echo "[validate]    Edit scripts/validate.sh and set XCODE_SCHEME and XCODE_DESTINATION to enable full validation."
     fi
   fi
 fi

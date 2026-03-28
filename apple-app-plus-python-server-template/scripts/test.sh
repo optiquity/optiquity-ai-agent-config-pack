@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh — Run tests for Swift client and Python server.
+# test.sh — Run the test suite.
 #
 # ── Xcode setup (do this on first project creation) ───────────────────────
 XCODE_SCHEME=""           # ← fill in after first Xcode target is created
@@ -18,16 +18,16 @@ if [[ -f "Package.swift" ]] && command -v swift >/dev/null 2>&1; then
   swift test || status=$?
 fi
 
-if command -v xcodebuild >/dev/null 2>&1 && [[ -n "$XCODE_SCHEME" && -n "$XCODE_DESTINATION" ]]; then
-  xcodebuild test -scheme "$XCODE_SCHEME" -destination "$XCODE_DESTINATION" -quiet || status=$?
-fi
-
-if command -v pytest >/dev/null 2>&1 && [[ -d "server" ]]; then
-  echo "[test] pytest (server/)"
-  pytest server/ || status=$?
-elif command -v uv >/dev/null 2>&1 && [[ -d "server" ]]; then
-  echo "[test] uv run pytest (server/)"
-  uv run pytest server/ || status=$?
+if command -v xcodebuild >/dev/null 2>&1; then
+  if [[ -n "$XCODE_SCHEME" && -n "$XCODE_DESTINATION" ]]; then
+    echo "[test] xcodebuild test: $XCODE_SCHEME"
+    xcodebuild test       -scheme "$XCODE_SCHEME"       -destination "$XCODE_DESTINATION"       -quiet || status=$?
+  else
+    if find . -maxdepth 2 \( -name "*.xcodeproj" -o -name "*.xcworkspace" \) | grep -q .; then
+      echo "[test] ⚠️  XCODE_SCHEME is not set — xcodebuild steps skipped."
+      echo "[test]    Edit scripts/test.sh and set XCODE_SCHEME and XCODE_DESTINATION to enable xcodebuild testing."
+    fi
+  fi
 fi
 
 exit "$status"

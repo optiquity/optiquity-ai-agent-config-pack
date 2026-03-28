@@ -13,6 +13,7 @@ This repo is Python-server-first and should remain cross-platform.
 """
 
 [sandbox_workspace_write]
+post_edit_command = "./scripts/agent-post-edit-check.sh"
 network_access = true
 writable_roots = ["."]
 

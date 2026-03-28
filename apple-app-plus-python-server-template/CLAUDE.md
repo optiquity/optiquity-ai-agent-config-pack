@@ -61,6 +61,7 @@ Default preference only:
 
 - **Liquid Glass** is the current iOS 26 / macOS 26 design language for materials and visual effects. Use `.glassEffect()` and related modifiers rather than custom `Material` or `UIVisualEffectView` implementations. Evaluate Liquid Glass before reaching for any third-party visual effects library.
 - **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Treat it as the Apple-first option for any on-device language model need. Evaluate it before reaching for third-party ML inference frameworks. It does not require network access and respects App Sandbox.
+- **Availability guards required.** Liquid Glass and FoundationModels require iOS 26+ / macOS 26+. If the project's deployment target is below iOS 26 / macOS 26, all usage of `.glassEffect()`, FoundationModels, and related APIs must be wrapped in `#available(iOS 26, *)` / `#available(macOS 26, *)` guards. Do not use these APIs as unconditional defaults on older deployment targets.
 - **Check Apple frameworks before third-party packages.** For any new capability, verify whether an iOS 26 Apple framework covers the need before adding a dependency. This applies especially to ML, visual effects, and system integration features.
 - For implementation details on any iOS 26 API, the `docs-researcher` agent reads from `shared-docs/ios26/` before web search.
 
@@ -279,7 +280,7 @@ characteristics favor the other system.
 
 | Phase | Default | Agent | Key reason |
 |---|---|---|---|
-| Architecture / design | **Claude Code** | ios-architect or planner | Multi-file context, extended reasoning |
+| Architecture / design | **Claude Code** | apple-architect or planner | Multi-file context, extended reasoning |
 | API and schema design | **Claude Code** | grpc-schema | Schema tools, buf integration |
 | Planning / task breakdown | **Claude Code** | planner | Tiebreaker — both systems comparable |
 | Dependency evaluation | **Claude Code** | docs-researcher | Web search, nuanced tradeoff analysis |

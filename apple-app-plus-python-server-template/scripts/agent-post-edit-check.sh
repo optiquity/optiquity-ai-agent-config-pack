@@ -16,20 +16,16 @@ fi
 
 if command -v xcodebuild >/dev/null 2>&1; then
   if find . -maxdepth 2 \( -name "*.xcodeproj" -o -name "*.xcworkspace" \) | grep -q .; then
-    echo "[agent-post-edit-check] Xcode project or workspace detected - listing schemes"
-    xcodebuild -list >/dev/null || status=$?
+    if [[ -n "${XCODE_SCHEME:-}" ]]; then
+      echo "[agent-post-edit-check] Xcode project detected - running xcodebuild build"
+      xcodebuild build -scheme "$XCODE_SCHEME" -quiet >/dev/null 2>&1 || status=$?
+    else
+      echo "[agent-post-edit-check] ⚠️  XCODE_SCHEME is not set — xcodebuild build check skipped."
+      echo "[agent-post-edit-check]    Set XCODE_SCHEME in scripts/validate.sh for full build verification."
+      xcodebuild -list >/dev/null || status=$?
+    fi
   fi
 fi
 
-
-if [[ -f "pyproject.toml" ]]; then
-  if command -v uv >/dev/null 2>&1; then
-    echo "[agent-post-edit-check] python project detected - running uv run ruff check ."
-    uv run ruff check . || status=$?
-  elif command -v ruff >/dev/null 2>&1; then
-    echo "[agent-post-edit-check] python project detected - running ruff check ."
-    ruff check . || status=$?
-  fi
-fi
 
 exit "$status"

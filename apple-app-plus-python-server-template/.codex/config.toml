@@ -12,6 +12,7 @@ Use local models only where the verification path is strong and the likely resul
 """
 
 [sandbox_workspace_write]
+post_edit_command = "./scripts/agent-post-edit-check.sh"
 network_access = true
 writable_roots = ["."]
 
@@ -63,9 +64,9 @@ config_file = "agents/reviewer.toml"
 description = "Read-only test strategist for unit, integration, UI, and end-to-end verification. Default for: Testing (Codex)."
 config_file = "agents/tester.toml"
 
-[agents.ios_architect]
+[agents.apple_architect]
 description = "Read-only Apple-platform architect for SwiftUI-first design and UIKit or AppKit interop decisions. Default for: Architecture / design (Claude Code)."
-config_file = "agents/ios-architect.toml"
+config_file = "agents/apple-architect.toml"
 
 [agents.repo_ops]
 description = "Repository operations specialist for scripts, command sequencing, and Git-safe automation. Default for: Repo operations, Local validation (Codex)."

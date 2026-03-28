@@ -38,6 +38,7 @@ Default preference only:
 
 - **Liquid Glass** is the current design language for iOS 26 / macOS 26. Use `.glassEffect()` and related SwiftUI modifiers for materials and visual effects. Prefer this over custom `Material`, `UIVisualEffectView`, or third-party visual effect libraries.
 - **FoundationModels** (iOS 26+) is Apple's on-device LLM framework. It is the Apple-first option for language model features. Evaluate it before any third-party ML framework. No network access required.
+- **Availability guards required.** Liquid Glass and FoundationModels require iOS 26+ / macOS 26+. If the project's deployment target is below iOS 26 / macOS 26, wrap all `.glassEffect()` and FoundationModels usage in `#available(iOS 26, *)` / `#available(macOS 26, *)` guards. Do not use as unconditional defaults on older targets.
 - **Apple-first dependency rule:** Before recommending any third-party package for a new capability, verify whether an iOS 26 or macOS 26 Apple framework already covers the need. Avoid recommending third-party packages unless they are already in use in the project or no Apple framework addresses the requirement.
 - For iOS 26 API details, reference `shared-docs/ios26/` in the local config pack (not in the project repo). Run `sync-xcode-docs.sh` to populate it from the Xcode bundle.
 

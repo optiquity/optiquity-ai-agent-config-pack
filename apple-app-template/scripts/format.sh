@@ -2,7 +2,8 @@
 # format.sh — Format Swift source files using swift-format.
 # Install: brew install swift-format
 # If swift-format is not installed, this script warns and exits 0.
-# The post-edit hook calls this after every agent file edit.
+# Run manually before committing, or invoke via: claude --agent repo-ops "run format.sh"
+# Not wired into the PostToolUse hook — format once pre-commit rather than after every individual edit.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
