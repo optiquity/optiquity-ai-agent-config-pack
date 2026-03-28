@@ -287,6 +287,62 @@ correctly implements this pattern.
 - OptiquityTrader-specific section: exact steps for upgrading OT from v7 to v8
 **Source:** v8 design session
 
+### BD-019 — Document Desktop Commander usage, PM chat scope limits, and fallback pattern
+
+**Files:** `supporting-docs/METHODOLOGY.md` (BD-008)
+
+**PM chat scope rule:**
+The PM chat should only use Desktop Commander for small, targeted doc changes that do
+not require a specialist agent — the kind of edit that would otherwise be done with
+standard `claude` (no agent flag). Examples of appropriate PM chat edits:
+- Updating STATUS.md after a phase completes
+- Adding items to BACKLOG.md
+- Appending a CHANGELOG entry
+- Fixing a typo or stale reference in a doc file
+
+The PM chat must NOT use Desktop Commander to:
+- Write or modify any Swift, Python, or other source code
+- Make broad or sweeping changes to multiple files
+- Change architectural or implementation decisions in ARCHITECTURE.md or
+  IMPLEMENTATION_PLAN.md without first explaining the change and receiving explicit
+  human approval in the chat
+
+For any change larger than a targeted doc edit, the PM chat must:
+1. Describe what it intends to change and why
+2. Wait for explicit human approval before proceeding
+3. If the change requires a specialist agent (coder, reviewer, etc.), generate the
+   appropriate agent prompt instead of making the change directly
+
+**Desktop Commander availability:**
+Desktop Commander (available as an MCP tool in the Claude desktop app) allows the PM
+chat and other Claude chats to make direct file edits and git commits. However, it is
+not always available:
+- Not present in the web version of Claude (claude.ai)
+- May not be installed or enabled on all machines
+- Multi-developer or multi-machine setups may not have it everywhere
+- Permission errors or path issues may block it
+
+**Dual-path pattern for METHODOLOGY.md:**
+Every workflow step that involves writing a file or committing must document both paths:
+
+1. **With Desktop Commander (when available and change is in scope):** Claude writes
+   the file directly, then runs git add/commit/push. Confirm success before proceeding.
+
+2. **Manual fallback (always provide):** Claude outputs the full file content and the
+   exact git commands. Human copies the content, writes to the correct path, and runs
+   the commands shown. This fallback must always be available regardless of whether
+   Desktop Commander is working.
+
+**Sync discipline:** After any file edit — Desktop Commander or manual — the human must
+sync the GitHub connector in the Claude project before the next session that depends on
+that content. File edits are not visible to the PM chat's project knowledge until a
+sync occurs.
+
+**Multi-machine and multi-developer note:** Always pull before editing and push promptly
+after committing to avoid conflicts across MacBook Pro, Mac mini, or future collaborators.
+
+**Source:** v8 design session
+
 ---
 
 ## Resolved
@@ -298,41 +354,3 @@ correctly implements this pattern.
 ## Deferred
 
 *(Items move here when pushed to a future version, with the target version noted)*
-
----
-
-### BD-019 — Document Desktop Commander usage and fallback pattern in METHODOLOGY.md
-
-**Files:** `supporting-docs/METHODOLOGY.md` (BD-008)
-**Reason:** Desktop Commander (available as an MCP tool in the Claude desktop app) allows
-the PM chat and other Claude chats to make direct file edits and git commits without
-requiring the human to open a terminal. This changes the workflow: instead of the PM chat
-generating a prompt for the human to paste into a CLI session, it can write the file and
-commit directly.
-
-However, Desktop Commander is not always available:
-- May not be installed or enabled on all machines
-- Web version of Claude (claude.ai) does not have Desktop Commander
-- Multi-developer or multi-machine setups where Desktop Commander is not present on
-  every machine
-- Permission errors or path issues
-
-**Required pattern in METHODOLOGY.md:**
-Every workflow step that involves writing a file or committing to the repo must document
-both paths:
-
-1. **With Desktop Commander (preferred when available):** Claude writes the file directly
-   via Desktop Commander, then runs git add/commit/push. Confirm success before proceeding.
-
-2. **Manual fallback (always provide):** Claude outputs the file content in the chat.
-   Human copies it, writes to the correct path, then runs the git commands shown.
-
-**Sync discipline:** After any file edit — whether done by Desktop Commander or manually —
-the human must sync the GitHub connector in the Claude project before the next session
-that depends on that content. METHODOLOGY.md should make this explicit: file edits are
-not visible to the PM chat's project knowledge until a sync occurs.
-
-**Multi-machine and multi-developer note:** If multiple machines or developers are active,
-always pull before editing and push promptly after committing to avoid conflicts.
-
-**Source:** v8 design session — Desktop Commander observed working in Claude desktop app
