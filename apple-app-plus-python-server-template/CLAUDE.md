@@ -70,7 +70,7 @@ Default preference only:
 
 These rules apply regardless of which architecture pattern this project uses.
 
-- Choose one primary architecture pattern per app target before writing production code. Document the choice and rationale in README.md or ARCHITECTURE.md before implementation begins.
+- Choose one primary architecture pattern per app target before writing production code. **Document the choice and rationale in `ARCHITECTURE.md` before implementation begins.** Do not write production code before the architecture decision is recorded.
 - Once chosen, apply the pattern consistently within its target. Any seam between two different patterns must be documented and justified.
 - Separate presentation, domain, and data/transport layers into distinct types, files, or modules. No layer may reach past its immediate neighbor (presentation → domain → data; never presentation → data directly).
 - Domain layer has zero import dependencies on UIKit, AppKit, SwiftUI, CoreData, SwiftData, gRPC, grpcio, or any persistence or networking framework.
@@ -95,6 +95,7 @@ These rules apply regardless of which architecture pattern this project uses.
 - Mark classes `final` by default unless subclassing is explicitly required.
 - Make invalid states unrepresentable where possible.
 - Prefer typed errors, typed IDs, and explicit domain models over stringly typed state.
+- Persistent domain objects carry a typed ID wrapper (a `UUID` wrapped in a named struct). Never use raw `UUID` or `String` at domain boundaries.
 - Avoid force unwraps except in tightly justified test-only or impossible-state contexts.
 - Prefer `async` and `await` over callback pyramids.
 - Any `@MainActor`, `nonisolated`, `Sendable`, or `@unchecked Sendable` decision must be intentional and documented in code comments when non-obvious.
@@ -187,6 +188,14 @@ Do not use synchronous `grpc.server()` or synchronous stubs in production code.
 - Prevent SQL injection. Use parameterized queries. Never concatenate user input into queries.
 - Use JWT or OAuth for auth. Validate tokens server-side on every request.
 - Run dependency security scans regularly on both Swift (SPM) and Python (uv) dependency trees.
+- Request minimum required permissions. Do not request entitlements not actively used (Apple).
+
+## Liskov Substitution Principle
+
+- Every protocol method must have a meaningful implementation in every conforming type. Silent no-ops and unconditional "not supported" throws that are not gated by feature flags or capability checks are violations.
+- No domain or presentation layer code may branch on the concrete type behind a protocol reference. Use capability flags or feature checks for all implementation differences.
+- No concrete data-layer type may be referenced by name in domain or presentation code. Only protocol types and domain model types cross layer boundaries.
+- When adding a new protocol or abstract base class, verify conformance correctness across all implementing types before committing.
 
 ## Dependency intake policy
 
@@ -232,6 +241,26 @@ Before adding any third-party framework, package, or API:
 - Separate mechanical formatting from semantic changes when practical.
 - Surface risky migrations early, especially proto schema changes.
 
+## Scripts
+
+The `scripts/` directory at the project root contains shell scripts for validation, formatting,
+testing, and code generation. **Copy from the pack template and make executable before first use**
+(`chmod +x scripts/*.sh`).
+
+| Script | When to run | Who calls it |
+|---|---|---|
+| `bootstrap.sh` | Once on first checkout or new machine | Human |
+| `format.sh` | Before committing — runs swift-format (Swift) and ruff (Python) | Human or `repo-ops` agent |
+| `test.sh` | After implementing — runs swift test and pytest | Human or `repo-ops` agent |
+| `validate.sh` | Before committing — full build + test suite for both sides | Human or `repo-ops` agent |
+| `proto-gen.sh` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
+| `agent-post-edit-check.sh` | **Never call manually** — fires automatically via Claude Code PostToolUse hook | Claude Code hook |
+
+**Required first-time setup (Apple targets):** Open `scripts/validate.sh` and `scripts/test.sh`
+and fill in `XCODE_SCHEME` and `XCODE_DESTINATION`. Until set, xcodebuild steps are skipped.
+
+**Note:** `format.sh` is manual-only — not wired into the automatic post-edit hook.
+
 ## Anti-patterns — never introduce these
 
 ### Shared / gRPC
@@ -249,9 +278,12 @@ Before adding any third-party framework, package, or API:
 - print() in production code.
 - Singleton sprawl for injectable services.
 - Leaking gRPC stream references across scene lifecycle.
+- Domain types appearing in data-layer or transport-layer signatures.
+- Hard deletion of user-modifiable objects — use soft-delete (tombstoning) where audit or logging requires data retention.
 
 ### Python server
 - Module-level mutable global state used as service registry.
+- Mutable global state that is not explicitly documented as such.
 - Ignoring gRPC UNAVAILABLE as a fatal unrecoverable error without retry logic.
 - N+1 database queries.
 - Type annotations omitted on public APIs.

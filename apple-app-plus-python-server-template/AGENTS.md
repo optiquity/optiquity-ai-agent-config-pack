@@ -52,6 +52,8 @@ Default preference only:
 - Make invalid states unrepresentable.
 - Prefer dependency injection over global state on both client and server.
 - Keep UI, domain, persistence, and networking concerns separate.
+- Persistent domain objects carry a typed ID wrapper (a `UUID` wrapped in a named struct). Never use raw `UUID` or `String` at domain boundaries.
+- Choose one primary architecture pattern before writing production code. **Document the choice in `ARCHITECTURE.md` before implementation begins.**
 
 ## gRPC client rules (Swift)
 
@@ -77,6 +79,14 @@ Default preference only:
 - Validate all incoming data at I/O boundaries.
 - Rate limit server-side. Return RESOURCE_EXHAUSTED for violations.
 - Parameterized queries only. Never concatenate user input into SQL.
+- Request minimum required permissions. Do not request entitlements not actively used (Apple).
+
+## Liskov Substitution Principle
+
+- Every protocol method must have a meaningful implementation in every conforming type. Silent no-ops and unconditional "not supported" throws not gated by capability checks are violations.
+- No domain or presentation code may branch on the concrete type behind a protocol reference. Use capability flags for all implementation differences.
+- No concrete data-layer type may be referenced by name in domain or presentation code.
+- When adding a new protocol or abstract base class, verify conformance correctness across all implementing types before committing.
 
 ## Testing policy
 
@@ -96,6 +106,22 @@ Default preference only:
 - Do not commit generated Protobuf or gRPC code.
 - Flag proto schema changes as high-risk in PR notes.
 
+## Scripts
+
+The `scripts/` directory contains shell scripts agents and developers use to validate,
+test, format, and generate code. Make them executable on first checkout: `chmod +x scripts/*.sh`.
+
+| Script | Purpose | Call |
+|---|---|---|
+| `bootstrap.sh` | First-time setup — resolves SPM and Python dependencies | Manual, once per machine |
+| `format.sh` | Format Swift (swift-format) and Python (ruff). Manual only | `repo-ops` or manual pre-commit |
+| `test.sh` | Run test suite (swift test + pytest) | `repo-ops` or manual |
+| `validate.sh` | Full build + test suite for both sides | `repo-ops` or manual pre-commit |
+| `proto-gen.sh` | Run buf lint + buf generate after .proto edits | `grpc-schema` or manual |
+| `agent-post-edit-check.sh` | Auto build-check. **Never call manually.** | Claude Code PostToolUse hook only |
+
+Set `XCODE_SCHEME` and `XCODE_DESTINATION` in `validate.sh` and `test.sh` before first use.
+
 ## Anti-patterns — never introduce
 
 - Hand-editing generated Protobuf or gRPC code.
@@ -108,9 +134,12 @@ Default preference only:
 - Force unwraps as convenience.
 - print() in production code.
 - Module-level mutable globals as service registries.
+- Mutable global state not explicitly documented as such.
 - N+1 database queries.
 - Blocking synchronous I/O in async handlers.
 - Hardcoded secrets in source or config files.
+- Domain types appearing in data-layer or transport-layer signatures.
+- Hard deletion of user-modifiable objects — use soft-delete (tombstoning) where audit or logging requires data retention.
 
 ## Agent behavior
 

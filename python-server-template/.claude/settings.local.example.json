@@ -2,9 +2,22 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
-      "Bash(uv run pytest *)",
-      "Bash(uv run pyright *)",
-      "Bash(uv run ruff *)"
+      // Common read-only exploration — safe to allow broadly
+      "Bash(grep *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(cat *)",
+
+      // Open files/folders in Finder or default app
+      "Bash(open *)",
+
+      // Web search for docs-researcher agent
+      "WebSearch",
+
+      // Add specific file paths as you encounter permission prompts during
+      // agent sessions. Copy the exact path from the permission dialog.
+      // Example:
+      // "Bash(/Users/yourname/Developer/YourApp/Sources/MyFile.swift:*)"
     ]
   }
 }

@@ -66,6 +66,20 @@ repo operations, and documentation work here. No work category is exclusive to o
 - Do not state that an external API or framework supports a feature unless that support was verified.
 - Do not commit generated Protobuf or gRPC Python code.
 
+## Scripts
+
+The `scripts/` directory contains shell scripts agents and developers use to validate,
+test, format, and generate code. Make them executable on first checkout: `chmod +x scripts/*.sh`.
+
+| Script | Purpose | Call |
+|---|---|---|
+| `bootstrap.sh` | First-time setup — installs Python dependencies via uv | Manual, once per machine |
+| `format.sh` | Run ruff format + ruff check. Manual only — not in the auto-hook | `repo-ops` or manual pre-commit |
+| `test.sh` | Run pytest | `repo-ops` or manual |
+| `validate.sh` | Full build + test suite | `repo-ops` or manual pre-commit |
+| `proto-gen.sh` | Run buf lint + buf generate after .proto edits | `grpc-schema` or manual |
+| `agent-post-edit-check.sh` | Auto build-check. **Never call manually.** | Claude Code PostToolUse hook only |
+
 ## Anti-patterns — never introduce
 
 - Hand-editing generated Protobuf or gRPC Python code.

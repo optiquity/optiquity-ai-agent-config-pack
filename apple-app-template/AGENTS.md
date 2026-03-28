@@ -41,6 +41,8 @@ Default preference only:
 - Prefer dependency injection over global state.
 - Avoid force unwraps outside tightly justified cases.
 - Avoid inheritance unless framework requirements or a stable abstraction clearly justify it.
+- Persistent domain objects carry a typed ID wrapper (a `UUID` wrapped in a named struct). Never use raw `UUID` or `String` at domain boundaries.
+- Choose one primary architecture pattern before writing production code. **Document the choice in `ARCHITECTURE.md` before implementation begins.**
 
 ## gRPC client rules
 
@@ -60,6 +62,14 @@ Default preference only:
 - TLS required for all gRPC connections.
 - Validate all network data before use in domain logic or UI.
 - Privacy Manifests required for all required reason APIs and third-party SDKs.
+- Request minimum required permissions. Do not request entitlements not actively used.
+
+## Liskov Substitution Principle
+
+- Every protocol method must have a meaningful implementation in every conforming type. Silent no-ops and unconditional "not supported" throws not gated by capability checks are violations.
+- No domain or presentation code may branch on the concrete type behind a protocol reference. Use capability flags for all implementation differences.
+- No concrete data-layer type may be referenced by name in domain or presentation code.
+- When adding a new protocol, verify conformance correctness across all implementing types before committing.
 
 ## Dependency and API policy
 
@@ -88,6 +98,23 @@ Before adding a third-party package or API:
 - Document setup changes.
 - Do not commit generated Protobuf or gRPC Swift files.
 
+## Scripts
+
+The `scripts/` directory contains shell scripts agents and developers use to validate,
+test, format, and generate code. Make them executable on first checkout: `chmod +x scripts/*.sh`.
+
+| Script | Purpose | Call |
+|---|---|---|
+| `bootstrap.sh` | First-time setup — resolves SPM dependencies | Manual, once per machine |
+| `format.sh` | Format Swift (swift-format). Manual only — not in the auto-hook | `repo-ops` or manual pre-commit |
+| `test.sh` | Run test suite only | `repo-ops` or manual |
+| `validate.sh` | Full build + test suite | `repo-ops` or manual pre-commit |
+| `proto-gen.sh` | Run buf lint + buf generate after .proto edits | `grpc-schema` or manual |
+| `agent-post-edit-check.sh` | Auto build-check. **Never call manually.** | Claude Code PostToolUse hook only |
+
+Set `XCODE_SCHEME` and `XCODE_DESTINATION` in `validate.sh` and `test.sh` before first use —
+without them, xcodebuild steps are skipped silently (a warning is printed).
+
 ## Anti-patterns — never introduce
 
 - Calling gRPC stubs directly from ViewModels or Views.
@@ -100,6 +127,8 @@ Before adding a third-party package or API:
 - Magic duration literals for gRPC deadlines.
 - Editing generated Protobuf or gRPC code by hand.
 - Leaking gRPC stream references across scene lifecycle.
+- Domain types appearing in data-layer or transport-layer signatures.
+- Hard deletion of user-modifiable objects — use soft-delete (tombstoning) where audit or logging requires data retention.
 
 ## Agent behavior
 

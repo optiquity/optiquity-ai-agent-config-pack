@@ -32,7 +32,24 @@ xcuserdata/
 *.xcworkspace/xcuserdata/
 *.xcworkspace/xcshareddata/
 
-# ─── Python tooling ────────────────────────────────────────────────────────
+# ─── Test and coverage artifacts ───────────────────────────────────────────
+xcresult/
+*.xcresult
+coverage/
+coverage.xml
+htmlcov/
+
+# ─── Generated Protobuf / gRPC (Swift) — regenerate via scripts/proto-gen.sh ──
+# Only commit generated code if your build system cannot run buf at build time.
+generated/swift/
+Sources/Generated/
+**/Generated/*.pb.swift
+**/Generated/*.grpc.swift
+
+# ─── buf CLI cache ─────────────────────────────────────────────────────────
+.buf/
+
+# ─── Python tooling (if scripts use Python) ────────────────────────────────
 .venv/
 venv/
 __pycache__/
@@ -42,25 +59,34 @@ __pycache__/
 .ruff_cache/
 .pyright/
 
-# ─── Generated Protobuf / gRPC — regenerate via scripts/proto-gen.sh ───────
-# Only commit generated code if your build system cannot run buf at build time.
-# Swift output
-generated/swift/
-Sources/Generated/
-**/Generated/*.pb.swift
-**/Generated/*.grpc.swift
-# Python output
-server/src/generated/
-*_pb2.py
-*_pb2_grpc.py
-*_pb2.pyi
+# ─── Additional Xcode artifacts ─────────────────────────────────────────────
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
 
-# ─── buf CLI cache ─────────────────────────────────────────────────────────
-.buf/
+# ─── Xcode mode/perspective files (keep defaults, ignore user-specific) ─────
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
 
-# ─── Test and coverage artifacts ───────────────────────────────────────────
-xcresult/
-*.xcresult
-coverage/
-coverage.xml
-htmlcov/
+# ─── Playgrounds ─────────────────────────────────────────────────────────────
+timeline.xctimeline
+playground.xcworkspace
+
+# ─── Fastlane ─────────────────────────────────────────────────────────────────
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# ─── Carthage ─────────────────────────────────────────────────────────────────
+Carthage/Build/

@@ -135,6 +135,24 @@ If a tool is not installed, say so explicitly instead of pretending validation p
 - Verify schema compatibility with `buf breaking` before every proto merge.
 - Tests must be deterministic. Avoid time-dependent, random, or network-dependent behavior without fakes or fixtures.
 
+## Scripts
+
+The `scripts/` directory at the project root contains shell scripts for validation, formatting,
+testing, and code generation. **Copy from the pack template and make executable before first use**
+(`chmod +x scripts/*.sh`).
+
+| Script | When to run | Who calls it |
+|---|---|---|
+| `bootstrap.sh` | Once on first checkout or new machine | Human |
+| `format.sh` | Before committing — runs ruff format and ruff check | Human or `repo-ops` agent |
+| `test.sh` | After implementing — runs pytest | Human or `repo-ops` agent |
+| `validate.sh` | Before committing — full build + test suite | Human or `repo-ops` agent |
+| `proto-gen.sh` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
+| `agent-post-edit-check.sh` | **Never call manually** — fires automatically via Claude Code PostToolUse hook | Claude Code hook |
+
+**Note:** `format.sh` is manual-only — not wired into the automatic post-edit hook.
+Run it explicitly before committing or ask `repo-ops` to run it.
+
 ## Anti-patterns — never introduce these
 
 - Editing generated Protobuf or gRPC Python code by hand.

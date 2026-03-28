@@ -58,3 +58,35 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .pyright/
+
+# ─── Additional Xcode artifacts ─────────────────────────────────────────────
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+
+# ─── Xcode mode/perspective files (keep defaults, ignore user-specific) ─────
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+
+# ─── Playgrounds ─────────────────────────────────────────────────────────────
+timeline.xctimeline
+playground.xcworkspace
+
+# ─── Fastlane ─────────────────────────────────────────────────────────────────
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# ─── Carthage ─────────────────────────────────────────────────────────────────
+Carthage/Build/

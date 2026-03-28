@@ -54,7 +54,7 @@ Default preference only:
 
 These rules apply regardless of which architecture pattern this project uses.
 
-- Choose one primary architecture pattern per app target before writing production code. Document the choice and rationale in README.md or ARCHITECTURE.md before implementation begins.
+- Choose one primary architecture pattern per app target before writing production code. **Document the choice and rationale in `ARCHITECTURE.md` before implementation begins.** Do not write production code before the architecture decision is recorded.
 - Once chosen, apply the pattern consistently within its target. Any seam between two different patterns must be documented and justified.
 - Separate presentation, domain, and data/transport layers into distinct types, files, or modules. No layer may reach past its immediate neighbor (presentation → domain → data; never presentation → data directly).
 - Domain layer has zero import dependencies on UIKit, AppKit, SwiftUI, CoreData, SwiftData, gRPC, grpcio, or any persistence or networking framework.
@@ -71,6 +71,7 @@ These rules apply regardless of which architecture pattern this project uses.
 - Mark classes `final` by default unless subclassing is explicitly required.
 - Make invalid states unrepresentable where possible.
 - Prefer typed errors, typed IDs, and explicit domain models over stringly typed state.
+- Persistent domain objects carry a typed ID wrapper (a `UUID` wrapped in a named struct). Never use raw `UUID` or `String` at domain boundaries.
 - Avoid force unwraps except in tightly justified test-only or impossible-state contexts.
 - Prefer `async` and `await` over callback pyramids.
 - Any `@MainActor`, `nonisolated`, `Sendable`, or `@unchecked Sendable` decision must be intentional and documented in code comments when non-obvious.
@@ -101,6 +102,13 @@ These rules govern how this repo consumes first-party gRPC services.
 - Declare Privacy Manifests for all required reason APIs and third-party SDKs.
 - Request minimum required permissions. Do not request entitlements not actively used.
 
+## Liskov Substitution Principle
+
+- Every protocol method must have a meaningful implementation in every conforming type. Silent no-ops and unconditional "not supported" throws that are not gated by feature flags or capability checks are violations.
+- No domain or presentation layer code may branch on the concrete type behind a protocol reference. Use capability flags or feature checks for all implementation differences.
+- No concrete data-layer type may be referenced by name in domain or presentation code. Only protocol types and domain model types cross layer boundaries.
+- When adding a new protocol, verify conformance correctness across all implementing types before committing.
+
 ## Dependency intake policy
 
 Before adding any third-party framework or API:
@@ -127,6 +135,32 @@ Before adding any third-party framework or API:
 - Preserve external behavior unless the task explicitly changes behavior.
 - When touching legacy code, improve naming, seams, and tests before broad rewrites.
 - Prefer deleting dead code over preserving speculative abstractions.
+
+## Scripts
+
+The `scripts/` directory at the project root contains shell scripts that agents and developers
+use to validate, test, format, and generate code. **Scripts must be copied from the pack template
+and made executable before first use** (`chmod +x scripts/*.sh`).
+
+| Script | When to run | Who calls it |
+|---|---|---|
+| `bootstrap.sh` | Once on first checkout or new machine | Human |
+| `format.sh` | Before committing — formats Swift (swift-format) and/or Python (ruff) | Human or `repo-ops` agent |
+| `test.sh` | After implementing — runs the test suite only | Human or `repo-ops` agent |
+| `validate.sh` | Before committing — full build + test suite | Human or `repo-ops` agent |
+| `proto-gen.sh` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
+| `agent-post-edit-check.sh` | **Never call manually** — fires automatically via Claude Code PostToolUse hook after every agent file edit | Claude Code hook |
+
+**Required first-time setup:** Open `scripts/validate.sh` and `scripts/test.sh` and fill in:
+```
+XCODE_SCHEME="YourSchemeName"
+XCODE_DESTINATION="platform=iOS Simulator,name=iPhone 16,OS=latest"
+```
+Until these are set, `xcodebuild` steps are skipped and the scripts only run `swift build`/`swift test`.
+Find valid values: `xcodebuild -list` and `xcrun simctl list devices available`.
+
+**Note:** `format.sh` is manual-only — it is not wired into the automatic post-edit hook.
+Run it explicitly before committing or ask `repo-ops` to run it.
 
 ## Build and repo hygiene
 
@@ -174,6 +208,8 @@ Do not use grpc-swift v1 APIs in new code.
 - Retain cycles, especially in gRPC streaming closures.
 - Blocking the main thread with synchronous network or disk I/O.
 - Mutable global state that is not documented as such.
+- Domain types appearing in data-layer or transport-layer signatures.
+- Hard deletion of user-modifiable objects — use soft-delete (tombstoning) where data must be preserved for audit or logging.
 - Stringly-typed identifiers or state machines.
 - Magic duration literals for gRPC deadlines — use named constants.
 - Ignoring scene lifecycle transitions in long-lived gRPC streaming connections.

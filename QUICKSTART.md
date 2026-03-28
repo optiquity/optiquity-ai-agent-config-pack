@@ -39,12 +39,34 @@ Minimum edits before using any agent:
 
 ---
 
-## Step 4 — Fix execute permissions and run bootstrap
+## Step 4 — Copy scripts, fix permissions, and run bootstrap
+
+The `scripts/` folder must be copied from the pack template into your project root if it isn't
+there already. It is **not optional** — `agent-post-edit-check.sh` is wired into the Claude Code
+hook and the Codex `post_edit_command`, and the other scripts are the primary way agents run
+validation and formatting.
 
 ```bash
+# If scripts/ is missing from your project (copy from the correct template):
+cp -r /path/to/pack/apple-app-template/scripts/ /path/to/your/project/scripts/
+
+# Make all scripts executable — required after every fresh clone
 chmod +x scripts/*.sh
+
+# Run bootstrap once per machine to resolve dependencies
 ./scripts/bootstrap.sh
 ```
+
+**What each script does:**
+
+| Script | Purpose | When to run |
+|---|---|---|
+| `bootstrap.sh` | Resolve SPM/Python dependencies. Run once per machine. | Manual, first checkout |
+| `format.sh` | Format code (swift-format and/or ruff). Manual only — not in the auto-hook. | Manual or `repo-ops`, pre-commit |
+| `test.sh` | Run the test suite only (no build step). | Manual or `repo-ops` |
+| `validate.sh` | Full build + test suite. The primary quality gate. | Manual or `repo-ops`, pre-commit |
+| `proto-gen.sh` | `buf lint` then `buf generate` after any `.proto` edit. | Manual or `grpc-schema` agent |
+| `agent-post-edit-check.sh` | Automatic build check after every agent file edit. **Never call manually.** | Auto via Claude Code hook |
 
 ---
 
