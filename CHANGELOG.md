@@ -5,6 +5,81 @@ Each version is available as a git tag (v1, v2, …).
 
 ---
 
+## v8 — March 2026
+
+### New files — methodology infrastructure
+- `supporting-docs/METHODOLOGY.md` — universal project development methodology:
+  tool roles, standard documents, agent roster, phase structure, 6 workflows,
+  audit checkpoints, warning signs, document authoring rules
+- `supporting-docs/PROMPT-TEMPLATES.md` — 14 ready-to-use agent prompt templates:
+  PM chat kickoff, coder, reviewer, fix cycle, tester, docs-researcher, planner,
+  BACKLOG/STATUS update, 4 audit prompts, SETUP.md and AGENT_KICKOFF.md generation
+- `supporting-docs/SETUP_TEMPLATE.md` — fill-in-the-blanks template for generating
+  a project-specific SETUP.md via PM chat
+- `supporting-docs/AGENT_KICKOFF_TEMPLATE.md` — fill-in-the-blanks template for
+  the architecture phase kickoff prompt
+- `supporting-docs/MIGRATION-v7-to-v8.md` — step-by-step upgrade guide for
+  existing v7 projects including exact text for all additive changes
+- `supporting-docs/ANDROID-ANALYSIS.md` — analysis of what would be needed for
+  Android support; Gemini CLI recommendation for Android
+- `supporting-docs/GEMINI-CLI-ANALYSIS.md` — analysis of Gemini CLI integration
+- `supporting-docs/origins/Claude-Assisted_Project_Methodology_Guide_v1.md` —
+  raw source material (OptiquityTrader methodology guide, archived for reference)
+- `METHODOLOGY.md` — copied to all three template roots
+- `vscode-companion-templates/` — VS Code settings, extensions, and tasks for
+  Python server and monorepo projects
+
+### New agents and skills
+- `python-architect` agent (python-server, monorepo) — service layer, grpc.aio
+  patterns, repository boundaries, Pydantic placement, ML isolation
+- `python-architecture` skill (python-server, monorepo) — 10-item checklist
+  mirroring ios-architecture/SKILL.md for Python server concerns
+
+### Renamed
+- `ios-architect` → `apple-architect` (apple-app, monorepo) — agent now clearly
+  covers iOS, iPadOS, and macOS; all references updated
+
+### Critical fix
+- **BD-017** — iOS 26 platform features section now includes availability guard
+  requirement: `.glassEffect()` and FoundationModels require `#available(iOS 26, *)`
+  / `#available(macOS 26, *)` guards on older deployment targets (apple-app, monorepo,
+  both Xcode companion files)
+
+### Updated — all three templates
+- `.codex/config.toml` — `post_edit_command` added; Codex now fires
+  `agent-post-edit-check.sh` after every file edit (mirrors Claude Code hook)
+- `.gitignore` (apple, monorepo) — complete Xcode artifact patterns merged from
+  OptiquityTrader: `*.dSYM`, `*.hmap`, `*.ipa`, fastlane, Carthage/Build/
+- `.claude/settings.local.example.json` — improved with common allow patterns
+  (grep, ls, find, cat, open, WebSearch) and usage comment block
+- `scripts/format.sh` — misleading "hook calls this" comment removed; now correctly
+  documented as manual/pre-commit only
+- `scripts/validate.sh` and `scripts/test.sh` (apple, monorepo) — warning upgraded
+  to `⚠️  XCODE_SCHEME is not set` with clear actionable message
+- `scripts/agent-post-edit-check.sh` (apple, monorepo) — now runs real
+  `xcodebuild build` when XCODE_SCHEME is set; warns clearly when it is not
+
+### Updated — CLAUDE.md and AGENTS.md (apple, monorepo)
+- New `## Scripts` section — table of all scripts, when to run, who calls each
+- New `## Liskov Substitution Principle` section — generalized from OptiquityTrader
+- Typed ID wrapper rule added to Swift coding rules and Design rules
+- Architecture section: ARCHITECTURE.md must be completed before production code
+- Security: Request minimum required permissions/entitlements added
+- Anti-patterns: domain types in transport signatures, hard deletion without
+  tombstoning added; mutable global state added to Python section (monorepo)
+
+### Updated — QUICKSTART.md
+- Step 4 expanded: scripts/ copy instruction, permissions, bootstrap, full table
+- Steps 11–13 added: Create Claude project, start PM chat, generate SETUP.md
+  and AGENT_KICKOFF.md via PM chat templates
+
+### Updated — BACKLOG.md
+- `V8-BACKLOG.md` renamed to `BACKLOG.md`
+- BD-008 through BD-019 added
+- Active/Resolved/Deferred section structure introduced
+
+---
+
 ## v7 — March 23, 2026
 
 ### New

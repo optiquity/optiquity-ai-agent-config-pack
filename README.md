@@ -23,6 +23,7 @@ See `QUICKSTART.md` (available from v6 onward) for full setup instructions.
 | v5      | Mar 9, 2026  | python-server-template; apple-app-plus-python-server monorepo; xcode-companion-templates in pack |
 | v6      | Mar 11, 2026 | Proto scaffold; QUICKSTART.md; error-handling skill; proto-gen.sh script |
 | v7      | Mar 23, 2026 | iOS 26 / Xcode 26.3 API docs; sync-xcode-docs.sh; Apple-first dependency policy |
+| v8      | Mar 2026     | apple-architect rename; python-architect; METHODOLOGY.md; PROMPT-TEMPLATES.md; VS Code companion; LSP rules; OT content merge; availability guard fix |
 
 ## Repository Layout
 
@@ -31,12 +32,21 @@ See `QUICKSTART.md` (available from v6 onward) for full setup instructions.
 ├── python-server-template/                 Template: Python gRPC servers
 ├── apple-app-plus-python-server-template/  Template: monorepo (Apple + Python)
 ├── xcode-companion-templates/              Machine-level Xcode AI config
+├── vscode-companion-templates/             Machine-level VS Code config (v8+)
 ├── shared-docs/                            Reference notes
 │   └── ios26/                              ← gitignored; sync via sync-xcode-docs.sh
 ├── supporting-docs/                        Guides, best practices, origin documents
 │   ├── origins/                            Chat transcripts from pack creation
-│   └── guides/                             Per-version setup guides (.docx)
+│   ├── guides/                             Per-version setup guides (.docx)
+│   ├── METHODOLOGY.md                      Universal project methodology (v8+)
+│   ├── PROMPT-TEMPLATES.md                 Agent prompt templates (v8+)
+│   ├── SETUP_TEMPLATE.md                   New project setup template (v8+)
+│   ├── AGENT_KICKOFF_TEMPLATE.md           Architecture kickoff template (v8+)
+│   ├── MIGRATION-v7-to-v8.md               Upgrade guide (v8+)
+│   ├── GEMINI-CLI-ANALYSIS.md              Gemini CLI integration analysis (v8+)
+│   └── ANDROID-ANALYSIS.md                 Android support analysis (v8+)
 ├── QUICKSTART.md                           Quick start (v6+)
+├── BACKLOG.md                              Pack improvement backlog (v8+, was V8-BACKLOG.md)
 ├── sync-xcode-docs.sh                      iOS 26 doc sync script (v7+)
 └── CHANGELOG.md
 ```
@@ -44,9 +54,9 @@ See `QUICKSTART.md` (available from v6 onward) for full setup instructions.
 ## Checking Out a Specific Version
 
 ```bash
-git checkout v7        # Latest
-git checkout v6        # One version back
-git diff v6 v7         # See exactly what changed between versions
+git checkout v8        # Latest
+git checkout v7        # One version back
+git diff v7 v8         # See exactly what changed between versions
 git log --oneline      # Full version history
 ```
 
@@ -55,15 +65,17 @@ git log --oneline      # Full version history
 | Feature                    | apple-app | python-server | monorepo |
 |----------------------------|-----------|---------------|---------|
 | CLAUDE.md / AGENTS.md      | ✓         | ✓             | ✓       |
+| METHODOLOGY.md (v8+)       | ✓         | ✓             | ✓       |
 | iOS 26 support (v7+)       | ✓         | —             | ✓       |
 | grpc-swift-2 rules         | ✓         | —             | ✓       |
 | grpc.aio rules             | —         | ✓             | ✓       |
 | Proto scaffold (v6+)       | ✓         | ✓             | ✓       |
-| ios-architect agent        | ✓         | —             | ✓       |
+| apple-architect agent (v8) | ✓         | —             | ✓       |
+| python-architect agent (v8)| —         | ✓             | ✓       |
 | grpc-schema agent (v4+)    | ✓         | ✓             | ✓       |
 
 ## `main` Branch Policy
 
 `main` always points to the latest released version. Each version is also
-available as a git tag (`v1` through `v7`, and onward). Use tags for stable
+available as a git tag (`v1` through `v8`, and onward). Use tags for stable
 references in project documentation.
