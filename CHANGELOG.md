@@ -26,8 +26,8 @@ Each version is available as a git tag (v1, v2, …).
 - `supporting-docs/origins/Claude-Assisted_Project_Methodology_Guide_v1.md` —
   raw source material (OptiquityTrader methodology guide, archived for reference)
 - `METHODOLOGY.md` — copied to all three template roots
-- `vscode-companion-templates/` — VS Code settings, extensions, and tasks for
-  Python server and monorepo projects
+- `supporting-docs/guides/ai-agent-config-pack-v8-guide.docx` — v8 setup guide (.docx format; v9+ guides will be .md only)
+- `supporting-docs/guides/ai-agent-config-pack-v8-guide.md` — Markdown version of the v8 guide (primary format going forward)
 
 ### New agents and skills
 - `python-architect` agent (python-server, monorepo) — service layer, grpc.aio

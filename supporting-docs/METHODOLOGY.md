@@ -3,6 +3,19 @@
 Version: 1.0 (v8, March 2026)
 Applies to: All projects using Claude Code CLI + Claude Chat + AI Agent Config Pack v8
 
+> **Applicability note:** This document is platform-agnostic and applies to all project
+> types (Apple, Python server, monorepo). Some agent references may not apply to every
+> project: `apple-architect` is relevant only for Swift/Apple projects; `python-architect`
+> is relevant only for Python server projects. Ignore agents that don't apply to your
+> project type. If a project-specific version of this file becomes necessary, it can be
+> created at that time.
+
+> **Single source of truth:** One copy of this file lives at
+> `supporting-docs/METHODOLOGY.md` in the AI Agent Config Pack. Copy it to your project
+> root during setup (see QUICKSTART.md Step 3). Do not modify the pack's copy for
+> project-specific needs — edit the project root copy instead and let it evolve with
+> the project.
+
 ---
 
 ## Overview

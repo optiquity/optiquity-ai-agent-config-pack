@@ -85,6 +85,9 @@ cp /path/to/pack/[TEMPLATE_NAME]/.gitignore .gitignore
 cp -r /path/to/pack/[TEMPLATE_NAME]/. .
 
 # The trailing /. ensures hidden directories are included (.claude/, .codex/)
+
+# Copy METHODOLOGY.md separately — it is not included in the template directory
+cp /path/to/pack/supporting-docs/METHODOLOGY.md ./METHODOLOGY.md
 ```
 
 Make scripts executable:
@@ -180,7 +183,7 @@ git push origin main
 2. Name it: **[PROJECT_NAME]**
 3. Connect the GitHub repo via the GitHub connector
 4. Upload to project knowledge:
-   - `METHODOLOGY.md` (from the project repo root, or from pack's supporting-docs/)
+   - `METHODOLOGY.md` (from the project repo root — copied there in setup Step 2)
    - `supporting-docs/PROMPT-TEMPLATES.md` (from the pack)
 5. Start a new chat in the project and paste the PM chat kickoff prompt
    (from PROMPT-TEMPLATES.md — "PM chat kickoff prompt" section)

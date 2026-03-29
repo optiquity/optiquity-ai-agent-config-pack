@@ -27,15 +27,22 @@ cp -r apple-app-template/. /path/to/your/project/
 
 > The trailing `/.` is required — it ensures hidden directories (`.claude/`, `.codex/`, `.gitignore`) are included.
 
+Then copy `METHODOLOGY.md` separately from `supporting-docs/` — it is not included in the template directory:
+
+```bash
+cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/METHODOLOGY.md
+```
+
 ---
 
-## Step 3 — Edit CLAUDE.md and AGENTS.md
+## Step 3 — Edit CLAUDE.md, AGENTS.md, and METHODOLOGY.md
 
 Minimum edits before using any agent:
 
-1. Add your chosen architecture pattern (MVVM, TCA, MV, Coordinator, etc.).
+1. Add your chosen architecture pattern (MVVM, TCA, MV, Coordinator, etc.) to `CLAUDE.md` and `AGENTS.md`.
 2. Add your Python server framework if using the server or monorepo template.
 3. Review the anti-patterns section and add any project-specific ones.
+4. `METHODOLOGY.md` can be left as-is initially — edit it later if project-specific notes are needed.
 
 ---
 
@@ -171,7 +178,7 @@ and all generated Protobuf output.
 2. Name it after your app (e.g., "MyApp — PM")
 3. Connect your GitHub repo via the GitHub connector (gives the PM chat read access to all repo docs)
 4. Upload these files to **Project Knowledge**:
-   - `METHODOLOGY.md` from your project repo root (or from `supporting-docs/METHODOLOGY.md` in the pack)
+   - `METHODOLOGY.md` from your project repo root (copied there in Step 2)
    - `supporting-docs/PROMPT-TEMPLATES.md` from the pack
 
 These two files give the PM chat the methodology context and prompt templates it needs

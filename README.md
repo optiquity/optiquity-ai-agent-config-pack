@@ -23,7 +23,7 @@ See `QUICKSTART.md` (available from v6 onward) for full setup instructions.
 | v5      | Mar 9, 2026  | python-server-template; apple-app-plus-python-server monorepo; xcode-companion-templates in pack |
 | v6      | Mar 11, 2026 | Proto scaffold; QUICKSTART.md; error-handling skill; proto-gen.sh script |
 | v7      | Mar 23, 2026 | iOS 26 / Xcode 26.3 API docs; sync-xcode-docs.sh; Apple-first dependency policy |
-| v8      | Mar 2026     | apple-architect rename; python-architect; METHODOLOGY.md; PROMPT-TEMPLATES.md; VS Code companion; LSP rules; OT content merge; availability guard fix |
+| v8      | Mar 29, 2026 | apple-architect rename; python-architect; METHODOLOGY.md; PROMPT-TEMPLATES.md; VS Code companion; LSP rules; OT content merge; availability guard fix |
 
 ## Repository Layout
 
@@ -65,7 +65,7 @@ git log --oneline      # Full version history
 | Feature                    | apple-app | python-server | monorepo |
 |----------------------------|-----------|---------------|---------|
 | CLAUDE.md / AGENTS.md      | ✓         | ✓             | ✓       |
-| METHODOLOGY.md (v8+)       | ✓         | ✓             | ✓       |
+| METHODOLOGY.md (v8+, copy to project) | ✓ (copy from supporting-docs/) | ✓ (copy from supporting-docs/) | ✓ (copy from supporting-docs/) |
 | iOS 26 support (v7+)       | ✓         | —             | ✓       |
 | grpc-swift-2 rules         | ✓         | —             | ✓       |
 | grpc.aio rules             | —         | ✓             | ✓       |

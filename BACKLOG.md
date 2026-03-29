@@ -17,7 +17,17 @@ Items are grouped by status. Each has a `BD-NNN` identifier for use in commit me
 
 ## Active — v9 Scope
 
-*(No items yet — add new items here as they are identified)*
+### BD-020 — C++ server support analysis
+
+**Files:** `supporting-docs/CPP-SERVER-ANALYSIS.md` (new)
+**Reason:** The pack currently supports Swift (Apple client) and Python (gRPC server).
+C++ is a common choice for high-performance gRPC servers and systems-level services.
+An analysis document should cover: what a `cpp-server-template` would require,
+C++ gRPC library choices (grpc++ official library), build system options (CMake, Bazel),
+relevant agents and skills needed (cpp-architect, cpp-architecture skill), toolchain
+differences, and whether any existing pack files would apply unchanged.
+Analysis only — no implementation until a concrete project need arises.
+**Source:** v8 post-release, March 2026
 
 ---
 

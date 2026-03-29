@@ -189,11 +189,11 @@ These are new in v8 and don't exist in v7 projects:
 
 **Add to project repo root:**
 ```bash
-cp /path/to/pack/apple-app-template/METHODOLOGY.md ./METHODOLOGY.md
+cp /path/to/pack/supporting-docs/METHODOLOGY.md ./METHODOLOGY.md
 ```
 
 **Upload to app's Claude project knowledge** (not to the repo):
-- `METHODOLOGY.md` (from project repo or pack supporting-docs/)
+- `METHODOLOGY.md` → copy from `supporting-docs/METHODOLOGY.md` in the pack to project root
 - `supporting-docs/PROMPT-TEMPLATES.md` (from pack)
 
 ---
