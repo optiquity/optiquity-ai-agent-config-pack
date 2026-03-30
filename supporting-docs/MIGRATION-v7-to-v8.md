@@ -96,7 +96,33 @@ update the first bullet to bold the ARCHITECTURE.md requirement:
 ```
 
 **6. Scripts section** — add a new `## Scripts` section before `## Anti-patterns`:
-See the apple-app-template CLAUDE.md for the exact table content.
+
+```markdown
+## Scripts
+
+The `scripts/` directory at the project root contains shell scripts that agents and developers
+use to validate, test, format, and generate code. **Scripts must be made executable before
+first use** (`chmod +x scripts/*.sh`).
+
+| Script | When to run | Who calls it |
+|---|---|---|
+| `bootstrap.sh` | Once on first checkout or new machine | Human |
+| `format.sh` | Before committing — formats Swift via swift-format | Human or `repo-ops` agent |
+| `test.sh` | After implementing — runs tests only | Human or `repo-ops` agent |
+| `validate.sh` | Before committing — full build + test suite | Human or `repo-ops` agent |
+| `agent-post-edit-check.sh` | **Never call manually** — fires automatically via Claude Code PostToolUse hook after every agent file edit | Claude Code hook |
+
+**Required first-time setup:** Set `XCODE_SCHEME` and `XCODE_DESTINATION` in both
+`scripts/validate.sh`/`scripts/test.sh` **and** in `.claude/settings.json` env block.
+Setting them only in the scripts is not enough — the post-edit hook reads from the
+environment, not from inside the scripts.
+
+**Note:** `proto-gen.sh` is available in the template but omitted here for projects
+that do not use gRPC. Add it to the table if your project uses Proto/gRPC.
+
+**Note:** `format.sh` is manual-only — not wired into the automatic post-edit hook.
+Run it explicitly before committing or ask `repo-ops` to run it.
+```
 
 ### `AGENTS.md` (apple and monorepo projects)
 
@@ -105,7 +131,25 @@ Apply the same changes mirrored to AGENTS.md format:
 - ARCHITECTURE.md emphasis → update `## Design rules`
 - LSP section → add after `## Security rules`
 - New anti-patterns → add to `## Anti-patterns — never introduce`
-- Scripts section → add before `## Anti-patterns`
+- Scripts section → add before `## Anti-patterns — never introduce` using this content:
+
+```markdown
+## Scripts
+
+The `scripts/` directory contains shell scripts agents and developers use to validate,
+test, format, and generate code. Make them executable on first checkout: `chmod +x scripts/*.sh`.
+
+| Script | Purpose | Call |
+|---|---|---|
+| `bootstrap.sh` | First-time setup — resolves SPM dependencies | Manual, once per machine |
+| `format.sh` | Format Swift (swift-format). Manual only — not in the auto-hook | `repo-ops` or manual pre-commit |
+| `test.sh` | Run test suite only | `repo-ops` or manual |
+| `validate.sh` | Full build + test suite | `repo-ops` or manual pre-commit |
+| `agent-post-edit-check.sh` | Auto build-check. **Never call manually.** | Claude Code PostToolUse hook only |
+
+`XCODE_SCHEME` and `XCODE_DESTINATION` must be set in both `validate.sh` and
+`.claude/settings.json` env block. Without both, the post-edit hook skips xcodebuild silently.
+```
 
 ### `.gitignore`
 
@@ -224,6 +268,23 @@ Update `CLAUDE.md` and `AGENTS.md` phase routing to reference `python-architect`
 ---
 
 ## Verify after migration
+
+**Before running validate.sh**, confirm these two things are both set:
+
+1. `XCODE_SCHEME` and `XCODE_DESTINATION` in `scripts/validate.sh` and `scripts/test.sh`
+2. The **same values** in `.claude/settings.json` `env` block:
+
+```json
+"env": {
+    "AGENT_CAPABILITIES": "...",
+    "XCODE_SCHEME": "YourAppName",
+    "XCODE_DESTINATION": "platform=macOS"
+}
+```
+
+Setting them only in `validate.sh` is not enough — `agent-post-edit-check.sh` runs
+in a separate process and reads `XCODE_SCHEME` from the environment, not from inside
+the script. Without both, the post-edit hook silently skips the xcodebuild build check.
 
 ```bash
 chmod +x scripts/*.sh

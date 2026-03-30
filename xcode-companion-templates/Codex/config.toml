@@ -12,6 +12,7 @@ Use local models only where the verification path is strong and the likely resul
 """
 
 [sandbox_workspace_write]
+post_edit_command = "./scripts/agent-post-edit-check.sh"
 network_access = true
 writable_roots = ["."]
 

@@ -10,7 +10,9 @@ Claude Code, OpenAI Codex, and Xcode's built-in AI agents a shared, consistent
 understanding of your projects — covering architecture rules, coding standards,
 agent roles, skills, and shell scripts to validate agent output.
 
-See `QUICKSTART.md` (available from v6 onward) for full setup instructions.
+## Using the Config Pack
+
+See [`QUICKSTART.md`](QUICKSTART.md) for full setup instructions (available from v6 onward).
 
 ## Version History
 

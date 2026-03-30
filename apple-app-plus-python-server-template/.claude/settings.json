@@ -36,7 +36,9 @@
     ]
   },
   "env": {
-    "AGENT_CAPABILITIES": "planning,architecture,implementation,refactoring,debugging,testing,review,dependency-review,repo-ops,documentation"
+    "AGENT_CAPABILITIES": "planning,architecture,implementation,refactoring,debugging,testing,review,dependency-review,repo-ops,documentation",
+    "XCODE_SCHEME": "",
+    "XCODE_DESTINATION": ""
   },
   "available_skills": [
     "planning",

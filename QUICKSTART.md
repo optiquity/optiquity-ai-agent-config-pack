@@ -1,11 +1,12 @@
-# AI Agent Config Pack v7 — Quick Start
+# AI Agent Config Pack v8 — Quick Start
 
 This pack configures Claude Code, OpenAI Codex, and Xcode 26.3 to follow your project's
 architecture rules, coding standards, and gRPC conventions automatically — without repeated prompting.
 
-**New in v7:** iOS 26 API reference docs (`shared-docs/ios26/`), `sync-xcode-docs.sh` for keeping
-them current, Apple-first dependency rules in Xcode companion files, and a project customization
-reconciliation procedure (see bottom of this document).
+**New in v8:** `apple-architect` rename, `python-architect` agent, `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`,
+project generation templates, VS Code companion files, LSP rules, OT content improvements,
+availability guard fix for iOS 26 APIs, and Codex post-edit hook. See `CHANGELOG.md` for the
+full list.
 
 ---
 
@@ -77,16 +78,38 @@ chmod +x scripts/*.sh
 
 ---
 
-## Step 5 — Fill in Xcode scheme (Apple templates only)
+## Step 5 — Fill in Xcode scheme and source directories (Apple templates only)
 
-Open `scripts/validate.sh` and `scripts/test.sh`. Fill in the two variables at the top:
+Open `scripts/validate.sh` and `scripts/test.sh`. Fill in these variables at the top:
 
 ```bash
 XCODE_SCHEME="YourAppName"
 XCODE_DESTINATION="platform=iOS Simulator,name=iPhone 16,OS=latest"
+# For macOS-only projects use: XCODE_DESTINATION="platform=macOS"
 ```
 
 Find valid values: `xcodebuild -list` and `xcrun simctl list devices available`
+
+**Also set the same values in `.claude/settings.json`** — the `env` block must contain them
+so the automatic post-edit hook (`agent-post-edit-check.sh`) can read them. Setting them
+only in `validate.sh` is not enough: the hook runs in a separate process and reads from
+the environment, not from inside the script.
+
+```json
+"env": {
+    "AGENT_CAPABILITIES": "...",
+    "XCODE_SCHEME": "YourAppName",
+    "XCODE_DESTINATION": "platform=iOS Simulator,name=iPhone 16,OS=latest"
+}
+```
+
+**Also set `SWIFT_SOURCE_DIRS` in `scripts/format.sh`** if your project uses an
+Xcode-generated directory layout (e.g. `MyApp/` and `MyAppTests/`) rather than SPM's
+`Sources/` and `Tests/`. Leave it empty to use the find-all-swift-files fallback.
+
+```bash
+SWIFT_SOURCE_DIRS=""   # e.g. "MyApp MyAppTests" for Xcode-generated layout
+```
 
 ---
 
@@ -271,82 +294,22 @@ Commit everything else, including `CLAUDE.md`, `AGENTS.md`, `.claude/`, `.codex/
 
 ---
 
-## Reconciling project customizations with a new pack version
+## Upgrading an existing project to a new pack version
 
-When you upgrade existing projects from v6 (or earlier) to v7, do not copy template files
-blindly — your project-level customizations must be preserved. Use this procedure:
+When upgrading an existing project, do not copy template files blindly — your
+project-level customizations must be preserved.
 
-### What changes between versions
+For v7 → v8 upgrades, see the complete step-by-step instructions in:
+**`supporting-docs/MIGRATION-v7-to-v8.md`**
 
-v7 adds content to these files — it does not restructure or remove anything:
+That guide covers all 15 change categories in v8, organized by severity, with exact
+text to insert, files to rename, and verification steps. It is self-contained — you
+do not need to open any other file to complete the migration.
 
-| File | What changed |
-|---|---|
-| `CLAUDE.md` (apple + monorepo) | New `## iOS 26 / Xcode 26.3 platform features` section added before `## Architecture rules` |
-| `.claude/agents/docs-researcher.md` (apple + monorepo) | New `## iOS 26 / Xcode 26.3 API reference` block added after existing responsibilities |
-| `.codex/agents/docs-researcher.toml` (apple + monorepo) | iOS 26 reference added to `developer_instructions` |
-| Xcode companion `CLAUDE.md` | New `## iOS 26 / Xcode 26.3 platform features` section added before `## Design rules` |
-| Xcode companion `AGENTS.md` | Same iOS 26 section added before `## Design rules` |
-| `shared-docs/VERIFIED-NOTES.md` | Five new verified items added |
+**Summary of v8 change scope:**
+- Critical: `scripts/` directory, `post_edit_command`, `XCODE_SCHEME` env export
+- High: `ios-architect` → `apple-architect` rename, `settings.local.example.json`
+- Medium: `METHODOLOGY.md`, Scripts section in CLAUDE.md/AGENTS.md, `.gitignore` additions
+- New files: `python-architect` agent (Python/monorepo only), VS Code companion files
 
-### Procedure for each existing project
-
-**Step 1 — Identify your customizations.** Open your project's `CLAUDE.md` and note everything
-you added after copying the template: architecture pattern, server framework, project-specific
-anti-patterns, module names, team rules.
-
-**Step 2 — Apply only the additive changes.** For each file in the table above, copy just the
-new section from the v7 template into your project file at the same insertion point.
-Do not replace the whole file.
-
-For `CLAUDE.md` (apple or monorepo), insert this block between
-`## Platform and stack defaults` and `## Architecture rules`:
-
-```markdown
-## iOS 26 / Xcode 26.3 platform features
-
-- **Liquid Glass** is the current iOS 26 / macOS 26 design language for materials and visual
-  effects. Use `.glassEffect()` and related modifiers rather than custom `Material` or
-  `UIVisualEffectView` implementations. Evaluate Liquid Glass before reaching for any
-  third-party visual effects library.
-- **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Treat it as the
-  Apple-first option for any on-device language model need. Evaluate it before reaching for
-  third-party ML inference frameworks. It does not require network access and respects App Sandbox.
-- **Check Apple frameworks before third-party packages.** For any new capability, verify whether
-  an iOS 26 Apple framework covers the need before adding a dependency.
-- For implementation details on any iOS 26 API, the `docs-researcher` agent reads from
-  `shared-docs/ios26/` before web search.
-```
-
-For `.claude/agents/docs-researcher.md`, append the `## iOS 26 / Xcode 26.3 API reference`
-block from the v7 template after the existing `Responsibilities:` section.
-
-**Step 3 — Verify the result compiles.** Run `./scripts/validate.sh` to confirm the project
-still builds after the edit.
-
-**Step 4 — Commit the update.** Use a commit message that distinguishes the pack update from
-your project work, e.g.: `"Update AI agent config to v7 (iOS 26 API reference, Apple-first rules)"`
-
-### What you should NOT overwrite
-
-These files are safe to leave as-is in existing projects unless you want to adopt the new content:
-
-- `AGENTS.md` — no changes from v7 template (unchanged from v6)
-- All `.claude/skills/` files — unchanged from v6
-- All `.claude/agents/` files except `docs-researcher.md` — unchanged
-- All shell scripts — unchanged
-- `.claude/settings.json`, `.codex/config.toml` — unchanged
-- `proto/` files — project-specific, never overwrite
-
-### Xcode companion files (machine-level, not in project repos)
-
-Reinstall on each Mac after upgrading:
-
-```bash
-cp xcode-companion-templates/ClaudeAgentConfig/CLAUDE.md \
-   ~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/
-cp xcode-companion-templates/Codex/AGENTS.md \
-   ~/Library/Developer/Xcode/CodingAssistant/codex/
-```
-
-These are not project-specific, so replacement is safe — no customizations live there.
+For upgrades from versions earlier than v7, apply v7 changes first, then v8.

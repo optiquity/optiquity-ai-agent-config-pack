@@ -110,7 +110,25 @@ XCODE_DESTINATION="[DESTINATION]"
 # Example: "platform=macOS" or "platform=iOS Simulator,name=iPhone 16,OS=latest"
 ```
 
-Find valid values:
+**Also set the same values in `.claude/settings.json`** env block — the post-edit hook reads
+from the environment, not from inside the scripts:
+
+```json
+"env": {
+    "AGENT_CAPABILITIES": "...",
+    "XCODE_SCHEME": "[SCHEME_NAME]",
+    "XCODE_DESTINATION": "[DESTINATION]"
+}
+```
+
+If your project uses an Xcode-generated directory layout (e.g. `[ProductName]/` and
+`[ProductName]Tests/`) rather than SPM's `Sources/` and `Tests/`, also set in `scripts/format.sh`:
+
+```bash
+SWIFT_SOURCE_DIRS="[ProductName] [ProductName]Tests"
+```
+
+Find valid scheme and destination values:
 ```bash
 xcodebuild -list
 xcrun simctl list devices available

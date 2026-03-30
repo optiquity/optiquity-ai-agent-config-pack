@@ -265,6 +265,19 @@ For test coverage audit, LSP audit, documentation audit, UI audit:
 4. Run Workflow 2 for each new phase
 ```
 
+### Workflow → template cross-reference
+
+Each workflow has corresponding prompt templates in `PROMPT-TEMPLATES.md`. Use these
+as starting points — customize for the current project and phase before pasting.
+
+| Workflow | Templates to use |
+|---|---|
+| Workflow 1 — New project | Template 1 (PM chat kickoff), Template 13 (generate SETUP.md), Template 14 (generate AGENT_KICKOFF.md) |
+| Workflow 2 — Per-phase execution | Template 2 (coder), Template 3 (reviewer), Template 4 (fix cycle) |
+| Workflow 3 — External API research | Template 6 (docs-researcher), then Template 2 (coder) |
+| Workflow 4 — Fix cycle | Template 4 (fix cycle) |
+| Workflow 5 — Global audit | Template 9 (test coverage), Template 10 (docs audit), Template 11 (LSP audit), Template 12 (UI audit) |
+| Workflow 6 — New feature | Template 8 (BACKLOG/STATUS update), then Workflow 2 templates |
 
 ---
 
