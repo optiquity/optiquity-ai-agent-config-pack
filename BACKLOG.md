@@ -31,6 +31,43 @@ Analysis only — no implementation until a concrete project need arises.
 
 ---
 
+### BD-021 — Redesign Apple platform architecture skills (three-tier)
+
+**Files:** New files and modifications across apple-app and monorepo templates
+**Reason:** The current `ios-architecture` skill applies to all Apple targets but macOS
+and iOS are not a superset/subset of each other — they are siblings with significant
+platform-specific differences. A single combined skill either includes irrelevant checklist
+items or misses platform-specific ones. Universal apps complicate this further.
+
+**Proposed three-tier design:**
+
+1. **`apple-architecture-core` skill** (new) — patterns shared across all Apple platforms:
+   SwiftUI-first design, protocol abstractions at layer boundaries, immutability defaults,
+   actor isolation, typed IDs, LSP compliance, SPM module structure. ~60% of current
+   `ios-architecture` skill content.
+
+2. **`ios-architecture` skill** (refocus existing) — iOS/iPadOS-specific: scene lifecycle,
+   UIKit interop justification, background task design, App Store/extension boundaries,
+   touch-first interaction model. Remove overlap with core.
+
+3. **`macos-architecture` skill** (new) — macOS-specific: NSDocument-based architecture,
+   multiple NSWindow management, AppDelegate lifecycle and Dock behavior, menu bar ownership
+   and command validation, AppKit interop patterns, Services/AppleScript/Shortcuts
+   integration, sandboxed file access model, floating panels and inspector windows.
+
+**For universal apps:** `apple-architect` agent uses all three skills — core plus both
+platform skills. Agent description updated to specify the combination per project target type.
+
+**For future platforms** (watchOS, visionOS, tvOS): same pattern — platform-specific skill
+alongside core. Not in scope for this item.
+
+**Also required:** Update `apple-architect` agent description and phase routing tables in
+CLAUDE.md and AGENTS.md to reference the correct skill combination per project type.
+
+**Source:** v8 post-release architecture review, March 2026
+
+---
+
 ## Resolved
 
 ### Resolved in v8 — March 2026
