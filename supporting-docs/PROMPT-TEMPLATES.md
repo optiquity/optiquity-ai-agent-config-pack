@@ -84,11 +84,10 @@ or `BACKLOG.md` unless a task below explicitly requires it.
 
 **Verification:** After all tasks, run:
 ```bash
-[VERIFICATION COMMAND — e.g., xcodebuild test -scheme MyApp -destination 'platform=macOS'
-or: cd ~/Developer/[project] && swift test
-or: cd ~/Developer/[project] && pytest]
+./scripts/format.sh
+./scripts/validate.sh
 ```
-Confirm all tests pass and zero compiler warnings remain.
+Confirm all tests pass and zero compiler warnings remain. `format.sh` exits 0 if swift-format is not installed — this is acceptable. `validate.sh` must exit 0 with zero warnings.
 
 **Completion report:** Report which files were modified and the final test count.
 [If this is the last task in the phase:] Update `CHANGELOG.md` with a Phase [N] entry
@@ -112,7 +111,7 @@ Review for:
 3. **Anti-pattern violations** — per CLAUDE.md prohibited list
 4. **Implementation plan compliance** — all tasks completed as specified
 5. **Test coverage** — definitions of done are verified by tests
-6. **Build warnings** — run: `[BUILD COMMAND] 2>&1 | grep "warning:"`
+6. **Build and test verification** — run independently: `./scripts/test.sh` and confirm all tests pass with zero warnings
 
 **Output format:**
 - ✅ PASS — [finding description]
