@@ -66,9 +66,92 @@ CLAUDE.md and AGENTS.md to reference the correct skill combination per project t
 
 **Source:** v8 post-release architecture review, March 2026
 
+### BD-022 — C project template and c-language skill
+
+**Files:** New `c-project-template/` directory; new `c-language` skill for use in other templates
+**Reason:** Standalone C projects (command-line tools initially; embedded code and libraries
+in scope for later iterations) currently have no pack support. A lightweight template is needed
+with a minimal agent set and simple tooling choices.
+
+**Template scope — v9 target (command-line tools):**
+- Agents: `architect`, `planner`, `coder`, `reviewer` — no grpc-schema, no docs-researcher,
+  no Python-specific agents
+- Build system: Makefile (simple, universally available, no dependencies)
+- Testing framework: one lightweight C test framework (e.g. Unity or Check — decide at
+  implementation time based on simplicity and macOS/Linux compatibility)
+- Static analysis: `clang-tidy` or `cppcheck` (decide at implementation time)
+- Scripts: `bootstrap.sh`, `build.sh`, `test.sh`, `format.sh` (clang-format), `validate.sh`
+- CLAUDE.md and AGENTS.md: C-specific rules (memory management, no hidden allocations,
+  explicit ownership, no undefined behavior, const correctness, header hygiene)
+- No gRPC, no proto scaffold, no Python tooling
+
+**Later iterations (deferred):**
+- Embedded code: cross-compiler support, hardware abstraction layer patterns, interrupt safety
+- Libraries: shared library vs static library conventions, versioned ABI, pkg-config
+
+**c-language skill** (also needed for BD-023 — Apple mixed-language projects):
+A `c-language` skill for use in `coder`, `reviewer`, and `architect` agents across any template
+where C code may appear. Covers: memory ownership and lifecycle, pointer safety, buffer handling,
+null termination discipline, const correctness, header include guards, function naming conventions,
+interop with Swift (bridging headers), interop with Python (ctypes/cffi/Cython), and common
+C anti-patterns to avoid.
+
+**Source:** v8 post-release, March 2026
+
 ---
 
-## Resolved
+### BD-023 — Mixed-language skills for Apple projects (Objective-C, C, C++, graphics)
+
+**Files:** New skills for use in apple-app and monorepo template agents
+**Reason:** Apple projects may contain Objective-C (legacy code), C (performance routines,
+third-party library bridges), or C++ (performance-critical code, graphics). New projects
+will not use Objective-C, but old projects may require modifications. New projects may add
+C or C++ for performance or graphics. Agents need targeted skills for each case — not a
+combined skill, since the contexts and patterns differ significantly.
+
+**Skills to create:**
+
+**`objc-language` skill** — for `coder` and `reviewer` agents:
+Read/modify legacy Objective-C code in Swift-first projects. Covers: ARC memory management,
+nullability annotations (`_Nullable`, `_Nonnull`), bridging header patterns, NS_SWIFT_NAME
+and NS_REFINED_FOR_SWIFT, @objc attribute usage, property declaration patterns, avoid writing
+new Objective-C unless there is no Swift alternative. Writing new Objective-C is a last resort
+only — document why no Swift alternative exists. No Objective-C++ (`.mm` files) in scope.
+
+**`c-language` skill** — shared with BD-022:
+See BD-022. Same skill, used here when C appears in Apple projects: wrapping third-party C
+libraries via bridging headers, writing performance-critical routines called from Swift via
+a C shim, C interop patterns. Covers ownership, pointer safety, const correctness, and
+Swift-C bridging conventions.
+
+**`cpp-language` skill** — for `coder` and `reviewer` agents:
+C++ in Apple projects for performance-critical code or graphics work. Covers: RAII and
+ownership (no raw `new`/`delete` in modern C++), `std::unique_ptr` and `std::shared_ptr`
+patterns, Swift-C++ interoperability (Swift 5.9+ direct C++ interop), header organization
+(`.hpp`/`.cpp` split), avoiding exceptions in performance paths, const correctness, rule of
+five, and common C++ anti-patterns. Does not cover Objective-C++ (`.mm`) — that is a
+separate concern handled at the architecture level if ever needed.
+
+**Graphics engine skills** (separate skills, each focused on one engine/framework):
+These are distinct enough from general C/C++ to warrant their own skills. Each engine has
+its own patterns, asset pipeline, and integration model. To be created when a concrete
+project need arises:
+- `metal-cpp-language` skill — Metal C++ API patterns (distinct from Swift Metal)
+- `unity-cpp-language` skill — Unity C++ native plugin patterns
+- `unreal-cpp-language` skill — Unreal Engine C++ patterns (UObject, UFUNCTION, etc.)
+Note: Metal via Swift bridge already works with existing Apple skills — no new skill
+needed for Swift Metal usage.
+
+**Agent integration:**
+These are skills used by existing agents, not new agents. The `apple-architect` agent
+(and future platform-specific variants per BD-021) would reference the appropriate skills
+when the project contains mixed-language code. The `coder` and `reviewer` agents include
+the skill when working on files of the relevant type.
+
+**Objective-C template:** Not planned. Objective-C support is skill-only. A full
+`objc-project-template` is out of scope unless a concrete project need arises.
+
+**Source:** v8 post-release, March 2026
 
 ### Resolved in v8 — March 2026
 
