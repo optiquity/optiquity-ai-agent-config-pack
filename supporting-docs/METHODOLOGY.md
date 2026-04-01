@@ -136,6 +136,7 @@ Every project should have all of these. Create them before writing any code.
 | Auditing documentation accuracy | `docs-researcher` |
 | Apple platform architecture design | `apple-architect` |
 | Python server architecture design | `python-architect` |
+| Mid-phase design correction (Trigger A or B met in Workflow 4) | `apple-architect` or `python-architect` |
 | Breaking down a complex phase | `planner` (optional) |
 | Proto3 schema design or review | `grpc-schema` |
 | BACKLOG/STATUS updates, simple doc edits | standard `claude` (no agent) |
@@ -245,19 +246,65 @@ For phases integrating external APIs or making architectural decisions:
 ```
 1. Developer pastes reviewer output into PM chat
 2. PM chat categorizes: ❌ blockers vs ⚠️ minors
-3. For ❌: PM chat presents a fix plan describing each issue and proposed fix
-4. Developer explicitly approves the fix plan
-5. PM chat generates the fix prompt → developer runs in new coder session
-6. Developer runs reviewer again (new session)
-7. Repeat from step 1 until ✅
-8. For ⚠️ not being fixed immediately:
+3. PM chat checks for architect trigger (see below) before generating any fix plan
+4. If NO trigger: PM chat presents fix plan → developer approves → coder fix pass → reviewer (step 1)
+5. If TRIGGER: PM chat identifies root cause → presents architect pass plan → developer approves
+   → architect agent runs (read-only, proposes doc changes) → PM chat presents proposed changes
+   → developer approves doc changes → PM chat applies them via Desktop Commander or manual
+   → PM chat presents coder fix plan covering both reviewer issues and new arch direction
+   → developer approves → coder fix pass → reviewer (step 1)
+6. For ⚠️ not being fixed immediately:
    PM chat generates BACKLOG.md addition → developer runs in standard claude
 ```
 
-> **Important:** The PM chat does not execute fix passes directly. After receiving
-> reviewer output, the PM chat's job is to present a plan and wait for approval.
-> Only after approval does it generate the coder prompt. The coder agent executes
-> the fix; the PM chat does not.
+> **The PM chat does not execute fix passes directly.** After receiving reviewer output,
+> the PM chat presents a plan and waits for approval before generating any agent prompt.
+> The coder agent executes the fix; the PM chat does not.
+
+#### Architect trigger conditions
+
+Check these after every reviewer pass. Either condition is sufficient to trigger an
+architect pass before the next coder fix pass.
+
+**Trigger A — Repeated coder runs without resolution:**
+The coder agent has run 3 or more times since the phase started (or since the last
+architect pass), AND the reviewer still identifies ❌ or ⚠️ issues.
+
+**Trigger B — Regression or issue count increase:**
+The reviewer report shows either:
+- Any item that was previously ✅ is now ❌ or ⚠️ (regression), OR
+- The number of new ❌/⚠️ issues introduced in this pass is greater than in the
+  previous pass — whichever count is larger
+
+> **Why this matters:** A coder running more than twice without clearing all issues,
+> or a coder introducing more issues than it fixes, signals that the problem is
+> architectural — the implementation plan or design is missing a constraint, has an
+> ambiguity, or is actively working against the fix. More coder passes won't fix this;
+> an architect pass that corrects the docs first will.
+
+#### What the PM chat does when a trigger fires
+
+1. **Identify root cause** — based on the pattern of reviewer findings, explain to the
+   user what design issue is causing recurring failures. Be specific: name the missing
+   rule, the ambiguous constraint, or the incorrect architectural assumption.
+2. **Propose an architect pass** — describe what the architect agent will read and what
+   doc changes are expected. Get explicit user approval before proceeding.
+3. **Run the architect agent** — read-only pass using Template 4b. The agent reads
+   `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `CLAUDE.md`, `AGENTS.md`, and the
+   specific reviewer findings. It proposes corrections to those docs as text output —
+   it does not write files.
+4. **Present proposed doc changes** — show the user exactly what the architect proposes
+   to change. Get explicit approval for each change before applying it.
+5. **Apply approved changes** — PM chat applies via Desktop Commander or outputs for
+   manual application. Commit the doc changes before the coder fix pass.
+6. **Generate coder fix pass** — using Template 4, incorporating both the reviewer's
+   open issues and the new architectural direction. Present plan, get approval, then
+   developer runs it.
+
+> **CLAUDE.md and AGENTS.md changes:** The architect agent may propose changes to
+> `CLAUDE.md` or `AGENTS.md` only if the root cause cannot be addressed by fixing
+> `ARCHITECTURE.md` or `IMPLEMENTATION_PLAN.md` alone. These require an additional
+> explicit user approval beyond the general architect pass approval.
 
 ### Workflow 5 — Global audit phases
 
@@ -291,7 +338,7 @@ as starting points — customize for the current project and phase before pastin
 | Workflow 1 — New project | Template 1 (PM chat kickoff), Template 13 (generate SETUP.md), Template 14 (generate AGENT_KICKOFF.md) |
 | Workflow 2 — Per-phase execution | Template 2 (coder), Template 3 (reviewer), Template 4 (fix cycle) |
 | Workflow 3 — External API research | Template 6 (docs-researcher), then Template 2 (coder) |
-| Workflow 4 — Fix cycle | Template 4 (fix cycle) |
+| Workflow 4 — Fix cycle | Template 4 (fix cycle coder prompt); Template 4b (mid-phase architect prompt, when triggered) |
 | Workflow 5 — Global audit | Template 9 (test coverage), Template 10 (docs audit), Template 11 (LSP audit), Template 12 (UI audit) |
 | Workflow 6 — New feature | Template 8 (BACKLOG/STATUS update), then Workflow 2 templates |
 
