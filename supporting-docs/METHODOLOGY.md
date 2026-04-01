@@ -28,7 +28,7 @@ They are not interchangeable. Claude Chat holds context, makes decisions, and ge
 prompts. CLI agents execute those prompts against the actual filesystem.
 
 **For prompt templates** referenced throughout this document, see:
-`supporting-docs/PROMPT-TEMPLATES.md` (in the pack) or uploaded to this Claude project.
+`PROMPT-TEMPLATES.md` in the project root (copied from the pack during setup).
 
 **Desktop Commander note:** When Desktop Commander is available in the Claude desktop app,
 the PM chat can write files and run git commands directly for small targeted doc changes
@@ -53,6 +53,17 @@ that depends on that content.
   STATUS.md updates, BACKLOG additions, CHANGELOG entries, typo/stale-reference fixes.
   Never source code. Never sweeping multi-file changes without explaining and getting approval.
 - Never writes code or calls specialist agents directly
+- **Plan before executing — no exceptions.** For any change beyond a trivial doc edit,
+  the PM chat must present a plan describing what will change and why, then wait for
+  explicit user approval before executing anything. This applies to code files,
+  documentation files, shell scripts, config files, and any other project files.
+  Receiving a task description is not approval. Approval must be explicit.
+- **Never bias architect agents with proposed solutions.** When routing a problem to an
+  architect agent, describe the constraint or design problem only — do not propose a
+  solution. The architect agent solves design problems. The PM chat may only prescribe
+  mechanical fixes (compile errors, specific wording corrections) in a prompt. Any
+  proposed architecture, pattern choice, or structural change must come from the agent,
+  not the PM chat.
 
 ### Claude Code CLI (agents)
 
@@ -140,8 +151,6 @@ Every project should have all of these. Create them before writing any code.
 - Each agent invocation is a new session. Never continue a coder session for a new phase.
 - Reviewer sessions are always new. Never reuse a reviewer session for a second pass.
 - Agents have no memory between sessions — every prompt must be self-contained.
-
-
 ---
 
 ## Part 4 — Phase Structure
@@ -196,8 +205,8 @@ Which agent(s) to use for which tasks.
 4. PM chat generates (or helps generate): `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`,
    `CLAUDE.md`, `AGENTS.md`, `METHODOLOGY.md` (copy from pack)
 5. Create `STATUS.md` and `BACKLOG.md` (initially sparse)
-6. Create app's Claude project, upload `METHODOLOGY.md` and `PROMPT-TEMPLATES.md`
-   to project knowledge
+6. Create app's Claude project, connect GitHub repo — `METHODOLOGY.md` and `PROMPT-TEMPLATES.md`
+   are in the project repo and available via the GitHub connector after syncing
 7. Run bootstrap: `./scripts/bootstrap.sh`
 8. Commit all docs before writing any code
 9. Sync GitHub connector in Claude Chat project
@@ -236,12 +245,19 @@ For phases integrating external APIs or making architectural decisions:
 ```
 1. Developer pastes reviewer output into PM chat
 2. PM chat categorizes: ❌ blockers vs ⚠️ minors
-3. For ❌: PM chat generates targeted fix prompt → new coder session
-4. Developer runs reviewer again (new session)
-5. Repeat until ✅
-6. For ⚠️ not being fixed immediately:
-   PM chat generates BACKLOG.md addition prompt → developer runs in standard claude
+3. For ❌: PM chat presents a fix plan describing each issue and proposed fix
+4. Developer explicitly approves the fix plan
+5. PM chat generates the fix prompt → developer runs in new coder session
+6. Developer runs reviewer again (new session)
+7. Repeat from step 1 until ✅
+8. For ⚠️ not being fixed immediately:
+   PM chat generates BACKLOG.md addition → developer runs in standard claude
 ```
+
+> **Important:** The PM chat does not execute fix passes directly. After receiving
+> reviewer output, the PM chat's job is to present a plan and wait for approval.
+> Only after approval does it generate the coder prompt. The coder agent executes
+> the fix; the PM chat does not.
 
 ### Workflow 5 — Global audit phases
 
@@ -402,7 +418,7 @@ git commands for the human to run manually. Both paths must always be available.
 - [ ] Create BACKLOG.md, STATUS.md, CHANGELOG.md (empty with structure)
 - [ ] Create .claude/agents/ directory with agent files from pack template
 - [ ] Run `./scripts/bootstrap.sh`
-- [ ] Create app's Claude project, upload METHODOLOGY.md + PROMPT-TEMPLATES.md to project knowledge
+- [ ] Create app's Claude project, connect GitHub repo and sync — `METHODOLOGY.md` and `PROMPT-TEMPLATES.md` are in the repo and searchable via GitHub connector
 - [ ] Commit all docs. Sync GitHub connector.
 
 ### Before each phase

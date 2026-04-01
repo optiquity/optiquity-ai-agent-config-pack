@@ -28,10 +28,11 @@ cp -r apple-app-template/. /path/to/your/project/
 
 > The trailing `/.` is required — it ensures hidden directories (`.claude/`, `.codex/`, `.gitignore`) are included.
 
-Then copy `METHODOLOGY.md` separately from `supporting-docs/` — it is not included in the template directory:
+Then copy `METHODOLOGY.md` and `PROMPT-TEMPLATES.md` separately from `supporting-docs/` — they are not included in the template directory:
 
 ```bash
 cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/METHODOLOGY.md
+cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md /path/to/your/project/PROMPT-TEMPLATES.md
 ```
 
 ---
@@ -199,13 +200,10 @@ and all generated Protobuf output.
 
 1. Go to claude.ai → Projects → New Project
 2. Name it after your app (e.g., "MyApp — PM")
-3. Connect your GitHub repo via the GitHub connector (gives the PM chat read access to all repo docs)
-4. Upload these files to **Project Knowledge**:
-   - `METHODOLOGY.md` from your project repo root (copied there in Step 2)
-   - `supporting-docs/PROMPT-TEMPLATES.md` from the pack
-
-These two files give the PM chat the methodology context and prompt templates it needs
-without bloating every conversation. They are searched on demand, not injected wholesale.
+3. Connect your GitHub repo via the GitHub connector
+4. Sync the GitHub connector — `METHODOLOGY.md` and `PROMPT-TEMPLATES.md` are in the
+   project repo (copied in Step 2) and will be searchable via project knowledge after sync.
+   No manual file upload is needed.
 
 ---
 
