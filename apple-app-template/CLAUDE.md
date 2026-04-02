@@ -195,6 +195,34 @@ Do not use grpc-swift v1 APIs in new code.
 - Channel lifecycle: manage one `GRPCClient` instance per app or scene lifecycle. Never create a new channel per request.
 - After every `buf generate` run: verify generated Protobuf Swift types still conform to `Sendable`.
 
+## Deferral comments and BACKLOG hygiene
+
+Three comment types are recognized for deferring work. Use exactly this syntax:
+
+```swift
+// TODO(scope): TD-TBD — Short title
+// KNOWN GAP(severity): TD-TBD — Short title
+// VERIFY(source): TD-TBD — Short title
+```
+
+**Valid scope values for TODO:** `phase-N`, `dependency`, `feature`, `perf`
+**Valid severity values for KNOWN GAP:**
+- `critical` — must eventually be addressed without exception
+- `functional` — should be addressed; feature is incomplete without it
+- `polish` — may be skipped; improves experience but does not affect correctness
+**Source for VERIFY:** name the external source (e.g. `apple-docs`, `schwab-api`)
+
+**Rules — read carefully:**
+- Always write `TD-TBD` — never a real TD number. The PM chat assigns numbers after review.
+- Report every deferral comment added in the "Deferred items" section of the completion report.
+- Do not write to `BACKLOG.md`. Do not resolve or modify existing BACKLOG entries.
+- Work that could be completed within the current phase scope is NOT a TODO — it is
+  an incomplete task. The reviewer will flag it as an implementation plan compliance failure.
+- Never use plain English deferral comments (`// Fix later`, `// Confirm this`, etc.).
+  Use the typed format above or do not leave a comment.
+- When citing a code location in a report, use the symbol name not the line number.
+  Line numbers drift with every edit; symbol names are stable.
+
 ## Anti-patterns — never introduce these
 
 - Massive view controllers or God ViewModels accumulating unrelated logic.

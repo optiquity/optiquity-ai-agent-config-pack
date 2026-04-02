@@ -122,6 +122,35 @@ test, format, and generate code. Make them executable on first checkout: `chmod 
 
 Set `XCODE_SCHEME` and `XCODE_DESTINATION` in `validate.sh` and `test.sh` before first use.
 
+## BACKLOG permissions and deferral comments
+
+**What you may do:** Add typed deferral comments in code when you encounter work that
+cannot be completed within the current phase scope. Report them in your completion report.
+
+**What you may not do:** Write to `BACKLOG.md`. Resolve or modify existing BACKLOG entries.
+
+**Deferral comment syntax — use the marker for the language you are writing:**
+```swift
+// TODO(scope): TD-TBD — Short title          // Swift / ObjC / C / C++
+// KNOWN GAP(critical|functional|polish): TD-TBD — Short title
+// VERIFY(source): TD-TBD — Short title
+```
+```python
+# TODO(scope): TD-TBD — Short title           # Python
+# KNOWN GAP(critical|functional|polish): TD-TBD — Short title
+# VERIFY(source): TD-TBD — Short title
+```
+Always write `TD-TBD`. Never invent a TD number.
+
+**BACKLOG write permissions by agent:**
+
+| Agent | May do | May not do |
+|---|---|---|
+| `coder` | Write TD-TBD comments; report in completion report | Write to BACKLOG.md |
+| `reviewer` | Add ⚠️ findings as new BACKLOG entries | Modify or resolve existing entries |
+| `docs-researcher` | Read only | Write anything |
+| `repo-ops` | Read only | Write anything |
+
 ## Anti-patterns — never introduce
 
 - Hand-editing generated Protobuf or gRPC code.

@@ -116,8 +116,10 @@ Every project should have all of these. Create them before writing any code.
 4. STATUS.md is updated after every phase — stale status is worse than no status.
 5. Agents must not modify ARCHITECTURE.md, IMPLEMENTATION_PLAN.md, or BACKLOG.md
    unless explicitly instructed in the prompt. Include this constraint in every coder prompt.
-6. Every // TODO:, // KNOWN GAP:, or similar code comment must have a BACKLOG entry
-   added in the same commit. Comments without tracking entries will be forgotten.
+6. Every deferral comment (`// TODO(scope):`, `// KNOWN GAP(severity):`, `// VERIFY(source):`,
+   or language-equivalent) must have a corresponding BACKLOG.md entry. `TD-TBD` in any
+   committed file is a defect — it means the PM chat has not yet processed the coder's
+   deferred items report. See Part 7 for the full comment format and BACKLOG procedures.
 
 
 ---
@@ -140,6 +142,7 @@ Every project should have all of these. Create them before writing any code.
 | Breaking down a complex phase | `planner` (optional) |
 | Proto3 schema design or review | `grpc-schema` |
 | BACKLOG/STATUS updates, simple doc edits | standard `claude` (no agent) |
+| BACKLOG item processing and comment updates | PM chat only (after user approval) |
 
 ### When NOT to use a CLI agent
 
@@ -383,7 +386,179 @@ missing accessibility, incomplete states, navigation correctness.
 
 ---
 
-## Part 7 — Warning Signs
+## Part 7 — BACKLOG and TODO Management
+
+This part defines the full system for tracking deferred work, known gaps, and items
+requiring verification. The PM chat owns this system. Agents receive explicit instructions
+in their prompts — they do not figure out BACKLOG logic themselves.
+
+### Comment format
+
+Three typed deferral comment formats are recognized. All others are invalid.
+
+**Swift / Objective-C / C / C++:**
+```swift
+// TODO(scope): TD-TBD — Short title
+// KNOWN GAP(severity): TD-TBD — Short title
+// VERIFY(source): TD-TBD — Short title
+```
+
+**Python:**
+```python
+# TODO(scope): TD-TBD — Short title
+# KNOWN GAP(severity): TD-TBD — Short title
+# VERIFY(source): TD-TBD — Short title
+```
+
+**Valid scope values for TODO:** `phase-N` (deferred to a named phase), `dependency`
+(blocked on another item), `feature` (blocked on a feature decision), `perf`
+(optimization deferred until profiling shows need), `version` (deferred to a pack version)
+
+**Valid severity values for KNOWN GAP:**
+- `critical` — must eventually be addressed without exception; the system is not complete without it
+- `functional` — should be addressed; feature is incomplete or incorrect in a meaningful way
+- `polish` — may be skipped based on judgment; improves experience but does not affect correctness
+
+**Source values for VERIFY:** name the external source (e.g. `schwab-api`, `apple-docs`, `stripe-api`)
+
+**The TD-TBD sentinel:** The coder always writes `TD-TBD` in deferral comments — never a
+real number. The PM chat replaces `TD-TBD` with a real `TD-NNN` when the BACKLOG entry is
+created after user approval. Any `TD-TBD` in committed code is a defect.
+
+**What is NOT a valid deferral:** Work that could be completed within the current phase
+scope is not a TODO — it is an incomplete task. The reviewer flags it as an implementation
+plan compliance failure (point 4 of the seven-point framework). The fix is a coder fix pass,
+not a BACKLOG entry.
+
+### BACKLOG item format
+
+```
+**TD-NNN — [Short title]**
+Type: TODO(scope) | KNOWN GAP(critical|functional|polish) | VERIFY(source)
+Status: Open | Unblocked | Resolved
+Blockers:
+  - [Named specific dependency — phase N, TD-NNN, or external condition]
+  - [Additional blocker if any — all must resolve before item is actionable]
+Unblocks: [TD-NNN, TD-NNN, ...] or None
+  ← informational only; PM chat derives actionability from Blockers, never from this field
+File/Symbol: `path/to/file` — `SymbolName`  ← optional; symbol name not line number; n/a if none
+Description: [What the work is and why it was deferred]
+Context: [What was known at deferral time — constraints, observed behavior, partial
+          information. Descriptive only. Do not propose a solution.]
+Resolved: [Phase N, date, brief note]  ← filled in when resolved; never deleted
+```
+
+**Status transitions:** Open → Unblocked (all Blockers resolved) → Resolved (work confirmed
+complete). Items are never deleted. Items with no blockers start as Unblocked.
+
+**TD counter:** The PM chat tracks the next available TD number. At the start of every
+session, read BACKLOG.md, find the highest existing TD number, set counter to that value + 1.
+Increment by 1 for each approved item. Report the updated counter at session end.
+
+### Procedure 1 — Phase gate check (runs before every phase prompt)
+
+No phase prompt is generated until this check is complete.
+
+```
+1. Read BACKLOG.md in full
+2. For every Open item, check each Blocker:
+   - Phase N blocker: has that phase been committed and marked ✅ in STATUS.md?
+   - TD-NNN blocker: does that item have Status: Resolved?
+   - External condition: has the condition been met? (use judgment; flag for user if uncertain)
+   If ALL blockers resolved → set Status: Unblocked
+3. For every Unblocked item:
+   - Determine resolution path using the decision logic below
+   - Present list to user with proposed path for each item
+   - Wait for explicit approval before incorporating into any phase prompt
+4. Run TD-TBD grep check:
+   Swift/C/C++/ObjC: grep -rn "TD-TBD" .
+   Any result is a defect — report to user and resolve before proceeding
+5. Run orphan audit (Procedure 3)
+```
+
+**Resolution path decision logic:**
+```
+Is the work small AND directly related to the upcoming phase's concerns?
+  → Yes: addendum task within the current phase
+  → No: Is the volume of unblocked items large, or do they span unrelated areas?
+      → Yes: dedicated cleanup phase
+      → No: separate pass of the current phase (same phase number, distinct prompt)
+```
+The PM chat presents its reasoning and the user may override. Bias toward resolving now.
+
+### Procedure 2 — Post-session processing (after every coder completion report)
+
+```
+1. Read the "Deferred items" section of the coder's completion report
+2. If section is empty or "None": confirm no TD-TBD grep hits in modified files; proceed
+3. For each reported item, present to user:
+   Type, severity/scope/source, description, blocker, context
+4. Wait for user decision per item: approve | modify | reject
+5. If approved or modified:
+   - Assign next available TD number from counter
+   - Write BACKLOG entry using the format above
+   - Replace TD-TBD with TD-NNN in the source file comment
+   - Increment TD counter
+6. If rejected:
+   - Remove the deferral comment from the source file entirely
+   - No BACKLOG entry created
+7. Confirm no TD-TBD remains in any file touched this session
+```
+
+### Procedure 3 — Orphan audit (runs at every phase gate, step 5)
+
+```
+1. Grep for all typed deferral comments:
+   Swift/C/C++/ObjC: grep -rn "// TODO(\|// KNOWN GAP(\|// VERIFY(" .
+   Python:            grep -rn "# TODO(\|# KNOWN GAP(\|# VERIFY(" .
+2. Grep for unprocessed items (always a defect if found in committed code):
+   grep -rn "TD-TBD" .
+3. For each TD-NNN found in comments:
+   - Confirm a corresponding BACKLOG entry exists with that number
+   - Confirm Type, severity/scope, and short title match between comment and BACKLOG entry
+   - Flag any mismatch
+4. For each Open or Unblocked BACKLOG entry with a File/Symbol:
+   - Confirm the deferral comment exists in that file at that symbol
+   - Flag any missing comment
+5. Report all findings; resolve before proceeding to next phase prompt
+```
+
+### Procedure 4 — Resolution procedure (when item is Unblocked and approved)
+
+```
+1. Determine resolution path (from gate check approval)
+2. Generate appropriate prompt:
+   - Addendum task: add to current phase prompt as additional numbered task
+   - Separate pass: standalone coder prompt for this item only
+   - Cleanup phase: accumulate multiple items into a dedicated phase with its own
+     IMPLEMENTATION_PLAN.md entry and reviewer pass
+3. When coder completes the work:
+   - Reviewer confirms work is done (point 4 — implementation plan compliance)
+   - Reviewer confirms deferral comment has been removed from code
+   - PM chat marks Status: Resolved with phase, date, brief note
+   - PM chat removes the comment if coder did not
+4. Run Unblocks scan: check all Open items whose Blockers list names this TD-NNN;
+   set those to Unblocked if all their other blockers are also now resolved
+```
+
+### Agent BACKLOG write permissions
+
+| Agent | May do | May not do |
+|---|---|---|
+| `coder` | Write TD-TBD deferral comments in code; report deferred items in completion report | Write to BACKLOG.md; resolve or modify existing entries |
+| `reviewer` | Add new TD-NNN entries for ⚠️ findings not being fixed immediately | Modify or resolve existing entries |
+| `docs-researcher` | Read only | Write anything |
+| `repo-ops` | Read only | Write anything |
+| PM chat | Write and update BACKLOG.md after user approval; replace TD-TBD with TD-NNN or remove rejected comments in source files | Any other source code changes |
+
+> **PM chat comment edit carve-out:** The PM chat may edit source files solely to add,
+> modify, or remove deferral comments (`// TODO(`, `// KNOWN GAP(`, `// VERIFY(`, and
+> Python equivalents). This is the only permitted source file edit by the PM chat.
+
+
+---
+
+## Part 8 — Warning Signs
 
 Stop and reassess when you see these patterns.
 
@@ -423,7 +598,7 @@ Stop and reassess when you see these patterns.
 
 ---
 
-## Part 8 — Document Authoring Rules
+## Part 9 — Document Authoring Rules
 
 ### What agents can and cannot modify
 
@@ -432,18 +607,21 @@ Stop and reassess when you see these patterns.
 | `ARCHITECTURE.md` | Only if task explicitly says so | Never | Approves changes | Source of truth |
 | `IMPLEMENTATION_PLAN.md` | Only if task explicitly says so | Never | Authors and approves | Never delete phases |
 | `CHANGELOG.md` | Yes — end of phase only | Never | Never | One entry per phase |
-| `BACKLOG.md` | Yes — add/resolve | Yes — add findings | Yes (small edits) | Never delete items |
+| `BACKLOG.md` | Never — reports only | Yes — add ⚠️ findings | Yes — after user approval | Never delete items |
 | `STATUS.md` | Yes — after phase completion | Never | Yes (small edits) | Update after every phase |
 | `CLAUDE.md` / `AGENTS.md` | Never | Never | Authors changes | CLI agents read, don't write |
 | Production source files | Yes | Never | Never | Core job |
+| Deferral comments in source | Writes TD-TBD only | Never | Replaces TD-TBD with TD-NNN or removes | See Part 7 |
 
 ### Desktop Commander scope for PM chat
 
 The PM chat may use Desktop Commander for:
 - Updating STATUS.md after a phase completes
-- Adding items to BACKLOG.md
+- Adding items to BACKLOG.md (after user approval)
 - Appending CHANGELOG entries
 - Fixing typos or stale references in doc files
+- Adding, modifying, or removing deferral comments in source files (TD-TBD → TD-NNN,
+  or removing rejected comments) — this is the only permitted source file edit
 
 The PM chat must NOT use Desktop Commander for:
 - Writing or modifying any source code
@@ -469,6 +647,8 @@ git commands for the human to run manually. Both paths must always be available.
 - [ ] Commit all docs. Sync GitHub connector.
 
 ### Before each phase
+- [ ] Run phase gate check (Part 7 Procedure 1): read BACKLOG.md for newly unblocked
+      items, run TD-TBD grep, run orphan audit — resolve all findings before proceeding
 - [ ] Sync GitHub connector in PM chat
 - [ ] Confirm STATUS.md shows correct current phase
 - [ ] Confirm prior phase ✅ and build/tests green

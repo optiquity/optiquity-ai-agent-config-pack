@@ -71,7 +71,21 @@ Phase [N] in full. Then read these specific files: [LIST FILES].
 
 **Scope constraint:** Make exactly the following changes. Do not modify any file not
 listed in the tasks below. Do not modify `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`,
-or `BACKLOG.md` unless a task below explicitly requires it.
+or `BACKLOG.md`.
+
+**Deferral comments:** If during implementation you encounter work that cannot be
+completed within this phase scope, add a typed deferral comment using exactly this
+syntax (use the comment marker for the language you are writing):
+```
+// TODO(scope): TD-TBD — Short title
+// KNOWN GAP(critical|functional|polish): TD-TBD — Short title
+// VERIFY(source): TD-TBD — Short title
+```
+Always write `TD-TBD` — never invent a TD number. Report every deferral comment
+you add in the "Deferred items" section of your completion report. Do not write
+to `BACKLOG.md` — the PM chat handles that after user review.
+
+**Next available TD number (for PM chat reference only — coder writes TD-TBD):** TD-[NNN]
 
 **Tasks:**
 
@@ -93,6 +107,14 @@ Confirm all tests pass and zero compiler warnings remain. `format.sh` exits 0 if
 [If this is the last task in the phase:] Update `CHANGELOG.md` with a Phase [N] entry
 using today's date, a summary paragraph, files created/modified list, and test count.
 
+**Deferred items** (required section — write "None" if nothing was deferred):
+For each deferral comment added this session:
+- Comment: [exact comment text as written in the file]
+- File/Symbol: `path/to/file` — `SymbolName`
+- Description: [what the work is and why it cannot be done now]
+- Blocker: [the specific dependency or condition preventing completion]
+- Context: [any constraints or observations relevant at deferral time]
+
 ---
 
 ## Template 3 — Reviewer Prompt (Standard Structure)
@@ -111,7 +133,7 @@ Read `ARCHITECTURE.md` in full. Read `CHANGELOG.md` (Phase [X] entry).
 Read `CLAUDE.md`. Read `IMPLEMENTATION_PLAN.md` Phase [X] in full.
 Then read all files modified in Phase [X]: [LIST FILES].
 
-Review for all six of the following — do not skip any:
+Review for all seven of the following — do not skip any:
 
 1. **Architecture compliance** — layer boundaries respected, no forbidden imports in
    domain files, no concrete types crossing layer boundaries
@@ -126,8 +148,16 @@ Review for all six of the following — do not skip any:
    Swift: run `xcodebuild build -scheme [XCODE_SCHEME] -destination '[XCODE_DESTINATION]' 2>&1 | grep "warning:"` and report any warnings;
    Python: run `ruff check` and `pyright` and report any warnings.
    Zero warnings is the standard.
+7. **BACKLOG and deferral comment hygiene** —
+   Run `grep -rn "TD-TBD" .` on all files modified in this phase. Any result is ❌ FAIL —
+   it means the PM chat has not yet processed the coder's deferred items report and the
+   session must not proceed to commit.
+   Check that all deferral comments in reviewed files use the typed format
+   (`// TODO(`, `// KNOWN GAP(`, `// VERIFY(` or language equivalents).
+   Any plain-English deferral comment (e.g. `// Fix later`, `// Confirm this`) is ⚠️ WARN.
+   For each TD-NNN found in reviewed files, confirm a matching BACKLOG entry exists.
 
-[Add any phase-specific focus areas here — these are in addition to the six above, not a replacement.]
+[Add any phase-specific focus areas here — these are in addition to the seven above, not a replacement.]
 
 **Verification** (run after reviewing, report results):
 ```bash
@@ -320,7 +350,8 @@ Output only the task breakdown and risk analysis. Do not write any code.
 
 ## Template 8 — BACKLOG / STATUS Update Prompt
 
-*For standard `claude` (no agent) — small doc-only changes.*
+*PM chat only — requires explicit user approval before executing. Do not use this
+template to make changes the user has not reviewed and approved.*
 
 ---
 
@@ -328,15 +359,32 @@ Read `BACKLOG.md` [and/or `STATUS.md`] in full. Make exactly the following chang
 Do not modify any other file.
 
 [DESCRIBE EXACT CHANGE — e.g.:]
-Add the following item to BACKLOG.md under the Phase [N] section:
 
+**To add a new BACKLOG item:**
+Add the following entry to BACKLOG.md:
+
+```
 **TD-[NNN] — [Short title]**
-File: `[path/to/file]`
-[Description of the issue]
-Action: [What to do to fix it]
+Type: TODO(scope) | KNOWN GAP(critical|functional|polish) | VERIFY(source)
+Status: Open | Unblocked
+Blockers:
+  - [Named specific dependency — phase N, TD-NNN, or external condition]
+  - [Additional blocker if any — all must resolve before item is actionable]
+Unblocks: [TD-NNN, ...] or None
+  ← informational only; PM chat derives actionability from Blockers, not this field
+File/Symbol: `path/to/file` — `SymbolName`  ← optional; symbol name not line number; n/a if none
+Description: [What the work is and why it was deferred]
+Context: [What was known at deferral time — descriptive only, no proposed solution]
+```
 
-[OR:]
-Update STATUS.md:
+**To mark an item resolved:**
+Find TD-[NNN] and append the Resolved field:
+```
+Resolved: [Phase N, date, brief note]
+```
+Change Status to: Resolved. Do not delete the item or any other fields.
+
+**To update STATUS.md:**
 - Mark Phase [N] as ✅ Complete in the phase table
 - Update "Current Phase" to: Phase [N+1] — [Title] (not started)
 - Update "Next Actions" to: [list]
@@ -390,7 +438,9 @@ Audit all documentation for:
 3. API or method names that have changed
 4. Phase references in IMPLEMENTATION_PLAN.md that don't match CHANGELOG.md history
 5. ARCHITECTURE.md sections describing patterns that differ from actual code structure
-6. TODO or KNOWN GAP code comments without corresponding BACKLOG entries
+6. Deferral comments (`// TODO(`, `// KNOWN GAP(`, `// VERIFY(`, or language equivalents)
+   without corresponding BACKLOG entries, or plain-English deferral comments that should
+   use the typed format
 
 **Output format:**
 For each issue:

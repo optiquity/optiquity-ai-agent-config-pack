@@ -289,6 +289,10 @@ Commit everything else, including `CLAUDE.md`, `AGENTS.md`, `.claude/`, `.codex/
 - `shared-docs/RECOMMENDATIONS.md` — practical next steps for each template
 - `shared-docs/ios26/` — iOS 26 / Xcode 26.3 API reference docs (sync via `sync-xcode-docs.sh`)
 - `swift-python-best-practices-v3.md` — the full 206-item best practices reference
+- `METHODOLOGY.md` (in each project repo) — full methodology reference; see **Part 7 —
+  BACKLOG and TODO Management** for deferral comment format, BACKLOG item format, and
+  the four PM chat procedures (phase gate check, post-session processing, orphan audit,
+  resolution)
 
 ---
 

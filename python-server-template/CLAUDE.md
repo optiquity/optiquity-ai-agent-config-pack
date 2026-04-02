@@ -153,6 +153,29 @@ testing, and code generation. **Copy from the pack template and make executable 
 **Note:** `format.sh` is manual-only — not wired into the automatic post-edit hook.
 Run it explicitly before committing or ask `repo-ops` to run it.
 
+## Deferral comments and BACKLOG hygiene
+
+Three comment types are recognized for deferring work. Use exactly this syntax:
+
+```python
+# TODO(scope): TD-TBD — Short title
+# KNOWN GAP(severity): TD-TBD — Short title
+# VERIFY(source): TD-TBD — Short title
+```
+
+**Valid scope values for TODO:** `phase-N`, `dependency`, `feature`, `perf`
+**Valid severity values for KNOWN GAP:** `critical`, `functional`, `polish`
+**Source for VERIFY:** name the external source (e.g. `stripe-api`, `google-cloud-docs`)
+
+**Rules — read carefully:**
+- Always write `TD-TBD` — never a real TD number. The PM chat assigns numbers after review.
+- Report every deferral comment added in the "Deferred items" section of the completion report.
+- Do not write to `BACKLOG.md`. Do not resolve or modify existing BACKLOG entries.
+- Work that could be completed within the current phase scope is NOT a TODO — it is
+  an incomplete task. The reviewer will flag it as an implementation plan compliance failure.
+- Never use plain English deferral comments. Use the typed format above or no comment.
+- When citing a code location in a report, use the symbol name not the line number.
+
 ## Anti-patterns — never introduce these
 
 - Editing generated Protobuf or gRPC Python code by hand.
