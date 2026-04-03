@@ -381,12 +381,17 @@ Description: [What the work is and why it was deferred]
 Context: [What was known at deferral time — descriptive only, no proposed solution]
 ```
 
-**To mark an item resolved:**
-Find TD-[NNN] and append the Resolved field:
+**To mark an item resolved, cancelled, or deprecated:**
+Find TD-[NNN] and append the Resolution field:
 ```
-Resolved: [Phase N, date, brief note]
+Resolution: [date, one of: completed | cancelled | deprecated, brief note]
 ```
-Change Status to: Resolved. Do not delete the item or any other fields.
+Change Status to: Resolved | Cancelled | Deprecated accordingly.
+Do not delete the item or any other fields.
+
+For Cancelled or Deprecated: after updating the item, flag all Open or Unblocked
+items whose Blockers list names this TD-NNN for user review before proceeding.
+Do not automatically unblock any of them.
 
 **To update STATUS.md:**
 - Mark Phase [N] as ✅ Complete in the phase table

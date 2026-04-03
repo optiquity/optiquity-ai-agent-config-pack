@@ -10,6 +10,10 @@ Format follows the standard BACKLOG item format from METHODOLOGY.md Part 7.
 
 - Reference items in commit messages: `feat: v9 — BD-020 description`
 - When an item is resolved, set Status: Resolved with the commit hash and date
+- To cancel or deprecate an item: set Status to Cancelled or Deprecated, add a
+  Resolution field with date, disposition (cancelled|deprecated), and brief rationale.
+  Then review all items that listed this item as a blocker — they require human
+  judgment, not automatic unblocking
 - Items deferred to a future version: set Blockers to the target version
 - New items get the next available BD-NNN number
 - This file ships in the repo so agents can read it and understand current scope

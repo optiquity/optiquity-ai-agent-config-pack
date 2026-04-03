@@ -435,7 +435,7 @@ not a BACKLOG entry.
 ```
 **TD-NNN — [Short title]**
 Type: TODO(scope) | KNOWN GAP(critical|functional|polish) | VERIFY(source)
-Status: Open | Unblocked | Resolved
+Status: Open | Unblocked | Resolved | Cancelled | Deprecated
 Blockers:
   - [Named specific dependency — phase N, TD-NNN, or external condition]
   - [Additional blocker if any — all must resolve before item is actionable]
@@ -445,11 +445,21 @@ File/Symbol: `path/to/file` — `SymbolName`  ← optional; symbol name not line
 Description: [What the work is and why it was deferred]
 Context: [What was known at deferral time — constraints, observed behavior, partial
           information. Descriptive only. Do not propose a solution.]
-Resolved: [Phase N, date, brief note]  ← filled in when resolved; never deleted
+Resolution: [date, one of: completed | cancelled | deprecated, brief note]
+  ← filled in when status moves to Resolved, Cancelled, or Deprecated; never deleted
 ```
 
-**Status transitions:** Open → Unblocked (all Blockers resolved) → Resolved (work confirmed
-complete). Items are never deleted. Items with no blockers start as Unblocked.
+**Status transitions:**
+- Open → Unblocked: all Blockers resolved
+- Unblocked → Resolved: work confirmed complete by reviewer
+- Open or Unblocked → Cancelled: deliberate decision not to do the work; the gap
+  may still exist but has been accepted
+- Open or Unblocked → Deprecated: item no longer applicable because something else
+  changed — feature removed, architecture evolved, external dependency disappeared
+
+Active statuses: Open, Unblocked — these are the only items requiring attention.
+Inactive statuses: Resolved, Cancelled, Deprecated — no further action required.
+Items are never deleted. Items with no blockers start as Unblocked.
 
 **TD counter:** The PM chat tracks the next available TD number. At the start of every
 session, read BACKLOG.md, find the highest existing TD number, set counter to that value + 1.
@@ -537,9 +547,29 @@ The PM chat presents its reasoning and the user may override. Bias toward resolv
    - Reviewer confirms deferral comment has been removed from code
    - PM chat marks Status: Resolved with phase, date, brief note
    - PM chat removes the comment if coder did not
-4. Run Unblocks scan: check all Open items whose Blockers list names this TD-NNN;
-   set those to Unblocked if all their other blockers are also now resolved
+4. Run disposition scan based on how this item was closed:
+   - Resolved (completed): check all Open items whose Blockers list names this
+     TD-NNN; set those to Unblocked if all their other blockers are also resolved
+   - Cancelled or Deprecated: check all Open items whose Blockers list names this
+     TD-NNN; flag each one for user review — do not automatically set to Unblocked.
+     The dependency chain is broken in a way that requires human judgment: the
+     downstream item may need a new blocker, revised scope, or cancellation itself
 ```
+
+### Cancelling or deprecating a BACKLOG item
+
+Tell the PM chat in conversation: "Cancel TD-NNN" or "Deprecate TD-NNN — [brief reason]."
+This is a deliberate human decision and always requires explicit instruction.
+
+When you instruct the PM chat to cancel or deprecate an item, it will:
+1. Set Status to Cancelled or Deprecated
+2. Add Resolution field: [date, cancelled|deprecated, your rationale]
+3. If a deferral comment exists in source code for this item, remove it
+4. Run the disposition scan: find all Open or Unblocked items whose Blockers list
+   names this TD-NNN; present each to you for a decision — do not automatically
+   unblock any of them. Each downstream item may need a new blocker stated,
+   a revised scope, or cancellation itself
+5. Wait for your decision on each downstream item before proceeding
 
 ### Agent BACKLOG write permissions
 
