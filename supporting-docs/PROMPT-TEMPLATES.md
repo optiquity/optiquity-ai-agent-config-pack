@@ -192,21 +192,25 @@ explicit approval. Do not generate this prompt until the plan is approved.*
 
 ---
 
+> **PM chat must describe problems, not solutions.** Each fix entry explains what is
+> wrong and what correct behavior looks like. It does not provide pseudocode,
+> implementation steps, or Swift/Python code. The coder agent determines how to fix it.
+
 Read `ARCHITECTURE.md` in full. Read `IMPLEMENTATION_PLAN.md` Phase [N].
 Read these specific files: [LIST AFFECTED FILES].
 
 The reviewer found the following issues that must be fixed before committing.
-Fix each one exactly as described. Do not change any other code.
+Fix each issue so that it meets the expected behavior described. Do not change any other code.
 
 **❌ Fix 1 — [Issue title]**
 File: `[path/to/file]`
-Problem: [exact description]
-Fix: [exact instructions]
+Problem: [exact description of what is wrong]
+Expected behavior: [what correct behavior looks like — no implementation instructions]
 
 **❌ Fix 2 — [Issue title]**
 File: `[path/to/file]`
-Problem: [exact description]
-Fix: [exact instructions]
+Problem: [exact description of what is wrong]
+Expected behavior: [what correct behavior looks like — no implementation instructions]
 
 **Verification:** After all fixes, run:
 ```bash
