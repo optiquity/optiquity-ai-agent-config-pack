@@ -60,10 +60,10 @@ that depends on that content.
   Receiving a task description is not approval. Approval must be explicit.
 - **Never bias architect agents with proposed solutions.** When routing a problem to an
   architect agent, describe the constraint or design problem only — do not propose a
-  solution. The architect agent solves design problems. The PM chat may only prescribe
-  mechanical fixes (compile errors, specific wording corrections) in a prompt. Any
-  proposed architecture, pattern choice, or structural change must come from the agent,
-  not the PM chat.
+  solution. The architect agent solves design problems. Any proposed architecture,
+  pattern choice, or structural change must come from the agent, not the PM chat.
+  See the **Prompt Authoring Principles** section for the full standard that applies
+  to all agent types.
 
 ### Claude Code CLI (agents)
 
@@ -210,7 +210,8 @@ Every phase in IMPLEMENTATION_PLAN.md should follow this format:
 
 ### Tasks
 #### N.1 — [Task title]
-- **What**: Specific implementation instructions
+- **Problem/Goal**: What this task achieves and what is currently wrong or missing —
+  describe the outcome, not the steps. Do not include implementation instructions.
 - **Files created/modified**: list
 - **Definition of done**: Measurable, verifiable criteria
 - **Dependencies**: other tasks within this phase
@@ -384,6 +385,99 @@ as starting points — customize for the current project and phase before pastin
 | Workflow 4 — Fix cycle | Template 4 (fix cycle coder prompt); Template 4b (mid-phase architect prompt, when triggered) |
 | Workflow 5 — Global audit | Template 9 (test coverage), Template 10 (docs audit), Template 11 (LSP audit), Template 12 (UI audit) |
 | Workflow 6 — New feature | Template 8 (BACKLOG/STATUS update), then Workflow 2 templates |
+
+---
+
+## Prompt Authoring Principles
+
+These principles apply to every prompt the PM chat generates — coder, architect,
+fix cycle, researcher, planner — and to every task entry written in IMPLEMENTATION_PLAN.md.
+They are not style guidance. They govern what information belongs in a prompt and what does not.
+
+### The core rule: describe the problem and goal, not the solution
+
+Every prompt and every task entry must answer:
+
+1. **Problem** — the root cause, described at the category level, not a single symptom.
+   Include enough scope that the agent recognizes all instances within the files-in-scope
+   list — but do not describe the solution.
+
+2. **Goal** — what correct behavior looks like across the affected scope when the task
+   is complete. Describe the outcome, not the steps.
+
+3. **Context** — why this matters and how it connects to the larger system design.
+   Include only what the agent cannot infer from reading ARCHITECTURE.md.
+
+4. **Required reading** — documents and files the agent must read before starting.
+   Distinguish: files to read for understanding (may extend beyond the change scope)
+   vs. files in scope to modify.
+
+5. **Files in scope** — explicit list of files the agent may create or modify.
+   This is a hard boundary. If the agent discovers the same problem in a file not
+   on this list, it must report it rather than fix it.
+
+6. **Completion report** — what the agent must report when done: files modified,
+   verification results, and any out-of-scope discoveries.
+
+A prompt must never contain:
+- Pseudocode or implementation sketches
+- Framework, pattern, or library choices (unless already mandated in ARCHITECTURE.md)
+- Step-by-step "how to" instructions
+- Proposed solutions that substitute for agent judgment
+
+**Why this rule exists:** Prescriptive prompts bypass the agent's ability to find
+the right approach from full filesystem context. The PM chat has not read every file
+in the repo — the agent has. The PM chat states what is wrong and what correct
+behavior looks like. The agent determines how to achieve it.
+
+### On scoping the problem statement
+
+The problem should be scoped to its root cause, not to a specific file or line.
+If the problem is "URLComponents construction can silently fail," say that — not
+"line 47 of ServiceX.swift." Root-cause framing lets the agent recognize every
+instance within the files-in-scope list.
+
+The files-in-scope list does the bounding, not the problem statement.
+Keep the problem statement complete; keep the files list tight.
+
+If it is genuinely unknown how many files are affected, say so and instruct the
+agent to audit the listed files only, then report any out-of-scope instances found
+for a follow-up decision. Do not expand the files list speculatively — that is
+scope inflation.
+
+### Exceptions — where prescriptive content is appropriate
+
+| Agent | May prescribe | Must not prescribe |
+|---|---|---|
+| `reviewer` | Review criteria, output format, verification commands | Which issues to overlook or deprioritize |
+| `docs-researcher` | Specific claims to verify, URLs to check, output format | How to resolve discrepancies found |
+| `repo-ops` / standard `claude` | Exact file operations, BACKLOG/STATUS changes | N/A — mechanical operations are fully prescribed |
+| `tester` | Audit scope, output format | Which test patterns or structures to use |
+| `coder` | Files in scope, verification commands, completion report format | Implementation approach, patterns, pseudocode |
+| `architect` | Problem statement and required reading only | All solutions — including pattern names and structural direction |
+| `planner` | Which phase or scope to break down | How to break it down |
+
+> **Update this table when any agent is added or changed in AGENTS.md.**
+
+**Architect prompts — stronger restriction:**
+Never include a proposed solution, pattern name, or structural approach in a prompt
+to an architect agent. A proposed solution in an architect prompt is not a suggestion
+— it anchors the agent. Describe the constraint violation or design problem only.
+The architect diagnoses and proposes.
+
+### When generating prompts from IMPLEMENTATION_PLAN.md task entries
+
+If a task entry contains prescriptive implementation instructions rather than a
+problem/goal description, reframe it before including it in the prompt — extract
+what the task is trying to achieve and what correct behavior looks like, and discard
+the how. Do not forward implementation instructions verbatim.
+This applies to coder, architect, and planner prompts. For agents where prescriptive
+content is permitted (see exceptions table above), forward plan content as written.
+
+### PM chat self-check before generating any prompt
+
+Before writing a prompt, ask: *"Am I describing what needs to be true, or how to do it?"*
+If the answer is "how to do it," rewrite it as "what needs to be true."
 
 ---
 
@@ -717,6 +811,8 @@ git commands for the human to run manually. Both paths must always be available.
 - [ ] Commit all docs. Sync GitHub connector.
 
 ### Before each phase
+- [ ] Re-read the **Prompt Authoring Principles** section before generating any prompt
+      for this phase — refresh the non-prescriptive authoring standard
 - [ ] Run phase gate check (Part 7 Procedure 1): read BACKLOG.md for newly unblocked
       items, run TD-TBD grep, run orphan audit — resolve all findings before proceeding
 - [ ] Sync GitHub connector in PM chat

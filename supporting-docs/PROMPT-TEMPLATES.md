@@ -18,6 +18,52 @@ for each use. Remove sections that don't apply to the current phase.
 
 ---
 
+## Prompt Authoring Principles
+
+> **Read this before generating any prompt.**
+> Full details in `METHODOLOGY.md` — Prompt Authoring Principles section.
+
+**The core rule:** Describe the *problem* and *goal* — not the solution.
+
+Every prompt must answer:
+- **Problem** — root cause at category level; enough scope for the agent to recognize all
+  instances within the files-in-scope list, but no description of the solution
+- **Goal** — what correct behavior looks like when done; outcome, not steps
+- **Context** — what the agent cannot infer from ARCHITECTURE.md
+- **Required reading** — distinguish files for understanding from files in scope to modify
+- **Files in scope** — hard boundary; agent reports out-of-scope discoveries, does not fix them
+- **Completion report** — files modified, verification results, out-of-scope discoveries
+
+**Never include** in a prompt: pseudocode, implementation steps, pattern choices, or
+proposed solutions (unless architecturally mandated in ARCHITECTURE.md).
+
+**Scoping the problem:** Use root-cause framing, not file/line references. The
+files-in-scope list does the bounding — keep it tight. If affected scope is unknown,
+instruct the agent to audit the listed files and report findings for a follow-up decision.
+
+**Exceptions by agent:**
+
+| Agent | May prescribe | Must not prescribe |
+|---|---|---|
+| `reviewer` | Review criteria, output format, verification commands | Which issues to overlook |
+| `docs-researcher` | Claims to verify, URLs, output format | How to resolve discrepancies |
+| `repo-ops` / standard `claude` | Exact operations (fully mechanical) | N/A |
+| `tester` | Audit scope, output format | Test patterns or structures |
+| `coder` | Files in scope, verification commands, report format | Implementation approach, pseudocode |
+| `architect` | Problem statement and required reading only | All solutions, pattern names, structural direction |
+| `planner` | Scope to break down | How to break it down |
+
+**When using IMPLEMENTATION_PLAN.md task entries:** If a task entry contains
+implementation instructions rather than a problem/goal description, reframe it before
+including it — extract the outcome and discard the how. Apply to coder, architect, and
+planner prompts. For agents where prescriptive content is permitted (see table above),
+forward plan content as written.
+
+**Self-check:** Before generating any prompt, ask: *"Am I describing what needs to be
+true, or how to do it?"* If "how to do it" — rewrite as "what needs to be true."
+
+---
+
 ## Template 1 — PM Chat Kickoff Prompt
 
 *Paste this at the start of a new PM chat session to establish project context.*
