@@ -564,6 +564,19 @@ Fill in all placeholder values:
 - External resources to read: [LIST WITH URLS]
 - Key domain types: [LIST]
 - Architecture constraints: [LIST — include project-specific ones]
+  - Architecture decisions required (architect must evaluate each and document
+    the chosen approach AND rejected alternatives with rationale before
+    producing any stub code):
+      □ Heterogeneous domain collections: type-erasure wrappers / exhaustive
+        enums / protocol elevation — which and why
+      □ Domain state change notification: coarse broadcast / typed payload
+        streams / observation framework — granularity, back pressure,
+        actor-hop cost at expected update frequency
+      □ ViewModel-to-navigation coupling: direct navigator injection /
+        route-intent stream / closure-based — what the ViewModel emits vs.
+        what the View layer executes
+      □ [Any other correctness-sensitive structural decisions specific to
+        this project]
 - Required stubs to generate: [LIST]
 - Test infrastructure required: [LIST OR NONE]
 

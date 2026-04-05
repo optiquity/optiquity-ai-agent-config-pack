@@ -159,7 +159,7 @@ Always write `TD-TBD`. Never invent a TD number.
 - gRPC stubs called directly from ViewModels, Views, or business logic.
 - Magic duration literals for gRPC deadlines.
 - Skipping buf lint and buf breaking before schema merges.
-- @unchecked Sendable without audited justification.
+- @unchecked Sendable without documented and audited justification.
 - Force unwraps as convenience.
 - print() in production code.
 - Module-level mutable globals as service registries.

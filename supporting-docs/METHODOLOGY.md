@@ -155,6 +155,25 @@ Every project should have all of these. Create them before writing any code.
 - Each agent invocation is a new session. Never continue a coder session for a new phase.
 - Reviewer sessions are always new. Never reuse a reviewer session for a second pass.
 - Agents have no memory between sessions — every prompt must be self-contained.
+
+### Rejected-alternative documentation rule (architect agent)
+
+For any correctness-sensitive design decision — defined as a decision where choosing
+the wrong pattern creates silent runtime failures, LSP violations, concurrency hazards,
+or significant migration cost — the architect agent must:
+
+1. Name every viable alternative that was considered
+2. State why each alternative was rejected
+3. State why the chosen approach is correct for this project's constraints
+
+This documentation must appear in `ARCHITECTURE.md` at the decision site, not only in
+a planning conversation. If an architect agent cannot name at least one rejected
+alternative for a structural decision, that is a signal the decision space was not
+fully evaluated.
+
+This rule applies at project kickoff and at every mid-phase architect pass
+(Trigger A, Trigger B from Workflow 4).
+
 ---
 
 ## Part 4 — Phase Structure

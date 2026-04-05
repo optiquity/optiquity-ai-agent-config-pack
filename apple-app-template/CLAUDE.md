@@ -228,7 +228,7 @@ Three comment types are recognized for deferring work. Use exactly this syntax:
 - Massive view controllers or God ViewModels accumulating unrelated logic.
 - Calling generated gRPC stubs directly from ViewModels or Views.
 - Putting auth tokens or credentials in Protobuf message fields.
-- @unchecked Sendable without a documented, audited justification.
+- @unchecked Sendable without documented and audited justification.
 - Force unwraps outside tightly justified test-only or impossible-state contexts.
 - Implicitly unwrapped optionals as a laziness shortcut.
 - print() in production code — use os_log or a structured logger.

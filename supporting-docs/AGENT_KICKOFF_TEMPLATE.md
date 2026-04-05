@@ -78,7 +78,21 @@ The architecture must define these core types. For each:
 
 These constraints are non-negotiable. The architecture must satisfy all of them.
 
-<!-- Customize this list for the project — add, remove, or modify as needed -->
+**Architecture decisions required:** Before producing any stub code, document the chosen
+approach AND all rejected alternatives with rationale for each decision below. This
+documentation must appear in `ARCHITECTURE.md` at the decision site — not only in
+planning conversation output.
+
+- □ Heterogeneous domain collections: type-erasure wrappers / exhaustive enums /
+    protocol elevation — which and why
+- □ Domain state change notification: coarse broadcast / typed payload streams /
+    observation framework — granularity, back pressure, actor-hop cost at expected
+    update frequency
+- □ ViewModel-to-navigation coupling: direct navigator injection / route-intent
+    stream / closure-based — what the ViewModel emits vs. what the View layer executes
+- □ [Add project-specific correctness-sensitive structural decisions here]
+
+<!-- Customize the constraint list below for the project — add, remove, or modify as needed -->
 
 1. **Layer separation:** Separate presentation, domain, and data/transport layers. No layer may skip its immediate neighbor.
 2. **Domain isolation:** The domain layer imports nothing from SwiftUI, AppKit, UIKit, [PERSISTENCE_FRAMEWORK], or any networking framework.

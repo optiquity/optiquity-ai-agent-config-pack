@@ -143,7 +143,7 @@ Always write `TD-TBD`. Never invent a TD number.
 
 - Calling gRPC stubs directly from ViewModels or Views.
 - Auth tokens in Protobuf message fields.
-- @unchecked Sendable without audited justification.
+- @unchecked Sendable without documented and audited justification.
 - Force unwraps as convenience.
 - print() in production code.
 - Singleton sprawl for injectable services.

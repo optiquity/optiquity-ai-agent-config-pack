@@ -305,7 +305,7 @@ the language you are writing — the text format is identical across all languag
 
 ### Apple client
 - Massive view controllers or God ViewModels.
-- @unchecked Sendable without audited justification.
+- @unchecked Sendable without documented and audited justification.
 - Force unwraps as a convenience shortcut.
 - print() in production code.
 - Singleton sprawl for injectable services.
