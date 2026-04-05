@@ -149,7 +149,9 @@ to `BACKLOG.md` — the PM chat handles that after user review.
 ```
 Confirm all tests pass and zero compiler warnings remain. `format.sh` exits 0 if swift-format is not installed — this is acceptable. `validate.sh` must exit 0 with zero warnings.
 
-**Completion report:** Report which files were modified and the final test count.
+**Completion report:** Begin the report with this header line as the very first line of output:
+`Phase [N] — [Phase title] — Coder Report, Pass 1`
+Then report which files were modified and the final test count.
 [If this is the last task in the phase:] Update `CHANGELOG.md` with a Phase [N] entry
 using today's date, a summary paragraph, files created/modified list, and test count.
 
@@ -212,6 +214,9 @@ Review for all seven of the following — do not skip any:
 Confirm all tests pass.
 
 **Output format:**
+Begin the report with this header line as the very first line of output:
+`Phase [X] — [Phase title] — Reviewer Report, Pass [N]`
+Then list findings:
 - ✅ PASS — [finding description]
 - ❌ FAIL — [finding]: [exact description of what's wrong and what file/line]
 - ⚠️ WARN — [finding]: [description — should fix or track in BACKLOG]
@@ -264,7 +269,9 @@ Expected behavior: [what correct behavior looks like — no implementation instr
 ```
 Confirm all tests pass and zero warnings remain.
 
-**Completion report:** List files modified.
+**Completion report:** Begin the report with this header line as the very first line of output:
+`Phase [N] — [Phase title] — Fix Cycle Coder Report, Pass [N]`
+Then list files modified.
 
 ---
 
@@ -337,6 +344,9 @@ For each component:
 End with a Priority Summary: top gaps ranked by likelihood of catching a real bug,
 with the specific test to write and the failure it would catch.
 
+**Report header (first line of output):**
+`Phase [N] — [Phase title] — Tester Report`
+
 **Constraint:** Output a report only. Do not write any test code.
 
 ---
@@ -361,6 +371,9 @@ Do not confirm them — check their accuracy and flag any discrepancy.
    Check against: [URL]
 
 **Output format:**
+Begin the report with this header line as the very first line of output:
+`Phase [N] — [Phase title] — Docs-Researcher Report`
+Then list findings:
 - ✅ CONFIRMED — [topic]: [evidence + source URL]
 - ⚠️ DISCREPANCY — [topic]:
   What the plan assumes: [...]
@@ -391,7 +404,9 @@ Break Phase [N] into ordered implementation tasks. For each task:
 Name any dependencies between tasks (which must complete before another can start).
 Identify the highest-risk task and suggest how to approach it first.
 
-Output only the task breakdown and risk analysis. Do not write any code.
+Begin the output with this header line as the very first line:
+`Phase [N] — [Phase title] — Planner Report`
+Then output only the task breakdown and risk analysis. Do not write any code.
 
 ---
 
