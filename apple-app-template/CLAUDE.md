@@ -242,6 +242,22 @@ Three comment types are recognized for deferring work. Use exactly this syntax:
 - Magic duration literals for gRPC deadlines — use named constants.
 - Ignoring scene lifecycle transitions in long-lived gRPC streaming connections.
 - Editing generated Protobuf or gRPC Swift code by hand.
+- Type-erasure wrappers that expose a `.base` property for downcasting to a
+  concrete type. Any code of the form `anyWrapper.base as? ConcreteType` in
+  domain or presentation code is an LSP violation — it is runtime type
+  interrogation disguised as abstraction. Use protocol elevation or exhaustive
+  enums instead.
+- `AsyncStream<Void>` or any contentless change notification broadcast to multiple
+  independent subscribers. New subscriptions must use typed payloads so subscribers
+  can determine relevance without an actor hop. `AsyncChannel` from
+  swift-async-algorithms is a competing-consumer rendezvous channel — it is NOT
+  suitable for fan-out to multiple independent subscribers.
+- ViewModels that import SwiftUI or hold a direct reference to a navigator or routing
+  object and call imperative navigation methods on it. ViewModels must express
+  navigation intent as output that the View layer consumes, including a typed stream
+  or observable state property of a ViewModel-defined enum, a non-isolated closure
+  injected by the caller, or a delegate protocol defined by the ViewModel. The View
+  layer executes navigation; the ViewModel declares what should happen.
 
 
 ## Phase routing — default agent assignments

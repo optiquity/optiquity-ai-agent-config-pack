@@ -174,6 +174,27 @@ fully evaluated.
 This rule applies at project kickoff and at every mid-phase architect pass
 (Trigger A, Trigger B from Workflow 4).
 
+**Apple-platform pattern selection rule (architect agent):**
+For Swift/Apple projects, the following patterns are prohibited by default
+and require explicit documented justification before the architect may choose them:
+
+1. Type-erasure wrappers with `.base` accessor properties for heterogeneous
+   domain collections. These are LSP violations. Use protocol elevation or
+   exhaustive enums instead. If chosen anyway, document why protocol elevation
+   and exhaustive enums are insufficient for this specific case.
+
+2. `AsyncStream<Void>` or any contentless change notification broadcast to
+   multiple independent subscribers. Use typed payload streams. If a contentless
+   stream is chosen, document why payload typing is insufficient.
+
+3. ViewModels that import SwiftUI or hold direct references to navigation
+   coordinators. ViewModels must express navigation intent as observable output
+   state. If direct navigator access is chosen, document why the intent-as-state
+   pattern is insufficient.
+
+These are not style preferences — they are structural correctness requirements
+with documented failure modes on Apple platforms.
+
 ---
 
 ## Part 4 — Phase Structure
