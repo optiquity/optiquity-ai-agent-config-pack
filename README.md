@@ -16,6 +16,12 @@ See [`QUICKSTART.md`](QUICKSTART.md) for full setup instructions (available from
 
 ## Version History
 
+### Versioning convention
+Major versions (v9, v10, …) mark large additions or breaking changes.
+Minor versions (v8.0, v8.1, …) mark incremental improvements — doc updates,
+new templates, prompt and workflow refinements. The bare major tag (e.g. `v8`)
+always points to the latest minor of that major version.
+
 | Version | Date         | Key Additions |
 |---------|--------------|---------------|
 | v1      | Mar 6, 2026  | Initial pack: apple-app and monorepo templates, 5 agents, 3 skills |
@@ -25,7 +31,12 @@ See [`QUICKSTART.md`](QUICKSTART.md) for full setup instructions (available from
 | v5      | Mar 9, 2026  | python-server-template; apple-app-plus-python-server monorepo; xcode-companion-templates in pack |
 | v6      | Mar 11, 2026 | Proto scaffold; QUICKSTART.md; error-handling skill; proto-gen.sh script |
 | v7      | Mar 23, 2026 | iOS 26 / Xcode 26.3 API docs; sync-xcode-docs.sh; Apple-first dependency policy |
-| v8      | Mar 29, 2026 | apple-architect rename; python-architect; METHODOLOGY.md; PROMPT-TEMPLATES.md; VS Code companion; LSP rules; OT content merge; availability guard fix |
+| v8.0    | Mar 29, 2026 | apple-architect rename; python-architect; METHODOLOGY.md; PROMPT-TEMPLATES.md; VS Code companion; LSP rules; OT content merge; availability guard fix |
+| v8.1    | Apr 1, 2026  | Post-release patches: METHODOLOGY single-source, ios-architect rename fixes, PROMPT-TEMPLATES verification updates, PM chat rules, BD-020–023 |
+| v8.2    | Apr 2, 2026  | Workflow 4 mid-phase architect trigger; BACKLOG/TODO management system; Cancelled/Deprecated item statuses; Template 4 non-prescriptive fix requirement |
+| v8.3    | Apr 3, 2026  | Architect rejected-alternative documentation rule; Apple-platform pattern selection rules (type-erasure, AsyncStream, ViewModel navigation) |
+| v8.4    | Apr 5, 2026  | Prompt Authoring Principles in METHODOLOGY.md and PROMPT-TEMPLATES.md |
+| v8.5    | Apr 6, 2026  | Standardized agent output report headers across Templates 2–7; DEPENDENCIES.md; minor versioning convention |
 
 ## Repository Layout
 

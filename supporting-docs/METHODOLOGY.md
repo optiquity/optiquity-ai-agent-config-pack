@@ -1,6 +1,6 @@
 # METHODOLOGY.md — AI-Assisted Project Development Methodology
 
-Version: 1.0 (v8, March 2026)
+Version: 1.0 (v8.5, April 2026)
 Applies to: All projects using Claude Code CLI + Claude Chat + AI Agent Config Pack v8
 
 > **Applicability note:** This document is platform-agnostic and applies to all project
@@ -829,6 +829,6 @@ git commands for the human to run manually. Both paths must always be available.
 
 ---
 
-*Version 1.0 — AI Agent Config Pack v8, March 2026*
+*Version 1.0 — AI Agent Config Pack v8.5, April 2026*
 *Source: supporting-docs/origins/Claude-Assisted_Project_Methodology_Guide_v1.md*
 *Update this file when new standing decisions are made. Bump the version number.*
