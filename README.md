@@ -36,7 +36,8 @@ always points to the latest minor of that major version.
 | v8.2    | Apr 2, 2026  | Workflow 4 mid-phase architect trigger; BACKLOG/TODO management system; Cancelled/Deprecated item statuses; Template 4 non-prescriptive fix requirement |
 | v8.3    | Apr 3, 2026  | Architect rejected-alternative documentation rule; Apple-platform pattern selection rules (type-erasure, AsyncStream, ViewModel navigation) |
 | v8.4    | Apr 5, 2026  | Prompt Authoring Principles in METHODOLOGY.md and PROMPT-TEMPLATES.md |
-| v8.5    | Apr 6, 2026  | Standardized agent output report headers across Templates 2–7; DEPENDENCIES.md; minor versioning convention |
+| v8.5    | Apr 6, 2026  | Standardized agent output report headers across Templates 2–7 |
+| v8.6    | Apr 6, 2026  | DEPENDENCIES.md; minor versioning convention; version string corrections |
 
 ## Repository Layout
 

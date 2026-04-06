@@ -1,6 +1,6 @@
 # PROMPT-TEMPLATES.md — Agent Prompt Templates
 
-Version: 1.0 (v8.5, April 2026)
+Version: 1.0 (v8.6, April 2026)
 
 ---
 
@@ -667,5 +667,5 @@ The developer will paste this directly into a Claude Code CLI session with the a
 
 ---
 
-*Version 1.0 — AI Agent Config Pack v8.5, April 2026*
+*Version 1.0 — AI Agent Config Pack v8.6, April 2026*
 *These templates are starting points. Customize per project and phase.*
