@@ -1,6 +1,8 @@
 # ─── Agent local overrides ─────────────────────────────────────────────────
 .claude/settings.local.json
 .mcp.json
+.claude/rag-index/
+.claude/rag-cache/
 
 # ─── Secrets and credentials ───────────────────────────────────────────────
 .env

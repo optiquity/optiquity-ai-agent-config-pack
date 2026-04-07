@@ -86,9 +86,10 @@ cp -r /path/to/pack/[TEMPLATE_NAME]/. .
 
 # The trailing /. ensures hidden directories are included (.claude/, .codex/)
 
-# Copy METHODOLOGY.md and PROMPT-TEMPLATES.md separately — not included in the template directory
+# Copy METHODOLOGY.md, PROMPT-TEMPLATES.md, and PM-CHAT.md separately — not included in the template directory
 cp /path/to/pack/supporting-docs/METHODOLOGY.md ./METHODOLOGY.md
 cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md ./PROMPT-TEMPLATES.md
+cp /path/to/pack/supporting-docs/PM-CHAT.md ./PM-CHAT.md
 ```
 
 Make scripts executable:
@@ -198,17 +199,18 @@ git push origin main
 
 ## 11. Set up the Claude project for PM chat
 
+**Option A — Claude Desktop app:**
 1. Go to claude.ai → Projects → New Project
 2. Name it: **[PROJECT_NAME]**
 3. Connect the GitHub repo via the GitHub connector
-4. Upload to project knowledge:
-   - `METHODOLOGY.md` (from the project repo root — copied there in setup Step 2)
-   - `PROMPT-TEMPLATES.md` (from the project repo root — copied there in setup Step 2)
-   Both files are in the project repo and available via the GitHub connector after syncing.
+4. Sync the GitHub connector — `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, and `PM-CHAT.md`
+   are in the project repo (copied in setup Step 4) and searchable after sync.
    No manual upload is needed.
-   - `supporting-docs/PROMPT-TEMPLATES.md` (from the pack)
-5. Start a new chat in the project and paste the PM chat kickoff prompt
-   (from PROMPT-TEMPLATES.md — "PM chat kickoff prompt" section)
+5. Start a new chat and paste Template 1 (PM chat kickoff prompt) from `PROMPT-TEMPLATES.md`
+
+**Option B — Claude Code CLI (non-blocking):**
+Follow QUICKSTART.md Step 11, Option B (Steps 11C–11G). Setup is self-contained there.
+For daily session management after setup, see `supporting-docs/CLI-PM-SETUP.md`.
 
 ---
 

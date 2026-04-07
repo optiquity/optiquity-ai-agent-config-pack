@@ -38,6 +38,7 @@ always points to the latest minor of that major version.
 | v8.4    | Apr 5, 2026  | Prompt Authoring Principles in METHODOLOGY.md and PROMPT-TEMPLATES.md |
 | v8.5    | Apr 6, 2026  | Standardized agent output report headers across Templates 2–7 |
 | v8.6    | Apr 6, 2026  | DEPENDENCIES.md; minor versioning convention; version string corrections |
+| v8.7    | Apr 6, 2026  | CLI PM chat: PM-CHAT.md template, /pm-startup skill, CLI-PM-SETUP.md, mcp-local-rag integration |
 
 ## Repository Layout
 
@@ -54,6 +55,9 @@ always points to the latest minor of that major version.
 │   ├── guides/                             Per-version setup guides (.docx)
 │   ├── METHODOLOGY.md                      Universal project methodology (v8+)
 │   ├── PROMPT-TEMPLATES.md                 Agent prompt templates (v8+)
+│   ├── PM-CHAT.md                          PM chat startup instructions template (v8.7+)
+│   ├── CLI-PM-SETUP.md                     CLI PM chat daily usage reference (v8.7+)
+│   ├── DEPENDENCIES.md                     Tool dependencies reference (v8.6+)
 │   ├── SETUP_TEMPLATE.md                   New project setup template (v8+)
 │   ├── AGENT_KICKOFF_TEMPLATE.md           Architecture kickoff template (v8+)
 │   ├── MIGRATION-v7-to-v8.md               Upgrade guide (v8+)

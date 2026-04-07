@@ -114,3 +114,25 @@ Configured via the `.codex/` directory in each template.
 | swift-protobuf | Swift gRPC | `brew install swift-protobuf` |
 | grpc-swift-2 | Swift gRPC | https://github.com/grpc/grpc-swift-2 |
 | OpenAI Codex CLI | Codex workflows | https://github.com/openai/codex |
+| mcp-local-rag | CLI PM chat (optional) | Auto via `npx -y mcp-local-rag` |
+
+---
+
+## CLI PM Chat (Optional — all templates)
+
+These tools are only needed if using the Claude Code CLI as the PM chat session
+instead of the Claude Desktop app. Setup is in QUICKSTART.md Step 11 (Option B).
+For daily session management after setup, see `supporting-docs/CLI-PM-SETUP.md`.
+
+### mcp-local-rag (required for CLI PM chat)
+Local RAG server for semantic search over METHODOLOGY.md and PROMPT-TEMPLATES.md.
+Runs entirely locally — no API keys required.
+- Requires: Node.js 18+ (already required for Claude Code CLI)
+- Install: Automatic via `npx -y mcp-local-rag` on first use
+- First run: Downloads local embedding model (~50MB, one-time per machine)
+- Verify: `npx mcp-local-rag --version`
+- Reference: https://github.com/shinpr/mcp-local-rag
+
+### Disk space (for RAG index)
+The RAG index for METHODOLOGY.md and PROMPT-TEMPLATES.md is small (under 5MB per project).
+Stored in `.claude/rag-index/` within the project directory (gitignored).

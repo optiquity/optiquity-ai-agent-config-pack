@@ -28,12 +28,16 @@ cp -r apple-app-template/. /path/to/your/project/
 
 > The trailing `/.` is required — it ensures hidden directories (`.claude/`, `.codex/`, `.gitignore`) are included.
 
-Then copy `METHODOLOGY.md` and `PROMPT-TEMPLATES.md` separately from `supporting-docs/` — they are not included in the template directory:
+Then copy `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, and `PM-CHAT.md` separately from `supporting-docs/` — they are not included in the template directory:
 
 ```bash
 cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/METHODOLOGY.md
 cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md /path/to/your/project/PROMPT-TEMPLATES.md
+cp /path/to/pack/supporting-docs/PM-CHAT.md /path/to/your/project/PM-CHAT.md
 ```
+
+> `PM-CHAT.md` contains `[PROJECT_NAME]` as a placeholder. The PM chat fills this
+> in and commits the file during the kickoff conversation — no manual editing needed.
 
 ---
 
@@ -196,37 +200,151 @@ and all generated Protobuf output.
 
 ---
 
-## Step 11 — Create the app's Claude project
+## Step 11 — Set up the PM chat
+
+The PM chat is your project manager for the entire project lifetime. It generates
+all agent prompts, receives agent output for analysis, and makes all architectural
+and planning decisions. It never writes code — that is the job of CLI agents.
+
+You have two interface options. The methodology, rules, and procedures are identical
+in both. Pick one as your primary PM chat for this project.
+
+> **Using the Claude Desktop app alongside the CLI:**
+> Regardless of which mode you pick as your PM chat, the Claude Desktop app is always
+> available for side investigations and research — API exploration, architectural
+> discussions, one-off analysis. When a Desktop app session produces something
+> actionable, ask it to generate a briefing prompt and paste that into your PM chat
+> at the start of the next session. Never run two PM chats simultaneously for the
+> same project.
+
+---
+
+### Option A — Claude Desktop app
+
+Best when: you prefer a persistent chat interface with GitHub connector search,
+and are comfortable using Desktop Commander for small file writes.
+
+**Step 11A — Create the Claude project**
 
 1. Go to claude.ai → Projects → New Project
 2. Name it after your app (e.g., "MyApp — PM")
 3. Connect your GitHub repo via the GitHub connector
-4. Sync the GitHub connector — `METHODOLOGY.md` and `PROMPT-TEMPLATES.md` are in the
-   project repo (copied in Step 2) and will be searchable via project knowledge after sync.
-   No manual file upload is needed.
+4. Sync the connector — `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, and `PM-CHAT.md`
+   (all copied to your project repo in Step 2) will be searchable after sync.
+   No manual file upload needed.
+
+**Step 11B — Start the PM chat**
+
+Open a new chat in your Claude project. Paste **Template 1 — PM Chat Kickoff Prompt**
+from `PROMPT-TEMPLATES.md` with all [PLACEHOLDERS] filled in.
+
+The PM chat will confirm it can see your project documents, fill in and commit
+`PM-CHAT.md`, and tell you what to do next.
+
+*Both options continue at Step 12 below.*
 
 ---
 
-## Step 12 — Start the PM chat
+### Option B — Claude Code CLI
 
-Open a new chat in your Claude project. Paste the **PM Chat Kickoff Prompt** from
-`supporting-docs/PROMPT-TEMPLATES.md` (Template 1), with all [PLACEHOLDERS] filled in.
+Best when: you want a non-blocking terminal session with native file and git access,
+or you work across multiple machines and want git as the authoritative memory.
 
-The PM chat will confirm it can see your project documents and tell you what to do next.
+**Step 11C — Verify prerequisites (one-time per machine)**
+
+```bash
+claude --version      # must be installed — see https://docs.anthropic.com/en/docs/claude-code
+node --version        # must be v18 or higher — brew install node
+```
+
+**Step 11D — Pre-warm mcp-local-rag (one-time per machine)**
+
+```bash
+npx -y mcp-local-rag --version
+```
+
+This downloads the local embedding model (~50MB) on first run. It enables semantic
+search over `METHODOLOGY.md` and `PROMPT-TEMPLATES.md` without loading them fully
+into context every session. Subsequent runs are instant.
+
+**Step 11E — Configure mcp-local-rag for this project**
+
+```bash
+cd ~/Developer/YourProject
+cp .mcp.json.example .mcp.json
+```
+
+Edit `.mcp.json` — the only value you need to change is `BASE_DIR` in the
+`local-rag` entry. Set it to the absolute path of your project directory.
+Leave the `xcode` entry exactly as it was in `.mcp.json.example`:
+
+```json
+"local-rag": {
+  "command": "npx",
+  "args": ["-y", "mcp-local-rag"],
+  "env": {
+    "BASE_DIR": "/Users/yourname/Developer/YourProject",
+    "DB_PATH": "./.claude/rag-index",
+    "CACHE_DIR": "./.claude/rag-cache"
+  }
+}
+```
+
+`.mcp.json` is gitignored — never commit it.
+
+**Step 11F — Start the session, name it, and ingest reference docs**
+
+```bash
+cd ~/Developer/YourProject
+git pull
+claude
+```
+
+Once in the session, run these in order:
+
+```
+/rename yourproject-pm
+Ingest METHODOLOGY.md into the RAG index
+Ingest PROMPT-TEMPLATES.md into the RAG index
+```
+
+Ingestion takes a few seconds per file and only needs to be done once per machine
+(or when the pack version changes and those files are updated).
+
+**Step 11G — Run the startup check and complete kickoff**
+
+```
+/pm-startup
+```
+
+Review the startup report. Then paste **Template 1 — PM Chat Kickoff Prompt**
+from `PROMPT-TEMPLATES.md` with all [PLACEHOLDERS] filled in.
+
+The PM chat will fill in and commit `PM-CHAT.md` as part of this first session.
+
+> **Daily sessions:** Resume with `claude --resume yourproject-pm` from the project
+> directory. Run `/pm-startup` only when starting fresh, after a long gap, or after
+> compaction. For cross-machine workflow and troubleshooting see
+> `supporting-docs/CLI-PM-SETUP.md`.
+
+*Both options continue at Step 12 below.*
 
 ---
 
-## Step 13 — Generate SETUP.md and AGENT_KICKOFF.md
+## Step 12 — Generate SETUP.md and AGENT_KICKOFF.md
 
-Use the PM chat with Templates 13 and 14 from `PROMPT-TEMPLATES.md` to generate
-project-specific versions of these files. The PM chat reads the templates and fills
-in all values from your planning conversation.
+Ask the PM chat to generate these using **Templates 13 and 14** from `PROMPT-TEMPLATES.md`.
+The PM chat reads the templates and fills in all values from your planning conversation.
 
 The resulting files go in your project repo root:
-- `SETUP.md` — step-by-step setup guide for this specific project (and second machine)
-- `AGENT_KICKOFF.md` — architecture phase kickoff prompt to paste into the architect agent
+- `SETUP.md` — step-by-step setup guide for this specific project on any machine
+- `AGENT_KICKOFF.md` — architecture phase kickoff prompt for the architect agent
 
-Commit both files, then run the architecture kickoff:
+Commit both files.
+
+---
+
+## Step 13 — Run the architecture kickoff
 
 ```bash
 cd ~/Developer/YourProject

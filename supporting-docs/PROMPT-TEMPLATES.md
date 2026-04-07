@@ -101,6 +101,11 @@ Please search project knowledge to read:
 Confirm you can see the project documents, then tell me the current state and what
 we should do next.
 
+If `PM-CHAT.md` exists in the project root with `[PROJECT_NAME]` still as a
+placeholder, fill it in now: replace `[PROJECT_NAME]` with the actual project name,
+update the "Additional project documents" section if needed, remove the template
+comment block at the top, and commit it. This only needs to be done once.
+
 ---
 
 

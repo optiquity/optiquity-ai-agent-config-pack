@@ -49,6 +49,15 @@ that depends on that content.
 - Generates all agent prompts — coder, reviewer, tester, docs-researcher
 - Receives all agent output (pasted by developer) and analyzes it
 - Makes all architectural and planning decisions
+
+> **Two PM chat options:** The PM chat can run as a Claude Desktop app project
+> (setup — see QUICKSTART.md Step 11, Option A) or as a resumable Claude Code
+> CLI session (non-blocking, native file/git access — setup in QUICKSTART.md
+> Step 11, Option B; daily usage reference in `supporting-docs/CLI-PM-SETUP.md`).
+> The methodology, rules, and procedures are identical in both modes. `PM-CHAT.md`
+> in the project root provides startup instructions and is read by both modes —
+> directly from disk by the CLI PM chat, and via the GitHub connector by the
+> Desktop app PM chat.
 - **Scope for direct file edits:** Small, targeted doc-only changes only:
   STATUS.md updates, BACKLOG additions, CHANGELOG entries, typo/stale-reference fixes.
   Never source code. Never sweeping multi-file changes without explaining and getting approval.
@@ -801,14 +810,15 @@ git commands for the human to run manually. Both paths must always be available.
 ## Appendix — New Project Checklist
 
 ### Day 1 — Setup
-- [ ] Create GitHub repo, create Claude Chat project, connect repo via GitHub connector
+- [ ] Create GitHub repo; clone locally
 - [ ] Planning conversation → ARCHITECTURE.md, IMPLEMENTATION_PLAN.md, CLAUDE.md, AGENTS.md
-- [ ] Copy METHODOLOGY.md from pack template to project root
+- [ ] Copy template files from pack: `cp -r pack/[TEMPLATE]/. .` — then separately copy
+      `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, and `PM-CHAT.md` from `supporting-docs/`
 - [ ] Create BACKLOG.md, STATUS.md, CHANGELOG.md (empty with structure)
-- [ ] Create .claude/agents/ directory with agent files from pack template
 - [ ] Run `./scripts/bootstrap.sh`
-- [ ] Create app's Claude project, connect GitHub repo and sync — `METHODOLOGY.md` and `PROMPT-TEMPLATES.md` are in the repo and searchable via GitHub connector
-- [ ] Commit all docs. Sync GitHub connector.
+- [ ] **Choose PM chat mode** — Option A (Claude Desktop app project, see QUICKSTART.md
+      Step 11, Option A) or Option B (CLI, see QUICKSTART.md Step 11, Option B)
+- [ ] Commit all docs. If using Desktop app: sync GitHub connector.
 
 ### Before each phase
 - [ ] Re-read the **Prompt Authoring Principles** section before generating any prompt

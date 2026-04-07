@@ -1,8 +1,12 @@
 # AI Agent Config Pack v8 — Setup and Usage Guide
 
-**Version 8 | March 29, 2026**
+**Version 8.0 | March 29, 2026**
 For Claude Code · OpenAI Codex · Xcode 26.3
 Targets: Swift 6 · macOS/iOS · Python 3.12+ · grpc-swift-2 · grpc.aio · buf CLI v2
+
+> **This guide covers v8.0.** For changes introduced in v8.1 and later (including
+> the CLI PM chat, PM-CHAT.md, and updated step numbering), see `CHANGELOG.md`.
+> The current setup reference is `QUICKSTART.md` in the pack root.
 
 > **Note:** Starting with v9, setup guides will be published in Markdown format only.
 > The `.docx` format is retained for v8 for continuity with previous versions.

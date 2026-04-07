@@ -1,6 +1,7 @@
 # Migration Guide — v7 to v8
 
-This guide covers upgrading existing projects from AI Agent Config Pack v7 to v8.
+This guide covers upgrading existing projects from AI Agent Config Pack v7 to v8.0.
+For changes introduced in v8.1 through the current version, see `CHANGELOG.md`.
 
 ---
 
@@ -229,7 +230,7 @@ Update any saved prompts, scripts, or shell aliases that use `--agent ios-archit
 
 ## New files to add to projects
 
-These are new in v8 and don't exist in v7 projects:
+These are new in v8.0 and don't exist in v7 projects:
 
 **Add to project repo root:**
 ```bash
@@ -240,6 +241,17 @@ cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md ./PROMPT-TEMPLATES.md
 Both files belong in the project repo root so they are version-controlled alongside
 the project and searchable via the GitHub connector. No manual upload to project
 knowledge is needed — sync the GitHub connector after committing these files.
+
+**Add VS Code companion files (once per Mac, optional — for Python/monorepo projects using VS Code):**
+```bash
+mkdir -p .vscode
+cp /path/to/pack/vscode-companion-templates/.vscode/settings.json .vscode/settings.json
+cp /path/to/pack/vscode-companion-templates/.vscode/extensions.json .vscode/extensions.json
+cp /path/to/pack/vscode-companion-templates/.vscode/tasks.json .vscode/tasks.json
+```
+
+These files configure VS Code to work alongside Claude Code CLI for Python server
+and monorepo projects. Not needed for Apple-only projects.
 
 ---
 
@@ -301,3 +313,66 @@ git add -A
 git commit -m "Update AI agent configuration to v8"
 git push
 ```
+
+---
+
+## Minor version additions (v8.1–v8.7)
+
+This section covers new files introduced in minor versions after v8.0. These are
+additive — no existing files need to be changed. Apply only what is relevant to
+your project and workflow.
+
+### v8.1–v8.4 — Methodology updates only
+
+No new files to copy. If you already copied `METHODOLOGY.md` and
+`PROMPT-TEMPLATES.md` in the v8.0 migration, pull the latest pack and recopy:
+
+```bash
+cp /path/to/pack/supporting-docs/METHODOLOGY.md ./METHODOLOGY.md
+cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md ./PROMPT-TEMPLATES.md
+```
+
+Commit and sync the GitHub connector.
+
+### v8.5–v8.6 — No project file changes
+
+DEPENDENCIES.md and version string corrections are pack-level changes only.
+No files need to be copied to your project.
+
+### v8.7 — CLI PM chat support (optional)
+
+These files support the CLI PM chat option. Only needed if you want to use
+`claude` in a terminal as your PM chat instead of the Claude Desktop app.
+All four additions are optional — the Desktop app PM chat path is unchanged.
+
+**Add PM-CHAT.md to project root:**
+```bash
+cp /path/to/pack/supporting-docs/PM-CHAT.md ./PM-CHAT.md
+```
+Leave `[PROJECT_NAME]` as a placeholder — the PM chat fills it in during
+the kickoff conversation (Template 1 in PROMPT-TEMPLATES.md).
+
+**Add pm-startup skill:**
+```bash
+# Use the skill from the correct template for your project type
+mkdir -p .claude/skills/pm-startup
+cp /path/to/pack/apple-app-template/.claude/skills/pm-startup/SKILL.md \
+   .claude/skills/pm-startup/SKILL.md
+# For Python-only projects use python-server-template instead of apple-app-template
+```
+
+**Update .gitignore to exclude RAG index:**
+Add these two lines to your project `.gitignore`:
+```
+.claude/rag-index/
+.claude/rag-cache/
+```
+
+**Update .mcp.json.example:**
+```bash
+cp /path/to/pack/apple-app-template/.mcp.json.example .mcp.json.example
+```
+This adds the mcp-local-rag entry alongside the existing Xcode placeholder.
+
+For CLI PM chat setup after copying these files, see
+QUICKSTART.md Step 11, Option B.
