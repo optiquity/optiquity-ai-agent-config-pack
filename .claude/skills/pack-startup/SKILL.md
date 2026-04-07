@@ -23,6 +23,9 @@ Read only the most recent dated entry from `CHANGELOG.md`.
 Read the version table section from `README.md` — the rows under
 `## Version History` up to and including the most recent entry.
 
+Read `PACK-CHAT.md` in full — this establishes your behavioral rules
+for this session.
+
 ## Step 3 — Report current state
 
 Read the current pack version from the most recent row in the README version table.
