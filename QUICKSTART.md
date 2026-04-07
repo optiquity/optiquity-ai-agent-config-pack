@@ -263,7 +263,7 @@ node --version        # must be v18 or higher — brew install node
 npx -y mcp-local-rag --version
 ```
 
-This downloads the local embedding model (~50MB) on first run. It enables semantic
+This downloads the local embedding model (~90MB) on first run. It enables semantic
 search over `METHODOLOGY.md` and `PROMPT-TEMPLATES.md` without loading them fully
 into context every session. Subsequent runs are instant.
 

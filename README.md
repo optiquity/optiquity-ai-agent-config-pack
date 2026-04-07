@@ -39,6 +39,7 @@ always points to the latest minor of that major version.
 | v8.5    | Apr 6, 2026  | Standardized agent output report headers across Templates 2–7 |
 | v8.6    | Apr 6, 2026  | DEPENDENCIES.md; minor versioning convention; version string corrections |
 | v8.7    | Apr 6, 2026  | CLI PM chat: PM-CHAT.md template, /pm-startup skill, CLI-PM-SETUP.md, mcp-local-rag integration |
+| v8.8    | Apr 7, 2026  | Pack CLI chat: PACK-CHAT.md, /pack-startup skill, .mcp.json.example; mcp-local-rag model size correction (~90MB); update instructions in DEPENDENCIES.md and CLI-PM-SETUP.md |
 
 ## Repository Layout
 
@@ -64,7 +65,9 @@ always points to the latest minor of that major version.
 │   ├── GEMINI-CLI-ANALYSIS.md              Gemini CLI integration analysis (v8+)
 │   └── ANDROID-ANALYSIS.md                 Android support analysis (v8+)
 ├── QUICKSTART.md                           Quick start (v6+)
+├── PACK-CHAT.md                            Pack CLI chat startup instructions (v8.8+)
 ├── BACKLOG.md                              Pack improvement backlog (v8+, was V8-BACKLOG.md)
+├── .mcp.json.example                       mcp-local-rag config template for pack repo (v8.8+)
 ├── sync-xcode-docs.sh                      iOS 26 doc sync script (v7+)
 └── CHANGELOG.md
 ```

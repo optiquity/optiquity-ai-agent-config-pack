@@ -131,6 +131,12 @@ cat .mcp.json                    # verify BASE_DIR is correct absolute path
 npx -y mcp-local-rag --version  # re-run pre-warm if needed
 ```
 
+**To update mcp-local-rag to the latest version:**
+```bash
+npx --prefer-online -y mcp-local-rag --version
+```
+Re-ingest your docs after updating — the vector index format may change between versions.
+
 **RAG returns stale or wrong results:**
 Re-ingest the affected file. The `/pm-startup` skill checks modification dates
 and flags this automatically.

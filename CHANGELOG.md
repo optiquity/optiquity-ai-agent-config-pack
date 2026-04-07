@@ -7,6 +7,34 @@ Each version is available as a git tag (v1, v2, …).
 
 ## v8 — March 2026
 
+### v8.8 — April 7, 2026
+
+**Pack CLI chat support**
+
+- `PACK-CHAT.md` (pack repo root) — startup and operating instructions for the
+  pack CLI chat session; covers role, file access strategy, behavioral rules,
+  session naming, cross-machine instructions, and RAG ingest guidance. This is
+  a pack-specific file — not a template and not copied to coding projects.
+- `.claude/skills/pack-startup/SKILL.md` (pack repo root) — `/pack-startup` skill
+  for pack chat session orientation: git pull, read BACKLOG.md and CHANGELOG.md,
+  check RAG freshness for supporting-docs/METHODOLOGY.md and
+  supporting-docs/PROMPT-TEMPLATES.md, report pack version and open BD items.
+  Completely independent of the `/pm-startup` skill used by coding projects.
+- `.mcp.json.example` (pack repo root) — mcp-local-rag configuration template
+  for the pack repo itself; distinct from the template `.mcp.json.example` files
+  which include an Xcode entry
+- `.gitignore` (pack root) — add `.claude/rag-index/` and `.claude/rag-cache/`
+
+**Corrections**
+
+- `QUICKSTART.md`, `supporting-docs/DEPENDENCIES.md` — corrected embedding model
+  download size from ~50MB to ~90MB (actual size per mcp-local-rag package)
+- `supporting-docs/DEPENDENCIES.md`, `supporting-docs/CLI-PM-SETUP.md` — added
+  mcp-local-rag update instructions (`npx --prefer-online`) and note to re-ingest
+  docs after updating
+
+---
+
 ### New files — methodology infrastructure
 - `supporting-docs/METHODOLOGY.md` — universal project development methodology:
   tool roles, standard documents, agent roster, phase structure, 6 workflows,

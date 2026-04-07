@@ -129,8 +129,9 @@ Local RAG server for semantic search over METHODOLOGY.md and PROMPT-TEMPLATES.md
 Runs entirely locally — no API keys required.
 - Requires: Node.js 18+ (already required for Claude Code CLI)
 - Install: Automatic via `npx -y mcp-local-rag` on first use
-- First run: Downloads local embedding model (~50MB, one-time per machine)
+- First run: Downloads local embedding model (~90MB, one-time per machine)
 - Verify: `npx mcp-local-rag --version`
+- Update: `npx --prefer-online -y mcp-local-rag --version` (re-ingest docs after updating)
 - Reference: https://github.com/shinpr/mcp-local-rag
 
 ### Disk space (for RAG index)
