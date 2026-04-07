@@ -6,11 +6,6 @@
 # May contain API keys or local server paths — never commit
 .mcp.json
 
-# ── mcp-local-rag index (pack CLI chat) ──────────────────────────────────────
-# Generated locally per machine — never commit
-.claude/rag-index/
-.claude/rag-cache/
-
 # ── Generated Protobuf output ─────────────────────────────────────────────────
 # Regenerate with scripts/proto-gen.sh
 generated/

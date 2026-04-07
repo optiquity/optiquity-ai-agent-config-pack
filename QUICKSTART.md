@@ -257,15 +257,12 @@ claude --version      # must be installed — see https://docs.anthropic.com/en/
 node --version        # must be v18 or higher — brew install node
 ```
 
-**Step 11D — Pre-warm mcp-local-rag (one-time per machine)**
+**Step 11D — First ingest note (mcp-local-rag)**
 
-```bash
-npx -y mcp-local-rag --version
-```
-
-This downloads the local embedding model (~90MB) on first run. It enables semantic
-search over `METHODOLOGY.md` and `PROMPT-TEMPLATES.md` without loading them fully
-into context every session. Subsequent runs are instant.
+No action needed here. The embedding model (~90MB) downloads automatically the
+first time you run an ingest command inside the CLI session (Step 11F). This takes
+1-2 minutes once per machine, then works offline and instantly for all future
+ingests. Nothing to install or pre-warm in advance.
 
 **Step 11E — Configure mcp-local-rag for this project**
 

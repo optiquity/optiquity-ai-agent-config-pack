@@ -127,13 +127,14 @@ app is available any time for focused side investigations and research:
 
 **mcp-local-rag not responding:**
 ```bash
-cat .mcp.json                    # verify BASE_DIR is correct absolute path
-npx -y mcp-local-rag --version  # re-run pre-warm if needed
+cat .mcp.json    # verify BASE_DIR is correct absolute path
 ```
+Then restart the CLI session. The embedding model downloads automatically on
+first ingest — if that never completed, re-run the ingest command in the session.
 
 **To update mcp-local-rag to the latest version:**
 ```bash
-npx --prefer-online -y mcp-local-rag --version
+npx --prefer-online -y mcp-local-rag --help
 ```
 Re-ingest your docs after updating — the vector index format may change between versions.
 

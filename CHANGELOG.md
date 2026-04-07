@@ -32,6 +32,18 @@ Each version is available as a git tag (v1, v2, …).
 - `supporting-docs/DEPENDENCIES.md`, `supporting-docs/CLI-PM-SETUP.md` — added
   mcp-local-rag update instructions (`npx --prefer-online`) and note to re-ingest
   docs after updating
+- `QUICKSTART.md`, `PACK-CHAT.md`, `supporting-docs/DEPENDENCIES.md`,
+  `supporting-docs/CLI-PM-SETUP.md` — removed invalid `npx -y mcp-local-rag --version`
+  pre-warm step (`--version` flag does not exist); embedding model (~90MB) downloads
+  automatically on first ingest; update command corrected to `--help`
+- `supporting-docs/METHODOLOGY.md` — version string corrected from v8.6 to v8.8
+  (file was modified in v8.7 and v8.8 but version header was not bumped)
+- `PACK-CHAT.md`, `.claude/skills/pack-startup/SKILL.md` — removed mcp-local-rag
+  from pack CLI chat entirely; the pack chat is the author of METHODOLOGY.md and
+  PROMPT-TEMPLATES.md, not a consumer — direct read is correct; RAG is appropriate
+  only for coding projects that use these files as stable reference
+- `.mcp.json.example` (pack root) — deleted; no longer needed without mcp-local-rag
+- `.gitignore` (pack root) — removed rag-index/rag-cache entries; no longer needed
 
 ---
 

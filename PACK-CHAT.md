@@ -42,8 +42,8 @@ is sufficient.
 | `BACKLOG.md` | Direct read | Open BD-NNN items, current backlog state |
 | `CHANGELOG.md` | Direct read (last entry only) | Current version and recent changes |
 | `README.md` | Direct read (version table section) | Pack version history at a glance |
-| `supporting-docs/METHODOLOGY.md` | RAG query | Large, stable reference |
-| `supporting-docs/PROMPT-TEMPLATES.md` | RAG query | Large, stable reference |
+| `supporting-docs/METHODOLOGY.md` | Direct read (on demand) | Author of this file — read directly when needed |
+| `supporting-docs/PROMPT-TEMPLATES.md` | Direct read (on demand) | Author of this file — read directly when needed |
 
 ---
 
@@ -65,33 +65,6 @@ These rules are non-negotiable and always apply:
 
 ---
 
-## Set up mcp-local-rag (one-time per machine)
-
-**Pre-warm (downloads embedding model, ~90MB):**
-```bash
-npx -y mcp-local-rag --version
-```
-
-**Configure the pack repo (one-time):**
-```bash
-cd ~/Developer/dhs-ai-agent-config-pack
-cp .mcp.json.example .mcp.json
-```
-
-Edit `.mcp.json` — set `BASE_DIR` to the absolute path of the pack repo:
-```json
-"BASE_DIR": "/Users/yourname/Developer/dhs-ai-agent-config-pack"
-```
-Leave all other values unchanged. `.mcp.json` is gitignored — never commit it.
-
-**To update mcp-local-rag when a new version is available:**
-```bash
-npx --prefer-online -y mcp-local-rag --version
-```
-Then re-ingest any documents whose index may be affected by the update.
-
----
-
 ## Session naming and resume
 
 **First start on this machine:**
@@ -100,8 +73,6 @@ cd ~/Developer/dhs-ai-agent-config-pack
 git pull
 claude
 /rename dhs-config-pack
-Ingest supporting-docs/METHODOLOGY.md into the RAG index
-Ingest supporting-docs/PROMPT-TEMPLATES.md into the RAG index
 /pack-startup
 ```
 
@@ -126,8 +97,6 @@ cd ~/Developer/dhs-ai-agent-config-pack
 git pull
 claude
 /rename dhs-config-pack
-Ingest supporting-docs/METHODOLOGY.md into the RAG index
-Ingest supporting-docs/PROMPT-TEMPLATES.md into the RAG index
 /pack-startup
 ```
 
@@ -141,12 +110,3 @@ The repo is the memory — not the session history. When moving between machines
 2. If the session exists on this machine, resume it and run `/pack-startup`
 3. If no session exists, start fresh, rename it `dhs-config-pack`, and run `/pack-startup`
 4. Never sync session files between machines
-
----
-
-## RAG ingest notes
-
-Re-ingest `supporting-docs/METHODOLOGY.md` and `supporting-docs/PROMPT-TEMPLATES.md`
-only when those files change (i.e., after installing a new pack version).
-The `/pack-startup` skill checks `git log` at session start and flags re-ingest
-if either file has been modified since the last known ingest. If unsure, re-ingest both.
