@@ -39,7 +39,7 @@ always points to the latest minor of that major version.
 | v8.5    | Apr 6, 2026  | Standardized agent output report headers across Templates 2–7 |
 | v8.6    | Apr 6, 2026  | DEPENDENCIES.md; minor versioning convention; version string corrections |
 | v8.7    | Apr 6, 2026  | CLI PM chat: PM-CHAT.md template, /pm-startup skill, CLI-PM-SETUP.md, mcp-local-rag integration |
-| v8.8    | Apr 7, 2026  | Pack CLI chat: PACK-CHAT.md, /pack-startup skill, .mcp.json.example; mcp-local-rag model size correction (~90MB); update instructions in DEPENDENCIES.md and CLI-PM-SETUP.md |
+| v8.8    | Apr 7, 2026  | Pack CLI chat: PACK-CHAT.md, /pack-startup skill; corrections to mcp-local-rag docs (QUICKSTART.md, DEPENDENCIES.md, CLI-PM-SETUP.md); METHODOLOGY.md version string fix |
 
 ## Repository Layout
 
