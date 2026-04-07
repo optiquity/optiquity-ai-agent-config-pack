@@ -124,6 +124,11 @@ Phase [N] in full. Then read these specific files: [LIST FILES].
 listed in the tasks below. Do not modify `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`,
 or `BACKLOG.md`.
 
+**Root .md file prohibition:** Do not write to `CHANGELOG.md`, `STATUS.md`,
+`BACKLOG.md`, `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `CLAUDE.md`, `AGENTS.md`,
+`README.md`, or any other `.md` file in the project root. Writing root `.md` files is
+exclusively the PM chat's responsibility.
+
 **Deferral comments:** If during implementation you encounter work that cannot be
 completed within this phase scope, add a typed deferral comment using exactly this
 syntax (use the comment marker for the language you are writing):
@@ -157,8 +162,11 @@ Confirm all tests pass and zero compiler warnings remain. `format.sh` exits 0 if
 **Completion report:** Begin the report with this header line as the very first line of output:
 `Phase [N] — [Phase title] — Coder Report, Pass 1`
 Then report which files were modified and the final test count.
-[If this is the last task in the phase:] Update `CHANGELOG.md` with a Phase [N] entry
-using today's date, a summary paragraph, files created/modified list, and test count.
+[If this is the last task in the phase:] Include a **"Proposed CHANGELOG entry"** section
+in this report, formatted exactly as it would appear in `CHANGELOG.md`: dated header,
+summary paragraph, files created/modified list, and test count. Do not write to
+`CHANGELOG.md` or any other `.md` file in the project root — the PM chat applies the
+entry after reviewer approval.
 
 **Deferred items** (required section — write "None" if nothing was deferred):
 For each deferral comment added this session:

@@ -110,8 +110,8 @@ Every project should have all of these. Create them before writing any code.
 |---|---|---|---|
 | `ARCHITECTURE.md` | Architectural decisions, layer map, patterns, data models | Architect agent (kickoff) | Any phase that changes architecture |
 | `IMPLEMENTATION_PLAN.md` | All phases with tasks, DoD, agent, risks | PM chat + planner agent | Each phase adds entries; never delete old phases |
-| `CHANGELOG.md` | Permanent dated history of what was built | Coder agent | One entry per phase, at phase completion only |
-| `BACKLOG.md` | Technical debt, deferred items, known gaps | PM chat or reviewer findings | Add/resolve; never delete items |
+| `CHANGELOG.md` | Permanent dated history of what was built | PM chat | One entry per phase, after reviewer approval; coder proposes entry in completion report |
+| `BACKLOG.md` | Technical debt, deferred items, known gaps | PM chat | Add/resolve; never delete items |
 | `STATUS.md` | Current phase, phase table, next actions, key metrics | PM chat or developer | After every phase completion |
 | `CLAUDE.md` | Project-specific rules for all CLI agents | PM chat | When new rules are established |
 | `AGENTS.md` | Agent roster and routing table | PM chat | When agents are added or changed |
@@ -123,8 +123,11 @@ Every project should have all of these. Create them before writing any code.
 2. CHANGELOG.md is append-only — never edit old entries.
 3. BACKLOG.md items are never deleted — mark resolved with a note.
 4. STATUS.md is updated after every phase — stale status is worse than no status.
-5. Agents must not modify ARCHITECTURE.md, IMPLEMENTATION_PLAN.md, or BACKLOG.md
-   unless explicitly instructed in the prompt. Include this constraint in every coder prompt.
+5. Agents must not modify `ARCHITECTURE.md` or `IMPLEMENTATION_PLAN.md` unless
+   explicitly instructed in the prompt. `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`,
+   and all other root `.md` files are exclusively the PM chat's responsibility — no
+   agent should write them, and no agent prompt should instruct them to. Include root
+   `.md` file constraints in every coder prompt.
 6. Every deferral comment (`// TODO(scope):`, `// KNOWN GAP(severity):`, `// VERIFY(source):`,
    or language-equivalent) must have a corresponding BACKLOG.md entry. `TD-TBD` in any
    committed file is a defect — it means the PM chat has not yet processed the coder's
@@ -719,7 +722,7 @@ When you instruct the PM chat to cancel or deprecate an item, it will:
 | Agent | May do | May not do |
 |---|---|---|
 | `coder` | Write TD-TBD deferral comments in code; report deferred items in completion report | Write to BACKLOG.md; resolve or modify existing entries |
-| `reviewer` | Add new TD-NNN entries for ⚠️ findings not being fixed immediately | Modify or resolve existing entries |
+| `reviewer` | Read only | Write anything |
 | `docs-researcher` | Read only | Write anything |
 | `repo-ops` | Read only | Write anything |
 | PM chat | Write and update BACKLOG.md after user approval; replace TD-TBD with TD-NNN or remove rejected comments in source files | Any other source code changes |
@@ -748,8 +751,10 @@ Stop and reassess when you see these patterns.
 
 - **ARCHITECTURE.md and code describe different patterns.** Either the architecture changed
   without updating the doc, or the coder drifted. Run a docs audit immediately.
-- **CHANGELOG.md entry doesn't match git diff.** Coder wrote the entry before finishing.
-  Always verify CHANGELOG entries against `git diff` before committing.
+- **CHANGELOG.md entry doesn't match git diff.** The PM chat may have applied the
+  coder's proposed entry before the phase was complete, or the proposed entry was not
+  updated to reflect late changes. Always verify CHANGELOG entries against `git diff`
+  before committing.
 
 ### In agent behavior
 
@@ -779,9 +784,9 @@ Stop and reassess when you see these patterns.
 |---|---|---|---|---|
 | `ARCHITECTURE.md` | Only if task explicitly says so | Never | Approves changes | Source of truth |
 | `IMPLEMENTATION_PLAN.md` | Only if task explicitly says so | Never | Authors and approves | Never delete phases |
-| `CHANGELOG.md` | Yes — end of phase only | Never | Never | One entry per phase |
-| `BACKLOG.md` | Never — reports only | Yes — add ⚠️ findings | Yes — after user approval | Never delete items |
-| `STATUS.md` | Yes — after phase completion | Never | Yes (small edits) | Update after every phase |
+| `CHANGELOG.md` | No — proposes entry in report only | Never | Yes — after reviewer approval | One entry per phase |
+| `BACKLOG.md` | Never — reports only | Never — reports only | Yes — after user approval | Never delete items |
+| `STATUS.md` | Never | Never | Yes — after phase completion | Update after every phase |
 | `CLAUDE.md` / `AGENTS.md` | Never | Never | Authors changes | CLI agents read, don't write |
 | Production source files | Yes | Never | Never | Core job |
 | Deferral comments in source | Writes TD-TBD only | Never | Replaces TD-TBD with TD-NNN or removes | See Part 7 |

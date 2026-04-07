@@ -127,7 +127,9 @@ Set `XCODE_SCHEME` and `XCODE_DESTINATION` in `validate.sh` and `test.sh` before
 **What you may do:** Add typed deferral comments in code when you encounter work that
 cannot be completed within the current phase scope. Report them in your completion report.
 
-**What you may not do:** Write to `BACKLOG.md`. Resolve or modify existing BACKLOG entries.
+**What you may not do:** Write to `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`, or any
+other `.md` file in the project root — these are exclusively the PM chat's
+responsibility. Resolve or modify existing BACKLOG entries.
 
 **Deferral comment syntax — use the marker for the language you are writing:**
 ```swift
@@ -147,7 +149,7 @@ Always write `TD-TBD`. Never invent a TD number.
 | Agent | May do | May not do |
 |---|---|---|
 | `coder` | Write TD-TBD comments; report in completion report | Write to BACKLOG.md |
-| `reviewer` | Add ⚠️ findings as new BACKLOG entries | Modify or resolve existing entries |
+| `reviewer` | Read only | Write anything |
 | `docs-researcher` | Read only | Write anything |
 | `repo-ops` | Read only | Write anything |
 

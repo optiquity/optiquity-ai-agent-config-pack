@@ -170,11 +170,18 @@ Three comment types are recognized for deferring work. Use exactly this syntax:
 **Rules — read carefully:**
 - Always write `TD-TBD` — never a real TD number. The PM chat assigns numbers after review.
 - Report every deferral comment added in the "Deferred items" section of the completion report.
-- Do not write to `BACKLOG.md`. Do not resolve or modify existing BACKLOG entries.
+- Do not write to `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`, or any other `.md` file
+  in the project root — these are exclusively the PM chat's responsibility. Do not
+  resolve or modify existing BACKLOG entries.
 - Work that could be completed within the current phase scope is NOT a TODO — it is
   an incomplete task. The reviewer will flag it as an implementation plan compliance failure.
 - Never use plain English deferral comments. Use the typed format above or no comment.
 - When citing a code location in a report, use the symbol name not the line number.
+- **At the end of every implementation phase**, include a **"Proposed CHANGELOG entry"**
+  section in your completion report, formatted exactly as it would appear in `CHANGELOG.md`:
+  dated header, summary paragraph, itemised task list, files created/modified, and final
+  test count. Do not write to `CHANGELOG.md` or any other `.md` file in the project root —
+  the PM chat applies the entry after reviewer approval.
 
 ## Anti-patterns — never introduce these
 
