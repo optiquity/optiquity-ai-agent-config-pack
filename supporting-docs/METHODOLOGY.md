@@ -310,7 +310,7 @@ For phases integrating external APIs or making architectural decisions:
 
 ```
 1. Developer pastes reviewer output into PM chat
-2. PM chat categorizes: ❌ blockers vs ⚠️ minors
+2. PM chat applies triage protocol (see below) to every ❌ and ⚠️ finding
 3. PM chat checks for architect trigger (see below) before generating any fix plan
 4. If NO trigger: PM chat presents fix plan → developer approves → coder fix pass → reviewer (step 1)
 5. If TRIGGER: PM chat identifies root cause → presents architect pass plan → developer approves
@@ -318,13 +318,47 @@ For phases integrating external APIs or making architectural decisions:
    → developer approves doc changes → PM chat applies them via Desktop Commander or manual
    → PM chat presents coder fix plan covering both reviewer issues and new arch direction
    → developer approves → coder fix pass → reviewer (step 1)
-6. For ⚠️ not being fixed immediately:
-   PM chat generates BACKLOG.md addition → developer runs in standard claude
+6. Items that pass the deferral test (see triage protocol): PM chat generates BACKLOG.md
+   addition with explicit named blocker → developer runs in standard claude
 ```
 
 > **The PM chat does not execute fix passes directly.** After receiving reviewer output,
 > the PM chat presents a plan and waits for approval before generating any agent prompt.
 > The coder agent executes the fix; the PM chat does not.
+
+#### PM chat triage protocol — reviewer findings
+
+The reviewer's **"Ready to commit"** verdict means all ❌ items are resolved from the
+reviewer's perspective. It is not the PM chat's bar. The PM chat evaluates every ❌ and
+⚠️ finding independently before deciding whether to commit or fix further.
+
+**The default is to fix. Deferral requires a named blocker.**
+
+**Every ❌ item** must appear in the fix prompt. No exceptions and no investigation needed
+— ❌ items are never deferred to BACKLOG.
+
+**Every ⚠️ item** requires a blocker investigation before any deferral decision. Ask:
+
+1. Is there a concrete, named external blocker? Valid examples:
+   - An external system or API not yet accessible because integration is planned for a later phase
+   - A design decision that requires a docs-researcher or architect agent run to resolve
+   - A later phase in `IMPLEMENTATION_PLAN.md` explicitly designated for this work
+2. Would fixing it require scope large enough to justify its own phase — one that would
+   need its own docs-researcher or architect run?
+
+If neither condition applies, the item goes into the fix prompt alongside the ❌ items.
+"It is minor," "we can revisit it later," and "it is not blocking the build" are not
+valid deferral reasons.
+
+**When deferral is the correct decision:**
+Create a BACKLOG entry with an explicit, named blocker. The blocker statement must be
+specific enough that a future reader can determine when the blocker is no longer active.
+Vague blockers ("needs more thought," "revisit later") are not acceptable. If the PM chat
+cannot name the specific blocker, the item is not actually blocked — put it in the fix prompt.
+
+**Fix prompts follow Template 4.** Each entry describes what is wrong and what correct
+behavior looks like — not how to fix it. No pseudocode, no implementation steps. This
+applies regardless of how obvious the fix appears.
 
 #### Architect trigger conditions
 
@@ -603,7 +637,7 @@ created after user approval. Any `TD-TBD` in committed code is a defect.
 
 **What is NOT a valid deferral:** Work that could be completed within the current phase
 scope is not a TODO — it is an incomplete task. The reviewer flags it as an implementation
-plan compliance failure (point 4 of the seven-point framework). The fix is a coder fix pass,
+plan compliance failure (point 4 of the eight-point framework). The fix is a coder fix pass,
 not a BACKLOG entry.
 
 ### BACKLOG item format

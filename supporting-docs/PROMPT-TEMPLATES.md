@@ -258,7 +258,7 @@ Begin the report with this header line as the very first line of output:
 Then list findings:
 - ✅ PASS — [finding description]
 - ❌ FAIL — [finding]: [exact description of what's wrong and what file/line]
-- ⚠️ WARN — [finding]: [description — should fix or track in BACKLOG]
+- ⚠️ WARN — [finding]: [description — PM chat determines response via triage protocol]
 
 **Pass summary (required at end of report):**
 - Pass number: [N] for Phase [X]
