@@ -434,8 +434,19 @@ Every prompt and every task entry must answer:
    vs. files in scope to modify.
 
 5. **Files in scope** — explicit list of files the agent may create or modify.
-   This is a hard boundary. If the agent discovers the same problem in a file not
-   on this list, it must report it rather than fix it.
+   This is the primary boundary. If the agent discovers the same problem in a file
+   not on this list, it should report it rather than fix it — unless the unlisted
+   file is a direct dependency required for the listed tasks to compile or function
+   (e.g., a type that must expose a new accessor for the phase to work). In that
+   case the agent may make a small, focused change and must disclose it in the
+   **"Unplanned file modifications"** section of the completion report.
+
+   **Before finalizing the file list:** For each data field or behavior the phase
+   requires, trace: *"Which existing type holds or produces that data, and does that
+   type need a new method or property to expose it?"* If yes, add that type's file to
+   the list. An incomplete file list is the most common cause of coder workarounds:
+   the agent either invents an architecturally wrong solution or silently touches an
+   unlisted file.
 
 6. **Completion report** — what the agent must report when done: files modified,
    verification results, and any out-of-scope discoveries.
@@ -497,8 +508,18 @@ content is permitted (see exceptions table above), forward plan content as writt
 
 ### PM chat self-check before generating any prompt
 
-Before writing a prompt, ask: *"Am I describing what needs to be true, or how to do it?"*
-If the answer is "how to do it," rewrite it as "what needs to be true."
+Before writing a prompt:
+
+1. Ask: *"Am I describing what needs to be true, or how to do it?"*
+   If the answer is "how to do it," rewrite it as "what needs to be true."
+
+2. **Data-dependency trace — required before finalizing any coder or fix-cycle file list:**
+   For each data field or behavior the phase requires, ask: *"Which existing type holds
+   or produces that data, and does that type need a new method or property to expose it?"*
+   If yes, add that type's file to the files-in-scope list before sending the prompt.
+   An incomplete file list is the single most common cause of coder workarounds: the
+   agent is forced to either invent an architecturally wrong solution or silently touch
+   a file it was not told about.
 
 ---
 
@@ -767,8 +788,11 @@ Stop and reassess when you see these patterns.
 
 ### In agent behavior
 
-- **Agent modifies files it was told not to touch.** Stop the session. Do not commit.
-  Review what changed. Re-run with more explicit scope constraints in the prompt.
+- **Agent modifies files it was told not to touch — without disclosing it.** Stop the
+  session. Do not commit. Review what changed. Re-run with more explicit scope constraints.
+  If the change appears in the completion report's **"Unplanned file modifications"**
+  section, evaluate it through the reviewer's checklist item 8 before deciding whether
+  to accept or reject it — disclosed changes are not automatic violations.
 - **Agent invents API methods or framework capabilities.** Hallucinating. Verify every
   new API call against official documentation before committing.
 - **Agent defers in-scope work unprompted.** Add the deferred items explicitly to the

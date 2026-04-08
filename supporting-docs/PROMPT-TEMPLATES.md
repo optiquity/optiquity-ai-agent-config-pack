@@ -31,7 +31,9 @@ Every prompt must answer:
 - **Goal** — what correct behavior looks like when done; outcome, not steps
 - **Context** — what the agent cannot infer from ARCHITECTURE.md
 - **Required reading** — distinguish files for understanding from files in scope to modify
-- **Files in scope** — hard boundary; agent reports out-of-scope discoveries, does not fix them
+- **Files in scope** — primary boundary; agent may make small focused changes to unlisted
+  supporting files only if disclosed in an **"Unplanned file modifications"** section of the
+  completion report; all other out-of-scope discoveries are reported, not fixed
 - **Completion report** — files modified, verification results, out-of-scope discoveries
 
 **Never include** in a prompt: pseudocode, implementation steps, pattern choices, or
@@ -120,9 +122,16 @@ comment block at the top, and commit it. This only needs to be done once.
 Read `ARCHITECTURE.md` in full. Read `CHANGELOG.md`. Read `IMPLEMENTATION_PLAN.md`
 Phase [N] in full. Then read these specific files: [LIST FILES].
 
-**Scope constraint:** Make exactly the following changes. Do not modify any file not
-listed in the tasks below. Do not modify `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`,
-or `BACKLOG.md`.
+**Scope constraint:** Your primary task list is below. Do not modify files unrelated to
+this phase. Do not modify `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, or `BACKLOG.md`.
+If during implementation you identify a supporting file not listed here that requires a
+small, focused change to expose data this phase genuinely needs (e.g., a new read-only
+accessor, a new protocol method with a default no-op, or a minor addition to an existing
+type), you may make that change — but you must call it out explicitly in your completion
+report under a dedicated **"Unplanned file modifications"** section, stating the file,
+the change, and why the listed task could not be completed without it. Do not use this
+escape valve for broad refactors, new feature work, or changes that belong in a separate
+phase.
 
 **Root .md file prohibition:** Do not write to `CHANGELOG.md`, `STATUS.md`,
 `BACKLOG.md`, `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `CLAUDE.md`, `AGENTS.md`,
@@ -168,6 +177,12 @@ summary paragraph, files created/modified list, and test count. Do not write to
 `CHANGELOG.md` or any other `.md` file in the project root — the PM chat applies the
 entry after reviewer approval.
 
+**Unplanned file modifications** (required section — write "None" if no unlisted files were changed):
+For each file changed that was not in the task scope:
+- File: `path/to/file`
+- Change: [brief description of what was added or modified]
+- Why necessary: [why the listed task could not be completed without this change]
+
 **Deferred items** (required section — write "None" if nothing was deferred):
 For each deferral comment added this session:
 - Comment: [exact comment text as written in the file]
@@ -194,7 +209,7 @@ Read `ARCHITECTURE.md` in full. Read `CHANGELOG.md` (Phase [X] entry).
 Read `CLAUDE.md`. Read `IMPLEMENTATION_PLAN.md` Phase [X] in full.
 Then read all files modified in Phase [X]: [LIST FILES].
 
-Review for all seven of the following — do not skip any:
+Review for all eight of the following — do not skip any:
 
 1. **Architecture compliance** — layer boundaries respected, no forbidden imports in
    domain files, no concrete types crossing layer boundaries
@@ -218,7 +233,18 @@ Review for all seven of the following — do not skip any:
    Any plain-English deferral comment (e.g. `// Fix later`, `// Confirm this`) is ⚠️ WARN.
    For each TD-NNN found in reviewed files, confirm a matching BACKLOG entry exists.
 
-[Add any phase-specific focus areas here — these are in addition to the seven above, not a replacement.]
+8. **Unplanned file modifications** — if the coder's completion report includes an
+   **"Unplanned file modifications"** section, review each disclosed change:
+   - Was the change genuinely necessary for the listed tasks to compile or function correctly?
+   - Is it small and focused (a new accessor, a protocol method, a minor addition to an existing type)?
+   - Does it comply with architecture rules, layer discipline, and the anti-patterns list?
+   ✅ PASS if the change is necessary, minimal, and compliant.
+   ❌ FAIL if the change is a broad refactor, introduces new feature work, violates layer
+   rules, or is not disclosed in the completion report.
+   If no "Unplanned file modifications" section is present and no unlisted files were
+   changed, this item is N/A.
+
+[Add any phase-specific focus areas here — these are in addition to the eight above, not a replacement.]
 
 **Verification** (run after reviewing, report results):
 ```bash
@@ -264,7 +290,11 @@ Read `ARCHITECTURE.md` in full. Read `IMPLEMENTATION_PLAN.md` Phase [N].
 Read these specific files: [LIST AFFECTED FILES].
 
 The reviewer found the following issues that must be fixed before committing.
-Fix each issue so that it meets the expected behavior described. Do not change any other code.
+Fix each issue so that it meets the expected behavior described. Do not make changes
+beyond what is required to resolve the listed issues. The same escape valve as in the
+coder prompt applies: if a fix genuinely requires a small, focused change to an unlisted
+supporting file, make it and disclose it in the completion report under **"Unplanned
+file modifications."**
 
 **❌ Fix 1 — [Issue title]**
 File: `[path/to/file]`
