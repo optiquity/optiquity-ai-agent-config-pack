@@ -33,7 +33,7 @@ The agent was always intended to cover iOS, iPadOS, and macOS. The name now refl
 
 ### New: python-architect agent and skill (BD-006)
 
-The python-server and monorepo templates now have a dedicated architect agent for Python server work — service layer design, grpc.aio patterns, repository boundaries, Pydantic placement, ML inference isolation. Invoke with `claude --agent python-architect`.
+The python-server and monorepo templates now have a dedicated architect agent for Python server work — service layer design, grpc.aio patterns, repository boundaries, Pydantic placement, ML inference isolation. Invoke with `./agent-run.sh claude --agent python-architect`.
 
 ### New: Codex post-edit hook (BD-002)
 
@@ -182,7 +182,7 @@ Open a new chat in the Claude project. Paste Template 1 (PM Chat Kickoff Prompt)
 Ask the PM chat to generate these using Templates 13 and 14 from `PROMPT-TEMPLATES.md`. Commit the results to the project repo, then run the architecture kickoff:
 
 ```bash
-claude --agent apple-architect
+./agent-run.sh claude --agent apple-architect
 # Paste the full contents of AGENT_KICKOFF.md as your first message
 ```
 

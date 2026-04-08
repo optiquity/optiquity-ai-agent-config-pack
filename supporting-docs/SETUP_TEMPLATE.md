@@ -92,10 +92,10 @@ cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md ./PROMPT-TEMPLATES.md
 cp /path/to/pack/supporting-docs/PM-CHAT.md ./PM-CHAT.md
 ```
 
-Make scripts executable:
+Make scripts and agent-run.sh executable:
 
 ```bash
-chmod +x scripts/*.sh
+chmod +x agent-run.sh scripts/*.sh
 ```
 
 ---
@@ -217,7 +217,7 @@ For daily session management after setup, see `supporting-docs/CLI-PM-SETUP.md`.
 ## 12. What comes next
 
 Once setup is confirmed, the PM chat will guide you through:
-- Architecture kickoff (run `claude --agent [ARCHITECT_AGENT]` with AGENT_KICKOFF.md)
+- Architecture kickoff (run `./agent-run.sh claude --agent [ARCHITECT_AGENT]` with AGENT_KICKOFF.md)
 - Creating ARCHITECTURE.md and stub class hierarchy
 - Creating IMPLEMENTATION_PLAN.md
 - Beginning Phase 1
@@ -233,7 +233,7 @@ To set up on a second Mac ([SECOND_MACHINE_NAME]):
 ```bash
 git clone https://github.com/[GITHUB_USERNAME]/[REPO_NAME].git
 cd [REPO_NAME]
-chmod +x scripts/*.sh
+chmod +x agent-run.sh scripts/*.sh
 ./scripts/bootstrap.sh
 ```
 

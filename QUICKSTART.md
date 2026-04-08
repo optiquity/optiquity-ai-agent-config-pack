@@ -52,19 +52,22 @@ Minimum edits before using any agent:
 
 ---
 
-## Step 4 — Copy scripts, fix permissions, and run bootstrap
+## Step 4 — Copy scripts and agent-run.sh, fix permissions, and run bootstrap
 
-The `scripts/` folder must be copied from the pack template into your project root if it isn't
-there already. It is **not optional** — `agent-post-edit-check.sh` is wired into the Claude Code
-hook and the Codex `post_edit_command`, and the other scripts are the primary way agents run
-validation and formatting.
+The `scripts/` folder and `agent-run.sh` must be copied from the pack template into your project.
+`scripts/` is **not optional** — `agent-post-edit-check.sh` is wired into the Claude Code hook and
+the Codex `post_edit_command`, and the other scripts are the primary way agents run validation and
+formatting. `agent-run.sh` goes in the **project root** and is how you launch agents day-to-day.
 
 ```bash
 # If scripts/ is missing from your project (copy from the correct template):
 cp -r /path/to/pack/apple-app-template/scripts/ /path/to/your/project/scripts/
 
-# Make all scripts executable — required after every fresh clone
-chmod +x scripts/*.sh
+# Copy agent-run.sh to the project root:
+cp /path/to/pack/apple-app-template/agent-run.sh /path/to/your/project/agent-run.sh
+
+# Make everything executable — required after every fresh clone
+chmod +x scripts/*.sh agent-run.sh
 
 # Run bootstrap once per machine to resolve dependencies
 ./scripts/bootstrap.sh
@@ -72,14 +75,15 @@ chmod +x scripts/*.sh
 
 **What each script does:**
 
-| Script | Purpose | When to run |
-|---|---|---|
-| `bootstrap.sh` | Resolve SPM/Python dependencies. Run once per machine. | Manual, first checkout |
-| `format.sh` | Format code (swift-format and/or ruff). Manual only — not in the auto-hook. | Manual or `repo-ops`, pre-commit |
-| `test.sh` | Run the test suite only (no build step). | Manual or `repo-ops` |
-| `validate.sh` | Full build + test suite. The primary quality gate. | Manual or `repo-ops`, pre-commit |
-| `proto-gen.sh` | `buf lint` then `buf generate` after any `.proto` edit. | Manual or `grpc-schema` agent |
-| `agent-post-edit-check.sh` | Automatic build check after every agent file edit. **Never call manually.** | Auto via Claude Code hook |
+| Script | Location | Purpose | When to run |
+|---|---|---|---|
+| `agent-run.sh` | Project root | Launch any agent with correct CLI flags. See `./agent-run.sh --help`. | Human only |
+| `bootstrap.sh` | `scripts/` | Resolve SPM/Python dependencies. Run once per machine. | Manual, first checkout |
+| `format.sh` | `scripts/` | Format code (swift-format and/or ruff). Manual only — not in the auto-hook. | Manual or `repo-ops`, pre-commit |
+| `test.sh` | `scripts/` | Run the test suite only (no build step). | Manual or `repo-ops` |
+| `validate.sh` | `scripts/` | Full build + test suite. The primary quality gate. | Manual or `repo-ops`, pre-commit |
+| `proto-gen.sh` | `scripts/` | `buf lint` then `buf generate` after any `.proto` edit. | Manual or `grpc-schema` agent |
+| `agent-post-edit-check.sh` | `scripts/` | Automatic build check after every agent file edit. **Never call manually.** | Auto via Claude Code hook |
 
 ---
 
@@ -345,7 +349,7 @@ Commit both files.
 
 ```bash
 cd ~/Developer/YourProject
-claude --agent apple-architect   # or python-architect for Python projects
+./agent-run.sh claude --agent apple-architect   # or python-architect for Python projects
 # Paste the full contents of AGENT_KICKOFF.md as your first message
 ```
 
@@ -353,15 +357,20 @@ claude --agent apple-architect   # or python-architect for Python projects
 
 ## Common agent invocations
 
+Use `./agent-run.sh` to launch any agent — it automatically applies the correct CLI flags for
+read-only agents (permission bypass, git write block) and passes everything through for write
+agents. Direct CLI invocation still works for one-off use; `agent-run.sh` ensures consistency
+across the team. Run `./agent-run.sh --help` for the full agent list and flag details.
+
 | Task | Command |
 |---|---|
-| Plan a feature before coding | `claude --agent planner "Plan [description]"` |
-| Implement | `codex --agent coder "Implement [description]"` |
-| Review code | `claude --agent reviewer "Review [file or module]"` |
-| Design a gRPC service | `claude --agent grpc-schema "Design a service for [description]"` |
-| Review a .proto change | `claude --agent grpc-schema "Review my changes to proto/[path]"` |
-| Debug a build failure | `claude --agent coder "Debug: [error text]"` |
-| iOS 26 API question | `claude --agent docs-researcher "How does [iOS 26 feature] work?"` |
+| Plan a feature before coding | `./agent-run.sh claude --agent planner "Plan [description]"` |
+| Implement | `./agent-run.sh codex --agent coder "Implement [description]"` |
+| Review code | `./agent-run.sh claude --agent reviewer "Review [file or module]"` |
+| Design a gRPC service | `./agent-run.sh claude --agent grpc-schema "Design a service for [description]"` |
+| Review a .proto change | `./agent-run.sh claude --agent grpc-schema "Review my changes to proto/[path]"` |
+| Debug a build failure | `./agent-run.sh claude --agent coder "Debug: [error text]"` |
+| iOS 26 API question | `./agent-run.sh claude --agent docs-researcher "How does [iOS 26 feature] work?"` |
 | Run all validation | `./scripts/validate.sh` |
 | Generate gRPC code | `./scripts/proto-gen.sh` |
 | Sync iOS 26 docs after Xcode update | `./sync-xcode-docs.sh` (from pack root) |
@@ -394,7 +403,7 @@ The `.gitignore` handles these automatically — do not commit them:
 - `generated/swift/` and `server/src/generated/` — generated Protobuf/gRPC code
 - `.buf/` — buf CLI cache
 
-Commit everything else, including `CLAUDE.md`, `AGENTS.md`, `.claude/`, `.codex/`, `scripts/`, `proto/`.
+Commit everything else, including `CLAUDE.md`, `AGENTS.md`, `agent-run.sh`, `.claude/`, `.codex/`, `scripts/`, `proto/`.
 
 ---
 

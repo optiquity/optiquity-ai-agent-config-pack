@@ -764,9 +764,9 @@ Both Claude Code and Codex can perform any phase. The assignments below identify
 | Repo operations | **Codex** | `repo-ops` | workspace-write sandbox, scripting strength |
 | Local validation | **Codex** | `repo-ops` | workspace-write sandbox; can execute scripts |
 
-Invoke a specific agent:
-- Claude Code: `claude --agent grpc-schema`
-- Codex: `codex --agent coder`
+Invoke a specific agent via `agent-run.sh` in the project root:
+- Claude Code: `./agent-run.sh claude --agent grpc-schema`
+- Codex: `./agent-run.sh codex --agent coder`
 
 ---
 

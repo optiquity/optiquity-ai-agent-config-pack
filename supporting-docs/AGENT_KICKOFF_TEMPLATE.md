@@ -9,7 +9,7 @@ This is a fill-in-the-blanks template for generating a project-specific AGENT_KI
    all [PLACEHOLDER] values based on the project planning conversation.
 2. The resulting AGENT_KICKOFF.md goes in the project repo root.
 3. Paste its full contents into a Claude Code CLI session to start the architecture phase:
-   cd ~/Developer/[PROJECT] && claude --agent [ARCHITECT_AGENT]
+   cd ~/Developer/[PROJECT] && ./agent-run.sh claude --agent [ARCHITECT_AGENT]
    Then paste the contents of AGENT_KICKOFF.md as your first message.
 4. This template stays in the pack — it is never copied to project repos.
 

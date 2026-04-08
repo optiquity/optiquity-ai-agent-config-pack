@@ -87,6 +87,7 @@ git log --oneline      # Full version history
 |----------------------------|-----------|---------------|---------|
 | CLAUDE.md / AGENTS.md      | ✓         | ✓             | ✓       |
 | METHODOLOGY.md (v8+, copy to project) | ✓ (copy from supporting-docs/) | ✓ (copy from supporting-docs/) | ✓ (copy from supporting-docs/) |
+| agent-run.sh (v8.9+)       | ✓         | ✓             | ✓       |
 | iOS 26 support (v7+)       | ✓         | —             | ✓       |
 | grpc-swift-2 rules         | ✓         | —             | ✓       |
 | grpc.aio rules             | —         | ✓             | ✓       |

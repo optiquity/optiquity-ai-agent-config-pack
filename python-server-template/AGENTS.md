@@ -68,17 +68,19 @@ repo operations, and documentation work here. No work category is exclusive to o
 
 ## Scripts
 
-The `scripts/` directory contains shell scripts agents and developers use to validate,
-test, format, and generate code. Make them executable on first checkout: `chmod +x scripts/*.sh`.
+`agent-run.sh` lives in the **project root** and is the standard way to launch any agent.
+The `scripts/` directory contains build, test, and validation scripts. Make everything
+executable on first checkout: `chmod +x agent-run.sh scripts/*.sh`.
 
-| Script | Purpose | Call |
-|---|---|---|
-| `bootstrap.sh` | First-time setup — installs Python dependencies via uv | Manual, once per machine |
-| `format.sh` | Run ruff format + ruff check. Manual only — not in the auto-hook | `repo-ops` or manual pre-commit |
-| `test.sh` | Run pytest | `repo-ops` or manual |
-| `validate.sh` | Full build + test suite | `repo-ops` or manual pre-commit |
-| `proto-gen.sh` | Run buf lint + buf generate after .proto edits | `grpc-schema` or manual |
-| `agent-post-edit-check.sh` | Auto build-check. **Never call manually.** | Claude Code PostToolUse hook only |
+| Script | Location | Purpose | Call |
+|---|---|---|---|
+| `agent-run.sh` | Project root | Launch any agent with correct CLI flags. Run `./agent-run.sh --help`. | Human only |
+| `bootstrap.sh` | `scripts/` | First-time setup — installs Python dependencies via uv | Manual, once per machine |
+| `format.sh` | `scripts/` | Run ruff format + ruff check. Manual only — not in the auto-hook | `repo-ops` or manual pre-commit |
+| `test.sh` | `scripts/` | Run pytest | `repo-ops` or manual |
+| `validate.sh` | `scripts/` | Full build + test suite | `repo-ops` or manual pre-commit |
+| `proto-gen.sh` | `scripts/` | Run buf lint + buf generate after .proto edits | `grpc-schema` or manual |
+| `agent-post-edit-check.sh` | `scripts/` | Auto build-check. **Never call manually.** | Claude Code PostToolUse hook only |
 
 ## BACKLOG permissions and deferral comments
 
@@ -144,5 +146,5 @@ characteristics favor the other system.
 | Repo operations | **Codex** | repo-ops | workspace-write sandbox, scripting strength |
 | Local validation | **Codex** | repo-ops | workspace-write sandbox; can execute scripts |
 
-To invoke a specific agent in Codex: `codex --agent planner`
-To invoke a specific agent in Claude Code: `claude --agent reviewer`
+To invoke any agent: `./agent-run.sh <cli> --agent <name>` (see `./agent-run.sh --help`)
+Examples: `./agent-run.sh claude --agent reviewer` / `./agent-run.sh codex --agent coder`

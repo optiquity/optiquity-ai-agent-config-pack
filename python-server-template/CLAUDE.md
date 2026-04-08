@@ -137,18 +137,19 @@ If a tool is not installed, say so explicitly instead of pretending validation p
 
 ## Scripts
 
-The `scripts/` directory at the project root contains shell scripts for validation, formatting,
-testing, and code generation. **Copy from the pack template and make executable before first use**
-(`chmod +x scripts/*.sh`).
+`agent-run.sh` lives in the **project root** and is the standard way to launch any agent.
+The `scripts/` directory contains build, test, and validation scripts. **Copy both from the
+pack template and make executable before first use** (`chmod +x agent-run.sh scripts/*.sh`).
 
-| Script | When to run | Who calls it |
-|---|---|---|
-| `bootstrap.sh` | Once on first checkout or new machine | Human |
-| `format.sh` | Before committing — runs ruff format and ruff check | Human or `repo-ops` agent |
-| `test.sh` | After implementing — runs pytest | Human or `repo-ops` agent |
-| `validate.sh` | Before committing — full build + test suite | Human or `repo-ops` agent |
-| `proto-gen.sh` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
-| `agent-post-edit-check.sh` | **Never call manually** — fires automatically via Claude Code PostToolUse hook | Claude Code hook |
+| Script | Location | When to run | Who calls it |
+|---|---|---|---|
+| `agent-run.sh` | Project root | To launch any agent — run `./agent-run.sh --help` | Human only |
+| `bootstrap.sh` | `scripts/` | Once on first checkout or new machine | Human |
+| `format.sh` | `scripts/` | Before committing — runs ruff format and ruff check | Human or `repo-ops` agent |
+| `test.sh` | `scripts/` | After implementing — runs pytest | Human or `repo-ops` agent |
+| `validate.sh` | `scripts/` | Before committing — full build + test suite | Human or `repo-ops` agent |
+| `proto-gen.sh` | `scripts/` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
+| `agent-post-edit-check.sh` | `scripts/` | **Never call manually** — fires automatically via Claude Code PostToolUse hook | Claude Code hook |
 
 **Note:** `format.sh` is manual-only — not wired into the automatic post-edit hook.
 Run it explicitly before committing or ask `repo-ops` to run it.
@@ -243,5 +244,5 @@ characteristics favor the other system.
 | Repo operations | **Codex** | repo-ops | workspace-write sandbox, scripting strength |
 | Local validation | **Codex** | repo-ops | workspace-write sandbox; can execute scripts |
 
-To invoke a specific agent in Claude Code: `claude --agent planner`
-To invoke a specific agent in Codex: `codex --agent coder`
+To invoke any agent: `./agent-run.sh <cli> --agent <name>` (see `./agent-run.sh --help`)
+Examples: `./agent-run.sh claude --agent reviewer` / `./agent-run.sh codex --agent coder`
