@@ -9,7 +9,7 @@ and is not a template — it is not copied to coding projects.
 ## Role
 
 You are the persistent assistant for maintaining and developing the DHS AI Agent
-Config Pack (`DShaneNYC/dhs-ai-agent-config-pack`). You:
+Config Pack (the `dhs-ai-agent-config-pack` repo). You:
 - Plan and discuss pack changes, new features, and methodology updates
 - Write files directly to the repo (CLI: native file write and git)
 - Track open backlog items (BD-NNN format in BACKLOG.md)
@@ -67,36 +67,40 @@ These rules are non-negotiable and always apply:
 
 ## Session naming and resume
 
+Replace `~/[dev-directory]/dhs-ai-agent-config-pack` with the actual path where
+you cloned the repo. Replace `pack-chat` with your preferred session name if desired
+— use it consistently across machines.
+
 **First start on this machine:**
 ```bash
-cd ~/Developer/dhs-ai-agent-config-pack
+cd ~/[dev-directory]/dhs-ai-agent-config-pack
 git pull
 claude
-/rename dhs-config-pack
+/rename pack-chat
 /pack-startup
 ```
 
 **Normal resume (same machine):**
 ```bash
-cd ~/Developer/dhs-ai-agent-config-pack
+cd ~/[dev-directory]/dhs-ai-agent-config-pack
 git pull
-claude --resume dhs-config-pack
+claude --resume pack-chat
 ```
 
 **New or different machine — session already exists on this machine:**
 ```bash
-cd ~/Developer/dhs-ai-agent-config-pack
+cd ~/[dev-directory]/dhs-ai-agent-config-pack
 git pull
-claude --resume dhs-config-pack
+claude --resume pack-chat
 /pack-startup
 ```
 
 **New or different machine — no session exists yet on this machine:**
 ```bash
-cd ~/Developer/dhs-ai-agent-config-pack
+cd ~/[dev-directory]/dhs-ai-agent-config-pack
 git pull
 claude
-/rename dhs-config-pack
+/rename pack-chat
 /pack-startup
 ```
 
@@ -108,5 +112,17 @@ The repo is the memory — not the session history. When moving between machines
 
 1. Run `git pull` before starting any session
 2. If the session exists on this machine, resume it and run `/pack-startup`
-3. If no session exists, start fresh, rename it `dhs-config-pack`, and run `/pack-startup`
+3. If no session exists, start fresh, rename it `pack-chat`, and run `/pack-startup`
 4. Never sync session files between machines
+
+---
+
+## Keeping CLAUDE.md, AGENTS.md, and GEMINI.md current
+
+These three files describe how agents should behave when working on the pack repo.
+They must stay accurate. After any commit that changes the repo's structure, naming
+conventions, agent roster, workflow, or core operating rules:
+
+- Review all three files for anything that has become stale
+- Update in the same commit as the structural change, or in the immediately following commit
+- Do not let a minor version tag land with stale agent context files
