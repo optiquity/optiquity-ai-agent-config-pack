@@ -282,12 +282,18 @@ explicit approval. Do not generate this prompt until the plan is approved.*
 
 ---
 
-> **PM chat must describe problems, not solutions.** Each fix entry explains what is
-> wrong and what correct behavior looks like. It does not provide pseudocode,
-> implementation steps, or Swift/Python code. The coder agent determines how to fix it.
+> **PM chat must describe problems, not solutions.** Each fix entry states what is
+> wrong and why, what correct behavior looks like, and how the reviewer will verify the
+> fix. It does not provide pseudocode, implementation steps, or code of any kind.
+> The coder agent determines how to fix it.
 
 Read `ARCHITECTURE.md` in full. Read `IMPLEMENTATION_PLAN.md` Phase [N].
 Read these specific files: [LIST AFFECTED FILES].
+
+**Root .md file prohibition:** Do not write to `CHANGELOG.md`, `STATUS.md`,
+`BACKLOG.md`, `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `CLAUDE.md`, `AGENTS.md`,
+`README.md`, or any other `.md` file in the project root. Writing root `.md` files is
+exclusively the PM chat's responsibility.
 
 The reviewer found the following issues that must be fixed before committing.
 Fix each issue so that it meets the expected behavior described. Do not make changes
@@ -298,13 +304,15 @@ file modifications."**
 
 **❌ Fix 1 — [Issue title]**
 File: `[path/to/file]`
-Problem: [exact description of what is wrong]
+Problem: [exact description of what is wrong and why]
 Expected behavior: [what correct behavior looks like — no implementation instructions]
+Success criteria: [what the reviewer will check to confirm this fix is complete]
 
 **❌ Fix 2 — [Issue title]**
 File: `[path/to/file]`
-Problem: [exact description of what is wrong]
+Problem: [exact description of what is wrong and why]
 Expected behavior: [what correct behavior looks like — no implementation instructions]
+Success criteria: [what the reviewer will check to confirm this fix is complete]
 
 **Verification:** After all fixes, run:
 ```bash
@@ -314,7 +322,22 @@ Confirm all tests pass and zero warnings remain.
 
 **Completion report:** Begin the report with this header line as the very first line of output:
 `Phase [N] — [Phase title] — Fix Cycle Coder Report, Pass [N]`
-Then list files modified.
+
+**Fixes applied** (one entry per ❌ item addressed):
+- Fix [N] — [Issue title]: [what was changed to resolve it — no implementation detail, just what changed]
+
+**Files modified:** [list all files changed]
+
+**Unplanned file modifications** (required section — write "None" if no unlisted files were changed):
+- File: `path/to/file`
+- Change: [brief description of what was added or modified]
+- Why necessary: [why the listed fix could not be completed without this change]
+
+**Validation:** [test count and confirmation that zero warnings remain]
+
+**Note:** Do not include a Proposed CHANGELOG entry. The PM chat will update the entry
+proposed in the initial coder pass to reflect any changes made in fix passes before
+applying it to `CHANGELOG.md`.
 
 ---
 
