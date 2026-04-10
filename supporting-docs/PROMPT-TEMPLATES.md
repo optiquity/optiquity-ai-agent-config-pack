@@ -23,12 +23,14 @@ for each use. Remove sections that don't apply to the current phase.
 > **Read this before generating any prompt.**
 > Full details in `METHODOLOGY.md` — Prompt Authoring Principles section.
 
-**The core rule:** Describe the *problem* and *goal* — not the solution.
+**The core rule:** Describe the *problem*, *goal*, and *success criteria* — not the solution.
 
 Every prompt must answer:
 - **Problem** — root cause at category level; enough scope for the agent to recognize all
   instances within the files-in-scope list, but no description of the solution
 - **Goal** — what correct behavior looks like when done; outcome, not steps
+- **Success criteria** — the observable, verifiable state that confirms the goal is achieved;
+  what can be checked to know the task is complete; not a solution — the end state, not the path
 - **Context** — what the agent cannot infer from ARCHITECTURE.md
 - **Required reading** — distinguish files for understanding from files in scope to modify
 - **Files in scope** — primary boundary; agent may make small focused changes to unlisted
@@ -56,10 +58,17 @@ instruct the agent to audit the listed files and report findings for a follow-up
 | `planner` | Scope to break down | How to break it down |
 
 **When using IMPLEMENTATION_PLAN.md task entries:** If a task entry contains
-implementation instructions rather than a problem/goal description, reframe it before
-including it — extract the outcome and discard the how. Apply to coder, architect, and
-planner prompts. For agents where prescriptive content is permitted (see table above),
+implementation instructions rather than a problem/goal/success-criteria description,
+reframe it before including it — extract what is wrong, what correct behavior looks
+like, and what confirms the task is complete. Discard the how. Apply to coder, architect,
+and planner prompts. For agents where prescriptive content is permitted (see table above),
 forward plan content as written.
+
+**Multi-part phases:** When a phase is split into sequential implementation chunks, use
+**Part [M]** (not "pass") appended to the phase title in all report headers. Pass numbers
+reset to 1 for each new part. Single-part phases use the existing header format — do not
+append `, Part 1`. Full convention in METHODOLOGY.md Part 4.
+- Example: `Phase 12 — Auth Flows, Part 2 — Reviewer Report, Pass 1`
 
 **Self-check:** Before generating any prompt, ask: *"Am I describing what needs to be
 true, or how to do it?"* If "how to do it" — rewrite as "what needs to be true."
@@ -314,6 +323,16 @@ Problem: [exact description of what is wrong and why]
 Expected behavior: [what correct behavior looks like — no implementation instructions]
 Success criteria: [what the reviewer will check to confirm this fix is complete]
 
+**Deferral comments:** If during a fix you encounter related work that cannot be
+completed within this fix cycle's scope, add a typed deferral comment:
+```
+// TODO(scope): TD-TBD — Short title
+// KNOWN GAP(critical|functional|polish): TD-TBD — Short title
+// VERIFY(source): TD-TBD — Short title
+```
+Always write `TD-TBD` — never invent a TD number. Report every deferral comment
+you add in the "Deferred items" section of your completion report.
+
 **Verification:** After all fixes, run:
 ```bash
 [VERIFICATION COMMAND]
@@ -332,6 +351,14 @@ Confirm all tests pass and zero warnings remain.
 - File: `path/to/file`
 - Change: [brief description of what was added or modified]
 - Why necessary: [why the listed fix could not be completed without this change]
+
+**Deferred items** (required section — write "None" if nothing was deferred):
+For each deferral comment added this session:
+- Comment: [exact comment text as written in the file]
+- File/Symbol: `path/to/file` — `SymbolName`
+- Description: [what the work is and why it cannot be done now]
+- Blocker: [the specific dependency or condition preventing completion]
+- Context: [any constraints or observations relevant at deferral time]
 
 **Validation:** [test count and confirmation that zero warnings remain]
 

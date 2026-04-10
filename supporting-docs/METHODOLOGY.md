@@ -222,8 +222,9 @@ Every phase in IMPLEMENTATION_PLAN.md should follow this format:
 
 ### Tasks
 #### N.1 — [Task title]
-- **Problem/Goal**: What this task achieves and what is currently wrong or missing —
-  describe the outcome, not the steps. Do not include implementation instructions.
+- **Problem / Goal / Success**: What is currently wrong, what the task must achieve,
+  and what observable state confirms it is complete — describe outcomes and verifiable
+  end states, not steps. Do not include implementation instructions.
 - **Files created/modified**: list
 - **Definition of done**: Measurable, verifiable criteria
 - **Dependencies**: other tasks within this phase
@@ -245,6 +246,34 @@ Which agent(s) to use for which tasks.
 - Insert new phases at the end of the plan.
 - Fractional phases (2.1, 2.2) only during early architecture work — use whole numbers after that.
 
+### Multi-part phases
+
+When a planning agent recommends splitting a phase into sequential implementation
+chunks, use **Part** as the term for each chunk — never "pass." "Pass" is a reserved
+term for the coder/reviewer cycle counter within a single coder or fix-cycle prompt.
+
+**In IMPLEMENTATION_PLAN.md:** Label each chunk as a sub-section within the phase:
+
+```markdown
+### Part 1 — [Subtitle]
+...tasks, files, definition of done...
+
+### Part 2 — [Subtitle]
+...tasks, files, definition of done...
+```
+
+**Report headers for multi-part phases:** Append `, Part [M]` to the phase title
+placeholder. The pass counter resets to 1 at the start of each new part.
+
+| Report type | Header format |
+|---|---|
+| Coder (initial) | `Phase [N] — [Phase title], Part [M] — Coder Report, Pass 1` |
+| Reviewer | `Phase [N] — [Phase title], Part [M] — Reviewer Report, Pass [N]` |
+| Fix cycle coder | `Phase [N] — [Phase title], Part [M] — Fix Cycle Coder Report, Pass [N]` |
+
+A single-part phase uses the existing header format unchanged — do not append `, Part 1`
+when there is only one part. The `, Part [M]` label is only added when the phase has
+been explicitly split into multiple sequential parts by a planning agent.
 
 ---
 
@@ -449,7 +478,7 @@ These principles apply to every prompt the PM chat generates — coder, architec
 fix cycle, researcher, planner — and to every task entry written in IMPLEMENTATION_PLAN.md.
 They are not style guidance. They govern what information belongs in a prompt and what does not.
 
-### The core rule: describe the problem and goal, not the solution
+### The core rule: describe the problem, goal, and success criteria — not the solution
 
 Every prompt and every task entry must answer:
 
@@ -460,14 +489,19 @@ Every prompt and every task entry must answer:
 2. **Goal** — what correct behavior looks like across the affected scope when the task
    is complete. Describe the outcome, not the steps.
 
-3. **Context** — why this matters and how it connects to the larger system design.
+3. **Success criteria** — the observable, verifiable state that confirms the goal is
+   achieved. What can be checked to know the task is complete? This is not a solution
+   — it describes the end state, not the path to it. At the task level, this maps to
+   the "Definition of done" field in IMPLEMENTATION_PLAN.md.
+
+4. **Context** — why this matters and how it connects to the larger system design.
    Include only what the agent cannot infer from reading ARCHITECTURE.md.
 
-4. **Required reading** — documents and files the agent must read before starting.
+5. **Required reading** — documents and files the agent must read before starting.
    Distinguish: files to read for understanding (may extend beyond the change scope)
    vs. files in scope to modify.
 
-5. **Files in scope** — explicit list of files the agent may create or modify.
+6. **Files in scope** — explicit list of files the agent may create or modify.
    This is the primary boundary. If the agent discovers the same problem in a file
    not on this list, it should report it rather than fix it — unless the unlisted
    file is a direct dependency required for the listed tasks to compile or function
@@ -482,7 +516,7 @@ Every prompt and every task entry must answer:
    the agent either invents an architecturally wrong solution or silently touches an
    unlisted file.
 
-6. **Completion report** — what the agent must report when done: files modified,
+7. **Completion report** — what the agent must report when done: files modified,
    verification results, and any out-of-scope discoveries.
 
 A prompt must never contain:
@@ -493,8 +527,8 @@ A prompt must never contain:
 
 **Why this rule exists:** Prescriptive prompts bypass the agent's ability to find
 the right approach from full filesystem context. The PM chat has not read every file
-in the repo — the agent has. The PM chat states what is wrong and what correct
-behavior looks like. The agent determines how to achieve it.
+in the repo — the agent has. The PM chat states what is wrong, what correct behavior
+looks like, and what confirms the task is complete. The agent determines how to achieve it.
 
 ### On scoping the problem statement
 
@@ -534,9 +568,9 @@ The architect diagnoses and proposes.
 ### When generating prompts from IMPLEMENTATION_PLAN.md task entries
 
 If a task entry contains prescriptive implementation instructions rather than a
-problem/goal description, reframe it before including it in the prompt — extract
-what the task is trying to achieve and what correct behavior looks like, and discard
-the how. Do not forward implementation instructions verbatim.
+problem/goal/success-criteria description, reframe it before including it in the prompt —
+extract what is wrong, what correct behavior looks like, and what confirms the task
+is complete. Discard the how. Do not forward implementation instructions verbatim.
 This applies to coder, architect, and planner prompts. For agents where prescriptive
 content is permitted (see exceptions table above), forward plan content as written.
 
@@ -637,7 +671,7 @@ created after user approval. Any `TD-TBD` in committed code is a defect.
 
 **What is NOT a valid deferral:** Work that could be completed within the current phase
 scope is not a TODO — it is an incomplete task. The reviewer flags it as an implementation
-plan compliance failure (point 4 of the eight-point framework). The fix is a coder fix pass,
+plan compliance failure (reviewer checklist item 4). The fix is a coder fix pass,
 not a BACKLOG entry.
 
 ### BACKLOG item format
@@ -753,7 +787,7 @@ The PM chat presents its reasoning and the user may override. Bias toward resolv
    - Cleanup phase: accumulate multiple items into a dedicated phase with its own
      IMPLEMENTATION_PLAN.md entry and reviewer pass
 3. When coder completes the work:
-   - Reviewer confirms work is done (point 4 — implementation plan compliance)
+   - Reviewer confirms work is done (reviewer checklist item 4 — implementation plan compliance)
    - Reviewer confirms deferral comment has been removed from code
    - PM chat marks Status: Resolved with phase, date, brief note
    - PM chat removes the comment if coder did not
