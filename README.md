@@ -40,6 +40,8 @@ always points to the latest minor of that major version.
 | v8.6    | Apr 6, 2026  | DEPENDENCIES.md; minor versioning convention; version string corrections |
 | v8.7    | Apr 6, 2026  | CLI PM chat: PM-CHAT.md template, /pm-startup skill, CLI-PM-SETUP.md, mcp-local-rag integration |
 | v8.8    | Apr 7, 2026  | Pack CLI chat: PACK-CHAT.md, /pack-startup skill; corrections to mcp-local-rag docs (QUICKSTART.md, DEPENDENCIES.md, CLI-PM-SETUP.md); METHODOLOGY.md version string fix |
+| v8.9    | Apr 9, 2026  | agent-run.sh added to all three templates: read-only/write permission flags per agent, Claude Code and Codex CLI support |
+| v8.10   | Apr 2026     | v9 planning: V9-DESIGN.md, TOOL-COMPARISON.md, BACKLOG.md (BD-025–031); v9-dev branch created |
 
 ## Repository Layout
 
@@ -62,8 +64,10 @@ always points to the latest minor of that major version.
 │   ├── SETUP_TEMPLATE.md                   New project setup template (v8+)
 │   ├── AGENT_KICKOFF_TEMPLATE.md           Architecture kickoff template (v8+)
 │   ├── MIGRATION-v7-to-v8.md               Upgrade guide (v8+)
-│   ├── GEMINI-CLI-ANALYSIS.md              Gemini CLI integration analysis (v8+)
-│   └── ANDROID-ANALYSIS.md                 Android support analysis (v8+)
+│   ├── V9-DESIGN.md                        v9 architecture design record (v8.10+)
+│   ├── TOOL-COMPARISON.md                  Cross-tool capability reference (v8.10+)
+│   ├── GEMINI-CLI-ANALYSIS.md              Gemini CLI integration analysis (v8+, superseded by TOOL-COMPARISON.md)
+│   └── ANDROID-ANALYSIS.md                 Android support analysis (v8+, superseded by TOOL-COMPARISON.md)
 ├── QUICKSTART.md                           Quick start (v6+)
 ├── PACK-CHAT.md                            Pack CLI chat startup instructions (v8.8+)
 ├── BACKLOG.md                              Pack improvement backlog (v8+, was V8-BACKLOG.md)

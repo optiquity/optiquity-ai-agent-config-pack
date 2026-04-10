@@ -27,23 +27,29 @@ Type: TODO(version)
 Status: Open
 Blockers:
   - No concrete C++ project need has arisen
+  - BD-024 unified template redesign must be completed first — analysis outcome
+    determines skills needed, not a new template directory
 Unblocks: None
 File/Symbol: n/a — new file `supporting-docs/CPP-SERVER-ANALYSIS.md` to be created
-Description: The pack currently supports Swift (Apple client) and Python (gRPC server).
-  C++ is a common choice for high-performance gRPC servers and systems-level services.
-  An analysis document should cover: what a `cpp-server-template` would require,
-  C++ gRPC library choices (grpc++ official library), build system options (CMake, Bazel),
-  relevant agents and skills needed (cpp-architect, cpp-architecture skill), toolchain
-  differences, and whether any existing pack files would apply unchanged.
+Description: C++ is a common choice for high-performance gRPC servers and
+  systems-level services. Under the unified template model (BD-024), this analysis
+  determines what skills are needed rather than whether a new template directory
+  is required. The analysis document should cover: C++ gRPC library choices
+  (grpc++ official library), build system options (CMake, Bazel, Makefile),
+  what a `cpp-server-architecture` skill would need to cover, what a
+  `cpp-language` skill would need to cover (if not already created by BD-024),
+  toolchain differences from Python/Swift, and whether any existing pack files
+  apply unchanged.
 Context: Analysis only — no implementation until a concrete project need arises.
-  C++ is common for high-performance gRPC servers and systems-level services.
+  Original framing assumed a new template directory; updated April 2026 to reflect
+  the unified template model from BD-024. Outcome is skill files, not a template.
 Resolved: n/a
 
 ---
 
 **BD-021 — Redesign Apple platform architecture skills (three-tier)**
 Type: TODO(version)
-Status: Open
+Status: Deprecated
 Blockers:
   - BD-022 c-language skill must exist first (shared dependency between Apple and C templates)
   - v9 planning conversation needed to confirm skill boundaries
@@ -81,13 +87,16 @@ Description: The current `ios-architecture` skill applies to all Apple targets b
 Context: macOS and iOS are siblings, not superset/subset. A single combined skill
   produces irrelevant checklist items for platform-specific projects. Universal apps
   need all three skills; single-platform projects need core + platform skill only.
-Resolved: n/a
+Resolution: April 2026, deprecated — superseded by BD-024 (unified template and
+  platform skills redesign). The three-tier skill design (apple-architecture-core,
+  ios-architecture, macos-architecture) is preserved and becomes part of BD-024's
+  skill library. The template-directory framing is dropped.
 
 ---
 
 **BD-022 — C project template and c-language skill**
 Type: TODO(version)
-Status: Open
+Status: Deprecated
 Blockers:
   - v9 planning conversation needed to confirm build system and test framework choices
 Unblocks: BD-021 (c-language skill is a shared dependency)
@@ -120,13 +129,16 @@ Description: Standalone C projects (command-line tools initially; embedded code 
   (ctypes/cffi/Cython), and common C anti-patterns to avoid.
 Context: SPM vs Makefile was discussed — Makefile chosen for simplicity and zero dependencies.
   c-language skill is created here and shared with BD-023 to avoid duplication.
-Resolved: n/a
+Resolution: April 2026, deprecated — superseded by BD-024 (unified template and
+  platform skills redesign). The c-project-template directory is dropped; a C project
+  will use the single unified template with c-language skill loaded. The c-language
+  skill content is preserved and becomes part of BD-024's skill library.
 
 ---
 
 **BD-023 — Mixed-language skills for Apple projects (Objective-C, C, C++, graphics)**
 Type: TODO(version)
-Status: Open
+Status: Deprecated
 Blockers:
   - BD-022 must be completed first — c-language skill is shared between C template and Apple projects
 Unblocks: None
@@ -180,7 +192,11 @@ Description: Apple projects may contain Objective-C (legacy code), C (performanc
   `objc-project-template` is out of scope unless a concrete project need arises.
 Context: Skills-only approach chosen over a new template. Graphics engine skills deferred
   until a concrete project need arises — they are too engine-specific to define speculatively.
-Resolved: n/a
+Resolution: April 2026, deprecated — superseded by BD-024 (unified template and
+  platform skills redesign). The Apple-specific framing is dropped; all skills
+  (objc-language, c-language, cpp-language, graphics engine skills) become part of
+  the unified skill library available to any project. Skill content from this item
+  is fully preserved in BD-024.
 
 ---
 
@@ -212,6 +228,209 @@ All BD-001 through BD-019 items resolved across Groups 1–6.
 
 ---
 
+**BD-024 — Unified template and platform skills redesign**
+Type: TODO(version)
+Status: Open
+Blockers:
+  - v9 planning conversation needed to finalize skill boundaries and script strategy
+Unblocks: BD-020 (C++ analysis outcome depends on unified model being settled)
+File/Symbol: n/a — replaces three template directories with one; new skill library
+Description: Replace the three template directories (apple-app-template,
+  python-server-template, apple-app-plus-python-server-template) with a single
+  unified template containing platform-agnostic agents and a composable skill
+  library. The PM chat selects the appropriate skills per project at prompt
+  generation time based on the project's platform profile in CLAUDE.md.
+
+  **Motivation:** Adding any new platform (Android, Windows, C++ server, embedded)
+  currently requires a new template directory with ~25 duplicated files. This is
+  unsustainable. Under the unified model, adding a platform requires only new skill
+  files and a documentation update — no new agents, no new template directories.
+
+  **Agent changes:**
+  - `apple-architect` and `python-architect` merge into a single `architect` agent
+    with a platform-agnostic system prompt. Platform knowledge comes from skills.
+  - All other agents (coder, reviewer, tester, docs-researcher, planner, repo-ops,
+    grpc-schema) are already platform-agnostic — no changes required.
+  - Agent files move from three template directories into one.
+
+  **Skill library to create** (all skills are platform-agnostic and composable):
+  - `swift-best-practices` — Swift language, concurrency, type system, Swift 6 rules
+  - `apple-architecture-core` — patterns shared across all Apple platforms: SwiftUI,
+    protocol abstractions, actor isolation, typed IDs, LSP compliance, SPM structure
+  - `ios-architecture` — iOS/iPadOS-specific: scene lifecycle, UIKit interop,
+    background tasks, App Store boundaries, touch-first interaction model
+  - `macos-architecture` — macOS-specific: NSDocument, multiple NSWindow management,
+    AppDelegate, menu bar, AppKit interop, sandbox, notarization, Services integration
+  - `python-best-practices` — Python patterns, async, type hints, ruff/pyright rules
+  - `grpc-patterns` — Protobuf schema design, gRPC service patterns, buf tooling
+  - `c-language` — memory ownership, pointer safety, buffer handling, const
+    correctness, header guards, Swift/Python interop (from BD-022)
+  - `objc-language` — ARC, nullability annotations, bridging headers, NS_SWIFT_NAME,
+    legacy code modification patterns (from BD-023)
+  - `cpp-language` — RAII, smart pointers, Swift-C++ interop, header organization,
+    rule of five, C++ anti-patterns (from BD-023)
+
+  **Skill selection by project type** (PM chat uses this at prompt generation time):
+  - macOS Swift app: swift-best-practices + apple-architecture-core + macos-architecture
+  - iOS Swift app: swift-best-practices + apple-architecture-core + ios-architecture
+  - Universal app: swift-best-practices + apple-architecture-core + ios-architecture
+    + macos-architecture
+  - Python gRPC server: python-best-practices + grpc-patterns
+  - Swift app + Python runtime (e.g., embedded interpreter): swift-best-practices
+    + macos-architecture + c-language (Python C API is the bridge)
+  - Mixed-language Apple: add objc-language or cpp-language as needed
+
+  **Scripts:** bootstrap.sh, validate.sh, format.sh require platform-aware logic or
+  a lightweight generator that assembles the correct script content at project setup
+  time based on answered platform questions. Strategy to be decided during v9 planning.
+
+  **METHODOLOGY.md update required:** Add a skill-selection section describing how
+  the PM chat determines which skills to load for a given project type, and where
+  the project's platform profile is declared (CLAUDE.md).
+
+  **Deferred to future items:**
+  - Android, Windows, embedded platform skills — new skill files only when needed
+  - watchOS, visionOS, tvOS — apple-architecture-core covers shared patterns;
+    platform-specific skills to be added when a concrete project need arises
+  - Graphics engine skills (Metal-cpp, Unity, Unreal) — deferred per BD-023
+  - Codex (.codex/) port — Claude Code version must be stable first
+
+Context: Emerged from April 2026 design analysis. The three existing template
+  directories are structurally identical — only CLAUDE.md and a few agent files
+  differ per platform. The real platform specialization already flows through
+  documents (ARCHITECTURE.md, CLAUDE.md), not agents. Skills make this explicit
+  and extensible. BD-021, BD-022, and BD-023 are deprecated into this item;
+  all skill content from those items is preserved here.
+Resolved: n/a
+
+---
+
+**BD-025 — Update DEPENDENCIES.md for Codex and Gemini CLIs**
+Type: TODO(version)
+Status: Open
+Blockers: None — independent of BD-024; can run in parallel
+Unblocks: None
+File/Symbol: supporting-docs/DEPENDENCIES.md
+Description: DEPENDENCIES.md currently documents only Claude Code CLI and
+  project-level tools (Swift, Python, buf, etc.). Codex CLI and Gemini CLI are
+  not listed. Node.js (required by Gemini CLI) is not listed. Add: Codex CLI
+  installation and version requirements; Gemini CLI installation (npm global);
+  Node.js as a shared dependency; any future C/C++ toolchain entries.
+Context: Part of BD-024 Step 12 scope. Can be drafted independently.
+Resolved: n/a
+
+---
+
+**BD-026 — Split scripts by language/platform**
+Type: TODO(version)
+Status: Open
+Blockers: BD-024 Step 3 (unified template structure must be confirmed first)
+Unblocks: None
+File/Symbol: scripts/ directory in unified template
+Description: The current monolithic format.sh and validate.sh handle all
+  languages with nested conditionals. Under the unified template, language-specific
+  scripts (format-swift.sh, format-python.sh, validate-swift.sh, validate-python.sh,
+  validate-proto.sh, bootstrap-swift.sh, bootstrap-python.sh, test-swift.sh,
+  test-python.sh) replace the monoliths. Thin wrapper scripts (format.sh,
+  validate.sh, bootstrap.sh, test.sh) detect the project type and call the
+  appropriate language-specific scripts. agent-post-edit-check.sh becomes
+  language-aware. agent-run.sh is updated for the v9 agent roster and Gemini CLI.
+  proto-gen.sh is carried forward unchanged.
+Context: Part of BD-024 Step 9. See V9-DESIGN.md Decision 4 for full rationale.
+Resolved: n/a
+
+---
+
+**BD-027 — Auditor agent design and implementation**
+Type: TODO(version)
+Status: Open
+Blockers: BD-024 Steps 4 and 6 (skill library and Claude agent patterns must
+  exist before auditor design is finalized)
+Unblocks: None
+File/Symbol: .claude/agents/, .codex/agents/, GEMINI.md,
+  supporting-docs/METHODOLOGY.md, supporting-docs/PROMPT-TEMPLATES.md,
+  .claude/skills/audit-methodology/
+Description: Add a new auditor agent for full-codebase structural audits.
+  Unlike reviewer (per-phase) and tester (pre-implementation strategy), the
+  auditor is retrospective and periodic — run after multiple phases to find
+  systemic gaps. Uses a parent + six subagent architecture: audit-architecture,
+  audit-code, audit-tests, audit-docs, audit-security, audit-ui. Parent
+  coordinates subagents and consolidates their reports. Requires a new
+  audit-methodology skill. Also serves as the pack's reference example of
+  subagent orchestration. Evaluate Templates 9-12 in PROMPT-TEMPLATES.md for
+  revision or deprecation.
+Context: Part of BD-024 Steps 10-11. See V9-DESIGN.md Decision 6 for full design.
+Resolved: n/a
+
+---
+
+**BD-028 — PM-CHAT.md expansion for all three tools**
+Type: TODO(version)
+Status: Open
+Blockers: BD-024 Steps 3 and 4 (structure confirmed, skill names finalized)
+Unblocks: None
+File/Symbol: PM-CHAT.md (template), supporting-docs/PM-CHAT.md (source),
+  PLATFORM-SKILLS.md (new), GEMINI.md (new project template file),
+  .claude/skills/pm-startup/SKILL.md
+Description: The current PM-CHAT.md covers only Claude PM chat architecture.
+  Expand to cover: Claude Web Projects, Gemini CLI, and ChatGPT Web / Codex
+  — each with startup procedures, file write mechanisms, context compression,
+  and cross-tool switching guidance. Create PLATFORM-SKILLS.md (skill-selection
+  matrix by project type and agent). Create GEMINI.md project template context
+  file. Update pm-startup skill to include PLATFORM-SKILLS.md in RAG check.
+  Decide and document whether pm-startup is ported to Codex and Gemini.
+Context: Part of BD-024 Step 5. See V9-DESIGN.md Part 3 for PM chat architecture.
+Resolved: n/a
+
+---
+
+**BD-029 — Pack self-validation CI/CD**
+Type: TODO(version)
+Status: Open
+Blockers: BD-024 Steps 3-12 (files being validated must exist first)
+Unblocks: None
+File/Symbol: .github/workflows/ (new)
+Description: Add a GitHub Actions workflow that validates on every push to the
+  pack repo: all SKILL.md files have valid frontmatter (name, description,
+  allowed-tools); all .codex/agents/*.toml files parse correctly; no BACKLOG.md
+  entries contain TD-TBD sentinels; README.md version table is consistent with
+  the most recent git tag. Deliberate structural errors should cause clear
+  workflow failures.
+Context: Post-v9, after all v9 files exist. See V9-DESIGN.md Step 14.
+Resolved: n/a
+
+---
+
+**BD-030 — TOOL-COMPARISON.md living capability reference**
+Type: TODO(version)
+Status: Resolved
+Blockers: None
+Unblocks: None
+File/Symbol: supporting-docs/TOOL-COMPARISON.md
+Description: Create a structured, date-stamped capability reference covering
+  all three AI tools: PM chat capability matrix, agent invocation differences,
+  skill loading mechanisms, approval model defaults, context window guidance,
+  and cost routing. Supersedes GEMINI-CLI-ANALYSIS.md and ANDROID-ANALYSIS.md.
+Context: Created during v9 planning phase. Committed as part of v8.10.
+Resolved: April 2026, v8.10 planning docs commit.
+
+---
+
 ## Deferred
+
+**BD-031 — Evaluate publishing pack skills to skills.sh**
+Type: TODO(version)
+Status: Deferred
+Blockers: BD-024 (skills must be stable and complete before publication)
+Unblocks: None
+File/Symbol: n/a — external publication; no pack files change
+Description: skills.sh (Vercel's cross-platform skill package manager,
+  npx skills add) is becoming the standard install method for agent skills
+  across Claude Code, Codex, and Gemini CLI. Publishing pack skills there
+  would enable one-command installation for new projects. Evaluate feasibility,
+  naming conventions, and versioning strategy for publishing the pack's Tier 1
+  and Tier 2 skill libraries.
+Context: Deferred until v9 skills are stable. See V9-DESIGN.md Decision 3.
+Resolved: n/a
 
 *(Items move here when pushed to a future version beyond v9, with the target version noted)*

@@ -7,6 +7,47 @@ Each version is available as a git tag (v1, v2, …).
 
 ## v8 — March 2026
 
+### v8.10 — April 2026
+
+**v9 planning documents**
+
+- `supporting-docs/V9-DESIGN.md` — authoritative design record for v9: 8 design
+  decisions with rationale and rejected alternatives, PM chat architecture for all
+  three tools, full documentation change inventory, backlog map (BD-020–031),
+  15-step implementation sequence with success criteria. Do not modify without
+  explicit approval.
+- `supporting-docs/TOOL-COMPARISON.md` — living capability reference for Claude,
+  Codex, and Gemini: PM chat capability matrix (7 surfaces), agent invocation
+  differences (including agent-run.sh, local model support, model profiles), skill
+  loading mechanisms, approval model defaults, context window and cost guidance,
+  cross-tool operational differences. Supersedes GEMINI-CLI-ANALYSIS.md and
+  ANDROID-ANALYSIS.md.
+- `BACKLOG.md` — added BD-025 through BD-031; BD-030 resolved (TOOL-COMPARISON.md
+  committed in this version); BD-031 deferred post-v9.
+
+**Branch strategy**
+
+- `v9-dev` branch created from this commit. All v9 implementation work (Steps 2–15
+  from V9-DESIGN.md) proceeds on `v9-dev`. The `main` branch continues v8.x patches
+  independently.
+
+---
+
+### v8.9 — April 9, 2026
+
+**Scripts**
+
+- `agent-run.sh` added to all three templates (apple-app, python-server, monorepo)
+  — standard launcher for Claude Code and Codex CLI agents; automatically applies
+  read-only permission flags (`--permission-mode bypassPermissions`,
+  `--disallowedTools git commit/push` for Claude; `--sandbox read-only`,
+  `-a never` for Codex) to agents that should never write source files (reviewer,
+  planner, apple-architect, docs-researcher, grpc-schema); write-permission agents
+  (coder, tester, repo-ops) run with default permissions. Place in project root and
+  use in place of direct `claude` / `codex` invocation for consistent flag behavior.
+
+---
+
 ### v8.8 — April 7, 2026
 
 **Pack CLI chat support**
