@@ -353,8 +353,8 @@ File/Symbol: .claude/agents/, .codex/agents/, GEMINI.md,
 Description: Add a new auditor agent for full-codebase structural audits.
   Unlike reviewer (per-phase) and tester (pre-implementation strategy), the
   auditor is retrospective and periodic — run after multiple phases to find
-  systemic gaps. Uses a parent + six subagent architecture: audit-architecture,
-  audit-code, audit-tests, audit-docs, audit-security, audit-ui. Parent
+  systemic gaps. Uses a parent + six subagent architecture: auditor-architecture,
+  auditor-code, auditor-tests, auditor-docs, auditor-security, auditor-ui. Parent
   coordinates subagents and consolidates their reports. Requires a new
   audit-methodology skill. Also serves as the pack's reference example of
   subagent orchestration. Evaluate Templates 9-12 in PROMPT-TEMPLATES.md for

@@ -16,8 +16,8 @@ prompts generated at implementation time by the PM chat.
 
 **Part 1** — Why v9 exists: the problem statement.
 **Part 2** — Settled design decisions with rationale and rejected alternatives.
-  Decisions 1–8 are written here. Decision 9 (unified template structural
-  specification) is added as part of Step 3 implementation.
+  Decisions 1–9. Decision 9 (unified template structural specification) was
+  added during Step 3 implementation.
 **Part 3** — PM chat architecture: how the PM chat works across all three major tools.
 **Part 4** — New, changed, and removed documentation.
 **Part 5** — Backlog map: every BD item and its v9 disposition.
@@ -335,19 +335,19 @@ to reference when designing their own multi-agent workflows.
 
 Six subagents, each covering a semantically coherent cluster of audit dimensions:
 
-- `audit-architecture` — architecture compliance + design quality (layer
+- `auditor-architecture` — architecture compliance + design quality (layer
   boundaries, LSP compliance, concrete type leakage, SOLID adherence, coupling,
   interface uniformity)
-- `audit-code` — coding best practices + performance patterns (language-specific
+- `auditor-code` — coding best practices + performance patterns (language-specific
   idioms, error handling, dead code, identifiable performance anti-patterns
   causing measurable problems)
-- `audit-tests` — test quality (coverage gaps, test design quality, isolation,
+- `auditor-tests` — test quality (coverage gaps, test design quality, isolation,
   missing edge cases)
-- `audit-docs` — documentation accuracy (markdown vs. actual code, stale
+- `auditor-docs` — documentation accuracy (markdown vs. actual code, stale
   descriptions, wrong file paths, CHANGELOG drift)
-- `audit-security` — security (credential exposure, unsafe deserialization,
+- `auditor-security` — security (credential exposure, unsafe deserialization,
   injection vectors, sensitive data in logs)
-- `audit-ui` — UI/UX compliance + deployment readiness (view thickness,
+- `auditor-ui` — UI/UX compliance + deployment readiness (view thickness,
   accessibility, incomplete states, platform-specific deployment config:
   signing/notarization for Apple, container security for Python)
 
@@ -396,6 +396,14 @@ updated in the same commit or the immediately following one:
 
 This is non-trivial by design. An agent or skill that cannot be fully documented
 across these files is not ready to be added to the pack.
+
+**Subagent naming convention:** Subagents use the pattern `<parent>-<scope>`
+where `<parent>` is the parent agent name and `<scope>` describes the
+subagent's focus area. Examples: `auditor-architecture`, `auditor-code`. The
+parent agent file uses the base name only (`auditor`). This convention applies
+to all tools — Claude (`.md`), Codex (`.toml`), and Gemini (GEMINI.md
+sections). The convention is also documented in METHODOLOGY.md Part 3 for
+project-level use.
 
 **Project-level customization — permitted with caution:**
 
@@ -500,6 +508,254 @@ decisions and must be able to route correctly from the documented table alone.
   selection matrix, not the agent routing table. Mixing concerns would bloat it.
 - *Keep implicit judgment:* Rejected — produces inconsistent behavior and breaks
   down on fresh sessions and cross-tool switches.
+
+---
+
+### Decision 9 — Unified template structural specification
+
+**Decision:** The unified template lives at `project-template/` in the pack
+repo. It replaces the three existing template directories. A new project is
+started by copying `project-template/` to the project directory, removing
+conditional files not needed for the project type, running the setup process
+to distribute skills to each tool's expected location, and copying product
+docs from `supporting-docs/`.
+
+**Complete file tree:**
+
+```
+project-template/
+├── skills/                              ← canonical source for all SKILL.md files
+│   ├── api-design/SKILL.md
+│   ├── apple-architecture-core/SKILL.md
+│   ├── architecture-review/SKILL.md
+│   ├── audit-methodology/SKILL.md
+│   ├── c-language/SKILL.md
+│   ├── cpp-language/SKILL.md
+│   ├── debugging/SKILL.md
+│   ├── dependency-intake/SKILL.md
+│   ├── deployment-apple/SKILL.md
+│   ├── deployment-python/SKILL.md
+│   ├── documentation/SKILL.md
+│   ├── error-handling/SKILL.md
+│   ├── grpc-patterns/SKILL.md
+│   ├── implementation/SKILL.md
+│   ├── ios-architecture/SKILL.md
+│   ├── macos-architecture/SKILL.md
+│   ├── objc-language/SKILL.md
+│   ├── planning/SKILL.md
+│   ├── pm-startup/SKILL.md
+│   ├── python-architecture/SKILL.md
+│   ├── python-best-practices/SKILL.md
+│   ├── repo-ops/SKILL.md
+│   ├── review/SKILL.md
+│   ├── security-patterns/SKILL.md
+│   ├── swift-best-practices/SKILL.md
+│   ├── testing/SKILL.md
+│   └── ui-test-strategy/SKILL.md
+├── .claude/
+│   ├── agents/
+│   │   ├── architect.md
+│   │   ├── auditor.md
+│   │   ├── auditor-architecture.md
+│   │   ├── auditor-code.md
+│   │   ├── auditor-docs.md
+│   │   ├── auditor-security.md
+│   │   ├── auditor-tests.md
+│   │   ├── auditor-ui.md
+│   │   ├── coder.md
+│   │   ├── docs-researcher.md
+│   │   ├── grpc-schema.md
+│   │   ├── planner.md
+│   │   ├── repo-ops.md
+│   │   ├── reviewer.md
+│   │   └── tester.md
+│   ├── settings.json
+│   └── settings.local.example.json
+├── .codex/
+│   ├── agents/
+│   │   ├── architect.toml
+│   │   ├── auditor.toml
+│   │   ├── auditor-architecture.toml
+│   │   ├── auditor-code.toml
+│   │   ├── auditor-docs.toml
+│   │   ├── auditor-security.toml
+│   │   ├── auditor-tests.toml
+│   │   ├── auditor-ui.toml
+│   │   ├── coder.toml
+│   │   ├── docs-researcher.toml
+│   │   ├── grpc-schema.toml
+│   │   ├── planner.toml
+│   │   ├── repo-ops.toml
+│   │   ├── reviewer.toml
+│   │   └── tester.toml
+│   ├── config.toml
+│   └── requirements.toml
+├── .gemini/
+│   └── (no files — Gemini agent behavior is defined in GEMINI.md sections)
+├── scripts/
+│   ├── format.sh                    ← wrapper
+│   ├── format-swift.sh
+│   ├── format-python.sh
+│   ├── validate.sh                  ← wrapper
+│   ├── validate-swift.sh
+│   ├── validate-python.sh
+│   ├── validate-proto.sh
+│   ├── bootstrap.sh                 ← wrapper
+│   ├── bootstrap-swift.sh
+│   ├── bootstrap-python.sh
+│   ├── test.sh                      ← wrapper
+│   ├── test-swift.sh
+│   ├── test-python.sh
+│   ├── proto-gen.sh
+│   └── agent-post-edit-check.sh
+├── proto/                            ← conditional: remove if no gRPC/protobuf
+│   ├── buf.gen.yaml
+│   ├── buf.yaml
+│   ├── common/v1/common.proto
+│   └── example/v1/example_service.proto
+├── server/                           ← conditional: remove if no Python
+│   ├── src/app/__init__.py
+│   └── tests/test_smoke.py
+├── CLAUDE.md
+├── AGENTS.md
+├── GEMINI.md
+├── PM-CHAT.md
+├── PLATFORM-SKILLS.md
+├── .mcp.json.example
+├── .gitignore
+├── README.md
+├── agent-run.sh
+├── pyproject.toml                    ← conditional: remove if no Python
+└── pyrightconfig.json                ← conditional: remove if no Python
+```
+
+**Skill deduplication:** Skills exist once in `skills/` at the template root.
+No `.claude/skills/`, `.codex/skills/`, or `.gemini/skills/` directories exist
+in the template. At project setup time, the setup process (bootstrap.sh or
+QUICKSTART.md steps) copies skills into each tool's expected location:
+
+- `skills/<name>/SKILL.md` → `.claude/skills/<name>/SKILL.md`
+- `skills/<name>/SKILL.md` → `.codex/skills/<name>/SKILL.md` (setup also
+  generates the `agents/openai.yaml` file per skill — content is `enabled: true`)
+- `skills/<name>/SKILL.md` → `.gemini/skills/<name>/SKILL.md`
+
+This eliminates maintaining 25 × 3 = 75 identical files. The canonical source
+is `skills/` and it is the only copy maintained in the pack repo.
+
+**Agents (15):** `architect` (merged from apple-architect + python-architect),
+`auditor` (new parent), 6 auditor subagents (new: `auditor-architecture`,
+`auditor-code`, `auditor-docs`, `auditor-security`, `auditor-tests`,
+`auditor-ui`), `coder`, `docs-researcher`, `grpc-schema` (kept as dedicated
+agent per Decision 9 structural rule 6), `planner`, `repo-ops`, `reviewer`,
+`tester`.
+
+**Skills (25):** 12 Tier 1 role skills carried forward from v8.9 (`api-design`,
+`architecture-review`, `debugging`, `dependency-intake`, `documentation`,
+`error-handling`, `implementation`, `planning`, `pm-startup`,
+`python-architecture`, `repo-ops`, `review`, `testing`, `ui-test-strategy`).
+13 Tier 2 platform skills new in v9 (`swift-best-practices`,
+`apple-architecture-core`, `ios-architecture`, `macos-architecture`,
+`python-best-practices`, `grpc-patterns`, `c-language`, `objc-language`,
+`cpp-language`, `audit-methodology`, `deployment-apple`, `deployment-python`,
+`security-patterns`). The v8.9 `grpc-schema` Tier 1 skill is superseded by
+`grpc-patterns` Tier 2. The v8.9 `ios-architecture` Tier 1 skill is replaced
+by `ios-architecture` Tier 2 (merged content).
+
+**File categories:**
+
+| Category | Rule | Examples |
+|---|---|---|
+| Always included | Present in every project | All 15 agents, all 25 skills, all scripts, config files (.claude/, .codex/), context files (CLAUDE.md, AGENTS.md, GEMINI.md), PM-CHAT.md, PLATFORM-SKILLS.md, .mcp.json.example, .gitignore, README.md, agent-run.sh |
+| Conditional — Python | Remove if project does not use Python | pyproject.toml, pyrightconfig.json, server/ |
+| Conditional — Proto | Remove if project does not use gRPC/protobuf | proto/ |
+| Not in template — copied at setup | Copied from `supporting-docs/` per QUICKSTART.md | METHODOLOGY.md, PROMPT-TEMPLATES.md |
+| Not in template — pack reference | Developer reads from pack; never copied | QUICKSTART.md, DEPENDENCIES.md, CLI-PM-SETUP.md, SETUP_TEMPLATE.md, AGENT_KICKOFF_TEMPLATE.md, migration guides |
+| Not in template — pack maintenance | Pack maintainers only | Everything in `maintenance-docs/` |
+
+**Structural rules:**
+
+1. **All skills are always present.** Every Tier 1 and Tier 2 skill exists in
+   the template regardless of project type. The PM chat selects which skills to
+   reference in agent prompts via PLATFORM-SKILLS.md. Unused skills are inert —
+   their descriptions are specific enough that they do not activate in unrelated
+   contexts.
+
+2. **All scripts are always present.** Wrapper scripts detect which languages
+   are present via marker files and call only the relevant language-specific
+   scripts. Unused language-specific scripts are never called.
+
+3. **Platform detection uses marker files.** Wrapper scripts detect project
+   type by checking for: `Package.swift` or `*.xcodeproj` → Swift;
+   `pyproject.toml` → Python; `proto/` directory → protobuf/gRPC. Multiple
+   markers can coexist (monorepo).
+
+4. **Conditional files are removed at setup time, not generated.** The template
+   includes Python and proto files. QUICKSTART.md setup instructions tell the
+   developer which to remove based on project type. No generator script is
+   required.
+
+5. **Three parallel skill directories in the project, one in the template.**
+   The template stores skills once in `skills/`. At setup time, they are
+   distributed to `.claude/skills/`, `.codex/skills/`, and `.gemini/skills/`.
+   No file with identical content exists in more than one location in the
+   template.
+
+6. **grpc-schema remains a dedicated agent.** Its scope (proto schema review,
+   field evolution, buf validation) is distinct from the architect's scope.
+   The Tier 1 `grpc-schema` skill is superseded by the Tier 2 `grpc-patterns`
+   skill; the agent is unchanged.
+
+7. **agent-run.sh stays at project root.** It is a top-level launcher invoked
+   directly by the developer, not a helper called by other scripts.
+
+8. **Python source layout uses `server/` prefix.** This namespaces Python code
+   for monorepo compatibility. Standalone Python projects may flatten it per
+   QUICKSTART.md guidance.
+
+9. **METHODOLOGY.md and PROMPT-TEMPLATES.md are not in the template.** They
+   are copied from `supporting-docs/` during setup. This ensures projects get
+   the version current at setup time and allows the pack to update these files
+   independently of the template.
+
+**Pack-root directory summary (not part of template):**
+
+| Directory / File | Purpose |
+|---|---|
+| `project-template/` | Unified template — copied to new projects |
+| `supporting-docs/` | Pack product docs — copied to or consumed by projects |
+| `maintenance-docs/` | Pack maintainer docs — design records, analysis, archives |
+| `shared-docs/` | Reference notes, iOS 26 docs (gitignored content) |
+| `xcode-companion-templates/` | Machine-level Xcode AI config |
+| `vscode-companion-templates/` | Machine-level VS Code config |
+| `QUICKSTART.md`, `README.md`, `CHANGELOG.md`, `BACKLOG.md` | Pack-level docs |
+| `PACK-CHAT.md`, `PACK-AGENTS.md` | Pack CLI chat instructions and routing |
+| `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` | Pack repo agent context (not templates) |
+| `sync-xcode-docs.sh` | iOS 26 doc sync script |
+
+**Disposition of existing template directories:** The three existing
+directories (`apple-app-template/`, `python-server-template/`,
+`apple-app-plus-python-server-template/`) are removed from the repo after
+v9 implementation is complete and the migration guide (Step 13) is tested.
+They are not retained alongside the unified template.
+
+**Rationale:** A single template with conditional removal is simpler than a
+generator, requires no build step, and is transparent. All skills and scripts
+are always present because the cost of unused files is negligible compared to
+the complexity of conditional inclusion logic. Three parallel skill directories
+in the project match each tool's native convention; a single canonical source
+in the template eliminates maintenance duplication.
+
+**Alternatives rejected:**
+- *Generator script that assembles per-project:* Adds tooling complexity and a
+  build step. Conditional removal achieves the same result.
+- *Separate skill directories per project type:* Combinatorial explosion;
+  contradicts composability.
+- *Three copies of skills in the template:* Maintaining 25 × 3 identical files
+  is error-prone. A single canonical source with setup-time distribution is
+  simpler and eliminates drift.
+- *Flatten Python layout at template level:* The `server/` prefix prevents
+  filename collisions in monorepos. Flattening is a project choice, not a
+  template decision.
 
 ---
 
