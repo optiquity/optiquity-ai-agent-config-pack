@@ -53,9 +53,7 @@ always points to the latest minor of that major version.
 ├── vscode-companion-templates/             Machine-level VS Code config (v8+)
 ├── shared-docs/                            Reference notes
 │   └── ios26/                              ← gitignored; sync via sync-xcode-docs.sh
-├── supporting-docs/                        Guides, best practices, origin documents
-│   ├── origins/                            Chat transcripts from pack creation
-│   ├── guides/                             Per-version setup guides (.docx)
+├── supporting-docs/                        Pack product docs (copied to or consumed by projects)
 │   ├── METHODOLOGY.md                      Universal project methodology (v8+)
 │   ├── PROMPT-TEMPLATES.md                 Agent prompt templates (v8+)
 │   ├── PM-CHAT.md                          PM chat startup instructions template (v8.7+)
@@ -63,11 +61,14 @@ always points to the latest minor of that major version.
 │   ├── DEPENDENCIES.md                     Tool dependencies reference (v8.6+)
 │   ├── SETUP_TEMPLATE.md                   New project setup template (v8+)
 │   ├── AGENT_KICKOFF_TEMPLATE.md           Architecture kickoff template (v8+)
-│   ├── MIGRATION-v7-to-v8.md               Upgrade guide (v8+)
+│   └── MIGRATION-v7-to-v8.md               Upgrade guide (v8+)
+├── maintenance-docs/                       Pack maintainer docs (design records, analysis, archives)
+│   ├── origins/                            Source material and chat transcripts
+│   ├── guides/                             Per-version setup guides (.docx)
 │   ├── V9-DESIGN.md                        v9 architecture design record (v8.10+)
 │   ├── TOOL-COMPARISON.md                  Cross-tool capability reference (v8.10+)
-│   ├── GEMINI-CLI-ANALYSIS.md              Gemini CLI integration analysis (v8+, superseded by TOOL-COMPARISON.md)
-│   └── ANDROID-ANALYSIS.md                 Android support analysis (v8+, superseded by TOOL-COMPARISON.md)
+│   ├── GEMINI-CLI-ANALYSIS.md              Gemini CLI integration analysis (deprecated)
+│   └── ANDROID-ANALYSIS.md                 Android support analysis (deprecated)
 ├── QUICKSTART.md                           Quick start (v6+)
 ├── PACK-CHAT.md                            Pack CLI chat startup instructions (v8.8+)
 ├── BACKLOG.md                              Pack improvement backlog (v8+, was V8-BACKLOG.md)

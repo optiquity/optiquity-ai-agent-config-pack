@@ -24,7 +24,7 @@ prompts generated at implementation time by the PM chat.
 **Part 6** — Implementation sequence: ordered steps with problem, goal, success,
   dependencies, and BD cross-references.
 
-Tool capability reference lives in `supporting-docs/TOOL-COMPARISON.md`.
+Tool capability reference lives in `maintenance-docs/TOOL-COMPARISON.md`.
 That document is versioned separately and updated as tools evolve.
 
 ---
@@ -387,7 +387,7 @@ updated in the same commit or the immediately following one:
 | `PACK-AGENTS.md` (pack repo) | Update the pack repo's agent routing table for pack development workflows |
 | `PLATFORM-SKILLS.md` | Add skill to selection matrix if it changes skill combinations |
 | `supporting-docs/DEPENDENCIES.md` | Add any new tool dependencies the agent or skill requires |
-| `supporting-docs/TOOL-COMPARISON.md` | Add agent if its behavior differs meaningfully across tools |
+| `maintenance-docs/TOOL-COMPARISON.md` | Add agent if its behavior differs meaningfully across tools |
 | `supporting-docs/METHODOLOGY.md` | Add a workflow entry if the agent introduces a new workflow |
 | `supporting-docs/PROMPT-TEMPLATES.md` | Add a prompt template for the new agent |
 | `QUICKSTART.md` | Update if setup steps change for new projects |
@@ -595,7 +595,7 @@ is a focused reference that any PM chat can read at prompt-generation time.
 | `PLATFORM-SKILLS.md` | Template root | PM chat skill-selection matrix by project type and agent |
 | `supporting-docs/MIGRATION-v8-to-v9.md` | supporting-docs/ | Upgrade guide for existing projects |
 
-*Note: `supporting-docs/TOOL-COMPARISON.md` was created during the v9 planning
+*Note: `maintenance-docs/TOOL-COMPARISON.md` was created during the v9 planning
 phase and committed in Step 1. It does not need to be created during implementation.*
 
 ### Documents to expand or restructure
@@ -621,7 +621,7 @@ template and require no structural changes in v9:
 - `shared-docs/` — reference notes and iOS 26 documentation; stays at pack root
 - `sync-xcode-docs.sh` — iOS 26 doc sync script; stays at pack root
 - `vscode-companion-templates/` — machine-level VS Code config; stays at pack root
-- `supporting-docs/swift-python-best-practices-v3.md` — source reference for
+- `maintenance-docs/origins/swift-python-best-practices-v3.md` — source reference for
   skill content in Step 4; will be explicitly cited in skill file development
 
 The `xcode-companion-templates/` directory stays at pack root but its
@@ -632,8 +632,8 @@ table above).
 
 | Document | Action |
 |---|---|
-| `supporting-docs/GEMINI-CLI-ANALYSIS.md` | Absorb key findings into TOOL-COMPARISON.md; deprecate original |
-| `supporting-docs/ANDROID-ANALYSIS.md` | Absorb key findings into TOOL-COMPARISON.md; deprecate original |
+| `maintenance-docs/GEMINI-CLI-ANALYSIS.md` | Absorb key findings into TOOL-COMPARISON.md; deprecate original |
+| `maintenance-docs/ANDROID-ANALYSIS.md` | Absorb key findings into TOOL-COMPARISON.md; deprecate original |
 
 ### Documents that remain structurally stable
 
@@ -767,7 +767,7 @@ merged, or conditionally generated:
   (language-specific — must not appear in Swift-only projects)
 - Pack root items that stay at pack root (not in unified template):
   `shared-docs/`, `sync-xcode-docs.sh`, `xcode-companion-templates/`,
-  `vscode-companion-templates/`, `supporting-docs/`
+  `vscode-companion-templates/`, `supporting-docs/`, `maintenance-docs/`
 - Template-level docs: `README.md`, `QUICKSTART.md`, `AGENT_KICKOFF_TEMPLATE.md`
 
 **Goal:** A written structural specification exists — added as a new Decision 9
@@ -815,7 +815,7 @@ former `ios-architecture` Tier 1 skill. A spot-check of three Tier 2 skills
 across Claude Code, Codex, and Gemini CLI confirms each loads correctly and
 activates when expected. The `audit-methodology` skill produces consistent
 report structure across tools. The `swift-best-practices` and
-`python-best-practices` skills reference `supporting-docs/swift-python-best-practices-v3.md`
+`python-best-practices` skills reference `maintenance-docs/origins/swift-python-best-practices-v3.md`
 as a source in their content.
 
 **Depends on:** Step 3 (structure must be confirmed before skill file locations
@@ -1196,7 +1196,7 @@ All gaps found are resolved before the `v9-dev` branch is merged to main.
 
 **Success looks like:** A written audit report exists covering all eight
 categories above, with a finding of either "pass" or a listed gap for each
-item. All gaps are resolved. The report is committed to `supporting-docs/` as
+item. All gaps are resolved. The report is committed to `maintenance-docs/` as
 `V9-AUDIT-REPORT.md`. The `v9-dev` branch is approved for merge to main.
 
 **Depends on:** Steps 3–14 complete and passing.

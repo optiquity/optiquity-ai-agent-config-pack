@@ -30,7 +30,7 @@ Blockers:
   - BD-024 unified template redesign must be completed first — analysis outcome
     determines skills needed, not a new template directory
 Unblocks: None
-File/Symbol: n/a — new file `supporting-docs/CPP-SERVER-ANALYSIS.md` to be created
+File/Symbol: n/a — new file `maintenance-docs/CPP-SERVER-ANALYSIS.md` to be created
 Description: C++ is a common choice for high-performance gRPC servers and
   systems-level services. Under the unified template model (BD-024), this analysis
   determines what skills are needed rather than whether a new template directory
@@ -217,7 +217,7 @@ All BD-001 through BD-019 items resolved across Groups 1–6.
 | BD-009 | Add PROMPT-TEMPLATES.md to supporting-docs (14 templates) | 2fc4a0c |
 | BD-010 | Update QUICKSTART.md Steps 11–13 for PM chat and new-project workflow | 2fc4a0c |
 | BD-011 | Add VS Code companion files in vscode-companion-templates/ | 61b3381 |
-| BD-012 | Commit Methodology Guide v1 to supporting-docs/origins/ | 2fc4a0c |
+| BD-012 | Commit Methodology Guide v1 to maintenance-docs/origins/ | 2fc4a0c |
 | BD-013 | Gemini CLI analysis document | 9a6ba5b |
 | BD-014 | Android support analysis document | 9a6ba5b |
 | BD-015 | Document SETUP.md/AGENT_KICKOFF.md generation workflow | 2fc4a0c |
@@ -406,7 +406,7 @@ Type: TODO(version)
 Status: Resolved
 Blockers: None
 Unblocks: None
-File/Symbol: supporting-docs/TOOL-COMPARISON.md
+File/Symbol: maintenance-docs/TOOL-COMPARISON.md
 Description: Create a structured, date-stamped capability reference covering
   all three AI tools: PM chat capability matrix, agent invocation differences,
   skill loading mechanisms, approval model defaults, context window guidance,

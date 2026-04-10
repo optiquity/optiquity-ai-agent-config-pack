@@ -49,7 +49,7 @@ Where N is the current major version (read from README.md version table).
 
 **What agents may modify:**
 - Any file in template directories when the task explicitly requires it
-- Files in supporting-docs/ when the task explicitly requires it
+- Files in supporting-docs/ or maintenance-docs/ when the task explicitly requires it
 - CHANGELOG.md only at version boundaries with explicit instruction
 - Scripts in template directories
 
