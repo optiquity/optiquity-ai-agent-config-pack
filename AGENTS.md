@@ -1,51 +1,57 @@
 # AGENTS.md — AI Agent Config Pack (Pack Repo)
 
-Platform-agnostic agent routing for work on the pack repo itself.
-Read by Claude Code, Codex, and Gemini when operating on this repo.
+Context file for Codex CLI agents working on this repo. Loaded automatically
+at the start of every Codex session. Keep this file accurate — it governs how
+Codex operates on the pack repo.
+
+This file is NOT a template and is NOT copied to coding projects.
 
 ---
 
-## When agents are used on the pack repo
+## What this repo is
 
-Most pack changes are made directly by the PM chat (via Desktop Commander on
-Claude Desktop, or native file write on Gemini CLI / Codex CLI). Agents are
-used for specific targeted tasks:
+The DHS AI Agent Config Pack provides versioned Claude Code, Codex, and Gemini
+CLI agent configuration files for Swift / Python / gRPC projects. It ships
+template directories, agent files, skills, scripts, and supporting documentation.
 
-| Situation | Agent | Notes |
-|---|---|---|
-| Verify capability claims against official docs | `docs-researcher` | Web search + report |
-| Check consistency across template files | `reviewer` | Read-only; report only |
-| Propagate a change across multiple template files | `coder` | Explicit file list required |
-| Audit skill files for valid frontmatter and structure | `reviewer` | Read-only |
-| Research a new platform or tool for pack support | `docs-researcher` | Analysis report |
-
-Agents are **not** used for:
-- Making architectural decisions about the pack (PM chat only)
-- Writing to BACKLOG.md, CHANGELOG.md, README.md (PM chat only)
-- Committing or pushing (developer only, after explicit approval)
+Key files to read before working on the pack:
+- `README.md` — version history and repo layout
+- `BACKLOG.md` — open BD-NNN items
+- `PACK-CHAT.md` — PM chat operating rules
+- `PACK-AGENTS.md` — agent routing table for pack development work
 
 ---
 
-## Agent behavior expectations
+## Rules for Codex agents working on this repo
 
-Every agent session on this repo:
-1. Reads CLAUDE.md (or AGENTS.md / GEMINI.md) before starting
-2. Reads only the files explicitly listed in the prompt
-3. Does not modify files not listed in the prompt
-4. Reports what it did and confirms no unexpected changes
+**Commit message format:**
+```
+feat: vN — BD-NNN short description
+fix: brief description of what was corrected
+docs: brief description of documentation change
+```
+Where N is the current major version (read from README.md version table).
 
-For `docs-researcher`: output a report only. No file writes.
-For `reviewer`: output a report only. No file writes.
-For `coder`: make exactly the changes listed. Report files modified.
+**Versioning:**
+- Minor versions (vN.0, vN.1, ...) for incremental changes
+- Major versions for large additions or breaking changes
+- Bare major tag always floats to the latest minor
 
----
+**BD-NNN numbering:**
+- Read BACKLOG.md, find the highest existing BD-NNN, increment by 1
+- Never assign a BD number without reading the current backlog first
 
-## Key conventions to follow
+**What agents may modify:**
+- Any file in template directories when the task explicitly requires it
+- Files in supporting-docs/ when the task explicitly requires it
+- CHANGELOG.md only at version boundaries with explicit instruction
+- Scripts in template directories
 
-- Commit format: `feat: vN — BD-NNN description` / `fix: description` (N = current major version)
-- BD-NNN numbering: read BACKLOG.md to find next available number
-- Skills live in `.claude/skills/` (Claude), `.codex/skills/` (Codex), `.gemini/skills/` (Gemini)
-- Agent files: `.claude/agents/` (markdown), `.codex/agents/` (TOML), GEMINI.md sections
+**What agents must never modify without explicit instruction:**
+- BACKLOG.md (PM chat only, after user approval)
+- README.md version table (PM chat only)
+- PACK-CHAT.md (PM chat operating instructions)
+- CLAUDE.md, AGENTS.md, GEMINI.md, PACK-AGENTS.md (PM chat only)
 
 **No commit or push without explicit user approval.**
-Always run `git add -A && git status` and confirm staged files before any commit.
+Always run `git add -A && git status` and confirm staged files before committing.

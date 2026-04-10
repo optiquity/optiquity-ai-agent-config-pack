@@ -57,7 +57,7 @@ Where N is the current major version (read from README.md version table).
 - BACKLOG.md (PM chat only, after user approval)
 - README.md version table (PM chat only)
 - PACK-CHAT.md (PM chat operating instructions)
-- This file (CLAUDE.md)
+- CLAUDE.md, AGENTS.md, GEMINI.md, PACK-AGENTS.md (PM chat only)
 
 **No commit or push without explicit user approval.**
 Always run `git add -A && git status` and show staged files before committing.

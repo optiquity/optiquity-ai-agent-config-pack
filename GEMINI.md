@@ -31,7 +31,7 @@ then increment by 1. Never assign a BD number from memory.
 **File write restrictions:**
 - BACKLOG.md: PM chat only, after user approval
 - README.md version table: PM chat only
-- PACK-CHAT.md / CLAUDE.md / AGENTS.md / GEMINI.md: PM chat only
+- PACK-CHAT.md / CLAUDE.md / AGENTS.md / PACK-AGENTS.md / GEMINI.md: PM chat only
 - Template files and supporting-docs: may modify when task explicitly requires
 
 **No commit or push without explicit user approval.**

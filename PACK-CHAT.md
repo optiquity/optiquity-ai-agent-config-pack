@@ -117,12 +117,12 @@ The repo is the memory — not the session history. When moving between machines
 
 ---
 
-## Keeping CLAUDE.md, AGENTS.md, and GEMINI.md current
+## Keeping CLAUDE.md, AGENTS.md, GEMINI.md, and PACK-AGENTS.md current
 
-These three files describe how agents should behave when working on the pack repo.
+These four files describe how agents should behave when working on the pack repo.
 They must stay accurate. After any commit that changes the repo's structure, naming
 conventions, agent roster, workflow, or core operating rules:
 
-- Review all three files for anything that has become stale
+- Review all four files for anything that has become stale
 - Update in the same commit as the structural change, or in the immediately following commit
 - Do not let a minor version tag land with stale agent context files
