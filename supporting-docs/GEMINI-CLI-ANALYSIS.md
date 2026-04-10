@@ -1,3 +1,9 @@
+> **⚠️ DEPRECATED — April 2026**
+> This document is superseded by [`TOOL-COMPARISON.md`](TOOL-COMPARISON.md).
+> It is retained as a historical record. Do not use it as a current reference.
+
+---
+
 # Gemini CLI — Integration Analysis
 
 **Status:** Analysis only. No implementation in v8.
