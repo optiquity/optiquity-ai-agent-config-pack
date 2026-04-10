@@ -639,7 +639,7 @@ QUICKSTART.md steps) copies skills into each tool's expected location:
   generates the `agents/openai.yaml` file per skill — content is `enabled: true`)
 - `skills/<name>/SKILL.md` → `.gemini/skills/<name>/SKILL.md`
 
-This eliminates maintaining 25 × 3 = 75 identical files. The canonical source
+This eliminates maintaining 27 × 3 = 81 identical files. The canonical source
 is `skills/` and it is the only copy maintained in the pack repo.
 
 **Agents (15):** `architect` (merged from apple-architect + python-architect),
@@ -649,7 +649,7 @@ is `skills/` and it is the only copy maintained in the pack repo.
 agent per Decision 9 structural rule 6), `planner`, `repo-ops`, `reviewer`,
 `tester`.
 
-**Skills (25):** 12 Tier 1 role skills carried forward from v8.9 (`api-design`,
+**Skills (27):** 14 Tier 1 role skills carried forward from v8.9 (`api-design`,
 `architecture-review`, `debugging`, `dependency-intake`, `documentation`,
 `error-handling`, `implementation`, `planning`, `pm-startup`,
 `python-architecture`, `repo-ops`, `review`, `testing`, `ui-test-strategy`).
@@ -665,7 +665,7 @@ by `ios-architecture` Tier 2 (merged content).
 
 | Category | Rule | Examples |
 |---|---|---|
-| Always included | Present in every project | All 15 agents, all 25 skills, all scripts, config files (.claude/, .codex/), context files (CLAUDE.md, AGENTS.md, GEMINI.md), PM-CHAT.md, PLATFORM-SKILLS.md, .mcp.json.example, .gitignore, README.md, agent-run.sh |
+| Always included | Present in every project | All 15 agents, all 27 skills, all scripts, config files (.claude/, .codex/), context files (CLAUDE.md, AGENTS.md, GEMINI.md), PM-CHAT.md, PLATFORM-SKILLS.md, .mcp.json.example, .gitignore, README.md, agent-run.sh |
 | Conditional — Python | Remove if project does not use Python | pyproject.toml, pyrightconfig.json, server/ |
 | Conditional — Proto | Remove if project does not use gRPC/protobuf | proto/ |
 | Not in template — copied at setup | Copied from `supporting-docs/` per QUICKSTART.md | METHODOLOGY.md, PROMPT-TEMPLATES.md |
@@ -750,7 +750,7 @@ in the template eliminates maintenance duplication.
   build step. Conditional removal achieves the same result.
 - *Separate skill directories per project type:* Combinatorial explosion;
   contradicts composability.
-- *Three copies of skills in the template:* Maintaining 25 × 3 identical files
+- *Three copies of skills in the template:* Maintaining 27 × 3 identical files
   is error-prone. A single canonical source with setup-time distribution is
   simpler and eliminates drift.
 - *Flatten Python layout at template level:* The `server/` prefix prevents
