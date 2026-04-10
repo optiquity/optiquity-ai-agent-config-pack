@@ -182,6 +182,9 @@ are loaded by the PM chat based on project type and injected into agent prompts.
 | `audit-methodology` | Audit report format, severity scale, subagent coordination model | Dedicated: auditor parent + subagents |
 | `deployment-apple` | Signing, entitlements, notarization, privacy manifest | Shared: auditor, docs-researcher |
 | `deployment-python` | Docker, secrets management, health checks | Shared: auditor, docs-researcher |
+| `rest-patterns` | REST/HTTP API: URL design, HTTP methods, status codes, OpenAPI, caching | Shared: architect, coder, reviewer |
+| `dependency-swift` | SPM evaluation, Apple framework alternatives, binary frameworks, Xcode compat | Shared: docs-researcher, auditor-security |
+| `dependency-python` | PyPI health, wheel availability, version pinning, type stubs, security scanning | Shared: docs-researcher, auditor-security |
 | `security-patterns` | Credential exposure, injection, unsafe deserialization | Shared: auditor, reviewer |
 
 *¹ The v9 `ios-architecture` platform skill replaces and extends the v8.9
@@ -198,13 +201,14 @@ and to better reflect its content (patterns, not just schema).*
 
 | Project type | Platform skills to load | Role skills always available |
 |---|---|---|
-| macOS Swift app | swift-best-practices, apple-architecture-core, macos-architecture | All Tier 1 skills |
-| iOS Swift app | swift-best-practices, apple-architecture-core, ios-architecture | All Tier 1 skills |
-| Universal iOS+macOS | swift-best-practices, apple-architecture-core, ios-architecture, macos-architecture | All Tier 1 skills |
-| Python gRPC server | python-best-practices, grpc-patterns | All Tier 1 skills |
-| Swift + embedded Python | swift-best-practices, macos-architecture, c-language | All Tier 1 skills |
+| macOS Swift app | swift-best-practices, apple-architecture-core, macos-architecture, deployment-apple, dependency-swift | All Tier 1 skills |
+| iOS Swift app | swift-best-practices, apple-architecture-core, ios-architecture, deployment-apple, dependency-swift | All Tier 1 skills |
+| Universal iOS+macOS | swift-best-practices, apple-architecture-core, ios-architecture, macos-architecture, deployment-apple, dependency-swift | All Tier 1 skills |
+| Python gRPC server | python-best-practices, grpc-patterns, deployment-python, dependency-python | All Tier 1 skills |
+| Python REST server | python-best-practices, rest-patterns, deployment-python, dependency-python | All Tier 1 skills |
+| Swift + embedded Python | swift-best-practices, macos-architecture, c-language, deployment-apple, dependency-swift, dependency-python | All Tier 1 skills |
 | Mixed-language Apple | add objc-language or cpp-language as needed | All Tier 1 skills |
-| Future: Android | android-architecture, kotlin-best-practices (new skills, no new agents) | All Tier 1 skills |
+| Future: Android | android-architecture, kotlin-best-practices, dependency-kotlin (new skills, no new agents) | All Tier 1 skills |
 
 *Note on Tier 1 availability: All Tier 1 role skills exist in the unified
 template's skill directories and are technically available to any project. The
@@ -533,6 +537,8 @@ project-template/
 │   ├── cpp-language/SKILL.md
 │   ├── debugging/SKILL.md
 │   ├── dependency-intake/SKILL.md
+│   ├── dependency-python/SKILL.md
+│   ├── dependency-swift/SKILL.md
 │   ├── deployment-apple/SKILL.md
 │   ├── deployment-python/SKILL.md
 │   ├── documentation/SKILL.md
@@ -547,6 +553,7 @@ project-template/
 │   ├── python-architecture/SKILL.md
 │   ├── python-best-practices/SKILL.md
 │   ├── repo-ops/SKILL.md
+│   ├── rest-patterns/SKILL.md
 │   ├── review/SKILL.md
 │   ├── security-patterns/SKILL.md
 │   ├── swift-best-practices/SKILL.md
@@ -639,7 +646,7 @@ QUICKSTART.md steps) copies skills into each tool's expected location:
   generates the `agents/openai.yaml` file per skill — content is `enabled: true`)
 - `skills/<name>/SKILL.md` → `.gemini/skills/<name>/SKILL.md`
 
-This eliminates maintaining 27 × 3 = 81 identical files. The canonical source
+This eliminates maintaining 30 × 3 = 90 identical files. The canonical source
 is `skills/` and it is the only copy maintained in the pack repo.
 
 **Agents (15):** `architect` (merged from apple-architect + python-architect),
@@ -649,23 +656,54 @@ is `skills/` and it is the only copy maintained in the pack repo.
 agent per Decision 9 structural rule 6), `planner`, `repo-ops`, `reviewer`,
 `tester`.
 
-**Skills (27):** 14 Tier 1 role skills carried forward from v8.9 (`api-design`,
+**Skills (30):** 14 Tier 1 role skills carried forward from v8.9 (`api-design`,
 `architecture-review`, `debugging`, `dependency-intake`, `documentation`,
 `error-handling`, `implementation`, `planning`, `pm-startup`,
 `python-architecture`, `repo-ops`, `review`, `testing`, `ui-test-strategy`).
-13 Tier 2 platform skills new in v9 (`swift-best-practices`,
+16 Tier 2 platform skills new in v9 (`swift-best-practices`,
 `apple-architecture-core`, `ios-architecture`, `macos-architecture`,
-`python-best-practices`, `grpc-patterns`, `c-language`, `objc-language`,
-`cpp-language`, `audit-methodology`, `deployment-apple`, `deployment-python`,
+`python-best-practices`, `grpc-patterns`, `rest-patterns`, `c-language`,
+`objc-language`, `cpp-language`, `audit-methodology`, `deployment-apple`,
+`deployment-python`, `dependency-swift`, `dependency-python`,
 `security-patterns`). The v8.9 `grpc-schema` Tier 1 skill is superseded by
 `grpc-patterns` Tier 2. The v8.9 `ios-architecture` Tier 1 skill is replaced
 by `ios-architecture` Tier 2 (merged content).
+
+**PM chat skill (outside both tiers):** `pm-startup` is a special-purpose
+operational skill used by the PM chat for session startup and orientation. It
+is not assigned to any agent. It exists in the template because every project
+needs PM chat startup capability.
+
+**Deferred protocol skills (create when a project need arises):**
+- `graphql-patterns` — GraphQL schema design (SDL), resolvers, N+1 prevention
+  (DataLoader), subscriptions, federation, persisted queries, depth limiting,
+  and query complexity analysis. For projects using GraphQL as a client-facing
+  API layer or as a BFF (Backend-for-Frontend) aggregation layer.
+- `realtime-patterns` — WebSocket and SSE (Server-Sent Events) implementation
+  patterns: connection lifecycle, reconnection strategies, heartbeat/keepalive,
+  backpressure handling, authentication on persistent connections, message
+  framing, and graceful degradation. For projects with real-time features
+  (chat, live updates, streaming dashboards).
+- `messaging-patterns` — Webhook and message queue (AMQP, Redis pub/sub)
+  patterns: delivery guarantees (at-least-once, exactly-once), idempotency
+  keys, dead-letter queues, retry and backoff strategies, event schema
+  versioning, and consumer group management. For event-driven architectures
+  and third-party integration via webhooks.
+- `soap-patterns` — SOAP/WSDL patterns: envelope structure, WS-Security,
+  WS-ReliableMessaging, WSDL-first design, and XML schema validation. For
+  projects integrating with enterprise legacy systems that expose SOAP APIs.
+- `dependency-*` — Per-platform dependency evaluation skills for future
+  platforms (e.g., `dependency-kotlin`, `dependency-node`, `dependency-rust`).
+  Created alongside the platform's best-practices skill when a project need
+  arises. Each follows the same structure as `dependency-swift` and
+  `dependency-python`: platform-specific package manager checks, vulnerability
+  scanning tools, compatibility verification, and ecosystem-specific red flags.
 
 **File categories:**
 
 | Category | Rule | Examples |
 |---|---|---|
-| Always included | Present in every project | All 15 agents, all 27 skills, all scripts, config files (.claude/, .codex/), context files (CLAUDE.md, AGENTS.md, GEMINI.md), PM-CHAT.md, PLATFORM-SKILLS.md, .mcp.json.example, .gitignore, README.md, agent-run.sh |
+| Always included | Present in every project | All 15 agents, all 30 skills, all scripts, config files (.claude/, .codex/), context files (CLAUDE.md, AGENTS.md, GEMINI.md), PM-CHAT.md, PLATFORM-SKILLS.md, .mcp.json.example, .gitignore, README.md, agent-run.sh |
 | Conditional — Python | Remove if project does not use Python | pyproject.toml, pyrightconfig.json, server/ |
 | Conditional — Proto | Remove if project does not use gRPC/protobuf | proto/ |
 | Not in template — copied at setup | Copied from `supporting-docs/` per QUICKSTART.md | METHODOLOGY.md, PROMPT-TEMPLATES.md |
@@ -750,7 +788,7 @@ in the template eliminates maintenance duplication.
   build step. Conditional removal achieves the same result.
 - *Separate skill directories per project type:* Combinatorial explosion;
   contradicts composability.
-- *Three copies of skills in the template:* Maintaining 27 × 3 identical files
+- *Three copies of skills in the template:* Maintaining 30 × 3 identical files
   is error-prone. A single canonical source with setup-time distribution is
   simpler and eliminates drift.
 - *Flatten Python layout at template level:* The `server/` prefix prevents

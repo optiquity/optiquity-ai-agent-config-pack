@@ -26,25 +26,18 @@ allowed-tools: Read, Grep, Glob, Bash
 12. Every `except` block must handle, log, or re-raise. Empty exception handlers are defects.
 13. Retry transient failures with exponential backoff and jitter. Never retry non-transient errors.
 
-## Server patterns
-
-14. Use constructor dependency injection. No module-level globals for services.
-15. Servicers are thin adapters that delegate to injected service objects. No business logic in servicers.
-16. Background tasks must be idempotent.
-17. Prevent N+1 queries — use eager loading or batch queries at the repository layer.
-18. Side effects live near the edge of the system. Business logic is pure where possible.
-
 ## Tooling
 
-19. Use `ruff` for linting and formatting. No competing linters.
-20. Use `pyright` in strict mode for static type checking.
-21. Use `pytest` + `pytest-asyncio` for tests. Use fixtures over `setUp`/`tearDown`.
-22. Use `uv` for runtime and dependency management.
-23. Pin all dependencies explicitly. Version drift in `grpcio` family causes generation mismatches.
+14. Use `ruff` for linting and formatting. No competing linters.
+15. Use `pyright` in strict mode for static type checking.
+16. Use `pytest` + `pytest-asyncio` for tests. Use fixtures over `setUp`/`tearDown`.
+17. Use `uv` for runtime and dependency management.
+18. Pin all dependencies explicitly. Version drift in `grpcio` family causes generation mismatches.
 
 ## Style and idioms
 
-24. Use `let`-equivalent patterns: module-level constants are `UPPER_SNAKE_CASE`. Never use global mutable config variables.
-25. Blocking synchronous I/O in async handlers is an anti-pattern — offload or convert.
-26. No hardcoded secrets or API keys in source or config files.
-27. Log every RPC with method name, status code, and latency using structured logging.
+19. Module-level constants are `UPPER_SNAKE_CASE`. Never use global mutable config variables.
+20. Blocking synchronous I/O in async handlers is an anti-pattern — offload or convert.
+21. No hardcoded secrets or API keys in source or config files.
+22. Log every RPC with method name, status code, and latency using structured logging.
+23. Side effects live near the edge of the system. Business logic is pure where possible.

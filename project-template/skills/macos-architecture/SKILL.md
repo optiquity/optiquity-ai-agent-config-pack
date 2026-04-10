@@ -42,8 +42,16 @@ allowed-tools: Read, Grep, Glob, Bash
 19. Hardened Runtime is enabled for notarization. Any entitlement exception (e.g., disable library validation for plugins) requires documented justification.
 20. All distributed builds are notarized. Test notarization before submission — `xcrun notarytool` or Xcode's organizer.
 
+## Accessibility
+
+21. All interactive elements must be reachable and operable via keyboard alone. Test full keyboard navigation without a mouse.
+22. Support VoiceOver. Every interactive element must have an accessibility label. Use `NSAccessibility` protocol (AppKit) or `.accessibilityLabel` / `.accessibilityHint` (SwiftUI).
+23. Images that convey meaning must not be marked decorative. Provide descriptive accessibility labels.
+24. Support Dynamic Type where text is user-facing. Use system text styles or scaled metrics rather than hardcoded font sizes.
+25. Test with Accessibility Inspector (Xcode) to verify the accessibility hierarchy is correct and complete.
+
 ## Services and system integration
 
-21. Register app Services in Info.plist when the app provides text or data transformation capabilities to other apps.
-22. Support Shortcuts (formerly Automator actions) via App Intents for common operations.
-23. Drag-and-drop uses `NSItemProvider` (AppKit) or `.onDrop`/`.draggable` (SwiftUI). Support standard pasteboard types for interoperability with other apps.
+26. Register app Services in Info.plist when the app provides text or data transformation capabilities to other apps.
+27. Support Shortcuts (formerly Automator actions) via App Intents for common operations.
+28. Drag-and-drop uses `NSItemProvider` (AppKit) or `.onDrop`/`.draggable` (SwiftUI). Support standard pasteboard types for interoperability with other apps.
