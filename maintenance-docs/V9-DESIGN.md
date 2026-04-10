@@ -197,24 +197,59 @@ preserved to minimize migration disruption.*
 skill. The name changes to avoid collision with the `grpc-schema` agent name
 and to better reflect its content (patterns, not just schema).*
 
-**Skill selection by project type (PM chat reference):**
+**Skill selection — composable dimension model (PM chat reference):**
 
-| Project type | Platform skills to load | Role skills always available |
+The PM chat builds the project's Tier 2 skill set by combining four independent
+dimensions. Each dimension adds skills; the PM chat unions them and deduplicates.
+The authoritative runtime reference is `PLATFORM-SKILLS.md` in the project root.
+
+*Dimension 1 — Platform targets:*
+
+| Selection | Skills added |
+|---|---|
+| iOS | apple-architecture-core, ios-architecture, deployment-apple |
+| macOS | apple-architecture-core, macos-architecture, deployment-apple |
+| iOS + macOS (universal) | apple-architecture-core, ios-architecture, macos-architecture, deployment-apple |
+
+*Dimension 2 — Languages:*
+
+| Selection | Skills added |
+|---|---|
+| Swift | swift-best-practices, dependency-swift |
+| Python | python-best-practices, dependency-python |
+| C | c-language |
+| C++ | cpp-language |
+| Objective-C | objc-language |
+
+*Dimension 3 — Component roles:*
+
+| Selection | Skills added | When to use |
 |---|---|---|
-| macOS Swift app | swift-best-practices, apple-architecture-core, macos-architecture, deployment-apple, dependency-swift | All Tier 1 skills |
-| iOS Swift app | swift-best-practices, apple-architecture-core, ios-architecture, deployment-apple, dependency-swift | All Tier 1 skills |
-| Universal iOS+macOS | swift-best-practices, apple-architecture-core, ios-architecture, macos-architecture, deployment-apple, dependency-swift | All Tier 1 skills |
-| Python gRPC server | python-best-practices, grpc-patterns, deployment-python, dependency-python | All Tier 1 skills |
-| Python REST server | python-best-practices, rest-patterns, deployment-python, dependency-python | All Tier 1 skills |
-| Swift + embedded Python | swift-best-practices, macos-architecture, c-language, deployment-apple, dependency-swift, dependency-python | All Tier 1 skills |
-| Mixed-language Apple | add objc-language or cpp-language as needed | All Tier 1 skills |
-| Future: Android | android-architecture, kotlin-best-practices, dependency-kotlin (new skills, no new agents) | All Tier 1 skills |
+| Python server | python-architecture, deployment-python | Python serves requests (gRPC, REST, or other) |
+| Embedded Python | c-language | Python runtime embedded in another app (C API bridge) |
+| Shared native library | (none additional) | C/C++ library — Language skills cover it |
 
-*Note on Tier 1 availability: All Tier 1 role skills exist in the unified
+A Role adds a dedicated architecture skill only when it introduces structural
+patterns (service layers, middleware, lifecycle) not covered by Language or
+Protocol skills. See Decision 7 for the three-condition test.
+
+*Dimension 4 — Communication protocols:*
+
+| Selection | Skills added |
+|---|---|
+| gRPC | grpc-patterns |
+| REST | rest-patterns |
+
+Future additions to all dimensions (new row + new skill files, no structural
+changes): Android, Web, Windows, Embedded Linux (platforms); Kotlin, TypeScript,
+C#, Rust (languages); Swift server, Node.js server (roles); GraphQL, WebSocket/SSE,
+Webhooks/AMQP, SOAP (protocols).
+
+*Note on Tier 1 availability:* All Tier 1 role skills exist in the unified
 template's skill directories and are technically available to any project. The
 PM chat loads only those relevant to the active task — for example,
-`python-architecture` and `api-design` are not loaded for a Swift-only
-architect pass, and `ui-test-strategy` is not loaded for a Python server project.*
+`python-architecture` is not loaded for a Swift-only architect pass, and
+`ui-test-strategy` is not loaded for a Python server project.
 
 **Rationale:** Skills are the correct unit of platform knowledge because they
 are composable, independently maintainable, and cross-tool compatible. The
@@ -408,6 +443,53 @@ parent agent file uses the base name only (`auditor`). This convention applies
 to all tools — Claude (`.md`), Codex (`.toml`), and Gemini (GEMINI.md
 sections). The convention is also documented in METHODOLOGY.md Part 3 for
 project-level use.
+
+**Dimension extension rules — adding new platforms, languages, roles, or protocols:**
+
+The skill selection model in PLATFORM-SKILLS.md uses four composable dimensions
+(Platform, Language, Role, Protocol). Adding support for a new entry in any
+dimension follows a consistent pattern.
+
+*Adding a new platform:*
+1. Create `<platform>-architecture` skill — platform-specific architecture patterns
+2. Create `deployment-<platform>` skill — platform-specific deployment and distribution
+3. Add a row to Dimension 1 (Platform targets) in PLATFORM-SKILLS.md
+4. Follow the pack-level addition checklist above for both skills
+
+*Adding a new language:*
+1. Create `<language>-best-practices` skill — language patterns, type system, tooling
+2. Create `dependency-<language-or-ecosystem>` skill — package manager, ecosystem checks
+3. Add a row to Dimension 2 (Languages) in PLATFORM-SKILLS.md
+4. Follow the pack-level addition checklist above for both skills
+
+*Adding a new component role:*
+A Role entry adds a dedicated architecture skill only when ALL three conditions
+are true: (1) the role introduces structural patterns (service layers, middleware,
+lifecycle) not covered by any Language or Protocol skill; (2) the patterns are
+role-specific — they exist because of what the component does, not what language
+or protocol it uses; (3) the patterns are substantial (10+ items).
+
+If Language + Protocol skills fully cover the role, the Role row either adds
+nothing or adds an existing skill (e.g., embedded Python adds c-language).
+If the patterns are protocol-specific (e.g., C++ gRPC server patterns), add a
+section to the existing Protocol skill rather than creating a new Role skill.
+
+1. If conditions 1-3 are met: create `<language>-<role>-architecture` skill
+2. Add a row to Dimension 3 (Component roles) in PLATFORM-SKILLS.md
+3. Follow the pack-level addition checklist
+
+*Adding a new communication protocol:*
+1. Create `<protocol>-patterns` skill — protocol-specific design, tooling, anti-patterns
+2. Add a row to Dimension 4 (Communication protocols) in PLATFORM-SKILLS.md
+3. Follow the pack-level addition checklist
+
+*Naming conventions:*
+- Platform architecture: `<platform>-architecture` (e.g., android-architecture)
+- Deployment: `deployment-<platform>` (e.g., deployment-android)
+- Language best practices: `<language>-best-practices` (e.g., kotlin-best-practices)
+- Dependency evaluation: `dependency-<ecosystem>` (e.g., dependency-kotlin, dependency-node)
+- Protocol patterns: `<protocol>-patterns` (e.g., graphql-patterns)
+- Role architecture: `<language>-<role>-architecture` (e.g., swift-server-architecture)
 
 **Project-level customization — permitted with caution:**
 
@@ -1136,8 +1218,10 @@ for Gemini CLI, distinct from the pack repo's own `GEMINI.md` for pack developme
 providing Gemini CLI context equivalent to CLAUDE.md.
 
 Also in scope for this step: update the `pm-startup` skill to include
-`PLATFORM-SKILLS.md` in its RAG freshness check and ingestion alongside
-`METHODOLOGY.md` and `PROMPT-TEMPLATES.md`. Decide and document whether
+`PLATFORM-SKILLS.md` in its startup file reads. Note: `PLATFORM-SKILLS.md` is
+small enough to read in full (direct read in Step 2), so it does not need RAG
+ingestion — unlike `METHODOLOGY.md` and `PROMPT-TEMPLATES.md` which are large
+and benefit from semantic search. Decide and document whether
 `pm-startup` is ported to `.codex/skills/` and `.gemini/skills/` in v9 (it
 currently exists only in `.claude/skills/`), or whether each tool gets a
 different startup mechanism — for example, Gemini CLI's `save_memory` combined
@@ -1153,8 +1237,8 @@ docs, or whether mcp-local-rag is also recommended for Gemini CLI PM chat sessio
 read `PM-CHAT.md` and `GEMINI.md` and operate the PM chat correctly without
 referring to any other documentation. The skill-selection matrix in
 `PLATFORM-SKILLS.md` matches the table in Part 2 Decision 3 of this document.
-The `pm-startup` skill's RAG freshness check covers `METHODOLOGY.md`,
-`PROMPT-TEMPLATES.md`, and `PLATFORM-SKILLS.md`. The startup mechanism for
+The `pm-startup` skill's RAG freshness check covers `METHODOLOGY.md` and
+`PROMPT-TEMPLATES.md`; `PLATFORM-SKILLS.md` is read directly in full (small file). The startup mechanism for
 each tool (Claude, Codex, Gemini) is documented and implemented — whether via
 a ported `pm-startup` skill or tool-native alternatives. The question of whether
 mcp-local-rag is recommended for Gemini CLI PM chat is answered and documented.
@@ -1454,8 +1538,9 @@ All gaps found are resolved before the `v9-dev` branch is merged to main.
    `grpc-patterns` Tier 2 replaces the v8.9 `grpc-schema` role skill.
 
 3. **PM chat flows** — The pm-startup skill (or equivalent) functions on all
-   three tools. RAG freshness check covers METHODOLOGY.md, PROMPT-TEMPLATES.md,
-   and PLATFORM-SKILLS.md. Skill selection from PLATFORM-SKILLS.md produces
+   three tools. RAG freshness check covers METHODOLOGY.md and
+   PROMPT-TEMPLATES.md; PLATFORM-SKILLS.md is read directly. Skill selection
+   from PLATFORM-SKILLS.md produces
    correct results for macOS Swift, iOS Swift, Python gRPC, and mixed-language
    project types.
 

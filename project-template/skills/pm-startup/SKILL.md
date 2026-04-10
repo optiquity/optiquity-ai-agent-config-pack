@@ -20,6 +20,7 @@ Read these files in full:
 - `BACKLOG.md`
 - `STATUS.md`
 - `PM-CHAT.md`
+- `PLATFORM-SKILLS.md`
 
 Read only the most recent dated section from `CHANGELOG.md`.
 
@@ -65,6 +66,7 @@ Output a summary in exactly this format:
 **TD-TBD check:** [Clean / N instances found — [files]]
 **Last commit:** [date] — [commit summary from git log -1 --oneline]
 **Pack version:** [read from the version header line in METHODOLOGY.md]
+**Skills profile:** [project type from PLATFORM-SKILLS.md — e.g., "iOS Swift app" or "Python gRPC server"]
 
 **Awaiting instructions.**
 ---
