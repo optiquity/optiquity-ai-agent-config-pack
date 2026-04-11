@@ -14,4 +14,5 @@ Responsibilities:
 
 Load the skills specified by the PM chat for this task. Test framework
 selection and platform-specific test tooling guidance come from the loaded
-skills (testing, ui-test-strategy), not from this agent definition.
+skills (testing, ui-test-strategy, and the project's language and protocol
+skills), not from this agent definition.

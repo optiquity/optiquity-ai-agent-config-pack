@@ -1,0 +1,19 @@
+# Project requirements for Codex
+#
+# This file contains platform-agnostic policies only. Platform-specific rules
+# (SPM vs pip, SwiftUI-first, pyright strict, Pydantic placement, etc.) live
+# in skills loaded by the PM chat on a per-task basis. See PLATFORM-SKILLS.md.
+
+[session]
+require_plan_for_non_trivial_work = true
+require_tests_for_behavior_changes = true
+
+[policy]
+prefer_small_diffs = true
+enforce_explicit_verification = true
+no_hand_editing_generated_code = true
+auth_tokens_in_transport_metadata_not_messages = true
+
+[models]
+cloud_first_for_correctness_sensitive_work = true
+local_models_allowed_for_low_risk_work = true
