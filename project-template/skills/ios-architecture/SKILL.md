@@ -4,7 +4,7 @@ description: Use for iOS/iPadOS-specific architecture — scene lifecycle, UIKit
 allowed-tools: Read, Grep, Glob, Bash
 ---
 
-## Architectural assessment (from v8.9 ios-architecture)
+## Architectural assessment
 
 1. Identify modules, layers, and seams.
 2. Check whether SwiftUI-first remains viable.

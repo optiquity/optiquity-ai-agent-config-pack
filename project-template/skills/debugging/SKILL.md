@@ -20,10 +20,10 @@ allowed-tools: Read, Grep, Glob, Bash
 ## Diagnostic techniques
 
 8. Add diagnostic logging at strategic points to trace execution flow. Remove all diagnostic logging after the fix is verified.
-9. Use platform debuggers: `lldb` for Swift/C/C++/Objective-C, `pdb`/`debugpy` for Python. Set conditional breakpoints rather than stepping through loops.
-10. Use Instruments (Xcode) for performance, memory, and concurrency issues on Apple platforms. Use `os_signpost` for custom performance measurement.
-11. For concurrency bugs: enable Thread Sanitizer (TSan) and Address Sanitizer (ASan). These catch races and memory errors that are invisible to code reading.
-12. For gRPC issues: inspect wire traffic with `grpcurl` or enable gRPC debug logging. Check deadline propagation, status codes, and metadata.
+9. Use the platform debuggers specified by the loaded language skills. Set conditional breakpoints rather than stepping through loops.
+10. Use platform profiling tools for performance, memory, and concurrency issues. Specific tool names come from the loaded language and platform skills.
+11. For concurrency bugs: enable runtime sanitizers (race detectors, memory sanitizers) where the loaded language skill supports them. These catch races and memory errors that are invisible to code reading.
+12. For inter-service protocol issues: inspect wire traffic using the tools specified by the loaded protocol skill. Check deadline propagation, status codes, and metadata.
 
 ## Verifying the fix
 

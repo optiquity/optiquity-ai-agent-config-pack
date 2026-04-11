@@ -148,15 +148,17 @@ agents how to perform their roles regardless of platform. No restructuring neede
 | `repo-ops` | Repo operations, scripted edits, Git-safe workflows | repo-ops |
 | `review` | Reviewing correctness, regressions, concurrency, architecture drift | reviewer |
 | `testing` | Designing unit, integration, UI, and end-to-end tests | tester |
-| `ui-test-strategy` | Choosing between XCTest, Swift Testing, XCUITest, Maestro | tester |
-| `api-design` | gRPC service contracts, HTTP API design, validation, versioning | architect, grpc-schema |
-| `python-architecture` | Python server architecture, grpc.aio handlers, repository pattern | architect |
+| `ui-test-strategy` | UI/E2E tool selection and test design (platform-agnostic framework) | tester |
+| `api-design` | API design philosophy, versioning, error design (protocol-agnostic) | architect, grpc-schema |
 | `grpc-schema` | Proto3 schema design, buf validation, gRPC service contract review³ | architect, grpc-schema |
 
-*Note: `api-design` and `python-architecture` currently exist only in the
-combined apple+python template. In v9, all role skills exist in the unified
-template regardless of project type — the PM chat loads only those relevant
-to the active task.*
+*Note: `api-design` currently exists only in the combined apple+python template.
+In v9, all role skills exist in the unified template regardless of project
+type — the PM chat loads only those relevant to the active task.*
+
+*Note: `python-architecture` is a Tier 2 platform skill (Python-specific
+architectural patterns for server projects). It moved to Tier 2 during the
+audit refactor to honor the rule that Tier 1 skills are platform-agnostic.*
 
 *³ The v8.9 `grpc-schema` role skill is replaced by the v9 `grpc-patterns`
 Tier 2 platform skill. The Tier 2 skill carries the same content with expanded
@@ -175,10 +177,11 @@ are loaded by the PM chat based on project type and injected into agent prompts.
 | `ios-architecture` | iOS/iPadOS-specific: scene lifecycle, App Store boundaries¹ | Shared: architect, reviewer, auditor |
 | `macos-architecture` | macOS-specific: NSDocument, menu bar, AppKit, sandbox | Shared: architect, reviewer, auditor |
 | `python-best-practices` | Python patterns, async, type hints, ruff/pyright | Shared: architect, coder, reviewer, auditor |
+| `python-architecture` | Python server structure, service layers, repository pattern | Shared: architect, reviewer, auditor |
 | `grpc-patterns` | Protobuf schema design, gRPC service patterns, buf² | Shared: architect, grpc-schema, coder, reviewer |
 | `c-language` | Memory ownership, pointer safety, Swift/Python interop | Shared: architect, coder, reviewer, auditor |
-| `objc-language` | ARC, nullability, bridging headers, legacy patterns | Shared: coder, reviewer, auditor |
-| `cpp-language` | RAII, smart pointers, Swift-C++ interop, rule of five | Shared: coder, reviewer, auditor |
+| `objc-language` | ARC, nullability, bridging headers, legacy patterns | Shared: architect, coder, reviewer, auditor |
+| `cpp-language` | RAII, smart pointers, Swift-C++ interop, rule of five | Shared: architect, coder, reviewer, auditor |
 | `audit-methodology` | Audit report format, severity scale, subagent coordination model | Dedicated: auditor parent + subagents |
 | `deployment-apple` | Signing, entitlements, notarization, privacy manifest | Shared: auditor, docs-researcher |
 | `deployment-python` | Docker, secrets management, health checks | Shared: auditor, docs-researcher |
@@ -738,16 +741,19 @@ is `skills/` and it is the only copy maintained in the pack repo.
 agent per Decision 9 structural rule 6), `planner`, `repo-ops`, `reviewer`,
 `tester`.
 
-**Skills (30):** 14 Tier 1 role skills carried forward from v8.9 (`api-design`,
+**Skills (30):** 12 Tier 1 role skills carried forward from v8.9 (`api-design`,
 `architecture-review`, `debugging`, `dependency-intake`, `documentation`,
-`error-handling`, `implementation`, `planning`, `pm-startup`,
-`python-architecture`, `repo-ops`, `review`, `testing`, `ui-test-strategy`).
-16 Tier 2 platform skills new in v9 (`swift-best-practices`,
+`error-handling`, `implementation`, `planning`, `repo-ops`, `review`,
+`testing`, `ui-test-strategy`).
+17 Tier 2 platform skills new in v9 (`swift-best-practices`,
 `apple-architecture-core`, `ios-architecture`, `macos-architecture`,
-`python-best-practices`, `grpc-patterns`, `rest-patterns`, `c-language`,
-`objc-language`, `cpp-language`, `audit-methodology`, `deployment-apple`,
-`deployment-python`, `dependency-swift`, `dependency-python`,
-`security-patterns`). The v8.9 `grpc-schema` Tier 1 skill is superseded by
+`python-best-practices`, `python-architecture`, `grpc-patterns`,
+`rest-patterns`, `c-language`, `objc-language`, `cpp-language`,
+`audit-methodology`, `deployment-apple`, `deployment-python`,
+`dependency-swift`, `dependency-python`, `security-patterns`).
+1 PM chat operational skill (`pm-startup`) — outside both tiers, not loaded
+by any agent; used by the PM chat for session startup and orientation.
+Total: 12 + 17 + 1 = 30. The v8.9 `grpc-schema` Tier 1 skill is superseded by
 `grpc-patterns` Tier 2. The v8.9 `ios-architecture` Tier 1 skill is replaced
 by `ios-architecture` Tier 2 (merged content).
 

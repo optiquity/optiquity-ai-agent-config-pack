@@ -1,40 +1,47 @@
 ---
 name: architecture-review
-description: Use when assessing architecture across the Apple client, Python server, or the gRPC/Proto3 schema boundary.
+description: Use when assessing architecture — module boundaries, layer discipline, state ownership, dependency decisions, and long-term maintainability. Platform-agnostic assessment methodology.
 allowed-tools: Read, Grep, Glob, Bash
 ---
 
-For Apple client work:
-1. Identify modules, layers, and seams.
-2. Check whether SwiftUI-first remains viable.
-3. Require justification for UIKit or AppKit interop.
-4. Check state ownership, immutability, and dependency boundaries.
-5. Verify gRPC stubs are behind protocols, never called from ViewModels or Views.
-6. Check gRPC channel lifecycle is tied to app or scene lifecycle.
+This skill defines the universal methodology for architecture review. Platform-specific rules come from the platform skills loaded alongside this one (apple-architecture-core, python-architecture, grpc-patterns, etc.). Apply this methodology using the rules from those skills.
 
-For Python server work:
-1. Verify gRPC servicers are thin adapters delegating to injected service objects.
-2. Check constructor DI is used. Flag module-level globals as service registries.
-3. Verify async design: no blocking I/O in async handlers.
-4. Check input validation at I/O boundaries.
-5. Check type annotation completeness.
-6. Flag N+1 query risks.
+## Before starting the review
 
-For the shared schema boundary:
-1. Verify proto field numbers have never been reused.
-2. Verify buf lint and buf breaking are part of the merge process.
-3. Check that generated code is never hand-edited.
+1. Read `ARCHITECTURE.md` to understand the project's documented architecture pattern, layer map, and rationale. If it does not exist, flag this as a blocking issue — architecture reviews require a documented baseline.
+2. Identify the modules, layers, and seams present in the codebase. Map what exists against what `ARCHITECTURE.md` describes.
+3. Identify which platform skills are relevant to the code under review and apply their rules during the assessment.
 
-Give a recommendation with explicit tradeoffs.
+## Layer discipline
 
-## Layer Boundary Review
+4. Verify layer separation: presentation, domain, and data/transport are distinct types, files, or modules. No layer may reach past its immediate neighbor.
+5. Verify the domain layer has no framework imports (UI frameworks, persistence frameworks, networking frameworks). This is a verifiable import-graph property — flag any violation as a defect.
+6. Verify every cross-layer dependency is expressed as a protocol or interface abstraction. Concrete implementations are injected; they are never instantiated inline by the consuming layer.
+7. Verify transport types (generated Protobuf, serialization DTOs) live only in the data layer. They must never appear in domain-layer or presentation-layer type signatures.
 
-Apply these checks on all architecture reviews:
+## State ownership
 
-1. Verify domain layer has no imports of UIKit, AppKit, SwiftUI, CoreData, SwiftData, GRPCCore, grpcio, or any networking framework.
-2. Verify generated Protobuf types do not appear in domain-layer or presentation-layer type signatures.
-3. Verify every cross-layer dependency is expressed as a protocol; concrete types are injected.
-4. Verify shared mutable state has documented ownership: owner type, actor/thread, lifecycle, and mutation contract.
-5. Verify navigation logic is not embedded in View or ViewModel types.
-6. Verify services are stateless or explicitly document their state and threading guarantees.
-7. Verify the architecture pattern is documented (README or ARCHITECTURE.md) before flagging pattern inconsistencies.
+8. Verify shared mutable state documents its owner type, owning actor or thread, lifecycle (creation and destruction), and mutation contract. Undocumented shared mutable state is a defect.
+9. Verify services are stateless by default. Stateful services document their state variables, threading guarantees, and invalidation policy at the definition site.
+10. Flag singleton sprawl — shared state accessed globally without clear ownership is an architecture smell.
+
+## Abstraction quality
+
+11. Flag over-abstraction — protocols or interfaces at every internal boundary create noise without improving testability. Abstractions belong at layer boundaries, not within layers.
+12. Flag under-abstraction — concrete types from the data layer appearing in domain or presentation code violates layer discipline.
+13. Verify LSP compliance: every protocol method must have a meaningful implementation in every conforming type. Silent no-ops and unconditional "not supported" throws are violations. No domain or presentation code may branch on the concrete type behind a protocol reference.
+
+## Navigation and control flow
+
+14. Verify navigation and routing logic is not embedded in view or view-model types. Navigation belongs in a dedicated coordinator, router, or typed navigation path — the exact pattern is determined by the project's platform and the loaded platform skills.
+
+## Dependency decisions
+
+15. Evaluate third-party dependencies for architectural impact. Flag dependencies that shape the architecture in unwanted ways — a dependency that forces a specific concurrency model, data layer, or UI framework is an architectural decision, not just a package choice. Detailed evaluation criteria live in the `dependency-intake` skill.
+
+## Output
+
+- Assessment of each layer: what exists, whether it matches `ARCHITECTURE.md`, and any violations.
+- List of findings grouped by severity (critical / major / minor). Each finding includes the file and symbol, the rule violated, and the recommended action.
+- Rejected-alternative documentation: when proposing a change, name the alternatives considered and why they were rejected.
+- Explicit tradeoffs: every architectural decision has costs — name them.

@@ -39,8 +39,14 @@ allowed-tools: Read, Grep, Glob, Bash
 16. Divide the app into independently compilable Swift packages where module boundaries align with architectural layers or feature domains.
 17. Module dependencies must follow the layer hierarchy — a domain module never imports a presentation or data module.
 
+## Deployment target compatibility
+
+18. Every use of an API introduced in an OS version newer than the project's minimum deployment target must be wrapped in `#available(iOS N, macOS N, *)` guards or annotated with `@available(iOS N, macOS N, *)`. Using a newer API unconditionally on an older deployment target is a crash. This includes OS-version-specific APIs like `.glassEffect()`, `FoundationModels`, and any other API documented as "Available in iOS N+".
+19. When adding availability guards, verify the fallback code path produces equivalent user-visible behavior, not just a silent no-op.
+20. The project's minimum deployment target is documented in `ARCHITECTURE.md` or the project's build configuration. Reviewers and auditors flag any API usage that exceeds the documented minimum without an explicit guard.
+
 ## Architecture documentation
 
-18. Choose one primary architecture pattern per app target. Document the choice and rationale in ARCHITECTURE.md before writing production code.
-19. Mixed-pattern seams within a target require explicit documentation and justification.
-20. Navigation logic lives outside view and view-model types. Use Coordinator, NavigationStack with typed path, or Router depending on the chosen pattern.
+21. Choose one primary architecture pattern per app target. Document the choice and rationale in ARCHITECTURE.md before writing production code.
+22. Mixed-pattern seams within a target require explicit documentation and justification.
+23. Navigation logic lives outside view and view-model types. Use Coordinator, NavigationStack with typed path, or Router depending on the chosen pattern.

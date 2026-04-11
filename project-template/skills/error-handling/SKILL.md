@@ -1,57 +1,37 @@
 ---
 name: error-handling
-description: Use when designing, implementing, or reviewing error handling for gRPC calls or handlers, domain error types, retry logic, or error propagation across layer boundaries. Default for: Debugging (Claude Code).
+description: Use when designing, implementing, or reviewing error handling — domain error design, error propagation across layer boundaries, and retry policy. Platform-agnostic philosophy; language/protocol specifics come from the loaded platform skills.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
-## Domain Error Design
+This skill defines universal error handling philosophy. Language-specific error types, concrete mapping tables (e.g., gRPC status → domain error), and async cancellation mechanics come from the platform skills loaded alongside this one (swift-best-practices, python-best-practices, grpc-patterns, rest-patterns). Apply this philosophy using the concrete types and conventions from those skills.
 
-1. Define one typed error type per domain layer. Swift: typed `enum` with `throws(DomainErrorType)`. Python: class hierarchy rooted at `AppError(Exception)`.
-2. gRPC transport errors (`RPCError` in Swift grpc-swift-2; `grpc.aio.AioRpcError` in Python) must never cross the repository or service boundary. Map to domain errors at the boundary.
-3. Domain errors are the only error types that propagate into business logic and presentation layers.
+## Domain error design
 
-## gRPC Status → Domain Error Mapping (Swift — grpc-swift-2)
+1. Define one typed error type per domain layer. Each case or class carries associated context values (ids, messages, codes, retry guidance) — never a bare error with just a string message.
+2. Domain errors are the only error types that propagate into business logic and presentation layers. Transport errors (HTTP status, gRPC status, filesystem errors, parser errors) must be mapped to domain errors at the boundary where they enter the system.
+3. The error type hierarchy is part of the API contract — changes to it are versioned and reviewed like any other API change.
 
-4. Catch `RPCError` at the repository implementation site. Map `RPCError.Code`:
-   - `.notFound` → `YourDomainError.notFound(id:)`
-   - `.unauthenticated` → `AuthError.unauthenticated`
-   - `.permissionDenied` → `AuthError.permissionDenied`
-   - `.invalidArgument` → `ValidationError.invalidRequest(message:)`
-   - `.unavailable`, `.deadlineExceeded` → `NetworkError.transient(code:message:)` — retry eligible
-   - `.internal` → `NetworkError.serverError(message:)` — not retryable
-5. Use `throws(DomainErrorType)` in repository protocols — callers never handle `RPCError`.
+## Error propagation across boundaries
 
-## gRPC Status → Domain Error Mapping (Python — grpc.aio)
+4. Map transport errors to domain errors at the repository or service boundary. Callers of repository and service methods never see raw transport errors.
+5. Every `catch` or `except` block must handle, log, or re-raise. Silent swallowing is a defect. An empty catch block is a code review failure.
+6. When logging a mapped error at the boundary, include: the method that failed, the original transport code, the mapped domain error type, and relevant structured context (request id, user id, deadline). Never log credentials or PII.
+7. Do not leak transport error detail into user-facing messages. The user sees a domain-appropriate message; the log sees the technical detail.
 
-6. Catch `grpc.aio.AioRpcError` at the service or repository implementation site. Map `error.code()`:
-   - `NOT_FOUND` → `NotFoundError(resource_type, id)`
-   - `UNAUTHENTICATED` → `AuthenticationError(message)`
-   - `PERMISSION_DENIED` → `AuthorizationError(message)`
-   - `INVALID_ARGUMENT` → `ValidationError(message)`
-   - `UNAVAILABLE`, `DEADLINE_EXCEEDED` → `TransientError(code, message)` — retry eligible
-   - `INTERNAL` → `ServerError(message)` — not retryable
+## Retry policy
 
-## gRPC Handler Error Responses (Python)
+8. Retry only transient errors. Retryable conditions are categorized at the domain error level — never retry based on raw transport status in business logic.
+9. Never retry client errors (not found, invalid argument, already exists, permission denied, unauthenticated). These are not transient — retrying them wastes resources and can corrupt state.
+10. Use exponential backoff with jitter. Formula: `delay = min(base * 2^attempt + jitter(0, maxJitter), maxDelay)`.
+11. Cap maximum retry count and maximum delay. Define defaults as a named value type or dataclass — no inline magic numbers. Reasonable starting defaults: base=0.5s, maxDelay=30s, maxAttempts=5, maxJitter=1.0s.
+12. Make retry behavior configurable per operation type. A read may retry more aggressively than a write.
 
-7. Return gRPC errors: `await context.abort(grpc.StatusCode.CODE, "detail string")`.
-8. Rich error details: `await context.abort_with_status(grpcio_status.to_status(Status(...)))`.
-9. Never let domain exceptions propagate from handlers unhandled — they become `INTERNAL` with no client-visible detail.
+## Cancellation
 
-## Retry Logic
+13. Long-running operations must respect cancellation. When a cancellation signal arrives, clean up resources, log the cancellation, then propagate the signal — never swallow it.
+14. Cancellation semantics are language- and framework-specific — consult the loaded platform skills (swift-best-practices, python-best-practices, grpc-patterns) for the correct mechanism.
 
-10. Retry only transient errors: `unavailable` / `UNAVAILABLE`, `deadlineExceeded` / `DEADLINE_EXCEEDED`.
-11. Never retry: `notFound`, `invalidArgument`, `alreadyExists`, `permissionDenied`, `unauthenticated`.
-12. Formula: `delay = min(base * 2^attempt + jitter(0, maxJitter), maxDelay)`
-13. Defaults: base=0.5s, maxDelay=30s, maxAttempts=5, maxJitter=1.0s. Define as a named value type / dataclass — no inline magic numbers.
+## Output
 
-## Swift-Specific Rules
-
-14. Use `Result<Success, Failure>` for storable errors (not thrown). Use `throws` for propagation.
-15. Cancellation in grpc-swift-2: Swift Task cancellation propagates automatically. No explicit `call.cancel()` required.
-16. Every `catch` block handles, logs, or rethrows. An empty `catch {}` is a code review failure.
-
-## Python-Specific Rules
-
-17. Never use bare `except:` or `except Exception:` without re-raising or structured logging.
-18. Handle `asyncio.CancelledError` in streaming handlers: clean up, then re-raise. Never swallow.
-19. Log mapped errors at the boundary with: rpc_method, domain error type, original code, and structured context.
+When reviewing error handling, produce findings grouped by severity. Each finding includes: the file and symbol, the rule violated, and the recommended action. When designing error handling, produce: the domain error type definition, the mapping strategy from transport errors, and the retry policy for each operation category.

@@ -148,8 +148,8 @@ agent needs every platform skill — load only what the agent's role requires.
 ### Agents and their skill assignments
 
 **architect**
-- Tier 1: architecture-review, api-design, python-architecture (if Python server in project)
-- Tier 2 (from Step 1): apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, python-best-practices, grpc-patterns, rest-patterns, c-language — load those present in the project's skill profile
+- Tier 1: architecture-review, api-design
+- Tier 2 (from Step 1): apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, python-best-practices, python-architecture, grpc-patterns, rest-patterns, c-language, objc-language, cpp-language — load those present in the project's skill profile
 
 **coder**
 - Tier 1: implementation, debugging, error-handling
@@ -157,10 +157,11 @@ agent needs every platform skill — load only what the agent's role requires.
 
 **reviewer**
 - Tier 1: review, error-handling
-- Tier 2 (from Step 1): swift-best-practices, python-best-practices, grpc-patterns, rest-patterns, apple-architecture-core, ios-architecture, macos-architecture, c-language, objc-language, cpp-language, security-patterns — load those present in the project's skill profile
+- Tier 2 (from Step 1): swift-best-practices, python-best-practices, python-architecture, grpc-patterns, rest-patterns, apple-architecture-core, ios-architecture, macos-architecture, c-language, objc-language, cpp-language, security-patterns — load those present in the project's skill profile
 
 **tester**
 - Tier 1: testing, ui-test-strategy
+- Tier 2 (from Step 1): swift-best-practices, python-best-practices, grpc-patterns, rest-patterns, ios-architecture, macos-architecture, c-language, objc-language, cpp-language — load those present in the project's skill profile (language skills for framework/naming conventions and test double patterns; protocol skills for transport-level test harnesses; platform architecture skills for UI test surface knowledge)
 
 **planner**
 - Tier 1: planning
@@ -183,7 +184,7 @@ agent needs every platform skill — load only what the agent's role requires.
 - Tier 2: audit-methodology + architecture platform skills from Step 1 (apple-architecture-core, ios-architecture, macos-architecture, python-architecture)
 
 **auditor-code**
-- Tier 2: audit-methodology + language skills from Step 1 (swift-best-practices, python-best-practices, c-language, objc-language, cpp-language)
+- Tier 2: audit-methodology + language skills from Step 1 (swift-best-practices, python-best-practices, c-language, objc-language, cpp-language) + python-architecture (when Python server in project — provides performance anti-pattern rules like N+1 query detection)
 
 **auditor-tests**
 - Tier 1: testing, ui-test-strategy
@@ -220,26 +221,24 @@ on which tool runs the agent.
 
 ## Full skill inventory
 
-### Tier 1 — Role skills (14)
+### Tier 1 — Role skills (12)
 
 | Skill | Description | Primary agents |
 |---|---|---|
 | api-design | API design philosophy, versioning, error design, protocol selection | architect, grpc-schema |
-| architecture-review | Architectural assessment checklist across platforms | architect |
+| architecture-review | Platform-agnostic architecture assessment methodology | architect |
 | debugging | Root cause methodology, diagnostics, fix verification | coder |
 | dependency-intake | Platform-agnostic dependency evaluation methodology | docs-researcher |
-| documentation | Research methodology, source prioritization, finding reporting | docs-researcher |
-| error-handling | Domain errors, gRPC status mapping, retry logic | coder, reviewer |
+| documentation | Platform-agnostic research methodology and finding reporting | docs-researcher |
+| error-handling | Universal domain error philosophy, retry policy, propagation | coder, reviewer |
 | implementation | Code change workflow, concurrency safety, verification | coder |
 | planning | Scoping, task breakdown, risk identification, verification strategy | planner |
-| python-architecture | Python server structure, service layers, repository pattern | architect |
 | repo-ops | Git workflows, scripting, command sequencing, safety | repo-ops |
 | review | Review priorities, examination checklist, finding reporting | reviewer |
-| testing | Test pyramid, design, organization, coverage, platform tooling | tester |
+| testing | Test pyramid, design, organization, coverage | tester |
 | ui-test-strategy | UI/E2E tool selection, test design, snapshot testing | tester |
-| pm-startup | PM chat session startup and orientation (PM chat only) | PM chat |
 
-### Tier 2 — Platform skills (16)
+### Tier 2 — Platform skills (17)
 
 | Skill | Description | Agents |
 |---|---|---|
@@ -255,10 +254,21 @@ on which tool runs the agent.
 | ios-architecture | iOS/iPadOS scene lifecycle, UIKit interop, App Store boundaries | architect, reviewer, auditor |
 | macos-architecture | macOS NSDocument, windows, menu bar, AppKit, sandbox, accessibility | architect, reviewer, auditor |
 | objc-language | Objective-C ARC, nullability, bridging, legacy code patterns | coder, reviewer, auditor |
+| python-architecture | Python server structure, service layers, repository pattern, grpc.aio handlers | architect, reviewer, auditor |
 | python-best-practices | Python type hints, async, error handling, ruff/pyright, style | architect, coder, reviewer, auditor |
 | rest-patterns | REST/HTTP URL design, HTTP methods, status codes, OpenAPI, caching | architect, coder, reviewer |
 | security-patterns | Credential exposure, injection, deserialization, log safety | auditor, reviewer |
 | swift-best-practices | Swift type system, immutability, Swift 6 concurrency, style | architect, coder, reviewer, auditor |
+
+### PM chat operational skill (1)
+
+This skill is outside both tiers. It is not loaded by any agent — it is used exclusively by the PM chat itself for session startup and orientation. It exists in the skill directory because the template's skill loading mechanism is uniform across tools, but its purpose is PM chat operational, not agent role guidance.
+
+| Skill | Description | Loaded by |
+|---|---|---|
+| pm-startup | PM chat session startup procedure: read state files, check TD-TBD sentinels, report ready status | PM chat only (not an agent) |
+
+**Total skills: 30** (12 Tier 1 + 17 Tier 2 + 1 PM chat operational)
 
 ### Deferred skills (create when project need arises)
 

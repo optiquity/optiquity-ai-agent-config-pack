@@ -36,13 +36,19 @@ allowed-tools: Read, Grep, Glob, Bash
 19. Use `Result<Success, Failure>` for storable errors; use `throws` for propagation.
 20. Retry transient failures with exponential backoff and jitter. Never retry non-transient errors.
 
+## Testing tooling
+
+21. Use the Swift Testing framework (`@Test`, `#expect`, `#require`) for new test code. Coexist with legacy XCTest suites without rewriting them.
+22. Test naming convention: `testWhenConditionThenExpectedOutcome()`. Names are self-documenting failure messages.
+23. For gRPC client tests: wrap generated stubs in a protocol and provide fake implementations returning canned Protobuf response messages. Never hit real endpoints in unit tests.
+
 ## Style and idioms
 
-21. Prefer protocol-oriented programming over class inheritance.
-22. Use `@Observable` (iOS 17+/macOS 14+) for new ViewModels. Coexist with legacy `ObservableObject`.
-23. Keep SwiftUI views thin — push logic into dedicated types.
-24. Use `ViewModifier` for reusable view behavior. Eliminate repeated modifier chains.
-25. Use `@Environment` for dependency injection into the view tree.
-26. Prefer `guard` and early return over deeply nested conditionals.
-27. Avoid force unwraps except in tightly justified test-only contexts.
-28. No `print()` in production code — use `os_log` or structured logging.
+24. Prefer protocol-oriented programming over class inheritance.
+25. Use `@Observable` (iOS 17+/macOS 14+) for new ViewModels. Coexist with legacy `ObservableObject`.
+26. Keep SwiftUI views thin — push logic into dedicated types.
+27. Use `ViewModifier` for reusable view behavior. Eliminate repeated modifier chains.
+28. Use `@Environment` for dependency injection into the view tree.
+29. Prefer `guard` and early return over deeply nested conditionals.
+30. Avoid force unwraps except in tightly justified test-only contexts.
+31. No `print()` in production code — use `os_log` or structured logging.
