@@ -980,6 +980,18 @@ is a focused reference that any PM chat can read at prompt-generation time.
 *Note: `maintenance-docs/TOOL-COMPARISON.md` was created during the v9 planning
 phase and committed in Step 1. It does not need to be created during implementation.*
 
+### Documents to create (new in v9)
+
+These project-template documents do not yet exist in v9 but must be created
+during Step 12. Each is the v9 unified replacement for content that previously
+lived in the three v8.9 template directories.
+
+| Document | Purpose |
+|---|---|
+| `project-template/CLAUDE.md` | Claude Code context file for the unified template. Platform-agnostic — project-specific platform defaults are filled in per project. Contains: capability policy, core priorities, agent behavior rules, skill loading reference, phase routing table, scripts table, deferral comment format, build hygiene. Equivalent in intent to the v8.9 `apple-app-template/CLAUDE.md` + `python-server-template/CLAUDE.md` + monorepo `CLAUDE.md`, unified and stripped of platform-specific content. |
+| `project-template/AGENTS.md` | Codex context file for the unified template. Clean Codex-only content — the human-readable routing table and agent selection criteria live in METHODOLOGY.md Part 3 per Decision 8. Contains: capability policy, core priorities, agent behavior rules, skill loading reference, scripts table, deferral comment format. Equivalent in intent to the v8.9 template AGENTS.md files, unified and trimmed to Codex-specific content only. |
+| `project-template/README.md` | Project template README. Explains what the template contains, how a new project uses it (via QUICKSTART.md), and points to the context files. Equivalent to the v8.9 per-template README files, unified. |
+
 ### Documents to expand or restructure
 
 | Document | Change |
@@ -987,12 +999,12 @@ phase and committed in Step 1. It does not need to be created during implementat
 | `QUICKSTART.md` | Update for unified template: single template directory, three-tool setup (Claude/Codex/Gemini), GEMINI.md creation, skill loading, PLATFORM-SKILLS.md reference. Currently describes three template directories and Claude-only setup. |
 | `supporting-docs/AGENT_KICKOFF_TEMPLATE.md` | Update architect kickoff to specify which skills to load rather than which template-specific architecture to adopt. Currently references platform-specific patterns scoped to the old three-template model. |
 | `PM-CHAT.md` (template — project-level file) | Expand to cover all three PM chat architectures, their startup procedures, file write mechanisms, context compression, and cross-tool switching. Note: the project-level PM-CHAT.md is copied from `supporting-docs/PM-CHAT.md` during setup — Step 5 updates the supporting-docs source so all new projects get the three-tool version. |
+| `project-template/GEMINI.md` | Add a "Scripts" section equivalent to the one in `project-template/CLAUDE.md` and `project-template/AGENTS.md`: table of all v9 wrapper and language-specific scripts, when to run each, and who calls each. The Agent roles section (added in Step 8) and phase routing table already exist — Step 12 only adds the scripts table. |
 | `supporting-docs/CLI-PM-SETUP.md` | Update for three-tool coverage: add Gemini CLI session management (`/chat save`, `/chat resume`, `/compress`) alongside existing Claude CLI content. Update cross-machine workflow for all three tools. |
 | `supporting-docs/DEPENDENCIES.md` | Add Codex CLI and Gemini CLI; add Node.js as a shared dependency; add future C/C++ tools. |
-| `supporting-docs/METHODOLOGY.md` | Add context window guidance per agent type; add approval model documentation per tool; add skill-loading preamble referencing PLATFORM-SKILLS.md; add agent/skill governance rules; add explicit routing criteria for tester, auditor, and planner with trigger conditions (see Decision 8). |
-| `AGENTS.md` | Update to be a clean Codex-only agent context file. The human-readable routing table and agent selection criteria move to METHODOLOGY.md Part 3 per Decision 8. Remove any content that is not Codex-specific. |
-| `supporting-docs/SETUP_TEMPLATE.md` | Update for unified template: remove references to three template directories; update setup instructions for all three tools. |
-| `supporting-docs/PROMPT-TEMPLATES.md` | Evaluate Templates 9–12 (global audit prompts currently using tester and docs-researcher) for revision or deprecation as the auditor agent is designed (Step 10). Add auditor prompt template (Step 11). No other structural changes required. |
+| `supporting-docs/METHODOLOGY.md` | Add context window guidance per agent type; add approval model documentation per tool; add skill-loading preamble referencing PLATFORM-SKILLS.md; add agent/skill governance rules; add explicit routing criteria for tester, auditor, and planner with trigger conditions (see Decision 8). Update all `apple-architect` / `python-architect` references to `architect`. Update Workflow 2 script references to the v9 wrapper + language-specific script model. |
+| `supporting-docs/SETUP_TEMPLATE.md` | Update for unified template: remove references to three template directories; update setup instructions for all three tools. Update script references to the v9 wrapper model. |
+| `supporting-docs/PROMPT-TEMPLATES.md` | Evaluate Templates 9–12 (global audit prompts currently using tester and docs-researcher) for revision or deprecation as the auditor agent is designed (Step 10). Add auditor prompt template (Step 11). Update all `./scripts/validate.sh` and similar references to clarify the v9 wrapper behavior (runs only language-specific scripts for detected project type). |
 | `xcode-companion-templates/ClaudeAgentConfig/CLAUDE.md` | Update agent name references: `apple-architect` → `architect`. Update skill names to match v9 skill library. |
 
 ### Pack-root items that remain unchanged
@@ -1428,43 +1440,76 @@ than loading all skills into itself.
 
 ---
 
-### Step 12 — Update shared documentation
+### Step 12 — Create and update shared documentation
 
-**Problem:** Multiple documents contain content specific to the old three-template
-structure or are missing information required by the unified model. Specifically:
-METHODOLOGY.md lacks context window guidance per agent type, approval model
-documentation per tool, skill-loading preamble, agent/skill governance rules,
-and explicit routing criteria for tester/auditor/planner (Decision 8).
-DEPENDENCIES.md omits Codex CLI and Gemini CLI. AGENTS.md still contains
-content beyond Codex-specific rules — the non-Codex content (routing table,
-agent selection criteria) must be removed and relocated to METHODOLOGY.md Part 3
-per Decision 8. QUICKSTART.md still describes three template
-directories and Claude-only setup. AGENT_KICKOFF_TEMPLATE.md still references
-platform-specific architecture patterns tied to the old model.
-CLI-PM-SETUP.md covers only Claude CLI and needs Gemini CLI coverage.
-SETUP_TEMPLATE.md still references the old three-template structure.
+**Problem:** Two gaps exist in the v9 documentation set.
+
+First, three project-template files listed in Decision 9's file tree do not
+yet exist: `project-template/CLAUDE.md`, `project-template/AGENTS.md`, and
+`project-template/README.md`. The v8.9 pack has these files in each of its
+three template directories, but the v9 unified template has not yet received
+its versions. Without them, new projects created from the v9 template have
+no Claude context file, no Codex context file, and no project-template
+README. The "Scripts" table that traditionally lives in the context files
+(from v8.9) is absent, so agents have no consolidated reference for the v9
+wrapper and language-specific scripts created in Step 9.
+
+Second, multiple existing documents contain content specific to the old
+three-template structure or are missing information required by the unified
+model. METHODOLOGY.md lacks context window guidance per agent type, approval
+model documentation per tool, skill-loading preamble, agent/skill governance
+rules, and explicit routing criteria for tester/auditor/planner (Decision 8);
+its workflow sections still reference `apple-architect` / `python-architect`
+and the pre-v9 monolithic scripts. DEPENDENCIES.md omits Codex CLI and
+Gemini CLI. QUICKSTART.md still describes three template directories and
+Claude-only setup. AGENT_KICKOFF_TEMPLATE.md still references platform-specific
+architecture patterns tied to the old model. CLI-PM-SETUP.md covers only
+Claude CLI and needs Gemini CLI coverage. SETUP_TEMPLATE.md still references
+the old three-template structure and pre-v9 scripts. PROMPT-TEMPLATES.md
+references the old script model and old architect agent names.
 xcode-companion-templates/ClaudeAgentConfig/CLAUDE.md references old agent names.
+GEMINI.md (created in Step 5, expanded in Step 8) needs a "Scripts" section
+equivalent to what CLAUDE.md and AGENTS.md will have.
 
-**Goal:** All documents listed in Part 4 "Documents to expand or restructure"
+**Goal:** All three new project-template files exist and are internally
+consistent with the v9 unified template structure, the v9 agent roster, the
+v9 skill library, and the v9 scripts. All documents listed in Part 4
+"Documents to create (new in v9)" and "Documents to expand or restructure"
 accurately reflect the unified template structure and three-tool support.
-METHODOLOGY.md adds all items specified in its Part 4 table row including
-Decision 8 agent routing criteria. DEPENDENCIES.md covers all three CLI tools.
-AGENTS.md is a clean Codex-only context file. QUICKSTART.md covers unified
-template setup for all three tools. AGENT_KICKOFF_TEMPLATE.md references skills
-rather than template-specific architecture. CLI-PM-SETUP.md covers Gemini CLI.
-SETUP_TEMPLATE.md is updated for the unified template.
-xcode-companion-templates/ClaudeAgentConfig/CLAUDE.md uses v9 agent and skill names.
+`project-template/CLAUDE.md`, `project-template/AGENTS.md`, and
+`project-template/GEMINI.md` each contain a "Scripts" section that lists
+every script created in Step 9 with its purpose, when to run, and who calls
+it. METHODOLOGY.md adds all items specified in its Part 4 table row
+including Decision 8 agent routing criteria and v9 script/agent name updates.
+DEPENDENCIES.md covers all three CLI tools. QUICKSTART.md covers unified
+template setup for all three tools. AGENT_KICKOFF_TEMPLATE.md references
+skills rather than template-specific architecture. CLI-PM-SETUP.md covers
+Gemini CLI. SETUP_TEMPLATE.md is updated for the unified template and v9
+scripts. xcode-companion-templates/ClaudeAgentConfig/CLAUDE.md uses v9 agent
+and skill names.
 
-**Success looks like:** A developer reading QUICKSTART.md can set up a new
-project on any of the three tools without referring to any other documentation.
-METHODOLOGY.md contains all additions specified in its Part 4 table row,
-including the explicit agent routing criteria from Decision 8. Decision 8's
-cross-references to METHODOLOGY.md sections are verified as accurate after all
-additions are made. None of the updated documents reference the old
-three-template structure anywhere.
+**Success looks like:**
+1. A developer reading QUICKSTART.md can set up a new project on any of the
+   three tools without referring to any other documentation.
+2. A developer copying `project-template/` to a new project gets a working
+   CLAUDE.md, AGENTS.md, GEMINI.md, and README.md immediately — no
+   placeholder-only files.
+3. Every v9 script (the 9 language-specific scripts, the 4 wrappers,
+   proto-gen.sh, agent-post-edit-check.sh, and agent-run.sh) is listed in
+   the Scripts table in all three context files (CLAUDE.md, AGENTS.md,
+   GEMINI.md).
+4. METHODOLOGY.md contains all additions specified in its Part 4 table row,
+   including the explicit agent routing criteria from Decision 8. Decision 8's
+   cross-references to METHODOLOGY.md sections are verified as accurate after
+   all additions are made.
+5. None of the updated documents reference the old three-template structure,
+   the `apple-architect` or `python-architect` agents, or the pre-v9
+   monolithic scripts anywhere. Grep for those strings returns zero matches
+   in the files Step 12 updates.
 
-**Depends on:** Steps 3–9 (unified structure and all agent/skill files must
-be finalized before documentation can accurately describe them).
+**Depends on:** Steps 3–9 (unified structure, all agent/skill files, and
+the v9 scripts must be finalized before documentation can accurately
+describe them).
 **Resolves:** BD-025; part of BD-024.
 
 ---
