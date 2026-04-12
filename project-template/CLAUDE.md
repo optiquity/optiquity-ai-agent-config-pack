@@ -1,0 +1,378 @@
+# CLAUDE.md
+
+<!--
+HOW TO USE THIS TEMPLATE
+
+This is the Claude Code context file for your project. It is loaded automatically
+by Claude Code CLI at session start via the CLAUDE.md hierarchy.
+
+Fill in [PROJECT_NAME], [PLATFORM_TARGETS], and [TRANSPORT] during project setup.
+Fill in the Platform and Stack Defaults section for your project type.
+Fill in or remove conditional sections marked with [CONDITIONAL] based on your
+project type (e.g., remove iOS 26 section for a Python-only server).
+Remove this comment block after filling in the placeholders.
+
+This file is the Claude Code equivalent of AGENTS.md (Codex) and GEMINI.md. All
+three files should express the same project rules — only tool-specific operating
+notes differ.
+-->
+
+---
+*Copied from: project-template/CLAUDE.md — AI Agent Config Pack v9*
+*Fill in placeholders and remove this block.*
+---
+
+**[PROJECT_NAME]** targets [PLATFORM_TARGETS].
+Transport: [TRANSPORT] (e.g., gRPC + Proto3 for first-party; REST for third-party).
+
+## Capability policy
+
+Claude may perform all major engineering tasks in this repository:
+planning, architecture, implementation, refactoring, debugging, testing, code review,
+dependency review, repo operations, documentation.
+
+All are allowed. No task category is reserved exclusively for another tool.
+
+Default preference only:
+- Use a stronger cloud model for architecture, concurrency, security, review, and other correctness-sensitive work.
+- Use local models only where results are likely equivalent and the verification path is strong.
+
+## Core priorities
+
+1. Correctness before speed.
+2. Preserve buildability and testability after every change.
+3. Prefer small, reviewable changes over broad rewrites.
+4. Keep architecture explicit. Do not hide complexity behind clever abstractions.
+5. Verify assumptions against code, tests, docs, or tooling output. Do not guess.
+
+## Platform and stack defaults
+
+<!--
+Fill in the platform-specific defaults for your project. Examples:
+
+For an iOS app:
+- Target platforms: iOS, iPadOS, macOS.
+- UI: SwiftUI first. UIKit interop only for platform gaps.
+- Dependencies: Swift Package Manager.
+- Concurrency: Swift 6 strict concurrency for new code.
+
+For a Python server:
+- Python 3.12+. uv for dependency management.
+- ruff for linting. pyright strict for type checking.
+- pytest + pytest-asyncio for tests.
+
+For a monorepo (Apple + Python):
+- Combine both sets of defaults above.
+-->
+
+[PLATFORM_DEFAULTS — fill in per project type]
+
+## [CONDITIONAL] iOS 26 / Xcode 26.3 platform features
+
+<!--
+Include this section only for projects targeting iOS 26+ / macOS 26+.
+Delete the entire section for Python-only or non-Apple projects.
+-->
+
+- **Liquid Glass** is the current iOS 26 / macOS 26 design language for materials and visual effects. Use `.glassEffect()` and related modifiers rather than custom `Material` or `UIVisualEffectView` implementations.
+- **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Evaluate before reaching for third-party ML inference.
+- **Availability guards required.** Liquid Glass and FoundationModels require iOS 26+ / macOS 26+. Wrap in `#available(iOS 26, *)` / `#available(macOS 26, *)` guards if the deployment target is below iOS 26 / macOS 26.
+- **Check Apple frameworks before third-party packages** for any new capability.
+- For implementation details on any iOS 26 API, the `docs-researcher` agent reads from `shared-docs/ios26/` before web search.
+
+## Architecture — universal layer discipline
+
+These rules apply regardless of which architecture pattern this project uses.
+
+- Choose one primary architecture pattern per app target before writing production code. **Document the choice and rationale in `ARCHITECTURE.md` before implementation begins.**
+- Once chosen, apply the pattern consistently within its target. Any seam between two different patterns must be documented and justified.
+- Separate presentation, domain, and data/transport layers into distinct types, files, or modules. No layer may reach past its immediate neighbor (presentation → domain → data; never presentation → data directly).
+- Domain layer has zero import dependencies on UIKit, AppKit, SwiftUI, CoreData, SwiftData, gRPC, grpcio, or any persistence or networking framework.
+- Generated Protobuf and gRPC types are transport types. They live in the data layer only. They must never appear in domain-layer type signatures or in presentation/view-model types.
+- Every cross-layer dependency is expressed as an interface or protocol abstraction. Concrete implementations are injected; they are never instantiated inline by the consuming layer.
+- Shared mutable state declares its owner type, owning actor or thread, lifecycle (who creates it, who destroys it), and mutation contract at the definition site. Undocumented shared mutable state is a defect.
+- Services are stateless by default. Stateful services explicitly document their state variables, threading guarantees, and invalidation policy.
+- Navigation logic lives outside view and view-model types. Use Coordinator, NavigationStack with a typed path, or a Router depending on the chosen pattern.
+
+## [CONDITIONAL] Architecture rules — platform-specific
+
+<!--
+Add platform-specific architecture rules here. These come from your project's
+platform skills (apple-architecture-core, ios-architecture, macos-architecture,
+python-architecture). Examples:
+
+For Swift/Apple:
+- Default to immutable value types.
+- Mark classes final by default.
+- Make invalid states unrepresentable.
+- Prefer typed errors, typed IDs, and explicit domain models.
+- Use dependency injection for services, clients, repositories.
+
+For Python:
+- Prefer simple, explicit APIs.
+- Prefer immutable data where practical.
+- Global mutable state is a code smell unless required by framework boundaries.
+- Keep side effects near the edge; business logic should be pure where possible.
+
+For both: fill in both sets. The loaded skills provide the full rule set.
+-->
+
+[PLATFORM_ARCHITECTURE — fill in from loaded skills]
+
+## [CONDITIONAL] Language-specific coding rules
+
+<!--
+Fill in language-specific coding rules from your project's language skills
+(swift-best-practices, python-best-practices, c-language, etc.).
+
+For Swift projects: Swift 6 strict concurrency, @MainActor usage, async/await,
+struct vs class rules, SwiftUI view rules, etc.
+
+For Python projects: async patterns, type annotations, ruff/pyright rules,
+error handling, module-level constants, etc.
+
+Delete this section for projects where language rules are fully covered by
+the platform section above. Usually both sections are needed.
+-->
+
+[LANGUAGE_RULES — fill in from loaded skills]
+
+## [CONDITIONAL] gRPC and Proto3 rules
+
+<!--
+Include this section only if the project uses gRPC. Delete for REST-only
+or no-protocol projects. Fill in from grpc-patterns skill.
+
+For Swift clients: wrap stubs behind protocols, map Protobuf to domain types,
+auth in metadata not fields, deadlines, channel lifecycle, etc.
+
+For Python servers: handler patterns, interceptors, error mapping, streaming, etc.
+-->
+
+[GRPC_RULES — fill in from grpc-patterns skill, or delete section]
+
+## Security
+
+- Never hardcode secrets, API keys, tokens, or certificates in source code or config files committed to git.
+- Validate all data received from the network before using it in domain logic or UI.
+- TLS required for all gRPC connections. Do not disable certificate validation outside development.
+
+<!--
+Add platform-specific security rules from your project's skills:
+
+For Apple: store credentials in Keychain (never UserDefaults/files), enable App
+Transport Security, declare Privacy Manifests, request minimum permissions.
+
+For Python: use environment variables + secrets manager for production, pydantic-settings
+for local dev, rate limiting in gRPC interceptors, JWT/OAuth with short-lived tokens.
+-->
+
+[PLATFORM_SECURITY — fill in from security-patterns skill]
+
+## Liskov Substitution Principle
+
+- Every interface or protocol method must have a meaningful implementation in every implementing type. Silent no-ops and unconditional "not supported" throws that are not gated by capability checks are violations.
+- No domain or presentation layer code may branch on the concrete type behind an abstract type reference. Use capability flags or feature checks for all implementation differences.
+- No concrete data-layer type may be referenced by name in domain or presentation code. Only abstract types and domain model types cross layer boundaries.
+- When adding a new interface or protocol, verify implementation correctness across all implementing types before committing.
+
+## Dependency intake policy
+
+Before adding any third-party framework or API:
+
+1. Check whether platform frameworks already solve the need well enough.
+2. Prefer the project's standard package manager with active maintenance, clear licensing, and recent activity.
+3. Evaluate cross-platform impact, security risk, binary size, and lock-in.
+4. Record why the dependency is needed, what alternatives were rejected, and the exit plan if the dependency becomes stale.
+5. Do not add a dependency when a local wrapper around platform APIs is simpler and safer.
+
+## Testing expectations
+
+- Add or update tests with every non-trivial change.
+- Use unit tests for domain logic and state transitions.
+- Use integration tests for storage, networking adapters, and module seams.
+- Use protocol-based test doubles for service stubs. Never hit real endpoints in unit or integration tests.
+
+<!--
+Add platform-specific testing rules:
+
+For Apple: XCUITest for UI, Maestro for black-box E2E, snapshot tests optional.
+For Python: pytest + pytest-asyncio, grpcio-testing harness for gRPC handlers.
+-->
+
+[PLATFORM_TESTING — fill in from testing skill]
+
+## Refactoring policy
+
+- Do not mix unrelated refactors into feature work.
+- Preserve external behavior unless the task explicitly changes behavior.
+- When touching legacy code, improve naming, seams, and tests before broad rewrites.
+- Prefer deleting dead code over preserving speculative abstractions.
+
+## Skill loading
+
+Agent prompts specify which skills to load. Skills are located in
+`.claude/skills/<name>/SKILL.md`. The PM chat selects skills based on
+`PLATFORM-SKILLS.md` — the skill-selection matrix for this project.
+
+## Scripts
+
+`agent-run.sh` lives in the **project root** and is the standard way to launch any agent.
+The `scripts/` directory contains build, test, and validation scripts. **Copy both from the
+pack template and make executable before first use** (`chmod +x agent-run.sh scripts/*.sh`).
+
+| Script | Location | When to run | Who calls it |
+|---|---|---|---|
+| `agent-run.sh` | Project root | To launch any agent — run `./agent-run.sh --help` | Human only |
+| `bootstrap.sh` | `scripts/` | Once on first checkout or new machine — detects languages and calls the right bootstrap-\<lang\>.sh | Human |
+| `bootstrap-swift.sh` | `scripts/` | Resolve SPM dependencies, verify Xcode | `bootstrap.sh` wrapper |
+| `bootstrap-python.sh` | `scripts/` | Sync Python dependencies via uv, verify buf | `bootstrap.sh` wrapper |
+| `format.sh` | `scripts/` | Before committing — detects languages and calls format-\<lang\>.sh | Human or `repo-ops` agent |
+| `format-swift.sh` | `scripts/` | Format Swift sources using swift-format | `format.sh` wrapper |
+| `format-python.sh` | `scripts/` | Format Python sources using ruff | `format.sh` wrapper |
+| `validate.sh` | `scripts/` | Before committing — full build + test suite; calls validate-\<lang\>.sh | Human or `repo-ops` agent |
+| `validate-swift.sh` | `scripts/` | Build and test Swift side | `validate.sh` wrapper |
+| `validate-python.sh` | `scripts/` | Lint, type-check, and test Python side | `validate.sh` wrapper |
+| `validate-proto.sh` | `scripts/` | Lint proto files and detect breaking changes | `validate.sh` wrapper |
+| `test.sh` | `scripts/` | After implementing — runs test suite only; calls test-\<lang\>.sh | Human or `repo-ops` agent |
+| `test-swift.sh` | `scripts/` | Run Swift test suite | `test.sh` wrapper |
+| `test-python.sh` | `scripts/` | Run Python test suite via pytest | `test.sh` wrapper |
+| `proto-gen.sh` | `scripts/` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
+| `agent-post-edit-check.sh` | `scripts/` | **Never call manually** — fires automatically via Claude Code PostToolUse hook and Codex post_edit_command after every agent file edit | Automatic hook |
+
+**Required first-time setup:** Open `scripts/validate.sh` and `scripts/test.sh` and fill in
+the scheme and destination variables for your project. Until set, `xcodebuild` steps are
+skipped and the scripts only run `swift build`/`swift test`.
+
+**Wrapper detection:** Wrapper scripts (`format.sh`, `validate.sh`, `bootstrap.sh`, `test.sh`)
+detect which languages are present via marker files (`Package.swift` → Swift, `pyproject.toml` →
+Python, `proto/` → protobuf) and call only the relevant language-specific scripts.
+
+**Note:** `format.sh` is manual-only — it is not wired into the automatic post-edit hook.
+Run it explicitly before committing or ask `repo-ops` to run it.
+
+## Build and repo hygiene
+
+- Do not commit secrets, generated code, or machine-specific config.
+- Do not commit generated Protobuf or gRPC files. Regenerate via `proto-gen.sh`.
+- Prefer repo-local scripts over undocumented manual steps.
+- Document any new setup requirement in README.md or docs/.
+- **At the end of every implementation phase**, include a **"Proposed CHANGELOG entry"**
+  section in your completion report, formatted exactly as it would appear in `CHANGELOG.md`:
+  dated header, summary paragraph, itemised task list, files created/modified, and final
+  test count. Do not write to `CHANGELOG.md` or any other `.md` file in the project root —
+  the PM chat applies the entry after reviewer approval.
+
+## Git workflow
+
+- Make commits small and coherent.
+- Include tests when behavior changes.
+- Separate mechanical formatting from semantic changes when practical.
+- Surface risky migrations early.
+
+## Deferral comments and BACKLOG hygiene
+
+Three comment types are recognized for deferring work. Use the marker for the
+language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
+
+```
+// TODO(scope): TD-TBD — Short title
+// KNOWN GAP(severity): TD-TBD — Short title
+// VERIFY(source): TD-TBD — Short title
+```
+
+**Valid scope values for TODO:** `phase-N`, `dependency`, `feature`, `perf`, `version`
+**Valid severity values for KNOWN GAP:**
+- `critical` — must eventually be addressed without exception
+- `functional` — should be addressed; feature is incomplete without it
+- `polish` — may be skipped; improves experience but does not affect correctness
+**Source for VERIFY:** name the external source (e.g. `apple-docs`, `schwab-api`)
+
+**Rules — read carefully:**
+- Always write `TD-TBD` — never a real TD number. The PM chat assigns numbers after review.
+- Report every deferral comment added in the "Deferred items" section of the completion report.
+- Do not write to `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`, `PACK-FEEDBACK.md`, or
+  any other `.md` file in the project root — these are exclusively the PM chat's
+  responsibility. Do not resolve or modify existing BACKLOG entries. Never write
+  to `PACK-FEEDBACK.md` under any circumstance — it is the PM chat's upstream
+  feedback log for the AI Agent Config Pack itself.
+- Work that could be completed within the current phase scope is NOT a TODO — it is
+  an incomplete task. The reviewer will flag it as an implementation plan compliance failure.
+- Never use plain English deferral comments (`// Fix later`, `// Confirm this`, etc.).
+  Use the typed format above or do not leave a comment.
+- When citing a code location in a report, use the symbol name not the line number.
+  Line numbers drift with every edit; symbol names are stable.
+
+## [CONDITIONAL] Anti-patterns — never introduce these
+
+<!--
+Universal anti-patterns (keep these):
+-->
+
+- Massive view controllers or God ViewModels accumulating unrelated logic.
+- Calling generated gRPC stubs directly from ViewModels or Views.
+- Putting auth tokens or credentials in Protobuf message fields.
+- Singleton sprawl for services that could be injected.
+- Mutable global state that is not documented as such.
+- Domain types appearing in data-layer or transport-layer signatures.
+- Stringly-typed identifiers or state machines.
+- Magic duration literals for gRPC deadlines — use named constants.
+- Editing generated Protobuf or gRPC code by hand.
+
+<!--
+Add platform-specific anti-patterns from your skills. Examples:
+
+For Swift/Apple:
+- @unchecked Sendable without documented justification.
+- Force unwraps outside tightly justified test-only contexts.
+- print() in production code — use os_log or structured logger.
+- Retain cycles in gRPC streaming closures.
+- Blocking the main thread with synchronous I/O.
+- Type-erasure wrappers exposing .base for downcasting (LSP violation).
+- AsyncStream<Void> for fan-out notifications (use typed payloads).
+- ViewModels importing SwiftUI or holding navigator references.
+
+For Python:
+- Bare `except:` or `except Exception:` without re-raise or structured logging.
+- Blocking synchronous I/O in async handlers.
+- Hardcoded secrets or API keys in source or config.
+-->
+
+[PLATFORM_ANTIPATTERNS — fill in from loaded skills]
+
+## Phase routing — default agent assignments
+
+All three tools (Claude Code, Codex, Gemini CLI) can execute any phase.
+The defaults below identify the better system for each phase. Override
+when task characteristics favor a different tool.
+
+| Phase | Default | Agent | Key reason |
+|---|---|---|---|
+| Architecture / design | **Claude Code** | architect | Multi-file context, extended reasoning |
+| API and schema design | **Claude Code** | grpc-schema | Schema tools, buf integration |
+| Planning / task breakdown | **Claude Code** | planner | Tiebreaker — all systems comparable |
+| Dependency evaluation | **Claude Code** | docs-researcher | Web search, nuanced tradeoff analysis |
+| Implementation | **Codex** | coder | Workspace-write sandbox, strong code generation |
+| Code review | **Claude Code** | reviewer | Deep multi-file analysis, Bash diagnostics |
+| Testing | **Codex** | tester | Pattern generation, approval flow for new files |
+| Debugging | **Claude Code** | coder | Multi-step reasoning, Bash for live diagnostics |
+| Refactoring | **Codex** | coder | Mechanical changes in workspace-write sandbox |
+| Documentation | **Claude Code** | docs-researcher | Multi-file context aids consistency |
+| Repo operations | **Codex** | repo-ops | Workspace-write sandbox, scripting strength |
+| Local validation | **Codex** | repo-ops | Workspace-write sandbox; can execute scripts |
+
+To invoke any agent: `./agent-run.sh <cli> --agent <name>` (see `./agent-run.sh --help`)
+
+*This table reflects quality-optimized defaults. For cost-optimized routing
+alternatives (e.g., using Gemini CLI Flash for reviewer, tester, and
+docs-researcher), see `TOOL-COMPARISON.md` in the pack's `maintenance-docs/`.*
+
+## Agent behavior
+
+When acting in this repo:
+- Plan first for non-trivial work.
+- Call out uncertainty explicitly.
+- Do not invent APIs, framework behavior, or build flags.
+- Read existing code before introducing new patterns.
+- Match local style when it does not violate these rules.
+- Prefer changing the smallest correct surface area.

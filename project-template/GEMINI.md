@@ -58,6 +58,125 @@ For a Python server:
 
 [PLATFORM_DEFAULTS — fill in per project type]
 
+## [CONDITIONAL] iOS 26 / Xcode 26.3 platform features
+
+<!--
+Include this section only for projects targeting iOS 26+ / macOS 26+.
+Delete the entire section for Python-only or non-Apple projects.
+-->
+
+- **Liquid Glass** is the current iOS 26 / macOS 26 design language. Use `.glassEffect()` and related modifiers.
+- **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Evaluate before third-party ML inference.
+- **Availability guards required.** Wrap in `#available(iOS 26, *)` / `#available(macOS 26, *)` if deployment target is below iOS 26.
+- **Check Apple frameworks before third-party packages** for any new capability.
+
+## Architecture — universal layer discipline
+
+These rules apply regardless of which architecture pattern this project uses.
+
+- Choose one primary architecture pattern before writing production code. **Document in `ARCHITECTURE.md` before implementation begins.**
+- Separate presentation, domain, and data/transport layers. No layer reaches past its immediate neighbor.
+- Domain layer has zero framework imports (no UIKit, AppKit, SwiftUI, gRPC, grpcio).
+- Generated Protobuf/gRPC types live in the data layer only — never in domain or presentation signatures.
+- Cross-layer dependencies are expressed as interface or protocol abstractions. Concrete implementations are injected.
+- Shared mutable state documents its owner, lifecycle, and mutation contract. Undocumented shared mutable state is a defect.
+- Services are stateless by default. Stateful services document state, threading, and invalidation.
+- Navigation logic lives outside view and view-model types.
+
+## [CONDITIONAL] Architecture rules — platform-specific
+
+<!--
+Add platform-specific architecture rules from loaded skills.
+See CLAUDE.md for detailed examples per project type.
+-->
+
+[PLATFORM_ARCHITECTURE — fill in from loaded skills]
+
+## [CONDITIONAL] Language-specific coding rules
+
+<!--
+Fill in from loaded language skills (swift-best-practices, python-best-practices, etc.).
+See CLAUDE.md for detailed examples.
+-->
+
+[LANGUAGE_RULES — fill in from loaded skills]
+
+## [CONDITIONAL] gRPC and Proto3 rules
+
+<!--
+Include only if the project uses gRPC. Fill in from grpc-patterns skill.
+-->
+
+[GRPC_RULES — fill in from grpc-patterns skill, or delete section]
+
+## Security
+
+- Never hardcode secrets, API keys, tokens, or certificates in source or committed config.
+- Validate all data received from the network before use in domain logic or UI.
+- TLS required for all gRPC connections.
+
+<!--
+Add platform-specific security rules from loaded skills. See CLAUDE.md for examples.
+-->
+
+[PLATFORM_SECURITY — fill in from security-patterns skill]
+
+## Liskov Substitution Principle
+
+- Every interface or protocol method must have a meaningful implementation in every implementing type. Silent no-ops and unconditional "not supported" throws that are not gated by capability checks are violations.
+- No domain or presentation layer code may branch on the concrete type behind an abstract type reference. Use capability flags or feature checks for all implementation differences.
+- No concrete data-layer type may be referenced by name in domain or presentation code. Only abstract types and domain model types cross layer boundaries.
+- When adding a new interface or protocol, verify implementation correctness across all implementing types before committing.
+
+## Dependency intake policy
+
+1. Check platform frameworks first.
+2. Prefer actively maintained packages with clear licensing.
+3. Evaluate security, size, lock-in.
+4. Record rationale, alternatives, and exit plan.
+
+## Testing expectations
+
+- Add or update tests with every non-trivial change.
+- Use unit tests for domain logic. Integration tests at module seams.
+- Use protocol-based test doubles. Never hit real endpoints in unit or integration tests.
+
+<!--
+Add platform-specific testing rules from loaded skills.
+-->
+
+[PLATFORM_TESTING — fill in from loaded skills]
+
+## Refactoring policy
+
+- Do not mix unrelated refactors into feature work.
+- Preserve external behavior unless the task explicitly changes behavior.
+- When touching legacy code, improve naming, seams, and tests before broad rewrites.
+- Prefer deleting dead code over preserving speculative abstractions.
+
+## Git workflow
+
+- Make commits small and coherent.
+- Include tests when behavior changes.
+- Separate formatting from semantic changes when practical.
+- Surface risky migrations early.
+
+## [CONDITIONAL] Anti-patterns — never introduce these
+
+- Calling generated gRPC stubs directly from ViewModels or Views.
+- Auth tokens in Protobuf message fields.
+- Singleton sprawl for injectable services.
+- Mutable global state undocumented as such.
+- Domain types in data-layer or transport-layer signatures.
+- Magic duration literals for gRPC deadlines.
+- Editing generated Protobuf or gRPC code by hand.
+
+<!--
+Add platform-specific anti-patterns from loaded skills. See CLAUDE.md for examples.
+-->
+
+[PLATFORM_ANTIPATTERNS — fill in from loaded skills]
+
 ## Agent behavior
 
 When acting in this repo:
@@ -475,6 +594,40 @@ To invoke any agent: `./agent-run.sh <cli> --agent <name>` (see `./agent-run.sh 
 *This table reflects quality-optimized defaults. For cost-optimized routing
 alternatives (e.g., using Gemini CLI Flash for reviewer, tester, and
 docs-researcher), see `TOOL-COMPARISON.md` in the pack's `maintenance-docs/`.*
+
+## Skill loading
+
+Agent prompts specify which skills to load. Skills are located in
+`.gemini/skills/<name>/SKILL.md`. The PM chat selects skills based on
+`PLATFORM-SKILLS.md` — the skill-selection matrix for this project.
+
+## Scripts
+
+`agent-run.sh` lives in the **project root** and is the standard way to launch any agent.
+The `scripts/` directory contains build, test, and validation scripts. Make everything
+executable on first checkout: `chmod +x agent-run.sh scripts/*.sh`.
+
+| Script | Location | When to run | Who calls it |
+|---|---|---|---|
+| `agent-run.sh` | Project root | To launch any agent — run `./agent-run.sh --help` | Human only |
+| `bootstrap.sh` | `scripts/` | Once on first checkout or new machine — detects languages and calls bootstrap-\<lang\>.sh | Human |
+| `bootstrap-swift.sh` | `scripts/` | Resolve SPM dependencies, verify Xcode | `bootstrap.sh` wrapper |
+| `bootstrap-python.sh` | `scripts/` | Sync Python dependencies via uv, verify buf | `bootstrap.sh` wrapper |
+| `format.sh` | `scripts/` | Before committing — detects languages and calls format-\<lang\>.sh | Human or `repo-ops` agent |
+| `format-swift.sh` | `scripts/` | Format Swift sources using swift-format | `format.sh` wrapper |
+| `format-python.sh` | `scripts/` | Format Python sources using ruff | `format.sh` wrapper |
+| `validate.sh` | `scripts/` | Before committing — full build + test suite; calls validate-\<lang\>.sh | Human or `repo-ops` agent |
+| `validate-swift.sh` | `scripts/` | Build and test Swift side | `validate.sh` wrapper |
+| `validate-python.sh` | `scripts/` | Lint, type-check, and test Python side | `validate.sh` wrapper |
+| `validate-proto.sh` | `scripts/` | Lint proto files and detect breaking changes | `validate.sh` wrapper |
+| `test.sh` | `scripts/` | After implementing — runs test suite only; calls test-\<lang\>.sh | Human or `repo-ops` agent |
+| `test-swift.sh` | `scripts/` | Run Swift test suite | `test.sh` wrapper |
+| `test-python.sh` | `scripts/` | Run Python test suite via pytest | `test.sh` wrapper |
+| `proto-gen.sh` | `scripts/` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
+| `agent-post-edit-check.sh` | `scripts/` | **Never call manually** — fires via Codex post_edit_command and Claude Code PostToolUse hook | Automatic hook |
+
+Set `XCODE_SCHEME` and `XCODE_DESTINATION` in `validate.sh` and `test.sh` before first use.
+Wrapper scripts detect project type via marker files (`Package.swift` → Swift, `pyproject.toml` → Python, `proto/` → protobuf).
 
 ## Gemini CLI operating notes
 

@@ -8,8 +8,8 @@ This is a fill-in-the-blanks template for generating a project-specific AGENT_KI
 1. The PM chat generates AGENT_KICKOFF.md by reading this template and filling in
    all [PLACEHOLDER] values based on the project planning conversation.
 2. The resulting AGENT_KICKOFF.md goes in the project repo root.
-3. Paste its full contents into a Claude Code CLI session to start the architecture phase:
-   cd ~/Developer/[PROJECT] && ./agent-run.sh claude --agent [ARCHITECT_AGENT]
+3. Paste its full contents into a CLI session to start the architecture phase:
+   cd ~/Developer/[PROJECT] && ./agent-run.sh <cli> --agent architect
    Then paste the contents of AGENT_KICKOFF.md as your first message.
 4. This template stays in the pack — it is never copied to project repos.
 
@@ -18,7 +18,7 @@ Not every section applies. Remove what doesn't apply.
 -->
 
 ---
-*Generated from: supporting-docs/AGENT_KICKOFF_TEMPLATE.md — AI Agent Config Pack v8*
+*Generated from: supporting-docs/AGENT_KICKOFF_TEMPLATE.md — AI Agent Config Pack v9*
 *Note to PM chat: Replace all [PLACEHOLDERS] and remove this header before saving.*
 ---
 

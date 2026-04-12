@@ -1,17 +1,34 @@
 # DEPENDENCIES.md — Tool Dependencies
 
-This document lists all tools required or optionally used by the AI Agent Config Pack
-scripts and templates. Install required tools before running `bootstrap.sh` or `validate.sh`.
+This document lists all tools required or optionally used by the AI Agent Config Pack v9
+unified template. Install required tools before running `bootstrap.sh` or `validate.sh`.
 
 ---
 
-## All Templates
+## CLI Tools (all projects)
 
 ### Claude Code CLI (required)
-The primary agent runner for all CLI-based workflows.
+Agent runner and PM chat host for Claude Code workflows.
 - Requires: Node.js 18+
 - Install: https://docs.anthropic.com/en/docs/claude-code
 - Verify: `claude --version`
+
+### OpenAI Codex CLI (required for Codex workflows)
+Agent runner and PM chat host for Codex workflows. Configured via `.codex/`.
+- Install: https://github.com/openai/codex
+- Verify: `codex --version`
+
+### Gemini CLI (required for Gemini workflows)
+Agent runner and PM chat host for Gemini CLI workflows. Agent behavior
+defined via GEMINI.md sections. Uses `agent-run.sh` for invocation.
+- Requires: Node.js 18+
+- Install: `npm install -g @anthropic-ai/gemini-cli` (or see Gemini CLI docs)
+- Verify: `gemini --version`
+
+### Node.js 18+ (required)
+Shared dependency for Claude Code CLI, Gemini CLI, and mcp-local-rag.
+- Install: https://nodejs.org/ or `brew install node`
+- Verify: `node --version`
 
 ### Homebrew (required on macOS)
 Package manager used to install most other tools listed here.
@@ -20,7 +37,7 @@ Package manager used to install most other tools listed here.
 
 ---
 
-## Apple App Template
+## Apple / Swift projects
 
 ### Xcode 26.3+ (required)
 Includes the Swift compiler, xcodebuild, and the built-in AI coding agent.
@@ -89,36 +106,29 @@ Swift gRPC plugin. Used by `proto-gen.sh`.
 
 ---
 
-## OpenAI Codex Integration
-
-### OpenAI Codex CLI (required for .codex/ workflows)
-Configured via the `.codex/` directory in each template.
-- Install: https://github.com/openai/codex
-- Verify: `codex --version`
-
----
-
 ## Quick Reference
 
 | Tool | Required for | Install |
 |---|---|---|
-| Claude Code CLI | All | https://docs.anthropic.com/en/docs/claude-code |
+| Claude Code CLI | Claude workflows | https://docs.anthropic.com/en/docs/claude-code |
+| Codex CLI | Codex workflows | https://github.com/openai/codex |
+| Gemini CLI | Gemini workflows | See Gemini CLI docs |
+| Node.js 18+ | Claude CLI, Gemini CLI, mcp-local-rag | https://nodejs.org/ |
 | Homebrew | All (macOS) | https://brew.sh |
-| Xcode 26.3+ | Apple templates | Mac App Store |
+| Xcode 26.3+ | Apple projects | Mac App Store |
 | swift-format | Apple (optional) | `brew install swift-format` |
-| uv | Python templates | https://docs.astral.sh/uv/ |
-| ruff | Python templates | `uv add --dev ruff` |
-| pyright | Python templates | `uv add --dev pyright` |
-| pytest | Python templates | `uv add --dev pytest` |
+| uv | Python projects | https://docs.astral.sh/uv/ |
+| ruff | Python projects | `uv add --dev ruff` |
+| pyright | Python projects | `uv add --dev pyright` |
+| pytest | Python projects | `uv add --dev pytest` |
 | buf | Proto/gRPC | `brew install bufbuild/buf/buf` |
 | swift-protobuf | Swift gRPC | `brew install swift-protobuf` |
 | grpc-swift-2 | Swift gRPC | https://github.com/grpc/grpc-swift-2 |
-| OpenAI Codex CLI | Codex workflows | https://github.com/openai/codex |
 | mcp-local-rag | CLI PM chat (optional) | Auto via `npx -y mcp-local-rag` |
 
 ---
 
-## CLI PM Chat (Optional — all templates)
+## CLI PM Chat (Optional)
 
 These tools are only needed if using the Claude Code CLI as the PM chat session
 instead of the Claude Desktop app. Setup is in QUICKSTART.md Step 11 (Option B).

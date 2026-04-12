@@ -1,14 +1,12 @@
 # METHODOLOGY.md — AI-Assisted Project Development Methodology
 
-Version: 1.0 (v8.8, April 2026)
-Applies to: All projects using Claude Code CLI + Claude Chat + AI Agent Config Pack v8
+Version: 2.0 (v9, April 2026)
+Applies to: All projects using Claude Code CLI, Codex CLI, or Gemini CLI with AI Agent Config Pack v9
 
 > **Applicability note:** This document is platform-agnostic and applies to all project
-> types (Apple, Python server, monorepo). Some agent references may not apply to every
-> project: `apple-architect` is relevant only for Swift/Apple projects; `python-architect`
-> is relevant only for Python server projects. Ignore agents that don't apply to your
-> project type. If a project-specific version of this file becomes necessary, it can be
-> created at that time.
+> types (Apple, Python server, monorepo) and all three CLI tools (Claude Code, Codex,
+> Gemini). Agents that don't apply to your project type can be ignored. The PM chat
+> selects agents and skills per project using `PLATFORM-SKILLS.md`.
 
 > **Single source of truth:** One copy of this file lives at
 > `supporting-docs/METHODOLOGY.md` in the AI Agent Config Pack. Copy it to your project
@@ -147,23 +145,64 @@ Every project should have all of these. Create them before writing any code.
 |---|---|
 | Implementing a phase | `coder` |
 | Reviewing code after implementation | `reviewer` |
-| Planning what tests to write | `tester` |
+| Architecture assessment, module boundaries, design decisions | `architect` |
+| Mid-phase design correction (Trigger A or B met in Workflow 4) | `architect` |
+| Planning what tests to write (see tester trigger below) | `tester` |
 | Writing tests after planning | `coder` |
 | Researching an external API before implementation | `docs-researcher` |
-| Auditing documentation accuracy | `docs-researcher` |
-| Apple platform architecture design | `apple-architect` |
-| Python server architecture design | `python-architect` |
-| Mid-phase design correction (Trigger A or B met in Workflow 4) | `apple-architect` or `python-architect` |
-| Breaking down a complex phase | `planner` (optional) |
+| Breaking down a complex phase (see planner trigger below) | `planner` |
 | Proto3 schema design or review | `grpc-schema` |
-| BACKLOG/STATUS updates, simple doc edits | standard `claude` (no agent) |
+| Full-codebase structural audit (see Part 6 cadence triggers) | `auditor` |
+| Repo operations, branch-safe scripted edits, local automation | `repo-ops` |
+| BACKLOG/STATUS updates, simple doc edits | standard CLI (no agent) or PM chat |
 | BACKLOG item processing and comment updates | PM chat only (after user approval) |
+
+### Reviewer vs. tester vs. auditor — when to use which
+
+These three agents all touch code quality but serve different purposes at
+different times. They are not interchangeable.
+
+| Agent | Timing | Scope | Trigger | Output |
+|---|---|---|---|---|
+| `reviewer` | After every coder pass | One phase | Always — never skip | "Does this phase's code meet the plan?" |
+| `tester` | Before complex implementation | One phase's test strategy | Conditional — see trigger below | "What tests should exist and how should they be structured?" |
+| `auditor` | After substantial implementation (3+ phases) | Full codebase, all quality dimensions | Conditional — see Part 6 cadence triggers | "What systemic gaps exist across the whole codebase?" |
+
+### Tester trigger rule
+
+Invoke the `tester` agent *before* the coder when **any** of these is true:
+
+1. The phase requires test infrastructure that is complex enough that leaving
+   it to the coder's judgment risks getting it wrong — mocks, actors, async
+   streams, UI test harness, gRPC test server setup.
+2. The phase introduces a new testing pattern not yet established in the project
+   (e.g., first UI test, first integration test, first gRPC handler test).
+3. The PM chat is uncertain whether unit tests, integration tests, or UI tests
+   are the right level of coverage for the phase.
+
+If none of these apply, the coder writes tests as part of normal implementation
+and the reviewer verifies them.
+
+### Planner trigger rule
+
+The planner check runs as part of Procedure 1 (phase gate check) in Part 7 —
+before generating any coder prompt. Invoke the `planner` when **any** of these
+is true:
+
+1. The phase has more than ~5 tasks, or task dependencies within the phase are
+   non-linear (one task must complete before another starts, and this is not
+   already spelled out in the implementation plan).
+2. The PM chat cannot map the implementation plan's phase description to
+   discrete, independently verifiable tasks without ambiguity.
+3. A coder has failed the same phase twice without meaningful progress and the
+   cause appears to be task definition rather than architecture (an architecture
+   cause triggers the architect via Workflow 4 instead).
 
 ### When NOT to use a CLI agent
 
-- Planning and decision-making → Claude Chat
-- Reviewing pasted agent output → Claude Chat
-- Simple doc-only changes (STATUS, BACKLOG, typo fixes) → standard `claude` or PM chat via Desktop Commander
+- Planning and decision-making → PM chat
+- Reviewing pasted agent output → PM chat
+- Simple doc-only changes (STATUS, BACKLOG, typo fixes) → standard CLI or PM chat
 
 ### Session rules
 
@@ -189,26 +228,14 @@ fully evaluated.
 This rule applies at project kickoff and at every mid-phase architect pass
 (Trigger A, Trigger B from Workflow 4).
 
-**Apple-platform pattern selection rule (architect agent):**
-For Swift/Apple projects, the following patterns are prohibited by default
-and require explicit documented justification before the architect may choose them:
-
-1. Type-erasure wrappers with `.base` accessor properties for heterogeneous
-   domain collections. These are LSP violations. Use protocol elevation or
-   exhaustive enums instead. If chosen anyway, document why protocol elevation
-   and exhaustive enums are insufficient for this specific case.
-
-2. `AsyncStream<Void>` or any contentless change notification broadcast to
-   multiple independent subscribers. Use typed payload streams. If a contentless
-   stream is chosen, document why payload typing is insufficient.
-
-3. ViewModels that import SwiftUI or hold direct references to navigation
-   coordinators. ViewModels must express navigation intent as observable output
-   state. If direct navigator access is chosen, document why the intent-as-state
-   pattern is insufficient.
-
-These are not style preferences — they are structural correctness requirements
-with documented failure modes on Apple platforms.
+**Platform-specific prohibited patterns (architect agent):**
+Certain platform-specific patterns are prohibited by default and require explicit
+documented justification. These come from the loaded platform skills — for example,
+`apple-architecture-core` prohibits type-erasure `.base` wrappers, contentless
+`AsyncStream<Void>` fan-out, and ViewModels importing SwiftUI. The architect agent
+must read the loaded skills and treat their prohibited-pattern lists as hard
+constraints, not suggestions. If a prohibited pattern is chosen, document why the
+recommended alternatives are insufficient for this specific case.
 
 ---
 
@@ -318,12 +345,13 @@ been explicitly split into multiple sequential parts by a planning agent.
 
 > **agent-run.sh:** All agent invocations use `./agent-run.sh <cli> --agent <name>` rather than
 > calling the CLI directly. The script automatically applies the correct flags per agent type:
-> read-only agents (`reviewer`, `planner`, `apple-architect`, `python-architect`,
-> `docs-researcher`, `grpc-schema`) receive permission bypass (so compilers and linters run
-> without interruption) and git write protection. Write agents (`coder`, `tester`, `repo-ops`)
-> pass through with no extra flags. Direct CLI invocation still works for one-off use; the script
-> ensures consistent flags across the team. Customize the configuration section at the top of
-> `agent-run.sh` to add agents or adjust flags per project.
+> read-only agents (`architect`, `reviewer`, `planner`, `tester`, `docs-researcher`,
+> `grpc-schema`, `auditor`, `auditor-architecture`, `auditor-code`, `auditor-docs`,
+> `auditor-security`, `auditor-tests`, `auditor-ui`, `auditor-ops`) receive permission
+> bypass and git write protection. Write agents (`coder`, `repo-ops`) pass through with
+> default permissions. Direct CLI invocation still works for one-off use; the script ensures
+> consistent flags across the team. Run `./agent-run.sh --help` for the full roster and
+> per-CLI flag details.
 
 ### Workflow 3 — Per-phase execution (with external API research)
 
@@ -584,8 +612,9 @@ scope inflation.
 | `coder` | Files in scope, verification commands, completion report format | Implementation approach, patterns, pseudocode |
 | `architect` | Problem statement and required reading only | All solutions — including pattern names and structural direction |
 | `planner` | Which phase or scope to break down | How to break it down |
+| `auditor` (parent + subagents) | Skip rules, file scopes, platform skills to load, output format from `audit-methodology` | Which findings to surface or hide, how to fix anything |
 
-> **Update this table when any agent is added or changed in AGENTS.md.**
+> **Update this table when any agent is added or changed.**
 
 **Architect prompts — stronger restriction:**
 Never include a proposed solution, pattern name, or structural approach in a prompt

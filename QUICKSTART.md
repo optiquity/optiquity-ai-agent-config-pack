@@ -1,95 +1,86 @@
-# AI Agent Config Pack v8 — Quick Start
+# AI Agent Config Pack v9 — Quick Start
 
-This pack configures Claude Code, OpenAI Codex, and Xcode 26.3 to follow your project's
-architecture rules, coding standards, and gRPC conventions automatically — without repeated prompting.
+This pack configures Claude Code, Codex CLI, Gemini CLI, and Xcode 26.3 to follow your
+project's architecture rules, coding standards, and conventions automatically — without
+repeated prompting.
 
-**New in v8:** `apple-architect` rename, `python-architect` agent, `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`,
-project generation templates, VS Code companion files, LSP rules, OT content improvements,
-availability guard fix for iOS 26 APIs, and Codex post-edit hook. See `CHANGELOG.md` for the
-full list.
-
----
-
-## Step 1 — Choose a template
-
-| Your project | Use this template |
-|---|---|
-| iOS / iPadOS / macOS app only | `apple-app-template/` |
-| Python server only | `python-server-template/` |
-| Swift client + Python server in one repo | `apple-app-plus-python-server-template/` |
+**New in v9:** Unified template (replaces three per-project-type templates), composable
+skill library (30 skills), three-tool parity (Claude/Codex/Gemini), 7-cluster auditor
+agent, PACK-FEEDBACK loop, platform-agnostic agents with skill-driven platform knowledge.
+See `CHANGELOG.md` for the full list.
 
 ---
 
-## Step 2 — Copy the template into your project root
+## Step 1 — Copy the unified template into your project root
+
+v9 uses a single unified template for all project types. Copy it:
 
 ```bash
-cp -r apple-app-template/. /path/to/your/project/
+cp -r /path/to/pack/project-template/. /path/to/your/project/
 ```
 
 > The trailing `/.` is required — it ensures hidden directories (`.claude/`, `.codex/`, `.gitignore`) are included.
 
-Then copy `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, `PM-CHAT.md`, and `PACK-FEEDBACK.md`
-separately — they are not included in the project-type template directory:
+Then copy the supporting docs (not included in the template):
 
 ```bash
 cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/METHODOLOGY.md
 cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md /path/to/your/project/PROMPT-TEMPLATES.md
-cp /path/to/pack/supporting-docs/PM-CHAT.md /path/to/your/project/PM-CHAT.md
-cp /path/to/pack/project-template/PACK-FEEDBACK.md /path/to/your/project/PACK-FEEDBACK.md
 ```
 
-> `PM-CHAT.md` contains `[PROJECT_NAME]` as a placeholder. The PM chat fills this
-> in and commits the file during the kickoff conversation — no manual editing needed.
->
-> `PACK-FEEDBACK.md` is the PM chat's upstream feedback log for the AI Agent Config
-> Pack itself. The PM chat fills in the Status section and seeds it during kickoff.
-> See METHODOLOGY.md Part 10 for the full procedure. Agents never write to this file.
+> `PM-CHAT.md`, `PACK-FEEDBACK.md`, `PLATFORM-SKILLS.md`, `GEMINI.md`, and the context
+> files (`CLAUDE.md`, `AGENTS.md`) are already in the template and get copied automatically.
+> `PM-CHAT.md` and `PACK-FEEDBACK.md` have `[PROJECT_NAME]` placeholders — the PM chat
+> fills them in during kickoff.
+
+## Step 2 — Remove conditional files you don't need
+
+The template includes files for all project types. Remove what doesn't apply:
+
+| Your project | Remove |
+|---|---|
+| Swift-only (no Python, no gRPC) | `pyproject.toml`, `pyrightconfig.json`, `server/`, `proto/` |
+| Swift + gRPC (no Python) | `pyproject.toml`, `pyrightconfig.json`, `server/` |
+| Python-only (no Swift, no gRPC) | `proto/` |
+| Python + gRPC | Nothing to remove |
+| Swift + Python + gRPC (monorepo) | Nothing to remove |
 
 ---
 
-## Step 3 — Edit CLAUDE.md, AGENTS.md, and METHODOLOGY.md
+## Step 3 — Fill in context files (CLAUDE.md, AGENTS.md, GEMINI.md)
 
+All three context files have `[PLACEHOLDER]` and `[CONDITIONAL]` sections.
 Minimum edits before using any agent:
 
-1. Add your chosen architecture pattern (MVVM, TCA, MV, Coordinator, etc.) to `CLAUDE.md` and `AGENTS.md`.
-2. Add your Python server framework if using the server or monorepo template.
-3. Review the anti-patterns section and add any project-specific ones.
-4. `METHODOLOGY.md` can be left as-is initially — edit it later if project-specific notes are needed.
+1. Fill in `[PROJECT_NAME]`, `[PLATFORM_TARGETS]`, `[TRANSPORT]` in all three files.
+2. Fill in `[PLATFORM_DEFAULTS]` for your project type (examples in the HTML comments).
+3. Fill in or remove `[CONDITIONAL]` sections — delete sections that don't apply
+   (e.g., remove the iOS 26 section for a Python-only server).
+4. Fill in `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`,
+   `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`, `[PLATFORM_ANTIPATTERNS]` from
+   the loaded skills. The PM chat does this during kickoff using `PLATFORM-SKILLS.md`.
+5. `METHODOLOGY.md` can be left as-is initially.
 
 ---
 
-## Step 4 — Copy scripts and agent-run.sh, fix permissions, and run bootstrap
+## Step 4 — Fix permissions, distribute skills, and run bootstrap
 
-The `scripts/` folder and `agent-run.sh` must be copied from the pack template into your project.
-`scripts/` is **not optional** — `agent-post-edit-check.sh` is wired into the Claude Code hook and
-the Codex `post_edit_command`, and the other scripts are the primary way agents run validation and
-formatting. `agent-run.sh` goes in the **project root** and is how you launch agents day-to-day.
+Scripts and `agent-run.sh` are already in the template (copied in Step 1). Fix permissions
+and run bootstrap:
 
 ```bash
-# If scripts/ is missing from your project (copy from the correct template):
-cp -r /path/to/pack/apple-app-template/scripts/ /path/to/your/project/scripts/
-
-# Copy agent-run.sh to the project root:
-cp /path/to/pack/apple-app-template/agent-run.sh /path/to/your/project/agent-run.sh
-
 # Make everything executable — required after every fresh clone
-chmod +x scripts/*.sh agent-run.sh
+chmod +x agent-run.sh scripts/*.sh
 
-# Run bootstrap once per machine to resolve dependencies
+# Distribute skills to each tool's expected location
 ./scripts/bootstrap.sh
 ```
 
-**What each script does:**
+`bootstrap.sh` detects which languages are present (Swift, Python, or both) and:
+- Resolves language-specific dependencies (SPM for Swift, uv for Python)
+- Copies `skills/*/SKILL.md` → `.claude/skills/`, `.codex/skills/`, `.gemini/skills/`
 
-| Script | Location | Purpose | When to run |
-|---|---|---|---|
-| `agent-run.sh` | Project root | Launch any agent with correct CLI flags. See `./agent-run.sh --help`. | Human only |
-| `bootstrap.sh` | `scripts/` | Resolve SPM/Python dependencies. Run once per machine. | Manual, first checkout |
-| `format.sh` | `scripts/` | Format code (swift-format and/or ruff). Manual only — not in the auto-hook. | Manual or `repo-ops`, pre-commit |
-| `test.sh` | `scripts/` | Run the test suite only (no build step). | Manual or `repo-ops` |
-| `validate.sh` | `scripts/` | Full build + test suite. The primary quality gate. | Manual or `repo-ops`, pre-commit |
-| `proto-gen.sh` | `scripts/` | `buf lint` then `buf generate` after any `.proto` edit. | Manual or `grpc-schema` agent |
-| `agent-post-edit-check.sh` | `scripts/` | Automatic build check after every agent file edit. **Never call manually.** | Auto via Claude Code hook |
+See the Scripts table in `CLAUDE.md` for the full script inventory (16 entries).
 
 ---
 
@@ -202,7 +193,7 @@ Replace v6 companion files if previously installed.
 
 ```bash
 git add -A && git status   # verify nothing sensitive is staged
-git commit -m "Add AI agent configuration (v8)"
+git commit -m "Add AI agent configuration (v9)"
 ```
 
 The `.gitignore` automatically excludes `.claude/settings.local.json`, `.mcp.json`,
@@ -216,16 +207,13 @@ The PM chat is your project manager for the entire project lifetime. It generate
 all agent prompts, receives agent output for analysis, and makes all architectural
 and planning decisions. It never writes code — that is the job of CLI agents.
 
-You have two interface options. The methodology, rules, and procedures are identical
-in both. Pick one as your primary PM chat for this project.
+You have three interface options. The methodology, rules, and procedures are
+identical in all three. Pick one as your primary PM chat for this project.
+See `PM-CHAT.md` (in the project root, copied from template) for full startup
+procedures, behavioral rules, and cross-tool switching instructions.
 
-> **Using the Claude Desktop app alongside the CLI:**
-> Regardless of which mode you pick as your PM chat, the Claude Desktop app is always
-> available for side investigations and research — API exploration, architectural
-> discussions, one-off analysis. When a Desktop app session produces something
-> actionable, ask it to generate a briefing prompt and paste that into your PM chat
-> at the start of the next session. Never run two PM chats simultaneously for the
-> same project.
+> **Never run two PM chats simultaneously for the same project.** Pick one tool
+> as your primary PM chat. The others are available for side investigations.
 
 ---
 
@@ -334,7 +322,40 @@ The PM chat will fill in and commit `PM-CHAT.md` as part of this first session.
 > compaction. For cross-machine workflow and troubleshooting see
 > `supporting-docs/CLI-PM-SETUP.md`.
 
-*Both options continue at Step 12 below.*
+*All options continue at Step 12 below.*
+
+---
+
+### Option C — Gemini CLI
+
+Best when: you want Gemini CLI as your primary tool, with native filesystem access,
+`/chat save` for session persistence, and GEMINI.md hierarchy for automatic context.
+
+**Step 11H — Start the Gemini CLI PM chat**
+
+```bash
+cd ~/Developer/YourProject
+git pull
+gemini
+```
+
+Gemini CLI loads `GEMINI.md` automatically. Read BACKLOG.md, STATUS.md,
+PLATFORM-SKILLS.md, and the current phase from IMPLEMENTATION_PLAN.md.
+
+Then paste **Template 1 — PM Chat Kickoff Prompt** from `PROMPT-TEMPLATES.md`
+with all [PLACEHOLDERS] filled in.
+
+**Step 11I — Save the session**
+
+```bash
+/chat save yourproject-pm
+```
+
+> **Daily sessions:** Resume with `gemini` then `/chat resume yourproject-pm`.
+> Use `/compress` when context grows large. For cross-machine workflow see
+> `supporting-docs/CLI-PM-SETUP.md`.
+
+*All options continue at Step 12 below.*
 
 ---
 
@@ -355,9 +376,12 @@ Commit both files.
 
 ```bash
 cd ~/Developer/YourProject
-./agent-run.sh claude --agent apple-architect   # or python-architect for Python projects
+./agent-run.sh claude --agent architect
 # Paste the full contents of AGENT_KICKOFF.md as your first message
 ```
+
+The architect agent is platform-agnostic — it loads the correct platform skills
+based on the prompt generated by the PM chat from `PLATFORM-SKILLS.md`.
 
 ---
 
@@ -387,16 +411,18 @@ across the team. Run `./agent-run.sh --help` for the full agent list and flag de
 
 | Phase | Default | Agent |
 |---|---|---|
-| Architecture / design | Claude Code | `apple-architect` or `planner` (Swift); `python-architect` or `planner` (Python) |
+| Architecture / design | Claude Code | `architect` |
 | API and schema design | Claude Code | `grpc-schema` |
-| Planning | Claude Code | `planner` |
+| Planning / task breakdown | Claude Code | `planner` |
 | Dependency evaluation | Claude Code | `docs-researcher` |
 | Implementation | Codex | `coder` |
 | Code review | Claude Code | `reviewer` |
 | Testing | Codex | `tester` |
 | Debugging | Claude Code | `coder` |
 | Refactoring | Codex | `coder` |
+| Documentation | Claude Code | `docs-researcher` |
 | Repo operations / validation | Codex | `repo-ops` |
+| Full-codebase audit | Any | `auditor` |
 
 ---
 
@@ -431,17 +457,16 @@ Commit everything else, including `CLAUDE.md`, `AGENTS.md`, `agent-run.sh`, `.cl
 When upgrading an existing project, do not copy template files blindly — your
 project-level customizations must be preserved.
 
-For v7 → v8 upgrades, see the complete step-by-step instructions in:
-**`supporting-docs/MIGRATION-v7-to-v8.md`**
+For v8 → v9 upgrades, see: **`supporting-docs/MIGRATION-v8-to-v9.md`**
+For v7 → v8 upgrades, see: **`supporting-docs/MIGRATION-v7-to-v8.md`**
 
-That guide covers all 15 change categories in v8, organized by severity, with exact
-text to insert, files to rename, and verification steps. It is self-contained — you
-do not need to open any other file to complete the migration.
+**Summary of v9 change scope:**
+- Unified template replaces three per-project-type templates
+- `apple-architect` + `python-architect` merged into single `architect` agent
+- 30-skill composable library with PLATFORM-SKILLS.md selection matrix
+- Three-tool parity: Claude Code, Codex CLI, Gemini CLI
+- 7-cluster auditor agent (new) with parent + 7 subagents
+- PACK-FEEDBACK.md (new) — upstream feedback loop to Pack Chat
+- Language-specific scripts with wrapper detection
 
-**Summary of v8 change scope:**
-- Critical: `scripts/` directory, `post_edit_command`, `XCODE_SCHEME` env export
-- High: `ios-architect` → `apple-architect` rename, `settings.local.example.json`
-- Medium: `METHODOLOGY.md`, Scripts section in CLAUDE.md/AGENTS.md, `.gitignore` additions
-- New files: `python-architect` agent (Python/monorepo only), VS Code companion files
-
-For upgrades from versions earlier than v7, apply v7 changes first, then v8.
+For upgrades from versions earlier than v8, apply v8 changes first, then v9.

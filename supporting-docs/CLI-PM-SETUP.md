@@ -1,8 +1,13 @@
 # CLI-PM-SETUP.md — CLI PM Chat Reference
 
 This document covers daily usage, cross-machine workflow, and troubleshooting
-for the CLI PM chat. **Setup is in QUICKSTART.md Steps 11C–11G.** Start there
-if you haven't completed setup yet.
+for the CLI PM chat on all three tools: Claude Code, Codex CLI, and Gemini CLI.
+**Setup is in QUICKSTART.md.** Start there if you haven't completed setup yet.
+
+For startup procedures, file access strategy, and behavioral rules, see
+`PM-CHAT.md` in the project root (the authoritative PM chat instructions).
+This document covers the day-to-day operational details that PM-CHAT.md
+references but does not repeat.
 
 ---
 
@@ -120,6 +125,76 @@ app is available any time for focused side investigations and research:
    prompt — paste that into the CLI PM chat at the start of the next session
 4. The CLI PM chat acts on it, commits any changes, and the repo stays current
 
+
+---
+
+## Gemini CLI daily workflow
+
+**Normal resume:**
+```bash
+cd ~/Developer/[project]
+git pull
+gemini
+/chat resume [project-short-name]-pm
+```
+
+**After a long gap or on a new machine:**
+```bash
+cd ~/Developer/[project]
+git pull
+gemini
+/chat resume [project-short-name]-pm    # or start fresh if no saved session
+```
+Read BACKLOG.md, STATUS.md, PLATFORM-SKILLS.md, and the current phase from
+IMPLEMENTATION_PLAN.md to verify state is current. Gemini loads GEMINI.md
+automatically via the GEMINI.md hierarchy.
+
+**Save before ending:**
+```bash
+/chat save [project-short-name]-pm
+```
+
+**Context compression:**
+Use `/compress` when context grows large. After compression, re-read state
+files (BACKLOG.md, STATUS.md, PLATFORM-SKILLS.md) to restore accuracy.
+
+**Cross-session memory:**
+Use `save_memory` to persist important cross-session facts to
+`~/.gemini/GEMINI.md`. Reserve this for facts that must survive session loss
+— project decisions, conventions, recurring context. Do not store state that
+belongs in project files.
+
+---
+
+## Codex CLI / ChatGPT Web daily workflow
+
+**Codex CLI resume:**
+```bash
+cd ~/Developer/[project]
+git pull
+codex --resume
+```
+
+**ChatGPT Web resume:** Continue the existing dedicated PM chat thread.
+
+**After a long gap (ChatGPT Web):** Re-paste BACKLOG.md, STATUS.md, and the
+current phase from IMPLEMENTATION_PLAN.md to refresh context. Long threads
+degrade — start a new thread if the old one becomes unwieldy.
+
+**File writes:** ChatGPT Web has no native file write. Output content for
+manual application, or delegate writes to Codex CLI.
+
+---
+
+## Cross-machine workflow (all tools)
+
+1. Always `git pull` before starting any session on any machine
+2. Commits made on machine A are immediately visible on machine B after `git pull`
+3. Session history is a convenience — the repo files are the authoritative memory
+4. Run the appropriate startup procedure after `git pull` on any machine where
+   the session is stale
+5. Never copy or sync tool-specific session files between machines (`.claude/`,
+   Gemini session files, ChatGPT threads)
 
 ---
 

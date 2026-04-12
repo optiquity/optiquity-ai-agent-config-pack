@@ -720,8 +720,8 @@ Fill in all placeholder values:
 
 Remove sections that don't apply.
 Output the complete AGENT_KICKOFF.md content ready to save to the project root.
-The developer will paste this directly into a Claude Code CLI session with the architect agent:
-`./agent-run.sh claude --agent apple-architect` (or `python-architect` for Python projects).
+The developer will paste this directly into a CLI session with the architect agent:
+`./agent-run.sh claude --agent architect` (or `codex`/`gemini` as appropriate).
 
 ---
 

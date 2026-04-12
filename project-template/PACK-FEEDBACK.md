@@ -57,6 +57,35 @@ Log observations in four categories as they occur during normal work:
 3. **Agent performance** — per-agent, per-run: did it follow the instructions? Respect file scope? Use the output format? Hallucinate? Drift? Silently fail? Aggregate into per-agent patterns over time (patterns are more valuable to Pack Chat than individual incidents).
 4. **User friction** — where the human got confused, asked twice, encountered unexpected behavior, or found documented behavior that didn't match tool behavior.
 
+**Coverage gap awareness:** The pack has deep coverage for Apple/Swift/Xcode
+and Python/uv/ruff. Other platforms, IDEs, and languages have thinner or
+absent coverage. When this project uses a platform, IDE, editor, or language
+where the pack's skills and context files feel thin or absent, observe and
+record what's missing. This includes:
+
+- **IDE and editor gaps:** Xcode has companion templates, post-edit hooks,
+  and scheme configuration guidance. VS Code has basic companion templates
+  but minimal workflow guidance. JetBrains, Cursor, and other editors have
+  nothing. If the project uses an IDE other than Xcode, note what workflow
+  guidance or hook integration is missing.
+- **Platform gaps:** iOS and macOS have dedicated architecture skills,
+  deployment skills, and prohibited-pattern lists. Android, Windows,
+  embedded, and web platforms have deferred skills (not yet created). If
+  the project targets a platform without dedicated skills, note what rules
+  or patterns were missing from the context files and which skills the
+  agents would have benefited from.
+- **Platform update cycles:** When a major platform update ships (new OS
+  version, new language version, new framework release, new IDE version),
+  observe whether the pack's skills and context files needed updating.
+  Record: what changed, how the gap was discovered (agent produced wrong
+  advice? skill referenced deprecated API? context file had stale
+  availability guards?), and how quickly the gap was noticed.
+
+These observations flow into the normal observation categories above —
+log them under Workflow, Prompt, Agent Performance, or User Friction as
+appropriate. The Pack Chat uses this data to prioritize new skills and
+platform coverage.
+
 ### Reporting cadence
 
 **Default — workflow-complete boundaries only.** Do not interrupt in-progress work. Deliver feedback batches at:
@@ -263,12 +292,11 @@ twice, unexpected behavior, documented flow didn't match tool UX.*
 
 ## Pack Chat Open Questions
 
-> **Context:** Q1–Q4 below are seed questions from the v9 auditor fix
-> pass. The Pack Chat deferred these four audit findings to real-world
-> observation because they could not be validated inside the pack repo —
-> the pack has no observability code, no Swift/Python domain code, no
-> UI layer, and no non-server Python project. Real project data is
-> required to answer them.
+> **Context:** Q1–Q4 are seed questions from the v9 auditor fix pass —
+> deferred because the pack repo has no real application code to test
+> against. Q5–Q6 are coverage gap questions that apply to any project
+> using platforms, IDEs, or languages where the pack's coverage is thin.
+> All require real-world data from downstream projects.
 >
 > **The PM chat's job:** observe for data relevant to these questions
 > during normal work. At every workflow-complete boundary, assess whether
@@ -358,6 +386,56 @@ Python project.
 **Status:** Not Ready
 **Last updated:** [v9 release date] (seeded)
 **Observations so far:** *(none yet — waiting for first real audit)*
+**Answer:** *(filled when Status reaches Ready or later)*
+
+### Q5 — IDE and editor coverage gaps
+
+**Asked by Pack Chat:** [v9 release date]
+**Question:** The pack has deep Xcode integration (companion templates,
+`agent-post-edit-check.sh` hook, `XCODE_SCHEME` / `XCODE_DESTINATION`
+config, iOS 26 doc sync). VS Code has basic companion templates but
+minimal workflow guidance. JetBrains, Cursor, and other editors have
+nothing.
+
+Does the pack's guidance work for the IDE this project actually uses?
+What workflow guidance, hook integration, or editor-specific configuration
+is missing? If the project uses Xcode exclusively, note any Xcode-specific
+gaps instead (e.g., Xcode 27 features the pack doesn't cover). If the
+project uses multiple editors (e.g., VS Code for Python, Xcode for Swift),
+note where the handoff between them is unclear.
+
+**Expected data source:** any project, regardless of IDE. Apple-centric
+projects can report Xcode gaps; non-Apple projects will surface
+editor-coverage gaps naturally.
+
+**Status:** Not Ready
+**Last updated:** [v9 release date] (seeded)
+**Observations so far:** *(none yet)*
+**Answer:** *(filled when Status reaches Ready or later)*
+
+### Q6 — Platform update cycle
+
+**Asked by Pack Chat:** [v9 release date]
+**Question:** When a major platform update ships (new OS version like
+iOS 27 or macOS 27, new language version like Python 3.14 or Swift 7,
+new framework release, new CLI tool version), the pack's skills and
+context files may become stale. Availability guards, API references,
+deprecated patterns, and tool-specific flags can all drift.
+
+How does this project discover that pack content needs updating after a
+platform update? Was there a lag between the update shipping and the
+project noticing stale pack content? What content was affected (skills,
+context files, scripts, agent behavior)? How was the gap surfaced —
+did an agent give wrong advice, did a skill reference a deprecated API,
+did a context file have stale availability guards, or did the user
+notice manually?
+
+**Expected data source:** any project that encounters a platform update
+while using v9. May take months to produce data — that's expected.
+
+**Status:** Not Ready
+**Last updated:** [v9 release date] (seeded)
+**Observations so far:** *(none yet)*
 **Answer:** *(filled when Status reaches Ready or later)*
 
 ---

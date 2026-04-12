@@ -1,0 +1,69 @@
+# Project Template — AI Agent Config Pack v9
+
+This directory is the unified project template. Copy it to start a new project:
+
+```bash
+cp -r /path/to/pack/project-template/. /path/to/your/project/
+```
+
+Then copy the supporting docs individually (they are not part of this template):
+
+```bash
+cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/
+cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md /path/to/your/project/
+```
+
+See `QUICKSTART.md` in the pack root for the full setup procedure.
+
+## What this template contains
+
+| Category | Files | Notes |
+|---|---|---|
+| Agent files | `.claude/agents/*.md`, `.codex/agents/*.toml` | 16 agents (8 core + auditor parent + 7 auditor subagents) |
+| Skills | `skills/*/SKILL.md` | 30 skills (canonical source). Distributed to `.claude/skills/`, `.codex/skills/`, `.gemini/skills/` at setup time by `bootstrap.sh`. |
+| Scripts | `scripts/*.sh`, `agent-run.sh` | 15 scripts + launcher. See the Scripts table in CLAUDE.md. |
+| Context files | `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` | One per tool. Fill in `[PLACEHOLDER]` sections per project type. |
+| PM chat docs | `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | PM chat operational docs. PM-CHAT.md and PACK-FEEDBACK.md have `[PROJECT_NAME]` placeholders. |
+| Config | `.claude/settings.json`, `.codex/config.toml`, `.mcp.json.example` | Tool-specific configuration. |
+| Conditional | `proto/`, `pyproject.toml`, `pyrightconfig.json`, `server/` | Remove if project does not use gRPC/Python (see below). |
+
+## Directory boundary rule
+
+The pack has two directories that produce project files:
+
+- **`project-template/`** (this directory) — everything here is copied as a
+  whole via `cp -r`. These are structural files the project needs to function:
+  agents, skills, scripts, config, context files, PM chat docs.
+
+- **`supporting-docs/`** — docs copied individually during setup (METHODOLOGY.md,
+  PROMPT-TEMPLATES.md) or read from the pack without copying (QUICKSTART.md,
+  DEPENDENCIES.md, CLI-PM-SETUP.md, etc.). These are process and reference docs.
+
+If a file is part of the project's runtime agent infrastructure, it belongs in
+`project-template/`. If it is a methodology or reference document, it belongs
+in `supporting-docs/`.
+
+## Conditional files — remove what you don't need
+
+After copying the template, remove files that don't apply to your project:
+
+| Project type | Remove |
+|---|---|
+| Swift-only (no Python, no gRPC) | `pyproject.toml`, `pyrightconfig.json`, `server/`, `proto/` |
+| Swift + gRPC (no Python) | `pyproject.toml`, `pyrightconfig.json`, `server/` |
+| Python-only (no Swift, no gRPC) | `proto/` (keep pyproject.toml and server/) |
+| Python + gRPC | Nothing to remove |
+| Swift + Python + gRPC (monorepo) | Nothing to remove |
+
+## Skill distribution
+
+Skills exist once in `skills/` at the template root. At setup time,
+`bootstrap.sh` (or manual steps per QUICKSTART.md) distributes them to each
+tool's expected location:
+
+- `skills/<name>/SKILL.md` → `.claude/skills/<name>/SKILL.md`
+- `skills/<name>/SKILL.md` → `.codex/skills/<name>/SKILL.md`
+- `skills/<name>/SKILL.md` → `.gemini/skills/<name>/SKILL.md`
+
+This eliminates maintaining 30 x 3 = 90 identical files. The `skills/`
+directory is the single source of truth.

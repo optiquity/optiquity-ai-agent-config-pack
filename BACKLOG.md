@@ -500,6 +500,49 @@ Resolved: n/a
 
 ---
 
+**BD-036 — IDE and editor coverage gaps**
+Type: TODO(version)
+Status: Open
+Blockers:
+  - First v9 project reports IDE/editor coverage observations (PACK-FEEDBACK.md Q5)
+Unblocks: None
+File/Symbol: `xcode-companion-templates/`, `vscode-companion-templates/`,
+  project-template context files (CLAUDE.md, AGENTS.md, GEMINI.md)
+Description: The pack has deep Xcode integration (companion templates,
+  post-edit hooks, scheme config, iOS doc sync) but thin VS Code coverage
+  (basic companion templates only) and no coverage for JetBrains, Cursor,
+  or other editors. If the first v9 project using a non-Xcode IDE reports
+  missing workflow guidance, hook integration, or editor-specific config,
+  create the relevant companion templates or skill content. Even Xcode-only
+  projects may report gaps when new Xcode versions ship.
+Context: Deferred from v9 Step 12 doc pass. The pack's Apple heritage means
+  Xcode is deeply covered; other editors need real-world data to determine
+  what's missing. Tracked as PACK-FEEDBACK.md Q5.
+Resolved: n/a
+
+---
+
+**BD-037 — Platform update cycle observability**
+Type: TODO(version)
+Status: Open
+Blockers:
+  - First v9 project encounters a major platform update (PACK-FEEDBACK.md Q6)
+Unblocks: None
+File/Symbol: `project-template/skills/` (platform skills may need updates),
+  project-template context files (availability guards, API references)
+Description: When a major platform update ships (iOS 27, macOS 27, Python
+  3.14, Swift 7, new CLI tool versions), pack skills and context files may
+  become stale. Currently there is no mechanism to detect this proactively
+  — the PM chat must notice and report. If the first platform update cycle
+  on a v9 project reveals a pattern (which content goes stale first, how
+  quickly, how the gap was discovered), use that data to build a proactive
+  update checklist or CI check into the pack.
+Context: Deferred from v9 Step 12 doc pass. Needs real-world observation of
+  at least one platform update cycle. Tracked as PACK-FEEDBACK.md Q6.
+Resolved: n/a
+
+---
+
 ## Deferred
 
 **BD-031 — Evaluate publishing pack skills to skills.sh**

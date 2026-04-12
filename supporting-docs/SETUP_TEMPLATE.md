@@ -15,7 +15,7 @@ Not every section applies to every project. Remove sections that don't apply.
 -->
 
 ---
-*Generated from: supporting-docs/SETUP_TEMPLATE.md — AI Agent Config Pack v8*
+*Generated from: supporting-docs/SETUP_TEMPLATE.md — AI Agent Config Pack v9*
 *Note to PM chat: Replace all [PLACEHOLDERS] and remove this header before saving.*
 ---
 
@@ -32,7 +32,7 @@ for [PROJECT_NAME] on a new machine.
 - Xcode [XCODE_VERSION] installed and launched at least once
 - Git configured: `git config --global user.name "Your Name"`
 - GitHub CLI (optional): `brew install gh`
-- AI Agent Config Pack v8 available locally
+- AI Agent Config Pack v9 available locally
 
 ---
 
@@ -70,10 +70,11 @@ cd [REPO_NAME]
 
 ## 3. Set up .gitignore
 
-Copy the template `.gitignore` from the pack:
+The `.gitignore` is included in the template copy (Step 4 below).
+Verify it exists after copying:
 
 ```bash
-cp /path/to/pack/[TEMPLATE_NAME]/.gitignore .gitignore
+ls -la .gitignore
 ```
 
 ---
@@ -81,15 +82,14 @@ cp /path/to/pack/[TEMPLATE_NAME]/.gitignore .gitignore
 ## 4. Copy agent configuration files
 
 ```bash
-# Copy the correct template (adjust template name for your project type)
-cp -r /path/to/pack/[TEMPLATE_NAME]/. .
+# Copy the unified template
+cp -r /path/to/pack/project-template/. .
 
 # The trailing /. ensures hidden directories are included (.claude/, .codex/)
 
-# Copy METHODOLOGY.md, PROMPT-TEMPLATES.md, and PM-CHAT.md separately — not included in the template directory
+# Copy supporting docs separately — not included in the template directory
 cp /path/to/pack/supporting-docs/METHODOLOGY.md ./METHODOLOGY.md
 cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md ./PROMPT-TEMPLATES.md
-cp /path/to/pack/supporting-docs/PM-CHAT.md ./PM-CHAT.md
 ```
 
 Make scripts and agent-run.sh executable:
