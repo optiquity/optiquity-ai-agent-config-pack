@@ -1,4 +1,0 @@
-name: error-handling
-description: Error handling design for gRPC status mapping, domain error types, retry logic, and error propagation across layer boundaries.
-instructions: Follow the error-handling SKILL.md in the same directory.
-model: gpt-5

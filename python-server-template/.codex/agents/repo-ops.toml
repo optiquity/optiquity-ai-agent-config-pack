@@ -1,4 +1,0 @@
-description = "Repository operations specialist for scripts and Git-safe automation."
-mode = "workspace-write"
-
-# Phase routing: Default for: Repo operations, Local validation (Codex).

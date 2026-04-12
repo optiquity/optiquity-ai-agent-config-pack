@@ -1,4 +1,0 @@
-description = "Read-only documentation specialist for official source verification."
-mode = "workspace-write"
-
-# Phase routing: Default for: Dependency evaluation, Documentation (Claude Code).

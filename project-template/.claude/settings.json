@@ -5,11 +5,17 @@
       "Bash(xcodebuild *)",
       "Bash(swift test *)",
       "Bash(swift build *)",
+      "Bash(swift format *)",
       "Bash(buf *)",
+      "Bash(uv *)",
+      "Bash(ruff *)",
+      "Bash(pyright *)",
+      "Bash(pytest *)",
       "Bash(git status)",
       "Bash(git diff *)",
       "Bash(git add *)",
-      "Bash(./scripts/*)"
+      "Bash(./scripts/*)",
+      "Bash(./agent-run.sh *)"
     ],
     "deny": [
       "Read(./.env)",
@@ -34,18 +40,5 @@
     "AGENT_CAPABILITIES": "planning,architecture,implementation,refactoring,debugging,testing,review,dependency-review,repo-ops,documentation",
     "XCODE_SCHEME": "",
     "XCODE_DESTINATION": ""
-  },
-  "available_skills": [
-    "planning",
-    "implementation",
-    "review",
-    "testing",
-    "debugging",
-    "documentation",
-    "architecture-review",
-    "dependency-intake",
-    "grpc-schema",
-    "repo-ops",
-    "error-handling"
-  ]
+  }
 }
