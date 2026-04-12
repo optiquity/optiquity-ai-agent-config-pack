@@ -87,9 +87,11 @@ executable on first checkout: `chmod +x agent-run.sh scripts/*.sh`.
 **What you may do:** Add typed deferral comments in code when you encounter work that
 cannot be completed within the current phase scope. Report them in your completion report.
 
-**What you may not do:** Write to `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`, or any
-other `.md` file in the project root — these are exclusively the PM chat's
-responsibility. Resolve or modify existing BACKLOG entries.
+**What you may not do:** Write to `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`,
+`PACK-FEEDBACK.md`, or any other `.md` file in the project root — these are
+exclusively the PM chat's responsibility. Resolve or modify existing BACKLOG
+entries. Never write to `PACK-FEEDBACK.md` under any circumstance — it is the
+PM chat's upstream feedback log for the AI Agent Config Pack itself.
 
 **Deferral comment syntax (Python):**
 ```python

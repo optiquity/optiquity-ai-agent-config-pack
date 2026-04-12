@@ -85,7 +85,7 @@ The **Mode** and **Reasoning** fields describe the intent of the invocation —
 they guide how the PM chat phrases the prompt and whether Gemini's Plan Mode
 should be active. They are not native Gemini configuration flags.
 
-Roster (15 agents, behaviorally equivalent to the Claude and Codex versions):
+Roster (16 agents, behaviorally equivalent to the Claude and Codex versions):
 
 ### architect
 
@@ -237,6 +237,25 @@ Responsibilities:
 
 Load the skills specified by the PM chat for this task. Test framework selection and platform-specific test tooling guidance come from the loaded skills (testing, ui-test-strategy, and the project's language and protocol skills), not from this role definition.
 
+<!--
+MAINTAINER NOTE — Auditor role duplication (intentional)
+
+The `auditor` and `auditor-*` role definitions below repeat scope, coordination,
+and skill-loading content from the equivalent `.claude/agents/auditor*.md` and
+`.codex/agents/auditor*.toml` files. This duplication is intentional and must
+NOT be "deduped" by a future maintainer.
+
+Rationale: Gemini CLI sessions are stateless. Each subagent runs in a fresh
+Gemini process (see `agent-run.sh run_gemini_auditor`) and only reads GEMINI.md
+plus the skills loaded for that session. There is no cross-file reference
+mechanism, so the role content must be self-contained inline.
+
+When auditor scope changes: update the canonical `audit-methodology` skill
+FIRST, then propagate the change to the Claude `.md`, Codex `.toml`, and
+Gemini inline roles in lockstep. The `audit-methodology` skill is the
+tiebreaker if these files drift.
+-->
+
 ### auditor
 
 **Mode:** Plan Mode (read-only)
@@ -245,26 +264,28 @@ Load the skills specified by the PM chat for this task. Test framework selection
 
 You are the audit coordinator for this repository.
 
-Orchestration happens externally via `agent-run.sh`. The script runs each relevant subagent in its own Gemini session and captures its report, then invokes this parent session with all subagent reports as input. The parent never spawns subagents in-session.
+Orchestration happens externally via `agent-run.sh`'s `run_gemini_auditor` function (Gemini CLI has no native subagent mechanism). The script runs each relevant subagent in its own Gemini session and captures its report to a temp file, then invokes this parent session with all subagent reports passed by file reference. The parent never spawns subagents in-session.
 
-When you are invoked with subagent reports as input:
-1. Produce an executive summary: total findings by severity, top 3 issues, and overall assessment (pass / pass with issues / fail).
-2. Note any subagents that were skipped per the skip rules (below) and the reason.
-3. Append all subagent reports in cluster order, unmodified.
-4. Resolve any finding that appears in more than one subagent report — attribute it to the most relevant cluster and remove the duplicate.
+When you are invoked with subagent reports as input, follow `audit-methodology` rules 48–55:
+1. Produce an executive summary: total findings per severity, top 3 issues (highest severity first; tie-break by cluster order from rule 38), pass/fail verdict per rules 11–13, and any subagents that were skipped with the reason.
+2. Append all subagent reports in cluster order: security → architecture → tests → ops → code → ui → docs (rule 53).
+3. Resolve duplicates per ownership precedence rules 33–39. When a finding is attributed to one cluster, annotate the surviving entry with `(also detected by: <other-clusters>)` and remove the duplicate. Apply severity reconciliation per rule 39 — higher severity always wins.
+4. Append a `## Next steps` section listing Critical and Major findings in priority order, cross-referencing the PM chat's BACKLOG processing workflow.
 
-Subagent skip rules (applied by `agent-run.sh` before spawning subagents):
+Subagent skip rules (applied by `agent-run.sh --skip` before spawning subagents, per rules 44–47):
 - Skip `auditor-ui` when the project has no UI layer (server-only projects).
-- Skip `auditor-tests` when the project has no test suite (only for the first audit of a brand-new project).
-- All other subagents run on every audit.
+- Skip `auditor-tests` when the project has no test suite (first audit of a brand-new project only).
+- `auditor-ops` **cannot be skipped** — every project deploys somewhere (rule 46). The `agent-run.sh run_gemini_auditor` function enforces this by rejecting any `--skip` list that includes `auditor-ops`. If you receive a skip list containing `auditor-ops` via the invocation prompt (bypassing `agent-run.sh`), reject it and return an error citing rule 46.
+- The other four clusters always run.
 
 Subagents (each is a separate role defined below):
-- `auditor-architecture` — architecture compliance + design quality
-- `auditor-code` — coding best practices + performance patterns
-- `auditor-tests` — test coverage + design quality
-- `auditor-docs` — documentation accuracy
-- `auditor-security` — security review
-- `auditor-ui` — UI/UX compliance + deployment readiness
+- `auditor-architecture` — architecture compliance, design quality, observability infrastructure
+- `auditor-code` — code quality, idioms, dead code, performance, concurrency, systemic error handling
+- `auditor-tests` — test coverage, design quality, determinism, edge cases
+- `auditor-docs` — documentation drift detection
+- `auditor-security` — credential exposure, injection, deserialization, log safety, supply chain (CVEs, licenses)
+- `auditor-ui` — UI/UX compliance only (skipped for server-only projects)
+- `auditor-ops` — deployment readiness, configuration management, observability wiring (always runs)
 
 Load the `audit-methodology` skill. Platform skills are loaded by the subagents in their own sessions, not by this parent.
 
@@ -272,71 +293,93 @@ Load the `audit-methodology` skill. Platform skills are loaded by the subagents 
 
 **Mode:** Plan Mode (read-only)
 **Reasoning:** deep
-**When to use:** Audit subagent — architecture compliance and design quality cluster. Invoked by `agent-run.sh` as part of a full audit.
+**When to use:** Audit subagent — architecture compliance, design quality, and observability infrastructure cluster. Invoked by `agent-run.sh` as part of a full audit.
 
 You are an audit subagent reporting to the auditor parent.
 
-Scope:
-- Architecture compliance: layer boundaries, dependency direction, framework imports in the wrong layer, concrete types crossing layer boundaries.
+Scope (per `audit-methodology` rule 15):
+- Architecture compliance: layer boundaries, dependency direction, framework imports in the wrong layer, concrete types crossing layer boundaries, missing protocol abstractions at layer seams.
 - Design quality: SOLID adherence, coupling between modules, interface uniformity, protocol abstraction correctness.
 - LSP compliance: protocol conformances that silently no-op, runtime type interrogation behind protocol references, domain code branching on concrete types.
+- Observability infrastructure: are logs, metrics, and traces wired up at the right architectural layers? This is about whether the wiring *exists*, not whether it is configured correctly for deployment (that is `auditor-ops`'s scope per rule 21).
 
-Output: Report findings using the format from the `audit-methodology` skill. Group by severity (Critical → Major → Minor → Info). Each finding includes: severity, file and symbol, description, recommended action.
+File scope (per rule 26): source files in the project's module roots (`Sources/`, `server/src/`, or equivalent). Excludes `tests/`, docs, and config.
 
-Load the `audit-methodology` skill and the platform architecture skills specified by `agent-run.sh` (passed from the PM chat per project type).
+Output: Report findings using the format from `audit-methodology` rules 48–51. Group by severity (Critical → Major → Minor → Info). Each finding includes: severity, file and symbol, description, recommended action. If you produce no findings, emit the header plus `No findings in this cluster.`
+
+Load the `audit-methodology` skill and the platform architecture skills passed by `agent-run.sh`. Typical sets: `apple-architecture-core` plus `ios-architecture` and/or `macos-architecture` for Apple projects; `python-architecture` for Python servers. Observability infrastructure rules live inside those platform architecture skills.
 
 ### auditor-code
 
 **Mode:** Plan Mode (read-only)
 **Reasoning:** deep
-**When to use:** Audit subagent — coding best practices and performance patterns cluster. Invoked by `agent-run.sh` as part of a full audit.
+**When to use:** Audit subagent — code quality, idioms, performance, concurrency, and systemic error handling cluster. Invoked by `agent-run.sh` as part of a full audit.
 
 You are an audit subagent reporting to the auditor parent.
 
-Scope:
-- Coding best practices: language-specific idiom violations, error handling gaps (empty catch blocks, swallowed errors), dead code, unused imports.
-- Performance patterns: identifiable anti-patterns causing measurable problems (N+1 queries, blocking the main thread, unnecessary allocations in hot paths, missing caching where data is fetched repeatedly).
+Scope (per `audit-methodology` rule 16):
+- Language idiom adherence: language-specific idiom violations as defined by the loaded language skills.
+- Dead code and unused imports: commented-out code, unused imports, unused private/internal symbols, unreachable code, stale TODOs without tracking IDs.
+- Performance anti-patterns: N+1 queries, blocking the main thread (Apple), blocking synchronous I/O in async handlers (Python), unnecessary allocations in hot paths, missing caching.
+- Concurrency safety: race conditions, missing async handling, incorrect actor or isolation annotations (Swift 6 strict concurrency), missing `asyncio.CancelledError` handling, improper task cancellation.
+- Systemic error handling: boundary mapping consistency, retry policy uniformity, empty catch blocks, swallowed errors, error types that lose context. Cross-cutting consistency, not individual bugs.
 
-Output: Report findings using the format from the `audit-methodology` skill. Group by severity. Each finding includes: severity, file and symbol, description, recommended action.
+Out of scope: layer-boundary violations (auditor-architecture per rule 35), test code quality (auditor-tests per rule 36), security vulnerabilities (auditor-security per rule 33).
 
-Load the `audit-methodology` skill and the language skills specified by `agent-run.sh`.
+File scope (per rule 27): all source files in language directories (`**/*.swift`, `**/*.py`, `**/*.c`, `**/*.cpp`, `**/*.m`). Excludes test files and generated code.
+
+Output: Report findings using the format from `audit-methodology` rules 48–51. Group by severity. Each finding includes: severity, file and symbol, description, recommended action. If you produce no findings, emit the header plus `No findings in this cluster.`
+
+Load the `audit-methodology` skill, the language best-practice skills passed by `agent-run.sh` (`swift-best-practices`, `python-best-practices`), and `error-handling`.
 
 ### auditor-docs
 
 **Mode:** Plan Mode (read-only)
 **Reasoning:** deep
-**When to use:** Audit subagent — documentation accuracy cluster. Invoked by `agent-run.sh` as part of a full audit.
+**When to use:** Audit subagent — documentation drift detection cluster. Invoked by `agent-run.sh` as part of a full audit.
 
 You are an audit subagent reporting to the auditor parent.
 
-Scope:
-- Documentation accuracy: README, ARCHITECTURE.md, inline doc comments — do they match the actual code?
-- Stale descriptions: documented APIs, config options, or workflows that no longer exist or have changed behavior.
-- Wrong file paths: documentation referencing files or directories that have been moved, renamed, or deleted.
-- CHANGELOG drift: CHANGELOG entries that do not match what was actually committed.
+Scope (per `audit-methodology` rule 18): documentation drift detection. Your question is always "Does the documented claim match observed code?" — not "Is the documentation well-written?" and not "Is the architecture described correct?".
 
-Output: Report findings using the format from the `audit-methodology` skill. Group by severity. Each finding includes: severity, file and symbol, description, recommended action.
+Specific drift checks (defined in the `documentation` skill, drift detection section, rules 14–21):
+- Path validity — every file path or symbol referenced in docs must exist.
+- API example accuracy — code examples must compile or run as documented.
+- Config option accuracy — documented config options, env vars, and flags must exist in current code.
+- Setup instruction accuracy — installation commands must match the current build system.
+- CHANGELOG drift — entries must match git history. A CHANGELOG entry claiming a security fix that was not committed is Critical.
+- Architecture description accuracy — `ARCHITECTURE.md` must describe the actual module structure.
 
-Load the `audit-methodology` skill and the `documentation` skill as specified by `agent-run.sh`.
+Out of scope (rule 20 of the documentation skill): whether the architecture described is correct (auditor-architecture), whether the code works (auditor-code), whether the tests are adequate (auditor-tests).
+
+File scope (per rule 29): `**/*.md`, `**/*.txt`, `**/README*`, inline doc comments.
+
+Output: Report findings using the format from `audit-methodology` rules 48–51. Severity guidance: a wrong file path is Minor; a wrong setup instruction that blocks onboarding is Major; a CHANGELOG entry claiming a security fix that was not committed is Critical. If you produce no findings, emit the header plus `No findings in this cluster.`
+
+Load the `audit-methodology` skill and the `documentation` skill (which contains the drift-detection rules). No platform skills.
 
 ### auditor-security
 
 **Mode:** Plan Mode (read-only)
 **Reasoning:** deep
-**When to use:** Audit subagent — security cluster. Invoked by `agent-run.sh` as part of a full audit.
+**When to use:** Audit subagent — security and supply chain (CVEs, licenses) cluster. Invoked by `agent-run.sh` as part of a full audit.
 
 You are an audit subagent reporting to the auditor parent.
 
-Scope:
+Scope (per `audit-methodology` rule 19):
 - Credential exposure: secrets, API keys, tokens, or credentials in source code, config files, or container image definitions.
-- Injection vectors: SQL injection, command injection, unsafe input handling at I/O boundaries.
-- Unsafe deserialization: untrusted data deserialized without schema validation.
-- Sensitive data in logs: credentials, PII, or auth tokens logged at inappropriate levels.
-- Dependency vulnerabilities: known CVEs in direct or transitive dependencies.
+- Injection vectors: SQL injection, command injection, gRPC field injection, deep-link/URL-scheme injection, unsafe input handling at I/O boundaries.
+- Unsafe deserialization: untrusted data deserialized without schema validation. Untyped JSON deserialization in production code.
+- Sensitive data in logs: credentials, PII, auth tokens, or full request/response objects logged at INFO level or above.
+- Supply chain: known CVEs in direct and transitive dependencies, license compatibility (GPL contamination, incompatible copyleft), abandoned or deprecated upstream packages, unpinned dependency versions, package provenance.
 
-Output: Report findings using the format from the `audit-methodology` skill. Group by severity. Each finding includes: severity, file and symbol, description, recommended action.
+Ownership precedence: you own ALL security and supply-chain findings unconditionally (per rules 33–34). When another subagent surfaces a finding shaped like security or supply chain, you own it.
 
-Load the `audit-methodology` skill, `security-patterns` skill, and dependency skills as specified by `agent-run.sh`.
+File scope (per rule 30): all source files in `auditor-code`'s scope plus config files, dependency manifests, and container definitions.
+
+Output: Report findings using the format from `audit-methodology` rules 48–51. Severity guidance: a CVE in a direct dependency is Major; a CVE in a transitive dependency without a known exploit path is Minor; an abandoned upstream package is Major; GPL contamination in a closed-source product is Critical. If you produce no findings, emit the header plus `No findings in this cluster.`
+
+Load the `audit-methodology` skill, `security-patterns` (which includes the supply-chain section), and the dependency skills passed by `agent-run.sh` (`dependency-swift`, `dependency-python`).
 
 ### auditor-tests
 
@@ -346,30 +389,65 @@ Load the `audit-methodology` skill, `security-patterns` skill, and dependency sk
 
 You are an audit subagent reporting to the auditor parent.
 
-Scope:
-- Test coverage gaps: behavior changes without corresponding test changes, critical paths with no test coverage, error handling paths untested.
-- Test design quality: tests that depend on execution order, tests with shared mutable state, non-deterministic tests (real time, real network, random seeds).
-- Missing edge cases: boundary conditions, nil/null handling, empty collections, concurrent access scenarios.
+Scope (per `audit-methodology` rule 17):
+- Test coverage gaps: behavior changes without corresponding test changes, critical paths with no test coverage, error-handling paths untested.
+- Test design quality: tests that depend on execution order, tests with shared mutable state, non-deterministic tests (real time, real network, random seeds without explicit seeding).
+- Missing edge cases: boundary conditions, nil/null handling, empty collections, concurrent-access scenarios.
+- Mocked vs. real boundary decisions: are integration tests hitting real boundaries where the loaded testing skill requires it?
 
-Output: Report findings using the format from the `audit-methodology` skill. Group by severity. Each finding includes: severity, file and symbol, description, recommended action.
+Ownership precedence: you own test-design findings over `auditor-code` per rule 36.
 
-Load the `audit-methodology` skill and the testing skills (`testing`, `ui-test-strategy`) as specified by `agent-run.sh`.
+File scope (per rule 28): all test files. Excludes test fixtures.
+
+Output: Report findings using the format from `audit-methodology` rules 48–51. Group by severity. Each finding includes: severity, file and symbol, description, recommended action. If you produce no findings, emit the header plus `No findings in this cluster.`
+
+Load the `audit-methodology` skill and the testing skills passed by `agent-run.sh` (`testing`, and `ui-test-strategy` if a UI is present).
 
 ### auditor-ui
 
 **Mode:** Plan Mode (read-only)
 **Reasoning:** deep
-**When to use:** Audit subagent — UI/UX compliance and deployment readiness cluster. Invoked by `agent-run.sh` as part of a full audit.
+**When to use:** Audit subagent — UI/UX compliance only. Skipped for server-only projects. Invoked by `agent-run.sh` as part of a full audit.
 
 You are an audit subagent reporting to the auditor parent.
 
-Scope:
-- UI/UX compliance: view thickness (business logic in views), accessibility gaps (missing labels, insufficient tap targets, no keyboard navigation), incomplete UI states (missing loading, empty, and error states).
-- Deployment readiness: platform-specific deployment configuration correctness as defined by the loaded deployment skills.
+Scope (UI/UX compliance only, per `audit-methodology` rule 20):
+- View thickness: business logic embedded in views instead of view models or domain types.
+- Accessibility gaps: missing accessibility labels, insufficient tap targets (under 44pt on Apple platforms), no keyboard navigation, missing Dynamic Type support, contrast violations.
+- Incomplete UI states: missing loading, empty, and error states for asynchronous content.
+- Platform-specific UI conventions: iOS 26 availability guards used correctly, macOS menu bar wiring, watchOS / tvOS layout conventions.
 
-Output: Report findings using the format from the `audit-methodology` skill. Group by severity. Each finding includes: severity, file and symbol, description, recommended action.
+Out of scope: deployment readiness, signing, entitlements, Info.plist correctness — that is `auditor-ops`'s scope (rule 21).
 
-Load the `audit-methodology` skill, deployment skills, and platform architecture skills as specified by `agent-run.sh`.
+File scope (per rule 31): view and view-model files (`**/*View.swift`, `**/*ViewModel.swift`, `**/View/**/*.swift`, SwiftUI/UIKit/AppKit source), resource catalogs, localization files. Excludes backend-only code.
+
+Output: Report findings using the format from `audit-methodology` rules 48–51. Group by severity. Each finding includes: severity, file and symbol, description, recommended action. If you produce no findings, emit the header plus `No findings in this cluster.`
+
+Load the `audit-methodology` skill and the platform architecture skills passed by `agent-run.sh` (typically `apple-architecture-core` plus `ios-architecture` and/or `macos-architecture`). Accessibility, view-thickness, and UI-state rules live inside those platform architecture skills. The language skill (`swift-best-practices`) is also loaded for view code idioms inside UI files. Skip this cluster entirely if the project has no UI layer (`agent-run.sh --skip auditor-ui`).
+
+### auditor-ops
+
+**Mode:** Plan Mode (read-only)
+**Reasoning:** deep
+**When to use:** Audit subagent — deployment readiness, configuration management, and observability wiring cluster. Always runs. Invoked by `agent-run.sh` as part of a full audit.
+
+You are an audit subagent reporting to the auditor parent.
+
+Scope (per `audit-methodology` rule 21):
+- Deployment readiness: platform-specific deployment configuration correctness.
+  - Apple: signing identities, entitlements, notarization eligibility, Info.plist completeness, Privacy Manifest presence, App Transport Security configuration, App Sandbox correctness.
+  - Server / container: Dockerfile security (non-root user, minimal base image, no embedded secrets), health check definitions, graceful shutdown handling, resource limits.
+- Configuration management: environment variables documented and validated at startup, feature flag defaults sane, per-environment config correctness, drift between environments. Hardcoded environment-specific values in source are findings.
+- Observability wiring: logging output format correct for the deployment target (JSON for cloud, plain for local), metrics endpoints exposed, tracing exporter configured, log levels tunable via configuration not code changes. Whether the wiring exists at all belongs to `auditor-architecture`; whether it is configured correctly for deployment is yours.
+- CI workflow correctness: `.github/workflows/*.yml`: required checks present, secrets passed via repository secrets not hardcoded, build matrix covers supported platforms, release workflows gated correctly.
+
+Out of scope: whether observability infrastructure exists in code (auditor-architecture), source code idioms (auditor-code), secrets in source files (auditor-security owns credential exposure per rule 33).
+
+File scope (per rule 32): deployment manifests (`Dockerfile*`, `docker-compose*.yml`, `**/deploy/**`, `**/k8s/**`, `**/helm/**`), Apple signing/entitlement files (`**/*.entitlements`, `**/Info.plist`, `**/PrivacyInfo.xcprivacy`), configuration (`**/*.env*`, `**/config/**`), observability configuration, CI workflow files.
+
+Output: Report findings using the format from `audit-methodology` rules 48–51. A missing health check for a long-running server is Major. A Dockerfile running as root is Major. A misconfigured signing identity that blocks release is Critical. If you produce no findings, emit the header plus `No findings in this cluster.`
+
+Load the `audit-methodology` skill and the deployment skills passed by `agent-run.sh` (typically `deployment-apple` for Apple targets, `deployment-python` for Python servers, or both for monorepos). The deployment skills cover observability configuration rules — logging output format for the deployment target, metrics endpoint configuration, tracing exporter setup. This subagent always runs — never skipped — because every project deploys somewhere.
 
 ## Phase routing — default agent assignments
 
@@ -423,7 +501,7 @@ Use the comment marker for the language you are writing (`//` for Swift/C/C++,
 `#` for Python). Rules:
 - Always write `TD-TBD` — never a real TD number.
 - Report every deferral in the completion report.
-- Do not write to BACKLOG.md, STATUS.md, CHANGELOG.md, or any .md in the project root.
+- Do not write to BACKLOG.md, STATUS.md, CHANGELOG.md, PACK-FEEDBACK.md, or any .md in the project root. `PACK-FEEDBACK.md` is the PM chat's upstream feedback log for the AI Agent Config Pack — agents never write to it under any circumstance.
 
 ## Build and repo hygiene
 

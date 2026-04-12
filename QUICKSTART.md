@@ -28,16 +28,22 @@ cp -r apple-app-template/. /path/to/your/project/
 
 > The trailing `/.` is required — it ensures hidden directories (`.claude/`, `.codex/`, `.gitignore`) are included.
 
-Then copy `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, and `PM-CHAT.md` separately from `supporting-docs/` — they are not included in the template directory:
+Then copy `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, `PM-CHAT.md`, and `PACK-FEEDBACK.md`
+separately — they are not included in the project-type template directory:
 
 ```bash
 cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/METHODOLOGY.md
 cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md /path/to/your/project/PROMPT-TEMPLATES.md
 cp /path/to/pack/supporting-docs/PM-CHAT.md /path/to/your/project/PM-CHAT.md
+cp /path/to/pack/project-template/PACK-FEEDBACK.md /path/to/your/project/PACK-FEEDBACK.md
 ```
 
 > `PM-CHAT.md` contains `[PROJECT_NAME]` as a placeholder. The PM chat fills this
 > in and commits the file during the kickoff conversation — no manual editing needed.
+>
+> `PACK-FEEDBACK.md` is the PM chat's upstream feedback log for the AI Agent Config
+> Pack itself. The PM chat fills in the Status section and seeds it during kickoff.
+> See METHODOLOGY.md Part 10 for the full procedure. Agents never write to this file.
 
 ---
 

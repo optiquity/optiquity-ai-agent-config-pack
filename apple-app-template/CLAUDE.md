@@ -221,9 +221,11 @@ Three comment types are recognized for deferring work. Use exactly this syntax:
 **Rules — read carefully:**
 - Always write `TD-TBD` — never a real TD number. The PM chat assigns numbers after review.
 - Report every deferral comment added in the "Deferred items" section of the completion report.
-- Do not write to `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`, or any other `.md` file
-  in the project root — these are exclusively the PM chat's responsibility. Do not
-  resolve or modify existing BACKLOG entries.
+- Do not write to `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`, `PACK-FEEDBACK.md`, or
+  any other `.md` file in the project root — these are exclusively the PM chat's
+  responsibility. Do not resolve or modify existing BACKLOG entries. Never write
+  to `PACK-FEEDBACK.md` under any circumstance — it is the PM chat's upstream
+  feedback log for the AI Agent Config Pack itself.
 - Work that could be completed within the current phase scope is NOT a TODO — it is
   an incomplete task. The reviewer will flag it as an implementation plan compliance failure.
 - Never use plain English deferral comments (`// Fix later`, `// Confirm this`, etc.).

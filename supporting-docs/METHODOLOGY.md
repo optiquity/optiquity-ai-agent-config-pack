@@ -115,7 +115,8 @@ Every project should have all of these. Create them before writing any code.
 | `STATUS.md` | Current phase, phase table, next actions, key metrics | PM chat or developer | After every phase completion |
 | `CLAUDE.md` | Project-specific rules for all CLI agents | PM chat | When new rules are established |
 | `AGENTS.md` | Agent roster and routing table | PM chat | When agents are added or changed |
-| `METHODOLOGY.md` | This file — project-agnostic methodology reference | Pack (v8) | When new standing decisions are made |
+| `PACK-FEEDBACK.md` | Upstream feedback log to Pack Chat — observations, not solutions | PM chat | Continuously (append-only); delivered at workflow boundaries (Part 10) |
+| `METHODOLOGY.md` | This file — project-agnostic methodology reference | Pack (v9) | When new standing decisions are made |
 
 ### Document hygiene rules (inviolable)
 
@@ -125,9 +126,11 @@ Every project should have all of these. Create them before writing any code.
 4. STATUS.md is updated after every phase — stale status is worse than no status.
 5. Agents must not modify `ARCHITECTURE.md` or `IMPLEMENTATION_PLAN.md` unless
    explicitly instructed in the prompt. `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`,
-   and all other root `.md` files are exclusively the PM chat's responsibility — no
-   agent should write them, and no agent prompt should instruct them to. Include root
-   `.md` file constraints in every coder prompt.
+   `PACK-FEEDBACK.md`, and all other root `.md` files are exclusively the PM chat's
+   responsibility — no agent should write them, and no agent prompt should instruct
+   them to. Include root `.md` file constraints in every coder prompt.
+   `PACK-FEEDBACK.md` in particular is never written by any agent — it is the PM
+   chat's feedback log to the upstream pack (see Part 10).
 6. Every deferral comment (`// TODO(scope):`, `// KNOWN GAP(severity):`, `// VERIFY(source):`,
    or language-equivalent) must have a corresponding BACKLOG.md entry. `TD-TBD` in any
    committed file is a defect — it means the PM chat has not yet processed the coder's
@@ -434,18 +437,43 @@ The reviewer report shows either:
 > `ARCHITECTURE.md` or `IMPLEMENTATION_PLAN.md` alone. These require an additional
 > explicit user approval beyond the general architect pass approval.
 
-### Workflow 5 — Global audit phases
+### Workflow 5 — Full-codebase audit (auditor agent)
 
-For test coverage audit, LSP audit, documentation audit, UI audit:
+Full-codebase audits run the `auditor` parent agent, which spawns up to seven
+read-only subagents (one per cluster) and consolidates their reports. See
+the `audit-methodology` skill (loaded by the auditor) for cluster definitions,
+file scopes, severity scale, pass/fail thresholds, and report format.
 
 ```
-1. Audit agent reads entire codebase — discovers components via Glob (no pre-specified list)
-2. Developer pastes full audit report into PM chat
-3. PM chat analyzes, categorizes ALL findings (not just top 10)
-4. PM chat generates comprehensive fix prompt covering all actionable items
-5. Items requiring live sandbox or design decision → added to BACKLOG.md with prerequisite note
-6. Standard coder → reviewer cycle for fixes
+1. PM chat decides an audit is warranted (per Part 6 cadence triggers below)
+2. PM chat determines which subagents to skip per audit-methodology rules 44–47:
+   - Skip auditor-ui for server-only projects with no UI layer
+   - Skip auditor-tests only for the first audit of a brand-new project
+   - auditor-ops always runs
+   - The other four clusters always run
+3. PM chat generates the auditor invocation prompt using the auditor template
+   in PROMPT-TEMPLATES.md, listing the skip set explicitly as prose
+4. Developer runs the auditor:
+   - Claude:  ./agent-run.sh claude --agent auditor
+   - Codex:   ./agent-run.sh codex  --agent auditor
+   - Gemini:  ./agent-run.sh gemini --agent auditor [--skip auditor-ui[,auditor-tests]]
+5. Developer pastes the consolidated audit report into the PM chat
+6. PM chat processes the report per Part 6 (BACKLOG intake rules below)
+7. Standard coder → reviewer cycle for each fix prompt the audit generates
 ```
+
+**Re-running a single subagent.** After fixing a Critical or Major finding,
+the developer may re-run the owning subagent in isolation to verify the fix
+without paying for a full audit (per `audit-methodology` rule 70):
+
+```
+./agent-run.sh claude  --agent auditor-security
+./agent-run.sh codex   --agent auditor-security
+./agent-run.sh gemini  --agent auditor-security  (runs as a single Plan Mode session)
+```
+
+The single-subagent path is the same script entry point — no special flag.
+The auditor parent is bypassed; the subagent reports directly.
 
 ### Workflow 6 — Adding a new feature to a stable project
 
@@ -467,7 +495,7 @@ as starting points — customize for the current project and phase before pastin
 | Workflow 2 — Per-phase execution | Template 2 (coder), Template 3 (reviewer), Template 4 (fix cycle) |
 | Workflow 3 — External API research | Template 6 (docs-researcher), then Template 2 (coder) |
 | Workflow 4 — Fix cycle | Template 4 (fix cycle coder prompt); Template 4b (mid-phase architect prompt, when triggered) |
-| Workflow 5 — Global audit | Template 9 (test coverage), Template 10 (docs audit), Template 11 (LSP audit), Template 12 (UI audit) |
+| Workflow 5 — Full-codebase audit | Template 9 (auditor invocation) — replaces the legacy per-dimension audit templates with a single auditor template that spawns the right subagents |
 | Workflow 6 — New feature | Template 8 (BACKLOG/STATUS update), then Workflow 2 templates |
 
 ---
@@ -593,39 +621,102 @@ Before writing a prompt:
 
 ## Part 6 — Audit Checkpoints
 
-Audits are judgment calls, not a fixed schedule. The PM chat should proactively
-recommend an audit when it detects these milestone triggers:
+Audits run the `auditor` agent, which spawns up to seven read-only subagents
+covering distinct quality dimensions and consolidates their reports. The
+authoritative cluster definitions, file scopes, severity scale, pass/fail
+thresholds, and report format live in the `audit-methodology` skill — read
+that skill for the canonical rules.
 
-| Trigger | Recommended audit |
+### Cadence — when to run a full audit
+
+The auditor is **retrospective and periodic**, not per-phase or per-PR.
+A full audit costs 7–8 subagent invocations (one per non-skipped cluster
+plus the parent consolidation), so it must be invoked deliberately.
+
+Run a full audit when **any one** of these triggers fires:
+
+| Trigger | Notes |
 |---|---|
-| End of a major implementation phase group | Test coverage audit + docs audit |
-| Before live/external API testing begins | Test coverage audit, LSP audit |
-| After a significant refactor | LSP audit, architecture audit |
-| When ARCHITECTURE.md and code feel out of sync | Architecture/docs audit |
-| When test count drops unexpectedly | Test coverage audit |
-| After 3+ phases without a review pass | LSP audit |
-| Before adding major new features | Full audit suite |
+| End of a major phase group (3 or more phases completed since the last audit) | Most common trigger |
+| Before starting major new feature work | Audit the foundation before extending it |
+| Before a release build | Required — pass-with-issues at minimum, no Criticals |
+| After a significant refactor that touched multiple layers | Catches regressions in coupling and layer discipline |
+| When ARCHITECTURE.md and code feel out of sync | `auditor-docs` will flag drift |
+| Test count drops unexpectedly | `auditor-tests` will identify which coverage was lost |
 
-**For each audit type, prompt templates are in `PROMPT-TEMPLATES.md`.** The PM chat
-uses those as starting points and customizes based on the project state.
+**Do not** run a full audit in the first three phases of a new project — there
+is not enough code to produce useful findings and the noise-to-signal ratio
+is high (per `audit-methodology` rule 5).
 
-### Audit types and what they check
+### Audit subagents (7 clusters)
 
-**Test coverage audit** (tester agent, read-only)
-Reads the entire codebase. For each component: what's tested, what's not, which BACKLOG
-items have no test coverage, priority ranking.
+Each cluster has its own subagent with its own scope, file boundaries, and
+skill set. The parent auditor coordinates them and consolidates a single
+report. Clusters are summarized below in the canonical consolidation order
+(`audit-methodology` rule 53: security → architecture → tests → ops → code
+→ ui → docs). Full definitions live in `audit-methodology` rules 15–21.
 
-**Documentation audit** (docs-researcher agent, read-only)
-Reads all markdown files against actual code. Finds misalignments, stale descriptions,
-wrong file paths, pseudocode drift, CHANGELOG entries that don't match files changed.
+| Subagent | Scope summary | Skip rule |
+|---|---|---|
+| `auditor-security` | Credentials, injection, deserialization, log safety, supply chain (CVEs, licenses) | Always runs |
+| `auditor-architecture` | Layer boundaries, SOLID, LSP, observability infrastructure | Always runs |
+| `auditor-tests` | Coverage, determinism, edge cases, mocked-vs-real boundaries | Skip only on first audit of a brand-new project with no test suite |
+| `auditor-ops` | Deployment readiness, configuration management, observability wiring | Always runs |
+| `auditor-code` | Idioms, dead code, performance, concurrency, systemic error handling | Always runs |
+| `auditor-ui` | UI/UX compliance only — view thickness, accessibility, incomplete states | Skip for server-only projects with no UI layer |
+| `auditor-docs` | Documentation drift detection (does docs match code?) | Always runs |
 
-**Architecture / LSP audit** (reviewer agent, read-only)
-Checks layer boundary violations, interface uniformity, Liskov Substitution compliance,
-any concrete type leaking across layer boundaries.
+### Post-audit BACKLOG intake (PM chat procedure)
 
-**UI audit** (reviewer agent, read-only)
-Reads View and ViewModel files. Checks view thickness, business logic placement,
-missing accessibility, incomplete states, navigation correctness.
+After the developer pastes the consolidated audit report into the PM chat,
+the PM chat processes it as follows:
+
+```
+1. Read the executive summary first — verdict, totals, top 3 issues, skipped subagents
+2. For each Critical finding:
+   - Generate a fix prompt and route to coder via Workflow 4 immediately
+   - Critical findings block release per audit-methodology rule 13
+3. For each Major finding:
+   - Create a BACKLOG entry per Part 7 procedures, marked Status: Open
+   - Use Type: KNOWN GAP(functional) unless the finding is structural
+   - Blocker: name the audit cluster and severity for traceability
+   - Major findings do NOT block release (rule 12) but must be tracked
+4. For Minor and Info findings:
+   - Create ONE consolidated BACKLOG entry summarizing them as "Audit
+     observations YYYY-MM-DD" — do not create one entry per Minor finding
+   - Reference the audit report by date for the full list
+5. For findings annotated with `(also detected by: <other-clusters>)`:
+   - Process the surviving entry only — the duplicate has already been
+     removed during parent consolidation per rules 33–39
+6. Run the standard phase-gate procedure (Part 7 Procedure 1) at the
+   start of the next phase, which will pick up newly Open audit entries
+```
+
+### Direct developer invocation
+
+Developers may invoke the auditor directly without the PM chat in the loop.
+This is most common when verifying a single fix:
+
+```
+# Full audit
+./agent-run.sh claude --agent auditor
+./agent-run.sh codex  --agent auditor
+./agent-run.sh gemini --agent auditor [--skip auditor-ui[,auditor-tests]]
+
+# Single subagent (verify a fix without paying for the full audit)
+./agent-run.sh <cli> --agent auditor-security
+./agent-run.sh <cli> --agent auditor-code
+# ...etc, any of the seven subagents
+```
+
+When a developer invokes the auditor directly, the resulting report is
+returned to the terminal. To process its findings into the BACKLOG, paste
+the report into the PM chat and follow the post-audit BACKLOG intake
+procedure above.
+
+**Auditor template lives in `PROMPT-TEMPLATES.md` (Template 9).** The PM
+chat uses it as a starting point and customizes the skip rules and
+project-specific scope notes per project.
 
 
 ---
@@ -890,6 +981,7 @@ Stop and reassess when you see these patterns.
 | `STATUS.md` | Never | Never | Yes — after phase completion | Update after every phase |
 | `CLAUDE.md` / `AGENTS.md` | Never | Never | Authors changes | CLI agents read, don't write |
 | Production source files | Yes | Never | Never | Core job |
+| `PACK-FEEDBACK.md` | Never | Never | Append entries; deliver batches | See Part 10; agents never write |
 | Deferral comments in source | Writes TD-TBD only | Never | Replaces TD-TBD with TD-NNN or removes | See Part 7 |
 
 ### Desktop Commander scope for PM chat
@@ -913,13 +1005,62 @@ git commands for the human to run manually. Both paths must always be available.
 
 ---
 
+## Part 10 — Pack Feedback Loop
+
+The PM chat is the only entity that observes the AI Agent Config Pack
+running on real production work. The Pack Chat (the upstream maintainer
+of the pack) has no visibility into how the pack behaves outside the
+pack repo. The PM chat's responsibility is to observe, record, and
+report back.
+
+### What to observe
+
+Four categories, logged continuously in `PACK-FEEDBACK.md`:
+
+1. **Workflow execution** — did each workflow (1–6) run as documented?
+2. **Prompt generation** — were templates sufficient, or did they need heavy customization?
+3. **Agent performance** — per-agent, per-run: did it follow scope, use the right format, hallucinate, drift? Aggregate into patterns over time.
+4. **User friction** — where did the human get confused, ask the same thing twice, or encounter behavior that didn't match docs?
+
+### Reporting cadence
+
+- **Default:** deliver feedback batches at workflow-complete boundaries only (end of phase, fix cycle, audit cycle, feature). Never mid-phase.
+- **Emergency:** escalate immediately if something blocks the project or indicates a broken pack defect. See PACK-FEEDBACK.md `## Emergency Escalation`.
+- **Question-driven:** the Pack Chat seeds open questions in PACK-FEEDBACK.md `## Pack Chat Open Questions`. The PM chat observes during normal work and answers at workflow boundaries when data is sufficient.
+
+### Workflow-boundary check (explicit trigger)
+
+At every workflow-complete boundary, **before** saying "ready for next phase," the PM chat must:
+
+1. Review all Pack Chat Open Questions in PACK-FEEDBACK.md.
+2. For each question with Status: Not Ready — assess whether observations from this phase provide enough data to transition to Ready. If so, transition it and tell the user.
+3. For each question with Status: Ready — generate the delivery prompt and present it to the user for forwarding to Pack Chat.
+4. Briefly report the status of all open questions to the user (even if nothing changed), so the user has visibility.
+
+### The running doc
+
+`PACK-FEEDBACK.md` lives in the project root alongside `BACKLOG.md` and
+`STATUS.md`. PM-chat-owned, append-only. Agents never write to it. The
+template ships at `project-template/PACK-FEEDBACK.md`.
+
+**All operational instructions** — the status state machine, delivery
+mechanics, scope boundaries, permissions, and what NOT to put in the
+doc — live inside `PACK-FEEDBACK.md` itself in the `## How to use this
+doc` section. Read that section when working with the doc. This Part
+(Part 10) is the overview; PACK-FEEDBACK.md is the operational
+reference.
+
+
+---
+
 ## Appendix — New Project Checklist
 
 ### Day 1 — Setup
 - [ ] Create GitHub repo; clone locally
 - [ ] Planning conversation → ARCHITECTURE.md, IMPLEMENTATION_PLAN.md, CLAUDE.md, AGENTS.md
 - [ ] Copy template files from pack: `cp -r pack/[TEMPLATE]/. .` — then separately copy
-      `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, and `PM-CHAT.md` from `supporting-docs/`
+      `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, `PM-CHAT.md`, and `PACK-FEEDBACK.md`
+      from `project-template/` and `supporting-docs/`
 - [ ] Create BACKLOG.md, STATUS.md, CHANGELOG.md (empty with structure)
 - [ ] Run `./scripts/bootstrap.sh`
 - [ ] **Choose PM chat mode** — Option A (Claude Desktop app project, see QUICKSTART.md
@@ -942,6 +1083,10 @@ git commands for the human to run manually. Both paths must always be available.
 - [ ] Update STATUS.md: mark phase ✅, update current phase, update test count in metrics
 - [ ] Sync GitHub connector
 - [ ] Confirm PM chat can see updated docs via project knowledge search
+- [ ] **Log any pack feedback observations** (Part 10) — per-agent performance,
+      workflow/prompt issues, user friction. Append to `PACK-FEEDBACK.md`. If the
+      phase completes a full workflow cycle, generate a feedback batch for Pack
+      Chat delivery.
 
 ---
 

@@ -1624,7 +1624,51 @@ All gaps found are resolved before the `v9-dev` branch is merged to main.
    (either "carried forward," "replaced by," "merged into," "deprecated," or
    "moved to"). No file is unaccounted for.
 
-**Success looks like:** A written audit report exists covering all eight
+9. **Doc coherence pass** — After the capability audit (categories 1–8), run a
+   cross-document coherence audit across all project-root docs (CLAUDE.md,
+   AGENTS.md, GEMINI.md, METHODOLOGY.md, PROMPT-TEMPLATES.md, PM-CHAT.md,
+   PLATFORM-SKILLS.md, PACK-FEEDBACK.md), all agent files (.claude/agents/,
+   .codex/agents/, GEMINI.md agent roles), all skills (skills/*/SKILL.md),
+   and the orchestration script (agent-run.sh). This is not a capability check
+   — it is a quality-of-system check that verifies the docs work together.
+
+   Verify:
+   a. **No contradictions.** When two or more files describe the same concept
+      (e.g., auditor cluster definitions, skip rules, ownership precedence,
+      agent roster, workflow steps), they must agree on every factual claim.
+      Flag any inconsistency — even if each file is internally correct, the
+      system is broken if they disagree.
+   b. **Cross-references resolve.** Every "see METHODOLOGY.md Part N," "per
+      audit-methodology rule N," "see PLATFORM-SKILLS.md," or similar
+      reference must point to a section or rule that exists and says what the
+      referencing file claims it does. Dead references and wrong-rule-number
+      citations are defects.
+   c. **Instructions are clear.** A fresh PM chat reading these docs for the
+      first time — with no prior conversation history — must be able to
+      follow each workflow, generate each prompt, and process each agent
+      report without ambiguity. If a step requires judgment, the criteria for
+      that judgment must be stated. Flag instructions that assume context the
+      reader does not have.
+   d. **Not too verbose, still complete.** No doc should be so long that a PM
+      chat loses context reading it. Operational instructions belong in the
+      doc where they are used (e.g., PACK-FEEDBACK.md contains its own "How
+      to use" section) rather than in a central methodology doc that grows
+      unbounded. Flag docs that are excessively long or that duplicate content
+      that should be a cross-reference instead.
+   e. **Prompt templates produce correct output.** Fill in Template 9 (auditor
+      invocation) with a test project's skill profile (e.g., the iOS+Python
+      monorepo worked example from PLATFORM-SKILLS.md) and verify the
+      resulting prompt is correct — right subagents, right skills per
+      subagent, right skip rules. Repeat for Templates 2 (coder) and 3
+      (reviewer) as a spot check.
+   f. **Agent scope coherence.** For each agent and subagent, verify: scope
+      is clearly delimited and not too vague, not too specific, not focused
+      on the wrong thing. No audit concern falls between clusters with no
+      owner. Ownership precedence resolves every plausible conflict. This is
+      the check that caught the auditor-ui/auditor-ops scope blur — it must
+      be a standing part of the closure audit.
+
+**Success looks like:** A written audit report exists covering all nine
 categories above, with a finding of either "pass" or a listed gap for each
 item. All gaps are resolved. The report is committed to `maintenance-docs/` as
 `V9-AUDIT-REPORT.md`. The `v9-dev` branch is approved for merge to main.

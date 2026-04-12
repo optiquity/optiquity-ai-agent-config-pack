@@ -179,26 +179,38 @@ agent needs every platform skill — load only what the agent's role requires.
 
 **auditor** (parent)
 - Tier 2: audit-methodology
+- The parent auditor only loads `audit-methodology`. Subagents load their own platform skills in their isolated contexts. The PM chat passes the per-subagent skill list in the parent's invocation prompt for the parent to relay to each subagent at spawn time.
 
 **auditor-architecture**
 - Tier 2: audit-methodology + architecture platform skills from Step 1 (apple-architecture-core, ios-architecture, macos-architecture, python-architecture)
+- Platform filtering: load only the architecture skills that match the project's platform profile from Step 1. A pure Python server loads `python-architecture` only. A pure iOS app loads `apple-architecture-core` + `ios-architecture` only. Observability infrastructure rules live inside these platform architecture skills (no separate observability skill).
 
 **auditor-code**
+- Tier 1: error-handling
 - Tier 2: audit-methodology + language skills from Step 1 (swift-best-practices, python-best-practices, c-language, objc-language, cpp-language) + python-architecture (when Python server in project — provides performance anti-pattern rules like N+1 query detection)
+- The `error-handling` skill provides the cross-cutting error-handling rules (boundary mapping, retry policy uniformity) that this subagent audits at the systemic level. The language skills (`swift-best-practices`, `python-best-practices`) supply the dead-code and unused-import detection rules.
 
 **auditor-tests**
 - Tier 1: testing, ui-test-strategy
-- Tier 2: audit-methodology
+- Tier 2: audit-methodology + language skills from Step 1 (swift-best-practices, python-best-practices) for test naming conventions and test framework idioms
+- Skip `ui-test-strategy` for server-only projects.
 
 **auditor-docs**
 - Tier 1: documentation
 - Tier 2: audit-methodology
+- No platform skills — drift detection is language-agnostic. The `documentation` skill includes the drift-detection rules section that this subagent uses.
 
 **auditor-security**
 - Tier 2: audit-methodology, security-patterns + dependency skills from Step 1 (dependency-swift, dependency-python)
+- The `security-patterns` skill includes the supply-chain section (CVEs, license compatibility, abandoned packages) that this subagent owns per `audit-methodology` rules 33–34.
 
-**auditor-ui**
-- Tier 2: audit-methodology + deployment skills from Step 1 (deployment-apple, deployment-python) + platform architecture skills (ios-architecture, macos-architecture)
+**auditor-ui** (skipped for server-only projects)
+- Tier 2: audit-methodology + platform architecture skills from Step 1 (apple-architecture-core, ios-architecture, macos-architecture) + swift-best-practices for view code idioms
+- Platform filtering: only loaded for projects with a UI layer. The platform architecture skills supply the accessibility, view-thickness, and UI-state rules — no separate accessibility skill.
+
+**auditor-ops** (always runs)
+- Tier 2: audit-methodology + deployment skills from Step 1 (deployment-apple, deployment-python)
+- Always loaded for every audit because every project deploys somewhere. The deployment skills cover the platform-specific deployment configuration rules and observability *configuration* (vs. observability *infrastructure*, which lives in the architecture skills loaded by `auditor-architecture`).
 
 ---
 
@@ -229,36 +241,36 @@ on which tool runs the agent.
 | architecture-review | Platform-agnostic architecture assessment methodology | architect |
 | debugging | Root cause methodology, diagnostics, fix verification | coder |
 | dependency-intake | Platform-agnostic dependency evaluation methodology | docs-researcher |
-| documentation | Platform-agnostic research methodology and finding reporting | docs-researcher |
-| error-handling | Universal domain error philosophy, retry policy, propagation | coder, reviewer |
+| documentation | Platform-agnostic research methodology, drift detection (for audits) | docs-researcher, auditor-docs |
+| error-handling | Universal domain error philosophy, retry policy, propagation | coder, reviewer, auditor-code |
 | implementation | Code change workflow, concurrency safety, verification | coder |
 | planning | Scoping, task breakdown, risk identification, verification strategy | planner |
 | repo-ops | Git workflows, scripting, command sequencing, safety | repo-ops |
 | review | Review priorities, examination checklist, finding reporting | reviewer |
-| testing | Test pyramid, design, organization, coverage | tester |
-| ui-test-strategy | UI/E2E tool selection, test design, snapshot testing | tester |
+| testing | Test pyramid, design, organization, coverage | tester, auditor-tests |
+| ui-test-strategy | UI/E2E tool selection, test design, snapshot testing | tester, auditor-tests |
 
 ### Tier 2 — Platform skills (17)
 
 | Skill | Description | Agents |
 |---|---|---|
-| apple-architecture-core | Cross-platform Apple patterns, SwiftUI-first, layer discipline | architect, reviewer, auditor |
-| audit-methodology | Audit report format, severity scale, subagent coordination | auditor (parent + all subagents) |
-| c-language | C memory ownership, pointers, buffers, const, Swift/Python interop | architect, coder, reviewer, auditor |
-| cpp-language | C++ RAII, smart pointers, Swift-C++ interop, rule of five | coder, reviewer, auditor |
+| apple-architecture-core | Cross-platform Apple patterns, SwiftUI-first, layer discipline | architect, reviewer, auditor-architecture, auditor-ui |
+| audit-methodology | Audit report format, severity scale, subagent coordination, file scopes, ownership precedence | auditor (parent + all 7 subagents) |
+| c-language | C memory ownership, pointers, buffers, const, Swift/Python interop | architect, coder, reviewer, auditor-code |
+| cpp-language | C++ RAII, smart pointers, Swift-C++ interop, rule of five | coder, reviewer, auditor-code |
 | dependency-python | PyPI evaluation, wheels, version pinning, type stubs, security | docs-researcher, auditor-security |
 | dependency-swift | SPM evaluation, Apple framework alternatives, binary frameworks | docs-researcher, auditor-security |
-| deployment-apple | Code signing, entitlements, notarization, privacy manifests | auditor, docs-researcher |
-| deployment-python | Docker, secrets, health checks, graceful shutdown, production config | auditor, docs-researcher |
+| deployment-apple | Code signing, entitlements, notarization, privacy manifests, observability config | auditor-ops, docs-researcher |
+| deployment-python | Docker, secrets, health checks, graceful shutdown, production config, observability config | auditor-ops, docs-researcher |
 | grpc-patterns | Proto3 schema, grpc-swift-2, grpc.aio, cross-language conventions | architect, grpc-schema, coder, reviewer |
-| ios-architecture | iOS/iPadOS scene lifecycle, UIKit interop, App Store boundaries | architect, reviewer, auditor |
-| macos-architecture | macOS NSDocument, windows, menu bar, AppKit, sandbox, accessibility | architect, reviewer, auditor |
-| objc-language | Objective-C ARC, nullability, bridging, legacy code patterns | coder, reviewer, auditor |
-| python-architecture | Python server structure, service layers, repository pattern, grpc.aio handlers | architect, reviewer, auditor |
-| python-best-practices | Python type hints, async, error handling, ruff/pyright, style | architect, coder, reviewer, auditor |
+| ios-architecture | iOS/iPadOS scene lifecycle, UIKit interop, App Store boundaries, accessibility, observability infrastructure | architect, reviewer, auditor-architecture, auditor-ui |
+| macos-architecture | macOS NSDocument, windows, menu bar, AppKit, sandbox, accessibility, observability infrastructure | architect, reviewer, auditor-architecture, auditor-ui |
+| objc-language | Objective-C ARC, nullability, bridging, legacy code patterns | coder, reviewer, auditor-code |
+| python-architecture | Python server structure, service layers, repository pattern, grpc.aio handlers, observability infrastructure | architect, reviewer, auditor-architecture, auditor-code |
+| python-best-practices | Python type hints, async, error handling, ruff/pyright, style, dead code | architect, coder, reviewer, auditor-code |
 | rest-patterns | REST/HTTP URL design, HTTP methods, status codes, OpenAPI, caching | architect, coder, reviewer |
-| security-patterns | Credential exposure, injection, deserialization, log safety | auditor, reviewer |
-| swift-best-practices | Swift type system, immutability, Swift 6 concurrency, style | architect, coder, reviewer, auditor |
+| security-patterns | Credential exposure, injection, deserialization, log safety, supply chain (CVEs, licenses) | auditor-security, reviewer |
+| swift-best-practices | Swift type system, immutability, Swift 6 concurrency, style, dead code | architect, coder, reviewer, auditor-code, auditor-ui |
 
 ### PM chat operational skill (1)
 

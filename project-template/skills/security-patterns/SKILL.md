@@ -32,12 +32,21 @@ allowed-tools: Read, Grep, Glob, Bash
 15. gRPC metadata (which may contain auth tokens) must not be logged at INFO level. Use DEBUG level with explicit opt-in.
 16. Log sanitization applies to error messages too — stack traces and exception messages may contain sensitive data.
 
+## Supply chain review (dependencies)
+
+17. Scan direct and transitive dependencies for known CVEs on every audit. A CVE in a direct dependency is a Major finding; a CVE in a transitive dependency without a known exploit path is Minor. Both are tracked.
+18. Abandoned or deprecated upstream packages are a Major finding even without a specific CVE — they cannot receive security patches.
+19. Review license compatibility for every direct dependency against the project's distribution model. GPL contamination in a closed-source product is Critical. Incompatible copyleft in a permissive-licensed library is Major.
+20. Pin dependency versions precisely in lock files (`Package.resolved`, `uv.lock`, equivalent). Unpinned dependencies allow silent substitution of malicious versions during install.
+21. Verify package provenance where tooling supports it (e.g., package signing, SLSA attestations). A dependency pulled from an unverified source is a Major finding in high-sensitivity projects.
+22. Platform-specific tooling for supply chain scanning: Swift → `swift package audit` + GitHub security advisories; Python → `pip-audit` + `safety`; Node.js → `npm audit`. Use the platform skill for the exact commands.
+
 ## Platform-specific security
 
-17. Apple: enable App Transport Security. No global `NSAllowsArbitraryLoads`. Scope ATS exceptions to specific domains with documentation.
-18. Apple: TLS required for all gRPC connections. Configure grpc-swift channel with TLS. Certificate pinning for production APIs.
-19. Apple: declare Privacy Manifests for all required reason APIs and third-party SDK data practices.
-20. Apple: request minimum permissions at the moment of first use with clear purpose strings.
-21. Python: implement server-side rate limiting in a gRPC interceptor. Return `RESOURCE_EXHAUSTED` with `RetryInfo`.
-22. Python: use JWT/OAuth with short-lived access tokens and refresh token rotation. Validate all claims server-side.
-23. Both: run dependency security scans regularly. Block known-vulnerable versions.
+23. Apple: enable App Transport Security. No global `NSAllowsArbitraryLoads`. Scope ATS exceptions to specific domains with documentation.
+24. Apple: TLS required for all gRPC connections. Configure grpc-swift channel with TLS. Certificate pinning for production APIs.
+25. Apple: declare Privacy Manifests for all required reason APIs and third-party SDK data practices.
+26. Apple: request minimum permissions at the moment of first use with clear purpose strings.
+27. Python: implement server-side rate limiting in a gRPC interceptor. Return `RESOURCE_EXHAUSTED` with `RetryInfo`.
+28. Python: use JWT/OAuth with short-lived access tokens and refresh token rotation. Validate all claims server-side.
+29. Both: run dependency security scans regularly. Block known-vulnerable versions.

@@ -56,6 +56,7 @@ instruct the agent to audit the listed files and report findings for a follow-up
 | `coder` | Files in scope, verification commands, report format | Implementation approach, pseudocode |
 | `architect` | Problem statement and required reading only | All solutions, pattern names, structural direction |
 | `planner` | Scope to break down | How to break it down |
+| `auditor` (parent + subagents) | Skip rules, file scopes, platform skills to load, output format from `audit-methodology` | Which findings to surface or hide, how to fix anything |
 
 **When using IMPLEMENTATION_PLAN.md task entries:** If a task entry contains
 implementation instructions rather than a problem/goal/success-criteria description,
@@ -557,122 +558,85 @@ Confirm what was changed.
 
 ---
 
-## Template 9 — Global Test Coverage Audit Prompt
+## Template 9 — Auditor Invocation Prompt
 
-*For tester agent — runs on entire codebase.*
-
----
-
-Read `ARCHITECTURE.md` in full. Read `CHANGELOG.md`. Read `BACKLOG.md`.
-Use Glob to discover EVERY source file in the project. Read them all.
-Build your own complete component inventory — do NOT rely on a pre-specified list.
-
-Produce a global test coverage audit report.
-
-For every major component (grouped by layer/module):
-
-**[ComponentName]**
-Tested by: [cite test file and suite names]
-Gaps: [specific behaviors not tested]
-Related BACKLOG items without coverage: [TD-NNN list]
-Priority: High/Medium/Low — [reason: what bug this would catch]
-
-End with:
-**Priority Summary** — top 10 gaps ranked by likelihood of catching a real bug.
-For each: specific test to write + exact failure it would prevent.
-
-**Constraint:** Output a report only. Do not write any code.
+*For the `auditor` parent agent — runs a full-codebase structural audit.
+Spawns up to seven read-only subagents (one per cluster) and consolidates
+their reports. See the `audit-methodology` skill for cluster definitions,
+file scopes, severity scale, pass/fail thresholds, and report format.*
 
 ---
 
-## Template 10 — Documentation Audit Prompt
+You are the audit coordinator. Run a full-codebase structural audit per the
+`audit-methodology` skill.
 
-*For docs-researcher agent — audits markdown against actual code.*
+**Skip rules for this project:** [PM CHAT FILLS THIS IN — for example:
+"Skip auditor-ui (server-only project, no UI layer). Run the six
+remaining clusters." Or: "Run all seven clusters." Or: "Skip auditor-tests
+(first audit of a brand-new project) and auditor-ui (server-only). Run
+the five remaining clusters." Note: auditor-ops is never skippable per
+audit-methodology rule 46.]
 
----
+**Platform skills to load per subagent** (the parent loads only `audit-methodology`;
+each subagent loads the platform skills relevant to its cluster from the
+project's PLATFORM-SKILLS.md profile):
+- `auditor-architecture`: [PM CHAT FILLS — e.g., apple-architecture-core, ios-architecture, python-architecture]
+- `auditor-code`: [e.g., swift-best-practices, python-best-practices, error-handling]
+- `auditor-tests`: [e.g., testing, ui-test-strategy]
+- `auditor-docs`: documentation
+- `auditor-security`: security-patterns, dependency-swift, dependency-python
+- `auditor-ui`: [if not skipped — e.g., apple-architecture-core, ios-architecture, swift-best-practices]
+- `auditor-ops`: [e.g., deployment-apple, deployment-python]
 
-Read every markdown file in the project root and `docs/` directory.
-Read `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `CHANGELOG.md`, `BACKLOG.md`.
-Use Glob to read the actual source files for context.
+**File scope guidance.** Compute per-subagent file scopes per
+`audit-methodology` rules 25–32. Apply the always-exclude list (rule 25):
+`**/.git/**`, `**/.build/**`, `**/DerivedData/**`, `**/node_modules/**`,
+`**/.venv/**`, `**/Pods/**`, `**/__pycache__/**`, `**/generated/**`,
+`**/*_pb2.py`, `**/*.pb.swift`, `**/*.pb.go`. Never pass generated code,
+vendored dependencies, or test fixtures to any subagent.
 
-Audit all documentation for:
-1. Descriptions that no longer match the actual implementation
-2. File paths that don't exist or have moved
-3. API or method names that have changed
-4. Phase references in IMPLEMENTATION_PLAN.md that don't match CHANGELOG.md history
-5. ARCHITECTURE.md sections describing patterns that differ from actual code structure
-6. Deferral comments (`// TODO(`, `// KNOWN GAP(`, `// VERIFY(`, or language equivalents)
-   without corresponding BACKLOG entries, or plain-English deferral comments that should
-   use the typed format
+**Spawn the subagents** per the per-tool mechanism (rules 56–60):
+- Claude Code: parallel `Task` tool calls in a single message
+- Codex CLI: native subagent invocation via `max_depth=2` config
+- Gemini CLI: orchestrated externally by `agent-run.sh run_gemini_auditor`
 
-**Output format:**
-For each issue:
-- Document: [filename]
-- Issue: [what's wrong]
-- Evidence: [code or file that contradicts it]
-- Suggested fix: [what to change]
+**Consolidate the reports** per rules 48–55:
+1. Executive summary: total findings per severity, top 3 issues (highest
+   severity first; tie-break by cluster order from rule 38), pass/fail
+   verdict per rules 11–13, any skipped subagents with reason.
+2. Append all subagent reports in cluster order (rule 53):
+   security → architecture → tests → ops → code → ui → docs.
+3. Resolve duplicates per ownership precedence rules 33–39. When a finding
+   is attributed to one cluster, annotate the surviving entry with
+   `(also detected by: <other-clusters>)` and remove the duplicate. Apply
+   severity reconciliation per rule 39 — higher severity always wins.
+4. Append a `## Next steps` section listing Critical and Major findings
+   in priority order, cross-referencing this PM chat's BACKLOG processing
+   workflow (METHODOLOGY.md Part 6).
 
-End with a summary count by severity.
-Do not make any changes.
-
----
-
-## Template 11 — Architecture / LSP Audit Prompt
-
-*For reviewer agent — checks layer discipline and interface compliance.*
-
----
-
-Read `ARCHITECTURE.md` in full. Read `CLAUDE.md`. Use Glob to read every source file.
-
-Audit for:
-1. **Layer boundary violations** — domain layer importing from UI or networking frameworks;
-   presentation layer importing from data layer directly
-2. **Concrete type leakage** — any domain or presentation code referencing concrete
-   data-layer types by name instead of through protocols
-3. **LSP violations** — protocol methods with silent no-ops or unconditional throws not
-   gated by capability checks; code branching on the concrete type behind a protocol
-4. **Interface uniformity** — inconsistent method signatures across types implementing
-   the same protocol
-5. **Undocumented mutable state** — shared mutable state without owner, lifecycle, or
-   threading documentation at the declaration site
-
-**Output format:**
-For each violation:
-- Category: [Layer boundary / Concrete type leakage / LSP / Interface uniformity / Mutable state]
-- File: `[path]`, Line: [N]
-- Issue: [exact description]
-- Fix: [what to change]
-
-End with a verdict: Layer discipline is sound OR N violations require fixes before proceeding.
-Do not make any changes.
+**Constraint:** Read-only audit. Do not write to BACKLOG.md, STATUS.md, or
+any other project file. Return the consolidated report to the developer.
 
 ---
 
-## Template 12 — UI Audit Prompt
+## Templates 10–12 — Superseded
 
-*For reviewer agent — checks view layer correctness.*
+Templates 10 (Documentation Audit), 11 (Architecture / LSP Audit), and 12
+(UI Audit) have been consolidated into Template 9 (Auditor Invocation).
+The auditor's seven-cluster architecture covers all three audit dimensions
+(plus four additional ones) in a single coordinated run with deduplicated
+findings and a unified severity scale.
 
----
+If you need to audit only one dimension — for example, to verify a fix — run
+the corresponding subagent directly per `audit-methodology` rule 70:
 
-Read `ARCHITECTURE.md` §[UI/Presentation sections]. Read `CLAUDE.md`.
-Use Glob to read all View and ViewModel files.
+```
+./agent-run.sh <cli> --agent auditor-docs        # documentation drift
+./agent-run.sh <cli> --agent auditor-architecture # layer/LSP/coupling
+./agent-run.sh <cli> --agent auditor-ui          # view-thickness/accessibility
+```
 
-Audit for:
-1. **View thickness** — business logic, network calls, or persistence access in View types
-2. **ViewModel responsibility** — ViewModels holding references to concrete service types
-   instead of protocols; ViewModels doing more than coordinating between domain and view
-3. **Navigation correctness** — navigation logic embedded in View or ViewModel types
-4. **Incomplete states** — views with no loading, empty, or error states
-5. **Accessibility** — interactive elements missing accessibility labels or hints
-
-For each issue:
-- File: `[path]`
-- Issue category: [View thickness / ViewModel / Navigation / Incomplete state / Accessibility]
-- Description: [what's wrong]
-- Fix: [what to change]
-
-Do not make any changes. Output a report only.
+The subagent reports directly to the terminal; the parent is bypassed.
 
 ---
 

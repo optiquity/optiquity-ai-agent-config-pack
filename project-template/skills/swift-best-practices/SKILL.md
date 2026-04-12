@@ -52,3 +52,13 @@ allowed-tools: Read, Grep, Glob, Bash
 29. Prefer `guard` and early return over deeply nested conditionals.
 30. Avoid force unwraps except in tightly justified test-only contexts.
 31. No `print()` in production code — use `os_log` or structured logging.
+
+## Dead code and unused imports
+
+32. Delete commented-out code. If you need a snippet for reference, use version control to find it, not a comment. Commented-out code rots and confuses readers.
+33. Delete unused `import` statements. Every import in a Swift file must be referenced somewhere in that file. The Swift compiler warns on unused imports only when `-warnings-as-errors` is set — audits should catch unreferenced imports explicitly.
+34. Delete unused `internal` and `private` types, properties, methods, and functions. If a symbol is not referenced anywhere in the module, it is dead code.
+35. Unused `public` API is harder to detect automatically (external callers may exist). Flag public symbols that have no internal callers AND no documentation explaining why they are public — if the symbol is undocumented and unused internally, it is likely accidentally public.
+36. Flag dead enum cases: an enum case with no reference anywhere (not in switch statements, not in constructors) is dead code.
+37. Flag unreachable code after `return`, `throw`, `fatalError`, or unconditional branch — the Swift compiler emits warnings but warnings can be ignored.
+38. Flag TODO comments older than six months, or any TODO without a tracking identifier (e.g., `TD-TBD` or a real backlog number). Tracked TODOs are intentional; untracked ones are dead intent.

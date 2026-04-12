@@ -43,3 +43,13 @@ allowed-tools: Read, Grep, Glob, Bash
 23. No hardcoded secrets or API keys in source or config files.
 24. Log every RPC with method name, status code, and latency using structured logging.
 25. Side effects live near the edge of the system. Business logic is pure where possible.
+
+## Dead code and unused imports
+
+26. Delete commented-out code. If you need a snippet for reference, use version control. Commented-out code rots and confuses readers.
+27. `ruff check` detects unused imports via rule `F401`. Audit every `# noqa: F401` suppression — each must have a documented reason (e.g., public re-export in `__init__.py`).
+28. Delete unused private names (`_foo`, `__bar`). If a symbol is prefixed for internal use and has no internal caller, it is dead code.
+29. Unused public API at the module level is flagged by `__all__` discipline — if a name is not in `__all__` and has no internal caller, it is dead code. If it IS in `__all__` and has no internal caller, document the external consumer.
+30. Flag unreachable code after `return`, `raise`, `sys.exit()`, or unconditional branch — `ruff` rule `W605` and friends catch some cases; audits should catch the rest.
+31. Flag TODO comments older than six months, or any TODO without a tracking identifier (e.g., `TD-TBD` or a real backlog number). Tracked TODOs are intentional; untracked ones are dead intent.
+32. Flag unused function parameters that are not named `_` — either the parameter should be removed or the name should start with underscore to signal intent.
