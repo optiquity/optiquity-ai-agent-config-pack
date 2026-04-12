@@ -69,6 +69,7 @@ Delete the entire section for Python-only or non-Apple projects.
 - **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Evaluate before third-party ML inference.
 - **Availability guards required.** Wrap in `#available(iOS 26, *)` / `#available(macOS 26, *)` if deployment target is below iOS 26.
 - **Check Apple frameworks before third-party packages** for any new capability.
+- For implementation details on any iOS 26 API, the `docs-researcher` agent reads directly from the Xcode documentation bundle at `/Applications/Xcode.app/Contents/PlugIns/IDEIntelligenceChat.framework/Versions/A/Resources/AdditionalDocumentation/`. If Xcode is installed elsewhere, adjust the path. If the path does not exist, fall back to web search.
 
 ## Architecture — universal layer discipline
 

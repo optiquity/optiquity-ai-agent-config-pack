@@ -50,6 +50,19 @@ Fill in platform-specific defaults. See CLAUDE.md for detailed examples.
 
 [PLATFORM_DEFAULTS — fill in per project type]
 
+## [CONDITIONAL] iOS 26 / Xcode 26.3 platform features
+
+<!--
+Include this section only for projects targeting iOS 26+ / macOS 26+.
+Delete the entire section for Python-only or non-Apple projects.
+-->
+
+- **Liquid Glass** is the current iOS 26 / macOS 26 design language. Use `.glassEffect()` and related modifiers.
+- **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Evaluate before third-party ML inference.
+- **Availability guards required.** Wrap in `#available(iOS 26, *)` / `#available(macOS 26, *)` if deployment target is below iOS 26.
+- **Check Apple frameworks before third-party packages** for any new capability.
+- For iOS 26 API details, read directly from the Xcode documentation bundle at `/Applications/Xcode.app/Contents/PlugIns/IDEIntelligenceChat.framework/Versions/A/Resources/AdditionalDocumentation/`. If the path does not exist, fall back to web search.
+
 ## Architecture — universal layer discipline
 
 These rules apply regardless of which architecture pattern this project uses.

@@ -149,27 +149,7 @@ then generate:
 
 ---
 
-## Step 8 — Sync iOS 26 API reference docs (once per Mac, repeat after Xcode updates)
-
-Run this from the pack root (not from any project repo):
-
-```bash
-./sync-xcode-docs.sh
-```
-
-This copies Apple's iOS 26 API documentation directly from the installed Xcode bundle into
-`shared-docs/ios26/`. The `docs-researcher` agent reads these files when answering iOS 26 API
-questions. Run again after any Xcode update.
-
-If Xcode is not at `/Applications/Xcode.app`, override the path:
-
-```bash
-XCODE_APP=/path/to/Xcode.app ./sync-xcode-docs.sh
-```
-
----
-
-## Step 9 — Install Xcode companion files (once per Mac)
+## Step 8 — Install Xcode companion files (Apple projects only, once per Mac)
 
 ```bash
 mkdir -p ~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig
@@ -403,7 +383,7 @@ across the team. Run `./agent-run.sh --help` for the full agent list and flag de
 | iOS 26 API question | `./agent-run.sh claude --agent docs-researcher "How does [iOS 26 feature] work?"` |
 | Run all validation | `./scripts/validate.sh` |
 | Generate gRPC code | `./scripts/proto-gen.sh` |
-| Sync iOS 26 docs after Xcode update | `./sync-xcode-docs.sh` (from pack root) |
+| iOS 26 API reference | Agents read directly from Xcode bundle (no sync step needed) |
 
 ---
 
@@ -443,7 +423,7 @@ Commit everything else, including `CLAUDE.md`, `AGENTS.md`, `agent-run.sh`, `.cl
 
 - `shared-docs/VERIFIED-NOTES.md` — what was verified from official docs and what was not
 - `shared-docs/RECOMMENDATIONS.md` — practical next steps for each template
-- `shared-docs/ios26/` — iOS 26 / Xcode 26.3 API reference docs (sync via `sync-xcode-docs.sh`)
+- iOS 26 API docs — agents read directly from the Xcode bundle at `/Applications/Xcode.app/Contents/PlugIns/IDEIntelligenceChat.framework/Versions/A/Resources/AdditionalDocumentation/`
 - `swift-python-best-practices-v3.md` — the full 206-item best practices reference
 - `METHODOLOGY.md` (in each project repo) — full methodology reference; see **Part 7 —
   BACKLOG and TODO Management** for deferral comment format, BACKLOG item format, and

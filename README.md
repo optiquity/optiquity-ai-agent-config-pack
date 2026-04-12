@@ -47,12 +47,9 @@ always points to the latest minor of that major version.
 
 ```
 ├── apple-app-template/                     Template: iOS / macOS apps
-├── python-server-template/                 Template: Python gRPC servers
-├── apple-app-plus-python-server-template/  Template: monorepo (Apple + Python)
 ├── xcode-companion-templates/              Machine-level Xcode AI config
 ├── vscode-companion-templates/             Machine-level VS Code config (v8+)
 ├── shared-docs/                            Reference notes
-│   └── ios26/                              ← gitignored; sync via sync-xcode-docs.sh
 ├── supporting-docs/                        Pack product docs (copied to or consumed by projects)
 │   ├── METHODOLOGY.md                      Universal project methodology (v8+)
 │   ├── PROMPT-TEMPLATES.md                 Agent prompt templates (v8+)
@@ -61,7 +58,7 @@ always points to the latest minor of that major version.
 │   ├── DEPENDENCIES.md                     Tool dependencies reference (v8.6+)
 │   ├── SETUP_TEMPLATE.md                   New project setup template (v8+)
 │   ├── AGENT_KICKOFF_TEMPLATE.md           Architecture kickoff template (v8+)
-│   └── MIGRATION-v7-to-v8.md               Upgrade guide (v8+)
+│   └── MIGRATION-v8-to-v9.md               Upgrade guide (v9)
 ├── maintenance-docs/                       Pack maintainer docs (design records, analysis, archives)
 │   ├── origins/                            Source material and chat transcripts
 │   ├── guides/                             Per-version setup guides (.docx)
@@ -72,8 +69,9 @@ always points to the latest minor of that major version.
 ├── QUICKSTART.md                           Quick start (v6+)
 ├── PACK-CHAT.md                            Pack CLI chat startup instructions (v8.8+)
 ├── BACKLOG.md                              Pack improvement backlog (v8+, was V8-BACKLOG.md)
+├── scripts/                                Pack-level scripts (CI validation)
+├── .github/workflows/                      GitHub Actions (pack self-validation)
 ├── .mcp.json.example                       mcp-local-rag config template for pack repo (v8.8+)
-├── sync-xcode-docs.sh                      iOS 26 doc sync script (v7+)
 └── CHANGELOG.md
 ```
 

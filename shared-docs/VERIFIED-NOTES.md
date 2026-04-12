@@ -18,9 +18,9 @@
 - `GRPCNIOTransportHTTP2` (Swift gRPC NIO stack) supports TLS and is the recommended transport for production. Source: grpc-swift docs.
 - Xcode 26.3 uses a planner/executor architecture internally for its AI coding agent, confirmed by `PlannerExecutorStylePlannerSystemPrompt-gpt_5.idechatprompttemplate` inside the IDEIntelligenceChat framework. Source: Xcode 26.3 app bundle (verified March 2026).
 - Xcode's AI base system prompt explicitly instructs the model to prefer Apple frameworks and avoid recommending third-party packages unless already in use. Source: `BasicSystemPrompt.idechatprompttemplate` from Xcode 26.3 app bundle (verified March 2026 via artemnovichkov/xcode-26-system-prompts).
-- Xcode 26.3 ships `AdditionalDocumentation/` markdown files inside the IDEIntelligenceChat framework as supplemental AI context. These are the same files used in `shared-docs/ios26/`. Path: `Xcode.app/Contents/PlugIns/IDEIntelligenceChat.framework/Versions/A/Resources/AdditionalDocumentation/`. Source: direct inspection of Xcode 26.3 app bundle (verified March 2026).
-- Liquid Glass is the iOS 26 / macOS 26 design language for materials and visual effects, available via `.glassEffect()` and related modifiers in SwiftUI. Source: `shared-docs/ios26/SwiftUI-Implementing-Liquid-Glass-Design.md` (Apple internal documentation, Xcode 26.3).
-- FoundationModels is Apple's on-device LLM framework available in iOS 26+. It requires no network access and operates within App Sandbox. Source: `shared-docs/ios26/FoundationModels-Using-on-device-LLM-in-your-app.md` (Apple internal documentation, Xcode 26.3).
+- Xcode 26.3 ships `AdditionalDocumentation/` markdown files inside the IDEIntelligenceChat framework as supplemental AI context. Agents read these directly from the Xcode bundle. Path: `Xcode.app/Contents/PlugIns/IDEIntelligenceChat.framework/Versions/A/Resources/AdditionalDocumentation/`. Source: direct inspection of Xcode 26.3 app bundle (verified March 2026).
+- Liquid Glass is the iOS 26 / macOS 26 design language for materials and visual effects, available via `.glassEffect()` and related modifiers in SwiftUI. Source: `AdditionalDocumentation/SwiftUI-Implementing-Liquid-Glass-Design.md` in the Xcode 26.3 bundle (Apple internal documentation).
+- FoundationModels is Apple's on-device LLM framework available in iOS 26+. It requires no network access and operates within App Sandbox. Source: `AdditionalDocumentation/FoundationModels-Using-on-device-LLM-in-your-app.md` in the Xcode 26.3 bundle (Apple internal documentation).
 
 ## Not fully verified
 

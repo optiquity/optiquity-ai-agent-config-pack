@@ -13,7 +13,8 @@ generated/
 **/generated/python/
 
 # ── iOS 26 API reference docs ─────────────────────────────────────────────────
-# Local only — sync with sync-xcode-docs.sh after each Xcode update
+# Agents read directly from the Xcode bundle — no local sync needed.
+# Entry kept in case a developer manually creates this directory.
 shared-docs/ios26/
 
 # ── macOS ─────────────────────────────────────────────────────────────────────
