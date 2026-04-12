@@ -1596,99 +1596,160 @@ All gaps found are resolved before the `v9-dev` branch is merged to main.
 **The audit covers these categories in order:**
 
 1. **Agents** — Every v8.9 agent exists in v9 (with apple-architect and
-   python-architect merged to architect). The new auditor and its six subagents
-   exist. All agents run on Claude, Codex, and Gemini.
+   python-architect merged to architect). The new auditor and its seven
+   subagents exist (auditor-architecture, auditor-code, auditor-tests,
+   auditor-docs, auditor-security, auditor-ui, auditor-ops). All 16 agents
+   exist across all three tools: `.claude/agents/*.md` (16 files),
+   `.codex/agents/*.toml` (16 files), GEMINI.md agent role sections (16
+   roles). Agent descriptions in `.codex/config.toml` match the agent files.
 
-2. **Skills** — Every v8.9 Tier 1 role skill exists in all three tools' skill
-   directories. All Tier 2 platform skills exist. `grpc-schema` Tier 1 is
-   absent (replaced). `ios-architecture` Tier 2 incorporates Tier 1 content.
-   `grpc-patterns` Tier 2 replaces the v8.9 `grpc-schema` role skill.
+2. **Skills** — All 30 skills exist in `project-template/skills/` (canonical
+   source): 12 Tier 1, 17 Tier 2, 1 PM chat operational (pm-startup). The
+   `grpc-schema` Tier 1 skill is absent (replaced by `grpc-patterns` Tier 2).
+   `ios-architecture` Tier 2 incorporates former Tier 1 content.
+   PLATFORM-SKILLS.md skill assignments reference only skills that actually
+   exist in `skills/`. The skill distribution mechanism (`skills/` →
+   `.claude/skills/`, `.codex/skills/`, `.gemini/skills/` at project setup
+   time) must be automated via bootstrap.sh — not a manual step requiring
+   the developer to run copy loops from QUICKSTART.md or the migration
+   guide. Verify that bootstrap.sh distributes skills automatically. If it
+   does not, add the distribution logic to bootstrap.sh so that running
+   `./scripts/bootstrap.sh` is the single setup command that resolves
+   dependencies AND distributes skills. Update QUICKSTART.md and
+   MIGRATION-v8-to-v9.md to reflect that bootstrap.sh handles distribution
+   (remove any manual copy-loop instructions if they become redundant).
 
 3. **PM chat flows** — The pm-startup skill (or equivalent) functions on all
    three tools. RAG freshness check covers METHODOLOGY.md and
    PROMPT-TEMPLATES.md; PLATFORM-SKILLS.md is read directly. Skill selection
-   from PLATFORM-SKILLS.md produces
-   correct results for macOS Swift, iOS Swift, Python gRPC, and mixed-language
-   project types.
+   from PLATFORM-SKILLS.md produces correct results for macOS Swift, iOS
+   Swift, Python gRPC, and mixed-language project types. PM-CHAT.md correctly
+   describes startup procedures, behavioral rules, and the PACK-FEEDBACK.md
+   feedback loop for all three tools.
 
-4. **Scripts** — All scripts from v8.9 exist in v9 (format, validate, bootstrap,
-   test, proto-gen, agent-post-edit-check, agent-run). Language-specific variants
-   work correctly. Wrapper detection logic calls only the appropriate variants.
-   `agent-run.sh` applies read-only flags correctly for all read-only agents on
-   Claude and Codex. Gemini invocation behavior is documented and working.
+4. **Scripts** — All v9 scripts exist in `project-template/scripts/`: 4
+   wrappers (format.sh, validate.sh, bootstrap.sh, test.sh), 9 language-
+   specific scripts (format-swift.sh, format-python.sh, validate-swift.sh,
+   validate-python.sh, validate-proto.sh, bootstrap-swift.sh,
+   bootstrap-python.sh, test-swift.sh, test-python.sh), proto-gen.sh, and
+   agent-post-edit-check.sh. `agent-run.sh` is at the project-template root.
+   Wrapper detection logic calls only the appropriate language-specific
+   scripts. `agent-run.sh` applies read-only flags correctly for all 14
+   read-only agents on Claude and Codex (architect, reviewer, planner,
+   tester, docs-researcher, grpc-schema, auditor parent, and 7 auditor
+   subagents). Gemini auditor orchestration
+   (`run_gemini_auditor` function) runs subagents sequentially, captures
+   reports to temp files, passes to parent via stdin. `agent-run.sh --help`
+   lists all 16 agents.
 
-5. **Template documents** — All template-root files exist: CLAUDE.md, AGENTS.md,
-   GEMINI.md, PLATFORM-SKILLS.md, PM-CHAT.md, README.md, QUICKSTART.md,
-   AGENT_KICKOFF_TEMPLATE.md. All config files exist: `.claude/settings.json`,
-   `.codex/config.toml`, `.codex/requirements.toml`, `.mcp.json.example`. The
-   `proto/` scaffold exists. Python project files (`pyproject.toml`,
-   `pyrightconfig.json`) are conditionally absent from Swift-only projects.
+5. **Template documents** — All `project-template/` files exist per Decision 9
+   file tree: context files (CLAUDE.md, AGENTS.md, GEMINI.md), PM chat docs
+   (PM-CHAT.md, PLATFORM-SKILLS.md, PACK-FEEDBACK.md), README.md, agent-run.sh,
+   `.mcp.json.example`, `.gitignore`. Config files: `.claude/settings.json`,
+   `.claude/settings.local.example.json`, `.codex/config.toml`,
+   `.codex/requirements.toml`. Conditional files present: `proto/` scaffold,
+   `server/` Python layout, `pyproject.toml`, `pyrightconfig.json`. No
+   `.gemini/` directory (Gemini uses GEMINI.md only — no agent files or config).
 
-6. **Documentation** — QUICKSTART.md covers three-tool setup without referencing
-   old template directories. METHODOLOGY.md contains all Decision 8 additions.
-   DEPENDENCIES.md covers all three CLIs. CLI-PM-SETUP.md covers Gemini CLI.
-   SETUP_TEMPLATE.md references the unified template. Xcode companion CLAUDE.md
-   uses v9 agent and skill names. MIGRATION-v8-to-v9.md tested successfully on
-   OptiquityTrader (Step 13 confirmation).
+6. **Documentation** — QUICKSTART.md covers unified template setup for all
+   three tools without referencing old template directories. METHODOLOGY.md
+   contains all Decision 8 additions (agent routing, trigger rules,
+   disambiguation table). DEPENDENCIES.md covers all three CLIs. CLI-PM-SETUP.md
+   covers Claude, Gemini, and Codex daily workflows. SETUP_TEMPLATE.md and
+   AGENT_KICKOFF_TEMPLATE.md reference the unified template with v9 headers.
+   Xcode and VS Code companion template READMEs are v9-current. MIGRATION-v8-
+   to-v9.md tested successfully on OptiquityTrader (Step 13 confirmation).
+   `sync-xcode-docs.sh` is removed — agents read directly from the Xcode
+   bundle. `shared-docs/` is removed — reference files moved to
+   `maintenance-docs/`. `MIGRATION-v7-to-v8.md` is removed (broken — v8
+   template dirs deleted; recoverable from `git checkout v8.9`).
 
-7. **CI/CD** — The Step 14 GitHub Actions workflow runs and passes on the v9-dev
-   branch. A deliberate structural error causes a failure. The error is fixed and
-   the workflow passes again.
+7. **CI/CD** — The `validate-pack.yml` GitHub Actions workflow runs on every
+   push and passes on the v9-dev branch. The workflow invokes
+   `scripts/validate-pack.py` which performs 5 checks: (1) SKILL.md
+   frontmatter validation (name, description, allowed-tools), (2) Codex TOML
+   parsing, (3) BACKLOG.md TD-TBD sentinel detection, (4) README version
+   table vs git tag consistency, (5) agent file count parity between Claude
+   and Codex. A deliberate structural error causes the workflow to fail with
+   a specific error message. The error is fixed and the workflow passes again.
+   PACK-CHAT.md documents the CI response process (check after every push,
+   fix immediately). The pack-startup skill checks GitHub MCP server
+   availability at session start.
 
-8. **v8.9 capability diff** — Run `git diff v8.9 HEAD` across template directories
-   and confirm every removed or changed file has an explicit account in V9-DESIGN.md
-   (either "carried forward," "replaced by," "merged into," "deprecated," or
-   "moved to"). No file is unaccounted for.
+8. **v8.9 capability diff** — Compare the v8.9 tag against `v9-dev HEAD`.
+   The v8.9 template directories (`apple-app-template/`, `python-server-
+   template/`, `apple-app-plus-python-server-template/`) are deleted —
+   replaced by `project-template/`. For each file that existed in v8.9,
+   confirm it has an explicit account: carried forward into
+   `project-template/`, replaced by a v9 equivalent, merged into a unified
+   file, deprecated, or intentionally removed. Files added in v9 that did
+   not exist in v8.9 (GEMINI.md, PLATFORM-SKILLS.md, PACK-FEEDBACK.md,
+   auditor agents, Tier 2 skills, language-specific scripts, etc.) are
+   verified to exist. No file is unaccounted for in either direction.
 
-9. **Doc coherence pass** — After the capability audit (categories 1–8), run a
-   cross-document coherence audit across all project-root docs (CLAUDE.md,
-   AGENTS.md, GEMINI.md, METHODOLOGY.md, PROMPT-TEMPLATES.md, PM-CHAT.md,
-   PLATFORM-SKILLS.md, PACK-FEEDBACK.md), all agent files (.claude/agents/,
-   .codex/agents/, GEMINI.md agent roles), all skills (skills/*/SKILL.md),
-   and the orchestration script (agent-run.sh). This is not a capability check
-   — it is a quality-of-system check that verifies the docs work together.
+9. **Pack-level operational files** — The pack repo's own operational files
+   are audited for v9 correctness: PACK-CHAT.md (pack chat instructions
+   including CI check rule and GitHub MCP server note), PACK-AGENTS.md
+   (pack agent routing — verify it reflects the v9 agent roster), the pack
+   repo's own CLAUDE.md, AGENTS.md, and GEMINI.md (verify they include the
+   CI validation rule and are not confused with the project-template
+   versions). BACKLOG.md: verify all BD items have correct status, no
+   orphaned references, BD-032–037 are Open with correct blockers.
+   README.md: verify the version table includes v9.0, the repository layout
+   tree matches the actual directory structure.
 
-   Verify:
-   a. **No contradictions.** When two or more files describe the same concept
-      (e.g., auditor cluster definitions, skip rules, ownership precedence,
-      agent roster, workflow steps), they must agree on every factual claim.
-      Flag any inconsistency — even if each file is internally correct, the
-      system is broken if they disagree.
-   b. **Cross-references resolve.** Every "see METHODOLOGY.md Part N," "per
-      audit-methodology rule N," "see PLATFORM-SKILLS.md," or similar
-      reference must point to a section or rule that exists and says what the
-      referencing file claims it does. Dead references and wrong-rule-number
-      citations are defects.
-   c. **Instructions are clear.** A fresh PM chat reading these docs for the
-      first time — with no prior conversation history — must be able to
-      follow each workflow, generate each prompt, and process each agent
-      report without ambiguity. If a step requires judgment, the criteria for
-      that judgment must be stated. Flag instructions that assume context the
-      reader does not have.
-   d. **Not too verbose, still complete.** No doc should be so long that a PM
-      chat loses context reading it. Operational instructions belong in the
-      doc where they are used (e.g., PACK-FEEDBACK.md contains its own "How
-      to use" section) rather than in a central methodology doc that grows
-      unbounded. Flag docs that are excessively long or that duplicate content
-      that should be a cross-reference instead.
-   e. **Prompt templates produce correct output.** Fill in Template 9 (auditor
-      invocation) with a test project's skill profile (e.g., the iOS+Python
-      monorepo worked example from PLATFORM-SKILLS.md) and verify the
-      resulting prompt is correct — right subagents, right skills per
-      subagent, right skip rules. Repeat for Templates 2 (coder) and 3
-      (reviewer) as a spot check.
-   f. **Agent scope coherence.** For each agent and subagent, verify: scope
-      is clearly delimited and not too vague, not too specific, not focused
-      on the wrong thing. No audit concern falls between clusters with no
-      owner. Ownership precedence resolves every plausible conflict. This is
-      the check that caught the auditor-ui/auditor-ops scope blur — it must
-      be a standing part of the closure audit.
-   g. **Version footers.** METHODOLOGY.md and PROMPT-TEMPLATES.md both have
-      version footers referencing a pack version (currently v8.8 and v8.6
-      respectively). These must be bumped to v9.0 before the merge to main.
-      Verify they match the actual release tag.
+10. **Doc coherence pass** — After the capability audit (categories 1–9),
+    run a cross-document coherence audit across all project-template docs
+    (CLAUDE.md, AGENTS.md, GEMINI.md, METHODOLOGY.md, PROMPT-TEMPLATES.md,
+    PM-CHAT.md, PLATFORM-SKILLS.md, PACK-FEEDBACK.md, QUICKSTART.md), all
+    agent files
+    (.claude/agents/, .codex/agents/, GEMINI.md agent roles), all skills
+    (skills/*/SKILL.md), the orchestration script (agent-run.sh), and the
+    companion templates (xcode-companion-templates/, vscode-companion-
+    templates/). This is not a capability check — it is a quality-of-system
+    check that verifies the docs work together.
 
-**Success looks like:** A written audit report exists covering all nine
+    Verify:
+    a. **No contradictions.** When two or more files describe the same concept
+       (e.g., auditor cluster definitions, skip rules, ownership precedence,
+       agent roster, workflow steps), they must agree on every factual claim.
+       Flag any inconsistency — even if each file is internally correct, the
+       system is broken if they disagree.
+    b. **Cross-references resolve.** Every "see METHODOLOGY.md Part N," "per
+       audit-methodology rule N," "see PLATFORM-SKILLS.md," or similar
+       reference must point to a section or rule that exists and says what the
+       referencing file claims it does. Dead references and wrong-rule-number
+       citations are defects.
+    c. **Instructions are clear.** A fresh PM chat reading these docs for the
+       first time — with no prior conversation history — must be able to
+       follow each workflow, generate each prompt, and process each agent
+       report without ambiguity. If a step requires judgment, the criteria for
+       that judgment must be stated. Flag instructions that assume context the
+       reader does not have.
+    d. **Not too verbose, still complete.** No doc should be so long that a PM
+       chat loses context reading it. Operational instructions belong in the
+       doc where they are used (e.g., PACK-FEEDBACK.md contains its own "How
+       to use" section) rather than in a central methodology doc that grows
+       unbounded. Flag docs that are excessively long or that duplicate content
+       that should be a cross-reference instead.
+    e. **Prompt templates produce correct output.** Fill in Template 9 (auditor
+       invocation) with a test project's skill profile (e.g., the iOS+Python
+       monorepo worked example from PLATFORM-SKILLS.md) and verify the
+       resulting prompt is correct — right subagents, right skills per
+       subagent, right skip rules. Repeat for Templates 2 (coder) and 3
+       (reviewer) as a spot check.
+    f. **Agent scope coherence.** For each agent and subagent, verify: scope
+       is clearly delimited and not too vague, not too specific, not focused
+       on the wrong thing. No audit concern falls between clusters with no
+       owner. Ownership precedence resolves every plausible conflict. This is
+       the check that caught the auditor-ui/auditor-ops scope blur — it must
+       be a standing part of the closure audit.
+    g. **Version footers.** METHODOLOGY.md and PROMPT-TEMPLATES.md both have
+       version footers referencing a pack version (currently v8.8 and v8.6
+       respectively). These must be bumped to v9.0 before the merge to main.
+       Verify they match the actual release tag.
+
+**Success looks like:** A written audit report exists covering all ten
 categories above, with a finding of either "pass" or a listed gap for each
 item. All gaps are resolved. The report is committed to `maintenance-docs/` as
 `V9-AUDIT-REPORT.md`. The `v9-dev` branch is approved for merge to main.
