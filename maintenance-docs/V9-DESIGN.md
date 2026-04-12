@@ -1698,16 +1698,60 @@ All gaps found are resolved before the `v9-dev` branch is merged to main.
    README.md: verify the version table includes v9.0, the repository layout
    tree matches the actual directory structure.
 
-10. **Doc coherence pass** — After the capability audit (categories 1–9),
-    run a cross-document coherence audit across all project-template docs
-    (CLAUDE.md, AGENTS.md, GEMINI.md, METHODOLOGY.md, PROMPT-TEMPLATES.md,
-    PM-CHAT.md, PLATFORM-SKILLS.md, PACK-FEEDBACK.md, QUICKSTART.md), all
-    agent files
-    (.claude/agents/, .codex/agents/, GEMINI.md agent roles), all skills
-    (skills/*/SKILL.md), the orchestration script (agent-run.sh), and the
-    companion templates (xcode-companion-templates/, vscode-companion-
-    templates/). This is not a capability check — it is a quality-of-system
-    check that verifies the docs work together.
+10. **Workflow walkthrough** — Trace each PM chat and Pack Chat workflow
+    step by step. This is an intellectual walkthrough, not a test execution
+    — read the documented steps and verify the chain holds. For each
+    workflow, at each step, check for:
+
+    - **Gaps** — a step where the reader would be stuck with no next action.
+    - **Conflicts** — two steps that contradict each other, or a step that
+      contradicts another workflow.
+    - **Inconsistencies** — the same concept described differently in
+      different places (same agent called by different names, same procedure
+      with different step counts, same rule with different thresholds).
+    - **Lack of clarity** — ambiguous wording, missing criteria for judgment
+      calls, undefined terms.
+    - **Errors** — wrong file path, wrong template number, wrong agent name,
+      wrong rule reference, wrong count.
+
+    Workflows to trace:
+
+    *PM chat workflows (METHODOLOGY.md Part 5):* Workflow 1 (new project
+    setup — verify QUICKSTART.md alignment), Workflow 2 (per-phase coder →
+    reviewer cycle), Workflow 3 (external API research), Workflow 4 (fix
+    cycle — trace triage protocol, deferral test, architect triggers A and
+    B), Workflow 5 (full-codebase audit — trace auditor invocation through
+    BACKLOG intake), Workflow 6 (new feature). Verify the Workflow → template
+    cross-reference table maps every workflow to the correct template number
+    and every referenced template exists in PROMPT-TEMPLATES.md.
+
+    *PM chat procedures (METHODOLOGY.md Part 7):* Procedure 1 (phase gate
+    check — verify planner trigger cross-reference), Procedure 2 (post-
+    session processing — verify TD-TBD → BD-NNN lifecycle), Procedure 3
+    (orphan audit), Procedure 4 (resolution procedure).
+
+    *PM chat feedback loop (METHODOLOGY.md Part 10 + PACK-FEEDBACK.md):*
+    Trace the observation → accumulation → workflow-boundary check → delivery
+    flow. Verify PACK-FEEDBACK.md's "How to use this doc" section matches
+    Part 10's overview. Verify the 6-state status machine is consistently
+    described in both locations.
+
+    *Pack Chat workflows (PACK-CHAT.md):* Session startup (pack-startup
+    skill → read state files → report), post-push CI check (push → check
+    workflow status → fix if needed — verify GitHub MCP path and manual
+    fallback), commit workflow (plan → approval → stage → verify → commit
+    → push → CI check).
+
+11. **Doc coherence pass** — After the capability audit and workflow
+    walkthrough (categories 1–10), run a cross-document coherence audit
+    across all project-template docs (CLAUDE.md, AGENTS.md, GEMINI.md,
+    METHODOLOGY.md, PROMPT-TEMPLATES.md, PM-CHAT.md, PLATFORM-SKILLS.md,
+    PACK-FEEDBACK.md, QUICKSTART.md), all agent files (.claude/agents/,
+    .codex/agents/, GEMINI.md agent roles), all skills (skills/*/SKILL.md),
+    the orchestration script (agent-run.sh), and the companion templates
+    (xcode-companion-templates/, vscode-companion-templates/). This is not
+    a capability check — it is a quality-of-system check that verifies the
+    docs work together.
 
     Verify:
     a. **No contradictions.** When two or more files describe the same concept
@@ -1749,7 +1793,7 @@ All gaps found are resolved before the `v9-dev` branch is merged to main.
        respectively). These must be bumped to v9.0 before the merge to main.
        Verify they match the actual release tag.
 
-**Success looks like:** A written audit report exists covering all ten
+**Success looks like:** A written audit report exists covering all eleven
 categories above, with a finding of either "pass" or a listed gap for each
 item. All gaps are resolved. The report is committed to `maintenance-docs/` as
 `V9-AUDIT-REPORT.md`. The `v9-dev` branch is approved for merge to main.
