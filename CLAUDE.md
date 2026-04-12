@@ -53,6 +53,10 @@ Where N is the current major version (read from README.md version table).
 - CHANGELOG.md only at version boundaries with explicit instruction
 - Scripts in template directories
 
+**CI validation:** The `Validate Pack` GitHub Actions workflow runs on
+every push. If it fails, fix before proceeding. Read the Actions log —
+errors name the exact file and problem. Never skip or disable the workflow.
+
 **What agents must never modify without explicit instruction:**
 - BACKLOG.md (PM chat only, after user approval)
 - README.md version table (PM chat only)

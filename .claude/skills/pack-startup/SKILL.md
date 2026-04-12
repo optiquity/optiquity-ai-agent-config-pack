@@ -26,7 +26,20 @@ Read the version table section from `README.md` — the rows under
 Read `PACK-CHAT.md` in full — this establishes your behavioral rules
 for this session.
 
-## Step 3 — Report current state
+## Step 3 — Check CI tooling
+
+Check whether the GitHub MCP server is available by looking for GitHub-related
+MCP tools (e.g., `list_workflow_runs`). This is a detection step — do not
+fail if it is absent.
+
+- If available: note "GitHub MCP server: available — CI status checks will
+  be automatic after pushes."
+- If not available: note "GitHub MCP server: not configured — after each
+  push, I will remind you to check the Validate Pack workflow in the GitHub
+  Actions tab. To enable direct CI checking, see the GitHub MCP server note
+  in PACK-CHAT.md."
+
+## Step 4 — Report current state
 
 Read the current pack version from the most recent row in the README version table.
 Output a summary in exactly this format:
@@ -38,6 +51,7 @@ Output a summary in exactly this format:
 **Open backlog items (BD):** [count of Status: Open + Status: Unblocked]
 **Last BD number:** BD-NNN (or "none" if empty)
 **Last commit:** [date] — [summary from git log -1 --oneline]
+**CI tooling:** [GitHub MCP available / not configured — manual check needed]
 
 **Awaiting instructions.**
 ---

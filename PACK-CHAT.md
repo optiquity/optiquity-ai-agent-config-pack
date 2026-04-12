@@ -62,6 +62,22 @@ These rules are non-negotiable and always apply:
   bare major tag (e.g., `v8`) to the new HEAD using the standard tag move sequence.
 - **No solution-biasing.** When discussing design problems, describe the constraint
   only — do not propose a solution unless asked.
+- **Check CI after every push.** After every commit and push, check the
+  `Validate Pack` workflow status. If the GitHub MCP server is configured
+  for this repo (see note below), use `list_workflow_runs` to check
+  directly. If not, remind the user to check the GitHub Actions tab (or
+  run `gh run list --workflow=validate-pack.yml -L 1`). If CI fails,
+  read the error, fix the file, and re-push before continuing. CI failures
+  are fix-immediately items — never defer them to BACKLOG.
+
+> **GitHub MCP server (optional, pack repo only):** The official GitHub
+> MCP server enables the Pack Chat to check CI status, read workflow logs,
+> and interact with GitHub directly. Without it, the Pack Chat must ask
+> the user to check CI manually. To configure: add the GitHub MCP server
+> to the pack repo's `.mcp.json` (not the project template's
+> `.mcp.json.example` — that is for downstream projects). See
+> https://github.com/github/github-mcp-server for setup. This is a pack
+> repo operational tool, not a project dependency.
 
 ---
 

@@ -1,0 +1,32 @@
+# Pack structural validation. Runs on every push to any branch.
+# Failures block merge to main. Fix immediately — read the Actions log,
+# errors name the exact file and problem.
+#
+# Checks: SKILL.md frontmatter, Codex TOML parsing, TD-TBD sentinels
+# in BACKLOG.md, README version table vs git tag, agent file count
+# consistency between Claude and Codex.
+#
+# Security note: this workflow uses no untrusted input in run commands.
+# It only runs a local Python script against checked-out repo files.
+#
+# Branch protection: to enforce that failures block merge to main,
+# configure in GitHub repo settings: Settings → Branches → Add rule →
+# Branch name pattern: main → Require status checks to pass → select
+# the "validate" job. This is a one-time repo admin action.
+
+name: Validate Pack
+
+on: push
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run pack validation
+        run: python3 scripts/validate-pack.py
