@@ -143,12 +143,16 @@ Also set these in `.claude/settings.json` → `env` block (for the post-edit hoo
 ## Step 3 — Distribute skills
 
 v9 has 30 skills. v8 had 14 (in `.claude/skills/` only). You need to:
-- Add the 16 new Tier 2 platform skills to `.claude/skills/`
+- Copy the canonical `skills/` directory to the project root (new in v9)
+- Replace `.claude/skills/` (clean out stale v8 skills like `grpc-schema`)
 - Create `.codex/skills/` and `.gemini/skills/` (didn't exist in v8)
-- Handle the `grpc-schema` → `grpc-patterns` rename
 
 ```bash
-# Replace .claude/skills/ entirely (adds 16 new Tier 2 skills, renames grpc-schema)
+# Copy canonical skills/ directory to project root (new in v9 — bootstrap.sh
+# uses this as the source for future skill distribution)
+cp -r "$PACK/project-template/skills/" skills/
+
+# Replace .claude/skills/ entirely (adds 16 new Tier 2 skills, removes stale grpc-schema)
 rm -rf .claude/skills/
 mkdir -p .claude/skills/
 for skill in "$PACK/project-template/skills/"*/; do
@@ -181,6 +185,12 @@ ls .claude/skills/ | wc -l    # should be 30
 ls .codex/skills/ | wc -l     # should be 30
 ls .gemini/skills/ | wc -l    # should be 30
 ```
+
+> **Note:** The manual loops above are needed for the initial migration to
+> clean out stale v8 skills (e.g., the renamed `grpc-schema`). After
+> migration, `./scripts/bootstrap.sh` automatically distributes skills from
+> the canonical `skills/` directory on every run — you won't need to repeat
+> these manual loops.
 
 ---
 
@@ -491,3 +501,70 @@ Re-run the skill distribution loop from Step 3. Verify the pack's
 **GEMINI.md has unfilled [PLACEHOLDER] sections:**
 Fill them in per Step 4. A fresh Gemini CLI session will load GEMINI.md
 automatically and may behave incorrectly if placeholders are present.
+
+---
+
+## Automated migration via Claude Code CLI
+
+Instead of executing the migration steps manually, you can paste the
+prompt below into a fresh Claude Code CLI session. The session will
+execute the migration guide steps, pause for your review at the merge
+step (Step 5), and wait for your approval before committing.
+
+**Setup:**
+
+```bash
+cd ~/Developer/[your-project]
+claude
+```
+
+**Paste this prompt:**
+
+> You are performing a v8 → v9 migration of this project using the
+> AI Agent Config Pack. First, set the pack repo location — use this
+> variable in all copy commands that follow:
+>
+> ```
+> PACK="/path/to/pack"
+> ```
+>
+> Set `$PACK` to the absolute path of your local pack repo checkout
+> (the directory containing `project-template/` and `supporting-docs/`).
+> If the pack has a v9-dev branch checked out via a worktree, use that
+> worktree's path.
+>
+> **Before starting:** Verify the working tree is clean (`git status`
+> shows no uncommitted changes). If it is not clean, stop and tell me.
+>
+> **Instructions:**
+>
+> 1. Read `$PACK/supporting-docs/MIGRATION-v8-to-v9.md` in full before
+>    doing anything.
+> 2. Create a migration branch: `git checkout -b migration-v8-to-v9`
+> 3. Execute guide Steps 1–4 (replace agents, replace scripts,
+>    distribute skills, create new files). Use `$PACK` in all copy
+>    commands.
+> 4. Execute guide Step 5 (context file merge). Use Option A (diff-and-
+>    merge) if this project has customized CLAUDE.md or AGENTS.md
+>    content. Read the v8 backup and the v9 template side by side —
+>    preserve all project-specific rules, platform defaults, and anti-
+>    patterns while adopting the v9 section structure. Present the
+>    proposed merge for my review before applying it.
+> 5. Execute guide Steps 6–7 (Xcode companion files if applicable,
+>    conditional file cleanup).
+> 6. Run guide Step 8 verification checks and report the results.
+>
+> **Rules:**
+>
+> - Do NOT commit anything without my explicit review and approval.
+>   Show me `git status` and a summary of changes before any commit.
+> - If a command requires `sudo` or manual intervention (e.g., Xcode
+>   companion file installation to `~/Library/`), tell me the command
+>   and wait for me to run it.
+> - Do NOT modify any file in the pack repo — only this project.
+> - After verification passes, present the "What to do after migration"
+>   section from the guide so I know the next steps (PM chat briefing,
+>   PLATFORM-SKILLS.md fill-in, PACK-FEEDBACK.md seeding).
+
+Replace `/path/to/pack` with the actual path to your pack repo checkout
+before pasting. For example: `PACK="$HOME/Developer/dhs-ai-agent-config-pack-v9"`

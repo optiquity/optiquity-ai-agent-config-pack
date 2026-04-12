@@ -209,7 +209,7 @@ git push origin main
 5. Start a new chat and paste Template 1 (PM chat kickoff prompt) from `PROMPT-TEMPLATES.md`
 
 **Option B — Claude Code CLI (non-blocking):**
-Follow QUICKSTART.md Step 11, Option B (Steps 11C–11G). Setup is self-contained there.
+Follow QUICKSTART.md Step 10, Option B (Steps 10C–10G). Setup is self-contained there.
 For daily session management after setup, see `supporting-docs/CLI-PM-SETUP.md`.
 
 ---

@@ -169,7 +169,7 @@ Replace v6 companion files if previously installed.
 
 ---
 
-## Step 10 — Commit
+## Step 9 — Commit
 
 ```bash
 git add -A && git status   # verify nothing sensitive is staged
@@ -181,7 +181,7 @@ and all generated Protobuf output.
 
 ---
 
-## Step 11 — Set up the PM chat
+## Step 10 — Set up the PM chat
 
 The PM chat is your project manager for the entire project lifetime. It generates
 all agent prompts, receives agent output for analysis, and makes all architectural
@@ -202,7 +202,7 @@ procedures, behavioral rules, and cross-tool switching instructions.
 Best when: you prefer a persistent chat interface with GitHub connector search,
 and are comfortable using Desktop Commander for small file writes.
 
-**Step 11A — Create the Claude project**
+**Step 10A — Create the Claude project**
 
 1. Go to claude.ai → Projects → New Project
 2. Name it after your app (e.g., "MyApp — PM")
@@ -211,7 +211,7 @@ and are comfortable using Desktop Commander for small file writes.
    (all copied to your project repo in Step 2) will be searchable after sync.
    No manual file upload needed.
 
-**Step 11B — Start the PM chat**
+**Step 10B — Start the PM chat**
 
 Open a new chat in your Claude project. Paste **Template 1 — PM Chat Kickoff Prompt**
 from `PROMPT-TEMPLATES.md` with all [PLACEHOLDERS] filled in.
@@ -219,7 +219,7 @@ from `PROMPT-TEMPLATES.md` with all [PLACEHOLDERS] filled in.
 The PM chat will confirm it can see your project documents, fill in and commit
 `PM-CHAT.md`, and tell you what to do next.
 
-*Both options continue at Step 12 below.*
+*Both options continue at Step 11 below.*
 
 ---
 
@@ -228,21 +228,21 @@ The PM chat will confirm it can see your project documents, fill in and commit
 Best when: you want a non-blocking terminal session with native file and git access,
 or you work across multiple machines and want git as the authoritative memory.
 
-**Step 11C — Verify prerequisites (one-time per machine)**
+**Step 10C — Verify prerequisites (one-time per machine)**
 
 ```bash
 claude --version      # must be installed — see https://docs.anthropic.com/en/docs/claude-code
 node --version        # must be v18 or higher — brew install node
 ```
 
-**Step 11D — First ingest note (mcp-local-rag)**
+**Step 10D — First ingest note (mcp-local-rag)**
 
 No action needed here. The embedding model (~90MB) downloads automatically the
-first time you run an ingest command inside the CLI session (Step 11F). This takes
+first time you run an ingest command inside the CLI session (Step 10F). This takes
 1-2 minutes once per machine, then works offline and instantly for all future
 ingests. Nothing to install or pre-warm in advance.
 
-**Step 11E — Configure mcp-local-rag for this project**
+**Step 10E — Configure mcp-local-rag for this project**
 
 ```bash
 cd ~/Developer/YourProject
@@ -267,7 +267,7 @@ Leave the `xcode` entry exactly as it was in `.mcp.json.example`:
 
 `.mcp.json` is gitignored — never commit it.
 
-**Step 11F — Start the session, name it, and ingest reference docs**
+**Step 10F — Start the session, name it, and ingest reference docs**
 
 ```bash
 cd ~/Developer/YourProject
@@ -286,7 +286,7 @@ Ingest PROMPT-TEMPLATES.md into the RAG index
 Ingestion takes a few seconds per file and only needs to be done once per machine
 (or when the pack version changes and those files are updated).
 
-**Step 11G — Run the startup check and complete kickoff**
+**Step 10G — Run the startup check and complete kickoff**
 
 ```
 /pm-startup
@@ -302,7 +302,7 @@ The PM chat will fill in and commit `PM-CHAT.md` as part of this first session.
 > compaction. For cross-machine workflow and troubleshooting see
 > `supporting-docs/CLI-PM-SETUP.md`.
 
-*All options continue at Step 12 below.*
+*All options continue at Step 11 below.*
 
 ---
 
@@ -311,7 +311,7 @@ The PM chat will fill in and commit `PM-CHAT.md` as part of this first session.
 Best when: you want Gemini CLI as your primary tool, with native filesystem access,
 `/chat save` for session persistence, and GEMINI.md hierarchy for automatic context.
 
-**Step 11H — Start the Gemini CLI PM chat**
+**Step 10H — Start the Gemini CLI PM chat**
 
 ```bash
 cd ~/Developer/YourProject
@@ -325,7 +325,7 @@ PLATFORM-SKILLS.md, and the current phase from IMPLEMENTATION_PLAN.md.
 Then paste **Template 1 — PM Chat Kickoff Prompt** from `PROMPT-TEMPLATES.md`
 with all [PLACEHOLDERS] filled in.
 
-**Step 11I — Save the session**
+**Step 10I — Save the session**
 
 ```bash
 /chat save yourproject-pm
@@ -335,11 +335,11 @@ with all [PLACEHOLDERS] filled in.
 > Use `/compress` when context grows large. For cross-machine workflow see
 > `supporting-docs/CLI-PM-SETUP.md`.
 
-*All options continue at Step 12 below.*
+*All options continue at Step 11 below.*
 
 ---
 
-## Step 12 — Generate SETUP.md and AGENT_KICKOFF.md
+## Step 11 — Generate SETUP.md and AGENT_KICKOFF.md
 
 Ask the PM chat to generate these using **Templates 13 and 14** from `PROMPT-TEMPLATES.md`.
 The PM chat reads the templates and fills in all values from your planning conversation.
@@ -352,7 +352,7 @@ Commit both files.
 
 ---
 
-## Step 13 — Run the architecture kickoff
+## Step 12 — Run the architecture kickoff
 
 ```bash
 cd ~/Developer/YourProject

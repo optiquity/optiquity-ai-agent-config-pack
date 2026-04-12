@@ -43,6 +43,30 @@ has_proto() { [[ -d proto ]]; }
 EXIT_CODE=0
 RAN_SOMETHING=0
 
+# ── Skill distribution ───────────────────────────────────────────────────
+# Distribute skills from the canonical skills/ directory to each tool's
+# expected location. This runs on every bootstrap (idempotent — overwrites
+# existing copies with the canonical version).
+
+if [[ -d "$ROOT_DIR/skills" ]]; then
+  echo "[bootstrap] Distributing skills to .claude/skills/, .codex/skills/, .gemini/skills/"
+  for skill_dir in "$ROOT_DIR/skills/"*/; do
+    skill_name=$(basename "$skill_dir")
+    # Claude
+    mkdir -p "$ROOT_DIR/.claude/skills/$skill_name"
+    cp "$skill_dir/SKILL.md" "$ROOT_DIR/.claude/skills/$skill_name/SKILL.md"
+    # Codex
+    mkdir -p "$ROOT_DIR/.codex/skills/$skill_name"
+    cp "$skill_dir/SKILL.md" "$ROOT_DIR/.codex/skills/$skill_name/SKILL.md"
+    # Gemini
+    mkdir -p "$ROOT_DIR/.gemini/skills/$skill_name"
+    cp "$skill_dir/SKILL.md" "$ROOT_DIR/.gemini/skills/$skill_name/SKILL.md"
+  done
+  echo "[bootstrap] Skills distributed: $(ls "$ROOT_DIR/skills/" | wc -l | tr -d ' ') skills × 3 tools"
+else
+  echo "[bootstrap] WARN: skills/ directory not found — skipping skill distribution"
+fi
+
 if has_swift; then
   RAN_SOMETHING=1
   echo "[bootstrap] Swift detected — running bootstrap-swift.sh"

@@ -48,10 +48,11 @@ that depends on that content.
 - Receives all agent output (pasted by developer) and analyzes it
 - Makes all architectural and planning decisions
 
-> **Two PM chat options:** The PM chat can run as a Claude Desktop app project
-> (setup — see QUICKSTART.md Step 11, Option A) or as a resumable Claude Code
-> CLI session (non-blocking, native file/git access — setup in QUICKSTART.md
-> Step 11, Option B; daily usage reference in `supporting-docs/CLI-PM-SETUP.md`).
+> **Three PM chat options:** The PM chat can run as a Claude Desktop app project
+> (setup — see QUICKSTART.md Step 10, Option A), a resumable Claude Code CLI
+> session (QUICKSTART.md Step 10, Option B), or a Gemini CLI session
+> (QUICKSTART.md Step 10, Option C). Daily CLI usage reference in
+> `supporting-docs/CLI-PM-SETUP.md`.
 > The methodology, rules, and procedures are identical in both modes. `PM-CHAT.md`
 > in the project root provides startup instructions and is read by both modes —
 > directly from disk by the CLI PM chat, and via the GitHub connector by the
@@ -315,19 +316,22 @@ been explicitly split into multiple sequential parts by a planning agent.
 
 ### Workflow 1 — Starting a new project
 
-1. Create GitHub repo
-2. Create Claude Chat project, connect GitHub repo via GitHub connector
-3. Planning conversation with PM chat → establishes architecture, phase plan, agent config
-4. PM chat generates (or helps generate): `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`,
-   `CLAUDE.md`, `AGENTS.md`, `METHODOLOGY.md` (copy from pack)
-5. Create `STATUS.md` and `BACKLOG.md` (initially sparse)
-6. Create app's Claude project, connect GitHub repo — `METHODOLOGY.md` and `PROMPT-TEMPLATES.md`
-   are in the project repo and available via the GitHub connector after syncing
-7. Run bootstrap: `./scripts/bootstrap.sh`
-8. Commit all docs before writing any code
-9. Sync GitHub connector in Claude Chat project
-10. Generate `AGENT_KICKOFF.md` from `AGENT_KICKOFF_TEMPLATE.md` (PM chat fills it in)
-11. Run architect agent with AGENT_KICKOFF.md to produce `ARCHITECTURE.md` and stubs
+1. Create GitHub repo, clone locally
+2. Copy the unified template and supporting docs per QUICKSTART.md Steps 1–4:
+   copy `project-template/`, copy `METHODOLOGY.md` and `PROMPT-TEMPLATES.md`
+   from `supporting-docs/`, remove conditional files, fill in context file
+   placeholders, run `./scripts/bootstrap.sh`
+3. Create `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` (initially sparse)
+4. Commit all template and doc files before writing any code
+5. Set up the PM chat (QUICKSTART.md Step 10 — choose Claude Desktop,
+   Claude CLI, or Gemini CLI)
+6. Planning conversation with PM chat → establishes architecture, phase plan
+7. PM chat generates: `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`; fills in
+   remaining `[PLACEHOLDER]` sections in context files using `PLATFORM-SKILLS.md`
+8. If using Claude Desktop: sync GitHub connector
+9. Generate `SETUP.md` and `AGENT_KICKOFF.md` using Templates 13 and 14
+   (PM chat fills them in from the planning conversation)
+10. Run architect agent with AGENT_KICKOFF.md to produce `ARCHITECTURE.md` stubs
 
 ### Workflow 2 — Per-phase execution (standard coder → reviewer cycle)
 
@@ -1092,8 +1096,9 @@ reference.
       from `project-template/` and `supporting-docs/`
 - [ ] Create BACKLOG.md, STATUS.md, CHANGELOG.md (empty with structure)
 - [ ] Run `./scripts/bootstrap.sh`
-- [ ] **Choose PM chat mode** — Option A (Claude Desktop app project, see QUICKSTART.md
-      Step 11, Option A) or Option B (CLI, see QUICKSTART.md Step 11, Option B)
+- [ ] **Choose PM chat mode** — Option A (Claude Desktop app, see QUICKSTART.md
+      Step 10, Option A), Option B (Claude CLI, Step 10, Option B), or
+      Option C (Gemini CLI, Step 10, Option C)
 - [ ] Commit all docs. If using Desktop app: sync GitHub connector.
 
 ### Before each phase
@@ -1119,6 +1124,6 @@ reference.
 
 ---
 
-*Version 1.0 — AI Agent Config Pack v8.8, April 2026*
+*Version 2.0 — AI Agent Config Pack v9, April 2026*
 *Source: maintenance-docs/origins/Claude-Assisted_Project_Methodology_Guide_v1.md*
 *Update this file when new standing decisions are made. Bump the version number.*
