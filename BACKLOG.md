@@ -353,13 +353,17 @@ File/Symbol: .claude/agents/, .codex/agents/, GEMINI.md,
 Description: Add a new auditor agent for full-codebase structural audits.
   Unlike reviewer (per-phase) and tester (pre-implementation strategy), the
   auditor is retrospective and periodic — run after multiple phases to find
-  systemic gaps. Uses a parent + six subagent architecture: auditor-architecture,
-  auditor-code, auditor-tests, auditor-docs, auditor-security, auditor-ui. Parent
-  coordinates subagents and consolidates their reports. Requires a new
-  audit-methodology skill. Also serves as the pack's reference example of
-  subagent orchestration. Evaluate Templates 9-12 in PROMPT-TEMPLATES.md for
-  revision or deprecation.
-Context: Part of BD-024 Steps 10-11. See V9-DESIGN.md Decision 6 for full design.
+  systemic gaps. Uses a parent + seven subagent architecture:
+  auditor-architecture, auditor-code, auditor-tests, auditor-docs,
+  auditor-security, auditor-ui, auditor-ops. Parent coordinates subagents
+  and consolidates their reports. Requires a new audit-methodology skill.
+  Also serves as the pack's reference example of subagent orchestration.
+  Templates 9-12 in PROMPT-TEMPLATES.md: Template 9 rewritten as the
+  auditor invocation template; Templates 10-12 superseded.
+Context: Part of BD-024 Steps 10-11. See V9-DESIGN.md Decision 6 for
+  full design. Updated April 2026: auditor-ui split into auditor-ui (UI
+  compliance only) and auditor-ops (deployment readiness, config management,
+  observability wiring) — seven subagents total.
 Resolved: n/a
 
 ---
@@ -413,6 +417,86 @@ Description: Create a structured, date-stamped capability reference covering
   and cost routing. Supersedes GEMINI-CLI-ANALYSIS.md and ANDROID-ANALYSIS.md.
 Context: Created during v9 planning phase. Committed as part of v8.10.
 Resolved: April 2026, v8.10 planning docs commit.
+
+---
+
+**BD-032 — Validate auditor observability infrastructure vs. configuration boundary**
+Type: TODO(version)
+Status: Open
+Blockers:
+  - First v9 project with cloud-deployed observability runs a full audit (PACK-FEEDBACK.md Q1)
+Unblocks: None
+File/Symbol: `project-template/skills/audit-methodology/SKILL.md` — rule 21 (auditor-ops scope)
+Description: The auditor splits observability into auditor-architecture (does
+  the wiring exist in code?) and auditor-ops (is it configured correctly for
+  the deployment target?). This boundary is logically sound but untested on
+  real observability code. If the first real audit shows findings that sit at
+  the boundary with no clear owner, refine rule 21 and the subagent files
+  with concrete "if X, it belongs to auditor-ops; if Y, auditor-architecture"
+  examples.
+Context: Deferred from the v9 auditor fix pass (d2c3599). The pack repo has
+  no observability code to test against. Tracked as PACK-FEEDBACK.md Q1 in
+  every downstream project.
+Resolved: n/a
+
+---
+
+**BD-033 — Validate auditor systemic error handling threshold**
+Type: TODO(version)
+Status: Open
+Blockers:
+  - First v9 project with non-trivial error handling runs a full audit (PACK-FEEDBACK.md Q2)
+Unblocks: None
+File/Symbol: `project-template/skills/audit-methodology/SKILL.md` — rule 16 (auditor-code scope)
+Description: auditor-code audits "systemic error handling" (boundary mapping
+  consistency, retry policy uniformity) as distinct from per-function
+  error-handling bugs. The threshold between systemic and per-function is not
+  quantified. If the first real audit shows auditor-code struggling to
+  distinguish the two, add a concrete threshold to rule 16 and consider
+  whether the error-handling skill needs systemic rules split from
+  per-function rules.
+Context: Deferred from the v9 auditor fix pass (d2c3599). The pack repo has
+  no Swift/Python domain code to audit for error handling patterns. Tracked
+  as PACK-FEEDBACK.md Q2.
+Resolved: n/a
+
+---
+
+**BD-034 — Validate auditor-ui scope breadth after ops split**
+Type: TODO(version)
+Status: Open
+Blockers:
+  - First v9 project with substantial UI runs a full audit (PACK-FEEDBACK.md Q3)
+Unblocks: None
+File/Symbol: `project-template/skills/audit-methodology/SKILL.md` — rule 20 (auditor-ui scope)
+Description: After splitting auditor-ui (UI compliance only) from auditor-ops
+  (deployment readiness), auditor-ui covers 4 specific checks: view thickness,
+  accessibility gaps, incomplete UI states, platform-specific UI conventions.
+  A traditional UI audit might expect more (localization, dark mode, Dynamic
+  Type, iPad split-view, custom gestures). If the first real UI audit shows
+  the scope is too narrow, extend rule 20 with additional examples.
+Context: Deferred from the v9 auditor fix pass (d2c3599). The pack repo has
+  no UI layer. Tracked as PACK-FEEDBACK.md Q3.
+Resolved: n/a
+
+---
+
+**BD-035 — Validate python-architecture skill loading for non-server Python**
+Type: TODO(version)
+Status: Open
+Blockers:
+  - First v9 non-server multi-file Python project runs a full audit (PACK-FEEDBACK.md Q4)
+Unblocks: None
+File/Symbol: `project-template/PLATFORM-SKILLS.md` — auditor-code skill assignment
+Description: PLATFORM-SKILLS.md loads python-architecture for auditor-code
+  only when a Python server is present. Performance anti-patterns (N+1
+  queries, blocking I/O in async handlers) apply to any multi-file Python
+  project. If the first real audit on a non-server Python project misses
+  findings that python-architecture would have caught, expand the loading
+  rule.
+Context: Deferred from the v9 auditor fix pass (d2c3599). No non-server
+  Python project exists to test against. Tracked as PACK-FEEDBACK.md Q4.
+Resolved: n/a
 
 ---
 

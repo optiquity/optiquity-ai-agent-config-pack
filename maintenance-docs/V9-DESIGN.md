@@ -1471,6 +1471,17 @@ xcode-companion-templates/ClaudeAgentConfig/CLAUDE.md references old agent names
 GEMINI.md (created in Step 5, expanded in Step 8) needs a "Scripts" section
 equivalent to what CLAUDE.md and AGENTS.md will have.
 
+Third, the boundary between `supporting-docs/` and `project-template/` is
+unclear. Both directories contain files that get copied to the project root
+during setup, with no consistent rule for which goes where. PM-CHAT.md
+exists in both directories (a v9-dev duplicate). Files like METHODOLOGY.md
+and PROMPT-TEMPLATES.md live in `supporting-docs/` while PLATFORM-SKILLS.md,
+PACK-FEEDBACK.md, and GEMINI.md live in `project-template/` — yet all are
+copied to the same destination. This must be resolved with a clear rule:
+which directory holds what, and why. The PM-CHAT.md duplicate must be
+eliminated (one canonical location, the other deleted or replaced with a
+pointer).
+
 **Goal:** All three new project-template files exist and are internally
 consistent with the v9 unified template structure, the v9 agent roster, the
 v9 skill library, and the v9 scripts. All documents listed in Part 4
@@ -1506,6 +1517,11 @@ and skill names.
    the `apple-architect` or `python-architect` agents, or the pre-v9
    monolithic scripts anywhere. Grep for those strings returns zero matches
    in the files Step 12 updates.
+6. The boundary between `supporting-docs/` and `project-template/` is
+   resolved with a clear, documented rule. Every file that gets copied to
+   the project root lives in exactly one canonical location. The PM-CHAT.md
+   duplicate is eliminated. QUICKSTART.md copy instructions reference the
+   correct source paths.
 
 **Depends on:** Steps 3–9 (unified structure, all agent/skill files, and
 the v9 scripts must be finalized before documentation can accurately
@@ -1667,6 +1683,10 @@ All gaps found are resolved before the `v9-dev` branch is merged to main.
       owner. Ownership precedence resolves every plausible conflict. This is
       the check that caught the auditor-ui/auditor-ops scope blur — it must
       be a standing part of the closure audit.
+   g. **Version footers.** METHODOLOGY.md and PROMPT-TEMPLATES.md both have
+      version footers referencing a pack version (currently v8.8 and v8.6
+      respectively). These must be bumped to v9.0 before the merge to main.
+      Verify they match the actual release tag.
 
 **Success looks like:** A written audit report exists covering all nine
 categories above, with a finding of either "pass" or a listed gap for each
