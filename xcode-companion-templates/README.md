@@ -1,14 +1,28 @@
 # Xcode companion templates
 
-Apple's Xcode 26.3 agent integrations are separate from your repo-level Claude and Codex CLI or IDE configs.
+Machine-level Xcode AI agent configuration. These files are installed per-Mac,
+not per-project — they live outside the project repo.
 
-Apple documents separate customization directories for Xcode agentic coding:
+Apple's Xcode 26.3 agent integrations use separate customization directories:
 
-- `~/Library/Developer/Xcode/CodingAssistant/codex`
-- `~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig`
+- `~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/` — Claude agent config
+- `~/Library/Developer/Xcode/CodingAssistant/codex/` — Codex agent config
 
-Treat these as user-local. Do not commit real copies of these into app repositories.
+## Installation
 
-The companion files here mirror the repo-level v6 policy:
-- both Claude Agent and Codex are allowed to do planning, implementation, testing, review, repo operations, and documentation
-- defaults may differ, but capability is not split by tool identity
+```bash
+cp ClaudeAgentConfig/CLAUDE.md ~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/
+cp ClaudeAgentConfig/settings.json ~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/
+cp Codex/AGENTS.md ~/Library/Developer/Xcode/CodingAssistant/codex/
+cp Codex/config.toml ~/Library/Developer/Xcode/CodingAssistant/codex/
+```
+
+Repeat on each Mac. Reinstall after pack version updates.
+
+## Policy
+
+These companion files mirror the v9 project-level policy:
+- Both Claude Agent and Codex are allowed to do planning, implementation,
+  testing, review, repo operations, and documentation
+- Capability is not split by tool identity — defaults may differ but both
+  tools can do all work categories

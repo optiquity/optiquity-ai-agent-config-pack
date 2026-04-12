@@ -421,8 +421,8 @@ Commit everything else, including `CLAUDE.md`, `AGENTS.md`, `agent-run.sh`, `.cl
 
 ## Reference documents (not copied into project repos)
 
-- `shared-docs/VERIFIED-NOTES.md` — what was verified from official docs and what was not
-- `shared-docs/RECOMMENDATIONS.md` — practical next steps for each template
+- `maintenance-docs/VERIFIED-NOTES.md` — what was verified from official docs and what was not
+- `maintenance-docs/RECOMMENDATIONS.md` — practical recommendations for new projects
 - iOS 26 API docs — agents read directly from the Xcode bundle at `/Applications/Xcode.app/Contents/PlugIns/IDEIntelligenceChat.framework/Versions/A/Resources/AdditionalDocumentation/`
 - `swift-python-best-practices-v3.md` — the full 206-item best practices reference
 - `METHODOLOGY.md` (in each project repo) — full methodology reference; see **Part 7 —

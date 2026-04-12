@@ -24,11 +24,11 @@ If you prefer them local-only, add `.vscode/` to your project `.gitignore`.
 
 ## Scope
 
-These files are intended for:
-- `python-server-template` projects
-- `apple-app-plus-python-server-template` (monorepo) projects — Python side only
+These files are intended for projects with Python code (servers, monorepos,
+CLI tools). They are **not** needed for Swift/Apple-only projects (Xcode-only).
 
-They are **not** needed for `apple-app-template` projects (Xcode-only).
+When setting up a new project from the unified template (`project-template/`),
+copy `.vscode/` if the project includes Python.
 
 ## Notes
 

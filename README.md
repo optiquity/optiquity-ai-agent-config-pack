@@ -1,25 +1,25 @@
 # DHS AI Agent Config Pack
 
-A versioned collection of Claude Code, OpenAI Codex, and Xcode AI agent
-configuration files for Swift / Python / gRPC projects.
+A versioned collection of Claude Code, Codex CLI, Gemini CLI, and Xcode AI
+agent configuration files for Swift / Python / gRPC projects.
 
 ## What is this?
 
 This pack provides per-project and machine-level configuration files that give
-Claude Code, OpenAI Codex, and Xcode's built-in AI agents a shared, consistent
-understanding of your projects — covering architecture rules, coding standards,
-agent roles, skills, and shell scripts to validate agent output.
+Claude Code, Codex CLI, Gemini CLI, and Xcode's built-in AI agents a shared,
+consistent understanding of your projects — covering architecture rules, coding
+standards, agent roles, skills, and shell scripts to validate agent output.
 
 ## Using the Config Pack
 
-See [`QUICKSTART.md`](QUICKSTART.md) for full setup instructions (available from v6 onward).
+See [`QUICKSTART.md`](QUICKSTART.md) for full setup instructions.
 
 ## Version History
 
 ### Versioning convention
 Major versions (v9, v10, …) mark large additions or breaking changes.
 Minor versions (v8.0, v8.1, …) mark incremental improvements — doc updates,
-new templates, prompt and workflow refinements. The bare major tag (e.g. `v8`)
+new templates, prompt and workflow refinements. The bare major tag (e.g. `v9`)
 always points to the latest minor of that major version.
 
 | Version | Date         | Key Additions |
@@ -42,65 +42,78 @@ always points to the latest minor of that major version.
 | v8.8    | Apr 7, 2026  | Pack CLI chat: PACK-CHAT.md, /pack-startup skill; corrections to mcp-local-rag docs (QUICKSTART.md, DEPENDENCIES.md, CLI-PM-SETUP.md); METHODOLOGY.md version string fix |
 | v8.9    | Apr 9, 2026  | agent-run.sh added to all three templates: read-only/write permission flags per agent, Claude Code and Codex CLI support |
 | v8.10   | Apr 2026     | v9 planning: V9-DESIGN.md, TOOL-COMPARISON.md, BACKLOG.md (BD-025–031); v9-dev branch created |
+| v9.0    | Apr 2026     | Unified template replaces 3 per-type templates; composable skill library (30 skills); three-tool parity (Claude/Codex/Gemini); architect agent unified; 7-cluster auditor agent; PACK-FEEDBACK loop; language-specific scripts with wrappers; GEMINI.md + PLATFORM-SKILLS.md + PACK-FEEDBACK.md; GitHub Actions CI validation; agents read Xcode docs directly from bundle |
 
 ## Repository Layout
 
 ```
-├── apple-app-template/                     Template: iOS / macOS apps
-├── xcode-companion-templates/              Machine-level Xcode AI config
-├── vscode-companion-templates/             Machine-level VS Code config (v8+)
-├── shared-docs/                            Reference notes
-├── supporting-docs/                        Pack product docs (copied to or consumed by projects)
-│   ├── METHODOLOGY.md                      Universal project methodology (v8+)
-│   ├── PROMPT-TEMPLATES.md                 Agent prompt templates (v8+)
-│   ├── PM-CHAT.md                          PM chat startup instructions template (v8.7+)
-│   ├── CLI-PM-SETUP.md                     CLI PM chat daily usage reference (v8.7+)
-│   ├── DEPENDENCIES.md                     Tool dependencies reference (v8.6+)
-│   ├── SETUP_TEMPLATE.md                   New project setup template (v8+)
-│   ├── AGENT_KICKOFF_TEMPLATE.md           Architecture kickoff template (v8+)
-│   └── MIGRATION-v8-to-v9.md               Upgrade guide (v9)
-├── maintenance-docs/                       Pack maintainer docs (design records, analysis, archives)
-│   ├── origins/                            Source material and chat transcripts
-│   ├── guides/                             Per-version setup guides (.docx)
-│   ├── V9-DESIGN.md                        v9 architecture design record (v8.10+)
-│   ├── TOOL-COMPARISON.md                  Cross-tool capability reference (v8.10+)
-│   ├── GEMINI-CLI-ANALYSIS.md              Gemini CLI integration analysis (deprecated)
-│   └── ANDROID-ANALYSIS.md                 Android support analysis (deprecated)
-├── QUICKSTART.md                           Quick start (v6+)
-├── PACK-CHAT.md                            Pack CLI chat startup instructions (v8.8+)
-├── BACKLOG.md                              Pack improvement backlog (v8+, was V8-BACKLOG.md)
-├── scripts/                                Pack-level scripts (CI validation)
-├── .github/workflows/                      GitHub Actions (pack self-validation)
-├── .mcp.json.example                       mcp-local-rag config template for pack repo (v8.8+)
-└── CHANGELOG.md
+project-template/                           Unified project template (v9)
+├── .claude/agents/                         Claude agent files (16 agents)
+├── .codex/agents/                          Codex agent files (16 agents)
+├── .codex/config.toml                      Codex config (agent registry, profiles)
+├── .claude/settings.json                   Claude Code settings (permissions, hooks)
+├── skills/                                 Canonical skill library (30 skills)
+├── scripts/                                Build, test, validation scripts (15)
+├── CLAUDE.md                               Claude context file (unified template)
+├── AGENTS.md                               Codex context file (unified template)
+├── GEMINI.md                               Gemini context file (unified template)
+├── PM-CHAT.md                              PM chat startup instructions
+├── PLATFORM-SKILLS.md                      Skill-selection matrix by project type
+├── PACK-FEEDBACK.md                        Upstream feedback log to Pack Chat
+├── agent-run.sh                            Agent launcher with per-tool flags
+├── .mcp.json.example                       MCP config template
+├── .gitignore                              Gitignore for projects
+└── (conditional: proto/, server/, pyproject.toml, pyrightconfig.json)
+
+supporting-docs/                            Pack product docs (copied to or consumed by projects)
+├── METHODOLOGY.md                          Universal project methodology
+├── PROMPT-TEMPLATES.md                     Agent prompt templates
+├── CLI-PM-SETUP.md                         CLI PM chat daily usage reference
+├── DEPENDENCIES.md                         Tool dependencies reference
+├── SETUP_TEMPLATE.md                       New project setup template
+├── AGENT_KICKOFF_TEMPLATE.md               Architecture kickoff template
+└── MIGRATION-v8-to-v9.md                   Upgrade guide
+
+maintenance-docs/                           Pack maintainer docs (design records, archives)
+├── V9-DESIGN.md                            v9 architecture design record
+├── TOOL-COMPARISON.md                      Cross-tool capability reference
+├── VERIFIED-NOTES.md                       Verified facts from official docs
+├── RECOMMENDATIONS.md                      Practical recommendations for new projects
+├── GEMINI-CLI-ANALYSIS.md                  Gemini CLI analysis (deprecated)
+├── ANDROID-ANALYSIS.md                     Android support analysis (deprecated)
+├── origins/                                Source material and chat transcripts
+└── guides/                                 Per-version setup guides
+
+xcode-companion-templates/                  Machine-level Xcode AI config (per Mac)
+vscode-companion-templates/                 Machine-level VS Code config (per project)
+
+scripts/                                    Pack-level scripts
+└── validate-pack.py                        CI structural validation
+
+.github/workflows/                          GitHub Actions
+└── validate-pack.yml                       Pack self-validation on every push
+
+QUICKSTART.md                               Quick start guide
+PACK-CHAT.md                                Pack CLI chat operating instructions
+PACK-AGENTS.md                              Pack agent routing
+BACKLOG.md                                  Pack improvement backlog
+CLAUDE.md                                   Pack repo Claude context (not a template)
+AGENTS.md                                   Pack repo Codex context (not a template)
+GEMINI.md                                   Pack repo Gemini context (not a template)
+README.md                                   This file
+CHANGELOG.md                                Pack changelog
 ```
 
 ## Checking Out a Specific Version
 
 ```bash
-git checkout v8        # Latest
-git checkout v7        # One version back
-git diff v7 v8         # See exactly what changed between versions
+git checkout v8        # Latest v8.x release
+git checkout v7        # Older version
+git diff v8 v9         # See what changed between major versions
 git log --oneline      # Full version history
 ```
-
-## Template Comparison
-
-| Feature                    | apple-app | python-server | monorepo |
-|----------------------------|-----------|---------------|---------|
-| CLAUDE.md / AGENTS.md      | ✓         | ✓             | ✓       |
-| METHODOLOGY.md (v8+, copy to project) | ✓ (copy from supporting-docs/) | ✓ (copy from supporting-docs/) | ✓ (copy from supporting-docs/) |
-| agent-run.sh (v8.9+)       | ✓         | ✓             | ✓       |
-| iOS 26 support (v7+)       | ✓         | —             | ✓       |
-| grpc-swift-2 rules         | ✓         | —             | ✓       |
-| grpc.aio rules             | —         | ✓             | ✓       |
-| Proto scaffold (v6+)       | ✓         | ✓             | ✓       |
-| apple-architect agent (v8) | ✓         | —             | ✓       |
-| python-architect agent (v8)| —         | ✓             | ✓       |
-| grpc-schema agent (v4+)    | ✓         | ✓             | ✓       |
 
 ## `main` Branch Policy
 
 `main` always points to the latest released version. Each version is also
-available as a git tag (`v1` through `v8`, and onward). Use tags for stable
-references in project documentation.
+available as a git tag. Use tags for stable references in project documentation.
