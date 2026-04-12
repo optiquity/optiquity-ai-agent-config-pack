@@ -458,7 +458,9 @@ When upgrading an existing project, do not copy template files blindly — your
 project-level customizations must be preserved.
 
 For v8 → v9 upgrades, see: **`supporting-docs/MIGRATION-v8-to-v9.md`**
-For v7 → v8 upgrades, see: **`supporting-docs/MIGRATION-v7-to-v8.md`**
+
+For v7 → v8 upgrades: use the v8 pack (`git checkout v8.9`) which contains
+`supporting-docs/MIGRATION-v7-to-v8.md`. Apply v7→v8 first, then v8→v9.
 
 **Summary of v9 change scope:**
 - Unified template replaces three per-project-type templates
