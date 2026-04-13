@@ -710,6 +710,36 @@ Resolved: April 2026, v9.1 — commit 5847208.
 
 ---
 
+**BD-042 — Move pack reference docs out of project root**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: METHODOLOGY.md, PROMPT-TEMPLATES.md, PM-CHAT.md, PLATFORM-SKILLS.md,
+  PACK-FEEDBACK.md — all currently in project root
+Description: The project root accumulates 15+ markdown files, mixing project
+  state files the developer uses daily (BACKLOG, STATUS, CHANGELOG, ARCHITECTURE,
+  IMPLEMENTATION_PLAN) with pack reference docs rarely touched after setup
+  (METHODOLOGY, PROMPT-TEMPLATES, PM-CHAT, PLATFORM-SKILLS, PACK-FEEDBACK).
+  Move the five pack reference docs to a subdirectory (e.g., `docs/` or
+  `pack-docs/`) to reduce root clutter.
+
+  Files that must stay in root: CLAUDE.md, AGENTS.md, GEMINI.md (tool convention),
+  README.md (git convention), agent-run.sh (invoked as ./agent-run.sh).
+
+  Blast radius is large: every cross-reference to these files in METHODOLOGY.md,
+  PROMPT-TEMPLATES.md, PM-CHAT.md, QUICKSTART.md, CLAUDE.md template, AGENTS.md
+  template, GEMINI.md template, pm-startup skill, CLI-PM-SETUP.md, MIGRATION
+  guide, and SETUP_TEMPLATE.md must be updated. Every existing project needs the
+  same migration. Scope as a major version change with its own migration step.
+
+Context: Identified April 2026 during v9.1 work. Deferred to reduce risk —
+  v9.1 is shipping BD-038 and BD-041; adding a file-move migration on top
+  would increase the blast radius beyond what a minor version should carry.
+Resolved: n/a
+
+---
+
 ## Deferred
 
 **BD-031 — Evaluate publishing pack skills to skills.sh**
