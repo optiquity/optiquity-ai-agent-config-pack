@@ -554,38 +554,37 @@ Resolved: n/a
 
 **BD-038 — Dynamic skill management mid-project**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: None
 Unblocks: None
-File/Symbol: project-level CLAUDE.md (skills: field), .claude/skills/pm-startup/SKILL.md,
-  supporting-docs/METHODOLOGY.md (Procedure 1 — one additional check),
-  supporting-docs/PM-CHAT.md
+File/Symbol: project-level CLAUDE.md/AGENTS.md/GEMINI.md (Active skills line),
+  skills/pm-startup/SKILL.md, supporting-docs/METHODOLOGY.md (Procedure 1 step 6),
+  project-level PM-CHAT.md, supporting-docs/PROMPT-TEMPLATES.md (Template 1)
 Description: Projects need to add or remove skills mid-project as needs evolve.
-  Currently there is no structured mechanism — the developer must remember to
-  tell the PM chat, and the PM chat has no way to proactively detect a skill gap.
 
-  Mechanism: Add a `skills:` field to the project-level CLAUDE.md listing the
-  currently active skills. The pm-startup skill reads and reports this field at
-  session start. The PM chat reads it at each phase gate when generating agent
-  prompts, loading only the listed skills.
+  Implemented mechanism: An **Active skills** line in the Skill loading section
+  of CLAUDE.md, AGENTS.md, and GEMINI.md lists the skills currently loaded for
+  the project. The PM chat writes this line during project kickoff by deriving
+  skills from PLATFORM-SKILLS.md for the project's type. Mid-project changes
+  update this line and the project description, then commit.
 
-  Proactive detection: At the phase gate check (Procedure 1), the PM chat scans
-  the implementation plan phase for technology references (proto files, Python
-  imports, C interop, etc.) and compares against the active skills list. If a gap
-  is found, it prompts: "Phase N references [technology] but [skill] is not in
-  your active skills. Add it?" Developer approves or declines. PM chat updates the
-  skills: field in CLAUDE.md and commits the change.
+  Proactive detection: At Procedure 1 step 6 (phase gate check), the PM chat
+  scans the upcoming phase for technology references not covered by the active
+  skills. If a matching skill exists in the pack, it flags the developer to add
+  it. If no matching skill exists, it records the gap in PACK-FEEDBACK.md for
+  the pack maintainer.
 
-  Manual management: Developer can also directly edit the skills: field in CLAUDE.md.
-  PM chat reads it fresh at each phase gate — no session restart needed.
+  pm-startup reads and reports the active skills list at session start.
 
-Encapsulation: Changes confined to CLAUDE.md (additive field), pm-startup skill
-  (additive step), and Procedure 1 (one additional check). No agent files change.
-  No workflow structure changes. Revertable by removing the skills: field from
-  CLAUDE.md and reverting the pm-startup and Procedure 1 additions.
-Context: See design discussion April 2026. v9 PLATFORM-SKILLS.md provides the
-  canonical skill list from which active skills are drawn.
-Resolved: n/a
+Encapsulation: Additive changes to Skill loading section (trinity files),
+  pm-startup (one step), Procedure 1 (one step), PM-CHAT.md (one rule),
+  Template 1 (one instruction), Workflow 1 (one sub-step), migration guide
+  (one note). No agent files change. No workflow structure changes. Revertable
+  by removing the Active skills line and reverting the additive steps.
+Context: Design discussion April 2026. Initial design proposed a separate
+  `skills:` field; revised to use an Active skills line in the existing Skill
+  loading section — additive on top of PLATFORM-SKILLS.md, not a replacement.
+Resolved: April 2026, v9.1 — commit f8758f9.
 
 ---
 
@@ -688,10 +687,10 @@ Resolved: n/a
 
 **BD-041 — Project initialization brief guidance**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: None
 Unblocks: None
-File/Symbol: supporting-docs/PM-CHAT.md, QUICKSTART.md
+File/Symbol: project-template/PM-CHAT.md, QUICKSTART.md
 Description: The PM chat currently has no guidance on what to do when a project
   starts without a defined platform, skill set, or architecture. Left unguided,
   a PM chat will attempt design decisions it is not positioned to make well.
@@ -700,19 +699,14 @@ Description: The PM chat currently has no guidance on what to do when a project
   belong in a design conversation (Claude Web side chat or equivalent), not in the
   PM chat. The PM chat is a consumer of a design brief, not its author.
 
-  Changes needed:
-  - PM-CHAT.md: Add a "Before starting" section stating: "If you do not have a
-    design brief (platform, key dependencies, rough architecture), stop. Ask the
-    developer to produce one in a side conversation first. The brief should specify
-    at minimum: target platform(s), primary language(s), any known external APIs
-    or services, and the project's definition of done for MVP."
-  - QUICKSTART.md: Add a note in the PM chat setup section pointing to the side
-    chat pattern for projects starting without known scope.
+  Implemented: "Before starting a new project" section added to PM-CHAT.md
+  requiring a design brief before the PM chat proceeds. Prerequisite callout
+  added to QUICKSTART.md Step 10 pointing to PM-CHAT.md for the full rule.
 
 Encapsulation: Two documentation additions only. No workflow, agent, skill, or
   script changes. Fully revertable.
 Context: See design discussion April 2026.
-Resolved: n/a
+Resolved: April 2026, v9.1 — commit 5847208.
 
 ---
 
