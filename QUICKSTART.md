@@ -183,6 +183,14 @@ and all generated Protobuf output.
 
 ## Step 10 — Set up the PM chat
 
+> **Prerequisite: design brief.** Before starting the PM chat, you need a design
+> brief covering at minimum: target platform(s), primary language(s), any known
+> external APIs or services, and the project's definition of done for MVP. If you
+> don't have one, produce it in a separate conversation first (a Claude Web side
+> chat, a Gemini CLI session, or any other workspace). The PM chat consumes a
+> design brief — it does not author one. See `PM-CHAT.md` § "Before starting a
+> new project" for details.
+
 The PM chat is your project manager for the entire project lifetime. It generates
 all agent prompts, receives agent output for analysis, and makes all architectural
 and planning decisions. It never writes code — that is the job of CLI agents.

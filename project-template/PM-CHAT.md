@@ -42,6 +42,29 @@ sections below.
 
 ---
 
+## Before starting a new project
+
+If the developer has not provided a design brief — target platform(s), primary
+language(s), key external APIs or services, and a rough architecture direction —
+stop. Do not attempt to make these decisions yourself. Ask the developer to
+produce a design brief in a separate conversation first (a Claude Web side chat,
+a Gemini CLI session, or any other workspace). The brief should specify at
+minimum:
+
+- Target platform(s) and deployment model
+- Primary language(s)
+- Any known external APIs, services, or data sources
+- The project's definition of done for MVP
+
+You are a consumer of a design brief, not its author. Platform selection, feature
+scope, and architecture decisions belong in a design conversation — not in the
+PM chat.
+
+Once the brief exists, proceed with Template 1 (PM Chat Kickoff Prompt) to
+establish project context.
+
+---
+
 ## When to run startup
 
 Run the startup procedure when:
