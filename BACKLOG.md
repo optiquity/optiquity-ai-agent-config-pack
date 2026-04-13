@@ -27,22 +27,20 @@ Type: TODO(version)
 Status: Open
 Blockers:
   - No concrete C++ project need has arisen
-  - BD-024 unified template redesign must be completed first — analysis outcome
-    determines skills needed, not a new template directory
 Unblocks: None
 File/Symbol: n/a — new file `maintenance-docs/CPP-SERVER-ANALYSIS.md` to be created
 Description: C++ is a common choice for high-performance gRPC servers and
-  systems-level services. Under the unified template model (BD-024), this analysis
-  determines what skills are needed rather than whether a new template directory
-  is required. The analysis document should cover: C++ gRPC library choices
-  (grpc++ official library), build system options (CMake, Bazel, Makefile),
-  what a `cpp-server-architecture` skill would need to cover, what a
-  `cpp-language` skill would need to cover (if not already created by BD-024),
-  toolchain differences from Python/Swift, and whether any existing pack files
-  apply unchanged.
+  systems-level services. The `cpp-language` skill already exists in the v9
+  unified template (created as part of BD-024). This analysis covers the
+  remaining server-specific gap: C++ gRPC library choices (grpc++ official
+  library), build system options (CMake, Bazel, Makefile), what a
+  `cpp-server-architecture` skill would need to cover beyond what
+  `cpp-language` already provides, toolchain differences from Python/Swift,
+  and whether any existing pack files apply unchanged.
 Context: Analysis only — no implementation until a concrete project need arises.
   Original framing assumed a new template directory; updated April 2026 to reflect
-  the unified template model from BD-024. Outcome is skill files, not a template.
+  the unified template model from BD-024. BD-024 resolved in v9 — the
+  `cpp-language` skill now exists; only the server-specific analysis remains.
 Resolved: n/a
 
 ---
@@ -230,9 +228,8 @@ All BD-001 through BD-019 items resolved across Groups 1–6.
 
 **BD-024 — Unified template and platform skills redesign**
 Type: TODO(version)
-Status: Open
-Blockers:
-  - v9 planning conversation needed to finalize skill boundaries and script strategy
+Status: Resolved
+Blockers: None
 Unblocks: BD-020 (C++ analysis outcome depends on unified model being settled)
 File/Symbol: n/a — replaces three template directories with one; new skill library
 Description: Replace the three template directories (apple-app-template,
@@ -301,14 +298,16 @@ Context: Emerged from April 2026 design analysis. The three existing template
   documents (ARCHITECTURE.md, CLAUDE.md), not agents. Skills make this explicit
   and extensible. BD-021, BD-022, and BD-023 are deprecated into this item;
   all skill content from those items is preserved here.
-Resolved: n/a
+Resolved: April 2026, v9.0 — unified template with 16 agents, 30 skills,
+  15 scripts in `project-template/`. Three old template directories removed.
+  Commits f61c776 through d4dc6f3 on v9-dev, merged to main.
 
 ---
 
 **BD-025 — Update DEPENDENCIES.md for Codex and Gemini CLIs**
 Type: TODO(version)
-Status: Open
-Blockers: None — independent of BD-024; can run in parallel
+Status: Resolved
+Blockers: None
 Unblocks: None
 File/Symbol: supporting-docs/DEPENDENCIES.md
 Description: DEPENDENCIES.md currently documents only Claude Code CLI and
@@ -317,14 +316,15 @@ Description: DEPENDENCIES.md currently documents only Claude Code CLI and
   installation and version requirements; Gemini CLI installation (npm global);
   Node.js as a shared dependency; any future C/C++ toolchain entries.
 Context: Part of BD-024 Step 12 scope. Can be drafted independently.
-Resolved: n/a
+Resolved: April 2026, v9.0 — DEPENDENCIES.md covers Claude Code CLI, Codex CLI,
+  Gemini CLI, and Node.js. Commit 5035328.
 
 ---
 
 **BD-026 — Split scripts by language/platform**
 Type: TODO(version)
-Status: Open
-Blockers: BD-024 Step 3 (unified template structure must be confirmed first)
+Status: Resolved
+Blockers: None
 Unblocks: None
 File/Symbol: scripts/ directory in unified template
 Description: The current monolithic format.sh and validate.sh handle all
@@ -337,15 +337,18 @@ Description: The current monolithic format.sh and validate.sh handle all
   language-aware. agent-run.sh is updated for the v9 agent roster and Gemini CLI.
   proto-gen.sh is carried forward unchanged.
 Context: Part of BD-024 Step 9. See V9-DESIGN.md Decision 4 for full rationale.
-Resolved: n/a
+Resolved: April 2026, v9.0 — language-specific scripts (format-swift.sh,
+  format-python.sh, validate-swift.sh, validate-python.sh, validate-proto.sh,
+  bootstrap-swift.sh, bootstrap-python.sh, test-swift.sh, test-python.sh) with
+  wrapper scripts. agent-run.sh updated for v9 roster including auditor and
+  Gemini CLI. Commit fd03d11.
 
 ---
 
 **BD-027 — Auditor agent design and implementation**
 Type: TODO(version)
-Status: Open
-Blockers: BD-024 Steps 4 and 6 (skill library and Claude agent patterns must
-  exist before auditor design is finalized)
+Status: Resolved
+Blockers: None
 Unblocks: None
 File/Symbol: .claude/agents/, .codex/agents/, GEMINI.md,
   supporting-docs/METHODOLOGY.md, supporting-docs/PROMPT-TEMPLATES.md,
@@ -364,14 +367,16 @@ Context: Part of BD-024 Steps 10-11. See V9-DESIGN.md Decision 6 for
   full design. Updated April 2026: auditor-ui split into auditor-ui (UI
   compliance only) and auditor-ops (deployment readiness, config management,
   observability wiring) — seven subagents total.
-Resolved: n/a
+Resolved: April 2026, v9.0 — parent auditor + 7 subagents across Claude,
+  Codex, and Gemini. audit-methodology skill created. Template 9 rewritten;
+  Templates 10-12 superseded. Commits d2c3599, 5135732.
 
 ---
 
 **BD-028 — PM-CHAT.md expansion for all three tools**
 Type: TODO(version)
-Status: Open
-Blockers: BD-024 Steps 3 and 4 (structure confirmed, skill names finalized)
+Status: Resolved
+Blockers: None
 Unblocks: None
 File/Symbol: PM-CHAT.md (template), supporting-docs/PM-CHAT.md (source),
   PLATFORM-SKILLS.md (new), GEMINI.md (new project template file),
@@ -384,14 +389,16 @@ Description: The current PM-CHAT.md covers only Claude PM chat architecture.
   file. Update pm-startup skill to include PLATFORM-SKILLS.md in RAG check.
   Decide and document whether pm-startup is ported to Codex and Gemini.
 Context: Part of BD-024 Step 5. See V9-DESIGN.md Part 3 for PM chat architecture.
-Resolved: n/a
+Resolved: April 2026, v9.0 — PM-CHAT.md covers Claude, Codex, and Gemini.
+  PLATFORM-SKILLS.md created. Template GEMINI.md created. pm-startup skill
+  updated with PLATFORM-SKILLS.md check. Commit 215f413.
 
 ---
 
 **BD-029 — Pack self-validation CI/CD**
 Type: TODO(version)
-Status: Open
-Blockers: BD-024 Steps 3-12 (files being validated must exist first)
+Status: Resolved
+Blockers: None
 Unblocks: None
 File/Symbol: .github/workflows/ (new)
 Description: Add a GitHub Actions workflow that validates on every push to the
@@ -401,7 +408,9 @@ Description: Add a GitHub Actions workflow that validates on every push to the
   the most recent git tag. Deliberate structural errors should cause clear
   workflow failures.
 Context: Post-v9, after all v9 files exist. See V9-DESIGN.md Step 14.
-Resolved: n/a
+Resolved: April 2026, v9.0 — `.github/workflows/validate-pack.yml` with
+  SKILL.md frontmatter validation, TOML parsing, TD-TBD sentinel check,
+  and version table consistency. Commit 8fe8dce.
 
 ---
 
@@ -543,12 +552,177 @@ Resolved: n/a
 
 ---
 
+**BD-038 — Dynamic skill management mid-project**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: project-level CLAUDE.md (skills: field), .claude/skills/pm-startup/SKILL.md,
+  supporting-docs/METHODOLOGY.md (Procedure 1 — one additional check),
+  supporting-docs/PM-CHAT.md
+Description: Projects need to add or remove skills mid-project as needs evolve.
+  Currently there is no structured mechanism — the developer must remember to
+  tell the PM chat, and the PM chat has no way to proactively detect a skill gap.
+
+  Mechanism: Add a `skills:` field to the project-level CLAUDE.md listing the
+  currently active skills. The pm-startup skill reads and reports this field at
+  session start. The PM chat reads it at each phase gate when generating agent
+  prompts, loading only the listed skills.
+
+  Proactive detection: At the phase gate check (Procedure 1), the PM chat scans
+  the implementation plan phase for technology references (proto files, Python
+  imports, C interop, etc.) and compares against the active skills list. If a gap
+  is found, it prompts: "Phase N references [technology] but [skill] is not in
+  your active skills. Add it?" Developer approves or declines. PM chat updates the
+  skills: field in CLAUDE.md and commits the change.
+
+  Manual management: Developer can also directly edit the skills: field in CLAUDE.md.
+  PM chat reads it fresh at each phase gate — no session restart needed.
+
+Encapsulation: Changes confined to CLAUDE.md (additive field), pm-startup skill
+  (additive step), and Procedure 1 (one additional check). No agent files change.
+  No workflow structure changes. Revertable by removing the skills: field from
+  CLAUDE.md and reverting the pm-startup and Procedure 1 additions.
+Context: See design discussion April 2026. v9 PLATFORM-SKILLS.md provides the
+  canonical skill list from which active skills are drawn.
+Resolved: n/a
+
+---
+
+**BD-039 — Prototype / speed mode**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: BD-040 (autonomous mode references prototype gate definitions)
+File/Symbol: project-level CLAUDE.md (mode: field),
+  supporting-docs/METHODOLOGY.md (Procedure 1 conditional logic, new Mode section),
+  supporting-docs/PM-CHAT.md
+Description: Projects sometimes need to prioritize speed over correctness —
+  prototypes, proof-of-concept builds, throwaway experiments. The pack currently
+  has one quality setting. Prototype mode selectively relaxes gates without
+  changing any agent behavior or files.
+
+  Mode declaration: `mode: prototype` in project-level CLAUDE.md. Default is
+  `mode: standard` (current behavior). Toggling requires a CLAUDE.md edit and
+  commit — not a session flag — so the mode is visible in git history.
+  The mode is always prominently reported in pm-startup output.
+
+  What changes in prototype mode:
+  - Reviewer findings are logged to BACKLOG.md as tech debt items but are
+    non-blocking (PM chat proceeds without requiring fixes first)
+  - Tester agent is skipped unless explicitly requested
+  - Architect is optional before coder for phases marked exploratory in the
+    implementation plan
+  - validate.sh runs but non-zero exit does not block proceeding (warning logged)
+
+  What does NOT change:
+  - Agent files, scripts, skills — unchanged
+  - The reviewer still runs and its output is still recorded
+  - BACKLOG.md tracks all accumulated tech debt automatically; these items
+    become the cleanup list when mode returns to standard
+
+Encapsulation: All logic lives in Procedure 1 conditional branches and the PM
+  chat's prompt generation. Zero changes to agent files, skill files, or scripts.
+  Revertable by removing the mode: field from CLAUDE.md and reverting the
+  Procedure 1 additions. Tech debt items accumulated during prototype mode
+  remain in BACKLOG.md permanently.
+Context: See design discussion April 2026.
+Resolved: n/a
+
+---
+
+**BD-040 — Fully autonomous execution mode**
+Type: TODO(version)
+Status: Open
+Blockers: BD-039 (autonomous mode references prototype gate definitions;
+  both modify Procedure 1 and must be sequenced to avoid conflicts)
+Unblocks: None
+File/Symbol: project-level CLAUDE.md (mode: autonomous, autonomous_threshold: field),
+  STATUS.md (stop marker convention), supporting-docs/METHODOLOGY.md
+  (new Procedure 5 — autonomous execution loop), supporting-docs/PM-CHAT.md
+Description: For well-defined projects with complete implementation plans, the
+  PM chat should be able to execute an entire coder → reviewer → fix cycle
+  without developer interaction, stopping only at genuine blockers.
+
+  Mode declaration: `mode: autonomous` in project-level CLAUDE.md, with optional
+  `autonomous_threshold:` specifying the reviewer finding severity that triggers a
+  stop (default: any Critical finding). Toggling follows the same commit-based
+  mechanism as BD-039.
+
+  Autonomous execution loop (new Procedure 5):
+  1. Read current phase from STATUS.md
+  2. Verify phase is fully defined in IMPLEMENTATION_PLAN.md with a mechanically
+     verifiable definition of done — if not, stop and report immediately
+  3. Generate coder prompt, invoke agent, collect output
+  4. Generate reviewer prompt, invoke agent, collect output
+  5. If reviewer passes: commit, update STATUS.md, advance to next phase, loop
+  6. If findings are below threshold: generate fix prompt, invoke coder, re-run
+     reviewer, loop (max 2 fix cycles per phase before stopping)
+  7. If Critical finding, fix cycles exhausted, or plan is ambiguous: write
+     ⚠️ AUTONOMOUS STOP to STATUS.md with reason, commit current state, halt
+
+  Hard limits — autonomous mode cannot:
+  - Modify ARCHITECTURE.md
+  - Create new phases in IMPLEMENTATION_PLAN.md
+  - Skip a reviewer pass
+  - Proceed past a Critical reviewer finding
+  - Handle external dependencies (credentials, env setup, API keys)
+  - Proceed if build fails after 2 fix cycles
+
+  Notification: The ⚠️ AUTONOMOUS STOP marker in STATUS.md is the signal.
+  Developer checks STATUS.md to see where execution stopped and why.
+
+Encapsulation: All logic in Procedure 5 and STATUS.md conventions. Zero changes
+  to agent files, skills, or scripts — agents run identically. Stop marker is
+  additive to STATUS.md. Revertable by removing mode: and autonomous_threshold:
+  from CLAUDE.md and removing Procedure 5 from METHODOLOGY.md.
+
+Risk note: Requires the implementation plan phase to have a complete, mechanically
+  verifiable definition of done. If the plan is vague, autonomous mode refuses to
+  start for that phase. This check is the primary safeguard against wrong
+  implementations being committed without review.
+Context: See design discussion April 2026.
+Resolved: n/a
+
+---
+
+**BD-041 — Project initialization brief guidance**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: supporting-docs/PM-CHAT.md, QUICKSTART.md
+Description: The PM chat currently has no guidance on what to do when a project
+  starts without a defined platform, skill set, or architecture. Left unguided,
+  a PM chat will attempt design decisions it is not positioned to make well.
+
+  The correct split: platform selection, feature scope, and architecture decisions
+  belong in a design conversation (Claude Web side chat or equivalent), not in the
+  PM chat. The PM chat is a consumer of a design brief, not its author.
+
+  Changes needed:
+  - PM-CHAT.md: Add a "Before starting" section stating: "If you do not have a
+    design brief (platform, key dependencies, rough architecture), stop. Ask the
+    developer to produce one in a side conversation first. The brief should specify
+    at minimum: target platform(s), primary language(s), any known external APIs
+    or services, and the project's definition of done for MVP."
+  - QUICKSTART.md: Add a note in the PM chat setup section pointing to the side
+    chat pattern for projects starting without known scope.
+
+Encapsulation: Two documentation additions only. No workflow, agent, skill, or
+  script changes. Fully revertable.
+Context: See design discussion April 2026.
+Resolved: n/a
+
+---
+
 ## Deferred
 
 **BD-031 — Evaluate publishing pack skills to skills.sh**
 Type: TODO(version)
 Status: Deferred
-Blockers: BD-024 (skills must be stable and complete before publication)
+Blockers: Skills must be stable through at least one real project audit cycle
+  before publication
 Unblocks: None
 File/Symbol: n/a — external publication; no pack files change
 Description: skills.sh (Vercel's cross-platform skill package manager,
