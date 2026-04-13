@@ -62,6 +62,14 @@ These rules are non-negotiable and always apply:
   bare major tag (e.g., `v8`) to the new HEAD using the standard tag move sequence.
 - **No solution-biasing.** When discussing design problems, describe the constraint
   only — do not propose a solution unless asked.
+- **Separation of pack operations and pack product.** The files and workflows used
+  to maintain the pack repo (PACK-CHAT.md, PACK-AGENTS.md, CLAUDE.md, AGENTS.md,
+  GEMINI.md, BACKLOG.md, CHANGELOG.md, README.md) are completely separate from
+  the files the pack ships to coding projects (everything under `project-template/`,
+  `supporting-docs/`, `maintenance-docs/`). Never mix the two — do not add product
+  file references to operational key-file lists, do not add pack-maintenance
+  workflows to project methodology, and do not let pack operational concerns leak
+  into template content. If a boundary feels unclear, ask before crossing it.
 - **Check CI after every push.** After every commit and push, check the
   `Validate Pack` workflow status. If the GitHub MCP server is configured
   for this repo (see note below), use `list_workflow_runs` to check

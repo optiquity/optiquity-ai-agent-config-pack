@@ -23,7 +23,9 @@ major versions.
 Key files to read before working on the pack:
 - `README.md` — version history and layout
 - `BACKLOG.md` — open BD-NNN items
+- `CHANGELOG.md` — version history details
 - `PACK-CHAT.md` — PM chat operating rules
+- `PACK-AGENTS.md` — agent routing table for pack development work
 
 ---
 
@@ -40,7 +42,7 @@ Where N is the current major version (read from README.md version table).
 **Versioning:**
 - Minor versions (vN.0, vN.1, ...) for incremental changes
 - Major versions for large additions or breaking changes
-- Bare major tag always floats to the latest minor (e.g. v8 → v8.6, then → v8.7)
+- Bare major tag always floats to the latest minor (e.g. v9 → v9.0, then → v9.1)
 - Tag move sequence: delete local + remote, recreate, push
 
 **BD-NNN numbering:**
@@ -52,6 +54,14 @@ Where N is the current major version (read from README.md version table).
 - Files in supporting-docs/ or maintenance-docs/ when the task explicitly requires it
 - CHANGELOG.md only at version boundaries with explicit instruction
 - Scripts in template directories
+
+**Trinity rule — CLAUDE.md / AGENTS.md / GEMINI.md:**
+When modifying `project-template/CLAUDE.md`, always make the parallel edit in
+`project-template/AGENTS.md` and `project-template/GEMINI.md` in the same commit.
+These three files must express the same project rules. The only exception is a
+change that is provably tool-specific (e.g., Claude Task tool syntax). Symmetry
+is the default; asymmetry requires justification. This rule also applies to the
+pack-repo copies of these three files.
 
 **CI validation:** The `Validate Pack` GitHub Actions workflow runs on
 every push. If it fails, fix before proceeding. Read the Actions log —
