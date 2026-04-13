@@ -424,7 +424,7 @@ else
 fi
 
 if [[ "${#EXTRA[@]}" -gt 0 ]]; then
-    exec "$CLI" "${EXTRA[@]}" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+    exec "$CLI" --agent "$AGENT" "${EXTRA[@]}" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
 else
-    exec "$CLI" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+    exec "$CLI" --agent "$AGENT" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
 fi
