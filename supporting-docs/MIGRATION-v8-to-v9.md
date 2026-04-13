@@ -4,6 +4,11 @@ This guide covers upgrading existing projects from AI Agent Config Pack v8.x
 to v9.0. It is self-contained — follow these steps in order without needing
 any other document.
 
+> **Automated option:** If you prefer to have a Claude Code CLI session
+> execute the migration for you (with your review and approval at each
+> step), see the **"Automated migration via Claude Code CLI"** section at
+> the end of this guide. You can skip the manual steps below entirely.
+
 For v7 → v8 upgrades: use the v8 pack (`git checkout v8.9`) which contains
 `MIGRATION-v7-to-v8.md`. Apply v7→v8 first, then this guide.
 
@@ -518,53 +523,55 @@ cd ~/Developer/[your-project]
 claude
 ```
 
-**Paste this prompt:**
+Before pasting, replace `/path/to/pack` in the prompt with the actual
+path to your pack repo checkout. For example:
+`PACK="$HOME/Developer/dhs-ai-agent-config-pack-v9"`
 
-> You are performing a v8 → v9 migration of this project using the
-> AI Agent Config Pack. First, set the pack repo location — use this
-> variable in all copy commands that follow:
->
-> ```
-> PACK="/path/to/pack"
-> ```
->
-> Set `$PACK` to the absolute path of your local pack repo checkout
-> (the directory containing `project-template/` and `supporting-docs/`).
-> If the pack has a v9-dev branch checked out via a worktree, use that
-> worktree's path.
->
-> **Before starting:** Verify the working tree is clean (`git status`
-> shows no uncommitted changes). If it is not clean, stop and tell me.
->
-> **Instructions:**
->
-> 1. Read `$PACK/supporting-docs/MIGRATION-v8-to-v9.md` in full before
->    doing anything.
-> 2. Create a migration branch: `git checkout -b migration-v8-to-v9`
-> 3. Execute guide Steps 1–4 (replace agents, replace scripts,
->    distribute skills, create new files). Use `$PACK` in all copy
->    commands.
-> 4. Execute guide Step 5 (context file merge). Use Option A (diff-and-
->    merge) if this project has customized CLAUDE.md or AGENTS.md
->    content. Read the v8 backup and the v9 template side by side —
->    preserve all project-specific rules, platform defaults, and anti-
->    patterns while adopting the v9 section structure. Present the
->    proposed merge for my review before applying it.
-> 5. Execute guide Steps 6–7 (Xcode companion files if applicable,
->    conditional file cleanup).
-> 6. Run guide Step 8 verification checks and report the results.
->
-> **Rules:**
->
-> - Do NOT commit anything without my explicit review and approval.
->   Show me `git status` and a summary of changes before any commit.
-> - If a command requires `sudo` or manual intervention (e.g., Xcode
->   companion file installation to `~/Library/`), tell me the command
->   and wait for me to run it.
-> - Do NOT modify any file in the pack repo — only this project.
-> - After verification passes, present the "What to do after migration"
->   section from the guide so I know the next steps (PM chat briefing,
->   PLATFORM-SKILLS.md fill-in, PACK-FEEDBACK.md seeding).
+**Paste this prompt** (copy everything between the `---` lines):
 
-Replace `/path/to/pack` with the actual path to your pack repo checkout
-before pasting. For example: `PACK="$HOME/Developer/dhs-ai-agent-config-pack-v9"`
+---
+
+You are performing a v8 → v9 migration of this project using the
+AI Agent Config Pack. First, set the pack repo location — use this
+variable in all copy commands that follow:
+
+PACK="/path/to/pack"
+
+Set $PACK to the absolute path of your local pack repo checkout
+(the directory containing project-template/ and supporting-docs/).
+If the pack has a v9-dev branch checked out via a worktree, use that
+worktree's path.
+
+Before starting: Verify the working tree is clean (git status shows
+no uncommitted changes). If it is not clean, stop and tell me.
+
+Instructions:
+
+1. Read $PACK/supporting-docs/MIGRATION-v8-to-v9.md in full before
+   doing anything.
+2. Create a migration branch: git checkout -b migration-v8-to-v9
+3. Execute guide Steps 1–4 (replace agents, replace scripts, distribute
+   skills, create new files). Use $PACK in all copy commands.
+4. Execute guide Step 5 (context file merge). Use Option A (diff-and-
+   merge) if this project has customized CLAUDE.md or AGENTS.md content.
+   Read the v8 backup and the v9 template side by side — preserve all
+   project-specific rules, platform defaults, and anti-patterns while
+   adopting the v9 section structure. Present the proposed merge for my
+   review before applying it.
+5. Execute guide Steps 6–7 (Xcode companion files if applicable,
+   conditional file cleanup).
+6. Run guide Step 8 verification checks and report the results.
+
+Rules:
+
+- Do NOT commit anything without my explicit review and approval.
+  Show me git status and a summary of changes before any commit.
+- If a command requires sudo or manual intervention (e.g., Xcode
+  companion file installation to ~/Library/), tell me the command
+  and wait for me to run it.
+- Do NOT modify any file in the pack repo — only this project.
+- After verification passes, present the "What to do after migration"
+  section from the guide so I know the next steps (PM chat briefing,
+  PLATFORM-SKILLS.md fill-in, PACK-FEEDBACK.md seeding).
+
+---
