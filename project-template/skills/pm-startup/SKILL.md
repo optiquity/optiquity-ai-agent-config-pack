@@ -29,7 +29,14 @@ from `IMPLEMENTATION_PLAN.md`.
 
 Read the first 5 lines of `METHODOLOGY.md` to get the version number.
 
-## Step 3 — Check RAG ingest freshness
+## Step 3 — Read active skills
+
+Read the `## Skill loading` section of `CLAUDE.md`. Find the **Active skills:**
+line and extract the skill list. If the line still contains the placeholder text
+(square brackets), note that active skills have not been set yet — the PM chat
+must populate this during kickoff.
+
+## Step 4 — Check RAG ingest freshness
 
 Run:
 ```bash
@@ -41,7 +48,7 @@ If either file was modified since the last known RAG ingest, re-ingest it now
 using the mcp-local-rag tool before any queries. If unsure of last ingest date,
 re-ingest both.
 
-## Step 4 — Check for TD-TBD sentinel
+## Step 5 — Check for TD-TBD sentinel
 
 ```bash
 grep -rn "TD-TBD" . --include="*.swift" --include="*.py" --include="*.md" \
@@ -50,7 +57,7 @@ grep -rn "TD-TBD" . --include="*.swift" --include="*.py" --include="*.md" \
 
 Any result is a defect requiring immediate attention before proceeding.
 
-## Step 5 — Report current state
+## Step 6 — Report current state
 
 Read the project name from the heading at the top of `PM-CHAT.md` — it will be
 the first `#` heading (e.g., `# OptiquityTrader — PM Chat Instructions`).
@@ -67,6 +74,7 @@ Output a summary in exactly this format:
 **Last commit:** [date] — [commit summary from git log -1 --oneline]
 **Pack version:** [read from the version header line in METHODOLOGY.md]
 **Skills profile:** [project type from PLATFORM-SKILLS.md — e.g., "iOS Swift app" or "Python gRPC server"]
+**Active skills:** [list from CLAUDE.md, or "not set — populate during kickoff"]
 
 **Awaiting instructions.**
 ---

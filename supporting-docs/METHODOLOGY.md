@@ -327,7 +327,10 @@ been explicitly split into multiple sequential parts by a planning agent.
    Claude CLI, or Gemini CLI)
 6. Planning conversation with PM chat → establishes architecture, phase plan
 7. PM chat generates: `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`; fills in
-   remaining `[PLACEHOLDER]` sections in context files using `PLATFORM-SKILLS.md`
+   remaining `[PLACEHOLDER]` sections in context files using `PLATFORM-SKILLS.md`;
+   writes the **Active skills** line in the Skill loading section of `CLAUDE.md`,
+   `AGENTS.md`, and `GEMINI.md` — listing the skills derived from
+   `PLATFORM-SKILLS.md` for this project's type
 8. If using Claude Desktop: sync GitHub connector
 9. Generate `SETUP.md` and `AGENT_KICKOFF.md` using Templates 13 and 14
    (PM chat fills them in from the planning conversation)
@@ -852,6 +855,23 @@ No phase prompt is generated until this check is complete.
    Swift/C/C++/ObjC: grep -rn "TD-TBD" .
    Any result is a defect — report to user and resolve before proceeding
 5. Run orphan audit (Procedure 3)
+6. Skill gap check:
+   Read the Active skills line from the Skill loading section of CLAUDE.md.
+   Read the upcoming phase's tasks from IMPLEMENTATION_PLAN.md.
+   Scan the task descriptions for technology references not covered by the
+   active skills (e.g., Python imports in a Swift-only skill set, proto files
+   without grpc-patterns, C interop without c-language).
+   If a gap is found:
+     a. If a matching skill exists in the pack (check PLATFORM-SKILLS.md):
+        flag to user — "Phase N references [technology] but [skill] is not
+        in active skills. Add it?"
+     b. If no matching skill exists in the pack:
+        flag to user AND record in PACK-FEEDBACK.md — "Phase N references
+        [technology] but no matching skill exists in the pack."
+        Developer decides: create a custom project-level skill, wait for
+        a pack update, or proceed without.
+   If user approves adding a skill: update the project description and the
+   Active skills line in CLAUDE.md, AGENTS.md, and GEMINI.md. Commit.
 ```
 
 **Resolution path decision logic:**
@@ -1105,7 +1125,8 @@ reference.
 - [ ] Re-read the **Prompt Authoring Principles** section before generating any prompt
       for this phase — refresh the non-prescriptive authoring standard
 - [ ] Run phase gate check (Part 7 Procedure 1): read BACKLOG.md for newly unblocked
-      items, run TD-TBD grep, run orphan audit — resolve all findings before proceeding
+      items, run TD-TBD grep, run orphan audit, run skill gap check — resolve all
+      findings before proceeding
 - [ ] Sync GitHub connector in PM chat
 - [ ] Confirm STATUS.md shows correct current phase
 - [ ] Confirm prior phase ✅ and build/tests green

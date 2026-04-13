@@ -268,7 +268,9 @@ your project's rules.
      Dependency intake, Refactoring, Git workflow) → replace with the v9
      version (language-agnostic terminology).
 4. Add these sections from v9 that don't exist in v8:
-   - `## Skill loading` (points to PLATFORM-SKILLS.md)
+   - `## Skill loading` (points to PLATFORM-SKILLS.md; includes **Active skills**
+     line — the PM chat populates this during the next startup or kickoff by
+     deriving the skill set from PLATFORM-SKILLS.md for your project type)
    - The full v9 Scripts table (16 entries replacing the v8 table)
    - `PACK-FEEDBACK.md` in the deferral comments / PM-chat-owned file list
 5. Update the phase routing table: replace `apple-architect` / `python-architect`

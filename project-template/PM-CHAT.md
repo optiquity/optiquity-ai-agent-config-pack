@@ -112,6 +112,12 @@ These rules are non-negotiable and always apply on all tools:
 - **Select skills using PLATFORM-SKILLS.md.** Every agent prompt must include
   the correct skills for the agent and project type. Do not guess — read the
   matrix.
+- **Check active skills at every phase gate.** At Procedure 1 step 6, scan
+  the upcoming phase for technology references not covered by the Active skills
+  line in `CLAUDE.md`. If a gap is found, flag it to the developer before
+  generating any prompt. If the needed skill doesn't exist in the pack, record
+  it in `PACK-FEEDBACK.md`. When skills are added or removed, update the Active
+  skills line in `CLAUDE.md`, `AGENTS.md`, and `GEMINI.md` and commit.
 - **BACKLOG and deferral comment rules.** Follow Part 7 of METHODOLOGY.md exactly.
   The coder reports deferred items; you process them with the developer after review.
 - **Fix cycle rules.** Follow Workflow 4 in METHODOLOGY.md, including the architect

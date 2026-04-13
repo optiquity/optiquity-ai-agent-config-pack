@@ -118,6 +118,11 @@ placeholder, fill it in now: replace `[PROJECT_NAME]` with the actual project na
 update the "Additional project documents" section if needed, remove the template
 comment block at the top, and commit it. This only needs to be done once.
 
+If the **Active skills** line in the Skill loading section of `CLAUDE.md` still
+contains placeholder text, populate it now: read `PLATFORM-SKILLS.md`, determine
+the skill set for this project's type, and write the list. Apply the same line
+to `AGENTS.md` and `GEMINI.md`. Commit.
+
 ---
 
 

@@ -215,6 +215,16 @@ Agent prompts specify which skills to load. Skills are located in
 `.claude/skills/<name>/SKILL.md`. The PM chat selects skills based on
 `PLATFORM-SKILLS.md` — the skill-selection matrix for this project.
 
+**Active skills:** [PM chat writes this line during project kickoff, listing
+the skills derived from PLATFORM-SKILLS.md for this project's type. Example:
+`swift-best-practices, apple-architecture-core, macos-architecture`.
+Update this line whenever skills are added or removed mid-project.]
+
+The PM chat checks this list at every phase gate (METHODOLOGY.md Procedure 1).
+If an upcoming phase references a technology not covered by the active skills,
+the PM chat flags the gap before generating any prompt. Skills are added or
+removed by updating this line and the project description above — then committing.
+
 ## Scripts
 
 `agent-run.sh` lives in the **project root** and is the standard way to launch any agent.
