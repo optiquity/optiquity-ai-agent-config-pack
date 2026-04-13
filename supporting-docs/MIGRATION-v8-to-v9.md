@@ -386,69 +386,103 @@ done
 
 ---
 
-## Step 9 — Commit
+## What to do after migration
+
+Follow these steps in this exact order after the verification passes.
+
+### Step A — Update Xcode companion files (Apple projects only)
+
+These are machine-level AI agent config files that Xcode reads from
+`~/Library/`, separate from the project repo. They need to be updated
+to match the v9 agent names and rules. Run on each Mac you develop on:
 
 ```bash
-git add -A
-git status    # review — verify nothing sensitive is staged
-git commit -m "Upgrade AI Agent Config Pack v8 → v9"
+PACK="/path/to/pack"
+cp "$PACK/xcode-companion-templates/ClaudeAgentConfig/CLAUDE.md" \
+   ~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/
+cp "$PACK/xcode-companion-templates/ClaudeAgentConfig/settings.json" \
+   ~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/
+cp "$PACK/xcode-companion-templates/Codex/AGENTS.md" \
+   ~/Library/Developer/Xcode/CodingAssistant/codex/
+cp "$PACK/xcode-companion-templates/Codex/config.toml" \
+   ~/Library/Developer/Xcode/CodingAssistant/codex/
 ```
 
-After committing:
-- If using Claude Desktop app PM chat: sync the GitHub connector.
-- If using CLI PM chat: re-ingest the updated reference docs, then run
-  `/pm-startup`. METHODOLOGY.md and PROMPT-TEMPLATES.md changed
-  significantly in v9 — without re-ingesting, RAG searches return stale
-  v8 content:
-  ```bash
-  claude --resume [project-short-name]-pm
-  ```
-  Inside the session:
-  ```
-  Re-ingest METHODOLOGY.md into the RAG index
-  Re-ingest PROMPT-TEMPLATES.md into the RAG index
-  /pm-startup
-  ```
+Replace `/path/to/pack` with your pack repo path. Skip this step for
+Python-only projects.
+
+### Step B — Re-ingest RAG index and restart PM chat
+
+METHODOLOGY.md and PROMPT-TEMPLATES.md changed significantly in v9.
+The PM chat's RAG index has stale v8 content and must be refreshed
+BEFORE the briefing.
+
+**CLI PM chat:**
+
+```bash
+claude --resume [project-short-name]-pm
+```
+
+Inside the session, run these three commands in order:
+
+```
+Re-ingest METHODOLOGY.md into the RAG index
+Re-ingest PROMPT-TEMPLATES.md into the RAG index
+/pm-startup
+```
+
+**Claude Desktop app PM chat:** sync the GitHub connector instead.
+
+### Step C — Brief the PM chat on v9
+
+After the RAG re-ingest and /pm-startup, paste this prompt into the PM
+chat session. Copy everything between the `---` lines:
 
 ---
 
-## What to do after migration
+This project has been migrated from AI Agent Config Pack v8 to v9.
+Key changes you need to know:
 
-**Brief the PM chat on v9.** In your first session after migration, paste
-this message so the PM chat understands the structural changes:
+1. Read PLATFORM-SKILLS.md in full now. You select skills per agent per
+   task using the four-dimension model (Platform, Language, Role,
+   Protocol). Every agent prompt you generate must include the correct
+   skills from this matrix. After reading it, determine this project's
+   skill profile by answering the four dimension questions and report
+   the result.
+2. The architect agent is now unified — architect replaces
+   apple-architect and python-architect. Platform knowledge comes from
+   loaded skills.
+3. Read METHODOLOGY.md Part 3 for the updated agent roster,
+   tester/planner trigger rules, and the reviewer-vs-tester-vs-auditor
+   disambiguation table.
+4. Read METHODOLOGY.md Part 10 for the new PACK-FEEDBACK loop — you
+   now own PACK-FEEDBACK.md and must log observations at workflow
+   boundaries.
+5. The auditor agent is new (7 subagents). See METHODOLOGY.md Part 6
+   for when and how to run it.
 
-> This project has been migrated from AI Agent Config Pack v8 to v9.
-> Key changes you need to know:
->
-> 1. Read PLATFORM-SKILLS.md in full now. You select skills per agent per
->    task using the four-dimension model (Platform, Language, Role,
->    Protocol). Every agent prompt you generate must include the correct
->    skills from this matrix.
-> 2. The architect agent is now unified — `architect` replaces
->    `apple-architect` and `python-architect`. Platform knowledge comes
->    from loaded skills.
-> 3. Read METHODOLOGY.md Part 3 for the updated agent roster,
->    tester/planner trigger rules, and the reviewer-vs-tester-vs-auditor
->    disambiguation table.
-> 4. Read METHODOLOGY.md Part 10 for the new PACK-FEEDBACK loop — you
->    now own PACK-FEEDBACK.md and must log observations at workflow
->    boundaries.
-> 5. The auditor agent is new (7 subagents). See METHODOLOGY.md Part 6
->    for when and how to run it.
-> 6. Run /pm-startup to re-read all state files.
+---
 
-**Fill in PLATFORM-SKILLS.md** — after the PM chat reads it, ask it to
-determine the project's skill profile by answering the four dimension
-questions (Platform targets, Languages, Component roles, Communication
-protocols). This determines which skills are loaded for every future
-agent prompt.
+The PM chat will read the files, determine the skill profile, and
+confirm it understands the v9 changes.
 
-**Seed PACK-FEEDBACK.md** — fill in the Status section (pack version v9.0,
-project name, start date). The PM chat will begin logging observations
-per METHODOLOGY.md Part 10.
+### Step D — Confirm these were completed during migration
 
-**Fill in GEMINI.md placeholders** — if not done in Step 4 above, fill in
-all `[PLACEHOLDER]` and `[CONDITIONAL]` sections before using Gemini CLI.
+These items should already be done. Verify and note any that need
+attention:
+
+- **PACK-FEEDBACK.md** — Status section should be filled (pack version
+  v9.0, project name, start date). If not, fill it now.
+- **GEMINI.md** — all `[PLACEHOLDER]` and `[CONDITIONAL]` sections
+  should be filled for your project type. If not, fill them before
+  using Gemini CLI.
+
+### Step E — Commit
+
+When all steps above are complete and you are satisfied with the
+migration, review the changes and commit. Do not commit until you have
+reviewed `git status` and confirmed nothing sensitive is staged. The
+commit message and timing are your decision.
 
 ---
 
