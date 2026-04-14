@@ -82,6 +82,10 @@ The startup procedure varies by tool — see the tool-specific sections below.
 
 ## File access strategy
 
+All documentation lives under `docs/`. See `CLAUDE.md` § "Document locations"
+for the full directory map. Files are listed by name below — paths are in the
+directory map.
+
 | File | How to access | Why |
 |---|---|---|
 | `BACKLOG.md` | Direct read | Small, changes frequently, must always be current |
@@ -93,9 +97,9 @@ The startup procedure varies by tool — see the tool-specific sections below.
 | `METHODOLOGY.md` | RAG query (Claude CLI) or direct read (other tools) | Large, stable |
 | `PROMPT-TEMPLATES.md` | RAG query (Claude CLI) or direct read (other tools) | Large, stable |
 | `ARCHITECTURE.md` | Direct read (targeted sections) | Large; read sections relevant to current decision |
-| `CLAUDE.md` | Direct read (full) | Referenced when generating Claude agent prompts |
-| `AGENTS.md` | Direct read (full) | Codex agent context file |
-| `GEMINI.md` | Direct read (full) | Referenced when generating Gemini agent prompts |
+| `CLAUDE.md` | Direct read (full) | Root-level; referenced when generating Claude agent prompts |
+| `AGENTS.md` | Direct read (full) | Root-level; Codex agent context file |
+| `GEMINI.md` | Direct read (full) | Root-level; referenced when generating Gemini agent prompts |
 
 ---
 

@@ -21,17 +21,31 @@ cp -r /path/to/pack/project-template/. /path/to/your/project/
 
 > The trailing `/.` is required — it ensures hidden directories (`.claude/`, `.codex/`, `.gitignore`) are included.
 
-Then copy the supporting docs (not included in the template):
+Then copy the supporting docs into `docs/pack/` (not included in the template):
 
 ```bash
-cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/METHODOLOGY.md
-cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md /path/to/your/project/PROMPT-TEMPLATES.md
+cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/docs/pack/METHODOLOGY.md
+cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md /path/to/your/project/docs/pack/PROMPT-TEMPLATES.md
 ```
 
-> `PM-CHAT.md`, `PACK-FEEDBACK.md`, `PLATFORM-SKILLS.md`, `GEMINI.md`, and the context
-> files (`CLAUDE.md`, `AGENTS.md`) are already in the template and get copied automatically.
-> `PM-CHAT.md` and `PACK-FEEDBACK.md` have `[PROJECT_NAME]` placeholders — the PM chat
-> fills them in during kickoff.
+Then create the project docs and reference docs directories:
+
+```bash
+mkdir -p /path/to/your/project/docs/project
+mkdir -p /path/to/your/project/docs/reference
+```
+
+> `docs/pack/` already exists from the template copy — it contains `PM-CHAT.md`,
+> `PACK-FEEDBACK.md`, and `PLATFORM-SKILLS.md`. `PM-CHAT.md` and `PACK-FEEDBACK.md`
+> have `[PROJECT_NAME]` placeholders — the PM chat fills them in during kickoff.
+> `GEMINI.md`, `CLAUDE.md`, and `AGENTS.md` are in the project root (tool convention).
+>
+> `docs/project/` is where project state files go: `ARCHITECTURE.md`,
+> `IMPLEMENTATION_PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` — created
+> during the planning conversation.
+>
+> `docs/reference/` is for project-specific user-facing documentation (how-to
+> guides, API references) — create files here as needed.
 
 ## Step 2 — Remove conditional files you don't need
 

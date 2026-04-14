@@ -204,6 +204,19 @@ If an upcoming phase references a technology not covered by the active skills,
 the PM chat flags the gap before generating any prompt. Skills are added or
 removed by updating this line and the project description above — then committing.
 
+## Document locations
+
+Project documentation is organized into three directories under `docs/`.
+All filenames are unique — reference them by name; use these paths to locate them.
+
+| Directory | Contents | Updated by |
+|---|---|---|
+| `docs/pack/` | `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) |
+| `docs/project/` | `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` | PM chat and developer during active development |
+| `docs/reference/` | Project-specific user-facing documentation (how-to guides, API references) | Developer as needed |
+
+Root-level files: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `README.md`, `agent-run.sh`.
+
 ## Agent roles
 
 Agent roles in Gemini CLI are activated per-session. Each agent invocation

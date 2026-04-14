@@ -29,9 +29,11 @@ from `IMPLEMENTATION_PLAN.md`.
 
 Read the first 5 lines of `METHODOLOGY.md` to get the version number.
 
+Use the Document locations section in the project context file to resolve file paths.
+
 ## Step 3 — Read active skills
 
-Read the `## Skill loading` section of `CLAUDE.md`. Find the **Active skills:**
+Read the `## Skill loading` section of the project context file. Find the **Active skills:**
 line and extract the skill list. If the line still contains the placeholder text
 (square brackets), note that active skills have not been set yet — the PM chat
 must populate this during kickoff.
@@ -40,8 +42,8 @@ must populate this during kickoff.
 
 Run:
 ```bash
-git log -1 --format="%H %cd" --date=short -- METHODOLOGY.md
-git log -1 --format="%H %cd" --date=short -- PROMPT-TEMPLATES.md
+git log -1 --format="%H %cd" --date=short -- docs/pack/METHODOLOGY.md
+git log -1 --format="%H %cd" --date=short -- docs/pack/PROMPT-TEMPLATES.md
 ```
 
 If either file was modified since the last known RAG ingest, re-ingest it now
@@ -74,7 +76,7 @@ Output a summary in exactly this format:
 **Last commit:** [date] — [commit summary from git log -1 --oneline]
 **Pack version:** [read from the version header line in METHODOLOGY.md]
 **Skills profile:** [project type from PLATFORM-SKILLS.md — e.g., "iOS Swift app" or "Python gRPC server"]
-**Active skills:** [list from CLAUDE.md, or "not set — populate during kickoff"]
+**Active skills:** [list from project context file, or "not set — populate during kickoff"]
 
 **Awaiting instructions.**
 ---

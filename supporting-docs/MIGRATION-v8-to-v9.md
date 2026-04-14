@@ -611,3 +611,65 @@ Rules:
   PLATFORM-SKILLS.md fill-in, PACK-FEEDBACK.md seeding).
 
 ---
+
+## Appendix — v9.1 to v9.2 migration (document relocation)
+
+v9.2 moves documentation files out of the project root into three directories
+under `docs/`. No functionality changes — only file locations.
+
+### Directory structure
+
+```
+docs/
+    pack/       METHODOLOGY.md, PROMPT-TEMPLATES.md, PM-CHAT.md,
+                PLATFORM-SKILLS.md, PACK-FEEDBACK.md
+    project/    ARCHITECTURE.md, IMPLEMENTATION_PLAN.md, BACKLOG.md,
+                STATUS.md, CHANGELOG.md
+    reference/  Project-specific user-facing docs (how-to guides, etc.)
+```
+
+Root-level files unchanged: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `README.md`,
+`agent-run.sh`.
+
+### Steps
+
+1. Create directories:
+   ```bash
+   mkdir -p docs/pack docs/project docs/reference
+   ```
+
+2. Move pack reference files:
+   ```bash
+   mv METHODOLOGY.md docs/pack/
+   mv PROMPT-TEMPLATES.md docs/pack/
+   mv PM-CHAT.md docs/pack/
+   mv PLATFORM-SKILLS.md docs/pack/
+   mv PACK-FEEDBACK.md docs/pack/
+   ```
+
+3. Move project state files:
+   ```bash
+   mv ARCHITECTURE.md docs/project/
+   mv IMPLEMENTATION_PLAN.md docs/project/
+   mv BACKLOG.md docs/project/
+   mv STATUS.md docs/project/
+   mv CHANGELOG.md docs/project/
+   ```
+
+4. Move any existing user-facing docs to `docs/reference/` (if applicable).
+
+5. Copy updated pack-shipped files from the pack v9.2:
+   ```bash
+   cp /path/to/pack/supporting-docs/METHODOLOGY.md docs/pack/
+   cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md docs/pack/
+   cp /path/to/pack/project-template/docs/pack/PM-CHAT.md docs/pack/
+   cp /path/to/pack/project-template/skills/pm-startup/SKILL.md skills/pm-startup/
+   ./scripts/bootstrap.sh
+   ```
+
+6. Add the "Document locations" section to `CLAUDE.md`, `AGENTS.md`, and
+   `GEMINI.md` — see the v9.2 template versions for the exact content.
+
+7. Commit all changes.
+
+---
