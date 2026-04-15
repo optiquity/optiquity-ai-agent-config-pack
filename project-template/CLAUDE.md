@@ -274,33 +274,6 @@ Python, `proto/` → protobuf) and call only the relevant language-specific scri
 **Note:** `format.sh` is manual-only — it is not wired into the automatic post-edit hook.
 Run it explicitly before committing or ask `repo-ops` to run it.
 
-## Completion report formatting
-
-Format all agent session completion reports using standard Markdown syntax.
-Use the full Markdown feature set as appropriate: headings, bold, italic,
-tables, ordered and unordered lists, fenced code blocks, inline code,
-horizontal rules, strikethrough, task lists, and links. Do not use ANSI
-escape codes or terminal color sequences anywhere in a report. The rest
-of the session output is unaffected — only the final report must be plain
-Markdown.
-
-Prompts or other content embedded in a report that is intended to be copied
-and pasted must be treated as regular Markdown content — never as blockquotes
-(`>` prefix). Wrap them with a horizontal rule on its own line with an empty
-line above and below on each side:
-
-```
-[text before]
-
----
-
-[prompt or copyable content here]
-
----
-
-[text after]
-```
-
 ## Build and repo hygiene
 
 - Do not commit secrets, generated code, or machine-specific config.
