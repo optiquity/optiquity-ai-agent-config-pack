@@ -10,15 +10,18 @@
 # to customize agents or flags for this project. Direct CLI invocation
 # still works for one-off use; use this script for ongoing consistency.
 #
-# Why "Option X" for the Gemini auditor:
-# Claude Code has a native Task tool and Codex has max_depth=2 in config.toml,
-# both of which let the auditor parent spawn subagents in-process. Gemini CLI
-# has no equivalent — so this script orchestrates the auditor externally,
-# running each subagent as a separate Gemini session and then invoking the
-# parent session with all subagent reports as input. The behavioral outcome
-# is identical to Claude/Codex (7 isolated subagent contexts that report
-# back to the parent), but the spawning mechanism lives in this script.
-# See `audit-methodology` rules 56–60 for the cross-tool spawning model.
+# Gemini CLI notes:
+# Gemini CLI has no --agent flag. Agent definitions live in .gemini/agents/
+# as .md files with YAML frontmatter (native subagents). This script
+# translates --agent to Gemini's @agent-name syntax transparently:
+#   Interactive (no -p): launches gemini -i "@agent-name" (activates agent,
+#     stays in interactive session).
+#   Headless (-p): prepends @agent-name to the -p prompt value.
+#
+# For the auditor, Gemini subagents cannot call other subagents, so this
+# script provides external orchestration: runs each auditor subagent in
+# its own Gemini session, collects reports, then invokes the parent with
+# all reports as input. See audit-methodology rules 56–60.
 
 set -euo pipefail
 
@@ -65,7 +68,7 @@ KNOWN_AGENTS=(
     auditor-ops
 )
 
-# Auditor subagents (in execution order for Gemini Option X orchestration).
+# Auditor subagents (in execution order for Gemini external orchestration).
 # Order matches `audit-methodology` rule 53 cluster order, except auditor-ops
 # is placed after auditor-tests so deployment/config issues come before pure
 # code/ui findings in the consolidation pass.
@@ -161,12 +164,10 @@ Auditor orchestration (per audit-methodology rules 56–60):
           invocation prompt (e.g., "Skip auditor-ui and auditor-tests").
   codex:  Uses max_depth=2 in .codex/config.toml to spawn registered subagents
           by name. Pass skip rules as prose in the invocation prompt.
-  gemini: External orchestration ("Option X") by this script. Runs each
-          non-skipped subagent in a fresh Gemini session sequentially,
-          captures reports to a temp directory, then invokes the auditor
-          parent session with all reports passed by file reference (not
-          inline — Gemini -p has command-line length limits, ARG_MAX is
-          ~256KB on macOS).
+  gemini: External orchestration by this script (Gemini subagents cannot call
+          other subagents). Activates each non-skipped subagent via
+          @agent-name in its own Gemini session, captures reports, then
+          invokes the auditor parent with all reports as input.
           Use --skip to exclude subagents (e.g., --skip auditor-ui for
           server-only projects, --skip auditor-tests for brand-new projects).
           auditor-ops never accepts a skip — every project deploys somewhere.
@@ -201,21 +202,18 @@ die() {
 }
 
 # ---------------------------------------------------------------------------
-# Gemini auditor orchestration (Option X — external)
+# Gemini auditor orchestration (external)
 # ---------------------------------------------------------------------------
 #
-# Each subagent runs in a fresh Gemini session in Plan Mode (read-only). The
-# subagent's prompt instructs it to (a) read the project context files
-# (CLAUDE.md / AGENTS.md / GEMINI.md / PLATFORM-SKILLS.md) to determine its
-# skill set, (b) compute its file scope per audit-methodology rules 25–32,
-# (c) produce a cluster report per rules 48–51. Each session has its own
-# context window — they do not share state.
+# Gemini CLI subagents cannot call other subagents. This script provides
+# external orchestration: each auditor subagent runs in its own Gemini
+# session in Plan Mode (read-only), activated via @agent-name. The subagent's
+# agent file (.gemini/agents/<name>.md) provides its system prompt, scope,
+# and skill loading instructions. The -p prompt adds project-specific
+# context (PLATFORM-SKILLS.md, audit-methodology rules).
 #
-# Reports are captured to per-subagent files in a temp directory, then the
-# parent consolidation prompt is written to a prompt file (also in the temp
-# directory). The parent session is launched with the prompt file passed via
-# stdin redirection rather than -p, so the consolidated report can grow
-# arbitrarily large without hitting ARG_MAX (~256KB on macOS).
+# Reports are captured to per-subagent files in a temp directory. The parent
+# consolidation prompt is passed via stdin (not -p) to avoid ARG_MAX limits.
 
 run_gemini_auditor() {
     local skip_list="$1"
@@ -237,7 +235,7 @@ run_gemini_auditor() {
     tmpdir="$(mktemp -d -t gemini-auditor-XXXXXX)"
     trap 'rm -rf "$tmpdir"' EXIT
 
-    echo "[auditor] Starting Gemini auditor orchestration (Option X)"
+    echo "[auditor] Starting Gemini auditor orchestration"
     echo "[auditor] Temp directory: $tmpdir"
 
     local ran_subagents=()
@@ -253,38 +251,23 @@ run_gemini_auditor() {
         echo "[auditor] Running subagent: $sub"
         local report_file="$tmpdir/${sub}.report"
 
-        # Per-subagent prompt: explicit instructions so the subagent can
-        # operate without a PM chat in the loop. The subagent reads the
-        # project context files itself, computes its file scope from the
-        # audit-methodology skill rules, and loads its skills per
-        # PLATFORM-SKILLS.md. This makes direct developer invocation of
-        # ./agent-run.sh gemini --agent auditor a fully functional path.
+        # Per-subagent prompt: the agent file (.gemini/agents/<sub>.md)
+        # provides the system prompt with scope, skills, and output format.
+        # This prompt adds project-specific context and activates the agent
+        # via @agent-name syntax.
         local prompt
-        prompt="You are acting as the ${sub} role as defined in GEMINI.md.
+        prompt="@${sub} Run your audit cluster for this project.
 
-Setup steps before producing your report:
-1. Read GEMINI.md to load your role definition.
-2. Read PLATFORM-SKILLS.md and determine which skills your role should load
-   for this project's skill profile. Load the audit-methodology skill plus
-   the platform skills your role's row in PLATFORM-SKILLS.md specifies.
-3. Read the audit-methodology skill in full. Pay particular attention to:
-   - Rules 15–21 (cluster definitions — confirm your scope).
-   - Rules 25–32 (file scope rules — compute the exact file scope for your
-     cluster from these rules, applying the always-exclude list in rule 25).
-   - Rules 33–39 (ownership precedence — note which findings you own and
-     which belong to other clusters so you can avoid duplicates).
-   - Rules 48–51 (report format — produce your cluster report in this
-     exact format).
-4. Audit only the files in your computed file scope. Do not audit files
-   that belong to other clusters' scopes.
+Your agent file defines your scope, skills to load, and output format.
+Additionally:
+1. Read PLATFORM-SKILLS.md to determine which platform skills to load
+   for this project's type.
+2. Read the audit-methodology skill in full (rules 15–51).
+3. Compute your file scope per audit-methodology rules 25–32.
+4. Produce your cluster report per rules 48–51.
 
-Output:
-Produce a cluster report titled '## ${sub} Audit — <YYYY-MM-DD>' followed
-by findings grouped by severity (Critical → Major → Minor → Info). Each
-finding has four fields: severity, location (file:symbol or file:line),
-description, recommended action. If you find nothing, emit the header
-plus the line 'No findings in this cluster.' so the parent confirms you
-ran."
+If you find nothing, emit the report header plus 'No findings in this
+cluster.' so the parent confirms you ran."
 
         if gemini "${GEMINI_READONLY_FLAGS[@]}" -p "$prompt" > "$report_file" 2>&1; then
             ran_subagents+=("$sub")
@@ -300,7 +283,7 @@ ran."
     echo "[auditor] Running auditor parent for consolidation"
     local parent_prompt_file="$tmpdir/parent.prompt"
     {
-        echo "You are acting as the auditor parent role as defined in GEMINI.md."
+        echo "@auditor You are the auditor parent. Your agent file defines your coordination rules."
         echo ""
         echo "You have received the following subagent reports. Produce a"
         echo "consolidated audit report per the audit-methodology skill (rules"
@@ -402,7 +385,7 @@ fi
 # Build extra flags and launch
 # ---------------------------------------------------------------------------
 
-# Special case: gemini auditor uses external orchestration (Option X)
+# Special case: gemini auditor uses external orchestration
 if [[ "$CLI" == "gemini" ]] && [[ "$AGENT" == "auditor" ]]; then
     run_gemini_auditor "$SKIP_LIST" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
     exit $?
@@ -423,8 +406,35 @@ else
     esac
 fi
 
-if [[ "${#EXTRA[@]}" -gt 0 ]]; then
-    exec "$CLI" --agent "$AGENT" "${EXTRA[@]}" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+if [[ "$CLI" == "gemini" ]]; then
+    # Gemini CLI has no --agent flag. Translate to @agent-name syntax.
+    # If -p/--prompt is in the args, prepend @agent-name to the prompt value.
+    # Otherwise, use -i "@agent-name" for interactive activation.
+    gemini_args=()
+    prompt_next=false
+    has_prompt=false
+    for arg in "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"; do
+        if $prompt_next; then
+            gemini_args+=("@${AGENT} ${arg}")
+            prompt_next=false
+            has_prompt=true
+        elif [[ "$arg" == "-p" || "$arg" == "--prompt" ]]; then
+            gemini_args+=("$arg")
+            prompt_next=true
+        else
+            gemini_args+=("$arg")
+        fi
+    done
+    if $has_prompt; then
+        exec gemini "${EXTRA[@]}" "${gemini_args[@]}"
+    else
+        exec gemini "${EXTRA[@]}" -i "@${AGENT}" "${gemini_args[@]+"${gemini_args[@]}"}"
+    fi
 else
-    exec "$CLI" --agent "$AGENT" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+    # Claude and Codex have native --agent support
+    if [[ "${#EXTRA[@]}" -gt 0 ]]; then
+        exec "$CLI" --agent "$AGENT" "${EXTRA[@]}" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+    else
+        exec "$CLI" --agent "$AGENT" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+    fi
 fi
