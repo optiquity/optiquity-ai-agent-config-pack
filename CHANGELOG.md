@@ -5,6 +5,39 @@ Each version is available as a git tag (v1, v2, …).
 
 ---
 
+## v9 — April 2026
+
+### v9.3 — April 2026
+
+**BD-043 — Gemini CLI native subagent architecture and full doc audit**
+
+- `.gemini/agents/` directory created with 16 agent files using Gemini CLI's
+  native subagent format (Markdown with YAML frontmatter: `name`, `description`,
+  `model`, `temperature`, `max_turns`). Agents are discovered automatically by
+  Gemini CLI at session start.
+- `project-template/GEMINI.md` stripped from ~700 lines to ~360 lines — all 16
+  inline agent role definitions removed, replaced with short agent roster
+  reference. Section ordering aligned with CLAUDE.md. Duplicate Skill loading
+  section removed. Content parity improved (dependency intake, deferral comments,
+  anti-patterns, build hygiene).
+- `project-template/agent-run.sh` fixed for Gemini CLI: transparent `--agent`
+  to `@agent-name` translation (interactive mode uses `-i`, headless mode
+  prepends to `-p`). Auditor subagent prompts simplified — agent files provide
+  system prompts. All "Option X" references removed.
+- `scripts/validate-pack.py` Check 5 extended to enforce three-tool agent parity
+  (Claude + Codex + Gemini file count and name correspondence).
+- `project-template/skills/audit-methodology/SKILL.md` rules 58 and 66 corrected:
+  Gemini has native subagents (subagents cannot call subagents); external
+  orchestration retained for headless auditor.
+- `maintenance-docs/TOOL-COMPARISON.md` Part 2 table corrected: agent definition
+  format, invocation, launcher, and subagent support entries for Gemini.
+- Full doc audit across 11 additional files: PACK-AGENTS.md, README.md,
+  project-template/README.md, CLAUDE.md and AGENTS.md (trinity rule),
+  DEPENDENCIES.md, PROMPT-TEMPLATES.md, MIGRATION-v8-to-v9.md, V9-DESIGN.md,
+  V9-AUDIT-REPORT.md, GEMINI-CLI-ANALYSIS.md.
+
+---
+
 ## v8 — March 2026
 
 ### v8.10 — April 2026

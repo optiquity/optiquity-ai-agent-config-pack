@@ -742,7 +742,7 @@ Resolved: n/a
 
 **BD-043 — Gemini CLI native subagent architecture and full doc audit**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: None
 Unblocks: None
 File/Symbol: `.gemini/agents/` (new directory, 16 agent files),
@@ -794,7 +794,10 @@ Context: Identified April 2026 via Gemini web chat feedback. The pack's Gemini
   of Gemini CLI's subagent capabilities. Official docs confirm `.gemini/agents/`
   with YAML frontmatter is the correct mechanism. See
   https://geminicli.com/docs/core/subagents/ ("Creating custom subagents" section).
-Resolved: n/a
+Resolved: April 2026, v9.3 — 16 Gemini agent files in `.gemini/agents/`,
+  GEMINI.md stripped to project context, agent-run.sh transparent translation,
+  validate-pack.py three-tool parity, audit-methodology and TOOL-COMPARISON
+  corrected, full doc audit across 11 files.
 
 ---
 
