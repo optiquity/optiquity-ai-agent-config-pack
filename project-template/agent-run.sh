@@ -10,18 +10,22 @@
 # to customize agents or flags for this project. Direct CLI invocation
 # still works for one-off use; use this script for ongoing consistency.
 #
-# Gemini CLI notes:
-# Gemini CLI has no --agent flag. Agent definitions live in .gemini/agents/
-# as .md files with YAML frontmatter (native subagents). This script
-# translates --agent to Gemini's @agent-name syntax transparently:
-#   Interactive (no -p): launches gemini -i "@agent-name" (activates agent,
-#     stays in interactive session).
+# Agent invocation notes:
+# Only Claude Code has a native --agent flag. This script translates
+# --agent transparently for the other two CLIs:
+#
+# Codex CLI: no --agent flag. Agents are registered in .codex/config.toml
+#   and .codex/agents/*.toml. The script activates the agent by passing
+#   its role instruction as the session prompt.
+#
+# Gemini CLI: no --agent flag. Agent definitions live in .gemini/agents/
+#   as .md files with YAML frontmatter (native subagents). The script
+#   translates to @agent-name syntax:
+#   Interactive (no -p): launches gemini -i "@agent-name".
 #   Headless (-p): prepends @agent-name to the -p prompt value.
 #
-# For the auditor, Gemini subagents cannot call other subagents, so this
-# script provides external orchestration: runs each auditor subagent in
-# its own Gemini session, collects reports, then invokes the parent with
-# all reports as input. See audit-methodology rules 56–60.
+# For the Gemini auditor, subagents cannot call other subagents, so this
+# script provides external orchestration. See audit-methodology rules 56–60.
 
 set -euo pipefail
 
@@ -430,11 +434,42 @@ if [[ "$CLI" == "gemini" ]]; then
     else
         exec gemini "${EXTRA[@]}" -i "@${AGENT}" "${gemini_args[@]+"${gemini_args[@]}"}"
     fi
-else
-    # Claude and Codex have native --agent support
-    if [[ "${#EXTRA[@]}" -gt 0 ]]; then
-        exec "$CLI" --agent "$AGENT" "${EXTRA[@]}" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+elif [[ "$CLI" == "codex" ]]; then
+    # Codex CLI has no --agent flag. Agents are registered in .codex/config.toml
+    # and delegated automatically within sessions. Activate the agent by passing
+    # its role instruction as the session prompt.
+    codex_agent_prompt="You are the ${AGENT} agent. Read your role definition from .codex/agents/${AGENT}.toml and follow those instructions."
+    # Codex takes [PROMPT] as a positional argument. If the user passed a
+    # positional prompt, prepend the agent instruction to it. Otherwise, use
+    # the agent instruction alone.
+    codex_opts=()
+    codex_user_prompt=""
+    skip_next=false
+    for arg in "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"; do
+        if $skip_next; then
+            codex_opts+=("$arg")
+            skip_next=false
+        elif [[ "$arg" == -* ]]; then
+            codex_opts+=("$arg")
+            # Flags that consume a following value
+            case "$arg" in
+                -c|--config|-m|--model|-s|--sandbox|-a|--ask-for-approval|-p|--profile|-C|--cd|-i|--image|-o|--output-last-message|--output-schema|--color|--local-provider|--remote|--add-dir)
+                    skip_next=true ;;
+            esac
+        else
+            codex_user_prompt="$arg"
+        fi
+    done
+    if [[ -n "$codex_user_prompt" ]]; then
+        exec codex "${EXTRA[@]}" "${codex_opts[@]+"${codex_opts[@]}"}" "${codex_agent_prompt} ${codex_user_prompt}"
     else
-        exec "$CLI" --agent "$AGENT" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+        exec codex "${EXTRA[@]}" "${codex_opts[@]+"${codex_opts[@]}"}" "$codex_agent_prompt"
+    fi
+else
+    # Claude Code has native --agent support
+    if [[ "${#EXTRA[@]}" -gt 0 ]]; then
+        exec claude --agent "$AGENT" "${EXTRA[@]}" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+    else
+        exec claude --agent "$AGENT" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
     fi
 fi
