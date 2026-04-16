@@ -47,7 +47,7 @@ For `coder`: make exactly the changes listed. Report files modified.
 - Commit format: `feat: vN — BD-NNN description` / `fix: description` (N = current major version)
 - BD-NNN numbering: read BACKLOG.md to find next available number
 - Skills live in `.claude/skills/` (Claude), `.codex/skills/` (Codex), `.gemini/skills/` (Gemini)
-- Agent files: `.claude/agents/` (markdown), `.codex/agents/` (TOML), GEMINI.md sections
+- Agent files: `.claude/agents/` (markdown), `.codex/agents/` (TOML), `.gemini/agents/` (markdown with YAML frontmatter)
 - Pack repo context files: CLAUDE.md (Claude), AGENTS.md (Codex), GEMINI.md (Gemini), PACK-AGENTS.md (routing table)
 
 **No commit or push without explicit user approval.**

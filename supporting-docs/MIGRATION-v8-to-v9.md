@@ -12,6 +12,12 @@ any other document.
 For v7 → v8 upgrades: use the v8 pack (`git checkout v8.9`) which contains
 `MIGRATION-v7-to-v8.md`. Apply v7→v8 first, then this guide.
 
+> **v9.3 note:** Starting in v9.3, Gemini CLI agent definitions live in
+> `.gemini/agents/*.md` as native subagent files (markdown with YAML
+> frontmatter). If you migrated to v9.0–v9.2, copy `.gemini/agents/` from
+> the updated pack template. No other migration steps are needed — GEMINI.md
+> no longer contains inline agent role definitions.
+
 ---
 
 ## Overview of what changed in v9

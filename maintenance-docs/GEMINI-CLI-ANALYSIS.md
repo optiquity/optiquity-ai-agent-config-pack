@@ -1,6 +1,8 @@
 > **⚠️ DEPRECATED — April 2026**
 > This document is superseded by [`TOOL-COMPARISON.md`](TOOL-COMPARISON.md).
 > It is retained as a historical record. Do not use it as a current reference.
+> As of v9.3 (BD-043), Gemini agent definitions live in `.gemini/agents/*.md`
+> as native subagent files, not inline in GEMINI.md as this document assumed.
 
 ---
 

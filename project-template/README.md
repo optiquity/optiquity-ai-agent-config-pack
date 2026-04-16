@@ -19,7 +19,7 @@ See `QUICKSTART.md` in the pack root for the full setup procedure.
 
 | Category | Files | Notes |
 |---|---|---|
-| Agent files | `.claude/agents/*.md`, `.codex/agents/*.toml` | 16 agents (8 core + auditor parent + 7 auditor subagents) |
+| Agent files | `.claude/agents/*.md`, `.codex/agents/*.toml`, `.gemini/agents/*.md` | 16 agents (8 core + auditor parent + 7 auditor subagents) |
 | Skills | `skills/*/SKILL.md` | 30 skills (canonical source). Distributed to `.claude/skills/`, `.codex/skills/`, `.gemini/skills/` at setup time by `bootstrap.sh`. |
 | Scripts | `scripts/*.sh`, `agent-run.sh` | 15 scripts + launcher. See the Scripts table in CLAUDE.md. |
 | Context files | `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` | One per tool. Fill in `[PLACEHOLDER]` sections per project type. |

@@ -19,8 +19,9 @@ Agent runner and PM chat host for Codex workflows. Configured via `.codex/`.
 - Verify: `codex --version`
 
 ### Gemini CLI (required for Gemini workflows)
-Agent runner and PM chat host for Gemini CLI workflows. Agent behavior
-defined via GEMINI.md sections. Uses `agent-run.sh` for invocation.
+Agent runner and PM chat host for Gemini CLI workflows. Agent definitions
+in `.gemini/agents/*.md` (native subagents with YAML frontmatter). Uses
+`agent-run.sh` for invocation.
 - Requires: Node.js 18+
 - Install: `npm install -g @anthropic-ai/gemini-cli` (or see Gemini CLI docs)
 - Verify: `gemini --version`

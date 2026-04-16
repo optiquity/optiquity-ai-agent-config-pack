@@ -603,7 +603,8 @@ vendored dependencies, or test fixtures to any subagent.
 **Spawn the subagents** per the per-tool mechanism (rules 56–60):
 - Claude Code: parallel `Task` tool calls in a single message
 - Codex CLI: native subagent invocation via `max_depth=2` config
-- Gemini CLI: orchestrated externally by `agent-run.sh run_gemini_auditor`
+- Gemini CLI: native subagents in `.gemini/agents/`, but subagents cannot call
+  subagents — `agent-run.sh run_gemini_auditor` provides external orchestration
 
 **Consolidate the reports** per rules 48–55:
 1. Executive summary: total findings per severity, top 3 issues (highest

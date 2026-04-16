@@ -34,7 +34,7 @@ approved for merge to main and v9.0 tagging.
 
 - 16 Claude agent files (.claude/agents/*.md)
 - 16 Codex agent files (.codex/agents/*.toml)
-- 16 GEMINI.md role sections
+- 16 GEMINI.md role sections *(v9.3: migrated to `.gemini/agents/*.md` — see BD-043)*
 - 16 [agents.*] entries in .codex/config.toml
 - Agent names match across all three tool formats
 - auditor-ops confirmed present in all three
@@ -90,7 +90,7 @@ All Decision 9 file tree entries verified present:
   .codex/config.toml, .codex/requirements.toml, .mcp.json.example
 - Other: README.md, agent-run.sh, .gitignore
 - Conditional: proto/, server/, pyproject.toml, pyrightconfig.json
-- .gemini/ correctly absent (Gemini uses GEMINI.md only)
+- .gemini/ correctly absent (Gemini uses GEMINI.md only) *(v9.3: `.gemini/agents/` now exists — see BD-043)*
 
 No findings.
 

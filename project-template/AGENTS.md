@@ -264,4 +264,6 @@ when task characteristics favor a different tool.
 | Repo operations | **Codex** | repo-ops | Workspace-write sandbox, scripting strength |
 | Local validation | **Codex** | repo-ops | Workspace-write sandbox; can execute scripts |
 
-To invoke any agent: `./agent-run.sh <cli> --agent <name>` (see `./agent-run.sh --help`)
+To invoke any agent: `./agent-run.sh <cli> --agent <name>` (see `./agent-run.sh --help`).
+For Gemini CLI, `agent-run.sh` translates `--agent` to Gemini's native `@agent-name`
+syntax transparently — the same command format works for all three CLIs.

@@ -52,6 +52,7 @@ always points to the latest minor of that major version.
 project-template/                           Unified project template (v9)
 ├── .claude/agents/                         Claude agent files (16 agents)
 ├── .codex/agents/                          Codex agent files (16 agents)
+├── .gemini/agents/                         Gemini agent files (16 agents)
 ├── .codex/config.toml                      Codex config (agent registry, profiles)
 ├── .claude/settings.json                   Claude Code settings (permissions, hooks)
 ├── skills/                                 Canonical skill library (30 skills)

@@ -6,6 +6,12 @@
 on any tool should read this file before beginning any v9 implementation step.
 Do not modify this file without explicit approval — it is the design record.*
 
+> **v9.3 postscript (BD-043):** This design document references "GEMINI.md
+> sections" and "no separate agent files" for Gemini throughout. As of v9.3,
+> Gemini agent definitions live in `.gemini/agents/*.md` as native subagent
+> files with YAML frontmatter. The inline GEMINI.md approach described in
+> this document has been superseded. See BD-043 in BACKLOG.md for details.
+
 ---
 
 ## How to use this document
