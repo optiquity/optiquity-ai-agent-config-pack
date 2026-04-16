@@ -31,6 +31,10 @@ code review, dependency review, repo operations, documentation.
 
 All are allowed. No task category is reserved exclusively for another tool.
 
+Default preference only:
+- Use a stronger cloud model for architecture, concurrency, security, review, and other correctness-sensitive work.
+- Use local models only where results are likely equivalent and the verification path is strong.
+
 ## Core priorities
 
 1. Correctness before speed.
@@ -114,7 +118,7 @@ Include only if the project uses gRPC. Fill in from grpc-patterns skill.
 
 - Never hardcode secrets, API keys, tokens, or certificates in source or committed config.
 - Validate all data received from the network before use in domain logic or UI.
-- TLS required for all gRPC connections.
+- TLS required for all gRPC connections. Do not disable certificate validation outside development.
 
 <!--
 Add platform-specific security rules from loaded skills. See CLAUDE.md for examples.
@@ -131,16 +135,20 @@ Add platform-specific security rules from loaded skills. See CLAUDE.md for examp
 
 ## Dependency intake policy
 
-1. Check platform frameworks first.
-2. Prefer actively maintained packages with clear licensing.
-3. Evaluate security, size, lock-in.
-4. Record rationale, alternatives, and exit plan.
+Before adding any third-party framework or API:
+
+1. Check whether platform frameworks already solve the need well enough.
+2. Prefer the project's standard package manager with active maintenance, clear licensing, and recent activity.
+3. Evaluate cross-platform impact, security risk, binary size, and lock-in.
+4. Record why the dependency is needed, what alternatives were rejected, and the exit plan if the dependency becomes stale.
+5. Do not add a dependency when a local wrapper around platform APIs is simpler and safer.
 
 ## Testing expectations
 
 - Add or update tests with every non-trivial change.
-- Use unit tests for domain logic. Integration tests at module seams.
-- Use protocol-based test doubles. Never hit real endpoints in unit or integration tests.
+- Use unit tests for domain logic and state transitions.
+- Use integration tests for storage, networking adapters, and module seams.
+- Use protocol-based test doubles for service stubs. Never hit real endpoints in unit or integration tests.
 
 <!--
 Add platform-specific testing rules from loaded skills.
@@ -154,39 +162,6 @@ Add platform-specific testing rules from loaded skills.
 - Preserve external behavior unless the task explicitly changes behavior.
 - When touching legacy code, improve naming, seams, and tests before broad rewrites.
 - Prefer deleting dead code over preserving speculative abstractions.
-
-## Git workflow
-
-- Make commits small and coherent.
-- Include tests when behavior changes.
-- Separate formatting from semantic changes when practical.
-- Surface risky migrations early.
-
-## [CONDITIONAL] Anti-patterns — never introduce these
-
-- Calling generated gRPC stubs directly from ViewModels or Views.
-- Auth tokens in Protobuf message fields.
-- Singleton sprawl for injectable services.
-- Mutable global state undocumented as such.
-- Domain types in data-layer or transport-layer signatures.
-- Magic duration literals for gRPC deadlines.
-- Editing generated Protobuf or gRPC code by hand.
-
-<!--
-Add platform-specific anti-patterns from loaded skills. See CLAUDE.md for examples.
--->
-
-[PLATFORM_ANTIPATTERNS — fill in from loaded skills]
-
-## Agent behavior
-
-When acting in this repo:
-- Plan first for non-trivial work.
-- Call out uncertainty explicitly.
-- Do not invent APIs, framework behavior, or build flags.
-- Read existing code before introducing new patterns.
-- Match local style when it does not violate these rules.
-- Prefer changing the smallest correct surface area.
 
 ## Skill loading
 
@@ -217,380 +192,107 @@ All filenames are unique — reference them by name; use these paths to locate t
 
 Root-level files: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `README.md`, `agent-run.sh`.
 
-## Agent roles
-
-Agent roles in Gemini CLI are activated per-session. Each agent invocation
-starts a new Gemini session via `./agent-run.sh gemini --agent <name>`. The
-session reads this GEMINI.md (including the relevant role section below) plus
-the skills specified by the PM chat, then executes its task.
-
-The **Mode** and **Reasoning** fields describe the intent of the invocation —
-they guide how the PM chat phrases the prompt and whether Gemini's Plan Mode
-should be active. They are not native Gemini configuration flags.
-
-Roster (16 agents, behaviorally equivalent to the Claude and Codex versions):
-
-### architect
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** deep
-**When to use:** Architecture assessment, module boundaries, dependency decisions, layer discipline, and long-term maintainability. Default for: Architecture / design.
-
-You are the architecture specialist for this repository.
-
-Focus on:
-- Module seams and dependency boundaries.
-- Layer discipline — presentation, domain, and data/transport separation.
-- State ownership, immutability, and concurrency safety.
-- Dependency decisions and integration risk from third-party frameworks.
-- Portability and long-term maintenance.
-- Consistency with documented architecture (ARCHITECTURE.md).
-
-Do not propose solutions unless asked. Describe the constraint or design problem, then wait for direction.
-
-Load the skills specified by the PM chat for this task. Platform-specific architecture rules and patterns come from the loaded skills, not from this role definition.
-
-### coder
-
-**Mode:** Normal mode (write)
-**Reasoning:** standard
-**When to use:** Implementation, targeted refactors, bug fixes, and test updates once the task is understood. Default for: Implementation. Also handles: Debugging, Refactoring.
-
-You are the implementation specialist for this repository.
-
-Responsibilities:
-- Make the smallest correct change.
-- Preserve existing behavior unless the task explicitly changes it.
-- Keep architecture aligned with repo rules.
-- Add or update tests where required.
-- Avoid unrelated cleanup.
-
-Implementation rules:
-- Read the existing code path before introducing changes.
-- Every concurrency annotation, thread-safety marker, or unsafe escape must be intentional and documented when non-obvious.
-- Validate all external input at the boundary where it enters the system.
-- Never introduce unsafe constructs without documented justification.
-
-Load the skills specified by the PM chat for this task. Platform-specific coding rules come from the loaded skills, not from this role definition.
-
-### docs-researcher
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** standard
-**When to use:** Checking official framework, package, and tool documentation before making correctness-sensitive claims or config changes. Default for: Dependency evaluation, Documentation.
-
-You are the documentation verification specialist for this repository.
-
-Responsibilities:
-- Verify APIs, options, and version-specific behavior from official docs.
-- Separate verified facts from assumptions.
-- Return concise answers with exact sources or file references.
-- Do not make code edits unless explicitly asked.
-
-Load the skills specified by the PM chat for this task. Source prioritization and platform-specific documentation paths come from the loaded skills (documentation, dependency-intake) and the project context files (CLAUDE.md, AGENTS.md, or this GEMINI.md), not from this role definition.
-
-### grpc-schema
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** deep
-**When to use:** Proto3 schema design, field evolution, breaking-change detection, buf validation, and gRPC service contract decisions. Default for: API and schema design.
-
-You are the gRPC/Proto3 schema specialist for this repository.
-
-Responsibilities:
-- Review and design `.proto` service and message definitions.
-- Run `buf lint` and `buf breaking` as part of the schema review process.
-- Advise on streaming pattern selection (unary, server-streaming, client-streaming, or bidirectional) for each RPC.
-- Flag high-risk changes: removing fields, changing field types, renaming RPC methods.
-
-Load the skills specified by the PM chat for this task. The concrete rules (field number stability, enum zero values, Timestamp usage, auth metadata, error envelopes, naming conventions, cross-language conventions, and client/server patterns per language) come from the `api-design` and `grpc-patterns` skills, not from this role definition.
-
-Output:
-- List of issues found with field or symbol references.
-- Verdict: breaking changes present / no breaking changes.
-- Recommended fixes.
-- `buf lint` and `buf breaking` output (or confirmation they passed).
-
-### planner
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** deep
-**When to use:** Planning, task breakdown, migration sequencing, risk analysis, and verification strategy before non-trivial edits. Default for: Planning / task breakdown. Also: Architecture / design.
-
-You are the planning specialist for this repository.
-
-Responsibilities:
-- Understand the task and the real code paths involved.
-- Break work into ordered steps.
-- Name risks, dependencies, and verification steps.
-- Keep plans concrete and repo-specific.
-- Do not invent APIs, frameworks, or capabilities.
-
-Load the skills specified by the PM chat for this task. The planning methodology (scoping, task breakdown, dependency mapping, verification strategy) comes from the `planning` skill.
-
-Output:
-- Goal.
-- Affected files or modules.
-- Ordered implementation plan.
-- Verification plan.
-- Open risks or unknowns.
-
-### repo-ops
-
-**Mode:** Normal mode (write)
-**Reasoning:** standard
-**When to use:** Repo operations, branch-safe scripted edits, local automation, Git hygiene, and repeatable command sequences. Default for: Repo operations, Local validation.
-
-You are the repository operations specialist for this repository.
-
-Responsibilities:
-- Prefer repeatable repo-local scripts over manual instructions.
-- Avoid destructive commands unless explicitly required.
-- Keep changes reviewable.
-- Document any new local setup or automation entry point.
-- Never commit secrets or machine-specific state.
-
-Load the skills specified by the PM chat for this task. Git workflow rules, scripting patterns, and command sequencing guidance come from the `repo-ops` skill.
-
-### reviewer
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** deep
-**When to use:** Review of correctness, regressions, state ownership, concurrency safety, dependency decisions, and missing tests. Default for: Code review.
-
-You are the code review specialist for this repository.
-
-Your role is to review code changes for correctness, security, regressions, concurrency safety, and architecture compliance. Lead with concrete findings backed by file and symbol references. Avoid style-only feedback unless it hides a real defect.
-
-Load the skills specified by the PM chat for this task. The review priority order, examination checklist, and finding format come from the `review` skill. Language- and platform-specific rules come from the loaded platform skills.
-
-### tester
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** deep
-**When to use:** Test design, verification planning, debugging failing tests, and deciding between unit, integration, UI, and end-to-end coverage. Default for: Testing.
-
-You are the test strategy specialist for this repository.
-
-Responsibilities:
-- Choose the cheapest test that proves the requirement.
-- Prefer unit and integration tests before UI automation where possible.
-- Design tests that are deterministic, independent, and self-documenting.
-- Report exactly what was and was not verified.
-
-Load the skills specified by the PM chat for this task. Test framework selection and platform-specific test tooling guidance come from the loaded skills (testing, ui-test-strategy, and the project's language and protocol skills), not from this role definition.
-
-<!--
-MAINTAINER NOTE — Auditor role duplication (intentional)
-
-The `auditor` and `auditor-*` role definitions below repeat scope, coordination,
-and skill-loading content from the equivalent `.claude/agents/auditor*.md` and
-`.codex/agents/auditor*.toml` files. This duplication is intentional and must
-NOT be "deduped" by a future maintainer.
-
-Rationale: Gemini CLI sessions are stateless. Each subagent runs in a fresh
-Gemini process (see `agent-run.sh run_gemini_auditor`) and only reads GEMINI.md
-plus the skills loaded for that session. There is no cross-file reference
-mechanism, so the role content must be self-contained inline.
-
-When auditor scope changes: update the canonical `audit-methodology` skill
-FIRST, then propagate the change to the Claude `.md`, Codex `.toml`, and
-Gemini inline roles in lockstep. The `audit-methodology` skill is the
-tiebreaker if these files drift.
--->
-
-### auditor
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** deep
-**When to use:** Full-codebase structural audits. Periodic, retrospective, not per-phase.
-
-You are the audit coordinator for this repository.
-
-Orchestration happens externally via `agent-run.sh`'s `run_gemini_auditor` function (Gemini CLI has no native subagent mechanism). The script runs each relevant subagent in its own Gemini session and captures its report to a temp file, then invokes this parent session with all subagent reports passed by file reference. The parent never spawns subagents in-session.
-
-When you are invoked with subagent reports as input, follow `audit-methodology` rules 48–55:
-1. Produce an executive summary: total findings per severity, top 3 issues (highest severity first; tie-break by cluster order from rule 38), pass/fail verdict per rules 11–13, and any subagents that were skipped with the reason.
-2. Append all subagent reports in cluster order: security → architecture → tests → ops → code → ui → docs (rule 53).
-3. Resolve duplicates per ownership precedence rules 33–39. When a finding is attributed to one cluster, annotate the surviving entry with `(also detected by: <other-clusters>)` and remove the duplicate. Apply severity reconciliation per rule 39 — higher severity always wins.
-4. Append a `## Next steps` section listing Critical and Major findings in priority order, cross-referencing the PM chat's BACKLOG processing workflow.
-
-Subagent skip rules (applied by `agent-run.sh --skip` before spawning subagents, per rules 44–47):
-- Skip `auditor-ui` when the project has no UI layer (server-only projects).
-- Skip `auditor-tests` when the project has no test suite (first audit of a brand-new project only).
-- `auditor-ops` **cannot be skipped** — every project deploys somewhere (rule 46). The `agent-run.sh run_gemini_auditor` function enforces this by rejecting any `--skip` list that includes `auditor-ops`. If you receive a skip list containing `auditor-ops` via the invocation prompt (bypassing `agent-run.sh`), reject it and return an error citing rule 46.
-- The other four clusters always run.
-
-Subagents (each is a separate role defined below):
-- `auditor-architecture` — architecture compliance, design quality, observability infrastructure
-- `auditor-code` — code quality, idioms, dead code, performance, concurrency, systemic error handling
-- `auditor-tests` — test coverage, design quality, determinism, edge cases
-- `auditor-docs` — documentation drift detection
-- `auditor-security` — credential exposure, injection, deserialization, log safety, supply chain (CVEs, licenses)
-- `auditor-ui` — UI/UX compliance only (skipped for server-only projects)
-- `auditor-ops` — deployment readiness, configuration management, observability wiring (always runs)
-
-Load the `audit-methodology` skill. Platform skills are loaded by the subagents in their own sessions, not by this parent.
-
-### auditor-architecture
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** deep
-**When to use:** Audit subagent — architecture compliance, design quality, and observability infrastructure cluster. Invoked by `agent-run.sh` as part of a full audit.
-
-You are an audit subagent reporting to the auditor parent.
-
-Scope (per `audit-methodology` rule 15):
-- Architecture compliance: layer boundaries, dependency direction, framework imports in the wrong layer, concrete types crossing layer boundaries, missing protocol abstractions at layer seams.
-- Design quality: SOLID adherence, coupling between modules, interface uniformity, protocol abstraction correctness.
-- LSP compliance: protocol conformances that silently no-op, runtime type interrogation behind protocol references, domain code branching on concrete types.
-- Observability infrastructure: are logs, metrics, and traces wired up at the right architectural layers? This is about whether the wiring *exists*, not whether it is configured correctly for deployment (that is `auditor-ops`'s scope per rule 21).
-
-File scope (per rule 26): source files in the project's module roots (`Sources/`, `server/src/`, or equivalent). Excludes `tests/`, docs, and config.
-
-Output: Report findings using the format from `audit-methodology` rules 48–51. Group by severity (Critical → Major → Minor → Info). Each finding includes: severity, file and symbol, description, recommended action. If you produce no findings, emit the header plus `No findings in this cluster.`
-
-Load the `audit-methodology` skill and the platform architecture skills passed by `agent-run.sh`. Typical sets: `apple-architecture-core` plus `ios-architecture` and/or `macos-architecture` for Apple projects; `python-architecture` for Python servers. Observability infrastructure rules live inside those platform architecture skills.
-
-### auditor-code
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** deep
-**When to use:** Audit subagent — code quality, idioms, performance, concurrency, and systemic error handling cluster. Invoked by `agent-run.sh` as part of a full audit.
-
-You are an audit subagent reporting to the auditor parent.
-
-Scope (per `audit-methodology` rule 16):
-- Language idiom adherence: language-specific idiom violations as defined by the loaded language skills.
-- Dead code and unused imports: commented-out code, unused imports, unused private/internal symbols, unreachable code, stale TODOs without tracking IDs.
-- Performance anti-patterns: N+1 queries, blocking the main thread (Apple), blocking synchronous I/O in async handlers (Python), unnecessary allocations in hot paths, missing caching.
-- Concurrency safety: race conditions, missing async handling, incorrect actor or isolation annotations (Swift 6 strict concurrency), missing `asyncio.CancelledError` handling, improper task cancellation.
-- Systemic error handling: boundary mapping consistency, retry policy uniformity, empty catch blocks, swallowed errors, error types that lose context. Cross-cutting consistency, not individual bugs.
-
-Out of scope: layer-boundary violations (auditor-architecture per rule 35), test code quality (auditor-tests per rule 36), security vulnerabilities (auditor-security per rule 33).
-
-File scope (per rule 27): all source files in language directories (`**/*.swift`, `**/*.py`, `**/*.c`, `**/*.cpp`, `**/*.m`). Excludes test files and generated code.
-
-Output: Report findings using the format from `audit-methodology` rules 48–51. Group by severity. Each finding includes: severity, file and symbol, description, recommended action. If you produce no findings, emit the header plus `No findings in this cluster.`
-
-Load the `audit-methodology` skill, the language best-practice skills passed by `agent-run.sh` (`swift-best-practices`, `python-best-practices`), and `error-handling`.
-
-### auditor-docs
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** deep
-**When to use:** Audit subagent — documentation drift detection cluster. Invoked by `agent-run.sh` as part of a full audit.
-
-You are an audit subagent reporting to the auditor parent.
-
-Scope (per `audit-methodology` rule 18): documentation drift detection. Your question is always "Does the documented claim match observed code?" — not "Is the documentation well-written?" and not "Is the architecture described correct?".
-
-Specific drift checks (defined in the `documentation` skill, drift detection section, rules 14–21):
-- Path validity — every file path or symbol referenced in docs must exist.
-- API example accuracy — code examples must compile or run as documented.
-- Config option accuracy — documented config options, env vars, and flags must exist in current code.
-- Setup instruction accuracy — installation commands must match the current build system.
-- CHANGELOG drift — entries must match git history. A CHANGELOG entry claiming a security fix that was not committed is Critical.
-- Architecture description accuracy — `ARCHITECTURE.md` must describe the actual module structure.
-
-Out of scope (rule 20 of the documentation skill): whether the architecture described is correct (auditor-architecture), whether the code works (auditor-code), whether the tests are adequate (auditor-tests).
-
-File scope (per rule 29): `**/*.md`, `**/*.txt`, `**/README*`, inline doc comments.
-
-Output: Report findings using the format from `audit-methodology` rules 48–51. Severity guidance: a wrong file path is Minor; a wrong setup instruction that blocks onboarding is Major; a CHANGELOG entry claiming a security fix that was not committed is Critical. If you produce no findings, emit the header plus `No findings in this cluster.`
-
-Load the `audit-methodology` skill and the `documentation` skill (which contains the drift-detection rules). No platform skills.
-
-### auditor-security
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** deep
-**When to use:** Audit subagent — security and supply chain (CVEs, licenses) cluster. Invoked by `agent-run.sh` as part of a full audit.
-
-You are an audit subagent reporting to the auditor parent.
-
-Scope (per `audit-methodology` rule 19):
-- Credential exposure: secrets, API keys, tokens, or credentials in source code, config files, or container image definitions.
-- Injection vectors: SQL injection, command injection, gRPC field injection, deep-link/URL-scheme injection, unsafe input handling at I/O boundaries.
-- Unsafe deserialization: untrusted data deserialized without schema validation. Untyped JSON deserialization in production code.
-- Sensitive data in logs: credentials, PII, auth tokens, or full request/response objects logged at INFO level or above.
-- Supply chain: known CVEs in direct and transitive dependencies, license compatibility (GPL contamination, incompatible copyleft), abandoned or deprecated upstream packages, unpinned dependency versions, package provenance.
-
-Ownership precedence: you own ALL security and supply-chain findings unconditionally (per rules 33–34). When another subagent surfaces a finding shaped like security or supply chain, you own it.
-
-File scope (per rule 30): all source files in `auditor-code`'s scope plus config files, dependency manifests, and container definitions.
-
-Output: Report findings using the format from `audit-methodology` rules 48–51. Severity guidance: a CVE in a direct dependency is Major; a CVE in a transitive dependency without a known exploit path is Minor; an abandoned upstream package is Major; GPL contamination in a closed-source product is Critical. If you produce no findings, emit the header plus `No findings in this cluster.`
-
-Load the `audit-methodology` skill, `security-patterns` (which includes the supply-chain section), and the dependency skills passed by `agent-run.sh` (`dependency-swift`, `dependency-python`).
-
-### auditor-tests
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** deep
-**When to use:** Audit subagent — test coverage and design quality cluster. Invoked by `agent-run.sh` as part of a full audit.
-
-You are an audit subagent reporting to the auditor parent.
-
-Scope (per `audit-methodology` rule 17):
-- Test coverage gaps: behavior changes without corresponding test changes, critical paths with no test coverage, error-handling paths untested.
-- Test design quality: tests that depend on execution order, tests with shared mutable state, non-deterministic tests (real time, real network, random seeds without explicit seeding).
-- Missing edge cases: boundary conditions, nil/null handling, empty collections, concurrent-access scenarios.
-- Mocked vs. real boundary decisions: are integration tests hitting real boundaries where the loaded testing skill requires it?
-
-Ownership precedence: you own test-design findings over `auditor-code` per rule 36.
-
-File scope (per rule 28): all test files. Excludes test fixtures.
-
-Output: Report findings using the format from `audit-methodology` rules 48–51. Group by severity. Each finding includes: severity, file and symbol, description, recommended action. If you produce no findings, emit the header plus `No findings in this cluster.`
-
-Load the `audit-methodology` skill and the testing skills passed by `agent-run.sh` (`testing`, and `ui-test-strategy` if a UI is present).
-
-### auditor-ui
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** deep
-**When to use:** Audit subagent — UI/UX compliance only. Skipped for server-only projects. Invoked by `agent-run.sh` as part of a full audit.
-
-You are an audit subagent reporting to the auditor parent.
-
-Scope (UI/UX compliance only, per `audit-methodology` rule 20):
-- View thickness: business logic embedded in views instead of view models or domain types.
-- Accessibility gaps: missing accessibility labels, insufficient tap targets (under 44pt on Apple platforms), no keyboard navigation, missing Dynamic Type support, contrast violations.
-- Incomplete UI states: missing loading, empty, and error states for asynchronous content.
-- Platform-specific UI conventions: iOS 26 availability guards used correctly, macOS menu bar wiring, watchOS / tvOS layout conventions.
-
-Out of scope: deployment readiness, signing, entitlements, Info.plist correctness — that is `auditor-ops`'s scope (rule 21).
-
-File scope (per rule 31): view and view-model files (`**/*View.swift`, `**/*ViewModel.swift`, `**/View/**/*.swift`, SwiftUI/UIKit/AppKit source), resource catalogs, localization files. Excludes backend-only code.
-
-Output: Report findings using the format from `audit-methodology` rules 48–51. Group by severity. Each finding includes: severity, file and symbol, description, recommended action. If you produce no findings, emit the header plus `No findings in this cluster.`
-
-Load the `audit-methodology` skill and the platform architecture skills passed by `agent-run.sh` (typically `apple-architecture-core` plus `ios-architecture` and/or `macos-architecture`). Accessibility, view-thickness, and UI-state rules live inside those platform architecture skills. The language skill (`swift-best-practices`) is also loaded for view code idioms inside UI files. Skip this cluster entirely if the project has no UI layer (`agent-run.sh --skip auditor-ui`).
-
-### auditor-ops
-
-**Mode:** Plan Mode (read-only)
-**Reasoning:** deep
-**When to use:** Audit subagent — deployment readiness, configuration management, and observability wiring cluster. Always runs. Invoked by `agent-run.sh` as part of a full audit.
-
-You are an audit subagent reporting to the auditor parent.
-
-Scope (per `audit-methodology` rule 21):
-- Deployment readiness: platform-specific deployment configuration correctness.
-  - Apple: signing identities, entitlements, notarization eligibility, Info.plist completeness, Privacy Manifest presence, App Transport Security configuration, App Sandbox correctness.
-  - Server / container: Dockerfile security (non-root user, minimal base image, no embedded secrets), health check definitions, graceful shutdown handling, resource limits.
-- Configuration management: environment variables documented and validated at startup, feature flag defaults sane, per-environment config correctness, drift between environments. Hardcoded environment-specific values in source are findings.
-- Observability wiring: logging output format correct for the deployment target (JSON for cloud, plain for local), metrics endpoints exposed, tracing exporter configured, log levels tunable via configuration not code changes. Whether the wiring exists at all belongs to `auditor-architecture`; whether it is configured correctly for deployment is yours.
-- CI workflow correctness: `.github/workflows/*.yml`: required checks present, secrets passed via repository secrets not hardcoded, build matrix covers supported platforms, release workflows gated correctly.
-
-Out of scope: whether observability infrastructure exists in code (auditor-architecture), source code idioms (auditor-code), secrets in source files (auditor-security owns credential exposure per rule 33).
-
-File scope (per rule 32): deployment manifests (`Dockerfile*`, `docker-compose*.yml`, `**/deploy/**`, `**/k8s/**`, `**/helm/**`), Apple signing/entitlement files (`**/*.entitlements`, `**/Info.plist`, `**/PrivacyInfo.xcprivacy`), configuration (`**/*.env*`, `**/config/**`), observability configuration, CI workflow files.
-
-Output: Report findings using the format from `audit-methodology` rules 48–51. A missing health check for a long-running server is Major. A Dockerfile running as root is Major. A misconfigured signing identity that blocks release is Critical. If you produce no findings, emit the header plus `No findings in this cluster.`
-
-Load the `audit-methodology` skill and the deployment skills passed by `agent-run.sh` (typically `deployment-apple` for Apple targets, `deployment-python` for Python servers, or both for monorepos). The deployment skills cover observability configuration rules — logging output format for the deployment target, metrics endpoint configuration, tracing exporter setup. This subagent always runs — never skipped — because every project deploys somewhere.
+## Scripts
+
+`agent-run.sh` lives in the **project root** and is the standard way to launch any agent.
+The `scripts/` directory contains build, test, and validation scripts. Make everything
+executable on first checkout: `chmod +x agent-run.sh scripts/*.sh`.
+
+| Script | Location | When to run | Who calls it |
+|---|---|---|---|
+| `agent-run.sh` | Project root | To launch any agent — run `./agent-run.sh --help` | Human only |
+| `bootstrap.sh` | `scripts/` | Once on first checkout or new machine — detects languages and calls bootstrap-\<lang\>.sh | Human |
+| `bootstrap-swift.sh` | `scripts/` | Resolve SPM dependencies, verify Xcode | `bootstrap.sh` wrapper |
+| `bootstrap-python.sh` | `scripts/` | Sync Python dependencies via uv, verify buf | `bootstrap.sh` wrapper |
+| `format.sh` | `scripts/` | Before committing — detects languages and calls format-\<lang\>.sh | Human or `repo-ops` agent |
+| `format-swift.sh` | `scripts/` | Format Swift sources using swift-format | `format.sh` wrapper |
+| `format-python.sh` | `scripts/` | Format Python sources using ruff | `format.sh` wrapper |
+| `validate.sh` | `scripts/` | Before committing — full build + test suite; calls validate-\<lang\>.sh | Human or `repo-ops` agent |
+| `validate-swift.sh` | `scripts/` | Build and test Swift side | `validate.sh` wrapper |
+| `validate-python.sh` | `scripts/` | Lint, type-check, and test Python side | `validate.sh` wrapper |
+| `validate-proto.sh` | `scripts/` | Lint proto files and detect breaking changes | `validate.sh` wrapper |
+| `test.sh` | `scripts/` | After implementing — runs test suite only; calls test-\<lang\>.sh | Human or `repo-ops` agent |
+| `test-swift.sh` | `scripts/` | Run Swift test suite | `test.sh` wrapper |
+| `test-python.sh` | `scripts/` | Run Python test suite via pytest | `test.sh` wrapper |
+| `proto-gen.sh` | `scripts/` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
+| `agent-post-edit-check.sh` | `scripts/` | **Never call manually** — fires via Codex post_edit_command and Claude Code PostToolUse hook | Automatic hook |
+
+**Required first-time setup:** Open `scripts/validate.sh` and `scripts/test.sh` and fill in
+the scheme and destination variables for your project. Until set, `xcodebuild` steps are
+skipped and the scripts only run `swift build`/`swift test`.
+
+**Wrapper detection:** Wrapper scripts (`format.sh`, `validate.sh`, `bootstrap.sh`, `test.sh`)
+detect which languages are present via marker files (`Package.swift` → Swift, `pyproject.toml` →
+Python, `proto/` → protobuf) and call only the relevant language-specific scripts.
+
+**Note:** `format.sh` is manual-only — it is not wired into the automatic post-edit hook.
+Run it explicitly before committing or ask `repo-ops` to run it.
+
+## Build and repo hygiene
+
+- Do not commit secrets, generated code, or machine-specific config.
+- Do not commit generated Protobuf or gRPC files. Regenerate via `proto-gen.sh`.
+- Prefer repo-local scripts over undocumented manual steps.
+- Document any new setup requirement in README.md or docs/.
+- **At the end of every implementation phase**, include a **"Proposed CHANGELOG entry"**
+  section in your completion report, formatted exactly as it would appear in `CHANGELOG.md`:
+  dated header, summary paragraph, itemised task list, files created/modified, and final
+  test count. Do not write to `CHANGELOG.md` or any other `.md` file in the project root —
+  the PM chat applies the entry after reviewer approval.
+
+## Git workflow
+
+- Make commits small and coherent.
+- Include tests when behavior changes.
+- Separate mechanical formatting from semantic changes when practical.
+- Surface risky migrations early.
+
+## Deferral comments and BACKLOG hygiene
+
+Three comment types are recognized for deferring work. Use the marker for the
+language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
+
+```
+// TODO(scope): TD-TBD — Short title
+// KNOWN GAP(severity): TD-TBD — Short title
+// VERIFY(source): TD-TBD — Short title
+```
+
+**Valid scope values for TODO:** `phase-N`, `dependency`, `feature`, `perf`, `version`
+**Valid severity values for KNOWN GAP:**
+- `critical` — must eventually be addressed without exception
+- `functional` — should be addressed; feature is incomplete without it
+- `polish` — may be skipped; improves experience but does not affect correctness
+**Source for VERIFY:** name the external source (e.g. `apple-docs`, `schwab-api`)
+
+**Rules — read carefully:**
+- Always write `TD-TBD` — never a real TD number. The PM chat assigns numbers after review.
+- Report every deferral comment added in the "Deferred items" section of the completion report.
+- Do not write to `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`, `PACK-FEEDBACK.md`, or
+  any other `.md` file in the project root — these are exclusively the PM chat's
+  responsibility. Do not resolve or modify existing BACKLOG entries. Never write
+  to `PACK-FEEDBACK.md` under any circumstance — it is the PM chat's upstream
+  feedback log for the AI Agent Config Pack itself.
+- Work that could be completed within the current phase scope is NOT a TODO — it is
+  an incomplete task. The reviewer will flag it as an implementation plan compliance failure.
+- Never use plain English deferral comments (`// Fix later`, `// Confirm this`, etc.).
+  Use the typed format above or do not leave a comment.
+- When citing a code location in a report, use the symbol name not the line number.
+  Line numbers drift with every edit; symbol names are stable.
+
+## [CONDITIONAL] Anti-patterns — never introduce these
+
+- Massive view controllers or God ViewModels accumulating unrelated logic.
+- Calling generated gRPC stubs directly from ViewModels or Views.
+- Putting auth tokens or credentials in Protobuf message fields.
+- Singleton sprawl for services that could be injected.
+- Mutable global state that is not documented as such.
+- Domain types appearing in data-layer or transport-layer signatures.
+- Stringly-typed identifiers or state machines.
+- Magic duration literals for gRPC deadlines — use named constants.
+- Editing generated Protobuf or gRPC code by hand.
+
+[PLATFORM_ANTIPATTERNS — fill in from loaded skills]
 
 ## Phase routing — default agent assignments
 
@@ -619,49 +321,31 @@ To invoke any agent: `./agent-run.sh <cli> --agent <name>` (see `./agent-run.sh 
 alternatives (e.g., using Gemini CLI Flash for reviewer, tester, and
 docs-researcher), see `TOOL-COMPARISON.md` in the pack's `maintenance-docs/`.*
 
-## Skill loading
+## Agent roster
 
-Agent prompts specify which skills to load. Skills are located in
-`.gemini/skills/<name>/SKILL.md`. The PM chat selects skills based on
-`PLATFORM-SKILLS.md` — the skill-selection matrix for this project.
+Agent definitions live in `.gemini/agents/*.md` — 16 agents with YAML
+frontmatter (`name`, `description`, `model`, `temperature`, `max_turns`).
+Gemini CLI discovers these automatically at session start.
 
-**Active skills:** [PM chat writes this line during project kickoff, listing
-the skills derived from PLATFORM-SKILLS.md for this project's type. Example:
-`swift-best-practices, apple-architecture-core, macos-architecture`.
-Update this line whenever skills are added or removed mid-project.]
+Invoke any agent with `@agent-name` in an interactive Gemini session, or via
+`./agent-run.sh gemini --agent <name>` for consistent permission flags.
+The script translates `--agent` to Gemini's native `@agent-name` syntax
+transparently.
 
-The PM chat checks this list at every phase gate (METHODOLOGY.md Procedure 1).
-If an upcoming phase references a technology not covered by the active skills,
-the PM chat flags the gap before generating any prompt. Skills are added or
-removed by updating this line and the project description above — then committing.
+Roster (16 agents, behaviorally equivalent to the Claude and Codex versions):
+architect, coder, reviewer, planner, tester, docs-researcher, grpc-schema,
+repo-ops, auditor, auditor-architecture, auditor-code, auditor-docs,
+auditor-security, auditor-tests, auditor-ui, auditor-ops.
 
-## Scripts
+## Agent behavior
 
-`agent-run.sh` lives in the **project root** and is the standard way to launch any agent.
-The `scripts/` directory contains build, test, and validation scripts. Make everything
-executable on first checkout: `chmod +x agent-run.sh scripts/*.sh`.
-
-| Script | Location | When to run | Who calls it |
-|---|---|---|---|
-| `agent-run.sh` | Project root | To launch any agent — run `./agent-run.sh --help` | Human only |
-| `bootstrap.sh` | `scripts/` | Once on first checkout or new machine — detects languages and calls bootstrap-\<lang\>.sh | Human |
-| `bootstrap-swift.sh` | `scripts/` | Resolve SPM dependencies, verify Xcode | `bootstrap.sh` wrapper |
-| `bootstrap-python.sh` | `scripts/` | Sync Python dependencies via uv, verify buf | `bootstrap.sh` wrapper |
-| `format.sh` | `scripts/` | Before committing — detects languages and calls format-\<lang\>.sh | Human or `repo-ops` agent |
-| `format-swift.sh` | `scripts/` | Format Swift sources using swift-format | `format.sh` wrapper |
-| `format-python.sh` | `scripts/` | Format Python sources using ruff | `format.sh` wrapper |
-| `validate.sh` | `scripts/` | Before committing — full build + test suite; calls validate-\<lang\>.sh | Human or `repo-ops` agent |
-| `validate-swift.sh` | `scripts/` | Build and test Swift side | `validate.sh` wrapper |
-| `validate-python.sh` | `scripts/` | Lint, type-check, and test Python side | `validate.sh` wrapper |
-| `validate-proto.sh` | `scripts/` | Lint proto files and detect breaking changes | `validate.sh` wrapper |
-| `test.sh` | `scripts/` | After implementing — runs test suite only; calls test-\<lang\>.sh | Human or `repo-ops` agent |
-| `test-swift.sh` | `scripts/` | Run Swift test suite | `test.sh` wrapper |
-| `test-python.sh` | `scripts/` | Run Python test suite via pytest | `test.sh` wrapper |
-| `proto-gen.sh` | `scripts/` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
-| `agent-post-edit-check.sh` | `scripts/` | **Never call manually** — fires via Codex post_edit_command and Claude Code PostToolUse hook | Automatic hook |
-
-Set `XCODE_SCHEME` and `XCODE_DESTINATION` in `validate.sh` and `test.sh` before first use.
-Wrapper scripts detect project type via marker files (`Package.swift` → Swift, `pyproject.toml` → Python, `proto/` → protobuf).
+When acting in this repo:
+- Plan first for non-trivial work.
+- Call out uncertainty explicitly.
+- Do not invent APIs, framework behavior, or build flags.
+- Read existing code before introducing new patterns.
+- Match local style when it does not violate these rules.
+- Prefer changing the smallest correct surface area.
 
 ## Gemini CLI operating notes
 
@@ -673,26 +357,3 @@ Wrapper scripts detect project type via marker files (`Package.swift` → Swift,
 - **File writes:** Gemini CLI native file write tools. No Desktop Commander needed.
 - **Checkpointing:** Automatic snapshots are available for recovery.
 - **Session files are local.** Sync state between machines via project docs committed to the repo, not session files.
-
-## Deferral comments and BACKLOG hygiene
-
-Use the same typed deferral comment format as all other tools:
-
-```
-// TODO(scope): TD-TBD — Short title
-// KNOWN GAP(severity): TD-TBD — Short title
-// VERIFY(source): TD-TBD — Short title
-```
-
-Use the comment marker for the language you are writing (`//` for Swift/C/C++,
-`#` for Python). Rules:
-- Always write `TD-TBD` — never a real TD number.
-- Report every deferral in the completion report.
-- Do not write to BACKLOG.md, STATUS.md, CHANGELOG.md, PACK-FEEDBACK.md, or any .md in the project root. `PACK-FEEDBACK.md` is the PM chat's upstream feedback log for the AI Agent Config Pack — agents never write to it under any circumstance.
-
-## Build and repo hygiene
-
-- Do not commit secrets, generated code, or machine-specific config.
-- Prefer repo-local scripts over undocumented manual steps.
-- At the end of every implementation phase, include a "Proposed CHANGELOG entry"
-  in the completion report. Do not write to CHANGELOG.md directly.
