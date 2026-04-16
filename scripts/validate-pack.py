@@ -7,7 +7,7 @@ Checks:
   2. Codex TOML files: all parse correctly
   3. TD-TBD sentinels: none in committed files (excluding docs that show the format)
   4. README version table: latest row matches latest git tag
-  5. Agent file count: Claude and Codex agent dirs have the same count
+  5. Agent file count: Claude, Codex, and Gemini agent dirs have the same count
 
 Exit 0 if all pass, exit 1 if any fail. Each failure prints the exact
 file, line (where applicable), and problem.
@@ -25,6 +25,7 @@ SKILLS_DIR = REPO_ROOT / "project-template" / "skills"
 CODEX_DIR = REPO_ROOT / "project-template" / ".codex"
 CLAUDE_AGENTS_DIR = REPO_ROOT / "project-template" / ".claude" / "agents"
 CODEX_AGENTS_DIR = REPO_ROOT / "project-template" / ".codex" / "agents"
+GEMINI_AGENTS_DIR = REPO_ROOT / "project-template" / ".gemini" / "agents"
 README = REPO_ROOT / "README.md"
 
 REQUIRED_SKILL_FIELDS = {"name", "description", "allowed-tools"}
@@ -189,29 +190,43 @@ def check_agent_count() -> None:
     print("\n── Check 5: Agent file count consistency ──")
     claude_agents = sorted(CLAUDE_AGENTS_DIR.glob("*.md")) if CLAUDE_AGENTS_DIR.is_dir() else []
     codex_agents = sorted(CODEX_AGENTS_DIR.glob("*.toml")) if CODEX_AGENTS_DIR.is_dir() else []
+    gemini_agents = sorted(GEMINI_AGENTS_DIR.glob("*.md")) if GEMINI_AGENTS_DIR.is_dir() else []
 
     claude_count = len(claude_agents)
     codex_count = len(codex_agents)
+    gemini_count = len(gemini_agents)
 
     if claude_count == 0:
         fail("No Claude agent files found in project-template/.claude/agents/")
     if codex_count == 0:
         fail("No Codex agent files found in project-template/.codex/agents/")
+    if gemini_count == 0:
+        fail("No Gemini agent files found in project-template/.gemini/agents/")
 
-    if claude_count == codex_count:
-        ok(f"Claude agents: {claude_count}, Codex agents: {codex_count} — match")
+    if claude_count == codex_count == gemini_count:
+        ok(f"Claude agents: {claude_count}, Codex agents: {codex_count}, Gemini agents: {gemini_count} — match")
     else:
-        fail(f"Claude has {claude_count} agents but Codex has {codex_count} — mismatch")
+        fail(f"Agent count mismatch — Claude: {claude_count}, Codex: {codex_count}, Gemini: {gemini_count}")
 
     # Also check name correspondence
     claude_names = {p.stem for p in claude_agents}
     codex_names = {p.stem for p in codex_agents}
-    only_claude = claude_names - codex_names
-    only_codex = codex_names - claude_names
+    gemini_names = {p.stem for p in gemini_agents}
+    only_claude = claude_names - codex_names - gemini_names
+    only_codex = codex_names - claude_names - gemini_names
+    only_gemini = gemini_names - claude_names - codex_names
+    missing_from_codex = claude_names - codex_names
+    missing_from_gemini = claude_names - gemini_names
     if only_claude:
-        fail(f"Agents in Claude but not Codex: {sorted(only_claude)}")
+        fail(f"Agents only in Claude: {sorted(only_claude)}")
     if only_codex:
-        fail(f"Agents in Codex but not Claude: {sorted(only_codex)}")
+        fail(f"Agents only in Codex: {sorted(only_codex)}")
+    if only_gemini:
+        fail(f"Agents only in Gemini: {sorted(only_gemini)}")
+    if missing_from_codex:
+        fail(f"Agents in Claude but not Codex: {sorted(missing_from_codex)}")
+    if missing_from_gemini:
+        fail(f"Agents in Claude but not Gemini: {sorted(missing_from_gemini)}")
 
 
 # ── Main ────────────────────────────────────────────────────────────────────
