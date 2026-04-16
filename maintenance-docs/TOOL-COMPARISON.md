@@ -64,13 +64,13 @@ application. Capabilities may differ from Codex CLI in edge cases.*
 
 | Aspect | Claude Code | Codex CLI | Gemini CLI |
 |---|---|---|---|
-| Agent definition format | Markdown (`.claude/agents/*.md`) | TOML (`.codex/agents/*.toml`) | GEMINI.md sections + skills |
-| Invoke with agent | `claude --agent <name>` | `codex --agent <name>` | Skill activation + GEMINI.md role |
-| Standard launcher | `agent-run.sh claude --agent <name>` | `agent-run.sh codex --agent <name>` | No `--agent` flag; invocation via skill activation + GEMINI.md role — `agent-run.sh` Gemini support designed in Step 9 |
+| Agent definition format | Markdown (`.claude/agents/*.md`) | TOML (`.codex/agents/*.toml`) | Markdown with YAML frontmatter (`.gemini/agents/*.md`) |
+| Invoke with agent | `claude --agent <name>` | `codex --agent <name>` | `@agent-name` in interactive mode (no `--agent` flag) |
+| Standard launcher | `agent-run.sh claude --agent <name>` | `agent-run.sh codex --agent <name>` | `agent-run.sh gemini --agent <name>` — translates to `@agent-name` transparently |
 | Local model support | ❌ Anthropic models only | ✅ Ollama, LM Studio via `[model_providers]` | ❌ Google models only |
 | Model profiles | Single model per invocation | `cloud-default`, `local-light`, `local-code` profiles in `config.toml` | Single model per invocation |
 | Context file read | CLAUDE.md (auto) | AGENTS.md (auto) | GEMINI.md (auto, hierarchical) |
-| Subagent support | ✅ Parallel, tool-isolated | ✅ Via config | ✅ Local execution (current default) |
+| Subagent support | ✅ Parallel, tool-isolated | ✅ Via config | ✅ Native `.gemini/agents/*.md`; subagents cannot call subagents |
 | Interactive/TUI | ✅ | ✅ | ✅ PTY shell (handles interactive) |
 | Headless/scripted | ✅ exec mode | ✅ exec mode | ✅ headless mode |
 | Windows support | ❌ (WSL only) | ⚙️ Experimental | ✅ Node.js cross-platform |

@@ -120,13 +120,13 @@ back to the parent — but the implementation differs.
 
 56. **Claude Code** — the parent auditor uses the Claude Code `Task` tool to spawn subagents in-process. Parent issues all Task calls in a single message so subagents run in parallel. The parent's agent file must include `Task` in its `tools:` frontmatter.
 57. **Codex CLI** — the parent auditor spawns subagents via Codex's native subagent mechanism configured through `.codex/config.toml` (`[agents] max_depth = 2` allows one level of parent→subagent spawning). Parent invokes each registered subagent by name.
-58. **Gemini CLI** — Gemini has no native subagent mechanism, so orchestration is external via `project-template/agent-run.sh` `run_gemini_auditor` function. The script runs 7 sequential Gemini sessions (one per non-skipped subagent) with Plan Mode flags, captures each subagent's report to a temp file, then runs an 8th session with the auditor parent role and passes all subagent reports as input via a file (not inline — see rule 59).
+58. **Gemini CLI** — Gemini supports native subagents in `.gemini/agents/*.md` with YAML frontmatter, but subagents cannot call other subagents (Gemini design constraint). For the auditor, `agent-run.sh run_gemini_auditor` provides external orchestration: runs each non-skipped subagent in its own Gemini session (activated via `@agent-name` in `-p`), captures reports to temp files, then invokes the auditor parent with all reports as input via stdin (not inline — see rule 59). The agent files provide each subagent's system prompt, scope, and skill instructions; the script prompt adds project-specific context.
 59. **Context budget.** Parent consolidation prompts can be large when subagent reports accumulate. Implementations must pass reports by file reference or chunked read, not by inline string concatenation, to avoid exceeding command-line length limits (`ARG_MAX` on macOS is approximately 256KB).
 60. **Skip-rule passing.** Skip decisions originate with the PM chat or the developer. Claude and Codex parents receive skip rules as prose in their invocation prompt ("Skip auditor-ui and auditor-tests for this server-only project"). Gemini receives skip rules via the `agent-run.sh --skip` flag. All three mechanisms produce the same effect.
 
 ## Cost and parallelism
 
-61. A full audit is expensive: 7 subagent invocations (or 8 counting the parent) per run. Parallelize where possible — Claude's Task tool and Codex's `max_depth=2` can run subagents concurrently; Gemini's external orchestration runs sequentially for log readability and to avoid hitting rate limits.
+61. A full audit is expensive: 7 subagent invocations (or 8 counting the parent) per run. Parallelize where possible — Claude's Task tool and Codex's `max_depth=2` can run subagents concurrently; Gemini's external orchestration runs sequentially for log readability and to avoid rate limits.
 62. Document the audit cost in each audit's executive summary (wall clock time, approximate token count if available) so teams can decide when the audit cadence is sustainable.
 
 ## Reference pattern: building other multi-agent workflows
@@ -138,7 +138,7 @@ preparation agent, a migration coordinator, a cross-cutting refactor workflow):
 63. **Define clusters using the three-criteria test** (rule 22). Each cluster must own a distinct skill set, file scope, and output cohesion. Combine only when all three agree.
 64. **Write one subagent per cluster** following the same file structure as the auditor subagents: scope description, output format, skills to load. Cross-reference a shared methodology skill (like this one) for common rules.
 65. **Write the parent** with coordination rules (spawning, skip rules, duplicate resolution, consolidated output format). Keep the parent small and delegate substance to subagents.
-66. **Choose per-tool spawning.** For Claude use the Task tool with parallel calls; for Codex use `max_depth` in `config.toml`; for Gemini write an external orchestration function in `agent-run.sh`.
+66. **Choose per-tool spawning.** For Claude use the Task tool with parallel calls; for Codex use `max_depth` in `config.toml`; for Gemini use native `@agent-name` subagent delegation from the main session, or `agent-run.sh` external orchestration for headless execution (subagents cannot call other subagents in Gemini).
 67. **Document the cost.** Parent-subagent workflows are not free — every extra cluster multiplies cost. Prefer a small number of coherent clusters over many fine-grained ones.
 
 ## Post-audit processing
