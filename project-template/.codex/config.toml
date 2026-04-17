@@ -1,5 +1,5 @@
 profile = "cloud-default"
-model = "gpt-5"
+model = "gpt-5.4"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 web_search_mode = "on"
@@ -17,7 +17,7 @@ network_access = true
 writable_roots = ["."]
 
 [profiles.cloud-default]
-model = "gpt-5"
+model = "gpt-5.4"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 web_search_mode = "on"
