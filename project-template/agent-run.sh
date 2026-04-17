@@ -99,12 +99,16 @@ CLAUDE_READONLY_FLAGS=(
 )
 
 # Flags for read-only agents on the codex CLI.
-# --sandbox read-only: OS-level enforcement — no disk writes at all,
-#   which implicitly blocks git commit, git push, and any file edits.
+# --sandbox workspace-write: allows builds and tests that need disk writes
+#   (Xcode DerivedData, /tmp, build caches). .git is automatically protected
+#   as read-only by Codex's sandbox — git commit/push fail at OS level.
+#   Source files are technically writable, but read-only agents are
+#   instructed not to modify them (same trust model as Claude Code's
+#   reviewer, which can write but doesn't).
 # -a never: never pause to ask for command approval, so build tools
 #   and linters run without interruption.
 CODEX_READONLY_FLAGS=(
-    "--sandbox" "read-only"
+    "--sandbox" "workspace-write"
     "-a" "never"
 )
 
@@ -147,7 +151,7 @@ Agent roster (16):
 Read-only agents — automatically receive CLI-appropriate flags:
   claude: --permission-mode bypassPermissions
           --disallowedTools Bash(git commit:*) Bash(git push:*)
-  codex:  --sandbox read-only  (OS-level; implicitly blocks all writes)
+  codex:  --sandbox workspace-write  (.git protected read-only by sandbox)
           -a never
   gemini: --approval-mode=plan  (Plan Mode — read-only)
 
