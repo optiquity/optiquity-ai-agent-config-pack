@@ -113,11 +113,13 @@ CODEX_READONLY_FLAGS=(
 )
 
 # Flags for read-only agents on the gemini CLI.
-# --approval-mode=plan: activates Gemini Plan Mode (read-only tool calls).
-# See https://geminicli.com/docs/cli/plan-mode/
-GEMINI_READONLY_FLAGS=(
-    "--approval-mode=plan"
-)
+# No --approval-mode flag: use Gemini default mode (per-command approval).
+# Plan Mode (--approval-mode=plan) is read-only and blocks all command
+# execution — xcodebuild, swift test, scripts — which breaks reviewer and
+# tester workflows. Default mode allows build/test tools to run while
+# prompting for approval before each command. Read-only agents are instructed
+# not to modify source files (same trust model as Claude Code reviewer).
+GEMINI_READONLY_FLAGS=()
 
 # Flags for write agents on the gemini CLI.
 # --approval-mode=yolo: auto-approves tool calls for unattended automation.
@@ -153,7 +155,7 @@ Read-only agents — automatically receive CLI-appropriate flags:
           --disallowedTools Bash(git commit:*) Bash(git push:*)
   codex:  --sandbox workspace-write  (.git protected read-only by sandbox)
           -a never
-  gemini: --approval-mode=plan  (Plan Mode — read-only)
+  gemini: default mode  (per-command approval; plan mode blocks builds)
 
   Agents: architect, reviewer, planner, tester, docs-researcher, grpc-schema,
           auditor, auditor-architecture, auditor-code, auditor-docs,
@@ -215,7 +217,7 @@ die() {
 #
 # Gemini CLI subagents cannot call other subagents. This script provides
 # external orchestration: each auditor subagent runs in its own Gemini
-# session in Plan Mode (read-only), activated via @agent-name. The subagent's
+# session in default mode (per-command approval), activated via @agent-name. The subagent's
 # agent file (.gemini/agents/<name>.md) provides its system prompt, scope,
 # and skill loading instructions. The -p prompt adds project-specific
 # context (PLATFORM-SKILLS.md, audit-methodology rules).
@@ -415,39 +417,37 @@ else
 fi
 
 if [[ "$CLI" == "gemini" ]]; then
-    # Gemini CLI has no --agent flag. Translate to @agent-name syntax.
-    # If -p/--prompt is in the args, prepend @agent-name to the prompt value.
-    # Otherwise, use -i "@agent-name" for interactive activation.
-    gemini_args=()
+    # Gemini CLI has no --agent flag. Always launch interactive (-i).
+    # If -p/--prompt is in the args, treat its value as activation context
+    # (not a task to execute) — strip -p and include the value in the
+    # activation message. The actual task prompt is always pasted by the
+    # user after the agent acknowledges.
+    other_args=()
+    user_context=""
     prompt_next=false
-    has_prompt=false
     for arg in "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"; do
         if $prompt_next; then
-            gemini_args+=("@${AGENT} ${arg}")
+            user_context="$arg"
             prompt_next=false
-            has_prompt=true
         elif [[ "$arg" == "-p" || "$arg" == "--prompt" ]]; then
-            gemini_args+=("$arg")
             prompt_next=true
         else
-            gemini_args+=("$arg")
+            other_args+=("$arg")
         fi
     done
-    if $has_prompt; then
-        exec gemini "${EXTRA[@]}" "${gemini_args[@]}"
-    else
-        exec gemini "${EXTRA[@]}" -i "@${AGENT}" "${gemini_args[@]+"${gemini_args[@]}"}"
+    activation_msg="@${AGENT} You are now active as the ${AGENT} agent. Load your agent definition from .gemini/agents/${AGENT}.md."
+    if [[ -n "$user_context" ]]; then
+        activation_msg="${activation_msg} Initial context: ${user_context}."
     fi
+    activation_msg="${activation_msg} Do not begin any work — acknowledge your role and wait for me to paste the task prompt."
+    exec gemini "${EXTRA[@]+"${EXTRA[@]}"}" "${other_args[@]+"${other_args[@]}"}" -i "$activation_msg"
 elif [[ "$CLI" == "codex" ]]; then
-    # Codex CLI has no --agent flag. Agents are registered in .codex/config.toml
-    # and delegated automatically within sessions. Activate the agent by passing
-    # its role instruction as the session prompt.
-    codex_agent_prompt="You are the ${AGENT} agent. Read your role definition from .codex/agents/${AGENT}.toml and follow those instructions."
-    # Codex takes [PROMPT] as a positional argument. If the user passed a
-    # positional prompt, prepend the agent instruction to it. Otherwise, use
-    # the agent instruction alone.
+    # Codex CLI has no --agent flag. Always launch interactive.
+    # Any positional arg is treated as activation context (not a task to
+    # execute) and included in the activation message. The actual task
+    # prompt is always pasted by the user after the agent acknowledges.
     codex_opts=()
-    codex_user_prompt=""
+    user_context=""
     skip_next=false
     for arg in "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"; do
         if $skip_next; then
@@ -461,14 +461,15 @@ elif [[ "$CLI" == "codex" ]]; then
                     skip_next=true ;;
             esac
         else
-            codex_user_prompt="$arg"
+            user_context="$arg"
         fi
     done
-    if [[ -n "$codex_user_prompt" ]]; then
-        exec codex "${EXTRA[@]}" "${codex_opts[@]+"${codex_opts[@]}"}" "${codex_agent_prompt} ${codex_user_prompt}"
-    else
-        exec codex "${EXTRA[@]}" "${codex_opts[@]+"${codex_opts[@]}"}" "$codex_agent_prompt"
+    activation_msg="You are the ${AGENT} agent. Read your role definition from .codex/agents/${AGENT}.toml and follow those instructions."
+    if [[ -n "$user_context" ]]; then
+        activation_msg="${activation_msg} Initial context: ${user_context}."
     fi
+    activation_msg="${activation_msg} Do not begin any work — acknowledge your role and wait for me to paste the task prompt."
+    exec codex "${EXTRA[@]}" "${codex_opts[@]+"${codex_opts[@]}"}" "$activation_msg"
 else
     # Claude Code has native --agent support
     if [[ "${#EXTRA[@]}" -gt 0 ]]; then

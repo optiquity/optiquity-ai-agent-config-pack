@@ -57,6 +57,6 @@ Always run `git add -A && git status` and show staged files before committing.
 
 Use `/chat save <tag>` to save session state before ending a session.
 Use `save_memory` to persist cross-session facts to ~/.gemini/GEMINI.md.
-Use Plan Mode (read-only before any edits — current default behavior) for all read-only tasks (reviewer, docs-researcher).
+Read-only agents (reviewer, docs-researcher) run in default mode — per-command approval. Do not use Plan Mode (`--approval-mode=plan`); it blocks command execution including xcodebuild and test tools. `agent-run.sh` sets the correct mode automatically.
 Native file write tools replace Desktop Commander — both achieve the same result.
 Session files are local; sync state between machines via project docs (committed to repo).

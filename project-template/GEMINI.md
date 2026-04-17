@@ -355,7 +355,7 @@ When acting in this repo:
 - **Session resume:** Use `/chat resume <tag>` to restore.
 - **Context compression:** Use `/compress` when context grows large.
 - **Cross-session memory:** Use `save_memory` to persist facts to `~/.gemini/GEMINI.md`.
-- **Plan Mode:** Use Plan Mode (read-only) for all review and research tasks. This is the default behavior.
+- **Approval mode:** Read-only and review agents use Gemini default mode (per-command approval) so build and test tools like xcodebuild can run. Plan Mode (`--approval-mode=plan`) blocks all command execution and must not be used as the standard mode for read-only agents. `agent-run.sh` sets the correct mode automatically.
 - **File writes:** Gemini CLI native file write tools. No Desktop Commander needed.
 - **Checkpointing:** Automatic snapshots are available for recovery.
 - **Session files are local.** Sync state between machines via project docs committed to the repo, not session files.

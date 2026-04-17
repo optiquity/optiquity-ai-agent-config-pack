@@ -397,12 +397,14 @@ across the team. Run `./agent-run.sh --help` for the full agent list and flag de
 | Task | Command |
 |---|---|
 | Plan a feature before coding | `./agent-run.sh claude --agent planner "Plan [description]"` |
-| Implement | `./agent-run.sh codex --agent coder "Implement [description]"` |
+| Implement | `./agent-run.sh codex --agent coder` |
 | Review code | `./agent-run.sh claude --agent reviewer "Review [file or module]"` |
 | Design a gRPC service | `./agent-run.sh claude --agent grpc-schema "Design a service for [description]"` |
 | Review a .proto change | `./agent-run.sh claude --agent grpc-schema "Review my changes to proto/[path]"` |
 | Debug a build failure | `./agent-run.sh claude --agent coder "Debug: [error text]"` |
 | iOS 26 API question | `./agent-run.sh claude --agent docs-researcher "How does [iOS 26 feature] work?"` |
+
+**Claude** executes inline prompts immediately. **Codex and Gemini** always start interactive — the agent activates, loads its definition, acknowledges, and waits for you to paste the full task prompt.
 | Run all validation | `./scripts/validate.sh` |
 | Generate gRPC code | `./scripts/proto-gen.sh` |
 | iOS 26 API reference | Agents read directly from Xcode bundle (no sync step needed) |

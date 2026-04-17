@@ -504,7 +504,7 @@ without paying for a full audit (per `audit-methodology` rule 70):
 ```
 ./agent-run.sh claude  --agent auditor-security
 ./agent-run.sh codex   --agent auditor-security
-./agent-run.sh gemini  --agent auditor-security  (runs as a single Plan Mode session)
+./agent-run.sh gemini  --agent auditor-security  (runs as a single default-mode session)
 ```
 
 The single-subagent path is the same script entry point — no special flag.

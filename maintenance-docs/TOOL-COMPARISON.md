@@ -118,7 +118,7 @@ mean the same prompt behaves differently without explicit configuration.
 |---|---|---|---|
 | Claude Code | Approval before each file write and shell command | Default (approval on) | Default (approval on) |
 | Codex CLI | `--ask-for-approval on-request` with workspace sandbox | Default | Default |
-| Gemini CLI | Plan Mode: read-only proposal before any edits (current default) | Confirm plan then execute | Plan Mode (natural fit) |
+| Gemini CLI | Default mode: per-command approval (plan mode blocks command execution) | Default mode (per-command approval) | Default mode — plan mode blocks xcodebuild and test tools |
 
 **Critical:** Never use full-auto / no-approval mode for agents that modify
 production source files. The `--yolo` / `--dangerously-bypass-approvals`
