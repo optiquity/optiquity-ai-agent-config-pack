@@ -611,9 +611,9 @@ decisions and must be able to route correctly from the documented table alone.
 **Decision:** The unified template lives at `project-template/` in the pack
 repo. It replaces the three existing template directories. A new project is
 started by copying `project-template/` to the project directory, removing
-conditional files not needed for the project type, running the setup process
-to distribute skills to each tool's expected location, and copying product
-docs from `supporting-docs/`.
+conditional files not needed for the project type, running the QUICKSTART.md
+setup process (distribute skills from the pack to trinity dirs, run bootstrap),
+and copying product docs from `supporting-docs/`.
 
 **Complete file tree:**
 
@@ -729,8 +729,9 @@ project-template/
 
 **Skill deduplication:** Skills exist once in `skills/` at the template root.
 No `.claude/skills/`, `.codex/skills/`, or `.gemini/skills/` directories exist
-in the template. At project setup time, the setup process (bootstrap.sh or
-QUICKSTART.md steps) copies skills into each tool's expected location:
+in the template. At project creation (QUICKSTART.md Step 4), a one-time
+distribution loop copies skills directly from the pack into each tool's
+expected location and commits them to git:
 
 - `skills/<name>/SKILL.md` → `.claude/skills/<name>/SKILL.md`
 - `skills/<name>/SKILL.md` → `.codex/skills/<name>/SKILL.md` (setup also
@@ -1615,15 +1616,13 @@ All gaps found are resolved before the `v9-dev` branch is merged to main.
    `ios-architecture` Tier 2 incorporates former Tier 1 content.
    PLATFORM-SKILLS.md skill assignments reference only skills that actually
    exist in `skills/`. The skill distribution mechanism (`skills/` →
-   `.claude/skills/`, `.codex/skills/`, `.gemini/skills/` at project setup
-   time) must be automated via bootstrap.sh — not a manual step requiring
-   the developer to run copy loops from QUICKSTART.md or the migration
-   guide. Verify that bootstrap.sh distributes skills automatically. If it
-   does not, add the distribution logic to bootstrap.sh so that running
-   `./scripts/bootstrap.sh` is the single setup command that resolves
-   dependencies AND distributes skills. Update QUICKSTART.md and
-   MIGRATION-v8-to-v9.md to reflect that bootstrap.sh handles distribution
-   (remove any manual copy-loop instructions if they become redundant).
+   `.claude/skills/`, `.codex/skills/`, `.gemini/skills/`) runs once at
+   project creation via the explicit loop in QUICKSTART.md Step 4 — sourcing
+   directly from the pack, then committed to git. Teammates who clone the
+   project get skills via git; bootstrap.sh handles language dependencies
+   only (Swift/Python) and does not touch skills. Verify that
+   QUICKSTART.md Step 4 contains the distribution loop and that
+   bootstrap.sh contains no skill distribution logic.
 
 3. **PM chat flows** — The pm-startup skill (or equivalent) functions on all
    three tools. RAG freshness check covers METHODOLOGY.md and

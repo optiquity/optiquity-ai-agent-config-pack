@@ -56,7 +56,9 @@ project-template/                           Unified project template (v9)
 ├── .gemini/agents/                         Gemini agent files (16 agents)
 ├── .codex/config.toml                      Codex config (agent registry, profiles)
 ├── .claude/settings.json                   Claude Code settings (permissions, hooks)
-├── skills/                                 Canonical skill library (30 skills)
+├── skills/                                 Canonical skill library (30 skills) — distributed
+│                                           to .claude/skills/, .codex/skills/, .gemini/skills/
+│                                           at project creation; not present in projects
 ├── scripts/                                Build, test, validation scripts (15)
 ├── CLAUDE.md                               Claude context file (unified template)
 ├── AGENTS.md                               Codex context file (unified template)

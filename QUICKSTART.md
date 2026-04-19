@@ -79,20 +79,34 @@ Minimum edits before using any agent:
 
 ## Step 4 — Fix permissions, distribute skills, and run bootstrap
 
-Scripts and `agent-run.sh` are already in the template (copied in Step 1). Fix permissions
-and run bootstrap:
+Scripts and `agent-run.sh` are already in the template (copied in Step 1). Fix permissions,
+distribute skills from the pack directly to each tool's expected location, then run bootstrap:
 
 ```bash
 # Make everything executable — required after every fresh clone
 chmod +x agent-run.sh scripts/*.sh
 
-# Distribute skills to each tool's expected location
+# Distribute skills from the pack to .claude/skills/, .codex/skills/, .gemini/skills/.
+# Set PACK to the path where the config pack is installed on your machine.
+PACK=~/Developer/dhs-ai-agent-config-pack   # adjust if installed elsewhere
+for skill_dir in "$PACK/project-template/skills/"*/; do
+    skill_name=$(basename "$skill_dir")
+    mkdir -p ".claude/skills/$skill_name" ".codex/skills/$skill_name" ".gemini/skills/$skill_name"
+    cp "$skill_dir/SKILL.md" ".claude/skills/$skill_name/SKILL.md"
+    cp "$skill_dir/SKILL.md" ".codex/skills/$skill_name/SKILL.md"
+    cp "$skill_dir/SKILL.md" ".gemini/skills/$skill_name/SKILL.md"
+done
+
+# Resolve language-specific dependencies (Swift, Python, or both)
 ./scripts/bootstrap.sh
 ```
 
+Skills are distributed once at project creation and committed to git — teammates who clone
+the project get them via git, not by re-running this step. To update skills after a pack
+version upgrade, see the migration guide.
+
 `bootstrap.sh` detects which languages are present (Swift, Python, or both) and:
 - Resolves language-specific dependencies (SPM for Swift, uv for Python)
-- Copies `skills/*/SKILL.md` → `.claude/skills/`, `.codex/skills/`, `.gemini/skills/`
 
 See the Scripts table in `CLAUDE.md` for the full script inventory (16 entries).
 

@@ -44,9 +44,10 @@ merging of v9 template structure around existing project content.
 - **Architect rename.** `apple-architect` and `python-architect` are merged
   into a single `architect` agent. Platform knowledge comes from loaded skills.
 - **Skill library.** 30 skills (12 Tier 1 role skills + 17 Tier 2 platform
-  skills + 1 PM chat operational skill). Skills are stored once in `skills/`
-  and distributed to `.claude/skills/`, `.codex/skills/`, `.gemini/skills/`
-  at setup time.
+  skills + 1 PM chat operational skill). The canonical skill library lives in
+  the pack at `project-template/skills/` and is distributed directly to
+  `.claude/skills/`, `.codex/skills/`, `.gemini/skills/` at setup time.
+  Skills are not stored at the project root.
 - **Three-tool parity.** Claude Code, Codex CLI, and Gemini CLI are all
   first-class. GEMINI.md is the Gemini context file. PLATFORM-SKILLS.md is
   the skill-selection matrix.
@@ -154,15 +155,13 @@ Also set these in `.claude/settings.json` → `env` block (for the post-edit hoo
 ## Step 3 — Distribute skills
 
 v9 has 30 skills. v8 had 14 (in `.claude/skills/` only). You need to:
-- Copy the canonical `skills/` directory to the project root (new in v9)
 - Replace `.claude/skills/` (clean out stale v8 skills like `grpc-schema`)
 - Create `.codex/skills/` and `.gemini/skills/` (didn't exist in v8)
 
-```bash
-# Copy canonical skills/ directory to project root (new in v9 — bootstrap.sh
-# uses this as the source for future skill distribution)
-cp -r "$PACK/project-template/skills/" skills/
+Skills are distributed directly from the pack to the trinity directories and
+committed to git. There is no `skills/` directory at the project root.
 
+```bash
 # Replace .claude/skills/ entirely (adds 16 new Tier 2 skills, removes stale grpc-schema)
 rm -rf .claude/skills/
 mkdir -p .claude/skills/
@@ -196,12 +195,6 @@ ls .claude/skills/ | wc -l    # should be 30
 ls .codex/skills/ | wc -l     # should be 30
 ls .gemini/skills/ | wc -l    # should be 30
 ```
-
-> **Note:** The manual loops above are needed for the initial migration to
-> clean out stale v8 skills (e.g., the renamed `grpc-schema`). After
-> migration, `./scripts/bootstrap.sh` automatically distributes skills from
-> the canonical `skills/` directory on every run — you won't need to repeat
-> these manual loops.
 
 ---
 
@@ -362,7 +355,7 @@ example versions.
 Run these checks to confirm the migration is complete:
 
 ```bash
-# 1. Bootstrap (resolves dependencies, distributes skills if bootstrap handles it)
+# 1. Bootstrap (resolves language dependencies — Swift, Python, or both)
 ./scripts/bootstrap.sh
 
 # 2. Validate (build + test — may fail if XCODE_SCHEME is not set)
@@ -669,7 +662,9 @@ Root-level files unchanged: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `README.md`,
    cp /path/to/pack/supporting-docs/METHODOLOGY.md docs/pack/
    cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md docs/pack/
    cp /path/to/pack/project-template/docs/pack/PM-CHAT.md docs/pack/
-   cp /path/to/pack/project-template/skills/pm-startup/SKILL.md skills/pm-startup/
+   cp /path/to/pack/project-template/skills/pm-startup/SKILL.md .claude/skills/pm-startup/SKILL.md
+   cp /path/to/pack/project-template/skills/pm-startup/SKILL.md .codex/skills/pm-startup/SKILL.md
+   cp /path/to/pack/project-template/skills/pm-startup/SKILL.md .gemini/skills/pm-startup/SKILL.md
    ./scripts/bootstrap.sh
    ```
 

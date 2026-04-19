@@ -53,11 +53,18 @@ skills from `skills/` to `.claude/skills/`, `.codex/skills/`,
 `.gemini/skills/`. The distribution was documented in QUICKSTART.md as
 automatic but was actually a manual copy-loop step.
 
-**Resolution:** Added skill distribution logic to `bootstrap.sh`
+**Resolution (v9.0):** Added skill distribution logic to `bootstrap.sh`
 (idempotent — copies canonical skills to all three tool directories on
 every run). Updated `MIGRATION-v8-to-v9.md` with a note that
 bootstrap.sh handles ongoing distribution and added a step to copy the
 canonical `skills/` directory during migration.
+
+**Subsequently reversed (post-v9.3):** The bootstrap.sh skill
+distribution was removed. Skills are now distributed once at project
+creation via the explicit loop in QUICKSTART.md Step 4 (sourced directly
+from the pack, then committed to git). bootstrap.sh handles language
+dependencies only. This matches the agent-files pattern: distributed
+once at project creation, then owned by git.
 
 ### Category 3 — PM Chat Flows: PASS
 
@@ -270,8 +277,8 @@ April 2026".
 
 | File | Change | Category |
 |---|---|---|
-| project-template/scripts/bootstrap.sh | Added skill distribution logic | 2 |
-| supporting-docs/MIGRATION-v8-to-v9.md | Added canonical skills/ copy step + bootstrap.sh note | 2 |
+| project-template/scripts/bootstrap.sh | Added skill distribution logic (subsequently reversed post-v9.3 — see Finding 2.1 note) | 2 |
+| supporting-docs/MIGRATION-v8-to-v9.md | Added canonical skills/ copy step + bootstrap.sh note (subsequently updated post-v9.3) | 2 |
 | QUICKSTART.md | Fixed step numbering (9–12 + sub-steps 10A–10I) | 10 |
 | supporting-docs/METHODOLOGY.md | Workflow 1 rewritten for v9; Step 10 refs; "Three PM chat options"; footer v9 | 10, 11 |
 | supporting-docs/SETUP_TEMPLATE.md | Step 11 → Step 10 reference | 10 |
@@ -303,7 +310,7 @@ until a downstream project produces data.
 
 The v9-dev branch passes all 11 audit categories. 8 findings were discovered and resolved during the audit — 3 major
 (Workflow 1 stale, QUICKSTART numbering gap, stale Step 11 references)
-and 5 minor (bootstrap.sh skill distribution, version footers x2,
+and 5 minor (bootstrap.sh skill distribution [subsequently reversed — see Finding 2.1], version footers x2,
 migration guide bootstrap note, automated CLI migration prompt). All
 fixes are verified by two complete re-runs of all 11 categories with
 zero new findings on the final pass.

@@ -20,7 +20,7 @@ See `QUICKSTART.md` in the pack root for the full setup procedure.
 | Category | Files | Notes |
 |---|---|---|
 | Agent files | `.claude/agents/*.md`, `.codex/agents/*.toml`, `.gemini/agents/*.md` | 16 agents (8 core + auditor parent + 7 auditor subagents) |
-| Skills | `skills/*/SKILL.md` | 30 skills (canonical source). Distributed to `.claude/skills/`, `.codex/skills/`, `.gemini/skills/` at setup time by `bootstrap.sh`. |
+| Skills | `.claude/skills/`, `.codex/skills/`, `.gemini/skills/` | 30 skills per tool. Distributed from the pack's `project-template/skills/` at project creation (QUICKSTART.md Step 4) and committed to git. No `skills/` directory at the project root. |
 | Scripts | `scripts/*.sh`, `agent-run.sh` | 15 scripts + launcher. See the Scripts table in CLAUDE.md. |
 | Context files | `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` | One per tool. Fill in `[PLACEHOLDER]` sections per project type. |
 | PM chat docs | `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | PM chat operational docs. PM-CHAT.md and PACK-FEEDBACK.md have `[PROJECT_NAME]` placeholders. |
@@ -57,13 +57,15 @@ After copying the template, remove files that don't apply to your project:
 
 ## Skill distribution
 
-Skills exist once in `skills/` at the template root. At setup time,
-`bootstrap.sh` (or manual steps per QUICKSTART.md) distributes them to each
-tool's expected location:
+The canonical skill library lives in the pack at `project-template/skills/`.
+At project creation (QUICKSTART.md Step 4) skills are distributed directly
+from the pack to each tool's expected location:
 
-- `skills/<name>/SKILL.md` → `.claude/skills/<name>/SKILL.md`
-- `skills/<name>/SKILL.md` → `.codex/skills/<name>/SKILL.md`
-- `skills/<name>/SKILL.md` → `.gemini/skills/<name>/SKILL.md`
+- `<pack>/project-template/skills/<name>/SKILL.md` → `.claude/skills/<name>/SKILL.md`
+- `<pack>/project-template/skills/<name>/SKILL.md` → `.codex/skills/<name>/SKILL.md`
+- `<pack>/project-template/skills/<name>/SKILL.md` → `.gemini/skills/<name>/SKILL.md`
 
-This eliminates maintaining 30 x 3 = 90 identical files. The `skills/`
-directory is the single source of truth.
+The distributed files are committed to git. Teammates who clone the project
+get skills via git — no pack access required after initial setup. There is
+no `skills/` directory at the project root. To update skills after a pack
+version upgrade, see the migration guide.
