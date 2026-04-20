@@ -801,6 +801,107 @@ Resolved: April 2026, v9.3 — 16 Gemini agent files in `.gemini/agents/`,
 
 ---
 
+**BD-044 — Project setup paths: init-project.sh, QUICKSTART router, and existing-project onboarding**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: `QUICKSTART.md`, `scripts/init-project.sh` (new), `supporting-docs/SETUP-NEW.md` (new), `supporting-docs/SETUP-EXISTING.md` (new), `supporting-docs/SETUP_TEMPLATE.md`, `README.md`
+
+Description: The pack has no supported path for adding it to a project already
+  under development with no AI tooling. QUICKSTART.md assumes a new project
+  started from scratch. This item introduces a general-purpose onboarding
+  flow for both new and existing projects and restructures QUICKSTART.md as
+  the single entry point for all setup scenarios.
+
+  Target scenario: a project with no existing AI config and no existing PM docs,
+  making file conflicts minimal. Full merging of existing AI config or PM docs
+  is explicitly out of scope — the PM chat handles that after the pack is
+  installed and working.
+
+  **Step 1 — Planning (required before any implementation):**
+  Produce a complete list of every file that needs to change and every task
+  required to implement this item. Known touch points: `QUICKSTART.md`,
+  `scripts/init-project.sh` (new), `supporting-docs/SETUP-NEW.md` (new),
+  `supporting-docs/SETUP-EXISTING.md` (new), `supporting-docs/SETUP_TEMPLATE.md`
+  (stale `cp -r` command and QUICKSTART.md step number references), `README.md`
+  (layout section). Additional touch points must be identified by auditing every
+  file in the pack that references QUICKSTART.md steps, the `cp -r` setup
+  command, or the project creation procedure. No implementation begins until
+  this list is complete and approved.
+
+  **Step 2 — Implementation:**
+  Execute all tasks from Step 1 in a logical sequence with approval gates.
+  Key deliverables:
+
+  - `scripts/init-project.sh`: single pack-level script handling both new and
+    existing projects. Runs a detection pass first and reports what it found
+    and what it will do — the developer confirms before any files are written.
+    Detection covers: presence of source files and git history (new vs. existing);
+    language/platform markers (`.swift`, `Package.swift`, `pyproject.toml`,
+    `.kt`, etc.); existing AI config (`.claude/`, `.codex/`, `.gemini/`,
+    `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` — stop condition: report and require
+    removal before proceeding). When a detected language or platform has no pack
+    skill coverage, reports the gap; the generated PM chat prompt instructs the
+    PM chat to log it to `PACK-FEEDBACK.md`.
+    New project path: automates the `cp -r` and skill distribution steps.
+    Existing project path: selective copy (add-don't-overwrite), `.gitignore`
+    merge (append and deduplicate), skip `README.md` / `pyproject.toml` /
+    `Package.swift` / any existing scripts. Script output explicitly tells the
+    developer that their previous file structure is replaced by the pack's
+    structure and that pack file names and locations are the standard going
+    forward. At the end, outputs a one-time PM chat prompt for the developer
+    to paste. The prompt includes an instruction to the developer to point the
+    PM chat at any existing documentation (architecture notes, README, inline
+    comments, etc.) before context file generation begins, so the PM chat can
+    read them for context. No persistent onboarding skill is added to projects.
+
+  - `QUICKSTART.md` restructured as a three-path router: new project →
+    `SETUP-NEW.md`; existing project → `SETUP-EXISTING.md`; pack version
+    upgrade → `MIGRATION-vN-to-vM.md` for the relevant version pair. One or
+    two sentences per path. No procedural content.
+
+  - `supporting-docs/SETUP-NEW.md`: current QUICKSTART.md procedural content
+    updated to reference `init-project.sh` instead of the manual `cp -r` step.
+
+  - `supporting-docs/SETUP-EXISTING.md`: existing-project procedure referencing
+    `init-project.sh`, describing the preview-and-confirm flow, and describing
+    the one-time PM chat onboarding step. Must clearly state that the old
+    project file structure is gone and the pack's file names and locations are
+    used from this point forward.
+
+  - Migration guide convention: version-specific migration guides are always
+    named `MIGRATION-vN-to-vM.md` and always land in `supporting-docs/`. This
+    convention must be documented in `SETUP-NEW.md`, `SETUP-EXISTING.md`, or
+    a central reference so it is followed consistently for all future major
+    version upgrades.
+
+  - All additional doc updates identified in Step 1.
+
+  **Step 3 — Verification:**
+  Manual testing against real repos covering all three paths:
+  - New project: run `init-project.sh` against an empty directory; verify
+    all template files land correctly, skills distribute, bootstrap runs.
+  - Existing project: run against a real project with no AI config; verify
+    preview output is accurate, selective copy and `.gitignore` merge are
+    correct, no existing files are overwritten, developer transition message
+    is present, PM chat prompt is generated and includes the existing-docs
+    pointer instruction.
+  - Pack version upgrade: follow `MIGRATION-vN-to-vM.md` end-to-end; verify
+    no regressions in the migration procedure from the QUICKSTART.md restructure.
+  Update `validate-pack.py` if new required pack files are introduced.
+  Confirm `SETUP_TEMPLATE.md` still produces a correct project `SETUP.md`
+  after its content is updated.
+
+Context: Design discussion April 2026. The pack currently has no onboarding
+  path for projects already under development. `init-project.sh` usage must
+  be clearly documented — when to run it (once per project, from the pack
+  directory), how it differs from `bootstrap.sh` (bootstrap runs inside a
+  project repeatedly on each machine checkout; init-project.sh runs once from
+  the pack to create or configure a project). This is v9.4.
+
+---
+
 ## Deferred
 
 **BD-031 — Evaluate publishing pack skills to skills.sh**
