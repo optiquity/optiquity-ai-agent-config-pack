@@ -558,6 +558,12 @@ Do not automatically unblock any of them.
 - Update "Current Phase" to: Phase [N+1] — [Title] (not started)
 - Update "Next Actions" to: [list]
 - Update "Key Metrics" test count to: [N] passing, 0 failing
+- Link every phase Title in the phase table to its heading in
+  `IMPLEMENTATION_PLAN.md` using `[Title](IMPLEMENTATION_PLAN.md#anchor)` format.
+  GitHub anchor: lowercase, spaces → hyphens, em-dash `—` removed (leaves `--`),
+  special characters (backticks, colons, parentheses, periods, asterisks, slashes) stripped.
+  Example: `## Phase 35 — Live Broker Sandbox Verification` →
+  `[Live Broker Sandbox Verification](IMPLEMENTATION_PLAN.md#phase-35--live-broker-sandbox-verification)`.
 
 Confirm what was changed.
 

@@ -129,6 +129,12 @@ These rules are non-negotiable and always apply on all tools:
 - **Source file edits.** You may write to BACKLOG.md, STATUS.md, and deferral
   comments in source files — but only after explicit user approval. Never write
   to source code files for any other reason.
+- **STATUS.md phase title links.** Every phase Title in the Phase Completion
+  table must link to its heading in `IMPLEMENTATION_PLAN.md` using
+  `[Title](IMPLEMENTATION_PLAN.md#anchor)` format. GitHub anchor: lowercase,
+  spaces → hyphens, em-dash `—` removed (leaves `--`), special characters
+  (backticks, colons, parentheses, periods, asterisks, slashes) stripped.
+  Apply when creating or updating the phase table.
 - **Pack feedback loop.** You own `PACK-FEEDBACK.md` (same permissions as
   BACKLOG.md). Follow METHODOLOGY.md Part 10: observe agent performance,
   workflow issues, prompt template gaps, and user friction continuously;
