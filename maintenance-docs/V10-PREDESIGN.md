@@ -747,24 +747,17 @@ path and which are deferred or out of scope.
 
 *Added by pack chat review, April 2026.*
 
-### Problem
+### Problem (resolved)
 
-The pack repo has no agent files and only one skill (pack-startup).
-Pack development work (v10 design, implementation, review) relies
-entirely on ad-hoc pack chat sessions with no structured agent roles.
-As version updates grow more sophisticated, this limits the quality
-and consistency of pack development.
+The pack repo had no agent files and only one skill (pack-startup).
+Pack development work relied entirely on ad-hoc pack chat sessions
+with no structured agent roles.
 
-The project-template has 16 agents and 30 skills, but they are
-designed for coding projects — they reference ARCHITECTURE.md,
-IMPLEMENTATION_PLAN.md, domain layers, etc. Using them as-is for
-pack work would produce wrong behavior.
+### Resolution
 
-### Recommendation
-
-Create a small set of pack-specific agents before starting the v10
-design pass, so the design work itself benefits from structured
-agent roles. Recommended agents:
+Four pack-specific agents were created as a pre-v10 step, with agent
+files in `.claude/agents/`, `.codex/agents/`, and `.gemini/agents/`
+at the pack repo root:
 
 - **pack-architect** — architecture and design decisions for pack
   changes. Understands pack structure, trinity rule, BD items,
@@ -774,19 +767,16 @@ agent roles. Recommended agents:
   planning.
 - **pack-reviewer** — reviews pack changes before commit. Checks
   trinity rule compliance, stale references, cross-doc consistency.
+- **pack-docs-researcher** — CLI tool documentation verification.
+  Verifies Claude Code, Codex CLI, and Gemini CLI features against
+  official docs before design decisions are committed.
 
-These agents would live in `.claude/agents/` (and `.codex/agents/`,
-`.gemini/agents/`) at the pack repo root — the same pattern projects
-use. They would load applicable skills from `project-template/skills/`
-(planning, architecture-review, documentation, review) for general
-design methodology, supplemented by pack-specific context from
-CLAUDE.md and PACK-CHAT.md.
+Five general-purpose skills were copied from `project-template/skills/`
+to each tool's skill directory (not read from project-template at
+runtime): `planning`, `architecture-review`, `documentation`, `review`,
+`dependency-intake`.
 
-### Timing
-
-This is a pre-v10 step — creating the agents before the design pass
-lets v10 design work use them. It also establishes the pattern for
-ongoing pack maintenance and is a form of eating your own dog food.
-
-Whether this is a BD item, a v9.x minor, or an informal addition
-before v10 planning begins is a decision for the developer.
+PACK-AGENTS.md was updated with the full agent roster, invocation
+commands (sub-agent via Task tool and separate terminal sessions),
+and delegation guidance. PACK-CHAT.md received a delegation
+behavioral rule.

@@ -70,6 +70,16 @@ These rules are non-negotiable and always apply:
   file references to operational key-file lists, do not add pack-maintenance
   workflows to project methodology, and do not let pack operational concerns leak
   into template content. If a boundary feels unclear, ask before crossing it.
+- **Delegate to pack agents when appropriate.** Four pack agents exist for
+  structured work: `pack-architect`, `pack-planner`, `pack-reviewer`, and
+  `pack-docs-researcher`. See PACK-AGENTS.md for their roles, invocation
+  methods, and when to use each. Use sub-agent invocation (Task tool) for
+  focused bounded questions within the current conversation. Recommend a
+  separate terminal session for substantial work (major design, deep research,
+  extended planning). Do not duplicate work an agent is doing — delegate and
+  wait for results. Do not use pack agents for PM-level decisions (BACKLOG
+  entries, CHANGELOG entries, version management) — those remain pack chat
+  responsibilities.
 - **Check CI after every push.** After every commit and push, check the
   `Validate Pack` workflow status. If the GitHub MCP server is configured
   for this repo (see note below), use `list_workflow_runs` to check

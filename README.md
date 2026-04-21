@@ -93,6 +93,12 @@ maintenance-docs/                           Pack maintainer docs (design records
 xcode-companion-templates/                  Machine-level Xcode AI config (per Mac)
 vscode-companion-templates/                 Machine-level VS Code config (per project)
 
+.claude/agents/                             Pack-specific Claude agents (4)
+.codex/agents/                              Pack-specific Codex agents (4)
+.gemini/agents/                             Pack-specific Gemini agents (4)
+.claude/skills/, .codex/skills/,            Pack agent skills (copied from project-template/skills/)
+  .gemini/skills/
+
 scripts/                                    Pack-level scripts
 └── validate-pack.py                        CI structural validation
 
@@ -101,7 +107,7 @@ scripts/                                    Pack-level scripts
 
 QUICKSTART.md                               Quick start guide
 PACK-CHAT.md                                Pack CLI chat operating instructions
-PACK-AGENTS.md                              Pack agent routing
+PACK-AGENTS.md                              Pack agent routing (includes invocation guide)
 BACKLOG.md                                  Pack improvement backlog
 CLAUDE.md                                   Pack repo Claude context (not a template)
 AGENTS.md                                   Pack repo Codex context (not a template)
