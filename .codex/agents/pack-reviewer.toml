@@ -1,3 +1,5 @@
+name = "pack-reviewer"
+description = "Use for reviewing pack changes — trinity rule compliance, stale cross-references, doc consistency, CI alignment."
 model = "gpt-5"
 approval_policy = "on-request"
 sandbox_mode = "read-only"

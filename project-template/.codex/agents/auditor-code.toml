@@ -1,3 +1,5 @@
+name = "auditor-code"
+description = "Audit subagent for language-specific code quality — idioms, dead code, performance anti-patterns, concurrency safety."
 model = "gpt-5"
 approval_policy = "on-request"
 sandbox_mode = "read-only"

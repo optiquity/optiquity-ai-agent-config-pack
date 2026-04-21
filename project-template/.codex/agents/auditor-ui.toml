@@ -1,3 +1,5 @@
+name = "auditor-ui"
+description = "Audit subagent for UI/UX compliance — view thickness, accessibility, incomplete states, platform UI conventions."
 model = "gpt-5"
 approval_policy = "on-request"
 sandbox_mode = "read-only"

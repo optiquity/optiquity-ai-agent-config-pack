@@ -1,3 +1,5 @@
+name = "pack-planner"
+description = "Use for implementation planning — task breakdown, file dependency analysis, commit sequencing, verification strategy."
 model = "gpt-5"
 approval_policy = "on-request"
 sandbox_mode = "read-only"

@@ -327,11 +327,14 @@ flags that tries to do both.
 
 ### OQ-6 — Design approval process itself
 
-Who conducts the approval pass, in what format, and what is the
-approval artifact? This is not defined. The approval pass must
-produce an updated version of this document with Part 2 re-labeled
-from "Candidate Decisions" to "Approved Decisions" and Part 3 either
-resolved or reduced to any remaining known unknowns.
+**Resolved — 2026-04-21 (Step 1, G1 gate).**
+
+The design approval process is defined by
+`maintenance-docs/V10-DESIGN-PROCESS-PLAN.md`. The process defines
+actors, session formats, 13 ordered steps, 10 checkpoint gates with
+developer approval at each, and the approval artifact
+(V10-DESIGN.md with APPROVED status header). V10-PREDESIGN.md
+receives a supersession banner when V10-DESIGN.md is approved.
 
 ### OQ-7 — Manual creation escape hatch (CD-3)
 
@@ -391,8 +394,10 @@ parallel but does not propose an order. Observation:
   final v10 file structure. It cannot be implemented until BD-046
   is settled because init-project.sh needs to know what it copies.
 
-Natural order: BD-045 first, BD-046 second, BD-044 last. Confirm
-or change during design approval.
+Natural order: BD-045 first, BD-046 second, BD-044 last.
+
+**Resolved — 2026-04-21 (Step 1, G1 gate).** Order confirmed:
+BD-045 → BD-046 → BD-044.
 
 ### OQ-11 — Per-agent prompt file format
 
@@ -551,7 +556,15 @@ registration are invisible to the workflow and offers to fix it.
 
 ## Part 6 — Implementation Constraints and Backlog Map
 
-**Migration baseline:** Latest v9.x release only. One path.
+**Scope confirmed — 2026-04-21 (Step 1, G1 gate):**
+- CD-10 confirmed: BD-044 is v10 scope
+- CD-11 confirmed: BD-045 is v10 scope
+- CD-12 confirmed: v10.0 is the target version
+- CD-13 confirmed: latest v9.3 is the only migration baseline (no v9.4; all projects already on v9.3)
+- OQ-6 resolved: design approval process defined by V10-DESIGN-PROCESS-PLAN.md
+- OQ-10 resolved: implementation order is BD-045 → BD-046 → BD-044
+
+**Migration baseline:** v9.3 only. One path.
 
 **Target version:** v10.0.
 

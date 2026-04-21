@@ -1,3 +1,5 @@
+name = "auditor-docs"
+description = "Audit subagent for documentation drift detection — does documentation match the actual code?"
 model = "gpt-5"
 approval_policy = "on-request"
 sandbox_mode = "read-only"

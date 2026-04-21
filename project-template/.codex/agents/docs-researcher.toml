@@ -1,3 +1,5 @@
+name = "docs-researcher"
+description = "Use for checking official framework, package, and tool documentation before correctness-sensitive claims."
 model = "gpt-5"
 approval_policy = "on-request"
 sandbox_mode = "read-only"

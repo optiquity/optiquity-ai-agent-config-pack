@@ -1,3 +1,5 @@
+name = "reviewer"
+description = "Use for review of correctness, regressions, state ownership, concurrency safety, and missing tests."
 model = "gpt-5"
 approval_policy = "on-request"
 sandbox_mode = "read-only"

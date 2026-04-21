@@ -1,3 +1,5 @@
+name = "auditor"
+description = "Use for full-codebase structural audits across multiple quality dimensions. Read-only."
 model = "gpt-5"
 approval_policy = "on-request"
 sandbox_mode = "read-only"
