@@ -39,6 +39,7 @@
 **Part 9** — Token budget analysis requirement.
 **Part 10** — Migration testing matrix dimensions.
 **Part 11** — Pack development agents and skills consideration.
+**Part 12** — Agent report file convention.
 
 ---
 
@@ -793,3 +794,42 @@ PACK-AGENTS.md was updated with the full agent roster, invocation
 commands (sub-agent via Task tool and separate terminal sessions),
 and delegation guidance. PACK-CHAT.md received a delegation
 behavioral rule.
+
+---
+
+## Part 12 — Agent Report File Convention
+
+*Added by pack chat review, April 2026.*
+
+Agent sessions should write their deliverables to a designated report
+file on disk, not only to terminal output. This makes deliverables
+traceable, referenceable by subsequent sessions, and avoids copy-paste
+between sessions.
+
+The convention affects two pack artifacts:
+
+1. **PM-CHAT.md** — a behavioral rule: when generating agent prompts,
+   always include a REPORT FILE path and framing instructions appropriate
+   to the agent's permission mode.
+
+2. **Per-agent prompt templates** — each template includes:
+   - For read-only agents: "This is a read-only session. Do not modify
+     any existing files. The only file you may create is the designated
+     report file below. Write it in markdown only."
+   - For write-capable agents: "Write your deliverable to the designated
+     report file below in markdown, in addition to any files you create
+     or modify as part of your task."
+   - A REPORT FILE: field with the path (PM chat fills in per task).
+   - A closing instruction: "Write your findings to the report file
+     when complete."
+   - A chunking instruction: "If your report exceeds 300 lines, write
+     it in sections — create the file with the first section, then read
+     it back and append subsequent sections."
+
+The PM chat specifies the report file path per task. A project
+convention for report locations (e.g., docs/project/reports/) should
+be established during project kickoff.
+
+This convention was validated during the v10 design process, where
+pack agent sessions wrote deliverables to maintenance-docs/v10-working/
+and each subsequent session read prior deliverables as input.
