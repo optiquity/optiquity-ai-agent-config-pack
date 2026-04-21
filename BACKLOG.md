@@ -898,14 +898,19 @@ Context: Design discussion April 2026. The pack currently has no onboarding
   be clearly documented — when to run it (once per project, from the pack
   directory), how it differs from `bootstrap.sh` (bootstrap runs inside a
   project repeatedly on each machine checkout; init-project.sh runs once from
-  the pack to create or configure a project). This is v9.4.
+  the pack to create or configure a project). Moved to v10 scope — migration
+  automation overlaps with the v10 migration script (BD-046). See
+  maintenance-docs/V10-PREDESIGN.md Candidate Decision 10.
 
 ---
 
 **BD-045 — Champion the capabilities design pattern alongside LSP in architecture guidance**
 Type: TODO(version)
 Status: Open
-Blockers: None
+Blockers:
+  - Design approval pass for V10-PREDESIGN.md required before implementation
+    (BD-046 blocker) — BD-045 touches same context files and skills as
+    BD-046; sequencing must be confirmed during the v10 design approval pass
 Unblocks: None
 File/Symbol: `project-template/CLAUDE.md`, `project-template/AGENTS.md`, `project-template/GEMINI.md`, `project-template/skills/apple-architecture-core/SKILL.md`, `project-template/skills/python-best-practices/SKILL.md`, `project-template/skills/architecture-review/SKILL.md`, `project-template/.claude/agents/auditor-architecture.md`, `project-template/.codex/agents/auditor-architecture.toml`, `project-template/.gemini/agents/auditor-architecture.md`
 
@@ -1002,6 +1007,41 @@ Context: Identified April 2026 via OT project, which implements capability
   violation) rather than reaching for it proactively during design. The pattern
   is language-agnostic — the implementation mechanism varies by language but
   the design intent is consistent across all typed systems.
+
+---
+
+**BD-046 — v10: Custom agent/skill support and prompt template reorganization**
+Type: TODO(version)
+Status: Open
+Blockers:
+  - Design approval pass required — V10-PREDESIGN.md is a discussion
+    capture, not an approved design. All candidate decisions must be
+    reviewed, all open questions resolved, and explicit approval
+    recorded before implementation begins.
+Unblocks: None
+File/Symbol: maintenance-docs/V10-PREDESIGN.md — full design record
+Description: v10 addresses three problems in one major version. First:
+  no structured mechanism exists for projects to add custom agents or
+  skills — manual additions are invisible to the PM chat workflow and
+  destroyed by pack upgrades. Second: PROMPT-TEMPLATES.md is a 765-line
+  monolith with no per-agent organization and no home for custom agent
+  prompts. Third: BD-044 (init-project.sh and QUICKSTART router) and
+  BD-045 (capabilities pattern in architecture guidance) are folded into
+  v10 because they touch the same files as the core v10 work and
+  batching avoids multiple migration passes. Solution summary: x-
+  prefixed custom files in existing tool directories, PM-chat-driven
+  creation and registration workflow, per-agent prompt files in
+  docs/pack/prompts/, automatic x- file preservation in migration
+  scripts, and init-project.sh for new and existing project onboarding.
+  Requires MIGRATION-v9-to-v10.md with automatable migration option.
+  Migration baseline: latest v9.x only.
+Context: Full design discussion captured in V10-PREDESIGN.md including
+  candidate decisions, open questions, touch point inventory, and PM
+  chat workflow outline. V10-PREDESIGN.md must be updated with approved
+  design before any implementation begins. This item should not move
+  to Unblocked until V10-PREDESIGN.md has been through a formal design
+  approval pass and all Part 3 open questions are resolved.
+Resolved: n/a
 
 ---
 
