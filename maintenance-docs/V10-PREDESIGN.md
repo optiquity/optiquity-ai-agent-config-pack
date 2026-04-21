@@ -667,6 +667,40 @@ The V10-DESIGN.md must address all of the following:
   implemented sequentially, the pack must be functional after each
   one — not only after all three are complete.
 
+- **Inline verification at every stage of every process.** Every
+  process — pack development work, automated scripts, and interactive
+  PM chat workflows — must include verification steps after each
+  logical batch of work, not only at the end. This applies at three
+  levels:
+  - **Pack development (v10 implementation itself).** After each batch
+    of file edits (agent files, skills, docs, scripts), verify that
+    cross-references are correct, trinity rule is honored, stale
+    references are caught, and nothing was missed — before moving to
+    the next batch. Agents frequently miss edits on a first pass that
+    are only caught on review; inline verification after each batch
+    is the mechanism for catching these before they compound.
+  - **Automated processes that ship with the pack.** Migration script
+    stages, init-project.sh steps, validate-pack.py CI checks. Each
+    stage verifies its own output before the next stage begins.
+  - **Interactive PM chat workflows.** Procedure 5 custom agent
+    creation, pm-startup detection scan, phase-gate checks. Each step
+    verifies before proceeding.
+  Verification must include a blast radius larger than the immediate
+  change set. Do not verify only the files that were edited — also
+  verify files that reference, depend on, or are affected by the
+  changed files. Rare cross-reference breakages, stale mentions in
+  docs not in the change set, and downstream effects in files the
+  author did not consider are the cases this catches. A grep sweep
+  for modified file names, section headings, and conventions across
+  the full repo is the minimum verification scope at each stage.
+  The design must specify what is verified, when it runs, and what
+  happens on failure (stop, warn, or report). This is distinct from
+  incremental testability: incremental testability says "each stage
+  leaves the pack working"; inline verification says "each stage
+  actively checks that the work it just did is correct before
+  proceeding." Step 6's migration design (seven stages with post-stage
+  assertions) is the reference pattern.
+
 ---
 
 ## Part 8 — V9 Lessons Learned
