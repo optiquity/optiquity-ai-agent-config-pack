@@ -297,9 +297,9 @@ chat's single lookup target for "what does this agent need."
 agents without custom skills, or vice versa. Both headers land immediately
 after `## Full skill inventory`. The sections are **project-owned**:
 content is preserved across pack upgrades by the migration splice rule
-(Part 6 §4).
+(Part 6 §6.6).
 
-Column specs are given in Part 5 §5 (exact headers, columns, and example
+Column specs are given in Part 5 §5.2 (exact headers, columns, and example
 rows). A project with no customizations carries the headers with the
 placeholder text `*No custom X defined for this project.*`.
 
@@ -454,7 +454,7 @@ skills.
 **Rationale.** Trinity-file ordering and commit sequencing must not leave
 BD-045's LSP-adjacent edits half-present alongside BD-046's phase-routing
 and document-location edits. Single-version delivery allows coordinated
-commits (Part 8 §1.4).
+commits (Part 8 §8.4).
 
 **Alternatives rejected.**
 - *Ship BD-045 in v9.4 as a minor.* Rejected per Step 1 G1 confirmation —
@@ -466,7 +466,7 @@ commits (Part 8 §1.4).
 init-project + custom-file mechanism) warrants a major version.
 `supporting-docs/MIGRATION-v9-to-v10.md` ships with v10.0; the automatable
 option is `scripts/migrate-v9-to-v10.sh` with a paste-ready AI CLI prompt
-pattern (Part 6 §9) matching the MIGRATION-v8-to-v9 convention.
+pattern (Part 6 §6.9) matching the MIGRATION-v8-to-v9 convention.
 
 **Rationale.** File-structure changes (prompt reorganization, new
 `docs/pack/prompts/` directory, new `scripts/lib/` directory, new
@@ -480,7 +480,7 @@ file diff.
 ### AD-13 — Latest v9.3 is the only migration baseline
 
 **Decision.** `scripts/migrate-v9-to-v10.sh` supports exactly one source
-baseline: v9.3 (git tag `v9.3`). Pre-flight invariants (Part 6 §2.4)
+baseline: v9.3 (git tag `v9.3`). Pre-flight invariants (Part 6 §6.3)
 reject any other state. If a project is on v9.0/v9.1/v9.2, the developer
 upgrades to v9.3 first using existing minor-version refresh; older majors
 (v8.x and earlier) apply `MIGRATION-v8-to-v9.md` first.
@@ -1022,7 +1022,7 @@ where they apply. The PM chat's prompt-generation workflow fills in the
 **PM-CHAT.md behavioral rule.** When generating any agent prompt, the PM
 chat always includes a REPORT FILE path and the framing appropriate to
 the agent's permission mode. This rule is added as a `## Behavioral rules`
-bullet in PM-CHAT.md (Part 5 §7).
+bullet in PM-CHAT.md (Part 5 §5.10).
 
 ### 4.7 OQ-4 — pm-startup behavior after reorg
 
