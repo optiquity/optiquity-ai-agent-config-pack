@@ -146,7 +146,7 @@ Concrete forms:
 
 `<name>` matches `^[a-z][a-z0-9-]*$`. The `x-` namespace is **reserved for
 project customizations**; the pack itself never ships an `x-` file. A new
-pack CI check (Part 10 §3.1 V-CI-05/06) enforces this.
+pack CI check (Part 10 §10.1 V-CI-05/06) enforces this.
 
 **Rationale.** Custom files must coexist with pack files in each CLI's
 designated directory (the tools only scan their own directory — there is no
@@ -315,7 +315,7 @@ available" questions uniformly.
 
 **Decision.** `supporting-docs/PROMPT-TEMPLATES.md` is replaced by a
 directory at `project-template/docs/pack/prompts/` containing ten per-agent
-prompt files plus one authoring-guidance file. The file list (Part 4 §2.3
+prompt files plus one authoring-guidance file. The file list (Part 4 §4.2
 for full detail):
 
 ```
@@ -340,10 +340,10 @@ docs/pack/prompts/
 
 **Two corrections to the CD-8 proposal.**
 1. Mid-Phase Architect (T4b) is reassigned from `coder.md` to `architect.md`
-   — it is an architect-agent prompt (Part 4 §2.1).
+   — it is an architect-agent prompt (Part 4 §4.2).
 2. `architect.md`, `grpc-schema.md`, and `repo-ops.md` receive zero-variant
    placeholder files to preserve the "one file per agent" rule that AD-4's
-   creation workflow and AD-5's migration both depend on (Part 4 §2.2).
+   creation workflow and AD-5's migration both depend on (Part 4 §4.2).
 
 **One rename incorporated from Step 11 assembly notes.** The pointer file
 at the top of the directory is named `PROMPT-AUTHORING.md`, not `README.md`.
@@ -354,7 +354,7 @@ distinguishes it from the per-agent lowercase files; the filename is
 descriptive where a generic `README.md` would not be.
 
 **No orphaned templates.** All 14 templates in the v9.3 monolith have
-destinations in the split (Part 4 §1.2); T10–T12 are already marked
+destinations in the split (Part 4 §4.1); T10–T12 are already marked
 superseded in the monolith and remain so as a trailing note in
 `auditor.md`. After redistribution, zero content remains in the monolith —
 deletion is correct.
@@ -429,7 +429,7 @@ condition all consult:
 6. `.gemini/skills/*/SKILL.md`
 7. `docs/pack/prompts/*.md`
 
-One list shared by all three mechanisms; maintained at Part 5 §8.2.
+One list shared by all three mechanisms; maintained at Part 5 §5.8.
 
 **Rationale.** Batching BD-044 with BD-046 migration work avoids two
 separate migration passes through the same files and consolidates the
@@ -1269,7 +1269,7 @@ is unaffected by v10 and unrelated to custom agents.
 **Decision.** The `x-` filename namespace is **reserved for project
 customizations**. The pack itself ships no agent, skill, or prompt file
 whose name begins with `x-` in any of its template directories.
-validate-pack.py Check 8 (§5.8 and Part 10 §3.1 V-CI-05) enforces.
+validate-pack.py Check 8 (§5.8 and Part 10 §10.1 V-CI-05) enforces.
 
 Corollary for the hypothetical collisions named in OQ-8:
 
@@ -1506,7 +1506,7 @@ Four new checks added to the pack CI:
 - **Check 8 — reserved `x-` prefix.** For each of the seven pack
   template scan locations, fail if any filename or directory begins with
   `x-`.
-- **Check 9 — BD-044 structure.** Detailed in Part 7 §10.
+- **Check 9 — BD-044 structure.** Detailed in Part 7 §7.13.
 
 These checks apply to the **pack repo only**; downstream projects with
 `x-` files are correct.
@@ -1559,7 +1559,7 @@ only the pack-roster set and copying the new pack template; it never runs
 The v10 pack roster comes from three authoritative sources at migration
 time:
 - **Agents:** `docs/pack/PM-CHAT.md` `## Pack agent roster` (Part 5 §5.3).
-- **Prompts:** Part 4 §2.3 file list (ten canonical files +
+- **Prompts:** Part 4 §4.2 file list (ten canonical files +
   `PROMPT-AUTHORING.md`).
 - **Skills:** enumerated from `ls "$PACK/project-template/skills/"` at
   run time.
@@ -1906,7 +1906,7 @@ same prompt with the MCP filesystem server enabled.
 - Script: `scripts/migrate-v9-to-v10.sh` (pack repo, not a project file).
 - Merge helpers: `scripts/merge-platform-skills.py`,
   `scripts/merge-trinity.py` (pack repo).
-- Shared detection library: `scripts/lib/detect.sh` (Part 7 §10).
+- Shared detection library: `scripts/lib/detect.sh` (Part 7 §7.2).
 
 ### 6.11 Integration with other BDs
 
@@ -2178,7 +2178,7 @@ S7, S8, S9, S10.
 | **S3** | Copy `.codex/config.toml`, `.claude/settings.json`, `.mcp.json.example` |
 | **S4** | Distribute skills — for each `$PACK/project-template/skills/<name>/`, copy `SKILL.md` to `.claude/skills/<name>/SKILL.md`, `.codex/skills/<name>/SKILL.md`, `.gemini/skills/<name>/SKILL.md` |
 | **S5** | Copy `scripts/` and `agent-run.sh`; apply `chmod +x` |
-| **S6** | Copy `docs/pack/` content: `METHODOLOGY.md`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md`, `prompts/` (entire directory per Part 4 §2.3 — 10 files + `PROMPT-AUTHORING.md`) |
+| **S6** | Copy `docs/pack/` content: `METHODOLOGY.md`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md`, `prompts/` (entire directory per Part 4 §4.2 — 10 files + `PROMPT-AUTHORING.md`) |
 | **S7** | Copy `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` from pack template. (Existing-project path never reaches here if AI config present — stop fires at S0) |
 | **S8** | `.gitignore` merge — append pack lines, dedupe, preserve project order. Pack additions go under header comment `# --- AI Agent Config Pack additions (v10.0) ---` |
 | **S9** | Conditional removal — per detected language, remove pack files that don't apply (Swift-only removes `pyproject.toml`, `pyrightconfig.json`, `server/`; etc.). For `new-empty` / `new-bare`, nothing detected → copy everything (v9 baseline behavior) |
@@ -3133,7 +3133,7 @@ Applied in:
   tool-emitted hook, because Codex emits no file-edit hook (Step 2
   Contradiction C-3), Claude Code has them, Gemini's hooks not
   deeply verified. Three asymmetric enforcement layers rejected.
-- **Part 1 AD-1 Codex hyphen rule.** Codex `name = "x-<name>"` accepted
+- **Part 2 AD-1 Codex hyphen rule.** Codex `name = "x-<name>"` accepted
   per Step 2 smoke test resolving Contradiction C-2.
 - **Part 2 AD-1** (Codex hyphen rule from Step 2 smoke test), **Part 5
   §5.4** (OQ-2 per Step 2 C-1), **Part 5 §5.8** (detection at PM-chat
