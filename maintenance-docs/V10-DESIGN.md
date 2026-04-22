@@ -81,6 +81,43 @@ same migration infrastructure as Problems 1 and 2, and BD-045 touches the
 same context files and skills that custom agent support also updates.
 Batching avoids multiple migration passes through the same files.
 
+### v9.x compatibility
+
+v10 preserves all v9.x functionality unless explicitly noted otherwise.
+The following v9.x capabilities are preserved:
+
+- **Developer choice of PM chat tool.** Claude Code CLI, Claude Desktop
+  app, Codex CLI, and Gemini CLI all remain supported for PM chat and
+  agent work (Part 5 §5.1, Part 9 §9.6).
+- **Tool interchangeability.** Developers can use Claude, Codex, and
+  Gemini interchangeably for any task per the Phase routing table.
+  Custom agents extend the same routing table (Part 5 §5.6).
+- **PACK-FEEDBACK.md mechanism.** The PM chat observes agent performance,
+  records feedback, and delivers to the Pack Chat at workflow boundaries
+  — unchanged (Part 7 §7.8 skill-gap tracking uses the same mechanism).
+- **All v9.x agent roles (16).** The pack roster (Part 5 §5.3) enumerates
+  all 16 v9.3 agents; none are removed.
+- **All v9.x skills (30).** Skill directories are updated in place; no
+  skill is removed.
+- **Desktop Commander / filesystem MCP.** Recommended for Claude Desktop
+  PM chat (Part 4 §4.1). The pack does not require it — Project knowledge
+  upload remains viable without it.
+- **mcp-local-rag for large-file RAG.** METHODOLOGY.md RAG freshness
+  check is retained (Part 4 §4.7). Only the PROMPT-TEMPLATES.md RAG
+  ingest is dropped (the monolith no longer exists).
+
+**Known per-tool limitations (documented, not silent):**
+
+- Codex CLI hooks only fire for the Bash tool — file-edit hooks do not
+  exist (Step 2 C-3). Detection of manually added files relies on PM
+  chat startup and phase-gate scans, not hooks.
+- Claude Desktop without filesystem MCP requires manual file upload for
+  Project knowledge; the MCP is recommended but not required.
+- Codex skill loading with `x-` prefix is not yet verified from official
+  docs (Part 13 §13.1 — deferred, with empirical test planned).
+- Gemini CLI hook model was not fully verified in the v10 design pass
+  (Part 13 §13.2 — deferred, non-blocking).
+
 ---
 
 ## Part 2 — Approved Decisions
@@ -102,7 +139,7 @@ Concrete forms:
 | Surface | Custom file pattern | Identifier value |
 |---|---|---|
 | Claude agent | `.claude/agents/x-<name>.md` | YAML `name: x-<name>` |
-| Codex agent | `.codex/agents/x-<name>.toml` | TOML `name = "x-<name>"` |
+| Codex agent | `.codex/agents/x-<name>.toml` | TOML `name = "x-<name>"` + `description = "..."` (both required; Codex silently ignores agents missing either field) |
 | Gemini agent | `.gemini/agents/x-<name>.md` | YAML `name: x-<name>` |
 | Skill (each tool) | `{.claude,.codex,.gemini}/skills/x-<name>/SKILL.md` | YAML `name: x-<name>` |
 | Prompt | `docs/pack/prompts/x-<name>.md` | YAML `agent: x-<name>` |
@@ -133,11 +170,18 @@ agents use the same stem across tools).
 
 **Decision.** "Identical structure" means identical to each tool's pack-file
 format in that tool, not literally identical across tools. Each tool has its
-own required structure (Claude YAML+markdown, Codex TOML with
-`developer_instructions`, Gemini YAML+markdown). The PM chat's creation
-workflow produces the tool-native form for each; custom files pass the same
-per-tool structural checks that pack files do (the only thing keeping them
-out of the pack roster is the `x-` filename).
+own required structure:
+
+- **Claude:** YAML frontmatter (`name`, `description`, `tools`) + markdown body.
+- **Codex:** TOML with `name`, `description` (both required — Codex silently
+  ignores agents missing either), `model`, `approval_policy`, `sandbox_mode`,
+  `developer_instructions` (triple-quoted string).
+- **Gemini:** YAML frontmatter (`name`, `description`, `model`, `temperature`,
+  `max_turns`) + markdown body.
+
+The PM chat's creation workflow produces the tool-native form for each;
+custom files pass the same per-tool structural checks that pack files do (the
+only thing keeping them out of the pack roster is the `x-` filename).
 
 **Rationale.** Each tool loads the file natively from disk. A "pack canonical"
 translation layer on top of three tool files would add a step the tools
@@ -193,7 +237,7 @@ Per custom-agent request, the PM chat produces six or nine artifacts (three
 agent files, prompt file, PLATFORM-SKILLS.md row, trinity routing-table
 rows; plus three SKILL.md files if a custom skill is involved). The PM chat
 does **not** edit `.codex/config.toml` — no per-agent registration entry
-exists in documented Codex (AD-8 below).
+exists in documented Codex (Part 5 §5.4 resolves OQ-2).
 
 **Rationale.** The three paths cover the realistic starting states a
 developer arrives with. Four approval gates preserve incremental testability
@@ -459,11 +503,16 @@ decisions.
 
 ### 3.1 Design principles
 
-- **LSP and capabilities are independent required practices.** The wording
-  uses BD-045's exact formulation: "both required coding practices, applied
-  independently. Neither is a prerequisite for the other, and neither is
-  the motivation for the other … Each stands on its own merits and is
-  required regardless of whether the other is in use."
+- **LSP is required; capabilities are a recommended best practice.** LSP
+  is a required coding practice. The capabilities pattern is a recommended
+  best practice — championed proactively during architecture, not mandated.
+  If the project's architecture doesn't support it naturally or the developer
+  explicitly opts out, that is valid. Neither is a prerequisite for the other,
+  and neither is the motivation for the other. They work well together when
+  both are present, but absence of capabilities is a recommendation, not a
+  defect. The BD-045 BACKLOG entry's original "required" language is
+  superseded by this design decision and will be updated when BD-045 is
+  resolved at v10.0 ship.
 - **Two complementary forms.** Value-based (bitmask / flag set / enum set)
   and interface-based (small focused interface adopted only when
   supported) are always named as a pair.
@@ -516,16 +565,15 @@ varies (compile-time or runtime conformance checks, structural
 subtyping, flag values, enum sets, etc.), but the design intent is
 consistent across any typed system.
 
-**Relationship to LSP.** LSP and the capabilities pattern are both
-required coding practices, applied independently. LSP is a correctness
-constraint on interface design — every method declared in an interface
-must have a meaningful implementation in every conforming type. The
-capabilities pattern is an architectural tool for making supported
-behaviors explicit and queryable. Neither is a prerequisite for the
-other, and neither is the motivation for the other. They work well
-together when both are present, but this is a benefit of using both —
-not a dependency between them. Each stands on its own merits and is
-required regardless of whether the other is in use.
+**Relationship to LSP.** LSP is a required coding practice — every
+method declared in an interface must have a meaningful implementation
+in every conforming type. The capabilities pattern is a recommended
+best practice — an architectural tool for making supported behaviors
+explicit and queryable. Neither is a prerequisite for the other, and
+neither is the motivation for the other. They work well together when
+both are present, but this is a benefit of using both — not a
+dependency between them. If the capabilities pattern does not fit the
+project's architecture or the developer opts out, that is valid.
 ```
 
 #### Anti-pattern bullet (identical in all three files)
@@ -557,8 +605,8 @@ rules 11–23 shift to 15–27.
 11. Make what a type supports explicit and queryable. Callers do not
 discover unsupported operations through `fatalError`, `throw`, or
 `switch` on concrete types. Reach for this pattern proactively during
-architecture — not only when fixing an LSP violation. Capabilities and
-LSP are independent required practices; apply each on its own merits.
+architecture — not only when fixing an LSP violation. LSP is required; the capabilities pattern is a recommended best practice.
+Apply each on its own merits.
 
 12. **Value-based form in Swift.** Expose supported operations as an
 `OptionSet` (bitmask), a `Set<Enum>` of a focused operation enum, or a
@@ -652,8 +700,8 @@ Substitute the five `<LANGUAGE-SPECIFIC>` slots and renumber.
 N1. Make what a type supports explicit and queryable. Callers do not
 discover unsupported operations through exceptions, silent no-ops, or
 branching on concrete types. Reach for this pattern proactively during
-architecture — not only when fixing an LSP violation. Capabilities and
-LSP are independent required practices; apply each on its own merits.
+architecture — not only when fixing an LSP violation. LSP is required; the capabilities pattern is a recommended best practice.
+Apply each on its own merits.
 
 N2. **Value-based form in <LANGUAGE>.** <LANGUAGE-SPECIFIC: name the
 idiomatic mechanism for a flag-set, bitmask, or enum set in this
@@ -690,8 +738,9 @@ rules 14–15 shift to 18–19.
 
 14. Verify the code reaches for the capabilities pattern proactively —
 not only when fixing an LSP violation. Capabilities and LSP are
-independent required practices; both must be present where each
-applies. A codebase that applies both avoids a wide class of runtime
+independent practices — LSP is required, capabilities are recommended.
+Both should be present where each applies; absence of capabilities is
+a finding, not a defect. A codebase that applies both avoids a wide class of runtime
 surprises — callers know what an abstraction supports before invoking
 it, and every declared interface method is meaningfully implemented.
 
@@ -725,7 +774,7 @@ concrete type.
 new scope bullet in the Scope list immediately after the existing
 `LSP compliance` bullet and before the `Observability infrastructure`
 bullet. Capabilities and LSP stay as two separate bullets — BD-045's
-"independent required practices" language — so a finding from one
+"independent practices" language — so a finding from one
 category is not miscategorized as the other.
 
 **Claude markdown file (`project-template/.claude/agents/auditor-architecture.md`) and Gemini markdown file (`project-template/.gemini/agents/auditor-architecture.md`) — identical text:**
@@ -738,8 +787,8 @@ category is not miscategorized as the other.
   capability gate rather than a legitimate LSP-compliant
   implementation; caller code that interrogates the concrete type
   behind an abstract reference instead of querying a capability.
-  Capabilities and LSP are independent required practices — file
-  capability findings under this bullet, not under LSP.
+  LSP is required; capabilities are recommended — file capability
+  findings under this bullet, not under LSP.
 ```
 
 **Codex TOML file (`project-template/.codex/agents/auditor-architecture.toml`).** Insert inside the
@@ -748,7 +797,7 @@ methodology rule 15):` list, plain-bullet style without markdown bold
 (matches the surrounding block's existing style):
 
 ```
-- Capabilities pattern adherence — abstractions whose conforming types have variable supported operation sets but expose no capability mechanism (value-based flag set or interface-based query); "not supported" throws or silent no-ops that indicate a missing capability gate rather than a legitimate LSP-compliant implementation; caller code that interrogates the concrete type behind an abstract reference instead of querying a capability. Capabilities and LSP are independent required practices — file capability findings under this bullet, not under LSP.
+- Capabilities pattern adherence — abstractions whose conforming types have variable supported operation sets but expose no capability mechanism (value-based flag set or interface-based query); "not supported" throws or silent no-ops that indicate a missing capability gate rather than a legitimate LSP-compliant implementation; caller code that interrogates the concrete type behind an abstract reference instead of querying a capability. LSP is required; capabilities are recommended — file capability findings under this bullet, not under LSP.
 ```
 
 The Codex formatting deviation (no markdown bold, single-paragraph inside
@@ -768,12 +817,13 @@ No other tool-specific deviation is required or proposed.
 
 ### 3.9 LSP-vs-capabilities relationship — exact language
 
-Wherever the drafts above state the relationship between LSP and
-capabilities, the wording uses BD-045's formulation verbatim or its
-short-form paraphrase ("Capabilities and LSP are independent required
-practices"). The formulation is never softened. The pattern is never
-presented as an LSP escape hatch. In every location it is a first-class
-proactive design tool.
+Wherever the drafts above state the relationship, LSP remains required.
+The capabilities pattern remains recommended — not required — and is
+always presented as a first-class proactive design tool rather than an
+escape hatch. The recommended-not-required framing is never softened to
+"required," and never exaggerated to "mandatory." Absence of
+capabilities is a recommendation/finding, not a defect. The developer
+may opt out if the architecture does not support it naturally.
 
 ### 3.10 BD-045 integration with BD-046 trinity edits
 
@@ -1066,7 +1116,7 @@ produces:
 
 | Gate | Artifact under review | Developer decision |
 |---|---|---|
-| G-design | Clarifying-question answers + draft agent description (purpose, scope, read-only/write, variants, custom-skill dependency) | Shape is right |
+| G-design | Clarifying-question answers + draft agent description (purpose, scope, read-only/write, variants, custom-skill dependency, PLATFORM-SKILLS.md dimension) | Shape is right |
 | G-files | Drafts of all three agent files + prompt file + optional SKILL.md set, side-by-side | Content is right |
 | G-registration | PLATFORM-SKILLS.md row(s); trinity routing-table rows; skill load lists | Registration surfaces are right |
 | G-commit | `git add` list; proposed commit message `feat: vN — add custom agent x-<name>` | Commit proceeds |
@@ -1104,9 +1154,9 @@ equivalent to pack agents for skill loading and routing, with the single
 difference that they are project-owned and preserved across pack
 upgrades.
 
-| Agent | Purpose | Phase routed to | Tier 1 skills | Tier 2 skills | Read/write mode |
-|---|---|---|---|---|---|
-| `x-deployer` | Release packaging and staging deploy | Repo operations | repo-ops | deployment-apple, deployment-python | write |
+| Agent | Purpose | Dimension | Phase routed to | Tier 1 skills | Tier 2 skills | Read/write mode |
+|---|---|---|---|---|---|---|
+| `x-deployer` | Release packaging and staging deploy | Component Roles | Repo operations | repo-ops | deployment-apple, deployment-python | write |
 
 *This row is illustrative. The PM chat replaces it with real entries during
 Procedure 5. If a project has no custom agents, the section body is
@@ -1114,7 +1164,9 @@ Procedure 5. If a project has no custom agents, the section body is
 ```
 
 Column semantics: Agent stem (must match `^x-[a-z][a-z0-9-]*$`); Purpose
-(one sentence); Phase routed to (matches existing Phase routing column);
+(one sentence); Dimension (which PLATFORM-SKILLS.md dimension this agent
+extends — Platform Targets, Languages, Component Roles, or Communication
+Protocols); Phase routed to (matches existing Phase routing column);
 Tier 1 skills (comma list from Tier 1 inventory); Tier 2 skills (Tier 2
 inventory + `x-` custom skills); Read/write mode (must match the agent
 file's sandbox/tools configuration).
@@ -1129,16 +1181,18 @@ All entries in this section begin with `x-`. Loaded by agents via the
 same instruction block as pack skills — see "Step 3 — Generate the
 prompt" above.
 
-| Skill | Description | Loaded by |
-|---|---|---|
-| `x-brokerage-api` | OT broker-adapter patterns, capability masks, idempotency | reviewer, auditor-code, x-deployer |
+| Skill | Description | Dimension | Loaded by |
+|---|---|---|---|
+| `x-brokerage-api` | OT broker-adapter patterns, capability masks, idempotency | Communication Protocols | reviewer, auditor-code, x-deployer |
 
 *This row is illustrative. The PM chat replaces it with real entries during
 Procedure 5. If a project has no custom skills, the section body is
 `*No custom skills defined for this project.*`.*
 ```
 
-Column semantics: Skill stem; Description (one sentence); Loaded by
+Column semantics: Skill stem; Description (one sentence); Dimension
+(which PLATFORM-SKILLS.md dimension this skill extends — Platform Targets,
+Languages, Component Roles, or Communication Protocols); Loaded by
 (comma list of pack agents by stem or custom agents by `x-<name>`; must
 match PM-CHAT.md pack roster or `## Custom agents` rows).
 
@@ -1267,11 +1321,12 @@ Triggered when the developer asks for a custom agent.
 1. **Pre-check (G-design).** Verify no existing files for the proposed
    name (`.claude/agents/x-<name>.md`, Codex, Gemini, prompt). If any
    exist, route to Procedure 5.3 (completing a partial registration).
-2. **Clarifying questions.** Purpose; primary phase served; read-only or
-   write; Bash/Web/MCP tool requirements; number of prompt variants;
-   existing pack skills loaded vs. new custom skill; which pack agent
-   the PM chat would have routed to absent this custom (for the routing-
-   table row).
+2. **Clarifying questions.** Purpose; which PLATFORM-SKILLS.md dimension
+   this agent extends (Platform Targets, Languages, Component Roles, or
+   Communication Protocols); primary phase served; read-only or write;
+   Bash/Web/MCP tool requirements; number of prompt variants; existing
+   pack skills loaded vs. new custom skill; which pack agent the PM chat
+   would have routed to absent this custom (for the routing-table row).
 3. **Drafts (G-files).** PM chat drafts all four files (Claude, Codex,
    Gemini, prompt). Presents side-by-side; iterate until approved.
 4. **Registration drafts (G-registration).** PLATFORM-SKILLS.md
@@ -1288,7 +1343,9 @@ project-specific skill and no custom agent creation is in flight.
 
 1. Pre-check: no `x-<name>` skill directory exists in any of the three
    tool skills directories.
-2. Clarifying questions: purpose; which agents load it; `allowed-tools`.
+2. Clarifying questions: purpose; which PLATFORM-SKILLS.md dimension this
+   skill extends (Platform Targets, Languages, Component Roles, or
+   Communication Protocols); which agents load it; `allowed-tools`.
 3. Drafts (G-files): three SKILL.md files with identical frontmatter and
    body across the three tool directories.
 4. Registration drafts (G-registration): PLATFORM-SKILLS.md
@@ -1399,7 +1456,7 @@ For `x-<name>` agent to be Registered, **all** of:
 1. `.claude/agents/x-<name>.md` exists with valid YAML frontmatter
    (`name: x-<name>`).
 2. `.codex/agents/x-<name>.toml` exists with valid TOML
-   (`name = "x-<name>"`).
+   (`name = "x-<name>"` and non-empty `description`; both required).
 3. `.gemini/agents/x-<name>.md` exists with valid YAML frontmatter.
 4. `docs/pack/prompts/x-<name>.md` exists and passes Part 4 §4.5
    validation.
@@ -1754,7 +1811,7 @@ the guide in the same patch.
 
 ### 6.8 Migration stages (incremental testability contract)
 
-The migration is one logical operation decomposing into seven stages.
+The migration is one logical operation decomposing into eight stages (S0–S7).
 Each stage writes sentinel `.pack-migration-backup/v9.3-to-v10.0/stage-S<N>.done`
 on completion; a resumed migration reads sentinels and skips completed
 stages. Each stage leaves the project in a valid state with post-stage
@@ -2109,7 +2166,7 @@ Proceed? [y/N]
 
 ### 7.6 Paths — new-project and existing-project
 
-Both paths share the same 10 stages (S0–S10). Behavioral differences at
+Both paths share the same 11 stages (S0–S10). Behavioral differences at
 S7, S8, S9, S10.
 
 | Stage | Operation |
@@ -2552,7 +2609,7 @@ entry, row 70), resolved BACKLOG items (BD-027, BD-028, BD-029, BD-038).
 | # | File | Change | BD | Actor | Trinity | Source |
 |---|---|---|---|---|---|---|
 | 44 | `supporting-docs/MIGRATION-v9-to-v10.md` | New guide; 15 sections (Part 6 §6.9). | BD-046 | pack chat | — | Part 6 §6.9 |
-| 45 | `scripts/migrate-v9-to-v10.sh` | New migration script; seven stages S0–S7 (Part 6 §6.8); sources `scripts/lib/detect.sh`. | BD-046 | pack chat | — | Part 6 §6.8 |
+| 45 | `scripts/migrate-v9-to-v10.sh` | New migration script; eight stages S0–S7 (Part 6 §6.8); sources `scripts/lib/detect.sh`. | BD-046 | pack chat | — | Part 6 §6.8 |
 | 46 | `scripts/merge-platform-skills.py` | New helper; positional splice at first `## Custom agents` or `## Custom skills` heading (Part 6 §6.6). | BD-046 | pack chat | — | Part 6 §6.6 |
 | 47 | `scripts/merge-trinity.py` | New helper; two splices per trinity file (`### Custom agents` sub-section + `**Active skills:**` line) (Part 6 §6.6). | BD-046 | pack chat | — | Part 6 §6.6 |
 | 48 | `supporting-docs/METHODOLOGY.md` | Add Procedure 5-R (reconciliation) alongside Procedure 5 (Part 6 §6.5). **Combine with rows 30 and 43.** | BD-046 | pack chat | — | Part 6 §6.5 |
@@ -2561,7 +2618,7 @@ entry, row 70), resolved BACKLOG items (BD-027, BD-028, BD-029, BD-038).
 
 | # | File | Change | BD | Actor | Trinity | Source |
 |---|---|---|---|---|---|---|
-| 49 | `scripts/init-project.sh` | New. Detection + preview-and-confirm + 10 stages S0–S10 + inline verification (Part 7 §7.6–7.7). Pack-repo `scripts/`. | BD-044 | pack chat | — | Part 7 |
+| 49 | `scripts/init-project.sh` | New. Detection + preview-and-confirm + 11 stages S0–S10 + inline verification (Part 7 §7.6–7.7). Pack-repo `scripts/`. | BD-044 | pack chat | — | Part 7 |
 | 50 | `scripts/lib/` | New directory in pack-repo `scripts/`. | BD-044 | pack chat | — | Part 7 §7.2 |
 | 51 | `scripts/lib/detect.sh` | New shared detection library (functions per Part 7 §7.2). | BD-044 | pack chat | — | Part 7 §7.2 |
 | 52 | `supporting-docs/SETUP-NEW.md` | New. ~300–400 lines; section list per Part 7 §7.10. | BD-044 | pack chat | — | Part 7 §7.10 |
@@ -3056,7 +3113,7 @@ Applied in:
   placement.** Each init-project operation placed at one lifecycle
   stage; skill-gap logging lives in the PM chat because shell has no
   project context.
-- **Part 5 §3.2 single-path rationale for custom-file creation.** Two
+- **Part 2 AD-3 single-path rationale for custom-file creation.** Two
   documented paths (chat-driven and manual procedure) rejected
   explicitly as the L1 pattern.
 
@@ -3077,8 +3134,9 @@ Applied in:
   deeply verified. Three asymmetric enforcement layers rejected.
 - **Part 1 AD-1 Codex hyphen rule.** Codex `name = "x-<name>"` accepted
   per Step 2 smoke test resolving Contradiction C-2.
-- **Part 7 §12.2** (via Part 7's reference to Step 2 facts). All
-  CLI-adjacent claims in init-project.sh design cite Step 2.
+- **Part 2 AD-1** (Codex hyphen rule from Step 2 smoke test), **Part 5
+  §5.4** (OQ-2 per Step 2 C-1), **Part 5 §5.8** (detection at PM-chat
+  layer per Step 2 C-3). All CLI-adjacent claims cite Step 2 facts.
 
 ### L3 — GEMINI.md trinity violation
 
@@ -3291,7 +3349,7 @@ Every other CD and OQ from V10-PREDESIGN is resolved in this document:
 - CD-6 → AD-6 + Part 5 §5.1
 - CD-7 → AD-7 + Part 5 §5.2
 - CD-8 → AD-8 + Part 4
-- CD-9 → AD-9 + Part 5 §5.1 row 4, §6.2
+- CD-9 → AD-9 + Part 5 §5.1 row 4, §5.2
 - CD-10 → AD-10 + Part 7
 - CD-11 → AD-11 + Part 3
 - CD-12 → AD-12 + Part 6
@@ -3321,14 +3379,14 @@ least one V10-DESIGN.md section.
 | Design Requirement | V10-DESIGN sections |
 |---|---|
 | **Automated and manual workflows** | Part 5 §5.1 (PM chat creation workflow + escape hatch); Part 7 §7.6 (init-project.sh + developer preview/confirm); Part 6 §6.9 (migration automated option + manual guide) |
-| **Resource considerations** | Part 4 §4.1 (token budget analysis); Part 5 §5.12 and §17.5 (detection scan cost; PLATFORM-SKILLS/PM-CHAT sizing); Part 7 §13.7 (init-project.sh runtime) |
+| **Resource considerations** | Part 4 §4.1 (token budget analysis); Part 5 §5.8 (detection scan cost is negligible — ~170 directory entries, pure string matching) |
 | **Maintenance considerations** | Part 5 §5.3 (single source of truth for pack roster); Part 6 §6.6 (positional splice rules preserve project-owned regions on upgrade); Part 8 (touch-point inventory as the maintenance contract); Part 7 §7.13 (no hardcoded file lists in init-project.sh) |
-| **Document access patterns** | Part 4 §4.7 (prompts read on-demand at generation time, not startup); Part 5 §5.10 (PM-CHAT.md file-access table updates); Part 7 §13.2 (QUICKSTART.md as router, not procedure) |
+| **Document access patterns** | Part 4 §4.7 (prompts read on-demand at generation time, not startup); Part 5 §5.10 (PM-CHAT.md file-access table updates); Part 7 §7.9 (QUICKSTART.md as router, not procedure) |
 | **Best use of RAG** | Part 4 §4.1 RAG analysis (monolith RAG dropped; per-agent direct read on most surfaces; filesystem MCP recommended for Claude Desktop); Part 6 §6.9 (automatable prompt works on all four surfaces) |
-| **PM chat tool flexibility** | Part 5 §5.1 (workflow on all four PM chat surfaces); Part 6 §6.9 (migration works on CLI and Desktop with MCP); Part 7 §13.3 (init-project.sh end-of-run prompt works on all four surfaces); Part 9 §9.6 (matrix has CP cell per PM chat tool) |
+| **PM chat tool flexibility** | Part 5 §5.1 (workflow on all four PM chat surfaces); Part 6 §6.9 (migration works on CLI and Desktop with MCP); Part 7 §7.8 (init-project.sh end-of-run prompt works on all four surfaces); Part 9 §9.6 (matrix has CP cell per PM chat tool); Part 1 §v9.x compatibility (preserved capabilities list) |
 | **Seamless BD integration** | Part 3 §3.10, Part 5 §5.13, Part 6 §6.11, Part 7 §7.13 (each BD's section explicitly references the other BDs' outputs); Part 8 §8.4 cross-BD coordination rows |
 | **Rollback plan** | Part 6 §6.7 (backup directory; restore sequence; guarantees); Part 10 §10.3 V-M1-ROLLBACK rehearsal |
-| **Incremental testability** | Part 6 §6.8 (seven migration stages with post-stage assertions and sentinel files); Part 7 §7.6 (ten init-project.sh stages with per-stage checks); Part 10 §10.14 V-INC-* |
+| **Incremental testability** | Part 6 §6.8 (eight migration stages S0–S7 with post-stage assertions and sentinel files); Part 7 §7.6 (eleven init-project.sh stages S0–S10 with per-stage checks); Part 10 §10.14 V-INC-* |
 | **Inline verification at every stage of every process** | Part 6 §6.8 (migration); Part 7 §7.7 (init-project.sh stage-local + blast-radius); Part 5 §5.8 (detection scan); Part 10 §10.7–§10.8 V-INIT-VERIFY-* / V-INIT-FAIL-* / V-BLAST-* (testable assertions for every verification stage) |
 
 ---
