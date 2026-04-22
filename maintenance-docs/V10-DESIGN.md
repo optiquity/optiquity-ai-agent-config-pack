@@ -13,6 +13,7 @@
 | Approved by | David Shane |
 | Supersedes | `maintenance-docs/V10-PREDESIGN.md` |
 | Review rounds | 5 (step-12-review-report through step-12-review-report-v5) |
+| Merged | 2026-04-22: V10-DESIGN-2.md addendum merged (AD-14–AD-18 appended; capability-addition mechanism integrated into Parts 5, 7, 8, 10, 11, 12, 13 and Appendices). V10-DESIGN-2.md is now a historical working document. |
 
 ### How to use this document
 
@@ -40,7 +41,7 @@ the cross-reference is in Appendix A.
 
 ## Part 1 — Why v10 Exists
 
-v10 addresses three problems together because their solutions overlap on the
+v10 addresses four problems together because their solutions overlap on the
 same files, and separating them would force multiple migration passes through
 the same project state.
 
@@ -78,10 +79,64 @@ natural home for their prompt templates.
   during architecture. Architecture guidance and skills must champion it
   alongside LSP as a first-class pattern.
 
-These three problems ship in one major version because BD-044 touches the
-same migration infrastructure as Problems 1 and 2, and BD-045 touches the
-same context files and skills that custom agent support also updates.
-Batching avoids multiple migration passes through the same files.
+These four problems ship in one major version. BD-044 touches the same
+migration infrastructure as Problems 1 and 2; BD-045 touches the same
+context files and skills that custom agent support also updates; Problem 4
+(capability addition, AD-14..AD-18) shares `scripts/lib/detect.sh` with
+BD-044 init and BD-046 migration, and shares METHODOLOGY.md and trinity
+structures with BD-046 Problems 1 and 2. Batching avoids multiple migration
+passes through the same files.
+
+### Problem 4 — No path for adding pack-supported capabilities to existing v10 projects
+
+A project is installed with the pack via `init-project.sh` for one set of
+PLATFORM-SKILLS.md dimensions — for example, macOS + Swift. At init time, all
+30 pack skills are distributed to `.claude/skills/`, `.codex/skills/`,
+`.gemini/skills/` (Part 7 §7.6 stage S4), but the project is pruned for its
+actual profile:
+
+- The **Active skills** line in each trinity file names only the Swift/macOS
+  skills.
+- The trinity `[PLACEHOLDER]` sections (`PLATFORM_DEFAULTS`,
+  `PLATFORM_ARCHITECTURE`, `LANGUAGE_RULES`, `GRPC_RULES`,
+  `PLATFORM_SECURITY`, `PLATFORM_TESTING`, `PLATFORM_ANTIPATTERNS`) are filled
+  from the macOS + Swift skills only.
+- Conditional project files for other dimensions (`pyproject.toml`,
+  `pyrightconfig.json`, `server/`, Python scripts, `proto/`, proto scripts)
+  are removed at stage S9 (Part 7 §7.6).
+
+Later the developer needs to add a capability the pack already supports —
+Python, iOS alongside macOS, gRPC, a new Component Role. None of this is
+custom: the skills exist on disk, the scripts and stubs exist in the pack,
+and the placeholder templates exist in the trinity files. But no supported
+path exists. Under v10 as written for Problems 1–3, the developer has three
+bad options:
+
+1. Manually edit the **Active skills** line, manually grep each SKILL.md for
+   content to paste into placeholders, manually `cp` conditional files from
+   the pack, and hope nothing is missed. No procedure exists.
+2. Re-run `init-project.sh` — but Part 7 §7.4 stops on any existing AI config
+   with exit 20.
+3. Delete the project's AI config and re-run `init-project.sh`, losing every
+   customization and `x-` file. Unacceptable.
+
+All four PLATFORM-SKILLS.md dimensions are affected equally:
+
+| Dimension | Example addition |
+|---|---|
+| Platform Targets | Adding iOS to a macOS-only project |
+| Languages | Adding Python to a Swift-only project |
+| Component Roles | Adding a Python server to an Apple-client monorepo |
+| Communication Protocols | Adding gRPC to a REST-only project |
+
+The mechanism must be dimension-uniform (one flag set, one workflow),
+automated (not a list of manual steps), zero-token-dormant during normal
+project work (no cost when not invoked), cross-surface (Claude Code, Claude
+Desktop, Codex CLI, Gemini CLI), and preserve `x-` files and project-owned
+regions of trinity files and PLATFORM-SKILLS.md.
+
+Problem 4 is resolved by AD-14 through AD-18 and the mechanism specification
+in Part 5 §5.14, with Procedure 6 outlined in §5.7.
 
 ### v9.x compatibility
 
@@ -494,6 +549,215 @@ is simpler to test, document, and support.
 **Alternatives rejected.**
 - *Support v9.0/v9.1/v9.2 → v10.0 directly.* Rejected — per-source-version
   branching logic that adds risk without covering a real user scenario.
+
+### AD-14 — Capability-addition mechanism is a two-part split (shell helper + PM chat procedure)
+
+**Decision.** Adding a pack-supported capability (platform, language,
+protocol, or role) to a project already installed with the pack is delivered
+by a two-part mechanism that mirrors the init-project.sh-plus-kickoff pattern
+(Part 7 §7.8) and the migrate-v9-to-v10.sh-plus-Procedure-5-R pattern
+(Part 6 §6.5):
+
+| Stage | Owner | Responsibility |
+|---|---|---|
+| File plumbing | `scripts/add-capability.sh` (new pack script) | Read `$PACK`; copy conditional project files for the new dimension; update `.gitignore` if needed; emit an end-of-run PM chat prompt |
+| Markdown edits | PM chat, new METHODOLOGY.md Procedure 6 | Update the **Active skills** line; fill `[PLACEHOLDER]` sections from the newly-active skills' SKILL.md content; add PLATFORM-SKILLS.md dimension rows if the dimension gains a row; commit |
+
+The script's scope is strictly filesystem plumbing for pack-sourced
+conditional files. It does not splice markdown, does not write
+`.claude/skills/` / `.codex/skills/` / `.gemini/skills/` (all 30 skills are
+already on disk from init, Part 7 §7.6 stage S4), and does not touch trinity
+files or PLATFORM-SKILLS.md. The PM chat owns markdown edits because they
+require per-project interpretive judgment (which skill content applies to
+which placeholder, how to word active-skills deltas). Full workflow spec
+in Part 5 §5.14; Procedure 6 outline in §5.7.
+
+**Rationale.** The file-copy step needs `$PACK` access and cross-tool-
+identical semantics that only a shell script delivers uniformly on all four
+PM chat surfaces (Claude Code CLI, Claude Desktop, Codex CLI, Gemini CLI).
+The markdown step needs interpretive judgment the PM chat owns. Splitting
+at this boundary puts each owner on its strong ground and is the same split
+pattern AD-5 and AD-10 already use.
+
+**Alternatives rejected.**
+- *Extend `init-project.sh` with an `--add` mode.* Rejected — Part 7 §7.4's
+  stop condition on existing AI config is a load-bearing invariant of
+  BD-044. Inverting it for a flag introduces a long conditional branch with
+  divergent pre-flight semantics — the exact trap §7.1 cites as the reason
+  to split init and migrate into two scripts. Separate script, shared
+  library is the established pattern.
+- *PM chat only, no shell script.* Rejected — Claude Desktop without
+  filesystem MCP and ChatGPT Web without Codex CLI cannot execute file
+  copies from `$PACK` into the project. Cross-surface parity (Part 1 §v9.x
+  compatibility; Part 9 §9.6) requires a shell layer. Even when the PM chat
+  has filesystem access, delegating the mechanical copy-and-chmod to a
+  script is cheaper in tokens and easier to verify.
+- *Manifest file the PM chat writes by hand.* Rejected — manifest-driven
+  workflows are the second-source-of-truth trap V9 Lesson 1 names
+  explicitly. The conditional-file table lives in Part 7 §7.6 and the
+  script reads it at run time.
+- *Use `migrate-v9-to-v10.sh` for "minor" migrations.* Rejected — migration
+  is a one-shot v9.3 → v10.0 operation with baseline invariants; capability
+  addition is a repeatable v10.x operation. Collapsing them would require
+  `migrate-v9-to-v10.sh` to be renamed and restructured, breaking Part 6's
+  one-shot semantics.
+- *One shell script doing everything (markdown splicing included).*
+  Rejected — it would need to splice markdown the way `merge-trinity.py`
+  and `merge-platform-skills.py` do for migration, and would still need a
+  separate PM chat pass to verify intent. The split puts each owner on
+  strong ground.
+
+### AD-15 — `scripts/add-capability.sh` lives in the pack repo, not in projects
+
+**Decision.** `scripts/add-capability.sh` is a pack-repo script, same
+placement as `scripts/init-project.sh` (Part 7 §7.1) and
+`scripts/migrate-v9-to-v10.sh` (Part 6 §6.10). The three scripts form the
+pack-operational triad: they run against a project but do not ship into it.
+
+Extended pack-repo layout (builds on Part 7 §7.2):
+
+```
+scripts/
+├── init-project.sh              (Part 7 §7.1)
+├── migrate-v9-to-v10.sh         (Part 6 §6.10)
+├── add-capability.sh            (NEW — AD-14/15)
+├── merge-platform-skills.py     (Part 6 §6.10)
+├── merge-trinity.py             (Part 6 §6.10)
+├── validate-pack.py             (existing)
+└── lib/
+    └── detect.sh                (Part 7 §7.2 — shared;
+                                  extended per §5.14.2)
+```
+
+README.md Repository Layout gains one line for `add-capability.sh` under
+`scripts/` (Part 8 §8.2.8 row 82). No other layout change.
+
+**Rationale.** Sibling placement keeps all three pack-operational scripts
+discoverable in one directory and lets `add-capability.sh` source the same
+`scripts/lib/detect.sh` library as init and migrate. Placing it in
+`project-template/scripts/` would make every project carry a script that
+only the pack repo's contents can satisfy.
+
+**Alternatives rejected.**
+- *Ship `add-capability.sh` inside projects under
+  `project-template/scripts/`.* Rejected — the script reads `$PACK` at run
+  time and has no value without pack-repo contents. Shipping it to projects
+  creates a stale-copy risk and duplicates pack knowledge per project.
+
+### AD-16 — METHODOLOGY.md Procedure 6: "Adding a pack-supported capability"
+
+**Decision.** A new procedure — Procedure 6 — is appended to
+`supporting-docs/METHODOLOGY.md` Part 7 ("BACKLOG and TODO Management")
+immediately after Procedure 5 (§5.7) and Procedure 5-R (§6.5). Procedure 5
+handles custom additions (`x-` files); Procedure 5-R handles v9.3-to-v10
+reconciliation; Procedure 6 handles pack-supported capability additions to
+an existing v10 project.
+
+Three distinct triggers, one consistent pattern: PM chat reads a
+detection/trigger report, presents drafts through named approval gates,
+commits at the end. No overlap with Procedures 1–4 or Procedure 5 / 5-R.
+Full step-by-step outline in §5.7 alongside Procedure 5's outline; workflow
+detail in §5.14.
+
+**Rationale.** Part 7 of METHODOLOGY.md already hosts Procedure 1 (phase
+gate), Procedure 2 (post-session), Procedure 3 (orphan audit), Procedure 4
+(resolution), Procedure 5 (custom agents/skills), Procedure 5-R (migration
+reconciliation). Procedure 6 is the sixth sibling. Placing it in
+PM-CHAT.md would split procedures across two files.
+
+**Alternatives rejected.**
+- *Put Procedure 6 in PM-CHAT.md instead of METHODOLOGY.md.* Rejected —
+  procedures live in METHODOLOGY.md by established convention; PM-CHAT.md
+  holds behavioral rules and file-access strategy, not procedural runbooks.
+- *Reuse Procedure 5 with a capability-addition sub-procedure.* Rejected —
+  the triggers and artifacts differ (Procedure 5 creates `x-` files;
+  Procedure 6 fills pack placeholders from non-`x-` skill content).
+  Collapsing them would require branching on capability-vs-custom at every
+  step.
+
+### AD-17 — Dimension-uniform invocation with atomic-token grammar
+
+**Decision.** The developer invokes `add-capability.sh` by naming the
+dimension and value:
+
+```bash
+bash $PACK/scripts/add-capability.sh --project . \
+    --add language:python
+bash $PACK/scripts/add-capability.sh --project . \
+    --add platform:ios
+bash $PACK/scripts/add-capability.sh --project . \
+    --add protocol:grpc
+bash $PACK/scripts/add-capability.sh --project . \
+    --add role:python-server
+```
+
+Multiple `--add` flags in one invocation are supported. The script resolves
+each against the PLATFORM-SKILLS.md dimension tables and derives the skill
+delta and conditional-file delta deterministically.
+
+**Token grammar.** Valid `dimension` tokens: `platform`, `language`,
+`protocol`, `role` — corresponding one-to-one with PLATFORM-SKILLS.md §§
+Step 1 Dimensions 1–4. Valid `value` tokens are **atomic,
+lowercase-hyphenated** normalizations of the row labels in those tables.
+This rule applies uniformly to all four dimensions — not just `platform:` —
+because Dimensions 1 and 3 both use multi-word row labels (e.g., "iOS +
+macOS (universal)", "Python server", "Shared native library"):
+
+- `platform:ios`, `platform:macos` (atomic; unions emerge from running the
+  flag twice).
+- `language:swift`, `language:python`, `language:c`, `language:cpp`,
+  `language:objc`.
+- `protocol:grpc`, `protocol:rest`.
+- `role:python-server`, `role:embedded-python`,
+  `role:shared-native-library`.
+
+Anything unrecognized exits non-zero with a "proposed dimension not in
+PLATFORM-SKILLS.md — consider PACK-FEEDBACK.md" diagnostic.
+
+**Rationale.** Atomic tokens with hyphenation keep the invocation stable
+regardless of how row labels are rewritten in future pack versions, and
+give the script an unambiguous matcher per dimension. Unions of values are
+expressed by running the flag twice rather than embedding a list syntax in
+one flag.
+
+**Alternatives rejected.**
+- *Free-text values matching row labels verbatim (e.g., `--add
+  platform:"iOS + macOS (universal)"`).* Rejected — whitespace,
+  punctuation, and casing variation introduce a brittle matcher. Atomic
+  normalization is unambiguous.
+- *`--add iOS` (bare, no dimension prefix).* Rejected — cross-dimension
+  collisions are possible (e.g., a future Component Role named the same as
+  a platform); the dimension prefix makes intent explicit.
+
+### AD-18 — Capability addition is within BD-046 scope; no new BACKLOG item
+
+**Decision.** BD-046's v10 scope is established across AD-12 (combined
+scope for v10.0) and Parts 4, 5, 6 (prompt reorg, custom agents/skills,
+migration). Capability addition shares the same files as all three
+established BD-046 sub-areas (trinity placeholders, METHODOLOGY.md,
+PM-CHAT.md, `scripts/lib/detect.sh`) and fits the same lifecycle. It is
+folded into BD-046 in the BACKLOG entry as a fourth bullet ("adding
+pack-supported capabilities to existing projects"). No new BD-NNN is
+opened and no existing AD is modified — the scope extension is carried by
+the BACKLOG.md edit (Part 8 §8.2.8 row 83) and by AD-12's combined-scope
+framing.
+
+**Rationale.** The mechanism touches the same files BD-046 already
+touches; batching is cheaper than a follow-up version and avoids a second
+migration pass through the same state.
+
+**Alternatives rejected.**
+- *New BACKLOG item BD-047 for v10.1.* Rejected per user constraint ("fits
+  into the existing BD-046 scope"). Touching the same files in a follow-up
+  version is strictly more expensive than batching.
+- *Populate **Active skills** line with the full 30-skill union at init
+  time, eliminating the "dormant skills" problem and making this mechanism
+  unnecessary.* Rejected — V9.1 BD-038 established Active skills as the
+  authoritative "what this project currently uses" line, consumed by the
+  PM chat at every phase gate. A 30-skill Active line defeats that
+  mechanism's purpose and inflates every agent prompt. The on-disk skills
+  are dormant by design; activating them is the lifecycle event AD-14
+  addresses.
 
 ---
 
@@ -1397,6 +1661,36 @@ for custom skills) enumerating registration artifacts, so a developer
 can answer "is my custom agent properly registered?" from Procedure 5
 alone.
 
+#### Procedure 6 — Adding a pack-supported capability
+
+Added to METHODOLOGY.md Part 7 immediately after Procedure 5-R (§6.5).
+Complements the Procedure 5 family: Procedure 5 handles `x-` custom
+additions; Procedure 5-R handles v9.3 → v10 reconciliation; Procedure 6
+handles pack-supported capability additions to an existing v10 project.
+
+Triggered when:
+
+- The developer pastes the end-of-run prompt emitted by
+  `scripts/add-capability.sh` stage A7 (§5.14.3), or
+- The developer asks the PM chat to "add Python" / "add iOS" / etc. and
+  the PM chat (per its PM-CHAT.md behavioral rule — Part 8 §8.2.8 row 81)
+  first instructs them to run `add-capability.sh` from the pack before
+  resuming.
+
+| Step | Action | Approval gate |
+|---|---|---|
+| **6.1** | Read the `add-capability.sh` report — either pasted into the session or read from `.pack-add-capability-prompt.md` at the project root (written by stage A7 per §5.14.3); verify script stages A0–A7 completed | — |
+| **6.2** | Read the newly-activated SKILL.md files from `.claude/skills/<name>/SKILL.md` (skills are already on disk from init); extract the content relevant to each trinity `[PLACEHOLDER]` section | — |
+| **6.3** | Draft updates to the trinity files: update the **Active skills** line; fill `[PLATFORM_DEFAULTS]`, `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`, `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`, `[PLATFORM_ANTIPATTERNS]` placeholders as applicable for the newly-added dimension. Present drafts side-by-side for all three trinity files (TRIO) | **G6-drafts** — developer confirms trinity drafts |
+| **6.4** | If the project now qualifies for a PLATFORM-SKILLS.md dimension row that was not previously selected (e.g., project gains an iOS row after adding iOS to a macOS-only selection), surface the dimension row for explicit acknowledgement. Informational — PLATFORM-SKILLS.md rows describe the pack's matrix, not the project's selection, so typically no edit is needed | — |
+| **6.5** | Run the Procedure 5.5 detection scan once drafts are applied — verify no `x-` files were touched; verify PLATFORM-SKILLS.md `## Custom agents` / `## Custom skills` project-owned regions are unchanged | — |
+| **6.6** | Present `git add` list and commit message (`feat: project — add <dimension>:<value> capability`); developer approves per CLAUDE.md pack rule (same gate as Procedure 5 G-commit) | **G6-commit** |
+
+The trinity edits are always TRIO (Appendix B "Trinity rule"; §8.5
+trinity-rule integrity audit): the same content is spliced into
+`CLAUDE.md`, `AGENTS.md`, `GEMINI.md` in one commit.
+
+
 ### 5.8 Detection workflow (OQ-1, OQ-2, OQ-7, OQ-8 converge here)
 
 #### Triggers
@@ -1536,6 +1830,211 @@ revertable with `git restore`. No half-committed states are possible.
 - **BD-044 init-project (Part 7).** init-project.sh never creates `x-`
   files. First post-init PM-chat session runs the detection scan against
   a clean project (only pack files present → all OK).
+
+### 5.14 Capability-addition mechanism
+
+Resolves Problem 4 (Part 1) and implements AD-14, AD-15, AD-16, AD-17,
+AD-18. Procedure 6 outline is in §5.7 immediately after Procedure 5.6.
+
+#### 5.14.1 Trigger
+
+The developer triggers the workflow from a terminal in the project
+directory:
+
+```bash
+PACK="/path/to/dhs-ai-agent-config-pack"
+bash "$PACK/scripts/add-capability.sh" --project . \
+    --add language:python \
+    --add protocol:grpc
+```
+
+`$PACK` is the same environment variable used by `migrate-v9-to-v10.sh`
+(§6.9 paste-ready prompt). No new convention.
+
+On Claude Desktop, the shell step runs via filesystem MCP or in a separate
+terminal; the developer then pastes the end-of-run prompt (§5.14.3) into
+the Desktop session. This mirrors §6.9's treatment for
+`migrate-v9-to-v10.sh` and preserves cross-surface parity (Part 1 §v9.x
+compatibility; Part 9 §9.6).
+
+The script detects `$PACK` from, in order:
+
+1. `--pack <path>` flag if provided.
+2. `$PACK` environment variable.
+3. The script's own location (`$(dirname $(dirname "$0"))`) — works when
+   invoked by absolute path from the pack repo.
+
+#### 5.14.2 Script behavior — `add-capability.sh` stages A0–A7
+
+The script sources `scripts/lib/detect.sh` (Part 7 §7.2 — extended with
+`detect_installed_capabilities()` per §7.2) and inverts the Part 7 §7.6
+stage S9 conditional-file table (conditional-add rather than
+conditional-remove; single source of truth).
+
+| Stage | Action | Post-stage assertion |
+|---|---|---|
+| **A0** | Pre-flight: working tree clean; target is a git repo; project has AI config (inverse of §7.4 stop); `$PACK` valid; pack-version compatibility check (see note) | Working-tree clean, pack resolvable |
+| **A1** | Resolve `--add` arguments against `$PACK/project-template/docs/pack/PLATFORM-SKILLS.md` dimension tables; compute skill delta and conditional-file delta | Dimension + value recognized; combined (skill-delta ∪ conditional-file-delta) is non-empty — see degenerate-case note |
+| **A2** | Read existing **Active skills** line from `CLAUDE.md` (trinity-equivalent to `AGENTS.md` / `GEMINI.md` per §6.6); compute union with skill delta; report what will be added vs. what is already active | Union computed; no silent overwrites; already-active short-circuit per note |
+| **A3** | Detection report + preview (§7.5 format adapted): planned file adds, planned skill additions, planned placeholder sections the PM chat will need to fill | Report printed; no writes yet |
+| **A4** | Confirmation prompt `Proceed? [y/N]`. Default **No**. SIGINT / EOF / non-`y` exits 0 with no changes | Explicit consent required |
+| **A5** | Copy conditional files per §7.6 conditional-removal table, inverted: if language/proto/platform/role is being added, copy the corresponding files from `$PACK/project-template/` | Files present; executable bits set (`chmod +x`); assertion matches per-file byte count |
+| **A6** | `.gitignore` merge: re-run the full pack `.gitignore` merge using the §7.6 stage S8 logic (append-missing under the pack header comment; dedupe). Idempotent — entries already present are skipped | `.gitignore` contains all pack entries; duplicates reported |
+| **A7** | Write end-of-run PM chat prompt to stdout AND to `.pack-add-capability-prompt.md` in the project root (gitignored by A6; ephemeral — developer may delete after Procedure 6 completes) | Prompt present on both stdout and the ephemeral file |
+
+**A0 pack-version compatibility — warning, not hard stop.** The trinity
+files carry a banner comment of the form `*Copied from:
+project-template/CLAUDE.md — AI Agent Config Pack vN*`. This is a
+human-readable comment, not a formally-defined machine-readable
+frontmatter field. A0 reads the banner best-effort. If the banner's
+version string does not match `$PACK`'s current version, the script prints
+a warning (`WARNING: project installed from pack vN; $PACK is vM —
+proceed only if you understand the compatibility impact`) but does not
+abort. Formalizing the banner to a fenced frontmatter block with a
+`pack-version:` key is deferred to a future minor-version iteration
+(§13.6); the warning preserves operability in the meantime.
+
+**A1 degenerate-case exit.** If the combined (skill-delta ∪
+conditional-file-delta) is empty after resolving `--add` arguments — for
+example `--add role:shared-native-library` when PLATFORM-SKILLS.md
+Dimension 3 declares that row adds no distinct skills or files — A1 exits
+0 with the message "nothing to add — this dimension/value is already
+covered by existing active skills and files." This is a success outcome,
+not an error.
+
+**A2 already-active exit.** If every `--add` argument resolves to a
+dimension/value whose skills are already in the **Active skills** line AND
+whose conditional files are already present on disk, A2 exits 0 with "all
+requested capabilities already active; no changes needed." The end-of-run
+prompt is still written (§5.14.3) for auditing, but it reports zero
+deltas.
+
+The script does not splice markdown, does not write `.claude/skills/` /
+`.codex/skills/` / `.gemini/skills/` (skills are already on disk from
+init, §7.6 stage S4), does not edit trinity files, does not edit
+`PLATFORM-SKILLS.md`. Its scope is strictly file-system plumbing for the
+pack-sourced conditional files.
+
+#### 5.14.3 End-of-run PM chat prompt
+
+Stage A7 writes this prompt both to stdout and to
+`.pack-add-capability-prompt.md` in the project root. The file is
+gitignored (A6's merge adds the pattern if not already present) and is
+ephemeral — the developer may delete it after Procedure 6 commits.
+
+```
+You are the PM chat for [PROJECT_NAME at <absolute path>].
+
+scripts/add-capability.sh has just run and added the following
+pack-supported capabilities to this project:
+
+  --add language:python
+  --add protocol:grpc
+
+Files copied:
+  - pyproject.toml
+  - pyrightconfig.json
+  - server/
+  - scripts/bootstrap-python.sh, format-python.sh, validate-python.sh,
+    test-python.sh
+  - scripts/proto-gen.sh, validate-proto.sh
+  - proto/
+
+.gitignore entries added: 4 new, 2 duplicates.
+
+Active skills currently in CLAUDE.md:
+  swift-best-practices, apple-architecture-core, macos-architecture
+
+Active skills after your Procedure 6 run should be:
+  swift-best-practices, apple-architecture-core, macos-architecture,
+  python-best-practices, python-architecture, grpc-patterns
+
+Please run METHODOLOGY.md Procedure 6 (Adding a pack-supported
+capability). Present your trinity-file drafts for approval at G6-drafts
+before writing, and the commit message at G6-commit before committing.
+
+Do NOT modify any file starting with x-.
+Do NOT modify PLATFORM-SKILLS.md project-owned sections
+(`## Custom agents`, `## Custom skills`).
+```
+
+#### 5.14.4 Artifacts created or modified
+
+| Artifact | Actor | Created / modified |
+|---|---|---|
+| `pyproject.toml`, `pyrightconfig.json`, `server/`, Python / proto scripts, `proto/` | `add-capability.sh` | Created (copied from `$PACK`) |
+| `.gitignore` | `add-capability.sh` | Modified (full pack-merge append-and-dedupe) |
+| `.pack-add-capability-prompt.md` | `add-capability.sh` | Created (ephemeral; gitignored; developer may delete after Procedure 6) |
+| `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` | PM chat (Procedure 6) | **Active skills** line + placeholder sections updated; TRIO |
+| `PLATFORM-SKILLS.md` | PM chat (Procedure 6) | Usually untouched. Modified only if the dimension row did not exist for this project before (rare) |
+| `docs/pack/PACK-FEEDBACK.md` | PM chat (Procedure 6) | Untouched by Procedure 6 itself. Appended only if the developer reports that the newly-added capability exposed a gap in the pack |
+
+Files **never** touched by either actor: any `x-` agent / skill / prompt
+file; any SKILL.md (already on disk); BACKLOG.md; STATUS.md;
+ARCHITECTURE.md; IMPLEMENTATION_PLAN.md; CHANGELOG.md.
+
+#### 5.14.5 Approval gates summary
+
+- **A4** — Script pre-write confirmation (script stage).
+- **G6-drafts** — Trinity drafts reviewed before any markdown write
+  (Procedure 6.3).
+- **G6-commit** — `git add` list + commit message before commit
+  (Procedure 6.6).
+
+Aborting at any gate leaves the project in the pre-gate state:
+
+- Pre-A4 — no changes.
+- Pre-G6-drafts — files copied but no markdown edits; rollback =
+  `git checkout -- .` plus remove the added files the script reports in
+  stage A5.
+- Pre-G6-commit — working-tree edits revertable with `git restore`.
+
+No half-committed states.
+
+#### 5.14.6 Zero-token dormancy
+
+During normal project work:
+
+- `scripts/add-capability.sh` is a file on disk in the pack repo, not
+  read by any PM chat or agent until the developer executes it.
+- Procedure 6 sits inside METHODOLOGY.md. METHODOLOGY.md is consumed
+  on-demand rather than at every session startup on most surfaces (Claude
+  Code CLI uses mcp-local-rag per-query retrieval; Claude Desktop +
+  filesystem MCP reads on demand; Codex CLI / Gemini CLI read on demand).
+  The net cost of adding one procedure's worth of content to
+  METHODOLOGY.md is paid only when Procedure 6 is actually invoked.
+- The one-line trigger rule added to `project-template/docs/pack/
+  PM-CHAT.md` `## Behavioral rules` (Part 8 §8.2.8 row 81) is ~15 tokens
+  at pm-startup. De minimis.
+
+The mechanism consumes tokens only when the developer invokes it: the
+script run costs zero tokens (shell); Procedure 6 run costs the tokens of
+reading Procedure 6 itself plus the delta content it produces. Both are
+tied to the developer's explicit action.
+
+#### 5.14.7 Integration with existing mechanisms
+
+- **Part 7 BD-044 (init-project.sh).** `add-capability.sh` sources
+  `scripts/lib/detect.sh` (§7.2) and inverts the §7.6 stage S9
+  conditional-file table. Single source of truth for the conditional-file
+  mapping; neither script hardcodes a separate list.
+- **Part 6 BD-046 (migration).** `add-capability.sh` is structured like
+  `migrate-v9-to-v10.sh`: pre-flight → preview → confirm → staged write →
+  end-of-run PM chat prompt. Per-stage post-assertions mirror §6.8. The
+  two scripts do not share run-time state — migration is one-shot v9.3 →
+  v10.0; capability addition is repeatable within v10.x.
+- **Part 5 custom-agent mechanism.** Procedure 6 never creates `x-`
+  files and never touches project-owned regions of `PLATFORM-SKILLS.md`
+  (`## Custom agents`, `## Custom skills`) or trinity (`### Custom
+  agents`). The detection scan (§5.8 Procedure 5.5) runs at Procedure 6
+  step 6.5 to enforce.
+- **Part 3 BD-045.** BD-045 ships content in trinity placeholders that
+  were populated at init time; Procedure 6 re-populates those same
+  placeholders for newly-activated skills. No conflict — BD-045 wording
+  is language-agnostic in trinity files and language-specific in skills,
+  and Procedure 6 sources placeholder content from the newly-active
+  language/platform skills.
+
 
 ---
 
@@ -1979,6 +2478,10 @@ detect_pack_version()           # pack-version: v<N.M> (tag or branch)
 detect_ai_config()              # ai-config-markers: <comma list>
 detect_x_files()                # x-files: <path>/line (scans 7 dirs)
 detect_improperly_added_files() # improperly-added: <path>/line
+detect_installed_capabilities() # capabilities: <dimension>:<value> list
+                                # (reads Active skills line from trinity to report
+                                # currently-active dimension values; consumed by
+                                # add-capability.sh stage A2 per §5.14.2)
 ```
 
 init-project-only helpers remain in `init-project.sh`:
@@ -2490,7 +2993,7 @@ same pattern: one guide, one script, one paste-ready prompt.
   copies verbatim. No init-specific content depends on BD-045.
 - **BD-046 prompt reorg.** init-project.sh copies `docs/pack/prompts/`
   as a unit; S6 verification asserts the exact file list from Part 4
-  §2.3 plus `PROMPT-AUTHORING.md`.
+  §4.2 plus `PROMPT-AUTHORING.md`.
 - **BD-046 custom agents.** init-project.sh never creates `x-` files
   (Part 5 §5.13). Project initial state has `## Custom agents` and
   `## Custom skills` sections with "No custom X defined for this
@@ -2499,6 +3002,13 @@ same pattern: one guide, one script, one paste-ready prompt.
   existing AI config — that case is migration's job. Shared detection
   library (§7.2) ensures both scripts agree on what "AI config present"
   means.
+- **BD-046 capability addition (§5.14).** `scripts/add-capability.sh`
+  runs post-init against already-initialized projects; sources
+  `scripts/lib/detect.sh` (including the new
+  `detect_installed_capabilities()` helper — §7.2); inverts the §7.6
+  stage S9 conditional-file table (conditional-add rather than
+  conditional-remove); never creates `x-` files. Keeps the integration
+  inventory complete across all three pack-operational scripts.
 
 ---
 
@@ -2649,6 +3159,41 @@ entry, row 70), resolved BACKLOG items (BD-027, BD-028, BD-029, BD-038).
 | 64 | `BACKLOG.md` | Clear BD-044/045/046 blockers at Step 13; set Resolved at v10.0 ship. | — | pack chat | V10-DESIGN-PROCESS-PLAN Step 13 |
 | 65 | `README.md` | Add v10.0 row to version table at ship time. **Combine with row 55.** | — | pack chat | CLAUDE.md versioning rules |
 | 66 | `CHANGELOG.md` | Add v10.0 entry at ship time. | — | pack chat | CLAUDE.md versioning rules |
+
+#### 8.2.8 BD-046 — Capability addition for existing projects
+
+Supports Problem 4 (Part 1), AD-14..AD-18, and Part 5 §5.14.
+
+| # | File | Change | BD | Actor | Source |
+|---|---|---|---|---|---|
+| 78 | `scripts/add-capability.sh` | New pack-operational script; stages A0–A7 per §5.14.2; end-of-run PM chat prompt per §5.14.3; approval gate A4. Sibling to `init-project.sh` and `migrate-v9-to-v10.sh` per AD-15. | BD-046 | pack chat | Part 5 §5.14.2 |
+| 79 | `scripts/lib/detect.sh` | Add `detect_installed_capabilities()` function (reads Active skills line from trinity; reports currently-active dimension values; consumed by `add-capability.sh` stage A2). Extends the shared library per Part 7 §7.2. | BD-046 | pack chat | Part 7 §7.2 |
+| 80 | `supporting-docs/METHODOLOGY.md` | Add Procedure 6 (Adding a pack-supported capability) in Part 7 immediately after Procedure 5-R; steps 6.1–6.6 with gates G6-drafts and G6-commit per §5.7. **Combine with rows 43 and 48.** | BD-046 | pack chat | Part 5 §5.7 (outline); Part 5 §5.14 (mechanism) |
+| 81 | `project-template/docs/pack/PM-CHAT.md` | Add one-line trigger rule under `## Behavioral rules`: "If the developer asks to add a pack-supported dimension (platform, language, protocol, role), direct them to run `scripts/add-capability.sh` from the pack first; then run METHODOLOGY.md Procedure 6." **Combine with rows 24 and 38.** | BD-046 | pack chat | Part 5 §5.14.1; §5.14.6 |
+| 82 | `README.md` (top-level) | Add `scripts/add-capability.sh` to Repository Layout (AD-15 sibling-placement). **Combine with rows 55 and 65.** | BD-044, BD-046 | pack chat | AD-15; Part 5 §5.14 |
+| 83 | `BACKLOG.md` | BD-046 description extended to a fourth bullet ("adding pack-supported capabilities to existing projects") per AD-18. No new BD-NNN opened. **Combine with row 64.** | — | pack chat | AD-18 |
+| 84 | `scripts/add-capability.sh` output | `.pack-add-capability-prompt.md` at project root — ephemeral, gitignored (via A6's `.gitignore` merge). Runtime artifact, not a pack-repo file; listed here for inventory completeness. | BD-046 | `add-capability.sh` (create); developer (optional delete) | Part 5 §5.14.3 |
+
+**Combined with other §8.2 batches.** Rows 80/43/48 combine the
+METHODOLOGY.md Procedure 5 pass, Procedure 5-R addition, and Procedure 6
+addition in one commit to avoid splicing METHODOLOGY.md Part 7 three times.
+Row 81 joins rows 24/38 so PM-CHAT.md receives its PROMPT-TEMPLATES.md
+sweep, pack-roster section, custom-agent workflow section, and
+capability-addition trigger rule in one commit. Row 82 joins rows 55/65 so
+README.md Repository Layout edits and v10.0 version-table row land together
+at ship.
+
+**No project-template changes.** The template itself is unaffected — the
+mechanism runs against a downstream project after install. `add-capability.sh`
+copies existing pack-template files (per §7.6 conditional table); it does
+not introduce new template content.
+
+**No new validate-pack.py check required.** Existing structural checks
+(Checks 1–9 per §5.11, §7.13) are sufficient; `add-capability.sh` is
+self-validating via stage post-assertions (§5.14.2 assertion column).
+
+**No migration-guide changes.** `supporting-docs/MIGRATION-v9-to-v10.md` is
+untouched: capability addition is post-migration. Row unchanged.
 
 ### 8.3 Files in a v10 project (produced by runtime actors)
 
@@ -3091,6 +3636,40 @@ files without a matching edit to Part 10.
 | V-BLAST-* | Part 7 §7.7 blast-radius sweep |
 
 Every Part 9 CP cell maps to at least one Part 10 test.
+### 10.17 Capability-addition tests (V-ADDCAP-*)
+
+Validates AD-14..AD-18 and the §5.14 mechanism. Every V-ADDCAP-* test
+exercises either `scripts/add-capability.sh` stage behavior or Procedure 6
+PM-chat behavior.
+
+| ID | Scope |
+|---|---|
+| **V-ADDCAP-01** | `add-capability.sh --add language:python` on a Swift-only project copies `pyproject.toml`, `pyrightconfig.json`, `server/`, Python scripts; `.gitignore` gains Python entries; `x-` files untouched |
+| **V-ADDCAP-02** | `--add platform:ios` on a macOS-only project copies no files (platform add is skill-only) but reports the skill delta and prompts PM chat Procedure 6 — A1's combined-delta rule accepts skill-only additions |
+| **V-ADDCAP-03** | `--add protocol:grpc` copies `proto/`, `proto-gen.sh`, `validate-proto.sh`; gRPC skill delta reported |
+| **V-ADDCAP-03b** | `--add role:python-server` on an Apple-client monorepo that does not already have Python active: Dimension 3 coverage — asserts the script resolves the role to its skill + file delta (per PLATFORM-SKILLS.md Dimension 3), copies the role-specific conditional files, and reports the skill additions |
+| **V-ADDCAP-04** | Running with no `--add` arguments exits non-zero with usage message |
+| **V-ADDCAP-05** | Running with an unrecognized dimension value (`--add language:cobol`) exits non-zero with the "not in PLATFORM-SKILLS.md — consider PACK-FEEDBACK.md" diagnostic |
+| **V-ADDCAP-06** | Declining the A4 confirmation prompt (`n`, EOF, SIGINT) exits 0 with no file changes |
+| **V-ADDCAP-07** | Dirty working tree stops at A0 with the §7.5 diagnostic pattern |
+| **V-ADDCAP-08** | Missing or invalid `$PACK` stops at A0 |
+| **V-ADDCAP-09** | PM chat Procedure 6 run updates **Active skills** line without touching `x-` files or `## Custom agents` / `## Custom skills` sections |
+| **V-ADDCAP-10** | After PM chat Procedure 6 run: the targeted placeholder sections (`[LANGUAGE_RULES]`, `[PLATFORM_ARCHITECTURE]`, etc. for the newly-added dimension) now contain non-trivial content; no placeholder-literal text (`[LANGUAGE_RULES — fill in from loaded skills]` or equivalent) remains in those sections; at least one full sentence is present per filled placeholder. Byte-comparison against `.claude/skills/<name>/SKILL.md` is **not** the assertion — the PM chat step is interpretive per §5.7 Procedure 6.2 |
+| **V-ADDCAP-11** | After Procedure 6 commit, trinity-diff shows three files with identical added content (TRIO preserved; §8.5 trinity-rule integrity audit) |
+| **V-ADDCAP-12** | Procedure 6 run against a project with existing `x-` files leaves all `x-` files byte-identical (`git status` shows no changes to `.claude/agents/x-*.md`, etc.) |
+| **V-ADDCAP-13** | **Already-active exit.** Running `--add language:python` on a project where `language:python` is already in the Active skills line and all Python conditional files are already present: A2 exits 0 with "all requested capabilities already active"; no file changes; no trinity edits |
+| **V-ADDCAP-14** | **Multi-dimension atomic invocation.** A single invocation with three flags — `--add language:python --add role:python-server --add protocol:grpc` — resolves all three deltas, copies all three file sets, and produces a single end-of-run prompt that names all three in the same "capabilities added" list |
+| **V-ADDCAP-15** | **Trigger-rule firing.** The developer says to the PM chat "add Python to this project" without first running the script. The PM chat (observing its PM-CHAT.md behavioral rule, Part 8 §8.2.8 row 81) redirects the developer to run `add-capability.sh --add language:python` from the pack before beginning Procedure 6; it does not attempt the file-copy step itself |
+| **V-ADDCAP-16** | **G6-drafts abort.** Developer runs the script through Procedure 6 up to G6-drafts, then declines the trinity drafts. Post-abort state: conditional files present on disk (from A5); `.gitignore` updated (from A6); trinity files unchanged; `git restore` on the conditional files is sufficient rollback (no partial trinity edit has been committed) |
+
+**Matrix coverage.** V-ADDCAP-01, 02, 03, 03b cover all four
+PLATFORM-SKILLS.md dimensions: language (V-ADDCAP-01), platform
+(V-ADDCAP-02), protocol (V-ADDCAP-03), role (V-ADDCAP-03b). V-ADDCAP-13–16
+cover non-trivial edge cases across the mechanism (already-active,
+multi-dimension, trigger-rule, abort). Mechanism-visible behaviors
+(degenerate-case exit, pack-version warning) surface through A1 and A0
+notes in §5.14.2 and do not require separate test IDs.
+
 
 ---
 
@@ -3119,6 +3698,18 @@ Applied in:
 - **Part 2 AD-3 single-path rationale for custom-file creation.** Two
   documented paths (chat-driven and manual procedure) rejected
   explicitly as the L1 pattern.
+- **Part 5 §5.14 capability-addition mechanism placement.** Each
+  artifact of the capability-addition mechanism has exactly one owner and
+  one location: `scripts/add-capability.sh` sits in pack `scripts/`
+  (sibling to init and migrate, AD-15); `scripts/lib/detect.sh` is the
+  shared detection library gaining `detect_installed_capabilities()`
+  (§7.2); Procedure 6 lives in METHODOLOGY.md Part 7 as the sixth sibling
+  to Procedures 1–5-R (AD-16); the PM-CHAT.md trigger rule is one line in
+  `## Behavioral rules` (§8.2.8 row 81); the end-of-run prompt is
+  ephemeral stdout plus a gitignored file (§5.14.3); touch-point deltas
+  surface in §8.2.8; Appendix B gains the Procedure 6 glossary entry.
+  Every artifact has exactly one owner and one location — no artifact
+  straddles surfaces.
 
 ### L2 — Gemini CLI misunderstanding
 
@@ -3272,6 +3863,46 @@ v10.0 ships when:
 v10.1+ follows the minor-version procedure documented in CLAUDE.md —
 floating `v10` tag moves to the latest minor.
 
+### 12.5 Capability-addition commits (AD-14..AD-18 landing)
+
+Three commits append to the BD-046 batch of Phase 3 because all three
+capability-addition surfaces sit inside BD-046 (AD-18). Dependencies are
+on BD-044 + BD-046 outputs — specifically on the commit that lands
+`scripts/lib/detect.sh` and on the commits that land the Procedure 5 pass
+through METHODOLOGY.md.
+
+| Commit | Message | Files | Depends on |
+|---|---|---|---|
+| **C-046-ADD-01** | `feat: v10 — BD-046 add-capability.sh + detect.sh extension` | `scripts/add-capability.sh` (new); `scripts/lib/detect.sh` (extension — `detect_installed_capabilities()`) | Commit that lands `scripts/lib/detect.sh` (BD-044 init + BD-046 migrate share it); commit that lands the conditional-file table / `init-project.sh` §7.6; commit that lands `migrate-v9-to-v10.sh` (shares `detect.sh`) |
+| **C-046-ADD-02** | `feat: v10 — BD-046 Procedure 6 for capability addition` | `supporting-docs/METHODOLOGY.md` (Procedure 6 section per §5.7); `project-template/docs/pack/PM-CHAT.md` (trigger-rule line under `## Behavioral rules` per §8.2.8 row 81) | BD-046 PM-CHAT.md pack-roster commit; BD-046 METHODOLOGY.md Procedure 5 commit (Procedure 6 sits alongside) |
+| **C-046-ADD-03** | `docs: v10 — BD-046 README.md layout entry for add-capability.sh` | `README.md` Repository Layout (adds `scripts/add-capability.sh` line) | BD-044 README layout baseline commit (row 55) — combine if not yet landed |
+
+**Commit-ID placeholders.** The commit identifiers above
+(`C-046-ADD-01..03`) are placeholders. The actual commit identifiers and
+the full dependency chain are resolved when Phase 3 (the working plan at
+`maintenance-docs/v10-working/phase-3-implementation-plan.md`) is frozen;
+that plan is a working artifact outside the approved design boundary and
+its commit IDs may be renumbered. The **dependency relationships**
+expressed here — not the literal IDs — are the authority:
+`add-capability.sh` depends on whatever commit lands
+`scripts/lib/detect.sh`; Procedure 6 depends on whatever commit lands the
+Procedure 5 pass; the README layout entry rides on whatever commit lands
+the README layout baseline.
+
+**Optional alternative placement.** C-046-ADD-01 can instead be folded
+into the BD-046 migration-tooling batch alongside the migrate-script
+commit, since both scripts source `scripts/lib/detect.sh`. If taken, the
+`detect.sh` extension lands with the `detect.sh` creation commit and
+`add-capability.sh` itself lands within BD-046's script commits. Either
+ordering respects dependencies; the grouping above keeps capability-
+addition commits co-located by default.
+
+**Total capability-addition commits.** 3 new commits. No existing commit
+from the Phase 3 plan is modified; existing BD-044 / BD-045 / BD-046
+batches are unchanged except for the "combine with row" joins recorded in
+§8.2.8.
+
+
 ---
 
 ## Part 13 — Open Items Deferred
@@ -3372,6 +4003,36 @@ Every other CD and OQ from V10-PREDESIGN is resolved in this document:
 - OQ-13 → Part 3 (concrete drafts for all nine locations)
 - OQ-14 → Part 10
 
+Capability-addition cross-reference (AD-14..AD-18; new in this merge):
+
+- AD-14 (two-part mechanism) → Part 5 §5.14 (mechanism detail) + §5.7 (Procedure 6 outline)
+- AD-15 (pack-repo script placement) → Part 5 §5.14 + Part 8 §8.2.8 row 78
+- AD-16 (METHODOLOGY.md Procedure 6) → Part 5 §5.7 (outline) + Part 8 §8.2.8 row 80
+- AD-17 (atomic-token invocation) → Part 5 §5.14.1 (trigger) + §5.14.2 (A1 dimension resolution)
+- AD-18 (BD-046 scope, no new BACKLOG item) → Part 8 §8.2.8 row 83; AD-12 combined-scope framing
+
+### 13.6 Deferred — pack-version banner formalization (§5.14.2 A0)
+
+*Resolution target: future v10.x minor-version iteration.*
+
+The A0 pre-flight in `scripts/add-capability.sh` currently warns on a
+version-string mismatch read from the trinity files' human-readable banner
+comment (`*Copied from: project-template/CLAUDE.md — AI Agent Config Pack
+vN*`). A future minor iteration may promote the banner to a fenced
+frontmatter block with a machine-readable `pack-version:` key (trinity
+rule applies to all three files in the same commit). Not required for
+v10.0 — the warning preserves operability in the meantime and no
+capability-addition decision in V10-DESIGN depends on a formal banner
+schema.
+
+**Fallback.** If the banner remains informal, A0's warning-not-hard-stop
+behavior suffices indefinitely. Pack-version mismatches surface visibly
+but do not block the developer, and no capability-addition scenario
+depends on exact version matching — skills are loaded dynamically from
+the on-disk directory in each tool and `$PACK`'s conditional-file table
+is consulted at run time.
+
+
 ---
 
 ## Appendix A — Design Requirement to Section Cross-Reference
@@ -3381,16 +4042,16 @@ least one V10-DESIGN.md section.
 
 | Design Requirement | V10-DESIGN sections |
 |---|---|
-| **Automated and manual workflows** | Part 5 §5.1 (PM chat creation workflow + escape hatch); Part 7 §7.6 (init-project.sh + developer preview/confirm); Part 6 §6.9 (migration automated option + manual guide) |
+| **Automated and manual workflows** | Part 5 §5.1 (PM chat creation workflow + escape hatch); Part 7 §7.6 (init-project.sh + developer preview/confirm); Part 6 §6.9 (migration automated option + manual guide); Part 5 §5.14 (capability addition — `add-capability.sh` file plumbing + PM chat Procedure 6 markdown edits) |
 | **Resource considerations** | Part 4 §4.1 (token budget analysis); Part 5 §5.8 (detection scan cost is negligible — ~170 directory entries, pure string matching) |
-| **Maintenance considerations** | Part 5 §5.3 (single source of truth for pack roster); Part 6 §6.6 (positional splice rules preserve project-owned regions on upgrade); Part 8 (touch-point inventory as the maintenance contract); Part 7 §7.13 (no hardcoded file lists in init-project.sh) |
+| **Maintenance considerations** | Part 5 §5.3 (single source of truth for pack roster); Part 6 §6.6 (positional splice rules preserve project-owned regions on upgrade); Part 8 (touch-point inventory as the maintenance contract); Part 7 §7.13 (no hardcoded file lists in init-project.sh); Part 5 §5.14.7 (capability addition shares `scripts/lib/detect.sh` and the §7.6 conditional-file table — single source of truth inverted at run time) |
 | **Document access patterns** | Part 4 §4.7 (prompts read on-demand at generation time, not startup); Part 5 §5.10 (PM-CHAT.md file-access table updates); Part 7 §7.9 (QUICKSTART.md as router, not procedure) |
 | **Best use of RAG** | Part 4 §4.1 RAG analysis (monolith RAG dropped; per-agent direct read on most surfaces; filesystem MCP recommended for Claude Desktop); Part 6 §6.9 (automatable prompt works on all four surfaces) |
-| **PM chat tool flexibility** | Part 5 §5.1 (workflow on all four PM chat surfaces); Part 6 §6.9 (migration works on CLI and Desktop with MCP); Part 7 §7.8 (init-project.sh end-of-run prompt works on all four surfaces); Part 9 §9.6 (matrix has CP cell per PM chat tool); Part 1 §v9.x compatibility (preserved capabilities list) |
-| **Seamless BD integration** | Part 3 §3.10, Part 5 §5.13, Part 6 §6.11, Part 7 §7.13 (each BD's section explicitly references the other BDs' outputs); Part 8 §8.4 cross-BD coordination rows |
+| **PM chat tool flexibility** | Part 5 §5.1 (workflow on all four PM chat surfaces); Part 6 §6.9 (migration works on CLI and Desktop with MCP); Part 7 §7.8 (init-project.sh end-of-run prompt works on all four surfaces); Part 9 §9.6 (matrix has CP cell per PM chat tool); Part 1 §v9.x compatibility (preserved capabilities list); Part 5 §5.14.1 (capability addition four-surface trigger: CLI direct invocation + Claude Desktop via MCP or terminal + paste-ready end-of-run prompt) |
+| **Seamless BD integration** | Part 3 §3.10, Part 5 §5.13, Part 6 §6.11, Part 7 §7.13 (each BD's section explicitly references the other BDs' outputs); Part 8 §8.4 cross-BD coordination rows; Part 5 §5.14.7 (capability addition × BD-044/BD-045/BD-046 integration points); Part 12 §12.5 (capability-addition commits depend on BD-044 detect.sh and BD-046 Procedure 5 pass) |
 | **Rollback plan** | Part 6 §6.7 (backup directory; restore sequence; guarantees); Part 10 §10.3 V-M1-ROLLBACK rehearsal |
-| **Incremental testability** | Part 6 §6.8 (eight migration stages S0–S7 with post-stage assertions and sentinel files); Part 7 §7.6 (eleven init-project.sh stages S0–S10 with per-stage checks); Part 10 §10.14 V-INC-* |
-| **Inline verification at every stage of every process** | Part 6 §6.8 (migration); Part 7 §7.7 (init-project.sh stage-local + blast-radius); Part 5 §5.8 (detection scan); Part 10 §10.7–§10.8 V-INIT-VERIFY-* / V-INIT-FAIL-* / V-BLAST-* (testable assertions for every verification stage) |
+| **Incremental testability** | Part 6 §6.8 (eight migration stages S0–S7 with post-stage assertions and sentinel files); Part 7 §7.6 (eleven init-project.sh stages S0–S10 with per-stage checks); Part 10 §10.14 V-INC-*; Part 5 §5.14.5 (capability-addition approval gates A4 / G6-drafts / G6-commit — each abort leaves project in a clean pre-gate state) |
+| **Inline verification at every stage of every process** | Part 6 §6.8 (migration); Part 7 §7.7 (init-project.sh stage-local + blast-radius); Part 5 §5.8 (detection scan); Part 10 §10.7–§10.8 V-INIT-VERIFY-* / V-INIT-FAIL-* / V-BLAST-* (testable assertions for every verification stage); Part 5 §5.14.2 (add-capability.sh A0–A7 post-stage assertions); Part 10 §10.17 V-ADDCAP-* (capability-addition tests) |
 
 ---
 
@@ -3416,10 +4077,14 @@ least one V10-DESIGN.md section.
 | **Stage sentinel** | Migration-stage completion marker (`.pack-migration-backup/v9.3-to-v10.0/stage-S<N>.done`). Enables resumability. |
 | **Blast-radius sweep** | Verification sweep wider than the immediate change set; catches stale references in files that were not directly edited. Part 7 §7.7, Part 10 §10.13. |
 | **Agent report file convention** | Convention requiring every agent prompt to include a `REPORT FILE:` path and read-only or write-capable framing. Part 4 §4.6. |
+| **Capability addition** | The pack-supported mechanism for adding a new dimension value (platform, language, protocol, role) to a project already initialized by `init-project.sh`. Delivered as two parts: `scripts/add-capability.sh` (file plumbing) + METHODOLOGY.md Procedure 6 (markdown edits). See AD-14 and Part 5 §5.14. |
+| **Procedure 6** | METHODOLOGY.md Part 7 procedure for adding a pack-supported capability (platform, language, protocol, or role) to an existing v10 project; paired with `scripts/add-capability.sh`. See Part 5 §5.7 (outline) and §5.14 (mechanism). |
+| **Atomic-token grammar** | `--add <dimension>:<value>` invocation syntax for `add-capability.sh` where `<dimension>` ∈ {platform, language, protocol, role} and `<value>` is an atomic, lowercase-hyphenated normalization of a PLATFORM-SKILLS.md row label. See AD-17. |
+| **G6-drafts / G6-commit** | Procedure 6 approval gates: G6-drafts gates the trinity-draft review before any markdown write; G6-commit gates the commit. Structurally parallel to Procedure 5's G-design, G-files, G-registration, G-commit gates. See Part 5 §5.7 and §5.14.5. |
+| **`.pack-add-capability-prompt.md`** | Ephemeral, gitignored file written by `scripts/add-capability.sh` stage A7 containing the end-of-run PM chat prompt. May be deleted after Procedure 6 completes. See Part 5 §5.14.3. |
 
 ---
 
 *End of V10-DESIGN.md.*
 
-*Status: DRAFT — PENDING REVIEW. Approval record to be added at Step 13
-of V10-DESIGN-PROCESS-PLAN.md.*
+*Status: APPROVED. See Part 0 for approval record.*
