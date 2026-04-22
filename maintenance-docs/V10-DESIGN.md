@@ -6,11 +6,13 @@
 
 | Field | Value |
 |---|---|
-| Status | **DRAFT — PENDING REVIEW** |
+| Status | **APPROVED** |
 | Assembled | 2026-04-21 |
+| Approved | 2026-04-21 |
 | Author | pack-architect (assembly) + pack chat (writing) |
-| Supersedes | `maintenance-docs/V10-PREDESIGN.md` (upon approval) |
-| Approval record | (filled in at Step 13 of V10-DESIGN-PROCESS-PLAN.md) |
+| Approved by | David Shane |
+| Supersedes | `maintenance-docs/V10-PREDESIGN.md` |
+| Review rounds | 5 (step-12-review-report through step-12-review-report-v5) |
 
 ### How to use this document
 

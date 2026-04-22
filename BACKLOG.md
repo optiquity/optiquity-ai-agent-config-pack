@@ -803,8 +803,8 @@ Resolved: April 2026, v9.3 — 16 Gemini agent files in `.gemini/agents/`,
 
 **BD-044 — Project setup paths: init-project.sh, QUICKSTART router, and existing-project onboarding**
 Type: TODO(version)
-Status: Open
-Blockers: None
+Status: Unblocked
+Blockers: None (design approval pass completed 2026-04-21; V10-DESIGN.md approved)
 Unblocks: None
 File/Symbol: `QUICKSTART.md`, `scripts/init-project.sh` (new), `supporting-docs/SETUP-NEW.md` (new), `supporting-docs/SETUP-EXISTING.md` (new), `supporting-docs/SETUP_TEMPLATE.md`, `README.md`
 
@@ -906,11 +906,9 @@ Context: Design discussion April 2026. The pack currently has no onboarding
 
 **BD-045 — Champion the capabilities design pattern alongside LSP in architecture guidance**
 Type: TODO(version)
-Status: Open
-Blockers:
-  - Design approval pass for V10-PREDESIGN.md required before implementation
-    (BD-046 blocker) — BD-045 touches same context files and skills as
-    BD-046; sequencing must be confirmed during the v10 design approval pass
+Status: Unblocked
+Blockers: None (design approval pass completed 2026-04-21; V10-DESIGN.md approved;
+  sequencing confirmed: BD-045 first in implementation order)
 Unblocks: None
 File/Symbol: `project-template/CLAUDE.md`, `project-template/AGENTS.md`, `project-template/GEMINI.md`, `project-template/skills/apple-architecture-core/SKILL.md`, `project-template/skills/python-best-practices/SKILL.md`, `project-template/skills/architecture-review/SKILL.md`, `project-template/.claude/agents/auditor-architecture.md`, `project-template/.codex/agents/auditor-architecture.toml`, `project-template/.gemini/agents/auditor-architecture.md`
 
@@ -1012,14 +1010,10 @@ Context: Identified April 2026 via OT project, which implements capability
 
 **BD-046 — v10: Custom agent/skill support and prompt template reorganization**
 Type: TODO(version)
-Status: Open
-Blockers:
-  - Design approval pass required — V10-PREDESIGN.md is a discussion
-    capture, not an approved design. All candidate decisions must be
-    reviewed, all open questions resolved, and explicit approval
-    recorded before implementation begins.
+Status: Unblocked
+Blockers: None (design approval pass completed 2026-04-21; V10-DESIGN.md approved)
 Unblocks: None
-File/Symbol: maintenance-docs/V10-PREDESIGN.md — full design record
+File/Symbol: maintenance-docs/V10-DESIGN.md — approved design record (supersedes V10-PREDESIGN.md)
 Description: v10 addresses three problems in one major version. First:
   no structured mechanism exists for projects to add custom agents or
   skills — manual additions are invisible to the PM chat workflow and

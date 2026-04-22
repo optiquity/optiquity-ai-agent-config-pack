@@ -1,25 +1,13 @@
 # V10-PREDESIGN.md — AI Agent Config Pack v10 Pre-Design Document
 
 *Created: April 2026*
-*Status: DISCUSSION CAPTURE — NOT AN APPROVED DESIGN*
+*Status: SUPERSEDED by `maintenance-docs/V10-DESIGN.md` (approved 2026-04-21)*
 
-> ⚠️ **This document is not an approved design. Do not implement
-> anything based on this document alone.**
->
-> This is a structured capture of design conversations. Everything in
-> Part 2 labeled "Candidate Decision" reflects what was discussed, not
-> what has been decided. Everything in Part 3 is explicitly unresolved.
->
-> Before any implementation begins, a formal design approval pass is
-> required that:
-> 1. Reviews every candidate decision and explicitly confirms or changes it
-> 2. Resolves every open question in Part 3
-> 3. Updates this document to reflect the approved design
-> 4. Produces an explicit written record of approval
->
-> The pack chat must not begin any implementation step based on this
-> document in its current state. This document is the input to the
-> design approval pass, not the output of it.
+> **This document has been superseded.** The approved v10 design is in
+> `maintenance-docs/V10-DESIGN.md`. This file is retained as a
+> historical record of the design discussion that produced the approved
+> design. Do not use this document for implementation decisions — use
+> V10-DESIGN.md.
 
 ---
 
