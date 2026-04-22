@@ -652,8 +652,8 @@ before `## Tooling` (current rules 14–20). Existing rules 14–32 shift to
 discover unsupported operations through `NotImplementedError`, silent
 `pass`, `hasattr` probes, or `isinstance` branching on concrete types.
 Reach for this pattern proactively during architecture — not only when
-fixing an LSP violation. Capabilities and LSP are independent required
-practices; apply each on its own merits.
+fixing an LSP violation. LSP is required; the capabilities pattern is a
+recommended best practice. Apply each on its own merits.
 
 15. **Value-based form in Python.** Expose supported operations as a
 class-level attribute — an `enum.Flag` (bitwise capabilities), a
@@ -1102,7 +1102,7 @@ produces:
 | Artifact | Path | Source of truth for format |
 |---|---|---|
 | Claude agent file | `.claude/agents/x-<name>.md` | AD-2 row: Claude pack agents |
-| Codex agent file | `.codex/agents/x-<name>.toml` | AD-2 row: Codex pack agents |
+| Codex agent file | `.codex/agents/x-<name>.toml` | AD-2 row: Codex pack agents (both `name` and `description` required; Codex silently ignores agents missing either) |
 | Gemini agent file | `.gemini/agents/x-<name>.md` | AD-2 row: Gemini pack agents |
 | Custom prompt file | `docs/pack/prompts/x-<name>.md` | Part 4 §4.5 format |
 | PLATFORM-SKILLS.md row | `## Custom agents` section | §5.2 below |
@@ -1843,6 +1843,7 @@ procedural, automatable option at the end.
 |---|---|
 | 1 | Title + automatable-option banner |
 | 2 | What changed in v10 (three BD-item summaries + three structural shifts) |
+| 2a | What does NOT change from v9.3 (pointer to Part 1 §v9.x compatibility — agent roles, skills, tool interchangeability, PACK-FEEDBACK, Desktop/CLI options all preserved) |
 | 3 | Before you start (v9.3 baseline, working tree clean, pack v10 available, migration branch) |
 | 4 | Step 1 — Run the migration script |
 | 5 | Step 2 — Review the migration report |
@@ -3360,7 +3361,7 @@ Every other CD and OQ from V10-PREDESIGN is resolved in this document:
 - OQ-4 → Part 4 §4.7
 - OQ-5 → Part 7 §7.1
 - OQ-6 → V10-DESIGN-PROCESS-PLAN.md (design process)
-- OQ-7 → Part 5 §5.3 (AD-3)
+- OQ-7 → AD-3 + Part 5 §5.8
 - OQ-8 → Part 5 §5.5
 - OQ-9 → Part 4 §4.4
 - OQ-10 → Part 12
