@@ -56,7 +56,6 @@ git pull
 claude
 /rename [project-short-name]-pm
 Ingest METHODOLOGY.md into the RAG index
-Ingest PROMPT-TEMPLATES.md into the RAG index
 /pm-startup
 ```
 
@@ -78,8 +77,7 @@ Never copy or sync `.claude/` session files between machines.
 
 ## Updating RAG after pack version changes
 
-When METHODOLOGY.md or PROMPT-TEMPLATES.md changes (new pack version installed),
-re-ingest them:
+When METHODOLOGY.md changes (new pack version installed), re-ingest it:
 
 ```bash
 cd ~/Developer/[project]
@@ -89,7 +87,6 @@ claude --resume [project-short-name]-pm
 Then inside the session:
 ```
 Re-ingest METHODOLOGY.md into the RAG index
-Re-ingest PROMPT-TEMPLATES.md into the RAG index
 ```
 
 The `/pm-startup` skill checks `git log` to detect whether re-ingest is needed

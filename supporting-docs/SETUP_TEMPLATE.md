@@ -89,7 +89,6 @@ cp -r /path/to/pack/project-template/. .
 
 # Copy supporting docs separately — not included in the template directory
 cp /path/to/pack/supporting-docs/METHODOLOGY.md ./METHODOLOGY.md
-cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md ./PROMPT-TEMPLATES.md
 ```
 
 Make scripts and agent-run.sh executable:
@@ -203,10 +202,10 @@ git push origin main
 1. Go to claude.ai → Projects → New Project
 2. Name it: **[PROJECT_NAME]**
 3. Connect the GitHub repo via the GitHub connector
-4. Sync the GitHub connector — `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, and `PM-CHAT.md`
+4. Sync the GitHub connector — `METHODOLOGY.md` and `PM-CHAT.md`
    are in the project repo (copied in setup Step 4) and searchable after sync.
    No manual upload is needed.
-5. Start a new chat and paste Template 1 (PM chat kickoff prompt) from `PROMPT-TEMPLATES.md`
+5. Start a new chat and paste Template 1 (PM chat kickoff prompt) from `docs/pack/prompts/pm-chat.md` (Variant: kickoff)
 
 **Option B — Claude Code CLI (non-blocking):**
 Follow QUICKSTART.md Step 10, Option B (Steps 10C–10G). Setup is self-contained there.

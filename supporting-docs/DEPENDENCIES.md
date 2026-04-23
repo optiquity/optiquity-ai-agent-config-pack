@@ -136,7 +136,7 @@ instead of the Claude Desktop app. Setup is in QUICKSTART.md Step 10 (Option B).
 For daily session management after setup, see `supporting-docs/CLI-PM-SETUP.md`.
 
 ### mcp-local-rag (required for CLI PM chat)
-Local RAG server for semantic search over METHODOLOGY.md and PROMPT-TEMPLATES.md.
+Local RAG server for semantic search over METHODOLOGY.md.
 Runs entirely locally — no API keys required.
 - Requires: Node.js 18+ (already required for Claude Code CLI)
 - Install: Automatic via `npx -y mcp-local-rag` on first use (no separate install step)
@@ -146,5 +146,5 @@ Runs entirely locally — no API keys required.
 - Reference: https://github.com/shinpr/mcp-local-rag
 
 ### Disk space (for RAG index)
-The RAG index for METHODOLOGY.md and PROMPT-TEMPLATES.md is small (under 5MB per project).
+The RAG index for METHODOLOGY.md is small (under 5MB per project).
 Stored in `.claude/rag-index/` within the project directory (gitignored).
