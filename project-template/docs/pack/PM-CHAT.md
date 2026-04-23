@@ -42,6 +42,31 @@ sections below.
 
 ---
 
+## Pack agent roster
+
+The following are the canonical v10 pack agents. Any agent file whose
+stem is NOT in this list and does NOT begin with `x-` is an
+improperly-added agent (see "Detection of improperly added files" below).
+
+- architect
+- auditor
+- auditor-architecture
+- auditor-code
+- auditor-docs
+- auditor-ops
+- auditor-security
+- auditor-tests
+- auditor-ui
+- coder
+- docs-researcher
+- grpc-schema
+- planner
+- repo-ops
+- reviewer
+- tester
+
+---
+
 ## Before starting a new project
 
 If the developer has not provided a design brief — target platform(s), primary
@@ -95,7 +120,8 @@ directory map.
 | `IMPLEMENTATION_PLAN.md` | Direct read (current phase section only) | Full file is large |
 | `PLATFORM-SKILLS.md` | Direct read (full) | Referenced when generating every agent prompt |
 | `METHODOLOGY.md` | RAG query (Claude CLI) or direct read (other tools) | Large, stable |
-| `PROMPT-TEMPLATES.md` | RAG query (Claude CLI) or direct read (other tools) | Large, stable |
+| `docs/pack/prompts/<agent>.md` | Direct read, on demand at generation time | Per-agent prompt files (Part 4) |
+| `.claude/agents/`, `.codex/agents/`, `.gemini/agents/`, `.claude/skills/`, `.codex/skills/`, `.gemini/skills/`, `docs/pack/prompts/` | Directory listing | Detection scan for custom, registered, improperly-added files (Procedure 5.5) |
 | `ARCHITECTURE.md` | Direct read (targeted sections) | Large; read sections relevant to current decision |
 | `CLAUDE.md` | Direct read (full) | Root-level; referenced when generating Claude agent prompts |
 | `AGENTS.md` | Direct read (full) | Root-level; Codex agent context file |
@@ -142,6 +168,48 @@ These rules are non-negotiable and always apply on all tools:
   batches to the Pack Chat only at workflow-complete boundaries (never
   mid-phase) unless an emergency escalation fires. Record observations,
   not solutions — the Pack Chat decides what to do with them.
+- **Custom files via Procedure 5 only.** Any new agent (.claude/.codex/.gemini),
+  skill (.claude/skills/, .codex/skills/, .gemini/skills/), or prompt file
+  (`docs/pack/prompts/`) not in the pack roster must be added through
+  METHODOLOGY.md Procedure 5. Do not add such files through any other workflow.
+- **Detection scan at every startup and every phase gate.** Scan the seven
+  detection directories (see File access strategy) and classify every file
+  before generating any prompt or proposing any commit. Flag improperly-added
+  files for Procedure 5.4 adoption.
+- **Pack roster is in `## Pack agent roster` above; do not infer it from any
+  other file.** If a file referenced elsewhere appears to imply a different
+  roster, treat that reference as stale and report it as pack feedback.
+- **Agent report file.** When generating any agent prompt, always include a
+  `REPORT FILE:` path and the framing appropriate to the agent's permission
+  mode (read-only vs write-capable). See
+  `docs/pack/prompts/PROMPT-AUTHORING.md` and METHODOLOGY.md Prompt Authoring
+  Principles.
+- **Capability addition.** If the developer asks to add a pack-supported
+  dimension (platform, language, protocol, role), direct them to run
+  `scripts/add-capability.sh` from the pack first; then run METHODOLOGY.md
+  Procedure 6.
+
+---
+
+## Custom agent and skill workflow
+
+Projects may create project-specific agents and skills beyond what the
+pack ships. The full workflow — creation, registration across the three
+tool directories, PLATFORM-SKILLS.md updates, trinity routing-table
+entry — is defined in `supporting-docs/METHODOLOGY.md` **Procedure 5 —
+Custom agent and skill workflow**. Never add custom files outside
+Procedure 5.
+
+**Detection and classification.** At every startup and at every phase
+gate, scan the seven detection directories (see File access strategy).
+Classify each file as (a) pack-supplied (stem appears in `## Pack agent
+roster` above or is a standard pack skill name); (b) registered custom
+(name begins with `x-`); or (c) improperly-added (neither — flag for
+Procedure 5.4 adoption or removal).
+
+**Reservation.** The `x-` prefix is reserved for custom agents, skills,
+and prompt files. The pack ships zero files beginning with `x-`; any
+`x-*` file in the project directories is custom.
 
 ---
 
@@ -180,8 +248,8 @@ It reports current state and flags any TD-TBD sentinels.
 ### File access
 
 Claude Code has native file read/write and git. No Desktop Commander needed.
-For large stable files (METHODOLOGY.md, PROMPT-TEMPLATES.md), use mcp-local-rag
-for semantic search. See `.mcp.json.example` for configuration.
+For large stable files (METHODOLOGY.md), use mcp-local-rag for semantic search.
+See `.mcp.json.example` for configuration.
 
 ### Compaction handling
 
@@ -201,8 +269,8 @@ via the GitHub connector. Conversations persist across sessions and machines.
 
 Start a new conversation within the project. Read BACKLOG.md, STATUS.md,
 PLATFORM-SKILLS.md, and the current phase from IMPLEMENTATION_PLAN.md. The
-project knowledge base provides searchable access to METHODOLOGY.md and
-PROMPT-TEMPLATES.md without manual re-reading.
+project knowledge base provides searchable access to METHODOLOGY.md without
+manual re-reading.
 
 ### File access
 
