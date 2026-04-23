@@ -194,7 +194,7 @@ All filenames are unique — reference them by name; use these paths to locate t
 
 | Directory | Contents | Updated by |
 |---|---|---|
-| `docs/pack/` | `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) |
+| `docs/pack/` | `METHODOLOGY.md`, `prompts/`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) |
 | `docs/project/` | `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` | PM chat and developer during active development |
 | `docs/reference/` | Project-specific user-facing documentation (how-to guides, API references) | Developer as needed |
 
@@ -308,3 +308,13 @@ when task characteristics favor a different tool.
 To invoke any agent: `./agent-run.sh <cli> --agent <name>` (see `./agent-run.sh --help`).
 For Gemini CLI, `agent-run.sh` translates `--agent` to Gemini's native `@agent-name`
 syntax transparently — the same command format works for all three CLIs.
+
+### Custom agents
+
+Project-specific agents created via Procedure 5. See
+`docs/pack/PLATFORM-SKILLS.md` § "Custom agents" for the canonical list
+and full skill assignments. All custom agent names begin with `x-`.
+
+| Phase | Agent | Key reason |
+|---|---|---|
+| (Developer / PM chat adds rows per project during Procedure 5) |  |  |

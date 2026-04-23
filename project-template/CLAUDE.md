@@ -272,7 +272,7 @@ All filenames are unique — reference them by name; use these paths to locate t
 
 | Directory | Contents | Updated by |
 |---|---|---|
-| `docs/pack/` | `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) |
+| `docs/pack/` | `METHODOLOGY.md`, `prompts/`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) |
 | `docs/project/` | `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` | PM chat and developer during active development |
 | `docs/reference/` | Project-specific user-facing documentation (how-to guides, API references) | Developer as needed |
 
@@ -432,6 +432,16 @@ syntax transparently — the same command format works for all three CLIs.
 *This table reflects quality-optimized defaults. For cost-optimized routing
 alternatives (e.g., using Gemini CLI Flash for reviewer, tester, and
 docs-researcher), see `TOOL-COMPARISON.md` in the pack's `maintenance-docs/`.*
+
+### Custom agents
+
+Project-specific agents created via Procedure 5. See
+`docs/pack/PLATFORM-SKILLS.md` § "Custom agents" for the canonical list
+and full skill assignments. All custom agent names begin with `x-`.
+
+| Phase | Agent | Key reason |
+|---|---|---|
+| (Developer / PM chat adds rows per project during Procedure 5) |  |  |
 
 ## Agent behavior
 
