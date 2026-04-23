@@ -98,6 +98,46 @@ skip lengthy explanatory comments. The loaded skills have the full detail.
 - No code branches on the concrete type behind an abstract type reference.
 - No concrete data-layer type is referenced by name in domain or presentation code.
 
+## Capabilities pattern
+
+Make what a type supports explicit and queryable. Callers check support
+before invoking behavior; they do not discover unsupported operations
+through exceptions, silent no-ops, or branching on concrete types.
+Reach for this pattern during design, not only when fixing an LSP
+violation.
+
+The pattern takes two complementary forms:
+
+- **Value-based capabilities.** A type exposes a value (bitmask, flag
+  set, enum set, or similar) enumerating the operations it supports.
+  Callers check the capability value before invoking the corresponding
+  operation. Validate capability compatibility at association or
+  initialization time — reject incompatible pairings before they can
+  produce runtime errors.
+- **Interface-based capabilities.** A type declares conformance to a
+  small, focused interface (protocol, trait, abstract base, or
+  equivalent) only when it genuinely supports that behavior. Callers
+  query for the interface before invoking. Types that do not support a
+  behavior simply do not expose the interface — no silent no-ops, no
+  unconditional throws.
+
+Both forms share the same intent: make supported behaviors explicit
+and queryable, eliminating the need for callers to discover
+limitations through runtime surprises. The specific language mechanism
+varies (compile-time or runtime conformance checks, structural
+subtyping, flag values, enum sets, etc.), but the design intent is
+consistent across any typed system.
+
+**Relationship to LSP.** LSP is a required coding practice — every
+method declared in an interface must have a meaningful implementation
+in every conforming type. The capabilities pattern is a recommended
+best practice — an architectural tool for making supported behaviors
+explicit and queryable. Neither is a prerequisite for the other, and
+neither is the motivation for the other. They work well together when
+both are present, but this is a benefit of using both — not a
+dependency between them. If the capabilities pattern does not fit the
+project's architecture or the developer opts out, that is valid.
+
 ## Dependency intake
 
 1. Check platform frameworks first.
@@ -231,6 +271,7 @@ See CLAUDE.md for the full list with examples.
 - Domain types in data-layer or transport-layer signatures.
 - Magic duration literals for gRPC deadlines.
 - Editing generated Protobuf or gRPC code by hand.
+- Branching on concrete types to discover what an abstraction supports, instead of querying a capability value or interface.
 
 [PLATFORM_ANTIPATTERNS — fill in from loaded skills]
 

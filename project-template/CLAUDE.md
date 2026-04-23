@@ -176,6 +176,46 @@ for local dev, rate limiting in gRPC interceptors, JWT/OAuth with short-lived to
 - No concrete data-layer type may be referenced by name in domain or presentation code. Only abstract types and domain model types cross layer boundaries.
 - When adding a new interface or protocol, verify implementation correctness across all implementing types before committing.
 
+## Capabilities pattern
+
+Make what a type supports explicit and queryable. Callers check support
+before invoking behavior; they do not discover unsupported operations
+through exceptions, silent no-ops, or branching on concrete types.
+Reach for this pattern during design, not only when fixing an LSP
+violation.
+
+The pattern takes two complementary forms:
+
+- **Value-based capabilities.** A type exposes a value (bitmask, flag
+  set, enum set, or similar) enumerating the operations it supports.
+  Callers check the capability value before invoking the corresponding
+  operation. Validate capability compatibility at association or
+  initialization time — reject incompatible pairings before they can
+  produce runtime errors.
+- **Interface-based capabilities.** A type declares conformance to a
+  small, focused interface (protocol, trait, abstract base, or
+  equivalent) only when it genuinely supports that behavior. Callers
+  query for the interface before invoking. Types that do not support a
+  behavior simply do not expose the interface — no silent no-ops, no
+  unconditional throws.
+
+Both forms share the same intent: make supported behaviors explicit
+and queryable, eliminating the need for callers to discover
+limitations through runtime surprises. The specific language mechanism
+varies (compile-time or runtime conformance checks, structural
+subtyping, flag values, enum sets, etc.), but the design intent is
+consistent across any typed system.
+
+**Relationship to LSP.** LSP is a required coding practice — every
+method declared in an interface must have a meaningful implementation
+in every conforming type. The capabilities pattern is a recommended
+best practice — an architectural tool for making supported behaviors
+explicit and queryable. Neither is a prerequisite for the other, and
+neither is the motivation for the other. They work well together when
+both are present, but this is a benefit of using both — not a
+dependency between them. If the capabilities pattern does not fit the
+project's architecture or the developer opts out, that is valid.
+
 ## Dependency intake policy
 
 Before adding any third-party framework or API:
@@ -341,6 +381,7 @@ Universal anti-patterns (keep these):
 - Stringly-typed identifiers or state machines.
 - Magic duration literals for gRPC deadlines — use named constants.
 - Editing generated Protobuf or gRPC code by hand.
+- Branching on concrete types to discover what an abstraction supports, instead of querying a capability value or interface.
 
 <!--
 Add platform-specific anti-patterns from your skills. Examples:
