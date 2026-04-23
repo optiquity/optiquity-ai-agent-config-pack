@@ -43,12 +43,11 @@ must populate this during kickoff.
 Run:
 ```bash
 git log -1 --format="%H %cd" --date=short -- docs/pack/METHODOLOGY.md
-git log -1 --format="%H %cd" --date=short -- docs/pack/PROMPT-TEMPLATES.md
 ```
 
-If either file was modified since the last known RAG ingest, re-ingest it now
+If this file was modified since the last known RAG ingest, re-ingest it now
 using the mcp-local-rag tool before any queries. If unsure of last ingest date,
-re-ingest both.
+re-ingest it.
 
 ## Step 5 — Check for TD-TBD sentinel
 
