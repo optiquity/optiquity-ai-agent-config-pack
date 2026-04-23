@@ -8,6 +8,8 @@ Checks:
   3. TD-TBD sentinels: none in committed files (excluding docs that show the format)
   4. README version table: latest row matches latest git tag
   5. Agent file count: Claude, Codex, and Gemini agent dirs have the same count
+  6. Prompts-directory format: per-agent frontmatter, variant→H2 consistency,
+     PROMPT-AUTHORING.md exists
 
 Exit 0 if all pass, exit 1 if any fail. Each failure prints the exact
 file, line (where applicable), and problem.
@@ -29,6 +31,10 @@ GEMINI_AGENTS_DIR = REPO_ROOT / "project-template" / ".gemini" / "agents"
 README = REPO_ROOT / "README.md"
 
 REQUIRED_SKILL_FIELDS = {"name", "description", "allowed-tools"}
+
+PROMPTS_DIR = REPO_ROOT / "project-template" / "docs" / "pack" / "prompts"
+REQUIRED_PROMPT_FRONTMATTER = {"agent", "variants"}
+RESERVED_PROMPT_FRONTMATTER = {"description", "deprecated-by", "notes"}
 
 # The pack repo is mostly templates and documentation, where TD-TBD appears
 # as a FORMAT EXAMPLE (teaching downstream projects the deferral syntax).
@@ -229,6 +235,124 @@ def check_agent_count() -> None:
         fail(f"Agents in Claude but not Gemini: {sorted(missing_from_gemini)}")
 
 
+# ── Check 6: Prompts-directory format ───────────────────────────────────────
+
+def check_prompts_directory() -> None:
+    print("\n── Check 6: Prompts-directory format ──")
+    if not PROMPTS_DIR.is_dir():
+        fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — directory missing")
+        return
+
+    authoring = PROMPTS_DIR / "PROMPT-AUTHORING.md"
+    if not authoring.exists():
+        fail(f"{authoring.relative_to(REPO_ROOT)} — file missing")
+    else:
+        ok(f"{authoring.relative_to(REPO_ROOT)} — exists")
+
+    agent_files = sorted(p for p in PROMPTS_DIR.glob("*.md") if p.name != "PROMPT-AUTHORING.md")
+    if not agent_files:
+        fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — no per-agent prompt files found")
+        return
+
+    for f in agent_files:
+        rel = f.relative_to(REPO_ROOT)
+        content = f.read_text()
+
+        # Rule 1: frontmatter opener + closer
+        if not content.startswith("---\n"):
+            fail(f"{rel} — no frontmatter (missing opening ---)")
+            continue
+        fm_match = re.match(r"---\n(.*?)\n---\n", content, re.DOTALL)
+        if not fm_match:
+            fail(f"{rel} — malformed frontmatter (no closing ---)")
+            continue
+        fm = fm_match.group(1)
+
+        # Parse frontmatter: simple line-based.
+        # Supports `key: value` on one line and a `variants:` list in either
+        # block style (indented `  - slug` lines) or inline `[a, b]` / `[]`.
+        agent_value = None
+        variants_slugs: list[str] = []
+        seen_keys: list[str] = []
+        current_list_key = None
+        for line in fm.split("\n"):
+            if not line.strip():
+                current_list_key = None
+                continue
+            if line.startswith("  - "):
+                if current_list_key == "variants":
+                    variants_slugs.append(line[4:].strip())
+                continue
+            if line.startswith(" ") or line.startswith("\t"):
+                # unrecognized indented content
+                continue
+            # top-level key line
+            current_list_key = None
+            if ":" in line:
+                key, _, val = line.partition(":")
+                key = key.strip()
+                val = val.strip()
+                seen_keys.append(key)
+                if key == "agent":
+                    agent_value = val
+                elif key == "variants":
+                    if val.startswith("["):
+                        inner = val.strip("[]").strip()
+                        if inner:
+                            variants_slugs = [
+                                s.strip().strip('"').strip("'") for s in inner.split(",")
+                            ]
+                        else:
+                            variants_slugs = []
+                    else:
+                        # block-style list follows on subsequent indented lines
+                        current_list_key = "variants"
+
+        # Rule 2: required keys present
+        missing = REQUIRED_PROMPT_FRONTMATTER - set(seen_keys)
+        if missing:
+            for m in sorted(missing):
+                fail(f"{rel} — missing required frontmatter key: {m}")
+            continue
+
+        # Rule 3: no unknown top-level keys
+        allowed = REQUIRED_PROMPT_FRONTMATTER | RESERVED_PROMPT_FRONTMATTER
+        unknown = set(seen_keys) - allowed
+        if unknown:
+            for k in sorted(unknown):
+                fail(f"{rel} — unknown frontmatter key: {k}")
+            continue
+
+        # Rule 4: stem matches agent: value
+        if f.stem != agent_value:
+            fail(f"{rel} — file stem '{f.stem}' does not match agent: '{agent_value}'")
+            continue
+
+        # Rule 5: variant slug ↔ H2 consistency
+        body = content[fm_match.end():]
+        h2_slugs = re.findall(r"^## Variant: (\S+)\s*$", body, re.MULTILINE)
+        listed = set(variants_slugs)
+
+        orphans = [s for s in h2_slugs if s not in listed]
+        if orphans:
+            fail(f"{rel} — orphan `## Variant:` H2 not listed in variants: {sorted(set(orphans))}")
+            continue
+
+        bad_slug = False
+        for s in variants_slugs:
+            count = h2_slugs.count(s)
+            if count == 0:
+                fail(f"{rel} — variant slug '{s}' listed but no matching `## Variant: {s}` H2")
+                bad_slug = True
+            elif count > 1:
+                fail(f"{rel} — variant slug '{s}' has {count} `## Variant: {s}` H2s (expected 1)")
+                bad_slug = True
+        if bad_slug:
+            continue
+
+        ok(f"{rel} — {len(variants_slugs)} variant(s)")
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -241,6 +365,7 @@ def main() -> None:
     check_td_tbd_sentinels()
     check_readme_version()
     check_agent_count()
+    check_prompts_directory()
 
     print("\n" + "=" * 60)
     if failures:
