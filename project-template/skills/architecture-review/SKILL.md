@@ -31,13 +31,46 @@ This skill defines the universal methodology for architecture review. Platform-s
 12. Flag under-abstraction — concrete types from the data layer appearing in domain or presentation code violates layer discipline.
 13. Verify LSP compliance: every protocol method must have a meaningful implementation in every conforming type. Silent no-ops and unconditional "not supported" throws are violations. No domain or presentation code may branch on the concrete type behind a protocol reference.
 
+## Capabilities pattern
+
+14. Verify the code reaches for the capabilities pattern proactively —
+not only when fixing an LSP violation. Capabilities and LSP are
+independent practices — LSP is required, capabilities are recommended.
+Both should be present where each applies; absence of capabilities is
+a finding, not a defect. A codebase that applies both avoids a wide class of runtime
+surprises — callers know what an abstraction supports before invoking
+it, and every declared interface method is meaningfully implemented.
+
+15. Flag absence of any capability mechanism in any abstraction whose
+conforming types have variable supported operation sets. If two or
+more conforming types differ in what operations they support, some
+form of capability query must exist for callers to check before
+invoking — either value-based (enum set, bitmask, flag struct) or
+interface-based (small focused protocol, trait, or structural type).
+Loaded language skills supply the idiomatic mechanism for this
+language.
+
+16. Flag interface implementations that throw "not supported" (or an
+equivalent runtime error, e.g. `NotImplementedError`, `fatalError`,
+silent no-op) for operations that could instead be gated by a
+capability check. The conforming type should either implement the
+operation meaningfully (LSP), not declare the method (interface-based
+capability), or the caller should gate the call upstream with a
+capability query (value-based).
+
+17. Flag caller code that branches on the concrete type behind an
+abstract reference to discover what the abstraction supports. Callers
+must use the capability mechanism — query a capability value, or
+conditionally downcast to a capability protocol — never inspect the
+concrete type.
+
 ## Navigation and control flow
 
-14. Verify navigation and routing logic is not embedded in view or view-model types. Navigation belongs in a dedicated coordinator, router, or typed navigation path — the exact pattern is determined by the project's platform and the loaded platform skills.
+18. Verify navigation and routing logic is not embedded in view or view-model types. Navigation belongs in a dedicated coordinator, router, or typed navigation path — the exact pattern is determined by the project's platform and the loaded platform skills.
 
 ## Dependency decisions
 
-15. Evaluate third-party dependencies for architectural impact. Flag dependencies that shape the architecture in unwanted ways — a dependency that forces a specific concurrency model, data layer, or UI framework is an architectural decision, not just a package choice. Detailed evaluation criteria live in the `dependency-intake` skill.
+19. Evaluate third-party dependencies for architectural impact. Flag dependencies that shape the architecture in unwanted ways — a dependency that forces a specific concurrency model, data layer, or UI framework is an architectural decision, not just a package choice. Detailed evaluation criteria live in the `dependency-intake` skill.
 
 ## Output
 
