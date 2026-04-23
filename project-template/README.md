@@ -10,7 +10,6 @@ Then copy the supporting docs individually (they are not part of this template):
 
 ```bash
 cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/
-cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md /path/to/your/project/
 ```
 
 See `QUICKSTART.md` in the pack root for the full setup procedure.
@@ -35,9 +34,9 @@ The pack has two directories that produce project files:
   whole via `cp -r`. These are structural files the project needs to function:
   agents, skills, scripts, config, context files, PM chat docs.
 
-- **`supporting-docs/`** — docs copied individually during setup (METHODOLOGY.md,
-  PROMPT-TEMPLATES.md) or read from the pack without copying (QUICKSTART.md,
-  DEPENDENCIES.md, CLI-PM-SETUP.md, etc.). These are process and reference docs.
+- **`supporting-docs/`** — docs copied individually during setup (METHODOLOGY.md)
+  or read from the pack without copying (QUICKSTART.md, DEPENDENCIES.md,
+  CLI-PM-SETUP.md, etc.). These are process and reference docs.
 
 If a file is part of the project's runtime agent infrastructure, it belongs in
 `project-template/`. If it is a methodology or reference document, it belongs
