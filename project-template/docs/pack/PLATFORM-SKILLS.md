@@ -294,6 +294,41 @@ This skill is outside both tiers. It is not loaded by any agent — it is used e
 
 ---
 
+## Custom agents
+
+Project-specific agents created via Procedure 5 (METHODOLOGY.md Part 7).
+All entries in this section begin with `x-`. The PM chat treats these as
+equivalent to pack agents for skill loading and routing, with the single
+difference that they are project-owned and preserved across pack
+upgrades.
+
+| Agent | Purpose | Dimension | Phase routed to | Tier 1 skills | Tier 2 skills | Read/write mode |
+|---|---|---|---|---|---|---|
+| `x-deployer` | Release packaging and staging deploy | Component Roles | Repo operations | repo-ops | deployment-apple, deployment-python | write |
+
+*This row is illustrative. The PM chat replaces it with real entries during
+Procedure 5. If a project has no custom agents, the section body is
+`*No custom agents defined for this project.*`.*
+
+---
+
+## Custom skills
+
+Project-specific skills created via Procedure 5 (METHODOLOGY.md Part 7).
+All entries in this section begin with `x-`. Loaded by agents via the
+same instruction block as pack skills — see "Step 3 — Generate the
+prompt" above.
+
+| Skill | Description | Dimension | Loaded by |
+|---|---|---|---|
+| `x-brokerage-api` | OT broker-adapter patterns, capability masks, idempotency | Communication Protocols | reviewer, auditor-code, x-deployer |
+
+*This row is illustrative. The PM chat replaces it with real entries during
+Procedure 5. If a project has no custom skills, the section body is
+`*No custom skills defined for this project.*`.*
+
+---
+
 ## Extending this file
 
 To add support for a new platform, language, role, or protocol: create the
