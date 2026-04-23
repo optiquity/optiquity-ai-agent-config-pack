@@ -523,18 +523,22 @@ The auditor parent is bypassed; the subagent reports directly.
 
 ### Workflow → template cross-reference
 
-Each workflow has corresponding prompt templates in `docs/pack/prompts/` (one
-file per agent, one `## Variant:` H2 per template). Use these as starting
-points — customize for the current project and phase before pasting.
+Each workflow uses one or more pack-shipped prompt variants from
+`docs/pack/prompts/` (one file per agent, one `## Variant:` H2 per
+variant). The table below enumerates every pack variant a workflow
+touches. Project-generated files that serve as prompts (notably
+`AGENT_KICKOFF.md` for Workflow 1 step 10) are noted inline in the
+relevant row. Customize every variant for the current project and
+phase before pasting.
 
 | Workflow | Prompts to use |
 |---|---|
-| Workflow 1 — New project | `pm-chat.md` Variant: kickoff, `pm-chat.md` Variant: generate-setup, `pm-chat.md` Variant: generate-agent-kickoff |
-| Workflow 2 — Per-phase execution | `coder.md` Variant: standard, `reviewer.md` Variant: standard, `coder.md` Variant: fix-cycle |
-| Workflow 3 — External API research | `docs-researcher.md` Variant: standard, then `coder.md` Variant: standard |
-| Workflow 4 — Fix cycle | `coder.md` Variant: fix-cycle (fix cycle coder prompt); `architect.md` Variant: mid-phase (when triggered) |
-| Workflow 5 — Full-codebase audit | `auditor.md` Variant: standard — replaces the legacy per-dimension audit prompts with a single auditor prompt that spawns the right subagents |
-| Workflow 6 — New feature | `pm-chat.md` Variant: backlog-status-update, then Workflow 2 prompts |
+| Workflow 1 — New project | `pm-chat.md` Variant: kickoff (developer-pasted to start the PM chat); `pm-chat.md` Variant: generate-setup and `pm-chat.md` Variant: generate-agent-kickoff (PM-chat self-prompts that produce `SETUP.md` and `AGENT_KICKOFF.md`); architect agent invocation with `AGENT_KICKOFF.md` (step 10 — `AGENT_KICKOFF.md` is project-generated, not a pack variant) |
+| Workflow 2 — Per-phase execution | `coder.md` Variant: standard; `reviewer.md` Variant: standard; `coder.md` Variant: fix-cycle (if reviewer finds issues) |
+| Workflow 3 — External API research | `docs-researcher.md` Variant: standard; (optional) `tester.md` Variant: standard; then Workflow 2 prompts for the implementation cycle |
+| Workflow 4 — Fix cycle | `coder.md` Variant: fix-cycle (main); `architect.md` Variant: mid-phase (when Trigger A or B fires); `reviewer.md` Variant: standard (re-runs the cycle after each fix); `pm-chat.md` Variant: backlog-status-update (for items deferred to BACKLOG) |
+| Workflow 5 — Full-codebase audit | `auditor.md` Variant: standard — a single auditor prompt that spawns the right subagents, replacing the legacy per-dimension audit prompts; `pm-chat.md` Variant: backlog-status-update (for BACKLOG intake from findings); Workflow 2 prompts for each fix prompt the audit generates |
+| Workflow 6 — New feature | PM chat updates `ARCHITECTURE.md` and `IMPLEMENTATION_PLAN.md` directly (no pack variant); `pm-chat.md` Variant: backlog-status-update (if the feature adds BACKLOG entries); then Workflow 2 prompts for each new phase |
 
 ---
 
