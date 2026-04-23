@@ -6,6 +6,12 @@
 **Auditor:** Pack Chat (Claude Code CLI, Opus 4.6)
 **Baseline:** v8.9 tag
 
+> **v10 postscript (BD-046):** Findings 11.1 and the surrounding version-
+> footer content reference `supporting-docs/PROMPT-TEMPLATES.md`. As of
+> v10.0, that file has been decomposed into per-agent prompt files under
+> `project-template/docs/pack/prompts/`. The findings and file-touch
+> table below are left unchanged as a historical record of the v9 audit.
+
 ---
 
 ## Executive Summary
