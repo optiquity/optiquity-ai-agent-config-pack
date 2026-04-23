@@ -7,7 +7,8 @@ Copy this file to your project root during setup:
   cp /path/to/pack/project-template/PM-CHAT.md ./PM-CHAT.md
 
 The [PROJECT_NAME] placeholder and the "Additional project documents" section
-are filled in by the PM chat during the project kickoff conversation (Template 1).
+are filled in by the PM chat during the project kickoff conversation (see
+`docs/pack/prompts/pm-chat.md` Variant: kickoff).
 Do not fill them in manually — the PM chat customizes and commits this file as
 part of kickoff, then removes this comment block.
 
@@ -85,8 +86,9 @@ You are a consumer of a design brief, not its author. Platform selection, featur
 scope, and architecture decisions belong in a design conversation — not in the
 PM chat.
 
-Once the brief exists, proceed with Template 1 (PM Chat Kickoff Prompt) to
-establish project context.
+Once the brief exists, proceed with the PM chat kickoff prompt
+(`docs/pack/prompts/pm-chat.md` Variant: kickoff) to establish project
+context.
 
 ---
 

@@ -219,6 +219,6 @@ Run `/pm-startup` — it re-reads BACKLOG.md, STATUS.md, and other key files
 from disk to restore accurate context.
 
 **PM-CHAT.md still shows `[PROJECT_NAME]`:**
-The PM chat fills this in during the kickoff conversation (Template 1). If it
+The PM chat fills this in during the kickoff conversation (`docs/pack/prompts/pm-chat.md` Variant: kickoff). If it
 was skipped, ask the PM chat to read PM-CHAT.md, fill in the project name,
 remove the template comment block, and commit the file.

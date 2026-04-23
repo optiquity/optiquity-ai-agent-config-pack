@@ -424,7 +424,7 @@ specific enough that a future reader can determine when the blocker is no longer
 Vague blockers ("needs more thought," "revisit later") are not acceptable. If the PM chat
 cannot name the specific blocker, the item is not actually blocked — put it in the fix prompt.
 
-**Fix prompts follow Template 4.** Each entry describes what is wrong and what correct
+**Fix prompts follow the coder fix-cycle pattern** (`coder.md` Variant: fix-cycle). Each entry describes what is wrong and what correct
 behavior looks like — not how to fix it. No pseudocode, no implementation steps. This
 applies regardless of how obvious the fix appears.
 
@@ -456,7 +456,7 @@ The reviewer report shows either:
    rule, the ambiguous constraint, or the incorrect architectural assumption.
 2. **Propose an architect pass** — describe what the architect agent will read and what
    doc changes are expected. Get explicit user approval before proceeding.
-3. **Run the architect agent** — read-only pass using Template 4b. The agent reads
+3. **Run the architect agent** — read-only pass using `architect.md` Variant: mid-phase. The agent reads
    `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `CLAUDE.md`, `AGENTS.md`, and the
    specific reviewer findings. It proposes corrections to those docs as text output —
    it does not write files.
@@ -464,7 +464,7 @@ The reviewer report shows either:
    to change. Get explicit approval for each change before applying it.
 5. **Apply approved changes** — PM chat applies via Desktop Commander or outputs for
    manual application. Commit the doc changes before the coder fix pass.
-6. **Generate coder fix pass** — using Template 4, incorporating both the reviewer's
+6. **Generate coder fix pass** — using `coder.md` Variant: fix-cycle, incorporating both the reviewer's
    open issues and the new architectural direction. Present plan, get approval, then
    developer runs it.
 
@@ -527,14 +527,14 @@ Each workflow has corresponding prompt templates in `docs/pack/prompts/` (one
 file per agent, one `## Variant:` H2 per template). Use these as starting
 points — customize for the current project and phase before pasting.
 
-| Workflow | Templates to use |
+| Workflow | Prompts to use |
 |---|---|
-| Workflow 1 — New project | Template 1 (PM chat kickoff), Template 13 (generate SETUP.md), Template 14 (generate AGENT_KICKOFF.md) |
-| Workflow 2 — Per-phase execution | Template 2 (coder), Template 3 (reviewer), Template 4 (fix cycle) |
-| Workflow 3 — External API research | Template 6 (docs-researcher), then Template 2 (coder) |
-| Workflow 4 — Fix cycle | Template 4 (fix cycle coder prompt); Template 4b (mid-phase architect prompt, when triggered) |
-| Workflow 5 — Full-codebase audit | Template 9 (auditor invocation) — replaces the legacy per-dimension audit templates with a single auditor template that spawns the right subagents |
-| Workflow 6 — New feature | Template 8 (BACKLOG/STATUS update), then Workflow 2 templates |
+| Workflow 1 — New project | `pm-chat.md` Variant: kickoff, `pm-chat.md` Variant: generate-setup, `pm-chat.md` Variant: generate-agent-kickoff |
+| Workflow 2 — Per-phase execution | `coder.md` Variant: standard, `reviewer.md` Variant: standard, `coder.md` Variant: fix-cycle |
+| Workflow 3 — External API research | `docs-researcher.md` Variant: standard, then `coder.md` Variant: standard |
+| Workflow 4 — Fix cycle | `coder.md` Variant: fix-cycle (fix cycle coder prompt); `architect.md` Variant: mid-phase (when triggered) |
+| Workflow 5 — Full-codebase audit | `auditor.md` Variant: standard — replaces the legacy per-dimension audit prompts with a single auditor prompt that spawns the right subagents |
+| Workflow 6 — New feature | `pm-chat.md` Variant: backlog-status-update, then Workflow 2 prompts |
 
 ---
 

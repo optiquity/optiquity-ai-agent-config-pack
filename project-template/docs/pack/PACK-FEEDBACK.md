@@ -53,7 +53,7 @@ section is the detail.
 Log observations in four categories as they occur during normal work:
 
 1. **Workflow execution** — for each Workflow (1–6 in METHODOLOGY.md Part 5): did it run as documented? What was confusing, improvised, or skipped? Every entry must say: which workflow, what was expected, what happened.
-2. **Prompt generation** — for each template (Templates 1–14 in PROMPT-TEMPLATES.md): what had to be customized heavily? Unclear placeholders? Missing information? Did the agent struggle because the template lacked context?
+2. **Prompt generation** — for each per-agent prompt variant (in `docs/pack/prompts/<agent>.md`): what had to be customized heavily? Unclear placeholders? Missing information? Did the agent struggle because the variant lacked context?
 3. **Agent performance** — per-agent, per-run: did it follow the instructions? Respect file scope? Use the output format? Hallucinate? Drift? Silently fail? Aggregate into per-agent patterns over time (patterns are more valuable to Pack Chat than individual incidents).
 4. **User friction** — where the human got confused, asked twice, encountered unexpected behavior, or found documented behavior that didn't match tool behavior.
 
@@ -115,7 +115,7 @@ This check is the PM chat's responsibility. The user should not have to ask for 
 ### Scope boundaries
 
 This doc is about **the pack**, not the project. The distinction:
-- *"Workflow 5 is confusing because the skip rules aren't in Template 9."* → **PACK-FEEDBACK.md** (observation about the pack).
+- *"Workflow 5 is confusing because the skip rules aren't in `auditor.md` Variant: standard."* → **PACK-FEEDBACK.md** (observation about the pack).
 - *"Phase 7 fix for auth middleware is deferred until the JWT library ships."* → **BACKLOG.md** (project-specific debt).
 
 The PM chat records *observations*, never *solutions*. Pack Chat decides what to do. The PM chat does not modify the pack from within a project — the pack repo is upstream and read-only.
@@ -191,46 +191,46 @@ only — no solutions.*
 
 ---
 
-## Prompt Template Observations
+## Prompt Variant Observations
 
-*For each template used: template number, what needed heavy
-customization, unclear placeholders, missing information, did the
+*For each variant used: which agent file and variant slug, what needed
+heavy customization, unclear placeholders, missing information, did the
 generated prompt produce good agent output.*
 
-### Template 1 — PM Chat Kickoff
+### pm-chat.md — Variant: kickoff
 *(no entries yet)*
 
-### Template 2 — Coder
+### coder.md — Variant: standard
 *(no entries yet)*
 
-### Template 3 — Reviewer
+### reviewer.md — Variant: standard
 *(no entries yet)*
 
-### Template 4 — Fix Cycle
+### coder.md — Variant: fix-cycle
 *(no entries yet)*
 
-### Template 4b — Mid-Phase Architect
+### architect.md — Variant: mid-phase
 *(no entries yet)*
 
-### Template 5 — Tester
+### tester.md — Variant: standard
 *(no entries yet)*
 
-### Template 6 — Docs-Researcher
+### docs-researcher.md — Variant: standard
 *(no entries yet)*
 
-### Template 7 — Planner
+### planner.md — Variant: standard
 *(no entries yet)*
 
-### Template 8 — BACKLOG / STATUS Update
+### pm-chat.md — Variant: backlog-status-update
 *(no entries yet)*
 
-### Template 9 — Auditor Invocation
+### auditor.md — Variant: standard
 *(no entries yet)*
 
-### Template 13 — Generate SETUP.md
+### pm-chat.md — Variant: generate-setup
 *(no entries yet)*
 
-### Template 14 — Generate AGENT_KICKOFF.md
+### pm-chat.md — Variant: generate-agent-kickoff
 *(no entries yet)*
 
 ---
