@@ -10,6 +10,10 @@ Checks:
   5. Agent file count: Claude, Codex, and Gemini agent dirs have the same count
   6. Prompts-directory format: per-agent frontmatter, variant→H2 consistency,
      PROMPT-AUTHORING.md exists
+  7. Pack agent roster: PM-CHAT.md ## Pack agent roster list matches
+     .claude/agents/*.md stems
+  8. Reserved x- prefix: no file or directory in the seven pack scan
+     locations begins with `x-`
 
 Exit 0 if all pass, exit 1 if any fail. Each failure prints the exact
 file, line (where applicable), and problem.
@@ -35,6 +39,17 @@ REQUIRED_SKILL_FIELDS = {"name", "description", "allowed-tools"}
 PROMPTS_DIR = REPO_ROOT / "project-template" / "docs" / "pack" / "prompts"
 REQUIRED_PROMPT_FRONTMATTER = {"agent", "variants"}
 RESERVED_PROMPT_FRONTMATTER = {"description", "deprecated-by", "notes"}
+
+PM_CHAT = REPO_ROOT / "project-template" / "docs" / "pack" / "PM-CHAT.md"
+PACK_SCAN_LOCATIONS = [
+    REPO_ROOT / "project-template" / ".claude" / "agents",
+    REPO_ROOT / "project-template" / ".codex" / "agents",
+    REPO_ROOT / "project-template" / ".gemini" / "agents",
+    REPO_ROOT / "project-template" / ".claude" / "skills",
+    REPO_ROOT / "project-template" / ".codex" / "skills",
+    REPO_ROOT / "project-template" / ".gemini" / "skills",
+    REPO_ROOT / "project-template" / "docs" / "pack" / "prompts",
+]
 
 # The pack repo is mostly templates and documentation, where TD-TBD appears
 # as a FORMAT EXAMPLE (teaching downstream projects the deferral syntax).
@@ -353,6 +368,78 @@ def check_prompts_directory() -> None:
         ok(f"{rel} — {len(variants_slugs)} variant(s)")
 
 
+# ── Check 7: Pack agent roster ──────────────────────────────────────────────
+
+def check_pack_agent_roster() -> None:
+    print("\n── Check 7: Pack agent roster ──")
+    if not PM_CHAT.exists():
+        fail(f"{PM_CHAT.relative_to(REPO_ROOT)} — file missing")
+        return
+    if not CLAUDE_AGENTS_DIR.is_dir():
+        fail(f"{CLAUDE_AGENTS_DIR.relative_to(REPO_ROOT)} — directory missing")
+        return
+
+    content = PM_CHAT.read_text()
+
+    # Extract bulleted stems between `^## Pack agent roster$` and the next
+    # section boundary (next `^## ` H2 or `^---$` separator).
+    lines = content.split("\n")
+    in_section = False
+    roster: list[str] = []
+    for line in lines:
+        if line.strip() == "## Pack agent roster":
+            in_section = True
+            continue
+        if in_section:
+            if line.startswith("## ") or line.strip() == "---":
+                break
+            if line.startswith("- "):
+                roster.append(line[2:].strip())
+
+    if not roster:
+        fail(f"{PM_CHAT.relative_to(REPO_ROOT)} — `## Pack agent roster` section missing or empty")
+        return
+
+    actual_stems = {p.stem for p in CLAUDE_AGENTS_DIR.glob("*.md")}
+    roster_set = set(roster)
+
+    missing_from_roster = actual_stems - roster_set
+    missing_from_disk = roster_set - actual_stems
+
+    if missing_from_roster:
+        fail(
+            f"{PM_CHAT.relative_to(REPO_ROOT)} — agent(s) on disk but missing from "
+            f"`## Pack agent roster`: {sorted(missing_from_roster)}"
+        )
+    if missing_from_disk:
+        fail(
+            f"{PM_CHAT.relative_to(REPO_ROOT)} — stem(s) in `## Pack agent roster` "
+            f"with no matching `.claude/agents/*.md` file: {sorted(missing_from_disk)}"
+        )
+
+    if not missing_from_roster and not missing_from_disk:
+        ok(f"PM-CHAT.md roster matches .claude/agents/ ({len(roster_set)} stems)")
+
+
+# ── Check 8: Reserved `x-` prefix ───────────────────────────────────────────
+
+def check_reserved_x_prefix() -> None:
+    print("\n── Check 8: Reserved `x-` prefix ──")
+    any_violation = False
+    for loc in PACK_SCAN_LOCATIONS:
+        if not loc.is_dir():
+            continue
+        rel = loc.relative_to(REPO_ROOT)
+        offenders = [p.name for p in loc.iterdir() if p.name.startswith("x-")]
+        if offenders:
+            any_violation = True
+            for name in sorted(offenders):
+                fail(f"{rel}/ — reserved `x-` prefix in pack: `{name}`")
+
+    if not any_violation:
+        ok(f"no `x-` entries in any of {len(PACK_SCAN_LOCATIONS)} pack scan locations")
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -366,6 +453,8 @@ def main() -> None:
     check_readme_version()
     check_agent_count()
     check_prompts_directory()
+    check_pack_agent_roster()
+    check_reserved_x_prefix()
 
     print("\n" + "=" * 60)
     if failures:
