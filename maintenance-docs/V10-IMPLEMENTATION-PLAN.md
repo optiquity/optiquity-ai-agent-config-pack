@@ -784,7 +784,11 @@ Commit format (CLAUDE.md pack-repo rules):
     at its current HEAD on v10-dev (equal to v9.3 for this file). If
     v10-dev has unexpectedly modified the file, reset via
     `git show v9.3:supporting-docs/PROMPT-TEMPLATES.md`.
-- **Files created (12):**
+- **Part 8 rows covered (12 = 1 directory + 11 files):** row 11 is
+  `project-template/docs/pack/prompts/` (the directory, created
+  implicitly when the first file is written into it); rows 12–22 are
+  the 11 files below.
+- **Files created (11):**
   - `project-template/docs/pack/prompts/coder.md` (`agent: coder`; variants `standard`, `fix-cycle` from T2+T4)
   - `project-template/docs/pack/prompts/reviewer.md` (`agent: reviewer`; variants `standard` from T3)
   - `project-template/docs/pack/prompts/tester.md` (variants `standard` from T5)
