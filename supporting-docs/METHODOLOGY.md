@@ -26,7 +26,8 @@ They are not interchangeable. Claude Chat holds context, makes decisions, and ge
 prompts. CLI agents execute those prompts against the actual filesystem.
 
 **For prompt templates** referenced throughout this document, see:
-`PROMPT-TEMPLATES.md` in the project root (copied from the pack during setup).
+`docs/pack/prompts/<agent>.md` — one file per agent, one `## Variant:`
+H2 per template (travels with `project-template/` at project setup).
 
 **Desktop Commander note:** When Desktop Commander is available in the Claude desktop app,
 the PM chat can write files and run git commands directly for small targeted doc changes
@@ -310,7 +311,7 @@ been explicitly split into multiple sequential parts by a planning agent.
 
 ## Part 5 — Standard Workflows
 
-> **Prompt templates** for each workflow step are in `PROMPT-TEMPLATES.md`.
+> **Prompt templates** for each workflow step are in `docs/pack/prompts/<agent>.md`.
 > Templates are starting points — the PM chat customizes each prompt based on project
 > context, current phase, and recent review results.
 
@@ -318,9 +319,9 @@ been explicitly split into multiple sequential parts by a planning agent.
 
 1. Create GitHub repo, clone locally
 2. Copy the unified template and supporting docs per QUICKSTART.md Steps 1–4:
-   copy `project-template/`, copy `METHODOLOGY.md` and `PROMPT-TEMPLATES.md`
-   from `supporting-docs/`, remove conditional files, fill in context file
-   placeholders, run `./scripts/bootstrap.sh`
+   copy `project-template/` (which includes `docs/pack/prompts/`), copy
+   `METHODOLOGY.md` from `supporting-docs/`, remove conditional files, fill
+   in context file placeholders, run `./scripts/bootstrap.sh`
 3. Create `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` (initially sparse)
 4. Commit all template and doc files before writing any code
 5. Set up the PM chat (QUICKSTART.md Step 10 — choose Claude Desktop,
@@ -487,7 +488,8 @@ file scopes, severity scale, pass/fail thresholds, and report format.
    - auditor-ops always runs
    - The other four clusters always run
 3. PM chat generates the auditor invocation prompt using the auditor template
-   in PROMPT-TEMPLATES.md, listing the skip set explicitly as prose
+   in `docs/pack/prompts/auditor.md` (`## Variant: standard`), listing the
+   skip set explicitly as prose
 4. Developer runs the auditor:
    - Claude:  ./agent-run.sh claude --agent auditor
    - Codex:   ./agent-run.sh codex  --agent auditor
@@ -521,8 +523,9 @@ The auditor parent is bypassed; the subagent reports directly.
 
 ### Workflow → template cross-reference
 
-Each workflow has corresponding prompt templates in `PROMPT-TEMPLATES.md`. Use these
-as starting points — customize for the current project and phase before pasting.
+Each workflow has corresponding prompt templates in `docs/pack/prompts/` (one
+file per agent, one `## Variant:` H2 per template). Use these as starting
+points — customize for the current project and phase before pasting.
 
 | Workflow | Templates to use |
 |---|---|
@@ -750,9 +753,9 @@ returned to the terminal. To process its findings into the BACKLOG, paste
 the report into the PM chat and follow the post-audit BACKLOG intake
 procedure above.
 
-**Auditor template lives in `PROMPT-TEMPLATES.md` (Template 9).** The PM
-chat uses it as a starting point and customizes the skip rules and
-project-specific scope notes per project.
+**Auditor template lives in `docs/pack/prompts/auditor.md` (`## Variant:
+standard`).** The PM chat uses it as a starting point and customizes the
+skip rules and project-specific scope notes per project.
 
 
 ---
@@ -944,6 +947,146 @@ The PM chat presents its reasoning and the user may override. Bias toward resolv
      downstream item may need a new blocker, revised scope, or cancellation itself
 ```
 
+### Procedure 5 — Custom agent and skill workflow
+
+Projects may create project-specific agents and skills beyond what the
+pack ships. All custom files use the `x-` prefix, which the pack
+reserves for this purpose. Pack-supplied files never begin with `x-`.
+
+Procedure 5 has six sub-procedures (5.1–5.6) plus a reconciliation
+variant (Procedure 5-R) triggered during migration.
+
+#### Procedure 5.1 — Creating a custom agent
+
+Triggered when the developer asks for a custom agent.
+
+1. **Pre-check (G-design).** Verify no existing files for the proposed
+   name (`.claude/agents/x-<name>.md`, the Codex and Gemini equivalents,
+   and `docs/pack/prompts/x-<name>.md`). If any exist, route to
+   Procedure 5.3 (completing a partial registration).
+2. **Clarifying questions.** Purpose; which PLATFORM-SKILLS.md dimension
+   this agent extends (Platform Targets, Languages, Component Roles, or
+   Communication Protocols); primary phase served; read-only or write;
+   Bash/Web/MCP tool requirements; number of prompt variants; existing
+   pack skills loaded vs. new custom skill; which pack agent the PM chat
+   would have routed to absent this custom (for the routing-table row).
+3. **Drafts (G-files).** PM chat drafts all four files (Claude agent,
+   Codex agent, Gemini agent, per-agent prompt). Presents side-by-side;
+   iterate until approved.
+4. **Registration drafts (G-registration).** PLATFORM-SKILLS.md
+   `## Custom agents` row; trinity Phase routing rows in CLAUDE.md,
+   AGENTS.md, and GEMINI.md (TRIO — byte-identical row content); if the
+   new agent needs a custom skill, also draft a `## Custom skills` row
+   plus three `SKILL.md` files (`.claude/skills/x-<name>/SKILL.md` and
+   the Codex/Gemini equivalents).
+5. **Commit (G-commit).** PM chat presents `git add` list and commit
+   message; developer explicitly approves per CLAUDE.md pack rule. One
+   commit, all artifacts.
+
+#### Procedure 5.2 — Creating a custom skill (standalone)
+
+Triggered when an existing pack or `x-` custom agent will load a new
+project-specific skill and no custom-agent creation is in flight.
+
+1. **Pre-check:** no `x-<name>` skill directory exists in any of the
+   three tool skills directories.
+2. **Clarifying questions:** purpose; which PLATFORM-SKILLS.md dimension
+   this skill extends (Platform Targets, Languages, Component Roles, or
+   Communication Protocols); which agents load it; `allowed-tools`.
+3. **Drafts (G-files):** three `SKILL.md` files with identical
+   frontmatter and body across the three tool directories.
+4. **Registration drafts (G-registration):** PLATFORM-SKILLS.md
+   `## Custom skills` row naming which agents load the skill.
+5. **Commit (G-commit):** per Procedure 5.1 step 5.
+
+#### Procedure 5.3 — Completing a partial registration (Unregistered)
+
+Triggered when the detection scan reports an Unregistered custom agent
+or skill (some but not all expected artifacts are present on disk).
+
+1. PM chat lists present files and missing artifacts.
+2. Developer approves reconstruction. PM chat drafts missing tool forms,
+   prompt file, and/or PLATFORM-SKILLS.md row and routing-table entries.
+3. **G-registration** approval.
+4. **G-commit** approval.
+
+#### Procedure 5.4 — Adopting an improperly-added file
+
+Triggered when the detection scan reports an Improperly added file —
+present in one of the seven scan locations but with neither a name that
+begins with `x-` nor an entry in the pack roster.
+
+1. PM chat confirms the invisibility consequence: the file is on disk
+   but not in routing tables or skill-load lists, so no agent session
+   loads or invokes it.
+2. Developer chooses:
+   - **Adopt as custom.** Rename to `x-<name>`; route to Procedure 5.3
+     to complete registration.
+   - **Remove.** PM chat produces `git rm` commands for approval (per
+     CLAUDE.md destructive-op rule: explicit approval before execution).
+   - **Defer.** File stays on disk, stays invisible; scan flags it at
+     every subsequent trigger.
+
+#### Procedure 5.5 — Detection scan as a phase-gate step
+
+The phase-gate check in **Procedure 1** gains sub-step 5a:
+
+> **5a. Run custom-file detection scan (Procedure 5).** If any
+> unregistered or improperly-added files are found, pause and route to
+> the appropriate sub-procedure (5.3 or 5.4). Developer may Defer; do
+> not block the phase on unregistered custom files if the developer
+> explicitly chooses Defer, but do not include those files in the
+> upcoming prompt generation either.
+
+#### Procedure 5.6 — Registration reference tables
+
+Custom-agent registration artifacts:
+
+| Artifact | Location | Must exist before G-commit |
+|---|---|---|
+| Claude agent file | `.claude/agents/x-<name>.md` | Yes |
+| Codex agent file | `.codex/agents/x-<name>.toml` | Yes |
+| Gemini agent file | `.gemini/agents/x-<name>.md` | Yes |
+| Per-agent prompt file | `docs/pack/prompts/x-<name>.md` | Yes |
+| PLATFORM-SKILLS.md `## Custom agents` row | `docs/pack/PLATFORM-SKILLS.md` | Yes |
+| Trinity routing-table row | `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` (TRIO, byte-identical) | Yes |
+
+Custom-skill registration artifacts:
+
+| Artifact | Location | Must exist before G-commit |
+|---|---|---|
+| Claude skill | `.claude/skills/x-<name>/SKILL.md` | Yes |
+| Codex skill | `.codex/skills/x-<name>/SKILL.md` | Yes |
+| Gemini skill | `.gemini/skills/x-<name>/SKILL.md` | Yes |
+| PLATFORM-SKILLS.md `## Custom skills` row | `docs/pack/PLATFORM-SKILLS.md` | Yes |
+
+A developer can answer "is my custom agent / skill properly
+registered?" by checking the rows above for their `x-<name>` entry.
+
+### Procedure 5-R — Prompt reconciliation after v9.3 → v10 migration
+
+Triggered by presence of `docs/pack/prompts/_v9-backup.md` at PM chat
+startup. That file is a one-shot backup of the v9.3 `PROMPT-TEMPLATES.md`
+content, written by `migrate-v9-to-v10.sh` for projects whose
+`PROMPT-TEMPLATES.md` diverged from the v9.3 baseline (indicating
+project-specific customization that needs human review).
+
+1. PM chat reads `_v9-backup.md` and the v10 per-agent files in
+   `docs/pack/prompts/`.
+2. PM chat computes a conceptual diff: the v9.3 baseline content (which
+   matches the v10 per-agent files modulo reformatting) vs. the
+   project-specific content in `_v9-backup.md`. The meaningful diff is
+   the project's customization.
+3. PM chat surfaces each customization to the developer with a proposed
+   placement (e.g., "your project added X to Template 4; in v10 this
+   would live in `coder.md ## Variant: fix-cycle` between these lines.
+   Approve?").
+4. Developer approves, modifies, or rejects each surfaced item.
+5. PM chat writes approved changes to the relevant per-agent file(s).
+6. PM chat offers to remove `_v9-backup.md` and records the
+   reconciliation in the commit message. Once removed, Procedure 5-R
+   does not run again.
+
 ### Cancelling or deprecating a BACKLOG item
 
 Tell the PM chat in conversation: "Cancel TD-NNN" or "Deprecate TD-NNN — [brief reason]."
@@ -1112,7 +1255,7 @@ reference.
 - [ ] Create GitHub repo; clone locally
 - [ ] Planning conversation → ARCHITECTURE.md, IMPLEMENTATION_PLAN.md, CLAUDE.md, AGENTS.md
 - [ ] Copy template files from pack: `cp -r pack/[TEMPLATE]/. .` — then separately copy
-      `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, `PM-CHAT.md`, and `PACK-FEEDBACK.md`
+      `METHODOLOGY.md`, `PM-CHAT.md`, and `PACK-FEEDBACK.md`
       from `project-template/` and `supporting-docs/`
 - [ ] Create BACKLOG.md, STATUS.md, CHANGELOG.md (empty with structure)
 - [ ] Run `./scripts/bootstrap.sh`
