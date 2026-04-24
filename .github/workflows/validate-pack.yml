@@ -4,7 +4,12 @@
 #
 # Checks: SKILL.md frontmatter, Codex TOML parsing, TD-TBD sentinels
 # in BACKLOG.md, README version table vs git tag, agent file count
-# consistency between Claude and Codex.
+# consistency across Claude / Codex / Gemini, prompts-directory format,
+# pack agent roster vs .claude/agents/, reserved `x-` prefix in the
+# seven pack scan locations, and BD-044 init-project structure
+# (scripts/init-project.sh executable, scripts/lib/detect.sh functions,
+# setup/migration docs present, README layout mentions detect.sh).
+# Full list and details in scripts/validate-pack.py.
 #
 # Security note: this workflow uses no untrusted input in run commands.
 # It only runs a local Python script against checked-out repo files.
