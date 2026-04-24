@@ -1092,6 +1092,47 @@ project-specific customization that needs human review).
    reconciliation in the commit message. Once removed, Procedure 5-R
    does not run again.
 
+### Procedure 6 — Adding a pack-supported capability
+
+Triggered when either:
+
+- The developer pastes the end-of-run prompt emitted by
+  `scripts/add-capability.sh` stage A7 (V10-DESIGN §5.14.3).
+- The developer asks the PM chat to "add Python" / "add iOS" / similar
+  and the PM chat (per its PM-CHAT.md **Capability addition**
+  behavioral rule) first instructs them to run `add-capability.sh`
+  from the pack before resuming.
+
+Procedure 6 is the PM-chat-side companion to `add-capability.sh`. The
+script copies the conditional pack files; Procedure 6 updates the
+trinity files' `**Active skills:**` line and `[PLACEHOLDER]` sections
+for the newly-active dimension.
+
+Gates: **G6-drafts** (trinity drafts reviewed before any markdown
+write) and **G6-commit** (git add list + commit message before
+committing).
+
+| Step | Action | Gate |
+|---|---|---|
+| **6.1** | Read the `add-capability.sh` report — either pasted into the session or read from `.pack-add-capability-prompt.md` at the project root (written by stage A7). Verify script stages A0–A7 completed. | — |
+| **6.2** | Read the newly-activated `SKILL.md` files from `.claude/skills/<name>/SKILL.md` (skills are already on disk from the initial pack install). Extract the content relevant to each trinity `[PLACEHOLDER]` section. | — |
+| **6.3** | Draft updates to the trinity files: update the `**Active skills:**` line; fill `[PLATFORM_DEFAULTS]`, `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`, `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`, `[PLATFORM_ANTIPATTERNS]` as applicable for the newly-added dimension. Present drafts side-by-side for all three trinity files (TRIO) — byte-identical content in every section the trinity rule covers. | **G6-drafts** — developer confirms trinity drafts before any write |
+| **6.4** | If the project now qualifies for a PLATFORM-SKILLS.md dimension row that was not previously selected (e.g., project gains an iOS row after adding iOS to a macOS-only selection), surface the dimension row for explicit acknowledgement. Informational — PLATFORM-SKILLS.md rows describe the pack's matrix, not the project's selection, so typically no edit is needed. | — |
+| **6.5** | Run the Procedure 5.5 detection scan once drafts are applied — verify no `x-` files were touched; verify PLATFORM-SKILLS.md `## Custom agents` / `## Custom skills` project-owned regions are unchanged. | — |
+| **6.6** | Present `git add` list and commit message (`feat: project — add <dimension>:<value> capability`); developer approves per CLAUDE.md pack rule (same gate as Procedure 5 G-commit). | **G6-commit** |
+
+The trinity edits are always TRIO (trinity rule): the same content is
+spliced into `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` in one commit.
+
+**Artifacts modified:** `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` (TRIO —
+`**Active skills:**` line + applicable `[PLACEHOLDER]` sections).
+
+**Artifacts never touched by Procedure 6:** any `x-` agent / skill /
+prompt file; any `SKILL.md` (already on disk); `BACKLOG.md`;
+`STATUS.md`; `ARCHITECTURE.md`; `IMPLEMENTATION_PLAN.md`;
+`CHANGELOG.md`; PLATFORM-SKILLS.md `## Custom agents` and
+`## Custom skills` project-owned regions.
+
 ### Cancelling or deprecating a BACKLOG item
 
 Tell the PM chat in conversation: "Cancel TD-NNN" or "Deprecate TD-NNN — [brief reason]."
