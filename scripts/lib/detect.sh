@@ -202,3 +202,69 @@ detect_improperly_added_files() {
 
     (( found == 0 )) && echo "improperly-added: (none)"
 }
+
+# capabilities: <dim>:<val>, <dim>:<val>, ... | (none) | (placeholder) | (no CLAUDE.md) | (no Active skills line)
+# Reads the `**Active skills:**` line from the target project's CLAUDE.md
+# and maps each skill to a dimension value using a hardcoded table that
+# mirrors the PLATFORM-SKILLS.md dimension rows. Consumed by
+# add-capability.sh stage A2 per V10-DESIGN §5.14.2.
+detect_installed_capabilities() {
+    local target="${1:-.}"
+    local claude="$target/CLAUDE.md"
+    if [[ ! -f "$claude" ]]; then
+        echo "capabilities: (no CLAUDE.md)"
+        return
+    fi
+
+    local skills_line content
+    skills_line=$(grep -m1 "^\*\*Active skills:\*\*" "$claude" 2>/dev/null || true)
+    if [[ -z "$skills_line" ]]; then
+        echo "capabilities: (no Active skills line)"
+        return
+    fi
+    content="${skills_line#*\*\*Active skills:\*\* }"
+    content="${content# }"
+    if [[ "$content" == "["* ]]; then
+        echo "capabilities: (placeholder)"
+        return
+    fi
+
+    # Normalize skill list: strip backticks, split on commas, trim whitespace.
+    local normalized skill
+    normalized=$(printf '%s' "$content" | tr -d '`' | tr ',' '\n' \
+        | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' || true)
+
+    # Map skills → dimension:value. Skills that don't map to a standalone
+    # dimension (architectural components, language-agnostic skills, or
+    # general-purpose helpers) are silently ignored — they don't represent
+    # independently-addable capabilities.
+    local caps=()
+    while IFS= read -r skill; do
+        [[ -z "$skill" ]] && continue
+        case "$skill" in
+            swift-best-practices)  caps+=("language:swift") ;;
+            python-best-practices) caps+=("language:python") ;;
+            cpp-language)          caps+=("language:cpp") ;;
+            c-language)            caps+=("language:c") ;;
+            objc-language)         caps+=("language:objc") ;;
+            macos-architecture)    caps+=("platform:macos") ;;
+            ios-architecture)      caps+=("platform:ios") ;;
+            grpc-patterns)         caps+=("protocol:grpc") ;;
+            rest-patterns)         caps+=("protocol:rest") ;;
+            graphql-patterns)      caps+=("protocol:graphql") ;;
+            realtime-patterns)     caps+=("protocol:realtime") ;;
+            messaging-patterns)    caps+=("protocol:messaging") ;;
+            soap-patterns)         caps+=("protocol:soap") ;;
+            deployment-apple)      caps+=("role:apple-app") ;;
+            deployment-python)     caps+=("role:python-server") ;;
+        esac
+    done <<< "$normalized"
+
+    if (( ${#caps[@]} == 0 )); then
+        echo "capabilities: (none)"
+    else
+        local joined
+        joined=$(printf '%s\n' "${caps[@]}" | sort -u | paste -sd, - | sed 's/,/, /g')
+        echo "capabilities: $joined"
+    fi
+}
