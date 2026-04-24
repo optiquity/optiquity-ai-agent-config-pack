@@ -19,7 +19,7 @@ See `QUICKSTART.md` in the pack root for the full setup procedure.
 | Category | Files | Notes |
 |---|---|---|
 | Agent files | `.claude/agents/*.md`, `.codex/agents/*.toml`, `.gemini/agents/*.md` | 16 agents (8 core + auditor parent + 7 auditor subagents) |
-| Skills | `.claude/skills/`, `.codex/skills/`, `.gemini/skills/` | 30 skills per tool. Distributed from the pack's `project-template/skills/` at project creation (QUICKSTART.md Step 4) and committed to git. No `skills/` directory at the project root. |
+| Skills | `.claude/skills/`, `.codex/skills/`, `.gemini/skills/` | 30 skills per tool. Distributed from the pack's `project-template/skills/` at project creation by `init-project.sh` and committed to git. No `skills/` directory at the project root. |
 | Scripts | `scripts/*.sh`, `agent-run.sh` | 15 scripts + launcher. See the Scripts table in CLAUDE.md. |
 | Context files | `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` | One per tool. Fill in `[PLACEHOLDER]` sections per project type. |
 | PM chat docs | `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | PM chat operational docs. PM-CHAT.md and PACK-FEEDBACK.md have `[PROJECT_NAME]` placeholders. |
@@ -57,8 +57,8 @@ After copying the template, remove files that don't apply to your project:
 ## Skill distribution
 
 The canonical skill library lives in the pack at `project-template/skills/`.
-At project creation (QUICKSTART.md Step 4) skills are distributed directly
-from the pack to each tool's expected location:
+At project creation, `init-project.sh` distributes skills directly from the
+pack to each tool's expected location:
 
 - `<pack>/project-template/skills/<name>/SKILL.md` → `.claude/skills/<name>/SKILL.md`
 - `<pack>/project-template/skills/<name>/SKILL.md` → `.codex/skills/<name>/SKILL.md`

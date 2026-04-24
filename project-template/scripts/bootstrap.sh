@@ -45,7 +45,8 @@ RAN_SOMETHING=0
 
 # Skills are distributed at project creation time from the pack's
 # project-template/skills/ directory directly into .claude/skills/,
-# .codex/skills/, and .gemini/skills/. See QUICKSTART.md Step 4.
+# .codex/skills/, and .gemini/skills/ by `init-project.sh` (see
+# supporting-docs/SETUP-NEW.md Step 3).
 # Once committed to git they do not need to be redistributed here.
 # To update skills after a pack version upgrade, see the migration guide.
 

@@ -132,7 +132,7 @@ Swift gRPC plugin. Used by `proto-gen.sh`.
 ## CLI PM Chat (Optional)
 
 These tools are only needed if using the Claude Code CLI as the PM chat session
-instead of the Claude Desktop app. Setup is in QUICKSTART.md Step 10 (Option B).
+instead of the Claude Desktop app. Setup is in `supporting-docs/SETUP-NEW.md` Step 10, Option B (Claude Code CLI).
 For daily session management after setup, see `supporting-docs/CLI-PM-SETUP.md`.
 
 ### mcp-local-rag (required for CLI PM chat)

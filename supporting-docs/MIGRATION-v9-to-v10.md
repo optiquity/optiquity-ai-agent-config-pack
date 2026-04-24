@@ -28,10 +28,9 @@ Three BD items shipped in v10.0:
 
 - **BD-044 — Project initialization tooling.** New `scripts/init-project.sh`
   detects project state (five classes), previews every operation, and
-  asks for explicit confirmation before writing. Replaces the manual
-  `cp -r project-template/. .` setup path for new and existing projects.
-  A three-path QUICKSTART.md router (NEW / EXISTING / MIGRATE) points
-  at this guide for v9.3 projects.
+  asks for explicit confirmation before writing. A three-path
+  QUICKSTART.md router (NEW / EXISTING / MIGRATE) points at this guide
+  for v9.3 projects.
 - **BD-045 — Capabilities pattern.** New architecture best practice
   recommended alongside LSP (LSP remains required; capabilities is
   recommended). Added to the trinity files (`CLAUDE.md`, `AGENTS.md`,
