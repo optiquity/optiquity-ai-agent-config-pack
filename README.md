@@ -50,7 +50,7 @@ always points to the latest minor of that major version.
 ## Repository Layout
 
 ```
-project-template/                           Unified project template (v9)
+project-template/                           Unified project template (v10)
 ├── .claude/agents/                         Claude agent files (16 agents)
 ├── .codex/agents/                          Codex agent files (16 agents)
 ├── .gemini/agents/                         Gemini agent files (16 agents)
@@ -58,30 +58,47 @@ project-template/                           Unified project template (v9)
 ├── .claude/settings.json                   Claude Code settings (permissions, hooks)
 ├── skills/                                 Canonical skill library (30 skills) — distributed
 │                                           to .claude/skills/, .codex/skills/, .gemini/skills/
-│                                           at project creation; not present in projects
+│                                           at project creation by init-project.sh; not
+│                                           present as a sub-directory in projects
+├── docs/pack/                              Pack product docs shipped into each project
+│   ├── PM-CHAT.md                          PM chat startup and operating instructions
+│   ├── PLATFORM-SKILLS.md                  Skill-selection matrix by project type
+│   ├── PACK-FEEDBACK.md                    Upstream feedback log to Pack Chat
+│   └── prompts/                            Per-agent prompt templates (new in v10)
+│       ├── coder.md                        variants: standard, fix-cycle
+│       ├── reviewer.md                     variant: standard
+│       ├── tester.md, planner.md,          variants: standard
+│       │   docs-researcher.md,
+│       │   architect.md (variant: mid-phase),
+│       │   auditor.md (variant: standard)
+│       ├── grpc-schema.md, repo-ops.md     placeholders (no variants shipped)
+│       ├── pm-chat.md                      variants: kickoff, backlog-status-update,
+│       │                                   generate-setup, generate-agent-kickoff
+│       └── PROMPT-AUTHORING.md             Directory guidance (not a per-agent file)
 ├── scripts/                                Build, test, validation scripts (15)
 ├── CLAUDE.md                               Claude context file (unified template)
 ├── AGENTS.md                               Codex context file (unified template)
 ├── GEMINI.md                               Gemini context file (unified template)
-├── PM-CHAT.md                              PM chat startup instructions
-├── PLATFORM-SKILLS.md                      Skill-selection matrix by project type
-├── PACK-FEEDBACK.md                        Upstream feedback log to Pack Chat
 ├── agent-run.sh                            Agent launcher with per-tool flags
 ├── .mcp.json.example                       MCP config template
 ├── .gitignore                              Gitignore for projects
 └── (conditional: proto/, server/, pyproject.toml, pyrightconfig.json)
 
 supporting-docs/                            Pack product docs (copied to or consumed by projects)
-├── METHODOLOGY.md                          Universal project methodology
-├── PROMPT-TEMPLATES.md                     Agent prompt templates
+├── METHODOLOGY.md                          Universal project methodology (copied to project root)
 ├── CLI-PM-SETUP.md                         CLI PM chat daily usage reference
 ├── DEPENDENCIES.md                         Tool dependencies reference
-├── SETUP_TEMPLATE.md                       New project setup template
+├── SETUP_TEMPLATE.md                       Per-project setup template (PM chat fills in)
+├── SETUP-NEW.md                            Guide for setting up a new project (v10)
+├── SETUP-EXISTING.md                       Guide for adding the pack to an existing project (v10)
 ├── AGENT_KICKOFF_TEMPLATE.md               Architecture kickoff template
-└── MIGRATION-v8-to-v9.md                   Upgrade guide
+├── MIGRATION-v9-to-v10.md                  Upgrade guide (v9.3 → v10.0)
+└── MIGRATION-v8-to-v9.md                   Upgrade guide (historical; v8.x → v9.0)
 
 maintenance-docs/                           Pack maintainer docs (design records, archives)
-├── V9-DESIGN.md                            v9 architecture design record
+├── V9-DESIGN.md                            v9 architecture design record (v10 annotated)
+├── V10-DESIGN.md                           v10 architecture design record
+├── V10-IMPLEMENTATION-PLAN.md              v10 implementation plan
 ├── TOOL-COMPARISON.md                      Cross-tool capability reference
 ├── VERIFIED-NOTES.md                       Verified facts from official docs
 ├── RECOMMENDATIONS.md                      Practical recommendations for new projects
@@ -100,12 +117,18 @@ vscode-companion-templates/                 Machine-level VS Code config (per pr
   .gemini/skills/
 
 scripts/                                    Pack-level scripts
-└── validate-pack.py                        CI structural validation
+├── validate-pack.py                        CI structural validation
+├── init-project.sh                         Initialize the pack in a new or existing project (v10)
+├── migrate-v9-to-v10.sh                    v9.3 → v10.0 migration script (v10)
+├── merge-platform-skills.py                PLATFORM-SKILLS.md splice helper (v10)
+├── merge-trinity.py                        Trinity file splice helper (v10)
+└── lib/
+    └── detect.sh                           Shared detection library sourced by the scripts above
 
 .github/workflows/                          GitHub Actions
 └── validate-pack.yml                       Pack self-validation on every push
 
-QUICKSTART.md                               Quick start guide
+QUICKSTART.md                               Quick start router (three paths — NEW / EXISTING / MIGRATE)
 PACK-CHAT.md                                Pack CLI chat operating instructions
 PACK-AGENTS.md                              Pack agent routing (includes invocation guide)
 BACKLOG.md                                  Pack improvement backlog
@@ -115,6 +138,10 @@ GEMINI.md                                   Pack repo Gemini context (not a temp
 README.md                                   This file
 CHANGELOG.md                                Pack changelog
 ```
+
+> Migration guides follow the naming convention `MIGRATION-vN-to-vM.md`.
+> They always live in `supporting-docs/` and ship with the major version
+> that introduces the destination pack version.
 
 ## Checking Out a Specific Version
 
