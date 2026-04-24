@@ -146,7 +146,25 @@ first:
 
 ---
 
-## Step 5 — (Apple only) Xcode scheme variables
+## Step 5 — (PM chat handles this during kickoff)
+
+On shell-capable surfaces (Claude Code CLI, Codex CLI, Gemini CLI,
+Claude Desktop with Desktop Commander), the PM chat runs kickoff
+auto-discovery (METHODOLOGY.md Procedure 7) after you paste the
+kickoff prompt in Step 10. It fills in Apple Xcode scheme variables,
+installs swift-format, installs gRPC tooling, and installs Xcode
+companion files — each behind an approval gate. **You do not need to
+run anything in this step on a shell-capable surface.**
+
+On surfaces without shell access (Claude Web, ChatGPT Web), declare
+`manual` when the PM chat asks and follow the Manual fallback below.
+
+### Manual fallback
+
+Run these commands locally and report values back to the PM chat,
+which will compose the corresponding file edits for you to paste.
+
+#### 5.A — (Apple only) Xcode scheme variables
 
 Open `scripts/validate.sh` and `scripts/test.sh`. Fill these at the
 top:
@@ -183,9 +201,7 @@ If your Xcode project uses a non-SPM source layout (e.g. `MyApp/` and
 SWIFT_SOURCE_DIRS=""   # e.g. "MyApp MyAppTests" for Xcode-generated layout
 ```
 
----
-
-## Step 6 — (Apple only) Install swift-format
+#### 5.B — (Apple only) Install swift-format
 
 ```bash
 brew install swift-format
@@ -194,9 +210,7 @@ brew install swift-format
 `scripts/format.sh` warns and exits 0 if swift-format is not installed,
 so this is not blocking — but you want it for local formatting.
 
----
-
-## Step 7 — (gRPC only) Set up proto code generation
+#### 5.C — (gRPC only) Set up proto code generation
 
 Install prerequisites:
 
@@ -215,9 +229,7 @@ with your own, then generate:
 ./scripts/proto-gen.sh
 ```
 
----
-
-## Step 8 — (Apple only) Install Xcode companion files
+#### 5.D — (Apple only) Install Xcode companion files
 
 Once per Mac (repeat on each machine you develop on):
 

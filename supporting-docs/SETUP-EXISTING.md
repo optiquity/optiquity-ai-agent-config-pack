@@ -142,30 +142,18 @@ now; the PM chat will finish the rest during kickoff (Step 10):
 
 ---
 
-## Step 5 — (Apple only) Xcode scheme variables
+## Step 5 — (PM chat handles this during kickoff)
 
-Fill in Xcode scheme and destination in `scripts/validate.sh`,
-`scripts/test.sh`, and `.claude/settings.json` (in the `env` block).
-See `SETUP-NEW.md` Step 5 for detailed values and how to find them.
+On shell-capable surfaces, the PM chat runs kickoff auto-discovery
+(METHODOLOGY.md Procedure 7) after you paste the kickoff prompt in
+Step 8. It fills in Apple Xcode scheme variables and installs Xcode
+companion files — each behind an approval gate. **You do not need to
+run anything in this step on a shell-capable surface.**
 
----
-
-## Step 6 — (Apple only) Xcode companion files
-
-Install once per Mac:
-
-```bash
-mkdir -p ~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig
-mkdir -p ~/Library/Developer/Xcode/CodingAssistant/codex
-cp "$PACK/xcode-companion-templates/ClaudeAgentConfig/CLAUDE.md" \
-   ~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/
-cp "$PACK/xcode-companion-templates/ClaudeAgentConfig/settings.json" \
-   ~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/
-cp "$PACK/xcode-companion-templates/Codex/AGENTS.md" \
-   ~/Library/Developer/Xcode/CodingAssistant/codex/
-cp "$PACK/xcode-companion-templates/Codex/config.toml" \
-   ~/Library/Developer/Xcode/CodingAssistant/codex/
-```
+On surfaces without shell access (Claude Web, ChatGPT Web), declare
+`manual` when the PM chat asks and follow `SETUP-NEW.md § Manual
+fallback` (sub-sections 5.A and 5.D — Xcode scheme variables and
+Xcode companion files; 5.B and 5.C apply only to new projects).
 
 ---
 
