@@ -120,6 +120,7 @@ scripts/                                    Pack-level scripts
 ├── validate-pack.py                        CI structural validation
 ├── init-project.sh                         Initialize the pack in a new or existing project (v10)
 ├── migrate-v9-to-v10.sh                    v9.3 → v10.0 migration script (v10)
+├── add-capability.sh                       Add a pack-supported capability to an existing project (v10)
 ├── merge-platform-skills.py                PLATFORM-SKILLS.md splice helper (v10)
 ├── merge-trinity.py                        Trinity file splice helper (v10)
 └── lib/
