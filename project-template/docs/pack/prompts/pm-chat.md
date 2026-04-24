@@ -20,6 +20,11 @@ generate-agent-kickoff).
 *Paste this at the start of a new PM chat session to establish project context.*
 *Fill in all [PLACEHOLDERS] before pasting.*
 
+**Before pasting:**
+- If you are running Gemini CLI and currently in plan mode (`/plan`), exit plan mode before continuing — kickoff requires shell execution.
+- If you are pasting this into Claude Web or ChatGPT Web without shell access, reply `manual` when asked below.
+- Shell-capable surfaces run kickoff auto-discovery (METHODOLOGY.md Procedure 7); non-shell surfaces use SETUP-NEW.md § Manual fallback.
+
 I am starting a new Claude Chat session for **[PROJECT_NAME]**.
 
 **Project:** [2-3 sentence description of what the project is and does]
@@ -31,6 +36,16 @@ I am starting a new Claude Chat session for **[PROJECT_NAME]**.
 - [Architecture pattern, e.g., MVVM with layered domain/data/presentation]
 - [Key protocol decisions, e.g., DataStore protocol over SwiftData]
 - [Any other settled decisions]
+
+**Before I do anything else:** I am about to run read-only discovery
+commands and propose installs and file edits for your approval.
+Confirm one of:
+
+- `shell` — I have shell access on this surface (Claude Code CLI, Codex
+  CLI, Gemini CLI, or Claude Desktop with Desktop Commander enabled).
+- `manual` — I have no shell on this surface (Claude Web, ChatGPT Web).
+
+Reply with the single word `shell` or `manual` before continuing.
 
 **Project documents are in the GitHub repo.** The GitHub connector is connected.
 Please search project knowledge to read:
@@ -59,6 +74,19 @@ If the **Active skills** line in the Skill loading section of `CLAUDE.md` still
 contains placeholder text, populate it now: read `PLATFORM-SKILLS.md`, determine
 the skill set for this project's type, and write the list. Apply the same line
 to `AGENTS.md` and `GEMINI.md`. Commit.
+
+---
+
+**Next, based on your surface declaration:**
+
+On `shell`: I will read `supporting-docs/METHODOLOGY.md` Procedure 7
+directly (not via RAG — Procedure 7 is order-sensitive) and follow
+its gates G7-discovery / G7-install / G7-edit / G7-machine before
+any write or install.
+
+On `manual`: I will point you at `supporting-docs/SETUP-NEW.md` §
+Manual fallback (sub-sections 5.A–5.D) and wait for you to report
+values back, then compose the corresponding edits for you to apply.
 
 ## Variant: backlog-status-update
 
