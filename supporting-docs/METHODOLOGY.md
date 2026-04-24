@@ -1133,6 +1133,313 @@ prompt file; any `SKILL.md` (already on disk); `BACKLOG.md`;
 `CHANGELOG.md`; PLATFORM-SKILLS.md `## Custom agents` and
 `## Custom skills` project-owned regions.
 
+### Procedure 7 — Kickoff auto-discovery and install-check
+
+Triggered when the developer pastes the `Variant: kickoff` prompt
+from `docs/pack/prompts/pm-chat.md` on a shell-capable surface
+(Claude Code CLI, Codex CLI, Gemini CLI, Claude Desktop with Desktop
+Commander) and declares `shell` at the surface-declaration gate.
+
+Procedure 7 is the PM-chat-side companion to the kickoff-variant
+continuation pointer. The pointer routes to this procedure; this
+procedure fills in the Apple / gRPC toolchain that SETUP-NEW.md
+Steps 5–8 would otherwise require the developer to run by hand.
+Every auto-discovered value and every install / edit / machine-level
+write is confirmed via Form R / I / E / M before the PM chat acts.
+
+Gates: **G7-discovery** (Form R), **G7-install** (Form I),
+**G7-edit** (Form E), and **G7-machine** (Form M). Each gate defaults
+to `skip` except G7-discovery, which is read-only and defaults to
+`yes`.
+
+#### 7.0 Trigger and scope
+
+The PM chat enters Procedure 7 when the kickoff-variant continuation
+pointer fires on a `shell` declaration. On `manual`, Procedure 7 is
+not entered; the PM chat emits the `SETUP-NEW.md § Manual fallback`
+pointer instead and waits for developer-reported values.
+
+The developer may declare `manual` even on a shell-capable surface
+(e.g., to read the planned commands before granting execution); the
+PM chat honors it. The developer may also switch to `manual`
+mid-kickoff; the PM chat treats that as a re-declaration from that
+point onward — commands already run cannot be unrun.
+
+#### 7.1 K1 — read-only discovery (Form R, G7-discovery)
+
+```
+PROPOSED ACTION — read-only discovery
+  All commands below are read-only (no side effects). If a command
+  is not applicable to this project (e.g., Xcode on a Python-only
+  project), the command exits non-zero; I note that and continue.
+
+  Apple / Swift discovery:
+    1. xcodebuild -list
+    2. xcrun simctl list devices available
+    3. command -v swift-format; if present, swift-format --version
+
+  gRPC discovery:
+    4. command -v buf;                    if present, buf --version
+    5. command -v protoc-gen-swift;       if present, --version
+    6. command -v protoc-gen-grpc-swift;  if present, --version
+
+  Environment:
+    7. command -v brew; if present, brew --version
+
+  Python + gRPC discovery (only if Python detected):
+    8. command -v uv;      if present, uv --version
+    9. command -v python3; if present, python3 --version
+
+  Machine-level companion files:
+   10. ls -1 ~/Library/Developer/Xcode/CodingAssistant/ 2>/dev/null
+   11. ls -1 "$PACK/xcode-companion-templates/"
+
+Reply: `yes` to run all · `skip` to bypass auto-discovery
+       (I'll ask you manually for each value) · `abort` to stop kickoff
+```
+
+#### 7.2 K2 — Apple sub-flow
+
+Runs only if `[PLATFORM_TARGETS]` includes any of iOS, iPadOS, macOS,
+tvOS, watchOS, or visionOS. Otherwise skipped with a single-line note.
+
+##### 7.2.1 Xcode scheme and destination
+
+From `xcodebuild -list`:
+- If exactly one scheme is found, I auto-fill it.
+- If multiple schemes are found, I present a numbered list and you reply
+  with the number or the scheme name.
+- If `xcodebuild -list` exits non-zero (no Xcode project at the target
+  root), I skip the entire Apple sub-flow with a single-line note.
+
+From `xcrun simctl list devices available`:
+- If at least one simulator is found, I pick the most recent iOS simulator
+  by default (reply `edit` to override).
+- If no simulators are found and this is a macOS project, I use
+  `platform=macOS`.
+- Otherwise I ask you for a destination string.
+
+##### 7.2.2 Script and settings edits (Form E, G7-edit)
+
+For each of the four targets — `scripts/validate-swift.sh`,
+`scripts/test-swift.sh`, `.claude/settings.json` (env block), and
+`scripts/format-swift.sh` (SWIFT_SOURCE_DIRS for non-SPM layouts only) — I
+render a Form E:
+
+```
+PROPOSED EDIT — scripts/validate-swift.sh
+  Discovered values:
+    XCODE_SCHEME       = "MyApp"        (from xcodebuild -list)
+    XCODE_DESTINATION  = "platform=iOS Simulator,name=iPhone 16,OS=latest"
+                                        (from xcrun simctl list devices available)
+
+  Diff:
+    -XCODE_SCHEME=""
+    +XCODE_SCHEME="MyApp"
+    -XCODE_DESTINATION=""
+    +XCODE_DESTINATION="platform=iOS Simulator,name=iPhone 16,OS=latest"
+
+Reply: `yes` to apply · `edit` to provide your own values
+       · `skip` to leave the file unchanged · `abort` to stop
+```
+
+**Anchor-matching rules:**
+
+- Primary: literal `XCODE_SCHEME=""` / `XCODE_DESTINATION=""` match.
+- Legacy fallback: `XCODE_SCHEME="[SCHEME_NAME]"` /
+  `XCODE_DESTINATION="[DESTINATION]"`.
+- Already-populated or unknown: emit a one-line
+  `note: <file> <variable> is already set to "<current_value>" — skipping`
+  and move on; do not propose overwrite.
+
+`.claude/settings.json` edit uses JSON parse-mutate-serialize (never
+regex). If the file fails to parse, I emit a diagnostic with the intended
+diff as textual instructions and ask you to apply it manually.
+
+##### 7.2.3 swift-format install (Form I, G7-install)
+
+```
+PROPOSED ACTION — install
+  Command:        brew install swift-format
+  Purpose:        enables scripts/format-swift.sh to format Swift sources
+  Pack-tested:    swift-format ≥510.0.0 (see supporting-docs/DEPENDENCIES.md;
+                  pack-tested starting range 2026-04, refine empirically
+                  per PACK-FEEDBACK.md Part 10)
+  Side effects:   writes to /opt/homebrew/Cellar; ~5MB; network required
+  Skip impact:    format-swift.sh emits a warning but does not block validation
+
+Reply: `yes` to install · `skip` to leave uninstalled · `abort` to stop
+```
+
+Idempotency: if `command -v swift-format` already returns a path AND
+`swift-format --version` is within the known-good range, I emit a one-line
+`note: swift-format already installed at <version> (within known-good range) — skipping`
+and do not render Form I.
+
+##### 7.2.4 Xcode companion files (Form M, G7-machine)
+
+```
+PROPOSED ACTION — install Xcode companion files (machine-level)
+  Target:       ~/Library/Developer/Xcode/CodingAssistant/
+  Source:       $PACK/xcode-companion-templates/
+  Files (from `ls "$PACK/xcode-companion-templates/"` at run time;
+         falls back to the hardcoded four-file list if `ls` fails):
+    1. ClaudeAgentConfig/CLAUDE.md          (replaces if present)
+    2. ClaudeAgentConfig/settings.json      (replaces if present)
+    3. codex/AGENTS.md                       (replaces if present)
+    4. codex/config.toml                     (replaces if present)
+  Side effects: writes to your home directory; one-time per Mac
+
+Reply: `yes` to install all · `skip` to leave companion files alone
+       · `abort` to stop
+```
+
+Idempotency: I run `cmp -s` between each source and its target; if every
+pair is byte-identical, I emit a one-line
+`note: Xcode companion files already present and up to date — skipping`
+and do not render Form M. If all files are present but some differ, I
+render Form M with a recommendation line
+`recommendation: installed companion files differ from the pack — reinstall recommended`
+— default remains `skip`.
+
+#### 7.3 K3 — gRPC sub-flow
+
+Runs only if `[TRANSPORT]` includes gRPC, or a `proto/` directory
+exists at the project root. Otherwise skipped.
+
+##### 7.3.1 Apple-side gRPC tooling (Form I, G7-install)
+
+One Form I per tool, using the shape in §7.2.3:
+
+- `brew install bufbuild/buf/buf` — Pack-tested: buf ≥1.35.0.
+- `brew install swift-protobuf` — Pack-tested: swift-protobuf ≥1.28.0.
+- `brew install grpc-swift` — Pack-tested: grpc-swift ≥1.24.0 (1.x-line;
+  2.x migration is out of scope for v10.0).
+
+Each Form I applies the idempotency rule from §7.2.3 — already-installed
+and in-range tools are skipped with a note.
+
+##### 7.3.2 Python-side gRPC tooling (Form I, G7-install)
+
+Runs only if Python is also detected. One Form I per package, using
+`uv add` instead of `brew install`:
+
+- `uv add grpcio-tools` — Pack-tested: grpcio-tools ≥1.64.0.
+- `uv add grpcio` — Pack-tested: grpcio ≥1.64.0.
+- `uv add grpcio-status` — Pack-tested: grpcio-status ≥1.64.0.
+- `uv add grpcio-reflection` — Pack-tested: grpcio-reflection ≥1.64.0
+  (optional, only if reflection is used).
+
+##### 7.3.3 Proto code generation example
+
+Once the tooling is in place, generate the first proto outputs:
+
+```bash
+./scripts/proto-gen.sh
+```
+
+The PM chat does not run this command as part of kickoff (it requires
+a `.proto` definition file and project-specific configuration); it
+prints the invocation so the developer can run it after kickoff
+completes.
+
+#### 7.4 Behavior on failure / ambiguity
+
+Common discipline across all branches:
+
+- **Never silently skip.** Every condition that does not produce the
+  ideal outcome is named in the reply.
+- **Never block the entire kickoff on a single failure.** The
+  developer can complete the rest of the kickoff and re-attempt the
+  failing step later.
+- **Always print the command that was run and its observed output**
+  before drawing a conclusion. The developer can override.
+
+Specific behaviors:
+
+1. **Xcode not installed** — `xcodebuild -list` exits non-zero, or
+   `[PLATFORM_TARGETS]` indicates a non-Apple project. Skip the Apple
+   sub-flow with a single line: `No Xcode detected — skipping Apple-only steps.`
+2. **One scheme detected** — auto-fill; surface in the Form E prompt.
+   `Scheme "MyApp" (only one found) — used as XCODE_SCHEME.`
+3. **Multiple schemes detected** — present a numbered list:
+   `Schemes found:  1. MyApp  2. MyAppTests … Reply with the number or the scheme name.`
+4. **No simulators available** — if macOS project, fall back to
+   `XCODE_DESTINATION="platform=macOS"`. Otherwise ask: `No simulators available. Reply with a destination string or say `diagnose` to inspect available runtimes.`
+5. **`brew` not installed** — do not attempt installs. Print:
+   `Homebrew not installed. Install from https://brew.sh and re-run kickoff.`
+6. **Required brew tool missing** — propose `brew install <pkg>` via
+   Form I. On `skip`, record the skip and proceed.
+7. **Brew tool at out-of-range version** — propose `brew upgrade <pkg>`
+   via Form I (upgrade variant). On `skip`, keep current version.
+8. **Source layout indeterminate** (both `Sources/` and a non-standard
+   directory contain Swift sources) — ask once: `Both `Sources/` and `MyApp/` contain Swift sources. Reply with the directories `format-swift.sh` should target (space-separated), or `default` to leave SWIFT_SOURCE_DIRS="".`
+9. **Network required but unavailable** (`brew install` fails with a
+   network error signature) — do not retry. Print the failed command and
+   the stderr tail; treat the install as `skip`-by-failure; proceed.
+
+#### 7.5 Reply grammar
+
+- `yes` / `y` — proceed.
+- `no` / `skip` — do not proceed; record the skip.
+- `abort` — exit kickoff entirely.
+- `edit` (Form E only) — provide overriding values in the next message.
+- Bare integer or scheme name (multi-scheme) / destination string
+  (no-simulator) / space-separated directory list (source-layout).
+- Empty / unrecognized / "no" / "don't" / "wait" → treated as `no`;
+  re-prompt with a clarifying question. Never defaults to `yes`.
+
+#### 7.6 Idempotency rules
+
+Procedure 7 is idempotent on re-invocation. Each Form has a
+target-state definition; when the target state already holds, the
+Form emits a single-line `note:` diagnostic and moves on without
+re-rendering.
+
+- **Form R** — always runs (no target state; read-only discovery).
+- **Form I** — skip when `command -v <tool>` returns a path AND
+  `<tool> --version` is within the pack-tested range.
+- **Form E** — skip when the anchor matches the proposed value
+  (empty diff) or when the file's variable is already set to a
+  non-placeholder value (see §7.2.2 anchor-matching rules).
+- **Form M** — skip when every source/target pair is byte-identical
+  under `cmp -s`.
+
+For concurrent / interrupted kickoff handling, see
+`project-template/docs/pack/PM-CHAT.md` § Before starting a new
+project ("Never run two PM chats simultaneously for the same
+project").
+
+If Form R runs, all Form I targets are in-range, all Form E anchors
+are populated, and all Form M targets are byte-identical, Procedure 7
+prints: `Kickoff complete — nothing to change.` This is the empty-diff
+re-invocation terminal state.
+
+#### 7.7 Artifacts and cross-references
+
+**Artifacts modified:** `scripts/validate-swift.sh`,
+`scripts/test-swift.sh`, `scripts/format-swift.sh` (conditional on
+non-SPM layout), `.claude/settings.json` (env block), and
+`~/Library/Developer/Xcode/CodingAssistant/{ClaudeAgentConfig,codex}/*`
+(machine-level; not in the project tree).
+
+**Artifacts never touched by Procedure 7:** `BACKLOG.md`; `STATUS.md`;
+`CHANGELOG.md`; `ARCHITECTURE.md`; `IMPLEMENTATION_PLAN.md`; the
+trinity files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`); `.codex/`,
+`.gemini/`, `.claude/agents/` subtrees; any file under `docs/project/`
+other than the ones the PM chat ordinarily writes; any `x-` custom
+agent / skill / prompt file.
+
+**Sub-flow conditions:** the Apple sub-flow runs iff `[PLATFORM_TARGETS]`
+includes any of iOS, iPadOS, macOS, tvOS, watchOS, or visionOS; the
+gRPC sub-flow runs iff `[TRANSPORT]` includes gRPC or a `proto/`
+directory exists at the project root; the Python Form I quadruplet
+under §7.3.2 runs iff Python is also detected.
+
+The kickoff-variant continuation pointer in
+`project-template/docs/pack/prompts/pm-chat.md` Variant: kickoff is
+the invocation point for Procedure 7.
+
 ### Cancelling or deprecating a BACKLOG item
 
 Tell the PM chat in conversation: "Cancel TD-NNN" or "Deprecate TD-NNN — [brief reason]."
