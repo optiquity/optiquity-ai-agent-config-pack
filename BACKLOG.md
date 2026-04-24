@@ -1041,7 +1041,7 @@ Resolved: n/a
 
 **BD-047 — PM chat kickoff auto-discovery and install-check enhancement**
 Type: TODO(version)
-Status: Unblocked
+Status: Resolved
 Blockers: None (can begin after Phase 3-AC completes; planner/architect pass
   is the first implementation step, not a backlog-level blocker). **v10.0 ship-blocker.**
 Unblocks: None
@@ -1090,6 +1090,29 @@ Context: Current SETUP-NEW.md and SETUP-EXISTING.md describe manual
   Identified 2026-04-24 as the v10 implementer reached Gate E; designated
   a v10.0 ship-blocker the same day. Lands as Phase 3-B between Phase 3-AC
   (Gate E2) and Phase 4 (Gate F).
+Resolved: 2026-04-24 — Phase 3-B landed on v10-dev (commits 1c5116c, db416a0, 2a0c8d5; design/plan prep in 6d6ab6a). METHODOLOGY.md Procedure 7 hosts the K1/K2/K3 auto-discovery + Forms R/I/E/M; pm-chat.md Variant: kickoff slimmed with continuation pointer; SETUP-NEW.md § Manual fallback (5.A–5.D) + SETUP-EXISTING.md Step 5 rewrite provide the non-shell path.
+
+---
+
+**BD-048 — Capability-addition discovery + install-check symmetry with kickoff**
+Type: TODO(version)
+Status: Open
+Blockers: None (BD-047 was the blocker; it is now Resolved)
+Unblocks: None
+File/Symbol: `scripts/add-capability.sh`; `supporting-docs/METHODOLOGY.md` Procedure 6
+
+Description: `scripts/add-capability.sh` today only performs trinity-placeholder
+  file plumbing; it does not propose `brew install grpcio-tools` / `uv add ...` /
+  machine-level installs when the developer adds a new pack-supported dimension
+  (platform, language, protocol). Mirror the BD-047 kickoff auto-discovery +
+  install-check pattern at capability-addition time. Implementation options:
+  either extend Procedure 6 with a kickoff-style Form R/I/E/M sub-procedure,
+  or add a new Variant: capability-added-kickoff to
+  `docs/pack/prompts/pm-chat.md` that the `add-capability.sh` A7 stage invokes.
+Context: Identified during BD-047 Phase 3-B planning (2026-04). Drafted in
+  V10-PHASE-3B-PLAN-v2.md Part 10. Deferred out of v10.0 scope per
+  V10-PHASE-3B-DESIGN.md Part 14 / V10-PHASE-3B-PLAN.md Q14-5 — keeps v10.0
+  ship-blocker surface focused on kickoff. Candidate for v10.1 or later.
 Resolved: n/a
 
 ---
