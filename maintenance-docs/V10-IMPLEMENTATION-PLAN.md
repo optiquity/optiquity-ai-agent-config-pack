@@ -250,6 +250,7 @@ Operational rules:
 | **2c** | BD-046 migration (detect.sh, merge helpers, migrate script, guide) | 5 | **Gate D** |
 | **3** | BD-044 init-project.sh + SETUP guides + QUICKSTART router + README layout + Check 9 + PROMPT-TEMPLATES.md deletion | 7 | **Gate E** |
 | **3-AC** | BD-046 capability-addition (add-capability.sh, detect.sh extension, Procedure 6, README line) | 3 | **Gate E2** |
+| **3-B** | BD-047 PM chat kickoff auto-discovery + install-check (ship-blocker) | 2 (+ 1 plan-update) | **Gate E3** |
 | **4** | Full verification pass (Part 10 CP tests; all six sweeps; deferred smoke tests) | 0 (verification only; `fix:` commits only if needed) | **Gate F** |
 | **5** | Ship — CHANGELOG, README version row, BACKLOG resolution, merge, tag | 3 + merge + tags | **Ship approval** |
 | **6** | Post-ship — OT project migration, deferred follow-through | per-project | — |
@@ -1608,6 +1609,58 @@ combined row 24+38+81), and the README layout baseline exists
 6. README layout contains `add-capability.sh` line.
 7. Procedure 6 present in METHODOLOGY.md; Procedure 5 and 5-R still
    present.
+
+**Approve to proceed to Phase 3-B.**
+
+---
+
+### 6.6-B Phase 3-B — BD-047 PM-chat kickoff auto-discovery (NEW — v10.0 ship-blocker)
+
+BD-047 was filed 2026-04-24 as a v10.0 ship-blocker for PM chat
+kickoff auto-discovery + install-check. Phase 3-B lands between
+Gate E2 and Gate F.
+
+**Authoritative documents:**
+
+- `maintenance-docs/V10-PHASE-3B-DESIGN.md` — architecture pass
+  (6 questions, 9 error branches, 4 confirmation-gate forms,
+  rejected alternatives, open questions).
+- `maintenance-docs/V10-PHASE-3B-PLAN.md` — implementation plan
+  (decisions table, Form E anchor-matching spec, idempotency rules,
+  brew version ranges, test-fixture strategy, cross-reference sweep
+  spec, commit-by-commit breakdown, Gate E3 criteria, Phase-4
+  deferred items, implementer flag-backs, BD-047 closure mapping).
+
+**Commits (see V10-PHASE-3B-PLAN.md Part 7 for full detail):**
+
+1. **C-047-01** — PM chat kickoff auto-discovery + install-check
+   (seven insertion points into `project-template/docs/pack/prompts/pm-chat.md`
+   Variant: kickoff; one atomic commit).
+2. **C-047-02** — SETUP-NEW + SETUP-EXISTING fold Steps 5–8 into PM chat
+   (collapse manual steps into a single Step 5 with PM-chat primary path
+   and Manual-fallback sub-sections).
+
+#### Gate E3 — End of Phase 3-B
+
+Entry criteria summary (full list in V10-PHASE-3B-PLAN.md Part 8):
+
+1. `validate-pack.py` passes on every Phase 3-B commit.
+2. Cross-reference sweeps S3B-1..S3B-4 clean (spec in PLAN.md Part 6).
+3. Kickoff variant parses cleanly — four `## Variant:` H2s, YAML
+   front matter preserved.
+4. SETUP-guide numbering invariant holds (SETUP-NEW Steps 1–5, 9–12
+   with intentional 6–8 gap; SETUP-EXISTING Steps 1–5, 7–12).
+5. Manual-vs-variant parity spot-check.
+6. Fixture evidence for the six fixtures from PLAN.md Part 5.
+7. Cross-surface checks (Codex CLI, Gemini CLI, Desktop Commander)
+   — deferable to Phase 4 per PLAN.md Part 9 if surfaces unavailable.
+8. Category-C (Manual mode) check on Claude Web / ChatGPT Web.
+9. BD-047 coverage verified per PLAN.md Part 11 closure mapping.
+10. No unintended touches (trinity, scripts, METHODOLOGY.md,
+    `validate-pack.py`, `README.md`, `BACKLOG.md` all untouched).
+
+**Predecessor:** Gate E2 (Phase 3-AC).
+**Successor:** Gate F (Phase 4).
 
 **Approve to proceed to Phase 4.**
 
