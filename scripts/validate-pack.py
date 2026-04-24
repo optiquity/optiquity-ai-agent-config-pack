@@ -14,6 +14,11 @@ Checks:
      .claude/agents/*.md stems
   8. Reserved x- prefix: no file or directory in the seven pack scan
      locations begins with `x-`
+  9. Init-project structure: scripts/init-project.sh executable,
+     scripts/lib/detect.sh defines the required v10 detection
+     functions, QUICKSTART.md and the three supporting-docs setup /
+     migration guides exist, and README.md Repository Layout names
+     scripts/lib/ and the migration-guide naming convention.
 
 Exit 0 if all pass, exit 1 if any fail. Each failure prints the exact
 file, line (where applicable), and problem.
@@ -49,6 +54,24 @@ PACK_SCAN_LOCATIONS = [
     REPO_ROOT / "project-template" / ".codex" / "skills",
     REPO_ROOT / "project-template" / ".gemini" / "skills",
     REPO_ROOT / "project-template" / "docs" / "pack" / "prompts",
+]
+
+INIT_SCRIPT = REPO_ROOT / "scripts" / "init-project.sh"
+DETECT_LIB = REPO_ROOT / "scripts" / "lib" / "detect.sh"
+REQUIRED_DETECT_FUNCTIONS = [
+    "detect_clean_working_tree",
+    "detect_git_repo",
+    "detect_pack_path",
+    "detect_pack_version",
+    "detect_ai_config",
+    "detect_x_files",
+    "detect_improperly_added_files",
+]
+REQUIRED_BD044_DOCS = [
+    REPO_ROOT / "QUICKSTART.md",
+    REPO_ROOT / "supporting-docs" / "SETUP-NEW.md",
+    REPO_ROOT / "supporting-docs" / "SETUP-EXISTING.md",
+    REPO_ROOT / "supporting-docs" / "MIGRATION-v9-to-v10.md",
 ]
 
 # The pack repo is mostly templates and documentation, where TD-TBD appears
@@ -440,6 +463,74 @@ def check_reserved_x_prefix() -> None:
         ok(f"no `x-` entries in any of {len(PACK_SCAN_LOCATIONS)} pack scan locations")
 
 
+# ── Check 9: Init-project structure (BD-044) ───────────────────────────────
+
+def check_init_project_structure() -> None:
+    print("\n── Check 9: Init-project structure (BD-044) ──")
+    any_failed = False
+
+    # (a) scripts/init-project.sh exists and is executable.
+    if not INIT_SCRIPT.exists():
+        fail(f"{INIT_SCRIPT.relative_to(REPO_ROOT)} — file missing")
+        any_failed = True
+    elif not os.access(INIT_SCRIPT, os.X_OK):
+        fail(f"{INIT_SCRIPT.relative_to(REPO_ROOT)} — not executable (chmod +x)")
+        any_failed = True
+    else:
+        ok(f"{INIT_SCRIPT.relative_to(REPO_ROOT)} — executable")
+
+    # (b) scripts/lib/detect.sh exists; grep confirms required v10 functions.
+    if not DETECT_LIB.exists():
+        fail(f"{DETECT_LIB.relative_to(REPO_ROOT)} — file missing")
+        any_failed = True
+    else:
+        content = DETECT_LIB.read_text()
+        missing_fns = []
+        for fn in REQUIRED_DETECT_FUNCTIONS:
+            if not re.search(rf"^{re.escape(fn)}\s*\(\s*\)", content, re.MULTILINE):
+                missing_fns.append(fn)
+        if missing_fns:
+            fail(
+                f"{DETECT_LIB.relative_to(REPO_ROOT)} — missing required "
+                f"function definition(s): {missing_fns}"
+            )
+            any_failed = True
+        else:
+            ok(f"{DETECT_LIB.relative_to(REPO_ROOT)} — all {len(REQUIRED_DETECT_FUNCTIONS)} required functions defined")
+
+    # (c) BD-044 docs exist.
+    for doc in REQUIRED_BD044_DOCS:
+        if not doc.exists():
+            fail(f"{doc.relative_to(REPO_ROOT)} — file missing")
+            any_failed = True
+        else:
+            ok(f"{doc.relative_to(REPO_ROOT)} — exists")
+
+    # (d) README.md Repository Layout mentions the detection library and
+    # migration naming convention. ASCII tree rendering may split
+    # `scripts/lib/` across lines, so match on the `detect.sh` filename
+    # (unambiguous indicator that the library is documented).
+    readme_path = REPO_ROOT / "README.md"
+    if readme_path.exists():
+        readme_text = readme_path.read_text()
+        has_detect = "detect.sh" in readme_text
+        has_migration_convention = "MIGRATION-vN-to-vM.md" in readme_text
+        if not has_detect:
+            fail(
+                "README.md — Repository Layout does not mention the "
+                "`scripts/lib/detect.sh` shared detection library"
+            )
+            any_failed = True
+        if not has_migration_convention:
+            fail(
+                "README.md — missing migration-guide naming convention note "
+                "(expected literal `MIGRATION-vN-to-vM.md`)"
+            )
+            any_failed = True
+        if has_detect and has_migration_convention:
+            ok("README.md — Repository Layout mentions detect.sh and migration naming convention")
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -455,6 +546,7 @@ def main() -> None:
     check_prompts_directory()
     check_pack_agent_roster()
     check_reserved_x_prefix()
+    check_init_project_structure()
 
     print("\n" + "=" * 60)
     if failures:
