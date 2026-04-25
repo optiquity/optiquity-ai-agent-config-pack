@@ -101,7 +101,7 @@ prior context" applies.
 
 Unless a step names additional inputs, every step may assume the actor has read:
 
-- `maintenance-docs/V10-PREDESIGN.md` (all 11 parts, in full)
+- `maintenance-docs/V10-PREDESIGN.md` (all 12 parts, in full)
 - `BACKLOG.md` (BD-044, BD-045, BD-046 entries)
 - `README.md` (repo layout section)
 - `CLAUDE.md` (pack repo rules)
