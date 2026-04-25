@@ -15,7 +15,7 @@ should express the same project rules — only tool-specific operating notes dif
 -->
 
 ---
-*Copied from: project-template/AGENTS.md — AI Agent Config Pack v9*
+*Copied from: project-template/AGENTS.md — AI Agent Config Pack v10*
 *Fill in placeholders and remove this block.*
 ---
 

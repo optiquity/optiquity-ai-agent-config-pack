@@ -24,7 +24,7 @@ below.
 -->
 
 ---
-*Copied from: project-template/PACK-FEEDBACK.md — AI Agent Config Pack v9*
+*Copied from: project-template/PACK-FEEDBACK.md — AI Agent Config Pack v10*
 *Fill in Status section during kickoff, then remove this block and the
 HTML comment above.*
 ---

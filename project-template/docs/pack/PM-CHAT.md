@@ -19,7 +19,7 @@ This file is read by the PM chat on all three tools:
 -->
 
 ---
-*Copied from: project-template/PM-CHAT.md — AI Agent Config Pack v9*
+*Copied from: project-template/PM-CHAT.md — AI Agent Config Pack v10*
 *Fill in [PROJECT_NAME] and customize the Additional project documents section,
 then remove this italicized block and the HTML comment above.*
 ---

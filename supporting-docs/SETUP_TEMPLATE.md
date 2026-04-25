@@ -15,7 +15,7 @@ Not every section applies to every project. Remove sections that don't apply.
 -->
 
 ---
-*Generated from: supporting-docs/SETUP_TEMPLATE.md — AI Agent Config Pack v9*
+*Generated from: supporting-docs/SETUP_TEMPLATE.md — AI Agent Config Pack v10*
 *Note to PM chat: Replace all [PLACEHOLDERS] and remove this header before saving.*
 ---
 
@@ -32,7 +32,7 @@ for [PROJECT_NAME] on a new machine.
 - Xcode [XCODE_VERSION] installed and launched at least once
 - Git configured: `git config --global user.name "Your Name"`
 - GitHub CLI (optional): `brew install gh`
-- AI Agent Config Pack v9 available locally
+- AI Agent Config Pack v10 available locally
 
 ---
 

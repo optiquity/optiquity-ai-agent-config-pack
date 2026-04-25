@@ -2,10 +2,11 @@
 
 This document covers daily usage, cross-machine workflow, and troubleshooting
 for the CLI PM chat on all three tools: Claude Code, Codex CLI, and Gemini CLI.
-**Setup is in QUICKSTART.md.** Start there if you haven't completed setup yet.
+**Setup is in `supporting-docs/SETUP-NEW.md` Step 10 Option B (Claude Code CLI)
+or Option D (Gemini CLI).** Start there if you haven't completed setup yet.
 
 For startup procedures, file access strategy, and behavioral rules, see
-`PM-CHAT.md` in the project root (the authoritative PM chat instructions).
+`docs/pack/PM-CHAT.md` (the authoritative PM chat instructions).
 This document covers the day-to-day operational details that PM-CHAT.md
 references but does not repeat.
 

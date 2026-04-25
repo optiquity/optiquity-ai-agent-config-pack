@@ -14,7 +14,7 @@ the same project rules — only tool-specific operating notes differ.
 -->
 
 ---
-*Copied from: project-template/GEMINI.md — AI Agent Config Pack v9*
+*Copied from: project-template/GEMINI.md — AI Agent Config Pack v10*
 *Fill in placeholders and remove this block.*
 ---
 

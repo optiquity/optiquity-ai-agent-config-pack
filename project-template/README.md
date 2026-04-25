@@ -1,4 +1,4 @@
-# Project Template — AI Agent Config Pack v9
+# Project Template — AI Agent Config Pack v10
 
 This directory is the unified project template. Copy it to start a new project:
 

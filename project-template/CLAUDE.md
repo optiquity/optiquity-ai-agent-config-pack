@@ -18,7 +18,7 @@ notes differ.
 -->
 
 ---
-*Copied from: project-template/CLAUDE.md — AI Agent Config Pack v9*
+*Copied from: project-template/CLAUDE.md — AI Agent Config Pack v10*
 *Fill in placeholders and remove this block.*
 ---
 
