@@ -24,7 +24,7 @@ guide.
 
 ## What changed in v10
 
-Three BD items shipped in v10.0:
+Four BD items shipped in v10.0:
 
 - **BD-044 — Project initialization tooling.** New `scripts/init-project.sh`
   detects project state (five classes), previews every operation, and
@@ -52,6 +52,18 @@ Three BD items shipped in v10.0:
     helpers `scripts/merge-platform-skills.py` and
     `scripts/merge-trinity.py`. Procedure 5-R reconciles customized
     `PROMPT-TEMPLATES.md` content after migration.
+- **BD-047 — PM chat kickoff auto-discovery and install-check.** New
+  `METHODOLOGY.md` Procedure 7 paired with the `docs/pack/prompts/pm-chat.md`
+  `Variant: kickoff` continuation pointer. On shell-capable surfaces
+  (Claude Code CLI, Codex CLI, Gemini CLI, Claude Desktop with Desktop
+  Commander), the PM chat runs read-only discovery (`xcodebuild -list`,
+  `xcrun simctl list devices available`, brew detection) and offers
+  approval-gated Forms (R / I / E / M) for every install and edit. On
+  non-shell surfaces (Claude Web, ChatGPT Web), the PM chat points at
+  `SETUP-NEW.md § Manual fallback` (sub-sections 5.A–5.D) and waits
+  for developer-reported values. SETUP-NEW.md Steps 5–8 collapse into
+  a single Step 5 that routes to either path; SETUP-EXISTING.md Step
+  5 follows the same pattern.
 
 Three structural shifts follow from those BD items:
 
