@@ -1607,14 +1607,17 @@ reference.
 ### Day 1 — Setup
 - [ ] Create GitHub repo; clone locally
 - [ ] Planning conversation → ARCHITECTURE.md, IMPLEMENTATION_PLAN.md, CLAUDE.md, AGENTS.md
-- [ ] Copy template files from pack: `cp -r pack/[TEMPLATE]/. .` — then separately copy
-      `METHODOLOGY.md`, `PM-CHAT.md`, and `PACK-FEEDBACK.md`
-      from `project-template/` and `supporting-docs/`
+- [ ] Run `"$PACK/scripts/init-project.sh" .` from the project root.
+      The script previews every operation, asks for explicit
+      confirmation, and on `y` executes eleven stages (S0..S10) that
+      copy template files, distribute skills, set permissions, run
+      bootstrap, and emit the PM chat kickoff prompt. See
+      `supporting-docs/SETUP-NEW.md` Step 3 for the full procedure.
 - [ ] Create BACKLOG.md, STATUS.md, CHANGELOG.md (empty with structure)
-- [ ] Run `./scripts/bootstrap.sh`
-- [ ] **Choose PM chat mode** — Option A (Claude Desktop app, see QUICKSTART.md
-      Step 10, Option A), Option B (Claude CLI, Step 10, Option B), or
-      Option C (Gemini CLI, Step 10, Option C)
+- [ ] **Choose PM chat mode** — Option A (Claude Desktop app, see
+      `SETUP-NEW.md` Step 10 Option A), Option B (Claude Code CLI,
+      Step 10 Option B), Option C (Codex CLI, Step 10 Option C), or
+      Option D (Gemini CLI, Step 10 Option D)
 - [ ] Commit all docs. If using Desktop app: sync GitHub connector.
 
 ### Before each phase
