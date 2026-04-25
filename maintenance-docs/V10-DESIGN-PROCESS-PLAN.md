@@ -16,11 +16,10 @@
 > which expected AD-1..AD-13. Step 12 executed 5 review rounds rather
 > than the implied single gate (see V10-DESIGN.md Part 0 row 15).*
 >
-> *Path note: references to `maintenance-docs/V9-DESIGN.md` in §2 and
-> elsewhere are frozen-in-time historical paths. After C-V10-13 lands,
-> V9-DESIGN.md lives at `maintenance-docs/archive/V9-DESIGN.md`; the
-> path references in this plan are updated in that same commit per
-> AF-033.*
+> *Path note: V9-DESIGN.md was moved from `maintenance-docs/V9-DESIGN.md`
+> to `maintenance-docs/archive/V9-DESIGN.md` by commit C-V10-13 (AF-033).
+> References to the file in §2 and elsewhere now point at the archive
+> location.*
 
 *Plan type: Phase 1 of the four-phase progression (V10-PREDESIGN.md Part 7).*
 *Goal of this phase: produce an approved V10-DESIGN.md.*
@@ -107,7 +106,7 @@ Unless a step names additional inputs, every step may assume the actor has read:
 - `CLAUDE.md` (pack repo rules)
 - `PACK-CHAT.md` (pack chat operating rules)
 - `PACK-AGENTS.md` (agent routing table)
-- `maintenance-docs/V9-DESIGN.md` (as a format and quality reference for a completed design doc)
+- `maintenance-docs/archive/V9-DESIGN.md` (as a format and quality reference for a completed design doc)
 
 Each step below lists incremental inputs on top of that baseline.
 
@@ -546,7 +545,7 @@ already-decided design content.
 - V10-PREDESIGN.md Part 4 (starting checklist).
 - `README.md` (layout section).
 - `QUICKSTART.md`.
-- `maintenance-docs/V9-DESIGN.md` Parts 4 and 6 (lesson: maintenance-docs contain stale references that
+- `maintenance-docs/archive/V9-DESIGN.md` Parts 4 and 6 (lesson: maintenance-docs contain stale references that
 must be updated).
 
 **Work.**
@@ -703,7 +702,7 @@ the pack chat's prior context," per PACK-AGENTS.md).
 **Incremental inputs.**
 - The Step 11 draft V10-DESIGN.md.
 - V10-PREDESIGN.md (for completeness check).
-- `maintenance-docs/V9-DESIGN.md` and `V9-AUDIT-REPORT.md` if it exists (for format and stale-reference
+- `maintenance-docs/archive/V9-DESIGN.md` and `V9-AUDIT-REPORT.md` if it exists (for format and stale-reference
 patterns).
 - Files referenced in Step 8 touch point inventory (for stale-reference sweeps).
 

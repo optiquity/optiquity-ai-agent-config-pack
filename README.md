@@ -96,7 +96,6 @@ supporting-docs/                            Pack product docs (copied to or cons
 └── MIGRATION-v8-to-v9.md                   Upgrade guide (historical; v8.x → v9.0)
 
 maintenance-docs/                           Pack maintainer docs (design records, archives)
-├── V9-DESIGN.md                            v9 architecture design record (v10 annotated)
 ├── V10-DESIGN.md                           v10 architecture design record
 ├── V10-IMPLEMENTATION-PLAN.md              v10 implementation plan
 ├── TOOL-COMPARISON.md                      Cross-tool capability reference
@@ -104,6 +103,8 @@ maintenance-docs/                           Pack maintainer docs (design records
 ├── RECOMMENDATIONS.md                      Practical recommendations for new projects
 ├── GEMINI-CLI-ANALYSIS.md                  Gemini CLI analysis (deprecated)
 ├── ANDROID-ANALYSIS.md                     Android support analysis (deprecated)
+├── archive/                                Superseded design records (v9 and earlier)
+│   └── V9-DESIGN.md                        v9 architecture design record (superseded by V10-DESIGN.md)
 ├── origins/                                Source material and chat transcripts
 └── guides/                                 Per-version setup guides
 
