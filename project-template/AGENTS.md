@@ -74,6 +74,7 @@ These rules apply regardless of which architecture pattern this project uses.
 - Cross-layer dependencies are protocol abstractions. Concrete types are injected.
 - Shared mutable state documents its owner, lifecycle, and mutation contract. Undocumented shared mutable state is a defect.
 - Services are stateless by default. Stateful services document state, threading, and invalidation.
+- Navigation logic lives outside view and view-model types.
 
 ## [CONDITIONAL] Design and coding rules
 
@@ -308,6 +309,10 @@ when task characteristics favor a different tool.
 To invoke any agent: `./agent-run.sh <cli> --agent <name>` (see `./agent-run.sh --help`).
 For Gemini CLI, `agent-run.sh` translates `--agent` to Gemini's native `@agent-name`
 syntax transparently — the same command format works for all three CLIs.
+
+*This table reflects quality-optimized defaults. For cost-optimized routing
+alternatives (e.g., using Gemini CLI Flash for reviewer, tester, and
+docs-researcher), see `TOOL-COMPARISON.md` in the pack's `maintenance-docs/`.*
 
 ### Custom agents
 
