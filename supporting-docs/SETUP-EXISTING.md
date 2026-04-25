@@ -144,6 +144,10 @@ now; the PM chat will finish the rest during kickoff (Step 10):
 
 ## Step 5 — (PM chat handles this during kickoff)
 
+*Step number 6 is intentionally absent — Steps 5–6 collapsed into this
+Step 5 by BD-047 (Phase 3-B). Step numbering is preserved for cross-doc
+reference stability; Steps 7–12 below retain their original numbers.*
+
 On shell-capable surfaces, the PM chat runs kickoff auto-discovery
 (METHODOLOGY.md Procedure 7) after you paste the kickoff prompt in
 Step 8. It fills in Apple Xcode scheme variables and installs Xcode

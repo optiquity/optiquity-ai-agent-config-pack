@@ -148,6 +148,10 @@ first:
 
 ## Step 5 — (PM chat handles this during kickoff)
 
+*Step numbers 6, 7, 8 are intentionally absent — Steps 5–8 collapsed into
+this Step 5 by BD-047 (Phase 3-B). Step numbering is preserved for cross-doc
+reference stability; Steps 9–12 below retain their original numbers.*
+
 On shell-capable surfaces (Claude Code CLI, Codex CLI, Gemini CLI,
 Claude Desktop with Desktop Commander), the PM chat runs kickoff
 auto-discovery (METHODOLOGY.md Procedure 7) after you paste the
