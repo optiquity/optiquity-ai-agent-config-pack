@@ -771,6 +771,13 @@ This part defines the full system for tracking deferred work, known gaps, and it
 requiring verification. The PM chat owns this system. Agents receive explicit instructions
 in their prompts — they do not figure out BACKLOG logic themselves.
 
+> **Sub-procedure heading style varies by procedure.** Procedure 5 uses
+> `#### Procedure 5.N` (each sub-procedure is itself a standalone procedure).
+> Procedure 6 uses `#### 6.N` (numbered steps within one procedure).
+> Procedure 7 uses `#### 7.N` with `##### 7.N.M` for sub-Forms (numbered steps
+> + nested Form sub-sections). Each procedure's local convention is intentional
+> and reflects the procedure's own structure; do not normalize across procedures.
+
 ### Comment format
 
 Three typed deferral comment formats are recognized. All others are invalid.
