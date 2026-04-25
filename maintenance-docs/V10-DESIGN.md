@@ -749,7 +749,12 @@ migration pass through the same state.
 **Alternatives rejected.**
 - *New BACKLOG item BD-047 for v10.1.* Rejected per user constraint ("fits
   into the existing BD-046 scope"). Touching the same files in a follow-up
-  version is strictly more expensive than batching.
+  version is strictly more expensive than batching. *(Note: the BD-047
+  number was subsequently assigned on 2026-04-24 to a different scope —
+  PM chat kickoff auto-discovery + install-check, METHODOLOGY.md
+  Procedure 7. The rejected alternative above predates that filing and
+  refers to a hypothetical capability-addition follow-up that was
+  ultimately batched into BD-046.)*
 - *Populate **Active skills** line with the full 30-skill union at init
   time, eliminating the "dormant skills" problem and making this mechanism
   unnecessary.* Rejected — V9.1 BD-038 established Active skills as the
