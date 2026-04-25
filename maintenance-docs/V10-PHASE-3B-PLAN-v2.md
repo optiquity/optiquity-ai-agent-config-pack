@@ -724,16 +724,32 @@ grep -rn 'Procedure 7' project-template/ supporting-docs/ \
     PACK-CHAT.md PACK-AGENTS.md BACKLOG.md
 ```
 
-**Expected:**
-- `project-template/docs/pack/prompts/pm-chat.md` — exactly 1 match
-  (the continuation pointer).
-- `supporting-docs/METHODOLOGY.md` — ≥1 match (the `### Procedure 7`
-  heading plus any cross-references inside the procedure body).
-- Zero matches elsewhere in `project-template/`, QUICKSTART.md,
-  README.md, PACK-*.md, BACKLOG.md, root trinity.
+**Forbidden category.** Redundant routing pointers — any new file or
+section that purports to "tell the PM chat to read Procedure 7" beyond
+the kickoff-variant continuation pointer in `pm-chat.md`. There is one
+canonical routing pointer; everything else must be descriptive (naming
+Procedure 7 in prose) rather than prescriptive (instructing the PM
+chat to read it).
 
-If matches appear in SETUP-EXISTING.md (Q5 decision forbids), or in
-any other pack-product file, the implementer flags back.
+**Sanctioned residuals (descriptive-not-prescriptive mentions).**
+
+| Location | Mention | Why sanctioned |
+|---|---|---|
+| `project-template/docs/pack/prompts/pm-chat.md` lines 26, 82, 83 | 3 mentions: "Before pasting" bullet; continuation pointer x 2 | Path A acceptance during Commit 1 execution; the §3.3 verbatim pointer text contains 2 mentions of "Procedure 7" by design (identifier + order-sensitive clause), and the bullet 3 mention is a one-line preview of the routing decision. Plan-arithmetic discrepancy with §3.5's "exactly 1" — accepted. |
+| `supporting-docs/METHODOLOGY.md` ≥1 match | `### Procedure 7` H3 heading + intra-procedure cross-references | Authoritative procedure home; mentions inside the procedure body are normal cross-references. |
+| `supporting-docs/SETUP-NEW.md` line 153 | Step 5 prose: "(METHODOLOGY.md Procedure 7) after you paste the kickoff prompt" | Descriptive — the SETUP guide tells the *developer* what the PM chat will do, not the PM chat itself. Not a routing pointer. |
+| `supporting-docs/SETUP-EXISTING.md` line 148 | Step 5 prose: same pattern as SETUP-NEW | Same rationale; descriptive not prescriptive. (Q5 of this plan said "no separate routing pointer from SETUP-EXISTING" — it does not forbid descriptive mentions.) |
+| `BACKLOG.md` BD-047 Resolution line | "METHODOLOGY.md Procedure 7 hosts the K1/K2/K3 auto-discovery + Forms R/I/E/M…" | Resolution-record artifact written 2026-04-24 *after* this sweep was originally specified. Historical record; not a routing pointer. |
+
+**Forbidden (would trigger flag-back).** Any *new* file under
+`project-template/` (other than `pm-chat.md`'s continuation pointer)
+that instructs the PM chat to read Procedure 7. Any new file in
+`QUICKSTART.md`, `README.md`, `PACK-*.md`, or the root trinity that
+adds a routing pointer.
+
+**Sweep verdict at Gate F.** If the sweep returns only the sanctioned
+residuals enumerated above (or a strict subset), pass. If any new
+match appears outside the sanctioned set, the implementer flags back.
 
 ### 6.6 S3B-6 — METHODOLOGY.md Procedure ordering (NEW under v2)
 
