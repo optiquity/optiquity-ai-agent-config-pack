@@ -166,7 +166,7 @@ which will compose the corresponding file edits for you to paste.
 
 #### 5.A — (Apple only) Xcode scheme variables
 
-Open `scripts/validate.sh` and `scripts/test.sh`. Fill these at the
+Open `scripts/validate-swift.sh` and `scripts/test-swift.sh`. Fill these at the
 top:
 
 ```bash
@@ -195,7 +195,7 @@ post-edit hook picks them up):
 
 If your Xcode project uses a non-SPM source layout (e.g. `MyApp/` and
 `MyAppTests/` rather than `Sources/` and `Tests/`), also set
-`SWIFT_SOURCE_DIRS` in `scripts/format.sh`:
+`SWIFT_SOURCE_DIRS` in `scripts/format-swift.sh`:
 
 ```bash
 SWIFT_SOURCE_DIRS=""   # e.g. "MyApp MyAppTests" for Xcode-generated layout
