@@ -374,6 +374,12 @@ and full skill assignments. All custom agent names begin with `x-`.
 |---|---|---|
 | (Developer / PM chat adds rows per project during Procedure 5) |  |  |
 
+<!-- Trinity-rule exception: this `## Agent roster` section is present in
+GEMINI.md only. Gemini CLI auto-discovers agents via filesystem scan of
+`.gemini/agents/`; the explicit roster below is a presentation aid for the
+human reader of GEMINI.md. CLAUDE.md and AGENTS.md rely on the phase-routing
+table above and tool-side discovery and do NOT need a parallel section. -->
+
 ## Agent roster
 
 Agent definitions live in `.gemini/agents/*.md` — 16 agents with YAML
