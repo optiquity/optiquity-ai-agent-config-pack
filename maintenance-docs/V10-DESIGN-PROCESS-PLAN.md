@@ -1,5 +1,27 @@
 # V10 Design Process Plan
 
+> *__Status: Complete__ — all 13 steps executed; exit criteria met at commit
+> `4df382d` (2026-04-21). This document is a historical process artifact;
+> the approved output is `maintenance-docs/V10-DESIGN.md`. Do not use for
+> live decisions.*
+>
+> *Phase numbering reconciliation: this plan governed V10-PREDESIGN Phases
+> 1+2 collapsed (process planning + design pass). The "Phase 1 → Phase 3"
+> wording in Step 13 reflects that collapse — V10-PREDESIGN Phase 2 (the
+> design pass itself) is implicit in this plan's Steps 9–13.*
+>
+> *Outcome scope: V10-DESIGN.md Part 2 landed with AD-1..AD-18; the final
+> five (AD-14..AD-18) are the capability-addition addendum merged from
+> V10-DESIGN-2.md on 2026-04-22, not anticipated by this plan's Step 11
+> which expected AD-1..AD-13. Step 12 executed 5 review rounds rather
+> than the implied single gate (see V10-DESIGN.md Part 0 row 15).*
+>
+> *Path note: references to `maintenance-docs/V9-DESIGN.md` in §2 and
+> elsewhere are frozen-in-time historical paths. After C-V10-13 lands,
+> V9-DESIGN.md lives at `maintenance-docs/archive/V9-DESIGN.md`; the
+> path references in this plan are updated in that same commit per
+> AF-033.*
+
 *Plan type: Phase 1 of the four-phase progression (V10-PREDESIGN.md Part 7).*
 *Goal of this phase: produce an approved V10-DESIGN.md.*
 *Scope of this plan: the workflow between "V10-PREDESIGN.md exists" and "V10-DESIGN.md is approved and
@@ -96,6 +118,9 @@ Each step below lists incremental inputs on top of that baseline.
 The numbering is execution order. Dependencies are explicit. Steps within the same "Block" may be
 executed in the same session; steps in different blocks should generally use separate actors or separate
 sessions.
+
+*Note: Blocks A–F are an internal grouping device for the 13 steps; other
+v10 docs cite step numbers directly and do not reference Block letters.*
 
 ### Block A — Scope confirmation and tool verification
 
@@ -340,8 +365,8 @@ hatch).** Decide one of: (a) strict PM-chat-only with detect-and-offer-to-regist
 precedence. Record the decision with rationale.
 4. **Confirm/change CD-4 (three creation paths — describe / one-tool-format / existing-file).** Write the
  PM chat workflow draft that feeds METHODOLOGY.md Procedure 5 at implementation time.
-5. **Confirm/change CD-6 (custom skills load same way) and CD-7 (PLATFORM-SKILLS.md `## Custom skills`
-section).** Specify the exact header, column structure, and example row.
+5. **Confirm/change CD-6 (custom skills load same way) and CD-7 (PLATFORM-SKILLS.md `## Custom agents`
+and `## Custom skills` sections).** Specify the exact header, column structure, and example row.
 6. **Confirm/change CD-9 (custom agent prompts in prompts/ directory).** Verify compatibility with the
 Step 4 format decision — same frontmatter, same heading structure.
 7. **Resolve OQ-1 (authoritative pack roster).** Decide among the three options listed in OQ-1:
@@ -765,7 +790,7 @@ depend on stable definition |
 | G6 | Step 6 | Migration design; Step 7 shares detection logic |
 | G7 | Step 7 | BD-044 design |
 | G8 | Step 11 | Assembled V10-DESIGN.md draft |
-| G9 | Step 12 | pack-reviewer report resolution |
+| G9 | Step 12 | pack-reviewer report resolution. *In practice, executed as 5 iterative rounds (see V10-DESIGN.md Part 0 row 15).* |
 | G10 | Step 13 | Commit approval |
 
 ---
@@ -782,7 +807,7 @@ depend on stable definition |
 | CD-4 (three creation paths) | Step 5 |
 | CD-5 (migration preserves x- files) | Step 6 |
 | CD-6 (custom skills load same way) | Step 5 (after Step 2 verifies skill loading per tool) |
-| CD-7 (PLATFORM-SKILLS.md `## Custom skills` section) | Step 5 |
+| CD-7 (PLATFORM-SKILLS.md `## Custom agents` and `## Custom skills` sections) | Step 5 |
 | CD-8 (prompt reorg) | Step 4 (after token budget analysis) |
 | CD-9 (custom prompts in prompts/ dir) | Step 5 (uses Step 4 format) |
 | CD-10 (BD-044 in v10) | Step 1 |
