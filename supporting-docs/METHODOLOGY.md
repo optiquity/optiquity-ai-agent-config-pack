@@ -681,6 +681,7 @@ or **Success criteria**.
 | `repo-ops` / mechanical claude | Exact operations and command sequences (the entire purpose of the agent). | N/A — but the prompt cannot ask `repo-ops` to **design** anything; only to apply a fully-specified operation. |
 | `reviewer` | Eight review dimensions; ✅/❌/⚠️ markers; Pass-summary block; Verdict line; verification command. | Adjusting the reviewer's judgment; pre-categorizing severity; instructing what to overlook. |
 | `tester` | Per-component output block; priority-summary format; report-only constraint. | Test pattern or framework choice; mock vs. stub direction; pre-ordered test plan. |
+| `pm-chat` (self-prompt) | When generating a prompt for any other agent, the PM chat may specify the same format requirements that agent's row allows. When generating its own self-prompts (BACKLOG entries, STATUS anchors, SETUP.md, AGENT_KICKOFF.md), the PM chat may specify the target file's schema and section structure. | Inheriting the target agent's solution-forbidden list — a PM-chat-authored coder prompt may not contain pseudocode or pattern names, a PM-chat-authored architect prompt may not contain proposed solutions or pattern names, etc. The PM chat is bound by every constraint that applies to the agent it is prompting. |
 
 > **Update this table when any agent is added or changed.**
 
@@ -689,6 +690,42 @@ solution, pattern name, or structural approach in a prompt to an
 architect agent. A proposed solution in an architect prompt is not a
 suggestion — it anchors the agent. Describe the constraint violation
 or design problem only. The architect diagnoses and proposes.
+
+### Format-vs-solutions: worked examples
+
+The format-vs-solutions distinction is easier to read in the abstract
+than to apply under time pressure. The examples below show the most
+common leakage shapes observed in PM-chat-generated coder prompts
+(paraphrased from real cases). For each: the **Negative** line shows
+what NOT to write; the **Positive** line shows the format/constraint
+version; the **Why** line names the leakage category.
+
+**Example 1 — testability technique**
+- **Negative:** *"The size limit must be injectable as a parameter so tests can drive rotation with small payloads."*
+- **Positive:** *"Rotation behavior must be testable with payloads small enough to trigger rotation in unit tests."*
+- **Why:** The negative names a testability mechanism (parameter injection). The positive states the testability requirement; the coder chooses among parameter injection, an overridable static, a test-seam protocol, or another approach.
+
+**Example 2 — API or framework name**
+- **Negative:** *"Declare the panel scene via `WindowGroup` or `Window`, whichever is consistent with how the existing app declares scenes."*
+- **Positive:** *"The panel must be a separate scene matching the scene-declaration convention already used in the app."*
+- **Why:** The negative names specific platform APIs. The positive names the constraint (separate scene; convention-matching) and lets the coder read the existing app to choose.
+
+**Example 3 — architectural-shape invention**
+- **Negative:** *"`StateProvider` is a protocol that returns a `StateSnapshot` value type; the snapshot has nested value types covering [list]."*
+- **Positive:** *"The panel content sections required: [list of sections from the plan]. The state-source design is the coder's choice."*
+- **Why:** The negative invents a protocol-plus-snapshot-plus-nested-value-types composition pattern that did not appear in the implementation plan. The plan required panel content sections; the data-supply architecture is a coder decision.
+
+**Example 4 — timing or lifecycle prescription**
+- **Negative:** *"Poll the data source on a 1 Hz timer; suspend the timer when the window is not visible."*
+- **Positive:** *"Panel data must reflect current state without measurable user-visible lag, and must not consume resources when the panel is hidden."*
+- **Why:** The negative names a polling rate and a lifecycle mechanism. The positive names the observable requirements (freshness, idle behavior); the coder chooses polling vs. observation, rate, and visibility hook.
+
+**Example 5 — Files-in-scope is NOT solution leakage (clarifying)**
+- **This is scope, not solution:** *"Files in scope: `Data/Logging/FileLogSink.swift` (new), `Data/Logging/LogRotation.swift` (new)."* Paths come from the implementation plan and enforce existing layer discipline (logging belongs in `Data/`). They are location guardrails.
+- **This crosses into solution:** *"Use `FileManager.default.url(for:in:)` to resolve the log directory."* This names an API choice the coder should make.
+- **Why:** Files-in-scope lists relay scope from the architect / planner / plan. They tell the coder where the work lives and where it does not. They do not specify how the work is done. API and data-structure choices made *inside* those files are the coder's.
+
+The per-agent table in the previous subsection enumerates which format requirements are allowed for each agent. When in doubt: ask the self-check question 2 below — "Am I describing what needs to be true, or how to do it?"
 
 ### File-based reporting
 

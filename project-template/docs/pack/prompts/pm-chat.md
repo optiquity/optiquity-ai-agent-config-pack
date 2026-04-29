@@ -258,34 +258,24 @@ Fill in all placeholder values:
     producing any stub code):
       □ Heterogeneous domain collections: type-erasure wrappers / exhaustive
         enums / protocol elevation — which and why
-          Note: Type-erasure wrappers that expose a .base accessor for downcasting
-          to a concrete type are an LSP violation — they are runtime type
-          interrogation disguised as abstraction. Protocol elevation (moving all
-          needed behavior into the protocol as requirements) is the preferred
-          approach. Exhaustive enums are preferred when the concrete type must be
-          known at the call site and the set of types is fixed and internal.
       □ Domain state change notification: coarse broadcast / typed payload
         streams / observation framework — granularity, back pressure,
         actor-hop cost at expected update frequency
-          Note: AsyncStream<Void> (contentless broadcast) forces every subscriber
-          to perform an actor hop and re-fetch all state on every signal regardless
-          of relevance. Typed payload streams (AsyncStream<ChangeType>) allow
-          subscribers to filter by relevance before crossing actor boundaries.
-          AsyncChannel from swift-async-algorithms is a competing-consumer
-          rendezvous channel — it is NOT suitable for fan-out to multiple
-          independent subscribers.
       □ ViewModel-to-navigation coupling: direct navigator injection /
         route-intent stream / closure-based — what the ViewModel emits vs.
         what the View layer executes
-          Note: ViewModels must not import SwiftUI. A ViewModel that imports SwiftUI
-          cannot be tested independently of a view hierarchy and violates the
-          framework-independence goal. ViewModels must express navigation intent as
-          output that the View layer consumes, including a typed stream or observable
-          state property of a ViewModel-defined enum, a non-isolated closure injected
-          by the caller, or a delegate protocol defined by the ViewModel. The ViewModel
-          never holds or calls a navigator directly.
       □ [Any other correctness-sensitive structural decisions specific to
         this project]
+      □ Before recording rationale on any of the above, the architect must
+        read the universal rules constraining these decisions in `CLAUDE.md`,
+        `AGENTS.md`, and `GEMINI.md` (LSP / capability-pattern / layer
+        discipline / shared-state documentation), plus any active skills
+        listed in the trinity `**Active skills:**` line (concurrency,
+        platform architecture, language-specific rules). The PM chat does
+        not pre-decide these structural choices in this checklist —
+        per `supporting-docs/METHODOLOGY.md § Format-vs-solutions: worked
+        examples`, prescribing a structural answer in an architect prompt
+        anchors the agent and is forbidden.
 - Required stubs to generate: [LIST]
 - Test infrastructure required: [LIST OR NONE]
 
