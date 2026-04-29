@@ -1183,7 +1183,7 @@ Context: Identified during Phase 4 audit (April 2026). The audit closed
   architect design pass V10-PROMPT-STRUCTURE-DESIGN.md (committed
   aff447f) and planner pass V10-PROMPT-STRUCTURE-PLAN.md (committed
   aff447f). Implementation commit follows this Pack Chat work.
-Resolved: April 2026, v10.0 — commit <SHA>.
+Resolved: April 2026, v10.0 — commit f81678f.
 
 ---
 
