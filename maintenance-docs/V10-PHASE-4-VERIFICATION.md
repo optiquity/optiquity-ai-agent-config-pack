@@ -1193,3 +1193,76 @@ All §12 fixtures synthetic; built from the v10-dev pack source. No OT content i
 
 - **F-G → RESOLVED.**
 - **F-A** still pending — kickoff surface-declaration gate + prose accuracy. Last v10.0 patch in Option A sequence.
+
+---
+
+## §13 Delta verification — F-A patch
+
+**Date:** 2026-04-29T19:00:00Z (UTC, harness execution timestamp)
+**Patch commits:** `cc5d7d0` (design + plan docs), `385dfe2` (10-edit atomic patch).
+**Scope:** Delta-only re-verification per project-lead Option A sequence. Confirms METHODOLOGY § Procedure 7.0 semantic-gate β rewrite + sanctioned-inference one-liner; § 7.6 Preview rendering rule single-source body; § 7.2.3 / § 7.2.4 / § 7.3.1 / § 7.3.2 cross-references; pm-chat.md Variant: kickoff surface-declaration block β rewrite + doc-discovery (b) rewrite + line-84 path piggyback; Variant: generate-agent-kickoff line-276 path piggyback (FB-2 Option 2).
+
+### §13.1 Fresh init — METHODOLOGY + pm-chat propagation
+
+- Fixture: `/tmp/v10-fa-fixtures/fresh-init/` (fresh git-init repo with seed README).
+- init-project.sh exit: **0**.
+- METHODOLOGY § 7.0 sanctioned-inference one-liner in fresh-init's `docs/pack/METHODOLOGY.md`: ✅ present.
+- METHODOLOGY § 7.6 Preview rendering rule in fresh-init's METHODOLOGY: ✅ present (`**Preview rendering.**` heading detected).
+- § 7.6 cross-references in fresh-init's METHODOLOGY: ✅ 3 single-line + 1 multi-line (E6 wraps "§ 7.6\n(Preview rendering)" across two source lines, by design).
+
+### §13.2 pm-chat.md kickoff F-A content propagation
+
+- kickoff β phrasing present in fresh-init's `docs/pack/prompts/pm-chat.md`: ✅ (`declare my surface and pause`).
+- Old `GitHub connector is connected` assertion removed: ✅ (0 hits).
+- New surface-agnostic discovery instruction present: ✅ (`Locate and read these by whatever means your surface provides`).
+
+### §13.3 Path piggybacks (E9 + E10) — pack-wide
+
+- `supporting-docs/METHODOLOGY.md` references in fresh-init's `pm-chat.md`: ✅ **0** (both stale references gone — line 84 fixed by E9; line 276 fixed by E10).
+- `docs/pack/METHODOLOGY.md` references in fresh-init's `pm-chat.md`: ✅ 2 (line 84 continuation pointer + line 276 F-G cross-reference, both updated).
+
+### §13.4 Convention exception (BD-049) preserved
+
+- Labeled-section markers (Problem/Goal/Success criteria/Constraints/Files in scope/Completion report) inside Variant: kickoff: ✅ **0** (Convention exception preserved per design §2.5).
+
+### §13.5 Pack-level regression guards
+
+- `python3 scripts/validate-pack.py` exit: **0**.
+- `bash scripts/test-detect.sh`: **34 passed, 0 failed**.
+
+### §13.6 Live-OT byte-identity
+
+- Live OT HEAD post-§13: `d9e288ba8b897f967c52e99a0391d9495d5f8073` (unchanged from baseline; **12th post-baseline checkpoint** across this verification effort).
+- Live OT working tree porcelain: empty.
+- All §13 fixtures built under `/tmp/v10-fa-fixtures/`. No OT live-repo content involved.
+
+### §13.7 Cross-surface paper trace (per architect §2.4 + §9 scope)
+
+The β semantic-gate generalizes uniformly across the 4 shell-capable surfaces (Claude Code CLI / Codex CLI / Gemini CLI / Claude Desktop with Desktop Commander) per architect's design §2.4 cross-surface check. v10.1-deferred per-surface details (Codex sandbox, Gemini plan-mode, Desktop Commander allowlist) layer onto Procedure 7's existing § 7.4 failure-handling and are not blocked by F-A. Live runs on the three deferred surfaces remain F-B (b) v10.1 work.
+
+### §13.8 Sanitization
+
+All §13 fixtures synthetic; built from v10-dev pack source. No OT content involved. Per §6.7.7 sanitization rules: clean.
+
+### §13.9 Cleanup
+
+`/tmp/v10-fa-fixtures/` removed at end of §13.
+
+### §13.10 Pass / fail summary
+
+| Check | Result |
+|---|---|
+| Fresh init → METHODOLOGY F-A content propagated | ✅ PASS |
+| pm-chat.md kickoff β phrasing + discovery instruction propagated | ✅ PASS |
+| Path piggybacks (E9 + E10) — both stale references gone pack-wide in pm-chat.md | ✅ PASS |
+| Convention exception (BD-049) preserved | ✅ PASS |
+| validate-pack.py exit 0 | ✅ PASS |
+| test-detect.sh 34/34 | ✅ PASS |
+| Live OT unchanged | ✅ PASS (12th checkpoint) |
+
+**Outcome:** **F-A resolved.** Kickoff surface-declaration gate codified semantically (β); Form I + Form M preview rendering formalized as recognized behavior when idempotency rules fire; kickoff prose's hardcoded environmental assertions replaced with surface-agnostic discovery; both F-D residual path-staleness sites in pm-chat.md cleaned (E9 + E10).
+
+### §13.11 Flag-back updates
+
+- **F-A → RESOLVED.**
+- **All v10.0 patches complete.** F-A, F-C, F-D, F-E, F-F, F-G all resolved. F-B (b) cross-surface live runs deferred to v10.1 per §0.6 scope decision (not a defect).
