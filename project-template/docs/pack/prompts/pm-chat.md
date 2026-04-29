@@ -20,6 +20,8 @@ generate-agent-kickoff).
 *Paste this at the start of a new PM chat session to establish project context.*
 *Fill in all [PLACEHOLDERS] before pasting.*
 
+**Convention exception:** kickoff is a context handoff, not an agent-task prompt. The labeled-section convention does not apply. All other variants and all other prompt files in this directory follow it.
+
 **Before pasting:**
 - If you are running Gemini CLI and currently in plan mode (`/plan`), exit plan mode before continuing — kickoff requires shell execution.
 - If you are pasting this into Claude Web or ChatGPT Web without shell access, reply `manual` when asked below.
@@ -93,8 +95,32 @@ values back, then compose the corresponding edits for you to apply.
 *PM chat only — requires explicit user approval before executing. Do not use this
 template to make changes the user has not reviewed and approved.*
 
-Read `BACKLOG.md` [and/or `STATUS.md`] in full. Make exactly the following changes.
-Do not modify any other file.
+**Context:** A BACKLOG and/or STATUS state-change requires recording. The
+PM chat composes this prompt against itself after explicit user approval.
+
+**Required reading:** `BACKLOG.md` and/or `STATUS.md` in full, depending
+on which file(s) the change targets.
+
+**Problem:** A BACKLOG/STATUS state-change is required (new entry, status
+flip, resolution, phase advance, etc.) and has been approved by the user.
+
+**Goal:** The named entries are updated per the schema below. No other
+files touched.
+
+**Success criteria:**
+- Exact entries exist with the prescribed BACKLOG-entry shape (per the
+  schema block under Constraints).
+- Phase-title links in STATUS.md validate (anchor format per the rule
+  under Constraints).
+- Cancelled/Deprecated items have flag-for-review applied to dependents.
+- Artifact (BACKLOG.md and/or STATUS.md edits) is the target file edit
+  itself; no separate report file is needed (sub-case B).
+
+**Files in scope:** `BACKLOG.md` and/or `STATUS.md` only. No other file
+is modified.
+
+**Constraints:** PM chat self-prompt. Requires explicit user approval
+before executing. Do not modify any other file.
 
 [DESCRIBE EXACT CHANGE — e.g.:]
 
@@ -139,15 +165,36 @@ Do not automatically unblock any of them.
   Example: `## Phase 35 — Live Broker Sandbox Verification` →
   `[Live Broker Sandbox Verification](IMPLEMENTATION_PLAN.md#phase-35--live-broker-sandbox-verification)`.
 
-Confirm what was changed.
+**Completion report:** The artifact is the target-file edit itself
+(sub-case B). Confirm what was changed by naming the file(s) edited
+and the change summary inline in chat — no separate REPORT FILE.
 
 ## Variant: generate-setup
 
 *PM chat fills this in using SETUP_TEMPLATE.md from the pack.*
 
-Read `supporting-docs/SETUP_TEMPLATE.md` from the AI Agent Config Pack.
-Using that template and our planning conversation, generate a complete `SETUP.md`
-for [PROJECT_NAME].
+**Context:** A new project has no `SETUP.md`. The PM chat fills in the
+pack's SETUP_TEMPLATE.md with values from the planning conversation.
+
+**Required reading:** `supporting-docs/SETUP_TEMPLATE.md` from the AI
+Agent Config Pack, plus the planning conversation context already in
+the PM chat session.
+
+**Problem:** The project has no `SETUP.md`.
+
+**Goal:** A complete `SETUP.md` produced from the pack template, with
+all relevant placeholders filled and inapplicable sections removed.
+
+**Success criteria:**
+- Output is a single complete `SETUP.md` ready to save to the project
+  root.
+- All listed placeholder values (per the placeholder list below) are
+  answered.
+- No template-only HTML comment block remaining at the top.
+- Sections that don't apply to this project are removed.
+
+**Files in scope:** Project-root `SETUP.md` (sub-case B — target file
+IS the artifact).
 
 Fill in all placeholder values based on what we have discussed:
 - Project name: [PROJECT_NAME]
@@ -159,16 +206,45 @@ Fill in all placeholder values based on what we have discussed:
 - Architect agent: [ARCHITECT_AGENT]
 - [Any other project-specific values]
 
-Remove any sections that don't apply to this project.
-Output the complete SETUP.md content ready to save to the project root.
+**Constraints:** PM chat self-prompt. Output the complete file content;
+do not partially fill or skip placeholders. Remove any sections that
+don't apply to this project.
+
+**Completion report:** The artifact is `SETUP.md` written at the
+project root (sub-case B). No separate REPORT FILE. Output the
+complete SETUP.md content ready to save.
 
 ## Variant: generate-agent-kickoff
 
 *PM chat fills this in using AGENT_KICKOFF_TEMPLATE.md from the pack.*
 
-Read `supporting-docs/AGENT_KICKOFF_TEMPLATE.md` from the AI Agent Config Pack.
-Using that template and our architecture planning conversation, generate a complete
-`AGENT_KICKOFF.md` for [PROJECT_NAME].
+**Context:** The architect kickoff session has no kickoff brief. The PM
+chat fills in the pack's AGENT_KICKOFF_TEMPLATE.md with values from the
+architecture planning conversation.
+
+**Required reading:** `supporting-docs/AGENT_KICKOFF_TEMPLATE.md` from
+the AI Agent Config Pack, plus the architecture planning conversation
+context already in the PM chat session.
+
+**Problem:** The architect kickoff session has no `AGENT_KICKOFF.md`
+brief.
+
+**Goal:** A complete `AGENT_KICKOFF.md` produced from the pack template,
+with project description, platform, pattern, structural decisions,
+required stubs, test infrastructure, and external resources filled in.
+
+**Success criteria:**
+- Output is a single complete `AGENT_KICKOFF.md` ready to save to the
+  project root.
+- All listed placeholder values (per the placeholder list below) are
+  answered.
+- Structural-decisions checklist enumerated (each □ item present with
+  rationale slot for the architect to fill).
+- CLI launch command for the architect agent included at the end.
+- Sections that don't apply are removed.
+
+**Files in scope:** Project-root `AGENT_KICKOFF.md` (sub-case B —
+target file IS the artifact).
 
 Fill in all placeholder values:
 - Project description: [DESCRIPTION]
@@ -213,7 +289,15 @@ Fill in all placeholder values:
 - Required stubs to generate: [LIST]
 - Test infrastructure required: [LIST OR NONE]
 
-Remove sections that don't apply.
+**Constraints:** PM chat self-prompt. Output the complete file content;
+do not partially fill placeholders. The structural-decisions checklist
+must be enumerated regardless of whether the planning conversation has
+resolved each item — the slots themselves drive the architect's later
+kickoff session. Remove sections that don't apply.
+
+**Completion report:** The artifact is `AGENT_KICKOFF.md` written at
+the project root (sub-case B). No separate REPORT FILE.
+
 Output the complete AGENT_KICKOFF.md content ready to save to the project root.
 The developer will paste this directly into a CLI session with the architect agent:
 `./agent-run.sh claude --agent architect` (or `codex`/`gemini` as appropriate).

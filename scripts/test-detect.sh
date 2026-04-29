@@ -217,7 +217,6 @@ fx=$(mkfixture improperly-prompts-allowed)
 mkdir -p "$fx/docs/pack/prompts"
 touch "$fx/docs/pack/prompts/coder.md"          # in roster
 touch "$fx/docs/pack/prompts/pm-chat.md"        # reserved
-touch "$fx/docs/pack/prompts/PROMPT-AUTHORING.md"  # known
 touch "$fx/docs/pack/prompts/x-custom.md"       # x- prefix
 assert_eq "prompts dir with all-allowed entries → (none)" \
     "improperly-added: (none)" "$(detect_improperly_added_files "$fx")"

@@ -16,21 +16,39 @@ variants:
 > **This is a read-only analysis pass. Do not modify any files. Output proposed
 > changes as text only. The PM chat will apply approved changes after this session.**
 
-Read `ARCHITECTURE.md` in full. Read `IMPLEMENTATION_PLAN.md` Phase [N] in full.
-Read `CLAUDE.md` in full. Read `AGENTS.md` in full.
-Then read these specific files that the reviewer flagged: [LIST FILES FROM REVIEWER REPORT].
-
-**Context — why this architect pass was triggered:**
-[PM chat describes: which trigger fired (A or B), how many coder passes have run,
-and the pattern of reviewer findings that indicates a design problem]
+**Context:** [PM chat describes: which trigger fired (A or B), how many coder passes have
+run, and the pattern of reviewer findings that indicates a design problem]
 
 **Reviewer findings that this pass must address:**
 [PM chat inserts the full ❌ and ⚠️ list from the most recent reviewer report]
 
-**Your task:**
-Identify the root cause of the recurring or worsening reviewer findings. Do not
-assume the coder is making mistakes — assume the design documentation is ambiguous,
-incomplete, or incorrect and is causing the coder to produce the wrong result.
+**Required reading:** `ARCHITECTURE.md` in full. `IMPLEMENTATION_PLAN.md` Phase [N] in full.
+`CLAUDE.md` in full. `AGENTS.md` in full. Plus these specific files that the reviewer
+flagged: [LIST FILES FROM REVIEWER REPORT].
+
+**Problem:** The recurring or worsening reviewer-finding pattern indicates that the
+design documentation is ambiguous, incomplete, or incorrect — not that the coder is
+making mistakes. Identify the root cause(s) in the design layer.
+
+**Goal:** Produce a list of named root causes (one per identified design defect),
+each tied to the specific section of the specific document that contains the problem,
+with proposed exact text changes to `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`,
+`CLAUDE.md`, or `AGENTS.md`.
+
+**Success criteria:**
+- Every reviewer finding listed in `**Reviewer findings…**` is traced to one or more
+  named root causes.
+- Each root cause has a `**Proposed change [N] — [Document name], [Section name]**`
+  block in the format specified below.
+- No source code changes proposed; no build/test commands run.
+
+**Files in scope:** None (read-only). Output is a proposed-change list only.
+
+**Constraints:** Read-only analysis pass. Do not modify any files. Do not propose
+source code changes. Do not run any build or test commands.
+
+**Completion report:**
+REPORT FILE: `[PM chat supplies path; e.g., docs/project/architect-mid-phase-N.md]`
 
 For each root cause you identify:
 1. Name it precisely — which section of which document contains the problem
@@ -45,6 +63,3 @@ Root cause: [explanation]
 Current text: [quote the existing text]
 Proposed replacement: [exact new text]
 Why this fixes it: [explanation]
-
-Do not propose source code changes. Do not run any build or test commands.
-Output proposed doc changes only.

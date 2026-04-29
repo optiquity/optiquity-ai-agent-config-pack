@@ -12,13 +12,36 @@ variants:
 
 > **This is a read-only review pass. Do not modify any files. Output a report only.**
 
-This is reviewer pass **[N]** for Phase **[X]**.
-[If N > 1:] The previous pass ([N-1]) had the following open ❌/⚠️ issues that the coder was asked to fix:
-[PM chat inserts the open issue list from the prior reviewer report here]
+**Context:** This is reviewer pass **[N]** for Phase **[X]**. [If N > 1:]
+Previous pass ([N-1]) had the following open ❌/⚠️ issues that the coder
+was asked to fix: [PM chat inserts the open issue list from the prior
+reviewer report here]
 
-Read `ARCHITECTURE.md` in full. Read `CHANGELOG.md` (Phase [X] entry).
-Read `CLAUDE.md`. Read `IMPLEMENTATION_PLAN.md` Phase [X] in full.
-Then read all files modified in Phase [X]: [LIST FILES].
+**Required reading:** `ARCHITECTURE.md` in full. `CHANGELOG.md` (Phase
+[X] entry). `CLAUDE.md`. `IMPLEMENTATION_PLAN.md` Phase [X] in full.
+Plus all files modified in Phase [X]: [LIST FILES].
+
+**Problem:** The coder's pass-[X] output has not been verified against
+the architecture, the implementation plan, or the eight review
+dimensions.
+
+**Goal:** An eight-dimension review producing a Verdict line (Ready to
+commit / Needs fixes) and a structured findings list with ✅/❌/⚠️
+markers per finding.
+
+**Success criteria:**
+- Report header line correct (per Completion report below).
+- Every one of the eight review dimensions addressed (no skipping).
+- Findings tagged ✅ PASS / ❌ FAIL / ⚠️ WARN per the format below.
+- Pass summary block present at end of report.
+- Verdict line ends the report.
+- Verification command run; result reported.
+
+**Files in scope:** None (read-only review). Output is the report only.
+
+**Constraints:**
+- Read-only review pass. Do not modify any files.
+- **Eight review dimensions (do not skip any):**
 
 Review for all eight of the following — do not skip any:
 
@@ -57,13 +80,15 @@ Review for all eight of the following — do not skip any:
 
 [Add any phase-specific focus areas here — these are in addition to the eight above, not a replacement.]
 
-**Verification** (run after reviewing, report results):
-```bash
-[VERIFICATION COMMAND — e.g., ./scripts/test.sh or pytest]
-```
-Confirm all tests pass.
+- **Verification** (run after reviewing, report results):
+  ```bash
+  [VERIFICATION COMMAND — e.g., ./scripts/test.sh or pytest]
+  ```
+  Confirm all tests pass.
 
-**Output format:**
+**Completion report:**
+REPORT FILE: `[PM chat supplies path; e.g., docs/project/reviewer-phase-X-pass-N.md]`
+
 Begin the report with this header line as the very first line of output:
 `Phase [X] — [Phase title] — Reviewer Report, Pass [N]`
 Then list findings:

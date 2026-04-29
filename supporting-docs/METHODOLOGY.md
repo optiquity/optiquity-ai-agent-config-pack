@@ -545,61 +545,184 @@ phase before pasting.
 
 ## Prompt Authoring Principles
 
-These principles apply to every prompt the PM chat generates — coder, architect,
-fix cycle, researcher, planner — and to every task entry written in IMPLEMENTATION_PLAN.md.
-They are not style guidance. They govern what information belongs in a prompt and what does not.
+These principles apply to every prompt the PM chat generates and to
+every task entry written in IMPLEMENTATION_PLAN.md. They are not style
+guidance. They govern what information belongs in a prompt and what
+does not.
+
+### About `docs/pack/prompts/`
+
+The `docs/pack/prompts/` directory contains one file per agent. The PM
+chat reads `<agent>.md` on demand, locates the requested variant by its
+`## Variant: <slug>` heading, copies the body, and customizes it for
+the task at hand.
+
+These templates are starting points. The PM chat customizes phase
+numbers, file names, scheme names, and verification commands per use;
+sections that don't apply to the current phase are removed. Every
+variant body follows the labeled-section convention defined in the
+subsections below.
 
 ### The core rule: describe the problem, goal, and success criteria — not the solution
 
-Every prompt and every task entry must answer:
+Every prompt must answer:
 
-1. **Problem** — the root cause, described at the category level, not a single symptom.
-   Include enough scope that the agent recognizes all instances within the files-in-scope
-   list — but do not describe the solution.
+1. **Problem** — the root cause, described at the category level,
+   not a single symptom. Include enough scope that the agent
+   recognizes all instances within the files-in-scope list — but
+   do not describe the solution.
+2. **Goal** — what correct behavior looks like across the affected
+   scope when the prompt is complete. Describe the outcome, not the
+   steps.
+3. **Success criteria** — the observable, verifiable state that
+   confirms the goal is achieved. What can be checked to know the
+   prompt's work is complete? At the IMPLEMENTATION_PLAN.md task
+   level this maps to the task's "Definition of done."
 
-2. **Goal** — what correct behavior looks like across the affected scope when the task
-   is complete. Describe the outcome, not the steps.
-
-3. **Success criteria** — the observable, verifiable state that confirms the goal is
-   achieved. What can be checked to know the task is complete? This is not a solution
-   — it describes the end state, not the path to it. At the task level, this maps to
-   the "Definition of done" field in IMPLEMENTATION_PLAN.md.
-
-4. **Context** — why this matters and how it connects to the larger system design.
-   Include only what the agent cannot infer from reading ARCHITECTURE.md.
-
-5. **Required reading** — documents and files the agent must read before starting.
-   Distinguish: files to read for understanding (may extend beyond the change scope)
-   vs. files in scope to modify.
-
-6. **Files in scope** — explicit list of files the agent may create or modify.
-   This is the primary boundary. If the agent discovers the same problem in a file
-   not on this list, it should report it rather than fix it — unless the unlisted
-   file is a direct dependency required for the listed tasks to compile or function
-   (e.g., a type that must expose a new accessor for the phase to work). In that
-   case the agent may make a small, focused change and must disclose it in the
-   **"Unplanned file modifications"** section of the completion report.
-
-   **Before finalizing the file list:** For each data field or behavior the phase
-   requires, trace: *"Which existing type holds or produces that data, and does that
-   type need a new method or property to expose it?"* If yes, add that type's file to
-   the list. An incomplete file list is the most common cause of coder workarounds:
-   the agent either invents an architecturally wrong solution or silently touches an
-   unlisted file.
-
-7. **Completion report** — what the agent must report when done: files modified,
-   verification results, and any out-of-scope discoveries.
+Plus the surrounding sections: Context, Required reading, Files in
+scope, Constraints, Out of scope, Completion report.
 
 A prompt must never contain:
 - Pseudocode or implementation sketches
-- Framework, pattern, or library choices (unless already mandated in ARCHITECTURE.md)
+- Framework, pattern, or library choices (unless already mandated
+  in ARCHITECTURE.md)
 - Step-by-step "how to" instructions
 - Proposed solutions that substitute for agent judgment
 
-**Why this rule exists:** Prescriptive prompts bypass the agent's ability to find
-the right approach from full filesystem context. The PM chat has not read every file
-in the repo — the agent has. The PM chat states what is wrong, what correct behavior
-looks like, and what confirms the task is complete. The agent determines how to achieve it.
+**Why this rule exists.** Prescriptive prompts bypass the agent's
+ability to find the right approach from full filesystem context. The
+PM chat has not read every file in the repo — the agent has. The PM
+chat states what is wrong, what correct behavior looks like, and
+what confirms the work is complete. The agent determines how to
+achieve it.
+
+### Mandatory section structure (canonical order)
+
+Every prompt template variant — every `## Variant: <slug>` block in
+every file under `docs/pack/prompts/` — uses bolded inline labels
+in the following order:
+
+1. **Role + agent identity** (one line; the variant heading + one-
+   line italic descriptor satisfies this)
+2. **Context:** state of the world this prompt fires in (include only what the agent cannot infer from reading ARCHITECTURE.md)
+3. **Required reading:** documents and files the agent must read
+   before starting; distinguish read-for-understanding vs. files in
+   scope
+4. **Problem:** as defined above
+5. **Goal:** as defined above
+6. **Success criteria:** as defined above
+7. **Files in scope:** explicit list the agent may create or
+   modify; the unplanned-file-modifications escape valve applies
+8. **Constraints:** read-only / write rules, verification commands,
+   deferral-comment rules, root-md prohibition where applicable
+9. **Out of scope:** explicit list of what the prompt is **not**
+   asking for, when relevant (omit if redundant with Constraints)
+10. **Completion report:** what the agent returns, **always
+    file-based** — see "File-based reporting" below
+
+**Label format.** Bolded inline markdown labels —
+`**Problem:**`, `**Goal:**`, `**Success criteria:**`, etc. — placed
+at the start of the section content. H2 / H3 markdown headers are
+not used at the section level: a multi-section prompt body
+rendered as a forest of `##` headings is harder to scan and creates
+a heading-level conflict with the variant's own `##` heading.
+
+**Per-variant application.** The convention attaches to each
+`## Variant: <slug>` block, not to the file as a whole. Different
+variants of the same agent are distinct prompts and may differ in
+Constraints, Files in scope, and Completion-report shape, but all
+contain the triad and follow the canonical order.
+
+**One triad per prompt — not per task.** A prompt with multiple
+tasks (e.g., a coder phase with three implementation tasks; a fix-
+cycle with five reviewer findings) lists the tasks under **Goal**.
+Per-task **Definition of done** survives inside the task list as
+task-scope detail; it does not replace the prompt-level **Success
+criteria**.
+
+**Single documented exception.** `pm-chat.md` Variant: kickoff is a
+context handoff to the PM chat, not an agent-task prompt. It carries
+a `**Convention exception:**` callout immediately after its italic
+descriptor and does not follow the labeled-section convention. Every
+other variant in `docs/pack/prompts/` follows it.
+
+### Format requirements vs. solutions
+
+No agent's prompt may contain solutions. The triad is mandatory
+for every agent without exception.
+
+"Format requirements" — output structure, parse-able shape,
+citation discipline, severity scales, verdict-line conventions —
+are a separate, narrower category. They are communication
+standards, not solutions. Format requirements may be added to
+specific agent prompts **alongside** the triad; they never replace
+or omit it.
+
+The distinguishing rule:
+
+> Format requirements describe **how the output is structured** and
+> **how findings are communicated**. Solutions describe **how the
+> agent should achieve the goal**.
+
+Format requirements appear in the prompt under **Constraints**
+(when they govern behavior — read-only, report-only, no-code,
+verification command) or under **Completion report** (when they
+govern output shape — header line, ordered sections, ✅/❌/⚠️
+markers, citation discipline). They never appear inside **Goal**
+or **Success criteria**.
+
+| Agent | Format requirements (allowed) | Solutions (forbidden) |
+|---|---|---|
+| `architect` | Required-reading list; proposed-change block format. | Pattern names; structural direction; library or framework choices. |
+| `auditor` | Skip rules; per-subagent platform-skill loadout; severity scale; cluster order; ownership-precedence dedup; executive-summary structure. All forwarded from `audit-methodology`. | Telling the auditor what to find or hide; pre-judging severity. |
+| `coder` | Files in scope; verification commands; completion-report shape (Unplanned-file-modifications, Deferred-items sections); per-task DOD format. | Pseudocode; pattern names; algorithm sketches; step-by-step "how to." |
+| `docs-researcher` | URLs; specific claims; ✅/⚠️ block format; citation discipline. | Telling the researcher what to conclude; proposing a fix to a discrepancy. |
+| `planner` | Report-header format; per-task field shape; dependency-edge format. | Prescribing the breakdown itself ("Phase N has these tasks: …"). |
+| `repo-ops` / mechanical claude | Exact operations and command sequences (the entire purpose of the agent). | N/A — but the prompt cannot ask `repo-ops` to **design** anything; only to apply a fully-specified operation. |
+| `reviewer` | Eight review dimensions; ✅/❌/⚠️ markers; Pass-summary block; Verdict line; verification command. | Adjusting the reviewer's judgment; pre-categorizing severity; instructing what to overlook. |
+| `tester` | Per-component output block; priority-summary format; report-only constraint. | Test pattern or framework choice; mock vs. stub direction; pre-ordered test plan. |
+
+> **Update this table when any agent is added or changed.**
+
+**Architect prompts — stronger restriction.** Never include a proposed
+solution, pattern name, or structural approach in a prompt to an
+architect agent. A proposed solution in an architect prompt is not a
+suggestion — it anchors the agent. Describe the constraint violation
+or design problem only. The architect diagnoses and proposes.
+
+### File-based reporting
+
+Every prompt's **Completion report** section names a file the
+agent's output is written to. Two sub-cases:
+
+- **Sub-case A — agent produces a report.** A `REPORT FILE: <path>`
+  line names a markdown file the agent writes its report to (e.g.,
+  reviewer pass-N report, coder phase-N completion report,
+  architect mid-phase analysis, docs-researcher verification, planner
+  breakdown, tester strategy, auditor consolidated report). The PM
+  chat reads the file back; the agent does not copy-paste output
+  into chat.
+- **Sub-case B — PM-chat self-prompt produces a target-file edit.**
+  When the PM chat runs a self-prompt that edits or creates a
+  project file (BACKLOG.md, STATUS.md, SETUP.md,
+  AGENT_KICKOFF.md), the artifact **is** the target file edit. No
+  separate report file is required. The Completion-report section
+  names the target file and the change summary.
+
+Both sub-cases satisfy this rule. A prompt that asks an agent to
+"output the report" or "return the result to the developer" without
+naming a file is a defect.
+
+### Multi-part phase report headers
+
+When a phase is split into sequential implementation chunks, use **Part [M]**
+(not "pass") appended to the phase title in all report headers. Pass numbers
+reset to 1 for each new part. Single-part phases use the existing header
+format — do not append `, Part 1`. Example:
+`Phase 12 — Auth Flows, Part 2 — Reviewer Report, Pass 1`
+
+This applies to every agent's completion report regardless of which file in
+`docs/pack/prompts/` the prompt came from.
 
 ### On scoping the problem statement
 
@@ -616,26 +739,20 @@ agent to audit the listed files only, then report any out-of-scope instances fou
 for a follow-up decision. Do not expand the files list speculatively — that is
 scope inflation.
 
-### Exceptions — where prescriptive content is appropriate
+### On scoping the files-in-scope list
 
-| Agent | May prescribe | Must not prescribe |
-|---|---|---|
-| `reviewer` | Review criteria, output format, verification commands | Which issues to overlook or deprioritize |
-| `docs-researcher` | Specific claims to verify, URLs to check, output format | How to resolve discrepancies found |
-| `repo-ops` / standard `claude` | Exact file operations, BACKLOG/STATUS changes | N/A — mechanical operations are fully prescribed |
-| `tester` | Audit scope, output format | Which test patterns or structures to use |
-| `coder` | Files in scope, verification commands, completion report format | Implementation approach, patterns, pseudocode |
-| `architect` | Problem statement and required reading only | All solutions — including pattern names and structural direction |
-| `planner` | Which phase or scope to break down | How to break it down |
-| `auditor` (parent + subagents) | Skip rules, file scopes, platform skills to load, output format from `audit-methodology` | Which findings to surface or hide, how to fix anything |
+The files-in-scope list is the primary boundary on what the agent may
+modify. If the agent discovers the same problem in a file not on this
+list, it should report it rather than fix it — unless the unlisted
+file is a direct dependency required for the listed tasks to compile
+or function (e.g., a type that must expose a new accessor for the
+phase to work). In that case the agent may make a small, focused
+change and must disclose it in the **"Unplanned file modifications"**
+section of the completion report.
 
-> **Update this table when any agent is added or changed.**
-
-**Architect prompts — stronger restriction:**
-Never include a proposed solution, pattern name, or structural approach in a prompt
-to an architect agent. A proposed solution in an architect prompt is not a suggestion
-— it anchors the agent. Describe the constraint violation or design problem only.
-The architect diagnoses and proposes.
+The data-dependency-trace requirement (see PM chat self-check item 3
+below) ensures this escape valve is invoked rarely — incomplete file
+lists are the most common reason agents hit it.
 
 ### When generating prompts from IMPLEMENTATION_PLAN.md task entries
 
@@ -644,22 +761,33 @@ problem/goal/success-criteria description, reframe it before including it in the
 extract what is wrong, what correct behavior looks like, and what confirms the task
 is complete. Discard the how. Do not forward implementation instructions verbatim.
 This applies to coder, architect, and planner prompts. For agents where prescriptive
-content is permitted (see exceptions table above), forward plan content as written.
+content is permitted as **format** (per the Format requirements vs. solutions table
+above), forward plan content as written.
 
 ### PM chat self-check before generating any prompt
 
 Before writing a prompt:
 
-1. Ask: *"Am I describing what needs to be true, or how to do it?"*
-   If the answer is "how to do it," rewrite it as "what needs to be true."
-
-2. **Data-dependency trace — required before finalizing any coder or fix-cycle file list:**
+1. **Triad check.** Does the prompt body contain bolded labeled
+   `**Problem:**`, `**Goal:**`, and `**Success criteria:**`
+   sections? If not, add them before sending. (The single exception
+   is the `pm-chat.md` kickoff variant, which carries the
+   `**Convention exception:**` callout.)
+2. **Solution check.** Ask: *"Am I describing what needs to be
+   true, or how to do it?"* If the answer is "how to do it,"
+   rewrite as "what needs to be true." Format requirements (output
+   shape) are not solutions and are not affected by this check.
+3. **Data-dependency trace — required before finalizing any coder or fix-cycle file list:**
    For each data field or behavior the phase requires, ask: *"Which existing type holds
    or produces that data, and does that type need a new method or property to expose it?"*
    If yes, add that type's file to the files-in-scope list before sending the prompt.
    An incomplete file list is the single most common cause of coder workarounds: the
    agent is forced to either invent an architecturally wrong solution or silently touch
    a file it was not told about.
+4. **REPORT FILE check.** Does the **Completion report** section
+   name a file the agent's output goes to (sub-case A) or the
+   target file the PM chat will edit (sub-case B)? If neither, add
+   one before sending.
 
 ---
 

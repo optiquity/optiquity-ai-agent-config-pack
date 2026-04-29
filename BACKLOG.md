@@ -1117,6 +1117,76 @@ Resolved: n/a
 
 ---
 
+**BD-049 — Prompt template labeled-section convention + validate-pack.py Check 10**
+Type: TODO(version)
+Status: Resolved
+Blockers: None
+Unblocks: None
+File/Symbol: project-template/docs/pack/prompts/architect.md,
+  project-template/docs/pack/prompts/auditor.md,
+  project-template/docs/pack/prompts/coder.md,
+  project-template/docs/pack/prompts/docs-researcher.md,
+  project-template/docs/pack/prompts/planner.md,
+  project-template/docs/pack/prompts/pm-chat.md,
+  project-template/docs/pack/prompts/reviewer.md,
+  project-template/docs/pack/prompts/tester.md,
+  project-template/docs/pack/prompts/PROMPT-AUTHORING.md (DELETED in v10.0),
+  supporting-docs/METHODOLOGY.md § Prompt Authoring Principles,
+  scripts/validate-pack.py (Check 10 added; Check 6 reformulated),
+  scripts/lib/detect.sh,
+  scripts/test-detect.sh,
+  scripts/init-project.sh,
+  scripts/migrate-v9-to-v10.sh,
+  README.md,
+  project-template/docs/pack/PM-CHAT.md,
+  supporting-docs/MIGRATION-v9-to-v10.md
+
+Description: Phase 4 audit of v10.0 surfaced inconsistency between the pack's
+  stated Prompt Authoring Principles in METHODOLOGY.md and the actual
+  content of the ten prompt templates that ship. Only coder.md Variant:
+  fix-cycle surfaced the labeled triad (Problem / Expected behavior /
+  Success criteria); the other variants either buried the triad in prose
+  or omitted it entirely. METHODOLOGY's existing "Exceptions — where
+  prescriptive content is appropriate" subsection was murky enough to be
+  read as licensing solutions in the prompt.
+
+  This item lands the labeled-section convention across all 12 in-scope
+  prompt template variants, replaces METHODOLOGY's § Prompt Authoring
+  Principles with the architect's draft text (mandatory triad on every
+  prompt, format-vs-solution distinction, file-based-reporting rule,
+  canonical section order), DELETES PROMPT-AUTHORING.md (the directory-
+  guidance file collapsed to a 16-line cross-reference per the planner
+  spec, which the project lead then chose to delete entirely; the
+  surviving directory-guidance content moved into METHODOLOGY.md as a
+  new "About docs/pack/prompts/" subsection), updates 8 deletion-
+  cascade dependents (validate-pack.py Check 6, detect.sh,
+  test-detect.sh, init-project.sh, migrate-v9-to-v10.sh, README.md,
+  PM-CHAT.md, MIGRATION-v9-to-v10.md), and adds a new validate-pack.py
+  Check 10 that enforces triad presence on every in-scope variant.
+
+  Per the resolved Q1b: the per-fix middle label in coder.md Variant:
+  fix-cycle was renamed Expected behavior: → Goal: for label
+  consistency with the prompt-level triad.
+
+  Per the resolved Q2b: pm-chat.md Variant: kickoff (a context handoff,
+  not an agent-task prompt) is the one exception to the convention; an
+  inline **Convention exception:** callout marks it, and the new
+  Check 10 identifies the exemption via that literal substring.
+
+  Per the resolved Q4b: the multi-part phase header convention moved
+  from PROMPT-AUTHORING.md into METHODOLOGY.md § Prompt Authoring
+  Principles alongside the file-based-reporting subsection.
+
+Context: Identified during Phase 4 audit (April 2026). The audit closed
+  with C-V10-01 through C-V10-14 landed (v10-dev tip 459161b or
+  descendant); this work landed before C-V10-15 final verification per
+  architect design pass V10-PROMPT-STRUCTURE-DESIGN.md (committed
+  aff447f) and planner pass V10-PROMPT-STRUCTURE-PLAN.md (committed
+  aff447f). Implementation commit follows this Pack Chat work.
+Resolved: April 2026, v10.0 — commit <SHA>.
+
+---
+
 ## Deferred
 
 **BD-031 — Evaluate publishing pack skills to skills.sh**

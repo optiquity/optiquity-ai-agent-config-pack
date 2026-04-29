@@ -72,9 +72,10 @@ project-template/                           Unified project template (v10)
 │       │   architect.md (variant: mid-phase),
 │       │   auditor.md (variant: standard)
 │       ├── grpc-schema.md, repo-ops.md     placeholders (no variants shipped)
-│       ├── pm-chat.md                      variants: kickoff, backlog-status-update,
-│       │                                   generate-setup, generate-agent-kickoff
-│       └── PROMPT-AUTHORING.md             Directory guidance (not a per-agent file)
+│       └── pm-chat.md                      variants: kickoff, backlog-status-update,
+│                                           generate-setup, generate-agent-kickoff
+│                                           (directory guidance: see supporting-docs/METHODOLOGY.md
+│                                            § Prompt Authoring Principles)
 ├── scripts/                                Build, test, validation scripts (15)
 ├── CLAUDE.md                               Claude context file (unified template)
 ├── AGENTS.md                               Codex context file (unified template)

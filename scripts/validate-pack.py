@@ -8,8 +8,9 @@ Checks:
   3. TD-TBD sentinels: none in committed files (excluding docs that show the format)
   4. README version table: latest row matches latest git tag
   5. Agent file count: Claude, Codex, and Gemini agent dirs have the same count
-  6. Prompts-directory format: per-agent frontmatter, variant→H2 consistency,
-     PROMPT-AUTHORING.md exists
+  6. Prompts-directory format: per-agent frontmatter, variant→H2 consistency
+     (PROMPT-AUTHORING.md was removed in v10.0; directory guidance lives in
+     supporting-docs/METHODOLOGY.md § Prompt Authoring Principles)
   7. Pack agent roster: PM-CHAT.md ## Pack agent roster list matches
      .claude/agents/*.md stems
   8. Reserved x- prefix: no file or directory in the seven pack scan
@@ -19,6 +20,12 @@ Checks:
      functions, QUICKSTART.md and the three supporting-docs setup /
      migration guides exist, and README.md Repository Layout names
      scripts/lib/ and the migration-guide naming convention.
+  10. Prompt template triad compliance: every in-scope variant in
+      project-template/docs/pack/prompts/*.md (excluding the kickoff
+      variant identified by `**Convention exception:**`) contains
+      `**Problem:**`, `**Goal:**`, `**Success criteria:**`, and a
+      file-based completion-report indicator (`REPORT FILE:` or
+      `**Completion report:**`).
 
 Exit 0 if all pass, exit 1 if any fail. Each failure prints the exact
 file, line (where applicable), and problem.
@@ -281,13 +288,7 @@ def check_prompts_directory() -> None:
         fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — directory missing")
         return
 
-    authoring = PROMPTS_DIR / "PROMPT-AUTHORING.md"
-    if not authoring.exists():
-        fail(f"{authoring.relative_to(REPO_ROOT)} — file missing")
-    else:
-        ok(f"{authoring.relative_to(REPO_ROOT)} — exists")
-
-    agent_files = sorted(p for p in PROMPTS_DIR.glob("*.md") if p.name != "PROMPT-AUTHORING.md")
+    agent_files = sorted(PROMPTS_DIR.glob("*.md"))
     if not agent_files:
         fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — no per-agent prompt files found")
         return
@@ -531,6 +532,81 @@ def check_init_project_structure() -> None:
             ok("README.md — Repository Layout mentions detect.sh and migration naming convention")
 
 
+# ── Check 10: Prompt template triad compliance ────────────────────────────
+
+def check_prompt_triad_compliance() -> None:
+    print("\n── Check 10: Prompt template triad compliance ──")
+    if not PROMPTS_DIR.is_dir():
+        fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — directory missing")
+        return
+
+    agent_files = sorted(PROMPTS_DIR.glob("*.md"))
+    if not agent_files:
+        fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — no per-agent prompt files found")
+        return
+
+    required_labels = ("**Problem:**", "**Goal:**", "**Success criteria:**")
+    completion_indicators = ("REPORT FILE:", "**Completion report:**")
+    exception_marker = "**Convention exception:**"
+    variant_h2 = re.compile(r"^## Variant: (\S+)\s*$", re.MULTILINE)
+
+    for f in agent_files:
+        rel = f.relative_to(REPO_ROOT)
+        content = f.read_text()
+
+        # Body = text after the closing --- of YAML frontmatter, if present.
+        if content.startswith("---\n"):
+            fm_match = re.match(r"---\n(.*?)\n---\n", content, re.DOTALL)
+            body = content[fm_match.end():] if fm_match else content
+        else:
+            body = content
+
+        matches = list(variant_h2.finditer(body))
+        if not matches:
+            ok(f"{rel} — 0 variant(s) (placeholder file)")
+            continue
+
+        in_scope_pass = 0
+        exempt: list[str] = []
+        file_failed = False
+
+        for i, m in enumerate(matches):
+            slug = m.group(1)
+            start = m.end()
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+            variant_body = body[start:end]
+
+            # Rule N.1 — Kickoff exception detection
+            if exception_marker in variant_body:
+                exempt.append(slug)
+                continue
+
+            # Rule N.2 — Triad presence
+            missing_labels = [lbl for lbl in required_labels if lbl not in variant_body]
+
+            # Rule N.3 — File-based completion-report indicator
+            has_report_indicator = any(ind in variant_body for ind in completion_indicators)
+
+            if missing_labels or not has_report_indicator:
+                missing = list(missing_labels)
+                if not has_report_indicator:
+                    missing.append("REPORT FILE: or **Completion report:**")
+                fail(f"{rel} — Variant: {slug} — missing labeled section(s): {missing}")
+                file_failed = True
+                continue
+
+            in_scope_pass += 1
+
+        if not file_failed:
+            if exempt:
+                ok(
+                    f"{rel} — {in_scope_pass} variant(s) pass triad+report-file rule "
+                    f"({len(exempt)} exempt: {', '.join(exempt)})"
+                )
+            else:
+                ok(f"{rel} — {in_scope_pass} variant(s) pass triad+report-file rule")
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -547,6 +623,7 @@ def main() -> None:
     check_pack_agent_roster()
     check_reserved_x_prefix()
     check_init_project_structure()
+    check_prompt_triad_compliance()
 
     print("\n" + "=" * 60)
     if failures:

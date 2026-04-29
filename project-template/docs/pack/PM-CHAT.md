@@ -183,9 +183,8 @@ These rules are non-negotiable and always apply on all tools:
   roster, treat that reference as stale and report it as pack feedback.
 - **Agent report file.** When generating any agent prompt, always include a
   `REPORT FILE:` path and the framing appropriate to the agent's permission
-  mode (read-only vs write-capable). See
-  `docs/pack/prompts/PROMPT-AUTHORING.md` and METHODOLOGY.md Prompt Authoring
-  Principles.
+  mode (read-only vs write-capable). See METHODOLOGY.md § Prompt Authoring
+  Principles → File-based reporting.
 - **Capability addition.** If the developer asks to add a pack-supported
   dimension (platform, language, protocol, role), direct them to run
   `scripts/add-capability.sh` from the pack first; then run METHODOLOGY.md

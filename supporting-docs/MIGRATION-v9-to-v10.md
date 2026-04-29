@@ -146,7 +146,7 @@ resumed run skips completed stages.
 | **S1** | Selective-replace agent files across the three tool directories (`.claude/`, `.codex/`, `.gemini/`); `x-*` agents untouched. |
 | **S2** | Selective-replace pack skill directories across the three tools; `x-*` skill directories untouched. |
 | **S3** | Replace `scripts/`, `agent-run.sh`, `.codex/config.toml`, `.claude/settings.json`, `.mcp.json.example` from pack; prior versions backed up. |
-| **S4** | Create `docs/pack/prompts/` and copy the 10 per-agent files + `PROMPT-AUTHORING.md` from pack. |
+| **S4** | Create `docs/pack/prompts/` and copy the 10 per-agent files from pack (PROMPT-AUTHORING.md was removed in v10.0; directory guidance lives in METHODOLOGY.md § Prompt Authoring Principles). |
 | **S5** | Splice-merge `PLATFORM-SKILLS.md` (via `merge-platform-skills.py`) and the three trinity files (via `merge-trinity.py`) — project-owned `## Custom agents` / `## Custom skills` sections, `### Custom agents` sub-section, and the `**Active skills:**` line are preserved. Pack-owned docs (PM-CHAT.md at `docs/pack/`; METHODOLOGY.md at project root) are copied verbatim from pack. |
 | **S6** | Diff project's `docs/pack/PROMPT-TEMPLATES.md` against v9.3 baseline. If identical → backup + delete. If diverged → backup + move to `docs/pack/prompts/_v9-backup.md` (Procedure 5-R reconciliation flag set). |
 | **S7** | Write post-migration report to `.pack-migration-backup/v9.3-to-v10.0/report.md`. |
@@ -212,7 +212,7 @@ ls -d .claude/skills/*/  | wc -l
 ls -d .codex/skills/*/   | wc -l
 ls -d .gemini/skills/*/  | wc -l
 
-# Prompts directory populated (expect 10 per-agent files + PROMPT-AUTHORING.md)
+# Prompts directory populated (expect 10 per-agent files)
 ls docs/pack/prompts/ | wc -l
 
 # No stray x-* in pack locations — the pack itself ships zero `x-` files
@@ -485,7 +485,7 @@ Verify `docs/pack/prompts/` is populated:
 
 ```bash
 ls docs/pack/prompts/
-# expect: 10 agent files + PROMPT-AUTHORING.md = 11 entries
+# expect: 10 agent files
 ```
 
 If the directory is missing: re-run the script from a clean

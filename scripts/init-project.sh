@@ -357,7 +357,9 @@ stage_s6_docs_pack() {
         [[ -e "$f" ]] || continue
         cp "$f" "$TARGET/docs/pack/"
     done
-    # prompts/ directory (entire; 10 files + PROMPT-AUTHORING.md)
+    # prompts/ directory (entire; 10 per-agent files; PROMPT-AUTHORING.md
+    # was removed in v10.0 — directory guidance lives in METHODOLOGY.md
+    # § Prompt Authoring Principles).
     mkdir -p "$TARGET/docs/pack/prompts"
     for f in "$pack_docs/prompts"/*.md; do
         [[ -e "$f" ]] || continue
@@ -371,10 +373,10 @@ stage_s6_docs_pack() {
             cp "$PACK/supporting-docs/METHODOLOGY.md" "$TARGET/METHODOLOGY.md"
         fi
     fi
-    # Verify prompts dir content
+    # Verify prompts dir content (10 per-agent files expected post-v10.0).
     local prompts_count
     prompts_count=$(find "$TARGET/docs/pack/prompts" -maxdepth 1 -name "*.md" | wc -l | tr -d ' ')
-    (( prompts_count >= 11 )) || fail_stage S6 "docs/pack/prompts/ has $prompts_count files (expected ≥ 11)"
+    (( prompts_count >= 10 )) || fail_stage S6 "docs/pack/prompts/ has $prompts_count files (expected ≥ 10)"
     # End-of-S6 blast-radius sweep (one match allowed: existing PROMPT-TEMPLATES ref in legacy docs — but expected zero in pack-installed files)
     blast_radius_sweep || exit "$EXIT_SWEEP"
 }

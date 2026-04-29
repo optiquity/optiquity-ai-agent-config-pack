@@ -283,7 +283,7 @@ stage_s3_scripts_and_config() {
     say "S3 complete."
 }
 
-# ── Stage S4 — create docs/pack/prompts/ + copy 11 files ──────────────────
+# ── Stage S4 — create docs/pack/prompts/ + copy 10 per-agent files ────────
 
 stage_s4_prompts_dir() {
     say "── S4 — create docs/pack/prompts/ ──"

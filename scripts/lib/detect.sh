@@ -183,14 +183,12 @@ detect_improperly_added_files() {
     done
 
     # Prompts dir: .md files; stem must be in agent_roster, start with
-    # x-, equal the reserved pm-chat identifier, or be the known
-    # directory-guidance file PROMPT-AUTHORING.md.
+    # x-, or equal the reserved pm-chat identifier.
     if [[ -d "$target/docs/pack/prompts" ]]; then
         for entry in "$target/docs/pack/prompts"/*.md; do
             [[ -e "$entry" ]] || continue
             name=$(basename "$entry")
             [[ "$name" == x-* ]] && continue
-            [[ "$name" == "PROMPT-AUTHORING.md" ]] && continue
             stem="${name%.md}"
             [[ "$stem" == "pm-chat" ]] && continue
             if ! printf '%s\n' "$agent_roster" | grep -qx "$stem"; then
