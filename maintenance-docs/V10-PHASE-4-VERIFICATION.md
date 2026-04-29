@@ -1104,3 +1104,92 @@ All §11 fixtures synthetic; built from the v9.3-tag pack source. No OT content 
 - **F-E → RESOLVED** (Task A of Procedure 5-S handles STATUS.md pack-version markers).
 - **F-F → RESOLVED** (Task B of Procedure 5-S handles trinity placeholder reconciliation).
 - **F-A, F-G** still pending v10.0 patches per Option A sequence.
+
+---
+
+## §12 Delta verification — F-G patch
+
+**Date:** 2026-04-29T18:15:00Z (UTC, harness execution timestamp)
+**Patch commits:** `f9ebff2` (design + plan docs), `a7d3542` (3-file behavioral patch).
+**Scope:** Delta-only re-verification per project-lead Option A sequence. Confirms METHODOLOGY § Prompt Authoring Principles gains the per-agent table pm-chat row + worked-examples subsection; pm-chat.md generate-agent-kickoff Notes are removed and replaced with the trinity-and-skills pointer; swift-best-practices SKILL.md gains the new Design choices section preserving Note 1 (LSP/type-erasure) and Note 2 (AsyncStream<Void>) substantive content as patterns/trade-offs.
+
+### §12.1 Fresh init — METHODOLOGY + SKILL propagation
+
+- Fixture: `/tmp/v10-fg-fixtures/fresh-init/` (fresh git-init repo with seed README).
+- init-project.sh exit: **0**.
+- Worked-examples subsection in fresh-init's `docs/pack/METHODOLOGY.md`: ✅ present.
+- `pm-chat (self-prompt)` row in fresh-init's METHODOLOGY per-agent table: ✅ present (1 hit).
+
+### §12.2 swift-best-practices SKILL propagation to all 3 tool dirs
+
+- `.claude/skills/swift-best-practices/SKILL.md`: ✅ has `## Design choices` section, entry 39 (AsyncStream), entry 40 (LSP/type-erasure)
+- `.codex/skills/swift-best-practices/SKILL.md`: ✅ same
+- `.gemini/skills/swift-best-practices/SKILL.md`: ✅ same
+
+### §12.3 pm-chat.md template cleanup propagation
+
+- `docs/pack/prompts/pm-chat.md` propagated to fresh-init project: ✅ present.
+- Old prescriptive Notes removed from propagated copy: ✅ confirmed (0 hits for `Type-erasure wrappers that expose a .base accessor`, `AsyncStream<Void>`, `ViewModels must not import SwiftUI`).
+- New pointer text present: ✅ confirmed (the `Before recording rationale` checklist item names `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, the `**Active skills:**` line, and cross-references `supporting-docs/METHODOLOGY.md § Format-vs-solutions: worked examples`).
+
+### §12.4 Pack-source artifact verification
+
+- `supporting-docs/METHODOLOGY.md`:
+  - `### Format-vs-solutions: worked examples` heading at line 694 ✅
+  - 5 `**Example N — `*` markers (1–5) ✅
+  - `### File-based reporting` heading still present ✅
+  - `| `pm-chat` (self-prompt)` row in per-agent table ✅
+- `project-template/docs/pack/prompts/pm-chat.md`:
+  - 3 deleted Note phrases gone ✅
+  - 3 □ checklist titles preserved ✅
+  - new pointer item present, references all 3 trinity files + active skills + METHODOLOGY cross-reference ✅
+- `project-template/skills/swift-best-practices/SKILL.md`:
+  - `## Design choices` section header ✅
+  - entries 39 + 40 present in numeric order ✅
+  - 40 total numbered entries (was 38; +2 new) ✅
+  - existing entries 1–38 unchanged (no accidental renumbering) ✅
+
+### §12.5 Pack-level regression guards
+
+- `python3 scripts/validate-pack.py` exit: **0**.
+- `bash scripts/test-detect.sh`: **34 passed, 0 failed**.
+
+### §12.6 Live-OT byte-identity
+
+- Live OT HEAD post-§12: `d9e288ba8b897f967c52e99a0391d9495d5f8073` (unchanged from baseline; **11th post-baseline checkpoint** across this verification effort).
+- Live OT working tree porcelain: empty.
+- All §12 fixtures built under `/tmp/v10-fg-fixtures/`. No OT live-repo content involved.
+
+### §12.7 Self-consistency check on inserted METHODOLOGY content
+
+The new "Format-vs-solutions: worked examples" subsection itself was re-read after edit to confirm zero solution prescriptions. Negative lines paraphrase real leakage and are explicitly framed as "do not write" — they do not prescribe behavior. Positive lines state requirements (testable / convention-matching / observable) without naming APIs or patterns. Why lines name leakage categories without prescribing fixes. The closing pointer references the per-agent table and existing self-check question 2 — already-published constraints, not new prescriptions. **Self-consistency: PASS.**
+
+### §12.8 Sanitization
+
+All §12 fixtures synthetic; built from the v10-dev pack source. No OT content involved. The 5 worked examples in METHODOLOGY are phase-anonymous (no "Phase 28/32" cites; type names softened from architect's design `DebugStateProvider/DebugStateSnapshot` to generic `StateProvider/StateSnapshot`). Per §6.7.7 sanitization rules: clean.
+
+### §12.9 Cleanup
+
+`/tmp/v10-fg-fixtures/` removed at end of §12.
+
+### §12.10 Pass / fail summary
+
+| Check | Result |
+|---|---|
+| Fresh init → METHODOLOGY worked-examples + per-agent table propagated | ✅ PASS |
+| swift-best-practices SKILL Design choices propagated to all 3 tool dirs | ✅ PASS |
+| pm-chat.md template cleanup propagated; old Notes gone; new pointer present | ✅ PASS |
+| Pack source artifacts verified (METHODOLOGY + pm-chat + SKILL) | ✅ PASS |
+| validate-pack.py exit 0 | ✅ PASS |
+| test-detect.sh 34/34 | ✅ PASS |
+| Self-consistency (new subsection contains no solution prescriptions) | ✅ PASS |
+| Live OT unchanged | ✅ PASS (11th checkpoint) |
+
+**Outcome:** **F-G resolved.** METHODOLOGY § Prompt Authoring Principles now contains explicit worked examples for the format-vs-solutions distinction; the per-agent table clarifies that pm-chat self-prompts inherit the agent's solution-forbidden list; the one offending template (pm-chat.md generate-agent-kickoff) is brought back into compliance with the existing "stronger restriction" rule; substantive lessons from the deleted Notes (LSP/type-erasure and AsyncStream<Void> design) are preserved as trade-off guidance in swift-best-practices SKILL.md.
+
+**Bonus side effect:** the trinity-asymmetry concern on the type-erasure anti-pattern (CLAUDE.md line 395 has it; AGENTS.md/GEMINI.md don't) is implicitly resolved — the substantive lesson now lives in the swift-best-practices skill (loaded for every Swift project), so the trinity-anti-patterns asymmetry on this specific line is no longer load-bearing. Broader trinity-asymmetry on anti-patterns remains a separate non-F-G issue.
+
+### §12.11 Flag-back updates
+
+- **F-G → RESOLVED.**
+- **F-A** still pending — kickoff surface-declaration gate + prose accuracy. Last v10.0 patch in Option A sequence.
