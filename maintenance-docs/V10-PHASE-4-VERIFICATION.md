@@ -1019,3 +1019,88 @@ All §10 fixtures synthetic; built from the v9.3-tag pack source. No OT content 
 - **F-C → RESOLVED** (combined into F-D fix per project-lead Decision 3; one BD entry at C-V10-18 BACKLOG sweep).
 - **F-D → RESOLVED.**
 - **F-A, F-E, F-F, F-G** still pending v10.0 patches per Option A sequence.
+
+---
+
+## §11 Delta verification — F-E + F-F patch
+
+**Date:** 2026-04-29T17:50:00Z (UTC, harness execution timestamp)
+**Patch commits:** `9b8af6c` (design + plan docs), `f266166` (4-file behavioral patch).
+**Scope:** Delta-only re-verification per project-lead Option A sequence. Confirms Procedure 5-S body lands in METHODOLOGY, migration script S7 writes `postrun-pending` sentinel, pm-startup SKILL Step 0 detects both Procedure 5-S AND Procedure 5-R triggers, and the new Step 4 bullet lands in MIGRATION-v9-to-v10.md. Full §4.6 / §4.7 / §4.8 NOT re-run.
+
+### §11.1 Fresh init — SKILL distribution propagation
+
+- Fixture: `/tmp/v10-feff-fixtures/fresh-init/` (fresh git-init repo with seed README).
+- init-project.sh exit: **0**.
+- pm-startup SKILL.md propagated to all 3 tool dirs:
+  - `.claude/skills/pm-startup/SKILL.md`: ✅ present, has Step 0, has 5-S detection, has 5-R detection
+  - `.codex/skills/pm-startup/SKILL.md`: ✅ present, has Step 0, has 5-S detection, has 5-R detection
+  - `.gemini/skills/pm-startup/SKILL.md`: ✅ present, has Step 0, has 5-S detection, has 5-R detection
+
+### §11.2 Migration sentinel-write harness (state A pre-state, post-F-D fixture shape)
+
+- Fixture: synthetic v9.3 scaffold with METHODOLOGY at `docs/pack/` (post-F-D state A shape). Built via `cp -r v9.3 project-template/. + supporting-docs/PROMPT-TEMPLATES.md + supporting-docs/METHODOLOGY.md → docs/pack/`.
+- migrate-v9-to-v10.sh exit: **0**.
+- `.pack-migration-backup/v9.3-to-v10.0/postrun-pending` sentinel: ✅ present.
+- stdout includes line: `wrote post-migration housekeeping sentinel: .pack-migration-backup/v9.3-to-v10.0/postrun-pending`.
+- `.pack-migration-backup/v9.3-to-v10.0/report.md` Next-steps section mentions Procedure 5-S: ✅ confirmed.
+
+### §11.3 Static checks — METHODOLOGY procedure body + SKILL routing
+
+- Procedure 5-S in pack source METHODOLOGY: ✅ present.
+- Procedure 5-S in fresh-init project's `docs/pack/METHODOLOGY.md`: ✅ propagated by init-project.sh.
+- Procedure 5-S in migrated project's `docs/pack/METHODOLOGY.md`: ✅ propagated by migration script's S5 (overwrite of docs/pack/METHODOLOGY with v10 content per F-D fix).
+- pm-startup SKILL Step 0 in all 3 tool dirs of migrated project: ✅ all present.
+
+### §11.4 Procedure 5-R latent-gap closure
+
+Builds a synthetic v9.3 fixture with a divergent (modified) `docs/pack/PROMPT-TEMPLATES.md` to trigger migration's S6 to preserve it as `_v9-backup.md`. Verifies the SKILL Step 0 detection block recognizes both triggers.
+
+- migrate-v9-to-v10.sh exit: **0**.
+- `docs/pack/prompts/_v9-backup.md` present (5-R trigger condition): ✅ confirmed (S6 detected divergence and preserved the v9 file).
+- `.pack-migration-backup/v9.3-to-v10.0/postrun-pending` also present (5-S unconditional): ✅ confirmed (both triggers can co-exist; SKILL Step 0 routes to both).
+- All 3 tool SKILL dirs have the 5-R trigger check (`docs/pack/prompts/_v9-backup.md`): ✅ confirmed for claude / codex / gemini.
+
+This closes the latent gap noted in the F-E+F-F architect design: Procedure 5-R routing was previously only documented in MIGRATION-v9-to-v10.md prose, not in the pm-startup SKILL itself. Step 0's two-trigger detection block now closes that gap as a side benefit of the F-E+F-F patch.
+
+### §11.5 Pack-level regression guards
+
+- `python3 scripts/validate-pack.py` exit: **0**.
+- `bash scripts/test-detect.sh`: **34 passed, 0 failed**.
+
+### §11.6 Live-OT byte-identity
+
+- Live OT HEAD post-§11: `d9e288ba8b897f967c52e99a0391d9495d5f8073` (unchanged from baseline; **10th post-baseline checkpoint** across this verification effort).
+- Live OT working tree porcelain: empty.
+- All §11 fixtures built under `/tmp/v10-feff-fixtures/` from the v9.3-tag pack source. No OT live-repo content involved at any point in §11.
+
+### §11.7 Sanitization
+
+All §11 fixtures synthetic; built from the v9.3-tag pack source. No OT content involved. No OT-derived names enumerated. Per §6.7.7 sanitization rules, no sanitization required.
+
+### §11.8 Cleanup
+
+`/tmp/v10-feff-fixtures/` removed at end of §11. `ls /tmp/v10-feff-fixtures` returns "No such file or directory."
+
+### §11.9 Pass / fail summary
+
+| Check | Result |
+|---|---|
+| Fresh init → SKILL Step 0 in all 3 tool dirs | ✅ PASS |
+| Migration → postrun-pending sentinel written | ✅ PASS |
+| Migration → report.md mentions Procedure 5-S | ✅ PASS |
+| Procedure 5-S body in pack METHODOLOGY | ✅ PASS |
+| Procedure 5-S body propagated to fresh-init project | ✅ PASS |
+| Procedure 5-S body propagated to migrated project | ✅ PASS |
+| 5-R latent-gap closed (SKILL detects both triggers) | ✅ PASS |
+| validate-pack.py exit 0 | ✅ PASS |
+| test-detect.sh 34/34 | ✅ PASS |
+| Live OT unchanged | ✅ PASS (10th checkpoint) |
+
+**Outcome:** **F-E + F-F jointly resolved.** Procedure 5-S provides the central post-migration housekeeping mechanism; sentinel-file trigger lands cleanly via S7; pm-startup SKILL Step 0 routes both 5-S and 5-R; migration documentation routing inventory updated. Bonus: pre-existing Procedure 5-R routing latent gap (only in prose, not in SKILL) closed as a side effect.
+
+### §11.10 Flag-back updates
+
+- **F-E → RESOLVED** (Task A of Procedure 5-S handles STATUS.md pack-version markers).
+- **F-F → RESOLVED** (Task B of Procedure 5-S handles trinity placeholder reconciliation).
+- **F-A, F-G** still pending v10.0 patches per Option A sequence.
