@@ -437,16 +437,26 @@ stage_s7_report() {
         echo "## Next steps"
         echo ""
         echo "1. Review \`git diff\` and this report."
-        echo "2. If \`_v9-backup.md\` exists under \`docs/pack/prompts/\`, expect"
+        echo "2. At your next PM chat session, expect the PM chat to invoke"
+        echo "   Procedure 5-S (post-migration housekeeping): scans STATUS.md"
+        echo "   for stale pack-version markers and trinity files for unfilled"
+        echo "   placeholders. The procedure self-cleans on completion."
+        echo "3. If \`_v9-backup.md\` exists under \`docs/pack/prompts/\`, expect"
         echo "   the PM chat to invoke Procedure 5-R on its next run."
-        echo "3. Commit the migration ON THE \`$MIGRATION_BRANCH\` BRANCH."
-        echo "4. Follow \`supporting-docs/MIGRATION-v9-to-v10.md\` Steps 5–7."
+        echo "4. Commit the migration ON THE \`$MIGRATION_BRANCH\` BRANCH."
+        echo "5. Follow \`supporting-docs/MIGRATION-v9-to-v10.md\` Steps 5–7."
         echo ""
         echo "## Rollback"
         echo ""
         echo "See \`supporting-docs/MIGRATION-v9-to-v10.md\` §12 for rollback commands."
         echo "Backup is at \`$BACKUP_DIR/\`."
     } > "$report"
+
+    # Post-migration housekeeping sentinel — triggers METHODOLOGY Procedure 5-S
+    # at next PM-chat /pm-startup. Procedure deletes the sentinel as its final
+    # step. Always written; Procedure 5-S handles "nothing to do" gracefully.
+    touch "$BACKUP_DIR/postrun-pending"
+    say "  wrote post-migration housekeeping sentinel: $BACKUP_DIR/postrun-pending"
 
     write_sentinel "S7"
     say "S7 complete. Report written to $report"

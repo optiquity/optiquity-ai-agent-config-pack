@@ -7,6 +7,26 @@ allowed-tools: Read, Bash, Grep
 You are the PM chat for this project. Run this startup sequence now and report
 the result. Do not ask questions — execute each step in order.
 
+## Step 0 — Check for pending one-shot procedures
+
+Before running the standard startup sequence, check whether any one-shot
+post-migration procedures are pending. Run:
+
+```bash
+[[ -f .pack-migration-backup/v9.3-to-v10.0/postrun-pending ]] && \
+    echo "POSTRUN-PENDING: Procedure 5-S"
+[[ -f docs/pack/prompts/_v9-backup.md ]] && \
+    echo "PROMPT-RECON-PENDING: Procedure 5-R"
+```
+
+If either line is emitted, do NOT run the standard startup sequence yet.
+Instead, route to the named METHODOLOGY procedure(s) (Procedure 5-S for
+POSTRUN-PENDING; Procedure 5-R for PROMPT-RECON-PENDING) and run them now.
+After all triggered procedures complete (or the developer explicitly defers
+remaining items), resume the standard startup sequence at Step 1.
+
+If neither file exists, this step is a no-op — proceed directly to Step 1.
+
 ## Step 1 — Sync repo
 
 ```bash

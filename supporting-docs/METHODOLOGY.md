@@ -1227,6 +1227,33 @@ project-specific customization that needs human review).
    reconciliation in the commit message. Once removed, Procedure 5-R
    does not run again.
 
+### Procedure 5-S — Post-migration housekeeping
+
+Triggered by presence of `.pack-migration-backup/v9.3-to-v10.0/postrun-pending`
+at PM chat startup. Written by `migrate-v9-to-v10.sh` stage S7. Combines two
+post-migration housekeeping tasks; either may report "nothing to do" without
+defect. Procedure is re-entrant — partial completion preserves the sentinel
+and re-runs at next `/pm-startup`.
+
+| Task | Scope | Action |
+|---|---|---|
+| **A** | STATUS.md pack-version markers (F-E) | Search `docs/project/STATUS.md`, then `docs/STATUS.md`, then `STATUS.md` (first existing wins). Grep case-insensitively for lines containing both `AI Agent Config Pack` (or `Pack version`) and a `v9` token. For each match, propose updating the version to the current pack version (read from `docs/pack/METHODOLOGY.md` first 5 lines, matching pm-startup Step 6). Developer approves / edits / skips per match. If no STATUS.md found or no v9 markers found: report "Task A — nothing to do." |
+| **B** | Trinity placeholder reconciliation (F-F) | Grep `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` for occurrences of the closed-form whitelist: `[PROJECT_NAME]`, `[PLATFORM_TARGETS]`, `[TRANSPORT]`, `[PLATFORM_DEFAULTS]`, `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`, `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`, `[PLATFORM_ANTIPATTERNS]`. Also grep for the literal Active-skills placeholder line (`Active skills: [PM chat writes`). For project-identifier placeholders, ask the developer for the values (project name, platform targets, transport) and offer to fill them consistently across all three trinity files (TRIO — byte-identical content). For section placeholders, reference the loaded skills' content. For the Active-skills line, run a simpler standalone Q&A (NOT the full Procedure 7 kickoff flow): "What skills are active for this project? Read `docs/pack/PLATFORM-SKILLS.md` to see options. PM chat proposes the set based on project type; developer approves." If no whitelist matches found and Active-skills line is filled: report "Task B — nothing to do." |
+
+1. Detect sentinel; read `docs/pack/METHODOLOGY.md` first 5 lines for current
+   pack version (Task A reference value).
+2. Run Task A. Surface findings (or "nothing to do"); apply developer-approved
+   edits to STATUS.md.
+3. Run Task B. Surface findings (or "nothing to do"); apply developer-approved
+   edits to the trinity files (TRIO; byte-identical across CLAUDE.md /
+   AGENTS.md / GEMINI.md for every section the trinity rule covers).
+4. If both tasks completed (no deferred items remain), PM chat offers to
+   remove the sentinel `.pack-migration-backup/v9.3-to-v10.0/postrun-pending`
+   and records the housekeeping in the commit message. Once removed,
+   Procedure 5-S does not run again. If either task has deferred items,
+   leave the sentinel in place — Procedure 5-S re-runs at next `/pm-startup`,
+   re-scans (skipping items already addressed), and resurfaces the rest.
+
 ### Procedure 6 — Adding a pack-supported capability
 
 Triggered when either:

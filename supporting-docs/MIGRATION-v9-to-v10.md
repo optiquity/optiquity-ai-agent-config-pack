@@ -230,8 +230,19 @@ commands). The PM chat's startup flow runs the detection scan
 
 Expected behaviors depending on what the migration report flagged:
 
-- **No flags raised.** PM chat reports the project is cleanly
-  migrated; proceed with Workflow 2 / next phase as normal.
+- **Procedure 5-S — Post-migration housekeeping (always runs).** The PM
+  chat detects the `postrun-pending` sentinel written by `migrate-v9-to-v10.sh`
+  S7 and invokes Procedure 5-S (METHODOLOGY.md Part 7). The procedure
+  scans STATUS.md for stale `**AI Agent Config Pack**: v9` markers and
+  the trinity files (CLAUDE.md / AGENTS.md / GEMINI.md) for unfilled
+  placeholders (`[PROJECT_NAME]`, `[PLATFORM_TARGETS]`, `[TRANSPORT]`,
+  `[PLATFORM_*]`, and the Active-skills line). Findings are surfaced;
+  the developer approves / edits / skips each item. The procedure
+  self-cleans on completion (deletes the sentinel). If either task
+  reports "nothing to do," the procedure exits cleanly.
+- **No flags raised (beyond Procedure 5-S).** PM chat reports the
+  project is cleanly migrated; proceed with Workflow 2 / next phase as
+  normal.
 - **`_v9-backup.md` present in `docs/pack/prompts/`.** PM chat invokes
   Procedure 5-R (METHODOLOGY.md Part 7): reads `_v9-backup.md`,
   surfaces each customization with a proposed v10 placement (variant
