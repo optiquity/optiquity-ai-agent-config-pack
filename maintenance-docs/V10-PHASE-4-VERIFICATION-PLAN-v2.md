@@ -1608,8 +1608,8 @@ git diff --stat | tee /tmp/phase-4-fixtures/ot-migrate.diff-stat.txt
 
 # 6b. v10 layout present.
 [[ -d docs/pack/prompts ]]                          && echo "OK: docs/pack/prompts/"
-[[ -f docs/pack/METHODOLOGY.md ]] || [[ -f METHODOLOGY.md ]] && echo "OK: METHODOLOGY.md present (one of the two paths)"
-grep -q '^### Procedure 7' docs/pack/METHODOLOGY.md METHODOLOGY.md 2>/dev/null && echo "OK: Procedure 7 present" \
+[[ -f docs/pack/METHODOLOGY.md ]] && echo "OK: METHODOLOGY.md present at docs/pack/"
+grep -q '^### Procedure 7' docs/pack/METHODOLOGY.md 2>/dev/null && echo "OK: Procedure 7 present" \
                                                    || echo "WARN: Procedure 7 missing — see §6.7 row 'Procedure 5-R note'"
 
 # 6c. Trinity carries v10 layout.
@@ -1659,7 +1659,7 @@ echo "validate-pack.py exit (against OT clone, informational): $?"
 | §6.5.7 OT live-repo unchanged | All three OK | **F-I (proposed) hard safety violation; STOP.** |
 | Migration exit code | 0 | non-zero → F-G; v10.0 hold; defect in `migrate-v9-to-v10.sh` exposed by OT realism. |
 | `docs/pack/prompts/` exists | yes | F-G; S4 stage failed against OT. |
-| METHODOLOGY.md present (either path) | yes | F-G; S5 / S6 stage failed against OT. |
+| docs/pack/METHODOLOGY.md present | yes | F-G; S5 / S6 stage failed against OT. |
 | METHODOLOGY.md contains `### Procedure 7` | yes | If missing, evaluate per V10-PHASE-4-PLAN §4.4 row 4; F-G if installed METHODOLOGY.md is older than v10. |
 | Trinity `docs/pack/` references | present | F-G; trinity splice failure (S5) against OT-shaped trinity. |
 | Backup directory present + gitignored | yes | F-G; S0 backup setup defective. |

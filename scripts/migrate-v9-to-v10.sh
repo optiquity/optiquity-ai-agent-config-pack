@@ -344,12 +344,26 @@ stage_s5_trinity_splice() {
         mkdir -p docs/pack
         cp "$PACK/project-template/docs/pack/PM-CHAT.md" docs/pack/PM-CHAT.md
     fi
-    # METHODOLOGY.md: pack `supporting-docs/METHODOLOGY.md` → project root `METHODOLOGY.md`.
+    # METHODOLOGY.md: pack `supporting-docs/METHODOLOGY.md` → project `docs/pack/METHODOLOGY.md`
+    # per V10-DESIGN.md Part 7 §7.6 S6 (and migration S5 stage spec). Pre-migration
+    # state may have METHODOLOGY at docs/pack/ (v9.3 OT-shape), at root (synthetic
+    # §4.4-shape), at both (mid-flight v10-dev migration), or neither. Back up
+    # whichever is present, write canonical v10 content to docs/pack/, remove any
+    # stale root copy. Resolves F-D + F-C jointly.
+    if [[ -f docs/pack/METHODOLOGY.md ]]; then
+        mkdir -p "$BACKUP_DIR/docs/pack"
+        cp docs/pack/METHODOLOGY.md "$BACKUP_DIR/docs/pack/METHODOLOGY.md"
+    fi
     if [[ -f METHODOLOGY.md ]]; then
         cp METHODOLOGY.md "$BACKUP_DIR/METHODOLOGY.md"
     fi
     if [[ -f "$PACK/supporting-docs/METHODOLOGY.md" ]]; then
-        cp "$PACK/supporting-docs/METHODOLOGY.md" METHODOLOGY.md
+        mkdir -p docs/pack
+        cp "$PACK/supporting-docs/METHODOLOGY.md" docs/pack/METHODOLOGY.md
+    fi
+    if [[ -f METHODOLOGY.md ]]; then
+        rm METHODOLOGY.md
+        say "  removed stale METHODOLOGY.md at project root (canonical is docs/pack/METHODOLOGY.md; backup at \$BACKUP_DIR/METHODOLOGY.md)"
     fi
 
     write_sentinel "S5"

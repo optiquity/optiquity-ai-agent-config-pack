@@ -6,10 +6,11 @@ This directory is the unified project template. Copy it to start a new project:
 cp -r /path/to/pack/project-template/. /path/to/your/project/
 ```
 
-Then copy the supporting docs individually (they are not part of this template):
+Then copy the supporting docs individually (they are not part of this template). METHODOLOGY.md lives under `docs/pack/` per V10-DESIGN.md Part 7 §7.6 (alongside other pack-distributed docs):
 
 ```bash
-cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/
+mkdir -p /path/to/your/project/docs/pack
+cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/docs/pack/METHODOLOGY.md
 ```
 
 See `QUICKSTART.md` in the pack root for the full setup procedure.
@@ -34,9 +35,9 @@ The pack has two directories that produce project files:
   whole via `cp -r`. These are structural files the project needs to function:
   agents, skills, scripts, config, context files, PM chat docs.
 
-- **`supporting-docs/`** — docs copied individually during setup (METHODOLOGY.md)
-  or read from the pack without copying (QUICKSTART.md, DEPENDENCIES.md,
-  CLI-PM-SETUP.md, etc.). These are process and reference docs.
+- **`supporting-docs/`** — docs copied individually during setup (METHODOLOGY.md
+  to `docs/pack/`) or read from the pack without copying (QUICKSTART.md,
+  DEPENDENCIES.md, CLI-PM-SETUP.md, etc.). These are process and reference docs.
 
 If a file is part of the project's runtime agent infrastructure, it belongs in
 `project-template/`. If it is a methodology or reference document, it belongs

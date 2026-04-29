@@ -147,7 +147,7 @@ resumed run skips completed stages.
 | **S2** | Selective-replace pack skill directories across the three tools; `x-*` skill directories untouched. |
 | **S3** | Replace `scripts/`, `agent-run.sh`, `.codex/config.toml`, `.claude/settings.json`, `.mcp.json.example` from pack; prior versions backed up. |
 | **S4** | Create `docs/pack/prompts/` and copy the 10 per-agent files from pack (PROMPT-AUTHORING.md was removed in v10.0; directory guidance lives in METHODOLOGY.md § Prompt Authoring Principles). |
-| **S5** | Splice-merge `PLATFORM-SKILLS.md` (via `merge-platform-skills.py`) and the three trinity files (via `merge-trinity.py`) — project-owned `## Custom agents` / `## Custom skills` sections, `### Custom agents` sub-section, and the `**Active skills:**` line are preserved. Pack-owned docs (PM-CHAT.md at `docs/pack/`; METHODOLOGY.md at project root) are copied verbatim from pack. |
+| **S5** | Splice-merge `PLATFORM-SKILLS.md` (via `merge-platform-skills.py`) and the three trinity files (via `merge-trinity.py`) — project-owned `## Custom agents` / `## Custom skills` sections, `### Custom agents` sub-section, and the `**Active skills:**` line are preserved. Pack-owned docs (PM-CHAT.md and METHODOLOGY.md, both at `docs/pack/`) are copied verbatim from pack. If a stale root-level `METHODOLOGY.md` is present pre-migration (legacy v10-dev shape), it is backed up and removed. |
 | **S6** | Diff project's `docs/pack/PROMPT-TEMPLATES.md` against v9.3 baseline. If identical → backup + delete. If diverged → backup + move to `docs/pack/prompts/_v9-backup.md` (Procedure 5-R reconciliation flag set). |
 | **S7** | Write post-migration report to `.pack-migration-backup/v9.3-to-v10.0/report.md`. |
 

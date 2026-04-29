@@ -365,13 +365,22 @@ stage_s6_docs_pack() {
         [[ -e "$f" ]] || continue
         cp "$f" "$TARGET/docs/pack/prompts/"
     done
-    # METHODOLOGY.md lives at project root per v10 convention.
+    # METHODOLOGY.md lives at `docs/pack/METHODOLOGY.md` per V10-DESIGN.md Part 7 §7.6.
+    # Source path is `$PACK/supporting-docs/METHODOLOGY.md`; the docs/pack/*.md loop
+    # above iterates `$PACK/project-template/docs/pack/`, which does not contain
+    # METHODOLOGY — keep this as a separate copy.
     if [[ -f "$PACK/supporting-docs/METHODOLOGY.md" ]]; then
-        if [[ "$CLASS" == existing-* && -f "$TARGET/METHODOLOGY.md" ]]; then
-            info "SKIP METHODOLOGY.md at root (exists)"
+        mkdir -p "$TARGET/docs/pack"
+        if [[ "$CLASS" == existing-* && -f "$TARGET/docs/pack/METHODOLOGY.md" ]]; then
+            info "SKIP METHODOLOGY.md at docs/pack/ (exists)"
         else
-            cp "$PACK/supporting-docs/METHODOLOGY.md" "$TARGET/METHODOLOGY.md"
+            cp "$PACK/supporting-docs/METHODOLOGY.md" "$TARGET/docs/pack/METHODOLOGY.md"
         fi
+    fi
+    # Stale-root cleanup advisory: init-project.sh does NOT delete project files
+    # (per V10-F-D-DESIGN §5.3 — init warns; migrate-v9-to-v10.sh removes).
+    if [[ "$CLASS" == existing-* && -f "$TARGET/METHODOLOGY.md" ]]; then
+        warn "stale METHODOLOGY.md at project root — canonical location is docs/pack/METHODOLOGY.md (move or delete manually)"
     fi
     # Verify prompts dir content (10 per-agent files expected post-v10.0).
     local prompts_count
