@@ -928,3 +928,94 @@ This supplementary section paraphrases project-internal observations (current ph
 **Files-in-scope is NOT solution leakage** (clarification — this is a recurring point of confusion worth recording explicitly): the prompt's "Files-in-scope" list relays file paths from `IMPLEMENTATION_PLAN.md`, which is the architect/planner's upstream output. File paths are scope/location guardrails (telling the coder where the work goes and where it does NOT go), not implementation choices. Saying "the new file lives in `Data/Logging/`" enforces an existing project layer-discipline rule, not a design decision. A genuine same-family solution leak would be specifying which API or data structure to use (e.g., "use `FileManager.default.url(for:in:)` to resolve the path" or "buffer entries in a `Deque<String>`") — those would cross into solution territory. The architectural chain is: `ARCHITECTURE.md` → `IMPLEMENTATION_PLAN.md` → PM chat coder prompt (relays plan's scope + project conventions; does NOT invent) → coder agent (chooses APIs / patterns / data structures).
 
 **Action:** file as new BD-NNN at C-V10-18 BACKLOG sweep. **Recommended fix scope: v10.0 patch (low risk, high value)** — `supporting-docs/METHODOLOGY.md § Prompt Authoring Principles` already touches the format-vs-solutions distinction but apparently not in a way the prompt-generating PM chat fully internalizes. Add a sharper subsection: "Format-vs-solutions: worked examples." Cover (a) what counts as scope/constraint (file paths from plan, test requirements, `Sendable` declaration, success-criteria thresholds), (b) what counts as solution (specific APIs, data structures, polling rates, lifecycle behaviors, algorithmic choices), and (c) the rationale that solutions belong to the coder agent's judgment, not the PM chat's. Project lead decides at Gate F. Note: F-G is somewhat ironic — the F-G fix is itself an exercise in writing format-not-solution guidance.
+
+---
+
+## §10 Delta verification — F-D + F-C patch
+
+**Date:** 2026-04-29T17:30:00Z (UTC, harness execution timestamp)
+**Patch commits:** `1de2d23` (design + plan docs), `603234e` (5-file behavioral patch), `55d1834` (blast_radius_sweep follow-on fix surfaced by §10.1)
+**Scope:** Delta-only re-verification per project-lead Decision 2. Confirms the patched migration script and init-project.sh write METHODOLOGY.md to `docs/pack/` and clean up any stale root copy. Full §4.6 / §4.7 / §4.8 NOT re-run; historical evidence in those sections retained as-was.
+
+### §10.1 Fresh init (state D)
+
+- Fixture: `/tmp/v10-fd-fixtures/fresh-init/` (fresh git-init repo with seed README).
+- init-project.sh exit: **0** (after blast_radius_sweep fix in `55d1834`; pre-fix exit was 31 — see §10.0 below).
+- `docs/pack/METHODOLOGY.md` present: **OK**.
+- root `METHODOLOGY.md` absent: **OK**.
+- Procedure 7 present in `docs/pack/METHODOLOGY.md`: **OK**.
+- stderr: empty.
+
+### §10.0 Pre-fix surfacing (blast_radius_sweep interaction)
+
+The first §10.1 run surfaced an interaction between the F-D fix (METHODOLOGY moved into `docs/pack/`) and `init-project.sh`'s pre-existing `blast_radius_sweep` (line 587), which scans `docs/pack/` for "PROMPT-TEMPLATES" references. METHODOLOGY.md legitimately mentions PROMPT-TEMPLATES on lines 1209/1211 (Procedure 5-R section, documenting the v9.3→v10 migration). Pre-F-D, METHODOLOGY at root was outside sweep scope; post-F-D, the references were flagged and init-project.sh exited 31. Resolved by adding `--exclude='METHODOLOGY.md'` to the grep — committed as `55d1834`.
+
+This is itself useful evidence: the §10.1 harness caught a real interaction the architect+planner missed, which is exactly the value of running the harness.
+
+### §10.2 Migration state B (root-only pre-state — synthetic §4.4-style)
+
+- Fixture: synthetic v9.3 scaffold (project-template/. + supporting-docs/PROMPT-TEMPLATES.md + root METHODOLOGY).
+- migrate-v9-to-v10.sh exit: **0**.
+- Pre-state confirmed: root `METHODOLOGY.md` present, `docs/pack/METHODOLOGY.md` absent.
+- Post-state: `docs/pack/METHODOLOGY.md` present (v10 content); root `METHODOLOGY.md` removed.
+- Backup: `.pack-migration-backup/v9.3-to-v10.0/METHODOLOGY.md` (root pre-state preserved). No `docs/pack/` backup (none existed pre-migration).
+- stdout includes the line: `removed stale METHODOLOGY.md at project root (canonical is docs/pack/METHODOLOGY.md; backup at $BACKUP_DIR/METHODOLOGY.md)`.
+
+### §10.3 Migration state A (docs/pack-only pre-state — OT-shape)
+
+- Fixture: synthetic v9.3 scaffold (project-template/. + supporting-docs/PROMPT-TEMPLATES.md + docs/pack/METHODOLOGY.md only).
+- migrate-v9-to-v10.sh exit: **0**.
+- Pre-state confirmed: `docs/pack/METHODOLOGY.md` present, root absent.
+- Post-state: `docs/pack/METHODOLOGY.md` overwritten with v10 content; no root file appears.
+- Backup: `.pack-migration-backup/v9.3-to-v10.0/docs/pack/METHODOLOGY.md` (docs/pack pre-state preserved). No root backup (none existed pre-migration).
+- v10 content match: `diff -q docs/pack/METHODOLOGY.md "$PACK/supporting-docs/METHODOLOGY.md"` returns empty (byte-identical).
+
+### §10.4 Migration state C (both present pre-state — mid-flight v10-dev shape)
+
+- Fixture: synthetic v9.3 scaffold (project-template/. + supporting-docs/PROMPT-TEMPLATES.md + METHODOLOGY at both locations).
+- migrate-v9-to-v10.sh exit: **0**.
+- Pre-state confirmed: both `METHODOLOGY.md` and `docs/pack/METHODOLOGY.md` present.
+- Post-state: `docs/pack/METHODOLOGY.md` present (v10 content); root `METHODOLOGY.md` removed.
+- Backup: both pre-states preserved at `$BACKUP_DIR/METHODOLOGY.md` and `$BACKUP_DIR/docs/pack/METHODOLOGY.md`.
+- stdout includes the root-removal line.
+- v10 content match: byte-identical.
+
+### §10.5 Pack-level regression guards
+
+- `python3 scripts/validate-pack.py` exit: **0**.
+- `bash scripts/test-detect.sh`: **34 passed, 0 failed**.
+
+### §10.6 Live-OT byte-identity
+
+- Live OT HEAD post-§10: `d9e288ba8b897f967c52e99a0391d9495d5f8073` (unchanged from baseline; 9th post-baseline checkpoint across this verification effort).
+- Live OT working tree porcelain: empty.
+- All §10 fixtures built under `/tmp/v10-fd-fixtures/` from the v9.3-tag pack source (`git clone --branch v9.3 --depth 1` of the live pack repo, which is read-only on source). No OT live-repo content involved at any point in §10.
+
+### §10.7 Sanitization
+
+All §10 fixtures synthetic; built from the v9.3-tag pack source. No OT content involved. No OT-derived names enumerated. Per §6.7.7 sanitization rules, no sanitization required for this delta — all evidence is pack-generated text and fixture metadata.
+
+### §10.8 Cleanup
+
+`/tmp/v10-fd-fixtures/` removed at end of §10. `ls /tmp/v10-fd-fixtures` returns "No such file or directory."
+
+### §10.9 Pass / fail summary
+
+| Check | Result |
+|---|---|
+| State D (fresh init) → docs/pack only | ✅ PASS |
+| State B migration → docs/pack + root removed + root backed up | ✅ PASS |
+| State A migration → docs/pack overwritten + docs/pack backed up | ✅ PASS |
+| State C migration → docs/pack + root removed + both backed up | ✅ PASS |
+| validate-pack.py exit 0 | ✅ PASS |
+| test-detect.sh 34/34 | ✅ PASS |
+| Live OT unchanged | ✅ PASS (9th checkpoint) |
+| blast_radius_sweep follow-on fix verified | ✅ PASS (commit `55d1834`) |
+
+**Outcome:** **F-D + F-C jointly resolved.** The v10.0 design contradiction is gone (METHODOLOGY canonical at `docs/pack/`; trinity, scripts, user-facing migration doc, project-template README, and verification plan are all consistent). The legacy-cleanup defect (F-C) is auto-resolved by the same script edit (state B and C both clean up stale root copies with backup). The blast_radius_sweep interaction surfaced by §10.1 is fixed in `55d1834`. v10.0 ship-blocker on F-D + F-C cleared.
+
+### §10.10 Flag-back updates
+
+- **F-C → RESOLVED** (combined into F-D fix per project-lead Decision 3; one BD entry at C-V10-18 BACKLOG sweep).
+- **F-D → RESOLVED.**
+- **F-A, F-E, F-F, F-G** still pending v10.0 patches per Option A sequence.
