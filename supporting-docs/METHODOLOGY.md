@@ -1353,10 +1353,21 @@ to `skip` except G7-discovery, which is read-only and defaults to
 
 #### 7.0 Trigger and scope
 
-The PM chat enters Procedure 7 when the kickoff-variant continuation
-pointer fires on a `shell` declaration. On `manual`, Procedure 7 is
+The PM chat enters Procedure 7 once the assistant has (a) declared
+its surface and (b) given the developer a one-message exit ramp
+before any non-read-only action. On a shell-capable surface (Claude
+Code CLI, Codex CLI, Gemini CLI, Claude Desktop with Desktop
+Commander), the assistant typically declares `shell` by inference
+from its environment — this is sanctioned and not a deviation; it
+MUST NOT begin Form R discovery in the same message as the surface
+declaration. On Web / Desktop surfaces without shell access (Claude
+Web, ChatGPT Web), the assistant declares `manual`; Procedure 7 is
 not entered; the PM chat emits the `SETUP-NEW.md § Manual fallback`
-pointer instead and waits for developer-reported values.
+pointer and waits for developer-reported values. The exit-ramp
+reply is interpreted per the § 7.5 reply grammar (`yes` / `no` /
+`skip` / `abort` / `edit` / bare value); a positive reply
+authorizes Form R, anything else defers per the grammar's
+"unrecognized → no" rule.
 
 The developer may declare `manual` even on a shell-capable surface
 (e.g., to read the planned commands before granting execution); the
@@ -1475,6 +1486,9 @@ Idempotency: if `command -v swift-format` already returns a path AND
 `note: swift-format already installed at <version> (within known-good range) — skipping`
 and do not render Form I.
 
+The single-line `note:` is rendered inside the Form R results table
+per § 7.6 (Preview rendering) — it is not a separate Form rendering.
+
 ##### 7.2.4 Xcode companion files (Form M, G7-machine)
 
 ```
@@ -1501,6 +1515,9 @@ render Form M with a recommendation line
 `recommendation: installed companion files differ from the pack — reinstall recommended`
 — default remains `skip`.
 
+The single-line `note:` is rendered inside the Form R results table
+per § 7.6 (Preview rendering) — it is not a separate Form rendering.
+
 #### 7.3 K3 — gRPC sub-flow
 
 Runs only if `[TRANSPORT]` includes gRPC, or a `proto/` directory
@@ -1518,6 +1535,8 @@ One Form I per tool, using the shape in §7.2.3:
 Each Form I applies the idempotency rule from §7.2.3 — already-installed
 and in-range tools are skipped with a note.
 
+The note is rendered inside Form R per § 7.6 (Preview rendering).
+
 ##### 7.3.2 Python-side gRPC tooling (Form I, G7-install)
 
 Runs only if Python is also detected. One Form I per package, using
@@ -1528,6 +1547,10 @@ Runs only if Python is also detected. One Form I per package, using
 - `uv add grpcio-status` — Pack-tested: grpcio-status ≥1.64.0.
 - `uv add grpcio-reflection` — Pack-tested: grpcio-reflection ≥1.64.0
   (optional, only if reflection is used).
+
+Each Form I in this section applies the § 7.2.3 idempotency rule;
+the resulting note is rendered inside Form R per § 7.6
+(Preview rendering).
 
 ##### 7.3.3 Proto code generation example
 
@@ -1603,6 +1626,21 @@ re-rendering.
   non-placeholder value (see §7.2.2 anchor-matching rules).
 - **Form M** — skip when every source/target pair is byte-identical
   under `cmp -s`.
+
+**Preview rendering.** When a Form's idempotency rule fires (Form I:
+`command -v <tool>` returns a path AND `<tool> --version` is within
+the pack-tested range; Form M: every source/target pair is
+byte-identical under `cmp -s`), the gate renders as a single-line
+`note:` diagnostic inside the Form R results table rather than as a
+separately-rendered Form. The preview is the gate — there is no
+proposed action for the developer to approve, skip, or abort. This
+applies wherever Form I or Form M is invoked (§ 7.2.3 swift-format,
+§ 7.2.4 Xcode companion files, § 7.3.1 Apple-side gRPC tooling,
+§ 7.3.2 Python-side gRPC tooling). The full Form renders only when
+the idempotency rule does NOT fire — i.e., when there is something
+to gate. Reply grammar (§ 7.5) does not apply to preview lines; they
+are informational notes inside Form R, whose own reply grammar
+covers the read-only discovery decision.
 
 For concurrent / interrupted kickoff handling, see
 `project-template/docs/pack/PM-CHAT.md` § Before starting a new

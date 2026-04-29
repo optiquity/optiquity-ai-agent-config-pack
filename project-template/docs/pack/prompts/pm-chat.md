@@ -39,22 +39,22 @@ I am starting a new Claude Chat session for **[PROJECT_NAME]**.
 - [Key protocol decisions, e.g., DataStore protocol over SwiftData]
 - [Any other settled decisions]
 
-**Before I do anything else:** I am about to run read-only discovery
-commands and propose installs and file edits for your approval.
-Confirm one of:
+**Before I do anything else:** I will declare my surface and pause
+for your reply before running any non-read-only action. The recognized
+surfaces are Claude Code CLI, Codex CLI, Gemini CLI, or Claude Desktop
+with Desktop Commander (shell-capable — I typically declare `shell`
+by inference); and Claude Web or ChatGPT Web (no shell — I declare
+`manual` and route to the manual fallback). Reply `yes` to authorize
+Form R discovery, `manual` to override mid-kickoff, or per the
+METHODOLOGY § 7.5 reply grammar (`no` / `skip` / `abort` / `edit`).
 
-- `shell` — I have shell access on this surface (Claude Code CLI, Codex
-  CLI, Gemini CLI, or Claude Desktop with Desktop Commander enabled).
-- `manual` — I have no shell on this surface (Claude Web, ChatGPT Web).
-
-Reply with the single word `shell` or `manual` before continuing.
-
-**Project documents are in the GitHub repo.** The GitHub connector is connected.
-Please search project knowledge to read:
-- ARCHITECTURE.md
-- IMPLEMENTATION_PLAN.md (current phase)
-- STATUS.md
-- BACKLOG.md
+**Project documents the PM chat needs in context:** ARCHITECTURE.md,
+IMPLEMENTATION_PLAN.md (current phase), STATUS.md, BACKLOG.md.
+Locate and read these by whatever means your surface provides —
+local repo read on shell-capable surfaces; project-knowledge or
+GitHub-connector search on Web with a Project + connector;
+equivalent retrieval on other surfaces. If you cannot access them,
+report what you can reach and I will adapt.
 
 **Your role as PM chat:**
 - Generate agent prompts for each phase (coder, reviewer, tester, docs-researcher)
@@ -81,7 +81,7 @@ to `AGENTS.md` and `GEMINI.md`. Commit.
 
 **Next, based on your surface declaration:**
 
-On `shell`: I will read `supporting-docs/METHODOLOGY.md` Procedure 7
+On `shell`: I will read `docs/pack/METHODOLOGY.md` Procedure 7
 directly (not via RAG — Procedure 7 is order-sensitive) and follow
 its gates G7-discovery / G7-install / G7-edit / G7-machine before
 any write or install.
@@ -273,7 +273,7 @@ Fill in all placeholder values:
         listed in the trinity `**Active skills:**` line (concurrency,
         platform architecture, language-specific rules). The PM chat does
         not pre-decide these structural choices in this checklist —
-        per `supporting-docs/METHODOLOGY.md § Format-vs-solutions: worked
+        per `docs/pack/METHODOLOGY.md § Format-vs-solutions: worked
         examples`, prescribing a structural answer in an architect prompt
         anchors the agent and is forbidden.
 - Required stubs to generate: [LIST]
