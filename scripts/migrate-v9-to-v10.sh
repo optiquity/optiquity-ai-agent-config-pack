@@ -201,11 +201,17 @@ dispatch_text_file() {
             ;;
         real-merge-required|project-shadows-new-pack)
             mkdir -p "$(dirname "$dest")"
-            cp "$theirs" "$dest"
             local sidecar="${dest}.v9-customized"
-            cp "$ours" "$sidecar"
             local diff_path
+            # CRITICAL ORDERING: write the three-way diff FIRST and copy
+            # ours to the sidecar BEFORE overwriting dest with theirs.
+            # When dest == ours (in-place dispatch — the common case),
+            # `cp "$theirs" "$dest"` overwrites ours; subsequent reads of
+            # ours would yield theirs content. Reversing the order
+            # preserves ours for the diff and the sidecar.
             diff_path=$(write_three_way_diff "$base" "$ours" "$theirs" "$dest")
+            cp "$ours" "$sidecar"
+            cp "$theirs" "$dest"
             record_disposition "$rep" "$cls" "$dest" "$sidecar" "$diff_path" "-"
             ;;
         removed-by-pack-clean)

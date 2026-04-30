@@ -523,7 +523,7 @@ def check_init_project_structure() -> None:
         any_failed = True
     else:
         # Each of three required fixtures must exist.
-        for fixture in ("migration-v9.3-empty", "migration-v9.3-customized", "migration-v9.3-marker-convention"):
+        for fixture in ("migration-v9.3-empty", "migration-v9.3-pattern-coverage", "migration-v9.3-marker-convention"):
             fp = fixtures_dir / fixture
             if not fp.is_dir():
                 fail(f"{fp.relative_to(REPO_ROOT)} — fixture directory missing")

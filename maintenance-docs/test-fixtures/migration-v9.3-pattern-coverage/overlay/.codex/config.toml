@@ -1,0 +1,111 @@
+profile = "cloud-default"
+model = "gpt-5.4"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search_mode = "on"
+oss_provider = "lmstudio"
+developer_instructions = """
+All major work categories are allowed in this repository: planning, architecture, implementation, refactoring, debugging, testing, review, dependency review, repo operations, and documentation.
+No task category is reserved exclusively for another tool.
+Prefer a stronger cloud model for correctness-sensitive work.
+Use local models only where the verification path is strong and the likely result is equivalent.
+"""
+
+[sandbox_workspace_write]
+post_edit_command = "./scripts/agent-post-edit-check.sh"
+network_access = true
+writable_roots = ["."]
+
+[profiles.cloud-default]
+model = "gpt-5.4"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search_mode = "on"
+
+[profiles.local-light]
+model = "gpt-oss:20b"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search_mode = "off"
+
+[profiles.local-code]
+model = "qwen3-coder-30b-a3b-instruct-8bit"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search_mode = "off"
+
+# FIXTURE-MARKER-K2: project removed [model_providers.*] sections.
+# Codex CLI now ships these as built-in providers; explicit declarations unnecessary.
+# FIXTURE-MARKER-K2: project removed [model_providers.*] sections.
+# Codex CLI now ships these as built-in providers; explicit declarations unnecessary.
+[agents]
+max_threads = 6
+max_depth = 2
+
+[agents.architect]
+description = "Read-only architecture specialist for module boundaries, layer discipline, state ownership, and long-term maintainability. Default for: Architecture / design (Claude Code)."
+config_file = "agents/architect.toml"
+
+[agents.planner]
+description = "Planning specialist for scoping work, sequencing changes, and defining verification steps before non-trivial edits. Default for: Planning / task breakdown (Claude Code). Also: Architecture / design."
+config_file = "agents/planner.toml"
+
+[agents.coder]
+description = "Implementation specialist for targeted code changes, refactors, and test updates. Default for: Implementation (Codex). Also: Debugging, Refactoring (Codex)."
+config_file = "agents/coder.toml"
+
+[agents.reviewer]
+description = "Read-only reviewer focused on correctness, regressions, concurrency, and missing tests. Default for: Code review (Claude Code)."
+config_file = "agents/reviewer.toml"
+
+[agents.tester]
+description = "Read-only test strategist for unit, integration, UI, and end-to-end verification. Default for: Testing (Codex)."
+config_file = "agents/tester.toml"
+
+[agents.repo_ops]
+description = "Repository operations specialist for scripts, command sequencing, and Git-safe automation. Default for: Repo operations, Local validation (Codex)."
+config_file = "agents/repo-ops.toml"
+
+[agents.docs_researcher]
+description = "Read-only documentation specialist for verifying APIs, options, and config behavior from official docs. Default for: Dependency evaluation, Documentation (Claude Code)."
+config_file = "agents/docs-researcher.toml"
+
+[agents.grpc_schema]
+description = "Read-only Proto3 schema specialist for field evolution, breaking-change detection, buf validation, and gRPC service contract review. Default for: API and schema design (Claude Code)."
+config_file = "agents/grpc-schema.toml"
+
+[agents.auditor]
+description = "Read-only audit coordinator for full-codebase structural audits. Spawns seven subagents and consolidates their reports. Periodic, retrospective, not per-phase."
+config_file = "agents/auditor.toml"
+
+[agents.auditor_architecture]
+description = "Read-only audit subagent — architecture compliance, design quality, and observability infrastructure cluster. Invoked by the auditor parent."
+config_file = "agents/auditor-architecture.toml"
+
+[agents.auditor_code]
+description = "Read-only audit subagent — code quality, idioms, dead code, performance, concurrency, and systemic error handling cluster. Invoked by the auditor parent."
+config_file = "agents/auditor-code.toml"
+
+[agents.auditor_docs]
+description = "Read-only audit subagent — documentation drift detection cluster. Invoked by the auditor parent."
+config_file = "agents/auditor-docs.toml"
+
+[agents.auditor_security]
+description = "Read-only audit subagent — security and supply chain (CVEs, licenses) cluster. Invoked by the auditor parent."
+config_file = "agents/auditor-security.toml"
+
+[agents.auditor_tests]
+description = "Read-only audit subagent — test coverage and design quality cluster. Invoked by the auditor parent."
+config_file = "agents/auditor-tests.toml"
+
+[agents.auditor_ui]
+description = "Read-only audit subagent — UI/UX compliance only cluster. Skipped for server-only projects. Invoked by the auditor parent."
+config_file = "agents/auditor-ui.toml"
+
+[agents.auditor_ops]
+description = "Read-only audit subagent — deployment readiness, configuration management, and observability wiring cluster. Always runs. Invoked by the auditor parent."
+config_file = "agents/auditor-ops.toml"
+
+# Skills are loaded by the PM chat on a per-task basis.
+# See PLATFORM-SKILLS.md for the skill selection matrix (project type and agent → skill set).
+# At setup time, skills are distributed from the canonical skills/ directory into .codex/skills/.

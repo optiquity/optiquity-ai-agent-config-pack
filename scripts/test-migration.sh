@@ -13,7 +13,7 @@
 #   scripts/test-migration.sh            # run all fixtures
 #   scripts/test-migration.sh --quick    # run just the empty fixture
 #                                        #   (CI fast path)
-#   scripts/test-migration.sh --fixture migration-v9.3-customized
+#   scripts/test-migration.sh --fixture migration-v9.3-pattern-coverage
 #                                        # run one named fixture
 #
 # Environment:
@@ -210,8 +210,8 @@ run_fixture_empty() {
     rm -rf "$tmp"
 }
 
-run_fixture_customized() {
-    local fixture="migration-v9.3-customized"
+run_fixture_pattern_coverage() {
+    local fixture="migration-v9.3-pattern-coverage"
     echo "── $fixture ──"
     local tmp; tmp=$(mktemp -d -t test-migration.XXXXXX)
     local target="$tmp/project"
@@ -242,36 +242,113 @@ run_fixture_customized() {
     local report="$target/.pack-migration-backup/v9.3-to-v10.0/report.md"
     local tsv="$target/.pack-migration-backup/v9.3-to-v10.0/dispositions.tsv"
 
-    # Trinity customizations should produce reconciliation sidecars.
-    if [[ -f "$FIXTURES_DIR/$fixture/overlay/CLAUDE.md" ]]; then
-        assert_file_exists "$fixture" "CLAUDE.md.v9-customized sidecar" \
-            "$target/CLAUDE.md.v9-customized"
-        # The sidecar should preserve the fixture marker from the overlay.
-        assert_grep "$fixture" "CLAUDE.md.v9-customized preserves fixture marker" \
-            "FIXTURE-MARKER-CLAUDE" "$target/CLAUDE.md.v9-customized"
+    # Pattern P, trinity (C1/C2/C3) — sidecars created, project markers preserved.
+    for trinity_file in CLAUDE.md AGENTS.md GEMINI.md; do
+        if [[ -f "$FIXTURES_DIR/$fixture/overlay/$trinity_file" ]]; then
+            assert_file_exists "$fixture" "${trinity_file}.v9-customized sidecar" \
+                "$target/${trinity_file}.v9-customized"
+            local marker
+            case "$trinity_file" in
+                CLAUDE.md) marker="FIXTURE-MARKER-CLAUDE" ;;
+                AGENTS.md) marker="FIXTURE-MARKER-AGENTS" ;;
+                GEMINI.md) marker="FIXTURE-MARKER-GEMINI" ;;
+            esac
+            assert_grep "$fixture" "${trinity_file}.v9-customized preserves $marker" \
+                "$marker" "$target/${trinity_file}.v9-customized"
+        fi
+    done
+
+    # Pattern T→P, D1 (PM-CHAT.md) — sidecar created, marker preserved.
+    if [[ -f "$FIXTURES_DIR/$fixture/overlay/docs/pack/PM-CHAT.md" ]]; then
+        assert_file_exists "$fixture" "docs/pack/PM-CHAT.md.v9-customized sidecar" \
+            "$target/docs/pack/PM-CHAT.md.v9-customized"
+        assert_grep "$fixture" "PM-CHAT.md.v9-customized preserves FIXTURE-MARKER-PMCHAT" \
+            "FIXTURE-MARKER-PMCHAT" "$target/docs/pack/PM-CHAT.md.v9-customized"
     fi
 
-    # Structured-config customizations should be merged or sidecared.
+    # Pattern S, K1 — XCODE_SCHEME preserved through key-merge (no sidecar).
     if [[ -f "$FIXTURES_DIR/$fixture/overlay/.claude/settings.json" ]]; then
-        # XCODE_SCHEME from overlay should survive in the merged file
-        # (Pattern S key-merge preserves project edits).
-        assert_grep "$fixture" "settings.json XCODE_SCHEME preserved" \
+        assert_grep "$fixture" "K1 settings.json XCODE_SCHEME preserved" \
             "FIXTURE-SCHEME-MARKER" "$target/.claude/settings.json"
     fi
 
-    # Project-only file should be preserved untouched.
+    # Pattern S, K2 — model_providers.* removal honored; agent_capabilities adopted.
+    if [[ -f "$FIXTURES_DIR/$fixture/overlay/.codex/config.toml" ]]; then
+        assert_no_match "$fixture" "K2 config.toml model_providers.ollama dropped" \
+            "^\[model_providers.ollama\]" "$target/.codex/config.toml"
+        assert_no_match "$fixture" "K2 config.toml model_providers.lmstudio dropped" \
+            "^\[model_providers.lmstudio\]" "$target/.codex/config.toml"
+        assert_grep "$fixture" "K2 config.toml [agent_capabilities] adopted" \
+            "^\[agent_capabilities\]" "$target/.codex/config.toml"
+    fi
+
+    # Pattern P, A1 — pack agent customization. When pack v10 == v9.3 for
+    # this file (common — most agents are stable across minor versions),
+    # disposition is `merged-with-customization` and project content is
+    # kept in place (no sidecar). When pack v10 changed the file, sidecar
+    # is created. Test for either: marker present in live file OR sidecar.
+    if [[ -f "$FIXTURES_DIR/$fixture/overlay/.claude/agents/coder.md" ]]; then
+        if grep -q "FIXTURE-MARKER-A1" "$target/.claude/agents/coder.md" 2>/dev/null; then
+            pass "$fixture" "A1 marker preserved in live file (merged-with-customization)"
+        elif grep -q "FIXTURE-MARKER-A1" "$target/.claude/agents/coder.md.v9-customized" 2>/dev/null; then
+            pass "$fixture" "A1 marker preserved in sidecar (real-merge-required)"
+        else
+            fail "$fixture" "A1 customization lost — neither live file nor sidecar contains FIXTURE-MARKER-A1"
+        fi
+    fi
+
+    # Pattern P, L1 — pack skill customization, sidecar created + sibling preserved.
+    if [[ -f "$FIXTURES_DIR/$fixture/overlay/.claude/skills/swift-best-practices/SKILL.md" ]]; then
+        assert_file_exists "$fixture" "L1 SKILL.md.v9-customized sidecar" \
+            "$target/.claude/skills/swift-best-practices/SKILL.md.v9-customized"
+        assert_grep "$fixture" "L1 sidecar preserves FIXTURE-MARKER-L1" \
+            "FIXTURE-MARKER-L1" "$target/.claude/skills/swift-best-practices/SKILL.md.v9-customized"
+    fi
+    if [[ -f "$FIXTURES_DIR/$fixture/overlay/.claude/skills/swift-best-practices/notes.md" ]]; then
+        # OQ-6(b): skill-dir sibling preservation.
+        assert_file_exists "$fixture" "skill-dir sibling notes.md preserved" \
+            "$target/.claude/skills/swift-best-practices/notes.md"
+        assert_grep "$fixture" "skill-dir sibling preserves FIXTURE-MARKER-SIBLING" \
+            "FIXTURE-MARKER-SIBLING" "$target/.claude/skills/swift-best-practices/notes.md"
+    fi
+
+    # Pattern P, S2 — pack script customization. Same merged-with vs sidecar
+    # logic as A1: depends on whether pack v10 changed the script vs v9.3.
+    if [[ -f "$FIXTURES_DIR/$fixture/overlay/scripts/format.sh" ]]; then
+        if grep -q "FIXTURE-MARKER-S2" "$target/scripts/format.sh" 2>/dev/null; then
+            pass "$fixture" "S2 marker preserved in live file (merged-with-customization)"
+        elif grep -q "FIXTURE-MARKER-S2" "$target/scripts/format.sh.v9-customized" 2>/dev/null; then
+            pass "$fixture" "S2 marker preserved in sidecar (real-merge-required)"
+        else
+            fail "$fixture" "S2 customization lost — neither live file nor sidecar contains FIXTURE-MARKER-S2"
+        fi
+    fi
+
+    # Project-only file (x-* prefix) preserved untouched.
     if [[ -f "$FIXTURES_DIR/$fixture/overlay/scripts/x-fixture.sh" ]]; then
         assert_file_exists "$fixture" "scripts/x-fixture.sh preserved" \
             "$target/scripts/x-fixture.sh"
     fi
 
-    # Report should have at least one reconciliation row.
-    local recon_count
+    # Report should have multiple reconciliation rows. Files with
+    # base==theirs go to merged-with-customization (no sidecar); only
+    # files where pack v10 actually changed the v9.3 baseline produce
+    # real-merge-required sidecars. Expect at least 5 reconciliation
+    # rows (C1/C2/C3 trinity + D1 PM-CHAT + L1 SKILL.md = 5;
+    # A1 coder.md and S2 format.sh may be merged-with-customization
+    # depending on whether pack v10 changed them).
+    local recon_count merged_count
     recon_count=$(count_dispositions "$tsv" "customization-detected-needs-reconciliation")
-    if (( recon_count > 0 )); then
-        pass "$fixture" "report has $recon_count reconciliation row(s)"
+    merged_count=$(count_dispositions "$tsv" "merged-with-customization")
+    if (( recon_count >= 5 )); then
+        pass "$fixture" "report has $recon_count reconciliation row(s) (expected ≥5)"
     else
-        fail "$fixture" "report has 0 reconciliation rows (expected ≥1)"
+        fail "$fixture" "report has $recon_count reconciliation rows (expected ≥5)"
+    fi
+    if (( merged_count >= 1 )); then
+        pass "$fixture" "report has $merged_count merged-with-customization row(s) (Pattern S K1/K2)"
+    else
+        fail "$fixture" "report has 0 merged-with-customization rows (expected ≥1 for Pattern S)"
     fi
 
     # Report's disposition summary line is present.
@@ -327,7 +404,7 @@ run_fixture_marker_convention() {
 if [[ -n "$SELECTED" ]]; then
     case "$SELECTED" in
         migration-v9.3-empty)              run_fixture_empty ;;
-        migration-v9.3-customized)         run_fixture_customized ;;
+        migration-v9.3-pattern-coverage)         run_fixture_pattern_coverage ;;
         migration-v9.3-marker-convention)  run_fixture_marker_convention ;;
         *) echo "error: unknown fixture: $SELECTED" >&2; exit 1 ;;
     esac
@@ -335,7 +412,7 @@ elif [[ "$QUICK" -eq 1 ]]; then
     run_fixture_empty
 else
     run_fixture_empty
-    run_fixture_customized
+    run_fixture_pattern_coverage
     run_fixture_marker_convention
 fi
 
