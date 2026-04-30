@@ -10,22 +10,37 @@ the result. Do not ask questions — execute each step in order.
 ## Step 0 — Check for pending one-shot procedures
 
 Before running the standard startup sequence, check whether any one-shot
-post-migration procedures are pending. Run:
+post-migration procedures are pending. The migration produces two kinds
+of signals: the post-run housekeeping sentinel (Procedure 5-S) and any
+`*.v9-customized` reconciliation sidecars (Procedure 5-C). Per OQ-5C-3
+the sentinel sweep is uniform — every sidecar dispatches to Procedure
+5-C, with sub-procedure 5-C.1 covering the legacy
+`docs/pack/prompts/_v9-backup.md` filename for pre-C7 v10.0 installs.
 
 ```bash
 [[ -f .pack-migration-backup/v9.3-to-v10.0/postrun-pending ]] && \
     echo "POSTRUN-PENDING: Procedure 5-S"
-[[ -f docs/pack/prompts/_v9-backup.md ]] && \
-    echo "PROMPT-RECON-PENDING: Procedure 5-R"
+sidecar_count=$(find . -name '*.v9-customized' \
+    -not -path './.pack-migration-backup/*' \
+    -not -path './.git/*' 2>/dev/null | wc -l | tr -d ' ')
+legacy_backup=$([[ -f docs/pack/prompts/_v9-backup.md ]] && echo 1 || echo 0)
+if (( sidecar_count > 0 || legacy_backup > 0 )); then
+    echo "RECON-PENDING: Procedure 5-C (${sidecar_count} sidecar(s); legacy=${legacy_backup})"
+fi
 ```
 
 If either line is emitted, do NOT run the standard startup sequence yet.
-Instead, route to the named METHODOLOGY procedure(s) (Procedure 5-S for
-POSTRUN-PENDING; Procedure 5-R for PROMPT-RECON-PENDING) and run them now.
-After all triggered procedures complete (or the developer explicitly defers
-remaining items), resume the standard startup sequence at Step 1.
+Instead, route to the named INSTALL-PROCEDURES.md procedure(s) — Procedure
+5-S for POSTRUN-PENDING (post-migration housekeeping), Procedure 5-C for
+RECON-PENDING (customization reconciliation; sub-procedure 5-C.1 handles
+the legacy `_v9-backup.md` filename). Both procedures live in
+`docs/pack/INSTALL-PROCEDURES.md` (relocated from METHODOLOGY.md per
+BD-059). Run them now. After all triggered procedures complete (or the
+developer explicitly defers remaining items), resume the standard startup
+sequence at Step 1.
 
-If neither file exists, this step is a no-op — proceed directly to Step 1.
+If neither line is emitted, this step is a no-op — proceed directly to
+Step 1.
 
 ## Step 1 — Sync repo
 

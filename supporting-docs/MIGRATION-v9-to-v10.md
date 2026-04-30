@@ -45,15 +45,15 @@ Four BD items shipped in v10.0:
     H2 per template. Templates 1–14 become variant slugs mapped into
     the relevant per-agent file.
   - Project-specific agents and skills are formalized via the reserved
-    `x-` filename prefix. METHODOLOGY.md Procedure 5 documents the
+    `x-` filename prefix. INSTALL-PROCEDURES.md Procedure 5 documents the
     creation, registration, detection, and adoption workflows.
   - New migration tooling: `scripts/migrate-v9-to-v10.sh` with shared
     detection library `scripts/lib/detect.sh` and two Python splice
     helpers `scripts/merge-platform-skills.py` and
-    `scripts/merge-trinity.py`. Procedure 5-R reconciles customized
+    `scripts/merge-trinity.py`. Procedure 5-C.1 reconciles customized
     `PROMPT-TEMPLATES.md` content after migration.
 - **BD-047 — PM chat kickoff auto-discovery and install-check.** New
-  `METHODOLOGY.md` Procedure 7 paired with the `docs/pack/prompts/pm-chat.md`
+  `INSTALL-PROCEDURES.md` Procedure 7 paired with the `docs/pack/prompts/pm-chat.md`
   `Variant: kickoff` continuation pointer. On shell-capable surfaces
   (Claude Code CLI, Codex CLI, Gemini CLI, Claude Desktop with Desktop
   Commander), the PM chat runs read-only discovery (`xcodebuild -list`,
@@ -148,7 +148,7 @@ resumed run skips completed stages.
 | **S3** | Replace `scripts/`, `agent-run.sh`, `.codex/config.toml`, `.claude/settings.json`, `.mcp.json.example` from pack; prior versions backed up. |
 | **S4** | Create `docs/pack/prompts/` and copy the 10 per-agent files from pack (PROMPT-AUTHORING.md was removed in v10.0; directory guidance lives in METHODOLOGY.md § Prompt Authoring Principles). |
 | **S5** | Splice-merge `PLATFORM-SKILLS.md` (via `merge-platform-skills.py`) and the three trinity files (via `merge-trinity.py`) — project-owned `## Custom agents` / `## Custom skills` sections, `### Custom agents` sub-section, and the `**Active skills:**` line are preserved. Pack-owned docs (PM-CHAT.md and METHODOLOGY.md, both at `docs/pack/`) are copied verbatim from pack. If a stale root-level `METHODOLOGY.md` is present pre-migration (legacy v10-dev shape), it is backed up and removed. |
-| **S6** | Diff project's `docs/pack/PROMPT-TEMPLATES.md` against v9.3 baseline. If identical → backup + delete. If diverged → backup + move to `docs/pack/prompts/_v9-backup.md` (Procedure 5-R reconciliation flag set). |
+| **S6** | Diff project's `docs/pack/PROMPT-TEMPLATES.md` against v9.3 baseline. If identical → backup + delete. If diverged → backup + move to `docs/pack/PROMPT-TEMPLATES.md.v9-customized` (Procedure 5-C.1 reconciliation flag set). |
 | **S7** | Write post-migration report to `.pack-migration-backup/v9.3-to-v10.0/report.md`. |
 
 The script does NOT commit. Review `git diff` and the report before
@@ -176,8 +176,8 @@ Sections to read carefully:
 - **Customization status.** Either `customization: none` (v9.3
   PROMPT-TEMPLATES.md was unmodified — nothing to reconcile) or
   `customization: divergence detected; reconciliation flag set`
-  (project-specific additions live in `_v9-backup.md` and need PM
-  chat reconciliation via Procedure 5-R at first startup).
+  (project-specific additions live in `PROMPT-TEMPLATES.md.v9-customized` and need PM
+  chat reconciliation via Procedure 5-C.1 at first startup).
 - **x-files preserved.** A list of project-owned `x-*` agents, skills,
   and prompt files that the migration script left untouched. Expect
   these to be `(none)` on most v9.3 projects unless you introduced
@@ -226,13 +226,13 @@ ls docs/pack/prompts/ | wc -l
 
 Start a fresh PM chat session (see PM-CHAT.md for the per-tool startup
 commands). The PM chat's startup flow runs the detection scan
-(METHODOLOGY.md Procedure 5.5) automatically.
+(INSTALL-PROCEDURES.md Procedure 5.5) automatically.
 
 Expected behaviors depending on what the migration report flagged:
 
 - **Procedure 5-S — Post-migration housekeeping (always runs).** The PM
   chat detects the `postrun-pending` sentinel written by `migrate-v9-to-v10.sh`
-  S7 and invokes Procedure 5-S (METHODOLOGY.md Part 7). The procedure
+  S7 and invokes Procedure 5-S (INSTALL-PROCEDURES.md). The procedure
   scans STATUS.md for stale `**AI Agent Config Pack**: v9` markers and
   the trinity files (CLAUDE.md / AGENTS.md / GEMINI.md) for unfilled
   placeholders (`[PROJECT_NAME]`, `[PLATFORM_TARGETS]`, `[TRANSPORT]`,
@@ -243,18 +243,18 @@ Expected behaviors depending on what the migration report flagged:
 - **No flags raised (beyond Procedure 5-S).** PM chat reports the
   project is cleanly migrated; proceed with Workflow 2 / next phase as
   normal.
-- **`_v9-backup.md` present in `docs/pack/prompts/`.** PM chat invokes
-  Procedure 5-R (METHODOLOGY.md Part 7): reads `_v9-backup.md`,
+- **`PROMPT-TEMPLATES.md.v9-customized` present in `docs/pack/prompts/`.** PM chat invokes
+  Procedure 5-C.1 (INSTALL-PROCEDURES.md): reads `PROMPT-TEMPLATES.md.v9-customized`,
   surfaces each customization with a proposed v10 placement (variant
   slug), and asks you to approve / modify / reject each item. After
-  reconciliation, PM chat offers to remove `_v9-backup.md`.
+  reconciliation, PM chat offers to remove `PROMPT-TEMPLATES.md.v9-customized`.
 - **Improperly-added files flagged.** PM chat routes to Procedure 5.4
   (adopt / remove / defer) for each flagged file.
 - **Unregistered custom files flagged.** PM chat routes to
   Procedure 5.3 (complete registration).
 
 Do not ask the PM chat to reconcile PROMPT-TEMPLATES.md content
-manually — Procedure 5-R is designed to walk through it
+manually — Procedure 5-C.1 is designed to walk through it
 interactively, and that flow is more reliable than freeform editing.
 
 ---
@@ -507,8 +507,8 @@ recreate the directory.
 
 The S6 diff step deletes it only if the project's copy is byte-
 identical to the v9.3 baseline. If customized, the file is moved to
-`docs/pack/prompts/_v9-backup.md` for PM chat reconciliation
-(Procedure 5-R). If neither happened, check the S6 logs:
+`docs/pack/PROMPT-TEMPLATES.md.v9-customized` for PM chat reconciliation
+(Procedure 5-C.1). If neither happened, check the S6 logs:
 
 ```bash
 cat .pack-migration-backup/v9.3-to-v10.0/status.txt
@@ -552,7 +552,7 @@ Rules:
 - If the script pauses or errors, report the stage and sentinel file
   state and wait for my direction. Do not attempt to recover by
   reversing individual file edits.
-- If the Procedure 5-R reconciliation flag is set, do not attempt the
+- If the Procedure 5-C.1 reconciliation flag is set, do not attempt the
   reconciliation — PM chat handles that at first pm-startup after the
   migration commits.
 ```

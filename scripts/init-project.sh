@@ -657,10 +657,12 @@ blast_radius_sweep() {
     local d f
     for d in "${scope_dirs[@]}"; do
         [[ -d "$TARGET/$d" ]] || continue
-        # METHODOLOGY.md legitimately documents the v9→v10 PROMPT-TEMPLATES.md
-        # migration in Procedure 5-R; exclude it from the sweep (post-F-D
-        # METHODOLOGY moved into docs/pack/, bringing it into sweep scope).
-        if grep -rn --exclude='METHODOLOGY.md' "PROMPT-TEMPLATES" "$TARGET/$d" >/dev/null 2>&1; then
+        # INSTALL-PROCEDURES.md legitimately documents the v9→v10
+        # PROMPT-TEMPLATES.md migration in Procedure 5-C.1 (formerly
+        # Procedure 5-R in METHODOLOGY pre-C7); exclude it from the
+        # sweep. METHODOLOGY.md retains a stub pointer that may also
+        # reference the legacy name, so exclude it too.
+        if grep -rn --exclude='METHODOLOGY.md' --exclude='INSTALL-PROCEDURES.md' "PROMPT-TEMPLATES" "$TARGET/$d" >/dev/null 2>&1; then
             warn "PROMPT-TEMPLATES reference found in $d"
             matches=1
         fi

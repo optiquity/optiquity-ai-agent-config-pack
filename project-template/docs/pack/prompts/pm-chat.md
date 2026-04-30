@@ -25,7 +25,7 @@ generate-agent-kickoff).
 **Before pasting:**
 - If you are running Gemini CLI and currently in plan mode (`/plan`), exit plan mode before continuing — kickoff requires shell execution.
 - If you are pasting this into Claude Web or ChatGPT Web without shell access, reply `manual` when asked below.
-- Shell-capable surfaces run kickoff auto-discovery (METHODOLOGY.md Procedure 7); non-shell surfaces use SETUP-NEW.md § Manual fallback.
+- Shell-capable surfaces run kickoff auto-discovery (INSTALL-PROCEDURES.md Procedure 7); non-shell surfaces use SETUP-NEW.md § Manual fallback.
 
 I am starting a new Claude Chat session for **[PROJECT_NAME]**.
 
@@ -46,7 +46,7 @@ with Desktop Commander (shell-capable — I typically declare `shell`
 by inference); and Claude Web or ChatGPT Web (no shell — I declare
 `manual` and route to the manual fallback). Reply `yes` to authorize
 Form R discovery, `manual` to override mid-kickoff, or per the
-METHODOLOGY § 7.5 reply grammar (`no` / `skip` / `abort` / `edit`).
+INSTALL-PROCEDURES.md § 7.5 reply grammar (`no` / `skip` / `abort` / `edit`).
 
 **Project documents the PM chat needs in context:** ARCHITECTURE.md,
 IMPLEMENTATION_PLAN.md (current phase), STATUS.md, BACKLOG.md.
@@ -81,7 +81,7 @@ to `AGENTS.md` and `GEMINI.md`. Commit.
 
 **Next, based on your surface declaration:**
 
-On `shell`: I will read `docs/pack/METHODOLOGY.md` Procedure 7
+On `shell`: I will read `docs/pack/INSTALL-PROCEDURES.md` Procedure 7
 directly (not via RAG — Procedure 7 is order-sensitive) and follow
 its gates G7-discovery / G7-install / G7-edit / G7-machine before
 any write or install.

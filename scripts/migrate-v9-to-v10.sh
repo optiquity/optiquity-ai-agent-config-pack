@@ -813,7 +813,7 @@ stage_s5_trinity_splice() {
                 cp "$BACKUP_DIR/$file" "$file.v9-customized"
                 local diff_path
                 diff_path=$(write_three_way_diff "$trinity_base_dir/$file" "$BACKUP_DIR/$file" "$PACK/project-template/$file" "$file")
-                record_disposition "customization-detected-needs-reconciliation" "C1" "$file" "$file.v9-customized" "$diff_path" "trinity prose conflict; reconcile per Procedure 5-C / 5-T"
+                record_disposition "customization-detected-needs-reconciliation" "C1" "$file" "$file.v9-customized" "$diff_path" "trinity prose conflict; reconcile per Procedure 5-C in INSTALL-PROCEDURES.md"
                 ;;
             *)
                 warn "merge-trinity.py reported unexpected classification '$classification' for $file"
@@ -963,7 +963,7 @@ stage_s7_report() {
                     [[ "$sidecar" != "-" ]] && recon_lines+="  - Project v9 preserved at: \`$sidecar\`"$'\n'
                     [[ "$diff" != "-" ]]    && recon_lines+="  - Three-way diff: \`$diff\`"$'\n'
                     [[ "$notes" != "-" ]]   && recon_lines+="  - Note: $notes"$'\n'
-                    recon_lines+="  - Suggested: invoke Procedure 5-C (or 5-R for D4) from INSTALL-PROCEDURES.md"$'\n'
+                    recon_lines+="  - Suggested: invoke Procedure 5-C from INSTALL-PROCEDURES.md (D4 case = sub-procedure 5-C.1)"$'\n'
                     ;;
                 merged-with-customization)
                     merged_count=$((merged_count + 1))

@@ -173,7 +173,7 @@ These rules are non-negotiable and always apply on all tools:
 - **Custom files via Procedure 5 only.** Any new agent (.claude/.codex/.gemini),
   skill (.claude/skills/, .codex/skills/, .gemini/skills/), or prompt file
   (`docs/pack/prompts/`) not in the pack roster must be added through
-  METHODOLOGY.md Procedure 5. Do not add such files through any other workflow.
+  INSTALL-PROCEDURES.md Procedure 5. Do not add such files through any other workflow.
 - **Detection scan at every startup and every phase gate.** Scan the seven
   detection directories (see File access strategy) and classify every file
   before generating any prompt or proposing any commit. Flag improperly-added
@@ -188,7 +188,8 @@ These rules are non-negotiable and always apply on all tools:
 - **Capability addition.** If the developer asks to add a pack-supported
   dimension (platform, language, protocol, role), direct them to run
   `scripts/add-capability.sh` from the pack first; then run METHODOLOGY.md
-  Procedure 6.
+  Procedure 6. (Procedure 6 stays in METHODOLOGY because capability
+  addition fires repeatedly, not as a one-shot.)
 
 ---
 
@@ -197,7 +198,7 @@ These rules are non-negotiable and always apply on all tools:
 Projects may create project-specific agents and skills beyond what the
 pack ships. The full workflow — creation, registration across the three
 tool directories, PLATFORM-SKILLS.md updates, trinity routing-table
-entry — is defined in `supporting-docs/METHODOLOGY.md` **Procedure 5 —
+entry — is defined in `docs/pack/INSTALL-PROCEDURES.md` **Procedure 5 —
 Custom agent and skill workflow**. Never add custom files outside
 Procedure 5.
 

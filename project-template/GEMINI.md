@@ -366,7 +366,8 @@ docs-researcher), see `TOOL-COMPARISON.md` in the pack's `maintenance-docs/`.*
 
 ### Custom agents
 
-Project-specific agents created via Procedure 5. See
+Project-specific agents created via Procedure 5 (see
+`docs/pack/INSTALL-PROCEDURES.md`). See
 `docs/pack/PLATFORM-SKILLS.md` § "Custom agents" for the canonical list
 and full skill assignments. All custom agent names begin with `x-`.
 

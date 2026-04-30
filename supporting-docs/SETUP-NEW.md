@@ -154,7 +154,7 @@ reference stability; Steps 9–12 below retain their original numbers.*
 
 On shell-capable surfaces (Claude Code CLI, Codex CLI, Gemini CLI,
 Claude Desktop with Desktop Commander), the PM chat runs kickoff
-auto-discovery (METHODOLOGY.md Procedure 7) after you paste the
+auto-discovery (INSTALL-PROCEDURES.md Procedure 7) after you paste the
 kickoff prompt in Step 10. It fills in Apple Xcode scheme variables,
 installs swift-format, installs gRPC tooling, and installs Xcode
 companion files — each behind an approval gate. **You do not need to
