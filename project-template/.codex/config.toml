@@ -16,6 +16,23 @@ post_edit_command = "./scripts/agent-post-edit-check.sh"
 network_access = true
 writable_roots = ["."]
 
+# Agent capabilities — mirrors `.claude/settings.json` env.AGENT_CAPABILITIES
+# and `.gemini/.env` AGENT_CAPABILITIES per the BD-059 trinity rule for
+# tool-level configuration. Update all three tools' configs together.
+[agent_capabilities]
+enabled = [
+    "planning",
+    "architecture",
+    "implementation",
+    "refactoring",
+    "debugging",
+    "testing",
+    "review",
+    "dependency-review",
+    "repo-ops",
+    "documentation",
+]
+
 [profiles.cloud-default]
 model = "gpt-5.4"
 approval_policy = "on-request"

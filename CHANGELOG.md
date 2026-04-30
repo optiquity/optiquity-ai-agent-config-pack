@@ -14,13 +14,19 @@ Each version is available as a git tag (v1, v2, …).
 The v10.0 release-as-tagged silently destroyed project customization
 when the OT migration ran 2026-04-30. BD-059 captures the design,
 plan, and implementation that closes the defect. v10.0 has not reached
-production; the fix lands in `main` without a version bump. Commits to
-date: design + plan + research bundle (4c55a69), three-way classifier
-+ backup-restore helpers (efd19a5), disposition-driven migration with
-sidecars + skill-dir sibling preservation (9a09e5f), JSON/TOML
-structured-config merges (f83d555), trinity-rule comparator for
-pack-roster agent files (73d480e), procedure relocation to
-`supporting-docs/INSTALL-PROCEDURES.md` (this commit).
+production; the fix lands in `main` without a version bump. Commits
+through G5 gate: design + plan + research bundle (4c55a69), three-way
+classifier + backup-restore helpers (efd19a5), disposition-driven
+migration with sidecars + skill-dir sibling preservation (9a09e5f),
+JSON/TOML structured-config merges (f83d555), trinity-rule comparator
+for pack-roster agent files (73d480e), procedure relocation to
+`supporting-docs/INSTALL-PROCEDURES.md` (32a9543), cross-reference
+sweep to INSTALL-PROCEDURES.md (ef222f1), trinity ## Project addenda
++ x-prefix convention + PM-CHAT project-owned markers (90ffaab),
+migration test fixtures and end-to-end test runner (381d377),
+validate-pack.py checks 12-16 for migration regression protection
+(1bfe90b), add-capability.sh x-prefix forward contract (d06874d),
+cross-tool capability + MCP parity (this commit).
 
 **Procedure relocation (BD-059 C7)**
 
@@ -51,6 +57,41 @@ pack-roster agent files (73d480e), procedure relocation to
   same H3 anchor. Procedure 5-C stub added (new). Procedure 6
   (capability addition) retained — it fires repeatedly throughout a
   project lifetime, not as a one-shot. (BD-059)
+
+**Cross-tool capability + MCP parity (BD-059 C11, G5)**
+
+- `project-template/.codex/config.toml` — adds `[agent_capabilities]`
+  table mirroring `.claude/settings.json` `env.AGENT_CAPABILITIES`.
+  Closes BD-059 success criterion (a).
+- `project-template/.gemini/.env` (NEW) — `AGENT_CAPABILITIES` parity
+  per OQ-Q4 user decision (Option A: `.env` file). Closes BD-059
+  success criterion (a) for Gemini.
+- `project-template/.gemini/settings.json` (NEW) — minimal Gemini CLI
+  config with `mcpServers.local-rag` block parallel to
+  `.mcp.json.example`. Closes BD-059 success criterion (b) for Gemini.
+- `project-template/.codex/config.toml.example` (NEW) — sibling to
+  live `config.toml` carrying a commented `[mcp_servers.local-rag]`
+  STDIO block per `V10-CODEX-MCP-RESEARCH.md`. Codex CLI loads
+  project-scoped config only for trusted projects (per Codex docs);
+  the developer copies / symlinks this file when ready. Closes
+  BD-059 success criterion (b) for Codex.
+- `scripts/migrate-v9-to-v10.sh` S3 — extends K-class file iteration
+  to include K5 (.gemini/settings.json), K6 (.gemini/.env), K7
+  (.codex/config.toml.example). Existing projects pre-C11 had none of
+  these files; migration treats them as `new-file-in-pack` and copies
+  them in.
+- `scripts/init-project.sh` S3 — same iteration extension for fresh
+  projects. Verification checks added: `.gemini/.env` and
+  `.gemini/settings.json` must be present after S3 (BD-059
+  trinity-rule parity).
+- `scripts/validate-pack.py` Check 17 (NEW) — `check_tool_config_capability_parity`.
+  Reads `AGENT_CAPABILITIES` from each tool's config and asserts all
+  three sets match. Hard-fails CI if Claude / Codex / Gemini
+  capability rosters drift.
+
+BD-059 success criteria (a) AGENT_CAPABILITIES parity and (b) MCP
+server config parity now both satisfied. Final remaining work is the
+end-to-end OT verification (revert + re-run) per OQ-8.
 
 ### v10.0 — April 2026
 

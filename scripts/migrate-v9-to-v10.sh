@@ -620,36 +620,79 @@ stage_s3_scripts_and_config() {
     fi
     [[ -n "$base_tmp" && -f "$base_tmp" ]] && rm -f "$base_tmp"
 
-    # ── Structured configs (K1, K2, K3, K4): classifier-wrapped with
-    # key-level merge via merge-json.py / merge-toml.py on
-    # real-merge-required. K3 (.codex/requirements.toml) added in C4. ──
-    mkdir -p "$BACKUP_DIR/.codex" "$BACKUP_DIR/.claude"
+    # ── Structured configs (K1..K7): classifier-wrapped with key-level
+    # merge for JSON/TOML or text dispatch for text-format configs.
+    # K3 (.codex/requirements.toml) added in C4; K5/K6/K7 added in C11
+    # for cross-tool capability + MCP parity per BD-059 success criterion. ──
+    mkdir -p "$BACKUP_DIR/.codex" "$BACKUP_DIR/.claude" "$BACKUP_DIR/.gemini"
+
+    # Some K-class files have a different pack-side path than project-side
+    # path. `.gemini/.env` is the live file Gemini reads at the project
+    # level, but the pack ships its template at `.gemini/.env.example`
+    # (project-template/.gitignore blocks plain `.env`; only `.env.example`
+    # is committable). pack_template_for_proj_path() maps proj→pack.
+    pack_template_for_proj_path() {
+        case "$1" in
+            .gemini/.env) echo ".gemini/.env.example" ;;
+            *)            echo "$1" ;;
+        esac
+    }
+
     local cf
-    for cf in .codex/config.toml .codex/requirements.toml .claude/settings.json .mcp.json.example; do
-        [[ -f "$PACK/project-template/$cf" ]] || continue
+    for cf in \
+        .codex/config.toml \
+        .codex/config.toml.example \
+        .codex/requirements.toml \
+        .claude/settings.json \
+        .mcp.json.example \
+        .gemini/settings.json \
+        .gemini/.env \
+    ; do
+        local pack_relpath
+        pack_relpath=$(pack_template_for_proj_path "$cf")
+        [[ -f "$PACK/project-template/$pack_relpath" ]] || continue
 
         local cls fmt
         case "$cf" in
-            .claude/settings.json)    cls="K1"; fmt="json" ;;
-            .codex/config.toml)       cls="K2"; fmt="toml" ;;
-            .codex/requirements.toml) cls="K3"; fmt="toml" ;;
-            .mcp.json.example)        cls="K4"; fmt="json" ;;
-            *)                        cls="K?"; fmt="text" ;;
+            .claude/settings.json)      cls="K1"; fmt="json" ;;
+            .codex/config.toml)         cls="K2"; fmt="toml" ;;
+            .codex/requirements.toml)   cls="K3"; fmt="toml" ;;
+            .mcp.json.example)          cls="K4"; fmt="json" ;;
+            .gemini/settings.json)      cls="K5"; fmt="json" ;;
+            .gemini/.env)               cls="K6"; fmt="text" ;;
+            .codex/config.toml.example) cls="K7"; fmt="text" ;;
+            *)                          cls="K?"; fmt="text" ;;
         esac
 
-        local pack_repo_path="project-template/${cf}"
-        base_tmp=$(v93_baseline_to_tmp "$pack_repo_path")
+        # BASE = v9.3 pack baseline at the project-side path (since v9.3
+        # didn't have these files, this returns empty for K5/K6/K7,
+        # which classifier treats as `new-file-in-pack`).
+        base_tmp=$(v93_baseline_to_tmp "project-template/${cf}")
 
         ours="$cf"
-        theirs="$PACK/project-template/$cf"
+        theirs="$PACK/project-template/$pack_relpath"
 
         if [[ -f "$ours" ]]; then
             mkdir -p "$BACKUP_DIR/$(dirname "$cf")"
             cp "$ours" "$BACKUP_DIR/$cf"
-            dispatch_structured_config "$cls" "$base_tmp" "$ours" "$theirs" "$ours" "$fmt"
         else
             mkdir -p "$(dirname "$cf")"
-            dispatch_structured_config "$cls" "$base_tmp" "" "$theirs" "$ours" "$fmt"
+        fi
+
+        if [[ "$fmt" == "json" || "$fmt" == "toml" ]]; then
+            if [[ -f "$ours" ]]; then
+                dispatch_structured_config "$cls" "$base_tmp" "$ours" "$theirs" "$ours" "$fmt"
+            else
+                dispatch_structured_config "$cls" "$base_tmp" "" "$theirs" "$ours" "$fmt"
+            fi
+        else
+            # Text-format configs (e.g., .env, .example templates) go through
+            # generic text dispatch — Pattern P with sidecar fallback.
+            if [[ -f "$ours" ]]; then
+                dispatch_text_file "$cls" "$base_tmp" "$ours" "$theirs" "$ours"
+            else
+                dispatch_text_file "$cls" "$base_tmp" "" "$theirs" "$ours"
+            fi
         fi
 
         [[ -n "$base_tmp" && -f "$base_tmp" ]] && rm -f "$base_tmp"

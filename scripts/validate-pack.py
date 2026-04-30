@@ -829,6 +829,104 @@ def check_migration_test_runs_clean() -> None:
     ok(f"test-migration.sh --quick passed ({last_line or 'see output'})")
 
 
+def check_tool_config_capability_parity() -> None:
+    """Check 17 — AGENT_CAPABILITIES expressed identically across the
+    three tools' config files (architect Part 6 / OQ-7 / BD-059).
+
+    The trinity rule applies to per-tool tool-level configuration: every
+    capability one tool expresses in its config-file surface must be
+    expressed by the other two via their own conventions. AGENT_CAPABILITIES
+    is the v10 capabilities-pattern roster — shipped in:
+
+      Claude  .claude/settings.json env.AGENT_CAPABILITIES (comma-list)
+      Codex   .codex/config.toml [agent_capabilities] enabled (TOML list)
+      Gemini  .gemini/.env AGENT_CAPABILITIES (comma-list)
+
+    All three must contain identical capability sets.
+    """
+    print("\n── Check 17: Tool-config AGENT_CAPABILITIES parity (BD-059) ──")
+    pt = REPO_ROOT / "project-template"
+    any_failed = False
+
+    # Claude — JSON env.AGENT_CAPABILITIES
+    claude_caps: set[str] | None = None
+    claude_path = pt / ".claude" / "settings.json"
+    if not claude_path.is_file():
+        fail(".claude/settings.json — missing")
+        return
+    try:
+        import json as _json
+        claude_data = _json.loads(claude_path.read_text())
+        claude_str = claude_data.get("env", {}).get("AGENT_CAPABILITIES", "")
+        claude_caps = {c.strip() for c in claude_str.split(",") if c.strip()}
+    except Exception as e:
+        fail(f".claude/settings.json — parse failed: {e}")
+        any_failed = True
+
+    # Codex — TOML [agent_capabilities] enabled list
+    codex_caps: set[str] | None = None
+    codex_path = pt / ".codex" / "config.toml"
+    if not codex_path.is_file():
+        fail(".codex/config.toml — missing")
+        return
+    try:
+        import tomllib
+        with open(codex_path, "rb") as f:
+            codex_data = tomllib.load(f)
+        codex_caps = set(codex_data.get("agent_capabilities", {}).get("enabled", []))
+    except Exception as e:
+        fail(f".codex/config.toml — parse failed: {e}")
+        any_failed = True
+
+    # Gemini — .env.example AGENT_CAPABILITIES line. The pack ships
+    # the template at `.env.example` (the project-template's .gitignore
+    # blocks plain .env to protect against secrets in projects;
+    # `.env.example` is committable). Init-project.sh / migrate-v9-to-v10.sh
+    # auto-create the live `.gemini/.env` from this template at install
+    # time so Gemini picks up AGENT_CAPABILITIES immediately.
+    gemini_caps: set[str] | None = None
+    gemini_path = pt / ".gemini" / ".env.example"
+    if not gemini_path.is_file():
+        fail(".gemini/.env.example — missing")
+        return
+    try:
+        for line in gemini_path.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("AGENT_CAPABILITIES="):
+                value = line.split("=", 1)[1].strip()
+                gemini_caps = {c.strip() for c in value.split(",") if c.strip()}
+                break
+        if gemini_caps is None:
+            fail(".gemini/.env.example — missing AGENT_CAPABILITIES line")
+            any_failed = True
+    except Exception as e:
+        fail(f".gemini/.env.example — parse failed: {e}")
+        any_failed = True
+
+    if any_failed or claude_caps is None or codex_caps is None or gemini_caps is None:
+        return
+
+    if claude_caps == codex_caps == gemini_caps:
+        ok(f"All three tools agree on AGENT_CAPABILITIES ({len(claude_caps)} capabilities)")
+        return
+
+    # Surface the divergence.
+    if claude_caps != codex_caps:
+        only_claude = sorted(claude_caps - codex_caps)
+        only_codex = sorted(codex_caps - claude_caps)
+        fail(
+            f"Claude vs Codex divergent: "
+            f"only-Claude={only_claude} only-Codex={only_codex}"
+        )
+    if claude_caps != gemini_caps:
+        only_claude = sorted(claude_caps - gemini_caps)
+        only_gemini = sorted(gemini_caps - claude_caps)
+        fail(
+            f"Claude vs Gemini divergent: "
+            f"only-Claude={only_claude} only-Gemini={only_gemini}"
+        )
+
+
 def check_trinity_addenda_h2() -> None:
     """Check 16 — v10 trinity templates carry `## Project addenda` H2
     with the HTML-comment placeholder (OQ-P6 / OQ-5C-1, BD-059 C9).
@@ -884,6 +982,7 @@ def main() -> None:
     check_merge_helpers_consistent()
     check_disposition_table_documented()
     check_migration_test_runs_clean()
+    check_tool_config_capability_parity()
     check_trinity_addenda_h2()
 
     print("\n" + "=" * 60)

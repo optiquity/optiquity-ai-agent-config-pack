@@ -1,0 +1,29 @@
+# Codex CLI project-scoped configuration override.
+#
+# To use: copy or symlink this file to `.codex/config.toml` in a TRUSTED
+# project. Codex CLI only loads project-scoped configuration for projects
+# the developer has marked trusted; see Codex Config basics for the
+# trust-prompt UX. Pre-trust, this file does nothing — `git status` shows
+# the .example sibling, the developer copies/symlinks when ready.
+#
+# This .example sibling matches the .mcp.json.example pattern Claude uses
+# and the .gemini/settings.json MCP block (per BD-059 trinity-rule
+# parity for MCP server configuration).
+#
+# Source: V10-CODEX-MCP-RESEARCH.md (commit 73d480e). Codex supports
+# MCP via [mcp_servers.<name>] tables in config.toml, both STDIO
+# (`command`) and Streamable HTTP (`url`, gated by
+# `experimental_use_rmcp_client`). v10 ships STDIO only; HTTP transport
+# stability is research OQ-1 (defer to future BD if needed).
+
+# Uncomment the block below to enable mcp-local-rag for Codex CLI
+# sessions in this project. Replace BASE_DIR with the absolute path of
+# this project directory.
+#
+# [mcp_servers.local-rag]
+# command = "npx"
+# args = ["-y", "mcp-local-rag"]
+# env = { BASE_DIR = "/absolute/path/to/your/project", DB_PATH = "./.codex/rag-index" }
+# startup_timeout_sec = 30
+# required = false
+# supports_parallel_tool_calls = true

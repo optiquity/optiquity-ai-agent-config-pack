@@ -324,9 +324,35 @@ stage_s2_agents() {
 
 stage_s3_configs() {
     say "── S3 — copy pack configs ──"
+
+    # proj-path → pack-path map for K-class files where the pack-side
+    # template lives under a different name. `.gemini/.env` is read by
+    # Gemini at the project level; the pack ships its template at
+    # `.gemini/.env.example` (project-template/.gitignore blocks plain
+    # `.env` to protect against secrets; `.env.example` is committable).
+    # init-project writes the live `.env` from the example so Gemini picks
+    # it up immediately. Implemented as a function (not associative array)
+    # for bash 3.2 compatibility (macOS default bash).
+    pack_template_for_proj_path() {
+        case "$1" in
+            .gemini/.env) echo ".gemini/.env.example" ;;
+            *)            echo "$1" ;;
+        esac
+    }
+
     local f
-    for f in .codex/config.toml .codex/requirements.toml .claude/settings.json .mcp.json.example; do
-        local pack_file="$PACK/project-template/$f"
+    for f in \
+        .codex/config.toml \
+        .codex/config.toml.example \
+        .codex/requirements.toml \
+        .claude/settings.json \
+        .mcp.json.example \
+        .gemini/settings.json \
+        .gemini/.env \
+    ; do
+        local src_relpath
+        src_relpath=$(pack_template_for_proj_path "$f")
+        local pack_file="$PACK/project-template/$src_relpath"
         if [[ -f "$pack_file" ]]; then
             mkdir -p "$TARGET/$(dirname "$f")"
             if [[ "$CLASS" == existing-* ]]; then
@@ -338,6 +364,8 @@ stage_s3_configs() {
     done
     [[ -f "$TARGET/.codex/config.toml" ]] || fail_stage S3 ".codex/config.toml missing after copy"
     [[ -s "$TARGET/.claude/settings.json" ]] || fail_stage S3 ".claude/settings.json empty or missing"
+    [[ -f "$TARGET/.gemini/.env" ]] || fail_stage S3 ".gemini/.env missing after copy (BD-059 trinity-rule parity)"
+    [[ -f "$TARGET/.gemini/settings.json" ]] || fail_stage S3 ".gemini/settings.json missing after copy (BD-059 trinity-rule parity)"
 }
 
 stage_s4_skills() {
