@@ -179,7 +179,8 @@ v93_baseline_to_tmp() {
 #   $5 dest path (project-relative; written/removed as needed)
 #   $6 label (informational)
 dispatch_text_file() {
-    local cls="$1" base="$2" ours="$3" theirs="$4" dest="$5" label="${6:-$dest}"
+    local cls="$1" base="$2" ours="$3" theirs="$4" dest="$5"
+    local label="${6:-$dest}"
     local classification rep
     classification=$(three_way_classify "$base" "$ours" "$theirs")
     rep=$(report_disposition_for "$classification")
