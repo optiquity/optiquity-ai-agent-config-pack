@@ -20,7 +20,84 @@ Format follows the standard BACKLOG item format from METHODOLOGY.md Part 7.
 
 ---
 
-## Active — v9 Scope
+## Active — v10 Scope
+
+**BD-059 — v10 migration silently destroys project customization**
+Type: TODO(version)
+Status: Open
+Blockers: None — pack-architect read-only audit of the OT post-migration state
+  is the first step; pack-planner sequencing follows; both run in this session.
+Unblocks: None
+File/Symbol: pending architect output (design report under `maintenance-docs/`);
+  pending planner output (implementation plan under `maintenance-docs/`); fix
+  surface in pack repo to be defined by those documents.
+Description:
+  **Problem:** v10.0 migration (`scripts/migrate-v9-to-v10.sh` and the
+  splice/merge helpers it calls) silently destroyed substantial project
+  customization when run against the OT (OptiquityTrader) repo on
+  2026-04-30. Confirmed losses on the OT branch `migration-v9-to-v10`:
+  trinity files (CLAUDE.md / AGENTS.md / GEMINI.md) — only the
+  `**Active skills:**` line preserved, ~635 / 327 / 297 diff-lines of
+  project-specific content (platform defaults, Xcode 26 features,
+  domain model, broker integrations, Swift coding rules, security
+  policy, refactoring policy, anti-patterns, phase routing, agent
+  behavior) overwritten by pack template; `docs/pack/PM-CHAT.md` —
+  project-name customizations and project-specific role/body content
+  overwritten verbatim by pack template; `.claude/settings.json` —
+  XCODE_SCHEME and XCODE_DESTINATION env values reset to empty, project-
+  tuned permissions altered; `.codex/config.toml` — project-intentional
+  removal of `[model_providers.ollama]` / `[model_providers.lmstudio]`
+  reverted. The migration's `report.md` falsely declared
+  `customization: none`. These confirmed losses are **non-exhaustive**:
+  the audit needs to define the universe of files and customization
+  patterns that the migration could have damaged, not stop at this list.
+
+  **Goal:** v10 migration preserves project customization across the
+  full surface area of files the migration touches, and produces a
+  truthful customization report so the developer can review what
+  changed before committing the migration. The architect defines the
+  preservation and detection mechanism; the planner sequences the
+  implementation; the fix lands directly in main.
+
+  **Success criteria:**
+  - Architect's audit covers every file and directory the migration
+    script touches plus the project files the migration's blast radius
+    can reach indirectly (e.g., via wholesale-overwrite stages). The
+    set of files-with-customization is derived from the audit, not
+    pre-supplied.
+  - Architect's design preserves project customization across that
+    full surface — trinity, PM-CHAT.md, settings.json, config.toml,
+    .mcp.json.example, scripts, agent files, skill files, and any
+    others the audit identifies — without requiring v9.3 projects to
+    adopt v10's marker-section convention retroactively.
+  - Architect's design closes the verification gap that allowed
+    `V10-PHASE-4-VERIFICATION.md` §4.6 (OT real-project migration smoke)
+    to pass while the production migration corrupted OT trinity content.
+    The closure includes a fixture or fixture pattern that exercises
+    realistic v9.3 customization shapes.
+  - `validate-pack.py` (or equivalent) gains coverage that would have
+    caught this defect before release.
+  - On a post-fix re-run of the migration against a freshly reverted
+    OT, the project customization listed above survives the migration
+    and the report accurately characterizes what changed.
+
+Context: Incident discovered 2026-04-30 by user inspection of the OT
+  post-migration state. v10.0 has not reached any production project
+  yet (OT is the only target and was the verification fixture itself);
+  the fix lands in main without a version bump or branch. Audit of the
+  OT post-migration state recorded in this session's transcript
+  identified the confirmed losses above and the root cause: stages S3
+  and S5 of `migrate-v9-to-v10.sh` overwrite project files from pack
+  templates, and `merge-trinity.py` preserves only the
+  `**Active skills:**` line and `### Custom agents` sub-section
+  (assuming a marker-section structure that v9.3 projects do not
+  have). The customization-detection that drives `report.md` and any
+  `_v9-backup.md` triggering is scoped only to `PROMPT-TEMPLATES.md`
+  text comparison, leaving every other potential customization point
+  unaudited and unreported.
+Resolved: n/a
+
+---
 
 **BD-020 — C++ server support analysis**
 Type: TODO(version)
