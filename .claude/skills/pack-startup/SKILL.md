@@ -20,8 +20,9 @@ Read `BACKLOG.md` in full.
 
 Read only the most recent dated entry from `CHANGELOG.md`.
 
-Read the version table section from `README.md` — the rows under
-`## Version History` up to and including the most recent entry.
+Read the version table section from `README.md` — the table under
+`## Version History` is sorted newest-first. The first data row is the
+current version.
 
 Read `PACK-CHAT.md` in full — this establishes your behavioral rules
 for this session.
@@ -41,7 +42,8 @@ fail if it is absent.
 
 ## Step 4 — Report current state
 
-Read the current pack version from the most recent row in the README version table.
+Read the current pack version from the first data row in the README version table
+(the table is sorted newest-first).
 Output a summary in exactly this format:
 
 ---
