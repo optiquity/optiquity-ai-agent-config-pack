@@ -323,8 +323,46 @@ from the pack repo.
 
 ## What to do after migration
 
-Brief your PM chat about the v10 changes that affect day-to-day
-workflow:
+The migration produces three classes of result:
+
+1. **Pack updates** — files brought current with v10 with no project
+   conflict. Already in your working tree.
+2. **Merges** — structured configs (`.claude/settings.json`,
+   `.codex/config.toml`) where pack additions and project
+   customizations were combined automatically.
+3. **Reconciliations** — files where the pack content and your
+   project customization diverge in ways that cannot be merged
+   automatically. For each such file, the script wrote a
+   `.v9-customized` sidecar next to the file holding your
+   pre-migration content. The live file holds the new pack content.
+
+### Workflow
+
+1. **Review the migration report** at
+   `.pack-migration-backup/v9.3-to-v10.0/report.md`. Run `git diff`
+   and confirm the working tree matches the report.
+2. **Commit the migration on the `migration-v9-to-v10` branch.**
+   Sidecars are committed too — they hold the pre-migration project
+   content needed for reconciliation in the next step. The
+   commit captures a complete, recoverable state of the project at
+   v10.0 with reconciliation pending.
+3. **Start a new PM chat session and run `/pm-startup`.** The skill
+   detects the post-migration sentinel
+   (`.pack-migration-backup/v9.3-to-v10.0/postrun-pending`) and the
+   `.v9-customized` sidecars, then walks **Procedure 5-C** with you
+   sidecar by sidecar. For each one you decide: keep the new pack
+   content as-is, restore the project version, or hand-merge the
+   two. The procedure deletes each sidecar as it is reconciled.
+4. **Commit the reconciliation** when Procedure 5-C completes. At
+   this point the project is fully on v10 with all customizations
+   accounted for.
+5. **Merge `migration-v9-to-v10` into your default branch** per
+   Steps 5–7 of this document.
+
+### v10 changes that affect day-to-day workflow
+
+Once reconciliation is complete, brief your PM chat about the v10
+changes that affect day-to-day workflow:
 
 - **Prompts are per-agent direct read.** When generating prompts, the
   PM chat reads `docs/pack/prompts/<agent>.md` and locates the
@@ -535,26 +573,36 @@ Instructions:
 1. Read $PACK/supporting-docs/MIGRATION-v9-to-v10.md in full before
    doing anything.
 2. Create branch: git checkout -b migration-v9-to-v10
-3. Run $PACK/scripts/migrate-v9-to-v10.sh and report each stage's
-   completion to me. Pause for my review and approval after each stage.
-4. When the script completes, present the migration report and the git
-   diff summary. Do NOT commit.
+3. Run $PACK/scripts/migrate-v9-to-v10.sh end-to-end (the script runs
+   non-interactively through stages S0–S7). When it finishes, report:
+   - the disposition summary line
+     (e.g., "N pack-updates · M merges · K reconciliations needed")
+   - the path to the generated migration report
+4. Read the migration report top to bottom and present:
+   - the report's "Reconciliation required" section verbatim (or
+     confirm it is empty)
+   - a summary of `git status` showing the changed files and any
+     `.v9-customized` sidecars
+   Do NOT commit.
 5. Run ./scripts/bootstrap.sh and ./scripts/validate.sh and report
    results.
-6. Present the "What to do after migration" section so I know what to do
-   with my first PM chat session (including any reconciliation flag set
-   by the script).
+6. Present the "What to do after migration" section of
+   MIGRATION-v9-to-v10.md so I know the next steps (commit on this
+   branch, then start a new PM chat session — `/pm-startup` will
+   detect the sidecars and walk Procedure 5-C reconciliation).
 
 Rules:
 - Do NOT commit anything without my explicit review and approval.
 - Do NOT modify any file starting with `x-` under any circumstance.
 - Do NOT modify any file in the pack repo — only this project.
-- If the script pauses or errors, report the stage and sentinel file
-  state and wait for my direction. Do not attempt to recover by
-  reversing individual file edits.
-- If the Procedure 5-C.1 reconciliation flag is set, do not attempt the
-  reconciliation — PM chat handles that at first pm-startup after the
-  migration commits.
+- Do NOT attempt reconciliation of `.v9-customized` sidecars in this
+  session. Reconciliation is a separate PM-chat workflow that runs in
+  the *next* session via `/pm-startup` + Procedure 5-C, after the
+  migration commit lands.
+- If the script errors or exits non-zero, report the stage, the
+  sentinel files present under `.pack-migration-backup/v9.3-to-v10.0/`,
+  and wait for my direction. Do not attempt to recover by reversing
+  individual file edits.
 ```
 
 Works on all three CLI tools (Claude Code, Codex, Gemini). On Claude

@@ -207,10 +207,18 @@ A `*.v9-customized` sidecar means the migration script detected
 project customization the migration could not safely auto-merge with
 the v10 pack template. The v10 pack file has been written; the
 project's pre-migration content is preserved in the sidecar; the
-report lists the file under "Reconciliation required". Procedure 5-C
-walks the developer through resolving each sidecar so that the
-migration commit lands a working tree the developer has reviewed line
-by line.
+report lists the file under "Reconciliation required".
+
+**Two-commit migration model.** The migration commit lands first,
+on `migration-v9-to-v10`, with sidecars present and committed —
+this captures a complete recoverable v10 state with reconciliation
+pending. Procedure 5-C runs in a *new* PM chat session triggered by
+`/pm-startup` detecting the post-migration sentinel and the
+sidecars. The procedure walks each sidecar with the developer and
+produces a *second* commit on the same branch that finalizes
+reconciliation (sidecars deleted, reconciled content in place).
+Steps 5–7 of `MIGRATION-v9-to-v10.md` (merge to default branch)
+run after the second commit.
 
 Procedure 5-C is re-entrant. Partial completion preserves the
 unresolved sidecars and the procedure resumes where it left off at
@@ -231,7 +239,11 @@ the next `/pm-startup`. The procedure is complete only when every
    to Pack Chat before proceeding.
 3. **Confirm the migration branch.** `git branch --show-current` must
    print `migration-v9-to-v10` (or whatever branch the migration
-   created). Procedure 5-C does not run on `main`.
+   created). Procedure 5-C does not run on `main`. The branch must
+   already contain the raw migration commit (sidecars present) —
+   verify with `git log --oneline -1`. If the branch has no migration
+   commit yet, stop and instruct the developer to commit the
+   migration first.
 4. **Decide reconciliation strategy per file class.** The flow below
    branches by file class (per the disposition record's `class` column
    in `dispositions.tsv`). Process files in the order they appear in
@@ -604,12 +616,16 @@ After every sidecar has been reconciled and removed:
 4. **Working-tree review.** `git status` and `git diff` on the
    migration branch. Confirm the working tree contains no
    `*.v9-customized` files and matches developer intent.
-5. **Commit.** `git add` the resolved files, the deleted sidecars
+5. **Commit the reconciliation.** This is the *second* commit on the
+   migration branch (the first was the raw migration with sidecars
+   present). `git add` the resolved files, the deleted sidecars
    (which `git status` shows as deletions), and any new
    `## Project addenda` sections, `x-*.md` prompts, or
-   `PACK-FEEDBACK.md` additions. Commit on the migration branch per
-   `MIGRATION-v9-to-v10.md` Steps 5–7. Procedure 5-C does not run
-   again on this project.
+   `PACK-FEEDBACK.md` additions. Suggested commit message:
+   `chore: v10 migration — Procedure 5-C reconciliation`. After
+   commit, follow `MIGRATION-v9-to-v10.md` Steps 5–7 to merge the
+   branch into the default branch. Procedure 5-C does not run again
+   on this project.
 
 ### Completion-check assertions (machine-checkable)
 

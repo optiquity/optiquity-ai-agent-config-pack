@@ -1141,12 +1141,12 @@ stage_s7_report() {
         echo
         echo "## Next steps"
         echo
-        echo "1. Read this report top to bottom. The \"Reconciliation required\" section above must be empty before commit."
-        echo "2. For each reconciliation: invoke Procedure 5-C from INSTALL-PROCEDURES.md (legacy PROMPT-TEMPLATES case is sub-procedure 5-C.1)."
-        echo "3. After every reconciliation, delete the corresponding \`.v9-customized\` sidecar."
-        echo "4. Run \`git diff\` and confirm the working tree matches your intent."
-        echo "5. Commit the migration ON THE \`$MIGRATION_BRANCH\` BRANCH."
-        echo "6. Follow \`supporting-docs/MIGRATION-v9-to-v10.md\` Steps 5–7."
+        echo "1. Read this report top to bottom."
+        echo "2. Run \`git diff\` and confirm the working tree (including \`.v9-customized\` sidecars) matches the report."
+        echo "3. Commit the migration ON THE \`$MIGRATION_BRANCH\` BRANCH. Sidecars are committed too — they hold pre-migration project content for reconciliation."
+        echo "4. Start a new PM chat session and run \`/pm-startup\`. The skill detects the post-migration sentinel and walks you through Procedure 5-C reconciliation, sidecar by sidecar."
+        echo "5. After reconciliation completes, commit the resolved files (the procedure deletes each sidecar as it is reconciled)."
+        echo "6. Follow \`supporting-docs/MIGRATION-v9-to-v10.md\` Steps 5–7 for merge / push."
         echo
         echo "## Rollback"
         echo
@@ -1165,8 +1165,9 @@ stage_s7_report() {
         say
         say "Disposition summary: $update_count pack-updates · $merged_count merges · $recon_count reconciliations needed."
         say
-        say "$recon_count file(s) require reconciliation before commit. See \`$report\`."
-        say "DO NOT COMMIT until reconciliation is complete and \`.v9-customized\` sidecars are resolved."
+        say "$recon_count file(s) need reconciliation. Pre-migration project content is preserved in \`.v9-customized\` sidecars next to each affected file."
+        say "Review \`$report\` and \`git diff\`, then commit the migration on branch $MIGRATION_BRANCH (sidecars included)."
+        say "Reconciliation runs in your next PM chat session: start a new session and \`/pm-startup\` will detect the sidecars and walk Procedure 5-C with you."
     else
         say "Migration complete. $update_count pack-updates applied; no reconciliations needed."
         say "Review \`git diff\` and \`$report\` before committing on branch $MIGRATION_BRANCH."
