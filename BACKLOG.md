@@ -1187,6 +1187,222 @@ Resolved: April 2026, v10.0 — commit f81678f.
 
 ---
 
+**BD-050 — Kickoff surface-declaration gate auto-inferable + kickoff prose hardcoded environmental assumptions (F-A)**
+Type: TODO(version)
+Status: Resolved
+Blockers: None
+Unblocks: None
+File/Symbol: supporting-docs/METHODOLOGY.md § Procedure 7.0,
+  supporting-docs/METHODOLOGY.md § Procedure 7.6 (Preview rendering rule),
+  supporting-docs/METHODOLOGY.md § 7.2.3 / § 7.2.4 / § 7.3.1 / § 7.3.2 (cross-references),
+  project-template/docs/pack/prompts/pm-chat.md Variant: kickoff lines 42–58, 84,
+  project-template/docs/pack/prompts/pm-chat.md Variant: generate-agent-kickoff line 276 (path piggyback)
+
+Description: Two related sub-defects in the kickoff variant of pm-chat.md surfaced
+  during Phase 4 verification. F-A.1: assistant proceeded past the surface-declaration
+  gate without explicit reply when running on shell-capable surfaces (observed in
+  §4.1 F1 + §4.7 M-OT; predicted on Codex/Gemini/Desktop Commander per §4.2
+  docs-research). Same auto-inference pattern collapsed Form I + Form M into Form R
+  results table. F-A.2: kickoff body declared "GitHub connector is connected" +
+  "search project knowledge" as facts (false on plain Web with no Project + connector
+  per §4.3 evidence).
+
+  Resolution: F-A.1 direction β (semantic acceptance with one-message no-action exit
+  ramp; sanctioned-by-inference) + Form I/M preview formalization in METHODOLOGY § 7.6.
+  F-A.2 direction (b) always-discover (decouple project-context doc list from
+  retrieval mechanism — same principle as F-G applied to kickoff prose). Plus
+  piggyback F-D path-stale fixes on pm-chat.md lines 84 + 276.
+
+  Behavioral re-test confirmed (V10-PHASE-4-VERIFICATION.md §14): assistant
+  declared `shell` AND paused for explicit `yes` reply before Form R discovery;
+  assistant read 4 project docs by filesystem (no GitHub-connector assertion);
+  Form I idempotency note rendered inline in Form R results table per § 7.6 Preview.
+Context: Identified during Phase 4 verification (April 2026). See
+  maintenance-docs/V10-F-A-DESIGN.md and maintenance-docs/V10-F-A-PLAN.md for full
+  design rationale and implementation plan. Cross-surface verification on Codex/
+  Gemini/Desktop Commander deferred to BD-055/BD-056/BD-057/BD-058 (v10.1).
+Resolved: April 2026, v10.0 — commits cc5d7d0 (design+plan) + 385dfe2 (10-edit
+  patch including 4 METHODOLOGY edits + 6 pm-chat.md edits) + 92c2428 (§13 delta
+  verification) + c1039cd (§14 post-ship behavioral re-test).
+
+---
+
+**BD-051 — METHODOLOGY canonical location at docs/pack/ + legacy cleanup (F-C + F-D, combined)**
+Type: TODO(version)
+Status: Resolved
+Blockers: None
+Unblocks: None
+File/Symbol: scripts/init-project.sh (S6 stage + blast_radius_sweep PROMPT-TEMPLATES exclusion),
+  scripts/migrate-v9-to-v10.sh (S5 stage),
+  supporting-docs/MIGRATION-v9-to-v10.md (S5 row prose),
+  project-template/README.md (cp example + directory-boundary prose),
+  maintenance-docs/V10-PHASE-4-VERIFICATION-PLAN-v2.md (path-assertion alignment)
+
+Description: Two related defects with one root cause and one fix. F-C: legacy
+  docs/pack/METHODOLOGY.md not cleaned up by migrate-v9-to-v10.sh — projects
+  with METHODOLOGY at docs/pack/ pre-migration ended up with both root and
+  docs/pack/ copies. F-D: v10 design contradiction — trinity files (CLAUDE.md
+  line 275, AGENTS.md line 198, GEMINI.md line 229) said canonical location is
+  docs/pack/METHODOLOGY.md, but init-project.sh and migrate-v9-to-v10.sh installed
+  to project root. M-OT post-migration assistant in §4.7 read the trinity, picked
+  docs/pack/ as canonical, and recommended `git mv root → docs/pack/` — direct
+  evidence of downstream-agent confusion from the contradiction.
+
+  Resolution: V10-DESIGN.md prescribed docs/pack/ in three independent places
+  (Part 7 §7.6 init S6, S5 migration spec, init banner); the scripts drifted
+  off-spec without an overruling design decision. F-D fix restores implementation
+  to V10-DESIGN.md spec: canonical METHODOLOGY.md location is docs/pack/
+  METHODOLOGY.md. Migration script S5 handles all 4 pre-states (docs/pack only /
+  root only / both / neither): backs up whichever is present, writes v10 content
+  to docs/pack/, removes any stale root copy. F-C auto-resolved by same script
+  edit. Init-project.sh warns on stale root for existing projects (does not
+  delete — operator action expected); blast_radius_sweep grep extended with
+  --exclude='METHODOLOGY.md' so legitimate Procedure 5-R PROMPT-TEMPLATES
+  references in METHODOLOGY don't trip the post-S6 sweep.
+
+  Delta verification (V10-PHASE-4-VERIFICATION.md §10) confirmed all 4
+  pre-state cases produce correct post-state with backup contracts honored.
+Context: F-D discovered during project-lead post-§4.8 inspection of OT clone
+  (April 2026); F-C identified separately during §4.6 OT migration. Combined into
+  single BD per architect rec (V10-F-D-DESIGN.md §6) — shared root cause and
+  shared fix. See V10-F-D-DESIGN.md and V10-F-D-PLAN.md for full design and
+  cascade rationale.
+Resolved: April 2026, v10.0 — commits 1de2d23 (design+plan) + 603234e (5-file
+  patch) + 55d1834 (blast_radius_sweep follow-on fix surfaced during §10.1
+  harness) + 9ae09c8 (§10 delta verification).
+
+---
+
+**BD-052 — Migration leaves Pack version stale in STATUS.md (F-E)**
+Type: TODO(version)
+Status: Resolved
+Blockers: None
+Unblocks: None
+File/Symbol: supporting-docs/METHODOLOGY.md § Procedure 5-S (Task A),
+  scripts/migrate-v9-to-v10.sh (S7 sentinel write),
+  project-template/skills/pm-startup/SKILL.md (Step 0 trigger detection),
+  supporting-docs/MIGRATION-v9-to-v10.md (Step 4 routing inventory)
+
+Description: migrate-v9-to-v10.sh did not update project-internal "Pack version"
+  markers that v9.3 user projects commonly carry (e.g., **AI Agent Config Pack**:
+  v9 in docs/project/STATUS.md). Post-migration the project said it was still on
+  v9 even though the pack content had been migrated to v10. The PM chat's
+  /pm-startup correctly flagged this in OT (reported Pack version: v9 despite
+  v10-migrated content). Real-world impact: developers reading STATUS.md
+  post-migration get inconsistent signals about which pack version they're on.
+
+  Resolution: combined with BD-053 (F-F) under one Procedure 5-S — Post-migration
+  housekeeping. Triggered by sentinel `.pack-migration-backup/v9.3-to-v10.0/
+  postrun-pending` written unconditionally by migrate-v9-to-v10.sh S7. Procedure
+  5-S Task A scans STATUS.md priority list (docs/project/STATUS.md →
+  docs/STATUS.md → STATUS.md, first-existing-wins) for case-insensitive lines
+  containing both "AI Agent Config Pack" (or "Pack version") and a v9 token.
+  Per match: PM chat proposes update to current pack version (read from
+  docs/pack/METHODOLOGY.md first 5 lines, matching pm-startup Step 6).
+  Developer approves / edits / skips per match.
+
+  Behavioral re-test (V10-PHASE-4-VERIFICATION.md §14.4) confirmed: /pm-startup
+  Step 0 detected POSTRUN-PENDING sentinel, routed to Procedure 5-S, Task A
+  found 1 match (STATUS.md:113 v9 marker), proposed update, awaited authorization.
+Context: Discovered during Phase 4 supplementary findings (post-§4.8 /pm-startup
+  on OT clone, April 2026). See V10-F-E-F-F-DESIGN.md and V10-F-E-F-F-PLAN.md.
+Resolved: April 2026, v10.0 — commits 9b8af6c (design+plan) + f266166 (4-file
+  patch including Procedure 5-S body + S7 sentinel write + pm-startup Step 0 +
+  MIGRATION doc routing) + 6d296f8 (§11 delta verification).
+
+---
+
+**BD-053 — Migration does not address unfilled trinity placeholders (F-F)**
+Type: TODO(version)
+Status: Resolved
+Blockers: None
+Unblocks: None
+File/Symbol: supporting-docs/METHODOLOGY.md § Procedure 5-S (Task B)
+
+Description: A v9.3 user project may have left [PROJECT_NAME], [PLATFORM_TARGETS],
+  [TRANSPORT], and Active-skills line placeholders unfilled in CLAUDE.md /
+  AGENTS.md / GEMINI.md (this is the case in OT — placeholders never filled).
+  Pre-migration migrate-v9-to-v10.sh S5 trinity splice/merge ran unconditionally
+  but did not detect or surface unfilled placeholders. Post-migration projects
+  could carry literal [PROJECT_NAME] text in their context files indefinitely;
+  AI agents reading those files would get template-default identifiers.
+
+  Resolution: Task B of Procedure 5-S (combined with BD-052/F-E under one
+  procedure per architect rec — shared trigger, shared lifecycle, shared cleanup).
+  Greps CLAUDE.md / AGENTS.md / GEMINI.md for whitelist placeholders
+  ([PROJECT_NAME], [PLATFORM_TARGETS], [TRANSPORT], [PLATFORM_DEFAULTS],
+  [PLATFORM_ARCHITECTURE], [LANGUAGE_RULES], [GRPC_RULES], [PLATFORM_SECURITY],
+  [PLATFORM_TESTING], [PLATFORM_ANTIPATTERNS]) plus the literal Active-skills
+  placeholder line. For project-identifier placeholders: standalone Q&A (NOT
+  full Procedure 7 kickoff per OQ-F-F-1) — PM chat proposes values; developer
+  approves; PM chat applies TRIO-byte-identical across all three trinity files.
+  For section placeholders: references loaded skills' content. Active-skills
+  line: simpler standalone Q&A reading docs/pack/PLATFORM-SKILLS.md.
+
+  Behavioral re-test (V10-PHASE-4-VERIFICATION.md §14.4) confirmed: Task B
+  found whitelist matches in OT trinity (TRIO-symmetric: [PROJECT_NAME] × 2,
+  [PLATFORM_TARGETS] × 2, [TRANSPORT] × 1 per file); Active-skills correctly
+  identified as already-populated (no Q&A needed); section placeholders
+  correctly identified as already filled by skills (no matches). Standalone
+  Q&A initiated for project identifiers.
+Context: Discovered during Phase 4 supplementary findings (post-§4.8 /pm-startup
+  on OT clone, April 2026). Same patch as BD-052.
+Resolved: April 2026, v10.0 — same commits as BD-052 (combined Procedure 5-S
+  patch in commit f266166).
+
+---
+
+**BD-054 — Solution leakage in PM-chat-generated prompts (F-G)**
+Type: TODO(version)
+Status: Resolved
+Blockers: None
+Unblocks: None
+File/Symbol: supporting-docs/METHODOLOGY.md § Prompt Authoring Principles (per-agent table + Format-vs-solutions: worked examples subsection),
+  project-template/docs/pack/prompts/pm-chat.md Variant: generate-agent-kickoff lines 264–287,
+  project-template/skills/swift-best-practices/SKILL.md (## Design choices section, entries 39–40)
+
+Description: Phase 4 supplementary findings (Phase 28 + Phase 32 paraphrased
+  coder-prompt walk-throughs against OT clone) revealed that the v10 prompt-
+  template structure (BD-049 labeled-section convention) ships a strong scaffold,
+  and the PM chat applies it well, but generated prompts cross from
+  format/scope/constraints into solution territory in several documented cases.
+  Examples observed: parameter-injection-for-testability (Phase 28); polling
+  rate, timer-suspend lifecycle, snapshot-as-value-type architectural details,
+  presentation rendering choices (Phase 32). METHODOLOGY § Prompt Authoring
+  Principles touched the distinction but apparently not in a way the prompt-
+  generating PM chat fully internalized. Self-consistency check found one
+  template (pm-chat.md Variant: generate-agent-kickoff lines 264–287) violated
+  the existing METHODOLOGY rule at line 687 ("A proposed solution in an
+  architect prompt is not a suggestion — it anchors the agent.").
+
+  Resolution: new "Format-vs-solutions: worked examples" subsection in METHODOLOGY
+  § Prompt Authoring Principles (between "Format requirements vs. solutions" and
+  "File-based reporting"). 5 phase-anonymous Negative/Positive/Why examples
+  covering testability technique, API/framework name, architectural-shape
+  invention, timing/lifecycle prescription, plus 1 clarifying example that
+  Files-in-scope is NOT solution leakage (recurring point of confusion).
+  Per-agent table extended with `pm-chat (self-prompt)` row clarifying that
+  PM chat self-prompts inherit the solution-forbidden list of every agent it
+  prompts. pm-chat.md Variant: generate-agent-kickoff cleanup: delete the three
+  prescriptive Notes (LSP/type-erasure, AsyncStream<Void>, ViewModel-no-SwiftUI);
+  replace with single pointer checklist item naming all three trinity files +
+  active skills + cross-reference to new METHODOLOGY subsection. Substantive
+  lessons preserved in swift-best-practices SKILL.md "## Design choices"
+  section (entries 39 + 40 — AsyncStream payload-design trade-offs and
+  type-erasure-vs-protocol-elevation, framed as patterns rather than
+  prescriptions). Note 3 (ViewModel-no-SwiftUI-import) already in
+  apple-architecture-core SKILL.md line 11; not duplicated.
+Context: Identified during Phase 4 supplementary findings (April 2026). See
+  V10-F-G-DESIGN.md and V10-F-G-PLAN.md. Per-agent table pm-chat row was OQ-F-G-2
+  reversal (architect recommended v10.1 defer; project lead overrode to v10.0).
+  Trinity-asymmetry on the type-erasure anti-pattern (CLAUDE.md line 395 has it;
+  AGENTS.md/GEMINI.md don't) implicitly resolved by substantive lesson now living
+  in swift-best-practices SKILL.md.
+Resolved: April 2026, v10.0 — commits f9ebff2 (design+plan) + a7d3542 (3-file
+  patch) + d7ff978 (§12 delta verification).
+
+---
+
 ## Deferred
 
 **BD-031 — Evaluate publishing pack skills to skills.sh**
@@ -1203,6 +1419,103 @@ Description: skills.sh (Vercel's cross-platform skill package manager,
   naming conventions, and versioning strategy for publishing the pack's Tier 1
   and Tier 2 skill libraries.
 Context: Deferred until v9 skills are stable. See V9-DESIGN.md Decision 3.
+Resolved: n/a
+
+---
+
+**BD-055 — Codex CLI: confirm surface-declaration gate behavior under workspace-write sandbox**
+Type: TODO(version)
+Status: Deferred
+Blockers: v10.1 — cross-surface live-run verification deferred per V10-PHASE-4-VERIFICATION-PLAN-v2 §0.6 scope decision
+Unblocks: None
+File/Symbol: maintenance-docs/V10-PHASE-4-VERIFICATION.md §4.2 DR1 Codex CLI
+  (deviation analysis); future maintenance-docs/V10-PHASE-4-VERIFICATION-v10.1.md
+  for live-run capture
+Description: §4.2 docs-research pass predicted that the F-A.1 auto-inference
+  pattern would recur on Codex CLI (it's a prompt-shape issue, not model-specific).
+  Codex CLI runs in a workspace-write sandbox by default. Live-run verification
+  needed to confirm: (1) the new F-A.1 β semantic-gate behavior fires correctly
+  (assistant declares surface AND pauses for reply); (2) Form R discovery commands
+  execute correctly under workspace-write sandbox without escalation prompts;
+  (3) the (b) discovery instruction works on Codex's filesystem access.
+Context: Deferred to v10.1 per project-lead Reading A interpretation of "no v10.1
+  defects": F-B (b) cross-surface live runs are scope decisions, not defects.
+  Both `codex` and `gemini` are present on the implementer's PATH but were not
+  exercised live for v10.0 per §1.3 silent-scope-expansion rule.
+Resolved: n/a
+
+---
+
+**BD-056 — Codex CLI: document Form I `yes`-path sandbox escalation in METHODOLOGY § Procedure 7.3**
+Type: TODO(version)
+Status: Deferred
+Blockers: v10.1 — cross-surface live-run verification deferred per V10-PHASE-4-VERIFICATION-PLAN-v2 §0.6 scope decision
+Unblocks: BD-055
+File/Symbol: supporting-docs/METHODOLOGY.md § Procedure 7.3 (Codex-specific
+  sandbox-escalation paragraph to add)
+Description: §4.2 DR1 docs-research identified that Form I default is `skip`,
+  but if a developer replies `yes` on Codex CLI, `brew install` (Apple-side gRPC)
+  or `uv add` (Python-side gRPC) would require explicit out-of-sandbox escalation
+  due to Codex's workspace-write sandbox model. METHODOLOGY § Procedure 7.3
+  doesn't currently document this. Fix: add a Codex-specific sandbox-escalation
+  paragraph to Procedure 7.3 explaining the prompt the developer will see and
+  how to handle it. Live verification under BD-055 should confirm the prompt
+  shape before the documentation lands.
+Context: Identified during V10-PHASE-4-VERIFICATION.md §4.2 DR1 deviation
+  analysis (April 2026). Out of v10.0 scope per §0.6.
+Resolved: n/a
+
+---
+
+**BD-057 — Gemini CLI: add plan-mode-detection check at start of Procedure 7 Form R**
+Type: TODO(version)
+Status: Deferred
+Blockers: v10.1 — cross-surface live-run verification deferred per V10-PHASE-4-VERIFICATION-PLAN-v2 §0.6 scope decision
+Unblocks: None
+File/Symbol: supporting-docs/METHODOLOGY.md § Procedure 7.1 (pre-flight check
+  to add); project-template/docs/pack/prompts/pm-chat.md kickoff variant line 26
+  (existing developer-facing plan-mode warning may become obsolete)
+Description: §4.2 DR2 docs-research identified that Gemini CLI's `/plan` mode
+  blocks shell execution (TOOL-COMPARISON.md Part 4 line 121). pm-chat.md line 26
+  has a developer-facing warning ("If you are running Gemini CLI and currently in
+  plan mode, exit plan mode before continuing"), but Procedure 7 itself doesn't
+  detect plan-mode programmatically. If a developer replies `shell` while in plan
+  mode, Form R discovery will fail with confusing errors. Fix: add a pre-flight
+  check at start of Procedure 7.1 (Form R) that, if surface is Gemini, attempts
+  a no-op shell command first; if it fails with the plan-mode-blocked error,
+  re-prompt the developer to exit plan mode and retry. Live verification needed
+  to confirm exact error shape before METHODOLOGY documentation lands.
+Context: Identified during V10-PHASE-4-VERIFICATION.md §4.2 DR2 deviation
+  analysis (April 2026). Architect's F-A design (V10-F-A-DESIGN.md OQ-F-A-2)
+  noted: "the kickoff Before-pasting preamble's Gemini plan-mode warning becomes
+  unnecessary if v10.1 lands the plan-mode-detection candidate."
+Resolved: n/a
+
+---
+
+**BD-058 — Desktop Commander: document MCP-scope check in pre-Form-M discovery**
+Type: TODO(version)
+Status: Deferred
+Blockers: v10.1 — cross-surface live-run verification deferred per V10-PHASE-4-VERIFICATION-PLAN-v2 §0.6 scope decision
+Unblocks: None
+File/Symbol: supporting-docs/METHODOLOGY.md § Procedure 7.2.4 (pre-Form-M
+  MCP-scope check paragraph to add)
+Description: §4.2 DR3 docs-research identified that Desktop Commander writes
+  via filesystem-MCP, which has an allowlist. Writing to ~/Library/Developer/
+  Xcode/CodingAssistant/ (Form M target) requires the MCP's allowlist to include
+  that path — most default MCP configs scope to project root only. METHODOLOGY
+  § Procedure 7.2.4 Form M default `skip` is correct (machine-level write
+  requires explicit allowlist), but doesn't document the MCP-scope check or
+  failure-handling. Fix: add a pre-Form-M check that, if surface is Desktop
+  Commander, confirms ~/Library/Developer/Xcode/CodingAssistant/ is in the
+  filesystem-MCP allowlist; if not, skip Form M and report which path needs
+  adding. Live verification needed (Desktop Commander not currently present on
+  implementer's machine — would need separate setup for v10.1).
+Context: Identified during V10-PHASE-4-VERIFICATION.md §4.2 DR3 deviation
+  analysis (April 2026). Lower priority than BD-055/BD-056/BD-057 because
+  Desktop Commander is the most surface-similar to Claude Code CLI of the three
+  deferred surfaces, and Form M default `skip` already protects against the
+  failure mode.
 Resolved: n/a
 
 *(Items move here when pushed to a future version beyond v9, with the target version noted)*
