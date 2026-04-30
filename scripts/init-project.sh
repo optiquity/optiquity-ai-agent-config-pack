@@ -56,13 +56,57 @@ fail_stage() {
     exit "$code"
 }
 
-# ── Source shared detection library ────────────────────────────────────────
+# ── Source shared libraries ────────────────────────────────────────────────
 
 if [[ ! -f "$SCRIPT_DIR/lib/detect.sh" ]]; then
     die "missing shared detection library: $SCRIPT_DIR/lib/detect.sh" "$EXIT_INTERNAL"
 fi
 # shellcheck source=lib/detect.sh
 source "$SCRIPT_DIR/lib/detect.sh"
+
+if [[ ! -f "$SCRIPT_DIR/lib/three-way.sh" ]]; then
+    die "missing three-way classifier library: $SCRIPT_DIR/lib/three-way.sh" "$EXIT_INTERNAL"
+fi
+# shellcheck source=lib/three-way.sh
+source "$SCRIPT_DIR/lib/three-way.sh"
+
+# ── Existing-project classifier wrapper (BD-059 OQ-5) ──────────────────────
+#
+# When --existing path encounters a target file that already exists, run
+# the four-case classifier with BASE absent (init has no v9.3 baseline).
+# If the project file differs from the pack file, write the pack version
+# as a `.pack-template` sidecar alongside so the developer can reconcile
+# manually. If they are identical, do nothing. In all cases, the project
+# file is left untouched (conservative — preserves prior init-project.sh
+# behaviour while surfacing the pack template for comparison).
+#
+# Returns 0 always; emits an info line per resolution.
+existing_classifier_copy() {
+    local src="$1" dst="$2"
+    if [[ ! -f "$src" ]]; then
+        return 0
+    fi
+    if [[ ! -f "$dst" ]]; then
+        cp "$src" "$dst"
+        return 0
+    fi
+    if cmp -s "$src" "$dst"; then
+        # Identical content; nothing to surface.
+        return 0
+    fi
+    local classification
+    classification=$(three_way_classify "" "$dst" "$src")
+    case "$classification" in
+        project-shadows-new-pack)
+            cp "$src" "${dst}.pack-template"
+            info "EXISTS $dst — pack template preserved at ${dst}.pack-template (differs; reconcile manually)"
+            ;;
+        *)
+            info "EXISTS $dst — classifier=$classification; left untouched (manual review)"
+            ;;
+    esac
+    return 0
+}
 
 # ── Init-only detection helpers ────────────────────────────────────────────
 
@@ -281,11 +325,15 @@ stage_s2_agents() {
 stage_s3_configs() {
     say "── S3 — copy pack configs ──"
     local f
-    for f in .codex/config.toml .claude/settings.json .mcp.json.example; do
+    for f in .codex/config.toml .codex/requirements.toml .claude/settings.json .mcp.json.example; do
         local pack_file="$PACK/project-template/$f"
         if [[ -f "$pack_file" ]]; then
             mkdir -p "$TARGET/$(dirname "$f")"
-            cp "$pack_file" "$TARGET/$f"
+            if [[ "$CLASS" == existing-* ]]; then
+                existing_classifier_copy "$pack_file" "$TARGET/$f"
+            else
+                cp "$pack_file" "$TARGET/$f"
+            fi
         fi
     done
     [[ -f "$TARGET/.codex/config.toml" ]] || fail_stage S3 ".codex/config.toml missing after copy"
@@ -326,22 +374,21 @@ stage_s5_scripts() {
         for f in "$pack_scripts"/*; do
             [[ -e "$f" ]] || continue
             local name; name=$(basename "$f")
-            # Skip if existing (existing-project skip list)
-            if [[ "$CLASS" == existing-* && -f "$TARGET/scripts/$name" ]]; then
-                info "SKIP $name (exists in project scripts/)"
-                continue
+            if [[ "$CLASS" == existing-* ]]; then
+                existing_classifier_copy "$f" "$TARGET/scripts/$name"
+            else
+                cp "$f" "$TARGET/scripts/"
             fi
-            cp "$f" "$TARGET/scripts/"
         done
         chmod +x "$TARGET/scripts"/*.sh 2>/dev/null || true
     fi
     if [[ -f "$PACK/project-template/agent-run.sh" ]]; then
-        if [[ "$CLASS" == existing-* && -f "$TARGET/agent-run.sh" ]]; then
-            info "SKIP agent-run.sh (exists in project root)"
+        if [[ "$CLASS" == existing-* ]]; then
+            existing_classifier_copy "$PACK/project-template/agent-run.sh" "$TARGET/agent-run.sh"
         else
             cp "$PACK/project-template/agent-run.sh" "$TARGET/agent-run.sh"
-            chmod +x "$TARGET/agent-run.sh"
         fi
+        chmod +x "$TARGET/agent-run.sh" 2>/dev/null || true
     fi
     [[ -x "$TARGET/agent-run.sh" ]] || fail_stage S5 "agent-run.sh missing or not executable"
 }
@@ -355,7 +402,12 @@ stage_s6_docs_pack() {
     local f
     for f in "$pack_docs"/*.md; do
         [[ -e "$f" ]] || continue
-        cp "$f" "$TARGET/docs/pack/"
+        local name; name=$(basename "$f")
+        if [[ "$CLASS" == existing-* ]]; then
+            existing_classifier_copy "$f" "$TARGET/docs/pack/$name"
+        else
+            cp "$f" "$TARGET/docs/pack/"
+        fi
     done
     # prompts/ directory (entire; 10 per-agent files; PROMPT-AUTHORING.md
     # was removed in v10.0 — directory guidance lives in METHODOLOGY.md
@@ -396,11 +448,11 @@ stage_s7_trinity() {
     for f in CLAUDE.md AGENTS.md GEMINI.md; do
         local pack_file="$PACK/project-template/$f"
         [[ -f "$pack_file" ]] || fail_stage S7 "pack template missing: $pack_file"
-        if [[ "$CLASS" == existing-* && -f "$TARGET/$f" ]]; then
-            info "SKIP $f (exists in project root)"
-            continue
+        if [[ "$CLASS" == existing-* ]]; then
+            existing_classifier_copy "$pack_file" "$TARGET/$f"
+        else
+            cp "$pack_file" "$TARGET/$f"
         fi
-        cp "$pack_file" "$TARGET/$f"
     done
 }
 
@@ -456,18 +508,26 @@ stage_s9_conditional_remove() {
     unset IFS
 
     local removed=0
+    # OQ-6(b) defensive guard: project-added files prefixed with `x-` are
+    # never deleted by pack-controlled removal sites, even when their
+    # name happens to collide with a pack-roster filename in this loop.
+    # The current loop iterates fixed pack-roster names so the guard is
+    # defensive, but it pins the contract for future refactors.
+    is_x_prefixed() { [[ "$(basename "$1")" == x-* ]]; }
+
     # Python conditional removals
     if (( has_python == 0 )); then
         local f
         for f in pyproject.toml pyrightconfig.json \
                  scripts/bootstrap-python.sh scripts/format-python.sh \
                  scripts/validate-python.sh scripts/test-python.sh; do
+            is_x_prefixed "$f" && continue
             if [[ -e "$TARGET/$f" ]]; then
                 rm -rf "$TARGET/$f"
                 removed=$((removed + 1))
             fi
         done
-        if [[ -d "$TARGET/server" ]]; then
+        if [[ -d "$TARGET/server" ]] && ! is_x_prefixed "server"; then
             rm -rf "$TARGET/server"
             removed=$((removed + 1))
         fi
@@ -477,6 +537,7 @@ stage_s9_conditional_remove() {
         local f
         for f in scripts/bootstrap-swift.sh scripts/format-swift.sh \
                  scripts/validate-swift.sh scripts/test-swift.sh; do
+            is_x_prefixed "$f" && continue
             if [[ -e "$TARGET/$f" ]]; then
                 rm -f "$TARGET/$f"
                 removed=$((removed + 1))
@@ -487,12 +548,13 @@ stage_s9_conditional_remove() {
     if (( has_proto == 0 )); then
         local f
         for f in scripts/proto-gen.sh scripts/validate-proto.sh; do
+            is_x_prefixed "$f" && continue
             if [[ -e "$TARGET/$f" ]]; then
                 rm -f "$TARGET/$f"
                 removed=$((removed + 1))
             fi
         done
-        if [[ -d "$TARGET/proto" ]]; then
+        if [[ -d "$TARGET/proto" ]] && ! is_x_prefixed "proto"; then
             rm -rf "$TARGET/proto"
             removed=$((removed + 1))
         fi
