@@ -173,7 +173,10 @@ These rules are non-negotiable and always apply on all tools:
 - **Custom files via Procedure 5 only.** Any new agent (.claude/.codex/.gemini),
   skill (.claude/skills/, .codex/skills/, .gemini/skills/), or prompt file
   (`docs/pack/prompts/`) not in the pack roster must be added through
-  INSTALL-PROCEDURES.md Procedure 5. Do not add such files through any other workflow.
+  INSTALL-PROCEDURES.md Procedure 5 and **must use the `x-` prefix**
+  (see `docs/pack/INSTALL-PROCEDURES.md` § Project file conventions in
+  pack-controlled directories). Pack-supplied files never begin with
+  `x-`. Do not add custom files through any other workflow.
 - **Detection scan at every startup and every phase gate.** Scan the seven
   detection directories (see File access strategy) and classify every file
   before generating any prompt or proposing any commit. Flag improperly-added
@@ -412,6 +415,8 @@ between machines:
 
 ---
 
+<!-- BEGIN project-owned -->
+
 ## Additional project documents
 
 <!--
@@ -425,3 +430,13 @@ List them here and add corresponding checks to the startup procedure if needed.
 -->
 
 *No additional project documents defined for this project.*
+
+<!-- END project-owned -->
+
+The `<!-- BEGIN project-owned -->` / `<!-- END project-owned -->`
+markers above delimit the region of this file the migration's
+classifier (Pattern X) treats as project-owned. Content between the
+markers is preserved verbatim across pack upgrades; content outside is
+pack-controlled. See `docs/pack/INSTALL-PROCEDURES.md` Procedure 5-C.3
+for the reconciliation workflow if a migration produces a
+`docs/pack/PM-CHAT.md.v9-customized` sidecar.

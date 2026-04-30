@@ -188,6 +188,13 @@ If an upcoming phase references a technology not covered by the active skills,
 the PM chat flags the gap before generating any prompt. Skills are added or
 removed by updating this line and the project description above — then committing.
 
+Project-specific (custom) skills use the `x-` prefix and live alongside
+pack skills in `.claude/skills/x-<name>/`, `.codex/skills/x-<name>/`, and
+`.gemini/skills/x-<name>/`. Pack-supplied skills never begin with `x-`.
+See `docs/pack/INSTALL-PROCEDURES.md` § "Project file conventions in
+pack-controlled directories" for the full convention and Procedure 5.2
+for the creation workflow.
+
 ## Document locations
 
 Project documentation is organized into three directories under `docs/`.
@@ -324,3 +331,11 @@ and full skill assignments. All custom agent names begin with `x-`.
 | Phase | Agent | Key reason |
 |---|---|---|
 | (Developer / PM chat adds rows per project during Procedure 5) |  |  |
+
+## Project addenda
+
+<!-- Project addenda go here. Project-original H2 sections that don't
+fit into pack-defined sections above land under this heading after a
+v9.3 → v10 migration. See docs/pack/INSTALL-PROCEDURES.md Procedure
+5-C.2 step 2.b for the migration reconciliation workflow. New projects
+start with this H2 empty. The marker is preserved across pack upgrades. -->

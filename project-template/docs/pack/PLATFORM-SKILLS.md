@@ -297,10 +297,12 @@ This skill is outside both tiers. It is not loaded by any agent — it is used e
 ## Custom agents
 
 Project-specific agents created via Procedure 5 (INSTALL-PROCEDURES.md).
-All entries in this section begin with `x-`. The PM chat treats these as
-equivalent to pack agents for skill loading and routing, with the single
-difference that they are project-owned and preserved across pack
-upgrades.
+All entries in this section begin with `x-`, the reserved prefix for
+project-added files in pack-controlled directories (see
+INSTALL-PROCEDURES.md § "Project file conventions in pack-controlled
+directories"). The PM chat treats these as equivalent to pack agents
+for skill loading and routing, with the single difference that they
+are project-owned and preserved across pack upgrades.
 
 | Agent | Purpose | Dimension | Phase routed to | Tier 1 skills | Tier 2 skills | Read/write mode |
 |---|---|---|---|---|---|---|
@@ -315,9 +317,11 @@ Procedure 5 (see INSTALL-PROCEDURES.md). If a project has no custom agents, the 
 ## Custom skills
 
 Project-specific skills created via Procedure 5 (INSTALL-PROCEDURES.md).
-All entries in this section begin with `x-`. Loaded by agents via the
-same instruction block as pack skills — see "Step 3 — Generate the
-prompt" above.
+All entries in this section begin with `x-`, the reserved prefix for
+project-added files in pack-controlled directories (see
+INSTALL-PROCEDURES.md § "Project file conventions in pack-controlled
+directories"). Loaded by agents via the same instruction block as pack
+skills — see "Step 3 — Generate the prompt" above.
 
 | Skill | Description | Dimension | Loaded by |
 |---|---|---|---|
