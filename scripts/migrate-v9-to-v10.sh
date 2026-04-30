@@ -880,6 +880,23 @@ stage_s5_trinity_splice() {
         fi
     fi
 
+    # ── INSTALL-PROCEDURES.md (D5) — pack-owned, copy to docs/pack/ ──
+    # New v10 doc per BD-059 hosting Procedures 5 / 5-C / 5-S / 7. Same
+    # pattern as METHODOLOGY: pack-owned, copied to docs/pack/, no merge.
+    local instproc_dest="docs/pack/INSTALL-PROCEDURES.md"
+    local instproc_pack="$PACK/supporting-docs/INSTALL-PROCEDURES.md"
+    if [[ -f "$instproc_pack" ]]; then
+        if [[ -f "$instproc_dest" ]]; then
+            mkdir -p "$BACKUP_DIR/docs/pack"
+            cp "$instproc_dest" "$BACKUP_DIR/docs/pack/INSTALL-PROCEDURES.md"
+            record_disposition "pack-update-applied" "D5" "$instproc_dest" "-" "-" "-"
+        else
+            record_disposition "new-file-in-pack" "D5" "$instproc_dest" "-" "-" "first-time install of INSTALL-PROCEDURES.md"
+        fi
+        mkdir -p docs/pack
+        cp "$instproc_pack" "$instproc_dest"
+    fi
+
     write_sentinel "S5"
     say "S5 complete."
 }
@@ -907,9 +924,9 @@ stage_s6_prompt_templates_diff() {
         rm "$proj_file"
         record_disposition "removed-by-design" "D4" "$proj_file" "-" "-" "v10 retires this file class; no project customization"
     else
-        say "  customization: divergence detected — preserving as docs/pack/prompts/_v9-backup.md"
-        mv "$proj_file" docs/pack/prompts/_v9-backup.md
-        record_disposition "removed-by-design" "D4" "$proj_file" "docs/pack/prompts/_v9-backup.md" "-" "v10 retires this file class; project edits preserved as _v9-backup.md (Procedure 5-R)"
+        say "  customization: divergence detected — preserving as ${proj_file}.v9-customized"
+        mv "$proj_file" "${proj_file}.v9-customized"
+        record_disposition "removed-by-design" "D4" "$proj_file" "${proj_file}.v9-customized" "-" "v10 retires this file class; project edits preserved (Procedure 5-C.1 in INSTALL-PROCEDURES.md)"
     fi
 
     write_sentinel "S6"
@@ -1032,7 +1049,7 @@ stage_s7_report() {
         echo "## Next steps"
         echo
         echo "1. Read this report top to bottom. The \"Reconciliation required\" section above must be empty before commit."
-        echo "2. For each reconciliation: invoke Procedure 5-C (or Procedure 5-R for the PROMPT-TEMPLATES legacy case) from INSTALL-PROCEDURES.md."
+        echo "2. For each reconciliation: invoke Procedure 5-C from INSTALL-PROCEDURES.md (legacy PROMPT-TEMPLATES case is sub-procedure 5-C.1)."
         echo "3. After every reconciliation, delete the corresponding \`.v9-customized\` sidecar."
         echo "4. Run \`git diff\` and confirm the working tree matches your intent."
         echo "5. Commit the migration ON THE \`$MIGRATION_BRANCH\` BRANCH."

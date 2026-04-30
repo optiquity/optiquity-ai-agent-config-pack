@@ -7,6 +7,51 @@ Each version is available as a git tag (v1, v2, …).
 
 ## v10 — April 2026
 
+### v10.0 (post-release patches) — April 2026
+
+**BD-059 — v10 migration preservation fix (in progress)**
+
+The v10.0 release-as-tagged silently destroyed project customization
+when the OT migration ran 2026-04-30. BD-059 captures the design,
+plan, and implementation that closes the defect. v10.0 has not reached
+production; the fix lands in `main` without a version bump. Commits to
+date: design + plan + research bundle (4c55a69), three-way classifier
++ backup-restore helpers (efd19a5), disposition-driven migration with
+sidecars + skill-dir sibling preservation (9a09e5f), JSON/TOML
+structured-config merges (f83d555), trinity-rule comparator for
+pack-roster agent files (73d480e), procedure relocation to
+`supporting-docs/INSTALL-PROCEDURES.md` (this commit).
+
+**Procedure relocation (BD-059 C7)**
+
+- `supporting-docs/INSTALL-PROCEDURES.md` — new doc hosting Procedures
+  5 / 5-C / 5-S / 7. These are one-shot install / migration / kickoff
+  procedures that fire a maximum of once per project and pollute
+  METHODOLOGY.md with content irrelevant to ongoing project work.
+  METHODOLOGY.md retains one-line pointer stubs at the same H3
+  anchors so legacy cross-references resolve. Includes the new
+  `## Project file conventions in pack-controlled directories`
+  section per OQ-6(a) documenting the `x-` prefix contract.
+  Procedure 5-C is new (umbrella reconciliation procedure for
+  `*.v9-customized` sidecars produced by the fixed migration);
+  Procedure 5-R is folded into Procedure 5-C.1 as a sub-procedure
+  per OQ-P4. (BD-059)
+- `scripts/migrate-v9-to-v10.sh` S5 — copies INSTALL-PROCEDURES.md
+  from pack to project's `docs/pack/INSTALL-PROCEDURES.md` alongside
+  METHODOLOGY.md. S6 sidecar naming unified on `.v9-customized`
+  (PROMPT-TEMPLATES retirement now produces
+  `docs/pack/PROMPT-TEMPLATES.md.v9-customized` instead of
+  `docs/pack/prompts/_v9-backup.md`). End-of-run summary references
+  Procedure 5-C / 5-C.1 instead of Procedure 5-R. (BD-059)
+- `scripts/init-project.sh` S6 — copies INSTALL-PROCEDURES.md to
+  fresh and existing projects via the `existing_classifier_copy`
+  helper. (BD-059)
+- `supporting-docs/METHODOLOGY.md` — Procedures 5 / 5.1–5.6 / 5-R /
+  5-S / 7 bodies stripped; pointer stubs replace each section at the
+  same H3 anchor. Procedure 5-C stub added (new). Procedure 6
+  (capability addition) retained — it fires repeatedly throughout a
+  project lifetime, not as a one-shot. (BD-059)
+
 ### v10.0 — April 2026
 
 **Project initialization and migration**

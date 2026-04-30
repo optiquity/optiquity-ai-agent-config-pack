@@ -423,10 +423,21 @@ stage_s6_docs_pack() {
     # METHODOLOGY — keep this as a separate copy.
     if [[ -f "$PACK/supporting-docs/METHODOLOGY.md" ]]; then
         mkdir -p "$TARGET/docs/pack"
-        if [[ "$CLASS" == existing-* && -f "$TARGET/docs/pack/METHODOLOGY.md" ]]; then
-            info "SKIP METHODOLOGY.md at docs/pack/ (exists)"
+        if [[ "$CLASS" == existing-* ]]; then
+            existing_classifier_copy "$PACK/supporting-docs/METHODOLOGY.md" "$TARGET/docs/pack/METHODOLOGY.md"
         else
             cp "$PACK/supporting-docs/METHODOLOGY.md" "$TARGET/docs/pack/METHODOLOGY.md"
+        fi
+    fi
+    # INSTALL-PROCEDURES.md (v10 BD-059): same pattern as METHODOLOGY.md.
+    # Source: $PACK/supporting-docs/INSTALL-PROCEDURES.md. Hosts Procedures
+    # 5 / 5-C / 5-S / 7 (relocated from METHODOLOGY).
+    if [[ -f "$PACK/supporting-docs/INSTALL-PROCEDURES.md" ]]; then
+        mkdir -p "$TARGET/docs/pack"
+        if [[ "$CLASS" == existing-* ]]; then
+            existing_classifier_copy "$PACK/supporting-docs/INSTALL-PROCEDURES.md" "$TARGET/docs/pack/INSTALL-PROCEDURES.md"
+        else
+            cp "$PACK/supporting-docs/INSTALL-PROCEDURES.md" "$TARGET/docs/pack/INSTALL-PROCEDURES.md"
         fi
     fi
     # Stale-root cleanup advisory: init-project.sh does NOT delete project files
