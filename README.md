@@ -98,15 +98,23 @@ supporting-docs/                            Pack product docs (copied to or cons
 └── MIGRATION-v8-to-v9.md                   Upgrade guide (historical; v8.x → v9.0)
 
 maintenance-docs/                           Pack maintainer docs (design records, archives)
-├── V10-DESIGN.md                           v10 architecture design record
-├── V10-IMPLEMENTATION-PLAN.md              v10 implementation plan
 ├── TOOL-COMPARISON.md                      Cross-tool capability reference
 ├── VERIFIED-NOTES.md                       Verified facts from official docs
 ├── RECOMMENDATIONS.md                      Practical recommendations for new projects
 ├── GEMINI-CLI-ANALYSIS.md                  Gemini CLI analysis (deprecated)
 ├── ANDROID-ANALYSIS.md                     Android support analysis (deprecated)
-├── archive/                                Superseded design records (v9 and earlier)
-│   └── V9-DESIGN.md                        v9 architecture design record (superseded by V10-DESIGN.md)
+├── archive/                                Superseded design records, plans, verifications, audits (v9, v10, and earlier)
+│   ├── V9-DESIGN.md                        v9 architecture design record
+│   ├── V9-AUDIT-REPORT.md                  v9 audit report
+│   ├── V10-DESIGN.md                       v10 architecture design record
+│   ├── V10-IMPLEMENTATION-PLAN.md          v10 implementation plan
+│   ├── V10-PREDESIGN.md, V10-DESIGN-PROCESS-PLAN.md
+│   ├── V10-AUDIT-REPORT.md, V10-AUDIT-REPORT-2.md
+│   ├── V10-PROMPT-STRUCTURE-{DESIGN,PLAN}.md
+│   ├── V10-PHASE-3B-{DESIGN,PLAN}{,-v2}.md
+│   ├── V10-PHASE-4-PLAN.md, V10-PHASE-4-VERIFICATION{,-PLAN}{,-v2}.md
+│   ├── V10-F-{A,D,E-F-F,G}-{DESIGN,PLAN}.md  v10 feature designs and plans
+│   └── v10-working/                        v10 working drafts (step-NN, phase-3 reviews, V10-DESIGN-2 drafts)
 ├── origins/                                Source material and chat transcripts
 └── guides/                                 Per-version setup guides
 
