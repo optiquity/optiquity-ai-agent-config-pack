@@ -507,6 +507,30 @@ def check_init_project_structure() -> None:
         else:
             ok(f"{doc.relative_to(REPO_ROOT)} — exists")
 
+    # (e) BD-059 test-migration harness present (architect Part 6.5).
+    test_migration = REPO_ROOT / "scripts" / "test-migration.sh"
+    fixtures_dir = REPO_ROOT / "maintenance-docs" / "test-fixtures"
+    if not test_migration.exists():
+        fail(f"{test_migration.relative_to(REPO_ROOT)} — file missing")
+        any_failed = True
+    elif not os.access(test_migration, os.X_OK):
+        fail(f"{test_migration.relative_to(REPO_ROOT)} — not executable")
+        any_failed = True
+    else:
+        ok(f"{test_migration.relative_to(REPO_ROOT)} — executable")
+    if not fixtures_dir.is_dir():
+        fail(f"{fixtures_dir.relative_to(REPO_ROOT)} — directory missing")
+        any_failed = True
+    else:
+        # Each of three required fixtures must exist.
+        for fixture in ("migration-v9.3-empty", "migration-v9.3-customized", "migration-v9.3-marker-convention"):
+            fp = fixtures_dir / fixture
+            if not fp.is_dir():
+                fail(f"{fp.relative_to(REPO_ROOT)} — fixture directory missing")
+                any_failed = True
+            else:
+                ok(f"{fp.relative_to(REPO_ROOT)} — exists")
+
     # (d) README.md Repository Layout mentions the detection library and
     # migration naming convention. ASCII tree rendering may split
     # `scripts/lib/` across lines, so match on the `detect.sh` filename
@@ -675,6 +699,169 @@ def check_pack_agent_trinity() -> None:
         ok(f"{checked} agents checked, {divergent} divergent (informational; not a failure)")
 
 
+def check_three_way_helper_present() -> None:
+    """Check 12 — `scripts/lib/three-way.sh` exists, has documented entry,
+    and is sourced by `migrate-v9-to-v10.sh` (architect Part 6.1, BD-059).
+    """
+    print("\n── Check 12: Three-way classifier helper present (BD-059) ──")
+    helper = REPO_ROOT / "scripts" / "lib" / "three-way.sh"
+    if not helper.is_file():
+        fail(f"{helper.relative_to(REPO_ROOT)} — file missing")
+        return
+    text = helper.read_text()
+    if "# ENTRY: three_way_classify" not in text:
+        fail(
+            f"{helper.relative_to(REPO_ROOT)} — missing "
+            "'# ENTRY: three_way_classify' documentation marker"
+        )
+        return
+    migrate = REPO_ROOT / "scripts" / "migrate-v9-to-v10.sh"
+    if not migrate.is_file():
+        fail("scripts/migrate-v9-to-v10.sh — file missing")
+        return
+    if "lib/three-way.sh" not in migrate.read_text():
+        fail("scripts/migrate-v9-to-v10.sh — does not source scripts/lib/three-way.sh")
+        return
+    ok(
+        f"{helper.relative_to(REPO_ROOT)} — present, documented, "
+        "sourced by migrate-v9-to-v10.sh"
+    )
+
+
+def check_merge_helpers_consistent() -> None:
+    """Check 13 — every merge helper named in BD-059 exists on disk and is
+    invoked by `migrate-v9-to-v10.sh` (architect Part 6.2).
+
+    The four helpers map to the disposition table (architect Part 3):
+      merge-trinity.py        — trinity (C1/C2/C3) S5
+      merge-platform-skills.py — PLATFORM-SKILLS.md (D2) S5
+      merge-json.py            — settings.json (K1), .mcp.json.example (K4) S3
+      merge-toml.py            — config.toml (K2), requirements.toml (K3) S3
+    """
+    print("\n── Check 13: Merge helpers consistent (BD-059) ──")
+    migrate = REPO_ROOT / "scripts" / "migrate-v9-to-v10.sh"
+    if not migrate.is_file():
+        fail("scripts/migrate-v9-to-v10.sh — file missing")
+        return
+    migrate_text = migrate.read_text()
+    helpers = {
+        "merge-trinity.py": "trinity (C1/C2/C3) splice in S5",
+        "merge-platform-skills.py": "PLATFORM-SKILLS.md splice in S5",
+        "merge-json.py": "K1 / K4 JSON merge in S3",
+        "merge-toml.py": "K2 / K3 TOML merge in S3",
+    }
+    any_failed = False
+    for name, role in helpers.items():
+        helper_path = REPO_ROOT / "scripts" / name
+        if not helper_path.is_file():
+            fail(f"scripts/{name} — file missing")
+            any_failed = True
+            continue
+        if name not in migrate_text:
+            fail(
+                f"migrate-v9-to-v10.sh does not invoke scripts/{name} "
+                f"(expected for: {role})"
+            )
+            any_failed = True
+    if not any_failed:
+        ok("4 merge helpers present and invoked by migrate-v9-to-v10.sh")
+
+
+def check_disposition_table_documented() -> None:
+    """Check 14 — `MIGRATION-v9-to-v10.md` references each migration stage
+    S0..S7 (architect Part 6.3 — cross-doc consistency check).
+    """
+    print("\n── Check 14: Migration disposition documented (BD-059) ──")
+    migration_md = REPO_ROOT / "supporting-docs" / "MIGRATION-v9-to-v10.md"
+    if not migration_md.is_file():
+        fail("supporting-docs/MIGRATION-v9-to-v10.md — file missing")
+        return
+    text = migration_md.read_text()
+    missing = [s for s in ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7")
+               if f"**{s}**" not in text]
+    if missing:
+        fail(
+            f"MIGRATION-v9-to-v10.md does not reference stages: "
+            f"{missing} (expected as `**Sn**` in stage descriptions)"
+        )
+        return
+    ok("MIGRATION-v9-to-v10.md references all 8 stages S0..S7")
+
+
+def check_migration_test_runs_clean() -> None:
+    """Check 15 — `scripts/test-migration.sh --quick` exits zero against
+    the empty fixture (architect Part 6.4).
+
+    Runs the empty-fixture path (~5–10s) so CI catches catastrophic
+    migration regressions at push time. Full fixture suite is for
+    pre-release verification, not every-push CI.
+    """
+    print("\n── Check 15: Migration test runs clean --quick (BD-059) ──")
+    test_script = REPO_ROOT / "scripts" / "test-migration.sh"
+    if not test_script.is_file():
+        fail("scripts/test-migration.sh — file missing")
+        return
+    if not os.access(test_script, os.X_OK):
+        fail("scripts/test-migration.sh — not executable")
+        return
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["bash", str(test_script), "--quick"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        fail("test-migration.sh --quick timed out (>120s)")
+        return
+    if result.returncode != 0:
+        fail(f"test-migration.sh --quick exit code {result.returncode}")
+        for line in (result.stdout + "\n" + result.stderr).strip().splitlines()[-15:]:
+            print(f"    {line}")
+        return
+    # Extract pass count for the OK line.
+    last_line = ""
+    for line in result.stdout.splitlines():
+        if "passed" in line and "failed" in line:
+            last_line = line.strip()
+    ok(f"test-migration.sh --quick passed ({last_line or 'see output'})")
+
+
+def check_trinity_addenda_h2() -> None:
+    """Check 16 — v10 trinity templates carry `## Project addenda` H2
+    with the HTML-comment placeholder (OQ-P6 / OQ-5C-1, BD-059 C9).
+
+    The H2 is the landing point for project-original sections during
+    Procedure 5-C.2 reconciliation. Locking it via this check prevents
+    accidental future removal.
+    """
+    print("\n── Check 16: Trinity ## Project addenda H2 (BD-059) ──")
+    any_failed = False
+    for name in ("CLAUDE.md", "AGENTS.md", "GEMINI.md"):
+        path = REPO_ROOT / "project-template" / name
+        if not path.is_file():
+            fail(f"project-template/{name} — file missing")
+            any_failed = True
+            continue
+        text = path.read_text()
+        if "## Project addenda" not in text:
+            fail(f"project-template/{name} — missing '## Project addenda' H2")
+            any_failed = True
+            continue
+        if "<!-- Project addenda go here" not in text:
+            fail(
+                f"project-template/{name} — '## Project addenda' H2 present "
+                f"but missing HTML-comment placeholder marker"
+            )
+            any_failed = True
+            continue
+        ok(f"project-template/{name} — '## Project addenda' H2 with placeholder")
+    if any_failed:
+        return
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -693,6 +880,11 @@ def main() -> None:
     check_init_project_structure()
     check_prompt_triad_compliance()
     check_pack_agent_trinity()
+    check_three_way_helper_present()
+    check_merge_helpers_consistent()
+    check_disposition_table_documented()
+    check_migration_test_runs_clean()
+    check_trinity_addenda_h2()
 
     print("\n" + "=" * 60)
     if failures:
