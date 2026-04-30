@@ -80,6 +80,24 @@ Description:
   - On a post-fix re-run of the migration against a freshly reverted
     OT, the project customization listed above survives the migration
     and the report accurately characterizes what changed.
+  - **Trinity rule applies to per-tool tool-level configuration.** Every
+    capability one of the three tools expresses in its config-file
+    surface (`.claude/settings.json`, `.codex/config.toml` +
+    `requirements.toml`, `.gemini/settings.json` and adjuncts including
+    `.gemini/.env`) is expressed by the other two via their own
+    config-file conventions, OR the asymmetry is explicitly documented
+    as a tool capability gap (not a pack defect). Specifically required
+    by user decisions on 2026-04-30: (a) `AGENT_CAPABILITIES` parity on
+    the Gemini side via `.gemini/.env` (Option A from
+    `V10-GEMINI-CONFIG-RESEARCH.md` Q4); (b) MCP server configuration
+    parity across all three tools — Claude already ships
+    `.mcp.json.example`, Gemini already supports MCP via
+    `.gemini/settings.json`, and Codex supports MCP via
+    `[mcp_servers.<name>]` tables in `config.toml` per
+    `V10-CODEX-MCP-RESEARCH.md` Part 1 (STDIO + Streamable HTTP; v10
+    ships STDIO via `.codex/config.toml.example` sibling matching the
+    `.mcp.json.example` pattern). BD-059 does not resolve until both
+    (a) and (b) are satisfied.
 
 Context: Incident discovered 2026-04-30 by user inspection of the OT
   post-migration state. v10.0 has not reached any production project
