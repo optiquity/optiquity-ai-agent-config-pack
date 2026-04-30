@@ -14,7 +14,7 @@ the same project rules — only tool-specific operating notes differ.
 -->
 
 ---
-*Copied from: project-template/GEMINI.md — AI Agent Config Pack v9*
+*Copied from: project-template/GEMINI.md — AI Agent Config Pack v10*
 *Fill in placeholders and remove this block.*
 ---
 
@@ -133,6 +133,46 @@ Add platform-specific security rules from loaded skills. See CLAUDE.md for examp
 - No concrete data-layer type may be referenced by name in domain or presentation code. Only abstract types and domain model types cross layer boundaries.
 - When adding a new interface or protocol, verify implementation correctness across all implementing types before committing.
 
+## Capabilities pattern
+
+Make what a type supports explicit and queryable. Callers check support
+before invoking behavior; they do not discover unsupported operations
+through exceptions, silent no-ops, or branching on concrete types.
+Reach for this pattern during design, not only when fixing an LSP
+violation.
+
+The pattern takes two complementary forms:
+
+- **Value-based capabilities.** A type exposes a value (bitmask, flag
+  set, enum set, or similar) enumerating the operations it supports.
+  Callers check the capability value before invoking the corresponding
+  operation. Validate capability compatibility at association or
+  initialization time — reject incompatible pairings before they can
+  produce runtime errors.
+- **Interface-based capabilities.** A type declares conformance to a
+  small, focused interface (protocol, trait, abstract base, or
+  equivalent) only when it genuinely supports that behavior. Callers
+  query for the interface before invoking. Types that do not support a
+  behavior simply do not expose the interface — no silent no-ops, no
+  unconditional throws.
+
+Both forms share the same intent: make supported behaviors explicit
+and queryable, eliminating the need for callers to discover
+limitations through runtime surprises. The specific language mechanism
+varies (compile-time or runtime conformance checks, structural
+subtyping, flag values, enum sets, etc.), but the design intent is
+consistent across any typed system.
+
+**Relationship to LSP.** LSP is a required coding practice — every
+method declared in an interface must have a meaningful implementation
+in every conforming type. The capabilities pattern is a recommended
+best practice — an architectural tool for making supported behaviors
+explicit and queryable. Neither is a prerequisite for the other, and
+neither is the motivation for the other. They work well together when
+both are present, but this is a benefit of using both — not a
+dependency between them. If the capabilities pattern does not fit the
+project's architecture or the developer opts out, that is valid.
+
 ## Dependency intake policy
 
 Before adding any third-party framework or API:
@@ -186,7 +226,7 @@ All filenames are unique — reference them by name; use these paths to locate t
 
 | Directory | Contents | Updated by |
 |---|---|---|
-| `docs/pack/` | `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) |
+| `docs/pack/` | `METHODOLOGY.md`, `prompts/`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) |
 | `docs/project/` | `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` | PM chat and developer during active development |
 | `docs/reference/` | Project-specific user-facing documentation (how-to guides, API references) | Developer as needed |
 
@@ -291,6 +331,7 @@ language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
 - Stringly-typed identifiers or state machines.
 - Magic duration literals for gRPC deadlines — use named constants.
 - Editing generated Protobuf or gRPC code by hand.
+- Branching on concrete types to discover what an abstraction supports, instead of querying a capability value or interface.
 
 [PLATFORM_ANTIPATTERNS — fill in from loaded skills]
 
@@ -322,6 +363,22 @@ syntax transparently — the same command format works for all three CLIs.
 *This table reflects quality-optimized defaults. For cost-optimized routing
 alternatives (e.g., using Gemini CLI Flash for reviewer, tester, and
 docs-researcher), see `TOOL-COMPARISON.md` in the pack's `maintenance-docs/`.*
+
+### Custom agents
+
+Project-specific agents created via Procedure 5. See
+`docs/pack/PLATFORM-SKILLS.md` § "Custom agents" for the canonical list
+and full skill assignments. All custom agent names begin with `x-`.
+
+| Phase | Agent | Key reason |
+|---|---|---|
+| (Developer / PM chat adds rows per project during Procedure 5) |  |  |
+
+<!-- Trinity-rule exception: this `## Agent roster` section is present in
+GEMINI.md only. Gemini CLI auto-discovers agents via filesystem scan of
+`.gemini/agents/`; the explicit roster below is a presentation aid for the
+human reader of GEMINI.md. CLAUDE.md and AGENTS.md rely on the phase-routing
+table above and tool-side discovery and do NOT need a parallel section. -->
 
 ## Agent roster
 

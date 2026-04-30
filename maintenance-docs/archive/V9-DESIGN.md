@@ -12,6 +12,14 @@ Do not modify this file without explicit approval — it is the design record.*
 > files with YAML frontmatter. The inline GEMINI.md approach described in
 > this document has been superseded. See BD-043 in BACKLOG.md for details.
 
+> **v10 postscript (BD-046):** This design document references
+> `supporting-docs/PROMPT-TEMPLATES.md` throughout (as a shipping
+> artifact and a PM-chat-read file). As of v10.0, `PROMPT-TEMPLATES.md`
+> has been decomposed into one file per agent under
+> `project-template/docs/pack/prompts/` (see V10-DESIGN.md Part 4).
+> Template content is preserved; location and file layout have changed.
+> The body below is left unchanged as a historical record.
+
 ---
 
 ## How to use this document
@@ -444,6 +452,15 @@ updated in the same commit or the immediately following one:
 
 This is non-trivial by design. An agent or skill that cannot be fully documented
 across these files is not ready to be added to the pack.
+
+> **v10 annotation (BD-046):** Decision 7's pack-level addition checklist
+> has been superseded for custom (project-level) agents and skills. See
+> V10-DESIGN.md Part 5 for the v10 treatment, which introduces the `x-`
+> custom-agent / custom-skill mechanism and formalizes the registration
+> workflow as METHODOLOGY.md Procedure 5. For pack-level additions, the
+> checklist above remains the reference pattern, with the row
+> `supporting-docs/PROMPT-TEMPLATES.md` now replaced by
+> `project-template/docs/pack/prompts/<agent>.md`.
 
 **Subagent naming convention:** Subagents use the pattern `<parent>-<scope>`
 where `<parent>` is the parent agent name and `<scope>` describes the

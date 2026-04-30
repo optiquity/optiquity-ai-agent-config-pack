@@ -1,7 +1,7 @@
 # METHODOLOGY.md — AI-Assisted Project Development Methodology
 
-Version: 2.0 (v9, April 2026)
-Applies to: All projects using Claude Code CLI, Codex CLI, or Gemini CLI with AI Agent Config Pack v9
+Version: 2.1 (v10.0, April 2026)
+Applies to: All projects using Claude Code CLI, Codex CLI, or Gemini CLI with AI Agent Config Pack v10
 
 > **Applicability note:** This document is platform-agnostic and applies to all project
 > types (Apple, Python server, monorepo) and all three CLI tools (Claude Code, Codex,
@@ -10,7 +10,8 @@ Applies to: All projects using Claude Code CLI, Codex CLI, or Gemini CLI with AI
 
 > **Single source of truth:** One copy of this file lives at
 > `supporting-docs/METHODOLOGY.md` in the AI Agent Config Pack. Copy it to your project
-> root during setup (see QUICKSTART.md Step 3). Do not modify the pack's copy for
+> root during setup (copied to project root by `init-project.sh`; see
+> `supporting-docs/SETUP-NEW.md` Step 3). Do not modify the pack's copy for
 > project-specific needs — edit the project root copy instead and let it evolve with
 > the project.
 
@@ -26,7 +27,8 @@ They are not interchangeable. Claude Chat holds context, makes decisions, and ge
 prompts. CLI agents execute those prompts against the actual filesystem.
 
 **For prompt templates** referenced throughout this document, see:
-`PROMPT-TEMPLATES.md` in the project root (copied from the pack during setup).
+`docs/pack/prompts/<agent>.md` — one file per agent, one `## Variant:`
+H2 per template (travels with `project-template/` at project setup).
 
 **Desktop Commander note:** When Desktop Commander is available in the Claude desktop app,
 the PM chat can write files and run git commands directly for small targeted doc changes
@@ -48,11 +50,11 @@ that depends on that content.
 - Receives all agent output (pasted by developer) and analyzes it
 - Makes all architectural and planning decisions
 
-> **Three PM chat options:** The PM chat can run as a Claude Desktop app project
-> (setup — see QUICKSTART.md Step 10, Option A), a resumable Claude Code CLI
-> session (QUICKSTART.md Step 10, Option B), or a Gemini CLI session
-> (QUICKSTART.md Step 10, Option C). Daily CLI usage reference in
-> `supporting-docs/CLI-PM-SETUP.md`.
+> **Four PM chat options:** The PM chat can run as a Claude Desktop app project
+> (setup — see `supporting-docs/SETUP-NEW.md` Step 10, Option A), a resumable
+> Claude Code CLI session (Step 10, Option B), a Codex CLI session (Step 10,
+> Option C), or a Gemini CLI session (Step 10, Option D). Daily CLI usage
+> reference in `supporting-docs/CLI-PM-SETUP.md`.
 > The methodology, rules, and procedures are identical in both modes. `PM-CHAT.md`
 > in the project root provides startup instructions and is read by both modes —
 > directly from disk by the CLI PM chat, and via the GitHub connector by the
@@ -310,7 +312,7 @@ been explicitly split into multiple sequential parts by a planning agent.
 
 ## Part 5 — Standard Workflows
 
-> **Prompt templates** for each workflow step are in `PROMPT-TEMPLATES.md`.
+> **Prompt templates** for each workflow step are in `docs/pack/prompts/<agent>.md`.
 > Templates are starting points — the PM chat customizes each prompt based on project
 > context, current phase, and recent review results.
 
@@ -318,13 +320,13 @@ been explicitly split into multiple sequential parts by a planning agent.
 
 1. Create GitHub repo, clone locally
 2. Copy the unified template and supporting docs per QUICKSTART.md Steps 1–4:
-   copy `project-template/`, copy `METHODOLOGY.md` and `PROMPT-TEMPLATES.md`
-   from `supporting-docs/`, remove conditional files, fill in context file
-   placeholders, run `./scripts/bootstrap.sh`
+   copy `project-template/` (which includes `docs/pack/prompts/`), copy
+   `METHODOLOGY.md` from `supporting-docs/`, remove conditional files, fill
+   in context file placeholders, run `./scripts/bootstrap.sh`
 3. Create `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` (initially sparse)
 4. Commit all template and doc files before writing any code
-5. Set up the PM chat (QUICKSTART.md Step 10 — choose Claude Desktop,
-   Claude CLI, or Gemini CLI)
+5. Set up the PM chat (`supporting-docs/SETUP-NEW.md` Step 10 — choose
+   Claude Desktop, Claude Code CLI, Codex CLI, or Gemini CLI)
 6. Planning conversation with PM chat → establishes architecture, phase plan
 7. PM chat generates: `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`; fills in
    remaining `[PLACEHOLDER]` sections in context files using `PLATFORM-SKILLS.md`;
@@ -423,7 +425,7 @@ specific enough that a future reader can determine when the blocker is no longer
 Vague blockers ("needs more thought," "revisit later") are not acceptable. If the PM chat
 cannot name the specific blocker, the item is not actually blocked — put it in the fix prompt.
 
-**Fix prompts follow Template 4.** Each entry describes what is wrong and what correct
+**Fix prompts follow the coder fix-cycle pattern** (`coder.md` Variant: fix-cycle). Each entry describes what is wrong and what correct
 behavior looks like — not how to fix it. No pseudocode, no implementation steps. This
 applies regardless of how obvious the fix appears.
 
@@ -455,7 +457,7 @@ The reviewer report shows either:
    rule, the ambiguous constraint, or the incorrect architectural assumption.
 2. **Propose an architect pass** — describe what the architect agent will read and what
    doc changes are expected. Get explicit user approval before proceeding.
-3. **Run the architect agent** — read-only pass using Template 4b. The agent reads
+3. **Run the architect agent** — read-only pass using `architect.md` Variant: mid-phase. The agent reads
    `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `CLAUDE.md`, `AGENTS.md`, and the
    specific reviewer findings. It proposes corrections to those docs as text output —
    it does not write files.
@@ -463,7 +465,7 @@ The reviewer report shows either:
    to change. Get explicit approval for each change before applying it.
 5. **Apply approved changes** — PM chat applies via Desktop Commander or outputs for
    manual application. Commit the doc changes before the coder fix pass.
-6. **Generate coder fix pass** — using Template 4, incorporating both the reviewer's
+6. **Generate coder fix pass** — using `coder.md` Variant: fix-cycle, incorporating both the reviewer's
    open issues and the new architectural direction. Present plan, get approval, then
    developer runs it.
 
@@ -487,7 +489,8 @@ file scopes, severity scale, pass/fail thresholds, and report format.
    - auditor-ops always runs
    - The other four clusters always run
 3. PM chat generates the auditor invocation prompt using the auditor template
-   in PROMPT-TEMPLATES.md, listing the skip set explicitly as prose
+   in `docs/pack/prompts/auditor.md` (`## Variant: standard`), listing the
+   skip set explicitly as prose
 4. Developer runs the auditor:
    - Claude:  ./agent-run.sh claude --agent auditor
    - Codex:   ./agent-run.sh codex  --agent auditor
@@ -521,77 +524,242 @@ The auditor parent is bypassed; the subagent reports directly.
 
 ### Workflow → template cross-reference
 
-Each workflow has corresponding prompt templates in `PROMPT-TEMPLATES.md`. Use these
-as starting points — customize for the current project and phase before pasting.
+Each workflow uses one or more pack-shipped prompt variants from
+`docs/pack/prompts/` (one file per agent, one `## Variant:` H2 per
+variant). The table below enumerates every pack variant a workflow
+touches. Project-generated files that serve as prompts (notably
+`AGENT_KICKOFF.md` for Workflow 1 step 10) are noted inline in the
+relevant row. Customize every variant for the current project and
+phase before pasting.
 
-| Workflow | Templates to use |
+| Workflow | Prompts to use |
 |---|---|
-| Workflow 1 — New project | Template 1 (PM chat kickoff), Template 13 (generate SETUP.md), Template 14 (generate AGENT_KICKOFF.md) |
-| Workflow 2 — Per-phase execution | Template 2 (coder), Template 3 (reviewer), Template 4 (fix cycle) |
-| Workflow 3 — External API research | Template 6 (docs-researcher), then Template 2 (coder) |
-| Workflow 4 — Fix cycle | Template 4 (fix cycle coder prompt); Template 4b (mid-phase architect prompt, when triggered) |
-| Workflow 5 — Full-codebase audit | Template 9 (auditor invocation) — replaces the legacy per-dimension audit templates with a single auditor template that spawns the right subagents |
-| Workflow 6 — New feature | Template 8 (BACKLOG/STATUS update), then Workflow 2 templates |
+| Workflow 1 — New project | `pm-chat.md` Variant: kickoff (developer-pasted to start the PM chat); `pm-chat.md` Variant: generate-setup and `pm-chat.md` Variant: generate-agent-kickoff (PM-chat self-prompts that produce `SETUP.md` and `AGENT_KICKOFF.md`); architect agent invocation with `AGENT_KICKOFF.md` (step 10 — `AGENT_KICKOFF.md` is project-generated, not a pack variant) |
+| Workflow 2 — Per-phase execution | `coder.md` Variant: standard; `reviewer.md` Variant: standard; `coder.md` Variant: fix-cycle (if reviewer finds issues) |
+| Workflow 3 — External API research | `docs-researcher.md` Variant: standard; (optional) `tester.md` Variant: standard; then Workflow 2 prompts for the implementation cycle |
+| Workflow 4 — Fix cycle | `coder.md` Variant: fix-cycle (main); `architect.md` Variant: mid-phase (when Trigger A or B fires); `reviewer.md` Variant: standard (re-runs the cycle after each fix); `pm-chat.md` Variant: backlog-status-update (for items deferred to BACKLOG) |
+| Workflow 5 — Full-codebase audit | `auditor.md` Variant: standard — a single auditor prompt that spawns the right subagents, replacing the legacy per-dimension audit prompts; `pm-chat.md` Variant: backlog-status-update (for BACKLOG intake from findings); Workflow 2 prompts for each fix prompt the audit generates |
+| Workflow 6 — New feature | PM chat updates `ARCHITECTURE.md` and `IMPLEMENTATION_PLAN.md` directly (no pack variant); `pm-chat.md` Variant: backlog-status-update (if the feature adds BACKLOG entries); then Workflow 2 prompts for each new phase |
 
 ---
 
 ## Prompt Authoring Principles
 
-These principles apply to every prompt the PM chat generates — coder, architect,
-fix cycle, researcher, planner — and to every task entry written in IMPLEMENTATION_PLAN.md.
-They are not style guidance. They govern what information belongs in a prompt and what does not.
+These principles apply to every prompt the PM chat generates and to
+every task entry written in IMPLEMENTATION_PLAN.md. They are not style
+guidance. They govern what information belongs in a prompt and what
+does not.
+
+### About `docs/pack/prompts/`
+
+The `docs/pack/prompts/` directory contains one file per agent. The PM
+chat reads `<agent>.md` on demand, locates the requested variant by its
+`## Variant: <slug>` heading, copies the body, and customizes it for
+the task at hand.
+
+These templates are starting points. The PM chat customizes phase
+numbers, file names, scheme names, and verification commands per use;
+sections that don't apply to the current phase are removed. Every
+variant body follows the labeled-section convention defined in the
+subsections below.
 
 ### The core rule: describe the problem, goal, and success criteria — not the solution
 
-Every prompt and every task entry must answer:
+Every prompt must answer:
 
-1. **Problem** — the root cause, described at the category level, not a single symptom.
-   Include enough scope that the agent recognizes all instances within the files-in-scope
-   list — but do not describe the solution.
+1. **Problem** — the root cause, described at the category level,
+   not a single symptom. Include enough scope that the agent
+   recognizes all instances within the files-in-scope list — but
+   do not describe the solution.
+2. **Goal** — what correct behavior looks like across the affected
+   scope when the prompt is complete. Describe the outcome, not the
+   steps.
+3. **Success criteria** — the observable, verifiable state that
+   confirms the goal is achieved. What can be checked to know the
+   prompt's work is complete? At the IMPLEMENTATION_PLAN.md task
+   level this maps to the task's "Definition of done."
 
-2. **Goal** — what correct behavior looks like across the affected scope when the task
-   is complete. Describe the outcome, not the steps.
-
-3. **Success criteria** — the observable, verifiable state that confirms the goal is
-   achieved. What can be checked to know the task is complete? This is not a solution
-   — it describes the end state, not the path to it. At the task level, this maps to
-   the "Definition of done" field in IMPLEMENTATION_PLAN.md.
-
-4. **Context** — why this matters and how it connects to the larger system design.
-   Include only what the agent cannot infer from reading ARCHITECTURE.md.
-
-5. **Required reading** — documents and files the agent must read before starting.
-   Distinguish: files to read for understanding (may extend beyond the change scope)
-   vs. files in scope to modify.
-
-6. **Files in scope** — explicit list of files the agent may create or modify.
-   This is the primary boundary. If the agent discovers the same problem in a file
-   not on this list, it should report it rather than fix it — unless the unlisted
-   file is a direct dependency required for the listed tasks to compile or function
-   (e.g., a type that must expose a new accessor for the phase to work). In that
-   case the agent may make a small, focused change and must disclose it in the
-   **"Unplanned file modifications"** section of the completion report.
-
-   **Before finalizing the file list:** For each data field or behavior the phase
-   requires, trace: *"Which existing type holds or produces that data, and does that
-   type need a new method or property to expose it?"* If yes, add that type's file to
-   the list. An incomplete file list is the most common cause of coder workarounds:
-   the agent either invents an architecturally wrong solution or silently touches an
-   unlisted file.
-
-7. **Completion report** — what the agent must report when done: files modified,
-   verification results, and any out-of-scope discoveries.
+Plus the surrounding sections: Context, Required reading, Files in
+scope, Constraints, Out of scope, Completion report.
 
 A prompt must never contain:
 - Pseudocode or implementation sketches
-- Framework, pattern, or library choices (unless already mandated in ARCHITECTURE.md)
+- Framework, pattern, or library choices (unless already mandated
+  in ARCHITECTURE.md)
 - Step-by-step "how to" instructions
 - Proposed solutions that substitute for agent judgment
 
-**Why this rule exists:** Prescriptive prompts bypass the agent's ability to find
-the right approach from full filesystem context. The PM chat has not read every file
-in the repo — the agent has. The PM chat states what is wrong, what correct behavior
-looks like, and what confirms the task is complete. The agent determines how to achieve it.
+**Why this rule exists.** Prescriptive prompts bypass the agent's
+ability to find the right approach from full filesystem context. The
+PM chat has not read every file in the repo — the agent has. The PM
+chat states what is wrong, what correct behavior looks like, and
+what confirms the work is complete. The agent determines how to
+achieve it.
+
+### Mandatory section structure (canonical order)
+
+Every prompt template variant — every `## Variant: <slug>` block in
+every file under `docs/pack/prompts/` — uses bolded inline labels
+in the following order:
+
+1. **Role + agent identity** (one line; the variant heading + one-
+   line italic descriptor satisfies this)
+2. **Context:** state of the world this prompt fires in (include only what the agent cannot infer from reading ARCHITECTURE.md)
+3. **Required reading:** documents and files the agent must read
+   before starting; distinguish read-for-understanding vs. files in
+   scope
+4. **Problem:** as defined above
+5. **Goal:** as defined above
+6. **Success criteria:** as defined above
+7. **Files in scope:** explicit list the agent may create or
+   modify; the unplanned-file-modifications escape valve applies
+8. **Constraints:** read-only / write rules, verification commands,
+   deferral-comment rules, root-md prohibition where applicable
+9. **Out of scope:** explicit list of what the prompt is **not**
+   asking for, when relevant (omit if redundant with Constraints)
+10. **Completion report:** what the agent returns, **always
+    file-based** — see "File-based reporting" below
+
+**Label format.** Bolded inline markdown labels —
+`**Problem:**`, `**Goal:**`, `**Success criteria:**`, etc. — placed
+at the start of the section content. H2 / H3 markdown headers are
+not used at the section level: a multi-section prompt body
+rendered as a forest of `##` headings is harder to scan and creates
+a heading-level conflict with the variant's own `##` heading.
+
+**Per-variant application.** The convention attaches to each
+`## Variant: <slug>` block, not to the file as a whole. Different
+variants of the same agent are distinct prompts and may differ in
+Constraints, Files in scope, and Completion-report shape, but all
+contain the triad and follow the canonical order.
+
+**One triad per prompt — not per task.** A prompt with multiple
+tasks (e.g., a coder phase with three implementation tasks; a fix-
+cycle with five reviewer findings) lists the tasks under **Goal**.
+Per-task **Definition of done** survives inside the task list as
+task-scope detail; it does not replace the prompt-level **Success
+criteria**.
+
+**Single documented exception.** `pm-chat.md` Variant: kickoff is a
+context handoff to the PM chat, not an agent-task prompt. It carries
+a `**Convention exception:**` callout immediately after its italic
+descriptor and does not follow the labeled-section convention. Every
+other variant in `docs/pack/prompts/` follows it.
+
+### Format requirements vs. solutions
+
+No agent's prompt may contain solutions. The triad is mandatory
+for every agent without exception.
+
+"Format requirements" — output structure, parse-able shape,
+citation discipline, severity scales, verdict-line conventions —
+are a separate, narrower category. They are communication
+standards, not solutions. Format requirements may be added to
+specific agent prompts **alongside** the triad; they never replace
+or omit it.
+
+The distinguishing rule:
+
+> Format requirements describe **how the output is structured** and
+> **how findings are communicated**. Solutions describe **how the
+> agent should achieve the goal**.
+
+Format requirements appear in the prompt under **Constraints**
+(when they govern behavior — read-only, report-only, no-code,
+verification command) or under **Completion report** (when they
+govern output shape — header line, ordered sections, ✅/❌/⚠️
+markers, citation discipline). They never appear inside **Goal**
+or **Success criteria**.
+
+| Agent | Format requirements (allowed) | Solutions (forbidden) |
+|---|---|---|
+| `architect` | Required-reading list; proposed-change block format. | Pattern names; structural direction; library or framework choices. |
+| `auditor` | Skip rules; per-subagent platform-skill loadout; severity scale; cluster order; ownership-precedence dedup; executive-summary structure. All forwarded from `audit-methodology`. | Telling the auditor what to find or hide; pre-judging severity. |
+| `coder` | Files in scope; verification commands; completion-report shape (Unplanned-file-modifications, Deferred-items sections); per-task DOD format. | Pseudocode; pattern names; algorithm sketches; step-by-step "how to." |
+| `docs-researcher` | URLs; specific claims; ✅/⚠️ block format; citation discipline. | Telling the researcher what to conclude; proposing a fix to a discrepancy. |
+| `planner` | Report-header format; per-task field shape; dependency-edge format. | Prescribing the breakdown itself ("Phase N has these tasks: …"). |
+| `repo-ops` / mechanical claude | Exact operations and command sequences (the entire purpose of the agent). | N/A — but the prompt cannot ask `repo-ops` to **design** anything; only to apply a fully-specified operation. |
+| `reviewer` | Eight review dimensions; ✅/❌/⚠️ markers; Pass-summary block; Verdict line; verification command. | Adjusting the reviewer's judgment; pre-categorizing severity; instructing what to overlook. |
+| `tester` | Per-component output block; priority-summary format; report-only constraint. | Test pattern or framework choice; mock vs. stub direction; pre-ordered test plan. |
+| `pm-chat` (self-prompt) | When generating a prompt for any other agent, the PM chat may specify the same format requirements that agent's row allows. When generating its own self-prompts (BACKLOG entries, STATUS anchors, SETUP.md, AGENT_KICKOFF.md), the PM chat may specify the target file's schema and section structure. | Inheriting the target agent's solution-forbidden list — a PM-chat-authored coder prompt may not contain pseudocode or pattern names, a PM-chat-authored architect prompt may not contain proposed solutions or pattern names, etc. The PM chat is bound by every constraint that applies to the agent it is prompting. |
+
+> **Update this table when any agent is added or changed.**
+
+**Architect prompts — stronger restriction.** Never include a proposed
+solution, pattern name, or structural approach in a prompt to an
+architect agent. A proposed solution in an architect prompt is not a
+suggestion — it anchors the agent. Describe the constraint violation
+or design problem only. The architect diagnoses and proposes.
+
+### Format-vs-solutions: worked examples
+
+The format-vs-solutions distinction is easier to read in the abstract
+than to apply under time pressure. The examples below show the most
+common leakage shapes observed in PM-chat-generated coder prompts
+(paraphrased from real cases). For each: the **Negative** line shows
+what NOT to write; the **Positive** line shows the format/constraint
+version; the **Why** line names the leakage category.
+
+**Example 1 — testability technique**
+- **Negative:** *"The size limit must be injectable as a parameter so tests can drive rotation with small payloads."*
+- **Positive:** *"Rotation behavior must be testable with payloads small enough to trigger rotation in unit tests."*
+- **Why:** The negative names a testability mechanism (parameter injection). The positive states the testability requirement; the coder chooses among parameter injection, an overridable static, a test-seam protocol, or another approach.
+
+**Example 2 — API or framework name**
+- **Negative:** *"Declare the panel scene via `WindowGroup` or `Window`, whichever is consistent with how the existing app declares scenes."*
+- **Positive:** *"The panel must be a separate scene matching the scene-declaration convention already used in the app."*
+- **Why:** The negative names specific platform APIs. The positive names the constraint (separate scene; convention-matching) and lets the coder read the existing app to choose.
+
+**Example 3 — architectural-shape invention**
+- **Negative:** *"`StateProvider` is a protocol that returns a `StateSnapshot` value type; the snapshot has nested value types covering [list]."*
+- **Positive:** *"The panel content sections required: [list of sections from the plan]. The state-source design is the coder's choice."*
+- **Why:** The negative invents a protocol-plus-snapshot-plus-nested-value-types composition pattern that did not appear in the implementation plan. The plan required panel content sections; the data-supply architecture is a coder decision.
+
+**Example 4 — timing or lifecycle prescription**
+- **Negative:** *"Poll the data source on a 1 Hz timer; suspend the timer when the window is not visible."*
+- **Positive:** *"Panel data must reflect current state without measurable user-visible lag, and must not consume resources when the panel is hidden."*
+- **Why:** The negative names a polling rate and a lifecycle mechanism. The positive names the observable requirements (freshness, idle behavior); the coder chooses polling vs. observation, rate, and visibility hook.
+
+**Example 5 — Files-in-scope is NOT solution leakage (clarifying)**
+- **This is scope, not solution:** *"Files in scope: `Data/Logging/FileLogSink.swift` (new), `Data/Logging/LogRotation.swift` (new)."* Paths come from the implementation plan and enforce existing layer discipline (logging belongs in `Data/`). They are location guardrails.
+- **This crosses into solution:** *"Use `FileManager.default.url(for:in:)` to resolve the log directory."* This names an API choice the coder should make.
+- **Why:** Files-in-scope lists relay scope from the architect / planner / plan. They tell the coder where the work lives and where it does not. They do not specify how the work is done. API and data-structure choices made *inside* those files are the coder's.
+
+The per-agent table in the previous subsection enumerates which format requirements are allowed for each agent. When in doubt: ask the self-check question 2 below — "Am I describing what needs to be true, or how to do it?"
+
+### File-based reporting
+
+Every prompt's **Completion report** section names a file the
+agent's output is written to. Two sub-cases:
+
+- **Sub-case A — agent produces a report.** A `REPORT FILE: <path>`
+  line names a markdown file the agent writes its report to (e.g.,
+  reviewer pass-N report, coder phase-N completion report,
+  architect mid-phase analysis, docs-researcher verification, planner
+  breakdown, tester strategy, auditor consolidated report). The PM
+  chat reads the file back; the agent does not copy-paste output
+  into chat.
+- **Sub-case B — PM-chat self-prompt produces a target-file edit.**
+  When the PM chat runs a self-prompt that edits or creates a
+  project file (BACKLOG.md, STATUS.md, SETUP.md,
+  AGENT_KICKOFF.md), the artifact **is** the target file edit. No
+  separate report file is required. The Completion-report section
+  names the target file and the change summary.
+
+Both sub-cases satisfy this rule. A prompt that asks an agent to
+"output the report" or "return the result to the developer" without
+naming a file is a defect.
+
+### Multi-part phase report headers
+
+When a phase is split into sequential implementation chunks, use **Part [M]**
+(not "pass") appended to the phase title in all report headers. Pass numbers
+reset to 1 for each new part. Single-part phases use the existing header
+format — do not append `, Part 1`. Example:
+`Phase 12 — Auth Flows, Part 2 — Reviewer Report, Pass 1`
+
+This applies to every agent's completion report regardless of which file in
+`docs/pack/prompts/` the prompt came from.
 
 ### On scoping the problem statement
 
@@ -608,26 +776,20 @@ agent to audit the listed files only, then report any out-of-scope instances fou
 for a follow-up decision. Do not expand the files list speculatively — that is
 scope inflation.
 
-### Exceptions — where prescriptive content is appropriate
+### On scoping the files-in-scope list
 
-| Agent | May prescribe | Must not prescribe |
-|---|---|---|
-| `reviewer` | Review criteria, output format, verification commands | Which issues to overlook or deprioritize |
-| `docs-researcher` | Specific claims to verify, URLs to check, output format | How to resolve discrepancies found |
-| `repo-ops` / standard `claude` | Exact file operations, BACKLOG/STATUS changes | N/A — mechanical operations are fully prescribed |
-| `tester` | Audit scope, output format | Which test patterns or structures to use |
-| `coder` | Files in scope, verification commands, completion report format | Implementation approach, patterns, pseudocode |
-| `architect` | Problem statement and required reading only | All solutions — including pattern names and structural direction |
-| `planner` | Which phase or scope to break down | How to break it down |
-| `auditor` (parent + subagents) | Skip rules, file scopes, platform skills to load, output format from `audit-methodology` | Which findings to surface or hide, how to fix anything |
+The files-in-scope list is the primary boundary on what the agent may
+modify. If the agent discovers the same problem in a file not on this
+list, it should report it rather than fix it — unless the unlisted
+file is a direct dependency required for the listed tasks to compile
+or function (e.g., a type that must expose a new accessor for the
+phase to work). In that case the agent may make a small, focused
+change and must disclose it in the **"Unplanned file modifications"**
+section of the completion report.
 
-> **Update this table when any agent is added or changed.**
-
-**Architect prompts — stronger restriction:**
-Never include a proposed solution, pattern name, or structural approach in a prompt
-to an architect agent. A proposed solution in an architect prompt is not a suggestion
-— it anchors the agent. Describe the constraint violation or design problem only.
-The architect diagnoses and proposes.
+The data-dependency-trace requirement (see PM chat self-check item 3
+below) ensures this escape valve is invoked rarely — incomplete file
+lists are the most common reason agents hit it.
 
 ### When generating prompts from IMPLEMENTATION_PLAN.md task entries
 
@@ -636,22 +798,33 @@ problem/goal/success-criteria description, reframe it before including it in the
 extract what is wrong, what correct behavior looks like, and what confirms the task
 is complete. Discard the how. Do not forward implementation instructions verbatim.
 This applies to coder, architect, and planner prompts. For agents where prescriptive
-content is permitted (see exceptions table above), forward plan content as written.
+content is permitted as **format** (per the Format requirements vs. solutions table
+above), forward plan content as written.
 
 ### PM chat self-check before generating any prompt
 
 Before writing a prompt:
 
-1. Ask: *"Am I describing what needs to be true, or how to do it?"*
-   If the answer is "how to do it," rewrite it as "what needs to be true."
-
-2. **Data-dependency trace — required before finalizing any coder or fix-cycle file list:**
+1. **Triad check.** Does the prompt body contain bolded labeled
+   `**Problem:**`, `**Goal:**`, and `**Success criteria:**`
+   sections? If not, add them before sending. (The single exception
+   is the `pm-chat.md` kickoff variant, which carries the
+   `**Convention exception:**` callout.)
+2. **Solution check.** Ask: *"Am I describing what needs to be
+   true, or how to do it?"* If the answer is "how to do it,"
+   rewrite as "what needs to be true." Format requirements (output
+   shape) are not solutions and are not affected by this check.
+3. **Data-dependency trace — required before finalizing any coder or fix-cycle file list:**
    For each data field or behavior the phase requires, ask: *"Which existing type holds
    or produces that data, and does that type need a new method or property to expose it?"*
    If yes, add that type's file to the files-in-scope list before sending the prompt.
    An incomplete file list is the single most common cause of coder workarounds: the
    agent is forced to either invent an architecturally wrong solution or silently touch
    a file it was not told about.
+4. **REPORT FILE check.** Does the **Completion report** section
+   name a file the agent's output goes to (sub-case A) or the
+   target file the PM chat will edit (sub-case B)? If neither, add
+   one before sending.
 
 ---
 
@@ -750,9 +923,9 @@ returned to the terminal. To process its findings into the BACKLOG, paste
 the report into the PM chat and follow the post-audit BACKLOG intake
 procedure above.
 
-**Auditor template lives in `PROMPT-TEMPLATES.md` (Template 9).** The PM
-chat uses it as a starting point and customizes the skip rules and
-project-specific scope notes per project.
+**Auditor template lives in `docs/pack/prompts/auditor.md` (`## Variant:
+standard`).** The PM chat uses it as a starting point and customizes the
+skip rules and project-specific scope notes per project.
 
 
 ---
@@ -762,6 +935,13 @@ project-specific scope notes per project.
 This part defines the full system for tracking deferred work, known gaps, and items
 requiring verification. The PM chat owns this system. Agents receive explicit instructions
 in their prompts — they do not figure out BACKLOG logic themselves.
+
+> **Sub-procedure heading style varies by procedure.** Procedure 5 uses
+> `#### Procedure 5.N` (each sub-procedure is itself a standalone procedure).
+> Procedure 6 uses `#### 6.N` (numbered steps within one procedure).
+> Procedure 7 uses `#### 7.N` with `##### 7.N.M` for sub-Forms (numbered steps
+> + nested Form sub-sections). Each procedure's local convention is intentional
+> and reflects the procedure's own structure; do not normalize across procedures.
 
 ### Comment format
 
@@ -944,6 +1124,559 @@ The PM chat presents its reasoning and the user may override. Bias toward resolv
      downstream item may need a new blocker, revised scope, or cancellation itself
 ```
 
+### Procedure 5 — Custom agent and skill workflow
+
+Projects may create project-specific agents and skills beyond what the
+pack ships. All custom files use the `x-` prefix, which the pack
+reserves for this purpose. Pack-supplied files never begin with `x-`.
+
+Procedure 5 has six sub-procedures (5.1–5.6) plus a reconciliation
+variant (Procedure 5-R) triggered during migration.
+
+#### Procedure 5.1 — Creating a custom agent
+
+Triggered when the developer asks for a custom agent.
+
+1. **Pre-check (G-design).** Verify no existing files for the proposed
+   name (`.claude/agents/x-<name>.md`, the Codex and Gemini equivalents,
+   and `docs/pack/prompts/x-<name>.md`). If any exist, route to
+   Procedure 5.3 (completing a partial registration).
+2. **Clarifying questions.** Purpose; which PLATFORM-SKILLS.md dimension
+   this agent extends (Platform Targets, Languages, Component Roles, or
+   Communication Protocols); primary phase served; read-only or write;
+   Bash/Web/MCP tool requirements; number of prompt variants; existing
+   pack skills loaded vs. new custom skill; which pack agent the PM chat
+   would have routed to absent this custom (for the routing-table row).
+3. **Drafts (G-files).** PM chat drafts all four files (Claude agent,
+   Codex agent, Gemini agent, per-agent prompt). Presents side-by-side;
+   iterate until approved.
+4. **Registration drafts (G-registration).** PLATFORM-SKILLS.md
+   `## Custom agents` row; trinity Phase routing rows in CLAUDE.md,
+   AGENTS.md, and GEMINI.md (TRIO — byte-identical row content); if the
+   new agent needs a custom skill, also draft a `## Custom skills` row
+   plus three `SKILL.md` files (`.claude/skills/x-<name>/SKILL.md` and
+   the Codex/Gemini equivalents).
+5. **Commit (G-commit).** PM chat presents `git add` list and commit
+   message; developer explicitly approves per CLAUDE.md pack rule. One
+   commit, all artifacts.
+
+#### Procedure 5.2 — Creating a custom skill (standalone)
+
+Triggered when an existing pack or `x-` custom agent will load a new
+project-specific skill and no custom-agent creation is in flight.
+
+1. **Pre-check:** no `x-<name>` skill directory exists in any of the
+   three tool skills directories.
+2. **Clarifying questions:** purpose; which PLATFORM-SKILLS.md dimension
+   this skill extends (Platform Targets, Languages, Component Roles, or
+   Communication Protocols); which agents load it; `allowed-tools`.
+3. **Drafts (G-files):** three `SKILL.md` files with identical
+   frontmatter and body across the three tool directories.
+4. **Registration drafts (G-registration):** PLATFORM-SKILLS.md
+   `## Custom skills` row naming which agents load the skill.
+5. **Commit (G-commit):** per Procedure 5.1 step 5.
+
+#### Procedure 5.3 — Completing a partial registration (Unregistered)
+
+Triggered when the detection scan reports an Unregistered custom agent
+or skill (some but not all expected artifacts are present on disk).
+
+1. PM chat lists present files and missing artifacts.
+2. Developer approves reconstruction. PM chat drafts missing tool forms,
+   prompt file, and/or PLATFORM-SKILLS.md row and routing-table entries.
+3. **G-registration** approval.
+4. **G-commit** approval.
+
+#### Procedure 5.4 — Adopting an improperly-added file
+
+Triggered when the detection scan reports an Improperly added file —
+present in one of the seven scan locations but with neither a name that
+begins with `x-` nor an entry in the pack roster.
+
+1. PM chat confirms the invisibility consequence: the file is on disk
+   but not in routing tables or skill-load lists, so no agent session
+   loads or invokes it.
+2. Developer chooses:
+   - **Adopt as custom.** Rename to `x-<name>`; route to Procedure 5.3
+     to complete registration.
+   - **Remove.** PM chat produces `git rm` commands for approval (per
+     CLAUDE.md destructive-op rule: explicit approval before execution).
+   - **Defer.** File stays on disk, stays invisible; scan flags it at
+     every subsequent trigger.
+
+#### Procedure 5.5 — Detection scan as a phase-gate step
+
+The phase-gate check in **Procedure 1** gains sub-step 5a:
+
+> **5a. Run custom-file detection scan (Procedure 5).** If any
+> unregistered or improperly-added files are found, pause and route to
+> the appropriate sub-procedure (5.3 or 5.4). Developer may Defer; do
+> not block the phase on unregistered custom files if the developer
+> explicitly chooses Defer, but do not include those files in the
+> upcoming prompt generation either.
+
+#### Procedure 5.6 — Registration reference tables
+
+Custom-agent registration artifacts:
+
+| Artifact | Location | Must exist before G-commit |
+|---|---|---|
+| Claude agent file | `.claude/agents/x-<name>.md` | Yes |
+| Codex agent file | `.codex/agents/x-<name>.toml` | Yes |
+| Gemini agent file | `.gemini/agents/x-<name>.md` | Yes |
+| Per-agent prompt file | `docs/pack/prompts/x-<name>.md` | Yes |
+| PLATFORM-SKILLS.md `## Custom agents` row | `docs/pack/PLATFORM-SKILLS.md` | Yes |
+| Trinity routing-table row | `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` (TRIO, byte-identical) | Yes |
+
+Custom-skill registration artifacts:
+
+| Artifact | Location | Must exist before G-commit |
+|---|---|---|
+| Claude skill | `.claude/skills/x-<name>/SKILL.md` | Yes |
+| Codex skill | `.codex/skills/x-<name>/SKILL.md` | Yes |
+| Gemini skill | `.gemini/skills/x-<name>/SKILL.md` | Yes |
+| PLATFORM-SKILLS.md `## Custom skills` row | `docs/pack/PLATFORM-SKILLS.md` | Yes |
+
+A developer can answer "is my custom agent / skill properly
+registered?" by checking the rows above for their `x-<name>` entry.
+
+### Procedure 5-R — Prompt reconciliation after v9.3 → v10 migration
+
+Triggered by presence of `docs/pack/prompts/_v9-backup.md` at PM chat
+startup. That file is a one-shot backup of the v9.3 `PROMPT-TEMPLATES.md`
+content, written by `migrate-v9-to-v10.sh` for projects whose
+`PROMPT-TEMPLATES.md` diverged from the v9.3 baseline (indicating
+project-specific customization that needs human review).
+
+1. PM chat reads `_v9-backup.md` and the v10 per-agent files in
+   `docs/pack/prompts/`.
+2. PM chat computes a conceptual diff: the v9.3 baseline content (which
+   matches the v10 per-agent files modulo reformatting) vs. the
+   project-specific content in `_v9-backup.md`. The meaningful diff is
+   the project's customization.
+3. PM chat surfaces each customization to the developer with a proposed
+   placement (e.g., "your project added X to Template 4; in v10 this
+   would live in `coder.md ## Variant: fix-cycle` between these lines.
+   Approve?").
+4. Developer approves, modifies, or rejects each surfaced item.
+5. PM chat writes approved changes to the relevant per-agent file(s).
+6. PM chat offers to remove `_v9-backup.md` and records the
+   reconciliation in the commit message. Once removed, Procedure 5-R
+   does not run again.
+
+### Procedure 5-S — Post-migration housekeeping
+
+Triggered by presence of `.pack-migration-backup/v9.3-to-v10.0/postrun-pending`
+at PM chat startup. Written by `migrate-v9-to-v10.sh` stage S7. Combines two
+post-migration housekeeping tasks; either may report "nothing to do" without
+defect. Procedure is re-entrant — partial completion preserves the sentinel
+and re-runs at next `/pm-startup`.
+
+| Task | Scope | Action |
+|---|---|---|
+| **A** | STATUS.md pack-version markers (F-E) | Search `docs/project/STATUS.md`, then `docs/STATUS.md`, then `STATUS.md` (first existing wins). Grep case-insensitively for lines containing both `AI Agent Config Pack` (or `Pack version`) and a `v9` token. For each match, propose updating the version to the current pack version (read from `docs/pack/METHODOLOGY.md` first 5 lines, matching pm-startup Step 6). Developer approves / edits / skips per match. If no STATUS.md found or no v9 markers found: report "Task A — nothing to do." |
+| **B** | Trinity placeholder reconciliation (F-F) | Grep `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` for occurrences of the closed-form whitelist: `[PROJECT_NAME]`, `[PLATFORM_TARGETS]`, `[TRANSPORT]`, `[PLATFORM_DEFAULTS]`, `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`, `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`, `[PLATFORM_ANTIPATTERNS]`. Also grep for the literal Active-skills placeholder line (`Active skills: [PM chat writes`). For project-identifier placeholders, ask the developer for the values (project name, platform targets, transport) and offer to fill them consistently across all three trinity files (TRIO — byte-identical content). For section placeholders, reference the loaded skills' content. For the Active-skills line, run a simpler standalone Q&A (NOT the full Procedure 7 kickoff flow): "What skills are active for this project? Read `docs/pack/PLATFORM-SKILLS.md` to see options. PM chat proposes the set based on project type; developer approves." If no whitelist matches found and Active-skills line is filled: report "Task B — nothing to do." |
+
+1. Detect sentinel; read `docs/pack/METHODOLOGY.md` first 5 lines for current
+   pack version (Task A reference value).
+2. Run Task A. Surface findings (or "nothing to do"); apply developer-approved
+   edits to STATUS.md.
+3. Run Task B. Surface findings (or "nothing to do"); apply developer-approved
+   edits to the trinity files (TRIO; byte-identical across CLAUDE.md /
+   AGENTS.md / GEMINI.md for every section the trinity rule covers).
+4. If both tasks completed (no deferred items remain), PM chat offers to
+   remove the sentinel `.pack-migration-backup/v9.3-to-v10.0/postrun-pending`
+   and records the housekeeping in the commit message. Once removed,
+   Procedure 5-S does not run again. If either task has deferred items,
+   leave the sentinel in place — Procedure 5-S re-runs at next `/pm-startup`,
+   re-scans (skipping items already addressed), and resurfaces the rest.
+
+### Procedure 6 — Adding a pack-supported capability
+
+Triggered when either:
+
+- The developer pastes the end-of-run prompt emitted by
+  `scripts/add-capability.sh` stage A7 (V10-DESIGN §5.14.3).
+- The developer asks the PM chat to "add Python" / "add iOS" / similar
+  and the PM chat (per its PM-CHAT.md **Capability addition**
+  behavioral rule) first instructs them to run `add-capability.sh`
+  from the pack before resuming.
+
+Procedure 6 is the PM-chat-side companion to `add-capability.sh`. The
+script copies the conditional pack files; Procedure 6 updates the
+trinity files' `**Active skills:**` line and `[PLACEHOLDER]` sections
+for the newly-active dimension.
+
+Gates: **G6-drafts** (trinity drafts reviewed before any markdown
+write) and **G6-commit** (git add list + commit message before
+committing).
+
+| Step | Action | Gate |
+|---|---|---|
+| **6.1** | Read the `add-capability.sh` report — either pasted into the session or read from `.pack-add-capability-prompt.md` at the project root (written by stage A7). Verify script stages A0–A7 completed. | — |
+| **6.2** | Read the newly-activated `SKILL.md` files from `.claude/skills/<name>/SKILL.md` (skills are already on disk from the initial pack install). Extract the content relevant to each trinity `[PLACEHOLDER]` section. | — |
+| **6.3** | Draft updates to the trinity files: update the `**Active skills:**` line; fill `[PLATFORM_DEFAULTS]`, `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`, `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`, `[PLATFORM_ANTIPATTERNS]` as applicable for the newly-added dimension. Present drafts side-by-side for all three trinity files (TRIO) — byte-identical content in every section the trinity rule covers. | **G6-drafts** — developer confirms trinity drafts before any write |
+| **6.4** | If the project now qualifies for a PLATFORM-SKILLS.md dimension row that was not previously selected (e.g., project gains an iOS row after adding iOS to a macOS-only selection), surface the dimension row for explicit acknowledgement. Informational — PLATFORM-SKILLS.md rows describe the pack's matrix, not the project's selection, so typically no edit is needed. | — |
+| **6.5** | Run the Procedure 5.5 detection scan once drafts are applied — verify no `x-` files were touched; verify PLATFORM-SKILLS.md `## Custom agents` / `## Custom skills` project-owned regions are unchanged. | — |
+| **6.6** | Present `git add` list and commit message (`feat: project — add <dimension>:<value> capability`); developer approves per CLAUDE.md pack rule (same gate as Procedure 5 G-commit). | **G6-commit** |
+
+The trinity edits are always TRIO (trinity rule): the same content is
+spliced into `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` in one commit.
+
+**Artifacts modified:** `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` (TRIO —
+`**Active skills:**` line + applicable `[PLACEHOLDER]` sections).
+
+**Artifacts never touched by Procedure 6:** any `x-` agent / skill /
+prompt file; any `SKILL.md` (already on disk); `BACKLOG.md`;
+`STATUS.md`; `ARCHITECTURE.md`; `IMPLEMENTATION_PLAN.md`;
+`CHANGELOG.md`; PLATFORM-SKILLS.md `## Custom agents` and
+`## Custom skills` project-owned regions.
+
+### Procedure 7 — Kickoff auto-discovery and install-check
+
+Triggered when the developer pastes the `Variant: kickoff` prompt
+from `docs/pack/prompts/pm-chat.md` on a shell-capable surface
+(Claude Code CLI, Codex CLI, Gemini CLI, Claude Desktop with Desktop
+Commander) and declares `shell` at the surface-declaration gate.
+
+Procedure 7 is the PM-chat-side companion to the kickoff-variant
+continuation pointer. The pointer routes to this procedure; this
+procedure fills in the Apple / gRPC toolchain that SETUP-NEW.md
+Steps 5–8 would otherwise require the developer to run by hand.
+Every auto-discovered value and every install / edit / machine-level
+write is confirmed via Form R / I / E / M before the PM chat acts.
+
+Gates: **G7-discovery** (Form R), **G7-install** (Form I),
+**G7-edit** (Form E), and **G7-machine** (Form M). Each gate defaults
+to `skip` except G7-discovery, which is read-only and defaults to
+`yes`.
+
+#### 7.0 Trigger and scope
+
+The PM chat enters Procedure 7 once the assistant has (a) declared
+its surface and (b) given the developer a one-message exit ramp
+before any non-read-only action. On a shell-capable surface (Claude
+Code CLI, Codex CLI, Gemini CLI, Claude Desktop with Desktop
+Commander), the assistant typically declares `shell` by inference
+from its environment — this is sanctioned and not a deviation; it
+MUST NOT begin Form R discovery in the same message as the surface
+declaration. On Web / Desktop surfaces without shell access (Claude
+Web, ChatGPT Web), the assistant declares `manual`; Procedure 7 is
+not entered; the PM chat emits the `SETUP-NEW.md § Manual fallback`
+pointer and waits for developer-reported values. The exit-ramp
+reply is interpreted per the § 7.5 reply grammar (`yes` / `no` /
+`skip` / `abort` / `edit` / bare value); a positive reply
+authorizes Form R, anything else defers per the grammar's
+"unrecognized → no" rule.
+
+The developer may declare `manual` even on a shell-capable surface
+(e.g., to read the planned commands before granting execution); the
+PM chat honors it. The developer may also switch to `manual`
+mid-kickoff; the PM chat treats that as a re-declaration from that
+point onward — commands already run cannot be unrun.
+
+#### 7.1 K1 — read-only discovery (Form R, G7-discovery)
+
+```
+PROPOSED ACTION — read-only discovery
+  All commands below are read-only (no side effects). If a command
+  is not applicable to this project (e.g., Xcode on a Python-only
+  project), the command exits non-zero; I note that and continue.
+
+  Apple / Swift discovery:
+    1. xcodebuild -list
+    2. xcrun simctl list devices available
+    3. command -v swift-format; if present, swift-format --version
+
+  gRPC discovery:
+    4. command -v buf;                    if present, buf --version
+    5. command -v protoc-gen-swift;       if present, --version
+    6. command -v protoc-gen-grpc-swift;  if present, --version
+
+  Environment:
+    7. command -v brew; if present, brew --version
+
+  Python + gRPC discovery (only if Python detected):
+    8. command -v uv;      if present, uv --version
+    9. command -v python3; if present, python3 --version
+
+  Machine-level companion files:
+   10. ls -1 ~/Library/Developer/Xcode/CodingAssistant/ 2>/dev/null
+   11. ls -1 "$PACK/xcode-companion-templates/"
+
+Reply: `yes` to run all · `skip` to bypass auto-discovery
+       (I'll ask you manually for each value) · `abort` to stop kickoff
+```
+
+#### 7.2 K2 — Apple sub-flow
+
+Runs only if `[PLATFORM_TARGETS]` includes any of iOS, iPadOS, macOS,
+tvOS, watchOS, or visionOS. Otherwise skipped with a single-line note.
+
+##### 7.2.1 Xcode scheme and destination
+
+From `xcodebuild -list`:
+- If exactly one scheme is found, I auto-fill it.
+- If multiple schemes are found, I present a numbered list and you reply
+  with the number or the scheme name.
+- If `xcodebuild -list` exits non-zero (no Xcode project at the target
+  root), I skip the entire Apple sub-flow with a single-line note.
+
+From `xcrun simctl list devices available`:
+- If at least one simulator is found, I pick the most recent iOS simulator
+  by default (reply `edit` to override).
+- If no simulators are found and this is a macOS project, I use
+  `platform=macOS`.
+- Otherwise I ask you for a destination string.
+
+##### 7.2.2 Script and settings edits (Form E, G7-edit)
+
+For each of the four targets — `scripts/validate-swift.sh`,
+`scripts/test-swift.sh`, `.claude/settings.json` (env block), and
+`scripts/format-swift.sh` (SWIFT_SOURCE_DIRS for non-SPM layouts only) — I
+render a Form E:
+
+```
+PROPOSED EDIT — scripts/validate-swift.sh
+  Discovered values:
+    XCODE_SCHEME       = "MyApp"        (from xcodebuild -list)
+    XCODE_DESTINATION  = "platform=iOS Simulator,name=iPhone 16,OS=latest"
+                                        (from xcrun simctl list devices available)
+
+  Diff:
+    -XCODE_SCHEME=""
+    +XCODE_SCHEME="MyApp"
+    -XCODE_DESTINATION=""
+    +XCODE_DESTINATION="platform=iOS Simulator,name=iPhone 16,OS=latest"
+
+Reply: `yes` to apply · `edit` to provide your own values
+       · `skip` to leave the file unchanged · `abort` to stop
+```
+
+**Anchor-matching rules:**
+
+- Primary: literal `XCODE_SCHEME=""` / `XCODE_DESTINATION=""` match.
+- Legacy fallback: `XCODE_SCHEME="[SCHEME_NAME]"` /
+  `XCODE_DESTINATION="[DESTINATION]"`.
+- Already-populated or unknown: emit a one-line
+  `note: <file> <variable> is already set to "<current_value>" — skipping`
+  and move on; do not propose overwrite.
+
+`.claude/settings.json` edit uses JSON parse-mutate-serialize (never
+regex). If the file fails to parse, I emit a diagnostic with the intended
+diff as textual instructions and ask you to apply it manually.
+
+##### 7.2.3 swift-format install (Form I, G7-install)
+
+```
+PROPOSED ACTION — install
+  Command:        brew install swift-format
+  Purpose:        enables scripts/format-swift.sh to format Swift sources
+  Pack-tested:    swift-format ≥510.0.0 (see supporting-docs/DEPENDENCIES.md;
+                  pack-tested starting range 2026-04, refine empirically
+                  per PACK-FEEDBACK.md Part 10)
+  Side effects:   writes to /opt/homebrew/Cellar; ~5MB; network required
+  Skip impact:    format-swift.sh emits a warning but does not block validation
+
+Reply: `yes` to install · `skip` to leave uninstalled · `abort` to stop
+```
+
+Idempotency: if `command -v swift-format` already returns a path AND
+`swift-format --version` is within the known-good range, I emit a one-line
+`note: swift-format already installed at <version> (within known-good range) — skipping`
+and do not render Form I.
+
+The single-line `note:` is rendered inside the Form R results table
+per § 7.6 (Preview rendering) — it is not a separate Form rendering.
+
+##### 7.2.4 Xcode companion files (Form M, G7-machine)
+
+```
+PROPOSED ACTION — install Xcode companion files (machine-level)
+  Target:       ~/Library/Developer/Xcode/CodingAssistant/
+  Source:       $PACK/xcode-companion-templates/
+  Files (from `ls "$PACK/xcode-companion-templates/"` at run time;
+         falls back to the hardcoded four-file list if `ls` fails):
+    1. ClaudeAgentConfig/CLAUDE.md          (replaces if present)
+    2. ClaudeAgentConfig/settings.json      (replaces if present)
+    3. codex/AGENTS.md                       (replaces if present)
+    4. codex/config.toml                     (replaces if present)
+  Side effects: writes to your home directory; one-time per Mac
+
+Reply: `yes` to install all · `skip` to leave companion files alone
+       · `abort` to stop
+```
+
+Idempotency: I run `cmp -s` between each source and its target; if every
+pair is byte-identical, I emit a one-line
+`note: Xcode companion files already present and up to date — skipping`
+and do not render Form M. If all files are present but some differ, I
+render Form M with a recommendation line
+`recommendation: installed companion files differ from the pack — reinstall recommended`
+— default remains `skip`.
+
+The single-line `note:` is rendered inside the Form R results table
+per § 7.6 (Preview rendering) — it is not a separate Form rendering.
+
+#### 7.3 K3 — gRPC sub-flow
+
+Runs only if `[TRANSPORT]` includes gRPC, or a `proto/` directory
+exists at the project root. Otherwise skipped.
+
+##### 7.3.1 Apple-side gRPC tooling (Form I, G7-install)
+
+One Form I per tool, using the shape in §7.2.3:
+
+- `brew install bufbuild/buf/buf` — Pack-tested: buf ≥1.35.0.
+- `brew install swift-protobuf` — Pack-tested: swift-protobuf ≥1.28.0.
+- `brew install grpc-swift` — Pack-tested: grpc-swift ≥1.24.0 (1.x-line;
+  2.x migration is out of scope for v10.0).
+
+Each Form I applies the idempotency rule from §7.2.3 — already-installed
+and in-range tools are skipped with a note.
+
+The note is rendered inside Form R per § 7.6 (Preview rendering).
+
+##### 7.3.2 Python-side gRPC tooling (Form I, G7-install)
+
+Runs only if Python is also detected. One Form I per package, using
+`uv add` instead of `brew install`:
+
+- `uv add grpcio-tools` — Pack-tested: grpcio-tools ≥1.64.0.
+- `uv add grpcio` — Pack-tested: grpcio ≥1.64.0.
+- `uv add grpcio-status` — Pack-tested: grpcio-status ≥1.64.0.
+- `uv add grpcio-reflection` — Pack-tested: grpcio-reflection ≥1.64.0
+  (optional, only if reflection is used).
+
+Each Form I in this section applies the § 7.2.3 idempotency rule;
+the resulting note is rendered inside Form R per § 7.6
+(Preview rendering).
+
+##### 7.3.3 Proto code generation example
+
+Once the tooling is in place, generate the first proto outputs:
+
+```bash
+./scripts/proto-gen.sh
+```
+
+The PM chat does not run this command as part of kickoff (it requires
+a `.proto` definition file and project-specific configuration); it
+prints the invocation so the developer can run it after kickoff
+completes.
+
+#### 7.4 Behavior on failure / ambiguity
+
+Common discipline across all branches:
+
+- **Never silently skip.** Every condition that does not produce the
+  ideal outcome is named in the reply.
+- **Never block the entire kickoff on a single failure.** The
+  developer can complete the rest of the kickoff and re-attempt the
+  failing step later.
+- **Always print the command that was run and its observed output**
+  before drawing a conclusion. The developer can override.
+
+Specific behaviors:
+
+1. **Xcode not installed** — `xcodebuild -list` exits non-zero, or
+   `[PLATFORM_TARGETS]` indicates a non-Apple project. Skip the Apple
+   sub-flow with a single line: `No Xcode detected — skipping Apple-only steps.`
+2. **One scheme detected** — auto-fill; surface in the Form E prompt.
+   `Scheme "MyApp" (only one found) — used as XCODE_SCHEME.`
+3. **Multiple schemes detected** — present a numbered list:
+   `Schemes found:  1. MyApp  2. MyAppTests … Reply with the number or the scheme name.`
+4. **No simulators available** — if macOS project, fall back to
+   `XCODE_DESTINATION="platform=macOS"`. Otherwise ask: `No simulators available. Reply with a destination string or say `diagnose` to inspect available runtimes.`
+5. **`brew` not installed** — do not attempt installs. Print:
+   `Homebrew not installed. Install from https://brew.sh and re-run kickoff.`
+6. **Required brew tool missing** — propose `brew install <pkg>` via
+   Form I. On `skip`, record the skip and proceed.
+7. **Brew tool at out-of-range version** — propose `brew upgrade <pkg>`
+   via Form I (upgrade variant). On `skip`, keep current version.
+8. **Source layout indeterminate** (both `Sources/` and a non-standard
+   directory contain Swift sources) — ask once: `Both `Sources/` and `MyApp/` contain Swift sources. Reply with the directories `format-swift.sh` should target (space-separated), or `default` to leave SWIFT_SOURCE_DIRS="".`
+9. **Network required but unavailable** (`brew install` fails with a
+   network error signature) — do not retry. Print the failed command and
+   the stderr tail; treat the install as `skip`-by-failure; proceed.
+
+#### 7.5 Reply grammar
+
+- `yes` / `y` — proceed.
+- `no` / `skip` — do not proceed; record the skip.
+- `abort` — exit kickoff entirely.
+- `edit` (Form E only) — provide overriding values in the next message.
+- Bare integer or scheme name (multi-scheme) / destination string
+  (no-simulator) / space-separated directory list (source-layout).
+- Empty / unrecognized / "no" / "don't" / "wait" → treated as `no`;
+  re-prompt with a clarifying question. Never defaults to `yes`.
+
+#### 7.6 Idempotency rules
+
+Procedure 7 is idempotent on re-invocation. Each Form has a
+target-state definition; when the target state already holds, the
+Form emits a single-line `note:` diagnostic and moves on without
+re-rendering.
+
+- **Form R** — always runs (no target state; read-only discovery).
+- **Form I** — skip when `command -v <tool>` returns a path AND
+  `<tool> --version` is within the pack-tested range.
+- **Form E** — skip when the anchor matches the proposed value
+  (empty diff) or when the file's variable is already set to a
+  non-placeholder value (see §7.2.2 anchor-matching rules).
+- **Form M** — skip when every source/target pair is byte-identical
+  under `cmp -s`.
+
+**Preview rendering.** When a Form's idempotency rule fires (Form I:
+`command -v <tool>` returns a path AND `<tool> --version` is within
+the pack-tested range; Form M: every source/target pair is
+byte-identical under `cmp -s`), the gate renders as a single-line
+`note:` diagnostic inside the Form R results table rather than as a
+separately-rendered Form. The preview is the gate — there is no
+proposed action for the developer to approve, skip, or abort. This
+applies wherever Form I or Form M is invoked (§ 7.2.3 swift-format,
+§ 7.2.4 Xcode companion files, § 7.3.1 Apple-side gRPC tooling,
+§ 7.3.2 Python-side gRPC tooling). The full Form renders only when
+the idempotency rule does NOT fire — i.e., when there is something
+to gate. Reply grammar (§ 7.5) does not apply to preview lines; they
+are informational notes inside Form R, whose own reply grammar
+covers the read-only discovery decision.
+
+For concurrent / interrupted kickoff handling, see
+`project-template/docs/pack/PM-CHAT.md` § Before starting a new
+project ("Never run two PM chats simultaneously for the same
+project").
+
+If Form R runs, all Form I targets are in-range, all Form E anchors
+are populated, and all Form M targets are byte-identical, Procedure 7
+prints: `Kickoff complete — nothing to change.` This is the empty-diff
+re-invocation terminal state.
+
+#### 7.7 Artifacts and cross-references
+
+**Artifacts modified:** `scripts/validate-swift.sh`,
+`scripts/test-swift.sh`, `scripts/format-swift.sh` (conditional on
+non-SPM layout), `.claude/settings.json` (env block), and
+`~/Library/Developer/Xcode/CodingAssistant/{ClaudeAgentConfig,codex}/*`
+(machine-level; not in the project tree).
+
+**Artifacts never touched by Procedure 7:** `BACKLOG.md`; `STATUS.md`;
+`CHANGELOG.md`; `ARCHITECTURE.md`; `IMPLEMENTATION_PLAN.md`; the
+trinity files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`); `.codex/`,
+`.gemini/`, `.claude/agents/` subtrees; any file under `docs/project/`
+other than the ones the PM chat ordinarily writes; any `x-` custom
+agent / skill / prompt file.
+
+**Sub-flow conditions:** the Apple sub-flow runs iff `[PLATFORM_TARGETS]`
+includes any of iOS, iPadOS, macOS, tvOS, watchOS, or visionOS; the
+gRPC sub-flow runs iff `[TRANSPORT]` includes gRPC or a `proto/`
+directory exists at the project root; the Python Form I quadruplet
+under §7.3.2 runs iff Python is also detected.
+
+The kickoff-variant continuation pointer in
+`project-template/docs/pack/prompts/pm-chat.md` Variant: kickoff is
+the invocation point for Procedure 7.
+
 ### Cancelling or deprecating a BACKLOG item
 
 Tell the PM chat in conversation: "Cancel TD-NNN" or "Deprecate TD-NNN — [brief reason]."
@@ -1111,14 +1844,17 @@ reference.
 ### Day 1 — Setup
 - [ ] Create GitHub repo; clone locally
 - [ ] Planning conversation → ARCHITECTURE.md, IMPLEMENTATION_PLAN.md, CLAUDE.md, AGENTS.md
-- [ ] Copy template files from pack: `cp -r pack/[TEMPLATE]/. .` — then separately copy
-      `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, `PM-CHAT.md`, and `PACK-FEEDBACK.md`
-      from `project-template/` and `supporting-docs/`
+- [ ] Run `"$PACK/scripts/init-project.sh" .` from the project root.
+      The script previews every operation, asks for explicit
+      confirmation, and on `y` executes eleven stages (S0..S10) that
+      copy template files, distribute skills, set permissions, run
+      bootstrap, and emit the PM chat kickoff prompt. See
+      `supporting-docs/SETUP-NEW.md` Step 3 for the full procedure.
 - [ ] Create BACKLOG.md, STATUS.md, CHANGELOG.md (empty with structure)
-- [ ] Run `./scripts/bootstrap.sh`
-- [ ] **Choose PM chat mode** — Option A (Claude Desktop app, see QUICKSTART.md
-      Step 10, Option A), Option B (Claude CLI, Step 10, Option B), or
-      Option C (Gemini CLI, Step 10, Option C)
+- [ ] **Choose PM chat mode** — Option A (Claude Desktop app, see
+      `SETUP-NEW.md` Step 10 Option A), Option B (Claude Code CLI,
+      Step 10 Option B), Option C (Codex CLI, Step 10 Option C), or
+      Option D (Gemini CLI, Step 10 Option D)
 - [ ] Commit all docs. If using Desktop app: sync GitHub connector.
 
 ### Before each phase
@@ -1145,6 +1881,6 @@ reference.
 
 ---
 
-*Version 2.0 — AI Agent Config Pack v9, April 2026*
+*Version 2.1 — AI Agent Config Pack v10.0, April 2026*
 *Source: maintenance-docs/origins/Claude-Assisted_Project_Methodology_Guide_v1.md*
 *Update this file when new standing decisions are made. Bump the version number.*

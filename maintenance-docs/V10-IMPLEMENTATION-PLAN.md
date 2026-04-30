@@ -250,6 +250,7 @@ Operational rules:
 | **2c** | BD-046 migration (detect.sh, merge helpers, migrate script, guide) | 5 | **Gate D** |
 | **3** | BD-044 init-project.sh + SETUP guides + QUICKSTART router + README layout + Check 9 + PROMPT-TEMPLATES.md deletion | 7 | **Gate E** |
 | **3-AC** | BD-046 capability-addition (add-capability.sh, detect.sh extension, Procedure 6, README line) | 3 | **Gate E2** |
+| **3-B** | BD-047 PM chat kickoff auto-discovery + install-check (ship-blocker) | 2 (+ 1 plan-update) | **Gate E3** |
 | **4** | Full verification pass (Part 10 CP tests; all six sweeps; deferred smoke tests) | 0 (verification only; `fix:` commits only if needed) | **Gate F** |
 | **5** | Ship — CHANGELOG, README version row, BACKLOG resolution, merge, tag | 3 + merge + tags | **Ship approval** |
 | **6** | Post-ship — OT project migration, deferred follow-through | per-project | — |
@@ -784,7 +785,11 @@ Commit format (CLAUDE.md pack-repo rules):
     at its current HEAD on v10-dev (equal to v9.3 for this file). If
     v10-dev has unexpectedly modified the file, reset via
     `git show v9.3:supporting-docs/PROMPT-TEMPLATES.md`.
-- **Files created (12):**
+- **Part 8 rows covered (12 = 1 directory + 11 files):** row 11 is
+  `project-template/docs/pack/prompts/` (the directory, created
+  implicitly when the first file is written into it); rows 12–22 are
+  the 11 files below.
+- **Files created (11):**
   - `project-template/docs/pack/prompts/coder.md` (`agent: coder`; variants `standard`, `fix-cycle` from T2+T4)
   - `project-template/docs/pack/prompts/reviewer.md` (`agent: reviewer`; variants `standard` from T3)
   - `project-template/docs/pack/prompts/tester.md` (variants `standard` from T5)
@@ -1604,6 +1609,80 @@ combined row 24+38+81), and the README layout baseline exists
 6. README layout contains `add-capability.sh` line.
 7. Procedure 6 present in METHODOLOGY.md; Procedure 5 and 5-R still
    present.
+
+**Approve to proceed to Phase 3-B.**
+
+---
+
+### 6.6-B Phase 3-B — BD-047 PM-chat kickoff auto-discovery (NEW — v10.0 ship-blocker)
+
+BD-047 was filed 2026-04-24 as a v10.0 ship-blocker for PM chat
+kickoff auto-discovery + install-check. Phase 3-B lands between
+Gate E2 and Gate F.
+
+**Authoritative documents:**
+
+- `maintenance-docs/V10-PHASE-3B-DESIGN.md` — v1 architecture pass
+  (6 questions, 9 error branches, 4 confirmation-gate forms, rejected
+  alternatives, open questions). **Superseded for Part 7 §7.2 + Part 10
+  by V10-PHASE-3B-DESIGN-v2.md.**
+- `maintenance-docs/V10-PHASE-3B-DESIGN-v2.md` — v2 architecture pass
+  (kickoff variant slim + METHODOLOGY.md Procedure 7 split; revised
+  Part 7 §7.2 structural decision and Part 10 relocation strategy).
+- `maintenance-docs/V10-PHASE-3B-PLAN.md` — v1 implementation plan
+  (decisions table, Form E anchor-matching spec, idempotency rules,
+  brew version ranges, test-fixture strategy, cross-reference sweep
+  spec, commit-by-commit breakdown, Gate E3 criteria, Phase-4
+  deferred items, implementer flag-backs, BD-047 closure mapping).
+  **Superseded for execution by V10-PHASE-3B-PLAN-v2.md** (decisions
+  reused; commit shape replaced).
+- `maintenance-docs/V10-PHASE-3B-PLAN-v2.md` — v2 implementation plan
+  (three-commit shape; six sweeps S3B-1..S3B-6; Gate E3 entry criteria
+  updated for the v2 commit shape; BD-047 closure mapping remapped).
+
+**Commits (landed; see V10-PHASE-3B-PLAN-v2.md Part 3 for full detail):**
+
+1. **`1c5116c`** — `docs: v10 — BD-047 pm-chat.md kickoff variant slim
+   + Procedure 7 pointer` (kickoff variant slimmed to ~74 lines with a
+   continuation pointer; bulk content moved to Procedure 7).
+2. **`db416a0`** — `docs: v10 — BD-047 SETUP-NEW + SETUP-EXISTING fold
+   Steps 5–8 into PM chat` (SETUP-NEW Steps 5–8 collapse to Step 5 +
+   § Manual fallback 5.A–5.D; SETUP-EXISTING Step 5 rewrites to point
+   at SETUP-NEW Manual fallback).
+3. **`2a0c8d5`** — `feat: v10 — BD-047 METHODOLOGY.md Procedure 7 for
+   kickoff auto-discovery` (new Procedure 7, ~308 lines; hosts Forms
+   R/I/E/M, behavior-on-failure, reply grammar, idempotency, artifacts).
+
+#### Gate E3 — End of Phase 3-B
+
+Entry criteria summary (full list in V10-PHASE-3B-PLAN-v2.md Part 7):
+
+1. `validate-pack.py` passes on every Phase 3-B commit.
+2. Cross-reference sweeps S3B-1..S3B-6 clean (spec in PLAN-v2.md Part 6).
+3. Kickoff variant parses cleanly — four `## Variant:` H2s, YAML
+   front matter preserved.
+4. SETUP-guide numbering invariant holds (SETUP-NEW Steps 1–5, 9–12
+   with intentional 6–8 gap; SETUP-EXISTING Steps 1–5, 7–12).
+5. Procedure 7 ↔ SETUP-NEW.md § Manual fallback command-set parity
+   (PLAN-v2.md Part 11 §11.1).
+6. Fixture evidence for the six fixtures from PLAN-v2.md Part 5
+   (deferred to Gate F per PLAN-v2.md Part 7 criterion 6).
+7. Cross-surface checks (Codex CLI, Gemini CLI, Desktop Commander)
+   — deferred to Gate F per PLAN-v2.md Part 9.
+8. Category-C (Manual mode) check on Claude Web / ChatGPT Web
+   — deferred to Gate F per PLAN-v2.md Part 9.
+9. BD-047 coverage verified per PLAN-v2.md Part 12 closure mapping.
+10. No unintended touches outside the four files explicitly named in
+    PLAN-v2.md Part 9 (`pm-chat.md`, `SETUP-NEW.md`, `SETUP-EXISTING.md`,
+    `METHODOLOGY.md`). **Note: METHODOLOGY.md is modified by Commit 3
+    to add Procedure 7; this is by design, not an unintended touch.**
+11. Procedure 7 has 8 H4 + 7 H5 sub-sections (PLAN-v2.md Part 7
+    criterion 11).
+12. G7 gate-label consistency with G6 precedent (PLAN-v2.md Part 7
+    criterion 12).
+
+**Predecessor:** Gate E2 (Phase 3-AC).
+**Successor:** Gate F (Phase 4).
 
 **Approve to proceed to Phase 4.**
 

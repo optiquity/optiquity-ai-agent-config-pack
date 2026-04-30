@@ -40,7 +40,7 @@ file and this skill disagree, this skill wins.
 The auditor uses seven semantically coherent clusters. Each cluster has its own
 subagent, its own file scope, its own skill set, and its own output format.
 
-15. **auditor-architecture** — architecture compliance, layer discipline, design quality, module coupling, interface uniformity, LSP compliance, SOLID adherence, observability infrastructure completeness (are logs/metrics/traces wired up at the right layers?).
+15. **auditor-architecture** — architecture compliance, layer discipline, design quality, module coupling, interface uniformity, LSP compliance, capabilities pattern adherence (LSP required; capabilities recommended), SOLID adherence, observability infrastructure completeness (are logs/metrics/traces wired up at the right layers?).
 16. **auditor-code** — language-specific code quality, idiom adherence, dead code, unused imports, performance anti-patterns (N+1, blocking main thread, unnecessary allocations in hot paths), concurrency safety (race conditions, missing async handling, incorrect isolation annotations), and systemic error handling (boundary mapping consistency, retry policy uniformity).
 17. **auditor-tests** — test coverage gaps, test design quality, isolation, determinism, missing edge cases, non-deterministic tests, mocked vs. real boundary decisions.
 18. **auditor-docs** — documentation accuracy vs. actual code, stale descriptions, wrong file paths, CHANGELOG drift, incorrect API examples, outdated setup instructions. Flags documented claims that do not match observed code facts.

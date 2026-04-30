@@ -18,6 +18,15 @@ Per `audit-methodology` rule 15:
 - **LSP compliance** — protocol conformances that silently no-op, runtime
   type interrogation behind protocol references, domain code branching on
   concrete types.
+- **Capabilities pattern adherence** — abstractions whose conforming
+  types have variable supported operation sets but expose no
+  capability mechanism (value-based flag set or interface-based query);
+  "not supported" throws or silent no-ops that indicate a missing
+  capability gate rather than a legitimate LSP-compliant
+  implementation; caller code that interrogates the concrete type
+  behind an abstract reference instead of querying a capability.
+  LSP is required; capabilities are recommended — file capability
+  findings under this bullet, not under LSP.
 - **Observability infrastructure** — are logs, metrics, and traces wired up
   at the right architectural layers? Does the project have a logger
   abstraction at the boundary, metric collection in the service layer,

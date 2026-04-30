@@ -1,6 +1,6 @@
 {
   "_readme": "Copy this to .mcp.json and fill in your real values. .mcp.json is gitignored — never commit it.",
-  "_tools": "mcp-local-rag is recommended for Claude Code CLI PM chat sessions. It provides semantic search over METHODOLOGY.md and PROMPT-TEMPLATES.md. Not needed for Gemini CLI (GEMINI.md hierarchy provides native context) or Codex CLI.",
+  "_tools": "mcp-local-rag is recommended for Claude Code CLI PM chat sessions. It provides semantic search over METHODOLOGY.md. Not needed for Gemini CLI (GEMINI.md hierarchy provides native context) or Codex CLI.",
   "mcpServers": {
     "local-rag": {
       "command": "npx",

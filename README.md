@@ -46,11 +46,12 @@ always points to the latest minor of that major version.
 | v9.1    | Apr 2026     | BD-038 dynamic skill management (Active skills line in context files, proactive skill gap detection at phase gates); BD-041 project initialization brief (design brief prerequisite in PM-CHAT.md) |
 | v9.2    | Apr 2026     | BD-042 pack reference docs moved to docs/pack/; document locations section added to context files |
 | v9.3    | Apr 2026     | BD-043 Gemini native subagent architecture (`.gemini/agents/` with YAML frontmatter); GEMINI.md stripped to project context only; agent-run.sh transparent `@agent-name` translation; full Gemini doc audit |
+| v10.0   | Apr 29, 2026 | Procedure 7 kickoff auto-discovery + Procedure 5-S post-migration housekeeping; per-agent prompt templates under docs/pack/prompts/ with labeled-section convention (BD-049); init-project.sh + migrate-v9-to-v10.sh; capabilities pattern (BD-045); METHODOLOGY canonical at docs/pack/; format-vs-solutions worked examples; validate-pack.py expanded to 10 checks |
 
 ## Repository Layout
 
 ```
-project-template/                           Unified project template (v9)
+project-template/                           Unified project template (v10)
 ├── .claude/agents/                         Claude agent files (16 agents)
 ├── .codex/agents/                          Codex agent files (16 agents)
 ├── .gemini/agents/                         Gemini agent files (16 agents)
@@ -58,35 +59,54 @@ project-template/                           Unified project template (v9)
 ├── .claude/settings.json                   Claude Code settings (permissions, hooks)
 ├── skills/                                 Canonical skill library (30 skills) — distributed
 │                                           to .claude/skills/, .codex/skills/, .gemini/skills/
-│                                           at project creation; not present in projects
+│                                           at project creation by init-project.sh; not
+│                                           present as a sub-directory in projects
+├── docs/pack/                              Pack product docs shipped into each project
+│   ├── PM-CHAT.md                          PM chat startup and operating instructions
+│   ├── PLATFORM-SKILLS.md                  Skill-selection matrix by project type
+│   ├── PACK-FEEDBACK.md                    Upstream feedback log to Pack Chat
+│   └── prompts/                            Per-agent prompt templates (new in v10)
+│       ├── coder.md                        variants: standard, fix-cycle
+│       ├── reviewer.md                     variant: standard
+│       ├── tester.md, planner.md,          variants: standard
+│       │   docs-researcher.md,
+│       │   architect.md (variant: mid-phase),
+│       │   auditor.md (variant: standard)
+│       ├── grpc-schema.md, repo-ops.md     placeholders (no variants shipped)
+│       └── pm-chat.md                      variants: kickoff, backlog-status-update,
+│                                           generate-setup, generate-agent-kickoff
+│                                           (directory guidance: see supporting-docs/METHODOLOGY.md
+│                                            § Prompt Authoring Principles)
 ├── scripts/                                Build, test, validation scripts (15)
 ├── CLAUDE.md                               Claude context file (unified template)
 ├── AGENTS.md                               Codex context file (unified template)
 ├── GEMINI.md                               Gemini context file (unified template)
-├── PM-CHAT.md                              PM chat startup instructions
-├── PLATFORM-SKILLS.md                      Skill-selection matrix by project type
-├── PACK-FEEDBACK.md                        Upstream feedback log to Pack Chat
 ├── agent-run.sh                            Agent launcher with per-tool flags
 ├── .mcp.json.example                       MCP config template
 ├── .gitignore                              Gitignore for projects
 └── (conditional: proto/, server/, pyproject.toml, pyrightconfig.json)
 
 supporting-docs/                            Pack product docs (copied to or consumed by projects)
-├── METHODOLOGY.md                          Universal project methodology
-├── PROMPT-TEMPLATES.md                     Agent prompt templates
+├── METHODOLOGY.md                          Universal project methodology (copied to project root)
 ├── CLI-PM-SETUP.md                         CLI PM chat daily usage reference
 ├── DEPENDENCIES.md                         Tool dependencies reference
-├── SETUP_TEMPLATE.md                       New project setup template
+├── SETUP_TEMPLATE.md                       Per-project setup template (PM chat fills in)
+├── SETUP-NEW.md                            Guide for setting up a new project (v10)
+├── SETUP-EXISTING.md                       Guide for adding the pack to an existing project (v10)
 ├── AGENT_KICKOFF_TEMPLATE.md               Architecture kickoff template
-└── MIGRATION-v8-to-v9.md                   Upgrade guide
+├── MIGRATION-v9-to-v10.md                  Upgrade guide (v9.3 → v10.0)
+└── MIGRATION-v8-to-v9.md                   Upgrade guide (historical; v8.x → v9.0)
 
 maintenance-docs/                           Pack maintainer docs (design records, archives)
-├── V9-DESIGN.md                            v9 architecture design record
+├── V10-DESIGN.md                           v10 architecture design record
+├── V10-IMPLEMENTATION-PLAN.md              v10 implementation plan
 ├── TOOL-COMPARISON.md                      Cross-tool capability reference
 ├── VERIFIED-NOTES.md                       Verified facts from official docs
 ├── RECOMMENDATIONS.md                      Practical recommendations for new projects
 ├── GEMINI-CLI-ANALYSIS.md                  Gemini CLI analysis (deprecated)
 ├── ANDROID-ANALYSIS.md                     Android support analysis (deprecated)
+├── archive/                                Superseded design records (v9 and earlier)
+│   └── V9-DESIGN.md                        v9 architecture design record (superseded by V10-DESIGN.md)
 ├── origins/                                Source material and chat transcripts
 └── guides/                                 Per-version setup guides
 
@@ -100,12 +120,19 @@ vscode-companion-templates/                 Machine-level VS Code config (per pr
   .gemini/skills/
 
 scripts/                                    Pack-level scripts
-└── validate-pack.py                        CI structural validation
+├── validate-pack.py                        CI structural validation
+├── init-project.sh                         Initialize the pack in a new or existing project (v10)
+├── migrate-v9-to-v10.sh                    v9.3 → v10.0 migration script (v10)
+├── add-capability.sh                       Add a pack-supported capability to an existing project (v10)
+├── merge-platform-skills.py                PLATFORM-SKILLS.md splice helper (v10)
+├── merge-trinity.py                        Trinity file splice helper (v10)
+└── lib/
+    └── detect.sh                           Shared detection library sourced by the scripts above
 
 .github/workflows/                          GitHub Actions
 └── validate-pack.yml                       Pack self-validation on every push
 
-QUICKSTART.md                               Quick start guide
+QUICKSTART.md                               Quick start router (three paths — NEW / EXISTING / MIGRATE)
 PACK-CHAT.md                                Pack CLI chat operating instructions
 PACK-AGENTS.md                              Pack agent routing (includes invocation guide)
 BACKLOG.md                                  Pack improvement backlog
@@ -115,6 +142,10 @@ GEMINI.md                                   Pack repo Gemini context (not a temp
 README.md                                   This file
 CHANGELOG.md                                Pack changelog
 ```
+
+> Migration guides follow the naming convention `MIGRATION-vN-to-vM.md`.
+> They always live in `supporting-docs/` and ship with the major version
+> that introduces the destination pack version.
 
 ## Checking Out a Specific Version
 

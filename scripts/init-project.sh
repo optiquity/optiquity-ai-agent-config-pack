@@ -1,0 +1,674 @@
+#!/usr/bin/env bash
+# init-project.sh — initialize an AI Agent Config Pack v10.0 installation
+# in a new or existing project directory.
+#
+# Per V10-DESIGN §7.3..§7.8, the script classifies the target into one
+# of five project classes, stops (exit 20) if AI config is already
+# present, prints a preview report, asks for explicit confirmation
+# (default No), then executes eleven stages S0..S10 with inline
+# verification at each step. A blast-radius sweep at the end of S6 and
+# S10 checks for stale cross-references.
+#
+# Usage:
+#     PACK=/path/to/pack ./scripts/init-project.sh [target-dir]
+#
+# Target directory defaults to the current working directory.
+#
+# Exit codes (§7.7):
+#     0   Success, or developer declined confirmation
+#     10  $PACK invalid
+#     11  Target is not a git repo
+#     12  Working tree not clean
+#     20  STOP — existing AI config
+#     21–30 Stage N (20 + stage number) failure
+#     31  Blast-radius sweep failure
+#     40  Conditional-removal failure
+#     99  Internal error (set -euo pipefail trap)
+
+set -euo pipefail
+
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Exit codes
+readonly EXIT_PACK_INVALID=10
+readonly EXIT_NOT_GIT=11
+readonly EXIT_DIRTY=12
+readonly EXIT_AI_CONFIG=20
+readonly EXIT_SWEEP=31
+readonly EXIT_CONDITIONAL=40
+readonly EXIT_INTERNAL=99
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+
+say()  { printf '%s\n' "$*"; }
+info() { printf '  %s\n' "$*"; }
+warn() { printf 'warning: %s\n' "$*" >&2; }
+die()  { printf 'error: %s\n' "$1" >&2; exit "${2:-$EXIT_INTERNAL}"; }
+
+fail_stage() {
+    local stage="$1" msg="$2"
+    # Stage number is S0..S10; exit code is 20 + N. S0 uses pre-confirm codes.
+    local n="${stage#S}"
+    local code=$(( 20 + n ))
+    (( code > 30 )) && code=30
+    printf 'error: stage %s failed: %s\n' "$stage" "$msg" >&2
+    printf 'hint: inspect state with `git status`; reset with `git reset --hard && git clean -fd`\n' >&2
+    exit "$code"
+}
+
+# ── Source shared detection library ────────────────────────────────────────
+
+if [[ ! -f "$SCRIPT_DIR/lib/detect.sh" ]]; then
+    die "missing shared detection library: $SCRIPT_DIR/lib/detect.sh" "$EXIT_INTERNAL"
+fi
+# shellcheck source=lib/detect.sh
+source "$SCRIPT_DIR/lib/detect.sh"
+
+# ── Init-only detection helpers ────────────────────────────────────────────
+
+# language-markers: <comma list> | (none)
+# Checks for language manifest files at depth ≤ 2.
+detect_language_markers() {
+    local target="${1:-.}"
+    local found=()
+    # Swift: Package.swift, *.xcodeproj, *.xcworkspace
+    if find "$target" -maxdepth 2 \( -name "Package.swift" -o -name "*.xcodeproj" -o -name "*.xcworkspace" \) \
+            -not -path '*/.*' 2>/dev/null | grep -q .; then
+        found+=("swift")
+    fi
+    # Python: pyproject.toml
+    if find "$target" -maxdepth 2 -name "pyproject.toml" -not -path '*/.*' 2>/dev/null | grep -q .; then
+        found+=("python")
+    fi
+    # Kotlin: build.gradle.kts, settings.gradle.kts, build.gradle
+    if find "$target" -maxdepth 2 \( -name "build.gradle.kts" -o -name "settings.gradle.kts" -o -name "build.gradle" \) \
+            -not -path '*/.*' 2>/dev/null | grep -q .; then
+        found+=("kotlin")
+    fi
+    # TypeScript/Node: package.json, tsconfig.json
+    if find "$target" -maxdepth 2 \( -name "package.json" -o -name "tsconfig.json" \) \
+            -not -path '*/.*' 2>/dev/null | grep -q .; then
+        found+=("typescript")
+    fi
+    # Proto: proto/ with ≥1 .proto file
+    if [[ -d "$target/proto" ]] && find "$target/proto" -maxdepth 2 -name "*.proto" 2>/dev/null | grep -q .; then
+        found+=("proto")
+    fi
+
+    # Weak evidence (extension count ≥ 3) only if no strong evidence for that language yet.
+    if ! printf '%s\n' "${found[@]:-}" | grep -qx "swift"; then
+        local c
+        c=$(find "$target" -maxdepth 2 -name "*.swift" -not -path '*/.*' 2>/dev/null | wc -l | tr -d ' ')
+        (( c >= 3 )) && found+=("swift")
+    fi
+    if ! printf '%s\n' "${found[@]:-}" | grep -qx "python"; then
+        local c
+        c=$(find "$target" -maxdepth 2 -name "*.py" -not -path '*/.*' 2>/dev/null | wc -l | tr -d ' ')
+        (( c >= 3 )) && found+=("python")
+    fi
+
+    if (( ${#found[@]} == 0 )); then
+        echo "language-markers: (none)"
+    else
+        local IFS=,
+        echo "language-markers: ${found[*]}"
+    fi
+}
+
+# source-files: <summary> — depth ≤ 2 counts for the covered languages.
+detect_source_files() {
+    local target="${1:-.}"
+    local s p
+    s=$(find "$target" -maxdepth 2 -name "*.swift" -not -path '*/.*' 2>/dev/null | wc -l | tr -d ' ')
+    p=$(find "$target" -maxdepth 2 -name "*.py" -not -path '*/.*' 2>/dev/null | wc -l | tr -d ' ')
+    echo "source-files: *.swift=$s, *.py=$p"
+}
+
+# classify: new-empty | new-bare | existing-bare | existing-source | already-configured
+classify_project_state() {
+    local target="${1:-.}"
+    local ai
+    ai=$(detect_ai_config "$target" | awk -F': ' '{print $2}')
+    if [[ "$ai" != "(none)" ]]; then
+        echo "classify: already-configured"
+        return
+    fi
+    # Language markers?
+    local lm
+    lm=$(detect_language_markers "$target" | awk -F': ' '{print $2}')
+    if [[ "$lm" != "(none)" ]]; then
+        echo "classify: existing-source"
+        return
+    fi
+    # README + docs/ with markdown only?
+    if [[ -f "$target/README.md" && -d "$target/docs" ]]; then
+        if find "$target/docs" -type f -not -name "*.md" 2>/dev/null | grep -q .; then
+            echo "classify: existing-source"   # docs has non-md files — treat as source
+        else
+            echo "classify: existing-bare"
+        fi
+        return
+    fi
+    # README only?
+    if [[ -f "$target/README.md" ]]; then
+        echo "classify: new-bare"
+        return
+    fi
+    # Empty or only .gitignore/LICENSE?
+    echo "classify: new-empty"
+}
+
+# Pack skill coverage table (per §7.8). Used for skill-gap detection.
+pack_skill_coverage_for() {
+    local lang="$1"
+    case "$lang" in
+        swift)      echo "apple-architecture-core,swift-best-practices" ;;
+        python)     echo "python-architecture,python-best-practices" ;;
+        proto)      echo "grpc-patterns" ;;
+        *)          echo "" ;;  # No coverage
+    esac
+}
+
+# ── Preview + confirmation ─────────────────────────────────────────────────
+
+# Prints the detection report per §7.5 format.
+print_preview() {
+    local target="$1" pack="$2" classification="$3" language_markers="$4"
+    cat <<EOF
+init-project.sh detection report
+=================================
+Target project:  $target
+Pack:            $pack  ($(detect_pack_version "$pack" | awk -F': ' '{print $2}'))
+
+Classification:  $classification
+$(detect_git_repo "$target")
+$(detect_clean_working_tree "$target")
+
+Language markers: $language_markers
+$(detect_source_files "$target")
+
+Existing AI config: $(detect_ai_config "$target" | awk -F': ' '{print $2}')
+
+Pack skill coverage:
+EOF
+    local lang coverage
+    local IFS=,
+    for lang in $language_markers; do
+        [[ "$lang" == "(none)" ]] && continue
+        coverage=$(pack_skill_coverage_for "$lang")
+        if [[ -n "$coverage" ]]; then
+            echo "  $lang:   FULL ($coverage)"
+        else
+            echo "  $lang:   NO COVERAGE    <-- gap reported"
+        fi
+    done
+    unset IFS
+    cat <<'EOF'
+
+Planned operations
+------------------
+  [ADD — new files and directories]  per stages S1–S7
+  [MERGE — appended and deduplicated] .gitignore (stage S8)
+  [CONDITIONAL REMOVE]               per stage S9 (language-aware)
+  [END-OF-RUN OUTPUT]                PM chat kickoff prompt (stage S10)
+
+Developer transition notice
+---------------------------
+After this run, the project will use the pack's file names and
+locations as the standard going forward:
+  - Agent config: .claude/, .codex/, .gemini/
+  - Context: CLAUDE.md, AGENTS.md, GEMINI.md at the project root
+  - Methodology & templates: docs/pack/
+  - Scripts: scripts/
+  - Agent launcher: agent-run.sh at the project root
+
+Existing README.md, LICENSE, language manifest, and project docs are
+unchanged and will continue to be authoritative.
+EOF
+}
+
+confirm_proceed() {
+    local ans
+    read -r -p "Proceed? [y/N] " ans || ans=""
+    local lower
+    lower=$(printf '%s' "$ans" | tr '[:upper:]' '[:lower:]')
+    case "$lower" in
+        y|yes) return 0 ;;
+        *)     say "Declined. No changes made."; return 1 ;;
+    esac
+}
+
+# ── Stages S1..S10 ─────────────────────────────────────────────────────────
+
+stage_s1_skeleton() {
+    say "── S1 — directory skeleton ──"
+    mkdir -p "$TARGET/.claude/agents" "$TARGET/.codex/agents" "$TARGET/.gemini/agents" \
+             "$TARGET/.claude/skills" "$TARGET/.codex/skills" "$TARGET/.gemini/skills" \
+             "$TARGET/docs/pack" "$TARGET/docs/project" "$TARGET/docs/reference" \
+             "$TARGET/scripts"
+    # Verification
+    local d
+    for d in .claude/agents .codex/agents .gemini/agents docs/pack scripts; do
+        [[ -d "$TARGET/$d" ]] || fail_stage S1 "missing directory $d after creation"
+    done
+}
+
+stage_s2_agents() {
+    say "── S2 — copy pack agent files (three tools) ──"
+    local tool ext pack_src dst
+    for tool in claude codex gemini; do
+        case "$tool" in codex) ext="toml" ;; *) ext="md" ;; esac
+        pack_src="$PACK/project-template/.${tool}/agents"
+        dst="$TARGET/.${tool}/agents"
+        [[ -d "$pack_src" ]] || fail_stage S2 "pack source missing: $pack_src"
+        local f
+        for f in "$pack_src"/*.${ext}; do
+            [[ -e "$f" ]] || continue
+            cp "$f" "$dst/"
+        done
+    done
+    # Verify agent counts match pack
+    local pack_count dst_count
+    pack_count=$(find "$PACK/project-template/.claude/agents" -maxdepth 1 -name "*.md" | wc -l | tr -d ' ')
+    for tool in claude codex gemini; do
+        case "$tool" in codex) ext="toml" ;; *) ext="md" ;; esac
+        dst_count=$(find "$TARGET/.${tool}/agents" -maxdepth 1 -name "*.${ext}" | wc -l | tr -d ' ')
+        (( dst_count == pack_count )) || \
+            fail_stage S2 "agent count mismatch: .${tool}/agents has $dst_count, expected $pack_count"
+    done
+}
+
+stage_s3_configs() {
+    say "── S3 — copy pack configs ──"
+    local f
+    for f in .codex/config.toml .claude/settings.json .mcp.json.example; do
+        local pack_file="$PACK/project-template/$f"
+        if [[ -f "$pack_file" ]]; then
+            mkdir -p "$TARGET/$(dirname "$f")"
+            cp "$pack_file" "$TARGET/$f"
+        fi
+    done
+    [[ -f "$TARGET/.codex/config.toml" ]] || fail_stage S3 ".codex/config.toml missing after copy"
+    [[ -s "$TARGET/.claude/settings.json" ]] || fail_stage S3 ".claude/settings.json empty or missing"
+}
+
+stage_s4_skills() {
+    say "── S4 — distribute skills (SKILL.md only) ──"
+    local skill_dir name tool
+    for skill_dir in "$PACK/project-template/skills"/*/; do
+        [[ -d "$skill_dir" ]] || continue
+        name=$(basename "$skill_dir")
+        for tool in claude codex gemini; do
+            mkdir -p "$TARGET/.${tool}/skills/$name"
+            cp "$skill_dir/SKILL.md" "$TARGET/.${tool}/skills/$name/SKILL.md"
+        done
+    done
+    # Verify: every pack skill has three destination SKILL.md files
+    local missing=0
+    for skill_dir in "$PACK/project-template/skills"/*/; do
+        [[ -d "$skill_dir" ]] || continue
+        name=$(basename "$skill_dir")
+        for tool in claude codex gemini; do
+            if [[ ! -f "$TARGET/.${tool}/skills/$name/SKILL.md" ]]; then
+                warn "missing .${tool}/skills/$name/SKILL.md"
+                missing=1
+            fi
+        done
+    done
+    (( missing == 0 )) || fail_stage S4 "one or more skill copies missing"
+}
+
+stage_s5_scripts() {
+    say "── S5 — copy scripts + agent-run.sh ──"
+    local pack_scripts="$PACK/project-template/scripts"
+    if [[ -d "$pack_scripts" ]]; then
+        local f
+        for f in "$pack_scripts"/*; do
+            [[ -e "$f" ]] || continue
+            local name; name=$(basename "$f")
+            # Skip if existing (existing-project skip list)
+            if [[ "$CLASS" == existing-* && -f "$TARGET/scripts/$name" ]]; then
+                info "SKIP $name (exists in project scripts/)"
+                continue
+            fi
+            cp "$f" "$TARGET/scripts/"
+        done
+        chmod +x "$TARGET/scripts"/*.sh 2>/dev/null || true
+    fi
+    if [[ -f "$PACK/project-template/agent-run.sh" ]]; then
+        if [[ "$CLASS" == existing-* && -f "$TARGET/agent-run.sh" ]]; then
+            info "SKIP agent-run.sh (exists in project root)"
+        else
+            cp "$PACK/project-template/agent-run.sh" "$TARGET/agent-run.sh"
+            chmod +x "$TARGET/agent-run.sh"
+        fi
+    fi
+    [[ -x "$TARGET/agent-run.sh" ]] || fail_stage S5 "agent-run.sh missing or not executable"
+}
+
+stage_s6_docs_pack() {
+    say "── S6 — copy docs/pack/ content ──"
+    local pack_docs="$PACK/project-template/docs/pack"
+    if [[ ! -d "$pack_docs" ]]; then
+        fail_stage S6 "pack source missing: $pack_docs"
+    fi
+    local f
+    for f in "$pack_docs"/*.md; do
+        [[ -e "$f" ]] || continue
+        cp "$f" "$TARGET/docs/pack/"
+    done
+    # prompts/ directory (entire; 10 per-agent files; PROMPT-AUTHORING.md
+    # was removed in v10.0 — directory guidance lives in METHODOLOGY.md
+    # § Prompt Authoring Principles).
+    mkdir -p "$TARGET/docs/pack/prompts"
+    for f in "$pack_docs/prompts"/*.md; do
+        [[ -e "$f" ]] || continue
+        cp "$f" "$TARGET/docs/pack/prompts/"
+    done
+    # METHODOLOGY.md lives at `docs/pack/METHODOLOGY.md` per V10-DESIGN.md Part 7 §7.6.
+    # Source path is `$PACK/supporting-docs/METHODOLOGY.md`; the docs/pack/*.md loop
+    # above iterates `$PACK/project-template/docs/pack/`, which does not contain
+    # METHODOLOGY — keep this as a separate copy.
+    if [[ -f "$PACK/supporting-docs/METHODOLOGY.md" ]]; then
+        mkdir -p "$TARGET/docs/pack"
+        if [[ "$CLASS" == existing-* && -f "$TARGET/docs/pack/METHODOLOGY.md" ]]; then
+            info "SKIP METHODOLOGY.md at docs/pack/ (exists)"
+        else
+            cp "$PACK/supporting-docs/METHODOLOGY.md" "$TARGET/docs/pack/METHODOLOGY.md"
+        fi
+    fi
+    # Stale-root cleanup advisory: init-project.sh does NOT delete project files
+    # (per V10-F-D-DESIGN §5.3 — init warns; migrate-v9-to-v10.sh removes).
+    if [[ "$CLASS" == existing-* && -f "$TARGET/METHODOLOGY.md" ]]; then
+        warn "stale METHODOLOGY.md at project root — canonical location is docs/pack/METHODOLOGY.md (move or delete manually)"
+    fi
+    # Verify prompts dir content (10 per-agent files expected post-v10.0).
+    local prompts_count
+    prompts_count=$(find "$TARGET/docs/pack/prompts" -maxdepth 1 -name "*.md" | wc -l | tr -d ' ')
+    (( prompts_count >= 10 )) || fail_stage S6 "docs/pack/prompts/ has $prompts_count files (expected ≥ 10)"
+    # End-of-S6 blast-radius sweep (one match allowed: existing PROMPT-TEMPLATES ref in legacy docs — but expected zero in pack-installed files)
+    blast_radius_sweep || exit "$EXIT_SWEEP"
+}
+
+stage_s7_trinity() {
+    say "── S7 — copy trinity from pack template ──"
+    local f
+    for f in CLAUDE.md AGENTS.md GEMINI.md; do
+        local pack_file="$PACK/project-template/$f"
+        [[ -f "$pack_file" ]] || fail_stage S7 "pack template missing: $pack_file"
+        if [[ "$CLASS" == existing-* && -f "$TARGET/$f" ]]; then
+            info "SKIP $f (exists in project root)"
+            continue
+        fi
+        cp "$pack_file" "$TARGET/$f"
+    done
+}
+
+stage_s8_gitignore() {
+    say "── S8 — merge .gitignore ──"
+    local pack_gi="$PACK/project-template/.gitignore"
+    if [[ ! -f "$pack_gi" ]]; then
+        info "no pack .gitignore template — skipping"
+        return
+    fi
+    local header="# --- AI Agent Config Pack additions (v10.0) ---"
+    if [[ ! -f "$TARGET/.gitignore" ]]; then
+        cp "$pack_gi" "$TARGET/.gitignore"
+        return
+    fi
+    # Append-and-dedup: for each line in pack .gitignore, append if not present.
+    local existing dup=0 added=0 line
+    existing=$(cat "$TARGET/.gitignore")
+    {
+        printf '\n%s\n' "$header"
+        while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            [[ "$line" =~ ^# ]] && { printf '%s\n' "$line"; continue; }
+            if printf '%s\n' "$existing" | grep -Fxq "$line"; then
+                dup=$((dup + 1))
+                continue
+            fi
+            printf '%s\n' "$line"
+            added=$((added + 1))
+        done < "$pack_gi"
+    } >> "$TARGET/.gitignore"
+    info ".gitignore merged: $added added, $dup duplicates skipped"
+}
+
+stage_s9_conditional_remove() {
+    say "── S9 — conditional removal ──"
+    # For new-empty / new-bare, copy everything (no removal).
+    if [[ "$CLASS" == "new-empty" || "$CLASS" == "new-bare" ]]; then
+        info "no language markers detected — keeping all conditional files"
+        return
+    fi
+    local lm
+    lm=$(detect_language_markers "$TARGET" | awk -F': ' '{print $2}')
+    local has_swift=0 has_python=0 has_proto=0
+    local IFS=,
+    for lang in $lm; do
+        case "$lang" in
+            swift) has_swift=1 ;;
+            python) has_python=1 ;;
+            proto) has_proto=1 ;;
+        esac
+    done
+    unset IFS
+
+    local removed=0
+    # Python conditional removals
+    if (( has_python == 0 )); then
+        local f
+        for f in pyproject.toml pyrightconfig.json \
+                 scripts/bootstrap-python.sh scripts/format-python.sh \
+                 scripts/validate-python.sh scripts/test-python.sh; do
+            if [[ -e "$TARGET/$f" ]]; then
+                rm -rf "$TARGET/$f"
+                removed=$((removed + 1))
+            fi
+        done
+        if [[ -d "$TARGET/server" ]]; then
+            rm -rf "$TARGET/server"
+            removed=$((removed + 1))
+        fi
+    fi
+    # Swift conditional removals
+    if (( has_swift == 0 )); then
+        local f
+        for f in scripts/bootstrap-swift.sh scripts/format-swift.sh \
+                 scripts/validate-swift.sh scripts/test-swift.sh; do
+            if [[ -e "$TARGET/$f" ]]; then
+                rm -f "$TARGET/$f"
+                removed=$((removed + 1))
+            fi
+        done
+    fi
+    # Proto conditional removals
+    if (( has_proto == 0 )); then
+        local f
+        for f in scripts/proto-gen.sh scripts/validate-proto.sh; do
+            if [[ -e "$TARGET/$f" ]]; then
+                rm -f "$TARGET/$f"
+                removed=$((removed + 1))
+            fi
+        done
+        if [[ -d "$TARGET/proto" ]]; then
+            rm -rf "$TARGET/proto"
+            removed=$((removed + 1))
+        fi
+    fi
+    info "conditional removal: $removed files/dirs removed"
+}
+
+stage_s10_kickoff_prompt() {
+    say "── S10 — generate end-of-run PM chat kickoff prompt ──"
+    local target_abs
+    target_abs=$(cd "$TARGET" && pwd)
+    local pack_ver
+    pack_ver=$(detect_pack_version "$PACK" | awk -F': ' '{print $2}')
+    # Compute skill gaps
+    local lm
+    lm=$(detect_language_markers "$TARGET" | awk -F': ' '{print $2}')
+    local gaps=()
+    local IFS=,
+    for lang in $lm; do
+        [[ "$lang" == "(none)" ]] && continue
+        [[ -z "$(pack_skill_coverage_for "$lang")" ]] && gaps+=("$lang")
+    done
+    unset IFS
+
+    # Existing docs pointer (existing-project path only)
+    local existing_docs=()
+    if [[ "$CLASS" == existing-* ]]; then
+        [[ -f "$TARGET/docs/ARCHITECTURE.md" ]] && existing_docs+=("docs/ARCHITECTURE.md")
+        [[ -f "$TARGET/README.md" ]] && existing_docs+=("README.md")
+    fi
+
+    cat <<EOF
+
+──── End-of-run PM chat kickoff prompt ────
+
+You are the PM chat for [PROJECT_NAME at $target_abs].
+
+The AI Agent Config Pack $pack_ver has just been installed by
+init-project.sh. Please begin your normal kickoff workflow using
+the PM chat kickoff prompt (docs/pack/prompts/pm-chat.md,
+Variant: kickoff).
+EOF
+    if (( ${#existing_docs[@]} > 0 )); then
+        echo ""
+        echo "This is an existing project with prior documentation. Before"
+        echo "proceeding with the usual context-file placeholder fill-in, read"
+        echo "the following existing documents for context, and confirm with the"
+        echo "developer which other existing docs they want you to read:"
+        echo ""
+        local d
+        for d in "${existing_docs[@]}"; do
+            echo "  - $d"
+        done
+        echo ""
+        echo "If the developer points you at additional files (inline design notes,"
+        echo "ADRs, wiki exports, etc.), read those too before generating"
+        echo "architecture content."
+    fi
+    if (( ${#gaps[@]} > 0 )); then
+        echo ""
+        echo "init-project.sh detected language/platform markers for which this"
+        echo "pack version has no skill coverage:"
+        echo ""
+        local g
+        for g in "${gaps[@]}"; do
+            echo "  - $g"
+        done
+        echo ""
+        echo "When you complete kickoff, append an entry to"
+        echo "docs/pack/PACK-FEEDBACK.md under the \"Language/platform coverage gaps\""
+        echo "section, including:"
+        echo "  - The language or platform name"
+        echo "  - The project stage (from the PM chat kickoff output)"
+        echo "  - A short note on the kinds of guidance the project would benefit from"
+    fi
+    echo ""
+    echo "Run /pm-startup (or your CLI's equivalent), then apply the kickoff"
+    echo "variant with the developer."
+    echo ""
+    echo "──── End of kickoff prompt ────"
+}
+
+# Blast-radius sweep — §7.7
+blast_radius_sweep() {
+    # PROMPT-TEMPLATES must not appear in installed pack-owned files.
+    local scope_dirs=(.claude .codex .gemini docs/pack scripts)
+    local scope_files=(CLAUDE.md AGENTS.md GEMINI.md agent-run.sh)
+    local matches=0
+    local d f
+    for d in "${scope_dirs[@]}"; do
+        [[ -d "$TARGET/$d" ]] || continue
+        # METHODOLOGY.md legitimately documents the v9→v10 PROMPT-TEMPLATES.md
+        # migration in Procedure 5-R; exclude it from the sweep (post-F-D
+        # METHODOLOGY moved into docs/pack/, bringing it into sweep scope).
+        if grep -rn --exclude='METHODOLOGY.md' "PROMPT-TEMPLATES" "$TARGET/$d" >/dev/null 2>&1; then
+            warn "PROMPT-TEMPLATES reference found in $d"
+            matches=1
+        fi
+    done
+    for f in "${scope_files[@]}"; do
+        [[ -f "$TARGET/$f" ]] || continue
+        if grep -n "PROMPT-TEMPLATES" "$TARGET/$f" >/dev/null 2>&1; then
+            warn "PROMPT-TEMPLATES reference found in $f"
+            matches=1
+        fi
+    done
+    (( matches == 0 )) || return 1
+    return 0
+}
+
+# ── Main ───────────────────────────────────────────────────────────────────
+
+main() {
+    TARGET="${1:-.}"
+    TARGET=$(cd "$TARGET" 2>/dev/null && pwd || echo "$TARGET")
+
+    # Pre-flight (pre-confirm)
+    if [[ -z "${PACK:-}" ]]; then
+        die "PACK environment variable not set" "$EXIT_PACK_INVALID"
+    fi
+    local pack_status
+    pack_status=$(detect_pack_path "$PACK" | awk -F': ' '{print $2}')
+    if [[ "$pack_status" != "valid" ]]; then
+        die "PACK ($PACK) is not a valid pack repo: $pack_status" "$EXIT_PACK_INVALID"
+    fi
+    if ! git -C "$TARGET" rev-parse --git-dir >/dev/null 2>&1; then
+        die "target is not a git repo: $TARGET (run \`git init\` first)" "$EXIT_NOT_GIT"
+    fi
+    local wt
+    wt=$(detect_clean_working_tree "$TARGET" | awk -F': ' '{print $2}')
+    if [[ "$wt" != "clean" ]]; then
+        die "target working tree is dirty; commit or stash first" "$EXIT_DIRTY"
+    fi
+
+    # Classification
+    CLASS=$(classify_project_state "$TARGET" | awk -F': ' '{print $2}')
+    if [[ "$CLASS" == "already-configured" ]]; then
+        say "STOP — existing AI config detected in $TARGET:"
+        detect_ai_config "$TARGET" | sed 's/^/  /'
+        say ""
+        say "Your options:"
+        say "  (a) already using this pack — run scripts/migrate-v9-to-v10.sh instead"
+        say "      (see supporting-docs/MIGRATION-v9-to-v10.md)"
+        say "  (b) using other AI tooling — remove or archive those files before"
+        say "      running init-project.sh"
+        exit "$EXIT_AI_CONFIG"
+    fi
+
+    # Preview + confirmation
+    local lm
+    lm=$(detect_language_markers "$TARGET" | awk -F': ' '{print $2}')
+    print_preview "$TARGET" "$PACK" "$CLASS" "$lm"
+    echo ""
+    if ! confirm_proceed; then
+        exit 0
+    fi
+
+    # Execute stages
+    say ""
+    stage_s1_skeleton
+    stage_s2_agents
+    stage_s3_configs
+    stage_s4_skills
+    stage_s5_scripts
+    stage_s6_docs_pack
+    stage_s7_trinity
+    stage_s8_gitignore
+    stage_s9_conditional_remove
+    stage_s10_kickoff_prompt
+
+    # End-of-S10 blast-radius sweep
+    blast_radius_sweep || exit "$EXIT_SWEEP"
+
+    say ""
+    say "Initialization complete. Review \`git diff\` / \`git status\`, then"
+    say "start a PM chat session with the kickoff prompt above."
+}
+
+main "$@"

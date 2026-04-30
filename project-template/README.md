@@ -1,4 +1,4 @@
-# Project Template — AI Agent Config Pack v9
+# Project Template — AI Agent Config Pack v10
 
 This directory is the unified project template. Copy it to start a new project:
 
@@ -6,11 +6,11 @@ This directory is the unified project template. Copy it to start a new project:
 cp -r /path/to/pack/project-template/. /path/to/your/project/
 ```
 
-Then copy the supporting docs individually (they are not part of this template):
+Then copy the supporting docs individually (they are not part of this template). METHODOLOGY.md lives under `docs/pack/` per V10-DESIGN.md Part 7 §7.6 (alongside other pack-distributed docs):
 
 ```bash
-cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/
-cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md /path/to/your/project/
+mkdir -p /path/to/your/project/docs/pack
+cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/docs/pack/METHODOLOGY.md
 ```
 
 See `QUICKSTART.md` in the pack root for the full setup procedure.
@@ -20,7 +20,7 @@ See `QUICKSTART.md` in the pack root for the full setup procedure.
 | Category | Files | Notes |
 |---|---|---|
 | Agent files | `.claude/agents/*.md`, `.codex/agents/*.toml`, `.gemini/agents/*.md` | 16 agents (8 core + auditor parent + 7 auditor subagents) |
-| Skills | `.claude/skills/`, `.codex/skills/`, `.gemini/skills/` | 30 skills per tool. Distributed from the pack's `project-template/skills/` at project creation (QUICKSTART.md Step 4) and committed to git. No `skills/` directory at the project root. |
+| Skills | `.claude/skills/`, `.codex/skills/`, `.gemini/skills/` | 30 skills per tool. Distributed from the pack's `project-template/skills/` at project creation by `init-project.sh` and committed to git. No `skills/` directory at the project root. |
 | Scripts | `scripts/*.sh`, `agent-run.sh` | 15 scripts + launcher. See the Scripts table in CLAUDE.md. |
 | Context files | `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` | One per tool. Fill in `[PLACEHOLDER]` sections per project type. |
 | PM chat docs | `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | PM chat operational docs. PM-CHAT.md and PACK-FEEDBACK.md have `[PROJECT_NAME]` placeholders. |
@@ -35,8 +35,8 @@ The pack has two directories that produce project files:
   whole via `cp -r`. These are structural files the project needs to function:
   agents, skills, scripts, config, context files, PM chat docs.
 
-- **`supporting-docs/`** — docs copied individually during setup (METHODOLOGY.md,
-  PROMPT-TEMPLATES.md) or read from the pack without copying (QUICKSTART.md,
+- **`supporting-docs/`** — docs copied individually during setup (METHODOLOGY.md
+  to `docs/pack/`) or read from the pack without copying (QUICKSTART.md,
   DEPENDENCIES.md, CLI-PM-SETUP.md, etc.). These are process and reference docs.
 
 If a file is part of the project's runtime agent infrastructure, it belongs in
@@ -58,8 +58,8 @@ After copying the template, remove files that don't apply to your project:
 ## Skill distribution
 
 The canonical skill library lives in the pack at `project-template/skills/`.
-At project creation (QUICKSTART.md Step 4) skills are distributed directly
-from the pack to each tool's expected location:
+At project creation, `init-project.sh` distributes skills directly from the
+pack to each tool's expected location:
 
 - `<pack>/project-template/skills/<name>/SKILL.md` → `.claude/skills/<name>/SKILL.md`
 - `<pack>/project-template/skills/<name>/SKILL.md` → `.codex/skills/<name>/SKILL.md`

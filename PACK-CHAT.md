@@ -43,7 +43,7 @@ is sufficient.
 | `CHANGELOG.md` | Direct read (last entry only) | Current version and recent changes |
 | `README.md` | Direct read (version table section) | Pack version history at a glance |
 | `supporting-docs/METHODOLOGY.md` | Direct read (on demand) | Author of this file — read directly when needed |
-| `supporting-docs/PROMPT-TEMPLATES.md` | Direct read (on demand) | Author of this file — read directly when needed |
+| `project-template/docs/pack/prompts/*.md` | Direct read (on demand) | Author of this set of files — read directly when needed |
 
 ---
 

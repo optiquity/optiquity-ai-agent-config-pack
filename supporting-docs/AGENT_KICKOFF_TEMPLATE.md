@@ -18,7 +18,7 @@ Not every section applies. Remove what doesn't apply.
 -->
 
 ---
-*Generated from: supporting-docs/AGENT_KICKOFF_TEMPLATE.md — AI Agent Config Pack v9*
+*Generated from: supporting-docs/AGENT_KICKOFF_TEMPLATE.md — AI Agent Config Pack v10*
 *Note to PM chat: Replace all [PLACEHOLDERS] and remove this header before saving.*
 ---
 

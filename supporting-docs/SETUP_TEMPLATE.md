@@ -15,7 +15,7 @@ Not every section applies to every project. Remove sections that don't apply.
 -->
 
 ---
-*Generated from: supporting-docs/SETUP_TEMPLATE.md — AI Agent Config Pack v9*
+*Generated from: supporting-docs/SETUP_TEMPLATE.md — AI Agent Config Pack v10*
 *Note to PM chat: Replace all [PLACEHOLDERS] and remove this header before saving.*
 ---
 
@@ -32,7 +32,7 @@ for [PROJECT_NAME] on a new machine.
 - Xcode [XCODE_VERSION] installed and launched at least once
 - Git configured: `git config --global user.name "Your Name"`
 - GitHub CLI (optional): `brew install gh`
-- AI Agent Config Pack v9 available locally
+- AI Agent Config Pack v10 available locally
 
 ---
 
@@ -70,8 +70,11 @@ cd [REPO_NAME]
 
 ## 3. Set up .gitignore
 
-The `.gitignore` is included in the template copy (Step 4 below).
-Verify it exists after copying:
+`init-project.sh` (Step 4 below) merges pack `.gitignore` entries with
+any existing project `.gitignore`, appending missing lines under a
+header comment `# --- AI Agent Config Pack additions (v10.0) ---`
+and deduplicating. Existing entries and their ordering are preserved.
+Verify the result after running the script:
 
 ```bash
 ls -la .gitignore
@@ -79,24 +82,19 @@ ls -la .gitignore
 
 ---
 
-## 4. Copy agent configuration files
+## 4. Install the pack via `init-project.sh`
 
 ```bash
-# Copy the unified template
-cp -r /path/to/pack/project-template/. .
-
-# The trailing /. ensures hidden directories are included (.claude/, .codex/)
-
-# Copy supporting docs separately — not included in the template directory
-cp /path/to/pack/supporting-docs/METHODOLOGY.md ./METHODOLOGY.md
-cp /path/to/pack/supporting-docs/PROMPT-TEMPLATES.md ./PROMPT-TEMPLATES.md
+# Install the pack. The script detects project state, previews every
+# operation, asks for confirmation, then copies the unified template +
+# METHODOLOGY.md, handles conditional file removal per detected language,
+# merges .gitignore entries, and applies chmod +x.
+export PACK=/path/to/pack
+"$PACK/scripts/init-project.sh" .
 ```
 
-Make scripts and agent-run.sh executable:
-
-```bash
-chmod +x agent-run.sh scripts/*.sh
-```
+See `supporting-docs/SETUP-NEW.md` §3 for the detailed walk-through,
+including the preview sections to review before typing `y`.
 
 ---
 
@@ -203,13 +201,13 @@ git push origin main
 1. Go to claude.ai → Projects → New Project
 2. Name it: **[PROJECT_NAME]**
 3. Connect the GitHub repo via the GitHub connector
-4. Sync the GitHub connector — `METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, and `PM-CHAT.md`
+4. Sync the GitHub connector — `METHODOLOGY.md` and `PM-CHAT.md`
    are in the project repo (copied in setup Step 4) and searchable after sync.
    No manual upload is needed.
-5. Start a new chat and paste Template 1 (PM chat kickoff prompt) from `PROMPT-TEMPLATES.md`
+5. Start a new chat and paste Template 1 (PM chat kickoff prompt) from `docs/pack/prompts/pm-chat.md` (Variant: kickoff)
 
 **Option B — Claude Code CLI (non-blocking):**
-Follow QUICKSTART.md Step 10, Option B (Steps 10C–10G). Setup is self-contained there.
+Follow `supporting-docs/SETUP-NEW.md` Step 10, Option B (Claude Code CLI). Setup is self-contained there.
 For daily session management after setup, see `supporting-docs/CLI-PM-SETUP.md`.
 
 ---

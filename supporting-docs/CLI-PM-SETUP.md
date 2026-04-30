@@ -2,10 +2,11 @@
 
 This document covers daily usage, cross-machine workflow, and troubleshooting
 for the CLI PM chat on all three tools: Claude Code, Codex CLI, and Gemini CLI.
-**Setup is in QUICKSTART.md.** Start there if you haven't completed setup yet.
+**Setup is in `supporting-docs/SETUP-NEW.md` Step 10 Option B (Claude Code CLI)
+or Option D (Gemini CLI).** Start there if you haven't completed setup yet.
 
 For startup procedures, file access strategy, and behavioral rules, see
-`PM-CHAT.md` in the project root (the authoritative PM chat instructions).
+`docs/pack/PM-CHAT.md` (the authoritative PM chat instructions).
 This document covers the day-to-day operational details that PM-CHAT.md
 references but does not repeat.
 
@@ -56,7 +57,6 @@ git pull
 claude
 /rename [project-short-name]-pm
 Ingest METHODOLOGY.md into the RAG index
-Ingest PROMPT-TEMPLATES.md into the RAG index
 /pm-startup
 ```
 
@@ -78,8 +78,7 @@ Never copy or sync `.claude/` session files between machines.
 
 ## Updating RAG after pack version changes
 
-When METHODOLOGY.md or PROMPT-TEMPLATES.md changes (new pack version installed),
-re-ingest them:
+When METHODOLOGY.md changes (new pack version installed), re-ingest it:
 
 ```bash
 cd ~/Developer/[project]
@@ -89,7 +88,6 @@ claude --resume [project-short-name]-pm
 Then inside the session:
 ```
 Re-ingest METHODOLOGY.md into the RAG index
-Re-ingest PROMPT-TEMPLATES.md into the RAG index
 ```
 
 The `/pm-startup` skill checks `git log` to detect whether re-ingest is needed
@@ -222,6 +220,6 @@ Run `/pm-startup` — it re-reads BACKLOG.md, STATUS.md, and other key files
 from disk to restore accurate context.
 
 **PM-CHAT.md still shows `[PROJECT_NAME]`:**
-The PM chat fills this in during the kickoff conversation (Template 1). If it
+The PM chat fills this in during the kickoff conversation (`docs/pack/prompts/pm-chat.md` Variant: kickoff). If it
 was skipped, ask the PM chat to read PM-CHAT.md, fill in the project name,
 remove the template comment block, and commit the file.

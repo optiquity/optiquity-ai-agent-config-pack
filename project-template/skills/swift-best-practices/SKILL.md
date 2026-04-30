@@ -62,3 +62,8 @@ allowed-tools: Read, Grep, Glob, Bash
 36. Flag dead enum cases: an enum case with no reference anywhere (not in switch statements, not in constructors) is dead code.
 37. Flag unreachable code after `return`, `throw`, `fatalError`, or unconditional branch — the Swift compiler emits warnings but warnings can be ignored.
 38. Flag TODO comments older than six months, or any TODO without a tracking identifier (e.g., `TD-TBD` or a real backlog number). Tracked TODOs are intentional; untracked ones are dead intent.
+
+## Design choices
+
+39. AsyncStream payload design — choose by subscriber filtering needs. Typed payload streams (`AsyncStream<ChangeType>`) let subscribers filter by relevance before crossing actor boundaries. Content-less broadcast (`AsyncStream<Void>`) forces every subscriber to actor-hop and re-fetch state on every signal regardless of relevance. AsyncChannel (swift-async-algorithms) is a competing-consumer rendezvous channel — not a fan-out broadcast. Weigh subscriber count, payload size, filtering needs, and back-pressure characteristics at design time.
+40. Heterogeneous domain collections — protocol elevation over type-erasure-with-downcasting. Type-erasure wrappers that expose a `.base` accessor for downcasting to a concrete type are an LSP violation: runtime type interrogation disguised as abstraction. Prefer protocol elevation (move all needed behavior into the protocol as requirements) when callers should remain concrete-type-agnostic. Use exhaustive enums when the concrete type must be known at call sites and the type set is fixed and internal to the module.

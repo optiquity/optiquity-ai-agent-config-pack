@@ -8,6 +8,24 @@ Checks:
   3. TD-TBD sentinels: none in committed files (excluding docs that show the format)
   4. README version table: latest row matches latest git tag
   5. Agent file count: Claude, Codex, and Gemini agent dirs have the same count
+  6. Prompts-directory format: per-agent frontmatter, variant→H2 consistency
+     (PROMPT-AUTHORING.md was removed in v10.0; directory guidance lives in
+     supporting-docs/METHODOLOGY.md § Prompt Authoring Principles)
+  7. Pack agent roster: PM-CHAT.md ## Pack agent roster list matches
+     .claude/agents/*.md stems
+  8. Reserved x- prefix: no file or directory in the seven pack scan
+     locations begins with `x-`
+  9. Init-project structure: scripts/init-project.sh executable,
+     scripts/lib/detect.sh defines the required v10 detection
+     functions, QUICKSTART.md and the three supporting-docs setup /
+     migration guides exist, and README.md Repository Layout names
+     scripts/lib/ and the migration-guide naming convention.
+  10. Prompt template triad compliance: every in-scope variant in
+      project-template/docs/pack/prompts/*.md (excluding the kickoff
+      variant identified by `**Convention exception:**`) contains
+      `**Problem:**`, `**Goal:**`, `**Success criteria:**`, and a
+      file-based completion-report indicator (`REPORT FILE:` or
+      `**Completion report:**`).
 
 Exit 0 if all pass, exit 1 if any fail. Each failure prints the exact
 file, line (where applicable), and problem.
@@ -29,6 +47,39 @@ GEMINI_AGENTS_DIR = REPO_ROOT / "project-template" / ".gemini" / "agents"
 README = REPO_ROOT / "README.md"
 
 REQUIRED_SKILL_FIELDS = {"name", "description", "allowed-tools"}
+
+PROMPTS_DIR = REPO_ROOT / "project-template" / "docs" / "pack" / "prompts"
+REQUIRED_PROMPT_FRONTMATTER = {"agent", "variants"}
+RESERVED_PROMPT_FRONTMATTER = {"description", "deprecated-by", "notes"}
+
+PM_CHAT = REPO_ROOT / "project-template" / "docs" / "pack" / "PM-CHAT.md"
+PACK_SCAN_LOCATIONS = [
+    REPO_ROOT / "project-template" / ".claude" / "agents",
+    REPO_ROOT / "project-template" / ".codex" / "agents",
+    REPO_ROOT / "project-template" / ".gemini" / "agents",
+    REPO_ROOT / "project-template" / ".claude" / "skills",
+    REPO_ROOT / "project-template" / ".codex" / "skills",
+    REPO_ROOT / "project-template" / ".gemini" / "skills",
+    REPO_ROOT / "project-template" / "docs" / "pack" / "prompts",
+]
+
+INIT_SCRIPT = REPO_ROOT / "scripts" / "init-project.sh"
+DETECT_LIB = REPO_ROOT / "scripts" / "lib" / "detect.sh"
+REQUIRED_DETECT_FUNCTIONS = [
+    "detect_clean_working_tree",
+    "detect_git_repo",
+    "detect_pack_path",
+    "detect_pack_version",
+    "detect_ai_config",
+    "detect_x_files",
+    "detect_improperly_added_files",
+]
+REQUIRED_BD044_DOCS = [
+    REPO_ROOT / "QUICKSTART.md",
+    REPO_ROOT / "supporting-docs" / "SETUP-NEW.md",
+    REPO_ROOT / "supporting-docs" / "SETUP-EXISTING.md",
+    REPO_ROOT / "supporting-docs" / "MIGRATION-v9-to-v10.md",
+]
 
 # The pack repo is mostly templates and documentation, where TD-TBD appears
 # as a FORMAT EXAMPLE (teaching downstream projects the deferral syntax).
@@ -229,6 +280,333 @@ def check_agent_count() -> None:
         fail(f"Agents in Claude but not Gemini: {sorted(missing_from_gemini)}")
 
 
+# ── Check 6: Prompts-directory format ───────────────────────────────────────
+
+def check_prompts_directory() -> None:
+    print("\n── Check 6: Prompts-directory format ──")
+    if not PROMPTS_DIR.is_dir():
+        fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — directory missing")
+        return
+
+    agent_files = sorted(PROMPTS_DIR.glob("*.md"))
+    if not agent_files:
+        fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — no per-agent prompt files found")
+        return
+
+    for f in agent_files:
+        rel = f.relative_to(REPO_ROOT)
+        content = f.read_text()
+
+        # Rule 1: frontmatter opener + closer
+        if not content.startswith("---\n"):
+            fail(f"{rel} — no frontmatter (missing opening ---)")
+            continue
+        fm_match = re.match(r"---\n(.*?)\n---\n", content, re.DOTALL)
+        if not fm_match:
+            fail(f"{rel} — malformed frontmatter (no closing ---)")
+            continue
+        fm = fm_match.group(1)
+
+        # Parse frontmatter: simple line-based.
+        # Supports `key: value` on one line and a `variants:` list in either
+        # block style (indented `  - slug` lines) or inline `[a, b]` / `[]`.
+        agent_value = None
+        variants_slugs: list[str] = []
+        seen_keys: list[str] = []
+        current_list_key = None
+        for line in fm.split("\n"):
+            if not line.strip():
+                current_list_key = None
+                continue
+            if line.startswith("  - "):
+                if current_list_key == "variants":
+                    variants_slugs.append(line[4:].strip())
+                continue
+            if line.startswith(" ") or line.startswith("\t"):
+                # unrecognized indented content
+                continue
+            # top-level key line
+            current_list_key = None
+            if ":" in line:
+                key, _, val = line.partition(":")
+                key = key.strip()
+                val = val.strip()
+                seen_keys.append(key)
+                if key == "agent":
+                    agent_value = val
+                elif key == "variants":
+                    if val.startswith("["):
+                        inner = val.strip("[]").strip()
+                        if inner:
+                            variants_slugs = [
+                                s.strip().strip('"').strip("'") for s in inner.split(",")
+                            ]
+                        else:
+                            variants_slugs = []
+                    else:
+                        # block-style list follows on subsequent indented lines
+                        current_list_key = "variants"
+
+        # Rule 2: required keys present
+        missing = REQUIRED_PROMPT_FRONTMATTER - set(seen_keys)
+        if missing:
+            for m in sorted(missing):
+                fail(f"{rel} — missing required frontmatter key: {m}")
+            continue
+
+        # Rule 3: no unknown top-level keys
+        allowed = REQUIRED_PROMPT_FRONTMATTER | RESERVED_PROMPT_FRONTMATTER
+        unknown = set(seen_keys) - allowed
+        if unknown:
+            for k in sorted(unknown):
+                fail(f"{rel} — unknown frontmatter key: {k}")
+            continue
+
+        # Rule 4: stem matches agent: value
+        if f.stem != agent_value:
+            fail(f"{rel} — file stem '{f.stem}' does not match agent: '{agent_value}'")
+            continue
+
+        # Rule 5: variant slug ↔ H2 consistency
+        body = content[fm_match.end():]
+        h2_slugs = re.findall(r"^## Variant: (\S+)\s*$", body, re.MULTILINE)
+        listed = set(variants_slugs)
+
+        orphans = [s for s in h2_slugs if s not in listed]
+        if orphans:
+            fail(f"{rel} — orphan `## Variant:` H2 not listed in variants: {sorted(set(orphans))}")
+            continue
+
+        bad_slug = False
+        for s in variants_slugs:
+            count = h2_slugs.count(s)
+            if count == 0:
+                fail(f"{rel} — variant slug '{s}' listed but no matching `## Variant: {s}` H2")
+                bad_slug = True
+            elif count > 1:
+                fail(f"{rel} — variant slug '{s}' has {count} `## Variant: {s}` H2s (expected 1)")
+                bad_slug = True
+        if bad_slug:
+            continue
+
+        ok(f"{rel} — {len(variants_slugs)} variant(s)")
+
+
+# ── Check 7: Pack agent roster ──────────────────────────────────────────────
+
+def check_pack_agent_roster() -> None:
+    print("\n── Check 7: Pack agent roster ──")
+    if not PM_CHAT.exists():
+        fail(f"{PM_CHAT.relative_to(REPO_ROOT)} — file missing")
+        return
+    if not CLAUDE_AGENTS_DIR.is_dir():
+        fail(f"{CLAUDE_AGENTS_DIR.relative_to(REPO_ROOT)} — directory missing")
+        return
+
+    content = PM_CHAT.read_text()
+
+    # Extract bulleted stems between `^## Pack agent roster$` and the next
+    # section boundary (next `^## ` H2 or `^---$` separator).
+    lines = content.split("\n")
+    in_section = False
+    roster: list[str] = []
+    for line in lines:
+        if line.strip() == "## Pack agent roster":
+            in_section = True
+            continue
+        if in_section:
+            if line.startswith("## ") or line.strip() == "---":
+                break
+            if line.startswith("- "):
+                roster.append(line[2:].strip())
+
+    if not roster:
+        fail(f"{PM_CHAT.relative_to(REPO_ROOT)} — `## Pack agent roster` section missing or empty")
+        return
+
+    actual_stems = {p.stem for p in CLAUDE_AGENTS_DIR.glob("*.md")}
+    roster_set = set(roster)
+
+    missing_from_roster = actual_stems - roster_set
+    missing_from_disk = roster_set - actual_stems
+
+    if missing_from_roster:
+        fail(
+            f"{PM_CHAT.relative_to(REPO_ROOT)} — agent(s) on disk but missing from "
+            f"`## Pack agent roster`: {sorted(missing_from_roster)}"
+        )
+    if missing_from_disk:
+        fail(
+            f"{PM_CHAT.relative_to(REPO_ROOT)} — stem(s) in `## Pack agent roster` "
+            f"with no matching `.claude/agents/*.md` file: {sorted(missing_from_disk)}"
+        )
+
+    if not missing_from_roster and not missing_from_disk:
+        ok(f"PM-CHAT.md roster matches .claude/agents/ ({len(roster_set)} stems)")
+
+
+# ── Check 8: Reserved `x-` prefix ───────────────────────────────────────────
+
+def check_reserved_x_prefix() -> None:
+    print("\n── Check 8: Reserved `x-` prefix ──")
+    any_violation = False
+    for loc in PACK_SCAN_LOCATIONS:
+        if not loc.is_dir():
+            continue
+        rel = loc.relative_to(REPO_ROOT)
+        offenders = [p.name for p in loc.iterdir() if p.name.startswith("x-")]
+        if offenders:
+            any_violation = True
+            for name in sorted(offenders):
+                fail(f"{rel}/ — reserved `x-` prefix in pack: `{name}`")
+
+    if not any_violation:
+        ok(f"no `x-` entries in any of {len(PACK_SCAN_LOCATIONS)} pack scan locations")
+
+
+# ── Check 9: Init-project structure (BD-044) ───────────────────────────────
+
+def check_init_project_structure() -> None:
+    print("\n── Check 9: Init-project structure (BD-044) ──")
+    any_failed = False
+
+    # (a) scripts/init-project.sh exists and is executable.
+    if not INIT_SCRIPT.exists():
+        fail(f"{INIT_SCRIPT.relative_to(REPO_ROOT)} — file missing")
+        any_failed = True
+    elif not os.access(INIT_SCRIPT, os.X_OK):
+        fail(f"{INIT_SCRIPT.relative_to(REPO_ROOT)} — not executable (chmod +x)")
+        any_failed = True
+    else:
+        ok(f"{INIT_SCRIPT.relative_to(REPO_ROOT)} — executable")
+
+    # (b) scripts/lib/detect.sh exists; grep confirms required v10 functions.
+    if not DETECT_LIB.exists():
+        fail(f"{DETECT_LIB.relative_to(REPO_ROOT)} — file missing")
+        any_failed = True
+    else:
+        content = DETECT_LIB.read_text()
+        missing_fns = []
+        for fn in REQUIRED_DETECT_FUNCTIONS:
+            if not re.search(rf"^{re.escape(fn)}\s*\(\s*\)", content, re.MULTILINE):
+                missing_fns.append(fn)
+        if missing_fns:
+            fail(
+                f"{DETECT_LIB.relative_to(REPO_ROOT)} — missing required "
+                f"function definition(s): {missing_fns}"
+            )
+            any_failed = True
+        else:
+            ok(f"{DETECT_LIB.relative_to(REPO_ROOT)} — all {len(REQUIRED_DETECT_FUNCTIONS)} required functions defined")
+
+    # (c) BD-044 docs exist.
+    for doc in REQUIRED_BD044_DOCS:
+        if not doc.exists():
+            fail(f"{doc.relative_to(REPO_ROOT)} — file missing")
+            any_failed = True
+        else:
+            ok(f"{doc.relative_to(REPO_ROOT)} — exists")
+
+    # (d) README.md Repository Layout mentions the detection library and
+    # migration naming convention. ASCII tree rendering may split
+    # `scripts/lib/` across lines, so match on the `detect.sh` filename
+    # (unambiguous indicator that the library is documented).
+    readme_path = REPO_ROOT / "README.md"
+    if readme_path.exists():
+        readme_text = readme_path.read_text()
+        has_detect = "detect.sh" in readme_text
+        has_migration_convention = "MIGRATION-vN-to-vM.md" in readme_text
+        if not has_detect:
+            fail(
+                "README.md — Repository Layout does not mention the "
+                "`scripts/lib/detect.sh` shared detection library"
+            )
+            any_failed = True
+        if not has_migration_convention:
+            fail(
+                "README.md — missing migration-guide naming convention note "
+                "(expected literal `MIGRATION-vN-to-vM.md`)"
+            )
+            any_failed = True
+        if has_detect and has_migration_convention:
+            ok("README.md — Repository Layout mentions detect.sh and migration naming convention")
+
+
+# ── Check 10: Prompt template triad compliance ────────────────────────────
+
+def check_prompt_triad_compliance() -> None:
+    print("\n── Check 10: Prompt template triad compliance ──")
+    if not PROMPTS_DIR.is_dir():
+        fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — directory missing")
+        return
+
+    agent_files = sorted(PROMPTS_DIR.glob("*.md"))
+    if not agent_files:
+        fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — no per-agent prompt files found")
+        return
+
+    required_labels = ("**Problem:**", "**Goal:**", "**Success criteria:**")
+    completion_indicators = ("REPORT FILE:", "**Completion report:**")
+    exception_marker = "**Convention exception:**"
+    variant_h2 = re.compile(r"^## Variant: (\S+)\s*$", re.MULTILINE)
+
+    for f in agent_files:
+        rel = f.relative_to(REPO_ROOT)
+        content = f.read_text()
+
+        # Body = text after the closing --- of YAML frontmatter, if present.
+        if content.startswith("---\n"):
+            fm_match = re.match(r"---\n(.*?)\n---\n", content, re.DOTALL)
+            body = content[fm_match.end():] if fm_match else content
+        else:
+            body = content
+
+        matches = list(variant_h2.finditer(body))
+        if not matches:
+            ok(f"{rel} — 0 variant(s) (placeholder file)")
+            continue
+
+        in_scope_pass = 0
+        exempt: list[str] = []
+        file_failed = False
+
+        for i, m in enumerate(matches):
+            slug = m.group(1)
+            start = m.end()
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+            variant_body = body[start:end]
+
+            # Rule N.1 — Kickoff exception detection
+            if exception_marker in variant_body:
+                exempt.append(slug)
+                continue
+
+            # Rule N.2 — Triad presence
+            missing_labels = [lbl for lbl in required_labels if lbl not in variant_body]
+
+            # Rule N.3 — File-based completion-report indicator
+            has_report_indicator = any(ind in variant_body for ind in completion_indicators)
+
+            if missing_labels or not has_report_indicator:
+                missing = list(missing_labels)
+                if not has_report_indicator:
+                    missing.append("REPORT FILE: or **Completion report:**")
+                fail(f"{rel} — Variant: {slug} — missing labeled section(s): {missing}")
+                file_failed = True
+                continue
+
+            in_scope_pass += 1
+
+        if not file_failed:
+            if exempt:
+                ok(
+                    f"{rel} — {in_scope_pass} variant(s) pass triad+report-file rule "
+                    f"({len(exempt)} exempt: {', '.join(exempt)})"
+                )
+            else:
+                ok(f"{rel} — {in_scope_pass} variant(s) pass triad+report-file rule")
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -241,6 +619,11 @@ def main() -> None:
     check_td_tbd_sentinels()
     check_readme_version()
     check_agent_count()
+    check_prompts_directory()
+    check_pack_agent_roster()
+    check_reserved_x_prefix()
+    check_init_project_structure()
+    check_prompt_triad_compliance()
 
     print("\n" + "=" * 60)
     if failures:
