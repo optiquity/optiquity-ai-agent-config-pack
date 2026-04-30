@@ -232,6 +232,94 @@ dispatch_text_file() {
     esac
 }
 
+# Dispatch a structured config file (JSON or TOML) using the appropriate
+# merge helper on real-merge-required. The helper performs key-level merge
+# preserving project edits while applying pack v10 schema additions. On
+# clean merge → disposition `merged-with-customization`. On reconciliation
+# warnings → disposition `customization-detected-needs-reconciliation`
+# with a `.v9-customized` sidecar of the project pre-migration file. On
+# helper error → falls back to Pattern P (sidecar) — same as
+# dispatch_text_file.
+#
+#   $1 file class (K1..K4)
+#   $2 base path (or "")
+#   $3 ours path (or "")
+#   $4 theirs path (or "")
+#   $5 dest path
+#   $6 format ("json" or "toml")
+dispatch_structured_config() {
+    local cls="$1" base="$2" ours="$3" theirs="$4" dest="$5" fmt="$6"
+    local classification rep
+    classification=$(three_way_classify "$base" "$ours" "$theirs")
+    rep=$(report_disposition_for "$classification")
+
+    case "$classification" in
+        unchanged-pack)
+            record_disposition "$rep" "$cls" "$dest" "-" "-" "-"
+            return 0
+            ;;
+        merged-with-customization)
+            record_disposition "$rep" "$cls" "$dest" "-" "-" "no pack update; project edits kept"
+            return 0
+            ;;
+        pack-update-applied|new-file-in-pack)
+            mkdir -p "$(dirname "$dest")"
+            cp "$theirs" "$dest"
+            record_disposition "$rep" "$cls" "$dest" "-" "-" "-"
+            return 0
+            ;;
+        real-merge-required|project-shadows-new-pack)
+            local helper
+            case "$fmt" in
+                json) helper="$PACK/scripts/merge-json.py" ;;
+                toml) helper="$PACK/scripts/merge-toml.py" ;;
+                *)
+                    warn "unknown structured format '$fmt' for $dest; falling back to text dispatch"
+                    dispatch_text_file "$cls" "$base" "$ours" "$theirs" "$dest"
+                    return 0
+                    ;;
+            esac
+            mkdir -p "$(dirname "$dest")" "$DIFFS_DIR"
+            local flat="${dest//\//-}"
+            local stderr_log="$DIFFS_DIR/${flat#.}.merge-warnings.log"
+
+            local rc=0
+            python3 "$helper" "${base:-}" "$ours" "$theirs" --output "$dest" \
+                2> "$stderr_log" || rc=$?
+
+            local diff_path
+            diff_path=$(write_three_way_diff "$base" "$ours" "$theirs" "$dest")
+
+            case "$rc" in
+                0)
+                    record_disposition "merged-with-customization" "$cls" "$dest" "-" "$diff_path" "structured merge clean (key-level)"
+                    rm -f "$stderr_log"
+                    ;;
+                2)
+                    cp "$ours" "${dest}.v9-customized"
+                    record_disposition "customization-detected-needs-reconciliation" "$cls" "$dest" "${dest}.v9-customized" "$diff_path" "structured merge with reconciliation warnings (see $stderr_log)"
+                    ;;
+                *)
+                    cp "$theirs" "$dest"
+                    cp "$ours" "${dest}.v9-customized"
+                    record_disposition "customization-detected-needs-reconciliation" "$cls" "$dest" "${dest}.v9-customized" "$diff_path" "structured merge errored (rc=$rc); fell back to sidecar (see $stderr_log)"
+                    ;;
+            esac
+            return 0
+            ;;
+        removed-by-pack-clean|removed-by-pack-customized|removed-everywhere|project-deleted-pack-kept|project-only-file)
+            # Configs aren't normally retired; route through text dispatch
+            # for the auxiliary cases (sidecar + record).
+            dispatch_text_file "$cls" "$base" "$ours" "$theirs" "$dest"
+            return 0
+            ;;
+        *)
+            warn "unhandled classification '$classification' for structured config $dest"
+            return 0
+            ;;
+    esac
+}
+
 # ── Stage S0 — pre-flight ──────────────────────────────────────────────────
 
 stage_s0_preflight() {
@@ -531,20 +619,21 @@ stage_s3_scripts_and_config() {
     fi
     [[ -n "$base_tmp" && -f "$base_tmp" ]] && rm -f "$base_tmp"
 
-    # ── Structured configs (K1, K2, K4): classifier-wrapped via Pattern P
-    # fallback (sidecar). C4 swaps the real-merge-required write strategy
-    # to merge-json.py / merge-toml.py for proper key-level merging. ──
+    # ── Structured configs (K1, K2, K3, K4): classifier-wrapped with
+    # key-level merge via merge-json.py / merge-toml.py on
+    # real-merge-required. K3 (.codex/requirements.toml) added in C4. ──
     mkdir -p "$BACKUP_DIR/.codex" "$BACKUP_DIR/.claude"
     local cf
-    for cf in .codex/config.toml .claude/settings.json .mcp.json.example; do
+    for cf in .codex/config.toml .codex/requirements.toml .claude/settings.json .mcp.json.example; do
         [[ -f "$PACK/project-template/$cf" ]] || continue
 
-        local cls
+        local cls fmt
         case "$cf" in
-            .claude/settings.json) cls="K1" ;;
-            .codex/config.toml)    cls="K2" ;;
-            .mcp.json.example)     cls="K4" ;;
-            *)                     cls="K?" ;;
+            .claude/settings.json)    cls="K1"; fmt="json" ;;
+            .codex/config.toml)       cls="K2"; fmt="toml" ;;
+            .codex/requirements.toml) cls="K3"; fmt="toml" ;;
+            .mcp.json.example)        cls="K4"; fmt="json" ;;
+            *)                        cls="K?"; fmt="text" ;;
         esac
 
         local pack_repo_path="project-template/${cf}"
@@ -556,10 +645,10 @@ stage_s3_scripts_and_config() {
         if [[ -f "$ours" ]]; then
             mkdir -p "$BACKUP_DIR/$(dirname "$cf")"
             cp "$ours" "$BACKUP_DIR/$cf"
-            dispatch_text_file "$cls" "$base_tmp" "$ours" "$theirs" "$ours" "$cf"
+            dispatch_structured_config "$cls" "$base_tmp" "$ours" "$theirs" "$ours" "$fmt"
         else
             mkdir -p "$(dirname "$cf")"
-            dispatch_text_file "$cls" "$base_tmp" "" "$theirs" "$ours" "$cf"
+            dispatch_structured_config "$cls" "$base_tmp" "" "$theirs" "$ours" "$fmt"
         fi
 
         [[ -n "$base_tmp" && -f "$base_tmp" ]] && rm -f "$base_tmp"
