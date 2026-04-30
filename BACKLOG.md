@@ -803,7 +803,7 @@ Resolved: April 2026, v9.3 — 16 Gemini agent files in `.gemini/agents/`,
 
 **BD-044 — Project setup paths: init-project.sh, QUICKSTART router, and existing-project onboarding**
 Type: TODO(version)
-Status: Unblocked
+Status: Resolved
 Blockers: None (design approval pass completed 2026-04-21; V10-DESIGN.md approved)
 Unblocks: None
 File/Symbol: `QUICKSTART.md`, `scripts/init-project.sh` (new), `supporting-docs/SETUP-NEW.md` (new), `supporting-docs/SETUP-EXISTING.md` (new), `supporting-docs/SETUP_TEMPLATE.md`, `README.md`
@@ -901,12 +901,13 @@ Context: Design discussion April 2026. The pack currently has no onboarding
   the pack to create or configure a project). Moved to v10 scope — migration
   automation overlaps with the v10 migration script (BD-046). See
   maintenance-docs/V10-PREDESIGN.md Candidate Decision 10.
+Resolved: April 2026, v10.0 — release merge commit 6bd18b1. `scripts/init-project.sh` and `scripts/lib/detect.sh` shipped with three-class detection (new / existing-empty / existing-with-marker-conflict / existing-clean) and 10-stage preview-and-confirm flow; QUICKSTART.md rewritten as three-path router (NEW / EXISTING / MIGRATE); SETUP-NEW.md and SETUP-EXISTING.md added; SETUP_TEMPLATE.md rewritten; validate-pack.py Check 9 enforces init-project structure. See CHANGELOG v10.0.
 
 ---
 
 **BD-045 — Champion the capabilities design pattern alongside LSP in architecture guidance**
 Type: TODO(version)
-Status: Unblocked
+Status: Resolved
 Blockers: None (design approval pass completed 2026-04-21; V10-DESIGN.md approved;
   sequencing confirmed: BD-045 first in implementation order)
 Unblocks: None
@@ -1005,12 +1006,13 @@ Context: Identified April 2026 via OT project, which implements capability
   violation) rather than reaching for it proactively during design. The pattern
   is language-agnostic — the implementation mechanism varies by language but
   the design intent is consistent across all typed systems.
+Resolved: April 2026, v10.0 — release merge commit 6bd18b1. Capabilities pattern section added to trinity files (CLAUDE.md / AGENTS.md / GEMINI.md) covering both value-based and interface-based forms with explicit LSP-relationship guidance; parallel content added to `apple-architecture-core`, `python-architecture`, and `architecture-review` skills; `auditor-architecture` agent extended with capabilities-scope rules; `audit-methodology` SKILL rule 15 covers the extension. See CHANGELOG v10.0.
 
 ---
 
 **BD-046 — v10: Custom agent/skill support and prompt template reorganization**
 Type: TODO(version)
-Status: Unblocked
+Status: Resolved
 Blockers: None (design approval pass completed 2026-04-21; V10-DESIGN.md approved)
 Unblocks: None
 File/Symbol: maintenance-docs/V10-DESIGN.md — approved design record (supersedes V10-PREDESIGN.md)
@@ -1035,7 +1037,7 @@ Context: Full design discussion captured in V10-PREDESIGN.md including
   design before any implementation begins. This item should not move
   to Unblocked until V10-PREDESIGN.md has been through a formal design
   approval pass and all Part 3 open questions are resolved.
-Resolved: n/a
+Resolved: April 2026, v10.0 — release merge commit 6bd18b1. x-prefixed custom agent/skill mechanism shipped (validate-pack.py Check 8 enforces reserved x- prefix); PROMPT-TEMPLATES.md replaced with per-agent files in `project-template/docs/pack/prompts/` (10 files with `## Variant: <name>` sections; validate-pack.py Check 6 enforces format, Check 10 enforces triad compliance per BD-049); `scripts/migrate-v9-to-v10.sh` ships with 8-stage backup-by-default pipeline plus splice/merge helpers (`merge-platform-skills.py`, `merge-trinity.py`); MIGRATION-v9-to-v10.md guide added; METHODOLOGY § Procedure 5 (custom agent/skill workflow), § Procedure 5-R (prompt reconciliation), and § Procedure 6 (capability addition) added; `scripts/add-capability.sh` ships. See CHANGELOG v10.0.
 
 ---
 
