@@ -1192,7 +1192,157 @@ All §12 fixtures synthetic; built from the v10-dev pack source. No OT content i
 ### §12.11 Flag-back updates
 
 - **F-G → RESOLVED.**
-- **F-A** still pending — kickoff surface-declaration gate + prose accuracy. Last v10.0 patch in Option A sequence.
+- **F-A** still pending — kickoff surface-declaration gate + prose accuracy. Last v10.0 patch in Option A sequence. (Resolved at §13.)
+
+---
+
+## §14 Post-ship behavioral re-test — Procedure 5-S + F-A.1 β + F-A.2 (b) + § 7.6 Preview rendering
+
+**Date:** 2026-04-29T19:30:00Z (UTC, M-OT execution timestamp)
+**Triggered by:** project-lead concern that all preceding §10–§13 delta verifications confirmed automated regressions + script behavior + static artifact propagation, but did NOT directly observe the AI-facing behavioral changes that F-A, F-E, F-F target. This section captures a single-session interactive PM-chat re-test exercising Procedure 5-S sentinel detection, F-A.1 semantic-gate β behavior, F-A.2 (b) discovery instruction, and § 7.6 Preview rendering on real-project complexity in one session.
+**Scope:** post-ship behavioral observation only. No re-run of full §4.6 / §4.7 / §4.8.
+**Surface:** Claude Code CLI 2.1.123, run from `/tmp/v10-postship-fixtures/ot-project/` (post-migration OT clone via `git clone --no-hardlinks file:///Users/david/Developer/OptiquityTrader …`).
+**Sanitization:** per §6.7.7 — only behavioral observations (gate fired / sentinel detected / Procedure 5-S routed) and pack-generated structural shape recorded; no OT business content quoted.
+
+### §14.1 Pre-test setup (autonomous in implementer CLI)
+
+- Re-cloned OT to `/tmp/v10-postship-fixtures/ot-project/` via `--no-hardlinks file://`.
+- Ran patched `migrate-v9-to-v10.sh` against the clone — exit 0.
+- Confirmed sentinel `.pack-migration-backup/v9.3-to-v10.0/postrun-pending` written by patched S7.
+- Confirmed METHODOLOGY at `docs/pack/METHODOLOGY.md` (no root file) per F-D.
+- Confirmed Procedure 5-S body in propagated METHODOLOGY.
+- Confirmed pm-startup SKILL Step 0 propagated to all 3 tool dirs.
+- Confirmed pm-chat.md kickoff body has new β phrasing post-propagation.
+- Built OT-tailored kickoff paste file at `/tmp/v10-postship-fixtures/kickoff-paste-OT-postship.txt` (75 lines; new β phrasing + (b) discovery instruction; F-D path piggyback applied; project name fallback `"OT (post-ship behavioral re-test)"`).
+- Live OT unchanged (verified pre-clone, post-clone, post-migration — all 3 checkpoints HEAD `d9e288ba…`, porcelain 0).
+
+### §14.2 Behavioral observations — F-A.1 β semantic gate
+
+**Pre-patch behavior** (per §4.7 M-OT evidence): assistant auto-inferred `Surface: Claude Code CLI, shell confirmed.` and proceeded to Form R discovery in the same message — gate not enforced.
+
+**Post-patch behavior observed (this session):**
+
+> "Surface declaration: shell (Claude Code CLI on darwin/zsh, working dir /private/tmp/v10-postship-fixtures/ot-project, git repo on branch migration-v9-to-v10).
+>
+> Pausing here before any non-read-only action per kickoff protocol. On your yes, I will read docs/pack/METHODOLOGY.md Procedure 7 directly and follow gates G7-discovery / G7-install / G7-edit / G7-machine."
+
+The assistant declared its surface AND paused for explicit reply. Form R discovery did NOT begin in the same message as the surface declaration. The reply options enumerated per § 7.5 grammar ("yes / manual / no / skip / abort / edit"). After developer reply `yes`, Form R proceeded.
+
+**Verdict: ✅ PASS — F-A.1 β semantic-gate behavior fired exactly as designed.**
+
+### §14.3 Behavioral observations — F-A.2 (b) surface-agnostic doc discovery
+
+**Pre-patch behavior** (per §4.3 evidence): kickoff body asserted "GitHub connector is connected" and asked the assistant to "search project knowledge" — false on plain Web, irrelevant on shell.
+
+**Post-patch behavior observed (this session):**
+
+The assistant read all 4 named project docs by filesystem (the surface-appropriate retrieval mechanism for shell):
+
+| Doc | Behavior |
+|---|---|
+| `docs/project/STATUS.md` | Read in full |
+| `docs/project/ARCHITECTURE.md` | Identified as ~45k tokens, deferred bulk-load to "targeted slices on demand" |
+| `docs/project/IMPLEMENTATION_PLAN.md` | Identified as 5,235 lines, deferred to on-demand |
+| `docs/project/BACKLOG.md` | Identified as 1,471 lines, deferred to on-demand |
+
+The assistant did NOT make any GitHub-connector assertion. The on-demand handling for oversized docs was an emergent good behavior beyond F-A.2's design — the discovery instruction's "by whatever means your surface provides" wording allowed the assistant to apply judgment.
+
+**Verdict: ✅ PASS — F-A.2 (b) discovery instruction fired exactly as designed; emergent on-demand handling is bonus quality.**
+
+### §14.4 Behavioral observations — Procedure 5-S sentinel detection
+
+**Pre-patch behavior:** Procedure 5-S did not exist; the post-migration housekeeping defects (F-E + F-F) were unaddressed.
+
+**Post-patch behavior observed (this session):**
+
+When developer ran `/pm-startup`, the assistant executed Step 0 first:
+
+> "Bash([[ -f .pack-migration-backup/v9.3-to-v10.0/postrun-pending ]] && echo "POSTRUN-PENDING: Procedure 5-S" …)
+> POSTRUN-PENDING: Procedure 5-S
+>
+> POSTRUN-PENDING: Procedure 5-S detected. Step 0 directs me to NOT run the standard startup sequence yet — routing to Procedure 5-S."
+
+Procedure 5-S then executed both tasks correctly:
+
+**Task A (F-E STATUS.md scan):** found 1 match — `**AI Agent Config Pack**: v9` at `docs/project/STATUS.md:113`. Proposed update to v10.0. Search scope correctly applied per OQ-F-F-3 priority list (`docs/project/STATUS.md` first; `docs/STATUS.md` and root `STATUS.md` correctly checked-and-not-found).
+
+**Task B (F-F trinity placeholder scan):** found whitelist matches in TRIO (CLAUDE.md / AGENTS.md / GEMINI.md) — `[PROJECT_NAME]` × 2, `[PLATFORM_TARGETS]` × 2, `[TRANSPORT]` × 1 per file. Active-skills line correctly identified as already populated (no Q&A needed per OQ-F-F design). Section placeholders (`[PLATFORM_DEFAULTS]` / `[PLATFORM_ARCHITECTURE]` / etc.) correctly identified as already filled by skills (no matches). Standalone Q&A initiated for project-identifier placeholders — explicitly NOT Procedure 7 kickoff flow (per OQ-F-F-1 resolution).
+
+**Sentinel disposition rule:** correctly stated in assistant's reply — "the sentinel is removed only after both tasks complete with no deferred items, and the housekeeping is recorded in the commit message. If either task is deferred, the sentinel stays in place and 5-S re-runs at next /pm-startup."
+
+**Developer replied `defer`.** Assistant correctly preserved sentinel, exited Procedure 5-S, resumed standard startup at Step 1.
+
+**Verdict: ✅ PASS — Procedure 5-S detection + Task A + Task B + sentinel-disposition + re-entrant deferral all fired exactly as designed.**
+
+### §14.5 Behavioral observations — § 7.6 Preview rendering formalization
+
+**Pre-patch behavior:** Form I + Form M collapse-into-Form-R was treated as a deviation from spec (per §4.1 F1 + §4.7 M-OT findings).
+
+**Post-patch behavior observed (this session):**
+
+The assistant rendered swift-format idempotency check inline in the Form R results table:
+
+| Check | Result | Gate disposition |
+|---|---|---|
+| swift-format | `/opt/homebrew/bin/swift-format 602.0.0 (≥510.0.0)` | `note: swift-format already installed at 602.0.0 (within known-good range) — skipping` |
+
+The single-line `note:` rendered inside Form R results, not as a separate Form I gate. This is exactly the `**Preview rendering.**` shape formalized in METHODOLOGY § 7.6 by E2.
+
+**Verdict: ✅ PASS — § 7.6 Preview rendering rule honored.**
+
+### §14.6 Standard pm-startup behavior post-Procedure-5-S
+
+After Procedure 5-S `defer`, standard startup resumed at Step 1 (per design). Steps 1, 4, 5, 6 executed:
+
+- Step 1 (git pull): noted no-upstream-tracking on `migration-v9-to-v10` branch (informational, not a defect)
+- Step 4 (RAG re-ingest check): correctly identified METHODOLOGY git-log; flagged but did not actually re-ingest per re-test scope
+- Step 5 (TD-TBD sentinel check): clean — 20 hits all in trinity / SKILL.md format-documentation references; zero in source code
+- Step 6 (final report): standard "PM Chat Ready" report rendered with all expected fields, plus a "Caveats from this run" section noting the Procedure 5-S sentinel still present (re-test deferred Task A + Task B)
+
+**Verdict: ✅ PASS — standard startup behavior intact post-Procedure-5-S route-and-resume.**
+
+### §14.7 Live-OT byte-identity (13th post-baseline checkpoint)
+
+| Checkpoint | Live OT HEAD | Porcelain | Match? |
+|---|---|---|---|
+| Pre-flight (Part 1, 2026-04-29T15:43:03Z) | `d9e288ba…` | 0 | baseline |
+| Pre-clone post-ship | `d9e288ba…` | 0 | ✅ |
+| Post-clone post-ship | `d9e288ba…` | 0 | ✅ |
+| Post-patched-migration | `d9e288ba…` | 0 | ✅ |
+| Post-M-OT-session (developer's check) | `d9e288ba…` | 0 | ✅ |
+| §14 final post-cleanup | `d9e288ba…` | 0 | ✅ (this section) |
+
+**OT HEAD SHA unchanged across all 13 post-baseline checkpoints.**
+
+### §14.8 Cleanup
+
+`/tmp/v10-postship-fixtures/` removed at end of §14.
+
+### §14.9 Pass / fail summary
+
+| Behavioral test | Result |
+|---|---|
+| F-A.1 β semantic gate (declare + pause + reply per § 7.5) | ✅ PASS |
+| F-A.2 (b) surface-agnostic doc discovery | ✅ PASS (with bonus on-demand handling) |
+| Procedure 5-S sentinel detection by /pm-startup Step 0 | ✅ PASS |
+| Procedure 5-S Task A (F-E STATUS.md scan + proposal) | ✅ PASS |
+| Procedure 5-S Task B (F-F trinity placeholder Q&A) | ✅ PASS |
+| Procedure 5-S sentinel disposition (defer → preserve + re-entrant) | ✅ PASS |
+| § 7.6 Preview rendering formalization (Form I idempotency note inline) | ✅ PASS |
+| Standard pm-startup resume post-Procedure-5-S | ✅ PASS |
+| Live OT unchanged | ✅ PASS (13th checkpoint) |
+
+### §14.10 What this re-test did NOT cover
+
+- **F-G behavioral effect.** F-G's content-only METHODOLOGY additions ("Format-vs-solutions: worked examples" subsection + per-agent table pm-chat row) target PM-chat-generated *coder/architect/reviewer/etc. prompts*. This re-test exercised PM chat receiving and running procedures, not generating downstream-agent prompts. F-G's behavioral effect remains untested-in-isolation. **Risk classification:** content-only change with documented worked examples; worst case is the new examples are ignored (same as pre-fix) — no regression risk.
+- **F-A.1 + F-A.2 cross-surface effectiveness.** Tested on Claude Code CLI only. Cross-surface effectiveness on Codex CLI / Gemini CLI / Desktop Commander remains an F-B (b) v10.1 candidate per §0.6 scope.
+- **Procedure 5-S Task A and Task B "apply" path.** Developer replied `defer`, so the apply-edits paths were not exercised. The proposal-rendering and sentinel-disposition logic was confirmed; the actual file-mutation logic relies on the same edit primitives the PM chat uses elsewhere and is not novel.
+
+### §14.11 Outcome
+
+**All three target behaviors that earlier delta-verification (§10–§13) could not directly observe are now confirmed by direct interactive observation.** Combined with §10–§13 automated and static evidence, the v10.0 patch sequence (F-C, F-D, F-E, F-F, F-G, F-A) has been verified along all the dimensions that can be exercised pre-ship. F-G remains content-only and untested-in-isolation (acceptable risk).
+
+**v10.0 ship-readiness: behavioral confidence elevated from "static + automated only" to "static + automated + behavioral".**
 
 ---
 
