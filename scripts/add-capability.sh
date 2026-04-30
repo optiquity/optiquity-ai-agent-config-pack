@@ -2,6 +2,25 @@
 # add-capability.sh — add a pack-supported capability (platform, language,
 # protocol, or role) to an existing AI Agent Config Pack v10.0 project.
 #
+# ┌──────────────────────────────────────────────────────────────────────┐
+# │  Pack file convention (BD-059, OQ-6 — forward contract)              │
+# │                                                                      │
+# │  This script is currently add-only — it copies conditional pack      │
+# │  files; it never removes files. If a future revision introduces a    │
+# │  deletion site in any pack-controlled directory                      │
+# │  (.{claude,codex,gemini}/agents/, .{claude,codex,gemini}/skills/,    │
+# │  scripts/, docs/pack/prompts/), that deletion MUST skip files whose  │
+# │  basename begins with `x-`. Project-added files use the `x-` prefix  │
+# │  (see supporting-docs/INSTALL-PROCEDURES.md § "Project file          │
+# │  conventions in pack-controlled directories"); pack-controlled       │
+# │  scripts must never remove them.                                     │
+# │                                                                      │
+# │  init-project.sh and migrate-v9-to-v10.sh both honor this contract;  │
+# │  any new deletion site here must follow the same pattern (see        │
+# │  init-project.sh stage_s9_conditional_remove() for the canonical     │
+# │  is_x_prefixed guard).                                               │
+# └──────────────────────────────────────────────────────────────────────┘
+#
 # Per V10-DESIGN §5.14, the script runs eight stages A0..A7 with preview
 # and confirmation before any writes. Per §5.14.7 it sources
 # scripts/lib/detect.sh and inverts the init-project.sh §7.6 stage S9
