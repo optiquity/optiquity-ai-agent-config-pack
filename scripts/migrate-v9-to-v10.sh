@@ -290,8 +290,17 @@ dispatch_structured_config() {
             local flat="${dest//\//-}"
             local stderr_log="$DIFFS_DIR/${flat#.}.merge-warnings.log"
 
+            # Same cp-order discipline as dispatch_text_file: write the
+            # merge to a tmpfile so $ours stays intact for diff and
+            # sidecar even when $ours == $dest. Without this, helper
+            # exit-2 (warnings) and helper error paths would write
+            # post-merge content to the sidecar instead of the project's
+            # pre-migration content.
+            local merged_tmp
+            merged_tmp=$(mktemp)
+
             local rc=0
-            python3 "$helper" "${base:-}" "$ours" "$theirs" --output "$dest" \
+            python3 "$helper" "${base:-}" "$ours" "$theirs" --output "$merged_tmp" \
                 2> "$stderr_log" || rc=$?
 
             local diff_path
@@ -299,19 +308,22 @@ dispatch_structured_config() {
 
             case "$rc" in
                 0)
+                    cp "$merged_tmp" "$dest"
                     record_disposition "merged-with-customization" "$cls" "$dest" "-" "$diff_path" "structured merge clean (key-level)"
                     rm -f "$stderr_log"
                     ;;
                 2)
                     cp "$ours" "${dest}.v9-customized"
+                    cp "$merged_tmp" "$dest"
                     record_disposition "customization-detected-needs-reconciliation" "$cls" "$dest" "${dest}.v9-customized" "$diff_path" "structured merge with reconciliation warnings (see $stderr_log)"
                     ;;
                 *)
-                    cp "$theirs" "$dest"
                     cp "$ours" "${dest}.v9-customized"
+                    cp "$theirs" "$dest"
                     record_disposition "customization-detected-needs-reconciliation" "$cls" "$dest" "${dest}.v9-customized" "$diff_path" "structured merge errored (rc=$rc); fell back to sidecar (see $stderr_log)"
                     ;;
             esac
+            rm -f "$merged_tmp"
             return 0
             ;;
         removed-by-pack-clean|removed-by-pack-customized|removed-everywhere|project-deleted-pack-kept|project-only-file)
@@ -845,15 +857,23 @@ stage_s5_trinity_splice() {
     fi
 
     # Apply per-file results: read classifier disposition and act.
+    # Trinity file class labels: C1 = CLAUDE.md, C2 = AGENTS.md, C3 = GEMINI.md.
     while IFS=$'\t' read -r file classification _; do
         [[ -z "$file" ]] && continue
+        local cls
+        case "$file" in
+            CLAUDE.md) cls="C1" ;;
+            AGENTS.md) cls="C2" ;;
+            GEMINI.md) cls="C3" ;;
+            *)         cls="C?" ;;
+        esac
         case "$classification" in
             unchanged-pack)
-                record_disposition "unchanged-pack" "C1" "$file" "-" "-" "-"
+                record_disposition "unchanged-pack" "$cls" "$file" "-" "-" "-"
                 ;;
             pack-update-applied|new-file-in-pack|merged-with-customization)
                 cp "$trinity_tmp/$file" "$file"
-                record_disposition "$(report_disposition_for "$classification")" "C1" "$file" "-" "-" "-"
+                record_disposition "$(report_disposition_for "$classification")" "$cls" "$file" "-" "-" "-"
                 ;;
             real-merge-required|project-shadows-new-pack)
                 # Helper has written the spliced (template + Active-skills + Custom-agents) file
@@ -863,7 +883,7 @@ stage_s5_trinity_splice() {
                 cp "$BACKUP_DIR/$file" "$file.v9-customized"
                 local diff_path
                 diff_path=$(write_three_way_diff "$trinity_base_dir/$file" "$BACKUP_DIR/$file" "$PACK/project-template/$file" "$file")
-                record_disposition "customization-detected-needs-reconciliation" "C1" "$file" "$file.v9-customized" "$diff_path" "trinity prose conflict; reconcile per Procedure 5-C in INSTALL-PROCEDURES.md"
+                record_disposition "customization-detected-needs-reconciliation" "$cls" "$file" "$file.v9-customized" "$diff_path" "trinity prose conflict; reconcile per Procedure 5-C in INSTALL-PROCEDURES.md"
                 ;;
             *)
                 warn "merge-trinity.py reported unexpected classification '$classification' for $file"

@@ -33,6 +33,15 @@ fi
 FIXTURE_DIR="$1"
 TARGET="$2"
 
+# Resolve FIXTURE_DIR to absolute. Otherwise the later `cd "$PACK"` makes
+# relative FIXTURE_DIR resolve against the wrong base, and the overlay
+# loop silently misses files. The test runner always passes absolute
+# paths so this only matters for manual invocation, but the failure
+# mode is silent — make it impossible.
+if [[ -d "$FIXTURE_DIR" ]]; then
+    FIXTURE_DIR="$(cd "$FIXTURE_DIR" && pwd)"
+fi
+
 if [[ -z "${PACK:-}" ]]; then
     echo "error: PACK env var required" >&2
     exit 1
