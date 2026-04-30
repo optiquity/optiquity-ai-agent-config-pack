@@ -607,6 +607,74 @@ def check_prompt_triad_compliance() -> None:
                 ok(f"{rel} — {in_scope_pass} variant(s) pass triad+report-file rule")
 
 
+def check_pack_agent_trinity() -> None:
+    """Check 11 — pack-roster agent trinity-rule symmetry (informational).
+
+    Per BD-059 success criterion #7, every pack-roster agent ships in three
+    formats parallel across the three tools (.claude/.md, .codex/.toml,
+    .gemini/.md). The trinity rule says behavioral content must match unless
+    a divergence is provably tool-specific.
+
+    This check runs scripts/compare-agent-trinity.py --all in lenient mode
+    (whitespace + Markdown formatting normalized) and reports the count of
+    agents whose body content diverges across the three. The check is
+    INFORMATIONAL: it always exits OK with the count. Hard-failure
+    enforcement requires a "trinity-asymmetry-by-design" marker convention
+    the pack does not yet have. Until then, the count is a regression
+    signal — reviewers should question any change that increases it.
+    """
+    print("\n── Check 11: Pack agent trinity-rule symmetry (informational) ──")
+    script = REPO_ROOT / "scripts" / "compare-agent-trinity.py"
+    if not script.is_file():
+        fail(f"{script.relative_to(REPO_ROOT)} — comparator script missing")
+        return
+
+    import subprocess
+    try:
+        result = subprocess.run(
+            [sys.executable, str(script), "--all", "--pack", str(REPO_ROOT), "--summary-only"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except Exception as e:
+        fail(f"compare-agent-trinity.py invocation failed: {e}")
+        return
+
+    out = result.stdout.strip().splitlines()
+    summary_line = next((l for l in out if l.startswith("summary:")), None)
+    if summary_line is None:
+        fail("compare-agent-trinity.py did not emit a summary line")
+        return
+
+    # Parse "summary: N agents checked; M divergent"
+    m = re.search(r"summary:\s+(\d+)\s+agents checked;\s+(\d+)\s+divergent", summary_line)
+    if not m:
+        fail(f"could not parse summary: {summary_line!r}")
+        return
+
+    checked = int(m.group(1))
+    divergent = int(m.group(2))
+    divergent_list = next(
+        (l[len("divergent: "):] for l in out if l.startswith("divergent: ")),
+        "",
+    )
+
+    if divergent == 0:
+        ok(f"{checked} agents checked — all trinity-symmetric")
+    else:
+        # Informational only — does not fail the check.
+        print(
+            f"  INFO: {checked} agents checked, {divergent} divergent "
+            f"(lenient mode; tool-specific content allowed). "
+            f"Divergent: {divergent_list}"
+        )
+        print(
+            f"  INFO: review with `scripts/compare-agent-trinity.py --all` for details."
+        )
+        ok(f"{checked} agents checked, {divergent} divergent (informational; not a failure)")
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -624,6 +692,7 @@ def main() -> None:
     check_reserved_x_prefix()
     check_init_project_structure()
     check_prompt_triad_compliance()
+    check_pack_agent_trinity()
 
     print("\n" + "=" * 60)
     if failures:

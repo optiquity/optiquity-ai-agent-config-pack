@@ -596,6 +596,55 @@ fixture suite lands in C5).
 
 ### Group C — Procedure relocation + cross-reference sweep + trinity edits
 
+#### Commit C7a — Pack-roster trinity comparator (BD-059 scope expansion 2026-04-30)
+
+**Title:** `feat: v10 — BD-059 trinity-rule comparator for pack-roster agent files`
+
+**Files touched:**
+
+- `scripts/compare-agent-trinity.py` (NEW) — comparator helper for
+  pack-roster agent files. Parses Claude .md (YAML frontmatter +
+  body), Codex .toml (`developer_instructions` field), Gemini .md
+  (frontmatter + body); normalizes whitespace + Markdown formatting;
+  reports body divergence. `--strict` keeps formatting chars; default
+  is lenient. `--all` iterates every pack-roster agent.
+- `scripts/test-compare-agent-trinity.sh` (NEW) — 10 unit tests
+  covering canonical 4 cases (identical, backtick-only, substantive,
+  whitespace-only) plus auxiliary (missing variant, --all summary,
+  name-field mismatch).
+- `scripts/validate-pack.py` — adds Check 11 (informational) that
+  invokes the comparator in `--all --summary-only` mode and reports
+  the count of divergent agents. Informational because hard CI
+  enforcement requires a trinity-asymmetry-by-design marker convention
+  the pack does not yet have; the count is a regression signal until
+  that convention lands.
+- `maintenance-docs/V10-PROCEDURE-5-C-DRAFT.md` (NEW) — architect's
+  full draft body of Procedure 5-C and sub-procedures, persisted as
+  the design artifact for C7's authoring step.
+- `maintenance-docs/V10-MIGRATION-FIX-PLAN.md` (this file) — minor
+  edit to drop a stale BD-061 reference and document C7a.
+
+**Dependencies:** C4 merged (Group B complete). Lands before C7
+because Procedure 5-C.6 (authored in C7) references the comparator.
+
+**Validation:** `validate-pack.py` PASSED (Check 11 informational,
+existing 10 checks unchanged); `test-compare-agent-trinity.sh` 10/10;
+`test-detect.sh` 34/34; `test-restore-from-backup.sh` 36/36;
+comparator runs cleanly against the 16 pack-roster agents (8 currently
+divergent, all in the auditor family with legitimate tool-specific
+content per architect 3.8 — informational, not a CI failure).
+
+**Approval gate flag:** None within group.
+
+**Scope rationale:** OQ-5C-4 from the architect's Procedure 5-C draft
+flagged that 5-C.6 cannot be performed reliably without a structured-diff
+helper for pack-roster agent files (Codex TOML vs Claude/Gemini Markdown
+make direct diff useless). Initially scoped as BD-061 candidate /
+deferred; user decision 2026-04-30 folded the work into BD-059 because
+"BD-059 is not done until everything works" — a procedure that requires
+eyeballed cross-format diffing is theater. C7a ships the tool that makes
+5-C.6 a reliable mechanical step.
+
 #### Commit C7 — Relocate procedures to INSTALL-PROCEDURES.md; create Procedure 5-C
 
 (commits C5 and C6 are out-of-order on purpose for sequencing; explained
@@ -1092,9 +1141,13 @@ time, not by `validate-pack.py` directly.
   files in the staged-files block.
 - `pack-reviewer` invocation between C9 and G4 is mandatory (see
   Part 3 gate G4 — user reviews before C5/C6 land).
-- Consider adding a `validate-pack.py` check in a follow-up commit
-  (BD-061?) that diffs trinity files for parallel-section symmetry —
-  out of scope for BD-059.
+- A `validate-pack.py` Check 11 covers pack-roster agent trinity
+  symmetry; landed in commit C7a (`scripts/compare-agent-trinity.py`
+  + tests + Check 11). Folded into BD-059 scope per user decision
+  2026-04-30; no BD-061. Hard CI enforcement requires a
+  trinity-asymmetry-by-design marker convention which is a separate
+  future BD; the v10.0 check is informational (count regression
+  signal) until that convention exists.
 
 ### 6.3 R3 — Commit-ordering pitfall: helper before caller [MEDIUM]
 
