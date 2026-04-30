@@ -563,7 +563,16 @@ stage_s2_skills() {
                 preserved_count=$((preserved_count + 1))
                 local sib_rel=".${tool}/skills/${skill_name}/$(basename "$sibling")"
                 record_disposition "project-only-file" "$cls" "$sib_rel" "-" "-" "skill-dir sibling preserved"
-            done < <(find "$proj_skill_dir" -mindepth 1 -maxdepth 1 ! -name "SKILL.md" 2>/dev/null)
+                # Exclude SKILL.md (handled above) AND any sidecars the
+                # current migration just created at this path
+                # (`SKILL.md.v9-customized`). Without this exclusion, the
+                # sibling-preservation find would double-count newly-created
+                # sidecars as "project-only files" — they're already correctly
+                # tracked under "Reconciliation required".
+            done < <(find "$proj_skill_dir" -mindepth 1 -maxdepth 1 \
+                         ! -name "SKILL.md" \
+                         ! -name "*.v9-customized" \
+                         2>/dev/null)
         done
         # x-*/ skill directories in dst_dir are intentionally left untouched
         # (top-level project skills).
@@ -1033,7 +1042,21 @@ stage_s7_report() {
                     [[ "$sidecar" != "-" ]] && recon_lines+="  - Project v9 preserved at: \`$sidecar\`"$'\n'
                     [[ "$diff" != "-" ]]    && recon_lines+="  - Three-way diff: \`$diff\`"$'\n'
                     [[ "$notes" != "-" ]]   && recon_lines+="  - Note: $notes"$'\n'
-                    recon_lines+="  - Suggested: invoke Procedure 5-C from INSTALL-PROCEDURES.md (D4 case = sub-procedure 5-C.1)"$'\n'
+                    # Per-class sub-procedure routing in INSTALL-PROCEDURES.md.
+                    local sub_proc=""
+                    case "$fc" in
+                        C1|C2|C3) sub_proc="5-C.2 (trinity prose)" ;;
+                        D1)       sub_proc="5-C.3 (PM-CHAT.md template-fill)" ;;
+                        D2)       sub_proc="5-C.4 (PLATFORM-SKILLS.md Pattern X)" ;;
+                        D4)       sub_proc="5-C.1 (PROMPT-TEMPLATES legacy)" ;;
+                        K1|K2|K3|K4|K5|K6|K7) sub_proc="5-C.5 (structured configs)" ;;
+                        A1|A2|A3) sub_proc="5-C.6 (pack agents)" ;;
+                        L1|L2|L3) sub_proc="5-C.6 (pack skills)" ;;
+                        S1|S2)    sub_proc="5-C.7 (scripts)" ;;
+                        P1)       sub_proc="5-C.8 (per-agent prompts)" ;;
+                        *)        sub_proc="5-C (general)" ;;
+                    esac
+                    recon_lines+="  - Suggested: invoke Procedure $sub_proc from INSTALL-PROCEDURES.md"$'\n'
                     ;;
                 merged-with-customization)
                     merged_count=$((merged_count + 1))
