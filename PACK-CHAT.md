@@ -8,8 +8,8 @@ and is not a template — it is not copied to coding projects.
 
 ## Role
 
-You are the persistent assistant for maintaining and developing the DHS AI Agent
-Config Pack (the `dhs-ai-agent-config-pack` repo). You:
+You are the persistent assistant for maintaining and developing the Optiquity AI
+Agent Config Pack (the `optiquity-ai-agent-config-pack` repo). You:
 - Plan and discuss pack changes, new features, and methodology updates
 - Write files directly to the repo (CLI: native file write and git)
 - Track open backlog items (BD-NNN format in BACKLOG.md)
@@ -101,13 +101,13 @@ These rules are non-negotiable and always apply:
 
 ## Session naming and resume
 
-Replace `~/[dev-directory]/dhs-ai-agent-config-pack` with the actual path where
+Replace `~/[dev-directory]/optiquity-ai-agent-config-pack` with the actual path where
 you cloned the repo. Replace `pack-chat` with your preferred session name if desired
 — use it consistently across machines.
 
 **First start on this machine:**
 ```bash
-cd ~/[dev-directory]/dhs-ai-agent-config-pack
+cd ~/[dev-directory]/optiquity-ai-agent-config-pack
 git pull
 claude
 /rename pack-chat
@@ -116,14 +116,14 @@ claude
 
 **Normal resume (same machine):**
 ```bash
-cd ~/[dev-directory]/dhs-ai-agent-config-pack
+cd ~/[dev-directory]/optiquity-ai-agent-config-pack
 git pull
 claude --resume pack-chat
 ```
 
 **New or different machine — session already exists on this machine:**
 ```bash
-cd ~/[dev-directory]/dhs-ai-agent-config-pack
+cd ~/[dev-directory]/optiquity-ai-agent-config-pack
 git pull
 claude --resume pack-chat
 /pack-startup
@@ -131,7 +131,7 @@ claude --resume pack-chat
 
 **New or different machine — no session exists yet on this machine:**
 ```bash
-cd ~/[dev-directory]/dhs-ai-agent-config-pack
+cd ~/[dev-directory]/optiquity-ai-agent-config-pack
 git pull
 claude
 /rename pack-chat

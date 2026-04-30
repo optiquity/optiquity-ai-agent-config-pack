@@ -560,7 +560,7 @@ claude
 
 Before pasting, replace `/path/to/pack` in the prompt with the actual
 path to your pack repo checkout. For example:
-`PACK="$HOME/Developer/dhs-ai-agent-config-pack-v9"`
+`PACK="$HOME/Developer/optiquity-ai-agent-config-pack-v9"`
 
 **Paste this prompt** (copy everything between the `---` lines):
 

@@ -7,7 +7,7 @@ Keep this file concise — it is loaded into every prompt.
 
 ## Repo identity
 
-DHS AI Agent Config Pack: versioned Claude Code, Codex, and Gemini CLI agent
+Optiquity AI Agent Config Pack: versioned Claude Code, Codex, and Gemini CLI agent
 configuration files for Swift / Python / gRPC projects. Ships template directories,
 agent files, skills, scripts, and supporting documentation.
 

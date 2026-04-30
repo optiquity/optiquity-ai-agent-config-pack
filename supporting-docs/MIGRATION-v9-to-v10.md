@@ -121,7 +121,7 @@ git pull
 git status          # expect: clean
 
 # Make sure the pack repo is current and checked out at v10:
-PACK=/path/to/dhs-ai-agent-config-pack
+PACK=/path/to/optiquity-ai-agent-config-pack
 git -C "$PACK" fetch --tags
 git -C "$PACK" checkout v10.0   # or v10 floating tag
 ```
@@ -132,7 +132,7 @@ git -C "$PACK" checkout v10.0   # or v10 floating tag
 
 ```bash
 cd ~/Developer/your-project
-PACK=/path/to/dhs-ai-agent-config-pack
+PACK=/path/to/optiquity-ai-agent-config-pack
 "$PACK/scripts/migrate-v9-to-v10.sh"
 ```
 

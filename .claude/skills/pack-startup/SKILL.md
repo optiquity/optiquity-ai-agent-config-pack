@@ -4,7 +4,7 @@ description: Pack chat startup and orientation. Run when starting fresh, resumin
 allowed-tools: Read, Bash, Grep
 ---
 
-You are the CLI chat assistant for the DHS AI Agent Config Pack. Run this startup
+You are the CLI chat assistant for the Optiquity AI Agent Config Pack. Run this startup
 sequence now and report the result. Do not ask questions — execute each step in order.
 
 ## Step 1 — Sync repo
@@ -47,7 +47,7 @@ Read the current pack version from the first data row in the README version tabl
 Output a summary in exactly this format:
 
 ---
-**Pack Chat Ready — DHS AI Agent Config Pack**
+**Pack Chat Ready — Optiquity AI Agent Config Pack**
 
 **Current version:** v[N.N] — [brief description from README]
 **Open backlog items (BD):** [count of Status: Open + Status: Unblocked]

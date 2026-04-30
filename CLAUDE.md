@@ -7,7 +7,7 @@ It is NOT a template and is NOT copied to coding projects.
 
 ## What this repo is
 
-The DHS AI Agent Config Pack provides
+The Optiquity AI Agent Config Pack provides
 versioned Claude Code, Codex, and Gemini CLI agent configuration files for
 Swift / Python / gRPC projects. It ships template directories, agent files,
 skills, scripts, and supporting documentation.

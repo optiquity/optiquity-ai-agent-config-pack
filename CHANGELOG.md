@@ -102,6 +102,17 @@ Each version is available as a git tag (v1, v2, …).
   DEPENDENCIES.md, PROMPT-TEMPLATES.md, MIGRATION-v8-to-v9.md, V9-DESIGN.md,
   V9-AUDIT-REPORT.md, GEMINI-CLI-ANALYSIS.md.
 
+**Rename**
+
+- Renamed from "DHS AI Agent Config Pack" to "Optiquity AI Agent Config Pack."
+  Repo slug changed from `dhs-ai-agent-config-pack` to
+  `optiquity-ai-agent-config-pack`. GitHub redirects the old URL. Display name
+  updated in README.md, CLAUDE.md, AGENTS.md, GEMINI.md, PACK-CHAT.md, and
+  pack-startup skill. Slug updated in PACK-CHAT.md, SETUP-NEW.md,
+  SETUP-EXISTING.md, MIGRATION-v9-to-v10.md, MIGRATION-v8-to-v9.md, and
+  settings.local.json. Archive docs preserved unchanged (historical records).
+  No functional changes to agents, skills, scripts, or workflows.
+
 ---
 
 ## v8 — March 2026

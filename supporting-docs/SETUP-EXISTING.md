@@ -30,7 +30,7 @@ no prior AI agent configuration.
 - **Pack cloned locally.** Export `$PACK`:
 
   ```bash
-  export PACK=~/Developer/dhs-ai-agent-config-pack
+  export PACK=~/Developer/optiquity-ai-agent-config-pack
   git -C "$PACK" checkout v10.0   # or v10 floating tag
   ```
 

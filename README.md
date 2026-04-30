@@ -1,7 +1,12 @@
-# DHS AI Agent Config Pack
+# Optiquity AI Agent Config Pack
 
 A versioned collection of Claude Code, Codex CLI, Gemini CLI, and Xcode AI
-agent configuration files for Swift / Python / gRPC projects.
+agent configuration files for Swift / Python / gRPC projects. Maintained by
+[Optiquity, Inc.](https://optiquity.com)
+
+> Formerly "DHS AI Agent Config Pack." Renamed at v10.0 to reflect ownership
+> by Optiquity, Inc. The pack provides the same configuration files and
+> workflows — the name change has no effect on functionality or migration paths.
 
 ## What is this?
 

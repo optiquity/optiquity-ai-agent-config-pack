@@ -27,11 +27,11 @@ template).
 - **Node.js 18+** (for `mcp-local-rag` if using Claude Code CLI as PM
   chat).
 - **Pack cloned locally.** Clone the pack repo to a stable location,
-  e.g. `~/Developer/dhs-ai-agent-config-pack`. Check out the v10 tag
+  e.g. `~/Developer/optiquity-ai-agent-config-pack`. Check out the v10 tag
   or track v10-dev. Set `PACK` to its absolute path in your shell:
 
   ```bash
-  export PACK=~/Developer/dhs-ai-agent-config-pack
+  export PACK=~/Developer/optiquity-ai-agent-config-pack
   git -C "$PACK" fetch --tags
   git -C "$PACK" checkout v10.0   # or v10 floating tag
   ```
