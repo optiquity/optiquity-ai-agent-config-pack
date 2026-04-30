@@ -32,4 +32,4 @@ version, first apply the intermediate guide(s) in sequence.
 
 ---
 
-See `README.md` for the full version history and repository layout.
+See [`README.md`](README.md) for the full version history and repository layout.
