@@ -18,8 +18,6 @@ the same project rules — only tool-specific operating notes differ.
 *Fill in placeholders and remove this block.*
 ---
 
-## Project identity
-
 **[PROJECT_NAME]** targets [PLATFORM_TARGETS].
 Transport: [TRANSPORT] (e.g., gRPC + Proto3 for first-party; REST for third-party).
 

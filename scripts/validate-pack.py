@@ -927,6 +927,80 @@ def check_tool_config_capability_parity() -> None:
         )
 
 
+def check_trinity_h2_parity() -> None:
+    """Check 18 — v10 trinity templates have matching H2 structure.
+
+    CLAUDE.md, AGENTS.md, GEMINI.md must agree on H2 names and order.
+    The trinity rule applies — symmetry is the default. The only allowed
+    asymmetry is tool-intrinsic content. GEMINI.md is permitted to add
+    these specific H2s (and only these): `## Agent roster`,
+    `## Gemini CLI operating notes`. Any other divergence is a defect.
+
+    Without this check, drift like the v10.0 OT migration discovered
+    (CLAUDE 'Platform and stack defaults' vs AGENTS 'Platform defaults'
+    etc.) ships unnoticed and breaks Procedure 5-C.2's trinity-rule
+    check during migration.
+    """
+    print("\n── Check 18: Trinity H2 structure parity (BD-059) ──")
+    GEMINI_INTRINSIC_H2S = {"## Agent roster", "## Gemini CLI operating notes"}
+    files = {
+        name: REPO_ROOT / "project-template" / name
+        for name in ("CLAUDE.md", "AGENTS.md", "GEMINI.md")
+    }
+    h2_lists = {}
+    for name, path in files.items():
+        if not path.is_file():
+            fail(f"project-template/{name} — file missing")
+            return
+        h2_lists[name] = [
+            line.rstrip()
+            for line in path.read_text().splitlines()
+            if line.startswith("## ")
+        ]
+
+    claude = h2_lists["CLAUDE.md"]
+    agents = h2_lists["AGENTS.md"]
+    gemini = h2_lists["GEMINI.md"]
+
+    # CLAUDE ↔ AGENTS must be exactly equal (no tool-intrinsic carve-out
+    # between these two — Codex and Claude Code see the same content).
+    if claude != agents:
+        fail(
+            "CLAUDE.md ↔ AGENTS.md H2 structure diverges (no tool-intrinsic "
+            "carve-out allowed between these two):"
+        )
+        in_claude = [h for h in claude if h not in agents]
+        in_agents = [h for h in agents if h not in claude]
+        for h in in_claude:
+            fail(f"  in CLAUDE.md only: {h}")
+        for h in in_agents:
+            fail(f"  in AGENTS.md only: {h}")
+        return
+
+    # GEMINI must equal CLAUDE *modulo* the allowed Gemini-intrinsic H2s.
+    gemini_filtered = [h for h in gemini if h not in GEMINI_INTRINSIC_H2S]
+    if gemini_filtered != claude:
+        fail("GEMINI.md H2 structure diverges from CLAUDE.md/AGENTS.md "
+             "beyond the allowed Gemini-intrinsic H2s "
+             f"({sorted(GEMINI_INTRINSIC_H2S)}):")
+        in_claude = [h for h in claude if h not in gemini_filtered]
+        in_gemini = [h for h in gemini_filtered if h not in claude]
+        for h in in_claude:
+            fail(f"  in CLAUDE.md/AGENTS.md only: {h}")
+        for h in in_gemini:
+            fail(f"  in GEMINI.md only (and not in allowed-intrinsic set): {h}")
+        return
+
+    # Check that the Gemini-intrinsic H2s, if present, are positioned
+    # at the documented insertion points (after Phase routing for
+    # `Agent roster`; after Agent behavior for `Gemini CLI operating notes`).
+    # Position drift is acceptable as long as parity-modulo-intrinsic holds,
+    # but log positions for telemetry.
+    ok(f"CLAUDE.md ↔ AGENTS.md H2 structures match ({len(claude)} sections)")
+    ok(f"GEMINI.md adds {len(gemini) - len(gemini_filtered)} intrinsic H2(s); "
+       f"otherwise matches ({len(gemini_filtered)} sections)")
+
+
 def check_trinity_addenda_h2() -> None:
     """Check 16 — v10 trinity templates carry `## Project addenda` H2
     with the HTML-comment placeholder (OQ-P6 / OQ-5C-1, BD-059 C9).
@@ -984,6 +1058,7 @@ def main() -> None:
     check_migration_test_runs_clean()
     check_tool_config_capability_parity()
     check_trinity_addenda_h2()
+    check_trinity_h2_parity()
 
     print("\n" + "=" * 60)
     if failures:

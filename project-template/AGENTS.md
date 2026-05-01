@@ -12,6 +12,8 @@ Remove this comment block after filling in the placeholders.
 
 This file is the Codex equivalent of CLAUDE.md and GEMINI.md. All three files
 should express the same project rules — only tool-specific operating notes differ.
+The trinity rule applies: H2 names and order match CLAUDE.md / GEMINI.md;
+bodies may be more concise here, since the loaded skills carry the full detail.
 -->
 
 ---
@@ -42,11 +44,7 @@ Default preference only:
 4. Keep architecture explicit. Do not hide complexity behind clever abstractions.
 5. Verify assumptions against code, tests, docs, or tooling output. Do not guess.
 
-## Platform defaults
-
-<!--
-Fill in platform-specific defaults. See CLAUDE.md for detailed examples.
--->
+## Platform and stack defaults
 
 [PLATFORM_DEFAULTS — fill in per project type]
 
@@ -76,22 +74,25 @@ These rules apply regardless of which architecture pattern this project uses.
 - Services are stateless by default. Stateful services document state, threading, and invalidation.
 - Navigation logic lives outside view and view-model types.
 
-## [CONDITIONAL] Design and coding rules
+## [CONDITIONAL] Architecture rules — platform-specific
 
-<!--
-Add architecture, language, and protocol rules from your project's skills.
-See CLAUDE.md for the full breakdown of conditional sections:
-- Platform architecture rules
-- Language-specific coding rules
-- gRPC/protocol rules
-- Security rules
-- Anti-patterns
+[PLATFORM_ARCHITECTURE — fill in from loaded skills]
 
-AGENTS.md can be more concise than CLAUDE.md — include the rules but
-skip lengthy explanatory comments. The loaded skills have the full detail.
--->
+## [CONDITIONAL] Language-specific coding rules
 
-[PLATFORM_RULES — fill in from loaded skills]
+[LANGUAGE_RULES — fill in from loaded skills]
+
+## [CONDITIONAL] gRPC and Proto3 rules
+
+[GRPC_RULES — fill in from grpc-patterns skill, or delete section]
+
+## Security
+
+- Never hardcode secrets, API keys, tokens, or certificates in source code or config files committed to git.
+- Validate data received from the network before using it in domain logic or UI.
+- TLS required for all gRPC connections. Do not disable certificate validation outside development.
+
+[PLATFORM_SECURITY — fill in from security-patterns skill]
 
 ## Liskov Substitution Principle
 
@@ -123,38 +124,25 @@ The pattern takes two complementary forms:
   unconditional throws.
 
 Both forms share the same intent: make supported behaviors explicit
-and queryable, eliminating the need for callers to discover
-limitations through runtime surprises. The specific language mechanism
-varies (compile-time or runtime conformance checks, structural
-subtyping, flag values, enum sets, etc.), but the design intent is
+and queryable. Specific language mechanism varies; design intent is
 consistent across any typed system.
 
-**Relationship to LSP.** LSP is a required coding practice — every
-method declared in an interface must have a meaningful implementation
-in every conforming type. The capabilities pattern is a recommended
-best practice — an architectural tool for making supported behaviors
-explicit and queryable. Neither is a prerequisite for the other, and
-neither is the motivation for the other. They work well together when
-both are present, but this is a benefit of using both — not a
-dependency between them. If the capabilities pattern does not fit the
-project's architecture or the developer opts out, that is valid.
+**Relationship to LSP.** LSP is required; the capabilities pattern is
+recommended. Neither is a prerequisite for the other. They work well
+together when both are present.
 
-## Dependency intake
+## Dependency intake policy
 
 1. Check platform frameworks first.
 2. Prefer actively maintained packages with clear licensing.
 3. Evaluate security, size, lock-in.
 4. Record rationale, alternatives, and exit plan.
 
-## Testing policy
+## Testing expectations
 
 - Add or update tests for non-trivial changes.
 - Use protocol-based test doubles. Never hit real endpoints in unit or integration tests.
 - Prefer unit tests for domain logic. Integration tests at module seams.
-
-<!--
-Add platform-specific testing rules from loaded skills.
--->
 
 [PLATFORM_TESTING — fill in from loaded skills]
 
@@ -164,13 +152,6 @@ Add platform-specific testing rules from loaded skills.
 - Preserve external behavior unless the task explicitly changes behavior.
 - When touching legacy code, improve naming, seams, and tests before broad rewrites.
 - Prefer deleting dead code over preserving speculative abstractions.
-
-## Git and review policy
-
-- Keep commits coherent.
-- Separate formatting from behavior changes.
-- Preserve existing behavior during refactors unless the task says otherwise.
-- Do not commit generated Protobuf/gRPC files. Regenerate via `proto-gen.sh`.
 
 ## Skill loading
 
@@ -236,14 +217,32 @@ executable on first checkout: `chmod +x agent-run.sh scripts/*.sh`.
 Set `XCODE_SCHEME` and `XCODE_DESTINATION` in `validate.sh` and `test.sh` before first use —
 without them, xcodebuild steps are skipped silently (a warning is printed).
 
-## BACKLOG permissions and deferral comments
+## Build and repo hygiene
+
+- Do not commit secrets, generated code, or machine-specific config.
+- Do not commit generated Protobuf or gRPC files. Regenerate via `proto-gen.sh`.
+- Prefer repo-local scripts over undocumented manual steps.
+- Document any new setup requirement in README.md or docs/.
+- **At the end of every implementation phase**, include a **"Proposed CHANGELOG entry"**
+  section in the completion report, formatted exactly as it would appear in `CHANGELOG.md`.
+  Do not write to `CHANGELOG.md` or any `.md` in the project root — the PM chat applies
+  the entry after reviewer approval.
+
+## Git workflow
+
+- Make commits small and coherent.
+- Include tests when behavior changes.
+- Separate mechanical formatting from semantic changes when practical.
+- Surface risky migrations early.
+
+## Deferral comments and BACKLOG hygiene
 
 **What you may do:** Add typed deferral comments in code when you encounter work that
 cannot be completed within the current phase scope. Report them in your completion report.
 
 **What you may not do:** Write to `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`,
 `PACK-FEEDBACK.md`, or any other `.md` file in the project root — these are
-exclusively the PM chat's responsibility. Resolve or modify existing BACKLOG
+exclusively the PM chat's responsibility. Do not resolve or modify existing BACKLOG
 entries. Never write to `PACK-FEEDBACK.md` under any circumstance — it is the
 PM chat's upstream feedback log for the AI Agent Config Pack itself.
 
@@ -256,6 +255,13 @@ PM chat's upstream feedback log for the AI Agent Config Pack itself.
 ```
 Always write `TD-TBD`. Never invent a TD number.
 
+**Valid scope values for TODO:** `phase-N`, `dependency`, `feature`, `perf`, `version`
+**Valid severity values for KNOWN GAP:** `critical`, `functional`, `polish`
+**Source for VERIFY:** name the external source (e.g. `apple-docs`, `schwab-api`)
+
+Never use plain English deferral comments (`// Fix later`, `// Confirm this`).
+When citing a code location in a report, use the symbol name not the line number.
+
 **BACKLOG write permissions by agent:**
 
 | Agent | May do | May not do |
@@ -265,12 +271,7 @@ Always write `TD-TBD`. Never invent a TD number.
 | `docs-researcher` | Read only | Write anything |
 | `repo-ops` | Read only | Write anything |
 
-## [CONDITIONAL] Anti-patterns — never introduce
-
-<!--
-Include universal anti-patterns and add platform-specific ones from skills.
-See CLAUDE.md for the full list with examples.
--->
+## [CONDITIONAL] Anti-patterns — never introduce these
 
 - Calling gRPC stubs directly from ViewModels or Views.
 - Auth tokens in Protobuf message fields.
@@ -282,15 +283,6 @@ See CLAUDE.md for the full list with examples.
 - Branching on concrete types to discover what an abstraction supports, instead of querying a capability value or interface.
 
 [PLATFORM_ANTIPATTERNS — fill in from loaded skills]
-
-## Agent behavior
-
-- Plan first for non-trivial work.
-- Read existing code before adding new abstractions.
-- Do not invent APIs, framework behavior, or build flags.
-- Prefer the smallest correct change.
-- State uncertainty explicitly.
-- When using a local model, avoid high-risk changes unless a stronger model has reviewed the plan.
 
 ## Phase routing — default agent assignments
 
@@ -331,6 +323,15 @@ and full skill assignments. All custom agent names begin with `x-`.
 | Phase | Agent | Key reason |
 |---|---|---|
 | (Developer / PM chat adds rows per project during Procedure 5) |  |  |
+
+## Agent behavior
+
+- Plan first for non-trivial work.
+- Read existing code before adding new abstractions.
+- Do not invent APIs, framework behavior, or build flags.
+- Prefer the smallest correct change.
+- State uncertainty explicitly.
+- When using a local model, avoid high-risk changes unless a stronger model has reviewed the plan.
 
 ## Project addenda
 
