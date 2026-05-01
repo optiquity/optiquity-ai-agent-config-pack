@@ -238,6 +238,17 @@ procedure where it left off. The procedure is complete only when
 every `*.v9-customized` sidecar is removed and the working tree is
 ready for the single migration commit.
 
+**Surface pack defects as you discover them.** If during
+reconciliation you notice that the v10 pack template ships
+incorrect content (wrong filenames, missing entries in tables,
+misleading instructions, etc.), append a dated entry to
+`docs/pack/PACK-FEEDBACK.md` *before* completing the procedure.
+The PACK-FEEDBACK update is part of the same single migration
+commit, not a follow-up. Format: one bullet per defect with
+file/section reference and a short suggested correction. The
+pack maintainer reads PACK-FEEDBACK.md to land fixes in the
+next pack release.
+
 ### Procedure 5-C.0 — Pre-flight (read this first)
 
 1. **Open the migration report.**
@@ -409,6 +420,20 @@ tool-specific.
         Compose a merged body — pack scaffolding plus project
         additions — and replace the v10 body with the merged result.
         Apply identically across the three files.
+
+      *Special case — `[CONDITIONAL]` sections whose v10 body is just a
+      `[PLATFORM_*]` / `[LANGUAGE_RULES]` / `[GRPC_RULES]` placeholder.*
+      The placeholders are *not* meant to be filled by copying skill
+      content into the trinity — skills are loaded at runtime by
+      agent prompts and are the canonical source. For these sections:
+      - **If v9 has project-specific filled-in content** (project
+        types named, project rules referenced): keep project + rename
+        the H2 to drop `[CONDITIONAL]`.
+      - **If v9 has no content for this section**: delete the section
+        across all three trinity files. Skills supply the rules at
+        agent runtime.
+      Do not "fill from skills" — that creates a duplicated source of
+      truth that drifts with every skill update.
    b. **H2 is project-original (not in v10 template).** Two routes:
       - **Pack-worthy.** The customization should be upstreamed.
         Land the section under `## Project addenda` at the bottom
@@ -425,16 +450,37 @@ tool-specific.
    conflicts with project policy), delete the section from all three
    trinity files and record the rejection in `BACKLOG.md` so a future
    migration does not silently re-introduce it.
-5. **Run the trinity rule check.**
-   `diff <(grep '^## ' CLAUDE.md) <(grep '^## ' AGENTS.md)`
-   and the same for GEMINI.md. Any diff is a trinity-rule violation
-   unless the H2 is tool-intrinsic (asymmetry justified). Resolve
-   before proceeding.
-6. **Confirm no placeholders remain.**
-   `grep -nE '\[(PROJECT_NAME|PLATFORM_TARGETS|TRANSPORT|PLATFORM_DEFAULTS|PLATFORM_ARCHITECTURE|LANGUAGE_RULES|GRPC_RULES|PLATFORM_SECURITY|PLATFORM_TESTING|PLATFORM_ANTIPATTERNS)\]' CLAUDE.md AGENTS.md GEMINI.md`
-   must produce no output. Any remaining placeholder is an
-   unfinished preamble step — return to step 2.
-7. **Delete the sidecars.**
+5. **Strip `[CONDITIONAL]` prefix from retained sections.** The v10
+   pack templates use `[CONDITIONAL]` in H2 names to signal "decide
+   whether to keep this section." Once you have decided to keep a
+   section, the prefix is misleading scaffolding. Remove `[CONDITIONAL] `
+   from any retained H2 (consistently across all three trinity files).
+   Drop sections you do not keep. Examples after this step:
+   - `## [CONDITIONAL] iOS 26 / Xcode 26.3 platform features` →
+     `## iOS 26 / Xcode 26.3 platform features` (or rename per project)
+   - `## [CONDITIONAL] Anti-patterns — never introduce these` →
+     `## Anti-patterns — never introduce these`
+6. **Trinity rule check (HARD GATE).**
+   ```
+   diff <(grep '^## ' CLAUDE.md) <(grep '^## ' AGENTS.md)
+   diff <(grep '^## ' CLAUDE.md) <(grep '^## ' GEMINI.md)
+   ```
+   The first diff must be empty. The second may show only the
+   documented Gemini-intrinsic exceptions (`## Agent roster`,
+   `## Gemini CLI operating notes`). Any other divergence — even a
+   single H2 — is a trinity-rule violation. **Do not proceed past
+   this step until both diffs are clean. If a diff is non-empty,
+   return to the offending section and apply the same decision
+   identically across all three trinity files.** Truncated bash
+   output is not a pass; read the full diff text before declaring
+   the check passed.
+7. **Confirm no placeholders remain.**
+   ```
+   grep -nE '\[(PROJECT_NAME|PLATFORM_TARGETS|TRANSPORT|PLATFORM_DEFAULTS|PLATFORM_ARCHITECTURE|LANGUAGE_RULES|GRPC_RULES|PLATFORM_SECURITY|PLATFORM_TESTING|PLATFORM_ANTIPATTERNS)\]' CLAUDE.md AGENTS.md GEMINI.md
+   ```
+   Must produce no output. Any remaining placeholder is an unfinished
+   preamble or section step — return and complete it.
+8. **Delete the sidecars.**
    `rm CLAUDE.md.v9-customized AGENTS.md.v9-customized GEMINI.md.v9-customized`.
    Procedure 5-C does not consider trinity reconciliation complete
    until all three sidecars are gone.
@@ -485,8 +531,15 @@ section.
    as trinity (5-C.2 step 3) — keep-pack / keep-project / hand-merge
    per section.
 7. **Confirm no placeholders remain.**
-   `grep -n '\[PROJECT_NAME\]' docs/pack/PM-CHAT.md` must produce
-   no output.
+   ```
+   grep -nE '\[(PROJECT_NAME|project|project-short-name)\]' docs/pack/PM-CHAT.md
+   ```
+   Must produce no output. The CLI examples in PM-CHAT.md use
+   `[project]` (path segment, e.g., `cd ~/Developer/[project]`) and
+   `[project-short-name]` (CLI session tag, e.g., `claude --resume
+   [project-short-name]-pm`) in addition to `[PROJECT_NAME]` (the
+   full project name in headings). All three must be filled in from
+   the sidecar's filled-in equivalents.
 8. **Delete the sidecar.** `rm docs/pack/PM-CHAT.md.v9-customized`.
 
 PM-CHAT.md is not under the trinity rule; no cross-file symmetry

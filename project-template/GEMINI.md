@@ -43,29 +43,9 @@ Default preference only:
 
 ## Platform and stack defaults
 
-<!--
-Fill in the platform-specific defaults for your project. Examples:
-
-For an iOS app:
-- Target platforms: iOS, iPadOS, macOS.
-- UI: SwiftUI first. UIKit interop only for platform gaps.
-- Dependencies: Swift Package Manager.
-- Concurrency: Swift 6 strict concurrency for new code.
-
-For a Python server:
-- Python 3.12+. uv for dependency management.
-- ruff for linting. pyright strict for type checking.
-- pytest + pytest-asyncio for tests.
--->
-
 [PLATFORM_DEFAULTS — fill in per project type]
 
 ## [CONDITIONAL] iOS 26 / Xcode 26.3 platform features
-
-<!--
-Include this section only for projects targeting iOS 26+ / macOS 26+.
-Delete the entire section for Python-only or non-Apple projects.
--->
 
 - **Liquid Glass** is the current iOS 26 / macOS 26 design language. Use `.glassEffect()` and related modifiers.
 - **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Evaluate before third-party ML inference.
@@ -88,27 +68,13 @@ These rules apply regardless of which architecture pattern this project uses.
 
 ## [CONDITIONAL] Architecture rules — platform-specific
 
-<!--
-Add platform-specific architecture rules from loaded skills.
-See CLAUDE.md for detailed examples per project type.
--->
-
 [PLATFORM_ARCHITECTURE — fill in from loaded skills]
 
 ## [CONDITIONAL] Language-specific coding rules
 
-<!--
-Fill in from loaded language skills (swift-best-practices, python-best-practices, etc.).
-See CLAUDE.md for detailed examples.
--->
-
 [LANGUAGE_RULES — fill in from loaded skills]
 
 ## [CONDITIONAL] gRPC and Proto3 rules
-
-<!--
-Include only if the project uses gRPC. Fill in from grpc-patterns skill.
--->
 
 [GRPC_RULES — fill in from grpc-patterns skill, or delete section]
 
@@ -117,10 +83,6 @@ Include only if the project uses gRPC. Fill in from grpc-patterns skill.
 - Never hardcode secrets, API keys, tokens, or certificates in source or committed config.
 - Validate all data received from the network before use in domain logic or UI.
 - TLS required for all gRPC connections. Do not disable certificate validation outside development.
-
-<!--
-Add platform-specific security rules from loaded skills. See CLAUDE.md for examples.
--->
 
 [PLATFORM_SECURITY — fill in from security-patterns skill]
 
@@ -188,10 +150,6 @@ Before adding any third-party framework or API:
 - Use integration tests for storage, networking adapters, and module seams.
 - Use protocol-based test doubles for service stubs. Never hit real endpoints in unit or integration tests.
 
-<!--
-Add platform-specific testing rules from loaded skills.
--->
-
 [PLATFORM_TESTING — fill in from loaded skills]
 
 ## Refactoring policy
@@ -231,7 +189,7 @@ All filenames are unique — reference them by name; use these paths to locate t
 
 | Directory | Contents | Updated by |
 |---|---|---|
-| `docs/pack/` | `METHODOLOGY.md`, `prompts/`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) |
+| `docs/pack/` | `METHODOLOGY.md`, `INSTALL-PROCEDURES.md`, `prompts/`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) |
 | `docs/project/` | `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` | PM chat and developer during active development |
 | `docs/reference/` | Project-specific user-facing documentation (how-to guides, API references) | Developer as needed |
 
@@ -262,9 +220,10 @@ executable on first checkout: `chmod +x agent-run.sh scripts/*.sh`.
 | `proto-gen.sh` | `scripts/` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
 | `agent-post-edit-check.sh` | `scripts/` | **Never call manually** — fires via Codex post_edit_command and Claude Code PostToolUse hook | Automatic hook |
 
-**Required first-time setup:** Open `scripts/validate.sh` and `scripts/test.sh` and fill in
-the scheme and destination variables for your project. Until set, `xcodebuild` steps are
-skipped and the scripts only run `swift build`/`swift test`.
+**Required first-time setup (Swift projects only):** Open `scripts/validate-swift.sh`
+and `scripts/test-swift.sh` and fill in the scheme and destination variables. Until set,
+`xcodebuild` steps are skipped and the scripts only run `swift build` / `swift test`.
+Non-Swift projects can ignore this paragraph.
 
 **Wrapper detection:** Wrapper scripts (`format.sh`, `validate.sh`, `bootstrap.sh`, `test.sh`)
 detect which languages are present via marker files (`Package.swift` → Swift, `pyproject.toml` →

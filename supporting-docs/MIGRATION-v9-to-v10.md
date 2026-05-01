@@ -646,8 +646,16 @@ Instructions:
    "Reconciliation required" section verbatim (or confirm empty),
    plus a summary of `git status` (modified + untracked).
    Do NOT commit.
-5. Walk Procedure 5-C interactively, sidecar by sidecar. For each
-   sidecar:
+5. Walk Procedure 5-C interactively, sidecar by sidecar. **If during
+   reconciliation you discover a pack defect** (incorrect filename in a
+   template, missing entry in a table, misleading instruction text,
+   wording that breaks for non-Apple projects, etc.), append a dated
+   bullet to `docs/pack/PACK-FEEDBACK.md` *before* completing the
+   procedure. Format: `- YYYY-MM-DD — <file>:<section> — <defect> →
+   <suggested correction>`. PACK-FEEDBACK is included in the single
+   migration commit, not a follow-up.
+
+   For each sidecar:
    a. State the file class (C1/C2/C3/D1/L1/L2/L3/S2/etc.), the
       sub-procedure that applies (5-C.1 through 5-C.8), and show
       the three-way diff path.

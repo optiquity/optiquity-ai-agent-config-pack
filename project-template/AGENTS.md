@@ -50,11 +50,6 @@ Default preference only:
 
 ## [CONDITIONAL] iOS 26 / Xcode 26.3 platform features
 
-<!--
-Include this section only for projects targeting iOS 26+ / macOS 26+.
-Delete the entire section for Python-only or non-Apple projects.
--->
-
 - **Liquid Glass** is the current iOS 26 / macOS 26 design language. Use `.glassEffect()` and related modifiers.
 - **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Evaluate before third-party ML inference.
 - **Availability guards required.** Wrap in `#available(iOS 26, *)` / `#available(macOS 26, *)` if deployment target is below iOS 26.
@@ -183,7 +178,7 @@ All filenames are unique — reference them by name; use these paths to locate t
 
 | Directory | Contents | Updated by |
 |---|---|---|
-| `docs/pack/` | `METHODOLOGY.md`, `prompts/`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) |
+| `docs/pack/` | `METHODOLOGY.md`, `INSTALL-PROCEDURES.md`, `prompts/`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) |
 | `docs/project/` | `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` | PM chat and developer during active development |
 | `docs/reference/` | Project-specific user-facing documentation (how-to guides, API references) | Developer as needed |
 
@@ -214,8 +209,10 @@ executable on first checkout: `chmod +x agent-run.sh scripts/*.sh`.
 | `proto-gen.sh` | `scripts/` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
 | `agent-post-edit-check.sh` | `scripts/` | **Never call manually** — fires via Codex post_edit_command and Claude Code PostToolUse hook | Automatic hook |
 
-Set `XCODE_SCHEME` and `XCODE_DESTINATION` in `validate.sh` and `test.sh` before first use —
-without them, xcodebuild steps are skipped silently (a warning is printed).
+**Required first-time setup (Swift projects only):** Open `scripts/validate-swift.sh`
+and `scripts/test-swift.sh` and fill in the scheme and destination variables. Until set,
+`xcodebuild` steps are skipped and the scripts only run `swift build` / `swift test`.
+Non-Swift projects can ignore this paragraph.
 
 ## Build and repo hygiene
 

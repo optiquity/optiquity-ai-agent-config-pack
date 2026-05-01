@@ -881,9 +881,11 @@ def check_tool_config_capability_parity() -> None:
     # Gemini — .env.example AGENT_CAPABILITIES line. The pack ships
     # the template at `.env.example` (the project-template's .gitignore
     # blocks plain .env to protect against secrets in projects;
-    # `.env.example` is committable). Init-project.sh / migrate-v9-to-v10.sh
-    # auto-create the live `.gemini/.env` from this template at install
-    # time so Gemini picks up AGENT_CAPABILITIES immediately.
+    # `.env.example` is committable). init-project.sh creates the live
+    # `.gemini/.env` from this template at fresh-install time. The
+    # migration script (migrate-v9-to-v10.sh) does NOT touch a project's
+    # existing `.env` — only `.env.example` is migrated, so the project
+    # can manually pick up new pack capabilities by diffing the example.
     gemini_caps: set[str] | None = None
     gemini_path = pt / ".gemini" / ".env.example"
     if not gemini_path.is_file():
@@ -925,6 +927,60 @@ def check_tool_config_capability_parity() -> None:
             f"Claude vs Gemini divergent: "
             f"only-Claude={only_claude} only-Gemini={only_gemini}"
         )
+
+
+def check_trinity_no_scaffolding_comments() -> None:
+    """Check 19 — v10 trinity templates contain no fresh-install
+    scaffolding HTML comments inside body sections.
+
+    The pack ships trinity files with two legitimate HTML comment
+    blocks:
+      - The file-level `<!-- HOW TO USE THIS TEMPLATE -->` at top
+        (above the first H2). Removed by Procedure 5-C.2 preamble
+        step on migration.
+      - The `<!-- Project addenda go here ... -->` marker before
+        the empty `## Project addenda` H2. Preserved by design so
+        the migration tooling can reliably locate the addenda
+        landing point.
+      - GEMINI.md only: the `<!-- Trinity-rule exception ... -->`
+        comment documenting the Gemini-intrinsic H2s.
+
+    Any other `<!-- ... -->` block in a trinity file is fresh-install
+    scaffolding ("Fill in the platform-specific defaults...", "Add
+    platform-specific anti-patterns...", etc.). These leak into live
+    project files when users pick "keep pack" during reconciliation
+    and create persistent clutter. Catch them at validate-pack time.
+    """
+    print("\n── Check 19: Trinity templates free of body scaffolding (BD-059) ──")
+    import re
+    ALLOWED_OPENINGS = (
+        "HOW TO USE THIS TEMPLATE",
+        "Project addenda go here",
+        "Trinity-rule exception",
+    )
+    any_failed = False
+    for name in ("CLAUDE.md", "AGENTS.md", "GEMINI.md"):
+        path = REPO_ROOT / "project-template" / name
+        if not path.is_file():
+            fail(f"project-template/{name} — file missing")
+            any_failed = True
+            continue
+        text = path.read_text()
+        for m in re.finditer(r"<!--(.*?)-->", text, flags=re.DOTALL):
+            body = m.group(1).strip()
+            if not body:
+                continue
+            first_line = body.splitlines()[0].strip()
+            if any(first_line.startswith(prefix) for prefix in ALLOWED_OPENINGS):
+                continue
+            line_no = text[: m.start()].count("\n") + 1
+            fail(
+                f"project-template/{name}:{line_no} — fresh-install scaffolding "
+                f"comment in body: {first_line[:80]!r}"
+            )
+            any_failed = True
+    if not any_failed:
+        ok("All three trinity templates free of body-section scaffolding comments")
 
 
 def check_trinity_h2_parity() -> None:
@@ -1059,6 +1115,7 @@ def main() -> None:
     check_tool_config_capability_parity()
     check_trinity_addenda_h2()
     check_trinity_h2_parity()
+    check_trinity_no_scaffolding_comments()
 
     print("\n" + "=" * 60)
     if failures:

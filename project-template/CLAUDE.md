@@ -47,32 +47,9 @@ Default preference only:
 
 ## Platform and stack defaults
 
-<!--
-Fill in the platform-specific defaults for your project. Examples:
-
-For an iOS app:
-- Target platforms: iOS, iPadOS, macOS.
-- UI: SwiftUI first. UIKit interop only for platform gaps.
-- Dependencies: Swift Package Manager.
-- Concurrency: Swift 6 strict concurrency for new code.
-
-For a Python server:
-- Python 3.12+. uv for dependency management.
-- ruff for linting. pyright strict for type checking.
-- pytest + pytest-asyncio for tests.
-
-For a monorepo (Apple + Python):
-- Combine both sets of defaults above.
--->
-
 [PLATFORM_DEFAULTS — fill in per project type]
 
 ## [CONDITIONAL] iOS 26 / Xcode 26.3 platform features
-
-<!--
-Include this section only for projects targeting iOS 26+ / macOS 26+.
-Delete the entire section for Python-only or non-Apple projects.
--->
 
 - **Liquid Glass** is the current iOS 26 / macOS 26 design language for materials and visual effects. Use `.glassEffect()` and related modifiers rather than custom `Material` or `UIVisualEffectView` implementations.
 - **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Evaluate before reaching for third-party ML inference.
@@ -96,58 +73,13 @@ These rules apply regardless of which architecture pattern this project uses.
 
 ## [CONDITIONAL] Architecture rules — platform-specific
 
-<!--
-Add platform-specific architecture rules here. These come from your project's
-platform skills (apple-architecture-core, ios-architecture, macos-architecture,
-python-architecture). Examples:
-
-For Swift/Apple:
-- Default to immutable value types.
-- Mark classes final by default.
-- Make invalid states unrepresentable.
-- Prefer typed errors, typed IDs, and explicit domain models.
-- Use dependency injection for services, clients, repositories.
-
-For Python:
-- Prefer simple, explicit APIs.
-- Prefer immutable data where practical.
-- Global mutable state is a code smell unless required by framework boundaries.
-- Keep side effects near the edge; business logic should be pure where possible.
-
-For both: fill in both sets. The loaded skills provide the full rule set.
--->
-
 [PLATFORM_ARCHITECTURE — fill in from loaded skills]
 
 ## [CONDITIONAL] Language-specific coding rules
 
-<!--
-Fill in language-specific coding rules from your project's language skills
-(swift-best-practices, python-best-practices, c-language, etc.).
-
-For Swift projects: Swift 6 strict concurrency, @MainActor usage, async/await,
-struct vs class rules, SwiftUI view rules, etc.
-
-For Python projects: async patterns, type annotations, ruff/pyright rules,
-error handling, module-level constants, etc.
-
-Delete this section for projects where language rules are fully covered by
-the platform section above. Usually both sections are needed.
--->
-
 [LANGUAGE_RULES — fill in from loaded skills]
 
 ## [CONDITIONAL] gRPC and Proto3 rules
-
-<!--
-Include this section only if the project uses gRPC. Delete for REST-only
-or no-protocol projects. Fill in from grpc-patterns skill.
-
-For Swift clients: wrap stubs behind protocols, map Protobuf to domain types,
-auth in metadata not fields, deadlines, channel lifecycle, etc.
-
-For Python servers: handler patterns, interceptors, error mapping, streaming, etc.
--->
 
 [GRPC_RULES — fill in from grpc-patterns skill, or delete section]
 
@@ -156,16 +88,6 @@ For Python servers: handler patterns, interceptors, error mapping, streaming, et
 - Never hardcode secrets, API keys, tokens, or certificates in source code or config files committed to git.
 - Validate all data received from the network before using it in domain logic or UI.
 - TLS required for all gRPC connections. Do not disable certificate validation outside development.
-
-<!--
-Add platform-specific security rules from your project's skills:
-
-For Apple: store credentials in Keychain (never UserDefaults/files), enable App
-Transport Security, declare Privacy Manifests, request minimum permissions.
-
-For Python: use environment variables + secrets manager for production, pydantic-settings
-for local dev, rate limiting in gRPC interceptors, JWT/OAuth with short-lived tokens.
--->
 
 [PLATFORM_SECURITY — fill in from security-patterns skill]
 
@@ -233,13 +155,6 @@ Before adding any third-party framework or API:
 - Use integration tests for storage, networking adapters, and module seams.
 - Use protocol-based test doubles for service stubs. Never hit real endpoints in unit or integration tests.
 
-<!--
-Add platform-specific testing rules:
-
-For Apple: XCUITest for UI, Maestro for black-box E2E, snapshot tests optional.
-For Python: pytest + pytest-asyncio, grpcio-testing harness for gRPC handlers.
--->
-
 [PLATFORM_TESTING — fill in from testing skill]
 
 ## Refactoring policy
@@ -279,7 +194,7 @@ All filenames are unique — reference them by name; use these paths to locate t
 
 | Directory | Contents | Updated by |
 |---|---|---|
-| `docs/pack/` | `METHODOLOGY.md`, `prompts/`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) |
+| `docs/pack/` | `METHODOLOGY.md`, `INSTALL-PROCEDURES.md`, `prompts/`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) |
 | `docs/project/` | `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` | PM chat and developer during active development |
 | `docs/reference/` | Project-specific user-facing documentation (how-to guides, API references) | Developer as needed |
 
@@ -310,9 +225,10 @@ pack template and make executable before first use** (`chmod +x agent-run.sh scr
 | `proto-gen.sh` | `scripts/` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
 | `agent-post-edit-check.sh` | `scripts/` | **Never call manually** — fires automatically via Claude Code PostToolUse hook and Codex post_edit_command after every agent file edit | Automatic hook |
 
-**Required first-time setup:** Open `scripts/validate.sh` and `scripts/test.sh` and fill in
-the scheme and destination variables for your project. Until set, `xcodebuild` steps are
-skipped and the scripts only run `swift build`/`swift test`.
+**Required first-time setup (Swift projects only):** Open `scripts/validate-swift.sh`
+and `scripts/test-swift.sh` and fill in the scheme and destination variables. Until set,
+`xcodebuild` steps are skipped and the scripts only run `swift build` / `swift test`.
+Non-Swift projects can ignore this paragraph.
 
 **Wrapper detection:** Wrapper scripts (`format.sh`, `validate.sh`, `bootstrap.sh`, `test.sh`)
 detect which languages are present via marker files (`Package.swift` → Swift, `pyproject.toml` →
@@ -375,10 +291,6 @@ language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
 
 ## [CONDITIONAL] Anti-patterns — never introduce these
 
-<!--
-Universal anti-patterns (keep these):
--->
-
 - Massive view controllers or God ViewModels accumulating unrelated logic.
 - Calling generated gRPC stubs directly from ViewModels or Views.
 - Putting auth tokens or credentials in Protobuf message fields.
@@ -389,25 +301,6 @@ Universal anti-patterns (keep these):
 - Magic duration literals for gRPC deadlines — use named constants.
 - Editing generated Protobuf or gRPC code by hand.
 - Branching on concrete types to discover what an abstraction supports, instead of querying a capability value or interface.
-
-<!--
-Add platform-specific anti-patterns from your skills. Examples:
-
-For Swift/Apple:
-- @unchecked Sendable without documented justification.
-- Force unwraps outside tightly justified test-only contexts.
-- print() in production code — use os_log or structured logger.
-- Retain cycles in gRPC streaming closures.
-- Blocking the main thread with synchronous I/O.
-- Type-erasure wrappers exposing .base for downcasting (LSP violation).
-- AsyncStream<Void> for fan-out notifications (use typed payloads).
-- ViewModels importing SwiftUI or holding navigator references.
-
-For Python:
-- Bare `except:` or `except Exception:` without re-raise or structured logging.
-- Blocking synchronous I/O in async handlers.
-- Hardcoded secrets or API keys in source or config.
--->
 
 [PLATFORM_ANTIPATTERNS — fill in from loaded skills]
 

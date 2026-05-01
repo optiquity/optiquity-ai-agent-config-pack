@@ -653,17 +653,11 @@ stage_s3_scripts_and_config() {
     # for cross-tool capability + MCP parity per BD-059 success criterion. ──
     mkdir -p "$BACKUP_DIR/.codex" "$BACKUP_DIR/.claude" "$BACKUP_DIR/.gemini"
 
-    # Some K-class files have a different pack-side path than project-side
-    # path. `.gemini/.env` is the live file Gemini reads at the project
-    # level, but the pack ships its template at `.gemini/.env.example`
-    # (project-template/.gitignore blocks plain `.env`; only `.env.example`
-    # is committable). pack_template_for_proj_path() maps proj→pack.
-    pack_template_for_proj_path() {
-        case "$1" in
-            .gemini/.env) echo ".gemini/.env.example" ;;
-            *)            echo "$1" ;;
-        esac
-    }
+    # K-class files are pack-managed templates and configs. Only files
+    # the pack ships under project-template/ go through this loop. The
+    # project's actual `.env` file (e.g. `.gemini/.env`) is project-owned
+    # and is NEVER touched by migration — only `.env.example` (the pack
+    # template) is migrated. This avoids overwriting project secrets.
 
     local cf
     for cf in \
@@ -673,11 +667,9 @@ stage_s3_scripts_and_config() {
         .claude/settings.json \
         .mcp.json.example \
         .gemini/settings.json \
-        .gemini/.env \
+        .gemini/.env.example \
     ; do
-        local pack_relpath
-        pack_relpath=$(pack_template_for_proj_path "$cf")
-        [[ -f "$PACK/project-template/$pack_relpath" ]] || continue
+        [[ -f "$PACK/project-template/$cf" ]] || continue
 
         local cls fmt
         case "$cf" in
@@ -686,18 +678,18 @@ stage_s3_scripts_and_config() {
             .codex/requirements.toml)   cls="K3"; fmt="toml" ;;
             .mcp.json.example)          cls="K4"; fmt="json" ;;
             .gemini/settings.json)      cls="K5"; fmt="json" ;;
-            .gemini/.env)               cls="K6"; fmt="text" ;;
+            .gemini/.env.example)       cls="K6"; fmt="text" ;;
             .codex/config.toml.example) cls="K7"; fmt="text" ;;
             *)                          cls="K?"; fmt="text" ;;
         esac
 
-        # BASE = v9.3 pack baseline at the project-side path (since v9.3
+        # BASE = v9.3 pack baseline at the same path (since v9.3
         # didn't have these files, this returns empty for K5/K6/K7,
         # which classifier treats as `new-file-in-pack`).
         base_tmp=$(v93_baseline_to_tmp "project-template/${cf}")
 
         ours="$cf"
-        theirs="$PACK/project-template/$pack_relpath"
+        theirs="$PACK/project-template/$cf"
 
         if [[ -f "$ours" ]]; then
             mkdir -p "$BACKUP_DIR/$(dirname "$cf")"
