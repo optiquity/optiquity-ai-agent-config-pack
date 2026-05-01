@@ -686,12 +686,22 @@ Instructions:
      `grep -nE '\[(PROJECT_NAME|PLATFORM_TARGETS|TRANSPORT|PLATFORM_DEFAULTS|PLATFORM_ARCHITECTURE|LANGUAGE_RULES|GRPC_RULES|PLATFORM_SECURITY|PLATFORM_TESTING|PLATFORM_ANTIPATTERNS)\]' CLAUDE.md AGENTS.md GEMINI.md`
      must be empty.
    - For PM-CHAT.md:
-     `grep -n '\[PROJECT_NAME\]' docs/pack/PM-CHAT.md` must be
-     empty.
+     `grep -nE '\[(PROJECT_NAME|project|project-short-name)\]' docs/pack/PM-CHAT.md`
+     must be empty.
    - Trinity rule check:
      `diff <(grep '^## ' CLAUDE.md) <(grep '^## ' AGENTS.md)`
      and the same for GEMINI.md must agree (modulo
      tool-intrinsic asymmetry).
+   - Pack `.example` files trackable check:
+     ```
+     for f in .gemini/.env.example .codex/config.toml.example .mcp.json.example; do
+         [[ -f "$f" ]] && git check-ignore -q "$f" && echo "FAIL: $f is gitignored"
+     done
+     ```
+     Must produce no `FAIL:` lines. If any pack `.example` file is
+     ignored, the project's `.gitignore` is suppressing a pack-tracked
+     file — add a `!<filename>` exception on the working tree before
+     commit.
    Report any check that fails and stop until I direct.
 7. Run ./scripts/bootstrap.sh and ./scripts/validate.sh. If either
    fails, report and stop — do not commit a failing migration.

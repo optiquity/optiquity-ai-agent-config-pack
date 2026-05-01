@@ -739,12 +739,33 @@ After every sidecar has been reconciled and removed:
 4. **Working-tree review.** `git status` and `git diff` on the
    migration branch. Confirm the working tree contains no
    `*.v9-customized` files and matches developer intent.
-5. **Re-run validation.** Run `./scripts/bootstrap.sh` and
+5. **Pack `.example` files trackable check.** v10 ships several
+   `.example` files (`.gemini/.env.example`, `.codex/config.toml.example`,
+   `.mcp.json.example`) that the pack expects to be committed.
+   Confirm none of them are silently ignored by `.gitignore`:
+
+   ```bash
+   for f in .gemini/.env.example .codex/config.toml.example .mcp.json.example; do
+       if [[ -f "$f" ]] && git check-ignore -q "$f"; then
+           echo "FAIL: $f is gitignored — pack expects it tracked"
+           git check-ignore -v "$f"
+       fi
+   done
+   ```
+
+   If any line is reported, the project's `.gitignore` is
+   suppressing a pack-tracked file. The migration script's S0 step
+   ensures the `.env.*` exception is applied automatically — if a
+   pack `.example` file is still ignored, the project's `.gitignore`
+   has additional rules that need an exception. Fix the `.gitignore`
+   on the working tree (typically by adding `!<filename>` after the
+   matching ignore rule) before commit.
+6. **Re-run validation.** Run `./scripts/bootstrap.sh` and
    `./scripts/validate.sh` (or the project's equivalent) and
    confirm clean. If validation fails, the reconciliation
    introduced a regression — fix in the working tree before
    proceeding. Do not commit a failing migration.
-6. **Single migration commit.** This is the *sole* commit on the
+7. **Single migration commit.** This is the *sole* commit on the
    migration branch. `git add -A` to stage all migrated files,
    reconciled content, new pack files (e.g.,
    `docs/pack/INSTALL-PROCEDURES.md`, `docs/pack/prompts/`,

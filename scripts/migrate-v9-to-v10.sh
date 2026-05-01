@@ -447,6 +447,35 @@ stage_s0_preflight() {
         printf '.pack-migration-backup/\n' > .gitignore
     fi
 
+    # 9. Ensure project .gitignore keeps `.env.example` files trackable.
+    # v9.3 projects' .gitignore typically has `.env.*` (which matches
+    # `.env.example`) but lacks the `!.env.example` negation. v10 ships
+    # `.env.example` as a tracked pack template (Gemini AGENT_CAPABILITIES,
+    # future per-tool examples). Without the negation, the migration's
+    # new `.env.example` files are silently ignored by git.
+    #
+    # If .gitignore has `.env.*` (or wildcard equivalent) without a
+    # following `!.env.example`, append the negation immediately after.
+    # Idempotent — safe to run on every migration. Project-agnostic.
+    if [[ -f .gitignore ]]; then
+        if grep -qE '^[[:space:]]*\.env\.\*[[:space:]]*$' .gitignore \
+            && ! grep -qE '^[[:space:]]*!\.env\.example[[:space:]]*$' .gitignore; then
+            # Append negation right after the first `.env.*` line.
+            local tmp_gi
+            tmp_gi=$(mktemp)
+            awk '
+                { print }
+                /^[[:space:]]*\.env\.\*[[:space:]]*$/ && !done {
+                    print "# But .env.example is a committed template (no secrets); always tracked."
+                    print "!.env.example"
+                    done = 1
+                }
+            ' .gitignore > "$tmp_gi"
+            mv "$tmp_gi" .gitignore
+            say "  added !.env.example exception to .gitignore (v9.3→v10 schema fix)"
+        fi
+    fi
+
     # Initialize the dispositions log header.
     record_disposition "_header_only" "_init" "_init" "-" "-" "-" >/dev/null 2>&1 || true
 

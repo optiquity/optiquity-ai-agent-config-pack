@@ -929,6 +929,41 @@ def check_tool_config_capability_parity() -> None:
         )
 
 
+def check_gitignore_env_example_exception() -> None:
+    """Check 20 — pack-template .gitignore keeps the !.env.example exception.
+
+    The pack ships `.gemini/.env.example` (and other `.example` files)
+    as committable pack templates. The pack-template `.gitignore` must
+    contain `!.env.example` after `.env.*` so fresh installs do not
+    silently exclude the pack template. The migrate-v9-to-v10.sh S0
+    step also injects this exception into existing project .gitignore
+    files; this check guards the pack-side template against drift.
+    """
+    print("\n── Check 20: Pack .gitignore !.env.example exception (BD-059) ──")
+    path = REPO_ROOT / "project-template" / ".gitignore"
+    if not path.is_file():
+        fail("project-template/.gitignore — file missing")
+        return
+    text = path.read_text()
+    has_envstar = any(
+        line.strip() == ".env.*" for line in text.splitlines()
+    )
+    has_exception = any(
+        line.strip() == "!.env.example" for line in text.splitlines()
+    )
+    if not has_envstar:
+        fail("project-template/.gitignore — missing `.env.*` rule")
+        return
+    if not has_exception:
+        fail(
+            "project-template/.gitignore — has `.env.*` but missing "
+            "`!.env.example` exception. Pack-tracked .env.example files "
+            "would be silently ignored on fresh install."
+        )
+        return
+    ok("project-template/.gitignore — `.env.*` + `!.env.example` exception present")
+
+
 def check_trinity_no_scaffolding_comments() -> None:
     """Check 19 — v10 trinity templates contain no fresh-install
     scaffolding HTML comments inside body sections.
@@ -1116,6 +1151,7 @@ def main() -> None:
     check_trinity_addenda_h2()
     check_trinity_h2_parity()
     check_trinity_no_scaffolding_comments()
+    check_gitignore_env_example_exception()
 
     print("\n" + "=" * 60)
     if failures:
