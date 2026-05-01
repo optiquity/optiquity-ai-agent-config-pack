@@ -323,10 +323,18 @@ from the pack repo.
 
 ## What to do after migration
 
-The migration produces three classes of result:
+The migration is a **single atomic session**: the script's
+mechanical pass and Procedure 5-C reconciliation both happen on
+the working tree of the `migration-v9-to-v10` branch *before any
+commit*. The session ends with one commit (success) or a clean
+rollback (no commit). Sidecars are never committed — they are
+working-tree artifacts that exist only between the script's run
+and the final commit-or-rollback decision.
 
-1. **Pack updates** — files brought current with v10 with no project
-   conflict. Already in your working tree.
+The script produces three classes of result:
+
+1. **Pack updates** — files brought current with v10 with no
+   project conflict. Already in the working tree.
 2. **Merges** — structured configs (`.claude/settings.json`,
    `.codex/config.toml`) where pack additions and project
    customizations were combined automatically.
@@ -340,29 +348,75 @@ The migration produces three classes of result:
 
 1. **Review the migration report** at
    `.pack-migration-backup/v9.3-to-v10.0/report.md`. Run `git diff`
-   and confirm the working tree matches the report.
-2. **Commit the migration on the `migration-v9-to-v10` branch.**
-   Sidecars are committed too — they hold the pre-migration project
-   content needed for reconciliation in the next step. The
-   commit captures a complete, recoverable state of the project at
-   v10.0 with reconciliation pending.
-3. **Start a new PM chat session and run `/pm-startup`.** The skill
-   detects the post-migration sentinel
-   (`.pack-migration-backup/v9.3-to-v10.0/postrun-pending`) and the
-   `.v9-customized` sidecars, then walks **Procedure 5-C** with you
-   sidecar by sidecar. For each one you decide: keep the new pack
-   content as-is, restore the project version, or hand-merge the
-   two. The procedure deletes each sidecar as it is reconciled.
-4. **Commit the reconciliation** when Procedure 5-C completes. At
-   this point the project is fully on v10 with all customizations
-   accounted for.
-5. **Merge `migration-v9-to-v10` into your default branch** per
+   (which shows tracked-file changes) and `git status` (which
+   shows new untracked files including sidecars) to confirm the
+   working tree matches the report.
+2. **Walk Procedure 5-C in this same session.** For each
+   `.v9-customized` sidecar, the chat presents the three-way diff
+   and the project's pre-migration content, then asks you to
+   decide: keep the new pack content as-is, restore the project
+   version, hand-merge the two, or land it under
+   `## Project addenda` / `x-*.md`. Procedure 5-C also reconciles
+   the trinity preamble (removes `<!-- HOW TO USE THIS TEMPLATE -->`
+   blocks, restores the H1 title and project intro from the sidecar,
+   replaces `[PROJECT_NAME]` / `[PLATFORM_TARGETS]` / `[TRANSPORT]`
+   placeholders) and the PM-CHAT.md preamble. Each sidecar is
+   deleted as it is reconciled. Procedure 5-C is in
+   `docs/pack/INSTALL-PROCEDURES.md`.
+3. **Re-run `bootstrap.sh` and `validate.sh`** after reconciliation
+   completes. Reconciliation must not introduce build or test
+   regressions. If validation fails, fix in the working tree
+   before proceeding.
+4. **Inventory check.** Confirm the working tree has no remaining
+   sidecars and no placeholders:
+
+   ```bash
+   find . -name '*.v9-customized' \
+       -not -path './.pack-migration-backup/*' \
+       -not -path './.git/*'
+   # Expected: empty output
+
+   grep -nE '\[(PROJECT_NAME|PLATFORM_TARGETS|TRANSPORT)\]' \
+       CLAUDE.md AGENTS.md GEMINI.md docs/pack/PM-CHAT.md
+   # Expected: empty output
+   ```
+5. **Single migration commit on `migration-v9-to-v10`.**
+   `git add -A` (captures both modifications and new untracked
+   pack files like `docs/pack/INSTALL-PROCEDURES.md`,
+   `docs/pack/prompts/`, `.codex/config.toml.example`,
+   `.gemini/settings.json`). Verify `git status` shows no
+   `*.v9-customized` files. Commit with a message like
+   `feat: v10 — migrate from v9.3 (script + Procedure 5-C reconciliation)`.
+
+   This is the *sole* commit for the migration. Do not commit
+   intermediate state.
+6. **Merge `migration-v9-to-v10` into your default branch** per
    Steps 5–7 of this document.
+
+### Rollback (if reconciliation reveals an unresolvable defect)
+
+If reconciliation surfaces a problem that cannot be fixed in this
+session — typically a defect in the pack scripts or docs — abort
+cleanly. The migration leaves no committed trace, and the repo
+returns to v9.3 state:
+
+```bash
+git checkout -- .
+git clean -fd
+rm -rf .pack-migration-backup
+git checkout main
+git branch -D migration-v9-to-v10
+```
+
+Report the defect, wait for the pack to be fixed (`git pull` in
+the pack repo), then re-run the migration prompt from a clean
+v9.3 working tree.
 
 ### v10 changes that affect day-to-day workflow
 
-Once reconciliation is complete, brief your PM chat about the v10
-changes that affect day-to-day workflow:
+Once the migration commit lands and the branch is merged, brief
+your PM chat about the v10 changes that affect day-to-day
+workflow:
 
 - **Prompts are per-agent direct read.** When generating prompts, the
   PM chat reads `docs/pack/prompts/<agent>.md` and locates the
@@ -568,41 +622,98 @@ PACK="/path/to/pack"
 Before starting: verify working tree is clean (git status). If not
 clean, stop.
 
+The migration is a SINGLE ATOMIC SESSION. The script's mechanical
+pass and Procedure 5-C reconciliation both happen on the working
+tree before any commit. The session ends with exactly one commit
+(success) or a clean rollback (no commit at all). Do not create
+intermediate commits under any circumstance.
+
 Instructions:
 
-1. Read $PACK/supporting-docs/MIGRATION-v9-to-v10.md in full before
-   doing anything.
+1. Read $PACK/supporting-docs/MIGRATION-v9-to-v10.md in full,
+   including the "What to do after migration" workflow and the
+   "Rollback" sub-section. Read $PACK/supporting-docs/INSTALL-PROCEDURES.md
+   Procedure 5-C in full so you can drive reconciliation.
 2. Create branch: git checkout -b migration-v9-to-v10
-3. Run $PACK/scripts/migrate-v9-to-v10.sh end-to-end (the script runs
-   non-interactively through stages S0–S7). When it finishes, report:
+3. Run $PACK/scripts/migrate-v9-to-v10.sh end-to-end (non-interactive
+   stages S0–S7). When it finishes, report:
    - the disposition summary line
      (e.g., "N pack-updates · M merges · K reconciliations needed")
    - the path to the generated migration report
-4. Read the migration report top to bottom and present:
-   - the report's "Reconciliation required" section verbatim (or
-     confirm it is empty)
-   - a summary of `git status` showing the changed files and any
-     `.v9-customized` sidecars
+   - the count and paths of any `.v9-customized` sidecars in the
+     working tree
+4. Read the migration report top to bottom and present its
+   "Reconciliation required" section verbatim (or confirm empty),
+   plus a summary of `git status` (modified + untracked).
    Do NOT commit.
-5. Run ./scripts/bootstrap.sh and ./scripts/validate.sh and report
-   results.
-6. Present the "What to do after migration" section of
-   MIGRATION-v9-to-v10.md so I know the next steps (commit on this
-   branch, then start a new PM chat session — `/pm-startup` will
-   detect the sidecars and walk Procedure 5-C reconciliation).
+5. Walk Procedure 5-C interactively, sidecar by sidecar. For each
+   sidecar:
+   a. State the file class (C1/C2/C3/D1/L1/L2/L3/S2/etc.), the
+      sub-procedure that applies (5-C.1 through 5-C.8), and show
+      the three-way diff path.
+   b. For trinity files (5-C.2): execute the preamble step
+      (remove `<!-- HOW TO USE THIS TEMPLATE -->` comment block,
+      restore H1/intro from sidecar, replace `[PROJECT_NAME]`,
+      `[PLATFORM_TARGETS]`, `[TRANSPORT]`, and other placeholders
+      with the sidecar's filled-in values) BEFORE walking H2
+      sections. Apply identically across CLAUDE.md / AGENTS.md /
+      GEMINI.md.
+   c. For PM-CHAT.md (5-C.3): execute the preamble step (remove
+      HOW TO USE comment block and `*Copied from:*` italicized
+      block) before reconciling project H1 / role / additional
+      docs / remaining sections.
+   d. For each H2 (or sub-section): present the project's
+      pre-migration content from the sidecar and the v10 pack
+      content side-by-side, then ask me to choose
+      "keep pack / keep project / hand-merge / land in
+      ## Project addenda or x-*.md". Apply the choice. For
+      trinity, apply the same choice identically to all three
+      files.
+   e. After reconciling a file, delete its sidecar with `rm`.
+      Confirm the file is gone.
+6. After all sidecars are reconciled, run the inventory checks:
+   - `find . -name '*.v9-customized' -not -path './.pack-migration-backup/*' -not -path './.git/*'`
+     must be empty.
+   - For trinity:
+     `grep -nE '\[(PROJECT_NAME|PLATFORM_TARGETS|TRANSPORT|PLATFORM_DEFAULTS|PLATFORM_ARCHITECTURE|LANGUAGE_RULES|GRPC_RULES|PLATFORM_SECURITY|PLATFORM_TESTING|PLATFORM_ANTIPATTERNS)\]' CLAUDE.md AGENTS.md GEMINI.md`
+     must be empty.
+   - For PM-CHAT.md:
+     `grep -n '\[PROJECT_NAME\]' docs/pack/PM-CHAT.md` must be
+     empty.
+   - Trinity rule check:
+     `diff <(grep '^## ' CLAUDE.md) <(grep '^## ' AGENTS.md)`
+     and the same for GEMINI.md must agree (modulo
+     tool-intrinsic asymmetry).
+   Report any check that fails and stop until I direct.
+7. Run ./scripts/bootstrap.sh and ./scripts/validate.sh. If either
+   fails, report and stop — do not commit a failing migration.
+8. Present the final `git status` and a `git diff --stat`. Then
+   ask me one question:
+   "Approve commit, or rollback?"
+   - On "commit": run `git add -A && git commit -m "feat: v10 — migrate from v9.3 (script + Procedure 5-C reconciliation)"`
+     and report the commit hash. Then present the "Steps 5–7"
+     instructions from MIGRATION-v9-to-v10.md so I can merge.
+   - On "rollback": run the rollback commands from
+     MIGRATION-v9-to-v10.md "Rollback" sub-section
+     (`git checkout -- . && git clean -fd && rm -rf .pack-migration-backup && git checkout main && git branch -D migration-v9-to-v10`)
+     and confirm `git status` is clean on `main`.
 
 Rules:
-- Do NOT commit anything without my explicit review and approval.
+- Do NOT commit anything before Step 8 approval. No intermediate
+  commits. The migration is one atomic session.
 - Do NOT modify any file starting with `x-` under any circumstance.
 - Do NOT modify any file in the pack repo — only this project.
-- Do NOT attempt reconciliation of `.v9-customized` sidecars in this
-  session. Reconciliation is a separate PM-chat workflow that runs in
-  the *next* session via `/pm-startup` + Procedure 5-C, after the
-  migration commit lands.
+- For trinity reconciliation, every decision applies to all three
+  files (CLAUDE.md / AGENTS.md / GEMINI.md). Never apply to one
+  without applying to the other two.
 - If the script errors or exits non-zero, report the stage, the
   sentinel files present under `.pack-migration-backup/v9.3-to-v10.0/`,
-  and wait for my direction. Do not attempt to recover by reversing
+  and wait for direction. Do not attempt to recover by reversing
   individual file edits.
+- If reconciliation reveals a defect in the pack scripts or docs
+  that cannot be resolved by my decisions, stop and recommend
+  rollback. The fix path is: rollback → fix the pack → `git pull`
+  in the pack repo → re-run this prompt from clean v9.3.
 ```
 
 Works on all three CLI tools (Claude Code, Codex, Gemini). On Claude

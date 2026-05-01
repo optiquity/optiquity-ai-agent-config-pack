@@ -209,21 +209,34 @@ the v10 pack template. The v10 pack file has been written; the
 project's pre-migration content is preserved in the sidecar; the
 report lists the file under "Reconciliation required".
 
-**Two-commit migration model.** The migration commit lands first,
-on `migration-v9-to-v10`, with sidecars present and committed —
-this captures a complete recoverable v10 state with reconciliation
-pending. Procedure 5-C runs in a *new* PM chat session triggered by
-`/pm-startup` detecting the post-migration sentinel and the
-sidecars. The procedure walks each sidecar with the developer and
-produces a *second* commit on the same branch that finalizes
-reconciliation (sidecars deleted, reconciled content in place).
-Steps 5–7 of `MIGRATION-v9-to-v10.md` (merge to default branch)
-run after the second commit.
+**Single-commit migration model.** The migration is one atomic
+session: the script's mechanical pass and Procedure 5-C
+reconciliation both happen on the working tree of the
+`migration-v9-to-v10` branch *before any commit*. The session ends
+in one of two outcomes:
 
-Procedure 5-C is re-entrant. Partial completion preserves the
-unresolved sidecars and the procedure resumes where it left off at
-the next `/pm-startup`. The procedure is complete only when every
-`*.v9-customized` sidecar is removed from the working tree.
+- **Commit.** Reconciliation completes, all sidecars are removed,
+  the working tree is clean. A single commit on
+  `migration-v9-to-v10` captures the fully reconciled v10 state.
+- **Rollback.** Reconciliation reveals a defect that cannot be
+  resolved in-session, or the developer decides not to proceed.
+  The working tree is restored to v9.3 (the migration branch's
+  starting commit) and the branch is dropped. No commit is made.
+  Repo state is exactly as it was before the migration ran.
+
+This procedure does *not* split the migration across two commits.
+Sidecars are never committed — they exist only on the working
+tree, between the script's run and the final commit-or-rollback
+decision. Steps 5–7 of `MIGRATION-v9-to-v10.md` (merge to default
+branch) run after the single migration commit.
+
+Procedure 5-C is re-entrant *within the same migration*. If the
+session ends mid-procedure (chat closes, machine restarts, etc.),
+the unresolved sidecars remain on the uncommitted working tree.
+A subsequent `/pm-startup` detects the sidecars and resumes the
+procedure where it left off. The procedure is complete only when
+every `*.v9-customized` sidecar is removed and the working tree is
+ready for the single migration commit.
 
 ### Procedure 5-C.0 — Pre-flight (read this first)
 
@@ -237,13 +250,18 @@ the next `/pm-startup`. The procedure is complete only when every
    The list must match the "Reconciliation required" section of the
    report one-for-one. A mismatch is a defect — STOP and surface it
    to Pack Chat before proceeding.
-3. **Confirm the migration branch.** `git branch --show-current` must
-   print `migration-v9-to-v10` (or whatever branch the migration
-   created). Procedure 5-C does not run on `main`. The branch must
-   already contain the raw migration commit (sidecars present) —
-   verify with `git log --oneline -1`. If the branch has no migration
-   commit yet, stop and instruct the developer to commit the
-   migration first.
+3. **Confirm the migration branch and uncommitted state.**
+   `git branch --show-current` must print `migration-v9-to-v10` (or
+   whatever branch the migration created). Procedure 5-C does not
+   run on `main`. The branch must NOT contain any migration commit
+   yet — verify with `git log --oneline main..HEAD`, which must be
+   empty. The mechanical migration changes live on the uncommitted
+   working tree; they become a commit only at the end of 5-C.9. If
+   `git log main..HEAD` is non-empty, a commit was made
+   prematurely (in violation of the single-commit model); stop and
+   surface this to the developer before proceeding — the procedure
+   can still complete and produce a second commit, but the protocol
+   was breached and the developer should be aware.
 4. **Decide reconciliation strategy per file class.** The flow below
    branches by file class (per the disposition record's `class` column
    in `dispositions.tsv`). Process files in the order they appear in
@@ -340,7 +358,40 @@ tool-specific.
    `cat .pack-migration-backup/v9.3-to-v10.0/diffs/<file>.three-way.diff`
    (path from the report). The diff shows BASE (v9.3 pack baseline) →
    OURS (project v9.3 customization) → THEIRS (v10 pack template).
-2. **Walk each H2 section in the project's v9.3 file.** Open
+2. **Reconcile the preamble** (everything above the first H2 — H1
+   title, intro paragraph, and any HTML comment blocks). The v10
+   template ships with fresh-install scaffolding the live file
+   should *not* retain after migration:
+
+   - **Remove the `<!-- HOW TO USE THIS TEMPLATE -->` comment block.**
+     v10 ships this block in trinity templates for *new-project*
+     setup. After migration the project already exists; the block
+     is noise. Delete it from all three live trinity files.
+   - **Restore the H1 title from the sidecar.** The v10 template
+     ships `# CLAUDE.md` (or `# AGENTS.md` / `# GEMINI.md`). The
+     v9.3 sidecar typically has the project name appended
+     (`# CLAUDE.md — <ProjectName>`). Replace the live H1 with the
+     sidecar's H1 across all three files.
+   - **Replace placeholders with sidecar values.** The v10 template
+     contains `[PROJECT_NAME]`, `[PLATFORM_TARGETS]`, `[TRANSPORT]`,
+     and conditional placeholders like `[PLATFORM_DEFAULTS]`,
+     `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`,
+     `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`,
+     `[PLATFORM_ANTIPATTERNS]`. For each placeholder still present
+     in the live file, find the corresponding filled-in value in
+     the sidecar and substitute it. Apply identically across all
+     three trinity files.
+   - **Restore the project intro paragraph.** The text immediately
+     after the H1 (e.g., "This repository is a macOS-only
+     algorithmic trading prototype...") is project-specific.
+     Replace any v10 template intro with the sidecar's intro,
+     consistently across all three files.
+
+   The Active-skills line and `## Project addenda` H2 are pack-
+   structural and may already be in place from S5's marker-section
+   splice — leave them unless reconciliation specifically requires
+   editing them.
+3. **Walk each H2 section in the project's v9.3 file.** Open
    `<file>.v9-customized` in the editor alongside the live `<file>`
    (now containing the v10 template). For each H2 in the v9.3 file:
    a. **H2 also exists in v10 template.** Read the v9.3 body, read
@@ -367,19 +418,23 @@ tool-specific.
         addition to the pack.
       - **Project-only.** Land the section under `## Project addenda`.
         No PACK-FEEDBACK entry.
-3. **Walk each H2 section in v10 that is NOT in the v9.3 file.** These
+4. **Walk each H2 section in v10 that is NOT in the v9.3 file.** These
    are pack additions the project must adopt or consciously reject.
    Default action is **adopt** — the v10 template is already in place.
    If the project explicitly does not want the section (e.g., it
    conflicts with project policy), delete the section from all three
    trinity files and record the rejection in `BACKLOG.md` so a future
    migration does not silently re-introduce it.
-4. **Run the trinity rule check.**
+5. **Run the trinity rule check.**
    `diff <(grep '^## ' CLAUDE.md) <(grep '^## ' AGENTS.md)`
    and the same for GEMINI.md. Any diff is a trinity-rule violation
    unless the H2 is tool-intrinsic (asymmetry justified). Resolve
    before proceeding.
-5. **Delete the sidecars.**
+6. **Confirm no placeholders remain.**
+   `grep -nE '\[(PROJECT_NAME|PLATFORM_TARGETS|TRANSPORT|PLATFORM_DEFAULTS|PLATFORM_ARCHITECTURE|LANGUAGE_RULES|GRPC_RULES|PLATFORM_SECURITY|PLATFORM_TESTING|PLATFORM_ANTIPATTERNS)\]' CLAUDE.md AGENTS.md GEMINI.md`
+   must produce no output. Any remaining placeholder is an
+   unfinished preamble step — return to step 2.
+7. **Delete the sidecars.**
    `rm CLAUDE.md.v9-customized AGENTS.md.v9-customized GEMINI.md.v9-customized`.
    Procedure 5-C does not consider trinity reconciliation complete
    until all three sidecars are gone.
@@ -399,25 +454,40 @@ section.
 
 1. Open `docs/pack/PM-CHAT.md.v9-customized` and the live
    `docs/pack/PM-CHAT.md` side by side.
-2. **Project name (H1).** The v9.3 file's H1 has the literal project
-   name; the v10 file has `[PROJECT_NAME]`. Replace the placeholder
-   with the project name from the sidecar. (If Procedure 5-S Task B
-   has already run and substituted the placeholder, this step is a
-   no-op — confirm and continue.)
-3. **Role paragraph.** v9.3 had a "You are the PM for X" sentence
+2. **Reconcile the preamble** (everything above the project H1
+   `# [PROJECT_NAME] — PM Chat Instructions`):
+
+   - **Remove the `<!-- HOW TO USE THIS TEMPLATE -->` comment block.**
+     v10 ships this for *new-project* setup; the project already
+     exists post-migration.
+   - **Remove the italicized `*Copied from: project-template/...*`
+     block.** Same rationale — it's setup scaffolding the v10
+     template ships for fresh installs only.
+   - The document H1
+     (`# PM-CHAT.md — PM Chat Startup and Operating Instructions`)
+     is pack-controlled and stays unchanged.
+3. **Project name (H1).** The v9.3 file's project H1 has the
+   literal project name; the v10 file has `[PROJECT_NAME]`. Replace
+   the placeholder with the project name from the sidecar. (If
+   Procedure 5-S Task B has already run and substituted the
+   placeholder, this step is a no-op — confirm and continue.)
+4. **Role paragraph.** v9.3 had a "You are the PM for X" sentence
    plus optional project-specific role description. v10 has the
    pack-template role paragraph with `[PROJECT_NAME]` token. Decide:
    keep-pack (replace token only), keep-project (paste sidecar
    paragraph), or hand-merge (template scaffold plus project
    specifics).
-4. **Additional project documents section.** This is the most common
+5. **Additional project documents section.** This is the most common
    conflict point. v10 ships an empty / illustrative list; v9.3 has
    the project's filled list of project-specific docs. Replace the
    v10 list wholesale with the sidecar's list.
-5. **Walk remaining H2 / H3 sections.** Apply the same H2-walk logic
-   as trinity (5-C.2 step 2) — keep-pack / keep-project / hand-merge
+6. **Walk remaining H2 / H3 sections.** Apply the same H2-walk logic
+   as trinity (5-C.2 step 3) — keep-pack / keep-project / hand-merge
    per section.
-6. **Delete the sidecar.** `rm docs/pack/PM-CHAT.md.v9-customized`.
+7. **Confirm no placeholders remain.**
+   `grep -n '\[PROJECT_NAME\]' docs/pack/PM-CHAT.md` must produce
+   no output.
+8. **Delete the sidecar.** `rm docs/pack/PM-CHAT.md.v9-customized`.
 
 PM-CHAT.md is not under the trinity rule; no cross-file symmetry
 check applies.
@@ -616,16 +686,52 @@ After every sidecar has been reconciled and removed:
 4. **Working-tree review.** `git status` and `git diff` on the
    migration branch. Confirm the working tree contains no
    `*.v9-customized` files and matches developer intent.
-5. **Commit the reconciliation.** This is the *second* commit on the
-   migration branch (the first was the raw migration with sidecars
-   present). `git add` the resolved files, the deleted sidecars
-   (which `git status` shows as deletions), and any new
-   `## Project addenda` sections, `x-*.md` prompts, or
-   `PACK-FEEDBACK.md` additions. Suggested commit message:
-   `chore: v10 migration — Procedure 5-C reconciliation`. After
-   commit, follow `MIGRATION-v9-to-v10.md` Steps 5–7 to merge the
-   branch into the default branch. Procedure 5-C does not run again
-   on this project.
+5. **Re-run validation.** Run `./scripts/bootstrap.sh` and
+   `./scripts/validate.sh` (or the project's equivalent) and
+   confirm clean. If validation fails, the reconciliation
+   introduced a regression — fix in the working tree before
+   proceeding. Do not commit a failing migration.
+6. **Single migration commit.** This is the *sole* commit on the
+   migration branch. `git add -A` to stage all migrated files,
+   reconciled content, new pack files (e.g.,
+   `docs/pack/INSTALL-PROCEDURES.md`, `docs/pack/prompts/`,
+   `.codex/config.toml.example`, `.gemini/settings.json`), any new
+   `## Project addenda` sections, `x-*.md` prompts, and
+   `PACK-FEEDBACK.md` additions. Verify `git status` shows no
+   `*.v9-customized` files staged or untracked, and no
+   `_v9-backup.md` file.
+
+   Suggested commit message:
+   `feat: v10 — migrate from v9.3 (script + Procedure 5-C reconciliation)`.
+
+   After commit, follow `MIGRATION-v9-to-v10.md` Steps 5–7 to merge
+   the branch into the default branch. Procedure 5-C does not run
+   again on this project.
+
+### Rollback (instead of commit)
+
+If reconciliation reveals a defect that cannot be resolved
+in-session, or the developer decides not to proceed, abort
+cleanly — the migration leaves no committed trace:
+
+```bash
+# 1. Discard all working-tree changes from the migration
+git checkout -- .
+git clean -fd
+
+# 2. Remove the migration backup directory
+rm -rf .pack-migration-backup
+
+# 3. Return to the default branch and drop the migration branch
+git checkout main
+git branch -D migration-v9-to-v10
+```
+
+After rollback the working tree, branches, and history are
+exactly as they were before the migration ran. Re-run the
+migration when the underlying defect is fixed (typically in the
+pack scripts or docs, then a `git pull` of the pack updates,
+followed by re-running the migration prompt).
 
 ### Completion-check assertions (machine-checkable)
 

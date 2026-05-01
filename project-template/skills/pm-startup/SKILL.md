@@ -10,12 +10,13 @@ the result. Do not ask questions — execute each step in order.
 ## Step 0 — Check for pending one-shot procedures
 
 Before running the standard startup sequence, check whether any one-shot
-post-migration procedures are pending. The migration produces two kinds
-of signals: the post-run housekeeping sentinel (Procedure 5-S) and any
-`*.v9-customized` reconciliation sidecars (Procedure 5-C). Per OQ-5C-3
-the sentinel sweep is uniform — every sidecar dispatches to Procedure
-5-C, with sub-procedure 5-C.1 covering the legacy
-`docs/pack/prompts/_v9-backup.md` filename for pre-C7 v10.0 installs.
+post-migration procedures are pending. The migration is designed as a
+single atomic session (mechanical pass + Procedure 5-C reconciliation +
+single commit, all in one chat); this Step 0 sweep is the safety net for
+sessions that ended mid-migration (chat closed, machine restarted, etc.).
+The migration produces two kinds of signals: the post-run housekeeping
+sentinel (Procedure 5-S) and any `*.v9-customized` reconciliation
+sidecars (Procedure 5-C).
 
 ```bash
 [[ -f .pack-migration-backup/v9.3-to-v10.0/postrun-pending ]] && \
@@ -26,18 +27,31 @@ sidecar_count=$(find . -name '*.v9-customized' \
 legacy_backup=$([[ -f docs/pack/prompts/_v9-backup.md ]] && echo 1 || echo 0)
 if (( sidecar_count > 0 || legacy_backup > 0 )); then
     echo "RECON-PENDING: Procedure 5-C (${sidecar_count} sidecar(s); legacy=${legacy_backup})"
+    # Detect whether the migration was prematurely committed
+    # (single-commit-model violation). If migration commits exist on
+    # the branch, surface that fact — Procedure 5-C still runs, but
+    # the developer should know the protocol was breached.
+    if [[ "$(git branch --show-current 2>/dev/null)" == "migration-v9-to-v10" ]]; then
+        if [[ -n "$(git log --oneline main..HEAD 2>/dev/null)" ]]; then
+            echo "WARN: migration-v9-to-v10 branch has commits ahead of main while sidecars are present — single-commit model breached. Procedure 5-C will still run; flag this to the developer."
+        fi
+    fi
 fi
 ```
 
-If either line is emitted, do NOT run the standard startup sequence yet.
-Instead, route to the named INSTALL-PROCEDURES.md procedure(s) — Procedure
-5-S for POSTRUN-PENDING (post-migration housekeeping), Procedure 5-C for
-RECON-PENDING (customization reconciliation; sub-procedure 5-C.1 handles
-the legacy `_v9-backup.md` filename). Both procedures live in
-`docs/pack/INSTALL-PROCEDURES.md` (relocated from METHODOLOGY.md per
-BD-059). Run them now. After all triggered procedures complete (or the
-developer explicitly defers remaining items), resume the standard startup
-sequence at Step 1.
+If RECON-PENDING is emitted, this is an interrupted migration. Do NOT
+run the standard startup sequence yet. Resume Procedure 5-C from
+`docs/pack/INSTALL-PROCEDURES.md` on the existing uncommitted (or, in
+the breach case, partially committed) working tree. The procedure walks
+each remaining sidecar, then ends with a single migration commit (or a
+second commit, in the breach case). Sub-procedure 5-C.1 handles the
+legacy `_v9-backup.md` filename for pre-C7 v10.0 installs.
+
+If POSTRUN-PENDING is emitted (and RECON-PENDING is not), reconciliation
+already completed — run Procedure 5-S (post-migration housekeeping).
+
+After all triggered procedures complete (or the developer explicitly
+defers remaining items), resume the standard startup sequence at Step 1.
 
 If neither line is emitted, this step is a no-op — proceed directly to
 Step 1.

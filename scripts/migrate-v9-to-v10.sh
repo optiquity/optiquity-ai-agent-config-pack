@@ -1141,12 +1141,16 @@ stage_s7_report() {
         echo
         echo "## Next steps"
         echo
+        echo "The migration is a single atomic session. The script's mechanical pass is complete; reconciliation runs next, on the same uncommitted working tree, and ends in one commit (success) or a clean rollback (no commit). Do NOT commit before reconciliation completes."
+        echo
         echo "1. Read this report top to bottom."
-        echo "2. Run \`git diff\` and confirm the working tree (including \`.v9-customized\` sidecars) matches the report."
-        echo "3. Commit the migration ON THE \`$MIGRATION_BRANCH\` BRANCH. Sidecars are committed too — they hold pre-migration project content for reconciliation."
-        echo "4. Start a new PM chat session and run \`/pm-startup\`. The skill detects the post-migration sentinel and walks you through Procedure 5-C reconciliation, sidecar by sidecar."
-        echo "5. After reconciliation completes, commit the resolved files (the procedure deletes each sidecar as it is reconciled)."
-        echo "6. Follow \`supporting-docs/MIGRATION-v9-to-v10.md\` Steps 5–7 for merge / push."
+        echo "2. Walk Procedure 5-C from \`docs/pack/INSTALL-PROCEDURES.md\` (or \`supporting-docs/INSTALL-PROCEDURES.md\` in the pack repo). The chat presents each sidecar; you decide keep-pack / keep-project / hand-merge / land in \`## Project addenda\` or \`x-*.md\`. The procedure also reconciles trinity preamble (removes HOW TO USE blocks, restores H1/intro/placeholders) and PM-CHAT.md preamble. Each sidecar is deleted as it is reconciled."
+        echo "3. Re-run \`./scripts/bootstrap.sh\` and \`./scripts/validate.sh\` — reconciliation must not introduce regressions."
+        echo "4. Confirm working tree is clean: no \`*.v9-customized\` sidecars, no \`[PROJECT_NAME]\` / \`[PLATFORM_TARGETS]\` / \`[TRANSPORT]\` placeholders in trinity or PM-CHAT.md."
+        echo "5. **Single commit** on \`$MIGRATION_BRANCH\` capturing the fully reconciled v10 state. Use \`git add -A\` to include new untracked pack files. Suggested message: \`feat: v10 — migrate from v9.3 (script + Procedure 5-C reconciliation)\`."
+        echo "6. Follow \`supporting-docs/MIGRATION-v9-to-v10.md\` Steps 5–7 to merge \`$MIGRATION_BRANCH\` into the default branch."
+        echo
+        echo "If reconciliation reveals a defect that cannot be resolved in-session, run the rollback commands from MIGRATION-v9-to-v10.md \"Rollback\" sub-section. The migration leaves no committed trace and the repo returns to v9.3 state."
         echo
         echo "## Rollback"
         echo
@@ -1161,16 +1165,16 @@ stage_s7_report() {
     # End-of-run developer-facing summary line.
     say
     if (( recon_count > 0 )); then
-        say "Migration complete."
+        say "Mechanical migration complete. Reconciliation pending — DO NOT COMMIT YET."
         say
         say "Disposition summary: $update_count pack-updates · $merged_count merges · $recon_count reconciliations needed."
         say
-        say "$recon_count file(s) need reconciliation. Pre-migration project content is preserved in \`.v9-customized\` sidecars next to each affected file."
-        say "Review \`$report\` and \`git diff\`, then commit the migration on branch $MIGRATION_BRANCH (sidecars included)."
-        say "Reconciliation runs in your next PM chat session: start a new session and \`/pm-startup\` will detect the sidecars and walk Procedure 5-C with you."
+        say "$recon_count file(s) need reconciliation. Pre-migration project content is preserved in \`.v9-customized\` sidecars next to each affected file. Sidecars are working-tree artifacts — they are never committed."
+        say "Walk Procedure 5-C from \`docs/pack/INSTALL-PROCEDURES.md\` in this same chat session, on this same uncommitted working tree. Each sidecar resolves to keep-pack / keep-project / hand-merge / land in addenda; the sidecar is then deleted."
+        say "After all sidecars are resolved and \`bootstrap.sh\` + \`validate.sh\` are clean, make a SINGLE commit on $MIGRATION_BRANCH capturing the fully reconciled state. Or roll back per MIGRATION-v9-to-v10.md if a defect is found."
     else
         say "Migration complete. $update_count pack-updates applied; no reconciliations needed."
-        say "Review \`git diff\` and \`$report\` before committing on branch $MIGRATION_BRANCH."
+        say "Run \`bootstrap.sh\` + \`validate.sh\`, review \`git diff\` and \`$report\`, then commit on branch $MIGRATION_BRANCH."
     fi
     say
     say "Full report:        $report"
