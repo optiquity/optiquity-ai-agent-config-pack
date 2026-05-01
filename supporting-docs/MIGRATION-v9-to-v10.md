@@ -321,6 +321,117 @@ from the pack repo.
 
 ---
 
+## Step 8 — Merge to the default branch
+
+After the migration commit lands on `migration-v9-to-v10`, merge
+the branch into your default branch (`main` or `master`) and clean
+up. Pick the path that matches your repo workflow.
+
+### Path A — solo repo or team using direct merges (no PR review)
+
+```bash
+# 1. Make sure you are on the migration branch with a clean tree
+git status                                # working tree clean
+git branch --show-current                 # migration-v9-to-v10
+git log --oneline -1                      # the migration commit you just made
+
+# 2. (Optional) Push the migration branch to the remote for backup / review
+git push -u origin migration-v9-to-v10
+
+# 3. Switch to main and update from remote
+git checkout main
+git pull
+
+# 4. Merge the migration branch.
+#    --no-ff preserves the branch boundary in history (recommended for
+#    a milestone change like this). Use a plain `git merge` if your team
+#    prefers fast-forward.
+git merge --no-ff migration-v9-to-v10 -m "merge: v10 migration"
+
+# 5. Push main
+git push                                  # if you have a remote
+
+# 6. Delete the migration branch (local + remote)
+git branch -d migration-v9-to-v10
+git push origin --delete migration-v9-to-v10  # only if you pushed in step 2
+```
+
+### Path B — team workflow with PR review
+
+```bash
+# 1. Push the migration branch
+git push -u origin migration-v9-to-v10
+
+# 2. Open a PR from migration-v9-to-v10 → main on your hosting platform
+#    (GitHub, GitLab, etc.). Have a reviewer approve the diff — the
+#    trinity splices, the docs/pack/ changes, and the Procedure 5-C
+#    reconciliation decisions all benefit from a second pair of eyes.
+
+# 3. Merge the PR via the platform UI (squash, rebase, or merge commit
+#    per your team convention). Most teams pick "merge commit" for
+#    milestone branches like this.
+
+# 4. Sync local main and clean up
+git checkout main
+git pull
+git branch -d migration-v9-to-v10
+```
+
+### After the merge
+
+- Confirm `main` contains the migration commit: `git log --oneline -3`
+- Run `./scripts/validate.sh` once more on `main` to verify the merge
+  did not silently re-introduce conflicts
+- Do NOT delete `.pack-migration-backup/` yet — Step 9 still needs
+  the `postrun-pending` sentinel inside it to trigger housekeeping.
+
+---
+
+## Step 9 — Post-migration housekeeping (`/pm-startup`)
+
+The migration script wrote a sentinel
+(`.pack-migration-backup/v9.3-to-v10.0/postrun-pending`) that
+triggers **Procedure 5-S** (post-migration housekeeping) on the
+next `/pm-startup` run. Procedure 5-S has two tasks:
+
+- **Task A — `STATUS.md` pack-version markers.** Updates lines like
+  "AI Agent Config Pack v9.x" to the current pack version. Reports
+  "nothing to do" if no v9 markers exist.
+- **Task B — Trinity placeholder reconciliation.** With Procedure
+  5-C completed in Step 5, this should report "nothing to do." If
+  it surfaces placeholders, that is a Procedure 5-C escape — fix
+  before continuing.
+
+Run it now, on `main`, after the merge:
+
+```bash
+cd ~/Developer/<your-project>
+claude --resume <project-short-name>-pm   # or start a fresh session
+/pm-startup
+```
+
+Step 0 of `/pm-startup` detects the sentinel and routes to
+Procedure 5-S. The PM chat will propose any `STATUS.md` edits;
+approve / modify / skip per match. When both tasks complete,
+the PM chat removes the sentinel. Procedure 5-S does not run
+again on this project.
+
+If Task A produced edits to `STATUS.md`, the PM chat lands them
+as a follow-up commit on `main` (separate from the migration
+commit). If both tasks reported "nothing to do," only the
+sentinel is removed and you can either commit that as a tiny
+housekeeping change or just clean up the whole backup directory:
+
+```bash
+git status                                  # may show .pack-migration-backup/ removal
+rm -rf .pack-migration-backup
+git add -A
+git commit -m "chore: drop v10 migration backup after housekeeping"
+git push
+```
+
+---
+
 ## What to do after migration
 
 The migration is a **single atomic session**: the script's
@@ -390,8 +501,8 @@ The script produces three classes of result:
 
    This is the *sole* commit for the migration. Do not commit
    intermediate state.
-6. **Merge `migration-v9-to-v10` into your default branch** per
-   Steps 5–7 of this document.
+6. **Merge `migration-v9-to-v10` into your default branch and run
+   post-migration housekeeping** per Steps 8–9 of this document.
 
 ### Rollback (if reconciliation reveals an unresolvable defect)
 
@@ -709,8 +820,12 @@ Instructions:
    ask me one question:
    "Approve commit, or rollback?"
    - On "commit": run `git add -A && git commit -m "feat: v10 — migrate from v9.3 (script + Procedure 5-C reconciliation)"`
-     and report the commit hash. Then present the "Steps 5–7"
-     instructions from MIGRATION-v9-to-v10.md so I can merge.
+     and report the commit hash. Then present the "Step 8 — Merge to
+     the default branch" instructions AND remind the developer that
+     after merging they should start a fresh PM chat session on `main`
+     and run `/pm-startup` (Step 9 — Post-migration housekeeping) to
+     trigger Procedure 5-S. Do not run merge or `/pm-startup`
+     commands yourself — both touch `main` and are the developer's call.
    - On "rollback": run the rollback commands from
      MIGRATION-v9-to-v10.md "Rollback" sub-section
      (`git checkout -- . && git clean -fd && rm -rf .pack-migration-backup && git checkout main && git branch -D migration-v9-to-v10`)

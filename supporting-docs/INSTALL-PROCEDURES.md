@@ -227,8 +227,9 @@ in one of two outcomes:
 This procedure does *not* split the migration across two commits.
 Sidecars are never committed — they exist only on the working
 tree, between the script's run and the final commit-or-rollback
-decision. Steps 5–7 of `MIGRATION-v9-to-v10.md` (merge to default
-branch) run after the single migration commit.
+decision. Steps 8–9 of `MIGRATION-v9-to-v10.md` (merge to default
+branch + `/pm-startup` for Procedure 5-S housekeeping) run after
+the single migration commit.
 
 Procedure 5-C is re-entrant *within the same migration*. If the
 session ends mid-procedure (chat closes, machine restarts, etc.),
@@ -778,9 +779,10 @@ After every sidecar has been reconciled and removed:
    Suggested commit message:
    `feat: v10 — migrate from v9.3 (script + Procedure 5-C reconciliation)`.
 
-   After commit, follow `MIGRATION-v9-to-v10.md` Steps 5–7 to merge
-   the branch into the default branch. Procedure 5-C does not run
-   again on this project.
+   After commit, follow `MIGRATION-v9-to-v10.md` Step 8 to merge
+   the branch into the default branch, then Step 9 to run
+   `/pm-startup` and let Procedure 5-S clear the post-migration
+   sentinel. Procedure 5-C does not run again on this project.
 
 ### Rollback (instead of commit)
 
