@@ -536,7 +536,7 @@ section.
    grep -nE '\[(PROJECT_NAME|project|project-short-name)\]' docs/pack/PM-CHAT.md
    ```
    Must produce no output. The CLI examples in PM-CHAT.md use
-   `[project]` (path segment, e.g., `cd ~/Developer/[project]`) and
+   `[project]` (path segment, e.g., `cd /path/to/your-project`) and
    `[project-short-name]` (CLI session tag, e.g., `claude --resume
    [project-short-name]-pm`) in addition to `[PROJECT_NAME]` (the
    full project name in headings). All three must be filled in from

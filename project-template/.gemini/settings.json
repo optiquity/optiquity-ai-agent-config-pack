@@ -6,7 +6,7 @@
       "command": "npx",
       "args": ["-y", "mcp-local-rag"],
       "env": {
-        "BASE_DIR": "/absolute/path/to/your/project",
+        "BASE_DIR": "/absolute/path/to/your-project",
         "DB_PATH": "./.gemini/rag-index",
         "CACHE_DIR": "./.gemini/rag-cache"
       },

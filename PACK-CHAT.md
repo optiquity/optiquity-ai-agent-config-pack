@@ -101,13 +101,13 @@ These rules are non-negotiable and always apply:
 
 ## Session naming and resume
 
-Replace `~/[dev-directory]/optiquity-ai-agent-config-pack` with the actual path where
+Replace `/path/to/pack` with the actual path where
 you cloned the repo. Replace `pack-chat` with your preferred session name if desired
 — use it consistently across machines.
 
 **First start on this machine:**
 ```bash
-cd ~/[dev-directory]/optiquity-ai-agent-config-pack
+cd /path/to/pack
 git pull
 claude
 /rename pack-chat
@@ -116,14 +116,14 @@ claude
 
 **Normal resume (same machine):**
 ```bash
-cd ~/[dev-directory]/optiquity-ai-agent-config-pack
+cd /path/to/pack
 git pull
 claude --resume pack-chat
 ```
 
 **New or different machine — session already exists on this machine:**
 ```bash
-cd ~/[dev-directory]/optiquity-ai-agent-config-pack
+cd /path/to/pack
 git pull
 claude --resume pack-chat
 /pack-startup
@@ -131,7 +131,7 @@ claude --resume pack-chat
 
 **New or different machine — no session exists yet on this machine:**
 ```bash
-cd ~/[dev-directory]/optiquity-ai-agent-config-pack
+cd /path/to/pack
 git pull
 claude
 /rename pack-chat

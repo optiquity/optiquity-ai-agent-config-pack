@@ -110,7 +110,7 @@ Any result is a defect requiring immediate attention before proceeding.
 ## Step 6 — Report current state
 
 Read the project name from the heading at the top of `PM-CHAT.md` — it will be
-the first `#` heading (e.g., `# OptiquityTrader — PM Chat Instructions`).
+the first `#` heading (e.g., `# YourProject — PM Chat Instructions`).
 Use that name in the output summary below.
 Output a summary in exactly this format:
 

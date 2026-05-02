@@ -224,7 +224,7 @@ and prompt files. The pack ships zero files beginning with `x-`; any
 
 **First start:**
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 claude
 /rename [project-short-name]-pm
 /pm-startup
@@ -232,13 +232,13 @@ claude
 
 **Normal resume (same machine):**
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 claude --resume [project-short-name]-pm
 ```
 
 **New machine or after gap:**
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 git pull
 claude --resume [project-short-name]-pm  # or start fresh + /rename if no session exists
 /pm-startup
@@ -296,7 +296,7 @@ knowledge persists across conversations automatically. No manual compaction need
 
 **First start:**
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 gemini
 ```
 Gemini CLI loads the project's GEMINI.md automatically via the GEMINI.md hierarchy.
@@ -308,7 +308,7 @@ Gemini CLI loads the project's GEMINI.md automatically via the GEMINI.md hierarc
 
 **Resume:**
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 gemini
 /chat resume [project-short-name]-pm
 ```
@@ -357,13 +357,13 @@ from IMPLEMENTATION_PLAN.md to refresh context.
 
 **First start:**
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 codex
 ```
 
 **Resume:**
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 codex --resume
 ```
 

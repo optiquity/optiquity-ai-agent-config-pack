@@ -16,7 +16,7 @@ references but does not repeat.
 
 **Normal resume (same machine, recent session):**
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 git pull
 claude --resume [project-short-name]-pm
 ```
@@ -24,7 +24,7 @@ No need to run `/pm-startup` — session history is current.
 
 **After compaction or a long gap:**
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 git pull
 claude --resume [project-short-name]-pm
 /pm-startup
@@ -44,7 +44,7 @@ The repo is the memory — not the session history. Session files are machine-lo
 
 If a session already exists on this machine under the right name, just resume it:
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 git pull
 claude --resume [project-short-name]-pm
 /pm-startup
@@ -52,7 +52,7 @@ claude --resume [project-short-name]-pm
 
 If no session exists yet on this machine, start one:
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 git pull
 claude
 /rename [project-short-name]-pm
@@ -81,7 +81,7 @@ Never copy or sync `.claude/` session files between machines.
 When METHODOLOGY.md changes (new pack version installed), re-ingest it:
 
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 claude --resume [project-short-name]-pm
 ```
 
@@ -130,7 +130,7 @@ app is available any time for focused side investigations and research:
 
 **Normal resume:**
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 git pull
 gemini
 /chat resume [project-short-name]-pm
@@ -138,7 +138,7 @@ gemini
 
 **After a long gap or on a new machine:**
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 git pull
 gemini
 /chat resume [project-short-name]-pm    # or start fresh if no saved session
@@ -168,7 +168,7 @@ belongs in project files.
 
 **Codex CLI resume:**
 ```bash
-cd ~/Developer/[project]
+cd /path/to/your-project
 git pull
 codex --resume
 ```

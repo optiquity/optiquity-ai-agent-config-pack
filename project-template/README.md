@@ -3,14 +3,14 @@
 This directory is the unified project template. Copy it to start a new project:
 
 ```bash
-cp -r /path/to/pack/project-template/. /path/to/your/project/
+cp -r /path/to/pack/project-template/. /path/to/your-project/
 ```
 
 Then copy the supporting docs individually (they are not part of this template). METHODOLOGY.md lives under `docs/pack/` per V10-DESIGN.md Part 7 §7.6 (alongside other pack-distributed docs):
 
 ```bash
-mkdir -p /path/to/your/project/docs/pack
-cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your/project/docs/pack/METHODOLOGY.md
+mkdir -p /path/to/your-project/docs/pack
+cp /path/to/pack/supporting-docs/METHODOLOGY.md /path/to/your-project/docs/pack/METHODOLOGY.md
 ```
 
 See `QUICKSTART.md` in the pack root for the full setup procedure.

@@ -23,7 +23,7 @@
 # [mcp_servers.local-rag]
 # command = "npx"
 # args = ["-y", "mcp-local-rag"]
-# env = { BASE_DIR = "/absolute/path/to/your/project", DB_PATH = "./.codex/rag-index" }
+# env = { BASE_DIR = "/absolute/path/to/your-project", DB_PATH = "./.codex/rag-index" }
 # startup_timeout_sec = 30
 # required = false
 # supports_parallel_tool_calls = true

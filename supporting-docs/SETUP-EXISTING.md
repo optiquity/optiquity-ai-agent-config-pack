@@ -27,10 +27,12 @@ no prior AI agent configuration.
 - **`pack-init` side branch.** All pack-install changes land here,
   not on `main`, so you can review and either merge or abandon them
   without polluting main.
-- **Pack cloned locally.** Export `$PACK`:
+- **Pack cloned locally.** Clone the `optiquity-ai-agent-config-pack`
+  repo to a stable location and use that location wherever
+  `/path/to/pack` appears in this guide. Export `$PACK`:
 
   ```bash
-  export PACK=~/Developer/optiquity-ai-agent-config-pack
+  export PACK=/path/to/pack
   git -C "$PACK" checkout v10.0   # or v10 floating tag
   ```
 
@@ -39,7 +41,7 @@ no prior AI agent configuration.
 ## Step 1 — Create the `pack-init` branch
 
 ```bash
-cd ~/Developer/YourProject
+cd /path/to/your-project
 git checkout main
 git pull
 git checkout -b pack-init

@@ -1,34 +1,35 @@
 # Optiquity AI Agent Config Pack
 
-The Config Pack is a versioned AI agent team managed project orchestration
-system for Claude Code, Codex, and Gemini. Focused on software development
-projects with extensive support for Apple platforms, Python, and others, the
-system can be extended to support any type of AI agent team project. Maintained
-by [Optiquity, Inc.](https://optiquity.com)
-
-> Created by David H. Shane and formerly "DHS AI Agent Config Pack." Renamed
-> at v10.0 to reflect ownership by Optiquity, Inc. The pack provides the same
-> configuration files and workflows — the name change has no effect on
-> functionality or migration paths.
+The Config Pack is a versioned **multi-agent project workflow system** for
+Claude Code, Codex CLI, and Gemini CLI. A persistent **PM Chat** session
+orchestrates role-shaped agents (architect, coder, reviewer, tester, planner,
+auditor, docs-researcher, grpc-schema, repo-ops) using shared context files,
+skill libraries, and validation scripts — the same configuration works
+identically across every CLI. Focused on software development with extensive
+support for Apple platforms, Python, and gRPC; extensible to any project
+type. Maintained by [Optiquity, Inc.](https://optiquity.com)
 
 ## What is this?
 
-The Config Pack uses agent team principles and tools to provides per-project
-and machine-level configuration files that give Claude Code, Codex CLI, Gemini
-CLI, and IDEs, auch as Xcode's built-in AI agents, a shared, consistent
-understanding of your projects — covering architecture rules, coding standards,
-agent roles, skills, and shell scripts to validate agent output.
+Per-project and machine-level configuration files that give Claude Code, Codex
+CLI, Gemini CLI, and IDEs such as Xcode's built-in AI a shared, consistent
+understanding of your projects — architecture rules, coding standards, agent
+roles, skills, and shell scripts that validate agent output. The PM Chat is
+the human-coordinated coordination layer; agents are invoked via
+`agent-run.sh` and report back through paste-able output, so the workflow is
+deterministic, auditable, and identical across CLIs.
 
 ## Using the Config Pack
 
 ### Terminology
-| Term           | Definition | 
-|----------------|------------|
-| **You**            | The lead contributor, project coordinator, product manager, software engineer, marketing director, and pretty much everything else. |
-| **Pack Chat**      | The lead agent for contributing to and maintaining the Config Pack. |
-| **Config Pack**    | This agent team project orchestration system. |
-| **PM Chat**        | The lead agent for running and tracking the project workflows of any project that uses the Config Pack. It is technically the **Project Manager Chat** or, if you prefer, the **Product Manager Chat**. Since you are the ultimate decision maker, this is a distinction without a difference. |
 
+| Term | Definition |
+|---|---|
+| **You** | The lead contributor, project coordinator, product manager, software engineer, and ultimate decision maker for your project. |
+| **Config Pack** | This multi-agent project workflow system. |
+| **PM Chat** | The persistent chat session for running and tracking the workflow of any project that uses the Config Pack. Technically the **Project Manager Chat** or, if you prefer, the **Product Manager Chat** — since you are the ultimate decision maker, this is a distinction without a difference. |
+| **Pack Chat** | The persistent chat session for contributing to and maintaining the Config Pack itself. |
+| **Agent** | A role-shaped CLI invocation (architect, coder, reviewer, tester, planner, auditor, docs-researcher, grpc-schema, repo-ops). The same agent definitions ship for Claude Code, Codex CLI, and Gemini CLI; the PM Chat invokes them via `agent-run.sh`. |
 
 ### With Your Projects
 
@@ -36,13 +37,21 @@ See [`QUICKSTART.md`](QUICKSTART.md) for full setup instructions.
 
 ### Contributing to the Config Pack
 
-After checking out the **Config Pack** repo, cd to the repo directory and launch the the **Pack Chat** by starting a fresh session in your favorite CLI, Claude, Codex, or Gemini. Begin by running `/pack-startup`. After that, you can customize your session and workspace however you want.
+After checking out the Config Pack repo, `cd` into the repo directory and launch the **Pack Chat** by starting a fresh session in Claude Code, Codex CLI, or Gemini CLI. Run `/pack-startup` first; from there, customize your session and workspace however you want.
+
+## Optional features and settings
+
+Each CLI ships its own optional or experimental features that the Config Pack
+can plug into. See [`OPTIONAL-FEATURES.md`](OPTIONAL-FEATURES.md) for the
+current list — including Claude Code's Agent Teams (parallel teammates that
+share a task list and message each other) and equivalents for Codex CLI and
+Gemini CLI as they ship.
 
 ## Version History
 
 ### Versioning convention
 Major versions (v9, v10, …) mark large additions or breaking changes.
-Minor versions (v8.0, v8.1, …) mark incremental improvements — doc updates,
+Minor versions (v9.0, v9.1, …) mark incremental improvements — doc updates,
 new templates, prompt and workflow refinements. The bare major tag (e.g. `v9`)
 always points to the latest minor of that major version.
 
@@ -165,6 +174,7 @@ scripts/                                    Pack-level scripts
 └── validate-pack.yml                       Pack self-validation on every push
 
 QUICKSTART.md                               Quick start router (three paths — NEW / EXISTING / MIGRATE)
+OPTIONAL-FEATURES.md                        Tool settings for features and settings used with non-pack related functionality
 PACK-CHAT.md                                Pack CLI chat operating instructions
 PACK-AGENTS.md                              Pack agent routing (includes invocation guide)
 BACKLOG.md                                  Pack improvement backlog
@@ -196,3 +206,10 @@ available as a git tag. Use tags for stable references in project documentation.
 ## Contact
 Email:       [config-pack@optiquity.com](mailto:config-pack@optiquity.com)
 Web:         [Optiquity, Inc.](https://optiquity.com)
+
+---
+
+> Created by David H. Shane and formerly "DHS AI Agent Config Pack." Renamed
+> at v10.0 to reflect ownership by Optiquity, Inc. The pack provides the same
+> configuration files and workflows — the name change has no effect on
+> functionality or migration paths.

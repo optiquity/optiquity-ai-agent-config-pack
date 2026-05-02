@@ -26,12 +26,13 @@ template).
 - **Xcode 26+** for Apple projects.
 - **Node.js 18+** (for `mcp-local-rag` if using Claude Code CLI as PM
   chat).
-- **Pack cloned locally.** Clone the pack repo to a stable location,
-  e.g. `~/Developer/optiquity-ai-agent-config-pack`. Check out the v10 tag
-  or track v10-dev. Set `PACK` to its absolute path in your shell:
+- **Pack cloned locally.** Clone the `optiquity-ai-agent-config-pack`
+  repo to a stable location and use that location wherever
+  `/path/to/pack` appears in this guide. Check out the v10 tag or track
+  v10-dev. Set `PACK` to its absolute path in your shell:
 
   ```bash
-  export PACK=~/Developer/optiquity-ai-agent-config-pack
+  export PACK=/path/to/pack
   git -C "$PACK" fetch --tags
   git -C "$PACK" checkout v10.0   # or v10 floating tag
   ```
@@ -57,7 +58,7 @@ For an Apple app, pick a name that matches your Xcode scheme.
 Create the Xcode project inside the cloned repo:
 
 ```bash
-# In Xcode: File → New → Project → App → save into ~/Developer/YourProject/
+# In Xcode: File → New → Project → App → save into /path/to/your-project/
 ```
 
 Commit the initial Xcode project before running `init-project.sh`:
@@ -77,7 +78,7 @@ This single command handles everything that was manual in v9
 permissions, bootstrap setup):
 
 ```bash
-cd ~/Developer/YourProject
+cd /path/to/your-project
 "$PACK/scripts/init-project.sh" .
 ```
 
@@ -301,7 +302,7 @@ identical in all four. Pick one as your primary PM chat.
 ### Option B — Claude Code CLI
 
 ```bash
-cd ~/Developer/YourProject
+cd /path/to/your-project
 cp .mcp.json.example .mcp.json
 # Edit .mcp.json: set BASE_DIR to the absolute path of this project.
 # .mcp.json is gitignored — never commit it.
@@ -323,7 +324,7 @@ gap, or after compaction. For cross-machine workflow see
 ### Option C — Codex CLI
 
 ```bash
-cd ~/Developer/YourProject
+cd /path/to/your-project
 codex
 ```
 
@@ -335,7 +336,7 @@ Daily sessions: `codex --resume`.
 ### Option D — Gemini CLI
 
 ```bash
-cd ~/Developer/YourProject
+cd /path/to/your-project
 gemini
 ```
 
@@ -375,7 +376,7 @@ git commit -m "Add SETUP.md and AGENT_KICKOFF.md"
 ## Step 12 — Run the architecture kickoff
 
 ```bash
-cd ~/Developer/YourProject
+cd /path/to/your-project
 ./agent-run.sh claude --agent architect
 # Paste the full contents of AGENT_KICKOFF.md as your first message
 ```

@@ -70,7 +70,7 @@ merging of v9 template structure around existing project content.
 
 **Back up:**
 ```bash
-cd ~/Developer/[your-project]
+cd /path/to/your-project
 git checkout -b migration-v8-to-v9
 ```
 
@@ -554,7 +554,7 @@ step (Step 5), and wait for your approval before committing.
 **Setup:**
 
 ```bash
-cd ~/Developer/[your-project]
+cd /path/to/your-project
 claude
 ```
 

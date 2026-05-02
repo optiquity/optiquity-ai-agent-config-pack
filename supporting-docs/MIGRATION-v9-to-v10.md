@@ -113,15 +113,19 @@ you know what to expect at the S0 pre-flight):
 
 ### Recommended setup
 
+In the commands below, replace `/path/to/your-project` with your
+project's actual path and `/path/to/pack` with the path where you
+cloned the `optiquity-ai-agent-config-pack` repo.
+
 ```bash
 # In your project directory:
-cd ~/Developer/your-project
+cd /path/to/your-project
 git checkout main
 git pull
 git status          # expect: clean
 
 # Make sure the pack repo is current and checked out at v10:
-PACK=/path/to/optiquity-ai-agent-config-pack
+PACK=/path/to/pack
 git -C "$PACK" fetch --tags
 git -C "$PACK" checkout v10.0   # or v10 floating tag
 ```
@@ -131,8 +135,8 @@ git -C "$PACK" checkout v10.0   # or v10 floating tag
 ## Step 1 — Run the migration script
 
 ```bash
-cd ~/Developer/your-project
-PACK=/path/to/optiquity-ai-agent-config-pack
+cd /path/to/your-project
+PACK=/path/to/pack
 "$PACK/scripts/migrate-v9-to-v10.sh"
 ```
 
@@ -405,7 +409,7 @@ next `/pm-startup` run. Procedure 5-S has two tasks:
 Run it now, on `main`, after the merge:
 
 ```bash
-cd ~/Developer/<your-project>
+cd /path/to/your-project
 claude --resume <project-short-name>-pm   # or start a fresh session
 /pm-startup
 ```

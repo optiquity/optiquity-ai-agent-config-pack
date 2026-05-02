@@ -16,7 +16,7 @@ Machine-level VS Code configuration for Python server and monorepo projects.
 Copy `.vscode/` into your project root:
 
 ```bash
-cp -r /path/to/pack/vscode-companion-templates/.vscode /path/to/your/project/.vscode
+cp -r /path/to/pack/vscode-companion-templates/.vscode /path/to/your-project/.vscode
 ```
 
 These files are safe to commit — they contain no secrets or machine-specific paths.
