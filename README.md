@@ -21,7 +21,22 @@ agent roles, skills, and shell scripts to validate agent output.
 
 ## Using the Config Pack
 
+### Terminology
+| Term           | Definition | 
+|----------------|------------|
+| **You**            | The lead contributor, project coordinator, product manager, software engineer, marketing director, and pretty much everything else. |
+| **Pack Chat**      | The lead agent for contributing to and maintaining the Config Pack. |
+| **Config Pack**    | This agent team project orchestration system. |
+| **PM Chat**        | The lead agent for running and tracking the project workflows of any project that uses the Config Pack. It is technically the **Project Manager Chat** or, if you prefer, the **Product Manager Chat**. Since you are the ultimate decision maker, this is a distinction without a difference. |
+
+
+### With Your Projects
+
 See [`QUICKSTART.md`](QUICKSTART.md) for full setup instructions.
+
+### Contributing to the Config Pack
+
+After checking out the **Config Pack** repo, cd to the repo directory and launch the the **Pack Chat** by starting a fresh session in your favorite CLI, Claude, Codex, or Gemini. Begin by running `/pack-startup`. After that, you can customize your session and workspace however you want.
 
 ## Version History
 
@@ -167,8 +182,8 @@ CHANGELOG.md                                Pack changelog
 ## Checking Out a Specific Version
 
 ```bash
-git checkout v8        # Latest v8.x release
-git checkout v7        # Older version
+git checkout v10       # Latest v10.x release
+git checkout v7        # Older version (please don't do this for no reason)
 git diff v8 v9         # See what changed between major versions
 git log --oneline      # Full version history
 ```
@@ -177,3 +192,7 @@ git log --oneline      # Full version history
 
 `main` always points to the latest released version. Each version is also
 available as a git tag. Use tags for stable references in project documentation.
+
+## Contact
+Email:       [config-pack@optiquity.com](mailto:config-pack@optiquity.com)
+Web:         [Optiquity, Inc.](https://optiquity.com)
