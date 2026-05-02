@@ -1,19 +1,23 @@
 # Optiquity AI Agent Config Pack
 
-A versioned collection of Claude Code, Codex CLI, Gemini CLI, and Xcode AI
-agent configuration files for Swift / Python / gRPC projects. Maintained by
-[Optiquity, Inc.](https://optiquity.com)
+The Config Pack is a versioned AI agent team managed project orchestration
+system for Claude Code, Codex, and Gemini. Focused on software development
+projects with extensive support for Apple platforms, Python, and others, the
+system can be extended to support any type of AI agent team project. Maintained
+by [Optiquity, Inc.](https://optiquity.com)
 
-> Formerly "DHS AI Agent Config Pack." Renamed at v10.0 to reflect ownership
-> by Optiquity, Inc. The pack provides the same configuration files and
-> workflows — the name change has no effect on functionality or migration paths.
+> Created by David H. Shane and formerly "DHS AI Agent Config Pack." Renamed
+> at v10.0 to reflect ownership by Optiquity, Inc. The pack provides the same
+> configuration files and workflows — the name change has no effect on
+> functionality or migration paths.
 
 ## What is this?
 
-This pack provides per-project and machine-level configuration files that give
-Claude Code, Codex CLI, Gemini CLI, and Xcode's built-in AI agents a shared,
-consistent understanding of your projects — covering architecture rules, coding
-standards, agent roles, skills, and shell scripts to validate agent output.
+The Config Pack uses agent team principles and tools to provides per-project
+and machine-level configuration files that give Claude Code, Codex CLI, Gemini
+CLI, and IDEs, auch as Xcode's built-in AI agents, a shared, consistent
+understanding of your projects — covering architecture rules, coding standards,
+agent roles, skills, and shell scripts to validate agent output.
 
 ## Using the Config Pack
 
