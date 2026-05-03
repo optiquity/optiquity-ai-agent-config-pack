@@ -203,6 +203,23 @@ git log --oneline      # Full version history
 `main` always points to the latest released version. Each version is also
 available as a git tag. Use tags for stable references in project documentation.
 
+## License
+
+The Optiquity AI Agent Config Pack is distributed under the
+[Optiquity AI Agent Config Pack License](LICENSE.md) — a
+**source-available** (not OSI-approved) license that allows free use
+and modification with two notable conditions:
+
+- The Pack must always be free wherever it is offered.
+- If You distribute the Pack or a modification (in any form,
+  including bundled into a paid product or service), You must also
+  publish a free, publicly downloadable copy of that exact version
+  with attribution to Optiquity, Inc.
+
+See [`LICENSE.md`](LICENSE.md) for the complete terms, including
+modification ownership, attribution requirements, and the conditions
+governing forks.
+
 ## Contact
 Email:       [config-pack@optiquity.com](mailto:config-pack@optiquity.com)
 Web:         [Optiquity, Inc.](https://optiquity.com)
