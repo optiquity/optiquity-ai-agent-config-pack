@@ -800,9 +800,9 @@ Instructions:
    - For trinity:
      `grep -nE '\[(PROJECT_NAME|PLATFORM_TARGETS|TRANSPORT|PLATFORM_DEFAULTS|PLATFORM_ARCHITECTURE|LANGUAGE_RULES|GRPC_RULES|PLATFORM_SECURITY|PLATFORM_TESTING|PLATFORM_ANTIPATTERNS)\]' CLAUDE.md AGENTS.md GEMINI.md`
      must be empty.
-   - For PM-CHAT.md:
+   - For PM-CHAT.md (two checks — both must be empty):
      `grep -nE '\[(PROJECT_NAME|project|project-short-name)\]' docs/pack/PM-CHAT.md`
-     must be empty.
+     `grep -nF '/path/to/your-project' docs/pack/PM-CHAT.md`
    - Trinity rule check:
      `diff <(grep '^## ' CLAUDE.md) <(grep '^## ' AGENTS.md)`
      and the same for GEMINI.md must agree (modulo

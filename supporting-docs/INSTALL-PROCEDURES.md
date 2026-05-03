@@ -531,16 +531,20 @@ section.
 6. **Walk remaining H2 / H3 sections.** Apply the same H2-walk logic
    as trinity (5-C.2 step 3) — keep-pack / keep-project / hand-merge
    per section.
-7. **Confirm no placeholders remain.**
+7. **Confirm no placeholders remain.** Two checks — both must pass:
    ```
    grep -nE '\[(PROJECT_NAME|project|project-short-name)\]' docs/pack/PM-CHAT.md
+   grep -nF '/path/to/your-project' docs/pack/PM-CHAT.md
    ```
-   Must produce no output. The CLI examples in PM-CHAT.md use
-   `[project]` (path segment, e.g., `cd /path/to/your-project`) and
-   `[project-short-name]` (CLI session tag, e.g., `claude --resume
-   [project-short-name]-pm`) in addition to `[PROJECT_NAME]` (the
-   full project name in headings). All three must be filled in from
-   the sidecar's filled-in equivalents.
+   Both commands must produce no output. PM-CHAT.md uses three
+   placeholder shapes that all need to be filled in:
+   - `[PROJECT_NAME]` — full project name in headings.
+   - `[project-short-name]` — CLI session tag, e.g., `claude --resume
+     [project-short-name]-pm`.
+   - `/path/to/your-project` — project directory in `cd` examples
+     (path-style placeholder; not bracketed).
+   All three forms must be substituted with the project's
+   filled-in values from the sidecar.
 8. **Delete the sidecar.** `rm docs/pack/PM-CHAT.md.v9-customized`.
 
 PM-CHAT.md is not under the trinity rule; no cross-file symmetry
