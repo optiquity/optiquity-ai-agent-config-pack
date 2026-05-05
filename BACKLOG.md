@@ -20,6 +20,803 @@ Format follows the standard BACKLOG item format from METHODOLOGY.md Part 7.
 
 ---
 
+## Active — v11 Scope
+
+The v11.0 implementation surface. 51 BD entries (BD-060..BD-110)
+derived from the planning corpus at `maintenance-docs/v11-research/`
+(IMPLEMENTATION-PLAN.md + four addenda; ARCHITECTURE-V3.3-DELTA.md is
+the live design). Sequencing per merged §3.3 commit order. See the
+plan docs for full Verification + Definition-of-Done per BD.
+
+---
+
+**BD-060 — TrackerProvider abstraction skeleton + GH backend implementation**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: `scripts/lib/tracker-provider.sh`, `scripts/lib/tracker-provider-gh.sh`, `scripts/tests/tracker-provider-test.sh`
+Description: Lands the OQ-1 surface — the 18-operation provider library every
+  other tracker BD calls. GH-backend implementation; capability flags per V1
+  §2.7.2; error model per V1 §2.5; pagination per V1 §2.6. Includes the
+  `gh-sub-issue` extension policy and the GraphQL preview-header policy.
+  The `raw(...)` escape hatch (V1 §2.1) is required.
+Resolved: n/a
+
+---
+
+**BD-061 — `tracker.toml` schema + detection helper + gitignore entry**
+Type: TODO(version)
+Status: Open
+Blockers: BD-060
+Unblocks: None
+File/Symbol: `scripts/lib/tracker-config.sh`, `tracker.toml.example`, `project-template/tracker.toml.example`, `.gitignore`, `project-template/.gitignore`
+Description: Resolves D-2 + D-5 + R16. Detection is "presence + content of
+  `tracker.toml`": no file = flat-file; `mode.state = "flat-file"` = flat-file;
+  `mode.state = "tracker"` = tracker. Adds `.pack-tracker/` to `.gitignore`
+  per V1 §3.4.
+Resolved: n/a
+
+---
+
+**BD-062 — Trinity `## Document locations` Source column extension (D-6)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-061
+Unblocks: None
+File/Symbol: `project-template/CLAUDE.md`, `project-template/AGENTS.md`, `project-template/GEMINI.md` (trinity-replicated; project-template trinity only per D-6 footnote)
+Description: Extend the `## Document locations` table per V1 §3.3 with a
+  Source column ("flat" | "tracker" | "mixed") so `pm-startup` Step 2 can
+  branch by source. Pack-repo trinity is exempted by D-6 (no `## Document
+  locations` section there).
+Resolved: n/a
+
+---
+
+**BD-063 — Issue forms `work-item.yml` and `inbound.yml` (D-4-V2)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-061
+Unblocks: None
+File/Symbol: `.github/ISSUE_TEMPLATE/work-item.yml`, `.github/ISSUE_TEMPLATE/inbound.yml`, `.github/ISSUE_TEMPLATE/config.yml`, plus `project-template/.github/ISSUE_TEMPLATE/` mirrors
+Description: Implements D-4-V2 + D-16 + D-17 + D-18. The form family routes
+  by Type dropdown (bd / td / phase-epic-skeleton; phase-task-skeleton added
+  by BD-106 extension). HTML-comment `template_version` marker + label per
+  D-18. Both surfaces ship the same forms (TD-NNN namespace + Pack-feedback
+  category on client side).
+Resolved: n/a
+
+---
+
+**BD-064 — Template-archive directory bootstrap + bd-v11.0 schemas**
+Type: TODO(version)
+Status: Open
+Blockers: BD-063
+Unblocks: None
+File/Symbol: `maintenance-docs/v11-research/templates-archive/bd-v11.0/SCHEMA.md`, `work-item.yml`, `inbound.yml`, `README.md`
+Description: Implements P2 maintenance-ergonomics: template versions archived
+  at every minor cut so `pack tracker update-templates` and reverse-migration
+  sidecar (V1 §6.6.1 / DELTA §3) can deterministically translate. Phase-task
+  schema added by BD-106 extension.
+Resolved: n/a
+
+---
+
+**BD-065 — `tracker-migrate.sh forward` + idempotency markers + checkpoint**
+Type: TODO(version)
+Status: Open
+Blockers: BD-060, BD-061, BD-063
+Unblocks: None
+File/Symbol: `scripts/tracker-migrate.sh`, `scripts/lib/tracker-migrate-forward.sh`, `.pack-tracker/id-map.json`, `.pack-tracker/forward.checkpoint.json`, `scripts/tests/tracker-migrate-forward-test.sh`
+Description: Forward migration with body-footer idempotency markers
+  (`<!-- pack-id: TD-NNN -->`); reads BACKLOG / IMPLEMENTATION-PLAN; creates
+  issues; resolves blockers / sub-issues; writes mapping file; regenerates
+  mirror files. Checkpoint per V1 §6.4. `forward` and `status` subcommands
+  in this BD; `reverse` lands in BD-067.
+Resolved: n/a
+
+---
+
+**BD-066 — `pack tracker init` wrapper + label / template ensure step**
+Type: TODO(version)
+Status: Open
+Blockers: BD-065
+Unblocks: None
+File/Symbol: `scripts/pack-tracker.sh`, `scripts/lib/tracker-labels.sh`, `scripts/lib/tracker-init.sh`
+Description: Lands `pack tracker init` as the one-command opt-in path.
+  Includes auth validation per V1 §7.3 + D-10 (`gh auth status`). Adds verb
+  dispatcher per V2 §22.1. Auth-missing surfaces actionable error per V1 §9.3.
+Resolved: n/a
+
+---
+
+**BD-067 — `tracker-migrate.sh reverse` + sidecar (V1 §6.6 + §6.6.1, A2)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-064, BD-065
+Unblocks: None
+File/Symbol: `scripts/lib/tracker-migrate-reverse.sh`, `scripts/lib/tracker-sidecar.sh`, `scripts/lib/tracker-mirror.sh`, `scripts/tracker-migrate.sh`, `scripts/pack-tracker.sh`
+Description: Reverse migration is mandatory per `DESIGN-BRIEF.md` §3.1.
+  Sidecar coverage extended per DELTA A2 to include template-version drift
+  fields. `pack tracker disable` runs reverse + flips `tracker.toml
+  mode.state` to `flat-file`; `pack tracker doctor` reports mapping integrity.
+Resolved: n/a
+
+---
+
+**BD-068 — Round-trip test fixture + multi-template-version coverage**
+Type: TODO(version)
+Status: Open
+Blockers: BD-067
+Unblocks: None
+File/Symbol: `scripts/tests/tracker-migrate-roundtrip-test.sh`, `scripts/tests/fixtures/roundtrip/bd-v11.0/`, `scripts/tests/fixtures/roundtrip/bd-v11.1/`, `scripts/tests/fixtures/roundtrip/bd-v11.2/`
+Description: Implements V1 §6.7 + V3 §I.1 explicit round-trip test. v11.0
+  ships with bd-v11.0 entries plus stub directories for bd-v11.1 / bd-v11.2
+  per §6.A maintainer check. CI runs forward → reverse → forward; diff = 0
+  (whitespace-tolerant). Extended by BD-106 with phase-task fixtures.
+Resolved: n/a
+
+---
+
+**BD-069 — `template_version` HTML-comment + label dual carrier (D-18)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-064, BD-065, BD-067
+Unblocks: None
+File/Symbol: `scripts/lib/template-version.sh`, `scripts/lib/tracker-migrate-forward.sh`, `scripts/lib/tracker-migrate-reverse.sh`, `scripts/pack-tracker.sh`
+Description: Implements D-18 dual carrier. `<!-- template_version: bd-v11.0 -->`
+  HTML comment in body + parallel `template:bd-v11.0` label. `update-templates`
+  subcommand reads stale carriers, applies V2 §19.3 patch semantics + §19.4
+  translation rules. Phase-task entry added to carrier matrix by BD-106
+  extension.
+Resolved: n/a
+
+---
+
+**BD-070 — Typed error surfacing + diagnostic helper**
+Type: TODO(version)
+Status: Open
+Blockers: BD-060
+Unblocks: None
+File/Symbol: `scripts/lib/tracker-errors.sh`, `scripts/tests/tracker-errors-test.sh`
+Description: Implements D-7. Central error formatter; maps the 9 typed codes
+  from V1 §2.5 to user-facing messages + next-step verb (Layer 2 per V3
+  §27.1). No silent retry; every failure surfaces typed code + diagnostic +
+  next-step verb. Every error message ends with "→ Run: pack X".
+Resolved: n/a
+
+---
+
+**BD-071 — Agent read-pattern adaptation (D-9, V1 §8 + V1 §13)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-062, BD-070
+Unblocks: None
+File/Symbol: `project-template/docs/pack/prompts/*.md` (10 prompt files), `scripts/lib/tracker-agent-read.sh`
+Description: Implements D-9 LCD agent reads. Replaces "Read BACKLOG.md"
+  with "Read BACKLOG entries (resolve via trinity Document locations)" across
+  10 per-agent prompt files. Agents use `gh issue view --json …` shell-out
+  when tracker mode is on. validate-pack Check 22 catches drift.
+Resolved: n/a
+
+---
+
+**BD-072 — `scripts/lib/recommendation.sh` + state-file schema (D-19)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-061
+Unblocks: None
+File/Symbol: `scripts/lib/recommendation.sh`, `scripts/tests/recommendation-test.sh`, `.pack-tracker/recommendation-state.json` (schema)
+Description: Lands the OQ-19 mechanism. Signal computation per V3 §28.1.1
+  (3 signals pack-side; 7 client-side); state I/O for state file per V3
+  §28.1.4 schema; `should_recommend()` test per V3 §28.1.5; prompt rendering
+  per V3 §28.1.7. State file is JSON v1 schema; lazy-created with default
+  values; failure-mode UX per V3 §28.1.4 (parse fail → log warning + write
+  fresh state + defer recommendation to next session). All 7 V3 §28.1.10
+  tests must pass.
+Resolved: n/a
+
+---
+
+**BD-073 — `pack tracker enable-recommendations` subcommand**
+Type: TODO(version)
+Status: Open
+Blockers: BD-072
+Unblocks: None
+File/Symbol: `scripts/pack-tracker.sh`
+Description: Adds `enable-recommendations` subcommand per V3 §28.1.9 +
+  D-19 verb table. Sets `persistent_refusal: false`; increments
+  `user_re_enable_count`. Colloquial "remind me about the tracker again"
+  routes through it.
+Resolved: n/a
+
+---
+
+**BD-074 — `pack-startup` Step 8 + `pm-startup` Step 8 (D-19 integration)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-072, BD-073
+Unblocks: None
+File/Symbol: `.claude/skills/pack-startup/SKILL.md`, `.codex/skills/pack-startup/SKILL.md`, `.gemini/commands/pack-startup.toml`, `project-template/skills/pm-startup/SKILL.md` + 3 distributed copies
+Description: Step 8 runs after V1's Step 7 triage queue: source
+  `recommendation.sh`; compute signals; check state; call `should_recommend`;
+  if true, render the V3 §28.1.7 prompt. Trinity-replicated × 2 surfaces.
+  Body content byte-identical across the three CLIs in each surface; framing
+  differs as the per-CLI format mandates. Introduces `.claude/`, `.codex/`,
+  `.gemini/` directories at pack-root for the first time per §6.F.
+Resolved: n/a
+
+---
+
+**BD-075 — `scripts/pack-help.sh` LCD shell verb + surface detection**
+Type: TODO(version)
+Status: Open
+Blockers: BD-076
+Unblocks: None
+File/Symbol: `scripts/pack-help.sh`, `scripts/lib/detect-surface.sh`
+Description: Implements LCD floor for D-20 / OQ-20 (M2 path). Reads the
+  appropriate `HELP-FRAGMENT-*.md` and prints to stdout. Inlines the shared
+  `HELP-FRAGMENT-TRACKER.md` per V3 §28.2.4 + DELTA L1 (sibling-file include).
+  Surface detection for pack vs client per V3 §28.2.3. Output ~400 tokens
+  per V3 §28.2.3. Ships new at v11 per §6.B.
+Resolved: n/a
+
+---
+
+**BD-076 — HELP-FRAGMENT files (canonical + per-surface; L1 layout)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-066, BD-073
+Unblocks: None
+File/Symbol: `HELP-FRAGMENT-PACK.md`, `HELP-FRAGMENT-TRACKER.md` (pack root canonical), `project-template/docs/pack/HELP-FRAGMENT.md`, `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md` (mirror)
+Description: Implements D-20 + DELTA L1. Pack-root canonical is the single
+  source of truth for the shared tracker section; client mirror is overwritten
+  by `init-project.sh`. The two top-level fragments diverge in non-tracker
+  sections per V3 §28.2.4. Check 24 (BD-082) verifies byte-identity.
+Resolved: n/a
+
+---
+
+**BD-077 — Per-CLI `pack-help` command/skill (Trinity-replicated × 2 surfaces)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-075
+Unblocks: None
+File/Symbol: `.claude/skills/pack-help/SKILL.md`, `.codex/skills/pack-help/SKILL.md`, `.gemini/commands/pack-help.toml` (pack-side); `project-template/.claude/skills/pack-help/SKILL.md` + 2 per-CLI mirrors (client-side)
+Description: Implements per-CLI namespaced `/pack-help` per D-20. All 6
+  files invoke the same `scripts/pack-help.sh` via shell injection per V3
+  §28.2.3 / §D.6 / §D.7. Trinity rule applies: all three per surface in
+  lockstep. Codex form per V3 §7.1.1 corrected format (.codex/skills/pack-help/SKILL.md, NOT .toml).
+Resolved: n/a
+
+---
+
+**BD-078 — validate-pack.py Check (`check_tracker_config`) (V1 §A.2)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-061
+Unblocks: None
+File/Symbol: `scripts/validate-pack.py`
+Description: First v11 validate-pack addition. Validates `tracker.toml`
+  schema if present; warns if mode tracker but mirror files have stale
+  `Last regenerated` timestamps relative to `tracker.toml.migration.last_forward_run`
+  (per V1 §A.2). Check number is pedagogical — verify next-free integer at
+  land-time per §6.C.
+Resolved: n/a
+
+---
+
+**BD-079 — validate-pack.py Check (recommendation-state schema)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-072
+Unblocks: None
+File/Symbol: `scripts/validate-pack.py`
+Description: If `.pack-tracker/recommendation-state.json` exists, validate
+  against the V3 §28.1.4 v1 schema. Soft-fail if missing (lazy-create is by
+  design). Catches state-file corruption before it causes runtime defaults.
+  Check number per §6.C audit at land-time.
+Resolved: n/a
+
+---
+
+**BD-080 — `init-project.sh` extensions for v11 artifacts**
+Type: TODO(version)
+Status: Open
+Blockers: BD-076, BD-077, BD-063
+Unblocks: None
+File/Symbol: `scripts/init-project.sh`, `scripts/lib/init-helpers.sh`
+Description: Single-source for client-side artifact installation. Installs
+  per-CLI `pack-help/` skills and `pack-help.toml`; installs `HELP-FRAGMENT.md`
+  and `HELP-FRAGMENT-TRACKER.md` (latter copied from pack-root canonical per
+  DELTA L1); installs `tracker.toml.example`; installs issue forms.
+  `--update` flag refreshes from pack-root canonical without destroying
+  customization (BD-088 contract).
+Resolved: n/a
+
+---
+
+**BD-081 — Trinity addenda: per-CLI command files at pack-root + client (P-help reference)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-077
+Unblocks: None
+File/Symbol: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` (pack-root); `project-template/CLAUDE.md`, `AGENTS.md`, `GEMINI.md` (client) — 6 files trinity-replicated × 2 surfaces
+Description: Implements V3 §A.2 trinity addendum. Adds one-line "Pack
+  commands" reference (`pack help` / `/pack-help`) AND one-line "Recommended
+  first action: run `pack-startup` (pack repo) or `pm-startup` (client repo)"
+  line. The second line makes §28.2.6 Layer 1's static greeting a documented
+  contract. All 6 files in lockstep.
+Resolved: n/a
+
+---
+
+**BD-082 — validate-pack.py Checks for help / per-CLI parity / byte-identity**
+Type: TODO(version)
+Status: Open
+Blockers: BD-076, BD-077, BD-080, BD-081
+Unblocks: None
+File/Symbol: `scripts/validate-pack.py`
+Description: Lands the four CI gates that prevent help-surface drift per V3
+  §28.2.5 + DELTA L1: (a) trinity per-CLI help-surface parity, (b)
+  help-fragment freshness against external doc verb references, (c)
+  help-fragment completeness against `scripts/` top-level executables, (d)
+  shared-fragment byte-identity (pack-root vs client-mirror). V3.3-introduced
+  Checks (phase-task coverage / cross-entity ref resolution / promotion-label
+  consistency / per-CLI parity for `auditor-issue-tracking.md`) ride a later
+  extension at step 24a per Addendum 4. Check numbers per §6.C / §6.O / §6.O.1
+  audit at land-time.
+Resolved: n/a
+
+---
+
+**BD-083 — Aggregate CI workflow update + test runner**
+Type: TODO(version)
+Status: Open
+Blockers: BD-060, BD-065, BD-068, BD-072, BD-070
+Unblocks: None
+File/Symbol: `.github/workflows/validate-pack.yml`
+Description: One workflow, one runner. Invokes the new test scripts:
+  `tracker-provider-test.sh`, `tracker-migrate-forward-test.sh`,
+  `tracker-migrate-roundtrip-test.sh`, `recommendation-test.sh`,
+  `tracker-errors-test.sh`. Stage-fence the live-network tests (skipped in
+  CI by default; recorded fixtures used). Each test independent.
+Resolved: n/a
+
+---
+
+**BD-084 — Create `supporting-docs/MIGRATION-v10-to-v11.md`**
+Type: TODO(version)
+Status: Open
+Blockers: BD-085, BD-088, BD-091
+Unblocks: None
+File/Symbol: `supporting-docs/MIGRATION-v10-to-v11.md`
+Description: Authoritative v10→v11 migration narrative. Two-phase: forced
+  v10→v11 changes (everyone runs) then optional tracker opt-in (per surface,
+  per user). Includes BD-059 lessons-learned section (customization
+  preservation contract); v9-or-earlier upgrade path paragraph (chained via
+  migrate-v9-to-v10.sh first); multi-project guidance (one sentence). Length
+  comparable to v9-to-v10 (~800 lines).
+Resolved: n/a
+
+---
+
+**BD-085 — `scripts/migrate-v10-to-v11.sh` (the migration script itself)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-088, BD-091, BD-080
+Unblocks: None
+File/Symbol: `scripts/migrate-v10-to-v11.sh`, `scripts/lib/migrate-v10-to-v11/`, `scripts/tests/test-migrate-v10-to-v11.sh`
+Description: One-shot migrator paralleling `migrate-v9-to-v10.sh`. Applies
+  Phase A only (tracker opt-in is post-migration via `pack tracker init`).
+  Applies trinity addenda; installs help fragments + per-CLI `pack-help`
+  surfaces; adds Source column to project-template trinity; performs BD-042
+  relocation; produces a truthful customization report (BD-059 fix). Tracker
+  opt-in is NOT part of this script. Extended by BD-095 with `--dry-run` /
+  `--apply` / `--resume` modes.
+Resolved: n/a
+
+---
+
+**BD-086 — README.md version table v11.0 row + Repository Layout updates**
+Type: TODO(version)
+Status: Open
+Blockers: BD-091, BD-076, BD-093
+Unblocks: None
+File/Symbol: `README.md`
+Description: Adds v11.0 row to the version table (newest-first per recent
+  v10.x convention); updates Repository Layout to include `HELP-FRAGMENT-PACK.md`,
+  `HELP-FRAGMENT-TRACKER.md`, `tracker.toml.example`, `.github/ISSUE_TEMPLATE/`,
+  per-CLI agent / skill / command directories; reflects post-relocation tree.
+  Lands as two-step (placeholder → final hash at BD-093).
+Resolved: n/a
+
+---
+
+**BD-087 — CHANGELOG.md v11.0 entry**
+Type: TODO(version)
+Status: Open
+Blockers: All other v11 BDs land first; BD-093
+Unblocks: None
+File/Symbol: `CHANGELOG.md`
+Description: Adds v11.0 entry covering Scope A (D-1..D-23 list, BDs landed)
+  and Scope B (BD-059 fix, BD-042 relocation, trinity addenda,
+  MIGRATION-v10-to-v11.md, dog-food validation, pack tracker reset).
+  Cites the 5 audit artifacts (3 CP reports + semantic audit + dog-food
+  report) as release evidence. Pack maintainer rule: CHANGELOG only at
+  version boundaries with explicit instruction.
+Resolved: n/a
+
+---
+
+**BD-088 — Customization-preservation algorithm + truthful report (BD-059 fix)**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: BD-042, BD-059 (resolves both)
+File/Symbol: `scripts/lib/customization-preserve.sh`, `scripts/lib/customization-report.sh`, `scripts/tests/test-customization-preserve.sh`
+Description: BD-059 fix as a v11-cut artifact. Per-file preservation rules
+  for trinity (3-way merge), `.claude/settings.json` (allowlist via
+  merge-json.py), `.codex/config.toml` (allowlist via merge-toml.py),
+  `.gemini/.env`, `.mcp.json.example`, PM-CHAT.md (marker-section + diff-
+  recognition), `scripts/`, `x-*` agents. Truthful customization report
+  listing every preserved/modified file. Same library used by `init-project.sh
+  --update` (BD-080) and `migrate-v10-to-v11.sh` (BD-085).
+Resolved: n/a
+
+---
+
+**BD-089 — validate-pack.py Check (customization-detection regression guard)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-088, BD-085
+Unblocks: None
+File/Symbol: `scripts/validate-pack.py`
+Description: Synthetic test that simulates `migrate-v10-to-v11.sh` against a
+  fixture v10 project with known customization shapes and asserts the
+  customization-preservation report names every preserved file. Closes the
+  verification gap from BD-059 success criterion. Runs in CI on every push.
+  Check name (`check_customization_detection_regression_guard`) is stable;
+  number per §6.C / §6.O.1 audit at land-time.
+Resolved: n/a
+
+---
+
+**BD-090 — QUICKSTART.md callout + cross-references**
+Type: TODO(version)
+Status: Open
+Blockers: BD-084
+Unblocks: None
+File/Symbol: `QUICKSTART.md`
+Description: Adds top-of-doc "Recommended first action: run `pack-startup`
+  (pack repo) or `pm-startup` (client repo) in your CLI" callout per V3
+  §A.2. Adds link to `MIGRATION-v10-to-v11.md` for upgraders. References
+  HELP-FRAGMENT and `pack help` for verb discovery. References
+  `OPTIONAL-FEATURES.md` for tracker opt-in walkthrough. Maintains existing
+  path-router shape.
+Resolved: n/a
+
+---
+
+**BD-091 — BD-042 doc relocation (Phase 1: relocate)**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: BD-042 (resolves)
+File/Symbol: `project-template/METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` → `project-template/docs/pack/`
+Description: Per BD-042 (open since v9). Relocates pack reference docs from
+  `project-template/` root to `project-template/docs/pack/`. Per §6.D
+  audit at land-time: README v9.2 entry suggests this work was partially
+  shipped; this BD ships the complete relocation across any remaining root-
+  level reference docs. `git mv` preserves history.
+Resolved: n/a
+
+---
+
+**BD-092 — Cross-reference sweep for relocated docs + v11 verbs**
+Type: TODO(version)
+Status: Open
+Blockers: BD-091, BD-076, BD-073
+Unblocks: None
+File/Symbol: `project-template/docs/pack/*.md`, trinity files, prompts, supporting-docs/SETUP-*.md, INSTALL-PROCEDURES.md, MIGRATION-v10-to-v11.md, OPTIONAL-FEATURES.md, PACK-CHAT.md, PACK-AGENTS.md
+Description: One sweep BD that updates every cross-reference impacted by
+  (a) BD-091 / BD-042 relocation, and (b) v11 verb additions. Touches many
+  files but each diff is small. Adds tracker section to OPTIONAL-FEATURES.md
+  (elevated by BD-098). Adds Recommendation routing section to PACK-CHAT.md /
+  PM-CHAT.md.
+Resolved: n/a
+
+---
+
+**BD-093 — v11.0 release pin (tag, README, CHANGELOG, MIGRATION cross-link)**
+Type: TODO(version)
+Status: Open
+Blockers: All BDs above (BD-060..BD-092) plus all addenda BDs
+Unblocks: None
+File/Symbol: `README.md`, `CHANGELOG.md`, git tags
+Description: The release-cut commit. Pack maintainer rule: tag operations
+  only after Pack Chat approval. Delete `v11` if present; recreate `v11.0`
+  and `v11`; push. validate-pack must pass on the tagged commit;
+  MIGRATION-v10-to-v11.md references reflect as-shipped state.
+Resolved: n/a
+
+---
+
+**BD-094 — `MERGE-STRATEGY.md` deliverable (per-file matrix + A1 UX)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-088, BD-095, BD-085
+Unblocks: None
+File/Symbol: `supporting-docs/MERGE-STRATEGY.md`, cross-links from `MIGRATION-v10-to-v11.md`, `OPTIONAL-FEATURES.md`, `QUICKSTART.md`
+Description: Surfaces the per-file customization-preservation matrix as a
+  user-readable deliverable (rules buried in BD-088 code). For every file
+  class the migrator touches: primary strategy (3-way merge / allowlist-merge
+  / marker-section / diff-recognition / unconditional-preserve) + A1 fallback
+  (stop on unresolvable conflict; emit `*.merge-conflict`; user resolves and
+  runs `--resume`). Includes IMPLEMENTATION-PLAN.md row (BD-106 extension).
+Resolved: n/a
+
+---
+
+**BD-095 — `migrate-v10-to-v11.sh` two-phase `--dry-run` / `--apply` / `--resume` workflow**
+Type: TODO(version)
+Status: Open
+Blockers: BD-085, BD-088, BD-094
+Unblocks: None
+File/Symbol: `scripts/migrate-v10-to-v11.sh`, `scripts/lib/migrate-v10-to-v11/dry-run.sh`, `apply.sh`, `resume.sh`, `scripts/tests/test-migrate-v10-to-v11-dry-run.sh`
+Description: Splits the migrator into the standard two-phase workflow.
+  `--dry-run` produces report; `--apply` requires fresh dry-run report
+  matching working-tree fingerprint (24h freshness window per §6.G);
+  `--resume` continues from `*.merge-conflict` resolution per A1 UX.
+  `--resume` is forward-only; accept both `.resolved` flag-file and
+  extension removal (§6.H).
+Resolved: n/a
+
+---
+
+**BD-096 — Synthetic-fixture set (general-use coverage; OT is one example)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-088, BD-085
+Unblocks: None
+File/Symbol: `scripts/tests/fixtures/customization-preserve/lightly-customized-minimal/`, `heavily-customized/`, `language-heterogeneous/`, `custom-agents-heavy/`, `v10-with-customization/`
+Description: 4 new synthetic fixtures + the OT-modeled fixture from BD-088
+  (now one of five). Proves migrator handles distinct customization shapes;
+  OT becomes one example among several (general-use). README explains each
+  fixture; all 5 pass `test-customization-preserve.sh` end-to-end. Phase-task
+  fixtures added by BD-106 extension.
+Resolved: n/a
+
+---
+
+**BD-097 — Pre-release semantic audit pass**
+Type: TODO(version)
+Status: Open
+Blockers: All Scope-A and Scope-B BDs except BD-086, BD-087, BD-093
+Unblocks: BD-093
+File/Symbol: `maintenance-docs/v11-implementation/SEMANTIC-AUDIT-REPORT.md`, `SEMANTIC-AUDIT-PROMPT.md`
+Description: Agent-driven semantic audit before release pin. Catches
+  semantic drift validate-pack can't catch (HELP-FRAGMENT entries that
+  describe wrong verb behavior; MIGRATION doc that disagrees with code;
+  etc.). Pass = zero blockers + every warning dispositioned. Per §6.I
+  resolution: ad-hoc Claude Code session for v11.0; revisit dedicated agent
+  in v11.1+.
+Resolved: n/a
+
+---
+
+**BD-098 — `OPTIONAL-FEATURES.md` tracker walkthrough (elevated user-doc home)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-092, BD-073, BD-066
+Unblocks: None
+File/Symbol: `OPTIONAL-FEATURES.md`, plus cross-links from QUICKSTART.md, MIGRATION-v10-to-v11.md, DEPENDENCIES.md, PACK-CHAT.md, PM-CHAT.md
+Description: Elevates GH Issue tracker enablement to OPTIONAL-FEATURES.md
+  as primary user-doc home (matching existing Agent Teams template shape).
+  Status / What it is / When this matters / How to enable (`pack tracker
+  init` walkthrough) / How the pack's pieces work with it / Caveats / When
+  to skip / How to disable / Failure modes (cross-link to MERGE-STRATEGY).
+  3-level recovery (BD-103) lands here too.
+Resolved: n/a
+
+---
+
+**BD-099 — `DEPENDENCIES.md` `gh` optional-dep pointer**
+Type: TODO(version)
+Status: Open
+Blockers: BD-098
+Unblocks: None
+File/Symbol: `supporting-docs/DEPENDENCIES.md`
+Description: Adds `gh` CLI entry under new `## CLI tools (optional, per-feature)`
+  section. Includes `gh-sub-issue` extension entry. Cross-link to
+  OPTIONAL-FEATURES.md § GitHub Issue Tracker. Quick Reference table row
+  added: `gh CLI | Tracker opt-in (optional) | brew install gh`.
+Resolved: n/a
+
+---
+
+**BD-100 — Pack-implementation milestone checkpoints (3 strategic audits during v11)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-068 (CP1), BD-082 (CP2), BD-085 (CP3)
+Unblocks: BD-093
+File/Symbol: `maintenance-docs/v11-implementation/CHECKPOINT-{1,2,3}-REPORT.md`, `CHECKPOINT-PROMPT-TEMPLATE.md`
+Description: 3 strategic agent-driven audit passes during v11 implementation.
+  CP1 (Scope-A backbone after BD-068): tracker provider + forward + reverse
+  + round-trip work. CP2 (Scope-A surfaces after BD-082): help system +
+  recommendation system wired. CP3 (Scope-B integrated after BD-085):
+  migration script + customization-preserve + MERGE-STRATEGY produce
+  truthful reports against multiple fixtures. Each CP has explicit
+  pass/fail criteria. Extended by BD-110 to invoke `pack-auditor`.
+Resolved: n/a
+
+---
+
+**BD-101 — Client-migration validation gates (3 in-script gates with pass/fail)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-085, BD-095, BD-088, BD-091, BD-094, BD-066
+Unblocks: None
+File/Symbol: `scripts/lib/migrate-v10-to-v11/gate-{1,2,3}-*.sh`, `checkpoint.sh`, `scripts/tests/test-migrate-v10-to-v11-gates.sh`
+Description: 3 gates inside `migrate-v10-to-v11.sh` with explicit pass/fail.
+  Gate 1: pre-migration dry-run (read-only; user reviews and approves).
+  Gate 2: post-Phase-A (trinity addenda; HELP-FRAGMENT files; Source column;
+  relocated docs; validate-pack). Gate 3: post-Phase-B (only if user opted
+  into tracker; mapping integrity; mirror freshness; `pack tracker doctor`
+  green). Failures route through A1 UX (`*.merge-conflict` files;
+  `restore-from-backup.sh` if needed).
+Resolved: n/a
+
+---
+
+**BD-102 — Pack-repo dog-food migration (final v11 validation)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-101, BD-097, BD-100, BD-067, BD-066, BD-085, BD-084
+Unblocks: BD-093
+File/Symbol: `maintenance-docs/v11-implementation/DOG-FOOD-MIGRATION-REPORT.md`, `scripts/tests/dog-food-checkpoint.sh`
+Description: Pack-Chat-direct workflow: maintainer runs `migrate-v10-to-v11.sh`
+  + `pack tracker init` against the pack's own real BACKLOG. Final pre-release
+  validation. Procedure: pre-checkpoint → dry-run → apply → tracker init →
+  doctor → disable → reverse-round-trip diff → author report → ship decision.
+  Per §6.J ship decision: pack ships v11.0 in flat-file mode (reverse before
+  release pin). Highest-confidence validation; predicts client migration.
+Resolved: n/a
+
+---
+
+**BD-103 — `pack tracker reset` verb + 3-level recovery documentation**
+Type: TODO(version)
+Status: Open
+Blockers: BD-066, BD-067, BD-070, BD-076, BD-084, BD-098
+Unblocks: None
+File/Symbol: `scripts/pack-tracker.sh`, `scripts/lib/pack-tracker/reset.sh`, `scripts/tests/test-tracker-reset.sh`, plus prose in MIGRATION-v10-to-v11.md, OPTIONAL-FEATURES.md, HELP-FRAGMENT files, PACK-CHAT.md, PM-CHAT.md
+Description: Friction-by-design bulk-delete for pack-marked GH issues.
+  Confirm flag per §6.K: `--confirm-i-have-admin-and-want-to-delete-all-pack-issues`.
+  Admin permission check; marker-scoped delete (only `<!-- pack-id: -->`
+  matches; user-created issues safe); 100ms throttle. 3-level recovery
+  documented in OPTIONAL-FEATURES.md "Failure modes": soft (reverse + fix
+  + re-forward), hard (reset + re-forward), nuclear (restore-from-backup).
+Resolved: n/a
+
+---
+
+**BD-104 — Cross-pack rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md`**
+Type: TODO(version)
+Status: Open
+Blockers: BD-085, BD-091, BD-076, BD-070
+Unblocks: None
+File/Symbol: project-template trinity, prompts, PM-CHAT.md, pm-startup SKILL.md, supporting-docs/METHODOLOGY.md and SETUP-*.md, BACKLOG.md, maintenance-docs/TOOL-COMPARISON.md (40+ specific line-numbered references); migrator `git mv` step
+Description: Forced v10→v11 client change. Naming consistency: hyphenated
+  all-caps convention. Pack-side string sweep + client-side `git mv`
+  (history-preserving) in migrate-v10-to-v11.sh Phase A. Historical files
+  (MIGRATION-v9-to-v10.md, MIGRATION-v8-to-v9.md, CHANGELOG v10 entry)
+  explicitly allowlisted. Collision case surfaces typed error
+  `migration-rename-collision`.
+Resolved: n/a
+
+---
+
+**BD-105 — STATUS.md phase-row dual-link rendering (tracker mode)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-065, BD-067, BD-068, BD-066, BD-084
+Unblocks: None
+File/Symbol: `scripts/lib/tracker-migrate-forward.sh`, `tracker-migrate-reverse.sh`, `scripts/lib/pack-tracker/doctor.sh`, `scripts/tests/tracker-migrate-roundtrip-test.sh`, MIGRATION-v10-to-v11.md
+Description: When tracker mode is active, STATUS.md phase-row titles render
+  in Option A middle-dot inline format: `[Phase Title](IMPLEMENTATION-PLAN.md#anchor)
+  · [#N](issue-URL)`. Reverse strips ` · [#N](URL)` to restore single-link
+  form. 4 edge cases dispositioned (orphan / multi-epic / direct edits /
+  closed). Bidirectionality contract honored: dual-link is tracker-only
+  enrichment.
+Resolved: n/a
+
+---
+
+**BD-106 — Phase task entity model + identifier scheme + parser/emitter**
+Type: TODO(version)
+Status: Open
+Blockers: BD-063, BD-064, BD-065, BD-067
+Unblocks: BD-107, BD-108
+File/Symbol: `scripts/lib/pack-tracker/phase-task-parser.py`, `phase-task-emitter.py`, `sidecar-schema.py` (extend), `labels.py` (extend), `id-map.py` (extend), `scripts/tests/test-phase-task-parser.sh`
+Description: Phase task as first-class L2 entity per V3.3 D-21. Identifier
+  `phase-N.M` (lowercase, dash-separated; M is integer task number from .md).
+  Parser reads `### Tasks` blocks under `## Phase N` headings; emitter
+  reverses. Sidecar gains `phase_tasks` block + per-task `dependency_edges`
+  with `annotation` sub-field per §6.R. Label family: `derived-from:` and
+  `promoted-to:` only (NOT `folded-into:` per Path-3 forbidden).
+Resolved: n/a
+
+---
+
+**BD-107 — TD-NNN promotion-path tooling (Path 1 + Path 2 + direct close)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-106, BD-108
+Unblocks: None
+File/Symbol: `scripts/lib/pack-tracker/promote.sh`, `promote.py`, `project-template/docs/pack/PM-CHAT.md`, `METHODOLOGY.md` § Part 7 lines 1057-1064, `project-template/HELP-FRAGMENT.md`, 3 test scripts
+Description: PM Chat orchestration for `pack td promote --to=phase-N`
+  (Path 1; new phase epic) and `pack td promote --to=phase-N.M` (Path 2;
+  new phase task); direct close uses v10 lifecycle unchanged. Path 3
+  forbidden. PM Chat invokes architect by default for Path 1 (per §6.P
+  resolution); planner conditional on architect's call. Path 2 typically
+  goes direct. PM Chat advises threshold per V3.3 §7.1; user can override.
+Resolved: n/a
+
+---
+
+**BD-108 — Cross-entity dependency link orchestration + cycle check + gate-check extension**
+Type: TODO(version)
+Status: Open
+Blockers: BD-106, BD-070
+Unblocks: None
+File/Symbol: `scripts/lib/pack-tracker/links.py`, `cycle-check.py`, `dependencies-bullet-parser.py`, `blockers-grammar.py` (extend), `METHODOLOGY.md` § Part 4 line 263 + § Part 7 lines 990-993 + 1025-1029, 2 test scripts
+Description: Uniform cross-entity dependency model across 6 entity-pair
+  types (TD↔phase epic, TD↔phase task, phase task↔phase task same/cross-phase,
+  TD↔TD, TD↔BD). Uses V1 §5.3 reserved `link.kind` open-string family; no
+  new provider operation. Cycle check at link-creation time (K=10 default
+  per §6.Q; configurable via `tracker.toml [graph] cycle_check_k`). Flat-file
+  Blockers grammar gains `phase-N.M` (additive); Dependencies bullet grammar
+  codified.
+Resolved: n/a
+
+---
+
+**BD-109 — Project-side `auditor-issue-tracking` sub-agent**
+Type: TODO(version)
+Status: Open
+Blockers: None on critical path; recommended sequencing pairs with BD-082 ext (Check 28) at step 23a/23b
+Unblocks: None
+File/Symbol: `project-template/.claude/agents/auditor-issue-tracking.md`, `.codex/agents/auditor-issue-tracking.toml`, `.gemini/agents/auditor-issue-tracking.md`, `auditor.md` parent extension × 3 CLIs, `audit-methodology/SKILL.md` × 3 CLIs, `scripts/tests/test-auditor-issue-tracking.sh`
+Description: New 8th cluster under existing `auditor` parent fan-out per
+  V3.3 D-23. Audits issue-tracking-surface health: dependency-graph
+  integrity, syntax conformance, semantic consistency, drift detection.
+  Read-only. Trinity-replicated × 3 CLIs in one commit (Check 28 enforces).
+  Skip rule: brand-new project (no BACKLOG.md and no IMPLEMENTATION-PLAN.md)
+  skips this cluster.
+Resolved: n/a
+
+---
+
+**BD-110 — Pack-side `pack-auditor` agent**
+Type: TODO(version)
+Status: Open
+Blockers: BD-074
+Unblocks: None
+File/Symbol: `.claude/agents/pack-auditor.md`, `.codex/agents/pack-auditor.toml`, `.gemini/agents/pack-auditor.md` (per-CLI per §6.M), `PACK-CHAT.md` Audit cadence section, `BD-100` CP-prompt extensions, `scripts/tests/test-pack-auditor.sh`
+Description: New pack-side ongoing-state-audit agent peer to `pack-reviewer`
+  per V3.3 D-23. Distinct role: review = pre-commit change-scoped;
+  pack-auditor = ongoing-state surface-scoped (BACKLOG dependency graph,
+  BD entry semantic consistency, drift over time, pack-product/pack-ops
+  separation, version-table consistency, tracker-mode health). Per-CLI
+  replicated to match existing pack-side layout per §6.M (a). Loads
+  `audit-methodology` always; `architecture-review` conditionally for
+  layer-discipline findings. Skill provenance via §6.N audit at land-time
+  (BD-074 vs BD-110).
+Resolved: n/a
+
+---
+
 ## Active — v10 Scope
 
 **BD-059 — v10 migration silently destroys project customization**
