@@ -35,17 +35,28 @@
 #     JSON to stdout per V1 §2.2 / §2.3. list/search return
 #     {items: [...], next_cursor: <string|null>} per V1 §2.6.
 #   - Write ops emit a small JSON status object on success.
-#   - All errors emit two lines to stderr via _tracker_provider_emit_error:
+#   - All errors emit a typed-code block to stderr via tracker_error_emit
+#     (scripts/lib/tracker-errors.sh, sourced at load time):
 #       ERROR: <typed-code>
 #       MESSAGE: <backend-specific-message>
+#       <optional context lines per V1 §9>
+#       → Run: <next-step verb per V3 §27.1>
 #     and return non-zero. Typed codes per V1 §2.5.
-#   - BD-070 will replace _tracker_provider_emit_error with a richer
-#     scripts/lib/tracker-errors.sh helper. Until then, the inline
-#     stub here is the only error surface.
 #
 # Reference: maintenance-docs/v11-research/ARCHITECTURE.md §2.
 #
 # Do NOT add a shebang — this file is sourced, not executed.
+
+# Source the typed-error formatter (BD-070). Idempotent: tracker-
+# errors.sh has no top-level side effects beyond function definitions,
+# so re-sourcing in callers that already loaded it is harmless.
+# shellcheck disable=SC1091
+if ! declare -f tracker_error_emit >/dev/null 2>&1; then
+    _tep_self="${BASH_SOURCE[0]}"
+    _tep_dir="$(cd "$(dirname "$_tep_self")" && pwd)"
+    source "$_tep_dir/tracker-errors.sh"
+    unset _tep_self _tep_dir
+fi
 
 # ─────────────────────────────────────────────────────────────────
 # Backend selection
@@ -77,19 +88,6 @@ _tracker_provider_backend() {
     echo "github"
 }
 
-# Inline typed-error helper. Emits two stderr lines:
-#   ERROR: <code>
-#   MESSAGE: <message>
-# BD-070 generalizes this into scripts/lib/tracker-errors.sh.
-_tracker_provider_emit_error() {
-    local code="$1"
-    local message="${2:-}"
-    echo "ERROR: $code" >&2
-    if [[ -n "$message" ]]; then
-        echo "MESSAGE: $message" >&2
-    fi
-}
-
 # Internal dispatcher: call tracker_provider_<backend>_<op> with all
 # remaining args. Emits "validation" typed error on unknown backend
 # and returns non-zero.
@@ -114,7 +112,7 @@ _tracker_provider_dispatch() {
             tracker_provider_stub_"$op" "$@"
             ;;
         *)
-            _tracker_provider_emit_error "validation" "Unknown backend: $backend"
+            tracker_error_emit "validation" "Unknown backend: $backend"
             return 1
             ;;
     esac

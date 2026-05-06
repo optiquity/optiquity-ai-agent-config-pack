@@ -36,11 +36,20 @@
 # the key instead, and the example files we ship use commented-out
 # placeholders. If schema grows to need real TOML, swap to tomllib.
 #
-# BD-070 will replace the inline _tracker_config_emit_error stub with
-# scripts/lib/tracker-errors.sh; same shape as tracker-provider.sh's
-# stub, intentional for the unification.
+# Errors emitted via tracker_error_emit (scripts/lib/tracker-errors.sh,
+# sourced at load time; BD-070).
 #
 # Do NOT add a shebang — this file is sourced, not executed.
+
+# Source the typed-error formatter. Idempotent: tracker-errors.sh has
+# no top-level side effects beyond function definitions.
+# shellcheck disable=SC1091
+if ! declare -f tracker_error_emit >/dev/null 2>&1; then
+    _tcfg_self="${BASH_SOURCE[0]}"
+    _tcfg_dir="$(cd "$(dirname "$_tcfg_self")" && pwd)"
+    source "$_tcfg_dir/tracker-errors.sh"
+    unset _tcfg_self _tcfg_dir
+fi
 
 # Currently supported schema version. Bumped only on incompatible
 # tracker.toml schema changes; minor additive changes do not bump.
@@ -57,14 +66,14 @@ tracker_config_resolve_path() {
     local surface="$1"
     local root="$2"
     if [[ -z "$surface" || -z "$root" ]]; then
-        _tracker_config_emit_error "validation" "resolve_path: surface and root required"
+        tracker_error_emit "validation" "resolve_path: surface and root required"
         return 1
     fi
     case "$surface" in
         pack)   echo "$root/tracker.toml" ;;
         client) echo "$root/docs/pack/tracker.toml" ;;
         *)
-            _tracker_config_emit_error "validation" "resolve_path: unknown surface '$surface' (expected pack|client)"
+            tracker_error_emit "validation" "resolve_path: unknown surface '$surface' (expected pack|client)"
             return 1
             ;;
     esac
@@ -79,11 +88,11 @@ tracker_config_resolve_path() {
 tracker_config_read() {
     local path="$1"
     if [[ -z "$path" ]]; then
-        _tracker_config_emit_error "validation" "read: path required"
+        tracker_error_emit "validation" "read: path required"
         return 1
     fi
     if [[ ! -f "$path" ]]; then
-        _tracker_config_emit_error "not-found" "tracker.toml not present at $path"
+        tracker_error_emit "not-found" "tracker.toml not present at $path"
         return 1
     fi
     python3 - "$path" <<'PYEOF'
@@ -146,7 +155,7 @@ tracker_config_get() {
     local path="$1"
     local key="$2"
     if [[ -z "$path" || -z "$key" ]]; then
-        _tracker_config_emit_error "validation" "get: path and key required"
+        tracker_error_emit "validation" "get: path and key required"
         return 1
     fi
     local data
@@ -212,26 +221,16 @@ tracker_schema_version_check() {
     data=$(tracker_config_read "$path") || return 1
     ver=$(printf '%s' "$data" | jq -r '.schema_version // empty')
     if [[ -z "$ver" ]]; then
-        _tracker_config_emit_error "validation" "tracker.toml: missing required key 'schema_version'"
+        tracker_error_emit "validation" "tracker.toml: missing required key 'schema_version'"
         return 1
     fi
     if [[ "$ver" != "$TRACKER_CONFIG_SCHEMA_VERSION" ]]; then
-        _tracker_config_emit_error "validation" \
+        tracker_error_emit "validation" \
             "tracker.toml: schema_version=$ver (this build supports $TRACKER_CONFIG_SCHEMA_VERSION)"
         return 1
     fi
     return 0
 }
 
-# ─────────────────────────────────────────────────────────────────
-# Inline typed-error helper (BD-070 unifies with tracker-provider.sh)
-# ─────────────────────────────────────────────────────────────────
-
-_tracker_config_emit_error() {
-    local code="$1"
-    local message="${2:-}"
-    echo "ERROR: $code" >&2
-    if [[ -n "$message" ]]; then
-        echo "MESSAGE: $message" >&2
-    fi
-}
+# tracker_error_emit() is provided by scripts/lib/tracker-errors.sh,
+# sourced at the top of this file (BD-070).

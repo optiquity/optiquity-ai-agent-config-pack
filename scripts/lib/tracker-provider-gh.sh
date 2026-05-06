@@ -11,7 +11,7 @@
 #   - Emits canonical Issue JSON (V1 §2.2) to stdout for read ops or
 #     a small status JSON for write ops.
 #   - On error, emits typed code + message to stderr via
-#     _tracker_provider_emit_error and returns 1.
+#     tracker_error_emit and returns 1.
 #
 # Helpers are private (prefix _gh_) and not part of the public API.
 #
@@ -52,34 +52,34 @@ _gh_classify_error() {
     content=$(cat "$stderr_file" 2>/dev/null)
     case "$content" in
         *"could not resolve to a Resource"*|*"Not Found"*|*"HTTP 404"*|*"404 Not Found"*)
-            _tracker_provider_emit_error "not-found" "$content"
+            tracker_error_emit "not-found" "$content"
             ;;
         *"secondary rate limit"*|*"abuse detection"*|*"abuse rate limit"*)
-            _tracker_provider_emit_error "rate-limit-secondary" "$content"
+            tracker_error_emit "rate-limit-secondary" "$content"
             ;;
         *"API rate limit exceeded"*|*"rate limit"*|*"X-RateLimit-Remaining: 0"*)
-            _tracker_provider_emit_error "rate-limit-primary" "$content"
+            tracker_error_emit "rate-limit-primary" "$content"
             ;;
         *"authentication required"*|*"not logged in"*|*"gh auth login"*|*"no authentication token"*)
-            _tracker_provider_emit_error "auth-missing" "$content"
+            tracker_error_emit "auth-missing" "$content"
             ;;
         *"HTTP 401"*|*"Bad credentials"*|*"token has expired"*|*"401 Unauthorized"*)
-            _tracker_provider_emit_error "auth-expired" "$content"
+            tracker_error_emit "auth-expired" "$content"
             ;;
         *"HTTP 403"*|*"insufficient_scope"*|*"requires the"*"scope"*|*"forbidden"*|*"Forbidden"*)
-            _tracker_provider_emit_error "auth-insufficient-scope" "$content"
+            tracker_error_emit "auth-insufficient-scope" "$content"
             ;;
         *"could not resolve host"*|*"connection refused"*|*"connection reset"*|*"timeout"*|*"TLS handshake"*|*"network is unreachable"*)
-            _tracker_provider_emit_error "network-unreachable" "$content"
+            tracker_error_emit "network-unreachable" "$content"
             ;;
         *"HTTP 422"*|*"unprocessable"*|*"Validation Failed"*|*"422 Unprocessable"*)
-            _tracker_provider_emit_error "validation" "$content"
+            tracker_error_emit "validation" "$content"
             ;;
         *"undefined field"*|*"type mismatch"*|*"unknown field"*|*"Schema is not configured"*)
-            _tracker_provider_emit_error "schema-reshape" "$content"
+            tracker_error_emit "schema-reshape" "$content"
             ;;
         *)
-            _tracker_provider_emit_error "validation" "$content"
+            tracker_error_emit "validation" "$content"
             ;;
     esac
 }
@@ -206,7 +206,7 @@ print(json.dumps({"items": out, "next_cursor": None}))
 tracker_provider_gh_get() {
     local id="$1"
     if [[ -z "$id" ]]; then
-        _tracker_provider_emit_error "validation" "get: id required"
+        tracker_error_emit "validation" "get: id required"
         return 1
     fi
     local output
@@ -219,7 +219,7 @@ tracker_provider_gh_search() {
     local query="$1"
     local limit="${2:-30}"
     if [[ -z "$query" ]]; then
-        _tracker_provider_emit_error "validation" "search: query required"
+        tracker_error_emit "validation" "search: query required"
         return 1
     fi
     local output
@@ -260,7 +260,7 @@ tracker_provider_gh_create() {
     milestone=$(printf '%s' "$payload" | jq -r '.milestone // empty')
 
     if [[ -z "$title" ]]; then
-        _tracker_provider_emit_error "validation" "create: title required"
+        tracker_error_emit "validation" "create: title required"
         return 1
     fi
 
@@ -294,7 +294,7 @@ tracker_provider_gh_update() {
     local id="$1"
     local patch="${2:-{\}}"
     if [[ -z "$id" ]]; then
-        _tracker_provider_emit_error "validation" "update: id required"
+        tracker_error_emit "validation" "update: id required"
         return 1
     fi
 
@@ -334,13 +334,13 @@ tracker_provider_gh_close() {
     local id="$1"
     local reason="${2:-completed}"
     if [[ -z "$id" ]]; then
-        _tracker_provider_emit_error "validation" "close: id required"
+        tracker_error_emit "validation" "close: id required"
         return 1
     fi
     case "$reason" in
         completed|not_planned|duplicate) ;;
         *)
-            _tracker_provider_emit_error "validation" "close: invalid reason '$reason'"
+            tracker_error_emit "validation" "close: invalid reason '$reason'"
             return 1
             ;;
     esac
@@ -352,7 +352,7 @@ tracker_provider_gh_close() {
 tracker_provider_gh_reopen() {
     local id="$1"
     if [[ -z "$id" ]]; then
-        _tracker_provider_emit_error "validation" "reopen: id required"
+        tracker_error_emit "validation" "reopen: id required"
         return 1
     fi
     _gh_run gh issue reopen "$id" >/dev/null || return 1
@@ -365,11 +365,11 @@ tracker_provider_gh_comment() {
     local id="$1"
     local body="$2"
     if [[ -z "$id" ]]; then
-        _tracker_provider_emit_error "validation" "comment: id required"
+        tracker_error_emit "validation" "comment: id required"
         return 1
     fi
     if [[ -z "$body" ]]; then
-        _tracker_provider_emit_error "validation" "comment: body required"
+        tracker_error_emit "validation" "comment: body required"
         return 1
     fi
     local body_file
@@ -390,7 +390,7 @@ tracker_provider_gh_set_labels() {
     local id="$1"
     local labels="${2:-[]}"
     if [[ -z "$id" ]]; then
-        _tracker_provider_emit_error "validation" "set_labels: id required"
+        tracker_error_emit "validation" "set_labels: id required"
         return 1
     fi
     local current to_remove new_labels
@@ -416,7 +416,7 @@ tracker_provider_gh_set_assignee() {
     local id="$1"
     local assignees="${2:-[]}"
     if [[ -z "$id" ]]; then
-        _tracker_provider_emit_error "validation" "set_assignee: id required"
+        tracker_error_emit "validation" "set_assignee: id required"
         return 1
     fi
     local current to_remove new_assignees
@@ -442,7 +442,7 @@ tracker_provider_gh_set_milestone() {
     local id="$1"
     local milestone="${2:-}"
     if [[ -z "$id" ]]; then
-        _tracker_provider_emit_error "validation" "set_milestone: id required"
+        tracker_error_emit "validation" "set_milestone: id required"
         return 1
     fi
     if [[ -z "$milestone" ]]; then
@@ -472,7 +472,7 @@ tracker_provider_gh_link() {
     local other_id="$2"
     local kind="$3"
     if [[ -z "$id" || -z "$other_id" || -z "$kind" ]]; then
-        _tracker_provider_emit_error "validation" "link: id, other_id, kind required"
+        tracker_error_emit "validation" "link: id, other_id, kind required"
         return 1
     fi
     case "$kind" in
@@ -493,7 +493,7 @@ tracker_provider_gh_link() {
             tracker_provider_gh_sub_issue_create "$id" "{\"existing_id\": \"$other_id\"}" >/dev/null || return 1
             ;;
         *)
-            _tracker_provider_emit_error "validation" "link: unknown kind '$kind'"
+            tracker_error_emit "validation" "link: unknown kind '$kind'"
             return 1
             ;;
     esac
@@ -509,7 +509,7 @@ tracker_provider_gh_unlink() {
     local other_id="$2"
     local kind="$3"
     if [[ -z "$id" || -z "$other_id" || -z "$kind" ]]; then
-        _tracker_provider_emit_error "validation" "unlink: id, other_id, kind required"
+        tracker_error_emit "validation" "unlink: id, other_id, kind required"
         return 1
     fi
     case "$kind" in
@@ -520,12 +520,12 @@ tracker_provider_gh_unlink() {
             tracker_provider_gh_sub_issue_unlink "$id" "$other_id" >/dev/null || return 1
             ;;
         blocks|blocked-by|related|duplicates)
-            _tracker_provider_emit_error "validation" \
+            tracker_error_emit "validation" \
                 "unlink: kind '$kind' is comment-based; remove the comment manually or via raw()"
             return 1
             ;;
         *)
-            _tracker_provider_emit_error "validation" "unlink: unknown kind '$kind'"
+            tracker_error_emit "validation" "unlink: unknown kind '$kind'"
             return 1
             ;;
     esac
@@ -544,7 +544,7 @@ tracker_provider_gh_sub_issue_create() {
     local parent_id="$1"
     local payload="${2:-{\}}"
     if [[ -z "$parent_id" ]]; then
-        _tracker_provider_emit_error "validation" "sub_issue_create: parent_id required"
+        tracker_error_emit "validation" "sub_issue_create: parent_id required"
         return 1
     fi
 
@@ -575,7 +575,7 @@ tracker_provider_gh_sub_issue_create() {
 tracker_provider_gh_sub_issue_list() {
     local parent_id="$1"
     if [[ -z "$parent_id" ]]; then
-        _tracker_provider_emit_error "validation" "sub_issue_list: parent_id required"
+        tracker_error_emit "validation" "sub_issue_list: parent_id required"
         return 1
     fi
     if _gh_has_sub_issue_extension; then
@@ -595,7 +595,7 @@ tracker_provider_gh_sub_issue_unlink() {
     local parent_id="$1"
     local child_id="$2"
     if [[ -z "$parent_id" || -z "$child_id" ]]; then
-        _tracker_provider_emit_error "validation" "sub_issue_unlink: parent_id, child_id required"
+        tracker_error_emit "validation" "sub_issue_unlink: parent_id, child_id required"
         return 1
     fi
     if _gh_has_sub_issue_extension; then
@@ -677,12 +677,12 @@ tracker_provider_gh_raw() {
     local path="$2"
     local body="${3:-}"
     if [[ -z "$method" || -z "$path" ]]; then
-        _tracker_provider_emit_error "validation" "raw: method and path required"
+        tracker_error_emit "validation" "raw: method and path required"
         return 1
     fi
     if [[ "$path" == "graphql" ]]; then
         if [[ -z "$body" ]]; then
-            _tracker_provider_emit_error "validation" "raw: graphql requires body (the query)"
+            tracker_error_emit "validation" "raw: graphql requires body (the query)"
             return 1
         fi
         _gh_run gh api graphql -f "query=$body" || return 1
