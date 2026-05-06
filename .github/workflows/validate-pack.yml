@@ -33,5 +33,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install dependencies
+        run: pip install pyyaml
       - name: Run pack validation
         run: python3 scripts/validate-pack.py
