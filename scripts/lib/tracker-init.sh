@@ -31,18 +31,19 @@
 
 tracker_init_run() {
     local repo_root="" backend="" repo="" id_prefix="" surface=""
-    local no_forward=0 dry_run=0 no_labels=0
+    local no_forward=0 dry_run=0 no_labels=0 no_interactive=0
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --repo-root)   repo_root="$2";  shift 2 ;;
-            --backend)     backend="$2";    shift 2 ;;
-            --repo)        repo="$2";       shift 2 ;;
-            --id-prefix)   id_prefix="$2";  shift 2 ;;
-            --surface)     surface="$2";    shift 2 ;;
-            --no-forward)  no_forward=1;    shift ;;
-            --no-labels)   no_labels=1;     shift ;;
-            --dry-run)     dry_run=1;       shift ;;
+            --repo-root)       repo_root="$2";  shift 2 ;;
+            --backend)         backend="$2";    shift 2 ;;
+            --repo)            repo="$2";       shift 2 ;;
+            --id-prefix)       id_prefix="$2";  shift 2 ;;
+            --surface)         surface="$2";    shift 2 ;;
+            --no-forward)      no_forward=1;    shift ;;
+            --no-labels)       no_labels=1;     shift ;;
+            --dry-run)         dry_run=1;       shift ;;
+            --no-interactive)  no_interactive=1; shift ;;
             -h|--help)
                 _tracker_init_usage
                 return 0
@@ -60,6 +61,20 @@ tracker_init_run() {
         return 1
     fi
 
+    # Decide whether to prompt for missing inputs. Default: interactive
+    # iff stdin is a TTY. Override forward via --no-interactive
+    # (CI / scripting) or via _TRACKER_INIT_FORCE_INTERACTIVE=1 env
+    # var (test seam: tests that pipe stdin set this so the prompt
+    # path is exercised even though stdin is a pipe).
+    local interactive=1
+    if [[ "$no_interactive" == "1" ]]; then
+        interactive=0
+    elif [[ "${_TRACKER_INIT_FORCE_INTERACTIVE:-0}" == "1" ]]; then
+        interactive=1
+    elif [[ ! -t 0 ]]; then
+        interactive=0
+    fi
+
     # Auto-detect surface if not provided. Pack root has PACK-CHAT.md;
     # client root has docs/pack/.
     if [[ -z "$surface" ]]; then
@@ -67,32 +82,64 @@ tracker_init_run() {
             surface="pack"
         elif [[ -d "$repo_root/docs/pack" ]]; then
             surface="client"
+        elif [[ "$interactive" == "1" ]]; then
+            surface=$(_tracker_init_prompt "Surface (pack | client)" "")
+            if [[ "$surface" != "pack" && "$surface" != "client" ]]; then
+                tracker_error_emit "validation" \
+                    "init: surface must be 'pack' or 'client'; got '$surface'"
+                return 1
+            fi
         else
             tracker_error_emit "validation" \
-                "init: cannot auto-detect surface; pass --surface pack|client"
+                "init: cannot auto-detect surface; pass --surface pack|client (or run interactively)"
             return 1
         fi
     fi
 
-    # Default id_prefix per surface.
+    # Default id_prefix per surface (auto-accepted in non-interactive
+    # mode; offered as the default when prompting).
+    local default_prefix
+    case "$surface" in
+        pack)   default_prefix="BD" ;;
+        client) default_prefix="TD" ;;
+        *)      default_prefix="" ;;
+    esac
     if [[ -z "$id_prefix" ]]; then
-        case "$surface" in
-            pack)   id_prefix="BD" ;;
-            client) id_prefix="TD" ;;
-        esac
+        if [[ "$interactive" == "1" ]]; then
+            id_prefix=$(_tracker_init_prompt "ID prefix" "$default_prefix")
+        else
+            id_prefix="$default_prefix"
+        fi
     fi
 
-    # Required flags.
+    # Backend prompt — github is the only supported value at v11.0,
+    # so the prompt offers it as the default.
     if [[ -z "$backend" ]]; then
-        tracker_error_emit "validation" \
-            "init: --backend is required (only 'github' supported at v11.0). Re-run with --help for the full flag list."
-        return 1
+        if [[ "$interactive" == "1" ]]; then
+            backend=$(_tracker_init_prompt "Backend (github)" "github")
+        else
+            tracker_error_emit "validation" \
+                "init: --backend is required (only 'github' supported at v11.0). Re-run with --help for the full flag list, or run interactively."
+            return 1
+        fi
     fi
+
+    # Repo slug — no sensible default; required.
     if [[ -z "$repo" ]]; then
-        tracker_error_emit "validation" \
-            "init: --repo is required (org/name slug, e.g. Optiquity-Inc/optiquity-ai-agent-config-pack)"
-        return 1
+        if [[ "$interactive" == "1" ]]; then
+            repo=$(_tracker_init_prompt "Repo slug (org/name)" "")
+            if [[ -z "$repo" ]]; then
+                tracker_error_emit "validation" \
+                    "init: repo slug is required (org/name, e.g. Optiquity-Inc/optiquity-ai-agent-config-pack)"
+                return 1
+            fi
+        else
+            tracker_error_emit "validation" \
+                "init: --repo is required (org/name slug, e.g. Optiquity-Inc/optiquity-ai-agent-config-pack)"
+            return 1
+        fi
     fi
+
     if [[ "$backend" != "github" ]]; then
         tracker_error_emit "validation" \
             "init: backend '$backend' not supported at v11.0 (only 'github')"
@@ -178,7 +225,11 @@ _tracker_init_usage() {
     cat <<'EOF'
 Usage: pack-tracker.sh init [flags]
 
-Required:
+When run interactively (stdin is a TTY) any required input that is
+not provided as a flag is prompted for. Pass --no-interactive to
+disable prompting (CI / scripting contexts).
+
+Required (when --no-interactive or missing flags in TTY skipped):
   --backend NAME         Tracker backend (only 'github' at v11.0).
   --repo SLUG            Repository slug (e.g. org-name/repo-name).
 
@@ -187,19 +238,51 @@ Optional:
   --id-prefix PREFIX     ID namespace (default: BD for pack root,
                          TD for client root).
   --surface MODE         pack | client. Auto-detected from
-                         PACK-CHAT.md or docs/pack/ presence.
+                         PACK-CHAT.md or docs/pack/ presence;
+                         prompted if neither marker exists.
   --no-forward           Write config + ensure labels but skip the
                          forward migration step.
   --no-labels            Skip label ensure step (tests / dry-run only).
   --dry-run              Print the plan without writing anything.
+  --no-interactive       Disable prompting; require all inputs as
+                         flags. Default in non-TTY contexts.
 
-Example (pack root):
+Example (pack root, interactive):
+  scripts/pack-tracker.sh init
+
+Example (pack root, all-flags):
   scripts/pack-tracker.sh init \
       --backend github \
-      --repo Optiquity-Inc/optiquity-ai-agent-config-pack
+      --repo Optiquity-Inc/optiquity-ai-agent-config-pack \
+      --no-interactive
 
 Reference: ARCHITECTURE.md §6.1.
 EOF
+}
+
+# Prompt the user for one input. Emits the prompt to stderr (so the
+# prompt label does not pollute the function's stdout, which carries
+# the answer); reads one line from stdin; returns the answer or the
+# default if the user pressed Enter.
+#
+# Read from stdin (not /dev/tty) so tests can pipe answers; in real
+# interactive use stdin IS the TTY, so the same code path works.
+_tracker_init_prompt() {
+    local label="$1" default_val="${2:-}"
+    local prompt_str
+    if [[ -n "$default_val" ]]; then
+        prompt_str="$label [$default_val]: "
+    else
+        prompt_str="$label: "
+    fi
+    printf '%s' "$prompt_str" >&2
+    local answer
+    if ! IFS= read -r answer; then
+        printf '%s' "$default_val"
+        return 0
+    fi
+    [[ -z "$answer" ]] && answer="$default_val"
+    printf '%s' "$answer"
 }
 
 # Write a tracker.toml from a parsed flag set (V1 §3.1).

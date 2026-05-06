@@ -297,6 +297,165 @@ fi
 # Summary
 # ─────────────────────────────────────────────────────────────────
 
+# ─────────────────────────────────────────────────────────────────
+# Group 5: interactive dialogue (V1 §6.1 step 1)
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 5: interactive dialogue ===\n"
+
+# Setup: a fake gh that always returns auth-OK + empty labels (so
+# init can run end-to-end with --no-forward).
+FAKE_BIN_INT=$(mktemp -d -t tinit-int.XXXXXX)
+cat > "$FAKE_BIN_INT/gh" <<'EOF'
+#!/usr/bin/env bash
+case "$1 $2" in
+    "auth status") echo "Logged in to github.com"; exit 0 ;;
+    "label list")  echo "[]" ;;
+    "label create") ;;
+esac
+exit 0
+EOF
+chmod +x "$FAKE_BIN_INT/gh"
+
+# 5.1 prompt path: --backend and --repo missing, force interactive
+# via env var, pipe answers via stdin. Surface auto-detected from
+# PACK-CHAT.md.
+TR_INT1=$(mktemp -d -t tinit-int1.XXXXXX)
+touch "$TR_INT1/PACK-CHAT.md"
+mkdir -p "$TR_INT1/.github/ISSUE_TEMPLATE"
+touch "$TR_INT1/.github/ISSUE_TEMPLATE/work-item.yml"
+touch "$TR_INT1/.github/ISSUE_TEMPLATE/inbound.yml"
+touch "$TR_INT1/.github/ISSUE_TEMPLATE/config.yml"
+
+export PATH="$FAKE_BIN_INT:$PATH_SAVED"
+# Pipe order: id-prefix (default BD), backend (default github), repo
+export _TRACKER_INIT_FORCE_INTERACTIVE=1
+output=$(printf 'BD\ngithub\nOptiquity-Inc/x\n' | \
+    tracker_init_run --repo-root "$TR_INT1" --no-forward 2>&1)
+rc=$?
+export PATH="$PATH_SAVED"
+
+assert_eq       "5.1 interactive happy-path rc=0"      "0" "$rc"
+assert_contains "5.1 prompt 'ID prefix' visible"        "$output" "ID prefix"
+assert_contains "5.1 prompt 'Backend' visible"          "$output" "Backend (github)"
+assert_contains "5.1 prompt 'Repo slug' visible"        "$output" "Repo slug"
+# tracker.toml written with the piped repo value.
+assert_eq "5.1 backend.repo from prompt" "Optiquity-Inc/x" \
+    "$(tracker_config_get "$TR_INT1/tracker.toml" backend.repo)"
+rm -rf "$TR_INT1"
+
+# 5.2 default-accept: blank lines accept the offered defaults.
+TR_INT2=$(mktemp -d -t tinit-int2.XXXXXX)
+touch "$TR_INT2/PACK-CHAT.md"
+mkdir -p "$TR_INT2/.github/ISSUE_TEMPLATE"
+touch "$TR_INT2/.github/ISSUE_TEMPLATE/work-item.yml"
+touch "$TR_INT2/.github/ISSUE_TEMPLATE/inbound.yml"
+touch "$TR_INT2/.github/ISSUE_TEMPLATE/config.yml"
+
+export PATH="$FAKE_BIN_INT:$PATH_SAVED"
+# Empty answer for id-prefix → default BD
+# Empty answer for backend → default github
+# Repo answer (non-empty; required)
+output=$(
+    printf '\n\nOptiquity-Inc/y\n' | \
+    tracker_init_run --repo-root "$TR_INT2" --no-forward 2>&1)
+rc=$?
+export PATH="$PATH_SAVED"
+
+assert_eq "5.2 default-accept happy-path rc=0" "0" "$rc"
+assert_eq "5.2 id-prefix defaulted to BD"  "BD"     "$(tracker_config_get "$TR_INT2/tracker.toml" id_namespace.prefix)"
+assert_eq "5.2 backend defaulted to github" "github" "$(tracker_config_get "$TR_INT2/tracker.toml" backend.name)"
+assert_eq "5.2 repo from prompt"           "Optiquity-Inc/y" "$(tracker_config_get "$TR_INT2/tracker.toml" backend.repo)"
+rm -rf "$TR_INT2"
+
+# 5.3 prompt path: empty repo answer → validation error.
+TR_INT3=$(mktemp -d -t tinit-int3.XXXXXX)
+touch "$TR_INT3/PACK-CHAT.md"
+mkdir -p "$TR_INT3/.github/ISSUE_TEMPLATE"
+touch "$TR_INT3/.github/ISSUE_TEMPLATE/work-item.yml"
+touch "$TR_INT3/.github/ISSUE_TEMPLATE/inbound.yml"
+touch "$TR_INT3/.github/ISSUE_TEMPLATE/config.yml"
+
+export PATH="$FAKE_BIN_INT:$PATH_SAVED"
+# Pipe: id-prefix=BD, backend=github, repo=<empty>
+err=$(
+    printf 'BD\ngithub\n\n' | \
+    tracker_init_run --repo-root "$TR_INT3" --no-forward 2>&1) || true
+export PATH="$PATH_SAVED"
+assert_contains "5.3 empty repo answer → validation" "$err" "ERROR: validation"
+assert_contains "5.3 message names repo slug"        "$err" "repo slug is required"
+rm -rf "$TR_INT3"
+
+# 5.4 surface prompt: when both PACK-CHAT.md and docs/pack/ absent
+# AND interactive mode, prompt for surface.
+TR_INT4=$(mktemp -d -t tinit-int4.XXXXXX)
+mkdir -p "$TR_INT4/.github/ISSUE_TEMPLATE"
+touch "$TR_INT4/.github/ISSUE_TEMPLATE/work-item.yml"
+touch "$TR_INT4/.github/ISSUE_TEMPLATE/inbound.yml"
+touch "$TR_INT4/.github/ISSUE_TEMPLATE/config.yml"
+# No PACK-CHAT.md, no docs/pack/.
+
+export PATH="$FAKE_BIN_INT:$PATH_SAVED"
+# Pipe: surface=pack, id-prefix=BD, backend=github, repo
+output=$(
+    printf 'pack\nBD\ngithub\nOptiquity-Inc/z\n' | \
+    tracker_init_run --repo-root "$TR_INT4" --no-forward 2>&1)
+rc=$?
+export PATH="$PATH_SAVED"
+assert_eq       "5.4 surface-prompt happy-path rc=0" "0" "$rc"
+assert_contains "5.4 surface prompt visible"          "$output" "Surface (pack | client)"
+rm -rf "$TR_INT4"
+
+# 5.5 invalid surface answer → validation.
+TR_INT5=$(mktemp -d -t tinit-int5.XXXXXX)
+mkdir -p "$TR_INT5/.github/ISSUE_TEMPLATE"
+touch "$TR_INT5/.github/ISSUE_TEMPLATE/work-item.yml"
+touch "$TR_INT5/.github/ISSUE_TEMPLATE/inbound.yml"
+touch "$TR_INT5/.github/ISSUE_TEMPLATE/config.yml"
+
+export PATH="$FAKE_BIN_INT:$PATH_SAVED"
+err=$(
+    printf 'desktop\n' | \
+    tracker_init_run --repo-root "$TR_INT5" --no-forward 2>&1) || true
+export PATH="$PATH_SAVED"
+assert_contains "5.5 invalid surface answer → validation" "$err" "ERROR: validation"
+assert_contains "5.5 message names valid options"        "$err" "must be 'pack' or 'client'"
+rm -rf "$TR_INT5"
+
+# 5.6 --no-interactive disables prompts (regression: existing flag-only
+# tests in Group 1 already exercise this implicitly because tests run
+# in non-TTY context, but make the override explicit).
+TR_INT6=$(mktemp -d -t tinit-int6.XXXXXX)
+touch "$TR_INT6/PACK-CHAT.md"
+err=$(
+    tracker_init_run --repo-root "$TR_INT6" --no-interactive 2>&1) || true
+assert_contains "5.6 --no-interactive overrides force flag → validation" "$err" "ERROR: validation"
+assert_contains "5.6 still requires --backend"  "$err" "--backend is required"
+rm -rf "$TR_INT6"
+
+# 5.7 EOF on stdin (closed input) accepts default and proceeds.
+TR_INT7=$(mktemp -d -t tinit-int7.XXXXXX)
+touch "$TR_INT7/PACK-CHAT.md"
+mkdir -p "$TR_INT7/.github/ISSUE_TEMPLATE"
+touch "$TR_INT7/.github/ISSUE_TEMPLATE/work-item.yml"
+touch "$TR_INT7/.github/ISSUE_TEMPLATE/inbound.yml"
+touch "$TR_INT7/.github/ISSUE_TEMPLATE/config.yml"
+
+export PATH="$FAKE_BIN_INT:$PATH_SAVED"
+# /dev/null stdin → read returns rc=1 immediately → default accepted
+# for all prompts. Repo has no default → validation error.
+err=$(
+    tracker_init_run --repo-root "$TR_INT7" --no-forward < /dev/null 2>&1) || true
+export PATH="$PATH_SAVED"
+assert_contains "5.7 EOF + empty-default repo → validation" "$err" "repo slug is required"
+rm -rf "$TR_INT7"
+
+rm -rf "$FAKE_BIN_INT"
+
+# ─────────────────────────────────────────────────────────────────
+# Summary
+# ─────────────────────────────────────────────────────────────────
+
 printf "\n=== Summary ===\n"
 printf "Passed: %d\n" "$PASS"
 printf "Failed: %d\n" "$FAIL"
