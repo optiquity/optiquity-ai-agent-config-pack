@@ -521,6 +521,21 @@ assert_contains "6.1 doctor reports OK on tracker.toml"   "$output" "[OK]   trac
 assert_contains "6.1 doctor reports OK on mapping file"   "$output" "[OK]   mapping file is valid JSON"
 assert_contains "6.1 doctor reports OK on pack-ids"       "$output" "[OK]   all mapping pack-ids are well-shaped"
 assert_contains "6.1 doctor reports OK on templates"      "$output" ".github/ISSUE_TEMPLATE present"
+# F4: capability-cache refresh sub-surface (V2 §22.1).
+# First run on a fresh repo populates the cache.
+assert_contains "6.1a doctor populates capability cache"  "$output" "capability cache absent; populating"
+[[ -f "$REPO_DR/.pack-tracker/capabilities.json" ]] \
+    && t_pass "6.1a capability cache file written" \
+    || t_fail "6.1a capability cache file written" "missing"
+# Second run on the same repo finds the cache and reports OK.
+output2=$(bash "$REPO_ROOT/scripts/tracker-migrate.sh" doctor --repo-root "$REPO_DR" 2>&1)
+assert_contains "6.1a doctor reports OK on cached capabilities" \
+    "$output2" "[OK]   capability cache current"
+# Tampering with the cache surfaces a schema-reshape WARN.
+echo '{}' > "$REPO_DR/.pack-tracker/capabilities.json"
+output3=$(bash "$REPO_ROOT/scripts/tracker-migrate.sh" doctor --repo-root "$REPO_DR" 2>&1)
+assert_contains "6.1a doctor surfaces schema-reshape on capability diff" \
+    "$output3" "[WARN] capability cache differs from re-probe (schema-reshape)"
 rm -rf "$REPO_DR"
 
 # 6.2 doctor surfaces malformed pack-id

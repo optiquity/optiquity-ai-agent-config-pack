@@ -158,12 +158,11 @@ cmd_doctor() {
 # pack-id is shaped correctly, (d) mirror freshness vs last-forward
 # timestamp, (e) template freshness — form-level template_version
 # vs translation manifest's latest target, (f) issue-template dir
-# presence. Reports OK / WARN / INFO per check; each WARN line
-# names a recovery verb (V3 §27.1 Layer 2). Returns 0 if zero
-# warnings.
-#
-# Capability re-probing is deferred to a future BD (capability cache
-# refresh requires `provider_capabilities` re-fetch + diff).
+# presence, (g) capability cache refresh — re-probe the backend's
+# provider_capabilities and diff against the cached snapshot at
+# .pack-tracker/capabilities.json (V2 §22.1 doctor sub-surface).
+# Reports OK / WARN / INFO per check; each WARN line names a
+# recovery verb (V3 §27.1 Layer 2). Returns 0 if zero warnings.
 tracker_doctor_run() {
     local repo_root="$1"
     local cfg_path mapping_file surface
@@ -287,6 +286,42 @@ tracker_doctor_run() {
     else
         echo "  [WARN] $tmpl_dir absent  → Run: pack tracker init"
         n_warn=$((n_warn + 1))
+    fi
+
+    # (g) capability cache refresh (V2 §22.1 doctor sub-surface).
+    # Re-probe provider_capabilities; diff against the cached snapshot
+    # at .pack-tracker/capabilities.json. A diff signals schema-reshape
+    # (V1 §9.5 / §2.7.4) — the backend's surface has changed, e.g. a
+    # gh CLI extension that altered hierarchy depth, or a swap of the
+    # pack to a backend with a different declaration. The cache is
+    # always (re-)written on doctor completion, so doctor is itself
+    # the refresh verb.
+    if [[ -f "$cfg_path" ]]; then
+        export _TRACKER_PROVIDER_CONFIG_PATH="$cfg_path"
+        local caps_now caps_cached caps_file
+        caps_file="$repo_root/.pack-tracker/capabilities.json"
+        if caps_now=$(provider_capabilities 2>/dev/null); then
+            caps_now=$(printf '%s' "$caps_now" | jq -cS . 2>/dev/null) || caps_now=""
+        else
+            caps_now=""
+        fi
+        if [[ -n "$caps_now" ]]; then
+            if [[ -f "$caps_file" ]]; then
+                caps_cached=$(jq -cS . "$caps_file" 2>/dev/null || echo "")
+                if [[ "$caps_now" == "$caps_cached" ]]; then
+                    echo "  [OK]   capability cache current (no schema-reshape)"
+                else
+                    echo "  [WARN] capability cache differs from re-probe (schema-reshape)  → Run: pack tracker doctor"
+                    n_warn=$((n_warn + 1))
+                fi
+            else
+                echo "  [INFO] capability cache absent; populating $caps_file"
+            fi
+            mkdir -p "$repo_root/.pack-tracker"
+            printf '%s\n' "$caps_now" > "$caps_file"
+        else
+            echo "  [INFO] provider_capabilities unavailable; skipping cache refresh"
+        fi
     fi
 
     if [[ "$n_warn" -gt 0 ]]; then
