@@ -1013,9 +1013,12 @@ _tmf_regen_mirror() {
     tracker_mirror_header_write "$@"
 }
 
-# Update tracker.toml [migration].last_forward_run timestamp.
-# V1 §3.1 schema. Done as a line-targeted edit since the parser is
-# read-only by design.
+# Update tracker.toml [migration] section after a successful forward run.
+# V1 §3.1 schema + V1 §3.2 D-5: writes
+#   - last_forward_run = "<ISO8601>"
+#   - forward_complete = true
+# so `tracker_mode()` resolves to "tracker" on subsequent invocations.
+# Done as a line-targeted edit since the parser is read-only by design.
 _tmf_update_tracker_toml() {
     local cfg="$1"
     if [[ ! -f "$cfg" ]]; then
@@ -1029,27 +1032,38 @@ cfg, now = sys.argv[1], sys.argv[2]
 with open(cfg) as f:
     text = f.read()
 
-# In-place line edit: under [migration], replace any existing
-# last_forward_run = "..." line, or append one if absent. Use
-# [ \t]* not \s* — \s consumes newlines and breaks line boundaries
+# Use [ \t]* not \s* — \s consumes newlines and breaks line boundaries
 # needed for re.sub line-replacement.
+def set_in_block(block, key, value_literal):
+    """Replace, uncomment, or append `<key> = <value_literal>` in `block`."""
+    live_re    = re.compile(r'^[ \t]*' + re.escape(key) + r'[ \t]*=.*$', re.M)
+    commented  = re.compile(r'^[ \t]*#[ \t]*' + re.escape(key) + r'[ \t]*=.*$', re.M)
+    new_line   = f'{key} = {value_literal}'
+    if live_re.search(block):
+        return live_re.sub(new_line, block)
+    if commented.search(block):
+        return commented.sub(new_line, block)
+    return block.rstrip() + '\n' + new_line + '\n'
+
+updates = [
+    ("last_forward_run", f'"{now}"'),
+    ("forward_complete", "true"),
+]
+
 section_re = re.compile(r'^\[migration\][ \t]*$', re.M)
 m = section_re.search(text)
 if not m:
-    text = text.rstrip() + '\n\n[migration]\nlast_forward_run = "' + now + '"\n'
+    new_section = "\n\n[migration]\n"
+    for k, v in updates:
+        new_section += f'{k} = {v}\n'
+    text = text.rstrip() + new_section
 else:
     start = m.end()
     nxt = re.search(r'^\[', text[start:], re.M)
     end = start + (nxt.start() if nxt else len(text) - start)
     block = text[start:end]
-    if re.search(r'^[ \t]*last_forward_run[ \t]*=', block, re.M):
-        block = re.sub(r'^[ \t]*last_forward_run[ \t]*=.*$',
-                       f'last_forward_run = "{now}"', block, flags=re.M)
-    elif re.search(r'^[ \t]*#[ \t]*last_forward_run[ \t]*=', block, re.M):
-        block = re.sub(r'^[ \t]*#[ \t]*last_forward_run[ \t]*=.*$',
-                       f'last_forward_run = "{now}"', block, flags=re.M)
-    else:
-        block = block.rstrip() + f'\nlast_forward_run = "{now}"\n'
+    for k, v in updates:
+        block = set_in_block(block, k, v)
     text = text[:start] + block + text[end:]
 
 with open(cfg, 'w') as f:

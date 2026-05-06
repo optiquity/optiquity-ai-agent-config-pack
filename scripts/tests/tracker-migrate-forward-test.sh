@@ -293,6 +293,19 @@ assert_contains "3.6 BACKLOG mirror header text" \
 assert_contains "3.7 tracker.toml has last_forward_run" \
     "$(cat "$TEST_REPO/tracker.toml")" "last_forward_run = \""
 
+# 3.7b forward run flips migration.forward_complete = false → true
+# per V1 §3.2 D-5; the fixture starts at false (mirroring `init` output)
+# so this assertion proves the production code path emits the flip.
+assert_contains "3.7b tracker.toml flips forward_complete=true" \
+    "$(cat "$TEST_REPO/tracker.toml")" "forward_complete = true"
+
+# 3.7c integration: tracker_mode resolves to "tracker" after a successful
+# init→forward sequence (V1 §3.2 detection). Closes Finding #1 + #10
+# from PACK-REVIEW-CUMULATIVE-V11: every prior fixture hard-coded
+# forward_complete = true, so no test exercised the production flip.
+mode_after=$(tracker_mode "$TEST_REPO/tracker.toml")
+assert_eq "3.7c tracker_mode resolves to tracker" "tracker" "$mode_after"
+
 # 3.8 idempotency: second run produces 0 new creates.
 > "$GH_LOG"
 output2=$(tracker_migrate_forward_run "$TEST_REPO" 0 0 2>&1)

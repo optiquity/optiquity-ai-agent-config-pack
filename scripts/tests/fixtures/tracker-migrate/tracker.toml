@@ -11,5 +11,5 @@ state = "tracker"
 prefix = "BD"
 
 [migration]
-forward_complete = true
+forward_complete = false
 mapping_file = ".pack-tracker/id-map.json"
