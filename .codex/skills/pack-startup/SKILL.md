@@ -58,6 +58,15 @@ Output a summary in exactly this format:
 **Awaiting instructions.**
 ---
 
+<!--
+Steps 5–7 are reserved. Step 7 is the V1 §10.2 tracker-mode triage
+queue (provider.list filter=label:'needs-triage'); a later BD adds it
+when tracker mode lands in pack-startup. Steps 5 and 6 are open for
+future surface additions. The Step 8 numbering is fixed by V3 §28.1.9
+to keep the recommendation check at the documented insertion point
+regardless of when the intermediate steps land.
+-->
+
 ## Step 8 — Inflection-point recommendation check (D-19)
 
 Run only in flat-file mode. In tracker mode this step is skipped

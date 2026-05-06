@@ -135,6 +135,14 @@ Output a summary in exactly this format:
 **Awaiting instructions.**
 ---
 
+<!--
+Step 7 is reserved. The V1 §10.2 tracker-mode triage queue
+(provider.list filter=label:'needs-triage') lands here in a later
+BD when tracker mode is wired into pm-startup. The Step 8 numbering
+is fixed by V3 §28.1.9 to keep the recommendation check at the
+documented insertion point regardless of when Step 7 lands.
+-->
+
 ## Step 8 — Inflection-point recommendation check (D-19)
 
 Run only in flat-file mode. In tracker mode this step is skipped

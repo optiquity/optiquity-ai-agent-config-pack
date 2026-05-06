@@ -144,7 +144,12 @@ _rec_compute_pack_signals() {
 
 _rec_compute_client_signals() {
     local repo_root="$1"
+    # Per the project-template trinity `## Document locations` table,
+    # client BACKLOG / STATUS / IMPLEMENTATION_PLAN live under
+    # `docs/project/`. Fall back to the trinity-mandated path when the
+    # repo-root copy is absent (legacy v9 layout fallback).
     local backlog="$repo_root/BACKLOG.md"
+    [[ ! -f "$backlog" ]] && backlog="$repo_root/docs/project/BACKLOG.md"
     local plan="$repo_root/IMPLEMENTATION_PLAN.md"
     [[ ! -f "$plan" ]] && plan="$repo_root/docs/project/IMPLEMENTATION_PLAN.md"
 
@@ -359,9 +364,11 @@ recommendation_should_recommend() {
             echo "true"
             return 0
         fi
-        # Both prior and current are over threshold. Require ≥ 25% growth.
+        # Both prior and current are over threshold (last_v >= thr > 0
+        # at this point — the "$last_v -lt $thr" branch above already
+        # returned for the under-threshold case). Require ≥ 25% growth.
         # Bash arithmetic only; (now * 100) / last >= 125.
-        if [[ "$last_v" -gt 0 ]] && (( (now * 100) >= (last_v * 125) )); then
+        if (( (now * 100) >= (last_v * 125) )); then
             echo "true"
             return 0
         fi
@@ -372,6 +379,26 @@ recommendation_should_recommend() {
 # ─────────────────────────────────────────────────────────────────
 # Prompt rendering (V3 §28.1.7)
 # ─────────────────────────────────────────────────────────────────
+
+# _rec_signal_label <signal-key>
+# Maps a signal JSON key to the human label V3 §28.1.7 + §D.2 prescribe
+# for the rendered prompt. The lib emits the human label so the prompt
+# reads as the worked-example shows; the raw key only appears in JSON.
+_rec_signal_label() {
+    case "$1" in
+        bd_count_active)        echo "BACKLOG entries (active)" ;;
+        bd_count_total)         echo "BACKLOG entries (total)" ;;
+        td_count_active)        echo "TD entries (active)" ;;
+        td_count_total)         echo "TD entries (total)" ;;
+        backlog_kb)             echo "BACKLOG.md size (KB)" ;;
+        backlog_growth_30d)     echo "BACKLOG growth (30 days)" ;;
+        phase_count)            echo "phase count" ;;
+        implementation_plan_kb) echo "IMPLEMENTATION_PLAN.md size (KB)" ;;
+        td_tbd_comment_count)   echo "TD-TBD comments" ;;
+        typed_deferral_count)   echo "typed deferral comments" ;;
+        *)                      echo "$1" ;;
+    esac
+}
 
 # recommendation_render_prompt <signals-json> <surface>
 # Emits the V3 §28.1.7 prompt block on stdout. Selects the most
@@ -385,7 +412,7 @@ recommendation_render_prompt() {
     local headline_ratio_num=0 headline_ratio_den=1
     local also=""
 
-    local name now thr ratio_num ratio_den
+    local name now thr ratio_num ratio_den label
     while IFS= read -r name; do
         [[ -z "$name" ]] && continue
         thr=$(_rec_threshold "$surface" "$name")
@@ -398,7 +425,9 @@ recommendation_render_prompt() {
             if [[ -z "$headline_name" ]] || \
                (( ratio_num * headline_ratio_den > headline_ratio_num * ratio_den )); then
                 if [[ -n "$headline_name" ]]; then
-                    also="$also; $headline_name $headline_value (threshold ≥ $headline_thr)"
+                    label=$(_rec_signal_label "$headline_name")
+                    if [[ -n "$also" ]]; then also="$also; "; fi
+                    also="${also}${label}: $headline_value (threshold ≥ $headline_thr)"
                 fi
                 headline_name="$name"
                 headline_value="$now"
@@ -406,7 +435,9 @@ recommendation_render_prompt() {
                 headline_ratio_num="$ratio_num"
                 headline_ratio_den="$ratio_den"
             else
-                also="$also; $name $now (threshold ≥ $thr)"
+                label=$(_rec_signal_label "$name")
+                if [[ -n "$also" ]]; then also="$also; "; fi
+                also="${also}${label}: $now (threshold ≥ $thr)"
             fi
         fi
     done < <(_rec_signal_names "$surface")
@@ -416,12 +447,14 @@ recommendation_render_prompt() {
         return 0
     fi
 
+    local headline_label
+    headline_label=$(_rec_signal_label "$headline_name")
     cat <<EOF
 ─────────────────────────────────────────────────────────────────
-You're at $headline_name: $headline_value (threshold ≥ $headline_thr).
+You're at $headline_label: $headline_value (threshold ≥ $headline_thr).
 EOF
     if [[ -n "$also" ]]; then
-        printf 'Also past threshold:%s.\n' "${also# ; }"
+        printf 'Also past threshold: %s.\n' "$also"
     fi
     cat <<'EOF'
 

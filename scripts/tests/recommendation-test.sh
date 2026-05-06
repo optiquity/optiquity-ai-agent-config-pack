@@ -76,6 +76,35 @@ assert_eq "1.2 td_count_active=2"   "2" "$(printf '%s' "$sigs" | jq -r '.td_coun
 assert_eq "1.2 td_count_total=2"    "2" "$(printf '%s' "$sigs" | jq -r '.td_count_total')"
 assert_eq "1.2 phase_count=3"       "3" "$(printf '%s' "$sigs" | jq -r '.phase_count')"
 
+# 1.2b — F-1 closure: client BACKLOG.md + IMPLEMENTATION_PLAN.md at the
+# trinity-mandated docs/project/ path. The lib must fall back from the
+# repo-root location (legacy v9 layout) to docs/project/ (v10/v11
+# trinity layout) per project-template/CLAUDE.md Document locations.
+TR_CLI_DOCS=$(mktemp -d -t rec-cli-docs.XXXXXX)
+mkdir -p "$TR_CLI_DOCS/docs/project"
+cat > "$TR_CLI_DOCS/docs/project/BACKLOG.md" <<'EOF'
+**TD-001 — A**
+Status: Open
+
+**TD-002 — B**
+Status: Unblocked
+
+**TD-003 — C**
+Status: Open
+EOF
+cat > "$TR_CLI_DOCS/docs/project/IMPLEMENTATION_PLAN.md" <<'EOF'
+## Phase 1 — One
+## Phase 2 — Two
+EOF
+sigs=$(recommendation_compute_signals "client" "$TR_CLI_DOCS")
+assert_eq "1.2b client BACKLOG fallback resolves docs/project/ td_count_active" "3" \
+    "$(printf '%s' "$sigs" | jq -r '.td_count_active')"
+assert_eq "1.2b client BACKLOG fallback resolves docs/project/ td_count_total"  "3" \
+    "$(printf '%s' "$sigs" | jq -r '.td_count_total')"
+assert_eq "1.2b client plan fallback resolves docs/project/ phase_count" "2" \
+    "$(printf '%s' "$sigs" | jq -r '.phase_count')"
+rm -rf "$TR_CLI_DOCS"
+
 # 1.3 invalid surface → typed validation error.
 err=$(recommendation_compute_signals "bogus" "$TR_PACK" 2>&1 1>/dev/null) || true
 assert_eq "1.3 invalid surface → ERROR: validation" "1" \
@@ -228,8 +257,14 @@ printf "\n=== Group 4: prompt rendering ===\n"
 
 prompt=$(recommendation_render_prompt "$sigs_grown" "pack")
 [[ "$prompt" == *"You're at"* ]]                && t_pass "4.1 prompt has greeting"   || t_fail "4.1 prompt greeting" "$prompt"
-[[ "$prompt" == *"bd_count_active: 105"* ]]     && t_pass "4.1 prompt names headline signal + value" \
+# F-3 closure: the headline carries the human label, not the raw JSON
+# key (V3 §28.1.7 + §D.2 worked example).
+[[ "$prompt" == *"BACKLOG entries (active): 105"* ]] \
+    && t_pass "4.1 prompt headline uses human label + value" \
     || t_fail "4.1 prompt headline" "$prompt"
+[[ "$prompt" != *"bd_count_active: "* ]] \
+    && t_pass "4.1 prompt does NOT leak raw JSON key" \
+    || t_fail "4.1 raw key in prompt" "$prompt"
 [[ "$prompt" == *"threshold ≥ 80"* ]]           && t_pass "4.1 prompt names threshold"  \
     || t_fail "4.1 prompt threshold" "$prompt"
 [[ "$prompt" == *"yes"* && "$prompt" == *"not now"* && "$prompt" == *"don't ask again"* ]] \
@@ -245,6 +280,14 @@ prompt=$(recommendation_render_prompt "$sigs_multi" "pack")
 [[ "$prompt" == *"Also past threshold"* ]] \
     && t_pass "4.2 multi-signal mentions secondary on follow-up line" \
     || t_fail "4.2 multi-signal" "$prompt"
+# F-2 closure: the follow-up line is well-formed — starts with a
+# label after "Also past threshold:", not "Also past threshold:; …".
+[[ "$prompt" != *"Also past threshold:;"* ]] \
+    && t_pass "4.2 follow-up line starts cleanly (no stray semicolon)" \
+    || t_fail "4.2 follow-up punctuation" "$prompt"
+[[ "$prompt" == *"Also past threshold: BACKLOG.md size (KB):"* ]] \
+    && t_pass "4.2 follow-up label is human-readable" \
+    || t_fail "4.2 follow-up label" "$prompt"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 5: pack-tracker enable-recommendations verb (BD-073)
