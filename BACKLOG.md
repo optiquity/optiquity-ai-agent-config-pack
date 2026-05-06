@@ -146,7 +146,7 @@ Resolved: 2026-05-06 — V1 §6.5 9-step reverse orchestrator + per-entry recons
 
 **BD-068 — Round-trip test fixture + multi-template-version coverage**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-067
 Unblocks: None
 File/Symbol: `scripts/tests/tracker-migrate-roundtrip-test.sh`, `scripts/tests/fixtures/roundtrip/bd-v11.0/`, `scripts/tests/fixtures/roundtrip/bd-v11.1/`, `scripts/tests/fixtures/roundtrip/bd-v11.2/`
@@ -154,7 +154,7 @@ Description: Implements V1 §6.7 + V3 §I.1 explicit round-trip test. v11.0
   ships with bd-v11.0 entries plus stub directories for bd-v11.1 / bd-v11.2
   per §6.A maintainer check. CI runs forward → reverse → forward; diff = 0
   (whitespace-tolerant). Extended by BD-106 with phase-task fixtures.
-Resolved: n/a
+Resolved: 2026-05-06 — Stateful fake-gh test harness maintains an in-memory tracker state across forward/reverse invocations (next-id counter + issues map + create-call signature log). bd-v11.0 fixture (3 entries: BD-001 Open, BD-002 Unblocked-with-blocker, TD-010 Open + 2 phase epics); bd-v11.1 and bd-v11.2 stub directories with READMEs documenting fill-in-when-shipped contract. Round-trip property verified: F→R reconstructs 3 entries with status/title/file-symbol/description preserved (whitespace-tolerant); F→R→F produces byte-equivalent tracker create-call signature (sorted titles+labels). Sidecar extra_fields shape ready for v11.x (5 entry sections, all empty at v11.0 — readiness guard for v11.1+ template-field additions). Multi-template-version stub directories present (per V1 §6.6.1 readiness). 39/39 BD-068 tests; full sweep 531/531; validate-pack clean. Documented gap: comment-fallback blockers (BD-111 deferral) do not round-trip — auto-flips to positive check when BD-111 closes.
 
 ---
 

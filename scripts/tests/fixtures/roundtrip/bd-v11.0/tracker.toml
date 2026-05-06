@@ -1,0 +1,15 @@
+schema_version = 1
+
+[backend]
+name = "github"
+repo = "fixture-org/roundtrip-v11.0"
+
+[mode]
+state = "tracker"
+
+[id_namespace]
+prefix = "BD"
+
+[migration]
+forward_complete = true
+mapping_file = ".pack-tracker/id-map.json"
