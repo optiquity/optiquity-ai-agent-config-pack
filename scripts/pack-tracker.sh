@@ -42,6 +42,12 @@ source "$LIB_DIR/tracker-labels.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/tracker-migrate-forward.sh"
 # shellcheck disable=SC1091
+source "$LIB_DIR/tracker-mirror.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-sidecar.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-migrate-reverse.sh"
+# shellcheck disable=SC1091
 source "$LIB_DIR/tracker-init.sh"
 
 usage() {
@@ -124,15 +130,37 @@ cmd_mirror_rebuild() {
 # ─────────────────────────────────────────────────────────────────
 
 cmd_disable() {
-    tracker_error_emit "validation" \
-        "disable: not implemented in this build (BD-067 — reverse migration + sidecar)"
-    return 1
+    local repo_root="" include_comments=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --repo-root)         repo_root="$2"; shift 2 ;;
+            --include-comments)  include_comments=1; shift ;;
+            -h|--help)           usage; return 0 ;;
+            *)
+                tracker_error_emit "validation" "disable: unknown option '$1'"
+                return 1
+                ;;
+        esac
+    done
+    [[ -z "$repo_root" ]] && repo_root="$(pwd)"
+    # disable = reverse + flip mode.state to flat-file
+    tracker_migrate_reverse_run "$repo_root" 0 1 "$include_comments"
 }
 
 cmd_doctor() {
-    tracker_error_emit "validation" \
-        "doctor: not implemented in this build (BD-067 — mapping integrity + capability cache refresh)"
-    return 1
+    local repo_root=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --repo-root) repo_root="$2"; shift 2 ;;
+            -h|--help)   usage; return 0 ;;
+            *)
+                tracker_error_emit "validation" "doctor: unknown option '$1'"
+                return 1
+                ;;
+        esac
+    done
+    [[ -z "$repo_root" ]] && repo_root="$(pwd)"
+    tracker_doctor_run "$repo_root"
 }
 
 cmd_update_templates() {

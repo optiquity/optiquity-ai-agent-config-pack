@@ -40,6 +40,17 @@
 #
 # Do NOT add a shebang — this file is sourced, not executed.
 
+# Source the shared mirror-header helpers (BD-067 refactor).
+# Idempotent: tracker-mirror.sh has no side effects beyond function
+# definitions.
+# shellcheck disable=SC1091
+if ! declare -f tracker_mirror_header_write >/dev/null 2>&1; then
+    _tmf_self="${BASH_SOURCE[0]}"
+    _tmf_dir="$(cd "$(dirname "$_tmf_self")" && pwd)"
+    source "$_tmf_dir/tracker-mirror.sh"
+    unset _tmf_self _tmf_dir
+fi
+
 # ─────────────────────────────────────────────────────────────────
 # Constants
 # ─────────────────────────────────────────────────────────────────
@@ -421,23 +432,15 @@ tmf_compose_issue_body() {
 }
 
 # ─────────────────────────────────────────────────────────────────
-# Mirror header (V1 §6.3)
+# Mirror header (V1 §6.3) — shared with reverse migration via
+# scripts/lib/tracker-mirror.sh (BD-067 refactor).
 # ─────────────────────────────────────────────────────────────────
 
-# Emit the read-only mirror header on stdout. Caller is responsible
-# for the rest of the file body.
+# Back-compat shim: tmf_mirror_header was the BD-065 inline helper.
+# Forward callers and tests still use it; we re-export the shared
+# tracker_mirror_header_emit under the original name.
 tmf_mirror_header() {
-    local backend_slug="$1"
-    local now_iso
-    now_iso=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-    cat <<EOF
-<!--
-  This file is a read-only mirror generated from the tracker.
-  Tracker: github / $backend_slug
-  Last regenerated: $now_iso
-  Direct edits will be overwritten. Edit via Pack Chat / PM Chat.
--->
-EOF
+    tracker_mirror_header_emit "$@"
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -969,53 +972,10 @@ _tmf_labels_for_entry() {
 }
 
 # Regenerate the BACKLOG.md mirror (in place) with the V1 §6.3
-# read-only header. The body content is preserved verbatim modulo
-# the header itself. Idempotent: N consecutive runs produce
-# byte-equal output (modulo the timestamp inside the header).
-#
-# Invariant (V1 §6.7 round-trip safety): the body extraction is
-# whitespace-tolerant — any leading whitespace on `<!--` / `-->`
-# tags or a blank gap between header and body is normalized out.
+# read-only header. Idempotent. Delegated to the shared helper in
+# scripts/lib/tracker-mirror.sh (BD-067 refactor).
 _tmf_regen_mirror() {
-    local path="$1"
-    local backend_slug="$2"
-    if [[ ! -f "$path" ]]; then
-        return 0
-    fi
-    local now_iso
-    now_iso=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-    python3 - "$path" "$backend_slug" "$now_iso" <<'PYEOF' || return 1
-import re, sys
-path, backend_slug, now_iso = sys.argv[1], sys.argv[2], sys.argv[3]
-with open(path) as f:
-    text = f.read()
-
-# Strip a leading mirror-header block + any blank-line gap that
-# follows it. The header opens with `<!--` (possibly indented or
-# trailing-whitespace-padded) and closes with `-->`. Anything
-# in between is replaced wholesale.
-m = re.match(r'\s*<!--\s*\n.*?\n\s*-->\s*\n+', text, re.DOTALL)
-if m:
-    body = text[m.end():]
-else:
-    body = text
-
-# Normalize: strip trailing newlines from body to a single one;
-# we'll add exactly one blank line between header and body.
-body = body.rstrip('\n') + '\n'
-
-header = (
-    "<!--\n"
-    "  This file is a read-only mirror generated from the tracker.\n"
-    f"  Tracker: github / {backend_slug}\n"
-    f"  Last regenerated: {now_iso}\n"
-    "  Direct edits will be overwritten. Edit via Pack Chat / PM Chat.\n"
-    "-->\n"
-)
-out = header + "\n" + body
-with open(path, 'w') as f:
-    f.write(out)
-PYEOF
+    tracker_mirror_header_write "$@"
 }
 
 # Update tracker.toml [migration].last_forward_run timestamp.
@@ -1035,23 +995,23 @@ with open(cfg) as f:
     text = f.read()
 
 # In-place line edit: under [migration], replace any existing
-# last_forward_run = "..." line, or append one if absent.
-section_re = re.compile(r'^\[migration\]\s*$', re.M)
+# last_forward_run = "..." line, or append one if absent. Use
+# [ \t]* not \s* — \s consumes newlines and breaks line boundaries
+# needed for re.sub line-replacement.
+section_re = re.compile(r'^\[migration\][ \t]*$', re.M)
 m = section_re.search(text)
 if not m:
-    # Append the section.
     text = text.rstrip() + '\n\n[migration]\nlast_forward_run = "' + now + '"\n'
 else:
     start = m.end()
-    # Find the next section header or EOF.
     nxt = re.search(r'^\[', text[start:], re.M)
     end = start + (nxt.start() if nxt else len(text) - start)
     block = text[start:end]
-    if re.search(r'^\s*last_forward_run\s*=', block, re.M):
-        block = re.sub(r'^\s*last_forward_run\s*=.*$',
+    if re.search(r'^[ \t]*last_forward_run[ \t]*=', block, re.M):
+        block = re.sub(r'^[ \t]*last_forward_run[ \t]*=.*$',
                        f'last_forward_run = "{now}"', block, flags=re.M)
-    elif re.search(r'^\s*#\s*last_forward_run\s*=', block, re.M):
-        block = re.sub(r'^\s*#\s*last_forward_run\s*=.*$',
+    elif re.search(r'^[ \t]*#[ \t]*last_forward_run[ \t]*=', block, re.M):
+        block = re.sub(r'^[ \t]*#[ \t]*last_forward_run[ \t]*=.*$',
                        f'last_forward_run = "{now}"', block, flags=re.M)
     else:
         block = block.rstrip() + f'\nlast_forward_run = "{now}"\n'
