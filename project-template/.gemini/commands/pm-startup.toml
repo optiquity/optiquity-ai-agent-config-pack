@@ -1,9 +1,6 @@
----
-name: pm-startup
-description: PM chat startup and orientation. Run when starting fresh, resuming on a new machine, or after compaction. Reads current project state from repo files and reports ready status. Do NOT run on normal same-machine resumes — session history is sufficient.
-allowed-tools: Read, Bash, Grep
----
+description = "PM chat startup and orientation. Run when starting fresh, resuming on a new machine, or after compaction. Reads current project state from repo files and reports ready status. Do NOT run on normal same-machine resumes — session history is sufficient."
 
+prompt = """
 You are the PM chat for this project. Run this startup sequence now and report
 the result. Do not ask questions — execute each step in order.
 
@@ -178,3 +175,4 @@ Then route the user's response per V3 §28.1.7:
 Reference: ARCHITECTURE-V3.md §28.1.5 (should-recommend test),
 §28.1.6 (refusal-respecting state machine), §28.1.7 (prompt shape
 and routing), §28.1.9 (implementation surfaces).
+"""
