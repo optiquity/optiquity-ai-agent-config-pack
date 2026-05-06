@@ -815,6 +815,31 @@ Description: New pack-side ongoing-state-audit agent peer to `pack-reviewer`
   (BD-074 vs BD-110).
 Resolved: n/a
 
+**BD-111 — Switch blocks/blocked-by from comment-marker to first-class GH dependency API**
+Type: TODO(version)
+Status: Open
+Blockers: Live GH repo access — pairs naturally with BD-088 or BD-093 integration
+  test land-time, where introspection against the live GraphQL schema confirms
+  the exact mutation name.
+Unblocks: First-class blocker enumeration in `auditor-issue-tracking` (Check 28)
+  without comment-body parsing.
+File/Symbol: `scripts/lib/tracker-provider-gh.sh` —
+  `tracker_provider_gh_link()` `blocks|blocked-by` case;
+  `scripts/tests/tracker-provider-test.sh` test 1.17;
+  new fixture under `scripts/tests/fixtures/tracker-provider/`.
+Description: BD-060 ships `blocks`/`blocked-by` via comment markers (the
+  documented V3 §28 fallback). GitHub issue dependencies went GA 2025-08-21
+  (EXTERNAL-RESEARCH §1.5); the exact GraphQL mutation name was not pinned
+  at BD-060 land-time and could not be verified offline. At BD-088 or BD-093
+  land-time, run a GraphQL schema introspection against the live repo, swap
+  the comment-based branch in `tracker_provider_gh_link()` for the actual
+  mutation, add a fixture-driven test mirroring test 1.17, and remove the
+  "GA 2025-08-21; mutation name verified at first live use" deferral note
+  from the comment block above the function. Public `provider_link()` shape
+  is unchanged. Comment-based markers remain available via `provider_raw()`
+  for callers that explicitly want the V3 §28 fallback path.
+Resolved: n/a
+
 ---
 
 ## Active — v10 Scope
