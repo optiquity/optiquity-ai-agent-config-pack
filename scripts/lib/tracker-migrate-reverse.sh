@@ -142,20 +142,31 @@ _tmr_decode_status() {
     esac
 }
 
-# Decode the entry's v10 Type from labels (TODO/KNOWN GAP/VERIFY for
-# TD; TODO(version) catch-all for BD).
+# Decode the entry's v10 Type from labels.
+#
+# v10 grammar (METHODOLOGY §988):
+#   Type: TODO(<scope>) | KNOWN GAP(<severity>) | VERIFY(<source>)
+#
+# The parenthetical takes the actual scope/severity VALUE from the
+# corresponding label (`scope:dependency` → `TODO(dependency)`,
+# `severity:critical` → `KNOWN GAP(critical)`). When the label is
+# absent we fall back to the literal placeholder name (`scope`,
+# `severity`) so v10 fixtures that author the type as `TODO(scope)`
+# round-trip byte-equivalent through forward → reverse.
 _tmr_decode_type() {
     local pack_id="$1"
     local labels_json="$2"
     case "$pack_id" in
         BD-*) echo "TODO(version)" ;;
         TD-*)
-            # Severity label means KNOWN GAP variant; otherwise TODO.
-            if printf '%s' "$labels_json" | jq -r 'if type=="array" then .[] else empty end' \
-                | grep -qE '^severity:'; then
-                echo "KNOWN GAP(scope)"
+            local severity scope
+            severity=$(_tmr_decode_severity "$labels_json")
+            if [[ -n "$severity" ]]; then
+                echo "KNOWN GAP($severity)"
             else
-                echo "TODO(scope)"
+                scope=$(_tmr_decode_scope "$labels_json")
+                [[ -z "$scope" ]] && scope="scope"
+                echo "TODO($scope)"
             fi
             ;;
         *)    echo "TODO" ;;
@@ -595,21 +606,49 @@ tracker_migrate_reverse_run() {
     mapping_file=$(_tmf_mapping_file "$repo_root")
     mapping=$(tmf_mapping_load "$mapping_file")
 
-    # Steps 1+2: list issues. We use the mapping file as the
-    # authoritative source of which issues to fetch (BD-060's
-    # provider_list is filter-based; the mapping is the ground truth
-    # of pack-managed entries).
-    local pack_ids issue_jsons='[]' phase_jsons='[]'
-    pack_ids=$(printf '%s' "$mapping" | jq -r 'keys[]')
+    # Steps 1+2 (V1 §6.5): discover entries via provider_list with
+    # label filters (`bd-entry`, `td-entry`, `phase-epic`). The
+    # mapping file is unioned in as a recovery fallback so entries
+    # whose entry-label was stripped or that pre-date v11.0 (no
+    # canonical labels yet) still round-trip. pack_id is resolved
+    # from the canonical body marker; mapping serves only as a
+    # gh_id → pack_id fallback when the body marker is absent.
+    local roster='[]'
+    local _tmr_label
+    for _tmr_label in "bd-entry" "td-entry" "phase-epic"; do
+        local _tmr_list
+        if _tmr_list=$(provider_list "{\"label\":\"${_tmr_label}\",\"state\":\"all\"}" 100 2>/dev/null); then
+            roster=$(jq -nc --argjson r "$roster" --argjson l "$_tmr_list" \
+                '$r + (($l.items // []) | map(.id // .number | tostring))')
+        fi
+    done
+    # Union with mapping gh_ids (recovery fallback).
+    roster=$(jq -nc --argjson r "$roster" --argjson m "$mapping" \
+        '$r + ([$m | to_entries[] | .value.id // empty | tostring]) | unique')
 
-    local pack_id gh_id issue
-    while IFS= read -r pack_id; do
-        [[ -z "$pack_id" ]] && continue
-        gh_id=$(tmf_mapping_get "$mapping" "$pack_id" || echo "")
-        [[ -z "$gh_id" ]] && continue
+    local issue_jsons='[]' phase_jsons='[]'
+    local n_roster i_roster=0 gh_id pack_id issue
+    n_roster=$(printf '%s' "$roster" | jq 'length')
+    while [[ $i_roster -lt $n_roster ]]; do
+        gh_id=$(printf '%s' "$roster" | jq -r ".[$i_roster]")
+        i_roster=$((i_roster + 1))
+        [[ -z "$gh_id" || "$gh_id" == "null" ]] && continue
         if ! issue=$(provider_get "$gh_id" 2>/dev/null); then
             continue
         fi
+        # Canonical: pack-id from body marker.
+        pack_id=$(printf '%s' "$issue" | python3 -c '
+import json, re, sys
+d = json.load(sys.stdin)
+b = d.get("body", "") or ""
+m = re.search(r"<!--\s*pack-id:\s*([A-Za-z]+-\d+(?:\.\d+)?)\s*-->", b)
+print(m.group(1) if m else "")')
+        # Fallback: gh_id → pack_id via mapping reverse lookup.
+        if [[ -z "$pack_id" ]]; then
+            pack_id=$(printf '%s' "$mapping" | jq -r --arg g "$gh_id" \
+                'to_entries | map(select(.value.id == $g)) | .[0].key // empty')
+        fi
+        [[ -z "$pack_id" ]] && continue
         case "$pack_id" in
             phase-*)
                 phase_jsons=$(printf '%s' "$phase_jsons" | jq -c \
@@ -622,7 +661,7 @@ tracker_migrate_reverse_run() {
                 issue_jsons=$(printf '%s' "$issue_jsons" | jq -c --argjson r "$rec" '. + [$r]')
                 ;;
         esac
-    done <<<"$pack_ids"
+    done
 
     # Step 3 second pass: compute Unblocks (inverse of Blockers).
     issue_jsons=$(printf '%s' "$issue_jsons" | _tmr_compute_unblocks)

@@ -50,7 +50,25 @@ _build_fake_gh() {
     local bin="$1"
     cat > "$bin/gh" <<'FG'
 #!/usr/bin/env bash
+# Parse --label out of `issue list` flags (V1 §6.5 step 1 calls
+# provider_list with bd-entry / td-entry / phase-epic filters).
+label=""
+for ((i=1; i<=$#; i++)); do
+    if [[ "${!i}" == "--label" ]]; then
+        j=$((i+1))
+        label="${!j}"
+        break
+    fi
+done
 case "$1 $2" in
+    "issue list")
+        case "$label" in
+            bd-entry)   echo '[{"number":42,"title":"BD-001: Add foo to bar","state":"OPEN","labels":[{"name":"bd-entry"}],"assignees":[],"milestone":null,"url":"http://x/42"},{"number":43,"title":"BD-002: Refactor bar","state":"OPEN","labels":[{"name":"bd-entry"}],"assignees":[],"milestone":null,"url":"http://x/43"}]' ;;
+            td-entry)   echo '[{"number":55,"title":"TD-010: Document quux","state":"OPEN","labels":[{"name":"td-entry"}],"assignees":[],"milestone":null,"url":"http://x/55"}]' ;;
+            phase-epic) echo '[{"number":58,"title":"Phase 3 — Foundations","state":"OPEN","labels":[{"name":"phase-epic"}],"assignees":[],"milestone":null,"url":"http://x/58"}]' ;;
+            *)          echo '[]' ;;
+        esac
+        ;;
     "issue view")
         case "$3" in
             42)
@@ -127,8 +145,15 @@ assert_eq "1.1b state=open no label → Open"          "Open"       "$(_tmr_deco
 assert_eq "1.1b state=open status:unblocked → Unblocked" "Unblocked" "$(_tmr_decode_status "$manual_unblocked")"
 
 assert_eq "1.2 BD type"   "TODO(version)" "$(_tmr_decode_type "BD-001" '["bd-entry"]')"
-assert_eq "1.2 TD TODO"   "TODO(scope)"   "$(_tmr_decode_type "TD-010" '["td-entry"]')"
-assert_eq "1.2 TD KNOWN-GAP" "KNOWN GAP(scope)" "$(_tmr_decode_type "TD-010" '["td-entry","severity:critical"]')"
+# v10 grammar (METHODOLOGY §988): Type: TODO(<scope>) — parenthetical
+# is the scope label VALUE, falling back to the literal placeholder
+# `scope` when no scope label exists (preserves v10 fixture round-trip).
+assert_eq "1.2 TD TODO no scope label → fallback" \
+    "TODO(scope)"        "$(_tmr_decode_type "TD-010" '["td-entry"]')"
+assert_eq "1.2 TD TODO with scope:dependency → substituted" \
+    "TODO(dependency)"   "$(_tmr_decode_type "TD-010" '["td-entry","scope:dependency"]')"
+assert_eq "1.2 TD KNOWN GAP severity:critical → substituted" \
+    "KNOWN GAP(critical)" "$(_tmr_decode_type "TD-010" '["td-entry","severity:critical"]')"
 
 assert_eq "1.3 scope decode"     "dependency" "$(_tmr_decode_scope    '["scope:dependency","other"]')"
 assert_eq "1.3 severity decode"  "critical"   "$(_tmr_decode_severity '["severity:critical"]')"
@@ -288,6 +313,10 @@ assert_contains "4.2 BACKLOG has TD-010 entry" "$backlog" "**TD-010 — Document
 assert_contains "4.2 BACKLOG has Status: Open" "$backlog" "Status: Open"
 assert_contains "4.2 BACKLOG has File/Symbol"  "$backlog" "File/Symbol: scripts/foo.sh"
 assert_contains "4.2 BACKLOG has Description"  "$backlog" "Description: Implements foo on bar."
+# F5 closure: TD-010 carries scope:dependency on the tracker side, so
+# the v10 Type field substitutes the scope value into TODO(...).
+assert_contains "4.2 TD-010 Type substitutes scope value" \
+    "$backlog" "Type: TODO(dependency)"
 
 # 4.3 STATUS reports counts
 status_md=$(cat "$REPO/STATUS.md")
