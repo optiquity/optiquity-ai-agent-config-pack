@@ -1,0 +1,9 @@
+# GitHub Issues form-family configuration (V2 §4.1).
+# Disables blank issues so all intake routes through one of the two
+# composite forms (work-item.yml or inbound.yml). Open-ended questions
+# go to GH Discussions instead.
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions — open-ended questions
+    url: https://github.com/Optiquity-Inc/optiquity-ai-agent-config-pack/discussions
+    about: For questions, ideas, and discussion that are not yet a bug report, feature request, or pack-feedback observation.

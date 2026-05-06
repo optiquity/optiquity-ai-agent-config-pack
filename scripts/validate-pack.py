@@ -929,6 +929,110 @@ def check_tool_config_capability_parity() -> None:
         )
 
 
+def check_issue_template_forms() -> None:
+    """Check (existing series) — `.github/ISSUE_TEMPLATE/*.yml` forms parse and
+    have the required structural fields per V2 §4.1 / §4.2 / §4.3 (BD-063).
+
+    Verifies, per surface (pack-root and project-template):
+      - work-item.yml, inbound.yml, config.yml all exist and parse as YAML
+      - Forms (work-item, inbound) have name/description/labels/body keys
+      - work-item.yml's wi-type dropdown has all 4 options
+        (bd, td, phase-epic-skeleton, phase-task-skeleton) per V3.3 §6.1
+      - inbound.yml's in-category dropdown has all 7 options
+        (bug, feature-request, 5× pack-feedback-*) per V2 §4.3
+      - config.yml has blank_issues_enabled = false
+
+    GitHub validates field-level form schema server-side at upload time;
+    this check guards against malformed YAML and missing top-level keys
+    that would render the form non-functional after merge.
+    """
+    print("\n── Check: Issue template forms (BD-063) ──")
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        fail("PyYAML not available — cannot validate issue templates")
+        return
+
+    expected_wi_type_options = {"bd", "td", "phase-epic-skeleton", "phase-task-skeleton"}
+    expected_in_category_options = {
+        "bug", "feature-request",
+        "pack-feedback-workflow", "pack-feedback-prompt",
+        "pack-feedback-agent-perf", "pack-feedback-friction",
+        "pack-feedback-open-question",
+    }
+
+    surfaces = [
+        ("pack-root", REPO_ROOT / ".github" / "ISSUE_TEMPLATE"),
+        ("project-template", REPO_ROOT / "project-template" / ".github" / "ISSUE_TEMPLATE"),
+    ]
+
+    for label, dir_path in surfaces:
+        for filename in ("work-item.yml", "inbound.yml", "config.yml"):
+            path = dir_path / filename
+            if not path.is_file():
+                fail(f"{label}: {path.relative_to(REPO_ROOT)} missing")
+                continue
+            try:
+                data = yaml.safe_load(path.read_text())
+            except yaml.YAMLError as e:
+                fail(f"{label}: {path.relative_to(REPO_ROOT)} — YAML parse error: {e}")
+                continue
+
+            if filename == "config.yml":
+                if data.get("blank_issues_enabled") is not False:
+                    fail(f"{label}: config.yml — blank_issues_enabled must be false")
+                else:
+                    ok(f"{label}: config.yml — blank_issues_enabled = false")
+                continue
+
+            # Forms (work-item, inbound)
+            for required_key in ("name", "description", "labels", "body"):
+                if required_key not in data:
+                    fail(f"{label}: {filename} — missing required top-level key '{required_key}'")
+                    break
+            else:
+                # Validate dropdown options for the type-discriminator field.
+                body = data.get("body", [])
+                if filename == "work-item.yml":
+                    dropdown = next(
+                        (b for b in body if b.get("type") == "dropdown" and b.get("id") == "wi-type"),
+                        None,
+                    )
+                    if dropdown is None:
+                        fail(f"{label}: work-item.yml — missing wi-type dropdown")
+                    else:
+                        opts = set(dropdown.get("attributes", {}).get("options", []))
+                        missing = expected_wi_type_options - opts
+                        extra = opts - expected_wi_type_options
+                        if missing or extra:
+                            fail(
+                                f"{label}: work-item.yml — wi-type options mismatch "
+                                f"(missing: {sorted(missing) or 'none'}, "
+                                f"extra: {sorted(extra) or 'none'})"
+                            )
+                        else:
+                            ok(f"{label}: work-item.yml — 4 wi-type options correct (V3.3 §6.1)")
+                elif filename == "inbound.yml":
+                    dropdown = next(
+                        (b for b in body if b.get("type") == "dropdown" and b.get("id") == "in-category"),
+                        None,
+                    )
+                    if dropdown is None:
+                        fail(f"{label}: inbound.yml — missing in-category dropdown")
+                    else:
+                        opts = set(dropdown.get("attributes", {}).get("options", []))
+                        missing = expected_in_category_options - opts
+                        extra = opts - expected_in_category_options
+                        if missing or extra:
+                            fail(
+                                f"{label}: inbound.yml — in-category options mismatch "
+                                f"(missing: {sorted(missing) or 'none'}, "
+                                f"extra: {sorted(extra) or 'none'})"
+                            )
+                        else:
+                            ok(f"{label}: inbound.yml — 7 in-category options correct (V2 §4.3)")
+
+
 def check_gitignore_env_example_exception() -> None:
     """Check 20 — pack-template .gitignore keeps the !.env.example exception.
 
@@ -1152,6 +1256,7 @@ def main() -> None:
     check_trinity_h2_parity()
     check_trinity_no_scaffolding_comments()
     check_gitignore_env_example_exception()
+    check_issue_template_forms()
 
     print("\n" + "=" * 60)
     if failures:

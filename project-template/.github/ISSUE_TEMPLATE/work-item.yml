@@ -1,0 +1,179 @@
+name: Project work item (TD / phase-epic / phase-task)
+description: Project technical-debt item (TD-NNN), phase epic skeleton, or phase task skeleton. (Pack development BDs are filed against the pack repo, not here.)
+title: "TD-NNN: <short title>"
+labels:
+  - work-item
+  - needs-triage
+  - template:work-item-v11.0
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for project-managed work. The Type dropdown selects the entry kind;
+        the chat at triage time renames the title (e.g. `TD-NNN:` becomes the assigned
+        ID), adds the entry-specific `template:` label, and resolves Blockers/Dependencies
+        into first-class links. Phase epic / phase task skeletons are rare-case fallbacks —
+        day-to-day phase work is created by PM Chat at migration time.
+
+        Pack-development items (BD-NNN) belong in the pack repo, not in this project.
+  - type: dropdown
+    id: wi-type
+    attributes:
+      label: Type
+      description: Pick TD for project items; phase-epic-skeleton or phase-task-skeleton for hand-edited phase skeletons (rare). The bd option exists for parity with the pack-side form but is not used in projects.
+      options:
+        - bd
+        - td
+        - phase-epic-skeleton
+        - phase-task-skeleton
+    validations:
+      required: true
+  - type: dropdown
+    id: wi-kind
+    attributes:
+      label: Kind (BD / TD only)
+      description: Required for Type=bd or Type=td. The METHODOLOGY § Part 7 type ("feat", "fix", "refactor", "docs", "chore", "infra").
+      options:
+        - feat
+        - fix
+        - refactor
+        - docs
+        - chore
+        - infra
+    validations:
+      required: false
+  - type: dropdown
+    id: wi-status
+    attributes:
+      label: Initial status
+      description: Defaults to Open for BD/TD. Phase tasks default to Pending. The chat changes status via labels post-creation.
+      options:
+        - Open
+        - Unblocked
+        - Pending
+        - In Progress
+        - Resolved
+        - Done
+        - Deferred
+        - Cancelled
+        - Deprecated
+      default: 0
+    validations:
+      required: true
+  - type: dropdown
+    id: wi-td-scope
+    attributes:
+      label: TD scope (TD only)
+      description: Required for Type=td. Drives the `scope:*` label.
+      options:
+        - phase-N
+        - dependency
+        - feature
+        - perf
+        - version
+    validations:
+      required: false
+  - type: dropdown
+    id: wi-td-severity
+    attributes:
+      label: TD severity (TD only, KNOWN GAP variant)
+      description: Optional. Drives the `severity:*` label.
+      options:
+        - critical
+        - functional
+        - polish
+    validations:
+      required: false
+  - type: input
+    id: wi-phase-number
+    attributes:
+      label: Phase number (phase-epic-skeleton or phase-task-skeleton)
+      description: Required for Type=phase-epic-skeleton (use "N") or Type=phase-task-skeleton (use "N" — the parent phase). Drives the `phase-N` label and the body `pack-id`.
+      placeholder: "3"
+    validations:
+      required: false
+  - type: input
+    id: wi-task-title
+    attributes:
+      label: Task title (phase-task-skeleton only)
+      description: Required for Type=phase-task-skeleton. The chat composes the issue title as `Phase N.M — <task title>` where M is the next available task number under phase N.
+    validations:
+      required: false
+  - type: textarea
+    id: wi-blockers
+    attributes:
+      label: Blockers
+      description: |
+        One per line. Each line is either an issue id (TD-NNN, #N) or a phase token. Blockers may name 'phase-N' (entire phase) or 'phase-N.M' (specific task) — both forms are recognized. The chat resolves these to first-class links/sub-issue parents post-creation.
+    validations:
+      required: false
+  - type: textarea
+    id: wi-unblocks
+    attributes:
+      label: Unblocks
+      description: Informational; one issue id per line. Inverse of Blockers across the dataset.
+    validations:
+      required: false
+  - type: input
+    id: wi-file-symbol
+    attributes:
+      label: File / Symbol
+      description: Affected path or symbol (free-form).
+    validations:
+      required: false
+  - type: textarea
+    id: wi-description
+    attributes:
+      label: Description
+      description: For BD/TD/phase-epic-skeleton. (Phase task skeletons use Problem / Goal / Success below instead.)
+    validations:
+      required: false
+  - type: textarea
+    id: wi-context
+    attributes:
+      label: Context
+      description: Background, motivation, related work.
+    validations:
+      required: false
+  - type: textarea
+    id: wi-resolution
+    attributes:
+      label: Resolution
+      description: Filled when status flips to Resolved.
+    validations:
+      required: false
+  - type: textarea
+    id: wi-problem-goal-success
+    attributes:
+      label: Problem / Goal / Success (phase-task-skeleton only)
+      description: Required for Type=phase-task-skeleton. Body section per METHODOLOGY § Part 4.
+    validations:
+      required: false
+  - type: textarea
+    id: wi-files
+    attributes:
+      label: Files created / modified (phase-task-skeleton only)
+      description: Optional; one path per line.
+    validations:
+      required: false
+  - type: textarea
+    id: wi-definition-of-done
+    attributes:
+      label: Definition of done (phase-task-skeleton only)
+      description: Required for Type=phase-task-skeleton. Bulleted criteria.
+    validations:
+      required: false
+  - type: textarea
+    id: wi-dependencies
+    attributes:
+      label: Dependencies (phase-task-skeleton only)
+      description: |
+        One ID per line. Accepts `phase-N`, `phase-N.M`, `TD-NNN`, `BD-NNN`. The chat resolves each line to first-class `provider.link()` calls post-creation.
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        <!-- pack-id: PENDING -->
+        <!-- template_version: work-item-v11.0 -->
+        <!-- pack-version: v11 -->

@@ -1,0 +1,12 @@
+# GitHub Issues form-family configuration (V2 §4.1).
+# Disables blank issues so all intake routes through one of the two
+# composite forms (work-item.yml or inbound.yml). Open-ended questions
+# go to GH Discussions instead.
+#
+# Replace `<your-org>/<your-project>` with your project's actual repo
+# slug at install time.
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions — open-ended questions
+    url: https://github.com/<your-org>/<your-project>/discussions
+    about: For questions, ideas, and discussion that are not yet a bug report, feature request, or pack-feedback observation.
