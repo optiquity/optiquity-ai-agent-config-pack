@@ -65,20 +65,26 @@ Note what was fetched, or confirm "already up to date."
 
 ## Step 2 — Read core state files
 
-Read these files in full:
-- `BACKLOG.md`
-- `STATUS.md`
+Read these in full:
+- BACKLOG entries (resolve via the trinity `## Document locations` table;
+  reads `BACKLOG.md` in flat-file mode, the tracker in tracker mode)
+- STATUS entries (same resolver as above; reads `STATUS.md` in flat-file mode,
+  the tracker in tracker mode)
 - `PM-CHAT.md`
 - `PLATFORM-SKILLS.md`
 
 Read only the most recent dated section from `CHANGELOG.md`.
 
-Identify the current phase from STATUS.md, then read only that phase's section
+Identify the current phase from STATUS, then read only that phase's section
 from `IMPLEMENTATION_PLAN.md`.
 
 Read the first 5 lines of `METHODOLOGY.md` to get the version number.
 
-Use the Document locations section in the project context file to resolve file paths.
+Resolve every BACKLOG / STATUS / IMPLEMENTATION_PLAN / CHANGELOG read through
+the trinity `## Document locations` table in the project context file (V1 §8.4).
+In flat-file mode the table points at the named files in `docs/project/`; in
+tracker mode the table points at the tracker (BACKLOG / STATUS / CHANGELOG /
+IMPLEMENTATION_PLAN are tracker-mirrored read-only files in that mode).
 
 ## Step 3 — Read active skills
 

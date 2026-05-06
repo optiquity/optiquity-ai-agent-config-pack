@@ -246,7 +246,9 @@ claude --resume [project-short-name]-pm  # or start fresh + /rename if no sessio
 
 ### Startup procedure
 
-Run `/pm-startup`. The skill reads BACKLOG.md, STATUS.md, PM-CHAT.md,
+Run `/pm-startup`. The skill reads BACKLOG entries, STATUS entries (resolve
+via the trinity `## Document locations` table — flat-file mode reads
+BACKLOG.md / STATUS.md; tracker mode reads the tracker), PM-CHAT.md,
 CHANGELOG.md, IMPLEMENTATION_PLAN.md, METHODOLOGY.md, and PLATFORM-SKILLS.md.
 It reports current state and flags any TD-TBD sentinels.
 
@@ -272,10 +274,12 @@ via the GitHub connector. Conversations persist across sessions and machines.
 
 ### Startup procedure
 
-Start a new conversation within the project. Read BACKLOG.md, STATUS.md,
-PLATFORM-SKILLS.md, and the current phase from IMPLEMENTATION_PLAN.md. The
-project knowledge base provides searchable access to METHODOLOGY.md without
-manual re-reading.
+Start a new conversation within the project. Read BACKLOG entries, STATUS
+entries (resolve via the trinity `## Document locations` table —
+flat-file mode reads BACKLOG.md / STATUS.md; tracker mode reads the
+tracker), PLATFORM-SKILLS.md, and the current phase from
+IMPLEMENTATION_PLAN.md. The project knowledge base provides searchable
+access to METHODOLOGY.md without manual re-reading.
 
 ### File access
 
@@ -316,7 +320,9 @@ gemini
 ### Startup procedure
 
 No startup skill — Gemini CLI loads GEMINI.md automatically. After resuming
-a saved session, read BACKLOG.md, STATUS.md, PLATFORM-SKILLS.md, and the
+a saved session, read BACKLOG entries, STATUS entries (resolve via the
+trinity `## Document locations` table — flat-file mode reads BACKLOG.md /
+STATUS.md; tracker mode reads the tracker), PLATFORM-SKILLS.md, and the
 current phase from IMPLEMENTATION_PLAN.md to verify state is current.
 
 ### File access
@@ -328,7 +334,8 @@ provides persistent project context without RAG.
 ### Context management
 
 Use `/compress` when context grows large. After compression, re-read state
-files (BACKLOG.md, STATUS.md, PLATFORM-SKILLS.md) to restore accuracy.
+(BACKLOG / STATUS entries via the trinity resolver — see Step 2 of
+`/pm-startup` — and PLATFORM-SKILLS.md) to restore accuracy.
 
 ### Cross-session memory
 
@@ -350,7 +357,9 @@ PLATFORM-SKILLS.md into the thread as initial context.
 
 **Normal resume:** Continue the existing thread.
 
-**After a long gap:** Re-paste BACKLOG.md, STATUS.md, and the current phase
+**After a long gap:** Re-paste BACKLOG / STATUS entries (resolve via the
+trinity `## Document locations` table — flat-file mode pastes BACKLOG.md /
+STATUS.md; tracker mode pastes the tracker mirror) and the current phase
 from IMPLEMENTATION_PLAN.md to refresh context.
 
 ### Session management (Codex CLI)
@@ -377,8 +386,10 @@ Codex CLI: native filesystem access and git. File access works like Claude Code 
 ### Context management
 
 ChatGPT Web has no built-in compaction. Long threads degrade — start a new
-thread and re-paste key context (BACKLOG.md, STATUS.md, current phase,
-PLATFORM-SKILLS.md) when the thread becomes unwieldy.
+thread and re-paste key context (BACKLOG / STATUS entries via the trinity
+resolver — flat-file mode reads BACKLOG.md / STATUS.md; tracker mode reads
+the tracker — plus current phase, PLATFORM-SKILLS.md) when the thread
+becomes unwieldy.
 
 Codex CLI: use `--resume` to continue. No automatic compaction.
 
@@ -392,8 +403,10 @@ the shared state:
 1. Commit all pending changes on the current tool before switching
 2. `git pull` on the new tool's machine
 3. Start or resume a session on the new tool
-4. Read BACKLOG.md, STATUS.md, PLATFORM-SKILLS.md, and current phase from
-   IMPLEMENTATION_PLAN.md to reconstruct context
+4. Read BACKLOG entries, STATUS entries (resolve via the trinity
+   `## Document locations` table — flat-file mode reads BACKLOG.md /
+   STATUS.md; tracker mode reads the tracker), PLATFORM-SKILLS.md, and
+   current phase from IMPLEMENTATION_PLAN.md to reconstruct context
 
 What transfers: all project state (committed to repo).
 What does not transfer: conversation history, reasoning behind decisions.
