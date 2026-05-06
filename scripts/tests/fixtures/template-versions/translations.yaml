@@ -1,0 +1,28 @@
+# Synthetic translation manifest for BD-069 tests.
+# This is NOT the production manifest. Production at v11.0 ships an
+# empty translations manifest (no v11.x has shipped yet). When v11.1
+# ships, the production manifest at
+# `maintenance-docs/v11-research/templates-archive/translations.yaml`
+# gets a real entry shaped like this.
+
+- from: bd-v11.0
+  to:   bd-v11.1
+  rules:
+    - kind: field-added
+      to:   wi-priority
+      default: ""
+    - kind: field-renamed
+      from: Description
+      to:   Summary
+    - kind: label-renamed
+      from: status:open
+      to:   status:active
+
+- from: bd-v11.1
+  to:   bd-v12.0
+  rules:
+    - kind: field-removed
+      from: wi-priority
+    - kind: field-added
+      to:   wi-impact
+      default: ""

@@ -118,10 +118,11 @@ print(m.group(1) if m else "")')
 
 EOF
     # Per V1 §6.6.1, extra_fields is the set of fields on the tracker
-    # entry not representable in v10 grammar. v11.0 templates use
-    # only v10-grammar fields, so the set is empty. Future v11.x
-    # templates that add fields will append them here.
-    echo '(empty at v11.0; v11.x-only fields populate this section)'
+    # entry not representable in v10 grammar. The content is emitted
+    # by the _tmsc_extra_fields_for_entry hook so future BDs (BD-069
+    # template-version reconciliation; BD-106 phase-task fields) can
+    # extend the emitter without re-architecting the sidecar.
+    _tmsc_extra_fields_for_entry "$pack_id" "$issue"
     echo
 
     cat <<EOF
@@ -162,4 +163,25 @@ EOF
 ---
 
 EOF
+}
+
+# _tmsc_extra_fields_for_entry <pack-id> <issue-json>
+# Default extension hook for the V1 §6.6.1 extra_fields block.
+# v11.0 ships an empty implementation (no v11.x-only fields exist).
+# BD-069's template-version reconciliation logic + BD-106's phase-
+# task fields can override this function (sourced order: define
+# this default first, then sourced-later libs may redefine).
+#
+# The function takes pack_id + canonical Issue JSON and emits text
+# (one or more lines) describing v11.x-only fields present on the
+# tracker entry. v11.0's default emits the empty-state notice.
+#
+# Finding #7 ride-along from PACK-REVIEW-BD066-068.
+_tmsc_extra_fields_for_entry() {
+    local pack_id="$1"
+    local issue="$2"
+    # v11.0 has no v11.x-only fields. Future BDs that add fields
+    # redefine this function before sourcing tracker-sidecar.sh, or
+    # source it then redefine — the latest definition wins.
+    echo '(empty at v11.0; v11.x-only fields populate this section)'
 }
