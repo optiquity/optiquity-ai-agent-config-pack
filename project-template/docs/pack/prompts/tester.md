@@ -15,9 +15,11 @@ implementation-bound test gaps that must be characterized before
 implementation begins.]
 
 **Required reading:** `ARCHITECTURE.md` in full. `CHANGELOG.md`.
-`BACKLOG.md`. Use Glob to list every source file. Read them all. Build
-your own complete inventory — do NOT rely on any pre-specified list of
-components.
+`BACKLOG` entries (resolve via the trinity `## Document locations`
+table; reads the flat-file mirror in flat-file mode and the tracker
+in tracker mode). Use Glob to list every source file. Read them all.
+Build your own complete inventory — do NOT rely on any pre-specified
+list of components.
 
 **Problem:** Phase [N] / [COMPONENT SCOPE] has implementation-bound
 test gaps that must be identified, ranked by likelihood of catching

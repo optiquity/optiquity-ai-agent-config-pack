@@ -189,15 +189,15 @@ Resolved: 2026-05-05 — typed-error formatter covering all 10 V1 §2.5 codes (i
 
 **BD-071 — Agent read-pattern adaptation (D-9, V1 §8 + V1 §13)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-062, BD-070
 Unblocks: None
-File/Symbol: `project-template/docs/pack/prompts/*.md` (10 prompt files), `scripts/lib/tracker-agent-read.sh`
+File/Symbol: `project-template/docs/pack/prompts/{tester,pm-chat}.md`, `scripts/lib/tracker-agent-read.sh`, `scripts/tests/tracker-agent-read-test.sh`
 Description: Implements D-9 LCD agent reads. Replaces "Read BACKLOG.md"
   with "Read BACKLOG entries (resolve via trinity Document locations)" across
   10 per-agent prompt files. Agents use `gh issue view --json …` shell-out
   when tracker mode is on. validate-pack Check 22 catches drift.
-Resolved: n/a
+Resolved: 2026-05-06 — Per V1 §8.4/§8.5 prompt-language change applied to the prompt files that actually carry "Read BACKLOG.md" / "Read STATUS.md" instructions: tester.md required-reading line, pm-chat.md (2 places: project-documents-in-context list + state-change-recording required-reading line). Other 8 prompt files (architect, auditor, coder, docs-researcher, grpc-schema, planner, repo-ops, reviewer) audited — they reference BACKLOG/STATUS only in write-prohibition or concept contexts; no language change needed per V1 §8.5 narrow rule (only "Read X.md" → trinity-resolver). New scripts/lib/tracker-agent-read.sh provides the LCD agent read path per V1 §8.1 — mode-agnostic: flat-file mode greps BACKLOG.md mirror; tracker mode resolves pack-id via mapping file then provider_get. Both sourceable (tracker_agent_read_entry function) and direct-executable (`bash scripts/lib/tracker-agent-read.sh BD-001 [<repo>]`). 29/29 tests in 4 groups (mode detection, flat-file read, tracker-mode read with mocked gh, direct-execution entrypoint). Full sweep 645/645; validate-pack clean.
 
 ---
 
