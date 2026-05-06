@@ -75,20 +75,20 @@ import json, sys
 try:
     import yaml
 except ImportError:
-    sys.stderr.write("ERROR: validation\nMESSAGE: PyYAML not installed; cannot read translations manifest\n")
+    sys.stderr.write("ERROR: validation\nMESSAGE: PyYAML not installed; cannot read translations manifest\n→ Run: review the backend message above\n")
     sys.exit(1)
 path = sys.argv[1]
 try:
     with open(path) as f:
         data = yaml.safe_load(f)
 except (OSError, yaml.YAMLError) as e:
-    sys.stderr.write("ERROR: validation\nMESSAGE: %s\n" % e)
+    sys.stderr.write("ERROR: validation\nMESSAGE: %s\n→ Run: review the backend message above\n" % e)
     sys.exit(1)
 if data is None:
     print("[]")
     sys.exit(0)
 if not isinstance(data, list):
-    sys.stderr.write("ERROR: validation\nMESSAGE: manifest top-level must be a list of transitions\n")
+    sys.stderr.write("ERROR: validation\nMESSAGE: manifest top-level must be a list of transitions\n→ Run: review the backend message above\n")
     sys.exit(1)
 print(json.dumps(data))
 PYEOF
@@ -132,7 +132,7 @@ try:
     with open(manifest_path) as f:
         manifest = json.load(f)
 except (OSError, json.JSONDecodeError):
-    sys.stderr.write("ERROR: validation\nMESSAGE: manifest is not valid JSON\n")
+    sys.stderr.write("ERROR: validation\nMESSAGE: manifest is not valid JSON\n→ Run: review the backend message above\n")
     sys.exit(1)
 
 # Build adjacency: from-version → list of (to-version, rules).
@@ -165,7 +165,7 @@ while queue:
             continue
         queue.append((nxt, acc + rules, seen_edges | {ei}))
 
-sys.stderr.write("ERROR: validation\nMESSAGE: no translation chain from '%s' to '%s' in manifest\n" % (src, dst))
+sys.stderr.write("ERROR: validation\nMESSAGE: no translation chain from '%s' to '%s' in manifest\n→ Run: review the backend message above\n" % (src, dst))
 sys.exit(1)
 PYEOF
     local rc=$?
@@ -203,7 +203,7 @@ path = sys.argv[1]
 try:
     rules = json.loads(sys.argv[2])
 except json.JSONDecodeError:
-    sys.stderr.write("ERROR: validation\nMESSAGE: rules-json is not valid JSON\n")
+    sys.stderr.write("ERROR: validation\nMESSAGE: rules-json is not valid JSON\n→ Run: review the backend message above\n")
     sys.exit(1)
 
 with open(path) as f:

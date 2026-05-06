@@ -104,7 +104,7 @@ try:
     with open(path) as f:
         text = f.read()
 except OSError as e:
-    sys.stderr.write("ERROR: validation\nMESSAGE: %s\n" % e)
+    sys.stderr.write("ERROR: validation\nMESSAGE: %s\n→ Run: review the backend message above\n" % e)
     sys.exit(1)
 
 for raw_line in text.splitlines():
@@ -126,7 +126,7 @@ for raw_line in text.splitlines():
         continue
     m = re.match(r'^([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(.+?)\s*$', line)
     if not m:
-        sys.stderr.write("ERROR: validation\nMESSAGE: cannot parse line: %r\n" % raw_line)
+        sys.stderr.write("ERROR: validation\nMESSAGE: cannot parse line: %r\n→ Run: review the backend message above\n" % raw_line)
         sys.exit(1)
     key, raw = m.group(1), m.group(2)
     if raw == "true":
@@ -140,7 +140,7 @@ for raw_line in text.splitlines():
     elif re.match(r'^-?\d+$', raw):
         val = int(raw)
     else:
-        sys.stderr.write("ERROR: validation\nMESSAGE: unrecognized value %r on line: %r\n" % (raw, raw_line))
+        sys.stderr.write("ERROR: validation\nMESSAGE: unrecognized value %r on line: %r\n→ Run: review the backend message above\n" % (raw, raw_line))
         sys.exit(1)
     full_key = ("%s.%s" % (section, key)) if section else key
     data[full_key] = val

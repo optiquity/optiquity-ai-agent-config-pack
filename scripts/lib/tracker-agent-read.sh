@@ -166,13 +166,13 @@ try:
     with open(path) as f:
         text = f.read()
 except OSError as e:
-    sys.stderr.write("ERROR: not-found\nMESSAGE: %s\n" % e)
+    sys.stderr.write("ERROR: not-found\nMESSAGE: %s\n→ Run: verify the issue id and re-run\n" % e)
     sys.exit(1)
 # Match the entry header: **PACK_ID — Title**
 pat = re.compile(r'^\*\*' + re.escape(pack_id) + r'\s*[—-]\s*.+?\*\*\s*$', re.M)
 m = pat.search(text)
 if not m:
-    sys.stderr.write("ERROR: not-found\nMESSAGE: %s not found in BACKLOG.md\n" % pack_id)
+    sys.stderr.write("ERROR: not-found\nMESSAGE: %s not found in BACKLOG.md\n→ Run: verify the issue id and re-run\n" % pack_id)
     sys.exit(1)
 start = m.start()
 # End is the next `---` separator or next `**X-NNN —` header, whichever first.
