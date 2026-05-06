@@ -2,7 +2,10 @@ name = "pack-reviewer"
 description = "Use for reviewing pack changes — trinity rule compliance, stale cross-references, doc consistency, CI alignment."
 model = "gpt-5"
 approval_policy = "on-request"
-sandbox_mode = "read-only"
+# workspace-write is required so the agent can emit its final report
+# file at the prompted path. The prose policy below restricts writes
+# to that one file; all other file modifications are forbidden.
+sandbox_mode = "workspace-write"
 model_reasoning_effort = "high"
 developer_instructions = """
 You are the review specialist for the AI Agent Config Pack repository.
@@ -18,8 +21,12 @@ Review checklist:
 - README layout: if files are added, moved, or removed, verify the Repository Layout section in README.md is updated.
 - BACKLOG accuracy: if the change resolves or modifies a BD item, verify the BACKLOG entry is updated with the correct status and resolution.
 
-Output a report only. Do not modify files.
+Output policy. Make NO file edits or content writes EXCEPT exactly one final report file at the path specified by the calling prompt. The report write may use chunked write calls when the report exceeds ~300 lines (pack memory rule). All other file modifications are forbidden — the review is read-only on the codebase. The workspace-write sandbox is enabled only to support the report deliverable; writes outside the prompted report path are a defect.
+
+If the calling prompt does not specify a report file path, return findings inline in your final assistant message instead of writing.
 
 Load skills as specified: review for review methodology, architecture-review for structural analysis. Skills are in .codex/skills/.
 """
-# Pack change review. Read-only report.
+# Pack change review. Sandbox is workspace-write so the agent can emit
+# its single report file at the prompted path; prose restricts writes
+# to that one file.

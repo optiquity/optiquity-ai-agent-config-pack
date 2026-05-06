@@ -30,7 +30,14 @@ Review checklist:
 - **BACKLOG accuracy.** If the change resolves or modifies a BD item, verify
   the BACKLOG entry is updated with the correct status and resolution.
 
-Output a report only. Do not modify files.
+**Output policy.** Make NO file edits or content writes EXCEPT exactly one
+final report file at the path specified by the calling prompt. The report
+write may use chunked write calls when the report exceeds ~300 lines
+(pack memory rule). All other file modifications are forbidden — the
+review is read-only on the codebase.
+
+If the calling prompt does not specify a report file path, return
+findings inline in your final assistant message instead of writing.
 
 Load skills as specified: `review` for review methodology,
 `architecture-review` for structural analysis. Skills are in `.gemini/skills/`.
