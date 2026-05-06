@@ -247,6 +247,55 @@ prompt=$(recommendation_render_prompt "$sigs_multi" "pack")
     || t_fail "4.2 multi-signal" "$prompt"
 
 # ─────────────────────────────────────────────────────────────────
+# Group 5: pack-tracker enable-recommendations verb (BD-073)
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 5: enable-recommendations verb (BD-073) ===\n"
+
+# 5.1 verb runs and flips persistent_refusal=true → false on disk.
+TR_V=$(mktemp -d -t rec-verb.XXXXXX)
+touch "$TR_V/PACK-CHAT.md"  # forces surface=pack auto-detect
+state_path="$TR_V/.pack-tracker/recommendation-state.json"
+mkdir -p "$TR_V/.pack-tracker"
+# Seed the state file with persistent_refusal=true.
+cat > "$state_path" <<EOF
+{"schema_version":"v1","surface":"pack","persistent_refusal":true,"persistent_refusal_at":"2026-05-01T00:00:00Z","last_recommendation_shown_at":null,"last_recommendation_signals":{},"user_re_enable_count":0}
+EOF
+
+output=$(bash "$REPO_ROOT/scripts/pack-tracker.sh" enable-recommendations --repo-root "$TR_V" 2>&1)
+rc=$?
+assert_eq "5.1 verb rc=0" "0" "$rc"
+assert_eq "5.1 persistent_refusal flipped to false" "false" \
+    "$(jq -r '.persistent_refusal' "$state_path")"
+assert_eq "5.1 user_re_enable_count incremented to 1" "1" \
+    "$(jq -r '.user_re_enable_count' "$state_path")"
+[[ "$output" == *"persistent_refusal cleared"* ]] \
+    && t_pass "5.1 verb reports cleared status" \
+    || t_fail "5.1 verb output" "$output"
+
+# 5.2 second invocation is idempotent: persistent_refusal stays false,
+# count increments to 2.
+bash "$REPO_ROOT/scripts/pack-tracker.sh" enable-recommendations --repo-root "$TR_V" >/dev/null 2>&1
+assert_eq "5.2 second run keeps persistent_refusal=false" "false" \
+    "$(jq -r '.persistent_refusal' "$state_path")"
+assert_eq "5.2 second run increments count to 2" "2" \
+    "$(jq -r '.user_re_enable_count' "$state_path")"
+
+# 5.3 missing state file: verb still works (loads default, then flips).
+TR_V2=$(mktemp -d -t rec-verb2.XXXXXX)
+touch "$TR_V2/PACK-CHAT.md"
+output=$(bash "$REPO_ROOT/scripts/pack-tracker.sh" enable-recommendations --repo-root "$TR_V2" 2>&1)
+rc=$?
+assert_eq "5.3 verb rc=0 on missing state" "0" "$rc"
+[[ -f "$TR_V2/.pack-tracker/recommendation-state.json" ]] \
+    && t_pass "5.3 verb creates state file when missing" \
+    || t_fail "5.3 state file created"
+assert_eq "5.3 created state has user_re_enable_count=1" "1" \
+    "$(jq -r '.user_re_enable_count' "$TR_V2/.pack-tracker/recommendation-state.json")"
+
+rm -rf "$TR_V" "$TR_V2"
+
+# ─────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────
 

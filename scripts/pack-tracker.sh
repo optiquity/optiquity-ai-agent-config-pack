@@ -49,6 +49,8 @@ source "$LIB_DIR/tracker-init.sh"
 source "$LIB_DIR/template-version.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/template-translations.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/recommendation.sh"
 
 usage() {
     cat <<'EOF'
@@ -331,10 +333,69 @@ EOF
 # (BD-069 + Finding #12 ride-along). Local _template_update_read_form_version
 # alias removed; callers use template_version_read_form directly.
 
+# cmd_enable_recommendations [--repo-root <path>] [--surface pack|client]
+#
+# Per V3 §28.1.6 / D-19: clears persistent_refusal in
+# .pack-tracker/recommendation-state.json so the recommendation
+# system re-evaluates at the next session start. Also increments
+# user_re_enable_count (informational; not used in v11 decisions
+# per V3 §28.1.4).
+#
+# Surface auto-detected from PACK-CHAT.md (pack) or docs/pack/
+# (client) presence; --surface overrides.
 cmd_enable_recommendations() {
-    tracker_error_emit "not-implemented" \
-        "enable-recommendations: not implemented in this build (BD-073 — Layer-3 proactive recommendation toggle)"
-    return 1
+    local repo_root="" surface=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --repo-root) repo_root="$2"; shift 2 ;;
+            --surface)   surface="$2";   shift 2 ;;
+            -h|--help)
+                cat <<'EOF'
+Usage: pack-tracker.sh enable-recommendations [--repo-root <path>] [--surface pack|client]
+
+Re-enables proactive tracker-mode recommendations after a prior
+"don't ask again." The next session start re-evaluates signals;
+if any threshold has been crossed, the recommendation prompt fires.
+
+Reference: ARCHITECTURE-V3.md §28.1.6, §28.1.9.
+EOF
+                return 0
+                ;;
+            *)
+                tracker_error_emit "validation" \
+                    "enable-recommendations: unknown option '$1'"
+                return 1
+                ;;
+        esac
+    done
+    [[ -z "$repo_root" ]] && repo_root="$(pwd)"
+    if [[ -z "$surface" ]]; then
+        if ! surface=$(tracker_config_auto_surface "$repo_root" 2>/dev/null); then
+            surface="pack"
+        fi
+    fi
+    if [[ "$surface" != "pack" && "$surface" != "client" ]]; then
+        tracker_error_emit "validation" \
+            "enable-recommendations: surface must be pack|client; got '$surface'"
+        return 1
+    fi
+
+    local state_path="$repo_root/.pack-tracker/recommendation-state.json"
+    # Load state (default if absent or corrupted) so
+    # set_persistent_refusal has well-formed input.
+    recommendation_state_load "$state_path" "$surface" >/dev/null
+    recommendation_set_persistent_refusal "$state_path" "false"
+
+    local count
+    count=$(jq -r '.user_re_enable_count // 0' "$state_path")
+    cat <<EOF
+enable-recommendations: persistent_refusal cleared.
+  surface: $surface
+  state:   $state_path
+  user_re_enable_count: $count
+Next session evaluates fresh; recommendation may fire if signals
+cross thresholds.
+EOF
 }
 
 # ─────────────────────────────────────────────────────────────────
