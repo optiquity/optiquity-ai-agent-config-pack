@@ -48,15 +48,15 @@ printf "\n=== Group 1: per-code emit (10 V1 §2.5 codes) ===\n"
 declare_verb() {
     case "$1" in
         network-unreachable)        echo "gh api rate_limit" ;;
-        rate-limit-primary)         echo "wait for the rate-limit reset window" ;;
-        rate-limit-secondary)       echo "wait for the rate-limit reset window" ;;
+        rate-limit-primary)         echo "wait for the reset window, then re-run" ;;
+        rate-limit-secondary)       echo "wait for the reset window, then re-run" ;;
         auth-missing)               echo "gh auth login" ;;
         auth-expired)               echo "gh auth login" ;;
-        auth-insufficient-scope)    echo "gh auth refresh -s" ;;
-        not-found)                  echo "verify the issue id" ;;
-        validation)                 echo "review the backend message" ;;
+        auth-insufficient-scope)    echo "gh auth refresh -s <scope>" ;;
+        not-found)                  echo "verify the issue id and re-run" ;;
+        validation)                 echo "review the backend message above" ;;
         schema-reshape)             echo "pack tracker doctor" ;;
-        partial-write)              echo "pick a resume option" ;;
+        partial-write)              echo "see resume options above" ;;
     esac
 }
 

@@ -100,33 +100,21 @@ EOF
 # ─────────────────────────────────────────────────────────────────
 
 _tracker_error_verb() {
+    # One unambiguous verb per code per V3 §27.1 Layer 2. Verbs match
+    # V1 §9.x's intended next-step framing without parenthetical
+    # alternatives or follow-on hints. Caller-supplied context lines
+    # (passed as additional args to tracker_error_format) carry any
+    # qualifying detail.
     case "$1" in
-        network-unreachable)
-            echo "gh api rate_limit  (then re-run the operation)"
-            ;;
+        network-unreachable)        echo "gh api rate_limit" ;;            # V1 §9.1: confirm connectivity
         rate-limit-primary|rate-limit-secondary)
-            echo "wait for the rate-limit reset window  (or use provider.list instead of search where possible)"
-            ;;
-        auth-missing|auth-expired)
-            echo "gh auth login  (then re-run the operation)"
-            ;;
-        auth-insufficient-scope)
-            echo "gh auth refresh -s <scope>  (substitute the missing scope name)"
-            ;;
-        not-found)
-            echo "verify the issue id and re-run"
-            ;;
-        validation)
-            echo "review the backend message above; this error is not auto-retried"
-            ;;
-        schema-reshape)
-            echo "pack tracker doctor  (refreshes capability cache and reports backend changes)"
-            ;;
-        partial-write)
-            echo "pick a resume option from the list above; idempotent re-run is supported"
-            ;;
-        *)
-            echo "review the message above and re-run if recoverable"
-            ;;
+                                    echo "wait for the reset window, then re-run" ;;  # V1 §9.2
+        auth-missing|auth-expired)  echo "gh auth login" ;;                 # V1 §9.3
+        auth-insufficient-scope)    echo "gh auth refresh -s <scope>" ;;    # V1 §9.4
+        not-found)                  echo "verify the issue id and re-run" ;;
+        validation)                 echo "review the backend message above" ;;
+        schema-reshape)             echo "pack tracker doctor" ;;           # V1 §9.5
+        partial-write)              echo "see resume options above" ;;     # V1 §9.6
+        *)                          echo "review the message above" ;;
     esac
 }

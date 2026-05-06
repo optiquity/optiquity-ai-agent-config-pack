@@ -86,6 +86,7 @@ fi
 assert_eq "1.9 tracker_backend_name" "github"   "$(tracker_backend_name "$FIXTURES/tracker-mode.toml")"
 assert_eq "1.9 tracker_repo_slug"    "Optiquity-Inc/optiquity-ai-agent-config-pack" "$(tracker_repo_slug "$FIXTURES/tracker-mode.toml")"
 assert_eq "1.9 tracker_id_prefix"    "BD"       "$(tracker_id_prefix "$FIXTURES/tracker-mode.toml")"
+assert_eq "1.9 tracker_mapping_file" ".pack-tracker/id-map.json" "$(tracker_mapping_file "$FIXTURES/tracker-mode.toml")"
 
 # 1.10 read tolerates inline comments
 inline_tmp=$(mktemp -t tcfg-inline.XXXXXX)

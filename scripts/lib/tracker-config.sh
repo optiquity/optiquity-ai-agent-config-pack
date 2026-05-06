@@ -208,6 +208,7 @@ tracker_mode() {
 tracker_backend_name() { tracker_config_get "$1" "backend.name"; }
 tracker_repo_slug()    { tracker_config_get "$1" "backend.repo"; }
 tracker_id_prefix()    { tracker_config_get "$1" "id_namespace.prefix"; }
+tracker_mapping_file() { tracker_config_get "$1" "migration.mapping_file"; }
 
 # ─────────────────────────────────────────────────────────────────
 # Schema-version compatibility
