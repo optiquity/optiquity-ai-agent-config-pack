@@ -68,19 +68,76 @@ fi
 # Per-entry reconstruction (V1 §6.5 step 3)
 # ─────────────────────────────────────────────────────────────────
 
-# Decode the entry's v10 Status from its labels. Inverse of BD-065's
-# _tmf_labels_for_entry.
+# Decode the entry's v10 Status. Accepts either:
+#   - A JSON array of label strings (legacy/test path; labels-only)
+#   - A full canonical Issue JSON object (production path; reads
+#     state + state_reason and falls back to label hints)
+#
+# Production path (V3.3 §6.3 mapping + addresses Finding #4 from
+# PACK-REVIEW-BD066-068):
+#   state=closed + state_reason=completed              → Resolved
+#   state=closed + state_reason=not_planned/duplicate  → Cancelled
+#                                       (or Deprecated if label hints)
+#   state=open + status:unblocked label                 → Unblocked
+#   state=open + (no/other label)                       → Open
+#
+# Legacy/test path is preserved for the existing labels-only test
+# fixtures in tracker-migrate-reverse-test.sh Group 1.
 _tmr_decode_status() {
-    local labels_json="$1"
-    local label
-    label=$(printf '%s' "$labels_json" | jq -r 'if type=="array" then .[] else empty end' 2>/dev/null \
+    local input="$1"
+    local first_char
+    first_char=$(printf '%s' "$input" | head -c 1)
+
+    if [[ "$first_char" == "[" ]]; then
+        # Legacy: input is a label array.
+        local label
+        label=$(printf '%s' "$input" | jq -r 'if type=="array" then .[] else empty end' 2>/dev/null \
+            | grep -E '^status:' | head -n 1)
+        case "$label" in
+            status:open)        echo "Open" ;;
+            status:unblocked)   echo "Unblocked" ;;
+            status:resolved)    echo "Resolved" ;;
+            status:cancelled)   echo "Cancelled" ;;
+            status:deprecated)  echo "Deprecated" ;;
+            *)                  echo "Open" ;;
+        esac
+        return 0
+    fi
+
+    # New: input is a full canonical Issue object. Prefer GH state
+    # over labels (manual closes have no status:* label).
+    local state state_reason label
+    state=$(printf '%s' "$input" | jq -r '.state // "open"')
+    state_reason=$(printf '%s' "$input" | jq -r '.state_reason // ""')
+    label=$(printf '%s' "$input" | jq -r '(.labels // []) | if type=="array" then .[] else empty end' 2>/dev/null \
         | grep -E '^status:' | head -n 1)
+
+    if [[ "$state" == "closed" ]]; then
+        case "$state_reason" in
+            completed)
+                echo "Resolved"
+                ;;
+            not_planned|duplicate)
+                # status:deprecated label distinguishes Deprecated
+                # from Cancelled (V3.3 §6.3 line table); both map
+                # to GH state_reason=not_planned.
+                if [[ "$label" == "status:deprecated" ]]; then
+                    echo "Deprecated"
+                else
+                    echo "Cancelled"
+                fi
+                ;;
+            *)
+                # Closed with unknown reason → Resolved (safest read).
+                echo "Resolved"
+                ;;
+        esac
+        return 0
+    fi
+
+    # Open: derive from label.
     case "$label" in
-        status:open)        echo "Open" ;;
         status:unblocked)   echo "Unblocked" ;;
-        status:resolved)    echo "Resolved" ;;
-        status:cancelled)   echo "Cancelled" ;;
-        status:deprecated)  echo "Deprecated" ;;
         *)                  echo "Open" ;;
     esac
 }
@@ -216,7 +273,9 @@ print(m.group(1) if m else "")')
     body=$(printf  '%s' "$issue" | jq -r '.body // ""')
     labels=$(printf '%s' "$issue" | jq -c '.labels // []')
 
-    status=$(_tmr_decode_status "$labels")
+    # Pass the full issue (state + state_reason + labels) so
+    # manually-closed issues (no status:* label) classify correctly.
+    status=$(_tmr_decode_status "$issue")
     type=$(_tmr_decode_type "$pack_id" "$labels")
     scope=$(_tmr_decode_scope "$labels")
     severity=$(_tmr_decode_severity "$labels")
@@ -498,8 +557,9 @@ tracker_migrate_reverse_run() {
         return 1
     fi
 
-    local cfg_path
-    cfg_path=$(tracker_config_resolve_path pack "$repo_root") || return 1
+    local cfg_path surface
+    surface=$(tracker_config_auto_surface "$repo_root" 2>/dev/null) || surface="pack"
+    cfg_path=$(tracker_config_resolve_path "$surface" "$repo_root") || return 1
     if [[ ! -f "$cfg_path" ]]; then
         tracker_error_emit "validation" \
             "reverse: tracker.toml not found at $cfg_path  (nothing to reverse from)"

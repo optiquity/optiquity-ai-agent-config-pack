@@ -210,6 +210,30 @@ tracker_repo_slug()    { tracker_config_get "$1" "backend.repo"; }
 tracker_id_prefix()    { tracker_config_get "$1" "id_namespace.prefix"; }
 tracker_mapping_file() { tracker_config_get "$1" "migration.mapping_file"; }
 
+# tracker_config_auto_surface <repo-root>
+# Auto-detect pack vs client surface based on filesystem markers:
+#   - PACK-CHAT.md present → pack
+#   - docs/pack/ present   → client
+# Emits "pack" or "client" on stdout. Returns 1 with typed validation
+# error when neither marker is present (caller can fall back to a
+# user prompt or a --surface override).
+#
+# Used by status / disable / doctor / mirror-rebuild verb wrappers
+# so all V2 §22.1 verbs are surface-aware (Finding #2 from
+# PACK-REVIEW-BD066-068, addresses V1 §3.4 independence axes).
+tracker_config_auto_surface() {
+    local repo_root="$1"
+    if [[ -f "$repo_root/PACK-CHAT.md" ]]; then
+        echo "pack"
+    elif [[ -d "$repo_root/docs/pack" ]]; then
+        echo "client"
+    else
+        tracker_error_emit "validation" \
+            "cannot auto-detect surface in $repo_root; pass --surface pack|client"
+        return 1
+    fi
+}
+
 # ─────────────────────────────────────────────────────────────────
 # Schema-version compatibility
 # ─────────────────────────────────────────────────────────────────

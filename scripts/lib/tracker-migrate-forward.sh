@@ -537,8 +537,14 @@ tracker_migrate_forward_run() {
         return 1
     fi
 
-    local cfg_path
-    cfg_path=$(tracker_config_resolve_path pack "$repo_root") || return 1
+    local cfg_path surface
+    # Auto-detect surface; fall back to pack on indeterminate trees
+    # (e.g. test fixtures that have tracker.toml at root without
+    # PACK-CHAT.md). BD-066's `init` verb prompts on the same
+    # ambiguity; here we choose a permissive default since reverse /
+    # status / doctor / mirror-rebuild are diagnostic verbs.
+    surface=$(tracker_config_auto_surface "$repo_root" 2>/dev/null) || surface="pack"
+    cfg_path=$(tracker_config_resolve_path "$surface" "$repo_root") || return 1
     if [[ ! -f "$cfg_path" ]]; then
         tracker_error_emit "validation" \
             "forward: tracker.toml not found at $cfg_path  (run \`pack tracker init\` first)"
@@ -861,8 +867,14 @@ EOF
 # file mode too.
 tracker_migrate_status_report() {
     local repo_root="$1"
-    local cfg_path
-    cfg_path=$(tracker_config_resolve_path pack "$repo_root") || return 1
+    local cfg_path surface
+    # Auto-detect surface; fall back to pack on indeterminate trees
+    # (e.g. test fixtures that have tracker.toml at root without
+    # PACK-CHAT.md). BD-066's `init` verb prompts on the same
+    # ambiguity; here we choose a permissive default since reverse /
+    # status / doctor / mirror-rebuild are diagnostic verbs.
+    surface=$(tracker_config_auto_surface "$repo_root" 2>/dev/null) || surface="pack"
+    cfg_path=$(tracker_config_resolve_path "$surface" "$repo_root") || return 1
 
     local mode backend repo
     mode=$(tracker_mode "$cfg_path")

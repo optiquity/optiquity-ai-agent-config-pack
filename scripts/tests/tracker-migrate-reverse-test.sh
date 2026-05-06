@@ -113,6 +113,19 @@ assert_eq "1.1 status:resolved → Resolved"   "Resolved"   "$(_tmr_decode_statu
 assert_eq "1.1 status:cancelled → Cancelled" "Cancelled"  "$(_tmr_decode_status '["status:cancelled"]')"
 assert_eq "1.1 no status → Open default"     "Open"       "$(_tmr_decode_status '[]')"
 
+# 1.1b state-aware decode (Finding #4 fix): manually-closed issues
+# without a status:* label decode from canonical state + state_reason.
+manual_closed='{"state":"closed","state_reason":"completed","labels":[]}'
+manual_cancelled='{"state":"closed","state_reason":"not_planned","labels":[]}'
+manual_deprecated='{"state":"closed","state_reason":"not_planned","labels":["status:deprecated"]}'
+manual_open='{"state":"open","labels":[]}'
+manual_unblocked='{"state":"open","labels":["status:unblocked"]}'
+assert_eq "1.1b state=closed completed → Resolved"   "Resolved"   "$(_tmr_decode_status "$manual_closed")"
+assert_eq "1.1b state=closed not_planned → Cancelled" "Cancelled" "$(_tmr_decode_status "$manual_cancelled")"
+assert_eq "1.1b state=closed + status:deprecated → Deprecated" "Deprecated" "$(_tmr_decode_status "$manual_deprecated")"
+assert_eq "1.1b state=open no label → Open"          "Open"       "$(_tmr_decode_status "$manual_open")"
+assert_eq "1.1b state=open status:unblocked → Unblocked" "Unblocked" "$(_tmr_decode_status "$manual_unblocked")"
+
 assert_eq "1.2 BD type"   "TODO(version)" "$(_tmr_decode_type "BD-001" '["bd-entry"]')"
 assert_eq "1.2 TD TODO"   "TODO(scope)"   "$(_tmr_decode_type "TD-010" '["td-entry"]')"
 assert_eq "1.2 TD KNOWN-GAP" "KNOWN GAP(scope)" "$(_tmr_decode_type "TD-010" '["td-entry","severity:critical"]')"

@@ -82,7 +82,7 @@ _tmsc_emit_entry_section() {
     local issue="$3"
     local include_comments="$4"
 
-    local title template_version template_archive_path
+    local title template_version template_archive_path version_dir
     title=$(printf '%s' "$issue" | jq -r '.title // ""')
     template_version=$(printf '%s' "$issue" | python3 -c '
 import json, re, sys
@@ -92,7 +92,17 @@ m = re.search(r"<!--\s*template_version:\s*([^\s]+)\s*-->", body)
 print(m.group(1) if m else "")')
 
     if [[ -n "$template_version" ]]; then
-        template_archive_path="maintenance-docs/v11-research/templates-archive/v11.0/$template_version/SCHEMA.md"
+        # Extract the version segment (e.g. "bd-v11.0" → "v11.0";
+        # "phase-task-v11.2" → "v11.2"). The archive layout is
+        # templates-archive/<version_dir>/<template_version>/SCHEMA.md
+        # (per V3.3 §6.5; addresses Finding #6 from PACK-REVIEW-BD066-068).
+        version_dir=$(printf '%s' "$template_version" | sed -nE 's/^.*-(v[0-9]+\.[0-9]+)$/\1/p')
+        if [[ -n "$version_dir" ]]; then
+            template_archive_path="maintenance-docs/v11-research/templates-archive/$version_dir/$template_version/SCHEMA.md"
+        else
+            # Malformed template_version (no -vX.Y suffix); emit nothing.
+            template_archive_path=""
+        fi
     else
         template_archive_path=""
     fi

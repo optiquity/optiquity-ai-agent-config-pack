@@ -156,8 +156,13 @@ cmd_doctor() {
 # Capability re-probing is deferred to a future BD.
 tracker_doctor_run() {
     local repo_root="$1"
-    local cfg_path mapping_file
-    cfg_path=$(tracker_config_resolve_path pack "$repo_root")
+    local cfg_path mapping_file surface
+    if ! surface=$(tracker_config_auto_surface "$repo_root" 2>/dev/null); then
+        # Doctor is a diagnostic verb; run with pack as fallback so it
+        # can still report "tracker.toml absent" on indeterminate trees.
+        surface="pack"
+    fi
+    cfg_path=$(tracker_config_resolve_path "$surface" "$repo_root")
     mapping_file="$repo_root/.pack-tracker/id-map.json"
 
     local n_warn=0
