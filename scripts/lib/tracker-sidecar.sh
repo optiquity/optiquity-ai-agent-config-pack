@@ -29,6 +29,16 @@
 #
 # Do NOT add a shebang — this file is sourced, not executed.
 
+# Source template-version.sh idempotently for the body-marker reader
+# + archive-path composer (PACK-REVIEW-BD062-069-071 #3 unification).
+# shellcheck disable=SC1091
+if ! declare -f template_version_read_body >/dev/null 2>&1; then
+    _tmsc_self="${BASH_SOURCE[0]}"
+    _tmsc_dir="$(cd "$(dirname "$_tmsc_self")" && pwd)"
+    [[ -f "$_tmsc_dir/template-version.sh" ]] && source "$_tmsc_dir/template-version.sh"
+    unset _tmsc_self _tmsc_dir
+fi
+
 # tracker_sidecar_emit <repo-root> <mapping-json> [<include-comments>]
 #
 # F10 (PACK-REVIEW-BD066-068 Finding #12): two reverse runs straddling
@@ -101,26 +111,37 @@ _tmsc_emit_entry_section() {
     local issue="$3"
     local include_comments="$4"
 
-    local title template_version template_archive_path version_dir
+    local title template_version template_archive_path
     title=$(printf '%s' "$issue" | jq -r '.title // ""')
-    template_version=$(printf '%s' "$issue" | python3 -c '
+    # Use the shared library reader from template-version.sh (BD-069
+    # + PACK-REVIEW-BD062-069-071 #3 unification): single regex for
+    # the body marker across the codebase. Falls back gracefully if
+    # the library hasn't been sourced (e.g. legacy callers that source
+    # only tracker-sidecar.sh).
+    if declare -f template_version_read_body >/dev/null 2>&1; then
+        template_version=$(template_version_read_body "$issue")
+    else
+        template_version=$(printf '%s' "$issue" | python3 -c '
 import json, re, sys
 data = json.load(sys.stdin)
 body = data.get("body", "") or ""
 m = re.search(r"<!--\s*template_version:\s*([^\s]+)\s*-->", body)
 print(m.group(1) if m else "")')
+    fi
 
     if [[ -n "$template_version" ]]; then
-        # Extract the version segment (e.g. "bd-v11.0" → "v11.0";
-        # "phase-task-v11.2" → "v11.2"). The archive layout is
-        # templates-archive/<version_dir>/<template_version>/SCHEMA.md
-        # (per V3.3 §6.5; addresses Finding #6 from PACK-REVIEW-BD066-068).
-        version_dir=$(printf '%s' "$template_version" | sed -nE 's/^.*-(v[0-9]+\.[0-9]+)$/\1/p')
-        if [[ -n "$version_dir" ]]; then
-            template_archive_path="maintenance-docs/v11-research/templates-archive/$version_dir/$template_version/SCHEMA.md"
+        # Use the shared library helper from template-version.sh
+        # (PACK-REVIEW-BD062-069-071 #3 unification).
+        if declare -f template_version_archive_path >/dev/null 2>&1; then
+            template_archive_path=$(template_version_archive_path "$template_version" 2>/dev/null || echo "")
         else
-            # Malformed template_version (no -vX.Y suffix); emit nothing.
-            template_archive_path=""
+            local version_dir
+            version_dir=$(printf '%s' "$template_version" | sed -nE 's/^.*-(v[0-9]+\.[0-9]+)$/\1/p')
+            if [[ -n "$version_dir" ]]; then
+                template_archive_path="maintenance-docs/v11-research/templates-archive/$version_dir/$template_version/SCHEMA.md"
+            else
+                template_archive_path=""
+            fi
         fi
     else
         template_archive_path=""

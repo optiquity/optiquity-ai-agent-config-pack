@@ -203,6 +203,14 @@ out=$(tracker_agent_read_entry "BD-001" "$REPO_T" 2>/dev/null)
 rc=$?
 assert_eq       "3.1 BD-001 tracker rc=0"          "0" "$rc"
 assert_contains "3.1 BD-001 source line tracker"   "$out" "Source: tracker (gh #42"
+# State annotation lowercase per V1 §2.2 canonical (PACK-REVIEW-
+# BD062-069-071 #19 closure). gh emits OPEN/CLOSED; we normalize.
+assert_contains "3.1 BD-001 source state lowercase"  "$out" "state=open"
+if [[ "$out" == *"state=OPEN"* ]]; then
+    t_fail "3.1 BD-001 state lowercase (no OPEN uppercase)" "raw GH state leaked"
+else
+    t_pass "3.1 BD-001 state lowercase (no OPEN uppercase)"
+fi
 assert_contains "3.1 BD-001 title"                 "$out" "BD-001: Add foo"
 assert_contains "3.1 BD-001 body content"          "$out" "Foo on bar."
 

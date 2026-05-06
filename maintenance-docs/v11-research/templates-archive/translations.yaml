@@ -1,0 +1,36 @@
+# tracker-mode translation manifest (V2 §19.4)
+#
+# This file is the single source of truth for `pack tracker
+# update-templates`. Each entry encodes a transition from one
+# template_version to another, with rules per V2 §19.3 patch
+# semantics.
+#
+# At v11.0 the manifest is empty (no v11.x has shipped yet). When
+# v11.1 ships with new template fields, append a transition like:
+#
+#   - from: bd-v11.0
+#     to:   bd-v11.1
+#     rules:
+#       - kind: field-added
+#         to:   wi-priority
+#         default: ""
+#       - kind: field-renamed
+#         from: bd-blockers
+#         to:   wi-blockers
+#       - kind: label-renamed
+#         from: status:open
+#         to:   status:active
+#
+# Reverse-skip transitions (e.g. v12.0 → v11.0) are intentionally
+# NOT supported per V2 §19.3 ("user content moves to legacy section,
+# not back-recovered"). The chain is forward-walking.
+#
+# Rule kinds:
+#   field-renamed:  rewrite section heading; preserve content
+#   field-added:    append empty section + TODO marker (idempotent)
+#   field-removed:  rewrite to "## Context (legacy <name>)"; preserve content
+#   label-renamed:  no body change; label patch handled separately
+#
+# Reference: ARCHITECTURE-V2.md §19.2 / §19.3 / §19.4 / §19.5.
+
+[]

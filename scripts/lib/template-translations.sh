@@ -136,28 +136,34 @@ except (OSError, json.JSONDecodeError):
     sys.exit(1)
 
 # Build adjacency: from-version → list of (to-version, rules).
+# Edges are indexed for an edge-level `seen` set (PACK-REVIEW-
+# BD062-069-071 #4): two parallel paths to the same target via
+# different intermediate versions can both be considered. Cycles
+# are still safe because each edge is visited at most once.
 adj = {}
-for entry in manifest:
+edges = []
+for ei, entry in enumerate(manifest):
     f = entry.get("from")
     t = entry.get("to")
     rules = entry.get("rules", []) or []
     if f and t:
-        adj.setdefault(f, []).append((t, rules))
+        adj.setdefault(f, []).append((ei, t, rules))
+        edges.append((f, t))
 
-# BFS from src to dst, accumulating rules.
+# BFS from src to dst, accumulating rules. Edge-level `seen` so
+# parallel paths to the same node remain reachable. First path
+# found (FIFO) wins on tie.
 from collections import deque
-queue = deque([(src, [])])
-seen = {src}
+queue = deque([(src, [], frozenset())])
 while queue:
-    cur, acc = queue.popleft()
+    cur, acc, seen_edges = queue.popleft()
     if cur == dst:
         print(json.dumps(acc))
         sys.exit(0)
-    for nxt, rules in adj.get(cur, []):
-        if nxt in seen:
+    for ei, nxt, rules in adj.get(cur, []):
+        if ei in seen_edges:
             continue
-        seen.add(nxt)
-        queue.append((nxt, acc + rules))
+        queue.append((nxt, acc + rules, seen_edges | {ei}))
 
 sys.stderr.write("ERROR: validation\nMESSAGE: no translation chain from '%s' to '%s' in manifest\n" % (src, dst))
 sys.exit(1)

@@ -132,7 +132,11 @@ _tar_read_entry_tracker() {
     local title body status
     title=$(printf  '%s' "$issue" | jq -r '.title // ""')
     body=$(printf   '%s' "$issue" | jq -r '.body // ""')
-    status=$(printf '%s' "$issue" | jq -r '.state // "open"')
+    # Normalize state to lowercase per V1 §2.2 canonical Issue shape.
+    # gh CLI emits OPEN/CLOSED uppercase; the canonical form is
+    # lowercase. Cross-mode `Source:` annotations now consistently use
+    # lowercase (PACK-REVIEW-BD062-069-071 #19 closure).
+    status=$(printf '%s' "$issue" | jq -r '.state // "open" | ascii_downcase')
 
     cat <<EOF
 **$title**
