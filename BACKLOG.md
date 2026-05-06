@@ -32,7 +32,7 @@ plan docs for full Verification + Definition-of-Done per BD.
 
 **BD-060 — TrackerProvider abstraction skeleton + GH backend implementation**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: None
 Unblocks: None
 File/Symbol: `scripts/lib/tracker-provider.sh`, `scripts/lib/tracker-provider-gh.sh`, `scripts/tests/tracker-provider-test.sh`
@@ -41,13 +41,13 @@ Description: Lands the OQ-1 surface — the 18-operation provider library every
   §2.7.2; error model per V1 §2.5; pagination per V1 §2.6. Includes the
   `gh-sub-issue` extension policy and the GraphQL preview-header policy.
   The `raw(...)` escape hatch (V1 §2.1) is required.
-Resolved: n/a
+Resolved: 2026-05-05 — cf9ddd3 — TrackerProvider abstraction + GH backend (18 ops + raw + capabilities); 65/65 tests; CI green.
 
 ---
 
 **BD-061 — `tracker.toml` schema + detection helper + gitignore entry**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-060
 Unblocks: None
 File/Symbol: `scripts/lib/tracker-config.sh`, `tracker.toml.example`, `project-template/tracker.toml.example`, `.gitignore`, `project-template/.gitignore`
@@ -55,7 +55,7 @@ Description: Resolves D-2 + D-5 + R16. Detection is "presence + content of
   `tracker.toml`": no file = flat-file; `mode.state = "flat-file"` = flat-file;
   `mode.state = "tracker"` = tracker. Adds `.pack-tracker/` to `.gitignore`
   per V1 §3.4.
-Resolved: n/a
+Resolved: 2026-05-05 — c0f29ab — tracker.toml schema + detection helper + .pack-tracker gitignore; tracker_mapping_file convenience getter added in 62a3465 review fix; 32/32 tests; CI green.
 
 ---
 
@@ -75,7 +75,7 @@ Resolved: n/a
 
 **BD-063 — Issue forms `work-item.yml` and `inbound.yml` (D-4-V2)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-061
 Unblocks: None
 File/Symbol: `.github/ISSUE_TEMPLATE/work-item.yml`, `.github/ISSUE_TEMPLATE/inbound.yml`, `.github/ISSUE_TEMPLATE/config.yml`, plus `project-template/.github/ISSUE_TEMPLATE/` mirrors
@@ -84,27 +84,27 @@ Description: Implements D-4-V2 + D-16 + D-17 + D-18. The form family routes
   by BD-106 extension). HTML-comment `template_version` marker + label per
   D-18. Both surfaces ship the same forms (TD-NNN namespace + Pack-feedback
   category on client side).
-Resolved: n/a
+Resolved: 2026-05-05 — 12243e1 — work-item + inbound + config forms (V2 §4 + V3.3 §6.1 4-option wi-type); validate-pack check_issue_template_forms; 78/78 tests; CI green (PyYAML CI fix in 5675b3f).
 
 ---
 
 **BD-064 — Template-archive directory bootstrap + bd-v11.0 schemas**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-063
 Unblocks: None
-File/Symbol: `maintenance-docs/v11-research/templates-archive/bd-v11.0/SCHEMA.md`, `work-item.yml`, `inbound.yml`, `README.md`
+File/Symbol: `maintenance-docs/v11-research/templates-archive/v11.0/{INDEX.md,bd-v11.0,td-v11.0,phase-epic-v11.0,phase-task-v11.0,inbound-v11.0,forms}`, `templates-archive/README.md`
 Description: Implements P2 maintenance-ergonomics: template versions archived
   at every minor cut so `pack tracker update-templates` and reverse-migration
   sidecar (V1 §6.6.1 / DELTA §3) can deterministically translate. Phase-task
   schema added by BD-106 extension.
-Resolved: n/a
+Resolved: 2026-05-05 — 6c43238 — template archive bootstrap (5 entry-type SCHEMAs incl. phase-task-v11.0 per V3.3; INDEX.md; frozen byte-equal forms); validate-pack informational check_template_archive_v11; CI green. Path layout per V3.3 §6.5 (templates-archive/v11.0/&lt;entry-type&gt;-v11.0/), superseding original IMPLEMENTATION-PLAN flat layout.
 
 ---
 
 **BD-065 — `tracker-migrate.sh forward` + idempotency markers + checkpoint**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-060, BD-061, BD-063
 Unblocks: None
 File/Symbol: `scripts/tracker-migrate.sh`, `scripts/lib/tracker-migrate-forward.sh`, `.pack-tracker/id-map.json`, `.pack-tracker/forward.checkpoint.json`, `scripts/tests/tracker-migrate-forward-test.sh`
@@ -113,7 +113,7 @@ Description: Forward migration with body-footer idempotency markers
   issues; resolves blockers / sub-issues; writes mapping file; regenerates
   mirror files. Checkpoint per V1 §6.4. `forward` and `status` subcommands
   in this BD; `reverse` lands in BD-067.
-Resolved: n/a
+Resolved: 2026-05-05 — 007273c — V1 §6.2 11-step forward orchestrator + parser + mapping/checkpoint helpers + body composer + read-only mirror header + label set + tracker.toml updater. Review fixes in bab5122 (findings #1, #2, #3, #5, #7 from PACK-REVIEW-BD065): three-marker idempotency probe (incl. body-footer marker via provider_get), File/Symbol body field round-trip, Python-rewritten mirror regen for byte-stable output, partial-write surfacing per V1 §9.6, per-entry mapping save. 93/93 tests; CI green. Phase-task parser (BD-106) + cross-entity dependency module (BD-108) extend later.
 
 ---
 
@@ -175,7 +175,7 @@ Resolved: n/a
 
 **BD-070 — Typed error surfacing + diagnostic helper**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-060
 Unblocks: None
 File/Symbol: `scripts/lib/tracker-errors.sh`, `scripts/tests/tracker-errors-test.sh`
@@ -183,7 +183,7 @@ Description: Implements D-7. Central error formatter; maps the 9 typed codes
   from V1 §2.5 to user-facing messages + next-step verb (Layer 2 per V3
   §27.1). No silent retry; every failure surfaces typed code + diagnostic +
   next-step verb. Every error message ends with "→ Run: pack X".
-Resolved: n/a
+Resolved: 2026-05-05 — 7617ae5 — typed-error formatter covering all 10 V1 §2.5 codes (incl. partial-write); V1 §9 message shapes via caller-supplied context lines; V3 §27.1 Layer 2 verb table. Verb-table V3 §27.1 conformance fix in 62a3465 (single unambiguous verb per code, no parenthetical alternatives). Existing inline emit_error stubs in tracker-provider.sh and tracker-config.sh unified. 56/56 tests; backward-compat with BD-060/-061 first-line ERROR/MESSAGE format preserved; CI green.
 
 ---
 
