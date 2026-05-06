@@ -3,7 +3,8 @@
 # typed-error formatter (BD-070).
 #
 # Three groups:
-#   1. Per-code emit — for each of the 10 codes from V1 §2.5, assert
+#   1. Per-code emit — for each of the 11 codes (10 from V1 §2.5 + the
+#      pack-internal `not-implemented` code), assert
 #      ERROR/MESSAGE prefix correct and "→ Run:" verb line present.
 #   2. Format details — multi-line context passthrough; emit-vs-format
 #      stdout/stderr routing; unknown code falls back gracefully;
@@ -42,7 +43,7 @@ source "$LIB"
 # Group 1: per-code emit (10 codes from V1 §2.5)
 # ─────────────────────────────────────────────────────────────────
 
-printf "\n=== Group 1: per-code emit (10 V1 §2.5 codes) ===\n"
+printf "\n=== Group 1: per-code emit (11 codes; 10 V1 §2.5 + not-implemented) ===\n"
 
 # Map each code → expected "→ Run:" verb fragment for substring check.
 declare_verb() {
@@ -57,6 +58,7 @@ declare_verb() {
         validation)                 echo "review the backend message above" ;;
         schema-reshape)             echo "pack tracker doctor" ;;
         partial-write)              echo "see resume options above" ;;
+        not-implemented)            echo "pack tracker doctor" ;;
     esac
 }
 
@@ -125,7 +127,7 @@ assert_contains "2.5 no-message still has verb line" "$out" "→ Run: gh auth lo
 
 # 2.6 codes() emits exactly 10 lines
 n=$(tracker_error_codes | wc -l | tr -d ' ')
-assert_eq "2.6 tracker_error_codes emits 10 codes" "10" "$n"
+assert_eq "2.6 tracker_error_codes emits 11 codes" "11" "$n"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 3: backward-compat (BD-060 / BD-061 test format preserved)

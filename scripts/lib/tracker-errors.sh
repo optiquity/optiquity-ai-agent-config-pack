@@ -92,6 +92,7 @@ not-found
 validation
 schema-reshape
 partial-write
+not-implemented
 EOF
 }
 
@@ -115,6 +116,7 @@ _tracker_error_verb() {
         validation)                 echo "review the backend message above" ;;
         schema-reshape)             echo "pack tracker doctor" ;;           # V1 §9.5
         partial-write)              echo "see resume options above" ;;     # V1 §9.6
+        not-implemented)            echo "pack tracker doctor" ;;          # surfaces which BD lands the verb
         *)                          echo "review the message above" ;;
     esac
 }

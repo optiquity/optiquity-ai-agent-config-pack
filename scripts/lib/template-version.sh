@@ -165,3 +165,29 @@ template_version_archive_path() {
     fi
     echo "maintenance-docs/v11-research/templates-archive/$vdir/$tv/SCHEMA.md"
 }
+
+# template_version_read_form <yaml-path>
+# Reads the `<!-- template_version: ... -->` HTML comment from a
+# .github/ISSUE_TEMPLATE/*.yml file's `markdown` block. The form
+# YAML embeds the marker inside a `value: |` multiline string;
+# YAML preserves the literal HTML comment text. Emits the marker
+# value (e.g. "work-item-v11.0") on stdout, or "(missing)" if the
+# file is absent, or "(none)" if the marker is not present.
+#
+# Used by `pack tracker update-templates` (V2 §19.2 step 1) and by
+# `tracker doctor` (template-version freshness check, V2 §22.1).
+# Unifies what was a duplicate inline regex in pack-tracker.sh.
+template_version_read_form() {
+    local path="$1"
+    if [[ ! -f "$path" ]]; then
+        echo "(missing)"
+        return 0
+    fi
+    python3 - "$path" <<'PYEOF'
+import re, sys
+with open(sys.argv[1]) as f:
+    text = f.read()
+m = re.search(r'<!--\s*template_version:\s*([^\s-]+(?:-[^\s]*)?)\s*-->', text)
+print(m.group(1) if m else "(none)")
+PYEOF
+}

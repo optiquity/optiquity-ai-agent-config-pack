@@ -30,6 +30,13 @@
 # Do NOT add a shebang — this file is sourced, not executed.
 
 # tracker_sidecar_emit <repo-root> <mapping-json> [<include-comments>]
+#
+# F10 (PACK-REVIEW-BD066-068 Finding #12): two reverse runs straddling
+# UTC midnight emit two different sidecar files. To prevent disk-state
+# growth, every emit removes any earlier `reverse.sidecar.YYYY-MM-DD.md`
+# files in the sidecar dir before writing the current-date file. The
+# user is told via stderr if a previous sidecar was removed (so they
+# know it existed and can recover from a backup if they wanted it).
 tracker_sidecar_emit() {
     local repo_root="$1"
     local mapping="$2"
@@ -40,6 +47,18 @@ tracker_sidecar_emit() {
     sidecar_dir="$repo_root/.pack-tracker"
     sidecar_path="$sidecar_dir/reverse.sidecar.$now_date.md"
     mkdir -p "$sidecar_dir"
+
+    # Clean up any older sidecar files (different date) before
+    # writing the new one. The current-date file is preserved if it
+    # already exists — it'll be overwritten by the open below.
+    local older
+    while IFS= read -r older; do
+        [[ -z "$older" ]] && continue
+        if [[ "$older" != "$sidecar_path" ]]; then
+            rm -f "$older"
+            echo "tracker_sidecar_emit: removed older sidecar at $older" >&2
+        fi
+    done < <(find "$sidecar_dir" -maxdepth 1 -name 'reverse.sidecar.*.md' 2>/dev/null)
 
     # Build per-entry sidecar sections by walking the mapping and
     # fetching each issue's full canonical Issue JSON.
@@ -129,24 +148,28 @@ EOF
 ### reactions
 
 EOF
-    # Reactions are not in BD-060's canonical Issue shape; they
-    # require a separate provider call (gh api /repos/.../reactions).
-    # v11.0 emits a placeholder; future BD adds real reaction fetch.
-    echo '(reactions fetch not implemented at v11.0; future BD-067 ride-along)'
+    # Extension hooks for the V1 §6.6 sub-blocks. v11.0 ships empty
+    # defaults; future BDs that add provider ops (reactions via
+    # `gh api /repos/.../reactions`; events via a provider_events op)
+    # redefine these functions before sourcing tracker-sidecar.sh, or
+    # source it then redefine — last definition wins. Mirrors the
+    # _tmsc_extra_fields_for_entry pattern (PACK-REVIEW-BD062-069-071
+    # Finding #8 ride-along).
+    _tmsc_reactions_for_entry "$pack_id" "$issue"
     echo
 
     cat <<EOF
 ### attachments
 
 EOF
-    echo '(attachments fetch not implemented at v11.0; future BD-067 ride-along)'
+    _tmsc_attachments_for_entry "$pack_id" "$issue"
     echo
 
     cat <<EOF
 ### audit_log
 
 EOF
-    echo '(events fetch not implemented at v11.0; the provider_events op is not yet defined)'
+    _tmsc_audit_log_for_entry "$pack_id" "$issue"
     echo
 
     if [[ "$include_comments" == "1" ]]; then
@@ -154,7 +177,7 @@ EOF
 ### comments
 
 EOF
-        echo '(full comment-thread fetch not implemented at v11.0; --include-comments is a placeholder for the future ride-along)'
+        _tmsc_comments_for_entry "$pack_id" "$issue"
         echo
     fi
 
@@ -165,23 +188,58 @@ EOF
 EOF
 }
 
+# Default extension hooks for the V1 §6.6 sidecar blocks.
+#
+# Contract: each hook takes <pack-id> <canonical-Issue-JSON> and
+# emits one or more lines of text. v11.0 defaults emit an empty-
+# state notice naming the missing provider op + the BD that will
+# implement the real fetcher. Future BDs override by redefining the
+# function before/after sourcing tracker-sidecar.sh — last
+# definition wins.
+#
+# Findings #7 (extra_fields) + #8 (reactions/attachments/audit_log)
+# ride-along from PACK-REVIEW-BD066-068 / PACK-REVIEW-BD062-069-071.
+
 # _tmsc_extra_fields_for_entry <pack-id> <issue-json>
-# Default extension hook for the V1 §6.6.1 extra_fields block.
-# v11.0 ships an empty implementation (no v11.x-only fields exist).
-# BD-069's template-version reconciliation logic + BD-106's phase-
-# task fields can override this function (sourced order: define
-# this default first, then sourced-later libs may redefine).
-#
-# The function takes pack_id + canonical Issue JSON and emits text
-# (one or more lines) describing v11.x-only fields present on the
-# tracker entry. v11.0's default emits the empty-state notice.
-#
-# Finding #7 ride-along from PACK-REVIEW-BD066-068.
+# V1 §6.6.1 extra_fields block — v11.x-only fields not in v10 grammar.
 _tmsc_extra_fields_for_entry() {
     local pack_id="$1"
     local issue="$2"
-    # v11.0 has no v11.x-only fields. Future BDs that add fields
-    # redefine this function before sourcing tracker-sidecar.sh, or
-    # source it then redefine — the latest definition wins.
     echo '(empty at v11.0; v11.x-only fields populate this section)'
+}
+
+# _tmsc_reactions_for_entry <pack-id> <issue-json>
+# V1 §6.6 reactions block. Real fetch needs a separate provider call
+# (gh api /repos/<slug>/issues/<n>/reactions); future BD wires it in.
+_tmsc_reactions_for_entry() {
+    local pack_id="$1"
+    local issue="$2"
+    echo '(reactions fetch not implemented at v11.0; awaiting future provider_reactions op)'
+}
+
+# _tmsc_attachments_for_entry <pack-id> <issue-json>
+# V1 §6.6 attachments block. Real fetch needs a body-link extractor
+# + a provider call to resolve attachment URLs.
+_tmsc_attachments_for_entry() {
+    local pack_id="$1"
+    local issue="$2"
+    echo '(attachments fetch not implemented at v11.0; awaiting future provider_attachments op)'
+}
+
+# _tmsc_audit_log_for_entry <pack-id> <issue-json>
+# V1 §6.6 audit log of state changes. Real fetch needs a
+# provider_events op (BD-060 did not ship one; future BD does).
+_tmsc_audit_log_for_entry() {
+    local pack_id="$1"
+    local issue="$2"
+    echo '(events fetch not implemented at v11.0; awaiting future provider_events op)'
+}
+
+# _tmsc_comments_for_entry <pack-id> <issue-json>
+# V1 §6.7 comment-thread block (gated by --include-comments).
+# Real fetch is `gh issue view --comments` plus body parsing.
+_tmsc_comments_for_entry() {
+    local pack_id="$1"
+    local issue="$2"
+    echo '(full comment-thread fetch not implemented at v11.0; --include-comments is a placeholder for the future provider_comments op)'
 }

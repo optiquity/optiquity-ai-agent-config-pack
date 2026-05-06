@@ -1068,23 +1068,44 @@ def check_template_archive_v11() -> None:
         else:
             print(f"  INFO: {schema.relative_to(REPO_ROOT)} missing")
 
+    # Compare archived forms against BOTH pack-side and project-template
+    # client-side live forms. PACK-REVIEW-BD060-070 Finding #10 fix:
+    # client-side drift was previously unmonitored; now both surfaces
+    # are checked. Pack-side and client-side forms have intentional
+    # differences (BD vs TD title placeholders, surface description),
+    # so we record drift INFO-style for the client side without
+    # treating it as a defect.
+    surface_dirs = (
+        ("pack",   REPO_ROOT / ".github" / "ISSUE_TEMPLATE"),
+        ("client", REPO_ROOT / "project-template" / ".github" / "ISSUE_TEMPLATE"),
+    )
     for form_name in ("work-item.yml", "inbound.yml"):
         archived = archive_root / "forms" / form_name
-        live = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / form_name
         if not archived.is_file():
             print(f"  INFO: {archived.relative_to(REPO_ROOT)} missing")
             continue
-        if not live.is_file():
-            print(f"  INFO: {live.relative_to(REPO_ROOT)} missing (live form expected)")
-            continue
-        if archived.read_bytes() == live.read_bytes():
-            ok(f"forms/{form_name} — byte-equal to live .github/ISSUE_TEMPLATE/{form_name}")
-        else:
-            print(
-                f"  INFO: forms/{form_name} drifted from live "
-                f".github/ISSUE_TEMPLATE/{form_name}; "
-                f"refresh the archive at next minor cut"
-            )
+        for surface_label, live_dir in surface_dirs:
+            live = live_dir / form_name
+            if not live.is_file():
+                print(f"  INFO: {live.relative_to(REPO_ROOT)} missing (live {surface_label} form expected)")
+                continue
+            if archived.read_bytes() == live.read_bytes():
+                ok(f"forms/{form_name} — byte-equal to {surface_label}: {live.relative_to(REPO_ROOT)}")
+            else:
+                # Pack-side drift = stale archive; client-side drift =
+                # expected (BD vs TD namespace differences). Both
+                # report as INFO so a pack maintainer sees both.
+                if surface_label == "pack":
+                    print(
+                        f"  INFO: forms/{form_name} drifted from pack "
+                        f"{live.relative_to(REPO_ROOT)}; "
+                        f"refresh the archive at next minor cut"
+                    )
+                else:
+                    print(
+                        f"  INFO: forms/{form_name} differs from client "
+                        f"{live.relative_to(REPO_ROOT)} (expected — BD vs TD namespace)"
+                    )
 
 
 def check_gitignore_env_example_exception() -> None:

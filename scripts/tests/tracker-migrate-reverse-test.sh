@@ -321,6 +321,92 @@ export PATH="$PATH_SAVED"
 assert_eq "4.7 mode flipped to flat-file via --disable" "flat-file" \
     "$(tracker_config_get "$REPO/tracker.toml" mode.state)"
 
+# 4.7-atomic Disable atomicity (PACK-REVIEW-BD066-068 #3 fix):
+# simulate an emit failure mid-disable; expect (a) flat files
+# restored from backup, (b) mode NOT flipped, (c) partial-write error.
+REPO_ATOMIC=$(mktemp -d -t tmr-atomic.XXXXXX); _build_test_repo "$REPO_ATOMIC"
+# Plant a recognizable original BACKLOG.md so we can verify restore.
+ORIGINAL_BODY=$'# ORIGINAL\n\nThis content must survive the failed disable.\n'
+printf '%s' "$ORIGINAL_BODY" > "$REPO_ATOMIC/BACKLOG.md"
+# Override _tmr_emit_status to simulate an emit failure.
+saved_emit=$(declare -f _tmr_emit_status)
+_tmr_emit_status() { return 1; }
+
+FAKE_ATOMIC=$(mktemp -d -t tmr-fake-atomic.XXXXXX); _build_fake_gh "$FAKE_ATOMIC"
+export PATH="$FAKE_ATOMIC:$PATH_SAVED"
+err=$(tracker_migrate_reverse_run "$REPO_ATOMIC" 0 1 0 2>&1) || true
+export PATH="$PATH_SAVED"
+
+# Restore the real function so subsequent tests aren't affected.
+eval "$saved_emit"
+
+assert_contains "4.7-atomic emit-failure surfaces partial-write" "$err" "ERROR: partial-write"
+assert_contains "4.7-atomic message names flat files restored"   "$err" "files restored from backup"
+# Mode NOT flipped.
+mode_after=$(tracker_config_get "$REPO_ATOMIC/tracker.toml" mode.state)
+assert_eq "4.7-atomic mode NOT flipped on emit failure" "tracker" "$mode_after"
+# BACKLOG.md content restored. Compare via byte-equality on disk
+# (avoids the trailing-newline trim that command substitution does).
+if cmp -s <(printf '%s' "$ORIGINAL_BODY") "$REPO_ATOMIC/BACKLOG.md"; then
+    t_pass "4.7-atomic BACKLOG.md restored to original (byte-equal)"
+else
+    t_fail "4.7-atomic BACKLOG.md restored to original (byte-equal)" \
+        "actual: $(cat "$REPO_ATOMIC/BACKLOG.md" | head -c 200)"
+fi
+# Backup dir cleaned up after restore.
+[[ ! -d "$REPO_ATOMIC/.pack-tracker/disable-backup" ]] \
+    && t_pass "4.7-atomic backup dir cleaned up after restore" \
+    || t_fail "4.7-atomic backup dir cleaned up after restore"
+rm -rf "$REPO_ATOMIC" "$FAKE_ATOMIC"
+
+# 4.7b Sidecar dated-filename stability (PACK-REVIEW-BD066-068 #12 fix):
+# emitting a second sidecar removes any prior date file so disk
+# state stays bounded.
+REPO_DATED=$(mktemp -d -t tmr-dated.XXXXXX); _build_test_repo "$REPO_DATED"
+mkdir -p "$REPO_DATED/.pack-tracker"
+# Plant a fake older sidecar from yesterday.
+touch "$REPO_DATED/.pack-tracker/reverse.sidecar.2025-01-01.md"
+# Emit a current sidecar.
+mapping_for_test=$(cat "$REPO_DATED/.pack-tracker/id-map.json" 2>/dev/null || echo '{}')
+FAKE_DATED=$(mktemp -d -t tmr-fake-dated.XXXXXX); _build_fake_gh "$FAKE_DATED"
+export PATH="$FAKE_DATED:$PATH_SAVED"
+tracker_sidecar_emit "$REPO_DATED" "$mapping_for_test" 0 >/dev/null 2>&1
+export PATH="$PATH_SAVED"
+# Older sidecar removed.
+[[ ! -f "$REPO_DATED/.pack-tracker/reverse.sidecar.2025-01-01.md" ]] \
+    && t_pass "4.7b older dated sidecar cleaned up" \
+    || t_fail "4.7b older dated sidecar cleaned up" "fake 2025-01-01 file still present"
+# Current sidecar written.
+n_sidecars=$(ls "$REPO_DATED/.pack-tracker/"reverse.sidecar.*.md 2>/dev/null | wc -l | tr -d ' ')
+assert_eq "4.7b exactly one sidecar after emit" "1" "$n_sidecars"
+rm -rf "$REPO_DATED" "$FAKE_DATED"
+
+# 4.8 Sidecar extension hooks (PACK-REVIEW-BD062-069-071 #8 fix):
+# overriding _tmsc_reactions_for_entry changes sidecar output.
+saved_hook=$(declare -f _tmsc_reactions_for_entry)
+_tmsc_reactions_for_entry() {
+    echo "👍 5  ❤️ 2  (overridden for test)"
+}
+
+REPO_OVR=$(mktemp -d -t tmr-ovr.XXXXXX); _build_test_repo "$REPO_OVR"
+FAKE_OVR=$(mktemp -d -t tmr-fake-ovr.XXXXXX); _build_fake_gh "$FAKE_OVR"
+export PATH="$FAKE_OVR:$PATH_SAVED"
+tracker_migrate_reverse_run "$REPO_OVR" >/dev/null 2>&1
+export PATH="$PATH_SAVED"
+sidecar_ovr=$(ls "$REPO_OVR/.pack-tracker/reverse.sidecar."*.md 2>/dev/null | head -n 1)
+assert_contains "4.8 reactions hook override emits custom text" \
+    "$(cat "$sidecar_ovr")" "overridden for test"
+# And the default reactions placeholder is gone.
+if grep -q "reactions fetch not implemented" "$sidecar_ovr"; then
+    t_fail "4.8 default reactions text replaced" "default still present"
+else
+    t_pass "4.8 default reactions text replaced"
+fi
+
+# Restore default hook so subsequent tests are unaffected.
+eval "$saved_hook"
+rm -rf "$REPO_OVR" "$FAKE_OVR"
+
 rm -rf "$FAKE" "$REPO"
 
 # ─────────────────────────────────────────────────────────────────
@@ -346,6 +432,46 @@ assert_eq "5.1 BACKLOG.md byte-equal across runs" "$backlog1" "$backlog2"
 assert_eq "5.1 STATUS.md byte-equal across runs"  "$status1"  "$status2"
 rm -rf "$FAKE" "$REPO"
 
+# 5.2 Triple-quote in body content does not crash _tmr_emit_backlog
+# (regression: PACK-REVIEW-BD066-068 Finding #13 — pre-fix the
+# helpers embedded jq-emitted JSON into Python triple-quoted strings
+# which terminate early on `"""` payload). Fixed by passing JSON via
+# temp file. The JSON value below contains an *escaped* triple-quote
+# so the JSON itself is valid; the description text the user wrote
+# is the literal three-character sequence `"""`.
+TQ_OUT=$(mktemp -t tmr-tq.XXXXXX)
+entries_with_tq=$(jq -nc '[{
+    pack_id: "BD-001",
+    title: "Triple quote test",
+    type: "TODO(version)",
+    status: "Open",
+    blockers: [],
+    unblocks: [],
+    file_symbol: "",
+    description: "User wrote a \"\"\" block here.",
+    context: "",
+    resolution: "",
+    scope: "",
+    severity: ""
+}]')
+if _tmr_emit_backlog "$entries_with_tq" "x/y" "$TQ_OUT" 2>/dev/null; then
+    t_pass "5.2 _tmr_emit_backlog handles triple-quote in body"
+else
+    t_fail "5.2 _tmr_emit_backlog handles triple-quote in body" "rc != 0"
+fi
+if [[ -s "$TQ_OUT" ]] && grep -q "Triple quote test" "$TQ_OUT"; then
+    t_pass "5.2 emitted file contains the triple-quoted entry"
+else
+    t_fail "5.2 emitted file contains the triple-quoted entry" "missing or empty"
+fi
+# And the literal ``` block survived through to the markdown output.
+if grep -q '"""' "$TQ_OUT"; then
+    t_pass "5.2 emitted file preserves the literal triple-quote text"
+else
+    t_fail "5.2 emitted file preserves the literal triple-quote text" "no \"\"\" found"
+fi
+rm -f "$TQ_OUT"
+
 # ─────────────────────────────────────────────────────────────────
 # Group 6: doctor verb
 # ─────────────────────────────────────────────────────────────────
@@ -365,7 +491,7 @@ output=$(bash "$REPO_ROOT/scripts/tracker-migrate.sh" doctor --repo-root "$REPO_
 assert_contains "6.1 doctor reports OK on tracker.toml"   "$output" "[OK]   tracker.toml schema_version supported"
 assert_contains "6.1 doctor reports OK on mapping file"   "$output" "[OK]   mapping file is valid JSON"
 assert_contains "6.1 doctor reports OK on pack-ids"       "$output" "[OK]   all mapping pack-ids are well-shaped"
-assert_contains "6.1 doctor reports OK on templates"      "$output" "[OK]   .github/ISSUE_TEMPLATE present"
+assert_contains "6.1 doctor reports OK on templates"      "$output" ".github/ISSUE_TEMPLATE present"
 rm -rf "$REPO_DR"
 
 # 6.2 doctor surfaces malformed pack-id
@@ -381,7 +507,43 @@ output=$(bash "$REPO_ROOT/scripts/tracker-migrate.sh" doctor --repo-root "$REPO_
 rc=$?
 assert_contains "6.2 doctor warns on malformed pack-id" "$output" "[WARN] mapping has malformed pack-ids"
 assert_eq       "6.2 doctor returns rc=1 on warnings"   "1" "$rc"
+# F9 verification: the WARN line names a recovery verb (V3 §27.1 Layer 2).
+assert_contains "6.2 WARN line names recovery verb"     "$output" "→ Run:"
 rm -rf "$REPO_BAD"
+
+# 6.3 doctor template-version freshness check (PACK-REVIEW-BD062-069-071
+# Finding #7 fix). Build a repo whose form-level template_version
+# matches an empty manifest → reports "current".
+REPO_FRESH=$(mktemp -d -t tmr-doctor-fresh.XXXXXX)
+_build_test_repo "$REPO_FRESH"
+mkdir -p "$REPO_FRESH/.github/ISSUE_TEMPLATE"
+cat > "$REPO_FRESH/.github/ISSUE_TEMPLATE/work-item.yml" <<'EOF'
+name: x
+description: x
+body:
+  - type: markdown
+    attributes:
+      value: |
+        <!-- template_version: work-item-v11.0 -->
+EOF
+cat > "$REPO_FRESH/.github/ISSUE_TEMPLATE/inbound.yml" <<'EOF'
+name: x
+description: x
+body:
+  - type: markdown
+    attributes:
+      value: |
+        <!-- template_version: inbound-v11.0 -->
+EOF
+
+output=$(bash "$REPO_ROOT/scripts/tracker-migrate.sh" doctor --repo-root "$REPO_FRESH" 2>&1)
+assert_contains "6.3 doctor reports template-version freshness check" \
+    "$output" "template-version freshness:"
+assert_contains "6.3 doctor reports work-item version"  "$output" "work-item=work-item-v11.0"
+assert_contains "6.3 doctor reports inbound version"    "$output" "inbound=inbound-v11.0"
+# Empty production manifest → reports "0 transitions (current)".
+assert_contains "6.3 doctor reports empty manifest"     "$output" "0 transitions (current)"
+rm -rf "$REPO_FRESH"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

@@ -57,10 +57,15 @@ fi
 
 # Write a checkpoint after every N successful issue creations
 # (V1 §6.4 specifies 25; can be overridden by env for tests).
-readonly TMF_CHECKPOINT_INTERVAL="${TMF_CHECKPOINT_INTERVAL:-25}"
+# Not declared readonly because integration tests re-source the lib
+# with a smaller interval to exercise the cadence (PACK-REVIEW-BD065
+# Finding #6 closure).
+TMF_CHECKPOINT_INTERVAL="${TMF_CHECKPOINT_INTERVAL:-25}"
 
 # Standard local-state directory; gitignored via BD-061.
-readonly TMF_PACK_TRACKER_DIR=".pack-tracker"
+# Not readonly so test re-sourcing (with overridden TMF_CHECKPOINT_INTERVAL)
+# works without redeclaration errors.
+TMF_PACK_TRACKER_DIR=".pack-tracker"
 
 # ─────────────────────────────────────────────────────────────────
 # Path resolvers
@@ -684,36 +689,9 @@ tracker_migrate_forward_run() {
                 ;;
         esac
 
-        # Steps 8 + 9: close-on-Resolved + Resolution comment. Run for
-        # both create and skip-with-gh_id paths so a recovered entry's
-        # status flip is honoured. Failures here are tracked, not fatal
-        # (V1 §9.6 partial-write).
-        if [[ -n "$gh_id" ]]; then
-            local status resolution
-            status=$(printf '%s' "$entry" | jq -r '.status')
-            resolution=$(printf '%s' "$entry" | jq -r '.resolution // ""')
-            case "$status" in
-                Resolved|Cancelled|Deprecated)
-                    local reason
-                    case "$status" in
-                        Resolved)              reason="completed" ;;
-                        Cancelled|Deprecated)  reason="not_planned" ;;
-                    esac
-                    if ! provider_close "$gh_id" "$reason" >/dev/null 2>&1; then
-                        printf 'step-8 close: %s (%s)\n' "$pack_id" "gh_id=$gh_id" >> "$partial_failures"
-                    else
-                        closed=$((closed + 1))
-                    fi
-                    if [[ -n "$resolution" ]]; then
-                        if ! provider_comment "$gh_id" "$resolution" >/dev/null 2>&1; then
-                            printf 'step-9 comment: %s (%s)\n' "$pack_id" "gh_id=$gh_id" >> "$partial_failures"
-                        fi
-                    fi
-                    ;;
-            esac
-        fi
-
-        # Track completion + checkpoint.
+        # Track completion + checkpoint. Steps 8 (close) + 9 (comment)
+        # are deferred to a dedicated post-link block below per V1 §6.2
+        # numeric step order (PACK-REVIEW-BD065 Finding #4 closure).
         completed_ids=$(printf '%s' "$completed_ids" | jq -c --arg k "$pack_id" '. + [$k]')
         idx=$((idx + 1))
         if [[ $((idx % TMF_CHECKPOINT_INTERVAL)) -eq 0 ]]; then
@@ -809,11 +787,56 @@ tracker_migrate_forward_run() {
         lidx=$((lidx + 1))
     done
 
+    # Steps 8 + 9: close-on-Resolved + Resolution comment.
+    # Per V1 §6.2 numeric step order, these execute AFTER step 7
+    # (link emission) so links land on still-open issues — some
+    # backends reject linking to closed issues. PACK-REVIEW-BD065
+    # Finding #4 closure: previously these ran inline with step 4,
+    # which is the wrong ordering for failure semantics.
+    local cidx=0
+    while [[ $cidx -lt $entry_count ]]; do
+        local entry pack_id gh_id status resolution
+        entry=$(printf '%s' "$entries" | jq -c ".[$cidx]")
+        pack_id=$(printf '%s' "$entry" | jq -r '.pack_id')
+        gh_id=$(tmf_mapping_get "$mapping" "$pack_id" || echo "")
+        if [[ -z "$gh_id" ]]; then
+            cidx=$((cidx + 1))
+            continue
+        fi
+        status=$(printf '%s' "$entry" | jq -r '.status')
+        resolution=$(printf '%s' "$entry" | jq -r '.resolution // ""')
+        case "$status" in
+            Resolved|Cancelled|Deprecated)
+                local reason
+                case "$status" in
+                    Resolved)              reason="completed" ;;
+                    Cancelled|Deprecated)  reason="not_planned" ;;
+                esac
+                if ! provider_close "$gh_id" "$reason" >/dev/null 2>&1; then
+                    printf 'step-8 close: %s (%s)\n' "$pack_id" "gh_id=$gh_id" >> "$partial_failures"
+                else
+                    closed=$((closed + 1))
+                fi
+                if [[ -n "$resolution" ]]; then
+                    if ! provider_comment "$gh_id" "$resolution" >/dev/null 2>&1; then
+                        printf 'step-9 comment: %s (%s)\n' "$pack_id" "gh_id=$gh_id" >> "$partial_failures"
+                    fi
+                fi
+                ;;
+        esac
+        cidx=$((cidx + 1))
+    done
+
     # Step 10: regenerate flat-file mirror (BACKLOG.md rewrite with
-    # the V1 §6.3 read-only header).
+    # the V1 §6.3 read-only header). Failures surface to the
+    # partial_failures list so the user knows to re-run with
+    # --mirror-only per V1 §6.4 (PACK-REVIEW-BD065 Finding #9 closure).
     local backend_slug
     backend_slug=$(tracker_repo_slug "$cfg_path" 2>/dev/null || echo "unknown")
-    _tmf_regen_mirror "$backlog_path" "$backend_slug"
+    if ! _tmf_regen_mirror "$backlog_path" "$backend_slug" 2>/dev/null; then
+        printf 'step-10 mirror regen: %s (re-run with --mirror-only to recover)\n' \
+            "$backlog_path" >> "$partial_failures"
+    fi
 
     # Step 11: write mapping + tracker.toml [migration].last_forward_run.
     tmf_mapping_save "$mapping_file" "$mapping"

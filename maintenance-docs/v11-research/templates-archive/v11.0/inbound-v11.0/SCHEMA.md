@@ -106,3 +106,21 @@ Tracker-only state (the inbound issue itself, comments, reactions,
 labels) is preserved by virtue of the issue remaining in the tracker
 across migrations. The reverse-migration sidecar (V1 §6.6.1) does not
 emit inbound issues.
+
+## 7. `pack-id: PENDING` contract
+
+The `<!-- pack-id: PENDING -->` body marker is permanent for inbound
+entries. Unlike BD/TD entries (where chat triage rewrites `PENDING`
+to `BD-NNN` / `TD-NNN`), inbound entries have no pack-side namespace
+identity — the GH issue number is their identifier. The chat
+explicitly does NOT rewrite `PENDING` for entries with `inbound` /
+`external` / `pack-feedback` labels.
+
+Forward migration (BD-065) does not write inbound entries to flat
+files (the parser reads only BACKLOG.md, which by definition holds
+no inbound entries). Reverse migration (BD-067) excludes inbound
+entries from the BACKLOG.md regen for the same reason. Mirror
+regen never sees an inbound entry's `PENDING` marker; the contract
+holds without explicit handling.
+
+This is the v11.0 design (PACK-REVIEW-BD060-070 Finding #8 closure).

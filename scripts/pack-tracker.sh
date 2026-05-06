@@ -250,8 +250,8 @@ template_update_run() {
     # inbound-v11.0 are the form-level versions; entry-specific
     # versions like bd-v11.0 are written by chat triage.)
     local current_work_item current_inbound
-    current_work_item=$(_template_update_read_form_version "$live_template_dir/work-item.yml")
-    current_inbound=$(_template_update_read_form_version "$live_template_dir/inbound.yml")
+    current_work_item=$(template_version_read_form "$live_template_dir/work-item.yml")
+    current_inbound=$(template_version_read_form "$live_template_dir/inbound.yml")
 
     # Step 2: read tracker entries. v11.0 uses the mapping file as
     # the entry index (future: provider_list with label filter, when
@@ -331,31 +331,12 @@ update-templates: --apply set; no transitions to apply at v11.0.
 EOF
 }
 
-# Read the `<!-- template_version: <value> -->` marker from a form
-# file's `markdown` block. Form files are YAML; we use Python to
-# load and traverse.
-_template_update_read_form_version() {
-    local path="$1"
-    if [[ ! -f "$path" ]]; then
-        echo "(missing)"
-        return 0
-    fi
-    python3 - "$path" <<'PYEOF'
-import re, sys
-path = sys.argv[1]
-try:
-    with open(path) as f:
-        text = f.read()
-except OSError:
-    print("(missing)")
-    sys.exit(0)
-m = re.search(r'<!--\s*template_version:\s*([^\s-]+(?:-[^\s]*)?)\s*-->', text)
-print(m.group(1) if m else "(none)")
-PYEOF
-}
+# template_version_read_form is defined in scripts/lib/template-version.sh
+# (BD-069 + Finding #12 ride-along). Local _template_update_read_form_version
+# alias removed; callers use template_version_read_form directly.
 
 cmd_enable_recommendations() {
-    tracker_error_emit "validation" \
+    tracker_error_emit "not-implemented" \
         "enable-recommendations: not implemented in this build (BD-073 — Layer-3 proactive recommendation toggle)"
     return 1
 }

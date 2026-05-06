@@ -351,10 +351,18 @@ _tmr_emit_backlog() {
     local backend_slug="$2"
     local out_path="$3"
 
-    python3 - "$out_path" <<PYEOF
+    # Pass entries via temp file (not heredoc-embedded triple-quoted
+    # string) — addresses Finding #13 from PACK-REVIEW-BD066-068:
+    # description text containing `"""` would terminate the embedded
+    # string early. File-passing is robust against any payload.
+    local entries_file
+    entries_file=$(mktemp -t tmr-emit-backlog.XXXXXX)
+    printf '%s' "$entries" > "$entries_file"
+    python3 - "$out_path" "$entries_file" <<'PYEOF'
 import json, sys
 out_path = sys.argv[1]
-entries = json.loads("""$entries""")
+with open(sys.argv[2]) as f:
+    entries = json.load(f)
 
 def sort_key(e):
     pid = e.get("pack_id", "ZZZ-000")
@@ -409,6 +417,7 @@ for e in entries:
 with open(out_path, "w") as f:
     f.write("\n".join(lines).rstrip("\n") + "\n")
 PYEOF
+    rm -f "$entries_file"
 }
 
 # Emit IMPLEMENTATION_PLAN.md skeleton from phase epic titles. Per
@@ -419,10 +428,15 @@ _tmr_emit_implementation_plan() {
     if [[ -f "$out_path" ]]; then
         return 0
     fi
-    python3 - "$out_path" <<PYEOF
+    # File-pass per Finding #13 (PACK-REVIEW-BD066-068).
+    local phases_file
+    phases_file=$(mktemp -t tmr-emit-plan.XXXXXX)
+    printf '%s' "$phases" > "$phases_file"
+    python3 - "$out_path" "$phases_file" <<'PYEOF'
 import json, sys
 out_path = sys.argv[1]
-phases = json.loads("""$phases""")
+with open(sys.argv[2]) as f:
+    phases = json.load(f)
 phases = sorted(phases, key=lambda p: int(p.get("phase_number", "0") or "0"))
 lines = ["# IMPLEMENTATION PLAN", "", "## Phases", ""]
 for p in phases:
@@ -433,6 +447,7 @@ for p in phases:
 with open(out_path, "w") as f:
     f.write("\n".join(lines).rstrip("\n") + "\n")
 PYEOF
+    rm -f "$phases_file"
 }
 
 # Emit STATUS.md skeleton from phase epics + entry counts.
@@ -440,11 +455,19 @@ _tmr_emit_status() {
     local entries="$1"
     local phases="$2"
     local out_path="$3"
-    python3 - "$out_path" <<PYEOF
+    # File-pass per Finding #13 (PACK-REVIEW-BD066-068).
+    local entries_file phases_file
+    entries_file=$(mktemp -t tmr-emit-status-e.XXXXXX)
+    phases_file=$(mktemp  -t tmr-emit-status-p.XXXXXX)
+    printf '%s' "$entries" > "$entries_file"
+    printf '%s' "$phases"  > "$phases_file"
+    python3 - "$out_path" "$entries_file" "$phases_file" <<'PYEOF'
 import json, sys
 out_path = sys.argv[1]
-entries = json.loads("""$entries""")
-phases  = json.loads("""$phases""")
+with open(sys.argv[2]) as f:
+    entries = json.load(f)
+with open(sys.argv[3]) as f:
+    phases = json.load(f)
 
 open_count    = sum(1 for e in entries if e.get("status") in ("Open", "Unblocked"))
 closed_count  = sum(1 for e in entries if e.get("status") in ("Resolved", "Cancelled", "Deprecated"))
@@ -458,6 +481,7 @@ lines.append(f"- Closed: {closed_count}")
 with open(out_path, "w") as f:
     f.write("\n".join(lines).rstrip("\n") + "\n")
 PYEOF
+    rm -f "$entries_file" "$phases_file"
 }
 
 # Emit CHANGELOG.md skeleton. Real audit-log walking (V1 §6.5 step 7)
@@ -634,10 +658,34 @@ print(json.dumps(phases))')
     status_out="$repo_root/STATUS.md"
     changelog_out="$repo_root/CHANGELOG.md"
 
-    _tmr_emit_backlog             "$issue_jsons" "$backend_slug" "$backlog_out"
-    _tmr_emit_implementation_plan "$phase_jsons" "$plan_out"
-    _tmr_emit_status              "$issue_jsons" "$phase_jsons"  "$status_out"
-    _tmr_emit_changelog           "$changelog_out"
+    # PACK-REVIEW-BD066-068 Finding #3 closure: when flip_mode=1
+    # (the `pack tracker disable` flow), the reverse path must be
+    # atomic with respect to the tracker.toml mode flip. Snapshot
+    # the existing flat files into a backup directory; if any of
+    # the emit / strip steps fail, restore from backup and surface
+    # a partial-write error WITHOUT flipping the mode. Without this,
+    # mid-run failure leaves the user with: (a) partial flat files,
+    # (b) tracker.toml still saying mode=tracker — a split state.
+    local backup_dir=""
+    if [[ "$flip_mode" == "1" ]]; then
+        backup_dir="$repo_root/$TMF_PACK_TRACKER_DIR/disable-backup"
+        mkdir -p "$backup_dir"
+        local f
+        for f in BACKLOG.md IMPLEMENTATION_PLAN.md STATUS.md CHANGELOG.md; do
+            if [[ -f "$repo_root/$f" ]]; then
+                cp "$repo_root/$f" "$backup_dir/$f"
+            else
+                # Sentinel: file did not exist before the run.
+                : > "$backup_dir/$f.sentinel-absent"
+            fi
+        done
+    fi
+
+    local emit_failed=0
+    _tmr_emit_backlog             "$issue_jsons" "$backend_slug" "$backlog_out" || emit_failed=1
+    _tmr_emit_implementation_plan "$phase_jsons" "$plan_out"                    || emit_failed=1
+    _tmr_emit_status              "$issue_jsons" "$phase_jsons"  "$status_out"  || emit_failed=1
+    _tmr_emit_changelog           "$changelog_out"                              || emit_failed=1
 
     # Step 7.5: sidecar (V1 §6.6 + §6.6.1).
     local sidecar_path
@@ -645,13 +693,37 @@ print(json.dumps(phases))')
 
     # Step 8: strip mirror header from emitted files. Reverse
     # convention: the file is now authoritative, no header needed.
-    tracker_mirror_header_strip "$backlog_out"
-    tracker_mirror_header_strip "$plan_out"
-    tracker_mirror_header_strip "$status_out"
-    tracker_mirror_header_strip "$changelog_out"
+    tracker_mirror_header_strip "$backlog_out"   || emit_failed=1
+    tracker_mirror_header_strip "$plan_out"      || emit_failed=1
+    tracker_mirror_header_strip "$status_out"    || emit_failed=1
+    tracker_mirror_header_strip "$changelog_out" || emit_failed=1
 
-    # Step 9: update tracker.toml.
+    # Atomicity gate: if any emit/strip failed during a disable
+    # flow, restore originals and abort BEFORE the mode flip.
+    if [[ "$flip_mode" == "1" && "$emit_failed" == "1" ]]; then
+        local restored=0
+        for f in BACKLOG.md IMPLEMENTATION_PLAN.md STATUS.md CHANGELOG.md; do
+            if [[ -f "$backup_dir/$f.sentinel-absent" ]]; then
+                # File didn't exist before the run; remove the half-written one.
+                rm -f "$repo_root/$f"
+                restored=$((restored + 1))
+            elif [[ -f "$backup_dir/$f" ]]; then
+                cp "$backup_dir/$f" "$repo_root/$f"
+                restored=$((restored + 1))
+            fi
+        done
+        rm -rf "$backup_dir"
+        tracker_error_emit "partial-write" \
+            "disable: emit step failed; flat files restored from backup ($restored files); tracker mode unchanged" \
+            "Re-run 'pack tracker disable' after addressing the underlying error."
+        return 1
+    fi
+
+    # Step 9: update tracker.toml. Now safe to flip mode (if requested).
     _tmr_update_tracker_toml "$cfg_path" "$flip_mode"
+
+    # Clean up backup on success.
+    [[ -n "$backup_dir" && -d "$backup_dir" ]] && rm -rf "$backup_dir"
 
     cat <<EOF
 

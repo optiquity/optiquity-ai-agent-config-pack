@@ -113,7 +113,7 @@ EOF
 # success, 1 if any label create fails (the failures are emitted as
 # partial-write context lines).
 tracker_labels_ensure() {
-    local existing missing_count=0 created=0 failed=0
+    local existing missing_count=0 created=0 failed=0 already_present=0
     local pf_file
     pf_file=$(mktemp -t tlbl-pf.XXXXXX)
     : > "$pf_file"
@@ -132,6 +132,7 @@ tracker_labels_ensure() {
     while IFS= read -r label; do
         [[ -z "$label" ]] && continue
         if printf '%s\n' "$existing" | grep -qFx "$label"; then
+            already_present=$((already_present + 1))
             continue
         fi
         missing_count=$((missing_count + 1))
@@ -143,9 +144,8 @@ tracker_labels_ensure() {
         fi
     done < <(tracker_labels_canonical_set)
 
-    local present=$((missing_count - created - failed))
     cat <<EOF
-labels: canonical=$(tracker_labels_canonical_set | wc -l | tr -d ' ')  missing=$missing_count  created=$created  already-present=$((missing_count - missing_count))  failed=$failed
+labels: canonical=$(tracker_labels_canonical_set | wc -l | tr -d ' ')  missing=$missing_count  created=$created  already-present=$already_present  failed=$failed
 EOF
     if [[ "$failed" -gt 0 ]]; then
         local extras=()

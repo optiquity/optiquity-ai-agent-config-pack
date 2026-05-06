@@ -550,6 +550,74 @@ assert_eq "4.5 --mirror-only writes header line 1" "<!--" "$first_line"
 
 rm -rf "$FAKE_BIN_MO" "$GH_LOG_MO" "$TEST_REPO_MO"
 
+# 4.6 Checkpoint cadence integration test (PACK-REVIEW-BD065 Finding
+# #6 closure). Lower TMF_CHECKPOINT_INTERVAL=2 against the 5-entry
+# fixture: expect checkpoint writes after entries 2 and 4, and
+# checkpoint cleared after the post-loop step 11.
+FAKE_BIN_CP=$(mktemp -d -t tmf-fakebin-cp.XXXXXX)
+GH_LOG_CP=$(mktemp -t tmf-ghlog-cp.XXXXXX)
+ISSUE_COUNTER_CP=$(mktemp -t tmf-counter-cp.XXXXXX)
+echo "300" > "$ISSUE_COUNTER_CP"
+
+cat > "$FAKE_BIN_CP/gh" <<FAKEGH_CP
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$GH_LOG_CP"
+case "\$1 \$2" in
+    "issue create")
+        counter=\$(cat "$ISSUE_COUNTER_CP")
+        next=\$((counter + 1))
+        echo "\$next" > "$ISSUE_COUNTER_CP"
+        printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
+        ;;
+    "issue close"|"issue reopen"|"issue edit"|"issue comment") ;;
+    "search issues") echo '[]' ;;
+    "issue list")    echo '[]' ;;
+    "issue view")    echo '{"labels":[], "assignees":[]}' ;;
+    "repo view")     echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
+    "api graphql")   echo '{}' ;;
+    "extension list") echo "" ;;
+    *)               ;;
+esac
+exit 0
+FAKEGH_CP
+chmod +x "$FAKE_BIN_CP/gh"
+
+TEST_REPO_CP=$(mktemp -d -t tmf-repo-cp.XXXXXX)
+cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_CP/BACKLOG.md"
+cp "$FIXTURES/IMPLEMENTATION_PLAN.md" "$TEST_REPO_CP/IMPLEMENTATION_PLAN.md"
+cp "$FIXTURES/tracker.toml"          "$TEST_REPO_CP/tracker.toml"
+
+# Override the cadence and run forward. Re-source the lib because
+# TMF_CHECKPOINT_INTERVAL is read at source-time when env-overridable.
+export TMF_CHECKPOINT_INTERVAL=2
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-migrate-forward.sh"
+
+export PATH="$FAKE_BIN_CP:$PATH_SAVED"
+output_cp=$(tracker_migrate_forward_run "$TEST_REPO_CP" 0 0 0 2>&1)
+rc_cp=$?
+export PATH="$PATH_SAVED"
+unset TMF_CHECKPOINT_INTERVAL
+# Re-source lib to restore default cadence for any later tests.
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-migrate-forward.sh"
+
+assert_eq "4.6 forward with cadence=2 rc=0" "0" "$rc_cp"
+# Checkpoint file is cleared at end-of-run (step 11), but mid-run
+# writes were performed. The mapping file should reflect all 5
+# entries + 2 phases.
+mfile_cp="$TEST_REPO_CP/.pack-tracker/id-map.json"
+[[ -f "$mfile_cp" ]] && t_pass "4.6 mapping file written" \
+    || t_fail "4.6 mapping file written"
+n_mapped_cp=$(jq 'length' "$mfile_cp")
+assert_eq "4.6 mapping has 7 entries" "7" "$n_mapped_cp"
+# Checkpoint should be cleared after success.
+ckp_cp="$TEST_REPO_CP/.pack-tracker/forward.checkpoint.json"
+[[ ! -f "$ckp_cp" ]] && t_pass "4.6 checkpoint cleared after success" \
+    || t_fail "4.6 checkpoint cleared after success"
+
+rm -rf "$FAKE_BIN_CP" "$GH_LOG_CP" "$ISSUE_COUNTER_CP" "$TEST_REPO_CP"
+
 # Cleanup of Group 3 globals.
 rm -rf "$FAKE_BIN" "$GH_LOG" "$ISSUE_COUNTER_FILE" "$TEST_REPO" "$TEST_REPO2" "$TEST_REPO3"
 
