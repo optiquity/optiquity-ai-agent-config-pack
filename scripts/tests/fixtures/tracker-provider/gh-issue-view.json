@@ -1,0 +1,19 @@
+{
+  "number": 42,
+  "title": "Add tracker-provider abstraction",
+  "body": "Implements V1 §2 surface.\n\nReplaces direct gh shellouts.",
+  "state": "OPEN",
+  "stateReason": null,
+  "labels": [
+    {"name": "type:bd", "color": "ededed"},
+    {"name": "phase-3", "color": "0366d6"}
+  ],
+  "assignees": [
+    {"login": "david"}
+  ],
+  "milestone": {"title": "v11.0"},
+  "createdAt": "2026-04-15T10:00:00Z",
+  "updatedAt": "2026-05-04T18:30:00Z",
+  "closedAt": null,
+  "url": "https://github.com/optiquity/pack/issues/42"
+}

@@ -1,0 +1,24 @@
+[
+  {
+    "number": 42,
+    "title": "Add tracker-provider abstraction",
+    "state": "OPEN",
+    "labels": [{"name": "type:bd"}],
+    "assignees": [{"login": "david"}],
+    "milestone": {"title": "v11.0"},
+    "createdAt": "2026-04-15T10:00:00Z",
+    "updatedAt": "2026-05-04T18:30:00Z",
+    "url": "https://github.com/optiquity/pack/issues/42"
+  },
+  {
+    "number": 43,
+    "title": "Implement tracker.toml schema",
+    "state": "OPEN",
+    "labels": [{"name": "type:bd"}],
+    "assignees": [],
+    "milestone": null,
+    "createdAt": "2026-04-15T10:05:00Z",
+    "updatedAt": "2026-04-15T10:05:00Z",
+    "url": "https://github.com/optiquity/pack/issues/43"
+  }
+]
