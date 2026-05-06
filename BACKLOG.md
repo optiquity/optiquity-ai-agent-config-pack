@@ -126,7 +126,7 @@ File/Symbol: `scripts/pack-tracker.sh`, `scripts/lib/tracker-labels.sh`, `script
 Description: Lands `pack tracker init` as the one-command opt-in path.
   Includes auth validation per V1 §7.3 + D-10 (`gh auth status`). Adds verb
   dispatcher per V2 §22.1. Auth-missing surfaces actionable error per V1 §9.3.
-Resolved: 2026-05-06 — pending — `pack tracker init` flag-driven orchestrator (V1 §6.1 5 steps), 45-label canonical set + idempotent ensure, V2 §22.1 verb dispatcher (init/status/mirror-rebuild live; 4 placeholders pointing at owning BDs), surface auto-detection (PACK-CHAT.md vs docs/pack/), opted_in_at preservation across re-runs. Includes BD-065 ride-along fixes #10 (--mirror-only flag on tracker-migrate.sh forward) and #12 (8-field V2 §22.1 status report). 73/73 BD-066 tests + 105/105 BD-065 tests (was 93); validate-pack clean. Interactive dialogue (V1 §6.1 step 1) lands as immediate fast-follow.
+Resolved: 2026-05-06 — bb211f3 — `pack tracker init` flag-driven orchestrator (V1 §6.1 5 steps), 45-label canonical set + idempotent ensure, V2 §22.1 verb dispatcher (init/status/mirror-rebuild live; 4 placeholders pointing at owning BDs), surface auto-detection (PACK-CHAT.md vs docs/pack/), opted_in_at preservation across re-runs. Includes BD-065 ride-along fixes #10 (--mirror-only flag on tracker-migrate.sh forward) and #12 (8-field V2 §22.1 status report). 73/73 BD-066 tests + 105/105 BD-065 tests (was 93); validate-pack clean. Interactive dialogue (V1 §6.1 step 1) lands as immediate fast-follow.
 
 ---
 
