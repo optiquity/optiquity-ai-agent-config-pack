@@ -1,0 +1,15 @@
+schema_version = 1
+
+[backend]
+name = "stub"
+repo = "fixture-org/fixture-repo"
+
+[mode]
+state = "tracker"
+
+[id_namespace]
+prefix = "BD"
+
+[migration]
+forward_complete = true
+mapping_file = ".pack-tracker/id-map.json"
