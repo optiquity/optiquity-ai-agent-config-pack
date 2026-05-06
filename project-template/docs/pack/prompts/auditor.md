@@ -46,7 +46,9 @@ only.
 
 **Constraints:**
 - Read-only audit. Do not write to BACKLOG.md, STATUS.md, or any other project
-  file.
+  file. In tracker mode the BACKLOG/STATUS mirrors are read-only by design
+  and the underlying tracker entries are PM-chat exclusive — the read-only
+  posture holds in both modes.
 - **Skip rules for this project:** [PM CHAT FILLS THIS IN — for example: "Skip
   auditor-ui (server-only project, no UI layer). Run the six remaining
   clusters." Or: "Run all seven clusters." Or: "Skip auditor-tests (first audit

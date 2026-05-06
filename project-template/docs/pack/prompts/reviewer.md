@@ -19,7 +19,10 @@ reviewer report here]
 
 **Required reading:** `ARCHITECTURE.md` in full. `CHANGELOG.md` (Phase
 [X] entry). `CLAUDE.md`. `IMPLEMENTATION_PLAN.md` Phase [X] in full.
-Plus all files modified in Phase [X]: [LIST FILES].
+BACKLOG entries (resolve via the trinity `## Document locations`
+table; reads the flat-file mirror in flat-file mode and the tracker
+in tracker mode) — needed for the BACKLOG hygiene check (review
+dimension 7). Plus all files modified in Phase [X]: [LIST FILES].
 
 **Problem:** The coder's pass-[X] output has not been verified against
 the architecture, the implementation plan, or the eight review
@@ -65,7 +68,10 @@ Review for all eight of the following — do not skip any:
    Check that all deferral comments in reviewed files use the typed format
    (`// TODO(`, `// KNOWN GAP(`, `// VERIFY(` or language equivalents).
    Any plain-English deferral comment (e.g. `// Fix later`, `// Confirm this`) is ⚠️ WARN.
-   For each TD-NNN found in reviewed files, confirm a matching BACKLOG entry exists.
+   For each TD-NNN found in reviewed files, confirm a matching BACKLOG entry
+   exists (resolve location via the trinity `## Document locations` table;
+   in flat-file mode read `BACKLOG.md`, in tracker mode read the tracker
+   entry — both surface the same data).
 
 8. **Unplanned file modifications** — if the coder's completion report includes an
    **"Unplanned file modifications"** section, review each disclosed change:

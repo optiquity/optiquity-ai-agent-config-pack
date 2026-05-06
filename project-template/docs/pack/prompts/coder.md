@@ -63,6 +63,10 @@ under Constraints.]
   `BACKLOG.md`, `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `CLAUDE.md`,
   `AGENTS.md`, `README.md`, or any other `.md` file in the project root.
   Writing root `.md` files is exclusively the PM chat's responsibility.
+  This restriction applies identically in tracker mode: BACKLOG/STATUS/
+  CHANGELOG/IMPLEMENTATION_PLAN are tracker-mirrored read-only files
+  there — only the PM chat (with tracker write authority) may modify
+  the underlying entries.
 - **Deferral comments:** If during implementation you encounter work that
   cannot be completed within this phase scope, add a typed deferral comment
   using exactly this syntax (use the comment marker for the language you are
