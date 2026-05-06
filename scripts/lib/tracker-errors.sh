@@ -9,7 +9,9 @@
 #   - V1 §2.5: 10 typed error codes (network-unreachable,
 #     rate-limit-primary, rate-limit-secondary, auth-missing,
 #     auth-expired, auth-insufficient-scope, not-found, validation,
-#     schema-reshape, partial-write).
+#     schema-reshape, partial-write) plus the additive `not-implemented`
+#     code documented in ARCHITECTURE §2.5 (eleven total). V1 §2.5
+#     specifies a minimum surface, not an exhaustive list.
 #   - V1 §9: per-code user-facing message shape — caller passes the
 #     contextual lines per V1 §9.x; the formatter wraps them in the
 #     canonical ERROR/MESSAGE prefix and appends the next-step verb.

@@ -4,23 +4,19 @@
 # Verb surface:
 #   init                    Opt-in to tracker mode: write tracker.toml,
 #                           validate auth, ensure templates+labels, run
-#                           forward migration. (BD-066 — this commit.)
+#                           forward migration.
 #   status                  One-screen view of tracker state (8 fields
-#                           per V2 §22.1). (BD-066 — this commit.)
+#                           per V2 §22.1).
 #   disable                 Reverse migration + flip mode to flat-file.
-#                           (BD-067 — pending; placeholder.)
 #   doctor                  Validate config + capabilities + mapping
 #                           integrity + template freshness.
-#                           (BD-067 — pending; placeholder.)
 #   update-templates        Apply translation rules from older
 #                           template_version to current.
-#                           (BD-069 — pending; placeholder.)
 #   mirror-rebuild          Rebuild flat-file mirror without re-running
 #                           the full forward migration. Wraps
 #                           `tracker-migrate.sh forward --mirror-only`.
-#                           (BD-066 — this commit.)
 #   enable-recommendations  Toggle proactive Layer-3 recommendations.
-#                           (BD-073 — pending; placeholder.)
+#                           (Stubbed at v11.0; body lands in BD-073.)
 #
 # Reference: ARCHITECTURE-V2.md §22.1.
 

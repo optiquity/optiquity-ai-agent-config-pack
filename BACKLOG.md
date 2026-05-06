@@ -230,8 +230,8 @@ Description: Adds `enable-recommendations` subcommand per V3 §28.1.9 +
   routes through it. v11.0 ships the verb wired into the dispatcher
   (`cmd_enable_recommendations`) emitting a typed `not-implemented`
   error so V2 §22.1's "Required for v11?" row is rationalized — the
-  surface is reachable; the body lands in BD-073 and depends on
-  BD-072's threshold-driven Layer 3 state file
+  surface is reachable; the body lands here and depends on BD-072's
+  threshold-driven Layer 3 state file
   (`.pack-tracker/recommendation-state.json`, V3 §27.3 / §28.1.6).
 Resolved: n/a
 

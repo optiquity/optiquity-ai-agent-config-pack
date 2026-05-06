@@ -233,7 +233,7 @@ EOF
 init: complete.
   $surface mode is now: tracker
   Run \`pack tracker status\` to see the new state.
-  Run \`pack tracker disable\` to revert (BD-067 — pending).
+  Run \`pack tracker disable\` to revert.
 EOF
 }
 

@@ -2,10 +2,11 @@
 # scripts/tracker-migrate.sh — tracker-mode migration verbs.
 #
 # Subcommand surface (V1 §6.1):
-#   forward   flat-file → tracker (BD-065 — this commit)
-#   reverse   tracker → flat-file (BD-067 — pending)
-#   status    report mapping freshness (BD-065 — this commit)
-#   doctor    validate mapping integrity (BD-067 — pending)
+#   forward   flat-file → tracker
+#   reverse   tracker → flat-file
+#   status    report mapping freshness
+#   doctor    validate config + mapping integrity + template freshness
+#             + capability cache
 #
 # Both forward and reverse are idempotent. Forward runs at opt-in;
 # reverse runs on opt-out, on demand for backups, or as the final
@@ -114,7 +115,7 @@ cmd_status() {
 }
 
 # ─────────────────────────────────────────────────────────────────
-# Subcommand: reverse / doctor (BD-067 placeholders)
+# Subcommand: reverse / doctor
 # ─────────────────────────────────────────────────────────────────
 
 cmd_reverse() {
