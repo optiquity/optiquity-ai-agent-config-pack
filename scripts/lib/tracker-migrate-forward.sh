@@ -374,6 +374,10 @@ PYEOF
 #
 #   <description>
 #
+#   ## File / Symbol
+#
+#   <file_symbol>     (omitted if empty)
+#
 #   ## Context
 #
 #   <context>          (omitted if empty)
@@ -382,13 +386,15 @@ PYEOF
 #
 #   <resolution>       (omitted if empty)
 #
-# Type: / Status: / Blockers: / Unblocks: / File-Symbol: are NOT in
-# the body — they map to labels and link relationships per V1 §4.1.
+# Type: / Status: / Blockers: / Unblocks: are NOT in the body — they
+# map to labels and link relationships per V1 §4.1. File/Symbol IS in
+# the body per V1 §4.1 ("kept verbatim; not a GH first-class concept").
 tmf_compose_issue_body() {
     local pack_id="$1"
     local description="$2"
     local context="${3:-}"
     local resolution="${4:-}"
+    local file_symbol="${5:-}"
     local template_version
     case "$pack_id" in
         BD-*) template_version="bd-v11.0" ;;
@@ -402,6 +408,9 @@ tmf_compose_issue_body() {
         printf '<!-- template_version: %s -->\n' "$template_version"
         printf '<!-- pack-version: v11 -->\n'
         printf '\n## Description\n\n%s\n' "$description"
+        if [[ -n "$file_symbol" ]]; then
+            printf '\n## File / Symbol\n\n%s\n' "$file_symbol"
+        fi
         if [[ -n "$context" ]]; then
             printf '\n## Context\n\n%s\n' "$context"
         fi
@@ -435,13 +444,23 @@ EOF
 # Issue create / lookup (V1 §6.2 step 4)
 # ─────────────────────────────────────────────────────────────────
 
-# tmf_create_or_lookup <entry-json> <mapping-json> [<dry-run>]
-# Returns one of:
-#   "skip"      already in mapping; nothing to do
-#   "lookup"    not in mapping but title-marker found upstream;
-#               caller updates mapping
-#   "create"    needs creation; caller invokes provider_create
-# Emits status to stdout; caller dispatches.
+# tmf_create_or_lookup <entry-json> <mapping-json>
+# Probes V1 §6.2's three idempotency markers in order:
+#   (a) mapping file (fast path)
+#   (b) title-marker search (recovery path)
+#   (c) body-footer marker (verification of search hits, V1 §6.2
+#       line 1031 "two redundant markers ... if a future GH version
+#       strips it, we fall back to title marker only")
+#
+# Emits a JSON envelope on stdout:
+#   {"action": "skip",   "gh_id": "<id>", "url": "<url>"}   (a) or (b+c) match
+#   {"action": "create"}                                     no marker found
+#
+# When (b) returns a hit, this function calls provider_get on the
+# first hit and verifies the body contains `<!-- pack-id: <ID> -->`.
+# A title hit without the body marker is treated as a stale-title
+# false positive and falls through to "create". This closes the
+# Finding #1 + #8 recovery contract.
 tmf_create_or_lookup() {
     local entry="$1"
     local mapping="$2"
@@ -449,27 +468,47 @@ tmf_create_or_lookup() {
     pack_id=$(printf '%s' "$entry" | jq -r '.pack_id')
 
     # 4a: already mapped?
-    if printf '%s' "$mapping" | jq -e --arg k "$pack_id" 'has($k)' >/dev/null 2>&1; then
-        echo "skip"
+    local mapped_id mapped_url
+    mapped_id=$(printf '%s' "$mapping" | jq -r --arg k "$pack_id" 'if has($k) then .[$k].id else empty end')
+    if [[ -n "$mapped_id" && "$mapped_id" != "null" ]]; then
+        mapped_url=$(printf '%s' "$mapping" | jq -r --arg k "$pack_id" 'if has($k) then .[$k].url else "" end')
+        jq -n --arg id "$mapped_id" --arg url "$mapped_url" \
+            '{action: "skip", gh_id: $id, url: $url}'
         return 0
     fi
 
-    # 4b: search tracker for title marker (provider_search returns rc=0
-    # on success; we accept either a hit or empty result). The caller
-    # interprets and updates the mapping; this function just reports
-    # the routing decision.
+    # 4b: title-marker search.
     local search_result
-    if search_result=$(provider_search "in:title \"$pack_id:\"" 5 2>/dev/null); then
-        local hit_count
-        hit_count=$(printf '%s' "$search_result" | jq -r '.items | length')
-        if [[ "$hit_count" -gt 0 ]]; then
-            echo "lookup"
-            return 0
-        fi
+    if ! search_result=$(provider_search "in:title \"$pack_id:\"" 5 2>/dev/null); then
+        echo '{"action": "create"}'
+        return 0
+    fi
+    local hit_count
+    hit_count=$(printf '%s' "$search_result" | jq -r '.items | length')
+    if [[ "$hit_count" -eq 0 ]]; then
+        echo '{"action": "create"}'
+        return 0
     fi
 
-    # 4c: needs creation
-    echo "create"
+    # 4c: verify body-footer marker on each hit. The first hit whose
+    # body contains the canonical pack-id marker is a recovered match.
+    local i=0 hit_id hit_url issue_json body
+    while [[ $i -lt $hit_count ]]; do
+        hit_id=$(printf '%s' "$search_result"  | jq -r ".items[$i].id // .items[$i].number")
+        hit_url=$(printf '%s' "$search_result" | jq -r ".items[$i].url // \"\"")
+        if issue_json=$(provider_get "$hit_id" 2>/dev/null); then
+            body=$(printf '%s' "$issue_json" | jq -r '.body // ""')
+            if [[ "$body" == *"<!-- pack-id: $pack_id -->"* ]]; then
+                jq -n --arg id "$hit_id" --arg url "$hit_url" \
+                    '{action: "skip", gh_id: $id, url: $url}'
+                return 0
+            fi
+        fi
+        i=$((i + 1))
+    done
+
+    # No verified body marker among title hits; treat as needs-create.
+    echo '{"action": "create"}'
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -536,8 +575,14 @@ tracker_migrate_forward_run() {
         return 0
     fi
 
+    # Partial-failure tracking (V1 §9.6 partial-write surface).
+    # File-backed because bash 3.2 arrays do not survive subshells.
+    local partial_failures
+    partial_failures=$(mktemp -t tmf-pf.XXXXXX)
+    : > "$partial_failures"
+
     # Steps 4–9: per-entry work.
-    local idx=0 created=0 skipped=0 looked_up=0 closed=0
+    local idx=0 created=0 skipped=0 recovered=0 closed=0
     local completed_ids='[]'
     if [[ "$resume" == "1" ]]; then
         completed_ids=$(printf '%s' "$resume_state" | jq -c '.completed_pack_ids // []')
@@ -556,26 +601,35 @@ tracker_migrate_forward_run() {
             continue
         fi
 
-        local routing
+        local routing action gh_id url
         routing=$(tmf_create_or_lookup "$entry" "$mapping")
-        case "$routing" in
+        action=$(printf '%s' "$routing" | jq -r '.action')
+
+        case "$action" in
             skip)
+                # Already mapped, OR recovered via title+body marker probe
+                # (Findings #1 + #8). If recovered and not yet in mapping,
+                # register it now so subsequent steps (links/close) run.
+                gh_id=$(printf '%s' "$routing" | jq -r '.gh_id // ""')
+                url=$(printf   '%s' "$routing" | jq -r '.url   // ""')
+                if [[ -n "$gh_id" ]]; then
+                    if ! printf '%s' "$mapping" | jq -e --arg k "$pack_id" 'has($k)' >/dev/null 2>&1; then
+                        mapping=$(tmf_mapping_set "$mapping" "$pack_id" "$gh_id" "$url")
+                        tmf_mapping_save "$mapping_file" "$mapping"
+                        recovered=$((recovered + 1))
+                    fi
+                fi
                 skipped=$((skipped + 1))
-                ;;
-            lookup)
-                # 4b: title-marker found; record the marker -> caller mapping.
-                # In this BD-065 implementation we emit a placeholder; full
-                # resolve-from-search logic ships when BD-068 round-trip lands.
-                looked_up=$((looked_up + 1))
                 ;;
             create)
                 local title body labels_json result
+                local description context resolution file_symbol
                 title="$pack_id: $(printf '%s' "$entry" | jq -r '.title')"
-                local description context resolution
                 description=$(printf '%s' "$entry" | jq -r '.description // ""')
                 context=$(printf '%s'     "$entry" | jq -r '.context // ""')
                 resolution=$(printf '%s'  "$entry" | jq -r '.resolution // ""')
-                body=$(tmf_compose_issue_body "$pack_id" "$description" "$context" "$resolution")
+                file_symbol=$(printf '%s' "$entry" | jq -r '.file_symbol // ""')
+                body=$(tmf_compose_issue_body "$pack_id" "$description" "$context" "$resolution" "$file_symbol")
                 labels_json=$(_tmf_labels_for_entry "$entry")
 
                 local payload
@@ -586,34 +640,47 @@ tracker_migrate_forward_run() {
                     '{title: $t, body: $b, labels: $l}')
 
                 if ! result=$(provider_create "$payload"); then
+                    rm -f "$partial_failures"
                     return 1
                 fi
-                local gh_id url
                 gh_id=$(printf '%s' "$result" | jq -r '.id')
                 url=$(printf '%s'   "$result" | jq -r '.url // ""')
                 mapping=$(tmf_mapping_set "$mapping" "$pack_id" "$gh_id" "$url")
+                # Finding #7: persist mapping after EVERY create so a
+                # mid-loop failure cannot lose the create→mapping window.
+                tmf_mapping_save "$mapping_file" "$mapping"
                 created=$((created + 1))
-
-                # Step 8: close on Resolved/Cancelled/Deprecated.
-                local status
-                status=$(printf '%s' "$entry" | jq -r '.status')
-                case "$status" in
-                    Resolved|Cancelled|Deprecated)
-                        local reason
-                        case "$status" in
-                            Resolved)              reason="completed" ;;
-                            Cancelled|Deprecated)  reason="not_planned" ;;
-                        esac
-                        provider_close "$gh_id" "$reason" >/dev/null || true
-                        closed=$((closed + 1))
-                        # Step 9: comment with resolution text if present.
-                        if [[ -n "$resolution" ]]; then
-                            provider_comment "$gh_id" "$resolution" >/dev/null || true
-                        fi
-                        ;;
-                esac
                 ;;
         esac
+
+        # Steps 8 + 9: close-on-Resolved + Resolution comment. Run for
+        # both create and skip-with-gh_id paths so a recovered entry's
+        # status flip is honoured. Failures here are tracked, not fatal
+        # (V1 §9.6 partial-write).
+        if [[ -n "$gh_id" ]]; then
+            local status resolution
+            status=$(printf '%s' "$entry" | jq -r '.status')
+            resolution=$(printf '%s' "$entry" | jq -r '.resolution // ""')
+            case "$status" in
+                Resolved|Cancelled|Deprecated)
+                    local reason
+                    case "$status" in
+                        Resolved)              reason="completed" ;;
+                        Cancelled|Deprecated)  reason="not_planned" ;;
+                    esac
+                    if ! provider_close "$gh_id" "$reason" >/dev/null 2>&1; then
+                        printf 'step-8 close: %s (%s)\n' "$pack_id" "gh_id=$gh_id" >> "$partial_failures"
+                    else
+                        closed=$((closed + 1))
+                    fi
+                    if [[ -n "$resolution" ]]; then
+                        if ! provider_comment "$gh_id" "$resolution" >/dev/null 2>&1; then
+                            printf 'step-9 comment: %s (%s)\n' "$pack_id" "gh_id=$gh_id" >> "$partial_failures"
+                        fi
+                    fi
+                    ;;
+            esac
+        fi
 
         # Track completion + checkpoint.
         completed_ids=$(printf '%s' "$completed_ids" | jq -c --arg k "$pack_id" '. + [$k]')
@@ -625,7 +692,6 @@ tracker_migrate_forward_run() {
             state=$(jq -n --argjson c "$completed_ids" --arg t "$now_iso" \
                 '{last_step: "step-4", completed_pack_ids: $c, timestamp: $t}')
             tmf_checkpoint_write "$checkpoint_file" "$state"
-            tmf_mapping_save "$mapping_file" "$mapping"
         fi
     done
 
@@ -685,17 +751,25 @@ tracker_migrate_forward_run() {
                     local parent_gh_id
                     parent_gh_id=$(tmf_mapping_get "$mapping" "$raw" || echo "")
                     if [[ -n "$parent_gh_id" ]]; then
-                        provider_sub_issue_create "$parent_gh_id" \
-                            "{\"existing_id\": \"$gh_id\"}" >/dev/null || true
-                        linked_parent=$((linked_parent + 1))
+                        if provider_sub_issue_create "$parent_gh_id" \
+                            "{\"existing_id\": \"$gh_id\"}" >/dev/null 2>&1; then
+                            linked_parent=$((linked_parent + 1))
+                        else
+                            printf 'step-6 sub_issue_create: %s -> %s\n' \
+                                "$pack_id" "$raw" >> "$partial_failures"
+                        fi
                     fi
                     ;;
                 BD-*|TD-*)
                     local other_gh_id
                     other_gh_id=$(tmf_mapping_get "$mapping" "$raw" || echo "")
                     if [[ -n "$other_gh_id" ]]; then
-                        provider_link "$gh_id" "$other_gh_id" "blocked-by" >/dev/null || true
-                        linked_blocked=$((linked_blocked + 1))
+                        if provider_link "$gh_id" "$other_gh_id" "blocked-by" >/dev/null 2>&1; then
+                            linked_blocked=$((linked_blocked + 1))
+                        else
+                            printf 'step-7 link blocked-by: %s -> %s\n' \
+                                "$pack_id" "$raw" >> "$partial_failures"
+                        fi
                     fi
                     ;;
             esac
@@ -720,12 +794,31 @@ forward: complete.
   entries:    $entry_count
   created:    $created
   skipped:    $skipped
-  looked-up:  $looked_up
+  recovered:  $recovered
   closed:     $closed
   phases:     $phase_count (created: $phase_created)
   links:      parent=$linked_parent, blocked-by=$linked_blocked
   mapping:    $mapping_file
 EOF
+
+    # Surface partial-write per V1 §9.6 if any post-create steps failed.
+    # The forward-side state is consistent (mapping file persisted; idempotent
+    # re-run will retry the failed steps); the user is told what to fix.
+    if [[ -s "$partial_failures" ]]; then
+        local n_pf
+        n_pf=$(wc -l < "$partial_failures" | tr -d ' ')
+        local extras=()
+        while IFS= read -r line; do
+            extras+=("  - $line")
+        done < "$partial_failures"
+        rm -f "$partial_failures"
+        tracker_error_emit "partial-write" \
+            "Forward migration completed with $n_pf step failure(s); per-step list above. Idempotent re-run will retry." \
+            "${extras[@]}"
+        return 1
+    fi
+    rm -f "$partial_failures"
+    return 0
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -792,40 +885,53 @@ _tmf_labels_for_entry() {
 }
 
 # Regenerate the BACKLOG.md mirror (in place) with the V1 §6.3
-# read-only header. For BD-065's scope we keep the body content
-# unchanged (the chat will regenerate on subsequent writes); we
-# only add the header if absent.
+# read-only header. The body content is preserved verbatim modulo
+# the header itself. Idempotent: N consecutive runs produce
+# byte-equal output (modulo the timestamp inside the header).
+#
+# Invariant (V1 §6.7 round-trip safety): the body extraction is
+# whitespace-tolerant — any leading whitespace on `<!--` / `-->`
+# tags or a blank gap between header and body is normalized out.
 _tmf_regen_mirror() {
     local path="$1"
     local backend_slug="$2"
     if [[ ! -f "$path" ]]; then
         return 0
     fi
-    local first_line
-    first_line=$(head -n 1 "$path" 2>/dev/null || echo "")
-    if [[ "$first_line" == "<!--" ]]; then
-        # Header already present; refresh the timestamp by replacing
-        # the first 6 lines (the header block).
-        local header body tmp
-        header=$(tmf_mirror_header "$backend_slug")
-        body=$(awk 'NR == 1 && $0 == "<!--" {flag=1; next} flag && $0 == "-->" {flag=0; next} !flag' "$path")
-        tmp=$(mktemp -t tmf-mirror.XXXXXX)
-        {
-            printf '%s\n' "$header"
-            printf '\n%s' "$body"
-        } > "$tmp"
-        mv "$tmp" "$path"
-        return 0
-    fi
-    # No header; prepend.
-    local header tmp
-    header=$(tmf_mirror_header "$backend_slug")
-    tmp=$(mktemp -t tmf-mirror.XXXXXX)
-    {
-        printf '%s\n\n' "$header"
-        cat "$path"
-    } > "$tmp"
-    mv "$tmp" "$path"
+    local now_iso
+    now_iso=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+    python3 - "$path" "$backend_slug" "$now_iso" <<'PYEOF' || return 1
+import re, sys
+path, backend_slug, now_iso = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(path) as f:
+    text = f.read()
+
+# Strip a leading mirror-header block + any blank-line gap that
+# follows it. The header opens with `<!--` (possibly indented or
+# trailing-whitespace-padded) and closes with `-->`. Anything
+# in between is replaced wholesale.
+m = re.match(r'\s*<!--\s*\n.*?\n\s*-->\s*\n+', text, re.DOTALL)
+if m:
+    body = text[m.end():]
+else:
+    body = text
+
+# Normalize: strip trailing newlines from body to a single one;
+# we'll add exactly one blank line between header and body.
+body = body.rstrip('\n') + '\n'
+
+header = (
+    "<!--\n"
+    "  This file is a read-only mirror generated from the tracker.\n"
+    f"  Tracker: github / {backend_slug}\n"
+    f"  Last regenerated: {now_iso}\n"
+    "  Direct edits will be overwritten. Edit via Pack Chat / PM Chat.\n"
+    "-->\n"
+)
+out = header + "\n" + body
+with open(path, 'w') as f:
+    f.write(out)
+PYEOF
 }
 
 # Update tracker.toml [migration].last_forward_run timestamp.

@@ -120,7 +120,7 @@ tmf_checkpoint_clear "$ckp"
 [[ ! -f "$ckp" ]] && t_pass "2.4 checkpoint cleared" || t_fail "2.4 checkpoint cleared"
 
 # 2.5 issue-body composer
-body=$(tmf_compose_issue_body "BD-001" "desc text" "ctx text" "")
+body=$(tmf_compose_issue_body "BD-001" "desc text" "ctx text" "" "")
 assert_contains "2.5 body has pack-id marker"          "$body" "<!-- pack-id: BD-001 -->"
 assert_contains "2.5 body has bd-v11.0 template_version" "$body" "<!-- template_version: bd-v11.0 -->"
 assert_contains "2.5 body has pack-version: v11"       "$body" "<!-- pack-version: v11 -->"
@@ -133,12 +133,23 @@ else
     t_pass "2.5 body Resolution absent when empty"
 fi
 # TD entries get td-v11.0 template_version
-body_td=$(tmf_compose_issue_body "TD-010" "td desc" "" "")
+body_td=$(tmf_compose_issue_body "TD-010" "td desc" "" "" "")
 assert_contains "2.5 td body has td-v11.0 marker" "$body_td" "<!-- template_version: td-v11.0 -->"
 # Resolution section appears when resolution is non-empty
-body_res=$(tmf_compose_issue_body "BD-003" "d" "" "fixed in abc")
+body_res=$(tmf_compose_issue_body "BD-003" "d" "" "fixed in abc" "")
 assert_contains "2.5 body has Resolution section" "$body_res" "## Resolution"
 assert_contains "2.5 body has resolution text"    "$body_res" "fixed in abc"
+# File/Symbol section (Finding #3 fix) appears when non-empty
+body_fs=$(tmf_compose_issue_body "BD-001" "d" "" "" "scripts/foo.sh")
+assert_contains "2.5 body has File / Symbol section"   "$body_fs" "## File / Symbol"
+assert_contains "2.5 body has file_symbol value"       "$body_fs" "scripts/foo.sh"
+# File/Symbol omitted when empty
+body_no_fs=$(tmf_compose_issue_body "BD-001" "d" "" "" "")
+if printf '%s' "$body_no_fs" | grep -q "^## File / Symbol"; then
+    t_fail "2.5 body File/Symbol absent when empty" "section unexpectedly present"
+else
+    t_pass "2.5 body File/Symbol absent when empty"
+fi
 
 # 2.6 label set composer
 labels_open=$(_tmf_labels_for_entry '{"pack_id":"BD-001","status":"Open"}')
@@ -321,7 +332,180 @@ err=$(tracker_migrate_forward_run "$TEST_REPO3" 0 0 2>&1) || true
 assert_contains "3.11 missing tracker.toml → validation" "$err" "ERROR: validation"
 assert_contains "3.11 error mentions pack tracker init" "$err" "pack tracker init"
 
-# Cleanup.
+# ─────────────────────────────────────────────────────────────────
+# Group 4: review-fix verifications
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 4: review-fix verifications ===\n"
+
+# 4.1 Mirror-header idempotency (Finding #2): three consecutive runs
+# of _tmf_regen_mirror against a clean-body fixture produce byte-equal
+# files modulo the "Last regenerated" timestamp line.
+mtmp=$(mktemp -t tmf-mirror-idem.XXXXXX)
+printf 'Some BACKLOG body content.\nLine two.\n' > "$mtmp"
+_tmf_regen_mirror "$mtmp" "test-org/test-repo"
+snap1=$(grep -v "Last regenerated:" "$mtmp")
+_tmf_regen_mirror "$mtmp" "test-org/test-repo"
+snap2=$(grep -v "Last regenerated:" "$mtmp")
+_tmf_regen_mirror "$mtmp" "test-org/test-repo"
+snap3=$(grep -v "Last regenerated:" "$mtmp")
+assert_eq "4.1 mirror regen run-2 ≡ run-1 (modulo timestamp)" "$snap1" "$snap2"
+assert_eq "4.1 mirror regen run-3 ≡ run-1 (modulo timestamp)" "$snap1" "$snap3"
+# Body content survives all three runs.
+assert_contains "4.1 body line preserved across runs" "$snap1" "Some BACKLOG body content."
+rm -f "$mtmp"
+
+# 4.2 File/Symbol round-trip (Finding #3): an entry with File/Symbol
+# set ships through to the issue body. Use the parser+composer chain
+# directly (the fixture BACKLOG.md has File/Symbol on every entry).
+entries_for_fs=$(tmf_parse_backlog "$FIXTURES/BACKLOG.md")
+entry_bd1=$(printf '%s' "$entries_for_fs" | jq -c '.[0]')
+fs_value=$(printf '%s' "$entry_bd1" | jq -r '.file_symbol')
+assert_eq "4.2 parser captures file_symbol BD-001" "scripts/foo.sh" "$fs_value"
+desc_bd1=$(printf '%s' "$entry_bd1" | jq -r '.description')
+ctx_bd1=$(printf  '%s' "$entry_bd1" | jq -r '.context')
+res_bd1=$(printf  '%s' "$entry_bd1" | jq -r '.resolution')
+body_bd1=$(tmf_compose_issue_body "BD-001" "$desc_bd1" "$ctx_bd1" "$res_bd1" "$fs_value")
+assert_contains "4.2 composed body has File / Symbol heading" "$body_bd1" "## File / Symbol"
+assert_contains "4.2 composed body has scripts/foo.sh"        "$body_bd1" "scripts/foo.sh"
+
+# 4.3 Partial-write surfacing (Finding #5): fake gh that fails on
+# `issue close` produces an end-of-run partial-write typed error.
+FAKE_BIN_PF=$(mktemp -d -t tmf-fakebin-pf.XXXXXX)
+GH_LOG_PF=$(mktemp -t tmf-ghlog-pf.XXXXXX)
+ISSUE_COUNTER_PF=$(mktemp -t tmf-counter-pf.XXXXXX)
+echo "200" > "$ISSUE_COUNTER_PF"
+
+cat > "$FAKE_BIN_PF/gh" <<FAKEGH_PF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$GH_LOG_PF"
+case "\$1 \$2" in
+    "issue create")
+        counter=\$(cat "$ISSUE_COUNTER_PF")
+        next=\$((counter + 1))
+        echo "\$next" > "$ISSUE_COUNTER_PF"
+        printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
+        ;;
+    "issue close")
+        echo "HTTP 422: cannot close issue" >&2
+        exit 1
+        ;;
+    "issue comment")          ;;
+    "issue edit")             ;;
+    "search issues")          echo '[]' ;;
+    "issue list")             echo '[]' ;;
+    "issue view")             echo '{"labels":[], "assignees":[]}' ;;
+    "repo view")              echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
+    "api graphql")            echo '{}' ;;
+    "extension list")         echo "" ;;
+    *)                        ;;
+esac
+exit 0
+FAKEGH_PF
+chmod +x "$FAKE_BIN_PF/gh"
+
+# Run forward with fake-gh that fails on close. Expect rc=1 + partial-write.
+TEST_REPO_PF=$(mktemp -d -t tmf-repo-pf.XXXXXX)
+cp "$FIXTURES/BACKLOG.md" "$TEST_REPO_PF/BACKLOG.md"
+cp "$FIXTURES/IMPLEMENTATION_PLAN.md" "$TEST_REPO_PF/IMPLEMENTATION_PLAN.md"
+cp "$FIXTURES/tracker.toml" "$TEST_REPO_PF/tracker.toml"
+
+PATH_SAVED="$PATH"
+export PATH="$FAKE_BIN_PF:$PATH_SAVED"
+# `|| true` would mask the non-zero rc we are testing for. Without it
+# and without `set -e`, the assignment's rc propagates to $?.
+output_pf=$(tracker_migrate_forward_run "$TEST_REPO_PF" 0 0 2>&1)
+rc_pf=$?
+export PATH="$PATH_SAVED"
+
+assert_eq "4.3 partial-failure run rc=1"             "1" "$rc_pf"
+assert_contains "4.3 surfaces ERROR: partial-write"  "$output_pf" "ERROR: partial-write"
+assert_contains "4.3 partial-write names step-8 close" "$output_pf" "step-8 close"
+assert_contains "4.3 partial-write next-step verb"   "$output_pf" "→ Run: see resume options"
+
+# Mapping file IS persisted even on partial failure (Finding #7 fix).
+mfile_pf="$TEST_REPO_PF/.pack-tracker/id-map.json"
+[[ -f "$mfile_pf" ]] && t_pass "4.3 mapping persisted on partial failure" \
+    || t_fail "4.3 mapping persisted on partial failure" "missing $mfile_pf"
+
+rm -rf "$FAKE_BIN_PF" "$GH_LOG_PF" "$ISSUE_COUNTER_PF" "$TEST_REPO_PF"
+
+# 4.4 Body-marker recovery (Findings #1 + #8): fake gh that returns
+# a search hit AND a matching body marker for BD-001 → BD-065 should
+# treat the entry as recovered (registered in mapping, not re-created).
+FAKE_BIN_REC=$(mktemp -d -t tmf-fakebin-rec.XXXXXX)
+GH_LOG_REC=$(mktemp -t tmf-ghlog-rec.XXXXXX)
+ISSUE_COUNTER_REC=$(mktemp -t tmf-counter-rec.XXXXXX)
+echo "300" > "$ISSUE_COUNTER_REC"
+
+cat > "$FAKE_BIN_REC/gh" <<'FAKEGH_REC'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "@@GH_LOG@@"
+
+# Special-case BD-001 recovery: search returns a hit, view returns
+# matching body marker. Match on substring of "$*" so quote-fragility
+# in case patterns is avoided.
+all="$*"
+case "$all" in
+    *"search issues"*"BD-001:"*)
+        # Raw `gh search issues --json ...` shape: an array of objects.
+        # Provider's normalizer wraps it into the {items, next_cursor} envelope.
+        echo '[{"number":555,"title":"BD-001: Add foo","url":"https://github.com/fixture-org/fixture-repo/issues/555","state":"OPEN","labels":[]}]'
+        exit 0
+        ;;
+    *"issue view 555"*)
+        # Raw `gh issue view 555 --json ...` shape (flat object).
+        # Body contains the matching pack-id marker → recovery succeeds.
+        printf '%s\n' '{"number":555,"title":"BD-001: Add foo","body":"<!-- pack-id: BD-001 -->\n<!-- template_version: bd-v11.0 -->","state":"OPEN","stateReason":null,"labels":[],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"https://github.com/fixture-org/fixture-repo/issues/555"}'
+        exit 0
+        ;;
+esac
+
+case "$1 $2" in
+    "issue create")
+        counter=$(cat "@@COUNTER@@")
+        next=$((counter + 1))
+        echo "$next" > "@@COUNTER@@"
+        printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "$next"
+        ;;
+    "issue close"|"issue reopen"|"issue edit"|"issue comment") ;;
+    "search issues")    echo '[]' ;;
+    "issue list")       echo '[]' ;;
+    "issue view")       echo '{"labels":[], "assignees":[]}' ;;
+    "repo view")        echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
+    "api graphql")      echo '{}' ;;
+    "extension list")   echo "" ;;
+    *)                  ;;
+esac
+exit 0
+FAKEGH_REC
+# Substitute placeholders to avoid heredoc-quoting headaches.
+sed -i.bak -e "s|@@GH_LOG@@|$GH_LOG_REC|g" -e "s|@@COUNTER@@|$ISSUE_COUNTER_REC|g" "$FAKE_BIN_REC/gh"
+rm -f "$FAKE_BIN_REC/gh.bak"
+chmod +x "$FAKE_BIN_REC/gh"
+
+TEST_REPO_REC=$(mktemp -d -t tmf-repo-rec.XXXXXX)
+cp "$FIXTURES/BACKLOG.md" "$TEST_REPO_REC/BACKLOG.md"
+cp "$FIXTURES/IMPLEMENTATION_PLAN.md" "$TEST_REPO_REC/IMPLEMENTATION_PLAN.md"
+cp "$FIXTURES/tracker.toml" "$TEST_REPO_REC/tracker.toml"
+
+export PATH="$FAKE_BIN_REC:$PATH_SAVED"
+output_rec=$(tracker_migrate_forward_run "$TEST_REPO_REC" 0 0 2>&1)
+rc_rec=$?
+export PATH="$PATH_SAVED"
+
+assert_eq "4.4 recovery run rc=0" "0" "$rc_rec"
+# Mapping should have BD-001 with id=555 (recovered, not freshly created).
+mfile_rec="$TEST_REPO_REC/.pack-tracker/id-map.json"
+[[ -f "$mfile_rec" ]] || t_fail "4.4 mapping file written" "missing"
+bd1_id=$(jq -r '.["BD-001"].id' "$mfile_rec")
+assert_eq "4.4 BD-001 mapped to recovered id 555 (not a new create)" "555" "$bd1_id"
+# Output reports recovered counter.
+assert_contains "4.4 output reports recovered" "$output_rec" "recovered:"
+
+rm -rf "$FAKE_BIN_REC" "$GH_LOG_REC" "$ISSUE_COUNTER_REC" "$TEST_REPO_REC"
+
+# Cleanup of Group 3 globals.
 rm -rf "$FAKE_BIN" "$GH_LOG" "$ISSUE_COUNTER_FILE" "$TEST_REPO" "$TEST_REPO2" "$TEST_REPO3"
 
 # ─────────────────────────────────────────────────────────────────
