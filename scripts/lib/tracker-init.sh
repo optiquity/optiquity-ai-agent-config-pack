@@ -31,7 +31,7 @@
 
 tracker_init_run() {
     local repo_root="" backend="" repo="" id_prefix="" surface=""
-    local no_forward=0 dry_run=0 no_labels=0 no_interactive=0
+    local no_forward=0 dry_run=0 no_labels=0 no_interactive=0 force=0
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -44,6 +44,7 @@ tracker_init_run() {
             --no-labels)       no_labels=1;     shift ;;
             --dry-run)         dry_run=1;       shift ;;
             --no-interactive)  no_interactive=1; shift ;;
+            --force)           force=1;         shift ;;
             -h|--help)
                 _tracker_init_usage
                 return 0
@@ -59,6 +60,25 @@ tracker_init_run() {
     if [[ ! -d "$repo_root" ]]; then
         tracker_error_emit "validation" "init: --repo-root is not a directory: $repo_root"
         return 1
+    fi
+
+    # Prior-state safety rail (V1 §6.4 + PACK-REVIEW-CUMULATIVE-V11
+    # Finding #8). Re-running `init` over an existing tracker state
+    # will pick up the prior mapping and skip-recover entries against
+    # whatever backend.repo the new init resolves — silently wrong if
+    # the slug differs. Require explicit `--force` to proceed (or run
+    # `pack tracker disable` first to clean state). The check is
+    # gated by --dry-run to allow rehearsal.
+    if [[ "$dry_run" != "1" && "$force" != "1" ]]; then
+        local prior_map="$repo_root/.pack-tracker/id-map.json"
+        if [[ -f "$prior_map" ]]; then
+            tracker_error_emit "validation" \
+                "init: prior tracker state found at $prior_map" \
+                "Re-running init over existing state can silently rebind a stale mapping to" \
+                "a different backend.repo. Run \`pack tracker disable\` to clean state, or" \
+                "pass --force to acknowledge and proceed."
+            return 1
+        fi
     fi
 
     # Decide whether to prompt for missing inputs. Default: interactive
@@ -246,6 +266,11 @@ Optional:
   --dry-run              Print the plan without writing anything.
   --no-interactive       Disable prompting; require all inputs as
                          flags. Default in non-TTY contexts.
+  --force                Bypass the prior-state safety rail (the
+                         check that rejects re-init when
+                         .pack-tracker/id-map.json already exists).
+                         Use only when re-pointing init to the same
+                         backend.repo intentionally.
 
 Example (pack root, interactive):
   scripts/pack-tracker.sh init

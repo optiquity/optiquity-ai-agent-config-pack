@@ -116,6 +116,19 @@ rm -rf "$TR_DRY"
 err=$(tracker_init_run --backend github --repo a/b --bogus 2>&1 1>/dev/null) || true
 assert_contains "1.9 unknown flag → validation" "$err" "unknown option '--bogus'"
 
+# 1.10 prior-state safety rail (F8): a tree with .pack-tracker/id-map.json
+# rejects re-init absent --force, telling the user to run disable first.
+TR_PRIOR=$(mktemp -d -t tr-prior.XXXXXX); touch "$TR_PRIOR/PACK-CHAT.md"
+mkdir -p "$TR_PRIOR/.pack-tracker"; echo '{}' > "$TR_PRIOR/.pack-tracker/id-map.json"
+err=$(tracker_init_run --repo-root "$TR_PRIOR" --backend github --repo a/b --no-forward 2>&1 1>/dev/null) || true
+assert_contains "1.10 prior id-map.json → validation"      "$err" "ERROR: validation"
+assert_contains "1.10 message names prior tracker state"   "$err" "prior tracker state found"
+assert_contains "1.10 message recommends disable or --force" "$err" "pack tracker disable"
+# 1.10b --force bypasses the rail (still --dry-run so we don't touch the network).
+output=$(tracker_init_run --repo-root "$TR_PRIOR" --surface pack --backend github --repo a/b --force --dry-run 2>&1)
+assert_contains "1.10b --force bypasses the rail" "$output" "stopping after plan summary"
+rm -rf "$TR_PRIOR"
+
 # ─────────────────────────────────────────────────────────────────
 # Group 2: auth validation (mocked gh)
 # ─────────────────────────────────────────────────────────────────
