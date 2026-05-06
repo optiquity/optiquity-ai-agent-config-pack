@@ -1,0 +1,237 @@
+# scripts/lib/tracker-config.sh — tracker.toml schema reader and
+# mode detection (V1 §3.1 + §3.2).
+#
+# Sourced by migration scripts, pack-startup / pm-startup / tracker-
+# startup skills, and tracker-provider.sh's dispatcher.
+#
+# Provides:
+#   - tracker_config_resolve_path <surface> <root>
+#       surface: "pack" | "client"
+#       Pack root:    <root>/tracker.toml
+#       Client root:  <root>/docs/pack/tracker.toml
+#   - tracker_config_read <path>
+#       Parses tracker.toml; emits a flat JSON dotted-key map on stdout.
+#       Returns 1 on missing file or parse error, with a typed-error
+#       block on stderr (V1 §2.5 codes).
+#   - tracker_config_get <path> <dotted-key>
+#       Convenience: emit a single value; rc=1 if absent.
+#   - tracker_mode <path>
+#       Implements V1 §3.2 detection algorithm verbatim. Always rc=0;
+#       emits "tracker" or "flat-file".
+#   - tracker_backend_name <path>     → backend.name
+#   - tracker_repo_slug <path>        → backend.repo
+#   - tracker_id_prefix <path>        → id_namespace.prefix
+#   - tracker_schema_version_check <path>
+#       rc=0 if schema_version == 1; rc=1 + typed error otherwise.
+#
+# Schema reference: ARCHITECTURE.md §3.1.
+# Detection reference: ARCHITECTURE.md §3.2.
+#
+# Implementation note: the parser is a tiny regex-based reader, not a
+# full TOML parser. Our schema is flat (one section level, no arrays,
+# no inline tables, no multiline strings), so a minimal parser is
+# sufficient and avoids the Python tomllib (3.11+) / tomli (extra dep)
+# fork. The parser tolerates the non-standard `null` literal that
+# appears in V1 §3.1's example for unset timestamps; real TOML omits
+# the key instead, and the example files we ship use commented-out
+# placeholders. If schema grows to need real TOML, swap to tomllib.
+#
+# BD-070 will replace the inline _tracker_config_emit_error stub with
+# scripts/lib/tracker-errors.sh; same shape as tracker-provider.sh's
+# stub, intentional for the unification.
+#
+# Do NOT add a shebang — this file is sourced, not executed.
+
+# Currently supported schema version. Bumped only on incompatible
+# tracker.toml schema changes; minor additive changes do not bump.
+readonly TRACKER_CONFIG_SCHEMA_VERSION=1
+
+# ─────────────────────────────────────────────────────────────────
+# Path resolution
+# ─────────────────────────────────────────────────────────────────
+
+# tracker_config_resolve_path <surface> <root>
+# Emits the canonical path to tracker.toml for the given surface,
+# regardless of whether the file exists.
+tracker_config_resolve_path() {
+    local surface="$1"
+    local root="$2"
+    if [[ -z "$surface" || -z "$root" ]]; then
+        _tracker_config_emit_error "validation" "resolve_path: surface and root required"
+        return 1
+    fi
+    case "$surface" in
+        pack)   echo "$root/tracker.toml" ;;
+        client) echo "$root/docs/pack/tracker.toml" ;;
+        *)
+            _tracker_config_emit_error "validation" "resolve_path: unknown surface '$surface' (expected pack|client)"
+            return 1
+            ;;
+    esac
+}
+
+# ─────────────────────────────────────────────────────────────────
+# Reader
+# ─────────────────────────────────────────────────────────────────
+
+# tracker_config_read <path>
+# Emits flat dotted-key JSON: {"schema_version": 1, "backend.name": "github", ...}
+tracker_config_read() {
+    local path="$1"
+    if [[ -z "$path" ]]; then
+        _tracker_config_emit_error "validation" "read: path required"
+        return 1
+    fi
+    if [[ ! -f "$path" ]]; then
+        _tracker_config_emit_error "not-found" "tracker.toml not present at $path"
+        return 1
+    fi
+    python3 - "$path" <<'PYEOF'
+import re, json, sys
+path = sys.argv[1]
+data = {}
+section = ""
+try:
+    with open(path) as f:
+        text = f.read()
+except OSError as e:
+    sys.stderr.write("ERROR: validation\nMESSAGE: %s\n" % e)
+    sys.exit(1)
+
+for raw_line in text.splitlines():
+    line = raw_line.strip()
+    if not line or line.startswith("#"):
+        continue
+    m = re.match(r'^\[([A-Za-z0-9_]+)\]$', line)
+    if m:
+        section = m.group(1)
+        continue
+    # Strip trailing inline comment, but only when the # is outside
+    # any quoted string (heuristic: balanced quotes in the prefix).
+    parts = line.split('#', 1)
+    candidate = parts[0]
+    if candidate.count('"') % 2 == 1:
+        candidate = line
+    line = candidate.strip()
+    if not line:
+        continue
+    m = re.match(r'^([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(.+?)\s*$', line)
+    if not m:
+        sys.stderr.write("ERROR: validation\nMESSAGE: cannot parse line: %r\n" % raw_line)
+        sys.exit(1)
+    key, raw = m.group(1), m.group(2)
+    if raw == "true":
+        val = True
+    elif raw == "false":
+        val = False
+    elif raw == "null":
+        val = None
+    elif len(raw) >= 2 and raw[0] == '"' and raw[-1] == '"':
+        val = raw[1:-1]
+    elif re.match(r'^-?\d+$', raw):
+        val = int(raw)
+    else:
+        sys.stderr.write("ERROR: validation\nMESSAGE: unrecognized value %r on line: %r\n" % (raw, raw_line))
+        sys.exit(1)
+    full_key = ("%s.%s" % (section, key)) if section else key
+    data[full_key] = val
+
+print(json.dumps(data))
+PYEOF
+}
+
+# tracker_config_get <path> <dotted-key>
+# Emits the value as a string; rc=1 if absent or read fails.
+tracker_config_get() {
+    local path="$1"
+    local key="$2"
+    if [[ -z "$path" || -z "$key" ]]; then
+        _tracker_config_emit_error "validation" "get: path and key required"
+        return 1
+    fi
+    local data
+    data=$(tracker_config_read "$path") || return 1
+    local val
+    val=$(printf '%s' "$data" | jq -r --arg k "$key" 'if has($k) then .[$k] else empty end')
+    if [[ -z "$val" ]]; then
+        return 1
+    fi
+    echo "$val"
+}
+
+# ─────────────────────────────────────────────────────────────────
+# V1 §3.2 mode detection
+# ─────────────────────────────────────────────────────────────────
+
+# tracker_mode <path>
+# Implements V1 §3.2 verbatim. Always rc=0 — the algorithm is
+# deliberately tolerant: any failure to interpret the file as
+# tracker-mode falls back to "flat-file".
+tracker_mode() {
+    local path="$1"
+    if [[ -z "$path" ]] || [[ ! -f "$path" ]]; then
+        echo "flat-file"
+        return 0
+    fi
+    local data
+    if ! data=$(tracker_config_read "$path" 2>/dev/null); then
+        echo "flat-file"
+        return 0
+    fi
+    local state forward
+    state=$(printf '%s' "$data"   | jq -r '."mode.state" // empty')
+    forward=$(printf '%s' "$data" | jq -r '."migration.forward_complete" // empty')
+    if [[ "$state" != "tracker" ]]; then
+        echo "flat-file"
+        return 0
+    fi
+    if [[ "$forward" != "true" ]]; then
+        echo "flat-file"
+        return 0
+    fi
+    echo "tracker"
+}
+
+# ─────────────────────────────────────────────────────────────────
+# Convenience getters
+# ─────────────────────────────────────────────────────────────────
+
+tracker_backend_name() { tracker_config_get "$1" "backend.name"; }
+tracker_repo_slug()    { tracker_config_get "$1" "backend.repo"; }
+tracker_id_prefix()    { tracker_config_get "$1" "id_namespace.prefix"; }
+
+# ─────────────────────────────────────────────────────────────────
+# Schema-version compatibility
+# ─────────────────────────────────────────────────────────────────
+
+# tracker_schema_version_check <path>
+# Emits a typed validation error if missing or unexpected.
+tracker_schema_version_check() {
+    local path="$1"
+    local data ver
+    data=$(tracker_config_read "$path") || return 1
+    ver=$(printf '%s' "$data" | jq -r '.schema_version // empty')
+    if [[ -z "$ver" ]]; then
+        _tracker_config_emit_error "validation" "tracker.toml: missing required key 'schema_version'"
+        return 1
+    fi
+    if [[ "$ver" != "$TRACKER_CONFIG_SCHEMA_VERSION" ]]; then
+        _tracker_config_emit_error "validation" \
+            "tracker.toml: schema_version=$ver (this build supports $TRACKER_CONFIG_SCHEMA_VERSION)"
+        return 1
+    fi
+    return 0
+}
+
+# ─────────────────────────────────────────────────────────────────
+# Inline typed-error helper (BD-070 unifies with tracker-provider.sh)
+# ─────────────────────────────────────────────────────────────────
+
+_tracker_config_emit_error() {
+    local code="$1"
+    local message="${2:-}"
+    echo "ERROR: $code" >&2
+    if [[ -n "$message" ]]; then
+        echo "MESSAGE: $message" >&2
+    fi
+}

@@ -52,15 +52,28 @@
 # ─────────────────────────────────────────────────────────────────
 
 # Resolve the active backend name. Used by _tracker_provider_dispatch.
-# Test seam: _TRACKER_PROVIDER_BACKEND_OVERRIDE wins absolutely.
-# BD-061: this function will read tracker.toml [backend] name when
-# the override is unset and the file exists.
+# Resolution order (V1 §3.2 + BD-061):
+#   1. _TRACKER_PROVIDER_BACKEND_OVERRIDE env var (test seam; absolute).
+#   2. tracker.toml backend.name when scripts/lib/tracker-config.sh is
+#      sourced AND _TRACKER_PROVIDER_CONFIG_PATH points at an existing
+#      file. Failures (missing key, parse error) fall through silently.
+#   3. Default: "github".
 _tracker_provider_backend() {
     if [[ -n "${_TRACKER_PROVIDER_BACKEND_OVERRIDE:-}" ]]; then
         echo "$_TRACKER_PROVIDER_BACKEND_OVERRIDE"
         return 0
     fi
-    # BD-061 will read tracker.toml here; until then, default.
+    if declare -f tracker_backend_name >/dev/null 2>&1 && \
+       [[ -n "${_TRACKER_PROVIDER_CONFIG_PATH:-}" ]] && \
+       [[ -f "${_TRACKER_PROVIDER_CONFIG_PATH}" ]]; then
+        local name
+        if name=$(tracker_backend_name "$_TRACKER_PROVIDER_CONFIG_PATH" 2>/dev/null); then
+            if [[ -n "$name" ]]; then
+                echo "$name"
+                return 0
+            fi
+        fi
+    fi
     echo "github"
 }
 

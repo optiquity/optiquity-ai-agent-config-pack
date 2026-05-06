@@ -1,0 +1,30 @@
+# Fixture: opted in (state="tracker") but migration not yet complete
+# → tracker_mode == "flat-file" per V1 §3.2 algorithm
+schema_version = 1
+
+[backend]
+name = "github"
+repo = "Optiquity-Inc/optiquity-ai-agent-config-pack"
+
+[mode]
+state = "tracker"
+opted_in_at = "2026-05-15T12:00:00Z"
+opted_in_by = "david@shane.com"
+
+[mirror]
+enabled = true
+location_backlog   = "BACKLOG.md"
+location_status    = "STATUS.md"
+location_changelog = "CHANGELOG.md"
+regenerate_on_write = true
+
+[id_namespace]
+prefix = "BD"
+
+[cli_acceleration]
+prefer = "gh"
+
+[migration]
+forward_complete = false
+reverse_available = false
+mapping_file = ".pack-tracker/id-map.json"

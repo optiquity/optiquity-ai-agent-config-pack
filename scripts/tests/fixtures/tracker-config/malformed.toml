@@ -1,0 +1,8 @@
+# Fixture: malformed TOML — tracker_config_read should emit a typed
+# validation error and return rc=1. Used to exercise the parser's
+# error path.
+schema_version = 1
+
+[backend
+name = "github"
+this is not a valid line

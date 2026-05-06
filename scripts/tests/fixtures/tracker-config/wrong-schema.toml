@@ -1,0 +1,16 @@
+# Fixture: schema_version newer than this build supports
+schema_version = 99
+
+[backend]
+name = "github"
+repo = "x/y"
+
+[mode]
+state = "tracker"
+
+[id_namespace]
+prefix = "BD"
+
+[migration]
+forward_complete = true
+mapping_file = ".pack-tracker/id-map.json"

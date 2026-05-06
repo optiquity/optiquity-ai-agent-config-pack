@@ -1,0 +1,63 @@
+# tracker.toml — pack repo tracker configuration (example)
+#
+# This file is OPTIONAL. Without it, the pack runs in flat-file mode
+# (BACKLOG.md / STATUS.md / CHANGELOG.md as source-of-truth).
+#
+# To enable tracker mode for the pack repo:
+#   1. Copy this file to `tracker.toml` in the pack root.
+#   2. Edit `mode.state = "tracker"`.
+#   3. Run the forward migration script (see ARCHITECTURE.md §6).
+#   4. The migration will set `migration.forward_complete = true`,
+#      after which `tracker_mode()` resolves to "tracker".
+#
+# Read by scripts/lib/tracker-config.sh; spec: ARCHITECTURE.md §3.1.
+
+schema_version = 1
+
+[backend]
+# Supported at v11.0: "github". Others (linear, jira, redmine) reserved.
+name = "github"
+# Org/repo slug. Required for GH-backed installs.
+repo = "Optiquity-Inc/optiquity-ai-agent-config-pack"
+# host = "github.com"             # set for GitHub Enterprise
+# instance = ""                    # set for jira: full URL
+
+[mode]
+# "tracker"   = use tracker as source-of-truth; mirrors regenerated.
+# "flat-file" = pre-v11 behavior; tracker.toml present but disabled.
+state = "flat-file"
+# Set when first switching to tracker mode (ISO 8601 UTC).
+# opted_in_at = "2026-05-15T12:00:00Z"
+# opted_in_by = "you@example.com"
+
+[mirror]
+# Whether write paths regenerate the markdown mirror automatically.
+enabled = true
+# Bare names; trinity ## Document locations resolves to actual paths.
+location_backlog   = "BACKLOG.md"
+location_status    = "STATUS.md"
+location_changelog = "CHANGELOG.md"
+regenerate_on_write = true
+
+[id_namespace]
+# "BD" for the pack repo; "TD" for client projects.
+prefix = "BD"
+
+[cli_acceleration]
+# Prefer gh CLI vs MCP for tracker ops:
+#   "gh"   = always shell out to gh
+#   "mcp"  = always use MCP if configured
+#   "auto" = MCP if configured for the active CLI, else gh
+prefer = "gh"
+
+[migration]
+# Set true once forward migration to tracker is complete. Until then,
+# tracker_mode() returns "flat-file" even when state = "tracker".
+forward_complete = false
+# Set true once a reverse migration script run has been verified.
+reverse_available = false
+# Set on each successful migration run (ISO 8601 UTC).
+# last_forward_run = "2026-05-15T12:00:00Z"
+# last_reverse_run = "2026-05-20T08:00:00Z"
+# Local mapping file (gitignored). Tracker IDs <-> pack IDs.
+mapping_file = ".pack-tracker/id-map.json"
