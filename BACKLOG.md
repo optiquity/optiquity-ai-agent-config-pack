@@ -61,7 +61,7 @@ Resolved: 2026-05-05 — tracker.toml schema + detection helper + .pack-tracker 
 
 **BD-062 — Trinity `## Document locations` Source column extension (D-6)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-061
 Unblocks: None
 File/Symbol: `project-template/CLAUDE.md`, `project-template/AGENTS.md`, `project-template/GEMINI.md` (trinity-replicated; project-template trinity only per D-6 footnote)
@@ -69,7 +69,7 @@ Description: Extend the `## Document locations` table per V1 §3.3 with a
   Source column ("flat" | "tracker" | "mixed") so `pm-startup` Step 2 can
   branch by source. Pack-repo trinity is exempted by D-6 (no `## Document
   locations` section there).
-Resolved: n/a
+Resolved: 2026-05-06 — Source column added to all 3 project-template trinity files (CLAUDE.md / AGENTS.md / GEMINI.md), trinity-replicated byte-identically. Values: docs/pack/=flat, docs/project/=`flat (or mixed in tracker mode)`, docs/reference/=flat. Brief explainer paragraph above the table documents what Source means and when docs/project/ flips to mixed (BACKLOG/STATUS/CHANGELOG/IMPLEMENTATION_PLAN tracker-mirrored; ARCHITECTURE.md stays flat). validate-pack Check 18 trinity H2 structure parity preserved. Pack-repo trinity exempted per D-6 footnote (no Document locations section). Unblocks BD-071's prompt-language change ("Read BACKLOG entries — resolve via trinity Document locations").
 
 ---
 
