@@ -41,7 +41,7 @@ Description: Lands the OQ-1 surface — the 18-operation provider library every
   §2.7.2; error model per V1 §2.5; pagination per V1 §2.6. Includes the
   `gh-sub-issue` extension policy and the GraphQL preview-header policy.
   The `raw(...)` escape hatch (V1 §2.1) is required.
-Resolved: 2026-05-05 — cf9ddd3 — TrackerProvider abstraction + GH backend (18 ops + raw + capabilities); 65/65 tests; CI green.
+Resolved: 2026-05-05 — TrackerProvider abstraction + GH backend (18 ops + raw + capabilities); 65/65 tests; CI green.
 
 ---
 
@@ -55,7 +55,7 @@ Description: Resolves D-2 + D-5 + R16. Detection is "presence + content of
   `tracker.toml`": no file = flat-file; `mode.state = "flat-file"` = flat-file;
   `mode.state = "tracker"` = tracker. Adds `.pack-tracker/` to `.gitignore`
   per V1 §3.4.
-Resolved: 2026-05-05 — c0f29ab — tracker.toml schema + detection helper + .pack-tracker gitignore; tracker_mapping_file convenience getter added in 62a3465 review fix; 32/32 tests; CI green.
+Resolved: 2026-05-05 — tracker.toml schema + detection helper + .pack-tracker gitignore; tracker_mapping_file convenience getter added in 62a3465 review fix; 32/32 tests; CI green.
 
 ---
 
@@ -84,7 +84,7 @@ Description: Implements D-4-V2 + D-16 + D-17 + D-18. The form family routes
   by BD-106 extension). HTML-comment `template_version` marker + label per
   D-18. Both surfaces ship the same forms (TD-NNN namespace + Pack-feedback
   category on client side).
-Resolved: 2026-05-05 — 12243e1 — work-item + inbound + config forms (V2 §4 + V3.3 §6.1 4-option wi-type); validate-pack check_issue_template_forms; 78/78 tests; CI green (PyYAML CI fix in 5675b3f).
+Resolved: 2026-05-05 — work-item + inbound + config forms (V2 §4 + V3.3 §6.1 4-option wi-type); validate-pack check_issue_template_forms; 78/78 tests; CI green (PyYAML CI fix in 5675b3f).
 
 ---
 
@@ -98,7 +98,7 @@ Description: Implements P2 maintenance-ergonomics: template versions archived
   at every minor cut so `pack tracker update-templates` and reverse-migration
   sidecar (V1 §6.6.1 / DELTA §3) can deterministically translate. Phase-task
   schema added by BD-106 extension.
-Resolved: 2026-05-05 — 6c43238 — template archive bootstrap (5 entry-type SCHEMAs incl. phase-task-v11.0 per V3.3; INDEX.md; frozen byte-equal forms); validate-pack informational check_template_archive_v11; CI green. Path layout per V3.3 §6.5 (templates-archive/v11.0/&lt;entry-type&gt;-v11.0/), superseding original IMPLEMENTATION-PLAN flat layout.
+Resolved: 2026-05-05 — template archive bootstrap (5 entry-type SCHEMAs incl. phase-task-v11.0 per V3.3; INDEX.md; frozen byte-equal forms); validate-pack informational check_template_archive_v11; CI green. Path layout per V3.3 §6.5 (templates-archive/v11.0/&lt;entry-type&gt;-v11.0/), superseding original IMPLEMENTATION-PLAN flat layout.
 
 ---
 
@@ -113,7 +113,7 @@ Description: Forward migration with body-footer idempotency markers
   issues; resolves blockers / sub-issues; writes mapping file; regenerates
   mirror files. Checkpoint per V1 §6.4. `forward` and `status` subcommands
   in this BD; `reverse` lands in BD-067.
-Resolved: 2026-05-05 — 007273c — V1 §6.2 11-step forward orchestrator + parser + mapping/checkpoint helpers + body composer + read-only mirror header + label set + tracker.toml updater. Review fixes in bab5122 (findings #1, #2, #3, #5, #7 from PACK-REVIEW-BD065): three-marker idempotency probe (incl. body-footer marker via provider_get), File/Symbol body field round-trip, Python-rewritten mirror regen for byte-stable output, partial-write surfacing per V1 §9.6, per-entry mapping save. 93/93 tests; CI green. Phase-task parser (BD-106) + cross-entity dependency module (BD-108) extend later.
+Resolved: 2026-05-05 — V1 §6.2 11-step forward orchestrator + parser + mapping/checkpoint helpers + body composer + read-only mirror header + label set + tracker.toml updater. Review fixes in bab5122 (findings #1, #2, #3, #5, #7 from PACK-REVIEW-BD065): three-marker idempotency probe (incl. body-footer marker via provider_get), File/Symbol body field round-trip, Python-rewritten mirror regen for byte-stable output, partial-write surfacing per V1 §9.6, per-entry mapping save. 93/93 tests; CI green. Phase-task parser (BD-106) + cross-entity dependency module (BD-108) extend later.
 
 ---
 
@@ -126,7 +126,7 @@ File/Symbol: `scripts/pack-tracker.sh`, `scripts/lib/tracker-labels.sh`, `script
 Description: Lands `pack tracker init` as the one-command opt-in path.
   Includes auth validation per V1 §7.3 + D-10 (`gh auth status`). Adds verb
   dispatcher per V2 §22.1. Auth-missing surfaces actionable error per V1 §9.3.
-Resolved: 2026-05-06 — bb211f3 — `pack tracker init` flag-driven orchestrator (V1 §6.1 5 steps), 45-label canonical set + idempotent ensure, V2 §22.1 verb dispatcher (init/status/mirror-rebuild live; 4 placeholders pointing at owning BDs), surface auto-detection (PACK-CHAT.md vs docs/pack/), opted_in_at preservation across re-runs. Includes BD-065 ride-along fixes #10 (--mirror-only flag on tracker-migrate.sh forward) and #12 (8-field V2 §22.1 status report). 73/73 BD-066 tests + 105/105 BD-065 tests (was 93); validate-pack clean. Interactive dialogue (V1 §6.1 step 1) lands as immediate fast-follow.
+Resolved: 2026-05-06 — `pack tracker init` flag-driven orchestrator (V1 §6.1 5 steps), 45-label canonical set + idempotent ensure, V2 §22.1 verb dispatcher (init/status/mirror-rebuild live; 4 placeholders pointing at owning BDs), surface auto-detection (PACK-CHAT.md vs docs/pack/), opted_in_at preservation across re-runs. Includes BD-065 ride-along fixes #10 (--mirror-only flag on tracker-migrate.sh forward) and #12 (8-field V2 §22.1 status report). 73/73 BD-066 tests + 105/105 BD-065 tests (was 93); validate-pack clean. Interactive dialogue (V1 §6.1 step 1) lands as immediate fast-follow.
 
 ---
 
@@ -183,7 +183,7 @@ Description: Implements D-7. Central error formatter; maps the 9 typed codes
   from V1 §2.5 to user-facing messages + next-step verb (Layer 2 per V3
   §27.1). No silent retry; every failure surfaces typed code + diagnostic +
   next-step verb. Every error message ends with "→ Run: pack X".
-Resolved: 2026-05-05 — 7617ae5 — typed-error formatter covering all 10 V1 §2.5 codes (incl. partial-write); V1 §9 message shapes via caller-supplied context lines; V3 §27.1 Layer 2 verb table. Verb-table V3 §27.1 conformance fix in 62a3465 (single unambiguous verb per code, no parenthetical alternatives). Existing inline emit_error stubs in tracker-provider.sh and tracker-config.sh unified. 56/56 tests; backward-compat with BD-060/-061 first-line ERROR/MESSAGE format preserved; CI green.
+Resolved: 2026-05-05 — typed-error formatter covering all 10 V1 §2.5 codes (incl. partial-write); V1 §9 message shapes via caller-supplied context lines; V3 §27.1 Layer 2 verb table. Verb-table V3 §27.1 conformance fix in 62a3465 (single unambiguous verb per code, no parenthetical alternatives). Existing inline emit_error stubs in tracker-provider.sh and tracker-config.sh unified. 56/56 tests; backward-compat with BD-060/-061 first-line ERROR/MESSAGE format preserved; CI green.
 
 ---
 
