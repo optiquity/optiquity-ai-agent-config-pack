@@ -1033,6 +1033,60 @@ def check_issue_template_forms() -> None:
                             ok(f"{label}: inbound.yml — 7 in-category options correct (V2 §4.3)")
 
 
+def check_template_archive_v11() -> None:
+    """Informational — template archive directory v11.0 is well-formed (BD-064).
+
+    Verifies (per BD-064 + Addendum 4 §2.2):
+      - templates-archive/v11.0/INDEX.md exists
+      - All five entry-type subdirectories exist with SCHEMA.md
+        (bd, td, phase-epic, phase-task, inbound)
+      - templates-archive/v11.0/forms/{work-item,inbound}.yml exist
+        and are byte-equal to the live .github/ISSUE_TEMPLATE/ copies
+
+    This is a soft check (warning style, INFO/FAIL) per BD-064 plan:
+      "logged in pack-internal CI for human review."
+    Drift is reported as INFO, not as a numbered Check failure, so
+    that release-cut commits that update the live forms before
+    archiving don't have to land both edits in lockstep.
+    """
+    print("\n── Check: Template archive v11.0 integrity (BD-064; informational) ──")
+    archive_root = REPO_ROOT / "maintenance-docs" / "v11-research" / "templates-archive" / "v11.0"
+    if not archive_root.is_dir():
+        print(f"  INFO: {archive_root.relative_to(REPO_ROOT)} not present (expected at v11.0 cut)")
+        return
+
+    index = archive_root / "INDEX.md"
+    if index.is_file():
+        ok(f"{index.relative_to(REPO_ROOT)} — present")
+    else:
+        print(f"  INFO: {index.relative_to(REPO_ROOT)} missing")
+
+    for entry_type in ("bd", "td", "phase-epic", "phase-task", "inbound"):
+        schema = archive_root / f"{entry_type}-v11.0" / "SCHEMA.md"
+        if schema.is_file():
+            ok(f"{schema.relative_to(REPO_ROOT)} — present")
+        else:
+            print(f"  INFO: {schema.relative_to(REPO_ROOT)} missing")
+
+    for form_name in ("work-item.yml", "inbound.yml"):
+        archived = archive_root / "forms" / form_name
+        live = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / form_name
+        if not archived.is_file():
+            print(f"  INFO: {archived.relative_to(REPO_ROOT)} missing")
+            continue
+        if not live.is_file():
+            print(f"  INFO: {live.relative_to(REPO_ROOT)} missing (live form expected)")
+            continue
+        if archived.read_bytes() == live.read_bytes():
+            ok(f"forms/{form_name} — byte-equal to live .github/ISSUE_TEMPLATE/{form_name}")
+        else:
+            print(
+                f"  INFO: forms/{form_name} drifted from live "
+                f".github/ISSUE_TEMPLATE/{form_name}; "
+                f"refresh the archive at next minor cut"
+            )
+
+
 def check_gitignore_env_example_exception() -> None:
     """Check 20 — pack-template .gitignore keeps the !.env.example exception.
 
@@ -1257,6 +1311,7 @@ def main() -> None:
     check_trinity_no_scaffolding_comments()
     check_gitignore_env_example_exception()
     check_issue_template_forms()
+    check_template_archive_v11()
 
     print("\n" + "=" * 60)
     if failures:

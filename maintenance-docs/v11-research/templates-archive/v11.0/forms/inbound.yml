@@ -1,0 +1,76 @@
+name: Inbound report or feedback
+description: External bug, feature request, or pack-feedback observation from a project user.
+title: "<category>: <short title>"
+labels:
+  - inbound
+  - needs-triage
+  - template:inbound-v11.0
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for issues filed against the pack from outside the pack development
+        team — bug reports, feature requests, or upstream feedback from a project that uses
+        the pack. Pack-feedback categories land here per V1 §7.5.
+  - type: dropdown
+    id: in-category
+    attributes:
+      label: Category
+      description: Select the category that best matches your report. Pack-feedback subcategories are for users of the pack reporting upstream observations.
+      options:
+        - bug
+        - feature-request
+        - pack-feedback-workflow
+        - pack-feedback-prompt
+        - pack-feedback-agent-perf
+        - pack-feedback-friction
+        - pack-feedback-open-question
+    validations:
+      required: true
+  - type: input
+    id: in-pack-version
+    attributes:
+      label: Pack version in use (pack-feedback only)
+      description: Read from STATUS.md "Key Metrics" section. Required for pack-feedback-* categories.
+      placeholder: "v11.0"
+    validations:
+      required: false
+  - type: input
+    id: in-project-id
+    attributes:
+      label: Project identifier (pack-feedback only)
+      description: Anonymized; for pattern detection only.
+    validations:
+      required: false
+  - type: textarea
+    id: in-observation
+    attributes:
+      label: Observation / steps to reproduce
+      description: What did you see? For bugs, include steps to reproduce.
+    validations:
+      required: true
+  - type: textarea
+    id: in-context
+    attributes:
+      label: Context (project state, agent, files, environment)
+      description: Background that helps the triager understand the report.
+    validations:
+      required: false
+  - type: textarea
+    id: in-expected
+    attributes:
+      label: Expected behavior (bug only)
+    validations:
+      required: false
+  - type: textarea
+    id: in-actual
+    attributes:
+      label: Actual behavior (bug only)
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        <!-- pack-id: PENDING -->
+        <!-- template_version: inbound-v11.0 -->
+        <!-- pack-version: v11 -->
