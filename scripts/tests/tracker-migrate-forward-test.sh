@@ -320,10 +320,17 @@ assert_eq "3.9 dry-run: 0 creates" "0" "$n_creates_3"
 [[ ! -d "$TEST_REPO2/.pack-tracker" ]] && t_pass "3.9 dry-run: no .pack-tracker dir created" \
     || t_fail "3.9 dry-run: no .pack-tracker dir created"
 
-# 3.10 status subcommand reports mode + mapping freshness.
+# 3.10 status subcommand reports the V2 §22.1 8-field surface.
 status_out=$(tracker_migrate_status_report "$TEST_REPO" 2>&1)
-assert_contains "3.10 status reports mapping file"  "$status_out" "mapping file:"
-assert_contains "3.10 status reports last forward"  "$status_out" "last forward run:"
+assert_contains "3.10 status reports tracker mode"        "$status_out" "tracker mode:"
+assert_contains "3.10 status reports backend"             "$status_out" "backend:"
+assert_contains "3.10 status reports repo"                "$status_out" "repo:"
+assert_contains "3.10 status reports mapping count"       "$status_out" "mapping count:"
+assert_contains "3.10 status reports mapping freshness"   "$status_out" "mapping freshness:"
+assert_contains "3.10 status reports mirror freshness"    "$status_out" "mirror freshness:"
+assert_contains "3.10 status reports template freshness"  "$status_out" "template freshness:"
+assert_contains "3.10 status reports last forward run"    "$status_out" "last forward run:"
+assert_contains "3.10 status reports last reverse run"    "$status_out" "last reverse run:"
 
 # 3.11 missing tracker.toml: forward fails with typed error.
 TEST_REPO3=$(mktemp -d -t tmf-repo-noconf.XXXXXX)
@@ -504,6 +511,44 @@ assert_eq "4.4 BD-001 mapped to recovered id 555 (not a new create)" "555" "$bd1
 assert_contains "4.4 output reports recovered" "$output_rec" "recovered:"
 
 rm -rf "$FAKE_BIN_REC" "$GH_LOG_REC" "$ISSUE_COUNTER_REC" "$TEST_REPO_REC"
+
+# 4.5 --mirror-only flag (BD-065 review fix #10): runs only step 10
+# (mirror regen). No issue creates, no provider calls touching the
+# tracker. Used by `pack tracker mirror-rebuild` to refresh the
+# mirror header timestamp without re-running forward.
+GH_LOG_MO=$(mktemp -t tmf-ghlog-mo.XXXXXX)
+FAKE_BIN_MO=$(mktemp -d -t tmf-fakebin-mo.XXXXXX)
+cat > "$FAKE_BIN_MO/gh" <<FAKE_GH_MO
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$GH_LOG_MO"
+exit 0
+FAKE_GH_MO
+chmod +x "$FAKE_BIN_MO/gh"
+
+TEST_REPO_MO=$(mktemp -d -t tmf-repo-mo.XXXXXX)
+cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_MO/BACKLOG.md"
+cp "$FIXTURES/IMPLEMENTATION_PLAN.md" "$TEST_REPO_MO/IMPLEMENTATION_PLAN.md"
+cp "$FIXTURES/tracker.toml"          "$TEST_REPO_MO/tracker.toml"
+
+export PATH="$FAKE_BIN_MO:$PATH_SAVED"
+output_mo=$(tracker_migrate_forward_run "$TEST_REPO_MO" 0 0 1 2>&1)
+rc_mo=$?
+export PATH="$PATH_SAVED"
+
+assert_eq "4.5 --mirror-only rc=0" "0" "$rc_mo"
+assert_contains "4.5 --mirror-only reports refresh" "$output_mo" "mirror header refreshed"
+# Zero gh calls: no issue create, no search, no view.
+n_gh_calls=$(wc -l < "$GH_LOG_MO" | tr -d ' ')
+assert_eq "4.5 --mirror-only invokes 0 gh calls" "0" "$n_gh_calls"
+# Mirror header is now present in BACKLOG.md.
+first_line=$(head -n 1 "$TEST_REPO_MO/BACKLOG.md")
+assert_eq "4.5 --mirror-only writes header line 1" "<!--" "$first_line"
+# No mapping file or checkpoint file written.
+[[ ! -f "$TEST_REPO_MO/.pack-tracker/id-map.json" ]] \
+    && t_pass "4.5 --mirror-only writes no id-map.json" \
+    || t_fail "4.5 --mirror-only writes no id-map.json"
+
+rm -rf "$FAKE_BIN_MO" "$GH_LOG_MO" "$TEST_REPO_MO"
 
 # Cleanup of Group 3 globals.
 rm -rf "$FAKE_BIN" "$GH_LOG" "$ISSUE_COUNTER_FILE" "$TEST_REPO" "$TEST_REPO2" "$TEST_REPO3"

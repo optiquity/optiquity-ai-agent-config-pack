@@ -34,12 +34,16 @@ usage() {
 Usage: tracker-migrate.sh <subcommand> [options]
 
 Subcommands:
-  forward [--repo-root PATH] [--dry-run] [--resume]
+  forward [--repo-root PATH] [--dry-run] [--resume] [--mirror-only]
         Migrate flat-file BACKLOG.md / IMPLEMENTATION_PLAN.md content
         to the tracker. Idempotent: re-runs skip existing entries.
-        --repo-root  Path to the repo to migrate (default: CWD).
-        --dry-run    Print what would be done; create no issues.
-        --resume     Resume from .pack-tracker/forward.checkpoint.json.
+        --repo-root    Path to the repo to migrate (default: CWD).
+        --dry-run      Print what would be done; create no issues.
+        --resume       Resume from .pack-tracker/forward.checkpoint.json.
+        --mirror-only  Skip every step except step 10 (mirror regen).
+                       Used by `pack tracker mirror-rebuild` to refresh
+                       the mirror header timestamp without touching the
+                       tracker. Mapping is left untouched.
 
   status [--repo-root PATH]
         Report mapping file freshness, mode, and migration timestamps.
@@ -59,13 +63,14 @@ EOF
 # ─────────────────────────────────────────────────────────────────
 
 cmd_forward() {
-    local repo_root="" dry_run=0 resume=0
+    local repo_root="" dry_run=0 resume=0 mirror_only=0
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --repo-root) repo_root="$2"; shift 2 ;;
-            --dry-run)   dry_run=1; shift ;;
-            --resume)    resume=1; shift ;;
-            -h|--help)   usage; return 0 ;;
+            --repo-root)   repo_root="$2"; shift 2 ;;
+            --dry-run)     dry_run=1; shift ;;
+            --resume)      resume=1; shift ;;
+            --mirror-only) mirror_only=1; shift ;;
+            -h|--help)     usage; return 0 ;;
             *)
                 tracker_error_emit "validation" "forward: unknown option '$1'"
                 return 1
@@ -74,7 +79,7 @@ cmd_forward() {
     done
     [[ -z "$repo_root" ]] && repo_root="$(pwd)"
 
-    tracker_migrate_forward_run "$repo_root" "$dry_run" "$resume"
+    tracker_migrate_forward_run "$repo_root" "$dry_run" "$resume" "$mirror_only"
 }
 
 # ─────────────────────────────────────────────────────────────────

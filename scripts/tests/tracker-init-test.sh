@@ -1,0 +1,305 @@
+#!/usr/bin/env bash
+# scripts/tests/tracker-init-test.sh — offline test suite for the
+# `pack tracker init` orchestrator (BD-066).
+#
+# Five groups:
+#   1. Flag parsing — required vs missing, defaults, surface auto-
+#      detection, dry-run plan.
+#   2. Auth validation — missing-auth surfaces auth-missing typed code;
+#      not-logged-in payload surfaces same.
+#   3. Templates verification — missing template files surface
+#      not-found typed code.
+#   4. tracker.toml emission — written shape matches V1 §3.1; opted_in_at
+#      preservation across re-runs; default values.
+#   5. Label canonical set — tracker_labels_canonical_set emits the
+#      expected count + every required family member.
+#
+# Usage: bash scripts/tests/tracker-init-test.sh
+
+set -u
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+LIB_DIR="$REPO_ROOT/scripts/lib"
+
+PASS=0
+FAIL=0
+
+t_pass() { PASS=$((PASS + 1)); printf "  \033[32mPASS\033[0m %s\n" "$1"; }
+t_fail() { FAIL=$((FAIL + 1)); printf "  \033[31mFAIL\033[0m %s\n" "$1"; [[ -n "${2:-}" ]] && printf "       %s\n" "$2"; }
+
+assert_eq() {
+    if [[ "$2" == "$3" ]]; then t_pass "$1"
+    else t_fail "$1" "expected='$2' actual='$3'"; fi
+}
+
+assert_contains() {
+    if [[ "$2" == *"$3"* ]]; then t_pass "$1"
+    else t_fail "$1" "needle='$3' missing from: ${2:0:200}"; fi
+}
+
+# Source the libs (same load order as scripts/pack-tracker.sh).
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-errors.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-config.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-provider.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-provider-gh.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-labels.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-migrate-forward.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-init.sh"
+
+# ─────────────────────────────────────────────────────────────────
+# Group 1: flag parsing
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 1: flag parsing ===\n"
+
+# 1.1 missing --backend → validation error.
+err=$(tracker_init_run --repo /x/y 2>&1 1>/dev/null) || true
+assert_contains "1.1 missing --backend → validation" "$err" "ERROR: validation"
+assert_contains "1.1 message names --backend"        "$err" "--backend is required"
+
+# 1.2 missing --repo → validation error.
+err=$(tracker_init_run --backend github 2>&1 1>/dev/null) || true
+assert_contains "1.2 missing --repo → validation" "$err" "--repo is required"
+
+# 1.3 unsupported backend.
+err=$(tracker_init_run --backend gitlab --repo x/y 2>&1 1>/dev/null) || true
+assert_contains "1.3 backend 'gitlab' rejected at v11.0" "$err" "not supported at v11.0"
+
+# 1.4 surface auto-detection — pack root (PACK-CHAT.md present).
+TR_PACK=$(mktemp -d -t tinit-pack.XXXXXX)
+touch "$TR_PACK/PACK-CHAT.md"
+output=$(tracker_init_run --repo-root "$TR_PACK" --backend github --repo a/b --dry-run 2>&1)
+assert_contains "1.4 auto-detects pack surface"   "$output" "surface:    pack"
+assert_contains "1.4 default id-prefix BD"        "$output" "id-prefix:  BD"
+rm -rf "$TR_PACK"
+
+# 1.5 surface auto-detection — client (docs/pack present).
+TR_CLI=$(mktemp -d -t tinit-cli.XXXXXX)
+mkdir -p "$TR_CLI/docs/pack"
+output=$(tracker_init_run --repo-root "$TR_CLI" --backend github --repo a/b --dry-run 2>&1)
+assert_contains "1.5 auto-detects client surface" "$output" "surface:    client"
+assert_contains "1.5 default id-prefix TD"        "$output" "id-prefix:  TD"
+rm -rf "$TR_CLI"
+
+# 1.6 surface auto-detection — neither marker → validation error.
+TR_AMB=$(mktemp -d -t tinit-ambig.XXXXXX)
+err=$(tracker_init_run --repo-root "$TR_AMB" --backend github --repo a/b 2>&1 1>/dev/null) || true
+assert_contains "1.6 ambiguous → validation"      "$err" "cannot auto-detect surface"
+rm -rf "$TR_AMB"
+
+# 1.7 explicit --surface overrides auto-detection.
+TR_OVR=$(mktemp -d -t tinit-ovr.XXXXXX)
+touch "$TR_OVR/PACK-CHAT.md"
+output=$(tracker_init_run --repo-root "$TR_OVR" --surface client --backend github --repo a/b --dry-run 2>&1)
+assert_contains "1.7 explicit --surface client overrides PACK-CHAT.md" "$output" "surface:    client"
+rm -rf "$TR_OVR"
+
+# 1.8 --dry-run stops after plan.
+TR_DRY=$(mktemp -d -t tinit-dry.XXXXXX)
+touch "$TR_DRY/PACK-CHAT.md"
+output=$(tracker_init_run --repo-root "$TR_DRY" --backend github --repo a/b --dry-run 2>&1)
+rc=$?
+assert_eq       "1.8 --dry-run rc=0"            "0" "$rc"
+assert_contains "1.8 --dry-run stops after plan" "$output" "stopping after plan summary"
+[[ ! -f "$TR_DRY/tracker.toml" ]] && t_pass "1.8 --dry-run writes no tracker.toml" \
+    || t_fail "1.8 --dry-run writes no tracker.toml"
+rm -rf "$TR_DRY"
+
+# 1.9 unknown flag → validation error.
+err=$(tracker_init_run --backend github --repo a/b --bogus 2>&1 1>/dev/null) || true
+assert_contains "1.9 unknown flag → validation" "$err" "unknown option '--bogus'"
+
+# ─────────────────────────────────────────────────────────────────
+# Group 2: auth validation (mocked gh)
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 2: auth validation ===\n"
+
+PATH_SAVED="$PATH"
+
+# 2.1 gh exits non-zero → auth-missing.
+FAKE_BIN_NA=$(mktemp -d -t tinit-na.XXXXXX)
+cat > "$FAKE_BIN_NA/gh" <<'EOF'
+#!/usr/bin/env bash
+echo "You are not logged into any GitHub hosts." >&2
+echo "Run: gh auth login" >&2
+exit 1
+EOF
+chmod +x "$FAKE_BIN_NA/gh"
+
+TR_NA=$(mktemp -d -t tinit-na-repo.XXXXXX)
+touch "$TR_NA/PACK-CHAT.md"
+
+export PATH="$FAKE_BIN_NA:$PATH_SAVED"
+err=$(tracker_init_run --repo-root "$TR_NA" --backend github --repo a/b 2>&1 1>/dev/null) || true
+export PATH="$PATH_SAVED"
+assert_contains "2.1 gh exit≠0 → auth-missing typed code" "$err" "ERROR: auth-missing"
+assert_contains "2.1 message includes gh stderr"          "$err" "not logged into"
+rm -rf "$FAKE_BIN_NA" "$TR_NA"
+
+# 2.2 gh exits 0 but no "Logged in to" line → auth-missing.
+FAKE_BIN_NB=$(mktemp -d -t tinit-nb.XXXXXX)
+cat > "$FAKE_BIN_NB/gh" <<'EOF'
+#!/usr/bin/env bash
+echo "Some unrelated output."
+exit 0
+EOF
+chmod +x "$FAKE_BIN_NB/gh"
+
+TR_NB=$(mktemp -d -t tinit-nb-repo.XXXXXX)
+touch "$TR_NB/PACK-CHAT.md"
+
+export PATH="$FAKE_BIN_NB:$PATH_SAVED"
+err=$(tracker_init_run --repo-root "$TR_NB" --backend github --repo a/b 2>&1 1>/dev/null) || true
+export PATH="$PATH_SAVED"
+assert_contains "2.2 missing 'Logged in to' → auth-missing" "$err" "ERROR: auth-missing"
+rm -rf "$FAKE_BIN_NB" "$TR_NB"
+
+# ─────────────────────────────────────────────────────────────────
+# Group 3: templates verification + happy-path init
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 3: templates verification + happy-path init ===\n"
+
+# 3.1 missing issue templates → not-found typed code.
+FAKE_BIN_TPL=$(mktemp -d -t tinit-tpl.XXXXXX)
+cat > "$FAKE_BIN_TPL/gh" <<'EOF'
+#!/usr/bin/env bash
+case "$1 $2" in
+    "auth status") echo "Logged in to github.com"; exit 0 ;;
+    "label list") echo "[]" ;;
+    "label create") ;;
+esac
+exit 0
+EOF
+chmod +x "$FAKE_BIN_TPL/gh"
+
+TR_NOTPL=$(mktemp -d -t tinit-notpl.XXXXXX)
+touch "$TR_NOTPL/PACK-CHAT.md"
+# No .github/ISSUE_TEMPLATE/ exists.
+
+export PATH="$FAKE_BIN_TPL:$PATH_SAVED"
+err=$(tracker_init_run --repo-root "$TR_NOTPL" --backend github --repo a/b --no-forward 2>&1 1>/dev/null) || true
+export PATH="$PATH_SAVED"
+assert_contains "3.1 missing templates → not-found"     "$err" "ERROR: not-found"
+assert_contains "3.1 message names work-item.yml"       "$err" "work-item.yml"
+rm -rf "$TR_NOTPL"
+
+# 3.2 happy-path init with --no-forward (writes config, validates auth,
+# verifies templates, ensures labels via mocked gh; skips forward).
+TR_OK=$(mktemp -d -t tinit-ok.XXXXXX)
+touch "$TR_OK/PACK-CHAT.md"
+mkdir -p "$TR_OK/.github/ISSUE_TEMPLATE"
+touch "$TR_OK/.github/ISSUE_TEMPLATE/work-item.yml"
+touch "$TR_OK/.github/ISSUE_TEMPLATE/inbound.yml"
+touch "$TR_OK/.github/ISSUE_TEMPLATE/config.yml"
+
+export PATH="$FAKE_BIN_TPL:$PATH_SAVED"
+output=$(tracker_init_run --repo-root "$TR_OK" --backend github --repo Optiquity-Inc/x --no-forward 2>&1)
+rc=$?
+export PATH="$PATH_SAVED"
+assert_eq       "3.2 happy-path rc=0"                 "0" "$rc"
+assert_contains "3.2 reports tracker.toml written"    "$output" "tracker.toml written"
+assert_contains "3.2 reports gh auth status OK"       "$output" "gh auth status OK"
+assert_contains "3.2 reports templates present"       "$output" "issue templates present"
+assert_contains "3.2 reports labels canonical=count"  "$output" "canonical="
+assert_contains "3.2 reports --no-forward skip"       "$output" "skipping forward migration"
+
+# 3.3 verify the written tracker.toml matches V1 §3.1 schema.
+cfg="$TR_OK/tracker.toml"
+[[ -f "$cfg" ]] || t_fail "3.3 tracker.toml exists" "missing"
+assert_eq "3.3 schema_version=1"        "1"      "$(tracker_config_get "$cfg" schema_version)"
+assert_eq "3.3 backend.name=github"     "github" "$(tracker_config_get "$cfg" backend.name)"
+assert_eq "3.3 backend.repo correct"    "Optiquity-Inc/x" "$(tracker_config_get "$cfg" backend.repo)"
+assert_eq "3.3 mode.state=tracker"      "tracker" "$(tracker_config_get "$cfg" mode.state)"
+assert_eq "3.3 id_namespace.prefix=BD"  "BD"     "$(tracker_config_get "$cfg" id_namespace.prefix)"
+assert_eq "3.3 mapping_file path"       ".pack-tracker/id-map.json" \
+    "$(tracker_config_get "$cfg" migration.mapping_file)"
+
+# 3.4 opted_in_at persists across re-runs.
+prior_opted_in=$(tracker_config_get "$cfg" mode.opted_in_at)
+sleep 1   # ensure timestamp would change if we re-wrote it
+export PATH="$FAKE_BIN_TPL:$PATH_SAVED"
+tracker_init_run --repo-root "$TR_OK" --backend github --repo Optiquity-Inc/x --no-forward >/dev/null 2>&1
+export PATH="$PATH_SAVED"
+new_opted_in=$(tracker_config_get "$cfg" mode.opted_in_at)
+assert_eq "3.4 opted_in_at preserved across re-runs" "$prior_opted_in" "$new_opted_in"
+
+rm -rf "$FAKE_BIN_TPL" "$TR_OK"
+
+# ─────────────────────────────────────────────────────────────────
+# Group 4: tracker_labels_canonical_set
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 4: label canonical set ===\n"
+
+labels=$(tracker_labels_canonical_set)
+n=$(printf '%s' "$labels" | wc -l | tr -d ' ')
+
+# 4.1 sane upper-bound count (v11.0 set is ~45 labels).
+assert_eq "4.1 canonical-set count >= 40" "1" "$([[ "$n" -ge 40 ]] && echo 1 || echo 0)"
+assert_eq "4.1 canonical-set count <= 60" "1" "$([[ "$n" -le 60 ]] && echo 1 || echo 0)"
+
+# 4.2 entry-type provenance family.
+for fam in bd-entry td-entry phase-epic phase-task work-item inbound external pack-feedback needs-triage; do
+    if printf '%s\n' "$labels" | grep -qFx "$fam"; then
+        t_pass "4.2 has $fam"
+    else
+        t_fail "4.2 has $fam" "missing"
+    fi
+done
+
+# 4.3 status family (V3.3 §6.3).
+for s in status:open status:unblocked status:in-review status:resolved \
+         status:cancelled status:deprecated status:pending status:in-progress \
+         status:done status:deferred; do
+    printf '%s\n' "$labels" | grep -qFx "$s" && t_pass "4.3 has $s" \
+        || t_fail "4.3 has $s" "missing"
+done
+
+# 4.4 type family (METHODOLOGY § Part 7).
+for t in type:feat type:fix type:refactor type:docs type:chore type:infra type:bug type:feature; do
+    printf '%s\n' "$labels" | grep -qFx "$t" && t_pass "4.4 has $t" \
+        || t_fail "4.4 has $t" "missing"
+done
+
+# 4.5 template-version family (V3.3 §6.5 D-18).
+for tv in template:work-item-v11.0 template:inbound-v11.0 template:bd-v11.0 \
+          template:td-v11.0 template:phase-epic-v11.0 template:phase-task-v11.0; do
+    printf '%s\n' "$labels" | grep -qFx "$tv" && t_pass "4.5 has $tv" \
+        || t_fail "4.5 has $tv" "missing"
+done
+
+# 4.6 pack-feedback subcategory family (V2 §4.3).
+for pf in pf-category:workflow pf-category:prompt pf-category:agent-perf \
+          pf-category:friction pf-category:open-question; do
+    printf '%s\n' "$labels" | grep -qFx "$pf" && t_pass "4.6 has $pf" \
+        || t_fail "4.6 has $pf" "missing"
+done
+
+# 4.7 NO open-string label-family members in the canonical set
+# (derived-from:TD-NNN, promoted-to:phase-N, scope:phase-N specific
+# numbers are created at promotion/derivation time, not init time).
+if printf '%s\n' "$labels" | grep -qE "^(derived-from:TD-[0-9]|promoted-to:phase-[0-9]|scope:phase-[0-9])$"; then
+    t_fail "4.7 canonical set excludes open-string members" "found a concrete derived-from/promoted-to/scope-phase-N entry"
+else
+    t_pass "4.7 canonical set excludes open-string members"
+fi
+
+# ─────────────────────────────────────────────────────────────────
+# Summary
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Summary ===\n"
+printf "Passed: %d\n" "$PASS"
+printf "Failed: %d\n" "$FAIL"
+[[ $FAIL -gt 0 ]] && exit 1
+printf "All tests passed.\n"
+exit 0

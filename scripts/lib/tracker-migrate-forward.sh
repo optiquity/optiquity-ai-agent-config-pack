@@ -515,13 +515,19 @@ tmf_create_or_lookup() {
 # Top-level orchestrator (V1 §6.2 steps 1–11)
 # ─────────────────────────────────────────────────────────────────
 
-# tracker_migrate_forward_run <repo-root> <dry-run> <resume>
+# tracker_migrate_forward_run <repo-root> <dry-run> <resume> [<mirror-only>]
 # Top-level forward migration entry point invoked by tracker-migrate.sh.
 # Reports per-step status to stdout; emits typed errors to stderr.
+#
+# mirror_only=1 (BD-065 review fix #10): skip every step except step 10
+# (mirror regen). Used by `pack tracker mirror-rebuild` to refresh the
+# mirror header timestamp without touching the tracker. The mapping
+# file is read but not modified.
 tracker_migrate_forward_run() {
     local repo_root="$1"
     local dry_run="${2:-0}"
     local resume="${3:-0}"
+    local mirror_only="${4:-0}"
 
     if [[ ! -d "$repo_root" ]]; then
         tracker_error_emit "validation" "forward: repo-root not a directory: $repo_root"
@@ -546,6 +552,22 @@ tracker_migrate_forward_run() {
 
     local mapping
     mapping=$(tmf_mapping_load "$mapping_file")
+
+    # Mirror-only short-circuit: skip steps 1–9 + step 11; just regen
+    # the mirror header. Used by `pack tracker mirror-rebuild`.
+    if [[ "$mirror_only" == "1" ]]; then
+        local backend_slug backlog_path
+        backend_slug=$(tracker_repo_slug "$cfg_path" 2>/dev/null || echo "unknown")
+        backlog_path="$repo_root/BACKLOG.md"
+        if [[ ! -f "$backlog_path" ]]; then
+            tracker_error_emit "not-found" \
+                "forward --mirror-only: BACKLOG.md not found at $backlog_path"
+            return 1
+        fi
+        _tmf_regen_mirror "$backlog_path" "$backend_slug"
+        echo "forward --mirror-only: BACKLOG.md mirror header refreshed"
+        return 0
+    fi
 
     local resume_state='{}'
     if [[ "$resume" == "1" ]]; then
@@ -826,29 +848,91 @@ EOF
 # ─────────────────────────────────────────────────────────────────
 
 # tracker_migrate_status_report <repo-root>
-# Reports mode, mapping freshness, and migration timestamps.
+# Reports the 8-field tracker state surface per V2 §22.1:
+#   mode, backend, repo, mapping count + freshness, mirror freshness,
+#   template freshness, last-forward-run, last-reverse-run.
+#
+# Each field that cannot be resolved (e.g. tracker.toml absent,
+# mapping file absent, mirror file absent) reports "(none)" rather
+# than failing — status is a diagnostic verb and must work in flat-
+# file mode too.
 tracker_migrate_status_report() {
     local repo_root="$1"
     local cfg_path
     cfg_path=$(tracker_config_resolve_path pack "$repo_root") || return 1
-    local mode mapping_file mapping_age last_forward
-    mode=$(tracker_mode "$cfg_path")
-    mapping_file=$(_tmf_mapping_file "$repo_root")
 
-    if [[ -f "$mapping_file" ]]; then
-        local n
-        n=$(jq 'length' "$mapping_file" 2>/dev/null || echo "0")
-        mapping_age=$(date -r "$mapping_file" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown")
-        echo "tracker mode: $mode"
-        echo "mapping file: $mapping_file ($n entries, last write $mapping_age)"
+    local mode backend repo
+    mode=$(tracker_mode "$cfg_path")
+    if [[ -f "$cfg_path" ]]; then
+        backend=$(tracker_backend_name "$cfg_path" 2>/dev/null || echo "(none)")
+        repo=$(tracker_repo_slug    "$cfg_path" 2>/dev/null || echo "(none)")
     else
-        echo "tracker mode: $mode"
-        echo "mapping file: $mapping_file (absent)"
+        backend="(none)"
+        repo="(none)"
     fi
+
+    # Mapping count + freshness.
+    local mapping_file mapping_count mapping_age
+    mapping_file=$(_tmf_mapping_file "$repo_root")
+    if [[ -f "$mapping_file" ]]; then
+        mapping_count=$(jq 'length' "$mapping_file" 2>/dev/null || echo "0")
+        mapping_age=$(date -r "$mapping_file" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown")
+    else
+        mapping_count="0"
+        mapping_age="(no mapping file)"
+    fi
+
+    # Mirror freshness — file mtime of the BACKLOG.md mirror, or
+    # "(none)" if the file lacks the V1 §6.3 read-only header.
+    local mirror_path mirror_age
+    mirror_path="$repo_root/BACKLOG.md"
+    if [[ -f "$mirror_path" ]]; then
+        local first_line
+        first_line=$(head -n 1 "$mirror_path" 2>/dev/null || echo "")
+        if [[ "$first_line" == "<!--" ]]; then
+            mirror_age=$(date -r "$mirror_path" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown")
+        else
+            mirror_age="(no mirror header)"
+        fi
+    else
+        mirror_age="(no BACKLOG.md)"
+    fi
+
+    # Template freshness — newest mtime among the live issue templates.
+    local tmpl_age tmpl_dir tmpl_newest
+    tmpl_dir="$repo_root/.github/ISSUE_TEMPLATE"
+    if [[ -d "$tmpl_dir" ]]; then
+        tmpl_newest=$(ls -t "$tmpl_dir"/*.yml 2>/dev/null | head -n 1)
+        if [[ -n "$tmpl_newest" && -f "$tmpl_newest" ]]; then
+            tmpl_age=$(date -r "$tmpl_newest" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown")
+        else
+            tmpl_age="(no templates)"
+        fi
+    else
+        tmpl_age="(no .github/ISSUE_TEMPLATE)"
+    fi
+
+    # Last forward / reverse run from tracker.toml.
+    local last_forward last_reverse
     if [[ -f "$cfg_path" ]]; then
         last_forward=$(tracker_config_get "$cfg_path" "migration.last_forward_run" 2>/dev/null || echo "(never)")
-        echo "last forward run: $last_forward"
+        last_reverse=$(tracker_config_get "$cfg_path" "migration.last_reverse_run" 2>/dev/null || echo "(never)")
+    else
+        last_forward="(never)"
+        last_reverse="(never)"
     fi
+
+    cat <<EOF
+tracker mode:        $mode
+backend:             $backend
+repo:                $repo
+mapping count:       $mapping_count entries
+mapping freshness:   $mapping_age
+mirror freshness:    $mirror_age
+template freshness:  $tmpl_age
+last forward run:    $last_forward
+last reverse run:    $last_reverse
+EOF
 }
 
 # ─────────────────────────────────────────────────────────────────
