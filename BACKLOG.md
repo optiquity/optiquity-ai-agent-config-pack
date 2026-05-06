@@ -227,7 +227,12 @@ File/Symbol: `scripts/pack-tracker.sh`
 Description: Adds `enable-recommendations` subcommand per V3 §28.1.9 +
   D-19 verb table. Sets `persistent_refusal: false`; increments
   `user_re_enable_count`. Colloquial "remind me about the tracker again"
-  routes through it.
+  routes through it. v11.0 ships the verb wired into the dispatcher
+  (`cmd_enable_recommendations`) emitting a typed `not-implemented`
+  error so V2 §22.1's "Required for v11?" row is rationalized — the
+  surface is reachable; the body lands in BD-073 and depends on
+  BD-072's threshold-driven Layer 3 state file
+  (`.pack-tracker/recommendation-state.json`, V3 §27.3 / §28.1.6).
 Resolved: n/a
 
 ---

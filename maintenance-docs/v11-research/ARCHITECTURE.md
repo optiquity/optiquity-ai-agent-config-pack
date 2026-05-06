@@ -362,6 +362,15 @@ Every error is one of these typed codes plus a backend-specific message in
 the diagnostic field. The chat translates the typed code into the
 user-facing failure-mode UX described in §9.
 
+**v11.0 additive code (post-D-1):** the implementation also carries
+`not-implemented` for verbs whose v11.0 stub is wired into the
+dispatcher but whose body lands in a later BD (currently `pack tracker
+enable-recommendations`, BD-073). The code is additive — it does not
+replace or refine any of the ten codes above — and is mapped to
+`pack tracker doctor` in the V3 §27.1 Layer-2 verb table. Per V1 §2.5
+the ten typed codes are a minimum surface, not an exhaustive list, so
+v11.0's eleventh code does not break the §2.5 contract.
+
 ### 2.6 Pagination contract
 
 `list` and `search` accept `page = {limit: int, cursor: string | null}` and
