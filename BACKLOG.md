@@ -258,7 +258,7 @@ Type: TODO(version)
 Status: Open
 Blockers: BD-076
 Unblocks: None
-File/Symbol: `scripts/pack-help.sh`, `scripts/lib/detect-surface.sh`
+File/Symbol: `scripts/pack-help.sh`, `scripts/lib/detect.sh` (extended with `detect_pack_surface`)
 Description: Implements LCD floor for D-20 / OQ-20 (M2 path). Reads the
   appropriate `HELP-FRAGMENT-*.md` and prints to stdout. Inlines the shared
   `HELP-FRAGMENT-TRACKER.md` per V3 §28.2.4 + DELTA L1 (sibling-file include).
@@ -278,6 +278,12 @@ Description: Implements D-20 + DELTA L1. Pack-root canonical is the single
   source of truth for the shared tracker section; client mirror is overwritten
   by `init-project.sh`. The two top-level fragments diverge in non-tracker
   sections per V3 §28.2.4. Check 24 (BD-082) verifies byte-identity.
+  Addendum-4 §2.8 row scope at BD-076 ship: the two `pack td promote`
+  rows (verb names stable per Addendum-4 §3.1) ship at BD-076.
+  The `auditor-issue-tracking` row (client) and `pack-auditor` row
+  (pack) are deferred to the BD-109 / BD-110 ship commits — those
+  agents do not yet exist, so adding the rows now would forward-
+  reference unshipped entities. Tracked in BD-109 / BD-110.
 Resolved: n/a
 
 ---
@@ -292,6 +298,12 @@ Description: Implements per-CLI namespaced `/pack-help` per D-20. All 6
   files invoke the same `scripts/pack-help.sh` via shell injection per V3
   §28.2.3 / §D.6 / §D.7. Trinity rule applies: all three per surface in
   lockstep. Codex form per V3 §7.1.1 corrected format (.codex/skills/pack-help/SKILL.md, NOT .toml).
+  Note: the BD-077 commit message asserts `init-project.sh` installs
+  `scripts/pack-help.sh` + `scripts/lib/` into the client project at
+  install time. That wiring is BD-080 scope (still Open) — at the
+  BD-077 ship commit those files are NOT yet copied by
+  `init-project.sh`, so client-side `/pack-help` becomes functional
+  only after BD-080 lands.
 Resolved: n/a
 
 ---

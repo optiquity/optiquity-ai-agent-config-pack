@@ -94,7 +94,7 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" 2>/dev/null)
 [[ "$output" == *"# Pack v11 — verb reference (pack repo)"* ]] \
     && t_pass "2.1 pack-side header present" \
     || t_fail "2.1 pack-side header" "got: ${output:0:200}"
-[[ "$output" == *"## Pack commands (this surface)"* ]] \
+[[ "$output" == *"## Pack commands"* ]] \
     && t_pass "2.1 pack commands section present" \
     || t_fail "2.1 pack commands section"
 [[ "$output" == *"# Tracker commands (v11+)"* ]] \

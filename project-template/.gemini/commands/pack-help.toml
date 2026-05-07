@@ -7,6 +7,7 @@ to the user.
 
 !{bash scripts/pack-help.sh}
 
-For full documentation, see QUICKSTART.md, README.md, PACK-CHAT.md,
-and OPTIONAL-FEATURES.md.
+For full documentation, see docs/pack/QUICKSTART.md,
+docs/pack/PM-CHAT.md, docs/pack/INSTALL-PROCEDURES.md, and
+docs/pack/OPTIONAL-FEATURES.md.
 """
