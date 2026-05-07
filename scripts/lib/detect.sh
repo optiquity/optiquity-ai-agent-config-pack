@@ -17,6 +17,39 @@
 #
 # Do NOT add a shebang — this file is sourced, not executed.
 
+# pack-surface: pack | client | ambiguous
+#
+# Per V3 §28.2.3 surface routing:
+#   - Pack repo:    BACKLOG.md at <target>/ with `^\*\*BD-` entries.
+#   - Client repo:  BACKLOG.md at <target>/ OR <target>/docs/project/
+#                   with `^\*\*TD-` entries.
+#   - Both present: ambiguous (caller decides — pack-help prints both).
+#   - Neither:      ambiguous (no signal to disambiguate).
+#
+# Used by scripts/pack-help.sh (BD-075) and any future verb that needs
+# to dispatch by surface without consulting tracker.toml.
+detect_pack_surface() {
+    local target="${1:-.}"
+    local bd_seen=0 td_seen=0
+    local backlog
+    for backlog in "$target/BACKLOG.md" "$target/docs/project/BACKLOG.md"; do
+        [[ -f "$backlog" ]] || continue
+        if grep -qE '^\*\*BD-[0-9]+ ' "$backlog" 2>/dev/null; then
+            bd_seen=1
+        fi
+        if grep -qE '^\*\*TD-[0-9]+ ' "$backlog" 2>/dev/null; then
+            td_seen=1
+        fi
+    done
+    if (( bd_seen == 1 && td_seen == 0 )); then
+        echo "pack-surface: pack"
+    elif (( td_seen == 1 && bd_seen == 0 )); then
+        echo "pack-surface: client"
+    else
+        echo "pack-surface: ambiguous"
+    fi
+}
+
 # working-tree: clean|dirty
 detect_clean_working_tree() {
     local target="${1:-.}"
