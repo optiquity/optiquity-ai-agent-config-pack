@@ -14,6 +14,10 @@
 #   # disposition\tclass\trel_path\taction\tsidecar\tdiff\tnotes
 #   <disposition>\t<class>\t<rel_path>\t<action>\t<sidecar>\t<diff>\t<notes>
 
+# Mirror the canonical disposition token from customization-preserve.sh so
+# report.sh and preserve.sh cannot drift on the long-form name.
+: "${_CP_DISP_NEEDS_RECONCILIATION:=customization-detected-needs-reconciliation}"
+
 customization_report() {
     local tsv="$1" out="$2"
     local title="${3:-Migration customization report}"
@@ -41,7 +45,7 @@ customization_report() {
         _cp_report_section "$tsv" "merged-with-customization" \
             "Files merged (project customizations preserved)" \
             "These had project customizations; the migrator merged pack updates while preserving your edits."
-        _cp_report_section "$tsv" "customization-detected-needs-reconciliation" \
+        _cp_report_section "$tsv" "$_CP_DISP_NEEDS_RECONCILIATION" \
             "Files needing manual reconciliation" \
             "Both you and the pack edited these. The migrator wrote the new pack template to the live file and saved your pre-update copy as a sidecar (see paths below). Please review and reconcile."
         _cp_report_section "$tsv" "removed-by-design" \
@@ -63,10 +67,11 @@ customization_report() {
         # Catch-all for any disposition not listed above (defensive: this
         # surfaces unknown tokens rather than dropping them).
         local unhandled
-        unhandled=$(awk -F '\t' 'NR > 1 && NF > 0 \
+        unhandled=$(awk -F '\t' -v needs="$_CP_DISP_NEEDS_RECONCILIATION" '
+            NR > 1 && NF > 0 \
             && $1 != "pack-update-applied" \
             && $1 != "merged-with-customization" \
-            && $1 != "customization-detected-needs-reconciliation" \
+            && $1 != needs \
             && $1 != "removed-by-design" \
             && $1 != "project-only-file" \
             && $1 != "project-deleted-pack-kept" \

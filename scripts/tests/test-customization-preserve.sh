@@ -26,15 +26,20 @@ assert_contains() {
     else t_fail "$1" "expected to contain '$3'"; fi
 }
 
+# Extract a tab-separated column from a TSV row.
+#   $1: 1-based column index, $2: tsv row.
+tsv_col() {
+    printf '%s' "$2" | awk -F '\t' -v c="$1" '{print $c}'
+}
+
 # shellcheck disable=SC1091
 source "$LIB_DIR/three-way.sh"
+# Required by structured-config strategy AND by init guard (B1).
+export _CP_PACK_ROOT="$REPO_ROOT"
 # shellcheck disable=SC1091
 source "$LIB_DIR/customization-preserve.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/customization-report.sh"
-
-# Required by structured-config strategy.
-export _CP_PACK_ROOT="$REPO_ROOT"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Group 1: customization_classify
@@ -90,8 +95,8 @@ echo "same" > "$T2/theirs.md"
 customization_preserve "$T2/base.md" "$T2/ours.md" "$T2/theirs.md" \
     "doc.md" "$T2/dest.md" generic >/dev/null
 last=$(tail -1 "$state/dispositions.tsv")
-assert_contains "2.1 unchanged-pack disposition" "$last" "unchanged-pack"
-assert_contains "2.1 action=none" "$last" "none"
+assert_eq "2.1 disposition" "unchanged-pack" "$(tsv_col 1 "$last")"
+assert_eq "2.1 action"      "none"           "$(tsv_col 4 "$last")"
 
 # 2.2 pack-update-applied: base==ours, theirs differs.
 setup_state "$state"
@@ -102,8 +107,9 @@ echo "v1" > "$T2/dest.md"
 customization_preserve "$T2/base.md" "$T2/ours.md" "$T2/theirs.md" \
     "doc.md" "$T2/dest.md" generic >/dev/null
 last=$(tail -1 "$state/dispositions.tsv")
-assert_contains "2.2 pack-update-applied" "$last" "pack-update-applied"
-assert_eq      "2.2 dest written"   "v2" "$(cat "$T2/dest.md")"
+assert_eq "2.2 disposition" "pack-update-applied" "$(tsv_col 1 "$last")"
+assert_eq "2.2 action"      "copied"              "$(tsv_col 4 "$last")"
+assert_eq "2.2 dest written" "v2" "$(cat "$T2/dest.md")"
 
 # 2.3 merged-with-customization: project edited, pack didn't.
 setup_state "$state"
@@ -114,8 +120,9 @@ echo "v1-mine" > "$T2/dest.md"
 customization_preserve "$T2/base.md" "$T2/ours.md" "$T2/theirs.md" \
     "doc.md" "$T2/dest.md" generic >/dev/null
 last=$(tail -1 "$state/dispositions.tsv")
-assert_contains "2.3 merged-with-customization" "$last" "merged-with-customization"
-assert_eq      "2.3 dest preserved" "v1-mine" "$(cat "$T2/dest.md")"
+assert_eq "2.3 disposition" "merged-with-customization" "$(tsv_col 1 "$last")"
+assert_eq "2.3 action"      "preserved"                 "$(tsv_col 4 "$last")"
+assert_eq "2.3 dest preserved" "v1-mine" "$(cat "$T2/dest.md")"
 
 # 2.4 real-merge-required: both edited; sidecar.
 setup_state "$state"
@@ -126,9 +133,11 @@ cp "$T2/ours.md" "$T2/dest.md"
 customization_preserve "$T2/base.md" "$T2/ours.md" "$T2/theirs.md" \
     "doc.md" "$T2/dest.md" generic >/dev/null
 last=$(tail -1 "$state/dispositions.tsv")
-assert_contains "2.4 needs-reconciliation" "$last" "customization-detected-needs-reconciliation"
-assert_eq      "2.4 dest = theirs" "v2" "$(cat "$T2/dest.md")"
-assert_eq      "2.4 sidecar = ours" "v1-mine" "$(cat "$T2/dest.md.pre-update")"
+assert_eq "2.4 disposition" "customization-detected-needs-reconciliation" \
+    "$(tsv_col 1 "$last")"
+assert_eq "2.4 action"      "sidecar"   "$(tsv_col 4 "$last")"
+assert_eq "2.4 dest = theirs"  "v2"      "$(cat "$T2/dest.md")"
+assert_eq "2.4 sidecar = ours" "v1-mine" "$(cat "$T2/dest.md.pre-update")"
 [[ -f "$state/diffs/doc.md.three-way.diff" ]] \
     && t_pass "2.4 three-way diff written" \
     || t_fail "2.4 three-way diff written"
@@ -140,8 +149,9 @@ rm -f "$T2/dest.md"
 customization_preserve "" "" "$T2/theirs.md" \
     "newfile.md" "$T2/dest.md" generic >/dev/null
 last=$(tail -1 "$state/dispositions.tsv")
-assert_contains "2.5 new-file → pack-update-applied" "$last" "pack-update-applied"
-assert_eq      "2.5 dest written" "new" "$(cat "$T2/dest.md")"
+assert_eq "2.5 disposition" "pack-update-applied" "$(tsv_col 1 "$last")"
+assert_eq "2.5 action"      "copied"              "$(tsv_col 4 "$last")"
+assert_eq "2.5 dest written" "new" "$(cat "$T2/dest.md")"
 
 # 2.6 project-only: base + theirs absent, ours present → preserved.
 setup_state "$state"
@@ -149,7 +159,8 @@ echo "mine" > "$T2/ours.md"
 customization_preserve "" "$T2/ours.md" "" \
     "private.md" "$T2/ours.md" generic >/dev/null
 last=$(tail -1 "$state/dispositions.tsv")
-assert_contains "2.6 project-only-file" "$last" "project-only-file"
+assert_eq "2.6 disposition" "project-only-file" "$(tsv_col 1 "$last")"
+assert_eq "2.6 action"      "preserved"         "$(tsv_col 4 "$last")"
 
 # 2.7 removed-by-pack-clean: pack retired; project unchanged.
 setup_state "$state"
@@ -159,7 +170,8 @@ cp "$T2/ours.md" "$T2/dest.md"
 customization_preserve "$T2/base.md" "$T2/ours.md" "" \
     "old.md" "$T2/dest.md" generic >/dev/null
 last=$(tail -1 "$state/dispositions.tsv")
-assert_contains "2.7 removed-by-design" "$last" "removed-by-design"
+assert_eq "2.7 disposition" "removed-by-design" "$(tsv_col 1 "$last")"
+assert_eq "2.7 action"      "removed"           "$(tsv_col 4 "$last")"
 [[ ! -f "$T2/dest.md" ]] && t_pass "2.7 dest removed" || t_fail "2.7 dest still present"
 
 # 2.8 removed-by-pack-customized: pack retired; project edited → sidecar.
@@ -170,10 +182,24 @@ cp "$T2/ours.md" "$T2/dest.md"
 customization_preserve "$T2/base.md" "$T2/ours.md" "" \
     "old.md" "$T2/dest.md" generic >/dev/null
 last=$(tail -1 "$state/dispositions.tsv")
-assert_contains "2.8 removed-by-design (with sidecar)" "$last" "removed-by-design"
+assert_eq "2.8 disposition" "removed-by-design" "$(tsv_col 1 "$last")"
+assert_eq "2.8 action"      "removed"           "$(tsv_col 4 "$last")"
 [[ -f "$T2/dest.md.pre-update" ]] \
     && t_pass "2.8 sidecar preserved customizations" \
     || t_fail "2.8 sidecar missing"
+
+# 2.9 trinity class explicitly routes through text dispatch (m4).
+setup_state "$state"
+echo "v1" > "$T2/base.md"
+echo "v1-mine" > "$T2/ours.md"
+echo "v2" > "$T2/theirs.md"
+cp "$T2/ours.md" "$T2/dest.md"
+customization_preserve "$T2/base.md" "$T2/ours.md" "$T2/theirs.md" \
+    "CLAUDE.md" "$T2/dest.md" >/dev/null  # no explicit class → auto-classify
+last=$(tail -1 "$state/dispositions.tsv")
+assert_eq "2.9 trinity auto-classified" "trinity"      "$(tsv_col 2 "$last")"
+assert_eq "2.9 trinity → needs-reconciliation" \
+    "customization-detected-needs-reconciliation" "$(tsv_col 1 "$last")"
 
 rm -rf "$T2"
 
@@ -284,6 +310,55 @@ assert_contains "5.1 AGENT_CAPABILITIES preserves project value" "$merged" "swif
 assert_contains "5.1 PROJECT_VAR preserved" "$merged" "PROJECT_VAR=keep-me"
 # Pack-new key adopted.
 assert_contains "5.1 NEW_PACK_VAR adopted"  "$merged" "NEW_PACK_VAR=v11-default"
+# M1: project-shadows-new-pack (no base + both present + differ) now
+# routes through the merge branch and records needs-reconciliation with
+# sidecar (so the conflict is visible in the report).
+last=$(tail -1 "$state/dispositions.tsv")
+assert_eq "5.1 disposition = needs-reconciliation" \
+    "customization-detected-needs-reconciliation" "$(tsv_col 1 "$last")"
+[[ -f "$T5/dest.env.pre-update" ]] \
+    && t_pass "5.1 sidecar written" \
+    || t_fail "5.1 sidecar missing"
+
+# 5.2 M2 + M3: dup-keys + leading whitespace. Use BASE + OURS edited from
+# BASE + THEIRS edited from BASE so we hit real-merge-required.
+setup_state "$state"
+cat > "$T5/base2.env" <<'EOF'
+A=base
+B=base
+EOF
+# OURS has a duplicate KEY (later wins by env-file convention) and a
+# leading-whitespace KEY=. Both must round-trip correctly.
+cat > "$T5/ours2.env" <<'EOF'
+A=1
+A=2
+  B=indented
+PROJECT_ONLY=keep
+EOF
+cat > "$T5/theirs2.env" <<'EOF'
+A=pack-new
+B=pack-new
+NEW_PACK_VAR=adopted
+EOF
+cp "$T5/ours2.env" "$T5/dest2.env"
+customization_preserve "$T5/base2.env" "$T5/ours2.env" "$T5/theirs2.env" \
+    ".gemini/.env" "$T5/dest2.env" gemini-env >/dev/null
+merged=$(cat "$T5/dest2.env")
+# M2: duplicate A= must NOT be doubled in output.
+a_count=$(printf '%s\n' "$merged" | grep -c '^A=' || true)
+assert_eq "5.2 dup-key A= appears once" "1" "$a_count"
+# M2: last-wins semantics — ours value of A is "A=2" (last in ours).
+assert_contains "5.2 dup-key last-wins (A=2)" "$merged" "A=2"
+# M3: leading-whitespace B=indented must survive (project value wins,
+# leading whitespace acceptably stripped).
+assert_contains "5.2 leading-whitespace B preserved" "$merged" "B=indented"
+# PROJECT_ONLY preserved.
+assert_contains "5.2 project-only key preserved" "$merged" "PROJECT_ONLY=keep"
+# Pack-new key adopted.
+assert_contains "5.2 NEW_PACK_VAR adopted"      "$merged" "NEW_PACK_VAR=adopted"
+last=$(tail -1 "$state/dispositions.tsv")
+assert_eq "5.2 disposition = needs-reconciliation" \
+    "customization-detected-needs-reconciliation" "$(tsv_col 1 "$last")"
 
 rm -rf "$T5"
 
@@ -316,6 +391,29 @@ last=$(tail -1 "$state/dispositions.tsv")
 assert_contains "6.2 custom-script → project-only-file" "$last" "project-only-file"
 
 rm -rf "$T6"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 6b: B1 init guard (caller contract — _CP_PACK_ROOT must be set)
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 6b: init guard for _CP_PACK_ROOT (B1) ===\n"
+
+# Subshell so unsetting _CP_PACK_ROOT doesn't leak into later tests.
+T6B=$(mktemp -d -t cp-init.XXXXXX)
+init_rc=$(
+    bash -c '
+        SCRIPT_DIR="'"$LIB_DIR"'"
+        # shellcheck source=/dev/null
+        source "$SCRIPT_DIR/three-way.sh"
+        # shellcheck source=/dev/null
+        source "$SCRIPT_DIR/customization-preserve.sh"
+        unset _CP_PACK_ROOT
+        customization_preserve_init "'"$T6B"'/state" 2>/dev/null
+        echo "rc=$?"
+    '
+)
+assert_eq "6b.1 init without _CP_PACK_ROOT fails (rc=1)" "rc=1" "$init_rc"
+rm -rf "$T6B"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Group 7: truthful report (BD-059 contract)

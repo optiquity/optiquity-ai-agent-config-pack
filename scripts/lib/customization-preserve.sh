@@ -29,8 +29,9 @@
 #   customization_findings_tsv_path
 #       Echo the path to the dispositions TSV.
 #
-# Disposition tokens (canonical 6 per V10-MIGRATION-FIX-DESIGN.md Part 3.11
-# plus v11 additions):
+# Disposition tokens (per IMPLEMENTATION-PLAN.md §2.5 BD-088, mirroring the
+# v10 disposition vocabulary established in V10-MIGRATION-FIX-DESIGN.md
+# Part 3.11):
 #   unchanged-pack
 #   pack-update-applied
 #   merged-with-customization
@@ -39,6 +40,12 @@
 #   project-only-file
 #   project-deleted-pack-kept
 #   removed-everywhere
+#   unknown-classification        (catch-all; should never appear in
+#                                  normal use; surfaced under the report
+#                                  renderer's "Unhandled dispositions"
+#                                  section so defects are visible)
+#   library-error                 (reserved for future use; same surfacing
+#                                  contract as unknown-classification)
 #
 # Action verbs recorded alongside (for the truthful report):
 #   none, copied, merged, sidecar, removed, preserved
@@ -54,6 +61,11 @@
 # three_way_classify). Validate at first call instead of sourcing here so
 # callers control source order.
 
+# Long-form disposition token used in 6+ places; declare once to avoid
+# silent typos that would slip through validate-pack and the report
+# renderer's section dispatcher.
+: "${_CP_DISP_NEEDS_RECONCILIATION:=customization-detected-needs-reconciliation}"
+
 _cp_require_three_way() {
     if ! declare -F three_way_classify >/dev/null 2>&1; then
         printf 'error: customization-preserve.sh requires three-way.sh to be sourced first\n' >&2
@@ -68,6 +80,10 @@ customization_preserve_init() {
     local sidecar_suffix="${2:-.pre-update}"
     if [[ -z "$state_dir" ]]; then
         printf 'error: customization_preserve_init: STATE_DIR required\n' >&2
+        return 1
+    fi
+    if [[ -z "${_CP_PACK_ROOT:-}" ]]; then
+        printf 'error: customization_preserve_init: _CP_PACK_ROOT must be set before init\n' >&2
         return 1
     fi
     _cp_require_three_way || return 1
@@ -119,10 +135,10 @@ customization_classify() {
             printf 'custom-agent\n' ;;
         .claude/agents/*.md|.codex/agents/*.md|.gemini/agents/*.md)
             printf 'pack-agent\n' ;;
-        # Scripts: caller passes class explicitly when known (pack-script vs
-        # custom-script depends on whether the file was shipped by the pack).
-        # Default: treat as generic until the caller overrides. Callers that
-        # know the pack-shipped script list pass class=pack-script directly.
+        # Scripts: default is `pack-script` (3-way text dispatch). Callers
+        # that know a script is project-added should pass class=custom-script
+        # explicitly to bypass classification (preserved untouched). The
+        # default routes pack-shipped scripts through 3-way merge.
         scripts/*)
             printf 'pack-script\n' ;;
         *)
@@ -148,7 +164,7 @@ _cp_disposition_for() {
         pack-update-applied|new-file-in-pack)  printf 'pack-update-applied\n' ;;
         merged-with-customization)             printf 'merged-with-customization\n' ;;
         real-merge-required|project-shadows-new-pack)
-            printf 'customization-detected-needs-reconciliation\n' ;;
+            printf '%s\n' "$_CP_DISP_NEEDS_RECONCILIATION" ;;
         removed-by-pack-clean|removed-by-pack-customized)
             printf 'removed-by-design\n' ;;
         project-only-file)                     printf 'project-only-file\n' ;;
@@ -284,8 +300,8 @@ _cp_strategy_structured() {
         real-merge-required|project-shadows-new-pack)
             local helper
             case "$fmt" in
-                json) helper="${_CP_PACK_ROOT:?_CP_PACK_ROOT must be set}/scripts/merge-json.py" ;;
-                toml) helper="${_CP_PACK_ROOT:?_CP_PACK_ROOT must be set}/scripts/merge-toml.py" ;;
+                json) helper="${_CP_PACK_ROOT}/scripts/merge-json.py" ;;
+                toml) helper="${_CP_PACK_ROOT}/scripts/merge-toml.py" ;;
                 *)
                     _cp_strategy_text "$class" "$base" "$ours" "$theirs" "$rel" "$dest"
                     return 0
@@ -313,14 +329,14 @@ _cp_strategy_structured() {
                 2)
                     cp "$ours" "$sidecar"
                     cp "$merged_tmp" "$dest"
-                    _cp_record "customization-detected-needs-reconciliation" "$class" \
+                    _cp_record "$_CP_DISP_NEEDS_RECONCILIATION" "$class" \
                         "$rel" "merged" "$sidecar" "$diff_path" \
                         "structured merge with reconciliation warnings (see $stderr_log)"
                     ;;
                 *)
                     cp "$ours" "$sidecar"
                     cp "$theirs" "$dest"
-                    _cp_record "customization-detected-needs-reconciliation" "$class" \
+                    _cp_record "$_CP_DISP_NEEDS_RECONCILIATION" "$class" \
                         "$rel" "sidecar" "$sidecar" "$diff_path" \
                         "structured merge errored (rc=$rc); fell back to sidecar (see $stderr_log)"
                     ;;
@@ -342,54 +358,98 @@ _cp_strategy_structured() {
 
 # Strategy: gemini-env (KEY=VALUE line preservation). Per BD-088, preserve
 # AGENT_CAPABILITIES and any project-set keys; adopt new pack-shipped keys.
-# Algorithm: union of keys; on conflict, project wins (per BD-059 lesson).
+#
+# Routes the absent / unchanged / one-sided-edit cases through
+# three_way_classify (parallel to _cp_strategy_text and _cp_strategy_structured)
+# and only invokes the awk key-merger on real-merge-required /
+# project-shadows-new-pack — where it always writes a sidecar and records
+# customization-detected-needs-reconciliation, since both sides edited and
+# the user must audit the result.
 _cp_strategy_gemini_env() {
     local class="$1" base="$2" ours="$3" theirs="$4" rel="$5" dest="$6"
-    if [[ ! -e "$ours" && -e "$theirs" ]]; then
-        mkdir -p "$(dirname "$dest")"
-        cp "$theirs" "$dest"
-        _cp_record "pack-update-applied" "$class" "$rel" "copied" "-" "-" "new pack file"
-        return 0
-    fi
-    if [[ -e "$ours" && ! -e "$theirs" ]]; then
-        _cp_record "project-only-file" "$class" "$rel" "preserved" "-" "-" \
-            "project-only env file"
-        return 0
-    fi
-    if [[ ! -e "$ours" && ! -e "$theirs" ]]; then
-        _cp_record "removed-everywhere" "$class" "$rel" "none" "-" "-" "-"
-        return 0
-    fi
-    if cmp -s "$ours" "$theirs"; then
-        _cp_record "unchanged-pack" "$class" "$rel" "none" "-" "-" "-"
-        return 0
-    fi
-    # Both present and differ: union with ours-wins-on-conflict.
+    local classification disp
+    classification=$(three_way_classify "$base" "$ours" "$theirs")
+    disp=$(_cp_disposition_for "$classification")
+
+    case "$classification" in
+        unchanged-pack)
+            _cp_record "$disp" "$class" "$rel" "none" "-" "-" "-"
+            return 0
+            ;;
+        pack-update-applied|new-file-in-pack)
+            mkdir -p "$(dirname "$dest")"
+            cp "$theirs" "$dest"
+            _cp_record "$disp" "$class" "$rel" "copied" "-" "-" "-"
+            return 0
+            ;;
+        merged-with-customization)
+            _cp_record "$disp" "$class" "$rel" "preserved" "-" "-" \
+                "no pack update; project edits kept"
+            return 0
+            ;;
+        project-only-file)
+            _cp_record "$disp" "$class" "$rel" "preserved" "-" "-" \
+                "project-only env file"
+            return 0
+            ;;
+        removed-everywhere)
+            _cp_record "$disp" "$class" "$rel" "none" "-" "-" "-"
+            return 0
+            ;;
+        project-deleted-pack-kept)
+            _cp_record "$disp" "$class" "$rel" "none" "-" "-" \
+                "honoring project deletion (pack still ships)"
+            return 0
+            ;;
+        removed-by-pack-clean)
+            [[ -f "$dest" ]] && rm "$dest"
+            _cp_record "$disp" "$class" "$rel" "removed" "-" "-" \
+                "pack retired (no project edits)"
+            return 0
+            ;;
+        removed-by-pack-customized)
+            local sidecar="${dest}${_CP_SIDECAR_SUFFIX}"
+            cp "$ours" "$sidecar"
+            [[ -f "$dest" ]] && rm "$dest"
+            _cp_record "$disp" "$class" "$rel" "removed" "$sidecar" "-" \
+                "pack retired; project edits preserved in sidecar"
+            return 0
+            ;;
+    esac
+
+    # real-merge-required | project-shadows-new-pack — both sides edited.
+    # Run key-union merger (project wins on conflict per BD-059), write
+    # sidecar of ours, write merged result to dest, record needs-reconciliation.
     local merged_tmp
     merged_tmp=$(mktemp)
     awk -v ours_file="$ours" '
+        function strip_lead(s,    t) { t = s; sub(/^[[:space:]]+/, "", t); return t }
         BEGIN {
             while ((getline line < ours_file) > 0) {
-                if (line ~ /^[[:space:]]*(#|$)/) { ours_lines[++on] = line; continue }
-                if (match(line, /^[A-Za-z_][A-Za-z0-9_]*=/)) {
-                    key = substr(line, 1, RLENGTH - 1)
-                    ours_kv[key] = line
-                    ours_order[++ok] = key
+                stripped = strip_lead(line)
+                if (stripped ~ /^(#|$)/) { ours_lines[++on] = line; continue }
+                if (match(stripped, /^[A-Za-z_][A-Za-z0-9_]*=/)) {
+                    key = substr(stripped, 1, RLENGTH - 1)
+                    if (!(key in ours_kv)) ours_order[++ok] = key
+                    ours_kv[key] = stripped
                 } else { ours_lines[++on] = line }
             }
             close(ours_file)
         }
         # Now iterate THEIRS (current input) to add pack-only keys.
-        /^[[:space:]]*(#|$)/ { next }
-        match($0, /^[A-Za-z_][A-Za-z0-9_]*=/) {
-            key = substr($0, 1, RLENGTH - 1)
-            if (!(key in ours_kv)) {
-                pack_only_kv[key] = $0
-                pack_only_order[++po] = key
+        {
+            stripped = strip_lead($0)
+            if (stripped ~ /^(#|$)/) next
+            if (match(stripped, /^[A-Za-z_][A-Za-z0-9_]*=/)) {
+                key = substr(stripped, 1, RLENGTH - 1)
+                if (!(key in ours_kv) && !(key in pack_only_kv)) {
+                    pack_only_kv[key] = stripped
+                    pack_only_order[++po] = key
+                }
             }
         }
         END {
-            # Print ours preserved order first, then pack-only additions.
+            # Print ours preserved order first (deduped), then pack-only.
             for (i = 1; i <= ok; i++) print ours_kv[ours_order[i]]
             if (po > 0) {
                 print ""
@@ -400,17 +460,14 @@ _cp_strategy_gemini_env() {
     ' "$theirs" > "$merged_tmp"
 
     mkdir -p "$(dirname "$dest")"
-    if cmp -s "$ours" "$merged_tmp"; then
-        # Ours already has all pack keys (or pack added nothing new).
-        _cp_record "merged-with-customization" "$class" "$rel" "preserved" \
-            "-" "-" "no pack additions; project edits kept"
-    else
-        cp "$merged_tmp" "$dest"
-        local diff_path
-        diff_path=$(_cp_write_diff "$base" "$ours" "$theirs" "$rel")
-        _cp_record "merged-with-customization" "$class" "$rel" "merged" \
-            "-" "$diff_path" "env-file key-union; project values preserved"
-    fi
+    local sidecar="${dest}${_CP_SIDECAR_SUFFIX}"
+    local diff_path
+    diff_path=$(_cp_write_diff "$base" "$ours" "$theirs" "$rel")
+    cp "$ours" "$sidecar"
+    cp "$merged_tmp" "$dest"
+    _cp_record "$_CP_DISP_NEEDS_RECONCILIATION" "$class" "$rel" "merged" \
+        "$sidecar" "$diff_path" \
+        "env-file key-union; project values preserved on conflict"
     rm -f "$merged_tmp"
 }
 

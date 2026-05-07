@@ -468,7 +468,7 @@ Resolved: n/a
 
 **BD-088 — Customization-preservation algorithm + truthful report (BD-059 fix)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: None
 Unblocks: BD-042, BD-059 (resolves both)
 File/Symbol: `scripts/lib/customization-preserve.sh`, `scripts/lib/customization-report.sh`, `scripts/tests/test-customization-preserve.sh`
@@ -479,7 +479,17 @@ Description: BD-059 fix as a v11-cut artifact. Per-file preservation rules
   recognition), `scripts/`, `x-*` agents. Truthful customization report
   listing every preserved/modified file. Same library used by `init-project.sh
   --update` (BD-080) and `migrate-v10-to-v11.sh` (BD-085).
-Resolved: n/a
+Resolved: 2026-05-07, v11.0 — library + report renderer + 72 fixture tests
+  shipped. Public API: customization_preserve_init, customization_classify,
+  customization_preserve, customization_findings_count,
+  customization_findings_tsv_path, customization_report. Covers 12 file
+  classes; routes through three_way_classify for 8 canonical dispositions
+  plus catch-all unknown-classification surfaced in the report's
+  "Unhandled dispositions" section. BD-088 review (PACK-REVIEW-BD-088)
+  surfaced 1 BLOCKER + 3 MAJOR (init-time guard, gemini-env routing
+  through three_way_classify, dup-key dedup, leading-whitespace handling)
+  + cheap-correctness fixes; all addressed in fix-follow. m7 (flat-name
+  collision; pre-existing in migrate-v9-to-v10.sh too) tracked as BD-112.
 
 ---
 
@@ -862,6 +872,30 @@ Description: BD-060 ships `blocks`/`blocked-by` via comment markers (the
   from the comment block above the function. Public `provider_link()` shape
   is unchanged. Comment-based markers remain available via `provider_raw()`
   for callers that explicitly want the V3 §28 fallback path.
+Resolved: n/a
+
+---
+
+**BD-112 — Three-way diff filename mangling can collide on similar paths**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: `scripts/lib/customization-preserve.sh` `_cp_write_diff()`;
+  `scripts/migrate-v9-to-v10.sh` `write_three_way_diff()`
+Description: Both helpers flatten relative paths into diff filenames via
+  `${rel//\//-}` then strip a leading `.`. Two distinct rels can collapse
+  to the same flattened name — e.g. `.claude/agents/foo.md` and
+  `claude/agents/foo.md` both produce `claude-agents-foo.md`, so the
+  second write silently overwrites the first's diff. The defect is a
+  port-fidelity carryover from `migrate-v9-to-v10.sh` (low probability in
+  practice — projects rarely shadow dotfile paths — but a truthfulness
+  violation by another route, since the report references a diff path
+  that no longer reflects the file it was written for). Fix in both
+  locations in lockstep: include a stable disambiguator (short hash of
+  rel, or sequence index) when a flattened name is already in use.
+  Discovered during BD-088 review (PACK-REVIEW-BD-088 finding m7,
+  2026-05-07).
 Resolved: n/a
 
 ---
