@@ -1,16 +1,25 @@
 #!/usr/bin/env bash
-# init-project.sh — initialize an AI Agent Config Pack v10.0 installation
-# in a new or existing project directory.
+# init-project.sh — initialize an AI Agent Config Pack installation in
+# a new or existing project directory, OR refresh an existing pack
+# install (--update) without destroying project customization.
 #
-# Per V10-DESIGN §7.3..§7.8, the script classifies the target into one
-# of five project classes, stops (exit 20) if AI config is already
+# Per V10-DESIGN §7.3..§7.8 the default flow classifies the target into
+# one of five project classes, stops (exit 20) if AI config is already
 # present, prints a preview report, asks for explicit confirmation
-# (default No), then executes eleven stages S0..S10 with inline
-# verification at each step. A blast-radius sweep at the end of S6 and
-# S10 checks for stale cross-references.
+# (default No), then executes stages S0..S11 with inline verification
+# at each step. A blast-radius sweep at the end of S6 and S11 checks
+# for stale cross-references.
+#
+# v11 additions (BD-080): stage S11 installs v11 client-side artifacts
+# (HELP-FRAGMENT.md + HELP-FRAGMENT-TRACKER.md, tracker.toml.example,
+# .github/ISSUE_TEMPLATE/* issue forms, per-CLI pack-help skills /
+# command). The --update flag refreshes a previously-installed pack to
+# the current pack version using the BD-088 customization-preservation
+# contract; no destructive overwrites of project edits.
 #
 # Usage:
 #     PACK=/path/to/pack ./scripts/init-project.sh [target-dir]
+#     PACK=/path/to/pack ./scripts/init-project.sh --update [target-dir]
 #
 # Target directory defaults to the current working directory.
 #
@@ -19,10 +28,12 @@
 #     10  $PACK invalid
 #     11  Target is not a git repo
 #     12  Working tree not clean
-#     20  STOP — existing AI config
-#     21–30 Stage N (20 + stage number) failure
+#     20  STOP — existing AI config (default flow only)
+#     21–30 Stage N (20 + stage number; clamped to 30) failure
 #     31  Blast-radius sweep failure
 #     40  Conditional-removal failure
+#     50  --update: target is not currently pack-configured
+#     51  --update: BD-088 customization library unavailable
 #     99  Internal error (set -euo pipefail trap)
 
 set -euo pipefail
@@ -36,6 +47,8 @@ readonly EXIT_DIRTY=12
 readonly EXIT_AI_CONFIG=20
 readonly EXIT_SWEEP=31
 readonly EXIT_CONDITIONAL=40
+readonly EXIT_UPDATE_NOT_CONFIGURED=50
+readonly EXIT_UPDATE_LIB_MISSING=51
 readonly EXIT_INTERNAL=99
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -676,6 +689,174 @@ EOF
     echo "──── End of kickoff prompt ────"
 }
 
+# ── Stage S11 — v11 client-side artifacts (BD-080) ────────────────────────
+
+stage_s11_v11_artifacts() {
+    say "── S11 — v11 client artifacts (HELP-FRAGMENT, tracker, issue forms, pack-help) ──"
+
+    local copy_fn="cp"
+    [[ "$CLASS" == existing-* ]] && copy_fn="existing_classifier_copy"
+
+    # 1. HELP-FRAGMENT*.md → docs/pack/. The tracker fragment is byte-
+    #    identical between pack-root and project-template/docs/pack/ per
+    #    DELTA L1 (validate-pack Check 24). Copy from project-template/.
+    mkdir -p "$TARGET/docs/pack"
+    local help_src
+    for help_src in HELP-FRAGMENT.md HELP-FRAGMENT-TRACKER.md; do
+        local pack_file="$PACK/project-template/docs/pack/$help_src"
+        if [[ -f "$pack_file" ]]; then
+            "$copy_fn" "$pack_file" "$TARGET/docs/pack/$help_src"
+        fi
+    done
+    [[ -f "$TARGET/docs/pack/HELP-FRAGMENT.md" ]] \
+        || fail_stage S11 "docs/pack/HELP-FRAGMENT.md missing after copy"
+    [[ -f "$TARGET/docs/pack/HELP-FRAGMENT-TRACKER.md" ]] \
+        || fail_stage S11 "docs/pack/HELP-FRAGMENT-TRACKER.md missing after copy"
+
+    # 2. tracker.toml.example at project root.
+    if [[ -f "$PACK/project-template/tracker.toml.example" ]]; then
+        "$copy_fn" "$PACK/project-template/tracker.toml.example" \
+            "$TARGET/tracker.toml.example"
+    fi
+
+    # 3. .github/ISSUE_TEMPLATE/* issue forms (BD-063).
+    if [[ -d "$PACK/project-template/.github/ISSUE_TEMPLATE" ]]; then
+        mkdir -p "$TARGET/.github/ISSUE_TEMPLATE"
+        local form
+        for form in "$PACK/project-template/.github/ISSUE_TEMPLATE"/*.yml; do
+            [[ -e "$form" ]] || continue
+            local name; name=$(basename "$form")
+            "$copy_fn" "$form" "$TARGET/.github/ISSUE_TEMPLATE/$name"
+        done
+    fi
+
+    # 4. Per-CLI pack-help surfaces (BD-077). Source files live under each
+    #    CLI's directory in the pack template; targets mirror that layout.
+    if [[ -d "$PACK/project-template/.claude/skills/pack-help" ]]; then
+        mkdir -p "$TARGET/.claude/skills/pack-help"
+        "$copy_fn" "$PACK/project-template/.claude/skills/pack-help/SKILL.md" \
+            "$TARGET/.claude/skills/pack-help/SKILL.md"
+    fi
+    if [[ -d "$PACK/project-template/.codex/skills/pack-help" ]]; then
+        mkdir -p "$TARGET/.codex/skills/pack-help"
+        "$copy_fn" "$PACK/project-template/.codex/skills/pack-help/SKILL.md" \
+            "$TARGET/.codex/skills/pack-help/SKILL.md"
+    fi
+    if [[ -f "$PACK/project-template/.gemini/commands/pack-help.toml" ]]; then
+        mkdir -p "$TARGET/.gemini/commands"
+        "$copy_fn" "$PACK/project-template/.gemini/commands/pack-help.toml" \
+            "$TARGET/.gemini/commands/pack-help.toml"
+    fi
+}
+
+# ── --update mode (BD-080) ─────────────────────────────────────────────────
+#
+# Refresh a previously-installed pack to the current pack version using the
+# BD-088 customization-preservation contract. Does NOT run the full S1..S10
+# install — that path is for fresh installs only. --update is conservative:
+# it only touches files the BD-088 library knows how to dispatch, records a
+# truthful report at .pack-update/report.md, and never overwrites a project
+# customization without writing a sidecar (per BD-088 contract).
+
+cmd_update() {
+    say "── --update — refresh v11 artifacts via BD-088 customization-preserve ──"
+
+    # Pre-check: target must be currently pack-configured (else this is a
+    # fresh install, not an update).
+    if [[ ! -f "$TARGET/CLAUDE.md" || ! -d "$TARGET/.claude" ]]; then
+        die "target is not currently pack-configured (CLAUDE.md or .claude/ missing); run init-project.sh without --update for a fresh install" \
+            "$EXIT_UPDATE_NOT_CONFIGURED"
+    fi
+
+    # Pre-check: BD-088 library must be available.
+    local lib_dir="$PACK/scripts/lib"
+    if [[ ! -f "$lib_dir/three-way.sh" \
+       || ! -f "$lib_dir/customization-preserve.sh" \
+       || ! -f "$lib_dir/customization-report.sh" ]]; then
+        die "BD-088 customization library missing under $lib_dir; cannot --update" \
+            "$EXIT_UPDATE_LIB_MISSING"
+    fi
+
+    # Source libs and initialize state.
+    # shellcheck source=lib/customization-preserve.sh
+    export _CP_PACK_ROOT="$PACK"
+    # shellcheck disable=SC1091
+    source "$lib_dir/customization-preserve.sh"
+    # shellcheck disable=SC1091
+    source "$lib_dir/customization-report.sh"
+
+    local state_dir="$TARGET/.pack-update"
+    rm -rf "$state_dir"
+    customization_preserve_init "$state_dir" ".pre-update"
+
+    # The set of files --update touches. BASE is left empty (no prior pack
+    # baseline available offline; the BD-088 classifier handles
+    # `project-shadows-new-pack` for files where ours and theirs differ
+    # without a base).
+    #
+    # Each entry is: pack_relpath:project_relpath:class
+    #   pack_relpath     — path under $PACK (or $PACK/project-template/)
+    #   project_relpath  — path under $TARGET
+    #   class            — explicit class for customization_preserve
+    local entries=(
+        "project-template/CLAUDE.md:CLAUDE.md:trinity"
+        "project-template/AGENTS.md:AGENTS.md:trinity"
+        "project-template/GEMINI.md:GEMINI.md:trinity"
+        "project-template/.claude/settings.json:.claude/settings.json:claude-settings"
+        "project-template/.mcp.json.example:.mcp.json.example:claude-mcp-example"
+        "project-template/.codex/config.toml:.codex/config.toml:codex-config"
+        "project-template/.codex/config.toml.example:.codex/config.toml.example:codex-config-example"
+        "project-template/.codex/requirements.toml:.codex/requirements.toml:codex-config"
+        "project-template/.gemini/.env.example:.gemini/.env:gemini-env"
+        "project-template/docs/pack/PM-CHAT.md:docs/pack/PM-CHAT.md:pm-chat"
+        "project-template/docs/pack/HELP-FRAGMENT.md:docs/pack/HELP-FRAGMENT.md:generic"
+        "project-template/docs/pack/HELP-FRAGMENT-TRACKER.md:docs/pack/HELP-FRAGMENT-TRACKER.md:generic"
+        "project-template/tracker.toml.example:tracker.toml.example:generic"
+        "project-template/.github/ISSUE_TEMPLATE/work-item.yml:.github/ISSUE_TEMPLATE/work-item.yml:generic"
+        "project-template/.github/ISSUE_TEMPLATE/inbound.yml:.github/ISSUE_TEMPLATE/inbound.yml:generic"
+        "project-template/.github/ISSUE_TEMPLATE/config.yml:.github/ISSUE_TEMPLATE/config.yml:generic"
+        "project-template/.claude/skills/pack-help/SKILL.md:.claude/skills/pack-help/SKILL.md:generic"
+        "project-template/.codex/skills/pack-help/SKILL.md:.codex/skills/pack-help/SKILL.md:generic"
+        "project-template/.gemini/commands/pack-help.toml:.gemini/commands/pack-help.toml:generic"
+    )
+
+    local entry pack_rel proj_rel cls theirs ours dest
+    for entry in "${entries[@]}"; do
+        pack_rel="${entry%%:*}"
+        local rest="${entry#*:}"
+        proj_rel="${rest%%:*}"
+        cls="${rest##*:}"
+        theirs="$PACK/$pack_rel"
+        ours="$TARGET/$proj_rel"
+        dest="$TARGET/$proj_rel"
+        # BD-088 contract: passing ""=absent for missing files. Library
+        # records a finding for every entry (truthful report).
+        [[ -f "$theirs" ]] || theirs=""
+        [[ -f "$ours" ]]   || ours=""
+        # Skip when both sides absent (nothing to do; library records as
+        # removed-everywhere already, but only when called).
+        [[ -z "$theirs" && -z "$ours" ]] && continue
+        customization_preserve "" "$ours" "$theirs" "$proj_rel" "$dest" "$cls" >/dev/null
+    done
+
+    # Render truthful report.
+    local report="$state_dir/report.md"
+    customization_report "$state_dir/dispositions.tsv" "$report" \
+        "AI Agent Config Pack — --update report"
+
+    local count
+    count=$(customization_findings_count)
+    say ""
+    say "Update complete. $count files processed."
+    say "Report: $report"
+    if grep -q "needs-reconciliation" "$state_dir/dispositions.tsv" 2>/dev/null; then
+        say ""
+        say "NOTE: one or more files need manual reconciliation. Search the"
+        say "report for 'Files needing manual reconciliation' and inspect the"
+        say "named .pre-update sidecars before continuing."
+    fi
+}
+
 # Blast-radius sweep — §7.7
 blast_radius_sweep() {
     # PROMPT-TEMPLATES must not appear in installed pack-owned files.
@@ -709,7 +890,22 @@ blast_radius_sweep() {
 # ── Main ───────────────────────────────────────────────────────────────────
 
 main() {
-    TARGET="${1:-.}"
+    # Argv parsing — accept --update flag in any position.
+    local update_mode=0
+    local positional=()
+    while (( $# > 0 )); do
+        case "$1" in
+            --update) update_mode=1 ;;
+            --help|-h)
+                say "Usage: PACK=/path/to/pack init-project.sh [--update] [target-dir]"
+                exit 0
+                ;;
+            --*) die "unknown option: $1 (try --help)" "$EXIT_INTERNAL" ;;
+            *)   positional+=("$1") ;;
+        esac
+        shift
+    done
+    TARGET="${positional[0]:-.}"
     TARGET=$(cd "$TARGET" 2>/dev/null && pwd || echo "$TARGET")
 
     # Pre-flight (pre-confirm)
@@ -728,6 +924,12 @@ main() {
     wt=$(detect_clean_working_tree "$TARGET" | awk -F': ' '{print $2}')
     if [[ "$wt" != "clean" ]]; then
         die "target working tree is dirty; commit or stash first" "$EXIT_DIRTY"
+    fi
+
+    # --update branch: skip classification + confirmation; refresh via BD-088.
+    if (( update_mode == 1 )); then
+        cmd_update
+        exit 0
     fi
 
     # Classification
@@ -764,6 +966,7 @@ main() {
     stage_s7_trinity
     stage_s8_gitignore
     stage_s9_conditional_remove
+    stage_s11_v11_artifacts
     stage_s10_kickoff_prompt
 
     # End-of-S10 blast-radius sweep
