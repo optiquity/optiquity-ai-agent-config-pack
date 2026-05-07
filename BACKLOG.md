@@ -339,7 +339,7 @@ Resolved: n/a
 
 **BD-080 — `init-project.sh` extensions for v11 artifacts**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-076, BD-077, BD-063
 Unblocks: None
 File/Symbol: `scripts/init-project.sh`, `scripts/lib/init-helpers.sh`
@@ -349,7 +349,14 @@ Description: Single-source for client-side artifact installation. Installs
   DELTA L1); installs `tracker.toml.example`; installs issue forms.
   `--update` flag refreshes from pack-root canonical without destroying
   customization (BD-088 contract).
-Resolved: n/a
+Resolved: 2026-05-07, v11.0 — stage S11 + cmd_update + 30 fixture tests.
+  Stage S11 installs HELP-FRAGMENT*.md, tracker.toml.example, issue forms,
+  per-CLI pack-help surfaces. cmd_update consumes BD-088 over a 23-entry
+  list plus iteration of project-template/scripts/ + per-CLI agents/ for
+  parity with BD-085. HELP-FRAGMENT-TRACKER.md force-copied from pack-root
+  canonical for DELTA L1 byte-identity. Sidecar-presence gate on re-run
+  prevents single-slot sidecar overwrite. Review fixes (PACK-REVIEW-BD-080-
+  BD-085) addressed B1, M1–M5, m1–m4, m6, m7 in fix-follow.
 
 ---
 
@@ -420,7 +427,7 @@ Resolved: n/a
 
 **BD-085 — `scripts/migrate-v10-to-v11.sh` (the migration script itself)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-088, BD-091, BD-080
 Unblocks: None
 File/Symbol: `scripts/migrate-v10-to-v11.sh`, `scripts/lib/migrate-v10-to-v11/`, `scripts/tests/test-migrate-v10-to-v11.sh`
@@ -431,7 +438,14 @@ Description: One-shot migrator paralleling `migrate-v9-to-v10.sh`. Applies
   relocation; produces a truthful customization report (BD-059 fix). Tracker
   opt-in is NOT part of this script. Extended by BD-095 with `--dry-run` /
   `--apply` / `--resume` modes.
-Resolved: n/a
+Resolved: 2026-05-07, v11.0 — 7-stage migrator (S0 pre-flight / S1 backup
+  / S2 BD-088 init / S3 dispatch / S4 BD-042 relocation / S5 v11 artifacts
+  / S6 truthful report). 35 fixture tests including end-to-end with
+  genuine v10-tag baseline content. Backup captures full working tree
+  (M1 fix — preserves gitignored .gemini/.env). git mv failures fail
+  loudly rather than silently falling back (M4 fix). User-facing restore
+  messages give explicit working `rsync` commands (B1 fix). BD-095 will
+  later extend with --dry-run / --apply / --resume modes.
 
 ---
 

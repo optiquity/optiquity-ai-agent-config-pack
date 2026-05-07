@@ -125,6 +125,15 @@ count=$(awk 'NR > 1 && NF > 0' "$T/.pack-update/dispositions.tsv" | wc -l | tr -
     && t_pass "2.6 dispositions.tsv has $count rows" \
     || t_fail "2.6 dispositions.tsv empty"
 
+# 2.7 (m6) re-run --update with stale .pre-update sidecars must refuse
+# (single-slot sidecar contract; second run would silently overwrite).
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T" 2>&1) ; rc=$?
+[[ "$rc" -ne 0 ]] \
+    && t_pass "2.7 re-run with stale sidecars refuses (rc!=0)" \
+    || t_fail "2.7 re-run with sidecars unexpectedly succeeded" "rc=$rc"
+assert_contains "2.7 user told to reconcile sidecars" "$out" \
+    "reconcile or remove the .pre-update sidecars"
+
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────

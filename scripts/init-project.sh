@@ -697,17 +697,21 @@ stage_s11_v11_artifacts() {
     local copy_fn="cp"
     [[ "$CLASS" == existing-* ]] && copy_fn="existing_classifier_copy"
 
-    # 1. HELP-FRAGMENT*.md → docs/pack/. The tracker fragment is byte-
-    #    identical between pack-root and project-template/docs/pack/ per
-    #    DELTA L1 (validate-pack Check 24). Copy from project-template/.
+    # 1. HELP-FRAGMENT*.md → docs/pack/. HELP-FRAGMENT.md per the usual
+    #    classifier-copy rule (developer-customizable). HELP-FRAGMENT-
+    #    TRACKER.md is byte-identity-required across pack-root and client
+    #    mirror per DELTA L1 (validate-pack Check 24); force-copy from
+    #    pack-root canonical regardless of class so an existing-* re-run
+    #    cannot leave stale tracker fragments in place.
     mkdir -p "$TARGET/docs/pack"
-    local help_src
-    for help_src in HELP-FRAGMENT.md HELP-FRAGMENT-TRACKER.md; do
-        local pack_file="$PACK/project-template/docs/pack/$help_src"
-        if [[ -f "$pack_file" ]]; then
-            "$copy_fn" "$pack_file" "$TARGET/docs/pack/$help_src"
-        fi
-    done
+    if [[ -f "$PACK/project-template/docs/pack/HELP-FRAGMENT.md" ]]; then
+        "$copy_fn" "$PACK/project-template/docs/pack/HELP-FRAGMENT.md" \
+            "$TARGET/docs/pack/HELP-FRAGMENT.md"
+    fi
+    if [[ -f "$PACK/HELP-FRAGMENT-TRACKER.md" ]]; then
+        cp -f "$PACK/HELP-FRAGMENT-TRACKER.md" \
+            "$TARGET/docs/pack/HELP-FRAGMENT-TRACKER.md"
+    fi
     [[ -f "$TARGET/docs/pack/HELP-FRAGMENT.md" ]] \
         || fail_stage S11 "docs/pack/HELP-FRAGMENT.md missing after copy"
     [[ -f "$TARGET/docs/pack/HELP-FRAGMENT-TRACKER.md" ]] \
@@ -758,6 +762,26 @@ stage_s11_v11_artifacts() {
 # truthful report at .pack-update/report.md, and never overwrites a project
 # customization without writing a sidecar (per BD-088 contract).
 
+# Iterate every regular file under `$PACK/$pack_dir`, derive the parallel
+# project-relative path under `$proj_dir`, and dispatch via BD-088. Mirror
+# of stage S3's _stage_s3_iter_dir in migrate-v10-to-v11.sh so --update
+# and the migrator share parity (PACK-REVIEW-BD-080-BD-085 M2).
+_cmd_update_iter_dir() {
+    local pack_dir="$1" proj_dir="$2" cls="$3"
+    [[ -d "$PACK/$pack_dir" ]] || return 0
+    local f rel proj_rel theirs ours dest
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        rel="${f#"$PACK/$pack_dir/"}"
+        proj_rel="$proj_dir/$rel"
+        theirs="$f"
+        ours="$TARGET/$proj_rel"
+        dest="$TARGET/$proj_rel"
+        [[ -f "$ours" ]] || ours=""
+        customization_preserve "" "$ours" "$theirs" "$proj_rel" "$dest" "$cls" >/dev/null
+    done < <(find "$PACK/$pack_dir" -type f -print 2>/dev/null)
+}
+
 cmd_update() {
     say "── --update — refresh v11 artifacts via BD-088 customization-preserve ──"
 
@@ -777,9 +801,25 @@ cmd_update() {
             "$EXIT_UPDATE_LIB_MISSING"
     fi
 
+    # Pre-check: refuse to proceed if any *.pre-update sidecars from a
+    # prior --update run still exist. Single-slot sidecars must be
+    # reconciled before re-running, else the second run silently
+    # overwrites them and destroys the user's pre-update content.
+    local stale_sidecars
+    stale_sidecars=$(find "$TARGET" -type f -name "*.pre-update" \
+        -not -path "*/.pack-update/*" -not -path "*/.git/*" 2>/dev/null | head -20)
+    if [[ -n "$stale_sidecars" ]]; then
+        say "refusing to proceed: prior --update sidecars present:"
+        printf '  %s\n' $stale_sidecars >&2
+        die "reconcile or remove the .pre-update sidecars above before re-running --update" \
+            "$EXIT_UPDATE_NOT_CONFIGURED"
+    fi
+
     # Source libs and initialize state.
     # shellcheck source=lib/customization-preserve.sh
     export _CP_PACK_ROOT="$PACK"
+    # shellcheck disable=SC1091
+    source "$lib_dir/three-way.sh"
     # shellcheck disable=SC1091
     source "$lib_dir/customization-preserve.sh"
     # shellcheck disable=SC1091
@@ -808,7 +848,11 @@ cmd_update() {
         "project-template/.codex/config.toml.example:.codex/config.toml.example:codex-config-example"
         "project-template/.codex/requirements.toml:.codex/requirements.toml:codex-config"
         "project-template/.gemini/.env.example:.gemini/.env:gemini-env"
+        "project-template/.gemini/settings.json:.gemini/settings.json:claude-settings"
         "project-template/docs/pack/PM-CHAT.md:docs/pack/PM-CHAT.md:pm-chat"
+        "project-template/docs/pack/PLATFORM-SKILLS.md:docs/pack/PLATFORM-SKILLS.md:generic"
+        "project-template/docs/pack/PACK-FEEDBACK.md:docs/pack/PACK-FEEDBACK.md:generic"
+        "project-template/docs/pack/PROMPT-TEMPLATES.md:docs/pack/PROMPT-TEMPLATES.md:generic"
         "project-template/docs/pack/HELP-FRAGMENT.md:docs/pack/HELP-FRAGMENT.md:generic"
         "project-template/docs/pack/HELP-FRAGMENT-TRACKER.md:docs/pack/HELP-FRAGMENT-TRACKER.md:generic"
         "project-template/tracker.toml.example:tracker.toml.example:generic"
@@ -830,13 +874,21 @@ cmd_update() {
         ours="$TARGET/$proj_rel"
         dest="$TARGET/$proj_rel"
         # BD-088 contract: passing ""=absent for missing files. Library
-        # records a finding for every entry (truthful report).
+        # records a finding for every entry — including removed-everywhere
+        # — so the truthful-report contract is preserved.
         [[ -f "$theirs" ]] || theirs=""
         [[ -f "$ours" ]]   || ours=""
-        # Skip when both sides absent (nothing to do; library records as
-        # removed-everywhere already, but only when called).
-        [[ -z "$theirs" && -z "$ours" ]] && continue
         customization_preserve "" "$ours" "$theirs" "$proj_rel" "$dest" "$cls" >/dev/null
+    done
+
+    # Iterate pack-shipped scripts and per-CLI agents (parity with
+    # migrate-v10-to-v11.sh stage S3). Without this, pack-shipped script
+    # / agent updates would silently NOT be picked up by --update.
+    _cmd_update_iter_dir "project-template/scripts" "scripts" pack-script
+    local tool
+    for tool in claude codex gemini; do
+        _cmd_update_iter_dir "project-template/.${tool}/agents" \
+            ".${tool}/agents" pack-agent
     done
 
     # Render truthful report.
@@ -920,16 +972,21 @@ main() {
     if ! git -C "$TARGET" rev-parse --git-dir >/dev/null 2>&1; then
         die "target is not a git repo: $TARGET (run \`git init\` first)" "$EXIT_NOT_GIT"
     fi
+
+    # --update branch: skip classification + confirmation. Run before the
+    # global clean-tree check so cmd_update's sidecar pre-check can issue
+    # an actionable error on re-run (the global check would shadow it
+    # with a generic "tree dirty" message). cmd_update has its own
+    # safety gates (sidecar presence, pack-configured precondition).
+    if (( update_mode == 1 )); then
+        cmd_update
+        exit 0
+    fi
+
     local wt
     wt=$(detect_clean_working_tree "$TARGET" | awk -F': ' '{print $2}')
     if [[ "$wt" != "clean" ]]; then
         die "target working tree is dirty; commit or stash first" "$EXIT_DIRTY"
-    fi
-
-    # --update branch: skip classification + confirmation; refresh via BD-088.
-    if (( update_mode == 1 )); then
-        cmd_update
-        exit 0
     fi
 
     # Classification

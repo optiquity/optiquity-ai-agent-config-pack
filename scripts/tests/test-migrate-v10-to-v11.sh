@@ -166,6 +166,44 @@ assert_contains "2.6 report has H1" "$report" \
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────
+# Group 2b: backup completeness (M1 — gitignored files)
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 2b: backup includes gitignored files (M1) ===\n"
+
+T=$(make_v10_target)
+# Simulate a gitignored .gemini/.env with project-set content.
+# .gemini/.env.example is committable; .env is not (.gitignore blocks).
+mkdir -p "$T/.gemini"
+echo ".env" > "$T/.gitignore"
+git -C "$T" add .gitignore >/dev/null
+git -C "$T" commit -q -m "ignore .env" 2>/dev/null
+echo "AGENT_CAPABILITIES=swift,python" > "$T/.gemini/.env"
+# Confirm .env is gitignored (working tree still "clean" by porcelain).
+[[ -z "$(git -C "$T" status --porcelain)" ]] \
+    && t_pass "2b.0 gitignored .env leaves working tree clean per porcelain" \
+    || t_fail "2b.0 .env is not gitignored as expected"
+
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" >/dev/null 2>&1 ; rc=$?
+assert_eq "2b.1 migration rc=0 with gitignored .env" "0" "$rc"
+
+# Backup must include .gemini/.env (M1 fix — backup the working tree, not
+# just HEAD).
+[[ -f "$T/.pack-migrate-v10-to-v11-backup/.gemini/.env" ]] \
+    && t_pass "2b.2 gitignored .gemini/.env captured in backup" \
+    || t_fail "2b.2 backup elided gitignored .gemini/.env (M1 regression)"
+# Backup contents match.
+if [[ -f "$T/.pack-migrate-v10-to-v11-backup/.gemini/.env" ]] && \
+   grep -q "AGENT_CAPABILITIES=swift,python" \
+        "$T/.pack-migrate-v10-to-v11-backup/.gemini/.env"; then
+    t_pass "2b.3 backup of gitignored file preserves content"
+else
+    t_fail "2b.3 backup content mismatch"
+fi
+
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
 # Group 3: BD-042 relocation of legacy root-level docs
 # ─────────────────────────────────────────────────────────────────────────
 

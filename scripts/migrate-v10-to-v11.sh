@@ -28,7 +28,7 @@
 # BD-095 will extend this script with --dry-run / --apply / --resume
 # modes; the current implementation is a single non-resumable run.
 
-set -uo pipefail
+set -euo pipefail
 
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly EXIT_PACK_INVALID=10
@@ -98,15 +98,28 @@ stage_s1_backup() {
     say "── S1 — backup ──"
     BACKUP_DIR="$TARGET/.pack-migrate-v10-to-v11-backup"
     if [[ -d "$BACKUP_DIR" ]]; then
-        fail_stage S1 "backup directory already exists: $BACKUP_DIR (delete or run restore-from-backup.sh)"
+        fail_stage S1 "backup directory already exists: $BACKUP_DIR — rename it (mv $BACKUP_DIR $BACKUP_DIR.prev) or remove it before re-running"
     fi
     mkdir -p "$BACKUP_DIR"
-    # Cheap whole-tree backup via git archive of HEAD. Skipped files
-    # outside HEAD (e.g. untracked) are not preserved, but the pre-flight
-    # clean-tree check guarantees there are none.
-    git -C "$TARGET" archive --format=tar HEAD | tar -x -C "$BACKUP_DIR"
+    # Backup the entire working tree (not just HEAD). git archive HEAD
+    # would miss gitignored files — `.gemini/.env` is gitignored by the
+    # pack template and is exactly the file the gemini-env strategy
+    # rewrites, so it must be in the backup. Excludes: .git/ itself,
+    # the backup dir we just created, the BD-088 state dir, and the
+    # legacy .pack-update dir (init-project --update). Use bash 3.2-
+    # compatible find (no -prune-style; rely on tar's --exclude-from).
+    local exclude_list
+    exclude_list=$(mktemp)
+    cat > "$exclude_list" <<EOF
+.git
+.pack-migrate-v10-to-v11
+.pack-migrate-v10-to-v11-backup
+.pack-update
+EOF
+    tar -cf - -C "$TARGET" --exclude-from="$exclude_list" . | tar -x -C "$BACKUP_DIR"
+    rm -f "$exclude_list"
     [[ -f "$BACKUP_DIR/CLAUDE.md" ]] || fail_stage S1 "backup verification failed (CLAUDE.md missing in backup)"
-    info "backup written: $BACKUP_DIR"
+    info "backup written: $BACKUP_DIR (full working tree, excludes .git/ + state dirs)"
 }
 
 # ── Customization-preserve library setup ──────────────────────────────────
@@ -167,6 +180,7 @@ stage_s3_dispatch() {
         "project-template/docs/pack/PM-CHAT.md:docs/pack/PM-CHAT.md:pm-chat"
         "project-template/docs/pack/PLATFORM-SKILLS.md:docs/pack/PLATFORM-SKILLS.md:generic"
         "project-template/docs/pack/PACK-FEEDBACK.md:docs/pack/PACK-FEEDBACK.md:generic"
+        "project-template/docs/pack/PROMPT-TEMPLATES.md:docs/pack/PROMPT-TEMPLATES.md:generic"
     )
 
     local entry pack_rel proj_rel cls theirs ours dest base
@@ -182,10 +196,9 @@ stage_s3_dispatch() {
         base=$(v10_baseline_to_tmp "$pack_rel")
         [[ -f "$theirs" ]] || theirs=""
         [[ -f "$ours" ]]   || ours=""
-        if [[ -z "$theirs" && -z "$ours" ]]; then
-            [[ -n "$base" ]] && rm -f "$base"
-            continue
-        fi
+        # Always dispatch — even when both sides absent, the BD-088
+        # contract records `removed-everywhere` so the report is truthful.
+        # Skipping would hide a planned-but-not-shipped pack-side file.
         customization_preserve "$base" "$ours" "$theirs" "$proj_rel" "$dest" "$cls" >/dev/null
         [[ -n "$base" ]] && rm -f "$base"
         processed=$((processed + 1))
@@ -243,8 +256,27 @@ stage_s4_bd042_relocation() {
                 mv "$TARGET/$f" "$TARGET/$f.relocated-from-root"
                 info "relocated: $f → $f.relocated-from-root (docs/pack/$f already present)"
             else
-                git -C "$TARGET" mv "$f" "docs/pack/$f" 2>/dev/null || mv "$TARGET/$f" "$TARGET/docs/pack/$f"
-                info "relocated: $f → docs/pack/$f"
+                # Track via git when the root copy is tracked (clean-tree
+                # invariant from S0 means HEAD-tracked is the typical case).
+                # Fall back to plain `mv` ONLY when git mv reports the file
+                # is not tracked; any other failure is a defect.
+                local mv_stderr untracked=0
+                mv_stderr=$(git -C "$TARGET" mv "$f" "docs/pack/$f" 2>&1) || {
+                    if [[ "$mv_stderr" == *"not under version control"* \
+                       || "$mv_stderr" == *"did not match"* ]]; then
+                        mv "$TARGET/$f" "$TARGET/docs/pack/$f"
+                        untracked=1
+                    else
+                        fail_stage S4 "git mv $f → docs/pack/$f failed: $mv_stderr"
+                    fi
+                }
+                [[ -f "$TARGET/docs/pack/$f" ]] || \
+                    fail_stage S4 "post-relocation verification failed: docs/pack/$f missing"
+                if (( untracked == 1 )); then
+                    info "relocated (untracked): $f → docs/pack/$f"
+                else
+                    info "relocated: $f → docs/pack/$f"
+                fi
             fi
             moved=$((moved + 1))
         fi
@@ -317,8 +349,18 @@ stage_s6_report() {
     count=$(customization_findings_count)
     say ""
     say "Migration complete. $count files processed by BD-088 dispatch."
-    say "Backup: $BACKUP_DIR (use scripts/restore-from-backup.sh to revert)"
+    say "Backup: $BACKUP_DIR (faithful working-tree snapshot)"
     say "Report: $report"
+    say ""
+    say "To revert this migration:"
+    say "  1. From a clean shell:"
+    say "       cd $TARGET"
+    say "       rm -rf .pack-migrate-v10-to-v11"
+    say "       (rsync -a --delete --exclude=.git/ \\"
+    say "          --exclude=.pack-migrate-v10-to-v11-backup/ \\"
+    say "          .pack-migrate-v10-to-v11-backup/ ./)"
+    say "  2. Inspect with \`git diff\`."
+    say "  3. When satisfied, remove .pack-migrate-v10-to-v11-backup/."
     if grep -q "needs-reconciliation" "$STATE_DIR/dispositions.tsv" 2>/dev/null; then
         say ""
         say "NOTE: one or more files need manual reconciliation. Review the"

@@ -478,6 +478,17 @@ customization_preserve() {
     local class="${6:-}"
     [[ -z "$class" ]] && class=$(customization_classify "$rel")
 
+    # Early-return on the all-three-absent case. three_way_classify
+    # returns rc=1 with "no-inputs" stdout for this case; under a `set -e`
+    # caller the rc=1 from a `$(...)` capture would abort the parent
+    # script before any strategy can record. Record removed-everywhere
+    # directly so the truthful-report contract is preserved without
+    # propagating the rc=1 to the caller.
+    if [[ ! -e "$base" && ! -e "$ours" && ! -e "$theirs" ]]; then
+        _cp_record "removed-everywhere" "$class" "$rel" "none" "-" "-" "-"
+        return 0
+    fi
+
     case "$class" in
         trinity|pack-agent|pack-script|pm-chat|generic)
             _cp_strategy_text "$class" "$base" "$ours" "$theirs" "$rel" "$dest"
