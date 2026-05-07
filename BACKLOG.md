@@ -203,7 +203,7 @@ Resolved: 2026-05-06 — Per V1 §8.4/§8.5 prompt-language change applied to th
 
 **BD-072 — `scripts/lib/recommendation.sh` + state-file schema (D-19)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-061
 Unblocks: None
 File/Symbol: `scripts/lib/recommendation.sh`, `scripts/tests/recommendation-test.sh`, `.pack-tracker/recommendation-state.json` (schema)
@@ -214,13 +214,13 @@ Description: Lands the OQ-19 mechanism. Signal computation per V3 §28.1.1
   values; failure-mode UX per V3 §28.1.4 (parse fail → log warning + write
   fresh state + defer recommendation to next session). All 7 V3 §28.1.10
   tests must pass.
-Resolved: n/a
+Resolved: 2026-05-07 — V3 §28.1 lib end-to-end. recommendation_compute_signals (3 pack / 7 client) + state I/O (default / corrupt-recover / atomic save) + 5-guard should_recommend with 25%-growth Guard 4 + prompt rendering with human-label substitution per §28.1.7. 53 tests in scripts/tests/recommendation-test.sh covering the V3 §28.1.10 7-test surface. Bash 3.2 compatible. Review fix-follow added docs/project/ BACKLOG fallback (BLOCKER F-1), human-label headline (was raw JSON keys), well-formed "Also past threshold" follow-up. Sweep 754/754; CI green.
 
 ---
 
 **BD-073 — `pack tracker enable-recommendations` subcommand**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-072
 Unblocks: None
 File/Symbol: `scripts/pack-tracker.sh`
@@ -233,13 +233,13 @@ Description: Adds `enable-recommendations` subcommand per V3 §28.1.9 +
   surface is reachable; the body lands here and depends on BD-072's
   threshold-driven Layer 3 state file
   (`.pack-tracker/recommendation-state.json`, V3 §27.3 / §28.1.6).
-Resolved: n/a
+Resolved: 2026-05-07 — cmd_enable_recommendations replaces v11.0 not-implemented stub (V3 §28.1.6 / D-19); flips persistent_refusal=false + increments user_re_enable_count via BD-072's recommendation_set_persistent_refusal helper. Surface auto-detected (PACK-CHAT.md / docs/pack/) with --surface override; --repo-root override. Idempotent. Group 5 verb integration tests cover seeded-true→false flip, idempotent re-run, and create-from-default path.
 
 ---
 
 **BD-074 — `pack-startup` Step 8 + `pm-startup` Step 8 (D-19 integration)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-072, BD-073
 Unblocks: None
 File/Symbol: `.claude/skills/pack-startup/SKILL.md`, `.codex/skills/pack-startup/SKILL.md`, `.gemini/commands/pack-startup.toml`, `project-template/skills/pm-startup/SKILL.md` + 3 distributed copies
@@ -249,13 +249,13 @@ Description: Step 8 runs after V1's Step 7 triage queue: source
   Body content byte-identical across the three CLIs in each surface; framing
   differs as the per-CLI format mandates. Introduces `.claude/`, `.codex/`,
   `.gemini/` directories at pack-root for the first time per §6.F.
-Resolved: n/a
+Resolved: 2026-05-07 — Step 8 (Inflection-point recommendation check) appended to 7 startup files: pack-side × 3 (.claude/skills/pack-startup/SKILL.md, .codex/skills/pack-startup/SKILL.md, .gemini/commands/pack-startup.toml) + client-side × 4 (project-template canonical + 3 distributed copies). Body sources scripts/lib/recommendation.sh, computes signals, calls should_recommend, renders prompt + records show on true; routes user response per V3 §28.1.7 (yes / not now / don't ask again). Step numbering preserves the gap at 5–7 (V1 §10.2 tracker-mode triage queue lands later) — fix-follow added explanatory HTML-comment banner in all 7 files. Pack-root .codex/skills/pack-startup/ and .gemini/commands/ directories created.
 
 ---
 
 **BD-075 — `scripts/pack-help.sh` LCD shell verb + surface detection**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-076
 Unblocks: None
 File/Symbol: `scripts/pack-help.sh`, `scripts/lib/detect.sh` (extended with `detect_pack_surface`)
@@ -264,13 +264,13 @@ Description: Implements LCD floor for D-20 / OQ-20 (M2 path). Reads the
   `HELP-FRAGMENT-TRACKER.md` per V3 §28.2.4 + DELTA L1 (sibling-file include).
   Surface detection for pack vs client per V3 §28.2.3. Output ~400 tokens
   per V3 §28.2.3. Ships new at v11 per §6.B.
-Resolved: n/a
+Resolved: 2026-05-07 — scripts/pack-help.sh + detect_pack_surface() added to scripts/lib/detect.sh. Surface auto-detection per V3 §28.2.3 covering all 5 cases (BD/TD/mixed/none/legacy-root). awk-based sibling-include resolver replaces tracker-fragment placeholder line per V3 §28.2.4 / DELTA L1, preserving surrounding content. Flags --surface override, --root, --help. 17 tests in scripts/tests/pack-help-test.sh. Review fix-follow trimmed verb-tables + dropped "Underlying script" subsection: pack-side render 5215 → 2946 chars (~841 tokens; 43% reduction). §28.2.3 ~400-token target not fully hit; partial improvement.
 
 ---
 
 **BD-076 — HELP-FRAGMENT files (canonical + per-surface; L1 layout)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-066, BD-073
 Unblocks: None
 File/Symbol: `HELP-FRAGMENT-PACK.md`, `HELP-FRAGMENT-TRACKER.md` (pack root canonical), `project-template/docs/pack/HELP-FRAGMENT.md`, `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md` (mirror)
@@ -284,13 +284,13 @@ Description: Implements D-20 + DELTA L1. Pack-root canonical is the single
   (pack) are deferred to the BD-109 / BD-110 ship commits — those
   agents do not yet exist, so adding the rows now would forward-
   reference unshipped entities. Tracked in BD-109 / BD-110.
-Resolved: n/a
+Resolved: 2026-05-07 — 4 HELP-FRAGMENT files: HELP-FRAGMENT-PACK.md (pack-root), HELP-FRAGMENT-TRACKER.md (pack-root canonical, byte-identical mirror in project-template/docs/pack/), project-template/docs/pack/HELP-FRAGMENT.md (client). Per-surface verb manifests per V3 §28.2.1 / §28.2.4 / §28.2.7. Review fix-follow added Addendum-4 §2.8 `pack td promote --to=phase-N` / `--to=phase-N.M` rows to client fragment; BD-109 `auditor-issue-tracking` and BD-110 `pack-auditor` agent rows deferred (those agents not yet shipped). Token-budget trim (~43% reduction); client-side Notes-block path issue closed; Notes references corrected to docs/pack/.
 
 ---
 
 **BD-077 — Per-CLI `pack-help` command/skill (Trinity-replicated × 2 surfaces)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-075
 Unblocks: None
 File/Symbol: `.claude/skills/pack-help/SKILL.md`, `.codex/skills/pack-help/SKILL.md`, `.gemini/commands/pack-help.toml` (pack-side); `project-template/.claude/skills/pack-help/SKILL.md` + 2 per-CLI mirrors (client-side)
@@ -304,7 +304,7 @@ Description: Implements per-CLI namespaced `/pack-help` per D-20. All 6
   BD-077 ship commit those files are NOT yet copied by
   `init-project.sh`, so client-side `/pack-help` becomes functional
   only after BD-080 lands.
-Resolved: n/a
+Resolved: 2026-05-07 — 6 per-CLI pack-help files (Trinity × 2 surfaces): Markdown SKILL.md for Claude/Codex per V3 §28.2.3 + §7.1.1 corrected format; TOML for Gemini per V3 §D.7. All 6 invoke scripts/pack-help.sh shell injection. Pack-root and client-tree per-CLI variants byte-equal at each (Claude/Codex/Gemini). Review fix-follow corrected client-side Notes-block paths from pack-only references (PACK-CHAT.md, bare QUICKSTART.md) to docs/pack/* paths. Note: client-side install gap (init-project.sh doesn't yet copy scripts/lib/ + pack-help.sh) closed by BD-080.
 
 ---
 
