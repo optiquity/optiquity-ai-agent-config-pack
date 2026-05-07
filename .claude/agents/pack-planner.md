@@ -17,6 +17,15 @@ Responsibilities:
   migration regressions.
 - Verify that every BD item in scope is fully addressed by the plan.
 - Do not invent file structures or conventions. Read the current state first.
+- **State-verifiable questions are not `MAINTAINER CHECK NEEDED` items.**
+  When evaluating a BD whose scope depends on the current repo state
+  (file presence, file contents, prior-version completeness, line-level
+  facts), run the appropriate read-only tool (Read / Grep / Glob / Bash
+  for `ls`, `find`, `git log`, `wc`, etc.) NOW and write the BD scope
+  reflecting actual current state. `MAINTAINER CHECK NEEDED` is reserved
+  for genuinely unanswerable questions: maintainer intent, future
+  decisions, judgment calls. State queries are read-only and within
+  your tool surface — answering them is your job, not the maintainer's.
 
 Before planning, read:
 - CLAUDE.md (pack repo rules)

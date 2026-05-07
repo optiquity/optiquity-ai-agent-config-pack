@@ -517,7 +517,7 @@ Resolved: n/a
 
 **BD-091 — BD-042 doc relocation (Phase 1: relocate)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: None
 Unblocks: BD-042 (resolves)
 File/Symbol: `project-template/METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` → `project-template/docs/pack/`
@@ -526,7 +526,14 @@ Description: Per BD-042 (open since v9). Relocates pack reference docs from
   audit at land-time: README v9.2 entry suggests this work was partially
   shipped; this BD ships the complete relocation across any remaining root-
   level reference docs. `git mv` preserves history.
-Resolved: n/a
+Resolved: 2026-05-07 — verification-only no-op. State audit confirmed the
+  relocation already shipped in prior versions: `project-template/` root now
+  contains only the four files BD-042 explicitly preserved (CLAUDE.md,
+  AGENTS.md, GEMINI.md, README.md); the five named reference docs are present
+  at `project-template/docs/pack/` (PM-CHAT.md, PLATFORM-SKILLS.md,
+  PACK-FEEDBACK.md) or moved pack-side to `supporting-docs/` (METHODOLOGY.md;
+  PROMPT-TEMPLATES.md retired into prompt skills). No further file moves
+  required. BD-042 is unblocked and resolves with this BD.
 
 ---
 
@@ -1646,7 +1653,7 @@ Resolved: April 2026, v9.1 — commit 5847208.
 
 **BD-042 — Move pack reference docs out of project root**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: None
 Unblocks: None
 File/Symbol: METHODOLOGY.md, PROMPT-TEMPLATES.md, PM-CHAT.md, PLATFORM-SKILLS.md,
@@ -1670,7 +1677,9 @@ Description: The project root accumulates 15+ markdown files, mixing project
 Context: Identified April 2026 during v9.1 work. Deferred to reduce risk —
   v9.1 is shipping BD-038 and BD-041; adding a file-move migration on top
   would increase the blast radius beyond what a minor version should carry.
-Resolved: n/a
+Resolved: 2026-05-07, v11.0 — resolved via BD-091 verification audit. The
+  relocation shipped incrementally across prior versions; v11.0 confirms
+  end state and closes this long-standing item.
 
 ---
 
