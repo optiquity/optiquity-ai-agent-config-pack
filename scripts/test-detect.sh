@@ -285,6 +285,67 @@ assert_eq "Active-skills with backticks → stripped + mapped correctly" \
     "capabilities: language:python, role:python-server" \
     "$(detect_installed_capabilities "$fx")"
 
+# ── detect_target_pack_version (BD-119) ───────────────────────────────
+echo "== detect_target_pack_version =="
+
+fx=$(mkfixture tgtver-empty)
+assert_eq "empty dir → unknown" \
+    "unknown" "$(detect_target_pack_version "$fx")"
+
+fx=$(mkfixture tgtver-tracker-toml-v11)
+cat > "$fx/tracker.toml" <<'EOF'
+[pack]
+version = "v11"
+
+[mode]
+state = "tracker"
+EOF
+assert_eq "tracker.toml [pack].version=v11 → v11 (signal 1)" \
+    "v11" "$(detect_target_pack_version "$fx")"
+
+fx=$(mkfixture tgtver-tracker-toml-no-pack-version)
+cat > "$fx/tracker.toml" <<'EOF'
+[mode]
+state = "flat-file"
+EOF
+mkdir -p "$fx/.claude"
+cat > "$fx/CLAUDE.md" <<'EOF'
+# CLAUDE.md
+Body content here.
+EOF
+# v10 with tracker.toml but without [pack].version: cascade falls through to v10.
+assert_eq "tracker.toml without [pack].version + v10 shape → v10" \
+    "v10" "$(detect_target_pack_version "$fx")"
+
+fx=$(mkfixture tgtver-trinity-fingerprint)
+mkdir -p "$fx/.claude"
+cat > "$fx/CLAUDE.md" <<'EOF'
+# CLAUDE.md
+- run `pack help` for the full verb list, or `/pack-help` in your CLI.
+EOF
+assert_eq "trinity addenda fingerprint → v11 (signal 2)" \
+    "v11" "$(detect_target_pack_version "$fx")"
+
+fx=$(mkfixture tgtver-surface-marker)
+mkdir -p "$fx/.claude/skills/pack-help" "$fx/.claude"
+echo "# SKILL.md" > "$fx/.claude/skills/pack-help/SKILL.md"
+cat > "$fx/CLAUDE.md" <<'EOF'
+# CLAUDE.md
+no fingerprint here.
+EOF
+assert_eq "v11 surface marker (.claude/skills/pack-help) → v11 (signal 3)" \
+    "v11" "$(detect_target_pack_version "$fx")"
+
+fx=$(mkfixture tgtver-v10-shape)
+mkdir -p "$fx/.claude" "$fx/docs/pack"
+cat > "$fx/CLAUDE.md" <<'EOF'
+# CLAUDE.md
+v10 shape, no v11 fingerprint.
+EOF
+echo "# PROMPT-TEMPLATES.md" > "$fx/docs/pack/PROMPT-TEMPLATES.md"
+assert_eq "v10 shape (PROMPT-TEMPLATES + no v11 markers) → v10 (signal 4)" \
+    "v10" "$(detect_target_pack_version "$fx")"
+
 # ── Summary ────────────────────────────────────────────────────────────
 echo
 echo "=== Results: $passes passed, $fails failed ==="

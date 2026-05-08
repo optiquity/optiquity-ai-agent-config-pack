@@ -3,7 +3,7 @@
 # Actions log; errors name the exact file and problem.
 #
 # Two jobs:
-#   - validate: runs scripts/validate-pack.py (25 structural Checks)
+#   - validate: runs scripts/validate-pack.py (26 structural Checks)
 #   - tests:    runs every scripts/tests/*-test.sh independently so a
 #               failure in one suite does not mask another's results.
 #
@@ -34,7 +34,7 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: pip install pyyaml
-      - name: Run pack validation (25 Checks)
+      - name: Run pack validation (26 Checks)
         run: python3 scripts/validate-pack.py
 
   tests:

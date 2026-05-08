@@ -299,3 +299,88 @@ detect_installed_capabilities() {
         echo "capabilities: $joined"
     fi
 }
+
+# target-pack-version: vN | unknown
+#
+# Detect the major pack version installed in the *target* project (NOT the
+# pack repo). Used by the BD-119 migrator framework to decide which adapter
+# applies, and by external harnesses (BD-114) to dispatch correctly.
+#
+# Signal cascade (architecture §5.1, cheapest first; first positive match wins):
+#   1. tracker.toml `[pack]\nversion = "vN"` field, when present (opt-in:
+#      absence is NOT a v10 signal — the cascade continues).
+#   2. Trinity addenda fingerprint — v11 trinity files contain the line
+#      `run \`pack help\` for the full verb list`.
+#   3. Surface markers — v11-only files: pack-help SKILL.md per CLI,
+#      ISSUE_TEMPLATE/work-item.yml, docs/pack/HELP-FRAGMENT.md.
+#   4. Negative markers — v10-shape: docs/pack/PROMPT-TEMPLATES.md present
+#      AND none of the v11 surface markers above.
+#   5. Otherwise: `unknown`.
+#
+# Echoes a single line to stdout with no prefix, e.g. `v11`, `v10`, or
+# `unknown`. Read-only with respect to the target.
+detect_target_pack_version() {
+    local target="${1:-.}"
+
+    # Signal 1: explicit tracker.toml [pack].version field. Opt-in.
+    if [[ -f "$target/tracker.toml" ]]; then
+        local pack_ver
+        pack_ver=$(awk '
+            /^\[pack\]/    { in_pack = 1; next }
+            /^\[/          { in_pack = 0 }
+            in_pack && /^[[:space:]]*version[[:space:]]*=/ {
+                # Extract value between quotes; tolerate either kind.
+                line = $0
+                sub(/^[^=]*=[[:space:]]*/, "", line)
+                gsub(/[[:space:]]*$/, "", line)
+                gsub(/^"/, "", line); gsub(/"$/, "", line)
+                gsub(/^\x27/, "", line); gsub(/\x27$/, "", line)
+                print line
+                exit
+            }
+        ' "$target/tracker.toml" 2>/dev/null)
+        if [[ -n "$pack_ver" ]]; then
+            echo "$pack_ver"
+            return 0
+        fi
+    fi
+
+    # Signal 2: trinity addenda fingerprint (v11+).
+    local trinity
+    for trinity in CLAUDE.md AGENTS.md GEMINI.md; do
+        if [[ -f "$target/$trinity" ]]; then
+            if grep -q 'run `pack help` for the full verb list' \
+               "$target/$trinity" 2>/dev/null; then
+                echo "v11"
+                return 0
+            fi
+        fi
+    done
+
+    # Signal 3: v11-only surface markers.
+    if [[ -f "$target/.claude/skills/pack-help/SKILL.md" \
+       || -f "$target/.codex/skills/pack-help/SKILL.md" \
+       || -f "$target/.gemini/commands/pack-help.toml" \
+       || -f "$target/.github/ISSUE_TEMPLATE/work-item.yml" \
+       || -f "$target/docs/pack/HELP-FRAGMENT.md" ]]; then
+        echo "v11"
+        return 0
+    fi
+
+    # Signal 4: v10-shape (negative markers — v9-era root docs already
+    # relocated, AND no v11 surface).
+    if [[ -f "$target/CLAUDE.md" && -d "$target/.claude" ]]; then
+        if [[ -f "$target/docs/pack/PROMPT-TEMPLATES.md" \
+           || -f "$target/docs/pack/PM-CHAT.md" \
+           || -f "$target/docs/pack/METHODOLOGY.md" ]]; then
+            echo "v10"
+            return 0
+        fi
+        # CLAUDE.md + .claude/ but none of the v10/v11 distinguishing markers:
+        # treat as v10 (the migrator's existing sanity check accepts this).
+        echo "v10"
+        return 0
+    fi
+
+    echo "unknown"
+}

@@ -26,6 +26,10 @@ Checks:
       `**Problem:**`, `**Goal:**`, `**Success criteria:**`, and a
       file-based completion-report indicator (`REPORT FILE:` or
       `**Completion report:**`).
+  26. BD-119 migrator-framework inventory: scripts/lib/migrator-core.sh
+      (when present) is shell-syntax-valid and exposes the documented
+      public-API function names + exit-code constants per
+      ARCHITECTURE-BD-119.md §3.2 / PLAN-BD-119.md §3.
 
 Exit 0 if all pass, exit 1 if any fail. Each failure prints the exact
 file, line (where applicable), and problem.
@@ -1686,6 +1690,93 @@ def check_help_fragment_tracker_byte_identity() -> None:
     ok(f"HELP-FRAGMENT-TRACKER.md byte-identical across pack-root and client mirror")
 
 
+# ── Check 26: BD-119 migrator-framework inventory ──────────────────────────
+
+def check_migrator_framework_inventory() -> None:
+    """Check 26 — BD-119 migrator-framework inventory.
+
+    Asserts the three new shared libraries are present, shell-syntax
+    valid, and (when present) source cleanly enough to expose the
+    documented public-API names per ARCHITECTURE-BD-119.md §3.2 and
+    PLAN-BD-119.md §3.
+
+    Lenient mode: if scripts/lib/migrator-core.sh is absent (early
+    commits before C-2), the check returns OK with a notice. Once the
+    file lands, the check is strict on syntax + public-API surface.
+
+    Public-API names frozen at C-3 of PLAN-BD-119.md:
+        migrator_run
+        migrator_dispatch
+        migrator_detect_target_version
+        migrator_select_adapter
+        migrator_baseline_to_tmp
+        migrator_target_surface_for_version
+    """
+    print("\n── Check 26: BD-119 migrator-framework inventory ──")
+    core = REPO_ROOT / "scripts" / "lib" / "migrator-core.sh"
+    stages = REPO_ROOT / "scripts" / "lib" / "migrator-stages.sh"
+    manifest = REPO_ROOT / "scripts" / "lib" / "migrator-manifest.sh"
+
+    if not core.is_file():
+        ok("migrator-core.sh not yet present — skipping (lenient pre-C-2)")
+        return
+
+    # Strict mode: all three libs must exist and be syntax-valid.
+    for lib in (core, stages, manifest):
+        if not lib.is_file():
+            fail(f"migrator framework library missing: {lib.relative_to(REPO_ROOT)}")
+            return
+        rc = subprocess.run(
+            ["bash", "-n", str(lib)],
+            capture_output=True, text=True,
+        )
+        if rc.returncode != 0:
+            fail(f"bash -n {lib.name} failed: {rc.stderr.strip()}")
+            return
+        ok(f"{lib.relative_to(REPO_ROOT)} syntax valid")
+
+    # Public-API names must appear as function definitions in core.
+    required_names = [
+        "migrator_run",
+        "migrator_dispatch",
+        "migrator_detect_target_version",
+        "migrator_select_adapter",
+        "migrator_baseline_to_tmp",
+        "migrator_target_surface_for_version",
+    ]
+    core_text = core.read_text()
+    for name in required_names:
+        # Match either `name() {` or `function name {` declarations.
+        if not re.search(rf'(^|\n)\s*(function\s+)?{re.escape(name)}\s*\(\)\s*\{{',
+                         core_text):
+            fail(f"migrator-core.sh missing public-API function: {name}()")
+            return
+    ok(f"migrator-core.sh declares all {len(required_names)} public-API functions")
+
+    # Exit-code constants must be present.
+    required_exits = [
+        "EXIT_PACK_INVALID",
+        "EXIT_NOT_GIT",
+        "EXIT_DIRTY",
+        "EXIT_NOT_BASELINE",
+        "EXIT_BASELINE_MISSING",
+        "EXIT_LIB_MISSING",
+        "EXIT_ALREADY_MIGRATED",
+        "EXIT_INTERNAL",
+    ]
+    for sym in required_exits:
+        if not re.search(rf'\breadonly\s+{re.escape(sym)}=', core_text):
+            fail(f"migrator-core.sh missing exit-code constant: readonly {sym}=...")
+            return
+    ok(f"migrator-core.sh declares all {len(required_exits)} exit-code constants")
+
+    # EXIT_NOT_V10 synonym preserved for back-compat (PLAN §3.5).
+    if "EXIT_NOT_V10" not in core_text:
+        fail("migrator-core.sh missing EXIT_NOT_V10 back-compat synonym")
+        return
+    ok("migrator-core.sh preserves EXIT_NOT_V10 back-compat synonym")
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -1720,6 +1811,7 @@ def main() -> None:
     check_help_fragment_completeness()
     check_help_fragment_tracker_byte_identity()
     check_customization_detection_regression_guard()
+    check_migrator_framework_inventory()
 
     print("\n" + "=" * 60)
     if failures:

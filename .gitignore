@@ -55,3 +55,9 @@ DerivedData/
 !vscode-companion-templates/.vscode/
 !vscode-companion-templates/.vscode/**
 .idea/
+
+# ── BD-119 pre-refactor monolith snapshot ─────────────────────────────────────
+# Captured before the migrate-v10-to-v11.sh refactor; consumed by the
+# behavior-preservation harness. Lives only on the implementer's working
+# tree. Never committed; recreate from a pre-refactor commit if needed.
+scripts/.bd119-pre-refactor-monolith.sh.snapshot
