@@ -22,10 +22,10 @@ Key docs: `README.md` (version table), `BACKLOG.md` (BD-NNN items),
 
 **Migrator framework (BD-119).** When authoring a new
 `scripts/migrate-vN-to-vM.sh`, source `scripts/lib/migrator-core.sh` and
-supply the adapter contract (`MIGRATOR_*` vars + hook functions). See
+supply the adapter contract (`MIGRATOR_*` vars + the hook functions). See
 `maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md` for the
-contract. Do NOT copy `scripts/migrate-v10-to-v11.sh` and rewrite —
-that regresses the framework.
+contract. Do NOT copy `scripts/migrate-v10-to-v11.sh` and rewrite — that
+regresses the framework.
 
 ---
 

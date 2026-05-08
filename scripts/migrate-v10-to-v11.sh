@@ -244,12 +244,18 @@ migrator_post_report_hook() {
 
 # ── Source the framework + run ─────────────────────────────────────────────
 
-# `$PACK` is required by every framework helper; resolve to the pack repo
-# this script lives in if the caller did not export it.
-PACK="${PACK:-$(cd "$SCRIPT_DIR/.." && pwd)}"
-export PACK
+# Source the framework via SCRIPT_DIR — the lib lives in the same pack as
+# this adapter, so we do NOT need $PACK to be set just to source it. This
+# preserves `--help` / unknown-option behavior even when PACK is unset, and
+# lets the framework's `_stage_preflight` enforce the documented
+# `EXIT_PACK_INVALID=10` path (architecture §3.2 invariant I1) when the
+# user actually attempts a migration without exporting PACK.
+#
+# Do NOT auto-resolve PACK here. The architecture/PLAN treat unset PACK as
+# a fatal preflight, not a recoverable default; substituting a fallback
+# silently breaks the documented exit-code contract.
 
 # shellcheck source=lib/migrator-core.sh disable=SC1091
-. "$PACK/scripts/lib/migrator-core.sh"
+. "$SCRIPT_DIR/lib/migrator-core.sh"
 
 migrator_run "$@"

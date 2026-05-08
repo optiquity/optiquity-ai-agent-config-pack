@@ -1695,22 +1695,28 @@ def check_help_fragment_tracker_byte_identity() -> None:
 def check_migrator_framework_inventory() -> None:
     """Check 26 — BD-119 migrator-framework inventory.
 
-    Asserts the three new shared libraries are present, shell-syntax
-    valid, and (when present) source cleanly enough to expose the
-    documented public-API names per ARCHITECTURE-BD-119.md §3.2 and
-    PLAN-BD-119.md §3.
+    Asserts, per ARCHITECTURE-BD-119.md §3.2 and PLAN-BD-119.md §3, that
+    the three new shared libraries (`migrator-core.sh`,
+    `migrator-stages.sh`, `migrator-manifest.sh`) are present and pass
+    `bash -n` syntax validation, and that `migrator-core.sh` contains:
 
-    Lenient mode: if scripts/lib/migrator-core.sh is absent (early
+      - regex matches for the 6 public-API function-name declarations
+        (frozen at C-3 of PLAN-BD-119.md): `migrator_run`,
+        `migrator_dispatch`, `migrator_detect_target_version`,
+        `migrator_select_adapter`, `migrator_baseline_to_tmp`,
+        `migrator_target_surface_for_version`;
+      - regex matches for the 8 `readonly`-declared exit-code
+        constants: `EXIT_PACK_INVALID`, `EXIT_NOT_GIT`, `EXIT_DIRTY`,
+        `EXIT_NOT_BASELINE`, `EXIT_BASELINE_MISSING`, `EXIT_LIB_MISSING`,
+        `EXIT_ALREADY_MIGRATED`, `EXIT_INTERNAL`;
+      - the `EXIT_NOT_V10` back-compat synonym (PLAN §3.5).
+
+    The check uses regex matching against the file contents — it does
+    NOT source the file, so it does not detect runtime-only defects.
+
+    Lenient mode: if `scripts/lib/migrator-core.sh` is absent (early
     commits before C-2), the check returns OK with a notice. Once the
-    file lands, the check is strict on syntax + public-API surface.
-
-    Public-API names frozen at C-3 of PLAN-BD-119.md:
-        migrator_run
-        migrator_dispatch
-        migrator_detect_target_version
-        migrator_select_adapter
-        migrator_baseline_to_tmp
-        migrator_target_surface_for_version
+    file lands, the check is strict on syntax + the regex surface above.
     """
     print("\n── Check 26: BD-119 migrator-framework inventory ──")
     core = REPO_ROOT / "scripts" / "lib" / "migrator-core.sh"

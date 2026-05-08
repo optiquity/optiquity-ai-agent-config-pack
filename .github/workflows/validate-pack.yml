@@ -92,6 +92,18 @@ jobs:
       - name: migrate-v10-to-v11 tests (BD-085)
         if: always()
         run: bash scripts/tests/test-migrate-v10-to-v11.sh
+      - name: migrator-core tests (BD-119)
+        if: always()
+        run: bash scripts/test-migrator-core.sh
+      - name: migrator-manifest tests (BD-119)
+        if: always()
+        run: bash scripts/test-migrator-manifest.sh
+      - name: build test fixtures (BD-115/116/117)
+        if: always()
+        run: bash test-fixtures/build.sh --all --clean
+      - name: migrator behavior-preservation tests (BD-119)
+        if: always()
+        run: bash scripts/test-migrator-behavior-preservation.sh
       - name: template-translations tests
         if: always()
         run: bash scripts/tests/template-translations-test.sh

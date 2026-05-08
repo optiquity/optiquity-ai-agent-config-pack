@@ -78,36 +78,14 @@ Each version is available as a git tag (v1, v2, …).
 - BD-086 — README.md v11.0 row + Repository Layout updates.
 - BD-087 — This CHANGELOG entry.
 
-**Scope C — Migrator framework refactor (BD-119)**
-
-- BD-119 — Introduce the N→N+1 migrator framework at
-  `scripts/lib/migrator-{core,stages,manifest}.sh`. The v10→v11 migrator
-  (`scripts/migrate-v10-to-v11.sh`) is now a thin per-version adapter on
-  top of the framework: it declares its from/to versions, sidecar suffix,
-  manifest, and a small set of hooks, and the framework provides
-  preflight, backup, three-way dispatch via BD-088, report rendering,
-  and exit codes. Behavior is byte-equivalent to the pre-refactor
-  monolith, gated by `scripts/test-migrator-behavior-preservation.sh`
-  in CI. Future per-version migrators (v11→v12, etc.) are small adapters
-  that declare what's specific to each version transition rather than
-  copy-rewriting the prior migrator. See
-  `maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md` and
-  `PLAN-BD-119.md`.
-
 **Audit artifacts (release evidence):**
 
 - Customization-preservation regression coverage:
   `scripts/tests/test-customization-preserve.sh` (72 tests) +
   validate-pack Check 25 (BD-089) — both run on every push.
-- Migrator-framework regression coverage (BD-119):
-  `scripts/test-migrator-core.sh` (public-API unit tests) +
-  `scripts/test-migrator-manifest.sh` (manifest parser/validator) +
-  `scripts/test-migrator-behavior-preservation.sh` (byte-equivalence
-  vs. pre-refactor monolith) — all run on every push; validate-pack
-  Check 26 lints adapter manifests.
 - Semantic audit: `maintenance-docs/v11-research/MAINTAINER-CHECK-AUDIT-2026-05-07.md`.
-- Dog-food validation: validate-pack passes all 26 Checks; CI runs
-  the test-suite matrix green.
+- Dog-food validation: validate-pack passes all 25 Checks; CI runs
+  17 test suites green.
 
 **Carried over to future work (v11-Active BDs Open at v11.0 cut):**
 

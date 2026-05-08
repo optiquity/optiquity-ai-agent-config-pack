@@ -7,9 +7,7 @@
 # contract) and ARCHITECTURE-BD-119.md §10 (behavior-preservation
 # rationale), this harness pins five axes across two independent runs of
 # the migrator and asserts byte-equivalence (modulo two narrowly scoped
-# redactions). It is the mandatory gate before C-6 cutover; without it,
-# C-6's refactor of the monolith into a framework adapter cannot be
-# proven equivalent to the pre-refactor monolith.
+# redactions).
 #
 # Two runs are compared:
 #
@@ -19,10 +17,19 @@
 #              POQ-4); recovered via `git show d7b3f07:...` when absent.
 #
 #   ADAPTER  — whatever scripts/migrate-v10-to-v11.sh currently is on
-#              this worktree. At C-5 (this commit) it is still the
-#              same monolith, so equivalence is trivially true. At C-6
-#              it will be the framework adapter (~120 lines) calling
-#              `migrator_run`, and the harness must remain green.
+#              this worktree.
+#
+# Coverage (PLAN §8.4 — 15 assertions total):
+#
+#   • 2 fixtures × 5 axes = 10 axis assertions across both v10 fixtures
+#     in a single invocation (v10-realistic-ot and v10-minimal).
+#   • 5 negative-leg tests asserting BASELINE and ADAPTER produce
+#     identical numeric exit codes for each documented failure path:
+#       N1 — EXIT_PACK_INVALID    (10): PACK env var unset
+#       N2 — EXIT_NOT_GIT         (11): target is not a git repo
+#       N3 — EXIT_DIRTY           (12): target has uncommitted changes
+#       N4 — EXIT_NOT_BASELINE    (13): target is not at v10
+#       N5 — EXIT_BASELINE_MISSING(14): required baseline tag missing
 #
 # Equivalence axes (PLAN §8.2):
 #
@@ -50,13 +57,15 @@
 # Usage:
 #     bash scripts/test-migrator-behavior-preservation.sh [fixture-name]
 #
-#     fixture-name defaults to v10-realistic-ot. The named fixture must
-#     exist under test-fixtures/<name>/ — re-build with
+#     fixture-name (optional) restricts the axis sweep to a single
+#     fixture name (e.g. v10-realistic-ot or v10-minimal). When omitted,
+#     the harness iterates over BOTH v10 fixtures plus the 5 negative
+#     legs for the full 15-assertion run. Named fixtures must exist
+#     under test-fixtures/<name>/ — re-build via
 #     `bash test-fixtures/build.sh --name <name> --clean` if missing.
 #
-# Exit 0 on all five axes matching across all subtests; exit 1 otherwise
-# with a per-axis breakdown. The summary line follows the convention
-# established by sibling test scripts:
+# Exit 0 when all assertions pass; exit 1 otherwise with a per-axis
+# breakdown. Summary line:
 #
 #     === Results: <P> passed, <F> failed ===
 
@@ -74,8 +83,16 @@ PACK_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 readonly BD119_PRE_REFACTOR_SHA="d7b3f07"
 readonly SNAPSHOT_FILE="$PACK_ROOT/scripts/.bd119-pre-refactor-monolith.sh.snapshot"
 
-FIXTURE_NAME="${1:-v10-realistic-ot}"
-FIXTURE_DIR="$PACK_ROOT/test-fixtures/$FIXTURE_NAME"
+# Default v10 fixture set per PLAN §8.4. When the user passes a fixture
+# name as $1 we restrict to that fixture (back-compat for one-shot runs).
+DEFAULT_FIXTURES=(v10-realistic-ot v10-minimal)
+if (( $# >= 1 )) && [[ -n "${1:-}" ]]; then
+    FIXTURES=("$1")
+    RUN_NEGATIVES=0
+else
+    FIXTURES=("${DEFAULT_FIXTURES[@]}")
+    RUN_NEGATIVES=1
+fi
 
 RESULTS_DIR="$(mktemp -d -t bd119-results.XXXXXX)"
 KEEP_RESULTS="${BD119_KEEP_RESULTS:-0}"
@@ -137,20 +154,8 @@ chmod +x "$BASELINE_FILE"
 
 ADAPTER_FILE="$PACK_ROOT/scripts/migrate-v10-to-v11.sh"
 echo "  adapter source: $ADAPTER_FILE"
-echo "  fixture:        $FIXTURE_DIR"
+echo "  fixtures:       ${FIXTURES[*]}"
 echo "  results dir:    $RESULTS_DIR"
-
-# Materialize the fixture if absent. The fixture's own state is verified
-# against test-fixtures/manifest.txt (the build script does this when
-# --clean is passed). For the harness's purpose we only need the fixture
-# tree to exist; manifest verification is the build script's concern.
-if [[ ! -d "$FIXTURE_DIR" ]]; then
-    echo "  fixture missing — building via test-fixtures/build.sh"
-    bash "$PACK_ROOT/test-fixtures/build.sh" --name "$FIXTURE_NAME" --clean \
-        >/dev/null 2>&1 \
-        || die "fixture build failed; rerun manually: bash test-fixtures/build.sh --name $FIXTURE_NAME --clean"
-fi
-[[ -d "$FIXTURE_DIR" ]] || die "fixture still missing after build: $FIXTURE_DIR"
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -191,8 +196,8 @@ _redact() {
 # tree itself (tar). Excludes .git/ from filelist + tar (per PLAN §8.2
 # A1 rule and to keep the harness independent of git-internal flux).
 _run_impl() {
-    local impl="$1" migrator="$2"
-    local clone="$RESULTS_DIR/$impl.tree"
+    local impl="$1" migrator="$2" fixture_dir="$3" result_prefix="$4"
+    local clone="$RESULTS_DIR/${result_prefix}.${impl}.tree"
     rm -rf "$clone"
     mkdir -p "$clone"
 
@@ -200,23 +205,18 @@ _run_impl() {
     # by test-fixtures/build.sh) so we can `cp -R` and the .git/
     # subtree comes along — needed because the migrator requires a
     # clean git working tree (S0 preflight).
-    cp -R "$FIXTURE_DIR/." "$clone/"
+    cp -R "$fixture_dir/." "$clone/"
 
     PACK="$PACK_ROOT" \
     bash "$migrator" "$clone" \
-        > "$RESULTS_DIR/$impl.stdout" 2> "$RESULTS_DIR/$impl.stderr"
+        > "$RESULTS_DIR/${result_prefix}.${impl}.stdout" \
+        2> "$RESULTS_DIR/${result_prefix}.${impl}.stderr"
     local rc=$?
-    printf '%d\n' "$rc" > "$RESULTS_DIR/$impl.exit"
+    printf '%d\n' "$rc" > "$RESULTS_DIR/${result_prefix}.${impl}.exit"
 
     # File list: every regular file post-migration, excluding .git/ and
     # the .pack-migrate-* state + backup directories. PLAN §8.3 spells
-    # this exclusion out verbatim: the state dir contains diagnostic
-    # files (three-way diff side-files, dispositions.tsv, etc.) whose
-    # content embeds tmp paths and run timestamps that vary between
-    # any two invocations of the migrator — even of the *same* monolith.
-    # report.md (also under the state dir) is checked separately by axis
-    # A3 with redactions applied. Use LC_ALL=C sort for deterministic
-    # ordering across BSD vs GNU find.
+    # this exclusion out verbatim.
     (
         cd "$clone" && \
         find . -type f \
@@ -225,142 +225,276 @@ _run_impl() {
             \! -path './.pack-migrate-*/*' \
             \! -path './.pack-migrate-*' \
             -print 2>/dev/null \
-            | LC_ALL=C sort > "$RESULTS_DIR/$impl.filelist"
+            | LC_ALL=C sort > "$RESULTS_DIR/${result_prefix}.${impl}.filelist"
     )
 
-    # Tar archive of the post-migration tree (excluding .git/ + every
-    # .pack-migrate-* dir) so axis A2 can `cmp` per-file content without
-    # re-walking the filesystem twice. BSD + GNU tar both accept
-    # --exclude. Pattern matches both .pack-migrate-v10-to-v11/ and
-    # .pack-migrate-v10-to-v11-backup/ in one expression.
     tar -C "$clone" \
         --exclude='./.git' \
         --exclude='./.pack-migrate-*' \
-        -cf "$RESULTS_DIR/$impl.tar" . 2>/dev/null
+        -cf "$RESULTS_DIR/${result_prefix}.${impl}.tar" . 2>/dev/null
 
     return 0
 }
 
-# ── 1. Run BASELINE + ADAPTER ──────────────────────────────────────────────
-echo "== running BASELINE (pre-refactor monolith) =="
-_run_impl baseline "$BASELINE_FILE"
-b_rc=$(cat "$RESULTS_DIR/baseline.exit")
-echo "  exit=$b_rc"
+# ── Per-fixture axis sweep (5 axes) ────────────────────────────────────────
+_sweep_fixture() {
+    local fixture_name="$1"
+    local fixture_dir="$PACK_ROOT/test-fixtures/$fixture_name"
+    local prefix="fix-$fixture_name"
 
-echo "== running ADAPTER (current scripts/migrate-v10-to-v11.sh) =="
-_run_impl adapter "$ADAPTER_FILE"
-a_rc=$(cat "$RESULTS_DIR/adapter.exit")
-echo "  exit=$a_rc"
+    echo
+    echo "############################################################"
+    echo "## fixture: $fixture_name"
+    echo "############################################################"
 
-# Both must exit 0 for axes A1..A4 to be meaningfully comparable. If
-# both are non-zero AND identical, A5 still passes (negative-leg
-# behavior preservation), but A1..A3 are not asserted because the tree
-# may be in an undefined intermediate state. Document this and treat
-# the case as a partial run.
-both_succeeded=0
-if [[ "$b_rc" = "0" && "$a_rc" = "0" ]]; then
-    both_succeeded=1
-fi
-
-# ── A5. Exit code equality ─────────────────────────────────────────────────
-echo "== A5 — exit code equality =="
-if [[ "$b_rc" = "$a_rc" ]]; then
-    pass "A5 exit codes match (baseline=$b_rc adapter=$a_rc)"
-else
-    fail "A5 exit codes differ" "baseline=$b_rc adapter=$a_rc"
-fi
-
-# ── A1. File list equality ─────────────────────────────────────────────────
-echo "== A1 — file list equality =="
-if [[ "$both_succeeded" = "1" ]]; then
-    if diff -u "$RESULTS_DIR/baseline.filelist" \
-              "$RESULTS_DIR/adapter.filelist" \
-              > "$RESULTS_DIR/A1.diff" 2>&1; then
-        pass "A1 file lists byte-identical"
-    else
-        fail "A1 file lists differ" \
-            "see $RESULTS_DIR/A1.diff (BD119_KEEP_RESULTS=1 to retain)"
-        head -40 "$RESULTS_DIR/A1.diff" >&2
+    # Materialize the fixture if absent. Fixture-internal byte-determinism
+    # is the build script's concern; we only require the tree to exist.
+    if [[ ! -d "$fixture_dir" ]]; then
+        echo "  fixture missing — building via test-fixtures/build.sh"
+        bash "$PACK_ROOT/test-fixtures/build.sh" \
+            --name "$fixture_name" --clean \
+            >/dev/null 2>&1 \
+            || die "fixture build failed: $fixture_name"
     fi
-else
-    fail "A1 skipped — at least one impl failed before completion" \
-        "baseline=$b_rc adapter=$a_rc"
-fi
+    [[ -d "$fixture_dir" ]] \
+        || die "fixture still missing after build: $fixture_dir"
 
-# ── A2. Per-file content equality ──────────────────────────────────────────
-echo "== A2 — per-file content equality =="
-if [[ "$both_succeeded" = "1" ]]; then
-    a2_misses=0
-    a2_first_miss=""
-    while IFS= read -r f; do
-        [[ -z "$f" ]] && continue
-        # The filelist already excludes .pack-migrate-* (where report.md
-        # and the diagnostic three-way diffs live), so no per-file
-        # carve-out is needed here. report.md is asserted separately by
-        # axis A3 with the allowed redactions applied.
-        # Use tar -xO (POSIX, BSD + GNU) to extract one file each side.
-        # cmp is POSIX. Both are bash-3.2 safe.
-        if ! cmp -s \
-            <(tar -xOf "$RESULTS_DIR/baseline.tar" "$f" 2>/dev/null) \
-            <(tar -xOf "$RESULTS_DIR/adapter.tar" "$f" 2>/dev/null)
-        then
-            a2_misses=$((a2_misses + 1))
-            [[ -z "$a2_first_miss" ]] && a2_first_miss="$f"
-        fi
-    done < "$RESULTS_DIR/baseline.filelist"
-    if [[ "$a2_misses" -eq 0 ]]; then
-        pass "A2 per-file content byte-identical across all files"
-    else
-        fail "A2 $a2_misses file(s) differ" \
-            "first divergence: $a2_first_miss"
+    echo "== running BASELINE (pre-refactor monolith) =="
+    _run_impl baseline "$BASELINE_FILE" "$fixture_dir" "$prefix"
+    local b_rc; b_rc=$(cat "$RESULTS_DIR/${prefix}.baseline.exit")
+    echo "  exit=$b_rc"
+
+    echo "== running ADAPTER (current scripts/migrate-v10-to-v11.sh) =="
+    _run_impl adapter "$ADAPTER_FILE" "$fixture_dir" "$prefix"
+    local a_rc; a_rc=$(cat "$RESULTS_DIR/${prefix}.adapter.exit")
+    echo "  exit=$a_rc"
+
+    local both_succeeded=0
+    if [[ "$b_rc" = "0" && "$a_rc" = "0" ]]; then
+        both_succeeded=1
     fi
-else
-    fail "A2 skipped — at least one impl failed before completion" \
-        "baseline=$b_rc adapter=$a_rc"
-fi
 
-# ── A3. report.md equality (post-redaction) ────────────────────────────────
-echo "== A3 — report.md equality (post-redaction) =="
-if [[ "$both_succeeded" = "1" ]]; then
-    b_report="$RESULTS_DIR/baseline.tree/.pack-migrate-v10-to-v11/report.md"
-    a_report="$RESULTS_DIR/adapter.tree/.pack-migrate-v10-to-v11/report.md"
-    if [[ ! -f "$b_report" || ! -f "$a_report" ]]; then
-        fail "A3 report.md missing on at least one side" \
-            "baseline=$([[ -f $b_report ]] && echo present || echo absent) adapter=$([[ -f $a_report ]] && echo present || echo absent)"
+    # ── A5 ────────────────────────────────────────────────────────────────
+    echo "== [$fixture_name] A5 — exit code equality =="
+    if [[ "$b_rc" = "$a_rc" ]]; then
+        pass "[$fixture_name] A5 exit codes match (baseline=$b_rc adapter=$a_rc)"
     else
-        _redact "$b_report" "$RESULTS_DIR/baseline.report.redacted"
-        _redact "$a_report" "$RESULTS_DIR/adapter.report.redacted"
-        if cmp -s "$RESULTS_DIR/baseline.report.redacted" \
-                  "$RESULTS_DIR/adapter.report.redacted"; then
-            pass "A3 report.md byte-identical post-redaction"
+        fail "[$fixture_name] A5 exit codes differ" "baseline=$b_rc adapter=$a_rc"
+    fi
+
+    # ── A1 ────────────────────────────────────────────────────────────────
+    echo "== [$fixture_name] A1 — file list equality =="
+    if [[ "$both_succeeded" = "1" ]]; then
+        if diff -u "$RESULTS_DIR/${prefix}.baseline.filelist" \
+                  "$RESULTS_DIR/${prefix}.adapter.filelist" \
+                  > "$RESULTS_DIR/${prefix}.A1.diff" 2>&1; then
+            pass "[$fixture_name] A1 file lists byte-identical"
         else
-            diff -u "$RESULTS_DIR/baseline.report.redacted" \
-                    "$RESULTS_DIR/adapter.report.redacted" \
-                    > "$RESULTS_DIR/A3.diff" 2>&1
-            fail "A3 report.md differs post-redaction" \
-                "see $RESULTS_DIR/A3.diff"
-            head -40 "$RESULTS_DIR/A3.diff" >&2
+            fail "[$fixture_name] A1 file lists differ" \
+                "see $RESULTS_DIR/${prefix}.A1.diff"
+            head -40 "$RESULTS_DIR/${prefix}.A1.diff" >&2
         fi
+    else
+        fail "[$fixture_name] A1 skipped — at least one impl failed" \
+            "baseline=$b_rc adapter=$a_rc"
     fi
-else
-    fail "A3 skipped — at least one impl failed before completion" \
-        "baseline=$b_rc adapter=$a_rc"
-fi
 
-# ── A4. Stdout equality (post-redaction) ───────────────────────────────────
-echo "== A4 — stdout equality (post-redaction) =="
-_redact "$RESULTS_DIR/baseline.stdout" "$RESULTS_DIR/baseline.stdout.redacted"
-_redact "$RESULTS_DIR/adapter.stdout"  "$RESULTS_DIR/adapter.stdout.redacted"
-if cmp -s "$RESULTS_DIR/baseline.stdout.redacted" \
-          "$RESULTS_DIR/adapter.stdout.redacted"; then
-    pass "A4 stdout byte-identical post-redaction"
-else
-    diff -u "$RESULTS_DIR/baseline.stdout.redacted" \
-            "$RESULTS_DIR/adapter.stdout.redacted" \
-            > "$RESULTS_DIR/A4.diff" 2>&1
-    fail "A4 stdout differs post-redaction" \
-        "see $RESULTS_DIR/A4.diff"
-    head -40 "$RESULTS_DIR/A4.diff" >&2
+    # ── A2 ────────────────────────────────────────────────────────────────
+    echo "== [$fixture_name] A2 — per-file content equality =="
+    if [[ "$both_succeeded" = "1" ]]; then
+        local a2_misses=0 a2_first_miss="" f
+        while IFS= read -r f; do
+            [[ -z "$f" ]] && continue
+            if ! cmp -s \
+                <(tar -xOf "$RESULTS_DIR/${prefix}.baseline.tar" "$f" 2>/dev/null) \
+                <(tar -xOf "$RESULTS_DIR/${prefix}.adapter.tar" "$f" 2>/dev/null)
+            then
+                a2_misses=$((a2_misses + 1))
+                [[ -z "$a2_first_miss" ]] && a2_first_miss="$f"
+            fi
+        done < "$RESULTS_DIR/${prefix}.baseline.filelist"
+        if [[ "$a2_misses" -eq 0 ]]; then
+            pass "[$fixture_name] A2 per-file content byte-identical"
+        else
+            fail "[$fixture_name] A2 $a2_misses file(s) differ" \
+                "first divergence: $a2_first_miss"
+        fi
+    else
+        fail "[$fixture_name] A2 skipped — at least one impl failed" \
+            "baseline=$b_rc adapter=$a_rc"
+    fi
+
+    # ── A3 ────────────────────────────────────────────────────────────────
+    echo "== [$fixture_name] A3 — report.md equality (post-redaction) =="
+    if [[ "$both_succeeded" = "1" ]]; then
+        local b_report="$RESULTS_DIR/${prefix}.baseline.tree/.pack-migrate-v10-to-v11/report.md"
+        local a_report="$RESULTS_DIR/${prefix}.adapter.tree/.pack-migrate-v10-to-v11/report.md"
+        if [[ ! -f "$b_report" || ! -f "$a_report" ]]; then
+            fail "[$fixture_name] A3 report.md missing on at least one side" \
+                "baseline=$([[ -f $b_report ]] && echo present || echo absent) adapter=$([[ -f $a_report ]] && echo present || echo absent)"
+        else
+            _redact "$b_report" "$RESULTS_DIR/${prefix}.baseline.report.redacted"
+            _redact "$a_report" "$RESULTS_DIR/${prefix}.adapter.report.redacted"
+            if cmp -s "$RESULTS_DIR/${prefix}.baseline.report.redacted" \
+                      "$RESULTS_DIR/${prefix}.adapter.report.redacted"; then
+                pass "[$fixture_name] A3 report.md byte-identical post-redaction"
+            else
+                diff -u "$RESULTS_DIR/${prefix}.baseline.report.redacted" \
+                        "$RESULTS_DIR/${prefix}.adapter.report.redacted" \
+                        > "$RESULTS_DIR/${prefix}.A3.diff" 2>&1
+                fail "[$fixture_name] A3 report.md differs post-redaction" \
+                    "see $RESULTS_DIR/${prefix}.A3.diff"
+                head -40 "$RESULTS_DIR/${prefix}.A3.diff" >&2
+            fi
+        fi
+    else
+        fail "[$fixture_name] A3 skipped — at least one impl failed" \
+            "baseline=$b_rc adapter=$a_rc"
+    fi
+
+    # ── A4 ────────────────────────────────────────────────────────────────
+    echo "== [$fixture_name] A4 — stdout equality (post-redaction) =="
+    _redact "$RESULTS_DIR/${prefix}.baseline.stdout" \
+        "$RESULTS_DIR/${prefix}.baseline.stdout.redacted"
+    _redact "$RESULTS_DIR/${prefix}.adapter.stdout" \
+        "$RESULTS_DIR/${prefix}.adapter.stdout.redacted"
+    if cmp -s "$RESULTS_DIR/${prefix}.baseline.stdout.redacted" \
+              "$RESULTS_DIR/${prefix}.adapter.stdout.redacted"; then
+        pass "[$fixture_name] A4 stdout byte-identical post-redaction"
+    else
+        diff -u "$RESULTS_DIR/${prefix}.baseline.stdout.redacted" \
+                "$RESULTS_DIR/${prefix}.adapter.stdout.redacted" \
+                > "$RESULTS_DIR/${prefix}.A4.diff" 2>&1
+        fail "[$fixture_name] A4 stdout differs post-redaction" \
+            "see $RESULTS_DIR/${prefix}.A4.diff"
+        head -40 "$RESULTS_DIR/${prefix}.A4.diff" >&2
+    fi
+}
+
+# ── Negative-leg tests (5) ────────────────────────────────────────────────
+# Each negative leg sets up a deliberately-broken target and asserts
+# BASELINE and ADAPTER produce identical numeric exit codes. PLAN §8.4
+# named these five exit codes as the load-bearing failure paths.
+#
+# Helper: invoke a migrator, capture rc (stdout/stderr suppressed —
+# we only assert exit-code parity; PLAN §8.2 axis A5 semantics).
+_neg_invoke() {
+    local migrator="$1" target="$2" pack_val="$3" v10_tag_val="$4"
+    local env_args=()
+    [[ -n "$pack_val"     ]] && env_args+=("PACK=$pack_val")
+    [[ -n "$v10_tag_val"  ]] && env_args+=("V10_TAG=$v10_tag_val")
+
+    if (( ${#env_args[@]} > 0 )); then
+        env -i HOME="$HOME" PATH="$PATH" "${env_args[@]}" \
+            bash "$migrator" "$target" >/dev/null 2>&1
+    else
+        env -i HOME="$HOME" PATH="$PATH" \
+            bash "$migrator" "$target" >/dev/null 2>&1
+    fi
+    return $?
+}
+
+# Build a minimal v10-shaped target git repo with clean working tree
+# (matches the make_v10_target helper in the BD-085 test suite).
+_neg_make_v10_target() {
+    local d
+    d=$(mktemp -d -t bd119-neg-v10.XXXXXX)
+    git init -q "$d"
+    git -C "$d" config user.email "harness@example.com"
+    git -C "$d" config user.name  "Harness"
+    mkdir -p "$d/.claude" "$d/docs/pack" "$d/.codex" "$d/.gemini"
+    git -C "$PACK_ROOT" show v10:project-template/CLAUDE.md \
+        > "$d/CLAUDE.md" 2>/dev/null
+    git -C "$PACK_ROOT" show v10:project-template/AGENTS.md \
+        > "$d/AGENTS.md" 2>/dev/null
+    git -C "$PACK_ROOT" show v10:project-template/GEMINI.md \
+        > "$d/GEMINI.md" 2>/dev/null
+    git -C "$d" add -A >/dev/null
+    git -C "$d" commit -q -m "v10 initial state" 2>/dev/null
+    printf '%s\n' "$d"
+}
+
+_run_negative() {
+    local label="$1" pack_val="$2" v10_tag_val="$3" target="$4" expected_rc="$5"
+
+    local b_rc a_rc
+    _neg_invoke "$BASELINE_FILE" "$target" "$pack_val" "$v10_tag_val"
+    b_rc=$?
+    _neg_invoke "$ADAPTER_FILE"  "$target" "$pack_val" "$v10_tag_val"
+    a_rc=$?
+
+    if [[ "$b_rc" = "$a_rc" ]]; then
+        if [[ "$b_rc" = "$expected_rc" ]]; then
+            pass "[neg] $label baseline=adapter=$b_rc (expected $expected_rc)"
+        else
+            # Parity holds but neither matches the documented code.
+            # Behavior is preserved (the harness's job) but the shared
+            # exit code is unexpected — fail loud so the maintainer
+            # knows the documented contract drifted.
+            fail "[neg] $label baseline=adapter=$b_rc but expected $expected_rc"
+        fi
+    else
+        fail "[neg] $label exit codes differ" \
+            "baseline=$b_rc adapter=$a_rc (expected $expected_rc)"
+    fi
+}
+
+_run_negatives() {
+    echo
+    echo "############################################################"
+    echo "## negative-leg tests (5 — exit-code parity)"
+    echo "############################################################"
+
+    # N1 — EXIT_PACK_INVALID (10): PACK env var unset.
+    local n1_target
+    n1_target=$(mktemp -d -t bd119-neg-pack.XXXXXX)
+    _run_negative "N1 EXIT_PACK_INVALID (PACK unset)" "" "" "$n1_target" 10
+    rm -rf "$n1_target"
+
+    # N2 — EXIT_NOT_GIT (11): target is not a git repo.
+    local n2_target
+    n2_target=$(mktemp -d -t bd119-neg-nogit.XXXXXX)
+    _run_negative "N2 EXIT_NOT_GIT (target not a git repo)" \
+        "$PACK_ROOT" "" "$n2_target" 11
+    rm -rf "$n2_target"
+
+    # N3 — EXIT_DIRTY (12): target has uncommitted changes.
+    local n3_target
+    n3_target=$(_neg_make_v10_target)
+    echo "uncommitted" > "$n3_target/dirty.txt"
+    _run_negative "N3 EXIT_DIRTY (uncommitted changes)" \
+        "$PACK_ROOT" "" "$n3_target" 12
+    rm -rf "$n3_target"
+
+    # N4 — EXIT_NOT_BASELINE (13): target is not at v10. We use a bare
+    # git repo with one empty commit and no trinity files; the migrator
+    # cannot match it as a v10 baseline.
+    local n4_target
+    n4_target=$(mktemp -d -t bd119-neg-notv10.XXXXXX)
+    git init -q "$n4_target"
+    git -C "$n4_target" config user.email "harness@example.com"
+    git -C "$n4_target" config user.name  "Harness"
+    git -C "$n4_target" commit --allow-empty -q -m "init" 2>/dev/null
+    _run_negative "N4 EXIT_NOT_BASELINE (target not at v10)" \
+        "$PACK_ROOT" "" "$n4_target" 13
+    rm -rf "$n4_target"
+
+    # N5 — EXIT_BASELINE_MISSING (14): override V10_TAG to a tag the
+    # pack repo does not have, so the baseline lookup fails.
+    local n5_target
+    n5_target=$(_neg_make_v10_target)
+    _run_negative "N5 EXIT_BASELINE_MISSING (v10 tag missing)" \
+        "$PACK_ROOT" "v999-nonexistent-harness" "$n5_target" 14
+    rm -rf "$n5_target"
+}
+
+# ── Main loop ──────────────────────────────────────────────────────────────
+for fx in "${FIXTURES[@]}"; do
+    _sweep_fixture "$fx"
+done
+
+if [[ "$RUN_NEGATIVES" = "1" ]]; then
+    _run_negatives
 fi
 
 # ── Summary ────────────────────────────────────────────────────────────────
