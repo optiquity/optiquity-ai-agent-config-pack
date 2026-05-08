@@ -1165,6 +1165,79 @@ Resolved: n/a
 
 ---
 
+**BD-121 — Sunset v9 migration infrastructure**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: BD-122 (test-fixtures convention doc no longer has to disambiguate from a live v9 system)
+File/Symbol: `maintenance-docs/test-fixtures/`, `scripts/test-migration.sh`, `scripts/migrate-v9-to-v10.sh`
+Description: Two parallel test-fixture systems exist today: the legacy
+  `maintenance-docs/test-fixtures/` (v9.3 → v10 migration regression
+  fixtures, BD-059 era; tracks fixture content in git via overlay-on-
+  baseline pattern) and the newer `test-fixtures/` at repo root
+  (BD-113; gitignored content, deterministic rebuild + manifest
+  verification). No clients are on v9 anymore, so the v9→v10 migration
+  script and its fixtures are dead code. Keeping them risks confusing
+  contributors about which fixture system to extend and bloats CI.
+  Action: delete `maintenance-docs/test-fixtures/` (16 tracked files),
+  `scripts/test-migration.sh` (the v9→v10 CI runner), and
+  `scripts/migrate-v9-to-v10.sh` if present. Update README, CHANGELOG,
+  validate-pack.py if any of them reference the deleted paths. Verify
+  validate-pack.yml CI workflow doesn't invoke `test-migration.sh`
+  standalone before deletion. If a v9 client unexpectedly surfaces
+  post-deletion, they recover the migrator via `git checkout v9 --
+  scripts/migrate-v9-to-v10.sh` from history.
+Resolved: n/a
+
+---
+
+**BD-122 — Document `test-fixtures/` `<vN>-<persona>` versioning convention**
+Type: TODO(version)
+Status: Open
+Blockers: BD-121 (cleaner once the legacy system is gone)
+Unblocks: future-version fixture additions (no re-derivation by next contributor)
+File/Symbol: `test-fixtures/README.md`
+Description: The root `test-fixtures/` directory holds fixtures named
+  `<vN>-<persona>` (e.g. `v10-minimal`, `v11-flat-file`,
+  `v11-tracker-on`, `existing-project-mid-dev`). The convention is
+  implicit today; an explicit section in `test-fixtures/README.md`
+  prevents future-vN contributors from re-deriving the layout or
+  re-introducing a parallel system. Add a "Naming convention" section:
+  major-version prefix for version-pinned fixtures (`v10-`, `v11-`,
+  ...), bare descriptors for version-agnostic fixtures (`existing-
+  project-mid-dev`). Add a "When to add a fixture here vs. elsewhere"
+  paragraph. Keep it short — implementation is one or two paragraphs
+  and a row-by-row update of the existing fixture table. Tiny.
+Resolved: n/a
+
+---
+
+**BD-123 — Relocate `tracker.toml.example` from repo root to `project-template/`**
+Type: TODO(version)
+Status: Open
+Blockers: BD-119 (must land AFTER BD-119 closes to avoid coordinating with the in-flight migrator refactor)
+Unblocks: cleaner repo-root surface (root holds entry-point docs and pack ops files only)
+File/Symbol: `tracker.toml.example` (move from repo root to `project-template/`); references in `README.md`, `OPTIONAL-FEATURES.md`, `HELP-FRAGMENT-TRACKER.md`, `CHANGELOG.md`, `BACKLOG.md`, `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md`, `supporting-docs/MERGE-STRATEGY.md`, `supporting-docs/MIGRATION-v10-to-v11.md`, `scripts/init-project.sh`, `scripts/migrate-v10-to-v11.sh` (the BD-119 adapter shim post-cutover), `scripts/tests/test-init-project.sh`, `scripts/tests/test-migrate-v10-to-v11.sh`
+Description: `tracker.toml.example` is template-source content — it's
+  copied into a project on `init-project.sh` so the user can reference
+  the canonical tracker.toml shape. It currently lives at repo root,
+  which mixes user-facing example content with pack ops files
+  (CLAUDE.md, PACK-CHAT.md, PACK-AGENTS.md, BACKLOG.md, etc.) and
+  entry-point docs (README.md, QUICKSTART.md, OPTIONAL-FEATURES.md).
+  Move to `project-template/tracker.toml.example` so it lives with the
+  rest of project-template content. The user-facing path inside an
+  initialized project does NOT change (still `tracker.toml.example` at
+  the project root after init copies it). Update the 7 doc references
+  + 4 script references. **Sequencing:** must land AFTER BD-119 closes
+  — `migrate-v10-to-v11.sh` is being refactored from a monolith into a
+  thin adapter via BD-119; doing this rename mid-refactor would force
+  coordinating updates across both the monolith and the eventual
+  adapter shim. Post-BD-119 the adapter is small and the rename
+  touches it cheaply.
+Resolved: n/a
+
+---
+
 ## Active — v10 Scope
 
 **BD-059 — v10 migration silently destroys project customization**
