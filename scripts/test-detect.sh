@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# pack-internal: true  (CI test runner; not a user-facing verb)
 # scripts/test-detect.sh — unit tests for scripts/lib/detect.sh
 #
 # Runs each detect_* function against fixture git repos / filesystem

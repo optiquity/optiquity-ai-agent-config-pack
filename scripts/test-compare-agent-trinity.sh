@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# pack-internal: true  (CI test runner; not a user-facing verb)
 # scripts/test-compare-agent-trinity.sh — unit tests for compare-agent-trinity.py.
 #
 # Builds synthetic three-tool agent file trios under a temp pack-shape

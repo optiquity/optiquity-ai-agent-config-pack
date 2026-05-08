@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pack-internal: true  (invoked only by migrators; not a user-facing verb)
 """
 merge-trinity.py — classifier-wrapped merge of v9.3 pack trinity templates
 (CLAUDE.md, AGENTS.md, GEMINI.md) with the corresponding project trinity

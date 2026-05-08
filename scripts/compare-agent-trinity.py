@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pack-internal: true  (CI helper; not a user-facing verb)
 """
 compare-agent-trinity.py — verify trinity-rule symmetry across the three
 tool variants of a pack-roster agent file.

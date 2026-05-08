@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# pack-internal: true  (CI test runner; not a user-facing verb)
 # scripts/test-migration.sh — end-to-end test runner for the v9.3 → v10
 # migration script. Builds synthetic v9.3-shape projects from fixtures
 # under maintenance-docs/test-fixtures/, runs scripts/migrate-v9-to-v10.sh

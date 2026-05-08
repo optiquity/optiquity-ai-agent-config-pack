@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pack-internal: true  (invoked only by migrators; not a user-facing verb)
 """
 merge-platform-skills.py — merge a v10 pack PLATFORM-SKILLS.md template
 with a v9.3 (or later) project PLATFORM-SKILLS.md, preserving the

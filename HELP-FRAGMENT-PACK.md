@@ -18,6 +18,18 @@ in your CLI for this content. Full docs in `QUICKSTART.md`, `README.md`,
 | `bash scripts/tests/<name>-test.sh` | Run an individual test suite. CI runs all. |
 | `pack help` | Print this fragment (LCD shell verb). |
 
+## Pack scripts (install / migrate / tracker)
+
+| Script | What it does |
+|---|---|
+| `scripts/init-project.sh` | Bootstrap a Pack install in a new or existing project directory. Use `--update` to refresh an existing pack install in place. |
+| `scripts/migrate-v9-to-v10.sh` | One-shot v9.3 → v10 migrator (frozen). Use against a v9.3 client repo. |
+| `scripts/migrate-v10-to-v11.sh` | One-shot v10 → v11 migrator. Backup + BD-088 customization preserve + truthful report. |
+| `scripts/restore-from-backup.sh` | Restore a v9.3 → v10 pre-migration tree (use the v11 migrator's printed `rsync` recipe for v11 backups). |
+| `scripts/add-capability.sh` | Extend an existing project with an additional language/platform capability. |
+| `scripts/pack-tracker.sh <subcmd>` | Tracker mode — `init`, `forward`, `reverse`, `status`, `doctor`, `enable-recommendations`. |
+| `scripts/tracker-migrate.sh <subcmd>` | Tracker forward / reverse / status / doctor (lower-level wrapper). |
+
 ## Tracker commands (v11+)
 
 [Included from `HELP-FRAGMENT-TRACKER.md` at pack root via `pack-help.sh`.]

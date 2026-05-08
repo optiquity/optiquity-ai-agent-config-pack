@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# pack-internal: true  (CI test runner; not a user-facing verb)
 # scripts/test-restore-from-backup.sh — unit tests for restore-from-backup.sh
 # and the three-way classifier in scripts/lib/three-way.sh.
 #

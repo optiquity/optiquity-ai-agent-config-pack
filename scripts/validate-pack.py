@@ -1304,6 +1304,209 @@ def check_trinity_addenda_h2() -> None:
         return
 
 
+def check_pack_help_per_cli_parity() -> None:
+    """Check 21 — per-CLI pack-help surface parity (BD-082).
+
+    Per V3 §28.2.5 + DELTA L1, the pack-help verb is exposed via three
+    per-CLI surfaces in lockstep:
+      - .claude/skills/pack-help/SKILL.md   (Claude skill)
+      - .codex/skills/pack-help/SKILL.md    (Codex skill)
+      - .gemini/commands/pack-help.toml     (Gemini command)
+
+    Per surface (pack-root + project-template/), all three must exist or
+    all three must be absent. All three must reference scripts/pack-help.sh
+    so the command actually invokes the pack-help shell.
+    """
+    print("\n── Check 21: Pack-help per-CLI parity (BD-082) ──")
+    surfaces = {
+        "pack-root":         REPO_ROOT,
+        "project-template":  REPO_ROOT / "project-template",
+    }
+    triplets = {
+        "claude": (".claude/skills/pack-help/SKILL.md",          "skill"),
+        "codex":  (".codex/skills/pack-help/SKILL.md",           "skill"),
+        "gemini": (".gemini/commands/pack-help.toml",            "command"),
+    }
+    any_failed = False
+    for surface, root in surfaces.items():
+        present, absent = [], []
+        for cli, (rel, _kind) in triplets.items():
+            (present if (root / rel).is_file() else absent).append(cli)
+        if present and absent:
+            fail(f"{surface}: pack-help parity violated — present in {sorted(present)}, missing in {sorted(absent)}")
+            any_failed = True
+            continue
+        if not present:
+            ok(f"{surface}: pack-help absent on all 3 CLIs (consistent — feature not installed)")
+            continue
+        # All three present — verify each references scripts/pack-help.sh.
+        bad = []
+        for cli, (rel, _kind) in triplets.items():
+            text = (root / rel).read_text()
+            if "scripts/pack-help.sh" not in text and "pack-help.sh" not in text:
+                bad.append(cli)
+        if bad:
+            fail(f"{surface}: pack-help present but does not reference scripts/pack-help.sh on {sorted(bad)}")
+            any_failed = True
+            continue
+        ok(f"{surface}: all 3 CLIs present and reference scripts/pack-help.sh")
+    if any_failed:
+        return
+
+
+_VERB_RE = re.compile(
+    # Only match pack-root verb invocation shapes. Project-template
+    # scripts (e.g. format-swift.sh) and editorial mentions are out of
+    # scope for the pack-root help fragment. Allowed shapes:
+    #   `pack <subcommand>[ <subcommand>]…`     — shell-verb form
+    #   `/pack-<word>`                          — slash-command form
+    #   `scripts/<path>.sh|.py`                 — explicit pack-root script ref
+    r"`(pack(?:\s\w+)+|/pack-\w+|scripts/[A-Za-z0-9._/-]+\.(?:sh|py))`"
+)
+_PACK_INTERNAL_RE = re.compile(r"^#\s*pack-internal:\s*true\b", re.MULTILINE)
+
+
+def check_help_fragment_freshness() -> None:
+    """Check 22 — Help-fragment freshness vs prose verb references (BD-082).
+
+    Every verb-shape token (e.g. `pack help`, `/pack-help`, `pack tracker init`,
+    `scripts/pack-help.sh`) referenced in the named user-facing docs must
+    appear somewhere in the matching HELP-FRAGMENT*.md. Prevents prose
+    docs drifting ahead of the help fragment.
+
+    Conservative: only flags verbs that match the regex shape AND are
+    absent from the fragment. Editorial mentions of unrelated commands
+    are not flagged.
+    """
+    print("\n── Check 22: Help-fragment freshness (BD-082) ──")
+    sources = {
+        "pack-root": [
+            REPO_ROOT / "PACK-CHAT.md",
+            REPO_ROOT / "QUICKSTART.md",
+            REPO_ROOT / "supporting-docs" / "OPTIONAL-FEATURES.md",
+            REPO_ROOT / "supporting-docs" / "INSTALL-PROCEDURES.md",
+        ],
+        "project-template": [
+            REPO_ROOT / "project-template" / "docs" / "pack" / "PM-CHAT.md",
+        ],
+    }
+    fragments = {
+        "pack-root":        REPO_ROOT / "HELP-FRAGMENT-PACK.md",
+        "project-template": REPO_ROOT / "project-template" / "docs" / "pack" / "HELP-FRAGMENT.md",
+    }
+    tracker_fragment = REPO_ROOT / "HELP-FRAGMENT-TRACKER.md"
+
+    any_failed = False
+    for surface, doc_list in sources.items():
+        frag = fragments[surface]
+        if not frag.is_file():
+            fail(f"{surface}: help fragment missing: {frag.relative_to(REPO_ROOT)}")
+            any_failed = True
+            continue
+        frag_text = frag.read_text()
+        if tracker_fragment.is_file():
+            frag_text += "\n" + tracker_fragment.read_text()
+        verbs_referenced = set()
+        for doc in doc_list:
+            if not doc.is_file():
+                continue
+            for m in _VERB_RE.finditer(doc.read_text()):
+                token = m.group(1)
+                # `scripts/<file>` references are only pack-root verbs if
+                # the file actually exists at pack root. Project-template
+                # scripts (e.g. scripts/format-swift.sh, deployed to
+                # clients) are out of scope for the pack-root help
+                # fragment even when documented in pack-side install
+                # docs that describe what gets installed.
+                if token.startswith("scripts/"):
+                    if not (REPO_ROOT / token).is_file():
+                        continue
+                verbs_referenced.add(token)
+        missing = sorted(v for v in verbs_referenced if v not in frag_text)
+        if missing:
+            fail(f"{surface}: verbs referenced in prose but absent from help fragment ({frag.relative_to(REPO_ROOT)}):")
+            for v in missing:
+                fail(f"  missing: `{v}`")
+            any_failed = True
+            continue
+        ok(f"{surface}: {len(verbs_referenced)} prose-referenced verb(s) all present in fragment")
+    if any_failed:
+        return
+
+
+def check_help_fragment_completeness() -> None:
+    """Check 23 — Help-fragment completeness vs scripts/ executables (BD-082).
+
+    Every top-level executable script in scripts/ must appear in
+    HELP-FRAGMENT-PACK.md unless the script declares `# pack-internal: true`
+    near the top. Prevents the fragment going stale as new scripts ship.
+    """
+    print("\n── Check 23: Help-fragment completeness (BD-082) ──")
+    fragment = REPO_ROOT / "HELP-FRAGMENT-PACK.md"
+    tracker_fragment = REPO_ROOT / "HELP-FRAGMENT-TRACKER.md"
+    if not fragment.is_file():
+        fail(f"pack-root help fragment missing: {fragment.name}")
+        return
+    text = fragment.read_text()
+    if tracker_fragment.is_file():
+        text += "\n" + tracker_fragment.read_text()
+
+    scripts_dir = REPO_ROOT / "scripts"
+    missing = []
+    flagged_internal = []
+    listed = []
+    for entry in sorted(scripts_dir.iterdir()):
+        if not entry.is_file():
+            continue
+        if entry.suffix not in (".sh", ".py"):
+            continue
+        if not os.access(entry, os.X_OK):
+            continue
+        # Skip the validate-pack helper itself — it's CI-only.
+        if entry.name == "validate-pack.py":
+            flagged_internal.append(entry.name)
+            continue
+        head = entry.read_text(errors="replace")[:2000]
+        if _PACK_INTERNAL_RE.search(head):
+            flagged_internal.append(entry.name)
+            continue
+        if entry.name in text:
+            listed.append(entry.name)
+        else:
+            missing.append(entry.name)
+    if missing:
+        fail(f"scripts/ executables missing from HELP-FRAGMENT-PACK.md (or mark with `# pack-internal: true`):")
+        for n in missing:
+            fail(f"  {n}")
+        return
+    ok(f"all {len(listed)} non-internal scripts/ executables listed in HELP-FRAGMENT-PACK.md "
+       f"({len(flagged_internal)} marked pack-internal)")
+
+
+def check_help_fragment_tracker_byte_identity() -> None:
+    """Check 24 — Shared HELP-FRAGMENT-TRACKER byte-identity (BD-082, DELTA L1).
+
+    The tracker fragment is canonical at pack root and mirrored in the
+    client template at project-template/docs/pack/. Per DELTA L1 the
+    two MUST be byte-identical so install-time copies in BD-080 stage
+    S11 produce a faithful client mirror.
+    """
+    print("\n── Check 24: HELP-FRAGMENT-TRACKER byte-identity (BD-082, DELTA L1) ──")
+    pack_root = REPO_ROOT / "HELP-FRAGMENT-TRACKER.md"
+    client    = REPO_ROOT / "project-template" / "docs" / "pack" / "HELP-FRAGMENT-TRACKER.md"
+    if not pack_root.is_file():
+        fail(f"pack-root canonical missing: {pack_root.name}")
+        return
+    if not client.is_file():
+        fail(f"client mirror missing: project-template/docs/pack/{client.name}")
+        return
+    if pack_root.read_bytes() != client.read_bytes():
+        fail(f"byte-identity violated: {pack_root.relative_to(REPO_ROOT)} != "
+             f"{client.relative_to(REPO_ROOT)}")
+        return
+    ok(f"HELP-FRAGMENT-TRACKER.md byte-identical across pack-root and client mirror")
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -1333,6 +1536,10 @@ def main() -> None:
     check_gitignore_env_example_exception()
     check_issue_template_forms()
     check_template_archive_v11()
+    check_pack_help_per_cli_parity()
+    check_help_fragment_freshness()
+    check_help_fragment_completeness()
+    check_help_fragment_tracker_byte_identity()
 
     print("\n" + "=" * 60)
     if failures:
