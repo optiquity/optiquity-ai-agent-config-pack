@@ -1081,7 +1081,7 @@ Resolved: n/a
 
 **BD-115 — `existing-project-mid-dev` fixture (pack added to in-progress project)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: None
 Unblocks: BD-116
 File/Symbol: `test-fixtures/build.sh` (new builder), `test-fixtures/README.md`
@@ -1095,7 +1095,19 @@ Description: Today there is no fixture for "user has a real project
   user files. Version-agnostic: same fixture serves v11, v12, ... since
   the input shape (a generic in-progress project) doesn't change with
   pack version.
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — `_build_existing_project_mid_dev` shipped
+  in `test-fixtures/build.sh`, fixture lives at
+  `test-fixtures/existing-project-mid-dev/` with deterministic SHA
+  `a54e081a9e1d04f293bfb38fa0af77fd9f7f8619`. Mixed Swift+Python+gRPC
+  starter shape (Package.swift + Sources/AcmeWidget/ + Tests/ +
+  proto/catalog.proto + service/ + .gitignore + README.md), 3 commits
+  of pre-existing project history, zero pack files. Two `--all --clean`
+  runs produce byte-identical manifest; `--verify` exits 0. Documented
+  in `test-fixtures/README.md` and pack-root `README.md` Repository
+  Layout. Pack-reviewer audited the fixture (PACK-REVIEW-BD-115-BD-119)
+  and accepted as correct; only finding was BD-118-scope (CI workflow
+  needs `--all --clean` before `--verify` step), not a defect in the
+  fixture itself. Trinity rule untouched.
 
 ---
 
@@ -1168,7 +1180,7 @@ Resolved: n/a
 
 **BD-119 — General N→N+1 migrator framework (`scripts/lib/migrator-core.sh`)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: None
 Unblocks: BD-114, BD-120; every future per-version migrator
 File/Symbol: `scripts/lib/migrator-core.sh` (new), `scripts/migrate-v10-to-v11.sh` (refactor)
@@ -1183,7 +1195,34 @@ Description: Today `migrate-v10-to-v11.sh` is monolithic — every
   the framework as the first consumer + reference implementation.
   Makes v12, v13, ... migration "just work" — no full rewrite per
   version.
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — Framework shipped across 8 commits
+  (C-1..C-7 + C-4b) per ARCHITECTURE-BD-119.md + PLAN-BD-119.md.
+  3 new lib files: `scripts/lib/migrator-core.sh` (496 lines,
+  6 frozen public-API functions + 8 exit-code constants +
+  `EXIT_NOT_V10` synonym), `scripts/lib/migrator-stages.sh`
+  (529 lines, 7 stage functions implementing architecture §6
+  invariants), `scripts/lib/migrator-manifest.sh` (528 lines,
+  4-verb declarative parser + dispatcher with trinity-parity
+  validator). `scripts/migrate-v10-to-v11.sh` refactored from
+  437-line monolith to 247-line adapter (5 `MIGRATOR_*` env vars +
+  4 declarative hooks + post-dispatch hook for v10-specific
+  inline behaviors). 3 new test scripts: `test-migrator-core.sh`
+  (19 cases), `test-migrator-manifest.sh` (12 cases),
+  `test-migrator-behavior-preservation.sh` (15 cases — 2 fixtures
+  × 5 axes + 5 negative-leg exit-code parity tests). All wired
+  into `validate-pack.yml` CI. New `validate-pack.py` Check 26
+  enforces public-API surface lock + exit-code constants + lib
+  presence + bash-n syntax. Cross-version dispatch via
+  `detect_target_pack_version` (scripts/lib/detect.sh, 5-signal
+  cascade) + `migrator_select_adapter` (filename-glob discovery).
+  Pack-reviewer audited the batch (PACK-REVIEW-BD-115-BD-119);
+  fix-follow `79f3aef` addressed 1 BLOCKER (PACK auto-resolve
+  removal) + 5 SHOULD-FIX (CI wiring, harness expansion to 15/15,
+  CHANGELOG mid-version revert, trinity wording alignment, Check 26
+  docstring). Existing `test-migrate-v10-to-v11.sh` regression
+  suite restored to 39/39 post-fix-follow. Trinity rule respected
+  (CLAUDE/AGENTS/GEMINI byte-identical "Migrator framework" bullet).
+  v12+ migrators are now small adapters atop the framework.
 
 ---
 
