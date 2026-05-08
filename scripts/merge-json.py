@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pack-internal: true  (invoked only by migrators; not a user-facing verb)
 """
 merge-json.py — three-way JSON key-merge per V10-MIGRATION-FIX-DESIGN.md
 Part 3.7 (BD-059). Used by migrate-v9-to-v10.sh for K1 (`.claude/settings.json`)

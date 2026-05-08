@@ -1355,15 +1355,28 @@ def check_pack_help_per_cli_parity() -> None:
 
 
 _VERB_RE = re.compile(
-    # Only match pack-root verb invocation shapes. Project-template
-    # scripts (e.g. format-swift.sh) and editorial mentions are out of
-    # scope for the pack-root help fragment. Allowed shapes:
+    # Match verb invocation shapes; existence-filter applied below to
+    # filter project-template-only references and editorial mentions.
+    # Allowed shapes:
     #   `pack <subcommand>[ <subcommand>]…`     — shell-verb form
     #   `/pack-<word>`                          — slash-command form
-    #   `scripts/<path>.sh|.py`                 — explicit pack-root script ref
-    r"`(pack(?:\s\w+)+|/pack-\w+|scripts/[A-Za-z0-9._/-]+\.(?:sh|py))`"
+    #   `scripts/<path>.sh|.py`                 — explicit script path
+    #   `<name>.sh` / `<name>.py`               — bare script name
+    r"`(pack(?:\s\w+)+|/pack-\w+|scripts/[A-Za-z0-9._/-]+\.(?:sh|py)|[A-Za-z0-9][A-Za-z0-9._-]*\.(?:sh|py))`"
 )
 _PACK_INTERNAL_RE = re.compile(r"^#\s*pack-internal:\s*true\b", re.MULTILINE)
+
+
+def _is_pack_internal(path: Path) -> bool:
+    """Scan the first 2000 bytes of `path` for a `# pack-internal: true`
+    marker. Used by Checks 22 and 23 to exempt internal helpers (CI test
+    runners, migrator-only merge helpers) from user-facing-fragment rules.
+    """
+    try:
+        head = path.read_text(errors="replace")[:2000]
+    except OSError:
+        return False
+    return bool(_PACK_INTERNAL_RE.search(head))
 
 
 def check_help_fragment_freshness() -> None:
@@ -1379,26 +1392,30 @@ def check_help_fragment_freshness() -> None:
     are not flagged.
     """
     print("\n── Check 22: Help-fragment freshness (BD-082) ──")
-    sources = {
-        "pack-root": [
-            REPO_ROOT / "PACK-CHAT.md",
-            REPO_ROOT / "QUICKSTART.md",
-            REPO_ROOT / "supporting-docs" / "OPTIONAL-FEATURES.md",
-            REPO_ROOT / "supporting-docs" / "INSTALL-PROCEDURES.md",
-        ],
-        "project-template": [
-            REPO_ROOT / "project-template" / "docs" / "pack" / "PM-CHAT.md",
-        ],
-    }
-    fragments = {
-        "pack-root":        REPO_ROOT / "HELP-FRAGMENT-PACK.md",
-        "project-template": REPO_ROOT / "project-template" / "docs" / "pack" / "HELP-FRAGMENT.md",
+    surfaces = {
+        "pack-root": {
+            "root": REPO_ROOT,
+            "docs": [
+                REPO_ROOT / "PACK-CHAT.md",
+                REPO_ROOT / "QUICKSTART.md",
+                REPO_ROOT / "supporting-docs" / "OPTIONAL-FEATURES.md",
+                REPO_ROOT / "supporting-docs" / "INSTALL-PROCEDURES.md",
+            ],
+            "fragment": REPO_ROOT / "HELP-FRAGMENT-PACK.md",
+        },
+        "project-template": {
+            "root": REPO_ROOT / "project-template",
+            "docs": [
+                REPO_ROOT / "project-template" / "docs" / "pack" / "PM-CHAT.md",
+            ],
+            "fragment": REPO_ROOT / "project-template" / "docs" / "pack" / "HELP-FRAGMENT.md",
+        },
     }
     tracker_fragment = REPO_ROOT / "HELP-FRAGMENT-TRACKER.md"
 
     any_failed = False
-    for surface, doc_list in sources.items():
-        frag = fragments[surface]
+    for surface, cfg in surfaces.items():
+        frag = cfg["fragment"]
         if not frag.is_file():
             fail(f"{surface}: help fragment missing: {frag.relative_to(REPO_ROOT)}")
             any_failed = True
@@ -1406,20 +1423,33 @@ def check_help_fragment_freshness() -> None:
         frag_text = frag.read_text()
         if tracker_fragment.is_file():
             frag_text += "\n" + tracker_fragment.read_text()
+        surface_root = cfg["root"]
         verbs_referenced = set()
-        for doc in doc_list:
+        for doc in cfg["docs"]:
             if not doc.is_file():
                 continue
             for m in _VERB_RE.finditer(doc.read_text()):
                 token = m.group(1)
-                # `scripts/<file>` references are only pack-root verbs if
-                # the file actually exists at pack root. Project-template
-                # scripts (e.g. scripts/format-swift.sh, deployed to
-                # clients) are out of scope for the pack-root help
-                # fragment even when documented in pack-side install
-                # docs that describe what gets installed.
+                # Resolve script-shaped references against the surface
+                # root so client-doc references resolve against the
+                # client (project-template) tree, not the pack root.
+                # Bare-name refs (e.g. `init-project.sh`) only count if
+                # the file actually exists at scripts/<name> on the
+                # surface — filters editorial mentions of names that
+                # aren't real scripts on this surface.
                 if token.startswith("scripts/"):
-                    if not (REPO_ROOT / token).is_file():
+                    script_path = surface_root / token
+                    if not script_path.is_file():
+                        continue
+                    if _is_pack_internal(script_path):
+                        continue
+                elif token.endswith(".sh") or token.endswith(".py"):
+                    if "/" in token:
+                        continue
+                    script_path = surface_root / "scripts" / token
+                    if not script_path.is_file():
+                        continue
+                    if _is_pack_internal(script_path):
                         continue
                 verbs_referenced.add(token)
         missing = sorted(v for v in verbs_referenced if v not in frag_text)
@@ -1466,8 +1496,7 @@ def check_help_fragment_completeness() -> None:
         if entry.name == "validate-pack.py":
             flagged_internal.append(entry.name)
             continue
-        head = entry.read_text(errors="replace")[:2000]
-        if _PACK_INTERNAL_RE.search(head):
+        if _is_pack_internal(entry):
             flagged_internal.append(entry.name)
             continue
         if entry.name in text:
@@ -1500,6 +1529,13 @@ def check_customization_detection_regression_guard() -> None:
     Without this Check, a BD-088 regression (silently dropping a
     finding, returning success when a real-merge case occurs) could ship
     unnoticed. CI fails on regression.
+
+    Coverage scope: this Check guards against silent disposition / report
+    drops for the four most-load-bearing classes. Exhaustive class
+    coverage (removed-by-pack-customized sidecar, JSON/TOML allowlist
+    merges, pm-chat marker-section, all-three-absent early-return) is
+    delegated to scripts/tests/test-customization-preserve.sh, which
+    runs in CI per BD-083.
     """
     print("\n── Check 25: Customization-detection regression guard (BD-089) ──")
     import shutil
@@ -1522,10 +1558,10 @@ def check_customization_detection_regression_guard() -> None:
         driver = Path(tmpdir) / "driver.sh"
         driver.write_text(f"""#!/usr/bin/env bash
 set -euo pipefail
-export _CP_PACK_ROOT={REPO_ROOT}
-source {REPO_ROOT}/scripts/lib/three-way.sh
-source {REPO_ROOT}/scripts/lib/customization-preserve.sh
-source {REPO_ROOT}/scripts/lib/customization-report.sh
+export _CP_PACK_ROOT="{REPO_ROOT}"
+source "{REPO_ROOT}/scripts/lib/three-way.sh"
+source "{REPO_ROOT}/scripts/lib/customization-preserve.sh"
+source "{REPO_ROOT}/scripts/lib/customization-report.sh"
 customization_preserve_init "{state_dir}" ".v10-customized"
 
 # Fixture 1: trinity with project customization (real-merge-required).

@@ -362,7 +362,7 @@ Resolved: 2026-05-07, v11.0 — stage S11 + cmd_update + 30 fixture tests.
 
 **BD-081 — Trinity addenda: per-CLI command files at pack-root + client (P-help reference)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-077
 Unblocks: None
 File/Symbol: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` (pack-root); `project-template/CLAUDE.md`, `AGENTS.md`, `GEMINI.md` (client) — 6 files trinity-replicated × 2 surfaces
@@ -371,13 +371,17 @@ Description: Implements V3 §A.2 trinity addendum. Adds one-line "Pack
   first action: run `pack-startup` (pack repo) or `pm-startup` (client repo)"
   line. The second line makes §28.2.6 Layer 1's static greeting a documented
   contract. All 6 files in lockstep.
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — "## Quick reference" block added in
+  lockstep across all 6 trinity files. Block lines byte-identical
+  within each surface; only inter-surface difference is `pack-startup`
+  vs `pm-startup`. Verified by Check 18 (trinity H2 parity) still
+  green. Pack-Reviewer Batch 5 confirmed byte-identity.
 
 ---
 
 **BD-082 — validate-pack.py Checks for help / per-CLI parity / byte-identity**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-076, BD-077, BD-080, BD-081
 Unblocks: None
 File/Symbol: `scripts/validate-pack.py`
@@ -390,13 +394,20 @@ Description: Lands the four CI gates that prevent help-surface drift per V3
   consistency / per-CLI parity for `auditor-issue-tracking.md`) ride a later
   extension at step 24a per Addendum 4. Check numbers per §6.C / §6.O / §6.O.1
   audit at land-time.
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — Checks 21–24 landed in validate-pack.py.
+  Check 21 per-CLI parity (claude/codex skill + gemini command).
+  Check 22 freshness (verb regex with surface-aware existence filter +
+  pack-internal exemption shared with Check 23). Check 23 completeness
+  (every executable listed unless `# pack-internal: true`). Check 24
+  DELTA L1 byte-identity. Drift surfaced + fixed: HELP-FRAGMENT-PACK.md
+  gained 7-row "Pack scripts" section; 9 helpers marked pack-internal
+  (CI runners + migrator-only merge helpers).
 
 ---
 
 **BD-083 — Aggregate CI workflow update + test runner**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-060, BD-065, BD-068, BD-072, BD-070
 Unblocks: None
 File/Symbol: `.github/workflows/validate-pack.yml`
@@ -405,7 +416,11 @@ Description: One workflow, one runner. Invokes the new test scripts:
   `tracker-migrate-roundtrip-test.sh`, `recommendation-test.sh`,
   `tracker-errors-test.sh`. Stage-fence the live-network tests (skipped in
   CI by default; recorded fixtures used). Each test independent.
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — workflow split into `validate` (25
+  Checks) + `tests` (17 independent test suites with `if: always()`
+  isolation). All offline (tracker-* uses PATH-prepended fake gh
+  stubs). Branch protection note in workflow comments — must re-apply
+  to require both jobs (one-time admin action).
 
 ---
 
@@ -509,7 +524,7 @@ Resolved: 2026-05-07, v11.0 — library + report renderer + 72 fixture tests
 
 **BD-089 — validate-pack.py Check (customization-detection regression guard)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-088, BD-085
 Unblocks: None
 File/Symbol: `scripts/validate-pack.py`
@@ -519,7 +534,13 @@ Description: Synthetic test that simulates `migrate-v10-to-v11.sh` against a
   verification gap from BD-059 success criterion. Runs in CI on every push.
   Check name (`check_customization_detection_regression_guard`) is stable;
   number per §6.C / §6.O.1 audit at land-time.
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — Check 25 lands. 4-fixture driver covers
+  trinity real-merge / gemini-env / custom-agent / unchanged-pack
+  classes; asserts each produces exactly one finding with expected
+  disposition + class + appears in rendered report. Exhaustive class
+  coverage (sidecar / structured-config / pm-chat / all-three-absent)
+  delegated to test-customization-preserve.sh which now runs in CI
+  per BD-083.
 
 ---
 
