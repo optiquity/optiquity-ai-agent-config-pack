@@ -10,6 +10,14 @@
 #
 # Replaces the pre-BD-119 monolith (refactor at BD-119 C-6).
 #
+# Design rationale, contract, and adapter-authoring rules:
+#   maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md
+# Implementation plan + verification recipe:
+#   maintenance-docs/v11-implementation/PLAN-BD-119.md
+# A future migrate-v11-to-v12.sh is the same shape as this file: declare
+# the MIGRATOR_* contract + the small set of hook functions, then source
+# the framework and call migrator_run "$@".
+#
 # Architectural note on hook usage:
 #
 # The v10→v11 transition's post-dispatch work (BD-042 legacy-doc

@@ -178,7 +178,7 @@ scripts/                                    Pack-level scripts
 ├── validate-pack.py                        CI structural validation (25 Checks; pack-internal)
 ├── init-project.sh                         Initialize the pack in a new or existing project (v10; --update mode v11)
 ├── migrate-v9-to-v10.sh                    v9.3 → v10.0 migration script (v10; frozen)
-├── migrate-v10-to-v11.sh                   v10.0 → v11.0 migration script (v11)
+├── migrate-v10-to-v11.sh                   v10.0 → v11.0 migrator (v11; thin adapter on the BD-119 framework at lib/migrator-*.sh)
 ├── add-capability.sh                       Add a pack-supported capability to an existing project (v10)
 ├── pack-help.sh                            LCD shell help-verb (v11; renders HELP-FRAGMENT)
 ├── pack-tracker.sh                         Tracker — init / status / mirror-rebuild / disable / doctor / update-templates / enable-recommendations (v11)
@@ -190,12 +190,19 @@ scripts/                                    Pack-level scripts
     ├── three-way.sh                        4-case three-way classifier (BD-088 / migrators)
     ├── customization-preserve.sh           BD-088 customization-preservation orchestrator (v11)
     ├── customization-report.sh             Truthful migration report renderer (v11)
+    ├── migrator-core.sh                    BD-119 N→N+1 migrator framework — sequencer + public API (v11)
+    ├── migrator-stages.sh                  BD-119 framework — preflight / backup / dispatch / report stage helpers (v11)
+    ├── migrator-manifest.sh                BD-119 framework — manifest parser + validator (v11)
     ├── recommendation.sh                   Inflection-point recommendation system (v11; D-19)
     ├── tracker-provider.sh                 TrackerProvider abstraction (v11; D-1)
     ├── tracker-provider-gh.sh              gh-CLI backend (v11; D-2)
     ├── tracker-{config,init,labels,errors,sidecar,mirror,agent-read}.sh   Tracker subsystem (v11)
     ├── tracker-migrate-{forward,reverse}.sh    Forward / reverse migration libs (v11; D-3 / D-8)
     └── template-{translations,version}.sh  Template freshness helpers (v11)
+
+scripts/test-migrator-core.sh               BD-119 unit tests — public API surface (v11)
+scripts/test-migrator-manifest.sh           BD-119 unit tests — manifest parser/validator (v11)
+scripts/test-migrator-behavior-preservation.sh   BD-119 byte-equivalence harness vs. pre-refactor monolith (v11)
 
 .github/workflows/                          GitHub Actions
 └── validate-pack.yml                       Pack self-validation on every push

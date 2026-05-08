@@ -26,6 +26,13 @@ Key files to read before working on the pack:
 - `PACK-CHAT.md` — PM chat operating rules
 - `PACK-AGENTS.md` — agent routing table for pack development work
 
+**Migrator framework (BD-119).** When authoring a new
+`scripts/migrate-vN-to-vM.sh`, source `scripts/lib/migrator-core.sh` and
+supply the adapter contract (`MIGRATOR_*` vars + the hook functions). See
+`maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md` for the
+contract. Do NOT copy `scripts/migrate-v10-to-v11.sh` and rewrite — that
+regresses the framework.
+
 ---
 
 ## Rules for Codex agents working on this repo
