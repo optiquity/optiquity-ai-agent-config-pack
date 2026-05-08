@@ -74,3 +74,71 @@ errors name the exact file and problem. Never skip or disable the workflow.
 
 **No commit or push without explicit user approval.**
 Always run `git add -A && git status` and show staged files before committing.
+
+---
+
+## Pack memory (project-local learnings)
+
+These entries codify learnings from prior sessions. They are authoritative —
+treat them as standing rules, not suggestions. Pack Chat and all pack agents
+must respect them. When a learning becomes stale, update or remove the entry
+in the same commit as the behavior change.
+
+### Workflow
+
+- **Agents never commit.** No agent — including `pack-coder` — may run
+  `git add`, `git commit`, `git push`, `git tag`, or any state-changing git
+  verb. Read-only git verbs (`status`, `diff`, `log`, `rev-parse`, `show`)
+  are allowed. Only Pack Chat may stage and commit, and only with explicit
+  user approval. The agent's output is its report file plus working-tree
+  edits; Pack Chat reads the report, verifies, then commits.
+- **Pack Chat does not architect.** Architecture, planning, implementation,
+  and review work goes to `pack-architect` / `pack-planner` / `pack-coder` /
+  `pack-reviewer` directly. Pack Chat handles BACKLOG/CHANGELOG entries,
+  routing, approvals, commits, and user-facing decisions.
+- **One review/fix cycle per batch.** Run `pack-reviewer` once per batch,
+  fix once, move on. Do not propose a second review pass; the final audit
+  is user-initiated.
+- **Implicit BD status flip on batch completion.** When a batch's review +
+  fixes are clean and tests are green, flip its BDs to `Resolved` as the
+  final step of the batch — no separate user approval needed.
+
+### Agent invocation rules
+
+- **Pack agent invocation.** Pack agents are invoked via `codex --agent
+  pack-<name>` (separate session) or as a sub-agent within Pack Chat. The
+  pack repo has no `agent-run.sh` — that's a project template helper, not
+  a pack invocation method.
+- **Agent prompt requirements.** Every agent prompt must include: context
+  (what the codebase is, what the task is), output file path, read-only
+  flags where applicable, markdown-only directive for outputs, problem /
+  goal / success criteria, and an instruction to chunk write calls for
+  outputs over ~300 lines.
+- **No solutions in agent prompts.** Agent prompts contain only problem,
+  goal, and success criteria. No proposed solutions, no "pick one" options,
+  no biased framing. Architects/planners/coders/reviewers reach their own
+  conclusions.
+- **No prior reviews to pack-reviewer.** Reviewer prompts reference
+  ARCHITECTURE / PLAN docs only — never prior `PACK-REVIEW-*.md` reports.
+  Including a prior review biases the new review.
+
+### Repo conventions
+
+- **BACKLOG.md has no Resolved section.** Entries resolve in place by
+  flipping `Status: Open` to `Status: Resolved` and filling the
+  `Resolved:` line. Do not propose moving entries to a separate section.
+- **Separate pack ops from pack product.** Pack ops files (CLAUDE.md,
+  AGENTS.md, GEMINI.md, PACK-CHAT.md, PACK-AGENTS.md, BACKLOG.md, etc.)
+  are NEVER mixed into pack product files (`project-template/`,
+  `supporting-docs/`). Same applies in reverse.
+- **Test infra is self-provisioned.** Tests that need GitHub repos
+  provision them via `gh` CLI with per-step approval and clean up after.
+  Never touch existing real repos as test targets — use scratch repos
+  or `/tmp` clones.
+
+### Project goals (v11)
+
+- Pack tracker opt-in works with little to no user intervention; flat-file
+  is default; tracker is opt-in but easy.
+- OT-style v10→v11 migration is automated; OT itself is read-only for
+  testing (use `/tmp` clones or scratch fixtures, never write to real OT).
