@@ -1028,23 +1028,53 @@ Resolved: 2026-05-08, v11.0 — 4 fixtures shipped via deterministic
 
 ---
 
-**BD-114 — Real-OT read-only dry-run harness for vN→vN+1 migration**
+**BD-114 — `dry-run-migration.sh` parameterized read-only migration harness**
 Type: TODO(version)
 Status: Open
 Blockers: BD-119
-Unblocks: v11.0 ship gate (Criterion 2); same harness reused for v12+
-File/Symbol: `scripts/dry-run-real-ot.sh`
-Description: Ship gate for "real OT migrates cleanly from vN to vN+1."
-  Read-only clones the real OT repo into /tmp via HTTPS, sets `pushurl`
-  to `/dev/null` on the clone (push physically impossible from the
-  working copy), auto-detects OT's current pack version, picks the
+Unblocks: v11.0 ship gate (Criterion 2); same harness reused for v12+; first public-release usability for any org maintaining a v10 client
+File/Symbol: `scripts/dry-run-migration.sh` (NEW); referenced by BD-117 (RELEASE-GATE.md) and BD-118 (CI wiring) — both BDs should be updated to use the new file name when they implement
+Description: Read-only migration dry-run harness that works for **any
+  v10 client repo** — not just Optiquity's OT. Originally scoped as
+  `dry-run-real-ot.sh` with OT's URL baked in; revised to be
+  parameterized so the same harness serves Optiquity's release gate
+  AND public users who maintain their own v10 clients.
+
+  **Public-friendly design:**
+  Required first arg = a git URL (HTTPS or SSH) OR a local filesystem
+  path to a v10 client repo. The harness clones (URL) or copies (local
+  path) read-only into /tmp, sets `pushurl` to `/dev/null` on the
+  clone (push physically impossible from the working copy), auto-
+  detects the target's current pack version via
+  `detect_target_pack_version` (BD-119 lib/detect.sh), picks the
   appropriate `migrate-v<N>-to-v<N+1>.sh` from `scripts/`, runs it
   against the clone, captures the full diff to a report artifact, and
   removes the clone via EXIT trap regardless of pass / fail / Ctrl-C.
   Refuses to run if the working dir resolves anywhere outside /tmp or
-  $TMPDIR. Real OT itself is never opened in write mode by this
-  harness. Manual gate (not in CI) since it touches a real network
-  repo. Required before tagging v11.0, v12.0, ... etc.
+  $TMPDIR. The original target (URL or local path) is never opened in
+  write mode by this harness.
+
+  **Three usage modes (all the same script):**
+  1. *Synthetic fixture (CI / smoke test):* `dry-run-migration.sh
+     test-fixtures/v10-realistic-ot` — works for everyone; no network
+     required; serves as the regression floor.
+  2. *Public user, their own v10 client:* `dry-run-migration.sh
+     /path/to/their/v10/clone` or `dry-run-migration.sh
+     https://github.com/their-org/their-v10-repo` — they preview the
+     migration result before applying it for real.
+  3. *Optiquity release gate:* `dry-run-migration.sh "$OT_URL"` —
+     where `$OT_URL` is set via Optiquity's internal CI secret /
+     env var; the URL is NOT hardcoded in the pack. Single code
+     path, target supplied at invocation time.
+
+  **Input contract** (documented in BD-125, the companion doc):
+  target must be a clean v10 install (no uncommitted changes), no
+  in-flight prior migration, accessible via `git clone` or readable
+  as a local directory.
+
+  Manual gate (not in CI for the URL-based modes since they touch
+  network); the synthetic-fixture mode (#1 above) IS in CI per
+  BD-118. Required before tagging v11.0, v12.0, ... etc.
 Resolved: n/a
 
 ---
@@ -1246,6 +1276,50 @@ Description: The root `test-fixtures/` directory holds fixtures named
   project-mid-dev`). Add a "When to add a fixture here vs. elsewhere"
   paragraph. Keep it short — implementation is one or two paragraphs
   and a row-by-row update of the existing fixture table. Tiny.
+Resolved: n/a
+
+---
+
+**BD-125 — `dry-run-migration.sh` input contract + usage doc**
+Type: TODO(version)
+Status: Open
+Blockers: BD-114
+Unblocks: first public-release usability for the dry-run harness; clearer Optiquity release-gate procedure
+File/Symbol: `supporting-docs/DRY-RUN-MIGRATION.md` (NEW); cross-references in `supporting-docs/MIGRATION-v10-to-v11.md`, `README.md`, `OPTIONAL-FEATURES.md` (audit and update if the dry-run is mentioned)
+Description: Companion documentation for the parameterized BD-114
+  harness. Must be public-friendly because the harness is now usable
+  by any org maintaining a v10 client (not just Optiquity).
+
+  Contents:
+  1. **Input contract** — what state the target repo must be in for
+     the dry-run to produce meaningful output: clean v10 install
+     (CLAUDE.md present, .claude/ etc.), no uncommitted changes, no
+     in-flight prior migration sentinel, no merge conflicts, on the
+     primary branch.
+  2. **Usage examples** — all three modes (synthetic fixture, public
+     user with their own clone, URL-based against any git remote).
+     Show the exact invocation for each.
+  3. **Reading the output** — what the captured diff means, how to
+     tell "this migration looks safe" from "this migration would
+     break my customizations." Reference BD-088 customization-
+     preservation report semantics.
+  4. **Optiquity-style release gate** — how an org integrates the
+     harness into their CI pipeline as a release gate: secret /
+     env var convention for the target URL, recommended exit-code
+     interpretation, when to treat a non-zero exit as a release
+     blocker vs. a known-acceptable diff.
+  5. **Limitations** — explicit list of what the harness does NOT
+     verify (e.g., post-migration runtime behavior, downstream tool
+     compatibility, anything outside the file-tree diff).
+  6. **Recovery** — what to do if a real migration produces a
+     different diff than the dry-run predicted (rare; means the
+     target's state changed between dry-run and real run).
+
+  Public-facing tone — the doc lives in `supporting-docs/` because
+  consumers (any org running a pack-managed v10 client) will read it,
+  not just pack maintainers. Keep it under ~150 lines; reference
+  BD-114's harness usage output for the exhaustive flag/option
+  listing rather than duplicating it.
 Resolved: n/a
 
 ---
