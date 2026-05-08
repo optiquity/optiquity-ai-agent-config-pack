@@ -208,7 +208,8 @@ test-fixtures/                              Persistent baseline fixtures for tes
 ├── v10-minimal/                            Bare v10 install (gitignored)
 ├── v10-realistic-ot/                       Fake-OT shape (gitignored)
 ├── v11-flat-file/                          v11 client, no tracker (gitignored)
-└── v11-tracker-on/                         v11 client + synthesized tracker.toml (gitignored)
+├── v11-tracker-on/                         v11 client + synthesized tracker.toml (gitignored)
+└── existing-project-mid-dev/               In-progress Swift+Python+gRPC project, no pack files (gitignored; BD-115)
 
 QUICKSTART.md                               Quick start router (three paths — NEW / EXISTING / MIGRATE)
 OPTIONAL-FEATURES.md                        Tool settings for features and settings used with non-pack related functionality
