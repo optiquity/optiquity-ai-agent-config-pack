@@ -1086,6 +1086,16 @@ Description: Today fixtures are *built* but no test asserts the result
   init --update on BD-115 fixture leaves user files intact + lands
   pack correctly; (3) migration — synthetic OT-shape fixture through
   migrator produces expected vN+1 shape with customizations preserved.
+
+  **Sequencing note:** technically only BD-115 is a hard blocker — the
+  migration contract could be wired against today's monolithic
+  `migrate-v10-to-v11.sh` and pass, then auto-pass against the BD-119
+  framework adapter post-cutover (C-5's behavior-preservation harness
+  guarantees the adapter produces equivalent output). However, doing
+  the migration contract pre-BD-119-close means duplicating effort if
+  the contract assertion needs adjustment for the adapter's report.md
+  or exit-code shape. Recommended: land BD-116 after BD-119 closes to
+  avoid potential rework.
 Resolved: n/a
 
 ---
@@ -1170,7 +1180,7 @@ Type: TODO(version)
 Status: Open
 Blockers: None
 Unblocks: BD-122 (test-fixtures convention doc no longer has to disambiguate from a live v9 system)
-File/Symbol: `maintenance-docs/test-fixtures/`, `scripts/test-migration.sh`, `scripts/migrate-v9-to-v10.sh`
+File/Symbol: `maintenance-docs/test-fixtures/` (DELETE), `scripts/test-migration.sh` (DELETE), `scripts/migrate-v9-to-v10.sh` (DELETE if present), `scripts/lib/three-way.sh` + 4 merge helpers in `scripts/lib/` (audit — keep if used by v10→v11 migrator, delete if v9-exclusive), `scripts/validate-pack.py` (remove v9-specific Checks — at least the test-migration harness check + the 4-merge-helpers check + the MIGRATION-v9-to-v10.md stages check), `supporting-docs/MIGRATION-v9-to-v10.md` (DELETE), `supporting-docs/MIGRATION-v10-to-v11.md` (3 references to remove/rephrase), `supporting-docs/SETUP-NEW.md` (1 reference), `supporting-docs/INSTALL-PROCEDURES.md` (4 references), `README.md` (audit), `CHANGELOG.md` (audit), `.github/workflows/validate-pack.yml` (audit — verify no standalone test-migration.sh invocation)
 Description: Two parallel test-fixture systems exist today: the legacy
   `maintenance-docs/test-fixtures/` (v9.3 → v10 migration regression
   fixtures, BD-059 era; tracks fixture content in git via overlay-on-
@@ -1179,14 +1189,42 @@ Description: Two parallel test-fixture systems exist today: the legacy
   verification). No clients are on v9 anymore, so the v9→v10 migration
   script and its fixtures are dead code. Keeping them risks confusing
   contributors about which fixture system to extend and bloats CI.
-  Action: delete `maintenance-docs/test-fixtures/` (16 tracked files),
-  `scripts/test-migration.sh` (the v9→v10 CI runner), and
-  `scripts/migrate-v9-to-v10.sh` if present. Update README, CHANGELOG,
-  validate-pack.py if any of them reference the deleted paths. Verify
-  validate-pack.yml CI workflow doesn't invoke `test-migration.sh`
-  standalone before deletion. If a v9 client unexpectedly surfaces
-  post-deletion, they recover the migrator via `git checkout v9 --
-  scripts/migrate-v9-to-v10.sh` from history.
+
+  Scope is larger than initial estimate (validated against current
+  repo state): validate-pack.py has multiple v9-specific checks tied
+  to the migrate-v9-to-v10.sh script + its merge helpers + its
+  documentation; supporting-docs/ has four files that reference v9
+  migration tooling. All must be addressed in lockstep with the
+  deletions or `validate-pack.py` will fail on the missing files
+  immediately after `git rm`.
+
+  Action plan for the implementer:
+  1. Audit which `scripts/lib/` files are v9-only vs. shared with v10
+     (`three-way.sh` is shared; 4 merge helpers may be v9-only — read
+     them to determine).
+  2. Delete v9-only library files; preserve shared ones.
+  3. Delete `scripts/migrate-v9-to-v10.sh`, `scripts/test-migration.sh`,
+     `maintenance-docs/test-fixtures/` (16 files), and
+     `supporting-docs/MIGRATION-v9-to-v10.md`.
+  4. Remove v9-specific Checks from `validate-pack.py` — typically the
+     test-migration harness check, the merge-helper presence check,
+     and the MIGRATION-v9-to-v10.md stages check. Renumber subsequent
+     checks if numbering must stay sequential, otherwise leave gaps.
+  5. Update `supporting-docs/MIGRATION-v10-to-v11.md` (3 references —
+     "if you're on v9.x, run migrate-v9-to-v10.sh first" lines should
+     become "v9.x is no longer supported; reach out for migration
+     guidance" or similar).
+  6. Update `supporting-docs/SETUP-NEW.md` (1 reference) and
+     `supporting-docs/INSTALL-PROCEDURES.md` (4 references) similarly.
+  7. Verify `.github/workflows/validate-pack.yml` does not invoke the
+     deleted scripts standalone.
+  8. Add a CHANGELOG entry under v11 noting the v9 sunset.
+  9. Verify `python3 scripts/validate-pack.py` passes after all
+     deletions + edits.
+
+  If a v9 client unexpectedly surfaces post-deletion, they recover the
+  migrator via `git checkout v9 -- scripts/migrate-v9-to-v10.sh` from
+  history.
 Resolved: n/a
 
 ---
