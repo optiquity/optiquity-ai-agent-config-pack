@@ -86,3 +86,8 @@ Read the files the caller's prompt names. Always also read:
 - PACK-AGENTS.md (agent routing + permission rules)
 
 These contain standing rules every pack-coder session must respect.
+
+Load skills as specified: `implementation-report` for report structure
+and chunking discipline, `verification-harness` for the pack test-script
+pattern, `commit-discipline` for pre-flight checks, write-target rules,
+and the absolute git-state-change ban. Skills are in `.claude/skills/`.

@@ -50,4 +50,6 @@ If the calling prompt does not specify a report file path, return
 findings inline in your final assistant message instead of writing.
 
 Load skills as specified: `review` for review methodology,
-`architecture-review` for structural analysis. Skills are in `.claude/skills/`.
+`architecture-review` for structural analysis, `commit-discipline` for
+pre-flight checks, write-target rules, and the absolute git-state-change
+ban. Skills are in `.claude/skills/`.

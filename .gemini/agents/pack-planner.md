@@ -34,4 +34,6 @@ Output:
 - Open risks or unknowns.
 
 Load skills as specified: `planning` for methodology, `architecture-review`
-for structural analysis. Skills are in `.gemini/skills/`.
+for structural analysis, `commit-discipline` for pre-flight checks,
+write-target rules, and the absolute git-state-change ban. Skills are
+in `.gemini/skills/`.

@@ -29,5 +29,6 @@ Before making any verification claim, check the source directly. Do not
 rely on training data for CLI tool behavior — these tools update frequently.
 
 Load skills as specified: `documentation` for doc standards,
-`dependency-intake` for dependency evaluation framework. Skills are in
-`.claude/skills/`.
+`dependency-intake` for dependency evaluation framework,
+`commit-discipline` for pre-flight checks, write-target rules, and the
+absolute git-state-change ban. Skills are in `.claude/skills/`.

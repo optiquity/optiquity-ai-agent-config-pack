@@ -30,6 +30,9 @@ Skills are in `.claude/skills/`, `.codex/skills/`, `.gemini/skills/`
 | `documentation` | pack-architect, pack-docs-researcher |
 | `review` | pack-reviewer |
 | `dependency-intake` | pack-docs-researcher |
+| `implementation-report` | pack-coder |
+| `verification-harness` | pack-coder |
+| `commit-discipline` | pack-coder, pack-architect, pack-planner, pack-reviewer, pack-docs-researcher |
 
 ---
 

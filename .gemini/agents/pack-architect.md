@@ -32,5 +32,6 @@ Do not propose solutions unless asked. Describe the constraint or design
 problem, then wait for direction.
 
 Load skills as specified: `architecture-review` for design review methodology,
-`planning` for structuring design work, `documentation` for doc standards.
-Skills are in `.gemini/skills/`.
+`planning` for structuring design work, `documentation` for doc standards,
+`commit-discipline` for pre-flight checks, write-target rules, and the
+absolute git-state-change ban. Skills are in `.gemini/skills/`.
