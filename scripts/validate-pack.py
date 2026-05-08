@@ -1483,6 +1483,144 @@ def check_help_fragment_completeness() -> None:
        f"({len(flagged_internal)} marked pack-internal)")
 
 
+def check_customization_detection_regression_guard() -> None:
+    """Check 25 — Customization-detection regression guard (BD-089).
+
+    Synthetic fixture exercises the BD-088 library against a known v10-
+    shape project with realistic customizations. Asserts:
+      1. Every customized file produces exactly one finding row.
+      2. A trinity file edited by the project surfaces as
+         `customization-detected-needs-reconciliation` (not silently merged).
+      3. A `.gemini/.env` with project-set keys is preserved
+         (BD-059 scenario).
+      4. An `x-`-prefixed custom agent surfaces as `project-only-file`.
+      5. The truthful-report contract holds — every fixture file appears
+         in the rendered report.md.
+
+    Without this Check, a BD-088 regression (silently dropping a
+    finding, returning success when a real-merge case occurs) could ship
+    unnoticed. CI fails on regression.
+    """
+    print("\n── Check 25: Customization-detection regression guard (BD-089) ──")
+    import shutil
+    import tempfile
+
+    lib_dir = REPO_ROOT / "scripts" / "lib"
+    needed = ["three-way.sh", "customization-preserve.sh", "customization-report.sh"]
+    for n in needed:
+        if not (lib_dir / n).is_file():
+            fail(f"BD-088 library missing: {lib_dir.relative_to(REPO_ROOT)}/{n}")
+            return
+
+    tmpdir = tempfile.mkdtemp(prefix="vp-bd089-")
+    try:
+        state_dir = Path(tmpdir) / "state"
+        # Build a tiny driver script that sources the BD-088 libs and
+        # dispatches a fixture set covering: trinity-with-customization,
+        # gemini-env with project-set key, x-prefixed custom agent,
+        # unchanged-pack file. Capture the dispositions TSV for assertion.
+        driver = Path(tmpdir) / "driver.sh"
+        driver.write_text(f"""#!/usr/bin/env bash
+set -euo pipefail
+export _CP_PACK_ROOT={REPO_ROOT}
+source {REPO_ROOT}/scripts/lib/three-way.sh
+source {REPO_ROOT}/scripts/lib/customization-preserve.sh
+source {REPO_ROOT}/scripts/lib/customization-report.sh
+customization_preserve_init "{state_dir}" ".v10-customized"
+
+# Fixture 1: trinity with project customization (real-merge-required).
+mkdir -p "{tmpdir}/files"
+echo "v10-base" > "{tmpdir}/files/trinity-base.md"
+echo "v10-base + project edit" > "{tmpdir}/files/trinity-ours.md"
+echo "v11-pack edit" > "{tmpdir}/files/trinity-theirs.md"
+cp "{tmpdir}/files/trinity-ours.md" "{tmpdir}/files/trinity-dest.md"
+customization_preserve "{tmpdir}/files/trinity-base.md" \\
+    "{tmpdir}/files/trinity-ours.md" "{tmpdir}/files/trinity-theirs.md" \\
+    "CLAUDE.md" "{tmpdir}/files/trinity-dest.md" trinity >/dev/null
+
+# Fixture 2: gemini-env with project-set key (BD-059 scenario).
+echo "AGENT_CAPABILITIES=swift,python" > "{tmpdir}/files/env-ours"
+echo "AGENT_CAPABILITIES=swift" > "{tmpdir}/files/env-theirs"
+cp "{tmpdir}/files/env-ours" "{tmpdir}/files/env-dest"
+customization_preserve "" "{tmpdir}/files/env-ours" \\
+    "{tmpdir}/files/env-theirs" \\
+    ".gemini/.env" "{tmpdir}/files/env-dest" gemini-env >/dev/null
+
+# Fixture 3: x-prefixed custom agent (project-only-file).
+echo "x-agent body" > "{tmpdir}/files/x-mine.md"
+customization_preserve "" "{tmpdir}/files/x-mine.md" "" \\
+    ".claude/agents/x-mine.md" "{tmpdir}/files/x-mine.md" custom-agent >/dev/null
+
+# Fixture 4: unchanged-pack file.
+echo "same" > "{tmpdir}/files/unchanged.md"
+customization_preserve "{tmpdir}/files/unchanged.md" \\
+    "{tmpdir}/files/unchanged.md" "{tmpdir}/files/unchanged.md" \\
+    "docs/pack/PM-CHAT.md" "{tmpdir}/files/unchanged.md" pm-chat >/dev/null
+
+customization_report "{state_dir}/dispositions.tsv" "{state_dir}/report.md" \\
+    "Check 25 fixture report" >/dev/null
+""")
+        driver.chmod(0o755)
+        result = subprocess.run(
+            ["bash", str(driver)],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            fail(f"BD-088 driver failed (rc={result.returncode}): {result.stderr.strip()}")
+            return
+
+        tsv = state_dir / "dispositions.tsv"
+        if not tsv.is_file():
+            fail("BD-088 driver produced no dispositions.tsv")
+            return
+        rows = [
+            line.split("\t")
+            for line in tsv.read_text().splitlines()
+            if line and not line.startswith("#")
+        ]
+        if len(rows) != 4:
+            fail(f"expected 4 dispositions for 4-fixture set; got {len(rows)}")
+            for r in rows:
+                fail(f"  row: {r}")
+            return
+
+        # Index by rel_path (column 3) for stable assertion.
+        by_rel = {r[2]: r for r in rows}
+        expected = {
+            "CLAUDE.md": ("customization-detected-needs-reconciliation", "trinity"),
+            ".gemini/.env": ("customization-detected-needs-reconciliation", "gemini-env"),
+            ".claude/agents/x-mine.md": ("project-only-file", "custom-agent"),
+            "docs/pack/PM-CHAT.md": ("unchanged-pack", "pm-chat"),
+        }
+        any_failed = False
+        for rel, (exp_disp, exp_class) in expected.items():
+            if rel not in by_rel:
+                fail(f"truthful-report violation: fixture file '{rel}' missing from dispositions.tsv")
+                any_failed = True
+                continue
+            row = by_rel[rel]
+            if row[0] != exp_disp:
+                fail(f"{rel}: expected disposition '{exp_disp}', got '{row[0]}'")
+                any_failed = True
+            if row[1] != exp_class:
+                fail(f"{rel}: expected class '{exp_class}', got '{row[1]}'")
+                any_failed = True
+
+        # Truthful contract: every fixture rel must appear in report.md.
+        report = (state_dir / "report.md").read_text()
+        for rel in expected:
+            if rel not in report:
+                fail(f"truthful-report violation: '{rel}' missing from rendered report.md")
+                any_failed = True
+
+        if any_failed:
+            return
+        ok("4/4 fixture rows recorded with expected disposition + class")
+        ok("truthful-report contract: every fixture file appears in report.md")
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
 def check_help_fragment_tracker_byte_identity() -> None:
     """Check 24 — Shared HELP-FRAGMENT-TRACKER byte-identity (BD-082, DELTA L1).
 
@@ -1540,6 +1678,7 @@ def main() -> None:
     check_help_fragment_freshness()
     check_help_fragment_completeness()
     check_help_fragment_tracker_byte_identity()
+    check_customization_detection_regression_guard()
 
     print("\n" + "=" * 60)
     if failures:

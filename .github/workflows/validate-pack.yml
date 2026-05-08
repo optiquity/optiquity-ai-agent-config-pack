@@ -1,23 +1,22 @@
-# Pack structural validation. Runs on every push to any branch.
-# Failures block merge to main. Fix immediately — read the Actions log,
-# errors name the exact file and problem.
+# Pack structural validation + test runner. Runs on every push to any
+# branch. Failures block merge to main. Fix immediately — read the
+# Actions log; errors name the exact file and problem.
 #
-# Checks: SKILL.md frontmatter, Codex TOML parsing, TD-TBD sentinels
-# in BACKLOG.md, README version table vs git tag, agent file count
-# consistency across Claude / Codex / Gemini, prompts-directory format,
-# pack agent roster vs .claude/agents/, reserved `x-` prefix in the
-# seven pack scan locations, and BD-044 init-project structure
-# (scripts/init-project.sh executable, scripts/lib/detect.sh functions,
-# setup/migration docs present, README layout mentions detect.sh).
-# Full list and details in scripts/validate-pack.py.
+# Two jobs:
+#   - validate: runs scripts/validate-pack.py (25 structural Checks)
+#   - tests:    runs every scripts/tests/*-test.sh independently so a
+#               failure in one suite does not mask another's results.
+#
+# All test scripts run offline. tracker-provider / tracker-errors use
+# PATH-prepended fake `gh` stubs (no live-network requirement).
 #
 # Security note: this workflow uses no untrusted input in run commands.
-# It only runs a local Python script against checked-out repo files.
+# Only runs local scripts against checked-out repo files.
 #
 # Branch protection: to enforce that failures block merge to main,
 # configure in GitHub repo settings: Settings → Branches → Add rule →
 # Branch name pattern: main → Require status checks to pass → select
-# the "validate" job. This is a one-time repo admin action.
+# the "validate" and "tests" jobs. One-time repo admin action.
 
 name: Validate Pack
 
@@ -35,5 +34,68 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: pip install pyyaml
-      - name: Run pack validation
+      - name: Run pack validation (25 Checks)
         run: python3 scripts/validate-pack.py
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Per-suite steps — independent so one failure surfaces all.
+      - name: detect.sh tests
+        if: always()
+        run: bash scripts/test-detect.sh
+      - name: tracker-provider tests (BD-060, offline gh stubs)
+        if: always()
+        run: bash scripts/tests/tracker-provider-test.sh
+      - name: tracker-config tests (BD-061)
+        if: always()
+        run: bash scripts/tests/tracker-config-test.sh
+      - name: tracker-init tests
+        if: always()
+        run: bash scripts/tests/tracker-init-test.sh
+      - name: tracker-agent-read tests
+        if: always()
+        run: bash scripts/tests/tracker-agent-read-test.sh
+      - name: tracker-migrate forward tests (BD-065)
+        if: always()
+        run: bash scripts/tests/tracker-migrate-forward-test.sh
+      - name: tracker-migrate reverse tests (BD-068)
+        if: always()
+        run: bash scripts/tests/tracker-migrate-reverse-test.sh
+      - name: tracker-migrate roundtrip tests (BD-070)
+        if: always()
+        run: bash scripts/tests/tracker-migrate-roundtrip-test.sh
+      - name: tracker error mapping tests (BD-066)
+        if: always()
+        run: bash scripts/tests/tracker-errors-test.sh
+      - name: recommendation tests (BD-072 / D-19)
+        if: always()
+        run: bash scripts/tests/recommendation-test.sh
+      - name: pack-help tests (BD-075 / D-20)
+        if: always()
+        run: bash scripts/tests/pack-help-test.sh
+      - name: customization-preserve tests (BD-088)
+        if: always()
+        run: bash scripts/tests/test-customization-preserve.sh
+      - name: init-project tests (BD-080)
+        if: always()
+        run: bash scripts/tests/test-init-project.sh
+      - name: migrate-v10-to-v11 tests (BD-085)
+        if: always()
+        run: bash scripts/tests/test-migrate-v10-to-v11.sh
+      - name: template-translations tests
+        if: always()
+        run: bash scripts/tests/template-translations-test.sh
+      - name: template-version tests
+        if: always()
+        run: bash scripts/tests/template-version-test.sh
+      - name: issue-forms tests (BD-063)
+        if: always()
+        run: bash scripts/tests/test-issue-forms.sh
