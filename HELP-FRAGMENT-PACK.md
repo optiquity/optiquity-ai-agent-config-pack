@@ -25,6 +25,7 @@ in your CLI for this content. Full docs in `QUICKSTART.md`, `README.md`,
 | `scripts/init-project.sh` | Bootstrap a Pack install in a new or existing project directory. Use `--update` to refresh an existing pack install in place. |
 | `scripts/migrate-v9-to-v10.sh` | One-shot v9.3 → v10 migrator (frozen). Use against a v9.3 client repo. |
 | `scripts/migrate-v10-to-v11.sh` | One-shot v10 → v11 migrator. Backup + BD-088 customization preserve + truthful report. |
+| `scripts/dry-run-migration.sh` | Read-only migration dry-run harness. Clones target into `/tmp`, runs the appropriate per-version migrator with `--dry-run`, captures the full diff. Three modes: synthetic fixture / git URL / local-path. Used as the v11+ release-gate harness; safe for any v10 client. |
 | `scripts/restore-from-backup.sh` | Restore a v9.3 → v10 pre-migration tree (use the v11 migrator's printed `rsync` recipe for v11 backups). |
 | `scripts/add-capability.sh` | Extend an existing project with an additional language/platform capability. |
 | `scripts/pack-tracker.sh <subcmd>` | Tracker mode — `init`, `status`, `mirror-rebuild`, `disable`, `doctor`, `update-templates`, `enable-recommendations`. |
