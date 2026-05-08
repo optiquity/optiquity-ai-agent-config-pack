@@ -3,8 +3,9 @@
 <!--
 HOW TO USE THIS TEMPLATE
 
-Copy this file to your project root during setup:
-  cp /path/to/pack/project-template/PM-CHAT.md ./PM-CHAT.md
+This file is installed by `scripts/init-project.sh` (or refreshed by
+`init-project.sh --update` / `migrate-v10-to-v11.sh`) into your project
+at `docs/pack/PM-CHAT.md`. You do not copy it manually.
 
 The [PROJECT_NAME] placeholder and the "Additional project documents" section
 are filled in by the PM chat during the project kickoff conversation (see
@@ -19,7 +20,7 @@ This file is read by the PM chat on all three tools:
 -->
 
 ---
-*Copied from: project-template/PM-CHAT.md — AI Agent Config Pack v10*
+*Copied from: project-template/docs/pack/PM-CHAT.md — AI Agent Config Pack v11*
 *Fill in [PROJECT_NAME] and customize the Additional project documents section,
 then remove this italicized block and the HTML comment above.*
 ---
@@ -193,6 +194,37 @@ These rules are non-negotiable and always apply on all tools:
   `scripts/add-capability.sh` from the pack first; then run METHODOLOGY.md
   Procedure 6. (Procedure 6 stays in METHODOLOGY because capability
   addition fires repeatedly, not as a one-shot.)
+
+---
+
+## Recommendation routing (v11+)
+
+When `/pm-startup` runs, the recommendation system in
+`scripts/lib/recommendation.sh` (D-19) computes client-side signals
+(active TD count, BACKLOG size, 30-day TD growth, plus 4 project-shape
+signals) and decides whether to surface a tracker opt-in
+recommendation. PM chat behavior:
+
+- **If the recommendation fires** — `pm-startup` prints a single
+  paragraph naming the signals and asks whether to opt the project in.
+  PM chat presents the question without editorializing; the user
+  decides. On approval, PM chat runs `pack tracker init` and reports
+  the outcome.
+- **If declined** — PM chat records the decision (state file under
+  `.pack-tracker/recommendation-state.json`); the recommendation will
+  not re-fire for a configured cooldown window.
+- **If permanently declined** — PM chat records the persistent refusal
+  flag; the recommendation never re-fires for this project.
+
+PM chat does NOT silently opt the project into tracker mode. The
+recommendation is informational; opt-in requires explicit user
+consent. This mirrors the BACKLOG / CHANGELOG approval rule —
+state-changing operations need a yes.
+
+For the per-file customization-preservation behavior of
+`pack tracker init`'s forward migration, see
+`docs/pack/MERGE-STRATEGY.md` (or `supporting-docs/MERGE-STRATEGY.md`
+in the pack repo).
 
 ---
 

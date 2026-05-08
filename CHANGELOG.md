@@ -5,6 +5,103 @@ Each version is available as a git tag (v1, v2, …).
 
 ---
 
+## v11 — May 2026
+
+### v11.0 — Issue-tracker integration + customization-preservation fix
+
+**Scope A — Issue-tracker integration (D-1..D-23)**
+
+- D-1..D-2 — TrackerProvider abstraction (V1 §2.1): 18 ops + raw +
+  capabilities. Canonical `gh` backend (`scripts/lib/tracker-provider-gh.sh`)
+  with future-extensibility for forgejo/linear/jira. (BD-060)
+- D-3 — Forward and reverse migration libraries
+  (`scripts/lib/tracker-migrate-{forward,reverse}.sh`); idempotent.
+  Forward: `BACKLOG.md` → tracker issues. Reverse: tracker issues →
+  sidecar `BACKLOG.md`. (BD-065 / BD-068 / BD-070)
+- D-4-V2 / D-16 / D-17 / D-18 — Issue template forms
+  (`.github/ISSUE_TEMPLATE/work-item.yml`, `inbound.yml`, `config.yml`)
+  with 4 wi-type + 7 in-category options. (BD-063)
+- D-5 — Tracker config (`tracker.toml.example` template installed at
+  project root by init-project.sh). (BD-061)
+- D-6 / D-7 — Mirror file behavior + Source column convention.
+- D-8 — Sidecar + template-version drift handling. (BD-067)
+- D-9 / D-10 / D-11 — Failure UX + typed error model
+  (`scripts/lib/tracker-errors.sh`); agent-read library
+  (`scripts/lib/tracker-agent-read.sh`). (BD-066 / BD-069 / BD-071)
+- D-19 — Inflection-point recommendation system
+  (`scripts/lib/recommendation.sh`). Pack-side 3 signals + client-side
+  7 signals; per-user state at `.pack-tracker/recommendation-state.json`;
+  cooldown + persistent refusal flags. (BD-072 / BD-073 / BD-074)
+- D-20 — Help-verb system: LCD shell verb `pack help`
+  (`scripts/pack-help.sh`) + per-CLI `/pack-help` skills/commands +
+  shared `HELP-FRAGMENT-PACK.md` / `docs/pack/HELP-FRAGMENT.md` +
+  byte-identical `HELP-FRAGMENT-TRACKER.md` mirror per DELTA L1.
+  (BD-075 / BD-076 / BD-077)
+- D-21..D-23 — Recommendation routing rules in PACK-CHAT.md /
+  project-template/docs/pack/PM-CHAT.md (BD-092 sweep).
+
+**Scope B — v11 version cut + ride-alongs**
+
+- BD-088 — Customization-preservation library (`scripts/lib/customization-preserve.sh`
+  + `customization-report.sh`). 12 file classes; 8 canonical disposition
+  tokens; truthful report (every file accounted for; no silent drops).
+  Single-slot sidecars (`.v10-customized` for migrator, `.pre-update`
+  for `init-project.sh --update`). 72 fixture tests on bash 3.2.57.
+  Closes BD-059.
+- BD-080 — `init-project.sh` extensions: stage S11 (v11 client artifacts)
+  + `--update` mode (consumes BD-088, sidecar-presence gate on re-run).
+  30 fixture tests.
+- BD-085 — `scripts/migrate-v10-to-v11.sh`: 7-stage migrator. Backup
+  captures full working tree (preserves gitignored `.gemini/.env`). 35
+  fixture tests using genuine v10-tag baseline content.
+- BD-081 — Trinity addenda: `## Quick reference` block (Pack commands +
+  Recommended first action) added to all 6 trinity files (pack-root +
+  client) in lockstep.
+- BD-082 — validate-pack Checks 21–24 (per-CLI parity / help-fragment
+  freshness / completeness / `HELP-FRAGMENT-TRACKER.md` byte-identity).
+  Surfaced + fixed help-fragment drift.
+- BD-089 — validate-pack Check 25 (customization-detection regression
+  guard). 4-fixture synthetic; class coverage delegated to
+  `test-customization-preserve.sh` per BD-083.
+- BD-083 — Aggregate CI workflow split into `validate` + `tests` jobs;
+  17 independent test suites with `if: always()` failure isolation.
+- BD-091 / BD-042 — Doc relocation tail; verified end-state by audit.
+- BD-084 — `supporting-docs/MIGRATION-v10-to-v11.md` user-facing
+  migration narrative.
+- BD-094 — `supporting-docs/MERGE-STRATEGY.md` per-file
+  customization-preservation matrix (user-readable surface for BD-088).
+- BD-090 — QUICKSTART.md callout + cross-references.
+- BD-092 — Cross-reference sweep (post-relocation paths + v11 verb
+  references; tracker section in OPTIONAL-FEATURES.md; recommendation
+  routing in PACK-CHAT.md / project-template PM-CHAT.md).
+- BD-086 — README.md v11.0 row + Repository Layout updates.
+- BD-087 — This CHANGELOG entry.
+
+**Audit artifacts (release evidence):**
+
+- Customization-preservation regression coverage:
+  `scripts/tests/test-customization-preserve.sh` (72 tests) +
+  validate-pack Check 25 (BD-089) — both run on every push.
+- Semantic audit: `maintenance-docs/v11-research/MAINTAINER-CHECK-AUDIT-2026-05-07.md`.
+- Dog-food validation: validate-pack passes all 25 Checks; CI runs
+  17 test suites green.
+
+**Carried over to future work:**
+
+- BD-093 — v11.0 release pin (tag, README hash, CHANGELOG final).
+- BD-095 — `migrate-v10-to-v11.sh` `--dry-run` / `--apply` /
+  `--resume` modes.
+- BD-097 — Auditor-issue-tracking work-item BD.
+- BD-098 — Tracker section elevation in OPTIONAL-FEATURES.md (initial
+  shipped in BD-092; further refinement deferred).
+- BD-110 — Audit-methodology skill at pack root.
+- BD-111 — First-class GitHub dependency-API mutation (replaces
+  comment-marker fallback in `tracker_provider_gh_link`).
+- BD-112 — Three-way diff filename mangling collision fix (affects both
+  `customization-preserve.sh` and `migrate-v9-to-v10.sh`).
+
+---
+
 ## v10 — April 2026
 
 ### v10.0 (post-release patches) — April 2026

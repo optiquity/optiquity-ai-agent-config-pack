@@ -4,6 +4,11 @@ This pack configures Claude Code, Codex CLI, Gemini CLI, and Xcode to
 follow your project's architecture rules, coding standards, and
 conventions automatically — without repeated prompting.
 
+> **Recommended first action.** In your CLI, run `/pack-startup` (pack
+> repo) or `/pm-startup` (a pack-configured project repo). These bootstrap
+> a working session. For the full pack verb list run `pack help` or
+> `/pack-help` — see [`HELP-FRAGMENT-PACK.md`](HELP-FRAGMENT-PACK.md).
+
 ## Which path are you on?
 
 ### New project — you are creating a new repo (no code yet, or only a README)
@@ -24,11 +29,18 @@ if any prior AI agent config is detected.
 ### Pack version upgrade — you already use the pack and want the next major version
 
 Follow the version-specific migration guide in `supporting-docs/`.
-For v9 → v10, that is **[`supporting-docs/MIGRATION-v9-to-v10.md`](supporting-docs/MIGRATION-v9-to-v10.md)**.
+
+- **v10 → v11:** [`supporting-docs/MIGRATION-v10-to-v11.md`](supporting-docs/MIGRATION-v10-to-v11.md)
+- **v9 → v10:** [`supporting-docs/MIGRATION-v9-to-v10.md`](supporting-docs/MIGRATION-v9-to-v10.md)
 
 Version-specific migration guides are always named `MIGRATION-vN-to-vM.md`
 and always land in `supporting-docs/`. If you are on an older major
 version, first apply the intermediate guide(s) in sequence.
+
+For the per-file customization-preservation contract that v11 migrators
+honor, see [`supporting-docs/MERGE-STRATEGY.md`](supporting-docs/MERGE-STRATEGY.md).
+For tracker opt-in (Phase B of the v11 migration), see
+[`OPTIONAL-FEATURES.md`](OPTIONAL-FEATURES.md).
 
 ---
 

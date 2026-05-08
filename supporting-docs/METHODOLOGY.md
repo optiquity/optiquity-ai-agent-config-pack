@@ -1333,9 +1333,10 @@ At every workflow-complete boundary, **before** saying "ready for next phase," t
 
 ### The running doc
 
-`PACK-FEEDBACK.md` lives in the project root alongside `BACKLOG.md` and
-`STATUS.md`. PM-chat-owned, append-only. Agents never write to it. The
-template ships at `project-template/PACK-FEEDBACK.md`.
+`PACK-FEEDBACK.md` lives at `docs/pack/PACK-FEEDBACK.md` in the project
+(post-BD-042 relocation), with `BACKLOG.md` and `STATUS.md` remaining
+at project root. PM-chat-owned, append-only. Agents never write to it.
+The template ships at `project-template/docs/pack/PACK-FEEDBACK.md`.
 
 **All operational instructions** — the status state machine, delivery
 mechanics, scope boundaries, permissions, and what NOT to put in the

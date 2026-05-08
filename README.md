@@ -57,6 +57,7 @@ always points to the latest minor of that major version.
 
 | Version | Date         | Key Additions |
 |---------|--------------|---------------|
+| v11.0   | May 2026     | Issue-tracker integration (Phase A — D-1..D-23 surfacing as forced trinity addenda + per-CLI `/pack-help` + HELP-FRAGMENT shared content; Phase B — opt-in tracker abstraction with `gh` backend, forward/reverse migration, recommendation system); BD-088 customization-preservation library + truthful report (BD-059 fix); migrate-v10-to-v11.sh; init-project.sh `--update`; validate-pack.py expanded to 25 Checks (per-CLI parity, help-fragment freshness/completeness, byte-identity, customization regression guard); aggregate CI test runner across 17 suites |
 | v10.0   | Apr 29, 2026 | Procedure 7 kickoff auto-discovery + Procedure 5-S post-migration housekeeping; per-agent prompt templates under docs/pack/prompts/ with labeled-section convention (BD-049); init-project.sh + migrate-v9-to-v10.sh; capabilities pattern (BD-045); METHODOLOGY canonical at docs/pack/; format-vs-solutions worked examples; validate-pack.py expanded to 10 checks |
 | v9.3    | Apr 2026     | BD-043 Gemini native subagent architecture (`.gemini/agents/` with YAML frontmatter); GEMINI.md stripped to project context only; agent-run.sh transparent `@agent-name` translation; full Gemini doc audit |
 | v9.2    | Apr 2026     | BD-042 pack reference docs moved to docs/pack/; document locations section added to context files |
@@ -84,21 +85,30 @@ always points to the latest minor of that major version.
 ## Repository Layout
 
 ```
-project-template/                           Unified project template (v10)
+project-template/                           Unified project template (v11)
 ├── .claude/agents/                         Claude agent files (16 agents)
 ├── .codex/agents/                          Codex agent files (16 agents)
 ├── .gemini/agents/                         Gemini agent files (16 agents)
+├── .claude/skills/pack-help/               Claude pack-help skill (v11; invokes pack-help.sh)
+├── .codex/skills/pack-help/                Codex pack-help skill (v11)
+├── .gemini/commands/pack-help.toml         Gemini pack-help command (v11)
 ├── .codex/config.toml                      Codex config (agent registry, profiles)
 ├── .claude/settings.json                   Claude Code settings (permissions, hooks)
+├── .github/ISSUE_TEMPLATE/                 Issue template forms (v11; BD / TD / inbound)
+│   ├── work-item.yml                       BD or TD entry form
+│   ├── inbound.yml                         External-input entry form
+│   └── config.yml                          Disables blank issues
 ├── skills/                                 Canonical skill library (30 skills) — distributed
 │                                           to .claude/skills/, .codex/skills/, .gemini/skills/
 │                                           at project creation by init-project.sh; not
 │                                           present as a sub-directory in projects
 ├── docs/pack/                              Pack product docs shipped into each project
+│   ├── HELP-FRAGMENT.md                    Per-project verb reference (v11; rendered by pack-help.sh)
+│   ├── HELP-FRAGMENT-TRACKER.md            Shared tracker section (v11; byte-identical to pack root, DELTA L1)
 │   ├── PM-CHAT.md                          PM chat startup and operating instructions
 │   ├── PLATFORM-SKILLS.md                  Skill-selection matrix by project type
 │   ├── PACK-FEEDBACK.md                    Upstream feedback log to Pack Chat
-│   └── prompts/                            Per-agent prompt templates (new in v10)
+│   └── prompts/                            Per-agent prompt templates
 │       ├── coder.md                        variants: standard, fix-cycle
 │       ├── reviewer.md                     variant: standard
 │       ├── tester.md, planner.md,          variants: standard
@@ -111,22 +121,26 @@ project-template/                           Unified project template (v10)
 │                                           (directory guidance: see supporting-docs/METHODOLOGY.md
 │                                            § Prompt Authoring Principles)
 ├── scripts/                                Build, test, validation scripts (15)
-├── CLAUDE.md                               Claude context file (unified template)
-├── AGENTS.md                               Codex context file (unified template)
-├── GEMINI.md                               Gemini context file (unified template)
+├── CLAUDE.md                               Claude context file (unified template; "Quick reference" addendum v11)
+├── AGENTS.md                               Codex context file (unified template; "Quick reference" addendum v11)
+├── GEMINI.md                               Gemini context file (unified template; "Quick reference" addendum v11)
 ├── agent-run.sh                            Agent launcher with per-tool flags
+├── tracker.toml.example                    Tracker opt-in config template (v11)
 ├── .mcp.json.example                       MCP config template
 ├── .gitignore                              Gitignore for projects
 └── (conditional: proto/, server/, pyproject.toml, pyrightconfig.json)
 
 supporting-docs/                            Pack product docs (copied to or consumed by projects)
 ├── METHODOLOGY.md                          Universal project methodology (copied to project root)
+├── INSTALL-PROCEDURES.md                   Procedures 5 / 5-C / 5-S / 7 (host for v10/v11 install steps)
 ├── CLI-PM-SETUP.md                         CLI PM chat daily usage reference
 ├── DEPENDENCIES.md                         Tool dependencies reference
 ├── SETUP_TEMPLATE.md                       Per-project setup template (PM chat fills in)
 ├── SETUP-NEW.md                            Guide for setting up a new project (v10)
 ├── SETUP-EXISTING.md                       Guide for adding the pack to an existing project (v10)
 ├── AGENT_KICKOFF_TEMPLATE.md               Architecture kickoff template
+├── MERGE-STRATEGY.md                       Per-file customization-preservation matrix (v11)
+├── MIGRATION-v10-to-v11.md                 Upgrade guide (v10.0 → v11.0)
 ├── MIGRATION-v9-to-v10.md                  Upgrade guide (v9.3 → v10.0)
 └── MIGRATION-v8-to-v9.md                   Upgrade guide (historical; v8.x → v9.0)
 
@@ -161,28 +175,45 @@ vscode-companion-templates/                 Machine-level VS Code config (per pr
   .gemini/skills/
 
 scripts/                                    Pack-level scripts
-├── validate-pack.py                        CI structural validation
-├── init-project.sh                         Initialize the pack in a new or existing project (v10)
-├── migrate-v9-to-v10.sh                    v9.3 → v10.0 migration script (v10)
+├── validate-pack.py                        CI structural validation (25 Checks; pack-internal)
+├── init-project.sh                         Initialize the pack in a new or existing project (v10; --update mode v11)
+├── migrate-v9-to-v10.sh                    v9.3 → v10.0 migration script (v10; frozen)
+├── migrate-v10-to-v11.sh                   v10.0 → v11.0 migration script (v11)
 ├── add-capability.sh                       Add a pack-supported capability to an existing project (v10)
-├── merge-platform-skills.py                PLATFORM-SKILLS.md splice helper (v10)
-├── merge-trinity.py                        Trinity file splice helper (v10)
-└── lib/
-    └── detect.sh                           Shared detection library sourced by the scripts above
+├── pack-help.sh                            LCD shell help-verb (v11; renders HELP-FRAGMENT)
+├── pack-tracker.sh                         Tracker opt-in / forward / reverse / status / doctor (v11)
+├── tracker-migrate.sh                      Lower-level tracker forward/reverse wrapper (v11)
+├── restore-from-backup.sh                  v9.3 → v10 backup restore (v10; legacy)
+├── merge-{json,toml,trinity,platform-skills}.py   Migrator-only merge helpers (pack-internal)
+└── lib/                                    Shared bash libraries
+    ├── detect.sh                           Detection helpers (project class, language markers, surface)
+    ├── three-way.sh                        4-case three-way classifier (BD-088 / migrators)
+    ├── customization-preserve.sh           BD-088 customization-preservation orchestrator (v11)
+    ├── customization-report.sh             Truthful migration report renderer (v11)
+    ├── recommendation.sh                   Inflection-point recommendation system (v11; D-19)
+    ├── tracker-provider.sh                 TrackerProvider abstraction (v11; D-1)
+    ├── tracker-provider-gh.sh              gh-CLI backend (v11; D-2)
+    ├── tracker-{config,init,labels,errors,sidecar,mirror,agent-read}.sh   Tracker subsystem (v11)
+    ├── tracker-migrate-{forward,reverse}.sh    Forward / reverse migration libs (v11; D-3 / D-8)
+    └── template-{translations,version}.sh  Template freshness helpers (v11)
 
 .github/workflows/                          GitHub Actions
 └── validate-pack.yml                       Pack self-validation on every push
 
 QUICKSTART.md                               Quick start router (three paths — NEW / EXISTING / MIGRATE)
 OPTIONAL-FEATURES.md                        Tool settings for features and settings used with non-pack related functionality
+HELP-FRAGMENT-PACK.md                       Pack-side verb reference (v11; rendered by pack-help.sh)
+HELP-FRAGMENT-TRACKER.md                    Shared tracker section (v11; canonical; mirrored to project-template/docs/pack/)
 PACK-CHAT.md                                Pack CLI chat operating instructions
 PACK-AGENTS.md                              Pack agent routing (includes invocation guide)
 BACKLOG.md                                  Pack improvement backlog
-CLAUDE.md                                   Pack repo Claude context (not a template)
-AGENTS.md                                   Pack repo Codex context (not a template)
-GEMINI.md                                   Pack repo Gemini context (not a template)
+CLAUDE.md                                   Pack repo Claude context (not a template; "Quick reference" addendum v11)
+AGENTS.md                                   Pack repo Codex context (not a template; "Quick reference" addendum v11)
+GEMINI.md                                   Pack repo Gemini context (not a template; "Quick reference" addendum v11)
 README.md                                   This file
 CHANGELOG.md                                Pack changelog
+.github/ISSUE_TEMPLATE/                     Pack-side issue forms (v11)
+└── work-item.yml, inbound.yml, config.yml
 ```
 
 > Migration guides follow the naming convention `MIGRATION-vN-to-vM.md`.

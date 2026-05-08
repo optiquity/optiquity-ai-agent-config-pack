@@ -99,6 +99,35 @@ These rules are non-negotiable and always apply:
 
 ---
 
+## Recommendation routing (v11+)
+
+When `/pack-startup` runs, the recommendation system in
+`scripts/lib/recommendation.sh` (D-19) computes pack-side signals
+(active BD count, BACKLOG.md size, 30-day BD growth) and decides
+whether to surface a tracker opt-in recommendation. Pack Chat behavior:
+
+- **If the recommendation fires** — `pack-startup` prints a single
+  paragraph naming the signals and asks whether to opt in. Pack Chat
+  presents the question to the user without editorializing; the user
+  decides. On approval, Pack Chat runs `pack tracker init` and reports
+  the outcome.
+- **If declined** — Pack Chat records the decision (state file under
+  `.pack-tracker/recommendation-state.json`); the recommendation will
+  not re-fire for a configured cooldown window.
+- **If permanently declined** — Pack Chat records the persistent
+  refusal flag; the recommendation never re-fires for this pack repo.
+
+Pack Chat does NOT silently opt the pack repo into tracker mode. The
+recommendation is informational; opt-in requires explicit user
+consent. This mirrors the BACKLOG / CHANGELOG approval rule —
+state-changing operations need a yes.
+
+For the per-file customization-preservation behavior of
+`pack tracker init`'s forward migration, see
+`supporting-docs/MERGE-STRATEGY.md`.
+
+---
+
 ## Session naming and resume
 
 Replace `/path/to/pack` with the actual path where

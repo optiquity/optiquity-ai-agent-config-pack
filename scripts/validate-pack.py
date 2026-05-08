@@ -1438,6 +1438,11 @@ def check_help_fragment_freshness() -> None:
                 # surface — filters editorial mentions of names that
                 # aren't real scripts on this surface.
                 if token.startswith("scripts/"):
+                    # Skip library / test directories — those are
+                    # implementation details, not user-facing verbs.
+                    if (token.startswith("scripts/lib/") or
+                            token.startswith("scripts/tests/")):
+                        continue
                     script_path = surface_root / token
                     if not script_path.is_file():
                         continue

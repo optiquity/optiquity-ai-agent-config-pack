@@ -3,8 +3,9 @@
 <!--
 HOW TO USE THIS TEMPLATE
 
-Copy this file to your project root during setup:
-  cp /path/to/pack/project-template/PACK-FEEDBACK.md ./PACK-FEEDBACK.md
+This file is installed by `scripts/init-project.sh` (or refreshed by
+`init-project.sh --update` / `migrate-v10-to-v11.sh`) into your project
+at `docs/pack/PACK-FEEDBACK.md`. You do not copy it manually.
 
 This is the PM chat's running feedback log for the AI Agent Config Pack
 itself. It is NOT a project log (use STATUS.md, BACKLOG.md, CHANGELOG.md
@@ -24,7 +25,7 @@ below.
 -->
 
 ---
-*Copied from: project-template/PACK-FEEDBACK.md — AI Agent Config Pack v10*
+*Copied from: project-template/docs/pack/PACK-FEEDBACK.md — AI Agent Config Pack v11*
 *Fill in Status section during kickoff, then remove this block and the
 HTML comment above.*
 ---
