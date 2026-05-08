@@ -6,6 +6,11 @@ Codex operates on the pack repo.
 
 This file is NOT a template and is NOT copied to coding projects.
 
+## Quick reference
+
+- **Pack commands:** run `pack help` for the full verb list, or `/pack-help` in your CLI.
+- **Recommended first action:** run `pack-startup` (or your CLI's equivalent).
+
 ---
 
 ## What this repo is

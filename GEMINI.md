@@ -3,6 +3,11 @@
 Context file for Gemini CLI working on this repo. Loaded automatically at session start.
 Keep this file concise — it is loaded into every prompt.
 
+## Quick reference
+
+- **Pack commands:** run `pack help` for the full verb list, or `/pack-help` in your CLI.
+- **Recommended first action:** run `pack-startup` (or your CLI's equivalent).
+
 ---
 
 ## Repo identity

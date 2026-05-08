@@ -3,6 +3,11 @@
 This file is read by Claude Code CLI agents working on the pack repo itself.
 It is NOT a template and is NOT copied to coding projects.
 
+## Quick reference
+
+- **Pack commands:** run `pack help` for the full verb list, or `/pack-help` in your CLI.
+- **Recommended first action:** run `pack-startup` (or your CLI's equivalent).
+
 ---
 
 ## What this repo is

@@ -24,6 +24,11 @@ bodies may be more concise here, since the loaded skills carry the full detail.
 **[PROJECT_NAME]** targets [PLATFORM_TARGETS].
 Transport: [TRANSPORT] (e.g., gRPC + Proto3 for first-party; REST for third-party).
 
+## Quick reference
+
+- **Pack commands:** run `pack help` for the full verb list, or `/pack-help` in your CLI.
+- **Recommended first action:** run `pm-startup` (or your CLI's equivalent).
+
 ## Capability policy
 
 Codex may perform all major engineering tasks in this repository:
