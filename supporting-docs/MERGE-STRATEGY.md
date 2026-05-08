@@ -186,9 +186,11 @@ migrator never overwrites one.
 
 **Strategy:** 3-way text dispatch.
 
-Pack-shipped agent files (e.g., `pack-architect.md`,
-`auditor-issue-tracking.md`). Trinity rule applies — refreshes are
-delivered in lockstep across the three CLI variants.
+Pack-shipped agent files (e.g., `pack-architect.md`, `pack-reviewer.md`).
+Trinity rule applies — refreshes are delivered in lockstep across the
+three CLI variants. The `auditor-issue-tracking` agent (BD-109 / BD-110)
+is on the v11.x roadmap; when it ships it will route through the same
+class.
 
 ---
 

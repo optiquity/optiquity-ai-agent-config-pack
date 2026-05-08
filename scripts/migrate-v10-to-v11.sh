@@ -352,6 +352,21 @@ stage_s5_v11_artifacts() {
         cp "$PACK/project-template/.gemini/commands/pack-help.toml" \
             "$TARGET/.gemini/commands/pack-help.toml"
     fi
+
+    # The pack-help shell script + its single dep (lib/detect.sh) — the
+    # per-CLI skills/commands above invoke `bash scripts/pack-help.sh`
+    # relative to the project. Without these copies the slash-command
+    # surfaces fail at first invocation (BD-097 audit B-1).
+    mkdir -p "$TARGET/scripts/lib"
+    if [[ -f "$PACK/scripts/pack-help.sh" \
+       && ! -f "$TARGET/scripts/pack-help.sh" ]]; then
+        cp "$PACK/scripts/pack-help.sh" "$TARGET/scripts/pack-help.sh"
+        chmod +x "$TARGET/scripts/pack-help.sh"
+    fi
+    if [[ -f "$PACK/scripts/lib/detect.sh" \
+       && ! -f "$TARGET/scripts/lib/detect.sh" ]]; then
+        cp "$PACK/scripts/lib/detect.sh" "$TARGET/scripts/lib/detect.sh"
+    fi
 }
 
 # ── Render report ─────────────────────────────────────────────────────────

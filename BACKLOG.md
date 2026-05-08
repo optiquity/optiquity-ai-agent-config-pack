@@ -22,7 +22,7 @@ Format follows the standard BACKLOG item format from METHODOLOGY.md Part 7.
 
 ## Active — v11 Scope
 
-The v11.0 implementation surface. 51 BD entries (BD-060..BD-110)
+The v11.0 implementation surface. 53 BD entries (BD-060..BD-112)
 derived from the planning corpus at `maintenance-docs/v11-research/`
 (IMPLEMENTATION-PLAN.md + four addenda; ARCHITECTURE-V3.3-DELTA.md is
 the live design). Sequencing per merged §3.3 commit order. See the
@@ -208,13 +208,13 @@ Blockers: BD-061
 Unblocks: None
 File/Symbol: `scripts/lib/recommendation.sh`, `scripts/tests/recommendation-test.sh`, `.pack-tracker/recommendation-state.json` (schema)
 Description: Lands the OQ-19 mechanism. Signal computation per V3 §28.1.1
-  (3 signals pack-side; 7 client-side); state I/O for state file per V3
+  (3 signals pack-side; 6 client-side); state I/O for state file per V3
   §28.1.4 schema; `should_recommend()` test per V3 §28.1.5; prompt rendering
   per V3 §28.1.7. State file is JSON v1 schema; lazy-created with default
   values; failure-mode UX per V3 §28.1.4 (parse fail → log warning + write
   fresh state + defer recommendation to next session). All 7 V3 §28.1.10
   tests must pass.
-Resolved: 2026-05-07 — V3 §28.1 lib end-to-end. recommendation_compute_signals (3 pack / 7 client) + state I/O (default / corrupt-recover / atomic save) + 5-guard should_recommend with 25%-growth Guard 4 + prompt rendering with human-label substitution per §28.1.7. 53 tests in scripts/tests/recommendation-test.sh covering the V3 §28.1.10 7-test surface. Bash 3.2 compatible. Review fix-follow added docs/project/ BACKLOG fallback (BLOCKER F-1), human-label headline (was raw JSON keys), well-formed "Also past threshold" follow-up. Sweep 754/754; CI green.
+Resolved: 2026-05-07 — V3 §28.1 lib end-to-end. recommendation_compute_signals (3 pack / 6 client) + state I/O (default / corrupt-recover / atomic save) + 5-guard should_recommend with 25%-growth Guard 4 + prompt rendering with human-label substitution per §28.1.7. 53 tests in scripts/tests/recommendation-test.sh covering the V3 §28.1.10 7-test surface. Bash 3.2 compatible. Review fix-follow added docs/project/ BACKLOG fallback (BLOCKER F-1), human-label headline (was raw JSON keys), well-formed "Also past threshold" follow-up. Sweep 754/754; CI green.
 
 ---
 
@@ -702,7 +702,7 @@ Resolved: n/a
 
 **BD-097 — Pre-release semantic audit pass**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: All Scope-A and Scope-B BDs except BD-086, BD-087, BD-093
 Unblocks: BD-093
 File/Symbol: `maintenance-docs/v11-implementation/SEMANTIC-AUDIT-REPORT.md`, `SEMANTIC-AUDIT-PROMPT.md`
@@ -712,13 +712,24 @@ Description: Agent-driven semantic audit before release pin. Catches
   etc.). Pass = zero blockers + every warning dispositioned. Per §6.I
   resolution: ad-hoc Claude Code session for v11.0; revisit dedicated agent
   in v11.1+.
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — pack-architect agent ran the semantic
+  audit; produced 480-line SEMANTIC-AUDIT-REPORT.md. Found 1 BLOCKER
+  (B-1: client `/pack-help` skill referenced a script the install
+  never delivered) + 11 WARNINGs + 6 NOTEs. B-1 fixed by extending
+  init-project S11 + migrator S5 to install `pack-help.sh` +
+  `lib/detect.sh` into client (with fixture tests verifying
+  `bash scripts/pack-help.sh` succeeds from a fresh project root).
+  10 of 11 WARNINGs fixed; remainder dispositioned as deferred (1
+  cosmetic skipped). All 25 validate-pack Checks remain green; 137
+  BD-088/080/085 fixture tests + 17 pack-help tests + 53
+  recommendation tests pass on bash 3.2.57. Audit clears BD-093 for
+  release-pin per re-audit gate.
 
 ---
 
 **BD-098 — `OPTIONAL-FEATURES.md` tracker walkthrough (elevated user-doc home)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-092, BD-073, BD-066
 Unblocks: None
 File/Symbol: `OPTIONAL-FEATURES.md`, plus cross-links from QUICKSTART.md, MIGRATION-v10-to-v11.md, DEPENDENCIES.md, PACK-CHAT.md, PM-CHAT.md
@@ -728,13 +739,20 @@ Description: Elevates GH Issue tracker enablement to OPTIONAL-FEATURES.md
   init` walkthrough) / How the pack's pieces work with it / Caveats / When
   to skip / How to disable / Failure modes (cross-link to MERGE-STRATEGY).
   3-level recovery (BD-103) lands here too.
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — full 9-section tracker entry in
+  OPTIONAL-FEATURES.md (Status, What it is, When it matters, How to
+  enable, How to use, Caveats, When to skip, How to disable, Failure
+  modes — cross-linked to MERGE-STRATEGY.md). Initial 7-section shape
+  shipped in BD-092; BD-098 adds the explicit "How to disable"
+  (`pack tracker disable`) + "Failure modes" (truthful-report contract
+  + sidecar reconciliation recipe) sections per the BD spec. 3-level
+  recovery (BD-103) deferred to v11.x.
 
 ---
 
 **BD-099 — `DEPENDENCIES.md` `gh` optional-dep pointer**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-098
 Unblocks: None
 File/Symbol: `supporting-docs/DEPENDENCIES.md`
@@ -742,7 +760,10 @@ Description: Adds `gh` CLI entry under new `## CLI tools (optional, per-feature)
   section. Includes `gh-sub-issue` extension entry. Cross-link to
   OPTIONAL-FEATURES.md § GitHub Issue Tracker. Quick Reference table row
   added: `gh CLI | Tracker opt-in (optional) | brew install gh`.
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — Quick Reference table gained two rows
+  (`gh CLI` + `gh-sub-issue`); new "## CLI tools (optional, per-feature)"
+  section with full install + auth + verify recipe and cross-link to
+  OPTIONAL-FEATURES.md § Tracker integration (v11).
 
 ---
 

@@ -126,6 +126,41 @@ Swift gRPC plugin. Used by `proto-gen.sh`.
 | swift-protobuf | Swift gRPC | `brew install swift-protobuf` |
 | grpc-swift-2 | Swift gRPC | https://github.com/grpc/grpc-swift-2 |
 | mcp-local-rag | CLI PM chat (optional) | Auto via `npx -y mcp-local-rag` |
+| gh CLI | Tracker opt-in (optional, v11+) | `brew install gh` |
+| gh-sub-issue | Tracker opt-in (optional, v11+) | `gh extension install yahsan2/gh-sub-issue` |
+
+---
+
+## CLI tools (optional, per-feature)
+
+### gh CLI (optional — required for v11 tracker opt-in)
+
+GitHub's official command-line tool. Used by the v11 tracker
+abstraction (`scripts/lib/tracker-provider-gh.sh`) to read and write
+GitHub Issues when the project opts into tracker mode via
+`pack tracker init`. Not required if your project stays on flat-file
+(`BACKLOG.md`) tracking — most projects do not need this.
+
+- Install: `brew install gh` (macOS); see https://cli.github.com/ for
+  Linux / Windows installers.
+- Auth: `gh auth login` against the repo's GitHub account; minimum
+  scopes are `repo` (issues read/write) plus `read:org` if the repo is
+  in an organization.
+- Verify: `gh repo view` from the project root must succeed before
+  `pack tracker init`.
+
+### gh-sub-issue (optional — required for v11 tracker phase-task linking)
+
+`gh` extension that adds first-class sub-issue commands. v11 tracker
+mode uses sub-issues to link phase-tasks to their parent BD; without
+this extension, sub-issue links fall back to comment-marker form.
+
+- Install: `gh extension install yahsan2/gh-sub-issue`
+- Verify: `gh sub-issue --help` exits 0.
+- Reference: https://github.com/yahsan2/gh-sub-issue
+
+See `OPTIONAL-FEATURES.md` § "Tracker integration (v11)" for the full
+walkthrough.
 
 ---
 

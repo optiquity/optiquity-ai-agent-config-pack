@@ -515,7 +515,7 @@ stage_s8_gitignore() {
         info "no pack .gitignore template — skipping"
         return
     fi
-    local header="# --- AI Agent Config Pack additions (v10.0) ---"
+    local header="# --- AI Agent Config Pack additions (v11.0) ---"
     if [[ ! -f "$TARGET/.gitignore" ]]; then
         cp "$pack_gi" "$TARGET/.gitignore"
         return
@@ -751,6 +751,24 @@ stage_s11_v11_artifacts() {
         "$copy_fn" "$PACK/project-template/.gemini/commands/pack-help.toml" \
             "$TARGET/.gemini/commands/pack-help.toml"
     fi
+
+    # 5. The pack-help shell script + its single dep (lib/detect.sh).
+    #    The per-CLI skills/commands above invoke `bash scripts/pack-help.sh`
+    #    relative to the project — without these copies the slash-command
+    #    surfaces (`/pack-help` on Claude/Codex/Gemini) fail at first
+    #    invocation in a freshly-installed project (BD-097 audit B-1).
+    mkdir -p "$TARGET/scripts/lib"
+    if [[ -f "$PACK/scripts/pack-help.sh" ]]; then
+        cp -f "$PACK/scripts/pack-help.sh" "$TARGET/scripts/pack-help.sh"
+        chmod +x "$TARGET/scripts/pack-help.sh"
+    fi
+    if [[ -f "$PACK/scripts/lib/detect.sh" ]]; then
+        cp -f "$PACK/scripts/lib/detect.sh" "$TARGET/scripts/lib/detect.sh"
+    fi
+    [[ -x "$TARGET/scripts/pack-help.sh" ]] \
+        || fail_stage S11 "scripts/pack-help.sh missing or not executable after copy"
+    [[ -f "$TARGET/scripts/lib/detect.sh" ]] \
+        || fail_stage S11 "scripts/lib/detect.sh missing after copy"
 }
 
 # ── --update mode (BD-080) ─────────────────────────────────────────────────

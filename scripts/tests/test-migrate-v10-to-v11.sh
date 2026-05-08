@@ -155,6 +155,19 @@ else
     t_fail "2.5 byte-identity violated"
 fi
 
+# 2.5b (BD-097 audit B-1) pack-help.sh + lib/detect.sh installed by
+# migrator S5; pack-help.sh runs from project root without external deps.
+[[ -x "$T/scripts/pack-help.sh" ]] \
+    && t_pass "2.5b scripts/pack-help.sh installed + executable" \
+    || t_fail "2.5b pack-help.sh missing or not executable"
+[[ -f "$T/scripts/lib/detect.sh" ]] \
+    && t_pass "2.5b scripts/lib/detect.sh installed" \
+    || t_fail "2.5b detect.sh missing"
+help_out=$(cd "$T" && bash scripts/pack-help.sh 2>&1) ; help_rc=$?
+assert_eq "2.5b pack-help.sh from project root rc=0" "0" "$help_rc"
+assert_contains "2.5b pack-help.sh emits client-side header" "$help_out" \
+    "Pack v11 — verb reference (this project)"
+
 # Truthful report content.
 report=$(cat "$T/.pack-migrate-v10-to-v11/report.md")
 assert_contains "2.6 report has H1" "$report" \

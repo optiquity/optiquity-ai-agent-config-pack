@@ -56,8 +56,10 @@ project — there is no shared state between projects.
   pm-startup observe pack/project signals (BD count, BACKLOG size,
   growth rate) and recommend tracker opt-in when threshold heuristics
   fire. Per-user state persisted under `.pack-tracker/`.
-- Issue tracking auditor agent (`auditor-issue-tracking`): pack /
-  client surface verbs.
+- TrackerProvider abstraction consumed by PM chat / Pack chat for
+  tracker-aware prompts. The dedicated `auditor-issue-tracking` agent
+  (BD-109 client-side, BD-110 pack-side) is on the v11.x roadmap; the
+  provider it consumes ships in v11.0.
 
 **Out of scope for this version:**
 
@@ -250,7 +252,8 @@ fully without ever opting in.
    GitHub Issues with the `bd:NNN` label.
 4. Add a `.pack-tracker/state` directory for sidecar tracking-state.
 
-To opt out later: `bash scripts/pack-tracker.sh reverse` (idempotent).
+To opt out later: `bash scripts/pack-tracker.sh disable` (idempotent;
+runs the reverse migration internally).
 
 To check tracker health: `bash scripts/pack-tracker.sh doctor`.
 

@@ -181,7 +181,7 @@ scripts/                                    Pack-level scripts
 ├── migrate-v10-to-v11.sh                   v10.0 → v11.0 migration script (v11)
 ├── add-capability.sh                       Add a pack-supported capability to an existing project (v10)
 ├── pack-help.sh                            LCD shell help-verb (v11; renders HELP-FRAGMENT)
-├── pack-tracker.sh                         Tracker opt-in / forward / reverse / status / doctor (v11)
+├── pack-tracker.sh                         Tracker — init / status / mirror-rebuild / disable / doctor / update-templates / enable-recommendations (v11)
 ├── tracker-migrate.sh                      Lower-level tracker forward/reverse wrapper (v11)
 ├── restore-from-backup.sh                  v9.3 → v10 backup restore (v10; legacy)
 ├── merge-{json,toml,trinity,platform-skills}.py   Migrator-only merge helpers (pack-internal)

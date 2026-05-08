@@ -18,7 +18,7 @@ notes differ.
 -->
 
 ---
-*Copied from: project-template/CLAUDE.md — AI Agent Config Pack v10*
+*Copied from: project-template/CLAUDE.md — AI Agent Config Pack v11*
 *Fill in placeholders and remove this block.*
 ---
 
@@ -29,6 +29,8 @@ Transport: [TRANSPORT] (e.g., gRPC + Proto3 for first-party; REST for third-part
 
 - **Pack commands:** run `pack help` for the full verb list, or `/pack-help` in your CLI.
 - **Recommended first action:** run `pm-startup` (or your CLI's equivalent).
+
+---
 
 ## Capability policy
 

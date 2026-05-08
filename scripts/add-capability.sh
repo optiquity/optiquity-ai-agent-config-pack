@@ -368,7 +368,7 @@ stage_a6_gitignore() {
     if [[ ! -f "$pack_gi" ]]; then
         info "(no pack .gitignore template — skipping)"
     else
-        local header="# --- AI Agent Config Pack additions (v10.0) ---"
+        local header="# --- AI Agent Config Pack additions (v11.0) ---"
         if [[ ! -f "$TARGET/.gitignore" ]]; then
             cp "$pack_gi" "$TARGET/.gitignore"
         else

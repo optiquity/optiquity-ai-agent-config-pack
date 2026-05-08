@@ -157,11 +157,13 @@ bash scripts/pack-tracker.sh disable    # reverse migration; back to flat-file
 repo). The example template at `tracker.toml.example` is installed by
 `init-project.sh` at v11.
 
-**How to use the pack's pieces with it** — once opted in, every
-`auditor-issue-tracking` agent run (pack-side or client-side) reads
-issue state via the TrackerProvider, not by parsing `BACKLOG.md`. PM
-chat / Pack chat queries route through the same provider so prompts
-stay accurate as issues evolve.
+**How to use the pack's pieces with it** — once opted in, PM chat /
+Pack chat queries route tracker reads through the TrackerProvider in
+`scripts/lib/tracker-provider.sh` so prompts stay accurate as issues
+evolve. The dedicated `auditor-issue-tracking` agent is on the v11.x
+roadmap (BD-109 client-side, BD-110 pack-side); v11.0 ships the
+provider abstraction the agent will consume but not the agent file
+itself.
 
 **Caveats**
 
@@ -179,6 +181,31 @@ stay accurate as issues evolve.
 **When to skip** — if your BD volume is under ~50 open and BACKLOG.md
 search is comfortable, the tracker round-trip is more friction than
 flat-file. The recommendation system will not nag in this regime.
+
+**How to disable** — the tracker is reversible at any time:
+
+```sh
+bash scripts/pack-tracker.sh disable
+```
+
+`disable` runs the reverse migration internally: it reads live issue
+state, writes a sidecar `BACKLOG.md` from current issues, and flips
+`tracker.toml`'s `mode.state` back to flat-file. Atomic — restores
+backup on failure. Idempotent — safe to re-run. After `disable`, the
+flat-file tracking workflow resumes; existing issues remain on GitHub
+untouched (the disable does not delete them).
+
+**Failure modes** — when the tracker's forward / reverse migration
+encounters a file with both project-side AND pack-side edits since
+the last baseline (real-merge case), the migrator surfaces the
+disposition `customization-detected-needs-reconciliation` and writes
+a sidecar of your pre-migration content. See
+`supporting-docs/MERGE-STRATEGY.md` for the per-file class matrix and
+the canonical sidecar conventions. Reconciliation is manual: open the
+sidecar + the destination, merge, remove the sidecar, commit. The
+truthful-report contract guarantees every file the migrator touches
+appears in the rendered report under exactly one disposition; nothing
+silently changes.
 
 ---
 

@@ -47,8 +47,8 @@ Each version is available as a git tag (v1, v2, …).
   tokens; truthful report (every file accounted for; no silent drops).
   Single-slot sidecars (`.v10-customized` for migrator, `.pre-update`
   for `init-project.sh --update`). 72 BD-088 fixture tests (137 total
-  v11 fixture tests across BD-088 / BD-080 / BD-085 / pack-help) on
-  bash 3.2.57. Closes BD-059.
+  across BD-088 + BD-080 + BD-085; pack-help adds another 17 tested
+  separately under BD-075/077) on bash 3.2.57. Closes BD-059.
 - BD-080 — `init-project.sh` extensions: stage S11 (v11 client artifacts)
   + `--update` mode (consumes BD-088, sidecar-presence gate on re-run).
   30 fixture tests.
@@ -87,14 +87,34 @@ Each version is available as a git tag (v1, v2, …).
 - Dog-food validation: validate-pack passes all 25 Checks; CI runs
   17 test suites green.
 
-**Carried over to future work:**
+**Carried over to future work (v11-Active BDs Open at v11.0 cut):**
 
-- BD-093 — v11.0 release pin (tag, README hash, CHANGELOG final).
+- BD-078 — validate-pack `check_tracker_config` (V1 §A.2).
+- BD-079 — validate-pack recommendation-state schema check.
+- BD-093 — v11.0 release pin (tag move + README hash + CHANGELOG
+  final). Lands as the release commit.
 - BD-095 — `migrate-v10-to-v11.sh` `--dry-run` / `--apply` /
   `--resume` modes.
-- BD-097 — Pre-release semantic audit pass.
-- BD-098 — Tracker section elevation in OPTIONAL-FEATURES.md (initial
-  shipped in BD-092; further refinement deferred).
+- BD-096 — Synthetic-fixture set (general-use coverage).
+- BD-097 — Pre-release semantic audit pass (this release: gated
+  BD-093 via SEMANTIC-AUDIT-REPORT.md).
+- BD-098 — Tracker walkthrough refinement in OPTIONAL-FEATURES.md
+  (initial shipped in BD-092).
+- BD-099 — DEPENDENCIES.md `gh` optional-dep pointer.
+- BD-100 — Pack-implementation milestone checkpoints (3 strategic
+  audits during v11).
+- BD-101 — Client-migration validation gates (3 in-script gates with
+  pass/fail).
+- BD-102 — Pack-repo dog-food migration (final v11 validation).
+- BD-103 — `pack tracker reset` verb + 3-level recovery documentation.
+- BD-104 — Cross-pack rename `IMPLEMENTATION_PLAN.md` →
+  `IMPLEMENTATION-PLAN.md`.
+- BD-105 — STATUS.md phase-row dual-link rendering (tracker mode).
+- BD-106 — Phase task entity model + identifier scheme + parser/emitter.
+- BD-107 — TD-NNN promotion-path tooling (Path 1 + Path 2 + direct close).
+- BD-108 — Cross-entity dependency link orchestration + cycle check +
+  gate-check extension.
+- BD-109 — Project-side `auditor-issue-tracking` sub-agent.
 - BD-110 — Pack-side `pack-auditor` agent.
 - BD-111 — First-class GitHub dependency-API mutation (replaces
   comment-marker fallback in `tracker_provider_gh_link`).

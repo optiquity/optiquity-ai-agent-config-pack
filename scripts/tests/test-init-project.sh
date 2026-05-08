@@ -185,6 +185,20 @@ else
     t_fail "3.3 byte-identity violated (DELTA L1)"
 fi
 
+# 3.4 (BD-097 audit B-1) pack-help.sh + lib/detect.sh installed in client,
+# and `bash scripts/pack-help.sh` runs from the project root without
+# needing PACK env or any pack-repo path resolution.
+[[ -x "$T/scripts/pack-help.sh" ]] \
+    && t_pass "3.4 scripts/pack-help.sh installed + executable" \
+    || t_fail "3.4 pack-help.sh missing or not executable"
+[[ -f "$T/scripts/lib/detect.sh" ]] \
+    && t_pass "3.4 scripts/lib/detect.sh installed" \
+    || t_fail "3.4 detect.sh missing"
+help_out=$(cd "$T" && bash scripts/pack-help.sh 2>&1) ; help_rc=$?
+assert_eq "3.4 pack-help.sh from project root rc=0" "0" "$help_rc"
+assert_contains "3.4 pack-help.sh emits client-side header" "$help_out" \
+    "Pack v11 — verb reference (this project)"
+
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────
