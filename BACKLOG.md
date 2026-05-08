@@ -1286,10 +1286,15 @@ Description: Two parallel test-fixture systems exist today: the legacy
   6. Update `supporting-docs/SETUP-NEW.md` (1 reference) and
      `supporting-docs/INSTALL-PROCEDURES.md` (4 references) similarly.
   7. Verify `.github/workflows/validate-pack.yml` does not invoke the
-     deleted scripts standalone.
-  8. Add a CHANGELOG entry under v11 noting the v9 sunset.
-  9. Verify `python3 scripts/validate-pack.py` passes after all
+     deleted scripts standalone; remove any v9-only steps if found.
+  8. Verify `python3 scripts/validate-pack.py` passes after all
      deletions + edits.
+
+  **Do NOT modify CHANGELOG.md.** Per pack rule + PLAN-BD-119 §2.3,
+  CHANGELOG is touched only at version boundaries (e.g., v11.0
+  release). The v9 sunset will be summarized in the v11.0 CHANGELOG
+  entry when v11 ships, alongside the other v11.0 scope items. The
+  Resolved: line in this BACKLOG entry is the in-flight audit trail.
 
   If a v9 client unexpectedly surfaces post-deletion, they recover the
   migrator via `git checkout v9 -- scripts/migrate-v9-to-v10.sh` from
