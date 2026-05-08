@@ -1028,6 +1028,143 @@ Resolved: 2026-05-08, v11.0 — 4 fixtures shipped via deterministic
 
 ---
 
+**BD-114 — Real-OT read-only dry-run harness for vN→vN+1 migration**
+Type: TODO(version)
+Status: Open
+Blockers: BD-119
+Unblocks: v11.0 ship gate (Criterion 2); same harness reused for v12+
+File/Symbol: `scripts/dry-run-real-ot.sh`
+Description: Ship gate for "real OT migrates cleanly from vN to vN+1."
+  Read-only clones the real OT repo into /tmp via HTTPS, sets `pushurl`
+  to `/dev/null` on the clone (push physically impossible from the
+  working copy), auto-detects OT's current pack version, picks the
+  appropriate `migrate-v<N>-to-v<N+1>.sh` from `scripts/`, runs it
+  against the clone, captures the full diff to a report artifact, and
+  removes the clone via EXIT trap regardless of pass / fail / Ctrl-C.
+  Refuses to run if the working dir resolves anywhere outside /tmp or
+  $TMPDIR. Real OT itself is never opened in write mode by this
+  harness. Manual gate (not in CI) since it touches a real network
+  repo. Required before tagging v11.0, v12.0, ... etc.
+Resolved: n/a
+
+---
+
+**BD-115 — `existing-project-mid-dev` fixture (pack added to in-progress project)**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: BD-116
+File/Symbol: `test-fixtures/build.sh` (new builder), `test-fixtures/README.md`
+Description: Today there is no fixture for "user has a real project
+  mid-development and adds the pack on top." Persona coverage gap —
+  currently zero. Add a deterministic builder `_build_existing_project_mid_dev`
+  that produces a starting state with realistic non-pack content
+  (e.g. Package.swift, src/, tests/, README, pre-existing .git/
+  history) before any pack files are present. Used by BD-116 to assert
+  `init-project.sh --update` lands the pack cleanly without clobbering
+  user files. Version-agnostic: same fixture serves v11, v12, ... since
+  the input shape (a generic in-progress project) doesn't change with
+  pack version.
+Resolved: n/a
+
+---
+
+**BD-116 — Persona contract assertions (template-derived expected output)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-115
+Unblocks: BD-118
+File/Symbol: `scripts/persona-contracts/` (new), `test-fixtures/build.sh`
+Description: Today fixtures are *built* but no test asserts the result
+  is *correct*. Silent regressions in `init-project.sh` or migrators
+  go undetected. Add per-persona contract scripts that diff post-init /
+  post-migration output against an expected manifest **derived from
+  the pack templates themselves**, not hand-written. When
+  `project-template/` or `init-project.sh` changes for v12, contracts
+  auto-evolve — no per-release contract maintenance. Three contracts:
+  (1) greenfield — init on empty dir matches template; (2) mid-dev —
+  init --update on BD-115 fixture leaves user files intact + lands
+  pack correctly; (3) migration — synthetic OT-shape fixture through
+  migrator produces expected vN+1 shape with customizations preserved.
+Resolved: n/a
+
+---
+
+**BD-117 — `RELEASE-GATE.md` per-major-version checklist**
+Type: TODO(version)
+Status: Open
+Blockers: BD-114, BD-116
+Unblocks: v11.0 tag; reused for every future major
+File/Symbol: `maintenance-docs/RELEASE-GATE.md` (new)
+Description: Authoritative pre-tag checklist that must complete before
+  any major version vN+1 is tagged: (1) per-version migrator
+  `migrate-v<N>-to-v<N+1>.sh` written using the BD-119 framework;
+  (2) BD-114 dry-run against real OT passes with expected diff shape;
+  (3) all three BD-116 persona contracts pass; (4) BD-118 CI workflow
+  green on the release commit; (5) `test-fixtures/build.sh --verify`
+  passes against committed manifest. Single document; updated with
+  each release if the gate evolves.
+Resolved: n/a
+
+---
+
+**BD-118 — CI wiring for persona contracts + fixture verification**
+Type: TODO(version)
+Status: Open
+Blockers: BD-114, BD-115, BD-116
+Unblocks: v11.0 ship
+File/Symbol: `.github/workflows/validate-pack.yml`
+Description: Wire BD-116 persona contracts and `test-fixtures/build.sh
+  --verify` into validate-pack.yml so every push runs: (1) fixture
+  rebuild + manifest verify (catches non-deterministic drift);
+  (2) greenfield contract; (3) mid-dev contract (BD-115 fixture);
+  (4) synthetic migration contract through `v10-realistic-ot` (or
+  whichever vN-realistic fixture is current). BD-114 real-OT dry-run
+  is **not** in CI — manual release-gate step per BD-117 since it
+  touches a real network repo. Catches regressions before they ship.
+Resolved: n/a
+
+---
+
+**BD-119 — General N→N+1 migrator framework (`scripts/lib/migrator-core.sh`)**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: BD-114, BD-120; every future per-version migrator
+File/Symbol: `scripts/lib/migrator-core.sh` (new), `scripts/migrate-v10-to-v11.sh` (refactor)
+Description: Today `migrate-v10-to-v11.sh` is monolithic — every
+  release we'd write a new monolithic script and risk re-introducing
+  the same defect classes (customization preservation, sidecar
+  handling, BACKLOG migration, trinity diff, dry-run mode). Extract
+  shared concerns into `scripts/lib/migrator-core.sh`. Each
+  per-version migrator becomes a thin adapter that declares "what to
+  add / remove / transform from vN to vN+1," and inherits the shared
+  safety / preservation logic. Refactor `migrate-v10-to-v11.sh` to use
+  the framework as the first consumer + reference implementation.
+  Makes v12, v13, ... migration "just work" — no full rewrite per
+  version.
+Resolved: n/a
+
+---
+
+**BD-120 — Parameterize realistic-OT fixture generator for any vN**
+Type: TODO(version)
+Status: Open
+Blockers: BD-119
+Unblocks: future-version migration testing
+File/Symbol: `test-fixtures/build.sh`
+Description: Today `_build_v10_realistic_ot` is hardcoded to v10. When
+  OT migrates to v11, we'll need `v11-realistic-ot` as the *next*
+  migration baseline (then v12-realistic-ot, etc). Refactor into
+  `_build_realistic_for_version <vN>` so the same OT-shape
+  customization patterns (project-name fills, x-agent on all 3 CLIs,
+  ollama removed, TD BACKLOG) apply against any pack tag. Cheap once
+  BD-119 establishes the per-version adapter pattern. Lets BD-114's
+  dry-run harness exercise vN+1→vN+2 migrations once we ship v11.
+Resolved: n/a
+
+---
+
 ## Active — v10 Scope
 
 **BD-059 — v10 migration silently destroys project customization**
