@@ -90,6 +90,22 @@ stage_s0_preflight() {
             "$EXIT_BASELINE_MISSING"
     fi
     info "v10 baseline tag resolved: $V10_TAG"
+
+    # Refuse to proceed when stale `--update` sidecars exist in the
+    # working tree. Both upgrade paths use single-slot sidecars; mixing
+    # `.pre-update` (from a prior init-project.sh --update) with
+    # `.v10-customized` (this migrator) leaves the user with two
+    # parallel pre-migration snapshots and ambiguous reconciliation.
+    local stale_sidecars
+    stale_sidecars=$(find "$TARGET" -type f -name "*.pre-update" \
+        -not -path "*/.git/*" -not -path "*/.pack-update/*" \
+        -not -path "*/.pack-migrate-v10-to-v11-backup/*" 2>/dev/null | head -20)
+    if [[ -n "$stale_sidecars" ]]; then
+        say "refusing to proceed: prior \`--update\` sidecars present:"
+        printf '  %s\n' $stale_sidecars >&2
+        die "reconcile or remove the .pre-update sidecars above before running migrate-v10-to-v11.sh" \
+            "$EXIT_DIRTY"
+    fi
 }
 
 # ── Backup ────────────────────────────────────────────────────────────────

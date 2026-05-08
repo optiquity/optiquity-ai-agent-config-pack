@@ -204,6 +204,7 @@ QUICKSTART.md                               Quick start router (three paths — 
 OPTIONAL-FEATURES.md                        Tool settings for features and settings used with non-pack related functionality
 HELP-FRAGMENT-PACK.md                       Pack-side verb reference (v11; rendered by pack-help.sh)
 HELP-FRAGMENT-TRACKER.md                    Shared tracker section (v11; canonical; mirrored to project-template/docs/pack/)
+tracker.toml.example                        Pack-side tracker config template (v11)
 PACK-CHAT.md                                Pack CLI chat operating instructions
 PACK-AGENTS.md                              Pack agent routing (includes invocation guide)
 BACKLOG.md                                  Pack improvement backlog

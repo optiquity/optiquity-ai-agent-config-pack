@@ -30,7 +30,7 @@ Each version is available as a git tag (v1, v2, …).
   (`scripts/lib/tracker-agent-read.sh`). (BD-066 / BD-069 / BD-071)
 - D-19 — Inflection-point recommendation system
   (`scripts/lib/recommendation.sh`). Pack-side 3 signals + client-side
-  7 signals; per-user state at `.pack-tracker/recommendation-state.json`;
+  6 signals; per-user state at `.pack-tracker/recommendation-state.json`;
   cooldown + persistent refusal flags. (BD-072 / BD-073 / BD-074)
 - D-20 — Help-verb system: LCD shell verb `pack help`
   (`scripts/pack-help.sh`) + per-CLI `/pack-help` skills/commands +
@@ -46,8 +46,9 @@ Each version is available as a git tag (v1, v2, …).
   + `customization-report.sh`). 12 file classes; 8 canonical disposition
   tokens; truthful report (every file accounted for; no silent drops).
   Single-slot sidecars (`.v10-customized` for migrator, `.pre-update`
-  for `init-project.sh --update`). 72 fixture tests on bash 3.2.57.
-  Closes BD-059.
+  for `init-project.sh --update`). 72 BD-088 fixture tests (137 total
+  v11 fixture tests across BD-088 / BD-080 / BD-085 / pack-help) on
+  bash 3.2.57. Closes BD-059.
 - BD-080 — `init-project.sh` extensions: stage S11 (v11 client artifacts)
   + `--update` mode (consumes BD-088, sidecar-presence gate on re-run).
   30 fixture tests.
@@ -91,10 +92,10 @@ Each version is available as a git tag (v1, v2, …).
 - BD-093 — v11.0 release pin (tag, README hash, CHANGELOG final).
 - BD-095 — `migrate-v10-to-v11.sh` `--dry-run` / `--apply` /
   `--resume` modes.
-- BD-097 — Auditor-issue-tracking work-item BD.
+- BD-097 — Pre-release semantic audit pass.
 - BD-098 — Tracker section elevation in OPTIONAL-FEATURES.md (initial
   shipped in BD-092; further refinement deferred).
-- BD-110 — Audit-methodology skill at pack root.
+- BD-110 — Pack-side `pack-auditor` agent.
 - BD-111 — First-class GitHub dependency-API mutation (replaces
   comment-marker fallback in `tracker_provider_gh_link`).
 - BD-112 — Three-way diff filename mangling collision fix (affects both

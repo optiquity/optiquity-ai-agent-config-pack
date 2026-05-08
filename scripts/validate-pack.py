@@ -1398,7 +1398,7 @@ def check_help_fragment_freshness() -> None:
             "docs": [
                 REPO_ROOT / "PACK-CHAT.md",
                 REPO_ROOT / "QUICKSTART.md",
-                REPO_ROOT / "supporting-docs" / "OPTIONAL-FEATURES.md",
+                REPO_ROOT / "OPTIONAL-FEATURES.md",
                 REPO_ROOT / "supporting-docs" / "INSTALL-PROCEDURES.md",
             ],
             "fragment": REPO_ROOT / "HELP-FRAGMENT-PACK.md",

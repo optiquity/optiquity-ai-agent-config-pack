@@ -200,10 +200,10 @@ These rules are non-negotiable and always apply on all tools:
 ## Recommendation routing (v11+)
 
 When `/pm-startup` runs, the recommendation system in
-`scripts/lib/recommendation.sh` (D-19) computes client-side signals
-(active TD count, BACKLOG size, 30-day TD growth, plus 4 project-shape
-signals) and decides whether to surface a tracker opt-in
-recommendation. PM chat behavior:
+`scripts/lib/recommendation.sh` (D-19) computes 6 client-side signals
+(active TD count, BACKLOG size, phase count, IMPLEMENTATION_PLAN.md
+size, TD-TBD comment count, typed-deferral count) and decides whether
+to surface a tracker opt-in recommendation. PM chat behavior:
 
 - **If the recommendation fires** — `pm-startup` prints a single
   paragraph naming the signals and asks whether to opt the project in.

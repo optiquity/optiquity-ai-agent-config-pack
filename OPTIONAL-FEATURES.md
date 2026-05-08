@@ -132,8 +132,9 @@ in v11.
 
 **What it is** — moves issue tracking out of `BACKLOG.md` flat-file
 format into GitHub Issues (or another tracker), with a one-shot forward
-migration (`pack tracker forward`) and idempotent reverse (`pack tracker
-reverse`) for opt-out or backup. Adds an inflection-point recommendation
+migration (`pack tracker init`) and idempotent reverse
+(`pack tracker disable`) for opt-out or backup. Adds an inflection-point
+recommendation
 system that observes pack/project signals (BD count, BACKLOG size,
 30-day growth) and offers tracker opt-in only when the signals warrant.
 
@@ -146,10 +147,10 @@ you do not have to track it yourself.
 **How to enable** — from the pack repo or a pack-configured project:
 
 ```sh
-bash scripts/pack-tracker.sh init       # creates tracker.toml
-bash scripts/pack-tracker.sh forward    # migrates BACKLOG.md → GH Issues
+bash scripts/pack-tracker.sh init       # writes tracker.toml + runs forward migration
 bash scripts/pack-tracker.sh status     # mapping freshness report
 bash scripts/pack-tracker.sh doctor     # config + integrity check
+bash scripts/pack-tracker.sh disable    # reverse migration; back to flat-file
 ```
 
 `tracker.toml` lives at the repo root (project) or pack root (pack

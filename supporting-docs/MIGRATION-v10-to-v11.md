@@ -120,7 +120,7 @@ The script runs 7 stages:
 | 10 | `$PACK` invalid | Set `PACK` to a valid pack repo path. |
 | 11 | Target is not a git repo | `git init` the target first. |
 | 12 | Working tree dirty | `git stash` or commit. |
-| 13 | Target not v10-configured | If a fresh install, use `init-project.sh` instead. |
+| 13 | Target does not appear to be a pack-configured project (no `CLAUDE.md` or no `.claude/`) | If you're on v9.x, run `migrate-v9-to-v10.sh` first; for a fresh install use `init-project.sh`. |
 | 14 | v10 baseline tag missing in pack repo | `git -C "$PACK" fetch --tags` then retry. |
 | 15 | BD-088 library missing under pack | The pack repo is corrupt or incomplete; re-clone. |
 | 21–30 | Stage `S<n>` failure | Read the printed error message; address; retry. |

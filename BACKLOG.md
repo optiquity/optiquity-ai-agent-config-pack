@@ -426,7 +426,7 @@ Resolved: 2026-05-08, v11.0 — workflow split into `validate` (25
 
 **BD-084 — Create `supporting-docs/MIGRATION-v10-to-v11.md`**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-085, BD-088, BD-091
 Unblocks: None
 File/Symbol: `supporting-docs/MIGRATION-v10-to-v11.md`
@@ -436,7 +436,13 @@ Description: Authoritative v10→v11 migration narrative. Two-phase: forced
   preservation contract); v9-or-earlier upgrade path paragraph (chained via
   migrate-v9-to-v10.sh first); multi-project guidance (one sentence). Length
   comparable to v9-to-v10 (~800 lines).
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — 453-line user-facing migration doc.
+  Two-phase structure (forced + tracker opt-in); 7-stage table matching
+  migrate-v10-to-v11.sh; 7-row exit-code table; project-type-specific
+  notes (Apple/Swift, Python, mixed/gRPC); troubleshooting recipes;
+  BD-059 lessons-learned; automated-via-AI-CLI variant; multi-project
+  guidance. Cross-links MERGE-STRATEGY.md (per-file matrix) +
+  OPTIONAL-FEATURES.md (Phase B walkthrough).
 
 ---
 
@@ -466,7 +472,7 @@ Resolved: 2026-05-07, v11.0 — 7-stage migrator (S0 pre-flight / S1 backup
 
 **BD-086 — README.md version table v11.0 row + Repository Layout updates**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-091, BD-076, BD-093
 Unblocks: None
 File/Symbol: `README.md`
@@ -475,13 +481,18 @@ Description: Adds v11.0 row to the version table (newest-first per recent
   `HELP-FRAGMENT-TRACKER.md`, `tracker.toml.example`, `.github/ISSUE_TEMPLATE/`,
   per-CLI agent / skill / command directories; reflects post-relocation tree.
   Lands as two-step (placeholder → final hash at BD-093).
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — v11.0 row added to version table
+  (newest-first); Repository Layout updated to include all new v11
+  artifacts (per-CLI pack-help, ISSUE_TEMPLATE, HELP-FRAGMENT*.md,
+  tracker.toml.example) and expanded scripts/lib/ tree (BD-088 +
+  tracker subsystem + recommendation). Final hash placeholder retained
+  for BD-093.
 
 ---
 
 **BD-087 — CHANGELOG.md v11.0 entry**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: All other v11 BDs land first; BD-093
 Unblocks: None
 File/Symbol: `CHANGELOG.md`
@@ -491,7 +502,13 @@ Description: Adds v11.0 entry covering Scope A (D-1..D-23 list, BDs landed)
   Cites the 5 audit artifacts (3 CP reports + semantic audit + dog-food
   report) as release evidence. Pack maintainer rule: CHANGELOG only at
   version boundaries with explicit instruction.
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — v11.0 entry lands. Scope A enumerates
+  D-1..D-23 with BD-NNN per dimension; Scope B enumerates BD-088 +
+  BD-080 + BD-085 + BD-081 + BD-082 + BD-089 + BD-083 + BD-091/042 +
+  BD-084/094 + BD-090/092/086/087. Audit artifacts cited
+  (test-customization-preserve.sh + Check 25 + semantic audit doc).
+  Carried-over future work captured (BD-093, BD-095, BD-097, BD-098,
+  BD-110, BD-111, BD-112).
 
 ---
 
@@ -546,7 +563,7 @@ Resolved: 2026-05-08, v11.0 — Check 25 lands. 4-fixture driver covers
 
 **BD-090 — QUICKSTART.md callout + cross-references**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-084
 Unblocks: None
 File/Symbol: `QUICKSTART.md`
@@ -556,7 +573,11 @@ Description: Adds top-of-doc "Recommended first action: run `pack-startup`
   HELP-FRAGMENT and `pack help` for verb discovery. References
   `OPTIONAL-FEATURES.md` for tracker opt-in walkthrough. Maintains existing
   path-router shape.
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — top-of-doc callout added pointing at
+  /pack-startup or /pm-startup; HELP-FRAGMENT-PACK.md and `pack help`
+  surfaced for verb discovery. v10→v11 cross-link added (alongside
+  v9→v10) plus references to MERGE-STRATEGY.md and OPTIONAL-FEATURES.md.
+  Path-router (NEW / EXISTING / MIGRATE) shape preserved.
 
 ---
 
@@ -584,7 +605,7 @@ Resolved: 2026-05-07 — verification-only no-op. State audit confirmed the
 
 **BD-092 — Cross-reference sweep for relocated docs + v11 verbs**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-091, BD-076, BD-073
 Unblocks: None
 File/Symbol: `project-template/docs/pack/*.md`, trinity files, prompts, supporting-docs/SETUP-*.md, INSTALL-PROCEDURES.md, MIGRATION-v10-to-v11.md, OPTIONAL-FEATURES.md, PACK-CHAT.md, PACK-AGENTS.md
@@ -593,7 +614,16 @@ Description: One sweep BD that updates every cross-reference impacted by
   files but each diff is small. Adds tracker section to OPTIONAL-FEATURES.md
   (elevated by BD-098). Adds Recommendation routing section to PACK-CHAT.md /
   PM-CHAT.md.
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — sweep landed in commit 8497b03 + fix-
+  follow. OPTIONAL-FEATURES.md gained 7-point "Tracker integration
+  (v11)" section; PACK-CHAT.md and project-template PM-CHAT.md gained
+  parallel "Recommendation routing (v11+)" sections (pack-side 3
+  signals; client-side 6 signals — verified against
+  recommendation.sh::_rec_signal_names per Batch 6 review M1);
+  template-instruction blocks in project-template/docs/pack/PM-CHAT.md
+  + PACK-FEEDBACK.md updated to post-relocation install path;
+  METHODOLOGY.md PACK-FEEDBACK reference updated to docs/pack/
+  location.
 
 ---
 
@@ -613,7 +643,7 @@ Resolved: n/a
 
 **BD-094 — `MERGE-STRATEGY.md` deliverable (per-file matrix + A1 UX)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-088, BD-095, BD-085
 Unblocks: None
 File/Symbol: `supporting-docs/MERGE-STRATEGY.md`, cross-links from `MIGRATION-v10-to-v11.md`, `OPTIONAL-FEATURES.md`, `QUICKSTART.md`
@@ -623,7 +653,19 @@ Description: Surfaces the per-file customization-preservation matrix as a
   / marker-section / diff-recognition / unconditional-preserve) + A1 fallback
   (stop on unresolvable conflict; emit `*.merge-conflict`; user resolves and
   runs `--resume`). Includes IMPLEMENTATION-PLAN.md row (BD-106 extension).
-Resolved: n/a
+Resolved: 2026-05-08, v11.0 — 290-line user-readable per-file matrix.
+  12 classes documented (trinity / claude-settings / claude-mcp-example
+  / codex-config / codex-config-example / gemini-env / pm-chat /
+  custom-agent / pack-agent / custom-script / pack-script / generic).
+  Each class entry: strategy, what's preserved, what's updated,
+  disposition tokens, what to do on
+  customization-detected-needs-reconciliation. Single-slot sidecar
+  conventions documented; A1 UX deferred to BD-095 (--dry-run / --apply
+  / --resume) with forward-pointing section. Cross-references closed:
+  customization-preserve.sh, customization-report.sh,
+  test-customization-preserve.sh, MIGRATION-v10-to-v11.md,
+  OPTIONAL-FEATURES.md, QUICKSTART.md, validate-pack Check 25. Note
+  on lib/ being intentionally hidden from `pack help` added.
 
 ---
 

@@ -1,7 +1,7 @@
 # scripts/lib/recommendation.sh — D-19 inflection-point recommendation system.
 # (BD-072 — V3 §28.1)
 #
-# Watches three pack-side or seven client-side signals at session
+# Watches three pack-side or six client-side signals at session
 # start; tests them against thresholds; if a signal has crossed (and
 # none of the refusal guards apply) emits a recommendation prompt.
 #

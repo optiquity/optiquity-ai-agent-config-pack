@@ -61,15 +61,21 @@ baseline and the new pack.
 
 **On `customization-detected-needs-reconciliation`:** the migrator
 writes the new pack template to `<file>.md` and saves your pre-update
-copy as `<file>.md.v10-customized` (or `.pre-update` for `--update`).
-Open both, manually merge the project content into the new template,
-delete the sidecar, and `git add`.
+copy as `<file>.md.v10-customized` (migrator) or `<file>.md.pre-update`
+(`init-project.sh --update`). Open both, manually merge the project
+content into the new template, delete the sidecar, and `git add`.
 
 ---
 
-### 2. `claude-settings` — `.claude/settings.json`, `.claude/settings.json.example`
+### 2. `claude-settings` — `.claude/settings.json`, `.claude/settings.json.example`, `.gemini/settings.json`
 
 **Strategy:** allowlist-based JSON key-merge via `scripts/merge-json.py`.
+
+The `.gemini/settings.json` file is routed through this same class by
+the migrator (BD-085 stage S3) — same algorithm, different file path.
+The classifier auto-emits `claude-settings` for paths matching
+`.claude/settings.json`; for `.gemini/settings.json` the migrator passes
+the class explicitly.
 
 Recursive key-union over BASE / OURS / THEIRS, with set-difference logic
 for arrays. Pack-managed top-level keys adopt new pack values; project-
@@ -188,12 +194,31 @@ delivered in lockstep across the three CLI variants.
 
 ### 10. `custom-script` — `scripts/x-*.sh`, `scripts/<project-added>.{sh,py}`
 
-**Strategy:** unconditional preservation (parallel to `custom-agent`).
+**Strategy:** unconditional preservation when reached.
 
-The `x-` prefix or any project-added script that does not collide with
-a pack-shipped name is preserved without dispatch.
+**Reachability:** the auto-classifier (`customization_classify`) routes
+all `scripts/*` paths to `pack-script` (3-way text). The `custom-script`
+class is reachable only when a caller passes it explicitly via the
+6th argument to `customization_preserve`. The migrator and
+`init-project.sh --update` currently iterate `scripts/` with
+`cls=pack-script` for the entire directory, so a project-added script
+will route through `pack-script` 3-way text dispatch:
 
-**Disposition:** always `project-only-file`.
+- A `scripts/x-tool.sh` not present in the pack repo will hit
+  `project-only-file` via three-way classification (BASE absent,
+  THEIRS absent, OURS present) — same effective outcome as
+  `custom-script`. The migrator does NOT touch it.
+- A `scripts/<name>.sh` whose name collides with a pack-shipped script
+  WILL route through 3-way text — the migrator treats it as the
+  pack-shipped file (with potential customization-detected-needs-
+  reconciliation if both sides differ from baseline).
+
+The reserved `x-` prefix contract guarantees collisions cannot occur:
+the pack never ships `x-`-prefixed scripts (validate-pack Check 8
+enforces). Per-CLI agents under `.{claude,codex,gemini}/agents/x-*.md`
+ARE classified directly to `custom-agent` by name; scripts use the
+prefix-by-convention but rely on three-way's project-only-file
+classification rather than a dedicated classifier branch.
 
 ---
 
@@ -224,8 +249,8 @@ text 3-way which preserves project edits via sidecar.
 When the migrator writes a sidecar (`customization-detected-needs-reconciliation`
 or `removed-by-pack-customized` paths), the suffix is:
 
-- `--update` (BD-080): `<file>.pre-update`
 - `migrate-v10-to-v11.sh` (BD-085): `<file>.v10-customized`
+- `init-project.sh --update` (BD-080): `<file>.pre-update`
 
 Sidecars are **single-slot**. If `--update` finds prior `.pre-update`
 sidecars in the working tree it refuses to run — the user must
@@ -288,3 +313,11 @@ Until BD-095 lands, follow this single-shot recipe:
 - `OPTIONAL-FEATURES.md` — tracker opt-in walkthrough
 - `QUICKSTART.md` — where to start
 - `validate-pack.py` Check 25 — CI regression guard for the truthful-report contract
+
+> **Note on `scripts/lib/`.** Files under `scripts/lib/` are pack
+> implementation details (sourced by other scripts; never invoked
+> directly by users). They are intentionally absent from
+> `HELP-FRAGMENT-PACK.md` and `validate-pack.py` Check 22 skips
+> `scripts/lib/` and `scripts/tests/` references when scanning user
+> docs for verb freshness. To surface a new lib file as a user-facing
+> verb, move it to `scripts/<name>.sh` and add it to the help fragment.
