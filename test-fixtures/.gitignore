@@ -1,0 +1,10 @@
+# test-fixtures/.gitignore — keep recipe + manifest committed; ignore
+# fixture build output (each fixture dir is itself a git repo).
+#
+# See test-fixtures/README.md for the rebuild recipe.
+
+*
+!.gitignore
+!README.md
+!build.sh
+!manifest.txt

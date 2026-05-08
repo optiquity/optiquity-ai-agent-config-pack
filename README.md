@@ -200,6 +200,16 @@ scripts/                                    Pack-level scripts
 .github/workflows/                          GitHub Actions
 └── validate-pack.yml                       Pack self-validation on every push
 
+test-fixtures/                              Persistent baseline fixtures for tests + dog-food
+                                            (built dirs are gitignored; recipe is committed)
+├── README.md                               How fixtures are used + how to rebuild
+├── build.sh                                Deterministic rebuild script (BD-113)
+├── manifest.txt                            Expected git SHA per fixture
+├── v10-minimal/                            Bare v10 install (gitignored)
+├── v10-realistic-ot/                       Fake-OT shape (gitignored)
+├── v11-flat-file/                          v11 client, no tracker (gitignored)
+└── v11-tracker-on/                         v11 client + synthesized tracker.toml (gitignored)
+
 QUICKSTART.md                               Quick start router (three paths — NEW / EXISTING / MIGRATE)
 OPTIONAL-FEATURES.md                        Tool settings for features and settings used with non-pack related functionality
 HELP-FRAGMENT-PACK.md                       Pack-side verb reference (v11; rendered by pack-help.sh)
