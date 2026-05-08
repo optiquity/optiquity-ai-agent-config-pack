@@ -258,15 +258,20 @@ _stage_dispatch() {
 # v10→v11 emits five (METHODOLOGY.md / PROMPT-TEMPLATES.md / etc.).
 
 _stage_relocations() {
-    say "── S4 — relocations ──"
-
     local rows row old new moved=0
     rows=$(migrator_relocations 2>/dev/null || true)
 
+    # Silent when the adapter declares no relocations — adapters that
+    # handle their own S4 banner via migrator_post_dispatch_hook (e.g. the
+    # v10→v11 adapter, which uses the BD-042-specific wording) rely on
+    # this stage being a no-op when rows are empty so the framework does
+    # not double-print a generic banner. Adapters that DO declare rows
+    # get the generic banner + per-row info lines below.
     if [[ -z "$rows" ]]; then
-        info "no relocations declared by adapter"
         return 0
     fi
+
+    say "── S4 — relocations ──"
 
     while IFS= read -r row; do
         [[ -z "$row" ]] && continue
@@ -345,15 +350,19 @@ _stage_relocations() {
 # customization manifest while artifact installs stay version-additive.
 
 _stage_artifact_installs() {
-    say "── S5 — install ${MIGRATOR_TO_VERSION} client artifacts ──"
-
     local rows row pack_rel proj_rel cls action installed=0
     rows=$(migrator_artifact_installs 2>/dev/null || true)
 
+    # Silent when the adapter declares no artifact installs — same
+    # rationale as `_stage_relocations`: adapters wanting a custom S5
+    # banner (or that ship artifacts via migrator_post_dispatch_hook for
+    # behavior-preservation reasons, e.g. v10→v11) rely on this stage
+    # being a no-op when rows are empty.
     if [[ -z "$rows" ]]; then
-        info "no artifact installs declared by adapter"
         return 0
     fi
+
+    say "── S5 — install ${MIGRATOR_TO_VERSION} client artifacts ──"
 
     while IFS=$'\t' read -r pack_rel proj_rel cls action; do
         # Skip blank or comment rows.

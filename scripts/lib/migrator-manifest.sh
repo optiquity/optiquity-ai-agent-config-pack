@@ -296,7 +296,13 @@ _manifest_dispatch_transform() {
             "$base" "$ours" "$theirs" "$proj_rel" "$dest" "$cls" >/dev/null
     fi
 
-    [[ -n "$base" ]] && rm -f "$base"
+    # Best-effort cleanup; explicit `return 0` so an empty $base (baseline
+    # absent) does not propagate a non-zero exit under set -e in the
+    # caller's iterator loop.
+    if [[ -n "$base" ]]; then
+        rm -f "$base"
+    fi
+    return 0
 }
 
 _manifest_dispatch_add() {
@@ -512,6 +518,11 @@ _manifest_sweep_one_dir() {
                 >/dev/null
         fi
 
-        [[ -n "$base" ]] && rm -f "$base"
+        # Same set -e guard as in _manifest_dispatch_transform — an empty
+        # `$base` means baseline absence, not a failure; the loop must
+        # continue.
+        if [[ -n "$base" ]]; then
+            rm -f "$base"
+        fi
     done < <(find "$PACK/$pack_dir" -type f -print 2>/dev/null)
 }
