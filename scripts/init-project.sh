@@ -942,12 +942,21 @@ blast_radius_sweep() {
     local d f
     for d in "${scope_dirs[@]}"; do
         [[ -d "$TARGET/$d" ]] || continue
-        # INSTALL-PROCEDURES.md legitimately documents the v9→v10
-        # PROMPT-TEMPLATES.md migration in Procedure 5-C.1 (formerly
-        # Procedure 5-R in METHODOLOGY pre-C7); exclude it from the
-        # sweep. METHODOLOGY.md retains a stub pointer that may also
-        # reference the legacy name, so exclude it too.
-        if grep -rn --exclude='METHODOLOGY.md' --exclude='INSTALL-PROCEDURES.md' "PROMPT-TEMPLATES" "$TARGET/$d" >/dev/null 2>&1; then
+        # Files that legitimately reference the retired
+        # PROMPT-TEMPLATES.md name and must be excluded from the
+        # active-reference sweep:
+        #   - INSTALL-PROCEDURES.md (docs/pack/) documents the v9→v10
+        #     PROMPT-TEMPLATES.md migration in Procedure 5-C.1 (formerly
+        #     Procedure 5-R in METHODOLOGY pre-C7).
+        #   - METHODOLOGY.md (docs/pack/) retains a stub pointer that
+        #     may also reference the legacy name.
+        #   - PM-CHAT.md (docs/pack/, v10.1+) names PROMPT-TEMPLATES.md
+        #     in the RAG orphan-files table so users can purge stale
+        #     RAG entries citing dead paths.
+        #   - detect.sh (scripts/lib/) uses PROMPT-TEMPLATES.md as a
+        #     v10-shape negative marker for pack-version detection;
+        #     this is functional library code, not stale narrative.
+        if grep -rn --exclude='METHODOLOGY.md' --exclude='INSTALL-PROCEDURES.md' --exclude='PM-CHAT.md' --exclude='detect.sh' "PROMPT-TEMPLATES" "$TARGET/$d" >/dev/null 2>&1; then
             warn "PROMPT-TEMPLATES reference found in $d"
             matches=1
         fi

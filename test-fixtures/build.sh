@@ -115,6 +115,19 @@ _run_v11_init() {
 
 # Set up a temp clone of the pack at the v10 tag for fixture builds
 # that need v10 source files. Sets V10_PACK_SRC_DIR globally.
+#
+# BD-128 work-around: the v10 tag (v10 → v10.1) ships an
+# init-project.sh whose blast_radius_sweep does NOT exclude
+# PM-CHAT.md, but v10.1's PM-CHAT.md does name PROMPT-TEMPLATES.md in
+# the RAG orphan-files table — so a fresh `init-project.sh` against
+# the v10 tag exits 31 (EXIT_SWEEP) on every install. The fix in the
+# current pack adds PM-CHAT.md to the sweep's exclude list; we cannot
+# patch the v10 tag, so we apply the same one-line exclude to the
+# CLONED v10 init-project.sh after clone. The patch is surgical
+# (adds a single --exclude='PM-CHAT.md' to the `grep -rn` line) — it
+# does not relax sweep semantics for any other file. Without this, the
+# v10 fixture builds would CI-block on a v10-side bug we cannot fix
+# in-tag.
 _setup_v10_pack_src() {
     if [[ -n "${V10_PACK_SRC_DIR:-}" && -d "$V10_PACK_SRC_DIR" ]]; then
         return 0
@@ -123,6 +136,16 @@ _setup_v10_pack_src() {
     trap '[[ -n "${V10_PACK_SRC_DIR:-}" ]] && rm -rf "$V10_PACK_SRC_DIR"' EXIT
     git clone --depth 1 --branch v10 "$PACK_ROOT" "$V10_PACK_SRC_DIR" \
         >/dev/null 2>&1
+    # BD-128 work-around (see function comment).
+    local v10_init="$V10_PACK_SRC_DIR/scripts/init-project.sh"
+    if [[ -f "$v10_init" ]] \
+        && grep -q "exclude='INSTALL-PROCEDURES.md'" "$v10_init" \
+        && ! grep -q "exclude='PM-CHAT.md'" "$v10_init"; then
+        sed -i.bak \
+            "s/--exclude='INSTALL-PROCEDURES.md'/--exclude='INSTALL-PROCEDURES.md' --exclude='PM-CHAT.md'/" \
+            "$v10_init"
+        rm -f "$v10_init.bak"
+    fi
 }
 
 # ── Per-fixture builders ───────────────────────────────────────────────────

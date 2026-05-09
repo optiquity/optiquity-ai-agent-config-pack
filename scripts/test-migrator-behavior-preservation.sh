@@ -152,6 +152,38 @@ else
 fi
 chmod +x "$BASELINE_FILE"
 
+# BD-128 baseline source-path patch.
+#
+# BD-135 (commit ffecfef) renamed
+#   project-template/tracker.toml.example
+# to
+#   project-template/tracker.toml.project-example
+# while keeping the install-destination basename at tracker.toml.example
+# (see IMPLEMENTATION-REPORT-BD-135.md "Open design choice"). The
+# pre-refactor BASELINE migrator (snapshotted at d7b3f07, before
+# BD-135) still references the OLD source path, which no longer exists
+# in the working tree. As a result the BASELINE's tracker-install
+# `[[ -f "$PACK/project-template/tracker.toml.example" ]]` precondition
+# silently evaluates false and the file is never copied — diverging
+# from the ADAPTER, which correctly sources from the BD-135 path and
+# installs the file. The diff is purely a baseline-stale-path artifact;
+# the ADAPTER's behavior is the contract the BD-119 framework is meant
+# to preserve.
+#
+# Patch the BASELINE file's source path to match the BD-135 rename so
+# the equivalence sweep compares like-for-like. This is the same
+# surgical-patch pattern used in test-fixtures/build.sh's
+# _setup_v10_pack_src for the v10-tag PROMPT-TEMPLATES sweep bug:
+# we cannot edit historical tagged/snapshotted source, but we can
+# make the harness retarget the source path that BD-135 moved.
+if grep -q "PACK/project-template/tracker.toml.example" "$BASELINE_FILE"; then
+    sed -i.bak \
+        's#PACK/project-template/tracker.toml.example#PACK/project-template/tracker.toml.project-example#g' \
+        "$BASELINE_FILE"
+    rm -f "$BASELINE_FILE.bak"
+    echo "  baseline patched: tracker.toml.example source path retargeted to tracker.toml.project-example (BD-135 rename)"
+fi
+
 ADAPTER_FILE="$PACK_ROOT/scripts/migrate-v10-to-v11.sh"
 echo "  adapter source: $ADAPTER_FILE"
 echo "  fixtures:       ${FIXTURES[*]}"
