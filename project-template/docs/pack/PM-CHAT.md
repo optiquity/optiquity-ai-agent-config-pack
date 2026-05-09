@@ -46,7 +46,7 @@ sections below.
 
 ## Pack agent roster
 
-The following are the canonical v10 pack agents. Any agent file whose
+The following are the canonical v11 pack agents. Any agent file whose
 stem is NOT in this list and does NOT begin with `x-` is an
 improperly-added agent (see "Detection of improperly added files" below).
 

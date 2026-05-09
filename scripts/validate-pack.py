@@ -30,15 +30,61 @@ Checks:
       `**Problem:**`, `**Goal:**`, `**Success criteria:**`, and a
       file-based completion-report indicator (`REPORT FILE:` or
       `**Completion report:**`).
-  21. Agent canonical-phrase compliance (v10.1): every project-template
-      agent definition (.claude/.codex/.gemini × 16 agents) contains the
-      canonical phrases for Permission profile, Output policy, and
-      Hard rules — codified per profile (Read-only / Write-capable
-      scoped / Write-capable script).
+  11. Pack agent trinity-rule symmetry (informational): pack-roster
+      agent file content stays in lockstep across .claude/.codex/.gemini
+      (BD-082-era informational guard).
+  16. Trinity ## Project addenda H2 (BD-059): v10 trinity templates
+      carry the `## Project addenda` H2 anchor required by Procedure
+      5-S Task B.
+  17. Tool-config AGENT_CAPABILITIES parity (BD-059): the
+      AGENT_CAPABILITIES table is expressed identically in
+      `agent-run.sh`, `.codex/config.toml.example`, and
+      `.gemini/settings.json`.
+  18. Trinity H2 structure parity (BD-059): CLAUDE.md, AGENTS.md, and
+      GEMINI.md (project-template) share the same `##` heading
+      sequence, modulo provably tool-specific sections.
+  19. Trinity templates free of body scaffolding (BD-059): v10 trinity
+      templates do not carry stale fresh-install scaffolding
+      comments that should have been pruned.
+  20. Pack .gitignore !.env.example exception (BD-059): pack-template
+      .gitignore retains the `!.env.example` re-include after the
+      `*.env*` ignore pattern.
+  21. Pack-help per-CLI parity (BD-082): all three CLI surfaces
+      (.claude/skills, .codex/skills, .gemini/skills) ship a
+      `pack-help` skill that delegates to scripts/pack-help.sh.
+  22. Help-fragment freshness (BD-082): every verb that pack prose
+      references is present in the HELP-FRAGMENT shared content,
+      pack-side and project-template-side.
+  23. Help-fragment completeness (BD-082): every non-internal
+      executable under `scripts/` is listed in
+      `HELP-FRAGMENT-PACK.md` (and pack-internal scripts are marked
+      `pack-internal: true`).
+  24. HELP-FRAGMENT-TRACKER byte-identity (BD-082, DELTA L1): the
+      pack-root and project-template HELP-FRAGMENT-TRACKER.md copies
+      are byte-identical.
+  25. Customization-detection regression guard (BD-089): the
+      customization-preserve fixture set produces the expected
+      disposition + class for every fixture row, and the truthful
+      report contract holds.
   26. BD-119 migrator-framework inventory: scripts/lib/migrator-core.sh
       (when present) is shell-syntax-valid and exposes the documented
       public-API function names + exit-code constants per
       ARCHITECTURE-BD-119.md §3.2 / PLAN-BD-119.md §3.
+  27. Agent canonical-phrase compliance (v10.1): every project-template
+      agent definition (.claude/.codex/.gemini × 16 agents) contains the
+      canonical phrases for Permission profile, Output policy, and
+      Hard rules — codified per profile (Read-only / Write-capable
+      scoped / Write-capable script).
+
+Two additional informational checks (no number, soft / advisory):
+  - Issue template forms (BD-063): `.github/ISSUE_TEMPLATE/*.yml`
+    forms parse and have the required structural fields per V2
+    §4.1 / §4.2 / §4.3, both pack-side and project-template-side.
+  - Template archive v11.0 integrity (BD-064; informational):
+    `maintenance-docs/v11-research/templates-archive/v11.0/` (when
+    present) carries INDEX.md, per-entry-type SCHEMA.md files, and
+    archived forms byte-equal to the live `.github/ISSUE_TEMPLATE/`
+    copies.
 
 Exit 0 if all pass, exit 1 if any fail. Each failure prints the exact
 file, line (where applicable), and problem.
@@ -1230,7 +1276,7 @@ def _agent_profile(stem: str) -> str | None:
 
 
 def check_agent_canonical_phrases() -> None:
-    """Check 21 — every project-template agent definition file carries the
+    """Check 27 — every project-template agent definition file carries the
     canonical phrases that codify its permission profile (BD v10.1).
 
     The agent file is authoritative for its own operating rules
@@ -1243,7 +1289,7 @@ def check_agent_canonical_phrases() -> None:
     Custom agents (`x-*`) are not validated; their profile is set at
     creation time per Procedure 5.
     """
-    print("\n── Check 21: Agent canonical-phrase compliance (v10.1) ──")
+    print("\n── Check 27: Agent canonical-phrase compliance (v10.1) ──")
     any_failed = False
     agent_dirs = [
         (CLAUDE_AGENTS_DIR, "*.md"),
