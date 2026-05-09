@@ -23,13 +23,53 @@ bash test-fixtures/build.sh --verify
 
 ## Available fixtures
 
-| Name | Pack source | What it is | Use case |
-|---|---|---|---|
-| `v10-minimal` | pack at `v10` tag | Bare v10 install via `init-project.sh`; no customizations | Control fixture for migrator tests; the "what does the migrator do to a vanilla v10?" baseline |
-| `v10-realistic-ot` | pack at `v10` tag | Fake-OT shape: project-name fills (`FakeOT`); x-prefixed custom agent on Claude/Codex/Gemini; `.codex/config.toml` `model_providers.ollama` removed; 5-entry TD-* `BACKLOG.md`; trinity v10 self-label intact | Realistic OT-style migration test; exercises BD-088 customization-preservation against shapes a real client would have |
-| `v11-flat-file` | pack at current `HEAD` | v11 install via current `init-project.sh`; no `tracker.toml`; flat-file BACKLOG | "Vanilla v11 client" — what most users have on day 1 of v11. Use for tracker-init dog-food. |
-| `v11-tracker-on` | pack at current `HEAD` | v11 install + `tracker.toml` with `mode.state = "tracker"` and `migration.forward_complete = true` set by hand (no live GH state) | Code-path testing for tracker-aware logic without round-tripping through real GH. |
-| `existing-project-mid-dev` | none — synthesized | Realistic in-progress Swift+Python+gRPC project: `Package.swift`, `Sources/AcmeWidget/`, `Tests/AcmeWidgetTests/`, `proto/catalog.proto`, `service/` (Python tooling), top-level `README.md`, `.gitignore`, and 3 commits of pre-existing project history. Contains **zero** pack files (no `.claude/`, `.codex/`, `.gemini/`, `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`, no pack scripts). | Input fixture for the BD-116 "init --update on top of an existing project" persona contract. Version-agnostic — same fixture serves v11, v12, … (BD-115). |
+| Name | Versioning | Pack source | What it is | Use case |
+|---|---|---|---|---|
+| `v10-minimal` | v10-pinned | pack at `v10` tag | Bare v10 install via `init-project.sh`; no customizations | Control fixture for migrator tests; the "what does the migrator do to a vanilla v10?" baseline |
+| `v10-realistic-ot` | v10-pinned | pack at `v10` tag | Fake-OT shape: project-name fills (`FakeOT`); x-prefixed custom agent on Claude/Codex/Gemini; `.codex/config.toml` `model_providers.ollama` removed; 5-entry TD-* `BACKLOG.md`; trinity v10 self-label intact | Realistic OT-style migration test; exercises BD-088 customization-preservation against shapes a real client would have |
+| `v11-flat-file` | v11-pinned | pack at current `HEAD` | v11 install via current `init-project.sh`; no `tracker.toml`; flat-file BACKLOG | "Vanilla v11 client" — what most users have on day 1 of v11. Use for tracker-init dog-food. |
+| `v11-tracker-on` | v11-pinned | pack at current `HEAD` | v11 install + `tracker.toml` with `mode.state = "tracker"` and `migration.forward_complete = true` set by hand (no live GH state) | Code-path testing for tracker-aware logic without round-tripping through real GH. |
+| `existing-project-mid-dev` | version-agnostic | none — synthesized | Realistic in-progress Swift+Python+gRPC project: `Package.swift`, `Sources/AcmeWidget/`, `Tests/AcmeWidgetTests/`, `proto/catalog.proto`, `service/` (Python tooling), top-level `README.md`, `.gitignore`, and 3 commits of pre-existing project history. Contains **zero** pack files (no `.claude/`, `.codex/`, `.gemini/`, `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`, no pack scripts). | Input fixture for the BD-116 "init --update on top of an existing project" persona contract. Version-agnostic — same fixture serves v11, v12, … (BD-115). |
+
+## Naming convention
+
+Fixture directory names follow one of two patterns:
+
+- **`<vN>-<persona>` for version-pinned fixtures.** The `vN` prefix
+  (`v10-`, `v11-`, …) anchors the fixture to a specific pack-version
+  baseline — either a tagged release (`v10-minimal` is built from the
+  `v10` tag) or the current pack `HEAD` for the named major
+  (`v11-flat-file`, `v11-tracker-on`). The `<persona>` half names the
+  shape the fixture represents (`minimal`, `realistic-ot`, `flat-file`,
+  `tracker-on`). When v12 lands, expect `v12-flat-file`,
+  `v12-tracker-on`, etc., as siblings — never overwrite a v11 fixture
+  in place.
+- **Bare descriptor for version-agnostic fixtures.** When the fixture
+  models something that does not depend on a pack version (e.g.,
+  `existing-project-mid-dev` models a generic in-progress project the
+  pack is being added to), drop the `vN` prefix and use a hyphenated
+  descriptor. The fixture is reused unchanged across versions
+  (BD-115/BD-116).
+
+Pick version-pinned when the fixture's content is a snapshot of pack
+output at a specific version. Pick version-agnostic when the fixture is
+input *to* the pack and is not itself a pack artifact.
+
+## When to add a fixture here vs. elsewhere
+
+Add it to `test-fixtures/` when (a) more than one test consumes it, or
+(b) it represents a persona / baseline that has documentation value
+beyond a single test (migrator-baseline, tracker-on, mid-dev project,
+etc.). These fixtures live as their own git repos with deterministic
+SHAs so multiple test runs and dog-food sessions get byte-identical
+clones.
+
+Keep it inline in the test script when the fixture is single-use,
+trivially derivable in a few `mkdir`/`echo` lines, and not interesting
+on its own — e.g., a one-off `tmp` directory a single test creates,
+mutates, and deletes within its own `mktemp -d` scope. Don't promote
+single-use scratch state to a persistent fixture; the build/verify
+overhead isn't worth it.
 
 ## How fixtures are used by tests
 

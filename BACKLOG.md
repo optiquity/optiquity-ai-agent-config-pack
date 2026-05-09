@@ -1305,7 +1305,7 @@ Resolved: n/a
 
 **BD-122 — Document `test-fixtures/` `<vN>-<persona>` versioning convention**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-121 (cleaner once the legacy system is gone)
 Unblocks: future-version fixture additions (no re-derivation by next contributor)
 File/Symbol: `test-fixtures/README.md`
@@ -1320,7 +1320,7 @@ Description: The root `test-fixtures/` directory holds fixtures named
   project-mid-dev`). Add a "When to add a fixture here vs. elsewhere"
   paragraph. Keep it short — implementation is one or two paragraphs
   and a row-by-row update of the existing fixture table. Tiny.
-Resolved: n/a
+Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-122.md`
 
 ---
 
