@@ -310,7 +310,7 @@ Resolved: 2026-05-07 — 6 per-CLI pack-help files (Trinity × 2 surfaces): Mark
 
 **BD-078 — validate-pack.py Check (`check_tracker_config`) (V1 §A.2)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-061
 Unblocks: None
 File/Symbol: `scripts/validate-pack.py`
@@ -319,13 +319,13 @@ Description: First v11 validate-pack addition. Validates `tracker.toml`
   `Last regenerated` timestamps relative to `tracker.toml.migration.last_forward_run`
   (per V1 §A.2). Check number is pedagogical — verify next-free integer at
   land-time per §6.C.
-Resolved: n/a
+Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-078-BD-079.md`. **Check 29** (`check_tracker_config`) added to scripts/validate-pack.py — uses `tomllib` to validate both `tracker.toml.pack-example` (root) and `project-template/tracker.toml.project-example` for: TOML parse correctness, `schema_version == 1` (int), allowed-set membership on `backend.name` / `mode.state` / `cli_acceleration.prefer`, presence + types of all `[mirror]` keys, per-surface `id_namespace.prefix` (BD pack / TD client), bool + non-empty-string typing on `[migration]` keys. Wired in `main()` after Check 28 in numerical order. New regression test `scripts/tests/tracker-config-schema-test.sh` 17/17 PASS (1 well-formed + 8 distinct failure modes). Validator now reports 30 numbered checks + 2 informational, all clean.
 
 ---
 
 **BD-079 — validate-pack.py Check (recommendation-state schema)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-072
 Unblocks: None
 File/Symbol: `scripts/validate-pack.py`
@@ -333,7 +333,7 @@ Description: If `.pack-tracker/recommendation-state.json` exists, validate
   against the V3 §28.1.4 v1 schema. Soft-fail if missing (lazy-create is by
   design). Catches state-file corruption before it causes runtime defaults.
   Check number per §6.C audit at land-time.
-Resolved: n/a
+Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-078-BD-079.md`. **Check 30** (`check_recommendation_state_schema`) added to scripts/validate-pack.py — soft-passes when `.pack-tracker/recommendation-state.json` is absent (lazy-create design); otherwise validates JSON parse, all v1 schema fields per `recommendation_state_default()`, `schema_version == "v1"`, `surface ∈ {pack, client}`, `user_re_enable_count` non-negative-int (with explicit bool rejection). Wired in `main()` after Check 29 in numerical order. New regression test `scripts/tests/recommendation-state-schema-test.sh` 19/19 PASS (file-absent soft-pass + well-formed PASS + 8 distinct failure modes).
 
 ---
 
@@ -976,7 +976,7 @@ Resolved: n/a
 
 **BD-112 — Three-way diff filename mangling can collide on similar paths**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: None
 Unblocks: None
 File/Symbol: `scripts/lib/customization-preserve.sh` `_cp_write_diff()`;
@@ -994,7 +994,7 @@ Description: Both helpers flatten relative paths into diff filenames via
   rel, or sequence index) when a flattened name is already in use.
   Discovered during BD-088 review (PACK-REVIEW-BD-088 finding m7,
   2026-05-07).
-Resolved: n/a
+Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-112.md`. NEW `_cp_flat_name()` helper in scripts/lib/customization-preserve.sh maps each rel to `<rel-with-/-replaced-by-__>__<sha1-6hex>`. Deterministic, collision-resistant (different paths produce both different sanitized prefixes AND different hash suffixes), human-readable for debugging, macOS bash 3.2 + BSD-utils compatible (`shasum -a 1`). Both call sites that previously used `${rel//\//-}` with leading-dot strip — `_cp_write_diff` (`.three-way.diff` artifacts) and `_cp_strategy_structured` (`.merge-warnings.log` artifacts) — now route through the helper. Note: the BACKLOG entry's secondary surface (`scripts/migrate-v9-to-v10.sh`) was deleted by BD-121 and required no fix. test-customization-preserve 79/79 (was 72; +7 BD-112 collision/determinism asserts in new Group 6c, including the exact `.claude/agents/foo.md` vs `claude/agents/foo.md` pair from the BACKLOG entry). test-migrator-behavior-preservation 15/15. test-migrate-v10-to-v11 39/39. Validator clean.
 
 ---
 

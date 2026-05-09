@@ -82,6 +82,22 @@ Checks:
       (RAG reconciliation procedure) and the Step 6 `RAG:` summary
       template. Prevents v10.1-style backports landing only on the
       canonical SKILL while leaving live per-CLI surfaces stale.
+  29. Tracker-config schema (BD-078): the pack-side
+      `tracker.toml.pack-example` and the client-side
+      `project-template/tracker.toml.project-example` parse as TOML
+      and carry the required keys/types per ARCHITECTURE.md §3.1
+      (`schema_version`, `[backend].name`, `[mode].state`,
+      `[mirror]`, `[id_namespace].prefix`, `[cli_acceleration].prefer`,
+      `[migration].forward_complete`, `[migration].reverse_available`,
+      `[migration].mapping_file`). Catches schema drift in the
+      example files that ship to clients via init-project.sh.
+  30. Recommendation-state JSON schema (BD-079): if
+      `.pack-tracker/recommendation-state.json` exists at the pack
+      root, it parses as JSON and matches the v1 schema documented in
+      `scripts/lib/recommendation.sh` (V3 §28.1.4). Soft-passes when
+      the file is absent (lazy-create is by design — fresh installs
+      never write the file until first persistent-refusal toggle).
+      Catches state-file corruption before it causes runtime defaults.
 
 Two additional informational checks (no number, soft / advisory):
   - Issue template forms (BD-063): `.github/ISSUE_TEMPLATE/*.yml`
@@ -97,6 +113,7 @@ Exit 0 if all pass, exit 1 if any fail. Each failure prints the exact
 file, line (where applicable), and problem.
 """
 
+import json
 import os
 import re
 import subprocess
@@ -1982,6 +1999,238 @@ def check_pm_startup_per_cli_parity() -> None:
         return
 
 
+# ── Check 29: Tracker-config schema (BD-078) ────────────────────────────────
+
+# Supported backend names per the example file comments
+# ("github" first-class at v11.0; others reserved). Keep in lockstep
+# with the comment block in the two example files.
+_TRACKER_BACKENDS = ("github", "linear", "jira", "redmine")
+_TRACKER_MODES = ("flat-file", "tracker")
+_TRACKER_PREFER = ("gh", "mcp", "auto")
+_TRACKER_SCHEMA_VERSION = 1
+
+
+def _validate_tracker_toml(path: Path, expected_prefix: str) -> bool:
+    """Validate a single tracker.toml example file.
+
+    Returns True on PASS, False on FAIL. Records each failure via
+    `fail()` with file path + key + expected vs actual context so the
+    message names exactly what diverges.
+
+    `expected_prefix` is the [id_namespace].prefix value the example
+    file is supposed to ship with — "BD" for the pack-side example,
+    "TD" for the client-side example.
+    """
+    rel = path.relative_to(REPO_ROOT)
+    if not path.is_file():
+        fail(f"{rel} — tracker example file missing")
+        return False
+
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+    except Exception as e:
+        fail(f"{rel} — TOML parse error: {e}")
+        return False
+
+    failed = False
+
+    def _require(key_path, expected_type, container=None):
+        nonlocal failed
+        cur = data if container is None else container
+        for part in key_path.split("."):
+            if not isinstance(cur, dict) or part not in cur:
+                fail(f"{rel} — missing required key: {key_path}")
+                failed = True
+                return None
+            cur = cur[part]
+        if not isinstance(cur, expected_type):
+            fail(f"{rel} — key {key_path}: expected "
+                 f"{expected_type.__name__}, got {type(cur).__name__}")
+            failed = True
+            return None
+        return cur
+
+    schema_version = _require("schema_version", int)
+    if schema_version is not None and schema_version != _TRACKER_SCHEMA_VERSION:
+        fail(f"{rel} — schema_version: expected "
+             f"{_TRACKER_SCHEMA_VERSION}, got {schema_version}")
+        failed = True
+
+    backend_name = _require("backend.name", str)
+    if backend_name is not None and backend_name not in _TRACKER_BACKENDS:
+        fail(f"{rel} — backend.name: expected one of "
+             f"{list(_TRACKER_BACKENDS)}, got {backend_name!r}")
+        failed = True
+
+    mode_state = _require("mode.state", str)
+    if mode_state is not None and mode_state not in _TRACKER_MODES:
+        fail(f"{rel} — mode.state: expected one of "
+             f"{list(_TRACKER_MODES)}, got {mode_state!r}")
+        failed = True
+
+    # [mirror] table — presence of the table itself, plus the four
+    # operational keys init-project / mirror regen rely on.
+    mirror = _require("mirror", dict)
+    if mirror is not None:
+        for k, ty in (
+            ("enabled", bool),
+            ("location_backlog", str),
+            ("location_status", str),
+            ("location_changelog", str),
+            ("regenerate_on_write", bool),
+        ):
+            if k not in mirror:
+                fail(f"{rel} — missing required key: mirror.{k}")
+                failed = True
+            elif not isinstance(mirror[k], ty):
+                fail(f"{rel} — key mirror.{k}: expected "
+                     f"{ty.__name__}, got {type(mirror[k]).__name__}")
+                failed = True
+
+    id_prefix = _require("id_namespace.prefix", str)
+    if id_prefix is not None and id_prefix != expected_prefix:
+        fail(f"{rel} — id_namespace.prefix: expected "
+             f"{expected_prefix!r} for this surface, got {id_prefix!r}")
+        failed = True
+
+    prefer = _require("cli_acceleration.prefer", str)
+    if prefer is not None and prefer not in _TRACKER_PREFER:
+        fail(f"{rel} — cli_acceleration.prefer: expected one of "
+             f"{list(_TRACKER_PREFER)}, got {prefer!r}")
+        failed = True
+
+    fwd = _require("migration.forward_complete", bool)
+    rev = _require("migration.reverse_available", bool)
+    mapping = _require("migration.mapping_file", str)
+    if mapping is not None and not mapping.strip():
+        fail(f"{rel} — migration.mapping_file: empty string")
+        failed = True
+    # Silence unused-binding lint; the _require side effects (fail
+    # registration on missing key/wrong type) are the load-bearing
+    # behavior here.
+    _ = (fwd, rev)
+
+    if not failed:
+        ok(f"{rel} — schema OK (prefix={id_prefix!r}, "
+           f"backend={backend_name!r}, mode={mode_state!r})")
+    return not failed
+
+
+def check_tracker_config() -> None:
+    """Check 29 — tracker.toml example schema (BD-078).
+
+    Both the pack-side `tracker.toml.pack-example` and the client-side
+    `project-template/tracker.toml.project-example` must parse as TOML
+    and carry the required keys/types per ARCHITECTURE.md §3.1.
+
+    Catches schema drift in the example files that ship to clients
+    via `init-project.sh` (per-BD-080 stage S11). If the examples
+    fall out of sync with the live `scripts/lib/tracker-config.sh`
+    reader expectations, every fresh install propagates the breakage.
+    """
+    print("\n── Check 29: Tracker-config schema (BD-078) ──")
+    pack_example = REPO_ROOT / "tracker.toml.pack-example"
+    client_example = REPO_ROOT / "project-template" / "tracker.toml.project-example"
+
+    _validate_tracker_toml(pack_example, expected_prefix="BD")
+    _validate_tracker_toml(client_example, expected_prefix="TD")
+
+
+# ── Check 30: Recommendation-state JSON schema (BD-079) ─────────────────────
+
+# Schema fields per scripts/lib/recommendation.sh:recommendation_state_default()
+# (V3 §28.1.4). Tuples are (field, allowed-types). `type(None)` permitted
+# for nullable timestamp fields per the default jq builder.
+_REC_STATE_SCHEMA = (
+    ("schema_version",                (str,)),
+    ("surface",                       (str,)),
+    ("persistent_refusal",            (bool,)),
+    ("persistent_refusal_at",         (str, type(None))),
+    ("last_recommendation_shown_at",  (str, type(None))),
+    ("last_recommendation_signals",   (dict,)),
+    ("user_re_enable_count",          (int,)),
+)
+_REC_STATE_SCHEMA_VERSION = "v1"
+_REC_STATE_SURFACES = ("pack", "client")
+
+
+def check_recommendation_state_schema() -> None:
+    """Check 30 — recommendation-state.json schema (BD-079).
+
+    If `.pack-tracker/recommendation-state.json` exists at the pack
+    root, it must parse as JSON and match the v1 schema documented
+    in `scripts/lib/recommendation.sh` (V3 §28.1.4).
+
+    Soft-passes when the file is absent — lazy-create is by design,
+    so a fresh pack checkout will not have one. The check fires only
+    when the file is present, catching state-file corruption before
+    `recommendation_state_load()` falls back to defaults at runtime
+    (which silently masks the underlying corruption).
+    """
+    print("\n── Check 30: Recommendation-state JSON schema (BD-079) ──")
+    state_file = REPO_ROOT / ".pack-tracker" / "recommendation-state.json"
+    if not state_file.is_file():
+        ok(".pack-tracker/recommendation-state.json absent — "
+           "lazy-create is by design, nothing to validate")
+        return
+
+    rel = state_file.relative_to(REPO_ROOT)
+    try:
+        with open(state_file, "r") as f:
+            data = json.load(f)
+    except Exception as e:
+        fail(f"{rel} — JSON parse error: {e}")
+        return
+
+    if not isinstance(data, dict):
+        fail(f"{rel} — top-level JSON must be an object, "
+             f"got {type(data).__name__}")
+        return
+
+    failed = False
+    for field, allowed_types in _REC_STATE_SCHEMA:
+        if field not in data:
+            fail(f"{rel} — missing required field: {field}")
+            failed = True
+            continue
+        value = data[field]
+        # bool is a subclass of int in Python; reject bool where int
+        # is the only allowed type to catch true/false mistakenly stored
+        # as user_re_enable_count.
+        if isinstance(value, bool) and bool not in allowed_types:
+            fail(f"{rel} — field {field}: expected "
+                 f"{[t.__name__ for t in allowed_types]}, got bool")
+            failed = True
+            continue
+        if not isinstance(value, allowed_types):
+            type_names = [t.__name__ for t in allowed_types]
+            fail(f"{rel} — field {field}: expected one of "
+                 f"{type_names}, got {type(value).__name__}")
+            failed = True
+
+    sv = data.get("schema_version")
+    if isinstance(sv, str) and sv != _REC_STATE_SCHEMA_VERSION:
+        fail(f"{rel} — schema_version: expected "
+             f"{_REC_STATE_SCHEMA_VERSION!r}, got {sv!r}")
+        failed = True
+
+    surface = data.get("surface")
+    if isinstance(surface, str) and surface not in _REC_STATE_SURFACES:
+        fail(f"{rel} — surface: expected one of "
+             f"{list(_REC_STATE_SURFACES)}, got {surface!r}")
+        failed = True
+
+    cnt = data.get("user_re_enable_count")
+    if isinstance(cnt, int) and not isinstance(cnt, bool) and cnt < 0:
+        fail(f"{rel} — user_re_enable_count: must be ≥ 0, got {cnt}")
+        failed = True
+
+    if not failed:
+        ok(f"{rel} — schema OK (surface={surface!r}, "
+           f"schema_version={sv!r})")
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -2017,6 +2266,8 @@ def main() -> None:
     check_migrator_framework_inventory()
     check_agent_canonical_phrases()
     check_pm_startup_per_cli_parity()
+    check_tracker_config()
+    check_recommendation_state_schema()
 
     print("\n" + "=" * 60)
     if failures:

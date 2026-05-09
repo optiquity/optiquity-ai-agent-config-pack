@@ -138,9 +138,11 @@ assert_eq "2.4 disposition" "customization-detected-needs-reconciliation" \
 assert_eq "2.4 action"      "sidecar"   "$(tsv_col 4 "$last")"
 assert_eq "2.4 dest = theirs"  "v2"      "$(cat "$T2/dest.md")"
 assert_eq "2.4 sidecar = ours" "v1-mine" "$(cat "$T2/dest.md.pre-update")"
-[[ -f "$state/diffs/doc.md.three-way.diff" ]] \
-    && t_pass "2.4 three-way diff written" \
-    || t_fail "2.4 three-way diff written"
+# BD-112: diff name uses the collision-safe flat helper.
+expected_diff_24="$state/diffs/$(_cp_flat_name "doc.md").three-way.diff"
+[[ -f "$expected_diff_24" ]] \
+    && t_pass "2.4 three-way diff written ($expected_diff_24)" \
+    || t_fail "2.4 three-way diff written" "expected $expected_diff_24"
 
 # 2.5 new-file-in-pack: base + ours absent, theirs present → copy.
 setup_state "$state"
@@ -414,6 +416,79 @@ init_rc=$(
 )
 assert_eq "6b.1 init without _CP_PACK_ROOT fails (rc=1)" "rc=1" "$init_rc"
 rm -rf "$T6B"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 6c: BD-112 — collision-safe flat naming for per-file artifacts
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Two distinct rels that collide under the legacy scheme
+# (`${rel//\//-}` then strip leading `.`) must now produce distinct
+# work-directory artifact names. Concrete pair from BD-112:
+#   .claude/agents/foo.md   ←→ legacy → claude-agents-foo.md
+#   claude/agents/foo.md    ←→ legacy → claude-agents-foo.md   (collision)
+
+printf "\n=== Group 6c: BD-112 collision-safe flat naming ===\n"
+
+# 6c.1 helper-level: distinct names for the two BD-112-described rels.
+flat_a=$(_cp_flat_name ".claude/agents/foo.md")
+flat_b=$(_cp_flat_name "claude/agents/foo.md")
+[[ "$flat_a" != "$flat_b" ]] \
+    && t_pass "6c.1 helper distinguishes .claude/agents/foo.md vs claude/agents/foo.md ($flat_a vs $flat_b)" \
+    || t_fail "6c.1 helper produced identical flat names" "both='$flat_a'"
+
+# 6c.2 helper-level: deterministic — same rel → same name across calls.
+flat_a2=$(_cp_flat_name ".claude/agents/foo.md")
+assert_eq "6c.2 deterministic (same input → same output)" "$flat_a" "$flat_a2"
+
+# 6c.3 helper-level: another collision pair using basename-shared paths.
+flat_c=$(_cp_flat_name "scripts/lib/three-way.sh")
+flat_d=$(_cp_flat_name "tests/lib/three-way.sh")
+[[ "$flat_c" != "$flat_d" ]] \
+    && t_pass "6c.3 helper distinguishes scripts/lib vs tests/lib (same basename)" \
+    || t_fail "6c.3 helper produced identical flat names" "both='$flat_c'"
+
+# 6c.4 end-to-end: drive _cp_write_diff via the text strategy for the
+# collision pair and confirm two distinct diff files land on disk.
+T6C=$(mktemp -d -t cp-collide.XXXXXX)
+state="$T6C/state"
+setup_state "$state"
+
+# Both rels are real-merge-required so they trigger _cp_write_diff.
+mk_pair() {
+    local tag="$1"
+    echo "v1"      > "$T6C/${tag}.base"
+    echo "v1-mine" > "$T6C/${tag}.ours"
+    echo "v2"      > "$T6C/${tag}.theirs"
+    cp "$T6C/${tag}.ours" "$T6C/${tag}.dest"
+}
+mk_pair "a"
+mk_pair "b"
+
+customization_preserve "$T6C/a.base" "$T6C/a.ours" "$T6C/a.theirs" \
+    ".claude/agents/foo.md" "$T6C/a.dest" generic >/dev/null
+customization_preserve "$T6C/b.base" "$T6C/b.ours" "$T6C/b.theirs" \
+    "claude/agents/foo.md" "$T6C/b.dest" generic >/dev/null
+
+diff_a="$state/diffs/$(_cp_flat_name ".claude/agents/foo.md").three-way.diff"
+diff_b="$state/diffs/$(_cp_flat_name "claude/agents/foo.md").three-way.diff"
+
+[[ "$diff_a" != "$diff_b" ]] \
+    && t_pass "6c.4 expected diff paths differ" \
+    || t_fail "6c.4 expected diff paths identical" "both='$diff_a'"
+
+[[ -f "$diff_a" && -f "$diff_b" ]] \
+    && t_pass "6c.4 both diff files exist on disk" \
+    || t_fail "6c.4 a or b diff missing" "a=$([[ -f $diff_a ]] && echo yes || echo no) b=$([[ -f $diff_b ]] && echo yes || echo no)"
+
+# Confirm content matches the per-rel header (no overwrite happened).
+grep -q '^# Three-way diff for \.claude/agents/foo\.md$' "$diff_a" \
+    && t_pass "6c.4 diff_a header names .claude/agents/foo.md" \
+    || t_fail "6c.4 diff_a header wrong"
+grep -q '^# Three-way diff for claude/agents/foo\.md$' "$diff_b" \
+    && t_pass "6c.4 diff_b header names claude/agents/foo.md" \
+    || t_fail "6c.4 diff_b header wrong"
+
+rm -rf "$T6C"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Group 7: truthful report (BD-059 contract)

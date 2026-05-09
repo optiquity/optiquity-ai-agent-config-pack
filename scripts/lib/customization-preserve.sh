@@ -73,6 +73,38 @@ _cp_require_three_way() {
     fi
 }
 
+# BD-112: collision-safe per-file artifact name in the work directory.
+#
+# The previous scheme — `${rel//\//-}` then strip a leading `.` — collapsed
+# distinct rels to the same name (e.g. `.claude/agents/foo.md` and
+# `claude/agents/foo.md` both became `claude-agents-foo.md`), so the second
+# write silently overwrote the first's diff and the truthful-report
+# contract was violated.
+#
+# New scheme: `<sanitized>__<hash6>` where:
+#   sanitized = rel with "/" replaced by "__" (leading "." preserved
+#               verbatim; no info discarded)
+#   hash6     = first 6 hex chars of `shasum -a 1` over the full rel
+#
+# Properties:
+#   - Deterministic: same rel → same name across runs / hosts.
+#   - Collision-resistant: two distinct rels with the same basename produce
+#     distinct hash6 suffixes (and usually distinct sanitized prefixes too).
+#   - Human-readable for debugging: the sanitized prefix shows the path
+#     shape; the hash is a stable suffix.
+#   - macOS bash 3.2 + BSD utils compatible (shasum -a 1 is present on
+#     macOS by default and on Linux via Perl's shasum).
+#
+# Echoes the sanitized stem on stdout. Callers append `.three-way.diff`,
+# `.merge-warnings.log`, etc.
+_cp_flat_name() {
+    local rel="$1"
+    local sanitized="${rel//\//__}"
+    local hash6
+    hash6=$(printf '%s' "$rel" | shasum -a 1 | cut -c1-6)
+    printf '%s__%s\n' "$sanitized" "$hash6"
+}
+
 # ── Init ──────────────────────────────────────────────────────────────────
 
 customization_preserve_init() {
@@ -177,8 +209,11 @@ _cp_disposition_for() {
 # Write a structured three-way diff. Echo the path written.
 _cp_write_diff() {
     local base="$1" ours="$2" theirs="$3" rel="$4"
-    local flat="${rel//\//-}"
-    flat="${flat#.}"
+    # BD-112: collision-safe flat name (was `${rel//\//-}` with leading-dot
+    # strip — would collide e.g. `.claude/agents/foo.md` vs
+    # `claude/agents/foo.md`).
+    local flat
+    flat=$(_cp_flat_name "$rel")
     local out="$_CP_DIFFS_DIR/${flat}.three-way.diff"
     {
         echo "# Three-way diff for $rel"
@@ -308,8 +343,11 @@ _cp_strategy_structured() {
                     ;;
             esac
             mkdir -p "$(dirname "$dest")" "$_CP_DIFFS_DIR"
-            local flat="${rel//\//-}"
-            local stderr_log="$_CP_DIFFS_DIR/${flat#.}.merge-warnings.log"
+            # BD-112: collision-safe flat name (was `${rel//\//-}` with
+            # leading-dot strip — same defect as in _cp_write_diff).
+            local flat
+            flat=$(_cp_flat_name "$rel")
+            local stderr_log="$_CP_DIFFS_DIR/${flat}.merge-warnings.log"
             local merged_tmp
             merged_tmp=$(mktemp)
             local rc=0
