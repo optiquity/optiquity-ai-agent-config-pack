@@ -129,6 +129,45 @@ directory map.
 | `AGENTS.md` | Direct read (full) | Root-level; Codex agent context file |
 | `GEMINI.md` | Direct read (full) | Root-level; referenced when generating Gemini agent prompts |
 
+### RAG ingestion manifest
+
+This project's RAG index (`mcp-local-rag`) ingests exactly **one**
+file: `docs/pack/METHODOLOGY.md`. All other project files are
+direct-read.
+
+**Forbidden in the index** — retired paths from prior pack versions
+or files that have moved. If `local-rag.list` returns any of these,
+they are **orphans**: the retriever will surface stale chunks when
+queried, citing dead paths. Each must be removed via
+`local-rag.delete <path>`.
+
+| Retired path | Why orphaned |
+|---|---|
+| `PROMPT-TEMPLATES.md` (root) | Retired before v10; per-agent prompt files in `docs/pack/prompts/` replaced it |
+| `docs/pack/PROMPT-TEMPLATES.md` | Retired in v10.0 — replaced by per-agent files in `docs/pack/prompts/` |
+| `METHODOLOGY.md` (root) | Moved to `docs/pack/METHODOLOGY.md` in v10.0 |
+| `ARCHITECTURE.md` (root) | Moved to `docs/project/ARCHITECTURE.md` in v10.0 |
+
+`/pm-startup` Step 4 reconciles the manifest against the index on
+every startup: orphans are auto-deleted, the manifest path is
+re-ingested if stale, and the diff is reported in the startup
+summary. See `METHODOLOGY.md § RAG index hygiene` for the
+underlying principle (orphans are not benign — they actively
+mislead retrievals).
+
+**Custom project documents.** If your project ships project-specific
+files that should be RAG-ingested (a domain ontology, large
+reference docs), add them under `## Additional project documents`
+near the bottom of this file. **The discriminator is the
+access-method column:** rows whose access-method begins with
+`RAG query` (matching the canonical `METHODOLOGY.md` row's pattern)
+join the manifest as RAG-eligible; rows whose access-method begins
+with `Direct read` are direct-read only and never RAG-ingested. The
+reconciliation logic in `/pm-startup` Step 4 reads this file, takes
+the union of `docs/pack/METHODOLOGY.md` plus every
+`## Additional project documents` row whose access-method starts
+with `RAG`, and treats that union as the authoritative manifest.
+
 ---
 
 ## Behavioral rules

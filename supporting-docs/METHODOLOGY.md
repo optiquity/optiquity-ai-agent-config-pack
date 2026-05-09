@@ -137,6 +137,48 @@ Every project should have all of these. Create them before writing any code.
    committed file is a defect — it means the PM chat has not yet processed the coder's
    deferred items report. See Part 7 for the full comment format and BACKLOG procedures.
 
+### RAG index hygiene
+
+The PM chat's local-rag index (`mcp-local-rag`) holds embedding
+chunks for files declared in the **RAG ingestion manifest** in
+`docs/pack/PM-CHAT.md` § RAG ingestion manifest. The manifest is
+authoritative: anything in the index but not in the manifest is an
+**orphan**.
+
+**Orphans are not benign.** A retired-path chunk that lingers in the
+index is returned by future queries and cited as if it were current
+content. The PM chat receives confidently-wrong retrievals — stale
+guidance, dead paths, removed file references — with no signal that
+the source is gone. This is worse than no RAG at all, because the
+failure mode is invisible: the PM chat acts on retrieved chunks
+without knowing they are orphans.
+
+**The reconciliation procedure.** Every `/pm-startup` Step 4
+reconciles the actual ingested set against the manifest:
+
+- Orphans (in index, not in manifest) are auto-deleted via
+  `local-rag.delete <path>`.
+- Stale entries (manifest path whose source mtime exceeds the
+  ingest date) are re-ingested.
+- Missing entries (manifest path not in index) are ingested.
+- The diff is reported in the startup summary
+  (`RAG: N ingested, N stale, N orphans removed: [<paths>]`).
+
+The procedure runs unconditionally on every startup — orphan removal
+does not require user approval, since the manifest is the source of
+truth and orphans are by definition outside it. See
+`docs/pack/PM-CHAT.md` § RAG ingestion manifest for the per-project
+manifest declaration. The same `list` / `delete` / `ingest` MCP
+calls can be invoked manually outside `/pm-startup` (the
+pack-distributed `CLI-PM-SETUP.md` documents this for pack
+maintainers; project-installed copies of this file do not include
+that pack-only doc).
+
+**Triggers beyond `/pm-startup`.** Run reconciliation manually after
+any of: pack version migration that retires or moves a file; manual
+deletion or rename of a manifest-declared file; user observation of
+stale or wrong-citation retrievals.
+
 
 ---
 
