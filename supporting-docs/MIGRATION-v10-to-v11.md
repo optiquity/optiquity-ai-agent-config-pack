@@ -12,8 +12,12 @@ This guide is the authoritative narrative for upgrading an existing
    `STATUS.md` flat files into GitHub Issues. Driven by
    `pack tracker init` (post-migration).
 
-If you're on **v9.x or earlier**, run `migrate-v9-to-v10.sh` first
-(see `MIGRATION-v9-to-v10.md`), then return here.
+If you're on **v9.x or earlier**, the v9->v10 migrator was sunset
+in v11 (BD-121); v9 is no longer supported. Reach out to the pack
+maintainer for migration guidance, or recover the legacy migrator
+from history with
+`git -C "$PACK" checkout v10 -- scripts/migrate-v9-to-v10.sh
+supporting-docs/MIGRATION-v9-to-v10.md`.
 
 If you're managing **multiple projects**, repeat the whole flow per
 project — there is no shared state between projects.
@@ -122,7 +126,7 @@ The script runs 7 stages:
 | 10 | `$PACK` invalid | Set `PACK` to a valid pack repo path. |
 | 11 | Target is not a git repo | `git init` the target first. |
 | 12 | Working tree dirty | `git stash` or commit. |
-| 13 | Target does not appear to be a pack-configured project (no `CLAUDE.md` or no `.claude/`) | If you're on v9.x, run `migrate-v9-to-v10.sh` first; for a fresh install use `init-project.sh`. |
+| 13 | Target does not appear to be a pack-configured project (no `CLAUDE.md` or no `.claude/`) | For a fresh install use `init-project.sh`. (v9.x is no longer supported — the v9->v10 migrator was sunset in v11; reach out for migration guidance.) |
 | 14 | v10 baseline tag missing in pack repo | `git -C "$PACK" fetch --tags` then retry. |
 | 15 | BD-088 library missing under pack | The pack repo is corrupt or incomplete; re-clone. |
 | 21–30 | Stage `S<n>` failure | Read the printed error message; address; retry. |
@@ -264,7 +268,8 @@ surface.
 
 ## BD-059 lessons learned — customization preservation
 
-The v10 migrator (`migrate-v9-to-v10.sh`) had a defect class that
+The historical v10 migrator (the v9->v10 script, sunset in v11 per
+BD-121) had a defect class that
 silently destroyed project customizations on a small set of file
 shapes (BD-059 in the BACKLOG). v11 fixes this with the BD-088
 library:

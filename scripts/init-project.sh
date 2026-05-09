@@ -482,7 +482,9 @@ stage_s6_docs_pack() {
         fi
     fi
     # Stale-root cleanup advisory: init-project.sh does NOT delete project files
-    # (per V10-F-D-DESIGN §5.3 — init warns; migrate-v9-to-v10.sh removes).
+    # (per V10-F-D-DESIGN §5.3 — init warns; migrators remove. The historical
+    # v9->v10 migrator was sunset in v11 per BD-121; the v10->v11 migrator and
+    # any future migrators handle removals on their own paths.)
     if [[ "$CLASS" == existing-* && -f "$TARGET/METHODOLOGY.md" ]]; then
         warn "stale METHODOLOGY.md at project root — canonical location is docs/pack/METHODOLOGY.md (move or delete manually)"
     fi
@@ -1014,8 +1016,10 @@ main() {
         detect_ai_config "$TARGET" | sed 's/^/  /'
         say ""
         say "Your options:"
-        say "  (a) already using this pack — run scripts/migrate-v9-to-v10.sh instead"
-        say "      (see supporting-docs/MIGRATION-v9-to-v10.md)"
+        say "  (a) already using this pack — run the migrator for your"
+        say "      current → target version (e.g. scripts/migrate-v10-to-v11.sh"
+        say "      and supporting-docs/MIGRATION-v10-to-v11.md). v9.x is"
+        say "      no longer supported (sunset in v11 per BD-121)."
         say "  (b) using other AI tooling — remove or archive those files before"
         say "      running init-project.sh"
         exit "$EXIT_AI_CONFIG"

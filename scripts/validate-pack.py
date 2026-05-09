@@ -17,9 +17,13 @@ Checks:
      locations begins with `x-`
   9. Init-project structure: scripts/init-project.sh executable,
      scripts/lib/detect.sh defines the required v10 detection
-     functions, QUICKSTART.md and the three supporting-docs setup /
-     migration guides exist, and README.md Repository Layout names
+     functions, QUICKSTART.md and the supporting-docs setup guides
+     exist, and README.md Repository Layout names
      scripts/lib/ and the migration-guide naming convention.
+     (Checks 12, 13, 14, 15 — the v9-era test-migration
+     harness, the migrate-v9-to-v10.sh source/helpers checks, and
+     the MIGRATION-v9-to-v10.md stages check — were retired in v11
+     with the v9 sunset (BD-121).)
   10. Prompt template triad compliance: every in-scope variant in
       project-template/docs/pack/prompts/*.md (excluding the kickoff
       variant identified by `**Convention exception:**`) contains
@@ -82,7 +86,7 @@ REQUIRED_BD044_DOCS = [
     REPO_ROOT / "QUICKSTART.md",
     REPO_ROOT / "supporting-docs" / "SETUP-NEW.md",
     REPO_ROOT / "supporting-docs" / "SETUP-EXISTING.md",
-    REPO_ROOT / "supporting-docs" / "MIGRATION-v9-to-v10.md",
+    # MIGRATION-v9-to-v10.md removed in v11 with the v9 sunset (BD-121).
 ]
 
 # The pack repo is mostly templates and documentation, where TD-TBD appears
@@ -511,30 +515,13 @@ def check_init_project_structure() -> None:
         else:
             ok(f"{doc.relative_to(REPO_ROOT)} — exists")
 
-    # (e) BD-059 test-migration harness present (architect Part 6.5).
-    test_migration = REPO_ROOT / "scripts" / "test-migration.sh"
-    fixtures_dir = REPO_ROOT / "maintenance-docs" / "test-fixtures"
-    if not test_migration.exists():
-        fail(f"{test_migration.relative_to(REPO_ROOT)} — file missing")
-        any_failed = True
-    elif not os.access(test_migration, os.X_OK):
-        fail(f"{test_migration.relative_to(REPO_ROOT)} — not executable")
-        any_failed = True
-    else:
-        ok(f"{test_migration.relative_to(REPO_ROOT)} — executable")
-    if not fixtures_dir.is_dir():
-        fail(f"{fixtures_dir.relative_to(REPO_ROOT)} — directory missing")
-        any_failed = True
-    else:
-        # Each of three required fixtures must exist.
-        for fixture in ("migration-v9.3-empty", "migration-v9.3-pattern-coverage", "migration-v9.3-marker-convention"):
-            fp = fixtures_dir / fixture
-            if not fp.is_dir():
-                fail(f"{fp.relative_to(REPO_ROOT)} — fixture directory missing")
-                any_failed = True
-            else:
-                ok(f"{fp.relative_to(REPO_ROOT)} — exists")
-
+    # (e) BD-059 test-migration harness — RETIRED in v11 (BD-121, v9 sunset).
+    # The legacy `scripts/test-migration.sh` harness and the v9.3 fixture
+    # set under `maintenance-docs/test-fixtures/` were removed when the
+    # `migrate-v9-to-v10.sh` migrator was sunset. The v11 N->N+1 framework
+    # ships its own test scripts at `scripts/test-migrator-{core,manifest,
+    # behavior-preservation}.sh` — those are not asserted here; they run as
+    # standalone CI steps in `.github/workflows/validate-pack.yml`.
     # (d) README.md Repository Layout mentions the detection library and
     # migration naming convention. ASCII tree rendering may split
     # `scripts/lib/` across lines, so match on the `detect.sh` filename
@@ -703,134 +690,28 @@ def check_pack_agent_trinity() -> None:
         ok(f"{checked} agents checked, {divergent} divergent (informational; not a failure)")
 
 
-def check_three_way_helper_present() -> None:
-    """Check 12 — `scripts/lib/three-way.sh` exists, has documented entry,
-    and is sourced by `migrate-v9-to-v10.sh` (architect Part 6.1, BD-059).
-    """
-    print("\n── Check 12: Three-way classifier helper present (BD-059) ──")
-    helper = REPO_ROOT / "scripts" / "lib" / "three-way.sh"
-    if not helper.is_file():
-        fail(f"{helper.relative_to(REPO_ROOT)} — file missing")
-        return
-    text = helper.read_text()
-    if "# ENTRY: three_way_classify" not in text:
-        fail(
-            f"{helper.relative_to(REPO_ROOT)} — missing "
-            "'# ENTRY: three_way_classify' documentation marker"
-        )
-        return
-    migrate = REPO_ROOT / "scripts" / "migrate-v9-to-v10.sh"
-    if not migrate.is_file():
-        fail("scripts/migrate-v9-to-v10.sh — file missing")
-        return
-    if "lib/three-way.sh" not in migrate.read_text():
-        fail("scripts/migrate-v9-to-v10.sh — does not source scripts/lib/three-way.sh")
-        return
-    ok(
-        f"{helper.relative_to(REPO_ROOT)} — present, documented, "
-        "sourced by migrate-v9-to-v10.sh"
-    )
-
-
-def check_merge_helpers_consistent() -> None:
-    """Check 13 — every merge helper named in BD-059 exists on disk and is
-    invoked by `migrate-v9-to-v10.sh` (architect Part 6.2).
-
-    The four helpers map to the disposition table (architect Part 3):
-      merge-trinity.py        — trinity (C1/C2/C3) S5
-      merge-platform-skills.py — PLATFORM-SKILLS.md (D2) S5
-      merge-json.py            — settings.json (K1), .mcp.json.example (K4) S3
-      merge-toml.py            — config.toml (K2), requirements.toml (K3) S3
-    """
-    print("\n── Check 13: Merge helpers consistent (BD-059) ──")
-    migrate = REPO_ROOT / "scripts" / "migrate-v9-to-v10.sh"
-    if not migrate.is_file():
-        fail("scripts/migrate-v9-to-v10.sh — file missing")
-        return
-    migrate_text = migrate.read_text()
-    helpers = {
-        "merge-trinity.py": "trinity (C1/C2/C3) splice in S5",
-        "merge-platform-skills.py": "PLATFORM-SKILLS.md splice in S5",
-        "merge-json.py": "K1 / K4 JSON merge in S3",
-        "merge-toml.py": "K2 / K3 TOML merge in S3",
-    }
-    any_failed = False
-    for name, role in helpers.items():
-        helper_path = REPO_ROOT / "scripts" / name
-        if not helper_path.is_file():
-            fail(f"scripts/{name} — file missing")
-            any_failed = True
-            continue
-        if name not in migrate_text:
-            fail(
-                f"migrate-v9-to-v10.sh does not invoke scripts/{name} "
-                f"(expected for: {role})"
-            )
-            any_failed = True
-    if not any_failed:
-        ok("4 merge helpers present and invoked by migrate-v9-to-v10.sh")
-
-
-def check_disposition_table_documented() -> None:
-    """Check 14 — `MIGRATION-v9-to-v10.md` references each migration stage
-    S0..S7 (architect Part 6.3 — cross-doc consistency check).
-    """
-    print("\n── Check 14: Migration disposition documented (BD-059) ──")
-    migration_md = REPO_ROOT / "supporting-docs" / "MIGRATION-v9-to-v10.md"
-    if not migration_md.is_file():
-        fail("supporting-docs/MIGRATION-v9-to-v10.md — file missing")
-        return
-    text = migration_md.read_text()
-    missing = [s for s in ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7")
-               if f"**{s}**" not in text]
-    if missing:
-        fail(
-            f"MIGRATION-v9-to-v10.md does not reference stages: "
-            f"{missing} (expected as `**Sn**` in stage descriptions)"
-        )
-        return
-    ok("MIGRATION-v9-to-v10.md references all 8 stages S0..S7")
-
-
-def check_migration_test_runs_clean() -> None:
-    """Check 15 — `scripts/test-migration.sh --quick` exits zero against
-    the empty fixture (architect Part 6.4).
-
-    Runs the empty-fixture path (~5–10s) so CI catches catastrophic
-    migration regressions at push time. Full fixture suite is for
-    pre-release verification, not every-push CI.
-    """
-    print("\n── Check 15: Migration test runs clean --quick (BD-059) ──")
-    test_script = REPO_ROOT / "scripts" / "test-migration.sh"
-    if not test_script.is_file():
-        fail("scripts/test-migration.sh — file missing")
-        return
-    if not os.access(test_script, os.X_OK):
-        fail("scripts/test-migration.sh — not executable")
-        return
-    import subprocess
-    try:
-        result = subprocess.run(
-            ["bash", str(test_script), "--quick"],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-    except subprocess.TimeoutExpired:
-        fail("test-migration.sh --quick timed out (>120s)")
-        return
-    if result.returncode != 0:
-        fail(f"test-migration.sh --quick exit code {result.returncode}")
-        for line in (result.stdout + "\n" + result.stderr).strip().splitlines()[-15:]:
-            print(f"    {line}")
-        return
-    # Extract pass count for the OK line.
-    last_line = ""
-    for line in result.stdout.splitlines():
-        if "passed" in line and "failed" in line:
-            last_line = line.strip()
-    ok(f"test-migration.sh --quick passed ({last_line or 'see output'})")
+# Checks 12, 13, 14, 15 — RETIRED in v11 (BD-121, v9 sunset).
+#
+#   Check 12: Three-way classifier helper present (sourced-by-v9-migrator).
+#   Check 13: Merge helpers consistent (invoked-by-v9-migrator).
+#   Check 14: Migration disposition documented in MIGRATION-v9-to-v10.md.
+#   Check 15: scripts/test-migration.sh --quick runs clean.
+#
+# All four were tightly coupled to scripts/migrate-v9-to-v10.sh,
+# scripts/test-migration.sh, maintenance-docs/test-fixtures/, and
+# supporting-docs/MIGRATION-v9-to-v10.md — every one of which was
+# deleted in BD-121 because no v9 clients remain. The check numbers
+# 12..15 are intentionally NOT renumbered; subsequent check numbers
+# are kept to preserve cross-references in BACKLOG / archive docs.
+#
+# Coverage of the shared lib files (scripts/lib/three-way.sh,
+# customization-*.sh, detect.sh) — which remain in the pack, consumed
+# by the BD-119 migrator framework and the v10->v11 adapter — moved to
+# Check 25 (customization-detection regression guard) and Check 26
+# (BD-119 migrator-framework inventory), plus the standalone test
+# scripts run by .github/workflows/validate-pack.yml
+# (test-migrator-core, test-migrator-manifest,
+# test-migrator-behavior-preservation, test-detect).
 
 
 def check_tool_config_capability_parity() -> None:
@@ -887,7 +768,8 @@ def check_tool_config_capability_parity() -> None:
     # blocks plain .env to protect against secrets in projects;
     # `.env.example` is committable). init-project.sh creates the live
     # `.gemini/.env` from this template at fresh-install time. The
-    # migration script (migrate-v9-to-v10.sh) does NOT touch a project's
+    # migration scripts (historically migrate-v9-to-v10.sh; today
+    # migrate-v10-to-v11.sh) do NOT touch a project's
     # existing `.env` — only `.env.example` is migrated, so the project
     # can manually pick up new pack capabilities by diffing the example.
     gemini_caps: set[str] | None = None
@@ -1118,9 +1000,10 @@ def check_gitignore_env_example_exception() -> None:
     The pack ships `.gemini/.env.example` (and other `.example` files)
     as committable pack templates. The pack-template `.gitignore` must
     contain `!.env.example` after `.env.*` so fresh installs do not
-    silently exclude the pack template. The migrate-v9-to-v10.sh S0
-    step also injects this exception into existing project .gitignore
-    files; this check guards the pack-side template against drift.
+    silently exclude the pack template. (Historically the v9->v10
+    migrator's S0 step also injected this exception into existing
+    project .gitignore files; that migrator was retired in v11
+    per BD-121.) This check guards the pack-side template against drift.
     """
     print("\n── Check 20: Pack .gitignore !.env.example exception (BD-059) ──")
     path = REPO_ROOT / "project-template" / ".gitignore"
@@ -1801,10 +1684,8 @@ def main() -> None:
     check_init_project_structure()
     check_prompt_triad_compliance()
     check_pack_agent_trinity()
-    check_three_way_helper_present()
-    check_merge_helpers_consistent()
-    check_disposition_table_documented()
-    check_migration_test_runs_clean()
+    # Checks 12, 13, 14, 15 retired in v11 (BD-121, v9 sunset) — see
+    # comment block at the function definitions above.
     check_tool_config_capability_parity()
     check_trinity_addenda_h2()
     check_trinity_h2_parity()

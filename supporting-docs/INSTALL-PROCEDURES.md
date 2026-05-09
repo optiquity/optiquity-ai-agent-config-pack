@@ -18,9 +18,11 @@ content that is not relevant to ongoing project work. METHODOLOGY.md
 retains a one-line pointer stub at the same H3 anchor for each relocated
 procedure so legacy cross-references resolve.
 
-This file is shipped to every project alongside `METHODOLOGY.md` by both
-`scripts/init-project.sh` and `scripts/migrate-v9-to-v10.sh`. The
-project-side canonical location is `docs/pack/INSTALL-PROCEDURES.md`.
+This file is shipped to every project alongside `METHODOLOGY.md` by
+`scripts/init-project.sh` and the active migrator
+(`scripts/migrate-v10-to-v11.sh` in v11; the v9->v10 migrator was
+retired in v11 per BD-121). The project-side canonical location is
+`docs/pack/INSTALL-PROCEDURES.md`.
 
 ---
 
@@ -50,9 +52,10 @@ Locations governed by this convention:
 What the convention guarantees:
 
 - **Pack-controlled deletions skip `x-*`.** Every site in the pack's
-  scripts (`migrate-v9-to-v10.sh`, `init-project.sh`,
-  `add-capability.sh`) that removes files from these locations
-  honors the `x-` prefix and leaves project-added files in place.
+  scripts (`init-project.sh`, the active `migrate-vN-to-vM.sh`
+  migrator, `add-capability.sh`) that removes files from these
+  locations honors the `x-` prefix and leaves project-added files
+  in place.
 - **Pack-controlled overwrites skip `x-*`.** When the migration or
   init script copies a pack file into one of these directories, the
   copy targets only the pack-roster filename — never an `x-*`
@@ -199,6 +202,19 @@ registered?" by checking the rows above for their `x-<name>` entry.
 ---
 
 ## Procedure 5-C — Customization reconciliation after v9.3 → v10 migration
+
+> **HISTORICAL — sunset in v11 (BD-121).** The v9->v10 migrator and
+> its `MIGRATION-v9-to-v10.md` guide were removed in v11; this
+> procedure no longer fires for new migrations. The v11 N->N+1
+> migrator framework (BD-119, `scripts/lib/migrator-core.sh` +
+> the BD-088 customization-preservation library) handles
+> customization reconciliation differently — see
+> `MIGRATION-v10-to-v11.md`. Procedure 5-C is retained here as
+> historical documentation only; clients still on v9.x should
+> reach out to the pack maintainer for migration guidance, or
+> recover the legacy migrator from history with
+> `git -C "$PACK" checkout v10 -- scripts/migrate-v9-to-v10.sh
+> supporting-docs/MIGRATION-v9-to-v10.md`.
 
 Triggered by presence of any `*.v9-customized` sidecar file in the
 project working tree after `migrate-v9-to-v10.sh` completes.
@@ -852,6 +868,13 @@ All four assertions must pass before the migration commit lands.
 ---
 
 ## Procedure 5-S — Post-migration housekeeping
+
+> **HISTORICAL — sunset in v11 (BD-121).** This procedure was
+> triggered by the v9->v10 migrator's S7 sentinel; the migrator
+> was removed in v11. The v11 N->N+1 migrator framework handles
+> post-migration housekeeping inline (no separate procedure
+> needed for v10->v11). Procedure 5-S is retained here as
+> historical documentation only.
 
 Triggered by presence of
 `.pack-migration-backup/v9.3-to-v10.0/postrun-pending` at PM chat

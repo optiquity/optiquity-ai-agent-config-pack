@@ -141,8 +141,9 @@ supporting-docs/                            Pack product docs (copied to or cons
 ├── AGENT_KICKOFF_TEMPLATE.md               Architecture kickoff template
 ├── MERGE-STRATEGY.md                       Per-file customization-preservation matrix (v11)
 ├── MIGRATION-v10-to-v11.md                 Upgrade guide (v10.0 → v11.0)
-├── MIGRATION-v9-to-v10.md                  Upgrade guide (v9.3 → v10.0)
 └── MIGRATION-v8-to-v9.md                   Upgrade guide (historical; v8.x → v9.0)
+                                            (v9->v10 migrator + guide were sunset in v11 per BD-121;
+                                            recover from history with `git checkout v10 -- ...`)
 
 maintenance-docs/                           Pack maintainer docs (design records, archives)
 ├── TOOL-COMPARISON.md                      Cross-tool capability reference
@@ -177,8 +178,8 @@ vscode-companion-templates/                 Machine-level VS Code config (per pr
 scripts/                                    Pack-level scripts
 ├── validate-pack.py                        CI structural validation (25 Checks; pack-internal)
 ├── init-project.sh                         Initialize the pack in a new or existing project (v10; --update mode v11)
-├── migrate-v9-to-v10.sh                    v9.3 → v10.0 migration script (v10; frozen)
 ├── migrate-v10-to-v11.sh                   v10.0 → v11.0 migrator (v11; thin adapter on the BD-119 framework at lib/migrator-*.sh)
+                                            (v9->v10 migrator + harness + fixtures were sunset in v11 per BD-121)
 ├── add-capability.sh                       Add a pack-supported capability to an existing project (v10)
 ├── pack-help.sh                            LCD shell help-verb (v11; renders HELP-FRAGMENT)
 ├── pack-tracker.sh                         Tracker — init / status / mirror-rebuild / disable / doctor / update-templates / enable-recommendations (v11)

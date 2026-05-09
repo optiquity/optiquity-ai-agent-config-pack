@@ -7,7 +7,9 @@ order.
 Use this guide when you are creating a fresh repo (no code yet, or
 only a README). For an existing project that has source and/or docs
 but no AI agent configuration, see `SETUP-EXISTING.md` instead. For
-upgrading a v9.3 project to v10.0, see `MIGRATION-v9-to-v10.md`.
+upgrading from v10 to v11, see `MIGRATION-v10-to-v11.md`. (The
+v9->v10 migrator was sunset in v11 per BD-121; v9.x is no longer
+supported — reach out for migration guidance.)
 
 **New in v10:** a single `scripts/init-project.sh` script replaces
 the manual copy / conditional-remove / permissions / bootstrap dance.
@@ -86,9 +88,10 @@ The script will:
 
 1. Detect your project state (five classes: `new-empty`, `new-bare`,
    `existing-bare`, `existing-source`, `already-configured`).
-2. Stop (exit 20) if any AI config is already present — route you to
-   `MIGRATION-v9-to-v10.md` or tell you to archive the conflicting
-   config.
+2. Stop (exit 20) if any AI config is already present — tell you to
+   archive the conflicting config (or, if you're already on a prior
+   pack version, route you to the appropriate `MIGRATION-vN-to-vM.md`
+   guide; v9.x is no longer supported per BD-121).
 3. Print a preview of every operation: files to add, `.gitignore`
    lines to merge, conditional files to remove based on detected
    languages, any skill-coverage gaps (e.g., Kotlin / TypeScript not
@@ -444,8 +447,9 @@ prompt.
 - `generated/swift/` and `server/src/generated/` — generated
   Protobuf / gRPC code.
 - `.buf/` — buf CLI cache.
-- `.pack-migration-backup/` — migration-script backup directory (if
-  you later run `migrate-v9-to-v10.sh` for an upgrade).
+- `.pack-migration-backup/` and `.pack-migrate-vN-to-vM/` —
+  migration-script backup / state directories (created by
+  `migrate-vN-to-vM.sh` on upgrade; absent on a fresh install).
 
 Commit everything else, including `CLAUDE.md`, `AGENTS.md`,
 `GEMINI.md`, `agent-run.sh`, `.claude/` (excluding the gitignored
@@ -458,8 +462,11 @@ local files), `.codex/`, `.gemini/`, `scripts/`, `proto/`.
 When a new pack version ships, upgrade your project by running the
 migration script for your current → target version:
 
-- Currently at v9.3 — see `MIGRATION-v9-to-v10.md` (in the v10 pack).
-- Currently at an earlier v10.x — see the migration guide shipped
+- Currently at v9.3 — v9 is no longer supported (the v9->v10
+  migrator was sunset in v11 per BD-121); reach out to the pack
+  maintainer for migration guidance.
+- Currently at v10.x — see `MIGRATION-v10-to-v11.md`.
+- For future major versions — see the migration guide shipped
   with the next major pack version, naming convention
   `MIGRATION-vN-to-vM.md`.
 
