@@ -344,8 +344,12 @@ assert_contains "4.6 tracker.toml has last_reverse_run" \
 assert_eq "4.6 mode still tracker" "tracker" "$(tracker_config_get "$REPO/tracker.toml" mode.state)"
 
 # 4.7 With --disable flag, mode flips to flat-file.
+# BD-132: pass force=1 to bypass race-detection (mapping freshness)
+# in this fixture-time test; the freshness threshold is a guard for
+# real init→disable races, not for unit-test fixtures created seconds
+# before the disable call.
 export PATH="$FAKE:$PATH_SAVED"
-tracker_migrate_reverse_run "$REPO" 0 1 0 >/dev/null 2>&1
+tracker_migrate_reverse_run "$REPO" 0 1 0 1 >/dev/null 2>&1
 export PATH="$PATH_SAVED"
 assert_eq "4.7 mode flipped to flat-file via --disable" "flat-file" \
     "$(tracker_config_get "$REPO/tracker.toml" mode.state)"
@@ -363,7 +367,9 @@ _tmr_emit_status() { return 1; }
 
 FAKE_ATOMIC=$(mktemp -d -t tmr-fake-atomic.XXXXXX); _build_fake_gh "$FAKE_ATOMIC"
 export PATH="$FAKE_ATOMIC:$PATH_SAVED"
-err=$(tracker_migrate_reverse_run "$REPO_ATOMIC" 0 1 0 2>&1) || true
+# BD-132: force=1 bypasses race-detection so we exercise the
+# emit-failure atomicity path (the original purpose of this test).
+err=$(tracker_migrate_reverse_run "$REPO_ATOMIC" 0 1 0 1 2>&1) || true
 export PATH="$PATH_SAVED"
 
 # Restore the real function so subsequent tests aren't affected.

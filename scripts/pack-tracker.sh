@@ -132,11 +132,12 @@ cmd_mirror_rebuild() {
 # ─────────────────────────────────────────────────────────────────
 
 cmd_disable() {
-    local repo_root="" include_comments=0
+    local repo_root="" include_comments=0 force=0
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --repo-root)         repo_root="$2"; shift 2 ;;
             --include-comments)  include_comments=1; shift ;;
+            --force)             force=1; shift ;;
             -h|--help)           usage; return 0 ;;
             *)
                 tracker_error_emit "validation" "disable: unknown option '$1'"
@@ -145,8 +146,12 @@ cmd_disable() {
         esac
     done
     [[ -z "$repo_root" ]] && repo_root="$(pwd)"
-    # disable = reverse + flip mode.state to flat-file
-    tracker_migrate_reverse_run "$repo_root" 0 1 "$include_comments"
+    # disable = reverse + flip mode.state to flat-file.
+    # BD-132 Part 2 + 3: --force overrides race-detection refusal AND
+    # silent-skip refusal. Without --force, disable refuses to run when
+    # init's close ops are still propagating (race) or when any issue
+    # fails to reconstruct (silent-data-loss guard).
+    tracker_migrate_reverse_run "$repo_root" 0 1 "$include_comments" "$force"
 }
 
 cmd_doctor() {

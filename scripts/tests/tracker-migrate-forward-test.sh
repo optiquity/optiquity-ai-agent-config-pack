@@ -183,6 +183,13 @@ printf "\n=== Group 3: integration with fake gh ===\n"
 FAKE_BIN=$(mktemp -d -t tmf-fakebin.XXXXXX)
 GH_LOG=$(mktemp -t tmf-ghlog.XXXXXX)
 ISSUE_COUNTER_FILE=$(mktemp -t tmf-counter.XXXXXX)
+# BD-132 F-7: track which issue numbers have been closed so the
+# `issue list --state closed --label X` poll (Part 1 stabilization)
+# returns a count that grows as `issue close` is called. This lets
+# the close-stabilization helper see the closes propagate, which is
+# what its label-scoped poll measures on a real repo.
+CLOSED_IDS_FILE=$(mktemp -t tmf-closed.XXXXXX)
+: > "$CLOSED_IDS_FILE"
 echo "100" > "$ISSUE_COUNTER_FILE"
 
 cat > "$FAKE_BIN/gh" <<FAKEGH
@@ -199,7 +206,13 @@ case "\$1 \$2" in
         echo "\$next" > "$ISSUE_COUNTER_FILE"
         printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
         ;;
-    "issue close"|"issue reopen"|"issue edit"|"issue comment")
+    "issue close")
+        # Track the closed id so the stabilization poll (BD-132 F-7)
+        # can see it reflected in subsequent `issue list --state
+        # closed --label …` calls. The id is the 3rd positional arg.
+        printf '%s\n' "\$3" >> "$CLOSED_IDS_FILE"
+        ;;
+    "issue reopen"|"issue edit"|"issue comment")
         # No stdout needed for these — caller doesn't parse.
         ;;
     "search issues")
@@ -208,7 +221,32 @@ case "\$1 \$2" in
         echo '[]'
         ;;
     "issue list")
-        echo '[]'
+        # BD-132 F-7: when the caller is the close-stabilization
+        # poll (state=closed scoped to an entry-label), reflect the
+        # tracked closed ids. For all other list calls (open
+        # rosters, search, etc.) keep the legacy empty-array
+        # response so the rest of the test suite is unaffected.
+        want_closed=0
+        for arg in "\$@"; do
+            [[ "\$arg" == "closed" ]] && want_closed=1
+        done
+        if [[ "\$want_closed" == "1" ]]; then
+            python3 - <<PY
+import json
+ids = []
+try:
+    with open("$CLOSED_IDS_FILE") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                ids.append(line)
+except FileNotFoundError:
+    pass
+print(json.dumps([{"number": int(i)} for i in ids]))
+PY
+        else
+            echo '[]'
+        fi
         ;;
     "issue view")
         # Return labels-empty / assignees-empty payload.
@@ -456,6 +494,9 @@ rm -rf "$FAKE_BIN_PF" "$GH_LOG_PF" "$ISSUE_COUNTER_PF" "$TEST_REPO_PF"
 FAKE_BIN_REC=$(mktemp -d -t tmf-fakebin-rec.XXXXXX)
 GH_LOG_REC=$(mktemp -t tmf-ghlog-rec.XXXXXX)
 ISSUE_COUNTER_REC=$(mktemp -t tmf-counter-rec.XXXXXX)
+# BD-132 F-7: track closed ids so the stabilization poll sees them.
+CLOSED_IDS_REC=$(mktemp -t tmf-closed-rec.XXXXXX)
+: > "$CLOSED_IDS_REC"
 echo "300" > "$ISSUE_COUNTER_REC"
 
 cat > "$FAKE_BIN_REC/gh" <<'FAKEGH_REC'
@@ -488,9 +529,36 @@ case "$1 $2" in
         echo "$next" > "@@COUNTER@@"
         printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "$next"
         ;;
-    "issue close"|"issue reopen"|"issue edit"|"issue comment") ;;
+    "issue close")
+        # BD-132 F-7: track the closed id for stabilization poll visibility.
+        printf '%s\n' "$3" >> "@@CLOSED_IDS@@"
+        ;;
+    "issue reopen"|"issue edit"|"issue comment") ;;
     "search issues")    echo '[]' ;;
-    "issue list")       echo '[]' ;;
+    "issue list")
+        # BD-132 F-7: stabilization poll asks for state=closed,label=...
+        want_closed=0
+        for arg in "$@"; do
+            [[ "$arg" == "closed" ]] && want_closed=1
+        done
+        if [[ "$want_closed" == "1" ]]; then
+            python3 - <<PY
+import json
+ids = []
+try:
+    with open("@@CLOSED_IDS@@") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                ids.append(line)
+except FileNotFoundError:
+    pass
+print(json.dumps([{"number": int(i)} for i in ids]))
+PY
+        else
+            echo '[]'
+        fi
+        ;;
     "issue view")       echo '{"labels":[], "assignees":[]}' ;;
     "repo view")        echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
     "api graphql")      echo '{}' ;;
@@ -500,7 +568,11 @@ esac
 exit 0
 FAKEGH_REC
 # Substitute placeholders to avoid heredoc-quoting headaches.
-sed -i.bak -e "s|@@GH_LOG@@|$GH_LOG_REC|g" -e "s|@@COUNTER@@|$ISSUE_COUNTER_REC|g" "$FAKE_BIN_REC/gh"
+sed -i.bak \
+    -e "s|@@GH_LOG@@|$GH_LOG_REC|g" \
+    -e "s|@@COUNTER@@|$ISSUE_COUNTER_REC|g" \
+    -e "s|@@CLOSED_IDS@@|$CLOSED_IDS_REC|g" \
+    "$FAKE_BIN_REC/gh"
 rm -f "$FAKE_BIN_REC/gh.bak"
 chmod +x "$FAKE_BIN_REC/gh"
 
@@ -523,7 +595,7 @@ assert_eq "4.4 BD-001 mapped to recovered id 555 (not a new create)" "555" "$bd1
 # Output reports recovered counter.
 assert_contains "4.4 output reports recovered" "$output_rec" "recovered:"
 
-rm -rf "$FAKE_BIN_REC" "$GH_LOG_REC" "$ISSUE_COUNTER_REC" "$TEST_REPO_REC"
+rm -rf "$FAKE_BIN_REC" "$GH_LOG_REC" "$ISSUE_COUNTER_REC" "$CLOSED_IDS_REC" "$TEST_REPO_REC"
 
 # 4.5 --mirror-only flag (BD-065 review fix #10): runs only step 10
 # (mirror regen). No issue creates, no provider calls touching the
@@ -570,6 +642,9 @@ rm -rf "$FAKE_BIN_MO" "$GH_LOG_MO" "$TEST_REPO_MO"
 FAKE_BIN_CP=$(mktemp -d -t tmf-fakebin-cp.XXXXXX)
 GH_LOG_CP=$(mktemp -t tmf-ghlog-cp.XXXXXX)
 ISSUE_COUNTER_CP=$(mktemp -t tmf-counter-cp.XXXXXX)
+# BD-132 F-7: track closed ids so the stabilization poll sees them.
+CLOSED_IDS_CP=$(mktemp -t tmf-closed-cp.XXXXXX)
+: > "$CLOSED_IDS_CP"
 echo "300" > "$ISSUE_COUNTER_CP"
 
 cat > "$FAKE_BIN_CP/gh" <<FAKEGH_CP
@@ -582,9 +657,36 @@ case "\$1 \$2" in
         echo "\$next" > "$ISSUE_COUNTER_CP"
         printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
         ;;
-    "issue close"|"issue reopen"|"issue edit"|"issue comment") ;;
+    "issue close")
+        # BD-132 F-7: track closed id for stabilization poll.
+        printf '%s\n' "\$3" >> "$CLOSED_IDS_CP"
+        ;;
+    "issue reopen"|"issue edit"|"issue comment") ;;
     "search issues") echo '[]' ;;
-    "issue list")    echo '[]' ;;
+    "issue list")
+        # BD-132 F-7: state=closed poll → return tracked ids.
+        want_closed=0
+        for arg in "\$@"; do
+            [[ "\$arg" == "closed" ]] && want_closed=1
+        done
+        if [[ "\$want_closed" == "1" ]]; then
+            python3 - <<PY
+import json
+ids = []
+try:
+    with open("$CLOSED_IDS_CP") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                ids.append(line)
+except FileNotFoundError:
+    pass
+print(json.dumps([{"number": int(i)} for i in ids]))
+PY
+        else
+            echo '[]'
+        fi
+        ;;
     "issue view")    echo '{"labels":[], "assignees":[]}' ;;
     "repo view")     echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
     "api graphql")   echo '{}' ;;
@@ -629,10 +731,10 @@ ckp_cp="$TEST_REPO_CP/.pack-tracker/forward.checkpoint.json"
 [[ ! -f "$ckp_cp" ]] && t_pass "4.6 checkpoint cleared after success" \
     || t_fail "4.6 checkpoint cleared after success"
 
-rm -rf "$FAKE_BIN_CP" "$GH_LOG_CP" "$ISSUE_COUNTER_CP" "$TEST_REPO_CP"
+rm -rf "$FAKE_BIN_CP" "$GH_LOG_CP" "$ISSUE_COUNTER_CP" "$CLOSED_IDS_CP" "$TEST_REPO_CP"
 
 # Cleanup of Group 3 globals.
-rm -rf "$FAKE_BIN" "$GH_LOG" "$ISSUE_COUNTER_FILE" "$TEST_REPO" "$TEST_REPO2" "$TEST_REPO3"
+rm -rf "$FAKE_BIN" "$GH_LOG" "$ISSUE_COUNTER_FILE" "$CLOSED_IDS_FILE" "$TEST_REPO" "$TEST_REPO2" "$TEST_REPO3"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

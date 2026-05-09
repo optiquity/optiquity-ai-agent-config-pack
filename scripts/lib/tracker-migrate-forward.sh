@@ -67,6 +67,25 @@ TMF_CHECKPOINT_INTERVAL="${TMF_CHECKPOINT_INTERVAL:-25}"
 # works without redeclaration errors.
 TMF_PACK_TRACKER_DIR=".pack-tracker"
 
+# BD-132 close-stabilization wait parameters. After the close loop
+# completes, we poll `provider_list state=closed` until the count is
+# stable across two successive reads (gh issue close is eventually
+# consistent — issues take a measurable beat to reflect closed state
+# in subsequent list/get calls; running disable mid-window saw
+# inconsistent body/labels and silently dropped ~33% of entries in
+# BD-102 Phase A dog-food).
+#
+# Defaults: poll up to 30 attempts × 2-second sleep (60s ceiling).
+# Test seam: TMF_STABILIZE_MAX_ATTEMPTS / TMF_STABILIZE_SLEEP_SECS
+# can be overridden to 0 / fractional values to keep test runtimes
+# bounded (the deterministic mock test uses 2 attempts × 0s).
+# F-8: TMF_STABILIZE_FAIL_LIMIT bounds consecutive provider_list
+# failures (default 3) so transient API failures don't silently
+# masquerade as "stable at 0".
+TMF_STABILIZE_MAX_ATTEMPTS="${TMF_STABILIZE_MAX_ATTEMPTS:-30}"
+TMF_STABILIZE_SLEEP_SECS="${TMF_STABILIZE_SLEEP_SECS:-2}"
+TMF_STABILIZE_FAIL_LIMIT="${TMF_STABILIZE_FAIL_LIMIT:-3}"
+
 # ─────────────────────────────────────────────────────────────────
 # Path resolvers
 # ─────────────────────────────────────────────────────────────────
@@ -827,6 +846,28 @@ tracker_migrate_forward_run() {
         cidx=$((cidx + 1))
     done
 
+    # BD-132 step 8.5: close-stabilization wait. `gh issue close` is
+    # eventually consistent; if a downstream `pack tracker disable` runs
+    # while closes are still propagating, the reverse-loop sees
+    # inconsistent body/labels and silently skipped ~33% of entries in
+    # the BD-102 Phase A dog-food. Block here until the closed-issue
+    # count is stable across two consecutive reads, OR the timeout
+    # ceiling is hit (in which case we append to partial_failures so
+    # the user knows the close ops are still in flight).
+    #
+    # F-4: track stabilization success/failure. On timeout we DO NOT
+    # clear the forward checkpoint below — it remains as a Part 2a
+    # race-detection signal for any downstream `disable` from a
+    # separate shell that has no visibility into this run's exit code.
+    local stabilization_ok=1
+    if [[ "$closed" -gt 0 ]]; then
+        if ! _tmf_wait_for_close_stabilization "$closed"; then
+            stabilization_ok=0
+            printf 'step-8.5 close-stabilization timed out after %s attempts — checkpoint preserved as race signal for downstream disable; close ops may still be propagating, wait then re-run forward to clear, OR run `pack tracker init --resume`\n' \
+                "$TMF_STABILIZE_MAX_ATTEMPTS" >> "$partial_failures"
+        fi
+    fi
+
     # Step 10: regenerate flat-file mirror (BACKLOG.md rewrite with
     # the V1 §6.3 read-only header). Failures surface to the
     # partial_failures list so the user knows to re-run with
@@ -841,7 +882,13 @@ tracker_migrate_forward_run() {
     # Step 11: write mapping + tracker.toml [migration].last_forward_run.
     tmf_mapping_save "$mapping_file" "$mapping"
     _tmf_update_tracker_toml "$cfg_path"
-    tmf_checkpoint_clear "$checkpoint_file"
+    # F-4: only clear the checkpoint if stabilization succeeded.
+    # On timeout we preserve it so a separate-shell `disable` will see
+    # the Part 2a checkpoint signal and refuse — even if the calling
+    # shell's non-zero exit was missed by the operator.
+    if [[ "$stabilization_ok" == "1" ]]; then
+        tmf_checkpoint_clear "$checkpoint_file"
+    fi
 
     cat <<EOF
 forward: complete.
@@ -1011,6 +1058,119 @@ _tmf_labels_for_entry() {
 # scripts/lib/tracker-mirror.sh (BD-067 refactor).
 _tmf_regen_mirror() {
     tracker_mirror_header_write "$@"
+}
+
+# BD-132 close-stabilization wait. Poll provider_list scoped to the
+# entry-labels this migration uses (`bd-entry`, `td-entry`,
+# `phase-epic`) with state=closed, and aggregate the per-label closed
+# count, until the count stops growing across two consecutive reads
+# AND the count is at least `closes_attempted`, OR the bounded timeout
+# is hit. This addresses `gh issue close`'s eventual consistency —
+# the BD-102 Phase A dog-food race where init exited with closes in
+# flight, then disable saw inconsistent issue state and silently
+# dropped ~33% of entries.
+#
+# F-7: scoping to entry-labels (rather than all closed issues in the
+# repo) is necessary on production-scale repos. A bare
+# `provider_list state=closed limit=200` on a repo with >200 pre-
+# existing closed issues returns 200 on every poll regardless of
+# in-flight migration closes; the count appears trivially "stable"
+# and the function returns immediately with no actual stabilization
+# guarantee. By scoping to entry-labels (which are applied during
+# this migration's create step at line 1020-1021), we count only
+# migration-relevant issues — re-establishing the stability signal.
+#
+# F-6: arg renamed `closes_attempted` (the count this migration just
+# tried to close). Beyond the no-op short-circuit, it is also used
+# as a sanity floor: if the post-stabilization count is < the
+# attempted count, propagation is incomplete even if stable across
+# two reads, so we keep polling.
+#
+# F-8: `provider_list` failure (network blip, gh auth glitch) is
+# distinguished from "0 results". On per-attempt failure we do NOT
+# update prev_count, do NOT count the attempt as evidence of
+# stability, and continue. After STAB_FAIL_LIMIT consecutive failures
+# we return 1 (timeout-equivalent) to surface the API problem rather
+# than silently masking it as "stable at 0".
+#
+# Args:
+#   closes_attempted: integer count of close calls that returned 0
+#                     in the just-finished close loop.
+# Emits:
+#   stdout: per-attempt progress lines.
+# Returns:
+#   0 on stable count reached (and count >= closes_attempted).
+#   1 on timeout OR repeated provider_list failure (caller appends
+#                 to partial_failures so the user knows to wait +
+#                 re-run before disable).
+_tmf_wait_for_close_stabilization() {
+    local closes_attempted="${1:-0}"
+    if [[ "$closes_attempted" -le 0 ]]; then
+        # No closes attempted → nothing to stabilize.
+        return 0
+    fi
+    local prev_count=-1 cur_count attempt=0
+    local consecutive_failures=0
+    local stab_fail_limit="${TMF_STABILIZE_FAIL_LIMIT:-3}"
+    while [[ $attempt -lt $TMF_STABILIZE_MAX_ATTEMPTS ]]; do
+        # F-7: scope the closed-count poll to migration entry-labels.
+        # Aggregate across the three label families this migration
+        # creates, deduplicating by id (a single issue can in
+        # principle carry multiple entry labels, though current
+        # forward never assigns more than one).
+        local read_failed=0
+        local _label _list_json _ids_json
+        _ids_json='[]'
+        for _label in "bd-entry" "td-entry" "phase-epic"; do
+            if _list_json=$(provider_list \
+                "{\"label\":\"$_label\",\"state\":\"closed\"}" 1000 2>/dev/null); then
+                _ids_json=$(printf '%s' "$_list_json" \
+                    | jq -nc --argjson acc "$_ids_json" \
+                             --argjson l "$_list_json" \
+                             '$acc + (($l.items // []) | map(.id // .number | tostring))' \
+                    2>/dev/null) || { read_failed=1; break; }
+            else
+                read_failed=1
+                break
+            fi
+        done
+        if [[ "$read_failed" == "1" ]]; then
+            # F-8: provider_list failure path. Do NOT update prev_count,
+            # do NOT count toward "stable". Track consecutive failures
+            # and surface as rc=1 if they pile up.
+            consecutive_failures=$((consecutive_failures + 1))
+            if [[ "$consecutive_failures" -ge "$stab_fail_limit" ]]; then
+                echo "forward: close-stabilization FAILED (provider_list failed $consecutive_failures consecutive times; aborting wait)" >&2
+                return 1
+            fi
+            attempt=$((attempt + 1))
+            if [[ $attempt -lt $TMF_STABILIZE_MAX_ATTEMPTS ]]; then
+                sleep "$TMF_STABILIZE_SLEEP_SECS" 2>/dev/null || true
+            fi
+            continue
+        fi
+        consecutive_failures=0
+        cur_count=$(printf '%s' "$_ids_json" | jq -r 'unique | length' 2>/dev/null || echo "0")
+
+        # F-6: stable AND the count meets the floor we attempted to
+        # close. If we attempted 53 closes but only see 40 reflected,
+        # propagation is still incomplete even if 40 was stable
+        # across two reads — keep polling.
+        if [[ "$cur_count" == "$prev_count" \
+              && "$cur_count" -ge "$closes_attempted" ]]; then
+            echo "forward: close-stabilization OK (closed entry-issue count stable at $cur_count, >= $closes_attempted attempted, after $attempt poll(s))"
+            return 0
+        fi
+        prev_count="$cur_count"
+        attempt=$((attempt + 1))
+        # Skip sleep on the last iteration (we'll just exit the loop).
+        if [[ $attempt -lt $TMF_STABILIZE_MAX_ATTEMPTS ]]; then
+            # Bash 3.2-compatible: `sleep` accepts fractional/zero values
+            # on macOS BSD coreutils. `sleep 0` returns immediately.
+            sleep "$TMF_STABILIZE_SLEEP_SECS" 2>/dev/null || true
+        fi
+    done
+    return 1
 }
 
 # Update tracker.toml [migration] section after a successful forward run.

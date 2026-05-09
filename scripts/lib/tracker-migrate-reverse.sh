@@ -65,6 +65,44 @@ if ! declare -f tracker_sidecar_emit >/dev/null 2>&1; then
 fi
 
 # ─────────────────────────────────────────────────────────────────
+# BD-132 helpers: race detection + skip tracking
+# ─────────────────────────────────────────────────────────────────
+
+# Emit the age in whole seconds of the mapping file (now - mtime).
+# Returns "" on stdout if the file is missing (no race possible).
+#
+# Implementation: defers to python3's `os.path.getmtime`, which is
+# documented to return the file's mtime as a Unix timestamp on every
+# platform Python supports (macOS, Linux, *BSD). This avoids the
+# BSD-vs-GNU `stat` flag mismatch (`stat -f %m` is "filesystem status"
+# on Linux GNU coreutils, NOT mtime — the previous BSD/GNU fallback
+# silently produced bogus values on Linux). Python3 is already a
+# hard dependency of the rest of this codebase (see
+# tracker-migrate-forward.sh:1105 et al), so this introduces no new
+# requirement. Bash 3.2 + BSD utils compatible.
+_tmr_mapping_age_secs() {
+    local path="$1"
+    if [[ ! -f "$path" ]]; then
+        echo ""
+        return 0
+    fi
+    local secs
+    if ! secs=$(python3 -c '
+import os, sys, time
+try:
+    print(int(time.time() - os.path.getmtime(sys.argv[1])))
+except Exception:
+    sys.exit(2)
+' "$path" 2>/dev/null); then
+        # Could not read mtime; report -1 so caller treats as
+        # "unknown" (race-detection is permissive, not blocking).
+        echo "-1"
+        return 0
+    fi
+    echo "$secs"
+}
+
+# ─────────────────────────────────────────────────────────────────
 # Per-entry reconstruction (V1 §6.5 step 3)
 # ─────────────────────────────────────────────────────────────────
 
@@ -578,14 +616,20 @@ PYEOF
 # Top-level orchestrator
 # ─────────────────────────────────────────────────────────────────
 
-# tracker_migrate_reverse_run <repo-root> [<dry-run>] [<flip-mode-to-flat-file>] [<include-comments>]
+# tracker_migrate_reverse_run <repo-root> [<dry-run>] [<flip-mode-to-flat-file>] [<include-comments>] [<force>]
 # Runs V1 §6.5 steps 1–9. flip_mode=1 turns this into the
 # `pack tracker disable` semantic (reverse + flip mode).
+#
+# BD-132 race-detection (Part 2): when flip_mode=1 (the disable
+# entry point), refuse to proceed if a forward run appears to be
+# in flight (forward.checkpoint.json present, OR mapping file mtime
+# is fresher than TMR_RACE_FRESHNESS_SECS). Override with force=1.
 tracker_migrate_reverse_run() {
     local repo_root="$1"
     local dry_run="${2:-0}"
     local flip_mode="${3:-0}"
     local include_comments="${4:-0}"
+    local force="${5:-0}"
 
     if [[ ! -d "$repo_root" ]]; then
         tracker_error_emit "validation" "reverse: repo-root not a directory: $repo_root"
@@ -605,6 +649,49 @@ tracker_migrate_reverse_run() {
     local mapping_file mapping
     mapping_file=$(_tmf_mapping_file "$repo_root")
     mapping=$(tmf_mapping_load "$mapping_file")
+
+    # BD-132 Part 2: race-detection pre-flight. Only applies when
+    # flip_mode=1 (disable). Two signals:
+    #   (a) forward.checkpoint.json present → forward is mid-run or
+    #       crashed mid-run; reverse would race.
+    #   (b) mapping file mtime is fresher than TMR_RACE_FRESHNESS_SECS
+    #       seconds → forward just finished; eventual consistency on
+    #       gh issue close means body/labels may be stale.
+    # Either signal triggers refusal unless --force.
+    if [[ "$flip_mode" == "1" && "$force" != "1" && "$dry_run" != "1" ]]; then
+        local checkpoint_file
+        checkpoint_file=$(_tmf_checkpoint_file "$repo_root")
+        if [[ -f "$checkpoint_file" ]]; then
+            tracker_error_emit "validation" \
+                "disable: forward checkpoint file present at $checkpoint_file" \
+                "A forward migration is in progress or crashed mid-run." \
+                "Reverse now would race the forward path and silently drop entries." \
+                "Wait for forward to finish, OR run \`pack tracker init --resume\` to clean up," \
+                "OR pass --force to override (NOT recommended; you may lose data)."
+            return 1
+        fi
+        local fresh_secs
+        fresh_secs=$(_tmr_mapping_age_secs "$mapping_file")
+        # F-5 calibration: default freshness threshold matches the
+        # forward-side stabilization ceiling
+        # (TMF_STABILIZE_MAX_ATTEMPTS=30 × TMF_STABILIZE_SLEEP_SECS=2
+        # = 60s). Setting it lower (the previous 30s default) created
+        # a window where stabilization had timed out, mapping was
+        # older than 30s, but closes were still in flight — Part 2b
+        # would not fire. Override via TMR_RACE_FRESHNESS_SECS env.
+        local race_threshold="${TMR_RACE_FRESHNESS_SECS:-60}"
+        if [[ -n "$fresh_secs" && "$fresh_secs" -ge 0 && "$fresh_secs" -lt "$race_threshold" ]]; then
+            tracker_error_emit "validation" \
+                "disable: mapping file modified ${fresh_secs}s ago (< ${race_threshold}s freshness threshold)" \
+                "A forward migration just finished; tracker close ops may still be propagating." \
+                "Eventual consistency means reverse now could read stale body/labels and" \
+                "silently drop entries (BD-132 / D-5 silent-data-loss bug)." \
+                "Wait at least ${race_threshold}s and re-run, OR pass --force to override" \
+                "(NOT recommended unless you have independently verified \`gh issue list" \
+                "--state closed\` count is stable)."
+            return 1
+        fi
+    fi
 
     # Steps 1+2 (V1 §6.5): discover entries via provider_list with
     # label filters (`bd-entry`, `td-entry`, `phase-epic`). The
@@ -627,13 +714,30 @@ tracker_migrate_reverse_run() {
         '$r + ([$m | to_entries[] | .value.id // empty | tostring]) | unique')
 
     local issue_jsons='[]' phase_jsons='[]'
+    # BD-132 Part 3: skip tracking. Previously, any entry whose
+    # provider_get failed OR whose body did not yield a pack_id was
+    # silently `continue`-d — that is the silent-data-loss path the
+    # BD-102 Phase A dog-food caught. Now we accumulate the skip ids
+    # + reasons and surface them at the end (loud failure beats
+    # silent loss; if any skips occurred we exit non-zero unless
+    # the caller passes --force).
+    local skipped_log
+    skipped_log=$(mktemp -t tmr-skipped.XXXXXX)
+    : > "$skipped_log"
+
     local n_roster i_roster=0 gh_id pack_id issue
     n_roster=$(printf '%s' "$roster" | jq 'length')
     while [[ $i_roster -lt $n_roster ]]; do
         gh_id=$(printf '%s' "$roster" | jq -r ".[$i_roster]")
         i_roster=$((i_roster + 1))
-        [[ -z "$gh_id" || "$gh_id" == "null" ]] && continue
+        if [[ -z "$gh_id" || "$gh_id" == "null" ]]; then
+            # Roster entry with no id is a roster-build defect, not a
+            # data-loss event — log and continue without escalation.
+            continue
+        fi
         if ! issue=$(provider_get "$gh_id" 2>/dev/null); then
+            printf 'gh #%s: provider_get failed (issue may be in flight or unreadable)\n' \
+                "$gh_id" >> "$skipped_log"
             continue
         fi
         # Canonical: pack-id from body marker.
@@ -648,7 +752,11 @@ print(m.group(1) if m else "")')
             pack_id=$(printf '%s' "$mapping" | jq -r --arg g "$gh_id" \
                 'to_entries | map(select(.value.id == $g)) | .[0].key // empty')
         fi
-        [[ -z "$pack_id" ]] && continue
+        if [[ -z "$pack_id" ]]; then
+            printf 'gh #%s: pack-id not resolvable (no body marker, no mapping entry; body may be mid-update)\n' \
+                "$gh_id" >> "$skipped_log"
+            continue
+        fi
         case "$pack_id" in
             phase-*)
                 phase_jsons=$(printf '%s' "$phase_jsons" | jq -c \
@@ -659,6 +767,10 @@ print(m.group(1) if m else "")')
                 local rec
                 rec=$(tracker_migrate_reverse_reconstruct "$issue" "$mapping")
                 issue_jsons=$(printf '%s' "$issue_jsons" | jq -c --argjson r "$rec" '. + [$r]')
+                ;;
+            *)
+                printf 'gh #%s: pack-id %s did not match BD-/TD-/phase- prefix\n' \
+                    "$gh_id" "$pack_id" >> "$skipped_log"
                 ;;
         esac
     done
@@ -682,10 +794,45 @@ print(json.dumps(phases))')
     n_phases=$(printf  '%s' "$phase_jsons" | jq 'length')
     echo "reverse: reconstructed $n_entries BACKLOG entries, $n_phases phase epic(s)"
 
+    # BD-132 Part 3: surface the silent-skip path. Emit per-skip WARN
+    # lines to stderr (so the user sees what was dropped, not just a
+    # count), then refuse to write half-data into BACKLOG.md unless
+    # --force is set. This converts the silent-data-loss bug
+    # (BD-132 / D-5) into a loud failure with full diagnostic detail.
+    local n_skipped=0
+    if [[ -s "$skipped_log" ]]; then
+        n_skipped=$(wc -l < "$skipped_log" | tr -d ' ')
+        printf 'WARN: reverse: %s issue(s) skipped during reconstruction:\n' "$n_skipped" >&2
+        local _line
+        while IFS= read -r _line; do
+            printf '  - %s\n' "$_line" >&2
+        done < "$skipped_log"
+    fi
+
     if [[ "$dry_run" == "1" ]]; then
+        rm -f "$skipped_log"
         echo "reverse: --dry-run set; stopping after reconstruction"
+        if [[ "$n_skipped" -gt 0 && "$force" != "1" ]]; then
+            tracker_error_emit "partial-write" \
+                "reverse --dry-run: $n_skipped issue(s) skipped (would lose data on a real run)" \
+                "Per-skip diagnostic above; pass --force to acknowledge data loss."
+            return 1
+        fi
         return 0
     fi
+
+    if [[ "$n_skipped" -gt 0 && "$force" != "1" ]]; then
+        rm -f "$skipped_log"
+        tracker_error_emit "partial-write" \
+            "reverse: $n_skipped issue(s) failed to reconstruct (silent-data-loss guard)" \
+            "Reconstructing BACKLOG.md now would drop these entries from disk." \
+            "Cause is typically gh issue close eventual consistency (BD-132 / D-5):" \
+            "wait 30+ seconds and re-run, OR run \`pack tracker init --no-forward\` to" \
+            "refresh tracker state and try again. Pass --force only if you have" \
+            "verified the missing entries are actually deleted, not in flight."
+        return 1
+    fi
+    rm -f "$skipped_log"
 
     # Steps 4–7: emit flat files.
     local backend_slug
