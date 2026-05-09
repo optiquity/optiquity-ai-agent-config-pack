@@ -154,8 +154,11 @@ bash scripts/pack-tracker.sh disable    # reverse migration; back to flat-file
 ```
 
 `tracker.toml` lives at the repo root (project) or pack root (pack
-repo). The example template at `tracker.toml.example` is installed by
-`init-project.sh` at v11.
+repo). The pack-side example template `tracker.toml.pack-example`
+ships at the pack root; the client-side template
+`project-template/tracker.toml.project-example` is installed by
+`init-project.sh` at v11 as `tracker.toml.example` at the client
+project root.
 
 **How to use the pack's pieces with it** — once opted in, PM chat /
 Pack chat queries route tracker reads through the TrackerProvider in

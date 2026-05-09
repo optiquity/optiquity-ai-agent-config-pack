@@ -11,7 +11,8 @@
 # for stale cross-references.
 #
 # v11 additions (BD-080): stage S11 installs v11 client-side artifacts
-# (HELP-FRAGMENT.md + HELP-FRAGMENT-TRACKER.md, tracker.toml.example,
+# (HELP-FRAGMENT.md + HELP-FRAGMENT-TRACKER.md, tracker.toml.example
+# — sourced from project-template/tracker.toml.project-example,
 # .github/ISSUE_TEMPLATE/* issue forms, per-CLI pack-help skills /
 # command). The --update flag refreshes a previously-installed pack to
 # the current pack version using the BD-088 customization-preservation
@@ -720,8 +721,11 @@ stage_s11_v11_artifacts() {
         || fail_stage S11 "docs/pack/HELP-FRAGMENT-TRACKER.md missing after copy"
 
     # 2. tracker.toml.example at project root.
-    if [[ -f "$PACK/project-template/tracker.toml.example" ]]; then
-        "$copy_fn" "$PACK/project-template/tracker.toml.example" \
+    #    Source: project-template/tracker.toml.project-example (BD-135).
+    #    Destination basename remains tracker.toml.example for client
+    #    projects (only one such file exists client-side; no collision).
+    if [[ -f "$PACK/project-template/tracker.toml.project-example" ]]; then
+        "$copy_fn" "$PACK/project-template/tracker.toml.project-example" \
             "$TARGET/tracker.toml.example"
     fi
 
@@ -875,7 +879,7 @@ cmd_update() {
         "project-template/docs/pack/PROMPT-TEMPLATES.md:docs/pack/PROMPT-TEMPLATES.md:generic"
         "project-template/docs/pack/HELP-FRAGMENT.md:docs/pack/HELP-FRAGMENT.md:generic"
         "project-template/docs/pack/HELP-FRAGMENT-TRACKER.md:docs/pack/HELP-FRAGMENT-TRACKER.md:generic"
-        "project-template/tracker.toml.example:tracker.toml.example:generic"
+        "project-template/tracker.toml.project-example:tracker.toml.example:generic"
         "project-template/.github/ISSUE_TEMPLATE/work-item.yml:.github/ISSUE_TEMPLATE/work-item.yml:generic"
         "project-template/.github/ISSUE_TEMPLATE/inbound.yml:.github/ISSUE_TEMPLATE/inbound.yml:generic"
         "project-template/.github/ISSUE_TEMPLATE/config.yml:.github/ISSUE_TEMPLATE/config.yml:generic"

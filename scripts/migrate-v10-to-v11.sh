@@ -22,7 +22,9 @@
 #
 # The v10→v11 transition's post-dispatch work (BD-042 legacy-doc
 # relocation; additive install of v11 artifacts like HELP-FRAGMENT,
-# tracker.toml.example, ISSUE_TEMPLATE forms, per-CLI pack-help, and the
+# tracker.toml.example — sourced from
+# project-template/tracker.toml.project-example,
+# ISSUE_TEMPLATE forms, per-CLI pack-help, and the
 # bare scripts/pack-help.sh + scripts/lib/detect.sh files) is performed
 # inside `migrator_post_dispatch_hook` rather than via the framework's
 # declarative `migrator_relocations` / `migrator_artifact_installs`
@@ -179,9 +181,11 @@ _v10_to_v11_install_v11_artifacts() {
     done
 
     # tracker.toml.example
-    if [[ -f "$PACK/project-template/tracker.toml.example" \
+    #   Source: project-template/tracker.toml.project-example (BD-135).
+    #   Destination basename remains tracker.toml.example client-side.
+    if [[ -f "$PACK/project-template/tracker.toml.project-example" \
        && ! -f "$_MIGRATOR_TARGET/tracker.toml.example" ]]; then
-        cp "$PACK/project-template/tracker.toml.example" \
+        cp "$PACK/project-template/tracker.toml.project-example" \
             "$_MIGRATOR_TARGET/tracker.toml.example"
     fi
 

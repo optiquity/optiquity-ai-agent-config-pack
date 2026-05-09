@@ -125,7 +125,7 @@ project-template/                           Unified project template (v11)
 ├── AGENTS.md                               Codex context file (unified template; "Quick reference" addendum v11)
 ├── GEMINI.md                               Gemini context file (unified template; "Quick reference" addendum v11)
 ├── agent-run.sh                            Agent launcher with per-tool flags
-├── tracker.toml.example                    Tracker opt-in config template (v11)
+├── tracker.toml.project-example            Tracker opt-in config template (v11; copied to client root as tracker.toml.example)
 ├── .mcp.json.example                       MCP config template
 ├── .gitignore                              Gitignore for projects
 └── (conditional: proto/, server/, pyproject.toml, pyrightconfig.json)
@@ -223,7 +223,7 @@ QUICKSTART.md                               Quick start router (three paths — 
 OPTIONAL-FEATURES.md                        Tool settings for features and settings used with non-pack related functionality
 HELP-FRAGMENT-PACK.md                       Pack-side verb reference (v11; rendered by pack-help.sh)
 HELP-FRAGMENT-TRACKER.md                    Shared tracker section (v11; canonical; mirrored to project-template/docs/pack/)
-tracker.toml.example                        Pack-side tracker config template (v11)
+tracker.toml.pack-example                   Pack-side tracker config template (v11; copy to tracker.toml to opt the pack repo into tracker mode)
 PACK-CHAT.md                                Pack CLI chat operating instructions
 PACK-AGENTS.md                              Pack agent routing (includes invocation guide)
 BACKLOG.md                                  Pack improvement backlog

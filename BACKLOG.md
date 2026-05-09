@@ -1326,7 +1326,7 @@ Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 
 **BD-135 — Disambiguate `tracker.toml.example` filename pair (rename pack-side and client-side)**
 Type: TODO(version) — surfaced during BD-123 disposition discussion (2026-05-09); new BD per `feedback_filename_uniqueness.md` heuristic memory
-Status: Open
+Status: Resolved
 Blockers: BD-123 (must be Cancelled first; its premise was incompatible with this approach — BD-123 assumed one file misplaced, BD-135 keeps both files where they are with distinct names)
 Unblocks: unambiguous prose references to either tracker-example file without a path qualifier; reduces future-author confusion (the BD-123 author was tripped by the matching filenames)
 File/Symbol:
@@ -1341,7 +1341,7 @@ File/Symbol:
   - Update `supporting-docs/MIGRATION-v10-to-v11.md` lines 8, 48, 118, 226, 252 — five references describing where the file lands during v10→v11 migration; line 252 is the forward-setup read step
   - Update `scripts/tests/test-init-project.sh` and `scripts/tests/test-migrate-v10-to-v11.sh` if they assert the basename (verify and update if so)
 Description: Two `tracker.toml.example` files exist for legitimate, distinct reasons — pack-side template (BD-prefix, Optiquity URL, "pack repo tracker configuration" header) for opting the pack repo itself into tracker mode, and client-side template (TD-prefix, your-org placeholder, "client project tracker configuration" header) that ships into client projects via `init-project.sh`. The matching filenames led the BD-123 author to mis-frame the work as "one file in the wrong directory." Investigation revealed the asymmetry is intentional and documented in `README.md` at lines 128 and 226. Renaming both to filename-distinct forms eliminates the recurring confusion vector and aligns with the codified `feedback_filename_uniqueness.md` heuristic. Mechanical rename + reference sweep across ~9 files. Verification: validator PASS (no Check regression); HELP-FRAGMENT-TRACKER mirror byte-identity preserved (Check 24); a fresh `init-project.sh` run installs the renamed file at the new client-side basename; v10→v11 migration test still copies the renamed source.
-Resolved: n/a
+Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-135.md`. Final names: `tracker.toml.pack-example` (pack root) and `project-template/tracker.toml.project-example` (client-side template source). Install destination at client deliberately stays as `tracker.toml.example` (unique-filename heuristic only applies inside the pack repo where both files coexist; client projects only ever have one tracker example file). Validator PASS (28 checks); HELP-FRAGMENT-TRACKER trinity byte-identity preserved.
 
 ---
 

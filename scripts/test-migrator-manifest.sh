@@ -274,9 +274,11 @@ out=$(bash -c '
     MIGRATOR_OWN_SIDECAR_SUFFIX="v10-customized"
     MIGRATOR_PRIOR_SIDECAR_SUFFIXES=()
     migrator_manifest() {
-        # Use a real pack file so cp succeeds. tracker.toml.example is
-        # present in the v11 pack template.
-        printf "%s\t%s\t%s\t%s\n" "project-template/tracker.toml.example" "tracker.toml.example" "generic" "add"
+        # Use a real pack file so cp succeeds.
+        # tracker.toml.project-example is present in the v11 pack template
+        # (renamed from tracker.toml.example per BD-135). Destination
+        # basename remains tracker.toml.example client-side.
+        printf "%s\t%s\t%s\t%s\n" "project-template/tracker.toml.project-example" "tracker.toml.example" "generic" "add"
     }
     migrator_directory_sweeps()     { :; }
     migrator_relocations()          { :; }
@@ -328,7 +330,7 @@ out=$(bash -c '
     MIGRATOR_OWN_SIDECAR_SUFFIX="v10-customized"
     MIGRATOR_PRIOR_SIDECAR_SUFFIXES=()
     migrator_manifest() {
-        printf "%s\t%s\t%s\t%s\n" "project-template/tracker.toml.example" "tracker.toml.example" "generic" "add"
+        printf "%s\t%s\t%s\t%s\n" "project-template/tracker.toml.project-example" "tracker.toml.example" "generic" "add"
     }
     migrator_directory_sweeps()     { :; }
     migrator_relocations()          { :; }

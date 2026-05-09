@@ -240,9 +240,11 @@ with sidecar.
 **Strategy:** 3-way text dispatch (default).
 
 Catch-all for files the classifier doesn't recognize. HELP-FRAGMENT
-files, tracker.toml.example, and issue-template forms route through
-this class. The classifier is conservative: when unsure, fall back to
-text 3-way which preserves project edits via sidecar.
+files, the client-installed tracker.toml.example (sourced from
+`project-template/tracker.toml.project-example`), and issue-template
+forms route through this class. The classifier is conservative: when
+unsure, fall back to text 3-way which preserves project edits via
+sidecar.
 
 ---
 

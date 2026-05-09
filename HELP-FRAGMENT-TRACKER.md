@@ -26,4 +26,4 @@ disable` restores flat-file mode.
 | "rebuild the mirror" / "regenerate BACKLOG.md" | `pack tracker mirror-rebuild` |
 | "remind me about the tracker again" | `pack tracker enable-recommendations` |
 
-See `tracker.toml.example` and `OPTIONAL-FEATURES.md` for full setup.
+See the tracker example template (`tracker.toml.pack-example` in the pack repo, or `tracker.toml.example` at a client project root) and `OPTIONAL-FEATURES.md` for full setup.

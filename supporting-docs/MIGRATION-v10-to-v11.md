@@ -5,8 +5,10 @@ This guide is the authoritative narrative for upgrading an existing
 
 1. **Phase A — forced v10→v11 changes.** Everyone runs this. Trinity
    refresh, HELP-FRAGMENT install, per-CLI `pack-help` surfaces,
-   `tracker.toml.example`, issue templates, BD-042 doc relocation
-   tail. Driven by `scripts/migrate-v10-to-v11.sh` (BD-085).
+   `tracker.toml.example` (installed at project root from the pack's
+   `project-template/tracker.toml.project-example`), issue templates,
+   BD-042 doc relocation tail. Driven by `scripts/migrate-v10-to-v11.sh`
+   (BD-085).
 2. **Phase B — optional tracker opt-in.** Per surface, per user. Run
    only if you want to move issue tracking out of `BACKLOG.md` /
    `STATUS.md` flat files into GitHub Issues. Driven by
@@ -46,7 +48,8 @@ project — there is no shared state between projects.
   `inbound.yml`, `config.yml`) installed for projects opting into
   GitHub Issues.
 - `tracker.toml.example` installed at project root (template for
-  Phase B).
+  Phase B; sourced from the pack's
+  `project-template/tracker.toml.project-example`).
 
 **Optional (Phase B):**
 
@@ -115,7 +118,7 @@ The script runs 7 stages:
 | S2 | Initialize BD-088 customization-preserve state |
 | S3 | Dispatch v10 → v11 changes via BD-088 (trinity / configs / scripts / agents / docs) |
 | S4 | BD-042 relocation tail (legacy root docs → `docs/pack/`) |
-| S5 | Install v11 client artifacts (HELP-FRAGMENT*.md, tracker.toml.example, issue forms, per-CLI pack-help) |
+| S5 | Install v11 client artifacts (HELP-FRAGMENT*.md, tracker.toml.example, issue forms, per-CLI pack-help). The tracker example is sourced from the pack's `project-template/tracker.toml.project-example` and lands at the project root as `tracker.toml.example`. |
 | S6 | Render truthful migration report at `.pack-migrate-v10-to-v11/report.md` |
 
 **Exit codes:**
@@ -223,7 +226,8 @@ git diff --staged | less
 #   - .gitignore may have been merged with new pack additions.
 #   - docs/pack/HELP-FRAGMENT.md and docs/pack/HELP-FRAGMENT-TRACKER.md
 #     are new.
-#   - tracker.toml.example is new at project root.
+#   - tracker.toml.example is new at project root (sourced from
+#     the pack's project-template/tracker.toml.project-example).
 #   - .github/ISSUE_TEMPLATE/{work-item,inbound,config}.yml are new.
 #   - per-CLI pack-help skill / command are new.
 #   - Any reconciliation files you edited.
@@ -249,7 +253,9 @@ fully without ever opting in.
 
 `pack-tracker.sh init` will:
 
-1. Read `tracker.toml.example` at project root and prompt you for
+1. Read `tracker.toml.example` at project root (installed by the v11
+   migrator from the pack's
+   `project-template/tracker.toml.project-example`) and prompt you for
    provider config (default: `gh`).
 2. Create `tracker.toml` with your settings.
 3. Optionally run `forward` migration: `BACKLOG.md` entries become
