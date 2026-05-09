@@ -1030,7 +1030,7 @@ Resolved: 2026-05-08, v11.0 — 4 fixtures shipped via deterministic
 
 **BD-114 — `dry-run-migration.sh` parameterized read-only migration harness**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-119
 Unblocks: v11.0 ship gate (Criterion 2); same harness reused for v12+; first public-release usability for any org maintaining a v10 client
 File/Symbol: `scripts/dry-run-migration.sh` (NEW); referenced by BD-117 (RELEASE-GATE.md) and BD-118 (CI wiring) — both BDs should be updated to use the new file name when they implement
@@ -1075,7 +1075,7 @@ Description: Read-only migration dry-run harness that works for **any
   Manual gate (not in CI for the URL-based modes since they touch
   network); the synthetic-fixture mode (#1 above) IS in CI per
   BD-118. Required before tagging v11.0, v12.0, ... etc.
-Resolved: n/a
+Resolved: 2026-05-09 — work shipped earlier; status flip in Batch 5 hygiene. See `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-114.md`.
 
 ---
 
@@ -1246,7 +1246,7 @@ Resolved: n/a
 
 **BD-121 — Sunset v9 migration infrastructure**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: None
 Unblocks: BD-122 (test-fixtures convention doc no longer has to disambiguate from a live v9 system)
 File/Symbol: `maintenance-docs/test-fixtures/` (DELETE), `scripts/test-migration.sh` (DELETE), `scripts/migrate-v9-to-v10.sh` (DELETE if present), `scripts/lib/three-way.sh` + 4 merge helpers in `scripts/lib/` (audit — keep if used by v10→v11 migrator, delete if v9-exclusive), `scripts/validate-pack.py` (remove v9-specific Checks — at least the test-migration harness check + the 4-merge-helpers check + the MIGRATION-v9-to-v10.md stages check), `supporting-docs/MIGRATION-v9-to-v10.md` (DELETE), `supporting-docs/MIGRATION-v10-to-v11.md` (3 references to remove/rephrase), `supporting-docs/SETUP-NEW.md` (1 reference), `supporting-docs/INSTALL-PROCEDURES.md` (4 references), `README.md` (audit), `CHANGELOG.md` (audit), `.github/workflows/validate-pack.yml` (audit — verify no standalone test-migration.sh invocation)
@@ -1299,7 +1299,7 @@ Description: Two parallel test-fixture systems exist today: the legacy
   If a v9 client unexpectedly surfaces post-deletion, they recover the
   migrator via `git checkout v9 -- scripts/migrate-v9-to-v10.sh` from
   history.
-Resolved: n/a
+Resolved: 2026-05-09 — deletions shipped in `1daa938`; v10.1 backport pulled in residual cross-doc cleanup; bare-prose `(historical)` qualifiers added by BD-127 (PACK-REVIEW F-4). Status flip in Batch 5 hygiene.
 
 ---
 
@@ -1321,6 +1321,104 @@ Description: The root `test-fixtures/` directory holds fixtures named
   paragraph. Keep it short — implementation is one or two paragraphs
   and a row-by-row update of the existing fixture table. Tiny.
 Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-122.md`
+
+---
+
+**BD-135 — Disambiguate `tracker.toml.example` filename pair (rename pack-side and client-side)**
+Type: TODO(version) — surfaced during BD-123 disposition discussion (2026-05-09); new BD per `feedback_filename_uniqueness.md` heuristic memory
+Status: Open
+Blockers: BD-123 (must be Cancelled first; its premise was incompatible with this approach — BD-123 assumed one file misplaced, BD-135 keeps both files where they are with distinct names)
+Unblocks: unambiguous prose references to either tracker-example file without a path qualifier; reduces future-author confusion (the BD-123 author was tripped by the matching filenames)
+File/Symbol:
+  - RENAME `tracker.toml.example` → `tracker.toml.pack-example` (pack root) — proposed name; final name at implementor's discretion provided it is distinct from the project-template peer AND remains self-evidently a tracker-config template
+  - RENAME `project-template/tracker.toml.example` → `project-template/tracker.toml.project-example` — same naming flexibility
+  - Update `init-project.sh` lines 14 (comment), 722–725 (the copy block), and 878 (manifest entry) to read the new pack-side source path AND write to the new client-side basename at install destination
+  - Update `migrate-v10-to-v11.sh` lines 25 (comment), 181–185 (copy block) — same shape
+  - Update `README.md` line 128 (project-template/ layout block) and line 226 (pack-repo root layout block) to reflect new filenames
+  - Update `OPTIONAL-FEATURES.md` lines 156–158 (the install-narrative paragraph)
+  - Update `HELP-FRAGMENT-TRACKER.md` line 29 AND `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md` line 29 — trinity-mirrored byte-identical per DELTA L1; edit both lockstep; CI Check 24 enforces byte-identity
+  - Update `supporting-docs/MERGE-STRATEGY.md` line 243 (the catch-all classifier paragraph)
+  - Update `supporting-docs/MIGRATION-v10-to-v11.md` lines 8, 48, 118, 226, 252 — five references describing where the file lands during v10→v11 migration; line 252 is the forward-setup read step
+  - Update `scripts/tests/test-init-project.sh` and `scripts/tests/test-migrate-v10-to-v11.sh` if they assert the basename (verify and update if so)
+Description: Two `tracker.toml.example` files exist for legitimate, distinct reasons — pack-side template (BD-prefix, Optiquity URL, "pack repo tracker configuration" header) for opting the pack repo itself into tracker mode, and client-side template (TD-prefix, your-org placeholder, "client project tracker configuration" header) that ships into client projects via `init-project.sh`. The matching filenames led the BD-123 author to mis-frame the work as "one file in the wrong directory." Investigation revealed the asymmetry is intentional and documented in `README.md` at lines 128 and 226. Renaming both to filename-distinct forms eliminates the recurring confusion vector and aligns with the codified `feedback_filename_uniqueness.md` heuristic. Mechanical rename + reference sweep across ~9 files. Verification: validator PASS (no Check regression); HELP-FRAGMENT-TRACKER mirror byte-identity preserved (Check 24); a fresh `init-project.sh` run installs the renamed file at the new client-side basename; v10→v11 migration test still copies the renamed source.
+Resolved: n/a
+
+---
+
+**BD-134 — Tracker forward close retry-with-backoff (eliminate ~5% partial-write rate)**
+Type: TODO(version) — surfaced by BD-102 Phase A dog-food (D-7)
+Status: Open
+Blockers: none
+Unblocks: cleaner BD-102 dog-food re-run; reduced post-init `gh issue` state drift
+File/Symbol: `scripts/lib/tracker-provider-gh.sh` (close call); `scripts/lib/tracker-migrate-forward.sh` (end-of-init re-run-failed-closes step)
+Description: Forward step-8 close has ~5% partial-write rate (3 of 56 named close failures observed: BD-021/022/023). Likely transient gh API rate-limiting. Add retry-with-backoff on individual close, OR end-of-init pass that re-runs failed closes once before reporting partial-write. Severity NIT — issues end up OPEN with `status:resolved` label instead of CLOSED.
+Resolved: n/a
+
+---
+
+**BD-133 — Reverse migration preserves BACKLOG.md header preamble**
+Type: TODO(version) — surfaced by BD-102 Phase A dog-food (D-6)
+Status: Open
+Blockers: none
+Unblocks: BD-102 dog-food (Phase A round-trip survives without content loss)
+File/Symbol: `scripts/lib/tracker-migrate-reverse.sh` BACKLOG emission; `scripts/lib/tracker-migrate-forward.sh` checkpoint snapshot OR `scripts/lib/tracker-sidecar.sh` header preservation
+Description: Reverse migration strips ALL non-entry content from BACKLOG.md — the `# Backlog` title, "All planned improvements..." paragraph, `## How to use this file` section, type explanations, format references — replacing it with bare `# BACKLOG`. Per V1 §6.5 design intent project-specific content not representable in tracker should be sidecar-preserved; this header content qualifies. Reverse must preserve everything before the first `**BD-NNN — ...**` heading byte-identical, via checkpoint snapshot, sidecar, or refusal-to-overwrite policy after first round-trip. Test fixture required.
+Resolved: n/a
+
+---
+
+**BD-132 — BLOCKER: tracker disable/init close-step race destroys ~33% of BACKLOG entries**
+Type: TODO(version) — surfaced by BD-102 Phase A dog-food (D-5)
+Status: Open
+Blockers: none
+Unblocks: BD-102 dog-food (Phase A); v11.0 ship gate (silent data loss is unacceptable)
+File/Symbol: `scripts/lib/tracker-migrate-reverse.sh` reconstruct loop; `scripts/pack-tracker.sh` init/disable race detection; `scripts/lib/tracker-migrate-forward.sh` close-stabilization wait
+Description: First `disable` invocation immediately after `init` exit reconstructed only 60 of 93 BD entries — 33 entries silently dropped. Hypothesis: `gh issue close` is eventually consistent; `disable` running mid-close sees inconsistent issue state and silently skips entries whose body or labels appear malformed mid-update. Workaround was poll `gh issue list --state closed --limit 200 --json number --jq length` until stable, then disable. Three-part fix required: (a) `init` waits for all close ops to stabilize before exit, (b) `disable` detects "init still racing" via `forward.checkpoint.json` freshness OR issue-state stability poll, (c) reverse loop's silent-skip path must at minimum WARN ("skipping X issues whose body did not parse — re-run"). Severity effective CRITICAL: a user who runs `init` then immediately `disable` (smoke test, change of mind) loses 35% of BACKLOG content with no warning. **BLOCKER for v11.0.**
+Resolved: n/a
+
+---
+
+**BD-131 — Set `forward_complete = true` at end of clean forward migration**
+Type: TODO(version) — surfaced by BD-102 Phase A dog-food (D-4)
+Status: Open
+Blockers: none
+Unblocks: correct `tracker_mode()` resolution (V1 §3.2); downstream tooling routes to tracker behavior reliably
+File/Symbol: `scripts/lib/tracker-migrate-forward.sh` (or wherever final tracker.toml `[migration]` write happens); `scripts/lib/tracker-init.sh` if init owns the post-forward write
+Description: After `pack tracker init --backend github --repo ... --no-interactive` succeeded (created tracker.toml, wrote 93 issues, wrote id-map.json + forward.checkpoint.json, closed 53 of 56 attempted closes), the `tracker.toml [migration]` section reads `forward_complete = false`. Per V1 §3.2 `tracker_mode()` resolves to "tracker" only when `mode.state = "tracker"` AND `migration.forward_complete = true`. Downstream tooling depending on `tracker_mode()` may incorrectly route to flat-file behavior. Fix: set `forward_complete = true` at end of clean forward. For partial-write cases (BD-134's 3-of-56 failure pattern), document semantics — does `forward_complete` mean "all closes succeeded" or "all issues created"? Recommend the latter since BD-134's fix will eliminate the close-failure case anyway.
+Resolved: n/a
+
+---
+
+**BD-130 — Wire `tracker_doctor_run` so `pack tracker doctor` works (BD-067 fix incomplete)**
+Type: TODO(version) — surfaced by BD-102 Phase A dog-food (D-2; live regression confirmed at HEAD `240867d`)
+Status: Open
+Blockers: none
+Unblocks: BD-102 dog-food (operator can actually run `pack tracker doctor`); BD-097 audit accuracy (NOTE N-5 said all four verbs implemented — was wrong for `doctor`)
+File/Symbol: `scripts/pack-tracker.sh` (sources scripts/lib/* but never `scripts/tracker-migrate.sh` where `tracker_doctor_run` is defined at line 167); options to fix: (a) move `tracker_doctor_run` from `scripts/tracker-migrate.sh` into `scripts/lib/tracker-*.sh` and source it; (b) have `pack-tracker.sh` source `scripts/tracker-migrate.sh`; (c) duplicate the function (rejected — DRY)
+Description: BD-067 Resolved-line claims `pack tracker doctor` was wired. Live test on HEAD `240867d`: `bash scripts/pack-tracker.sh doctor` returns `scripts/pack-tracker.sh: line 165: tracker_doctor_run: command not found`. Function is defined in `scripts/tracker-migrate.sh:167` but `scripts/pack-tracker.sh` only sources `scripts/lib/*.sh` files (verified — see lines 29-53 of pack-tracker.sh). Recommended fix (a): relocate to `scripts/lib/tracker-doctor.sh` (or fold into existing `scripts/lib/tracker-init.sh` since init/doctor are sibling concerns) and add a source line in pack-tracker.sh.
+Resolved: n/a
+
+---
+
+**BD-129 — Tracker libs pass `--repo` to all gh invocations (don't depend on git remote)**
+Type: TODO(version) — surfaced by BD-102 Phase A dog-food (D-1)
+Status: Open
+Blockers: none
+Unblocks: tracker init works for repos with non-GitHub remotes, internal mirrors, GHE-on-different-host, freshly-cloned repos before remote setup, monorepo subtree imports
+File/Symbol: `scripts/lib/tracker-labels.sh:172` (`_tracker_labels_existing`), `scripts/lib/tracker-labels.sh:183` (`_tracker_labels_create`), every `_gh_run gh ...` call in `scripts/lib/tracker-provider-gh.sh` that doesn't pass `--repo`. Slug source: `scripts/lib/tracker-config.sh::tracker_repo_slug`.
+Description: All gh invocations in tracker libs run without `--repo`. gh resolves slug from working repo's git remote — fails with "none of the git remotes configured for this repository point to a known GitHub host" for clones from local-path sources, non-GitHub remotes, or freshly-cloned repos. `pack tracker init` then aborts at `labels_ensure: cannot read existing labels (gh auth or network failure)` — misleading error. Fix: pass `--repo "$slug"` everywhere (slug already available via `tracker_repo_slug`); OR set `GH_REPO` env in dispatcher before any gh call (cleaner — single point of control). Recommend the env-var approach: set once in `scripts/pack-tracker.sh` cmd dispatcher, applies to every gh call below it.
+Resolved: n/a
+
+---
+
+**BD-128 — CI test-suite repair: BD-080 Group 3 + v10-realistic-ot fixture + migrator collateral**
+Type: TODO(version) — surfaced by current CI baseline (red on every push since v10.1 backport landed)
+Status: Open
+Blockers: none — but should land BEFORE BD-102 dog-food
+Unblocks: green CI on `validate-pack.yml`; BD-102 dog-food run can rely on test-suite signal
+File/Symbol: `scripts/tests/test-init-project.sh` (Group 3: 13 FAILs hunting for `S11 — v11 client artifacts`, `tracker.toml.example`, `pack-help.sh`, `detect.sh` post-BD-088/BD-119/BD-121); `test-fixtures/build.sh` (exit 31 building `v10-realistic-ot` — likely v10 tag unreachable in CI checkout OR builder needs BD-120 parameterization first); `scripts/test-migrator-behavior-preservation.sh` (collateral failure on missing fixture); possibly `.github/workflows/validate-pack.yml` (verify checkout fetches tags)
+Description: CI `tests` job has been red since `19755b5` (v10.1 backport optimization pass). Three failing suites: (1) BD-080 init-project Group 3 — assertions reference v11 client artifacts in paths that BD-088/BD-119/BD-121 reorganized; either update assertions OR fix install paths. (2) `test-fixtures/build.sh --all --clean` exit 31 building `v10-realistic-ot` from the v10 git tag — checkout depth or tag-fetching issue in CI, OR builder needs BD-120 parameterization. (3) BD-119 migrator behavior-preservation — depends on fixture from #2. Triage and repair each. May spawn fix-follow BDs if any failure surfaces a deeper issue. **NOTE on sequencing:** if BD-128 repair turns out to require BD-120 (fixture parameterization), batch ordering must move BD-120 ahead of BD-128. Pre-flight check is the first task.
+Resolved: n/a
 
 ---
 
@@ -1412,7 +1510,7 @@ Resolved: n/a
 
 **BD-124 — Pack-coder skills: `implementation-report`, `verification-harness`, `commit-discipline`**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-119 (let the pack-coder patterns settle through C-7 before formalizing)
 Unblocks: shorter / more uniform pack-coder prompts for every future implementation BD
 File/Symbol: `.claude/skills/implementation-report/SKILL.md`, `.claude/skills/verification-harness/SKILL.md`, `.claude/skills/commit-discipline/SKILL.md` (+ trinity peers in `.codex/skills/` and `.gemini/skills/`); `PACK-AGENTS.md` skills table; `.claude/agents/pack-coder.md` (and trinity peers) "Skills loaded by pack-coder" reference
@@ -1471,13 +1569,13 @@ Description: BD-119's C-1..C-7 sequence has surfaced three repeatable
   **Sequencing:** depends on BD-119 closing first so the report /
   test-script / pre-flight patterns are fully settled. Doing this
   earlier risks formalizing a pattern that's still moving.
-Resolved: n/a
+Resolved: 2026-05-09 — work shipped earlier; status flip in Batch 5 hygiene. See `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-124.md`.
 
 ---
 
 **BD-123 — Relocate `tracker.toml.example` from repo root to `project-template/`**
 Type: TODO(version)
-Status: Open
+Status: Cancelled
 Blockers: BD-119 (must land AFTER BD-119 closes to avoid coordinating with the in-flight migrator refactor)
 Unblocks: cleaner repo-root surface (root holds entry-point docs and pack ops files only)
 File/Symbol: `tracker.toml.example` (move from repo root to `project-template/`); references in `README.md`, `OPTIONAL-FEATURES.md`, `HELP-FRAGMENT-TRACKER.md`, `CHANGELOG.md`, `BACKLOG.md`, `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md`, `supporting-docs/MERGE-STRATEGY.md`, `supporting-docs/MIGRATION-v10-to-v11.md`, `scripts/init-project.sh`, `scripts/migrate-v10-to-v11.sh` (the BD-119 adapter shim post-cutover), `scripts/tests/test-init-project.sh`, `scripts/tests/test-migrate-v10-to-v11.sh`
@@ -1497,7 +1595,7 @@ Description: `tracker.toml.example` is template-source content — it's
   coordinating updates across both the monolith and the eventual
   adapter shim. Post-BD-119 the adapter is small and the rename
   touches it cheaply.
-Resolved: n/a
+Resolution: 2026-05-09 cancelled — investigation revealed the BACKLOG entry's premise was wrong. There are TWO distinct `tracker.toml.example` files: pack-side at root (BD-prefix, Optiquity URL, "pack repo tracker configuration" header) for opting the pack repo itself into tracker mode, and client-side at `project-template/` (TD-prefix, your-org placeholder, "client project tracker configuration" header) that ships into client projects via `init-project.sh`. README.md documents both intentionally at lines 128 and 226. Moving one into the other's location would destroy the other. The underlying confusion (matching filenames) is addressed by BD-135, which renames both to filename-distinct forms per the `feedback_filename_uniqueness.md` heuristic.
 
 ---
 
@@ -1505,7 +1603,7 @@ Resolved: n/a
 
 **BD-059 — v10 migration silently destroys project customization**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: None — pack-architect read-only audit of the OT post-migration state
   is the first step; pack-planner sequencing follows; both run in this session.
 Unblocks: None
@@ -1594,7 +1692,7 @@ Context: Incident discovered 2026-04-30 by user inspection of the OT
   `_v9-backup.md` triggering is scoped only to `PROMPT-TEMPLATES.md`
   text comparison, leaving every other potential customization point
   unaudited and unreported.
-Resolved: n/a
+Resolved: 2026-05-09 — closed by BD-088 (Customization-preservation algorithm + truthful report; explicitly framed as "BD-059 fix as v11-cut artifact"). BD-088 shipped 2026-05-07 with `scripts/lib/customization-preserve.sh` + `customization-report.sh` + 72 fixture tests covering 12 file classes via 8 canonical dispositions. BD-088's `Unblocks` line names BD-059 explicitly. Status flip in Batch 5 hygiene.
 
 ---
 
