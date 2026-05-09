@@ -141,6 +141,7 @@ supporting-docs/                            Pack product docs (copied to or cons
 ├── AGENT_KICKOFF_TEMPLATE.md               Architecture kickoff template
 ├── MERGE-STRATEGY.md                       Per-file customization-preservation matrix (v11)
 ├── MIGRATION-v10-to-v11.md                 Upgrade guide (v10.0 → v11.0)
+├── DRY-RUN-MIGRATION.md                    Companion guide for scripts/dry-run-migration.sh (v11; BD-114 / BD-125)
 └── MIGRATION-v8-to-v9.md                   Upgrade guide (historical; v8.x → v9.0)
                                             (v9->v10 migrator + guide were sunset in v11 per BD-121;
                                             recover from history with `git checkout v10 -- ...`)

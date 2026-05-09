@@ -97,6 +97,13 @@ project — there is no shared state between projects.
    `init-project.sh --update`, remove any `*.pre-update` sidecars
    first — the v10→v11 migrator and `--update` use different sidecar
    suffixes but it's cleaner to start from a known state.
+6. **(Optional but recommended) Preview the migration first.** Run
+   `scripts/dry-run-migration.sh /path/to/your/v10/clone` from the
+   pack repo to see exactly what files Step 1 below would change,
+   without modifying anything. The dry-run renders a Markdown report
+   showing the file-tree diff and any sidecars the real migration
+   would write. See `DRY-RUN-MIGRATION.md` for the full input
+   contract, output interpretation, and CI release-gate pattern.
 
 ---
 

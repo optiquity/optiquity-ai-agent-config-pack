@@ -1466,7 +1466,7 @@ Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 
 **BD-125 — `dry-run-migration.sh` input contract + usage doc**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-114
 Unblocks: first public-release usability for the dry-run harness; clearer Optiquity release-gate procedure
 File/Symbol: `supporting-docs/DRY-RUN-MIGRATION.md` (NEW); cross-references in `supporting-docs/MIGRATION-v10-to-v11.md`, `README.md`, `OPTIONAL-FEATURES.md` (audit and update if the dry-run is mentioned)
@@ -1504,7 +1504,7 @@ Description: Companion documentation for the parameterized BD-114
   not just pack maintainers. Keep it under ~150 lines; reference
   BD-114's harness usage output for the exhaustive flag/option
   listing rather than duplicating it.
-Resolved: n/a
+Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-125.md`. NEW `supporting-docs/DRY-RUN-MIGRATION.md` (199 lines — slightly over the ~150 target but all six BACKLOG-required sections covered). Cross-references added: README.md supporting-docs tree listing (+1 line) and MIGRATION-v10-to-v11.md "Before you start" checklist as new optional-but-recommended item 6 (+7 lines). OPTIONAL-FEATURES.md audited and left untouched (file scope is tool-specific opt-in features, not pack scripts; no existing dry-run mention to update). Every flag and exit code in the doc verified against as-shipped `scripts/dry-run-migration.sh --help` and source. Validator clean.
 
 ---
 
