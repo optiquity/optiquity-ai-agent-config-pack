@@ -3,11 +3,6 @@
 This file is read by Claude Code CLI agents working on the pack repo itself.
 It is NOT a template and is NOT copied to coding projects.
 
-## Quick reference
-
-- **Pack commands:** run `pack help` for the full verb list, or `/pack-help` in your CLI.
-- **Recommended first action:** run `pack-startup` (or your CLI's equivalent).
-
 ---
 
 ## What this repo is
@@ -31,13 +26,6 @@ Key files to read before working on the pack:
 - `CHANGELOG.md` — version history details
 - `PACK-CHAT.md` — PM chat operating rules
 - `PACK-AGENTS.md` — agent routing table for pack development work
-
-**Migrator framework (BD-119).** When authoring a new
-`scripts/migrate-vN-to-vM.sh`, source `scripts/lib/migrator-core.sh` and
-supply the adapter contract (`MIGRATOR_*` vars + the hook functions). See
-`maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md` for the
-contract. Do NOT copy `scripts/migrate-v10-to-v11.sh` and rewrite — that
-regresses the framework.
 
 ---
 
@@ -90,69 +78,21 @@ Always run `git add -A && git status` and show staged files before committing.
 
 ---
 
-## Pack memory (project-local learnings)
+## Pack memory (Claude-only, all chats in this repo)
 
-These entries codify learnings from prior sessions. They are authoritative —
-treat them as standing rules, not suggestions. Pack Chat and all pack agents
-must respect them. When a learning becomes stale, update or remove the entry
-in the same commit as the behavior change.
+**Spawn all sub-agents with no worktree isolation.**
 
-### Workflow
+The Agent tool's `isolation: "worktree"` mode places sub-worktrees under the
+main clone's `.git/worktrees/` directory and checks them out at `origin/main`,
+**regardless of which worktree the parent chat is running in**. This means an
+agent spawned from a v11-dev (or any non-main) chat will end up auditing /
+editing v10.1 stable content instead of the parent chat's branch.
 
-- **Agents never commit.** No agent — including `pack-coder` — may run
-  `git add`, `git commit`, `git push`, `git tag`, or any state-changing git
-  verb. Read-only git verbs (`status`, `diff`, `log`, `rev-parse`, `show`)
-  are allowed. Only Pack Chat may stage and commit, and only with explicit
-  user approval. The agent's output is its report file plus working-tree
-  edits; Pack Chat reads the report, verifies, then commits.
-- **Pack Chat does not architect.** Architecture, planning, implementation,
-  and review work goes to `pack-architect` / `pack-planner` / `pack-coder` /
-  `pack-reviewer` directly. Pack Chat handles BACKLOG/CHANGELOG entries,
-  routing, approvals, commits, and user-facing decisions.
-- **One review/fix cycle per batch.** Run `pack-reviewer` once per batch,
-  fix once, move on. Do not propose a second review pass; the final audit
-  is user-initiated.
-- **Implicit BD status flip on batch completion.** When a batch's review +
-  fixes are clean and tests are green, flip its BDs to `Resolved` as the
-  final step of the batch — no separate user approval needed.
+Rule: do not pass `isolation: "worktree"` when calling the Agent tool from
+any chat in this repo. Run agents in-place against the parent chat's working
+tree. If parallelism across worktrees is needed, open separate Claude Code
+chat sessions in separate worktree directories — never use Agent-tool
+worktree isolation.
 
-### Agent invocation rules
-
-- **Pack agent invocation.** Pack agents are invoked via `claude --agent
-  pack-<name>` (separate session) or via the Agent tool with
-  `subagent_type=pack-<name>` (sub-agent within Pack Chat). The pack repo
-  has no `agent-run.sh` — that's a project template helper, not a pack
-  invocation method.
-- **Agent prompt requirements.** Every agent prompt must include: context
-  (what the codebase is, what the task is), output file path, read-only
-  flags where applicable, markdown-only directive for outputs, problem /
-  goal / success criteria, and an instruction to chunk Write calls for
-  outputs over ~300 lines.
-- **No solutions in agent prompts.** Agent prompts contain only problem,
-  goal, and success criteria. No proposed solutions, no "pick one" options,
-  no biased framing. Architects/planners/coders/reviewers reach their own
-  conclusions.
-- **No prior reviews to pack-reviewer.** Reviewer prompts reference
-  ARCHITECTURE / PLAN docs only — never prior `PACK-REVIEW-*.md` reports.
-  Including a prior review biases the new review.
-
-### Repo conventions
-
-- **BACKLOG.md has no Resolved section.** Entries resolve in place by
-  flipping `Status: Open` to `Status: Resolved` and filling the
-  `Resolved:` line. Do not propose moving entries to a separate section.
-- **Separate pack ops from pack product.** Pack ops files (CLAUDE.md,
-  AGENTS.md, GEMINI.md, PACK-CHAT.md, PACK-AGENTS.md, BACKLOG.md, etc.)
-  are NEVER mixed into pack product files (`project-template/`,
-  `supporting-docs/`). Same applies in reverse.
-- **Test infra is self-provisioned.** Tests that need GitHub repos
-  provision them via `gh` CLI with per-step approval and clean up after.
-  Never touch existing real repos as test targets — use scratch repos
-  or `/tmp` clones.
-
-### Project goals (v11)
-
-- Pack tracker opt-in works with little to no user intervention; flat-file
-  is default; tracker is opt-in but easy.
-- OT-style v10→v11 migration is automated; OT itself is read-only for
-  testing (use `/tmp` clones or scratch fixtures, never write to real OT).
+This rule is Claude-specific (not part of the CLAUDE.md / AGENTS.md /
+GEMINI.md trinity) because it concerns Claude Code's Agent tool behavior.
