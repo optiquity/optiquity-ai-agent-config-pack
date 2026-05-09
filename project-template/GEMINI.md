@@ -217,7 +217,7 @@ executable on first checkout: `chmod +x agent-run.sh scripts/*.sh`.
 | `test.sh` | `scripts/` | After implementing — runs test suite only; calls test-\<lang\>.sh | Human or `repo-ops` agent |
 | `test-swift.sh` | `scripts/` | Run Swift test suite | `test.sh` wrapper |
 | `test-python.sh` | `scripts/` | Run Python test suite via pytest | `test.sh` wrapper |
-| `proto-gen.sh` | `scripts/` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
+| `proto-gen.sh` | `scripts/` | After editing any `.proto` file — runs buf lint then buf generate | Human or `coder` / `repo-ops` agent |
 | `agent-post-edit-check.sh` | `scripts/` | **Never call manually** — fires via Codex post_edit_command and Claude Code PostToolUse hook | Automatic hook |
 
 **Required first-time setup (Swift projects only):** Open `scripts/validate-swift.sh`
@@ -298,6 +298,27 @@ language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
 - Branching on concrete types to discover what an abstraction supports, instead of querying a capability value or interface.
 
 [PLATFORM_ANTIPATTERNS — fill in from loaded skills]
+
+## Project memory
+
+These rules govern every agent invocation. Each agent's full operating
+rules (Permission profile, Output policy, Hard rules) live in its own
+definition file under `.claude/agents/<agent>.md`,
+`.codex/agents/<agent>.toml`, and `.gemini/agents/<agent>.md` — the
+agent file is authoritative. This section carries only universal
+collaboration rules that apply project-wide.
+
+- **Trinity rule.** When modifying `CLAUDE.md`, `AGENTS.md`, or
+  `GEMINI.md` at the project root, the same change applies to all
+  three. Asymmetry requires justification as provably tool-specific.
+- **No destructive operations without explicit approval.** Before
+  any `git rm`, `rm -rf`, deletion, overwrite, or `git reset --hard`,
+  state what will be destroyed and wait for explicit approval — even
+  when the overall task is approved.
+- **PM chat does not architect.** Architecture, planning, implementation,
+  and review work goes to the corresponding agent. The PM chat handles
+  BACKLOG, STATUS, CHANGELOG, routing, approvals, and prompt
+  construction — not the work the agents do.
 
 ## Phase routing — default agent assignments
 

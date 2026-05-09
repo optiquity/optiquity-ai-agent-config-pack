@@ -206,7 +206,7 @@ executable on first checkout: `chmod +x agent-run.sh scripts/*.sh`.
 | `test.sh` | `scripts/` | After implementing — runs test suite only; calls test-\<lang\>.sh | Human or `repo-ops` agent |
 | `test-swift.sh` | `scripts/` | Run Swift test suite | `test.sh` wrapper |
 | `test-python.sh` | `scripts/` | Run Python test suite via pytest | `test.sh` wrapper |
-| `proto-gen.sh` | `scripts/` | After editing any `.proto` file — runs buf lint then buf generate | Human or `grpc-schema` agent |
+| `proto-gen.sh` | `scripts/` | After editing any `.proto` file — runs buf lint then buf generate | Human or `coder` / `repo-ops` agent |
 | `agent-post-edit-check.sh` | `scripts/` | **Never call manually** — fires via Codex post_edit_command and Claude Code PostToolUse hook | Automatic hook |
 
 **Required first-time setup (Swift projects only):** Open `scripts/validate-swift.sh`
@@ -280,6 +280,32 @@ When citing a code location in a report, use the symbol name not the line number
 - Branching on concrete types to discover what an abstraction supports, instead of querying a capability value or interface.
 
 [PLATFORM_ANTIPATTERNS — fill in from loaded skills]
+
+## Project memory
+
+These rules govern every agent invocation in this project. Each
+agent's full operating rules (Permission profile, Output policy,
+Hard rules) live in its own definition file under
+`.claude/agents/<agent>.md`, `.codex/agents/<agent>.toml`, and
+`.gemini/agents/<agent>.md`. The agent file is authoritative for
+what that agent may and must do; this section carries only the
+universal collaboration rules that apply project-wide regardless
+of agent role.
+
+- **Trinity rule.** When modifying `CLAUDE.md`, `AGENTS.md`, or
+  `GEMINI.md` at the project root, the same change applies to all
+  three in the same set of edits. Symmetry is the default;
+  asymmetry requires justification as provably tool-specific.
+- **No destructive operations without explicit approval.** Before
+  any `git rm`, `rm -rf`, file deletion, overwrite, or
+  `git reset --hard`, state exactly what will be destroyed and wait
+  for explicit approval — even when the overall task is approved.
+- **PM chat does not architect.** Architecture, planning,
+  implementation, and review work goes to the corresponding agent
+  (architect / planner / coder / reviewer / tester / auditor /
+  docs-researcher / grpc-schema / repo-ops). The PM chat handles
+  BACKLOG, STATUS, CHANGELOG, routing, approvals, and prompt
+  construction — not the work the agents do.
 
 ## Phase routing — default agent assignments
 
