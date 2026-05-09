@@ -1160,6 +1160,35 @@ stage_s7_report() {
         echo
         detect_improperly_added_files || true
         echo
+        echo "## RAG sync required after this migration"
+        echo
+        echo "v9 → v10 retired or moved several files. If this project has a"
+        echo "populated local-rag index from v9 (or earlier), it now contains"
+        echo "**orphan** chunks for paths that no longer exist or have moved."
+        echo "Orphans are returned by future queries and cite dead paths —"
+        echo "confidently-wrong retrievals."
+        echo
+        echo "**Reconciliation runs automatically on next \`/pm-startup\`** via"
+        echo "the new Step 4 in v10's pm-startup skill. The reconciliation"
+        echo "compares the index against the manifest in"
+        echo "\`docs/pack/PM-CHAT.md\` § RAG ingestion manifest, deletes"
+        echo "orphans, re-ingests stale entries, and reports the diff."
+        echo
+        echo "Expected v9 → v10 orphans (auto-deleted on next \`/pm-startup\`):"
+        echo
+        echo "- \`PROMPT-TEMPLATES.md\` (root) — retired before v10"
+        echo "- \`docs/pack/PROMPT-TEMPLATES.md\` — retired in v10.0"
+        echo "- \`METHODOLOGY.md\` (root) — moved to \`docs/pack/METHODOLOGY.md\`"
+        echo "- \`ARCHITECTURE.md\` (root) — moved to \`docs/project/ARCHITECTURE.md\`"
+        echo
+        echo "If your project never ingested any of these, the reconciliation"
+        echo "is a no-op (reports \`RAG: 1 ingested, 0 orphans\`; the \`stale\`"
+        echo "count may be non-zero on first run if METHODOLOGY.md was edited"
+        echo "after the previous machine's last ingest, or \`stale=N/A\` if"
+        echo "the local-rag \`list\` verb does not expose ingest timestamps)."
+        echo "See \`docs/pack/METHODOLOGY.md\` § RAG index hygiene for the"
+        echo "underlying principle."
+        echo
         echo "## Next steps"
         echo
         echo "The migration is a single atomic session. The script's mechanical pass is complete; reconciliation runs next, on the same uncommitted working tree, and ends in one commit (success) or a clean rollback (no commit). Do NOT commit before reconciliation completes."
@@ -1170,6 +1199,7 @@ stage_s7_report() {
         echo "4. Confirm working tree is clean: no \`*.v9-customized\` sidecars, no \`[PROJECT_NAME]\` / \`[PLATFORM_TARGETS]\` / \`[TRANSPORT]\` placeholders in trinity or PM-CHAT.md."
         echo "5. **Single commit** on \`$MIGRATION_BRANCH\` capturing the fully reconciled v10 state. Use \`git add -A\` to include new untracked pack files. Suggested message: \`feat: v10 — migrate from v9.3 (script + Procedure 5-C reconciliation)\`."
         echo "6. Follow \`supporting-docs/MIGRATION-v9-to-v10.md\` Steps 5–7 to merge \`$MIGRATION_BRANCH\` into the default branch."
+        echo "7. **Run \`/pm-startup\`** in your PM chat (Procedure 5-S triggers automatically). Step 4 reconciles the RAG index against the v10 manifest and sweeps any v9-era orphans. Verify the startup summary's \`RAG:\` line reports \`0 orphans\` (or lists which orphans were removed)."
         echo
         echo "If reconciliation reveals a defect that cannot be resolved in-session, run the rollback commands from MIGRATION-v9-to-v10.md \"Rollback\" sub-section. The migration leaves no committed trace and the repo returns to v9.3 state."
         echo

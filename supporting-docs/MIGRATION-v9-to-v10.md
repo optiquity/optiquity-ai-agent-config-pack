@@ -396,7 +396,7 @@ git branch -d migration-v9-to-v10
 The migration script wrote a sentinel
 (`.pack-migration-backup/v9.3-to-v10.0/postrun-pending`) that
 triggers **Procedure 5-S** (post-migration housekeeping) on the
-next `/pm-startup` run. Procedure 5-S has two tasks:
+next `/pm-startup` run. Procedure 5-S has three tasks:
 
 - **Task A — `STATUS.md` pack-version markers.** Updates lines like
   "AI Agent Config Pack v9.x" to the current pack version. Reports
@@ -405,6 +405,24 @@ next `/pm-startup` run. Procedure 5-S has two tasks:
   5-C completed in Step 5, this should report "nothing to do." If
   it surfaces placeholders, that is a Procedure 5-C escape — fix
   before continuing.
+- **Task C — RAG index reconciliation confirmation.** v9 → v10
+  retired or moved several files (PROMPT-TEMPLATES.md, root-level
+  METHODOLOGY.md and ARCHITECTURE.md). If your project's local-rag
+  index was populated under v9, those paths are now **orphans** —
+  retired entries that the retriever will surface on future
+  queries, citing dead paths. The new `/pm-startup` Step 4
+  reconciliation runs **before** Procedure 5-S triggers and
+  auto-deletes the orphans. Task C confirms that Step 4 ran
+  cleanly. Read the startup summary's `RAG:` line and verify it
+  reports `0 orphans` or lists which orphans were removed (e.g.
+  `4 orphans removed: [PROMPT-TEMPLATES.md, METHODOLOGY.md,
+  ARCHITECTURE.md, docs/pack/PROMPT-TEMPLATES.md]`). The state
+  `RAG: not available — skipped` is benign (local-rag MCP not
+  configured for this CLI surface). The state `RAG: manifest not
+  found — skipped` is a defect that requires fixing PM-CHAT.md
+  before completing housekeeping. See `docs/pack/PM-CHAT.md § RAG
+  ingestion manifest` and `docs/pack/METHODOLOGY.md § RAG index
+  hygiene` for the underlying principle.
 
 Run it now, on `main`, after the merge:
 
@@ -416,15 +434,17 @@ claude --resume <project-short-name>-pm   # or start a fresh session
 
 Step 0 of `/pm-startup` detects the sentinel and routes to
 Procedure 5-S. The PM chat will propose any `STATUS.md` edits;
-approve / modify / skip per match. When both tasks complete,
-the PM chat removes the sentinel. Procedure 5-S does not run
-again on this project.
+approve / modify / skip per match. The startup summary's `RAG:`
+line surfaces what Step 4 reconciliation did. When all three
+tasks complete, the PM chat removes the sentinel. Procedure 5-S
+does not run again on this project.
 
 If Task A produced edits to `STATUS.md`, the PM chat lands them
 as a follow-up commit on `main` (separate from the migration
-commit). If both tasks reported "nothing to do," only the
-sentinel is removed and you can either commit that as a tiny
-housekeeping change or just clean up the whole backup directory:
+commit). If all tasks reported "nothing to do" (or, for Task C,
+`0 orphans` / `not available — skipped`), only the sentinel is
+removed and you can either commit that as a tiny housekeeping
+change or just clean up the whole backup directory:
 
 ```bash
 git status                                  # may show .pack-migration-backup/ removal
