@@ -118,6 +118,16 @@ tracker_labels_ensure() {
     pf_file=$(mktemp -t tlbl-pf.XXXXXX)
     : > "$pf_file"
 
+    # BD-129 / D-1: export GH_REPO from the active tracker.toml so the
+    # `gh label list` and `gh label create` calls below target the
+    # configured backend.repo, not whatever (possibly missing or
+    # non-GitHub) remote the working repo's git config exposes. The
+    # helper is a no-op when GH_REPO is already set or when no
+    # tracker config is in scope.
+    if declare -f tracker_gh_repo_setup >/dev/null 2>&1; then
+        tracker_gh_repo_setup
+    fi
+
     # Fetch existing labels. `gh label list --json name --limit 200`
     # is enough for v11.0's ~45 label set; bump the limit if a pack
     # extension grows beyond that.

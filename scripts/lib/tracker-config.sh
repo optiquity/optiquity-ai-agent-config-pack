@@ -210,6 +210,49 @@ tracker_repo_slug()    { tracker_config_get "$1" "backend.repo"; }
 tracker_id_prefix()    { tracker_config_get "$1" "id_namespace.prefix"; }
 tracker_mapping_file() { tracker_config_get "$1" "migration.mapping_file"; }
 
+# tracker_gh_repo_setup
+# Export GH_REPO from the active tracker.toml so every `gh` invocation
+# in the tracker libs targets the configured backend.repo, regardless
+# of what `git remote -v` says in the working copy. This addresses
+# BD-129 / D-1: clones from local-path sources, repos with non-GitHub
+# remotes, internal mirrors, and freshly-cloned repos before
+# `git remote` setup all break gh's auto-resolution from git remotes
+# with the misleading "none of the git remotes configured for this
+# repository point to a known GitHub host" error. GH_REPO (a
+# documented gh CLI env var) overrides remote resolution for the
+# entire process.
+#
+# Resolution:
+#   - If GH_REPO is already set in the environment (caller override,
+#     test seam, or a previous setup) it is preserved — the function
+#     is a no-op in that case.
+#   - Otherwise, reads _TRACKER_PROVIDER_CONFIG_PATH (set by every
+#     tracker verb's orchestrator: tracker_init_run,
+#     tracker_migrate_forward_run, tracker_migrate_reverse_run,
+#     tracker_doctor_run, tracker_agent_read).
+#   - Reads backend.repo from that tracker.toml; if non-empty,
+#     exports GH_REPO=<slug>.
+#   - All failures (no env var, missing file, parse error, missing
+#     key) are silent: the function never returns non-zero. The
+#     downstream gh call will surface the appropriate typed error if
+#     no slug is reachable.
+#
+# Idempotent and safe to call from any tracker library that wraps a
+# gh invocation. Belt-and-suspenders: planted in _gh_run (covers the
+# provider surface) and tracker_labels_ensure (covers the labels
+# surface, which uses raw gh outside _gh_run).
+tracker_gh_repo_setup() {
+    if [[ -n "${GH_REPO:-}" ]]; then
+        return 0
+    fi
+    local cfg="${_TRACKER_PROVIDER_CONFIG_PATH:-}"
+    [[ -z "$cfg" || ! -f "$cfg" ]] && return 0
+    local slug
+    slug=$(tracker_repo_slug "$cfg" 2>/dev/null) || return 0
+    [[ -n "$slug" ]] && export GH_REPO="$slug"
+    return 0
+}
+
 # tracker_config_auto_surface <repo-root>
 # Auto-detect pack vs client surface based on filesystem markers:
 #   - PACK-CHAT.md present → pack

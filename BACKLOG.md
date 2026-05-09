@@ -1391,23 +1391,23 @@ Resolved: n/a
 
 **BD-130 — Wire `tracker_doctor_run` so `pack tracker doctor` works (BD-067 fix incomplete)**
 Type: TODO(version) — surfaced by BD-102 Phase A dog-food (D-2; live regression confirmed at HEAD `240867d`)
-Status: Open
+Status: Resolved
 Blockers: none
 Unblocks: BD-102 dog-food (operator can actually run `pack tracker doctor`); BD-097 audit accuracy (NOTE N-5 said all four verbs implemented — was wrong for `doctor`)
 File/Symbol: `scripts/pack-tracker.sh` (sources scripts/lib/* but never `scripts/tracker-migrate.sh` where `tracker_doctor_run` is defined at line 167); options to fix: (a) move `tracker_doctor_run` from `scripts/tracker-migrate.sh` into `scripts/lib/tracker-*.sh` and source it; (b) have `pack-tracker.sh` source `scripts/tracker-migrate.sh`; (c) duplicate the function (rejected — DRY)
 Description: BD-067 Resolved-line claims `pack tracker doctor` was wired. Live test on HEAD `240867d`: `bash scripts/pack-tracker.sh doctor` returns `scripts/pack-tracker.sh: line 165: tracker_doctor_run: command not found`. Function is defined in `scripts/tracker-migrate.sh:167` but `scripts/pack-tracker.sh` only sources `scripts/lib/*.sh` files (verified — see lines 29-53 of pack-tracker.sh). Recommended fix (a): relocate to `scripts/lib/tracker-doctor.sh` (or fold into existing `scripts/lib/tracker-init.sh` since init/doctor are sibling concerns) and add a source line in pack-tracker.sh.
-Resolved: n/a
+Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-130.md`. Approach (a): extracted `tracker_doctor_run` into NEW `scripts/lib/tracker-doctor.sh` (203 lines, function body verbatim), sourced from both `scripts/pack-tracker.sh` and `scripts/tracker-migrate.sh`; inline definition in tracker-migrate.sh removed and replaced with pointer comment. Smoke-tested: `bash scripts/pack-tracker.sh doctor` from scratch dir now emits doctor-formatted output (`doctor: <target>` banner + WARN/INFO lines + completion summary), no shell error. New regression test `scripts/tests/tracker-bd130-doctor-wired-test.sh` 8/8 PASS. tracker-migrate-reverse-test groups 6.2 + 6.3 confirm legacy entry path still resolves the function. v11.0 BLOCKER count 1 → 0 after this commit.
 
 ---
 
 **BD-129 — Tracker libs pass `--repo` to all gh invocations (don't depend on git remote)**
 Type: TODO(version) — surfaced by BD-102 Phase A dog-food (D-1)
-Status: Open
+Status: Resolved
 Blockers: none
 Unblocks: tracker init works for repos with non-GitHub remotes, internal mirrors, GHE-on-different-host, freshly-cloned repos before remote setup, monorepo subtree imports
 File/Symbol: `scripts/lib/tracker-labels.sh:172` (`_tracker_labels_existing`), `scripts/lib/tracker-labels.sh:183` (`_tracker_labels_create`), every `_gh_run gh ...` call in `scripts/lib/tracker-provider-gh.sh` that doesn't pass `--repo`. Slug source: `scripts/lib/tracker-config.sh::tracker_repo_slug`.
 Description: All gh invocations in tracker libs run without `--repo`. gh resolves slug from working repo's git remote — fails with "none of the git remotes configured for this repository point to a known GitHub host" for clones from local-path sources, non-GitHub remotes, or freshly-cloned repos. `pack tracker init` then aborts at `labels_ensure: cannot read existing labels (gh auth or network failure)` — misleading error. Fix: pass `--repo "$slug"` everywhere (slug already available via `tracker_repo_slug`); OR set `GH_REPO` env in dispatcher before any gh call (cleaner — single point of control). Recommend the env-var approach: set once in `scripts/pack-tracker.sh` cmd dispatcher, applies to every gh call below it.
-Resolved: n/a
+Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-129.md`. Approach (b): `GH_REPO` env-var export via new helper `tracker_gh_repo_setup` in `scripts/lib/tracker-config.sh`; called from `_gh_run` (covers 24 sites in `tracker-provider-gh.sh`) and from `tracker_labels_ensure` (covers 2 raw `gh label list`/`create` sites in `tracker-labels.sh`). 26 gh-invocation sites total routed through `GH_REPO` from active `tracker.toml`'s `backend.repo`. Helper is no-op when caller pre-sets `GH_REPO` (preserves test seam) or when no tracker config in scope. New regression test `scripts/tests/tracker-bd129-gh-repo-test.sh` 11/11 PASS — Group 3 reproduces the exact failure scenario (`git init` directory with no remote, run `tracker_labels_ensure`, verify all 46 expected gh calls succeed and every one carried `GH_REPO=owner/repo`). 10 tracker test suites = 566/566 PASS. Validator clean.
 
 ---
 

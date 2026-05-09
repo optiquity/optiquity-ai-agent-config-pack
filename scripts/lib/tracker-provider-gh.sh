@@ -87,7 +87,20 @@ _gh_classify_error() {
 # Run gh command, capture stdout and stderr separately. On non-zero
 # exit, classify stderr into a typed error and return 1. On success,
 # print stdout to caller's stdout.
+#
+# Pre-flight: ensure GH_REPO is exported from the active tracker.toml's
+# backend.repo so gh does not fall back to (and fail on) git-remote
+# resolution. BD-129 / D-1: without this, repos with no GitHub remote
+# (local-path clones, internal mirrors, freshly cloned with no remote
+# configured) emit the misleading "none of the git remotes configured
+# for this repository point to a known GitHub host" error and the
+# tracker verb aborts with a labels_ensure read failure. The helper
+# is a no-op when GH_REPO is already set or when no tracker config is
+# in scope, so non-tracker callers and test seams are unaffected.
 _gh_run() {
+    if declare -f tracker_gh_repo_setup >/dev/null 2>&1; then
+        tracker_gh_repo_setup
+    fi
     local stderr_tmp
     stderr_tmp=$(mktemp -t tracker-gh-stderr.XXXXXX)
     local stdout
