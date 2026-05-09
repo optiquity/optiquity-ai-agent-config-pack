@@ -14,7 +14,7 @@ wins; update this doc to match.
 
 ## 1. In-scope inventory for v11.0
 
-**Total: 40 BDs in-scope** (33 tracked at session start + 7 new opened
+**Total: 41 BDs in-scope** (33 tracked at session start + 8 new opened
 during planning) + 1 BD to verify-and-close (BD-059) + 4 untracked
 items folded into BDs.
 
@@ -73,7 +73,7 @@ pulled in for v11.0; non-tracker / non-validation moved to Group 4.
 **Test infrastructure (1):**
 - **BD-096** — Synthetic-fixture set (general-use coverage; OT is one example)
 
-### 1.4 New BDs opened during this planning (7 BDs)
+### 1.4 New BDs opened during this planning (8 BDs)
 
 Drafted in §2 below; ready to paste into BACKLOG.md once user approves.
 
@@ -84,6 +84,7 @@ Drafted in §2 below; ready to paste into BACKLOG.md once user approves.
 - **BD-132** — **BLOCKER** — eliminate disable/init close-step race that silently drops ~33% of BACKLOG entries (D-5)
 - **BD-133** — Reverse migration preserves BACKLOG.md header preamble byte-identical (D-6)
 - **BD-134** — Forward close retry-with-backoff to eliminate ~5% partial-write rate (D-7; NIT)
+- **BD-135** — Disambiguate `tracker.toml.example` filename pair (rename pack-side and client-side per filename-uniqueness heuristic)
 
 ### 1.5 Verify-then-close (1 BD; likely no new work)
 
@@ -174,6 +175,27 @@ Resolved: n/a
 
 ---
 
+**BD-135 — Disambiguate `tracker.toml.example` filename pair (rename pack-side and client-side)**
+Type: TODO(version) — surfaced during BD-123 disposition discussion (2026-05-09); new BD per `feedback_filename_uniqueness.md` heuristic memory
+Status: Open
+Blockers: BD-123 (must be Cancelled first; its premise was incompatible with this approach — BD-123 assumed one file misplaced, BD-135 keeps both files where they are with distinct names)
+Unblocks: unambiguous prose references to either tracker-example file without a path qualifier; reduces future-author confusion (the BD-123 author was tripped by the matching filenames)
+File/Symbol:
+  - RENAME `tracker.toml.example` → `tracker.toml.pack-example` (pack root) — proposed name; final name at implementor's discretion provided it is distinct from the project-template peer AND remains self-evidently a tracker-config template
+  - RENAME `project-template/tracker.toml.example` → `project-template/tracker.toml.project-example` — same naming flexibility
+  - Update `init-project.sh` lines 14 (comment), 722–725 (the copy block), and 878 (manifest entry) to read the new pack-side source path AND write to the new client-side basename at install destination (the destination basename also changes since the user-facing post-install name is the project-template copy's basename)
+  - Update `migrate-v10-to-v11.sh` lines 25 (comment), 181–185 (copy block) — same shape
+  - Update `README.md` line 128 (project-template/ layout block) and line 226 (pack-repo root layout block) to reflect new filenames
+  - Update `OPTIONAL-FEATURES.md` lines 156–158 (the install-narrative paragraph)
+  - Update `HELP-FRAGMENT-TRACKER.md` line 29 AND `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md` line 29 — trinity-mirrored byte-identical per DELTA L1; edit both lockstep; CI Check 24 enforces byte-identity
+  - Update `supporting-docs/MERGE-STRATEGY.md` line 243 (the catch-all classifier paragraph)
+  - Update `supporting-docs/MIGRATION-v10-to-v11.md` lines 8, 48, 118, 226, 252 — five references describing where the file lands during v10→v11 migration; line 252 is the forward-setup read step
+  - Update `scripts/tests/test-init-project.sh` and `scripts/tests/test-migrate-v10-to-v11.sh` if they assert the basename (verify and update if so)
+Description: Two `tracker.toml.example` files exist for legitimate, distinct reasons — pack-side template (BD-prefix, Optiquity URL, "pack repo tracker configuration" header) for opting the pack repo itself into tracker mode, and client-side template (TD-prefix, your-org placeholder, "client project tracker configuration" header) that ships into client projects via init-project.sh. The matching filenames led the BD-123 author to mis-frame the work as "one file in the wrong directory." Investigation revealed the asymmetry is intentional and documented in README.md at lines 128 and 226. Renaming both to filename-distinct forms eliminates the recurring confusion vector and aligns with the codified `feedback_filename_uniqueness.md` heuristic. Mechanical rename + reference sweep across ~9 files. Verification: validator PASS (no Check regression); HELP-FRAGMENT-TRACKER mirror byte-identity preserved (Check 24); a fresh `init-project.sh` run installs the renamed file at the new client-side basename; v10→v11 migration test still copies the renamed source.
+Resolved: n/a
+
+---
+
 **BD-128 — CI test-suite repair: BD-080 Group 3 + v10-realistic-ot fixture + migrator collateral**
 Type: TODO(version) — surfaced by current CI baseline (red on every push since v10.1 backport landed)
 Status: Open
@@ -211,13 +233,14 @@ Sequencing rationale up front:
 | **2** | sequential pack-coder | BD-125 | `supporting-docs/DRY-RUN-MIGRATION.md` (NEW) + cross-refs in README/OPTIONAL-FEATURES/MIGRATION-v10-to-v11 | Sequential after Batch 1 (cross-ref overlap with BD-123 if BD-123 ships) |
 | **3** | sequential pack-coder | BD-120 → BD-116 | both touch `test-fixtures/build.sh` | Two commits; BD-120 first (BD-116 builds on parameterization) |
 | **4** | sequential pack-coder | BD-117 → BD-118 | `maintenance-docs/RELEASE-GATE.md` (NEW) → `.github/workflows/validate-pack.yml` | Two commits; BD-118 depends on BD-117 surface + BD-116 contracts |
-| **5** | direct (Pack Chat) | flips: BD-114, BD-121, BD-124, BD-059 → Resolved; opens: BD-128 / BD-129 / BD-130 / BD-131 / BD-132 / BD-133 / BD-134 | `BACKLOG.md` only | Single hygiene commit; PM-only file edits |
+| **5** | direct (Pack Chat) | flips: BD-114, BD-121, BD-124, BD-059 → Resolved; cancels: BD-123 → Cancelled (intentional asymmetry per Q1 disposition 2026-05-09); opens: BD-128 / BD-129 / BD-130 / BD-131 / BD-132 / BD-133 / BD-134 / BD-135 | `BACKLOG.md` only | Single hygiene commit; PM-only file edits |
+| **5b** | sequential pack-coder | BD-135 — disambiguate `tracker.toml.example` pair | RENAME pack-root + project-template files to distinct names; update ~9 reference sites (README ×2 lines, OPTIONAL-FEATURES, HELP-FRAGMENT-TRACKER ×2 trinity, MERGE-STRATEGY, MIGRATION-v10-to-v11 ×5 lines, init-project.sh, migrate-v10-to-v11.sh, possibly tests) | Rename early so all subsequent batches reference unambiguous names. Trinity-mirrored HELP-FRAGMENT-TRACKER edits must remain byte-identical (Check 24). Standalone commit. |
 | **6** | sequential pack-coder | BD-128 (CI test-suite repair) | `scripts/tests/test-init-project.sh`, `test-fixtures/build.sh`, possibly `.github/workflows/validate-pack.yml` | **CI must turn green** — gate for downstream batches; if BD-120 prerequisite emerges, swap order with Batch 3 |
 | **7** | sequential pack-coder | BD-132 (D-5 BLOCKER) | `scripts/lib/tracker-migrate-reverse.sh` + `scripts/pack-tracker.sh` + `scripts/lib/tracker-migrate-forward.sh` | Standalone commit; silent-data-loss bug warrants extra verification |
 | **8** | parallel pack-coder | BD-129 ∥ BD-130 | `scripts/lib/tracker-labels.sh` + `scripts/lib/tracker-provider-gh.sh` ∥ `scripts/pack-tracker.sh` (source-add) + new `scripts/lib/tracker-doctor.sh` (or relocation target) | Different files; safe parallel |
 | **9** | sequential pack-coder | BD-131 → BD-133 | `scripts/lib/tracker-migrate-forward.sh` (BD-131) → `scripts/lib/tracker-migrate-reverse.sh` (BD-133) | BD-133 sequential because BD-132 already touched reverse.sh in Batch 7 |
 | **10** | sequential pack-coder | BD-134 (D-7 NIT) | `scripts/lib/tracker-provider-gh.sh` close call OR `scripts/lib/tracker-migrate-forward.sh` end-of-init pass | Standalone; small retry logic |
-| **11** | parallel pack-coder | BD-112 ∥ BD-078 ∥ BD-079 | three-way diff fix ∥ validator Check `check_tracker_config` ∥ validator Check (recommendation-state schema) | Different files; safe parallel; one combined commit |
+| **11** | partial-parallel pack-coder | BD-112 ∥ (BD-078 → BD-079) | BD-112 = three-way diff filename mangling fix (`scripts/lib/three-way.sh`); BD-078 = validator Check `check_tracker_config`; BD-079 = validator Check (recommendation-state schema) | BD-078 and BD-079 BOTH add Checks to `scripts/validate-pack.py` — must be sequential within the batch. BD-112 truly parallel with the BD-078→BD-079 sequence. One combined commit. |
 | **12** | atomic pack-coder | BD-104 | cross-pack rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md` (large blast radius) | Single commit, atomic |
 | **13** | sequential pack-coder | BD-095 → BD-101 | `scripts/migrate-v10-to-v11.sh` two-phase workflow → in-script validation gates | Two commits; BD-101 builds on BD-095's `--dry-run`/`--apply`/`--resume` surface |
 | **14** | parallel pack-architect (audit-only) | BD-032 ∥ BD-033 ∥ BD-034 ∥ BD-035 | audit reports under `maintenance-docs/v11-implementation/AUDIT-BD-032..035.md` (no code) | Audit batch; **standing rule §5.B applies — fix-follow BD opened for every finding incl. NITs** |
@@ -234,7 +257,7 @@ Sequencing rationale up front:
 | **22b** | (conditional) sequential pack-coder | fix-follow BDs from Batch 22 defects | TBD by dog-food findings | Spawned only if dog-food surfaces defects |
 | **23** | direct (Pack Chat) | BD-093 v11.0 release pin — final | rewrite `CHANGELOG.md` v11.0 entry; verify `README.md` version-table row; `MIGRATION-v10-to-v11.md` cross-link; `git tag v11.0`; `git tag -f v11`; `git push --tags` | **Release. Stop-before-commit + stop-before-push apply with maximum scrutiny.** |
 
-**Total: 23 main batches + up to 3 conditional fix-follow batches = max 26 commits.** Could be more if any audit / dog-food fix-follow needs more than one commit.
+**Total: 24 main batches (23 + new Batch 5b for BD-135) + up to 3 conditional fix-follow batches = max 27 commits.** Could be more if any audit / dog-food fix-follow needs more than one commit.
 
 ---
 
@@ -292,7 +315,13 @@ These rules govern every batch in §4. They are ordered by enforcement priority 
 
 These block one or more batches. Resolve before firing the affected batches.
 
-### Q1 — BD-123 disposition (blocks Batch 1's BD-123 leg)
+### Q1 — BD-123 disposition — **RESOLVED 2026-05-09**
+
+**Decision:** Cancel BD-123 (option 3 — intentional asymmetry between pack-side and client-side `tracker.toml.example` is documented in README.md). New BD-135 opened to address the underlying filename-collision issue via rename of both files to distinct names. BD-123 marked Cancelled in Batch 5 hygiene; BD-135 implementation in Batch 5b. Original Q1 description preserved below for historical reference.
+
+---
+
+### Q1 (original) — BD-123 disposition (blocks Batch 1's BD-123 leg)
 
 The BD-123 BACKLOG entry's premise is wrong. There are TWO distinct `tracker.toml.example` files with different content for different purposes:
 
