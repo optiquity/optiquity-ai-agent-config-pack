@@ -87,16 +87,70 @@ line and extract the skill list. If the line still contains the placeholder text
 (square brackets), note that active skills have not been set yet — the PM chat
 must populate this during kickoff.
 
-## Step 4 — Check RAG ingest freshness
+## Step 4 — Reconcile RAG index against manifest
 
-Run:
-```bash
-git log -1 --format="%H %cd" --date=short -- docs/pack/METHODOLOGY.md
-```
+The RAG manifest in `docs/pack/PM-CHAT.md` § RAG ingestion manifest
+is authoritative for which files belong in the local-rag index.
+This step reconciles the actual ingested set against the manifest:
+**orphans are auto-deleted, stale entries are re-ingested, the diff
+is reported in the Step 6 summary.**
 
-If this file was modified since the last known RAG ingest, re-ingest it now
-using the mcp-local-rag tool before any queries. If unsure of last ingest date,
-re-ingest it.
+**Why this matters.** Orphan chunks (paths in the index but not in
+the manifest) are not benign — the retriever returns them on
+matching queries, citing dead paths and surfacing stale guidance.
+Auto-deleting them on every startup is mandatory. See
+`METHODOLOGY.md § RAG index hygiene` for the principle.
+
+Procedure (use the `local-rag` MCP tool channel — the MCP server is
+already wired up via `.mcp.json` for Claude Code, via
+`.codex/config.toml` for Codex (the wiring is shipped commented-out
+in `.codex/config.toml.example` and must be uncommented or copied
+into `.codex/config.toml` to take effect), and `.gemini/settings.json`
+for Gemini):
+
+1. **List current ingest.** Call the `local-rag` `list` tool. This
+   returns the set of currently-ingested paths.
+2. **Read the manifest.** Read `docs/pack/PM-CHAT.md` § RAG
+   ingestion manifest to determine the intended set. Default
+   manifest in v10 is exactly one path: `docs/pack/METHODOLOGY.md`
+   (plus any custom project documents declared under `## Additional
+   project documents` near the bottom of `PM-CHAT.md`).
+3. **Compute the diff:**
+   - **Orphans** — paths in the index but not in the manifest.
+   - **Stale** — manifest paths whose source file has been edited
+     since the last ingest. If the `local-rag` `list` tool exposes a
+     per-file ingest timestamp, compare it against
+     `git log -1 --format=%ct -- <path>` and treat any
+     source-mtime > ingest-timestamp as stale. **Fallback** — if
+     `list` does not expose a per-file ingest timestamp (CLI surface
+     varies; the verb prints baseDir + files but timestamp fields
+     may be absent), treat every manifest path as potentially stale
+     and re-ingest unconditionally on each startup. The cost of an
+     unnecessary re-ingest is small; the cost of stale chunks is a
+     confidently-wrong retrieval. Reflect this in the `RAG:` summary
+     line by reporting `stale=N/A` instead of a zero count.
+   - **Missing** — manifest paths not in the index.
+4. **For each orphan:** call the `local-rag` `delete` tool with
+   that path. No user approval is needed — the manifest is the
+   source of truth and orphans are by definition outside it.
+5. **For each stale or missing manifest path:** call `local-rag`
+   `delete` (no-op if missing, clears stale chunks if stale)
+   followed by `local-rag` `ingest`.
+6. **Record the diff** for inclusion in the Step 6 startup summary.
+   Format: `RAG: N ingested, N stale, N orphans removed: [<paths>]`
+   (or `RAG: N ingested, 0 stale, 0 orphans` for the clean case).
+
+**If `local-rag` is not available in this CLI surface** (Codex
+without the optional MCP block, Gemini without `local-rag` configured,
+or first-time-on-this-machine before the embedding model is
+downloaded), skip this step and report `RAG: not available — skipped`
+in the Step 6 summary. Do not block startup on RAG availability.
+
+**If the manifest is missing or malformed** (e.g., the `## RAG
+ingestion manifest` section has been removed from PM-CHAT.md), skip
+this step and report `RAG: manifest not found — skipped` in the
+Step 6 summary. Surface this as a defect to the developer in the
+report so they know to restore the manifest.
 
 ## Step 5 — Check for TD-TBD sentinel
 
@@ -125,6 +179,7 @@ Output a summary in exactly this format:
 **Pack version:** [read from the version header line in METHODOLOGY.md]
 **Skills profile:** [project type from PLATFORM-SKILLS.md — e.g., "iOS Swift app" or "Python gRPC server"]
 **Active skills:** [list from project context file, or "not set — populate during kickoff"]
+**RAG:** [diff from Step 4 — one of: "N ingested, N stale, N orphans" / "N ingested, N stale, N orphans removed: [<paths>]" / "N ingested, stale=N/A (timestamp unavailable; re-ingested unconditionally), N orphans" / "not available — skipped" / "manifest not found — skipped" (defect — surface to developer)]
 
 **Awaiting instructions.**
 ---
