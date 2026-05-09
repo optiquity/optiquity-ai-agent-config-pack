@@ -486,6 +486,16 @@ mfile_pf="$TEST_REPO_PF/.pack-tracker/id-map.json"
 [[ -f "$mfile_pf" ]] && t_pass "4.3 mapping persisted on partial failure" \
     || t_fail "4.3 mapping persisted on partial failure" "missing $mfile_pf"
 
+# BD-131: a partial-CLOSE failure (creates all succeeded, closes
+# failed) MUST still flip migration.forward_complete = true. The
+# create surface is the strong signal for `tracker_mode()`; close
+# failures are best-effort and surfaced via the partial-write typed
+# error above. Treating partial closes as forward_incomplete would
+# silently route downstream tooling to flat-file mode after an
+# otherwise successful migration — defeating the opt-in.
+assert_contains "4.3 BD-131 forward_complete=true after partial-close (creates clean)" \
+    "$(cat "$TEST_REPO_PF/tracker.toml")" "forward_complete = true"
+
 rm -rf "$FAKE_BIN_PF" "$GH_LOG_PF" "$ISSUE_COUNTER_PF" "$TEST_REPO_PF"
 
 # 4.4 Body-marker recovery (Findings #1 + #8): fake gh that returns
@@ -735,6 +745,198 @@ rm -rf "$FAKE_BIN_CP" "$GH_LOG_CP" "$ISSUE_COUNTER_CP" "$CLOSED_IDS_CP" "$TEST_R
 
 # Cleanup of Group 3 globals.
 rm -rf "$FAKE_BIN" "$GH_LOG" "$ISSUE_COUNTER_FILE" "$CLOSED_IDS_FILE" "$TEST_REPO" "$TEST_REPO2" "$TEST_REPO3"
+
+# ─────────────────────────────────────────────────────────────────
+# Group 5: BD-131 forward_complete write semantics
+# ─────────────────────────────────────────────────────────────────
+#
+# BD-131 (D-4) — clean forward must flip
+# `tracker.toml [migration].forward_complete = true` so V1 §3.2
+# `tracker_mode()` resolves to "tracker". Partial-create failures
+# must leave the flag at "false" so downstream tooling stays on
+# flat-file until the operator re-runs init to complete the create
+# surface.
+#
+# Group 4.3 already covers the partial-CLOSE path (creates clean,
+# closes fail) — that one MUST flip to true (asserted above).
+# Group 5 covers:
+#   5.1 — direct writer round-trip with both "true" and "false"
+#   5.2 — _tmf_verify_forward_complete read-back helper
+#   5.3 — partial-CREATE failure → forward_complete stays "false"
+#         (full integration: fake gh fails on the 4th `issue create`)
+
+printf "\n=== Group 5: BD-131 forward_complete write semantics ===\n"
+
+# 5.1 _tmf_update_tracker_toml round-trip.
+TOML_RT=$(mktemp -d -t tmf-bd131-rt.XXXXXX)
+cat > "$TOML_RT/tracker.toml" <<'TOML'
+schema_version = 1
+
+[backend]
+name = "github"
+repo = "fixture-org/fixture-repo"
+
+[mode]
+state = "tracker"
+
+[id_namespace]
+prefix = "BD"
+
+[migration]
+forward_complete = false
+mapping_file = ".pack-tracker/id-map.json"
+TOML
+
+_tmf_update_tracker_toml "$TOML_RT/tracker.toml" "true"
+assert_contains "5.1 writer with 'true' flips forward_complete=true" \
+    "$(cat "$TOML_RT/tracker.toml")" "forward_complete = true"
+assert_contains "5.1 writer with 'true' adds last_forward_run" \
+    "$(cat "$TOML_RT/tracker.toml")" "last_forward_run = \""
+
+_tmf_update_tracker_toml "$TOML_RT/tracker.toml" "false"
+assert_contains "5.1 writer with 'false' sets forward_complete=false" \
+    "$(cat "$TOML_RT/tracker.toml")" "forward_complete = false"
+
+# 5.1b default arg is "true" (preserves pre-BD-131 behavior at any
+# call site that omits the second arg).
+cat > "$TOML_RT/tracker.toml" <<'TOML'
+schema_version = 1
+[backend]
+name = "github"
+repo = "x/y"
+[mode]
+state = "tracker"
+[id_namespace]
+prefix = "BD"
+[migration]
+forward_complete = false
+TOML
+_tmf_update_tracker_toml "$TOML_RT/tracker.toml"
+assert_contains "5.1b writer omitted-arg defaults to 'true'" \
+    "$(cat "$TOML_RT/tracker.toml")" "forward_complete = true"
+
+# 5.1c writer rejects unexpected values (defensive — out-of-schema
+# strings would break tracker_mode() resolution downstream).
+cat > "$TOML_RT/tracker.toml" <<'TOML'
+schema_version = 1
+[migration]
+forward_complete = false
+TOML
+err_5_1c=$(_tmf_update_tracker_toml "$TOML_RT/tracker.toml" "yes" 2>&1) || true
+assert_contains "5.1c writer rejects unexpected value with stderr WARN" \
+    "$err_5_1c" "refusing to write unexpected forward_complete value"
+assert_contains "5.1c rejected write leaves forward_complete unchanged" \
+    "$(cat "$TOML_RT/tracker.toml")" "forward_complete = false"
+
+rm -rf "$TOML_RT"
+
+# 5.2 _tmf_verify_forward_complete helper.
+TOML_VF=$(mktemp -d -t tmf-bd131-vf.XXXXXX)
+cat > "$TOML_VF/tracker.toml" <<'TOML'
+schema_version = 1
+[backend]
+name = "github"
+repo = "x/y"
+[id_namespace]
+prefix = "BD"
+[migration]
+forward_complete = true
+mapping_file = ".pack-tracker/id-map.json"
+TOML
+_tmf_verify_forward_complete "$TOML_VF/tracker.toml" "true"
+assert_eq "5.2 verify match → rc=0" "0" "$?"
+
+vf_err=$(_tmf_verify_forward_complete "$TOML_VF/tracker.toml" "false" 2>&1)
+vf_rc=$?
+assert_eq "5.2 verify mismatch → rc=1" "1" "$vf_rc"
+assert_contains "5.2 verify mismatch emits stderr WARN" \
+    "$vf_err" "read-back mismatch"
+
+# 5.2b verify is a no-op (returns 0) when cfg is missing — it's a
+# best-effort safety net, not a hard precondition.
+_tmf_verify_forward_complete "/no/such/file.toml" "true"
+assert_eq "5.2b verify on missing cfg → rc=0 (no-op)" "0" "$?"
+
+rm -rf "$TOML_VF"
+
+# 5.3 Partial-CREATE failure: fake gh fails on the 4th `issue
+# create`. Forward should early-return rc=1 BEFORE step 11, so
+# tracker.toml's forward_complete remains at the init-time "false".
+# Per BD-131 semantics the create surface is the strong signal —
+# a partial create means the mapping does not cover every entry,
+# so downstream `tracker_mode()` MUST keep resolving to flat-file.
+FAKE_BIN_C=$(mktemp -d -t tmf-fakebin-c.XXXXXX)
+GH_LOG_C=$(mktemp -t tmf-ghlog-c.XXXXXX)
+ISSUE_COUNTER_C=$(mktemp -t tmf-counter-c.XXXXXX)
+echo "0" > "$ISSUE_COUNTER_C"
+
+cat > "$FAKE_BIN_C/gh" <<FAKEGH_C
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$GH_LOG_C"
+case "\$1 \$2" in
+    "issue create")
+        counter=\$(cat "$ISSUE_COUNTER_C")
+        next=\$((counter + 1))
+        echo "\$next" > "$ISSUE_COUNTER_C"
+        # Fail on the 4th create — the fixture has 5 entries, so at
+        # least one entry will fail mid-loop, exercising the BD-131
+        # creation_ok=0 branch via the tmf provider_create
+        # early-return.
+        if [[ "\$next" == "4" ]]; then
+            echo "HTTP 422: validation failed" >&2
+            exit 1
+        fi
+        printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
+        ;;
+    "issue close")           ;;
+    "issue reopen"|"issue edit"|"issue comment") ;;
+    "search issues")         echo '[]' ;;
+    "issue list")            echo '[]' ;;
+    "issue view")            echo '{"labels":[], "assignees":[]}' ;;
+    "repo view")             echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
+    "api graphql")           echo '{}' ;;
+    "extension list")        echo "" ;;
+    *)                       ;;
+esac
+exit 0
+FAKEGH_C
+chmod +x "$FAKE_BIN_C/gh"
+
+TEST_REPO_C=$(mktemp -d -t tmf-repo-c.XXXXXX)
+cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_C/BACKLOG.md"
+cp "$FIXTURES/IMPLEMENTATION_PLAN.md" "$TEST_REPO_C/IMPLEMENTATION_PLAN.md"
+cp "$FIXTURES/tracker.toml"          "$TEST_REPO_C/tracker.toml"
+
+# Confirm the fixture starts at forward_complete = false (so a
+# false flag at end-of-test is meaningful: it proves the writer
+# did not flip on partial-create, NOT that the writer never ran).
+assert_contains "5.3 fixture starts forward_complete=false" \
+    "$(cat "$TEST_REPO_C/tracker.toml")" "forward_complete = false"
+
+PATH_SAVED_C="$PATH"
+export PATH="$FAKE_BIN_C:$PATH_SAVED_C"
+output_c=$(tracker_migrate_forward_run "$TEST_REPO_C" 0 0 2>&1)
+rc_c=$?
+export PATH="$PATH_SAVED_C"
+
+# Forward should fail with the propagated provider_create error
+# (early-return at the create site — step 11 never runs).
+assert_eq "5.3 partial-create run rc=1" "1" "$rc_c"
+
+# tracker.toml MUST still read forward_complete = false so
+# tracker_mode() keeps resolving to flat-file (V1 §3.2). This is
+# the BD-131 contract: partial creates MUST NOT silently route
+# downstream tooling to tracker mode against an incomplete map.
+assert_contains "5.3 BD-131 forward_complete stays 'false' on partial-create" \
+    "$(cat "$TEST_REPO_C/tracker.toml")" "forward_complete = false"
+
+# Mapping file SHOULD have the partial set (entries created before
+# the failure) — Finding #7's per-create save invariant.
+mfile_c="$TEST_REPO_C/.pack-tracker/id-map.json"
+[[ -f "$mfile_c" ]] && t_pass "5.3 partial-create mapping persisted (resume seed)" \
+    || t_fail "5.3 partial-create mapping persisted (resume seed)" "missing $mfile_c"
+
+rm -rf "$FAKE_BIN_C" "$GH_LOG_C" "$ISSUE_COUNTER_C" "$TEST_REPO_C"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

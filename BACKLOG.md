@@ -1358,12 +1358,12 @@ Resolved: n/a
 
 **BD-133 — Reverse migration preserves BACKLOG.md header preamble**
 Type: TODO(version) — surfaced by BD-102 Phase A dog-food (D-6)
-Status: Open
+Status: Resolved
 Blockers: none
 Unblocks: BD-102 dog-food (Phase A round-trip survives without content loss)
 File/Symbol: `scripts/lib/tracker-migrate-reverse.sh` BACKLOG emission; `scripts/lib/tracker-migrate-forward.sh` checkpoint snapshot OR `scripts/lib/tracker-sidecar.sh` header preservation
 Description: Reverse migration strips ALL non-entry content from BACKLOG.md — the `# Backlog` title, "All planned improvements..." paragraph, `## How to use this file` section, type explanations, format references — replacing it with bare `# BACKLOG`. Per V1 §6.5 design intent project-specific content not representable in tracker should be sidecar-preserved; this header content qualifies. Reverse must preserve everything before the first `**BD-NNN — ...**` heading byte-identical, via checkpoint snapshot, sidecar, or refusal-to-overwrite policy after first round-trip. Test fixture required.
-Resolved: n/a
+Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-133.md`. Approach (b): NEW `scripts/lib/tracker-header-snapshot.sh` module (sidecar storage at `<repo-root>/.pack-tracker/backlog-header.snapshot`); reverse calls `tracker_header_snapshot_capture` before `_tmr_emit_backlog` and `tracker_header_snapshot_apply` after, prepending the snapshot to the entries-only body. First-write-wins semantics (capture is no-op if snapshot already exists) guarantee N round-trips don't degrade the preamble. Trivial preambles (whitespace-only or bare `# BACKLOG` from a prior reverse) are skipped to prevent bootstrap from a never-had-preamble repo locking in a bad value. Approach (a) (forward-time checkpoint snapshot) was rejected because it would have required editing tracker-migrate-forward.sh which BD-131 owns in this same Batch 9 — the sidecar approach has zero file conflict with BD-131. New round-trip test `scripts/tests/tracker-bd133-header-preservation-test.sh` 30/30 PASS across 4 groups (module API isolation, reverse-only round-trip, full forward→reverse via stateful fake gh, multi-cycle stability N=5). All existing tracker test suites green: reverse 93/93, roundtrip 39/39, forward 126/126 (BD-131 intact), bd132-race 29/29. Validator clean.
 
 ---
 
@@ -1380,12 +1380,12 @@ Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 
 **BD-131 — Set `forward_complete = true` at end of clean forward migration**
 Type: TODO(version) — surfaced by BD-102 Phase A dog-food (D-4)
-Status: Open
+Status: Resolved
 Blockers: none
 Unblocks: correct `tracker_mode()` resolution (V1 §3.2); downstream tooling routes to tracker behavior reliably
 File/Symbol: `scripts/lib/tracker-migrate-forward.sh` (or wherever final tracker.toml `[migration]` write happens); `scripts/lib/tracker-init.sh` if init owns the post-forward write
 Description: After `pack tracker init --backend github --repo ... --no-interactive` succeeded (created tracker.toml, wrote 93 issues, wrote id-map.json + forward.checkpoint.json, closed 53 of 56 attempted closes), the `tracker.toml [migration]` section reads `forward_complete = false`. Per V1 §3.2 `tracker_mode()` resolves to "tracker" only when `mode.state = "tracker"` AND `migration.forward_complete = true`. Downstream tooling depending on `tracker_mode()` may incorrectly route to flat-file behavior. Fix: set `forward_complete = true` at end of clean forward. For partial-write cases (BD-134's 3-of-56 failure pattern), document semantics — does `forward_complete` mean "all closes succeeded" or "all issues created"? Recommend the latter since BD-134's fix will eliminate the close-failure case anyway.
-Resolved: n/a
+Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-131.md`. Fix landed in `tracker_migrate_forward_run` step 11 + `_tmf_update_tracker_toml` (writer takes `"true"|"false"` positional arg with defensive value-validation) + NEW helper `_tmf_verify_forward_complete` (defense-in-depth read-back; emits stderr WARN if on-disk value disagrees with what was written). Semantics: `forward_complete = true` iff all create operations succeeded (the strong signal for `tracker_mode()`); partial-close is BD-134's concern, not BD-131's. Any create failure (entry or phase epic) early-returns at the create site so step 11 never runs and `forward_complete` stays at the init-time `false`. tracker-migrate-forward-test 126/126 PASS (was 111; +15 new asserts in Group 5 and added to 4.3). All other tracker suites green; validator clean.
 
 ---
 

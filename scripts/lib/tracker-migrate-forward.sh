@@ -636,6 +636,16 @@ tracker_migrate_forward_run() {
     partial_failures=$(mktemp -t tmf-pf.XXXXXX)
     : > "$partial_failures"
 
+    # BD-131: explicit creation-success flag. Set to 0 immediately
+    # before any provider_create early-return so step 11's
+    # tracker.toml writer can pass the right value to
+    # `forward_complete`. Reaching the bottom of the function with
+    # creation_ok=1 means: every BACKLOG entry + phase epic produced
+    # a usable gh id (close / link / mirror failures are best-effort
+    # post-create steps and do NOT degrade the create surface — see
+    # _tmf_update_tracker_toml header for the BD-131 semantics).
+    local creation_ok=1
+
     # Steps 4–9: per-entry work.
     local idx=0 created=0 skipped=0 recovered=0 closed=0
     local completed_ids='[]'
@@ -695,6 +705,11 @@ tracker_migrate_forward_run() {
                     '{title: $t, body: $b, labels: $l}')
 
                 if ! result=$(provider_create "$payload"); then
+                    # BD-131: mark creation surface incomplete so any
+                    # future refactor that elects to continue past a
+                    # create failure (instead of early-return) routes
+                    # through step 11 with the right semantics.
+                    creation_ok=0
                     rm -f "$partial_failures"
                     return 1
                 fi
@@ -744,6 +759,8 @@ tracker_migrate_forward_run() {
             --arg b "$phase_body" \
             '{title: $t, body: $b, labels: ["phase-epic", "template:phase-epic-v11.0"]}')
         if ! phase_result=$(provider_create "$phase_payload"); then
+            # BD-131: see paired creation_ok comment above.
+            creation_ok=0
             return 1
         fi
         phase_gh_id=$(printf '%s' "$phase_result" | jq -r '.id')
@@ -879,9 +896,31 @@ tracker_migrate_forward_run() {
             "$backlog_path" >> "$partial_failures"
     fi
 
-    # Step 11: write mapping + tracker.toml [migration].last_forward_run.
+    # Step 11: write mapping + tracker.toml [migration].
+    # BD-131: forward_complete is "true" iff the create surface
+    # (steps 4 + 5) emitted a usable gh id for every BACKLOG entry +
+    # phase epic. By construction, reaching this point with
+    # creation_ok=1 means every provider_create either succeeded or
+    # was already mapped (skip / recover). Partial closes (step 8) +
+    # partial links (steps 6 + 7) + mirror regen failures (step 10)
+    # are best-effort and surfaced via the `partial-write` typed
+    # error below, but they do NOT degrade the create surface — see
+    # the _tmf_update_tracker_toml header for the full semantics.
     tmf_mapping_save "$mapping_file" "$mapping"
-    _tmf_update_tracker_toml "$cfg_path"
+    local fc_value
+    if [[ "$creation_ok" == "1" ]]; then
+        fc_value="true"
+    else
+        fc_value="false"
+    fi
+    _tmf_update_tracker_toml "$cfg_path" "$fc_value"
+    # BD-131 defense-in-depth: read back the value we just wrote so a
+    # silent regex regression in `_tmf_update_tracker_toml` produces
+    # a visible WARN instead of leaving downstream `tracker_mode()`
+    # quietly resolving to flat-file. Read-back failure does NOT
+    # abort the run (the mapping + closes already landed); the
+    # operator gets the WARN and can re-run init to recover.
+    _tmf_verify_forward_complete "$cfg_path" "$fc_value" || true
     # F-4: only clear the checkpoint if stabilization succeeded.
     # On timeout we preserve it so a separate-shell `disable` will see
     # the Part 2a checkpoint signal and refuse — even if the calling
@@ -1173,22 +1212,52 @@ _tmf_wait_for_close_stabilization() {
     return 1
 }
 
-# Update tracker.toml [migration] section after a successful forward run.
+# Update tracker.toml [migration] section after a forward run.
 # V1 §3.1 schema + V1 §3.2 D-5: writes
 #   - last_forward_run = "<ISO8601>"
-#   - forward_complete = true
-# so `tracker_mode()` resolves to "tracker" on subsequent invocations.
-# Done as a line-targeted edit since the parser is read-only by design.
+#   - forward_complete = "true" | "false"   (caller-decided)
+# so `tracker_mode()` resolves to "tracker" on subsequent invocations
+# only when the caller asserts the run produced a usable tracker
+# state. Done as a line-targeted edit since the parser is read-only
+# by design.
+#
+# BD-131 semantics — what `forward_complete = true` means:
+#   * "All issues created successfully" (the strong signal that the
+#     mapping covers every BACKLOG entry + phase epic).
+#   * NOT "all close ops succeeded" — close-on-Resolved is best-effort
+#     in v11.0 and BD-134 lands the retry-with-backoff that drives
+#     the ~5% partial-close residual to ~0. Treating partial closes
+#     as forward_incomplete would silently route downstream tooling
+#     to flat-file mode after an otherwise successful migration —
+#     defeating the opt-in.
+#   * Partial-CREATE failures (provider_create returned non-zero on
+#     any entry or phase epic): caller MUST pass "false" so
+#     `tracker_mode()` keeps resolving to "flat-file" until the next
+#     `pack tracker init --resume` completes the create surface.
+#
+# Args:
+#   $1  cfg  — path to the tracker.toml to update
+#   $2  fc   — value to write for forward_complete: "true" or "false"
+#              (defaults to "true" to preserve pre-BD-131 behavior at
+#              every existing call site).
 _tmf_update_tracker_toml() {
     local cfg="$1"
+    local fc="${2:-true}"
     if [[ ! -f "$cfg" ]]; then
         return 0
     fi
+    if [[ "$fc" != "true" && "$fc" != "false" ]]; then
+        # Defensive: caller passed something unexpected. Do not write
+        # — silently leaving the file unchanged is safer than writing
+        # an out-of-schema value.
+        echo "forward: _tmf_update_tracker_toml: refusing to write unexpected forward_complete value '$fc' (must be 'true' or 'false')" >&2
+        return 1
+    fi
     local now_iso
     now_iso=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-    python3 - "$cfg" "$now_iso" <<'PYEOF'
+    python3 - "$cfg" "$now_iso" "$fc" <<'PYEOF'
 import re, sys
-cfg, now = sys.argv[1], sys.argv[2]
+cfg, now, fc = sys.argv[1], sys.argv[2], sys.argv[3]
 with open(cfg) as f:
     text = f.read()
 
@@ -1207,7 +1276,7 @@ def set_in_block(block, key, value_literal):
 
 updates = [
     ("last_forward_run", f'"{now}"'),
-    ("forward_complete", "true"),
+    ("forward_complete", fc),
 ]
 
 section_re = re.compile(r'^\[migration\][ \t]*$', re.M)
@@ -1229,4 +1298,28 @@ else:
 with open(cfg, 'w') as f:
     f.write(text)
 PYEOF
+}
+
+# Defensive read-back: confirm the on-disk forward_complete matches
+# the value we just wrote. Catches any future regex regression in
+# `_tmf_update_tracker_toml` that would silently leave the flag at
+# its prior value (the BD-131 surface mode — `tracker_mode()` would
+# then resolve to flat-file even after a clean forward).
+#
+# Returns 0 on match, 1 on mismatch. On mismatch, emits a stderr
+# warning naming the expected vs actual value. Caller decides
+# whether to escalate.
+_tmf_verify_forward_complete() {
+    local cfg="$1"
+    local expected="$2"
+    if [[ ! -f "$cfg" ]]; then
+        return 0
+    fi
+    local actual
+    actual=$(tracker_config_get "$cfg" "migration.forward_complete" 2>/dev/null || echo "")
+    if [[ "$actual" != "$expected" ]]; then
+        echo "forward: WARN: tracker.toml [migration].forward_complete read-back mismatch — expected='$expected' actual='${actual:-<empty>}' at $cfg" >&2
+        return 1
+    fi
+    return 0
 }

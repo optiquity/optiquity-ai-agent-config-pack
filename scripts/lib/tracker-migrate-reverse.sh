@@ -63,6 +63,17 @@ if ! declare -f tracker_sidecar_emit >/dev/null 2>&1; then
     source "$_tmr_dir/tracker-sidecar.sh"
     unset _tmr_self _tmr_dir
 fi
+# shellcheck disable=SC1091
+# BD-133 / D-6: header preservation across init→disable round-trips.
+# The reverse emitter writes BACKLOG.md from scratch; without this
+# module, every reverse destroys the user-authored preamble (title,
+# intro paragraph, "How to use this file" section, etc.).
+if ! declare -f tracker_header_snapshot_capture >/dev/null 2>&1; then
+    _tmr_self="${BASH_SOURCE[0]}"
+    _tmr_dir="$(cd "$(dirname "$_tmr_self")" && pwd)"
+    source "$_tmr_dir/tracker-header-snapshot.sh"
+    unset _tmr_self _tmr_dir
+fi
 
 # ─────────────────────────────────────────────────────────────────
 # BD-132 helpers: race detection + skip tracking
@@ -867,8 +878,28 @@ print(json.dumps(phases))')
         done
     fi
 
+    # BD-133 / D-6: capture the BACKLOG.md header preamble (everything
+    # before the first **BD-NNN — / **TD-NNN — / **phase-N heading)
+    # BEFORE _tmr_emit_backlog overwrites the file. First-write-wins
+    # via the snapshot file at .pack-tracker/backlog-header.snapshot,
+    # so the header survives N round-trips byte-identical to its first
+    # capture. Run on every reverse path (not gated by flip_mode) so
+    # plain `reverse` (without --disable) also preserves the header.
+    # The capture is a no-op if the snapshot already exists or if the
+    # current preamble is trivial (bare `# BACKLOG`).
+    tracker_header_snapshot_capture "$repo_root" || true
+
     local emit_failed=0
     _tmr_emit_backlog             "$issue_jsons" "$backend_slug" "$backlog_out" || emit_failed=1
+    # BD-133 / D-6: re-prepend the captured preamble. Runs immediately
+    # after the entries-only emit, before sidecar / mirror-strip /
+    # atomicity-gate steps. If the emit failed (emit_failed=1) the
+    # apply is skipped — the atomicity gate below will restore the
+    # original BACKLOG.md from backup_dir, which already had the
+    # preamble in place.
+    if [[ "$emit_failed" == "0" ]]; then
+        tracker_header_snapshot_apply "$repo_root" "$backlog_out" || emit_failed=1
+    fi
     _tmr_emit_implementation_plan "$phase_jsons" "$plan_out"                    || emit_failed=1
     _tmr_emit_status              "$issue_jsons" "$phase_jsons"  "$status_out"  || emit_failed=1
     _tmr_emit_changelog           "$changelog_out"                              || emit_failed=1
