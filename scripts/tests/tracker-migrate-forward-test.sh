@@ -37,6 +37,12 @@ assert_contains() {
     else t_fail "$1" "needle='$3' missing from: ${2:0:200}"; fi
 }
 
+# BD-134: keep test runtimes bounded — skip real backoff sleeps.
+# The retry sweep is exercised in this suite (4.3 + Group 7) and in
+# the dedicated tracker-bd134-close-retry-test.sh; both rely on env
+# overrides to avoid 1s/2s/4s sleeps during CI.
+export TMF_CLOSE_RETRY_BACKOFF_SECS="0 0 0"
+
 # Source all libs the same way tracker-migrate.sh does.
 # shellcheck disable=SC1091
 source "$LIB_DIR/tracker-errors.sh"

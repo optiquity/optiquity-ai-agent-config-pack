@@ -86,6 +86,38 @@ TMF_STABILIZE_MAX_ATTEMPTS="${TMF_STABILIZE_MAX_ATTEMPTS:-30}"
 TMF_STABILIZE_SLEEP_SECS="${TMF_STABILIZE_SLEEP_SECS:-2}"
 TMF_STABILIZE_FAIL_LIMIT="${TMF_STABILIZE_FAIL_LIMIT:-3}"
 
+# BD-134 close-retry parameters. The initial step-8 close loop has a
+# ~5% partial-write rate observed in BD-102 Phase A dog-food (3 of 56
+# named close failures: BD-021/022/023). Cause is most likely transient
+# `gh` API rate-limiting or eventually-consistent state on the GitHub
+# side. The retry sweep runs AFTER the initial close loop completes —
+# this lets the rate-limit window drain before re-attempting, and keeps
+# the main close loop simple/fast for the 95% common case.
+#
+# Approach (b) per BD-134 (end-of-init re-run-failed-closes pass) was
+# chosen over approach (a) (per-call retry inline) because:
+#   * Failures don't slow down the main close loop — retries happen
+#     in a focused sweep at the end where transient errors have time
+#     to clear naturally.
+#   * Composes cleanly with BD-132 `_tmf_wait_for_close_stabilization`,
+#     which runs AFTER the retry sweep. Stabilization sees the final
+#     close count and waits for the propagation delay to drain.
+#   * Smaller, more contained change to the orchestrator vs. wrapping
+#     every provider_close call site.
+#
+# Defaults: 3 attempts max with 1s/2s/4s exponential backoff between
+# attempts (the schedule is held in a space-separated string so bash
+# 3.2 can iterate without associative arrays). Test seam: the env
+# overrides accept "0" and a "0 0 0" backoff schedule for fast tests
+# (the deterministic mock test uses these to keep runtime sub-second).
+#
+# Bounded by design: TMF_CLOSE_RETRY_MAX_ATTEMPTS caps the per-close
+# work at exactly that many provider_close calls. A close that fails
+# every attempt is surfaced as a partial-write entry naming the gh-id
+# (same as today); the loop never recurses or extends.
+TMF_CLOSE_RETRY_MAX_ATTEMPTS="${TMF_CLOSE_RETRY_MAX_ATTEMPTS:-3}"
+TMF_CLOSE_RETRY_BACKOFF_SECS="${TMF_CLOSE_RETRY_BACKOFF_SECS:-1 2 4}"
+
 # ─────────────────────────────────────────────────────────────────
 # Path resolvers
 # ─────────────────────────────────────────────────────────────────
@@ -829,6 +861,17 @@ tracker_migrate_forward_run() {
     # backends reject linking to closed issues. PACK-REVIEW-BD065
     # Finding #4 closure: previously these ran inline with step 4,
     # which is the wrong ordering for failure semantics.
+    #
+    # BD-134: the initial close loop appends failed (pack_id,gh_id,reason)
+    # tuples to `failed_closes` rather than to `partial_failures`
+    # directly. After the loop completes, _tmf_retry_failed_closes
+    # re-attempts each failed close with bounded exponential backoff
+    # (TMF_CLOSE_RETRY_MAX_ATTEMPTS / TMF_CLOSE_RETRY_BACKOFF_SECS).
+    # Successes are added to `closed`; persistent failures are
+    # surfaced via partial_failures (preserving today's contract).
+    local failed_closes
+    failed_closes=$(mktemp -t tmf-fc.XXXXXX)
+    : > "$failed_closes"
     local cidx=0
     while [[ $cidx -lt $entry_count ]]; do
         local entry pack_id gh_id status resolution
@@ -849,7 +892,10 @@ tracker_migrate_forward_run() {
                     Cancelled|Deprecated)  reason="not_planned" ;;
                 esac
                 if ! provider_close "$gh_id" "$reason" >/dev/null 2>&1; then
-                    printf 'step-8 close: %s (%s)\n' "$pack_id" "gh_id=$gh_id" >> "$partial_failures"
+                    # BD-134: defer surfacing — record the (id, reason)
+                    # for the retry sweep below. Tab-separated to keep
+                    # parsing trivial in bash 3.2.
+                    printf '%s\t%s\t%s\n' "$pack_id" "$gh_id" "$reason" >> "$failed_closes"
                 else
                     closed=$((closed + 1))
                 fi
@@ -862,6 +908,34 @@ tracker_migrate_forward_run() {
         esac
         cidx=$((cidx + 1))
     done
+
+    # BD-134 step-8.4: retry sweep for failed closes. Re-attempts each
+    # failed close up to TMF_CLOSE_RETRY_MAX_ATTEMPTS-1 more times with
+    # exponential backoff. Closes that succeed in the sweep increment
+    # `closed`. Closes that fail every attempt are surfaced as
+    # partial-write entries (same observable contract as today minus
+    # the transient-failure noise).
+    if [[ -s "$failed_closes" ]]; then
+        local _retry_recovered _retry_persistent
+        _retry_recovered=0
+        _retry_persistent=0
+        while IFS=$'\t' read -r _rc_pack_id _rc_gh_id _rc_reason; do
+            [[ -z "$_rc_gh_id" ]] && continue
+            if _tmf_retry_one_close "$_rc_gh_id" "$_rc_reason"; then
+                closed=$((closed + 1))
+                _retry_recovered=$((_retry_recovered + 1))
+            else
+                printf 'step-8 close: %s (%s) — failed after %s attempts\n' \
+                    "$_rc_pack_id" "gh_id=$_rc_gh_id" "$TMF_CLOSE_RETRY_MAX_ATTEMPTS" \
+                    >> "$partial_failures"
+                _retry_persistent=$((_retry_persistent + 1))
+            fi
+        done < "$failed_closes"
+        if [[ $_retry_recovered -gt 0 || $_retry_persistent -gt 0 ]]; then
+            echo "forward: close-retry sweep — recovered=$_retry_recovered persistent=$_retry_persistent (max-attempts=$TMF_CLOSE_RETRY_MAX_ATTEMPTS)"
+        fi
+    fi
+    rm -f "$failed_closes"
 
     # BD-132 step 8.5: close-stabilization wait. `gh issue close` is
     # eventually consistent; if a downstream `pack tracker disable` runs
@@ -1208,6 +1282,72 @@ _tmf_wait_for_close_stabilization() {
             # on macOS BSD coreutils. `sleep 0` returns immediately.
             sleep "$TMF_STABILIZE_SLEEP_SECS" 2>/dev/null || true
         fi
+    done
+    return 1
+}
+
+# BD-134 close retry helper. Re-attempts a single failed close up to
+# `TMF_CLOSE_RETRY_MAX_ATTEMPTS - 1` times (the original attempt
+# already happened in the main close loop), with the backoff schedule
+# read from `TMF_CLOSE_RETRY_BACKOFF_SECS`. Returns 0 on the first
+# successful attempt; returns 1 if every retry attempt fails.
+#
+# Bounded by design — the loop iterates exactly
+# `TMF_CLOSE_RETRY_MAX_ATTEMPTS - 1` times. A persistent close failure
+# (e.g. permission revoked, issue locked, repo archived) cannot loop
+# forever.
+#
+# Backoff schedule is a space-separated list of seconds. With the
+# default ("1 2 4") and TMF_CLOSE_RETRY_MAX_ATTEMPTS=3, we wait 1s
+# before retry attempt 2 and 2s before retry attempt 3. The 4 is the
+# tail value used if the schedule is shorter than the attempt count.
+# bash 3.2 + BSD sleep both accept fractional/zero values, so test
+# overrides like "0 0 0" run in microseconds.
+#
+# Args:
+#   $1  gh_id   — issue id to close.
+#   $2  reason  — close reason (completed | not_planned | duplicate).
+# Returns:
+#   0 on eventual success; 1 if all attempts fail.
+_tmf_retry_one_close() {
+    local gh_id="$1"
+    local reason="$2"
+    local max_attempts="${TMF_CLOSE_RETRY_MAX_ATTEMPTS:-3}"
+    if [[ "$max_attempts" -le 1 ]]; then
+        # No retries allowed (either disabled or pathological config).
+        return 1
+    fi
+    # Parse the backoff schedule into a positional array. bash 3.2 has
+    # no associative arrays, but indexed arrays + word-splitting on a
+    # space-separated string work fine.
+    # shellcheck disable=SC2206
+    local -a backoff=( ${TMF_CLOSE_RETRY_BACKOFF_SECS:-1 2 4} )
+    local n_backoff=${#backoff[@]}
+    local last_backoff
+    if [[ $n_backoff -gt 0 ]]; then
+        last_backoff="${backoff[$((n_backoff - 1))]}"
+    else
+        last_backoff="0"
+    fi
+    # `attempt` indexes the RETRY pass (1..max_attempts-1). The
+    # original attempt already happened and failed, so attempt=1 here
+    # is the first retry.
+    local attempt=1
+    local sleep_secs
+    while [[ $attempt -lt $max_attempts ]]; do
+        # Pick the backoff value: index = attempt - 1, fall back to
+        # the last value if the schedule is shorter.
+        local idx=$((attempt - 1))
+        if [[ $idx -lt $n_backoff ]]; then
+            sleep_secs="${backoff[$idx]}"
+        else
+            sleep_secs="$last_backoff"
+        fi
+        sleep "$sleep_secs" 2>/dev/null || true
+        if provider_close "$gh_id" "$reason" >/dev/null 2>&1; then
+            return 0
+        fi
+        attempt=$((attempt + 1))
     done
     return 1
 }

@@ -1347,12 +1347,12 @@ Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 
 **BD-134 — Tracker forward close retry-with-backoff (eliminate ~5% partial-write rate)**
 Type: TODO(version) — surfaced by BD-102 Phase A dog-food (D-7)
-Status: Open
+Status: Resolved
 Blockers: none
 Unblocks: cleaner BD-102 dog-food re-run; reduced post-init `gh issue` state drift
 File/Symbol: `scripts/lib/tracker-provider-gh.sh` (close call); `scripts/lib/tracker-migrate-forward.sh` (end-of-init re-run-failed-closes step)
 Description: Forward step-8 close has ~5% partial-write rate (3 of 56 named close failures observed: BD-021/022/023). Likely transient gh API rate-limiting. Add retry-with-backoff on individual close, OR end-of-init pass that re-runs failed closes once before reporting partial-write. Severity NIT — issues end up OPEN with `status:resolved` label instead of CLOSED.
-Resolved: n/a
+Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-134.md`. Approach (b): end-of-init re-run-failed-closes pass in `scripts/lib/tracker-migrate-forward.sh` (new step-8.4 helper) — composes cleanly with BD-132's `_tmf_wait_for_close_stabilization` (retry sweep runs first, then stabilization sees the post-retry close count). Retry bounds: `TMF_CLOSE_RETRY_MAX_ATTEMPTS=3` (1 original + 2 retries), `TMF_CLOSE_RETRY_BACKOFF_SECS="1 2 4"` exponential schedule; both env-overridable. Bounded by construction (helper iterates exactly `MAX_ATTEMPTS - 1` times — no recursion, no extension). New regression test `scripts/tests/tracker-bd134-close-retry-test.sh` 24/24 PASS across 3 groups (transient close recovers with 0 partial-writes; persistent close surfaces partial-write after exactly 3 attempts per id with proven bounded-loop assertions; helper-level isolation tests). All 7 pinned suites green: bd129 11/11, bd130 8/8, bd132 29/29, bd133 30/30, forward 126/126, reverse 93/93, roundtrip 39/39. Validator clean. **Closes BD-102 Phase A dog-food triage cluster: D-1..D-7 all addressed (D-3 was withdrawn at hand-off).**
 
 ---
 
