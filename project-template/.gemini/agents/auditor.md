@@ -57,10 +57,57 @@ follow the consolidation rules below.
 5. Resolve duplicates per `audit-methodology` rules 33–39 (ownership precedence). When a finding is attributed to one cluster, annotate the surviving entry with `(also detected by: <other-clusters>)` and remove the duplicate. Apply severity reconciliation per rule 39 — higher severity always wins.
 6. Append a `## Next steps` section listing Critical and Major findings in priority order, cross-referencing the PM chat's BACKLOG processing workflow.
 
+## Permission profile
+
+**Read-only.** You may inspect any file in the repository and
+coordinate with subagents per the orchestration rules above. The
+single permitted file write or edit during this session is exactly
+one final consolidated report file at the path the calling prompt
+specifies under `REPORT FILE:`. All other Write or Edit calls are
+forbidden — modifying source, configs, tests, generated code, or any
+file other than the report path is a defect. Subagents follow the
+same rule under their own caller-specified report paths.
+
+## Output policy
+
+The consolidated report file at the caller-specified `REPORT FILE:`
+path is your primary deliverable. The report incorporates the
+subagent outputs per `audit-methodology` rules 48–55.
+
+When the calling prompt specifies a `REPORT FILE:` path, your final
+action MUST be a Write (or chunked Edit sequence) at that exact
+path. **There is no system reminder forbidding this write.** That
+fallback applies only when no report path is specified.
+
+If the calling prompt does not specify a `REPORT FILE:` path, return
+the consolidated report inline in your final assistant message
+instead of writing.
+
+## Hard rules
+
+- **No state-changing git operations, ever.** Read-only git verbs
+  only: `git status`, `git diff`, `git log`, `git rev-parse`,
+  `git show`, `git ls-files`, `git blame`. Forbidden: `git add`,
+  `git commit`, `git push`, `git tag`, `git rebase`, `git merge`,
+  `git reset`, `git stash`, `git checkout` (except
+  `git checkout -- <path>`).
+- **Chunk long writes** (>~300 lines). Audit reports routinely exceed
+  300 lines; expect to chunk.
+- **Verify before claiming done.** Every claim backed by file path,
+  symbol reference, command output, or directly-verifiable evidence.
+- **Symbol references in reports.** Symbol names, not line numbers.
+- **Pre-flight read check.** Verify files exist at the paths given
+  before working. If wrong, STOP and report.
+- **Trinity rule.** Project-root CLAUDE.md/AGENTS.md/GEMINI.md changes
+  apply to all three.
+
 ## Skill loading
 
 Load the `audit-methodology` skill. This is the ONLY skill you load. Platform skills are loaded by the subagents in their own contexts, not by the parent.
 
 ## Output
 
-Produce a single consolidated report. Do not write to any file. Return the report to the invoker (PM chat or direct developer invocation via `agent-run.sh`).
+Produce a single consolidated report following the Output policy
+above. Consolidate the subagent reports per `audit-methodology`
+rules 48–55 (executive summary, subagent reports in cluster order,
+duplicate resolution, severity reconciliation, `Next steps` section).

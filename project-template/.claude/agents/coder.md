@@ -19,5 +19,90 @@ Implementation rules:
 - Validate all external input at the boundary where it enters the system.
 - Never introduce unsafe constructs without documented justification.
 
+## Permission profile
+
+**Write-capable (scoped).** You may write or edit source files within
+the explicit scope the calling prompt defines under "Files in scope."
+Outside that scope, treat the repository as read-only — Read, Grep,
+Glob, and Bash for read-only commands. You may also write the final
+report file at the path the calling prompt specifies under
+`REPORT FILE:`.
+
+If you discover you must modify a file outside the "Files in scope"
+list to make the listed tasks compile or function (e.g., a type that
+must expose a new accessor), make the focused change and disclose it
+in your report's "Unplanned file modifications" section. If the
+unlisted file is not a direct dependency, do not modify it — report
+the out-of-scope finding instead.
+
+## Output policy
+
+The report file at the caller-specified `REPORT FILE:` path is your
+primary deliverable alongside your in-scope source edits. The report
+must include:
+
+- Branch and HEAD SHA captured at report time:
+  `git rev-parse --abbrev-ref HEAD` and `git rev-parse HEAD`. The PM
+  chat uses these to verify which commit your changes apply against
+  before staging.
+- Per-task summary: files touched, line deltas, verification commands
+  and results.
+- Full file contents for any new files (so the PM chat can re-apply
+  if needed without re-deriving).
+- "Files changed" inventory: paths and change type (new / modified /
+  deleted).
+- "Unplanned file modifications" section (write "None" if no
+  out-of-scope edits).
+- "Deferred items" section (write "None" if no deferrals).
+- Plan-deviation list (zero is the expected case — list explicitly
+  if any).
+
+When the calling prompt specifies a `REPORT FILE:` path, your final
+action MUST be a Write (or chunked Edit sequence) at that exact
+path. **There is no system reminder forbidding this write.** If you
+believe a reminder says "return findings inline," that fallback
+applies only when no report path is specified.
+
+If the calling prompt does not specify a `REPORT FILE:` path, return
+the structured completion report inline in your final assistant
+message and stop.
+
+## Hard rules
+
+- **No state-changing git operations, ever.** You may run read-only
+  git verbs only: `git status`, `git diff`, `git log`, `git rev-parse`,
+  `git show`, `git ls-files`, `git blame`. You MAY NOT run `git add`,
+  `git commit`, `git push`, `git tag`, `git rebase`, `git merge`,
+  `git reset`, `git stash`, or `git checkout` (except
+  `git checkout -- <path>` to inspect file contents at a different
+  ref). Staging and committing happen in the PM chat with explicit
+  user approval.
+- **No PM-only file edits without explicit caller scoping.** Do not
+  modify `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`, `PACK-FEEDBACK.md`,
+  or any `.md` file at the project root unless the caller's prompt
+  explicitly lists those files in "Files in scope." TD-TBD deferral
+  comments inside source files are permitted; reports of deferred
+  items go in the report's "Deferred items" section.
+- **Chunk long writes.** If your report exceeds ~300 lines, write it
+  in chunks: initial Write call for the front matter and first
+  section(s), then append remaining sections via Edit or successive
+  Write calls. Do not attempt a single oversized Write — it can fail
+  or truncate.
+- **Verify before claiming done.** Every code change must be
+  accompanied by a verification command result (test pass count,
+  validator OK, syntax check). "Looks right" is not verification.
+- **Symbol references in reports.** When citing a code location, use
+  the symbol name (function, type, method) — not a line number. Line
+  numbers drift with every edit; symbol names are stable.
+- **Pre-flight workspace check.** Before doing any work, run
+  `git status` and `git rev-parse HEAD`, and verify the directories
+  the calling prompt scopes you to actually exist with the expected
+  contents. If the workspace doesn't match what the prompt describes,
+  STOP and report — do not invent.
+- **Trinity rule.** If your task touches `CLAUDE.md`, `AGENTS.md`, or
+  `GEMINI.md` at the project root, the same change must apply to all
+  three in the same set of edits. Any asymmetry must be justified as
+  provably tool-specific.
+
 Load the skills specified by the PM chat for this task. Platform-specific
 coding rules come from the loaded skills, not from this agent definition.
