@@ -158,6 +158,16 @@ this step and report `RAG: manifest not found — skipped` in the
 Step 6 summary. Surface this as a defect to the developer in the
 report so they know to restore the manifest.
 
+**If a manifest path does not exist on disk** (e.g., the manifest
+declares `docs/pack/METHODOLOGY.md` but the project has not yet run
+the install copy step that creates it), skip ingest for that
+specific path and report `RAG: manifest target missing — run
+install/migration` in the Step 6 summary. This is the expected
+first-run state on a project that has not yet copied
+`supporting-docs/METHODOLOGY.md` into `docs/pack/`. Surface it to
+the developer so they run `init-project.sh` (new install) or the
+appropriate migrator (existing project).
+
 ## Step 5 — Check for TD-TBD sentinel
 
 ```bash
@@ -185,7 +195,7 @@ Output a summary in exactly this format:
 **Pack version:** [read from the version header line in METHODOLOGY.md]
 **Skills profile:** [project type from PLATFORM-SKILLS.md — e.g., "iOS Swift app" or "Python gRPC server"]
 **Active skills:** [list from project context file, or "not set — populate during kickoff"]
-**RAG:** [diff from Step 4 — one of: "N ingested, N stale, N orphans" / "N ingested, N stale, N orphans removed: [<paths>]" / "N ingested, stale=N/A (timestamp unavailable; re-ingested unconditionally), N orphans" / "not available — skipped" / "manifest not found — skipped" (defect — surface to developer)]
+**RAG:** [diff from Step 4 — one of: "N ingested, N stale, N orphans" / "N ingested, N stale, N orphans removed: [<paths>]" / "N ingested, stale=N/A (timestamp unavailable; re-ingested unconditionally), N orphans" / "not available — skipped" / "manifest not found — skipped" (defect — surface to developer) / "manifest target missing — run install/migration" (manifest path not on disk; surface to developer)]
 
 **Awaiting instructions.**
 ---

@@ -311,10 +311,10 @@ Every prompt to a read-only agent must NOT include:
 - Implementation instructions ("use X library", "call API Y").
 
 `agent-run.sh` flag profile (Claude Code):
-`--permission-mode bypassPermissions --disallowedTools Edit 'Bash(git add:*)' 'Bash(git mv:*)' 'Bash(git commit:*)' 'Bash(git push:*)'`
-Write is allowed (for the report); Edit is denied (no source
-modifications). The prompt constrains Write to the single report
-file.
+`--permission-mode bypassPermissions --disallowedTools 'Bash(git add:*)' 'Bash(git mv:*)' 'Bash(git commit:*)' 'Bash(git push:*)'`
+Write is allowed (for the report); the prompt constrains Write to
+the single report file. Edit is permitted only on the agent's
+report file, per the chunked-Edit pattern in agent Hard rules.
 
 ### Write-capable (scoped) profile — prompt requirements (`coder`)
 

@@ -341,9 +341,10 @@ of agent role.
 - **PM chat does not architect.** Architecture, planning,
   implementation, and review work goes to the corresponding agent
   (architect / planner / coder / reviewer / tester / auditor /
-  docs-researcher / grpc-schema / repo-ops). The PM chat handles
-  BACKLOG, STATUS, CHANGELOG, routing, approvals, and prompt
-  construction — not the work the agents do.
+  docs-researcher / grpc-schema / repo-ops) — `auditor` covers the
+  7 variant agents; see `PACK-AGENTS.md` for the full roster. The
+  PM chat handles BACKLOG, STATUS, CHANGELOG, routing, approvals,
+  and prompt construction — not the work the agents do.
 
 ## Phase routing — default agent assignments
 

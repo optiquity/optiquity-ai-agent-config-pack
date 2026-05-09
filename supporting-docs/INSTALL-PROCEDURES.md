@@ -217,7 +217,8 @@ registered?" by checking the rows above for their `x-<name>` entry.
 > supporting-docs/MIGRATION-v9-to-v10.md`.
 
 Triggered by presence of any `*.v9-customized` sidecar file in the
-project working tree after `migrate-v9-to-v10.sh` completes.
+project working tree after `migrate-v9-to-v10.sh` (historical;
+sunset in v11 — see HISTORICAL block above) completes.
 
 A `*.v9-customized` sidecar means the migration script detected
 project customization the migration could not safely auto-merge with
@@ -243,9 +244,10 @@ in one of two outcomes:
 This procedure does *not* split the migration across two commits.
 Sidecars are never committed — they exist only on the working
 tree, between the script's run and the final commit-or-rollback
-decision. Steps 8–9 of `MIGRATION-v9-to-v10.md` (merge to default
-branch + `/pm-startup` for Procedure 5-S housekeeping) run after
-the single migration commit.
+decision. Steps 8–9 of `MIGRATION-v9-to-v10.md` (historical, available
+via `git checkout v10 --` per the HISTORICAL block above) — merge to
+default branch + `/pm-startup` for Procedure 5-S housekeeping — run
+after the single migration commit.
 
 Procedure 5-C is re-entrant *within the same migration*. If the
 session ends mid-procedure (chat closes, machine restarts, etc.),
@@ -799,10 +801,11 @@ After every sidecar has been reconciled and removed:
    Suggested commit message:
    `feat: v10 — migrate from v9.3 (script + Procedure 5-C reconciliation)`.
 
-   After commit, follow `MIGRATION-v9-to-v10.md` Step 8 to merge
-   the branch into the default branch, then Step 9 to run
-   `/pm-startup` and let Procedure 5-S clear the post-migration
-   sentinel. Procedure 5-C does not run again on this project.
+   After commit, follow `MIGRATION-v9-to-v10.md` (historical,
+   available via `git checkout v10 --`) Step 8 to merge the branch
+   into the default branch, then Step 9 to run `/pm-startup` and let
+   Procedure 5-S clear the post-migration sentinel. Procedure 5-C
+   does not run again on this project.
 
 ### Rollback (instead of commit)
 
@@ -878,18 +881,16 @@ All four assertions must pass before the migration commit lands.
 
 Triggered by presence of
 `.pack-migration-backup/v9.3-to-v10.0/postrun-pending` at PM chat
-startup. Written by `migrate-v9-to-v10.sh` stage S7. Combines three
-post-migration housekeeping tasks; any subset may report "nothing to
-do" without defect (the common case for Tasks A and B is "nothing to
-do" after a clean Procedure 5-C; Task C reads the current session's
-`/pm-startup` Step 4 output). Procedure is re-entrant — partial
-completion preserves the sentinel and re-runs at next `/pm-startup`.
+startup. Written by `migrate-v9-to-v10.sh` (historical; sunset in v11
+— see HISTORICAL block above) stage S7. Combines two
+post-migration housekeeping tasks; either may report "nothing to do"
+without defect. Procedure is re-entrant — partial completion preserves
+the sentinel and re-runs at next `/pm-startup`.
 
 | Task | Scope | Action |
 |---|---|---|
 | **A** | STATUS.md pack-version markers (F-E) | Search `docs/project/STATUS.md`, then `docs/STATUS.md`, then `STATUS.md` (first existing wins). Grep case-insensitively for lines containing both `AI Agent Config Pack` (or `Pack version`) and a `v9` token. For each match, propose updating the version to the current pack version (read from `docs/pack/METHODOLOGY.md` first 5 lines, matching pm-startup Step 6). Developer approves / edits / skips per match. If no STATUS.md found or no v9 markers found: report "Task A — nothing to do." |
 | **B** | Trinity placeholder reconciliation (F-F) | Grep `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` for occurrences of the closed-form whitelist: `[PROJECT_NAME]`, `[PLATFORM_TARGETS]`, `[TRANSPORT]`, `[PLATFORM_DEFAULTS]`, `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`, `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`, `[PLATFORM_ANTIPATTERNS]`. Also grep for the literal Active-skills placeholder line (`Active skills: [PM chat writes`). For project-identifier placeholders, ask the developer for the values (project name, platform targets, transport) and offer to fill them consistently across all three trinity files (TRIO — byte-identical content). For section placeholders, reference the loaded skills' content. For the Active-skills line, run a simpler standalone Q&A (NOT the full Procedure 7 kickoff flow): "What skills are active for this project? Read `docs/pack/PLATFORM-SKILLS.md` to see options. PM chat proposes the set based on project type; developer approves." If no whitelist matches found and Active-skills line is filled: report "Task B — nothing to do." |
-| **C** | RAG index reconciliation confirmation | The current `/pm-startup` Step 4 runs reconciliation automatically before Procedure 5-S triggers. Confirm the Step 4 output: the startup summary's `RAG:` line should report `0 orphans` or list orphans that were auto-removed (e.g. `4 orphans removed: [PROMPT-TEMPLATES.md, METHODOLOGY.md, ARCHITECTURE.md, docs/pack/PROMPT-TEMPLATES.md]`). If the line says `RAG: not available — skipped`, the local-rag MCP server is not configured for this CLI surface — that's fine; nothing to reconcile. If the line says `RAG: manifest not found — skipped`, that's a defect — the migration disrupted PM-CHAT.md's RAG ingestion manifest section; surface to developer and fix before completing housekeeping. |
 
 1. Detect sentinel; read `docs/pack/METHODOLOGY.md` first 5 lines for
    current pack version (Task A reference value).
@@ -899,16 +900,11 @@ completion preserves the sentinel and re-runs at next `/pm-startup`.
    developer-approved edits to the trinity files (TRIO; byte-identical
    across CLAUDE.md / AGENTS.md / GEMINI.md for every section the
    trinity rule covers).
-4. Run Task C. Read the current session's `/pm-startup` Step 4
-   output (the `RAG:` line in the startup summary) and confirm
-   reconciliation ran cleanly. If `not available — skipped`, no-op.
-   If `manifest not found — skipped`, escalate as a defect to the
-   developer before continuing.
-5. If all tasks completed (no deferred items remain), PM chat offers
+4. If both tasks completed (no deferred items remain), PM chat offers
    to remove the sentinel
    `.pack-migration-backup/v9.3-to-v10.0/postrun-pending` and records
    the housekeeping in the commit message. Once removed, Procedure
-   5-S does not run again. If any task has deferred items, leave
+   5-S does not run again. If either task has deferred items, leave
    the sentinel in place — Procedure 5-S re-runs at next
    `/pm-startup`, re-scans (skipping items already addressed), and
    resurfaces the rest.

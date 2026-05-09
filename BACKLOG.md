@@ -1324,6 +1324,48 @@ Resolved: n/a
 
 ---
 
+**BD-127 — v10.1 backport doc-tidy: HISTORICAL prose qualifiers, METHODOLOGY CLI-PM-SETUP rephrase, agent-list pointer, PM-CHAT Edit-allowed alignment**
+Type: TODO(version) — fix-follow on v10.1 backport (PACK-REVIEW F-4, F-5, F-7, F-16)
+Status: Resolved
+Blockers: none
+Unblocks: closes the 4 SHOULD-FIX + actionable NIT cluster from `maintenance-docs/v11-implementation/PACK-REVIEW-V10.1-BACKPORT.md`
+File/Symbol:
+  - `supporting-docs/INSTALL-PROCEDURES.md` lines 220, 246, 802, 881 — bare `migrate-v9-to-v10.sh` / `MIGRATION-v9-to-v10.md` prose references outside the HISTORICAL block scope
+  - `supporting-docs/METHODOLOGY.md` § RAG index hygiene — parenthetical that wrongly classifies `CLI-PM-SETUP.md` as a pack-only doc
+  - `project-template/CLAUDE.md`, `project-template/AGENTS.md`, `project-template/GEMINI.md` — Project memory section agent-list parenthetical (trinity edit, lockstep)
+  - `project-template/docs/pack/PM-CHAT.md` lines 313–317 — agent-run.sh read-only flag profile lists `Edit` on the denied-tools list, contradicting chunked-Edit-on-report pattern in agent files
+Description: Small targeted doc edits surfaced by the v10.1 backport reviewer pass.
+
+  1. **F-4 — Add `(historical)` qualifier inline** at each of the four bare references (lines 220, 246, 802, 881). Do not expand the HISTORICAL block-quote scope; inline qualifiers preserve the procedure structure.
+  2. **F-5 — Rephrase the parenthetical** to: "the `CLI-PM-SETUP.md` companion doc covers MCP / RAG setup; copy it alongside `METHODOLOGY.md` during install." Drop the false "pack-only" claim while preserving the navigation aid.
+  3. **F-7 — Append "(`auditor` covers the 7 variant agents — see PACK-AGENTS.md for the full roster)"** to the 9-agent enumeration in the Project memory bullet "PM chat does not architect." Trinity edit — apply lockstep to all three files.
+  4. **F-16 — Update PM-CHAT.md lines 313–317** to remove `Edit` from the read-only profile's denied-tools list and add a one-line note: "Edit is permitted only on the agent's report file, per the chunked-Edit pattern in agent Hard rules."
+
+  Verification: `validate-pack.py` PASS; trinity symmetry preserved on F-7 (Check 16 / 18); PM-CHAT.md profile description consistent with all 14 read-only agent files.
+Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-126-BD-127.md`
+
+---
+
+**BD-126 — pm-startup per-CLI sync + Procedure 5-S revert + validator Check 28 + manifest-missing handling**
+Type: TODO(version) — fix-follow on v10.1 backport (PACK-REVIEW F-8, F-9, F-11, F-17)
+Status: Resolved
+Blockers: none
+Unblocks: closes the 3 BLOCKER cluster from `maintenance-docs/v11-implementation/PACK-REVIEW-V10.1-BACKPORT.md` so the v10.1 backport can ship cleanly
+File/Symbol:
+  - `project-template/.claude/skills/pm-startup/SKILL.md` — Step 4 + Step 6 RAG: summary line (sync from canonical)
+  - `project-template/.codex/skills/pm-startup/SKILL.md` — Step 4 + Step 6 RAG: summary line (sync from canonical)
+  - `project-template/.gemini/commands/pm-startup.toml` — Step 4 + Step 6 RAG: summary line inside the `prompt = """..."""` block (sync from canonical)
+  - `project-template/skills/pm-startup/SKILL.md` (canonical) — add manifest-missing branch to Step 4 and matching state to the Step 6 `RAG:` summary template (F-17)
+  - `supporting-docs/INSTALL-PROCEDURES.md` Procedure 5-S — revert Task C addition (line ~892), step 4 addition (lines ~902-906), and the "two tasks → three tasks" count change introduced by `45d2098`. Leave Procedure 5-S in its pre-v10.1 frozen form with the HISTORICAL banner intact.
+  - `supporting-docs/METHODOLOGY.md` § RAG index hygiene — add brief sentence: "PM Chat reconciles RAG manifest on every `/pm-startup` per Step 4; the `RAG:` summary line surfaces the result. No separate post-migration procedure is needed in v11+."
+  - `scripts/validate-pack.py` — NEW Check 28: `check_pm_startup_per_cli_parity()` modeled on Check 21 (pack-help parity). Asserts canonical SKILL and the three per-CLI surfaces agree on Step 4 substance + Step 6 RAG-line template. Gemini `.toml` requires extracting prose from the `prompt = """..."""` block before comparison.
+Description: The v10.1 cherry-pick (`eec122e` + `45d2098`) updated only the canonical pm-startup SKILL — leaving the three live per-CLI surfaces with stale Step 4 (the pre-v10.1 single-file freshness check) and adding Procedure 5-S Task C that reads a `RAG:` line none of the live surfaces emit. Compounded: Task C was added to a procedure already marked `> HISTORICAL — sunset in v11 (BD-121)`. Result: Gemini `/pm-startup` ships stale Step 4; Procedure 5-S Task C is unrunnable; validator silence on pm-startup parity is what allowed the cherry-pick gap to land green.
+
+  Verification: validator Check 28 passes; full `validate-pack.py` PASS; manual diff confirms Step 4 + Step 6 byte-equivalent across canonical + 3 per-CLI surfaces; Procedure 5-S diff vs `1daa938` shows zero net additions.
+Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-126-BD-127.md`
+
+---
+
 **BD-125 — `dry-run-migration.sh` input contract + usage doc**
 Type: TODO(version)
 Status: Open

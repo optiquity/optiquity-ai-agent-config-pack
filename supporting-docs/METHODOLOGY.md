@@ -170,9 +170,13 @@ truth and orphans are by definition outside it. See
 `docs/pack/PM-CHAT.md` § RAG ingestion manifest for the per-project
 manifest declaration. The same `list` / `delete` / `ingest` MCP
 calls can be invoked manually outside `/pm-startup` (the
-pack-distributed `CLI-PM-SETUP.md` documents this for pack
-maintainers; project-installed copies of this file do not include
-that pack-only doc).
+`CLI-PM-SETUP.md` companion doc covers MCP / RAG setup; copy it
+alongside `METHODOLOGY.md` during install).
+
+PM Chat reconciles the RAG manifest on every `/pm-startup` per Step
+4 above and surfaces the result in the `RAG:` line of the startup
+summary. No separate post-migration reconciliation procedure is
+needed in v11+ — Step 4 is the single, always-on hygiene point.
 
 **Triggers beyond `/pm-startup`.** Run reconciliation manually after
 any of: pack version migration that retires or moves a file; manual

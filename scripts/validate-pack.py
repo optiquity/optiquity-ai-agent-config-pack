@@ -75,6 +75,13 @@ Checks:
       canonical phrases for Permission profile, Output policy, and
       Hard rules — codified per profile (Read-only / Write-capable
       scoped / Write-capable script).
+  28. PM-startup per-CLI parity (v10.1, BD-126): the canonical
+      `project-template/skills/pm-startup/SKILL.md` and the three
+      per-CLI surfaces (`.claude/skills/`, `.codex/skills/`,
+      `.gemini/commands/pm-startup.toml`) agree on Step 4 substance
+      (RAG reconciliation procedure) and the Step 6 `RAG:` summary
+      template. Prevents v10.1-style backports landing only on the
+      canonical SKILL while leaving live per-CLI surfaces stale.
 
 Two additional informational checks (no number, soft / advisory):
   - Issue template forms (BD-063): `.github/ISSUE_TEMPLATE/*.yml`
@@ -1848,6 +1855,133 @@ def check_migrator_framework_inventory() -> None:
     ok("migrator-core.sh preserves EXIT_NOT_V10 back-compat synonym")
 
 
+def _extract_pm_startup_sections(text: str) -> tuple[str, str]:
+    """Extract (step4_block, step6_rag_line) from a pm-startup prompt body.
+
+    `step4_block` is the prose under the `## Step 4` H2 up to but not
+    including the next `## Step` heading (whitespace-trimmed).
+    `step6_rag_line` is the line beginning with `**RAG:**` inside Step 6
+    (whitespace-trimmed). Returns ("", "") for the line if absent — the
+    caller decides whether absence is a failure.
+    """
+    step4_match = re.search(
+        r"^##\s+Step\s+4\b[^\n]*\n(.*?)(?=^##\s+Step\s+\d)",
+        text, flags=re.DOTALL | re.MULTILINE,
+    )
+    step4_block = step4_match.group(1).strip() if step4_match else ""
+
+    rag_match = re.search(r"^\*\*RAG:\*\*[^\n]*", text, flags=re.MULTILINE)
+    rag_line = rag_match.group(0).strip() if rag_match else ""
+
+    return step4_block, rag_line
+
+
+def check_pm_startup_per_cli_parity() -> None:
+    """Check 28 — PM-startup per-CLI surface parity (v10.1, BD-126).
+
+    The canonical `project-template/skills/pm-startup/SKILL.md` is the
+    source of truth for the Step 4 RAG-reconciliation procedure and the
+    Step 6 `RAG:` summary line. Three per-CLI surfaces ship with every
+    pack install and must stay byte-substantively aligned with the
+    canonical:
+
+      - project-template/.claude/skills/pm-startup/SKILL.md  (Claude skill)
+      - project-template/.codex/skills/pm-startup/SKILL.md   (Codex skill)
+      - project-template/.gemini/commands/pm-startup.toml    (Gemini command)
+
+    Without this check, v10.1-style RAG backports update the canonical
+    only and leave the live surfaces stale (the F-8 BLOCKER pattern
+    diagnosed in PACK-REVIEW-V10.1-BACKPORT.md). Gemini is especially
+    vulnerable because `init-project.sh` regenerates `.claude` /
+    `.codex` SKILL.md from the canonical at install time but never
+    touches `.gemini/commands/pm-startup.toml`.
+
+    Comparison rule: extracted Step 4 block AND Step 6 `RAG:` line
+    must match the canonical exactly (whitespace-trimmed). For the
+    Gemini surface, Step 4 / Step 6 are extracted from the
+    triple-quoted `prompt` TOML string before comparison.
+    """
+    print("\n── Check 28: PM-startup per-CLI parity (v10.1, BD-126) ──")
+    canonical = REPO_ROOT / "project-template" / "skills" / "pm-startup" / "SKILL.md"
+    surfaces = [
+        ("claude",
+         REPO_ROOT / "project-template" / ".claude" / "skills" / "pm-startup" / "SKILL.md",
+         "skill-md"),
+        ("codex",
+         REPO_ROOT / "project-template" / ".codex" / "skills" / "pm-startup" / "SKILL.md",
+         "skill-md"),
+        ("gemini",
+         REPO_ROOT / "project-template" / ".gemini" / "commands" / "pm-startup.toml",
+         "gemini-toml"),
+    ]
+
+    if not canonical.is_file():
+        fail(f"canonical pm-startup SKILL missing: "
+             f"{canonical.relative_to(REPO_ROOT)}")
+        return
+
+    canon_text = canonical.read_text()
+    canon_step4, canon_rag = _extract_pm_startup_sections(canon_text)
+    if not canon_step4:
+        fail(f"canonical {canonical.relative_to(REPO_ROOT)} — "
+             "Step 4 H2 block not found")
+        return
+    if not canon_rag:
+        fail(f"canonical {canonical.relative_to(REPO_ROOT)} — "
+             "Step 6 `**RAG:**` summary line not found")
+        return
+
+    any_failed = False
+    for cli, path, kind in surfaces:
+        if not path.is_file():
+            fail(f"{cli}: pm-startup surface missing: "
+                 f"{path.relative_to(REPO_ROOT)}")
+            any_failed = True
+            continue
+
+        if kind == "skill-md":
+            body = path.read_text()
+        elif kind == "gemini-toml":
+            try:
+                with open(path, "rb") as f:
+                    data = tomllib.load(f)
+            except Exception as e:
+                fail(f"{cli}: TOML parse error in "
+                     f"{path.relative_to(REPO_ROOT)}: {e}")
+                any_failed = True
+                continue
+            body = data.get("prompt", "")
+            if not body:
+                fail(f"{cli}: {path.relative_to(REPO_ROOT)} has no "
+                     f"`prompt` key")
+                any_failed = True
+                continue
+        else:
+            fail(f"{cli}: unknown surface kind {kind!r}")
+            any_failed = True
+            continue
+
+        step4, rag = _extract_pm_startup_sections(body)
+        if step4 != canon_step4:
+            fail(f"{cli}: {path.relative_to(REPO_ROOT)} — Step 4 "
+                 "diverges from canonical "
+                 f"{canonical.relative_to(REPO_ROOT)} "
+                 "(RAG reconciliation procedure must match exactly)")
+            any_failed = True
+            continue
+        if rag != canon_rag:
+            fail(f"{cli}: {path.relative_to(REPO_ROOT)} — Step 6 "
+                 "`**RAG:**` summary line diverges from canonical "
+                 f"{canonical.relative_to(REPO_ROOT)}")
+            any_failed = True
+            continue
+        ok(f"{cli}: {path.relative_to(REPO_ROOT)} — Step 4 + Step 6 "
+           "RAG line match canonical")
+
+    if any_failed:
+        return
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -1866,7 +2000,6 @@ def main() -> None:
     check_init_project_structure()
     check_prompt_triad_compliance()
     check_pack_agent_trinity()
-    check_agent_canonical_phrases()
     # Checks 12, 13, 14, 15 retired in v11 (BD-121, v9 sunset) — see
     # comment block at the function definitions above.
     check_tool_config_capability_parity()
@@ -1882,6 +2015,8 @@ def main() -> None:
     check_help_fragment_tracker_byte_identity()
     check_customization_detection_regression_guard()
     check_migrator_framework_inventory()
+    check_agent_canonical_phrases()
+    check_pm_startup_per_cli_parity()
 
     print("\n" + "=" * 60)
     if failures:
