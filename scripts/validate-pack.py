@@ -26,6 +26,11 @@ Checks:
       `**Problem:**`, `**Goal:**`, `**Success criteria:**`, and a
       file-based completion-report indicator (`REPORT FILE:` or
       `**Completion report:**`).
+  21. Agent canonical-phrase compliance (v10.1): every project-template
+      agent definition (.claude/.codex/.gemini × 16 agents) contains the
+      canonical phrases for Permission profile, Output policy, and
+      Hard rules — codified per profile (Read-only / Write-capable
+      scoped / Write-capable script).
 
 Exit 0 if all pass, exit 1 if any fail. Each failure prints the exact
 file, line (where applicable), and problem.
@@ -1092,6 +1097,137 @@ def check_trinity_h2_parity() -> None:
        f"otherwise matches ({len(gemini_filtered)} sections)")
 
 
+READ_ONLY_AGENTS = {
+    "architect",
+    "planner",
+    "reviewer",
+    "tester",
+    "docs-researcher",
+    "grpc-schema",
+    "auditor",
+    "auditor-architecture",
+    "auditor-code",
+    "auditor-docs",
+    "auditor-ops",
+    "auditor-security",
+    "auditor-tests",
+    "auditor-ui",
+}
+WRITE_SCOPED_AGENTS = {"coder"}
+WRITE_SCRIPT_AGENTS = {"repo-ops"}
+
+# Canonical phrases that must appear in every agent definition
+# regardless of profile. Each agent file is the authoritative source
+# for its operating rules; this check enforces structural symmetry
+# across all 48 files (16 agents × 3 tools).
+COMMON_CANONICAL_PHRASES = [
+    "## Permission profile",
+    "## Output policy",
+    "## Hard rules",
+    "REPORT FILE:",
+    "There is no system reminder forbidding this write",
+    "No state-changing git operations",
+    "Chunk long writes",
+    "Symbol references in reports",
+    "Trinity rule",
+]
+
+# Profile-specific phrases that must appear in agents of that profile.
+PROFILE_PHRASES = {
+    "read-only": ["**Read-only.**", "Pre-flight read check"],
+    "write-scoped": [
+        "**Write-capable (scoped).**",
+        "Branch and HEAD SHA",
+        "Files in scope",
+        "Pre-flight workspace check",
+        "No PM-only file edits",
+    ],
+    "write-script": [
+        "**Write-capable (script).**",
+        "Branch and HEAD SHA",
+        "No hand-written source edits",
+        "Pre-flight workspace check",
+        "No PM-only file edits",
+    ],
+}
+
+
+def _agent_profile(stem: str) -> str | None:
+    """Return the canonical profile name for an agent stem, or None."""
+    if stem in READ_ONLY_AGENTS:
+        return "read-only"
+    if stem in WRITE_SCOPED_AGENTS:
+        return "write-scoped"
+    if stem in WRITE_SCRIPT_AGENTS:
+        return "write-script"
+    return None  # custom x-* agents fall through; not validated here
+
+
+def check_agent_canonical_phrases() -> None:
+    """Check 21 — every project-template agent definition file carries the
+    canonical phrases that codify its permission profile (BD v10.1).
+
+    The agent file is authoritative for its own operating rules
+    (Permission profile / Output policy / Hard rules sections).
+    This check verifies the canonical text is present so future edits
+    cannot silently drift the profile contract — agents must continue
+    to declare their profile, output contract, and hard rules
+    explicitly. Mirrors how Check 10 enforces prompt-template triads.
+
+    Custom agents (`x-*`) are not validated; their profile is set at
+    creation time per Procedure 5.
+    """
+    print("\n── Check 21: Agent canonical-phrase compliance (v10.1) ──")
+    any_failed = False
+    agent_dirs = [
+        (CLAUDE_AGENTS_DIR, "*.md"),
+        (CODEX_AGENTS_DIR, "*.toml"),
+        (GEMINI_AGENTS_DIR, "*.md"),
+    ]
+    for agent_dir, pattern in agent_dirs:
+        if not agent_dir.is_dir():
+            fail(f"{agent_dir.relative_to(REPO_ROOT)} — directory missing")
+            any_failed = True
+            continue
+        for path in sorted(agent_dir.glob(pattern)):
+            stem = path.stem
+            if stem.startswith("x-"):
+                continue  # custom agents are out of scope
+            profile = _agent_profile(stem)
+            if profile is None:
+                # Pack-shipped agent we don't recognize — flag it.
+                fail(
+                    f"{path.relative_to(REPO_ROOT)} — agent stem '{stem}' "
+                    f"not in any known profile group; update "
+                    f"READ_ONLY_AGENTS / WRITE_SCOPED_AGENTS / "
+                    f"WRITE_SCRIPT_AGENTS in validate-pack.py"
+                )
+                any_failed = True
+                continue
+            text = path.read_text()
+            missing = []
+            for phrase in COMMON_CANONICAL_PHRASES:
+                if phrase not in text:
+                    missing.append(phrase)
+            for phrase in PROFILE_PHRASES[profile]:
+                if phrase not in text:
+                    missing.append(phrase)
+            if missing:
+                rel = path.relative_to(REPO_ROOT)
+                fail(
+                    f"{rel} — profile '{profile}' missing canonical "
+                    f"phrase(s): {missing}"
+                )
+                any_failed = True
+            else:
+                ok(
+                    f"{path.relative_to(REPO_ROOT)} — profile "
+                    f"'{profile}' canonical phrases present"
+                )
+    if any_failed:
+        return
+
+
 def check_trinity_addenda_h2() -> None:
     """Check 16 — v10 trinity templates carry `## Project addenda` H2
     with the HTML-comment placeholder (OQ-P6 / OQ-5C-1, BD-059 C9).
@@ -1152,6 +1288,7 @@ def main() -> None:
     check_trinity_h2_parity()
     check_trinity_no_scaffolding_comments()
     check_gitignore_env_example_exception()
+    check_agent_canonical_phrases()
 
     print("\n" + "=" * 60)
     if failures:
