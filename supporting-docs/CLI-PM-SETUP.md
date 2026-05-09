@@ -212,8 +212,29 @@ npx --prefer-online -y mcp-local-rag --help
 Re-ingest your docs after updating — the vector index format may change between versions.
 
 **RAG returns stale or wrong results:**
-Re-ingest the affected file. The `/pm-startup` skill checks modification dates
-and flags this automatically.
+First check whether the index has orphans (paths that shouldn't be
+there) or stale chunks (chunks reflecting outdated file content):
+
+1. In your PM chat session, call the `local-rag` MCP `list` tool to
+   read the current ingest. Compare against the manifest declared
+   in `docs/pack/PM-CHAT.md` § RAG ingestion manifest.
+2. If a path appears in `list` but not in the manifest, it is an
+   **orphan** from a prior pack version or a retired file. Run
+   `local-rag.delete <path>` for each orphan.
+   **Re-ingestion alone will not remove orphans** — they live in
+   the index until explicitly deleted.
+3. If the manifest path's chunks reflect outdated content (the
+   source file was edited after the last ingest), run
+   `local-rag.delete <path>` followed by `local-rag.ingest <path>`
+   to rebuild from current content.
+
+This sequence is the same one `/pm-startup` Step 4 executes
+automatically on every startup. The manual procedure is useful when
+you want to trigger reconciliation outside of a startup, or when
+investigating a specific suspected stale-retrieval incident.
+
+See `supporting-docs/METHODOLOGY.md § RAG index hygiene` for the
+underlying principle (orphans are confidently-wrong retrievals).
 
 **Compaction happened mid-session:**
 Run `/pm-startup` — it re-reads BACKLOG.md, STATUS.md, and other key files
