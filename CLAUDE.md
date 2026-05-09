@@ -75,3 +75,24 @@ errors name the exact file and problem. Never skip or disable the workflow.
 
 **No commit or push without explicit user approval.**
 Always run `git add -A && git status` and show staged files before committing.
+
+---
+
+## Pack memory (Claude-only, all chats in this repo)
+
+**Spawn all sub-agents with no worktree isolation.**
+
+The Agent tool's `isolation: "worktree"` mode places sub-worktrees under the
+main clone's `.git/worktrees/` directory and checks them out at `origin/main`,
+**regardless of which worktree the parent chat is running in**. This means an
+agent spawned from a v11-dev (or any non-main) chat will end up auditing /
+editing v10.1 stable content instead of the parent chat's branch.
+
+Rule: do not pass `isolation: "worktree"` when calling the Agent tool from
+any chat in this repo. Run agents in-place against the parent chat's working
+tree. If parallelism across worktrees is needed, open separate Claude Code
+chat sessions in separate worktree directories — never use Agent-tool
+worktree isolation.
+
+This rule is Claude-specific (not part of the CLAUDE.md / AGENTS.md /
+GEMINI.md trinity) because it concerns Claude Code's Agent tool behavior.
