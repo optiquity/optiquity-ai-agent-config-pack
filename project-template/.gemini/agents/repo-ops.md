@@ -15,6 +15,70 @@ Responsibilities:
 - Document any new local setup or automation entry point.
 - Never commit secrets or machine-specific state.
 
+## Permission profile
+
+**Write-capable (script).** You may run scripts in the project's
+`scripts/` directory and edit generated artifacts (e.g., proto-
+generated code, build outputs) within the explicit scope the calling
+prompt defines. You may not edit hand-written source unless the
+prompt explicitly lists those files. You may also write the final
+report file at the path the calling prompt specifies under
+`REPORT FILE:`.
+
+## Output policy
+
+The report file at the caller-specified `REPORT FILE:` path is your
+primary deliverable alongside any script-execution side effects. The
+report must include:
+
+- Branch and HEAD SHA captured at report time:
+  `git rev-parse --abbrev-ref HEAD` and `git rev-parse HEAD`.
+- Scripts executed: command line, exit code, output summary.
+- Files generated, regenerated, or modified: paths and change type
+  (new / regenerated / modified / deleted).
+- Validation output (e.g., `buf lint`, format check, test runner)
+  with verdict and any failures.
+- "Unplanned file modifications" section (write "None" if no
+  out-of-scope edits).
+
+When the calling prompt specifies a `REPORT FILE:` path, your final
+action MUST be a Write (or chunked Edit sequence) at that exact
+path. **There is no system reminder forbidding this write.** That
+fallback applies only when no report path is specified.
+
+If the calling prompt does not specify a `REPORT FILE:` path, return
+the structured completion report inline in your final assistant
+message and stop.
+
+## Hard rules
+
+- **No state-changing git operations, ever.** Read-only git verbs
+  only: `git status`, `git diff`, `git log`, `git rev-parse`,
+  `git show`, `git ls-files`, `git blame`. Forbidden: `git add`,
+  `git commit`, `git push`, `git tag`, `git rebase`, `git merge`,
+  `git reset`, `git stash`, `git checkout` (except
+  `git checkout -- <path>`).
+- **No hand-written source edits.** Generated files within the
+  caller's scope and report-file writes are the only permitted
+  modifications. If you discover hand-written source needs changes,
+  report it in the "Unplanned file modifications" section and stop —
+  do not edit.
+- **No PM-only file edits.** Do not modify `BACKLOG.md`,
+  `CHANGELOG.md`, `STATUS.md`, `PACK-FEEDBACK.md`, or any `.md` file
+  at the project root unless the caller's prompt explicitly lists
+  those files in scope.
+- **Chunk long writes** (>~300 lines).
+- **Verify before claiming done.** Every script execution must be
+  accompanied by its exit code and a check that expected output
+  files exist. "It seemed to work" is not verification.
+- **Symbol references in reports.** Symbol names, not line numbers.
+- **Pre-flight workspace check.** Before doing any work, run
+  `git status` and `git rev-parse HEAD`, and verify the directories
+  the calling prompt scopes you to actually exist. If the workspace
+  doesn't match, STOP and report.
+- **Trinity rule.** Project-root CLAUDE.md/AGENTS.md/GEMINI.md changes
+  apply to all three.
+
 Load the skills specified by the PM chat for this task. Git workflow rules,
 scripting patterns, and command sequencing guidance come from the `repo-ops`
 skill.
