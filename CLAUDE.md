@@ -136,6 +136,22 @@ in the same commit as the behavior change.
   ARCHITECTURE / PLAN docs only — never prior `PACK-REVIEW-*.md` reports.
   Including a prior review biases the new review.
 
+### Sub-agent isolation (Claude-only)
+
+- **Spawn all sub-agents with no worktree isolation.** Do not pass
+  `isolation: "worktree"` when calling the Agent tool from any chat in
+  this repo. Run agents in-place against the parent chat's working
+  tree. The Agent tool places sub-worktrees under the main clone's
+  `.git/worktrees/` and checks them out at `origin/main` regardless
+  of which worktree the parent chat is in — so an agent spawned from
+  a v11-dev (or any non-main) chat would audit / edit stable content
+  instead of the parent's branch. For parallelism across worktrees,
+  open separate Claude Code chat sessions in separate worktree
+  directories.
+- **Trinity exemption.** This rule is Claude-specific (not mirrored
+  in `AGENTS.md` / `GEMINI.md`) because it concerns Claude Code's
+  Agent tool behavior.
+
 ### Repo conventions
 
 - **BACKLOG.md has no Resolved section.** Entries resolve in place by
