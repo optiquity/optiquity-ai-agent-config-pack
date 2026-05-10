@@ -5,7 +5,83 @@ Each version is available as a git tag (v1, v2, …).
 
 ---
 
-## v10 — April 2026
+## v10 — April–May 2026
+
+### v10.1 — May 8, 2026
+
+Minor release. Codifies the per-agent permission model and the RAG
+ingestion hygiene loop. No breaking changes to the v10.0 surface.
+
+**Per-agent permission profiles**
+
+- `project-template/.claude/agents/*.md`,
+  `project-template/.codex/agents/*.toml`,
+  `project-template/.gemini/agents/*.md` (48 agent files total across
+  the three CLIs) — every agent declares one of four permission
+  profiles: `read-only` (architect / planner / reviewer / tester /
+  docs-researcher / grpc-schema / auditor + the 7 auditor variants),
+  `write-scoped` (coder), `write-script` (repo-ops), or `orchestrator`
+  (PM-Chat-only — not assigned to any sub-agent). The profile selects
+  the `agent-run.sh` flag set for that agent. Pack-tooling tools
+  (`proto-gen.sh`) reassigned from `grpc-schema` to `coder` / `repo-ops`
+  since the schema role is read-only and cannot generate code.
+- `project-template/docs/pack/PM-CHAT.md` — new **Permission profiles**
+  section + profile-assignment table documenting which profile each
+  agent gets, the exact `--disallowedTools` / `--sandbox` flag set per
+  profile, and the chunked-Edit pattern that lets `read-only` agents
+  still edit their own report file. Prompt-construction rules tightened
+  to forbid options/recommendations in agent prompts (problem + goal +
+  success criteria only).
+- `scripts/validate-pack.py` Check 21 (NEW) —
+  `check_agent_canonical_phrases`. Asserts each agent file contains the
+  canonical phrases for its declared profile across all three CLIs.
+  Hard-fails CI if any of the 48 agents drifts from its profile
+  contract.
+
+**Project trinity gains Project memory section**
+
+- `project-template/CLAUDE.md`, `project-template/AGENTS.md`,
+  `project-template/GEMINI.md` (trinity-replicated) — new
+  `## Project memory` H2 section directing agents to consult
+  project-scoped memory at the start of each invocation, with a roster
+  of which agents own which memory categories. The pack-repo copies of
+  the three files gain a parallel `## Pack memory` section for
+  pack-repo-scoped standing rules (e.g., "agents never commit",
+  "no solutions in agent prompts").
+
+**RAG ingestion manifest + index hygiene**
+
+- `supporting-docs/METHODOLOGY.md` — new **RAG ingestion manifest** and
+  **RAG index hygiene** subsections under the RAG topic. Manifest is
+  declarative: a TOML table at `docs/pack/RAG-MANIFEST.toml` listing
+  the documents that should be ingested into the project's
+  `mcp-local-rag` index. Hygiene principle: every `/pm-startup`
+  reconciles the live RAG index against the manifest (delete orphans,
+  re-ingest stale and missing).
+- `project-template/skills/pm-startup/SKILL.md` (canonical) — Step 4
+  rewritten from single-file freshness check to full RAG
+  reconciliation: list live index → read manifest → diff → delete
+  orphans → re-ingest stale/missing → record diff. Step 6 startup
+  summary gains a `**RAG:**` line with the diff. New conditional
+  branches handle `local-rag` MCP unavailable, manifest missing or
+  malformed.
+
+**Migration emits RAG sync section**
+
+- `scripts/migrate-v9-to-v10.sh` — post-migration output now includes
+  a **RAG sync** section recommending `/pm-startup` be re-run against
+  the migrated project to reconcile the index with the (possibly
+  expanded) manifest.
+- `supporting-docs/INSTALL-PROCEDURES.md` Procedure 5-S — gains
+  **Task C** ("Confirm /pm-startup RAG reconciliation completed
+  successfully") alongside the existing Tasks A / B. Prose preamble
+  updated: "two tasks" → "three tasks"; "either" → "any subset".
+  *(Note: the Task C addition was subsequently reverted on `v11-dev`
+  because the v11 migrator handles RAG reconciliation inline, but it
+  ships in v10.1 as tagged.)*
+- `supporting-docs/MIGRATION-v9-to-v10.md` — describes the new
+  post-migration `/pm-startup` reconciliation task and points readers
+  at Procedure 5-S Task C for the procedure.
 
 ### v10.0 (post-release patches) — April 2026
 
