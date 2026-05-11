@@ -3,7 +3,7 @@
 # for V1 §6.2 forward migration (BD-065).
 #
 # Three groups:
-#   1. Parser correctness — fixture BACKLOG / IMPLEMENTATION_PLAN
+#   1. Parser correctness — fixture BACKLOG / IMPLEMENTATION-PLAN
 #      parse to expected JSON shapes.
 #   2. Helpers — mapping load/save, checkpoint write/read/clear,
 #      issue-body composer, label set, mirror header.
@@ -77,7 +77,7 @@ assert_contains "1.1 entry[2].resolution captures commit" \
 assert_eq "1.1 entry[3].pack_id"          "TD-010"  "$(printf '%s' "$entries" | jq -r '.[3].pack_id')"
 assert_eq "1.1 entry[4].status"           "Cancelled" "$(printf '%s' "$entries" | jq -r '.[4].status')"
 
-phases=$(tmf_parse_implementation_plan "$FIXTURES/IMPLEMENTATION_PLAN.md")
+phases=$(tmf_parse_implementation_plan "$FIXTURES/IMPLEMENTATION-PLAN.md")
 assert_eq "1.2 plan parses 2 phases" "2" "$(printf '%s' "$phases" | jq 'length')"
 assert_eq "1.2 phase[0].number"      "1" "$(printf '%s' "$phases" | jq -r '.[0].phase_number')"
 assert_eq "1.2 phase[0].title"       "Foundations" "$(printf '%s' "$phases" | jq -r '.[0].title')"
@@ -284,7 +284,7 @@ fi
 # Build a temp repo seeded from the fixtures.
 TEST_REPO=$(mktemp -d -t tmf-repo.XXXXXX)
 cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO/BACKLOG.md"
-cp "$FIXTURES/IMPLEMENTATION_PLAN.md" "$TEST_REPO/IMPLEMENTATION_PLAN.md"
+cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO/tracker.toml"
 
 # Override the dispatcher to keep pointing at github (the stub fixture
@@ -365,7 +365,7 @@ assert_eq "3.8 mapping count unchanged" "$n_mapped" "$n_mapped_2"
 > "$GH_LOG"
 TEST_REPO2=$(mktemp -d -t tmf-repo-dry.XXXXXX)
 cp "$FIXTURES/BACKLOG.md" "$TEST_REPO2/BACKLOG.md"
-cp "$FIXTURES/IMPLEMENTATION_PLAN.md" "$TEST_REPO2/IMPLEMENTATION_PLAN.md"
+cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO2/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml" "$TEST_REPO2/tracker.toml"
 output3=$(tracker_migrate_forward_run "$TEST_REPO2" 1 0 2>&1)
 rc3=$?
@@ -471,7 +471,7 @@ chmod +x "$FAKE_BIN_PF/gh"
 # Run forward with fake-gh that fails on close. Expect rc=1 + partial-write.
 TEST_REPO_PF=$(mktemp -d -t tmf-repo-pf.XXXXXX)
 cp "$FIXTURES/BACKLOG.md" "$TEST_REPO_PF/BACKLOG.md"
-cp "$FIXTURES/IMPLEMENTATION_PLAN.md" "$TEST_REPO_PF/IMPLEMENTATION_PLAN.md"
+cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_PF/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml" "$TEST_REPO_PF/tracker.toml"
 
 PATH_SAVED="$PATH"
@@ -594,7 +594,7 @@ chmod +x "$FAKE_BIN_REC/gh"
 
 TEST_REPO_REC=$(mktemp -d -t tmf-repo-rec.XXXXXX)
 cp "$FIXTURES/BACKLOG.md" "$TEST_REPO_REC/BACKLOG.md"
-cp "$FIXTURES/IMPLEMENTATION_PLAN.md" "$TEST_REPO_REC/IMPLEMENTATION_PLAN.md"
+cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_REC/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml" "$TEST_REPO_REC/tracker.toml"
 
 export PATH="$FAKE_BIN_REC:$PATH_SAVED"
@@ -628,7 +628,7 @@ chmod +x "$FAKE_BIN_MO/gh"
 
 TEST_REPO_MO=$(mktemp -d -t tmf-repo-mo.XXXXXX)
 cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_MO/BACKLOG.md"
-cp "$FIXTURES/IMPLEMENTATION_PLAN.md" "$TEST_REPO_MO/IMPLEMENTATION_PLAN.md"
+cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_MO/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO_MO/tracker.toml"
 
 export PATH="$FAKE_BIN_MO:$PATH_SAVED"
@@ -715,7 +715,7 @@ chmod +x "$FAKE_BIN_CP/gh"
 
 TEST_REPO_CP=$(mktemp -d -t tmf-repo-cp.XXXXXX)
 cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_CP/BACKLOG.md"
-cp "$FIXTURES/IMPLEMENTATION_PLAN.md" "$TEST_REPO_CP/IMPLEMENTATION_PLAN.md"
+cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_CP/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO_CP/tracker.toml"
 
 # Override the cadence and run forward. Re-source the lib because
@@ -910,7 +910,7 @@ chmod +x "$FAKE_BIN_C/gh"
 
 TEST_REPO_C=$(mktemp -d -t tmf-repo-c.XXXXXX)
 cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_C/BACKLOG.md"
-cp "$FIXTURES/IMPLEMENTATION_PLAN.md" "$TEST_REPO_C/IMPLEMENTATION_PLAN.md"
+cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_C/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO_C/tracker.toml"
 
 # Confirm the fixture starts at forward_complete = false (so a

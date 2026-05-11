@@ -144,7 +144,7 @@ gemini
 /chat resume [project-short-name]-pm    # or start fresh if no saved session
 ```
 Read BACKLOG.md, STATUS.md, PLATFORM-SKILLS.md, and the current phase from
-IMPLEMENTATION_PLAN.md to verify state is current. Gemini loads GEMINI.md
+IMPLEMENTATION-PLAN.md to verify state is current. Gemini loads GEMINI.md
 automatically via the GEMINI.md hierarchy.
 
 **Save before ending:**
@@ -176,7 +176,7 @@ codex --resume
 **ChatGPT Web resume:** Continue the existing dedicated PM chat thread.
 
 **After a long gap (ChatGPT Web):** Re-paste BACKLOG.md, STATUS.md, and the
-current phase from IMPLEMENTATION_PLAN.md to refresh context. Long threads
+current phase from IMPLEMENTATION-PLAN.md to refresh context. Long threads
 degrade — start a new thread if the old one becomes unwieldy.
 
 **File writes:** ChatGPT Web has no native file write. Output content for

@@ -13,7 +13,7 @@ variants:
 **Context:** Phase [N] is too complex to send to the coder without an
 ordered task breakdown.
 
-**Required reading:** `ARCHITECTURE.md` in full. `IMPLEMENTATION_PLAN.md`
+**Required reading:** `ARCHITECTURE.md` in full. `IMPLEMENTATION-PLAN.md`
 Phase [N]. Plus the files listed under **Files in scope** below.
 
 **Problem:** Phase [N] is too complex to send to the coder without a task

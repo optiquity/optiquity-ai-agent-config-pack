@@ -145,13 +145,13 @@ _rec_compute_pack_signals() {
 _rec_compute_client_signals() {
     local repo_root="$1"
     # Per the project-template trinity `## Document locations` table,
-    # client BACKLOG / STATUS / IMPLEMENTATION_PLAN live under
+    # client BACKLOG / STATUS / IMPLEMENTATION-PLAN live under
     # `docs/project/`. Fall back to the trinity-mandated path when the
     # repo-root copy is absent (legacy v9 layout fallback).
     local backlog="$repo_root/BACKLOG.md"
     [[ ! -f "$backlog" ]] && backlog="$repo_root/docs/project/BACKLOG.md"
-    local plan="$repo_root/IMPLEMENTATION_PLAN.md"
-    [[ ! -f "$plan" ]] && plan="$repo_root/docs/project/IMPLEMENTATION_PLAN.md"
+    local plan="$repo_root/IMPLEMENTATION-PLAN.md"
+    [[ ! -f "$plan" ]] && plan="$repo_root/docs/project/IMPLEMENTATION-PLAN.md"
 
     local td_active=0 td_total=0 backlog_kb=0 phase_count=0 plan_kb=0
     local td_tbd_count=0 deferral_count=0
@@ -393,7 +393,7 @@ _rec_signal_label() {
         backlog_kb)             echo "BACKLOG.md size (KB)" ;;
         backlog_growth_30d)     echo "BACKLOG growth (30 days)" ;;
         phase_count)            echo "phase count" ;;
-        implementation_plan_kb) echo "IMPLEMENTATION_PLAN.md size (KB)" ;;
+        implementation_plan_kb) echo "IMPLEMENTATION-PLAN.md size (KB)" ;;
         td_tbd_comment_count)   echo "TD-TBD comments" ;;
         typed_deferral_count)   echo "typed deferral comments" ;;
         *)                      echo "$1" ;;

@@ -148,7 +148,7 @@ Resolution: done in commit def5678
 
 ---
 EOF
-    cat > "$repo/IMPLEMENTATION_PLAN.md" <<'EOF'
+    cat > "$repo/IMPLEMENTATION-PLAN.md" <<'EOF'
 # Implementation Plan
 EOF
 }

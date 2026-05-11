@@ -73,15 +73,15 @@ Read these in full:
 Read only the most recent dated section from `CHANGELOG.md`.
 
 Identify the current phase from STATUS, then read only that phase's section
-from `IMPLEMENTATION_PLAN.md`.
+from `IMPLEMENTATION-PLAN.md`.
 
 Read the first 5 lines of `METHODOLOGY.md` to get the version number.
 
-Resolve every BACKLOG / STATUS / IMPLEMENTATION_PLAN / CHANGELOG read through
+Resolve every BACKLOG / STATUS / IMPLEMENTATION-PLAN / CHANGELOG read through
 the trinity `## Document locations` table in the project context file (V1 §8.4).
 In flat-file mode the table points at the named files in `docs/project/`; in
 tracker mode the table points at the tracker (BACKLOG / STATUS / CHANGELOG /
-IMPLEMENTATION_PLAN are tracker-mirrored read-only files in that mode).
+IMPLEMENTATION-PLAN are tracker-mirrored read-only files in that mode).
 
 ## Step 3 — Read active skills
 

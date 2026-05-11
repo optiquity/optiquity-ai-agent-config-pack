@@ -28,7 +28,7 @@
 #        Resolution  ← latest comment if status=Resolved, else null
 #   4. Sort by ID (BD-NNN ascending, then TD-NNN ascending) and emit
 #      BACKLOG.md.
-#   5. Emit IMPLEMENTATION_PLAN.md from phase-epic titles
+#   5. Emit IMPLEMENTATION-PLAN.md from phase-epic titles
 #      (only if it does not already exist).
 #   6. Emit STATUS.md from phase-epic state + entry counts.
 #   7. Emit CHANGELOG.md skeleton (real audit-log walking is deferred;
@@ -480,7 +480,7 @@ PYEOF
     rm -f "$entries_file"
 }
 
-# Emit IMPLEMENTATION_PLAN.md skeleton from phase epic titles. Per
+# Emit IMPLEMENTATION-PLAN.md skeleton from phase epic titles. Per
 # V1 §6.5 step 5, skipped if the file already exists.
 _tmr_emit_implementation_plan() {
     local phases="$1"
@@ -851,7 +851,7 @@ print(json.dumps(phases))')
 
     local backlog_out plan_out status_out changelog_out
     backlog_out="$repo_root/BACKLOG.md"
-    plan_out="$repo_root/IMPLEMENTATION_PLAN.md"
+    plan_out="$repo_root/IMPLEMENTATION-PLAN.md"
     status_out="$repo_root/STATUS.md"
     changelog_out="$repo_root/CHANGELOG.md"
 
@@ -868,7 +868,7 @@ print(json.dumps(phases))')
         backup_dir="$repo_root/$TMF_PACK_TRACKER_DIR/disable-backup"
         mkdir -p "$backup_dir"
         local f
-        for f in BACKLOG.md IMPLEMENTATION_PLAN.md STATUS.md CHANGELOG.md; do
+        for f in BACKLOG.md IMPLEMENTATION-PLAN.md STATUS.md CHANGELOG.md; do
             if [[ -f "$repo_root/$f" ]]; then
                 cp "$repo_root/$f" "$backup_dir/$f"
             else
@@ -919,7 +919,7 @@ print(json.dumps(phases))')
     # flow, restore originals and abort BEFORE the mode flip.
     if [[ "$flip_mode" == "1" && "$emit_failed" == "1" ]]; then
         local restored=0
-        for f in BACKLOG.md IMPLEMENTATION_PLAN.md STATUS.md CHANGELOG.md; do
+        for f in BACKLOG.md IMPLEMENTATION-PLAN.md STATUS.md CHANGELOG.md; do
             if [[ -f "$backup_dir/$f.sentinel-absent" ]]; then
                 # File didn't exist before the run; remove the half-written one.
                 rm -f "$repo_root/$f"
@@ -947,7 +947,7 @@ print(json.dumps(phases))')
 reverse: complete.
   entries:    $n_entries
   phases:     $n_phases
-  files:      BACKLOG.md, IMPLEMENTATION_PLAN.md (if absent), STATUS.md, CHANGELOG.md (if absent)
+  files:      BACKLOG.md, IMPLEMENTATION-PLAN.md (if absent), STATUS.md, CHANGELOG.md (if absent)
   sidecar:    $sidecar_path
   mode-flip:  $([[ "$flip_mode" == "1" ]] && echo "yes (mode.state=flat-file)" || echo "no")
 EOF

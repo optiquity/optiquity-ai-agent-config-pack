@@ -388,7 +388,7 @@ print(json.dumps(entries, ensure_ascii=False))
 PYEOF
 }
 
-# Parse IMPLEMENTATION_PLAN.md and emit a JSON array of phase entries:
+# Parse IMPLEMENTATION-PLAN.md and emit a JSON array of phase entries:
 #   [
 #     {"phase_number": "1", "title": "<phase title>", "anchor": "Phase 1 — <title>"},
 #     ...
@@ -399,7 +399,7 @@ PYEOF
 tmf_parse_implementation_plan() {
     local path="$1"
     if [[ ! -f "$path" ]]; then
-        tracker_error_emit "not-found" "IMPLEMENTATION_PLAN.md not found at $path"
+        tracker_error_emit "not-found" "IMPLEMENTATION-PLAN.md not found at $path"
         return 1
     fi
     python3 - "$path" <<'PYEOF'
@@ -639,11 +639,11 @@ tracker_migrate_forward_run() {
         resume_state=$(tmf_checkpoint_load "$checkpoint_file")
     fi
 
-    # Step 1+2: read + parse BACKLOG and IMPLEMENTATION_PLAN.
+    # Step 1+2: read + parse BACKLOG and IMPLEMENTATION-PLAN.
     local backlog_path plan_path
     backlog_path="$repo_root/BACKLOG.md"
-    plan_path="$repo_root/IMPLEMENTATION_PLAN.md"
-    [[ ! -f "$plan_path" ]] && plan_path="$repo_root/maintenance-docs/IMPLEMENTATION_PLAN.md"
+    plan_path="$repo_root/IMPLEMENTATION-PLAN.md"
+    [[ ! -f "$plan_path" ]] && plan_path="$repo_root/maintenance-docs/IMPLEMENTATION-PLAN.md"
 
     local entries phases
     entries=$(tmf_parse_backlog "$backlog_path") || return 1
@@ -770,7 +770,7 @@ tracker_migrate_forward_run() {
         fi
     done
 
-    # Step 5: phase epics (one per phase from IMPLEMENTATION_PLAN).
+    # Step 5: phase epics (one per phase from IMPLEMENTATION-PLAN).
     local pidx=0 phase_created=0
     local phase_count
     phase_count=$(printf '%s' "$phases" | jq 'length')

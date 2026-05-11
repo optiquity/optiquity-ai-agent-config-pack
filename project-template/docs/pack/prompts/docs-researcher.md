@@ -15,7 +15,7 @@ variants:
 current official documentation.
 
 **Required reading:** `ARCHITECTURE.md` §[RELEVANT SECTIONS].
-`IMPLEMENTATION_PLAN.md` Phase [N].
+`IMPLEMENTATION-PLAN.md` Phase [N].
 
 **Problem:** Phase [N] depends on external assumptions that may have drifted
 from current official documentation. Drift could cause the implementation to

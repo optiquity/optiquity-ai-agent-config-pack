@@ -2398,7 +2398,7 @@ Description: For well-defined projects with complete implementation plans, the
 
   Autonomous execution loop (new Procedure 5):
   1. Read current phase from STATUS.md
-  2. Verify phase is fully defined in IMPLEMENTATION_PLAN.md with a mechanically
+  2. Verify phase is fully defined in IMPLEMENTATION-PLAN.md with a mechanically
      verifiable definition of done — if not, stop and report immediately
   3. Generate coder prompt, invoke agent, collect output
   4. Generate reviewer prompt, invoke agent, collect output
@@ -2410,7 +2410,7 @@ Description: For well-defined projects with complete implementation plans, the
 
   Hard limits — autonomous mode cannot:
   - Modify ARCHITECTURE.md
-  - Create new phases in IMPLEMENTATION_PLAN.md
+  - Create new phases in IMPLEMENTATION-PLAN.md
   - Skip a reviewer pass
   - Proceed past a Critical reviewer finding
   - Handle external dependencies (credentials, env setup, API keys)
@@ -2467,7 +2467,7 @@ File/Symbol: METHODOLOGY.md, PROMPT-TEMPLATES.md, PM-CHAT.md, PLATFORM-SKILLS.md
   PACK-FEEDBACK.md — all currently in project root
 Description: The project root accumulates 15+ markdown files, mixing project
   state files the developer uses daily (BACKLOG, STATUS, CHANGELOG, ARCHITECTURE,
-  IMPLEMENTATION_PLAN) with pack reference docs rarely touched after setup
+  IMPLEMENTATION-PLAN) with pack reference docs rarely touched after setup
   (METHODOLOGY, PROMPT-TEMPLATES, PM-CHAT, PLATFORM-SKILLS, PACK-FEEDBACK).
   Move the five pack reference docs to a subdirectory (e.g., `docs/` or
   `pack-docs/`) to reduce root clutter.

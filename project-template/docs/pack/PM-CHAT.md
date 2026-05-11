@@ -120,7 +120,7 @@ directory map.
 | `STATUS.md` | Direct read | Small, changes every phase, must always be current |
 | `CHANGELOG.md` | Direct read (last entry only) | Recent history only |
 | `PACK-FEEDBACK.md` | Direct read + append writes | PM-chat-owned feedback log for the pack itself (see METHODOLOGY.md Part 10) |
-| `IMPLEMENTATION_PLAN.md` | Direct read (current phase section only) | Full file is large |
+| `IMPLEMENTATION-PLAN.md` | Direct read (current phase section only) | Full file is large |
 | `PLATFORM-SKILLS.md` | Direct read (full) | Referenced when generating every agent prompt |
 | `METHODOLOGY.md` | RAG query (Claude CLI) or direct read (other tools) | Large, stable |
 | `docs/pack/prompts/<agent>.md` | Direct read, on demand at generation time | Per-agent prompt files (Part 4) |
@@ -202,8 +202,8 @@ These rules are non-negotiable and always apply on all tools:
   comments in source files — but only after explicit user approval. Never write
   to source code files for any other reason.
 - **STATUS.md phase title links.** Every phase Title in the Phase Completion
-  table must link to its heading in `IMPLEMENTATION_PLAN.md` using
-  `[Title](IMPLEMENTATION_PLAN.md#anchor)` format. GitHub anchor: lowercase,
+  table must link to its heading in `IMPLEMENTATION-PLAN.md` using
+  `[Title](IMPLEMENTATION-PLAN.md#anchor)` format. GitHub anchor: lowercase,
   spaces → hyphens, em-dash `—` removed (leaves `--`), special characters
   (backticks, colons, parentheses, periods, asterisks, slashes) stripped.
   Apply when creating or updating the phase table.
@@ -235,7 +235,7 @@ These rules are non-negotiable and always apply on all tools:
   requirements and `METHODOLOGY.md` § Prompt Authoring Principles →
   File-based reporting for the underlying convention.
 - **No prior reviews to reviewer.** Reviewer prompts cite
-  ARCHITECTURE / IMPLEMENTATION_PLAN docs only — never prior
+  ARCHITECTURE / IMPLEMENTATION-PLAN docs only — never prior
   reviewer reports. A reviewer that reads prior reviews inherits
   their framings and produces confirmatory rather than independent
   output.
@@ -365,7 +365,7 @@ Every prompt to repo-ops must include:
 
 When `/pm-startup` runs, the recommendation system in
 `scripts/lib/recommendation.sh` (D-19) computes 6 client-side signals
-(active TD count, BACKLOG size, phase count, IMPLEMENTATION_PLAN.md
+(active TD count, BACKLOG size, phase count, IMPLEMENTATION-PLAN.md
 size, TD-TBD comment count, typed-deferral count) and decides whether
 to surface a tracker opt-in recommendation. PM chat behavior:
 
@@ -445,7 +445,7 @@ claude --resume [project-short-name]-pm  # or start fresh + /rename if no sessio
 Run `/pm-startup`. The skill reads BACKLOG entries, STATUS entries (resolve
 via the trinity `## Document locations` table — flat-file mode reads
 BACKLOG.md / STATUS.md; tracker mode reads the tracker), PM-CHAT.md,
-CHANGELOG.md, IMPLEMENTATION_PLAN.md, METHODOLOGY.md, and PLATFORM-SKILLS.md.
+CHANGELOG.md, IMPLEMENTATION-PLAN.md, METHODOLOGY.md, and PLATFORM-SKILLS.md.
 It reports current state and flags any TD-TBD sentinels.
 
 ### File access
@@ -474,7 +474,7 @@ Start a new conversation within the project. Read BACKLOG entries, STATUS
 entries (resolve via the trinity `## Document locations` table —
 flat-file mode reads BACKLOG.md / STATUS.md; tracker mode reads the
 tracker), PLATFORM-SKILLS.md, and the current phase from
-IMPLEMENTATION_PLAN.md. The project knowledge base provides searchable
+IMPLEMENTATION-PLAN.md. The project knowledge base provides searchable
 access to METHODOLOGY.md without manual re-reading.
 
 ### File access
@@ -519,7 +519,7 @@ No startup skill — Gemini CLI loads GEMINI.md automatically. After resuming
 a saved session, read BACKLOG entries, STATUS entries (resolve via the
 trinity `## Document locations` table — flat-file mode reads BACKLOG.md /
 STATUS.md; tracker mode reads the tracker), PLATFORM-SKILLS.md, and the
-current phase from IMPLEMENTATION_PLAN.md to verify state is current.
+current phase from IMPLEMENTATION-PLAN.md to verify state is current.
 
 ### File access
 
@@ -556,7 +556,7 @@ PLATFORM-SKILLS.md into the thread as initial context.
 **After a long gap:** Re-paste BACKLOG / STATUS entries (resolve via the
 trinity `## Document locations` table — flat-file mode pastes BACKLOG.md /
 STATUS.md; tracker mode pastes the tracker mirror) and the current phase
-from IMPLEMENTATION_PLAN.md to refresh context.
+from IMPLEMENTATION-PLAN.md to refresh context.
 
 ### Session management (Codex CLI)
 
@@ -602,7 +602,7 @@ the shared state:
 4. Read BACKLOG entries, STATUS entries (resolve via the trinity
    `## Document locations` table — flat-file mode reads BACKLOG.md /
    STATUS.md; tracker mode reads the tracker), PLATFORM-SKILLS.md, and
-   current phase from IMPLEMENTATION_PLAN.md to reconstruct context
+   current phase from IMPLEMENTATION-PLAN.md to reconstruct context
 
 What transfers: all project state (committed to repo).
 What does not transfer: conversation history, reasoning behind decisions.

@@ -6,7 +6,7 @@ fields (per V2 §19), drop a fixture set in here:
 
   - `BACKLOG.md` — entry written on the v11.1 template (one entry
     is enough; the round-trip test fixture-walks per-directory).
-  - `IMPLEMENTATION_PLAN.md` — phases referenced from the entry, if any.
+  - `IMPLEMENTATION-PLAN.md` — phases referenced from the entry, if any.
   - `tracker.toml` — `backend.name = "github"` + a fixture repo slug;
     `mode.state = "tracker"` + `migration.forward_complete = true`.
   - `extra_fields.json` — the v11.x-only fields the entry's body

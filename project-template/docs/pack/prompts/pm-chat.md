@@ -49,7 +49,7 @@ Form R discovery, `manual` to override mid-kickoff, or per the
 INSTALL-PROCEDURES.md § 7.5 reply grammar (`no` / `skip` / `abort` / `edit`).
 
 **Project documents the PM chat needs in context:** ARCHITECTURE.md,
-IMPLEMENTATION_PLAN.md (current phase), STATUS entries, BACKLOG
+IMPLEMENTATION-PLAN.md (current phase), STATUS entries, BACKLOG
 entries. Resolve the location of STATUS and BACKLOG entries via the
 trinity `## Document locations` table (the Source column says `flat`
 in flat-file mode; `mixed` in tracker mode means BACKLOG/STATUS are
@@ -167,11 +167,11 @@ Do not automatically unblock any of them.
 - Update "Next Actions" to: [list]
 - Update "Key Metrics" test count to: [N] passing, 0 failing
 - Link every phase Title in the phase table to its heading in
-  `IMPLEMENTATION_PLAN.md` using `[Title](IMPLEMENTATION_PLAN.md#anchor)` format.
+  `IMPLEMENTATION-PLAN.md` using `[Title](IMPLEMENTATION-PLAN.md#anchor)` format.
   GitHub anchor: lowercase, spaces → hyphens, em-dash `—` removed (leaves `--`),
   special characters (backticks, colons, parentheses, periods, asterisks, slashes) stripped.
   Example: `## Phase 35 — Live Broker Sandbox Verification` →
-  `[Live Broker Sandbox Verification](IMPLEMENTATION_PLAN.md#phase-35--live-broker-sandbox-verification)`.
+  `[Live Broker Sandbox Verification](IMPLEMENTATION-PLAN.md#phase-35--live-broker-sandbox-verification)`.
 
 **Completion report:** The artifact is the target-file edit itself
 (sub-case B). Confirm what was changed by naming the file(s) edited

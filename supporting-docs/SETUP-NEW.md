@@ -389,7 +389,7 @@ platform skills via the skill-loading instructions the PM chat
 generated from `docs/pack/PLATFORM-SKILLS.md`.
 
 After the architect run, commit `ARCHITECTURE.md` and
-`IMPLEMENTATION_PLAN.md` (the architect writes these files as its
+`IMPLEMENTATION-PLAN.md` (the architect writes these files as its
 output deliverables).
 
 ---

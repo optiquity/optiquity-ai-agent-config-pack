@@ -182,13 +182,13 @@ any tool. Use this as a starting point and adjust based on observed results.*
 ### Switching PM chat tools mid-project
 
 This is supported. The startup skill on each tool reads the four key state
-docs (`IMPLEMENTATION_PLAN.md`, `STATUS.md`, `BACKLOG.md`, `CHANGELOG.md`)
+docs (`IMPLEMENTATION-PLAN.md`, `STATUS.md`, `BACKLOG.md`, `CHANGELOG.md`)
 and reconstructs context. The current phase, open backlog items, and recent
 changes are all recoverable from the project docs.
 
 What is NOT preserved across a tool switch: the reasoning behind past decisions
 as expressed in prior turns. This is why every significant decision must be
-written into `ARCHITECTURE.md` or `IMPLEMENTATION_PLAN.md` before the session
+written into `ARCHITECTURE.md` or `IMPLEMENTATION-PLAN.md` before the session
 ends — those docs are the permanent record, not the conversation history.
 
 For detailed daily-use guidance on CLI PM chat sessions (resume procedures, RAG

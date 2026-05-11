@@ -302,7 +302,7 @@ assert_contains "4.1 reports 1 phase epic"  "$output" "1 phase epic"
 assert_contains "4.1 reports complete"      "$output" "reverse: complete"
 
 [[ -f "$REPO/BACKLOG.md" ]]            && t_pass "4.1 BACKLOG.md emitted" || t_fail "4.1 BACKLOG.md emitted"
-[[ -f "$REPO/IMPLEMENTATION_PLAN.md" ]] && t_pass "4.1 IMPLEMENTATION_PLAN.md emitted" || t_fail "4.1 IMPLEMENTATION_PLAN.md emitted"
+[[ -f "$REPO/IMPLEMENTATION-PLAN.md" ]] && t_pass "4.1 IMPLEMENTATION-PLAN.md emitted" || t_fail "4.1 IMPLEMENTATION-PLAN.md emitted"
 [[ -f "$REPO/STATUS.md" ]]             && t_pass "4.1 STATUS.md emitted" || t_fail "4.1 STATUS.md emitted"
 [[ -f "$REPO/CHANGELOG.md" ]]          && t_pass "4.1 CHANGELOG.md emitted" || t_fail "4.1 CHANGELOG.md emitted"
 

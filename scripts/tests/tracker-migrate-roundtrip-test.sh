@@ -226,7 +226,7 @@ _setup_test_repo() {
     local test_repo
     test_repo=$(mktemp -d -t rtrip.XXXXXX)
     cp "$fixture_dir/BACKLOG.md"             "$test_repo/BACKLOG.md"
-    cp "$fixture_dir/IMPLEMENTATION_PLAN.md" "$test_repo/IMPLEMENTATION_PLAN.md"
+    cp "$fixture_dir/IMPLEMENTATION-PLAN.md" "$test_repo/IMPLEMENTATION-PLAN.md"
     cp "$fixture_dir/tracker.toml"           "$test_repo/tracker.toml"
     mkdir -p "$test_repo/.pack-tracker"
     echo "$test_repo"
@@ -340,7 +340,7 @@ printf "\n=== Group 3: F→R→F byte-equivalent on tracker side ===\n"
 SIG_BEFORE=$(_state_create_signature "$STATE1")
 
 # Set up a fresh state file but preserve the reverse-emitted flat
-# files (reverse already wrote BACKLOG.md / IMPLEMENTATION_PLAN.md).
+# files (reverse already wrote BACKLOG.md / IMPLEMENTATION-PLAN.md).
 # Wipe mapping + state so the second forward starts fresh.
 rm -f "$REPO1/.pack-tracker/id-map.json"
 rm -f "$STATE1"

@@ -414,7 +414,7 @@ prefix = "BD"
 forward_complete = false
 mapping_file = ".pack-tracker/id-map.json"
 EOF
-cat > "$REPO/IMPLEMENTATION_PLAN.md" <<'EOF'
+cat > "$REPO/IMPLEMENTATION-PLAN.md" <<'EOF'
 # IMPLEMENTATION PLAN
 EOF
 cat > "$REPO/BACKLOG.md" <<EOF

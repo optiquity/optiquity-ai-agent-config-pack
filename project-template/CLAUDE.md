@@ -203,14 +203,14 @@ The Source column indicates whether files in each directory are
 flat-file (source of truth in the working tree) or tracker-mirrored
 (read-only mirror; edit via Pack/PM Chat). In flat-file mode (default),
 all rows read `flat`. In tracker mode, `docs/project/` becomes `mixed`
-because BACKLOG.md, STATUS.md, CHANGELOG.md, and IMPLEMENTATION_PLAN.md
+because BACKLOG.md, STATUS.md, CHANGELOG.md, and IMPLEMENTATION-PLAN.md
 are tracker-mirrored while ARCHITECTURE.md remains flat. `pm-startup`
 Step 2 reads this column to branch by source.
 
 | Directory | Contents | Updated by | Source |
 |---|---|---|---|
 | `docs/pack/` | `METHODOLOGY.md`, `INSTALL-PROCEDURES.md`, `prompts/`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) | flat |
-| `docs/project/` | `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` | PM chat and developer during active development | flat (or `mixed` in tracker mode) |
+| `docs/project/` | `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` | PM chat and developer during active development | flat (or `mixed` in tracker mode) |
 | `docs/reference/` | Project-specific user-facing documentation (how-to guides, API references) | Developer as needed | flat |
 
 Root-level files: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `README.md`, `agent-run.sh`.

@@ -110,7 +110,7 @@ Every project should have all of these. Create them before writing any code.
 | Document | Purpose | Who writes | Who updates |
 |---|---|---|---|
 | `ARCHITECTURE.md` | Architectural decisions, layer map, patterns, data models | Architect agent (kickoff) | Any phase that changes architecture |
-| `IMPLEMENTATION_PLAN.md` | All phases with tasks, DoD, agent, risks | PM chat + planner agent | Each phase adds entries; never delete old phases |
+| `IMPLEMENTATION-PLAN.md` | All phases with tasks, DoD, agent, risks | PM chat + planner agent | Each phase adds entries; never delete old phases |
 | `CHANGELOG.md` | Permanent dated history of what was built | PM chat | One entry per phase, after reviewer approval; coder proposes entry in completion report |
 | `BACKLOG.md` | Technical debt, deferred items, known gaps | PM chat | Add/resolve; never delete items |
 | `STATUS.md` | Current phase, phase table, next actions, key metrics | PM chat or developer | After every phase completion |
@@ -121,11 +121,11 @@ Every project should have all of these. Create them before writing any code.
 
 ### Document hygiene rules (inviolable)
 
-1. ARCHITECTURE.md and IMPLEMENTATION_PLAN.md are source of truth — they must reflect reality.
+1. ARCHITECTURE.md and IMPLEMENTATION-PLAN.md are source of truth — they must reflect reality.
 2. CHANGELOG.md is append-only — never edit old entries.
 3. BACKLOG.md items are never deleted — mark resolved with a note.
 4. STATUS.md is updated after every phase — stale status is worse than no status.
-5. Agents must not modify `ARCHITECTURE.md` or `IMPLEMENTATION_PLAN.md` unless
+5. Agents must not modify `ARCHITECTURE.md` or `IMPLEMENTATION-PLAN.md` unless
    explicitly instructed in the prompt. `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`,
    `PACK-FEEDBACK.md`, and all other root `.md` files are exclusively the PM chat's
    responsibility — no agent should write them, and no agent prompt should instruct
@@ -290,7 +290,7 @@ recommended alternatives are insufficient for this specific case.
 
 ## Part 4 — Phase Structure
 
-Every phase in IMPLEMENTATION_PLAN.md should follow this format:
+Every phase in IMPLEMENTATION-PLAN.md should follow this format:
 
 ```markdown
 ## Phase N — [Title]
@@ -331,7 +331,7 @@ When a planning agent recommends splitting a phase into sequential implementatio
 chunks, use **Part** as the term for each chunk — never "pass." "Pass" is a reserved
 term for the coder/reviewer cycle counter within a single coder or fix-cycle prompt.
 
-**In IMPLEMENTATION_PLAN.md:** Label each chunk as a sub-section within the phase:
+**In IMPLEMENTATION-PLAN.md:** Label each chunk as a sub-section within the phase:
 
 ```markdown
 ### Part 1 — [Subtitle]
@@ -374,7 +374,7 @@ been explicitly split into multiple sequential parts by a planning agent.
 5. Set up the PM chat (`supporting-docs/SETUP-NEW.md` Step 10 — choose
    Claude Desktop, Claude Code CLI, Codex CLI, or Gemini CLI)
 6. Planning conversation with PM chat → establishes architecture, phase plan
-7. PM chat generates: `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`; fills in
+7. PM chat generates: `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`; fills in
    remaining `[PLACEHOLDER]` sections in context files using `PLATFORM-SKILLS.md`;
    writes the **Active skills** line in the Skill loading section of `CLAUDE.md`,
    `AGENTS.md`, and `GEMINI.md` — listing the skills derived from
@@ -415,7 +415,7 @@ For phases integrating external APIs or making architectural decisions:
 ```
 1. docs-researcher agent reads official API docs (prompt from PM chat)
 2. Developer pastes research report into PM chat
-3. PM chat identifies discrepancies, generates IMPLEMENTATION_PLAN.md correction prompt
+3. PM chat identifies discrepancies, generates IMPLEMENTATION-PLAN.md correction prompt
 4. Developer runs correction in standard claude CLI, commits
 5. (Optional) tester agent generates test specification → PM chat incorporates into coder prompt
 6. Standard coder → reviewer cycle
@@ -457,7 +457,7 @@ reviewer's perspective. It is not the PM chat's bar. The PM chat evaluates every
 1. Is there a concrete, named external blocker? Valid examples:
    - An external system or API not yet accessible because integration is planned for a later phase
    - A design decision that requires a docs-researcher or architect agent run to resolve
-   - A later phase in `IMPLEMENTATION_PLAN.md` explicitly designated for this work
+   - A later phase in `IMPLEMENTATION-PLAN.md` explicitly designated for this work
 2. Would fixing it require scope large enough to justify its own phase — one that would
    need its own docs-researcher or architect run?
 
@@ -504,7 +504,7 @@ The reviewer report shows either:
 2. **Propose an architect pass** — describe what the architect agent will read and what
    doc changes are expected. Get explicit user approval before proceeding.
 3. **Run the architect agent** — read-only pass using `architect.md` Variant: mid-phase. The agent reads
-   `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, `CLAUDE.md`, `AGENTS.md`, and the
+   `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`, `CLAUDE.md`, `AGENTS.md`, and the
    specific reviewer findings. It proposes corrections to those docs as text output —
    it does not write files.
 4. **Present proposed doc changes** — show the user exactly what the architect proposes
@@ -517,7 +517,7 @@ The reviewer report shows either:
 
 > **CLAUDE.md and AGENTS.md changes:** The architect agent may propose changes to
 > `CLAUDE.md` or `AGENTS.md` only if the root cause cannot be addressed by fixing
-> `ARCHITECTURE.md` or `IMPLEMENTATION_PLAN.md` alone. These require an additional
+> `ARCHITECTURE.md` or `IMPLEMENTATION-PLAN.md` alone. These require an additional
 > explicit user approval beyond the general architect pass approval.
 
 ### Workflow 5 — Full-codebase audit (auditor agent)
@@ -563,7 +563,7 @@ The auditor parent is bypassed; the subagent reports directly.
 
 ```
 1. PM chat: describe feature → discussion to scope and document it
-2. PM chat generates updates to ARCHITECTURE.md and IMPLEMENTATION_PLAN.md (new phases)
+2. PM chat generates updates to ARCHITECTURE.md and IMPLEMENTATION-PLAN.md (new phases)
 3. Developer runs update prompts in standard claude, commits doc changes, syncs
 4. Run Workflow 2 for each new phase
 ```
@@ -585,14 +585,14 @@ phase before pasting.
 | Workflow 3 — External API research | `docs-researcher.md` Variant: standard; (optional) `tester.md` Variant: standard; then Workflow 2 prompts for the implementation cycle |
 | Workflow 4 — Fix cycle | `coder.md` Variant: fix-cycle (main); `architect.md` Variant: mid-phase (when Trigger A or B fires); `reviewer.md` Variant: standard (re-runs the cycle after each fix); `pm-chat.md` Variant: backlog-status-update (for items deferred to BACKLOG) |
 | Workflow 5 — Full-codebase audit | `auditor.md` Variant: standard — a single auditor prompt that spawns the right subagents, replacing the legacy per-dimension audit prompts; `pm-chat.md` Variant: backlog-status-update (for BACKLOG intake from findings); Workflow 2 prompts for each fix prompt the audit generates |
-| Workflow 6 — New feature | PM chat updates `ARCHITECTURE.md` and `IMPLEMENTATION_PLAN.md` directly (no pack variant); `pm-chat.md` Variant: backlog-status-update (if the feature adds BACKLOG entries); then Workflow 2 prompts for each new phase |
+| Workflow 6 — New feature | PM chat updates `ARCHITECTURE.md` and `IMPLEMENTATION-PLAN.md` directly (no pack variant); `pm-chat.md` Variant: backlog-status-update (if the feature adds BACKLOG entries); then Workflow 2 prompts for each new phase |
 
 ---
 
 ## Prompt Authoring Principles
 
 These principles apply to every prompt the PM chat generates and to
-every task entry written in IMPLEMENTATION_PLAN.md. They are not style
+every task entry written in IMPLEMENTATION-PLAN.md. They are not style
 guidance. They govern what information belongs in a prompt and what
 does not.
 
@@ -622,7 +622,7 @@ Every prompt must answer:
    steps.
 3. **Success criteria** — the observable, verifiable state that
    confirms the goal is achieved. What can be checked to know the
-   prompt's work is complete? At the IMPLEMENTATION_PLAN.md task
+   prompt's work is complete? At the IMPLEMENTATION-PLAN.md task
    level this maps to the task's "Definition of done."
 
 Plus the surrounding sections: Context, Required reading, Files in
@@ -837,7 +837,7 @@ The data-dependency-trace requirement (see PM chat self-check item 3
 below) ensures this escape valve is invoked rarely — incomplete file
 lists are the most common reason agents hit it.
 
-### When generating prompts from IMPLEMENTATION_PLAN.md task entries
+### When generating prompts from IMPLEMENTATION-PLAN.md task entries
 
 If a task entry contains prescriptive implementation instructions rather than a
 problem/goal/success-criteria description, reframe it before including it in the prompt —
@@ -1083,7 +1083,7 @@ No phase prompt is generated until this check is complete.
 5. Run orphan audit (Procedure 3)
 6. Skill gap check:
    Read the Active skills line from the Skill loading section of CLAUDE.md.
-   Read the upcoming phase's tasks from IMPLEMENTATION_PLAN.md.
+   Read the upcoming phase's tasks from IMPLEMENTATION-PLAN.md.
    Scan the task descriptions for technology references not covered by the
    active skills (e.g., Python imports in a Swift-only skill set, proto files
    without grpc-patterns, C interop without c-language).
@@ -1155,7 +1155,7 @@ The PM chat presents its reasoning and the user may override. Bias toward resolv
    - Addendum task: add to current phase prompt as additional numbered task
    - Separate pass: standalone coder prompt for this item only
    - Cleanup phase: accumulate multiple items into a dedicated phase with its own
-     IMPLEMENTATION_PLAN.md entry and reviewer pass
+     IMPLEMENTATION-PLAN.md entry and reviewer pass
 3. When coder completes the work:
    - Reviewer confirms work is done (reviewer checklist item 4 — implementation plan compliance)
    - Reviewer confirms deferral comment has been removed from code
@@ -1223,7 +1223,7 @@ spliced into `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` in one commit.
 
 **Artifacts never touched by Procedure 6:** any `x-` agent / skill /
 prompt file; any `SKILL.md` (already on disk); `BACKLOG.md`;
-`STATUS.md`; `ARCHITECTURE.md`; `IMPLEMENTATION_PLAN.md`;
+`STATUS.md`; `ARCHITECTURE.md`; `IMPLEMENTATION-PLAN.md`;
 `CHANGELOG.md`; PLATFORM-SKILLS.md `## Custom agents` and
 `## Custom skills` project-owned regions.
 
@@ -1315,7 +1315,7 @@ Stop and reassess when you see these patterns.
 | Document | Coder | Reviewer | PM chat | Notes |
 |---|---|---|---|---|
 | `ARCHITECTURE.md` | Only if task explicitly says so | Never | Approves changes | Source of truth |
-| `IMPLEMENTATION_PLAN.md` | Only if task explicitly says so | Never | Authors and approves | Never delete phases |
+| `IMPLEMENTATION-PLAN.md` | Only if task explicitly says so | Never | Authors and approves | Never delete phases |
 | `CHANGELOG.md` | No — proposes entry in report only | Never | Yes — after reviewer approval | One entry per phase |
 | `BACKLOG.md` | Never — reports only | Never — reports only | Yes — after user approval | Never delete items |
 | `STATUS.md` | Never | Never | Yes — after phase completion | Update after every phase |
@@ -1337,7 +1337,7 @@ The PM chat may use Desktop Commander for:
 The PM chat must NOT use Desktop Commander for:
 - Writing or modifying any source code
 - Sweeping multi-file changes without explaining and getting explicit approval
-- Modifying ARCHITECTURE.md or IMPLEMENTATION_PLAN.md without approval
+- Modifying ARCHITECTURE.md or IMPLEMENTATION-PLAN.md without approval
 
 When Desktop Commander is unavailable, the PM chat outputs file content and
 git commands for the human to run manually. Both paths must always be available.
@@ -1398,7 +1398,7 @@ reference.
 
 ### Day 1 — Setup
 - [ ] Create GitHub repo; clone locally
-- [ ] Planning conversation → ARCHITECTURE.md, IMPLEMENTATION_PLAN.md, CLAUDE.md, AGENTS.md
+- [ ] Planning conversation → ARCHITECTURE.md, IMPLEMENTATION-PLAN.md, CLAUDE.md, AGENTS.md
 - [ ] Run `"$PACK/scripts/init-project.sh" .` from the project root.
       The script previews every operation, asks for explicit
       confirmation, and on `y` executes eleven stages (S0..S10) that

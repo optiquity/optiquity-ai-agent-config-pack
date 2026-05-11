@@ -1240,7 +1240,7 @@ non-SPM layout), `.claude/settings.json` (env block), and
 (machine-level; not in the project tree).
 
 **Artifacts never touched by Procedure 7:** `BACKLOG.md`; `STATUS.md`;
-`CHANGELOG.md`; `ARCHITECTURE.md`; `IMPLEMENTATION_PLAN.md`; the
+`CHANGELOG.md`; `ARCHITECTURE.md`; `IMPLEMENTATION-PLAN.md`; the
 trinity files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`); `.codex/`,
 `.gemini/`, `.claude/agents/` subtrees; any file under `docs/project/`
 other than the ones the PM chat ordinarily writes; any `x-` custom

@@ -48,7 +48,7 @@ Usage: tracker-migrate.sh <subcommand> [options]
 
 Subcommands:
   forward [--repo-root PATH] [--dry-run] [--resume] [--mirror-only]
-        Migrate flat-file BACKLOG.md / IMPLEMENTATION_PLAN.md content
+        Migrate flat-file BACKLOG.md / IMPLEMENTATION-PLAN.md content
         to the tracker. Idempotent: re-runs skip existing entries.
         --repo-root    Path to the repo to migrate (default: CWD).
         --dry-run      Print what would be done; create no issues.

@@ -18,7 +18,7 @@ was asked to fix: [PM chat inserts the open issue list from the prior
 reviewer report here]
 
 **Required reading:** `ARCHITECTURE.md` in full. `CHANGELOG.md` (Phase
-[X] entry). `CLAUDE.md`. `IMPLEMENTATION_PLAN.md` Phase [X] in full.
+[X] entry). `CLAUDE.md`. `IMPLEMENTATION-PLAN.md` Phase [X] in full.
 BACKLOG entries (resolve via the trinity `## Document locations`
 table; reads the flat-file mirror in flat-file mode and the tracker
 in tracker mode) — needed for the BACKLOG hygiene check (review

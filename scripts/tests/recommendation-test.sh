@@ -66,7 +66,7 @@ Status: Open
 **TD-002 — Refactor**
 Status: Open
 EOF
-cat > "$TR_CLI/IMPLEMENTATION_PLAN.md" <<'EOF'
+cat > "$TR_CLI/IMPLEMENTATION-PLAN.md" <<'EOF'
 ## Phase 1 — Setup
 ## Phase 2 — Core
 ## Phase 3 — Polish
@@ -76,7 +76,7 @@ assert_eq "1.2 td_count_active=2"   "2" "$(printf '%s' "$sigs" | jq -r '.td_coun
 assert_eq "1.2 td_count_total=2"    "2" "$(printf '%s' "$sigs" | jq -r '.td_count_total')"
 assert_eq "1.2 phase_count=3"       "3" "$(printf '%s' "$sigs" | jq -r '.phase_count')"
 
-# 1.2b — F-1 closure: client BACKLOG.md + IMPLEMENTATION_PLAN.md at the
+# 1.2b — F-1 closure: client BACKLOG.md + IMPLEMENTATION-PLAN.md at the
 # trinity-mandated docs/project/ path. The lib must fall back from the
 # repo-root location (legacy v9 layout) to docs/project/ (v10/v11
 # trinity layout) per project-template/CLAUDE.md Document locations.
@@ -92,7 +92,7 @@ Status: Unblocked
 **TD-003 — C**
 Status: Open
 EOF
-cat > "$TR_CLI_DOCS/docs/project/IMPLEMENTATION_PLAN.md" <<'EOF'
+cat > "$TR_CLI_DOCS/docs/project/IMPLEMENTATION-PLAN.md" <<'EOF'
 ## Phase 1 — One
 ## Phase 2 — Two
 EOF
