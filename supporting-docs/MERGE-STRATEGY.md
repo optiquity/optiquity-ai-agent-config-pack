@@ -302,6 +302,54 @@ backup directory.
   sidecar AND extension removal as conflict-resolution signals
   (ARCHITECTURE §6.H).
 
+**BD-101 (shipped 2026-05-10) added three verification gates** that
+fire inside the `--dry-run` and `--apply` modes above. Gates do not
+mutate the working tree — they observe and either pass or fail.
+
+- **Gate 1 — pre-migration dry-run summary** fires inside `--dry-run`
+  after `_stage_report` writes the dispositions TSV + report.md. It
+  validates that no `unknown-classification` rows leaked through and
+  that report.md was rendered. Read-only; no recovery needed beyond
+  re-running `--dry-run` with a fix.
+- **Gate 2 — post-Phase-A verification** fires inside `--apply` after
+  S6 (post_report_hook). It checks: trinity addenda landed
+  (CLAUDE / AGENTS / GEMINI carry the v11 H2 markers), HELP-FRAGMENT
+  files match pack mirrors byte-for-byte, dispositions.tsv has no
+  unknown rows, BD-042 / BD-091 relocated docs are in their new
+  positions, and `validate-pack.py` passes against the pack source.
+- **Gate 3 — post-Phase-B verification** fires inside `--apply` after
+  Gate 2 passes, **conditionally** on tracker mode being active at
+  the target (`tracker.toml` present with `mode.state = "tracker"`
+  and `migration.forward_complete = true`). In flat-file mode it
+  prints `[INFO] tracker: skipped` and returns 0. When tracker mode is
+  active it checks: `id-map.json` integrity, BACKLOG.md mirror
+  freshness, and `pack tracker doctor` exit-status.
+
+**Gate-failure exit code.** A failing gate returns
+`EXIT_GATE_FAILED = 31` from the migrator. This slot is intentionally
+above the stage-failure range (20..30) so callers / `--resume`
+reconciliation logic can distinguish a gate failure from a stage-
+internal failure. The exit code is also documented in
+`MIGRATION-v10-to-v11.md` Step 1's exit-codes table.
+
+**Gate-failure recovery.** Recovery depends on which gate fired:
+
+- **Gate 1 FAIL** — re-run `--dry-run` after fixing the defect (no
+  working-tree mutation has occurred).
+- **Gate 2 FAIL** — fix-and-continue is NOT supported. The S4/S5/S6
+  sentinels are already marked `.done` by the time Gate 2 fires, so
+  `--resume`'s forward-only guard would skip past the failed stages
+  without re-firing the gate. The only supported recovery is
+  `bash $PACK/scripts/restore-from-backup.sh
+  <state-dir>-backup` followed by a fresh `--dry-run` + `--apply`.
+  The Gate 2 FAIL banner spells out the exact commands.
+- **Gate 3 FAIL** — Phase-A (working tree) is intact, so
+  restore-from-backup is the wrong recovery and would discard
+  Phase-A work. Run `pack tracker doctor` for a per-check diagnosis
+  and follow its printed recovery verbs; if tracker setup is
+  unrecoverable, `pack tracker reset` + `pack tracker init` from a
+  clean state.
+
 Pre-BD-095 single-shot recipe (still works as the bare invocation
 default behavior):
 

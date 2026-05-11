@@ -80,12 +80,17 @@ migrate_v10_to_v11_gate3_run() {
     else
         say "── Gate 3 FAIL — $fails check(s) failed; route through A1 UX ──"
         say ""
-        say "Recovery options:"
-        say "  (a) Inspect each [FAIL] line above and fix the underlying defect."
-        say "  (b) Run \`pack tracker doctor\` to diagnose; follow the recovery"
-        say "      verbs the doctor prints."
-        say "  (c) If tracker setup is unrecoverable, run \`pack tracker reset\`"
-        say "      and start over."
+        say "Recovery — Phase-B (tracker mode) is recoverable WITHOUT restore-from-backup;"
+        say "Phase-A is already complete. Diagnose and re-run the failed tracker step:"
+        say ""
+        say "  1. Inspect each [FAIL] line above."
+        say "  2. Run \`pack tracker doctor\` for a per-check diagnosis and the"
+        say "     specific recovery verbs to run."
+        say "  3. If tracker setup is unrecoverable (mapping / mirror state corrupt),"
+        say "     run \`pack tracker reset\` and re-run \`pack tracker init\`."
+        say ""
+        say "Note: the Phase-A working tree is intact (Gate 2 already passed). Do NOT"
+        say "restore-from-backup for a Gate 3 failure — it would discard Phase-A work."
         return "${EXIT_GATE_FAILED:-31}"
     fi
 }

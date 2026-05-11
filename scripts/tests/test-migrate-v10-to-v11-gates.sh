@@ -24,6 +24,9 @@
 #   Gate exit codes
 #     4.1 Gate failure exit code 31 (EXIT_GATE_FAILED) is distinguishable
 #         from stage failure exit codes (20..30)
+#     4.2 Stage cap (30) is disjoint from gate code (31)
+#     4.3 End-to-end --apply propagates rc=31 when Gate 2 fails (verified
+#         via planted HELP-FRAGMENT.md drift in v10 fixture)
 #
 # These tests directly source the gate libs and helpers rather than
 # round-tripping through the full migrator for every case — the BD-095
@@ -343,20 +346,34 @@ assert_eq "4.2 stage cap is 30, gate is 31 — disjoint" "ok" \
     "$(if (( EXIT_GATE_FAILED > 30 )); then echo ok; else echo collision; fi)"
 
 # 4.3 End-to-end: --apply that fails Gate 2 surfaces rc=31 (verified by
-#     forcing a Gate 2 failure mid-apply). We do this by deleting the
-#     trinity addenda right after S5 — the apply.sh post_report_hook
-#     calls Gate 2 which observes the strip and exits 31.
+#     forcing a Gate 2 failure mid-apply). We do this by planting a
+#     custom HELP-FRAGMENT.md inside the v10 fixture BEFORE --dry-run.
+#     S5's artifact-install honors the `! -f` guard and keeps our custom
+#     copy; Gate 2's help-fragments check then observes the byte-mismatch
+#     against the pack mirror and FAILs, propagating EXIT_GATE_FAILED=31
+#     through the apply.sh post_report_hook wrapper.
+#
+#     Why HELP-FRAGMENT.md (not trinity)? The v10 customization-surface
+#     fingerprint covers trinity but NOT docs/pack/HELP-FRAGMENT.md, so
+#     planting the file does not invalidate the dry-run fingerprint
+#     (--apply's freshness check still passes). This gives us a clean
+#     end-to-end path through dispatch + S5 + S6 + Gate 2 without
+#     mid-flight hook injection.
 T=$(make_v10_target)
+mkdir -p "$T/docs/pack"
+printf '# CUSTOM HELP FRAGMENT — DRIFT FOR GATE 2 TEST\n' \
+    > "$T/docs/pack/HELP-FRAGMENT.md"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "plant drifted HELP-FRAGMENT.md" 2>/dev/null
 PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
-# Pre-stage a wrapper around the migrate-sh that strips trinity
-# addenda from CLAUDE.md after install but before Gate 2 runs.
-# Easiest approach: source apply.sh directly and inject a hook.
-# Simpler: run --apply and observe rc; if it is 0 (because addenda
-# IS present after a clean migration), we then mutate and re-invoke
-# Gate 2 directly to confirm the rc-31 contract from the gate alone
-# (already covered by 2.2). Skip a heavy end-to-end here and rely on
-# 2.2's direct gate-call assertion of rc=31.
-t_pass "4.3 end-to-end gate rc=31 covered by 2.2/2.3/2.4 direct gate-call asserts"
+# Now run --apply. S5 keeps our custom HELP-FRAGMENT. Gate 2 fires from
+# inside post_report_hook, observes the help-fragment byte-mismatch,
+# and apply.sh exits with EXIT_GATE_FAILED.
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply "$T" 2>&1) ; rc=$?
+assert_eq "4.3 --apply exit code on Gate 2 FAIL" "31" "$rc"
+assert_contains "4.3 output names Gate 2"           "$out" "Gate 2 FAIL"
+assert_contains "4.3 output names help-fragments"   "$out" "[FAIL] help-fragments"
+assert_contains "4.3 output names HELP-FRAGMENT.md" "$out" "HELP-FRAGMENT.md differs"
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────

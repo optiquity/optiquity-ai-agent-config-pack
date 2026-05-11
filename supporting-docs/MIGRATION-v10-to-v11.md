@@ -147,6 +147,27 @@ framework's single S4 stage and share the BD-095 sentinel
 | 14 | v10 baseline tag missing in pack repo | `git -C "$PACK" fetch --tags` then retry. |
 | 15 | BD-088 library missing under pack | The pack repo is corrupt or incomplete; re-clone. |
 | 21–30 | Stage `S<n>` failure | Read the printed error message; address; retry. |
+| 31 | `EXIT_GATE_FAILED` — BD-101 verification gate (Gate 1, 2, or 3) reported a defect | Read the printed `[FAIL]` lines and the gate's printed recovery banner. Gate 1 (during `--dry-run`) is read-only — fix the underlying defect and re-run `--dry-run`. Gate 2 (post-Phase-A) requires `restore-from-backup.sh` + re-run of `--dry-run` + `--apply`; fix-and-continue is NOT supported because S4/S5/S6 sentinels are already marked `.done`. Gate 3 (post-Phase-B, tracker-mode only) is recoverable without restore-from-backup — run `pack tracker doctor` and follow the printed verbs. See `MERGE-STRATEGY.md` §A1 for full gate semantics. |
+
+**BD-101 verification gates.** During `--dry-run` and `--apply` the
+migrator emits one or more `── Gate N — ... ──` banners. There are
+three gates:
+
+- **Gate 1** fires inside `--dry-run` and validates the dispositions
+  TSV / report.md before the user reviews them. Read-only.
+- **Gate 2** fires after Phase-A completes inside `--apply` (post-S6).
+  It checks trinity addenda, HELP-FRAGMENT byte-equality, dispositions
+  consistency, relocated docs, and `validate-pack`. On FAIL the
+  migrator exits `31` (`EXIT_GATE_FAILED`).
+- **Gate 3** fires after Phase-B inside `--apply`, **only** when
+  `tracker.toml` is present at the target with `mode.state =
+  "tracker"` and `migration.forward_complete = true`. In flat-file
+  mode the gate prints `[INFO] tracker: skipped` and returns 0.
+
+A FAIL banner always lists the failing checks as `[FAIL] <check-name>`
+lines and prints a recovery banner naming the supported recovery path
+for that gate. See `MERGE-STRATEGY.md` §A1 for the full gate
+semantics + recovery contracts.
 
 ---
 

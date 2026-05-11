@@ -262,11 +262,17 @@ _migrator_parse_args() {
                 _MIGRATOR_MODE="apply"
                 ;;
             --resume)
-                # BD-095 surface; acknowledged but not implemented in BD-119.
-                # PLAN POQ-2 / OQ1: resume stays a stub that errors loudly so
-                # callers do not silently get a fresh run when they expected
-                # state-machine resume.
-                die "--resume not yet implemented; tracked as BD-095" "$EXIT_INTERNAL"
+                # `--resume` is per-adapter. The v10→v11 adapter handles it
+                # in `scripts/lib/migrate-v10-to-v11/resume.sh` and intercepts
+                # the flag BEFORE forwarding to `migrator_run`, so this
+                # framework-level branch is unreachable in normal use.
+                # Adapters that need resume must wire similar pre-`migrator_run`
+                # mode dispatch in their own entry script (see migrate-v10-to-v11.sh
+                # _mode parsing as the reference implementation). The framework
+                # does not provide a generic state-machine resume — the
+                # sentinels and recovery semantics are version-specific.
+                die "--resume is per-adapter; this framework call path was not intercepted by the adapter (see scripts/lib/migrate-v10-to-v11/resume.sh for the v10→v11 reference implementation)" \
+                    "$EXIT_INTERNAL"
                 ;;
             --)
                 shift

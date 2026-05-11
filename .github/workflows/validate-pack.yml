@@ -92,6 +92,12 @@ jobs:
       - name: migrate-v10-to-v11 tests (BD-085)
         if: always()
         run: bash scripts/tests/test-migrate-v10-to-v11.sh
+      - name: migrate-v10-to-v11 dry-run/apply/resume tests (BD-095)
+        if: always()
+        run: bash scripts/tests/test-migrate-v10-to-v11-dry-run.sh
+      - name: migrate-v10-to-v11 verification gates (BD-101)
+        if: always()
+        run: bash scripts/tests/test-migrate-v10-to-v11-gates.sh
       - name: migrator-core tests (BD-119)
         if: always()
         run: bash scripts/test-migrator-core.sh

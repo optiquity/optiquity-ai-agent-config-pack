@@ -1849,7 +1849,8 @@ def check_migrator_framework_inventory() -> None:
             return
     ok(f"migrator-core.sh declares all {len(required_names)} public-API functions")
 
-    # Exit-code constants must be present.
+    # Exit-code constants must be present. BD-119 froze 8 baseline codes;
+    # BD-101 added EXIT_GATE_FAILED (=31) for verification-gate failures.
     required_exits = [
         "EXIT_PACK_INVALID",
         "EXIT_NOT_GIT",
@@ -1858,6 +1859,7 @@ def check_migrator_framework_inventory() -> None:
         "EXIT_BASELINE_MISSING",
         "EXIT_LIB_MISSING",
         "EXIT_ALREADY_MIGRATED",
+        "EXIT_GATE_FAILED",
         "EXIT_INTERNAL",
     ]
     for sym in required_exits:

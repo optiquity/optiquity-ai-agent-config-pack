@@ -200,10 +200,16 @@ scripts/                                    Pack-level scripts
     ├── tracker-provider-gh.sh              gh-CLI backend (v11; D-2)
     ├── tracker-{config,init,labels,errors,sidecar,mirror,agent-read}.sh   Tracker subsystem (v11)
     ├── tracker-migrate-{forward,reverse}.sh    Forward / reverse migration libs (v11; D-3 / D-8)
-    └── template-{translations,version}.sh  Template freshness helpers (v11)
+    ├── template-{translations,version}.sh  Template freshness helpers (v11)
+    └── migrate-v10-to-v11/                 v10→v11 adapter-private libs (v11; BD-095 + BD-101)
+        ├── dry-run.sh, apply.sh, resume.sh    Two-phase mode dispatchers (BD-095)
+        ├── checkpoint.sh                       BD-101 verification helpers
+        └── gate-{1,2,3}-*.sh                   Pre/post Phase-A/Phase-B gates (BD-101)
 
 scripts/test-migrator-core.sh               BD-119 unit tests — public API surface (v11)
 scripts/test-migrator-manifest.sh           BD-119 unit tests — manifest parser/validator (v11)
+scripts/tests/test-migrate-v10-to-v11-dry-run.sh   BD-095 tests — dry-run / apply / resume modes (40 cases)
+scripts/tests/test-migrate-v10-to-v11-gates.sh     BD-101 tests — Gate 1 / 2 / 3 verification (39 cases)
 
 .github/workflows/                          GitHub Actions
 └── validate-pack.yml                       Pack self-validation on every push
