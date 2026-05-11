@@ -17,13 +17,30 @@ UI/UX compliance only (per `audit-methodology` rule 20):
   transitions are candidates.
 - **Accessibility gaps** — missing accessibility labels, insufficient tap
   targets (under 44pt on Apple platforms), no keyboard navigation support,
-  missing Dynamic Type support, contrast violations.
+  missing Dynamic Type support, contrast violations, screen-reader flow
+  defects (improper grouping, missing traits, absent custom rotors where
+  warranted), Reduce Motion preference unhonored, color-only meaning
+  conveyance (information distinguishable only by hue).
 - **Incomplete UI states** — missing loading, empty, and error states for
   asynchronous content. A view that only renders the success case is
   incomplete.
 - **Platform-specific UI conventions** — iOS 26 availability guards used
   correctly, macOS menu bar wiring, watchOS / tvOS layout conventions
-  followed.
+  followed, orientation handling (portrait/landscape adaptation; documented
+  orientation locks), system-gesture conflict avoidance, drag-and-drop
+  conformance (NSItemProvider / `.draggable` / standard pasteboard types).
+- **Localization and adaptation** — string-length tolerance for translated
+  labels (no truncation, no overflow under pseudolocalization), RTL layout
+  semantics where the platform supports it (leading/trailing instead of
+  left/right), locale-specific date/number/currency formatting, dark-mode /
+  appearance support including contrast in both modes, iPad split-view /
+  Stage Manager / multi-scene multitasking adaptation.
+
+Beyond the bullets above, every UI rule defined in a loaded platform skill
+is in scope. This list is illustrative, not exhaustive — if a loaded skill
+(`apple-architecture-core`, `ios-architecture`, `macos-architecture`, or
+any future per-platform skill) defines a UI rule not enumerated here,
+audit it. The 4 default headings are the floor, not the ceiling.
 
 ## Out of scope
 

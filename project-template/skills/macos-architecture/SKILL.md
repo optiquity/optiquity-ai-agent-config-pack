@@ -55,3 +55,12 @@ allowed-tools: Read, Grep, Glob, Bash
 26. Register app Services in Info.plist when the app provides text or data transformation capabilities to other apps.
 27. Support Shortcuts (formerly Automator actions) via App Intents for common operations.
 28. Drag-and-drop uses `NSItemProvider` (AppKit) or `.onDrop`/`.draggable` (SwiftUI). Support standard pasteboard types for interoperability with other apps.
+
+## Localization
+
+29. Externalize every user-visible string. Use `String(localized:)` (Swift 5.5+) backed by a `.xcstrings` String Catalog (preferred on macOS 14+) or `.strings`/`.stringsdict` files. Hardcoded user-facing literals — including menu items, window titles, and toolbar labels — are a finding.
+30. Tolerate translated string-length growth — design windows, menus, and inspector panels for at least 30% expansion. Menu bar item widths and column headers are particularly susceptible; pseudolocalize during development to catch truncation.
+31. Use semantic layout: leading/trailing edges instead of left/right; `.layoutDirection` aware spacing; mirror toolbar item ordering and asymmetric icons under right-to-left (RTL) locales (Arabic, Hebrew, etc.). Do not hardcode `.left` / `.right` for user-facing layout.
+32. Format dates, times, numbers, currencies, and units locale-aware: `Date.FormatStyle`, `Decimal.FormatStyle`, `Measurement.FormatStyle`, `ListFormatter`, `RelativeDateTimeFormatter`. Never concatenate locale-sensitive substrings by hand.
+33. Maintain a single source of truth for translations — the String Catalog file under version control, with a documented translator workflow. Localize Info.plist values (`CFBundleDisplayName`, `NSHumanReadableCopyright`, usage-description strings) via `InfoPlist.xcstrings`. Empty translation values, stale keys, and untranslated languages are findings.
+34. Test under at least one RTL locale and one long-string locale (German, Finnish) before release. Snapshot tests for windows and menus must cover both directions where user-facing.

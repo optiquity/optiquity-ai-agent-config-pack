@@ -24,12 +24,26 @@ Per `audit-methodology` rule 16:
   incorrect actor or isolation annotations (Swift 6 strict concurrency),
   missing `asyncio.CancelledError` handling in streaming handlers (Python),
   improper task cancellation.
-- **Systemic error handling** — boundary mapping consistency (are external
-  errors uniformly mapped to domain errors at the boundary?), retry policy
-  uniformity (do all transient-failure paths use the same backoff strategy?),
-  empty catch blocks, swallowed errors, error types that lose context. This
-  is about *cross-cutting consistency*, not individual error-handling bugs
-  inside one function.
+- **Systemic error handling** — *cross-cutting* consistency only (per
+  `audit-methodology` rule 16's three-site / cross-module threshold):
+  boundary mapping uniformly applied at every transport boundary the
+  project uses (gRPC, REST, message queue, filesystem, OS process
+  boundary — every transport defined in the loaded protocol skills);
+  retry policy uniformity (same backoff curve, same `maxAttempts`, same
+  retryable-vs.-non-retryable taxonomy across all transient paths);
+  error-type hierarchy completeness (every domain layer has its typed
+  error per `error-handling` rule 1; every boundary maps per
+  `error-handling` rule 4). The boundaries to audit are exactly those
+  named in `error-handling` rule 4 (repository / service / external-API
+  ingress) plus every transport per the loaded protocol skills.
+- **Per-function error-handling defects** — empty catch blocks, swallowed
+  errors, error types that lose context, missing re-raise after log.
+  These are filed under "Language idiom adherence" above unless the same
+  defect recurs at three or more independent sites or crosses module
+  boundaries — in which case escalate to the systemic bullet and file
+  once with the site list. Per-function rules in the `error-handling`
+  skill are tagged `[per-function — reviewer]`; systemic rules are
+  tagged `[systemic — auditor-code]` so the routing is explicit.
 
 ## Out of scope
 
