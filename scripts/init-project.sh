@@ -217,11 +217,33 @@ classify_project_state() {
 }
 
 # Pack skill coverage table (per §7.8). Used for skill-gap detection.
+#
+# Args:
+#   $1   Language marker (swift|python|proto|...).
+#   $2   Optional target project directory. Used by the python row
+#        (BD-141) to consult the python_data_marker_detected predicate
+#        in scripts/lib/detect.sh; defaults to $TARGET if unset, else
+#        the current working directory. Other rows ignore $2.
 pack_skill_coverage_for() {
     local lang="$1"
+    local target_dir="${2:-${TARGET:-.}}"
     case "$lang" in
         swift)      echo "apple-architecture-core,swift-best-practices" ;;
-        python)     echo "python-data-architecture,python-best-practices" ;;
+        python)
+            # BD-141: python-data-architecture loads only when the
+            # concrete predicate matches (architecture §7.5).
+            # python-best-practices is unconditional for python.
+            # Compare against the full literal helper-output line
+            # rather than parsing — tighter contract; a future helper
+            # output change is caught at compare time, not silently.
+            local marker_line
+            marker_line=$(python_data_marker_detected "$target_dir")
+            if [[ "$marker_line" == "python-data: yes" ]]; then
+                echo "python-data-architecture,python-best-practices"
+            else
+                echo "python-best-practices"
+            fi
+            ;;
         proto)      echo "grpc-patterns" ;;
         *)          echo "" ;;  # No coverage
     esac
@@ -253,7 +275,7 @@ EOF
     local IFS=,
     for lang in $language_markers; do
         [[ "$lang" == "(none)" ]] && continue
-        coverage=$(pack_skill_coverage_for "$lang")
+        coverage=$(pack_skill_coverage_for "$lang" "$target")
         if [[ -n "$coverage" ]]; then
             echo "  $lang:   FULL ($coverage)"
         else
@@ -630,7 +652,7 @@ stage_s10_kickoff_prompt() {
     local IFS=,
     for lang in $lm; do
         [[ "$lang" == "(none)" ]] && continue
-        [[ -z "$(pack_skill_coverage_for "$lang")" ]] && gaps+=("$lang")
+        [[ -z "$(pack_skill_coverage_for "$lang" "$TARGET")" ]] && gaps+=("$lang")
     done
     unset IFS
 

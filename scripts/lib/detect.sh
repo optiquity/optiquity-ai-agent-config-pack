@@ -300,6 +300,91 @@ detect_installed_capabilities() {
     fi
 }
 
+# python-data: yes|no
+#
+# BD-141 (v11.0 skill-dimensions reframe Batch 2). Concrete load
+# predicate for the `python-data-architecture` skill. Replaces the
+# fuzzy "multi-file Python with data access, async I/O, or ML
+# inference; otherwise omit" prose previously used in
+# PLATFORM-SKILLS.md.
+#
+# Args:
+#   $1   Target project directory. Defaults to current working
+#        directory. Missing/non-existent target is tolerated and
+#        evaluated as `python-data: no` (no error to stderr).
+#
+# Output:
+#   Single line `python-data: yes` or `python-data: no` on stdout.
+#
+# Markers (any one true → yes), per architecture §7.5
+# (maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-DIMENSIONS.md):
+#   (a) requirements.txt OR pyproject.toml OR setup.py OR setup.cfg
+#       lists any of these dependencies (case-insensitive,
+#       package-name boundary anchored): sqlalchemy, alembic, pydantic,
+#       aiohttp, httpx, psycopg, psycopg2, aiomysql, asyncpg, redis,
+#       pymongo, motor, boto3, aioboto3, grpc-tools, protobuf, pyarrow,
+#       pandas, numpy, scikit-learn, torch, tensorflow.
+#   (b) >= 5 *.py files outside tests/ and test_*.py / *_test.py.
+#
+# Callers: scripts/init-project.sh (pack_skill_coverage_for python row);
+# scripts/add-capability.sh references the predicate by comment only
+# (the language:python skill set is coarser than init-project's
+# auto-detect). PLATFORM-SKILLS.md cites the helper as the canonical
+# predicate for the python-data-architecture row.
+python_data_marker_detected() {
+    local target="${1:-.}"
+    if [[ -z "$target" || ! -d "$target" ]]; then
+        echo "python-data: no"
+        return 0
+    fi
+
+    # Marker (a): dependency manifests. Case-insensitive, anchored to
+    # package-name boundaries via negated character classes. Lead
+    # boundary asserts the byte before the name is NOT a name-char
+    # ([A-Za-z0-9_-]) — this rejects substring matches like "numpy"
+    # inside "numpyro" or "redis" inside "aioredis". Trail boundary
+    # asserts the byte after the name is NOT a name-char or version-spec
+    # continuation ([A-Za-z0-9_.-]) — this rejects "psycopg2-binary" via
+    # "psycopg2", "redis-py-cluster" via "redis", etc. The `^` and `$`
+    # alternatives cover line-start and line-end positions.
+    #
+    # Note: an earlier construction used a positive bracket class with
+    # `\]` to include `]` as a literal — that was incorrect under POSIX
+    # ERE (the first `]` after the class contents closes the class), so
+    # versioned manifest entries like `sqlalchemy>=2.0` silently failed
+    # to match. The negated-class construction below is portable and
+    # avoids the bracket-escape landmine.
+    local manifest pkg
+    local pkgs="sqlalchemy|alembic|pydantic|aiohttp|httpx|psycopg|psycopg2|aiomysql|asyncpg|redis|pymongo|motor|boto3|aioboto3|grpc-tools|protobuf|pyarrow|pandas|numpy|scikit-learn|torch|tensorflow"
+    local pattern="(^|[^A-Za-z0-9_-])(${pkgs})($|[^A-Za-z0-9_.-])"
+    for manifest in \
+        "$target/requirements.txt" \
+        "$target/pyproject.toml" \
+        "$target/setup.py" \
+        "$target/setup.cfg"
+    do
+        [[ -f "$manifest" ]] || continue
+        if grep -iqE "$pattern" "$manifest" 2>/dev/null; then
+            echo "python-data: yes"
+            return 0
+        fi
+    done
+
+    # Marker (b): >= 5 .py files outside tests/.
+    local py_count
+    py_count=$(find "$target" -name "*.py" \
+        -not -path "*/tests/*" \
+        -not -name "test_*.py" \
+        -not -name "*_test.py" \
+        -type f 2>/dev/null | wc -l | tr -d '[:space:]')
+    if [[ -n "$py_count" ]] && (( py_count >= 5 )); then
+        echo "python-data: yes"
+        return 0
+    fi
+
+    echo "python-data: no"
+}
+
 # target-pack-version: vN | unknown
 #
 # Detect the major pack version installed in the *target* project (NOT the

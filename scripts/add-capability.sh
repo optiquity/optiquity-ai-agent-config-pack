@@ -107,6 +107,11 @@ TARGET=$(cd "$TARGET" 2>/dev/null && pwd || echo "$TARGET")
 capability_skills() {
     local cap="$1"
     case "$cap" in
+        # BD-141: python-data-architecture's load predicate is defined in
+        # scripts/lib/detect.sh::python_data_marker_detected(). add-capability.sh
+        # adds it as part of the language:python skill set (coarser tool —
+        # explicit user intent to add the capability); init-project.sh applies
+        # the predicate at scaffold time via pack_skill_coverage_for().
         language:python)    echo "python-best-practices python-data-architecture dependency-python" ;;
         language:swift)     echo "swift-best-practices apple-architecture-core dependency-swift" ;;
         language:cpp)       echo "cpp-language" ;;
