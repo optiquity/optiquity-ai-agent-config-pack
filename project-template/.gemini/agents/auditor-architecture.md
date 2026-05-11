@@ -34,7 +34,12 @@ Per `audit-methodology` rule 15:
   abstraction at the boundary, metric collection in the service layer,
   trace context propagated across async boundaries? This is about whether
   the wiring *exists*, not whether it is configured correctly for
-  deployment (that is `auditor-ops`'s scope per rule 21).
+  deployment (that is `auditor-ops`'s scope per rule 21). Source-file
+  observability *code* that configures the runtime for a deployment
+  target (endpoint URLs, resource attributes, exporter installation
+  gated on environment) is the auditor-ops bullet — the file path
+  notwithstanding. Findings about log *content* (credentials, tokens,
+  PII in log messages) belong to `auditor-security` per rule 33.
 
 ## Out of scope
 
@@ -64,10 +69,12 @@ no findings, emit the header plus `No findings in this cluster.`
 
 Load `audit-methodology` and the platform architecture skills the parent
 specifies. Typical sets: `apple-architecture-core` plus `ios-architecture`
-and/or `macos-architecture` for Apple projects; `python-architecture` for
-Python servers. Observability infrastructure rules live inside those
-platform architecture skills (logger abstractions, metric collection
-points, trace propagation patterns).
+and/or `macos-architecture` for Apple projects; `python-server-architecture`
++ `python-data-architecture` for Python servers, or
+`python-data-architecture` alone for non-server multi-file Python.
+Observability infrastructure rules live inside those platform
+architecture skills (logger abstractions, metric collection points,
+trace propagation patterns).
 
 ## Permission profile
 

@@ -4,7 +4,7 @@ description: Use when assessing architecture — module boundaries, layer discip
 allowed-tools: Read, Grep, Glob, Bash
 ---
 
-This skill defines the universal methodology for architecture review. Platform-specific rules come from the platform skills loaded alongside this one (apple-architecture-core, python-architecture, grpc-patterns, etc.). Apply this methodology using the rules from those skills.
+This skill defines the universal methodology for architecture review. Platform-specific rules come from the platform skills loaded alongside this one (apple-architecture-core, python-server-architecture, python-data-architecture, grpc-patterns, etc.). Apply this methodology using the rules from those skills.
 
 ## Before starting the review
 

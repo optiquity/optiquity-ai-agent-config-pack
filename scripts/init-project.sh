@@ -221,7 +221,7 @@ pack_skill_coverage_for() {
     local lang="$1"
     case "$lang" in
         swift)      echo "apple-architecture-core,swift-best-practices" ;;
-        python)     echo "python-architecture,python-best-practices" ;;
+        python)     echo "python-data-architecture,python-best-practices" ;;
         proto)      echo "grpc-patterns" ;;
         *)          echo "" ;;  # No coverage
     esac

@@ -11,8 +11,8 @@ Every agent prompt includes two categories of skills:
 
 1. **Tier 1 role skills** — define how the agent performs its role. Always
    available in the template. The PM chat loads only those relevant to the
-   active task (e.g., `python-architecture` is not loaded for a Swift-only
-   architect pass).
+   active task (e.g., `python-server-architecture` is not loaded for a
+   Swift-only architect pass).
 
 2. **Tier 2 platform skills** — encode platform-specific rules, patterns, and
    constraints. Selected by combining the four dimensions below.
@@ -50,12 +50,24 @@ What programming languages are in the codebase?
 | Selection | Skills added |
 |---|---|
 | Swift | swift-best-practices, dependency-swift |
-| Python | python-best-practices, dependency-python |
+| Python | python-best-practices, dependency-python, *plus* python-data-architecture when project has multi-file Python with data access, async I/O, or ML inference; otherwise omit |
 | C | c-language |
 | C++ | cpp-language |
 | Objective-C | objc-language |
 
 Select all languages present. Each adds its own skills independently.
+
+The Python row's `python-data-architecture` qualifier (introduced in
+v11.0 under BD-035 and finalised by the v11 split) ensures the data /
+I/O rules — repository pattern, N+1 prevention, no-direct-driver,
+Pydantic placement, ML isolation — load even for non-server multi-file
+Python projects (CLI tools, libraries, ETL pipelines, embedded Python).
+Server context (Dimension 3, Python server row) additionally loads
+`python-server-architecture` for the server-specific rules
+(servicers, grpc.aio handlers, interceptors, background tasks). See
+`project-template/skills/python-data-architecture/SKILL.md` and
+`project-template/skills/python-server-architecture/SKILL.md` for the
+applicability sections that govern each.
 
 Future languages (add row when skills are created):
 Kotlin, TypeScript/JavaScript, C#, Rust.
@@ -67,8 +79,8 @@ Monorepos and multi-component systems may have several.
 
 | Selection | Skills added | When to use |
 |---|---|---|
-| Python server | python-architecture, deployment-python | Python serves requests (gRPC, REST, or other protocol) |
-| Embedded Python | c-language | Python runtime embedded inside another application (C API is the bridge) |
+| Python server | python-server-architecture, python-data-architecture, deployment-python | Python serves requests (gRPC, REST, or other protocol) |
+| Embedded Python | c-language; *plus* python-data-architecture when the embedded Python codebase exceeds ~10 files or implements non-trivial data access | Python runtime embedded inside another application (C API is the bridge). The Dimension 2 broadened load rule (BD-035) covers most embedded-Python cases via the Python language row; this Component-Roles row exists to make the embedded case explicit and to clarify that no server-specific rules apply (i.e., `python-server-architecture` is NOT loaded). |
 | Shared native library | (none additional) | C or C++ library consumed by other components — Language skills cover it |
 
 A Role entry adds a dedicated architecture skill only when ALL three conditions
@@ -111,24 +123,24 @@ GraphQL, WebSocket/SSE (realtime-patterns), Webhooks/AMQP (messaging-patterns), 
 
 **Python gRPC server:**
 - Platform: Linux → (no platform architecture skills)
-- Language: Python → python-best-practices, dependency-python
-- Role: Python server → python-architecture, deployment-python
+- Language: Python → python-best-practices, dependency-python, python-data-architecture
+- Role: Python server → python-server-architecture, python-data-architecture, deployment-python
 - Protocol: gRPC → grpc-patterns
-- **Result:** python-best-practices, dependency-python, python-architecture, deployment-python, grpc-patterns
+- **Result:** python-best-practices, dependency-python, python-data-architecture, python-server-architecture, deployment-python, grpc-patterns
 
 **Universal Apple app + Python gRPC server (monorepo):**
 - Platform: iOS + macOS → apple-architecture-core, ios-architecture, macos-architecture, deployment-apple
-- Language: Swift + Python → swift-best-practices, dependency-swift, python-best-practices, dependency-python
-- Role: client app + Python server → python-architecture, deployment-python
+- Language: Swift + Python → swift-best-practices, dependency-swift, python-best-practices, dependency-python, python-data-architecture
+- Role: client app + Python server → python-server-architecture, python-data-architecture, deployment-python
 - Protocol: gRPC → grpc-patterns
-- **Result:** apple-architecture-core, ios-architecture, macos-architecture, deployment-apple, swift-best-practices, dependency-swift, python-best-practices, dependency-python, python-architecture, deployment-python, grpc-patterns
+- **Result:** apple-architecture-core, ios-architecture, macos-architecture, deployment-apple, swift-best-practices, dependency-swift, python-best-practices, dependency-python, python-data-architecture, python-server-architecture, deployment-python, grpc-patterns
 
 **macOS Swift app with embedded Python:**
 - Platform: macOS → apple-architecture-core, macos-architecture, deployment-apple
-- Language: Swift + Python → swift-best-practices, dependency-swift, python-best-practices, dependency-python
-- Role: embedded Python → c-language
+- Language: Swift + Python → swift-best-practices, dependency-swift, python-best-practices, dependency-python, python-data-architecture (assuming the embedded Python codebase is multi-file with data access)
+- Role: embedded Python → c-language (no `python-server-architecture` — embedded Python is not a server)
 - Protocol: none → (none)
-- **Result:** apple-architecture-core, macos-architecture, deployment-apple, swift-best-practices, dependency-swift, python-best-practices, dependency-python, c-language
+- **Result:** apple-architecture-core, macos-architecture, deployment-apple, swift-best-practices, dependency-swift, python-best-practices, dependency-python, python-data-architecture, c-language
 
 **macOS Swift app with C++ performance code:**
 - Platform: macOS → apple-architecture-core, macos-architecture, deployment-apple
@@ -149,7 +161,7 @@ agent needs every platform skill — load only what the agent's role requires.
 
 **architect**
 - Tier 1: architecture-review, api-design
-- Tier 2 (from Step 1): apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, python-best-practices, python-architecture, grpc-patterns, rest-patterns, c-language, objc-language, cpp-language — load those present in the project's skill profile
+- Tier 2 (from Step 1): apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, python-best-practices, python-server-architecture, python-data-architecture, grpc-patterns, rest-patterns, c-language, objc-language, cpp-language — load those present in the project's skill profile
 
 **coder**
 - Tier 1: implementation, debugging, error-handling
@@ -157,7 +169,7 @@ agent needs every platform skill — load only what the agent's role requires.
 
 **reviewer**
 - Tier 1: review, error-handling
-- Tier 2 (from Step 1): swift-best-practices, python-best-practices, python-architecture, grpc-patterns, rest-patterns, apple-architecture-core, ios-architecture, macos-architecture, c-language, objc-language, cpp-language, security-patterns — load those present in the project's skill profile
+- Tier 2 (from Step 1): swift-best-practices, python-best-practices, python-server-architecture, python-data-architecture, grpc-patterns, rest-patterns, apple-architecture-core, ios-architecture, macos-architecture, c-language, objc-language, cpp-language, security-patterns — load those present in the project's skill profile
 
 **tester**
 - Tier 1: testing, ui-test-strategy
@@ -182,12 +194,12 @@ agent needs every platform skill — load only what the agent's role requires.
 - The parent auditor only loads `audit-methodology`. Subagents load their own platform skills in their isolated contexts. The PM chat passes the per-subagent skill list in the parent's invocation prompt for the parent to relay to each subagent at spawn time.
 
 **auditor-architecture**
-- Tier 2: audit-methodology + architecture platform skills from Step 1 (apple-architecture-core, ios-architecture, macos-architecture, python-architecture)
-- Platform filtering: load only the architecture skills that match the project's platform profile from Step 1. A pure Python server loads `python-architecture` only. A pure iOS app loads `apple-architecture-core` + `ios-architecture` only. Observability infrastructure rules live inside these platform architecture skills (no separate observability skill).
+- Tier 2: audit-methodology + architecture platform skills from Step 1 (apple-architecture-core, ios-architecture, macos-architecture, python-server-architecture, python-data-architecture)
+- Platform filtering: load only the architecture skills that match the project's platform profile from Step 1. A pure Python server loads `python-server-architecture` + `python-data-architecture`. A pure iOS app loads `apple-architecture-core` + `ios-architecture` only. Observability infrastructure rules live inside these platform architecture skills (no separate observability skill). For non-server multi-file Python projects, load `python-data-architecture` only (per the Dimension 2 broadened load rule, BD-035); do NOT load `python-server-architecture` because the server-specific rules do not apply.
 
 **auditor-code**
 - Tier 1: error-handling
-- Tier 2: audit-methodology + language skills from Step 1 (swift-best-practices, python-best-practices, c-language, objc-language, cpp-language) + python-architecture (when Python server in project — provides performance anti-pattern rules like N+1 query detection)
+- Tier 2: audit-methodology + language skills from Step 1 (swift-best-practices, python-best-practices, c-language, objc-language, cpp-language) + python-data-architecture (load per the broadened Dimension 2 condition: Python server present *or* non-trivial multi-file Python with data access, async I/O, or ML inference — BD-035. Provides performance anti-pattern rules like N+1 query detection, repository pattern correctness, Pydantic placement, ML isolation.) + python-server-architecture (load only when a Python server is present — provides server-specific rules: servicers, grpc.aio handlers, interceptors, background tasks).
 - The `error-handling` skill provides the cross-cutting error-handling rules (boundary mapping, retry policy uniformity) that this subagent audits at the systemic level. The language skills (`swift-best-practices`, `python-best-practices`) supply the dead-code and unused-import detection rules.
 
 **auditor-tests**
@@ -250,7 +262,7 @@ on which tool runs the agent.
 | testing | Test pyramid, design, organization, coverage | tester, auditor-tests |
 | ui-test-strategy | UI/E2E tool selection, test design, snapshot testing | tester, auditor-tests |
 
-### Tier 2 — Platform skills (17)
+### Tier 2 — Platform skills (18)
 
 | Skill | Description | Agents |
 |---|---|---|
@@ -266,7 +278,8 @@ on which tool runs the agent.
 | ios-architecture | iOS/iPadOS scene lifecycle, UIKit interop, App Store boundaries, accessibility, observability infrastructure | architect, reviewer, auditor-architecture, auditor-ui |
 | macos-architecture | macOS NSDocument, windows, menu bar, AppKit, sandbox, accessibility, observability infrastructure | architect, reviewer, auditor-architecture, auditor-ui |
 | objc-language | Objective-C ARC, nullability, bridging, legacy code patterns | coder, reviewer, auditor-code |
-| python-architecture | Python server structure, service layers, repository pattern, grpc.aio handlers, observability infrastructure | architect, reviewer, auditor-architecture, auditor-code |
+| python-data-architecture | Python data and I/O architecture: repository pattern, N+1 prevention, Pydantic placement at I/O boundaries, ML inference isolation, no-direct-driver | architect, reviewer, auditor-architecture, auditor-code |
+| python-server-architecture | Python server structure: gRPC servicers / FastAPI handlers, grpc.aio, async handler I/O, server interceptors / middleware, background-task patterns, observability infrastructure | architect, reviewer, auditor-architecture, auditor-code |
 | python-best-practices | Python type hints, async, error handling, ruff/pyright, style, dead code | architect, coder, reviewer, auditor-code |
 | rest-patterns | REST/HTTP URL design, HTTP methods, status codes, OpenAPI, caching | architect, coder, reviewer |
 | security-patterns | Credential exposure, injection, deserialization, log safety, supply chain (CVEs, licenses) | auditor-security, reviewer |
@@ -280,7 +293,7 @@ This skill is outside both tiers. It is not loaded by any agent — it is used e
 |---|---|---|
 | pm-startup | PM chat session startup procedure: read state files, check TD-TBD sentinels, report ready status | PM chat only (not an agent) |
 
-**Total skills: 30** (12 Tier 1 + 17 Tier 2 + 1 PM chat operational)
+**Total skills: 31** (12 Tier 1 + 18 Tier 2 + 1 PM chat operational)
 
 ### Deferred skills (create when project need arises)
 

@@ -138,12 +138,13 @@ migrator_post_dispatch_hook() {
     # invariant (single-shot only) made this gate unnecessary; with
     # BD-095 the gate is required.
     if _migrator_is_dryrun; then
-        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install"
+        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install + python-architecture skill rename"
         return 0
     fi
     _v10_to_v11_rename_implementation_plan
     _v10_to_v11_relocate_legacy_docs
     _v10_to_v11_install_v11_artifacts
+    _v10_to_v11_rename_python_architecture_refs
 }
 
 # Internal: BD-104 cross-pack rename of the client's IMPLEMENTATION_PLAN.md
@@ -331,6 +332,165 @@ _v10_to_v11_install_v11_artifacts() {
     if [[ -f "$PACK/scripts/lib/detect.sh" \
        && ! -f "$_MIGRATOR_TARGET/scripts/lib/detect.sh" ]]; then
         cp "$PACK/scripts/lib/detect.sh" "$_MIGRATOR_TARGET/scripts/lib/detect.sh"
+    fi
+}
+
+# Internal: BD-035-split client-side rename of `python-architecture`
+# references to the post-split skill names (`python-server-architecture`
+# / `python-data-architecture`).
+#
+# The v10.x `python-architecture` skill was split in v11 (BD-035) into
+# `python-server-architecture` (servicers, grpc.aio handlers, server
+# interceptors, background tasks) and `python-data-architecture`
+# (repository pattern, N+1, Pydantic placement, ML isolation).
+#
+# This step scans the client's PLATFORM-SKILLS.md and CLAUDE.md /
+# AGENTS.md / GEMINI.md (project root + project-template/) for stale
+# `python-architecture` tokens introduced before the split and rewrites
+# them in-place when the surrounding context is unambiguous. Ambiguous
+# cases (single tokens in custom prose, comments, etc.) get an entry in
+# a sidecar advisory file at the v11 sidecar suffix so the user can
+# reconcile by hand.
+#
+# The rewrite is conservative: only the bare token `python-architecture`
+# is rewritten, only when the line ALSO contains another server- or
+# data-tier signal that disambiguates. Files are visited in a fixed
+# order; per-file changes are recorded in a single advisory file under
+# the migrator state dir.
+#
+# Files scanned (project-root-relative; only those that exist):
+#   docs/pack/PLATFORM-SKILLS.md
+#   CLAUDE.md, AGENTS.md, GEMINI.md
+#
+# Disambiguation rules (per-line):
+#   1. Line contains `python-server-architecture` already → rewrite
+#      stale `python-architecture` to `python-server-architecture`.
+#   2. Line contains `python-data-architecture` already → rewrite
+#      stale `python-architecture` to `python-data-architecture`.
+#   3. Line contains another server-tier signal (`grpc-patterns`,
+#      `deployment-python`, `Python server`, `python-server`) AND
+#      no data-tier signal → rewrite to `python-server-architecture`.
+#   4. Line contains a data-tier signal (`repository`, `N+1`,
+#      `Pydantic`, `data / I/O`) AND no server-tier signal → rewrite
+#      to `python-data-architecture`.
+#   5. Otherwise → record an ambiguous-rename advisory entry; leave
+#      the file untouched at this site.
+#
+# Advisory output: $_MIGRATOR_STATE_DIR/python-architecture-rename.advisory
+# (created only when at least one ambiguous site is found). The advisory
+# enumerates file:line pairs the user should reconcile by hand. The
+# customization-preserve sidecar contract is intentionally NOT used
+# here because none of the files in scope are customization-preserve
+# managed at this point in the migration (PLATFORM-SKILLS.md is a
+# `transform` target; the trinity files are `trinity` transforms; the
+# v10→v11 transform pipeline has already replaced their pack-managed
+# content). The advisory file is the canonical user-facing surface.
+_v10_to_v11_rename_python_architecture_refs() {
+    say "── S5b — BD-035 split: rename stale python-architecture refs ──"
+
+    local advisory="$_MIGRATOR_STATE_DIR/python-architecture-rename.advisory"
+    local rewrites=0
+    local ambiguous=0
+    local f rel
+    local files=(
+        "docs/pack/PLATFORM-SKILLS.md"
+        "CLAUDE.md"
+        "AGENTS.md"
+        "GEMINI.md"
+    )
+
+    for rel in "${files[@]}"; do
+        f="$_MIGRATOR_TARGET/$rel"
+        [[ -f "$f" ]] || continue
+        # Skip if the file has no stale references (cheap fast path).
+        grep -q '\bpython-architecture\b' "$f" || continue
+
+        local tmp linenum=0 line
+        tmp=$(mktemp -t pack-py-arch-rename.XXXXXX) || \
+            fail_stage S5 "S5b-rename: mktemp failed for $rel"
+        # Read line-by-line. Per-line decision per the rules above.
+        # The file is read once; rewrites are applied in the same pass
+        # and written back atomically via mv.
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            linenum=$((linenum + 1))
+            if [[ "$line" != *"python-architecture"* ]]; then
+                printf '%s\n' "$line" >>"$tmp"
+                continue
+            fi
+            # Ignore lines that already mention only post-split names
+            # (e.g., `python-server-architecture` matches the substring
+            # `python-architecture` — exclude those from rewrite by
+            # checking the bare-token form via word boundaries).
+            if ! printf '%s' "$line" | grep -qE '(^|[^-])python-architecture([^-]|$)'; then
+                printf '%s\n' "$line" >>"$tmp"
+                continue
+            fi
+            local has_server=0 has_data=0 new_token=""
+            [[ "$line" == *"python-server-architecture"* ]] && has_server=1
+            [[ "$line" == *"python-data-architecture"* ]] && has_data=1
+            if (( has_server == 1 && has_data == 0 )); then
+                new_token="python-server-architecture"
+            elif (( has_data == 1 && has_server == 0 )); then
+                new_token="python-data-architecture"
+            else
+                # Look for other-token disambiguators on the same line.
+                local server_signal=0 data_signal=0
+                if printf '%s' "$line" | grep -qE 'grpc-patterns|deployment-python|Python server|python-server|gRPC servicer|grpc\.aio|interceptor'; then
+                    server_signal=1
+                fi
+                if printf '%s' "$line" | grep -qE 'repository|N\+1|Pydantic|data ?/ ?I/O|data and I/O|ML inference'; then
+                    data_signal=1
+                fi
+                if (( server_signal == 1 && data_signal == 0 )); then
+                    new_token="python-server-architecture"
+                elif (( data_signal == 1 && server_signal == 0 )); then
+                    new_token="python-data-architecture"
+                fi
+            fi
+            if [[ -n "$new_token" ]]; then
+                # Replace only the bare-token form; leave any pre-existing
+                # post-split occurrences intact.
+                printf '%s\n' "$line" \
+                    | sed "s/\\([^-]\\)python-architecture\\([^-]\\)/\\1${new_token}\\2/g; s/^python-architecture\\([^-]\\)/${new_token}\\1/g; s/\\([^-]\\)python-architecture$/\\1${new_token}/g; s/^python-architecture$/${new_token}/g" \
+                    >>"$tmp"
+                rewrites=$((rewrites + 1))
+            else
+                # Ambiguous: keep the line as-is and queue an advisory entry.
+                printf '%s\n' "$line" >>"$tmp"
+                if (( ambiguous == 0 )); then
+                    {
+                        printf '# python-architecture skill-rename advisory (BD-035 split)\n'
+                        printf '#\n'
+                        printf '# The v10.x `python-architecture` skill was split in v11 into\n'
+                        printf '# `python-server-architecture` and `python-data-architecture`.\n'
+                        printf '# The migrator could not unambiguously rewrite the references\n'
+                        printf '# below. Inspect each line and rename to the appropriate\n'
+                        printf '# post-split skill name by hand.\n'
+                        printf '#\n'
+                        printf '# Format: <file>:<line>: <text>\n'
+                        printf '\n'
+                    } >"$advisory"
+                fi
+                printf '%s:%d: %s\n' "$rel" "$linenum" "$line" >>"$advisory"
+                ambiguous=$((ambiguous + 1))
+            fi
+        done <"$f"
+
+        if ! mv "$tmp" "$f"; then
+            rm -f "$tmp"
+            fail_stage S5 "S5b-rename: failed to write rewritten $rel"
+        fi
+        info "scanned $rel for python-architecture rename"
+    done
+
+    if (( rewrites > 0 )); then
+        info "BD-035 rename: $rewrites unambiguous reference(s) rewritten in place"
+    else
+        info "BD-035 rename: no unambiguous references found to rewrite"
+    fi
+    if (( ambiguous > 0 )); then
+        info "BD-035 rename: $ambiguous ambiguous reference(s) recorded in $advisory"
+        info "review the advisory and rename by hand before treating the migration as complete"
     fi
 }
 

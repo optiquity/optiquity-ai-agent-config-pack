@@ -57,7 +57,7 @@ only.
 - **Platform skills to load per subagent** (the parent loads only
   `audit-methodology`; each subagent loads the platform skills relevant to its
   cluster from the project's PLATFORM-SKILLS.md profile):
-  - `auditor-architecture`: [PM CHAT FILLS — e.g., apple-architecture-core, ios-architecture, python-architecture]
+  - `auditor-architecture`: [PM CHAT FILLS — e.g., apple-architecture-core, ios-architecture, python-server-architecture, python-data-architecture]
   - `auditor-code`: [e.g., swift-best-practices, python-best-practices, error-handling]
   - `auditor-tests`: [e.g., testing, ui-test-strategy]
   - `auditor-docs`: documentation

@@ -107,7 +107,7 @@ TARGET=$(cd "$TARGET" 2>/dev/null && pwd || echo "$TARGET")
 capability_skills() {
     local cap="$1"
     case "$cap" in
-        language:python)    echo "python-best-practices python-architecture dependency-python" ;;
+        language:python)    echo "python-best-practices python-data-architecture dependency-python" ;;
         language:swift)     echo "swift-best-practices apple-architecture-core dependency-swift" ;;
         language:cpp)       echo "cpp-language" ;;
         language:c)         echo "c-language" ;;
@@ -121,7 +121,7 @@ capability_skills() {
         protocol:messaging) echo "messaging-patterns" ;;
         protocol:soap)      echo "soap-patterns" ;;
         role:apple-app)     echo "deployment-apple" ;;
-        role:python-server) echo "deployment-python" ;;
+        role:python-server) echo "python-server-architecture deployment-python" ;;
         *) return 1 ;;
     esac
 }
