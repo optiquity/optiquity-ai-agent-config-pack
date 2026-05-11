@@ -88,7 +88,7 @@ Drafted in §2 below; ready to paste into BACKLOG.md once user approves.
 
 ### 1.5 Verify-then-close (1 BD; likely no new work)
 
-- **BD-059** — v10 customization-preservation. Almost certainly closed by BD-088. Pack Chat verifies BD-088 closed it; flips status; adds Resolved note pointing to BD-088 commits. If verification surfaces residual gaps, opens fix-follow BD.
+- **BD-059** — v10 customization-preservation. Almost certainly closed by BD-088. Pack Chat verifies BD-088 closed it; flips status; adds Resolved note pointing to BD-088 commits. If verification surfaces residual gaps, Pack Chat reports the gaps to the user, presents fix options, and (with user approval) ships the fixes in the current Batch 5 commit. New BDs are not opened for findings — only at user direction.
 
 ### 1.6 Group 4 — deferred to v11.1+ (5 BDs, NOT in v11.0)
 
@@ -202,7 +202,7 @@ Status: Open
 Blockers: none — but should land BEFORE BD-102 dog-food
 Unblocks: green CI on `validate-pack.yml`; BD-102 dog-food run can rely on test-suite signal
 File/Symbol: `scripts/tests/test-init-project.sh` (Group 3: 13 FAILs hunting for `S11 — v11 client artifacts`, `tracker.toml.example`, `pack-help.sh`, `detect.sh` post-BD-088/BD-119/BD-121); `test-fixtures/build.sh` (exit 31 building `v10-realistic-ot` — likely v10 tag unreachable in CI checkout OR builder needs BD-120 parameterization first); `scripts/test-migrator-behavior-preservation.sh` (collateral failure on missing fixture); possibly `.github/workflows/validate-pack.yml` (verify checkout fetches tags)
-Description: CI `tests` job has been red since `19755b5` (v10.1 backport optimization pass). Three failing suites: (1) BD-080 init-project Group 3 — assertions reference v11 client artifacts in paths that BD-088/BD-119/BD-121 reorganized; either update assertions OR fix install paths. (2) `test-fixtures/build.sh --all --clean` exit 31 building `v10-realistic-ot` from the v10 git tag — checkout depth or tag-fetching issue in CI, OR builder needs BD-120 parameterization. (3) BD-119 migrator behavior-preservation — depends on fixture from #2. Triage and repair each. May spawn fix-follow BDs if any failure surfaces a deeper issue. **NOTE on sequencing:** if BD-128 repair turns out to require BD-120 (fixture parameterization), batch ordering must move BD-120 ahead of BD-128. Pre-flight check is the first task.
+Description: CI `tests` job has been red since `19755b5` (v10.1 backport optimization pass). Three failing suites: (1) BD-080 init-project Group 3 — assertions reference v11 client artifacts in paths that BD-088/BD-119/BD-121 reorganized; either update assertions OR fix install paths. (2) `test-fixtures/build.sh --all --clean` exit 31 building `v10-realistic-ot` from the v10 git tag — checkout depth or tag-fetching issue in CI, OR builder needs BD-120 parameterization. (3) BD-119 migrator behavior-preservation — depends on fixture from #2. Triage and repair each. If any failure surfaces a deeper issue, Pack Chat reports it and asks the user how to proceed; new BDs are opened only if the user directs. **NOTE on sequencing:** if BD-128 repair turns out to require BD-120 (fixture parameterization), batch ordering must move BD-120 ahead of BD-128. Pre-flight check is the first task.
 Resolved: n/a
 ```
 
@@ -243,8 +243,8 @@ Sequencing rationale up front:
 | **11** | partial-parallel pack-coder | BD-112 ∥ (BD-078 → BD-079) | BD-112 = three-way diff filename mangling fix (`scripts/lib/three-way.sh`); BD-078 = validator Check `check_tracker_config`; BD-079 = validator Check (recommendation-state schema) | BD-078 and BD-079 BOTH add Checks to `scripts/validate-pack.py` — must be sequential within the batch. BD-112 truly parallel with the BD-078→BD-079 sequence. One combined commit. |
 | **12** | atomic pack-coder | BD-104 | cross-pack rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md` (large blast radius) | Single commit, atomic |
 | **13** | sequential pack-coder | BD-095 → BD-101 | `scripts/migrate-v10-to-v11.sh` two-phase workflow → in-script validation gates | Two commits; BD-101 builds on BD-095's `--dry-run`/`--apply`/`--resume` surface |
-| **14** | parallel pack-architect (audit-only) | BD-032 ∥ BD-033 ∥ BD-034 ∥ BD-035 | audit reports under `maintenance-docs/v11-implementation/AUDIT-BD-032..035.md` (no code) | Audit batch; **standing rule §5.B applies — fix-follow BD opened for every finding incl. NITs** |
-| **14b** | (conditional) sequential pack-coder | fix-follow BDs from Batch 14 findings | TBD by audit output | Spawned only if audits surface defects; one commit per fix-follow BD |
+| **14** | parallel pack-architect (audit-only) | BD-032 ∥ BD-033 ∥ BD-034 ∥ BD-035 | audit reports under `maintenance-docs/v11-implementation/AUDIT-BD-032..035.md` (no code) | Audit batch. Per the in-session fix rule (§B), Pack Chat reports all findings to the user, presents fix options per finding (including NITs), asks permission, and ships the fixes in the same batch (or in a Pack-Chat-approved follow-up commit). No new BDs are opened for audit findings. |
+| **14b** | (conditional in-session fix commit if needed — no BD) | Batch 14 audit findings | TBD by audit output | Only fires if audits surface defects; fixes land in a Pack-Chat-approved follow-up commit (or fold into Batch 14). No new BDs opened. |
 | **15** | sequential pack-coder | BD-048 | `scripts/init-project.sh` capability-addition discovery + install-check symmetry with kickoff procedure | Standalone |
 | **16** | sequential pack-coder | BD-096 | `test-fixtures/` synthetic-fixture set | Sequential after Batch 6 lands clean tests |
 | **17** | sequential pack-coder | BD-106 → BD-107 → BD-108 | tracker entity-model expansion (phase task model + identifier scheme + parser/emitter → TD-NNN promotion → cross-entity dependency orchestration) | Three commits; intra-dependent |
@@ -252,13 +252,13 @@ Sequencing rationale up front:
 | **19** | parallel pack-coder | BD-105 ∥ BD-103 | STATUS.md phase-row dual-link rendering ∥ `pack tracker reset` verb + 3-level recovery doc | Different files; safe parallel |
 | **20** | parallel pack-coder | BD-109 ∥ BD-110 | project-side `auditor-issue-tracking` agent files ∥ pack-side `pack-auditor` agent files | Different agent files; safe parallel; trinity rule applies inside each (per-CLI ×3) |
 | **20b** | sequential pack-coder | BD-136 implementation (4 sub-commits) | (1) marker-aware merger in `scripts/lib/customization-preserve.sh` (or new sibling `marker-preserve.sh`) implementing L-1..L-10 + override mechanism; (2) `scripts/validate-pack.py` new Check enforcing V-1..V-8; (3) PM-CHAT.md authoring procedure section (P-1..P-8) + cross-references in INSTALL-PROCEDURES.md / SETUP-NEW.md / SETUP-EXISTING.md / init-project.sh post-install hint + seed Shape A marker pair in `project-template/{CLAUDE,AGENTS,GEMINI}.md` + `[CONDITIONAL]` retirement in canonical templates; (4) `scripts/tests/test-customization-preserve-bd136.sh` covering M-1..M-10 + add M-11/M-12 fixtures to `test-fixtures/` | Inserted by BD-138 (no v11.1 deferral). 4 sub-commits, each independently approve-able under stop-before-commit. M-8 fixture (`test-fixtures/v11-trinity-marker-prepped/`) is the round-trip golden the merger must reproduce byte-identical. |
-| **21** | sequential pack-architect + pack-reviewer (audit-only) | BD-100 final milestone audit (incl. BD-136) | audit report under `maintenance-docs/v11-implementation/AUDIT-V11.0-FINAL.md` (no code). **MUST verify BD-136 implementation shipped clean** (per BD-138 scheduling): merger handles all Shape A + Shape B cases with override mechanism + `renamed-from`; validator V-1..V-8 active; PM-CHAT.md procedure surfaced from all three entry-point flows; M-8 round-trip byte-identical; M-11/M-12 fixtures green. | Audit batch; **standing rule §5.B applies — fix-follow BDs opened for every finding incl. NITs**; final blocker check before BD-102 |
-| **21b** | (conditional) sequential pack-coder | fix-follow BDs from Batch 21 findings | TBD by audit output | Spawned only if audit surfaces defects |
-| **22** | sequential pack-coder + manual | BD-102 dog-food migration (BD-136-aware) | run `migrate-v10-to-v11.sh` against pack-repo clone at v10 tag; verify clean output, customization preserved. **MUST exercise the BD-136 marker-aware merge path** (per BD-138 scheduling): pack-repo trinity files prepped with Shape A + Shape B markers BEFORE the dog-food run; round-trip preserves all marker content byte-identical. | Produces dog-food report under `maintenance-docs/v11-implementation/DOG-FOOD-MIGRATION-REPORT.md`; **defects → fix-follow BDs incl. NITs (§5.B)** |
-| **22b** | (conditional) sequential pack-coder | fix-follow BDs from Batch 22 defects | TBD by dog-food findings | Spawned only if dog-food surfaces defects |
+| **21** | sequential pack-architect + pack-reviewer (audit-only) | BD-100 final milestone audit (incl. BD-136) | audit report under `maintenance-docs/v11-implementation/AUDIT-V11.0-FINAL.md` (no code). **MUST verify BD-136 implementation shipped clean** (per BD-138 scheduling): merger handles all Shape A + Shape B cases with override mechanism + `renamed-from`; validator V-1..V-8 active; PM-CHAT.md procedure surfaced from all three entry-point flows; M-8 round-trip byte-identical; M-11/M-12 fixtures green. | Audit batch. Per the in-session fix rule (§B), Pack Chat reports all findings to the user, presents fix options per finding (including NITs), asks permission, and ships the fixes in the same batch (or in a Pack-Chat-approved follow-up commit). No new BDs are opened for audit findings. Final blocker check before BD-102. |
+| **21b** | (conditional in-session fix commit if needed — no BD) | Batch 21 audit findings | TBD by audit output | Only fires if audit surfaces defects; fixes land in a Pack-Chat-approved follow-up commit (or fold into Batch 21). No new BDs opened. |
+| **22** | sequential pack-coder + manual | BD-102 dog-food migration (BD-136-aware) | run `migrate-v10-to-v11.sh` against pack-repo clone at v10 tag; verify clean output, customization preserved. **MUST exercise the BD-136 marker-aware merge path** (per BD-138 scheduling): pack-repo trinity files prepped with Shape A + Shape B markers BEFORE the dog-food run; round-trip preserves all marker content byte-identical. | Produces dog-food report under `maintenance-docs/v11-implementation/DOG-FOOD-MIGRATION-REPORT.md`. Per the in-session fix rule (§B), Pack Chat reports all defects to the user, presents fix options per defect (including NITs), asks permission, and ships the fixes in the same batch (or in a Pack-Chat-approved follow-up commit). No new BDs are opened for dog-food findings. |
+| **22b** | (conditional in-session fix commit if needed — no BD) | Batch 22 dog-food defects | TBD by dog-food findings | Only fires if dog-food surfaces defects; fixes land in a Pack-Chat-approved follow-up commit (or fold into Batch 22). No new BDs opened. |
 | **23** | direct (Pack Chat) | BD-093 v11.0 release pin — final | rewrite `CHANGELOG.md` v11.0 entry (incl. BD-136 line); verify `README.md` version-table row; `MIGRATION-v10-to-v11.md` cross-link; `git tag v11.0`; `git tag -f v11`; `git push --tags` | **Release. Stop-before-commit + stop-before-push apply with maximum scrutiny.** |
 
-**Total: 25 main batches (23 + Batch 5b for BD-135 + Batch 20b for BD-136 implementation) + up to 3 conditional fix-follow batches = max 28 commits, plus Batch 20b internally ships 4 commits, putting practical max at ~31 commits.** Could be more if any audit / dog-food fix-follow needs more than one commit.
+**Total: 25 main batches (23 + Batch 5b for BD-135 + Batch 20b for BD-136 implementation) + up to 3 conditional in-session fix commits if audits/dog-food surface defects = max 28 commits, plus Batch 20b internally ships 4 commits, putting practical max at ~31 commits.** Could be slightly higher if any audit / dog-food gate needs more than one small follow-up commit.
 
 ---
 
@@ -274,13 +274,31 @@ These rules govern every batch in §4. They are ordered by enforcement priority 
 4. **Push to `v11-dev` only.** Never push to `main` from this chat. v11.0 ships via deliberate handoff at Batch 23.
 5. **Tag operations are destructive on tag space.** Treat as requiring explicit approval at Batch 23 (the only batch that creates/moves tags).
 
-### B. Audit / fix-follow protocol (user rule, 2026-05-09)
+### B. Audit / review-fix protocol (user rule, 2026-05-11)
 
-1. Every audit pass that produces findings spawns a fix-follow batch.
-2. **Even NITs get fixed.** Fix-follow scope includes every BLOCKER, SHOULD-FIX, and NIT surfaced.
-3. Fix-follow runs as pack-coder (or direct edits if scope ≤ a few lines per file).
-4. After fix-follow lands and validator/CI is clean, status flips per the implicit-flip rule (§C.4).
-5. If fix-follow surfaces defects beyond the original audit scope, those become NEW BDs — not folded into the fix-follow batch.
+1. Every audit/review pass that produces findings is fixed *in the
+   current session*. No fix-follow BDs are opened.
+
+2. Pack Chat reports the findings to the user (severity-grouped),
+   presents fix options per finding (including NITs), and asks
+   permission to fix. Pack Chat does not start the fixes before
+   approval.
+
+3. With user approval, Pack Chat ships the fixes in the same batch's
+   commit, or in a small follow-up commit Pack Chat proposes and the
+   user approves.
+
+4. After review fixes land and validator/CI is clean, status flips
+   per the implicit-flip rule (§C.4).
+
+5. If review surfaces defects beyond the audit scope, Pack Chat
+   surfaces them to the user as findings — without proposing a BD
+   or asking whether to open one. The user alone decides whether
+   a defect becomes a BD.
+
+**BDs are reserved for new scope, new features, and new architecture —
+never for closing audit findings. Only the user can initiate a
+BD-for-fix conversation; Pack Chat must not propose one.**
 
 ### C. Agent / commit lifecycle
 
@@ -305,7 +323,7 @@ These rules govern every batch in §4. They are ordered by enforcement priority 
 
 ### F. Validator / CI gates
 
-1. **`validate-pack.py` PASSES after every batch.** Pack Chat verifies before committing. Regression on any check (1–28) is a defect — fix-forward in the same batch or split a fix-follow.
+1. **`validate-pack.py` PASSES after every batch.** Pack Chat verifies before committing. Regression on any check (1–28) is a defect — fix-forward in the same batch, or in a small Pack-Chat-approved follow-up commit. No fix-follow BD is opened.
 2. **CI `validate` job must be green before BD-102 dog-food (Batch 22).** Currently green. Stays green = batches don't break it.
 3. **CI `tests` job must be green before BD-093 release pin (Batch 23).** Currently red — Batch 6 (BD-128) is the gate that turns it green. Subsequent batches must keep it green.
 4. **No `--no-verify` on commits.** No bypassing pre-commit hooks. (Standing rule.)
@@ -358,8 +376,8 @@ If BD-128's CI repair (Batch 6) requires BD-120's fixture parameterization (Batc
 | Per-batch validator | After every code-change batch, before commit | `validate-pack.py` PASSED — all checks clean | Fix-forward in same batch |
 | CI `validate` job | After every push | green | Fix-forward; never defer |
 | CI `tests` job | After every push | green (target post-Batch 6) | Currently red; Batch 6 gates green; subsequent batches must keep it green |
-| Final milestone audit | Batch 21 | audit report finds zero BLOCKER + acceptable SHOULD-FIX/NIT scope | Fix-follow batch (Batch 21b) per §5.B |
-| Dog-food migration | Batch 22 | clean migrator output against v10-tag pack clone; customization preserved | Fix-follow batch (Batch 22b) per §5.B |
+| Final milestone audit | Batch 21 | audit report finds zero BLOCKER + acceptable SHOULD-FIX/NIT scope | Pack Chat presents findings, options, and asks the user how to proceed (per §B). |
+| Dog-food migration | Batch 22 | clean migrator output against v10-tag pack clone; customization preserved | Pack Chat presents findings, options, and asks the user how to proceed (per §B). |
 | Pre-tag check | Batch 23 | all BDs in §1.1–1.4 Resolved; BD-059 verified-closed; CI fully green; final audit clean | Hold release; resolve gates first |
 
 ---

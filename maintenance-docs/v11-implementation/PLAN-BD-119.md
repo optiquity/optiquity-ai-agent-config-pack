@@ -911,7 +911,7 @@ final commit message body or PR description.
 ### 14.7 Reviewer + maintainer sign-off
 
 - [ ] One pack-reviewer pass after C-7 (per the one-review/fix-cycle-per-batch rule). Review prompt cites ARCHITECTURE-BD-119.md and this PLAN, never any prior review.
-- [ ] If reviewer finds issues: one fix-follow batch, then move on.
+- [ ] If reviewer finds issues: fix in-session (in BD-119's commits or a Pack-Chat-approved follow-up commit), then move on.
 - [ ] PM chat flips BD-119 to Resolved with the date in BACKLOG.md after batch completion (implicit-flip rule).
 
 ---

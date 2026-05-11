@@ -1,5 +1,7 @@
 # BD-097 v11.0 Pre-Release Semantic Audit Report
 
+> **Note (2026-05-11):** Recommendations in §6 ("Followup BD list") and prose phrases like "fix-follow" reflect the prior BD-for-fix policy, deprecated 2026-05-11. Treat the §6 entries as candidate in-session fixes for user approval, not as new BDs to open.
+
 **Date:** 2026-05-07
 **Auditor:** pack-architect (semantic audit role; read-only)
 **Repo HEAD:** main @ e07c318 (`docs: v10 — rename to Optiquity AI Agent Config Pack`)
