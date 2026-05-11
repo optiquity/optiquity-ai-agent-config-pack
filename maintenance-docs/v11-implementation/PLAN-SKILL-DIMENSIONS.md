@@ -48,18 +48,20 @@ Inputs:
 | 10 | BD-149 | PLATFORM-SKILLS.md "Extending this file" naming-convention codification | Documents `*-best-practices` / `*-language` / `*-architecture` / `*-patterns` convention per architecture §7.10; no skill renames |
 | 11 | BD-150 | CHANGELOG.md + README.md skill-count + version-table update | Single CHANGELOG entry; README "30 skills" / "31 skills" mentions reconciled; v11.0 row picks up reframe BD references |
 | 12 | BD-156 | `protobuf-patterns` skill — extract Proto3 schema rules from grpc-patterns; standalone-usable via intersection table | NEW skill creation (3 trinity copies); refocus `grpc-patterns` (×3 trinity) to gRPC-only; PLATFORM-SKILLS.md intersection-table row + dimensional-skills count update; new `protobuf_marker_detected()` helper in `scripts/lib/detect.sh` (parallels BD-141 pattern); `add-capability.sh` row; validate-pack Check 31 must pass with new skill. **Hard blocker for BD-149** per user direction 2026-05-11. *Added 2026-05-11 post-planner — see §7.3.* |
+| 13 | BD-157 | `apple-swiftdata-patterns` skill — SwiftData object-store rules for Apple platforms (intersection-cell loading) | NEW skill (3 trinity copies); PLATFORM-SKILLS.md intersection-table row + inventory update; new `swiftdata_marker_detected()` helper in `scripts/lib/detect.sh` (parallels BD-141 / BD-156 pattern); `init-project.sh` / `add-capability.sh` wiring; validate-pack Check 31 must pass. **Hard blocker for BD-149** per user direction 2026-05-11. *Added 2026-05-11 post-planner — see §7.3.* |
+| 14 | BD-158 | `swift-concurrency-patterns` skill — Modern Swift Concurrency (async/await, actors, Sendable) + GCD (D1-implied loading) | NEW skill (3 trinity copies); PLATFORM-SKILLS.md dimensional-skills row (D1-implied for D1 ∈ {ios, macos}, parallels `swift-best-practices` loading) + inventory update; modify `swift-best-practices` (×3 trinity) and `apple-architecture-core` (×3 trinity) to strip brief concurrency mentions and cross-reference; `init-project.sh` swift-coverage update; `add-capability.sh` update; validate-pack Check 31 must pass. **Hard blocker for BD-149** per user direction 2026-05-11. *Added 2026-05-11 post-planner — see §7.3.* |
 | FINAL | — | Spawn pack-architect for **Phase 2A** | Per-skill rule design for `web-architecture`, `android-architecture`, `embedded-mcu-architecture` |
 
-**Total batches: 12.** **Total new BDs: 12 batch BDs (BD-140..BD-150 + BD-156) + 5 v12-deferred BDs (BD-140 batch creates them as BD-151..BD-155).**
+**Total batches: 14.** **Total new BDs: 14 batch BDs (BD-140..BD-150 + BD-156, BD-157, BD-158) + 5 v12-deferred BDs (BD-140 batch creates them as BD-151..BD-155).**
 
 PLANNER NOTE: BD-140 is the "BACKLOG ops" batch and itself creates the
 five v12-deferred entries inline. So the new-BD inventory is BD-140
 (BACKLOG-ops batch) plus BD-141..BD-150 (ten implementation batches)
 plus BD-151..BD-155 (five v12-deferred BACKLOG entries created inside
-BD-140's batch) plus BD-156 (post-planner addition for the
-standalone-protobuf gap surfaced during the BD-142 model-validation
-checkpoint, 2026-05-11). Total new BD numbers consumed: **17**
-(BD-140..BD-156).
+BD-140's batch) plus BD-156, BD-157, BD-158 (post-planner additions
+for the standalone-protobuf, SwiftData, and Swift-concurrency gaps
+surfaced during the BD-142 model-validation checkpoint, 2026-05-11).
+Total new BD numbers consumed: **19** (BD-140..BD-158).
 
 ## 1. Critical-path diagram
 
@@ -78,14 +80,16 @@ BD-141 (detect helper) ┼─► BD-142 (PLATFORM-SKILLS reframe) ──► BD-1
                        │                                              │
                        └────────────────────► BD-148 (MIGRATION docs) ┤
                                                                       │
-                                              BD-156 (protobuf-patterns) ─► BD-149 (naming convention) ─┤
-                                                                                                       │
-                                                                           BD-150 (CHANGELOG + README) ┘
-                                                                                                       │
-                                                                                         FINAL ─► Phase 2A
+                                              BD-156 (protobuf-patterns) ──┐
+                                              BD-157 (apple-swiftdata-patterns) ──┤
+                                              BD-158 (swift-concurrency-patterns) ──┼─► BD-149 (naming convention) ─┤
+                                                                                                                    │
+                                                                                        BD-150 (CHANGELOG + README) ┘
+                                                                                                                    │
+                                                                                                      FINAL ─► Phase 2A
 ```
 
-**Critical path: BD-140 → BD-141 → BD-142 → BD-143 → BD-146 → BD-150 (6 batches).** BD-156 sits off the critical path but is a hard blocker for BD-149 (off-path) per user direction 2026-05-11.
+**Critical path: BD-140 → BD-141 → BD-142 → BD-143 → BD-146 → BD-150 (6 batches).** BD-156, BD-157, BD-158 sit off the critical path but are hard blockers for BD-149 (off-path) per user direction 2026-05-11. They can ship in parallel with each other (file-disjoint: each new skill's SKILL.md trinity is its own directory; BD-156 and BD-157 each add a new intersection-table row, BD-158 adds a dimensional-skills row — only BD-158 cross-edits existing skills `swift-best-practices` and `apple-architecture-core`).
 
 Rationale: BD-141 must precede BD-142 because BD-142's text references
 the new detection helper. BD-142 must precede BD-143 because trinity
@@ -839,8 +843,10 @@ README edit.
 | BD-154 | Skill-versioning frontmatter convention (per architecture §7.9) | Open / Deferred to v12 | Created in Batch 1 |
 | BD-155 | Naming-convention enforcement migration (per architecture §7.10) | Open / Deferred to v12 | Created in Batch 1 |
 | BD-156 | `protobuf-patterns` skill — extract Proto3 schema rules from grpc-patterns; standalone-usable via intersection table | Open / v11.0 | Batch 12 (added 2026-05-11 post-planner; hard blocker for BD-149) |
+| BD-157 | `apple-swiftdata-patterns` skill — SwiftData object-store rules for Apple platforms (intersection-cell loading) | Open / v11.0 | Batch 13 (added 2026-05-11 post-planner; hard blocker for BD-149) |
+| BD-158 | `swift-concurrency-patterns` skill — Modern Swift Concurrency + GCD (D1-implied loading for D1 ∈ {ios, macos}) | Open / v11.0 | Batch 14 (added 2026-05-11 post-planner; hard blocker for BD-149) |
 
-**Total new BDs: 17** (12 v11.0 batch BDs + 5 v12-deferred BDs).
+**Total new BDs: 19** (14 v11.0 batch BDs + 5 v12-deferred BDs).
 
 ---
 
@@ -960,7 +966,7 @@ README edit.
 
 ## 6. Phase 2A handoff
 
-After all 12 batches above ship and BD-150 is Resolved, Pack Chat
+After all 14 batches above ship and BD-150 is Resolved, Pack Chat
 spawns a fresh `pack-architect` session to design Phase 2A: per-skill
 rule designs for `web-architecture`, `android-architecture`, and
 `embedded-mcu-architecture`. This planner does NOT plan the SKILL.md
@@ -1187,27 +1193,60 @@ updates `ARCHITECTURE-BD-119.md` + `PLAN-BD-119.md` to mention it.
 - `grep -n "migrator-skills.sh" maintenance-docs/v11-implementation/PLAN-BD-119.md`
   → ≥1.
 
-### 7.3 BD-156 added post-planner (2026-05-11)
+### 7.3 BD-156, BD-157, BD-158 added post-planner (2026-05-11)
 
-A standalone-Protocol-Buffers gap was identified during the BD-142
-model-validation checkpoint (2026-05-11). Today Proto3 schema rules
-are bundled inside `grpc-patterns` (D4=grpc) — honest for the pack's
-gRPC use case but excludes non-gRPC scenarios (binary file format, IPC
-payloads, Twirp / Connect, persistent storage, log formats). BD-156
-creates a new `protobuf-patterns` skill loaded via the intersection
-table (matches the `python-data-architecture` pattern of intersection-
-cell loading by language ∩ marker). Predicate: any host language ∩
-"project has `.proto` files" marker (or dependency manifest lists
-protobuf tooling). New helper `protobuf_marker_detected()` in
-`scripts/lib/detect.sh` parallels BD-141's `python_data_marker_detected()`
-shape.
+Three skill-content gaps were identified during the BD-142
+model-validation checkpoint (2026-05-11) and added as v11.0 scope per
+user direction. All three are hard blockers for BD-149 so the
+`*-patterns` naming convention has worked examples AND the gaps close
+before v11.0 ships rather than being deferred.
 
-**Sequencing:** BD-156 ships before BD-149 (hard blocker per user
-direction 2026-05-11) so the `*-patterns` naming convention can be
-codified with a worked example AND the standalone-protobuf gap closes
-before v11.0 ships rather than being deferred to a later minor.
-BD-156 sits off the critical path (depends only on BD-142 and BD-141);
-BD-149 (also off-path) gains BD-156 as a Blocker.
+**BD-156: `protobuf-patterns`.** Today Proto3 schema rules are bundled
+inside `grpc-patterns` (D4=grpc) — honest for the pack's gRPC use case
+but excludes non-gRPC scenarios (binary file format, IPC payloads,
+Twirp / Connect, persistent storage, log formats). BD-156 creates a
+new `protobuf-patterns` skill loaded via the intersection table
+(matches the `python-data-architecture` pattern of intersection-cell
+loading by language ∩ marker). Predicate: any host language ∩ "project
+has `.proto` files" marker. New helper `protobuf_marker_detected()`
+in `scripts/lib/detect.sh` parallels BD-141's
+`python_data_marker_detected()` shape.
+
+**BD-157: `apple-swiftdata-patterns`.** SwiftData (iOS 17+ / macOS 14+)
+is Apple's modern declarative object-store API on top of SQLite,
+replacing CoreData for new development. Has substantial framework-
+specific rules (`@Model` macro design, `ModelContainer`/`ModelContext`
+threading, `FetchDescriptor` predicates, schema migrations, history
+tracking, CloudKit sync) currently uncovered by `apple-architecture-core`
+/ `ios-architecture` / `macos-architecture`. OT itself uses SwiftData,
+making this immediately consequential. Predicate: `D1 ∈ {ios, macos} ∩
+swiftdata-marker`. New helper `swiftdata_marker_detected()` parallels
+BD-141 / BD-156 helper pattern. Demonstrates the maintainability
+property — adding a new intersection-cell skill is a mechanical change.
+
+**BD-158: `swift-concurrency-patterns`.** Modern Swift Concurrency
+(async/await, actors, Sendable, Swift 6 strict checking) and Grand
+Central Dispatch (GCD) are the two concurrency models in active use
+across every nontrivial Apple project. Currently scattered across
+`swift-best-practices` (brief Swift 6 mention) and
+`apple-architecture-core` (brief actor-isolation mention). BD-158
+creates a dedicated skill encoding both Modern Swift Concurrency rules
+and GCD rules including modernization guidance. Loads as **D1-implied**
+for D1 ∈ {ios, macos} per architecture §3.2 (matches `swift-best-practices`
+loading pattern — every Apple project deals with concurrency, no marker
+predicate needed). When BD-153 (the v12-deferred Tier 0
+`concurrency-architecture` skill) lands, this Apple-Swift specialization
+references BD-153 for cross-language principles.
+
+**Sequencing:** All three ship before BD-149. BD-156 / BD-157 / BD-158
+sit off the critical path (depend only on BD-142, plus BD-141 for the
+helper-pattern precedent for the marker-using skills); BD-149 (also
+off-path) gains all three as Blockers. BD-156 / BD-157 / BD-158 are
+file-disjoint at the SKILL.md level (each new skill in its own
+directory) and can ship in parallel; BD-158 additionally cross-edits
+`swift-best-practices` and `apple-architecture-core` to strip brief
+concurrency mentions and cross-reference, which is the only intra-
+batch sequencing constraint.
 
 **Effect on `grpc-patterns`:** refocused on gRPC-specific rules
 (servicers, interceptors, streaming, deadlines, error model, async
@@ -1247,9 +1286,9 @@ make.
 ## 8. Final summary
 
 - **Doc path:** `/Users/david/Developer/optiquity-ai-agent-config-pack-v11-dev/maintenance-docs/v11-implementation/PLAN-SKILL-DIMENSIONS.md`
-- **Total batches: 12** (BD-140..BD-150 + BD-156).
-- **Total new BDs: 17** (12 v11.0 batch BDs + 5 v12-deferred BDs).
-- **Critical path: 6 batches** (BD-140 → BD-141 → BD-142 → BD-143 → BD-146 → BD-150). BD-156 sits off-path; hard-blocks BD-149.
+- **Total batches: 14** (BD-140..BD-150 + BD-156, BD-157, BD-158).
+- **Total new BDs: 19** (14 v11.0 batch BDs + 5 v12-deferred BDs).
+- **Critical path: 6 batches** (BD-140 → BD-141 → BD-142 → BD-143 → BD-146 → BD-150). BD-156, BD-157, BD-158 sit off-path; all three hard-block BD-149.
 - **After BD-150 ships and is Resolved:** spawn `pack-architect` for
   Phase 2A (web / Android / embedded-MCU per-skill rule design). Do
   NOT pass `isolation: "worktree"` to the spawn.
