@@ -47,15 +47,19 @@ Inputs:
 | 9 | BD-148 | MIGRATION-v10-to-v11.md + MERGE-STRATEGY.md "Skill model changes" section | Documents reframe as behavioral note (per architecture §7.8); BD-136 trinity-marker non-overlap noted; D5 monorepo gotcha (architecture §7.4); D2 reshape advisory (architecture §7.6) |
 | 10 | BD-149 | PLATFORM-SKILLS.md "Extending this file" naming-convention codification | Documents `*-best-practices` / `*-language` / `*-architecture` / `*-patterns` convention per architecture §7.10; no skill renames |
 | 11 | BD-150 | CHANGELOG.md + README.md skill-count + version-table update | Single CHANGELOG entry; README "30 skills" / "31 skills" mentions reconciled; v11.0 row picks up reframe BD references |
+| 12 | BD-156 | `protobuf-patterns` skill — extract Proto3 schema rules from grpc-patterns; standalone-usable via intersection table | NEW skill creation (3 trinity copies); refocus `grpc-patterns` (×3 trinity) to gRPC-only; PLATFORM-SKILLS.md intersection-table row + dimensional-skills count update; new `protobuf_marker_detected()` helper in `scripts/lib/detect.sh` (parallels BD-141 pattern); `add-capability.sh` row; validate-pack Check 31 must pass with new skill. **Hard blocker for BD-149** per user direction 2026-05-11. *Added 2026-05-11 post-planner — see §7.3.* |
 | FINAL | — | Spawn pack-architect for **Phase 2A** | Per-skill rule design for `web-architecture`, `android-architecture`, `embedded-mcu-architecture` |
 
-**Total batches: 11.** **Total new BDs: 11 batch BDs (BD-140..BD-150) + 5 v12-deferred BDs (BD-140 batch creates them as BD-151..BD-155).**
+**Total batches: 12.** **Total new BDs: 12 batch BDs (BD-140..BD-150 + BD-156) + 5 v12-deferred BDs (BD-140 batch creates them as BD-151..BD-155).**
 
 PLANNER NOTE: BD-140 is the "BACKLOG ops" batch and itself creates the
 five v12-deferred entries inline. So the new-BD inventory is BD-140
 (BACKLOG-ops batch) plus BD-141..BD-150 (ten implementation batches)
 plus BD-151..BD-155 (five v12-deferred BACKLOG entries created inside
-BD-140's batch). Total new BD numbers consumed: **16** (BD-140..BD-155).
+BD-140's batch) plus BD-156 (post-planner addition for the
+standalone-protobuf gap surfaced during the BD-142 model-validation
+checkpoint, 2026-05-11). Total new BD numbers consumed: **17**
+(BD-140..BD-156).
 
 ## 1. Critical-path diagram
 
@@ -74,14 +78,14 @@ BD-141 (detect helper) ┼─► BD-142 (PLATFORM-SKILLS reframe) ──► BD-1
                        │                                              │
                        └────────────────────► BD-148 (MIGRATION docs) ┤
                                                                       │
-                                              BD-149 (naming convention) ─┤
-                                                                          │
-                                              BD-150 (CHANGELOG + README) ┘
-                                                                          │
-                                                            FINAL ─► Phase 2A
+                                              BD-156 (protobuf-patterns) ─► BD-149 (naming convention) ─┤
+                                                                                                       │
+                                                                           BD-150 (CHANGELOG + README) ┘
+                                                                                                       │
+                                                                                         FINAL ─► Phase 2A
 ```
 
-**Critical path: BD-140 → BD-141 → BD-142 → BD-143 → BD-146 → BD-150 (6 batches).**
+**Critical path: BD-140 → BD-141 → BD-142 → BD-143 → BD-146 → BD-150 (6 batches).** BD-156 sits off the critical path but is a hard blocker for BD-149 (off-path) per user direction 2026-05-11.
 
 Rationale: BD-141 must precede BD-142 because BD-142's text references
 the new detection helper. BD-142 must precede BD-143 because trinity
@@ -834,8 +838,9 @@ README edit.
 | BD-153 | Tier 0 concurrency-architecture skill (per architecture §7.3) | Open / Deferred to v12 | Created in Batch 1 |
 | BD-154 | Skill-versioning frontmatter convention (per architecture §7.9) | Open / Deferred to v12 | Created in Batch 1 |
 | BD-155 | Naming-convention enforcement migration (per architecture §7.10) | Open / Deferred to v12 | Created in Batch 1 |
+| BD-156 | `protobuf-patterns` skill — extract Proto3 schema rules from grpc-patterns; standalone-usable via intersection table | Open / v11.0 | Batch 12 (added 2026-05-11 post-planner; hard blocker for BD-149) |
 
-**Total new BDs: 16** (11 v11.0 batch BDs + 5 v12-deferred BDs).
+**Total new BDs: 17** (12 v11.0 batch BDs + 5 v12-deferred BDs).
 
 ---
 
@@ -955,7 +960,7 @@ README edit.
 
 ## 6. Phase 2A handoff
 
-After all 11 batches above ship and BD-150 is Resolved, Pack Chat
+After all 12 batches above ship and BD-150 is Resolved, Pack Chat
 spawns a fresh `pack-architect` session to design Phase 2A: per-skill
 rule designs for `web-architecture`, `android-architecture`, and
 `embedded-mcu-architecture`. This planner does NOT plan the SKILL.md
@@ -1182,14 +1187,69 @@ updates `ARCHITECTURE-BD-119.md` + `PLAN-BD-119.md` to mention it.
 - `grep -n "migrator-skills.sh" maintenance-docs/v11-implementation/PLAN-BD-119.md`
   → ≥1.
 
+### 7.3 BD-156 added post-planner (2026-05-11)
+
+A standalone-Protocol-Buffers gap was identified during the BD-142
+model-validation checkpoint (2026-05-11). Today Proto3 schema rules
+are bundled inside `grpc-patterns` (D4=grpc) — honest for the pack's
+gRPC use case but excludes non-gRPC scenarios (binary file format, IPC
+payloads, Twirp / Connect, persistent storage, log formats). BD-156
+creates a new `protobuf-patterns` skill loaded via the intersection
+table (matches the `python-data-architecture` pattern of intersection-
+cell loading by language ∩ marker). Predicate: any host language ∩
+"project has `.proto` files" marker (or dependency manifest lists
+protobuf tooling). New helper `protobuf_marker_detected()` in
+`scripts/lib/detect.sh` parallels BD-141's `python_data_marker_detected()`
+shape.
+
+**Sequencing:** BD-156 ships before BD-149 (hard blocker per user
+direction 2026-05-11) so the `*-patterns` naming convention can be
+codified with a worked example AND the standalone-protobuf gap closes
+before v11.0 ships rather than being deferred to a later minor.
+BD-156 sits off the critical path (depends only on BD-142 and BD-141);
+BD-149 (also off-path) gains BD-156 as a Blocker.
+
+**Effect on `grpc-patterns`:** refocused on gRPC-specific rules
+(servicers, interceptors, streaming, deadlines, error model, async
+handlers, grpc-swift-2 / grpc.aio specifics). The Proto3 schema-design
+rules currently bundled there move to `protobuf-patterns`;
+`grpc-patterns` ships with a one-paragraph "see `protobuf-patterns`
+for schema rules; load both when gRPC is in use" pointer.
+
+**Naming:** `protobuf-patterns` matches architecture §7.10 naming
+convention for cross-cutting concerns (parallels `grpc-patterns`,
+`rest-patterns`, `security-patterns`).
+
+**Out of scope (explicitly):** no separate skills for JSON / YAML /
+TOML — minimal standalone rules; fold into `api-design` (Tier 0) and
+`rest-patterns` (D4=rest). A separate BD can be opened later if
+standalone schema work for those formats becomes a need.
+
+### 7.4 BD-148 expanded scope (BD-142 F3 deferred fix)
+
+The BD-142 pack-reviewer surfaced F3 (NIT): the `## Custom agents`
+table in PLATFORM-SKILLS.md (line 510 in the v11.0 reframe state)
+carries column headers `Tier 1 skills | Tier 2 skills` from the
+deprecated pre-v11 framing. BD-142 preserved the section byte-identical
+per BD-088 customization-preserve invariants, so the rename was
+deferred to BD-148 (which already coordinates skill-model migration
+across MIGRATION-v10-to-v11.md + MERGE-STRATEGY.md + Procedure-5
+documentation). BD-148's File/Symbol and Description fields were
+expanded inline in the BD-142 commit (`58f79f0`) to record the F3
+scope so it is not forgotten. Recommended new column convention
+(per the architecture §3.6 Tier 0 / dimensional / intersection /
+trigger nomenclature): `Base skills | Dimensional skills`, but the
+exact convention is a Procedure-5 design decision that BD-148 must
+make.
+
 ---
 
 ## 8. Final summary
 
 - **Doc path:** `/Users/david/Developer/optiquity-ai-agent-config-pack-v11-dev/maintenance-docs/v11-implementation/PLAN-SKILL-DIMENSIONS.md`
-- **Total batches: 11** (BD-140..BD-150).
-- **Total new BDs: 16** (11 v11.0 batch BDs + 5 v12-deferred BDs).
-- **Critical path: 6 batches** (BD-140 → BD-141 → BD-142 → BD-143 → BD-146 → BD-150).
+- **Total batches: 12** (BD-140..BD-150 + BD-156).
+- **Total new BDs: 17** (12 v11.0 batch BDs + 5 v12-deferred BDs).
+- **Critical path: 6 batches** (BD-140 → BD-141 → BD-142 → BD-143 → BD-146 → BD-150). BD-156 sits off-path; hard-blocks BD-149.
 - **After BD-150 ships and is Resolved:** spawn `pack-architect` for
   Phase 2A (web / Android / embedded-MCU per-skill rule design). Do
   NOT pass `isolation: "worktree"` to the spawn.
