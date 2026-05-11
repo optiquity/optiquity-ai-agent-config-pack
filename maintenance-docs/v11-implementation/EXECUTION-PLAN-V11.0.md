@@ -218,7 +218,28 @@ Resolved: n/a
 
 ## 4. Batch plan (23 batches)
 
-Sequencing rationale up front:
+> **2026-05-11 re-sequencing note.** Batches 1, 2, and 5–13 shipped in
+> numeric order. Batches 3 and 4 (BD-120/BD-116, BD-117/BD-118) were
+> skipped over and are now deferred to **Phase 3.5** of the post-reframe
+> sequence — they ship after the skill-dimensions reframe
+> (BD-140..BD-150 per `PLAN-SKILL-DIMENSIONS.md`) and the non-Apple UI
+> Phase 2A/2B/3 work, but before Batch 14b. Their original positions in
+> the table below are preserved for historical reference and BD numbering
+> integrity.
+>
+> The skill-dimensions reframe (11 batches: BD-140..BD-150) was inserted
+> by user direction and runs BEFORE all remaining v11.0 batches. It is
+> documented authoritatively in `PLAN-SKILL-DIMENSIONS.md`, not here.
+> This document covers Batches 14b–23 unchanged (plus the deferred
+> Batches 3 and 4 at their new Phase 3.5 slot).
+>
+> Effective execution order from 2026-05-11 forward:
+> 1. Skill-dimensions reframe (BD-140..BD-150) — see `PLAN-SKILL-DIMENSIONS.md`
+> 2. Phase 2A architect → Phase 2B planner → Phase 3 (3 new SKILL.md commits: web-architecture, android-architecture, embedded-mcu-architecture)
+> 3. **Phase 3.5: original Batches 3 + 4** — BD-120 → BD-116; BD-117 → BD-118
+> 4. Batches 14b → 23 per the table below
+
+Sequencing rationale up front (original):
 - Batches 1–4 are the original Tier B + C scope (small, fast).
 - Batch 5 stops the BACKLOG from claiming work is open that's already done AND opens the 7 new BDs in one hygiene commit.
 - Batch 6 (CI repair) gates everything else — until CI is green, dog-food and release pin can't fire confidently.
