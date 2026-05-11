@@ -284,17 +284,26 @@ The current migrator runs in single-shot mode: pre-flight → backup →
 dispatch → install → report. A re-run requires removing the prior
 backup directory.
 
-**BD-095 will extend `migrate-v10-to-v11.sh` with three modes:**
+**BD-095 (shipped 2026-05-10) extended `migrate-v10-to-v11.sh` with three modes:**
 
 - `--dry-run` — emit the dispositions TSV and report without writing
   any project files. Useful for previewing changes before commit.
 - `--apply` — the default behavior today (write changes, write
-  sidecars, exit).
-- `--resume` — after the user reconciles `*.merge-conflict` sidecars,
-  resume the migration from the next pending dispatch. Sentinel-based
-  (mirrors the v9→v10 migrator's `stage-S*.done` files).
+  sidecars, exit). Refuses to run unless a fresh dry-run report exists
+  for the current working-tree fingerprint (24h freshness window per
+  ARCHITECTURE §6.G). Bare invocation auto-runs `--dry-run` first if
+  no fresh dry-run output exists, preserving single-shot UX.
+- `--resume` — after the user reconciles sidecar files (written with
+  the per-migrator suffix `*.${MIGRATOR_OWN_SIDECAR_SUFFIX}` —
+  currently `*.v10-customized` for the v10→v11 migrator), resume the
+  migration from the next pending dispatch. Sentinel-based
+  (`stage-S<N>.done` files in the migrator's state directory).
+  Forward-only; accepts BOTH a `.resolved` flag-file alongside the
+  sidecar AND extension removal as conflict-resolution signals
+  (ARCHITECTURE §6.H).
 
-Until BD-095 lands, follow this single-shot recipe:
+Pre-BD-095 single-shot recipe (still works as the bare invocation
+default behavior):
 
 1. Confirm clean working tree.
 2. Run `scripts/migrate-v10-to-v11.sh`.

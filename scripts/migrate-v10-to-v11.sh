@@ -42,7 +42,22 @@
 #      stays on `migrator_post_dispatch_hook` for backward compatibility.
 #
 # Usage:
-#     PACK=/path/to/pack ./scripts/migrate-v10-to-v11.sh [target-dir] [--dry-run]
+#     PACK=/path/to/pack ./scripts/migrate-v10-to-v11.sh [target-dir] [mode-flag]
+#
+# Modes (BD-095 two-phase workflow):
+#     --dry-run   Preview only; writes report + dispositions + a fingerprint
+#                 the apply mode will check. No project files are mutated.
+#     --apply     Default. Refuses to run unless a fresh (<24h) dry-run
+#                 fingerprint exists for the current working tree (§6.G).
+#                 Pauses cleanly before S4 if dispatch produces sidecars
+#                 the user must reconcile.
+#     --resume    Continues a paused --apply after sidecar reconciliation.
+#                 Forward-only (§6.H). Accepts both `.resolved` flag-files
+#                 AND extension removal as conflict-resolution signals.
+#     <bare>      Backwards-compat: equivalent to --apply, BUT auto-runs
+#                 --dry-run first if no fresh dry-run output exists. Users
+#                 of pre-BD-095 invocations do not need to learn the new
+#                 flags for the no-conflict path.
 #
 # Exit codes are inherited from the framework
 # (`scripts/lib/migrator-core.sh`). The pre-refactor `EXIT_NOT_V10=13` is
@@ -117,6 +132,15 @@ migrator_artifact_installs() { :; }
 # in a single unit so the adapter retains the exact stdout + report.md
 # shape the pre-refactor monolith produced.
 migrator_post_dispatch_hook() {
+    # In --dry-run mode the framework's stage helpers short-circuit
+    # writes; the adapter's hook must do the same so BD-095 can rely on
+    # a true dry-run for the fingerprint comparator. The pre-BD-095
+    # invariant (single-shot only) made this gate unnecessary; with
+    # BD-095 the gate is required.
+    if _migrator_is_dryrun; then
+        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install"
+        return 0
+    fi
     _v10_to_v11_rename_implementation_plan
     _v10_to_v11_relocate_legacy_docs
     _v10_to_v11_install_v11_artifacts
@@ -321,4 +345,126 @@ migrator_post_report_hook() {
 # shellcheck source=lib/migrator-core.sh disable=SC1091
 . "$SCRIPT_DIR/lib/migrator-core.sh"
 
-migrator_run "$@"
+# ── BD-095 two-phase mode dispatch ─────────────────────────────────────────
+#
+# The three mode libs sit under scripts/lib/migrate-v10-to-v11/. dry-run.sh
+# stamps a fingerprint, apply.sh enforces freshness + sentinel-based
+# pause/resume, resume.sh continues a paused run after sidecar
+# reconciliation. Each lib exposes a `migrate_v10_to_v11_<mode>_run`
+# function that wraps `migrator_run` with the mode-specific concerns.
+#
+# We parse the FIRST `--<mode>` flag here and dispatch. The framework's
+# arg parser still validates other flags + positional args downstream.
+
+# shellcheck source=lib/migrate-v10-to-v11/dry-run.sh disable=SC1091
+. "$SCRIPT_DIR/lib/migrate-v10-to-v11/dry-run.sh"
+# shellcheck source=lib/migrate-v10-to-v11/apply.sh disable=SC1091
+. "$SCRIPT_DIR/lib/migrate-v10-to-v11/apply.sh"
+# shellcheck source=lib/migrate-v10-to-v11/resume.sh disable=SC1091
+. "$SCRIPT_DIR/lib/migrate-v10-to-v11/resume.sh"
+
+# Mode detection: scan args for the first explicit mode flag. Drop the
+# matched flag from the forwarded args because each mode dispatcher
+# re-supplies its own canonical mode flag to `migrator_run`.
+_mode=""
+_passthru=()
+for _a in "$@"; do
+    case "$_a" in
+        --dry-run|--apply|--resume)
+            if [[ -z "$_mode" ]]; then
+                _mode="$_a"
+                continue
+            fi
+            # Multiple mode flags is a user error — let the framework's
+            # parser reject the duplicate downstream rather than silently
+            # picking one.
+            _passthru+=("$_a")
+            ;;
+        *)
+            _passthru+=("$_a")
+            ;;
+    esac
+done
+
+# Helper: scan passthru for --help and route through framework usage if present.
+_dispatch_help_passthru() {
+    local _a
+    for _a in "${_passthru[@]:-}"; do
+        case "$_a" in
+            --help|-h)
+                migrator_run "${_passthru[@]:-}"
+                exit $?
+                ;;
+        esac
+    done
+}
+
+case "$_mode" in
+    --dry-run)
+        _dispatch_help_passthru
+        migrate_v10_to_v11_dry_run_run "${_passthru[@]:-}"
+        ;;
+    --resume)
+        _dispatch_help_passthru
+        migrate_v10_to_v11_resume_run "${_passthru[@]:-}"
+        ;;
+    --apply)
+        # Explicit --apply: STRICTLY enforce the freshness gate. Refuses
+        # to run without a pre-existing fresh dry-run fingerprint
+        # (architecture §6.G). Users who want the auto-dry-run-then-
+        # apply convenience drop the flag and use the bare invocation.
+        _dispatch_help_passthru
+        migrate_v10_to_v11_apply_run "${_passthru[@]:-}"
+        ;;
+    "")
+        # Bare invocation: backwards-compat with the pre-BD-095 UX.
+        # Auto-runs --dry-run first if no fresh dry-run output exists,
+        # then runs --apply. Users of the legacy `migrate.sh <target>`
+        # invocation pattern do NOT need to learn the new flags for the
+        # no-conflict path.
+        _dispatch_help_passthru
+        _target="."
+        for _a in "${_passthru[@]:-}"; do
+            case "$_a" in
+                -*|--*) ;;
+                *) _target="$_a"; break ;;
+            esac
+        done
+        _target_abs="$(cd "$_target" 2>/dev/null && pwd || printf '%s' "$_target")"
+        _fp="$_target_abs/.pack-migrate-v10-to-v11/dry-run.fingerprint"
+        # Determine whether a re-dry-run is needed:
+        #   - fingerprint absent
+        #   - fingerprint older than 24h (would fail freshness in apply)
+        #   - working-tree fingerprint drifted from recorded fingerprint
+        # Any of those → auto-rerun --dry-run so the bare-invocation UX
+        # mirrors the pre-BD-095 single-shot path.
+        _need_dry_run=0
+        if [[ ! -f "$_fp" ]]; then
+            _need_dry_run=1
+        else
+            _now=$(date +%s)
+            _rec_epoch=$(grep '^epoch=' "$_fp" | head -1 | cut -d= -f2-)
+            if [[ -z "$_rec_epoch" ]] \
+               || (( _now - _rec_epoch > ${V10_V11_DRYRUN_MAX_AGE_SECS:-86400} )); then
+                _need_dry_run=1
+            else
+                _rec_sha=$(grep '^target_sha256=' "$_fp" | head -1 | cut -d= -f2-)
+                _cur_line=$(migrate_v10_to_v11_dry_run_compute_fingerprint "$_target_abs")
+                _cur_sha=$(printf '%s' "$_cur_line" | awk '{print $1}')
+                if [[ "$_rec_sha" != "$_cur_sha" ]]; then
+                    _need_dry_run=1
+                fi
+            fi
+        fi
+        if (( _need_dry_run == 1 )); then
+            say "── BD-095 backwards-compat: no fresh dry-run found ──"
+            say "Auto-running --dry-run first; --apply will follow on success."
+            say ""
+            migrate_v10_to_v11_dry_run_run "${_passthru[@]:-}" || exit $?
+            say ""
+            say "── proceeding to --apply ──"
+            say ""
+        fi
+        migrate_v10_to_v11_apply_run "${_passthru[@]:-}"
+        ;;
+esac

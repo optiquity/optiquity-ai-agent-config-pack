@@ -72,8 +72,11 @@ project — there is no shared state between projects.
 
 - Multi-tracker (Linear / Jira / Forgejo) backends — the abstraction
   exists, only `gh` is implemented in v11.
-- `--dry-run` / `--apply` / `--resume` migrator modes — single-shot
-  only in v11; BD-095 will extend.
+- `--dry-run` / `--apply` / `--resume` migrator modes — shipped in
+  v11.0 by BD-095. Bare invocation defaults to `--apply` and
+  auto-runs `--dry-run` first if no fresh dry-run output exists, so
+  the single-shot UX is preserved. See `MERGE-STRATEGY.md` §A1 for
+  full mode semantics.
 
 ---
 
