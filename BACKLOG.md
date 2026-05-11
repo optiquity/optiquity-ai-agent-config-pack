@@ -1334,6 +1334,22 @@ Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 
 ---
 
+**BD-139 — BD-104 audit fix-follow (1 MAJOR + 2 MINOR + 2 NIT)**
+Type: TODO(version) — fix-follow per standing rule §5.B (Batch 12 audit `maintenance-docs/v11-implementation/AUDIT-BD-104.md`, 2026-05-10)
+Status: Open
+Blockers: none — purely fix-follow polish + the missing test
+Unblocks: closes the BD-104 audit; restores test-coverage compliance with `IMPLEMENTATION-PLAN-ADDENDUM-3.md:235`
+File/Symbol:
+  - `scripts/tests/test-migrate-v10-to-v11.sh` — extend with 4 BD-104 test cases (F-1, MAJOR): rename happy-path; source-absent no-op; untracked-source `mv` fallback; `migration-rename-collision` typed-error contract per `scripts/lib/tracker-errors.sh` lines 25-31. ~80 lines bash + assertions. Spec reference: `maintenance-docs/v11-research/IMPLEMENTATION-PLAN-ADDENDUM-3.md:235`.
+  - `supporting-docs/MIGRATION-v10-to-v11.md` lines 119-129 — update stage table to include the new S4 rename stage (F-2, MINOR). User-facing doc currently never mentions the BD-104 rename.
+  - `scripts/migrate-v10-to-v11.sh` — disambiguate the two functions both emitting "── S4 ──" banner (F-3, MINOR). Either give the second a distinct stage label OR add a sub-banner that distinguishes. Current ambiguity confuses both stdout output and `fail_stage` reports.
+  - `scripts/migrate-v10-to-v11.sh` lines 191-201 — surface `$mv_stderr` in the git-mv fallback failure path (F-4, NIT). Currently silently dropped, hindering operator diagnostics.
+  - `BACKLOG.md` BD-104 Resolved line + commit message of `ef20113` + `maintenance-docs/v11-implementation/EXECUTION-PLAN-V11.0.md` (if applicable) — reconcile the allowlist count (F-5, NIT). Audit found 181 remaining `IMPLEMENTATION_PLAN` references; docs say 179. Either find the 2 missing allowlist entries to bring to 179, OR correct the docs to say 181.
+Description: Standing rule §5.B mandates fix-follow BDs for every audit finding including NITs. BD-104 audit (`maintenance-docs/v11-implementation/AUDIT-BD-104.md`) surfaced 1 MAJOR + 2 MINOR + 2 NIT. The MAJOR (F-1) is a real test-coverage gap — all four BD-104 migrator code paths (rename happy-path, source-absent no-op, untracked `mv` fallback, `migration-rename-collision` typed-error contract) are uncovered. Spec `maintenance-docs/v11-research/IMPLEMENTATION-PLAN-ADDENDUM-3.md:235` explicitly calls for the test extension. The other 4 findings are smaller (doc table, banner disambiguation, stderr surfacing, count reconciliation). All 5 fit one batch; one commit.
+Resolved:
+
+---
+
 **BD-138 — Schedule BD-136 implementation as a v11.0 batch (no v11.1 deferral)**
 Type: TODO(version) — surfaced 2026-05-10 during v11.0 plan review (no batch was scheduled for BD-136 implementation despite BD-136 being a v11.0 ship-gate item per user direction)
 Status: Resolved
