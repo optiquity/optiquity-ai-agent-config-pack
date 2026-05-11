@@ -11,7 +11,6 @@ The pack test convention. Canonical examples:
 - `scripts/test-detect.sh` — unit tests for `scripts/lib/detect.sh`
 - `scripts/test-migrator-core.sh` — public-API surface of the migrator framework
 - `scripts/test-migrator-manifest.sh` — engine-side manifest behavior
-- `scripts/test-migrator-behavior-preservation.sh` — adapter behavior preservation harness
 
 When adding a new test runner, match this pattern. When extending an
 existing one, do not invent a parallel pattern — extend the script in
@@ -210,8 +209,8 @@ Allowed and recommended:
 - Different unit / different surface / different fixture style →
   new `scripts/test-<name>.sh`.
 - A new BD that needs to verify multi-step behavior → consider a
-  behavior-preservation harness (see
-  `test-migrator-behavior-preservation.sh` for the pattern).
+  behavior-preservation harness (see `test-migrator-core.sh` for the
+  adapter-test pattern that gated the BD-119 refactor).
 
 Do not duplicate fixture macros across scripts; if two scripts need the
 same fixture, that's the signal to factor — but per "DECLINED for now"

@@ -204,7 +204,6 @@ scripts/                                    Pack-level scripts
 
 scripts/test-migrator-core.sh               BD-119 unit tests — public API surface (v11)
 scripts/test-migrator-manifest.sh           BD-119 unit tests — manifest parser/validator (v11)
-scripts/test-migrator-behavior-preservation.sh   BD-119 byte-equivalence harness vs. pre-refactor monolith (v11)
 
 .github/workflows/                          GitHub Actions
 └── validate-pack.yml                       Pack self-validation on every push

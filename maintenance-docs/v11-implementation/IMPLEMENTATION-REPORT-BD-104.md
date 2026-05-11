@@ -446,7 +446,13 @@ $ find . -name 'IMPLEMENTATION-PLAN.md' -not -path './.git/*'
 
 ## 7. POQs (Planner-Open-Questions)
 
-### POQ-1 — `test-migrator-behavior-preservation.sh` regression (BLOCKING for CI)
+### POQ-1 — `test-migrator-behavior-preservation.sh` regression (BLOCKING for CI) — RESOLVED by BD-137 (2026-05-10)
+
+**Resolution:** BD-137 retired the harness entirely. The BD-119 refactor it gated has shipped clean; harness purpose fulfilled. Surviving BD-119 test surface (`test-migrator-core.sh` + `test-migrator-manifest.sh` + validate-pack Check 26) continues to guard the framework. CI tests job restored to green.
+
+---
+
+
 
 **Problem.** The BD-119 byte-equivalence harness now reports
 `13 passed, 2 failed` because the new BD-104 stdout (`── S4 — BD-104

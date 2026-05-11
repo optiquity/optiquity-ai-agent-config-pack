@@ -1223,6 +1223,16 @@ Resolved: 2026-05-08, v11.0 — Framework shipped across 8 commits
   suite restored to 39/39 post-fix-follow. Trinity rule respected
   (CLAUDE/AGENTS/GEMINI byte-identical "Migrator framework" bullet).
   v12+ migrators are now small adapters atop the framework.
+  **2026-05-10 addendum (BD-137):** the byte-equivalence harness
+  (`scripts/test-migrator-behavior-preservation.sh`) was retired
+  by BD-137. Its purpose — gating the BD-119 refactor by proving
+  byte-equivalence vs the pre-refactor monolith pinned at SHA
+  `d7b3f07` — is fulfilled. Post-refactor surface drift (banner
+  changes from BD-104, etc.) cannot be accommodated by the harness
+  per its anti-redaction policy (PLAN §13.3). The remaining BD-119
+  test surface (`test-migrator-core.sh` 19 cases +
+  `test-migrator-manifest.sh` 12 cases + Check 26) continues to
+  guard the framework's public API and structural invariants.
 
 ---
 
@@ -1326,7 +1336,7 @@ Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 
 **BD-137 — Retire `scripts/test-migrator-behavior-preservation.sh` (BD-119 byte-equivalence harness)**
 Type: TODO(version) — fast-follow from BD-104 commit (2026-05-10) + standing rule §5.B
-Status: Open
+Status: Resolved
 Blockers: none (BD-119 refactor it gated has shipped at commit `91a9fc5` — Batch 11)
 Unblocks: green CI on the `tests` job (currently red on `test-migrator-behavior-preservation.sh` after BD-104's stdout banner intentionally diverged from the pre-refactor monolith pinned at SHA `d7b3f07`)
 File/Symbol:
@@ -1337,7 +1347,7 @@ File/Symbol:
   - `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-104.md` POQ-1 — mark resolved by BD-137.
   - `supporting-docs/MIGRATION-v10-to-v11.md` — audit for any reference to the harness; remove if present (low likelihood — the harness was internal pack tooling).
 Description: BD-104's pack-side string sweep (Batch 12) included one rename in the migrator's stdout (a banner line referencing `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md`). The BD-119 byte-equivalence harness (`scripts/test-migrator-behavior-preservation.sh`) compares the current migrator's stdout against a frozen baseline captured before the BD-119 refactor (pinned at SHA `d7b3f07`). The new banner is legitimate post-refactor surface drift that the harness cannot accommodate without redaction — and the harness header explicitly forbids redaction-based fixes (PLAN §13.3). The harness was created as a one-shot proof for the BD-119 refactor (which shipped clean); its purpose is fulfilled. Retiring it is the correct fix. Alternative considered: re-pin the harness baseline to current `HEAD` — rejected because future legitimate stdout changes would face the same problem repeatedly, and the harness's anti-redaction policy makes it perpetually fragile to surface evolution. Retirement is one commit (delete the script + remove its workflow invocation + paper-trail addenda).
-Resolved:
+Resolved: 2026-05-10 — direct execution by Pack Chat (no pack-coder agent needed; mechanical change). Deleted `scripts/test-migrator-behavior-preservation.sh` (entire file). Removed harness invocation from `.github/workflows/validate-pack.yml` (the 3-line step under `migrator behavior-preservation tests (BD-119)`). Removed harness row from `README.md` script-table. Updated `scripts/validate-pack.py` line 789 comment list (removed harness mention; added a one-liner noting BD-137 retirement). Trinity update across `.claude/skills/verification-harness/SKILL.md`, `.codex/skills/verification-harness/SKILL.md`, `.gemini/skills/verification-harness/SKILL.md`: removed harness from the example test list (line 14) and re-pointed the "behavior-preservation harness pattern" example reference (line 213-214) to `test-migrator-core.sh`. Appended addendum to BD-119 Resolved: line documenting the harness retirement and the surviving BD-119 test surface (`test-migrator-core.sh` 19/19 + `test-migrator-manifest.sh` 12/12 + validate-pack Check 26). Validator: 30 checks PASS. Tests: surviving BD-119 test runners green. CI tests job is now expected to be green on next push (the BD-104 known-temporary failure goes away with this commit).
 
 ---
 

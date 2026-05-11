@@ -785,8 +785,9 @@ def check_pack_agent_trinity() -> None:
 # Check 25 (customization-detection regression guard) and Check 26
 # (BD-119 migrator-framework inventory), plus the standalone test
 # scripts run by .github/workflows/validate-pack.yml
-# (test-migrator-core, test-migrator-manifest,
-# test-migrator-behavior-preservation, test-detect).
+# (test-migrator-core, test-migrator-manifest, test-detect).
+# Note: test-migrator-behavior-preservation.sh was retired by BD-137
+# after the BD-119 refactor it gated shipped clean.
 
 
 def check_tool_config_capability_parity() -> None:
