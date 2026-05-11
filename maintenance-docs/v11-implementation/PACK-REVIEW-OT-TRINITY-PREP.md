@@ -740,3 +740,206 @@ The two spec gaps (S-G-1, S-G-2) are amendments to BD-136 itself, not OT-side fi
 ### Read-only confirmation (FP2 verification)
 
 No files in `/Users/david/Developer/OptiquityTrader/`, `/Users/david/Developer/optiquity-ai-agent-config-pack/`, or `/Users/david/Developer/optiquity-ai-agent-config-pack-v11-dev/` (other than this report file) were modified during FP2 verification. Only Bash `diff`, `wc`, `grep`, `awk`, `sed`, and Read calls were used. Confirmed `git status --porcelain` clean in the v10.1 baseline; OT working tree shows the expected pre-existing uncommitted FP2 changes to CLAUDE.md / AGENTS.md / GEMINI.md (these are OT's FP2 work product, not modifications by this verification pass).
+
+---
+
+## Fix Pass 3 — Verification (2026-05-10)
+
+### Verdict
+
+**OK to commit as-is.** All five FP3 actions (FP3-R1, FP3-A1, FP3-A2, FP3-A3, FP3-A4) verified PASS against the twice-amended BD-136 spec (L-1..L-10, V-1..V-8, including L-9 `[CONDITIONAL]` retirement and L-10 `renamed-from` annotation). Marker pair counts match OT's self-report exactly (CLAUDE 15 = 11A+4B; AGENTS 14 = 9A+5B; GEMINI 15 = 11A+4B). Six `renamed-from` annotations present, all byte-identical including the U+2014 EM DASH in `Architecture rules — platform-specific`. Zero `[CONDITIONAL]` prefixes remain. Zero duplicate H2s across Shape A/Shape B per file. Zero markers inside fenced code blocks. Pack-owned territory byte-clean against v10.1 canonical except for legitimate Shape A wraps and the deliberate v11-canonical-anticipated `[CONDITIONAL]` strips. No new defects surfaced. No spec gap surfaced.
+
+One informational note (not a defect): for FP3-R1, OT chose NOT to copy back the canonical `## Phase routing` body (the canonical 12-row routing table, intro paragraph, footnote). OT's Shape B wrap retains its own project-customized 12-row routing table plus the FP2-introduced `### Tool selection` H3 lead-in. Per the L-4 override mechanism this is fully supported; consequence is that AGENTS/CLAUDE/GEMINI `## Phase routing` will diverge from pack-side routing-table refreshes on every future v11 pack update, which is the documented contract for Shape B name-equality override.
+
+### Per-action verdicts
+
+| Action | Verdict | Evidence |
+|---|---|---|
+| FP3-R1 (Phase routing → single Shape B H2 wrap) | **PASS** | CLAUDE.md BEGIN=366 immediately precedes H2 at L367; END=425 just before `## Agent behavior` at L427. AGENTS.md BEGIN=351 / H2=L352 / END=410 just before `## Agent behavior` at L413. GEMINI.md BEGIN=360 / H2=L361 / END=419 just before `## Agent roster` at L427. Inner H3 marker pairs from FP2 (`### Tool selection`, `### Agent routing table`) are GONE — those H3s remain as plain content inside the H2 wrap. H2 name byte-matches canonical (`## Phase routing — default agent assignments`), so L-4 strict-equality override applies; no `renamed-from` needed. |
+| FP3-A1 (Xcode 26.4 platform features `renamed-from`) | **PASS** | All three files line 45: `<!-- BEGIN project-owned: renamed-from "## iOS 26 / Xcode 26.3 platform features" -->`. Annotation grammar matches L-10 exactly. Quoted heading (`## iOS 26 / Xcode 26.3 platform features`) targets the v11-canonical name (post-`[CONDITIONAL]`-strip per L-9). |
+| FP3-A2 (Swift coding rules multi-value `renamed-from`) | **PASS** | CLAUDE.md L70, AGENTS.md L69, GEMINI.md L69: `<!-- BEGIN project-owned: renamed-from "## Architecture rules — platform-specific", "## Language-specific coding rules" -->`. Em-dash byte verified in all three: `e2 80 94` (U+2014 EM DASH), NOT hyphen-minus (`2d`) and NOT en-dash (`e2 80 93`). Multi-value comma-separated grammar matches L-10 exactly. Both quoted headings target v11-canonical names. |
+| FP3-A3 (Anti-patterns no-op) | **PASS** | All three files: `## Anti-patterns — never introduce these` H2 byte-matches canonical (post-`[CONDITIONAL]`-strip per L-9). No `renamed-from` needed. |
+| FP3-A4 (AGENTS.md Agent behavior no-op) | **PASS** | AGENTS.md L413: `## Agent behavior` H2 byte-matches canonical exactly. No `renamed-from` needed. |
+
+### Per-pair Shape A vs Shape B classification
+
+OT self-reported CLAUDE 11A+4B, AGENTS 9A+5B, GEMINI 11A+4B. Independent classification by inspecting the line immediately following each BEGIN marker (Shape B iff a heading line; Shape A otherwise) **MATCHES exactly**.
+
+#### CLAUDE.md (15 pairs: 11 Shape A + 4 Shape B)
+
+| # | BEGIN | END | Shape | Anchor / next-line preview |
+|---|---|---|---|---|
+| 1 | 3 | 9 | A | repository description preface |
+| 2 | 33 | 43 | A | `## Platform and stack defaults` body bullets |
+| 3 | 45 | 54 | B | `## Xcode 26.4 platform features` (renamed-from FP3-A1) |
+| 4 | 70 | 84 | B | `## Swift coding rules` (renamed-from FP3-A2) |
+| 5 | 88 | 93 | A | `## Security` body bullets |
+| 6 | 144 | 152 | A | `## Dependency intake policy` body |
+| 7 | 156 | 163 | A | `## Testing expectations` body bullets |
+| 8 | 178 | 180 | A | `## Skill loading` Active-skills wrap (T-5) |
+| 9 | 232 | 236 | A | `## Scripts` first-time-setup paragraph |
+| 10 | 247 | 259 | A | `## Build and repo hygiene` body bullets |
+| 11 | 301 | 338 | B | `## Anti-patterns — never introduce these` (FP3-A3 strict-eq override) |
+| 12 | 366 | 425 | B | `## Phase routing — default agent assignments` (FP3-R1, strict-eq override) |
+| 13 | 432 | 434 | A | `## Agent behavior` "Do not invent…" bullet |
+| 14 | 438 | 441 | A | `## Agent behavior` "For high-risk work…" bullet |
+| 15 | 445 | 595 | A | `## Project addenda` seed-slot wrap (per L-1 exception) |
+
+#### AGENTS.md (14 pairs: 9 Shape A + 5 Shape B)
+
+| # | BEGIN | END | Shape | Anchor / next-line preview |
+|---|---|---|---|---|
+| 1 | 3 | 9 | A | repository description preface |
+| 2 | 33 | 43 | A | `## Platform and stack defaults` body bullets |
+| 3 | 45 | 54 | B | `## Xcode 26.4 platform features` (renamed-from FP3-A1) |
+| 4 | 69 | 83 | B | `## Swift coding rules` (renamed-from FP3-A2) |
+| 5 | 87 | 92 | A | `## Security` body bullets |
+| 6 | 133 | 141 | A | `## Dependency intake policy` body |
+| 7 | 145 | 152 | A | `## Testing expectations` body bullets |
+| 8 | 167 | 169 | A | `## Skill loading` Active-skills wrap (T-5) |
+| 9 | 221 | 225 | A | `## Scripts` first-time-setup paragraph |
+| 10 | 229 | 241 | A | `## Build and repo hygiene` body bullets |
+| 11 | 286 | 323 | B | `## Anti-patterns — never introduce these` (FP3-A3 strict-eq override) |
+| 12 | 351 | 410 | B | `## Phase routing — default agent assignments` (FP3-R1, strict-eq override) |
+| 13 | 412 | 424 | B | `## Agent behavior` (FP2-7 Option B, FP3-A4 strict-eq override) |
+| 14 | 428 | 578 | A | `## Project addenda` seed-slot wrap (per L-1 exception) |
+
+#### GEMINI.md (15 pairs: 11 Shape A + 4 Shape B)
+
+| # | BEGIN | END | Shape | Anchor / next-line preview |
+|---|---|---|---|---|
+| 1 | 3 | 9 | A | repository description preface |
+| 2 | 33 | 43 | A | `## Platform and stack defaults` body bullets |
+| 3 | 45 | 54 | B | `## Xcode 26.4 platform features` (renamed-from FP3-A1) |
+| 4 | 69 | 83 | B | `## Swift coding rules` (renamed-from FP3-A2) |
+| 5 | 87 | 92 | A | `## Security` body bullets |
+| 6 | 143 | 151 | A | `## Dependency intake policy` body |
+| 7 | 155 | 162 | A | `## Testing expectations` body bullets |
+| 8 | 177 | 179 | A | `## Skill loading` Active-skills wrap (T-5) |
+| 9 | 231 | 235 | A | `## Scripts` first-time-setup paragraph |
+| 10 | 246 | 258 | A | `## Build and repo hygiene` body bullets |
+| 11 | 300 | 337 | B | `## Anti-patterns — never introduce these` (FP3-A3 strict-eq override) |
+| 12 | 360 | 419 | B | `## Phase routing — default agent assignments` (FP3-R1, strict-eq override) |
+| 13 | 448 | 450 | A | `## Agent behavior` "Do not invent…" bullet |
+| 14 | 454 | 457 | A | `## Agent behavior` "For high-risk work…" bullet |
+| 15 | 472 | 622 | A | `## Project addenda` seed-slot wrap (per L-1 exception) |
+
+Net pair-count delta vs FP2 self-report (16/15/16): -1 per file. This matches expected behavior of FP3-R1 collapsing two H3 Shape B pairs into one H2 Shape B pair per file. AGENTS 15→14 (FP3-R1) and CLAUDE/GEMINI 16→15 (FP3-R1). Confirmed.
+
+### `renamed-from` annotation audit (L-10 conformance)
+
+Six annotations total — two per file, trinity-symmetric. Each enumerated below with byte-level verification of the em-dash where applicable.
+
+| File | Line | Annotation (verbatim) | Em-dash check |
+|---|---|---|---|
+| CLAUDE.md | 45 | `<!-- BEGIN project-owned: renamed-from "## iOS 26 / Xcode 26.3 platform features" -->` | n/a (no em-dash) |
+| CLAUDE.md | 70 | `<!-- BEGIN project-owned: renamed-from "## Architecture rules — platform-specific", "## Language-specific coding rules" -->` | em-dash byte = `e2 80 94` (U+2014 EM DASH) — PASS |
+| AGENTS.md | 45 | `<!-- BEGIN project-owned: renamed-from "## iOS 26 / Xcode 26.3 platform features" -->` | n/a |
+| AGENTS.md | 69 | `<!-- BEGIN project-owned: renamed-from "## Architecture rules — platform-specific", "## Language-specific coding rules" -->` | `e2 80 94` — PASS |
+| GEMINI.md | 45 | `<!-- BEGIN project-owned: renamed-from "## iOS 26 / Xcode 26.3 platform features" -->` | n/a |
+| GEMINI.md | 69 | `<!-- BEGIN project-owned: renamed-from "## Architecture rules — platform-specific", "## Language-specific coding rules" -->` | `e2 80 94` — PASS |
+
+All six annotations match the L-10 grammar exactly: `<!-- BEGIN project-owned: renamed-from "<exact heading line>"[, "<exact heading line>"]* -->`. The two `## Swift coding rules` annotations correctly carry the multi-value comma-separated form for the override-by-merge case where one project Shape B section is the successor of two canonical sections.
+
+Note on canonical-name targeting: OT's `renamed-from` quoted headings target the v11-canonical name (post-`[CONDITIONAL]`-strip per L-9), e.g. `## iOS 26 / Xcode 26.3 platform features` rather than v10.1's `## [CONDITIONAL] iOS 26 / Xcode 26.3 platform features`. This is correct under the amended spec — v11 canonical retires `[CONDITIONAL]` (V-7), so the merger's match key in v11 will be the bare heading. PASS.
+
+### Override-mechanism check (L-4 / V-6: zero duplicate H2 across Shape A and Shape B)
+
+Programmatic enumeration of every H2 line in each file, classified by location (outside markers vs inside Shape A wrap vs inside Shape B wrap):
+
+- **CLAUDE.md** — 19 H2s in pack territory (outside markers); 4 H2s inside Shape B wraps (`## Xcode 26.4 platform features`, `## Swift coding rules`, `## Anti-patterns — never introduce these`, `## Phase routing — default agent assignments`); 0 H2s inside Shape A wraps. Set intersection of pack-territory H2s and Shape B H2s = **EMPTY**. PASS.
+- **AGENTS.md** — 18 H2s in pack territory; 5 H2s inside Shape B wraps (above four + `## Agent behavior`); 0 H2s inside Shape A wraps. Intersection = **EMPTY**. PASS.
+- **GEMINI.md** — 21 H2s in pack territory; 4 H2s inside Shape B wraps (same as CLAUDE.md — `## Agent behavior` is NOT Shape B in GEMINI.md, consistent with the FP2-7 Option B AGENTS-only asymmetry); 0 H2s inside Shape A wraps. Intersection = **EMPTY**. PASS.
+
+L-4/V-6 fully satisfied across all three files.
+
+### `[CONDITIONAL]` audit (L-9 / V-7: zero occurrences in committed files)
+
+`grep -n "\[CONDITIONAL\]"` across all three OT trinity files: **zero matches**. PASS.
+
+### Marker integrity invariants (L-1 / L-6 / V-1 / V-2 / V-3)
+
+| Invariant | Result |
+|---|---|
+| BEGIN count == END count per file | CLAUDE 15==15, AGENTS 14==14, GEMINI 15==15 — PASS |
+| Strict alternation (no nesting, BEGIN→END pairs only) | All pairs alternate cleanly per `grep -n` enumeration — PASS |
+| No marker inside a fenced code block (V-3) | Programmatic check tracking triple-backtick state line-by-line: 0 markers inside fences in all three files — PASS |
+| Shape A wraps contain no heading lines (L-1) | Programmatic check across all 31 Shape A wraps: 0 H2 lines inside any Shape A pair (V-2) — PASS. Project addenda seed-slot wraps contain only H3/H4 sub-headings (CLAUDE pair 15, AGENTS pair 14, GEMINI pair 15), permitted under the L-1 seed-slot exception |
+| Shape B BEGIN immediately precedes its heading (L-1) | All 13 Shape B pairs (4+5+4) verified: BEGIN at line N, heading at line N+1, no blank between — PASS |
+| Shape B END at natural section boundary | All 13 Shape B pairs verified: END is the last line of the section body, immediately before the next same-or-lower-depth heading (`## Agent behavior` for Phase routing in CLAUDE.md/AGENTS.md, `## Agent roster` for GEMINI.md, etc.) — PASS |
+
+### Class B fill-in placeholder (L-3 — Active skills wrap)
+
+Inherited from prior FP1 T-5 fix — all three files carry a single-line Shape A wrap around the resolved Active-skills line:
+
+- CLAUDE.md L178–180: `<!-- BEGIN -->\n**Active skills:** apple-architecture-core, macos-architecture, deployment-apple, swift-best-practices, dependency-swift, rest-patterns\n<!-- END -->`
+- AGENTS.md L167–169: identical body content
+- GEMINI.md L177–179: identical body content
+
+Trinity byte-identical inside the wrap. PASS.
+
+### Trinity symmetry (L-7)
+
+Pair counts per file: CLAUDE 15, AGENTS 14, GEMINI 15. The -1 in AGENTS is the AGENTS.md FP2-7 Option B asymmetry already accepted in FP2 verification: AGENTS.md ships `## Agent behavior` as Shape B (pair 13) instead of two Shape A intra-section pairs the way CLAUDE/GEMINI do. After FP3-R1 collapsed two pairs into one in every file (-1 each), the relative AGENTS shortfall remains -1 per file vs CLAUDE/GEMINI — same as FP2.
+
+Other pre-existing trinity asymmetries (all canonical-shipped, not introduced by FP3):
+- GEMINI.md ships `## Agent roster` (L427) and `## Gemini CLI operating notes` (L459) — pack-area, no markers.
+- AGENTS.md does not ship the `### Custom agents` "Five fully-prompted personas" intro paragraph that CLAUDE.md ships.
+
+L-7 is a soft-warn (not hard-fail). Surface-level symmetry where it counts (Shape B placement of Xcode/Swift/Anti-patterns/Phase routing, all six `renamed-from` annotations identical, all H3+ Project addenda body identical line-by-line) — PASS.
+
+### Pack-owned-text drift vs v10.1 canonical (Shape A territory)
+
+Per-section body comparison (canonical vs OT, dropping marker LINES only — content within marker pairs is preserved by Shape A and shows in the diff as legitimate project ownership):
+
+- **Sections with byte-clean pack-area text** (no drift outside marker pairs): `## Capability policy`, `## Core priorities`, `## Architecture — universal layer discipline`, `## Liskov Substitution Principle`, `## Capabilities pattern`, `## Refactoring policy`, `## Document locations`, `## Git workflow`, `## Deferral comments and BACKLOG hygiene`, `## Project memory`. Verified via direct `diff` against canonical at the corresponding line ranges.
+- **Sections wrapped in whole-body Shape A** (canonical body fully replaced by project content within markers; pack H2 line preserved verbatim): `## Platform and stack defaults`, `## Security`, `## Testing expectations`, `## Skill loading` (Active skills line), `## Scripts` (first-time-setup paragraph wrap), `## Build and repo hygiene` (entire bullet list wrap), `## Dependency intake policy`. Each section's H2 line and surrounding blank lines byte-match canonical; all body divergence is inside marker pairs. PASS.
+- **Sections wrapped in Shape B** (whole H2 + body project-owned per the override mechanism): the four/five Shape B sections enumerated above. By design, no canonical comparison applies inside the wrap.
+- **Sections deleted by OT** (canonical ships H2; OT does not): `## [CONDITIONAL] gRPC and Proto3 rules` — OT is pre-gRPC, deleted per P-6. Acceptable.
+
+No surreptitious pack-area edits outside marker pairs detected.
+
+### Phase routing body-content disposition (FP3-R1 informational)
+
+Per FP3 spec item 9, surfacing what OT chose to retain inside the new `## Phase routing` Shape B wrap:
+
+OT did **NOT** copy back the canonical `## Phase routing` body. Specifically:
+- Canonical intro paragraph "All three tools (Claude Code, Codex, Gemini CLI) can execute any phase…" — OT's wrap retains its own FP2-introduced `### Tool selection: Claude Code CLI vs Xcode Claude Agent` H3 lead-in instead, then a different intro paragraph beginning "All three tools (Claude Code, Codex, Xcode Claude Agent)…" (note OT substitutes Xcode Claude Agent for Gemini CLI to reflect macOS-only project scope).
+- Canonical 12-row routing table (rows: Architecture/design, API and schema design, Planning, Dependency evaluation, Implementation, Code review, Testing, Debugging, Refactoring, Documentation, Repo operations, Local validation) — OT's wrap retains its own 12-row table with project-customized rows (drops "API and schema design" since pre-gRPC; drops "Local validation"; adds "UI-heavy phases (37, 38, 41)" and "Structural audit"; replaces Codex defaults with Claude Code defaults; uses Xcode Agent specifically for UI Previews).
+- Canonical cost-optimized-routing footnote pointing to `TOOL-COMPARISON.md` — OT's wrap omits this footnote.
+- Canonical `### Custom agents` H3 sub-section — OT's wrap retains its own `### Custom agents` H3 (project-customized but structurally analogous).
+
+This is fully supported by Shape B's name-equality override mechanism (L-4): the entire pack body for `## Phase routing` is suppressed in OT's effective trinity files and OT's project body wins. User-facing implication: OT will not receive routing-table updates from future v11 pack pushes; if pack adds new phases to its canonical table (e.g., a new "Performance review" phase), OT must hand-merge those into its Shape B wrap. Acceptable per the override contract; flagged here so the operator can decide whether to monitor pack routing-table changes manually.
+
+### New defects surfaced by FP3
+
+**None.** All FP2 invariants still hold:
+- balanced markers (15/15, 14/14, 15/15)
+- zero `[CONDITIONAL]` prefixes (V-7)
+- zero duplicate H2 across Shape A/Shape B per file (L-4 / V-6)
+- all pairs well-formed Shape A or Shape B (L-1 / V-2)
+- zero markers inside fenced code blocks (L-6 / V-3)
+- T-5 Active skills wrap intact (L-3)
+- Project addenda seed-slot exception properly applied (L-1 narrow exception)
+
+The R-1 defect from FP2 (Phase routing partial-pack-content-delete) is **fully resolved** by FP3-R1's collapse-to-single-Shape-B-wrap approach. The merger will now SUPPRESS the canonical body cleanly via L-4 strict-name-equality on the next v11 pack update.
+
+### Spec gap
+
+**None.** Both spec gaps surfaced in FP2 verification (S-G-1 `[CONDITIONAL]` ↔ Shape B name-equality override, S-G-2 Project addenda H3-dump exception) were closed by the second BD-136 amendment (commit `a2a2446` per the calling prompt context):
+- S-G-1 closed by L-9 retiring `[CONDITIONAL]` from v11 canonical; OT's `renamed-from` quoted headings now target the post-strip canonical names (e.g., `"## iOS 26 / Xcode 26.3 platform features"` not `"## [CONDITIONAL] iOS 26 / Xcode 26.3 platform features"`). PASS.
+- S-G-2 closed by L-1's narrow seed-slot exception for `## Project addenda` body wraps. OT's pair-15/14/15 (the Project addenda body wrap containing 17 H3/H4 sub-headings) is now spec-compliant under the exception. PASS.
+
+The amended spec covers every customization shape OT actually exercises. No new gap surfaced this round.
+
+### Final verdict
+
+**OK to commit as-is.**
+
+OT's three trinity files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) are now fully compliant with the twice-amended BD-136 spec across the L-1..L-10, P-1..P-8, V-1..V-8 rule matrix. All five FP3 actions (FP3-R1 + FP3-A1 + FP3-A2 + FP3-A3 + FP3-A4) verified PASS. Pair counts match OT's self-report (CLAUDE 15, AGENTS 14, GEMINI 15). Six `renamed-from` annotations byte-identical with em-dash verified. Zero structural defects. Zero spec gaps. Zero new defects. The OT v10→v11 trinity-prep cycle is complete pending operator commit.
+
+Recommended commit grouping (operator's discretion): a single trinity commit covering all three files; suggested message in pack convention `feat: project-side trinity prep complete (BD-136-conformant Shape A + Shape B + renamed-from)` or equivalent on the OT side. Once committed, the FP2 footnote in this report's M-8 reference (BACKLOG.md L1393: "OT-derived golden fixture: once OT's re-prepped trinity files exist (clean per `PACK-REVIEW-OT-TRINITY-PREP.md`), copy them into `test-fixtures/v11-trinity-marker-prepped/` as a real-world golden example") is unblocked — pack-side BD-136 implementation can pick these three files up as M-8 fixture inputs.
+
+### Read-only confirmation (FP3 verification)
+
+No files in `/Users/david/Developer/OptiquityTrader/`, `/Users/david/Developer/optiquity-ai-agent-config-pack/`, or `/Users/david/Developer/optiquity-ai-agent-config-pack-v11-dev/` (other than this report file) were modified during FP3 verification. Only Bash `diff`, `wc`, `grep`, `awk`, `sed`, `xxd`, `python3` (read-only analysis), and Read calls were used. No git state-changing verbs invoked. No sub-agents spawned.

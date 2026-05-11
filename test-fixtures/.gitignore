@@ -1,10 +1,19 @@
 # test-fixtures/.gitignore — keep recipe + manifest committed; ignore
-# fixture build output (each fixture dir is itself a git repo).
+# fixture build output (each build.sh-generated fixture dir is itself
+# a git repo whose contents should not be re-committed here).
 #
-# See test-fixtures/README.md for the rebuild recipe.
+# Static-snapshot fixtures (NOT regenerable via build.sh) are
+# explicitly committed via per-directory exceptions below.
+#
+# See test-fixtures/README.md for the rebuild recipe and the
+# per-fixture README for snapshot provenance.
 
 *
 !.gitignore
 !README.md
 !build.sh
 !manifest.txt
+
+# Static-snapshot fixtures (committed verbatim — no build.sh recipe):
+!v11-trinity-marker-prepped/
+!v11-trinity-marker-prepped/**
