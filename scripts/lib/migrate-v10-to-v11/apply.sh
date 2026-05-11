@@ -349,7 +349,8 @@ migrate_v10_to_v11_apply_run() {
     rm -f "$state_dir/dispositions.tsv" "$state_dir/report.md"
 
     # Hook into S6 to also mark the sentinel + restore the fingerprint
-    # after _stage_libs has wiped the state dir.
+    # after _stage_libs has wiped the state dir, then run BD-101 Gate 2
+    # (post-Phase-A) and Gate 3 (post-Phase-B, conditional).
     if ! declare -F _v10_to_v11_orig_post_report >/dev/null 2>&1; then
         if declare -F migrator_post_report_hook >/dev/null 2>&1; then
             eval "$(declare -f migrator_post_report_hook \
@@ -360,6 +361,29 @@ migrate_v10_to_v11_apply_run() {
         migrator_post_report_hook() {
             _v10_v11_apply_sentinel_mark "$_MIGRATOR_STATE_DIR" S6
             _v10_to_v11_orig_post_report
+
+            # BD-101 Gate 2 — post-Phase-A verification. On gate failure
+            # exit with EXIT_GATE_FAILED so callers / `--resume` can
+            # distinguish gate failure from stage failure (codes 20..30).
+            if declare -F migrate_v10_to_v11_gate2_run >/dev/null 2>&1; then
+                if ! migrate_v10_to_v11_gate2_run \
+                        "$_MIGRATOR_TARGET" \
+                        "$_MIGRATOR_STATE_DIR" \
+                        "${PACK:-}"; then
+                    exit "${EXIT_GATE_FAILED:-31}"
+                fi
+            fi
+
+            # BD-101 Gate 3 — post-Phase-B verification, conditional on
+            # tracker mode being active at the target. The gate itself
+            # decides PASS / SKIP / FAIL.
+            if declare -F migrate_v10_to_v11_gate3_run >/dev/null 2>&1; then
+                if ! migrate_v10_to_v11_gate3_run \
+                        "$_MIGRATOR_TARGET" \
+                        "${PACK:-}"; then
+                    exit "${EXIT_GATE_FAILED:-31}"
+                fi
+            fi
         }
     fi
 

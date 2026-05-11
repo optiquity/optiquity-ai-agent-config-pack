@@ -57,6 +57,10 @@ readonly EXIT_NOT_BASELINE=13
 readonly EXIT_BASELINE_MISSING=14
 readonly EXIT_LIB_MISSING=15
 readonly EXIT_ALREADY_MIGRATED=16
+# BD-101 — gate failure (verification gate detected a defect post-stage).
+# Distinct from stage failure (codes 20..30) so `--resume` can detect a
+# gate-fix-and-retry workflow vs a stage-internal failure.
+readonly EXIT_GATE_FAILED=31
 readonly EXIT_INTERNAL=99
 
 # Back-compat synonym — the monolithic v10→v11 migrator exposed

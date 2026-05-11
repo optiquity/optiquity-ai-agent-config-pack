@@ -208,9 +208,25 @@ migrate_v10_to_v11_dry_run_run() {
     say "  target_sha256: $fp_sha"
     say "  target_files:  $fp_count"
     say "  epoch:         $epoch (24h freshness window)"
+
+    # BD-101 Gate 1 — pre-migration dry-run summary (read-only).
+    # Surface the gate result inline with the dry-run report so the user
+    # reviewing the report sees PASS/FAIL before deciding to --apply.
+    # On Gate 1 failure, return EXIT_GATE_FAILED so the caller (the
+    # adapter's bare-invocation auto-flow OR the explicit --dry-run
+    # exit) propagates a non-zero rc.
+    local gate1_rc=0
+    if declare -F migrate_v10_to_v11_gate1_run >/dev/null 2>&1; then
+        migrate_v10_to_v11_gate1_run "$state_dir" || gate1_rc=$?
+    fi
+
     say ""
     say "Review the report at $state_dir/report.md, then run --apply"
     say "to write the changes. The fingerprint guards against working-tree"
     say "drift between dry-run review and apply."
+
+    if (( gate1_rc != 0 )); then
+        return "$gate1_rc"
+    fi
     return 0
 }

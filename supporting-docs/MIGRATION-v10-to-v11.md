@@ -119,7 +119,10 @@ PACK=/path/to/pack-repo bash scripts/migrate-v10-to-v11.sh
 Default target is the current directory; pass an explicit path as the
 last argument if needed.
 
-The script runs 7 stages:
+The script runs 7 framework stages (S0..S6). Stage S4 is split into two
+sub-banners (`S4a` and `S4b`) for operator clarity — both run inside the
+framework's single S4 stage and share the BD-095 sentinel
+(`stage-S4.done`) and the framework exit code (`24` on failure).
 
 | Stage | What it does |
 |---|---|
@@ -127,7 +130,8 @@ The script runs 7 stages:
 | S1 | Backup — full working tree (excludes `.git/` + state dirs) into `.pack-migrate-v10-to-v11-backup/` |
 | S2 | Initialize BD-088 customization-preserve state |
 | S3 | Dispatch v10 → v11 changes via BD-088 (trinity / configs / scripts / agents / docs) |
-| S4 | BD-042 relocation tail (legacy root docs → `docs/pack/`) |
+| S4a | BD-104 rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md` at project root. History-preserving via `git mv` for tracked source; plain `mv` fallback for untracked. No-op if the source is absent. Halts with the typed error `migration-rename-collision` if both names already exist (the user inspects, resolves, re-runs). |
+| S4b | BD-042 relocation tail (legacy root docs → `docs/pack/`) |
 | S5 | Install v11 client artifacts (HELP-FRAGMENT*.md, tracker.toml.example, issue forms, per-CLI pack-help). The tracker example is sourced from the pack's `project-template/tracker.toml.project-example` and lands at the project root as `tracker.toml.example`. |
 | S6 | Render truthful migration report at `.pack-migrate-v10-to-v11/report.md` |
 

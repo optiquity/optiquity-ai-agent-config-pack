@@ -163,7 +163,14 @@ migrator_post_dispatch_hook() {
 #     fallback: plain `mv` (matches the BD-042 _v10_to_v11_relocate_legacy_docs
 #     pattern at lines 142–147 above).
 _v10_to_v11_rename_implementation_plan() {
-    say "── S4 — BD-104 rename IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md ──"
+    # BD-139 F-3: sub-banner "S4a (rename)" disambiguates from the
+    # BD-042 relocation that also runs inside migrator_post_dispatch_hook.
+    # The fail_stage call still uses "S4" so the BD-095 sentinel filename
+    # (`stage-S4.done`) and the framework exit-code formula (24 = 20+4)
+    # remain stable; the failure-message prefix carries the sub-stage tag
+    # ("S4a-rename: ...") so operators can tell rename vs. relocate apart
+    # in a fail_stage report.
+    say "── S4a (rename) — BD-104 rename IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md ──"
     local src="$_MIGRATOR_TARGET/IMPLEMENTATION_PLAN.md"
     local dst="$_MIGRATOR_TARGET/IMPLEMENTATION-PLAN.md"
     if [[ ! -f "$src" ]]; then
@@ -186,21 +193,26 @@ _v10_to_v11_rename_implementation_plan() {
                 "files; delete or merge whichever is stale; then re-run the migration."
             printf '→ Run: %s\n' "inspect both files, resolve, then re-run migrate-v10-to-v11.sh"
         } >&2
-        fail_stage S4 "rename collision: $dst already exists"
+        fail_stage S4 "S4a-rename: collision: $dst already exists"
     fi
     local mv_stderr
     mv_stderr=$(git -C "$_MIGRATOR_TARGET" mv "IMPLEMENTATION_PLAN.md" "IMPLEMENTATION-PLAN.md" 2>&1) || {
         if [[ "$mv_stderr" == *"not under version control"* \
            || "$mv_stderr" == *"did not match"* ]]; then
+            # BD-139 F-4: surface the captured git-mv stderr so operators
+            # can distinguish the two fallback-trigger sentinels (and any
+            # third-class git-mv message that happens to match either
+            # substring) when diagnosing why the fallback fired.
+            info "git mv hint (taking untracked-fallback branch): $mv_stderr"
             mv "$src" "$dst"
             info "renamed (untracked): IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md"
             return 0
         else
-            fail_stage S4 "git mv IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md failed: $mv_stderr"
+            fail_stage S4 "S4a-rename: git mv IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md failed: $mv_stderr"
         fi
     }
     [[ -f "$dst" ]] \
-        || fail_stage S4 "post-rename verification failed: IMPLEMENTATION-PLAN.md missing"
+        || fail_stage S4 "S4a-rename: post-rename verification failed: IMPLEMENTATION-PLAN.md missing"
     info "renamed: IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md"
 }
 
@@ -210,7 +222,10 @@ _v10_to_v11_rename_implementation_plan() {
 # branch when both root and docs/pack/ have the file. The framework's
 # `say`/`info`/`fail_stage` helpers are inherited from migrator-core.sh.
 _v10_to_v11_relocate_legacy_docs() {
-    say "── S4 — BD-042 relocation of legacy root docs (if any) ──"
+    # BD-139 F-3: sub-banner "S4b (relocate)" disambiguates from the
+    # BD-104 rename above. fail_stage call still uses "S4" so the
+    # BD-095 sentinel filename and exit-code formula stay stable.
+    say "── S4b (relocate) — BD-042 relocation of legacy root docs (if any) ──"
     local moved=0
     local f
     for f in METHODOLOGY.md PROMPT-TEMPLATES.md PM-CHAT.md \
@@ -229,11 +244,11 @@ _v10_to_v11_relocate_legacy_docs() {
                         mv "$_MIGRATOR_TARGET/$f" "$_MIGRATOR_TARGET/docs/pack/$f"
                         untracked=1
                     else
-                        fail_stage S4 "git mv $f → docs/pack/$f failed: $mv_stderr"
+                        fail_stage S4 "S4b-relocate: git mv $f → docs/pack/$f failed: $mv_stderr"
                     fi
                 }
                 [[ -f "$_MIGRATOR_TARGET/docs/pack/$f" ]] \
-                    || fail_stage S4 "post-relocation verification failed: docs/pack/$f missing"
+                    || fail_stage S4 "S4b-relocate: post-relocation verification failed: docs/pack/$f missing"
                 if (( untracked == 1 )); then
                     info "relocated (untracked): $f → docs/pack/$f"
                 else
@@ -362,6 +377,17 @@ migrator_post_report_hook() {
 . "$SCRIPT_DIR/lib/migrate-v10-to-v11/apply.sh"
 # shellcheck source=lib/migrate-v10-to-v11/resume.sh disable=SC1091
 . "$SCRIPT_DIR/lib/migrate-v10-to-v11/resume.sh"
+
+# BD-101 — verification gates (read-only checks at stage transitions).
+# Each gate sources `checkpoint.sh` for its shared helpers.
+# shellcheck source=lib/migrate-v10-to-v11/checkpoint.sh disable=SC1091
+. "$SCRIPT_DIR/lib/migrate-v10-to-v11/checkpoint.sh"
+# shellcheck source=lib/migrate-v10-to-v11/gate-1-dry-run-summary.sh disable=SC1091
+. "$SCRIPT_DIR/lib/migrate-v10-to-v11/gate-1-dry-run-summary.sh"
+# shellcheck source=lib/migrate-v10-to-v11/gate-2-phase-a-verify.sh disable=SC1091
+. "$SCRIPT_DIR/lib/migrate-v10-to-v11/gate-2-phase-a-verify.sh"
+# shellcheck source=lib/migrate-v10-to-v11/gate-3-phase-b-verify.sh disable=SC1091
+. "$SCRIPT_DIR/lib/migrate-v10-to-v11/gate-3-phase-b-verify.sh"
 
 # Mode detection: scan args for the first explicit mode flag. Drop the
 # matched flag from the forwarded args because each mode dispatcher

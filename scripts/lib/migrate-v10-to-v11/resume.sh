@@ -246,6 +246,26 @@ migrate_v10_to_v11_resume_run() {
         fi
     fi
 
+    # BD-101 Gate 2 + Gate 3 — fire after the resumed Phase-A completes.
+    # The apply.sh `migrator_post_report_hook` wrapper handles gates when
+    # the run is non-paused; resume.sh runs S4..S6 directly (bypassing
+    # the wrapper), so we invoke the gates explicitly here.
+    if declare -F migrate_v10_to_v11_gate2_run >/dev/null 2>&1; then
+        if ! migrate_v10_to_v11_gate2_run \
+                "$target" \
+                "$state_dir" \
+                "${PACK:-}"; then
+            exit "${EXIT_GATE_FAILED:-31}"
+        fi
+    fi
+    if declare -F migrate_v10_to_v11_gate3_run >/dev/null 2>&1; then
+        if ! migrate_v10_to_v11_gate3_run \
+                "$target" \
+                "${PACK:-}"; then
+            exit "${EXIT_GATE_FAILED:-31}"
+        fi
+    fi
+
     say ""
     say "── --resume complete ──"
     return 0

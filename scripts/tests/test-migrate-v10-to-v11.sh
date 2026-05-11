@@ -277,6 +277,121 @@ preserved=0
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────
+# Group 5: BD-104 IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md rename
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Spec: maintenance-docs/v11-research/IMPLEMENTATION-PLAN-ADDENDUM-3.md:235.
+# Asserts the four BD-104 migrator branches surfaced by the BD-104 audit
+# (AUDIT-BD-104.md, F-1):
+#   5.1 happy path — tracked source, dest absent → `git mv` succeeds, dest
+#       has source's content, source absent post-rename
+#   5.2 source-absent no-op — info line emitted, exit 0, downstream
+#       artifacts (S5) still installed
+#   5.3 untracked-source `mv` fallback — `git mv` errors with the
+#       documented sentinel substring, migrator falls back to plain `mv`
+#       and emits "renamed (untracked)" info
+#   5.4 collision typed-error contract — both names present, migrator
+#       emits ERROR/MESSAGE/→ Run lines per
+#       scripts/lib/tracker-errors.sh:25-31 and exits non-zero via
+#       fail_stage S4 (rc=24)
+
+printf "\n=== Group 5: BD-104 rename (BD-139 fix-follow) ===\n"
+
+# 5.1 happy path: source committed, dest absent → git mv succeeds.
+T=$(make_v10_target)
+echo "# project IMPLEMENTATION_PLAN content" > "$T/IMPLEMENTATION_PLAN.md"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "v10 IMPLEMENTATION_PLAN.md" 2>/dev/null
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" 2>&1) ; rc=$?
+happy_ok=1
+[[ "$rc" -ne 0 ]] && happy_ok=0
+[[ -f "$T/IMPLEMENTATION-PLAN.md" ]] || happy_ok=0
+[[ -f "$T/IMPLEMENTATION_PLAN.md" ]] && happy_ok=0
+grep -q "project IMPLEMENTATION_PLAN content" "$T/IMPLEMENTATION-PLAN.md" 2>/dev/null \
+    || happy_ok=0
+[[ "$out" == *"S4a (rename)"* ]] || happy_ok=0
+[[ "$happy_ok" -eq 1 ]] \
+    && t_pass "5.1 BD-104 rename happy path: git mv succeeded, content preserved, sub-banner emitted" \
+    || t_fail "5.1 BD-104 rename happy path failed (rc=$rc)"
+rm -rf "$T"
+
+# 5.2 source absent: info "nothing to rename", exit 0, S5 artifacts still
+# install (proves downstream stages run after the no-op).
+T=$(make_v10_target)
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" 2>&1) ; rc=$?
+noop_ok=1
+[[ "$rc" -ne 0 ]] && noop_ok=0
+[[ "$out" == *"nothing to rename"* ]] || noop_ok=0
+[[ -f "$T/docs/pack/HELP-FRAGMENT.md" ]] || noop_ok=0
+[[ "$noop_ok" -eq 1 ]] \
+    && t_pass "5.2 BD-104 source-absent no-op: info emitted, downstream S5 ran" \
+    || t_fail "5.2 BD-104 source-absent no-op failed (rc=$rc)"
+rm -rf "$T"
+
+# 5.3 untracked-source mv fallback: source exists in working tree but is
+# gitignored (not tracked) → `git mv` errors with the documented sentinel
+# substring → migrator falls back to plain `mv`. Tests the BD-104 fallback
+# branch + the BD-139 F-4 stderr-surfacing info line.
+T=$(make_v10_target)
+echo "IMPLEMENTATION_PLAN.md" > "$T/.gitignore"
+git -C "$T" add .gitignore >/dev/null
+git -C "$T" commit -q -m "ignore IMPLEMENTATION_PLAN.md" 2>/dev/null
+echo "# untracked plan content" > "$T/IMPLEMENTATION_PLAN.md"
+# Confirm working tree clean per porcelain (gitignored counts as untracked-ignored).
+[[ -z "$(git -C "$T" status --porcelain)" ]] || t_fail "5.3 setup: gitignore not effective"
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" 2>&1) ; rc=$?
+fallback_ok=1
+[[ "$rc" -ne 0 ]] && fallback_ok=0
+[[ -f "$T/IMPLEMENTATION-PLAN.md" ]] || fallback_ok=0
+[[ -f "$T/IMPLEMENTATION_PLAN.md" ]] && fallback_ok=0
+grep -q "untracked plan content" "$T/IMPLEMENTATION-PLAN.md" 2>/dev/null \
+    || fallback_ok=0
+[[ "$out" == *"renamed (untracked)"* ]] || fallback_ok=0
+# BD-139 F-4: the captured git-mv stderr must be surfaced when the
+# fallback branch fires. Match the prefix; the actual git message text
+# varies by git version.
+[[ "$out" == *"git mv hint"* ]] || fallback_ok=0
+[[ "$fallback_ok" -eq 1 ]] \
+    && t_pass "5.3 BD-104 untracked-source mv fallback: 'renamed (untracked)' + 'git mv hint' both emitted" \
+    || t_fail "5.3 BD-104 untracked fallback failed (rc=$rc)"
+rm -rf "$T"
+
+# 5.4 collision: both old and new names present at start. Migrator must
+# emit the BD-070 / tracker-errors.sh:25-31 typed-error block to stderr
+# and exit via fail_stage S4 (rc=24).
+T=$(make_v10_target)
+echo "# old name content" > "$T/IMPLEMENTATION_PLAN.md"
+echo "# new name content" > "$T/IMPLEMENTATION-PLAN.md"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "both names present" 2>/dev/null
+# Capture stdout+stderr separately so we can assert ERROR block went to stderr.
+co_out=$(mktemp -t mig-co-out.XXXXXX)
+co_err=$(mktemp -t mig-co-err.XXXXXX)
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" >"$co_out" 2>"$co_err" ; rc=$?
+err_content=$(cat "$co_err")
+collision_ok=1
+# Stage S4 fail_stage exit code is 24 (20 + 4) per migrator-core.sh:80-90.
+[[ "$rc" -ne 24 ]] && collision_ok=0
+# Typed-error contract per scripts/lib/tracker-errors.sh:25-31:
+#   ERROR: <code>
+#   MESSAGE: <one-line backend message>
+#   <extra context>
+#   → Run: <verb>
+[[ "$err_content" == *"ERROR: migration-rename-collision"* ]] || collision_ok=0
+[[ "$err_content" == *"MESSAGE:"* ]]                          || collision_ok=0
+[[ "$err_content" == *"→ Run:"* ]]                            || collision_ok=0
+# fail_stage prefix on stderr.
+[[ "$err_content" == *"stage S4 failed"* ]] || collision_ok=0
+# Both files still present (migrator did not destructively touch either).
+[[ -f "$T/IMPLEMENTATION_PLAN.md" ]] || collision_ok=0
+[[ -f "$T/IMPLEMENTATION-PLAN.md" ]] || collision_ok=0
+[[ "$collision_ok" -eq 1 ]] \
+    && t_pass "5.4 BD-104 migration-rename-collision: typed-error contract + fail_stage S4 (rc=24)" \
+    || t_fail "5.4 BD-104 collision contract failed (rc=$rc)"
+rm -f "$co_out" "$co_err"
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────────────
 
