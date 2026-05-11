@@ -1334,6 +1334,19 @@ Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 
 ---
 
+**BD-138 — Schedule BD-136 implementation as a v11.0 batch (no v11.1 deferral)**
+Type: TODO(version) — surfaced 2026-05-10 during v11.0 plan review (no batch was scheduled for BD-136 implementation despite BD-136 being a v11.0 ship-gate item per user direction)
+Status: Resolved
+Blockers: none
+Unblocks: BD-136 implementation actually happens in v11.0; downstream Batch 21 (BD-100 final audit) and Batch 22 (BD-102 dog-food) can rely on the marker-aware merger being live
+File/Symbol:
+  - `maintenance-docs/v11-implementation/EXECUTION-PLAN-V11.0.md` — insert new **Batch 20b** for BD-136 implementation between Batch 20 (auditor agents) and Batch 21 (BD-100 final audit). Batch 20b is sequential (4 sub-commits — see scope below). Update Batch 21 (BD-100) audit scope to include BD-136 verification. Update Batch 22 (BD-102) to specify dog-food MUST exercise the marker-aware merge path.
+  - `BACKLOG.md` — this entry (BD-138) flips to Resolved in the same commit as the EXECUTION-PLAN amendment.
+Description: BD-136 currently has spec (3 amendments) but no scheduled implementation batch. Without a batch slot it would default-slip to v11.1. User direction (2026-05-10): no v11.1 deferral — schedule it. Batch 20b lands BD-136 implementation in 4 sub-commits: (1) marker-aware merger in `scripts/lib/customization-preserve.sh` (or new sibling `marker-preserve.sh`) implementing L-1..L-10 + the override mechanism; (2) `scripts/validate-pack.py` new Check enforcing V-1..V-8 validator surface; (3) PM-CHAT.md authoring procedure section (P-1..P-8) + cross-references in INSTALL-PROCEDURES.md / SETUP-NEW.md / SETUP-EXISTING.md / init-project.sh post-install hint + seed Shape A marker pair in `project-template/{CLAUDE,AGENTS,GEMINI}.md` + `[CONDITIONAL]` retirement in canonical templates; (4) `scripts/tests/test-customization-preserve-bd136.sh` covering M-1..M-10 + add M-11/M-12 fixtures to `test-fixtures/`. Each sub-commit is independently approve-able per the stop-before-commit rule. Existing M-8 fixture (`test-fixtures/v11-trinity-marker-prepped/`) becomes the round-trip golden the merger must reproduce byte-identical.
+Resolved: 2026-05-10 — EXECUTION-PLAN-V11.0.md amended to insert Batch 20b for BD-136 implementation; Batch 21 (BD-100) and Batch 22 (BD-102) scope updated to reference BD-136 verification + marker-aware merge path. BD-138 was a scheduling-only BD; resolved in the same commit as the plan amendment.
+
+---
+
 **BD-137 — Retire `scripts/test-migrator-behavior-preservation.sh` (BD-119 byte-equivalence harness)**
 Type: TODO(version) — fast-follow from BD-104 commit (2026-05-10) + standing rule §5.B
 Status: Resolved
