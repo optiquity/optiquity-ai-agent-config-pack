@@ -1129,7 +1129,7 @@ Resolved: 2026-05-08, v11.0 — `_build_existing_project_mid_dev` shipped
 
 **BD-116 — Persona contract assertions (template-derived expected output)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-115
 Unblocks: BD-118
 File/Symbol: `scripts/persona-contracts/` (new), `test-fixtures/build.sh`
@@ -1154,7 +1154,7 @@ Description: Today fixtures are *built* but no test asserts the result
   the contract assertion needs adjustment for the adapter's report.md
   or exit-code shape. Recommended: land BD-116 after BD-119 closes to
   avoid potential rework.
-Resolved: n/a
+Resolved: 2026-05-12 in commit 72789fc — 3 contracts under scripts/persona-contracts/ (greenfield 166/0, mid-dev 25/0, migration 30/0); aggregator scripts/test-persona-contracts.sh wired into CI; test-fixtures/build.sh extended with --for-contract flag (existing fixture SHAs unchanged); README Repository Layout updated; cross-reference comments added to S11 artifact lists pointing to scripts/init-project.sh:stage_s11_v11_artifacts(); contracts derive expected manifests from project-template/ + BD-088 invariants (zero hand-written file lists). Two POQs handled: POQ-BD-116-1 → BD-161 (migrator missing skill installs + UX wording bug); POQ-BD-116-2 → no action (inline-documented). validate-pack 31/31 PASS; reviewer APPROVE WITH NITS (both N1/N2 fixed in same commit).
 
 ---
 
