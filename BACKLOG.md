@@ -1382,12 +1382,12 @@ Resolved: 2026-05-12 in commit af2f651 — NEW project-template/skills/protobuf-
 
 **BD-150 — CHANGELOG v11.0 entry for skill-dimensions reframe + README skill-count refresh**
 Type: TODO(version) — Batch 11 of skill-dimensions reframe (per `maintenance-docs/v11-implementation/PLAN-SKILL-DIMENSIONS.md` §2 Batch 11)
-Status: Open
+Status: Resolved
 Blockers: BD-146 (Check 31 must gate the new tables before the version-row CHANGELOG entry goes in), BD-148 (MIGRATION + MERGE-STRATEGY behavioral notes must exist before CHANGELOG quotes them)
 Unblocks: v11.0 release-pin readiness (cross-cutting with BD-093 release pin); machine-readable skill counts in README are reconciled to post-reframe reality; downstream Phase 2A architect handoff (per `PLAN-SKILL-DIMENSIONS.md` §6)
 File/Symbol: `CHANGELOG.md` v11.0 section (single entry referencing BD-141..BD-150 cluster as "skill-dimensions reframe — 5 dimensions + Tier 0 + intersection + trigger tables; behavioral note per `MIGRATION-v10-to-v11.md`"); `README.md` skill-count mentions ("30 skills" / "31 skills" instances must be reconciled to the post-reframe count); `README.md` v11.0 row in version table picks up the reframe BD references
 Description: Per `maintenance-docs/v11-implementation/PLAN-SKILL-DIMENSIONS.md` §2 Batch 11, the closing batch of the skill-dimensions reframe lands the CHANGELOG entry plus README skill-count refresh. Single CHANGELOG.md v11.0 entry referencing the BD-141..BD-150 cluster. README.md "30 skills" / "31 skills" mentions reconciled to the post-reframe count (which depends on whether the python split BD landed before or after the count was last touched — implementor verifies via `grep -n "skill" README.md`). README v11.0 row in version table picks up the reframe BD references. Critical-path gating per `PLAN-SKILL-DIMENSIONS.md` §1: BD-146 (Check 31 internal-consistency gate) and BD-148 (MIGRATION + MERGE-STRATEGY behavioral note) must have shipped first.
-Resolved:
+Resolved: 2026-05-12 in commit c30fa36 — CHANGELOG.md v11.0 Scope C section covers BD-141..BD-150 cluster + behavioral note + Check 31 + 3 new *-patterns skills + BD-119/144/147 framework work; README.md skill count 30 → 34 with subsection breakdown reconciled to PLATFORM-SKILLS.md Full skill inventory total + v11.0 row in version table extended with cluster references + archive description updated; Pattern B archive sweep moved 78 per-batch IMPLEMENTATION-REPORT-* / PACK-REVIEW-* / AUDIT-* / RESEARCH-* / *-DISCOVERY artifacts to maintenance-docs/archive/v11/ (durable design docs ARCHITECTURE-* / PLAN-* / EXECUTION-PLAN-* retained in v11-implementation/); validate-pack 31/31 PASS (Check 31 reports 34 skills consistent).
 
 ---
 
