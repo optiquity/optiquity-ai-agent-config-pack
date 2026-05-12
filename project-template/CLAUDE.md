@@ -177,6 +177,17 @@ Agent prompts specify which skills to load. Skills are located in
 `.claude/skills/<name>/SKILL.md`. The PM chat selects skills based on
 `PLATFORM-SKILLS.md` — the skill-selection matrix for this project.
 
+Skill selection follows a 5-dimension model: D1 (runtime / OS substrate),
+D2 (cross-platform languages), D3 (component role / app-layer),
+D4 (communication protocols), and D5 (deployment surface).
+Skills load through three orthogonal mechanisms: Tier 0 base skills
+(loaded for every project, every agent), intersection-cell skills (loaded
+when specific D1–D5 cells apply), and trigger-loaded skills (loaded by
+agent role rather than project shape).
+See `docs/pack/PLATFORM-SKILLS.md` for the authoritative D1–D5 tables,
+the Tier 0 base list, the sparse intersection table, and the
+trigger-loaded list.
+
 **Active skills:** [PM chat writes this line during project kickoff, listing
 the skills derived from PLATFORM-SKILLS.md for this project's type. Example:
 `swift-best-practices, apple-architecture-core, macos-architecture`.
