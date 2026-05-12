@@ -1160,7 +1160,7 @@ Resolved: 2026-05-12 in commit 72789fc — 3 contracts under scripts/persona-con
 
 **BD-117 — `RELEASE-GATE.md` per-major-version checklist**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-114, BD-116
 Unblocks: v11.0 tag; reused for every future major
 File/Symbol: `maintenance-docs/v11-implementation/RELEASE-GATE.md` (new)
@@ -1172,7 +1172,7 @@ Description: Authoritative pre-tag checklist that must complete before
   green on the release commit; (5) `test-fixtures/build.sh --verify`
   passes against committed manifest. Single document; updated with
   each release if the gate evolves.
-Resolved: n/a
+Resolved: 2026-05-12 in commit 6b2d5fc — maintenance-docs/v11-implementation/RELEASE-GATE.md (263 lines) with 5 enumerated gate items in BD-117 spec order, each with concrete commands + pass criteria + common-failure-mode tips; version-agnostic via <N>/<N+1> placeholders with v11.0 worked-example labels; §4 Maintenance locks the five-item count and delegates expansion to architect+planner per BD-159; cross-references to BD-093/BD-114/BD-115/BD-116/BD-118/BD-119 + EXECUTION-PLAN §7. Original placement at maintenance-docs/RELEASE-GATE.md (root) corrected to v11-implementation/ to satisfy BD-159 §3.2 condition 5 literal-enumeration; cross-references updated in BACKLOG, EXECUTION-PLAN-V11.0.md, IMPL-REPORT, PACK-REVIEW. validate-pack 31/31 PASS; reviewer APPROVE no code-fix nits.
 
 ---
 
