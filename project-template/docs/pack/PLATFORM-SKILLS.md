@@ -63,8 +63,8 @@ targets, and deployment platforms — be inclusive.
 
 | D1 value | Skills added |
 |---|---|
-| `ios` | apple-architecture-core, ios-architecture, swift-best-practices, dependency-swift |
-| `macos` | apple-architecture-core, macos-architecture, swift-best-practices, dependency-swift |
+| `ios` | apple-architecture-core, ios-architecture, swift-best-practices, swift-concurrency-patterns, dependency-swift |
+| `macos` | apple-architecture-core, macos-architecture, swift-best-practices, swift-concurrency-patterns, dependency-swift |
 | `android` *(deferred)* | android-architecture, kotlin-best-practices, dependency-kotlin |
 | `web-browser` *(deferred)* | web-architecture, typescript-best-practices, dependency-node |
 | `linux-server` | (no D1 skill — Python or Rust language skills cover via D2; see also intersections) |
@@ -257,15 +257,15 @@ filtering happens in Step 2 — the examples focus on dimensional / intersection
 contributions.)
 
 **iOS Swift app, no server:**
-- D1: `ios` → apple-architecture-core, ios-architecture, swift-best-practices, dependency-swift
+- D1: `ios` → apple-architecture-core, ios-architecture, swift-best-practices, swift-concurrency-patterns, dependency-swift
 - D2: (none — Swift implied by D1)
 - D3: `client-app` → (none additional)
 - D4: `none` → (none)
 - D5: `apple-distribution` → deployment-apple
 - Intersection: D1 ∈ {ios, macos} ∩ swiftdata-marker (`swiftdata_marker_detected()` → yes when the project's `.swift` sources contain `import SwiftData` or an `@Model` attribute) → apple-swiftdata-patterns
 - Tier 0 base: loaded per agent
-- **Result (dimensional + intersection, SwiftData present):** apple-architecture-core, ios-architecture, swift-best-practices, dependency-swift, deployment-apple, apple-swiftdata-patterns
-- **Result (dimensional + intersection, no SwiftData):** apple-architecture-core, ios-architecture, swift-best-practices, dependency-swift, deployment-apple
+- **Result (dimensional + intersection, SwiftData present):** apple-architecture-core, ios-architecture, swift-best-practices, swift-concurrency-patterns, dependency-swift, deployment-apple, apple-swiftdata-patterns
+- **Result (dimensional + intersection, no SwiftData):** apple-architecture-core, ios-architecture, swift-best-practices, swift-concurrency-patterns, dependency-swift, deployment-apple
 
 **Python gRPC server (Linux container):**
 - D1: `linux-server` → (none)
@@ -278,34 +278,34 @@ contributions.)
 - **Result (dimensional + intersection):** python-best-practices, dependency-python, grpc-patterns, protobuf-patterns, python-server-architecture, python-data-architecture, deployment-python
 
 **Universal Apple app + Python gRPC server (monorepo):**
-- D1: `ios` + `macos` → apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, dependency-swift; plus `linux-server` for the backend → (none)
+- D1: `ios` + `macos` → apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, swift-concurrency-patterns, dependency-swift; plus `linux-server` for the backend → (none)
 - D2: `python` (backend) → python-best-practices, dependency-python
 - D3: `client-app` (Apple side) + `server` (backend) → server intersection-loaded
 - D4: `grpc` → grpc-patterns
 - D5: `apple-distribution` (Apple app) + `linux-container` (backend) → deployment-apple + (deployment-python via intersection); see "Monorepo D5 scoping note" above
 - Intersection: D2=python ∩ D3=server → python-server-architecture; D2=python ∩ data-marker → python-data-architecture; protobuf-marker present → protobuf-patterns; D2=python ∩ D5=linux-container → deployment-python
 - Tier 0 base: loaded per agent
-- **Result (dimensional + intersection):** apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, dependency-swift, python-best-practices, dependency-python, grpc-patterns, protobuf-patterns, python-server-architecture, python-data-architecture, deployment-apple, deployment-python
+- **Result (dimensional + intersection):** apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, swift-concurrency-patterns, dependency-swift, python-best-practices, dependency-python, grpc-patterns, protobuf-patterns, python-server-architecture, python-data-architecture, deployment-apple, deployment-python
 
 **macOS Swift app with embedded Python:**
-- D1: `macos` → apple-architecture-core, macos-architecture, swift-best-practices, dependency-swift
+- D1: `macos` → apple-architecture-core, macos-architecture, swift-best-practices, swift-concurrency-patterns, dependency-swift
 - D2: `python` (embedded) → python-best-practices, dependency-python
 - D3: `client-app` (Swift host) + `embedded-runtime` (Python) → no `python-server-architecture` (embedded Python is not a server)
 - D4: `none` → (none)
 - D5: `apple-distribution` → deployment-apple
 - Intersection: D2=python ∩ data-marker (load only when `python_data_marker_detected()` returns yes for the embedded Python codebase, e.g. ≥5 `.py` files or relevant dependencies) → python-data-architecture; the C-API bridge between Swift and embedded Python additionally loads c-language
 - Tier 0 base: loaded per agent
-- **Result (dimensional + intersection):** apple-architecture-core, macos-architecture, swift-best-practices, dependency-swift, python-best-practices, dependency-python, deployment-apple, python-data-architecture, c-language
+- **Result (dimensional + intersection):** apple-architecture-core, macos-architecture, swift-best-practices, swift-concurrency-patterns, dependency-swift, python-best-practices, dependency-python, deployment-apple, python-data-architecture, c-language
 
 **macOS Swift app with C++ performance code:**
-- D1: `macos` → apple-architecture-core, macos-architecture, swift-best-practices, dependency-swift; the C++ performance code loads cpp-language as a D1-implied auxiliary (Swift / C++ interop on Apple)
+- D1: `macos` → apple-architecture-core, macos-architecture, swift-best-practices, swift-concurrency-patterns, dependency-swift; the C++ performance code loads cpp-language as a D1-implied auxiliary (Swift / C++ interop on Apple)
 - D2: (none)
 - D3: `client-app` → (none additional)
 - D4: `none` → (none)
 - D5: `apple-distribution` → deployment-apple
 - Intersection: (none)
 - Tier 0 base: loaded per agent
-- **Result (dimensional + intersection):** apple-architecture-core, macos-architecture, swift-best-practices, dependency-swift, cpp-language, deployment-apple
+- **Result (dimensional + intersection):** apple-architecture-core, macos-architecture, swift-best-practices, swift-concurrency-patterns, dependency-swift, cpp-language, deployment-apple
 
 ---
 
@@ -320,15 +320,15 @@ what the agent's role requires.
 
 **architect**
 - Tier 0 base: architecture-review, api-design, planning, documentation, error-handling, security-patterns
-- Dimensional (filtered by D1/D2/D3/D4/D5): apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, python-best-practices, python-server-architecture, python-data-architecture, grpc-patterns, protobuf-patterns, rest-patterns, c-language, objc-language, cpp-language, apple-swiftdata-patterns *(load when `swiftdata_marker_detected()` is true — schema design and storage boundaries are an architectural concern)*
+- Dimensional (filtered by D1/D2/D3/D4/D5): apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, swift-concurrency-patterns *(D1-implied for D1 ∈ {ios, macos} — concurrency design is an architectural concern at the actor / state-isolation boundary)*, python-best-practices, python-server-architecture, python-data-architecture, grpc-patterns, protobuf-patterns, rest-patterns, c-language, objc-language, cpp-language, apple-swiftdata-patterns *(load when `swiftdata_marker_detected()` is true — schema design and storage boundaries are an architectural concern)*
 
 **coder**
 - Tier 0 base: implementation, debugging, error-handling, documentation
-- Dimensional (filtered): swift-best-practices, python-best-practices, grpc-patterns, protobuf-patterns, rest-patterns, c-language, objc-language, cpp-language, apple-swiftdata-patterns *(load when `swiftdata_marker_detected()` is true)*
+- Dimensional (filtered): swift-best-practices, swift-concurrency-patterns *(D1-implied for D1 ∈ {ios, macos})*, python-best-practices, grpc-patterns, protobuf-patterns, rest-patterns, c-language, objc-language, cpp-language, apple-swiftdata-patterns *(load when `swiftdata_marker_detected()` is true)*
 
 **reviewer**
 - Tier 0 base: review, error-handling, security-patterns, api-design, debugging
-- Dimensional (filtered): swift-best-practices, python-best-practices, python-server-architecture, python-data-architecture, grpc-patterns, protobuf-patterns, rest-patterns, apple-architecture-core, ios-architecture, macos-architecture, c-language, objc-language, cpp-language, apple-swiftdata-patterns *(load when `swiftdata_marker_detected()` is true)*
+- Dimensional (filtered): swift-best-practices, swift-concurrency-patterns *(D1-implied for D1 ∈ {ios, macos})*, python-best-practices, python-server-architecture, python-data-architecture, grpc-patterns, protobuf-patterns, rest-patterns, apple-architecture-core, ios-architecture, macos-architecture, c-language, objc-language, cpp-language, apple-swiftdata-patterns *(load when `swiftdata_marker_detected()` is true)*
 
 **tester**
 - Tier 0 base: testing, ui-test-strategy *(when UI present)*
@@ -357,13 +357,13 @@ what the agent's role requires.
 
 **auditor-architecture**
 - Trigger: audit-methodology
-- Dimensional (filtered): apple-architecture-core, ios-architecture, macos-architecture, python-server-architecture, python-data-architecture, protobuf-patterns *(load when `protobuf_marker_detected()` is true — schema design is an architectural concern at the transport boundary)*, apple-swiftdata-patterns *(load when `swiftdata_marker_detected()` is true — `@Model` schema design and storage-layer threading are architectural concerns at the persistence boundary)*
+- Dimensional (filtered): apple-architecture-core, ios-architecture, macos-architecture, swift-concurrency-patterns *(D1-implied for D1 ∈ {ios, macos} — actor isolation, Sendable boundaries, and GCD ↔ async-await interop are architectural concerns at the concurrency boundary)*, python-server-architecture, python-data-architecture, protobuf-patterns *(load when `protobuf_marker_detected()` is true — schema design is an architectural concern at the transport boundary)*, apple-swiftdata-patterns *(load when `swiftdata_marker_detected()` is true — `@Model` schema design and storage-layer threading are architectural concerns at the persistence boundary)*
 - Platform filtering: load only the architecture skills that match the project's D1/D2/D3 selectors. A pure Python server loads `python-server-architecture` + `python-data-architecture`. A pure iOS app loads `apple-architecture-core` + `ios-architecture` only. Observability infrastructure rules live inside these platform architecture skills (no separate observability skill). For non-server multi-file Python projects, load `python-data-architecture` only (per the intersection-table predicate via `python_data_marker_detected()`); do NOT load `python-server-architecture` because the server-specific rules do not apply.
 
 **auditor-code**
 - Trigger: audit-methodology
 - Tier 0 base: error-handling, security-patterns
-- Dimensional (filtered): swift-best-practices, python-best-practices, c-language, objc-language, cpp-language; plus python-data-architecture (load per the intersection-table predicate via `python_data_marker_detected()` — provides performance anti-pattern rules like N+1 query detection, repository pattern correctness, Pydantic placement, ML isolation); plus python-server-architecture (load only when D3=server — provides server-specific rules: servicers, grpc.aio handlers, interceptors, background tasks); plus protobuf-patterns (load per `protobuf_marker_detected()` — provides field-evolution / wire-compatibility rules that auditor-code uses to flag risky `.proto` changes and hand-edited generated code); plus apple-swiftdata-patterns (load per `swiftdata_marker_detected()` — provides `@Model` performance anti-pattern rules like N+1 relationship traversal, missing `relationshipKeyPathsForPrefetching`, unbounded `FetchDescriptor` results, and `ModelContext` threading violations).
+- Dimensional (filtered): swift-best-practices, swift-concurrency-patterns *(D1-implied for D1 ∈ {ios, macos} — provides actor-isolation correctness rules, Sendable-conformance audits, do-not-mix anti-patterns flagged at code-review level, e.g., `semaphore.wait()` from a Swift Concurrency context, GCD calls from inside an `actor`, captured mutable references in `@Sendable` closures)*, python-best-practices, c-language, objc-language, cpp-language; plus python-data-architecture (load per the intersection-table predicate via `python_data_marker_detected()` — provides performance anti-pattern rules like N+1 query detection, repository pattern correctness, Pydantic placement, ML isolation); plus python-server-architecture (load only when D3=server — provides server-specific rules: servicers, grpc.aio handlers, interceptors, background tasks); plus protobuf-patterns (load per `protobuf_marker_detected()` — provides field-evolution / wire-compatibility rules that auditor-code uses to flag risky `.proto` changes and hand-edited generated code); plus apple-swiftdata-patterns (load per `swiftdata_marker_detected()` — provides `@Model` performance anti-pattern rules like N+1 relationship traversal, missing `relationshipKeyPathsForPrefetching`, unbounded `FetchDescriptor` results, and `ModelContext` threading violations).
 - The `error-handling` skill provides the cross-cutting error-handling rules (boundary mapping, retry policy uniformity) that this subagent audits at the systemic level. The `security-patterns` skill provides the log-safety, injection, and deserialization rules that overlap with code-level audit findings (added per architecture §5.9). The language skills (`swift-best-practices`, `python-best-practices`) supply the dead-code and unused-import detection rules.
 
 **auditor-tests**
@@ -436,7 +436,7 @@ actually loads.
 | testing | Test pyramid, design, organization, coverage | tester, auditor-tests |
 | ui-test-strategy | UI/E2E tool selection, test design, snapshot testing *(loaded only when a UI is present)* | tester, auditor-tests, auditor-ui |
 
-### Dimensional skills (18)
+### Dimensional skills (19)
 
 Skills loaded by D1–D5 selectors. Each skill's "Cell" column identifies
 which dimension(s) load it.
@@ -446,7 +446,8 @@ which dimension(s) load it.
 | apple-architecture-core | D1 ∈ {ios, macos} | Cross-platform Apple patterns, SwiftUI-first, layer discipline | architect, reviewer, auditor-architecture, auditor-ui |
 | ios-architecture | D1=ios | iOS / iPadOS scene lifecycle, UIKit interop, App Store boundaries, accessibility, observability infrastructure | architect, reviewer, tester, auditor-architecture, auditor-ui |
 | macos-architecture | D1=macos | macOS NSDocument, windows, menu bar, AppKit, sandbox, accessibility, observability infrastructure | architect, reviewer, tester, auditor-architecture, auditor-ui |
-| swift-best-practices | D1 ∈ {ios, macos} *(D1-implied)* | Swift type system, immutability, Swift 6 concurrency, style, dead code | architect, coder, reviewer, auditor-code, auditor-ui |
+| swift-best-practices | D1 ∈ {ios, macos} *(D1-implied)* | Swift type system, immutability, error handling, testing tooling, style, dead code *(concurrency-design rules live in `swift-concurrency-patterns`)* | architect, coder, reviewer, auditor-code, auditor-ui |
+| swift-concurrency-patterns | D1 ∈ {ios, macos} *(D1-implied)* | Modern Swift Concurrency (async/await, structured concurrency, actor isolation, Sendable, `@preconcurrency`, AsyncSequence / AsyncStream, Swift 6 strict checking, continuation bridging) and Grand Central Dispatch (DispatchQueue selection, DispatchGroup, DispatchSemaphore caveats, barrier writes, QoS, DispatchSource, GCD ↔ async-await modernization, do-not-mix anti-patterns) | architect, coder, reviewer, auditor-architecture, auditor-code |
 | objc-language | D1 ∈ {ios, macos} *(D1-implied, conditional on ObjC sources)* | Objective-C ARC, nullability, bridging, legacy code patterns | coder, reviewer, auditor-code |
 | c-language | D1=embedded-mcu *(D1-implied)* OR (D2=python ∩ embedded-Python via C API) | C memory ownership, pointers, buffers, const, Swift/Python interop | architect, coder, reviewer, auditor-code |
 | cpp-language | D1=embedded-mcu *(D1-implied, conditional)* OR Apple project with C++ performance code | C++ RAII, smart pointers, Swift-C++ interop, rule of five | coder, reviewer, auditor-code |
@@ -462,12 +463,14 @@ which dimension(s) load it.
 | python-data-architecture | D2=python ∩ data-marker *(intersection — see `scripts/lib/detect.sh::python_data_marker_detected()`)* | Python data and I/O architecture: repository pattern, N+1 prevention, Pydantic placement at I/O boundaries, ML inference isolation, no-direct-driver | architect, reviewer, auditor-architecture, auditor-code |
 | apple-swiftdata-patterns | D1 ∈ {ios, macos} ∩ swiftdata-marker *(intersection — see `scripts/lib/detect.sh::swiftdata_marker_detected()`)* | SwiftData object-store rules: `@Model` macro design, `ModelContainer` / `ModelContext` lifecycle and threading, `FetchDescriptor` construction, relationship-traversal performance, schema migration, history tracking, CloudKit sync, `save()` semantics | architect, coder, reviewer, auditor-architecture, auditor-code |
 
-**18 dimensional / intersection skills.** The Cell column is the
+**19 dimensional / intersection skills.** The Cell column is the
 authoritative load predicate; five rows
 (`python-server-architecture`, `python-data-architecture`,
 `protobuf-patterns`, `apple-swiftdata-patterns`, `deployment-python`)
 are intersection-loaded per the §"Intersection table" predicates;
-the remaining 13 load directly from a single D1/D2/D4/D5 selector.
+the remaining 14 load directly from a single D1/D2/D4/D5 selector
+(D1-implied rows include `swift-best-practices` and
+`swift-concurrency-patterns`).
 
 ### Trigger-loaded skills (1)
 
@@ -487,7 +490,7 @@ but its purpose is PM chat operational, not agent role guidance.
 |---|---|---|
 | pm-startup | PM chat session startup procedure: read state files, check TD-TBD sentinels, report ready status | PM chat only (not an agent) |
 
-**Total skills: 33** (13 Tier 0 base + 18 dimensional / intersection + 1 trigger-loaded + 1 PM chat operational).
+**Total skills: 34** (13 Tier 0 base + 19 dimensional / intersection + 1 trigger-loaded + 1 PM chat operational).
 
 ### Deferred skills (create when project need arises)
 

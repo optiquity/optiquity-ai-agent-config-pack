@@ -245,13 +245,24 @@ pack_skill_coverage_for() {
         # BD-141 python and BD-156 proto cases. Uses a tight literal
         # comparison so a future helper-output change is caught at
         # compare time.
+        # BD-158: swift-concurrency-patterns is D1-implied for D1 ∈
+        # {ios, macos} (architecture §3.2 D1-implied semantics) — it
+        # loads unconditionally for any Apple project alongside
+        # swift-best-practices, with no marker predicate. Every Apple
+        # project deals with concurrency. The skill carries Modern
+        # Swift Concurrency rules (async/await, actors, Sendable,
+        # Swift 6 strict checking, AsyncSequence / AsyncStream,
+        # continuation bridging) and Grand Central Dispatch
+        # (DispatchQueue selection, DispatchGroup, semaphore caveats,
+        # barrier writes, QoS, DispatchSource, do-not-mix
+        # anti-patterns, GCD ↔ async-await modernization).
         swift)
             local swiftdata_marker_line
             swiftdata_marker_line=$(swiftdata_marker_detected "$target_dir")
             if [[ "$swiftdata_marker_line" == "swiftdata-marker: yes" ]]; then
-                echo "apple-architecture-core,swift-best-practices,apple-swiftdata-patterns"
+                echo "apple-architecture-core,swift-best-practices,swift-concurrency-patterns,apple-swiftdata-patterns"
             else
-                echo "apple-architecture-core,swift-best-practices"
+                echo "apple-architecture-core,swift-best-practices,swift-concurrency-patterns"
             fi
             ;;
         # python: D2=python (cross-platform language) + intersection-loaded data/server skills

@@ -117,7 +117,16 @@ capability_skills() {
         # explicit user intent to add the capability); init-project.sh applies
         # the predicate at scaffold time via pack_skill_coverage_for().
         language:python)    echo "python-best-practices python-data-architecture dependency-python" ;;
-        language:swift)     echo "swift-best-practices apple-architecture-core dependency-swift" ;;
+        # BD-158: swift-concurrency-patterns is D1-implied for D1 ∈
+        # {ios, macos} alongside swift-best-practices — every Apple
+        # project deals with concurrency, no marker predicate. Added
+        # to the language:swift capability row so add-capability
+        # operations register the skill on the same path as
+        # swift-best-practices. The companion intersection-loaded
+        # skill (apple-swiftdata-patterns) remains marker-gated and
+        # is NOT added here — see the apple-swiftdata-patterns
+        # comment under platform:macos / platform:ios.
+        language:swift)     echo "swift-best-practices swift-concurrency-patterns apple-architecture-core dependency-swift" ;;
         language:cpp)       echo "cpp-language" ;;
         language:c)          echo "c-language" ;;
         language:objc)      echo "objc-language" ;;

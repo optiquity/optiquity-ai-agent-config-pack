@@ -1,8 +1,19 @@
 ---
 name: apple-architecture-core
-description: Use for patterns shared across all Apple platforms — SwiftUI-first design, protocol abstractions at boundaries, actor isolation, typed IDs, LSP compliance, SPM module structure.
+description: Use for patterns shared across all Apple platforms — SwiftUI-first design, protocol abstractions at boundaries, layer discipline, typed IDs, LSP compliance, capabilities pattern, SPM module structure, deployment-target compatibility.
 allowed-tools: Read, Grep, Glob, Bash
 ---
+
+## Companion skill — Swift concurrency rules
+
+Substantive concurrency design — actor isolation, `@MainActor` and
+global-actor selection, Sendable conformance, structured concurrency,
+AsyncSequence / AsyncStream patterns, GCD, GCD ↔ async-await
+modernization — lives in `swift-concurrency-patterns`. That skill
+loads as D1-implied for D1 ∈ {ios, macos} alongside this one. This
+skill carries the architectural-state-ownership rules that touch
+concurrency only at a glance (see "State ownership" below); the
+actor-isolation rules and reentrancy pitfalls are in the companion.
 
 ## SwiftUI-first design
 
@@ -59,9 +70,9 @@ time. Call sites query capabilities only for behavior that legitimately
 varies across conforming types — never as a substitute for
 LSP-compliant method implementations.
 
-## Actor isolation and state
+## State ownership
 
-15. Shared mutable state documents its owner, owning actor or thread, lifecycle, and mutation contract.
+15. Shared mutable state documents its owner, isolation domain (owning actor, thread, or queue), lifecycle, and mutation contract at the definition site. Substantive actor-isolation rules — when to choose `actor` vs `@MainActor` vs a global actor, reentrancy across `await`, isolated parameters — live in `swift-concurrency-patterns`.
 16. Services are stateless by default. Stateful services document their state variables and threading guarantees.
 17. Avoid singleton sprawl. Document ownership and lifecycle of all shared state.
 
