@@ -289,8 +289,9 @@ A change is structural if any of the following hold:
    `supporting-docs/`, `project-template/docs/`, or
    `maintenance-docs/v11-implementation/` that is not an
    `ARCHITECTURE-*.md` / `PLAN-*.md` / `IMPLEMENTATION-REPORT-*.md` /
-   `PACK-REVIEW-*.md` / `AUDIT-*.md` produced by the existing
-   architect / planner / coder / reviewer / auditor workflow.
+   `PACK-REVIEW-*.md` / `AUDIT-*.md` / `RESEARCH-*.md` /
+   `*-DISCOVERY.md` produced by the existing architect / planner /
+   coder / reviewer / auditor / docs-researcher workflow.
 6. **New script.** Adding a new top-level `scripts/*.sh` or `scripts/*.py`
    (helpers in `scripts/lib/` are not new scripts; they are
    library extensions).

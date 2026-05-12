@@ -120,6 +120,22 @@ in the same commit as the behavior change.
   provision them via `gh` CLI with per-step approval and clean up after.
   Never touch existing real repos as test targets — use scratch repos
   or `/tmp` clones.
+- **Skill and agent maintenance is mechanical by default.**
+  Maintenance is mechanical, complete, reviewed, and rule-strict.
+  Structural change — including rule changes — requires
+  architect-then-planner, never convenience. Mechanical changes
+  preserve client `x-` skills/agents conforming to existing
+  dimensions; breaking the `x-` contract escalates to structural
+  and requires architect-pass migrator coverage. Workflow artifacts
+  (architect/planner/coder/reviewer/auditor outputs:
+  `ARCHITECTURE-*.md`, `PLAN-*.md`, `IMPLEMENTATION-REPORT-*.md`,
+  `PACK-REVIEW-*.md`, `AUDIT-*.md`, `RESEARCH-*.md`,
+  `*-DISCOVERY.md`) are exempted from the "no new top-level doc"
+  structural signal during their batch's active development; they
+  sweep to `maintenance-docs/archive/vN/` at version ship as the
+  final pre-tag step (Pattern B). Threshold conditions and worked
+  examples in `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`
+  §3.
 
 ### Project goals (v11)
 

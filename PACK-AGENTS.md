@@ -141,6 +141,13 @@ explicitly scopes them in: BACKLOG.md, CHANGELOG.md, README.md version
 table, PACK-CHAT.md, PACK-AGENTS.md, CLAUDE.md / AGENTS.md / GEMINI.md
 (root and `project-template/`).
 
+- **Skill and agent maintenance.** Additions and modifications follow
+  the maintainability principle in pack-repo trinity `## Pack memory`
+  § "Repo conventions" ("Maintenance is mechanical, complete,
+  reviewed, and rule-strict ..."). See
+  `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`
+  §3 for thresholds.
+
 ---
 
 ## Agent behavior expectations

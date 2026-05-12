@@ -87,6 +87,14 @@ These rules are non-negotiable and always apply:
   run `gh run list --workflow=validate-pack.yml -L 1`). If CI fails,
   read the error, fix the file, and re-push before continuing. CI failures
   are fix-immediately items — never defer them to BACKLOG.
+- **No commit-staging beyond mechanical-edit threshold without
+  architect justification.** Pack Chat does not stage commits for
+  batches whose footprint exceeds the mechanical-edit threshold
+  (per pack memory's maintainability principle: "Maintenance is
+  mechanical, complete, reviewed, and rule-strict ...") without an
+  architect-pass justification recorded in the BD. Threshold details:
+  `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`
+  §3.
 
 > **GitHub MCP server (optional, pack repo only):** The official GitHub
 > MCP server enables the Pack Chat to check CI status, read workflow logs,
