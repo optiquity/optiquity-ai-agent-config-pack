@@ -569,3 +569,42 @@ extension rules in the pack's design documentation
 (`maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-DIMENSIONS.md`
 §3 / §4 / §6) for the framing rules that govern each dimension and the
 governance checklist for new skills.
+
+### Naming convention for new skills
+
+The skill catalog uses four suffixes, each tied to a different kind of
+content. **New skills must follow this convention.** Existing skills are
+not renamed in v11.0 — the cost of breaking external references
+outweighs the consistency benefit at this point; a future v12
+enforcement migration is tracked under BD-155.
+
+- **`*-best-practices`** — languages with idiomatic-style rules
+  (formatting, dead-code policy, type-system idioms, error-handling
+  idioms, testing tooling). Examples: `swift-best-practices`,
+  `python-best-practices`.
+- **`*-language`** — languages where ownership / memory / interop
+  dominate the rule set rather than idiomatic style. Examples:
+  `c-language`, `cpp-language`, `objc-language`.
+- **`*-architecture`** — platform-specific structural rules: layer
+  discipline, lifecycle, navigation, persistence boundaries, server
+  structure, observability infrastructure. Examples:
+  `apple-architecture-core`, `ios-architecture`, `macos-architecture`,
+  `python-server-architecture`, `python-data-architecture`.
+- **`*-patterns`** — cross-cutting concerns and recurring design rules
+  not bound to a single platform or language. Examples:
+  `grpc-patterns`, `rest-patterns`, `security-patterns`, plus the three
+  v11.0 additions: `protobuf-patterns` (BD-156, Proto3 schema design
+  standalone of gRPC), `apple-swiftdata-patterns` (BD-157, SwiftData
+  object-store rules), and `swift-concurrency-patterns` (BD-158, modern
+  Swift Concurrency + GCD).
+
+When the suffix is genuinely ambiguous (e.g., a new skill could plausibly
+be `*-best-practices` or `*-architecture`), choose the suffix that
+matches the dominant content of the SKILL.md, and record the rationale
+in the BACKLOG entry that creates the skill.
+
+> **Maintainability rule.** Adding a new skill is a mechanical edit when
+> it fits the existing dimensions, patterns, and naming conventions
+> documented above. See the pack-repo trinity (`CLAUDE.md` / `AGENTS.md`
+> / `GEMINI.md` `## Pack memory`) for the full mechanical-vs-structural
+> threshold and the client `x-` preservation rule.
