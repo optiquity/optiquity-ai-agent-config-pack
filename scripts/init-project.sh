@@ -218,6 +218,14 @@ classify_project_state() {
 
 # Pack skill coverage table (per §7.8). Used for skill-gap detection.
 #
+# Per the v11 PLATFORM-SKILLS.md reframe (BD-142), skills load via a 5+3
+# model: 5 dimensions (D1 substrate, D2 cross-platform languages, D3
+# component role, D4 communication protocols, D5 deployment surface) and
+# 3 orthogonal load mechanisms (Tier 0 base, intersection-cell, trigger-
+# loaded). The per-language rows below emit each language's pack-bundled
+# skill coverage; PLATFORM-SKILLS.md is authoritative for the dimension
+# membership and the full intersection / trigger semantics.
+#
 # Args:
 #   $1   Language marker (swift|python|proto|...).
 #   $2   Optional target project directory. Used by the python row
@@ -228,7 +236,9 @@ pack_skill_coverage_for() {
     local lang="$1"
     local target_dir="${2:-${TARGET:-.}}"
     case "$lang" in
+        # swift: D1=ios|macos (D1-implied) + Apple-platform skills via D1
         swift)      echo "apple-architecture-core,swift-best-practices" ;;
+        # python: D2=python (cross-platform language) + intersection-loaded data/server skills
         python)
             # BD-141: python-data-architecture loads only when the
             # concrete predicate matches (architecture §7.5).
@@ -244,6 +254,7 @@ pack_skill_coverage_for() {
                 echo "python-best-practices"
             fi
             ;;
+        # proto: D4=grpc + future protobuf-patterns intersection (BD-156)
         proto)      echo "grpc-patterns" ;;
         *)          echo "" ;;  # No coverage
     esac
@@ -673,6 +684,13 @@ The AI Agent Config Pack $pack_ver has just been installed by
 init-project.sh. Please begin your normal kickoff workflow using
 the PM chat kickoff prompt (docs/pack/prompts/pm-chat.md,
 Variant: kickoff).
+
+PLATFORM-SKILLS.md was reframed in v11 to use 5 dimensions
+(D1 substrate, D2 cross-platform languages, D3 component role,
+D4 communication protocols, D5 deployment surface) plus 3 orthogonal
+load mechanisms (Tier 0 base, intersection-cell, trigger-loaded).
+Read §"How skill selection works" for the new framing before
+generating prompts.
 EOF
     if (( ${#existing_docs[@]} > 0 )); then
         echo ""
