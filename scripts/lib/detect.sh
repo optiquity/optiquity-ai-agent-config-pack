@@ -497,6 +497,114 @@ protobuf_marker_detected() {
     echo "protobuf-marker: no"
 }
 
+# swiftdata-marker: yes|no
+#
+# BD-157 (v11.0 PLATFORM-SKILLS.md naming-convention codification batch).
+# Concrete load predicate for the `apple-swiftdata-patterns` skill.
+# Mirrors the BD-156 `protobuf_marker_detected()` shape: single
+# positional argument defaulting to cwd; tolerates missing target as a
+# `no`; emits a single `swiftdata-marker: yes|no` line on stdout.
+#
+# Args:
+#   $1   Target project directory. Defaults to current working
+#        directory. Missing/non-existent target is tolerated and
+#        evaluated as `swiftdata-marker: no` (no error to stderr).
+#
+# Output:
+#   Single line `swiftdata-marker: yes` or `swiftdata-marker: no`.
+#
+# Markers (any one true → yes), per architecture §3.7 / BD-157:
+#   (a) any `.swift` file in the project tree contains
+#       `import SwiftData` (excluding nested vendored / build trees:
+#       node_modules/, .git/, build/, .venv/, venv/, .tox/, .build/,
+#       DerivedData/, Pods/, Carthage/).
+#   (b) any `.swift` file in the project tree contains an `@Model`
+#       macro attribute on a class declaration. The grep pattern
+#       matches `@Model` followed by EOL, whitespace, or `(` so that
+#       custom-annotation lookalikes (`@ModelAttribute`, `@Modeled`)
+#       are rejected by the boundary.
+#   (c) `Package.swift` / `Package.resolved` / `Podfile` /
+#       `Podfile.lock` lists SwiftData explicitly. SwiftData ships as
+#       a first-party Apple framework on iOS 17+ / macOS 14+, so a
+#       project rarely declares it as an explicit SPM / CocoaPods
+#       dependency — markers (a) and (b) are the primary signals,
+#       and marker (c) is included for completeness (e.g. cross-
+#       compile shims, indirect SwiftData wrappers, or CocoaPods
+#       binary distributions of SwiftData-bridging helpers).
+#
+# Callers: scripts/init-project.sh `pack_skill_coverage_for swift` row
+# (BD-157 — wires alongside the existing apple-architecture-core /
+# swift-best-practices coverage); scripts/add-capability.sh references
+# the predicate by comment only (the platform:ios / platform:macos
+# capability rows declare apple-architecture-core deterministically;
+# the swiftdata-marker → apple-swiftdata-patterns load is intersection-
+# table-driven and applies regardless of capability declaration).
+# PLATFORM-SKILLS.md cites the helper as the canonical predicate for
+# the apple-swiftdata-patterns intersection row.
+swiftdata_marker_detected() {
+    local target="${1:-.}"
+    if [[ -z "$target" || ! -d "$target" ]]; then
+        echo "swiftdata-marker: no"
+        return 0
+    fi
+
+    # Markers (a) and (b): scan `.swift` files, excluding common
+    # vendored / generated / build trees. Combine into a single find
+    # → grep pipeline so we only enumerate the file list once.
+    local swift_hits
+    swift_hits=$(find "$target" \
+        \( -path '*/node_modules' -o -path '*/.git' \
+           -o -path '*/build' -o -path '*/.venv' \
+           -o -path '*/venv' -o -path '*/.tox' \
+           -o -path '*/.build' -o -path '*/DerivedData' \
+           -o -path '*/Pods' -o -path '*/Carthage' \) -prune \
+        -o -type f -name '*.swift' -print 2>/dev/null)
+    if [[ -n "$swift_hits" ]]; then
+        # Marker (a): `import SwiftData` (line-anchored to defeat
+        # comment-prose mentions like `// not import SwiftData`).
+        if printf '%s\n' "$swift_hits" \
+           | xargs grep -lE '^[[:space:]]*import[[:space:]]+SwiftData([[:space:]]|$)' \
+                  2>/dev/null | head -n 1 | grep -q .; then
+            echo "swiftdata-marker: yes"
+            return 0
+        fi
+        # Marker (b): `@Model` attribute. Boundary rejects
+        # `@ModelAttribute`, `@Modeled`, and similar look-alikes —
+        # the trailing class is `[^A-Za-z0-9_]` (`@Model` followed
+        # by EOL, whitespace, or `(` for `@Model(...)` parameter
+        # forms).
+        if printf '%s\n' "$swift_hits" \
+           | xargs grep -lE '@Model([[:space:]]|\(|$)' \
+                  2>/dev/null | head -n 1 | grep -q .; then
+            echo "swiftdata-marker: yes"
+            return 0
+        fi
+    fi
+
+    # Marker (c): dependency manifests. SwiftData is first-party so
+    # this rarely fires; supports cross-compile shims and indirect
+    # bridging helpers. Same negated-character-class boundary
+    # construction as protobuf_marker_detected() (BD-156) — rejects
+    # substring matches like `SwiftDataMocks` or `SwiftDataKit` via
+    # `SwiftData`.
+    local manifest sd_pattern
+    sd_pattern='(^|[^A-Za-z0-9_-])(SwiftData|swift-data)($|[^A-Za-z0-9_.-])'
+    for manifest in \
+        "$target/Package.swift" \
+        "$target/Package.resolved" \
+        "$target/Podfile" \
+        "$target/Podfile.lock"
+    do
+        [[ -f "$manifest" ]] || continue
+        if grep -qE "$sd_pattern" "$manifest" 2>/dev/null; then
+            echo "swiftdata-marker: yes"
+            return 0
+        fi
+    done
+
+    echo "swiftdata-marker: no"
+}
+
 # target-pack-version: vN | unknown
 #
 # Detect the major pack version installed in the *target* project (NOT the

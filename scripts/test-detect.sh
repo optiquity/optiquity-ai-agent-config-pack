@@ -408,6 +408,143 @@ EOF
 assert_eq "manifests without protobuf tooling → no" \
     "protobuf-marker: no" "$(protobuf_marker_detected "$fx")"
 
+# ── swiftdata_marker_detected (BD-157) ────────────────────────────────
+echo "== swiftdata_marker_detected =="
+
+fx=$(mkfixture sd-marker-empty)
+assert_eq "empty dir → no" \
+    "swiftdata-marker: no" "$(swiftdata_marker_detected "$fx")"
+
+assert_eq "non-existent target → no (tolerated, no stderr)" \
+    "swiftdata-marker: no" "$(swiftdata_marker_detected "$FIXTURE_BASE/sd-never-existed")"
+
+# Marker (a): a `.swift` file with `import SwiftData`.
+fx=$(mkfixture sd-marker-import)
+mkdir -p "$fx/Sources/App"
+cat > "$fx/Sources/App/Item.swift" <<'EOF'
+import Foundation
+import SwiftData
+
+final class Item {
+    var name: String = ""
+}
+EOF
+assert_eq "import SwiftData present → yes (marker a)" \
+    "swiftdata-marker: yes" "$(swiftdata_marker_detected "$fx")"
+
+# Marker (b): a `.swift` file with `@Model` attribute.
+fx=$(mkfixture sd-marker-at-model)
+mkdir -p "$fx/Sources/App"
+cat > "$fx/Sources/App/User.swift" <<'EOF'
+import Foundation
+// SwiftData re-exported via a project umbrella; no direct import line.
+
+@Model
+final class User {
+    var email: String = ""
+}
+EOF
+assert_eq "@Model attribute present → yes (marker b)" \
+    "swiftdata-marker: yes" "$(swiftdata_marker_detected "$fx")"
+
+# Marker (b) with parameter form: `@Model(...)`.
+fx=$(mkfixture sd-marker-at-model-paren)
+mkdir -p "$fx/Sources/App"
+cat > "$fx/Sources/App/Order.swift" <<'EOF'
+@Model(versionedSchema: V1.self)
+final class Order {}
+EOF
+assert_eq "@Model(...) parameter form → yes (marker b boundary)" \
+    "swiftdata-marker: yes" "$(swiftdata_marker_detected "$fx")"
+
+# Marker (b) boundary reject: `@ModelAttribute` and `@Modeled` should NOT match.
+fx=$(mkfixture sd-marker-lookalike-reject)
+mkdir -p "$fx/Sources/App"
+cat > "$fx/Sources/App/Other.swift" <<'EOF'
+import Foundation
+
+@ModelAttribute
+struct Other {}
+
+@Modeled var x = 0
+EOF
+assert_eq "@ModelAttribute / @Modeled lookalikes alone → no (boundary reject)" \
+    "swiftdata-marker: no" "$(swiftdata_marker_detected "$fx")"
+
+# Marker (a) excludes vendored / build trees.
+fx=$(mkfixture sd-marker-vendored-only)
+mkdir -p "$fx/.build/checkouts/foo/Sources"
+cat > "$fx/.build/checkouts/foo/Sources/X.swift" <<'EOF'
+import SwiftData
+EOF
+assert_eq "import SwiftData only inside .build/ → no (vendored prune)" \
+    "swiftdata-marker: no" "$(swiftdata_marker_detected "$fx")"
+
+# Marker (c): Package.swift lists SwiftData explicitly.
+fx=$(mkfixture sd-marker-package-swift)
+cat > "$fx/Package.swift" <<'EOF'
+// swift-tools-version:5.9
+import PackageDescription
+let package = Package(
+    name: "App",
+    dependencies: [
+        .package(url: "https://example.com/SwiftDataKit", from: "1.0.0"),
+    ]
+)
+EOF
+# 'SwiftDataKit' does NOT match `SwiftData` (negated boundary class
+# rejects substring extension by trailing alphanumeric — `K` after
+# `SwiftData` is in the [A-Za-z0-9_.-] negation set).
+assert_eq "Package.swift lists 'SwiftDataKit' only → no (substring reject)" \
+    "swiftdata-marker: no" "$(swiftdata_marker_detected "$fx")"
+
+# Marker (c) positive: Package.swift lists SwiftData with a trailing word boundary.
+fx=$(mkfixture sd-marker-package-swift-positive)
+cat > "$fx/Package.swift" <<'EOF'
+// swift-tools-version:5.9
+import PackageDescription
+let package = Package(
+    name: "App",
+    dependencies: [
+        .package(url: "https://example.com/SwiftData-shim.git", from: "1.0.0"),
+    ]
+)
+EOF
+assert_eq "Package.swift lists 'SwiftData-shim' → no (boundary: trailing -shim is in name-chars)" \
+    "swiftdata-marker: no" "$(swiftdata_marker_detected "$fx")"
+
+# A truly word-bounded SwiftData mention does match.
+fx=$(mkfixture sd-marker-package-swift-bare)
+cat > "$fx/Package.swift" <<'EOF'
+// Comment: depends on SwiftData (bare reference for cross-compile shim).
+import PackageDescription
+let package = Package(name: "App")
+EOF
+assert_eq "Package.swift bare 'SwiftData' word → yes (marker c)" \
+    "swiftdata-marker: yes" "$(swiftdata_marker_detected "$fx")"
+
+# Negative: Apple project, .swift files but no SwiftData.
+fx=$(mkfixture sd-marker-apple-no-swiftdata)
+mkdir -p "$fx/Sources/App"
+cat > "$fx/Sources/App/View.swift" <<'EOF'
+import SwiftUI
+
+struct ContentView: View {
+    var body: some View { Text("hi") }
+}
+EOF
+assert_eq "Apple project without SwiftData → no" \
+    "swiftdata-marker: no" "$(swiftdata_marker_detected "$fx")"
+
+# Negative: non-Apple project (no .swift files at all).
+fx=$(mkfixture sd-marker-non-apple)
+mkdir -p "$fx/src"
+cat > "$fx/src/main.py" <<'EOF'
+import SwiftData  # not a real Python module — just prose
+EOF
+assert_eq "non-Apple project (no .swift files) → no" \
+    "swiftdata-marker: no" "$(swiftdata_marker_detected "$fx")"
+
 # ── detect_target_pack_version (BD-119) ───────────────────────────────
 echo "== detect_target_pack_version =="
 

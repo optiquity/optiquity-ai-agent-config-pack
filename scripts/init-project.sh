@@ -236,8 +236,24 @@ pack_skill_coverage_for() {
     local lang="$1"
     local target_dir="${2:-${TARGET:-.}}"
     case "$lang" in
-        # swift: D1=ios|macos (D1-implied) + Apple-platform skills via D1
-        swift)      echo "apple-architecture-core,swift-best-practices" ;;
+        # swift: D1=ios|macos (D1-implied) + Apple-platform skills via D1.
+        # BD-157: apple-swiftdata-patterns intersection-loads when the
+        # canonical predicate `swiftdata_marker_detected()` matches
+        # (markers: any `.swift` file with `import SwiftData` OR an
+        # `@Model` attribute, OR a manifest listing SwiftData
+        # explicitly — see scripts/lib/detect.sh). Mirrors the
+        # BD-141 python and BD-156 proto cases. Uses a tight literal
+        # comparison so a future helper-output change is caught at
+        # compare time.
+        swift)
+            local swiftdata_marker_line
+            swiftdata_marker_line=$(swiftdata_marker_detected "$target_dir")
+            if [[ "$swiftdata_marker_line" == "swiftdata-marker: yes" ]]; then
+                echo "apple-architecture-core,swift-best-practices,apple-swiftdata-patterns"
+            else
+                echo "apple-architecture-core,swift-best-practices"
+            fi
+            ;;
         # python: D2=python (cross-platform language) + intersection-loaded data/server skills
         python)
             # BD-141: python-data-architecture loads only when the

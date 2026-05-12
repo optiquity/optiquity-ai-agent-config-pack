@@ -121,6 +121,15 @@ capability_skills() {
         language:cpp)       echo "cpp-language" ;;
         language:c)          echo "c-language" ;;
         language:objc)      echo "objc-language" ;;
+        # BD-157: platform:macos / platform:ios add the Apple-platform
+        # skill set deterministically. The companion
+        # `apple-swiftdata-patterns` skill is intersection-loaded by
+        # marker (`scripts/lib/detect.sh::swiftdata_marker_detected()`),
+        # not by capability — a project that uses SwiftData
+        # (`import SwiftData` OR `@Model`) will have the marker
+        # fire and the intersection-table loader pulls in
+        # apple-swiftdata-patterns alongside the platform skills
+        # listed here. See PLATFORM-SKILLS.md "Intersection table".
         platform:macos)     echo "macos-architecture apple-architecture-core" ;;
         platform:ios)       echo "ios-architecture apple-architecture-core" ;;
         # BD-144 (v11.0 skill-dimensions reframe Batch 5): forward-declared
