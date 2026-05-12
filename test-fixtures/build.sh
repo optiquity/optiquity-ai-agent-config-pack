@@ -11,6 +11,14 @@
 #   build.sh --all --clean               Wipe + rebuild
 #   build.sh --verify                    Compare current builds against
 #                                        manifest.txt
+#   build.sh --for-contract <persona>    BD-116. Materialize a per-contract
+#                                        sandbox (fresh tmp clone of the
+#                                        relevant committed fixture) and
+#                                        print its absolute path on stdout.
+#                                        Persona ∈ {greenfield, mid-dev,
+#                                        migration}. The sandbox is the
+#                                        caller's to mutate / drive scripts
+#                                        against / clean up after.
 #
 # Fixtures (see README.md for the full description):
 #   v10-minimal               Bare v10 install via init-project.sh
@@ -26,7 +34,7 @@
 #                             top of an existing project" persona test
 #                             (BD-115).
 #
-# Reference: BACKLOG.md BD-113, BD-115.
+# Reference: BACKLOG.md BD-113, BD-115, BD-116.
 
 set -euo pipefail
 
@@ -55,15 +63,20 @@ die()  { printf 'error: %s\n' "$1" >&2; exit "${2:-1}"; }
 
 usage() {
     cat <<EOF
-Usage: build.sh [--all | --name <fixture>] [--clean] [--verify]
+Usage: build.sh [--all | --name <fixture> | --for-contract <persona>] [--clean] [--verify]
 
 Fixtures: ${FIXTURE_NAMES[*]}
 
-  --all                Rebuild every fixture.
-  --name <fixture>     Rebuild only the named fixture.
-  --clean              Wipe target before building (ensures from-scratch).
-  --verify             Compare HEAD SHA of each existing fixture against
-                       manifest.txt; non-zero exit on mismatch.
+  --all                       Rebuild every fixture.
+  --name <fixture>            Rebuild only the named fixture.
+  --clean                     Wipe target before building (ensures from-scratch).
+  --verify                    Compare HEAD SHA of each existing fixture against
+                              manifest.txt; non-zero exit on mismatch.
+  --for-contract <persona>    BD-116. Print to stdout the absolute path of a
+                              freshly-materialized sandbox suitable for
+                              persona-contract scripts. Persona ∈
+                              {greenfield, mid-dev, migration}. The caller
+                              owns the sandbox (must clean up).
 
 Without --clean, a build refuses to overwrite an existing fixture
 (safety; rebuild takes ~30s — surprises are bad). Combine with
@@ -739,19 +752,86 @@ _verify() {
     return "$mismatch"
 }
 
+# ── BD-116 — per-contract sandbox materialization ─────────────────────────
+#
+# Persona contracts (see scripts/persona-contracts/) need a fresh, writable
+# starting state that mirrors the persona's input shape but does NOT mutate
+# the committed test-fixtures/ tree. This helper materializes such a
+# sandbox under a tmp dir and prints its absolute path on stdout.
+#
+# Persona → source fixture mapping:
+#   greenfield  →  fresh empty git repo (no fixture; the contract drives
+#                  init-project.sh against an empty, just-initialized repo
+#                  to assert greenfield install correctness).
+#   mid-dev     →  copy of `existing-project-mid-dev` (BD-115 fixture):
+#                  realistic Swift+Python+gRPC project with pre-existing
+#                  history and zero pack files. Contract asserts that
+#                  running init on top preserves user files.
+#   migration   →  copy of `v10-realistic-ot` (BD-120 fixture): v10 install
+#                  plus the four canonical OT customizations (project-name
+#                  fills, ollama removal, x-fakeot-domain agent, TD-NNN
+#                  BACKLOG). Contract asserts that running the v10→v11
+#                  migrator produces the expected v11 shape with all four
+#                  customizations preserved (BD-088 invariants).
+#
+# The sandbox is a top-level git repo with deterministic identity pins
+# (same env as the committed fixtures). Caller is responsible for
+# `rm -rf` after use.
+_materialize_for_contract() {
+    local persona="${1:?_materialize_for_contract requires <persona>}"
+    local sandbox
+    sandbox=$(mktemp -d -t pack-contract-"$persona".XXXXXX)
+    case "$persona" in
+        greenfield)
+            # Fresh empty git repo; deterministic identity. The contract
+            # itself runs init-project.sh against this dir.
+            _fixture_git_init "$sandbox"
+            _fixture_commit_all "$sandbox" "initial empty repo"
+            ;;
+        mid-dev)
+            local src="$THIS_DIR/existing-project-mid-dev"
+            [[ -d "$src/.git" ]] \
+                || die "mid-dev source fixture not built; run build.sh --name existing-project-mid-dev first" 5
+            # Copy the entire fixture (including .git history) so the
+            # sandbox is a real git repo at the fixture's HEAD. Use cp -R
+            # for BSD-compat (no GNU --preserve flags).
+            rm -rf "$sandbox"
+            cp -R "$src" "$sandbox"
+            # Re-pin identity in the cloned repo (cp preserves config but
+            # be defensive in case the source ever drifts).
+            git -C "$sandbox" config user.name  "$FIXTURE_AUTHOR_NAME"
+            git -C "$sandbox" config user.email "$FIXTURE_AUTHOR_EMAIL"
+            ;;
+        migration)
+            local src="$THIS_DIR/v10-realistic-ot"
+            [[ -d "$src/.git" ]] \
+                || die "migration source fixture not built; run build.sh --name v10-realistic-ot first" 5
+            rm -rf "$sandbox"
+            cp -R "$src" "$sandbox"
+            git -C "$sandbox" config user.name  "$FIXTURE_AUTHOR_NAME"
+            git -C "$sandbox" config user.email "$FIXTURE_AUTHOR_EMAIL"
+            ;;
+        *)
+            die "unknown contract persona: $persona (known: greenfield, mid-dev, migration)" 6
+            ;;
+    esac
+    printf '%s\n' "$sandbox"
+}
+
 # ── Main ──────────────────────────────────────────────────────────────────
 
 main() {
-    local mode="" only="" CLEAN=0 VERIFY=0
+    local mode="" only="" persona="" CLEAN=0 VERIFY=0
     while (( $# > 0 )); do
         case "$1" in
-            --all)        mode="all" ;;
-            --name)       mode="one"; shift; only="${1:-}" ;;
-            --clean)      CLEAN=1 ;;
-            --verify)     VERIFY=1 ;;
-            --help | -h)  usage; exit 0 ;;
-            --*)          die "unknown option: $1 (try --help)" ;;
-            *)            die "unexpected positional arg: $1 (try --help)" ;;
+            --all)            mode="all" ;;
+            --name)           mode="one"; shift; only="${1:-}" ;;
+            --for-contract)   mode="contract"; shift; persona="${1:-}" ;;
+            --clean)          CLEAN=1 ;;
+            --verify)         VERIFY=1 ;;
+            --help | -h)      usage; exit 0 ;;
+            --*)              die "unknown option: $1 (try --help)" ;;
+            *)                die "unexpected positional arg: $1 (try --help)" ;;
         esac
         shift
     done
@@ -761,7 +841,13 @@ main() {
         exit $?
     fi
     if [[ -z "$mode" ]]; then
-        die "specify --all, --name <fixture>, or --verify (try --help)"
+        die "specify --all, --name <fixture>, --for-contract <persona>, or --verify (try --help)"
+    fi
+
+    if [[ "$mode" == "contract" ]]; then
+        [[ -z "$persona" ]] && die "--for-contract requires a persona name"
+        _materialize_for_contract "$persona"
+        return 0
     fi
 
     if [[ "$mode" == "one" ]]; then

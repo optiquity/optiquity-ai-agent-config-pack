@@ -113,6 +113,9 @@ jobs:
       - name: build test fixtures (BD-115/116/117)
         if: always()
         run: bash test-fixtures/build.sh --all --clean
+      - name: persona contracts (BD-116)
+        if: always()
+        run: bash scripts/test-persona-contracts.sh
       - name: template-translations tests
         if: always()
         run: bash scripts/tests/template-translations-test.sh
