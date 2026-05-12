@@ -392,6 +392,111 @@ python_data_marker_detected() {
     echo "python-data: no"
 }
 
+# protobuf-marker: yes|no
+#
+# BD-156 (v11.0 PLATFORM-SKILLS.md naming-convention codification batch).
+# Concrete load predicate for the `protobuf-patterns` skill. Mirrors the
+# BD-141 `python_data_marker_detected()` shape: single positional
+# argument defaulting to cwd; tolerates missing target as a `no`;
+# emits a single `protobuf-marker: yes|no` line on stdout.
+#
+# Args:
+#   $1   Target project directory. Defaults to current working
+#        directory. Missing/non-existent target is tolerated and
+#        evaluated as `protobuf-marker: no` (no error to stderr).
+#
+# Output:
+#   Single line `protobuf-marker: yes` or `protobuf-marker: no`.
+#
+# Markers (any one true → yes):
+#   (a) project tree contains any `.proto` file (excluding nested
+#       node_modules/, .git/, build/, .venv/ — common large vendored
+#       trees that should not influence detection).
+#   (b) dependency manifests list any of these protobuf-tooling
+#       packages (case-insensitive, package-name boundary anchored):
+#         Python (requirements.txt / pyproject.toml / setup.py /
+#                 setup.cfg): `protobuf`, `grpc-tools`, `grpcio-tools`,
+#                 `protoc`.
+#         Swift  (Package.swift / Package.resolved): `swift-protobuf`,
+#                 `SwiftProtobuf`, `grpc-swift-2`, `grpc-swift`.
+#         Generic (any of the above filenames OR `buf.yaml` /
+#                 `buf.gen.yaml` present).
+#
+# Manifest scan reuses the BD-141 negated-character-class pattern
+# construction (rejects substring matches and version-suffix matches
+# like `protobuf-c` via `protobuf`).
+#
+# Callers: scripts/init-project.sh `pack_skill_coverage_for proto` row
+# (BD-156 — wires alongside the existing `grpc-patterns` coverage);
+# scripts/add-capability.sh references the predicate by comment only
+# (the protocol:grpc skill set declaratively adds grpc-patterns; the
+# protobuf-marker → protobuf-patterns load is intersection-table-driven
+# and applies regardless of capability declaration).
+# PLATFORM-SKILLS.md cites the helper as the canonical predicate for
+# the protobuf-patterns intersection row.
+protobuf_marker_detected() {
+    local target="${1:-.}"
+    if [[ -z "$target" || ! -d "$target" ]]; then
+        echo "protobuf-marker: no"
+        return 0
+    fi
+
+    # Marker (a): any `.proto` file in the project tree, excluding
+    # large vendored / generated trees.
+    if find "$target" \
+        \( -path '*/node_modules' -o -path '*/.git' \
+           -o -path '*/build' -o -path '*/.venv' \
+           -o -path '*/venv' -o -path '*/.tox' \) -prune \
+        -o -type f -name '*.proto' -print 2>/dev/null \
+        | head -n 1 | grep -q .; then
+        echo "protobuf-marker: yes"
+        return 0
+    fi
+
+    # Marker (b): dependency manifests. Same negated-character-class
+    # boundary construction as python_data_marker_detected() (BD-141)
+    # — rejects substring matches like `protobuf-c-bindings` via
+    # `protobuf` and `swift-protobuf-runtime` via `swift-protobuf`.
+    local manifest pkg_pattern
+    # Python-side packages (case-insensitive grep handles the `iqE`).
+    local py_pkgs="protobuf|grpc-tools|grpcio-tools|protoc"
+    local py_pattern="(^|[^A-Za-z0-9_-])(${py_pkgs})($|[^A-Za-z0-9_.-])"
+    for manifest in \
+        "$target/requirements.txt" \
+        "$target/pyproject.toml" \
+        "$target/setup.py" \
+        "$target/setup.cfg"
+    do
+        [[ -f "$manifest" ]] || continue
+        if grep -iqE "$py_pattern" "$manifest" 2>/dev/null; then
+            echo "protobuf-marker: yes"
+            return 0
+        fi
+    done
+    # Swift-side packages.
+    local swift_pkgs="swift-protobuf|SwiftProtobuf|grpc-swift-2|grpc-swift"
+    local swift_pattern="(^|[^A-Za-z0-9_-])(${swift_pkgs})($|[^A-Za-z0-9_.-])"
+    for manifest in \
+        "$target/Package.swift" \
+        "$target/Package.resolved"
+    do
+        [[ -f "$manifest" ]] || continue
+        if grep -qE "$swift_pattern" "$manifest" 2>/dev/null; then
+            echo "protobuf-marker: yes"
+            return 0
+        fi
+    done
+    # Generic buf-tooling configs — strong signal that protobuf is in
+    # use even when no `.proto` file is yet committed (e.g., a fresh
+    # repo skeleton).
+    if [[ -f "$target/buf.yaml" || -f "$target/buf.gen.yaml" ]]; then
+        echo "protobuf-marker: yes"
+        return 0
+    fi
+
+    echo "protobuf-marker: no"
+}
+
 # target-pack-version: vN | unknown
 #
 # Detect the major pack version installed in the *target* project (NOT the

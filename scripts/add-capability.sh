@@ -132,6 +132,15 @@ capability_skills() {
         platform:android)      echo "android-architecture" ;;
         platform:web-browser)  echo "web-architecture" ;;
         platform:embedded-mcu) echo "embedded-mcu-architecture" ;;
+        # BD-156: protocol:grpc adds grpc-patterns only. The companion
+        # `protobuf-patterns` skill is intersection-loaded by marker
+        # (`scripts/lib/detect.sh::protobuf_marker_detected()`), not by
+        # capability — the same `.proto` files that justify a `grpc`
+        # capability also trigger the marker, so intersection loading
+        # picks up protobuf-patterns automatically. Standalone-protobuf
+        # projects (binary file format / IPC / Twirp / Connect) load
+        # protobuf-patterns via the marker without ever declaring
+        # protocol:grpc. See PLATFORM-SKILLS.md "Intersection table".
         protocol:grpc)      echo "grpc-patterns" ;;
         protocol:rest)      echo "rest-patterns" ;;
         protocol:graphql)   echo "graphql-patterns" ;;

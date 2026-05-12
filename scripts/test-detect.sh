@@ -312,6 +312,102 @@ assert_eq "deployment-python → deployment:linux-container (D5, BD-144 rename)"
     "capabilities: deployment:linux-container, language:python" \
     "$(detect_installed_capabilities "$fx")"
 
+# ── protobuf_marker_detected (BD-156) ─────────────────────────────────
+echo "== protobuf_marker_detected =="
+
+fx=$(mkfixture proto-marker-empty)
+assert_eq "empty dir → no" \
+    "protobuf-marker: no" "$(protobuf_marker_detected "$fx")"
+
+fx=$(mkfixture proto-marker-missing-target)
+rm -rf "$fx"
+assert_eq "non-existent target → no (tolerated, no stderr)" \
+    "protobuf-marker: no" "$(protobuf_marker_detected "$FIXTURE_BASE/never-existed")"
+
+# Marker (a): a `.proto` file anywhere in the tree.
+fx=$(mkfixture proto-marker-proto-file)
+mkdir -p "$fx/proto/myorg/v1"
+cat > "$fx/proto/myorg/v1/billing.proto" <<'EOF'
+syntax = "proto3";
+package myorg.v1;
+message Invoice { string id = 1; }
+EOF
+assert_eq ".proto file present → yes (marker a)" \
+    "protobuf-marker: yes" "$(protobuf_marker_detected "$fx")"
+
+# Marker (a) excludes vendored trees — a .proto only inside
+# node_modules/ should NOT trigger detection.
+fx=$(mkfixture proto-marker-vendored-only)
+mkdir -p "$fx/node_modules/some-pkg/proto"
+echo 'syntax = "proto3";' > "$fx/node_modules/some-pkg/proto/x.proto"
+assert_eq ".proto only in node_modules → no (vendored prune)" \
+    "protobuf-marker: no" "$(protobuf_marker_detected "$fx")"
+
+# Marker (b): Python manifest lists `protobuf`.
+fx=$(mkfixture proto-marker-pyproject)
+cat > "$fx/pyproject.toml" <<'EOF'
+[project]
+dependencies = [
+  "protobuf>=4.25",
+  "grpcio>=1.60",
+]
+EOF
+assert_eq "pyproject.toml lists protobuf → yes (marker b — Python)" \
+    "protobuf-marker: yes" "$(protobuf_marker_detected "$fx")"
+
+# Marker (b): requirements.txt lists `grpcio-tools`.
+fx=$(mkfixture proto-marker-requirements-grpcio-tools)
+cat > "$fx/requirements.txt" <<'EOF'
+grpcio-tools==1.60.0
+pytest
+EOF
+assert_eq "requirements.txt lists grpcio-tools → yes (marker b)" \
+    "protobuf-marker: yes" "$(protobuf_marker_detected "$fx")"
+
+# Marker (b): Swift Package.swift references SwiftProtobuf.
+fx=$(mkfixture proto-marker-package-swift)
+cat > "$fx/Package.swift" <<'EOF'
+// swift-tools-version:5.9
+import PackageDescription
+let package = Package(
+    name: "App",
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-protobuf", from: "1.25.0"),
+    ]
+)
+EOF
+assert_eq "Package.swift references swift-protobuf → yes (marker b — Swift)" \
+    "protobuf-marker: yes" "$(protobuf_marker_detected "$fx")"
+
+# Marker (b): substring rejection — `protobuf-c-bindings` should NOT
+# match `protobuf` (negated character class boundary).
+fx=$(mkfixture proto-marker-substring-reject)
+cat > "$fx/requirements.txt" <<'EOF'
+protobuf-c-bindings==0.1
+some-other-pkg==1.0
+EOF
+assert_eq "substring 'protobuf-c-bindings' alone → no (boundary reject)" \
+    "protobuf-marker: no" "$(protobuf_marker_detected "$fx")"
+
+# Marker (b): generic — buf.yaml present.
+fx=$(mkfixture proto-marker-buf-yaml)
+cat > "$fx/buf.yaml" <<'EOF'
+version: v2
+modules:
+  - path: proto
+EOF
+assert_eq "buf.yaml present → yes (generic buf-tooling marker)" \
+    "protobuf-marker: yes" "$(protobuf_marker_detected "$fx")"
+
+# Negative: dir with unrelated Python deps.
+fx=$(mkfixture proto-marker-no-protobuf)
+cat > "$fx/requirements.txt" <<'EOF'
+requests==2.31
+pytest==7.4
+EOF
+assert_eq "manifests without protobuf tooling → no" \
+    "protobuf-marker: no" "$(protobuf_marker_detected "$fx")"
+
 # ── detect_target_pack_version (BD-119) ───────────────────────────────
 echo "== detect_target_pack_version =="
 

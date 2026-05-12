@@ -219,6 +219,7 @@ This table is the authoritative source for those sparse cells:
 |---|---|---|
 | `python-server-architecture` | D2=python ∩ D3=server | PM chat reads D2 + D3 selections |
 | `python-data-architecture` | D2=python ∩ ((D3=server) ∨ data-marker present) | `scripts/lib/detect.sh::python_data_marker_detected()` is the canonical predicate for the data-marker branch (see BD-141); checks for relevant data / async I/O / ML dependencies in `requirements.txt` / `pyproject.toml` / `setup.py` / `setup.cfg` and for ≥5 `.py` files outside `tests/` |
+| `protobuf-patterns` | (any host language) ∩ protobuf-marker present | `scripts/lib/detect.sh::protobuf_marker_detected()` is the canonical predicate (see BD-156); checks for any `.proto` file in the project tree OR dependency manifests listing protobuf tooling (`protobuf`, `swift-protobuf` / `SwiftProtobuf`, `grpc-tools`, `grpc-swift-2`, `protoc`). Loads alongside `grpc-patterns` whenever D4=grpc; loads standalone (without `grpc-patterns`) for non-gRPC protobuf use (binary file format, IPC payloads, Twirp / Connect, persistent storage, log formats) |
 | `deployment-python` | D2=python ∩ D5=linux-container | PM chat reads D2 + D5 selections |
 | *(future)* `swift-server-architecture` | D1 ∈ {macos, linux-server-with-Swift} ∩ D3=server | Deferred; placeholder for Vapor / Hummingbird |
 | *(future)* `node-server-architecture` | D1=linux-server ∩ D2=typescript ∩ D3=server | Deferred; placeholder for Node servers |
@@ -270,9 +271,9 @@ contributions.)
 - D3: `server` → (intersection-loaded)
 - D4: `grpc` → grpc-patterns
 - D5: `linux-container` → (intersection-loaded)
-- Intersection: D2=python ∩ D3=server → python-server-architecture; D2=python ∩ data-marker (`python_data_marker_detected()` → yes for any server with relevant data deps) → python-data-architecture; D2=python ∩ D5=linux-container → deployment-python
+- Intersection: D2=python ∩ D3=server → python-server-architecture; D2=python ∩ data-marker (`python_data_marker_detected()` → yes for any server with relevant data deps) → python-data-architecture; protobuf-marker present (`protobuf_marker_detected()` → yes when `.proto` files or protobuf tooling are detected) → protobuf-patterns; D2=python ∩ D5=linux-container → deployment-python
 - Tier 0 base: loaded per agent
-- **Result (dimensional + intersection):** python-best-practices, dependency-python, grpc-patterns, python-server-architecture, python-data-architecture, deployment-python
+- **Result (dimensional + intersection):** python-best-practices, dependency-python, grpc-patterns, protobuf-patterns, python-server-architecture, python-data-architecture, deployment-python
 
 **Universal Apple app + Python gRPC server (monorepo):**
 - D1: `ios` + `macos` → apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, dependency-swift; plus `linux-server` for the backend → (none)
@@ -280,9 +281,9 @@ contributions.)
 - D3: `client-app` (Apple side) + `server` (backend) → server intersection-loaded
 - D4: `grpc` → grpc-patterns
 - D5: `apple-distribution` (Apple app) + `linux-container` (backend) → deployment-apple + (deployment-python via intersection); see "Monorepo D5 scoping note" above
-- Intersection: D2=python ∩ D3=server → python-server-architecture; D2=python ∩ data-marker → python-data-architecture; D2=python ∩ D5=linux-container → deployment-python
+- Intersection: D2=python ∩ D3=server → python-server-architecture; D2=python ∩ data-marker → python-data-architecture; protobuf-marker present → protobuf-patterns; D2=python ∩ D5=linux-container → deployment-python
 - Tier 0 base: loaded per agent
-- **Result (dimensional + intersection):** apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, dependency-swift, python-best-practices, dependency-python, grpc-patterns, python-server-architecture, python-data-architecture, deployment-apple, deployment-python
+- **Result (dimensional + intersection):** apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, dependency-swift, python-best-practices, dependency-python, grpc-patterns, protobuf-patterns, python-server-architecture, python-data-architecture, deployment-apple, deployment-python
 
 **macOS Swift app with embedded Python:**
 - D1: `macos` → apple-architecture-core, macos-architecture, swift-best-practices, dependency-swift
@@ -317,15 +318,15 @@ what the agent's role requires.
 
 **architect**
 - Tier 0 base: architecture-review, api-design, planning, documentation, error-handling, security-patterns
-- Dimensional (filtered by D1/D2/D3/D4/D5): apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, python-best-practices, python-server-architecture, python-data-architecture, grpc-patterns, rest-patterns, c-language, objc-language, cpp-language
+- Dimensional (filtered by D1/D2/D3/D4/D5): apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices, python-best-practices, python-server-architecture, python-data-architecture, grpc-patterns, protobuf-patterns, rest-patterns, c-language, objc-language, cpp-language
 
 **coder**
 - Tier 0 base: implementation, debugging, error-handling, documentation
-- Dimensional (filtered): swift-best-practices, python-best-practices, grpc-patterns, rest-patterns, c-language, objc-language, cpp-language
+- Dimensional (filtered): swift-best-practices, python-best-practices, grpc-patterns, protobuf-patterns, rest-patterns, c-language, objc-language, cpp-language
 
 **reviewer**
 - Tier 0 base: review, error-handling, security-patterns, api-design, debugging
-- Dimensional (filtered): swift-best-practices, python-best-practices, python-server-architecture, python-data-architecture, grpc-patterns, rest-patterns, apple-architecture-core, ios-architecture, macos-architecture, c-language, objc-language, cpp-language
+- Dimensional (filtered): swift-best-practices, python-best-practices, python-server-architecture, python-data-architecture, grpc-patterns, protobuf-patterns, rest-patterns, apple-architecture-core, ios-architecture, macos-architecture, c-language, objc-language, cpp-language
 
 **tester**
 - Tier 0 base: testing, ui-test-strategy *(when UI present)*
@@ -343,7 +344,7 @@ what the agent's role requires.
 
 **grpc-schema**
 - Tier 0 base: api-design
-- Dimensional: grpc-patterns
+- Dimensional: grpc-patterns, protobuf-patterns
 
 **auditor** (parent)
 - Trigger: audit-methodology
@@ -354,13 +355,13 @@ what the agent's role requires.
 
 **auditor-architecture**
 - Trigger: audit-methodology
-- Dimensional (filtered): apple-architecture-core, ios-architecture, macos-architecture, python-server-architecture, python-data-architecture
+- Dimensional (filtered): apple-architecture-core, ios-architecture, macos-architecture, python-server-architecture, python-data-architecture, protobuf-patterns *(load when `protobuf_marker_detected()` is true — schema design is an architectural concern at the transport boundary)*
 - Platform filtering: load only the architecture skills that match the project's D1/D2/D3 selectors. A pure Python server loads `python-server-architecture` + `python-data-architecture`. A pure iOS app loads `apple-architecture-core` + `ios-architecture` only. Observability infrastructure rules live inside these platform architecture skills (no separate observability skill). For non-server multi-file Python projects, load `python-data-architecture` only (per the intersection-table predicate via `python_data_marker_detected()`); do NOT load `python-server-architecture` because the server-specific rules do not apply.
 
 **auditor-code**
 - Trigger: audit-methodology
 - Tier 0 base: error-handling, security-patterns
-- Dimensional (filtered): swift-best-practices, python-best-practices, c-language, objc-language, cpp-language; plus python-data-architecture (load per the intersection-table predicate via `python_data_marker_detected()` — provides performance anti-pattern rules like N+1 query detection, repository pattern correctness, Pydantic placement, ML isolation); plus python-server-architecture (load only when D3=server — provides server-specific rules: servicers, grpc.aio handlers, interceptors, background tasks).
+- Dimensional (filtered): swift-best-practices, python-best-practices, c-language, objc-language, cpp-language; plus python-data-architecture (load per the intersection-table predicate via `python_data_marker_detected()` — provides performance anti-pattern rules like N+1 query detection, repository pattern correctness, Pydantic placement, ML isolation); plus python-server-architecture (load only when D3=server — provides server-specific rules: servicers, grpc.aio handlers, interceptors, background tasks); plus protobuf-patterns (load per `protobuf_marker_detected()` — provides field-evolution / wire-compatibility rules that auditor-code uses to flag risky `.proto` changes and hand-edited generated code).
 - The `error-handling` skill provides the cross-cutting error-handling rules (boundary mapping, retry policy uniformity) that this subagent audits at the systemic level. The `security-patterns` skill provides the log-safety, injection, and deserialization rules that overlap with code-level audit findings (added per architecture §5.9). The language skills (`swift-best-practices`, `python-best-practices`) supply the dead-code and unused-import detection rules.
 
 **auditor-tests**
@@ -433,7 +434,7 @@ actually loads.
 | testing | Test pyramid, design, organization, coverage | tester, auditor-tests |
 | ui-test-strategy | UI/E2E tool selection, test design, snapshot testing *(loaded only when a UI is present)* | tester, auditor-tests, auditor-ui |
 
-### Dimensional skills (16)
+### Dimensional skills (17)
 
 Skills loaded by D1–D5 selectors. Each skill's "Cell" column identifies
 which dimension(s) load it.
@@ -450,19 +451,20 @@ which dimension(s) load it.
 | python-best-practices | D2=python | Python type hints, async, error handling, ruff/pyright, style, dead code | architect, coder, reviewer, auditor-code |
 | dependency-python | D2=python | PyPI evaluation, wheels, version pinning, type stubs, security | docs-researcher, auditor-security |
 | dependency-swift | D1 ∈ {ios, macos} | SPM evaluation, Apple framework alternatives, binary frameworks | docs-researcher, auditor-security |
-| grpc-patterns | D4=grpc | Proto3 schema, grpc-swift-2, grpc.aio, cross-language conventions | architect, grpc-schema, coder, reviewer |
+| grpc-patterns | D4=grpc | gRPC service patterns: servicers, interceptors, streaming, deadlines, error model, async handlers, grpc-swift-2 / grpc.aio specifics, gRPC-side cross-language conventions *(Proto3 schema rules live in `protobuf-patterns`; load both when D4=grpc)* | architect, grpc-schema, coder, reviewer |
+| protobuf-patterns | (any host language) ∩ protobuf-marker *(intersection — see `scripts/lib/detect.sh::protobuf_marker_detected()`)* | Proto3 schema-design rules: field numbering invariants, backward / forward compatibility, well-known types, `oneof` semantics, code-generation options, package conventions, `buf` tooling. Standalone-usable (loads without `grpc-patterns` for non-gRPC protobuf consumers) | architect, grpc-schema, coder, reviewer, auditor-architecture, auditor-code |
 | rest-patterns | D4=rest | REST/HTTP URL design, HTTP methods, status codes, OpenAPI, caching | architect, coder, reviewer |
 | deployment-apple | D5=apple-distribution | Code signing, entitlements, notarization, privacy manifests, observability config | auditor-ops, docs-researcher |
 | deployment-python | D5=linux-container ∩ D2=python *(intersection)* | Docker, secrets, health checks, graceful shutdown, production config, observability config | auditor-ops, docs-researcher |
 | python-server-architecture | D2=python ∩ D3=server *(intersection)* | Python server structure: gRPC servicers / FastAPI handlers, grpc.aio, async handler I/O, server interceptors / middleware, background-task patterns, observability infrastructure | architect, reviewer, auditor-architecture, auditor-code |
 | python-data-architecture | D2=python ∩ data-marker *(intersection — see `scripts/lib/detect.sh::python_data_marker_detected()`)* | Python data and I/O architecture: repository pattern, N+1 prevention, Pydantic placement at I/O boundaries, ML inference isolation, no-direct-driver | architect, reviewer, auditor-architecture, auditor-code |
 
-**16 dimensional / intersection skills.** The Cell column is the
-authoritative load predicate; three rows
+**17 dimensional / intersection skills.** The Cell column is the
+authoritative load predicate; four rows
 (`python-server-architecture`, `python-data-architecture`,
-`deployment-python`) are intersection-loaded per the §"Intersection
-table" predicates; the remaining 13 load directly from a single
-D1/D2/D4/D5 selector.
+`protobuf-patterns`, `deployment-python`) are intersection-loaded per
+the §"Intersection table" predicates; the remaining 13 load directly
+from a single D1/D2/D4/D5 selector.
 
 ### Trigger-loaded skills (1)
 
@@ -482,7 +484,7 @@ but its purpose is PM chat operational, not agent role guidance.
 |---|---|---|
 | pm-startup | PM chat session startup procedure: read state files, check TD-TBD sentinels, report ready status | PM chat only (not an agent) |
 
-**Total skills: 31** (13 Tier 0 base + 16 dimensional / intersection + 1 trigger-loaded + 1 PM chat operational).
+**Total skills: 32** (13 Tier 0 base + 17 dimensional / intersection + 1 trigger-loaded + 1 PM chat operational).
 
 ### Deferred skills (create when project need arises)
 

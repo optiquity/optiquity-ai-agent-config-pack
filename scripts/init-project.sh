@@ -254,8 +254,24 @@ pack_skill_coverage_for() {
                 echo "python-best-practices"
             fi
             ;;
-        # proto: D4=grpc + future protobuf-patterns intersection (BD-156)
-        proto)      echo "grpc-patterns" ;;
+        # proto: D4=grpc + protobuf-patterns intersection (BD-156).
+        # grpc-patterns loads unconditionally for the proto language
+        # marker (a `.proto` file is itself a strong gRPC-D4 signal);
+        # protobuf-patterns loads when the canonical predicate
+        # `protobuf_marker_detected()` matches (the same `.proto`
+        # presence will trigger it, but the predicate also matches
+        # standalone protobuf scenarios — manifest-only signals — so
+        # routing through the helper preserves the architecture §3.7
+        # intersection-cell loading model).
+        proto)
+            local proto_marker_line
+            proto_marker_line=$(protobuf_marker_detected "$target_dir")
+            if [[ "$proto_marker_line" == "protobuf-marker: yes" ]]; then
+                echo "grpc-patterns,protobuf-patterns"
+            else
+                echo "grpc-patterns"
+            fi
+            ;;
         *)          echo "" ;;  # No coverage
     esac
 }
