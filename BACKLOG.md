@@ -632,11 +632,25 @@ Type: TODO(version)
 Status: Open
 Blockers: All BDs above (BD-060..BD-092) plus all addenda BDs
 Unblocks: None
-File/Symbol: `README.md`, `CHANGELOG.md`, git tags
+File/Symbol: `README.md`, `CHANGELOG.md`, git tags, `maintenance-docs/v11-implementation/EXECUTION-PLAN-V11.0.md` (final Pattern B sweep target)
 Description: The release-cut commit. Pack maintainer rule: tag operations
   only after Pack Chat approval. Delete `v11` if present; recreate `v11.0`
   and `v11`; push. validate-pack must pass on the tagged commit;
   MIGRATION-v10-to-v11.md references reflect as-shipped state.
+  **CHANGELOG audit-artifacts consolidation pass (carried from BD-150
+  PACK-REVIEW §2.1 advisory nit, 2026-05-12):** the v11.0 Scope C
+  audit-artifacts subsection (CHANGELOG lines 248-266 at BD-150 ship time)
+  is wedged between "Carried over to future work" and the v10 H3 instead
+  of consolidated with the other audit-artifacts blocks. Consolidate all
+  v11.0 audit-artifacts blocks into one position at the v11.0-section tail
+  (or another single canonical position) as part of the release-pin
+  CHANGELOG polish. **Final Pattern B sweep:** move
+  `maintenance-docs/v11-implementation/EXECUTION-PLAN-V11.0.md` and the
+  BD-150 IMPL/REVIEW reports (and any other workflow artifacts that
+  accumulated during the safe-window batches) to
+  `maintenance-docs/archive/v11/` via `git mv` — BD-150's Pattern B sweep
+  intentionally retained EXECUTION-PLAN and BD-150's own reports because
+  they were still being referenced by the remaining safe-window batches.
 Resolved: n/a
 
 ---
