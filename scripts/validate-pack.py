@@ -1786,9 +1786,10 @@ def check_migrator_framework_inventory() -> None:
     """Check 26 — BD-119 migrator-framework inventory.
 
     Asserts, per ARCHITECTURE-BD-119.md §3.2 and PLAN-BD-119.md §3, that
-    the three new shared libraries (`migrator-core.sh`,
-    `migrator-stages.sh`, `migrator-manifest.sh`) are present and pass
-    `bash -n` syntax validation, and that `migrator-core.sh` contains:
+    the four shared libraries (`migrator-core.sh`, `migrator-stages.sh`,
+    `migrator-manifest.sh`, and the BD-147 `migrator-skills.sh`) are
+    present and pass `bash -n` syntax validation, and that
+    `migrator-core.sh` contains:
 
       - regex matches for the 6 public-API function-name declarations
         (frozen at C-3 of PLAN-BD-119.md): `migrator_run`,
@@ -1801,6 +1802,12 @@ def check_migrator_framework_inventory() -> None:
         `EXIT_ALREADY_MIGRATED`, `EXIT_INTERNAL`;
       - the `EXIT_NOT_V10` back-compat synonym (PLAN §3.5).
 
+    Per PLAN-SKILL-DIMENSIONS.md §7.2 (BD-147), the inventory now
+    includes `migrator-skills.sh` as a fourth blessed framework lib.
+    `migrator-skills.sh` must additionally declare its public-API
+    function `migrator_skill_rename` (and the forward-declared
+    `migrator_skill_split` wrapper).
+
     The check uses regex matching against the file contents — it does
     NOT source the file, so it does not detect runtime-only defects.
 
@@ -1812,13 +1819,14 @@ def check_migrator_framework_inventory() -> None:
     core = REPO_ROOT / "scripts" / "lib" / "migrator-core.sh"
     stages = REPO_ROOT / "scripts" / "lib" / "migrator-stages.sh"
     manifest = REPO_ROOT / "scripts" / "lib" / "migrator-manifest.sh"
+    skills = REPO_ROOT / "scripts" / "lib" / "migrator-skills.sh"
 
     if not core.is_file():
         ok("migrator-core.sh not yet present — skipping (lenient pre-C-2)")
         return
 
-    # Strict mode: all three libs must exist and be syntax-valid.
-    for lib in (core, stages, manifest):
+    # Strict mode: all four libs must exist and be syntax-valid.
+    for lib in (core, stages, manifest, skills):
         if not lib.is_file():
             fail(f"migrator framework library missing: {lib.relative_to(REPO_ROOT)}")
             return
@@ -1873,6 +1881,35 @@ def check_migrator_framework_inventory() -> None:
         fail("migrator-core.sh missing EXIT_NOT_V10 back-compat synonym")
         return
     ok("migrator-core.sh preserves EXIT_NOT_V10 back-compat synonym")
+
+    # BD-147 — migrator-skills.sh public-API surface. Both the skill-rename
+    # adapter and the forward-declared skill-split wrapper must be present
+    # as function definitions so adapters can rely on a stable API across
+    # N→N+1 migrators (per ARCHITECTURE-SKILL-DIMENSIONS.md §6.5).
+    skills_text = skills.read_text()
+    skills_required_names = [
+        "migrator_skill_rename",
+        "migrator_skill_split",
+    ]
+    for name in skills_required_names:
+        if not re.search(
+            rf'(^|\n)\s*(function\s+)?{re.escape(name)}\s*\(\)\s*\{{',
+            skills_text,
+        ):
+            fail(f"migrator-skills.sh missing public-API function: {name}()")
+            return
+    ok(
+        f"migrator-skills.sh declares all {len(skills_required_names)} "
+        "public-API functions"
+    )
+
+    # BD-147 — migrator-core.sh must source migrator-skills.sh so the
+    # public API is available to per-version adapters via the same single
+    # `source migrator-core.sh` entry point as the other framework libs.
+    if "migrator-skills.sh" not in core_text:
+        fail("migrator-core.sh does not source migrator-skills.sh")
+        return
+    ok("migrator-core.sh sources migrator-skills.sh")
 
 
 def _extract_pm_startup_sections(text: str) -> tuple[str, str]:

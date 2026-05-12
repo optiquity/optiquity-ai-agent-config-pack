@@ -107,6 +107,9 @@ jobs:
       - name: migrator-capability-translation tests (BD-144)
         if: always()
         run: bash scripts/test-migrator-capability-translation.sh
+      - name: migrator-skills tests (BD-147)
+        if: always()
+        run: bash scripts/test-migrator-skills.sh
       - name: build test fixtures (BD-115/116/117)
         if: always()
         run: bash test-fixtures/build.sh --all --clean

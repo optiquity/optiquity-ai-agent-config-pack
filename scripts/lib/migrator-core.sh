@@ -44,6 +44,13 @@ _migrator_core_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$_migrator_core_dir/migrator-stages.sh"
 # shellcheck source=migrator-manifest.sh disable=SC1091
 . "$_migrator_core_dir/migrator-manifest.sh"
+# shellcheck source=migrator-skills.sh disable=SC1091
+# BD-147 — skill-rename / skill-split adapter (ARCHITECTURE-SKILL-DIMENSIONS.md
+# §6.5; sibling lib per ARCHITECTURE-BD-119.md §3.1). Adapters call
+# `migrator_skill_rename` (and forward-declared `migrator_skill_split`)
+# from inside their post-dispatch hooks; the BD-035 v10→v11 split is the
+# first consumer.
+. "$_migrator_core_dir/migrator-skills.sh"
 
 # ── Exit-code constants (PLAN §3.5; FROZEN) ────────────────────────────────
 #

@@ -109,6 +109,7 @@ scripts/
 │   ├── migrator-core.sh           NEW — orchestrator, public API consumed by adapters
 │   ├── migrator-stages.sh         NEW — per-stage implementations (sourced by core)
 │   ├── migrator-manifest.sh       NEW — manifest parser + dispatch engine
+│   ├── migrator-skills.sh         BD-147 — skill-rename / skill-split adapter (sourced by core)
 │   ├── customization-preserve.sh  EXISTING — unchanged
 │   ├── customization-report.sh    EXISTING — unchanged
 │   ├── three-way.sh               EXISTING — unchanged
@@ -136,6 +137,36 @@ the existing concerns:
 If at refactor time the line counts argue for fewer files, collapsing
 manifest into stages is acceptable. The split is justified up-front
 so the architecture does not bias toward another monolith.
+
+**Sibling lib added in BD-147 — `migrator-skills.sh`.** The BD-035
+v10→v11 split helper (per-line scan, server/data disambiguation, and
+advisory-file emission) was originally inline in
+`migrate-v10-to-v11.sh` S5b. BD-147 extracts that helper into
+`scripts/lib/migrator-skills.sh` as a fourth blessed framework lib so
+future N→N+1 adapters that need skill renames or splits can call a
+stable API rather than duplicating the helper. Public surface (frozen
+at BD-147 ship):
+
+- `migrator_skill_rename <old-skill> <new-skill> [<advisory-path>]` —
+  bare-token rewrite of `<old-skill>` references across a fixed file
+  list (default: `docs/pack/PLATFORM-SKILLS.md` + the trinity). Two
+  modes: SIMPLE (unconditional rewrite) and SPLIT (selected via the
+  `MIGRATOR_SKILLS_SPLIT_TO_SERVER` / `MIGRATOR_SKILLS_SPLIT_TO_DATA`
+  env vars, applying the BD-035 5-rule disambiguation). Writes an
+  advisory file when the split mode finds ambiguous sites.
+- `migrator_skill_split <old-skill> <new-server-skill> <new-data-skill>
+  [<advisory-path>]` — forward-declared one-to-many split. v11.0 BD-035
+  calls `migrator_skill_rename` in split mode directly; this wrapper
+  exists so future adapters with a more readable split call site, or
+  with extended split semantics (additional destination skills, custom
+  signal patterns), have a stable entry point.
+
+`migrator-core.sh` sources `migrator-skills.sh` alongside
+`migrator-stages.sh` and `migrator-manifest.sh`, so adapters get the
+public API with the same single-source pattern. The lib is
+syntax-checked, function-defined, and source-graph-verified by Check 26
+in `scripts/validate-pack.py` (extended in BD-147 from a 3-lib check
+to a 4-lib check per PLAN-SKILL-DIMENSIONS.md §7.2).
 
 ### 3.2 Public surface (what an adapter sees)
 

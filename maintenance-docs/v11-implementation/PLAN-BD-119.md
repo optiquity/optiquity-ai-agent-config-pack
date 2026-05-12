@@ -67,6 +67,7 @@ BD-116, BD-117, BD-118.
 | `scripts/lib/migrator-core.sh` | Public API + arg parsing + stage sequencer + exit-code constants. Adapters source this. (Architecture §3.1, §3.2.) |
 | `scripts/lib/migrator-stages.sh` | Per-stage implementations (`_stage_preflight`, `_stage_backup`, `_stage_libs`, `_stage_dispatch`, `_stage_relocations`, `_stage_artifact_installs`, `_stage_report`). Sourced only by core. (Architecture §3.1.) |
 | `scripts/lib/migrator-manifest.sh` | TSV manifest parser + `customization_preserve` dispatch engine + trinity-parity validator. Sourced only by core. (Architecture §3.1, §4.2, §6 I3 / I5.) |
+| `scripts/lib/migrator-skills.sh` (added in BD-147) | Reusable skill-rename helper extracted from inline S5b. Sibling library to `migrator-core.sh`. Exposes `migrator_skill_rename` and forward-declared `migrator_skill_split`. (See `ARCHITECTURE-BD-119.md` §3.1 sibling-lib paragraph and `ARCHITECTURE-SKILL-DIMENSIONS.md` §6.5.) |
 | `scripts/tests/test-migrator-core.sh` | Unit tests for the core's public API (`migrator_select_adapter`, `migrator_detect_target_version`, manifest parser, trinity-parity validator). Wired into `validate-pack.yml`. |
 | `scripts/tests/test-migrator-behavior-preservation.sh` | The §8 recipe driver: builds fixtures, runs both pre-refactor and post-refactor migrators, diffs outputs, fails CI on unexpected diff. (Hooked into `validate-pack.yml` only after C-6.) |
 | `maintenance-docs/v11-implementation/PLAN-BD-119.md` | This file. |

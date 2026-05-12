@@ -195,6 +195,7 @@ scripts/                                    Pack-level scripts
     ├── migrator-core.sh                    BD-119 N→N+1 migrator framework — sequencer + public API (v11)
     ├── migrator-stages.sh                  BD-119 framework — preflight / backup / dispatch / report stage helpers (v11)
     ├── migrator-manifest.sh                BD-119 framework — manifest parser + validator (v11)
+    ├── migrator-skills.sh                  BD-119 sibling lib — reusable skill-rename helper (BD-147; v11)
     ├── recommendation.sh                   Inflection-point recommendation system (v11; D-19)
     ├── tracker-provider.sh                 TrackerProvider abstraction (v11; D-1)
     ├── tracker-provider-gh.sh              gh-CLI backend (v11; D-2)
@@ -208,6 +209,7 @@ scripts/                                    Pack-level scripts
 
 scripts/test-migrator-core.sh               BD-119 unit tests — public API surface (v11)
 scripts/test-migrator-manifest.sh           BD-119 unit tests — manifest parser/validator (v11)
+scripts/test-migrator-skills.sh             BD-147 unit tests — skill-rename helper + golden-snapshot regression (v11)
 scripts/tests/test-migrate-v10-to-v11-dry-run.sh   BD-095 tests — dry-run / apply / resume modes (40 cases)
 scripts/tests/test-migrate-v10-to-v11-gates.sh     BD-101 tests — Gate 1 / 2 / 3 verification (39 cases)
 
