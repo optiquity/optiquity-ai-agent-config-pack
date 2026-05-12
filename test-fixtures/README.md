@@ -137,6 +137,10 @@ expected SHA so you can confirm the rebuild matches.
 Each builder writes its fixture deterministically into
 `test-fixtures/<name>/` with a clean `git init` and a single commit.
 
+> **For a new realistic-OT version** (`v11-realistic-ot`,
+> `v12-realistic-ot`, ...), do NOT add a per-version `_build_<name>()`
+> function — extend the per-version subsection below instead.
+
 ### Realistic-OT fixtures: per-version pattern (BD-120)
 
 The realistic-OT family uses a single parameterized builder,
