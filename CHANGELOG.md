@@ -121,6 +121,149 @@ Each version is available as a git tag (v1, v2, …).
 - BD-112 — Three-way diff filename mangling collision fix (affects both
   `customization-preserve.sh` and `migrate-v9-to-v10.sh`).
 
+**Scope C — Skill-dimensions reframe (BD-141..BD-150 + BD-156..BD-159)**
+
+Skill selection in `project-template/docs/pack/PLATFORM-SKILLS.md` is
+reframed to an explicit five-dimension model — D1 (runtime / OS
+substrate), D2 (cross-platform languages), D3 (component role /
+app-layer), D4 (communication protocols), D5 (deployment surface, NEW
+in v11) — plus three orthogonal load mechanisms: Tier 0 base skills
+(loaded for every project, every relevant agent), intersection-cell
+skills (loaded when specific D1–D5 cell predicates apply), and
+trigger-loaded skills (loaded by agent role, not project shape). The
+pre-v11 "Tier 1 role / Tier 2 platform" nomenclature is retired.
+Per `supporting-docs/MIGRATION-v10-to-v11.md` "Skill model changes"
+section, the reframe is a **behavioral change** masquerading as a doc
+change: PM chats re-read PLATFORM-SKILLS.md every time they generate
+a prompt, so the v11 model takes effect on the next prompt after
+migration with no manual file edit needed; clients who locally edited
+PLATFORM-SKILLS.md must re-apply customizations manually (BD-088
+sidecar `docs/pack/PLATFORM-SKILLS.md.v10-customized` is preserved
+per `supporting-docs/MERGE-STRATEGY.md`). Total skill count post-reframe:
+**34** (13 Tier 0 base + 19 dimensional / intersection + 1
+trigger-loaded + 1 PM chat operational).
+
+- BD-141 — `python_data_marker_detected()` helper in
+  `scripts/lib/detect.sh` makes the `python-data-architecture` load
+  predicate concrete (≥5 `.py` files outside `tests/` OR data-tooling
+  manifest entry); init-project.sh + add-capability.sh consume it.
+- BD-142 — `project-template/docs/pack/PLATFORM-SKILLS.md` rewritten
+  to the 5-dimension D1–D5 + Tier 0 base + sparse intersection table
+  + trigger-loaded sections; project-owned `## Custom agents` and
+  `## Custom skills` sections preserved byte-identical per BD-088
+  customization-preserve invariants.
+- BD-143 — Trinity (`project-template/CLAUDE.md` / `AGENTS.md` /
+  `GEMINI.md`) "Skill loading" prose realigned to the 5+3 model;
+  `audit-methodology/SKILL.md` rule 20 cross-platform UI seam
+  extension; `architecture-review/SKILL.md` skill list updated across
+  all four trinity copies.
+- BD-144 — `scripts/add-capability.sh` D5 dimension rename
+  (`role:apple-app` → `deployment:apple`); `role:python-server`
+  intersection fix (resolves to `python-server-architecture` +
+  `python-data-architecture`, drops obsolete `deployment-python`);
+  forward-declared rows for `deployment:linux-container`,
+  `platform:android` / `web-browser` / `embedded-mcu`. New S5c
+  capability-translation stage in `scripts/migrate-v10-to-v11.sh`
+  maps existing client `tracker.toml` entries.
+- BD-145 — `scripts/init-project.sh` `pack_skill_coverage_for()`
+  consults D1/D5 markers; python row calls
+  `python_data_marker_detected()` instead of unconditional listing;
+  post-install hint points the PM chat at the new D1–D5 tables.
+- BD-146 — `scripts/validate-pack.py` Check 31
+  (`check_skill_cell_consistency`) parses the four Full-skill-inventory
+  subsections and asserts every SKILL.md appears in exactly one cell
+  (no orphans, no phantoms, no double-counted, no header-count drift,
+  no total-line drift). Check 27 extension validates per-agent
+  `## Skills to load` lists against the new tables.
+- BD-147 — BD-035 rename helper extracted from migrate-v10-to-v11.sh
+  S5b inline into reusable `scripts/lib/migrator-skills.sh` API
+  (`migrator_skill_rename`); golden-snapshot byte-equivalence verified
+  against `test-fixtures/v10-realistic-ot/`; Check 26 extended;
+  `scripts/test-migrator-skills.sh` (19 cases) wired into CI;
+  `maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md` §3.1
+  documents migrator-skills.sh as a sibling library to migrator-core.sh.
+- BD-148 — `supporting-docs/MIGRATION-v10-to-v11.md` "Skill model
+  changes" H2 section + `supporting-docs/MERGE-STRATEGY.md` per-file
+  matrix update for PLATFORM-SKILLS.md (D5 monorepo gotcha + D2
+  reshape advisory) + Procedure 5.1 v11 column-write convention in
+  `supporting-docs/INSTALL-PROCEDURES.md`. Picks up BD-142 F3 deferred
+  fix: `## Custom agents` table column header rename
+  `Tier 1 skills | Tier 2 skills` → `Base skills | Dimensional skills`.
+- BD-149 — `project-template/docs/pack/PLATFORM-SKILLS.md` "Extending
+  this file" section gains "### Naming convention for new skills"
+  subsection codifying four suffixes in active use:
+  `*-best-practices` (language style), `*-language` (language
+  structure), `*-architecture` (platform-specific structural rules),
+  `*-patterns` (cross-cutting concerns). v11.0 ships no skill renames;
+  the v12 enforcement migration is BD-155. Closing pointer references
+  the maintainability principle in pack-repo trinity `## Pack memory`.
+- BD-150 — This CHANGELOG entry + README skill-count reconciliation
+  (Repository Layout `skills/` line: 30 → 34) + README v11.0 row
+  extension with the reframe-cluster BD references + Pattern B archive
+  sweep moving the cluster's per-batch IMPLEMENTATION-REPORT-* and
+  PACK-REVIEW-* artifacts (plus AUDIT-* / RESEARCH-* / *-DISCOVERY.md)
+  from `maintenance-docs/v11-implementation/` to
+  `maintenance-docs/archive/v11/` per the BD-159 maintainability
+  principle workflow-artifact exemption (durable architecture / plan
+  docs remain in place).
+- BD-156 — NEW `project-template/skills/protobuf-patterns/SKILL.md`
+  (Proto3 schema-design rules: field numbering invariants,
+  backward / forward compatibility, well-known types, `oneof`
+  semantics, code-generation options, package conventions, `buf`
+  tooling). Standalone-usable for non-gRPC protobuf consumers.
+  Loads by intersection: `(any host language) ∩ protobuf-marker`.
+  `grpc-patterns/SKILL.md` Proto3 rules stripped + cross-referenced.
+  New `protobuf_marker_detected()` in `scripts/lib/detect.sh`.
+- BD-157 — NEW `project-template/skills/apple-swiftdata-patterns/SKILL.md`
+  (SwiftData object-store rules: `@Model` macro design,
+  `ModelContainer` / `ModelContext` lifecycle and threading,
+  `FetchDescriptor` construction, relationship-traversal performance,
+  schema migration, history tracking, CloudKit sync, `save()`
+  semantics). Loads by intersection:
+  `D1 ∈ {ios, macos} ∩ swiftdata-marker`. New
+  `swiftdata_marker_detected()` in `scripts/lib/detect.sh`.
+- BD-158 — NEW `project-template/skills/swift-concurrency-patterns/SKILL.md`
+  (Modern Swift Concurrency — async/await, structured concurrency,
+  actor isolation, Sendable, `@preconcurrency`, AsyncSequence /
+  AsyncStream, Swift 6 strict checking, continuation bridging — and
+  Grand Central Dispatch — DispatchQueue selection, DispatchGroup,
+  DispatchSemaphore caveats, barrier writes, QoS, DispatchSource,
+  GCD ↔ async-await modernization, do-not-mix anti-patterns). Loads
+  D1-implied for `D1 ∈ {ios, macos}` parallel to `swift-best-practices`.
+  Concurrency mentions in `swift-best-practices/SKILL.md` and
+  `apple-architecture-core/SKILL.md` stripped + cross-referenced.
+- BD-159 — Codifies the canonical maintainability principle in
+  pack-repo trinity (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`)
+  `## Pack memory` § "Repo conventions": "Maintenance is mechanical,
+  complete, reviewed, and rule-strict. Structural change — including
+  rule changes — requires architect-then-planner, never convenience."
+  Full canonical paragraph adds the client `x-` preservation rule and
+  the workflow-artifact archive-sweep exemption (Pattern B). Adds
+  one-line pointer in `PACK-AGENTS.md` and a negative
+  commit-staging rule in `PACK-CHAT.md` "Behavioral rules". Threshold
+  conditions and worked examples live in
+  `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`
+  §3 (no duplication per the principle's no-duplication clause).
+
+**Audit artifacts (release evidence — Scope C):**
+
+- `scripts/validate-pack.py` Check 31 (skill-cell consistency) gates
+  every PLATFORM-SKILLS.md edit; 31/31 Checks PASS at v11.0 release pin.
+- Behavior-equivalence: BD-147 golden-snapshot proves
+  `migrator-skills.sh` extraction is byte-equivalent to the prior
+  inline S5b helper against `test-fixtures/v10-realistic-ot/`.
+- New Scope C test wiring into CI: `scripts/test-migrator-skills.sh`
+  (19 cases, BD-147), `scripts/test-migrate-v10-to-v11-capability-translation.sh`
+  (12 cases, BD-144); `scripts/test-detect.sh` extended +22 cases for
+  the three new marker helpers (BD-141, BD-156, BD-157).
+- Workflow-artifact archive sweep (BD-150 / BD-159): per-batch
+  IMPLEMENTATION-REPORT-* and PACK-REVIEW-* for the v11.0 cluster
+  swept to `maintenance-docs/archive/v11/`; durable architecture and
+  plan docs (`ARCHITECTURE-SKILL-DIMENSIONS.md`, `PLAN-SKILL-DIMENSIONS.md`,
+  `ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`, `ARCHITECTURE-BD-119.md`,
+  `PLAN-BD-119.md`, `EXECUTION-PLAN-V11.0.md`) remain in
+  `maintenance-docs/v11-implementation/` for cross-version reference.
+
 ---
 
 ## v10 — April 2026
