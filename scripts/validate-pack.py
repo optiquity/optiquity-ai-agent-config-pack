@@ -98,6 +98,20 @@ Checks:
       the file is absent (lazy-create is by design — fresh installs
       never write the file until first persistent-refusal toggle).
       Catches state-file corruption before it causes runtime defaults.
+  31. Skill-cell consistency (BD-146, v11 skill-dimensions reframe):
+      every SKILL.md on disk under `project-template/skills/<name>/`
+      appears in exactly one cell (one row of one Full-skill-inventory
+      subsection) of `project-template/docs/pack/PLATFORM-SKILLS.md`,
+      and every cell corresponds to a SKILL.md on disk. Catches
+      orphan SKILL.md (on disk, missing from inventory), phantom cells
+      (in inventory, no SKILL.md on disk), double-counted skills
+      (listed in more than one inventory subsection), header drift
+      (`### <subsection> (NN)` mismatch), and total drift
+      (`**Total skills: NN**` mismatch). Check 27 was extended in the
+      same BD to verify each agent's `## Skills to load` prose section
+      cites only known skills (skill exists on disk AND is listed in
+      PLATFORM-SKILLS.md) — see the in-line `[extension]` block at
+      the end of `check_agent_canonical_phrases()`.
 
 Two additional informational checks (no number, soft / advisory):
   - Issue template forms (BD-063): `.github/ISSUE_TEMPLATE/*.yml`
@@ -1361,8 +1375,100 @@ def check_agent_canonical_phrases() -> None:
                     f"{path.relative_to(REPO_ROOT)} — profile "
                     f"'{profile}' canonical phrases present"
                 )
+
+    # ── Check 27 extension (BD-146): Skills-to-load conformance ──
+    # Per BD-146 Batch 7 of the v11 skill-dimensions reframe, the
+    # per-agent "## Skills to load" prose section (currently used by
+    # auditor-* subagents) must reference only skills that (a) exist
+    # on disk as project-template/skills/<name>/SKILL.md and (b) are
+    # known to PLATFORM-SKILLS.md (i.e., not a typo or stale removal).
+    # This is the conformance leg of the BD-146 internal-consistency
+    # gate; the cell-membership leg is enforced by Check 31.
+    print("\n  [extension] Skills-to-load conformance vs PLATFORM-SKILLS (BD-146)")
+    disk_skills = set()
+    if SKILLS_DIR.is_dir():
+        for d in SKILLS_DIR.iterdir():
+            if d.is_dir() and (d / "SKILL.md").is_file():
+                disk_skills.add(d.name)
+    platform_skills_md = (
+        REPO_ROOT / "project-template" / "docs" / "pack" / "PLATFORM-SKILLS.md"
+    )
+    known_skills: set[str] = set()
+    if platform_skills_md.is_file():
+        ps_text = platform_skills_md.read_text()
+        # Any backticked identifier that matches a disk skill is "known."
+        # The Full skill inventory tables list every skill in plain | name |
+        # cells, so use those as the authoritative set when present.
+        for tok in re.findall(r"`([a-z][a-z0-9-]+)`", ps_text):
+            if tok in disk_skills:
+                known_skills.add(tok)
+        # Also harvest plain (non-backticked) skill names that appear as
+        # the first column of an inventory table row — robust to either
+        # `| name |` or `| `name` |` styles.
+        for m in re.finditer(
+            r"^\|\s*`?([a-z][a-z0-9-]+)`?\s*\|", ps_text, re.MULTILINE
+        ):
+            if m.group(1) in disk_skills:
+                known_skills.add(m.group(1))
+    # Walk every agent file with a "## Skills to load" H2 and validate
+    # the backtick-quoted skill identifiers inside that section body.
+    for agent_dir, pattern in agent_dirs:
+        if not agent_dir.is_dir():
+            continue  # already failed above
+        for path in sorted(agent_dir.glob(pattern)):
+            stem = path.stem
+            if stem.startswith("x-"):
+                continue
+            text = path.read_text()
+            section = _extract_skills_to_load_section(text)
+            if section is None:
+                continue  # agent has no Skills-to-load section (allowed)
+            referenced = set(re.findall(r"`([a-z][a-z0-9-]+)`", section))
+            file_failed = False
+            # Filter to plausible skill names — must be on disk AND known
+            # to PLATFORM-SKILLS.md. Skill names never contain underscores
+            # (kebab-case convention), so a leading underscore filter
+            # excludes detection-helper identifiers like
+            # `swiftdata_marker_detected()` automatically.
+            for skill in sorted(referenced):
+                if "_" in skill:
+                    continue  # not a skill identifier
+                if skill not in disk_skills:
+                    fail(
+                        f"{path.relative_to(REPO_ROOT)} — '## Skills to "
+                        f"load' references '{skill}' but no SKILL.md "
+                        f"exists at project-template/skills/{skill}/"
+                    )
+                    any_failed = True
+                    file_failed = True
+                elif skill not in known_skills:
+                    fail(
+                        f"{path.relative_to(REPO_ROOT)} — '## Skills to "
+                        f"load' references '{skill}' but PLATFORM-SKILLS.md "
+                        f"does not list it as a known skill"
+                    )
+                    any_failed = True
+                    file_failed = True
+            if not file_failed:
+                cited = sum(1 for s in referenced if "_" not in s)
+                ok(
+                    f"{path.relative_to(REPO_ROOT)} — Skills-to-load "
+                    f"references conform ({cited} cited)"
+                )
+
     if any_failed:
         return
+
+
+def _extract_skills_to_load_section(text: str) -> str | None:
+    """Return the body text under '## Skills to load' (up to the next
+    H2), or None if the section is absent. Used by Check 27 extension."""
+    m = re.search(
+        r"^##\s+Skills to load\s*\n(.*?)(?=^##\s+|\Z)",
+        text,
+        re.MULTILINE | re.DOTALL,
+    )
+    return m.group(1) if m else None
 
 
 def check_trinity_addenda_h2() -> None:
@@ -2271,6 +2377,203 @@ def check_recommendation_state_schema() -> None:
            f"schema_version={sv!r})")
 
 
+# ── Check 31: Skill-cell consistency (BD-146, v11) ──────────────────────────
+
+# Subsection headers in the "Full skill inventory" block of
+# PLATFORM-SKILLS.md. Each subsection is a markdown table whose first
+# column is the skill name. The parenthesized integer in the header is
+# the inventory count for that subsection.
+_INVENTORY_SUBSECTIONS = [
+    "Tier 0 base skills",
+    "Dimensional skills",
+    "Trigger-loaded skills",
+    "PM chat operational skill",
+]
+
+
+def _parse_inventory_subsection(text: str, header: str) -> tuple[int, list[str]]:
+    """Parse one '### <header> (NN)' subsection and return
+    (declared_count, [skill_names]). The skill name is the first column
+    of each table row in the subsection body (up to the next H3 / H2 /
+    EOF). Returns (-1, []) if the subsection is absent.
+    """
+    pat = re.compile(
+        rf"^###\s+{re.escape(header)}\s*\((\d+)\)\s*\n(.*?)(?=^###\s+|^##\s+|\Z)",
+        re.MULTILINE | re.DOTALL,
+    )
+    m = pat.search(text)
+    if not m:
+        return (-1, [])
+    declared = int(m.group(1))
+    body = m.group(2)
+    skills: list[str] = []
+    for line in body.split("\n"):
+        # Skip header / separator rows. Skill names are kebab-case
+        # identifiers in the first table column, optionally backticked.
+        if not line.startswith("|"):
+            continue
+        if re.match(r"^\|\s*-+\s*\|", line):
+            continue
+        if re.match(r"^\|\s*Skill\s*\|", line):
+            continue
+        cell_match = re.match(r"^\|\s*`?([a-z][a-z0-9-]+)`?\s*\|", line)
+        if cell_match:
+            skills.append(cell_match.group(1))
+    return (declared, skills)
+
+
+def check_skill_cell_consistency() -> None:
+    """Check 31 — skill-cell consistency vs PLATFORM-SKILLS.md (BD-146).
+
+    Enforces the v11 skill-dimensions reframe internal-consistency
+    contract: every SKILL.md on disk under
+    `project-template/skills/<name>/` appears in exactly one cell
+    (one row of one Full-skill-inventory subsection) of
+    `project-template/docs/pack/PLATFORM-SKILLS.md`, and every cell
+    in PLATFORM-SKILLS.md corresponds to a SKILL.md on disk.
+
+    Failure modes detected:
+      - Orphan SKILL.md  : present on disk, missing from inventory.
+      - Phantom cell     : referenced in inventory, no SKILL.md on disk.
+      - Double-counted   : same skill listed in more than one inventory
+                           subsection (D1-implied skills load via
+                           multiple D-table rows but appear in exactly
+                           one inventory row — see ARCHITECTURE-SKILL-
+                           DIMENSIONS.md §3.7-§3.8).
+      - Header drift     : '### <subsection> (NN)' count does not match
+                           the row count in that subsection's table.
+      - Total drift      : '**Total skills: NN**' line disagrees with
+                           the sum across all inventory subsections.
+
+    The Full skill inventory subsections are the authoritative
+    canonical-cell source per `maintenance-docs/v11-implementation/
+    ARCHITECTURE-SKILL-DIMENSIONS.md` §3 — the dimension tables (D1-D5)
+    and intersection table reference loading-mechanism descriptors;
+    the inventory rows are the per-skill canonical cell.
+    """
+    print("\n── Check 31: Skill-cell consistency (BD-146, v11) ──")
+    platform_skills_md = (
+        REPO_ROOT / "project-template" / "docs" / "pack" / "PLATFORM-SKILLS.md"
+    )
+    if not platform_skills_md.is_file():
+        fail("project-template/docs/pack/PLATFORM-SKILLS.md — file missing")
+        return
+    if not SKILLS_DIR.is_dir():
+        fail("project-template/skills/ — directory missing")
+        return
+
+    text = platform_skills_md.read_text()
+
+    # 1. Disk-side: enumerate SKILL.md directories on disk.
+    disk_skills: set[str] = set()
+    for d in sorted(SKILLS_DIR.iterdir()):
+        if d.is_dir() and (d / "SKILL.md").is_file():
+            disk_skills.add(d.name)
+
+    # 2. PLATFORM-SKILLS-side: parse each inventory subsection and
+    #    collect declared counts + per-subsection skill lists.
+    subsection_data: dict[str, tuple[int, list[str]]] = {}
+    any_failed = False
+    for header in _INVENTORY_SUBSECTIONS:
+        declared, skills = _parse_inventory_subsection(text, header)
+        if declared == -1:
+            fail(
+                f"PLATFORM-SKILLS.md — '### {header} (NN)' subsection "
+                f"missing or malformed (cannot find header line with "
+                f"parenthesized count)"
+            )
+            any_failed = True
+            continue
+        subsection_data[header] = (declared, skills)
+        actual = len(skills)
+        if declared != actual:
+            fail(
+                f"PLATFORM-SKILLS.md — '### {header} ({declared})' header "
+                f"count does not match table row count ({actual})"
+            )
+            any_failed = True
+        else:
+            ok(f"PLATFORM-SKILLS.md — '{header}': {declared} rows (header matches)")
+
+    if any_failed:
+        # Count drift makes downstream checks unreliable; still run them
+        # so the developer sees every issue in one pass, but proceed.
+        pass
+
+    # 3. Build canonical cells (skill → list of subsections that hold it).
+    cell_membership: dict[str, list[str]] = {}
+    for header, (_, skills) in subsection_data.items():
+        for s in skills:
+            cell_membership.setdefault(s, []).append(header)
+
+    inventory_skills = set(cell_membership.keys())
+
+    # 4. Orphan SKILL.md: on disk, missing from inventory.
+    orphans = sorted(disk_skills - inventory_skills)
+    for s in orphans:
+        fail(
+            f"PLATFORM-SKILLS.md — orphan SKILL.md: "
+            f"project-template/skills/{s}/SKILL.md exists on disk but is "
+            f"not listed in any Full skill inventory subsection"
+        )
+        any_failed = True
+
+    # 5. Phantom cell: in inventory, no SKILL.md on disk.
+    phantoms = sorted(inventory_skills - disk_skills)
+    for s in phantoms:
+        sections = ", ".join(cell_membership[s])
+        fail(
+            f"PLATFORM-SKILLS.md — phantom cell: '{s}' listed in "
+            f"inventory subsection(s) [{sections}] but no SKILL.md "
+            f"exists at project-template/skills/{s}/"
+        )
+        any_failed = True
+
+    # 6. Double-counted: skill appears in more than one inventory subsection.
+    double_counted = sorted(s for s, secs in cell_membership.items() if len(secs) > 1)
+    for s in double_counted:
+        sections = ", ".join(cell_membership[s])
+        fail(
+            f"PLATFORM-SKILLS.md — double-counted: '{s}' listed in "
+            f"more than one inventory subsection [{sections}] (each "
+            f"skill must have exactly one canonical cell per "
+            f"ARCHITECTURE-SKILL-DIMENSIONS.md §3)"
+        )
+        any_failed = True
+
+    # 7. Total skills line consistency.
+    total_match = re.search(r"\*\*Total skills:\s*(\d+)\*\*", text)
+    declared_total = sum(d for d, _ in subsection_data.values()) if subsection_data else 0
+    if total_match:
+        stated_total = int(total_match.group(1))
+        if stated_total != declared_total:
+            fail(
+                f"PLATFORM-SKILLS.md — '**Total skills: {stated_total}**' "
+                f"disagrees with sum of subsection counts ({declared_total})"
+            )
+            any_failed = True
+        elif stated_total != len(inventory_skills):
+            fail(
+                f"PLATFORM-SKILLS.md — '**Total skills: {stated_total}**' "
+                f"disagrees with unique inventory row count "
+                f"({len(inventory_skills)}) — likely a double-counted row"
+            )
+            any_failed = True
+        else:
+            ok(
+                f"PLATFORM-SKILLS.md — total skills: {stated_total} "
+                f"(header sum, inventory row count, and disk count "
+                f"all agree)"
+            )
+
+    if not any_failed:
+        ok(
+            f"Skill-cell consistency: {len(disk_skills)} SKILL.md on disk, "
+            f"all map to exactly one inventory cell; no orphans, "
+            f"phantoms, or double-counts"
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -2308,6 +2611,7 @@ def main() -> None:
     check_pm_startup_per_cli_parity()
     check_tracker_config()
     check_recommendation_state_schema()
+    check_skill_cell_consistency()
 
     print("\n" + "=" * 60)
     if failures:
