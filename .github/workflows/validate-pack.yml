@@ -104,6 +104,9 @@ jobs:
       - name: migrator-manifest tests (BD-119)
         if: always()
         run: bash scripts/test-migrator-manifest.sh
+      - name: migrator-capability-translation tests (BD-144)
+        if: always()
+        run: bash scripts/test-migrator-capability-translation.sh
       - name: build test fixtures (BD-115/116/117)
         if: always()
         run: bash test-fixtures/build.sh --all --clean

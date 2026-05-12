@@ -281,8 +281,35 @@ cat > "$fx/CLAUDE.md" <<'EOF'
 # CLAUDE.md
 **Active skills:** `python-best-practices`, `deployment-python`
 EOF
+# BD-144 (v11.0 skill-dimensions reframe Batch 5): deployment-python now
+# reciprocally maps to `deployment:linux-container` (D5), not the misclassified
+# `role:python-server` (D3) of v10.x.
 assert_eq "Active-skills with backticks → stripped + mapped correctly" \
-    "capabilities: language:python, role:python-server" \
+    "capabilities: deployment:linux-container, language:python" \
+    "$(detect_installed_capabilities "$fx")"
+
+# BD-144: rename `role:apple-app` → `deployment:apple`. Verify the
+# reciprocal mapping in detect_installed_capabilities() emits the new D5
+# token, not the deprecated D3 token.
+fx=$(mkfixture caps-deployment-apple)
+cat > "$fx/CLAUDE.md" <<'EOF'
+# CLAUDE.md
+**Active skills:** swift-best-practices, deployment-apple
+EOF
+assert_eq "deployment-apple → deployment:apple (D5, BD-144 rename)" \
+    "capabilities: deployment:apple, language:swift" \
+    "$(detect_installed_capabilities "$fx")"
+
+# BD-144: deployment-python → deployment:linux-container without backticks
+# (covers the path where add-capability.sh wrote the skill straight without
+# Markdown formatting).
+fx=$(mkfixture caps-deployment-linux-container)
+cat > "$fx/CLAUDE.md" <<'EOF'
+# CLAUDE.md
+**Active skills:** python-best-practices, deployment-python
+EOF
+assert_eq "deployment-python → deployment:linux-container (D5, BD-144 rename)" \
+    "capabilities: deployment:linux-container, language:python" \
     "$(detect_installed_capabilities "$fx")"
 
 # ── detect_target_pack_version (BD-119) ───────────────────────────────

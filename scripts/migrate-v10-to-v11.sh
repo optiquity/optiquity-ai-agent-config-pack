@@ -138,13 +138,14 @@ migrator_post_dispatch_hook() {
     # invariant (single-shot only) made this gate unnecessary; with
     # BD-095 the gate is required.
     if _migrator_is_dryrun; then
-        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install + python-architecture skill rename"
+        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install + python-architecture skill rename + BD-144 capability-token translation"
         return 0
     fi
     _v10_to_v11_rename_implementation_plan
     _v10_to_v11_relocate_legacy_docs
     _v10_to_v11_install_v11_artifacts
     _v10_to_v11_rename_python_architecture_refs
+    _v10_to_v11_translate_capability_tokens
 }
 
 # Internal: BD-104 cross-pack rename of the client's IMPLEMENTATION_PLAN.md
@@ -491,6 +492,195 @@ _v10_to_v11_rename_python_architecture_refs() {
     if (( ambiguous > 0 )); then
         info "BD-035 rename: $ambiguous ambiguous reference(s) recorded in $advisory"
         info "review the advisory and rename by hand before treating the migration as complete"
+    fi
+}
+
+# Internal: BD-144 (v11.0 skill-dimensions reframe Batch 5) — translate
+# v10.x capability tokens on each trinity file's `capabilities:` line.
+#
+# Per ARCHITECTURE-SKILL-DIMENSIONS.md §3.5 + §3.7 and
+# PLAN-SKILL-DIMENSIONS.md §7.1, two v10.x tokens are realigned in v11:
+#
+#   1. `role:apple-app` is renamed to `deployment:apple` (Apple-app is a
+#      D5 deployment surface, not a D3 architectural role).
+#   2. `role:python-server` is preserved but its resolved skill list
+#      changed: `deployment-python` was dropped from it (now loads via
+#      the new `deployment:linux-container` D5 row). Append
+#      `deployment:linux-container` to any line containing
+#      `role:python-server` so the project doesn't silently lose the
+#      `deployment-python` skill.
+#
+# Files scanned (project-root, only those that exist):
+#   CLAUDE.md, AGENTS.md, GEMINI.md
+#
+# The stage scans every line for the literal `^capabilities:` prefix.
+# Token boundaries are anchored via the surrounding character class
+# `[^A-Za-z0-9_:-]` (or line start/end) so substring matches like
+# `role:apple-app-foo` (hypothetical) cannot be touched.
+#
+# Idempotency:
+#   - `role:apple-app` → `deployment:apple` is a one-shot replace; once
+#     applied the source token is gone.
+#   - `deployment:linux-container` is only appended when the line
+#     contains `role:python-server` AND does NOT already contain
+#     `deployment:linux-container` (token boundary anchored).
+#
+# Advisory output: $_MIGRATOR_STATE_DIR/capability-rename.advisory
+# (created only when at least one site is touched). Format mirrors the
+# BD-035 S5b advisory: comment header + per-touch entries with
+# file:line: before / after / rationale.
+_v10_to_v11_translate_capability_tokens() {
+    say "── S5c — BD-144 capability-token translation (role:apple-app → deployment:apple; deployment:linux-container append) ──"
+
+    local advisory="$_MIGRATOR_STATE_DIR/capability-rename.advisory"
+    local touches=0
+    local rel f tmp linenum line new_line had_change
+
+    local files=(
+        "CLAUDE.md"
+        "AGENTS.md"
+        "GEMINI.md"
+    )
+
+    # Token-boundary anchors — bare-token form, similar to the §3 pattern
+    # used in python_data_marker_detected(). Lead/trail boundary asserts
+    # the byte before / after the token is NOT a token-continuation char.
+    local apple_pat='(^|[^A-Za-z0-9_:-])role:apple-app($|[^A-Za-z0-9_:-])'
+    local pyserver_pat='(^|[^A-Za-z0-9_:-])role:python-server($|[^A-Za-z0-9_:-])'
+    local lxc_pat='(^|[^A-Za-z0-9_:-])deployment:linux-container($|[^A-Za-z0-9_:-])'
+
+    for rel in "${files[@]}"; do
+        f="$_MIGRATOR_TARGET/$rel"
+        [[ -f "$f" ]] || continue
+        # Cheap fast path: skip if the file has no `capabilities:` line at
+        # all, or if it has one but contains neither legacy token.
+        if ! grep -qE '^capabilities:' "$f" 2>/dev/null; then
+            continue
+        fi
+        if ! grep -qE "$apple_pat|$pyserver_pat" "$f" 2>/dev/null; then
+            continue
+        fi
+
+        tmp=$(mktemp -t pack-cap-rename.XXXXXX) || \
+            fail_stage S5 "S5c-translate: mktemp failed for $rel"
+        linenum=0
+        had_change=0
+        # Read line-by-line; only `capabilities:`-prefixed lines are
+        # candidates for translation. Other lines are passed through.
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            linenum=$((linenum + 1))
+            if [[ "$line" != capabilities:* ]]; then
+                printf '%s\n' "$line" >>"$tmp"
+                continue
+            fi
+            new_line="$line"
+            local before_apple="$new_line"
+            # Edit 1: rename role:apple-app → deployment:apple, anchored
+            # to token boundaries via sed groups that preserve the
+            # surrounding (non-token) chars.
+            if printf '%s' "$new_line" | grep -qE "$apple_pat"; then
+                new_line=$(printf '%s' "$new_line" | sed -E \
+                    "s/(^|[^A-Za-z0-9_:-])role:apple-app($|[^A-Za-z0-9_:-])/\\1deployment:apple\\2/g")
+                if [[ "$new_line" != "$before_apple" ]]; then
+                    if (( touches == 0 )); then
+                        {
+                            printf '# capability-token translation advisory (BD-144)\n'
+                            printf '#\n'
+                            printf '# v11 renames `role:apple-app` to `deployment:apple` (D5 deployment\n'
+                            printf '# surface, not a D3 architectural role per\n'
+                            printf '# ARCHITECTURE-SKILL-DIMENSIONS.md §3.5).\n'
+                            printf '# v11 also preserves `role:python-server` but its resolved skill\n'
+                            printf '# list dropped `deployment-python` (now loads via the new\n'
+                            printf '# `deployment:linux-container` D5 row); the migrator appends\n'
+                            printf '# `deployment:linux-container` to lines containing\n'
+                            printf '# `role:python-server` so projects do not silently lose the skill.\n'
+                            printf '#\n'
+                            printf '# Format: <file>:<line>: <kind>\n'
+                            printf '#   before: <text>\n'
+                            printf '#   after:  <text>\n'
+                            printf '#   rationale: <one-line rationale>\n'
+                            printf '\n'
+                        } >"$advisory"
+                    fi
+                    {
+                        printf '%s:%d: rename\n' "$rel" "$linenum"
+                        printf '  before: %s\n' "$before_apple"
+                        printf '  after:  %s\n' "$new_line"
+                        printf '  rationale: role:apple-app renamed to deployment:apple (D5 deployment surface, ARCHITECTURE-SKILL-DIMENSIONS.md §3.5)\n'
+                    } >>"$advisory"
+                    touches=$((touches + 1))
+                    had_change=1
+                fi
+            fi
+            # Edit 2: append `, deployment:linux-container` to lines
+            # containing `role:python-server` AND not already containing
+            # `deployment:linux-container`. Idempotent.
+            local before_lxc="$new_line"
+            if printf '%s' "$new_line" | grep -qE "$pyserver_pat" \
+               && ! printf '%s' "$new_line" | grep -qE "$lxc_pat"; then
+                # Append with a comma separator, preserving any trailing
+                # whitespace on the line by appending before it. Simplest:
+                # rstrip trailing whitespace, append, restore newline.
+                local rstripped
+                rstripped=$(printf '%s' "$new_line" | sed -E 's/[[:space:]]+$//')
+                # If the rstripped line ends with a comma, append without
+                # adding a second comma; otherwise add `, `. Preserves
+                # the human-readable comma-space convention used by the
+                # detect_installed_capabilities() output.
+                if [[ "$rstripped" == *, ]]; then
+                    new_line="${rstripped} deployment:linux-container"
+                else
+                    new_line="${rstripped}, deployment:linux-container"
+                fi
+                if [[ "$new_line" != "$before_lxc" ]]; then
+                    if (( touches == 0 )); then
+                        {
+                            printf '# capability-token translation advisory (BD-144)\n'
+                            printf '#\n'
+                            printf '# v11 renames `role:apple-app` to `deployment:apple` (D5 deployment\n'
+                            printf '# surface, not a D3 architectural role per\n'
+                            printf '# ARCHITECTURE-SKILL-DIMENSIONS.md §3.5).\n'
+                            printf '# v11 also preserves `role:python-server` but its resolved skill\n'
+                            printf '# list dropped `deployment-python` (now loads via the new\n'
+                            printf '# `deployment:linux-container` D5 row); the migrator appends\n'
+                            printf '# `deployment:linux-container` to lines containing\n'
+                            printf '# `role:python-server` so projects do not silently lose the skill.\n'
+                            printf '#\n'
+                            printf '# Format: <file>:<line>: <kind>\n'
+                            printf '#   before: <text>\n'
+                            printf '#   after:  <text>\n'
+                            printf '#   rationale: <one-line rationale>\n'
+                            printf '\n'
+                        } >"$advisory"
+                    fi
+                    {
+                        printf '%s:%d: append\n' "$rel" "$linenum"
+                        printf '  before: %s\n' "$before_lxc"
+                        printf '  after:  %s\n' "$new_line"
+                        printf '  rationale: role:python-server preserved but deployment-python now loads via deployment:linux-container (D2 ∩ D5, ARCHITECTURE-SKILL-DIMENSIONS.md §3.7)\n'
+                    } >>"$advisory"
+                    touches=$((touches + 1))
+                    had_change=1
+                fi
+            fi
+            printf '%s\n' "$new_line" >>"$tmp"
+        done <"$f"
+
+        if (( had_change == 1 )); then
+            if ! mv "$tmp" "$f"; then
+                rm -f "$tmp"
+                fail_stage S5 "S5c-translate: failed to write rewritten $rel"
+            fi
+            info "translated capability tokens in $rel"
+        else
+            rm -f "$tmp"
+        fi
+    done
+
+    if (( touches > 0 )); then
+        info "BD-144 translation: $touches capability-token edit(s) recorded in $advisory"
+    else
+        info "BD-144 translation: no v10.x capability tokens found (no-op)"
     fi
 }
 

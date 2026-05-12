@@ -35,7 +35,11 @@
 # Flags:
 #     --project <path>   Target project directory (required).
 #     --add <dim>:<val>  Capability to add. May be repeated.
-#                        Recognized dimensions: platform, language, protocol, role.
+#                        Recognized dimensions: platform, language, protocol,
+#                        role, deployment.
+#                        Examples: language:python, platform:ios,
+#                        protocol:grpc, role:python-server, deployment:apple,
+#                        deployment:linux-container.
 #     --pack <path>      Override $PACK environment variable.
 #
 # Exit codes:
@@ -115,20 +119,63 @@ capability_skills() {
         language:python)    echo "python-best-practices python-data-architecture dependency-python" ;;
         language:swift)     echo "swift-best-practices apple-architecture-core dependency-swift" ;;
         language:cpp)       echo "cpp-language" ;;
-        language:c)         echo "c-language" ;;
+        language:c)          echo "c-language" ;;
         language:objc)      echo "objc-language" ;;
         platform:macos)     echo "macos-architecture apple-architecture-core" ;;
         platform:ios)       echo "ios-architecture apple-architecture-core" ;;
+        # BD-144 (v11.0 skill-dimensions reframe Batch 5): forward-declared
+        # D1 platform rows. The SKILL.md targets ship in Phase 3
+        # (web-architecture / android-architecture / embedded-mcu-architecture);
+        # until then warn_if_missing_skills() emits a stderr warning when the
+        # resolved skill directory is absent, but the operation still proceeds
+        # so PM-chat-driven projects can declare D1 ahead of skill ship.
+        platform:android)      echo "android-architecture" ;;
+        platform:web-browser)  echo "web-architecture" ;;
+        platform:embedded-mcu) echo "embedded-mcu-architecture" ;;
         protocol:grpc)      echo "grpc-patterns" ;;
         protocol:rest)      echo "rest-patterns" ;;
         protocol:graphql)   echo "graphql-patterns" ;;
         protocol:realtime)  echo "realtime-patterns" ;;
         protocol:messaging) echo "messaging-patterns" ;;
         protocol:soap)      echo "soap-patterns" ;;
-        role:apple-app)     echo "deployment-apple" ;;
-        role:python-server) echo "python-server-architecture deployment-python" ;;
+        # BD-144 (v11.0 skill-dimensions reframe Batch 5): D5 deployment
+        # surface. `role:apple-app` was renamed to `deployment:apple` (Apple-app
+        # is a D5 deployment surface, not a D3 architectural role per
+        # ARCHITECTURE-SKILL-DIMENSIONS.md §3.5). `deployment:linux-container`
+        # carries `deployment-python` (formerly bundled into role:python-server,
+        # which now resolves to the D2∩D3 intersection per architecture §3.7).
+        deployment:apple)             echo "deployment-apple" ;;
+        deployment:linux-container)   echo "deployment-python" ;;
+        # BD-144: role:python-server preserved as a legitimate D3 role token.
+        # Resolved skill list updated per architecture §3.7 intersection table:
+        # D2=python ∩ D3=server → python-server-architecture +
+        # python-data-architecture. `deployment-python` was dropped from this
+        # row; it now loads via the new `deployment:linux-container` D5 row.
+        role:python-server) echo "python-server-architecture python-data-architecture" ;;
         *) return 1 ;;
     esac
+}
+
+# warn_if_missing_skills <skill> [<skill>...]
+#
+# BD-144: forward-declared platform rows (platform:android,
+# platform:web-browser, platform:embedded-mcu) reference SKILL.md targets
+# that don't yet ship in v11.0 (they ship in Phase 3 per
+# PLAN-SKILL-DIMENSIONS.md §6). When a resolved skill is absent from
+# $PACK/project-template/skills/<skill>/SKILL.md, emit a stderr warning
+# but allow the operation to proceed — the PM-chat-driven workflow can
+# declare D1 ahead of skill ship.
+#
+# Returns 0 always (advisory only).
+warn_if_missing_skills() {
+    local skill
+    for skill in "$@"; do
+        [[ -z "$skill" ]] && continue
+        if [[ ! -f "$PACK/project-template/skills/$skill/SKILL.md" ]]; then
+            warn "skill '$skill' has no SKILL.md in pack ($PACK/project-template/skills/$skill/SKILL.md missing); the capability row is forward-declared and the skill ships in a later release"
+        fi
+    done
+    return 0
 }
 
 capability_files() {
@@ -227,6 +274,13 @@ stage_a1_resolve() {
         dedup=$(printf '%s\n' "${RESOLVED_FILES[@]}" | sort -u | grep -v '^$' || true)
         RESOLVED_FILES=()
         while IFS= read -r f; do [[ -n "$f" ]] && RESOLVED_FILES+=("$f"); done <<< "$dedup"
+    fi
+
+    # BD-144: warn (don't fail) when any resolved skill is forward-declared
+    # — i.e. the SKILL.md ships in a later release. Allows PM-chat-driven
+    # projects to declare D1 substrate ahead of Phase 3 skill ship.
+    if (( ${#RESOLVED_SKILLS[@]} > 0 )); then
+        warn_if_missing_skills "${RESOLVED_SKILLS[@]}"
     fi
 }
 

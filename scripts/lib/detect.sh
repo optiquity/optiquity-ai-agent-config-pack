@@ -286,8 +286,15 @@ detect_installed_capabilities() {
             realtime-patterns)     caps+=("protocol:realtime") ;;
             messaging-patterns)    caps+=("protocol:messaging") ;;
             soap-patterns)         caps+=("protocol:soap") ;;
-            deployment-apple)      caps+=("role:apple-app") ;;
-            deployment-python)     caps+=("role:python-server") ;;
+            # BD-144 (v11.0 skill-dimensions reframe Batch 5): D5 deployment
+            # surface — reciprocal of the renamed `deployment:apple` and the
+            # new `deployment:linux-container` rows in
+            # scripts/add-capability.sh::capability_skills(). The pre-Batch-5
+            # mappings (deployment-apple→role:apple-app,
+            # deployment-python→role:python-server) were misclassified per
+            # ARCHITECTURE-SKILL-DIMENSIONS.md §3.5; both flip atomically here.
+            deployment-apple)      caps+=("deployment:apple") ;;
+            deployment-python)     caps+=("deployment:linux-container") ;;
         esac
     done <<< "$normalized"
 
