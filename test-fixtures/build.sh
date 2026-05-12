@@ -161,15 +161,54 @@ _build_v10_minimal() {
     _fixture_commit_all "$target" "v10 install (no customizations)"
 }
 
-# Fake-OT v10 with realistic customizations.
-_build_v10_realistic_ot() {
-    local target="$THIS_DIR/v10-realistic-ot"
-    info "  source: pack v10 tag + FakeOT customizations"
-    _setup_v10_pack_src
+# Fake-OT realistic fixture, parameterized by pack version (BD-120).
+#
+# Builds a `vN-realistic-ot` fixture by:
+#   1. Running the vN pack's init-project.sh into the target.
+#   2. Applying the canonical OT-style customization patterns:
+#        - Trinity project-name fills (CLAUDE/AGENTS/GEMINI).
+#        - `model_providers.ollama` removed from .codex/config.toml.
+#        - `x-`-prefixed custom agent on all 3 CLIs.
+#        - TD-NNN BACKLOG.md.
+#
+# The four patterns are version-agnostic: they target the customization
+# surface that every vN install shares (see
+# `migrator_target_surface_for_version` in scripts/lib/migrator-core.sh
+# for the per-version surface declaration).
+#
+# Per-version dispatch is confined to:
+#   - Source-clone setup (only v10 needs the cloned-tag work-around).
+#   - Which init-project.sh runner to invoke (`_run_vN_init`).
+#
+# Add a new vN by extending the two `case` blocks below and adding a
+# `_run_vN_init` helper if the new version needs source-isolation
+# different from the current pack HEAD.
+_build_realistic_for_version() {
+    local ver="${1:?_build_realistic_for_version requires <vN>}"
+    local target="$THIS_DIR/${ver}-realistic-ot"
+
+    # Per-version source setup + init dispatch.
+    case "$ver" in
+        v10)
+            info "  source: pack v10 tag + FakeOT customizations"
+            _setup_v10_pack_src
+            ;;
+        v11)
+            info "  source: pack v11 (current HEAD) + FakeOT customizations"
+            ;;
+        *)
+            die "_build_realistic_for_version: unsupported version: $ver" 4
+            ;;
+    esac
+
     _fixture_git_init "$target"
     _fixture_commit_all "$target" "initial empty repo"
-    _run_v10_init "$target"
-    _fixture_commit_all "$target" "v10 install"
+
+    case "$ver" in
+        v10) _run_v10_init "$target" ;;
+        v11) _run_v11_init "$target" ;;
+    esac
+    _fixture_commit_all "$target" "${ver} install"
 
     # Customization 1: trinity project-name fills.
     local f
@@ -294,6 +333,14 @@ EOF
 
     _fixture_commit_all "$target" \
         "FakeOT customizations: project-name, ollama removed, x-agent, BACKLOG"
+}
+
+# Backwards-compat shim: existing dispatcher + any external callers
+# that name the v10-specific function continue to work. Delegates to
+# the parameterized builder. Safe to remove once no caller uses the
+# v10-named entry point.
+_build_v10_realistic_ot() {
+    _build_realistic_for_version v10
 }
 
 # Vanilla v11 install (current pack HEAD).

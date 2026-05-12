@@ -137,6 +137,22 @@ expected SHA so you can confirm the rebuild matches.
 Each builder writes its fixture deterministically into
 `test-fixtures/<name>/` with a clean `git init` and a single commit.
 
+### Realistic-OT fixtures: per-version pattern (BD-120)
+
+The realistic-OT family uses a single parameterized builder,
+`_build_realistic_for_version <vN>`, that applies the same four
+canonical OT-style customizations (trinity project-name fills,
+`model_providers.ollama` removed, `x-`-prefixed custom agent on all
+3 CLIs, TD-NNN BACKLOG.md) against any pack version's install. To add
+a `vN-realistic-ot` sibling for a future version, extend the per-
+version `case` blocks inside `_build_realistic_for_version` (source
+setup + init runner) — the customization patterns themselves are
+version-agnostic. The legacy `_build_v10_realistic_ot()` entry point
+is preserved as a thin wrapper for backwards compatibility. The
+per-version customization-surface declaration lives in
+`scripts/lib/migrator-core.sh::migrator_target_surface_for_version`
+(BD-119).
+
 ## See also
 
 - `scripts/migrate-v10-to-v11.sh` — the migrator these fixtures
