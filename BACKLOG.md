@@ -1163,7 +1163,7 @@ Type: TODO(version)
 Status: Open
 Blockers: BD-114, BD-116
 Unblocks: v11.0 tag; reused for every future major
-File/Symbol: `maintenance-docs/RELEASE-GATE.md` (new)
+File/Symbol: `maintenance-docs/v11-implementation/RELEASE-GATE.md` (new)
 Description: Authoritative pre-tag checklist that must complete before
   any major version vN+1 is tagged: (1) per-version migrator
   `migrate-v<N>-to-v<N+1>.sh` written using the BD-119 framework;
