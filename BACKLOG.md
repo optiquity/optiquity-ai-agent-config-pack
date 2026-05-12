@@ -1254,7 +1254,7 @@ Resolved: 2026-05-08, v11.0 — Framework shipped across 8 commits
 
 **BD-120 — Parameterize realistic-OT fixture generator for any vN**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-119
 Unblocks: future-version migration testing
 File/Symbol: `test-fixtures/build.sh`
@@ -1266,6 +1266,7 @@ Description: Today `_build_v10_realistic_ot` is hardcoded to v10. When
   ollama removed, TD BACKLOG) apply against any pack tag. Cheap once
   BD-119 establishes the per-version adapter pattern. Lets BD-114's
   dry-run harness exercise vN+1→vN+2 migrations once we ship v11.
+Resolved: 2026-05-12 in commit 3fa3322 — _build_v10_realistic_ot() refactored into _build_realistic_for_version <vN> with v10/v11 case-dispatch; backwards-compat shim retained; dispatcher routes v10 unchanged through it; pattern mirrors BD-119's migrator_target_surface_for_version (single string arg, case dispatch, no global state); v10-realistic-ot byte-identical pre/post (HEAD/tree/ls-tree-sha256 all match); test-fixtures/README.md per-version pattern subsection added; manifest.txt regenerated; validate-pack 31/31 + test-detect 64/64 + test-migrator-core 19/19 + test-migrate-v10-to-v11 43/43 PASS; reviewer APPROVE 3 non-blocking nits.
 Resolved: n/a
 
 ---
