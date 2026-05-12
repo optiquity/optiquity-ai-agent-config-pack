@@ -115,6 +115,25 @@ Triggered when the developer asks for a custom agent.
    new agent needs a custom skill, also draft a `## Custom skills` row
    plus three `SKILL.md` files (`.claude/skills/x-<name>/SKILL.md` and
    the Codex/Gemini equivalents).
+
+   **Column convention for the `## Custom agents` row (v11+).** The
+   table columns are `Agent | Purpose | Dimension | Phase routed to |
+   Base skills | Dimensional skills | Read/write mode`. The
+   `Base skills` column lists the agent's Tier 0 base skills (always
+   loaded for that agent regardless of project shape — see
+   `docs/pack/PLATFORM-SKILLS.md` § "Tier 0 — Base skills"). The
+   `Dimensional skills` column lists the dimensional / intersection /
+   trigger skills the agent loads (D1–D5 selectors, intersection-cell
+   skills, or trigger-loaded skills — see `docs/pack/PLATFORM-SKILLS.md`
+   § "Intersection table" and § "Trigger-loaded skills"). When writing
+   the row, follow this convention exactly so the row is consistent
+   with the v11 skill model. Pre-v11 projects whose `## Custom agents`
+   section still carries the deprecated `Tier 1 skills | Tier 2 skills`
+   headers should rename the headers manually to `Base skills |
+   Dimensional skills` at first write; column data semantics are
+   unchanged (Tier 1 → Base, Tier 2 → Dimensional). See
+   `MIGRATION-v10-to-v11.md` § "Skill model changes" for the migration
+   note covering this rename.
 5. **Commit (G-commit).** PM chat presents `git add` list and commit
    message; developer explicitly approves per CLAUDE.md pack rule. One
    commit, all artifacts.

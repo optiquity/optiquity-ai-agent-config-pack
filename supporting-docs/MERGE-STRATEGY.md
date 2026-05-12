@@ -248,6 +248,72 @@ sidecar.
 
 ---
 
+## Per-file notes
+
+### `docs/pack/PLATFORM-SKILLS.md` (BD-148, v11 reframe)
+
+**Class:** routes through `generic` (3-way text dispatch with
+sidecar) for the body. Two `## Custom *` H2 sections at the bottom
+are project-owned and preserved verbatim by the BD-088 sidecar
+mechanism.
+
+**v11 reframe note (BD-142, BD-148).** v11 reshapes the file from
+the four-dimension model (Platform Targets, Languages, Component
+Roles, Communication Protocols) to a five-dimension model (D1
+runtime / OS substrate, D2 cross-platform languages, D3 component
+role, D4 communication protocols, D5 deployment surface — new) plus
+three orthogonal load mechanisms (Tier 0 base, intersection-cell,
+trigger-loaded). The reshape is **`transform`-class for the
+pack-managed body** (sections from §"How skill selection works"
+through §"Full skill inventory" / §"Extending this file") — i.e.,
+the pack ships a wholesale-replaced template; project edits to
+those sections are not preserved automatically. Per the architecture
+§7.6 advisory, projects with locally edited PLATFORM-SKILLS.md
+bodies must re-apply edits manually after the migrator writes the
+v11 template (the migrator saves the pre-migration copy as
+`docs/pack/PLATFORM-SKILLS.md.v10-customized` for the manual
+reconciliation pass).
+
+**`## Custom agents` and `## Custom skills` are user-owned.** These
+two H2 sections at the bottom of the file are preserved
+**byte-identical** by the BD-088 customization-preserve sidecar
+mechanism — the migrator does NOT rewrite them, even when the
+column headers inside them are stale. The v11 illustrative-row
+column headers are `Base skills | Dimensional skills` (replacing
+the v10 `Tier 1 skills | Tier 2 skills`); projects with real custom
+rows under the deprecated v10 headers keep those headers
+post-migration and rename them manually. See
+`MIGRATION-v10-to-v11.md` § "Skill model changes" for the
+manual-rename note and `INSTALL-PROCEDURES.md` § "Procedure 5.1"
+for the v11 column convention used when a new custom agent is
+registered.
+
+**D5 monorepo gotcha (architecture §7.4).** The new D5 dimension
+loads deployment skills globally for every prompt the PM chat
+generates. A monorepo with D5 = {`apple-distribution`,
+`linux-container`} loads BOTH `deployment-apple` AND
+`deployment-python` for every prompt; the agent prompt (constructed
+by the PM chat) scopes per-component citation. This is documented
+behavior — multi-component projects migrating from v10 should
+verify their PM-chat prompt construction continues to scope
+deployment-skill rule citations to the relevant component. No
+preservation-strategy change is needed for the gotcha; it is a
+documentation / behavioral note carried in PLATFORM-SKILLS.md
+§ "Monorepo D5 scoping note" and in `MIGRATION-v10-to-v11.md`
+§ "Skill model changes — D5 monorepo gotcha".
+
+**D2 reshape advisory (architecture §7.6).** The Apple-family
+languages (Swift, Objective-C, C, C++) move from a v10 D2
+selection to v11 D1-implied loading (Swift implied by D1=ios/macos,
+C/C++ implied by D1=embedded-mcu, etc.). Projects that read
+PLATFORM-SKILLS.md programmatically by the v10 D2 row labels will
+need to update their reading logic to consult the v11 D1 tables.
+Manual readers see the same set of skills loaded for the same
+project shape — only the labeling of which dimension causes the
+load changes.
+
+---
+
 ## Sidecar conventions
 
 When the migrator writes a sidecar (`customization-detected-needs-reconciliation`

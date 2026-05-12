@@ -80,6 +80,169 @@ project — there is no shared state between projects.
 
 ---
 
+## Skill model changes (BD-142, BD-148)
+
+v11 reframes how `docs/pack/PLATFORM-SKILLS.md` describes skill
+selection. The reframe is a **behavioral change**, not a doc-only
+change — see "Behavioral impact" below.
+
+### What changed
+
+- **5 dimensions, not 4.** v10's four dimensions (Platform Targets,
+  Languages, Component Roles, Communication Protocols) are reframed
+  as five: D1 (runtime / OS substrate), D2 (cross-platform languages),
+  D3 (component role / app-layer), D4 (communication protocols), and
+  D5 (deployment surface — new).
+- **Three load mechanisms made explicit.** Skills now load through
+  three orthogonal mechanisms: Tier 0 base skills (loaded for every
+  project, every relevant agent), intersection-cell skills (loaded
+  when a specific D1–D5 cell predicate matches — e.g.,
+  `python-server-architecture` loads when `D2=python ∩ D3=server`),
+  and trigger-loaded skills (loaded by agent role rather than project
+  shape — e.g., `audit-methodology` loads for every auditor invocation
+  regardless of project type).
+- **"Tier 1 / Tier 2" nomenclature retired.** The pre-v11 framing
+  bucketed skills into "Tier 1 role" and "Tier 2 platform"; v11
+  replaces this with **Tier 0 base / dimensional / intersection /
+  trigger**. Several skills (`security-patterns`, `api-design`,
+  `debugging`, `ui-test-strategy`) that were classified as "Tier 1
+  role" in v10 are reclassified as Tier 0 base because their content
+  is universal methodology, not role-specific.
+- **No SKILL.md content changed.** The reframe is a documentation
+  and selection-model change. Every `project-template/skills/*/SKILL.md`
+  file ships byte-equivalent to its v10 form (modulo the unrelated
+  Python skill split shipped as BD-035 and handled by Stage S5b of
+  the migrator — see "Migrator handling" below).
+
+For the authoritative v11 dimension tables, the Tier 0 base list, the
+sparse intersection table, and the trigger-loaded list, read
+`docs/pack/PLATFORM-SKILLS.md` after migration completes.
+
+### Behavioral impact
+
+Per `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-DIMENSIONS.md`
+§7.8, the reframe is a pack-product change masquerading as a doc
+change: PLATFORM-SKILLS.md edits affect every consuming PM chat
+session because every PM chat re-reads PLATFORM-SKILLS.md when it
+generates a prompt (per the file's own header instruction). **Actual
+impact on running PM chats is minimal** — PM chats do not cache
+PLATFORM-SKILLS.md across prompts; the next prompt after migration
+picks up the v11 tables automatically. Agents do not cache the file
+either. **What client projects must do:**
+
+1. **No manual file edit needed for the reframe itself.** The PM
+   chat re-reads `docs/pack/PLATFORM-SKILLS.md` on its next prompt
+   and adopts the v11 model transparently. The migrator overwrites
+   `docs/pack/PLATFORM-SKILLS.md` with the v11 template (the file
+   ships from the pack, not project-customized).
+2. **Re-apply locally edited PLATFORM-SKILLS.md customizations
+   manually.** Per architecture §7.6, if you have locally edited
+   `docs/pack/PLATFORM-SKILLS.md` (rare but possible — e.g.,
+   handwritten changes to the dimension tables or the worked
+   examples), the v10 → v11 reshape will not preserve those edits
+   automatically. The four-dimension table is replaced wholesale by
+   five-dimension tables; the row order, column structure, and
+   section organization differ. The migrator writes the new template
+   and saves your pre-migration copy as
+   `docs/pack/PLATFORM-SKILLS.md.v10-customized` (per the BD-088
+   sidecar contract documented in `MERGE-STRATEGY.md`); reconcile
+   manually as Step 2 above directs.
+3. **`## Custom agents` and `## Custom skills` sections are
+   preserved byte-identical.** These two H2 sections at the bottom
+   of `docs/pack/PLATFORM-SKILLS.md` are project-owned and
+   preserved by the BD-088 customization-preserve sidecar mechanism
+   regardless of the reframe (see `MERGE-STRATEGY.md` per-file
+   matrix entry for PLATFORM-SKILLS.md). The reframe does not
+   touch their content.
+4. **Custom agents column header rename (BD-142 F3 / BD-148).**
+   The illustrative row column headers in the `## Custom agents`
+   section were `Tier 1 skills | Tier 2 skills` in v10 and are
+   `Base skills | Dimensional skills` in v11 (semantics unchanged
+   — Tier 1 → Base, Tier 2 → Dimensional). For client projects
+   that already populated real custom-agent rows under the
+   deprecated headers, the BD-088 sidecar mechanism preserves the
+   project's section verbatim (including the deprecated headers)
+   — the migrator does NOT rewrite the headers automatically. To
+   adopt the v11 convention, manually rename the two columns in
+   your live `docs/pack/PLATFORM-SKILLS.md` after migration:
+   `Tier 1 skills` → `Base skills`, `Tier 2 skills` → `Dimensional
+   skills`. The data in those columns stays put. Future Procedure
+   5.1 invocations (creating a new custom agent) emit the v11
+   headers — see `INSTALL-PROCEDURES.md` § "Procedure 5.1 step 4"
+   for the documented column convention.
+
+### Migrator handling
+
+The dimension reframe itself requires no migrator-script work
+because the reshape is doc-only at the pack level — the migrator
+ships the v11 PLATFORM-SKILLS.md template and the BD-088 mechanism
+preserves project customizations under the per-class strategy in
+`MERGE-STRATEGY.md`.
+
+The one skill *rename* in v11 — the BD-035 Python split
+(`python-architecture` → `python-server-architecture` +
+`python-data-architecture`) — is handled by migrator Stage S5b,
+which writes a `*.v10-customized` advisory listing the old
+references and the disambiguation guidance. S5b ships independently
+of the dimension reframe (it landed in v11.0 with BD-035). See
+`scripts/migrate-v10-to-v11.sh` for the implementation and
+`PLAN-SKILL-DIMENSIONS.md` BD-147 for the planned extraction into
+`scripts/lib/migrator-skills.sh`.
+
+### BD-136 trinity-marker non-overlap
+
+Per `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-DIMENSIONS.md`
+§6.7, the dimension reframe and the BD-136 trinity-marker
+preservation mechanism are **non-overlapping**: BD-136 introduces
+Shape A / Shape B markers and a `renamed-from` annotation to
+preserve project-owned sections in the trinity files (`CLAUDE.md`,
+`AGENTS.md`, `GEMINI.md`) at project root. The PLATFORM-SKILLS.md
+reframe does NOT touch the trinity files (PLATFORM-SKILLS.md lives
+at `docs/pack/`, not at project root) and does NOT use the BD-136
+marker mechanism.
+
+The trinity files' `## Skill loading` H2 section was updated by
+BD-143 to describe the 5+3 model and to point at PLATFORM-SKILLS.md
+as the authoritative reference; the trinity rule applies (the same
+edit lands in CLAUDE.md, AGENTS.md, and GEMINI.md). The
+`**Active skills:**` line format inside that section did NOT change
+between v10 and v11 — it stays a comma-separated skill-name list
+written by the PM chat at project kickoff. Skill **names** in that
+list change only for the BD-035 Python split case (handled by S5b
+advisory); the dimension reframe itself produces no `Active skills`
+edits.
+
+The two mechanisms — BD-088 PLATFORM-SKILLS.md customization-
+preservation (sidecar-based) and BD-136 trinity-marker preservation
+(in-line marker-based) — operate on different file sets via
+different surfaces (Shape A pack-canonical sections vs Shape B
+project-owned override sections in the trinity, vs `## Custom *`
+sections in PLATFORM-SKILLS.md). The non-overlap is intentional;
+they do not conflict.
+
+### D5 monorepo gotcha
+
+Per `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-DIMENSIONS.md`
+§7.4: a monorepo with both an Apple app and a Linux container
+backend selects D5 = {`apple-distribution`, `linux-container`} and
+loads BOTH `deployment-apple` AND `deployment-python` globally for
+every prompt the PM chat generates. The deployment skills then apply
+*to the right component* via per-component scoping in the agent
+prompt — `deployment-apple` is not relevant to the backend's
+containerization, and `deployment-python` is not relevant to the
+Apple app's notarization.
+
+The current loader model loads both skills globally and trusts the
+agent prompt (constructed by the PM chat) to scope correctly. This
+is the documented v11 behavior; per-component fine-grained loading
+is not in v11 scope. The same gotcha is documented in
+`docs/pack/PLATFORM-SKILLS.md` § "Monorepo D5 scoping note".
+Multi-component (monorepo) projects migrating from v10 should
+verify that PM-chat prompt construction continues to scope
+deployment-skill rule citations to the relevant component.
+
+---
+
 ## Before you start
 
 1. **Commit or stash.** The migrator refuses a dirty working tree.

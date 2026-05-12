@@ -522,7 +522,7 @@ directories"). The PM chat treats these as equivalent to pack agents
 for skill loading and routing, with the single difference that they
 are project-owned and preserved across pack upgrades.
 
-| Agent | Purpose | Dimension | Phase routed to | Tier 1 skills | Tier 2 skills | Read/write mode |
+| Agent | Purpose | Dimension | Phase routed to | Base skills | Dimensional skills | Read/write mode |
 |---|---|---|---|---|---|---|
 | `x-deployer` | Release packaging and staging deploy | Component Roles | Repo operations | repo-ops | deployment-apple, deployment-python | write |
 
