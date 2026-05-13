@@ -266,20 +266,43 @@ pack_skill_coverage_for() {
             fi
             ;;
         # python: D2=python (cross-platform language) + intersection-loaded data/server skills
+        # BD-141: python-data-architecture loads only when the
+        # concrete predicate matches (architecture §7.5).
+        # BD-162: python-observability-patterns intersection-loads
+        # when the canonical predicate
+        # `python_observability_marker_detected()` matches (markers:
+        # OpenTelemetry / Prometheus client / structured-logging
+        # dependencies in requirements.txt / pyproject.toml /
+        # setup.py / setup.cfg / uv.lock; OR source-file imports of
+        # opentelemetry / prometheus_client / structlog — see
+        # scripts/lib/detect.sh and the BD-162 architecture document
+        # at maintenance-docs/v11-implementation/ARCHITECTURE-DEPLOYMENT-PYTHON-OBSERVABILITY.md).
+        # The "OR D3=server" branch of the architect §4.1
+        # intersection predicate is intentionally NOT computed here:
+        # init-project.sh does not have a D3 selector — it auto-
+        # detects from language markers only. The D3=server load
+        # path applies at PM-chat skill-selection time
+        # (PLATFORM-SKILLS.md drives the agent prompts), not at
+        # scaffold-time skill copying. stage_s4_skills copies ALL
+        # pack skills to the per-CLI directories unconditionally,
+        # so python-observability-patterns/SKILL.md is always
+        # physically present after init; PM-chat decides which
+        # agents load it per project shape.
+        # python-best-practices is unconditional for python.
+        # Compare against the full literal helper-output lines
+        # rather than parsing — tighter contract; a future helper
+        # output change is caught at compare time, not silently.
+        # Build the comma-joined skill list via 0/1-style booleans
+        # and conditional appends so the case-arm doesn't explode
+        # combinatorially as more intersection skills are added.
         python)
-            # BD-141: python-data-architecture loads only when the
-            # concrete predicate matches (architecture §7.5).
-            # python-best-practices is unconditional for python.
-            # Compare against the full literal helper-output line
-            # rather than parsing — tighter contract; a future helper
-            # output change is caught at compare time, not silently.
-            local marker_line
-            marker_line=$(python_data_marker_detected "$target_dir")
-            if [[ "$marker_line" == "python-data: yes" ]]; then
-                echo "python-data-architecture,python-best-practices"
-            else
-                echo "python-best-practices"
-            fi
+            local data_marker_line obs_marker_line
+            data_marker_line=$(python_data_marker_detected "$target_dir")
+            obs_marker_line=$(python_observability_marker_detected "$target_dir")
+            local skills="python-best-practices"
+            [[ "$data_marker_line" == "python-data: yes" ]] && skills="$skills,python-data-architecture"
+            [[ "$obs_marker_line" == "python-observability-marker: yes" ]] && skills="$skills,python-observability-patterns"
+            echo "$skills"
             ;;
         # proto: D4=grpc + protobuf-patterns intersection (BD-156).
         # grpc-patterns loads unconditionally for the proto language

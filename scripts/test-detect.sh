@@ -737,6 +737,190 @@ echo "# PROMPT-TEMPLATES.md" > "$fx/docs/pack/PROMPT-TEMPLATES.md"
 assert_eq "v10 shape (PROMPT-TEMPLATES + no v11 markers) → v10 (signal 4)" \
     "v10" "$(detect_target_pack_version "$fx")"
 
+# ── python_observability_marker_detected (BD-162) ─────────────────────
+echo "== python_observability_marker_detected =="
+
+# T11: empty dir baseline.
+fx=$(mkfixture pyobs-marker-empty)
+assert_eq "empty dir → no" \
+    "python-observability-marker: no" "$(python_observability_marker_detected "$fx")"
+
+# T12: non-existent target tolerated.
+assert_eq "non-existent target → no (tolerated, no stderr)" \
+    "python-observability-marker: no" "$(python_observability_marker_detected "$FIXTURE_BASE/pyobs-never-existed")"
+
+# T1: requirements.txt lists opentelemetry-api (manifest marker — primary OTel package).
+fx=$(mkfixture pyobs-marker-otel-api-req)
+cat > "$fx/requirements.txt" <<'EOF'
+opentelemetry-api>=1.20
+pytest
+EOF
+assert_eq "requirements.txt lists opentelemetry-api → yes (marker a — exact)" \
+    "python-observability-marker: yes" "$(python_observability_marker_detected "$fx")"
+
+# T2: pyproject.toml lists opentelemetry-instrumentation-grpc (prefix-match contrib package).
+fx=$(mkfixture pyobs-marker-otel-instr-grpc)
+cat > "$fx/pyproject.toml" <<'EOF'
+[project]
+dependencies = [
+  "opentelemetry-instrumentation-grpc>=0.45b0",
+]
+EOF
+assert_eq "pyproject.toml lists opentelemetry-instrumentation-grpc → yes (marker a — prefix)" \
+    "python-observability-marker: yes" "$(python_observability_marker_detected "$fx")"
+
+# T3: pyproject.toml lists prometheus_client.
+fx=$(mkfixture pyobs-marker-prom-client)
+cat > "$fx/pyproject.toml" <<'EOF'
+[project]
+dependencies = [
+  "prometheus_client>=0.20",
+]
+EOF
+assert_eq "pyproject.toml lists prometheus_client → yes (marker a — exact)" \
+    "python-observability-marker: yes" "$(python_observability_marker_detected "$fx")"
+
+# T4: requirements.txt lists structlog.
+fx=$(mkfixture pyobs-marker-structlog-req)
+cat > "$fx/requirements.txt" <<'EOF'
+structlog==24.0
+EOF
+assert_eq "requirements.txt lists structlog → yes (marker a — exact)" \
+    "python-observability-marker: yes" "$(python_observability_marker_detected "$fx")"
+
+# T5: pyproject.toml lists python-json-logger.
+fx=$(mkfixture pyobs-marker-json-logger)
+cat > "$fx/pyproject.toml" <<'EOF'
+[project]
+dependencies = ["python-json-logger>=2.0"]
+EOF
+assert_eq "pyproject.toml lists python-json-logger → yes (marker a — exact)" \
+    "python-observability-marker: yes" "$(python_observability_marker_detected "$fx")"
+
+# T10: pyproject.toml lists opentelemetry-exporter-otlp-proto-grpc (prefix-match exporter).
+fx=$(mkfixture pyobs-marker-otel-exporter)
+cat > "$fx/pyproject.toml" <<'EOF'
+[project]
+dependencies = [
+  "opentelemetry-exporter-otlp-proto-grpc>=1.20",
+]
+EOF
+assert_eq "pyproject.toml lists opentelemetry-exporter-otlp-proto-grpc → yes (marker a — prefix)" \
+    "python-observability-marker: yes" "$(python_observability_marker_detected "$fx")"
+
+# T6: a .py file outside tests/ contains `import opentelemetry`.
+fx=$(mkfixture pyobs-marker-import-otel)
+mkdir -p "$fx/src"
+cat > "$fx/src/app.py" <<'EOF'
+import opentelemetry
+
+def main():
+    pass
+EOF
+assert_eq "import opentelemetry in .py file → yes (marker b — primary)" \
+    "python-observability-marker: yes" "$(python_observability_marker_detected "$fx")"
+
+# T7: a .py file with `from opentelemetry.trace import get_tracer` (dotted path).
+fx=$(mkfixture pyobs-marker-from-otel-dotted)
+mkdir -p "$fx/src"
+cat > "$fx/src/tracing.py" <<'EOF'
+from opentelemetry.trace import get_tracer
+
+tracer = get_tracer(__name__)
+EOF
+assert_eq "from opentelemetry.trace import ... → yes (marker b — dotted path)" \
+    "python-observability-marker: yes" "$(python_observability_marker_detected "$fx")"
+
+# T8: a .py file with `import prometheus_client`.
+fx=$(mkfixture pyobs-marker-import-prom)
+mkdir -p "$fx/src"
+cat > "$fx/src/metrics.py" <<'EOF'
+import prometheus_client
+
+counter = prometheus_client.Counter("requests_total", "Total requests")
+EOF
+assert_eq "import prometheus_client in .py file → yes (marker b)" \
+    "python-observability-marker: yes" "$(python_observability_marker_detected "$fx")"
+
+# T9: a .py file with `from structlog import get_logger`.
+fx=$(mkfixture pyobs-marker-from-structlog)
+mkdir -p "$fx/src"
+cat > "$fx/src/logger.py" <<'EOF'
+from structlog import get_logger
+
+log = get_logger()
+EOF
+assert_eq "from structlog import get_logger → yes (marker b)" \
+    "python-observability-marker: yes" "$(python_observability_marker_detected "$fx")"
+
+# T13: pure Apple project — Swift sources, Package.swift, no Python observability deps.
+fx=$(mkfixture pyobs-marker-apple-only)
+mkdir -p "$fx/Sources/App"
+cat > "$fx/Sources/App/App.swift" <<'EOF'
+import SwiftUI
+
+@main
+struct App: SwiftUI.App {
+    var body: some Scene { WindowGroup { Text("hi") } }
+}
+EOF
+cat > "$fx/Package.swift" <<'EOF'
+// swift-tools-version:5.9
+import PackageDescription
+let package = Package(name: "App")
+EOF
+assert_eq "pure Apple project (no Python observability) → no" \
+    "python-observability-marker: no" "$(python_observability_marker_detected "$fx")"
+
+# T14: Python script with `requests` + `pytest` only — no observability deps,
+# no observability imports.
+fx=$(mkfixture pyobs-marker-py-no-obs)
+mkdir -p "$fx/src"
+cat > "$fx/requirements.txt" <<'EOF'
+requests==2.31
+pytest==7.4
+EOF
+cat > "$fx/src/main.py" <<'EOF'
+import requests
+
+def fetch(url):
+    return requests.get(url).text
+EOF
+assert_eq "Python script with requests + pytest only → no" \
+    "python-observability-marker: no" "$(python_observability_marker_detected "$fx")"
+
+# T15: substring rejection — `not-opentelemetry-clone` must NOT match
+# `opentelemetry-api` (BD-141 negated-character-class boundary).
+fx=$(mkfixture pyobs-marker-substring-reject)
+cat > "$fx/requirements.txt" <<'EOF'
+not-opentelemetry-clone==0.1
+some-other-pkg==1.0
+EOF
+assert_eq "substring 'not-opentelemetry-clone' alone → no (boundary reject)" \
+    "python-observability-marker: no" "$(python_observability_marker_detected "$fx")"
+
+# T16: prose mention in a comment must NOT trigger marker (b)
+# (line-anchored grep rejects comments per BD-141 marker-c convention).
+fx=$(mkfixture pyobs-marker-comment-prose)
+mkdir -p "$fx/src"
+cat > "$fx/src/notes.py" <<'EOF'
+# we should add import opentelemetry someday
+# from prometheus_client import Counter (refactored away)
+x = 1
+EOF
+assert_eq "prose 'import opentelemetry' in comment only → no (line-anchor reject)" \
+    "python-observability-marker: no" "$(python_observability_marker_detected "$fx")"
+
+# T17: vendored prune — a .py file under node_modules/some-pkg/ with
+# `import opentelemetry` must NOT trigger detection.
+fx=$(mkfixture pyobs-marker-vendored-only)
+mkdir -p "$fx/node_modules/some-pkg"
+cat > "$fx/node_modules/some-pkg/foo.py" <<'EOF'
+import opentelemetry
+EOF
+assert_eq "import opentelemetry only in node_modules → no (vendored prune)" \
+    "python-observability-marker: no" "$(python_observability_marker_detected "$fx")"
+
 # ── Summary ────────────────────────────────────────────────────────────
 echo
 echo "=== Results: $passes passed, $fails failed ==="

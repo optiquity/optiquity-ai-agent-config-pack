@@ -126,7 +126,16 @@ capability_skills() {
         # adds it as part of the language:python skill set (coarser tool —
         # explicit user intent to add the capability); init-project.sh applies
         # the predicate at scaffold time via pack_skill_coverage_for().
-        language:python)    echo "python-best-practices python-data-architecture dependency-python" ;;
+        # BD-162: python-observability-patterns' load predicate is defined
+        # in scripts/lib/detect.sh::python_observability_marker_detected();
+        # see maintenance-docs/v11-implementation/ARCHITECTURE-DEPLOYMENT-PYTHON-OBSERVABILITY.md.
+        # Added to the language:python capability row on the same coarse-
+        # tool path as python-data-architecture (BD-141 precedent) — when
+        # a developer explicitly opts into Python via add-capability they
+        # get the full Python-skill family declaratively. The marker-gated
+        # intersection load (PLATFORM-SKILLS.md Intersection table) still
+        # applies at PM-chat skill-selection time.
+        language:python)    echo "python-best-practices python-data-architecture python-observability-patterns dependency-python" ;;
         # BD-158: swift-concurrency-patterns is D1-implied for D1 ∈
         # {ios, macos} alongside swift-best-practices — every Apple
         # project deals with concurrency, no marker predicate. Added
@@ -188,7 +197,13 @@ capability_skills() {
         # D2=python ∩ D3=server → python-server-architecture +
         # python-data-architecture. `deployment-python` was dropped from this
         # row; it now loads via the new `deployment:linux-container` D5 row.
-        role:python-server) echo "python-server-architecture python-data-architecture" ;;
+        # BD-162: python-observability-patterns added — architect §4.1 of
+        # maintenance-docs/v11-implementation/ARCHITECTURE-DEPLOYMENT-PYTHON-OBSERVABILITY.md
+        # specifies the D3=server branch loads observability unconditionally
+        # (alongside the marker-gated load for non-server Python processes).
+        # This row encodes the explicit-D3 declaration path; the marker-gated
+        # intersection-table load handles the auto-detect path.
+        role:python-server) echo "python-server-architecture python-data-architecture python-observability-patterns" ;;
         *) return 1 ;;
     esac
 }

@@ -646,6 +646,131 @@ swiftdata_marker_detected() {
     echo "swiftdata-marker: no"
 }
 
+# python-observability-marker: yes|no
+#
+# BD-162 (v11.0 python-observability-patterns skill batch).
+# Concrete load predicate for the `python-observability-patterns` skill.
+# Mirrors the BD-141 `python_data_marker_detected()` and BD-156
+# `protobuf_marker_detected()` and BD-157 `swiftdata_marker_detected()`
+# shape: single positional argument defaulting to cwd; tolerates
+# missing target as a `no`; emits a single
+# `python-observability-marker: yes|no` line on stdout.
+#
+# Args:
+#   $1   Target project directory. Defaults to current working
+#        directory. Missing/non-existent target is tolerated and
+#        evaluated as `python-observability-marker: no` (no error
+#        to stderr).
+#
+# Output:
+#   Single line `python-observability-marker: yes` or
+#   `python-observability-marker: no`.
+#
+# Markers (any one true → yes), per architecture §4.2 of
+# maintenance-docs/v11-implementation/ARCHITECTURE-DEPLOYMENT-PYTHON-OBSERVABILITY.md:
+#   (a) Dependency manifests (requirements.txt OR pyproject.toml OR
+#       setup.py OR setup.cfg OR uv.lock) list any of these
+#       observability third-party dependencies (case-insensitive,
+#       package-name boundary anchored):
+#         OpenTelemetry exact-name packages: opentelemetry-api,
+#           opentelemetry-sdk, opentelemetry-distro,
+#           prometheus-client, prometheus_client, structlog,
+#           python-json-logger.
+#         OpenTelemetry contrib prefix-match packages:
+#           opentelemetry-instrumentation-* (any package whose name
+#           starts with opentelemetry-instrumentation-) and
+#           opentelemetry-exporter-* (any package whose name starts
+#           with opentelemetry-exporter-).
+#       The exact-name list uses the BD-141 negated-character-class
+#       boundary construction `(^|[^A-Za-z0-9_-])(<pkgs>)($|[^A-Za-z0-9_.-])`
+#       to reject substring matches like `not-opentelemetry-clone`
+#       via `opentelemetry-api`. The prefix-match packages use a
+#       leading-boundary anchor with a trailing `[A-Za-z0-9_.-]+`
+#       continuation to admit legitimate sub-packages
+#       (e.g., `opentelemetry-instrumentation-grpc`,
+#       `opentelemetry-exporter-otlp-proto-grpc`) while preserving
+#       the substring-rejection invariant.
+#   (b) Source file imports. Any `.py` file in the project tree
+#       (excluding nested vendored / build trees: node_modules/,
+#       .git/, build/, .venv/, venv/, .tox/, per the BD-156 prune
+#       list) contains a line matching
+#       `^[[:space:]]*(import|from)[[:space:]]+(opentelemetry|prometheus_client|structlog)([[:space:]]|\.|,|$)`.
+#       Line-anchored to defeat prose mentions in comments /
+#       docstrings (per BD-141 marker-c convention). Matches
+#       `import opentelemetry`, `from opentelemetry import …`,
+#       `from opentelemetry.foo import …` (via the `\.`
+#       alternative), `import prometheus_client`,
+#       `from prometheus_client import …`, `import structlog`,
+#       `from structlog import …`.
+#
+# Callers: scripts/init-project.sh `pack_skill_coverage_for python` row
+# (BD-162 — wires alongside the existing python-best-practices /
+# python-data-architecture coverage); scripts/add-capability.sh
+# references the predicate by comment only (the language:python
+# capability set declaratively adds python-observability-patterns;
+# the role:python-server capability adds it as well — the marker-
+# gated intersection-table load applies regardless of capability
+# declaration). PLATFORM-SKILLS.md cites the helper as the canonical
+# predicate for the python-observability-patterns intersection row.
+python_observability_marker_detected() {
+    local target="${1:-.}"
+    if [[ -z "$target" || ! -d "$target" ]]; then
+        echo "python-observability-marker: no"
+        return 0
+    fi
+
+    # Marker (a): dependency manifests. Two patterns combined —
+    # exact-name packages via BD-141 negated-character-class boundary,
+    # and prefix-match packages (opentelemetry-instrumentation-*,
+    # opentelemetry-exporter-*) via leading-boundary + trailing
+    # name-char continuation. Both run case-insensitive (-iqE).
+    local manifest
+    local exact_pkgs="opentelemetry-api|opentelemetry-sdk|opentelemetry-distro|prometheus-client|prometheus_client|structlog|python-json-logger"
+    local exact_pattern="(^|[^A-Za-z0-9_-])(${exact_pkgs})($|[^A-Za-z0-9_.-])"
+    local prefix_pattern="(^|[^A-Za-z0-9_-])opentelemetry-(instrumentation|exporter)-[A-Za-z0-9_.-]+"
+    for manifest in \
+        "$target/requirements.txt" \
+        "$target/pyproject.toml" \
+        "$target/setup.py" \
+        "$target/setup.cfg" \
+        "$target/uv.lock"
+    do
+        [[ -f "$manifest" ]] || continue
+        if grep -iqE "$exact_pattern" "$manifest" 2>/dev/null; then
+            echo "python-observability-marker: yes"
+            return 0
+        fi
+        if grep -iqE "$prefix_pattern" "$manifest" 2>/dev/null; then
+            echo "python-observability-marker: yes"
+            return 0
+        fi
+    done
+
+    # Marker (b): source file imports. Scan `.py` files outside
+    # vendored / build trees. Line-anchored grep rejects prose
+    # mentions in comments / docstrings (per BD-141 marker-c
+    # convention). Module-name boundary uses the
+    # `([[:space:]]|\.|,|$)` trailing alternative to admit
+    # `import opentelemetry`, `from opentelemetry.trace import ...`,
+    # and `from opentelemetry import trace, metrics`.
+    local py_files
+    py_files=$(find "$target" \
+        \( -path '*/node_modules' -o -path '*/.git' \
+           -o -path '*/build' -o -path '*/.venv' \
+           -o -path '*/venv' -o -path '*/.tox' \) -prune \
+        -o -type f -name '*.py' -print 2>/dev/null)
+    if [[ -n "$py_files" ]]; then
+        if printf '%s\n' "$py_files" \
+           | xargs grep -lE '^[[:space:]]*(import|from)[[:space:]]+(opentelemetry|prometheus_client|structlog)([[:space:]]|\.|,|$)' \
+                  2>/dev/null | head -n 1 | grep -q .; then
+            echo "python-observability-marker: yes"
+            return 0
+        fi
+    fi
+
+    echo "python-observability-marker: no"
+}
+
 # target-pack-version: vN | unknown
 #
 # Detect the major pack version installed in the *target* project (NOT the

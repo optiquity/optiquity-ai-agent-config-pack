@@ -43,5 +43,5 @@ is intentional and load-order-independent.
 
 ## Middleware and cross-cutting concerns
 
-8. Auth, logging, and metrics belong in gRPC interceptors (or framework middleware for REST), not in servicer / handler implementations.
+8. Auth, logging, and metrics belong in gRPC interceptors (or framework middleware for REST), not in servicer / handler implementations. The substantive observability rules — what spans to create, which attributes to attach, which fields every log record must carry, how to wire trace ↔ log correlation — live in `python-observability-patterns` (loaded for any Python server project per the intersection table). This skill defines the *placement*; the patterns skill defines the *content*.
 9. Flag middleware and interceptor correctness — interceptors subclass `grpc.aio.ServerInterceptor` and use `async def`.

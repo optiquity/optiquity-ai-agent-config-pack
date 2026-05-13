@@ -38,6 +38,6 @@ allowed-tools: Read, Grep, Glob, Bash
 
 19. Use environment variables for all configuration that varies between environments (dev, staging, production).
 20. Set gRPC server concurrency limits appropriate to the deployment target. Do not use unbounded concurrency.
-21. Enable structured logging (JSON format) for production. Include request ID, method, status, and latency in every log entry.
+21. Substantive observability rules — structured-log field set, metrics naming and cardinality, tracing setup, sampling, SLO definition shape, retention policy shape — live in `python-observability-patterns`. This skill (`deployment-python`) covers deployment-readiness concerns adjacent to observability: container layout, secrets, health checks, graceful shutdown, env-driven production config. Auditor-ops loads both skills for D2=python ∩ D5=linux-container projects.
 22. Set appropriate resource limits (memory, CPU) in the container orchestrator. Monitor and alert on resource exhaustion.
 23. Pin all Python dependencies to exact versions in the lock file. Verify the lock file is up to date before building the image.
