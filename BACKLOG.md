@@ -1178,7 +1178,7 @@ Resolved: 2026-05-12 in commit 6b2d5fc — maintenance-docs/v11-implementation/R
 
 **BD-118 — CI wiring for persona contracts + fixture verification**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-114, BD-115, BD-116
 Unblocks: v11.0 ship
 File/Symbol: `.github/workflows/validate-pack.yml`
@@ -1190,7 +1190,7 @@ Description: Wire BD-116 persona contracts and `test-fixtures/build.sh
   whichever vN-realistic fixture is current). BD-114 real-OT dry-run
   is **not** in CI — manual release-gate step per BD-117 since it
   touches a real network repo. Catches regressions before they ship.
-Resolved: n/a
+Resolved: 2026-05-12 in commit b93d22b — NEW "fixture manifest verify (BD-115, RELEASE-GATE item 5)" step inserted between existing fixture-rebuild and persona-contracts steps, so manifest drift is caught before contracts run; persona-contracts step name suffixed "RELEASE-GATE item 3" for traceability; new 19-line header comment block maps RELEASE-GATE items → CI steps (items 3/4/5 in CI; items 1/2 explicitly NOT in CI per BD-117 spec); tag-along: stale "26 Checks" → "31 Checks" in 2 header strings; BD-114 real-OT dry-run intentionally NOT added (manual pre-tag per RELEASE-GATE item 2); YAML parses cleanly (29 steps in tests job); independent CI sequence simulation 5/5 + 5/5 + 3/3 PASS; validate-pack 31/31 PASS; reviewer APPROVE no nits no advisories.
 
 ---
 
