@@ -121,7 +121,7 @@ cat > "$TOML1" <<'TOML'
 schema_version = 1
 [backend]
 name = "github"
-repo = "Optiquity-Inc/example-repo"
+repo = "DShaneNYC/example-repo"
 [mode]
 state = "tracker"
 [id_namespace]
@@ -132,8 +132,8 @@ TOML
 unset GH_REPO
 export _TRACKER_PROVIDER_CONFIG_PATH="$TOML1"
 tracker_gh_repo_setup
-assert_eq "1.3 valid config → GH_REPO=Optiquity-Inc/example-repo" \
-    "Optiquity-Inc/example-repo" "${GH_REPO:-}"
+assert_eq "1.3 valid config → GH_REPO=DShaneNYC/example-repo" \
+    "DShaneNYC/example-repo" "${GH_REPO:-}"
 
 # 1.4 GH_REPO already set → preserved (caller / test seam wins).
 export GH_REPO="caller/override"
@@ -152,7 +152,7 @@ export _TRACKER_PROVIDER_CONFIG_PATH="$TOML1"
 : > "$GH_LOG"
 # Use gh issue view via tracker_provider_gh_get; fake gh records env.
 tracker_provider_gh_get 1 >/dev/null 2>&1 || true
-got=$(grep -c '^GH_REPO=Optiquity-Inc/example-repo|' "$GH_LOG" || true)
+got=$(grep -c '^GH_REPO=DShaneNYC/example-repo|' "$GH_LOG" || true)
 [[ "$got" -ge 1 ]] && t_pass "2.1 _gh_run exports GH_REPO before invoking gh" \
     || t_fail "2.1 _gh_run exports GH_REPO before invoking gh" \
         "log: $(cat "$GH_LOG")"
@@ -164,7 +164,7 @@ got=$(grep -c '^GH_REPO=Optiquity-Inc/example-repo|' "$GH_LOG" || true)
 unset GH_REPO
 : > "$GH_LOG"
 tracker_provider_gh_get 1 >/dev/null 2>&1 || true
-got=$(grep -c '^GH_REPO=Optiquity-Inc/example-repo|' "$GH_LOG" || true)
+got=$(grep -c '^GH_REPO=DShaneNYC/example-repo|' "$GH_LOG" || true)
 [[ "$got" -ge 1 ]] && t_pass "2.2 _gh_run re-establishes GH_REPO after caller unset" \
     || t_fail "2.2 _gh_run re-establishes GH_REPO after caller unset" \
         "log: $(cat "$GH_LOG")"

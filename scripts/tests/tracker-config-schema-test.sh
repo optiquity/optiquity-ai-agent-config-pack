@@ -83,7 +83,7 @@ schema_version = 1
 
 [backend]
 name = "github"
-repo = "Optiquity-Inc/optiquity-ai-agent-config-pack"
+repo = "DShaneNYC/optiquity-ai-agent-config-pack"
 
 [mode]
 state = "flat-file"

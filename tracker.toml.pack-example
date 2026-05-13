@@ -18,7 +18,7 @@ schema_version = 1
 # Supported at v11.0: "github". Others (linear, jira, redmine) reserved.
 name = "github"
 # Org/repo slug. Required for GH-backed installs.
-repo = "Optiquity-Inc/optiquity-ai-agent-config-pack"
+repo = "DShaneNYC/optiquity-ai-agent-config-pack"
 # host = "github.com"             # set for GitHub Enterprise
 # instance = ""                    # set for jira: full URL
 

@@ -73,7 +73,7 @@ assert_contains "1.6 read malformed → validation" "$err" "ERROR: validation"
 
 # 1.7 get: dotted-key
 val=$(tracker_config_get "$FIXTURES/tracker-mode.toml" "backend.repo")
-assert_eq "1.7 get backend.repo" "Optiquity-Inc/optiquity-ai-agent-config-pack" "$val"
+assert_eq "1.7 get backend.repo" "DShaneNYC/optiquity-ai-agent-config-pack" "$val"
 
 # 1.8 get: missing key → rc=1
 if tracker_config_get "$FIXTURES/tracker-mode.toml" "no.such.key" >/dev/null 2>&1; then
@@ -84,7 +84,7 @@ fi
 
 # 1.9 convenience getters
 assert_eq "1.9 tracker_backend_name" "github"   "$(tracker_backend_name "$FIXTURES/tracker-mode.toml")"
-assert_eq "1.9 tracker_repo_slug"    "Optiquity-Inc/optiquity-ai-agent-config-pack" "$(tracker_repo_slug "$FIXTURES/tracker-mode.toml")"
+assert_eq "1.9 tracker_repo_slug"    "DShaneNYC/optiquity-ai-agent-config-pack" "$(tracker_repo_slug "$FIXTURES/tracker-mode.toml")"
 assert_eq "1.9 tracker_id_prefix"    "BD"       "$(tracker_id_prefix "$FIXTURES/tracker-mode.toml")"
 assert_eq "1.9 tracker_mapping_file" ".pack-tracker/id-map.json" "$(tracker_mapping_file "$FIXTURES/tracker-mode.toml")"
 

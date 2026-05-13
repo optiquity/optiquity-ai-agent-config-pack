@@ -150,12 +150,12 @@ tracker_init_run() {
             repo=$(_tracker_init_prompt "Repo slug (org/name)" "")
             if [[ -z "$repo" ]]; then
                 tracker_error_emit "validation" \
-                    "init: repo slug is required (org/name, e.g. Optiquity-Inc/optiquity-ai-agent-config-pack)"
+                    "init: repo slug is required (org/name, e.g. DShaneNYC/optiquity-ai-agent-config-pack)"
                 return 1
             fi
         else
             tracker_error_emit "validation" \
-                "init: --repo is required (org/name slug, e.g. Optiquity-Inc/optiquity-ai-agent-config-pack)"
+                "init: --repo is required (org/name slug, e.g. DShaneNYC/optiquity-ai-agent-config-pack)"
             return 1
         fi
     fi
@@ -278,7 +278,7 @@ Example (pack root, interactive):
 Example (pack root, all-flags):
   scripts/pack-tracker.sh init \
       --backend github \
-      --repo Optiquity-Inc/optiquity-ai-agent-config-pack \
+      --repo DShaneNYC/optiquity-ai-agent-config-pack \
       --no-interactive
 
 Reference: ARCHITECTURE.md §6.1.

@@ -215,7 +215,7 @@ touch "$TR_OK/.github/ISSUE_TEMPLATE/inbound.yml"
 touch "$TR_OK/.github/ISSUE_TEMPLATE/config.yml"
 
 export PATH="$FAKE_BIN_TPL:$PATH_SAVED"
-output=$(tracker_init_run --repo-root "$TR_OK" --backend github --repo Optiquity-Inc/x --no-forward 2>&1)
+output=$(tracker_init_run --repo-root "$TR_OK" --backend github --repo DShaneNYC/x --no-forward 2>&1)
 rc=$?
 export PATH="$PATH_SAVED"
 assert_eq       "3.2 happy-path rc=0"                 "0" "$rc"
@@ -230,7 +230,7 @@ cfg="$TR_OK/tracker.toml"
 [[ -f "$cfg" ]] || t_fail "3.3 tracker.toml exists" "missing"
 assert_eq "3.3 schema_version=1"        "1"      "$(tracker_config_get "$cfg" schema_version)"
 assert_eq "3.3 backend.name=github"     "github" "$(tracker_config_get "$cfg" backend.name)"
-assert_eq "3.3 backend.repo correct"    "Optiquity-Inc/x" "$(tracker_config_get "$cfg" backend.repo)"
+assert_eq "3.3 backend.repo correct"    "DShaneNYC/x" "$(tracker_config_get "$cfg" backend.repo)"
 assert_eq "3.3 mode.state=tracker"      "tracker" "$(tracker_config_get "$cfg" mode.state)"
 assert_eq "3.3 id_namespace.prefix=BD"  "BD"     "$(tracker_config_get "$cfg" id_namespace.prefix)"
 assert_eq "3.3 mapping_file path"       ".pack-tracker/id-map.json" \
@@ -240,7 +240,7 @@ assert_eq "3.3 mapping_file path"       ".pack-tracker/id-map.json" \
 prior_opted_in=$(tracker_config_get "$cfg" mode.opted_in_at)
 sleep 1   # ensure timestamp would change if we re-wrote it
 export PATH="$FAKE_BIN_TPL:$PATH_SAVED"
-tracker_init_run --repo-root "$TR_OK" --backend github --repo Optiquity-Inc/x --no-forward >/dev/null 2>&1
+tracker_init_run --repo-root "$TR_OK" --backend github --repo DShaneNYC/x --no-forward >/dev/null 2>&1
 export PATH="$PATH_SAVED"
 new_opted_in=$(tracker_config_get "$cfg" mode.opted_in_at)
 assert_eq "3.4 opted_in_at preserved across re-runs" "$prior_opted_in" "$new_opted_in"
@@ -343,7 +343,7 @@ touch "$TR_INT1/.github/ISSUE_TEMPLATE/config.yml"
 export PATH="$FAKE_BIN_INT:$PATH_SAVED"
 # Pipe order: id-prefix (default BD), backend (default github), repo
 export _TRACKER_INIT_FORCE_INTERACTIVE=1
-output=$(printf 'BD\ngithub\nOptiquity-Inc/x\n' | \
+output=$(printf 'BD\ngithub\nDShaneNYC/x\n' | \
     tracker_init_run --repo-root "$TR_INT1" --no-forward 2>&1)
 rc=$?
 export PATH="$PATH_SAVED"
@@ -353,7 +353,7 @@ assert_contains "5.1 prompt 'ID prefix' visible"        "$output" "ID prefix"
 assert_contains "5.1 prompt 'Backend' visible"          "$output" "Backend (github)"
 assert_contains "5.1 prompt 'Repo slug' visible"        "$output" "Repo slug"
 # tracker.toml written with the piped repo value.
-assert_eq "5.1 backend.repo from prompt" "Optiquity-Inc/x" \
+assert_eq "5.1 backend.repo from prompt" "DShaneNYC/x" \
     "$(tracker_config_get "$TR_INT1/tracker.toml" backend.repo)"
 rm -rf "$TR_INT1"
 
@@ -370,7 +370,7 @@ export PATH="$FAKE_BIN_INT:$PATH_SAVED"
 # Empty answer for backend → default github
 # Repo answer (non-empty; required)
 output=$(
-    printf '\n\nOptiquity-Inc/y\n' | \
+    printf '\n\nDShaneNYC/y\n' | \
     tracker_init_run --repo-root "$TR_INT2" --no-forward 2>&1)
 rc=$?
 export PATH="$PATH_SAVED"
@@ -378,7 +378,7 @@ export PATH="$PATH_SAVED"
 assert_eq "5.2 default-accept happy-path rc=0" "0" "$rc"
 assert_eq "5.2 id-prefix defaulted to BD"  "BD"     "$(tracker_config_get "$TR_INT2/tracker.toml" id_namespace.prefix)"
 assert_eq "5.2 backend defaulted to github" "github" "$(tracker_config_get "$TR_INT2/tracker.toml" backend.name)"
-assert_eq "5.2 repo from prompt"           "Optiquity-Inc/y" "$(tracker_config_get "$TR_INT2/tracker.toml" backend.repo)"
+assert_eq "5.2 repo from prompt"           "DShaneNYC/y" "$(tracker_config_get "$TR_INT2/tracker.toml" backend.repo)"
 rm -rf "$TR_INT2"
 
 # 5.3 prompt path: empty repo answer → validation error.
@@ -411,7 +411,7 @@ touch "$TR_INT4/.github/ISSUE_TEMPLATE/config.yml"
 export PATH="$FAKE_BIN_INT:$PATH_SAVED"
 # Pipe: surface=pack, id-prefix=BD, backend=github, repo
 output=$(
-    printf 'pack\nBD\ngithub\nOptiquity-Inc/z\n' | \
+    printf 'pack\nBD\ngithub\nDShaneNYC/z\n' | \
     tracker_init_run --repo-root "$TR_INT4" --no-forward 2>&1)
 rc=$?
 export PATH="$PATH_SAVED"

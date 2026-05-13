@@ -491,7 +491,7 @@ schema_version = 1
 
 [backend]
 name = "github"                 # github | linear | jira | redmine | ...
-repo  = "Optiquity-Inc/optiquity-ai-agent-config-pack"   # GH-specific
+repo  = "DShaneNYC/optiquity-ai-agent-config-pack"   # GH-specific
 # host = "github.com" | "github.example.com"            # for GHE
 # instance = "https://my-jira.atlassian.net"            # for Jira
 
@@ -1073,7 +1073,7 @@ A header comment is added to mirrored files:
 ```markdown
 <!--
   This file is a read-only mirror generated from the tracker.
-  Tracker: github / Optiquity-Inc/optiquity-ai-agent-config-pack
+  Tracker: github / DShaneNYC/optiquity-ai-agent-config-pack
   Last regenerated: 2026-05-15T12:00:00Z
   Direct edits will be overwritten. Edit via Pack Chat / PM Chat.
 -->
@@ -1463,7 +1463,7 @@ host` on stderr. MCP transport returns connection error.
 **Message shape:**
 ```
 Tracker unreachable.
-Backend: github (Optiquity-Inc/optiquity-ai-agent-config-pack)
+Backend: github (DShaneNYC/optiquity-ai-agent-config-pack)
 Underlying: dial tcp api.github.com:443: i/o timeout
 The flat-file mirror at <path> was last regenerated <relative time>;
 the chat can read it for context but cannot write until the tracker is

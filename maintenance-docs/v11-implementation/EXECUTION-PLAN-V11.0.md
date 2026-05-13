@@ -367,7 +367,7 @@ The BD-123 BACKLOG entry's premise is wrong. There are TWO distinct `tracker.tom
 
 | File | Purpose | Distinguishers |
 |---|---|---|
-| `/tracker.toml.example` (root) | Pack-repo-side tracker config example | Header: "pack repo tracker configuration"; `repo = "Optiquity-Inc/optiquity-ai-agent-config-pack"`; `prefix = "BD"` |
+| `/tracker.toml.example` (root) | Pack-repo-side tracker config example | Header: "pack repo tracker configuration"; `repo = "DShaneNYC/optiquity-ai-agent-config-pack"`; `prefix = "BD"` |
 | `/project-template/tracker.toml.example` | Client-project-side tracker config example | Header: "client project tracker configuration"; `repo = "your-org/your-project"`; `prefix = "TD"` |
 
 README documents both intentionally (lines 128 + 226). Three options:
