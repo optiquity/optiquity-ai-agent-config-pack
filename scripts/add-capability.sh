@@ -21,11 +21,21 @@
 # │  is_x_prefixed guard).                                               │
 # └──────────────────────────────────────────────────────────────────────┘
 #
-# Per V10-DESIGN §5.14, the script runs eight stages A0..A7 with preview
+# Per V10-DESIGN §5.14, the script runs nine stages A0..A8 with preview
 # and confirmation before any writes. Per §5.14.7 it sources
 # scripts/lib/detect.sh and inverts the init-project.sh §7.6 stage S9
 # conditional-file table (single source of truth for the conditional-file
 # mapping).
+#
+# BD-048 (v11.0): stages A7-discovery (read-only `command -v` discovery
+# of capability-implied tooling) + install-hint summary embedded in the
+# A8 PM-chat prompt mirror the BD-047 kickoff Form-R / Form-I shape at
+# capability-addition time. The script never installs anything itself —
+# it surfaces missing tools with concrete install commands that the
+# developer (or the PM chat following Procedure 6) chooses to run.
+# The discovery table (`capability_install_checks()`) is parallel to
+# `capability_skills()` and `capability_files()` and is the single
+# extension point for new capability rows.
 #
 # Usage:
 #     bash "$PACK/scripts/add-capability.sh" --project . \
@@ -215,6 +225,131 @@ capability_files() {
         protocol:grpc)
             echo "proto scripts/proto-gen.sh scripts/validate-proto.sh" ;;
         *) echo "" ;;
+    esac
+}
+
+# ── Capability → install-check rows (BD-048) ───────────────────────────────
+# Each capability emits zero or more rows of the shape:
+#     <tool>:::<install-command>:::<purpose>
+# where <tool> is the binary or package name probed by the discovery stage,
+# and <install-command> is the concrete command the developer runs if the
+# probe reports missing. Rows are newline-separated; fields are `:::`-
+# delimited (not pipe — install commands themselves often contain `|` as
+# an "or" separator between platform alternatives, which would break
+# pipe-based parsing). Mirrors the BD-047 kickoff Form-I shape
+# (INSTALL-PROCEDURES.md § 7.2.3 / 7.3.1 / 7.3.2) applied at
+# capability-addition time.
+#
+# Discovery is read-only: `command -v <tool>` for binaries; `python3 -c
+# 'import <pkg>'` may be added by future rows for Python-package probes.
+# This script never installs anything — A7 reports status; the A8 PM-chat
+# prompt repeats the install commands so Procedure 6 can drive Form I
+# follow-ups under developer approval.
+#
+# Adding a new capability row: extend capability_skills() AND
+# capability_files() AND this table — three parallel surfaces, one
+# capability per case branch.
+capability_install_checks() {
+    local cap="$1"
+    case "$cap" in
+        language:python)
+            cat <<'EOF'
+python3:::see https://www.python.org/downloads/ (Python 3.12+ recommended):::Python interpreter required by scripts/bootstrap-python.sh and scripts/test-python.sh
+uv:::brew install uv  (macOS) | curl -LsSf https://astral.sh/uv/install.sh | sh  (Linux):::Project-standard Python package manager (pyproject.toml workflow)
+EOF
+            ;;
+        language:swift)
+            cat <<'EOF'
+swift:::install Xcode 26.3+ from the App Store, or swift.org/install for Linux:::Swift toolchain required by scripts/bootstrap-swift.sh / validate-swift.sh
+swift-format:::brew install swift-format  (macOS) | swift package update + use SPM plugin (Linux):::Formatter invoked by scripts/format-swift.sh
+EOF
+            ;;
+        platform:macos|platform:ios)
+            cat <<'EOF'
+xcodebuild:::install Xcode 26.3+ from the App Store:::Apple platform builds (xcodebuild + Simulator) require Xcode
+xcrun:::installed alongside Xcode (no separate install):::simctl device discovery during validate-swift.sh / kickoff Procedure 7
+EOF
+            ;;
+        platform:android)
+            cat <<'EOF'
+adb:::install Android Studio (https://developer.android.com/studio) which bundles platform-tools:::Android device + emulator interaction
+java:::brew install --cask temurin@17  (macOS) | apt install openjdk-17-jdk  (Debian/Ubuntu):::JDK 17+ required by Android Gradle Plugin
+EOF
+            ;;
+        platform:web-browser)
+            cat <<'EOF'
+node:::brew install node  (macOS) | nvm install --lts  (any platform):::Node.js runtime for web tooling and bundlers
+EOF
+            ;;
+        platform:embedded-mcu)
+            cat <<'EOF'
+cmake:::brew install cmake  (macOS) | apt install cmake  (Debian/Ubuntu):::Cross-compile build orchestration for MCU targets
+arm-none-eabi-gcc:::brew install --cask gcc-arm-embedded  (macOS) | apt install gcc-arm-none-eabi  (Debian/Ubuntu):::ARM Cortex-M cross compiler (adjust per MCU family)
+EOF
+            ;;
+        language:cpp|language:c)
+            cat <<'EOF'
+clang:::install Xcode Command Line Tools: xcode-select --install  (macOS) | apt install clang  (Debian/Ubuntu):::C/C++ compiler
+cmake:::brew install cmake  (macOS) | apt install cmake  (Debian/Ubuntu):::Build orchestration (project-typical)
+EOF
+            ;;
+        language:objc)
+            cat <<'EOF'
+clang:::install Xcode 26.3+ from the App Store:::Objective-C is built by clang shipped with Xcode
+EOF
+            ;;
+        protocol:grpc)
+            # BD-048: Apple-side gRPC tooling rows mirror Procedure 7 §7.3.1.
+            # Python rows mirror §7.3.2 — they're emitted unconditionally
+            # here because protocol:grpc is dimension-only (the table doesn't
+            # know whether the project also has language:python). The
+            # discovery stage probes each tool independently; missing
+            # Python tools on a Swift-only project show as "skip if
+            # not adding Python" in the install-hint output.
+            cat <<'EOF'
+buf:::brew install bufbuild/buf/buf  (macOS) | go install github.com/bufbuild/buf/cmd/buf@latest  (any platform):::Proto lint + breaking-change detection (scripts/validate-proto.sh)
+protoc-gen-swift:::brew install swift-protobuf:::Swift code generator for .proto files (Apple-side; skip if no Apple target)
+protoc-gen-grpc-swift:::brew install grpc-swift:::Swift gRPC code generator (Apple-side; skip if no Apple target)
+grpcio-tools:::uv add grpcio-tools  (in project root) | pip install grpcio-tools:::Python proto/gRPC code generator (skip if no Python target)
+grpcio:::uv add grpcio  (in project root) | pip install grpcio:::Python gRPC runtime (skip if no Python target)
+EOF
+            ;;
+        protocol:rest|protocol:graphql|protocol:realtime|protocol:messaging|protocol:soap)
+            # No machine-level installs implied; tooling is library-level
+            # and lands via language-package-manager rows on the language
+            # capability the project already has.
+            : ;;
+        deployment:apple)
+            cat <<'EOF'
+xcodebuild:::install Xcode 26.3+ from the App Store:::Apple-app deployment surface requires the full Xcode toolchain (archive + notarize)
+EOF
+            ;;
+        deployment:linux-container)
+            cat <<'EOF'
+docker:::install Docker Desktop (https://docs.docker.com/get-docker/) or use Colima (brew install colima):::Container build + run for linux-container deployment
+EOF
+            ;;
+        role:python-server)
+            cat <<'EOF'
+uv:::brew install uv  (macOS) | curl -LsSf https://astral.sh/uv/install.sh | sh  (Linux):::Project-standard Python package manager (pyproject.toml workflow)
+EOF
+            ;;
+        *) : ;;
+    esac
+}
+
+# probe_tool_present <tool>
+#
+# Read-only presence check — the BD-048 discovery stage's only side effect
+# beyond stdout/stderr is a `command -v` lookup. Returns 0 if present,
+# 1 otherwise. Centralized so future rows can swap to alternate probes
+# (e.g., `python3 -c 'import <pkg>'`) by adding cases here.
+probe_tool_present() {
+    local tool="$1"
+    case "$tool" in
+        # Python-package probe pattern (none today; reserved):
+        # py:*) python3 -c "import ${tool#py:}" >/dev/null 2>&1 ;;
+        *) command -v "$tool" >/dev/null 2>&1 ;;
     esac
 }
 
@@ -483,7 +618,78 @@ stage_a6_gitignore() {
     fi
 }
 
-# ── Stage A7 — end-of-run PM chat prompt ───────────────────────────────────
+# ── Stage A7 — capability install-check discovery (BD-048) ─────────────────
+#
+# Read-only Form-R-shaped discovery: for each requested capability, look
+# up its install-check rows and probe each tool with `command -v`. Build
+# two arrays exposed to the A8 prompt: DISCOVERY_LINES (one line per
+# probed tool with present/missing status) and INSTALL_HINTS (one line
+# per missing tool with the concrete install command).
+#
+# Mirrors INSTALL-PROCEDURES.md Procedure 7 §7.1 K1 read-only discovery
+# — the script never installs anything; it surfaces the proposal so the
+# developer (or PM chat Procedure 6) can decide.
+
+stage_a7_install_check() {
+    say ""
+    say "── A7 — capability install-check discovery (read-only) ──"
+    DISCOVERY_LINES=()
+    INSTALL_HINTS=()
+
+    # Track tools we've already probed this run — a single tool may be
+    # implied by multiple capabilities (e.g., xcodebuild ↔ platform:macos +
+    # deployment:apple). Probe once; report once.
+    local probed_tools=""
+
+    local cap rows row tool inst purpose status
+    for cap in "${ADD_ARGS[@]}"; do
+        rows=$(capability_install_checks "$cap" || true)
+        if [[ -z "$rows" ]]; then
+            DISCOVERY_LINES+=("$cap: (no machine-level installs implied)")
+            continue
+        fi
+        while IFS= read -r row; do
+            [[ -z "$row" ]] && continue
+            # Field separator is ':::' (BD-048) — install commands themselves
+            # often contain `|` as an "or" between platform alternatives, so
+            # pipe-based parsing would break. awk -F treats the arg as ERE;
+            # ':::' is a literal three-colon match.
+            tool=$(printf '%s' "$row" | awk -F':::' '{print $1}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            inst=$(printf '%s' "$row" | awk -F':::' '{print $2}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            purpose=$(printf '%s' "$row" | awk -F':::' '{print $3}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            [[ -z "$tool" ]] && continue
+
+            # Dedup probes across capabilities.
+            if [[ " $probed_tools " == *" $tool "* ]]; then
+                continue
+            fi
+            probed_tools="$probed_tools $tool"
+
+            if probe_tool_present "$tool"; then
+                status="present"
+                DISCOVERY_LINES+=("  [present] $tool — $purpose")
+            else
+                status="missing"
+                DISCOVERY_LINES+=("  [missing] $tool — $purpose")
+                INSTALL_HINTS+=("  $tool: $inst")
+            fi
+            info "$cap → $tool: $status"
+        done <<< "$rows"
+    done
+
+    say ""
+    if (( ${#INSTALL_HINTS[@]} == 0 )); then
+        info "all probed tools present (or no machine-level installs implied)"
+    else
+        info "${#INSTALL_HINTS[@]} tool(s) missing — install commands surfaced in the A8 prompt below"
+        local h
+        for h in "${INSTALL_HINTS[@]}"; do
+            info "$h"
+        done
+    fi
+}
+
+# ── Stage A8 — end-of-run PM chat prompt ───────────────────────────────────
 
 write_prompt_file() {
     local mode="${1:-normal}"
@@ -538,15 +744,38 @@ EOF
     fi
     report+="Active skills currently in CLAUDE.md:"$'\n'"  $active_display"$'\n\n'
     report+="Active skills after your Procedure 6 run should be:"$'\n'"  $union_display"$'\n\n'
-    report+=$'Please run METHODOLOGY.md Procedure 6 (Adding a pack-supported\ncapability). Present your trinity-file drafts for approval at G6-drafts\nbefore writing, and the commit message at G6-commit before committing.\n\nDo NOT modify any file starting with `x-`.\nDo NOT modify PLATFORM-SKILLS.md project-owned sections\n(`## Custom agents`, `## Custom skills`).\n'
+
+    # BD-048 install-check section. Stage A7 populates DISCOVERY_LINES and
+    # INSTALL_HINTS; the already-active early-exit path skips A7, so guard
+    # with `:-` defaults to keep this prompt block well-formed in both modes.
+    local dl il
+    if (( ${#DISCOVERY_LINES[@]:-0} > 0 )); then
+        report+="Capability install-check discovery (read-only, BD-048):"$'\n'
+        for dl in "${DISCOVERY_LINES[@]}"; do
+            report+="$dl"$'\n'
+        done
+        report+=$'\n'
+        if (( ${#INSTALL_HINTS[@]:-0} > 0 )); then
+            report+="Missing tools — proposed install commands (run with developer approval per Procedure 6 G6-install):"$'\n'
+            for il in "${INSTALL_HINTS[@]}"; do
+                report+="$il"$'\n'
+            done
+            report+=$'\n'
+            report+=$'Render a Form I (INSTALL-PROCEDURES.md § 7.2.3 shape) for each\nmissing tool before running any install. Skip-by-default: a missing\ntool is reported, never auto-installed.\n\n'
+        else
+            report+="All probed tools present — no Form I follow-up required."$'\n\n'
+        fi
+    fi
+
+    report+=$'Please run METHODOLOGY.md Procedure 6 (Adding a pack-supported\ncapability). Present your trinity-file drafts for approval at G6-drafts\nbefore writing, the install commands at G6-install before running them,\nand the commit message at G6-commit before committing.\n\nDo NOT modify any file starting with `x-`.\nDo NOT modify PLATFORM-SKILLS.md project-owned sections\n(`## Custom agents`, `## Custom skills`).\n'
 
     printf '%s' "$report" > "$TARGET/$PROMPT_FILE"
     printf '%s' "$report"
 }
 
-stage_a7_prompt() {
+stage_a8_prompt() {
     say ""
-    say "── A7 — end-of-run PM chat prompt ──"
+    say "── A8 — end-of-run PM chat prompt ──"
     say ""
     say "──── PM chat prompt (also written to $PROMPT_FILE) ────"
     write_prompt_file "normal"
@@ -560,6 +789,12 @@ main() {
     say "add-capability.sh — add pack-supported capability to v10 project"
     say ""
 
+    # BD-048: ensure discovery arrays exist even on early-exit paths
+    # (already-active short-circuit in stage_a2_delta calls write_prompt_file
+    # before stage_a7_install_check runs).
+    DISCOVERY_LINES=()
+    INSTALL_HINTS=()
+
     stage_a0_preflight
     stage_a1_resolve
     stage_a2_delta
@@ -567,7 +802,8 @@ main() {
     stage_a4_confirm
     stage_a5_copy
     stage_a6_gitignore
-    stage_a7_prompt
+    stage_a7_install_check
+    stage_a8_prompt
 
     say ""
     say "Done. Review git diff, then follow the PM chat prompt above (or read it"
