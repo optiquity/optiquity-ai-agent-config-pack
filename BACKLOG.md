@@ -2444,7 +2444,7 @@ Resolved: April 2026, v8.10 planning docs commit.
 
 **BD-032 — Validate auditor observability infrastructure vs. configuration boundary**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers:
   - First v9 project with cloud-deployed observability runs a full audit (PACK-FEEDBACK.md Q1)
 Unblocks: None
@@ -2459,13 +2459,13 @@ Description: The auditor splits observability into auditor-architecture (does
 Context: Deferred from the v9 auditor fix pass (d2c3599). The pack repo has
   no observability code to test against. Tracked as PACK-FEEDBACK.md Q1 in
   every downstream project.
-Resolved: n/a
+Resolved: 2026-05-12 in commits 50d1a57 (BD-032 audit + rule 21 fixes + boundary prose dedup) — pack-architect audit (NEEDS FIXES verdict) ran desk-audit; 5 fixes applied: F1 metrics/tracing examples, F2 uncertainty triggers (a/b/c), F3 sub-domains (sampling rate / alerting / log retention), F4 named-test ownership rubric (value vs type/call-graph/wiring), F5 boundary prose dedup across 6 agent files (3 auditor-ops trinity + 3 auditor-architecture trinity) replaced with cross-references to canonical rule 21. Cross-cutting concern (deployment-python missing metrics/tracing rules) tracked separately via docs-researcher → architect → planner → coder cycle (see batch follow-up). validate-pack 31/31 PASS.
 
 ---
 
 **BD-033 — Validate auditor systemic error handling threshold**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers:
   - First v9 project with non-trivial error handling runs a full audit (PACK-FEEDBACK.md Q2)
 Unblocks: None
@@ -2480,13 +2480,13 @@ Description: auditor-code audits "systemic error handling" (boundary mapping
 Context: Deferred from the v9 auditor fix pass (d2c3599). The pack repo has
   no Swift/Python domain code to audit for error handling patterns. Tracked
   as PACK-FEEDBACK.md Q2.
-Resolved: n/a
+Resolved: 2026-05-12 in commit d059d5f (BD-033 audit + rule 16 reformat + auditor-code trinity prose-parity) — pack-architect audit (CLEAN WITH NITS verdict) found original "threshold not quantified" hypothesis factually false against current rule 16 (v11 work already addressed core concern); 4 actionable nits fixed: F1 paragraph-per-dimension (a)–(e) reformat, F2 inline definition of "independent call site", F4 worked examples (Scenarios A/B/C from audit §5), F6 boundary-with-auditor-architecture sub-section. F3 (no-change — error-handling routing tags already correct). F5 trinity prose drift fixed: Claude version selected canonical, Codex .toml + Gemini .md brought to prose-parity. validate-pack 31/31 PASS.
 
 ---
 
 **BD-034 — Validate auditor-ui scope breadth after ops split**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers:
   - First v9 project with substantial UI runs a full audit (PACK-FEEDBACK.md Q3)
 Unblocks: None
@@ -2499,13 +2499,13 @@ Description: After splitting auditor-ui (UI compliance only) from auditor-ops
   the scope is too narrow, extend rule 20 with additional examples.
 Context: Deferred from the v9 auditor fix pass (d2c3599). The pack repo has
   no UI layer. Tracked as PACK-FEEDBACK.md Q3.
-Resolved: n/a
+Resolved: 2026-05-12 in commit e9c44e7 (BD-034 audit + Apple skill additions + phase identifier dedrift) — pack-architect audit (CLEAN WITH NITS verdict) found BD-143 (cross-platform UI checklist) already addressed the original "scope too narrow" concern; 4 NITs fixed in adjacent skills: F2 ios-architecture rule 28 haptic feedback (UIKit feedback generators + SwiftUI .sensoryFeedback + Reduce Motion / Reduce Haptics respect; rules 28-33 renumbered 29-34), F3 apple-architecture-core rules 28-29 animation correctness (state-driven over imperative + explicit/implicit selection + Reduce Motion respect), F4 apple-architecture-core rules 30-31 Liquid Glass (system materials + light/dark + Increase Contrast), F10 phase identifier drift between rule 20 and rule 44 standardized to "deferred to a future version (currently planned post-v11.0)". validate-pack 31/31 PASS.
 
 ---
 
 **BD-035 — Validate python-architecture skill loading for non-server Python**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers:
   - First v9 non-server multi-file Python project runs a full audit (PACK-FEEDBACK.md Q4)
 Unblocks: None
@@ -2518,7 +2518,7 @@ Description: PLATFORM-SKILLS.md loads python-architecture for auditor-code
   rule.
 Context: Deferred from the v9 auditor fix pass (d2c3599). No non-server
   Python project exists to test against. Tracked as PACK-FEEDBACK.md Q4.
-Resolved: n/a
+Resolved: 2026-05-12 in commit 523be4b (BD-035 audit + python_data_marker stdlib + protobuf-overlap fixes) — pack-architect audit (CLEAN WITH NITS verdict) found post-reframe split (BD-141 + BD-156 cluster) materially closes original gap; 4 fixes applied: F1 extended python_data_marker_detected() with marker (c) for stdlib `import sqlite3` / `import csv` (closes blind-spot for sqlite3 CLIs / csv ETLs), F2 cross-reference between python-best-practices rule 26 and auditor-code performance-anti-pattern scope, F3 attribution corrected in python-server-architecture + python-data-architecture SKILL.md (BD-141 + BD-143, not BD-035), F5 removed protobuf/grpc-tools from python-data-marker package list (now protobuf-marker territory per BD-156). test-detect.sh +14 cases (64 → 78 PASS); validate-pack 31/31 PASS.
 
 ---
 
