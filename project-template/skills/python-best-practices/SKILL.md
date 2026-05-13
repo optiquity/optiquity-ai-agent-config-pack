@@ -79,7 +79,7 @@ instead be gated by a capability check.
 ## Style and idioms
 
 25. Module-level constants are `UPPER_SNAKE_CASE`. Never use global mutable config variables.
-26. Blocking synchronous I/O in async handlers is an anti-pattern — offload or convert.
+26. Blocking synchronous I/O in async handlers is an anti-pattern — offload or convert. (Also surfaces in `auditor-code` as a performance anti-pattern; see `audit-methodology` rule 16.)
 27. No hardcoded secrets or API keys in source or config files.
 28. Log every RPC with method name, status code, and latency using structured logging.
 29. Side effects live near the edge of the system. Business logic is pure where possible.

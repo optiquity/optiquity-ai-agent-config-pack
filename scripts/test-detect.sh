@@ -545,6 +545,137 @@ EOF
 assert_eq "non-Apple project (no .swift files) → no" \
     "swiftdata-marker: no" "$(swiftdata_marker_detected "$fx")"
 
+# ── python_data_marker_detected (BD-141 + BD-035 audit fixes) ─────────
+echo "== python_data_marker_detected =="
+
+fx=$(mkfixture pyd-marker-empty)
+assert_eq "empty dir → no" \
+    "python-data: no" "$(python_data_marker_detected "$fx")"
+
+assert_eq "non-existent target → no (tolerated, no stderr)" \
+    "python-data: no" "$(python_data_marker_detected "$FIXTURE_BASE/pyd-never-existed")"
+
+# Marker (a): pyproject.toml lists sqlalchemy.
+fx=$(mkfixture pyd-marker-sqlalchemy)
+cat > "$fx/pyproject.toml" <<'EOF'
+[project]
+dependencies = ["sqlalchemy>=2.0", "alembic"]
+EOF
+assert_eq "pyproject.toml lists sqlalchemy → yes (marker a)" \
+    "python-data: yes" "$(python_data_marker_detected "$fx")"
+
+# Marker (b): >= 5 .py files outside tests/.
+fx=$(mkfixture pyd-marker-five-files)
+mkdir -p "$fx/src"
+for n in 1 2 3 4 5; do touch "$fx/src/mod${n}.py"; done
+assert_eq "5 non-test .py files → yes (marker b)" \
+    "python-data: yes" "$(python_data_marker_detected "$fx")"
+
+# Negative: 4 non-test .py files, no listed deps.
+fx=$(mkfixture pyd-marker-four-files-stdlib-noop)
+mkdir -p "$fx/src"
+for n in 1 2 3 4; do echo "x = 1" > "$fx/src/mod${n}.py"; done
+assert_eq "4 non-test .py files with no data imports → no" \
+    "python-data: no" "$(python_data_marker_detected "$fx")"
+
+# F1: marker (c) — stdlib `import sqlite3` only (small CLI shape).
+fx=$(mkfixture pyd-marker-stdlib-sqlite3)
+mkdir -p "$fx/src"
+cat > "$fx/src/store.py" <<'EOF'
+import sqlite3
+
+def init_db(path):
+    return sqlite3.connect(path)
+EOF
+echo "x = 1" > "$fx/src/cli.py"
+assert_eq "stdlib import sqlite3 only, 2 files → yes (F1: marker c)" \
+    "python-data: yes" "$(python_data_marker_detected "$fx")"
+
+# F1: marker (c) — stdlib `import csv` only (small ETL shape).
+fx=$(mkfixture pyd-marker-stdlib-csv)
+mkdir -p "$fx/src"
+cat > "$fx/src/etl.py" <<'EOF'
+import csv
+
+def load(path):
+    with open(path) as f:
+        return list(csv.reader(f))
+EOF
+assert_eq "stdlib import csv only, 1 file → yes (F1: marker c)" \
+    "python-data: yes" "$(python_data_marker_detected "$fx")"
+
+# F1: marker (c) — both `import sqlite3` and `import csv`.
+fx=$(mkfixture pyd-marker-stdlib-both)
+mkdir -p "$fx/src"
+cat > "$fx/src/a.py" <<'EOF'
+import sqlite3
+EOF
+cat > "$fx/src/b.py" <<'EOF'
+from csv import reader
+EOF
+assert_eq 'stdlib sqlite3 + csv (from-import form) → yes (F1: marker c)' \
+    "python-data: yes" "$(python_data_marker_detected "$fx")"
+
+# F1 boundary: prose mention in comment must NOT trigger marker (c).
+fx=$(mkfixture pyd-marker-comment-prose)
+mkdir -p "$fx/src"
+cat > "$fx/src/notes.py" <<'EOF'
+# We do not import sqlite3 here — see ARCHITECTURE.md.
+# from csv import reader (refactored away)
+x = 1
+EOF
+assert_eq "prose 'import sqlite3' in comment only → no (line-anchor reject)" \
+    "python-data: no" "$(python_data_marker_detected "$fx")"
+
+# F1 boundary: stdlib imports in test files must NOT trigger.
+fx=$(mkfixture pyd-marker-stdlib-tests-only)
+mkdir -p "$fx/tests"
+cat > "$fx/tests/test_db.py" <<'EOF'
+import sqlite3
+def test_x(): pass
+EOF
+assert_eq "import sqlite3 only inside tests/ → no (test exclude)" \
+    "python-data: no" "$(python_data_marker_detected "$fx")"
+
+# F5: protobuf-only project must NOT trigger python-data.
+# Previously `protobuf` and `grpc-tools` lived in the python-data
+# marker package list and over-triggered. Post-F5 they belong
+# exclusively to `protobuf_marker_detected()`.
+fx=$(mkfixture pyd-marker-protobuf-only)
+cat > "$fx/pyproject.toml" <<'EOF'
+[project]
+dependencies = ["protobuf>=4.25"]
+EOF
+assert_eq "pyproject.toml lists protobuf only → no (F5: not data)" \
+    "python-data: no" "$(python_data_marker_detected "$fx")"
+
+# F5: grpc-tools-only also should NOT trigger.
+fx=$(mkfixture pyd-marker-grpc-tools-only)
+cat > "$fx/requirements.txt" <<'EOF'
+grpc-tools==1.60.0
+EOF
+assert_eq "requirements.txt lists grpc-tools only → no (F5: not data)" \
+    "python-data: no" "$(python_data_marker_detected "$fx")"
+
+# F5 cross-check: the same protobuf-only fixture SHOULD trigger
+# protobuf_marker_detected — confirms ownership moved cleanly.
+fx=$(mkfixture pyd-marker-f5-cross-check)
+cat > "$fx/pyproject.toml" <<'EOF'
+[project]
+dependencies = ["protobuf>=4.25"]
+EOF
+assert_eq "F5 cross-check: protobuf-only fires protobuf-marker (not python-data)" \
+    "protobuf-marker: yes" "$(protobuf_marker_detected "$fx")"
+
+# Boundary regression: substring rejection still works for data pkgs.
+fx=$(mkfixture pyd-marker-substring-reject)
+cat > "$fx/requirements.txt" <<'EOF'
+numpyro==0.12
+aioredis==2.0
+EOF
+assert_eq "substring 'numpyro'/'aioredis' alone → no (boundary reject)" \
+    "python-data: no" "$(python_data_marker_detected "$fx")"
+
 # ── detect_target_pack_version (BD-119) ───────────────────────────────
 echo "== detect_target_pack_version =="
 

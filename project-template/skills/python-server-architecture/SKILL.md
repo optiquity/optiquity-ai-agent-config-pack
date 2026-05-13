@@ -13,7 +13,9 @@ Python process (per `docs/pack/PLATFORM-SKILLS.md` Dimension 3 "Python
 server" row).
 
 This skill is the *server-specific* half of the v10.x `python-architecture`
-skill (split per BD-035, completed in v11). Data and I/O rules
+skill, split in v11.0 by BD-141 (the `python_data_marker_detected()`
+load predicate) and BD-143 (the trinity SKILL.md split into
+`python-server-architecture` + `python-data-architecture`). Data and I/O rules
 (repository pattern, N+1 prevention, Pydantic placement, ML isolation)
 moved to `python-data-architecture` and load independently for both
 server and non-server multi-file Python projects. Both skills should

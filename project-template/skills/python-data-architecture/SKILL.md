@@ -24,7 +24,9 @@ This skill is loaded for `auditor-code`, `auditor-architecture`, and
    loaded.
 
 This skill is the *data and I/O* half of the v10.x `python-architecture`
-skill (split per BD-035, completed in v11).
+skill, split in v11.0 by BD-141 (the `python_data_marker_detected()`
+load predicate) and BD-143 (the trinity SKILL.md split into
+`python-server-architecture` + `python-data-architecture`).
 
 Foundational dependency-injection / statelessness rules (constructor
 DI for services, stateless-by-default service objects) appear in both

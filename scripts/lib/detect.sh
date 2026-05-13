@@ -326,12 +326,27 @@ detect_installed_capabilities() {
 # Markers (any one true → yes), per architecture §7.5
 # (maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-DIMENSIONS.md):
 #   (a) requirements.txt OR pyproject.toml OR setup.py OR setup.cfg
-#       lists any of these dependencies (case-insensitive,
+#       lists any of these third-party dependencies (case-insensitive,
 #       package-name boundary anchored): sqlalchemy, alembic, pydantic,
 #       aiohttp, httpx, psycopg, psycopg2, aiomysql, asyncpg, redis,
-#       pymongo, motor, boto3, aioboto3, grpc-tools, protobuf, pyarrow,
-#       pandas, numpy, scikit-learn, torch, tensorflow.
+#       pymongo, motor, boto3, aioboto3, pyarrow, pandas, numpy,
+#       scikit-learn, torch, tensorflow.
+#       NOTE: `protobuf` and `grpc-tools` were previously in this list
+#       but are now covered exclusively by `protobuf_marker_detected()`
+#       (BD-156). A protobuf-only project (e.g., `swift-protobuf` deps,
+#       Python wire-format library) does not imply data-architecture
+#       concerns — removing the over-trigger here keeps
+#       `python-data-architecture` scoped to actual data handling.
+#       (BD-035 audit finding F5 fix — see AUDIT-BD-035.md §3.)
 #   (b) >= 5 *.py files outside tests/ and test_*.py / *_test.py.
+#   (c) any *.py file outside tests/ contains an `import` of a
+#       stdlib data-handling module — currently `sqlite3` or `csv`.
+#       This catches the small pure-stdlib data-shaped CLI shape
+#       (e.g., a 3-file SQLite-backed task runner) that the skill's
+#       own applicability prose names ("files-as-DB") but markers (a)
+#       and (b) miss because stdlib imports never appear in dependency
+#       manifests and the file count is below the (b) threshold.
+#       (BD-035 audit finding F1 fix — see AUDIT-BD-035.md §3.)
 #
 # Callers: scripts/init-project.sh (pack_skill_coverage_for python row);
 # scripts/add-capability.sh references the predicate by comment only
@@ -362,7 +377,9 @@ python_data_marker_detected() {
     # to match. The negated-class construction below is portable and
     # avoids the bracket-escape landmine.
     local manifest pkg
-    local pkgs="sqlalchemy|alembic|pydantic|aiohttp|httpx|psycopg|psycopg2|aiomysql|asyncpg|redis|pymongo|motor|boto3|aioboto3|grpc-tools|protobuf|pyarrow|pandas|numpy|scikit-learn|torch|tensorflow"
+    # F5 fix (BD-035 audit): `protobuf` and `grpc-tools` removed from
+    # this list — they belong to `protobuf_marker_detected()` (BD-156).
+    local pkgs="sqlalchemy|alembic|pydantic|aiohttp|httpx|psycopg|psycopg2|aiomysql|asyncpg|redis|pymongo|motor|boto3|aioboto3|pyarrow|pandas|numpy|scikit-learn|torch|tensorflow"
     local pattern="(^|[^A-Za-z0-9_-])(${pkgs})($|[^A-Za-z0-9_.-])"
     for manifest in \
         "$target/requirements.txt" \
@@ -378,15 +395,39 @@ python_data_marker_detected() {
     done
 
     # Marker (b): >= 5 .py files outside tests/.
-    local py_count
-    py_count=$(find "$target" -name "*.py" \
+    local py_files py_count
+    py_files=$(find "$target" -name "*.py" \
         -not -path "*/tests/*" \
         -not -name "test_*.py" \
         -not -name "*_test.py" \
-        -type f 2>/dev/null | wc -l | tr -d '[:space:]')
+        -type f 2>/dev/null)
+    py_count=$(printf '%s\n' "$py_files" | grep -c . | tr -d '[:space:]')
     if [[ -n "$py_count" ]] && (( py_count >= 5 )); then
         echo "python-data: yes"
         return 0
+    fi
+
+    # Marker (c): stdlib data-handling imports in any non-test .py file.
+    # Scope is intentionally narrow — `sqlite3` (files-as-DB / persistent
+    # state) and `csv` (tabular ETL) are both explicitly named in the
+    # python-data-architecture SKILL.md applicability prose and are the
+    # canonical stdlib data-handling stories for small Python tools.
+    # The grep pattern is line-anchored to defeat prose mentions in
+    # comments / docstrings ("we don't import sqlite3 here") — only an
+    # actual `import sqlite3` / `from sqlite3 import ...` statement
+    # at line start (with optional leading whitespace) qualifies.
+    # Other stdlib modules (json, urllib, http.client, asyncio) are
+    # deliberately excluded — `json` is too noisy on its own (config
+    # files, simple parsing) and `asyncio`/`urllib` blocking-I/O
+    # concerns are already covered by `python-best-practices` rule 26
+    # which loads unconditionally for D2=python.
+    if [[ -n "$py_files" ]]; then
+        if printf '%s\n' "$py_files" \
+           | xargs grep -lE '^[[:space:]]*(import|from)[[:space:]]+(sqlite3|csv)([[:space:]]|\.|,|$)' \
+                  2>/dev/null | head -n 1 | grep -q .; then
+            echo "python-data: yes"
+            return 0
+        fi
     fi
 
     echo "python-data: no"
