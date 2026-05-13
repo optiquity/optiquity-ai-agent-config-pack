@@ -48,12 +48,13 @@ allowed-tools: Read, Grep, Glob, Bash
 25. Support both portrait and landscape where the app's purpose permits. Document any orientation lock with justification.
 26. Gesture recognizers must not conflict with system gestures (edge swipe for back, notification center pull-down).
 27. Accessibility: every interactive element must have an accessibility label. Images that convey meaning must not be marked decorative.
+28. Haptic feedback accompanies discrete tactile UI events — button confirmation, selection change, success / warning / error result. Use `UIImpactFeedbackGenerator`, `UISelectionFeedbackGenerator`, and `UINotificationFeedbackGenerator` from UIKit; in SwiftUI on iOS 17+ prefer the `.sensoryFeedback(_:trigger:)` modifier over manual generator calls. Do not fire haptics for non-interactive or background events (animation ticks, network polls, view appearance) — that is sensory noise and a battery drain. Respect the user's accessibility preferences: check `UIAccessibility.isReduceMotionEnabled` (or the `\.accessibilityReduceMotion` SwiftUI environment value) and suppress non-essential haptics when it is true. Generators must be prepared on the main actor; firing from a background thread is a defect.
 
 ## Localization
 
-28. Externalize every user-visible string. Use `String(localized:)` (SwiftUI / Swift 5.5+) backed by a `.xcstrings` String Catalog (preferred on iOS 17+) or `.strings`/`.stringsdict` files. Hardcoded user-facing literals are a finding.
-29. Tolerate translated string-length growth — design layouts and constraints for at least 30% expansion, or pseudolocalize during development to catch truncation and overflow before shipping.
-30. Use semantic layout: leading/trailing edges instead of left/right; `.layoutDirection` aware spacing; mirror navigation gestures and asymmetric icons under right-to-left (RTL) locales (Arabic, Hebrew, etc.). Do not hardcode `.left` / `.right` for user-facing layout.
-31. Format dates, times, numbers, currencies, and units locale-aware: `Date.FormatStyle`, `Decimal.FormatStyle`, `Measurement.FormatStyle`, `ListFormatter`, `RelativeDateTimeFormatter`. Never concatenate locale-sensitive substrings by hand.
-32. Maintain a single source of truth for translations — the String Catalog file under version control, with a documented translator workflow. Empty translation values, stale keys, and untranslated languages are findings.
-33. Test under at least one RTL locale and one long-string locale (German, Finnish) before release. Snapshot tests must cover both directions for any user-facing surface.
+29. Externalize every user-visible string. Use `String(localized:)` (SwiftUI / Swift 5.5+) backed by a `.xcstrings` String Catalog (preferred on iOS 17+) or `.strings`/`.stringsdict` files. Hardcoded user-facing literals are a finding.
+30. Tolerate translated string-length growth — design layouts and constraints for at least 30% expansion, or pseudolocalize during development to catch truncation and overflow before shipping.
+31. Use semantic layout: leading/trailing edges instead of left/right; `.layoutDirection` aware spacing; mirror navigation gestures and asymmetric icons under right-to-left (RTL) locales (Arabic, Hebrew, etc.). Do not hardcode `.left` / `.right` for user-facing layout.
+32. Format dates, times, numbers, currencies, and units locale-aware: `Date.FormatStyle`, `Decimal.FormatStyle`, `Measurement.FormatStyle`, `ListFormatter`, `RelativeDateTimeFormatter`. Never concatenate locale-sensitive substrings by hand.
+33. Maintain a single source of truth for translations — the String Catalog file under version control, with a documented translator workflow. Empty translation values, stale keys, and untranslated languages are findings.
+34. Test under at least one RTL locale and one long-string locale (German, Finnish) before release. Snapshot tests must cover both directions for any user-facing surface.
