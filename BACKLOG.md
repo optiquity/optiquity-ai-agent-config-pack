@@ -1353,7 +1353,7 @@ Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 
 **BD-163 — CI repair: declare fixture dependencies in test runners + reorder workflow + audit + document invariant (retroactive BD-147 CI fix)**
 Type: TODO(version) — surfaced 2026-05-12 by parallel pack chat noting the Validate Pack workflow has been failing on v11-dev for 4 consecutive runs at the `migrator-skills tests (BD-147)` step. Root cause: BD-147 commit 0622c82 wired `scripts/test-migrator-skills.sh` into the workflow BEFORE the `build test fixtures (BD-115/116/117)` step; G1 has a silent, undeclared, unchecked dependency on `test-fixtures/v10-realistic-ot/` which is gitignored and only exists post-build. CI runner had no fixture → cryptic `cp: cannot stat ...` error → 4 consecutive red CI builds since BD-147.
-Status: Open
+Status: Resolved
 Blockers: none — fix is mechanical
 Unblocks: green CI on v11-dev (currently red since BD-147); BD-093 release pin (which requires green CI per EXECUTION-PLAN-V11.0.md §7); confidence in subsequent batch test results
 File/Symbol: `scripts/test-migrator-skills.sh` (Change A: add `require_fixture <name>` helper + call at G1; document preconditions in header); `.github/workflows/validate-pack.yml` (Change B: reorder steps so all fixture-dependent tests run AFTER `build test fixtures`; add header comment documenting the invariant); `scripts/test-migrator-core.sh`, `scripts/test-migrator-manifest.sh`, `scripts/test-migrator-capability-translation.sh`, `scripts/tests/test-migrate-v10-to-v11.sh`, `scripts/tests/test-migrate-v10-to-v11-dry-run.sh`, `scripts/tests/test-migrate-v10-to-v11-gates.sh`, `scripts/tests/test-init-project.sh`, `scripts/test-persona-contracts.sh`, `scripts/tests/test-customization-preserve.sh` (Change C: audit each for similar silent fixture dependencies; apply `require_fixture` where applicable)
@@ -1370,7 +1370,7 @@ Description: BD-147 commit 0622c82 introduced `scripts/test-migrator-skills.sh` 
 **Process gap fix (parallel):** post-push CI verification via `mcp__github__list_workflow_runs` should be mandatory (not relying on user to flag failures). Will be added to documented workflow rules in the rules-documentation work.
 
 Single commit (changes A + B + C), single flip commit. validate-pack 31/31 PASS expected; CI green expected after push.
-Resolved:
+Resolved: 2026-05-12 in commit 422ec12 (fix) + d5b7d54 (BD-163 opening). Change A: require_fixture helper added to test-migrator-skills.sh + Preconditions header documented + G1 calls helper at top. Change B: validate-pack.yml step ordering reordered so migrator-skills tests runs AFTER build test fixtures + fixture manifest verify; new header comment block documents the invariant. Change C audit: of 9 sibling test runners, ONLY test-migrator-skills.sh had the silent-undeclared-dep anti-pattern (test-persona-contracts.sh already protected via build.sh die-check; 7 others synthesize own mktemp fixtures). Helper kept inline (YAGNI on shared lib — only one consumer). Fail-fast smoke verified (fixture moved aside → exit 3 with actionable error). validate-pack 31/31 PASS locally; **CI green confirmed via `gh run watch 25775179582` — all steps PASS in both validate + tests jobs on commit 422ec12.** First green CI on v11-dev since BD-147. Process gap fix (post-push CI verification) tracked for the rules-documentation work. Node.js 20 deprecation warning noted in CI annotations (informational, not blocking; tracked separately for BD-093 housekeeping or new BD before September 2026 deadline).
 
 ---
 
