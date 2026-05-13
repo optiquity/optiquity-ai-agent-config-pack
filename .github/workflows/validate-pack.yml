@@ -27,6 +27,27 @@
 # (b) = missing manifest update / fixture content drift; (c) = pack
 # behavior regression surfaced by a contract.
 #
+# Step ordering invariant for the tests: job (BD-163)
+# ===================================================
+# Tests that depend on built fixtures (in test-fixtures/<name>/) MUST
+# come AFTER the "build test fixtures" step. The fixtures are
+# gitignored build artifacts; CI runners do not have them until built.
+# Affected tests today:
+#   - migrator-skills tests (BD-147) — depends on v10-realistic-ot
+#                                     (G1 golden-snapshot regression)
+#   - persona contracts (BD-116)     — depends on existing-project-mid-dev
+#                                     and v10-realistic-ot via
+#                                     `test-fixtures/build.sh
+#                                     --for-contract <persona>`
+#   - fixture manifest verify (BD-115) — depends on all built fixtures
+# Each fixture-dependent test runner ALSO declares its precondition
+# inline via the `require_fixture` helper (test-migrator-skills.sh)
+# or via `_materialize_for_contract`'s built-fixture die-check
+# (test-fixtures/build.sh, used by persona-contracts). CI step ordering
+# is a defense-in-depth complement to those preconditions: the in-script
+# checks give a clear local-dev error; the ordering keeps CI green even
+# if a future runner forgets to call `require_fixture`.
+#
 # All test scripts run offline. tracker-provider / tracker-errors use
 # PATH-prepended fake `gh` stubs (no live-network requirement).
 #
@@ -127,15 +148,19 @@ jobs:
       - name: migrator-capability-translation tests (BD-144)
         if: always()
         run: bash scripts/test-migrator-capability-translation.sh
-      - name: migrator-skills tests (BD-147)
-        if: always()
-        run: bash scripts/test-migrator-skills.sh
       - name: build test fixtures (BD-115/116/117)
         if: always()
         run: bash test-fixtures/build.sh --all --clean
       - name: fixture manifest verify (BD-115, RELEASE-GATE item 5)
         if: always()
         run: bash test-fixtures/build.sh --verify
+      # BD-163: migrator-skills tests MUST run AFTER "build test fixtures"
+      # because G1 (golden-snapshot regression) depends on the built
+      # `test-fixtures/v10-realistic-ot/` fixture (gitignored build
+      # artifact). The runner also calls `require_fixture` defensively.
+      - name: migrator-skills tests (BD-147)
+        if: always()
+        run: bash scripts/test-migrator-skills.sh
       - name: persona contracts (BD-116, RELEASE-GATE item 3)
         if: always()
         run: bash scripts/test-persona-contracts.sh

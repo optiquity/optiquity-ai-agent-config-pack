@@ -40,11 +40,42 @@
 # Exit 0 on all pass; exit 1 on any failure.
 #
 # Per BD-147 / PLAN-SKILL-DIMENSIONS.md §2 Batch 8 + §4.5 + §7.2.
+#
+# ## Preconditions (BD-163)
+#
+# G1 depends on the built `test-fixtures/v10-realistic-ot/` fixture
+# (a gitignored build artifact, not source — only present after running
+# `bash test-fixtures/build.sh --name v10-realistic-ot`). G2 / G3 are
+# self-contained (synthesize their own fixtures under `$TMPDIR`).
+#
+# `require_fixture` (below) validates fixture preconditions explicitly
+# and fails fast with a clear, actionable error if a required fixture is
+# missing — converting the prior silent `cp: cannot stat ...` failure
+# into a self-documenting precondition. Add a `require_fixture <name>`
+# call at the top of any future G-section that touches `test-fixtures/`.
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACK_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# ── BD-163 — fixture-precondition helper ───────────────────────────────
+# Verifies that `test-fixtures/<name>/` exists AND has been built (per
+# `test-fixtures/build.sh`, every fixture is initialized as a git repo,
+# so `.git/HEAD` is the canonical built-fixture marker). On failure,
+# prints the exact build command and exits non-zero. Portable bash 3.2
+# / BSD-utils — no GNU-only constructs.
+require_fixture() {
+    local name="${1:?require_fixture: missing <name>}"
+    local fx="$PACK_ROOT/test-fixtures/$name"
+    if [[ ! -d "$fx" || ! -f "$fx/.git/HEAD" ]]; then
+        printf 'ERROR: %s requires test-fixtures/%s/ but it does not exist or is not a built fixture.\n' \
+            "$(basename "${BASH_SOURCE[1]:-$0}")" "$name" >&2
+        printf '       Build it with: bash test-fixtures/build.sh --name %s\n' "$name" >&2
+        printf '       (or build all fixtures: bash test-fixtures/build.sh --all --clean)\n' >&2
+        exit 3
+    fi
+}
 
 FIXTURE_BASE="$(mktemp -d -t test-migrator-skills.XXXXXX)"
 trap 'rm -rf "$FIXTURE_BASE"' EXIT
@@ -112,6 +143,11 @@ fi
 
 echo
 echo "=== G1: golden-snapshot regression for v10→v11 S5b helper ==="
+
+# BD-163: declare G1's fixture precondition explicitly. Fails fast with
+# an actionable error if the gitignored build artifact is missing
+# (instead of the prior silent `cp: cannot stat ...` failure).
+require_fixture "v10-realistic-ot"
 
 G1_DIR="$FIXTURE_BASE/g1"
 mkdir -p "$G1_DIR"
