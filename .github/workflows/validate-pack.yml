@@ -3,9 +3,29 @@
 # Actions log; errors name the exact file and problem.
 #
 # Two jobs:
-#   - validate: runs scripts/validate-pack.py (26 structural Checks)
+#   - validate: runs scripts/validate-pack.py (31 structural Checks)
 #   - tests:    runs every scripts/tests/*-test.sh independently so a
 #               failure in one suite does not mask another's results.
+#
+# RELEASE-GATE wiring (BD-117 / BD-118): the `tests` job exercises the
+# CI-eligible release-gate items so every push proves them. Specifically:
+#   - Gate item 3 (BD-116 persona contracts) → `persona contracts` step.
+#   - Gate item 4 (BD-118 CI green) → this workflow itself.
+#   - Gate item 5 (`test-fixtures/build.sh --verify`) → `fixture
+#     manifest verify` step.
+# Gate items 1 (per-version migrator framework adoption) and 2 (BD-114
+# real-OT dry-run) are pre-tag manual checks — intentionally NOT in CI
+# (item 2 touches a network-hosted real repo). See
+# `maintenance-docs/v11-implementation/RELEASE-GATE.md`.
+#
+# Step ordering for the BD-115/116/117 surface (intentional):
+#   (a) build test fixtures      — rebuilds fixtures from scratch
+#   (b) fixture manifest verify  — compares rebuilt SHAs vs committed
+#                                  manifest.txt (catches manifest drift)
+#   (c) persona contracts        — runs against the verified fixtures
+# Failures attribute clearly: (a) = non-determinism in a builder;
+# (b) = missing manifest update / fixture content drift; (c) = pack
+# behavior regression surfaced by a contract.
 #
 # All test scripts run offline. tracker-provider / tracker-errors use
 # PATH-prepended fake `gh` stubs (no live-network requirement).
@@ -34,7 +54,7 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: pip install pyyaml
-      - name: Run pack validation (26 Checks)
+      - name: Run pack validation (31 Checks)
         run: python3 scripts/validate-pack.py
 
   tests:
@@ -113,7 +133,10 @@ jobs:
       - name: build test fixtures (BD-115/116/117)
         if: always()
         run: bash test-fixtures/build.sh --all --clean
-      - name: persona contracts (BD-116)
+      - name: fixture manifest verify (BD-115, RELEASE-GATE item 5)
+        if: always()
+        run: bash test-fixtures/build.sh --verify
+      - name: persona contracts (BD-116, RELEASE-GATE item 3)
         if: always()
         run: bash scripts/test-persona-contracts.sh
       - name: template-translations tests
