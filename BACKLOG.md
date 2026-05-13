@@ -3124,7 +3124,7 @@ Resolved: 2026-04-24 — Phase 3-B landed on v10-dev (commits 1c5116c, db416a0, 
 
 **BD-048 — Capability-addition discovery + install-check symmetry with kickoff**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: None (BD-047 was the blocker; it is now Resolved)
 Unblocks: None
 File/Symbol: `scripts/add-capability.sh`; `supporting-docs/METHODOLOGY.md` Procedure 6
@@ -3141,7 +3141,7 @@ Context: Identified during BD-047 Phase 3-B planning (2026-04). Drafted in
   V10-PHASE-3B-PLAN-v2.md Part 10. Deferred out of v10.0 scope per
   V10-PHASE-3B-DESIGN.md Part 14 / V10-PHASE-3B-PLAN.md Q14-5 — keeps v10.0
   ship-blocker surface focused on kickoff. Candidate for v10.1 or later.
-Resolved: n/a
+Resolved: 2026-05-12 in commit e175b78 (Option A: extended add-capability.sh script-side; Procedure 6 updated). New capability_install_checks() table + probe_tool_present() helper + stage_a7_install_check() stage; existing A7 (prompt emit) renumbered to A8; write_prompt_file() embeds discovery + install-hint blocks via Form R script-side ↔ Form I PM-chat-side per BD-047 kickoff symmetry. Procedure 6 expanded to 7 steps with new G6-install gate + Symmetry with Procedure 7 paragraph + Adding a new capability row guidance. Field-delimiter switched from `|` to `:::` after smoke testing caught install-command leak (regression-guard test included). New scripts/tests/test-add-capability.sh (19/19 PASS). Manual test on test-fixtures/v11-flat-file with --add protocol:grpc confirmed A6 placeholders + A7 probe + A8 prompt with discovery+install commands. validate-pack 31/31 PASS; reviewer APPROVE WITH NITS (NIT N1 line 1194 A7→A8 fixed in same commit).
 
 ---
 
