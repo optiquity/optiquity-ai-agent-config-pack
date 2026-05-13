@@ -1351,6 +1351,29 @@ Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 
 ---
 
+**BD-163 — CI repair: declare fixture dependencies in test runners + reorder workflow + audit + document invariant (retroactive BD-147 CI fix)**
+Type: TODO(version) — surfaced 2026-05-12 by parallel pack chat noting the Validate Pack workflow has been failing on v11-dev for 4 consecutive runs at the `migrator-skills tests (BD-147)` step. Root cause: BD-147 commit 0622c82 wired `scripts/test-migrator-skills.sh` into the workflow BEFORE the `build test fixtures (BD-115/116/117)` step; G1 has a silent, undeclared, unchecked dependency on `test-fixtures/v10-realistic-ot/` which is gitignored and only exists post-build. CI runner had no fixture → cryptic `cp: cannot stat ...` error → 4 consecutive red CI builds since BD-147.
+Status: Open
+Blockers: none — fix is mechanical
+Unblocks: green CI on v11-dev (currently red since BD-147); BD-093 release pin (which requires green CI per EXECUTION-PLAN-V11.0.md §7); confidence in subsequent batch test results
+File/Symbol: `scripts/test-migrator-skills.sh` (Change A: add `require_fixture <name>` helper + call at G1; document preconditions in header); `.github/workflows/validate-pack.yml` (Change B: reorder steps so all fixture-dependent tests run AFTER `build test fixtures`; add header comment documenting the invariant); `scripts/test-migrator-core.sh`, `scripts/test-migrator-manifest.sh`, `scripts/test-migrator-capability-translation.sh`, `scripts/tests/test-migrate-v10-to-v11.sh`, `scripts/tests/test-migrate-v10-to-v11-dry-run.sh`, `scripts/tests/test-migrate-v10-to-v11-gates.sh`, `scripts/tests/test-init-project.sh`, `scripts/test-persona-contracts.sh`, `scripts/tests/test-customization-preserve.sh` (Change C: audit each for similar silent fixture dependencies; apply `require_fixture` where applicable)
+Description: BD-147 commit 0622c82 introduced `scripts/test-migrator-skills.sh` and wired it into `.github/workflows/validate-pack.yml` BEFORE the existing `build test fixtures (BD-115/116/117)` step. The new test runner's G1 (golden-snapshot regression for v10→v11 S5b helper) requires `test-fixtures/v10-realistic-ot/` — which is intentionally gitignored (build artifact, not source) and only materialized by `bash test-fixtures/build.sh --name v10-realistic-ot` in the later workflow step. CI runner has no built fixture when G1 runs → `cp: cannot stat ...` failure → red CI for every push since BD-147 (4+ consecutive runs).
+
+**The real fix addresses the root cause** (silent undeclared dependency), not the symptom (CI step ordering). Three changes:
+
+**Change A (test-runner self-documenting precondition):** add `require_fixture <name>` helper to `scripts/test-migrator-skills.sh`. The helper checks `test-fixtures/<name>/` exists and is a built fixture (presence of `.git/HEAD` or sentinel marker); if missing, exits with a clear error naming the missing fixture AND the exact command to build it (`bash test-fixtures/build.sh --name <name>`). G1 (and any future fixture-dependent G-section) calls `require_fixture v10-realistic-ot` before any fixture access. Test-runner header documents preconditions explicitly.
+
+**Change B (CI workflow ordering with documented invariant):** reorder `.github/workflows/validate-pack.yml` so all fixture-dependent test runners run AFTER `build test fixtures (BD-115/116/117)`. Add a header comment block documenting the invariant: "Tests that depend on built fixtures (test-migrator-skills G1, persona contracts, etc.) must come AFTER `build test fixtures` step."
+
+**Change C (audit other fixture-dependent test runners + apply pattern):** check every existing test runner for similar silent fixture dependencies. For each: either confirm no fixture dep (test against synthetic temp dir), OR apply `require_fixture` for explicit dep. This prevents the same anti-pattern recurring.
+
+**Process gap fix (parallel):** post-push CI verification via `mcp__github__list_workflow_runs` should be mandatory (not relying on user to flag failures). Will be added to documented workflow rules in the rules-documentation work.
+
+Single commit (changes A + B + C), single flip commit. validate-pack 31/31 PASS expected; CI green expected after push.
+Resolved:
+
+---
+
 **BD-162 — Extend `deployment-python/SKILL.md` with metrics + tracing + sampling + alerting + retention rules (cross-cutting from BD-032 audit)**
 Type: TODO(version) — surfaced 2026-05-12 from BD-032 audit cross-cutting note (audit-methodology rule 21 names metrics + tracing + sampling rate + alerting / SLO + log retention as observability sub-domains, but the loaded `deployment-python` skill carries only one observability rule (JSON logging) — rule's reach exceeds loaded skills' grasp)
 Status: Open
