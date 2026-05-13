@@ -29,17 +29,16 @@ Per `audit-methodology` rule 15:
   behind an abstract reference instead of querying a capability.
   LSP is required; capabilities are recommended — file capability
   findings under this bullet, not under LSP.
-- **Observability infrastructure** — are logs, metrics, and traces wired up
-  at the right architectural layers? Does the project have a logger
+- **Observability infrastructure** — are logs, metrics, and traces wired
+  up at the right architectural layers? Does the project have a logger
   abstraction at the boundary, metric collection in the service layer,
   trace context propagated across async boundaries? This is about whether
-  the wiring *exists*, not whether it is configured correctly for
-  deployment (that is `auditor-ops`'s scope per rule 21). Source-file
-  observability *code* that configures the runtime for a deployment
-  target (endpoint URLs, resource attributes, exporter installation
-  gated on environment) is the auditor-ops bullet — the file path
-  notwithstanding. Findings about log *content* (credentials, tokens,
-  PII in log messages) belong to `auditor-security` per rule 33.
+  the wiring *exists*. For the full ownership boundary (auditor-architecture
+  vs auditor-ops vs auditor-security on observability findings, including
+  the named-test rubric distinguishing structural vs deployment-target
+  fixes), see `project-template/skills/audit-methodology/SKILL.md` rule 21
+  (auditor-ops scope and boundary clarification). The skill is canonical;
+  this bullet does not restate it.
 
 ## Out of scope
 

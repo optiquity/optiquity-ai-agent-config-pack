@@ -25,18 +25,14 @@ operational concerns (per `audit-methodology` rule 21):
   validated at startup, feature flag defaults sane, per-environment config
   correctness (dev / staging / prod), drift between environments flagged.
   Hardcoded environment-specific values in source are findings.
-- **Observability wiring** — logging output format correct for the
-  deployment target (JSON for cloud, plain for local), metrics endpoints
-  exposed and documented, tracing exporter configured, log levels tunable
-  via configuration not code changes. Whether the wiring exists at all
-  belongs to `auditor-architecture`; whether it is configured correctly for
-  deployment is yours. Source-file observability *code* that configures
-  the runtime for a deployment target (endpoint URLs, resource attributes,
-  exporter installation gated on environment) is yours — the file path
-  notwithstanding. Findings about log *content* (credentials, tokens,
-  PII in log messages) belong to `auditor-security` per rule 33; you may
-  surface them as deployment-config-shaped concerns and annotate
-  `(also detected by: security)`.
+- **Observability wiring** — logging output format, log retention,
+  metrics endpoints, sampling rates, tracing exporter setup, alerting /
+  SLO definitions. For the full ownership boundary (auditor-ops vs
+  auditor-architecture vs auditor-security on observability findings,
+  including the named-test rubric and the "when uncertain, file under
+  auditor-ops" default), see `project-template/skills/audit-methodology/SKILL.md`
+  rule 21 (auditor-ops scope and boundary clarification). The skill is
+  canonical; this bullet does not restate it.
 - **CI workflow correctness** — `.github/workflows/*.yml` or equivalent:
   required checks present, secrets passed via repository secrets not
   hardcoded, build matrix covers supported platforms, release workflows
