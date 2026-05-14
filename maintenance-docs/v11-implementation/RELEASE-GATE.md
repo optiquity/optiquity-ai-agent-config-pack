@@ -35,8 +35,8 @@ commands, specific pass criteria). It is a checklist, not a tutorial.
 
 This gate is **separate from** per-batch CI gates (those are documented
 in `maintenance-docs/v11-implementation/EXECUTION-PLAN-V11.0.md` §7) and
-**separate from** the final milestone audit (Batch 21) and dog-food
-migration (Batch 22). Those run earlier in the release sequence; this
+**separate from** the final milestone audit (Batch 22) and dog-food
+migration (Batch 23). Those run earlier in the release sequence; this
 gate is the last barrier before `git tag`.
 
 ---

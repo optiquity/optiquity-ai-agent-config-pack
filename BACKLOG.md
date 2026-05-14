@@ -1351,6 +1351,128 @@ Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 
 ---
 
+**BD-170 — Pre-decomposed v11-realistic-ot fixture per-entry tree extension (combined with BD-160 in commit 19f per Pack-Chat-direct R-2 resolution)**
+Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
+Status: Open
+Blockers: BD-164 (BD-160 dependency satisfied trivially — BD-160 ships in same commit per Pack-Chat-direct R-2 resolution per `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §10.2)
+Unblocks: BD-102 dog-food (Batch 23 per Addendum #1 §2.2 renumber cascade — was Batch 22)
+File/Symbol:
+  - `test-fixtures/build.sh` (`_build_realistic_for_version` v11 case dispatch per BD-160 + extension to call BD-164 decompose helper per integration parent §12.1; coder picks fixture-generator function structure per Addendum #1 §9.1)
+  - `test-fixtures/manifest.txt` (regeneration per integration parent §12.4)
+  - `test-fixtures/README.md` (table row for `v11-realistic-ot` per BD-160 spec)
+Description: Combined commit shipping BD-160 (v11 case dispatch + C2/C3 customization re-verification on v11 surface) + BD-170 (per-entry tree extension + round-trip test) per Pack-Chat-direct R-2 resolution. Both BDs are v11-realistic-ot fixture surface work and share the same dependency on BD-164 helpers; combining them avoids artificial separation. Per `maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §12.1 + §8.7 + Addendum #1 §6.4 BD table + PLAN-PER-ENTRY-SPLIT-BATCH-19.md §5.7.
+
+---
+
+**BD-169b — Per-entry split PM-only wording updates (PACK-CHAT.md row + README.md Repository Layout entries)**
+Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass; split from BD-169 per Addendum #1 §6.3
+Status: Open
+Blockers: BD-169
+Unblocks: none
+File/Symbol (PM-only — Pack Chat applies):
+  - `PACK-CHAT.md` (file-access strategy table — two new rows at lines 38–47 per Addendum #2 §5.2 verbatim)
+  - `README.md` (Repository Layout entries naming pack-side `/backlog/`, `/changelog/` and project-template-side `docs/project/{backlog,implementation-plan,changelog}/` per `maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §4.4.3 + Addendum #1 §6.3)
+Description: PM-only wording updates for per-entry decomposition; paired with BD-169 pack-product wording. Per `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.9 + §6.1 BD-169b sample text.
+
+---
+
+**BD-169 — Per-entry split pack-product wording updates (PM-CHAT.md + STATUS.md disclaimer + MERGE-STRATEGY + MIGRATION-v10-to-v11 + audit-methodology SKILL.md scope + skill directives)**
+Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
+Status: Open
+Blockers: BD-167
+Unblocks: none
+File/Symbol (coder authors final wording per planner-deferred items in PLAN §5.8):
+  - `project-template/docs/pack/PM-CHAT.md` (TWO additions: file-access strategy table row addition per Addendum #2 §5.4 verbatim; STATUS.md disclaimer guidance paragraph per Pack-Chat-direct R-3 resolution at integration parent §5.3 disclaimer shape)
+  - `supporting-docs/MERGE-STRATEGY.md` (one paragraph per integration parent §4.4.3 explaining v11.0 per-entry-tree mirror-vs-source distinction)
+  - `supporting-docs/MIGRATION-v10-to-v11.md` (~30-line section per integration parent §4.4.3 covering decomposition behavior + backup rollback + `--force-overwrite-mirror` semantics + BD-095 bridge)
+  - `project-template/skills/audit-methodology/SKILL.md` (audit-scope rule extension per Pack-Chat-direct R-4 resolution: per-entry tree files in scope under auditor-docs rule 29; regenerated mirrors out of scope when per-entry tree present; auditor agent files NOT modified — skill is authoritative source per its own §66 + per `auditor.md` line 11-12)
+  - `.claude/skills/pack-startup/SKILL.md` + `.codex/skills/pack-startup/SKILL.md` + `.gemini/commands/pack-startup.toml` (one-line directive per Addendum #1 §1.3)
+  - `project-template/skills/pm-startup/SKILL.md` (canonical) + `.claude/skills/`, `.codex/skills/`, `.gemini/commands/` per-CLI mirrors (one-line directive)
+Description: Pack-product wording updates for per-entry decomposition. Excludes PM-only edits (PACK-CHAT.md row + README.md Repository Layout — those land in BD-169b). Per `maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §4.4.3 + Addendum #1 §6.3 + Pack-Chat-direct R-3 + R-4 resolutions + PLAN-PER-ENTRY-SPLIT-BATCH-19.md §5.8. Auditor agent files (`auditor.md` / `auditor.toml` × 3 CLIs) are NOT modified per R-4 resolution — the audit-methodology SKILL.md is the authoritative source for audit-scope rules and the agent files delegate to the skill per `auditor.md` line 11-12.
+
+---
+
+**BD-168 — `validate-pack.py` Check 32 (mirror-in-sync) + Check 33 (TOC-in-sync) + Check 34 (cross-reference integrity)**
+Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
+Status: Open
+Blockers: BD-164, BD-167
+Unblocks: none
+File/Symbol:
+  - `scripts/validate-pack.py` (three new check functions appended after current Check 31 at line 2425 + new `STREAMS` constant; coder picks function names + STREAMS constant shape per Addendum #1 §9.1 + integration parent §18.2 #5)
+  - `scripts/tests/test-validate-pack-checks-32-33-34.sh` (new test runner; coder picks placement vs folding into existing test surface per integration parent §18.2 #6)
+Description: Three new validator checks per `maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §10. Each is a Signal 4 trip per `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md` §3.2; THIS architect+planner pass IS the defense. Each SKIPs gracefully when per-entry tree is absent (per integration parent §10.5 backward-compat for pre-v11.0 clients). Pack-side scope only per integration parent §10.6. Per `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.6.
+
+---
+
+**BD-167b — Per-entry split PM-only edits (trinity Key files + PACK-AGENTS.md PM-only directories list + CLAUDE.md pack-memory bullet + pack-* agent prompts × 15)**
+Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass; split from BD-167 per Addendum #1 §6.2
+Status: Open
+Blockers: BD-167
+Unblocks: none
+File/Symbol (PM-only — Pack Chat applies; trinity rule applies per trinity sets and pack-* agent set):
+  - `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (pack root) — Key files line addition + Pack-memory mode-aware bullet per Addendum #1 §3.4
+  - `project-template/CLAUDE.md` / `project-template/AGENTS.md` / `project-template/GEMINI.md` — Key files / Document locations line addition
+  - `PACK-AGENTS.md` (lines 139–142) — PM-only directories list expansion per integration parent §6.4 + Addendum #1 §3.1 honest Signal 9 trip framing (NOT "refactor not expansion")
+  - `.claude/agents/pack-{architect,coder,docs-researcher,planner,reviewer}.md` (5 files; Markdown bullet additions to "Inputs to read" block per Addendum #1 §1.4)
+  - `.codex/agents/pack-{architect,coder,docs-researcher,planner,reviewer}.toml` (5 files; TOML format per Addendum #2 §1 BLOCKER correction; same substantive addition placed inside existing `prompt = """..."""` per Addendum #2 §1.4)
+  - `.gemini/agents/pack-{architect,coder,docs-researcher,planner,reviewer}.md` (5 files; Markdown with YAML frontmatter)
+  - (STATUS.md disclaimer surface — RESOLVED per Pack-Chat-direct R-3 Option A: lives in BD-169 19g-pack PM-CHAT.md guidance; NOT in BD-167b)
+Description: PM-only edits paired with BD-167 client artifact installs. Trinity rule applies for the trinity sets (pack-root × 3, project-template × 3) and pack-* agent set (5 agents × 3 CLIs = 15 files). Layer 1 + Layer 4 of the four-layer discoverability cascade per Addendum #1 §1. Honest Signal 9 trip framing per Addendum #1 §3.1 (THIS architect+planner pass IS the justification). Per `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.3.
+
+---
+
+**BD-167 — Per-entry split client artifact installs (pack-product templates + install plumbing; absorbs BD-161)**
+Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
+Status: Open
+Blockers: BD-164
+Unblocks: BD-165, BD-166, BD-168, BD-169
+File/Symbol:
+  - `project-template/docs/project/backlog/_rules.md`, `_intro.md` (canonical per-stream contract + preamble per sidecar §4 + Addendum #1 §3 mode-aware)
+  - `project-template/docs/project/implementation-plan/_rules.md`, `_intro.md` (canonical per-stream contract + preamble)
+  - `project-template/docs/project/changelog/_rules.md`, `_intro.md`, `_format.md` (canonical per-stream contract + preamble + project-changelog Format Rules per sidecar §3.5 — project-side asymmetry; pack changelog has no `_format.md` analog)
+  - `scripts/migrate-v10-to-v11.sh` (`_v10_to_v11_install_v11_artifacts` extension at lines 144–148 to install new templates + BD-161 net-new SKILL.md installs; coder picks function placement per integration parent §3.1)
+  - `scripts/lib/tracker-agent-read.sh` (`_tar_read_entry_flat` at line 153 extended to prefer per-entry file when tree exists; mode-aware per Addendum #1 §3.2; backward-compat for pre-v11.0 client repos via mirror fallback)
+  - BD-161 net-new SKILL.md installs absorbed: `swift-concurrency-patterns`, `apple-swiftdata-patterns`, `protobuf-patterns` (BD-156/157/158) + `python-server-architecture`, `python-data-architecture`, `python-observability-patterns` (BD-162) per integration parent §17.2 + §8.14
+Description: Ship pack-product canonical templates for per-entry trees + extend migrator install step to ship them + extend `tracker-agent-read.sh` `_tar_read_entry_flat` for per-entry-prefer-mirror-fallback. Includes BD-161 absorption for client artifact install batch. Per integration parent §17.2 + Addendum #1 §6.2 + `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.2.
+
+---
+
+**BD-166 — `init-project.sh` greenfield per-entry tree install (S11 stage extension)**
+Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
+Status: Open
+Blockers: BD-164, BD-167
+Unblocks: none
+File/Symbol:
+  - `scripts/init-project.sh` (`stage_s11_v11_artifacts` at line 803 extended; coder picks stage extension vs new stage per integration parent §8.17 + §18.1 #5; PLAN recommendation: extend S11 with precondition check `[[ -d project-template/docs/project/<stream> ]]` per PLAN §10.6 R-6)
+Description: Extend `init-project.sh` greenfield path to install per-entry tree skeleton + supporting files + regenerated empty mirrors. Reads canonical templates from `project-template/docs/project/<stream>/` (created by BD-167); writes to client `docs/project/<stream>/`. Per integration parent §8.17 + §9.3 + `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.5.
+
+---
+
+**BD-165 — `_v10_to_v11_decompose_streams` 6th sub-operation in v10→v11 post-dispatch hook + `--force-overwrite-mirror` flag (BD-095 bridge)**
+Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
+Status: Open
+Blockers: BD-164
+Unblocks: BD-167
+File/Symbol:
+  - `scripts/migrate-v10-to-v11.sh` (post-dispatch hook 6th sub-op addition at lines 144–148; coder picks function name / position per integration parent §3.1 + §18.1 #4; post-report hook gains v11.0 decomposition advisory paragraph per integration parent §8.18 sample text ~12 lines)
+  - `scripts/lib/migrate-v10-to-v11/decompose.sh` (NEW adapter-private helper that wraps the BD-164 decompose helper)
+  - `scripts/lib/migrator-core.sh` (mode-flag parser at lines 264–276 extension for `--force-overwrite-mirror` per Addendum #2 §4.5; default `_MIGRATOR_FORCE_OVERWRITE_MIRROR="0"` near `_MIGRATOR_MODE` initialization at line 121; usage line addition near lines 243–245)
+Description: Add 6th sub-op to v10→v11 migrator's post-dispatch hook (currently 5 sub-ops at lines 144–148). Constraint: MUST run AFTER all 5 existing sub-ops so the decompose step reads final v11-shape monolithic files (per integration parent §3.1 constraint statement). Bridges to BD-095 two-phase `--dry-run` / `--apply` / `--resume` contract per Addendum #2 §4: dry-run reports divergence informationally (exit 0); apply/resume blocks with `EXIT_GATE_FAILED=31` (verified at `scripts/lib/migrator-core.sh:70`) unless `--force-overwrite-mirror` is passed. Post-report hook gains v11.0 decomposition advisory paragraph per integration parent §8.18 sample text (~12 lines, names rollback path). Per `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.4.
+
+---
+
+**BD-164 — Per-entry split helpers (decompose + mirror generator + `_toc.md` regenerator)**
+Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
+Status: Open
+Blockers: BD-104 (rename), BD-128 (CI green), BD-131..BD-134 (tracker repairs), BD-111 (final tracker dependency surface per integration parent §17.2 + Addendum #1 §2.3)
+Unblocks: BD-165, BD-166, BD-167, BD-168, BD-170
+File/Symbol:
+  - `scripts/lib/per-entry/` (NEW directory; coder picks file structure per integration parent §18.1 #2 + Addendum #1 §9 qualifier; PLAN recommendation: sub-directory with `decompose.sh`, `mirror-generate.sh`, `toc-regenerate.sh`, `_lib.sh` shared parser helper)
+  - `scripts/tests/test-per-entry.sh` (NEW test runner: round-trip identity / empty-tree / supporting-file admission / regenerator divergence-warning behavior per integration parent §18.2 #1)
+Description: Implement per-entry decomposition helpers per `maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §6.2 (mirror generator) + §5.2 (TOC regenerator) + sidecar parent `maintenance-docs/v11-research/ARCHITECTURE-PER-ENTRY-SPLIT.md` §3 (decompose helper). Library helpers in `scripts/lib/` per signal-6 carve-out (no new top-level scripts). Mirror generator + TOC regenerator + decompose helper share parsing logic (per sidecar §6.2). Decompose adds line-1 HTML-comment back-pointer per Addendum #2 §2 (no body-field back-pointer; superseded the body-field upgrade in Addendum #1 §1.2 because it violated V3.1-DELTA §3 A2 + sidecar parent §3.1's byte-additive invariant). Mirror generator strips line-1 HTML-comment when emitting (preserves byte-additive grammar invariant per integration parent §4.2). Helper reads `_rules.md` at runtime ONLY for the supporting-file basename list (per integration parent §7.5 split — entry regex + state vocabulary + grammar field labels are hard-coded). Test fixtures cover round-trip identity / empty-tree / supporting-file admission per integration parent §18.2 #1. Per `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.1.
+
+---
+
 **BD-163 — CI repair: declare fixture dependencies in test runners + reorder workflow + audit + document invariant (retroactive BD-147 CI fix)**
 Type: TODO(version) — surfaced 2026-05-12 by parallel pack chat noting the Validate Pack workflow has been failing on v11-dev for 4 consecutive runs at the `migrator-skills tests (BD-147)` step. Root cause: BD-147 commit 0622c82 wired `scripts/test-migrator-skills.sh` into the workflow BEFORE the `build test fixtures (BD-115/116/117)` step; G1 has a silent, undeclared, unchecked dependency on `test-fixtures/v10-realistic-ot/` which is gitignored and only exists post-build. CI runner had no fixture → cryptic `cp: cannot stat ...` error → 4 consecutive red CI builds since BD-147.
 Status: Resolved
@@ -1592,12 +1714,12 @@ Resolved: 2026-05-11 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 Type: TODO(version) — surfaced 2026-05-10 during v11.0 plan review (no batch was scheduled for BD-136 implementation despite BD-136 being a v11.0 ship-gate item per user direction)
 Status: Resolved
 Blockers: none
-Unblocks: BD-136 implementation actually happens in v11.0; downstream Batch 21 (BD-100 final audit) and Batch 22 (BD-102 dog-food) can rely on the marker-aware merger being live
+Unblocks: BD-136 implementation actually happens in v11.0; downstream Batch 22 (BD-100 final audit) and Batch 23 (BD-102 dog-food) can rely on the marker-aware merger being live
 File/Symbol:
-  - `maintenance-docs/v11-implementation/EXECUTION-PLAN-V11.0.md` — insert new **Batch 20b** for BD-136 implementation between Batch 20 (auditor agents) and Batch 21 (BD-100 final audit). Batch 20b is sequential (4 sub-commits — see scope below). Update Batch 21 (BD-100) audit scope to include BD-136 verification. Update Batch 22 (BD-102) to specify dog-food MUST exercise the marker-aware merge path.
+  - `maintenance-docs/v11-implementation/EXECUTION-PLAN-V11.0.md` — insert new **Batch 21b** for BD-136 implementation between Batch 21 (auditor agents) and Batch 22 (BD-100 final audit). Batch 21b is sequential (4 sub-commits — see scope below). Update Batch 22 (BD-100) audit scope to include BD-136 verification. Update Batch 23 (BD-102) to specify dog-food MUST exercise the marker-aware merge path.
   - `BACKLOG.md` — this entry (BD-138) flips to Resolved in the same commit as the EXECUTION-PLAN amendment.
-Description: BD-136 currently has spec (3 amendments) but no scheduled implementation batch. Without a batch slot it would default-slip to v11.1. User direction (2026-05-10): no v11.1 deferral — schedule it. Batch 20b lands BD-136 implementation in 4 sub-commits: (1) marker-aware merger in `scripts/lib/customization-preserve.sh` (or new sibling `marker-preserve.sh`) implementing L-1..L-10 + the override mechanism; (2) `scripts/validate-pack.py` new Check enforcing V-1..V-8 validator surface; (3) PM-CHAT.md authoring procedure section (P-1..P-8) + cross-references in INSTALL-PROCEDURES.md / SETUP-NEW.md / SETUP-EXISTING.md / init-project.sh post-install hint + seed Shape A marker pair in `project-template/{CLAUDE,AGENTS,GEMINI}.md` + `[CONDITIONAL]` retirement in canonical templates; (4) `scripts/tests/test-customization-preserve-bd136.sh` covering M-1..M-10 + add M-11/M-12 fixtures to `test-fixtures/`. Each sub-commit is independently approve-able per the stop-before-commit rule. Existing M-8 fixture (`test-fixtures/v11-trinity-marker-prepped/`) becomes the round-trip golden the merger must reproduce byte-identical.
-Resolved: 2026-05-10 — EXECUTION-PLAN-V11.0.md amended to insert Batch 20b for BD-136 implementation; Batch 21 (BD-100) and Batch 22 (BD-102) scope updated to reference BD-136 verification + marker-aware merge path. BD-138 was a scheduling-only BD; resolved in the same commit as the plan amendment.
+Description: BD-136 currently has spec (3 amendments) but no scheduled implementation batch. Without a batch slot it would default-slip to v11.1. User direction (2026-05-10): no v11.1 deferral — schedule it. Batch 21b lands BD-136 implementation in 4 sub-commits: (1) marker-aware merger in `scripts/lib/customization-preserve.sh` (or new sibling `marker-preserve.sh`) implementing L-1..L-10 + the override mechanism; (2) `scripts/validate-pack.py` new Check enforcing V-1..V-8 validator surface; (3) PM-CHAT.md authoring procedure section (P-1..P-8) + cross-references in INSTALL-PROCEDURES.md / SETUP-NEW.md / SETUP-EXISTING.md / init-project.sh post-install hint + seed Shape A marker pair in `project-template/{CLAUDE,AGENTS,GEMINI}.md` + `[CONDITIONAL]` retirement in canonical templates; (4) `scripts/tests/test-customization-preserve-bd136.sh` covering M-1..M-10 + add M-11/M-12 fixtures to `test-fixtures/`. Each sub-commit is independently approve-able per the stop-before-commit rule. Existing M-8 fixture (`test-fixtures/v11-trinity-marker-prepped/`) becomes the round-trip golden the merger must reproduce byte-identical.
+Resolved: 2026-05-10 — EXECUTION-PLAN-V11.0.md amended to insert Batch 21b for BD-136 implementation; Batch 22 (BD-100) and Batch 23 (BD-102) scope updated to reference BD-136 verification + marker-aware merge path. BD-138 was a scheduling-only BD; resolved in the same commit as the plan amendment. (Batch labels backstamped 2026-05-14 from Batch 20b/21/22 to Batch 21b/22/23 per Addendum #1 §2.2 renumber cascade — per-entry split inserted as NEW Batch 19, pushing existing 19+ up by one.)
 
 ---
 
@@ -1621,7 +1743,7 @@ Resolved: 2026-05-10 — direct execution by Pack Chat (no pack-coder agent need
 **BD-136 — Trinity marker-section preservation pattern (Shape A + Shape B) + PM-chat authoring procedure**
 Type: TODO(version) — surfaced 2026-05-10 during OT v10→v11 trinity prep; verified scope against `scripts/lib/customization-preserve.sh:145-179` (12-class file inventory), `supporting-docs/MERGE-STRATEGY.md`, and `supporting-docs/INSTALL-PROCEDURES.md` lines 472-479 (`[CONDITIONAL]` H2 convention)
 Status: Open
-Blockers: none (independent of remaining v11.0 batches; can land any time before Batch 22 BD-102 dog-food migration)
+Blockers: none (independent of remaining v11.0 batches; can land any time before Batch 23 BD-102 dog-food migration)
 Unblocks: byte-identical preservation of project-customized prose inside trinity files across pack updates; eliminates the OT-style "one-shot manual re-merge after every pack refresh" burden; closes the explicit BD-088/MERGE-STRATEGY.md §1 placeholder ("Future BDs may add explicit marker-section + diff-recognition fallback"); resolves the empty-pack-H2 problem and provides a clean override mechanism for project-overrides-pack-section cases
 **Spec — Two H2 ownership shapes:**
   - **Shape A — Pack-owned H2 with project body extensions.** H2/H3 line OUTSIDE markers; pack-owned body content OUTSIDE markers; project additions wrapped in marker pairs WITHIN the section body. Pack owns the H2 name and the canonical body. Project may ADD content (fill-in placeholders, additional bullets, sub-paragraphs) inside markers but cannot delete pack body or rename the H2. On pack update: pack body refreshes via 3-way merge; project marker contents preserved byte-identical.
