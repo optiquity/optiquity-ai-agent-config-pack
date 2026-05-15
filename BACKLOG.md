@@ -886,7 +886,7 @@ Type: TODO(version)
 Status: Open
 Blockers: BD-063, BD-064, BD-065, BD-067
 Unblocks: BD-107, BD-108
-File/Symbol: `scripts/lib/pack-tracker/phase-task-parser.py`, `phase-task-emitter.py`, `sidecar-schema.py` (extend), `labels.py` (extend), `id-map.py` (extend), `scripts/tests/test-phase-task-parser.sh`
+File/Symbol: NEW `scripts/lib/tracker-phase-task.sh` (parser + emitter; coder may split into `tracker-phase-task-parser.sh` + `tracker-phase-task-emitter.sh` per the existing `tracker-migrate-forward.sh`/`tracker-migrate-reverse.sh` split convention — planner-deferred); EXTEND `scripts/lib/tracker-sidecar.sh` (`phase_tasks` block + per-task `dependency_edges` with `annotation` sub-field per V3.3 §6.R); EXTEND `scripts/lib/tracker-labels.sh` (`derived-from:` + `promoted-to:` label family; NOT `folded-into:` per Path-3 forbidden); EXTEND `scripts/lib/tracker-migrate-forward.sh` + `scripts/lib/tracker-migrate-reverse.sh` (id-map handling for phase tasks; `.pack-tracker/id-map.json` is runtime data, not new code); NEW `scripts/tests/test-tracker-phase-task.sh`. **(File/Symbol corrected 2026-05-14 from stale Python paths in non-existent `scripts/lib/pack-tracker/` subdirectory to bash convention per existing `scripts/lib/tracker-*.sh` files; `.pack-tracker/` is the client runtime data directory not a code subdirectory.)**
 Description: Phase task as first-class L2 entity per V3.3 D-21. Identifier
   `phase-N.M` (lowercase, dash-separated; M is integer task number from .md).
   Parser reads `### Tasks` blocks under `## Phase N` headings; emitter
@@ -902,7 +902,7 @@ Type: TODO(version)
 Status: Open
 Blockers: BD-106, BD-108
 Unblocks: None
-File/Symbol: `scripts/lib/pack-tracker/promote.sh`, `promote.py`, `project-template/docs/pack/PM-CHAT.md`, `METHODOLOGY.md` § Part 7 lines 1057-1064, `project-template/HELP-FRAGMENT.md`, 3 test scripts
+File/Symbol: NEW `scripts/lib/tracker-promote.sh` (Path 1 + Path 2 + direct close orchestration; consumes BD-108's `tracker-links.sh` for Path 2's "new phase task + dependency edge" case per V3.3 §3); EXTEND `scripts/pack-tracker.sh` (add `pack td promote --to=phase-N` and `--to=phase-N.M` verb dispatchers); EXTEND `project-template/docs/pack/PM-CHAT.md` (PM Chat orchestration: invokes architect by default for Path 1 per V3.3 §6.P resolution; planner conditional on architect's call; threshold advice per V3.3 §7.1); EXTEND `supporting-docs/METHODOLOGY.md` § Part 7 lines 1057-1064 (TD resolution-path decision logic per V3.3 §3); EXTEND `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md` (or wherever the tracker help fragment lives — coder verifies); NEW 3 test scripts (e.g., `test-tracker-promote-path1.sh`, `test-tracker-promote-path2.sh`, `test-tracker-promote-direct.sh` — coder may consolidate into one combined runner per pack convention). **(File/Symbol corrected 2026-05-14 from stale Python `promote.py` and non-existent `scripts/lib/pack-tracker/` subdirectory to bash convention per existing `scripts/lib/tracker-*.sh` files.)**
 Description: PM Chat orchestration for `pack td promote --to=phase-N`
   (Path 1; new phase epic) and `pack td promote --to=phase-N.M` (Path 2;
   new phase task); direct close uses v10 lifecycle unchanged. Path 3
@@ -918,7 +918,7 @@ Type: TODO(version)
 Status: Open
 Blockers: BD-106, BD-070
 Unblocks: None
-File/Symbol: `scripts/lib/pack-tracker/links.py`, `cycle-check.py`, `dependencies-bullet-parser.py`, `blockers-grammar.py` (extend), `METHODOLOGY.md` § Part 4 line 263 + § Part 7 lines 990-993 + 1025-1029, 2 test scripts
+File/Symbol: NEW `scripts/lib/tracker-links.sh` (uniform cross-entity dependency model across 6 entity-pair types per V3.3 §5.1; uses V1 §5.3 reserved `link.kind = "blocks"/"blocked-by"` open-string family; no new provider operation; no new capability flag); NEW `scripts/lib/tracker-cycle-check.sh` (cycle check at link-creation time; K=10 default per V3.3 §6.Q; configurable via `tracker.toml [graph] cycle_check_k`); EXTEND `scripts/lib/tracker-migrate-forward.sh` + `scripts/lib/tracker-migrate-reverse.sh` (Dependencies bullet parser + Blockers grammar `phase-N.M` admission; flat-file ↔ tracker round-trip per V3.3 §5.2 / §5.3); EXTEND `supporting-docs/METHODOLOGY.md` § Part 4 line 263 (Dependencies bullet codification) + § Part 7 lines 990-993 (Blockers grammar `phase-N.M` admission) + 1025-1029 (gate-check extension); NEW 2 test scripts (`test-tracker-links.sh` + `test-tracker-cycle-check.sh`). **(File/Symbol corrected 2026-05-14 from stale Python paths in non-existent `scripts/lib/pack-tracker/` subdirectory to bash convention per existing `scripts/lib/tracker-*.sh` files.)**
 Description: Uniform cross-entity dependency model across 6 entity-pair
   types (TD↔phase epic, TD↔phase task, phase task↔phase task same/cross-phase,
   TD↔TD, TD↔BD). Uses V1 §5.3 reserved `link.kind` open-string family; no
