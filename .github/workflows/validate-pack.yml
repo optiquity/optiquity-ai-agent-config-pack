@@ -4,8 +4,9 @@
 #
 # Two jobs:
 #   - validate: runs scripts/validate-pack.py (structural Checks)
-#   - tests:    runs every scripts/tests/*-test.sh independently so a
-#               failure in one suite does not mask another's results.
+#   - tests:    runs each enumerated scripts/tests/*-test.sh independently
+#               (per-name list below — not a glob) so a failure in one suite
+#               does not mask another's results.
 #
 # RELEASE-GATE wiring (BD-117 / BD-118): the `tests` job exercises the
 # CI-eligible release-gate items so every push proves them. Specifically:
@@ -144,6 +145,27 @@ jobs:
       - name: tracker error mapping tests (BD-066)
         if: always()
         run: bash scripts/tests/tracker-errors-test.sh
+      - name: tracker-config-schema tests (BD-078, validate-pack Check 29)
+        if: always()
+        run: bash scripts/tests/tracker-config-schema-test.sh
+      - name: recommendation-state-schema tests (BD-079, validate-pack Check 30)
+        if: always()
+        run: bash scripts/tests/recommendation-state-schema-test.sh
+      - name: tracker BD-129 gh-repo routing tests (BD-129)
+        if: always()
+        run: bash scripts/tests/tracker-bd129-gh-repo-test.sh
+      - name: tracker BD-130 doctor-wired tests (BD-130)
+        if: always()
+        run: bash scripts/tests/tracker-bd130-doctor-wired-test.sh
+      - name: tracker BD-132 init-disable race tests (BD-132)
+        if: always()
+        run: bash scripts/tests/tracker-bd132-race-test.sh
+      - name: tracker BD-133 header-preservation tests (BD-133)
+        if: always()
+        run: bash scripts/tests/tracker-bd133-header-preservation-test.sh
+      - name: tracker BD-134 close-retry tests (BD-134)
+        if: always()
+        run: bash scripts/tests/tracker-bd134-close-retry-test.sh
       - name: recommendation tests (BD-072 / D-19)
         if: always()
         run: bash scripts/tests/recommendation-test.sh
