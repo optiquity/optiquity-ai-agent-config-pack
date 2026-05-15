@@ -66,7 +66,10 @@ _gh_classify_error() {
         *"HTTP 401"*|*"Bad credentials"*|*"token has expired"*|*"401 Unauthorized"*)
             tracker_error_emit "auth-expired" "$content"
             ;;
-        *"HTTP 403"*|*"insufficient_scope"*|*"requires the"*"scope"*|*"forbidden"*|*"Forbidden"*)
+        *"HTTP 403"*|*"insufficient_scope"*|*"requires the"*"scope"*|*"forbidden"*|*"Forbidden"*|*"FORBIDDEN"*)
+            # FORBIDDEN: all-caps form is the documented EMU wire shape
+            # for cross-enterprise dependency calls per EXTERNAL-RESEARCH
+            # §1.5 line 87 ("FORBIDDEN: Unauthorized; path: addBlockedBy").
             tracker_error_emit "auth-insufficient-scope" "$content"
             ;;
         *"could not resolve host"*|*"connection refused"*|*"connection reset"*|*"timeout"*|*"TLS handshake"*|*"network is unreachable"*)
@@ -474,12 +477,26 @@ tracker_provider_gh_set_milestone() {
 # kind: blocks|blocked-by|related|duplicates|parent|child
 #
 # Implementation per V1 §2.7.1 row 12:
-#   - blocks/blocked-by: GraphQL issue dependency mutation
-#     (GA 2025-08-21; mutation name verified at first live use —
-#     until then, fallback to comment-based marker which the
-#     tracker-mode merge agent already understands per V3 §28).
+#   - blocks/blocked-by: first-class GitHub issue-dependency GraphQL
+#     mutation (BD-111; GA 2025-08-21 per EXTERNAL-RESEARCH §1.5).
+#     Mutation name `addBlockedBy` per EXTERNAL-RESEARCH §1.5; the
+#     argument shape (`issueId` + `blockedByIssueId`) follows the
+#     symmetric convention established by `addSubIssue` (issueId +
+#     subIssueId) elsewhere in this file. The exact argument key is
+#     unverified offline and is flagged for confirmation at BD-088
+#     or BD-093 integration-test land-time; if GH's actual schema
+#     names the second arg `blockedById` (or any other shape), the
+#     fix is one line in the mutation string below plus one fixture
+#     line update. `kind="blocks"` is expressed by inverting the
+#     operands (B blocked-by A == A blocks B) since EXTERNAL-RESEARCH
+#     names only the `addBlockedBy` direction.
 #   - related/duplicates: comment-based marker (no first-class API).
 #   - parent/child: delegates to sub_issue_create.
+#
+# Comment-based fallback for blocks/blocked-by remains available to
+# callers that explicitly want it via provider_comment() or
+# provider_raw() (the V3 §28 fallback path is preserved as an
+# escape hatch; see ARCHITECTURE.md §2.4 line 334).
 tracker_provider_gh_link() {
     local id="$1"
     local other_id="$2"
@@ -489,11 +506,30 @@ tracker_provider_gh_link() {
         return 1
     fi
     case "$kind" in
-        blocks|blocked-by|related|duplicates)
+        blocks|blocked-by)
+            # First-class GH issue-dependency mutation.
+            # Resolve owner/repo and node-ids (matches sub_issue_create
+            # extension-absent path).
+            local owner_repo issue_node other_node query
+            local source_node target_node
+            owner_repo=$(_gh_run gh repo view --json nameWithOwner --jq '.nameWithOwner') || return 1
+            issue_node=$(_gh_run gh api "/repos/$owner_repo/issues/$id"       --jq '.node_id') || return 1
+            other_node=$(_gh_run gh api "/repos/$owner_repo/issues/$other_id" --jq '.node_id') || return 1
+            # blocked-by: id is blocked by other_id  → addBlockedBy(issueId=id,       blockedByIssueId=other_id)
+            # blocks:     id blocks other_id          → addBlockedBy(issueId=other_id, blockedByIssueId=id)
+            if [[ "$kind" == "blocked-by" ]]; then
+                source_node="$issue_node"
+                target_node="$other_node"
+            else
+                source_node="$other_node"
+                target_node="$issue_node"
+            fi
+            query='mutation($issueId: ID!, $blockedByIssueId: ID!) { addBlockedBy(input: { issueId: $issueId, blockedByIssueId: $blockedByIssueId }) { issue { number } } }'
+            _gh_run gh api graphql -f "query=$query" -F "issueId=$source_node" -F "blockedByIssueId=$target_node" >/dev/null || return 1
+            ;;
+        related|duplicates)
             local body
             case "$kind" in
-                blocks)      body="Blocks #$other_id" ;;
-                blocked-by)  body="Blocked by #$other_id" ;;
                 related)     body="Related to #$other_id" ;;
                 duplicates)  body="Duplicates #$other_id" ;;
             esac
@@ -514,9 +550,36 @@ tracker_provider_gh_link() {
 }
 
 # tracker_provider_gh_unlink <id> <other_id> <kind>
-# Only parent/child unlinks are first-class via sub_issue_unlink.
-# Other kinds (blocks/related/duplicates/blocked-by) are comment-based
-# and not directly removable; surface as validation error.
+# kind: blocks|blocked-by|related|duplicates|parent|child
+#
+# Implementation per V1 §2.7.1 row 13 (BD-111 scope-extended
+# 2026-05-15 to include the symmetric `removeBlockedBy` unlink path):
+#   - blocks/blocked-by: first-class GitHub issue-dependency removal
+#     GraphQL mutation. Mutation name `removeBlockedBy` chosen as the
+#     symmetric pair to `addBlockedBy` (which EXTERNAL-RESEARCH §1.5
+#     line 86 names literally and pairs with "removal" generically;
+#     line 86: "GraphQL mutations including `addBlockedBy` / removal").
+#     The remove-side literal name is unverified offline (could be
+#     `removeBlockedBy`, `deleteBlockedBy`, or `removeBlockedByDependency`);
+#     `removeBlockedBy` is the most likely guess given GH's symmetric
+#     `addSubIssue` / `removeSubIssue` precedent already used in this
+#     file. Argument shape (`issueId` + `blockedByIssueId`) mirrors
+#     `addBlockedBy`. Operand inversion for `kind="blocks"` matches
+#     the link side: removing "B blocked-by A" is the same edge as
+#     removing "A blocks B". Verify against the live schema at
+#     BD-088 / BD-093 integration-test land-time; if either the
+#     mutation name or arg shape differs, the fix is one line in the
+#     mutation string below plus one fixture line update in
+#     `gh-remove-blocked-by.json`.
+#   - parent/child: first-class via sub_issue_unlink (unchanged).
+#   - related/duplicates: still comment-based on the link side; surface
+#     a typed validation error here (callers remove the marker comment
+#     manually via the GH UI or via provider_raw()).
+#
+# Comment-based fallback for blocks/blocked-by remains available to
+# callers that explicitly want it: callers can locate the marker
+# comment via provider_get(id) (returns full body) and edit/delete it
+# via provider_raw() with a DELETE on /repos/.../issues/comments/<N>.
 tracker_provider_gh_unlink() {
     local id="$1"
     local other_id="$2"
@@ -532,9 +595,31 @@ tracker_provider_gh_unlink() {
         child)
             tracker_provider_gh_sub_issue_unlink "$id" "$other_id" >/dev/null || return 1
             ;;
-        blocks|blocked-by|related|duplicates)
+        blocks|blocked-by)
+            # First-class GH issue-dependency removal mutation
+            # (BD-111 symmetric pair of addBlockedBy in
+            # tracker_provider_gh_link). Resolve owner/repo and
+            # node-ids the same way the link side does.
+            local owner_repo issue_node other_node query
+            local source_node target_node
+            owner_repo=$(_gh_run gh repo view --json nameWithOwner --jq '.nameWithOwner') || return 1
+            issue_node=$(_gh_run gh api "/repos/$owner_repo/issues/$id"       --jq '.node_id') || return 1
+            other_node=$(_gh_run gh api "/repos/$owner_repo/issues/$other_id" --jq '.node_id') || return 1
+            # blocked-by: id no-longer blocked by other_id  → removeBlockedBy(issueId=id,       blockedByIssueId=other_id)
+            # blocks:     id no-longer blocks other_id       → removeBlockedBy(issueId=other_id, blockedByIssueId=id)
+            if [[ "$kind" == "blocked-by" ]]; then
+                source_node="$issue_node"
+                target_node="$other_node"
+            else
+                source_node="$other_node"
+                target_node="$issue_node"
+            fi
+            query='mutation($issueId: ID!, $blockedByIssueId: ID!) { removeBlockedBy(input: { issueId: $issueId, blockedByIssueId: $blockedByIssueId }) { issue { number } } }'
+            _gh_run gh api graphql -f "query=$query" -F "issueId=$source_node" -F "blockedByIssueId=$target_node" >/dev/null || return 1
+            ;;
+        related|duplicates)
             tracker_error_emit "validation" \
-                "unlink: kind '$kind' is comment-based; remove the comment manually or via raw()"
+                "unlink: kind '$kind' is comment-based (no first-class API); locate the marker comment via provider_get(id) and remove it manually or via provider_raw() DELETE on /repos/.../issues/comments/<comment-id>"
             return 1
             ;;
         *)

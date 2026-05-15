@@ -88,11 +88,64 @@ cat > "$FAKE_BIN_DIR/gh" <<'FAKE_GH'
 #   FAKE_GH_STDERR_FILE — path to file emitted to stderr (default: empty)
 #   FAKE_GH_EXIT        — exit code (default: 0)
 #   FAKE_GH_LOG         — append the invocation args to this file
+#
+# Multi-call dispatch (BD-111 — added for the addBlockedBy chain test):
+#   FAKE_GH_DISPATCH_DIR — when set, the fake selects its stdout file
+#                          by inspecting argv. Lookup precedence:
+#                            1. $FAKE_GH_DISPATCH_DIR/api-graphql when
+#                               the call is `api graphql ...`
+#                            2. $FAKE_GH_DISPATCH_DIR/api-issue-N for
+#                               `api /repos/.../issues/N` (numeric N)
+#                            3. $FAKE_GH_DISPATCH_DIR/repo for
+#                               `repo view ...`
+#                            4. $FAKE_GH_DISPATCH_DIR/<verb> generic
+#                               (e.g., `issue`, `search`)
+#                          When the matched file does not exist, the
+#                          fake falls through to FAKE_GH_STDOUT_FILE.
+#                          Unchanged behavior when DISPATCH_DIR is
+#                          unset; preserves backward compatibility.
 if [[ -n "${FAKE_GH_LOG:-}" ]]; then
     printf '%s\n' "$*" >> "$FAKE_GH_LOG"
 fi
-if [[ -n "${FAKE_GH_STDOUT_FILE:-}" && -f "${FAKE_GH_STDOUT_FILE}" ]]; then
-    cat "$FAKE_GH_STDOUT_FILE"
+_fake_gh_select_stdout() {
+    if [[ -z "${FAKE_GH_DISPATCH_DIR:-}" ]]; then
+        printf '%s' "${FAKE_GH_STDOUT_FILE:-}"
+        return
+    fi
+    local v1="${1:-}" v2="${2:-}" v3="${3:-}"
+    # api graphql
+    if [[ "$v1" == "api" && "$v2" == "graphql" ]]; then
+        if [[ -f "$FAKE_GH_DISPATCH_DIR/api-graphql" ]]; then
+            printf '%s' "$FAKE_GH_DISPATCH_DIR/api-graphql"
+            return
+        fi
+    fi
+    # api /repos/.../issues/N
+    if [[ "$v1" == "api" && "$v2" == /repos/* ]]; then
+        local n
+        n=$(printf '%s' "$v2" | sed -E 's|.*/issues/([0-9]+).*|\1|')
+        if [[ -n "$n" && -f "$FAKE_GH_DISPATCH_DIR/api-issue-$n" ]]; then
+            printf '%s' "$FAKE_GH_DISPATCH_DIR/api-issue-$n"
+            return
+        fi
+    fi
+    # repo view ...
+    if [[ "$v1" == "repo" ]]; then
+        if [[ -f "$FAKE_GH_DISPATCH_DIR/repo" ]]; then
+            printf '%s' "$FAKE_GH_DISPATCH_DIR/repo"
+            return
+        fi
+    fi
+    # generic verb fallback (issue, search, ...)
+    if [[ -n "$v1" && -f "$FAKE_GH_DISPATCH_DIR/$v1" ]]; then
+        printf '%s' "$FAKE_GH_DISPATCH_DIR/$v1"
+        return
+    fi
+    printf '%s' "${FAKE_GH_STDOUT_FILE:-}"
+}
+_fake_gh_stdout="$(_fake_gh_select_stdout "$@")"
+if [[ -n "$_fake_gh_stdout" && -f "$_fake_gh_stdout" ]]; then
+    cat "$_fake_gh_stdout"
 fi
 if [[ -n "${FAKE_GH_STDERR_FILE:-}" && -f "${FAKE_GH_STDERR_FILE}" ]]; then
     cat "$FAKE_GH_STDERR_FILE" >&2
@@ -118,7 +171,8 @@ source "$LIB_DIR/tracker-provider-gh.sh"
 
 # Helper: reset fake gh vars between tests.
 reset_fake_gh() {
-    unset FAKE_GH_STDOUT_FILE FAKE_GH_STDERR_FILE FAKE_GH_EXIT FAKE_GH_LOG
+    unset FAKE_GH_STDOUT_FILE FAKE_GH_STDERR_FILE FAKE_GH_EXIT FAKE_GH_LOG \
+          FAKE_GH_DISPATCH_DIR
 }
 
 # Helper: write content to a tmp file and echo path.
@@ -246,23 +300,181 @@ reset_fake_gh
 out=$(provider_set_milestone 42 "v11.1")
 assert_eq "1.16 set_milestone v11.1" "v11.1" "$(printf '%s' "$out" | jq -r '.milestone')"
 
-# 1.17 link — comment-based for blocks/blocked-by/related/duplicates
+# 1.17 link — first-class GraphQL `addBlockedBy` for blocks/blocked-by
+# (BD-111). Comment-marker path remains available via provider_comment()
+# / provider_raw() for callers explicitly wanting the V3 §28 fallback.
+#
+# This test exercises the gh invocation chain:
+#   1. gh repo view --json nameWithOwner --jq .nameWithOwner   → "owner/repo"
+#   2. gh api /repos/owner/repo/issues/42 --jq .node_id        → "NODE_42"
+#   3. gh api /repos/owner/repo/issues/99 --jq .node_id        → "NODE_99"
+#   4. gh api graphql -f query=... -F issueId=... -F blockedByIssueId=...
+#      → addBlockedBy response fixture
+# The dispatch-dir fake-gh mode (set FAKE_GH_DISPATCH_DIR) supplies
+# different stdout per invocation by inspecting argv. The FAKE_GH_LOG
+# captures every gh argv so we can assert the GraphQL mutation name +
+# arg ordering.
 reset_fake_gh
+LINK_DISPATCH_DIR=$(mktemp -d -t prov-link-dispatch.XXXXXX)
+printf '%s' "optiquity/pack" > "$LINK_DISPATCH_DIR/repo"
+printf '%s' "NODE_42"        > "$LINK_DISPATCH_DIR/api-issue-42"
+printf '%s' "NODE_99"        > "$LINK_DISPATCH_DIR/api-issue-99"
+cp "$FIXTURES/gh-add-blocked-by.json" "$LINK_DISPATCH_DIR/api-graphql"
+export FAKE_GH_DISPATCH_DIR="$LINK_DISPATCH_DIR"
+log=$(mktemp -t prov-link-log.XXXXXX); export FAKE_GH_LOG="$log"
+
+# 1.17a kind=blocked-by — id 42 is blocked by 99 →
+#       addBlockedBy(issueId=NODE_42, blockedByIssueId=NODE_99)
+: > "$log"
+out=$(provider_link 42 99 blocked-by)
+assert_eq "1.17a link kind=blocked-by"  "blocked-by" "$(printf '%s' "$out" | jq -r '.kind')"
+assert_eq "1.17a link linked_to=99"     "99"         "$(printf '%s' "$out" | jq -r '.linked_to')"
+log_contents=$(cat "$log")
+assert_contains "1.17a invokes gh repo view"           "$log_contents" "repo view"
+assert_contains "1.17a resolves issue 42 node-id"      "$log_contents" "/repos/optiquity/pack/issues/42"
+assert_contains "1.17a resolves issue 99 node-id"      "$log_contents" "/repos/optiquity/pack/issues/99"
+assert_contains "1.17a invokes graphql addBlockedBy"   "$log_contents" "addBlockedBy"
+assert_contains "1.17a issueId=NODE_42 (blocked-by)"   "$log_contents" "issueId=NODE_42"
+assert_contains "1.17a blockedByIssueId=NODE_99"       "$log_contents" "blockedByIssueId=NODE_99"
+assert_contains "1.17a does NOT comment on issue body" "$log_contents" "graphql"
+# Negative: the legacy comment-marker path must NOT be taken.
+if printf '%s' "$log_contents" | grep -q "issue comment"; then
+    t_fail "1.17a should not invoke 'issue comment' for blocked-by" "log: ${log_contents:0:200}"
+else
+    t_pass "1.17a does not invoke legacy 'issue comment' for blocked-by"
+fi
+
+# 1.17b kind=blocks — operands invert: 42 blocks 99 →
+#       addBlockedBy(issueId=NODE_99, blockedByIssueId=NODE_42)
+: > "$log"
 out=$(provider_link 42 99 blocks)
-assert_eq "1.17 link kind=blocks"      "blocks" "$(printf '%s' "$out" | jq -r '.kind')"
-assert_eq "1.17 link linked_to=99"     "99"     "$(printf '%s' "$out" | jq -r '.linked_to')"
+assert_eq "1.17b link kind=blocks"  "blocks" "$(printf '%s' "$out" | jq -r '.kind')"
+assert_eq "1.17b link linked_to=99" "99"     "$(printf '%s' "$out" | jq -r '.linked_to')"
+log_contents=$(cat "$log")
+assert_contains "1.17b invokes graphql addBlockedBy" "$log_contents" "addBlockedBy"
+assert_contains "1.17b issueId=NODE_99 (inverted)"   "$log_contents" "issueId=NODE_99"
+assert_contains "1.17b blockedByIssueId=NODE_42"     "$log_contents" "blockedByIssueId=NODE_42"
+
+# 1.17c GraphQL error path (simulated EMU FORBIDDEN response) — fail
+# the api-graphql call and verify a typed error is emitted.
+reset_fake_gh
+export FAKE_GH_DISPATCH_DIR="$LINK_DISPATCH_DIR"
+emu_err_file=$(mktemp -t prov-link-emu.XXXXXX)
+printf 'FORBIDDEN: Unauthorized; path: addBlockedBy\n' > "$emu_err_file"
+export FAKE_GH_STDERR_FILE="$emu_err_file"
+export FAKE_GH_EXIT=1
+err=$(provider_link 42 99 blocked-by 2>&1 1>/dev/null) || true
+assert_contains "1.17c EMU FORBIDDEN → typed auth-insufficient-scope" "$err" "ERROR: auth-insufficient-scope"
+rm -f "$emu_err_file"
+unset FAKE_GH_DISPATCH_DIR FAKE_GH_STDERR_FILE FAKE_GH_EXIT
+
+# 1.17d related — still comment-based fallback (no first-class API).
+reset_fake_gh
+out=$(provider_link 42 99 related)
+assert_eq "1.17d link kind=related"  "related" "$(printf '%s' "$out" | jq -r '.kind')"
+assert_eq "1.17d link linked_to=99"  "99"      "$(printf '%s' "$out" | jq -r '.linked_to')"
+
+# 1.17e duplicates — still comment-based fallback.
+reset_fake_gh
+out=$(provider_link 42 99 duplicates)
+assert_eq "1.17e link kind=duplicates" "duplicates" "$(printf '%s' "$out" | jq -r '.kind')"
+
+# Cleanup 1.17 dispatch dir.
+rm -rf "$LINK_DISPATCH_DIR"
+rm -f "$log"
+unset FAKE_GH_LOG
 
 # 1.18 link — invalid kind
 reset_fake_gh
 err=$(provider_link 42 99 mystery 2>&1 1>/dev/null) || true
 assert_contains "1.18 link bad-kind → validation" "$err" "unknown kind"
 
-# 1.19 unlink — comment-based kinds rejected
+# 1.19 unlink — comment-based kinds (related|duplicates) rejected. Note
+# that with BD-111's scope-extended unlink (2026-05-15), blocks and
+# blocked-by are now first-class via removeBlockedBy and are tested in
+# 1.20a-c below; the validation rejection now applies only to
+# related|duplicates which still have no first-class GH API.
 reset_fake_gh
-err=$(provider_unlink 42 99 blocks 2>&1 1>/dev/null) || true
-assert_contains "1.19 unlink blocks → validation (manual removal)" "$err" "comment-based"
+err=$(provider_unlink 42 99 related 2>&1 1>/dev/null) || true
+assert_contains "1.19 unlink related → validation (comment-based)" "$err" "comment-based"
+reset_fake_gh
+err=$(provider_unlink 42 99 duplicates 2>&1 1>/dev/null) || true
+assert_contains "1.19 unlink duplicates → validation (comment-based)" "$err" "comment-based"
 
-# 1.20 sub_issue_create — existing_id path (no extension)
+# 1.20 unlink — first-class GraphQL `removeBlockedBy` for blocks/blocked-by
+# (BD-111 scope-extended 2026-05-15; symmetric pair of 1.17 addBlockedBy).
+# Same dispatch-mode fake-gh harness as 1.17. Asserts the gh argv chain:
+#   1. gh repo view --json nameWithOwner --jq .nameWithOwner   → "owner/repo"
+#   2. gh api /repos/owner/repo/issues/42 --jq .node_id        → "NODE_42"
+#   3. gh api /repos/owner/repo/issues/99 --jq .node_id        → "NODE_99"
+#   4. gh api graphql -f query=... -F issueId=... -F blockedByIssueId=...
+#      → removeBlockedBy response fixture (gh-remove-blocked-by.json)
+reset_fake_gh
+UNLINK_DISPATCH_DIR=$(mktemp -d -t prov-unlink-dispatch.XXXXXX)
+printf '%s' "optiquity/pack" > "$UNLINK_DISPATCH_DIR/repo"
+printf '%s' "NODE_42"        > "$UNLINK_DISPATCH_DIR/api-issue-42"
+printf '%s' "NODE_99"        > "$UNLINK_DISPATCH_DIR/api-issue-99"
+cp "$FIXTURES/gh-remove-blocked-by.json" "$UNLINK_DISPATCH_DIR/api-graphql"
+export FAKE_GH_DISPATCH_DIR="$UNLINK_DISPATCH_DIR"
+log=$(mktemp -t prov-unlink-log.XXXXXX); export FAKE_GH_LOG="$log"
+
+# 1.20a kind=blocked-by — id 42 no-longer blocked by 99 →
+#       removeBlockedBy(issueId=NODE_42, blockedByIssueId=NODE_99)
+: > "$log"
+out=$(provider_unlink 42 99 blocked-by)
+assert_eq "1.20a unlink kind=blocked-by"     "blocked-by" "$(printf '%s' "$out" | jq -r '.kind')"
+assert_eq "1.20a unlink unlinked_from=99"    "99"         "$(printf '%s' "$out" | jq -r '.unlinked_from')"
+log_contents=$(cat "$log")
+assert_contains "1.20a invokes gh repo view"             "$log_contents" "repo view"
+assert_contains "1.20a resolves issue 42 node-id"        "$log_contents" "/repos/optiquity/pack/issues/42"
+assert_contains "1.20a resolves issue 99 node-id"        "$log_contents" "/repos/optiquity/pack/issues/99"
+assert_contains "1.20a invokes graphql removeBlockedBy"  "$log_contents" "removeBlockedBy"
+assert_contains "1.20a issueId=NODE_42 (blocked-by)"     "$log_contents" "issueId=NODE_42"
+assert_contains "1.20a blockedByIssueId=NODE_99"         "$log_contents" "blockedByIssueId=NODE_99"
+# Negative: must NOT invoke addBlockedBy nor any comment-write path.
+if printf '%s' "$log_contents" | grep -q "addBlockedBy"; then
+    t_fail "1.20a should not invoke addBlockedBy on unlink" "log: ${log_contents:0:200}"
+else
+    t_pass "1.20a does not invoke addBlockedBy on unlink"
+fi
+if printf '%s' "$log_contents" | grep -q "issue comment"; then
+    t_fail "1.20a should not invoke 'issue comment' on unlink" "log: ${log_contents:0:200}"
+else
+    t_pass "1.20a does not invoke legacy 'issue comment' on unlink"
+fi
+
+# 1.20b kind=blocks — operands invert: 42 no-longer blocks 99 →
+#       removeBlockedBy(issueId=NODE_99, blockedByIssueId=NODE_42)
+: > "$log"
+out=$(provider_unlink 42 99 blocks)
+assert_eq "1.20b unlink kind=blocks"          "blocks" "$(printf '%s' "$out" | jq -r '.kind')"
+assert_eq "1.20b unlink unlinked_from=99"     "99"     "$(printf '%s' "$out" | jq -r '.unlinked_from')"
+log_contents=$(cat "$log")
+assert_contains "1.20b invokes graphql removeBlockedBy" "$log_contents" "removeBlockedBy"
+assert_contains "1.20b issueId=NODE_99 (inverted)"      "$log_contents" "issueId=NODE_99"
+assert_contains "1.20b blockedByIssueId=NODE_42"        "$log_contents" "blockedByIssueId=NODE_42"
+
+# 1.20c GraphQL error path — `not-found` when target edge doesn't exist
+# (server returns "Not Found" / HTTP 404 for the removeBlockedBy call).
+# Auth path covered transitively by Group 2 classifier sweep + 1.17c
+# (FORBIDDEN form); cycle-detection N/A on remove.
+reset_fake_gh
+export FAKE_GH_DISPATCH_DIR="$UNLINK_DISPATCH_DIR"
+nf_err_file=$(mktemp -t prov-unlink-nf.XXXXXX)
+printf 'HTTP 404: Not Found\n' > "$nf_err_file"
+export FAKE_GH_STDERR_FILE="$nf_err_file"
+export FAKE_GH_EXIT=1
+err=$(provider_unlink 42 99 blocked-by 2>&1 1>/dev/null) || true
+assert_contains "1.20c missing-edge → typed not-found" "$err" "ERROR: not-found"
+rm -f "$nf_err_file"
+unset FAKE_GH_DISPATCH_DIR FAKE_GH_STDERR_FILE FAKE_GH_EXIT
+
+# Cleanup 1.20 dispatch dir.
+rm -rf "$UNLINK_DISPATCH_DIR"
+rm -f "$log"
+unset FAKE_GH_LOG
+
+# 1.21 sub_issue_create — existing_id path (no extension)
 # Force extension-absent path by clearing the cache and pointing
 # `gh extension list` (the fake) at empty stdout → grep returns 1.
 reset_fake_gh
@@ -276,27 +488,27 @@ out=$(provider_sub_issue_create 100 '{"existing_id":"42"}' 2>&1) || true
 # a typed error. Both are acceptable structural outcomes — the test
 # is that the public API does not throw.
 if printf '%s' "$out" | jq -e '.parent_id' >/dev/null 2>&1; then
-    t_pass "1.20 sub_issue_create returned parent/child JSON"
+    t_pass "1.21 sub_issue_create returned parent/child JSON"
 else
     # Accept structured error path
     if printf '%s' "$out" | grep -q "ERROR:"; then
-        t_pass "1.20 sub_issue_create (extension-absent fallback) emitted typed error"
+        t_pass "1.21 sub_issue_create (extension-absent fallback) emitted typed error"
     else
-        t_fail "1.20 sub_issue_create" "neither success nor typed-error: $out"
+        t_fail "1.21 sub_issue_create" "neither success nor typed-error: $out"
     fi
 fi
 rm -f "$empty_file"
 
-# 1.21 raw — graphql path requires body
+# 1.22 raw — graphql path requires body
 reset_fake_gh
 err=$(provider_raw POST graphql "" 2>&1 1>/dev/null) || true
-assert_contains "1.21 raw graphql empty-body → validation" "$err" "graphql requires body"
+assert_contains "1.22 raw graphql empty-body → validation" "$err" "graphql requires body"
 
-# 1.22 raw — graphql with body succeeds
+# 1.23 raw — graphql with body succeeds
 reset_fake_gh
 out=$(provider_raw POST graphql 'query { viewer { login } }')
 # Output is whatever the fake gh prints (empty here); just verify rc=0
-assert_eq "1.22 raw graphql body accepted (rc=0)" "0" "$?"
+assert_eq "1.23 raw graphql body accepted (rc=0)" "0" "$?"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 2: Error mapping (V1 §2.5 typed codes)
