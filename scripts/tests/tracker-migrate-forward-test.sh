@@ -960,6 +960,14 @@ export PATH="$PATH_SAVED_C"
 # (early-return at the create site — step 11 never runs).
 assert_eq "5.3 partial-create run rc=1" "1" "$rc_c"
 
+# Retro F5: confirm the orchestrator surfaces the propagated
+# provider_create error rather than swallowing it. The fake gh emits
+# "HTTP 422: validation failed" on the 4th create; mirror 4.3's
+# output assertions so the captured stderr has at least one
+# load-bearing pin.
+assert_contains "5.3 partial-create run surfaces propagated provider_create error" \
+    "$output_c" "validation failed"
+
 # tracker.toml MUST still read forward_complete = false so
 # tracker_mode() keeps resolving to flat-file (V1 §3.2). This is
 # the BD-131 contract: partial creates MUST NOT silently route
@@ -974,6 +982,214 @@ mfile_c="$TEST_REPO_C/.pack-tracker/id-map.json"
     || t_fail "5.3 partial-create mapping persisted (resume seed)" "missing $mfile_c"
 
 rm -rf "$FAKE_BIN_C" "$GH_LOG_C" "$ISSUE_COUNTER_C" "$TEST_REPO_C"
+
+# 5.4 BD-131 retro F1 — resume-then-completes flips forward_complete
+# to "true". The resume path is the documented recovery verb for the
+# `forward_complete = false` state 5.3 introduced. This test pins down
+# the orchestrator-level invariant end-to-end:
+#
+#   Phase 1 — partial-create run leaves the create surface incomplete:
+#     - Override TMF_CHECKPOINT_INTERVAL=2 so a checkpoint is written
+#       after the 2nd entry (the default 25 would never write because
+#       the failure happens before idx % 25 == 0).
+#     - Use a fake gh that fails on the 4th `issue create`.
+#     - Assert rc=1 + forward_complete still "false" + checkpoint
+#       file present (resume seed).
+#
+#   Phase 2 — resume run completes the surface:
+#     - Re-use the same TEST_REPO so the partial mapping +
+#       checkpoint carry forward.
+#     - Swap to a fake gh that succeeds on every operation.
+#     - Run `tracker_migrate_forward_run "$REPO" 0 1` (resume=1).
+#     - Assert rc=0 (no partial-write) + forward_complete = "true"
+#       on disk + last_forward_run line written + tracker_mode() now
+#       resolves to "tracker".
+#
+# A future refactor that quietly regresses the resume path's
+# interaction with `creation_ok` (e.g. resetting it to 0 inside the
+# resume skip arm, or rebuilding completed_pack_ids from the mapping
+# without re-driving step 11) would fail this test immediately.
+
+FAKE_BIN_R1=$(mktemp -d -t tmf-fakebin-r1.XXXXXX)
+GH_LOG_R1=$(mktemp -t tmf-ghlog-r1.XXXXXX)
+ISSUE_COUNTER_R1=$(mktemp -t tmf-counter-r1.XXXXXX)
+echo "0" > "$ISSUE_COUNTER_R1"
+
+# Phase 1 fake gh: identical to 5.3's — fails on the 4th `issue
+# create`. Splitting the fake into two binaries (R1 = fail-on-4th,
+# R2 = always-succeed) makes the swap explicit between the partial
+# run and the resume run.
+cat > "$FAKE_BIN_R1/gh" <<FAKEGH_R1
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$GH_LOG_R1"
+case "\$1 \$2" in
+    "issue create")
+        counter=\$(cat "$ISSUE_COUNTER_R1")
+        next=\$((counter + 1))
+        echo "\$next" > "$ISSUE_COUNTER_R1"
+        if [[ "\$next" == "4" ]]; then
+            echo "HTTP 422: validation failed" >&2
+            exit 1
+        fi
+        printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
+        ;;
+    "issue close")           ;;
+    "issue reopen"|"issue edit"|"issue comment") ;;
+    "search issues")         echo '[]' ;;
+    "issue list")            echo '[]' ;;
+    "issue view")            echo '{"labels":[], "assignees":[]}' ;;
+    "repo view")             echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
+    "api graphql")           echo '{}' ;;
+    "extension list")        echo "" ;;
+    *)                       ;;
+esac
+exit 0
+FAKEGH_R1
+chmod +x "$FAKE_BIN_R1/gh"
+
+TEST_REPO_R=$(mktemp -d -t tmf-repo-r.XXXXXX)
+cp "$FIXTURES/BACKLOG.md"             "$TEST_REPO_R/BACKLOG.md"
+cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_R/IMPLEMENTATION-PLAN.md"
+cp "$FIXTURES/tracker.toml"           "$TEST_REPO_R/tracker.toml"
+
+# Override checkpoint cadence so phase 1 writes a checkpoint that
+# phase 2's resume can consume. Re-source the lib because the
+# constant is read at source-time.
+export TMF_CHECKPOINT_INTERVAL=2
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-migrate-forward.sh"
+
+# ── Phase 1 — partial-create run ─────────────────────────────────
+PATH_SAVED_R="$PATH"
+export PATH="$FAKE_BIN_R1:$PATH_SAVED_R"
+output_r1=$(tracker_migrate_forward_run "$TEST_REPO_R" 0 0 2>&1)
+rc_r1=$?
+export PATH="$PATH_SAVED_R"
+
+assert_eq "5.4 phase-1 partial-create run rc=1" "1" "$rc_r1"
+assert_contains "5.4 phase-1 forward_complete stays 'false'" \
+    "$(cat "$TEST_REPO_R/tracker.toml")" "forward_complete = false"
+ckp_r="$TEST_REPO_R/.pack-tracker/forward.checkpoint.json"
+[[ -f "$ckp_r" ]] && t_pass "5.4 phase-1 checkpoint persisted (resume seed)" \
+    || t_fail "5.4 phase-1 checkpoint persisted (resume seed)" "missing $ckp_r"
+
+# Sanity: tracker_mode() must resolve to flat-file at this point
+# even though [mode].state = "tracker" (the fixture sets it). This
+# is the V1 §3.2 / D-5 contract that BD-131 enforces.
+mode_after_partial=$(tracker_mode "$TEST_REPO_R/tracker.toml")
+assert_eq "5.4 phase-1 tracker_mode() → flat-file" "flat-file" "$mode_after_partial"
+
+# ── Phase 2 — swap to all-success fake gh and resume ─────────────
+FAKE_BIN_R2=$(mktemp -d -t tmf-fakebin-r2.XXXXXX)
+GH_LOG_R2=$(mktemp -t tmf-ghlog-r2.XXXXXX)
+ISSUE_COUNTER_R2=$(mktemp -t tmf-counter-r2.XXXXXX)
+# BD-132 F-7: track closed ids so the stabilization poll sees them
+# (the fixture has a Resolved entry, so step 8 closes will fire and
+# step 8.5 will poll for state=closed).
+CLOSED_IDS_R2=$(mktemp -t tmf-closed-r2.XXXXXX)
+: > "$CLOSED_IDS_R2"
+# Continue the gh-id sequence past where phase 1 stopped (3 entries
+# created → next id is 4) so the resume's new creates do not collide
+# with the partial mapping. Phase 1's 4th attempt failed; phase 2
+# must satisfy entries 4 + 5 + 2 phase epics = 4 more creates.
+echo "3" > "$ISSUE_COUNTER_R2"
+
+cat > "$FAKE_BIN_R2/gh" <<FAKEGH_R2
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$GH_LOG_R2"
+case "\$1 \$2" in
+    "issue create")
+        counter=\$(cat "$ISSUE_COUNTER_R2")
+        next=\$((counter + 1))
+        echo "\$next" > "$ISSUE_COUNTER_R2"
+        printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
+        ;;
+    "issue close")
+        printf '%s\n' "\$3" >> "$CLOSED_IDS_R2"
+        ;;
+    "issue reopen"|"issue edit"|"issue comment") ;;
+    "search issues")         echo '[]' ;;
+    "issue list")
+        want_closed=0
+        for arg in "\$@"; do
+            [[ "\$arg" == "closed" ]] && want_closed=1
+        done
+        if [[ "\$want_closed" == "1" ]]; then
+            python3 - <<PY
+import json
+ids = []
+try:
+    with open("$CLOSED_IDS_R2") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                ids.append(line)
+except FileNotFoundError:
+    pass
+print(json.dumps([{"number": int(i)} for i in ids]))
+PY
+        else
+            echo '[]'
+        fi
+        ;;
+    "issue view")            echo '{"labels":[], "assignees":[]}' ;;
+    "repo view")             echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
+    "api graphql")           echo '{}' ;;
+    "extension list")        echo "" ;;
+    *)                       ;;
+esac
+exit 0
+FAKEGH_R2
+chmod +x "$FAKE_BIN_R2/gh"
+
+export PATH="$FAKE_BIN_R2:$PATH_SAVED_R"
+output_r2=$(tracker_migrate_forward_run "$TEST_REPO_R" 0 1 2>&1)
+rc_r2=$?
+export PATH="$PATH_SAVED_R"
+
+# Restore default checkpoint cadence for any later groups.
+unset TMF_CHECKPOINT_INTERVAL
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-migrate-forward.sh"
+
+# Resume must succeed end-to-end (no partial-write surface).
+assert_eq "5.4 phase-2 resume run rc=0" "0" "$rc_r2"
+
+# This is the load-bearing assertion: the orchestrator-level invariant
+# (creation_ok=1 → step 11 writes "true") must hold across the
+# resume → completes path. A future regression that flips
+# creation_ok to 0 inside the resume skip arm — or rebuilds
+# completed_pack_ids without driving step 11 — would fail here.
+assert_contains "5.4 BD-131 phase-2 resume flips forward_complete to 'true'" \
+    "$(cat "$TEST_REPO_R/tracker.toml")" "forward_complete = true"
+
+# last_forward_run must have been written by step 11 (the partial
+# run never reached step 11, so the absence-then-presence flip is a
+# clean signal that step 11 ran on resume).
+assert_contains "5.4 phase-2 resume writes last_forward_run" \
+    "$(cat "$TEST_REPO_R/tracker.toml")" "last_forward_run = \""
+
+# Composition check: tracker_mode() now resolves to "tracker" — the
+# user-visible recovery contract for BD-131.
+mode_after_resume=$(tracker_mode "$TEST_REPO_R/tracker.toml")
+assert_eq "5.4 phase-2 tracker_mode() → tracker" "tracker" "$mode_after_resume"
+
+# Checkpoint must be cleared after the successful resume (V1 §6.2
+# step 11 cleanup; PACK-REVIEW-BD065 Finding #6 + BD-132 F-4
+# stabilization-conditional clear). With our all-success fake gh,
+# stabilization succeeds → checkpoint cleared.
+[[ ! -f "$ckp_r" ]] && t_pass "5.4 phase-2 checkpoint cleared after resume success" \
+    || t_fail "5.4 phase-2 checkpoint cleared after resume success" "$ckp_r still present"
+
+# Mapping must be complete: 5 entries + 2 phase epics = 7 ids.
+mfile_r="$TEST_REPO_R/.pack-tracker/id-map.json"
+n_mapped_r=$(jq 'length' "$mfile_r")
+assert_eq "5.4 phase-2 mapping has 7 entries (5 BACKLOG + 2 phases)" \
+    "7" "$n_mapped_r"
+
+rm -rf "$FAKE_BIN_R1" "$GH_LOG_R1" "$ISSUE_COUNTER_R1" \
+       "$FAKE_BIN_R2" "$GH_LOG_R2" "$ISSUE_COUNTER_R2" \
+       "$CLOSED_IDS_R2" "$TEST_REPO_R"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 6: BD-108 cross-entity link routing (review F3)

@@ -875,6 +875,11 @@ tracker_migrate_forward_run() {
         if ! phase_result=$(provider_create "$phase_payload"); then
             # BD-131: see paired creation_ok comment above.
             creation_ok=0
+            # BD-131 retro F3: mirror the entry-create cleanup (line
+            # 827) so the partial_failures tempfile is not leaked when
+            # phase creation fails. Pre-existing asymmetry; cleaned up
+            # here so both early-return paths look identical.
+            rm -f "$partial_failures"
             return 1
         fi
         phase_gh_id=$(printf '%s' "$phase_result" | jq -r '.id')
@@ -1212,7 +1217,19 @@ tracker_migrate_forward_run() {
     else
         fc_value="false"
     fi
-    _tmf_update_tracker_toml "$cfg_path" "$fc_value"
+    # BD-131 retro F4: surface the writer's defensive-validation rc=1
+    # at the orchestrator layer. The writer rejects out-of-schema fc
+    # values ("must be 'true' or 'false'") with a stderr WARN and rc=1;
+    # the orchestrator's own conditional at lines above only ever
+    # passes "true" or "false", so this branch is unreachable from
+    # in-tree control flow today — but a future refactor that routes a
+    # different value here (or a stale-symbol shim that returns rc=1)
+    # would have been silently swallowed by the un-checked call. Emit a
+    # clearer follow-up WARN so the operator's eye is drawn to the
+    # writer's rejection without aborting the otherwise-successful run.
+    if ! _tmf_update_tracker_toml "$cfg_path" "$fc_value"; then
+        echo "forward: WARN: tracker.toml writer rejected forward_complete value '$fc_value' — see writer WARN above; tracker_mode() will resolve to flat-file until init is re-run" >&2
+    fi
     # BD-131 defense-in-depth: read back the value we just wrote so a
     # silent regex regression in `_tmf_update_tracker_toml` produces
     # a visible WARN instead of leaving downstream `tracker_mode()`

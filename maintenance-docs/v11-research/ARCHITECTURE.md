@@ -1132,6 +1132,21 @@ Algorithm:
 9. Update tracker.toml.migration.last_reverse_run.
 ```
 
+**Invariant: reverse does not touch `migration.forward_complete`.** The
+reverse path updates only `mode.state` (set to `"flat-file"` by
+`pack tracker disable`) and `migration.last_reverse_run`. The
+`migration.forward_complete = true` flag remains set after a
+disable cycle. This is benign in v11.0 because `tracker_mode()`
+checks `mode.state` (not the flag) to determine the active surface.
+The supported re-enable path is `pack tracker init`, which
+atomically rewrites both `mode.state` and `migration.forward_complete`
+in `_tmr_update_tracker_toml`. **A future `pack tracker enable` verb
+(not in v11.0) MUST re-validate the entry mapping rather than rely
+on the lingering `forward_complete = true` value** — otherwise
+post-disable customizations to flat-file state would be silently
+overwritten on re-enable. Carry-forward source:
+`PACK-REVIEW-BD-131-RETRO.md` F6.
+
 ### 6.6 What if tracker has data the flat-file format cannot capture?
 
 This is a real concern for `EXTERNAL-RESEARCH.md` §1.10 reactions, sub-issue
