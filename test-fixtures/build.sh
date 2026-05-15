@@ -185,17 +185,39 @@ _build_v10_minimal() {
 #        - TD-NNN BACKLOG.md.
 #
 # The four patterns are version-agnostic: they target the customization
-# surface that every vN install shares (see
-# `migrator_target_surface_for_version` in scripts/lib/migrator-core.sh
-# for the per-version surface declaration).
+# surface that every vN install shares. The per-version
+# customization-surface ground truth lives in
+# `scripts/lib/migrator-core.sh::migrator_target_surface_for_version <vN>`
+# (BD-119 helper). This builder does NOT consume the helper at runtime
+# — the C1–C4 paths are hardcoded inline below — so a future vN whose
+# surface differs from v10/v11 (e.g., `.codex/config.toml` moves) MUST
+# have the corresponding customization step updated by hand. The
+# `[[ -f ]]` guard at the C2 step is a defensive no-op on missing
+# files; do not rely on it to catch surface drift silently — pair any
+# surface change with a re-verification of every C-step's path list
+# against the helper's vN case.
 #
 # Per-version dispatch is confined to:
 #   - Source-clone setup (only v10 needs the cloned-tag work-around).
 #   - Which init-project.sh runner to invoke (`_run_vN_init`).
 #
-# Add a new vN by extending the two `case` blocks below and adding a
+# Per-version source-pin semantics (invariant for BD-160 / BD-170 +
+# future vN extension):
+#   v10: source pinned to the v10 git tag via `_setup_v10_pack_src`
+#        (byte-identity stable across rebuilds; same model as
+#        `v10-minimal`).
+#   v11: source tracks current pack HEAD via `_run_v11_init`
+#        (SHA drifts with every pack-product change to v11 surface;
+#        same model as `v11-flat-file` / `v11-tracker-on` — see
+#        README.md "Determinism" §). When a future version freezes
+#        v11 (e.g., when v12 ships and v11 becomes a frozen tag),
+#        add a v11-tag-cloned source path mirroring
+#        `_setup_v10_pack_src`.
+#
+# Add a new vN by extending the two `case` blocks below, adding a
 # `_run_vN_init` helper if the new version needs source-isolation
-# different from the current pack HEAD.
+# different from the current pack HEAD, and wiring the dispatcher per
+# the README "Realistic-OT fixtures: per-version pattern" subsection.
 _build_realistic_for_version() {
     local ver="${1:?_build_realistic_for_version requires <vN>}"
     local target="$THIS_DIR/${ver}-realistic-ot"
@@ -207,7 +229,16 @@ _build_realistic_for_version() {
             _setup_v10_pack_src
             ;;
         v11)
-            info "  source: pack v11 (current HEAD) + FakeOT customizations"
+            # BD-120 retro-fix F2 (2026-05-15): v11 case body removed
+            # pending BD-160. Until BD-160 wires v11-realistic-ot into
+            # FIXTURE_NAMES + dispatcher AND re-verifies C2/C3 against
+            # the v11 surface per `migrator_target_surface_for_version
+            # v11`, this path produces a functionally-incomplete fixture
+            # silently (the [[ -f ]] guard at C2 masks v11-shape drift).
+            # Fail loud here so any direct caller (test harness, manual
+            # invocation) gets a clear pointer to BD-160 instead of a
+            # half-built fixture.
+            die "_build_realistic_for_version v11: unwired pending BD-160 (v11-realistic-ot dispatcher wiring + C2/C3 v11-surface verification — see BACKLOG BD-160 / BD-170)" 4
             ;;
         *)
             die "_build_realistic_for_version: unsupported version: $ver" 4
@@ -219,7 +250,7 @@ _build_realistic_for_version() {
 
     case "$ver" in
         v10) _run_v10_init "$target" ;;
-        v11) _run_v11_init "$target" ;;
+        # v11) — wired by BD-160; v11 case above dies before reaching here.
     esac
     _fixture_commit_all "$target" "${ver} install"
 
@@ -346,14 +377,6 @@ EOF
 
     _fixture_commit_all "$target" \
         "FakeOT customizations: project-name, ollama removed, x-agent, BACKLOG"
-}
-
-# Backwards-compat shim: existing dispatcher + any external callers
-# that name the v10-specific function continue to work. Delegates to
-# the parameterized builder. Safe to remove once no caller uses the
-# v10-named entry point.
-_build_v10_realistic_ot() {
-    _build_realistic_for_version v10
 }
 
 # Vanilla v11 install (current pack HEAD).
@@ -688,7 +711,7 @@ _build_one() {
     fi
     case "$name" in
         v10-minimal)               _build_v10_minimal ;;
-        v10-realistic-ot)          _build_v10_realistic_ot ;;
+        v10-realistic-ot)          _build_realistic_for_version v10 ;;
         v11-flat-file)             _build_v11_flat_file ;;
         v11-tracker-on)            _build_v11_tracker_on ;;
         existing-project-mid-dev)  _build_existing_project_mid_dev ;;
@@ -699,6 +722,15 @@ _build_one() {
 }
 
 # Write or update manifest.txt with current SHAs.
+#
+# v11-* row SHAs drift naturally with any pack-product change to v11
+# surface (template files, scripts, skills, agents, etc.) — see README
+# "Determinism" §. Result: a `git blame` on a v11-* manifest row often
+# points at an unrelated BD that happened to run `--all` and stage the
+# regenerated row. v10-* row SHAs are tag-pinned and only drift if the
+# v10 tag itself moves. When committing manifest changes for a BD whose
+# scope does NOT include the v11 surface, prefer staging only the
+# in-scope rows to keep the BD commit's diff faithful.
 _update_manifest() {
     local manifest="$THIS_DIR/manifest.txt"
     {

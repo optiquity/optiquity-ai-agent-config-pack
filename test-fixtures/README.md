@@ -157,15 +157,40 @@ The realistic-OT family uses a single parameterized builder,
 `_build_realistic_for_version <vN>`, that applies the same four
 canonical OT-style customizations (trinity project-name fills,
 `model_providers.ollama` removed, `x-`-prefixed custom agent on all
-3 CLIs, TD-NNN BACKLOG.md) against any pack version's install. To add
-a `vN-realistic-ot` sibling for a future version, extend the per-
-version `case` blocks inside `_build_realistic_for_version` (source
-setup + init runner) — the customization patterns themselves are
-version-agnostic. The legacy `_build_v10_realistic_ot()` entry point
-is preserved as a thin wrapper for backwards compatibility. The
-per-version customization-surface declaration lives in
-`scripts/lib/migrator-core.sh::migrator_target_surface_for_version`
-(BD-119).
+3 CLIs, TD-NNN BACKLOG.md) against any pack version's install. The
+customization patterns themselves are version-agnostic; per-version
+dispatch is confined to source-clone setup and which `_run_vN_init`
+runner to invoke.
+
+To add a `vN-realistic-ot` sibling for a future version:
+
+1. Extend the two per-version `case` blocks inside
+   `_build_realistic_for_version` (source setup + init runner).
+2. Add `vN-realistic-ot` to the `FIXTURE_NAMES` array near the top
+   of `build.sh`.
+3. Add `vN-realistic-ot) _build_realistic_for_version vN ;;` to the
+   `_build_one` dispatcher case.
+4. If vN's surface differs from v10/v11 for the C1–C4 customization
+   patterns (e.g., `.codex/config.toml` location moves, agent dirs
+   relocate), re-verify each pattern against
+   `migrator_target_surface_for_version vN` in
+   `scripts/lib/migrator-core.sh`. That helper is the per-version
+   customization-surface ground truth; the BD-120 builder hardcodes
+   the v10/v11 paths inline rather than consuming the helper, so any
+   surface change in a future vN must be reflected by hand in the
+   builder's customization steps.
+
+Status: v10 wired and exercised (`v10-realistic-ot` fixture); v11
+case body is currently a fail-loud sentinel pending BD-160 (the BD
+that wires `v11-realistic-ot` into `FIXTURE_NAMES` + dispatcher and
+re-verifies C2/C3 against the v11 surface).
+
+Per-version determinism asymmetry: `v10-realistic-ot` is built from
+the v10 git tag (byte-identity stable across rebuilds, like
+`v10-minimal`); a future `v11-realistic-ot` will track the current
+pack `HEAD` (SHA drifts with every pack-product change to v11
+surface, like `v11-flat-file` / `v11-tracker-on`). See the
+**Determinism** section above.
 
 ## See also
 
