@@ -328,6 +328,49 @@ fi
 trk_id=$(printf '%s' "$result2" | jq -r '.tracker_id')
 assert_eq "4.3 tracker_id recorded (stub returns 99)" "99" "$trk_id"
 
+# 4.4 BATCH-17 F2 (cross-BD review): provider_update called on the TD
+# issue with body containing the canonical Resolution text. Without
+# this, `pack tracker disable` reverse migration regenerates BACKLOG
+# with empty Resolution for the promoted TD. The stub records each
+# call as `|<op> <args...>` on potentially-multiline output (the body
+# patch JSON has embedded newlines), so we pull the entire log file
+# content rather than grepping a single line.
+g4_log_full=$(cat "$G4_STUB_LOG")
+if [[ "$g4_log_full" == *"|update 1031 "* ]]; then
+    t_pass "4.4 F2: provider_update called for TD body Resolution sync (gh-id 1031)"
+else
+    t_fail "4.4 F2: provider_update called for TD body Resolution sync (gh-id 1031)" \
+        "no |update 1031 line in stub log; BATCH-17 F2 fix not wired"
+fi
+# Update should have body containing the canonical Resolution token
+# `[YYYY-MM-DD, completed, promoted to phase-7]`. The stub records the
+# raw args; the body is JSON-encoded inside the patch arg.
+if [[ "$g4_log_full" == *"completed, promoted to phase-7"* ]]; then
+    t_pass "4.4 F2: update body names canonical Resolution shape"
+else
+    t_fail "4.4 F2: update body names canonical Resolution shape" \
+        "update_payload tail: $(printf '%s' "$g4_log_full" | tail -50)"
+fi
+if [[ "$g4_log_full" == *"## Resolution"* ]]; then
+    t_pass "4.4 F2: update body has ## Resolution section heading"
+else
+    t_fail "4.4 F2: update body has ## Resolution section heading" \
+        "update_payload tail: $(printf '%s' "$g4_log_full" | tail -50)"
+fi
+
+# 4.5 BATCH-17 F3 (cross-BD review): id-map.json saved to disk after
+# provider_create. Without this, subsequent promote / link calls
+# cannot resolve the new phase-N entity.
+disk_map="$wt2/.pack-tracker/id-map.json"
+if [[ -f "$disk_map" ]] && jq -e --arg k "phase-7" 'has($k)' "$disk_map" >/dev/null 2>&1; then
+    t_pass "4.5 F3: id-map.json on disk has new phase-7 entry"
+    new_id=$(jq -r --arg k "phase-7" '.[$k].id' "$disk_map")
+    assert_eq "4.5 F3: phase-7 id matches stub create rc" "99" "$new_id"
+else
+    t_fail "4.5 F3: id-map.json on disk has new phase-7 entry" \
+        "$(cat "$disk_map" 2>/dev/null)"
+fi
+
 # ─────────────────────────────────────────────────────────────────
 # Group 5: Path 1 reverse / round-trip
 # ─────────────────────────────────────────────────────────────────

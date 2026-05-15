@@ -118,6 +118,18 @@
 #       when the phase has no existing tasks). Pure read; no side
 #       effects.
 #
+#   - tracker_promote_phase_task_M_in_use <repo-root> <phase-N.M>
+#       Reverse of next_phase_task_M's slot logic, scoped to a single
+#       requested M. rc=0 if phase-N.M already exists in the active
+#       IMPLEMENTATION-PLAN.md; rc=1 if free / not in use; rc=2 if
+#       input is invalid (target shape not phase-N.M, plan unreadable,
+#       or parser unavailable). The rc=2 disambiguation (BD-107 review
+#       F10) lets Path 2's idempotency check distinguish "M is free"
+#       from "cannot tell" without ambiguity. Pure read; no side
+#       effects. Total public function count: 9 (BATCH-17 review F5
+#       — header undercounted as 6/8; this is the previously-omitted
+#       9th entry).
+#
 # §6.P resolution (architect-default for Path 1) is HONOURED at the
 # orchestration-policy layer by PM Chat (PM-CHAT.md TD resolution
 # orchestration section); the library itself does not invoke any agent
@@ -703,6 +715,22 @@ Phase epic derived from $td. See IMPLEMENTATION-PLAN.md ## Phase $phase_n for th
         fi
         tracker_id=$(printf '%s' "$result" | jq -r '.id')
 
+        # BATCH-17 F3 (cross-BD review): persist the new phase-epic
+        # mapping to disk so subsequent `pack td promote` / `pack
+        # tracker doctor` invocations see it. Mirrors the
+        # tracker-migrate-forward.sh:818 pattern (save after every
+        # tmf_mapping_set). Without this, the on-disk id-map.json is
+        # stale after Path 1 forward and follow-up tooling cannot
+        # resolve the new phase-N entity.
+        if declare -f tmf_mapping_load >/dev/null 2>&1; then
+            local _f3_mapping
+            _f3_mapping=$(tmf_mapping_load "$repo_root/.pack-tracker/id-map.json")
+            local _f3_url
+            _f3_url=$(printf '%s' "$result" | jq -r '.url // ""')
+            _f3_mapping=$(tmf_mapping_set "$_f3_mapping" "$target" "$tracker_id" "$_f3_url")
+            tmf_mapping_save "$repo_root/.pack-tracker/id-map.json" "$_f3_mapping"
+        fi
+
         # Look up the TD's tracker id; close it with promoted-to label.
         # F3 (BD-107 review): surface backend failures as typed
         # partial-write errors instead of silently swallowing them via
@@ -728,6 +756,36 @@ Phase epic derived from $td. See IMPLEMENTATION-PLAN.md ## Phase $phase_n for th
                         "promote_path1: provider_close failed for TD $td (gh-id $td_gh_id)" \
                         "(phase epic + TD label update succeeded; TD close failed — re-run after addressing the backend failure)"
                     return 1
+                fi
+
+                # BATCH-17 F2 (cross-BD review): write the Resolution
+                # text to the TD issue body's `## Resolution` section so
+                # `pack tracker disable` reverse migration can recover it
+                # via `_tmr_extract_section "Resolution"`. Without this
+                # update, the V3.3 §3.3 round-trip carrier ("BACKLOG
+                # entry's Resolution text — human-readable") is lost on
+                # reverse: the `promoted-to:phase-N` label survives but
+                # the human-readable timestamp + path text does not.
+                # We re-compose the full body using the existing TD
+                # entry's fields plus the new resolution_text and
+                # provider_update with the merged shape. tmf_compose_
+                # issue_body already orders Description / File-Symbol /
+                # Context / Resolution per the v10 lifecycle convention.
+                local _f2_description _f2_context _f2_file_symbol _f2_body _f2_payload
+                _f2_description=$(printf '%s' "$td_entry" | jq -r '.description // ""')
+                _f2_context=$(printf     '%s' "$td_entry" | jq -r '.context // ""')
+                _f2_file_symbol=$(printf '%s' "$td_entry" | jq -r '.file_symbol // ""')
+                if declare -f tmf_compose_issue_body >/dev/null 2>&1; then
+                    _f2_body=$(tmf_compose_issue_body \
+                        "$td" "$_f2_description" "$_f2_context" \
+                        "$resolution_text" "$_f2_file_symbol")
+                    _f2_payload=$(jq -n --arg b "$_f2_body" '{body: $b}')
+                    if ! provider_update "$td_gh_id" "$_f2_payload" >/dev/null 2>&1; then
+                        tracker_error_emit "partial-write" \
+                            "promote_path1: provider_update failed for TD $td body Resolution sync (gh-id $td_gh_id)" \
+                            "(phase epic + TD close succeeded; Resolution body sync failed — reverse migration will not recover human-readable Resolution; re-run after addressing the backend failure)"
+                        return 1
+                    fi
                 fi
             fi
         fi
@@ -1022,6 +1080,26 @@ Phase task derived from $td. See IMPLEMENTATION-PLAN.md ## Phase $phase_n / ####
             id_map=$(printf '%s' "$id_map" | jq --arg k "$target" \
                 --arg id "$tracker_id" --arg url "$task_url" \
                 '. + {($k): {id: $id, url: $url}}')
+
+            # BATCH-17 F3 (cross-BD review): persist the new phase-task
+            # mapping to disk so subsequent `pack td promote` / `pack
+            # tracker doctor` invocations see it. Mirrors the
+            # tracker-migrate-forward.sh:818 pattern (save after every
+            # tmf_mapping_set). Without this, the on-disk id-map.json
+            # is stale after Path 2 forward and a follow-up promote
+            # citing this phase-N.M as a Dependencies target will hit
+            # the link-orchestrator's "not in id-map" typed error.
+            if declare -f tmf_mapping_save >/dev/null 2>&1 \
+                && declare -f tmf_mapping_load >/dev/null 2>&1 \
+                && declare -f tmf_mapping_set  >/dev/null 2>&1; then
+                local _f3_disk_mapping
+                _f3_disk_mapping=$(tmf_mapping_load "$repo_root/.pack-tracker/id-map.json")
+                _f3_disk_mapping=$(tmf_mapping_set "$_f3_disk_mapping" \
+                    "$target" "$tracker_id" "$task_url")
+                tmf_mapping_save "$repo_root/.pack-tracker/id-map.json" \
+                    "$_f3_disk_mapping"
+            fi
+
             local edges_arr="[]"
             local b_count b_idx=0 b_raw
             local blockers
@@ -1084,6 +1162,31 @@ Phase task derived from $td. See IMPLEMENTATION-PLAN.md ## Phase $phase_n / ####
                     "promote_path2: provider_close failed for TD $td (gh-id $td_gh_id)" \
                     "(phase task + TD label update succeeded; TD close failed — re-run after addressing the backend failure)"
                 return 1
+            fi
+
+            # BATCH-17 F2 (cross-BD review): write the Resolution text
+            # to the TD issue body's `## Resolution` section so `pack
+            # tracker disable` reverse migration recovers the human-
+            # readable timestamp + path text via _tmr_extract_section
+            # "Resolution". Symmetric to the Path 1 fix above. Without
+            # this update, the V3.3 §3.3 round-trip carrier is reduced
+            # to one (the `promoted-to:phase-N.M` label survives but
+            # the human-readable Resolution text is lost on reverse).
+            local _f2_description _f2_context _f2_file_symbol _f2_body _f2_payload
+            _f2_description=$(printf '%s' "$td_entry" | jq -r '.description // ""')
+            _f2_context=$(printf     '%s' "$td_entry" | jq -r '.context // ""')
+            _f2_file_symbol=$(printf '%s' "$td_entry" | jq -r '.file_symbol // ""')
+            if declare -f tmf_compose_issue_body >/dev/null 2>&1; then
+                _f2_body=$(tmf_compose_issue_body \
+                    "$td" "$_f2_description" "$_f2_context" \
+                    "$resolution_text" "$_f2_file_symbol")
+                _f2_payload=$(jq -n --arg b "$_f2_body" '{body: $b}')
+                if ! provider_update "$td_gh_id" "$_f2_payload" >/dev/null 2>&1; then
+                    tracker_error_emit "partial-write" \
+                        "promote_path2: provider_update failed for TD $td body Resolution sync (gh-id $td_gh_id)" \
+                        "(phase task + TD close succeeded; Resolution body sync failed — reverse migration will not recover human-readable Resolution; re-run after addressing the backend failure)"
+                    return 1
+                fi
             fi
         fi
     fi

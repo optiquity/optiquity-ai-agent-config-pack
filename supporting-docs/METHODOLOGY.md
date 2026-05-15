@@ -1090,6 +1090,8 @@ No phase prompt is generated until this check is complete.
    - TD-NNN blocker: does that item have Status: Resolved?
    - External condition: has the condition been met? (use judgment; flag for user if uncertain)
    If ALL blockers resolved → set Status: Unblocked
+   (When all blockers resolve, the TD becomes Unblocked — see the resolution-path
+   decision logic later in this Part for the V3.3 §3 promotion paths.)
 3. For every Unblocked item:
    - Determine resolution path using the decision logic below
    - Present list to user with proposed path for each item
@@ -1117,7 +1119,9 @@ No phase prompt is generated until this check is complete.
    Active skills line in CLAUDE.md, AGENTS.md, and GEMINI.md. Commit.
 ```
 
-**Resolution path decision logic** (per ARCHITECTURE-V3.3-DELTA.md §3.1; supersedes the v10 three-outcome shape):
+**Resolution path decision logic** (per ARCHITECTURE-V3.3-DELTA.md §3.1; supersedes the v10 three-outcome shape).
+(See Procedure 1 step 2 above for the "blockers resolved" gate-check semantics
+including the v11.0 phase-N.M and phase-task A-blocked-by-B forms.)
 ```
 Is the work small (≤ ~30 minutes inline; no significant scope expansion;
 user available to do it) AND no blockers?

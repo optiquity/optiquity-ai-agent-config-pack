@@ -51,6 +51,23 @@ if ! declare -f tracker_mirror_header_write >/dev/null 2>&1; then
     unset _tmf_self _tmf_dir
 fi
 
+# BATCH-17 F1 (cross-BD review): step 7 (Blockers: phase-N.M /
+# BD-NNN / TD-NNN) and step 7b (phase-task Dependencies bullets) must
+# go through BD-108's `tracker_links_create_blocked_by` orchestrator
+# so the cycle-graph store at `<repo>/.pack-tracker/links-graph.json`
+# is populated by initial forward migration. Without this, the
+# cycle-graph store is empty until a `pack td promote --to=phase-N.M`
+# runs, leaving forward-migration cycles invisible to subsequent
+# link-creation cycle checks. Source the link orchestrator (which in
+# turn sources tracker-cycle-check.sh, tracker-errors.sh) idempotently.
+# shellcheck disable=SC1091
+if ! declare -f tracker_links_create_blocked_by >/dev/null 2>&1; then
+    _tmf_self="${BASH_SOURCE[0]}"
+    _tmf_dir="$(cd "$(dirname "$_tmf_self")" && pwd)"
+    source "$_tmf_dir/tracker-links.sh"
+    unset _tmf_self _tmf_dir
+fi
+
 # ─────────────────────────────────────────────────────────────────
 # Constants
 # ─────────────────────────────────────────────────────────────────
@@ -881,6 +898,19 @@ tracker_migrate_forward_run() {
     # would falsely catch it. The v10 ordering convention (Blockers
     # field order = forward processing order = reverse emission order)
     # is preserved per call-out 5 in the BD-108 IMPLEMENTATION-REPORT.
+    #
+    # BATCH-17 F1 (cross-BD review): both blocked-by arms now route
+    # through `tracker_links_create_blocked_by` (BD-108) instead of
+    # bare `provider_link`. The orchestrator runs cycle-check + persists
+    # the new edge to the cycle-graph store so link-creation cycle
+    # detection has a non-empty baseline after initial migration. The
+    # store lives at `<repo>/.pack-tracker/links-graph.json` per
+    # tracker-links.sh convention. The id-map JSON is the in-memory
+    # `mapping` we have been maintaining; we re-serialize on each loop
+    # iteration so the orchestrator sees the freshest mapping (entries
+    # may be added by step 5 phase-creation between iterations).
+    local cycle_store_path
+    cycle_store_path="$repo_root/$TMF_PACK_TRACKER_DIR/links-graph.json"
     local lidx=0 linked_parent=0 linked_blocked=0
     while [[ $lidx -lt $entry_count ]]; do
         local entry pack_id gh_id
@@ -913,7 +943,14 @@ tracker_migrate_forward_run() {
                     local pt_gh_id
                     pt_gh_id=$(tmf_mapping_get "$mapping" "$raw" || echo "")
                     if [[ -n "$pt_gh_id" ]]; then
-                        if provider_link "$gh_id" "$pt_gh_id" "blocked-by" >/dev/null 2>&1; then
+                        # BATCH-17 F1: route through link orchestrator
+                        # (BD-108). The orchestrator handles cycle-check
+                        # + provider_link + cycle-graph store persist.
+                        # Cycle check is a no-op on empty initial store
+                        # but builds the baseline for subsequent links.
+                        if tracker_links_create_blocked_by \
+                            "$pack_id" "$raw" "$mapping" "$cycle_store_path" "" \
+                            >/dev/null 2>&1; then
                             linked_blocked=$((linked_blocked + 1))
                         else
                             printf 'step-7 link blocked-by (phase-task): %s -> %s\n' \
@@ -939,7 +976,13 @@ tracker_migrate_forward_run() {
                     local other_gh_id
                     other_gh_id=$(tmf_mapping_get "$mapping" "$raw" || echo "")
                     if [[ -n "$other_gh_id" ]]; then
-                        if provider_link "$gh_id" "$other_gh_id" "blocked-by" >/dev/null 2>&1; then
+                        # BATCH-17 F1: route through link orchestrator
+                        # (BD-108). Mirrors the phase-N.M arm above —
+                        # the BD/TD blocked-by arm now also populates
+                        # the cycle-graph store on initial migration.
+                        if tracker_links_create_blocked_by \
+                            "$pack_id" "$raw" "$mapping" "$cycle_store_path" "" \
+                            >/dev/null 2>&1; then
                             linked_blocked=$((linked_blocked + 1))
                         else
                             printf 'step-7 link blocked-by: %s -> %s\n' \
@@ -1008,7 +1051,14 @@ tracker_migrate_forward_run() {
                         "$pt_src" "$pt_tgt" >> "$partial_failures"
                     continue
                 fi
-                if provider_link "$pt_src_gh" "$pt_tgt_gh" "blocked-by" >/dev/null 2>&1; then
+                # BATCH-17 F1: route through link orchestrator (BD-108)
+                # so the cycle-graph store is populated for phase-task
+                # ↔ phase-task edges that originate from the
+                # IMPLEMENTATION-PLAN.md `Dependencies` bullets. This
+                # mirrors the F1 fix to step 7's blocked-by arms.
+                if tracker_links_create_blocked_by \
+                    "$pt_src" "$pt_tgt" "$mapping" "$cycle_store_path" "" \
+                    >/dev/null 2>&1; then
                     linked_blocked=$((linked_blocked + 1))
                 else
                     printf 'step-7b link blocked-by (phase-task dep): %s -> %s\n' \

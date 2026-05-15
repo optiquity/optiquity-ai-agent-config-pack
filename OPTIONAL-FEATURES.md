@@ -160,6 +160,14 @@ ships at the pack root; the client-side template
 `init-project.sh` at v11 as `tracker.toml.example` at the client
 project root.
 
+The example templates surface every commonly-tuned field as a
+commented-out section with a default value. Notably the v11.0
+additive `[graph] cycle_check_k` (default 10; raise if your cross-
+entity dependency graph regularly has chains longer than 10 hops)
+controls the BFS hop bound for the link-creation-time cycle
+detector — see ARCHITECTURE-V3.3-DELTA.md §5.5 for the bounded-
+search semantics.
+
 **How to use the pack's pieces with it** — once opted in, PM chat /
 Pack chat queries route tracker reads through the TrackerProvider in
 `scripts/lib/tracker-provider.sh` so prompts stay accurate as issues

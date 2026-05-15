@@ -327,6 +327,37 @@ for pid in BD-001 BD-002 BD-003 TD-010 TD-011 phase-1 phase-2; do
     fi
 done
 
+# 3.5b BATCH-17 F1: step 7 / 7b now route through
+# tracker_links_create_blocked_by, which persists every successful
+# blocked-by edge to the cycle-graph store at
+# .pack-tracker/links-graph.json. BD-002 has `Blockers: BD-001, phase-1`
+# in the fixture. The phase-1 token routes to the v10 sub-issue-parent
+# arm (NOT a blocked-by edge), so only BD-001 lands in the store as a
+# blocked-by edge. Without F1, the store would not exist at all on
+# initial migration.
+store_path="$TEST_REPO/.pack-tracker/links-graph.json"
+if [[ -f "$store_path" ]]; then
+    t_pass "3.5b F1: cycle-graph store created at $store_path"
+    n_edges=$(jq '.edges | length' "$store_path" 2>/dev/null || echo 0)
+    if [[ "$n_edges" -ge 1 ]]; then
+        t_pass "3.5b F1: cycle-graph store has ≥1 blocked-by edge (BD-002 → BD-001)"
+    else
+        t_fail "3.5b F1: cycle-graph store has ≥1 blocked-by edge (BD-002 → BD-001)" \
+            "n_edges=$n_edges"
+    fi
+    # BD-002 → BD-001 edge present?
+    if jq -e '.edges[] | select(.source == "BD-002" and .target == "BD-001" and .kind == "blocked-by")' \
+        "$store_path" >/dev/null 2>&1; then
+        t_pass "3.5b F1: cycle-graph store has BD-002 blocked-by BD-001 edge"
+    else
+        t_fail "3.5b F1: cycle-graph store has BD-002 blocked-by BD-001 edge" \
+            "edges: $(jq -c '.edges' "$store_path" 2>/dev/null)"
+    fi
+else
+    t_fail "3.5b F1: cycle-graph store created at $store_path" \
+        "missing (was forward migration's blocked-by orchestrator wired?)"
+fi
+
 # 3.6 BACKLOG.md mirror header was added in place.
 first_line=$(head -n 1 "$TEST_REPO/BACKLOG.md")
 assert_eq "3.6 BACKLOG mirror header line 1" "<!--" "$first_line"

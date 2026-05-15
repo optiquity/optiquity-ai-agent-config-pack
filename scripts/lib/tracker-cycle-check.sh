@@ -312,16 +312,15 @@ sys.exit(0)
 PYEOF
 
     # rc=0 → safe; rc=1 → traversal error (typed error already on
-    # stderr via the python sys.stderr.write above); rc=2 → cycle.
-    # Both 1 and 2 collapse to caller-visible rc=1 ("would form cycle
-    # OR refuse for safety"). The distinct exit codes give the test
-    # harness a way to assert on the failure mode without parsing
-    # stderr (cycle vs traversal error).
-    case "$rc" in
-        0) return 0 ;;
-        2) return 1 ;;
-        *) return 1 ;;
-    esac
+    # stderr via the python sys.stderr.write above); rc=2 → cycle
+    # detected. BATCH-17 F10 (cross-BD review): the python rc bubbles
+    # up directly so callers and tests CAN distinguish "would-cycle"
+    # (rc=2) from "traversal/schema error" (rc=1). Both are still
+    # fail-closed for the higher-level link-orchestrator (which only
+    # treats rc=0 as "safe"), but the diagnostic dimension is now
+    # available for the test harness to assert on without parsing
+    # stderr text.
+    return $rc
 }
 
 # ─────────────────────────────────────────────────────────────────

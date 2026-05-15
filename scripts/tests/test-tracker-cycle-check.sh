@@ -56,6 +56,19 @@ source "$LIB_DIR/tracker-errors.sh"
 source "$LIB_DIR/tracker-config.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/tracker-cycle-check.sh"
+# BATCH-17 F10: Group 6 below tests caller-side fail-closed semantics
+# at the tracker_links_create_blocked_by orchestrator (rc=2 → rc=1
+# coercion). Source the orchestrator + a stub provider for the
+# orchestrator's provider_link call.
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-provider.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/tracker-links.sh"
+# Stub provider_link so the orchestrator's step 4 does not actually
+# hit a backend during this offline test (we only need to verify
+# that cycle-check rc=2 still surfaces as orchestrator rc=1 —
+# i.e. the link is refused before provider_link is called).
+provider_link() { return 0; }
 
 # Helper: write a store JSON file from a list of "src,tgt" pairs.
 write_store() {
@@ -300,6 +313,57 @@ assert_contains "5.3 self-loop emits typed error block" "$err" "ERROR: validatio
 assert_contains "5.3 self-loop names a next-step verb" "$err" "→ Run:"
 assert_contains "5.3 self-loop names 'pack tracker doctor' verb (BD-108 F2)" \
     "$err" "pack tracker doctor"
+
+# ─────────────────────────────────────────────────────────────────
+# Group 6: BATCH-17 F10 — rc=2 vs rc=1 disambiguation
+#
+# Per the cross-BD review: callers and tests CAN now distinguish
+# "would-cycle" (python rc=2) from "traversal/schema error" (python
+# rc=1) without parsing stderr text. The function bubbles up the
+# python rc directly instead of collapsing to caller-visible rc=1.
+# Both still fail-closed at the higher orchestrator level; the
+# distinction is for diagnostic / test-harness use.
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 6: F10 rc=2 vs rc=1 disambiguation ===\n"
+
+# 6.1 cycle case → distinct rc=2.
+store="$FIXTURES/store-2cycle.json"
+write_store "$store" "TD-031,phase-3.2"
+tracker_cycle_check_would_form_cycle "phase-3.2" "TD-031" "$store" 10 2>/dev/null
+rc_cycle=$?
+assert_eq "6.1 F10: cycle case bubbles python rc=2 (distinct from traversal error)" \
+    "2" "$rc_cycle"
+
+# 6.2 traversal/schema error case → distinct rc=1.
+malformed="$FIXTURES/store-malformed-f10.json"
+printf 'not valid JSON' > "$malformed"
+tracker_cycle_check_would_form_cycle "phase-3.1" "phase-3.2" "$malformed" 10 2>/dev/null
+rc_traversal=$?
+assert_eq "6.2 F10: traversal/schema error bubbles python rc=1 (distinct from cycle)" \
+    "1" "$rc_traversal"
+
+# 6.3 safe case still returns rc=0.
+store_safe="$FIXTURES/store-empty-f10.json"
+printf '%s\n' '{"edges":[]}' > "$store_safe"
+tracker_cycle_check_would_form_cycle "phase-3.2" "phase-3.1" "$store_safe" 10 2>/dev/null
+rc_safe=$?
+assert_eq "6.3 F10: safe case returns rc=0 (unchanged)" "0" "$rc_safe"
+
+# 6.4 caller-side: tracker_links_create_blocked_by must still fail-closed
+# on BOTH rc=1 AND rc=2 (the orchestrator uses `if !` to coerce non-zero
+# to failure). The test checks the orchestrator's behavior is preserved.
+# (Cycle case — rc=2 propagates.)
+fixtures_id_map=$(jq -n '{
+    "TD-031": {"id": "1031"},
+    "phase-3.2": {"id": "3002"}
+}')
+if tracker_links_create_blocked_by "phase-3.2" "TD-031" "$fixtures_id_map" "$store" "" >/dev/null 2>&1; then
+    t_fail "6.4 F10: orchestrator still fails-closed on cycle (rc=2 propagates as rc=1)" \
+        "expected rc=1 from orchestrator; got rc=0"
+else
+    t_pass "6.4 F10: orchestrator still fails-closed on cycle (rc=2 → rc=1 at orchestrator)"
+fi
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

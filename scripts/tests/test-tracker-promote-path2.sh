@@ -281,6 +281,66 @@ set_labels_line=$(grep -E '^\|set_labels 1040 ' "$G4_STUB_LOG" | head -1 || true
 assert_contains "4.4 set_labels names promoted-to:phase-3.4" "$set_labels_line" "promoted-to:phase-3.4"
 assert_contains "4.4 set_labels names status:resolved"        "$set_labels_line" "status:resolved"
 
+# 4.5 BATCH-17 F2 (cross-BD review): provider_update called for TD-040
+# body Resolution sync. Stub records can be multi-line; pull full log.
+g4_log_full=$(cat "$G4_STUB_LOG")
+if [[ "$g4_log_full" == *"|update 1040 "* ]]; then
+    t_pass "4.5 F2: provider_update called for TD-040 body Resolution sync"
+else
+    t_fail "4.5 F2: provider_update called for TD-040 body Resolution sync" \
+        "no |update 1040 line; BATCH-17 F2 fix not wired"
+fi
+if [[ "$g4_log_full" == *"completed, promoted to phase-3.4"* ]]; then
+    t_pass "4.5 F2: update body names canonical Resolution shape (phase-3.4)"
+else
+    t_fail "4.5 F2: update body names canonical Resolution shape (phase-3.4)" \
+        "update payload tail: $(printf '%s' "$g4_log_full" | tail -30)"
+fi
+if [[ "$g4_log_full" == *"## Resolution"* ]]; then
+    t_pass "4.5 F2: update body has ## Resolution section heading"
+else
+    t_fail "4.5 F2: update body has ## Resolution section heading" \
+        "update payload tail: $(printf '%s' "$g4_log_full" | tail -30)"
+fi
+
+# 4.6 BATCH-17 F3 (cross-BD review): id-map.json on disk has the new
+# phase-3.4 entry. Without this, a subsequent --to=phase-3.5 promote
+# referencing phase-3.4 in Dependencies would fail at link-orchestrator
+# resolution.
+disk_map="$wt3/.pack-tracker/id-map.json"
+if [[ -f "$disk_map" ]] && jq -e --arg k "phase-3.4" 'has($k)' "$disk_map" >/dev/null 2>&1; then
+    t_pass "4.6 F3: id-map.json on disk has new phase-3.4 entry"
+    new_id=$(jq -r --arg k "phase-3.4" '.[$k].id' "$disk_map")
+    assert_eq "4.6 F3: phase-3.4 id matches stub create rc (99)" "99" "$new_id"
+else
+    t_fail "4.6 F3: id-map.json on disk has new phase-3.4 entry" \
+        "$(cat "$disk_map" 2>/dev/null)"
+fi
+
+# 4.7 BATCH-17 F3 (cross-BD review): second-run regression — promote
+# TD-029 to phase-3.5 in tracker mode and verify the second run's
+# in-memory id-map (loaded from disk) sees the previous phase-3.4
+# from disk. Reading id-map from disk (pack-td.sh:165 pattern) is
+# the production codepath; the test simulates that.
+wt3b=$(mk_tracker_worktree "g4-7-second-run")
+export _TRACKER_PROVIDER_BACKEND_OVERRIDE=stub
+G4B_STUB_LOG="$SCRATCH/g4-7-stub.log"
+: > "$G4B_STUB_LOG"
+export STUB_LOG_FILE="$G4B_STUB_LOG"
+ID_MAP_3B=$(cat "$wt3b/.pack-tracker/id-map.json")
+STORE_3B="$wt3b/.pack-tracker/links-graph.json"
+# First run: TD-040 → phase-3.4. F3 should save phase-3.4 to disk.
+tracker_promote_path2 "TD-040" "phase-3.4" "$wt3b" "$ID_MAP_3B" "$STORE_3B" 0 >/dev/null 2>&1
+# Now re-read id-map from disk (simulates the next pack-td invocation).
+ID_MAP_3B_AFTER=$(cat "$wt3b/.pack-tracker/id-map.json")
+if printf '%s' "$ID_MAP_3B_AFTER" | jq -e 'has("phase-3.4")' >/dev/null 2>&1; then
+    t_pass "4.7 F3: second-run reads phase-3.4 from disk id-map"
+else
+    t_fail "4.7 F3: second-run reads phase-3.4 from disk id-map" \
+        "id-map after first run: $(printf '%s' "$ID_MAP_3B_AFTER" | jq -c .)"
+fi
+unset _TRACKER_PROVIDER_BACKEND_OVERRIDE STUB_LOG_FILE
+
 # ─────────────────────────────────────────────────────────────────
 # Group 5: Path 2 reverse / round-trip
 # ─────────────────────────────────────────────────────────────────
