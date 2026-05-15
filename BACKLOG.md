@@ -701,16 +701,16 @@ Resolved: 2026-05-10 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 
 **BD-096 — Synthetic-fixture set (general-use coverage; OT is one example)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-088, BD-085
 Unblocks: None
-File/Symbol: `scripts/tests/fixtures/customization-preserve/lightly-customized-minimal/`, `heavily-customized/`, `language-heterogeneous/`, `custom-agents-heavy/`, `v10-with-customization/`
+File/Symbol: `scripts/tests/fixtures/customization-preserve/lightly-customized-minimal/`, `heavily-customized/`, `language-heterogeneous/`, `custom-agents-heavy/`, `v10-with-customization/`, `pack-retires-files/` (added during fix-cycle per F-5(a))
 Description: 4 new synthetic fixtures + the OT-modeled fixture from BD-088
   (now one of five). Proves migrator handles distinct customization shapes;
   OT becomes one example among several (general-use). README explains each
   fixture; all 5 pass `test-customization-preserve.sh` end-to-end. Phase-task
   fixtures added by BD-106 extension.
-Resolved: n/a
+Resolved: 2026-05-14 in commits 4a5a6e5 (impl) + db1ed87 (review fix-cycle) — Batch 16 single batch with 6 fixture directories total under `scripts/tests/fixtures/customization-preserve/` (5 originally specified + 6th `pack-retires-files/` added during F-5(a) fix-cycle to cover file-removal dispositions). `test-customization-preserve.sh` extended with Group 8 driver (data-driven; auto-discovers fixtures via `LC_ALL=C ls -d ... | sort`; supports negative-substring `!` assertions); BD-088 inline TSV cases (Groups 1–7) preserved byte-identical. Test count 79 → 233 (+154 new). Pack-reviewer end-of-batch review (`maintenance-docs/v11-implementation/REVIEW-BD-096.md`) found 1 BLOCKER (CI failure: 4 `.gemini/.env` fixture files git-ignored by `.gitignore:38`) + 4 SHOULD-FIX + 4 NIT — all 9 fixed in commit db1ed87 with narrow `.gitignore` exception (`!scripts/tests/fixtures/**/.env`) preserving security-relevant `.env` ignore everywhere else. validate-pack 35/35 PASS at both commits; CI green confirmed at db1ed87. Implementation report: `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-096.md`.
 
 ---
 
