@@ -1,28 +1,45 @@
 # Pack structural validation + test runner. Runs on every push to any
-# branch. Failures block merge to main. Fix immediately — read the
+# branch. Failures block merge to main. Fix immediately - read the
 # Actions log; errors name the exact file and problem.
 #
 # Two jobs:
-#   - validate: runs scripts/validate-pack.py (31 structural Checks)
+#   - validate: runs scripts/validate-pack.py (structural Checks)
 #   - tests:    runs every scripts/tests/*-test.sh independently so a
 #               failure in one suite does not mask another's results.
 #
 # RELEASE-GATE wiring (BD-117 / BD-118): the `tests` job exercises the
 # CI-eligible release-gate items so every push proves them. Specifically:
-#   - Gate item 3 (BD-116 persona contracts) → `persona contracts` step.
-#   - Gate item 4 (BD-118 CI green) → this workflow itself.
-#   - Gate item 5 (`test-fixtures/build.sh --verify`) → `fixture
+#   - Gate item 3 (BD-116 persona contracts) -> `persona contracts` step.
+#   - Gate item 4 (BD-118 CI green) -> this workflow's overall status on
+#     the candidate-tag SHA (no dedicated step; the workflow's own
+#     pass/fail is the signal).
+#   - Gate item 5 (`test-fixtures/build.sh --verify`) -> `fixture
 #     manifest verify` step.
 # Gate items 1 (per-version migrator framework adoption) and 2 (BD-114
-# real-OT dry-run) are pre-tag manual checks — intentionally NOT in CI
+# real-OT dry-run) are pre-tag manual checks - intentionally NOT in CI
 # (item 2 touches a network-hosted real repo). See
 # `maintenance-docs/v11-implementation/RELEASE-GATE.md`.
 #
 # Step ordering for the BD-115/116/117 surface (intentional):
-#   (a) build test fixtures      — rebuilds fixtures from scratch
-#   (b) fixture manifest verify  — compares rebuilt SHAs vs committed
-#                                  manifest.txt (catches manifest drift)
-#   (c) persona contracts        — runs against the verified fixtures
+#   (a)  build test fixtures              - rebuilds fixtures from scratch.
+#                                           SIDE EFFECT: writes
+#                                           `test-fixtures/manifest.txt` from
+#                                           the freshly-built SHAs (via
+#                                           `_update_manifest`). On the CI
+#                                           runner this overwrites the
+#                                           checked-out committed manifest.
+#   (a2) restore committed manifest       - `git checkout HEAD -- ...` puts the
+#                                           committed `manifest.txt` back so
+#                                           step (b) compares against the
+#                                           canonical pinned SHAs, not the
+#                                           ones step (a) just wrote. Without
+#                                           this, step (b) would be
+#                                           tautological (BD-118 retro fix).
+#   (b)  fixture manifest verify          - compares rebuilt fixture HEAD SHAs
+#                                           vs the committed `manifest.txt`
+#                                           (catches manifest drift /
+#                                           non-determinism).
+#   (c)  persona contracts                - runs against the verified fixtures.
 # Failures attribute clearly: (a) = non-determinism in a builder;
 # (b) = missing manifest update / fixture content drift; (c) = pack
 # behavior regression surfaced by a contract.
@@ -33,13 +50,13 @@
 # come AFTER the "build test fixtures" step. The fixtures are
 # gitignored build artifacts; CI runners do not have them until built.
 # Affected tests today:
-#   - migrator-skills tests (BD-147) — depends on v10-realistic-ot
-#                                     (G1 golden-snapshot regression)
-#   - persona contracts (BD-116)     — depends on existing-project-mid-dev
-#                                     and v10-realistic-ot via
-#                                     `test-fixtures/build.sh
-#                                     --for-contract <persona>`
-#   - fixture manifest verify (BD-115) — depends on all built fixtures
+#   - migrator-skills tests (BD-147) - depends on v10-realistic-ot
+#                                      (G1 golden-snapshot regression)
+#   - persona contracts (BD-116)     - depends on existing-project-mid-dev
+#                                      and v10-realistic-ot via
+#                                      `test-fixtures/build.sh
+#                                      --for-contract <persona>`
+#   - fixture manifest verify (BD-115) - depends on all built fixtures
 # Each fixture-dependent test runner ALSO declares its precondition
 # inline via the `require_fixture` helper (test-migrator-skills.sh)
 # or via `_materialize_for_contract`'s built-fixture die-check
@@ -75,7 +92,7 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: pip install pyyaml
-      - name: Run pack validation (31 Checks)
+      - name: Run pack validation
         run: python3 scripts/validate-pack.py
 
   tests:
@@ -90,7 +107,7 @@ jobs:
       - name: Install dependencies
         run: pip install pyyaml
 
-      # Per-suite steps — independent so one failure surfaces all.
+      # Per-suite steps - independent so one failure surfaces all.
       - name: detect.sh tests
         if: always()
         run: bash scripts/test-detect.sh
@@ -160,6 +177,18 @@ jobs:
       - name: build test fixtures (BD-115/116/117)
         if: always()
         run: bash test-fixtures/build.sh --all --clean
+      # BD-118 retro fix: `--all --clean` runs `_update_manifest`, which
+      # overwrites the checked-out committed `test-fixtures/manifest.txt`
+      # on the runner with the freshly-built SHAs. Without restoring the
+      # committed manifest here, the next step (`--verify`) would compare
+      # the just-built fixtures against the just-written manifest and
+      # always pass by construction (tautological). Restoring HEAD's
+      # version makes the verify step actually compare against the
+      # canonical pinned SHAs. Read-only `git checkout -- <path>` form;
+      # no branch state is mutated.
+      - name: restore committed manifest before verify (BD-118 retro)
+        if: always()
+        run: git checkout HEAD -- test-fixtures/manifest.txt
       - name: fixture manifest verify (BD-115, RELEASE-GATE item 5)
         if: always()
         run: bash test-fixtures/build.sh --verify

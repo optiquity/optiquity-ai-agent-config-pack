@@ -114,9 +114,11 @@ Two runs of `build.sh` from the same pack-repo state produce
   Re-running `build.sh` regenerates the manifest — `git diff
   manifest.txt` shows what moved.
 
-`build.sh --verify` rebuilds + compares against the committed
-manifest. Useful in CI for v10-* fixtures (which should never drift)
-and as an after-rebuild sanity check.
+`build.sh --verify` compares the local fixture HEAD SHAs against the
+committed manifest. It does **not** rebuild — run `build.sh --all`
+first if you want a fresh-build comparison. Useful in CI for v10-*
+fixtures (which should never drift) and as an after-rebuild sanity
+check.
 
 ## Why fixtures are gitignored, not committed
 
