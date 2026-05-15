@@ -183,6 +183,29 @@ cmd_promote() {
     local path
     path=$(_tpr_classify_target "$target") || return 1
 
+    # BD-129 retro-fix F2: export `_TRACKER_PROVIDER_CONFIG_PATH` so
+    # the gh invocations inside `tracker_promote_path1` /
+    # `tracker_promote_path2` (specifically the `_tracker_labels_create`
+    # pre-create calls and any provider_create / provider_set_labels
+    # routed through `_gh_run`) can resolve the configured backend.repo
+    # via `tracker_gh_repo_setup` and skip git-remote resolution.
+    # Mirrors the pattern in `tracker_init_run`
+    # (scripts/lib/tracker-init.sh:216) and `tracker_doctor_run`
+    # (scripts/lib/tracker-doctor.sh:168). Best-effort: missing
+    # tracker.toml means flat-file mode, in which case the export is a
+    # no-op (helper short-circuits when `_TRACKER_PROVIDER_CONFIG_PATH`
+    # is unset OR the file is missing). Failure to resolve a surface is
+    # also tolerated — flat-file mode does not need GH_REPO at all.
+    if [[ "$flat_only" != "1" ]]; then
+        local _td_surface _td_cfg_path
+        if _td_surface=$(tracker_config_auto_surface "$repo_root" 2>/dev/null) \
+           && _td_cfg_path=$(tracker_config_resolve_path "$_td_surface" "$repo_root" 2>/dev/null) \
+           && [[ -f "$_td_cfg_path" ]]; then
+            export _TRACKER_PROVIDER_CONFIG_PATH="$_td_cfg_path"
+        fi
+        unset _td_surface _td_cfg_path
+    fi
+
     # F4 (BD-107 review): capture the result so we can render the
     # BACKLOG patch advisory to stderr when invoked outside PM Chat.
     # The library deliberately does NOT mutate BACKLOG.md (PM Chat

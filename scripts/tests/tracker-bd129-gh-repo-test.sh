@@ -157,16 +157,20 @@ got=$(grep -c '^GH_REPO=DShaneNYC/example-repo|' "$GH_LOG" || true)
     || t_fail "2.1 _gh_run exports GH_REPO before invoking gh" \
         "log: $(cat "$GH_LOG")"
 
-# 2.2 No remote resolution involved: scrub GH_REPO between calls
-# and verify _gh_run re-establishes it (exec inherits but a fresh
-# env start would still see it because the helper exports). For this
-# we just confirm the same call works repeatedly.
+# 2.2 BD-129 retro-fix F6: two-call sequence to actually exercise the
+# "re-establishes between calls" invariant the test name claims. The
+# previous shape only proved "first call sets it after unset", which
+# duplicated 2.1. Now: caller unsets GH_REPO BETWEEN two calls; the
+# helper must re-export on the next gh invocation. Assert the log
+# contains the slug-bearing prefix at least twice (one per call).
 unset GH_REPO
 : > "$GH_LOG"
-tracker_provider_gh_get 1 >/dev/null 2>&1 || true
+tracker_provider_gh_get 1 >/dev/null 2>&1 || true   # 1st call: helper sets GH_REPO
+unset GH_REPO                                        # caller scrubs between calls
+tracker_provider_gh_get 1 >/dev/null 2>&1 || true   # 2nd call: helper re-sets GH_REPO
 got=$(grep -c '^GH_REPO=DShaneNYC/example-repo|' "$GH_LOG" || true)
-[[ "$got" -ge 1 ]] && t_pass "2.2 _gh_run re-establishes GH_REPO after caller unset" \
-    || t_fail "2.2 _gh_run re-establishes GH_REPO after caller unset" \
+[[ "$got" -ge 2 ]] && t_pass "2.2 _gh_run re-establishes GH_REPO between calls" \
+    || t_fail "2.2 _gh_run re-establishes GH_REPO between calls" \
         "log: $(cat "$GH_LOG")"
 
 # ─────────────────────────────────────────────────────────────────
@@ -238,6 +242,65 @@ got=$(grep -c '^GH_REPO=forced/override-repo|' "$GH_LOG" || true)
     || t_fail "4.1 caller GH_REPO override wins over tracker.toml" \
         "log: $(cat "$GH_LOG")"
 unset GH_REPO
+
+# ─────────────────────────────────────────────────────────────────
+# Group 5: BD-129 retro-fix F7 — non-GitHub remote variant
+# (GitLab / GHE-on-different-host / internal mirror). The BACKLOG
+# entry's Unblocks line names "non-GitHub remotes, internal mirrors,
+# GHE-on-different-host" alongside "no remote at all"; Group 3
+# already covers no-remote, this group covers the hostile-remote
+# case where a wrong git remote exists and `tracker_gh_repo_setup`
+# must still win and route every gh call to the tracker.toml slug.
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 5: tracker.toml slug wins over hostile non-GitHub git remote ===\n"
+
+unset GH_REPO
+TOML5="$WORKDIR/r5.toml"
+cat > "$TOML5" <<'TOML'
+schema_version = 1
+[backend]
+name = "github"
+repo = "owner-5/repo-5"
+[mode]
+state = "tracker"
+[id_namespace]
+prefix = "BD"
+[migration]
+forward_complete = false
+TOML
+export _TRACKER_PROVIDER_CONFIG_PATH="$TOML5"
+: > "$GH_LOG"
+
+mkdir -p "$WORKDIR/gitlab-remote-repo"
+cd "$WORKDIR/gitlab-remote-repo"
+git init -q . 2>/dev/null || true
+# Hostile (non-GitHub) remote: simulates a working copy whose git
+# remote points at a GitLab instance (or any non-GitHub host). Pre-
+# fix and pre-helper-call, gh would either consult this URL and emit
+# the misleading "none of the git remotes ..." error, or attempt to
+# auth against the wrong host. Post-fix, GH_REPO must be exported
+# from tracker.toml and gh's git-remote resolution must be skipped
+# entirely.
+git remote add origin "https://gitlab.example.com/owner-5/repo-5.git" 2>/dev/null || true
+
+out5=$(tracker_labels_ensure 2>&1)
+rc5=$?
+cd "$REPO_ROOT"
+
+assert_eq "5.1 tracker_labels_ensure rc=0 with hostile non-GitHub git remote" "0" "$rc5"
+
+total5=$(wc -l < "$GH_LOG" | tr -d ' ')
+ok5=$(grep -c '^GH_REPO=owner-5/repo-5|' "$GH_LOG" || true)
+assert_eq "5.2 all gh calls saw GH_REPO=owner-5/repo-5 (count=$total5) — tracker.toml slug won over gitlab remote" \
+    "$total5" "$ok5"
+
+# Negative assertion: NO gh call should have been made with GH_REPO=<unset>
+# (which would indicate the helper failed to fire and gh might have
+# fallen back to the gitlab remote URL).
+unset_count=$(grep -c '^GH_REPO=<unset>|' "$GH_LOG" || true)
+assert_eq "5.3 no gh call saw GH_REPO unset (helper fired for every invocation)" \
+    "0" "$unset_count"
 
 # Restore PATH for any post-suite tooling.
 export PATH="$ORIG_PATH"

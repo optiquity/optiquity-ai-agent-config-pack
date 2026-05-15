@@ -32,6 +32,18 @@
 # Detect gh-sub-issue extension at first call; cache result.
 # The extension provides `gh sub-issue add/list/remove`. When absent,
 # sub-issue ops fall back to GraphQL.
+#
+# BD-129 retro-fix F5: this `gh extension list` call is intentionally
+# NOT routed through `_gh_run` (and therefore does not trigger the
+# `tracker_gh_repo_setup` helper). `gh extension list` is a global
+# user-scope command that enumerates locally-installed gh extensions;
+# it does NOT consult git-remote resolution and does NOT need
+# `GH_REPO`. Sending it through `_gh_run` would buy nothing and would
+# add the typed-error classification overhead to a probe whose only
+# meaningful failure mode is "extension absent" (handled by the
+# fall-through to "no" via the grep -q exit). The result is cached for
+# the lifetime of the process so the global call happens at most once
+# per pack-tracker invocation.
 _gh_has_sub_issue_extension() {
     if [[ -z "${_GH_SUB_ISSUE_EXT_CACHED:-}" ]]; then
         if gh extension list 2>/dev/null | grep -q "sub-issue"; then

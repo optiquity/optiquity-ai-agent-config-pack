@@ -8,6 +8,22 @@ cause `pack tracker init` to fail in repos without a GitHub remote
 (no commits made — pack-coder is read-only on git state per
 `feedback_agents_never_commit.md`; Pack Chat commits)
 
+> **REVISION 2026-05-15 (Batch 21c retro-fix, F3 erratum):** The
+> "How verified" / Section 4 ("Files modified") narrative below
+> originally claimed CI's `Validate Pack` workflow runs all
+> `tracker-*-test.sh` files via `bash scripts/tests/run-all-tests.sh`.
+> That script does not exist and never did — the workflow enumerates
+> each test file by name with a dedicated step, and at original
+> commit time `tracker-bd129-gh-repo-test.sh` was NOT wired into the
+> workflow at all. The CI gap was closed in commit `304078f` (cross-BD
+> CI wiring + chmod +x parity) which added an explicit step
+> `bash scripts/tests/tracker-bd129-gh-repo-test.sh` to
+> `.github/workflows/validate-pack.yml`. The Section 4 / file-count
+> drift (claimed `+200`, actual `+246`) is a NIT (F8) — no behavior
+> impact; documented for archive-tree revision discipline. See
+> `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-129-RETRO-FIX.md`
+> for the full retro-fix scope (F2/F3/F4 + NITs F5-F9).
+
 ---
 
 ## Summary

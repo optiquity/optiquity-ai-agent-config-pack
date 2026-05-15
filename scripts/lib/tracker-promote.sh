@@ -660,6 +660,22 @@ tracker_promote_path1() {
 
     if [[ "$flat_only" != "1" ]] && [[ -f "$repo_root/.pack-tracker/id-map.json" ]]; then
         mode="tracker"
+        # BD-129 retro-fix F2: ensure `GH_REPO` is exported from the
+        # active tracker.toml's `backend.repo` before invoking
+        # `_tracker_labels_create`. The labels helper bypasses
+        # `_gh_run` (it shells `gh label create` directly), so the
+        # `_gh_run`-internal helper call from BD-129 does NOT cover
+        # this code path; without this defense, `pack td promote`
+        # against a working copy with no GitHub remote would still
+        # fail at the labels-pre-create step with the misleading
+        # `none of the git remotes ...` error BD-129 was meant to
+        # eliminate. The dispatcher (scripts/pack-td.sh::cmd_promote)
+        # exports `_TRACKER_PROVIDER_CONFIG_PATH` so this helper has
+        # the backend.repo source it needs. Helper is a no-op when
+        # `GH_REPO` is already set or the env var is unset.
+        if declare -f tracker_gh_repo_setup >/dev/null 2>&1; then
+            tracker_gh_repo_setup
+        fi
         # F3 (BD-107 review): pre-create the dynamic per-entity labels on
         # the GH repo before provider_create / provider_set_labels emits
         # them. modern `gh` rejects unknown labels at issue create/edit;
@@ -993,6 +1009,15 @@ PYEOF
 
     if [[ "$flat_only" != "1" ]] && [[ -f "$repo_root/.pack-tracker/id-map.json" ]]; then
         mode="tracker"
+        # BD-129 retro-fix F2: ensure `GH_REPO` is exported from the
+        # active tracker.toml's `backend.repo` before invoking
+        # `_tracker_labels_create`. See the matching block in
+        # `tracker_promote_path1` above for the full rationale.
+        # Helper is a no-op when `GH_REPO` is already set or the
+        # `_TRACKER_PROVIDER_CONFIG_PATH` env var is unset.
+        if declare -f tracker_gh_repo_setup >/dev/null 2>&1; then
+            tracker_gh_repo_setup
+        fi
         # F3 (BD-107 review): pre-create the dynamic per-entity labels on
         # the GH repo before provider_create / provider_set_labels emits
         # them. modern `gh` rejects unknown labels at issue create/edit;

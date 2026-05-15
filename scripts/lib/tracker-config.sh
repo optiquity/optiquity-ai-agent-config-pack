@@ -257,7 +257,28 @@ tracker_gh_repo_setup() {
     [[ -z "$cfg" || ! -f "$cfg" ]] && return 0
     local slug
     slug=$(tracker_repo_slug "$cfg" 2>/dev/null) || return 0
-    [[ -n "$slug" ]] && export GH_REPO="$slug"
+    [[ -z "$slug" ]] && return 0
+    # BD-129 retro-fix F4: validate the slug shape before exporting.
+    # A malformed `backend.repo` (e.g. an HTTPS URL pasted instead of
+    # `owner/repo`, internal whitespace, or a missing slash) propagates
+    # silently into `GH_REPO` and gh fails downstream with a less-
+    # targeted error than the original BD-129 problem the helper was
+    # meant to eliminate. Accept only the canonical `[HOST/]OWNER/REPO`
+    # shape gh's own GH_REPO contract documents:
+    #   - must contain at least one '/'
+    #   - no scheme separators ('://')
+    #   - no whitespace
+    # On rejection, emit a typed validation error to stderr and
+    # continue (helper still returns 0 — fail-soft so the downstream
+    # gh call can surface its own typed error if appropriate).
+    if [[ "$slug" != */* ]] || [[ "$slug" == *"://"* ]] \
+       || [[ "$slug" == *' '* ]] || [[ "$slug" == *$'\t'* ]]; then
+        tracker_error_emit "validation" \
+            "tracker.toml backend.repo='$slug' is not a canonical [HOST/]OWNER/REPO slug; refusing to export as GH_REPO" \
+            "(expected forms: 'owner/repo' or 'github.example.com/owner/repo'; got a value with a scheme, whitespace, or no slash)"
+        return 0
+    fi
+    export GH_REPO="$slug"
     return 0
 }
 
