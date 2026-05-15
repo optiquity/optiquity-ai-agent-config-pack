@@ -27,6 +27,14 @@
 # Schema reference: ARCHITECTURE.md §3.1.
 # Detection reference: ARCHITECTURE.md §3.2.
 #
+# Additive v11.0 fields (BD-108):
+#   - [graph] cycle_check_k = <positive integer, default 10>
+#       Per V3.3 §5.5 + IPLAN-ADDENDUM-4 §6.Q recommendation (a):
+#       maximum BFS hop count for the link-creation-time cycle
+#       detector (scripts/lib/tracker-cycle-check.sh). Read by
+#       tracker_cycle_check_get_k(); falls back to 10 when absent.
+#       Existing tracker.toml schemas continue to load (additive).
+#
 # Implementation note: the parser is a tiny regex-based reader, not a
 # full TOML parser. Our schema is flat (one section level, no arrays,
 # no inline tables, no multiline strings), so a minimal parser is

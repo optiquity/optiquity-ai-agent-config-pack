@@ -1,0 +1,14 @@
+{
+  "TD-029": {"id": "1029", "url": "https://example.com/issues/1029"},
+  "TD-031": {"id": "1031", "url": "https://example.com/issues/1031"},
+  "TD-040": {"id": "1040", "url": "https://example.com/issues/1040"},
+  "BD-108": {"id": "2108", "url": "https://example.com/issues/2108"},
+  "BD-110": {"id": "2110", "url": "https://example.com/issues/2110"},
+  "phase-3":   {"id": "3000", "url": "https://example.com/issues/3000"},
+  "phase-3.1": {"id": "3001", "url": "https://example.com/issues/3001"},
+  "phase-3.2": {"id": "3002", "url": "https://example.com/issues/3002"},
+  "phase-3.4": {"id": "3004", "url": "https://example.com/issues/3004"},
+  "phase-7":   {"id": "7000", "url": "https://example.com/issues/7000"},
+  "phase-7.1": {"id": "7001", "url": "https://example.com/issues/7001"},
+  "phase-7.2": {"id": "7002", "url": "https://example.com/issues/7002"}
+}

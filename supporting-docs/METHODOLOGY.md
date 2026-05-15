@@ -306,7 +306,18 @@ Every phase in IMPLEMENTATION-PLAN.md should follow this format:
   end states, not steps. Do not include implementation instructions.
 - **Files created/modified**: list
 - **Definition of done**: Measurable, verifiable criteria
-- **Dependencies**: other tasks within this phase
+- **Dependencies**: zero or more nested bullets, one per dependency. Each entry is
+  either a phase epic (`phase-N`), a sibling or cross-phase task (`phase-N.M`), a
+  TD entry (`TD-NNN`), or a BD entry (`BD-NNN`). Trailing free-text after the ID
+  is preserved as a human-readable annotation. Parser regex (V3.3 §5.3):
+  `^\s*-\s+(phase-\d+(\.\d+)?|TD-\d+|BD-\d+)(\s+(.*))?$`.
+  Example:
+  ```
+  - **Dependencies**:
+    - phase-3.1 (must complete schema before this task)
+    - phase-7.4
+    - TD-029
+  ```
 
 ### Verification
 Build/test command that proves the phase is complete.
@@ -1034,7 +1045,7 @@ not a BACKLOG entry.
 Type: TODO(scope) | KNOWN GAP(critical|functional|polish) | VERIFY(source)
 Status: Open | Unblocked | Resolved | Cancelled | Deprecated
 Blockers:
-  - [Named specific dependency — phase N, TD-NNN, or external condition]
+  - [Named specific dependency — phase N, phase N.M (v11.0 additive), TD-NNN, or external condition]
   - [Additional blocker if any — all must resolve before item is actionable]
 Unblocks: [TD-NNN, TD-NNN, ...] or None
   ← informational only; PM chat derives actionability from Blockers, never from this field
@@ -1070,6 +1081,12 @@ No phase prompt is generated until this check is complete.
 1. Read BACKLOG.md in full
 2. For every Open item, check each Blocker:
    - Phase N blocker: has that phase been committed and marked ✅ in STATUS.md?
+   - Phase N.M blocker (v11.0 additive per V3.3 §5.4): in tracker mode, read the
+     `status:done` label on the phase task; in flat-file mode, read the `✅` marker
+     on the `#### N.M` heading. Resolution is mode-agnostic via the trinity
+     Document-locations resolver (V1 §8.5 / D-6).
+   - Phase task A blocked by phase task B (Dependencies field, V3.3 §5.4):
+     same resolution as Phase N.M — read the target task's status; mode-agnostic.
    - TD-NNN blocker: does that item have Status: Resolved?
    - External condition: has the condition been met? (use judgment; flag for user if uncertain)
    If ALL blockers resolved → set Status: Unblocked

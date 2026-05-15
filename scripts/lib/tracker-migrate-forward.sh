@@ -858,6 +858,19 @@ tracker_migrate_forward_run() {
     done
 
     # Step 6+7: per-entry parent + blocked-by links.
+    #
+    # BD-108: Blockers grammar admits `phase-N.M` form (V3.3 §5.3).
+    # Distinct routing per token shape — preserved source order:
+    #   - `phase-N`     → sub-issue parent (V1 §6.2 step 6 unchanged)
+    #   - `phase-N.M`   → blocked-by link via tracker_links (V3.3 §5.1
+    #                     pair type 2: TD ↔ phase task)
+    #   - `BD-NNN|TD-NNN` → blocked-by link (V1 §6.2 step 7 unchanged)
+    #
+    # The case statement matches MOST-SPECIFIC FIRST so the v11.0
+    # `phase-N.M` shape is recognised before the v10 `phase-N*` glob
+    # would falsely catch it. The v10 ordering convention (Blockers
+    # field order = forward processing order = reverse emission order)
+    # is preserved per call-out 5 in the BD-108 IMPLEMENTATION-REPORT.
     local lidx=0 linked_parent=0 linked_blocked=0
     while [[ $lidx -lt $entry_count ]]; do
         local entry pack_id gh_id
@@ -869,8 +882,6 @@ tracker_migrate_forward_run() {
             continue
         fi
 
-        # Step 6: phase parent (if Blockers contains a phase-N token,
-        # treat the phase epic as a parent for sub-issue purposes).
         local blockers
         blockers=$(printf '%s' "$entry" | jq -c '.blockers // []')
         local b_count b_idx=0
@@ -879,6 +890,20 @@ tracker_migrate_forward_run() {
             local raw
             raw=$(printf '%s' "$blockers" | jq -r ".[$b_idx]")
             case "$raw" in
+                # Most-specific first: phase-N.M (v11.0 additive form).
+                phase-[0-9]*.[0-9]*)
+                    local pt_gh_id
+                    pt_gh_id=$(tmf_mapping_get "$mapping" "$raw" || echo "")
+                    if [[ -n "$pt_gh_id" ]]; then
+                        if provider_link "$gh_id" "$pt_gh_id" "blocked-by" >/dev/null 2>&1; then
+                            linked_blocked=$((linked_blocked + 1))
+                        else
+                            printf 'step-7 link blocked-by (phase-task): %s -> %s\n' \
+                                "$pack_id" "$raw" >> "$partial_failures"
+                        fi
+                    fi
+                    ;;
+                # phase-N (v10 sub-issue parent).
                 phase-[0-9]*)
                     local parent_gh_id
                     parent_gh_id=$(tmf_mapping_get "$mapping" "$raw" || echo "")
@@ -909,6 +934,62 @@ tracker_migrate_forward_run() {
         done
         lidx=$((lidx + 1))
     done
+
+    # Step 7b (BD-108; V3.3 §5.7): second pass also processes phase-task
+    # `Dependencies` bullets from IMPLEMENTATION-PLAN.md. The phase task
+    # parser (BD-106 tracker-phase-task.sh) already extracts each task's
+    # dependency_edges with `kind/target/annotation`; this loop replays
+    # them as provider_link calls so the tracker reflects the same
+    # blocked-by edges as the flat-file source.
+    #
+    # Sourced lazily so callers that don't need the v11.0 phase-task
+    # surface (e.g. v10 fixtures with no IMPLEMENTATION-PLAN.md) don't
+    # pay the load cost.
+    if [[ -f "$plan_path" ]]; then
+        # Lazy source — same idempotency guard pattern as the
+        # tracker-config / tracker-errors siblings.
+        if ! declare -f tracker_phase_task_parse >/dev/null 2>&1; then
+            local _tmf_lib_dir
+            _tmf_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            # shellcheck disable=SC1091
+            source "$_tmf_lib_dir/tracker-phase-task.sh"
+        fi
+        local pt_doc
+        if pt_doc=$(tracker_phase_task_parse "$plan_path" 2>/dev/null); then
+            local pt_pairs
+            # Emit one "<src>\t<tgt>" line per phase-task dependency
+            # for downstream loop. Awk-friendly; bash-3.2-portable.
+            pt_pairs=$(printf '%s' "$pt_doc" | jq -r '
+                .phases[]?.tasks[]? as $task |
+                $task.dependencies[]? |
+                [$task.pack_id, .target] | @tsv')
+            while IFS=$'\t' read -r pt_src pt_tgt; do
+                [[ -z "$pt_src" || -z "$pt_tgt" ]] && continue
+                local pt_src_gh pt_tgt_gh
+                pt_src_gh=$(tmf_mapping_get "$mapping" "$pt_src" || echo "")
+                pt_tgt_gh=$(tmf_mapping_get "$mapping" "$pt_tgt" || echo "")
+                if [[ -z "$pt_src_gh" ]]; then
+                    # Source phase task not in id-map yet — phase-task
+                    # creation is a future BD scope item. Surface as
+                    # partial-failure so the user sees coverage gaps.
+                    printf 'step-7b phase-task source not in id-map: %s\n' \
+                        "$pt_src" >> "$partial_failures"
+                    continue
+                fi
+                if [[ -z "$pt_tgt_gh" ]]; then
+                    printf 'step-7b phase-task target not in id-map: %s -> %s\n' \
+                        "$pt_src" "$pt_tgt" >> "$partial_failures"
+                    continue
+                fi
+                if provider_link "$pt_src_gh" "$pt_tgt_gh" "blocked-by" >/dev/null 2>&1; then
+                    linked_blocked=$((linked_blocked + 1))
+                else
+                    printf 'step-7b link blocked-by (phase-task dep): %s -> %s\n' \
+                        "$pt_src" "$pt_tgt" >> "$partial_failures"
+                fi
+            done <<<"$pt_pairs"
+        fi
+    fi
 
     # Steps 8 + 9: close-on-Resolved + Resolution comment.
     # Per V1 §6.2 numeric step order, these execute AFTER step 7

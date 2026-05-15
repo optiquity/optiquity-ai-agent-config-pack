@@ -328,6 +328,14 @@ PYEOF
 # is open-string); for v11.0 we read the body for the comment-marker
 # fallback ("Blocked by #NNN") and prepend any sub-issue parent.
 #
+# BD-108 (V3.3 §5.3): The decoder admits the v11.0 additive `phase-N.M`
+# form alongside v10's `phase-N` / `TD-NNN` / `BD-NNN`. Sub-issue parent
+# is restricted to phase EPICS (`phase-N`) — phase tasks (`phase-N.M`)
+# are not legal sub-issue parents per V3.3 §2 D-21. Body-comment-marker
+# Blockers admit the full set per V3.3 §5.3 line 263. Source order is
+# preserved (sub-issue parent first if present, then comment-marker
+# order) per call-out 5 in the BD-108 IMPLEMENTATION-REPORT.
+#
 # Returns a JSON array of pack-ids on stdout. Non-pack-id refs (e.g.
 # `#42` to a non-mapped issue) are dropped.
 _tmr_decode_blockers() {
@@ -347,13 +355,19 @@ for pack_id, info in mapping.items():
 
 blockers = []
 
-# Sub-issue parent → phase-N if it maps to one.
+# Sub-issue parent → phase epic only. V3.3 §2 D-21: phase tasks
+# (phase-N.M) are first-class L2 entities; they are NOT sub-issue
+# parents. Restrict to phase-N (no `.M` component) to avoid
+# misclassifying a phase-task parent as a phase-epic blocker.
 if sub_issue_parent:
     pack_parent = gh_to_pack.get(str(sub_issue_parent))
-    if pack_parent and pack_parent.startswith("phase-"):
+    if pack_parent and re.match(r'^phase-\d+$', pack_parent):
         blockers.append(pack_parent)
 
-# Body comment markers: "Blocked by #NNN" lines.
+# Body comment markers: "Blocked by #NNN" lines. Reverse-lookup yields
+# the pack-id verbatim (phase-N, phase-N.M, TD-NNN, or BD-NNN) — the
+# admission set is the V3.3 §5.3 grammar that the id-map already
+# carries. No additional filter needed.
 for m in re.finditer(r'(?:Blocked by|blocked-by|blocks)[\s:]*#(\d+)', body):
     gh_id = m.group(1)
     pack_id = gh_to_pack.get(gh_id)
