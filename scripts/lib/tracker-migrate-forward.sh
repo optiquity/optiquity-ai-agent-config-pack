@@ -901,7 +901,15 @@ tracker_migrate_forward_run() {
             raw=$(printf '%s' "$blockers" | jq -r ".[$b_idx]")
             case "$raw" in
                 # Most-specific first: phase-N.M (v11.0 additive form).
-                phase-[0-9]*.[0-9]*)
+                # BD-108 review F9: the glob is tightened so the N and
+                # M positions accept only digits — `phase-[0-9][0-9]*`
+                # rather than `phase-[0-9]*` — defense-in-depth against
+                # malformed Blockers entries (e.g. `phase-3foo.4`,
+                # `phase-3.2.5`) that would survive the parser. This
+                # mirrors the canonical regex used by
+                # `_tlk_is_valid_pack_id` in scripts/lib/tracker-links.sh.
+                # Bash-3.2 compatible (no `+(...)` extglob).
+                phase-[0-9][0-9]*.[0-9][0-9]*)
                     local pt_gh_id
                     pt_gh_id=$(tmf_mapping_get "$mapping" "$raw" || echo "")
                     if [[ -n "$pt_gh_id" ]]; then
@@ -964,8 +972,17 @@ tracker_migrate_forward_run() {
             # shellcheck disable=SC1091
             source "$_tmf_lib_dir/tracker-phase-task.sh"
         fi
-        local pt_doc
-        if pt_doc=$(tracker_phase_task_parse "$plan_path" 2>/dev/null); then
+        local pt_doc pt_err
+        # BD-108 review F10: capture parser stderr so a malformed
+        # IMPLEMENTATION-PLAN (V3.3 §5.3 grammar violation) surfaces
+        # via the partial_failures log rather than being silently
+        # dropped. Without this capture, users would see "0 cross-
+        # phase deps linked" with no diagnostic — violating V3.3 §5.6
+        # ("no silent retry / no silent fallback") and V1 §9.6
+        # partial-write contract.
+        pt_err=$(mktemp -t tmf-pt-err.XXXXXX)
+        if pt_doc=$(tracker_phase_task_parse "$plan_path" 2>"$pt_err"); then
+            rm -f "$pt_err"
             local pt_pairs
             # Emit one "<src>\t<tgt>" line per phase-task dependency
             # for downstream loop. Awk-friendly; bash-3.2-portable.
@@ -998,6 +1015,18 @@ tracker_migrate_forward_run() {
                         "$pt_src" "$pt_tgt" >> "$partial_failures"
                 fi
             done <<<"$pt_pairs"
+        else
+            # BD-108 review F10: parser failed — surface the typed
+            # error block to the partial_failures log so the user
+            # sees the diagnostic. Without this branch the migrator
+            # would silently skip the entire phase-task dependency
+            # replay. The leading marker line lets users grep the
+            # log for "step-7b phase-task parser failed" to locate
+            # malformed IMPLEMENTATION-PLAN inputs.
+            printf 'step-7b phase-task parser failed (plan_path=%s):\n' \
+                "$plan_path" >> "$partial_failures"
+            cat "$pt_err" >> "$partial_failures" 2>/dev/null || true
+            rm -f "$pt_err"
         fi
     fi
 

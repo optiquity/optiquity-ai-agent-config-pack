@@ -61,3 +61,10 @@ reverse_available = false
 # last_reverse_run = "2026-05-20T08:00:00Z"
 # Local mapping file (gitignored). Tracker IDs <-> pack IDs.
 mapping_file = ".pack-tracker/id-map.json"
+
+# [graph]
+# Cross-entity dependency graph tuning (V3.3 §5.5; BD-108).
+# K-hop bound for the link-creation cycle check. Default is 10 if
+# this section/key is absent. Raise to detect longer cycles at the
+# cost of broader graph traversal per link attempt.
+# cycle_check_k = 10  # K-hop bound for link-creation cycle check (V3.3 §5.5)

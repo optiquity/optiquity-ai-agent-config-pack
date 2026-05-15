@@ -291,11 +291,15 @@ assert_contains "5.3 cycle error names 'pack tracker doctor' verb" "$err" "pack 
 err=$(tracker_cycle_check_would_form_cycle "phase-3.1" "phase-3.2" "$malformed" 10 2>&1) || true
 assert_contains "5.3 schema-reshape error names 'pack tracker doctor' verb" "$err" "pack tracker doctor"
 
-# Self-loop's typed error names `review the backend message above`
-# (validation category verb) — we just confirm there's a typed code at all.
+# Self-loop's typed error names `pack tracker doctor` (V3.3 §5.6
+# cycle-class failure verb) — same verb as the BFS cycle path so the
+# two cycle-refusal sites stay consistent for the same class of
+# failure. BD-108 review F2 fix.
 err=$(tracker_cycle_check_would_form_cycle "TD-031" "TD-031" "$FIXTURES/store-empty.json" 10 2>&1) || true
 assert_contains "5.3 self-loop emits typed error block" "$err" "ERROR: validation"
 assert_contains "5.3 self-loop names a next-step verb" "$err" "→ Run:"
+assert_contains "5.3 self-loop names 'pack tracker doctor' verb (BD-108 F2)" \
+    "$err" "pack tracker doctor"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

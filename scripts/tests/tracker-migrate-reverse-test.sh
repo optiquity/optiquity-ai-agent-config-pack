@@ -196,6 +196,32 @@ assert_contains "1.5 BD-002 comment marker in blockers"    "$blockers" "BD-002"
 empty_blockers=$(_tmr_decode_blockers "" "$mapping" "")
 assert_eq "1.5 no blockers → []" "[]" "$empty_blockers"
 
+# 1.5c BD-108 review F4 — V3.3 §2 D-21: phase tasks (phase-N.M) are
+# L2 entities and are NOT legal sub-issue parents. Only phase epics
+# (phase-N) may appear in the sub-issue-parent channel of decoded
+# Blockers. Pre-BD-108 used `pack_parent.startswith("phase-")` which
+# would falsely admit a phase-task pack-id; BD-108 tightened the
+# regex to `^phase-\d+$`. This regression test seeds a mapping
+# containing a phase-task entry (phase-3.2 → "59") and passes "59"
+# as the sub_issue_parent. The decoded Blockers must NOT include
+# phase-3.2 — even though the gh-id reverse-lookup would resolve
+# it. (Body-comment-marker channel admits the full set per V3.3
+# §5.3, but that is a separate code path; this test isolates the
+# sub-issue-parent restriction.)
+mapping_d21='{"BD-001":{"id":"42"},"phase-3":{"id":"58"},"phase-3.2":{"id":"59"}}'
+# Body has no Blocked-by markers, so the only Blockers source is the
+# sub-issue parent channel. Without the D-21 regex tightening this
+# would (incorrectly) yield ["phase-3.2"]; with the tightening the
+# decoded list must be [].
+d21_blockers=$(_tmr_decode_blockers "" "$mapping_d21" "59")
+assert_eq "1.5c V3.3 D-21: phase-task pack-id NOT admitted as sub-issue parent (BD-108 F4)" \
+    "[]" "$d21_blockers"
+# Counterpoint: phase-3 (a phase epic) IS admitted as a sub-issue
+# parent — confirms the regex tightening did not over-restrict.
+d21_epic=$(_tmr_decode_blockers "" "$mapping_d21" "58")
+assert_contains "1.5c V3.3 D-21: phase epic STILL admitted as sub-issue parent" \
+    "$d21_epic" "phase-3"
+
 # ─────────────────────────────────────────────────────────────────
 # Group 2: reconstruction
 # ─────────────────────────────────────────────────────────────────

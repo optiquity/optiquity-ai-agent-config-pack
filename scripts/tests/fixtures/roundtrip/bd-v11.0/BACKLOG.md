@@ -30,3 +30,18 @@ Description: The quux subsystem lacks user-facing documentation.
 Resolved: n/a
 
 ---
+
+**TD-040 — Cross-phase TD blocked by phase task (BD-108 F5)**
+Type: TODO(version)
+Status: Open
+Blockers: phase-1.2, TD-010
+Unblocks: None
+File/Symbol: scripts/cross-phase.sh
+Description: Exercises the v11.0 phase-N.M Blockers grammar through
+  the full forward → state-file → reverse round-trip. The phase-1.2
+  pack-id rides through tmf_parse_backlog (shape-agnostic
+  parse_id_list) and through _tmr_emit_backlog (joins with `, `
+  preserving source order). V3.3 §5.3 additive grammar.
+Resolved: n/a
+
+---

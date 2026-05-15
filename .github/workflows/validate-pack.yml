@@ -115,6 +115,15 @@ jobs:
       - name: tracker-migrate roundtrip tests (BD-070)
         if: always()
         run: bash scripts/tests/tracker-migrate-roundtrip-test.sh
+      - name: tracker phase-task tests (BD-106)
+        if: always()
+        run: bash scripts/tests/test-tracker-phase-task.sh
+      - name: tracker links tests (BD-108)
+        if: always()
+        run: bash scripts/tests/test-tracker-links.sh
+      - name: tracker cycle-check tests (BD-108)
+        if: always()
+        run: bash scripts/tests/test-tracker-cycle-check.sh
       - name: tracker error mapping tests (BD-066)
         if: always()
         run: bash scripts/tests/tracker-errors-test.sh

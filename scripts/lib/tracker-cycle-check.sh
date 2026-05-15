@@ -21,27 +21,49 @@
 #   - tracker_cycle_check_would_form_cycle \
 #         <proposed-source-pack-id> \
 #         <proposed-target-pack-id> \
-#         <sidecar-store-path>
-#       Walk `blocked-by` edges in the sidecar store starting at the
-#       proposed-target. If the proposed-source appears within K hops
-#       (default 10), rc=1 (the link would close a cycle); otherwise
-#       rc=0 (the link is safe to create).
+#         <cycle-graph-store-path>
+#       Walk `blocked-by` edges in the cycle-graph store starting at
+#       the proposed-target. If the proposed-source appears within
+#       K hops (default 10), rc=1 (the link would close a cycle);
+#       otherwise rc=0 (the link is safe to create).
 #
-#       The traversal direction matches V3.3 §5.5 prose: "traverses
-#       `blocked-by` from the new edge's source for K hops; if the
-#       target appears in the closure, refuse." We start at the
-#       proposed-target and follow blocked-by edges from there. If we
-#       reach the proposed-source, then proposed-source is already
-#       (transitively) blocked by proposed-target, so adding
-#       "proposed-source blocked-by proposed-target" would close a
-#       cycle.
+#       The store argument names the cycle-graph store (the runtime
+#       edge index this lib maintains) — NOT the V3.3 §6.R sidecar
+#       `dependency_edges` block. They are two distinct artifacts;
+#       see "Cycle-graph store contract" below for schema. (BD-108
+#       review F8 — parameter rename for unambiguous artifact
+#       identity.)
+#
+#       Traversal direction (algorithm-correct rationale; BD-108
+#       review F6):
+#         out[X] = [things X is blocked by]. Walking forward from
+#         `tgt` along blocked-by edges enumerates the set of nodes
+#         that `tgt` is (transitively) blocked by. If we reach the
+#         proposed-source from the proposed-target, then
+#         **proposed-target is (transitively) blocked-by
+#         proposed-source** in the existing graph. Adding the
+#         proposed edge `S blocked-by T` (i.e., S → T) would then
+#         close a cycle S → T → ... → S, so we refuse it.
+#
+#       Note on the V3.3 §5.5 prose ("traverses `blocked-by` from
+#       the new edge's source for K hops; if the target appears in
+#       the closure, refuse"): if read literally that wording would
+#       NOT detect cycles correctly — walking from S along blocked-by
+#       enumerates what S is blocked by, not what blocks S, so
+#       reaching T from S would mean S is already blocked by T, which
+#       is the inverse of the cycle condition for "S blocked-by T".
+#       The implementation here (walk from tgt) matches graph-
+#       theoretic correctness; the spec text wording is a known
+#       imprecision and should be re-tightened in a future spec
+#       revision.
 #
 #       Fail-closed semantics: traversal errors (malformed sidecar,
 #       unreadable JSON, etc.) emit a typed error and rc=1 — the
 #       caller refuses the link. Per V3.3 §5.6, no silent retry.
 #
-# Sidecar-store contract:
-#   The sidecar-store argument is the path to a JSON file shaped:
+# Cycle-graph store contract:
+#   The <cycle-graph-store-path> argument is the path to a JSON file
+#   shaped:
 #     {
 #       "edges": [
 #         {"source": "<pack-id>", "target": "<pack-id>", "kind": "blocked-by"},
@@ -54,10 +76,13 @@
 #   non-phase-task BD/TD edges that the existing forward orchestrator
 #   has historically created via provider_link.
 #
-#   The store is the durable cycle-graph view; the sidecar is the
-#   durable persistence view. Keeping them as separate files lets the
-#   cycle check stay O(K) per query without re-deriving the edge set
-#   from a per-task YAML block on every link attempt.
+#   The cycle-graph store is the durable runtime view used by cycle
+#   detection; the V3.3 §6.R sidecar is the durable persistence view.
+#   Keeping them as separate files lets the cycle check stay O(K)
+#   per query without re-deriving the edge set from a per-task YAML
+#   block on every link attempt. (BD-108 review F8: do NOT confuse
+#   the cycle-graph store with the §6.R sidecar — they have
+#   different schemas and different lifetimes.)
 #
 # Reference:
 #   - ARCHITECTURE-V3.3-DELTA.md §5.5 (cycle detection)
@@ -141,15 +166,16 @@ tracker_cycle_check_get_k() {
 # Public: cycle detector
 # ─────────────────────────────────────────────────────────────────
 
-# tracker_cycle_check_would_form_cycle <src> <tgt> <store-path> [<k>]
+# tracker_cycle_check_would_form_cycle <src> <tgt> <cycle-graph-store-path> [<k>]
 #
 # Returns:
 #   rc=0  → safe (the proposed edge does NOT close a cycle within K hops)
 #   rc=1  → unsafe (cycle would form, OR traversal failed — fail-closed)
 #
 # Traversal:
-#   Treats the store as a directed graph of "blocked-by" edges. Every
-#   edge entry shape: {"source": A, "target": B, "kind": "blocked-by"}
+#   Treats the cycle-graph store as a directed graph of "blocked-by"
+#   edges. Every edge entry shape:
+#     {"source": A, "target": B, "kind": "blocked-by"}
 #   means "A is blocked by B". We walk forward from `tgt` along
 #   blocked-by edges (target → its targets → ...). If `src` appears in
 #   the closure within K hops, the new edge "src blocked-by tgt" would
@@ -174,9 +200,21 @@ tracker_cycle_check_would_form_cycle() {
 
     # Self-loop refused immediately. The store path doesn't even need
     # to exist for this guard — a 1-cycle is a closed-form refusal.
+    #
+    # Verb-naming: BD-108 review F2 — the self-loop refusal is a
+    # cycle-class failure exactly like the BFS-detected cycle path
+    # below. V3.3 §5.6 mandates that cross-entity link failures "name
+    # the verb (`pack tracker doctor`)", so we format the error inline
+    # (matching the BFS path's `→ Run: pack tracker doctor` line)
+    # rather than going through tracker_error_emit "validation" whose
+    # verb-table entry maps to "review the backend message above" —
+    # which would be inconsistent with the BFS path for the same
+    # class of failure.
     if [[ "$src" == "$tgt" ]]; then
-        tracker_error_emit "validation" \
-            "cycle_check: refusing self-loop edge: $src blocked-by $tgt"
+        printf 'ERROR: validation\n' >&2
+        printf 'MESSAGE: cycle_check: refusing self-loop edge: %s blocked-by %s\n' \
+            "$src" "$tgt" >&2
+        printf '→ Run: pack tracker doctor\n' >&2
         return 1
     fi
 

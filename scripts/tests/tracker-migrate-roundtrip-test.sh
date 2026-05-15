@@ -252,16 +252,20 @@ rc1=$?
 export PATH="$PATH_SAVED"
 
 assert_eq       "1.1 forward run rc=0"           "0" "$rc1"
-assert_contains "1.1 forward run reports 3 entries" "$output1" "parsed 3 BACKLOG entries"
+# BD-108 F5: bd-v11.0 fixture extended with TD-040 (Blockers: phase-1.2)
+# so the full forward → state-file → reverse pipeline exercises the
+# v11.0 phase-N.M Blockers grammar. Entry count: 4 BD/TD + 2 phase
+# epics = 6 issues in the recorded state.
+assert_contains "1.1 forward run reports 4 entries" "$output1" "parsed 4 BACKLOG entries"
 assert_contains "1.1 forward run reports 2 phases"  "$output1" "2 phase(s)"
 
-# State should have 3 BD/TD + 2 phase epics = 5 issues.
-assert_eq "1.1 tracker state has 5 issues" "5" "$(_state_issue_count "$STATE1")"
+# State should have 4 BD/TD + 2 phase epics = 6 issues.
+assert_eq "1.1 tracker state has 6 issues" "6" "$(_state_issue_count "$STATE1")"
 
 # Mapping file populated.
 mapping_file="$REPO1/.pack-tracker/id-map.json"
 [[ -f "$mapping_file" ]] && t_pass "1.1 mapping file written" || t_fail "1.1 mapping file written"
-assert_eq "1.1 mapping has 5 entries" "5" "$(jq 'length' "$mapping_file")"
+assert_eq "1.1 mapping has 6 entries" "6" "$(jq 'length' "$mapping_file")"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 2: reverse against recorded state reconstructs flat files
@@ -281,16 +285,18 @@ rc2=$?
 export PATH="$PATH_SAVED"
 
 assert_eq       "2.1 reverse rc=0" "0" "$rc2"
-assert_contains "2.1 reverse reports 3 entries"     "$output2" "reconstructed 3 BACKLOG entries"
+assert_contains "2.1 reverse reports 4 entries"     "$output2" "reconstructed 4 BACKLOG entries"
 assert_contains "2.1 reverse reports 2 phase epics" "$output2" "2 phase epic"
 
 # Reverse output should reconstruct each entry. The reconstructed
 # BACKLOG must contain every original pack-id and title (whitespace
 # differences are tolerable per V1 §6.7 "near-no-op").
 RECON_BACKLOG=$(cat "$REPO1/BACKLOG.md")
-for needle in "BD-001" "BD-002" "TD-010" \
+for needle in "BD-001" "BD-002" "TD-010" "TD-040" \
               "Add foo to bar" "Refactor bar after foo lands" "Document quux" \
-              "scripts/foo.sh" "scripts/bar.sh" "docs/quux.md"; do
+              "Cross-phase TD blocked by phase task" \
+              "scripts/foo.sh" "scripts/bar.sh" "docs/quux.md" \
+              "scripts/cross-phase.sh"; do
     assert_contains "2.2 reverse output preserves '$needle'" "$RECON_BACKLOG" "$needle"
 done
 
@@ -319,6 +325,32 @@ else
     else
         t_fail "2.2 BD-002 Blockers line unexpected shape" "got: $bd002_block_line"
     fi
+fi
+
+# 2.2 BD-108 F5 — TD-040 Blockers `phase-1.2, TD-010` round-trip
+# coverage. End-to-end the v11.0 phase-N.M grammar must survive
+# forward → state-file → reverse without the entry being dropped or
+# the pack-id being misclassified. The Blockers line itself rides
+# the same comment-fallback channel as BD-002 above, so the v11.0
+# round-trip captures the entry + description but not the Blockers
+# string (BD-111 pending — same documented gap).
+if printf '%s' "$RECON_BACKLOG" | grep -q "TD-040"; then
+    t_pass "2.2 TD-040 entry survives forward → state → reverse (BD-108 F5)"
+else
+    t_fail "2.2 TD-040 entry survives forward → state → reverse (BD-108 F5)" \
+        "TD-040 missing from reconstructed BACKLOG"
+fi
+# When BD-111 closes the comment-fallback gap, the next line auto-
+# flips to a positive round-trip check on phase-1.2. For now we
+# document the same Blockers gap as BD-002 (the comment-fallback
+# does not surface in the issue body via the fake gh's `issue view`).
+td040_block_line=$(printf '%s' "$RECON_BACKLOG" | grep -A 3 "TD-040" | grep "Blockers:")
+if [[ "$td040_block_line" == *"phase-1.2"* ]]; then
+    t_pass "2.2 TD-040 Blockers: phase-1.2 preserved (BD-111 gap closed for v11.0 phase-N.M!)"
+elif [[ "$td040_block_line" == *"None"* ]]; then
+    t_pass "2.2 TD-040 Blockers gap documented (BD-111 pending — phase-N.M same comment-fallback as v10 forms)"
+else
+    t_fail "2.2 TD-040 Blockers line unexpected shape" "got: $td040_block_line"
 fi
 
 # Sidecar present.
@@ -353,7 +385,7 @@ rc3=$?
 export PATH="$PATH_SAVED"
 
 assert_eq       "3.1 second forward rc=0"   "0" "$rc3"
-assert_eq       "3.1 second forward state has 5 issues" "5" "$(_state_issue_count "$STATE1")"
+assert_eq       "3.1 second forward state has 6 issues" "6" "$(_state_issue_count "$STATE1")"
 
 # Compare create-call signatures — these capture "<title> | <labels>"
 # for every create. Byte-equal means tracker side is round-trip stable
@@ -384,6 +416,8 @@ sidecar_content=$(cat "$sidecar2")
 assert_contains "4.1 sidecar has BD-001 section"   "$sidecar_content" "## BD-001"
 assert_contains "4.1 sidecar has BD-002 section"   "$sidecar_content" "## BD-002"
 assert_contains "4.1 sidecar has TD-010 section"   "$sidecar_content" "## TD-010"
+assert_contains "4.1 sidecar has TD-040 section (BD-108 F5)" \
+    "$sidecar_content" "## TD-040"
 assert_contains "4.1 sidecar has phase-1 section"  "$sidecar_content" "## phase-1"
 assert_contains "4.1 sidecar has phase-2 section"  "$sidecar_content" "## phase-2"
 assert_contains "4.1 sidecar marks extra_fields empty at v11.0" \
@@ -391,9 +425,10 @@ assert_contains "4.1 sidecar marks extra_fields empty at v11.0" \
 
 # extra_fields is structurally present for every entry — readiness
 # guard for v11.x. Count occurrences of "### extra_fields" — should
-# be one per sidecar entry (5).
+# be one per sidecar entry (4 BD/TD + 2 phase = 6 after BD-108 F5
+# fixture extension; was 5 pre-fix).
 n_extra_fields=$(printf '%s' "$sidecar_content" | grep -c "^### extra_fields")
-assert_eq "4.1 sidecar has 5 extra_fields blocks (one per entry)" "5" "$n_extra_fields"
+assert_eq "4.1 sidecar has 6 extra_fields blocks (one per entry)" "6" "$n_extra_fields"
 
 rm -rf "$REPO2" "$FAKE2"
 

@@ -28,11 +28,14 @@
 #   4. Persists the new edge to the in-memory cycle-graph store
 #      (`_tracker_cycle_check_store_add`) so subsequent cycle checks
 #      see it.
-#   5. Optionally appends the edge to the sidecar's `dependency_edges`
-#      array (V3.3 §6.R schema: kind / target / annotation) when the
-#      caller passes a sidecar-mutation callback. The sidecar is the
-#      durable persistence record; the cycle-graph store is the
-#      runtime view.
+#   5. Returns the edge metadata in the success JSON so the caller
+#      can persist it to the sidecar's `dependency_edges` array
+#      (V3.3 §6.R schema: kind / target / annotation). The sidecar
+#      mutation itself is the caller's responsibility — the success
+#      JSON's `annotation` field is the hook (BD-108 review F7). The
+#      sidecar is the durable persistence record; the cycle-graph
+#      store is the runtime view used by cycle-check on the next
+#      link attempt.
 #
 # Public API:
 #   - tracker_links_create_blocked_by \
@@ -63,11 +66,15 @@
 #           "annotation": "<free-text or empty>"
 #         }
 #
-#   - tracker_links_validate_pair_type <source-pack-id> <target-pack-id>
-#       Return rc=0 if the (source, target) pair matches one of the
-#       six entity-pair types from V3.3 §5.1; rc=1 with typed error
-#       otherwise. Useful for callers that want to validate the pair
-#       shape before resolving ids.
+#   - tracker_links_validate_id_shapes <source-pack-id> <target-pack-id>
+#       Return rc=0 if both source and target are valid pack-id
+#       shapes (`phase-N`, `phase-N.M`, `TD-NNN`, or `BD-NNN`); rc=1
+#       with typed error otherwise. The validator is shape-only and
+#       does NOT enforce the V3.3 §5.1 entity-pair table — the
+#       provider's `link()` is cross-type per V1 §2.1, so accepting
+#       e.g. BD↔BD is not a correctness issue. (BD-108 review F11 —
+#       renamed from `tracker_links_validate_pair_type` to match
+#       behaviour.)
 #
 # Provider-op confirmation (per BD-108 IMPLEMENTATION-REPORT call-out):
 #   The library uses the existing provider_link function from
@@ -116,23 +123,28 @@ fi
 # Public: pair-type validation
 # ─────────────────────────────────────────────────────────────────
 
-# tracker_links_validate_pair_type <src> <tgt>
+# tracker_links_validate_id_shapes <src> <tgt>
 # Pack-id forms recognized:
 #   - phase-<N>           (phase epic)
 #   - phase-<N>.<M>       (phase task)
 #   - TD-<NNN>            (TD-class entry)
 #   - BD-<NNN>            (BD-class entry)
 #
-# Per V3.3 §5.1 the six entity-pair types are exhaustive at v11.0.
 # Both source and target must each match one of the four shapes;
 # a typed validation error is emitted on any unrecognized shape.
 #
-# This function is deliberately tolerant about ordering — the pair-type
-# table in §5.1 is undirected, so we accept both directions of every
-# entry-pair type. The caller (tracker_links_create_blocked_by) handles
-# the directional convention (the canonical direction is always
-# blocked-by from source to target).
-tracker_links_validate_pair_type() {
+# This is a SHAPE check only — it does NOT enforce the V3.3 §5.1
+# entity-pair table. The provider's `link()` is cross-type per V1 §2.1,
+# so accepting e.g. BD↔BD or two phase epics is not a correctness
+# issue (V3.3 §5.1's six-row table is descriptive, not restrictive).
+# (BD-108 review F11 — renamed from `tracker_links_validate_pair_type`
+# to match the actual behaviour, which is per-id-shape validation
+# rather than pair-type enforcement.)
+#
+# Order-tolerant: src and tgt are validated independently — the
+# directional convention (source blocked-by target) is enforced by
+# the caller (tracker_links_create_blocked_by).
+tracker_links_validate_id_shapes() {
     local src="$1"
     local tgt="$2"
     if [[ -z "$src" || -z "$tgt" ]]; then
@@ -163,7 +175,8 @@ tracker_links_validate_pair_type() {
 #                                 <id-map-json> <store-path> [<annotation>]
 #
 # End-to-end orchestration:
-#   1. Validate the pair shape (V3.3 §5.1).
+#   1. Validate both pack-id shapes (V3.3 §5.1 vocabulary; see
+#      `tracker_links_validate_id_shapes`).
 #   2. Resolve both pack-ids to tracker ids via the id-map. A missing
 #      id is a typed error (the caller should run forward migration to
 #      populate the id-map first).
@@ -186,8 +199,8 @@ tracker_links_create_blocked_by() {
     local store_path="$4"
     local annotation="${5:-}"
 
-    # Step 1: pair-shape validation (V3.3 §5.1).
-    tracker_links_validate_pair_type "$src" "$tgt" || return 1
+    # Step 1: pack-id shape validation (V3.3 §5.1 vocabulary).
+    tracker_links_validate_id_shapes "$src" "$tgt" || return 1
 
     if [[ -z "$id_map" ]]; then
         tracker_error_emit "validation" \

@@ -3,7 +3,9 @@
 # orchestration coverage (BD-108; V3.3 §5.1 / §5.2 / §5.5 / §5.6).
 #
 # Coverage groups:
-#   1. Pair-type validation (V3.3 §5.1 — six entity-pair types)
+#   1. Id-shape validation (V3.3 §5.1 vocabulary; BD-108 F11 rename
+#      — was "pair-type validation" pre-fix; the validator is shape-
+#      only, not pair-table-restrictive)
 #       1.1 phase-N + phase-N         (TD ↔ phase epic permutation)
 #       1.2 phase-N.M + phase-N.M     (phase task ↔ phase task same/cross)
 #       1.3 TD-NNN + TD-NNN
@@ -91,37 +93,38 @@ mk_store() {
 }
 
 # ─────────────────────────────────────────────────────────────────
-# Group 1: pair-type validation (V3.3 §5.1)
+# Group 1: id-shape validation (V3.3 §5.1 vocabulary; BD-108 F11
+# rename — was "pair-type validation" pre-fix)
 # ─────────────────────────────────────────────────────────────────
 
-printf "\n=== Group 1: pair-type validation (V3.3 §5.1) ===\n"
+printf "\n=== Group 1: id-shape validation (V3.3 §5.1) ===\n"
 
-if tracker_links_validate_pair_type "phase-3"   "phase-7"   2>/dev/null; then t_pass "1.1 phase-N + phase-N"; else t_fail "1.1 phase-N + phase-N"; fi
-if tracker_links_validate_pair_type "phase-3.1" "phase-3.2" 2>/dev/null; then t_pass "1.2 phase-N.M + phase-N.M same phase"; else t_fail "1.2 phase-N.M + phase-N.M same phase"; fi
-if tracker_links_validate_pair_type "phase-3.4" "phase-7.1" 2>/dev/null; then t_pass "1.2 phase-N.M + phase-N.M cross phase"; else t_fail "1.2 phase-N.M + phase-N.M cross phase"; fi
-if tracker_links_validate_pair_type "TD-029"    "TD-031"    2>/dev/null; then t_pass "1.3 TD-NNN + TD-NNN"; else t_fail "1.3 TD-NNN + TD-NNN"; fi
-if tracker_links_validate_pair_type "TD-029"    "BD-108"    2>/dev/null; then t_pass "1.4 TD-NNN + BD-NNN"; else t_fail "1.4 TD-NNN + BD-NNN"; fi
-if tracker_links_validate_pair_type "TD-031"    "phase-3"   2>/dev/null; then t_pass "1.5 TD-NNN + phase-N"; else t_fail "1.5 TD-NNN + phase-N"; fi
-if tracker_links_validate_pair_type "TD-031"    "phase-3.2" 2>/dev/null; then t_pass "1.6 TD-NNN + phase-N.M"; else t_fail "1.6 TD-NNN + phase-N.M"; fi
+if tracker_links_validate_id_shapes "phase-3"   "phase-7"   2>/dev/null; then t_pass "1.1 phase-N + phase-N"; else t_fail "1.1 phase-N + phase-N"; fi
+if tracker_links_validate_id_shapes "phase-3.1" "phase-3.2" 2>/dev/null; then t_pass "1.2 phase-N.M + phase-N.M same phase"; else t_fail "1.2 phase-N.M + phase-N.M same phase"; fi
+if tracker_links_validate_id_shapes "phase-3.4" "phase-7.1" 2>/dev/null; then t_pass "1.2 phase-N.M + phase-N.M cross phase"; else t_fail "1.2 phase-N.M + phase-N.M cross phase"; fi
+if tracker_links_validate_id_shapes "TD-029"    "TD-031"    2>/dev/null; then t_pass "1.3 TD-NNN + TD-NNN"; else t_fail "1.3 TD-NNN + TD-NNN"; fi
+if tracker_links_validate_id_shapes "TD-029"    "BD-108"    2>/dev/null; then t_pass "1.4 TD-NNN + BD-NNN"; else t_fail "1.4 TD-NNN + BD-NNN"; fi
+if tracker_links_validate_id_shapes "TD-031"    "phase-3"   2>/dev/null; then t_pass "1.5 TD-NNN + phase-N"; else t_fail "1.5 TD-NNN + phase-N"; fi
+if tracker_links_validate_id_shapes "TD-031"    "phase-3.2" 2>/dev/null; then t_pass "1.6 TD-NNN + phase-N.M"; else t_fail "1.6 TD-NNN + phase-N.M"; fi
 
 # 1.7 malformed shape rejected
-if tracker_links_validate_pair_type "TD-031"    "garbage"   2>/dev/null; then
+if tracker_links_validate_id_shapes "TD-031"    "garbage"   2>/dev/null; then
     t_fail "1.7 malformed target rejected" "expected rc=1; got rc=0"
 else
     t_pass "1.7 malformed target rejected"
 fi
-if tracker_links_validate_pair_type "phase-3.4.5" "TD-031"  2>/dev/null; then
+if tracker_links_validate_id_shapes "phase-3.4.5" "TD-031"  2>/dev/null; then
     t_fail "1.7 phase-N.M.K rejected (3-component is not legal)" "expected rc=1; got rc=0"
 else
     t_pass "1.7 phase-N.M.K rejected (3-component is not legal)"
 fi
-if tracker_links_validate_pair_type ""           "TD-031"  2>/dev/null; then
+if tracker_links_validate_id_shapes ""           "TD-031"  2>/dev/null; then
     t_fail "1.7 empty source rejected" "expected rc=1; got rc=0"
 else
     t_pass "1.7 empty source rejected"
 fi
 
-err=$(tracker_links_validate_pair_type "TD-031" "garbage" 2>&1) || true
+err=$(tracker_links_validate_id_shapes "TD-031" "garbage" 2>&1) || true
 assert_contains "1.7 typed validation error block emitted" "$err" "ERROR: validation"
 assert_contains "1.7 typed error mentions expected shapes"  "$err" "phase-N.M"
 

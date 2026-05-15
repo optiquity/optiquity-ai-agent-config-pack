@@ -945,6 +945,227 @@ mfile_c="$TEST_REPO_C/.pack-tracker/id-map.json"
 rm -rf "$FAKE_BIN_C" "$GH_LOG_C" "$ISSUE_COUNTER_C" "$TEST_REPO_C"
 
 # ─────────────────────────────────────────────────────────────────
+# Group 6: BD-108 cross-entity link routing (review F3)
+# ─────────────────────────────────────────────────────────────────
+#
+# BD-108 review F3 (per IMPLEMENTATION-REPORT-BD-108-FIX): the forward
+# orchestrator gained two new BD-108 paths that were unit-tested in
+# `test-tracker-links.sh` (orchestration layer) but not exercised
+# end-to-end at the migrator level:
+#
+#   (a) step 6+7 case-statement routing — a BACKLOG entry with
+#       `Blockers: phase-N.M` must route to `provider_link blocked-by`
+#       (which falls back to a `gh issue comment "Blocked by #NNN"`
+#       call), NOT to `provider_sub_issue_create` (the v10 phase-N
+#       sub-issue parent path).
+#   (b) new step 7b — when an IMPLEMENTATION-PLAN.md contains a
+#       phase-task `Dependencies` bullet, the orchestrator parses it
+#       via `tracker_phase_task_parse` and replays each dependency as
+#       a `provider_link blocked-by` call.
+#
+# Both paths are exercised here against the same fake-gh + integration
+# pattern Group 3 uses, but with a self-contained mini-fixture so the
+# pre-existing entry counts (5 BD/TD + 2 phase) stay intact.
+
+printf "\n=== Group 6: BD-108 cross-entity link routing (review F3) ===\n"
+
+# Mini-fixture repo with one BACKLOG entry that has `Blockers:
+# phase-3.2` and an IMPLEMENTATION-PLAN with a Dependencies bullet.
+TEST_REPO_BD108=$(mktemp -d -t tmf-bd108.XXXXXX)
+FAKE_BIN_BD108=$(mktemp -d -t tmf-fakebin-bd108.XXXXXX)
+GH_LOG_BD108=$(mktemp -t tmf-ghlog-bd108.XXXXXX)
+ISSUE_COUNTER_BD108=$(mktemp -t tmf-counter-bd108.XXXXXX)
+echo "0" > "$ISSUE_COUNTER_BD108"
+
+# Two BACKLOG entries:
+#   - BD-501: blocked by phase-3.2 (the BD-108 routing target)
+#   - BD-502: blocked by phase-3 (the v10 sub-issue-parent path; included
+#     so the test can prove the case statement routes the two cases
+#     differently against the SAME fake-gh log).
+# Three phases (1, 2, 3) so the id-map carries phase-3 for the
+# sub-issue-parent path. phase-3.2 is NOT created at v11.0 (phase-task
+# creation is a future BD; documented limitation 10.2 of the BD-108
+# IMPLEMENTATION-REPORT) — so the phase-3.2 Blocker reaches the case
+# statement but tmf_mapping_get returns empty, surfacing the routing
+# decision via the partial_failures path.
+cat > "$TEST_REPO_BD108/BACKLOG.md" <<'BACKLOG'
+# BACKLOG
+
+**BD-501 — Phase-task blocker entry (BD-108 routing target)**
+Type: TODO(version)
+Status: Open
+Blockers: phase-3.2
+Unblocks: None
+File/Symbol: scripts/foo.sh
+Description: BD-108 F3 routing fixture.
+Resolved: n/a
+
+---
+
+**BD-502 — Phase-epic blocker entry (v10 sub-issue parent path)**
+Type: TODO(version)
+Status: Open
+Blockers: phase-3
+Unblocks: None
+File/Symbol: scripts/bar.sh
+Description: Counterpoint to BD-501 — proves case statement
+  routes phase-N differently than phase-N.M.
+Resolved: n/a
+
+---
+BACKLOG
+
+cat > "$TEST_REPO_BD108/IMPLEMENTATION-PLAN.md" <<'PLAN'
+# IMPLEMENTATION PLAN
+
+## Phases
+
+### Phase 1 — Foundations
+
+Lay the foundations.
+
+### Phase 2 — Polish
+
+Polish for v1.
+
+### Phase 3 — Cross-entity dependencies
+
+Phase epic for BD-065 (V3.3 §6.4): the H3 form is what the BD-065
+forward parser recognizes for phase-epic creation.
+
+## Phase 3 — Cross-entity dependencies
+
+The H2 form is what the BD-106 phase-task parser recognizes as the
+phase context for `#### N.M — Title` task headings below.
+
+### Tasks
+#### 3.1 — Schema bootstrap
+- **Problem / Goal / Success**: define the initial schema.
+- **Files created/modified**: schemas/v11.json
+- **Definition of done**: schema-validate PASS.
+- **Dependencies**:
+  - phase-3.2 (must complete migration scaffold first)
+  - TD-029
+PLAN
+
+cat > "$TEST_REPO_BD108/tracker.toml" <<'TOML'
+schema_version = 1
+
+[backend]
+name = "stub"
+repo = "fixture-org/fixture-repo"
+
+[mode]
+state = "tracker"
+
+[id_namespace]
+prefix = "BD"
+
+[migration]
+forward_complete = false
+mapping_file = ".pack-tracker/id-map.json"
+TOML
+
+# Reuse the same fake-gh shape as Group 3 — captures every call to
+# the log file. F3-specific assertions inspect the log for the
+# routing-decision fingerprints.
+cat > "$FAKE_BIN_BD108/gh" <<FAKEGH_BD108
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$GH_LOG_BD108"
+case "\$1 \$2" in
+    "issue create")
+        counter=\$(cat "$ISSUE_COUNTER_BD108")
+        next=\$((counter + 1))
+        echo "\$next" > "$ISSUE_COUNTER_BD108"
+        printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
+        ;;
+    "issue close"|"issue reopen"|"issue edit"|"issue comment") ;;
+    "search issues") echo '[]' ;;
+    "issue list")    echo '[]' ;;
+    "issue view")    echo '{"labels":[], "assignees":[]}' ;;
+    "repo view")     echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
+    "api graphql")   echo '{}' ;;
+    "extension list") echo "" ;;
+    *)               ;;
+esac
+exit 0
+FAKEGH_BD108
+chmod +x "$FAKE_BIN_BD108/gh"
+
+# Ensure the github backend is selected (the mini-fixture's tracker.toml
+# uses the "stub" backend, but we need the gh backend so the fake gh
+# captures the routing fingerprint).
+export _TRACKER_PROVIDER_BACKEND_OVERRIDE="github"
+
+PATH_SAVED_BD108="$PATH"
+export PATH="$FAKE_BIN_BD108:$PATH_SAVED_BD108"
+output_bd108=$(tracker_migrate_forward_run "$TEST_REPO_BD108" 0 0 2>&1)
+rc_bd108=$?
+export PATH="$PATH_SAVED_BD108"
+
+# rc=1 is the expected outcome here because the v11.0 fixture
+# deliberately exercises step 7b's "phase-task source not in id-map"
+# branch (phase-task creation is a future BD per BD-108 §10.2),
+# which surfaces as a partial-write — see assertion 6.3 below.
+# A clean rc=0 would mean step 7b silently swallowed the gap, which
+# is the regression F10 fixed.
+assert_eq "6.1 BD-108 mini-fixture forward rc=1 (partial-write expected)" "1" "$rc_bd108"
+assert_contains "6.1 partial-write surfaces ERROR: partial-write" \
+    "$output_bd108" "ERROR: partial-write"
+
+# (F3-a) The phase-3.2 Blocker on BD-501 must reach the case statement.
+# Because phase-3.2 is not in the id-map (no phase-task creation at
+# v11.0), tmf_mapping_get returns empty — the case-statement arm
+# proceeds without invoking provider_link. The routing decision is
+# observable via the partial_failures log: the phase-N.M arm does NOT
+# emit a "step-6 sub_issue_create: BD-501 -> phase-3.2" entry (which
+# would indicate the v10 path was taken). Instead, the new
+# phase-N.M arm runs and produces no log line for the missing target
+# (silent skip — distinct from sub_issue_create's failure log).
+#
+# We assert the absence of the v10-path failure marker for BD-501 →
+# phase-3.2. If the BD-108 case-statement reorder were reverted, the
+# v10 phase-N arm would catch phase-3.2 and write
+# "step-6 sub_issue_create: BD-501 -> phase-3.2" to partial_failures
+# (which surfaces in the run output via the typed partial-write
+# error block).
+if [[ "$output_bd108" != *"step-6 sub_issue_create: BD-501 -> phase-3.2"* ]]; then
+    t_pass "6.2 phase-3.2 Blocker NOT routed to sub_issue_create (BD-108 F3a)"
+else
+    t_fail "6.2 phase-3.2 Blocker NOT routed to sub_issue_create (BD-108 F3a)" \
+        "v10 phase-N arm caught phase-3.2 — case-statement order regression"
+fi
+
+# (F3-b) Step 7b runs when IMPLEMENTATION-PLAN.md has a Dependencies
+# bullet. Because phase-3.1 (the task carrying the Dependencies bullet)
+# is NOT in the id-map at v11.0, the source-not-in-id-map branch fires.
+# The marker line in partial_failures is "step-7b phase-task source
+# not in id-map: phase-3.1". This proves step 7b's parser ran and the
+# replay loop attempted resolution — the BD-108 IMPLEMENTATION-REPORT
+# documented this as the v11.0 limitation (10.2).
+assert_contains "6.3 step 7b runs and surfaces phase-task source gap (BD-108 F3b)" \
+    "$output_bd108" "step-7b phase-task source not in id-map: phase-3.1"
+
+# (F3-cleanup) The v10 path for phase-3 (BD-502) MUST still fire
+# sub_issue_create — proves the case-statement reorder did not
+# regress the existing v10 routing.
+n_sub_issue_calls=$(grep -c "issue edit\|sub-issue\|/sub_issues" "$GH_LOG_BD108" 2>/dev/null || true)
+# The github backend uses `gh api graphql` (or REST sub-issue
+# endpoint) for sub-issue create — depending on the backend version.
+# Either way, BD-502's phase-3 Blocker should route to a sub-issue
+# create attempt against phase-3's gh id; the fake gh's log captures
+# the api graphql call. We rely on the integration log having at
+# least one api-graphql or sub-issue invocation as proxy for the
+# v10 path firing for BD-502 → phase-3.
+n_api_graphql=$(grep -c "^api graphql" "$GH_LOG_BD108" 2>/dev/null || true)
+[[ "$n_api_graphql" -ge 1 ]] && t_pass "6.4 v10 phase-N Blocker still routes via api graphql (sub-issue path intact)" \
+    || t_fail "6.4 v10 phase-N Blocker still routes via api graphql (sub-issue path intact)" \
+       "expected ≥1 api-graphql call for BD-502 → phase-3 sub-issue; got $n_api_graphql"
+
+unset _TRACKER_PROVIDER_BACKEND_OVERRIDE
+rm -rf "$FAKE_BIN_BD108" "$GH_LOG_BD108" "$ISSUE_COUNTER_BD108" "$TEST_REPO_BD108"
+
+# ─────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────
 
