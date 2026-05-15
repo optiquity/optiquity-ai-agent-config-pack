@@ -272,14 +272,69 @@ checkpoint_check_validate_pack() {
     return 0
 }
 
+# ── checkpoint_classify_sidecar ──────────────────────────────────────────
+#
+# Single source of truth for "is this sidecar resolved?" semantics per
+# the BD-095 contract (see resume.sh:38-57 + ARCHITECTURE-SIDECAR-LIFECYCLE.md
+# §3). Both Gate 2's orphan-sidecar check (C3) and resume.sh's precondition
+# scanner (C2) classify sidecars through this helper so they can never
+# diverge on the BD-095 two-signal `.resolved` / removed contract.
+#
+# Returns one of (echoed to stdout, single token + newline):
+#   resolved-flag    — sidecar present AND companion `<sidecar>.resolved` exists
+#                      (state (c) in ARCHITECTURE-SIDECAR-LIFECYCLE.md §1)
+#   resolved-removed — sidecar absent (user merged + rm'd, OR accepted pack
+#                      default + rm'd) — state (d)/(e)
+#   unresolved       — sidecar present, no `.resolved` companion — state (b)
+#   unknown          — empty / missing arg; returns 1 (caller error)
+#
+# Pure read-only. Caller decides what counts as orphan / FAIL.
+checkpoint_classify_sidecar() {
+    local sidecar="${1:-}"
+    if [[ -z "$sidecar" ]]; then
+        printf 'unknown\n'
+        return 1
+    fi
+    if [[ -f "${sidecar}.resolved" ]]; then
+        printf 'resolved-flag\n'
+    elif [[ ! -f "$sidecar" ]]; then
+        printf 'resolved-removed\n'
+    else
+        printf 'unresolved\n'
+    fi
+    return 0
+}
+
 # ── checkpoint_check_no_orphan_sidecars ──────────────────────────────────
 #
-# MINOR-3 (BD-101 retro fix): Gate 2 should observe zero own-suffix
-# sidecar files at the project root. The migrator's --resume precondition
-# already gates this for sidecars listed in stage-S3.paused; this check
-# catches the residual class (sidecars left behind after manual resolve,
-# sidecars from a different stage, etc.) so the truth-oracle banner
-# accurately reflects "this client install is consistent post-Phase-A".
+# MINOR-3 (BD-101 retro fix), updated per
+# maintenance-docs/v11-implementation/ARCHITECTURE-SIDECAR-LIFECYCLE.md
+# §6: Gate 2 should observe zero UNRESOLVED own-suffix sidecar files at
+# the project root. The BD-095 contract (resume.sh:38-57) accepts TWO
+# resolution signals: (a) companion `<sidecar>.resolved` flag-file, and
+# (b) sidecar absence (user merged + `rm`'d). A sidecar in state (c)
+# "flagged-resolved" — present on disk WITH a `.resolved` companion —
+# is legitimate audit-trail residue and MUST NOT be counted as orphan.
+#
+# Classification is delegated to `checkpoint_classify_sidecar` so this
+# helper and resume.sh's `_v10_v11_resume_classify_sidecars` (C2) share
+# one source of truth (option (e) in ARCHITECTURE-SIDECAR-LIFECYCLE.md
+# §6.5).
+#
+# What this catches that other Gate 2 checks don't:
+#   - M3-α (cross-execution forgot-to-remove): sidecar present, no
+#     `.resolved` companion, no `stage-S3.paused` guard active because
+#     a later run wiped state-dir or completed. C2 (resume.sh
+#     precondition) only sees paused-list entries; this catches the
+#     residual class.
+#   - M3-β (unknown-lineage stragglers): sidecar matching this
+#     migrator's suffix at any path under target, regardless of whether
+#     it appears in stage-S3.paused.
+#
+# Lifecycle states (§1):
+#   (b) created     → sidecar present, no .resolved → UNRESOLVED → FAIL
+#   (c) flagged     → sidecar present + .resolved   → RESOLVED   → OK
+#   (d)/(e) absent  → sidecar gone                  → RESOLVED   → not seen by find
 
 checkpoint_check_no_orphan_sidecars() {
     local target="${1:-}"
@@ -289,25 +344,41 @@ checkpoint_check_no_orphan_sidecars() {
     fi
     local suffix="${MIGRATOR_OWN_SIDECAR_SUFFIX:-}"
     if [[ -z "$suffix" ]]; then
-        # Adapter contract violation — but treat as INFO not FAIL so the
+        # Adapter contract violation — treat as INFO not FAIL so the
         # gate does not block on a framework-loading defect.
         printf '  [INFO] sidecars: MIGRATOR_OWN_SIDECAR_SUFFIX unset; skipping orphan-sidecar check\n'
         return 0
     fi
-    # Find sidecars under target, excluding migrator state dirs and .git/.
-    # `head -10` caps the listed-orphan output so a pathological fixture
-    # does not flood the gate banner. macOS BSD `find` accepts both forms.
-    local orphans
-    orphans=$(find "$target" -type f -name "*.${suffix}" \
+    # Find candidates under target, excluding migrator state dirs and
+    # .git/. The `head -10` cap is applied to the orphans listing below
+    # (not to the find output) so we classify every match before listing.
+    local candidates
+    candidates=$(find "$target" -type f -name "*.${suffix}" \
         -not -path '*/.pack-migrate-*' \
         -not -path '*/.git/*' \
-        2>/dev/null | head -10)
-    if [[ -n "$orphans" ]]; then
-        printf '  [FAIL] sidecars: orphan *.%s file(s) at target  → Run: resolve and rm each listed sidecar\n' "$suffix"
-        printf '%s\n' "$orphans" | sed 's|^|         |'
+        2>/dev/null)
+    if [[ -z "$candidates" ]]; then
+        printf '  [OK]   sidecars: no *.%s files at target\n' "$suffix"
+        return 0
+    fi
+    # Per BD-095 §6.H + ARCHITECTURE-SIDECAR-LIFECYCLE.md §3.1: only
+    # sidecars classified `unresolved` count as orphan. `resolved-flag`
+    # (state (c)) is legitimate audit-trail residue and skipped.
+    local s status orphans=()
+    while IFS= read -r s; do
+        [[ -z "$s" ]] && continue
+        status=$(checkpoint_classify_sidecar "$s")
+        if [[ "$status" == "unresolved" ]]; then
+            orphans+=("$s")
+        fi
+    done <<< "$candidates"
+    if (( ${#orphans[@]} > 0 )); then
+        printf '  [FAIL] sidecars: %d unresolved *.%s file(s) at target  → Run: resolve and rm each listed sidecar (or touch <sidecar>.resolved if accepting pack default)\n' \
+            "${#orphans[@]}" "$suffix"
+        printf '         %s\n' "${orphans[@]:0:10}"
         return 1
     fi
-    printf '  [OK]   sidecars: no orphan *.%s files at target\n' "$suffix"
+    printf '  [OK]   sidecars: no unresolved *.%s files at target (resolved-via-flag sidecars present are OK)\n' "$suffix"
     return 0
 }
 

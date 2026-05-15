@@ -40,18 +40,34 @@
 #
 # Echoes `<status>\t<sidecar>` rows to stdout, one per input row. Pure
 # read-only.
+#
+# Per ARCHITECTURE-SIDECAR-LIFECYCLE.md §6.5 (option (e) extraction), the
+# per-sidecar classification logic lives in `checkpoint_classify_sidecar`
+# (scripts/lib/migrate-v10-to-v11/checkpoint.sh). This helper is a thin
+# loop wrapper that forwards each input row to the shared classifier so
+# Gate 2's C3 (orphan-sidecar) and the resume.sh C2 precondition can never
+# diverge on the BD-095 two-signal `.resolved` / removed contract. The
+# emitted status tokens (`resolved-flag` / `resolved-removed` /
+# `unresolved`) are unchanged; downstream consumers at line ~143 below
+# depend on those exact strings.
 _v10_v11_resume_classify_sidecars() {
     local paused="$1"
+    # Defense-in-depth: under the v10→v11 adapter, checkpoint.sh is
+    # always sourced before this function is called (see
+    # scripts/migrate-v10-to-v11.sh:629 + 634); but if a future test
+    # harness or direct-source scenario invokes resume.sh in isolation,
+    # source the classifier on demand. Mirrors the gate-2-phase-a-verify.sh
+    # idiom.
+    if ! declare -F checkpoint_classify_sidecar >/dev/null 2>&1; then
+        local _resume_dir
+        _resume_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        # shellcheck source=checkpoint.sh disable=SC1091
+        . "$_resume_dir/checkpoint.sh"
+    fi
     local s status
     while IFS= read -r s; do
         [[ -z "$s" ]] && continue
-        if [[ -f "${s}.resolved" ]]; then
-            status="resolved-flag"
-        elif [[ ! -f "$s" ]]; then
-            status="resolved-removed"
-        else
-            status="unresolved"
-        fi
+        status=$(checkpoint_classify_sidecar "$s")
         printf '%s\t%s\n' "$status" "$s"
     done < "$paused"
 }

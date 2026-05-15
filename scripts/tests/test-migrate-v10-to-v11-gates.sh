@@ -285,6 +285,11 @@ rm -rf "$T"
 
 # 2.6 (BD-101 retro fix MINOR-3) PASS: clean tree (no orphan sidecars)
 # satisfies the new check.
+#
+# Per ARCHITECTURE-SIDECAR-LIFECYCLE.md §7.2 the [OK] line wording shifted
+# from "no orphan *.<suffix> files at target" to
+# "no *.<suffix> files at target" (no candidates branch). Match the
+# stable substring.
 T=$(make_v10_target)
 PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
 PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply   "$T" >/dev/null 2>&1
@@ -292,8 +297,119 @@ SD="$T/.pack-migrate-v10-to-v11"
 out=$(PACK="$REPO_ROOT" \
     migrate_v10_to_v11_gate2_run "$T" "$SD" "$REPO_ROOT" 2>&1) ; rc=$?
 assert_eq "2.6 Gate 2 PASS no-orphan-sidecars rc=0" "0" "$rc"
-assert_contains "2.6 Gate 2 OK sidecars (no orphans)" "$out" "[OK]   sidecars: no orphan"
+assert_contains "2.6 Gate 2 OK sidecars (no candidates)" "$out" "[OK]   sidecars: no *.v10-customized files at target"
 rm -rf "$T"
+
+# 2.5b (ARCHITECTURE-SIDECAR-LIFECYCLE.md §8.2): sidecar present + companion
+# `.resolved` flag-file → state (c) → [OK] line, return 0 (NOT counted as
+# orphan). This is the BD-095 audit-trail-residue path that the pre-fix
+# C3 over-coarse predicate misclassified.
+T=$(make_v10_target)
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply   "$T" >/dev/null 2>&1
+SD="$T/.pack-migrate-v10-to-v11"
+echo "# state-(c) sidecar content" > "$T/flagged-doc.v10-customized"
+touch "$T/flagged-doc.v10-customized.resolved"
+out=$(PACK="$REPO_ROOT" \
+    migrate_v10_to_v11_gate2_run "$T" "$SD" "$REPO_ROOT" 2>&1) ; rc=$?
+assert_eq "2.5b Gate 2 PASS rc=0 (flagged-resolved sidecar present)" "0" "$rc"
+assert_contains "2.5b Gate 2 OK sidecars (resolved-via-flag OK)" "$out" "[OK]   sidecars: no unresolved *.v10-customized files at target (resolved-via-flag sidecars present are OK)"
+assert_not_contains "2.5b Gate 2 does NOT flag the .resolved-companion sidecar" "$out" "[FAIL] sidecars"
+rm -rf "$T"
+
+# 2.5c (ARCHITECTURE-SIDECAR-LIFECYCLE.md §8.2): sidecar present + NO
+# companion `.resolved` → state (b) unresolved → [FAIL] line, return 1.
+# Mirrors the existing 2.5 case but uses the new wording assertion. The
+# planted file count is precise.
+T=$(make_v10_target)
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply   "$T" >/dev/null 2>&1
+SD="$T/.pack-migrate-v10-to-v11"
+echo "# state-(b) unresolved" > "$T/unresolved-doc.v10-customized"
+out=$(PACK="$REPO_ROOT" \
+    migrate_v10_to_v11_gate2_run "$T" "$SD" "$REPO_ROOT" 2>&1) ; rc=$?
+assert_eq "2.5c Gate 2 FAIL rc=31 (1 unresolved sidecar)" "31" "$rc"
+assert_contains "2.5c Gate 2 names sidecars FAIL" "$out" "[FAIL] sidecars: 1 unresolved *.v10-customized file(s)"
+assert_contains "2.5c Gate 2 names the unresolved file" "$out" "unresolved-doc.v10-customized"
+rm -rf "$T"
+
+# 2.5d (ARCHITECTURE-SIDECAR-LIFECYCLE.md §8.2): two sidecars, one flagged
+# + one not → [FAIL] count is precise (only the unflagged one counts).
+T=$(make_v10_target)
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply   "$T" >/dev/null 2>&1
+SD="$T/.pack-migrate-v10-to-v11"
+echo "# flagged" > "$T/flagged-mix.v10-customized"
+touch "$T/flagged-mix.v10-customized.resolved"
+echo "# unresolved" > "$T/raw-mix.v10-customized"
+out=$(PACK="$REPO_ROOT" \
+    migrate_v10_to_v11_gate2_run "$T" "$SD" "$REPO_ROOT" 2>&1) ; rc=$?
+assert_eq "2.5d Gate 2 FAIL rc=31 (mix; 1 unresolved)" "31" "$rc"
+assert_contains "2.5d Gate 2 reports precise count = 1" "$out" "[FAIL] sidecars: 1 unresolved *.v10-customized file(s)"
+assert_contains "2.5d Gate 2 names the unresolved one" "$out" "raw-mix.v10-customized"
+assert_not_contains "2.5d Gate 2 does NOT name the flagged one in the orphan listing" "$out" "         $T/flagged-mix.v10-customized"
+rm -rf "$T"
+
+# 2.5e (ARCHITECTURE-SIDECAR-LIFECYCLE.md §8.2): three sidecars, all
+# flagged → [OK] line (audit-trail residue path). Equivalent to the
+# persona contract scenario at scale.
+T=$(make_v10_target)
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply   "$T" >/dev/null 2>&1
+SD="$T/.pack-migrate-v10-to-v11"
+for n in a b c; do
+    echo "# flagged-$n" > "$T/triplet-$n.v10-customized"
+    touch "$T/triplet-$n.v10-customized.resolved"
+done
+out=$(PACK="$REPO_ROOT" \
+    migrate_v10_to_v11_gate2_run "$T" "$SD" "$REPO_ROOT" 2>&1) ; rc=$?
+assert_eq "2.5e Gate 2 PASS rc=0 (3 sidecars all flagged)" "0" "$rc"
+assert_contains "2.5e Gate 2 OK sidecars (resolved-via-flag OK)" "$out" "[OK]   sidecars: no unresolved *.v10-customized files at target (resolved-via-flag sidecars present are OK)"
+assert_not_contains "2.5e Gate 2 does NOT FAIL on all-flagged tree" "$out" "[FAIL] sidecars"
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 2.6b/c/d/e — checkpoint_classify_sidecar direct unit tests
+# (ARCHITECTURE-SIDECAR-LIFECYCLE.md §6.5 option (e) extraction)
+# ─────────────────────────────────────────────────────────────────────────
+#
+# These exercise the shared classifier at the helper level (not via Gate
+# 2 wiring). The status tokens MUST be byte-identical to what
+# resume.sh's `_v10_v11_resume_classify_sidecars` emitted pre-extraction
+# — downstream consumers at resume.sh:143-153 awk-match these strings
+# exactly.
+
+printf "\n=== Group 2.6 — checkpoint_classify_sidecar (BD-095 contract) ===\n"
+
+# 2.6b: sidecar present + companion `.resolved` → resolved-flag.
+T=$(mktemp -d -t classify-flag.XXXXXX)
+echo "x" > "$T/sample.v10-customized"
+touch "$T/sample.v10-customized.resolved"
+out=$(checkpoint_classify_sidecar "$T/sample.v10-customized") ; rc=$?
+assert_eq "2.6b classifier rc=0 (resolved-flag)" "0" "$rc"
+assert_eq "2.6b classifier echoes 'resolved-flag'" "resolved-flag" "$out"
+rm -rf "$T"
+
+# 2.6c: sidecar absent → resolved-removed (caller passes a path that
+# does not exist; this is the "user merged + rm'd" path).
+T=$(mktemp -d -t classify-removed.XXXXXX)
+out=$(checkpoint_classify_sidecar "$T/never-existed.v10-customized") ; rc=$?
+assert_eq "2.6c classifier rc=0 (resolved-removed)" "0" "$rc"
+assert_eq "2.6c classifier echoes 'resolved-removed'" "resolved-removed" "$out"
+rm -rf "$T"
+
+# 2.6d: sidecar present, no `.resolved` → unresolved.
+T=$(mktemp -d -t classify-unresolved.XXXXXX)
+echo "x" > "$T/sample.v10-customized"
+out=$(checkpoint_classify_sidecar "$T/sample.v10-customized") ; rc=$?
+assert_eq "2.6d classifier rc=0 (unresolved)" "0" "$rc"
+assert_eq "2.6d classifier echoes 'unresolved'" "unresolved" "$out"
+rm -rf "$T"
+
+# 2.6e: empty arg → unknown, return 1 (caller error).
+out=$(checkpoint_classify_sidecar "") ; rc=$?
+assert_eq "2.6e classifier empty-arg rc=1" "1" "$rc"
+assert_eq "2.6e classifier empty-arg echoes 'unknown'" "unknown" "$out"
 
 # 2.7 (BD-101 retro fix MAJOR-1) Gate 2 FAIL recovery banner uses the
 # corrected v10→v11 rsync recipe rather than the broken
