@@ -91,7 +91,7 @@ In this pack, "race" is procedural, not OS-level concurrency. The detection rule
 Concrete patterns from prior v11 work:
 - Tracker init + customization preserve: init order matters — customization markers must be written BEFORE template overlay.
 - Forward migrate + cycle-check store: cycle store written by `tracker_links_create_blocked_by`; if forward migrate bypasses it (Batch 17 F1), the store is empty and cycle detection is silently disabled.
-- CI workflow + new test scripts: test scripts exist on disk but workflow doesn't invoke them (Batch 17 BD-108 F1) — CI green doesn't mean tests ran.
+- CI workflow + new test scripts: test scripts exist on disk but workflow doesn't invoke them (Batch 17 BD-108 F1) — CI green doesn't mean tests ran. **Batch 21c re-confirmation (2026-05-15):** four retro reviewers (BD-078, BD-079, BD-129) independently flagged 7 unwired test files; closed by single workflow edit (commit `304078f`). When reviewing any commit that adds new `*-test.sh` files, mandatory check: grep `.github/workflows/` for the new test path; if absent, MUST.
 
 Reviewer template for race findings:
 ```
@@ -100,6 +100,27 @@ Concept Y reads <artifact> at <procedure step>.
 If <ordering condition>, <stale-state consequence>.
 **Remediation:** <ordering constraint | shared lock | re-architect to remove the dependency>
 ```
+
+## CI-step interrogation heuristic
+
+When reviewing any commit that adds or modifies CI workflow steps, apply the "would this turn red?" test for every step:
+
+> For each new or modified workflow step, identify a specific change to the underlying script, fixture, or configuration that SHOULD make this step fail. Then trace the wiring: would that change actually surface as a CI red? If not, the step is wired but tautological.
+
+**Empirical basis (Batch 21c, 2026-05-15):** BD-118 retro reviewer applied this interrogation and caught a MUST that the original end-of-batch review missed: the manifest-verify step's preceding `--all --clean` step rewrote the committed `manifest.txt` before `--verify` read it, so the verify step compared just-built fixtures to a just-rewritten manifest — passes by construction. The reviewer's verbatim friction note: "future per-BD review prompts for CI work should explicitly require 'for every new CI step, identify a concrete change that would turn it red, and confirm the wiring would actually surface that change' — that interrogation is what surfaced this finding retroactively."
+
+Reviewer prompt template for CI work MUST include the "would this turn red?" requirement.
+
+## Convention/naming docs review checklist
+
+When reviewing convention documents (naming conventions, fixture conventions, file-class conventions, etc.), the standard six dimensions are insufficient. Add these convention-specific checks:
+
+1. **Procedure ↔ rule consistency.** Does the "how to add a new <thing>" procedure cite the convention rules at the moment a contributor would need them?
+2. **Column ↔ text consistency.** If the convention document includes a table column (e.g., "Versioning: v10-pinned / v11-pinned / version-agnostic"), does the prose convention text enumerate the same value space, or does it leave the column-value pattern unstated?
+3. **Forward-compatibility for vN+1.** Does the convention scale to the next major version's surfaces without amendment? (Convention text codified in BD-N+0 must admit new classes introduced in BD-N+1 — see Batch 21c BD-122 ↔ BD-136 M-8 carry-forward in BD-136 File/Symbol.)
+4. **Examples ↔ rule alignment.** Do the worked examples instantiate the rule, or contradict it via edge-case inclusion?
+
+**Empirical basis (Batch 21c, 2026-05-15):** BD-122 retro reviewer flagged 3 findings (1 SHOULD + 2 NITs) all in the convention document's procedure-rule-column triplet that the original end-of-batch review missed; the reviewer's friction note suggested adding a convention-docs checklist to this methodology, which is now codified above.
 
 ## Rat-hole limits (operational discipline)
 
@@ -203,6 +224,32 @@ If a finding violates a principle not on this list, document it as concept-speci
 
 **Wrong tool:** `pack-reviewer`. Its scope is pre-commit changes; conceptual review is about the surface as it currently exists, not about recent diffs.
 
+## Reviewer prompt construction discipline
+
+These rules govern how the calling chat (Pack Chat) constructs the reviewer's prompt. Independent of which agent runs the review.
+
+### File/Symbol scope from authoritative sources, not prose recall
+
+The reviewer's "BD scope anchor" section MUST source File/Symbol from:
+1. The BD's own BACKLOG entry `File/Symbol:` field (authoritative)
+2. `git show --stat <commit-sha>` for the BD's original commit (verifiable)
+
+NEVER from the parent chat's prose recollection of what files the BD touched. Recollection drifts and corrupts the reviewer's scope.
+
+**Empirical basis (Batch 21c, 2026-05-15):** the BD-112 retro trial prompt cited `scripts/lib/three-way.sh` as the BD-112 surface; actual surface (per BACKLOG + git --stat) was `scripts/lib/customization-preserve.sh`. Reviewer worked around the error but flagged it as methodology friction; subsequent prompts in the batch sourced from BACKLOG + git --stat correctly.
+
+### Filename hygiene in reference-doc citations
+
+Reference-doc paths in reviewer prompts MUST be verified against the live filesystem before sending. Do not cite docs by remembered/conventional name.
+
+**Empirical basis (Batch 21c, 2026-05-15):** five Group D+E reviewer prompts cited `IMPLEMENTATION-PLAN-V11.0.md` (does not exist); canonical filename is `EXECUTION-PLAN-V11.0.md`. Reviewers caught and worked around it; filename was later corrected in Group A+B+C+G prompts. Lesson: every reference-doc path in a reviewer prompt should be a recent `ls` confirmation, not a name recalled from training-pattern context.
+
+### Long output chunking
+
+Coder and reviewer prompts MUST instruct the agent to chunk Write calls for outputs over ~300 lines: initial Write of the first portion, then Edit appends for the rest. A single 500+ line Write risks token-limit truncation and harder-to-review reports.
+
+**Empirical basis (Batch 21c, 2026-05-15):** three coders blew through the threshold despite the guidance in their prompts: BD-118 fix coder (588 lines, single Write succeeded), BD-116 fix coder (733 lines, single Write succeeded), BD-101 fix coder (791 lines, properly chunked via initial Write + Edit append). Single Writes succeeded but the chunking discipline is the safer default; agents that miss this guidance need explicit reminder. Future Pack Chat prompts MUST surface this rule prominently AND include the BD-101 chunking pattern as the worked example.
+
 ## Concept-scope doc requirement
 
 Every conceptual review requires a per-concept scope doc that pre-declares:
@@ -244,3 +291,5 @@ A new conceptual area review approach must be empirically validated before insti
 5. Document empirical results in `maintenance-docs/v{N}-implementation/CONCEPTUAL-REVIEW-TRIAL-RESULTS.md`
 
 The trial requirement applies on first introduction (v11.0) and may apply on substantial methodology revisions in later versions.
+
+**Empirical confirmation (Batch 21c, 2026-05-15):** the per-BD-AND-per-batch review cycle (codified in the `feedback_review_fix_one_cycle` pack memory rule on 2026-05-15) was empirically validated retroactively across 13 BDs from prior multi-BD batches. Aggregate findings: 7+ MUSTs caught at the per-BD review layer that the original end-of-batch reviews missed (BD-078 missing acceptance criterion + test-not-CI, BD-079 test-not-CI, BD-118 CI manifest tautology, BD-095 dry-run fingerprint subset, BD-129 test-not-CI cross-BD pattern, BD-101 broken restore-from-backup.sh reference at 3 sites + Gate 2 coverage gap → BD-172). The "test-not-in-CI" heuristic was independently flagged by 4 reviewers — strongest empirical case for codifying as a named heuristic (now in the race-condition section + CI-step interrogation section above). Decision: per-BD review IS institutionalized for v11.0+ as the default for multi-BD batches, with end-of-batch review remaining the cross-cut catch.
