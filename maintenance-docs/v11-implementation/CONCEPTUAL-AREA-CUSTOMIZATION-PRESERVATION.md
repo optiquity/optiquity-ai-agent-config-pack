@@ -94,6 +94,24 @@ Cross-references to these concepts are allowed (one-sentence notes) but not purs
 - `supporting-docs/MIGRATION-v10-to-v11.md` (BD-084-extended) — user-facing migration contract
 - (if it exists) `maintenance-docs/v11-implementation/ARCHITECTURE-BD-136.md` or equivalent design doc — authoritative design for the merger
 
+## Sidecar suffix conventions
+
+The pack uses **two distinct sidecar-suffix conventions** for preserving prior-state files during pack-touching operations. Both are in active use; mixing them up is a real defect class (BD-116 retro F2 was caused by exactly this confusion). Future contributors editing customization-preserve, init-project, or migrator surfaces MUST consult this section.
+
+| Convention | Suffix shape | Source | Used by | When written |
+|---|---|---|---|---|
+| Init-update sidecar | `<original>.pre-update` | `scripts/lib/customization-preserve.sh` default `sidecar_suffix` parameter (`customization_preserve_init`) | `scripts/init-project.sh --update` workflow | Any time `init-project.sh --update` writes a new pack-canonical version of a file the project has customized |
+| Migrator sidecar | `<original>.<source-version>-customized` (e.g., `.v10-customized`) | `scripts/migrate-v10-to-v11.sh:76` `MIGRATOR_OWN_SIDECAR_SUFFIX` constant | `scripts/migrate-v10-to-v11.sh` (and any future `scripts/migrate-vN-to-vM.sh` per BD-119 framework) | Any time a migrator stage writes a new pack-canonical version of a file the project customized in the source-version era |
+
+**Why two conventions:** the version-agnostic `.pre-update` suffix would collide if a migrator ran twice (e.g., v10→v11 then v11→v12 on the same workspace) or if `--update` ran after a migrator. Encoding the source version in the migrator suffix gives every migrator pass a distinct sidecar namespace.
+
+**Cross-references:**
+- `scripts/persona-contracts/contract-migration.sh` 3c fallback: must use `config.toml.<vN>-customized*` glob (NOT `config.toml.pre-*`) — verifying migrator sidecar carrying, not init-update sidecar.
+- `scripts/persona-contracts/contract-mid-dev.sh` and `contract-greenfield.sh` pre-existing assertions: may reference either suffix depending on which surface they verify; check the contract's persona scoping before reading the glob.
+- `scripts/lib/migrator-core.sh` (BD-119 adapter framework): each migrator's adapter exports `MIGRATOR_OWN_SIDECAR_SUFFIX` per-vN. The framework wires the value into the customization-preserve init call.
+
+**Maintenance discipline:** any new sidecar-writing surface MUST pick one convention and document which (in code comment + this section's table). Adding a third convention without architect-pass review violates the maintainability principle (`CLAUDE.md` § Pack memory).
+
 ## Critical invariants
 
 | # | Invariant | Test that proves it |

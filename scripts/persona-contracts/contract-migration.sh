@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# pack-internal: true  (CI persona contract; not a user-facing verb)
 # scripts/persona-contracts/contract-migration.sh — BD-116 migration
 # persona contract.
 #
@@ -275,14 +276,31 @@ if [[ -f "$SANDBOX/.codex/config.toml" ]]; then
     if ! grep -q "^\[model_providers\.ollama\]" "$SANDBOX/.codex/config.toml"; then
         t_pass "3c: .codex/config.toml retains ollama-block deletion"
     else
-        # Acceptable if migrator surfaced the customization to a
+        # F2: Acceptable if migrator surfaced the customization to a
         # sidecar (BD-088 needs-reconciliation path).
-        if find "$SANDBOX" -name "config.toml.pre-*" -type f 2>/dev/null \
-                | xargs grep -L "^\[model_providers\.ollama\]" >/dev/null 2>&1; then
-            t_pass "3c: ollama-removal customization surfaced via sidecar"
+        #
+        # Pre-F2 the glob was `config.toml.pre-*` (init-project --update's
+        # `.pre-update` suffix), but the v10→v11 migrator uses
+        # MIGRATOR_OWN_SIDECAR_SUFFIX="v10-customized" per
+        # scripts/migrate-v10-to-v11.sh:76 — so the old glob never matched
+        # and the `find … | xargs grep -L` form returned success on empty
+        # input, silently passing the test even with no sidecars present.
+        # Aligned with the 3a generalized form at line ~250
+        # (`${f}.*-customized`) and switched to `-exec … +` + `grep -q .`
+        # so we require at least one matching sidecar, not zero.
+        sidecar_carried=0
+        while IFS= read -r side; do
+            [[ -n "$side" ]] || continue
+            if ! grep -q "^\[model_providers\.ollama\]" "$side" 2>/dev/null; then
+                sidecar_carried=1
+                break
+            fi
+        done < <(find "$SANDBOX" -name "config.toml.*-customized" -type f -not -path "*/.git/*" 2>/dev/null)
+        if [[ "$sidecar_carried" -eq 1 ]]; then
+            t_pass "3c: ollama-removal customization surfaced via .*-customized sidecar"
         else
             t_fail "3c: ollama-block returned in .codex/config.toml" \
-                "migrator silently restored deleted [model_providers.ollama]"
+                "migrator silently restored deleted [model_providers.ollama] and no sidecar carries the deletion"
         fi
     fi
 else

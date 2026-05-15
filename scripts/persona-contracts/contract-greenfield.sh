@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# pack-internal: true  (CI persona contract; not a user-facing verb)
 # scripts/persona-contracts/contract-greenfield.sh — BD-116 greenfield
 # persona contract.
 #
@@ -71,7 +72,14 @@ fi
 # ── Derived assertions ─────────────────────────────────────────────────────
 
 # Assertion 1: every project-template skill present in all three CLIs.
+# F6: enable nullglob so an empty project-template/skills/ does not leave
+# the literal pattern in the array (would otherwise count as a phantom
+# entry filtered by `[[ -d ]]` but skews intent). Scoped tightly: enabled
+# for the array assignment, disabled immediately afterward to avoid
+# changing global glob semantics for the rest of the script.
+shopt -s nullglob
 skill_dirs=("$PACK_ROOT"/project-template/skills/*/)
+shopt -u nullglob
 expected_skill_count=0
 for d in "${skill_dirs[@]}"; do
     [[ -d "$d" ]] || continue
@@ -100,7 +108,12 @@ for tool in claude codex gemini; do
     cli_extras_dir="$PACK_ROOT/project-template/.${tool}/skills"
     expected_unique="$expected_skill_count"
     if [[ -d "$cli_extras_dir" ]]; then
-        for extra in "$cli_extras_dir"/*/; do
+        # F6: nullglob hygiene — empty per-CLI extras dir must not yield a
+        # literal-pattern phantom entry.
+        shopt -s nullglob
+        cli_extras_list=("$cli_extras_dir"/*/)
+        shopt -u nullglob
+        for extra in "${cli_extras_list[@]}"; do
             [[ -d "$extra" ]] || continue
             extra_name=$(basename "$extra")
             # Add only if NOT already in shared project-template/skills/.
@@ -152,6 +165,18 @@ done
 # NOTE: this list mirrors the hardcoded enumeration in
 # scripts/init-project.sh:stage_s11_v11_artifacts(). Keep the two in sync
 # when adding/removing v11 client artifacts. (BD-116 PACK-REVIEW NIT N1.)
+#
+# Mapping to stage_s11_v11_artifacts() sub-stages:
+#   1. HELP-FRAGMENT*.md         → docs/pack/HELP-FRAGMENT.md, HELP-FRAGMENT-TRACKER.md
+#   2. tracker.toml.example      → tracker.toml.example
+#   3. .github/ISSUE_TEMPLATE/*  → handled by glob block below (F1 fix —
+#                                  mirrors the migration contract's pattern;
+#                                  pre-fix this surface was unverified by
+#                                  greenfield, only by migration).
+#   4. per-CLI pack-help         → .claude/skills/pack-help/SKILL.md,
+#                                  .codex/skills/pack-help/SKILL.md,
+#                                  .gemini/commands/pack-help.toml
+#   5. scripts/pack-help.sh + lib → scripts/pack-help.sh, scripts/lib/detect.sh
 s11_files=(
     "docs/pack/HELP-FRAGMENT.md"
     "docs/pack/HELP-FRAGMENT-TRACKER.md"
@@ -169,6 +194,25 @@ for f in "${s11_files[@]}"; do
         t_fail "S11 artifact ${f} MISSING"
     fi
 done
+# F1: S11 sub-stage 3 — .github/ISSUE_TEMPLATE/*.yml issue forms (BD-063).
+# Mirrors contract-migration.sh:333-347. Pre-F1 this surface was checked
+# only by the migration contract; a regression in greenfield issue-form
+# install would have slipped past CI green.
+if [[ -d "$PACK_ROOT/project-template/.github/ISSUE_TEMPLATE" ]]; then
+    missing_forms=0
+    for src in "$PACK_ROOT/project-template/.github/ISSUE_TEMPLATE"/*.yml; do
+        [[ -e "$src" ]] || continue
+        name=$(basename "$src")
+        if [[ ! -f "$SANDBOX/.github/ISSUE_TEMPLATE/$name" ]]; then
+            missing_forms=$((missing_forms + 1))
+        fi
+    done
+    if [[ "$missing_forms" -eq 0 ]]; then
+        t_pass "S11 sub-stage 3: all .github/ISSUE_TEMPLATE/*.yml installed by greenfield init"
+    else
+        t_fail "S11 sub-stage 3: $missing_forms ISSUE_TEMPLATE form(s) missing post-init"
+    fi
+fi
 # pack-help.sh executable.
 if [[ -x "$SANDBOX/scripts/pack-help.sh" ]]; then
     t_pass "scripts/pack-help.sh executable"
@@ -181,6 +225,40 @@ if [[ -x "$SANDBOX/agent-run.sh" ]]; then
     t_pass "agent-run.sh present and executable"
 else
     t_fail "agent-run.sh missing or not executable"
+fi
+
+# Assertion 6: stage S6 docs/pack/* + docs/pack/prompts/*.md present (F3).
+# Defense-in-depth — init-project.sh's stage_s6_docs_pack has internal
+# fail_stage checks that would short-circuit the contract's init-zero exit
+# test, but surfacing the same surface here makes the contract self-document
+# its S6 expectations. References:
+#   - scripts/init-project.sh:537-595 (stage_s6_docs_pack)
+#   - project-template/docs/pack/{PM-CHAT,PLATFORM-SKILLS,PACK-FEEDBACK}.md
+#   - project-template/docs/pack/prompts/*.md (10 per-agent files; init's
+#     internal check requires >=10 — we mirror that bound here).
+for f in PM-CHAT.md PLATFORM-SKILLS.md PACK-FEEDBACK.md; do
+    if [[ -f "$SANDBOX/docs/pack/$f" ]]; then
+        t_pass "S6 docs/pack/${f} present"
+    else
+        t_fail "S6 docs/pack/${f} MISSING"
+    fi
+done
+prompts_count=$(find "$SANDBOX/docs/pack/prompts" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
+if [[ "$prompts_count" -ge 10 ]]; then
+    t_pass "S6 docs/pack/prompts/ has ${prompts_count} prompt files (>=10 expected)"
+else
+    t_fail "S6 docs/pack/prompts/ count too low" "expected >=10 got $prompts_count"
+fi
+
+# Assertion 7: stage S8 .gitignore installed (F7).
+# Greenfield init copies project-template/.gitignore via plain `cp` (no
+# pre-existing .gitignore in the empty fixture). Symmetric to F3 — init's
+# internal stage_s8_gitignore check catches catastrophic failure, but we
+# self-document the surface here.
+if [[ -f "$SANDBOX/.gitignore" ]]; then
+    t_pass "S8 .gitignore installed"
+else
+    t_fail "S8 .gitignore MISSING"
 fi
 
 # ── Results ────────────────────────────────────────────────────────────────

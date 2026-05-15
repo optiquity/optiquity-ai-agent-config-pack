@@ -786,7 +786,7 @@ Type: TODO(version)
 Status: Open
 Blockers: BD-068 (CP1), BD-082 (CP2), BD-085 (CP3)
 Unblocks: BD-093
-File/Symbol: `maintenance-docs/v11-implementation/CHECKPOINT-{1,2,3}-REPORT.md`, `CHECKPOINT-PROMPT-TEMPLATE.md`
+File/Symbol: `maintenance-docs/v11-implementation/CHECKPOINT-{1,2,3}-REPORT.md`, `CHECKPOINT-PROMPT-TEMPLATE.md`. **Batch 21c retro carry-forwards** (verify in CP3 / final milestone audit; from PACK-REVIEW-BD-116-RETRO §5): (a) `scripts/validate-pack.py` Check 23 (`pack-internal: true` marker enforcement) recurses into `scripts/persona-contracts/` — BD-116 retro F5 added the markers but Check 23 currently only scans top-level `scripts/`; (b) `scripts/persona-contracts/contract-greenfield.sh` carries an inline note mapping its Assertion-N numbering to `init-project.sh stage_sN_*` source-stage numbering (currently mismatched cosmetically — Assertions 1-7 vs Stages S2/S4/S5/S6/S7/S8/S11); (c) `scripts/persona-contracts/contract-mid-dev.sh` carries an inline rationale comment explaining the deliberate absence of S6/S8/S11 mirror coverage (mid-dev verifies user-domain preservation only; greenfield owns install-verification surface — splitting prevents redundant assertion duplication).
 Description: 3 strategic agent-driven audit passes during v11 implementation.
   CP1 (Scope-A backbone after BD-068): tracker provider + forward + reverse
   + round-trip work. CP2 (Scope-A surfaces after BD-082): help system +

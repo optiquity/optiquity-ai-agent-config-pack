@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# pack-internal: true  (CI persona contract; not a user-facing verb)
 # scripts/persona-contracts/contract-mid-dev.sh — BD-116 mid-dev persona
 # contract.
 #
@@ -57,11 +58,30 @@ _sha256() {
     fi
 }
 
+# ── Cleanup (F4: single named trap, set once before resource creation) ────
+#
+# Reads current values of the SANDBOX / PRE_SNAPSHOT / PRE_GITIGNORE
+# variables at trap-fire time, so partial-creation paths are handled
+# naturally (anything still empty at fire time is skipped). Replaces the
+# pre-F4 chained-redefinition pattern (three sequential `trap … EXIT`
+# redefinitions) which read as fragile and was the only outlier among
+# the three contract scripts.
+
+PRE_SNAPSHOT=""
+PRE_GITIGNORE=""
+
+_cleanup() {
+    [[ -n "${PRE_SNAPSHOT:-}" && -f "$PRE_SNAPSHOT" ]] && rm -f "$PRE_SNAPSHOT"
+    [[ -n "${PRE_GITIGNORE:-}" && -f "$PRE_GITIGNORE" ]] && rm -f "$PRE_GITIGNORE"
+    [[ -n "${SANDBOX:-}" && -d "$SANDBOX" ]] && rm -rf "$SANDBOX"
+    return 0
+}
+trap _cleanup EXIT
+
 # ── Sandbox ────────────────────────────────────────────────────────────────
 
 SANDBOX="$(bash "$BUILD_SH" --for-contract mid-dev)" \
     || { printf 'error: failed to materialize mid-dev sandbox\n' >&2; exit 2; }
-trap '[[ -n "${SANDBOX:-}" && -d "$SANDBOX" ]] && rm -rf "$SANDBOX"' EXIT
 
 printf '── BD-116 mid-dev contract ──\n'
 printf '  sandbox:  %s\n' "$SANDBOX"
@@ -80,7 +100,6 @@ printf '  pack:     %s\n' "$PACK_ROOT"
 # user files, they're picked up automatically.
 
 PRE_SNAPSHOT="$(mktemp -t pack-contract-mid-dev-pre.XXXXXX)"
-trap '[[ -f "${PRE_SNAPSHOT:-}" ]] && rm -f "$PRE_SNAPSHOT"; [[ -n "${SANDBOX:-}" && -d "$SANDBOX" ]] && rm -rf "$SANDBOX"' EXIT
 
 while IFS= read -r f; do
     rel="${f#"$SANDBOX/"}"
@@ -94,11 +113,9 @@ pre_count=$(wc -l < "$PRE_SNAPSHOT" | tr -d ' ')
 printf '  user-domain files snapshotted: %s\n' "$pre_count"
 
 # Snapshot the pre-install .gitignore so we can verify pack append-only.
-PRE_GITIGNORE=""
 if [[ -f "$SANDBOX/.gitignore" ]]; then
     PRE_GITIGNORE="$(mktemp -t pack-contract-gitignore.XXXXXX)"
     cp "$SANDBOX/.gitignore" "$PRE_GITIGNORE"
-    trap '[[ -f "${PRE_SNAPSHOT:-}" ]] && rm -f "$PRE_SNAPSHOT"; [[ -f "${PRE_GITIGNORE:-}" ]] && rm -f "$PRE_GITIGNORE"; [[ -n "${SANDBOX:-}" && -d "$SANDBOX" ]] && rm -rf "$SANDBOX"' EXIT
 fi
 
 # ── Drive init-project.sh ──────────────────────────────────────────────────
