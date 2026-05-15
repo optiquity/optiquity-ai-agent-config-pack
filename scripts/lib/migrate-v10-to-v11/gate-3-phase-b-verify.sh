@@ -42,7 +42,7 @@ migrate_v10_to_v11_gate3_run() {
     local pack="${2:-${PACK:-}}"
 
     say ""
-    say "── Gate 3 — post-Phase-B verification (conditional on tracker mode) ──"
+    say "── Gate 3 — post-Phase-B verification (read-only; conditional on tracker mode) ──"
     say ""
 
     # Try to source tracker-config.sh so checkpoint_tracker_mode_active

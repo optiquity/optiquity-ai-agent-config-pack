@@ -40,6 +40,14 @@
 #       Run `python3 scripts/validate-pack.py` against the pack repo
 #       and require a clean pass.
 #
+#   checkpoint_check_no_orphan_sidecars <target>
+#       Verify the target tree contains zero `*.${MIGRATOR_OWN_SIDECAR_SUFFIX}`
+#       files. The expected post-Phase-A end-state is "all conflicts
+#       reconciled and sidecars removed". The `--resume` precondition
+#       check catches sidecars listed in `stage-S3.paused`; this
+#       check catches stragglers that escaped that list (e.g. a sidecar
+#       resolved by editing the destination but never deleted).
+#
 #   checkpoint_check_mapping_integrity <target>
 #       Verify .pack-tracker/id-map.json is parseable JSON and each
 #       entry's value is a positive integer (issue number).
@@ -68,6 +76,17 @@ checkpoint_check_dispositions_consistency() {
         printf '  [FAIL] dispositions: state dir missing (%s)\n' "$state_dir"
         return 1
     fi
+    # MINOR-2 (BD-101 retro fix): in --resume mode the dispositions.tsv
+    # has been truncated and re-initialized by `customization_preserve_init`
+    # in resume.sh, so any pre-resume rows are gone by the time Gate 2
+    # runs. Re-verifying "consistency" against a header-only TSV would be
+    # no-op-equivalent and could falsely stamp PASS. Skip the check
+    # explicitly with an INFO line so the user understands the gate's
+    # contract on this code path.
+    if [[ "${_MIGRATOR_MODE:-}" == "resume" ]]; then
+        printf '  [INFO] dispositions: skipped (resume mode — pre-resume rows were truncated by resume.sh; the original --apply Gate 2 already validated them)\n'
+        return 0
+    fi
     if [[ ! -f "$tsv" ]]; then
         printf '  [FAIL] dispositions: dispositions.tsv not found at %s  → Run: re-run --dry-run\n' "$tsv"
         return 1
@@ -86,8 +105,13 @@ checkpoint_check_dispositions_consistency() {
             "$n_unknown" "$tsv"
         return 1
     fi
+    # MINOR-1 (BD-101 retro fix): `wc -l` over-counts by 1 because the
+    # first line is the `# disposition\tclass\t...` header written by
+    # `customization_preserve_init`. Count only data rows (any line whose
+    # first column does NOT begin with `#`) so a fresh-init TSV with zero
+    # data rows reports "0 row(s)" instead of "1 row(s)".
     local n_rows
-    n_rows=$(wc -l < "$tsv" | tr -d ' ')
+    n_rows=$(awk -F'\t' '$1 !~ /^#/ {n++} END {print n+0}' "$tsv" 2>/dev/null)
     printf '  [OK]   dispositions: %s row(s), no unknown-classification\n' "$n_rows"
     return 0
 }
@@ -248,6 +272,45 @@ checkpoint_check_validate_pack() {
     return 0
 }
 
+# ── checkpoint_check_no_orphan_sidecars ──────────────────────────────────
+#
+# MINOR-3 (BD-101 retro fix): Gate 2 should observe zero own-suffix
+# sidecar files at the project root. The migrator's --resume precondition
+# already gates this for sidecars listed in stage-S3.paused; this check
+# catches the residual class (sidecars left behind after manual resolve,
+# sidecars from a different stage, etc.) so the truth-oracle banner
+# accurately reflects "this client install is consistent post-Phase-A".
+
+checkpoint_check_no_orphan_sidecars() {
+    local target="${1:-}"
+    if [[ -z "$target" || ! -d "$target" ]]; then
+        printf '  [FAIL] sidecars: target dir missing (%s)\n' "$target"
+        return 1
+    fi
+    local suffix="${MIGRATOR_OWN_SIDECAR_SUFFIX:-}"
+    if [[ -z "$suffix" ]]; then
+        # Adapter contract violation — but treat as INFO not FAIL so the
+        # gate does not block on a framework-loading defect.
+        printf '  [INFO] sidecars: MIGRATOR_OWN_SIDECAR_SUFFIX unset; skipping orphan-sidecar check\n'
+        return 0
+    fi
+    # Find sidecars under target, excluding migrator state dirs and .git/.
+    # `head -10` caps the listed-orphan output so a pathological fixture
+    # does not flood the gate banner. macOS BSD `find` accepts both forms.
+    local orphans
+    orphans=$(find "$target" -type f -name "*.${suffix}" \
+        -not -path '*/.pack-migrate-*' \
+        -not -path '*/.git/*' \
+        2>/dev/null | head -10)
+    if [[ -n "$orphans" ]]; then
+        printf '  [FAIL] sidecars: orphan *.%s file(s) at target  → Run: resolve and rm each listed sidecar\n' "$suffix"
+        printf '%s\n' "$orphans" | sed 's|^|         |'
+        return 1
+    fi
+    printf '  [OK]   sidecars: no orphan *.%s files at target\n' "$suffix"
+    return 0
+}
+
 # ── checkpoint_check_mapping_integrity ───────────────────────────────────
 #
 # Tracker mode: id-map.json must exist, be valid JSON, and every value
@@ -269,8 +332,14 @@ checkpoint_check_mapping_integrity() {
         return 1
     fi
     # Every value must be a positive integer.
+    # NIT-2 (BD-101 retro fix): JSON has no integer type — `1.5` is type
+    # "number" and > 0, so the bare numeric / positivity check accepts
+    # floats. Tracker issue numbers are strict positive integers, so we
+    # additionally reject any value where `floor(v) != v`. Defense in
+    # depth: the forward migrator writes integers; a float would mean a
+    # hand-edit or a future tracker provider regression.
     local bad_values
-    bad_values=$(jq -r 'to_entries[] | select((.value | type) != "number" or .value <= 0) | .key' \
+    bad_values=$(jq -r 'to_entries[] | select((.value | type) != "number" or .value <= 0 or ((.value | floor) != .value)) | .key' \
         "$mapping" 2>/dev/null | head -5)
     if [[ -n "$bad_values" ]]; then
         printf '  [FAIL] mapping: entries with non-positive-integer values  → Run: tracker-migrate.sh forward\n'

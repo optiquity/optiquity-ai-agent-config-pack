@@ -111,6 +111,15 @@ Private helper (1):
   inspected: it requires the 8 named exit-code constants but does NOT
   forbid additional ones, so `EXIT_GATE_FAILED` adds no validator
   amendment. Validator passes (verified — see test summary below).
+  - **Erratum (BD-101 retro fix, 2026-05-15):** Per
+    `PACK-REVIEW-BD-101-RETRO.md` MINOR-6, the "no validator amendment"
+    claim above was true on day-of-ship but missed the implication that
+    without an amendment Check 26 would silently fail to enforce the new
+    constant going forward. The audit fix-follow in commit `54dff63`
+    (Batch 13, same day) extended `required_exits` in
+    `scripts/validate-pack.py` Check 26 to include `EXIT_GATE_FAILED`,
+    closing the gap. This historical paragraph is left intact for
+    archive fidelity; the live validator already enforces the constant.
 
 ---
 

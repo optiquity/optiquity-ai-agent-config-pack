@@ -13,8 +13,12 @@
 # Plan:         maintenance-docs/v11-implementation/PLAN-BD-119.md §3
 #
 # State at C-3 (this file):
-#   - Public-API surface FROZEN per PLAN §3 (six function names + eight
-#     exit-code constants + EXIT_NOT_V10 synonym).
+#   - Public-API surface FROZEN per PLAN §3 (six function names + nine
+#     exit-code constants + EXIT_NOT_V10 synonym). The ninth constant —
+#     EXIT_GATE_FAILED=31 — was added by BD-101 (verification gates) as
+#     an additive extension to the frozen surface; existing constants
+#     10..16, 99 retain their semantics. Adapters should still reference
+#     constants by name, never by literal value.
 #   - Stage sequencer + arg parser + EXIT trap + adapter-contract reader
 #     are LIVE (this is T-7 from PLAN §4).
 #   - Public-API helpers `migrator_detect_target_version`,

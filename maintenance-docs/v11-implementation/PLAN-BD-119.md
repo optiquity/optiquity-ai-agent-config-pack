@@ -158,15 +158,26 @@ EXIT_NOT_BASELINE=13   # was EXIT_NOT_V10 in monolith; renamed (architecture §C
 EXIT_BASELINE_MISSING=14
 EXIT_LIB_MISSING=15
 EXIT_ALREADY_MIGRATED=16   # NEW per architecture I8
+EXIT_GATE_FAILED=31    # NEW per BD-101 — verification-gate failure
+                       # (Gate 1, 2, or 3 detected a defect post-stage)
 EXIT_INTERNAL=99
 ```
 
 Stage failures use the existing `20+N` formula; that formula is also
-frozen. **Renaming `EXIT_NOT_V10` to `EXIT_NOT_BASELINE` is the only
-behavior-visible exit-code change.** Old name retained as a synonym
-constant (`readonly EXIT_NOT_V10="$EXIT_NOT_BASELINE"`) so any external
-caller that grepped the constant name does not break. Documented in
-the adapter header comment.
+frozen. **At BD-119 ship the `EXIT_NOT_V10` → `EXIT_NOT_BASELINE` rename
+was the only behavior-visible exit-code change.** Old name retained as
+a synonym constant (`readonly EXIT_NOT_V10="$EXIT_NOT_BASELINE"`) so
+any external caller that grepped the constant name does not break.
+Documented in the adapter header comment.
+
+**BD-101 addition (post-BD-119 ship).** `EXIT_GATE_FAILED=31` was added
+by BD-101 (verification gates) as an additive extension above the
+stage-failure cap of 30 so `--resume` can distinguish gate-fix-and-retry
+(rc 31) from stage-internal failure (rc 20..30). The slot is reserved
+permanently — future BDs that need a new framework-level exit code
+should pick the next free slot above 31, not reuse one of the existing
+constants. The `migrator-core.sh` header comment names nine exit-code
+constants today (the original eight plus `EXIT_GATE_FAILED`).
 
 ### 3.6 Internal env vars (`_MIGRATOR_*`)
 

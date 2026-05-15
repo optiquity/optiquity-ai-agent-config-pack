@@ -162,6 +162,42 @@ assert_eq "1.4 Gate 1 PASS with conflicts rc=0" "0" "$rc"
 assert_contains "1.4 Gate 1 reports conflict count" "$out" "1 file(s) will need reconciliation"
 rm -rf "$SD"
 
+# 1.5 (BD-101 retro fix MINOR-1) Row count excludes the `# disposition...`
+# header line. `make_state_dir` writes 3 data rows (no header at top) —
+# the [OK] line should report `3 row(s)`, not `4 row(s)`.
+SD=$(make_state_dir)
+# Prepend the `# disposition` header so the TSV resembles what
+# customization_preserve_init writes.
+{ printf '# disposition\tclass\trel_path\taction\tsidecar\tdiff\tnotes\n'; cat "$SD/dispositions.tsv"; } > "$SD/dispositions.tsv.new"
+mv "$SD/dispositions.tsv.new" "$SD/dispositions.tsv"
+out=$(migrate_v10_to_v11_gate1_run "$SD" 2>&1) ; rc=$?
+assert_eq "1.5 Gate 1 PASS with header+3 data rows rc=0" "0" "$rc"
+assert_contains "1.5 Gate 1 reports 3 row(s) (header excluded)" "$out" "3 row(s), no unknown-classification"
+assert_not_contains "1.5 Gate 1 NOT 4 row(s) (would mean header counted)" "$out" "4 row(s), no unknown-classification"
+rm -rf "$SD"
+
+# 1.6 (BD-101 retro fix MINOR-1) Header-only TSV reports 0 row(s), not 1.
+SD=$(make_state_dir)
+printf '# disposition\tclass\trel_path\taction\tsidecar\tdiff\tnotes\n' > "$SD/dispositions.tsv"
+out=$(migrate_v10_to_v11_gate1_run "$SD" 2>&1) ; rc=$?
+assert_eq "1.6 Gate 1 PASS header-only TSV rc=0" "0" "$rc"
+assert_contains "1.6 Gate 1 reports 0 row(s) for header-only TSV" "$out" "0 row(s), no unknown-classification"
+rm -rf "$SD"
+
+# 1.7 (BD-101 retro fix MINOR-2) Dispositions check is SKIPPED in resume
+# mode. We simulate resume by setting _MIGRATOR_MODE=resume and verify
+# the gate's [INFO] dispositions: skipped line appears (and the row
+# count message does NOT appear).
+SD=$(make_state_dir)
+saved_mode="${_MIGRATOR_MODE:-}"
+_MIGRATOR_MODE="resume"
+out=$(migrate_v10_to_v11_gate1_run "$SD" 2>&1) ; rc=$?
+_MIGRATOR_MODE="$saved_mode"
+assert_eq "1.7 Gate 1 PASS in resume mode rc=0" "0" "$rc"
+assert_contains "1.7 Gate 1 dispositions: skipped (resume mode)" "$out" "[INFO] dispositions: skipped"
+assert_not_contains "1.7 Gate 1 no [OK] dispositions in resume" "$out" "[OK]   dispositions:"
+rm -rf "$SD"
+
 # ─────────────────────────────────────────────────────────────────────────
 # Group 2 — Gate 2 (post-Phase-A verification)
 # ─────────────────────────────────────────────────────────────────────────
@@ -229,6 +265,58 @@ out=$(PACK="$REPO_ROOT" \
 assert_eq "2.4 Gate 2 FAIL relocations rc=31" "31" "$rc"
 assert_contains "2.4 Gate 2 names relocations" "$out" "[FAIL] relocations"
 assert_contains "2.4 Gate 2 names METHODOLOGY" "$out" "METHODOLOGY.md still at project root"
+rm -rf "$T"
+
+# 2.5 (BD-101 retro fix MINOR-3) FAIL: orphan *.v10-customized sidecar
+# at project root. After a successful --apply, plant a sidecar that
+# escaped the resume.sh precondition list and verify Gate 2 catches it.
+T=$(make_v10_target)
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply   "$T" >/dev/null 2>&1
+SD="$T/.pack-migrate-v10-to-v11"
+# Plant an orphan sidecar that the gate's new check should observe.
+echo "# orphan sidecar content" > "$T/orphan-doc.v10-customized"
+out=$(PACK="$REPO_ROOT" \
+    migrate_v10_to_v11_gate2_run "$T" "$SD" "$REPO_ROOT" 2>&1) ; rc=$?
+assert_eq "2.5 Gate 2 FAIL orphan-sidecar rc=31" "31" "$rc"
+assert_contains "2.5 Gate 2 names sidecars FAIL" "$out" "[FAIL] sidecars"
+assert_contains "2.5 Gate 2 names the orphan file" "$out" "orphan-doc.v10-customized"
+rm -rf "$T"
+
+# 2.6 (BD-101 retro fix MINOR-3) PASS: clean tree (no orphan sidecars)
+# satisfies the new check.
+T=$(make_v10_target)
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply   "$T" >/dev/null 2>&1
+SD="$T/.pack-migrate-v10-to-v11"
+out=$(PACK="$REPO_ROOT" \
+    migrate_v10_to_v11_gate2_run "$T" "$SD" "$REPO_ROOT" 2>&1) ; rc=$?
+assert_eq "2.6 Gate 2 PASS no-orphan-sidecars rc=0" "0" "$rc"
+assert_contains "2.6 Gate 2 OK sidecars (no orphans)" "$out" "[OK]   sidecars: no orphan"
+rm -rf "$T"
+
+# 2.7 (BD-101 retro fix MAJOR-1) Gate 2 FAIL recovery banner uses the
+# corrected v10→v11 rsync recipe rather than the broken
+# `restore-from-backup.sh` reference. Force a Gate 2 failure (planted
+# trinity strip), capture banner, assert content.
+T=$(make_v10_target)
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply   "$T" >/dev/null 2>&1
+SD="$T/.pack-migrate-v10-to-v11"
+grep -v -E '^## (Project memory|Project addenda)' "$T/CLAUDE.md" > "$T/CLAUDE.md.tmp"
+mv "$T/CLAUDE.md.tmp" "$T/CLAUDE.md"
+out=$(PACK="$REPO_ROOT" \
+    migrate_v10_to_v11_gate2_run "$T" "$SD" "$REPO_ROOT" 2>&1) ; rc=$?
+assert_eq "2.7 Gate 2 FAIL banner exit rc=31" "31" "$rc"
+# Banner SHOULD reference the rsync-based recovery + the v10→v11 backup dir.
+assert_contains "2.7 Gate 2 banner mentions rsync recipe" "$out" "rsync -a --delete"
+assert_contains "2.7 Gate 2 banner names v10→v11 backup dir" "$out" ".pack-migrate-v10-to-v11-backup/"
+assert_contains "2.7 Gate 2 banner notes legacy script does not apply" "$out" "LEGACY"
+# Banner SHOULD NOT invoke restore-from-backup.sh as the recovery command.
+# (It MAY mention the script by name in a "do not use this — it is for
+# v9.3→v10" disclaimer, so we use a tighter check looking for the
+# bare invocation pattern.)
+assert_not_contains "2.7 Gate 2 banner does NOT invoke restore-from-backup.sh" "$out" "bash \$PACK/scripts/restore-from-backup.sh"
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -375,6 +463,45 @@ assert_contains "4.3 output names Gate 2"           "$out" "Gate 2 FAIL"
 assert_contains "4.3 output names help-fragments"   "$out" "[FAIL] help-fragments"
 assert_contains "4.3 output names HELP-FRAGMENT.md" "$out" "HELP-FRAGMENT.md differs"
 rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 5 — checkpoint_check_mapping_integrity (NIT-2 jq integer tightening)
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 5: mapping integrity rejects non-integer numerics (NIT-2) ===\n"
+
+if ! command -v jq >/dev/null 2>&1; then
+    echo "  [skip] jq not on PATH; mapping-integer tests require jq"
+else
+    # 5.1 PASS: all-integer mapping.
+    T=$(mktemp -d -t bd101-map-good.XXXXXX)
+    mkdir -p "$T/.pack-tracker"
+    echo '{"BD-001": 1, "BD-002": 5, "BD-003": 99}' > "$T/.pack-tracker/id-map.json"
+    out=$(checkpoint_check_mapping_integrity "$T" 2>&1) ; rc=$?
+    assert_eq "5.1 mapping all-int rc=0" "0" "$rc"
+    assert_contains "5.1 mapping all-int [OK] line" "$out" "[OK]   mapping: 3 entries"
+    rm -rf "$T"
+
+    # 5.2 FAIL: float value (3.14) — pre-fix the bare predicate accepts
+    # this; the tightened predicate rejects it because floor(3.14) != 3.14.
+    T=$(mktemp -d -t bd101-map-float.XXXXXX)
+    mkdir -p "$T/.pack-tracker"
+    echo '{"BD-001": 3.14, "BD-002": 5}' > "$T/.pack-tracker/id-map.json"
+    out=$(checkpoint_check_mapping_integrity "$T" 2>&1) ; rc=$?
+    assert_eq "5.2 mapping float-value rc=1" "1" "$rc"
+    assert_contains "5.2 mapping FAIL non-positive-integer" "$out" "[FAIL] mapping"
+    assert_contains "5.2 mapping names BD-001 (the float)" "$out" "BD-001"
+    rm -rf "$T"
+
+    # 5.3 FAIL: zero (boundary) — must be rejected (positive only).
+    T=$(mktemp -d -t bd101-map-zero.XXXXXX)
+    mkdir -p "$T/.pack-tracker"
+    echo '{"BD-001": 0, "BD-002": 5}' > "$T/.pack-tracker/id-map.json"
+    out=$(checkpoint_check_mapping_integrity "$T" 2>&1) ; rc=$?
+    assert_eq "5.3 mapping zero-value rc=1" "1" "$rc"
+    assert_contains "5.3 mapping FAIL zero" "$out" "[FAIL] mapping"
+    rm -rf "$T"
+fi
 
 # ─────────────────────────────────────────────────────────────────────────
 # Summary

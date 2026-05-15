@@ -405,10 +405,15 @@ internal failure. The exit code is also documented in
 - **Gate 2 FAIL** — fix-and-continue is NOT supported. The S4/S5/S6
   sentinels are already marked `.done` by the time Gate 2 fires, so
   `--resume`'s forward-only guard would skip past the failed stages
-  without re-firing the gate. The only supported recovery is
-  `bash $PACK/scripts/restore-from-backup.sh
-  <state-dir>-backup` followed by a fresh `--dry-run` + `--apply`.
-  The Gate 2 FAIL banner spells out the exact commands.
+  without re-firing the gate. The only supported recovery is to
+  restore the working tree from the migrator's `.pack-migrate-v10-to-v11-backup/`
+  mirror via `rsync -a --delete --exclude=.git/ --exclude=.pack-migrate-v10-to-v11-backup/ .pack-migrate-v10-to-v11-backup/ ./`
+  followed by a fresh `--dry-run` + `--apply`. The Gate 2 FAIL banner
+  spells out the exact commands; the canonical recipe also lives in
+  `MIGRATION-v10-to-v11.md` §Rollback. (Note: the legacy
+  `scripts/restore-from-backup.sh` is for v9.3→v10 backups and does
+  NOT apply to v10→v11; the v10→v11 backup is a faithful working-tree
+  mirror with no path flattening.)
 - **Gate 3 FAIL** — Phase-A (working tree) is intact, so
   restore-from-backup is the wrong recovery and would discard
   Phase-A work. Run `pack tracker doctor` for a per-check diagnosis
