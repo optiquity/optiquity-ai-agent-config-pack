@@ -44,7 +44,10 @@ Fixture directory names follow one of two patterns:
   shape the fixture represents (`minimal`, `realistic-ot`, `flat-file`,
   `tracker-on`). When v12 lands, expect `v12-flat-file`,
   `v12-tracker-on`, etc., as siblings — never overwrite a v11 fixture
-  in place.
+  in place. In the **Available fixtures** table above, version-pinned
+  rows take the form `<vN>-pinned` in the `Versioning` column
+  (`v10-pinned`, `v11-pinned`, …); the version-agnostic class uses
+  the literal value `version-agnostic`.
 - **Bare descriptor for version-agnostic fixtures.** When the fixture
   models something that does not depend on a pack version (e.g.,
   `existing-project-mid-dev` models a generic in-progress project the
@@ -52,9 +55,11 @@ Fixture directory names follow one of two patterns:
   descriptor. The fixture is reused unchanged across versions
   (BD-115/BD-116).
 
-Pick version-pinned when the fixture's content is a snapshot of pack
-output at a specific version. Pick version-agnostic when the fixture is
-input *to* the pack and is not itself a pack artifact.
+Pick version-pinned when the fixture's content is a snapshot of (pack
+output ± persona overlay) at a specific version — including fixtures
+that layer hand-applied customizations on top of a pack install
+(`v10-realistic-ot`, `v11-tracker-on`). Pick version-agnostic when the
+fixture is input *to* the pack and is not itself a pack artifact.
 
 ## When to add a fixture here vs. elsewhere
 
@@ -128,10 +133,15 @@ expected SHA so you can confirm the rebuild matches.
 
 ## Adding a new fixture
 
+0. Pick a fixture name per the **Naming convention** above
+   (`<vN>-<persona>` for version-pinned, bare hyphenated descriptor
+   for version-agnostic).
 1. Add a `_build_<name>()` function to `build.sh` following the
    pattern of the existing builders.
 2. Add the name to the `FIXTURE_NAMES` array near the top.
-3. Document the new fixture in this README's table.
+3. Document the new fixture in this README's table — populate all
+   columns including `Versioning` (`v10-pinned`, `v11-pinned`, …, or
+   `version-agnostic`).
 4. Run `bash build.sh --all` and commit the updated `manifest.txt`.
 
 Each builder writes its fixture deterministically into
