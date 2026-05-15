@@ -883,7 +883,7 @@ Resolved: n/a
 
 **BD-106 — Phase task entity model + identifier scheme + parser/emitter**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-063, BD-064, BD-065, BD-067
 Unblocks: BD-107, BD-108
 File/Symbol: NEW `scripts/lib/tracker-phase-task.sh` (parser + emitter; coder may split into `tracker-phase-task-parser.sh` + `tracker-phase-task-emitter.sh` per the existing `tracker-migrate-forward.sh`/`tracker-migrate-reverse.sh` split convention — planner-deferred); EXTEND `scripts/lib/tracker-sidecar.sh` (`phase_tasks` block + per-task `dependency_edges` with `annotation` sub-field per V3.3 §6.R); EXTEND `scripts/lib/tracker-labels.sh` (`derived-from:` + `promoted-to:` label family; NOT `folded-into:` per Path-3 forbidden); EXTEND `scripts/lib/tracker-migrate-forward.sh` + `scripts/lib/tracker-migrate-reverse.sh` (id-map handling for phase tasks; `.pack-tracker/id-map.json` is runtime data, not new code); NEW `scripts/tests/test-tracker-phase-task.sh`. **(File/Symbol corrected 2026-05-14 from stale Python paths in non-existent `scripts/lib/pack-tracker/` subdirectory to bash convention per existing `scripts/lib/tracker-*.sh` files; `.pack-tracker/` is the client runtime data directory not a code subdirectory.)**
@@ -893,13 +893,13 @@ Description: Phase task as first-class L2 entity per V3.3 D-21. Identifier
   reverses. Sidecar gains `phase_tasks` block + per-task `dependency_edges`
   with `annotation` sub-field per §6.R. Label family: `derived-from:` and
   `promoted-to:` only (NOT `folded-into:` per Path-3 forbidden).
-Resolved: n/a
+Resolved: 2026-05-15 — Phase task as L2 entity per V3.3 D-21; identifier `phase-N.M`; single-file `scripts/lib/tracker-phase-task.sh` parser/emitter; sidecar `phase_tasks` block + per-task `dependency_edges` per V3.3 §6.R (architect-ratified MATCH 16/16 per ARCHITECTURE-V3.3-DELTA-ADDENDUM-1 §A.6); `derived-from:`/`promoted-to:` label registration (no `folded-into:`). Per-BD review-fix in deecb08 addressed F1-F13 (typed-error contract 7 sites; bash↔Python regex parity; validate-pack Check 32 — `check_tracker_phase_task_invariants`). End-of-batch fix (8ccf30d) added cycle-store population on initial forward migration (per V3.3 §5.5/§5.7). 90/90 tests; CI green. Batch 17 commit 1.
 
 ---
 
 **BD-107 — TD-NNN promotion-path tooling (Path 1 + Path 2 + direct close)**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-106, BD-108
 Unblocks: None
 File/Symbol: NEW `scripts/lib/tracker-promote.sh` (Path 1 + Path 2 + direct close orchestration; consumes BD-108's `tracker-links.sh` for Path 2's "new phase task + dependency edge" case per V3.3 §3); NEW `scripts/pack-td.sh` (verb dispatcher for the `pack td <verb>` namespace per existing `scripts/pack-<noun>.sh` convention; wires `pack td promote --to=phase-N` and `pack td promote --to=phase-N.M`; coder verifies whether the existing `pack td resolve` baseline — if any — should consolidate here); EXTEND `project-template/docs/pack/PM-CHAT.md` (PM Chat orchestration: invokes architect by default for Path 1 per V3.3 §6.P resolution; planner conditional on architect's call; threshold advice per V3.3 §7.1); EXTEND `supporting-docs/METHODOLOGY.md` § Part 7 lines 1057-1064 (TD resolution-path decision logic per V3.3 §3); EXTEND `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md` (or wherever the tracker help fragment lives — coder verifies; note `HELP-FRAGMENT.md` lines 20-21 already reference these verbs, so reconcile to avoid duplication); NEW 3 test scripts (e.g., `test-tracker-promote-path1.sh`, `test-tracker-promote-path2.sh`, `test-tracker-promote-direct.sh` — coder may consolidate into one combined runner per pack convention). **(File/Symbol corrected 2026-05-14 from stale Python `promote.py` and non-existent `scripts/lib/pack-tracker/` subdirectory to bash convention per existing `scripts/lib/tracker-*.sh` files. Second correction 2026-05-14: `EXTEND scripts/pack-tracker.sh` → `NEW scripts/pack-td.sh` since `pack-tracker.sh` dispatches the `pack tracker` namespace, not `pack td`; per existing one-script-per-noun convention. HELP-FRAGMENT reconciliation note added.)**
@@ -909,13 +909,13 @@ Description: PM Chat orchestration for `pack td promote --to=phase-N`
   forbidden. PM Chat invokes architect by default for Path 1 (per §6.P
   resolution); planner conditional on architect's call. Path 2 typically
   goes direct. PM Chat advises threshold per V3.3 §7.1; user can override.
-Resolved: n/a
+Resolved: 2026-05-15 — TD promotion verb surface per V3.3 §3 D-22: Path 1 `pack td promote --to=phase-N` (new phase epic); Path 2 `pack td promote --to=phase-N.M` (new phase task; consumes BD-108's `tracker_links_create_blocked_by`); direct close via existing v10 lifecycle. Path 3 forbidden (5 grep invariants verified). PM Chat invokes architect by default for Path 1 per §6.P recommendation (a). NEW `scripts/pack-td.sh` dispatcher per `scripts/pack-<noun>.sh` convention. Per-BD impl + review-fix combined in 1a5944b addressed F1-F13 (dispatcher set-u guards on 4 value-bearing flags; Path 1 idempotency right-anchored regex; GH label pre-creation with partial-write surfacing; jq `--arg` discipline; failure-path tests). End-of-batch fix (8ccf30d) added `provider_update` Resolution-body sync and `tmf_mapping_save` id-map persistence. 159/159 BD-107 tests + 444 regressions; CI green. Batch 17 commit 3.
 
 ---
 
 **BD-108 — Cross-entity dependency link orchestration + cycle check + gate-check extension**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: BD-106, BD-070
 Unblocks: None
 File/Symbol: NEW `scripts/lib/tracker-links.sh` (uniform cross-entity dependency model across 6 entity-pair types per V3.3 §5.1; uses V1 §5.3 reserved `link.kind = "blocks"/"blocked-by"` open-string family; no new provider operation; no new capability flag); NEW `scripts/lib/tracker-cycle-check.sh` (cycle check at link-creation time; K=10 default per V3.3 §6.Q; configurable via `tracker.toml [graph] cycle_check_k`); EXTEND `scripts/lib/tracker-migrate-forward.sh` + `scripts/lib/tracker-migrate-reverse.sh` (Dependencies bullet parser + Blockers grammar `phase-N.M` admission; flat-file ↔ tracker round-trip per V3.3 §5.2 / §5.3); EXTEND `supporting-docs/METHODOLOGY.md` § Part 4 line 263 (Dependencies bullet codification) + § Part 7 lines 990-993 (Blockers grammar `phase-N.M` admission) + 1025-1029 (gate-check extension); NEW 2 test scripts (`test-tracker-links.sh` + `test-tracker-cycle-check.sh`). **(File/Symbol corrected 2026-05-14 from stale Python paths in non-existent `scripts/lib/pack-tracker/` subdirectory to bash convention per existing `scripts/lib/tracker-*.sh` files.)**
@@ -926,7 +926,7 @@ Description: Uniform cross-entity dependency model across 6 entity-pair
   per §6.Q; configurable via `tracker.toml [graph] cycle_check_k`). Flat-file
   Blockers grammar gains `phase-N.M` (additive); Dependencies bullet grammar
   codified.
-Resolved: n/a
+Resolved: 2026-05-15 — Uniform cross-entity dependency model (V3.3 §5.1, 6 pair types) via `tracker-links.sh` (uses V1 §5.3 `link.kind` open-string family; no new provider op; no new capability flag); cycle check K=10 default per §6.Q recommendation (a) configurable via `tracker.toml [graph] cycle_check_k`; flat-file Blockers grammar admits `phase-N.M` additive; Dependencies bullet codified per V3.3 §5.3. Per-BD review-fix in 430c637 addressed F1-F12 (CI workflow wire-up for BD-108 + BD-106 cross-cut tests; cycle-check self-loop verb consistency; `tracker_links_validate_pair_type` → `tracker_links_validate_id_shapes` rename; tracker.toml example documentation). End-of-batch fix (8ccf30d) added rc=2 cycle-vs-traversal disambiguation. 64/64 BD-108 tests (43 links + 21 cycle-check, +4 rc=2) + 270 migration regressions; CI green. Batch 17 commit 2. Note: V3.3 §5.5 spec wording on cycle traversal direction is logically inverted from the implementation (which is correct); pending PM-only V3.3-DELTA edit.
 
 ---
 
