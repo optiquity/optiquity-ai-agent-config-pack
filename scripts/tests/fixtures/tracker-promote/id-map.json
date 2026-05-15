@@ -1,0 +1,8 @@
+{
+  "TD-029": {"id": "1029", "url": "https://example.com/issues/1029"},
+  "TD-031": {"id": "1031", "url": "https://example.com/issues/1031"},
+  "TD-040": {"id": "1040", "url": "https://example.com/issues/1040"},
+  "phase-3":   {"id": "3000", "url": "https://example.com/issues/3000"},
+  "phase-3.1": {"id": "3001", "url": "https://example.com/issues/3001"},
+  "phase-3.2": {"id": "3002", "url": "https://example.com/issues/3002"}
+}

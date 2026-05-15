@@ -17,8 +17,9 @@ your CLI for this content. Full docs in `docs/pack/QUICKSTART.md`,
 | `python3 scripts/merge-platform-skills.py` | Splice helper for `PLATFORM-SKILLS.md`. |
 | `python3 scripts/merge-trinity.py` | Splice helper for trinity files (CLAUDE/AGENTS/GEMINI). |
 | `./agent-run.sh <cli> --agent <name>` | Spawn a project agent. `./agent-run.sh --help` for flags. |
-| `pack td promote --to=phase-N` | Promote a TD-NNN to a new phase epic (Path 1; V3.3 §3.1). |
-| `pack td promote --to=phase-N.M` | Promote a TD-NNN to a new phase task under phase N (Path 2; V3.3 §3.1). |
+| `pack td promote --to=phase-N` | Promote a TD-NNN to a new phase epic (Path 1; V3.3 §3.1 / §3.3). |
+| `pack td promote --to=phase-N.M` | Promote a TD-NNN to a new phase task under phase N (Path 2; V3.3 §3.1 / §3.4). |
+| `pack td resolve <td-id>` | Direct-close wrapper (V3.3 §3.2). No promotion label; no new entity. |
 | `pack help` | Print this fragment (LCD shell verb). |
 
 ## Tracker commands (v11+)

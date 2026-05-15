@@ -1117,15 +1117,42 @@ No phase prompt is generated until this check is complete.
    Active skills line in CLAUDE.md, AGENTS.md, and GEMINI.md. Commit.
 ```
 
-**Resolution path decision logic:**
+**Resolution path decision logic** (per ARCHITECTURE-V3.3-DELTA.md §3.1; supersedes the v10 three-outcome shape):
 ```
-Is the work small AND directly related to the upcoming phase's concerns?
-  → Yes: addendum task within the current phase
-  → No: Is the volume of unblocked items large, or do they span unrelated areas?
-      → Yes: dedicated cleanup phase
-      → No: separate pass of the current phase (same phase number, distinct prompt)
+Is the work small (≤ ~30 minutes inline; no significant scope expansion;
+user available to do it) AND no blockers?
+  → Yes: direct close
+         (V3.3 §3.2; verb: `pack td resolve <td-id>`; no promotion
+          label; no new entity; v10 lifecycle unchanged)
+  → No: Does the work span multiple tasks, warrant its own phase
+        (architectural surface; multi-day; distinct concern), OR is
+        there a cluster of related TDs in the same area?
+      → Yes: Path 1 — promote to a new phase epic
+             (V3.3 §3.3; verb: `pack td promote --to=phase-N`;
+              new phase epic at L1; `derived-from:TD-NNN` on phase
+              epic; `promoted-to:phase-N` on closed TD; PM Chat
+              invokes architect by default per V3.3 §7.2 / §6.P)
+      → No: Path 2 — promote to a new phase task under existing phase
+             (V3.3 §3.4; verb: `pack td promote --to=phase-N.M`;
+              new phase task at L2 child of phase-N epic;
+              `derived-from:TD-NNN` on task; `promoted-to:phase-N.M`
+              on closed TD; for each `Dependencies` bullet entry on
+              the new task, PM Chat creates a cross-entity
+              `blocked-by` edge per V3.3 §5.1)
 ```
-The PM chat presents its reasoning and the user may override. Bias toward resolving now.
+PM Chat advises per V3.3 §7.1 heuristic (Description length, File/Symbol
+scope, Type signal, related-TD cluster). The user can confirm or override
+via `change-to-path-1` / `change-to-path-2` / `change-to-direct-close`.
+Bias toward resolving now.
+
+**Path 3 is forbidden** per V3.3 §3 line 27 / V3.3 §1 supersession. The
+v10 "fold into existing task body via inline `(from TD-NNN)` marker
+plus `folded-into:` label" shape is rejected; where that case would
+have applied, the user edits the absorbing task body manually via PM
+Chat (outside the promotion mechanism) and resolves the TD via direct
+close, OR uses Path 2 with a `Dependencies` bullet pointing at the
+absorbing task to express ordering without merging entities. The
+`pack td promote` verb has no `--fold-into` flag.
 
 ### Procedure 2 — Post-session processing (after every coder completion report)
 
