@@ -198,7 +198,7 @@ V3.2 §4.2's emitter specification carries forward. The emitter writes `### Task
 
 V3.2 §4.3's sidecar `phase_tasks` block carries forward unchanged. Added fields beyond V3.2:
 
-- Per phase task: `dependency_edges: [{kind, target_pack_id}]` capturing the resolved tracker links so reverse → re-forward replays them deterministically. The flat-file `Dependencies` bullet is the human-readable face; the sidecar field is the queryable face.
+- Per phase task: `dependency_edges: [{kind, target, annotation}]` capturing the resolved tracker links plus the trailing free-text prose from the source `Dependencies` bullet (per §6.R below) so reverse → re-forward replays them deterministically. The flat-file `Dependencies` bullet is the human-readable face; the sidecar field is the queryable face. The `annotation` sub-field is always emitted (empty string when no annotation was present in the source bullet); see §6.R.2 for rationale.
 
 The sidecar composes with V1 §6.6.1 / A2 — same `template_version` and `extra_fields` mechanism applies.
 
@@ -273,7 +273,7 @@ Blockers:
   - TD-029            ← rare; phase task blocked by a TD
 ```
 
-The bullet's content shape is one entry per nested bullet; the parser regex matches `^\s*-\s+(phase-\d+(\.\d+)?|TD-\d+|BD-\d+)\s*$`. Prose annotations after the entry are permitted as free-text (e.g., `- phase-3.1 (must complete schema before this task)`); the parser captures only the matched ID prefix.
+The bullet's content shape is one entry per nested bullet; the parser regex matches `^\s*-\s+(phase-\d+(\.\d+)?|TD-\d+|BD-\d+)(\s+(.*))?$`. Prose annotations after the entry are permitted as free-text (e.g., `- phase-3.1 (must complete schema before this task)`); the parser captures the matched ID prefix as the link target and the trailing prose as the annotation. Both are stored in the sidecar's `dependency_edges` per-task entry per §6.R; reverse emit reproduces the bullet line byte-identically.
 
 These two extensions are **additive**. Every legal v10 form continues to parse. The bidirectionality contract (V1 §6.0) is honored: the v10 grammar for both fields is preserved; v11 adds new ID forms within those fields, without changing the field syntax.
 
@@ -380,6 +380,117 @@ D-18 (template_version dual carrier) extends to phase tasks with:
 | **Phase task** (NEW) | `<!-- template_version: phase-task-v11.0 -->` | `template:phase-task-v11.0` |
 
 `maintenance-docs/v11-research/templates-archive/v11.0/phase-task-v11.0/SCHEMA.md` ships the schema definition (BD-064 extension).
+
+### §6.R Sidecar `dependency_edges` per-task entry shape
+
+The sidecar `phase_tasks` block (V3.2 §4.3 carried forward through
+V3.3 §4.3) gains a `dependency_edges` per-task field. Each entry
+in that list captures one cross-entity dependency the phase task
+declares in its `Dependencies` bullet (V3.3 §5.3) plus the prose
+annotation that accompanies it.
+
+**Per-entry shape (canonical):**
+
+```yaml
+dependency_edges:
+  - kind: blocked-by
+    target: <pack-id>
+    annotation: <free-text or empty string>
+```
+
+Field semantics:
+
+| Field | Type | Required | Domain |
+|---|---|---|---|
+| `kind` | string | yes | one of V1 §5.3 reserved `link.kind` values; v11.0 admits `blocked-by` only for phase-task `Dependencies` bullet (V3.3 §5.2 canonical direction); the open-string contract permits backend-specific values via `provider.capabilities()` for future extensions |
+| `target` | string (pack-id) | yes | the upstream entity that blocks this task; one of `phase-N`, `phase-N.M`, `TD-NNN`, `BD-NNN` per V3.3 §5.3 grammar |
+| `annotation` | string | yes (may be empty) | the trailing free-text prose that accompanies the matched ID in the source `Dependencies` bullet; preserved verbatim for byte-identical reverse-emit; empty string when no annotation was present |
+
+The list is ordered. Order matches the source `Dependencies`
+bullet order so reverse emit reconstructs the bullet in the
+authored sequence.
+
+#### §6.R.1 Field name resolution: `target` vs `target_pack_id`
+
+V3.3 §4.3 line 201 originally named the field `target_pack_id`. This subsection adopts the shorter `target` for these reasons:
+
+- **Provider parity.** V1 §2.1 names `link(id, other_id, kind)`'s
+  second argument `other_id` and the canonical `Issue.links` shape
+  (V1 §2.2 line 238) names the field `target`. The sidecar uses the
+  same field name as the canonical Issue shape; the chat reads the
+  same mental model whether walking sidecar entries or canonical
+  Issue links.
+- **Length.** `target` is shorter; the YAML emit is more compact
+  without losing meaning.
+- **Domain marker is in the value, not the name.** The value is
+  always a pack-id by §6.R contract; the field name's `_pack_id`
+  suffix is redundant.
+
+The §4.3 line 201 prose has been updated to `target` per this subsection. The change is mechanical (rename of field name in one prose line of V3.3-DELTA). No schema semantics change.
+
+#### §6.R.2 Annotation field — always present, always serialised
+
+The `annotation` sub-field is always emitted, even when empty. The
+empty case serialises as `annotation: ""` (YAML empty string).
+
+Rationale:
+
+- **Deterministic emit.** Conditional field presence (omit when
+  empty) introduces a parser branch (does this entry have an
+  `annotation` key?) and an emitter branch (do I emit the key?).
+  Always-present is one path; the cost is two extra characters per
+  edge with no annotation.
+- **Schema stability.** Future migrators that introspect sidecar
+  shape via JSON-schema-like tools see one consistent entry shape,
+  not two.
+- **Round-trip stability.** YAML emitters that round-trip through
+  parse-emit cycles are sensitive to optional-key drift. Always-
+  present eliminates the drift risk.
+- **Diff clarity.** `git diff` on sidecars shows annotation
+  additions / removals on a stable line position rather than as
+  schema reshapes.
+
+#### §6.R.3 Annotation grammar — what counts as annotation
+
+Per V3.3 §5.3 (corrected to capture the trailing prose):
+the parser regex matches the `Dependencies` bullet entry as
+
+```
+^\s*-\s+(phase-\d+(\.\d+)?|TD-\d+|BD-\d+)(\s+(.*))?$
+```
+
+Group 1 captures the pack-id (the `target` field). The optional
+group 4 captures the trailing prose (the `annotation` field).
+Whitespace between the pack-id and the annotation is consumed by
+group 3 (one or more spaces); the annotation itself is the
+remainder of the line, trimmed of leading and trailing whitespace.
+
+Annotation content rules:
+
+- **Single-line only.** The grammar is line-based. Multi-line
+  annotations are not representable in v10 grammar (the bullet
+  syntax does not nest a paragraph under one entry). If a future
+  v11.x extends the grammar, it ships as a separate addendum.
+- **Any UTF-8 text permitted.** No reserved characters. The YAML
+  emitter quotes when the annotation contains characters that
+  would change YAML semantics (`:`, `#`, `"`, `'`, leading/trailing
+  whitespace, embedded newlines from upstream tooling). Round-trip
+  through `parse → emit → re-parse` returns the same string
+  byte-for-byte.
+- **Emit reconstruction.** The reverse-emit reproduces the source
+  line as `  - <target> <annotation>` when annotation is non-empty,
+  or `  - <target>` when empty. The two-space indent matches
+  V3.3 §5.3's nested-bullet shape.
+
+**Provenance.** This subsection formalises the schema that was
+maintainer-resolved at IMPLEMENTATION-PLAN-ADDENDUM-4.md §6.R
+(option (a)) and review-accepted at ARCHITECTURE-REVIEW-PASS3.md
+§4.6, then ratified by `maintenance-docs/v11-implementation/
+ARCHITECTURE-V3.3-DELTA-ADDENDUM-1.md` §A.1 at BD-106 land-time
+2026-05-14. See the addendum for the full rationale + alternative-
+schemas rejection (§A.2) + invariant compositions (§A.3) + worked
+examples (§A.4) + MATCH/DIVERGE table vs the BD-106 implementation
+(§A.6).
 
 ---
 

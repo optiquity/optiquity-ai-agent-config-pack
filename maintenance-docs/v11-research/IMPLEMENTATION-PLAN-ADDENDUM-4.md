@@ -840,10 +840,7 @@ Append to §6 of the base plan (Addendum 3 ends at §6.L):
   - (c) K=20 default. Larger search; more complete cycle detection at edge of GraphQL one-shot.
   - **Recommendation: (a).** Maintainer confirms at BD-108 land-time. If `tracker.toml` schema-extension is rejected, fall back to (b).
 
-- **§6.R — Sidecar `dependency_edges` annotation preservation.** V3.3 §4.3 specifies the sidecar `dependency_edges` per-task entries as `[{kind, target_pack_id}]` only. V3.3 §5.3 permits free-text annotations after the matched ID in the `Dependencies` bullet grammar. If the annotation is dropped on round-trip, the flat-file `Dependencies` bullet's annotation text is lost on reverse. Options:
-  - (a) **Add `annotation` sub-field to `dependency_edges` per-task entry (proposed).** Preserves free-text round-trip; sidecar grows by one optional field per dependency.
-  - (b) Drop annotation on round-trip. Document the loss in MIGRATION doc as an acceptable trade-off (annotations are advisory prose, not load-bearing).
-  - **Recommendation: (a).** Maintainer confirms at BD-106 land-time.
+- **§6.R — Sidecar `dependency_edges` annotation preservation. RESOLVED-RATIFIED 2026-05-14 per V3.3-DELTA §6.R (formalised inline) + ARCHITECTURE-V3.3-DELTA-ADDENDUM-1 §A.1 (full rationale + alternative-schemas rejection).** Maintainer chose option (a) at BD-106 land-time; architect ratified the schema as `dependency_edges: [{kind, target, annotation}]` with the field-name (`target` per V1 §2.2 parity) + always-emitted-annotation refinements per V3.3-DELTA §6.R.1 and §6.R.2. The sidecar `phase_tasks` block emits all three fields per dependency entry; reverse emit reproduces the source bullet byte-identically (BD-106 IMPLEMENTATION-REPORT §6.4 SHA-256 round-trip identity). The §6.R MAINTAINER CHECK is now permanently resolved; no further re-evaluation at later BD land-times.
 
 ---
 
