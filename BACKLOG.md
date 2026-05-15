@@ -972,9 +972,9 @@ Blockers: Live GH repo access — pairs naturally with BD-088 or BD-093 integrat
 Unblocks: First-class blocker enumeration in `auditor-issue-tracking` (Check 28)
   without comment-body parsing.
 File/Symbol: `scripts/lib/tracker-provider-gh.sh` —
-  `tracker_provider_gh_link()` `blocks|blocked-by` case;
-  `scripts/tests/tracker-provider-test.sh` test 1.17;
-  new fixture under `scripts/tests/fixtures/tracker-provider/`.
+  `tracker_provider_gh_link()` `blocks|blocked-by` case **+ `tracker_provider_gh_unlink()` `blocks|blocked-by` case (scope extended 2026-05-15)**;
+  `scripts/tests/tracker-provider-test.sh` test 1.17 **+ test 1.20 unlink coverage (scope extended 2026-05-15)**;
+  new fixtures under `scripts/tests/fixtures/tracker-provider/` (`gh-add-blocked-by.json` for link, `gh-remove-blocked-by.json` for unlink). **(Scope extended 2026-05-15 to include the symmetric `removeBlockedBy` unlink path. Original BACKLOG named only `tracker_provider_gh_link()`; the BD-111 coder's first pass surfaced the link/unlink asymmetry as a known limitation. Extending in-session is correct per pack rule "BDs are reserved for new scope / new feature / new architecture" — `removeBlockedBy` is the symmetric pair of `addBlockedBy`, not new architecture; same API surface, same files, same integration-test verification ask. Avoids artificial BD-split for one feature.)**
 Description: BD-060 ships `blocks`/`blocked-by` via comment markers (the
   documented V3 §28 fallback). GitHub issue dependencies went GA 2025-08-21
   (EXTERNAL-RESEARCH §1.5); the exact GraphQL mutation name was not pinned
