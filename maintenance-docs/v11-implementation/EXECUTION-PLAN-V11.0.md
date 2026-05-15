@@ -432,7 +432,7 @@ If BD-128's CI repair (Batch 6) requires BD-120's fixture parameterization (Batc
 | CI `tests` job | After every push | green (target post-Batch 6) | Currently red; Batch 6 gates green; subsequent batches must keep it green |
 | Final milestone audit | Batch 22 | audit report finds zero BLOCKER + acceptable SHOULD-FIX/NIT scope | Pack Chat presents findings, options, and asks the user how to proceed (per §B). |
 | Dog-food migration | Batch 23 | clean migrator output against v10-tag pack clone; customization preserved | Pack Chat presents findings, options, and asks the user how to proceed (per §B). |
-| Pre-tag check | Batch 24 | all BDs in §1.1–1.5 Resolved; BD-059 verified-closed; CI fully green; final audit clean; per-entry split mirror+TOC in-sync (Check 32+33) | Hold release; resolve gates first |
+| Pre-tag check | Batch 24 | all BDs in §1.1–1.5 Resolved; BD-059 verified-closed; CI fully green; final audit clean; per-entry split mirror+TOC in-sync (Check 32+33); RELEASE-GATE.md 5 items satisfied (per-item evidence in BD-093 release-pin BD's `Resolved:` line — see `maintenance-docs/v11-implementation/RELEASE-GATE.md`) | Hold release; resolve gates first |
 | Mirror+TOC in-sync (Check 32+33) | After every code-change batch in Batch 19+ | `validate-pack.py` PASSED (Checks 32+33) | Fix regenerator and re-stage (per Pack-Chat-direct R-2/R-3/R-4 resolutions and per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10) |
 
 ---

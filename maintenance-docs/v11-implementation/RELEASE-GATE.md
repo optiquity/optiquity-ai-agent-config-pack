@@ -1,6 +1,8 @@
 # Release Gate — major-version pre-tag checklist
 
-**Last updated:** 2026-05-12 (v11.0 development; BD-117).
+**Last updated:** 2026-05-15 (v11.0 development; BD-117 retro fix —
+hook count, §2/§4 alignment, fixup re-verification, BD-115 trace,
+regex tolerance, in-flight CI guidance).
 
 This document is the authoritative pre-tag checklist for **any** major
 pack version cut (v11.0, v12.0, ...). The five gate items below MUST all
@@ -27,9 +29,10 @@ commands, specific pass criteria). It is a checklist, not a tutorial.
 
 - **Every major version pre-tag commit.** v11.0 release (BD-093). v12.0
   release (analogue BD). v13.0, v14.0, ... — same gate.
-- **Run order:** items 1 and 4 are working-tree state checks (run any
-  time during release prep); items 2, 3, 5 are command-driven and should
-  be re-run on the exact candidate-tag commit immediately before tagging.
+- **Run order:** items 1 and 5 are working-tree state checks (run any
+  time during release prep, but items 2, 3, 4 must be re-run on the
+  exact candidate-tag commit immediately before tagging — see §4 for
+  the per-item ordering rationale).
 - **Sign-off:** the release-pin BD records pass evidence (commit SHA, CI
   run URL, contract output) per item in its `Resolved:` line.
 
@@ -51,9 +54,11 @@ the cause is fixed and the item re-passes.
 **Asserts:** the per-version migrator
 `scripts/migrate-v<N>-to-v<N+1>.sh` exists, sources
 `scripts/lib/migrator-core.sh`, and uses the documented adapter
-contract (`MIGRATOR_*` env vars + the four declarative hook
-functions). It is **not** a copy-and-rewrite of a previous version's
-migrator.
+contract (`MIGRATOR_*` env vars + the five declarative hook
+functions: `migrator_manifest`, `migrator_directory_sweeps`,
+`migrator_relocations`, `migrator_artifact_installs`,
+`migrator_post_report_hook`). It is **not** a copy-and-rewrite of a
+previous version's migrator.
 
 **Commands to run:**
 
@@ -61,7 +66,7 @@ migrator.
 # Replace <N>/<N+1> with the actual majors (e.g., 10 / 11 for v11.0).
 test -x scripts/migrate-v<N>-to-v<N+1>.sh
 grep -q 'scripts/lib/migrator-core.sh' scripts/migrate-v<N>-to-v<N+1>.sh
-grep -E '^MIGRATOR_(FROM_VERSION|TO_VERSION|BASELINE_TAG)=' \
+grep -E '^[[:space:]]*MIGRATOR_(FROM_VERSION|TO_VERSION|BASELINE_TAG)=' \
     scripts/migrate-v<N>-to-v<N+1>.sh
 ```
 
@@ -154,6 +159,10 @@ to install the new template artifact, or document the divergence in
 the contract's expected-manifest derivation. v11.0 example: BD-161
 (missing skill installs surfaced by the migration contract).
 
+The `mid-dev` contract requires the BD-115 mid-development fixture
+under `test-fixtures/existing-project-mid-dev/` to be built and
+verified — see item 5.
+
 ---
 
 ### Item 4 — BD-118 CI workflow green on the release commit
@@ -178,11 +187,20 @@ gh run list --workflow=validate-pack.yml --commit="$RELEASE_SHA" \
 - Both the `validate` and `tests` jobs report `success` (use
   `gh run view <run-id> --json jobs` to drill in if the top-level
   conclusion is ambiguous).
+- If `status` is `queued` or `in_progress`, wait for the run to
+  finish (`gh run watch <run-id>`) and re-check; do not proceed to
+  tag until `status` is `completed` and `conclusion` is `success`.
 
 **Common failure mode:** the candidate-tag commit was created locally
 but never pushed, so no CI run exists for that SHA. Push the commit
 to its release branch, wait for CI, then re-run the gate. Do **not**
 tag a SHA without a green CI run.
+
+**Note on fixup commits:** any fix to items 1/2/3/5 that lands a fixup
+commit changes the candidate-tag SHA. After each fixup, re-run items
+2, 3, 5 against the new SHA and re-verify item 4 against the new SHA's
+CI run before tagging. The previous CI run no longer satisfies item 4
+once the SHA has moved.
 
 ---
 
