@@ -76,6 +76,63 @@ if ! declare -f tracker_header_snapshot_capture >/dev/null 2>&1; then
 fi
 
 # ─────────────────────────────────────────────────────────────────
+# BD-106 helpers: phase-task id-map reads (V3.2 §4.2 / V3.3 §4.2)
+# ─────────────────────────────────────────────────────────────────
+#
+# Phase tasks are stored at the same top level of id-map.json as
+# BD-NNN / TD-NNN (`mapping["phase-N.M"] = {id, url}`). The reverse
+# emitter reads them via the existing tmf_mapping_get path. The
+# helpers below add:
+#
+#   _tmr_phase_task_order — read mapping["phase-N"].task_order so
+#     reverse emits tasks in the original file order (V3.2 §4.2
+#     step 5c). If unset, falls back to numeric sort of the task
+#     numbers found in mapping (mapping["phase-N.M"]).
+#
+# Implementation note: id-map handling is additive — existing v10
+# entries are untouched; v11 phase-task entries simply add new keys
+# alongside. Round-trip safety holds because the reverse emitter
+# reads only the keys it needs.
+
+# _tmr_phase_task_order <mapping-json> <phase-id>
+# Emit a JSON array of task numbers (e.g. ["1","2","3"]) in the
+# canonical emit order. Falls back to ascending numeric order over
+# all `phase-<N>.<M>` keys whose phase prefix matches.
+_tmr_phase_task_order() {
+    local mapping="$1"
+    local phase_id="$2"
+    if [[ ! "$phase_id" =~ ^phase-[0-9]+$ ]]; then
+        printf 'ERROR: _tmr_phase_task_order: invalid phase id %s\n' "$phase_id" >&2
+        return 1
+    fi
+    # Mapping JSON is passed via env var (TMR_MAPPING_JSON) instead
+    # of stdin because bash heredocs replace stdin with the heredoc
+    # body — a stdin pipe would be silently dropped.
+    TMR_MAPPING_JSON="$mapping" python3 - "$phase_id" <<'PYEOF'
+import json, os, re, sys
+mapping = json.loads(os.environ['TMR_MAPPING_JSON'])
+phase_id = sys.argv[1]
+phase_num = phase_id.split('-', 1)[1]
+
+# 1) explicit task_order on the phase entry, if present.
+phase_entry = mapping.get(phase_id, {})
+if isinstance(phase_entry, dict) and isinstance(phase_entry.get('task_order'), list):
+    print(json.dumps([str(x) for x in phase_entry['task_order']]))
+    sys.exit(0)
+
+# 2) fall back to ascending numeric scan of phase-<N>.<M> keys.
+task_re = re.compile(r'^phase-' + re.escape(phase_num) + r'\.(\d+)$')
+nums = []
+for k in mapping.keys():
+    m = task_re.match(k)
+    if m:
+        nums.append(int(m.group(1)))
+nums.sort()
+print(json.dumps([str(n) for n in nums]))
+PYEOF
+}
+
+# ─────────────────────────────────────────────────────────────────
 # BD-132 helpers: race detection + skip tracking
 # ─────────────────────────────────────────────────────────────────
 

@@ -190,6 +190,61 @@ tmf_mapping_set() {
 }
 
 # ─────────────────────────────────────────────────────────────────
+# BD-106 — phase-task id-map handling (additive)
+# ─────────────────────────────────────────────────────────────────
+#
+# Phase task IDs (`phase-N.M`) are stored at the same top level as
+# BD-NNN / TD-NNN — `mapping["phase-N.M"] = {id, url}` — so existing
+# tmf_mapping_get / tmf_mapping_set continue to work for phase tasks
+# without modification. The additive helpers below add:
+#
+#   tmf_mapping_set_phase_task_order — write the per-phase task_order
+#     list into mapping["phase-N"].task_order (V3.2 §4.1 step 5e). The
+#     phase epic's mapping entry already carries {id, url}; the
+#     task_order field is added alongside, NOT replacing them.
+#
+#   tmf_mapping_get_phase_task_order — read the per-phase task_order.
+#     Emits a JSON array on stdout; empty array if not set.
+#
+# These keep the V3.2/V3.3 schema honored: the phase epic entry can
+# carry both the gh-id mapping and the task ordering. The schema is
+# documented in maintenance-docs/v11-research/ARCHITECTURE-V3.2-DELTA.md
+# §4.1 and carried forward unchanged in V3.3 §4.1.
+
+# tmf_mapping_set_phase_task_order <data> <phase-id> <task-numbers-csv>
+# Add or update mapping["phase-N"].task_order = [<m1>, <m2>, ...].
+# task_numbers_csv is a comma-separated list of integer task numbers
+# (e.g. "1,3,2"). Preserves any existing fields on the phase entry.
+tmf_mapping_set_phase_task_order() {
+    local data="$1"
+    local phase_id="$2"
+    local task_csv="$3"
+    if [[ ! "$phase_id" =~ ^phase-[0-9]+$ ]]; then
+        printf 'ERROR: tmf_mapping_set_phase_task_order: invalid phase id %s\n' "$phase_id" >&2
+        return 1
+    fi
+    # Convert CSV → JSON array of strings.
+    local order_json
+    order_json=$(printf '%s' "$task_csv" | python3 -c '
+import sys, json
+parts = [p.strip() for p in sys.stdin.read().split(",") if p.strip()]
+print(json.dumps(parts))
+')
+    printf '%s' "$data" | jq --arg k "$phase_id" --argjson order "$order_json" \
+        '.[$k] = ((.[$k] // {}) + {task_order: $order})'
+}
+
+# tmf_mapping_get_phase_task_order <data> <phase-id>
+# Read mapping["phase-N"].task_order. Emits a JSON array (possibly
+# empty) on stdout. rc=0 always.
+tmf_mapping_get_phase_task_order() {
+    local data="$1"
+    local phase_id="$2"
+    printf '%s' "$data" | jq -c --arg k "$phase_id" \
+        '(.[$k] // {}) | (.task_order // [])'
+}
+
+# ─────────────────────────────────────────────────────────────────
 # Checkpoint file (V1 §6.4)
 # ─────────────────────────────────────────────────────────────────
 

@@ -30,10 +30,19 @@
 #     `pf-category:prompt`, `pf-category:agent-perf`,
 #     `pf-category:friction`, `pf-category:open-question`.
 #
-# `derived-from:TD-NNN` and `promoted-to:phase-N`/`promoted-to:phase-N.M`
-# are open-string label families (one label per concrete identifier);
-# they are NOT ensured at init time — created at the moment of
-# promotion / derivation (BD-107).
+# Promotion-path label family (V3.3 §3.5; BD-106 lands the helpers,
+# BD-107 wires them into the promote orchestration):
+#   - `derived-from:TD-NNN` — applied to the new phase epic (Path 1)
+#     or new phase task (Path 2). Reverse pointer to the source TD.
+#   - `promoted-to:phase-N` / `promoted-to:phase-N.M` — applied to
+#     the closed TD-NNN issue. Forward pointer; TD became a phase or
+#     phase task.
+#   - `folded-into:` is NOT supported — Path 3 is forbidden by V3.3
+#     §3 line 27. Helpers below intentionally have no `folded-into`
+#     constructor.
+# These are open-string label families (one label per concrete
+# identifier); they are NOT ensured at init time — created at the
+# moment of promotion / derivation (BD-107) via the helpers below.
 #
 # Public API:
 #   - tracker_labels_canonical_set
@@ -42,9 +51,17 @@
 #       Reads the canonical set and creates any missing labels via
 #       `gh label create`. Idempotent. Emits a one-line summary
 #       (created / already-present / failed counts) on stdout.
+#   - tracker_labels_derived_from <td-id>
+#       Echoes `derived-from:TD-NNN`. Validates the input matches
+#       `TD-\d+` and rejects anything else (BD-NNN derivation is not
+#       a thing in V3.3 — only TDs promote per §3).
+#   - tracker_labels_promoted_to <phase-or-task-id>
+#       Echoes `promoted-to:phase-N` or `promoted-to:phase-N.M`.
+#       Validates the input matches the phase / phase-task identifier
+#       grammar.
 #
 # Reference: ARCHITECTURE.md §4.1, §6.1; ARCHITECTURE-V2.md §4.2 / §4.3;
-# ARCHITECTURE-V3.3-DELTA.md §6.3 / §6.5.
+# ARCHITECTURE-V3.3-DELTA.md §6.3 / §6.5; §3.5 (label family).
 #
 # Do NOT add a shebang — this file is sourced, not executed.
 
@@ -193,4 +210,37 @@ _tracker_labels_existing() {
 _tracker_labels_create() {
     local name="$1"
     gh label create "$name" --description "v11 pack-managed label" --color "ededed" --force >/dev/null 2>&1
+}
+
+# ─────────────────────────────────────────────────────────────────
+# BD-106 — promotion-path label family helpers (V3.3 §3.5)
+# ─────────────────────────────────────────────────────────────────
+
+# tracker_labels_derived_from <td-id>
+# Compose the `derived-from:TD-NNN` label. Validates the input is a
+# canonical TD identifier; rejects anything else with rc=1.
+# (Only TDs derive new phase / phase-task entities per V3.3 §3 —
+# BD derivation is not in scope for v11.0.)
+tracker_labels_derived_from() {
+    local td="$1"
+    if [[ ! "$td" =~ ^TD-[0-9]+$ ]]; then
+        printf 'ERROR: tracker_labels_derived_from: invalid TD id %s\n' "$td" >&2
+        return 1
+    fi
+    printf 'derived-from:%s\n' "$td"
+}
+
+# tracker_labels_promoted_to <phase-or-task-id>
+# Compose the `promoted-to:phase-N` (Path 1) or
+# `promoted-to:phase-N.M` (Path 2) label. Validates the input matches
+# the phase / phase-task identifier grammar; rejects anything else
+# with rc=1. Path 3 is forbidden — there is intentionally no
+# `tracker_labels_folded_into` constructor.
+tracker_labels_promoted_to() {
+    local target="$1"
+    if [[ ! "$target" =~ ^phase-[0-9]+(\.[0-9]+)?$ ]]; then
+        printf 'ERROR: tracker_labels_promoted_to: invalid target %s\n' "$target" >&2
+        return 1
+    fi
+    printf 'promoted-to:%s\n' "$target"
 }

@@ -25,7 +25,17 @@
 #       Emits the path on stdout. include_comments=1 includes full
 #       comment-thread bodies (V1 §6.7); 0 includes only counts.
 #
-# Reference: ARCHITECTURE.md §6.6, §6.6.1; ARCHITECTURE-V3.1-DELTA.md A2.
+#   - tracker_sidecar_compose_phase_tasks_block <parsed-tasks-json>
+#       (BD-106) Compose the V3.3 §4.3 `phase_tasks` block from the
+#       output of tracker_phase_task_parse. Emits a YAML-shaped block
+#       on stdout with per-phase `task_order` + per-task
+#       `dependency_edges[]` (kind / target / annotation) — the
+#       queryable face of the human-readable Dependencies bullet
+#       (V3.3 §4.3 line 201). Idempotent + side-effect-free.
+#
+# Reference: ARCHITECTURE.md §6.6, §6.6.1; ARCHITECTURE-V3.1-DELTA.md A2;
+#            ARCHITECTURE-V3.3-DELTA.md §4.3 (sidecar phase_tasks +
+#            dependency_edges).
 #
 # Do NOT add a shebang — this file is sourced, not executed.
 
@@ -263,4 +273,105 @@ _tmsc_comments_for_entry() {
     local pack_id="$1"
     local issue="$2"
     echo '(full comment-thread fetch not implemented at v11.0; --include-comments is a placeholder for the future provider_comments op)'
+}
+
+# ─────────────────────────────────────────────────────────────────
+# BD-106 — phase_tasks block composer (V3.3 §4.3)
+# ─────────────────────────────────────────────────────────────────
+
+# tracker_sidecar_compose_phase_tasks_block <parsed-tasks-json>
+#
+# Input: the JSON document tracker_phase_task_parse emits.
+# Output: the V3.3 §4.3 `phase_tasks` block as YAML-shaped text.
+#
+# Per V3.2 §4.3 (carried forward in V3.3 §4.3) the schema is:
+#
+#   phase_tasks:
+#     phase-N:
+#       task_order: [N.1, N.2, ...]
+#       tasks:
+#         phase-N.M:
+#           title: <title>
+#           parent_phase: phase-N
+#           dependency_edges:
+#             - kind: blocked-by
+#               target: phase-X.Y
+#               annotation: <free-text annotation or empty>
+#             - kind: blocked-by
+#               target: TD-NNN
+#               annotation: ""
+#           template_version: phase-task-v11.0
+#           extra_fields: {}
+#
+# The block composes with V1 §6.6.1 / A2 — the same `template_version`
+# + `extra_fields` mechanism applies. v11.0 ships empty
+# `extra_fields` because no v11.x-only fields exist yet.
+#
+# Side-effect-free; the caller decides where to write the output
+# (sidecar emit path appends it; round-trip tests inspect it inline).
+tracker_sidecar_compose_phase_tasks_block() {
+    local parsed_json="$1"
+    if [[ -z "$parsed_json" ]]; then
+        printf 'ERROR: empty input to tracker_sidecar_compose_phase_tasks_block\n' >&2
+        return 1
+    fi
+    # JSON is passed via env var (TMSC_PARSED_JSON) instead of stdin
+    # because bash heredocs replace stdin with the heredoc body —
+    # a stdin pipe would be silently dropped.
+    TMSC_PARSED_JSON="$parsed_json" python3 - <<'PYEOF'
+import json
+import os
+import sys
+
+doc = json.loads(os.environ['TMSC_PARSED_JSON'])
+phases = doc.get('phases', [])
+
+def yaml_quote(s):
+    """Quote a YAML string only if it contains characters that
+    would change semantics. Round-trip stability is the priority,
+    not pretty-printing."""
+    if s is None:
+        return '""'
+    needs_quote = any(c in s for c in (':', '#', '"', "'", '\n', '\t'))
+    if not needs_quote and s.strip() == s and s != '':
+        return s
+    escaped = s.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+    return f'"{escaped}"'
+
+out = []
+out.append('phase_tasks:')
+if not phases:
+    out.append('  {}')
+for ph in phases:
+    pn = ph['phase_number']
+    out.append(f'  phase-{pn}:')
+    order = ph.get('task_order') or [t['task_number'] for t in ph['tasks']]
+    pretty_order = ', '.join(f'{pn}.{m}' for m in order)
+    out.append(f'    task_order: [{pretty_order}]')
+    if not ph['tasks']:
+        out.append('    tasks: {}')
+        continue
+    out.append('    tasks:')
+    for t in ph['tasks']:
+        pid = t['pack_id']
+        out.append(f'      {pid}:')
+        out.append(f'        title: {yaml_quote(t.get("title", ""))}')
+        out.append(f'        parent_phase: phase-{pn}')
+        deps = t.get('dependencies', [])
+        if not isinstance(deps, list) or not deps:
+            out.append('        dependency_edges: []')
+        else:
+            out.append('        dependency_edges:')
+            for dep in deps:
+                kind = dep.get('kind', 'blocked-by')
+                target = dep.get('target', '')
+                ann = dep.get('annotation', '') or ''
+                out.append(f'          - kind: {kind}')
+                out.append(f'            target: {target}')
+                out.append(f'            annotation: {yaml_quote(ann)}')
+        out.append('        template_version: phase-task-v11.0')
+        out.append('        extra_fields: {}')
+
+print('\n'.join(out))
+PYEOF
 }
