@@ -1,0 +1,5 @@
+[model_providers.openai]
+key = "x"
+
+[model_providers.lmstudio]
+key = "z"

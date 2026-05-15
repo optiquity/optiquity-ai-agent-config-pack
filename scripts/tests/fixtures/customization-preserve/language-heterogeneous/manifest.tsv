@@ -1,0 +1,7 @@
+# rel_path	class	expected_disposition	notes
+.gemini/.env	gemini-env	customization-detected-needs-reconciliation	project-shadows-new-pack: no base + both differ → key-union merge
+scripts/test-swift.sh	pack-script	pack-update-applied	unchanged in project; pack updated
+scripts/test-python.sh	pack-script	pack-update-applied	unchanged in project; pack updated
+scripts/format-swift.sh	pack-script	customization-detected-needs-reconciliation	project + pack edits → sidecar
+scripts/format-python.sh	pack-script	merged-with-customization	project edited; pack unchanged → preserved
+.claude/agents/x-grpc-coder.md	custom-agent	project-only-file	custom multi-language agent

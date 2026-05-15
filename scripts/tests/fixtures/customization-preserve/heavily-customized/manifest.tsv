@@ -1,0 +1,12 @@
+# rel_path	class	expected_disposition	notes
+CLAUDE.md	trinity	customization-detected-needs-reconciliation	project + pack edits → sidecar
+AGENTS.md	trinity	customization-detected-needs-reconciliation	project + pack edits → sidecar
+GEMINI.md	trinity	customization-detected-needs-reconciliation	project + pack edits → sidecar
+.claude/agents/x-arch.md	custom-agent	project-only-file	custom claude agent
+.codex/agents/x-coder.md	custom-agent	project-only-file	custom codex agent
+.gemini/agents/x-doc.md	custom-agent	project-only-file	custom gemini agent
+scripts/x-deploy.sh	custom-script	project-only-file	custom project script
+scripts/bootstrap.sh	pack-script	customization-detected-needs-reconciliation	project + pack edits → sidecar
+.claude/settings.json	claude-settings	merged-with-customization	project + pack add allow entries; structured merge clean
+.codex/config.toml	codex-config	merged-with-customization	project + pack add tool entries; structured merge clean
+docs/pack/PM-CHAT.md	pm-chat	customization-detected-needs-reconciliation	project + pack edits → sidecar

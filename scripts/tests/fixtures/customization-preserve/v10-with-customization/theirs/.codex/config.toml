@@ -1,0 +1,8 @@
+[model_providers.openai]
+key = "x"
+
+[model_providers.ollama]
+key = "y"
+
+[model_providers.lmstudio]
+key = "z"

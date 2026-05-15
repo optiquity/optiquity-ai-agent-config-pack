@@ -1,0 +1,5 @@
+[model_providers.openai]
+key = "x"
+
+[tools.project_tool]
+enabled = true

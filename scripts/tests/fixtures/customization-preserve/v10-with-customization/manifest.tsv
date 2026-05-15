@@ -1,0 +1,6 @@
+# rel_path	class	expected_disposition	notes
+.claude/settings.json	claude-settings	merged-with-customization	XCODE_SCHEME + project allow + pack allow → key-level merge
+.codex/config.toml	codex-config	merged-with-customization	project removed ollama; pack added lmstudio; merge clean
+.gemini/.env	gemini-env	customization-detected-needs-reconciliation	project AGENT_CAPABILITIES wins; pack adds NEW_PACK_VAR
+CLAUDE.md	trinity	customization-detected-needs-reconciliation	project + pack edits → sidecar
+.claude/agents/x-ot-reviewer.md	custom-agent	project-only-file	OT-style custom agent

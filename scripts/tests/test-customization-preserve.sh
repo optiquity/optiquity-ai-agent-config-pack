@@ -540,6 +540,162 @@ done
 rm -rf "$T7"
 
 # ─────────────────────────────────────────────────────────────────────────
+# Group 8: BD-096 — directory-based synthetic fixtures
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Each fixture under scripts/tests/fixtures/customization-preserve/<name>/
+# carries:
+#   manifest.tsv     — rel_path, class, expected_disposition, notes
+#   assertions.tsv   — (optional) rel_path, side (dest|sidecar), substring
+#   base/<rel>       — BASE file (omitted for absent-on-base scenarios)
+#   ours/<rel>       — OURS file (omitted for absent-on-ours scenarios)
+#   theirs/<rel>     — THEIRS file (omitted for absent-on-theirs scenarios)
+#
+# The runner stages each fixture under a temp project root, calls
+# customization_preserve for every manifest row, asserts the recorded
+# disposition + class match, and verifies any assertions.tsv content
+# checks against dest / sidecar files. End-to-end coverage proving the
+# library handles the documented customization-shape space (BD-096).
+
+printf "\n=== Group 8: BD-096 directory-based fixtures ===\n"
+
+FIXTURES_DIR="$REPO_ROOT/scripts/tests/fixtures/customization-preserve"
+
+# Run one fixture end-to-end. Args: fixture_name.
+run_fixture() {
+    local fname="$1"
+    local fdir="$FIXTURES_DIR/$fname"
+    local manifest="$fdir/manifest.tsv"
+    local assertions="$fdir/assertions.tsv"
+
+    if [[ ! -f "$manifest" ]]; then
+        t_fail "8.$fname manifest.tsv missing" "expected $manifest"
+        return
+    fi
+
+    local work
+    work=$(mktemp -d -t "cp-$fname.XXXXXX")
+    local proj="$work/proj"
+    local state="$work/state"
+    mkdir -p "$proj"
+
+    # Seed proj with OURS — mirrors how a real migration sees the
+    # project current state on disk before the algorithm touches it.
+    if [[ -d "$fdir/ours" ]]; then
+        # BSD `cp -R src/. dest/` copies contents incl. dotfiles.
+        cp -R "$fdir/ours/." "$proj/"
+    fi
+
+    customization_preserve_init "$state" ".pre-update"
+
+    local row rel klass expected notes
+    local base_path ours_path theirs_path dest_path
+    local actual_disp actual_class
+    while IFS=$'\t' read -r rel klass expected notes; do
+        # Skip header / empty / comment rows.
+        case "$rel" in
+            \#*|"") continue ;;
+        esac
+
+        base_path=""
+        ours_path=""
+        theirs_path=""
+        [[ -f "$fdir/base/$rel" ]]   && base_path="$fdir/base/$rel"
+        [[ -f "$fdir/ours/$rel" ]]   && ours_path="$fdir/ours/$rel"
+        [[ -f "$fdir/theirs/$rel" ]] && theirs_path="$fdir/theirs/$rel"
+
+        # dest_path lives under proj/ at the same rel; ensure parent dir.
+        dest_path="$proj/$rel"
+        mkdir -p "$(dirname "$dest_path")"
+
+        # If class is "auto", let the algorithm classify; pass empty.
+        local class_arg="$klass"
+        [[ "$klass" == "auto" ]] && class_arg=""
+
+        if ! customization_preserve "$base_path" "$ours_path" "$theirs_path" \
+                "$rel" "$dest_path" "$class_arg" >/dev/null 2>&1; then
+            t_fail "8.$fname/$rel customization_preserve call failed"
+            continue
+        fi
+
+        # Find the row this call recorded — it's the most-recent row
+        # whose rel matches. Scan from the end for safety.
+        local recorded
+        recorded=$(awk -F '\t' -v r="$rel" '
+            $3 == r { line = $0 }
+            END { print line }
+        ' "$state/dispositions.tsv")
+        if [[ -z "$recorded" ]]; then
+            t_fail "8.$fname/$rel no disposition recorded for rel"
+            continue
+        fi
+        actual_disp=$(tsv_col 1 "$recorded")
+        actual_class=$(tsv_col 2 "$recorded")
+        assert_eq "8.$fname/$rel disposition" "$expected" "$actual_disp"
+        # When manifest pinned a class explicitly (not auto), check it round-trips.
+        if [[ "$klass" != "auto" ]]; then
+            assert_eq "8.$fname/$rel class"   "$klass"    "$actual_class"
+        fi
+    done < "$manifest"
+
+    # Assertions: substring checks against dest or sidecar files.
+    if [[ -f "$assertions" ]]; then
+        local a_rel a_side a_sub a_notes target
+        while IFS=$'\t' read -r a_rel a_side a_sub a_notes; do
+            case "$a_rel" in
+                \#*|"") continue ;;
+            esac
+            case "$a_side" in
+                dest)    target="$proj/$a_rel" ;;
+                sidecar) target="$proj/$a_rel.pre-update" ;;
+                *)
+                    t_fail "8.$fname/$a_rel unknown assertion side='$a_side'"
+                    continue
+                    ;;
+            esac
+            if [[ ! -f "$target" ]]; then
+                t_fail "8.$fname/$a_rel ($a_side) target missing" "expected $target"
+                continue
+            fi
+            local content
+            content=$(cat "$target")
+            assert_contains "8.$fname/$a_rel ($a_side) contains '$a_sub'" \
+                "$content" "$a_sub"
+        done < "$assertions"
+    fi
+
+    # Render the truthful report and confirm every manifest rel appears.
+    customization_report "$state/dispositions.tsv" "$state/report.md" \
+        "BD-096 fixture: $fname" >/dev/null
+    local report
+    report=$(cat "$state/report.md")
+    while IFS=$'\t' read -r rel klass expected notes; do
+        case "$rel" in
+            \#*|"") continue ;;
+        esac
+        if [[ "$report" == *"$rel"* ]]; then
+            t_pass "8.$fname/$rel in truthful report"
+        else
+            t_fail "8.$fname/$rel missing from truthful report"
+        fi
+    done < "$manifest"
+
+    rm -rf "$work"
+}
+
+# Drive all five fixtures.
+for fixture in \
+    lightly-customized-minimal \
+    heavily-customized \
+    language-heterogeneous \
+    custom-agents-heavy \
+    v10-with-customization
+do
+    printf "\n--- 8.%s ---\n" "$fixture"
+    run_fixture "$fixture"
+done
+
+# ─────────────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────────────
 

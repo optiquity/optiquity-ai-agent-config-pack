@@ -1,0 +1,6 @@
+# rel_path	class	expected_disposition	notes
+CLAUDE.md	trinity	unchanged-pack	trinity untouched on both sides
+AGENTS.md	trinity	unchanged-pack	trinity untouched on both sides
+GEMINI.md	trinity	unchanged-pack	trinity untouched on both sides
+.claude/agents/x-tiny-helper.md	custom-agent	project-only-file	project-only x- agent
+.claude/settings.json	claude-settings	merged-with-customization	project + pack both added allow-list entries; structured merge clean

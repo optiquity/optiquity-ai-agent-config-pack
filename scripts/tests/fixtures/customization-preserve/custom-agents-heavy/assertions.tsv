@@ -1,0 +1,2 @@
+# rel_path	side	required_substring	notes
+.claude/agents/pack-reviewer.md	sidecar	project-reviewer-rule	project edits preserved in sidecar

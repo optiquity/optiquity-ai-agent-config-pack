@@ -1,0 +1,10 @@
+# rel_path	class	expected_disposition	notes
+.claude/agents/x-claude-1.md	custom-agent	project-only-file	custom claude agent 1
+.claude/agents/x-claude-2.md	custom-agent	project-only-file	custom claude agent 2
+.codex/agents/x-codex-1.md	custom-agent	project-only-file	custom codex agent 1
+.codex/agents/x-codex-2.md	custom-agent	project-only-file	custom codex agent 2
+.gemini/agents/x-gemini-1.md	custom-agent	project-only-file	custom gemini agent 1
+.gemini/agents/x-gemini-2.md	custom-agent	project-only-file	custom gemini agent 2
+.claude/agents/pack-reviewer.md	pack-agent	customization-detected-needs-reconciliation	pack agent project-edited + pack-edited → sidecar
+.codex/agents/pack-coder.md	pack-agent	pack-update-applied	pack agent unchanged in project; pack updated
+.gemini/agents/pack-architect.md	pack-agent	merged-with-customization	pack agent project-edited; pack unchanged

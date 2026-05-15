@@ -1,0 +1,10 @@
+# rel_path	side	required_substring	notes
+CLAUDE.md	sidecar	project-extension	project edits preserved in sidecar
+AGENTS.md	sidecar	project-extension	project edits preserved in sidecar
+GEMINI.md	sidecar	project-extension	project edits preserved in sidecar
+scripts/bootstrap.sh	sidecar	project-bootstrap-step	project script edits preserved
+docs/pack/PM-CHAT.md	sidecar	project-pm-rule	project pm-chat edits preserved
+.claude/settings.json	dest	project-perm	project allow-list entry retained
+.claude/settings.json	dest	pack-new-perm	pack allow-list addition adopted
+.codex/config.toml	dest	project_tool	project tool entry retained
+.codex/config.toml	dest	lmstudio	pack tool addition adopted
