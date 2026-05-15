@@ -61,11 +61,15 @@ Subcommands:
   status [--repo-root PATH]
         Report mapping file freshness, mode, and migration timestamps.
 
-  reverse [--repo-root PATH]
-        BD-067 — not yet implemented in this build.
+  reverse [--repo-root PATH] [--dry-run] [--disable] [--include-comments]
+        Reverse-migrate tracker entries back into BACKLOG.md /
+        IMPLEMENTATION-PLAN.md. --disable also flips mode to
+        flat-file. Idempotent on re-run.
 
   doctor [--repo-root PATH]
-        BD-067 — not yet implemented in this build.
+        Validate tracker.toml, mapping integrity, mirror freshness,
+        template freshness, and capability cache (refreshes the
+        cache as a side effect).
 
 Reference: ARCHITECTURE.md §6.1.
 EOF
@@ -152,6 +156,10 @@ cmd_doctor() {
         esac
     done
     [[ -z "$repo_root" ]] && repo_root="$(pwd)"
+    if [[ ! -d "$repo_root" ]]; then
+        tracker_error_emit "validation" "doctor: --repo-root is not a directory: $repo_root"
+        return 1
+    fi
     tracker_doctor_run "$repo_root"
 }
 

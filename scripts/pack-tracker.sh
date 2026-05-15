@@ -73,9 +73,23 @@ Verbs:
         Rebuild the flat-file mirror without re-running forward
         migration. Wraps `tracker-migrate.sh forward --mirror-only`.
 
-  disable | doctor | update-templates | enable-recommendations
-        Pending — surfaces a not-implemented validation error
-        pointing at the BD that lands the verb.
+  doctor [--repo-root PATH]
+        Validate tracker.toml, mapping integrity, mirror freshness,
+        template freshness, and capability cache (refreshes the
+        cache as a side effect).
+
+  disable [--repo-root PATH] [--include-comments] [--force]
+        Reverse migration + flip mode to flat-file. --force overrides
+        the race-detection and silent-data-loss guards.
+
+  update-templates [--repo-root PATH] [--dry-run | --apply]
+                   [--scope all|bd|td|inbound] [--manifest PATH]
+        Apply translation rules from older template_version to the
+        current pack version.
+
+  enable-recommendations [--repo-root PATH] [--surface pack|client]
+        Clear persistent_refusal so the recommendation system
+        re-evaluates inflection-point signals at next session start.
 
 Reference: ARCHITECTURE-V2.md §22.1.
 EOF
@@ -169,6 +183,10 @@ cmd_doctor() {
         esac
     done
     [[ -z "$repo_root" ]] && repo_root="$(pwd)"
+    if [[ ! -d "$repo_root" ]]; then
+        tracker_error_emit "validation" "doctor: --repo-root is not a directory: $repo_root"
+        return 1
+    fi
     tracker_doctor_run "$repo_root"
 }
 

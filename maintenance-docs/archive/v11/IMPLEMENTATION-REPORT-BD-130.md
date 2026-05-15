@@ -114,18 +114,21 @@ Net effect: behavior preserved for `tracker-migrate.sh doctor`
 (both groups 6.x of `tracker-migrate-reverse-test.sh` and the
 test below confirm this), code consolidated into the shared lib.
 
-### NEW: `scripts/tests/tracker-bd130-doctor-wired-test.sh` (110 lines)
+### NEW: `scripts/tests/tracker-bd130-doctor-wired-test.sh` (114 lines)
 
-Regression guard for the wiring. Four groups, 8 assertions:
+Regression guard for the wiring. Four groups, 8 assertions
+(Groups 1+3 each have 2 assertions; Group 4 has 2 source-line
+assertions, one per dispatcher):
 - Group 1: `scripts/lib/tracker-doctor.sh` exists and defines
-  `tracker_doctor_run()`.
+  `tracker_doctor_run()` (2 assertions).
 - Group 2: `pack-tracker.sh doctor --repo-root <scratch>`
-  produces the doctor banner and contains no `command not found`.
-- Group 3: same for `tracker-migrate.sh doctor`.
-- Group 4: both dispatchers contain the
-  `source "$LIB_DIR/tracker-doctor.sh"` line (so a future
-  refactor that removes the source can't silently re-break the
-  verb).
+  produces the doctor banner and contains no `command not found`
+  (2 assertions).
+- Group 3: same for `tracker-migrate.sh doctor` (2 assertions).
+- Group 4: each dispatcher contains the
+  `source "$LIB_DIR/tracker-doctor.sh"` line (2 assertions, one
+  per dispatcher) so a future refactor that removes the source
+  can't silently re-break the verb.
 
 ---
 
@@ -298,10 +301,10 @@ zero behavior change for the function body.
 
 | Path | Change | Notes |
 |---|---|---|
-| `scripts/lib/tracker-doctor.sh` | NEW | 203 lines; holds `tracker_doctor_run()` body extracted from `tracker-migrate.sh`. |
+| `scripts/lib/tracker-doctor.sh` | NEW | 201 lines; holds `tracker_doctor_run()` body extracted from `tracker-migrate.sh`. |
 | `scripts/pack-tracker.sh` | MODIFIED | +2 lines: shellcheck comment + `source "$LIB_DIR/tracker-doctor.sh"`. This line is the actual blocker fix. |
 | `scripts/tracker-migrate.sh` | MODIFIED | -179 lines net: source line added (+2), inline 178-line `tracker_doctor_run()` definition replaced by a 4-line pointer comment. Behavior preserved. |
-| `scripts/tests/tracker-bd130-doctor-wired-test.sh` | NEW | 110 lines; 8 / 8 pass. Wiring regression guard. |
+| `scripts/tests/tracker-bd130-doctor-wired-test.sh` | NEW | 114 lines; 8 / 8 pass. Wiring regression guard. |
 | `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-130.md` | NEW | This report. |
 
 ---

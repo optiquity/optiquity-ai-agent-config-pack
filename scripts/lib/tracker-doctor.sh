@@ -4,13 +4,15 @@
 # Validates: (a) tracker.toml is readable + schema_version OK,
 # (b) mapping file is well-formed JSON, (c) every mapping entry's
 # pack-id is shaped correctly, (d) mirror freshness vs last-forward
-# timestamp, (e) template freshness — form-level template_version
-# vs translation manifest's latest target, (f) issue-template dir
-# presence, (g) capability cache refresh — re-probe the backend's
-# provider_capabilities and diff against the cached snapshot at
-# .pack-tracker/capabilities.json (V2 §22.1 doctor sub-surface).
-# Reports OK / WARN / INFO per check; each WARN line names a
-# recovery verb (V3 §27.1 Layer 2). Returns 0 if zero warnings.
+# timestamp, (e) template-version freshness — form-level
+# template_version vs translation manifest's latest target,
+# (f) issue-template dir presence, (g) capability cache refresh —
+# re-probe the backend's provider_capabilities and diff against
+# the cached snapshot at .pack-tracker/capabilities.json
+# (V2 §22.1 doctor sub-surface). Reports OK / WARN / INFO per
+# check; each WARN line names a recovery verb from the user-facing
+# `pack tracker` surface (V3 §27.1 Layer 2). Returns 0 if zero
+# warnings.
 #
 # Sourced by both `scripts/pack-tracker.sh` (the user-facing
 # `pack tracker doctor` verb) and `scripts/tracker-migrate.sh`
@@ -18,12 +20,18 @@
 # dispatchers already source the dependencies this function needs
 # (tracker-config, tracker-provider*, template-version,
 # template-translations) so this lib has no `source` lines of its
-# own.
+# own. The defensive `declare -f` probe at the top of
+# `tracker_doctor_run` enforces that calling-convention contract:
+# any future caller that sources this lib without first sourcing
+# the dependencies gets a clear `ERROR: missing dependency` line
+# rather than the bare `command not found` failure that BD-130 was
+# created to fix.
 #
 # Public API:
 #   - tracker_doctor_run <repo-root>
 #       Top-level health check. Returns rc=0 when zero warnings,
-#       rc=1 when any [WARN] is emitted.
+#       rc=1 when any [WARN] is emitted, rc=2 when a calling-
+#       convention dependency is missing (defensive probe failure).
 #
 # Reference: ARCHITECTURE.md §6.1; ARCHITECTURE-V2.md §22.1;
 #            ARCHITECTURE-V3.md §27.1.
@@ -33,6 +41,27 @@
 # tracker_doctor_run <repo-root>
 tracker_doctor_run() {
     local repo_root="$1"
+
+    # Defensive dependency probe (M-4). The lib body calls into
+    # functions defined by tracker-config.sh, tracker-provider*.sh,
+    # template-version.sh, and template-translations.sh. Both shipped
+    # callers (scripts/pack-tracker.sh, scripts/tracker-migrate.sh)
+    # source those libs before this one, but a future caller (test
+    # harness, new dispatcher) could violate that calling convention
+    # and re-trigger the BD-130 BLOCKER failure mode under a different
+    # symbol name. The probe converts the silent `command not found`
+    # into an actionable error.
+    local _dep
+    for _dep in tracker_config_resolve_path tracker_config_auto_surface \
+                tracker_schema_version_check tracker_config_get \
+                provider_capabilities; do
+        if ! declare -f "$_dep" >/dev/null 2>&1; then
+            echo "ERROR: tracker-doctor: missing dependency: $_dep" >&2
+            echo "MESSAGE: source tracker-config.sh, tracker-provider*.sh, template-version.sh, template-translations.sh before tracker-doctor.sh" >&2
+            return 2
+        fi
+    done
+
     local cfg_path mapping_file surface
     if ! surface=$(tracker_config_auto_surface "$repo_root" 2>/dev/null); then
         surface="pack"
@@ -63,7 +92,7 @@ tracker_doctor_run() {
             n=$(jq 'length' "$mapping_file")
             echo "  [OK]   mapping file is valid JSON ($n entries)"
         else
-            echo "  [WARN] mapping file is malformed JSON  → Run: tracker-migrate.sh forward (regenerates mapping from tracker)"
+            echo "  [WARN] mapping file is malformed JSON  → Run: pack tracker init"
             n_warn=$((n_warn + 1))
         fi
 
@@ -72,7 +101,7 @@ tracker_doctor_run() {
         bad=$(jq -r 'keys[] | select(test("^(BD|TD)-[0-9]+$|^phase-[0-9]+(\\.[0-9]+)?$") | not)' \
             "$mapping_file" 2>/dev/null | head -n 5)
         if [[ -n "$bad" ]]; then
-            echo "  [WARN] mapping has malformed pack-ids  → Run: tracker-migrate.sh forward (regenerates mapping)"
+            echo "  [WARN] mapping has malformed pack-ids  → Run: pack tracker init"
             printf '         %s\n' $bad
             n_warn=$((n_warn + 1))
         else
@@ -99,7 +128,7 @@ tracker_doctor_run() {
                 if [[ "$mirror_mtime" > "$last_forward" || "$mirror_mtime" == "$last_forward" ]]; then
                     echo "  [OK]   BACKLOG.md mirror is current (mtime=$mirror_mtime, last_forward=$last_forward)"
                 else
-                    echo "  [WARN] BACKLOG.md mirror is older than last_forward_run  → Run: tracker-migrate.sh forward --mirror-only"
+                    echo "  [WARN] BACKLOG.md mirror is older than last_forward_run  → Run: pack tracker mirror-rebuild"
                     n_warn=$((n_warn + 1))
                 fi
             else
@@ -110,24 +139,40 @@ tracker_doctor_run() {
         fi
     fi
 
-    # (e) template-version freshness — compare form-level
-    # template_version against the translation manifest's latest
-    # target. At v11.0 the manifest is empty so the form's version
-    # is current by definition; the check becomes meaningful when
-    # v11.1+ ships transitions.
+    # (f) issue-template dir presence. Both the `pack` and `client`
+    # surfaces resolve to the same `.github/ISSUE_TEMPLATE` location
+    # — client templates live alongside the client repo's own
+    # `.github/` tree, not under `docs/pack/`.
     local tmpl_dir manifest_path
+    tmpl_dir="$repo_root/.github/ISSUE_TEMPLATE"
+    # Resolve the translation manifest path per-surface. Pack repo
+    # ships the manifest under maintenance-docs/v11-research/; in
+    # client projects the manifest sits in .pack-tracker/ if and
+    # when forward propagates one. v11.0 ships an empty manifest
+    # under both surfaces so the freshness check is informational
+    # until v11.1+ adds real transitions.
     case "$surface" in
-        pack)   tmpl_dir="$repo_root/.github/ISSUE_TEMPLATE" ;;
-        client) tmpl_dir="$repo_root/.github/ISSUE_TEMPLATE" ;;
+        pack)
+            manifest_path="$repo_root/maintenance-docs/v11-research/templates-archive/translations.yaml"
+            ;;
+        client)
+            manifest_path="$repo_root/.pack-tracker/translations.yaml"
+            ;;
+        *)
+            manifest_path="$repo_root/maintenance-docs/v11-research/templates-archive/translations.yaml"
+            ;;
     esac
-    manifest_path="$repo_root/maintenance-docs/v11-research/templates-archive/translations.yaml"
     if [[ -d "$tmpl_dir" ]]; then
         local n_yml
         n_yml=$(find "$tmpl_dir" -name '*.yml' | wc -l | tr -d ' ')
         echo "  [OK]   $tmpl_dir present ($n_yml templates)"
 
-        # Form-level template_version comparison against manifest.
-        # Use the BD-069 helpers if sourced; otherwise skip silently.
+        # (e) template-version freshness — compare form-level
+        # template_version against the translation manifest's latest
+        # target. At v11.0 the manifest is empty so the form's
+        # version is current by definition; the check becomes
+        # meaningful when v11.1+ ships transitions. Use the BD-069
+        # helpers if sourced; otherwise skip silently.
         if declare -f template_version_read_form >/dev/null 2>&1 \
            && declare -f template_translations_load >/dev/null 2>&1; then
             local form_wi form_in manifest_json n_transitions
@@ -149,6 +194,8 @@ tracker_doctor_run() {
                         n_warn=$((n_warn + 1))
                     fi
                 fi
+            else
+                echo "  [INFO] template-version freshness: manifest absent at $manifest_path (skipped)"
             fi
         fi
     else
@@ -179,8 +226,16 @@ tracker_doctor_run() {
                 if [[ "$caps_now" == "$caps_cached" ]]; then
                     echo "  [OK]   capability cache current (no schema-reshape)"
                 else
-                    echo "  [WARN] capability cache differs from re-probe (schema-reshape)  → Run: pack tracker doctor"
-                    n_warn=$((n_warn + 1))
+                    # Demoted from WARN to INFO (N-1): the cache is
+                    # auto-healed in this same invocation by the
+                    # unconditional rewrite below, so a subsequent
+                    # doctor run would emit [OK]. WARN-and-rc=1 here
+                    # falsely failed CI/PM scripts gating on
+                    # `pack tracker doctor` exit code despite there
+                    # being no remaining user task. The schema-reshape
+                    # signal is preserved in the message text so
+                    # operators can still notice it in the report.
+                    echo "  [INFO] capability cache differed from re-probe (schema-reshape; cache auto-refreshed)"
                 fi
             else
                 echo "  [INFO] capability cache absent; populating $caps_file"

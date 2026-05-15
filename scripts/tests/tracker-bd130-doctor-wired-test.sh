@@ -22,6 +22,13 @@
 #   4. `scripts/lib/tracker-doctor.sh` exists and defines
 #      `tracker_doctor_run` (so future refactors can't silently
 #      remove the relocation).
+#   5. The no-arg `pwd` fallback path works (Group 5 — N-4 close).
+#   6. `--repo-root` rejects non-directory values via cmd_doctor's
+#      validation block (Group 6 — N-5 close).
+#   7. The defensive `declare -f` dependency probe (M-4 close)
+#      catches the BD-130 failure mode under a future caller that
+#      sources tracker-doctor.sh without first sourcing the
+#      dependency libs (Group 7).
 #
 # Usage: bash scripts/tests/tracker-bd130-doctor-wired-test.sh
 
@@ -107,6 +114,71 @@ if grep -q 'source "\$LIB_DIR/tracker-doctor.sh"' "$TRACKER_MIGRATE"; then
 else
     t_fail "4.2 tracker-migrate.sh does NOT source lib/tracker-doctor.sh"
 fi
+
+# ─────────────────────────────────────────────────────────────────
+# Group 5: no-arg `pwd` fallback path (N-4 close)
+# Exercises `[[ -z "$repo_root" ]] && repo_root="$(pwd)"` in both
+# dispatchers' cmd_doctor; a refactor that lost the fallback would
+# trip here instead of slipping past the wiring test.
+# ─────────────────────────────────────────────────────────────────
+echo "=== Group 5: no-arg pwd fallback ==="
+out_pack_pwd=$(cd "$SCRATCH" && bash "$PACK_TRACKER" doctor 2>&1)
+assert_no_match "5.1 no 'command not found' in no-arg pack-tracker.sh doctor" \
+    "command not found" "$out_pack_pwd"
+assert_match "5.2 no-arg pack-tracker.sh doctor banner names cwd" \
+    "doctor: $SCRATCH" "$out_pack_pwd"
+
+out_migrate_pwd=$(cd "$SCRATCH" && bash "$TRACKER_MIGRATE" doctor 2>&1)
+assert_no_match "5.3 no 'command not found' in no-arg tracker-migrate.sh doctor" \
+    "command not found" "$out_migrate_pwd"
+assert_match "5.4 no-arg tracker-migrate.sh doctor banner names cwd" \
+    "doctor: $SCRATCH" "$out_migrate_pwd"
+
+# ─────────────────────────────────────────────────────────────────
+# Group 6: --repo-root directory validation (N-5 close)
+# Mirror cmd_update_templates' validation block; an invalid path
+# should fail fast with the "validation" error class rather than
+# falling through and producing nonsensical [WARN] lines.
+# ─────────────────────────────────────────────────────────────────
+echo "=== Group 6: --repo-root directory validation ==="
+out_pack_bad=$(bash "$PACK_TRACKER" doctor --repo-root /does/not/exist 2>&1)
+rc_pack_bad=$?
+assert_match "6.1 pack-tracker.sh doctor rejects non-directory --repo-root" \
+    "is not a directory" "$out_pack_bad"
+if [[ "$rc_pack_bad" -ne 0 ]]; then
+    t_pass "6.2 pack-tracker.sh doctor returns non-zero on invalid --repo-root"
+else
+    t_fail "6.2 pack-tracker.sh doctor returned 0 on invalid --repo-root"
+fi
+
+out_migrate_bad=$(bash "$TRACKER_MIGRATE" doctor --repo-root /does/not/exist 2>&1)
+rc_migrate_bad=$?
+assert_match "6.3 tracker-migrate.sh doctor rejects non-directory --repo-root" \
+    "is not a directory" "$out_migrate_bad"
+if [[ "$rc_migrate_bad" -ne 0 ]]; then
+    t_pass "6.4 tracker-migrate.sh doctor returns non-zero on invalid --repo-root"
+else
+    t_fail "6.4 tracker-migrate.sh doctor returned 0 on invalid --repo-root"
+fi
+
+# ─────────────────────────────────────────────────────────────────
+# Group 7: defensive dependency probe (M-4 close)
+# Source tracker-doctor.sh in isolation (no tracker-config.sh,
+# no tracker-provider*.sh) and verify the probe at the top of
+# tracker_doctor_run produces a clear ERROR + MESSAGE pair and
+# returns rc=2 — instead of the silent `command not found` failure
+# that BD-130 was created to fix.
+# ─────────────────────────────────────────────────────────────────
+echo "=== Group 7: defensive dependency probe ==="
+probe_out=$(bash -c "set +e; source '$DOCTOR_LIB'; tracker_doctor_run '$SCRATCH'; echo \"PROBE_RC=\$?\"" 2>&1)
+assert_match "7.1 probe emits ERROR: tracker-doctor: missing dependency" \
+    "ERROR: tracker-doctor: missing dependency:" "$probe_out"
+assert_match "7.2 probe emits MESSAGE with calling-convention hint" \
+    "source tracker-config.sh" "$probe_out"
+assert_match "7.3 probe returns rc=2 (calling-convention failure)" \
+    "PROBE_RC=2" "$probe_out"
+assert_no_match "7.4 probe does NOT emit raw 'command not found'" \
+    "command not found" "$probe_out"
 
 echo
 echo "=== Results: $PASS passed, $FAIL failed ==="

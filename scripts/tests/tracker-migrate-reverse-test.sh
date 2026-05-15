@@ -563,11 +563,17 @@ assert_contains "6.1a doctor populates capability cache"  "$output" "capability 
 output2=$(bash "$REPO_ROOT/scripts/tracker-migrate.sh" doctor --repo-root "$REPO_DR" 2>&1)
 assert_contains "6.1a doctor reports OK on cached capabilities" \
     "$output2" "[OK]   capability cache current"
-# Tampering with the cache surfaces a schema-reshape WARN.
+# Tampering with the cache surfaces a schema-reshape signal.
+# Per BD-130 retro N-1: the schema-reshape line was demoted from
+# WARN to INFO because the same invocation auto-heals the cache by
+# rewriting capabilities.json with the freshly-re-probed value.
+# Emitting WARN-and-rc=1 on an already-healed condition falsely
+# failed CI gates on `pack tracker doctor`'s exit code. The signal
+# itself is preserved in the message so operators still notice it.
 echo '{}' > "$REPO_DR/.pack-tracker/capabilities.json"
 output3=$(bash "$REPO_ROOT/scripts/tracker-migrate.sh" doctor --repo-root "$REPO_DR" 2>&1)
-assert_contains "6.1a doctor surfaces schema-reshape on capability diff" \
-    "$output3" "[WARN] capability cache differs from re-probe (schema-reshape)"
+assert_contains "6.1a doctor surfaces schema-reshape on capability diff (INFO; auto-healed)" \
+    "$output3" "[INFO] capability cache differed from re-probe (schema-reshape; cache auto-refreshed)"
 rm -rf "$REPO_DR"
 
 # 6.2 doctor surfaces malformed pack-id
