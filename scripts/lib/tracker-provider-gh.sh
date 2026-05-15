@@ -20,8 +20,8 @@
 #
 # Reference:
 #   - maintenance-docs/v11-research/ARCHITECTURE.md §2.7
-#   - maintenance-docs/v11-research/EXTERNAL-RESEARCH.md §1.5
-#     (issue dependencies GA 2025-08-21; sub-issues GA 2025-09-09)
+#   - maintenance-docs/v11-research/EXTERNAL-RESEARCH.md §1.3
+#     (issue dependencies GA 2025-08-21; sub-issues per §1.2)
 #
 # Do NOT add a shebang — this file is sourced, not executed.
 
@@ -69,7 +69,7 @@ _gh_classify_error() {
         *"HTTP 403"*|*"insufficient_scope"*|*"requires the"*"scope"*|*"forbidden"*|*"Forbidden"*|*"FORBIDDEN"*)
             # FORBIDDEN: all-caps form is the documented EMU wire shape
             # for cross-enterprise dependency calls per EXTERNAL-RESEARCH
-            # §1.5 line 87 ("FORBIDDEN: Unauthorized; path: addBlockedBy").
+            # §1.3 line 87 ("FORBIDDEN: Unauthorized; path: addBlockedBy").
             tracker_error_emit "auth-insufficient-scope" "$content"
             ;;
         *"could not resolve host"*|*"connection refused"*|*"connection reset"*|*"timeout"*|*"TLS handshake"*|*"network is unreachable"*)
@@ -478,8 +478,8 @@ tracker_provider_gh_set_milestone() {
 #
 # Implementation per V1 §2.7.1 row 12:
 #   - blocks/blocked-by: first-class GitHub issue-dependency GraphQL
-#     mutation (BD-111; GA 2025-08-21 per EXTERNAL-RESEARCH §1.5).
-#     Mutation name `addBlockedBy` per EXTERNAL-RESEARCH §1.5; the
+#     mutation (BD-111; GA 2025-08-21 per EXTERNAL-RESEARCH §1.3).
+#     Mutation name `addBlockedBy` per EXTERNAL-RESEARCH §1.3; the
 #     argument shape (`issueId` + `blockedByIssueId`) follows the
 #     symmetric convention established by `addSubIssue` (issueId +
 #     subIssueId) elsewhere in this file. The exact argument key is
@@ -495,8 +495,8 @@ tracker_provider_gh_set_milestone() {
 #
 # Comment-based fallback for blocks/blocked-by remains available to
 # callers that explicitly want it via provider_comment() or
-# provider_raw() (the V3 §28 fallback path is preserved as an
-# escape hatch; see ARCHITECTURE.md §2.4 line 334).
+# provider_raw() (BD-060-era comment-marker behavior — colloquially
+# "the V3 §28 fallback" — is preserved as an escape hatch).
 tracker_provider_gh_link() {
     local id="$1"
     local other_id="$2"
@@ -556,7 +556,7 @@ tracker_provider_gh_link() {
 # 2026-05-15 to include the symmetric `removeBlockedBy` unlink path):
 #   - blocks/blocked-by: first-class GitHub issue-dependency removal
 #     GraphQL mutation. Mutation name `removeBlockedBy` chosen as the
-#     symmetric pair to `addBlockedBy` (which EXTERNAL-RESEARCH §1.5
+#     symmetric pair to `addBlockedBy` (which EXTERNAL-RESEARCH §1.3
 #     line 86 names literally and pairs with "removal" generically;
 #     line 86: "GraphQL mutations including `addBlockedBy` / removal").
 #     The remove-side literal name is unverified offline (could be

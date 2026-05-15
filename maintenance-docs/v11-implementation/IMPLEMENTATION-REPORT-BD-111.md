@@ -2,36 +2,56 @@
 
 **Branch:** `v11-dev`
 **Pre-flight HEAD (initial coder session):** `4a2d7cc` (per first prompt) — actual HEAD when initial session started: `8409153` (Pack Chat advanced the branch with two docs commits between when the first prompt was drafted and when the coder started). No state-changing git verb run by coder.
-**Pre-flight HEAD (scope-extension follow-up session):** `eca769b` (PM-only commit that extended BD-111 scope to include `tracker_provider_gh_unlink()` symmetric `removeBlockedBy` path; see "Note on scope extension" below).
-**Final working-tree HEAD (pre-impl-commit):** `eca769b` (unchanged; coder edits uncommitted in working tree as required).
-**Plan deviations:** zero. The original §9 item 1 (unlink follow-up) was promoted into in-scope work via PM commit `eca769b` and shipped in this same session; see §9 update below.
+**Pre-flight HEAD (scope-extension first-pass follow-up session):** `eca769b` (PM-only commit that extended BD-111 scope to include `tracker_provider_gh_unlink()` symmetric `removeBlockedBy` path).
+**Pre-flight HEAD (PACK-REVIEW-BD-111 fix-pass / scope-extension second-pass follow-up session):** `46c86fe` (PM-only commit that extended BD-111 scope a second time to include the reverse-decoder retrofit per F1).
+**Final working-tree HEAD (pre-impl-commit):** `3d24443` (Pack Chat made one further commit during the fix-pass — `BD-112 retroactive per-BD review-fix`; touches `CHANGELOG.md`, `EXECUTION-PLAN-V11.0.md`, `customization-preserve.sh`, `test-customization-preserve.sh`. Unrelated to BD-111's scope; coder's uncommitted working-tree edits preserved across this commit. See §9 item 9 below.).
+**Plan deviations:** zero. The original §9 item 1 (unlink follow-up) was promoted into in-scope work via PM commit `eca769b` and shipped in the second pass. The PACK-REVIEW-BD-111 F1 reverse-decoder gap was promoted into in-scope work via PM commit `46c86fe` and shipped in the third pass. All 12 PACK-REVIEW-BD-111 findings (F1-F12) addressed in the third pass.
 
-> **Note on report authorship:** This report was authored by Pack Chat from the BD-111 coder's final message content (the coder declined to write the .md file directly per their own system prompt, but produced the structured report inline). Content is the coder's; formatting is preserved. **Scope-extension follow-up (§§ updated 2026-05-15):** the coder authored the §1 / §2 / §3 / §6 / §7 / §9 / DoD updates directly via Edit calls into this file in the follow-up session, after Pack Chat (a) wrote the original report from the coder's first-pass message and (b) extended BD-111 scope via PM-only commit `eca769b`.
+> **Note on report authorship:** This report was authored by Pack Chat from the BD-111 coder's final message content (the coder declined to write the .md file directly per their own system prompt, but produced the structured report inline). Content is the coder's; formatting is preserved. **Scope-extension first-pass follow-up (§§ updated 2026-05-15):** the coder authored the §1 / §2 / §3 / §6 / §7 / §9 / DoD updates directly via Edit calls into this file. **PACK-REVIEW-BD-111 fix-pass / scope-extension second-pass follow-up (§§ updated 2026-05-15):** the coder authored the further §1 / §2 second follow-up / §3 second follow-up / §6 / §7 items 8-9 / §9 / DoD updates directly via Edit calls into this file.
 
-> **Note on scope extension (2026-05-15).** PM-only commit `eca769b` extended BD-111's BACKLOG `File/Symbol` field to include the symmetric `removeBlockedBy` unlink path. Per pack rule "BDs are reserved for new scope / new feature / new architecture," `removeBlockedBy` is the symmetric pair of `addBlockedBy` (same API surface; same files; same integration-test verification ask), not new architecture. Splitting one feature across two BDs would violate "composition over special cases." The link/unlink asymmetry the coder flagged in the first-pass §9 item 1 was the right find — the right resolution was extend-in-session, not new-BD. The `removeBlockedBy` work shipped in this same coder session under unchanged BD-111.
+> **Note on scope extension (2026-05-15, first extension).** PM-only commit `eca769b` extended BD-111's BACKLOG `File/Symbol` field to include the symmetric `removeBlockedBy` unlink path. Per pack rule "BDs are reserved for new scope / new feature / new architecture," `removeBlockedBy` is the symmetric pair of `addBlockedBy` (same API surface; same files; same integration-test verification ask), not new architecture. Splitting one feature across two BDs would violate "composition over special cases." The link/unlink asymmetry the coder flagged in the first-pass §9 item 1 was the right find — the right resolution was extend-in-session, not new-BD. The `removeBlockedBy` work shipped in this same coder session under unchanged BD-111.
+
+> **Note on scope extension (2026-05-15, second extension).** PM-only commit `46c86fe` extended BD-111's BACKLOG `File/Symbol` field a second time to include the reverse-decoder retrofit per PACK-REVIEW-BD-111 F1. The post-BD-111 forward writer routes `provider_link blocked-by` to a first-class `addBlockedBy` GraphQL edge, but `tracker-migrate-reverse.sh:_tmr_decode_blockers` still read body comment markers only — so post-BD-111 writes were silently invisible to reverse, violating V1 §6.0 round-trip contract. Same pack rule rationale as the first extension: `getBlockedBy`-style first-class read is the symmetric pair of `addBlockedBy`/`removeBlockedBy` (different file but same feature surface; same integration-test verification ask). Splitting would have left BD-111 incomplete. The retrofit shipped in the same coder session under unchanged BD-111.
 
 ---
 
 ## §1 Files modified / created
 
-Combined inventory after the scope-extension follow-up:
+Combined inventory after all three passes (BD-111 link work, scope
+extension to unlink, PACK-REVIEW-BD-111 fix-pass including F1
+reverse-decoder retrofit):
 
-| Path | Change | Diff stats (cumulative across both passes) |
+| Path | Change | Diff stats (cumulative across all three passes) |
 |------|--------|------------|
-| `scripts/lib/tracker-provider-gh.sh` | modified | +101 / -22 (net +79 lines; covers `tracker_provider_gh_link()` + `tracker_provider_gh_unlink()` first-class swap and the `_gh_classify_error` `FORBIDDEN` patch) |
-| `scripts/tests/tracker-provider-test.sh` | modified | +233 / -19 (net +214 lines; includes new dispatch-mode harness, test 1.17a-e link suite, test 1.20a-c unlink suite, 1.19 retarget to related/duplicates, and renumber of 1.20→1.21 / 1.21→1.22 / 1.22→1.23) |
-| `scripts/tests/fixtures/tracker-provider/gh-add-blocked-by.json` | new | +9 lines |
-| `scripts/tests/fixtures/tracker-provider/gh-remove-blocked-by.json` | new | +9 lines (scope-extension follow-up; mirrors the addBlockedBy fixture for the removeBlockedBy happy path) |
+| `scripts/lib/tracker-provider-gh.sh` | modified | covers `tracker_provider_gh_link()` + `tracker_provider_gh_unlink()` first-class swap, the `_gh_classify_error` `FORBIDDEN` patch (PACK-REVIEW-BD-111 F10 named in BACKLOG File/Symbol), and PACK-REVIEW-BD-111 F4/F8 cite + escape-hatch comment cleanups |
+| `scripts/lib/tracker-migrate-reverse.sh` | modified | adds `_tmr_fetch_first_class_blocked_by` helper + extends `_tmr_decode_blockers` with a fourth arg `first_class_edges` (PACK-REVIEW-BD-111 F1 retrofit; reads `blockedByIssues` first-class GraphQL edges in addition to body comment markers; legacy markers continue to work) |
+| `scripts/lib/tracker-links.sh` | modified | PACK-REVIEW-BD-111 F5 stale doc-comment fixes (lines 84 + 235-238) — describes provider_link blocked-by as routing to first-class addBlockedBy per BD-111, no longer the comment-marker fallback |
+| `scripts/tests/tracker-provider-test.sh` | modified | new dispatch-mode harness, test 1.17a-e link suite, test 1.19 retarget to related/duplicates, test 1.20a-c unlink suite, renumber 1.20→1.21 / 1.21→1.22 / 1.22→1.23, PACK-REVIEW-BD-111 F6/F7 narrative + redundant-assertion cleanups |
+| `scripts/tests/tracker-migrate-reverse-test.sh` | modified | new Group 7 (8 sub-groups: 7.1, 7.2, 7.2b, 7.2c, 7.3, 7.4, 7.5, 7.6) covering the BD-111 retrofit — first-class edges only, mixed environment with comment markers, de-dup, fetch-helper happy path, fetch-helper graceful-degrade on error, end-to-end reconstruct, legacy-only backward-compat |
+| `scripts/tests/tracker-migrate-roundtrip-test.sh` | modified | stateful fake-gh extended to handle `addBlockedBy` (record edge in state), `removeBlockedBy` (remove edge from state), `blockedByIssues` (serve edges from state on read), `api /repos/.../issues/N --jq .node_id` (synthesize `NODE_<N>`), and `repo view --jq .nameWithOwner` (return bare slug). Two BD-111-pending narrative branches flipped to positive round-trip assertions. |
+| `scripts/tests/tracker-migrate-forward-test.sh` | modified | PACK-REVIEW-BD-111 F5 stale doc-comment fix (line 989) — describes provider_link blocked-by routing to first-class addBlockedBy per BD-111 |
+| `scripts/tests/fixtures/tracker-provider/gh-add-blocked-by.json` | new | +9 lines (BD-111 link fixture) |
+| `scripts/tests/fixtures/tracker-provider/gh-remove-blocked-by.json` | new | +9 lines (BD-111 unlink fixture; scope-extension first pass) |
+| `scripts/tests/fixtures/tracker-provider/gh-list-blocked-by.json` | new | +12 lines (BD-111 reverse-decoder query fixture; PACK-REVIEW-BD-111 F1 retrofit) |
+| `BACKLOG.md` | modified | PACK-REVIEW-BD-111 F4 cite fix in BD-111 Description (line 980-981 §1.5→§1.3) + F10 File/Symbol addition naming `_gh_classify_error` |
+| `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-111.md` | modified | F2 duplicate-section deletion, F3 per-Group counts correction, F4 §1.5→§1.3 cite fix (6 sites), F9 V1 §9.4 → ARCHITECTURE.md §2.5 cite fix, F11 worst-case fix-up estimate standardization, F12 fuzzy sub-assertion-count removal; integrate F1 retrofit content into §1 / §2 / §3 / §6 / §7 / §9 / DoD |
 
-`git diff --stat` (working tree, vs `HEAD=eca769b`):
+`git diff --stat` (working tree, vs `HEAD=46c86fe`):
 
 ```
- scripts/lib/tracker-provider-gh.sh     | 111 +++++++++++++--
- scripts/tests/tracker-provider-test.sh | 246 ++++++++++++++++++++++++++++++---
- 2 files changed, 327 insertions(+), 30 deletions(-)
+ BACKLOG.md                                         |   4 +-
+ maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-111.md
+                                                    |  ~120 ±
+ scripts/lib/tracker-links.sh                       |  16 +-
+ scripts/lib/tracker-migrate-reverse.sh             | 152 +++++++++++++++--
+ scripts/lib/tracker-provider-gh.sh                 |  16 +-
+ scripts/tests/tracker-migrate-forward-test.sh      |   6 +-
+ scripts/tests/tracker-migrate-reverse-test.sh      | 174 +++++++++++++++++++
+ scripts/tests/tracker-migrate-roundtrip-test.sh    | 184 +++++++++++++++++----
+ scripts/tests/tracker-provider-test.sh             |  33 +++-
 ```
 
-(plus two new untracked fixture files `gh-add-blocked-by.json` + `gh-remove-blocked-by.json`; total 4 paths.)
+Plus three new untracked fixture files (`gh-add-blocked-by.json`, `gh-remove-blocked-by.json`, `gh-list-blocked-by.json`). Total 12 paths touched (9 modified + 3 new) across all three passes.
 
 ---
 
@@ -41,8 +61,8 @@ Combined inventory after the scope-extension follow-up:
 
 **Evidence basis (high confidence on name, medium-high on arg shape):**
 
-- `EXTERNAL-RESEARCH.md` §1.5 line 86: *"GraphQL mutations including `addBlockedBy` / removal; full webhook events."* — names the mutation literally.
-- `EXTERNAL-RESEARCH.md` §1.5 line 87: *"EMU users can hit `FORBIDDEN: Unauthorized; path: addBlockedBy` for cross-enterprise links."* — corroborates the literal name appears in error responses.
+- `EXTERNAL-RESEARCH.md` §1.3 line 86: *"GraphQL mutations including `addBlockedBy` / removal; full webhook events."* — names the mutation literally.
+- `EXTERNAL-RESEARCH.md` §1.3 line 87: *"EMU users can hit `FORBIDDEN: Unauthorized; path: addBlockedBy` for cross-enterprise links."* — corroborates the literal name appears in error responses.
 - GitHub Changelog 2025-08-21 *"Dependencies on issues"* (cited at line 80) — GA reference.
 
 **Argument shape used:** `addBlockedBy(input: { issueId: <ID>, blockedByIssueId: <ID> }) { issue { number } }`
@@ -56,9 +76,9 @@ Combined inventory after the scope-extension follow-up:
 
 | Aspect | Confidence | Worst-case fix |
 |--------|------------|----------------|
-| Mutation name `addBlockedBy` | High (literal in EXTERNAL-RESEARCH §1.5) | n/a |
+| Mutation name `addBlockedBy` | High (literal in EXTERNAL-RESEARCH §1.3) | n/a |
 | Arg key `issueId` | High (universal GH convention) | n/a |
-| Arg key `blockedByIssueId` | Medium-high (symmetric with `subIssueId`) | one-line edit at `tracker-provider-gh.sh:527` + two test-assertion key updates |
+| Arg key `blockedByIssueId` | Medium-high (symmetric with `subIssueId`) | see §7 combined estimate |
 | Operand inversion for `blocks` | High (only documented direction) | n/a |
 | Selection set `{ issue { number } }` | Medium (we discard the result) | the response is discarded; even if GH's actual selection differs, the existing `_gh_run` will still succeed (gh's GraphQL mode returns the JSON verbatim; we don't parse it on success) |
 
@@ -68,7 +88,7 @@ Combined inventory after the scope-extension follow-up:
 
 **Evidence basis (medium-high on name, medium-high on arg shape — both lower than the `addBlockedBy` side because EXTERNAL-RESEARCH does not name the remove-side literal):**
 
-- `EXTERNAL-RESEARCH.md` §1.5 line 86: *"GraphQL mutations including `addBlockedBy` / removal; full webhook events."* — names the *add* side literally and pairs it with "removal" generically (no literal name for the remove-side mutation).
+- `EXTERNAL-RESEARCH.md` §1.3 line 86: *"GraphQL mutations including `addBlockedBy` / removal; full webhook events."* — names the *add* side literally and pairs it with "removal" generically (no literal name for the remove-side mutation).
 - GH GraphQL precedent in this same file: `addSubIssue` / `removeSubIssue` use the symmetric `add` / `remove` verb prefix. By analogy, `addBlockedBy` → `removeBlockedBy` is the most likely literal name. Alternatives a live-schema verification could surface include `deleteBlockedBy` (less common in GH GraphQL but possible) or `removeBlockedByDependency` (verbose form, also less common).
 - The pre-existing `_gh_classify_error` `forbidden`/`Forbidden`/`FORBIDDEN` pattern at line 69 will catch the EMU `FORBIDDEN: Unauthorized; path: removeBlockedBy` form (same wire shape as `addBlockedBy`) without further changes.
 
@@ -82,10 +102,33 @@ Combined inventory after the scope-extension follow-up:
 
 | Aspect | Confidence | Worst-case fix |
 |--------|------------|----------------|
-| Mutation name `removeBlockedBy` | Medium-high (symmetric with literal `addBlockedBy`; GH `addX`/`removeX` precedent) | one-line edit at `tracker-provider-gh.sh` `tracker_provider_gh_unlink()` GraphQL string + one fixture key in `gh-remove-blocked-by.json` |
-| Arg keys `issueId` + `blockedByIssueId` | Medium-high (mirror of add side) | same as add-side worst-case fix |
+| Mutation name `removeBlockedBy` | Medium-high (symmetric with literal `addBlockedBy`; GH `addX`/`removeX` precedent) | see §7 combined estimate |
+| Arg keys `issueId` + `blockedByIssueId` | Medium-high (mirror of add side) | see §7 combined estimate |
 | Operand inversion for `blocks` | High (mirror of add side) | n/a |
 | Selection set `{ issue { number } }` | Medium (discarded; same logic as add side) | n/a |
+
+### §2 second follow-up — `blockedByIssues` field accessor (PACK-REVIEW-BD-111 F1 retrofit, scope-extension third pass 2026-05-15)
+
+**Field accessor:** `Issue.blockedByIssues(first: 50) { nodes { number } }`
+
+The reverse-decoder retrofit needs to *read* the first-class blocked-by edges (not write them via mutation). GH GraphQL exposes relationships via field accessors on the entity type, paired with the corresponding mutation (`addX` mutation ↔ `xConnection`/`xIssues` field). The literal field name was not pinned by EXTERNAL-RESEARCH §1.3, so the choice was made by analogy with `Issue.subIssues` (used at `tracker_provider_gh_sub_issue_list:686`, paired with `addSubIssue`).
+
+**Evidence basis (medium-high on field name; medium-high on connection cap; high on jq filter path):**
+
+- GH GraphQL precedent in this same file: `Issue.subIssues(first: 100) { nodes { number title state } }` — paired with the `addSubIssue` mutation. By analogy, `addBlockedBy` mutation pairs with an `Issue.blockedByIssues` connection.
+- `EXTERNAL-RESEARCH.md` §1.8 line 188: "Blocks/blocked-by per issue: 50 each." → cap of 50 set in the `(first: 50)` argument matches the documented per-relationship ceiling.
+- The fixture `gh-list-blocked-by.json` mirrors the analogous `subIssues` response shape verbatim (`.data.repository.issue.<field>.nodes` with each node containing `number`).
+
+**Confidence summary (reverse-read side):**
+
+| Aspect | Confidence | Worst-case fix |
+|--------|------------|----------------|
+| Field accessor `Issue.blockedByIssues` | Medium-high (symmetric with `subIssues`) | see §7 combined estimate (item 8) |
+| `(first: 50)` cap | High (matches EXTERNAL-RESEARCH §1.8 line 188) | n/a |
+| Selection `{ nodes { number } }` | High (mirrors `subIssues` shape) | n/a |
+| jq filter `.data.repository.issue.blockedByIssues.nodes` | High (deterministic from query shape) | one-line update if field name differs |
+
+**Best-effort error handling.** The retrofit's `_tmr_fetch_first_class_blocked_by` swallows any error (auth, network, schema-reshape) and returns `[]`, falling back to body-comment-marker reading only. This is intentional: a missing or failing GraphQL response should degrade Blockers reconstruction for that one issue, not abort the entire reverse run. The decoder remains best-effort.
 
 ---
 
@@ -93,7 +136,7 @@ Combined inventory after the scope-extension follow-up:
 
 The mutation runs through the existing `_gh_run` helper (lines 100-116), which routes `gh` non-zero exits into `_gh_classify_error` (lines 49-85). The classifier already covers:
 
-- **EMU `FORBIDDEN: Unauthorized; path: addBlockedBy`** → typed `auth-insufficient-scope` (V1 §9.4). The classifier needed a small additive fix: the existing pattern matched `forbidden`/`Forbidden` but not the all-caps `FORBIDDEN` form documented in EXTERNAL-RESEARCH §1.5 line 87 as the literal wire shape. Added `*"FORBIDDEN"*` to the pattern at line 69 with a comment cite. The next-step verb resolves to `gh auth refresh -s <scope>` per V3 §27.1 Layer 2 (verb table at `tracker-errors.sh:116`).
+- **EMU `FORBIDDEN: Unauthorized; path: addBlockedBy`** → typed `auth-insufficient-scope` (ARCHITECTURE.md §2.5 typed-error-codes table; PACK-REVIEW-BD-111 F9 cite correction — was "V1 §9.4" which doesn't exist as a numbered subsection). The classifier needed a small additive fix: the existing pattern matched `forbidden`/`Forbidden` but not the all-caps `FORBIDDEN` form documented in EXTERNAL-RESEARCH §1.3 line 87 as the literal wire shape. Added `*"FORBIDDEN"*` to the pattern at line 69 with a comment cite. The next-step verb resolves to `gh auth refresh -s <scope>` per V3 §27.1 Layer 2 (verb table at `tracker-errors.sh:116`).
 - **Target-issue not found** → typed `not-found` (V1 §9-equivalent), via the existing `*"could not resolve to a Resource"*|*"Not Found"*|*"HTTP 404"*` pattern at line 54. Triggered if the user passes a stale `other_id`; classifier resolves in either the node-id resolution step (`gh api /repos/.../issues/N`) or in the GraphQL response.
 - **Cycle detection (server-side)** → currently routes through the catch-all `validation` typed code at line 82. GitHub's server validates dependency cycles and rejects with an error; the exact wire shape is not documented in EXTERNAL-RESEARCH so the classifier falls through to the generic `validation` bucket. This is acceptable: the user receives a typed error block ending in `→ Run: review the backend message above`, and the actual GH error message (e.g., `Cannot add dependency: would create cycle`) appears in the `MESSAGE:` line. **Worth a follow-up** once the live wire shape is observed at BD-088/BD-093 land-time — at that point the classifier could grow a more specific pattern.
 - **Per-issue cap exceeded (>50 deps)** → likely also `validation` via the `Validation Failed` / `unprocessable` catch at line 75. Same follow-up.
@@ -114,6 +157,21 @@ The `removeBlockedBy` mutation runs through the same `_gh_run` → `_gh_classify
 - **Auth missing / token expired / network unreachable** — covered by the same pre-existing classifier patterns.
 
 No new typed codes were added on the unlink side (V1 §2.5 surface still unchanged). All error sites use `tracker_error_emit` and end in `→ Run:` verbs.
+
+### §3 second follow-up — reverse-decoder (`blockedByIssues`) error coverage (PACK-REVIEW-BD-111 F1 retrofit, scope-extension third pass 2026-05-15)
+
+The `_tmr_fetch_first_class_blocked_by` helper routes through `provider_raw "POST" "graphql" "$query"`, which goes through the same `_gh_run` → `_gh_classify_error` chain as the link/unlink mutations. **Critically**, however, the helper itself swallows any non-zero rc and returns `[]` — it does NOT propagate the typed error block to the caller.
+
+This is intentional and best-effort by design (documented in the function header):
+
+- **Auth missing / `FORBIDDEN`** — the typed error block still emits to stderr (via `_gh_classify_error`), but the helper swallows it and proceeds to `[]`. The reverse decoder falls back to body comment markers only. Net effect: a Blockers reconstruction may be incomplete, but the reverse run does not abort.
+- **Schema-reshape (`blockedByIssues` field renamed)** — same. Surfaced to the user via stderr if they look; the decoder degrades to comment-marker-only mode for that issue.
+- **Network-unreachable** — same. Reverse runs to completion with degraded Blockers fields.
+- **Empty-result** — well-formed; `[]` returned; no comment markers either. The Blockers field for that issue ends up empty (which is the correct reconstruction — the issue has no blocked-by edges).
+
+This best-effort behavior matches the pre-BD-111 invariant that `_tmr_decode_blockers` does not throw — it always emits a well-formed JSON array. The retrofit preserves that invariant.
+
+**No new typed codes** were added across any of the three passes. V1 §2.5 surface is unchanged.
 
 ---
 
@@ -155,31 +213,41 @@ The "deferral note" demanded by the BD-111 success criteria — formerly *"GA 20
 
 ### New tracker-provider-test.sh totals
 
+Counts re-verified against the test-runner output after the
+PACK-REVIEW-BD-111 fix-pass (which removed one redundant assertion
+per F7 and corrected the per-Group breakdown per F3):
+
 ```
-Group 1 (happy-path):  79 PASS
+Group 1 (happy-path):  69 PASS
 Group 2 (error map):    8 PASS
-Group 3 (stub backend): 12 PASS
+Group 3 (stub backend): 21 PASS
 ─────────────────────────
-Total:                 99 PASS / 0 FAIL  (was 65 PASS at baseline; +34 new assertions across BD-111 link + scope-extended unlink)
+Total:                 98 PASS / 0 FAIL  (was 65 PASS at BD-060 baseline; +33 across BD-111 link + scope-extended unlink + F7 redundant-assertion removal)
 ```
+
+(The test-runner `Passed: <N>` summary line is the authoritative
+total. Per PACK-REVIEW-BD-111 F12 the per-test sub-assertion counts
+that previously appeared here have been removed in favor of the
+total — counting `assert_*` macros vs `if/grep` PASS lines proved
+fuzzy in practice.)
 
 New / updated assertions in test 1.17 (link side; replaces former 2-line 1.17):
 
-- 1.17a: kind=blocked-by → `addBlockedBy` mutation called with issueId=NODE_42, blockedByIssueId=NODE_99 (9 sub-assertions including negative "does NOT invoke `issue comment`")
-- 1.17b: kind=blocks → operands inverted (5 sub-assertions)
-- 1.17c: EMU `FORBIDDEN: Unauthorized; path: addBlockedBy` → typed `auth-insufficient-scope` error
-- 1.17d: kind=related → still comment-based (2 sub-assertions, no regression)
-- 1.17e: kind=duplicates → still comment-based (1 sub-assertion, no regression)
+- 1.17a: kind=blocked-by → `addBlockedBy` mutation called with issueId=NODE_42, blockedByIssueId=NODE_99; positive cross-checks on each gh argv step (`repo view`, node-id resolution for both issues, `addBlockedBy` mutation name + arg keys); negative cross-check that `issue comment` was NOT invoked.
+- 1.17b: kind=blocks → operands inverted (issueId=NODE_99, blockedByIssueId=NODE_42).
+- 1.17c: EMU `FORBIDDEN: Unauthorized; path: addBlockedBy` stderr in the link chain → typed `auth-insufficient-scope` error. (Per PACK-REVIEW-BD-111 F6 the test name was clarified: `FAKE_GH_EXIT` is global so the chain short-circuits at the first gh call; the typed code is correct because `_gh_classify_error` doesn't care which call produced the stderr.)
+- 1.17d: kind=related → still comment-based (no regression).
+- 1.17e: kind=duplicates → still comment-based (no regression).
 
 Test 1.19 retargeted (was `unlink blocks → "not unlinkable"` after first pass; now that blocks/blocked-by are first-class on unlink too, 1.19 asserts the comment-based rejection only for `related` and `duplicates`):
 
-- 1.19 (split): `unlink related → validation (comment-based)` + `unlink duplicates → validation (comment-based)` (2 assertions)
+- 1.19 (split): `unlink related → validation (comment-based)` + `unlink duplicates → validation (comment-based)`.
 
 New assertions in test 1.20 (unlink side; scope extension 2026-05-15):
 
-- 1.20a: kind=blocked-by → `removeBlockedBy` mutation called with issueId=NODE_42, blockedByIssueId=NODE_99 (10 sub-assertions including two negative assertions: does NOT invoke `addBlockedBy` and does NOT invoke `issue comment`)
-- 1.20b: kind=blocks → operands inverted (5 sub-assertions)
-- 1.20c: missing-edge `HTTP 404 Not Found` → typed `not-found` error (1 assertion)
+- 1.20a: kind=blocked-by → `removeBlockedBy` mutation called with issueId=NODE_42, blockedByIssueId=NODE_99; same positive cross-check shape as 1.17a; negative cross-checks that NEITHER `addBlockedBy` NOR `issue comment` was invoked.
+- 1.20b: kind=blocks → operands inverted.
+- 1.20c: missing-edge `HTTP 404 Not Found` stderr in the unlink chain → typed `not-found` error. (Same F6 caveat as 1.17c on which gh call short-circuits.)
 
 Renumbered (no behavioral change):
 
@@ -199,23 +267,7 @@ Added `FAKE_GH_DISPATCH_DIR` mode to the in-test fake `gh` (lines 91-152 of the 
 | `<verb> ...` (generic fallback) | `$DISPATCH_DIR/<verb>` |
 | miss → falls back to `FAKE_GH_STDOUT_FILE` (legacy) |
 
-When `FAKE_GH_DISPATCH_DIR` is unset, behavior is identical to the prior fake. All pre-existing test cases in Group 1 still pass without modification. The dispatch-mode harness is now used by both 1.17 (link) and 1.20 (unlink) test suites.
-
-`reset_fake_gh()` updated to also unset `FAKE_GH_DISPATCH_DIR`.
-
-### Fake-`gh` harness extension (additive, backward-compatible)
-
-Added `FAKE_GH_DISPATCH_DIR` mode to the in-test fake `gh` (lines 91-152 of the updated `tracker-provider-test.sh`). When set, the fake selects its stdout file by inspecting argv:
-
-| argv pattern | fixture file looked up |
-|--------------|-----------------------|
-| `api graphql ...` | `$DISPATCH_DIR/api-graphql` |
-| `api /repos/<o>/<r>/issues/N ...` | `$DISPATCH_DIR/api-issue-N` |
-| `repo view ...` | `$DISPATCH_DIR/repo` |
-| `<verb> ...` (generic fallback) | `$DISPATCH_DIR/<verb>` |
-| miss → falls back to `FAKE_GH_STDOUT_FILE` (legacy) |
-
-When `FAKE_GH_DISPATCH_DIR` is unset, behavior is identical to the prior fake. All 22 pre-existing test cases in Group 1 still pass without modification.
+When `FAKE_GH_DISPATCH_DIR` is unset, behavior is identical to the prior fake. All pre-existing test cases in Group 1 still pass without modification (the BD-111 fix-pass surfaced the BD-060-era baseline of 22 base tests; after BD-111 expansion + scope-extension the Group 1 count is 69 — see Group breakdown above). The dispatch-mode harness is now used by both 1.17 (link) and 1.20 (unlink) test suites.
 
 `reset_fake_gh()` updated to also unset `FAKE_GH_DISPATCH_DIR`.
 
@@ -240,11 +292,11 @@ When `FAKE_GH_DISPATCH_DIR` is unset, behavior is identical to the prior fake. A
 | `tracker-errors-test.sh` | 60 PASS / 0 FAIL |
 | `tracker-init-test.sh` | 95 PASS / 0 FAIL |
 | `tracker-migrate-forward-test.sh` | 134 PASS / 0 FAIL |
-| `tracker-migrate-reverse-test.sh` | 95 PASS / 0 FAIL |
-| `tracker-migrate-roundtrip-test.sh` | 45 PASS / 0 FAIL |
-| `tracker-provider-test.sh` | **99 PASS / 0 FAIL** (this BD's headline test; was 82 PASS at end of first pass; +17 from the scope-extended unlink suite + 1.19 split) |
+| `tracker-migrate-reverse-test.sh` | **113 PASS / 0 FAIL** (was 95 baseline; +18 from new Group 7 BD-111 retrofit suite — 7.1 first-class only, 7.2 / 7.2b / 7.2c de-dup + mixed-environment + legacy-only, 7.3 / 7.4 fetch helper, 7.5 end-to-end reconstruct, 7.6 backward-compat) |
+| `tracker-migrate-roundtrip-test.sh` | 45 PASS / 0 FAIL (BD-111 round-trip narrative branches now positive — `BD-002 Blockers: BD-001 preserved` and `TD-040 Blockers: TD-010 round-trips`; net assertion count unchanged because the prior "documented gap" branches were replaced 1-for-1 with positive round-trip assertions) |
+| `tracker-provider-test.sh` | **98 PASS / 0 FAIL** (was 65 PASS at BD-060 baseline; was 99 at end of scope-extension second pass; -1 from PACK-REVIEW-BD-111 F7 redundant-assertion removal in 1.17a) |
 
-Zero regressions across the tracker test corpus. Scope-extended sweep re-run on 2026-05-15 against working-tree HEAD `eca769b`.
+Zero regressions across the tracker test corpus. Sweep re-run on 2026-05-15 (third pass; PACK-REVIEW-BD-111 fix-pass) against working-tree HEAD `46c86fe`.
 
 ### validate-pack.py
 
@@ -255,7 +307,14 @@ PASSED — all checks clean   (32 / 32)
 ### Bash syntax check
 
 ```
-bash -n scripts/lib/tracker-provider-gh.sh && bash -n scripts/tests/tracker-provider-test.sh && echo OK_SYNTAX
+bash -n scripts/lib/tracker-provider-gh.sh \
+  && bash -n scripts/lib/tracker-migrate-reverse.sh \
+  && bash -n scripts/lib/tracker-links.sh \
+  && bash -n scripts/tests/tracker-provider-test.sh \
+  && bash -n scripts/tests/tracker-migrate-reverse-test.sh \
+  && bash -n scripts/tests/tracker-migrate-roundtrip-test.sh \
+  && bash -n scripts/tests/tracker-migrate-forward-test.sh \
+  && echo OK_SYNTAX
 → OK_SYNTAX
 ```
 
@@ -293,7 +352,15 @@ When the integration-test BD lands, please verify against the live GH GraphQL sc
 
 7. **`removeBlockedBy` 404 / missing-edge wire shape** (scope extension follow-up): when the target dependency edge does not exist, capture the exact error body. The current implementation assumes the existing `not-found` classifier pattern (`HTTP 404` / `Not Found` / `could not resolve to a Resource`) catches it; if GH returns `Validation Failed: dependency not found` instead, the catch-all `validation` typed code applies (still acceptable UX; the actual GH message appears in the `MESSAGE:` line). No fix needed unless we want a more specific verb than the generic `validation` one.
 
-Worst-case fix-up footprint if any name-guess is wrong (combined add + remove sides): ≤ 8 lines across `tracker-provider-gh.sh` + 4 lines across the two fixture files + ~6 test-assertion key updates. Still small.
+8. **`blockedByIssues` field accessor name** (PACK-REVIEW-BD-111 F1 retrofit follow-up; reverse-decoder query): confirm the `Issue` type exposes a field accessor named `blockedByIssues` paired with the `addBlockedBy` mutation (mirroring `subIssues` paired with `addSubIssue`). Run:
+   ```
+   gh api graphql -f query='{ __type(name: "Issue") { fields { name type { kind } } } }' --jq '.data.__type.fields[] | select(.name | test("(?i)block"))'
+   ```
+   Expected: a `blockedByIssues` field that returns a connection. If the field is named `blockedBy` (no `Issues` suffix), update the GraphQL query string in `_tmr_fetch_first_class_blocked_by` (one line) and the jq filter path (`.data.repository.issue.blockedByIssues.nodes` → `.data.repository.issue.blockedBy.nodes`; one line) plus the fixture key in `gh-list-blocked-by.json` (one line).
+
+9. **`blockedByIssues` empty-result wire shape** (PACK-REVIEW-BD-111 F1 retrofit follow-up): confirm a well-formed response for an issue with zero first-class blocked-by edges is `{"data":{"repository":{"issue":{"blockedByIssues":{"nodes":[]}}}}}` (mirroring the round-trip test fake-gh empty-edges path). The decoder treats missing keys defensively via `// []`, so any null-key variant is silently coerced to empty.
+
+Worst-case fix-up footprint if any name-guess is wrong (combined add + remove + reverse-read sides): ≤ 12 lines across `tracker-provider-gh.sh` + `tracker-migrate-reverse.sh` + 6 lines across the three fixture files (`gh-add-blocked-by.json`, `gh-remove-blocked-by.json`, `gh-list-blocked-by.json`) + ~8 test-assertion key updates. Still small. (Per PACK-REVIEW-BD-111 F11 this combined estimate is the authoritative number; the per-component sub-estimates that previously appeared in §2 / §2 follow-up tables have been replaced with "see §7 combined estimate" pointers.)
 
 ---
 
@@ -314,7 +381,7 @@ Worst-case fix-up footprint if any name-guess is wrong (combined add + remove si
 - The exact JSON content of a successful addBlockedBy response (we discard it; testing the discard would be tautological)
 - Multi-call dispatch failure modes (e.g., node-id resolution fails on the first issue) — covered transitively by Group 2 error mapping
 
-**Extra decision (capability flag):** Coder checked `tracker_provider_gh_capabilities()` (lines 631-679). The existing `dependencies.kinds` array already lists `"blocks", "blocked-by", "duplicates", "related"` and the `cross_repo_supported` value is `"same-org-internal-only"` — both are already accurate for the first-class API per EXTERNAL-RESEARCH §1.5 line 84. No capability change needed; the BD-111 swap is a pure backend implementation change, not a capability change. This matches the constraint in the prompt ("No new capability flag").
+**Extra decision (capability flag):** Coder checked `tracker_provider_gh_capabilities()` (lines 631-679). The existing `dependencies.kinds` array already lists `"blocks", "blocked-by", "duplicates", "related"` and the `cross_repo_supported` value is `"same-org-internal-only"` — both are already accurate for the first-class API per EXTERNAL-RESEARCH §1.3 line 84. No capability change needed; the BD-111 swap is a pure backend implementation change, not a capability change. This matches the constraint in the prompt ("No new capability flag").
 
 **Extra decision (deferral note):** The BACKLOG entry asked to "remove the 'GA 2025-08-21; mutation name verified at first live use' deferral note". Done — the original 4-line deferral comment block at the head of the function (formerly at lines 475-481) has been replaced with the new 21-line BD-111 commentary that documents (a) the chosen mutation name, (b) the arg-shape evidence basis, (c) the operand-inversion convention for kind=blocks, (d) the integration-test verification ask, and (e) the comment-marker fallback preservation surface.
 
@@ -322,19 +389,27 @@ Worst-case fix-up footprint if any name-guess is wrong (combined add + remove si
 
 ## §9 Open issues / known limitations
 
-> **Removed (resolved in scope-extension follow-up 2026-05-15):** the original §9 item 1 (`tracker_provider_gh_unlink()` for blocks/blocked-by deferred to follow-up BD) is no longer an open limitation. PM-only commit `eca769b` extended BD-111 scope to include the symmetric `removeBlockedBy` unlink path; the coder shipped it in the same session. See updated §1, §2 follow-up, §3 follow-up, §6 1.20a-c, §7 items 5-7.
+> **Removed (resolved in scope-extension follow-up 2026-05-15, first extension):** the original §9 item 1 (`tracker_provider_gh_unlink()` for blocks/blocked-by deferred to follow-up BD) is no longer an open limitation. PM-only commit `eca769b` extended BD-111 scope to include the symmetric `removeBlockedBy` unlink path; the coder shipped it in the same session. See updated §1, §2 follow-up, §3 follow-up, §6 1.20a-c, §7 items 5-7.
 
-1. **Cycle / cap error wire shapes are unknown offline.** Currently routed through the generic `validation` typed code. Will be tightened at integration-test land-time (see §7 item 3). N/A on the unlink side (cycles can't form on remove; cap can't be exceeded by a remove).
+> **Removed (resolved in PACK-REVIEW-BD-111 fix-pass 2026-05-15, second extension):** the implicit gap that PACK-REVIEW-BD-111 F1 surfaced — `tracker-migrate-reverse.sh:_tmr_decode_blockers` reading body comment markers only, leaving post-BD-111 forward writes invisible to reverse — is no longer an open limitation. PM-only commit `46c86fe` extended BD-111 scope to include the reverse-decoder retrofit; the coder shipped `_tmr_fetch_first_class_blocked_by` + the decoder's fourth `first_class_edges` arg in the same fix-pass. The two BD-111-pending narrative branches in `tracker-migrate-roundtrip-test.sh` (BD-002 Blockers + TD-040 Blockers) flipped to positive round-trip assertions. See updated §1, §2 second follow-up, §3 second follow-up, §6 (Group 7 reverse + flipped round-trip narrative), §7 items 8-9.
 
-2. **`schema-reshape` typed code is the right home if the addBlockedBy / removeBlockedBy schema disappears or renames.** The classifier at line 78 already maps `*"undefined field"*|*"unknown field"*` → `schema-reshape`; if GH renames either mutation post-launch, users will get a clean schema-reshape error pointing them at `pack tracker doctor` (per V3 §27.1 Layer 2 verb table). No additional handling needed.
+1. **Cycle / cap error wire shapes are unknown offline.** Currently routed through the generic `validation` typed code. Will be tightened at integration-test land-time (see §7 item 3). N/A on the unlink side (cycles can't form on remove; cap can't be exceeded by a remove). N/A on the reverse-decoder side (read-only).
+
+2. **`schema-reshape` typed code is the right home if any of the three GraphQL surfaces disappears or renames.** The classifier at line 78 already maps `*"undefined field"*|*"unknown field"*` → `schema-reshape`; if GH renames `addBlockedBy`, `removeBlockedBy`, or the `Issue.blockedByIssues` field accessor post-launch, users will get a clean schema-reshape error pointing them at `pack tracker doctor` (per V3 §27.1 Layer 2 verb table). The reverse-decoder helper additionally swallows the error and falls back to body-marker-only reads (best-effort by design). No additional handling needed.
 
 3. **The new fake-`gh` `FAKE_GH_DISPATCH_DIR` mode is an additive harness improvement.** Other tracker test scripts could adopt it to retire some of the "structural-only" test patterns (e.g., test 1.21 sub_issue_create which only checks "did not throw" — note the renumber from former 1.20). Not in scope for BD-111; just noting the harness is now richer for future test work.
 
-4. **HEAD-state observation (initial pass).** When the initial coder session started, HEAD was `8409153` (two commits past the first prompt's stated `4a2d7cc`). Pack Chat made two docs commits (`8066817` opens BD-171; `8409153` is RESOLVED-RATIFIED §6.P/§6.Q updates) between the first prompt being drafted and that session starting. Neither commit touched files in BD-111's scope. Coder's edits applied cleanly on top of `8409153`.
+4. **Phase-task `phase-N.M` references in Blockers do not round-trip in v11.0.** TD-040 in the round-trip fixture has `Blockers: phase-1.2, TD-010`. The `TD-010` reference resolves and round-trips through the BD-111 retrofit (positive assertion in `tracker-migrate-roundtrip-test.sh:417-431`). The `phase-1.2` reference does NOT round-trip because the v11.0 forward writer creates phase EPIC issues only (not individual phase TASK issues — the phase-task-as-first-class-issue split is BD-105/BD-106 territory). The `tracker-migrate-forward.sh:942-960` `phase-N.M` case-statement arm silently skips when no id-map entry exists. Not a BD-111 defect; documented expected behavior at the v11.0 boundary. Lifting this would require BD-105/BD-106 phase-task-as-first-class-issue work, at which point the round-trip test can extend the TD-040 assertion to also include `phase-1.2`.
 
-5. **HEAD-state observation (scope-extension follow-up).** When the scope-extension session started, HEAD was `eca769b` (the PM commit that extended scope). The coder's first-pass uncommitted working-tree edits were preserved across the PM commit (PM commit only touched `BACKLOG.md`, no scope conflict). The follow-up edits — `tracker_provider_gh_unlink()` swap, new `gh-remove-blocked-by.json` fixture, test 1.20a-c, 1.19 retarget, 1.20→1.21/1.21→1.22/1.22→1.23 renumber, and this report's §1/§2/§3/§6/§7/§9/DoD updates — apply cleanly on top of `eca769b` and the prior uncommitted working-tree state.
+5. **HEAD-state observation (initial pass).** When the initial coder session started, HEAD was `8409153` (two commits past the first prompt's stated `4a2d7cc`). Pack Chat made two docs commits (`8066817` opens BD-171; `8409153` is RESOLVED-RATIFIED §6.P/§6.Q updates) between the first prompt being drafted and that session starting. Neither commit touched files in BD-111's scope. Coder's edits applied cleanly on top of `8409153`.
 
-6. **Comment-marker fallback footprint check.** Re-verified post-extension: `provider_raw()`, `provider_comment()`, and the `related|duplicates` comment-write branch in `tracker_provider_gh_link()` are all unchanged from the first pass. Callers wanting to write or remove a comment-marker (the V3 §28 fallback) still have the same surfaces. The new `removeBlockedBy` first-class path on `tracker_provider_gh_unlink()` does not affect comment-marker reads or removals — those are governed by `provider_get(id)` (returns full issue body and comments) and `provider_raw("DELETE", "/repos/.../issues/comments/<comment-id>")`.
+6. **HEAD-state observation (scope-extension first-pass follow-up).** When the scope-extension session started, HEAD was `eca769b` (the PM commit that extended scope to include the unlink path). The coder's first-pass uncommitted working-tree edits were preserved across the PM commit (PM commit only touched `BACKLOG.md`, no scope conflict). The follow-up edits applied cleanly on top of `eca769b` and the prior uncommitted working-tree state.
+
+7. **HEAD-state observation (PACK-REVIEW-BD-111 fix-pass / scope-extension second-pass follow-up).** When the fix-pass session started, HEAD was `46c86fe` (the PM commit that extended scope a second time to include the reverse-decoder retrofit per F1, plus the two new untracked review files `PACK-REVIEW-BD-111.md` and `PACK-REVIEW-BD-112.md`). The coder's prior uncommitted working-tree edits were preserved across this PM commit (PM commit only touched `BACKLOG.md`, no scope conflict). The fix-pass edits — `_tmr_fetch_first_class_blocked_by` helper + `_tmr_decode_blockers` fourth-arg extension, new `gh-list-blocked-by.json` fixture, Group 7 in reverse test (8 sub-groups), stateful round-trip fake-gh extension (addBlockedBy + removeBlockedBy + blockedByIssues + api/repos node-id synthesis + repo-view --jq honoring), round-trip narrative flips, F4 cite fixes (8 sites across 5 files), F5 stale-doc-comment fixes (3 sites), F6 / F7 test-narrative cleanups, F8 escape-hatch comment cleanup, F9 typed-error cite fix, F10 BACKLOG File/Symbol addition, F11 worst-case-estimate standardization, F12 fuzzy-sub-count removal, F2 IMPL-REPORT duplicate-section deletion, F3 IMPL-REPORT per-Group count correction — apply cleanly on top of `46c86fe` and the prior uncommitted working-tree state.
+
+8. **Comment-marker fallback footprint check (final).** Re-verified after all three passes: `provider_raw()`, `provider_comment()`, and the `related|duplicates` comment-write branch in `tracker_provider_gh_link()` are all unchanged across all three passes. The new `removeBlockedBy` first-class path on `tracker_provider_gh_unlink()` and the new `_tmr_fetch_first_class_blocked_by` first-class read path do not affect comment-marker reads or removals — those are governed by `provider_get(id)` (returns full issue body and comments) and `provider_raw("DELETE", "/repos/.../issues/comments/<comment-id>")`. Pre-BD-111 issues with body comment markers continue to round-trip via `_tmr_decode_blockers`'s second-pass body-marker scan (verified by Group 7.6 backward-compat test).
+
+9. **HEAD-state observation (mid-fix-pass parallel commit).** During the fix-pass session, Pack Chat made one further commit (`3d24443` — `BD-112 retroactive per-BD review-fix`) that touched `CHANGELOG.md`, `EXECUTION-PLAN-V11.0.md`, `scripts/lib/customization-preserve.sh`, `scripts/tests/test-customization-preserve.sh`. None of these files overlap BD-111's scope. The coder's uncommitted working-tree edits were preserved across this commit. Final working-tree HEAD is `3d24443`; all BD-111 fix-pass edits apply cleanly on top.
 
 ---
 
@@ -350,12 +425,17 @@ Worst-case fix-up footprint if any name-guess is wrong (combined add + remove si
 | Deferral / "BD-111 follow-up" note above `tracker_provider_gh_unlink()` removed (or rewritten) | **PASS** — replaced with scope-extension commentary that documents the symmetric pair, evidence basis, operand inversion, and integration-test verification ask |
 | New fixture-driven test mirroring test 1.17 for the GraphQL path (link side) | **PASS** — 1.17a (kind=blocked-by, 9 assertions), 1.17b (kind=blocks, 5 assertions), 1.17c (error path, 1 assertion), 1.17d/1.17e (backward-compat for related/duplicates, 3 assertions) |
 | New fixture-driven test mirroring test 1.17 for the GraphQL path (unlink side, scope extension 2026-05-15) | **PASS** — 1.20a (kind=blocked-by, 10 assertions), 1.20b (kind=blocks, 5 assertions), 1.20c (missing-edge `not-found` error path, 1 assertion); test 1.19 retargeted to `related|duplicates` rejection (2 assertions); existing 1.20→1.21, 1.21→1.22, 1.22→1.23 renumber confirmed clean |
-| New fixture file `gh-remove-blocked-by.json` (scope extension 2026-05-15) | **PASS** — created at `scripts/tests/fixtures/tracker-provider/gh-remove-blocked-by.json`; mirrors `gh-add-blocked-by.json` shape |
-| Comment-based fallback still available via `provider_raw()` / `provider_comment()` | **PASS** — both ops unchanged; §4 + §9 item 6 (post-extension re-verification) document the preservation surface |
-| All other tracker-* tests continue to pass | **PASS** — 19 tracker test scripts swept after the scope extension; zero regressions |
-| `scripts/validate-pack.py` passes (32 checks) | **PASS** (re-run post-extension) |
-| IMPLEMENTATION-REPORT flags assumed mutation names + verification steps + worst-case fix-up for both add and remove sides | **PASS** — §2, §2 follow-up, §7 items 1-7, §9 |
-| No state-changing git verbs run | **PASS** — only `git status`, `git diff`, `git log`, `git rev-parse`, `git reflog`, `git show` used across both sessions |
+| New fixture file `gh-remove-blocked-by.json` (scope extension 2026-05-15, first extension) | **PASS** — created at `scripts/tests/fixtures/tracker-provider/gh-remove-blocked-by.json`; mirrors `gh-add-blocked-by.json` shape |
+| `tracker-migrate-reverse.sh:_tmr_decode_blockers` queries first-class `blockedByIssues` GraphQL edges (PACK-REVIEW-BD-111 F1 retrofit, scope extension 2026-05-15, second extension) | **PASS** — new `_tmr_fetch_first_class_blocked_by` helper queries via `provider_raw "POST" "graphql"`; decoder accepts a fourth `first_class_edges` JSON-array arg; reverse `tracker_migrate_reverse_reconstruct` fetches and passes it. Verified by reverse test Group 7 (8 sub-groups: first-class only, mixed environment with comment markers, de-dup, fetch helper happy + degrade, end-to-end, legacy-only backward-compat) and round-trip test BD-002 + TD-040 narrative flips. |
+| New fixture file `gh-list-blocked-by.json` (PACK-REVIEW-BD-111 F1 retrofit, scope extension 2026-05-15, second extension) | **PASS** — created at `scripts/tests/fixtures/tracker-provider/gh-list-blocked-by.json`; response shape mirrors `Issue.subIssues` |
+| Round-trip test (`tracker-migrate-roundtrip-test.sh`) BD-111-pending narrative flipped to positive round-trip (PACK-REVIEW-BD-111 F1 retrofit) | **PASS** — both BD-002 Blockers (BD-001) and TD-040 Blockers (TD-010) round-trip as positive assertions; stateful fake-gh extended to handle addBlockedBy / removeBlockedBy / blockedByIssues / api-/repos node-id / repo-view --jq honoring |
+| Stateful round-trip fake-`gh` extended for first-class edges (PACK-REVIEW-BD-111 F1 retrofit) | **PASS** — `addBlockedBy` records edge, `removeBlockedBy` removes edge, `blockedByIssues` query serves edges from state; backward-compatible (legacy paths unchanged) |
+| Comment-based fallback still available via `provider_raw()` / `provider_comment()` | **PASS** — all comment-marker surfaces unchanged across all three passes; §4 + §9 item 8 (post-fix-pass re-verification) document the preservation surface |
+| All other tracker-* tests continue to pass | **PASS** — 19 tracker test scripts swept after the fix-pass; zero regressions; `tracker-migrate-reverse-test.sh` 113 PASS (was 95; +18 from Group 7), `tracker-migrate-roundtrip-test.sh` 45 PASS (narrative flipped, count unchanged), `tracker-provider-test.sh` 98 PASS (was 99 prior; -1 from F7 redundant-assertion removal in 1.17a) |
+| `scripts/validate-pack.py` passes (32 checks) | **PASS** (re-run post-fix-pass) |
+| All 12 PACK-REVIEW-BD-111 findings (F1-F12) addressed | **PASS** — F1 reverse-decoder retrofit shipped (substantive); F2 IMPL-REPORT duplicate-section deleted; F3 per-Group counts corrected (Group 1=69, Group 2=8, Group 3=21, total 98); F4 §1.5→§1.3 cite fix across 8 sites in 5 files; F5 stale doc-comments fixed in 3 sites; F6 1.17c/1.20c narrative clarified; F7 1.17a redundant assertion removed; F8 ARCHITECTURE.md §2.4 misattribution removed; F9 V1 §9.4 → ARCHITECTURE.md §2.5 cite fix; F10 BACKLOG File/Symbol adds `_gh_classify_error`; F11 worst-case fix-up estimates standardized via §7 combined; F12 fuzzy sub-assertion counts replaced with authoritative top-line total |
+| IMPLEMENTATION-REPORT flags assumed mutation names + verification steps + worst-case fix-up for all three sides (add, remove, reverse-read) | **PASS** — §2 / §2 follow-up / §2 second follow-up / §7 items 1-9 / §9 |
+| No state-changing git verbs run | **PASS** — only `git status`, `git diff`, `git log`, `git rev-parse`, `git show` used across all three sessions |
 | Trinity rule | **N/A** — no edits to CLAUDE.md / AGENTS.md / GEMINI.md trinity files |
-| Bash 3.2 + BSD-utils compatibility | **PASS** — no GNU-only flags or bash 4+ features introduced (verified via `bash -n` syntax check + manual inspection of `case` patterns and `[[` usage) |
-| Workflow rule: agents do not commit | **PASS** — uncommitted working-tree changes only across both sessions |
+| Bash 3.2 + BSD-utils compatibility | **PASS** — no GNU-only flags or bash 4+ features introduced (verified via `bash -n` syntax check on all 7 modified `.sh` files + manual inspection of `case` patterns, `[[` usage, and the `sed -nE ... /p` idiom in the new fake-gh node-id synthesizer) |
+| Workflow rule: agents do not commit | **PASS** — uncommitted working-tree changes only across all three sessions |

@@ -185,11 +185,126 @@ case "$1 $2" in
         ;;
 
     "repo view")
-        echo '{"nameWithOwner":"fixture-org/roundtrip-v11.0"}'
+        # Honor --jq .nameWithOwner if requested (real gh would
+        # apply the filter server-side; we approximate). BD-111
+        # retrofit (PACK-REVIEW-BD-111 F1, scope-extension second
+        # pass): the production code does
+        # `_gh_run gh repo view --json nameWithOwner --jq .nameWithOwner`
+        # in multiple places (sub_issue_create, link, unlink,
+        # _tmr_fetch_first_class_blocked_by). Without this filter
+        # the JSON object string would propagate into URL paths.
+        rv_jq=""
+        for ((i=1; i<=$#; i++)); do
+            if [[ "${!i}" == "--jq" ]]; then
+                j=$((i+1))
+                rv_jq="${!j}"
+                break
+            fi
+        done
+        if [[ "$rv_jq" == ".nameWithOwner" ]]; then
+            echo "fixture-org/roundtrip-v11.0"
+        else
+            echo '{"nameWithOwner":"fixture-org/roundtrip-v11.0"}'
+        fi
         ;;
 
     "api graphql")
-        echo "{}"
+        # BD-111 retrofit (PACK-REVIEW-BD-111 F1, scope-extension second
+        # pass 2026-05-15): the round-trip fake-gh now handles the
+        # `addBlockedBy` mutation (forward write side) and the
+        # `blockedByIssues` query (reverse read side) so post-BD-111
+        # forward writes round-trip through reverse correctly.
+        #
+        # Arg parse: walk argv looking for -f query=... and -F key=val.
+        gquery=""
+        f_issue_id=""
+        f_blocked_by=""
+        f_owner=""
+        f_repo=""
+        f_number=""
+        shift 2
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                -f) case "$2" in
+                        query=*) gquery="${2#query=}" ;;
+                    esac
+                    shift 2 ;;
+                -F) case "$2" in
+                        issueId=*)          f_issue_id="${2#issueId=}" ;;
+                        blockedByIssueId=*) f_blocked_by="${2#blockedByIssueId=}" ;;
+                        owner=*)            f_owner="${2#owner=}" ;;
+                        repo=*)             f_repo="${2#repo=}" ;;
+                        number=*)           f_number="${2#number=}" ;;
+                    esac
+                    shift 2 ;;
+                --jq) shift 2 ;;
+                *)    shift   ;;
+            esac
+        done
+        # Recognize addBlockedBy mutation → record edge.
+        if [[ "$gquery" == *"addBlockedBy"* ]]; then
+            # node-ids are NODE_<N> (synthesized below in api /repos/...).
+            src_n="${f_issue_id#NODE_}"
+            tgt_n="${f_blocked_by#NODE_}"
+            if [[ -n "$src_n" && -n "$tgt_n" ]]; then
+                st=$(cat "$STATE")
+                new_st=$(printf '%s' "$st" | jq -c \
+                    --arg src "$src_n" --arg tgt "$tgt_n" \
+                    '.first_class_edges = ((.first_class_edges // []) + [{issue: ($src | tonumber), blocked_by: ($tgt | tonumber)}])')
+                printf '%s' "$new_st" > "$STATE"
+            fi
+            echo '{"data":{"addBlockedBy":{"issue":{"number":0}}}}'
+        elif [[ "$gquery" == *"removeBlockedBy"* ]]; then
+            src_n="${f_issue_id#NODE_}"
+            tgt_n="${f_blocked_by#NODE_}"
+            if [[ -n "$src_n" && -n "$tgt_n" ]]; then
+                st=$(cat "$STATE")
+                new_st=$(printf '%s' "$st" | jq -c \
+                    --arg src "$src_n" --arg tgt "$tgt_n" \
+                    '.first_class_edges = ((.first_class_edges // []) | map(select(.issue != ($src | tonumber) or .blocked_by != ($tgt | tonumber))))')
+                printf '%s' "$new_st" > "$STATE"
+            fi
+            echo '{"data":{"removeBlockedBy":{"issue":{"number":0}}}}'
+        elif [[ "$gquery" == *"blockedByIssues"* ]]; then
+            # Reverse read: query embeds owner/name/number directly via
+            # shell interpolation (per _tmr_fetch_first_class_blocked_by).
+            # Extract the issue number from the query string.
+            issue_n=$(printf '%s' "$gquery" | sed -nE 's/.*issue\(number:[[:space:]]*([0-9]+)\).*/\1/p')
+            if [[ -n "$issue_n" ]]; then
+                edges=$(jq -c --arg n "$issue_n" \
+                    '[.first_class_edges // [] | .[] | select(.issue == ($n | tonumber)) | {number: .blocked_by}]' \
+                    "$STATE")
+            else
+                edges='[]'
+            fi
+            jq -nc --argjson nodes "$edges" \
+                '{data: {repository: {issue: {blockedByIssues: {nodes: $nodes}}}}}'
+        else
+            echo "{}"
+        fi
+        ;;
+
+    "api /"*)
+        # Recognize node-id resolution: gh api /repos/<o>/<r>/issues/N
+        # --jq .node_id. The BD-111 link writer + reverse decoder both
+        # need this. Synthesize NODE_<N> as the node-id so the
+        # downstream addBlockedBy mutation can recover the issue number.
+        # (The case pattern matches `$1 $2` with $1=api and $2 starts
+        # with `/`. `api graphql` is matched by an earlier branch.)
+        path="$2"
+        if [[ "$path" == /repos/*/issues/* ]]; then
+            # `sed -n ... /p` is required: -n suppresses default
+            # output; the trailing /p prints the substitution result
+            # only when the match succeeds. Without /p the s|...|...|
+            # produces no output.
+            n=$(printf '%s' "$path" | sed -nE 's|.*/issues/([0-9]+).*|\1|p')
+            if [[ -n "$n" ]]; then
+                # Real `gh ... --jq .node_id` returns the bare string
+                # (jq -r style). Mirror that to keep _gh_run callers
+                # happy.
+                printf 'NODE_%s' "$n"
+            fi
+        fi
         ;;
 
     "extension list")
@@ -305,52 +420,57 @@ for line in "Status: Open" "Status: Unblocked"; do
     assert_contains "2.2 status line preserved: $line" "$RECON_BACKLOG" "$line"
 done
 
-# Blockers — DOCUMENTED GAP pending BD-111: forward writes "Blocked
-# by #N" as a comment (BD-060's GH backend falls back to comments
-# while the real GraphQL dependency mutation is verified); reverse
-# reads the issue body for the marker. Until BD-111 lands the real
-# mutation (which surfaces dependencies in body or via a first-class
-# link query), Blockers do NOT round-trip via the comment path.
-# This assertion documents the gap; it auto-flips to a positive
-# round-trip check when BD-111 closes.
+# Blockers — BD-111 closes the round-trip gap. With the BD-111 link
+# swap (forward writes addBlockedBy GraphQL edge) plus the BD-111
+# retrofit per PACK-REVIEW-BD-111 F1 (reverse reads blockedByIssues
+# GraphQL edges in addition to body comment markers), the Blockers
+# field round-trips through forward → state → reverse. The stateful
+# fake-gh now records first_class_edges in state on addBlockedBy and
+# serves them on blockedByIssues; the reverse decoder folds them
+# into the Blockers list per scripts/lib/tracker-migrate-reverse.sh
+# `_tmr_fetch_first_class_blocked_by` + `_tmr_decode_blockers`.
 bd002_block_line=$(printf '%s' "$RECON_BACKLOG" | grep -A 3 "BD-002" | grep "Blockers:")
 if [[ "$bd002_block_line" == *"BD-001"* ]]; then
-    t_pass "2.2 BD-002 Blockers: BD-001 preserved (BD-111 gap closed!)"
+    t_pass "2.2 BD-002 Blockers: BD-001 preserved (BD-111 round-trip)"
 else
-    # Expected at v11.0: Blockers line is "None" because the comment
-    # marker for blocked-by lives outside the body. When BD-111
-    # ships the real mutation, this branch flips.
-    if [[ "$bd002_block_line" == *"None"* ]]; then
-        t_pass "2.2 BD-002 Blockers gap documented (BD-111 pending — comment-fallback does not round-trip)"
-    else
-        t_fail "2.2 BD-002 Blockers line unexpected shape" "got: $bd002_block_line"
-    fi
+    t_fail "2.2 BD-002 Blockers: BD-001 should round-trip post-BD-111" "got: $bd002_block_line"
 fi
 
 # 2.2 BD-108 F5 — TD-040 Blockers `phase-1.2, TD-010` round-trip
 # coverage. End-to-end the v11.0 phase-N.M grammar must survive
 # forward → state-file → reverse without the entry being dropped or
-# the pack-id being misclassified. The Blockers line itself rides
-# the same comment-fallback channel as BD-002 above, so the v11.0
-# round-trip captures the entry + description but not the Blockers
-# string (BD-111 pending — same documented gap).
+# the pack-id being misclassified. With BD-111 (link swap) +
+# PACK-REVIEW-BD-111 F1 retrofit (reverse reads first-class edges),
+# resolvable Blockers references (those with id-map entries) round-
+# trip via the first-class GraphQL channel.
 if printf '%s' "$RECON_BACKLOG" | grep -q "TD-040"; then
     t_pass "2.2 TD-040 entry survives forward → state → reverse (BD-108 F5)"
 else
     t_fail "2.2 TD-040 entry survives forward → state → reverse (BD-108 F5)" \
         "TD-040 missing from reconstructed BACKLOG"
 fi
-# When BD-111 closes the comment-fallback gap, the next line auto-
-# flips to a positive round-trip check on phase-1.2. For now we
-# document the same Blockers gap as BD-002 (the comment-fallback
-# does not surface in the issue body via the fake gh's `issue view`).
+# TD-040 has Blockers `phase-1.2, TD-010`. The forward orchestrator
+# resolves `TD-010` via the id-map (TD-010 was created earlier in
+# the same forward run) → `addBlockedBy(TD-040, TD-010)` issued →
+# round-trips through the BD-111 retrofit. The `phase-1.2` reference
+# does NOT round-trip in v11.0 because the v11.0 forward writer
+# creates phase EPIC issues only (not individual phase TASKS — that
+# split is BD-105/BD-106 territory and lives in
+# scripts/lib/tracker-migrate-forward.sh:942-960 case
+# `phase-N.M` which silently skips when no mapping exists). So the
+# expected post-BD-111 round-trip behavior for TD-040 is: Blockers
+# line contains `TD-010` (the resolvable upstream); `phase-1.2` is
+# silently dropped at forward-write time and absent from reverse.
+# This is correct behavior given the v11.0 boundary; future BD-105
+# / BD-106 phase-task-as-first-class-issue work would lift this
+# limit and at that point the assertion can extend to also include
+# `phase-1.2`.
 td040_block_line=$(printf '%s' "$RECON_BACKLOG" | grep -A 3 "TD-040" | grep "Blockers:")
-if [[ "$td040_block_line" == *"phase-1.2"* ]]; then
-    t_pass "2.2 TD-040 Blockers: phase-1.2 preserved (BD-111 gap closed for v11.0 phase-N.M!)"
-elif [[ "$td040_block_line" == *"None"* ]]; then
-    t_pass "2.2 TD-040 Blockers gap documented (BD-111 pending — phase-N.M same comment-fallback as v10 forms)"
+if [[ "$td040_block_line" == *"TD-010"* ]]; then
+    t_pass "2.2 TD-040 Blockers: TD-010 round-trips post-BD-111 (resolvable Blockers via first-class edges)"
 else
-    t_fail "2.2 TD-040 Blockers line unexpected shape" "got: $td040_block_line"
+    t_fail "2.2 TD-040 Blockers: TD-010 should round-trip post-BD-111" \
+        "got: $td040_block_line"
 fi
 
 # Sidecar present.

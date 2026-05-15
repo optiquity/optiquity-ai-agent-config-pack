@@ -81,9 +81,10 @@
 #   scripts/lib/tracker-provider.sh (signature: provider_link <id>
 #   <other_id> <kind>). The github backend's implementation lives at
 #   tracker_provider_gh_link in scripts/lib/tracker-provider-gh.sh
-#   (V1 §2.7.1 row 12; comment-marker fallback "Blocked by #NNN" until
-#   the GraphQL issue-dependency mutation is wired). NO new provider
-#   operation is introduced.
+#   (V1 §2.7.1 row 12; first-class `addBlockedBy` GraphQL mutation
+#   per BD-111 — formerly comment-marker fallback "Blocked by #NNN"
+#   per the V3 §28 fallback path before BD-111 swapped it). NO new
+#   provider operation is introduced.
 #
 # Reference:
 #   - ARCHITECTURE-V3.3-DELTA.md §5.1 (entity-pair table)
@@ -232,10 +233,11 @@ tracker_links_create_blocked_by() {
         return 1
     fi
 
-    # Step 4: provider call. The github backend currently uses a
-    # comment-marker fallback for blocked-by per V1 §2.7.1 row 12 —
-    # tests for this library run against a stub backend that echoes
-    # success without hitting the network.
+    # Step 4: provider call. The github backend uses the first-class
+    # `addBlockedBy` GraphQL mutation per BD-111 (was comment-marker
+    # fallback pre-BD-111 per V1 §2.7.1 row 12). Tests for this
+    # library run against a stub backend that echoes success without
+    # hitting the network.
     if ! provider_link "$src_id" "$tgt_id" "blocked-by" >/dev/null 2>&1; then
         # Provider already emitted its typed error block. We do not
         # double-format; just bubble up.

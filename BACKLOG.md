@@ -965,20 +965,20 @@ Resolved: n/a
 
 **BD-111 — Switch blocks/blocked-by from comment-marker to first-class GH dependency API**
 Type: TODO(version)
-Status: Open
+Status: Resolved
 Blockers: Live GH repo access — pairs naturally with BD-088 or BD-093 integration
   test land-time, where introspection against the live GraphQL schema confirms
   the exact mutation name.
 Unblocks: First-class blocker enumeration in `auditor-issue-tracking` (Check 28)
   without comment-body parsing.
 File/Symbol: `scripts/lib/tracker-provider-gh.sh` —
-  `tracker_provider_gh_link()` `blocks|blocked-by` case **+ `tracker_provider_gh_unlink()` `blocks|blocked-by` case (scope extended 2026-05-15, first extension)**;
+  `tracker_provider_gh_link()` `blocks|blocked-by` case **+ `tracker_provider_gh_unlink()` `blocks|blocked-by` case (scope extended 2026-05-15, first extension)** + `_gh_classify_error` (FORBIDDEN pattern addition for EMU wire shape — added by BD-111 link work; called out for traceability per PACK-REVIEW-BD-111 F10);
   `scripts/tests/tracker-provider-test.sh` test 1.17 **+ test 1.20 unlink coverage (scope extended 2026-05-15, first extension)**;
   new fixtures under `scripts/tests/fixtures/tracker-provider/` (`gh-add-blocked-by.json` for link, `gh-remove-blocked-by.json` for unlink, **`gh-list-blocked-by.json` for reverse-decoder read query — scope extended 2026-05-15, second extension**);
   **`scripts/lib/tracker-migrate-reverse.sh` — `_tmr_decode_blockers` extended to query first-class `getBlockedBy` GraphQL edges in addition to body comment markers; `scripts/tests/tracker-migrate-reverse-test.sh` + `tracker-migrate-roundtrip-test.sh` extended to assert positive round-trip for post-BD-111 writes (scope extended 2026-05-15, second extension)**. **(Scope extended 2026-05-15, FIRST extension to include the symmetric `removeBlockedBy` unlink path. Original BACKLOG named only `tracker_provider_gh_link()`; the BD-111 coder's first pass surfaced the link/unlink asymmetry as a known limitation. Extending in-session is correct per pack rule "BDs are reserved for new scope / new feature / new architecture" — `removeBlockedBy` is the symmetric pair of `addBlockedBy`, not new architecture; same API surface, same files, same integration-test verification ask. Avoids artificial BD-split for one feature.)** **(Scope extended 2026-05-15, SECOND extension to include the reverse-decoder retrofit per PACK-REVIEW-BD-111 finding F1. The BD-111 forward-write swap to first-class `addBlockedBy` created a round-trip asymmetry: `tracker-migrate-reverse.sh:_tmr_decode_blockers` still reads only body comment markers, so post-BD-111 writes were silently invisible to reverse and `pack tracker disable` would lose Blockers fields — violating V1 §6.0 round-trip contract. The retrofit adds a `getBlockedBy` GraphQL query path to `_tmr_decode_blockers` that complements the existing body-marker reader (legacy markers continue to work). The BACKLOG title "Switch blocks/blocked-by from comment-marker to first-class GH dependency API" implied bidirectional completeness; closing the read half is symmetric completion of the feature, not new architecture. Different file than the link/unlink work but same feature surface; same integration-test verification ask. Per user direction "lean to v11.0, not v11.1" the round-trip gap closes in this batch rather than deferring to a follow-up BD.)**
 Description: BD-060 ships `blocks`/`blocked-by` via comment markers (the
   documented V3 §28 fallback). GitHub issue dependencies went GA 2025-08-21
-  (EXTERNAL-RESEARCH §1.5); the exact GraphQL mutation name was not pinned
+  (EXTERNAL-RESEARCH §1.3); the exact GraphQL mutation name was not pinned
   at BD-060 land-time and could not be verified offline. At BD-088 or BD-093
   land-time, run a GraphQL schema introspection against the live repo, swap
   the comment-based branch in `tracker_provider_gh_link()` for the actual
@@ -987,7 +987,7 @@ Description: BD-060 ships `blocks`/`blocked-by` via comment markers (the
   from the comment block above the function. Public `provider_link()` shape
   is unchanged. Comment-based markers remain available via `provider_raw()`
   for callers that explicitly want the V3 §28 fallback path.
-Resolved: n/a
+Resolved: 2026-05-15 — Shipped across three commits: 0ec5eaf (link + unlink: `addBlockedBy` / `removeBlockedBy` GraphQL mutations in `tracker_provider_gh_link()` / `tracker_provider_gh_unlink()` for `blocks|blocked-by`; `_gh_classify_error` FORBIDDEN pattern for EMU wire shape; 8 fixture-driven test groups), 46c86fe (scope-extension doc for reverse-decoder retrofit), and this commit (F1 reverse-decoder retrofit: new `_tmr_fetch_first_class_blocked_by` helper queries `Issue.blockedByIssues` GraphQL via `provider_raw "POST" "graphql"`; `_tmr_decode_blockers` extended with first-class-edges arg; new Group 7 reverse-test suite; stateful fake-gh extended for `addBlockedBy` / `removeBlockedBy` / `blockedByIssues` / `api /repos/.../issues/N --jq .node_id` / `repo view --jq .nameWithOwner`; BD-002 Blockers + TD-040 Blockers narrative branches flipped to positive round-trip assertions; plus F2-F12 cleanup: EXTERNAL-RESEARCH §1.5→§1.3 cite fixes across 8 sites, stale doc-comments in `tracker-links.sh` + `tracker-migrate-forward-test.sh`, redundant assertion removal, IMPL-REPORT count corrections, escape-hatch comment rewrites). Public `provider_link()` / `provider_unlink()` shapes unchanged. Comment-based markers remain available via `provider_raw()` for callers that want the V3 §28 fallback path. Reverse decoder reads first-class edges first then body markers (de-dups; first-class wins by source order); legacy comment-marker writes continue to round-trip. V1 §6.0 round-trip safety contract restored for blocks/blocked-by. Tests: tracker-provider 98/98, tracker-migrate-reverse 113/113 (+18 Group 7), tracker-migrate-roundtrip 45/45, 19 other tracker tests zero regressions, validate-pack 32/32 PASS, `bash -n` syntax check on all 7 modified `.sh` files OK. Closes Batch 18.
 
 ---
 

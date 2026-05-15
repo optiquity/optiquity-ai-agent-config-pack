@@ -336,7 +336,10 @@ assert_contains "1.17a resolves issue 99 node-id"      "$log_contents" "/repos/o
 assert_contains "1.17a invokes graphql addBlockedBy"   "$log_contents" "addBlockedBy"
 assert_contains "1.17a issueId=NODE_42 (blocked-by)"   "$log_contents" "issueId=NODE_42"
 assert_contains "1.17a blockedByIssueId=NODE_99"       "$log_contents" "blockedByIssueId=NODE_99"
-assert_contains "1.17a does NOT comment on issue body" "$log_contents" "graphql"
+# (PACK-REVIEW-BD-111 F7: a former positive `assert_contains
+# "graphql"` line was removed from here — it was redundant with the
+# `addBlockedBy` check above and the negative if/grep block below
+# already covers the actual "does NOT comment on issue body" intent.)
 # Negative: the legacy comment-marker path must NOT be taken.
 if printf '%s' "$log_contents" | grep -q "issue comment"; then
     t_fail "1.17a should not invoke 'issue comment' for blocked-by" "log: ${log_contents:0:200}"
@@ -355,8 +358,18 @@ assert_contains "1.17b invokes graphql addBlockedBy" "$log_contents" "addBlocked
 assert_contains "1.17b issueId=NODE_99 (inverted)"   "$log_contents" "issueId=NODE_99"
 assert_contains "1.17b blockedByIssueId=NODE_42"     "$log_contents" "blockedByIssueId=NODE_42"
 
-# 1.17c GraphQL error path (simulated EMU FORBIDDEN response) — fail
-# the api-graphql call and verify a typed error is emitted.
+# 1.17c EMU FORBIDDEN error path. PACK-REVIEW-BD-111 F6: this test
+# does NOT specifically isolate the api-graphql step — `FAKE_GH_EXIT`
+# is global, so the chain short-circuits at the FIRST gh call
+# (`gh repo view`) with the EMU stderr. The typed error code is
+# nonetheless correct (`_gh_classify_error` doesn't care which gh
+# call produced the stderr; the FORBIDDEN substring routes via line
+# 69 of tracker-provider-gh.sh to `auth-insufficient-scope`). This
+# test asserts: when ANY gh call in the link chain fails with EMU
+# FORBIDDEN stderr, the typed error must be `auth-insufficient-scope`.
+# Per-step isolation (faulting only the api-graphql step) would
+# require a dispatch-mode harness extension and is out of scope for
+# the BD-111 fix-pass per F6 option (a).
 reset_fake_gh
 export FAKE_GH_DISPATCH_DIR="$LINK_DISPATCH_DIR"
 emu_err_file=$(mktemp -t prov-link-emu.XXXXXX)
@@ -364,7 +377,7 @@ printf 'FORBIDDEN: Unauthorized; path: addBlockedBy\n' > "$emu_err_file"
 export FAKE_GH_STDERR_FILE="$emu_err_file"
 export FAKE_GH_EXIT=1
 err=$(provider_link 42 99 blocked-by 2>&1 1>/dev/null) || true
-assert_contains "1.17c EMU FORBIDDEN → typed auth-insufficient-scope" "$err" "ERROR: auth-insufficient-scope"
+assert_contains "1.17c link chain EMU FORBIDDEN → typed auth-insufficient-scope" "$err" "ERROR: auth-insufficient-scope"
 rm -f "$emu_err_file"
 unset FAKE_GH_DISPATCH_DIR FAKE_GH_STDERR_FILE FAKE_GH_EXIT
 
@@ -454,8 +467,14 @@ assert_contains "1.20b invokes graphql removeBlockedBy" "$log_contents" "removeB
 assert_contains "1.20b issueId=NODE_99 (inverted)"      "$log_contents" "issueId=NODE_99"
 assert_contains "1.20b blockedByIssueId=NODE_42"        "$log_contents" "blockedByIssueId=NODE_42"
 
-# 1.20c GraphQL error path — `not-found` when target edge doesn't exist
-# (server returns "Not Found" / HTTP 404 for the removeBlockedBy call).
+# 1.20c missing-edge / not-found error path. Same caveat as 1.17c
+# (PACK-REVIEW-BD-111 F6): `FAKE_GH_EXIT` is global, so the chain
+# short-circuits at the FIRST gh call in the unlink chain
+# (`gh repo view`) with the 404 stderr. The typed error code is
+# nonetheless correct (`_gh_classify_error` resolves "HTTP 404" to
+# `not-found` regardless of which gh call produced it). This test
+# asserts: when ANY gh call in the unlink chain fails with
+# `HTTP 404 Not Found` stderr, the typed error must be `not-found`.
 # Auth path covered transitively by Group 2 classifier sweep + 1.17c
 # (FORBIDDEN form); cycle-detection N/A on remove.
 reset_fake_gh
@@ -465,7 +484,7 @@ printf 'HTTP 404: Not Found\n' > "$nf_err_file"
 export FAKE_GH_STDERR_FILE="$nf_err_file"
 export FAKE_GH_EXIT=1
 err=$(provider_unlink 42 99 blocked-by 2>&1 1>/dev/null) || true
-assert_contains "1.20c missing-edge → typed not-found" "$err" "ERROR: not-found"
+assert_contains "1.20c unlink chain HTTP-404 → typed not-found" "$err" "ERROR: not-found"
 rm -f "$nf_err_file"
 unset FAKE_GH_DISPATCH_DIR FAKE_GH_STDERR_FILE FAKE_GH_EXIT
 

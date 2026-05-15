@@ -622,6 +622,180 @@ assert_contains "6.3 doctor reports empty manifest"     "$output" "0 transitions
 rm -rf "$REPO_FRESH"
 
 # ─────────────────────────────────────────────────────────────────
+# Group 7: BD-111 retrofit — first-class blocked-by round-trip
+#   (PACK-REVIEW-BD-111 F1; scope-extension second pass 2026-05-15)
+#
+# After BD-111 the forward writer routes `provider_link blocked-by`
+# to a first-class `addBlockedBy` GraphQL edge; the body comment
+# marker "Blocked by #N" is no longer written. Without this Group's
+# coverage, the reverse decoder would silently lose Blockers for
+# post-BD-111 issues. Group 7 verifies:
+#   7.1 — _tmr_decode_blockers consumes a non-empty first_class_edges
+#         JSON array (arg 4) and emits the expected pack-ids.
+#   7.2 — De-dup: an upstream that appears in both the first-class
+#         edge list AND a body comment marker contributes one entry
+#         (first-class wins by source order).
+#   7.3 — _tmr_fetch_first_class_blocked_by parses a well-formed
+#         GraphQL response into a JSON array of issue numbers.
+#   7.4 — End-to-end: tracker_migrate_reverse_reconstruct against an
+#         extended fake-gh that serves first-class edges → the
+#         reconstructed Blockers field contains the expected pack-id.
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 7: BD-111 retrofit — first-class blocked-by ===\n"
+
+# 7.1 first-class edges only (no body marker, no sub-issue parent)
+mapping_g7='{"BD-001":{"id":"42"},"BD-002":{"id":"43"},"BD-003":{"id":"55"},"phase-3":{"id":"58"}}'
+g71_blockers=$(_tmr_decode_blockers "" "$mapping_g7" "" '[43, 55]')
+assert_contains "7.1 first-class edge BD-002 in blockers"      "$g71_blockers" "BD-002"
+assert_contains "7.1 first-class edge BD-003 in blockers"      "$g71_blockers" "BD-003"
+# Order: GH numeric source order preserved → BD-002 (gh=43) before BD-003 (gh=55).
+g71_first=$(printf '%s' "$g71_blockers" | jq -r '.[0]')
+assert_eq "7.1 first-class source order: BD-002 first" "BD-002" "$g71_first"
+
+# 7.2 mixed environment: same upstream appears in both first-class
+# AND comment marker → one entry only. First-class wins by source
+# order (it's processed before the comment-marker pass in the decoder).
+body_g72='## Description
+
+Some text. Blocked by #43.'
+g72_blockers=$(_tmr_decode_blockers "$body_g72" "$mapping_g7" "" '[43]')
+g72_count=$(printf '%s' "$g72_blockers" | jq 'length')
+assert_eq "7.2 de-dup: BD-002 appears once across both sources" "1" "$g72_count"
+assert_contains "7.2 de-dup: BD-002 in blockers"                "$g72_blockers" "BD-002"
+
+# 7.2b mixed environment: first-class edge for BD-002 + comment marker
+# for BD-003 → both appear, in deterministic order (first-class first).
+body_g72b='## Description
+
+Some text. Blocked by #55.'
+g72b_blockers=$(_tmr_decode_blockers "$body_g72b" "$mapping_g7" "" '[43]')
+g72b_count=$(printf '%s' "$g72b_blockers" | jq 'length')
+assert_eq "7.2b mixed: 2 distinct upstreams"                    "2" "$g72b_count"
+g72b_first=$(printf  '%s' "$g72b_blockers" | jq -r '.[0]')
+g72b_second=$(printf '%s' "$g72b_blockers" | jq -r '.[1]')
+assert_eq "7.2b mixed: first-class BD-002 first"                "BD-002" "$g72b_first"
+assert_eq "7.2b mixed: comment-marker BD-003 second"            "BD-003" "$g72b_second"
+
+# 7.2c legacy-only path (no first-class edges) still works (BD-060
+# era — backward-compat sentinel; mirrors existing 1.5 assertion).
+body_g72c='## Description
+
+Some text. Blocked by #43.'
+g72c_blockers=$(_tmr_decode_blockers "$body_g72c" "$mapping_g7" "" '[]')
+assert_contains "7.2c legacy-only: BD-002 still extracted" "$g72c_blockers" "BD-002"
+
+# 7.3 _tmr_fetch_first_class_blocked_by parses a fake GraphQL response.
+# Build a fake gh that returns the BD-111 fixture content for `api graphql`.
+FAKE_G7=$(mktemp -d -t tmr-fake-g7.XXXXXX)
+G7_FIXTURE="$REPO_ROOT/scripts/tests/fixtures/tracker-provider/gh-list-blocked-by.json"
+[[ -f "$G7_FIXTURE" ]] || { echo "FATAL: gh-list-blocked-by.json fixture missing"; exit 2; }
+cat > "$FAKE_G7/gh" <<FG7
+#!/usr/bin/env bash
+# Group 7 fake gh: serve owner/repo on \`repo view\`, fixture on
+# \`api graphql\`. Anything else → empty.
+case "\$1 \$2" in
+    "repo view")   echo "fixture-org/fixture-repo" ;;
+    "api graphql") cat "$G7_FIXTURE" ;;
+    *)             ;;
+esac
+exit 0
+FG7
+chmod +x "$FAKE_G7/gh"
+PATH="$FAKE_G7:$PATH_SAVED"
+unset GH_REPO   # force the fallback to gh repo view
+g73_edges=$(_tmr_fetch_first_class_blocked_by 42)
+g73_count=$(printf '%s' "$g73_edges" | jq 'length' 2>/dev/null || echo 0)
+assert_eq "7.3 fetch parses 2 first-class edges" "2" "$g73_count"
+g73_first=$(printf  '%s' "$g73_edges" | jq -r '.[0]')
+g73_second=$(printf '%s' "$g73_edges" | jq -r '.[1]')
+assert_eq "7.3 first edge number=43"  "43" "$g73_first"
+assert_eq "7.3 second edge number=55" "55" "$g73_second"
+PATH="$PATH_SAVED"
+rm -rf "$FAKE_G7"
+
+# 7.4 fetch helper degrades to [] on missing/empty response.
+FAKE_G74=$(mktemp -d -t tmr-fake-g74.XXXXXX)
+cat > "$FAKE_G74/gh" <<'FG74'
+#!/usr/bin/env bash
+# Empty stdout + nonzero exit on api graphql → fetch must return [].
+case "$1 $2" in
+    "repo view")   echo "fixture-org/fixture-repo" ;;
+    "api graphql") exit 1 ;;
+    *) ;;
+esac
+exit 0
+FG74
+chmod +x "$FAKE_G74/gh"
+PATH="$FAKE_G74:$PATH_SAVED"
+g74_edges=$(_tmr_fetch_first_class_blocked_by 42 2>/dev/null)
+assert_eq "7.4 fetch swallows graphql error → []" "[]" "$g74_edges"
+PATH="$PATH_SAVED"
+rm -rf "$FAKE_G74"
+
+# 7.5 end-to-end: tracker_migrate_reverse_reconstruct fetches first-
+# class edges and folds them into the Blockers field. We construct
+# an issue JSON inline (number=42, body has no comment marker), set
+# up a fake gh that serves the fixture for `api graphql`, and assert
+# the reconstructed entry's blockers list contains BD-002 + BD-003.
+FAKE_G75=$(mktemp -d -t tmr-fake-g75.XXXXXX)
+cat > "$FAKE_G75/gh" <<FG75
+#!/usr/bin/env bash
+# End-to-end fake gh for Group 7.5: serve fixture on api graphql,
+# owner/repo on repo view, empty for everything else (the
+# reconstruct path doesn't make any other gh calls beyond what
+# _tmr_fetch_first_class_blocked_by does — provider_get etc. are
+# bypassed because we hand it the issue JSON directly).
+case "\$1 \$2" in
+    "repo view")   echo "fixture-org/fixture-repo" ;;
+    "api graphql") cat "$G7_FIXTURE" ;;
+    *)             ;;
+esac
+exit 0
+FG75
+chmod +x "$FAKE_G75/gh"
+PATH="$FAKE_G75:$PATH_SAVED"
+
+issue_g75='{"number":"42","title":"BD-001: foo","body":"<!-- pack-id: BD-001 -->\n\n## Description\n\nfoo.","state":"open","stateReason":null,"labels":[{"name":"bd-entry"},{"name":"status:open"}],"assignees":[],"milestone":null,"parent":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/42"}'
+mapping_g75='{"BD-001":{"id":"42"},"BD-002":{"id":"43"},"BD-003":{"id":"55"}}'
+rec_g75=$(tracker_migrate_reverse_reconstruct "$issue_g75" "$mapping_g75")
+g75_blockers=$(printf '%s' "$rec_g75" | jq -c '.blockers')
+assert_contains "7.5 end-to-end: BD-002 in reconstructed blockers" "$g75_blockers" "BD-002"
+assert_contains "7.5 end-to-end: BD-003 in reconstructed blockers" "$g75_blockers" "BD-003"
+g75_count=$(printf '%s' "$g75_blockers" | jq 'length')
+assert_eq "7.5 end-to-end: exactly 2 blockers from first-class edges" "2" "$g75_count"
+PATH="$PATH_SAVED"
+rm -rf "$FAKE_G75"
+
+# 7.6 backward-compat: legacy-only environment (fake gh returns no
+# first-class edges) still reconstructs Blockers from body comment
+# markers. Confirms the BD-111 retrofit is additive, not replacing.
+FAKE_G76=$(mktemp -d -t tmr-fake-g76.XXXXXX)
+cat > "$FAKE_G76/gh" <<'FG76'
+#!/usr/bin/env bash
+# Legacy-only fake gh: empty graphql response → fetch returns [];
+# decoder falls through to body comment markers.
+case "$1 $2" in
+    "repo view")   echo "fixture-org/fixture-repo" ;;
+    "api graphql") echo '{"data":{"repository":{"issue":{"blockedByIssues":{"nodes":[]}}}}}' ;;
+    *) ;;
+esac
+exit 0
+FG76
+chmod +x "$FAKE_G76/gh"
+PATH="$FAKE_G76:$PATH_SAVED"
+
+issue_g76='{"number":"42","title":"BD-001: foo","body":"<!-- pack-id: BD-001 -->\n\n## Description\n\nfoo. Blocked by #43.","state":"open","stateReason":null,"labels":[{"name":"bd-entry"}],"assignees":[],"milestone":null,"parent":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/42"}'
+mapping_g76='{"BD-001":{"id":"42"},"BD-002":{"id":"43"}}'
+rec_g76=$(tracker_migrate_reverse_reconstruct "$issue_g76" "$mapping_g76")
+g76_blockers=$(printf '%s' "$rec_g76" | jq -c '.blockers')
+assert_contains "7.6 legacy-only: BD-002 from body marker" "$g76_blockers" "BD-002"
+g76_count=$(printf '%s' "$g76_blockers" | jq 'length')
+assert_eq "7.6 legacy-only: exactly 1 blocker (no first-class)" "1" "$g76_count"
+PATH="$PATH_SAVED"
+rm -rf "$FAKE_G76"
+
+# ─────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────
 

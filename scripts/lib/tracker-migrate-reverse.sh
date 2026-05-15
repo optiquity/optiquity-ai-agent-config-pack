@@ -323,18 +323,122 @@ PYEOF
     rm -f "$tmp"
 }
 
+# Fetch the first-class GH issue-dependency edges (`blocked-by`) for
+# a given issue number via GraphQL. BD-111 retrofit (PACK-REVIEW-BD-111
+# F1, scope-extended 2026-05-15, second extension): post-BD-111 forward
+# writes go to first-class `addBlockedBy` edges, so the reverse decoder
+# must query those edges to round-trip Blockers. Legacy comment-body
+# markers continue to be read by `_tmr_decode_blockers` itself.
+#
+# Returns a JSON array of integer issue numbers on stdout (the
+# upstream issues that block the given issue). Empty array on error
+# or no edges. Errors are swallowed (best-effort): the decoder fall
+# back to comment-marker-only behavior, which is still strictly an
+# improvement over the pre-BD-111 state for legacy issues.
+#
+# GraphQL query — repository(owner, name).issue(number).blockedByIssues
+# (first: 50) { nodes { number } }. The field name `blockedByIssues`
+# is the symmetric guess paired with the `addBlockedBy` mutation
+# (EXTERNAL-RESEARCH §1.3 line 86) and the existing `subIssues` field
+# accessor used at `tracker_provider_gh_sub_issue_list:686` (which
+# pairs with the `addSubIssue` mutation). The cap of 50 matches the
+# documented per-relationship ceiling (EXTERNAL-RESEARCH §1.8 line
+# 188; capabilities.dependencies.per_relationship_ceiling=50). The
+# exact field name is unverified offline; flagged for confirmation
+# at BD-088 / BD-093 integration-test land-time same as the link /
+# unlink mutation names. If GH's actual field is named `blockedBy`
+# (no `Issues` suffix) or `blockingIssues`, the fix is one line in
+# the query string below plus one path in the jq filter.
+#
+# Routes through `provider_raw "POST" "graphql" "$query"`; any backend
+# error (auth, network, schema-reshape) classifies via
+# `_gh_classify_error` and emits a typed error block to stderr — but
+# we ignore the rc here because the reverse decoder must remain
+# best-effort: a missing GraphQL response should not abort the whole
+# reverse run, only degrade Blockers reconstruction for that one
+# issue.
+_tmr_fetch_first_class_blocked_by() {
+    local issue_number="$1"
+    if [[ -z "$issue_number" ]]; then
+        echo "[]"
+        return 0
+    fi
+    # Resolve owner/repo from the active gh context. tracker-config
+    # may export GH_REPO; failing that, fall back to `gh repo view`.
+    local owner_repo owner repo
+    if [[ -n "${GH_REPO:-}" && "$GH_REPO" == */* ]]; then
+        owner_repo="$GH_REPO"
+    else
+        owner_repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null) || {
+            echo "[]"
+            return 0
+        }
+    fi
+    if [[ -z "$owner_repo" || "$owner_repo" != */* ]]; then
+        echo "[]"
+        return 0
+    fi
+    owner=$(printf '%s' "$owner_repo" | cut -d/ -f1)
+    repo=$(printf  '%s' "$owner_repo" | cut -d/ -f2)
+    # Build the query with shell-interpolated owner/repo/number. The
+    # values are tracker-controlled (owner/repo from gh; number is
+    # integer), so direct interpolation is safe.
+    local query response
+    query='query { repository(owner: "'"$owner"'", name: "'"$repo"'") { issue(number: '"$issue_number"') { blockedByIssues(first: 50) { nodes { number } } } } }'
+    # provider_raw routes through _gh_run → _gh_classify_error. We
+    # swallow any error and fall back to []; the reverse decoder must
+    # remain best-effort per the function header rationale.
+    if ! response=$(provider_raw "POST" "graphql" "$query" 2>/dev/null); then
+        echo "[]"
+        return 0
+    fi
+    if [[ -z "$response" ]]; then
+        echo "[]"
+        return 0
+    fi
+    # Extract the issue numbers. A well-formed response is:
+    #   {"data": {"repository": {"issue": {"blockedByIssues": {"nodes": [{"number": N}, ...]}}}}}
+    # The jq filter is defensive against missing keys (`// empty`)
+    # and emits the integer numbers as a JSON array. On parse failure,
+    # echo [] (the // [] guard at the end).
+    printf '%s' "$response" \
+        | jq -c '[.data.repository.issue.blockedByIssues.nodes[]?.number] // []' 2>/dev/null \
+        || echo "[]"
+}
+
 # Extract Blockers from the issue's link relationships. The provider
 # does not have a generic "list links by kind" op (V1 §2.4 link.kind
-# is open-string); for v11.0 we read the body for the comment-marker
-# fallback ("Blocked by #NNN") and prepend any sub-issue parent.
+# is open-string); for v11.0 we combine three sources:
+#
+#   1. (NEW — BD-111 retrofit, PACK-REVIEW-BD-111 F1) First-class
+#      `blockedByIssues` GraphQL edges. Pre-fetched by the caller
+#      (typically `tracker_migrate_reverse_reconstruct`) via
+#      `_tmr_fetch_first_class_blocked_by` and passed in as a JSON
+#      array of gh-issue-numbers (arg 4). Post-BD-111 writes from
+#      `provider_link blocked-by` go to this surface. Authoritative
+#      when present.
+#
+#   2. (LEGACY — BD-060 era) Body comment markers ("Blocked by #NNN").
+#      Pre-BD-111 writes left these markers in the issue body; they
+#      persist after BD-111 and are still read for backward-compat.
+#      Mixed-environment safe: an issue with both a first-class edge
+#      AND a body marker pointing at the same upstream produces one
+#      entry in the Blockers list (de-dup by pack-id).
+#
+#   3. Sub-issue parent (the `parent` field in the canonical Issue
+#      JSON). Always prepended. Restricted to phase epics — see D-21
+#      note below.
 #
 # BD-108 (V3.3 §5.3): The decoder admits the v11.0 additive `phase-N.M`
 # form alongside v10's `phase-N` / `TD-NNN` / `BD-NNN`. Sub-issue parent
 # is restricted to phase EPICS (`phase-N`) — phase tasks (`phase-N.M`)
 # are not legal sub-issue parents per V3.3 §2 D-21. Body-comment-marker
-# Blockers admit the full set per V3.3 §5.3 line 263. Source order is
-# preserved (sub-issue parent first if present, then comment-marker
-# order) per call-out 5 in the BD-108 IMPLEMENTATION-REPORT.
+# Blockers and first-class edge Blockers admit the full set per V3.3
+# §5.3 line 263. Source order is preserved (sub-issue parent first if
+# present, then first-class edges in GH-numeric order, then comment-
+# marker order) per call-out 5 in the BD-108 IMPLEMENTATION-REPORT.
+# De-duplication by pack-id: an upstream that appears in both the
+# first-class edge graph and the body markers contributes one entry.
 #
 # Returns a JSON array of pack-ids on stdout. Non-pack-id refs (e.g.
 # `#42` to a non-mapped issue) are dropped.
@@ -342,10 +446,15 @@ _tmr_decode_blockers() {
     local body="$1"
     local mapping="$2"
     local sub_issue_parent="${3:-}"
-    python3 - "$body" "$mapping" "$sub_issue_parent" <<'PYEOF'
+    local first_class_edges="${4:-[]}"  # JSON array of integer gh-numbers
+    python3 - "$body" "$mapping" "$sub_issue_parent" "$first_class_edges" <<'PYEOF'
 import json, re, sys
-body, mapping_json, sub_issue_parent = sys.argv[1], sys.argv[2], sys.argv[3]
+body, mapping_json, sub_issue_parent, first_class_json = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 mapping = json.loads(mapping_json) if mapping_json else {}
+try:
+    first_class_edges = json.loads(first_class_json) if first_class_json else []
+except (ValueError, TypeError):
+    first_class_edges = []
 
 # Build reverse-lookup: gh-id → pack-id.
 gh_to_pack = {}
@@ -364,10 +473,18 @@ if sub_issue_parent:
     if pack_parent and re.match(r'^phase-\d+$', pack_parent):
         blockers.append(pack_parent)
 
-# Body comment markers: "Blocked by #NNN" lines. Reverse-lookup yields
-# the pack-id verbatim (phase-N, phase-N.M, TD-NNN, or BD-NNN) — the
-# admission set is the V3.3 §5.3 grammar that the id-map already
-# carries. No additional filter needed.
+# First-class blocked-by edges (BD-111 retrofit). Authoritative when
+# present. Reverse-lookup yields the pack-id verbatim (phase-N,
+# phase-N.M, TD-NNN, BD-NNN). Numeric source order from GH preserved.
+for gh_num in first_class_edges:
+    gh_id = str(gh_num)
+    pack_id = gh_to_pack.get(gh_id)
+    if pack_id and pack_id not in blockers:
+        blockers.append(pack_id)
+
+# Body comment markers: "Blocked by #NNN" lines (BD-060 legacy path,
+# preserved for backward-compat with pre-BD-111 issues). De-dup
+# against the first-class edge results by pack-id.
 for m in re.finditer(r'(?:Blocked by|blocked-by|blocks)[\s:]*#(\d+)', body):
     gh_id = m.group(1)
     pack_id = gh_to_pack.get(gh_id)
@@ -417,11 +534,20 @@ print(m.group(1) if m else "")')
     resolution=$(printf  '%s' "$body" | _tmr_extract_section "Resolution")
     file_symbol=$(printf '%s' "$body" | _tmr_extract_section "File / Symbol")
 
-    local sub_issue_parent
+    local sub_issue_parent issue_number first_class_edges
     sub_issue_parent=$(printf '%s' "$issue" | jq -r '.parent // ""')
+    issue_number=$(printf  '%s' "$issue" | jq -r '.number // ""')
+
+    # BD-111 retrofit (PACK-REVIEW-BD-111 F1, scope-extension second
+    # pass 2026-05-15): fetch first-class `blockedByIssues` GraphQL
+    # edges so post-BD-111 forward writes round-trip through reverse.
+    # Best-effort — empty array on any error (auth, network, schema-
+    # reshape); the decoder still reads body comment markers as the
+    # legacy-compat fallback.
+    first_class_edges=$(_tmr_fetch_first_class_blocked_by "$issue_number")
 
     local blockers
-    blockers=$(_tmr_decode_blockers "$body" "$mapping" "$sub_issue_parent")
+    blockers=$(_tmr_decode_blockers "$body" "$mapping" "$sub_issue_parent" "$first_class_edges")
 
     jq -n \
         --arg pack_id "$pack_id" \

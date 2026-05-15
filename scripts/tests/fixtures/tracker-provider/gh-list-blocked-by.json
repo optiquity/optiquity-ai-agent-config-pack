@@ -1,0 +1,14 @@
+{
+  "data": {
+    "repository": {
+      "issue": {
+        "blockedByIssues": {
+          "nodes": [
+            {"number": 43},
+            {"number": 55}
+          ]
+        }
+      }
+    }
+  }
+}

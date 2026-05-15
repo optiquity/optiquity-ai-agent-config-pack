@@ -986,9 +986,9 @@ rm -rf "$FAKE_BIN_C" "$GH_LOG_C" "$ISSUE_COUNTER_C" "$TEST_REPO_C"
 #
 #   (a) step 6+7 case-statement routing — a BACKLOG entry with
 #       `Blockers: phase-N.M` must route to `provider_link blocked-by`
-#       (which falls back to a `gh issue comment "Blocked by #NNN"`
-#       call), NOT to `provider_sub_issue_create` (the v10 phase-N
-#       sub-issue parent path).
+#       (which routes to the first-class `addBlockedBy` GraphQL
+#       mutation per BD-111), NOT to `provider_sub_issue_create` (the
+#       v10 phase-N sub-issue parent path).
 #   (b) new step 7b — when an IMPLEMENTATION-PLAN.md contains a
 #       phase-task `Dependencies` bullet, the orchestrator parses it
 #       via `tracker_phase_task_parse` and replays each dependency as
