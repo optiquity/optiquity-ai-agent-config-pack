@@ -8,15 +8,20 @@
 # Python harness that imports validate-pack.py's Check 29 entrypoint
 # and invokes it against the fixture root. We exercise:
 #
-#   1. Well-formed pack-example + client-example   → PASS
-#   2. Bad schema_version on pack-example          → FAIL on that key
-#   3. Unknown backend.name on client-example      → FAIL on that key
-#   4. Wrong id_namespace.prefix on client-example → FAIL on that key
-#   5. Mode value not in the supported set         → FAIL on mode.state
-#   6. cli_acceleration.prefer not in supported set → FAIL on that key
-#   7. Missing [mirror] table                      → FAIL on mirror
-#   8. Missing migration.mapping_file              → FAIL on that key
-#   9. TOML parse error                            → FAIL on parse
+#   1.  Well-formed pack-example + client-example  → PASS
+#   2.  Bad schema_version on pack-example         → FAIL on that key
+#   3.  Unknown backend.name on client-example     → FAIL on that key
+#   4.  Wrong id_namespace.prefix on client-example → FAIL on that key
+#   5.  Mode value not in the supported set        → FAIL on mode.state
+#   6.  cli_acceleration.prefer not in supported set → FAIL on that key
+#   7.  Missing [mirror] table                     → FAIL on mirror
+#   8.  Missing migration.mapping_file             → FAIL on that key
+#   9.  TOML parse error                           → FAIL on parse
+#   10. schema_version = true (bool-as-int trap)   → FAIL on bool (F3)
+#   11. backend.repo missing                       → FAIL on missing key (F4)
+#   12. backend.repo empty string                  → FAIL on empty (F4)
+#   13. Live tracker.toml with stale mirror        → FAIL on staleness (F1)
+#   14. Live tracker.toml flat-file mode           → soft-pass (F1)
 #
 # Usage: bash scripts/tests/tracker-config-schema-test.sh
 #
@@ -25,7 +30,6 @@
 set -u
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-VALIDATOR="$REPO_ROOT/scripts/validate-pack.py"
 
 PASS=0
 FAIL=0
@@ -258,6 +262,180 @@ if echo "$out" | grep -q "TOML parse error"; then
     t_pass "9.2 message identifies parse error"
 else
     t_fail "9.2 message identifies parse error" "out=${out:0:400}"
+fi
+rm -rf "$fix"
+
+# ── Test 10: schema_version = true (bool-is-int Python trap, F3) ────
+printf "\n=== Test 10: schema_version = true (bool-as-int defense) ===\n"
+bad=$(printf '%s\n' "$GOOD_PACK" | sed 's/schema_version = 1/schema_version = true/')
+fix=$(build_fixture "$bad" "$GOOD_CLIENT")
+out=$(run_check29_at "$fix" 2>&1); rc=$?
+if [[ $rc -ne 0 ]]; then t_pass "10.1 schema_version=true → exit nonzero"
+else t_fail "10.1 schema_version=true → exit nonzero" "rc=$rc out=${out:0:400}"; fi
+if echo "$out" | grep -q "schema_version: expected int, got bool"; then
+    t_pass "10.2 message identifies expected int, got bool"
+else
+    t_fail "10.2 message identifies expected int, got bool" "out=${out:0:400}"
+fi
+rm -rf "$fix"
+
+# ── Test 11: backend.repo missing (F4) ──────────────────────────────
+printf "\n=== Test 11: missing backend.repo (load-bearing for gh CLI) ===\n"
+bad=$(printf '%s\n' "$GOOD_PACK" | sed '/^repo = /d')
+fix=$(build_fixture "$bad" "$GOOD_CLIENT")
+out=$(run_check29_at "$fix" 2>&1); rc=$?
+if [[ $rc -ne 0 ]]; then t_pass "11.1 missing backend.repo → exit nonzero"
+else t_fail "11.1 missing backend.repo → exit nonzero" "rc=$rc"; fi
+if echo "$out" | grep -q "missing required key: backend.repo"; then
+    t_pass "11.2 message names backend.repo as missing"
+else
+    t_fail "11.2 message names backend.repo as missing" "out=${out:0:400}"
+fi
+rm -rf "$fix"
+
+# ── Test 12: backend.repo empty string (F4) ─────────────────────────
+printf "\n=== Test 12: empty backend.repo ===\n"
+bad=$(printf '%s\n' "$GOOD_PACK" | sed 's|^repo = .*|repo = ""|')
+fix=$(build_fixture "$bad" "$GOOD_CLIENT")
+out=$(run_check29_at "$fix" 2>&1); rc=$?
+if [[ $rc -ne 0 ]]; then t_pass "12.1 empty backend.repo → exit nonzero"
+else t_fail "12.1 empty backend.repo → exit nonzero" "rc=$rc"; fi
+if echo "$out" | grep -q "backend.repo: empty string"; then
+    t_pass "12.2 message identifies empty backend.repo"
+else
+    t_fail "12.2 message identifies empty backend.repo" "out=${out:0:400}"
+fi
+rm -rf "$fix"
+
+# ── Test 13: Live tracker.toml with stale mirror (F1) ───────────────
+# Build a fixture root with a live tracker.toml at the root (not just
+# the example file) declaring tracker mode + completed forward
+# migration with last_forward_run = 2026-05-15T12:00:00Z. Drop a
+# BACKLOG.md mirror with a Last regenerated header at an older
+# timestamp. Check 29 must surface staleness.
+printf "\n=== Test 13: live tracker.toml + stale mirror ===\n"
+read -r -d '' LIVE_TRACKER_ON <<'TOML' || true
+schema_version = 1
+
+[backend]
+name = "github"
+repo = "DShaneNYC/optiquity-ai-agent-config-pack"
+
+[mode]
+state = "tracker"
+opted_in_at = "2026-05-15T12:00:00Z"
+
+[mirror]
+enabled = true
+location_backlog   = "BACKLOG.md"
+location_status    = "STATUS.md"
+location_changelog = "CHANGELOG.md"
+regenerate_on_write = true
+
+[id_namespace]
+prefix = "BD"
+
+[cli_acceleration]
+prefer = "gh"
+
+[migration]
+forward_complete = true
+reverse_available = false
+last_forward_run = "2026-05-15T12:00:00Z"
+mapping_file = ".pack-tracker/id-map.json"
+TOML
+
+# Older timestamp than last_forward_run — must trip staleness.
+read -r -d '' STALE_MIRROR <<'MIRROR' || true
+<!--
+  This file is a read-only mirror generated from the tracker.
+  Tracker: github / DShaneNYC/optiquity-ai-agent-config-pack
+  Last regenerated: 2026-05-01T08:00:00Z
+  Direct edits will be overwritten. Edit via Pack Chat / PM Chat.
+-->
+
+# BACKLOG (mirror)
+
+stale body
+MIRROR
+
+# Fresh timestamp >= last_forward_run — must NOT trip staleness.
+read -r -d '' FRESH_MIRROR <<'MIRROR' || true
+<!--
+  This file is a read-only mirror generated from the tracker.
+  Tracker: github / DShaneNYC/optiquity-ai-agent-config-pack
+  Last regenerated: 2026-05-15T13:00:00Z
+  Direct edits will be overwritten. Edit via Pack Chat / PM Chat.
+-->
+
+# STATUS (mirror)
+
+fresh body
+MIRROR
+
+fix=$(build_fixture "$GOOD_PACK" "$GOOD_CLIENT")
+# Plant a live tracker.toml + mirror files into the fixture root.
+printf '%s\n' "$LIVE_TRACKER_ON"  > "$fix/tracker.toml"
+printf '%s\n' "$STALE_MIRROR"     > "$fix/BACKLOG.md"
+printf '%s\n' "$FRESH_MIRROR"     > "$fix/STATUS.md"
+printf '%s\n' "$FRESH_MIRROR"     > "$fix/CHANGELOG.md"
+out=$(run_check29_at "$fix" 2>&1); rc=$?
+if [[ $rc -ne 0 ]]; then t_pass "13.1 stale BACKLOG mirror → exit nonzero"
+else t_fail "13.1 stale BACKLOG mirror → exit nonzero" "rc=$rc out=${out:0:400}"; fi
+if echo "$out" | grep -q "BACKLOG.md.*Last regenerated.*older than"; then
+    t_pass "13.2 message names stale mirror + older-than wording"
+else
+    t_fail "13.2 message names stale mirror + older-than wording" "out=${out:0:600}"
+fi
+# Fresh mirrors should NOT appear in failure messages.
+if echo "$out" | grep -q "STATUS.md.*older than"; then
+    t_fail "13.3 fresh STATUS mirror should not be flagged stale" "out=${out:0:400}"
+else
+    t_pass "13.3 fresh STATUS mirror not flagged"
+fi
+rm -rf "$fix"
+
+# ── Test 14: Live tracker.toml in flat-file mode → soft-pass (F1) ──
+printf "\n=== Test 14: live tracker.toml flat-file → staleness N/A ===\n"
+read -r -d '' LIVE_TRACKER_OFF <<'TOML' || true
+schema_version = 1
+
+[backend]
+name = "github"
+repo = "DShaneNYC/optiquity-ai-agent-config-pack"
+
+[mode]
+state = "flat-file"
+
+[mirror]
+enabled = true
+location_backlog   = "BACKLOG.md"
+location_status    = "STATUS.md"
+location_changelog = "CHANGELOG.md"
+regenerate_on_write = true
+
+[id_namespace]
+prefix = "BD"
+
+[cli_acceleration]
+prefer = "gh"
+
+[migration]
+forward_complete = false
+reverse_available = false
+mapping_file = ".pack-tracker/id-map.json"
+TOML
+
+fix=$(build_fixture "$GOOD_PACK" "$GOOD_CLIENT")
+printf '%s\n' "$LIVE_TRACKER_OFF" > "$fix/tracker.toml"
+# Even with NO mirror files at all, flat-file must soft-pass.
+out=$(run_check29_at "$fix" 2>&1); rc=$?
+if [[ $rc -eq 0 ]]; then t_pass "14.1 flat-file live tracker.toml → exit 0"
+else t_fail "14.1 flat-file live tracker.toml → exit 0" "rc=$rc out=${out:0:400}"; fi
+if echo "$out" | grep -q "mirror-staleness check N/A"; then
+    t_pass "14.2 staleness leg reports N/A for flat-file mode"
+else
+    t_fail "14.2 staleness leg reports N/A for flat-file mode" "out=${out:0:400}"
 fi
 rm -rf "$fix"
 

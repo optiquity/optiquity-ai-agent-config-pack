@@ -85,8 +85,9 @@ Checks:
   29. Tracker-config schema (BD-078): the pack-side
       `tracker.toml.pack-example` and the client-side
       `project-template/tracker.toml.project-example` parse as TOML
-      and carry the required keys/types per ARCHITECTURE.md §3.1
-      (`schema_version`, `[backend].name`, `[mode].state`,
+      and carry the required keys/types per
+      `maintenance-docs/v11-research/ARCHITECTURE.md` §3.1
+      (`schema_version`, `[backend].name`, `[backend].repo`, `[mode].state`,
       `[mirror]`, `[id_namespace].prefix`, `[cli_acceleration].prefer`,
       `[migration].forward_complete`, `[migration].reverse_available`,
       `[migration].mapping_file`). Catches schema drift in the
@@ -96,8 +97,12 @@ Checks:
       root, it parses as JSON and matches the v1 schema documented in
       `scripts/lib/recommendation.sh` (V3 §28.1.4). Soft-passes when
       the file is absent (lazy-create is by design — fresh installs
-      never write the file until first persistent-refusal toggle).
-      Catches state-file corruption before it causes runtime defaults.
+      never write the file until first recommendation surface or
+      persistent-refusal toggle, whichever comes first; see
+      `recommendation_record_shown` and
+      `recommendation_set_persistent_refusal` in
+      `scripts/lib/recommendation.sh`). Catches state-file corruption
+      before it causes runtime defaults.
   31. Skill-cell consistency (BD-146, v11 skill-dimensions reframe):
       every SKILL.md on disk under `project-template/skills/<name>/`
       appears in exactly one cell (one row of one Full-skill-inventory
@@ -2190,6 +2195,19 @@ def _validate_tracker_toml(path: Path, expected_prefix: str) -> bool:
                 failed = True
                 return None
             cur = cur[part]
+        # bool is a subclass of int in Python; reject bool when the
+        # caller asked for int (or vice versa) so a stray
+        # `schema_version = true` does not slip through. Mirrors
+        # Check 30's defensive idiom for `user_re_enable_count`.
+        if expected_type is int and isinstance(cur, bool):
+            fail(f"{rel} — key {key_path}: expected int, got bool")
+            failed = True
+            return None
+        if expected_type is bool and not isinstance(cur, bool):
+            fail(f"{rel} — key {key_path}: expected bool, "
+                 f"got {type(cur).__name__}")
+            failed = True
+            return None
         if not isinstance(cur, expected_type):
             fail(f"{rel} — key {key_path}: expected "
                  f"{expected_type.__name__}, got {type(cur).__name__}")
@@ -2207,6 +2225,17 @@ def _validate_tracker_toml(path: Path, expected_prefix: str) -> bool:
     if backend_name is not None and backend_name not in _TRACKER_BACKENDS:
         fail(f"{rel} — backend.name: expected one of "
              f"{list(_TRACKER_BACKENDS)}, got {backend_name!r}")
+        failed = True
+
+    # backend.repo is load-bearing for the github backend (BD-129's
+    # tracker_gh_repo_setup() exports it as GH_REPO). Required + non-
+    # empty for any github-backed install. We require it for all
+    # backends in v11.0 since `github` is the only first-class
+    # backend; future backends with no repo concept will need a
+    # backend-conditional check here.
+    repo_slug = _require("backend.repo", str)
+    if repo_slug is not None and not repo_slug.strip():
+        fail(f"{rel} — backend.repo: empty string")
         failed = True
 
     mode_state = _require("mode.state", str)
@@ -2246,16 +2275,15 @@ def _validate_tracker_toml(path: Path, expected_prefix: str) -> bool:
              f"{list(_TRACKER_PREFER)}, got {prefer!r}")
         failed = True
 
-    fwd = _require("migration.forward_complete", bool)
-    rev = _require("migration.reverse_available", bool)
+    # Bare calls: _require's side effect (fail registration on
+    # missing/wrong-type) is the load-bearing behavior; no return
+    # value needed here.
+    _require("migration.forward_complete", bool)
+    _require("migration.reverse_available", bool)
     mapping = _require("migration.mapping_file", str)
     if mapping is not None and not mapping.strip():
         fail(f"{rel} — migration.mapping_file: empty string")
         failed = True
-    # Silence unused-binding lint; the _require side effects (fail
-    # registration on missing key/wrong type) are the load-bearing
-    # behavior here.
-    _ = (fwd, rev)
 
     if not failed:
         ok(f"{rel} — schema OK (prefix={id_prefix!r}, "
@@ -2263,17 +2291,142 @@ def _validate_tracker_toml(path: Path, expected_prefix: str) -> bool:
     return not failed
 
 
+# Pattern for the mirror-header `Last regenerated:` timestamp written
+# by scripts/lib/tracker-mirror.sh:tracker_mirror_header_emit. Matches
+# ISO 8601 UTC (Z-suffixed) anywhere on a line within the leading
+# `<!-- ... -->` HTML-comment block (V1 §A.2 + V1 §6.5 step 8).
+_MIRROR_HEADER_TS_RE = re.compile(
+    r"Last regenerated:\s*(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)"
+)
+
+
+def _read_mirror_last_regenerated(path: Path) -> "str | None":
+    """Return the ISO 8601 `Last regenerated:` timestamp from a mirror
+    file's leading HTML-comment header, or None if the file is absent
+    / has no header / has no parseable timestamp line. Reads at most
+    the first 4 KiB to avoid pulling huge mirrors into memory.
+    """
+    if not path.is_file():
+        return None
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            head = f.read(4096)
+    except Exception:
+        return None
+    m = _MIRROR_HEADER_TS_RE.search(head)
+    return m.group(1) if m else None
+
+
+def _check_mirror_staleness(live_cfg_path: Path) -> None:
+    """V1 §A.2 acceptance criterion B — staleness leg.
+
+    When the live tracker.toml has `mode.state == "tracker"` AND
+    `migration.forward_complete == true`, walk each configured mirror
+    file (`mirror.location_backlog` / `mirror.location_status` /
+    `mirror.location_changelog`) and warn (via fail()) if the file's
+    `Last regenerated:` header timestamp is older than
+    `migration.last_forward_run`. Files with no header / no parseable
+    timestamp are warned individually.
+
+    Soft-passes silently when mode is flat-file or forward migration
+    has not completed — those modes legitimately leave mirrors stale.
+    """
+    rel = live_cfg_path.relative_to(REPO_ROOT)
+    try:
+        with open(live_cfg_path, "rb") as f:
+            cfg = tomllib.load(f)
+    except Exception as e:
+        fail(f"{rel} — TOML parse error: {e}")
+        return
+
+    mode_state = cfg.get("mode", {}).get("state")
+    if mode_state != "tracker":
+        ok(f"{rel} — mode.state={mode_state!r}, mirror-staleness "
+           "check N/A (only fires for mode='tracker')")
+        return
+
+    migration = cfg.get("migration", {})
+    if migration.get("forward_complete") is not True:
+        ok(f"{rel} — migration.forward_complete is not true, "
+           "mirror-staleness check N/A")
+        return
+
+    last_fwd = migration.get("last_forward_run")
+    if not isinstance(last_fwd, str) or not last_fwd.strip():
+        fail(f"{rel} — mode='tracker' + forward_complete=true but "
+             "migration.last_forward_run is missing/empty; cannot "
+             "compare mirror timestamps")
+        return
+
+    mirror = cfg.get("mirror", {})
+    if not isinstance(mirror, dict):
+        fail(f"{rel} — [mirror] table missing/malformed; cannot "
+             "check mirror-staleness")
+        return
+
+    any_stale = False
+    for key in ("location_backlog", "location_status", "location_changelog"):
+        rel_path = mirror.get(key)
+        if not isinstance(rel_path, str) or not rel_path.strip():
+            # Schema validation on the example file already gates
+            # required mirror keys; skip silently if absent here.
+            continue
+        mirror_path = REPO_ROOT / rel_path
+        mirror_rel = rel_path
+        if not mirror_path.is_file():
+            fail(f"{rel} — mirror file '{mirror_rel}' "
+                 f"(from mirror.{key}) does not exist on disk; "
+                 "cannot check Last regenerated header")
+            any_stale = True
+            continue
+        ts = _read_mirror_last_regenerated(mirror_path)
+        if ts is None:
+            fail(f"{mirror_rel} — no parseable 'Last regenerated:' "
+                 "header (from mirror." + key + "); mirror may need "
+                 "regeneration")
+            any_stale = True
+            continue
+        # ISO 8601 Z-suffixed UTC sorts lexicographically; no need to
+        # parse to datetime. Stale iff header timestamp < last_forward_run.
+        if ts < last_fwd:
+            fail(f"{mirror_rel} — Last regenerated {ts} is older than "
+                 f"migration.last_forward_run {last_fwd}; mirror is "
+                 "stale and must be regenerated")
+            any_stale = True
+
+    if not any_stale:
+        ok(f"{rel} — mirrors are fresh (all 'Last regenerated' >= "
+           f"last_forward_run {last_fwd})")
+
+
 def check_tracker_config() -> None:
-    """Check 29 — tracker.toml example schema (BD-078).
+    """Check 29 — tracker.toml example schema + mirror staleness (BD-078).
 
     Both the pack-side `tracker.toml.pack-example` and the client-side
     `project-template/tracker.toml.project-example` must parse as TOML
-    and carry the required keys/types per ARCHITECTURE.md §3.1.
+    and carry the required keys/types per
+    `maintenance-docs/v11-research/ARCHITECTURE.md` §3.1.
 
     Catches schema drift in the example files that ship to clients
     via `init-project.sh` (per-BD-080 stage S11). If the examples
     fall out of sync with the live `scripts/lib/tracker-config.sh`
     reader expectations, every fresh install propagates the breakage.
+
+    In addition (per V1 §A.2 acceptance criterion B), if a live
+    `tracker.toml` exists at the pack root with `mode.state = "tracker"`
+    AND `migration.forward_complete = true`, warn when any of the
+    configured mirror files (`mirror.location_backlog`,
+    `mirror.location_status`, `mirror.location_changelog`) carries a
+    `Last regenerated:` header timestamp older than
+    `migration.last_forward_run`. Soft-passes when no live
+    `tracker.toml` is present (lazy-create is by design — fresh
+    pack/client checkouts ship the example files only).
+
+    Test-fixture variants under `test-fixtures/v11-*/tracker.toml.example`
+    are intentionally NOT validated here: they are pinned migration
+    inputs owned by BD-115/116/117 fixtures and may model historical
+    schemas for migration-regression coverage. See F6 in
+    PACK-REVIEW-BD-078-RETRO.md.
     """
     print("\n── Check 29: Tracker-config schema (BD-078) ──")
     pack_example = REPO_ROOT / "tracker.toml.pack-example"
@@ -2281,6 +2434,16 @@ def check_tracker_config() -> None:
 
     _validate_tracker_toml(pack_example, expected_prefix="BD")
     _validate_tracker_toml(client_example, expected_prefix="TD")
+
+    # V1 §A.2 acceptance criterion B — mirror-staleness warning when
+    # a live tracker.toml exists, mode is tracker, and forward
+    # migration completed. Soft-pass otherwise.
+    live_cfg = REPO_ROOT / "tracker.toml"
+    if live_cfg.is_file():
+        _check_mirror_staleness(live_cfg)
+    else:
+        ok("tracker.toml absent at pack root — mirror-staleness "
+           "leg soft-passes (lazy-create is by design)")
 
 
 # ── Check 30: Recommendation-state JSON schema (BD-079) ─────────────────────
@@ -2313,6 +2476,23 @@ def check_recommendation_state_schema() -> None:
     when the file is present, catching state-file corruption before
     `recommendation_state_load()` falls back to defaults at runtime
     (which silently masks the underlying corruption).
+
+    Inner-shape scope (per BD-079 retro F-2 disposition): the
+    `last_recommendation_signals` slot is checked for `(dict,)` only
+    — keys and value types inside the dict are intentionally not
+    validated here. Rationale: V3 §28.1.4 ships the inner-key set as
+    a descriptive example (`bd_count_active`, `backlog_kb`) while
+    `_rec_compute_pack_signals` and `_rec_compute_client_signals` in
+    `scripts/lib/recommendation.sh` emit *different* per-surface key
+    sets (pack: bd_count_active / bd_count_total / backlog_kb /
+    backlog_growth_30d; client: td_count_active / td_count_total /
+    backlog_kb / phase_count / implementation_plan_kb /
+    td_tbd_comment_count / typed_deferral_count). The runtime reader
+    at `recommendation.sh:360` defaults absent inner keys to 0 via
+    `// 0`, and `recommendation_state_default()` emits an empty
+    `{}` at fresh-create — so any dict shape is contract-conformant.
+    Tightening to a per-surface key/value-type whitelist would be a
+    future BD if signal-corruption becomes an empirical failure mode.
     """
     print("\n── Check 30: Recommendation-state JSON schema (BD-079) ──")
     state_file = REPO_ROOT / ".pack-tracker" / "recommendation-state.json"
