@@ -338,3 +338,18 @@ None. The §6.R reference appears to be a forward-looking pointer in the prompt;
 ## §12 Full file content for new files (re-applicable seed)
 
 For Pack Chat reapplication safety: the new files are listed in §1 inventory by absolute path. Their content is in the worktree at the paths shown; total new content ~939 lines (516 lib + 338 test + 54 + 31 fixtures). Re-creation from scratch is straightforward via the worktree files. The two modified libs (`tracker-sidecar.sh`, `tracker-labels.sh`, `tracker-migrate-forward.sh`, `tracker-migrate-reverse.sh`) carry purely additive content — additions appended to existing public-API comment blocks and at the end of the existing helper sections; existing functions are untouched.
+
+## §13 Post-land update — §6.R formalized (per BD-106 review F9)
+
+After this report was written, V3.3-DELTA was extended with the §6.R section (commit `342d8b8`, landed ~4 minutes BEFORE the BD-106 commit `bf26789`). The architect's `ARCHITECTURE-V3.3-DELTA-ADDENDUM-1.md` §A.6 records 16/16 MATCH against the implementation:
+
+- §6.R.1 (Phase task identifier scheme `phase-N.M`) — implemented.
+- §6.R.2 (sidecar `phase_tasks:` block schema with `id`, `title`, `parent_phase`, `dependency_edges[]`) — implemented; matches `tracker_sidecar_compose_phase_tasks_block` output verbatim.
+- §6.R.3 (canonical Dependencies entry regex + YAML quoting rule for annotations containing `:` / `#` / `"` / `'` / `\n` / `\t`) — implemented; the annotation-quoting branch is now explicitly tested against the IMPLEMENTATION-PLAN.md fixture (BD-106 review F3 fix; see Test 4.6 / 4.7).
+- §6.R.4 (label family `derived-from:` + `promoted-to:`; Path 3 forbidden) — implemented; runtime negative-test (Test 5.6) + CI invariant (validate-pack Check 32, added per BD-106 review F8 fix).
+
+The interpretation-note framing in §3 ("V3.3 §6.R is not literally a section …"), §9 ("zero strict deviations … single interpretation note"), and §10 ("the §6.R reference appears to be a forward-looking pointer …") is preserved as **historical context** — at the time the original coder finished, the §6.R section did not yet exist in the live spec. From `2026-05-14` forward (commit `342d8b8`), §6.R exists in `ARCHITECTURE-V3.3-DELTA.md` (lines 384-493) with no contradiction to the BD-106 implementation.
+
+**No re-implementation needed** — the §3 / §4 / §6.4 prose accurately describes the shipped behavior; only the framing assumption (that §6.R was a "forward-looking pointer") is superseded by the architect's ratification.
+
+This §13 update is part of the BD-106 fix-pass commit (Batch 17 retrospective per-BD review) and reflects the F9 finding's suggested fix verbatim.

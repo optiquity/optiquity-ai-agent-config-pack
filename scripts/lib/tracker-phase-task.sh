@@ -108,8 +108,28 @@ tracker_phase_task_compose_pack_id() {
 # whitespace; captures the ID prefix (group 1). Trailing free text
 # after the ID is the "annotation" per V3.3 §5.3 — preserved by the
 # parser as the `annotation` sub-field for lossless emit.
+#
+# Capture groups (POSIX ERE; bash `[[ =~ ]]` BASH_REMATCH indices):
+#   group 1 = the pack-id (`phase-N(.M)?` | `TD-N` | `BD-N`)
+#   group 2 = optional `.M` (internal sub-capture of group 1)
+#   group 3 = optional ` <annotation-with-leading-whitespace>` (the
+#            full `[[:space:]]+(.*)` match — analogous to the Python
+#            `DEP_ENTRY` group 2)
+#   group 4 = the annotation body alone, with leading whitespace
+#            consumed by `[[:space:]]+` — analogous to the Python
+#            `DEP_ENTRY` group 3 prior to `.strip()`. Callers may
+#            apply trailing-whitespace trim via `${var%[[:space:]]*}`
+#            if a stricter strip is needed (the canonical Python
+#            parser uses `.strip()` to drop both ends).
+#
+# Capture-group equivalence with the internal Python `DEP_ENTRY`
+# regex (line 187): group 1 is byte-identical; group 4 (bash) has
+# the same trim-equivalent meaning as Python group 3 (Python applies
+# `.strip()` after the regex; bash strips leading whitespace via
+# `[[:space:]]+` consumption). Test Group 1 verifies group-1 parity
+# and documents the group-3/4 mapping.
 tracker_phase_task_dependency_re() {
-    printf '%s\n' '^[[:space:]]*-[[:space:]]+(phase-[0-9]+(\.[0-9]+)?|TD-[0-9]+|BD-[0-9]+)([[:space:]].*)?$'
+    printf '%s\n' '^[[:space:]]*-[[:space:]]+(phase-[0-9]+(\.[0-9]+)?|TD-[0-9]+|BD-[0-9]+)([[:space:]]+(.*))?$'
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -153,7 +173,7 @@ tracker_phase_task_dependency_re() {
 tracker_phase_task_parse() {
     local path="$1"
     if [[ ! -f "$path" ]]; then
-        printf 'ERROR: not-found: tracker_phase_task_parse: %s does not exist\n' "$path" >&2
+        tracker_error_emit "not-found" "tracker_phase_task_parse: $path does not exist"
         return 1
     fi
     python3 - "$path" <<'PYEOF'
@@ -172,10 +192,13 @@ TASK_HEADER  = re.compile(r'^####\s+(\d+)\.(\d+)\s*[—-]\s*(.+?)\s*$')
 MALFORMED_H4 = re.compile(r'^####\s+\S')
 H1_OR_H2     = re.compile(r'^#{1,2}\s+\S')
 
-# Bullet header regex: matches "- **<name>**:" or "- **<name>** —"
-# (em-dash variant). Captures the bullet name (group 1) and the
-# trailing inline content on the same line (group 2, may be empty).
-BULLET_HEAD = re.compile(r'^-\s+\*\*([^*]+?)\*\*\s*[:—-]\s*(.*)$')
+# Bullet header regex: matches "- **<name>**:". Strict-colon per
+# METHODOLOGY § Part 4 line 304 canonical (em-dash and hyphen
+# separators dropped per BD-106 review F5 to avoid silent round-trip
+# drift — the emitter only ever produces `:`). Captures the bullet
+# name (group 1) and the trailing inline content on the same line
+# (group 2, may be empty).
+BULLET_HEAD = re.compile(r'^-\s+\*\*([^*]+?)\*\*\s*:\s*(.*)$')
 # Continuation bullets nested under a top-level bullet:
 NESTED_BULLET = re.compile(r'^\s+-\s+(.*)$')
 
@@ -359,7 +382,9 @@ for raw in text.splitlines():
                 if NESTED_BULLET.match(raw):
                     append_to_current_bullet(raw.lstrip())
                 elif raw.strip() == '':
-                    # Blank line ends the dependencies block.
+                    # Blank line is allowed inside the dependencies
+                    # block; state is unchanged until the next bullet
+                    # header (BULLET_HEAD or NESTED_BULLET) resets it.
                     pass
                 # Anything else falls through (loose annotation
                 # outside an entry) — warn at flush time.
@@ -424,6 +449,26 @@ PYEOF
 #     (verbatim). For round-trip identity tests, the emitter is
 #     byte-identical with the source bullet bodies.
 #
+# Round-trip byte-identity preconditions (per BD-106 review F4):
+#   Byte-identity (`parse → emit → diff = empty`) holds ONLY when the
+#   source text already uses the canonical bullet shape:
+#     1. Canonical bullet names — `Problem / Goal / Success`,
+#        `Files created/modified`, `Definition of done`, `Dependencies`.
+#        Non-canonical aliases (e.g. `Problem`, `Files`, `DoD`) parse
+#        semantically but are CANONICALIZED on emit (the emitter
+#        always produces the canonical name).
+#     2. Canonical separator — `: ` after the bullet name. The parser
+#        is strict to colon (per F5); the emitter always produces `:`.
+#     3. No trailing whitespace on any line — the parser strips
+#        trailing whitespace on body fields during normalization
+#        (lines 410-414); a source line with trailing spaces will
+#        not round-trip byte-identically.
+#   Inputs that satisfy all three conditions round-trip byte-identically
+#   (the `ROUNDTRIP.md` fixture is built to satisfy them — proof in
+#   Test 3.1 SHA-256). Inputs that violate any condition still round-
+#   trip semantically (parse → emit → re-parse preserves the parsed
+#   document equality — proof in Test 3.3 / 3.4).
+#
 # The emitter does NOT re-emit prose between `## Phase` and
 # `### Tasks` (e.g. Goal / Prerequisite paragraphs, ### Verification,
 # ### Agent, ### Risks) because BD-106's scope is the `### Tasks`
@@ -437,17 +482,12 @@ PYEOF
 # Implementation note: the JSON document is passed via an env var
 # (TPT_DOC_JSON) instead of stdin because bash heredocs (`<<'PYEOF'`)
 # replace stdin with the heredoc body — a stdin pipe would be
-# silently dropped.
-#
-# Implementation note: the JSON document is passed via an env var
-# (TPT_DOC_JSON) instead of stdin because bash heredocs (`<<'PYEOF'`)
-# replace stdin with the heredoc body — a stdin pipe would be
 # silently dropped. Env var is bash-3.2-portable and preserves
 # arbitrary content (json.loads handles any UTF-8 string).
 tracker_phase_task_emit() {
     local doc_json="$1"
     if [[ -z "$doc_json" ]]; then
-        printf 'ERROR: empty input to tracker_phase_task_emit\n' >&2
+        tracker_error_emit "validation" "empty input to tracker_phase_task_emit"
         return 1
     fi
     TPT_DOC_JSON="$doc_json" python3 - <<'PYEOF'

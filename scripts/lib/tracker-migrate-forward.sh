@@ -180,13 +180,23 @@ tmf_mapping_get() {
 }
 
 # Append an entry to the mapping. Returns the new JSON on stdout.
+#
+# Additive on the entry level: re-invoking with the same pack_id
+# preserves any extra fields previously written under that key (e.g.
+# `task_order` set by tmf_mapping_set_phase_task_order). Per BD-106
+# review F6 — the previous `. + {($k): ...}` form replaced the entry
+# wholesale, silently wiping additive fields on retry / checkpoint
+# resume. The new shape `'.[$k] = ((.[$k] // {}) + {id, url})'`
+# matches the additive intent documented at line 197 ("v11 phase-task
+# entries simply add new keys alongside") and is consistent with the
+# pattern used by tmf_mapping_set_phase_task_order at line 234-235.
 tmf_mapping_set() {
     local data="$1"
     local pack_id="$2"
     local gh_id="$3"
     local url="${4:-}"
     printf '%s' "$data" | jq --arg k "$pack_id" --arg id "$gh_id" --arg url "$url" \
-        '. + {($k): {id: $id, url: $url}}'
+        '.[$k] = ((.[$k] // {}) + {id: $id, url: $url})'
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -220,7 +230,7 @@ tmf_mapping_set_phase_task_order() {
     local phase_id="$2"
     local task_csv="$3"
     if [[ ! "$phase_id" =~ ^phase-[0-9]+$ ]]; then
-        printf 'ERROR: tmf_mapping_set_phase_task_order: invalid phase id %s\n' "$phase_id" >&2
+        tracker_error_emit "validation" "tmf_mapping_set_phase_task_order: invalid phase id $phase_id"
         return 1
     fi
     # Convert CSV → JSON array of strings.

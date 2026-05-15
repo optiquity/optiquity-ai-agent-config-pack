@@ -312,7 +312,7 @@ _tmsc_comments_for_entry() {
 tracker_sidecar_compose_phase_tasks_block() {
     local parsed_json="$1"
     if [[ -z "$parsed_json" ]]; then
-        printf 'ERROR: empty input to tracker_sidecar_compose_phase_tasks_block\n' >&2
+        tracker_error_emit "validation" "empty input to tracker_sidecar_compose_phase_tasks_block"
         return 1
     fi
     # JSON is passed via env var (TMSC_PARSED_JSON) instead of stdin

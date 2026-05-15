@@ -2574,6 +2574,115 @@ def check_skill_cell_consistency() -> None:
         )
 
 
+# ── Check 32: Phase-task lib invariants (BD-106 / V3.3 §3 line 27) ─────────
+
+def check_tracker_phase_task_invariants() -> None:
+    """Check 32 — phase-task lib presence + Path-3-forbidden invariant.
+
+    BD-106 lands `scripts/lib/tracker-phase-task.sh` and the V3.3 §3.5
+    label family (`derived-from:`, `promoted-to:`). Path 3 is FORBIDDEN
+    per V3.3 §3 line 27 — the tracker-labels.sh lib MUST NOT define a
+    `tracker_labels_folded_into` constructor, and no script under
+    `scripts/lib/` may carry the literal string `folded-into`.
+
+    The runtime negative-test in `test-tracker-phase-task.sh` Test 5.6
+    asserts the same invariant at lib-load time; this CI check is the
+    static-analysis backstop catching the case where a future
+    maintainer adds `tracker_labels_folded_into` to `tracker-labels.sh`
+    without re-running the test runner.
+
+    Three asserts:
+      1. `scripts/lib/tracker-phase-task.sh` exists.
+      2. `tracker_labels_folded_into` is NOT defined in
+         `scripts/lib/tracker-labels.sh`.
+      3. The literal `folded-into` does NOT appear anywhere in
+         `scripts/lib/` (per V3.3 §3 line 27 invariant).
+    """
+    print("\n── Check 32: Phase-task lib invariants (BD-106) ──")
+    lib_dir = REPO_ROOT / "scripts" / "lib"
+    phase_task_lib = lib_dir / "tracker-phase-task.sh"
+    labels_lib = lib_dir / "tracker-labels.sh"
+
+    if not phase_task_lib.is_file():
+        fail(
+            f"{phase_task_lib.relative_to(REPO_ROOT)} — file missing "
+            f"(BD-106 / V3.3 §2 D-21)"
+        )
+    else:
+        ok(f"{phase_task_lib.relative_to(REPO_ROOT)} present")
+
+    if labels_lib.is_file():
+        # Detect a function DEFINITION (not a comment reference). A bash
+        # function def matches `<name>()` or `function <name>` at the
+        # start of a non-comment line. Comments may legitimately mention
+        # the forbidden helper name when documenting the prohibition.
+        defines_folded_into = False
+        labels_def_lineno = 0
+        for lineno, line in enumerate(labels_lib.read_text().splitlines(), start=1):
+            stripped = line.lstrip()
+            if stripped.startswith("#"):
+                continue
+            if (
+                stripped.startswith("tracker_labels_folded_into(")
+                or stripped.startswith("function tracker_labels_folded_into")
+            ):
+                defines_folded_into = True
+                labels_def_lineno = lineno
+                break
+        if defines_folded_into:
+            fail(
+                f"{labels_lib.relative_to(REPO_ROOT)}:{labels_def_lineno} "
+                f"— defines tracker_labels_folded_into; Path 3 is "
+                f"FORBIDDEN per V3.3 §3 line 27"
+            )
+        else:
+            ok(
+                f"{labels_lib.relative_to(REPO_ROOT)} — no "
+                f"tracker_labels_folded_into helper definition "
+                f"(Path 3 forbidden)"
+            )
+    else:
+        fail(f"{labels_lib.relative_to(REPO_ROOT)} — file missing")
+
+    # Invariant 3: no `folded-into` literal in EXECUTABLE code under
+    # scripts/lib/. Comments (lines whose first non-whitespace char is
+    # `#`) are exempt because the libs explicitly DOCUMENT the
+    # forbidden state in their docstrings (e.g. tracker-labels.sh
+    # "Path 3 is forbidden by V3.3 §3 line 27 — Helpers below
+    # intentionally have no `folded-into` constructor."). The grep is
+    # performed in Python to avoid shelling out and to report all
+    # offending files in one pass.
+    offenders = []
+    if lib_dir.is_dir():
+        for path in sorted(lib_dir.rglob("*")):
+            if not path.is_file():
+                continue
+            try:
+                lines = path.read_text().splitlines()
+            except (OSError, UnicodeDecodeError):
+                continue
+            for lineno, line in enumerate(lines, start=1):
+                stripped = line.lstrip()
+                if stripped.startswith("#"):
+                    continue
+                if "folded-into" in line:
+                    offenders.append(
+                        (path.relative_to(REPO_ROOT), lineno, line.strip())
+                    )
+    if offenders:
+        for off, lineno, snippet in offenders:
+            fail(
+                f"{off}:{lineno} — contains literal `folded-into` in "
+                f"executable code; V3.3 §3 line 27 forbids Path 3 "
+                f"anywhere under scripts/lib/. Line: {snippet!r}"
+            )
+    else:
+        ok(
+            "scripts/lib/ — no `folded-into` literal in executable "
+            "code (V3.3 §3 line 27); comment-only references allowed"
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -2612,6 +2721,7 @@ def main() -> None:
     check_tracker_config()
     check_recommendation_state_schema()
     check_skill_cell_consistency()
+    check_tracker_phase_task_invariants()
 
     print("\n" + "=" * 60)
     if failures:

@@ -102,7 +102,7 @@ _tmr_phase_task_order() {
     local mapping="$1"
     local phase_id="$2"
     if [[ ! "$phase_id" =~ ^phase-[0-9]+$ ]]; then
-        printf 'ERROR: _tmr_phase_task_order: invalid phase id %s\n' "$phase_id" >&2
+        tracker_error_emit "validation" "_tmr_phase_task_order: invalid phase id $phase_id"
         return 1
     fi
     # Mapping JSON is passed via env var (TMR_MAPPING_JSON) instead

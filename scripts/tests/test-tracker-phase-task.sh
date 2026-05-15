@@ -6,21 +6,32 @@
 #   1. Identifier + grammar helpers
 #       1.1 tracker_phase_task_compose_pack_id round-trip
 #       1.2 tracker_phase_task_dependency_re shape
+#       1.3 (BD-106 review F2) bash-vs-Python regex group-1 parity +
+#           group-4(bash)==group-3(python) annotation trim equivalence
 #   2. Parser correctness — fixture parses to expected JSON
 #       2.1 phase / task counts
 #       2.2 sparse phase ([] tasks)
 #       2.3 dependency entries: kind/target/annotation captured
 #       2.4 cross-phase dependency captured (phase-7.1 → phase-3.4)
 #       2.5 TD reference inside Dependencies bullet captured
-#       2.6 missing-file → typed error
+#       2.6 missing-file → typed error envelope
+#           (BD-106 review F1: ERROR / MESSAGE / → Run: all asserted)
 #   3. Emitter correctness — round-trip identity
 #       3.1 parse → emit → diff = empty against ROUNDTRIP.md fixture
 #       3.2 emitter produces deterministic output for same input
+#       3.3 broader-fixture semantic round-trip preserves pack_ids
+#       3.4 broader-fixture semantic round-trip preserves dep targets
+#       3.5 (BD-106 review F12) emit rejects empty input → typed error
+#       3.6 (BD-106 review F4) non-canonical bullet aliases parse
+#           semantically but DO NOT round-trip byte-identically
 #   4. Sidecar phase_tasks block (V3.3 §4.3)
 #       4.1 block contains phase_tasks: header
 #       4.2 per-task dependency_edges with kind/target/annotation
 #       4.3 sparse-phase emits empty tasks: {}
 #       4.4 template_version = phase-task-v11.0 per V3.3 §6.5
+#       4.5 parent_phase wiring on per-task entries
+#       4.6 (BD-106 review F3) yaml_quote on annotations with `:` / `#`
+#       4.7 (BD-106 review F3) round-trip preserves quoted annotations
 #   5. Label family helpers (V3.3 §3.5)
 #       5.1 tracker_labels_derived_from happy path
 #       5.2 tracker_labels_derived_from rejects BD-NNN
@@ -35,6 +46,8 @@
 #       6.4 reverse-side _tmr_phase_task_order: explicit task_order honored
 #       6.5 reverse-side fallback: ascending numeric scan when unset
 #       6.6 mapping JSON round-trips through save+load with task_order
+#       6.7 (BD-106 review F6) tmf_mapping_set is additive on entry
+#           level: re-invocation preserves task_order
 #
 # Usage: bash scripts/tests/test-tracker-phase-task.sh
 
@@ -107,6 +120,51 @@ else
     t_fail "1.2 regex matches sample Dependencies entry" "no match against: $test_line"
 fi
 
+# 1.3 (BD-106 review F2) bash-vs-Python regex group-1 parity. The
+# exported bash regex MUST capture group 1 (the pack-id) identically
+# to the internal Python DEP_ENTRY parser; group 4 (bash) carries the
+# same trim-equivalent value as Python group 3 (annotation body, no
+# leading whitespace). Test runs both regexes against the same set of
+# representative lines and asserts capture equivalence.
+sample_lines=(
+    '  - phase-3.1 (must complete schema first)'
+    '  - TD-029'
+    '  - BD-108  trailing spaces in annotation  '
+    '  - phase-7.4'
+    '  - phase-12.7 see TD-029: blocking on schema-bootstrap'
+    '- phase-1.1 zero-indent variant'
+)
+for line in "${sample_lines[@]}"; do
+    # bash group 1
+    if [[ "$line" =~ $dep_re ]]; then
+        bash_g1="${BASH_REMATCH[1]}"
+        bash_g4="${BASH_REMATCH[4]:-}"
+    else
+        t_fail "1.3 bash regex matches sample" "no match: $line"
+        continue
+    fi
+    # Python group 1 + group 3 (the canonical parser's reading)
+    py_out=$(LINE="$line" python3 -c '
+import os, re, sys
+DEP = re.compile(r"^\s*-\s+(phase-\d+(?:\.\d+)?|TD-\d+|BD-\d+)(\s+(.*))?\s*$")
+m = DEP.match(os.environ["LINE"])
+if not m:
+    sys.exit(1)
+g1 = m.group(1)
+g3 = (m.group(3) or "").strip()
+print(g1)
+print(g3)
+') || { t_fail "1.3 python regex matches sample" "no match: $line"; continue; }
+    py_g1="$(printf '%s\n' "$py_out" | sed -n 1p)"
+    py_g3="$(printf '%s\n' "$py_out" | sed -n 2p)"
+    assert_eq "1.3 group-1 bash==python on: $line" "$py_g1" "$bash_g1"
+    # bash group 4 has leading whitespace already stripped; compare
+    # against python group 3 with trailing whitespace also trimmed
+    # (bash regex consumes only leading; trailing trim is convention).
+    bash_g4_trimmed="${bash_g4%"${bash_g4##*[![:space:]]}"}"
+    assert_eq "1.3 group-4(bash)==group-3(py) on: $line" "$py_g3" "$bash_g4_trimmed"
+done
+
 # ─────────────────────────────────────────────────────────────────
 # Group 2: parser correctness
 # ─────────────────────────────────────────────────────────────────
@@ -146,9 +204,14 @@ assert_eq "2.4 phase-7.1 dep[0].target = phase-3.4" "phase-3.4" \
 assert_eq "2.5 phase-3.3 dep[1].target = BD-108" "BD-108" \
     "$(printf '%s' "$parsed" | jq -r '.phases[0].tasks[2].dependencies[1].target')"
 
-# 2.6 missing file
+# 2.6 missing file → typed-error envelope (BD-106 review F1 — every
+# error MUST emit the canonical ERROR / MESSAGE / → Run: shape per
+# tracker_error_emit, not a bare ad-hoc printf). Test asserts all
+# three lines of the typed-error contract are present.
 err=$(tracker_phase_task_parse "/no/such/IMPLEMENTATION-PLAN.md" 2>&1 1>/dev/null) || true
-assert_contains "2.6 missing file → typed error" "$err" "ERROR: not-found"
+assert_contains "2.6 missing file → typed error (ERROR: not-found)" "$err" "ERROR: not-found"
+assert_contains "2.6 missing file → typed error (MESSAGE: line)"     "$err" "MESSAGE:"
+assert_contains "2.6 missing file → typed error (→ Run: trailer)"    "$err" "→ Run:"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 3: emitter + round-trip identity
@@ -199,6 +262,47 @@ orig_deps=$(printf '%s' "$parsed"   | jq -c '[.phases[].tasks[].dependencies[]?.
 re_deps=$(printf   '%s' "$re_parsed" | jq -c '[.phases[].tasks[].dependencies[]?.target]')
 assert_eq "3.4 semantic round-trip preserves dependency targets" "$orig_deps" "$re_deps"
 
+# 3.5 (BD-106 review F12) — emitter rejects empty input via the
+# typed-error envelope. Symmetric coverage with Test 2.6 (parser
+# empty-path rejection).
+if tracker_phase_task_emit "" >/dev/null 2>&1; then
+    t_fail "3.5 emit rejects empty input" "expected rc=1"
+else
+    t_pass "3.5 emit rejects empty input"
+fi
+emit_err=$(tracker_phase_task_emit "" 2>&1 1>/dev/null) || true
+assert_contains "3.5 emit empty → typed error (ERROR: validation)" "$emit_err" "ERROR: validation"
+assert_contains "3.5 emit empty → typed error (→ Run:)"            "$emit_err" "→ Run:"
+
+# 3.6 (BD-106 review F4) — non-canonical bullet aliases parse
+# semantically but DO NOT round-trip byte-identically: the emitter
+# canonicalizes bullet names. Documented in the emitter docstring
+# preconditions block.
+nc_parsed=$(tracker_phase_task_parse "$FIXTURES/ROUNDTRIP-NONCANONICAL.md" 2>/dev/null)
+nc_emitted=$(tracker_phase_task_emit "$nc_parsed")
+nc_tmp=$(mktemp -t tpt-nc-emit.XXXXXX)
+printf '%s\n' "$nc_emitted" > "$nc_tmp"
+if diff -q "$FIXTURES/ROUNDTRIP-NONCANONICAL.md" "$nc_tmp" >/dev/null 2>&1; then
+    t_fail "3.6 non-canonical does NOT round-trip byte-identically" \
+        "expected diff (canonicalization on emit), got byte-identical"
+else
+    t_pass "3.6 non-canonical does NOT round-trip byte-identically (canonicalized on emit)"
+fi
+# Semantic preservation still holds — re-parse the emitted form and
+# compare task pack_ids + dependency targets (per F4 spec).
+nc_reparsed=$(tracker_phase_task_parse "$nc_tmp" 2>/dev/null)
+rm -f "$nc_tmp"
+nc_orig_ids=$(printf  '%s' "$nc_parsed"  | jq -c '[.phases[].tasks[].pack_id]')
+nc_re_ids=$(printf    '%s' "$nc_reparsed" | jq -c '[.phases[].tasks[].pack_id]')
+assert_eq "3.6 non-canonical semantic round-trip preserves pack_ids" "$nc_orig_ids" "$nc_re_ids"
+# And the canonicalized output uses the canonical bullet names.
+assert_contains "3.6 emitter canonicalizes 'Problem' → 'Problem / Goal / Success'" \
+    "$nc_emitted" "- **Problem / Goal / Success**:"
+assert_contains "3.6 emitter canonicalizes 'Files' → 'Files created/modified'" \
+    "$nc_emitted" "- **Files created/modified**:"
+assert_contains "3.6 emitter canonicalizes 'DoD' → 'Definition of done'" \
+    "$nc_emitted" "- **Definition of done**:"
+
 # ─────────────────────────────────────────────────────────────────
 # Group 4: sidecar phase_tasks block (V3.3 §4.3)
 # ─────────────────────────────────────────────────────────────────
@@ -231,6 +335,30 @@ assert_contains "4.4 extra_fields: {} placeholder"        "$block" "extra_fields
 # 4.5 parent_phase wiring
 assert_contains "4.5 parent_phase: phase-3 emitted" "$block" "parent_phase: phase-3"
 assert_contains "4.5 parent_phase: phase-7 emitted" "$block" "parent_phase: phase-7"
+
+# 4.6 (BD-106 review F3) — yaml_quote MUST quote annotations
+# containing `:` or `#` (V3.3 §6.R.3 quoting rule). The
+# IMPLEMENTATION-PLAN.md fixture's phase-3.3 task includes two
+# Dependencies entries with such annotations:
+#   - TD-030 (annotation: "see TD-029: blocking on schema-bootstrap")
+#   - TD-031 (annotation: "#issue-tracker-link")
+assert_contains "4.6 annotation with ':' is quoted" \
+    "$block" 'annotation: "see TD-029: blocking on schema-bootstrap"'
+assert_contains "4.6 annotation with '#' is quoted" \
+    "$block" 'annotation: "#issue-tracker-link"'
+
+# 4.7 (BD-106 review F3) — round-trip on the broader fixture must
+# preserve the colon and hash annotations through parse → emit →
+# re-parse byte-equivalent on the dependency.annotation values.
+quoted_re_parsed="$re_parsed"
+ann_for_td030=$(printf '%s' "$quoted_re_parsed" | jq -r \
+    '.phases[0].tasks[2].dependencies[] | select(.target=="TD-030") | .annotation')
+assert_eq "4.7 round-trip preserves ':' annotation on TD-030" \
+    "see TD-029: blocking on schema-bootstrap" "$ann_for_td030"
+ann_for_td031=$(printf '%s' "$quoted_re_parsed" | jq -r \
+    '.phases[0].tasks[2].dependencies[] | select(.target=="TD-031") | .annotation')
+assert_eq "4.7 round-trip preserves '#' annotation on TD-031" \
+    "#issue-tracker-link" "$ann_for_td031"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 5: label family helpers (V3.3 §3.5)
@@ -325,6 +453,34 @@ assert_eq "6.6 save/load round-trip preserves phase task gh id" \
     "402" \
     "$(tmf_mapping_get "$loaded" "phase-3.1")"
 rm -rf "$tmpdir"
+
+# 6.7 (BD-106 review F6) — tmf_mapping_set is additive on the entry
+# level: re-invoking tmf_mapping_set on a phase entry that already
+# carries task_order MUST preserve task_order (not wipe it). Pre-fix
+# the `+` operator at top-level replaced .[$k] wholesale, silently
+# dropping task_order on retry / checkpoint resume. Post-fix
+# `'.[$k] = ((.[$k] // {}) + {id, url})'` adds id/url additively.
+m4="{}"
+m4=$(tmf_mapping_set "$m4" "phase-3" "401" "https://example/401")
+m4=$(tmf_mapping_set_phase_task_order "$m4" "phase-3" "1,2,3")
+# Pre-fix: this second tmf_mapping_set call would overwrite the
+# whole phase-3 object and drop task_order.
+m4=$(tmf_mapping_set "$m4" "phase-3" "401" "https://example/401")
+assert_eq "6.7 tmf_mapping_set is additive: task_order preserved" \
+    '["1","2","3"]' \
+    "$(printf '%s' "$m4" | jq -c '."phase-3".task_order')"
+assert_eq "6.7 tmf_mapping_set is additive: id preserved" \
+    "401" \
+    "$(printf '%s' "$m4" | jq -r '."phase-3".id')"
+# Re-invoke with a different gh-id (e.g. checkpoint replay corrected
+# the value): id MUST be updated, task_order MUST still be present.
+m4=$(tmf_mapping_set "$m4" "phase-3" "999" "https://example/999")
+assert_eq "6.7 tmf_mapping_set update: id is updated" \
+    "999" \
+    "$(printf '%s' "$m4" | jq -r '."phase-3".id')"
+assert_eq "6.7 tmf_mapping_set update: task_order still present" \
+    '["1","2","3"]' \
+    "$(printf '%s' "$m4" | jq -c '."phase-3".task_order')"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

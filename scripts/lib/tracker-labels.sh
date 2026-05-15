@@ -224,7 +224,7 @@ _tracker_labels_create() {
 tracker_labels_derived_from() {
     local td="$1"
     if [[ ! "$td" =~ ^TD-[0-9]+$ ]]; then
-        printf 'ERROR: tracker_labels_derived_from: invalid TD id %s\n' "$td" >&2
+        tracker_error_emit "validation" "tracker_labels_derived_from: invalid TD id $td"
         return 1
     fi
     printf 'derived-from:%s\n' "$td"
@@ -239,7 +239,7 @@ tracker_labels_derived_from() {
 tracker_labels_promoted_to() {
     local target="$1"
     if [[ ! "$target" =~ ^phase-[0-9]+(\.[0-9]+)?$ ]]; then
-        printf 'ERROR: tracker_labels_promoted_to: invalid target %s\n' "$target" >&2
+        tracker_error_emit "validation" "tracker_labels_promoted_to: invalid target $target"
         return 1
     fi
     printf 'promoted-to:%s\n' "$target"

@@ -24,6 +24,8 @@
 - **Dependencies**:
   - phase-7.4
   - BD-108
+  - TD-030 see TD-029: blocking on schema-bootstrap
+  - TD-031 #issue-tracker-link
 
 ### Verification
 `bash scripts/tests/test-tracker-phase-task.sh` PASS.
