@@ -253,6 +253,29 @@ CLI's help is added or moved, the parallel files in the other two CLIs
 must be updated in the same commit. Documented in `PACK-CHAT.md`
 "Trinity rule" section. See §28.2.5 for the test.
 
+**R18. BACKLOG.md header-snapshot first-write-wins drops user
+preamble edits (BD-133 / D-6).** The header-snapshot sidecar
+(`.pack-tracker/backlog-header.snapshot`) introduced by BD-133 is
+written on the first reverse with a substantive preamble and is
+then **never refreshed** unless the operator deletes it. This is
+the right default — it prevents a degraded entries-only emit from
+locking in a bad preamble across N round-trips — but it has a
+secondary edge: if the user edits the BACKLOG.md preamble in
+flat-file mode (V1 §3.1: "flat-file is authoritative") between two
+init→disable cycles, the next disable apply re-prepends the *first
+cycle's* snapshot and the user's preamble edits are silently
+overwritten. The user's *entry* edits round-trip fine (those flow
+through the tracker); only *preamble* edits are at risk.
+
+Mitigation, v11.0: documentation. The escape hatch is operator-
+visible in two places: (a) the source-file header comment in
+`scripts/lib/tracker-header-snapshot.sh` ("Operator note —
+refreshing the snapshot"); (b) Appendix A.1 of this document where
+the sidecar file is enumerated. The sequence is `disable` → delete
+the sidecar → `init` → `disable`. (Future: a single `pack tracker
+resnap` verb is a v11.1 candidate — tracked for BD-NNN follow-up
+during the v11.0 sweep.)
+
 V1 §17.2 trade-offs T1–T6 stand. V1 §17.3 reviewer/planner challenge
 list stands. V2 §17 risks R11–R14 stand.
 
@@ -1649,6 +1672,26 @@ V2 listed `HELP-FRAGMENT.md`, `pack-help.sh`, `chat-audit.jsonl`,
   `--update`; byte-identity enforced by `validate-pack.py`. New file.
 - `.pack-tracker/recommendation-state.json` (per surface, machine-local,
   gitignored) — recommendation state file (§28.1.4). New file.
+- `.pack-tracker/backlog-header.snapshot` (per surface, machine-local,
+  gitignored) — BACKLOG.md preamble preservation across reverse-
+  migration round-trips, introduced by BD-133 / D-6. **Lifecycle:**
+  created on the first reverse where the BACKLOG.md preamble is
+  substantive (i.e. not whitespace-only and not the bare `# BACKLOG`
+  line a prior entries-only emit would have produced); never refreshed
+  (first-write-wins, so the preamble survives N round-trips byte-
+  identical to its first capture); deleted only by manual operator
+  action. **Operator escape hatch:** to pick up a user-edited preamble
+  in flat-file mode between init→disable cycles, the user runs `pack
+  tracker disable` then deletes
+  `<surface-root>/.pack-tracker/backlog-header.snapshot` then runs
+  `pack tracker init` then `pack tracker disable` again — the second
+  disable re-snapshots from the now-edited preamble. (A future `pack
+  tracker resnap` verb may automate this; tracked as a v11.1 candidate
+  for follow-up.) **Gitignore status:** covered by the existing
+  `.pack-tracker/` rule (V1 §3.4), no new `.gitignore` line. **Source
+  module:** `scripts/lib/tracker-header-snapshot.sh`. **Sibling
+  sidecar:** `.pack-tracker/recommendation-state.json` (above) and
+  `.pack-tracker/id-map.json` (V1 §6.5). New file.
 - `.claude/skills/pack-help/SKILL.md` (per surface) — Claude Code
   `/pack-help` skill. New file.
 - `.codex/skills/pack-help/SKILL.md` (per surface) — Codex CLI `pack-help`
@@ -2822,9 +2865,12 @@ project-template/docs/pack/HELP-FRAGMENT-TRACKER.md   (init-project.sh installs 
 .codex/skills/pack-help/SKILL.md                           (per surface)
 .gemini/commands/pack-help.toml                        (per surface)
 scripts/lib/recommendation.sh                          (signal computation, state I/O)
+scripts/lib/tracker-header-snapshot.sh                 (BD-133 / D-6: BACKLOG.md preamble preservation across reverse round-trips)
 scripts/tests/recommendation-test.sh                   (integration tests for recommendation system)
 scripts/tests/tracker-migrate-roundtrip-test.sh        (multi-template-version roundtrip test; per V1 §6.6.1)
+scripts/tests/tracker-bd133-header-preservation-test.sh (BD-133 regression suite: 30 asserts in 4 groups)
 .pack-tracker/recommendation-state.json                (lazy-created at first session; gitignored)
+.pack-tracker/backlog-header.snapshot                  (BD-133 / D-6: lazy-created on first reverse with substantive preamble; first-write-wins; gitignored)
 ```
 
 ### I.2 Modified files (V3 extends)

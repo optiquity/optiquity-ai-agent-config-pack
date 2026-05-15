@@ -66,8 +66,44 @@
 #       Returns 0 on apply, 0 on no-op (snapshot absent), 1 on I/O
 #       failure.
 #
+#   tracker_header_snapshot_extract_preamble <backlog-path>
+#       Emit the preamble bytes (everything before the first entry
+#       or phase heading) of <backlog-path> on stdout. Pure read.
+#       Useful for callers that want to compute drift between the
+#       on-disk preamble and the snapshot (e.g. a future `pack
+#       tracker doctor` check) and for tests asserting byte-equality
+#       round-trips. No-op on missing input (caller checks rc).
+#
+# Operator note — refreshing the snapshot:
+#
+#   The capture step is first-write-wins: once
+#   `.pack-tracker/backlog-header.snapshot` exists, capture is a
+#   permanent no-op. This is a deliberate tradeoff against the
+#   "snapshot eats itself" failure mode in which a reverse cycle
+#   that produced a bare `# BACKLOG` preamble would lock that
+#   degraded preamble in for all future cycles. The trivial-skip
+#   predicate handles the common case, but first-write-wins is the
+#   belt-and-suspenders.
+#
+#   Side effect: if a user edits BACKLOG.md preamble in flat-file
+#   mode (V1 §3.1: "flat-file is authoritative") between two
+#   init→disable cycles, the snapshot from the first cycle is
+#   reapplied on the second cycle and the user's edits are
+#   silently overwritten. To pick up the new preamble:
+#
+#     1. `pack tracker disable`            (writes flat files)
+#     2. delete `.pack-tracker/backlog-header.snapshot`
+#     3. `pack tracker init`               (forward; snapshot still absent)
+#     4. `pack tracker disable`            (capture re-snapshots from the
+#                                           current — edited — preamble)
+#
+#   A future `pack tracker resnap` verb (BD-TBD) may automate this;
+#   see ARCHITECTURE-V3.md §28 for the v11.0 disposition.
+#
 # Reference: BACKLOG.md BD-133, ARCHITECTURE.md §6.5 step 4,
-#            §6.6 sidecar design intent.
+#            §6.6 sidecar design intent. ARCHITECTURE-V3.md
+#            Appendix A.1 enumerates the snapshot file alongside
+#            other `.pack-tracker/` sidecars.
 #
 # Do NOT add a shebang — this file is sourced, not executed.
 
@@ -84,12 +120,19 @@ tracker_header_snapshot_path() {
 # Capture: snapshot the header preamble (idempotent, first-write-wins)
 # ─────────────────────────────────────────────────────────────────
 
-# Internal: extract the header preamble (everything before the first
+# Public: extract the header preamble (everything before the first
 # entry/phase heading) from a BACKLOG.md file. Reads from $1, writes
 # the preamble verbatim to stdout. If no entry/phase heading is
 # found, the entire file is the "preamble" (the caller's filter
 # decides whether to capture).
-_ths_extract_preamble() {
+#
+# Promoted from `_ths_extract_preamble` (review F4): callers in tests
+# and a future `pack tracker doctor` drift check legitimately need
+# the same preamble-extraction logic that capture/apply use. A
+# back-compat alias `_ths_extract_preamble` is kept below so existing
+# call sites do not break mid-version; remove the alias when v12 is
+# in scope.
+tracker_header_snapshot_extract_preamble() {
     local backlog_path="$1"
     python3 - "$backlog_path" <<'PYEOF'
 import re, sys
@@ -110,6 +153,13 @@ if m:
 else:
     sys.stdout.write(text)
 PYEOF
+}
+
+# Back-compat alias (deprecated — call
+# `tracker_header_snapshot_extract_preamble` directly in new code).
+# Removed at v12 per F4 review note.
+_ths_extract_preamble() {
+    tracker_header_snapshot_extract_preamble "$@"
 }
 
 # Internal: decide whether the extracted preamble is "non-trivial"
@@ -182,7 +232,7 @@ tracker_header_snapshot_capture() {
     # ambiguity entirely).
     local tmp
     tmp=$(mktemp -t ths-snap.XXXXXX) || return 1
-    if ! _ths_extract_preamble "$backlog_path" > "$tmp" 2>/dev/null; then
+    if ! tracker_header_snapshot_extract_preamble "$backlog_path" > "$tmp" 2>/dev/null; then
         rm -f "$tmp"
         return 1
     fi

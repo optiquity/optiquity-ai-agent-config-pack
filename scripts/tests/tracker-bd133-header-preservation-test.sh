@@ -265,7 +265,13 @@ Description: x
 EOF
 
 # Capture original preamble bytes for byte-equal comparison.
-ORIGINAL_PREAMBLE=$(_ths_extract_preamble "$REPO/BACKLOG.md")
+# Use a tmp file + `cmp -s` rather than `$(...)` capture: command
+# substitution strips trailing newlines, so a file diff like
+# `\n\n` vs `\n\n\n` would falsely compare equal as bash strings
+# (review F2). `cmp -s` is byte-exact and rejects any trailing-
+# newline drift, matching the BD-133 byte-identical contract.
+WORK_G2=$(mktemp -d -t bd133-2-work.XXXXXX)
+tracker_header_snapshot_extract_preamble "$REPO/BACKLOG.md" > "$WORK_G2/orig.preamble"
 
 # Run reverse (no flip; no force needed — mapping was just written
 # but the test fixtures elsewhere bypass freshness via flip_mode=0).
@@ -281,13 +287,13 @@ assert_eq "2.1 reverse rc=0" "0" "$rc"
     && t_pass "2.1 snapshot file created on first reverse" \
     || t_fail "2.1 snapshot file created on first reverse"
 
-# Extract the post-reverse preamble and assert byte-equal.
-POST_PREAMBLE=$(_ths_extract_preamble "$REPO/BACKLOG.md")
-if [[ "$ORIGINAL_PREAMBLE" == "$POST_PREAMBLE" ]]; then
+# Extract the post-reverse preamble and assert byte-equal via cmp -s.
+tracker_header_snapshot_extract_preamble "$REPO/BACKLOG.md" > "$WORK_G2/post.preamble"
+if cmp -s "$WORK_G2/orig.preamble" "$WORK_G2/post.preamble"; then
     t_pass "2.2 post-reverse preamble byte-equal to original"
 else
     t_fail "2.2 post-reverse preamble byte-equal to original" \
-        "diff: original=$(printf '%s' "$ORIGINAL_PREAMBLE" | wc -c)b post=$(printf '%s' "$POST_PREAMBLE" | wc -c)b"
+        "diff: orig=$(wc -c < "$WORK_G2/orig.preamble")b post=$(wc -c < "$WORK_G2/post.preamble")b"
 fi
 
 # The reconstructed BD-001 entry must still be present after the apply.
@@ -296,7 +302,7 @@ assert_contains "2.3 BD-001 entry present after apply" "$backlog_after" "**BD-00
 assert_contains "2.3 user title preserved"   "$backlog_after" "# Backlog"
 assert_contains "2.3 H2 section preserved"   "$backlog_after" "## How to use this file"
 
-rm -rf "$REPO" "$FAKE"
+rm -rf "$REPO" "$FAKE" "$WORK_G2"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 3: full forward → reverse round-trip via stateful fake gh.
@@ -436,7 +442,10 @@ Unblocks: None
 Description: Refactor.
 EOF
 
-ORIGINAL_PREAMBLE=$(_ths_extract_preamble "$REPO/BACKLOG.md")
+# Capture pre-forward preamble bytes for byte-equal comparison.
+# `cmp -s` against a tmp file (review F2) — see Group 2 for rationale.
+WORK_G3=$(mktemp -d -t bd133-3-work.XXXXXX)
+tracker_header_snapshot_extract_preamble "$REPO/BACKLOG.md" > "$WORK_G3/orig.preamble"
 
 # Forward (BD-131-owned forward.sh runs but we do NOT modify it).
 export PATH="$FAKE:$PATH_SAVED"
@@ -456,13 +465,13 @@ assert_eq "3.1 reverse rc=0" "0" "$reverse_rc"
     && t_pass "3.2 snapshot file created during round-trip" \
     || t_fail "3.2 snapshot file created during round-trip"
 
-# Preamble byte-equal.
-POST_PREAMBLE=$(_ths_extract_preamble "$REPO/BACKLOG.md")
-if [[ "$ORIGINAL_PREAMBLE" == "$POST_PREAMBLE" ]]; then
+# Preamble byte-equal via cmp -s.
+tracker_header_snapshot_extract_preamble "$REPO/BACKLOG.md" > "$WORK_G3/post.preamble"
+if cmp -s "$WORK_G3/orig.preamble" "$WORK_G3/post.preamble"; then
     t_pass "3.3 init→disable preamble byte-equal to original"
 else
     t_fail "3.3 init→disable preamble byte-equal to original" \
-        "original len=$(printf '%s' "$ORIGINAL_PREAMBLE" | wc -c) post len=$(printf '%s' "$POST_PREAMBLE" | wc -c)"
+        "orig=$(wc -c < "$WORK_G3/orig.preamble")b post=$(wc -c < "$WORK_G3/post.preamble")b"
 fi
 
 # Entries also present.
@@ -470,7 +479,7 @@ backlog_after=$(cat "$REPO/BACKLOG.md")
 assert_contains "3.4 BD-001 reconstructed" "$backlog_after" "**BD-001 — Add foo**"
 assert_contains "3.4 BD-002 reconstructed" "$backlog_after" "**BD-002 — Refactor bar**"
 
-rm -rf "$REPO" "$FAKE"
+rm -rf "$REPO" "$FAKE" "$WORK_G3"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 4: multi-cycle stability — N reverses do not eat the header.
@@ -506,7 +515,10 @@ Type: TODO(version)
 Status: Open
 EOF
 
-ORIGINAL_PREAMBLE=$(_ths_extract_preamble "$REPO/BACKLOG.md")
+# Capture original preamble bytes via tmp file + cmp -s (review F2);
+# `$(...)` capture would mask trailing-newline drift across N cycles.
+WORK_G4=$(mktemp -d -t bd133-4-work.XXXXXX)
+tracker_header_snapshot_extract_preamble "$REPO/BACKLOG.md" > "$WORK_G4/orig.preamble"
 
 # Run reverse 5 times in a row.
 export PATH="$FAKE:$PATH_SAVED"
@@ -519,20 +531,22 @@ for cycle in 1 2 3 4 5; do
 done
 export PATH="$PATH_SAVED"
 
-POST_PREAMBLE=$(_ths_extract_preamble "$REPO/BACKLOG.md")
-if [[ "$ORIGINAL_PREAMBLE" == "$POST_PREAMBLE" ]]; then
+tracker_header_snapshot_extract_preamble "$REPO/BACKLOG.md" > "$WORK_G4/post.preamble"
+if cmp -s "$WORK_G4/orig.preamble" "$WORK_G4/post.preamble"; then
     t_pass "4.2 5 reverse cycles preserve preamble byte-equal"
 else
     t_fail "4.2 5 reverse cycles preserve preamble byte-equal" \
-        "original=$(printf '%s' "$ORIGINAL_PREAMBLE" | wc -c)b post=$(printf '%s' "$POST_PREAMBLE" | wc -c)b"
+        "orig=$(wc -c < "$WORK_G4/orig.preamble")b post=$(wc -c < "$WORK_G4/post.preamble")b"
 fi
 
-# Snapshot file is identical to the original preamble (first-write-wins).
-SNAP=$(cat "$REPO/.pack-tracker/backlog-header.snapshot")
-if [[ "$SNAP" == "$ORIGINAL_PREAMBLE" ]]; then
+# Snapshot file is byte-identical to the original preamble (first-
+# write-wins). Compare the two on-disk files directly via cmp -s
+# (review F2: $()/cat would strip trailing newlines and mask drift).
+if cmp -s "$REPO/.pack-tracker/backlog-header.snapshot" "$WORK_G4/orig.preamble"; then
     t_pass "4.3 snapshot equals original preamble (first-write-wins)"
 else
-    t_fail "4.3 snapshot equals original preamble (first-write-wins)"
+    t_fail "4.3 snapshot equals original preamble (first-write-wins)" \
+        "snap=$(wc -c < "$REPO/.pack-tracker/backlog-header.snapshot")b orig=$(wc -c < "$WORK_G4/orig.preamble")b"
 fi
 
 # Final BACKLOG.md still has exactly one title line (no duplication
@@ -540,7 +554,7 @@ fi
 n_titles=$(grep -c -E '^# (BACKLOG|Backlog)$' "$REPO/BACKLOG.md")
 assert_eq "4.4 exactly one title line after N cycles" "1" "$n_titles"
 
-rm -rf "$REPO" "$FAKE"
+rm -rf "$REPO" "$FAKE" "$WORK_G4"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary
