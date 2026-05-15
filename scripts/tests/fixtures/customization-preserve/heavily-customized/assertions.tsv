@@ -8,3 +8,8 @@ docs/pack/PM-CHAT.md	sidecar	project-pm-rule	project pm-chat edits preserved
 .claude/settings.json	dest	pack-new-perm	pack allow-list addition adopted
 .codex/config.toml	dest	project_tool	project tool entry retained
 .codex/config.toml	dest	lmstudio	pack tool addition adopted
+CLAUDE.md	dest	v11 addition	dest got new pack content (theirs)
+AGENTS.md	dest	v11 addition	dest got new pack content (theirs)
+GEMINI.md	dest	v11 addition	dest got new pack content (theirs)
+scripts/bootstrap.sh	dest	step two (added in v11)	dest got new pack content (theirs)
+docs/pack/PM-CHAT.md	dest	Pack workflow additions (v11)	dest got new pack content (theirs)

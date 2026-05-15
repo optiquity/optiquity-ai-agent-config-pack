@@ -36,6 +36,9 @@ __pycache__/
 *.egg-info/
 .venv/
 .env
+# Exception: synthetic test fixtures intentionally ship .env files
+# (BD-096; reproducibility from a fresh clone requires them in git)
+!scripts/tests/fixtures/**/.env
 dist/
 build/
 

@@ -1,2 +1,5 @@
 # rel_path	side	required_substring	notes
 .claude/agents/pack-reviewer.md	sidecar	project-reviewer-rule	project edits preserved in sidecar
+.codex/agents/pack-coder.md	dest	state-changing git verbs forbidden	pack-update-applied took theirs's v11 wording
+.gemini/agents/pack-architect.md	dest	data-flow diagram	project edit preserved (no pack change)
+.gemini/agents/pack-architect.md	dest	No implementation	pack baseline content present

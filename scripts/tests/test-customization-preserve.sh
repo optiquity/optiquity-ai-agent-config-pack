@@ -591,11 +591,24 @@ run_fixture() {
     local row rel klass expected notes
     local base_path ours_path theirs_path dest_path
     local actual_disp actual_class
+    # Manifest rows are 4 tab-separated fields:
+    #   rel_path  class  expected_disposition  notes
+    # `notes` is read for column-position discipline only — the runner
+    # does not assert on it (per README "Manifest format" §). F-6: a
+    # field-count guard below catches malformed rows (3 or 5+ fields).
     while IFS=$'\t' read -r rel klass expected notes; do
         # Skip header / empty / comment rows.
         case "$rel" in
             \#*|"") continue ;;
         esac
+
+        # F-6: field-count guard. Required columns 1-3 must be non-empty;
+        # `notes` (col 4) may be empty but its variable must exist.
+        if [[ -z "$rel" || -z "$klass" || -z "$expected" ]]; then
+            t_fail "8.$fname manifest row malformed" \
+                "expected 4 tab-separated fields, got rel='$rel' class='$klass' expected='$expected'"
+            continue
+        fi
 
         base_path=""
         ours_path=""
@@ -639,12 +652,25 @@ run_fixture() {
     done < "$manifest"
 
     # Assertions: substring checks against dest or sidecar files.
+    # Assertion rows are 4 tab-separated fields:
+    #   rel_path  side(dest|sidecar)  required_substring  notes
+    # `notes` is read for column-position discipline only — the runner
+    # does not assert on it. F-2: a leading `!` on the substring inverts
+    # the assertion (must NOT contain). F-6: field-count guard catches
+    # malformed rows.
     if [[ -f "$assertions" ]]; then
         local a_rel a_side a_sub a_notes target
+        local invert sub_actual
         while IFS=$'\t' read -r a_rel a_side a_sub a_notes; do
             case "$a_rel" in
                 \#*|"") continue ;;
             esac
+            # F-6: field-count guard for assertion rows.
+            if [[ -z "$a_rel" || -z "$a_side" || -z "$a_sub" ]]; then
+                t_fail "8.$fname assertion row malformed" \
+                    "expected 4 tab-separated fields, got rel='$a_rel' side='$a_side' sub='$a_sub'"
+                continue
+            fi
             case "$a_side" in
                 dest)    target="$proj/$a_rel" ;;
                 sidecar) target="$proj/$a_rel.pre-update" ;;
@@ -659,8 +685,24 @@ run_fixture() {
             fi
             local content
             content=$(cat "$target")
-            assert_contains "8.$fname/$a_rel ($a_side) contains '$a_sub'" \
-                "$content" "$a_sub"
+            # F-2: leading `!` inverts the assertion (must NOT contain).
+            invert=0
+            sub_actual="$a_sub"
+            if [[ "${a_sub:0:1}" == "!" ]]; then
+                invert=1
+                sub_actual="${a_sub:1}"
+            fi
+            if [[ "$invert" -eq 1 ]]; then
+                if [[ "$content" != *"$sub_actual"* ]]; then
+                    t_pass "8.$fname/$a_rel ($a_side) does NOT contain '$sub_actual'"
+                else
+                    t_fail "8.$fname/$a_rel ($a_side) does NOT contain '$sub_actual'" \
+                        "found unexpected substring"
+                fi
+            else
+                assert_contains "8.$fname/$a_rel ($a_side) contains '$sub_actual'" \
+                    "$content" "$sub_actual"
+            fi
         done < "$assertions"
     fi
 
@@ -683,14 +725,14 @@ run_fixture() {
     rm -rf "$work"
 }
 
-# Drive all five fixtures.
-for fixture in \
-    lightly-customized-minimal \
-    heavily-customized \
-    language-heterogeneous \
-    custom-agents-heavy \
-    v10-with-customization
-do
+# F-7: auto-discover fixture directories under FIXTURES_DIR. Sorted via
+# `LC_ALL=C ... | sort` for deterministic ordering across machines (so
+# pass/fail diffability holds across macOS / Linux CI). New fixtures
+# dropped into FIXTURES_DIR/ are picked up automatically — no runner
+# edit required, fulfilling the README "How to add a fixture" claim.
+for fixture_path in $(LC_ALL=C ls -d "$FIXTURES_DIR"/*/ 2>/dev/null | sort); do
+    [[ -d "$fixture_path" ]] || continue
+    fixture=$(basename "$fixture_path")
     printf "\n--- 8.%s ---\n" "$fixture"
     run_fixture "$fixture"
 done

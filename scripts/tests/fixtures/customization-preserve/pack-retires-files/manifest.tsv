@@ -1,0 +1,5 @@
+# rel_path	class	expected_disposition	notes
+scripts/legacy-cleanup.sh	pack-script	removed-by-design	pack retired; project never edited (removed-by-pack-clean → removed-by-design)
+scripts/legacy-bootstrap.sh	pack-script	removed-by-design	pack retired; project DID edit (removed-by-pack-customized → removed-by-design + sidecar)
+docs/pack/RETIRED-GUIDE.md	pm-chat	project-deleted-pack-kept	project removed; pack still ships
+scripts/old-helper.sh	pack-script	removed-everywhere	already gone on both sides; no-op

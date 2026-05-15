@@ -1,0 +1,2 @@
+# rel_path	side	required_substring	notes
+scripts/legacy-bootstrap.sh	sidecar	project-legacy-bootstrap-edit	project edits preserved in sidecar before pack-retire

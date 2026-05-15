@@ -13,12 +13,19 @@ asserts the recorded disposition + class match expectations. Optional
 `assertions.tsv` adds content checks against the destination or sidecar
 file the algorithm wrote.
 
-## The five fixtures
+## The six fixtures
 
-Together the five fixtures span the practical customization-shape space
-that v10→v11 migration must handle. None of them is the OT project
-itself — they are general-use scenarios; OT happens to be one realistic
-shape (captured in `v10-with-customization/`).
+Together the six fixtures span the practical customization-shape space
+that v10→v11 migration must handle: the edit/add space (fixtures 1-5)
+plus the file-removal space (fixture 6 `pack-retires-files/`, added per
+review F-5). None of them is the OT project itself — they are general-
+use scenarios; OT happens to be one realistic shape (captured in
+`v10-with-customization/`).
+
+New fixtures dropped into this directory are auto-discovered by the
+runner — no edit to `test-customization-preserve.sh` required. The
+runner enumerates `scripts/tests/fixtures/customization-preserve/*/`
+in `LC_ALL=C sort` order so test output is byte-stable across hosts.
 
 ### 1. `lightly-customized-minimal/`
 
@@ -94,6 +101,47 @@ unit tests; this fixture is the directory-based end-to-end equivalent.
 - `CLAUDE.md` trinity with project + pack edits.
 - One `x-` custom agent `.claude/agents/x-ot-reviewer.md`.
 
+### 6. `pack-retires-files/`
+
+Exercises the file-removal corner of the customization-shape space —
+the four dispositions where a file is gone on at least one side.
+Added per review F-5 to close the end-to-end coverage gap. The
+algorithmic unit-test surface for these cases lives inline in
+`test-customization-preserve.sh` Group 2.7 / 2.8 (text strategy
+removed-by-pack-clean / removed-by-pack-customized); this fixture
+re-exercises them through the directory-based driver.
+
+**Customization shape:**
+- `scripts/legacy-cleanup.sh` — pack-shipped script the project never
+  edited; pack retires it in v11. Classifier returns
+  `removed-by-pack-clean`; strategy maps to `removed-by-design` and
+  removes dest. (BASE present, OURS == BASE, THEIRS absent.)
+- `scripts/legacy-bootstrap.sh` — pack-shipped script the project DID
+  edit (added a custom step); pack retires it in v11. Classifier
+  returns `removed-by-pack-customized`; strategy maps to
+  `removed-by-design`, writes `.pre-update` sidecar to preserve the
+  project edit, and removes dest. (BASE present, OURS edited, THEIRS
+  absent.)
+- `docs/pack/RETIRED-GUIDE.md` — pack-shipped guide the project chose
+  to delete locally; pack still ships it (and even updated it).
+  Classifier returns `project-deleted-pack-kept`; strategy honors the
+  project deletion (records the disposition; does not restore dest).
+  (BASE present, OURS absent, THEIRS present.)
+- `scripts/old-helper.sh` — already gone on both project and pack-v11;
+  no-op. Classifier returns `removed-everywhere`. (BASE present, OURS
+  absent, THEIRS absent — distinct from the BASE-also-absent
+  early-return path which is exercised by Group 2.x inline cases.)
+
+Note: `removed-by-pack-clean` and `removed-by-pack-customized` both
+collapse to `removed-by-design` at the disposition layer per
+`_cp_disposition_for` (`scripts/lib/customization-preserve.sh`), so
+the manifest's `expected_disposition` for both rows is
+`removed-by-design`. The two are distinguished at the action /
+sidecar layer instead — the `assertions.tsv` row asserting
+`scripts/legacy-bootstrap.sh` (sidecar) contains
+`project-legacy-bootstrap-edit` is the dispositive check that the
+customized variant correctly preserved the project edit.
+
 ## Manifest format
 
 `manifest.tsv` (tab-separated, header line begins with `#`):
@@ -111,7 +159,9 @@ Columns:
    `auto` to let the algorithm classify from `rel_path`).
 3. `expected_disposition` — must equal the disposition token recorded
    in `dispositions.tsv` after the call.
-4. `notes` — human-readable description (not asserted; for fixture authors).
+4. `notes` — human-readable description; not asserted on. Read by the
+   runner only for column-position discipline. The F-6 field-count
+   guard requires columns 1-3 to be non-empty; column 4 may be empty.
 
 Triplet presence rules:
 
@@ -130,6 +180,7 @@ Triplet presence rules:
 .gemini/.env	dest	AGENT_CAPABILITIES=swift,python,grpc	project value wins
 .claude/settings.json	dest	XCODE_SCHEME	project key preserved
 CLAUDE.md	sidecar	project edit marker	pre-update copy keeps project edits
+.codex/config.toml	dest	!ollama	project removal of ollama honored (negative)
 ```
 
 Columns:
@@ -137,8 +188,15 @@ Columns:
 1. `rel_path` — must appear in the corresponding `manifest.tsv`.
 2. `side` — `dest` (the file the algorithm wrote to the dest path) or
    `sidecar` (the `.pre-update` file the algorithm wrote alongside dest).
-3. `required_substring` — file content must contain this substring.
-4. `notes` — human-readable.
+3. `required_substring` — file content must contain this substring. A
+   leading `!` inverts the assertion: the file content must NOT contain
+   the (post-`!`) substring. Use the negative form to guard properties
+   like "project intentionally removed X; algorithm honored the removal"
+   (added per review F-2).
+4. `notes` — human-readable description; not asserted on. Read by the
+   runner only for column-position discipline (kept so future columns
+   can be appended without ambiguity). The F-6 field-count guard
+   requires columns 1-3 to be non-empty; column 4 may be empty.
 
 ## Determinism
 

@@ -1,2 +1,3 @@
 # rel_path	side	required_substring	notes
 .claude/settings.json	dest	project-perm	project allow-list entry retained
+.claude/settings.json	dest	pack-new-perm	pack allow-list addition adopted

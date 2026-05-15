@@ -3,6 +3,7 @@
 .claude/settings.json	dest	MyApp	project env value preserved
 .claude/settings.json	dest	pack-new-perm	pack-new allow entry adopted
 .codex/config.toml	dest	lmstudio	pack tool addition adopted
+.codex/config.toml	dest	!ollama	project removal of ollama honored
 .gemini/.env	dest	AGENT_CAPABILITIES=swift,python	project value wins
 .gemini/.env	dest	NEW_PACK_VAR	pack-new key adopted
 CLAUDE.md	sidecar	project-ot-rule	project trinity edits preserved
