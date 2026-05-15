@@ -129,21 +129,28 @@ migrate_v10_to_v11_resume_run() {
     done
 
     # Classify sidecars. List unresolved ones with actionable instructions.
-    local classification unresolved=0 resolved=0
+    #
+    # F11 (BD-095 retro fix): build the unresolved listing in a single awk
+    # pass over the classification output (was: re-awk inside the error
+    # block). `unresolved_list` carries the rendered "  $sidecar" lines;
+    # `unresolved` is the count of those lines.
+    local classification unresolved=0 resolved=0 unresolved_list=""
     classification=$(_v10_v11_resume_classify_sidecars "$paused")
     if [[ -z "$classification" ]]; then
         # paused file is empty / blank-only — treat as no conflicts.
         warn "stage-S3.paused exists but lists no sidecars; proceeding to S4"
     else
-        local row status sidecar
-        while IFS=$'\t' read -r status sidecar; do
-            [[ -z "$status" ]] && continue
-            if [[ "$status" == "unresolved" ]]; then
-                unresolved=$((unresolved + 1))
-            else
-                resolved=$((resolved + 1))
-            fi
-        done <<< "$classification"
+        unresolved_list=$(printf '%s\n' "$classification" \
+            | awk -F'\t' '$1 == "unresolved" {print "  " $2}')
+        if [[ -n "$unresolved_list" ]]; then
+            # `wc -l` counts trailing-newline-terminated lines; the
+            # pipeline above always emits a trailing newline per match
+            # so this matches the row count exactly.
+            unresolved=$(printf '%s\n' "$unresolved_list" \
+                | grep -c '^  ' || true)
+        fi
+        resolved=$(printf '%s\n' "$classification" \
+            | awk -F'\t' '$1 != "unresolved" && $1 != "" {c++} END {print c+0}')
     fi
 
     if (( unresolved > 0 )); then
@@ -155,12 +162,14 @@ migrate_v10_to_v11_resume_run() {
             printf '  (b) merge or accept-pack-default, then remove (rename) the sidecar\n'
             printf '\n'
             printf 'Unresolved sidecars:\n'
-            printf '%s\n' "$classification" \
-                | awk -F'\t' '$1 == "unresolved" {print "  " $2}'
+            printf '%s\n' "$unresolved_list"
             printf '\n'
             printf 'Then re-run:\n'
+            # F12 (BD-095 retro fix): drop `:-/path/to/pack` fallback;
+            # by the time --resume is invoked, the prior --apply has
+            # validated PACK upstream.
             printf '  PACK=%s scripts/migrate-%s-to-%s.sh --resume %s\n' \
-                "${PACK:-/path/to/pack}" \
+                "$PACK" \
                 "$MIGRATOR_FROM_VERSION" "$MIGRATOR_TO_VERSION" \
                 "$target"
         } >&2
@@ -232,6 +241,21 @@ migrate_v10_to_v11_resume_run() {
     _v10_v11_apply_sentinel_mark "$state_dir" S4
     _v10_v11_apply_sentinel_mark "$state_dir" S5
 
+    # F10 (BD-095 retro fix): `_stage_relocations` and
+    # `_stage_artifact_installs` are no-ops in the v10→v11 adapter
+    # because `migrator_relocations` / `migrator_artifact_installs`
+    # are declared empty (see migrate-v10-to-v11.sh lines ~120-128).
+    # The post-dispatch hook above performs the equivalent BD-104 +
+    # BD-042 + v11 artifact install work. We keep the stage calls so
+    # the resume sequence is byte-equivalent to `_migrator_run_stages`'s
+    # tail and the framework's no-op-when-empty contract is exercised.
+    # Future per-version `resume.sh` files where the adapter declares
+    # non-empty `migrator_relocations` / `migrator_artifact_installs`
+    # rows MUST audit this sequence — re-running relocations after S3
+    # paused-for-reconciliation could double-rename. The forward-only
+    # contract assumes "S4..S6 haven't run"; copy this verbatim only
+    # after verifying the adapter's relocations + artifact-installs
+    # are also empty.
     _stage_relocations
     _stage_artifact_installs
     _stage_report

@@ -130,7 +130,7 @@ _stage_preflight() {
     # signal than the monolith's "backup directory already exists" error.
     if [[ -f "$_MIGRATOR_STATE_DIR/dispositions.tsv" ]]; then
         say "target already migrated: $_MIGRATOR_STATE_DIR/dispositions.tsv exists"
-        die "to re-run the migration, restore from the backup at $_MIGRATOR_BACKUP_DIR first; --resume is reserved for BD-095 and not yet implemented" \
+        die "to re-run the migration, restore from the backup at $_MIGRATOR_BACKUP_DIR first; --resume is the forward-only continuation after a paused dispatch (see --help)" \
             "$EXIT_ALREADY_MIGRATED"
     fi
 }

@@ -76,48 +76,118 @@ migrate_v10_to_v11_dry_run_compute_fingerprint() {
             "$EXIT_INTERNAL"
     fi
 
-    # Surface = explicit v10 list (trinity, .codex/config.toml, BACKLOG.md)
-    # PLUS recursive contents of per-CLI agents directories. Manifest-row
-    # files are covered by the explicit list; sweep-row files (agents) are
-    # covered by the recursion. Limited to the v10 surface so the apply
-    # comparator stays insensitive to v11-only files the dry-run might
-    # have proposed adding (e.g. tracker.toml.example).
-    local explicit=(
-        "CLAUDE.md"
-        "AGENTS.md"
-        "GEMINI.md"
-        ".codex/config.toml"
-        "BACKLOG.md"
-    )
-    local sweep_dirs=(
-        ".claude/agents"
-        ".codex/agents"
-        ".gemini/agents"
-    )
-
+    # F1 (BD-095 retro fix): the surface is built dynamically from two
+    # framework-owned sources so the fingerprint can never silently
+    # under-cover the manifest. ARCHITECTURE-BD-119.md §9.2 is the contract
+    # ("avoid duplicating surface knowledge"); the helper +
+    # `migrator_manifest` are the two framework-owned tables BD-095
+    # consumes. Adding a future v11→v12 transform row to the manifest
+    # (or extending `migrator_target_surface_for_version v10`) will
+    # automatically expand drift detection without a parallel edit here.
+    #
+    # Surface composition:
+    #   1. `migrator_target_surface_for_version "$MIGRATOR_FROM_VERSION"`
+    #      contributes both files (trinity, .codex/config.toml,
+    #      BACKLOG.md) and directories (per-CLI agents/) — directories
+    #      are swept recursively, files are hashed individually.
+    #   2. `migrator_manifest` contributes every row whose action column
+    #      is `transform` (project-relative path in column 2). Rows with
+    #      action `add` / `remove` / `relocate-from` are excluded — only
+    #      `transform`-class rows describe files that an `--apply` will
+    #      mutate based on user-side state.
+    #   3. Duplicates between (1) and (2) are folded — the trinity files
+    #      and `.codex/config.toml` appear in both sources; we union the
+    #      sets (sort -u) so each path is hashed once.
     local listing
     listing=$(mktemp)
 
-    local rel f abs sha
-    for rel in "${explicit[@]}"; do
-        abs="$target/$rel"
-        if [[ -f "$abs" ]]; then
-            sha=$(_v10_v11_dryrun_sha256_cmd < "$abs" | awk '{print $1}')
-            printf '%s\t%s\n' "$rel" "$sha" >> "$listing"
-        fi
-    done
+    # ── (1) Surface from `migrator_target_surface_for_version` ─────────
+    # Helper output is one entry per line. Each entry is either a
+    # project-relative file or a project-relative directory; we test
+    # `[[ -d ]]` to decide which sweep path to take. `unknown` is the
+    # one-line sentinel value the helper emits for unsupported versions
+    # (returns rc=1) — we treat it as an empty surface and rely on (2)
+    # alone, plus warn so the regression test surfaces the framework gap.
+    local surface_lines surface_rc
+    surface_lines=$(migrator_target_surface_for_version \
+        "$MIGRATOR_FROM_VERSION" 2>/dev/null) || surface_rc=$?
+    if [[ "${surface_lines:-}" == "unknown" ]] \
+       || [[ -z "${surface_lines:-}" ]]; then
+        warn "migrator_target_surface_for_version $MIGRATOR_FROM_VERSION returned no surface (rc=${surface_rc:-0}); fingerprint will rely on the manifest alone"
+        surface_lines=""
+    fi
 
-    local sweep
-    for sweep in "${sweep_dirs[@]}"; do
-        [[ -d "$target/$sweep" ]] || continue
-        # `find … -type f` is BSD/GNU portable. Sort for determinism.
-        while IFS= read -r f; do
-            [[ -z "$f" ]] && continue
-            sha=$(_v10_v11_dryrun_sha256_cmd < "$f" | awk '{print $1}')
-            rel="${f#"$target/"}"
-            printf '%s\t%s\n' "$rel" "$sha" >> "$listing"
-        done < <(find "$target/$sweep" -type f -print 2>/dev/null | sort)
-    done
+    # Files set + directories set, gathered into temp listings so the
+    # final hash is over a single sorted union (composition over
+    # special-cases — V3 §design 4).
+    local files_listing dirs_listing
+    files_listing=$(mktemp)
+    dirs_listing=$(mktemp)
+
+    local entry
+    while IFS= read -r entry; do
+        [[ -z "$entry" ]] && continue
+        if [[ -d "$target/$entry" ]]; then
+            printf '%s\n' "$entry" >> "$dirs_listing"
+        else
+            # Treat as a regular file even when it does not yet exist on
+            # disk — the listing is later filtered on `[[ -f ]]` so a
+            # missing file is silently skipped (deterministic with the
+            # pre-fix behavior).
+            printf '%s\n' "$entry" >> "$files_listing"
+        fi
+    done <<< "$surface_lines"
+
+    # ── (2) Manifest transform-class rows ──────────────────────────────
+    # Manifest format (one TSV row): pack-relpath\tproject-relpath\tclass\taction
+    # We want column 2 (project-relpath) where column 4 == `transform`.
+    # Comment lines (`#`-prefixed after optional leading whitespace) and
+    # blank rows are ignored — same lenience as the framework's
+    # `_manifest_parse`.
+    if declare -F migrator_manifest >/dev/null 2>&1; then
+        migrator_manifest 2>/dev/null \
+            | awk -F'\t' '
+                /^[[:space:]]*$/ { next }
+                /^[[:space:]]*#/ { next }
+                NF >= 4 && $4 == "transform" { print $2 }
+            ' >> "$files_listing"
+    fi
+
+    # ── Union files + sweep dirs into a single sorted listing ──────────
+    # Files: dedupe with sort -u so trinity / .codex/config.toml entries
+    # that appear in both (1) and (2) are hashed once. Skip rows whose
+    # target path doesn't exist (a manifest row may name a file the
+    # client doesn't have — that's not drift).
+    local rel f abs sha
+    if [[ -s "$files_listing" ]]; then
+        while IFS= read -r rel; do
+            [[ -z "$rel" ]] && continue
+            abs="$target/$rel"
+            if [[ -f "$abs" ]]; then
+                sha=$(_v10_v11_dryrun_sha256_cmd < "$abs" | awk '{print $1}')
+                printf '%s\t%s\n' "$rel" "$sha" >> "$listing"
+            fi
+        done < <(sort -u "$files_listing")
+    fi
+
+    # Directories: dedupe similarly, then `find -type f` per dir. The
+    # per-dir output is sorted so the final pre-hash sort is stable.
+    if [[ -s "$dirs_listing" ]]; then
+        local sweep
+        while IFS= read -r sweep; do
+            [[ -z "$sweep" ]] && continue
+            [[ -d "$target/$sweep" ]] || continue
+            # `find … -type f` is BSD/GNU portable.
+            while IFS= read -r f; do
+                [[ -z "$f" ]] && continue
+                sha=$(_v10_v11_dryrun_sha256_cmd < "$f" | awk '{print $1}')
+                rel="${f#"$target/"}"
+                printf '%s\t%s\n' "$rel" "$sha" >> "$listing"
+            done < <(find "$target/$sweep" -type f -print 2>/dev/null | sort)
+        done < <(sort -u "$dirs_listing")
+    fi
+
+    rm -f "$files_listing" "$dirs_listing"
 
     local count combined
     if [[ -s "$listing" ]]; then
@@ -180,13 +250,26 @@ migrate_v10_to_v11_dry_run_run() {
     # so we materialize the report here. State is read-only — the
     # render is a write to the state dir, not the project tree, and is
     # the deliverable BD-095 promises ("--dry-run produces report").
+    #
+    # F6 (BD-095 retro fix): capture stderr and surface it on failure
+    # rather than `>/dev/null 2>&1 || true` swallowing the renderer's
+    # diagnostic. Gate 1 will still emit `[FAIL] report.md not rendered`
+    # downstream, but operators now see WHY the renderer failed.
     if [[ -f "$state_dir/dispositions.tsv" ]] \
        && declare -F customization_report >/dev/null 2>&1; then
-        customization_report \
-            "$state_dir/dispositions.tsv" \
-            "$state_dir/report.md" \
-            "${MIGRATOR_FROM_VERSION} → ${MIGRATOR_TO_VERSION} migration customization report (--dry-run preview)" \
-            >/dev/null 2>&1 || true
+        local _render_err
+        _render_err="$state_dir/customization_report.stderr"
+        if ! customization_report \
+                "$state_dir/dispositions.tsv" \
+                "$state_dir/report.md" \
+                "${MIGRATOR_FROM_VERSION} → ${MIGRATOR_TO_VERSION} migration customization report (--dry-run preview)" \
+                2>"$_render_err"; then
+            warn "customization_report failed: $(head -5 "$_render_err" 2>/dev/null)"
+            warn "see $_render_err for full output"
+            # Leave the stderr file in place — Gate 1 FAIL will reference it.
+        else
+            rm -f "$_render_err"
+        fi
     fi
 
     local fp_line fp_sha fp_count epoch

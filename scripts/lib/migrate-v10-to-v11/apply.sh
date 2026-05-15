@@ -44,9 +44,9 @@
 #   $STATE_DIR/sentinels/stage-S6.done
 #
 # `*.done` is touched immediately after the stage completes successfully.
-# `S3.paused` lists one path-per-line of *.merge-conflict (a.k.a.
-# *.${MIGRATOR_OWN_SIDECAR_SUFFIX}) sidecars the user must reconcile
-# before --resume will proceed.
+# `S3.paused` lists one path-per-line of *.${MIGRATOR_OWN_SIDECAR_SUFFIX}
+# sidecars (currently *.v10-customized for the v10→v11 adapter) the user
+# must reconcile before --resume will proceed.
 #
 # Do NOT add a shebang — this file is sourced, not executed.
 
@@ -73,8 +73,13 @@ migrate_v10_to_v11_apply_check_freshness() {
             printf '  expected fingerprint: %s\n' "$fp"
             printf '  no dry-run output found for this target\n'
             printf '\n'
+            # F12 (BD-095 retro fix): drop the `:-/path/to/pack` fallback;
+            # by the time the freshness gate fires, PACK has been validated
+            # upstream (the dispatcher requires it; the framework's S0
+            # preflight enforces it). The fallback was a real-path-looking
+            # footgun for users who copy-paste the recovery line.
             printf '→ Run: PACK=%s %s --dry-run %s\n' \
-                "${PACK:-/path/to/pack}" \
+                "$PACK" \
                 "scripts/migrate-${MIGRATOR_FROM_VERSION}-to-${MIGRATOR_TO_VERSION}.sh" \
                 "$target"
             printf '  Review %s, then re-run --apply.\n' \
@@ -118,8 +123,9 @@ migrate_v10_to_v11_apply_check_freshness() {
             printf '  fingerprint: %s\n' "$fp"
             printf '  age:         %ss (max %ss)\n' "$age" "$max"
             printf '\n'
+            # F12 (BD-095 retro fix): drop `:-/path/to/pack` fallback.
             printf '→ Run: PACK=%s %s --dry-run %s\n' \
-                "${PACK:-/path/to/pack}" \
+                "$PACK" \
                 "scripts/migrate-${MIGRATOR_FROM_VERSION}-to-${MIGRATOR_TO_VERSION}.sh" \
                 "$target"
             printf '  Re-review the report, then re-run --apply within 24h.\n'
@@ -139,13 +145,15 @@ migrate_v10_to_v11_apply_check_freshness() {
             printf '  recorded sha:  %s (files=%s)\n' "$recorded_sha" "$recorded_count"
             printf '  current sha:   %s (files=%s)\n' "$current_sha" "$current_count"
             printf '\n'
-            printf 'The customization surface (CLAUDE.md / AGENTS.md / GEMINI.md /\n'
-            printf '.codex/config.toml / BACKLOG.md / per-CLI agents/) has been\n'
-            printf 'modified after the dry-run report was generated. The report at\n'
-            printf '%s no longer reflects what --apply would do.\n' "$state_dir/report.md"
+            printf 'The customization surface (trinity files, .codex/config.toml,\n'
+            printf 'BACKLOG.md, per-CLI agents/, plus every transform-class manifest\n'
+            printf 'row — see migrator_target_surface_for_version + migrator_manifest)\n'
+            printf 'has been modified after the dry-run report was generated. The\n'
+            printf 'report at %s no longer reflects what --apply would do.\n' "$state_dir/report.md"
             printf '\n'
+            # F12 (BD-095 retro fix): drop `:-/path/to/pack` fallback.
             printf '→ Run: PACK=%s %s --dry-run %s\n' \
-                "${PACK:-/path/to/pack}" \
+                "$PACK" \
                 "scripts/migrate-${MIGRATOR_FROM_VERSION}-to-${MIGRATOR_TO_VERSION}.sh" \
                 "$target"
             printf '  Re-review the report against the current working tree.\n'
@@ -247,7 +255,10 @@ migrate_v10_to_v11_apply_after_dispatch() {
         say "  (b) accept the pack's destination as-is and remove the sidecar."
         say ""
         say "Then run:"
-        say "  PACK=${PACK:-/path/to/pack} \\"
+        # F12 (BD-095 retro fix): drop `:-/path/to/pack` fallback. This
+        # block fires only AFTER S3 dispatch completed (post-mutation),
+        # so PACK is definitely set.
+        say "  PACK=$PACK \\"
         say "    scripts/migrate-${MIGRATOR_FROM_VERSION}-to-${MIGRATOR_TO_VERSION}.sh \\"
         say "    --resume $_MIGRATOR_TARGET"
         say ""
@@ -274,6 +285,32 @@ migrate_v10_to_v11_apply_run() {
     done
     target="$(cd "$target" 2>/dev/null && pwd || printf '%s' "$target")"
     local state_dir="$target/.pack-migrate-${MIGRATOR_FROM_VERSION}-to-${MIGRATOR_TO_VERSION}"
+
+    # F4 (BD-095 retro fix): paused-state guard. Refuse `--apply` when a
+    # previous run paused for sidecar reconciliation. Without this check
+    # `--apply` would silently re-execute S0..S3 and reach S1 with the
+    # backup-dir-already-exists error — telling the user to remove the
+    # backup when the right answer is `--resume`. (See PACK-REVIEW-
+    # BD-095-RETRO.md F4.) Mirrors the F3 guard in the bare branch of
+    # the adapter dispatcher.
+    local _paused_sentinel="$state_dir/sentinels/stage-S3.paused"
+    if [[ -f "$_paused_sentinel" ]]; then
+        {
+            printf 'error: --apply refused; a paused migration exists\n'
+            printf '  paused-sentinel: %s\n' "$_paused_sentinel"
+            printf '\n'
+            printf '→ Resolve the listed sidecars then run:\n'
+            # F12 (BD-095 retro fix): drop `:-/path/to/pack` fallback.
+            printf '    PACK=%s scripts/migrate-%s-to-%s.sh --resume %s\n' \
+                "$PACK" \
+                "$MIGRATOR_FROM_VERSION" "$MIGRATOR_TO_VERSION" \
+                "$target"
+            printf '\n'
+            printf '  Or to start over, restore from %s-backup and re-run.\n' \
+                "$state_dir"
+        } >&2
+        exit "${EXIT_INTERNAL:-99}"
+    fi
 
     # Freshness gate (§6.G). Exits the process on failure with a
     # documented exit code + actionable message.
@@ -390,6 +427,18 @@ migrate_v10_to_v11_apply_run() {
     # Wrap _stage_libs to restore the fingerprint after it wipes the
     # state dir. (Pure additive: the original behavior is preserved;
     # we just re-stash the file the user already validated.)
+    #
+    # F8 + F9 (BD-095 retro fix): the underlying state-dir-wipe-then-
+    # restore pattern is a workaround for the framework's `_stage_libs`
+    # `rm -rf $_MIGRATOR_STATE_DIR`. A cleaner fix is a preserve-list
+    # in `_stage_libs` (BD-119 framework cleanup, out of scope here).
+    # In the meantime we (a) remove the stash file as soon as the
+    # restore lands so the temp file does not survive a later
+    # framework `die`/`fail_stage` (F9 leak fix), and (b) note that
+    # restoring the fingerprint on a failed run is harmless because
+    # any post-S2 mutation makes a future `--apply` fail at S0
+    # idempotency or S1 backup-dir-exists (F8 — works around the
+    # framework gap; documented for future BD-119 cleanup).
     if ! declare -F _v10_to_v11_orig_stage_libs >/dev/null 2>&1; then
         eval "$(declare -f _stage_libs \
             | sed '1s/_stage_libs/_v10_to_v11_orig_stage_libs/')"
@@ -398,11 +447,19 @@ migrate_v10_to_v11_apply_run() {
             # Restore the dry-run fingerprint after the framework's
             # `rm -rf $_MIGRATOR_STATE_DIR`. Resume mode reads it.
             cp "$fp_stash" "$_MIGRATOR_STATE_DIR/dry-run.fingerprint"
+            # F9: the stash file's job is done — drop it now so a
+            # later framework `die` cannot leak it under $TMPDIR.
+            rm -f "$fp_stash"
+            fp_stash=""
         }
     fi
 
     migrator_run --apply "$@"
     local rc=$?
-    rm -f "$fp_stash"
+    # Belt-and-braces: if the `_stage_libs` wrapper never ran (early
+    # framework failure between trap-set and stage-libs entry), the
+    # original cleanup line still removes the stash. Idempotent —
+    # `rm -f ""` and `rm -f $fp_stash` both succeed silently.
+    [[ -n "${fp_stash:-}" ]] && rm -f "$fp_stash"
     return "$rc"
 }

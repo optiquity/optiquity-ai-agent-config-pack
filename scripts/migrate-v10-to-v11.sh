@@ -651,10 +651,19 @@ for _a in "$@"; do
                 _mode="$_a"
                 continue
             fi
-            # Multiple mode flags is a user error — let the framework's
-            # parser reject the duplicate downstream rather than silently
-            # picking one.
-            _passthru+=("$_a")
+            # F5 (BD-095 retro fix): duplicate mode flags fail loud at the
+            # dispatcher (this is where the contract is owned). The
+            # pre-fix behavior pushed the second flag to passthru and let
+            # the framework parser run with contradictory state — e.g.
+            # `--dry-run --apply` ran with _MIGRATOR_DRY_RUN=1 and
+            # _MIGRATOR_MODE="apply", and `--dry-run --resume` produced
+            # a confusing "framework call path was not intercepted"
+            # error. (See PACK-REVIEW-BD-095-RETRO.md F5.)
+            {
+                printf 'error: multiple mode flags: %s and %s (only one of --dry-run / --apply / --resume permitted)\n' \
+                    "$_mode" "$_a"
+            } >&2
+            exit "${EXIT_INTERNAL:-99}"
             ;;
         *)
             _passthru+=("$_a")
@@ -707,6 +716,30 @@ case "$_mode" in
             esac
         done
         _target_abs="$(cd "$_target" 2>/dev/null && pwd || printf '%s' "$_target")"
+        # F3 (BD-095 retro fix): bare-invocation-after-pause guard. If
+        # `stage-S3.paused` exists the previous `--apply` paused for
+        # sidecar reconciliation and the user must `--resume`, NOT bare-
+        # rerun. Without this guard the bare path would either skip the
+        # auto-dry-run (fingerprint still fresh) and call `--apply`,
+        # which would wipe `dispositions.tsv` and reach S1 with the
+        # backup-dir-already-exists error — telling the user to remove
+        # the backup when the right answer is `--resume`. (See PACK-REVIEW-
+        # BD-095-RETRO.md F3.)
+        _paused_sentinel="$_target_abs/.pack-migrate-v10-to-v11/sentinels/stage-S3.paused"
+        if [[ -f "$_paused_sentinel" ]]; then
+            {
+                printf 'error: a paused migration exists for this target\n'
+                printf '  paused-sentinel: %s\n' "$_paused_sentinel"
+                printf '\n'
+                printf '→ Resolve the listed sidecars then run:\n'
+                printf '    PACK=%s scripts/migrate-v10-to-v11.sh --resume %s\n' \
+                    "${PACK:-/path/to/pack}" "$_target_abs"
+                printf '\n'
+                printf '  Or to start over, restore from %s and re-run.\n' \
+                    "$_target_abs/.pack-migrate-v10-to-v11-backup"
+            } >&2
+            exit "${EXIT_INTERNAL:-99}"
+        fi
         _fp="$_target_abs/.pack-migrate-v10-to-v11/dry-run.fingerprint"
         # Determine whether a re-dry-run is needed:
         #   - fingerprint absent

@@ -315,6 +315,98 @@ assert_contains "6.1 proceeds to --apply"        "$out" \
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────
+# Group 7: BD-095 retro-fix regressions (F1, F3, F4, F5)
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Per `maintenance-docs/v11-implementation/PACK-REVIEW-BD-095-RETRO.md`:
+#   F1: dry-run fingerprint must cover the FULL transform-class manifest
+#       (not the pre-fix subset of trinity + .codex/config.toml +
+#       BACKLOG.md + agents/ sweeps).
+#   F3: bare invocation after a paused dispatch must error with
+#       --resume guidance, not fall through to S1 backup-dir-exists.
+#   F4: explicit --apply after a paused dispatch must error with
+#       --resume guidance (same UX as F3).
+#   F5: duplicate mode flags (any pairwise of --dry-run / --apply /
+#       --resume) must fail loud at the dispatcher.
+
+printf "\n=== Group 7: BD-095 retro-fix regressions (F1, F3, F4, F5) ===\n"
+
+# ── 7.1 F1 surface coverage: drift on .claude/settings.json triggers FAIL ──
+T=$(make_v10_target)
+# Seed enough of the v10 transform-class surface for the freshness gate
+# to have something to compare. The dry-run will hash whatever exists;
+# we only need .claude/settings.json present to verify the F1 fix
+# (pre-fix the file was NOT in the fingerprint surface, so a post-dry-run
+# mutation went undetected).
+git -C "$REPO_ROOT" show v10:project-template/.claude/settings.json \
+    > "$T/.claude/settings.json" 2>/dev/null
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "seed .claude/settings.json" 2>/dev/null
+
+PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
+fp7="$T/.pack-migrate-v10-to-v11/dry-run.fingerprint"
+if [[ -f "$fp7" ]]; then
+    t_pass "7.1.0 dry-run wrote fingerprint on full-surface fixture"
+else
+    t_fail "7.1.0 dry-run fingerprint missing"
+fi
+
+# Mutate .claude/settings.json post-dry-run.
+echo '// drift after dry-run' >> "$T/.claude/settings.json"
+git -C "$T" add -A >/dev/null
+git -C "$T" commit -q -m "drift on settings.json" 2>/dev/null
+
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply "$T" 2>&1) ; rc=$?
+[[ "$rc" -ne 0 ]] && t_pass "7.1 F1: --apply rc!=0 after .claude/settings.json drift" \
+                 || t_fail "7.1 F1: --apply succeeded after settings.json drift (pre-fix regression)"
+assert_contains "7.1 F1: error names fingerprint mismatch" "$out" \
+    "working-tree fingerprint changed"
+rm -rf "$T"
+
+# ── 7.2 F3 bare-after-pause guard ────────────────────────────────────────
+# Synthesize the paused state (no need for a real apply run — only the
+# sentinel matters for the F3 dispatcher branch).
+T=$(make_v10_target)
+mkdir -p "$T/.pack-migrate-v10-to-v11/sentinels"
+echo "fake-sidecar.v10-customized" > "$T/.pack-migrate-v10-to-v11/sentinels/stage-S3.paused"
+
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" "$T" 2>&1) ; rc=$?
+[[ "$rc" -ne 0 ]] && t_pass "7.2 F3: bare-after-pause rc!=0" \
+                 || t_fail "7.2 F3: bare-after-pause did not error"
+assert_contains "7.2 F3: error names paused migration" "$out" \
+    "paused migration"
+assert_contains "7.2 F3: error proposes --resume" "$out" \
+    "--resume"
+rm -rf "$T"
+
+# ── 7.3 F4 apply-after-pause guard ───────────────────────────────────────
+T=$(make_v10_target)
+mkdir -p "$T/.pack-migrate-v10-to-v11/sentinels"
+echo "fake-sidecar.v10-customized" > "$T/.pack-migrate-v10-to-v11/sentinels/stage-S3.paused"
+
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply "$T" 2>&1) ; rc=$?
+[[ "$rc" -ne 0 ]] && t_pass "7.3 F4: --apply-after-pause rc!=0" \
+                 || t_fail "7.3 F4: --apply-after-pause did not error"
+assert_contains "7.3 F4: error names paused migration" "$out" \
+    "paused migration"
+assert_contains "7.3 F4: error proposes --resume" "$out" \
+    "--resume"
+rm -rf "$T"
+
+# ── 7.4 F5 duplicate mode flag fail-loud (six pairwise combinations) ─────
+T=$(make_v10_target)
+for pair in "--dry-run --apply" "--dry-run --resume" "--apply --dry-run" \
+            "--apply --resume" "--resume --dry-run" "--resume --apply"; do
+    # shellcheck disable=SC2086
+    out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" $pair "$T" 2>&1) ; rc=$?
+    [[ "$rc" -ne 0 ]] && t_pass "7.4 F5: '$pair' rc!=0" \
+                     || t_fail "7.4 F5: '$pair' did not error"
+    assert_contains "7.4 F5: '$pair' error names multiple mode flags" "$out" \
+        "multiple mode flags"
+done
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────────────
 

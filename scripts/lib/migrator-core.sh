@@ -241,8 +241,11 @@ _migrator_usage() {
     say "Flags:"
     say "  --help, -h    Show this message and exit"
     say "  --dry-run     Run preflight + manifest validation; log writes but do not perform them"
-    say "  --apply       Default mode (full migration); reserved for BD-095 two-phase"
-    say "  --resume      Resume an interrupted migration; reserved for BD-095 (errors today)"
+    say "  --apply       Default. Refuses to run unless a fresh dry-run fingerprint exists;"
+    say "                pauses cleanly before S4 if conflicts are produced."
+    say "  --resume      Continue a paused migration after sidecar reconciliation."
+    say "                Forward-only; per-adapter (the v10→v11 adapter implements it;"
+    say "                future adapters may opt out)."
     say ""
     # bash 3.2 has no `${var^^}` upper-casing — use `tr` for portability.
     local from_upper
