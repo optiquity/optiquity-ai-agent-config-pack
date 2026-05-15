@@ -288,7 +288,7 @@ The gate-check logic is mode-agnostic: the chat resolves status via the trinity 
 
 ### §5.5 Cycle detection
 
-Cycle detection runs at link-creation time in PM Chat (not in the provider). The chat traverses `blocked-by` from the new edge's source for K hops (K = configurable, default 10 per V1 §6.1 GraphQL one-shot capacity); if the target appears in the closure, refuse the link and surface a typed error per V1 §9. The cycle check covers the full entity graph (TD ↔ TD; TD ↔ phase epic; TD ↔ phase task; phase task ↔ phase task in same/different phase).
+Cycle detection runs at link-creation time in PM Chat (not in the provider). The chat traverses `blocked-by` from the new edge's **target** for K hops (K = configurable, default 10 per V1 §6.1 GraphQL one-shot capacity); if the **source** appears in the closure, refuse the link and surface a typed error per V1 §9. **(Algorithmic note:** the traversal walks from the proposed target because adding edge `source blocked-by target` closes a cycle iff there is already a path `target → ... → source` via blocked-by edges; the check finds this by walking from target. The earlier wording of this section described the inverse direction — that wording was logically incorrect for cycle detection. Corrected 2026-05-15 to match the implementation in `scripts/lib/tracker-cycle-check.sh`, which has been correct since BD-108 land-time.**)** The cycle check covers the full entity graph (TD ↔ TD; TD ↔ phase epic; TD ↔ phase task; phase task ↔ phase task in same/different phase).
 
 ### §5.6 A1 failure-mode UX
 
