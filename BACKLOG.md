@@ -1351,6 +1351,35 @@ Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 
 ---
 
+**BD-171 — Real-OT scratch-GH-repo migration test fixture + harness**
+Type: TODO(version) — surfaced 2026-05-15 from session discussion of test fixture thoroughness pre-public-release
+Status: Open
+Blockers: None on critical path; recommended sequencing pairs with BD-102 (Batch 23 dog-food) to share live-GH test infra and amortize test-time cost. Can also run standalone in Batch 22b or 23.
+Unblocks: Empirical validation of v10.1 → v11.0 migration on a real OT clone (not synthetic `v10-realistic-ot` fixture); reusable harness pattern for v11 → v12 real-clone testing in future major versions; closes pre-public-release gap identified 2026-05-15 (synthetic fixture coverage is necessary but not sufficient for real-client validation).
+File/Symbol:
+  - NEW `scripts/tests/test-real-ot-migration.sh` (harness: provision scratch GH repo via `gh` CLI per pack-memory test-infra rule, clone real OT into `/tmp` at v10.1 tag, push to scratch, run `migrate-v10-to-v11.sh`, verify outcome incl. customization preservation + trinity invariants + tracker-mode round-trip if applicable, teardown scratch repo with per-step approval).
+  - NEW `test-fixtures/v10-real-ot-snapshot/README.md` (documentation of the harness pattern + provenance; the live-clone fixture itself is not committed since it's a runtime pattern not a static fixture).
+  - EXTEND `.github/workflows/validate-pack.yml` (gated CI run with `if: github.event_name == 'workflow_dispatch'` so the test runs on manual trigger only; auto-CI shouldn't provision scratch repos every push).
+  - EXTEND `test-fixtures/README.md` table (note the live-clone harness pattern complements the persistent fixtures).
+Description: Real-OT migration test that complements `v10-realistic-ot` synthetic
+  fixture (BD-113) and BD-102 dog-food on pack-repo. Provisions a scratch GH repo
+  via `gh repo create`, clones the real OT project into `/tmp` at v10.1 tag,
+  pushes to scratch, runs the actual v10.1 → v11.0 migration end-to-end, verifies
+  preservation invariants (BD-088 customization survival; BD-136 marker round-trip
+  if applicable), then tears down the scratch repo via `gh repo delete --yes`.
+  Original OT repo is read-only; no destructive operations on the source. Per
+  pack-memory rule (`feedback_test_infra_self_provisioned.md`): "provision scratch
+  GH repos via gh CLI with per-step approval; clean up after; never touch existing
+  real repos." Pattern reusable for v11 → v12 real-clone testing in future
+  versions. Closes pre-public-release gap: synthetic + dog-food-on-pack-repo
+  coverage is good but cannot substitute for real-client-shape validation (real
+  OT may have customization patterns the synthetic fixture doesn't model — history
+  depth, file-removal patterns, conflicting `[CONDITIONAL]` block edits, edge
+  `x-`-prefix conventions).
+Resolved: n/a
+
+---
+
 **BD-170 — Pre-decomposed v11-realistic-ot fixture per-entry tree extension (combined with BD-160 in commit 19f per Pack-Chat-direct R-2 resolution)**
 Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
 Status: Open
