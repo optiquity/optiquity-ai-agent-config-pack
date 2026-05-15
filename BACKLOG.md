@@ -1352,6 +1352,20 @@ Resolved: 2026-05-09 — see `maintenance-docs/v11-implementation/IMPLEMENTATION
 
 ---
 
+**BD-172 — Extend Gate 2 (Phase A verify) to cover post-dispatch operations (BD-104 rename + BD-035 advisory + BD-144 advisory)**
+Type: TODO(version) — surfaced 2026-05-15 from PACK-REVIEW-BD-101-RETRO.md MAJOR-2 (per-BD retro review revealed Gate 2 does not verify post-dispatch hook outputs; reviewer estimated 3 helpers + 9 test cases — too large for in-session fix at BD-101 retro time)
+Status: Open
+Blockers: BD-101 (the gate framework BD-172 extends — already Resolved)
+Unblocks: Truthful Gate 2 PASS verdict for migrations that exercise the BD-104 rename, BD-035 python-architecture-rename advisory, or BD-144 capability-rename advisory paths; Batch 22 milestone audit (BD-100) and Batch 23 dog-food migration (BD-102) can rely on Gate 2 verdict actually meaning what it claims
+File/Symbol:
+  - `scripts/lib/migrate-v10-to-v11/checkpoint.sh` — three new verification helpers per the PACK-REVIEW-BD-101-RETRO MAJOR-2 spec, mirroring the existing 8 verification helpers' signature: (a) `_cp_verify_bd104_rename_outcome` (assert IMPLEMENTATION_PLAN→IMPLEMENTATION-PLAN rename completed for any tracked source paths; consumes the migrator's S4 stage sentinel + post-dispatch hook output); (b) `_cp_verify_bd035_python_arch_advisory` (assert advisory was printed if the python-architecture-rename path was applicable); (c) `_cp_verify_bd144_capability_advisory` (assert advisory was printed if the capability-rename path was applicable)
+  - `scripts/lib/migrate-v10-to-v11/gate-2-phase-a-verify.sh` — wire the three new helpers into Gate 2's verify list; ensure each returns non-zero exit if its sub-stage outcome was incomplete or absent (so silent partial failures cause Gate 2 FAIL instead of stamping PASS)
+  - `scripts/tests/test-migrate-v10-to-v11-gates.sh` — nine new test cases (3 helpers × 3 cases each: happy path with the sub-stage applied + verifier passes; sub-stage applicable but advisory missing → verifier fails loud; sub-stage failed silently mid-run → verifier catches via state-dir absence)
+Description: Per `PACK-REVIEW-BD-101-RETRO.md` MAJOR-2, BD-101's Gate 2 (Phase-A verify) currently checks the framework stage outputs but does not verify the three post-dispatch operations that run inside `migrator_post_dispatch_hook`: BD-104's `IMPLEMENTATION_PLAN`→`IMPLEMENTATION-PLAN` rename outcome; BD-035's python-architecture-rename advisory; BD-144's capability-rename advisory. A silent partial failure in any of those three sub-stages would ship with Gate 2 stamping PASS, so a user running `--apply` would get a green Gate 2 verdict despite an incomplete migration. Reviewer estimated this fix at 3 new helpers + 9 new test cases — too large for an in-session fix at BD-101 retro time, so BD-172 is opened explicitly per the deferred-work tracking rule. Lands in v11.0 to keep the Gate 2 contract truthful before Batch 22 (BD-100) milestone audit and Batch 23 (BD-102) dog-food migration. Implementation pattern mirrors the existing 8 verification helpers in `checkpoint.sh` (no new dependencies, no architecture change). Each new helper consults the migrator's state directory and the post-dispatch hook's output fingerprint to decide pass/fail.
+Resolved: n/a
+
+---
+
 **BD-171 — Real-OT scratch-GH-repo migration test fixture + harness**
 Type: TODO(version) — surfaced 2026-05-15 from session discussion of test fixture thoroughness pre-public-release
 Status: Open
