@@ -426,6 +426,16 @@ rm -rf "$T6B"
 # work-directory artifact names. Concrete pair from BD-112:
 #   .claude/agents/foo.md   ←→ legacy → claude-agents-foo.md
 #   claude/agents/foo.md    ←→ legacy → claude-agents-foo.md   (collision)
+#
+# Strategy coverage note (per PACK-REVIEW-BD-112 F3, 2026-05-15 retro):
+# 6c covers helper-level (6c.1-6c.3) + end-to-end via the text strategy
+# (6c.4). The structured and gemini-env strategies also write three-way
+# diffs via the same `_cp_write_diff` helper, so they inherit the BD-112
+# fix automatically — explicit end-to-end coverage for those two
+# strategies would close the matrix but is not load-bearing because the
+# collision-safety property lives in the shared helper. Adding 6c.5
+# (structured) + 6c.6 (gemini-env) end-to-end witnesses is acceptable
+# follow-up if a future audit demands strategy-by-strategy coverage.
 
 printf "\n=== Group 6c: BD-112 collision-safe flat naming ===\n"
 

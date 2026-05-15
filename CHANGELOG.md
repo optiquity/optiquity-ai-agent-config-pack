@@ -118,8 +118,9 @@ Each version is available as a git tag (v1, v2, …).
 - BD-110 — Pack-side `pack-auditor` agent.
 - BD-111 — First-class GitHub dependency-API mutation (replaces
   comment-marker fallback in `tracker_provider_gh_link`).
-- BD-112 — Three-way diff filename mangling collision fix (affects both
-  `customization-preserve.sh` and `migrate-v9-to-v10.sh`).
+- BD-112 — Three-way diff filename mangling collision fix in
+  `customization-preserve.sh` (the originally-paired `migrate-v9-to-v11.sh`
+  surface was retired by BD-121 and required no fix).
 
 **Scope C — Skill-dimensions reframe (BD-141..BD-150 + BD-156..BD-159)**
 

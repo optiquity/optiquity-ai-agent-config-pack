@@ -98,6 +98,7 @@ _cp_require_three_way() {
 # Echoes the sanitized stem on stdout. Callers append `.three-way.diff`,
 # `.merge-warnings.log`, etc.
 _cp_flat_name() {
+    [[ -n "${1:-}" ]] || { printf 'error: _cp_flat_name: REL required\n' >&2; return 1; }
     local rel="$1"
     local sanitized="${rel//\//__}"
     local hash6
