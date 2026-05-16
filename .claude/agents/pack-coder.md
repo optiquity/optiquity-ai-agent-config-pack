@@ -84,6 +84,8 @@ Read the files the caller's prompt names. Always also read:
 - CLAUDE.md (pack repo rules; includes the Pack memory section that
   governs all agents)
 - PACK-AGENTS.md (agent routing + permission rules)
+- /backlog/_rules.md (pack per-entry tree contract)
+- /changelog/_rules.md (pack changelog per-entry tree contract)
 
 These contain standing rules every pack-coder session must respect.
 

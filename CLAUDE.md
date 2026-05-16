@@ -27,10 +27,11 @@ major versions.
 
 Key files to read before working on the pack:
 - `README.md` — version history and layout
-- `BACKLOG.md` — open BD-NNN items
-- `CHANGELOG.md` — version history details
+- `BACKLOG.md` — open BD-NNN items (regenerated mirror; per-entry source at `/backlog/`)
+- `CHANGELOG.md` — version history details (regenerated mirror; per-entry source at `/changelog/`)
 - `PACK-CHAT.md` — PM chat operating rules
 - `PACK-AGENTS.md` — agent routing table for pack development work
+- `/backlog/`, `/changelog/` — per-entry source-of-truth trees (read `/backlog/_rules.md` and `/changelog/_rules.md` for the per-stream contract; `BACKLOG.md` and `CHANGELOG.md` are the regenerated mirrors)
 
 **Migrator framework (BD-119).** When authoring a new
 `scripts/migrate-vN-to-vM.sh`, source `scripts/lib/migrator-core.sh` and
@@ -154,6 +155,22 @@ in the same commit as the behavior change.
 
 ### Repo conventions
 
+- **Per-entry trees vs mirrors — mode-dependent source of truth.**
+  In flat-file mode (the default — no `tracker.toml`, or `tracker.toml`
+  with `mode.state = "flat-file"`), the pack `/backlog/` and `/changelog/`
+  trees, and the project `docs/project/backlog/` /
+  `implementation-plan/` / `changelog/` trees, are source of truth for
+  entry content. The monolithic `BACKLOG.md` / `CHANGELOG.md` /
+  `IMPLEMENTATION-PLAN.md` files at the canonical locations are
+  regenerated mirrors — read-stable but never source of truth. In
+  tracker mode (`tracker.toml` with `mode.state = "tracker"` and
+  `migration.forward_complete = true`), the tracker (e.g., GH Issues)
+  is source of truth and BOTH the per-entry tree and the monolithic
+  mirror are regenerated from tracker state per the Mode 2 → Mode 3
+  transition contract. STATUS.md and any other convenience view carry
+  an explicit "never source of truth" disclaimer; if a convenience
+  view drifts, the per-entry tree (Mode 2) or the tracker (Mode 3)
+  wins. Read more at `<stream>/_rules.md`.
 - **BACKLOG.md has no Resolved section.** Entries resolve in place by
   flipping `Status: Open` to `Status: Resolved` and filling the
   `Resolved:` line. Do not propose moving entries to a separate section.

@@ -27,6 +27,10 @@ Key documentation sources:
 - Gemini CLI: https://geminicli.com/docs/
 - Context7 MCP server: use for fetching current library documentation
 
+Pack-internal context (for questions involving BACKLOG / CHANGELOG content):
+- /backlog/_rules.md (pack per-entry tree contract)
+- /changelog/_rules.md (pack changelog per-entry tree contract)
+
 Before making any verification claim, check the source directly. Do not
 rely on training data for CLI tool behavior — these tools update frequently.
 

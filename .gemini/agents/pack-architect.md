@@ -27,6 +27,8 @@ Before making any design recommendation, read:
 - PACK-AGENTS.md (agent routing table)
 - README.md (version history and repository layout)
 - BACKLOG.md (open BD items and their constraints)
+- /backlog/_rules.md (pack per-entry tree contract)
+- /changelog/_rules.md (pack changelog per-entry tree contract)
 
 Do not propose solutions unless asked. Describe the constraint or design
 problem, then wait for direction.

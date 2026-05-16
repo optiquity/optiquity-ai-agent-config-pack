@@ -221,10 +221,20 @@ Step 2 reads this column to branch by source.
 | Directory | Contents | Updated by | Source |
 |---|---|---|---|
 | `docs/pack/` | `METHODOLOGY.md`, `INSTALL-PROCEDURES.md`, `prompts/`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) | flat |
-| `docs/project/` | `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` | PM chat and developer during active development | flat (or `mixed` in tracker mode) |
+| `docs/project/` | `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` (regenerated mirrors for BACKLOG/IMPLEMENTATION-PLAN/CHANGELOG — per-entry source in subdirs) | PM chat and developer during active development | flat (or `mixed` in tracker mode) |
 | `docs/reference/` | Project-specific user-facing documentation (how-to guides, API references) | Developer as needed | flat |
 
 Root-level files: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `README.md`, `agent-run.sh`.
+
+**Per-entry source-of-truth trees (v11.0).** Project streams under
+`docs/project/backlog/`, `docs/project/implementation-plan/`, and
+`docs/project/changelog/` are per-entry source-of-truth trees in
+flat-file mode; read each `<stream>/_rules.md` for the per-stream
+contract before any per-entry edit. The monolithic `BACKLOG.md`,
+`IMPLEMENTATION-PLAN.md`, and `CHANGELOG.md` files in `docs/project/`
+are regenerated mirrors — read-stable but never source of truth. In
+tracker mode, the tracker is source of truth and both the per-entry
+tree and the monolithic mirror are regenerated from tracker state.
 
 ## Scripts
 

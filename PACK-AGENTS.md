@@ -136,10 +136,44 @@ reads the report, verifies (re-runs tests / inspects diffs), then stages
 and commits with explicit user approval. Agents cannot delegate this step
 to themselves.
 
-**PM-only files** are off-limits to all agents unless the caller's prompt
-explicitly scopes them in: BACKLOG.md, CHANGELOG.md, README.md version
-table, PACK-CHAT.md, PACK-AGENTS.md, CLAUDE.md / AGENTS.md / GEMINI.md
-(root and `project-template/`).
+**PM-only files and directories** are off-limits to all agents unless the
+caller's prompt explicitly scopes them in.
+
+Files:
+- `BACKLOG.md` (regenerated mirror; per-entry source at `/backlog/`)
+- `CHANGELOG.md` (regenerated mirror; per-entry source at `/changelog/`)
+- `README.md` version table
+- `PACK-CHAT.md`
+- `PACK-AGENTS.md`
+- `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (root and `project-template/`)
+
+Directories:
+- `/backlog/` — pack per-entry tree (entries; supporting files
+  pack-shipped via version-bump only).
+- `/changelog/` — pack changelog per-entry tree.
+- `project-template/docs/project/backlog/` — project per-entry tree
+  canonical templates (ship into client projects).
+- `project-template/docs/project/implementation-plan/`
+- `project-template/docs/project/changelog/`
+
+Within these directories, `_rules.md`, `_intro.md`, `_v8-resolved-archive.md`,
+and `_format.md` are pack-shipped immutable (updated on pack version bump
+only); `_toc.md` is derived (regenerator output); per-entry files (e.g.,
+`BD-NNN.md`, `TD-NNN.md`, `phase-N.md`, `YYYY-MM-DD-*.md`) are PM-only
+writes.
+
+`pack-coder` MAY scope a per-entry directory in for an explicit BD when
+Pack Chat's prompt scopes it — the same exception clause that applies to
+the PM-only files above.
+
+Per-entry decomposition mandatorily extends the source-of-truth surface
+from monolithic files to per-entry trees. The protected surface MUST
+follow or the source-of-truth invariant breaks: agents could write
+per-entry files directly, bypassing Pack Chat / PM Chat write authority.
+This addition is a Signal 9 trip per
+`maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`
+§3.2 (line 305–306); the architect pass behind v11.0 per-entry split is
+the Signal 9 justification.
 
 - **Skill and agent maintenance.** Additions and modifications follow
   the maintainability principle in pack-repo trinity `## Pack memory`
