@@ -1398,7 +1398,7 @@ Resolved: n/a
 
 **BD-170 — Pre-decomposed v11-realistic-ot fixture per-entry tree extension (combined with BD-160 in commit 19f per Pack-Chat-direct R-2 resolution)**
 Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
-Status: Open
+Status: Resolved
 Blockers: BD-164 (BD-160 dependency satisfied trivially — BD-160 ships in same commit per Pack-Chat-direct R-2 resolution per `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §10.2)
 Unblocks: BD-102 dog-food (Batch 23 per Addendum #1 §2.2 renumber cascade — was Batch 22)
 File/Symbol:
@@ -1406,24 +1406,26 @@ File/Symbol:
   - `test-fixtures/manifest.txt` (regeneration per integration parent §12.4)
   - `test-fixtures/README.md` (table row for `v11-realistic-ot` per BD-160 spec)
 Description: Combined commit shipping BD-160 (v11 case dispatch + C2/C3 customization re-verification on v11 surface) + BD-170 (per-entry tree extension + round-trip test) per Pack-Chat-direct R-2 resolution. Both BDs are v11-realistic-ot fixture surface work and share the same dependency on BD-164 helpers; combining them avoids artificial separation. Per `maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §12.1 + §8.7 + Addendum #1 §6.4 BD table + PLAN-PER-ENTRY-SPLIT-BATCH-19.md §5.7.
+Resolved: 2026-05-16 — combined with BD-160 in commit a57dd04 per Pack-Chat-direct R-2 resolution (v11-realistic-ot fixture per-entry tree extension via BD-164 helpers; round-trip byte-identical across all 3 project streams verified at build time); inline review/fix in commit 9c238ab (3 FIX: 2 SHOULD + 1 NIT). Broad batch review/fix in commit 479fef5 added test-v11-realistic-ot.sh integration test runner (33/33 PASS) closing the cross-BD integration-boundary gap.
 
 ---
 
 **BD-169b — Per-entry split PM-only wording updates (PACK-CHAT.md row + README.md Repository Layout entries)**
 Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass; split from BD-169 per Addendum #1 §6.3
-Status: Open
+Status: Resolved
 Blockers: BD-169
 Unblocks: none
 File/Symbol (PM-only — Pack Chat applies):
   - `PACK-CHAT.md` (file-access strategy table — two new rows at lines 38–47 per Addendum #2 §5.2 verbatim)
   - `README.md` (Repository Layout entries naming pack-side `/backlog/`, `/changelog/` and project-template-side `docs/project/{backlog,implementation-plan,changelog}/` per `maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §4.4.3 + Addendum #1 §6.3)
 Description: PM-only wording updates for per-entry decomposition; paired with BD-169 pack-product wording. Per `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.9 + §6.1 BD-169b sample text.
+Resolved: 2026-05-16 — PM-only wording updates (PACK-CHAT.md two file-access strategy rows verbatim from Addendum #2 §5.2 + README.md Repository Layout pack-self per-entry tree entries for /backlog/ and /changelog/) landed in commit 27374b4. Pack Chat direct (no agent — all targets are PM-only). Project-template-side docs/project/{backlog,implementation-plan,changelog}/ entries already in README from earlier batch (BD-167 retro fix) — not re-duplicated.
 
 ---
 
 **BD-169 — Per-entry split pack-product wording updates (PM-CHAT.md + STATUS.md disclaimer + MERGE-STRATEGY + MIGRATION-v10-to-v11 + audit-methodology SKILL.md scope + skill directives)**
 Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
-Status: Open
+Status: Resolved
 Blockers: BD-167
 Unblocks: none
 File/Symbol (coder authors final wording per planner-deferred items in PLAN §5.8):
@@ -1434,24 +1436,26 @@ File/Symbol (coder authors final wording per planner-deferred items in PLAN §5.
   - `.claude/skills/pack-startup/SKILL.md` + `.codex/skills/pack-startup/SKILL.md` + `.gemini/commands/pack-startup.toml` (one-line directive per Addendum #1 §1.3)
   - `project-template/skills/pm-startup/SKILL.md` (canonical) + `.claude/skills/`, `.codex/skills/`, `.gemini/commands/` per-CLI mirrors (one-line directive)
 Description: Pack-product wording updates for per-entry decomposition. Excludes PM-only edits (PACK-CHAT.md row + README.md Repository Layout — those land in BD-169b). Per `maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §4.4.3 + Addendum #1 §6.3 + Pack-Chat-direct R-3 + R-4 resolutions + PLAN-PER-ENTRY-SPLIT-BATCH-19.md §5.8. Auditor agent files (`auditor.md` / `auditor.toml` × 3 CLIs) are NOT modified per R-4 resolution — the audit-methodology SKILL.md is the authoritative source for audit-scope rules and the agent files delegate to the skill per `auditor.md` line 11-12.
+Resolved: 2026-05-16 — pack-product wording updates (PM-CHAT.md additions A+B + MERGE-STRATEGY.md catch-all classifier paragraph + MIGRATION-v10-to-v11.md "Per-entry decomposition" section + audit-methodology rule 29 clarifications + pack-startup × 3 + pm-startup × 4 body directives) landed in commit cf67a96; inline review/fix in commit 62f9eec (5 FIX: 1 MUST pre-commit-hook reframe + 2 SHOULD + 2 NIT). Trinity rule observed for pack-startup × 3 and pm-startup × 4.
 
 ---
 
 **BD-168 — `validate-pack.py` Check 32 (mirror-in-sync) + Check 33 (TOC-in-sync) + Check 34 (cross-reference integrity)**
 Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
-Status: Open
+Status: Resolved
 Blockers: BD-164, BD-167
 Unblocks: none
 File/Symbol:
   - `scripts/validate-pack.py` (three new check functions appended after current Check 31 at line 2425 + new `STREAMS` constant; coder picks function names + STREAMS constant shape per Addendum #1 §9.1 + integration parent §18.2 #5)
   - `scripts/tests/test-validate-pack-checks-32-33-34.sh` (new test runner; coder picks placement vs folding into existing test surface per integration parent §18.2 #6)
 Description: Three new validator checks per `maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §10. Each is a Signal 4 trip per `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md` §3.2; THIS architect+planner pass IS the defense. Each SKIPs gracefully when per-entry tree is absent (per integration parent §10.5 backward-compat for pre-v11.0 clients). Pack-side scope only per integration parent §10.6. Per `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.6.
+Resolved: 2026-05-16 — validate-pack.py Checks 32/33/34 + test-validate-pack-checks-32-33-34.sh runner landed in commit 6696182; retro review/fix in commit bd022e9 (11 FIX: 2 MUST + 5 SHOULD + 4 NIT; test suite expanded 46→65 PASS); broad batch review/fix in commit 479fef5 (33-checks arithmetic harmonization at 3 sites).
 
 ---
 
 **BD-167b — Per-entry split PM-only edits (trinity Key files + PACK-AGENTS.md PM-only directories list + CLAUDE.md pack-memory bullet + pack-* agent prompts × 15)**
 Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass; split from BD-167 per Addendum #1 §6.2
-Status: Open
+Status: Resolved
 Blockers: BD-167
 Unblocks: none
 File/Symbol (PM-only — Pack Chat applies; trinity rule applies per trinity sets and pack-* agent set):
@@ -1463,12 +1467,13 @@ File/Symbol (PM-only — Pack Chat applies; trinity rule applies per trinity set
   - `.gemini/agents/pack-{architect,coder,docs-researcher,planner,reviewer}.md` (5 files; Markdown with YAML frontmatter)
   - (STATUS.md disclaimer surface — RESOLVED per Pack-Chat-direct R-3 Option A: lives in BD-169 19g-pack PM-CHAT.md guidance; NOT in BD-167b)
 Description: PM-only edits paired with BD-167 client artifact installs. Trinity rule applies for the trinity sets (pack-root × 3, project-template × 3) and pack-* agent set (5 agents × 3 CLIs = 15 files). Layer 1 + Layer 4 of the four-layer discoverability cascade per Addendum #1 §1. Honest Signal 9 trip framing per Addendum #1 §3.1 (THIS architect+planner pass IS the justification). Per `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.3.
+Resolved: 2026-05-16 — PM-only edits landed in commit 8ba0164 (trinity Key files + PACK-AGENTS.md PM-only directories list + CLAUDE.md pack-memory bullet + pack-* agent prompts × 15 across 3 CLIs); retro review/fix in commit 8fac7d0 (N1 architect-doc sync + N3 forward-ref note + O1 gemini-planner trinity sync). Trinity rule observed for pack-root × 3 + project-template × 3 + pack-* agent set × 3 CLIs.
 
 ---
 
 **BD-167 — Per-entry split client artifact installs (pack-product templates + install plumbing; absorbs BD-161)**
 Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
-Status: Open
+Status: Resolved
 Blockers: BD-164
 Unblocks: BD-165, BD-166, BD-168, BD-169
 File/Symbol:
@@ -1479,23 +1484,25 @@ File/Symbol:
   - `scripts/lib/tracker-agent-read.sh` (`_tar_read_entry_flat` at line 153 extended to prefer per-entry file when tree exists; mode-aware per Addendum #1 §3.2; backward-compat for pre-v11.0 client repos via mirror fallback)
   - BD-161 net-new SKILL.md installs absorbed: `swift-concurrency-patterns`, `apple-swiftdata-patterns`, `protobuf-patterns` (BD-156/157/158) + `python-server-architecture`, `python-data-architecture`, `python-observability-patterns` (BD-162) per integration parent §17.2 + §8.14
 Description: Ship pack-product canonical templates for per-entry trees + extend migrator install step to ship them + extend `tracker-agent-read.sh` `_tar_read_entry_flat` for per-entry-prefer-mirror-fallback. Includes BD-161 absorption for client artifact install batch. Per integration parent §17.2 + Addendum #1 §6.2 + `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.2.
+Resolved: 2026-05-16 — pack-product canonical templates + migrator install plumbing + tracker-agent-read.sh extension landed in commit 142d160; retro review/fix in commit 80b025a (M1 contract regex + M2 per-stream-aware fallback + S1/N2/N3 nits). Absorbed BD-161 (net-new v11 SKILL.md installs).
 
 ---
 
 **BD-166 — `init-project.sh` greenfield per-entry tree install (S11 stage extension)**
 Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
-Status: Open
+Status: Resolved
 Blockers: BD-164, BD-167
 Unblocks: none
 File/Symbol:
   - `scripts/init-project.sh` (`stage_s11_v11_artifacts` at line 803 extended; coder picks stage extension vs new stage per integration parent §8.17 + §18.1 #5; PLAN recommendation: extend S11 with precondition check `[[ -d project-template/docs/project/<stream> ]]` per PLAN §10.6 R-6)
 Description: Extend `init-project.sh` greenfield path to install per-entry tree skeleton + supporting files + regenerated empty mirrors. Reads canonical templates from `project-template/docs/project/<stream>/` (created by BD-167); writes to client `docs/project/<stream>/`. Per integration parent §8.17 + §9.3 + `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.5.
+Resolved: 2026-05-16 — stage_s11_v11_artifacts extension landed in commit 91e497c (greenfield per-entry tree install via 2 new sub-steps: canonical templates copy + BD-164 helper-driven empty mirror+TOC regen, greenfield-only gated on CLASS == new-*); retro review/fix in commit b2b7e4c (6 FIX + 1 obs-routed-to-FIX; test-init-project.sh expanded 34→67 PASS).
 
 ---
 
 **BD-165 — `_v10_to_v11_decompose_streams` 6th sub-operation in v10→v11 post-dispatch hook + `--force-overwrite-mirror` flag (BD-095 bridge)**
 Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
-Status: Open
+Status: Resolved
 Blockers: BD-164
 Unblocks: BD-167
 File/Symbol:
@@ -1503,18 +1510,20 @@ File/Symbol:
   - `scripts/lib/migrate-v10-to-v11/decompose.sh` (NEW adapter-private helper that wraps the BD-164 decompose helper)
   - `scripts/lib/migrator-core.sh` (mode-flag parser at lines 264–276 extension for `--force-overwrite-mirror` per Addendum #2 §4.5; default `_MIGRATOR_FORCE_OVERWRITE_MIRROR="0"` near `_MIGRATOR_MODE` initialization at line 121; usage line addition near lines 243–245)
 Description: Add 6th sub-op to v10→v11 migrator's post-dispatch hook (currently 5 sub-ops at lines 144–148). Constraint: MUST run AFTER all 5 existing sub-ops so the decompose step reads final v11-shape monolithic files (per integration parent §3.1 constraint statement). Bridges to BD-095 two-phase `--dry-run` / `--apply` / `--resume` contract per Addendum #2 §4: dry-run reports divergence informationally (exit 0); apply/resume blocks with `EXIT_GATE_FAILED=31` (verified at `scripts/lib/migrator-core.sh:70`) unless `--force-overwrite-mirror` is passed. Post-report hook gains v11.0 decomposition advisory paragraph per integration parent §8.18 sample text (~12 lines, names rollback path). Per `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.4.
+Resolved: 2026-05-16 — migrator 6th sub-op (_v10_to_v11_decompose_streams) + --force-overwrite-mirror flag (BD-095 bridge) landed in commit a5b4a6e; retro review/fix in commit c0723b7 (5 FIX + 5 observations; new test-migrate-v10-to-v11-decompose.sh runner at 45/45 PASS); broad batch review/fix in commit 479fef5 (stale Batch-22 wording swept to Batch-23 BD-102 dog-food).
 
 ---
 
 **BD-164 — Per-entry split helpers (decompose + mirror generator + `_toc.md` regenerator)**
 Type: TODO(version) — surfaced 2026-05-13 during per-entry-split integration architect pass
-Status: Open
+Status: Resolved
 Blockers: BD-104 (rename), BD-128 (CI green), BD-131..BD-134 (tracker repairs), BD-111 (final tracker dependency surface per integration parent §17.2 + Addendum #1 §2.3)
 Unblocks: BD-165, BD-166, BD-167, BD-168, BD-170
 File/Symbol:
   - `scripts/lib/per-entry/` (NEW directory; coder picks file structure per integration parent §18.1 #2 + Addendum #1 §9 qualifier; PLAN recommendation: sub-directory with `decompose.sh`, `mirror-generate.sh`, `toc-regenerate.sh`, `_lib.sh` shared parser helper)
   - `scripts/tests/test-per-entry.sh` (NEW test runner: round-trip identity / empty-tree / supporting-file admission / regenerator divergence-warning behavior per integration parent §18.2 #1)
 Description: Implement per-entry decomposition helpers per `maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §6.2 (mirror generator) + §5.2 (TOC regenerator) + sidecar parent `maintenance-docs/v11-research/ARCHITECTURE-PER-ENTRY-SPLIT.md` §3 (decompose helper). Library helpers in `scripts/lib/` per signal-6 carve-out (no new top-level scripts). Mirror generator + TOC regenerator + decompose helper share parsing logic (per sidecar §6.2). Decompose adds line-1 HTML-comment back-pointer per Addendum #2 §2 (no body-field back-pointer; superseded the body-field upgrade in Addendum #1 §1.2 because it violated V3.1-DELTA §3 A2 + sidecar parent §3.1's byte-additive invariant). Mirror generator strips line-1 HTML-comment when emitting (preserves byte-additive grammar invariant per integration parent §4.2). Helper reads `_rules.md` at runtime ONLY for the supporting-file basename list (per integration parent §7.5 split — entry regex + state vocabulary + grammar field labels are hard-coded). Test fixtures cover round-trip identity / empty-tree / supporting-file admission per integration parent §18.2 #1. Per `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md` §5.1.
+Resolved: 2026-05-16 — per-entry helpers landed in commit ab51d76 (scripts/lib/per-entry/ with decompose.sh + mirror-generate.sh + toc-regenerate.sh + _lib.sh + test-per-entry.sh at 57/57 PASS); retro review/fix in commit 03d0dd9 (M1 CI wire + S1-S4 contract/regex + 7 nits/observations). Unblocked BD-165, BD-166, BD-167, BD-168, BD-170 (all now Resolved in this 19h flip).
 
 ---
 
@@ -1554,23 +1563,23 @@ Resolved: 2026-05-13 in commit 2a6f032 — NEW `project-template/skills/python-o
 
 **BD-161 — v10→v11 migrator: install net-new v11 SKILL.md dirs (BD-156/157/158 + python-server-architecture / python-data-architecture split)**
 Type: TODO(version) — surfaced 2026-05-12 from BD-116 POQ-BD-116-1 (persona-contracts found the v10→v11 migrator does NOT install net-new v11 SKILL.md directories created by the BD-141..BD-150 + BD-156..BD-159 cluster)
-Status: Open
+Status: Resolved
 Blockers: none (all required v11 SKILL.md content already shipped — BD-156/157/158 + the python split)
 Unblocks: client v10→v11 upgrade path includes new v11 skills automatically (no manual SKILL.md copy required); persona-contract migration assertion can be tightened to require post-migration v11 skill-inventory parity
 File/Symbol: `scripts/migrate-v10-to-v11.sh` (NEW install stage that copies missing SKILL.md dirs from `project-template/skills/<name>/` per the v11 catalog); possibly extend `scripts/lib/migrator-skills.sh` (BD-147) with a reusable `migrator_skill_install` helper paralleling `migrator_skill_rename`; new test cases in `scripts/test-migrator-skills.sh` covering the install path; persona-contract update — `scripts/persona-contracts/contract-migration.sh` should verify post-migration projects have all v11 catalog skills present (or document why the contract doesn't enforce this)
 Description: Per BD-116 POQ-BD-116-1 (2026-05-12), the persona-contracts test surfaced that the v10→v11 migrator does NOT install net-new v11 SKILL.md directories. Specifically missing: `apple-swiftdata-patterns` (BD-157), `swift-concurrency-patterns` (BD-158), `protobuf-patterns` (BD-156), and the post-split `python-server-architecture` / `python-data-architecture` SKILL.md dirs (created when the python skill was split during the BD-141..BD-150 reframe cluster). Today a client migrating from v10→v11 retains their v10 SKILL.md inventory; the new v11 skills are silently absent unless the client manually copies them from `project-template/skills/<name>/`. This is a real gap — the client is unaware of the new v11 capabilities and the PM chat will not load them. **Implementation:** add a new migrator stage (likely between S5b skill-rename and S6) in `scripts/migrate-v10-to-v11.sh` that enumerates skills from `project-template/skills/<name>/` against what's currently installed in the target's `<cli>/skills/` trees, copies any missing skill into all three per-CLI trees, and writes an advisory entry to the migrator report listing the newly-installed skills. The skill-installation logic should ideally extract into `scripts/lib/migrator-skills.sh` (BD-147 sibling) as `migrator_skill_install <skill-dir>` for v12+ reuse. Add test cases to `scripts/test-migrator-skills.sh` covering: (a) v10 client missing all 4 new skills → all 4 installed post-migration; (b) v10 client with a manually-copied subset → only the missing ones installed; (c) v10 client with `x-`-prefixed customizations preserved (BD-088 invariant). Update `scripts/persona-contracts/contract-migration.sh` to verify the post-migration v11 skill inventory matches the v11 catalog. **Additional UX fix bundled in this BD (surfaced 2026-05-12 by the BD-116 pack-coder via SendMessage roundtrip):** the v10→v11 migrator emits `warning: migration failed (exit 0)` when it actually pauses cleanly at the BD-101 reconciliation gate. The wording is misleading for a successful pause-and-wait state — first-time users will think the migration broke when in fact it's correctly waiting for sidecar resolution. Fix: change the message to something like `paused at BD-101 reconciliation gate — resolve sidecars and re-run with --resume` (or whatever phrasing matches the BD-101 gate UX in `scripts/lib/migrate-v10-to-v11/checkpoint.sh` / `gate-{1,2,3}-*.sh`). Locate the offending message via `grep -rn "migration failed" scripts/migrate-v10-to-v11.sh scripts/lib/migrate-v10-to-v11/`. Add a test case asserting the new wording.
-Resolved:
+Resolved: 2026-05-16 — absorbed into BD-167 per integration parent §17.2 + Addendum #1 §6.4 BD table. Net-new v11 SKILL.md installs (swift-concurrency-patterns BD-158, apple-swiftdata-patterns BD-157, protobuf-patterns BD-156, python-server-architecture, python-data-architecture, python-observability-patterns BD-162) ship via the BD-167 client artifact install plumbing landed in commit 142d160. The "migration failed (exit 0)" wording UX fix is tracked separately (not part of BD-161 absorption — surface for a future BD or batch cleanup).
 
 ---
 
 **BD-160 — Wire `v11-realistic-ot` fixture (extend `_build_realistic_for_version v11` case dispatch + verify C2/C3 customizations apply on v11 surface)**
 Type: TODO(version) — surfaced 2026-05-12 from BD-120 PACK-REVIEW NIT 2 (v11 dispatch path of `_build_realistic_for_version` is unexercised because no v11-realistic-ot fixture exists yet) + §3.1 follow-on (C2 ollama-strip and C3 x-agent payload paths reference v10-shape that needs re-verification on v11 surface)
-Status: Open
+Status: Resolved
 Blockers: BD-114 (the dry-run-migration harness that consumes realistic-OT fixtures — already Resolved); BD-161 is a soft pre-req — if BD-161 lands first, the v11-realistic-ot fixture will reflect post-migration v11 state including the new SKILL.md dirs from BD-156/157/158 + python split
 Unblocks: vN+1→vN+2 migration testing baseline once OT migrates to v11; exercises the BD-120 `_build_realistic_for_version v11` dispatch path (currently dead code); closes BD-120 NIT 2 carry-forward (PACK-REVIEW-BD-120 §6.2)
 File/Symbol: `test-fixtures/build.sh` `FIXTURE_NAMES` array (add `v11-realistic-ot`); `_build_realistic_for_version` v11 case body (validate C2 ollama-strip path — `[[ -f ]]` guard at line 226 catches missing v11 file; validate C3 x-agent payload writes correctly to v11's `.codex/agents/`, `.claude/agents/`, `.gemini/agents/` dirs per the `migrator_target_surface_for_version v11` enumeration in `scripts/lib/migrator-core.sh` lines 459-513); `test-fixtures/manifest.txt` (regenerate for new fixture); `test-fixtures/README.md` (table row for `v11-realistic-ot`); possibly extend `scripts/persona-contracts/contract-migration.sh` to v11→v12 dry-run once a v12 migrator exists — likely deferred. Additional carry-forwards from `PACK-REVIEW-BD-120-RETRO.md` §5 (tracked here because BD-160 wires the helper consumption that closes both items): `scripts/lib/migrator-core.sh` `migrator_target_surface_for_version` docstring (line ~462) currently claims "Used by BD-120 fixture parameterization", which is no longer true post-BD-120-retro F1 fix (BD-120 dropped the docs claim because the helper is not actually sourced or called from `test-fixtures/build.sh`); update the docstring to reflect BD-160 as the helper's first real consumer when BD-160 wires the v11 dispatch. `maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md` §9.2 currently describes BD-120 as the helper's first consumer in the architectural contract; update to reflect BD-160 (architectural intent shifted per BD-120 retro F1's option-(b) framing); may warrant a brief architect-pass review when BD-160 lands. Note: the BD-160 line-number reference to `[[ -f ]]` guard at line 226 will drift after BD-120 retro fix lands (which adds ~32 net lines to `build.sh` above line 226); BD-160's coder should re-grep for the actual `[[ -f ]]` site.
 Description: Per BD-120 PACK-REVIEW NIT 2 (2026-05-12), the `_build_realistic_for_version` v11 dispatch path landed in commit 3fa3322 but is currently unexercised — no `v11-realistic-ot` fixture is wired. When the v11 fixture is needed (e.g., as the migration baseline for v12 development, or for vN+1→vN+2 dry-run testing), the C2 ollama-strip and C3 x-agent payloads (currently using v10-shape paths like `FakeOT` Package.swift fills and `.codex/config.toml` ollama strip) MUST be re-verified against v11's surface per `migrator_target_surface_for_version v11`. Specifically: (a) confirm v11's surface still has `.codex/config.toml` (or whether ollama is removed differently in v11); (b) confirm v11's per-CLI agent dirs (`.codex/agents/`, `.claude/agents/`, `.gemini/agents/`) accept the same x-agent file shape as v10. The `[[ -f ]]` guard at `test-fixtures/build.sh` line 226 catches missing files defensively, so calling `_build_realistic_for_version v11` today wouldn't crash — but the fixture would be functionally incomplete. **Implementation:** add `v11-realistic-ot` to `FIXTURE_NAMES`; extend the `_build_realistic_for_version` v11 case to source-clone from the v11 git tag, run `_run_v11_init` (or whatever the v11 init function is named), apply re-verified C2/C3 customization patterns; regenerate `manifest.txt` with the new fixture's deterministic SHA; document the new fixture in `test-fixtures/README.md` table.
-Resolved:
+Resolved: 2026-05-16 — combined with BD-170 in commit a57dd04 per Pack-Chat-direct R-2 resolution (v11 case dispatch in test-fixtures/build.sh _build_realistic_for_version; C2 ollama-strip + C3 x-agent payload re-verified on v11 surface; FIXTURE_NAMES + dispatcher + v11 case body + C4 version branch + migrator_target_surface_for_version docstring carry-forward updated to BD-160); inline review/fix in commit 9c238ab (3 FIX: 2 SHOULD + 1 NIT including ARCHITECTURE-BD-119.md §9.2 addendum naming BD-160 as the realized consumer per feedback_deferred_work_tracking).
 
 ---
 
