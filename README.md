@@ -186,6 +186,11 @@ vscode-companion-templates/                 Machine-level VS Code config (per pr
 .claude/skills/, .codex/skills/,            Pack agent skills (copied from project-template/skills/)
   .gemini/skills/
 
+/backlog/                                   Pack-self per-entry backlog tree (BD-169b; populated at Batch 23 BD-102 dog-food per PACK-AGENTS.md forward-pointing note);
+                                            supporting files: _rules.md, _intro.md, _toc.md, _v8-resolved-archive.md (pack /backlog/ only)
+/changelog/                                 Pack-self per-entry changelog tree (BD-169b; populated at Batch 23 BD-102 dog-food);
+                                            supporting files: _rules.md, _intro.md, _toc.md
+
 scripts/                                    Pack-level scripts
 ├── validate-pack.py                        CI structural validation (33 invoked checks; pack-internal)
 ├── init-project.sh                         Initialize the pack in a new or existing project (v10; --update mode v11)

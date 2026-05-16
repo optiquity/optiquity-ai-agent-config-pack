@@ -44,6 +44,8 @@ is sufficient.
 | `README.md` | Direct read (version table section) | Pack version history at a glance |
 | `supporting-docs/METHODOLOGY.md` | Direct read (on demand) | Author of this file — read directly when needed |
 | `project-template/docs/pack/prompts/*.md` | Direct read (on demand) | Author of this set of files — read directly when needed |
+| `/backlog/<ID>.md`, `/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is source of truth in flat-file mode (per CLAUDE.md pack-memory + `<stream>/_rules.md`); smaller token footprint than mirror for one-entry edits |
+| `/backlog/_rules.md`, `/changelog/_rules.md` (per-stream contracts) | Direct read at session start (or on per-entry-tree-aware operation) | Per-stream contract authority — filename regex, lifecycle states admitted, supporting-file basenames admitted, write-authority pointer |
 
 ---
 
