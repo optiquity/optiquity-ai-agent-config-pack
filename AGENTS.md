@@ -20,7 +20,7 @@ CLI agent configuration files for Swift / Python / gRPC projects. It ships
 template directories, agent files, skills, scripts, and supporting documentation.
 
 Key files to read before working on the pack:
-- `README.md` — version history and repo layout
+- `README.md` — version history and layout
 - `BACKLOG.md` — open BD-NNN items (regenerated mirror; per-entry source at `/backlog/`)
 - `CHANGELOG.md` — version history details (regenerated mirror; per-entry source at `/changelog/`)
 - `PACK-CHAT.md` — PM chat operating rules

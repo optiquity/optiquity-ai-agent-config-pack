@@ -223,6 +223,9 @@ jobs:
       - name: fixture manifest verify (BD-115, RELEASE-GATE item 5)
         if: always()
         run: bash test-fixtures/build.sh --verify
+      - name: v11-realistic-ot integration test (BD-160/170 + BD-164 + BD-168)
+        if: always()
+        run: bash scripts/tests/test-v11-realistic-ot.sh
       # BD-163: migrator-skills tests MUST run AFTER "build test fixtures"
       # because G1 (golden-snapshot regression) depends on the built
       # `test-fixtures/v10-realistic-ot/` fixture (gitignored build

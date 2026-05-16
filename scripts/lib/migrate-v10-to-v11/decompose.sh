@@ -128,9 +128,9 @@ _v10_to_v11_decompose_streams() {
     # Three project-side streams. Each tuple: stream_key + relative
     # mirror filename + relative stream directory. Pack-side streams
     # (pack-backlog / pack-changelog) are NOT decomposed by this
-    # migrator — pack-self decomposition lands in Batch 22 dog-food
-    # per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.5 (last
-    # paragraph). The v10→v11 client migrator only touches
+    # migrator — pack-self decomposition lands in Batch 23 (BD-102)
+    # dog-food per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.5
+    # (last paragraph). The v10→v11 client migrator only touches
     # docs/project/<stream>/.
     #
     # Per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §3.3 / §9.7 the

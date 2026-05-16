@@ -314,6 +314,12 @@ subsequent retro-fix line drift.
 
 ## §4 — Verification
 
+> **Note:** captured tool output below reflects state at commit `03d0dd9`; subsequent
+> BD-168 retro-fix (commit `bd022e9`) swept OK-message wording to "pre-BD-102 dog-food
+> pack-self" and expanded BD-168 test suite from 46/46 to 65/65. The captures here are
+> chronologically pinned for audit-trail evidence; do not "freshen" at Pattern B archive
+> sweep — historical accuracy is the audit-trail signal.
+
 All commands run from the v11-dev worktree root. Command output tails:
 
 ### Bash syntax check (3 helpers)

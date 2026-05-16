@@ -631,9 +631,9 @@ to decide.
 **Fact.** Pack-side per-entry trees (`/backlog/`, `/changelog/`) are
 NOT decomposed by this migrator. The `_v10_to_v11_decompose_streams`
 function iterates only the three `project-*` streams. Per integration
-parent §10.5 (last paragraph), pack-self decomposition is Batch 22
-dog-food's job, not the v10→v11 client migrator's. A comment in
-`decompose.sh` explicitly documents this scoping decision.
+parent §10.5 (last paragraph), pack-self decomposition is Batch 23
+(BD-102) dog-food's job, not the v10→v11 client migrator's. A comment
+in `decompose.sh` explicitly documents this scoping decision.
 
 **Pack Chat decision needed.** None — confirms the architect-doc
 binding. Surfaced for visibility only.

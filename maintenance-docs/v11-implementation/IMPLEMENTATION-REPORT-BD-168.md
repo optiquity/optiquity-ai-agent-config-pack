@@ -346,7 +346,7 @@ Per-group summary:
 | `bash scripts/tests/test-migrate-v10-to-v11-dry-run.sh` | 61/61 PASS |
 | `bash scripts/tests/test-migrate-v10-to-v11-gates.sh` | 87/87 PASS |
 | `bash scripts/tests/tracker-agent-read-test.sh` | 31/31 PASS |
-| `python3 scripts/validate-pack.py` | PASSED — all 33 invoked checks (numbered Check 1–11 and 16–35; Checks 12–15 retired per v9 sunset) clean |
+| `python3 scripts/validate-pack.py` | PASSED — all 33 invoked checks (31 numbered Check 1–11 and 16–35; 2 unnumbered informational — issue-template-forms and template-archive-v11; Checks 12–15 retired per v9 sunset) clean |
 
 All baseline tail outputs verified identical (modulo new Check 32/33/34
 banners) to pre-edit baselines run before the implementation began.
