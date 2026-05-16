@@ -203,9 +203,10 @@ scripts/                                    Pack-level scripts
     ├── tracker-{config,doctor,init,labels,errors,sidecar,mirror,agent-read,phase-task,cycle-check,links,promote}.sh   Tracker subsystem (v11; phase-task per V3.3 §2 D-21 / BD-106; cycle-check + links per V3.3 §5 / BD-108; promote per V3.3 §3 / BD-107; doctor per BD-130)
     ├── tracker-migrate-{forward,reverse}.sh    Forward / reverse migration libs (v11; D-3 / D-8)
     ├── template-{translations,version}.sh  Template freshness helpers (v11)
-    └── migrate-v10-to-v11/                 v10→v11 adapter-private libs (v11; BD-095 + BD-101)
+    └── migrate-v10-to-v11/                 v10→v11 adapter-private libs (v11; BD-095 + BD-101 + BD-165)
         ├── dry-run.sh, apply.sh, resume.sh    Two-phase mode dispatchers (BD-095)
         ├── checkpoint.sh                       BD-101 verification helpers
+        ├── decompose.sh                        BD-165 — 6th post-dispatch sub-op + --force-overwrite-mirror bridge
         └── gate-{1,2,3}-*.sh                   Pre/post Phase-A/Phase-B gates (BD-101)
 
 scripts/test-migrator-core.sh               BD-119 unit tests — public API surface (v11)

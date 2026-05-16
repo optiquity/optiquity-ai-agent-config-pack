@@ -19,9 +19,14 @@
 #       context:
 #           - Interactive (TTY on stdin AND stdout): prompt user to
 #             confirm overwrite; abort on rejection (Addendum #1 §5.3).
-#           - Non-interactive: emit divergence warning to stderr and
-#             return non-zero exit (BD-095-mode wiring in 19c
-#             interprets the exit code per Addendum #2 §4).
+#           - Non-interactive with _MIGRATOR_MODE=dry-run: report divergence
+#             to stdout (informational); return 0.
+#           - Non-interactive with _MIGRATOR_MODE=apply|resume: BLOCK with
+#             EXIT_GATE_FAILED=31 + recovery instruction naming
+#             --force-overwrite-mirror (Addendum #2 §4 BD-095 bridge).
+#           - Non-interactive with _MIGRATOR_MODE unset (direct callers
+#             outside the migrator): preserve pre-BD-165 stderr warning +
+#             rc=2 behavior for backward compatibility.
 #       The PE_FORCE_OVERWRITE_MIRROR env var, if set to "1", bypasses
 #       both paths and proceeds with the overwrite (this is the seam
 #       used by 19c's `--force-overwrite-mirror` flag wiring).

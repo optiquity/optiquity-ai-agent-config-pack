@@ -193,6 +193,9 @@ jobs:
       - name: migrate-v10-to-v11 verification gates (BD-101)
         if: always()
         run: bash scripts/tests/test-migrate-v10-to-v11-gates.sh
+      - name: migrate-v10-to-v11 decompose tests (BD-165)
+        if: always()
+        run: bash scripts/tests/test-migrate-v10-to-v11-decompose.sh
       - name: migrator-core tests (BD-119)
         if: always()
         run: bash scripts/test-migrator-core.sh

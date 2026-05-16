@@ -27,9 +27,10 @@ divergence routing — where `_MIGRATOR_MODE=dry-run` REPORTS divergence
 to stdout (rc=0), `_MIGRATOR_MODE=apply|resume` BLOCKS with
 `EXIT_GATE_FAILED=31`, and `--force-overwrite-mirror` admits the
 overwrite with a stderr audit-trail warning. The post-report hook
-gains a 16-line advisory paragraph naming the rollback path. All
-architect-doc bindings honored; all baseline tests pass; all four
-manual smoke-test scenarios PASS.
+gains a short advisory paragraph (approximately 12 displayed lines)
+naming the rollback path and the divergence-block recovery
+instruction. All architect-doc bindings honored; all baseline tests
+pass; all four manual smoke-test scenarios PASS.
 
 ---
 
@@ -234,11 +235,28 @@ Also extended the dry-run banner to mention "+ BD-165 per-entry
 decompose" so dry-run output names the new step.
 
 **C. Post-report advisory paragraph in `migrator_post_report_hook`.**
-Added 16 say-lines (~12 displayed paragraph lines) before the existing
-"To opt into the v11 issue-tracker integration" pointer. Names the
-backup directory at `$_MIGRATOR_BACKUP_DIR` as the rollback path per
-integration parent §8.18 sample text. Confirms v11.0 decomposition
-non-reversibility.
+Added a short advisory paragraph (approximately 12 displayed lines)
+before the existing "To opt into the v11 issue-tracker integration"
+pointer. The paragraph names the backup directory at
+`$_MIGRATOR_BACKUP_DIR` as the rollback path per integration parent
+§8.18 sample text, confirms v11.0 decomposition non-reversibility, and
+states the divergence-block recovery instruction. Per the retroactive
+PACK-REVIEW-BD-165-RETRO finding M1, the divergence-block wording was
+corrected from the as-shipped phrasing (which inverted the Addendum #2
+§4 safety contract) to the accurate phrasing that matches the
+BLOCK-by-default behavior with exit code 31:
+
+```
+say "Hand-edits to the mirrors that diverge from the per-entry tree will BLOCK"
+say "the next regeneration with exit code 31 (EXIT_GATE_FAILED). Re-run with"
+say "--force-overwrite-mirror to acknowledge and overwrite the hand-edits, or"
+say "reconcile the per-entry tree with the mirror by hand first."
+```
+
+This wording matches Addendum #2 §4.2: the migrator NEVER silently
+overwrites the mirror in --apply or --resume mode; the flag is the
+explicit-acknowledgement signal that admits the overwrite, not the
+inverse.
 
 **D. Dispatcher-level flag intercept.** Added a `--force-overwrite-mirror)`
 case in the mode-detection scan loop:
@@ -487,7 +505,7 @@ Flags:
 | BD-095 contract preserved: NO redesign of `_MIGRATOR_MODE` / `_MIGRATOR_DRY_RUN`; bridge composes against existing state vars; only new flag is `--force-overwrite-mirror` | **PASS** — `_MIGRATOR_MODE` / `_MIGRATOR_DRY_RUN` semantics unchanged; only new flag is `--force-overwrite-mirror`; new state var `_MIGRATOR_FORCE_OVERWRITE_MIRROR` is internal and additive |
 | Backup contract preserved per integration parent §9.4 (`_stage_backup` at `migrator-stages.sh:146` unchanged) | **PASS** — `migrator-stages.sh` not modified |
 | BD-119 framework unchanged: NO new framework hook; NO new manifest entries for per-entry files; NO new mode beyond `--force-overwrite-mirror` | **PASS** — `migrator_manifest()` unchanged (still 14 rows); no new hook function; the only new framework-surface addition is the additive `--force-overwrite-mirror` flag in the existing `_migrator_parse_args` |
-| Post-report advisory paragraph length ~12 lines per integration parent §8.18 | **PASS** — 16 `say` lines (the say lines render as ~12 displayed paragraph lines because some are short / blank); paragraph names backup directory + rollback steps per §8.18 sample shape |
+| Post-report advisory paragraph length ~12 lines per integration parent §8.18 | **PASS** — a short advisory paragraph (approximately 12 displayed lines after rendering) names the backup directory + rollback steps per §8.18 sample shape and (post-retroactive-fix M1) states the divergence-block recovery instruction in wording that matches the Addendum #2 §4 BLOCK-by-default contract |
 | Bash 3.2 + macOS BSD-utility compatible | **PASS** — no associative arrays, no `&>`, no GNU-only flags; all `bash -n` clean; `for spec in "..."` with `case` substring; explicit `printf` over `echo -e`; tested on darwin25 |
 
 ### Functional verification (success criterion B)
