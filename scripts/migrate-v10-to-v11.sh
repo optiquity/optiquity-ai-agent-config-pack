@@ -138,7 +138,7 @@ migrator_post_dispatch_hook() {
     # invariant (single-shot only) made this gate unnecessary; with
     # BD-095 the gate is required.
     if _migrator_is_dryrun; then
-        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install + python-architecture skill rename + BD-144 capability-token translation"
+        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install + python-architecture skill rename + BD-144 capability-token translation + BD-165 per-entry decompose"
         return 0
     fi
     _v10_to_v11_rename_implementation_plan
@@ -146,6 +146,22 @@ migrator_post_dispatch_hook() {
     _v10_to_v11_install_v11_artifacts
     _v10_to_v11_rename_python_architecture_refs
     _v10_to_v11_translate_capability_tokens
+    # BD-165 (per-entry split, mandatory v11.0): 6th sub-op decomposes
+    # the just-installed v11-shape monolithic project-side files
+    # (BACKLOG.md / IMPLEMENTATION-PLAN.md / CHANGELOG.md) into the
+    # per-entry trees under docs/project/<stream>/ + regenerated
+    # mirrors + regenerated TOCs.
+    #
+    # Sequencing constraint per
+    # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §3.1 / §9.6: this
+    # MUST run AFTER all 5 prior sub-ops so the decompose step reads
+    # the FINAL v11-shape monolithic content (post BD-104 rename, post
+    # BD-042 relocation, post v11 artifact install incl. BD-167
+    # canonical templates, post python-architecture skill rename, post
+    # BD-144 capability-token translation). Anything that decomposed
+    # BEFORE one of those upstream mutations would produce per-entry
+    # files not reflecting the final v11 content.
+    _v10_to_v11_decompose_streams
 }
 
 # Internal: BD-104 cross-pack rename of the client's IMPLEMENTATION_PLAN.md
@@ -662,7 +678,32 @@ _v10_to_v11_translate_capability_tokens() {
 # the report is rendered. v10→v11 points users at `pack tracker init` for
 # the opt-in tracker integration. Mirrors the monolith's stage_s6_report
 # tail at lines 401–403.
+#
+# Also surfaces the BD-165 v11.0 per-entry decomposition advisory per
+# ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §8.18 / §9.4. v11.0
+# decomposition is non-reversible (the monolithic files are now
+# regenerated mirrors, not source); the backup directory created by
+# `_stage_backup` (scripts/lib/migrator-stages.sh:146) is the rollback
+# path. Surface the advisory here so the user reviews it alongside the
+# customization-preserve report.
 migrator_post_report_hook() {
+    say ""
+    say "v11.0 introduces per-entry decomposition of BACKLOG / CHANGELOG /"
+    say "IMPLEMENTATION-PLAN. The per-entry trees under"
+    say "  docs/project/backlog/, docs/project/implementation-plan/,"
+    say "  docs/project/changelog/"
+    say "are now the source of truth. The monolithic"
+    say "  docs/project/BACKLOG.md, docs/project/IMPLEMENTATION-PLAN.md,"
+    say "  docs/project/CHANGELOG.md"
+    say "files are regenerated mirrors — read-stable but not source-of-truth."
+    say "Hand-edits to the mirrors are silently overwritten on the next"
+    say "regeneration unless --force-overwrite-mirror is acknowledged."
+    say ""
+    say "This decomposition is non-reversible by design. To revert to the v10"
+    say "monolithic-as-source shape, restore from the backup directory at"
+    say "  $_MIGRATOR_BACKUP_DIR"
+    say "(or, if you committed the v10 state, \`git reset --hard <pre-migration-commit>\`)."
+    say "After restore, re-running this migrator will re-decompose."
     say ""
     say "To opt into the v11 issue-tracker integration, run:"
     say "  pack tracker init"
@@ -702,6 +743,16 @@ migrator_post_report_hook() {
 # shellcheck source=lib/migrate-v10-to-v11/resume.sh disable=SC1091
 . "$SCRIPT_DIR/lib/migrate-v10-to-v11/resume.sh"
 
+# BD-165 — adapter-private 6th post-dispatch sub-op (per-entry split).
+# Sources the BD-164 helpers from scripts/lib/per-entry/; defines
+# `_v10_to_v11_decompose_streams` consumed by the post-dispatch hook
+# above. Architecture: ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §3.1
+# / §9.6 / §10.2 + ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-ADDENDUM-2.md
+# §4.5 + research-side ARCHITECTURE-PER-ENTRY-SPLIT.md §1.3 (constraint
+# statement on function naming / placement).
+# shellcheck source=lib/migrate-v10-to-v11/decompose.sh disable=SC1091
+. "$SCRIPT_DIR/lib/migrate-v10-to-v11/decompose.sh"
+
 # BD-101 — verification gates (read-only checks at stage transitions).
 # Each gate sources `checkpoint.sh` for its shared helpers.
 # shellcheck source=lib/migrate-v10-to-v11/checkpoint.sh disable=SC1091
@@ -716,6 +767,17 @@ migrator_post_report_hook() {
 # Mode detection: scan args for the first explicit mode flag. Drop the
 # matched flag from the forwarded args because each mode dispatcher
 # re-supplies its own canonical mode flag to `migrator_run`.
+#
+# BD-165 / Addendum #2 §4.5: `--force-overwrite-mirror` is admissible
+# alongside any mode flag. The dry-run / apply paths funnel through
+# `migrator_run`, whose `_migrator_parse_args` will set
+# `_MIGRATOR_FORCE_OVERWRITE_MIRROR=1` when it sees the flag. The
+# resume path, however, sets `_MIGRATOR_MODE="resume"` directly inside
+# `migrate_v10_to_v11_resume_run` and never invokes `_migrator_parse_args`
+# — so we ALSO export the state var here at the dispatcher so all three
+# modes honor the flag uniformly. The flag is left in `_passthru` so the
+# apply / dry-run paths' framework-level parser still sees it (setting
+# the var twice is idempotent).
 _mode=""
 _passthru=()
 for _a in "$@"; do
@@ -738,6 +800,13 @@ for _a in "$@"; do
                     "$_mode" "$_a"
             } >&2
             exit "${EXIT_INTERNAL:-99}"
+            ;;
+        --force-overwrite-mirror)
+            # Set the framework state var here AND pass through, so
+            # the resume path (which never calls _migrator_parse_args)
+            # honors the flag too.
+            _MIGRATOR_FORCE_OVERWRITE_MIRROR="1"
+            _passthru+=("$_a")
             ;;
         *)
             _passthru+=("$_a")

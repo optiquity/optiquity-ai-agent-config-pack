@@ -263,10 +263,65 @@ per_entry_regenerate_mirror() {
         esac
     fi
 
-    # Non-interactive divergence path: warn + non-zero exit. The 19c
-    # BD-095-mode wiring interprets the exit code (per Addendum #2 §4):
-    # in --apply / --resume mode this blocks; in --dry-run mode the
-    # caller handles the report.
+    # Non-interactive divergence path. Routing per Addendum #2 §4
+    # (BD-095 two-phase contract bridge):
+    #
+    # When invoked from inside the v10→v11 migrator (or any future
+    # migrator that sources scripts/lib/migrator-core.sh), the
+    # framework exports `_MIGRATOR_MODE` ∈ {dry-run, apply, resume}
+    # and `_MIGRATOR_FORCE_OVERWRITE_MIRROR` ∈ {0, 1}. The migrator
+    # adapter additionally exports `PE_FORCE_OVERWRITE_MIRROR=1` when
+    # force is on; the force-path branch above (line ~236) handles
+    # that case before we reach here, so this branch only fires for
+    # divergence-with-force-OFF.
+    #
+    #   - --dry-run:           REPORT divergence to stdout, rc=0
+    #                          (informational; dry-run never writes).
+    #   - --apply / --resume:  BLOCK with rc=EXIT_GATE_FAILED (31)
+    #                          (per migrator-core.sh:74); user must
+    #                          re-run with --force-overwrite-mirror to
+    #                          proceed.
+    #
+    # When `_MIGRATOR_MODE` is unset (CI path / direct helper call /
+    # Pack-Chat tooling outside the migrator) we preserve the
+    # pre-BD-165 behavior: stderr warning + rc=2. CI's Check 32
+    # invokes a temp-file-only diff, never this writer, so the rc=2
+    # path is reached only by direct callers — Pack Chat / agent
+    # tooling that should still see a non-zero exit and a clear
+    # recovery instruction.
+    case "${_MIGRATOR_MODE:-}" in
+        dry-run)
+            # Dry-run: report informationally to stdout (the dry-run
+            # report channel) and exit clean. The migrator-core
+            # already short-circuits writes in --dry-run mode; this
+            # mirrors that semantic for the per-entry helper.
+            printf 'per-entry: divergence detected at %s\n' "$mirror_path"
+            printf '           per-entry tree under %s would produce different content.\n' "$stream_dir"
+            printf '           This divergence will be overwritten on --apply unless --force-overwrite-mirror is passed.\n'
+            rm -f "$new_tmp"
+            trap - EXIT
+            return 0
+            ;;
+        apply|resume)
+            # Apply / resume without --force-overwrite-mirror: BLOCK.
+            # Use EXIT_GATE_FAILED (31) per migrator-core.sh:74 so the
+            # caller can distinguish a gate-fix-and-retry workflow
+            # (BD-101) from a stage-internal failure.
+            printf 'ERROR: per-entry regenerator detected divergence at: %s\n' "$mirror_path" >&2
+            printf '       per-entry tree under %s would produce different content.\n' "$stream_dir" >&2
+            printf '       The on-disk mirror has been hand-edited since the last regeneration.\n' >&2
+            printf '       Re-run with --force-overwrite-mirror to overwrite the hand-edits, OR\n' >&2
+            printf '       reconcile the per-entry tree with the mirror by hand and re-run.\n' >&2
+            rm -f "$new_tmp"
+            trap - EXIT
+            return "${EXIT_GATE_FAILED:-31}"
+            ;;
+    esac
+
+    # Default non-interactive path (no migrator mode set): preserves
+    # pre-BD-165 behavior — warn to stderr + non-zero exit so direct
+    # callers (Pack Chat, agent tooling outside the migrator) still
+    # see the divergence and have a clear recovery instruction.
     printf 'WARNING: per-entry regenerator detected divergence at: %s\n' "$mirror_path" >&2
     printf '         per-entry tree under %s would produce different content.\n' "$stream_dir" >&2
     printf '         Pass --force-overwrite-mirror (or set PE_FORCE_OVERWRITE_MIRROR=1) to overwrite.\n' >&2
