@@ -151,6 +151,9 @@ jobs:
       - name: recommendation-state-schema tests (BD-079, validate-pack Check 30)
         if: always()
         run: bash scripts/tests/recommendation-state-schema-test.sh
+      - name: per-entry helper tests (BD-164)
+        if: always()
+        run: bash scripts/tests/test-per-entry.sh
       - name: validate-pack Check 32/33/34 tests (BD-168, per-entry split validators)
         if: always()
         run: bash scripts/tests/test-validate-pack-checks-32-33-34.sh

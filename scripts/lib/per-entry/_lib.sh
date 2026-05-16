@@ -50,7 +50,10 @@
 #   path; for pack streams pack-self uses this key).
 # Position 1: canonical mirror filename (relative to repo root for pack
 #   streams, relative to docs/project/ for project streams).
-# Position 2: entry-file regex (BSD-grep ERE; matched against basename).
+# Position 2: entry-file regex (portable extended-regex subset accepted
+#   by both BSD `grep -E` and Python `re.compile`; see
+#   `pe_list_entry_files` for the BSD-grep use site and
+#   decompose.sh / toc-regenerate.sh for the Python use sites).
 # Position 3: known supporting-file basenames the helpers can emit
 #   (space-separated). Anything not in this list is SKIP per integration
 #   parent §7.5 final paragraph.
@@ -88,6 +91,10 @@ pe__stream_attr() {
             esac
             ;;
         project-implementation-plan)
+            # Filename regex admits `phase-N.md` only (no `phase-N.M.md`
+            # per-task files). Per Addendum #1 §6.4 BD-167 spec override
+            # of sidecar §3.4: tasks live INLINE in the phase file. See
+            # `decompose.sh:125` for the parallel parser-side comment.
             case "$2" in
                 mirror) printf 'docs/project/IMPLEMENTATION-PLAN.md' ;;
                 entry-regex) printf '^phase-[0-9]+\.md$' ;;
@@ -98,7 +105,12 @@ pe__stream_attr() {
         project-changelog)
             case "$2" in
                 mirror) printf 'docs/project/CHANGELOG.md' ;;
-                entry-regex) printf '^[0-9]{4}-[0-9]{2}-[0-9]{2}-.+\.md$' ;;
+                # Slug is OPTIONAL per sidecar §3.5 (OT convention typically
+                # carries a slug, but the design does not lock it). The
+                # decompose `id_extract` bare-date fall-back returns
+                # `YYYY-MM-DD.md` for unannotated H3 anchors; this regex
+                # admits both shapes. Mirrored in toc-regenerate.sh:88.
+                entry-regex) printf '^[0-9]{4}-[0-9]{2}-[0-9]{2}(-.+)?\.md$' ;;
                 support) printf '_rules.md _intro.md _toc.md _format.md' ;;
                 dir-suffix) printf 'docs/project/changelog' ;;
             esac
@@ -287,25 +299,24 @@ pe_backpointer_line() {
 
 # Recognize ANY per-entry back-pointer line (regex shape, used for
 # stripping during mirror generation). Returns 0 if stdin first line
-# matches, 1 otherwise.
+# matches, 1 otherwise. Tolerates trailing whitespace on the line
+# (editor auto-trim hazard); the back-pointer text proper is anchored
+# at line start and ends with `-->`.
 pe_first_line_is_backpointer() {
     local first
     IFS= read -r first || return 1
-    case "$first" in
-        '<!-- per-entry source: '*'; contract: '*' -->')
-            return 0
-            ;;
-    esac
-    return 1
+    printf '%s' "$first" \
+        | grep -E -q '^<!-- per-entry source: .*; contract: .* -->[[:space:]]*$'
 }
 
 # Filter: emit stdin to stdout, dropping the first line iff it matches
 # the per-entry back-pointer pattern. Idempotent (a file with no
-# back-pointer passes through unchanged).
+# back-pointer passes through unchanged). Tolerates trailing whitespace
+# on the back-pointer line (editor auto-trim hazard).
 pe_strip_backpointer_stdin() {
     awk '
         NR == 1 {
-            if ($0 ~ /^<!-- per-entry source: .*; contract: .* -->$/) {
+            if ($0 ~ /^<!-- per-entry source: .*; contract: .* -->[ \t]*$/) {
                 next
             }
         }
@@ -314,7 +325,8 @@ pe_strip_backpointer_stdin() {
 }
 
 # Idempotent: prepend back-pointer to file IFF first line is not already
-# a back-pointer. Writes the result back atomically.
+# a back-pointer. Writes the result back atomically. Tolerates trailing
+# whitespace on the existing back-pointer line (editor auto-trim hazard).
 # $1 = file path, $2 = stream key, $3 = id
 pe_ensure_backpointer() {
     local path="$1"
@@ -322,15 +334,20 @@ pe_ensure_backpointer() {
     local id="$3"
     local first
     first=$(head -n 1 "$path" 2>/dev/null || true)
-    case "$first" in
-        '<!-- per-entry source: '*'; contract: '*' -->')
-            return 0
-            ;;
-    esac
+    if printf '%s' "$first" \
+        | grep -E -q '^<!-- per-entry source: .*; contract: .* -->[[:space:]]*$'; then
+        return 0
+    fi
     local bp
     bp=$(pe_backpointer_line "$key" "$id")
     local tmp
-    tmp=$(mktemp -t per-entry-bp.XXXXXX) || return 1
+    # Same-directory mktemp so the final `mv` is an atomic rename within
+    # the same filesystem. `mktemp -t` lands under $TMPDIR which is
+    # typically a different filesystem from $path — cross-FS `mv` is
+    # implemented as `copy + unlink` and is NOT atomic.
+    local dir
+    dir=$(dirname "$path")
+    tmp=$(mktemp "$dir/.per-entry-bp.XXXXXX") || return 1
     printf '%s\n' "$bp" >"$tmp"
     cat "$path" >>"$tmp"
     mv "$tmp" "$path"
@@ -403,7 +420,9 @@ pe_list_entry_files() {
         case "$base" in
             _*) continue ;;
         esac
-        # Match against the entry regex (BSD grep ERE).
+        # Match against the entry regex (portable ERE subset; here matched
+        # via BSD `grep -E`; same regex is also accepted by Python
+        # `re.compile` in decompose.sh / toc-regenerate.sh).
         if printf '%s\n' "$base" | grep -E -q "$regex"; then
             printf '%s\n' "$f"
         fi

@@ -117,6 +117,14 @@ Sub-directory matches integration parent §18.1 #2 recommendation ("sub-director
 
 ## 4. Files created
 
+**Note on line counts:** all counts below capture the BD-164-only state
+(as committed in 19a, pre-BD-165 / 19c). Downstream commits extended
+some of these files — notably `mirror-generate.sh` grew from 276 to
+331 lines when BD-165 added the `_MIGRATOR_MODE`-aware non-interactive
+divergence-routing case block (19c). Subsequent retro-fix work on this
+report may further adjust line counts in the working tree without
+changing this historical snapshot of BD-164's deliverable.
+
 | Path | Lines | Type |
 |---|---|---|
 | `/Users/david/Developer/optiquity-ai-agent-config-pack-v11-dev/scripts/lib/per-entry/` | (dir) | new directory |
@@ -176,7 +184,9 @@ These were noticed during 19a implementation but explicitly NOT acted on:
 
 3. **`PE_FORCE_OVERWRITE_MIRROR` env var is the seam used by 19c's `--force-overwrite-mirror` flag.** Naming of the env var is provisional; 19c's BD-095-mode wiring in `migrator-core.sh` will define how the flag is plumbed. By design — handled by subsequent commit in same batch. NOT a deferral.
 
-4. **Validate-pack.py "Check 32 collision" concern from initial agent reading was incorrect.** Re-verification: validate-pack.py currently has 30 `def check_` functions; PLAN §5.6 pre-state says "highest is Check 31" (off-by-one against grep but immaterial). BD-168 (19e) adds 32/33/34 with no collision. NOT a real issue.
+4. **Integration parent §18.2 #1 enumerates 4 helper-test scenarios; case 4 (cross-reference resolution: detect a `Blockers: BD-999` reference when BD-999 has no entry file) is BY DESIGN scoped to BD-168 / 19e, not BD-164 / 19a.** Cross-reference integrity is the validator's responsibility (Check 34 in `scripts/validate-pack.py`), not the helper library's. The first three §18.2 #1 cases (round-trip identity, empty-tree mirror, supporting-file admission) are covered by test groups 3, 6, and 7 respectively. By design — case 4 is BD-168 territory; NOT a deferral.
+
+5. **Validate-pack.py "Check 32 collision" concern from initial agent reading was incorrect.** Re-verification: validate-pack.py currently has 30 `def check_` functions; PLAN §5.6 pre-state says "highest is Check 31" (off-by-one against grep but immaterial). BD-168 (19e) adds 32/33/34 with no collision. NOT a real issue.
 
 No new POQs surfaced. No deviations from the plan; the file structure decision matches the planner's recommendation per integration parent §18.1 #2 + Addendum #1 §9.
 

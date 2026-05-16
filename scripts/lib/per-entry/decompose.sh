@@ -63,10 +63,14 @@ import os
 import re
 import sys
 
-key = os.environ["PE_DECOMPOSE_KEY"]
-mono_path = os.environ["PE_DECOMPOSE_MONO"]
-stream_dir = os.environ["PE_DECOMPOSE_DIR"]
-entry_regex = os.environ["PE_DECOMPOSE_REGEX"]
+try:
+    key = os.environ["PE_DECOMPOSE_KEY"]
+    mono_path = os.environ["PE_DECOMPOSE_MONO"]
+    stream_dir = os.environ["PE_DECOMPOSE_DIR"]
+    entry_regex = os.environ["PE_DECOMPOSE_REGEX"]
+except KeyError as e:
+    sys.stderr.write(f"per-entry decompose: missing env var {e.args[0]}\n")
+    sys.exit(2)
 
 # ─── Read input ──────────────────────────────────────────────
 with open(mono_path, "r", encoding="utf-8", newline="") as f:
@@ -111,8 +115,11 @@ if key == "pack-backlog":
 elif key == "pack-changelog":
     # Each H3 `### vN.M` is one entry; the file is sliced at H3 boundaries.
     # The H2 `## vN — <date>` is regrouped by the mirror generator.
-    anchor_re = re.compile(r"^### (v\d+\.\d+(?:[-A-Za-z0-9]+)?)\b")
-    id_extract = lambda line: re.match(r"^### (v\d+\.\d+(?:[-A-Za-z0-9]+)?)\b", line).group(1)
+    # Suffix shape harmonized with _lib.sh:77 + toc-regenerate.sh:85 — the
+    # canonical pack-changelog convention per sidecar §3.2 line 302 is
+    # `v10.0-post-release` (lowercase, leading-hyphen, [a-z0-9-]).
+    anchor_re = re.compile(r"^### (v\d+\.\d+(?:-[a-z0-9-]+)?)\b")
+    id_extract = lambda line: re.match(r"^### (v\d+\.\d+(?:-[a-z0-9-]+)?)\b", line).group(1)
     # The H2 `## vN — <date>` line ends an entry only by introducing
     # the next H2; the next entry-anchor (next `### vN.M`) ends it
     # within the same H2. Either signals close.
