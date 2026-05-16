@@ -151,6 +151,9 @@ jobs:
       - name: recommendation-state-schema tests (BD-079, validate-pack Check 30)
         if: always()
         run: bash scripts/tests/recommendation-state-schema-test.sh
+      - name: validate-pack Check 32/33/34 tests (BD-168, per-entry split validators)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-checks-32-33-34.sh
       - name: tracker BD-129 gh-repo routing tests (BD-129)
         if: always()
         run: bash scripts/tests/tracker-bd129-gh-repo-test.sh

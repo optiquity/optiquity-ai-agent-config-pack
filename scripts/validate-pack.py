@@ -117,6 +117,33 @@ Checks:
       cites only known skills (skill exists on disk AND is listed in
       PLATFORM-SKILLS.md) — see the in-line `[extension]` block at
       the end of `check_agent_canonical_phrases()`.
+  32. Per-entry mirror in-sync (BD-168, v11.0 per-entry split): for each
+      pack-side per-entry stream (`backlog/`, `changelog/`), the
+      regenerated mirror (`BACKLOG.md`, `CHANGELOG.md`) is byte-
+      identical to what the BD-164 mirror generator would produce from
+      the on-disk per-entry tree. Pre-checks fold per integration parent
+      §10.4: `_rules.md` exists per stream; per-entry filename
+      conformance; `_v8-resolved-archive.md` byte-stable (covered by
+      the main divergence check). SKIPs when the per-entry tree is
+      absent (pre-Batch-22 pack-self / pre-v11.0 client per §10.5).
+      Pack-side scope only per §10.6 (project-side trees are validated
+      by the client's CI).
+  33. Per-entry `_toc.md` in-sync (BD-168, v11.0 per-entry split): for
+      each pack-side per-entry stream, the on-disk `_toc.md` is byte-
+      identical to what the BD-164 TOC regenerator would produce. Same
+      SKIP behavior as Check 32.
+  34. Cross-reference integrity (BD-168, v11.0 per-entry split): every
+      `BD-NNN`, `TD-NNN`, `vN.M`, `phase-N[.M]` reference inside per-
+      entry files resolves to a defined entry ID in the loaded streams
+      (filename minus `.md` IS the ID per integration parent §10.3).
+      Self-references and references inside `_v8-resolved-archive.md`
+      are exempt per §11.3. SKIPs when no per-entry tree exists.
+  35. Phase-task lib invariants (BD-106 / V3.3 §3 line 27): renumbered
+      from Check 32 in BD-168 to make room for the per-entry split
+      validators. `scripts/lib/tracker-phase-task.sh` exists;
+      `tracker_labels_folded_into` is NOT defined in
+      `scripts/lib/tracker-labels.sh`; the literal `folded-into` does
+      NOT appear in executable code under `scripts/lib/`.
 
 Two additional informational checks (no number, soft / advisory):
   - Issue template forms (BD-063): `.github/ISSUE_TEMPLATE/*.yml`
@@ -137,11 +164,34 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import tomllib
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / "project-template" / "skills"
+
+# ── Per-entry tree streams (BD-168 Checks 32 / 33 / 34) ─────────────────────
+#
+# Each stream tuple: (stream_key, stream_dir_relative, mirror_relative,
+# entry_regex). Pack-side scope only per
+# ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.6 — `validate-pack.py`
+# runs in the pack repo CI; project-side per-entry trees under
+# `project-template/docs/project/<stream>/` are pack-shipped canonical
+# templates without entries during pack development, so they are NOT
+# loaded here. Client projects validate their own per-entry trees
+# (the regenerator's idempotency provides the implicit invariant).
+#
+# Stream keys MUST match the BD-164 helper keys in
+# `scripts/lib/per-entry/_lib.sh` (`PE_STREAM_KEYS`); the bash regex
+# strings here are mirrored from `pe_entry_regex_for_stream` for the
+# Python-side filename conformance pre-check (Check 32 pre-check b).
+STREAMS = [
+    # (stream_key,        stream_dir_relative,  mirror_relative,  entry_regex)
+    ("pack-backlog",      "backlog",            "BACKLOG.md",      r"^BD-\d+\.md$"),
+    ("pack-changelog",    "changelog",          "CHANGELOG.md",    r"^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$"),
+]
+PER_ENTRY_LIB = REPO_ROOT / "scripts" / "lib" / "per-entry"
 CODEX_DIR = REPO_ROOT / "project-template" / ".codex"
 CLAUDE_AGENTS_DIR = REPO_ROOT / "project-template" / ".claude" / "agents"
 CODEX_AGENTS_DIR = REPO_ROOT / "project-template" / ".codex" / "agents"
@@ -2754,10 +2804,572 @@ def check_skill_cell_consistency() -> None:
         )
 
 
-# ── Check 32: Phase-task lib invariants (BD-106 / V3.3 §3 line 27) ─────────
+# ── Check 32: per-entry mirror is in-sync with per-entry tree (BD-168) ─────
+
+def _per_entry_run_helper(helper_func: str, args: list) -> tuple:
+    """Invoke a BD-164 bash helper via subprocess.
+
+    Sources `scripts/lib/per-entry/_lib.sh` plus the named helper file
+    (mirror-generate.sh or toc-regenerate.sh inferred from the function),
+    then calls `helper_func` with `args`. Returns
+    `(returncode, stdout, stderr)`. Used by Check 32 / Check 33 to
+    regenerate the canonical mirror / TOC into a temp location for
+    byte-comparison against the on-disk file.
+
+    Architecture: ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.1
+    pseudo-code (planner refines per Addendum #1 §9.2 disclaimer).
+    """
+    helper_file = {
+        "per_entry_regenerate_mirror": "mirror-generate.sh",
+        "per_entry_regenerate_toc":    "toc-regenerate.sh",
+    }[helper_func]
+    quoted_args = " ".join(f"'{a}'" for a in args)
+    script = (
+        f". '{PER_ENTRY_LIB}/_lib.sh' && "
+        f". '{PER_ENTRY_LIB}/{helper_file}' && "
+        f"{helper_func} {quoted_args}"
+    )
+    result = subprocess.run(
+        ["bash", "-c", script],
+        capture_output=True,
+        text=True,
+        stdin=subprocess.DEVNULL,
+    )
+    return result.returncode, result.stdout, result.stderr
+
+
+def _list_unknown_files(stream_dir: Path, entry_regex: str,
+                        known_supporting: set) -> list:
+    """List basenames in `stream_dir` that are neither known supporting
+    files (e.g. `_rules.md`, `_intro.md`, `_toc.md`,
+    `_v8-resolved-archive.md`, `_format.md`) nor matching the entry
+    regex. Used by Check 32 pre-check (b) — non-conforming filenames
+    per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.4.
+    """
+    if not stream_dir.is_dir():
+        return []
+    pattern = re.compile(entry_regex)
+    unknown = []
+    for child in sorted(stream_dir.iterdir()):
+        if not child.is_file():
+            continue
+        name = child.name
+        if name in known_supporting:
+            continue
+        if pattern.match(name):
+            continue
+        unknown.append(name)
+    return unknown
+
+
+def check_mirror_in_sync() -> None:
+    """Check 32 — per-entry mirror is in-sync with per-entry tree (BD-168).
+
+    Pseudo-code sketches the behavioral contract; planner refines exact
+    implementation (per Addendum #1 §9.2 disclaimer).
+
+    For each pack-side stream in STREAMS:
+
+      - SKIP if the per-entry tree directory is absent (pre-Batch-22
+        pack-self / pre-v11.0 client) per
+        ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.5.
+
+      - Pre-check (a) per §10.4: `_rules.md` exists per stream; FAIL
+        with "missing _rules.md for stream X".
+
+      - Pre-check (b) per §10.4: per-entry filenames conform to the
+        stream's regex (e.g., `^BD-\\d+\\.md$` for pack-backlog); FAIL
+        with "non-conforming filenames: ..." enumerating offenders.
+
+      - Pre-check (c) per §10.4: `_v8-resolved-archive.md` byte-stable —
+        folded into the main divergence check (the v8 archive is part
+        of the regenerated mirror's trailing block; if it differs, the
+        cmp below catches it).
+
+      - Main check: invoke the BD-164 mirror generator
+        (`scripts/lib/per-entry/mirror-generate.sh::per_entry_regenerate_mirror`)
+        against the on-disk per-entry tree, redirecting the canonical
+        mirror argument to a temp file (the helper short-circuits to
+        no-op if the on-disk mirror is byte-identical to what it would
+        produce). Diff the temp output against the on-disk mirror; FAIL
+        on any difference.
+
+    Failure mode: developer hand-edited the mirror, OR forgot to invoke
+    the regenerator before committing.
+
+    Recovery: run the mirror regenerator and re-commit (named in the
+    FAIL message).
+    """
+    print("\n── Check 32: per-entry mirror is in-sync with per-entry tree (BD-168) ──")
+
+    # The set of known supporting basenames the BD-164 helpers may emit
+    # per stream. Mirrors `pe_supporting_files_known_for_stream` in
+    # `scripts/lib/per-entry/_lib.sh` (kept in lockstep — same hard-
+    # coded source-of-truth split per integration parent §7.5).
+    known_supporting_for = {
+        "pack-backlog":   {"_rules.md", "_intro.md", "_toc.md",
+                           "_v8-resolved-archive.md"},
+        "pack-changelog": {"_rules.md", "_intro.md", "_toc.md"},
+    }
+
+    for stream_key, stream_rel, mirror_rel, entry_regex in STREAMS:
+        stream_dir = REPO_ROOT / stream_rel
+        mirror_path = REPO_ROOT / mirror_rel
+
+        if not stream_dir.is_dir():
+            ok(
+                f"{stream_rel}/ — not present (skipping; pre-v11.0 "
+                f"client or pre-Batch-22 pack-self per integration "
+                f"parent §10.5)"
+            )
+            continue
+
+        # Pre-check (a): _rules.md exists per stream.
+        rules_path = stream_dir / "_rules.md"
+        if not rules_path.is_file():
+            fail(
+                f"{stream_rel}/_rules.md missing — required for v11.0 "
+                f"per-entry contract (integration parent §10.4 pre-check)"
+            )
+            continue
+
+        # Pre-check (b): per-entry filenames conform.
+        known_supporting = known_supporting_for.get(stream_key, set())
+        unknown = _list_unknown_files(stream_dir, entry_regex, known_supporting)
+        if unknown:
+            fail(
+                f"{stream_rel}/: non-conforming filenames: "
+                f"{unknown} — entry regex {entry_regex!r}; supporting "
+                f"basenames {sorted(known_supporting)}"
+            )
+            continue
+
+        # Main check: regenerate to a temp file under the same
+        # directory as the canonical mirror (the helper requires the
+        # mirror dir to exist so it can mktemp there for atomic mv).
+        # Use a unique temp filename under REPO_ROOT to keep the
+        # comparison byte-stable; clean up on every exit path.
+        mirror_dir = mirror_path.parent
+        if not mirror_dir.is_dir():
+            fail(
+                f"{mirror_rel}: parent directory does not exist — "
+                f"per-entry tree present but canonical mirror parent "
+                f"missing (cannot regenerate)"
+            )
+            continue
+
+        # Build a temp regenerated copy by point-in-time-snapshotting
+        # the on-disk mirror, asking the helper to regenerate the
+        # mirror in place (which is a no-op iff in sync), then
+        # comparing the post-helper mirror to the snapshot. This
+        # avoids redirecting the helper's output (the helper writes
+        # its output to <mirror_path>; we want to leave the on-disk
+        # mirror untouched for the comparison).
+        snap_fd, snap_path = tempfile.mkstemp(
+            prefix=".per-entry-snap.", suffix=".md",
+            dir=str(mirror_dir),
+        )
+        try:
+            os.close(snap_fd)
+            if mirror_path.is_file():
+                # Snapshot existing mirror.
+                snap_data = mirror_path.read_bytes()
+                Path(snap_path).write_bytes(snap_data)
+            else:
+                # No on-disk mirror at all — divergence with empty.
+                fail(
+                    f"{mirror_rel}: per-entry tree present at "
+                    f"{stream_rel}/ but mirror file absent — run "
+                    f"`bash scripts/lib/per-entry/mirror-generate.sh` "
+                    f"to materialize"
+                )
+                continue
+
+            # Invoke the regenerator. With PE_FORCE_OVERWRITE_MIRROR=1
+            # we bypass the divergence prompt + non-zero exit, so the
+            # helper either no-ops (in sync) or rewrites the mirror
+            # (out of sync). We restore the snapshot before returning
+            # in either case.
+            env = os.environ.copy()
+            env["PE_FORCE_OVERWRITE_MIRROR"] = "1"
+            quoted_args = " ".join(
+                f"'{a}'" for a in [stream_key, str(stream_dir), str(mirror_path)]
+            )
+            script = (
+                f". '{PER_ENTRY_LIB}/_lib.sh' && "
+                f". '{PER_ENTRY_LIB}/mirror-generate.sh' && "
+                f"per_entry_regenerate_mirror {quoted_args}"
+            )
+            result = subprocess.run(
+                ["bash", "-c", script],
+                capture_output=True,
+                text=True,
+                stdin=subprocess.DEVNULL,
+                env=env,
+            )
+            if result.returncode != 0:
+                # Helper failed for a reason other than divergence
+                # (we forced through divergence with the env var).
+                # Restore snapshot then FAIL with stderr.
+                Path(snap_path).replace(mirror_path)
+                fail(
+                    f"{mirror_rel}: mirror regenerator failed "
+                    f"(rc={result.returncode}); stderr: "
+                    f"{result.stderr.strip()}"
+                )
+                continue
+
+            # Compare new on-disk mirror vs. snapshot.
+            new_data = mirror_path.read_bytes()
+            if new_data == snap_data:
+                # In sync — leave on-disk file untouched.
+                Path(snap_path).unlink()
+                ok(
+                    f"{stream_rel}/ → {mirror_rel} byte-identical "
+                    f"({len(new_data)} bytes)"
+                )
+            else:
+                # Divergence — RESTORE the snapshot (so the working
+                # tree is unchanged) and FAIL.
+                Path(snap_path).replace(mirror_path)
+                fail(
+                    f"{mirror_rel} is out of sync with {stream_rel}/ — "
+                    f"re-run `bash scripts/lib/per-entry/mirror-generate.sh` "
+                    f"(or invoke `per_entry_regenerate_mirror "
+                    f"{stream_key} {stream_dir} {mirror_path}`) before "
+                    f"committing; restored on-disk mirror to pre-check "
+                    f"state"
+                )
+        finally:
+            # Defensive cleanup: if snap_path still exists the path
+            # above didn't tidy up.
+            if Path(snap_path).exists():
+                try:
+                    Path(snap_path).unlink()
+                except OSError:
+                    pass
+
+
+# ── Check 33: per-entry _toc.md is in-sync with per-entry tree (BD-168) ────
+
+def check_toc_in_sync() -> None:
+    """Check 33 — per-entry `_toc.md` is in-sync with per-entry tree (BD-168).
+
+    Same SKIP behavior as Check 32 (no per-entry tree → SKIP per
+    integration parent §10.5). Invokes the BD-164 TOC regenerator
+    against the on-disk tree, snapshotting the on-disk `_toc.md`,
+    asking the helper to regenerate in place, then comparing the
+    post-helper `_toc.md` to the snapshot. Restore on either path so
+    the working tree is unchanged.
+
+    Failure mode: developer hand-edited `_toc.md`, OR forgot to invoke
+    the TOC regenerator after editing the per-entry tree.
+
+    Recovery: re-run the TOC regenerator and re-commit.
+    """
+    print("\n── Check 33: per-entry _toc.md is in-sync with per-entry tree (BD-168) ──")
+
+    for stream_key, stream_rel, _mirror_rel, _entry_regex in STREAMS:
+        stream_dir = REPO_ROOT / stream_rel
+
+        if not stream_dir.is_dir():
+            ok(
+                f"{stream_rel}/ — not present (skipping; pre-v11.0 "
+                f"client or pre-Batch-22 pack-self per integration "
+                f"parent §10.5)"
+            )
+            continue
+
+        # If _rules.md absent the stream is malformed; Check 32
+        # already FAILed with the same diagnostic — emit a brief skip
+        # here so Check 33 doesn't double-fail on the same condition.
+        if not (stream_dir / "_rules.md").is_file():
+            ok(
+                f"{stream_rel}/_toc.md — skipped (Check 32 already "
+                f"reported missing _rules.md)"
+            )
+            continue
+
+        toc_path = stream_dir / "_toc.md"
+
+        snap_fd, snap_path = tempfile.mkstemp(
+            prefix=".per-entry-toc-snap.", suffix=".md",
+            dir=str(stream_dir),
+        )
+        try:
+            os.close(snap_fd)
+            had_existing_toc = toc_path.is_file()
+            if had_existing_toc:
+                snap_data = toc_path.read_bytes()
+                Path(snap_path).write_bytes(snap_data)
+            else:
+                snap_data = None
+
+            quoted_args = " ".join(
+                f"'{a}'" for a in [stream_key, str(stream_dir)]
+            )
+            script = (
+                f". '{PER_ENTRY_LIB}/_lib.sh' && "
+                f". '{PER_ENTRY_LIB}/toc-regenerate.sh' && "
+                f"per_entry_regenerate_toc {quoted_args}"
+            )
+            result = subprocess.run(
+                ["bash", "-c", script],
+                capture_output=True,
+                text=True,
+                stdin=subprocess.DEVNULL,
+            )
+            if result.returncode != 0:
+                # Restore on-disk (if any) before failing.
+                if had_existing_toc:
+                    Path(snap_path).replace(toc_path)
+                fail(
+                    f"{stream_rel}/_toc.md: regenerator failed "
+                    f"(rc={result.returncode}); stderr: "
+                    f"{result.stderr.strip()}"
+                )
+                continue
+
+            new_data = toc_path.read_bytes() if toc_path.is_file() else None
+            if had_existing_toc and new_data == snap_data:
+                # In sync — leave the file untouched.
+                Path(snap_path).unlink()
+                ok(
+                    f"{stream_rel}/_toc.md byte-identical "
+                    f"({len(new_data)} bytes)"
+                )
+            elif not had_existing_toc and new_data is not None:
+                # The on-disk tree had no _toc.md but the regenerator
+                # produced one — that itself is a divergence (TOC
+                # missing from the committed tree).
+                toc_path.unlink()  # restore tree to original (no TOC)
+                fail(
+                    f"{stream_rel}/_toc.md absent — run "
+                    f"`per_entry_regenerate_toc {stream_key} "
+                    f"{stream_dir}` to materialize before committing; "
+                    f"restored tree to pre-check state"
+                )
+            else:
+                # Divergence — restore the snapshot, FAIL.
+                if had_existing_toc:
+                    Path(snap_path).replace(toc_path)
+                fail(
+                    f"{stream_rel}/_toc.md is out of sync — re-run "
+                    f"`per_entry_regenerate_toc {stream_key} "
+                    f"{stream_dir}` before committing; restored "
+                    f"on-disk file to pre-check state"
+                )
+        finally:
+            if Path(snap_path).exists():
+                try:
+                    Path(snap_path).unlink()
+                except OSError:
+                    pass
+
+
+# ── Check 34: cross-reference integrity (BD-168) ───────────────────────────
+
+# Per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §11.2, the reference
+# regex matches BD-NNN, TD-NNN, vN.M (with optional `-suffix`),
+# `phase-N`, and `phase-N.M`. Conservative — false positives in code
+# blocks / quoted text are tolerated per §11.2.
+CROSS_REF_RE = re.compile(
+    r"\b("
+    r"BD-\d+"
+    r"|TD-\d+"
+    r"|phase-\d+(?:\.\d+)?"
+    r"|v\d+\.\d+(?:-[a-z0-9-]+)?"
+    r")\b"
+)
+
+
+def _collect_defined_ids(stream_key: str, stream_dir: Path,
+                         entry_regex: str) -> set:
+    """Collect all defined entry IDs for a stream from per-entry filenames.
+
+    For each file in `stream_dir` matching `entry_regex`, emit the ID
+    (filename minus `.md`). Per integration parent §10.3 — the
+    filename IS the ID.
+    """
+    if not stream_dir.is_dir():
+        return set()
+    pattern = re.compile(entry_regex)
+    defined = set()
+    for child in stream_dir.iterdir():
+        if not child.is_file():
+            continue
+        if not pattern.match(child.name):
+            continue
+        defined.add(child.name[:-3])  # strip .md
+    return defined
+
+
+def _extract_references(text: str, skip_v8_archive: bool) -> list:
+    """Extract (ref, line_no) pairs from `text` matching CROSS_REF_RE.
+
+    Per integration parent §11.3, when `skip_v8_archive` is True, any
+    reference appearing AFTER an H2 line matching `^## Resolved — v\\d+`
+    is suppressed (the v8 archive is frozen-historical and contains
+    references to entries that may not exist in the current tree).
+    """
+    refs = []
+    in_v8_archive = False
+    v8_archive_re = re.compile(r"^## Resolved — v\d+\b")
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        if skip_v8_archive and v8_archive_re.match(line):
+            in_v8_archive = True
+            continue
+        if in_v8_archive:
+            continue
+        for match in CROSS_REF_RE.finditer(line):
+            refs.append((match.group(1), line_no))
+    return refs
+
+
+def check_cross_reference_integrity() -> None:
+    """Check 34 — cross-reference integrity (BD-168).
+
+    Pseudo-code sketches the behavioral contract; planner refines exact
+    implementation (per Addendum #1 §9.2 disclaimer).
+
+    For each pack-side stream with a per-entry tree present:
+
+      - Collect defined IDs: the filename of every entry file that
+        matches the stream's entry regex (filename minus `.md` IS the
+        ID per integration parent §10.3).
+
+      - Walk every per-entry file in the stream; extract references
+        matching CROSS_REF_RE (`BD-NNN`, `TD-NNN`, `vN.M`,
+        `phase-N[.M]`); for each reference, FAIL with the offending
+        file + line number + ref if the ref is not in the union of
+        defined IDs across all loaded streams.
+
+      - SKIP the `_v8-resolved-archive.md` archive section (per
+        integration parent §11.3) — references inside it are
+        historical and not subject to integrity validation.
+
+    Cross-stream references are tolerated (a pack BD referencing a
+    project TD is out of scope for pack-side validation per §10.6).
+    Cross-stream references within the LOADED set (pack-backlog ↔
+    pack-changelog) ARE validated since both streams are loaded.
+
+    SKIP gracefully when no per-entry tree exists (per integration
+    parent §10.5).
+    """
+    print("\n── Check 34: cross-reference integrity (BD-168) ──")
+
+    # Build the union of defined IDs across loaded streams.
+    defined_by_stream = {}
+    any_stream_present = False
+    for stream_key, stream_rel, _mirror_rel, entry_regex in STREAMS:
+        stream_dir = REPO_ROOT / stream_rel
+        if not stream_dir.is_dir():
+            continue
+        any_stream_present = True
+        defined_by_stream[stream_key] = _collect_defined_ids(
+            stream_key, stream_dir, entry_regex
+        )
+
+    if not any_stream_present:
+        ok(
+            "no per-entry trees present (skipping; pre-v11.0 client or "
+            "pre-Batch-22 pack-self per integration parent §10.5)"
+        )
+        return
+
+    defined_all = set()
+    for ids in defined_by_stream.values():
+        defined_all |= ids
+
+    # The v8-archive SKIP per §11.3 applies to references INSIDE the
+    # `_v8-resolved-archive.md` supporting file (per-stream only;
+    # currently lives under pack-backlog).
+    v8_archive_basenames = {"_v8-resolved-archive.md"}
+
+    any_dangling = False
+    total_files = 0
+    total_refs = 0
+
+    for stream_key, stream_rel, _mirror_rel, entry_regex in STREAMS:
+        stream_dir = REPO_ROOT / stream_rel
+        if not stream_dir.is_dir():
+            continue
+
+        pattern = re.compile(entry_regex)
+        # Walk per-entry files (NOT supporting files like _toc.md /
+        # _rules.md / _intro.md — those are not entry content).
+        for child in sorted(stream_dir.iterdir()):
+            if not child.is_file():
+                continue
+            if child.name in v8_archive_basenames:
+                # SKIP the v8 archive entirely per §11.3.
+                continue
+            if child.name.startswith("_"):
+                # Other supporting files (e.g., _toc.md) — not entry
+                # content; out of scope per integration parent §10.3
+                # ("Walk every per-entry file").
+                continue
+            if not pattern.match(child.name):
+                # Non-conforming files are reported by Check 32; skip
+                # here to avoid double-reporting.
+                continue
+
+            total_files += 1
+            try:
+                text = child.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                fail(
+                    f"{child.relative_to(REPO_ROOT)}: unable to read for "
+                    f"cross-reference scan"
+                )
+                any_dangling = True
+                continue
+
+            refs = _extract_references(text, skip_v8_archive=True)
+            total_refs += len(refs)
+            seen_ids_this_file = set()
+            for ref, line_no in refs:
+                if ref in defined_all:
+                    continue
+                # Self-reference (a file referencing its own ID) is
+                # always defined — the ID lives in the filename.
+                self_id = child.name[:-3]
+                if ref == self_id:
+                    continue
+                # Track distinct dangling refs per file for clearer
+                # output (don't flood with one FAIL per repeat).
+                key = (ref, line_no)
+                if key in seen_ids_this_file:
+                    continue
+                seen_ids_this_file.add(key)
+                fail(
+                    f"{child.relative_to(REPO_ROOT)}:{line_no} references "
+                    f"{ref} — no matching entry file found in the loaded "
+                    f"per-entry streams (defined-IDs scope: pack-backlog + "
+                    f"pack-changelog per integration parent §10.6); fix "
+                    f"the reference or restore the missing entry"
+                )
+                any_dangling = True
+
+    if not any_dangling:
+        # Suppress the per-stream OK line if no streams had files;
+        # the any_stream_present guard above already SKIPed cleanly.
+        if total_files > 0:
+            ok(
+                f"cross-reference integrity: {total_refs} reference(s) "
+                f"across {total_files} per-entry file(s); all resolved "
+                f"to defined IDs (or self-reference, or v8-archive "
+                f"SKIPed per §11.3)"
+            )
+
+
+# ── Check 35: Phase-task lib invariants (BD-106 / V3.3 §3 line 27) ─────────
+# (Renumbered from Check 32 in BD-168 to make room for the per-entry
+# split validators per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.)
 
 def check_tracker_phase_task_invariants() -> None:
-    """Check 32 — phase-task lib presence + Path-3-forbidden invariant.
+    """Check 35 (renumbered from Check 32 in BD-168) — phase-task lib
+    presence + Path-3-forbidden invariant.
 
     BD-106 lands `scripts/lib/tracker-phase-task.sh` and the V3.3 §3.5
     label family (`derived-from:`, `promoted-to:`). Path 3 is FORBIDDEN
@@ -2778,7 +3390,7 @@ def check_tracker_phase_task_invariants() -> None:
       3. The literal `folded-into` does NOT appear anywhere in
          `scripts/lib/` (per V3.3 §3 line 27 invariant).
     """
-    print("\n── Check 32: Phase-task lib invariants (BD-106) ──")
+    print("\n── Check 35: Phase-task lib invariants (BD-106) ──")
     lib_dir = REPO_ROOT / "scripts" / "lib"
     phase_task_lib = lib_dir / "tracker-phase-task.sh"
     labels_lib = lib_dir / "tracker-labels.sh"
@@ -2901,6 +3513,14 @@ def main() -> None:
     check_tracker_config()
     check_recommendation_state_schema()
     check_skill_cell_consistency()
+    # ── BD-168 (Batch 19, Commit 19e): per-entry split validators. ──
+    # Order: 32 (mirror-in-sync) → 33 (TOC-in-sync) → 34 (cross-refs).
+    # Per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10. Each SKIPs
+    # gracefully when the per-entry tree is absent (pre-Batch-22
+    # pack-self / pre-v11.0 client).
+    check_mirror_in_sync()
+    check_toc_in_sync()
+    check_cross_reference_integrity()
     check_tracker_phase_task_invariants()
 
     print("\n" + "=" * 60)
