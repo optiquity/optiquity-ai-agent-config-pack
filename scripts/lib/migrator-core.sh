@@ -505,7 +505,14 @@ migrator_baseline_to_tmp() {
 # migrator_target_surface_for_version <vN>
 #   Echo a newline-delimited list of project-relative paths that a vN
 #   install creates and that real-client customization can target. Used
-#   by BD-120 fixture parameterization (architecture §9.2).
+#   by BD-160 fixture parameterization (v11-realistic-ot dispatcher in
+#   test-fixtures/build.sh — see `_build_realistic_for_version`'s C2/C3
+#   re-verification against the v11 surface; architecture §9.2). The
+#   prior "BD-120 fixture parameterization" wording was retracted in
+#   the BD-120 retro F1 fix because BD-120 dropped the helper-consumer
+#   claim (helper was not actually sourced or called from build.sh at
+#   that time); BD-160 is the helper's first real fixture-builder
+#   consumer.
 #
 #   The returned list is *paths to files or directories*, not a transformation
 #   map. The fixture builder applies its patterns; this helper only declares

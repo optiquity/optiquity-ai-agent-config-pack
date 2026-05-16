@@ -27,6 +27,7 @@ bash test-fixtures/build.sh --verify
 |---|---|---|---|---|
 | `v10-minimal` | v10-pinned | pack at `v10` tag | Bare v10 install via `init-project.sh`; no customizations | Control fixture for migrator tests; the "what does the migrator do to a vanilla v10?" baseline |
 | `v10-realistic-ot` | v10-pinned | pack at `v10` tag | Fake-OT shape: project-name fills (`FakeOT`); x-prefixed custom agent on Claude/Codex/Gemini; `.codex/config.toml` `model_providers.ollama` removed; 5-entry TD-* `BACKLOG.md`; trinity v10 self-label intact | Realistic OT-style migration test; exercises BD-088 customization-preservation against shapes a real client would have |
+| `v11-realistic-ot` | v11-pinned | pack at current `HEAD` (v11.0 baseline pre-release; will switch to `v11.0` tag at release) | Same four canonical OT customizations as `v10-realistic-ot` re-verified against the v11 surface (C2 strips `model_providers.ollama` from v11's `.codex/config.toml`; C3 writes `x-fakeot-domain` to v11's `.codex/agents/`, `.claude/agents/`, `.gemini/agents/`; C4 writes 5-entry TD-* content into `docs/project/BACKLOG.md` after the BD-166 empty-seed intro). Then BD-170 extension: decomposes the v11 monolithic project-side mirrors via the BD-164 helpers into `docs/project/{backlog,implementation-plan,changelog}/` per-entry trees, regenerates the mirrors, and verifies byte-identity round-trip per integration parent §12.1 + §8.7. | v11-target migration / dog-food fixture pair to `v10-realistic-ot`; exercises the v11 per-entry-split surface end-to-end (init → customization → decompose → regen → round-trip). |
 | `v11-flat-file` | v11-pinned | pack at current `HEAD` | v11 install via current `init-project.sh`; no `tracker.toml`; flat-file BACKLOG | "Vanilla v11 client" — what most users have on day 1 of v11. Use for tracker-init dog-food. |
 | `v11-tracker-on` | v11-pinned | pack at current `HEAD` | v11 install + `tracker.toml` with `mode.state = "tracker"` and `migration.forward_complete = true` set by hand (no live GH state) | Code-path testing for tracker-aware logic without round-tripping through real GH. |
 | `existing-project-mid-dev` | version-agnostic | none — synthesized | Realistic in-progress Swift+Python+gRPC project: `Package.swift`, `Sources/AcmeWidget/`, `Tests/AcmeWidgetTests/`, `proto/catalog.proto`, `service/` (Python tooling), top-level `README.md`, `.gitignore`, and 3 commits of pre-existing project history. Contains **zero** pack files (no `.claude/`, `.codex/`, `.gemini/`, `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`, no pack scripts). | Input fixture for the BD-116 "init --update on top of an existing project" persona contract. Version-agnostic — same fixture serves v11, v12, … (BD-115). |
@@ -183,16 +184,21 @@ To add a `vN-realistic-ot` sibling for a future version:
    builder's customization steps.
 
 Status: v10 wired and exercised (`v10-realistic-ot` fixture); v11
-case body is currently a fail-loud sentinel pending BD-160 (the BD
-that wires `v11-realistic-ot` into `FIXTURE_NAMES` + dispatcher and
-re-verifies C2/C3 against the v11 surface).
+wired and exercised (`v11-realistic-ot` fixture) per BD-160 +
+BD-170, with the BD-170 extension running the per-entry decompose /
+mirror-regen / TOC-regen + byte-identity round-trip on the three
+project-side streams after the four canonical OT customizations
+land.
 
 Per-version determinism asymmetry: `v10-realistic-ot` is built from
 the v10 git tag (byte-identity stable across rebuilds, like
-`v10-minimal`); a future `v11-realistic-ot` will track the current
-pack `HEAD` (SHA drifts with every pack-product change to v11
-surface, like `v11-flat-file` / `v11-tracker-on`). See the
-**Determinism** section above.
+`v10-minimal`); `v11-realistic-ot` tracks the current pack `HEAD`
+(SHA drifts with every pack-product change to the v11 surface,
+like `v11-flat-file` / `v11-tracker-on`). When v11.0 is tagged at
+Batch 24, a follow-up edit may switch the v11 source-pin to the
+`v11.0` tag mirroring `_setup_v10_pack_src`; until then, HEAD-based
+sourcing is the documented invariant. See the **Determinism**
+section above.
 
 ## See also
 
