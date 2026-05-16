@@ -241,6 +241,7 @@ test-fixtures/                              Persistent baseline fixtures for tes
 ├── manifest.txt                            Expected git SHA per fixture
 ├── v10-minimal/                            Bare v10 install (gitignored)
 ├── v10-realistic-ot/                       Fake-OT shape (gitignored)
+├── v11-realistic-ot/                       Fake-OT shape v11 (gitignored; BD-160 + BD-170; source-pinned to pack HEAD pre-v11.0)
 ├── v11-flat-file/                          v11 client, no tracker (gitignored)
 ├── v11-tracker-on/                         v11 client + synthesized tracker.toml (gitignored)
 └── existing-project-mid-dev/               In-progress Swift+Python+gRPC project, no pack files (gitignored; BD-115)

@@ -198,9 +198,19 @@ _build_v10_minimal() {
 # surface change with a re-verification of every C-step's path list
 # against the helper's vN case.
 #
-# Per-version dispatch is confined to:
-#   - Source-clone setup (only v10 needs the cloned-tag work-around).
-#   - Which init-project.sh runner to invoke (`_run_vN_init`).
+# Per-version dispatch sites inside this function (search for
+# `case "$ver" in` and `[[ "$ver" == ` to enumerate mechanically):
+#   1. Source-clone setup case — only v10 needs the cloned-tag
+#      work-around; v11 runs against the current pack HEAD.
+#   2. Init-runner dispatch case — picks `_run_vN_init`.
+#   3. C4 (TD-NNN BACKLOG.md) per-version target-path + intro-shape
+#      case (added BD-160). v10 writes a root-level BACKLOG.md;
+#      v11 appends the TD-NNN block to the pre-existing per-entry
+#      empty-seed mirror at `docs/project/BACKLOG.md`.
+#   4. Per-entry decompose / regenerate / round-trip block (added
+#      BD-170), currently gated `if [[ "$ver" == "v11" ]]`.
+#      Future vN whose surface includes a project-side per-entry
+#      tree must extend this gate.
 #
 # Per-version source-pin semantics (invariant for BD-160 / BD-170 +
 # future vN extension):
@@ -215,10 +225,13 @@ _build_v10_minimal() {
 #        add a v11-tag-cloned source path mirroring
 #        `_setup_v10_pack_src`.
 #
-# Add a new vN by extending the two `case` blocks below, adding a
-# `_run_vN_init` helper if the new version needs source-isolation
-# different from the current pack HEAD, and wiring the dispatcher per
-# the README "Realistic-OT fixtures: per-version pattern" subsection.
+# Add a new vN by extending EACH of the four per-version dispatch
+# sites listed above, adding a `_run_vN_init` helper if the new
+# version needs source-isolation different from the current pack
+# HEAD, and wiring the dispatcher per the README "Realistic-OT
+# fixtures: per-version pattern" subsection. The BD-120-retro F2
+# die-sentinel pattern (unsupported `vN` falls through to `die 4`)
+# is the safety net that catches a partial extension.
 _build_realistic_for_version() {
     local ver="${1:?_build_realistic_for_version requires <vN>}"
     local target="$THIS_DIR/${ver}-realistic-ot"

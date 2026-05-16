@@ -649,6 +649,22 @@ the core's public surface, removes a future drift risk for free. If
 BD-119's review finds the helper is not load-bearing it can be
 deferred to BD-120's own scope without ripple.
 
+**Addendum (2026-05-16, BD-160):** The §9.2 main text above preserves
+the original BD-120-anchored design intent (the helper was specified
+and shipped under BD-119 with BD-120 as the named first consumer).
+The realized first fixture-builder consumer of
+`migrator_target_surface_for_version` is BD-160 (commit `a57dd04`,
+2026-05-16), which wired the v11 case in `_build_realistic_for_version`
+inside `test-fixtures/build.sh` — BD-120 itself shipped without
+sourcing the helper (this was identified in the BD-120 retro F1 fix).
+The historical framing and the post-realization framing are not
+contradictory: §9.2 documents the architectural contract; BD-160
+documents the contract's first realization. The in-code docstring at
+`scripts/lib/migrator-core.sh` for `migrator_target_surface_for_version`
+was updated in the same commit `a57dd04` to name BD-160 as the
+realized consumer (with the BD-120-retro F1 context preserved); read
+the two together for the full historical chain.
+
 ### 9.3 What BD-120 inherits from BD-119
 
 - The version-detection contract (§5.1) tells BD-120 how to validate
