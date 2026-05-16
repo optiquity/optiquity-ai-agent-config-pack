@@ -47,9 +47,8 @@ Files not matching the entry regex AND not in this list are SKIP.
 
 ## Write authority
 
-Writes are PM-Chat authority. Read more at `docs/pack/PM-CHAT.md`,
-`docs/pack/METHODOLOGY.md` Part 4, and pack `PACK-AGENTS.md` (the
-project-side analog ships in PM-CHAT.md). The monolithic
+Writes are PM-Chat authority. Read more at `docs/pack/PM-CHAT.md` +
+`docs/pack/METHODOLOGY.md` Part 4. The monolithic
 `docs/project/IMPLEMENTATION-PLAN.md` is a regenerated mirror —
 read-stable but never source of truth; hand-edits are silently
 overwritten on the next regeneration.

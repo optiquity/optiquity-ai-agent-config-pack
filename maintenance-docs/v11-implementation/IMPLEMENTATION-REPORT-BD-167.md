@@ -181,6 +181,18 @@ prior to this commit).
 
 ## §3 — Migrator install-step extension
 
+**Note on line numbers (added by BD-167 retro-fix):** the line ranges
+cited in §3 and §4 below capture the file shapes AT BD-167's commit
+SHA (`142d160`). Subsequent commits in Batch 19 — BD-164 retro fix
+(SHA `03d0dd9`) and BD-165 (SHA `a5b4a6e`) — extended
+`scripts/migrate-v10-to-v11.sh` and adjacent helpers. Current line
+numbers will differ. Anchor your reading to the function names
+(`_v10_to_v11_install_v11_artifacts`, `_tar_read_entry_flat`) and the
+inline comment markers (`BD-167: canonical project-side per-entry tree
+skeletons`, `BD-161 (absorbed into BD-167): net-new v11 SKILL.md dirs`,
+`Per-entry tree exists AND per-entry file is present`) for drift-
+resilient location.
+
 Extended `_v10_to_v11_install_v11_artifacts` in
 `scripts/migrate-v10-to-v11.sh` (was lines 270–337, now lines
 270–410). The extension folds two new install loops into the end of
@@ -283,6 +295,15 @@ version-bump is handled by BD-088 truthful-report mechanism per
 `ARCHITECTURE-PER-ENTRY-SPLIT.md` §4.2.
 
 ## §4 — `_tar_read_entry_flat` extension
+
+**Note on line numbers (added by BD-167 retro-fix):** see the §3
+footnote — line ranges cited here capture state at BD-167 commit
+SHA `142d160`; the BD-167 retro fix itself further extended
+`_tar_read_entry_flat`'s fall-through branch with per-stream-aware
+mirror selection. Anchor to the function name
+(`_tar_read_entry_flat`) and inline comment markers
+(`Per-entry tree exists AND per-entry file is present`,
+`Per-stream-aware mirror selection`) for drift-resilient location.
 
 Extended `_tar_read_entry_flat` in
 `scripts/lib/tracker-agent-read.sh` (was lines 153–186, now lines
@@ -636,10 +657,19 @@ Batch 23 dog-food per the v11.0 batch sequence.
 
 This implementer interpreted the plan §5.2 file-creation table as
 authoritative and did NOT create pack-side canonical templates in
-this commit. Surfaced for Pack Chat: confirm whether (a) plan §5.2
-is correct (project-side only in this commit; pack-side extracted
-at first migration via 19c), or (b) Addendum #1 §6.2 also requires
-pre-shipping pack-side templates in 19b-pack.
+this commit.
+
+**Settled by retro review (BD-167 retro N3):** this is NOT an open
+Pack Chat question — integration parent §9.7 + §17.2 BD-167
+File/Symbol settle it. Pack-side `/backlog/` and `/changelog/`
+templates are EXTRACTED at first migration via the BD-165 decompose
+step (pack-self decompose lands in Batch 23 BD-102 dog-food per the
+v11.0 batch sequence), NOT pre-shipped from `project-template/`.
+The Addendum #1 §6.2 reference is a planning-doc note about where
+the templates eventually come from, not a "ship these in 19b-pack"
+instruction. This implementer correctly followed plan §5.2 (project-
+side only). Surfaced here for completeness; no Pack Chat decision
+required.
 
 ### O-2 — `--force-overwrite-mirror` flag (BD-095 bridge) is 19c scope, not 19b-pack
 

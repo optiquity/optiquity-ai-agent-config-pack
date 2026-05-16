@@ -246,15 +246,33 @@ PYEOF
 
     # Fall through: per-entry tree absent (pre-v11.0 client) OR
     # per-entry file missing (entry not in tree — could be a stale
-    # mirror or a typo). Read from the mirror.
-    local backlog="$repo_root/BACKLOG.md"
-    if [[ ! -f "$backlog" ]]; then
+    # mirror or a typo). Per-stream-aware mirror selection mirroring
+    # the prefer-branch's stream resolution above:
+    #   BD-*     → pack BACKLOG.md (pre-v11.0 backward compat)
+    #   TD-*     → project mirror docs/project/BACKLOG.md
+    #   phase-*  → project mirror docs/project/IMPLEMENTATION-PLAN.md
+    #   *        → pack BACKLOG.md (unknown prefix; preserves
+    #              pre-v11.0 backward-compat default)
+    # Per integration parent §18.2 #2 backward-compat contract: shim
+    # preserves pre-v11.0 BD-* behavior; new v11.0 TD-* / phase-*
+    # IDs need stream-correct mirrors when the per-entry tree is
+    # absent (greenfield project mid-migration) or the per-entry
+    # file is temporarily absent (mid-promote with mirror still
+    # holding the block).
+    local mirror_path=""
+    case "$pack_id" in
+        BD-*)    mirror_path="$repo_root/BACKLOG.md" ;;
+        TD-*)    mirror_path="$repo_root/docs/project/BACKLOG.md" ;;
+        phase-*) mirror_path="$repo_root/docs/project/IMPLEMENTATION-PLAN.md" ;;
+        *)       mirror_path="$repo_root/BACKLOG.md" ;;
+    esac
+    if [[ ! -f "$mirror_path" ]]; then
         tracker_error_emit "not-found" \
-            "agent_read: BACKLOG.md not found at $backlog"
+            "agent_read: mirror not found at $mirror_path for $pack_id"
         return 1
     fi
-    python3 - "$backlog" "$pack_id" <<'PYEOF' || return 1
-import re, sys
+    python3 - "$mirror_path" "$pack_id" <<'PYEOF' || return 1
+import os, re, sys
 path, pack_id = sys.argv[1], sys.argv[2]
 try:
     with open(path) as f:
@@ -266,7 +284,7 @@ except OSError as e:
 pat = re.compile(r'^\*\*' + re.escape(pack_id) + r'\s*[—-]\s*.+?\*\*\s*$', re.M)
 m = pat.search(text)
 if not m:
-    sys.stderr.write("ERROR: not-found\nMESSAGE: %s not found in BACKLOG.md\n→ Run: verify the issue id and re-run\n" % pack_id)
+    sys.stderr.write("ERROR: not-found\nMESSAGE: %s not found in %s\n→ Run: verify the issue id and re-run\n" % (pack_id, os.path.basename(path)))
     sys.exit(1)
 start = m.start()
 # End is the next `---` separator or next `**X-NNN —` header, whichever first.
@@ -274,7 +292,7 @@ nxt_sep = re.search(r'^---\s*$', text[m.end():], re.M)
 nxt_hdr = re.search(r'^\*\*[A-Z]+-[0-9]+', text[m.end():], re.M)
 candidates = [c.start() for c in (nxt_sep, nxt_hdr) if c]
 end = m.end() + (min(candidates) if candidates else len(text) - m.end())
-print("Source: flat-file (BACKLOG.md)\n")
+print("Source: flat-file (%s)\n" % os.path.basename(path))
 print(text[start:end].rstrip())
 PYEOF
 }
