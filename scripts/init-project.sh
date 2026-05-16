@@ -881,6 +881,133 @@ stage_s11_v11_artifacts() {
         || fail_stage S11 "scripts/pack-help.sh missing or not executable after copy"
     [[ -f "$TARGET/scripts/lib/detect.sh" ]] \
         || fail_stage S11 "scripts/lib/detect.sh missing after copy"
+
+    # 6. Per-entry tree skeleton install (BD-166).
+    #    Ships the project-side per-entry source-of-truth surface so
+    #    a greenfield v11 client has the v11.0-shape skeleton from
+    #    the first init. Three streams (backlog, implementation-plan,
+    #    changelog) each get `_rules.md` + `_intro.md`; project-
+    #    changelog also gets `_format.md` (project-side asymmetry per
+    #    ARCHITECTURE-PER-ENTRY-SPLIT.md §3.5 + §11). No entry files
+    #    (`TD-NNN.md`, `phase-N.md`, `YYYY-MM-DD-*.md`) — greenfield
+    #    starts empty; entries are authored client-side. No `_toc.md`
+    #    written directly — the BD-164 TOC regenerator (step 7 below
+    #    for greenfield) produces it as the empty seed.
+    #
+    #    Canonical templates are pack-shipped immutable per integration
+    #    parent §3.3 + §9.7. We use `$copy_fn` so existing-* re-runs
+    #    go through the `existing_classifier_copy` path (a
+    #    customized `_rules.md` is preserved with the pack version
+    #    written as a `.pack-template` sidecar for manual reconcile;
+    #    BD-088 truthful-report territory).
+    local pe_src pe_dst
+    pe_src="$PACK/project-template/docs/project"
+    pe_dst="$TARGET/docs/project"
+    [[ -d "$pe_src/backlog" && -d "$pe_src/implementation-plan" && -d "$pe_src/changelog" ]] \
+        || fail_stage S11 "canonical per-entry templates missing under project-template/docs/project/ (BD-167 install incomplete)"
+
+    mkdir -p "$pe_dst/backlog" "$pe_dst/implementation-plan" "$pe_dst/changelog"
+
+    # backlog: _rules.md + _intro.md (no _format.md).
+    [[ -f "$pe_src/backlog/_rules.md" ]] \
+        || fail_stage S11 "canonical template missing: project-template/docs/project/backlog/_rules.md"
+    [[ -f "$pe_src/backlog/_intro.md" ]] \
+        || fail_stage S11 "canonical template missing: project-template/docs/project/backlog/_intro.md"
+    "$copy_fn" "$pe_src/backlog/_rules.md" "$pe_dst/backlog/_rules.md"
+    "$copy_fn" "$pe_src/backlog/_intro.md" "$pe_dst/backlog/_intro.md"
+
+    # implementation-plan: _rules.md + _intro.md.
+    [[ -f "$pe_src/implementation-plan/_rules.md" ]] \
+        || fail_stage S11 "canonical template missing: project-template/docs/project/implementation-plan/_rules.md"
+    [[ -f "$pe_src/implementation-plan/_intro.md" ]] \
+        || fail_stage S11 "canonical template missing: project-template/docs/project/implementation-plan/_intro.md"
+    "$copy_fn" "$pe_src/implementation-plan/_rules.md" "$pe_dst/implementation-plan/_rules.md"
+    "$copy_fn" "$pe_src/implementation-plan/_intro.md" "$pe_dst/implementation-plan/_intro.md"
+
+    # changelog: _rules.md + _intro.md + _format.md (project-side asymmetry).
+    [[ -f "$pe_src/changelog/_rules.md" ]] \
+        || fail_stage S11 "canonical template missing: project-template/docs/project/changelog/_rules.md"
+    [[ -f "$pe_src/changelog/_intro.md" ]] \
+        || fail_stage S11 "canonical template missing: project-template/docs/project/changelog/_intro.md"
+    [[ -f "$pe_src/changelog/_format.md" ]] \
+        || fail_stage S11 "canonical template missing: project-template/docs/project/changelog/_format.md"
+    "$copy_fn" "$pe_src/changelog/_rules.md" "$pe_dst/changelog/_rules.md"
+    "$copy_fn" "$pe_src/changelog/_intro.md" "$pe_dst/changelog/_intro.md"
+    "$copy_fn" "$pe_src/changelog/_format.md" "$pe_dst/changelog/_format.md"
+
+    # 7. Empty-seed mirror + TOC regenerate (greenfield path only).
+    #    For greenfield (CLASS=new-*) the project starts empty — no
+    #    entry files exist — so the BD-164 mirror generator produces
+    #    the empty mirror (just `_intro.md` content for backlog /
+    #    implementation-plan; `_intro.md` + `_format.md` for changelog)
+    #    and the TOC regenerator produces the empty seed `_toc.md`.
+    #
+    #    The mirror regenerator handles empty input naturally per
+    #    integration parent §9.3 — no special "greenfield empty
+    #    mirror" template is needed. Helper reuse pattern preserved
+    #    per §9.3: the BD-164 helpers serve three call sites (v10→v11
+    #    migrator, init-project.sh, future tracker mode transitions).
+    #
+    #    Existing-* path is skipped: an existing source project that
+    #    runs init-project.sh (rare; would normally STOP at
+    #    `already-configured`) should not have its `docs/project/*.md`
+    #    mirrors overwritten with empty content. The v10→v11 migrator
+    #    is the canonical path for clients with prior monolithic
+    #    content.
+    if [[ "$CLASS" == new-* ]]; then
+        # Source the BD-164 per-entry helpers. Helpers live at
+        # $PACK/scripts/lib/per-entry/. Guard each source with a `type`
+        # check so re-sourcing is a no-op (matches the per-entry
+        # helpers' own convention at
+        # scripts/lib/per-entry/decompose.sh:30-33 and the migrator-
+        # private adapter at
+        # scripts/lib/migrate-v10-to-v11/decompose.sh:85-100).
+        local _pe_lib_dir="$PACK/scripts/lib/per-entry"
+        [[ -d "$_pe_lib_dir" ]] \
+            || fail_stage S11 "per-entry helpers missing at $_pe_lib_dir (BD-164 install incomplete)"
+        if ! type pe_die >/dev/null 2>&1; then
+            # shellcheck disable=SC1091
+            . "$_pe_lib_dir/_lib.sh"
+        fi
+        if ! type per_entry_regenerate_mirror >/dev/null 2>&1; then
+            # shellcheck disable=SC1091
+            . "$_pe_lib_dir/mirror-generate.sh"
+        fi
+        if ! type per_entry_regenerate_toc >/dev/null 2>&1; then
+            # shellcheck disable=SC1091
+            . "$_pe_lib_dir/toc-regenerate.sh"
+        fi
+
+        # Three project-side streams. Each tuple: stream_key + relative
+        # mirror filename + relative stream directory. Same shape as the
+        # v10→v11 migrator's _v10_to_v11_decompose_streams loop at
+        # scripts/lib/migrate-v10-to-v11/decompose.sh:145-148.
+        local pe_spec pe_key pe_mirror_rel pe_dir_rel pe_mirror pe_dir pe_rest
+        for pe_spec in \
+            "project-backlog|docs/project/BACKLOG.md|docs/project/backlog" \
+            "project-implementation-plan|docs/project/IMPLEMENTATION-PLAN.md|docs/project/implementation-plan" \
+            "project-changelog|docs/project/CHANGELOG.md|docs/project/changelog"; do
+            pe_key="${pe_spec%%|*}"
+            pe_rest="${pe_spec#*|}"
+            pe_mirror_rel="${pe_rest%%|*}"
+            pe_dir_rel="${pe_rest##*|}"
+            pe_mirror="$TARGET/$pe_mirror_rel"
+            pe_dir="$TARGET/$pe_dir_rel"
+
+            # Empty-seed mirror generate. </dev/null detaches stdin so
+            # the regenerator's interactive divergence branch
+            # (pe_is_interactive) does not fire — greenfield should
+            # never see divergence (mirror is absent → fresh write).
+            per_entry_regenerate_mirror "$pe_key" "$pe_dir" "$pe_mirror" </dev/null \
+                || fail_stage S11 "per_entry_regenerate_mirror failed for $pe_key (greenfield empty mirror)"
+
+            # Empty-seed TOC regenerate. Always produces _toc.md.
+            per_entry_regenerate_toc "$pe_key" "$pe_dir" \
+                || fail_stage S11 "per_entry_regenerate_toc failed for $pe_key (greenfield empty TOC)"
+        done
+
+        info "per-entry tree skeleton + empty mirrors installed under docs/project/{backlog,implementation-plan,changelog}/"
+    fi
 }
 
 # ── --update mode (BD-080) ─────────────────────────────────────────────────
