@@ -334,6 +334,80 @@ _v10_to_v11_install_v11_artifacts() {
        && ! -f "$_MIGRATOR_TARGET/scripts/lib/detect.sh" ]]; then
         cp "$PACK/scripts/lib/detect.sh" "$_MIGRATOR_TARGET/scripts/lib/detect.sh"
     fi
+
+    # BD-167 (per-entry split, mandatory v11.0): canonical project-side
+    # per-entry tree skeletons.
+    #
+    # Source: project-template/docs/project/<stream>/{_rules.md,
+    # _intro.md, _format.md (changelog only)}. Three streams: backlog,
+    # implementation-plan, changelog. Pack-shipped immutable per
+    # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §3.3 — the
+    # supporting-file installation creates the directory if absent and
+    # copies each support file iff the destination is absent (additive,
+    # no overwrite of client-customized supporting files; BD-088
+    # truthful-report mechanism handles divergence at next pack
+    # version-bump per ARCHITECTURE-PER-ENTRY-SPLIT.md §4.2).
+    #
+    # Per-entry decompose of the project's existing monolithic
+    # BACKLOG.md / IMPLEMENTATION-PLAN.md / CHANGELOG.md is BD-165's
+    # job (6th sub-op in this hook; lands in commit 19c). BD-167
+    # installs the contract templates ONLY.
+    local stream_dir support_basenames base
+    for stream_dir in backlog implementation-plan changelog; do
+        local pack_stream_dir="$PACK/project-template/docs/project/$stream_dir"
+        local target_stream_dir="$_MIGRATOR_TARGET/docs/project/$stream_dir"
+        [[ -d "$pack_stream_dir" ]] || continue
+        mkdir -p "$target_stream_dir"
+        # backlog + implementation-plan ship _rules.md + _intro.md;
+        # changelog additionally ships _format.md (project-side
+        # asymmetry per ARCHITECTURE-PER-ENTRY-SPLIT.md §3.5).
+        case "$stream_dir" in
+            changelog) support_basenames="_rules.md _intro.md _format.md" ;;
+            *)         support_basenames="_rules.md _intro.md" ;;
+        esac
+        for base in $support_basenames; do
+            if [[ -f "$pack_stream_dir/$base" \
+               && ! -f "$target_stream_dir/$base" ]]; then
+                cp "$pack_stream_dir/$base" "$target_stream_dir/$base"
+            fi
+        done
+    done
+
+    # BD-161 (absorbed into BD-167 per
+    # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §17.2 + §8.14):
+    # net-new v11 SKILL.md dirs that did not exist in v10 must install
+    # to all three per-CLI skill homes during the v10→v11 migration.
+    # Without this, a v10→v11-migrated client silently lacks the new
+    # v11 skills and the PM chat will not load them.
+    #
+    # The six net-new skills are:
+    #   - swift-concurrency-patterns (BD-158)
+    #   - apple-swiftdata-patterns (BD-157)
+    #   - protobuf-patterns (BD-156)
+    #   - python-server-architecture (BD-162 split)
+    #   - python-data-architecture (BD-162 split)
+    #   - python-observability-patterns (BD-162)
+    #
+    # Each ships from project-template/skills/<name>/SKILL.md; the
+    # migrator copies it into all three per-CLI skill homes
+    # (.claude/skills/, .codex/skills/, .gemini/skills/) iff the
+    # destination is absent (additive, no overwrite of client-
+    # customized skill files; the BD-088 truthful-report mechanism
+    # handles divergence on later pack version-bumps).
+    local skill_name skill_src cli skill_dest
+    for skill_name in swift-concurrency-patterns apple-swiftdata-patterns \
+                      protobuf-patterns python-server-architecture \
+                      python-data-architecture python-observability-patterns; do
+        skill_src="$PACK/project-template/skills/$skill_name/SKILL.md"
+        [[ -f "$skill_src" ]] || continue
+        for cli in .claude .codex .gemini; do
+            skill_dest="$_MIGRATOR_TARGET/$cli/skills/$skill_name/SKILL.md"
+            if [[ ! -f "$skill_dest" ]]; then
+                mkdir -p "$_MIGRATOR_TARGET/$cli/skills/$skill_name"
+                cp "$skill_src" "$skill_dest"
+            fi
+        done
+    done
 }
 
 # Internal: BD-035-split client-side rename of `python-architecture`

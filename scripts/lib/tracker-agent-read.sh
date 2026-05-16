@@ -153,6 +153,100 @@ EOF
 _tar_read_entry_flat() {
     local pack_id="$1"
     local repo_root="$2"
+
+    # BD-167 (per-entry split, mandatory v11.0): prefer the per-entry
+    # file when the per-entry tree exists for the stream this pack-id
+    # belongs to. Fall back to the regenerated mirror for backward
+    # compatibility with pre-v11.0 clients (which have no per-entry
+    # tree; the mirror IS source of truth there).
+    #
+    # Mode-awareness per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-
+    # ADDENDUM.md §3.2: the prefer-then-fall-back logic is independent
+    # of tracker mode (this function is the flat-file leg; tracker
+    # mode goes through _tar_read_entry_tracker). The per-entry tree
+    # is source of truth in flat-file mode (Mode 2) and a regenerated
+    # mirror of tracker state in tracker mode (Mode 3) — but tracker
+    # mode does not call this function, so the per-entry-prefer
+    # behavior here is correct for the flat-file leg in both modes.
+    #
+    # Per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §6.3 + §18.1 #10:
+    # extend the existing function rather than add a sibling.
+    # Per §18.2 #2: backward-compatibility for pre-v11.0 clients via
+    # mirror fallback when no per-entry tree present.
+    #
+    # Stream resolution from pack-id prefix:
+    #   BD-NNN     → pack backlog tree at $repo_root/backlog/
+    #   TD-NNN     → project backlog tree at
+    #                $repo_root/docs/project/backlog/
+    #   phase-N    → project implementation-plan tree at
+    #                $repo_root/docs/project/implementation-plan/
+    #   phase-N.M  → also project implementation-plan tree (tasks
+    #                live inline in their phase-N.md per
+    #                ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-
+    #                ADDENDUM.md §6.4 BD-167 spec; reduce to phase-N
+    #                file lookup).
+    local per_entry_dir="" per_entry_file="" per_entry_id="$pack_id"
+    case "$pack_id" in
+        BD-*)
+            per_entry_dir="$repo_root/backlog"
+            per_entry_file="$per_entry_dir/$pack_id.md"
+            ;;
+        TD-*)
+            per_entry_dir="$repo_root/docs/project/backlog"
+            per_entry_file="$per_entry_dir/$pack_id.md"
+            ;;
+        phase-*)
+            per_entry_dir="$repo_root/docs/project/implementation-plan"
+            # Per Addendum §6.4 BD-167 spec: tasks inline; phase-N.M
+            # lookups resolve to the phase-N.md file.
+            case "$pack_id" in
+                phase-*.*)
+                    per_entry_id="${pack_id%%.*}"
+                    ;;
+            esac
+            per_entry_file="$per_entry_dir/$per_entry_id.md"
+            ;;
+    esac
+
+    if [[ -n "$per_entry_dir" && -d "$per_entry_dir" \
+       && -f "$per_entry_file" ]]; then
+        # Per-entry tree exists AND per-entry file is present —
+        # source of truth in flat-file mode. Read the per-entry file
+        # directly. Strip the line-1 HTML-comment back-pointer per
+        # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-ADDENDUM-2.md §2
+        # (the comment is meaningful only on the per-entry file as a
+        # recovery anchor; agent-readable output should be the
+        # byte-identical entry span starting at the bold-header /
+        # H2 / H3).
+        printf 'Source: flat-file (per-entry: %s)\n\n' "$per_entry_file"
+        python3 - "$per_entry_file" <<'PYEOF' || return 1
+import re, sys
+path = sys.argv[1]
+try:
+    with open(path) as f:
+        text = f.read()
+except OSError as e:
+    sys.stderr.write("ERROR: not-found\nMESSAGE: %s\n→ Run: verify the issue id and re-run\n" % e)
+    sys.exit(1)
+# Strip the line-1 HTML-comment back-pointer if present
+# (Addendum #2 §2 — line-1 only, ABOVE the byte-identical span).
+lines = text.split('\n', 1)
+if lines and re.match(r'^<!-- per-entry source: .*; contract: .* -->\s*$', lines[0]):
+    text = lines[1] if len(lines) > 1 else ''
+# Drop a single leading blank line that may sit between the
+# back-pointer and the entry header (defensive, idempotent on files
+# without the leading blank).
+if text.startswith('\n'):
+    text = text[1:]
+sys.stdout.write(text.rstrip())
+sys.stdout.write('\n')
+PYEOF
+        return 0
+    fi
+
+    # Fall through: per-entry tree absent (pre-v11.0 client) OR
+    # per-entry file missing (entry not in tree — could be a stale
+    # mirror or a typo). Read from the mirror.
     local backlog="$repo_root/BACKLOG.md"
     if [[ ! -f "$backlog" ]]; then
         tracker_error_emit "not-found" \
