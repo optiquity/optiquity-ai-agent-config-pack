@@ -388,6 +388,34 @@ Two minor refinements within the "coder refines exact text" architect-doc planne
 
 These refinements are within the architect-doc planner-deferred authority ("Exact directive-line wording for pack-startup / pm-startup per Addendum #1 §1.3" in PLAN §5.8 "Architect-doc planner-deferred items") and do not deviate from the spec.
 
+### §6.1 — Architect-doc divergence flagged for Batch 19b cleanup (STATUS.md disclaimer literal)
+
+The PLAN-PER-ENTRY-SPLIT-BATCH-19.md §5.8 spec and the parent
+ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §5.3 prescribe DIFFERENT
+exact STATUS.md disclaimer wordings:
+
+- **PLAN §5.8 wording** (used in this commit; the PLAN is the binding
+  reference per the agent prompt's primary citation): `<!-- Working
+  snapshot. Source-of-truth lives in docs/project/backlog/ (per-entry
+  tree). Regenerated mirror at docs/project/BACKLOG.md. Edits to
+  STATUS.md must not contradict the per-entry tree. -->`
+- **Integration parent §5.3 wording** (not used in this commit): `<!--
+  STATUS.md is a CONVENIENCE VIEW. It is NEVER source of truth. Counts
+  and links may be stale; if they disagree with the per-entry tree at
+  docs/project/backlog/ or the regenerated BACKLOG.md mirror, the
+  per-entry tree wins. Workflows must not depend on STATUS.md being
+  current; depend on the per-entry tree. -->`
+
+The implementation followed PLAN §5.8 verbatim (per the run prompt's
+primary reference). This is NOT a coder defect — the coder followed
+the binding PLAN text. The architect-doc divergence is flagged here
+for the Batch 19b cleanup architect to resolve (architect picks
+which wording is canonical and updates the other architect text to
+match). This IMPL-REPORT note is the live forward-pointing anchor
+for the deferred reconciliation per the pack memory rule
+`feedback_deferred_work_tracking` (deferred work must be tracked,
+not hoped-for).
+
 ---
 
 ## §7 — Trinity rule compliance

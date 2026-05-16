@@ -334,10 +334,14 @@ mirror diverges from the per-entry tree. Two recovery paths:
   Use this only when you have already captured your hand edit
   elsewhere (e.g., applied it to the per-entry tree).
 
-The same block-and-flag semantics apply to the optional
-client-side pre-commit hook (installed via
-`init-project.sh --install-pre-commit-hook`): the hook fails the
-commit on divergence and prints the recovery instruction. See
+A future opt-in client-side pre-commit hook (deferred to v11.x per
+`ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-ADDENDUM.md` §5.6) is
+planned to inherit these same block-and-flag semantics; that work is
+tracked separately and is not part of the v11.0 ship surface. Until
+then, divergence is caught at CI time via `validate-pack.py` Check 32
+(mirror-in-sync) and Check 33 (TOC-in-sync), and the
+`--force-overwrite-mirror` recovery flag described above is available
+for advanced users to acknowledge intentional overwrites. See
 `MERGE-STRATEGY.md` § "12. `generic` — everything else" for the
 mirror-vs-source treatment in the BD-088 customization-preserve
 pipeline.
