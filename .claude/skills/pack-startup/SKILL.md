@@ -27,6 +27,12 @@ current version.
 Read `PACK-CHAT.md` in full — this establishes your behavioral rules
 for this session.
 
+Pack streams under `/backlog/` and `/changelog/` are per-entry trees
+when present; read `/backlog/_rules.md` and `/changelog/_rules.md` for
+the per-stream contract before any per-entry edit. The `BACKLOG.md` and
+`CHANGELOG.md` files at the pack root are regenerated mirrors of those
+per-entry trees, not source of truth.
+
 ## Step 3 — Check CI tooling
 
 Check whether the GitHub MCP server is available by looking for GitHub-related

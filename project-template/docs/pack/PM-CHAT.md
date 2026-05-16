@@ -121,6 +121,8 @@ directory map.
 | `CHANGELOG.md` | Direct read (last entry only) | Recent history only |
 | `PACK-FEEDBACK.md` | Direct read + append writes | PM-chat-owned feedback log for the pack itself (see METHODOLOGY.md Part 10) |
 | `IMPLEMENTATION-PLAN.md` | Direct read (current phase section only) | Full file is large |
+| `docs/project/backlog/<ID>.md`, `docs/project/implementation-plan/<ID>.md`, `docs/project/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is source of truth in flat-file mode (per project-template trinity Document locations + `<stream>/_rules.md`); smaller token footprint than mirror for one-entry edits |
+| `docs/project/backlog/_rules.md`, `docs/project/implementation-plan/_rules.md`, `docs/project/changelog/_rules.md` (per-stream contracts) | Direct read at session start (or on per-entry-tree-aware operation) | Per-stream contract authority |
 | `PLATFORM-SKILLS.md` | Direct read (full) | Referenced when generating every agent prompt |
 | `METHODOLOGY.md` | RAG query (Claude CLI) or direct read (other tools) | Large, stable |
 | `docs/pack/prompts/<agent>.md` | Direct read, on demand at generation time | Per-agent prompt files (Part 4) |
@@ -207,6 +209,15 @@ These rules are non-negotiable and always apply on all tools:
   spaces → hyphens, em-dash `—` removed (leaves `--`), special characters
   (backticks, colons, parentheses, periods, asterisks, slashes) stripped.
   Apply when creating or updating the phase table.
+- **STATUS.md never-source-of-truth disclaimer.** When authoring or
+  rewriting `STATUS.md`, prepend an HTML-comment disclaimer at the top of
+  the file declaring STATUS.md a working snapshot — never source of truth —
+  with the per-entry tree under `docs/project/backlog/` as the canonical
+  source and `docs/project/BACKLOG.md` named as the regenerated mirror.
+  STATUS.md edits must not contradict the per-entry tree; if a count or
+  link in STATUS.md disagrees with the per-entry tree, the per-entry tree
+  wins. Recommended disclaimer text:
+  `<!-- Working snapshot. Source-of-truth lives in docs/project/backlog/ (per-entry tree). Regenerated mirror at docs/project/BACKLOG.md. Edits to STATUS.md must not contradict the per-entry tree. -->`
 - **Pack feedback loop.** You own `PACK-FEEDBACK.md` (same permissions as
   BACKLOG.md). Follow METHODOLOGY.md Part 10: observe agent performance,
   workflow issues, prompt template gaps, and user friction continuously;

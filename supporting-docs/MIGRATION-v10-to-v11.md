@@ -243,6 +243,107 @@ deployment-skill rule citations to the relevant component.
 
 ---
 
+## Per-entry decomposition
+
+v11 introduces a per-entry source-of-truth tree for the three
+high-churn project documents: `BACKLOG.md`, `IMPLEMENTATION-PLAN.md`,
+and `CHANGELOG.md`. Each becomes a per-entry tree under
+`docs/project/backlog/`, `docs/project/implementation-plan/`, and
+`docs/project/changelog/` respectively. The pre-existing monolithic
+files become regenerated mirrors of the per-entry trees, not the
+source of truth.
+
+### What changes
+
+- **New directories.** `docs/project/backlog/`,
+  `docs/project/implementation-plan/`, and `docs/project/changelog/`
+  appear after migration, each containing:
+  - One Markdown file per entry (e.g., `docs/project/backlog/BD-NNN.md`,
+    `docs/project/implementation-plan/phase-N.md`,
+    `docs/project/changelog/YYYY-MM-DD-<slug>.md`) — authored source
+    of truth.
+  - `_rules.md` — the per-stream contract (what an entry contains,
+    how it's named, when it's regenerated). Read this before any
+    per-entry edit.
+  - `_intro.md` — the preamble extracted from the v10 monolithic
+    file (lines 1–20 of the source on first migration); re-emitted at
+    the top of the regenerated mirror.
+  - `_format.md` (changelog only) — the changelog entry shape contract.
+  - `_toc.md` — a derived table of contents for the stream.
+- **Monolithic files become regenerated mirrors.** `docs/project/BACKLOG.md`,
+  `docs/project/IMPLEMENTATION-PLAN.md`, and `docs/project/CHANGELOG.md`
+  remain on disk for read convenience and for tools that have not
+  yet been updated to read the per-entry tree directly. They are
+  rewritten from the per-entry tree on every regeneration; hand
+  edits to the mirror are not preserved across regeneration.
+- **CI gates the invariant.** `validate-pack.py` Check 32 (mirror-in-sync)
+  and Check 33 (TOC-in-sync) FAIL in CI on any committed divergence
+  between the per-entry tree and its mirror or TOC.
+
+### Why mandatory and non-reversible
+
+Per-entry decomposition is mandatory under the v10 → v11 migration
+and is non-reversible — once the per-entry tree exists, the
+monolithic file is a derived artifact. There is no `--skip-decompose`
+option and no rollback verb that re-collapses the per-entry tree
+into a monolithic source-of-truth file. Per-version monolithic
+sources are a v10-era pattern; v11 retires it.
+
+### What the user does
+
+Nothing. The v10 → v11 migrator handles decomposition automatically.
+A new sub-operation (`_v10_to_v11_decompose_streams`) inside the
+migrator's post-dispatch hook reads each v11-shape monolithic file
+and emits the per-entry tree plus the regenerated mirror. The
+sub-operation runs after all monolithic-content mutations have
+settled (rename, relocation, install, capability-token translation)
+so the source content is final before decomposition.
+
+### Backup and rollback
+
+The pre-migration backup at `.pack-migrate-v10-to-v11-backup/`
+(written by Stage S1) is unchanged by per-entry decomposition. The
+rollback recipe in § Rollback below restores both the v10
+monolithic files and any pre-migration state by rsyncing the backup
+back over the working tree — exactly as it did before per-entry
+decomposition. The per-entry tree directories are removed by the
+rsync `--delete` step since they are not present in the v10 backup.
+
+If the migration was committed and you want to revert without
+losing post-migration work, `git revert HEAD` reverts the
+migration commit including the per-entry-tree introduction;
+post-migration commits can then be cherry-picked back as needed.
+
+### `--force-overwrite-mirror` flag (advanced)
+
+If you hand-edit `docs/project/BACKLOG.md` (or any other mirror)
+after migration and then run the migrator or regenerator again,
+the apply-phase blocks with a non-zero exit and tells you the
+mirror diverges from the per-entry tree. Two recovery paths:
+
+- **Recommended:** re-apply your hand edit to the corresponding
+  per-entry file under `docs/project/backlog/<ID>.md`, then
+  re-run the migrator. The regenerator will emit a mirror that
+  matches the per-entry tree and contains your edit.
+- **Advanced override:** pass `--force-overwrite-mirror` to
+  acknowledge that the hand-edited mirror will be overwritten.
+  Sample:
+  ```sh
+  bash scripts/migrate-v10-to-v11.sh --apply --force-overwrite-mirror
+  ```
+  Use this only when you have already captured your hand edit
+  elsewhere (e.g., applied it to the per-entry tree).
+
+The same block-and-flag semantics apply to the optional
+client-side pre-commit hook (installed via
+`init-project.sh --install-pre-commit-hook`): the hook fails the
+commit on divergence and prints the recovery instruction. See
+`MERGE-STRATEGY.md` § "12. `generic` — everything else" for the
+mirror-vs-source treatment in the BD-088 customization-preserve
+pipeline.
+
+---
+
 ## Before you start
 
 1. **Commit or stash.** The migrator refuses a dirty working tree.

@@ -83,6 +83,13 @@ In flat-file mode the table points at the named files in `docs/project/`; in
 tracker mode the table points at the tracker (BACKLOG / STATUS / CHANGELOG /
 IMPLEMENTATION-PLAN are tracker-mirrored read-only files in that mode).
 
+Project streams under `docs/project/backlog/`, `docs/project/implementation-plan/`,
+and `docs/project/changelog/` are per-entry trees in flat-file mode; read each
+`<stream>/_rules.md` for the per-stream contract before any per-entry edit. The
+`docs/project/BACKLOG.md`, `docs/project/IMPLEMENTATION-PLAN.md`, and
+`docs/project/CHANGELOG.md` files are regenerated mirrors of those per-entry
+trees, not source of truth.
+
 ## Step 3 — Read active skills
 
 Read the `## Skill loading` section of the project context file. Find the **Active skills:**

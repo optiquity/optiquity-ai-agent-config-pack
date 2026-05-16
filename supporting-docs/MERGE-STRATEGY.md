@@ -246,6 +246,26 @@ forms route through this class. The classifier is conservative: when
 unsure, fall back to text 3-way which preserves project edits via
 sidecar.
 
+**v11.0 per-entry trees — source vs regenerated mirror.** Per-entry
+tree files under `docs/project/backlog/`,
+`docs/project/implementation-plan/`, and `docs/project/changelog/`
+(entry files plus the `_rules.md` / `_intro.md` / `_format.md` /
+`_toc.md` supporting files) route through `generic` 3-way text
+dispatch — they are flat-file source-of-truth in v11.0 and any
+project-side hand edit is preserved via sidecar like any other
+generic file. The monolithic `docs/project/BACKLOG.md`,
+`docs/project/IMPLEMENTATION-PLAN.md`, and `docs/project/CHANGELOG.md`
+files are regenerated mirrors of the per-entry trees in flat-file
+mode; the migrator overwrites them from the per-entry tree on each
+mirror-regeneration step and they are NOT treated as authoritative
+edit targets. If a developer hand-edits a mirror between
+regenerations, the next regenerator run overwrites the edit; the
+`validate-pack.py` Check 32 (mirror-in-sync) CI gate catches any
+committed divergence. See `MIGRATION-v10-to-v11.md` § "Per-entry
+decomposition" for the v10 → v11 decomposition contract and the
+`--force-overwrite-mirror` flag semantics for the rare advanced
+case where a hand-edited mirror must be force-overwritten.
+
 ---
 
 ## Per-file notes
