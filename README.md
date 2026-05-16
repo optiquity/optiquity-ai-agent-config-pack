@@ -120,6 +120,16 @@ project-template/                           Unified project template (v11)
 │                                           generate-setup, generate-agent-kickoff
 │                                           (directory guidance: see supporting-docs/METHODOLOGY.md
 │                                            § Prompt Authoring Principles)
+├── docs/project/                           v11 per-entry canonical templates (BD-167); shipped to
+│                                           client docs/project/<stream>/ on greenfield init via
+│                                           BD-166 (init-project.sh stage S11 sub-step 6) and on
+│                                           v10→v11 via BD-165 (migrate-v10-to-v11.sh S5d decompose).
+│                                           Project-side asymmetry: changelog HAS _format.md;
+│                                           backlog and implementation-plan do NOT (per
+│                                           ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §9.7).
+│   ├── backlog/_rules.md, _intro.md        per-stream contract + regenerated-mirror preamble
+│   ├── implementation-plan/_rules.md, _intro.md   same shape; no _format.md
+│   └── changelog/_rules.md, _intro.md, _format.md changelog-specific entry-format spec
 ├── scripts/                                Build, test, validation scripts (15)
 ├── CLAUDE.md                               Claude context file (unified template; "Quick reference" addendum v11)
 ├── AGENTS.md                               Codex context file (unified template; "Quick reference" addendum v11)

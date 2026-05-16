@@ -888,7 +888,11 @@ stage_s11_v11_artifacts() {
     #    the first init. Three streams (backlog, implementation-plan,
     #    changelog) each get `_rules.md` + `_intro.md`; project-
     #    changelog also gets `_format.md` (project-side asymmetry per
-    #    ARCHITECTURE-PER-ENTRY-SPLIT.md §3.5 + §11). No entry files
+    #    ARCHITECTURE-PER-ENTRY-SPLIT.md §3.5 + §11 +
+    #    ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §9.7 — integration
+    #    parent §9.7 is the load-bearing binding for the project-side
+    #    `_intro.md`/`_format.md` ship-from-`project-template/`
+    #    contract this code implements). No entry files
     #    (`TD-NNN.md`, `phase-N.md`, `YYYY-MM-DD-*.md`) — greenfield
     #    starts empty; entries are authored client-side. No `_toc.md`
     #    written directly — the BD-164 TOC regenerator (step 7 below
@@ -1006,7 +1010,7 @@ stage_s11_v11_artifacts() {
                 || fail_stage S11 "per_entry_regenerate_toc failed for $pe_key (greenfield empty TOC)"
         done
 
-        info "per-entry tree skeleton + empty mirrors installed under docs/project/{backlog,implementation-plan,changelog}/"
+        info "per-entry skeleton installed under docs/project/{backlog,implementation-plan,changelog}/; empty mirrors at docs/project/{BACKLOG.md,IMPLEMENTATION-PLAN.md,CHANGELOG.md}"
     fi
 }
 

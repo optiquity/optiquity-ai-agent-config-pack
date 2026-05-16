@@ -327,6 +327,38 @@ fi
 # NOTE: this list mirrors the hardcoded enumeration in
 # scripts/init-project.sh:stage_s11_v11_artifacts(). Keep the two in sync
 # when adding/removing v11 client artifacts. (BD-116 PACK-REVIEW NIT N1.)
+#
+# Mapping to stage_s11_v11_artifacts() sub-stages:
+#   1. HELP-FRAGMENT*.md          → docs/pack/HELP-FRAGMENT.md, HELP-FRAGMENT-TRACKER.md
+#   2. tracker.toml.example       → tracker.toml.example
+#   3. .github/ISSUE_TEMPLATE/*   → handled by glob block below
+#   4. per-CLI pack-help          → .claude/skills/pack-help/SKILL.md,
+#                                   .codex/skills/pack-help/SKILL.md,
+#                                   .gemini/commands/pack-help.toml
+#   5. scripts/pack-help.sh + lib → scripts/pack-help.sh, scripts/lib/detect.sh
+#   6. per-entry tree templates   → docs/project/{backlog,implementation-plan,
+#                                   changelog}/_rules.md + _intro.md
+#                                   (+ _format.md for changelog only —
+#                                   project-side asymmetry). BD-166. The
+#                                   migrator ships these unconditionally via
+#                                   the BD-167 templates step (independent
+#                                   of monolithic source content). PACK-
+#                                   REVIEW-BD-166-RETRO MUST finding 2.
+#   7. greenfield empty mirrors + → docs/project/{BACKLOG.md,
+#      empty seed _toc.md          IMPLEMENTATION-PLAN.md, CHANGELOG.md}
+#                                   + docs/project/{backlog,implementation-plan,
+#                                   changelog}/_toc.md. NOT asserted in the
+#                                   migration v11_artifacts array because
+#                                   the BD-165 decompose sub-op skips
+#                                   streams whose monolithic input mirror
+#                                   is absent (the v10-realistic-ot fixture
+#                                   case). See the v11_artifacts comment
+#                                   block below for the full asymmetry
+#                                   rationale. Sub-stage 7 surface IS
+#                                   asserted by (a) the greenfield contract
+#                                   above (always-empty case) and (b)
+#                                   scripts/tests/test-migrate-v10-to-v11-
+#                                   decompose.sh Group 2 (with-content case).
 
 v11_artifacts=(
     "docs/pack/HELP-FRAGMENT.md"
@@ -337,6 +369,35 @@ v11_artifacts=(
     ".claude/skills/pack-help/SKILL.md"
     ".codex/skills/pack-help/SKILL.md"
     ".gemini/commands/pack-help.toml"
+    # Sub-stage 6: per-entry canonical templates (BD-166). Project-side
+    # asymmetry: changelog HAS _format.md, backlog + implementation-plan
+    # do NOT (per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §9.7).
+    # These ship UNCONDITIONALLY via the BD-167 templates step in the
+    # migrator (scripts/migrate-v10-to-v11.sh:355-374 — verified by
+    # scripts/lib/migrate-v10-to-v11/decompose.sh:136-141 comment) —
+    # independent of whether the v10 source has monolithic docs/project
+    # content to decompose.
+    "docs/project/backlog/_rules.md"
+    "docs/project/backlog/_intro.md"
+    "docs/project/implementation-plan/_rules.md"
+    "docs/project/implementation-plan/_intro.md"
+    "docs/project/changelog/_rules.md"
+    "docs/project/changelog/_intro.md"
+    "docs/project/changelog/_format.md"
+    # Sub-stage 7 (mirrors + _toc.md) are NOT in this list because the
+    # BD-165 decompose sub-op SKIPS streams when the monolithic input
+    # mirror is absent (scripts/lib/migrate-v10-to-v11/decompose.sh:
+    # 161-170 — "no monolithic mirror at <path> — skip"). The current
+    # v10-realistic-ot fixture has no docs/project/{BACKLOG,
+    # IMPLEMENTATION-PLAN,CHANGELOG}.md files, so the migrator
+    # legitimately produces no mirrors and no _toc.md files for that
+    # fixture. Adding the mirrors + _toc.md surface here would force
+    # the contract to fail on the canonical fixture even though the
+    # migrator behavior is correct. The greenfield contract (which
+    # always starts empty + always regenerates) is the canonical CI
+    # gate for sub-stage 7 surface; the BD-165 decompose-with-content
+    # path is covered by scripts/tests/test-migrate-v10-to-v11-decompose.sh
+    # Group 2 (which synthesizes a fixture with monolithic content).
 )
 for f in "${v11_artifacts[@]}"; do
     if [[ -f "$SANDBOX/$f" ]]; then

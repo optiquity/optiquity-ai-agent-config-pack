@@ -202,6 +202,259 @@ assert_contains "3.4 pack-help.sh emits client-side header" "$help_out" \
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────
+# Group 4: BD-166 sub-step 6 (canonical per-entry templates) + sub-step 7
+# (greenfield empty mirrors + empty seed _toc.md) — closes the
+# PACK-REVIEW-BD-166-RETRO MUST finding 1 (test-not-in-CI heuristic).
+#
+# Per PACK-REVIEW-BD-166-RETRO §3 (what should be covered by CI):
+#   - 7 canonical templates present after greenfield init (project-side
+#     asymmetry: changelog has _format.md; backlog + implementation-plan
+#     do not)
+#   - 3 regenerated mirrors at parent docs/project/ (NOT inside the
+#     stream subdirs)
+#   - mirror byte-identity claim for backlog + implementation-plan
+#     (cmp == 0 against _intro.md)
+#   - changelog mirror shape: _intro.md + \n---\n\n + _format.md (per
+#     scripts/lib/per-entry/mirror-generate.sh:159-167)
+#   - 3 empty seed _toc.md files with `(empty — no entries)` payload
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 4: BD-166 per-entry tree skeleton (sub-steps 6+7) ===\n"
+
+T=$(make_target)
+PACK="$REPO_ROOT" bash "$INIT_SH" "$T" <<<"y" >/dev/null 2>&1 ; rc=$?
+assert_eq "4.1 fresh install rc=0" "0" "$rc"
+
+# 4.2 — seven canonical templates present (project-side asymmetry:
+# changelog HAS _format.md; backlog + implementation-plan do NOT).
+[[ -f "$T/docs/project/backlog/_rules.md" ]] \
+    && t_pass "4.2 docs/project/backlog/_rules.md present" \
+    || t_fail "4.2 docs/project/backlog/_rules.md missing"
+[[ -f "$T/docs/project/backlog/_intro.md" ]] \
+    && t_pass "4.2 docs/project/backlog/_intro.md present" \
+    || t_fail "4.2 docs/project/backlog/_intro.md missing"
+[[ ! -f "$T/docs/project/backlog/_format.md" ]] \
+    && t_pass "4.2 docs/project/backlog/_format.md ABSENT (project-side asymmetry)" \
+    || t_fail "4.2 docs/project/backlog/_format.md unexpectedly present (asymmetry violated)"
+
+[[ -f "$T/docs/project/implementation-plan/_rules.md" ]] \
+    && t_pass "4.2 docs/project/implementation-plan/_rules.md present" \
+    || t_fail "4.2 docs/project/implementation-plan/_rules.md missing"
+[[ -f "$T/docs/project/implementation-plan/_intro.md" ]] \
+    && t_pass "4.2 docs/project/implementation-plan/_intro.md present" \
+    || t_fail "4.2 docs/project/implementation-plan/_intro.md missing"
+[[ ! -f "$T/docs/project/implementation-plan/_format.md" ]] \
+    && t_pass "4.2 docs/project/implementation-plan/_format.md ABSENT (project-side asymmetry)" \
+    || t_fail "4.2 docs/project/implementation-plan/_format.md unexpectedly present (asymmetry violated)"
+
+[[ -f "$T/docs/project/changelog/_rules.md" ]] \
+    && t_pass "4.2 docs/project/changelog/_rules.md present" \
+    || t_fail "4.2 docs/project/changelog/_rules.md missing"
+[[ -f "$T/docs/project/changelog/_intro.md" ]] \
+    && t_pass "4.2 docs/project/changelog/_intro.md present" \
+    || t_fail "4.2 docs/project/changelog/_intro.md missing"
+[[ -f "$T/docs/project/changelog/_format.md" ]] \
+    && t_pass "4.2 docs/project/changelog/_format.md present (project-side asymmetry)" \
+    || t_fail "4.2 docs/project/changelog/_format.md missing (project-side asymmetry violated)"
+
+# 4.3 — three regenerated mirrors at parent docs/project/ (NOT inside
+# the stream subdirs; SHOULD finding 1's geographic-correctness claim).
+[[ -f "$T/docs/project/BACKLOG.md" ]] \
+    && t_pass "4.3 docs/project/BACKLOG.md mirror present at parent" \
+    || t_fail "4.3 docs/project/BACKLOG.md missing"
+[[ -f "$T/docs/project/IMPLEMENTATION-PLAN.md" ]] \
+    && t_pass "4.3 docs/project/IMPLEMENTATION-PLAN.md mirror present at parent" \
+    || t_fail "4.3 docs/project/IMPLEMENTATION-PLAN.md missing"
+[[ -f "$T/docs/project/CHANGELOG.md" ]] \
+    && t_pass "4.3 docs/project/CHANGELOG.md mirror present at parent" \
+    || t_fail "4.3 docs/project/CHANGELOG.md missing"
+
+# 4.3 (negative) — mirrors do NOT live inside the stream subdirs.
+[[ ! -f "$T/docs/project/backlog/BACKLOG.md" ]] \
+    && t_pass "4.3 no stray BACKLOG.md inside backlog/ subdir" \
+    || t_fail "4.3 unexpected docs/project/backlog/BACKLOG.md"
+[[ ! -f "$T/docs/project/implementation-plan/IMPLEMENTATION-PLAN.md" ]] \
+    && t_pass "4.3 no stray IMPLEMENTATION-PLAN.md inside implementation-plan/ subdir" \
+    || t_fail "4.3 unexpected docs/project/implementation-plan/IMPLEMENTATION-PLAN.md"
+[[ ! -f "$T/docs/project/changelog/CHANGELOG.md" ]] \
+    && t_pass "4.3 no stray CHANGELOG.md inside changelog/ subdir" \
+    || t_fail "4.3 unexpected docs/project/changelog/CHANGELOG.md"
+
+# 4.4 — mirror byte-identity claim for backlog + implementation-plan
+# (empty streams; mirror == _intro.md verbatim per mirror-generate.sh
+# "no prior mirror → fresh write" + intro-only emit). Changelog has the
+# _intro + separator + _format shape — separate assertion at 4.5.
+if cmp -s "$T/docs/project/BACKLOG.md" "$T/docs/project/backlog/_intro.md"; then
+    t_pass "4.4 BACKLOG.md byte-identical to backlog/_intro.md (empty-stream mirror shape)"
+else
+    t_fail "4.4 BACKLOG.md NOT byte-identical to backlog/_intro.md"
+fi
+if cmp -s "$T/docs/project/IMPLEMENTATION-PLAN.md" "$T/docs/project/implementation-plan/_intro.md"; then
+    t_pass "4.4 IMPLEMENTATION-PLAN.md byte-identical to implementation-plan/_intro.md (empty-stream mirror shape)"
+else
+    t_fail "4.4 IMPLEMENTATION-PLAN.md NOT byte-identical to implementation-plan/_intro.md"
+fi
+
+# 4.5 — changelog mirror shape: _intro.md content, then \n---\n\n
+# separator, then _format.md content (project-changelog is the one
+# project stream with _format.md asymmetry per mirror-generate.sh).
+# Verify by reconstructing the expected file via concat + cmp.
+expected_changelog=$(mktemp -t bd166-ch-expect.XXXXXX)
+cat "$T/docs/project/changelog/_intro.md" > "$expected_changelog"
+# pe__normalize_trailing_blank guarantees exactly-one-trailing-newline,
+# then the inter-section separator is `\n---\n\n`. We mirror that here.
+python3 - "$expected_changelog" "$T/docs/project/changelog/_format.md" <<'PYEOF'
+import sys
+expect_path = sys.argv[1]
+fmt_path = sys.argv[2]
+with open(expect_path, "r", encoding="utf-8", newline="") as f:
+    data = f.read()
+# Normalize trailing-newline-to-exactly-one (mirrors pe__normalize_trailing_blank).
+data = data.rstrip("\n") + "\n"
+# Inter-section separator per mirror-generate.sh:152/163.
+data += "\n---\n\n"
+with open(fmt_path, "r", encoding="utf-8", newline="") as f:
+    data += f.read()
+data = data.rstrip("\n") + "\n"
+with open(expect_path, "w", encoding="utf-8", newline="") as f:
+    f.write(data)
+PYEOF
+if cmp -s "$T/docs/project/CHANGELOG.md" "$expected_changelog"; then
+    t_pass "4.5 CHANGELOG.md == _intro.md + '\\n---\\n\\n' + _format.md (project-changelog shape)"
+else
+    t_fail "4.5 CHANGELOG.md shape mismatch (expected _intro + separator + _format)"
+fi
+rm -f "$expected_changelog"
+
+# 4.6 — three empty seed _toc.md files with the canonical empty-state
+# payload `(empty — no entries)` (verified upstream against the actual
+# toc-regenerate.sh output; uses em-dash U+2014).
+toc_empty_needle='(empty — no entries)'
+for stream in backlog implementation-plan changelog; do
+    toc_path="$T/docs/project/$stream/_toc.md"
+    if [[ -f "$toc_path" ]]; then
+        t_pass "4.6 $stream/_toc.md present"
+    else
+        t_fail "4.6 $stream/_toc.md missing"
+        continue
+    fi
+    if grep -q -F "$toc_empty_needle" "$toc_path"; then
+        t_pass "4.6 $stream/_toc.md contains '(empty — no entries)' payload"
+    else
+        t_fail "4.6 $stream/_toc.md missing empty-state payload"
+    fi
+done
+
+# 4.7 — no entry files seeded (greenfield starts empty per
+# IMPL-REPORT-BD-166 §3 design note). Negative assertion.
+strays=$(find "$T/docs/project/backlog" "$T/docs/project/implementation-plan" "$T/docs/project/changelog" \
+    -maxdepth 1 -type f -not -name "_*" 2>/dev/null | wc -l | tr -d ' ')
+if [[ "$strays" -eq 0 ]]; then
+    t_pass "4.7 no entry files seeded (TD-NNN.md / phase-N.md / YYYY-MM-DD-*.md absent on greenfield)"
+else
+    t_fail "4.7 unexpected entry files in stream subdirs (count=$strays)"
+fi
+
+# Keep $T alive for Group 5 (idempotency); cleaned at end of Group 5.
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 5: BD-166 sub-step 7 idempotency (helper-level proof loop)
+# closes PACK-REVIEW-BD-166-RETRO SHOULD finding 2 (proof-loop closure).
+#
+# The mirror + TOC regenerators both short-circuit on cmp -s byte-
+# identity (mirror-generate.sh:233-237, toc-regenerate.sh:285-289).
+# Reinvoking them against the freshly-installed greenfield tree must
+# produce zero mtime churn — proving the sub-step 7 regen path is
+# idempotent and a re-run of init-project.sh's sub-step 7 block would
+# not gratuitously modify the install.
+#
+# Reuses $T from Group 4 (canonical greenfield surface freshly installed).
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 5: BD-166 sub-step 7 idempotency (proof loop) ===\n"
+
+# Pre-snapshot mtimes for the 6 regen outputs (3 mirrors + 3 TOCs).
+# Use cmp-based equality rather than stat mtime: cmp -s is the
+# canonical zero-mtime-churn signal the helpers themselves use, and
+# avoids stat -f (BSD) vs stat -c (GNU) portability surface area.
+pre_snap_dir=$(mktemp -d -t bd166-snap.XXXXXX)
+for rel in \
+    "docs/project/BACKLOG.md" \
+    "docs/project/IMPLEMENTATION-PLAN.md" \
+    "docs/project/CHANGELOG.md" \
+    "docs/project/backlog/_toc.md" \
+    "docs/project/implementation-plan/_toc.md" \
+    "docs/project/changelog/_toc.md"; do
+    src="$T/$rel"
+    if [[ -f "$src" ]]; then
+        # Flatten path → safe snapshot filename.
+        safe_name=$(printf '%s' "$rel" | tr '/' '_')
+        cp "$src" "$pre_snap_dir/$safe_name"
+    fi
+done
+
+# Re-invoke the BD-164 helpers directly. The block below mirrors the
+# sub-step 7 invocation pattern at scripts/init-project.sh:981-1007
+# (same tuple shape, same </dev/null detach).
+(
+    set -uo pipefail
+    PACK="$REPO_ROOT"
+    cd "$PACK" || exit 1
+    # shellcheck disable=SC1091
+    . "$PACK/scripts/lib/per-entry/_lib.sh"
+    # shellcheck disable=SC1091
+    . "$PACK/scripts/lib/per-entry/mirror-generate.sh"
+    # shellcheck disable=SC1091
+    . "$PACK/scripts/lib/per-entry/toc-regenerate.sh"
+    for pe_spec in \
+        "project-backlog|docs/project/BACKLOG.md|docs/project/backlog" \
+        "project-implementation-plan|docs/project/IMPLEMENTATION-PLAN.md|docs/project/implementation-plan" \
+        "project-changelog|docs/project/CHANGELOG.md|docs/project/changelog"; do
+        pe_key="${pe_spec%%|*}"
+        pe_rest="${pe_spec#*|}"
+        pe_mirror_rel="${pe_rest%%|*}"
+        pe_dir_rel="${pe_rest##*|}"
+        per_entry_regenerate_mirror "$pe_key" "$T/$pe_dir_rel" "$T/$pe_mirror_rel" </dev/null \
+            || { echo "regen mirror failed for $pe_key" >&2; exit 1; }
+        per_entry_regenerate_toc "$pe_key" "$T/$pe_dir_rel" \
+            || { echo "regen toc failed for $pe_key" >&2; exit 1; }
+    done
+) ; regen_rc=$?
+assert_eq "5.1 helper-level re-invocation rc=0" "0" "$regen_rc"
+
+# Post: compare each regen output against the pre-snapshot. cmp -s is
+# the same equality test the helpers themselves use to short-circuit
+# (zero-mtime-churn semantics). Any byte difference here would mean
+# the helpers rewrote the file — proving non-idempotency.
+for rel in \
+    "docs/project/BACKLOG.md" \
+    "docs/project/IMPLEMENTATION-PLAN.md" \
+    "docs/project/CHANGELOG.md" \
+    "docs/project/backlog/_toc.md" \
+    "docs/project/implementation-plan/_toc.md" \
+    "docs/project/changelog/_toc.md"; do
+    safe_name=$(printf '%s' "$rel" | tr '/' '_')
+    pre="$pre_snap_dir/$safe_name"
+    post="$T/$rel"
+    if [[ ! -f "$pre" ]]; then
+        t_fail "5.2 $rel pre-snapshot missing (Group 4 install incomplete?)"
+        continue
+    fi
+    if [[ ! -f "$post" ]]; then
+        t_fail "5.2 $rel disappeared after re-invocation"
+        continue
+    fi
+    if cmp -s "$pre" "$post"; then
+        t_pass "5.2 $rel byte-identical after helper re-invocation (idempotent)"
+    else
+        t_fail "5.2 $rel changed after helper re-invocation (non-idempotent)"
+    fi
+done
+
+rm -rf "$pre_snap_dir"
+rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────────────
 

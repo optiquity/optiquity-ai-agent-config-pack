@@ -217,7 +217,8 @@ existing sub-steps 1..5 unchanged; new sub-steps 6 and 7 appended).
 4. **`fail_stage S11` error handling.** Every missing-canonical-template
    precondition and every helper-failure path calls `fail_stage S11`
    matching the existing S11 error pattern (e.g., line 825 / 827 / 881 /
-   883). Exit code = 20 + 11 (clamped to 30) per the existing scheme.
+   883). Exit code = 30 (clamped from 31 by `fail_stage`'s `> 30` guard;
+   see `scripts/init-project.sh:62-72`).
 
 5. **`</dev/null` on mirror regen.** Detaches stdin from the mirror
    regenerator so its interactive-divergence branch (`pe_is_interactive`)
@@ -441,6 +442,18 @@ specifically (the new code we added), idempotency was verified at the
 helper level by directly re-running the mirror+TOC regenerators on
 the smoke target and observing zero mtime churn:
 
+**See also (added by PACK-REVIEW-BD-166-RETRO fix):** the post-fix
+test runner `scripts/tests/test-init-project.sh` Group 5 (sub-step 7
+idempotency proof loop) now asserts the same property in CI by
+snapshotting all six regenerator outputs (3 mirrors + 3 TOCs),
+re-invoking the BD-164 helpers against the freshly-installed
+greenfield tree, and asserting byte-identity via `cmp -s` against
+the pre-snapshot. The helper-level proof here plus the CI assertion
+together close the end-to-end idempotency loop — the original
+report's §7.5 framing ("agents can't commit so full-main re-run is
+unprovable") is superseded: the CI runner is not subject to the
+agent commit prohibition, and it now provides the missing assertion.
+
 ```text
 $ bash -c '
 . scripts/lib/per-entry/_lib.sh
@@ -542,7 +555,7 @@ $ git diff --stat scripts/init-project.sh
 | B9.4 | Smoke #4: `docs/project/BACKLOG.md` exists, byte-identical to `_intro.md` | PASS |
 | B9.5 | Smoke #5: `docs/project/IMPLEMENTATION-PLAN.md` exists, byte-identical to `_intro.md` | PASS |
 | B9.6 | Smoke #6: `docs/project/CHANGELOG.md` exists, contains `_intro.md` + `---` separator + `_format.md` | PASS |
-| B9.7 | Smoke #7: Re-running init is safe (idempotent at helper level; classification gate STOPs at exit 20 for fully-installed targets) | PASS |
+| B9.7 | Smoke #7: Re-running init is safe (idempotent at helper level; classification gate STOPs at exit 20 for fully-installed targets). **Idempotency is now CI-asserted post-fix via `scripts/tests/test-init-project.sh` Group 5 — `cmp -s`-based byte-identity check across all six regen outputs (3 mirrors + 3 TOCs) before/after helper re-invocation. The "agents-can't-commit / full-main re-run unprovable" caveat from §7.5 is superseded by the CI runner, which is not subject to the agent commit prohibition.** | PASS |
 
 ### C. Process / hygiene
 
