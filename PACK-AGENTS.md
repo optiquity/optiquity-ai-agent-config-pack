@@ -175,6 +175,17 @@ This addition is a Signal 9 trip per
 §3.2 (line 305–306); the architect pass behind v11.0 per-entry split is
 the Signal 9 justification.
 
+**Forward-pointing note (Batch 19 → Batch 23):** the pack-self
+per-entry trees `/backlog/` and `/changelog/` enumerated above are
+created at Batch 23 (BD-102 dog-food) when the pack-self decompose
+fires. Until then, the directory references in this list and in
+the trinity Key files block + pack-* agent prompts are
+forward-pointing — a pack agent attempting to read
+`/backlog/_rules.md` between Batch 19 and Batch 23 will hit
+file-not-found. This is by design per
+`maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md`
+§2.3 + §10.1 R-1; the references resolve at Batch 23.
+
 - **Skill and agent maintenance.** Additions and modifications follow
   the maintainability principle in pack-repo trinity `## Pack memory`
   § "Repo conventions" ("Maintenance is mechanical, complete,

@@ -21,7 +21,7 @@ Responsibilities:
 - Do not invent file structures or conventions. Read the current state first.
 
 Before planning, read:
-- CLAUDE.md (pack repo rules)
+- GEMINI.md (pack repo rules)
 - BACKLOG.md (BD items in scope)
 - README.md (repository layout — the authoritative structure reference)
 - /backlog/_rules.md (pack per-entry tree contract)

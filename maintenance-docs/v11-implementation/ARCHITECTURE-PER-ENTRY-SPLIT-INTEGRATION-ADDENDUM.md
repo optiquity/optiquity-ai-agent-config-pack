@@ -617,7 +617,7 @@ are source of truth; mirrors are derived") is mode-incorrect.
   at the canonical locations are regenerated mirrors — read-stable
   but never source of truth.
   In tracker mode (`tracker.toml` with `mode.state = "tracker"`
-  + `migration.forward_complete = true`), the tracker (e.g., GH
+  and `migration.forward_complete = true`), the tracker (e.g., GH
   Issues) is source of truth and BOTH the per-entry tree and the
   monolithic mirror are regenerated from tracker state per the
   Mode 2 → Mode 3 transition contract.
