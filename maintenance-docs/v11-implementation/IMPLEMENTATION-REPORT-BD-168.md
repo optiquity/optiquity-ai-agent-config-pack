@@ -82,8 +82,8 @@ Per integration parent §10.1 pseudo-code (with §9.2 disclaimer noting
 
 - For each `STREAMS` tuple:
   - **SKIP** if `<REPO_ROOT>/<stream_dir>` does not exist (per
-    §10.5 backward-compat for pre-v11.0 clients / pre-Batch-22
-    pack-self) — emits an OK-line with "not present (skipping ...)".
+    §10.5 backward-compat for pre-v11.0 clients / pre-BD-102
+    dog-food pack-self) — emits an OK-line with "not present (skipping ...)".
   - **Pre-check (a)** per §10.4: `<stream_dir>/_rules.md` must exist;
     FAIL with `"_rules.md missing — required for v11.0 per-entry
     contract"` if absent.
@@ -284,20 +284,20 @@ All commands run from
 ### §4.1 — `python3 scripts/validate-pack.py` (full validator)
 
 Tail of output (Checks 32 / 33 / 34 SKIP gracefully because pack-self
-has no `/backlog/` or `/changelog/` per-entry tree until Batch 22 dog-
+has no `/backlog/` or `/changelog/` per-entry tree until BD-102 dog-
 food fires; Check 35 (renumbered) passes; overall PASSED):
 
 ```
 ── Check 32: per-entry mirror is in-sync with per-entry tree (BD-168) ──
-  OK: backlog/ — not present (skipping; pre-v11.0 client or pre-Batch-22 pack-self per integration parent §10.5)
-  OK: changelog/ — not present (skipping; pre-v11.0 client or pre-Batch-22 pack-self per integration parent §10.5)
+  OK: backlog/ — not present (skipping; pre-v11.0 client or pre-BD-102 dog-food pack-self per integration parent §10.5)
+  OK: changelog/ — not present (skipping; pre-v11.0 client or pre-BD-102 dog-food pack-self per integration parent §10.5)
 
 ── Check 33: per-entry _toc.md is in-sync with per-entry tree (BD-168) ──
-  OK: backlog/ — not present (skipping; pre-v11.0 client or pre-Batch-22 pack-self per integration parent §10.5)
-  OK: changelog/ — not present (skipping; pre-v11.0 client or pre-Batch-22 pack-self per integration parent §10.5)
+  OK: backlog/ — not present (skipping; pre-v11.0 client or pre-BD-102 dog-food pack-self per integration parent §10.5)
+  OK: changelog/ — not present (skipping; pre-v11.0 client or pre-BD-102 dog-food pack-self per integration parent §10.5)
 
 ── Check 34: cross-reference integrity (BD-168) ──
-  OK: no per-entry trees present (skipping; pre-v11.0 client or pre-Batch-22 pack-self per integration parent §10.5)
+  OK: no per-entry trees present (skipping; pre-v11.0 client or pre-BD-102 dog-food pack-self per integration parent §10.5)
 
 ── Check 35: Phase-task lib invariants (BD-106) ──
   OK: scripts/lib/tracker-phase-task.sh present
@@ -346,7 +346,7 @@ Per-group summary:
 | `bash scripts/tests/test-migrate-v10-to-v11-dry-run.sh` | 61/61 PASS |
 | `bash scripts/tests/test-migrate-v10-to-v11-gates.sh` | 87/87 PASS |
 | `bash scripts/tests/tracker-agent-read-test.sh` | 31/31 PASS |
-| `python3 scripts/validate-pack.py` | PASSED — all 35 checks clean |
+| `python3 scripts/validate-pack.py` | PASSED — all 33 invoked checks (numbered Check 1–11 and 16–35; Checks 12–15 retired per v9 sunset) clean |
 
 All baseline tail outputs verified identical (modulo new Check 32/33/34
 banners) to pre-edit baselines run before the implementation began.
@@ -504,23 +504,23 @@ that sources `_lib.sh` + the relevant helper. Per integration parent
 §7.2 cost calculation, the per-stream cost is ~1.5 sec at v11.0
 baseline; ~10 sec at v13 scale. CI tolerable. The pack-self CI today
 SKIPs all subprocess invocations (no per-entry tree exists), so the
-observed overhead is zero until Batch 22 dog-food fires.
+observed overhead is zero until BD-102 dog-food fires.
 
-If Batch 22 measures higher-than-expected overhead, possible
+If BD-102 measures higher-than-expected overhead, possible
 optimizations include batching multiple stream regenerations into one
 subprocess + shared `_lib.sh` source. NOT a v11.0 concern; named
 here only as a forward observation. NO deferral recommendation —
 this is observation-only, not a scoping decision.
 
-### §7.5 — Interaction with Batch 22 dog-food
+### §7.5 — Interaction with BD-102 dog-food
 
-When Batch 22 (BD-102) lands the pack-self per-entry tree migration,
+When BD-102 (Batch 23 per `EXECUTION-PLAN-V11.0.md:434`) lands the pack-self per-entry tree migration,
 Checks 32 / 33 / 34 will fire on every push. A divergence between
 `backlog/BD-NNN.md` files and the regenerated `BACKLOG.md` mirror
-will cause CI to FAIL with a clear recovery instruction
-("re-run `per_entry_regenerate_mirror pack-backlog backlog
-BACKLOG.md`"). This is the intended invariant per Goal 2 source-of-
-truth. Named here so Pack Chat is aware that Pack Chat workflow may
+will cause CI to FAIL with a clear runnable recovery instruction
+(per BD-168 retro M1: the FAIL message emits the fully-self-contained
+`bash -c '. _lib.sh && . mirror-generate.sh && PE_FORCE_OVERWRITE_MIRROR=1 per_entry_regenerate_mirror pack-backlog backlog BACKLOG.md'` form).
+This is the intended invariant per Goal 2 source-of-truth. Named here so Pack Chat is aware that Pack Chat workflow may
 need a small dance after PM-only `BACKLOG.md` edits land — first
 re-run the regenerator before staging, OR (preferred) edit the
 per-entry file directly and let CI catch the drift if forgotten.

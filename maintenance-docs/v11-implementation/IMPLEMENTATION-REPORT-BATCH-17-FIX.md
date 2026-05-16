@@ -205,8 +205,8 @@ All four assertions pass.
 
 Re-confirmed intact:
 
-- `_tracker_labels_create` — no `tracker_labels_folded_into` helper exists (Check 32 in validate-pack: PASS).
-- `scripts/lib/` — no `folded-into` literal in executable code (Check 32: PASS).
+- `_tracker_labels_create` — no `tracker_labels_folded_into` helper exists (Check 35 in validate-pack: PASS; renumbered from Check 32 by BD-168).
+- `scripts/lib/` — no `folded-into` literal in executable code (Check 35: PASS; renumbered from Check 32 by BD-168).
 - `tracker-promote.sh` — no `--fold-into` flag handling; the verb dispatcher (`scripts/pack-td.sh`) rejects the flag with a typed validation error citing V3.3 §3 line 27 (test-tracker-promote-path1 7.2: PASS).
 - `pack-td.sh` `--help` does not name Path 3 (test-tracker-promote-path1 7.3: PASS).
 - METHODOLOGY.md retains the `**Path 3 is forbidden**` block at lines 1148-1156 (test-tracker-promote-path1 8.3: PASS).
@@ -241,7 +241,7 @@ Batch 17 (BD-106 + BD-108 + BD-107) is **ready for status flip to `Resolved`**. 
 
 **Round-trip identity:** F1 cycle-store population proven via fresh fixture (BD-002 → BD-001 edge in `links-graph.json`); F2 Resolution-body round-trip proven via stub-backend `provider_update` recording with canonical `## Resolution\n\n[YYYY-MM-DD, completed, promoted to phase-N(.M)]` body shape (which the existing `_tmr_extract_section "Resolution"` decoder reads verbatim).
 
-**Path 3 forbidden invariants:** intact across all surfaces (validate-pack Check 32 + test-suite assertions in promote-path1 6.4 / 7.2 + corpus grep).
+**Path 3 forbidden invariants:** intact across all surfaces (validate-pack Check 35 + test-suite assertions in promote-path1 6.4 / 7.2 + corpus grep; renumbered from Check 32 by BD-168).
 
 **§6.P / §6.Q / §6.R MAINTAINER CHECK ratifications:** still pending PM-only post-CI Pack Chat decision (separate concern; not addressed by this fix-coder pass).
 

@@ -125,7 +125,7 @@ Checks:
       §10.4: `_rules.md` exists per stream; per-entry filename
       conformance; `_v8-resolved-archive.md` byte-stable (covered by
       the main divergence check). SKIPs when the per-entry tree is
-      absent (pre-Batch-22 pack-self / pre-v11.0 client per §10.5).
+      absent (pre-BD-102 dog-food pack-self / pre-v11.0 client per §10.5).
       Pack-side scope only per §10.6 (project-side trees are validated
       by the client's CI).
   33. Per-entry `_toc.md` in-sync (BD-168, v11.0 per-entry split): for
@@ -2806,36 +2806,12 @@ def check_skill_cell_consistency() -> None:
 
 # ── Check 32: per-entry mirror is in-sync with per-entry tree (BD-168) ─────
 
-def _per_entry_run_helper(helper_func: str, args: list) -> tuple:
-    """Invoke a BD-164 bash helper via subprocess.
-
-    Sources `scripts/lib/per-entry/_lib.sh` plus the named helper file
-    (mirror-generate.sh or toc-regenerate.sh inferred from the function),
-    then calls `helper_func` with `args`. Returns
-    `(returncode, stdout, stderr)`. Used by Check 32 / Check 33 to
-    regenerate the canonical mirror / TOC into a temp location for
-    byte-comparison against the on-disk file.
-
-    Architecture: ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.1
-    pseudo-code (planner refines per Addendum #1 §9.2 disclaimer).
-    """
-    helper_file = {
-        "per_entry_regenerate_mirror": "mirror-generate.sh",
-        "per_entry_regenerate_toc":    "toc-regenerate.sh",
-    }[helper_func]
-    quoted_args = " ".join(f"'{a}'" for a in args)
-    script = (
-        f". '{PER_ENTRY_LIB}/_lib.sh' && "
-        f". '{PER_ENTRY_LIB}/{helper_file}' && "
-        f"{helper_func} {quoted_args}"
-    )
-    result = subprocess.run(
-        ["bash", "-c", script],
-        capture_output=True,
-        text=True,
-        stdin=subprocess.DEVNULL,
-    )
-    return result.returncode, result.stdout, result.stderr
+# Note: an earlier draft of BD-168 defined a `_per_entry_run_helper(helper_func,
+# args)` seam intended for shared subprocess invocation. The seam was never
+# used — Check 32 inlines its own subprocess.run() to pass the
+# PE_FORCE_OVERWRITE_MIRROR env var, and Check 33 also inlines for symmetry.
+# The dead-code seam was removed per BD-168 retro fix N1 (favor actual-use
+# over speculative-API per `ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`).
 
 
 def _list_unknown_files(stream_dir: Path, entry_regex: str,
@@ -2870,8 +2846,8 @@ def check_mirror_in_sync() -> None:
 
     For each pack-side stream in STREAMS:
 
-      - SKIP if the per-entry tree directory is absent (pre-Batch-22
-        pack-self / pre-v11.0 client) per
+      - SKIP if the per-entry tree directory is absent (pre-BD-102
+        dog-food pack-self / pre-v11.0 client) per
         ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.5.
 
       - Pre-check (a) per §10.4: `_rules.md` exists per stream; FAIL
@@ -2919,7 +2895,7 @@ def check_mirror_in_sync() -> None:
         if not stream_dir.is_dir():
             ok(
                 f"{stream_rel}/ — not present (skipping; pre-v11.0 "
-                f"client or pre-Batch-22 pack-self per integration "
+                f"client or pre-BD-102 dog-food pack-self per integration "
                 f"parent §10.5)"
             )
             continue
@@ -2980,8 +2956,10 @@ def check_mirror_in_sync() -> None:
                 fail(
                     f"{mirror_rel}: per-entry tree present at "
                     f"{stream_rel}/ but mirror file absent — run "
-                    f"`bash scripts/lib/per-entry/mirror-generate.sh` "
-                    f"to materialize"
+                    f"`bash -c '. scripts/lib/per-entry/_lib.sh && "
+                    f". scripts/lib/per-entry/mirror-generate.sh && "
+                    f"per_entry_regenerate_mirror {stream_key} "
+                    f"{stream_dir} {mirror_path}'` to materialize"
                 )
                 continue
 
@@ -2990,6 +2968,18 @@ def check_mirror_in_sync() -> None:
             # helper either no-ops (in sync) or rewrites the mirror
             # (out of sync). We restore the snapshot before returning
             # in either case.
+            #
+            # S5 (BD-168 retro fix): the helper's pe_warn
+            # "PE_FORCE_OVERWRITE_MIRROR=1; overwriting hand-edited
+            # mirror at <path>" (Addendum #2 §4.5 audit-trail) is
+            # captured into result.stderr but is INTENTIONALLY silently
+            # discarded on the divergence path below — in CI the
+            # validator's FAIL message IS the audit trail, so the
+            # helper's audit-trail line is redundant; the §4.5
+            # audit-trail intent was anchored on the migrator path
+            # (where the user runs the helper directly), not the CI
+            # path. The discard is documented here so future readers
+            # don't add a noisy re-surface accidentally.
             env = os.environ.copy()
             env["PE_FORCE_OVERWRITE_MIRROR"] = "1"
             quoted_args = " ".join(
@@ -3034,11 +3024,15 @@ def check_mirror_in_sync() -> None:
                 Path(snap_path).replace(mirror_path)
                 fail(
                     f"{mirror_rel} is out of sync with {stream_rel}/ — "
-                    f"re-run `bash scripts/lib/per-entry/mirror-generate.sh` "
-                    f"(or invoke `per_entry_regenerate_mirror "
-                    f"{stream_key} {stream_dir} {mirror_path}`) before "
-                    f"committing; restored on-disk mirror to pre-check "
-                    f"state"
+                    f"re-run `bash -c '. scripts/lib/per-entry/_lib.sh "
+                    f"&& . scripts/lib/per-entry/mirror-generate.sh "
+                    f"&& PE_FORCE_OVERWRITE_MIRROR=1 "
+                    f"per_entry_regenerate_mirror {stream_key} "
+                    f"{stream_dir} {mirror_path}'` before committing "
+                    f"(the helper is sourced-not-executed; "
+                    f"PE_FORCE_OVERWRITE_MIRROR=1 bypasses the "
+                    f"divergence abort); restored on-disk mirror to "
+                    f"pre-check state"
                 )
         finally:
             # Defensive cleanup: if snap_path still exists the path
@@ -3075,7 +3069,7 @@ def check_toc_in_sync() -> None:
         if not stream_dir.is_dir():
             ok(
                 f"{stream_rel}/ — not present (skipping; pre-v11.0 "
-                f"client or pre-Batch-22 pack-self per integration "
+                f"client or pre-BD-102 dog-food pack-self per integration "
                 f"parent §10.5)"
             )
             continue
@@ -3092,9 +3086,17 @@ def check_toc_in_sync() -> None:
 
         toc_path = stream_dir / "_toc.md"
 
+        # M2 (BD-168 retro fix): create the snap in the system tempdir
+        # (`dir=None`), NOT under `stream_dir/`. Rationale: a SIGKILL
+        # between mkstemp() and the finally-block cleanup would leave a
+        # leftover `.per-entry-toc-snap.XXXXXX.md` inside `stream_dir/`,
+        # which Check 32 pre-check (b) (`_list_unknown_files`) would
+        # flag as a non-conforming filename on the next CI run. The
+        # snap is read-only consumed (no atomic rename across
+        # filesystems required), so cross-filesystem placement is fine.
         snap_fd, snap_path = tempfile.mkstemp(
             prefix=".per-entry-toc-snap.", suffix=".md",
-            dir=str(stream_dir),
+            dir=None,
         )
         try:
             os.close(snap_fd)
@@ -3113,6 +3115,11 @@ def check_toc_in_sync() -> None:
                 f". '{PER_ENTRY_LIB}/toc-regenerate.sh' && "
                 f"per_entry_regenerate_toc {quoted_args}"
             )
+            # S5 (BD-168 retro fix): any audit-trail stderr the helper
+            # emits (Addendum #2 §4.5 anchored on the migrator path) is
+            # captured but INTENTIONALLY discarded on the success-with-
+            # divergence path below — in CI the validator's FAIL
+            # message IS the audit trail. Documented for future readers.
             result = subprocess.run(
                 ["bash", "-c", script],
                 capture_output=True,
@@ -3120,9 +3127,13 @@ def check_toc_in_sync() -> None:
                 stdin=subprocess.DEVNULL,
             )
             if result.returncode != 0:
-                # Restore on-disk (if any) before failing.
+                # Restore on-disk (if any) before failing. Use
+                # write_bytes() not replace() so the restore is
+                # cross-filesystem safe (the snap may now live in the
+                # system tempdir per M2 retro fix; `os.rename` would
+                # raise EXDEV if /tmp is on a different FS).
                 if had_existing_toc:
-                    Path(snap_path).replace(toc_path)
+                    toc_path.write_bytes(snap_data)
                 fail(
                     f"{stream_rel}/_toc.md: regenerator failed "
                     f"(rc={result.returncode}); stderr: "
@@ -3145,19 +3156,28 @@ def check_toc_in_sync() -> None:
                 toc_path.unlink()  # restore tree to original (no TOC)
                 fail(
                     f"{stream_rel}/_toc.md absent — run "
-                    f"`per_entry_regenerate_toc {stream_key} "
-                    f"{stream_dir}` to materialize before committing; "
+                    f"`bash -c '. scripts/lib/per-entry/_lib.sh && "
+                    f". scripts/lib/per-entry/toc-regenerate.sh && "
+                    f"per_entry_regenerate_toc {stream_key} "
+                    f"{stream_dir}'` to materialize before committing "
+                    f"(the helper is sourced-not-executed); "
                     f"restored tree to pre-check state"
                 )
             else:
-                # Divergence — restore the snapshot, FAIL.
+                # Divergence — restore the snapshot, FAIL. Use
+                # write_bytes() not replace() for cross-filesystem
+                # safety (snap now lives in system tempdir per M2).
                 if had_existing_toc:
-                    Path(snap_path).replace(toc_path)
+                    toc_path.write_bytes(snap_data)
                 fail(
                     f"{stream_rel}/_toc.md is out of sync — re-run "
-                    f"`per_entry_regenerate_toc {stream_key} "
-                    f"{stream_dir}` before committing; restored "
-                    f"on-disk file to pre-check state"
+                    f"`bash -c '. scripts/lib/per-entry/_lib.sh && "
+                    f". scripts/lib/per-entry/toc-regenerate.sh && "
+                    f"per_entry_regenerate_toc {stream_key} "
+                    f"{stream_dir}'` before committing (the helper is "
+                    f"sourced-not-executed; the regenerator "
+                    f"unconditionally overwrites the on-disk file); "
+                    f"restored on-disk file to pre-check state"
                 )
         finally:
             if Path(snap_path).exists():
@@ -3204,23 +3224,22 @@ def _collect_defined_ids(stream_key: str, stream_dir: Path,
     return defined
 
 
-def _extract_references(text: str, skip_v8_archive: bool) -> list:
+def _extract_references(text: str) -> list:
     """Extract (ref, line_no) pairs from `text` matching CROSS_REF_RE.
 
-    Per integration parent §11.3, when `skip_v8_archive` is True, any
-    reference appearing AFTER an H2 line matching `^## Resolved — v\\d+`
-    is suppressed (the v8 archive is frozen-historical and contains
-    references to entries that may not exist in the current tree).
+    Note: the v8-archive SKIP per integration parent §11.3 is enforced
+    at the FILE level by the caller (the walk loop in
+    `check_cross_reference_integrity` skips `_v8-resolved-archive.md`
+    entirely). The earlier draft included a defensive in-text
+    `skip_v8_archive` parameter that suppressed references after any
+    line matching `^## Resolved — v\\d+\\b`; that parameter was removed
+    per BD-168 retro fix N2 because (a) the file-level skip is
+    sufficient and (b) the in-text version risked false negatives in
+    per-entry pack-changelog files that might legitimately carry a
+    `## Resolved — v11.0` H2 in their bodies.
     """
     refs = []
-    in_v8_archive = False
-    v8_archive_re = re.compile(r"^## Resolved — v\d+\b")
     for line_no, line in enumerate(text.splitlines(), start=1):
-        if skip_v8_archive and v8_archive_re.match(line):
-            in_v8_archive = True
-            continue
-        if in_v8_archive:
-            continue
         for match in CROSS_REF_RE.finditer(line):
             refs.append((match.group(1), line_no))
     return refs
@@ -3273,7 +3292,7 @@ def check_cross_reference_integrity() -> None:
     if not any_stream_present:
         ok(
             "no per-entry trees present (skipping; pre-v11.0 client or "
-            "pre-Batch-22 pack-self per integration parent §10.5)"
+            "pre-BD-102 dog-food pack-self per integration parent §10.5)"
         )
         return
 
@@ -3325,7 +3344,7 @@ def check_cross_reference_integrity() -> None:
                 any_dangling = True
                 continue
 
-            refs = _extract_references(text, skip_v8_archive=True)
+            refs = _extract_references(text)
             total_refs += len(refs)
             seen_ids_this_file = set()
             for ref, line_no in refs:
@@ -3516,8 +3535,8 @@ def main() -> None:
     # ── BD-168 (Batch 19, Commit 19e): per-entry split validators. ──
     # Order: 32 (mirror-in-sync) → 33 (TOC-in-sync) → 34 (cross-refs).
     # Per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10. Each SKIPs
-    # gracefully when the per-entry tree is absent (pre-Batch-22
-    # pack-self / pre-v11.0 client).
+    # gracefully when the per-entry tree is absent (pre-BD-102
+    # dog-food pack-self / pre-v11.0 client).
     check_mirror_in_sync()
     check_toc_in_sync()
     check_cross_reference_integrity()

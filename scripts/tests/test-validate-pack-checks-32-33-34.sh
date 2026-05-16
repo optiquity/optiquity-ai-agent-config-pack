@@ -39,6 +39,18 @@
 # Plus structural smoke:
 #   D1: STREAMS constant has the expected pack-side tuples (sanity).
 #
+# BD-168 retro fix adds:
+#   Group F: pack-changelog stream coverage (S2 — review §2.2 #2).
+#     F1: green pack-changelog → Check 32 PASS.
+#     F2: green pack-changelog → Check 33 PASS.
+#     F3: green pack-changelog → Check 34 PASS (no dangling).
+#     F4: hand-edited pack-changelog mirror → Check 32 FAIL.
+#     F5: cross-stream union — pack-backlog refs v11.0 in pack-changelog
+#         → Check 34 PASS (exercises defined_all union path).
+#   Group G: M2 snap-leftover regression (M2 — review §2.1 #2).
+#     G1: Check 33 PASS path → no `.per-entry-toc-snap.*` left in stream_dir.
+#     G2: Check 33 FAIL path → no `.per-entry-toc-snap.*` left in stream_dir.
+#
 # Usage: bash scripts/tests/test-validate-pack-checks-32-33-34.sh
 # Exit:  0 if all PASS; 1 on any FAIL.
 #
@@ -252,6 +264,82 @@ EOF
         . '$PER_ENTRY_LIB/_lib.sh'
         . '$PER_ENTRY_LIB/toc-regenerate.sh'
         per_entry_regenerate_toc pack-backlog '$backlog_dir'
+    " >/dev/null 2>&1
+}
+
+# Materialize a green pack-changelog per-entry tree under <scratch_repo>:
+#   <scratch_repo>/changelog/_rules.md
+#   <scratch_repo>/changelog/_intro.md
+#   <scratch_repo>/changelog/v10.0.md, v10.1.md, v11.0.md
+#   <scratch_repo>/CHANGELOG.md  (regenerated mirror)
+#   <scratch_repo>/changelog/_toc.md  (regenerated TOC)
+# Entries match the pack-changelog regex `^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$`
+# per validate-pack.py STREAMS. Three entries exercise grouping by major
+# version (BD-164 toc-regenerate axis). Added in BD-168 retro fix S2.
+# $1 = scratch_repo path
+build_green_pack_changelog() {
+    local scratch_repo="$1"
+    local changelog_dir="$scratch_repo/changelog"
+    mkdir -p "$changelog_dir"
+
+    # _rules.md (declares supporting files).
+    cat >"$changelog_dir/_rules.md" <<'EOF'
+# Per-stream contract — pack-changelog (test fixture)
+
+Stream identity: pack-changelog
+Filename convention: ^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$
+Lifecycle states: none (versions are immutable post-ship)
+
+## Supporting files
+
+- `_rules.md`
+- `_intro.md`
+- `_toc.md`
+EOF
+
+    # _intro.md (preamble).
+    cat >"$changelog_dir/_intro.md" <<'EOF'
+# Changelog (test fixture)
+
+Test-fixture preamble.
+
+---
+EOF
+
+    # Three version entries. v11.0 is the current version; v10.x are
+    # historical. The toc-regenerate.sh axis is "version" grouping by
+    # major.
+    cat >"$changelog_dir/v11.0.md" <<'EOF'
+<!-- per-entry source: /changelog/v11.0.md; contract: /changelog/_rules.md -->
+## v11 — May 2026
+
+- Initial v11.0 release. References BD-100 for context.
+EOF
+    cat >"$changelog_dir/v10.1.md" <<'EOF'
+<!-- per-entry source: /changelog/v10.1.md; contract: /changelog/_rules.md -->
+## v10.1 — April 2026
+
+- v10.1 minor release.
+EOF
+    cat >"$changelog_dir/v10.0.md" <<'EOF'
+<!-- per-entry source: /changelog/v10.0.md; contract: /changelog/_rules.md -->
+## v10.0 — March 2026
+
+- v10.0 first release.
+EOF
+
+    # Generate the canonical CHANGELOG.md mirror via the BD-164 helper.
+    bash -c "
+        . '$PER_ENTRY_LIB/_lib.sh'
+        . '$PER_ENTRY_LIB/mirror-generate.sh'
+        per_entry_regenerate_mirror pack-changelog '$changelog_dir' '$scratch_repo/CHANGELOG.md'
+    " >/dev/null 2>&1
+
+    # Generate the canonical _toc.md via the BD-164 helper.
+    bash -c "
+        . '$PER_ENTRY_LIB/_lib.sh'
+        . '$PER_ENTRY_LIB/toc-regenerate.sh'
+        per_entry_regenerate_toc pack-changelog '$changelog_dir'
     " >/dev/null 2>&1
 }
 
@@ -489,6 +577,165 @@ E1_C34=$(run_check check_cross_reference_integrity "$E1_REPO" 2>&1)
 E1_C34_RC=$?
 assert_eq "E1.5 no tree → Check 34 rc=0 (SKIP)" "0" "$E1_C34_RC"
 assert_contains "E1.6 no tree → Check 34 says 'no per-entry trees present'" "$E1_C34" "no per-entry trees present"
+
+# ─────────────────────────────────────────────────────────────────
+# Group F: pack-changelog stream coverage (BD-168 retro fix S2)
+# ─────────────────────────────────────────────────────────────────
+#
+# The original BD-168 test runner exercised only the pack-backlog
+# stream. Per BD-168 retro fix S2 (review §2.2 SHOULD finding #2), add
+# explicit coverage for the second pack-side stream (pack-changelog),
+# including a cross-stream `defined_all` union test exercising
+# validate-pack.py:3280-3282 (the union of defined IDs across loaded
+# streams used by Check 34).
+#
+# The extra_streams seam in run_check (lines 105-110) accepts
+# pipe-delimited tuples; the pack-changelog tuple is
+# "pack-changelog|changelog|CHANGELOG.md|^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$".
+
+printf "\n=== Group F: pack-changelog stream coverage (BD-168 retro fix S2) ===\n"
+
+# Tuple constant for the pack-changelog stream (4-part pipe-delimited).
+# NB: escape the pipe-internal regex carefully — bash word-splits on
+# whitespace, so embedded pipes are fine; the python wrapper splits
+# each tuple on '|'.
+PACKCL_TUPLE='pack-changelog|changelog|CHANGELOG.md|^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$'
+
+# F1: green pack-changelog tree + Check 32 → PASS.
+# pack-backlog SKIPs (no /backlog/ in scratch); pack-changelog
+# byte-identical → overall PASS.
+F1_REPO="$SCRATCH_ROOT/F1"
+mkdir -p "$F1_REPO"
+build_green_pack_changelog "$F1_REPO"
+F1_OUT=$(run_check check_mirror_in_sync "$F1_REPO" "$PACKCL_TUPLE" 2>&1)
+F1_RC=$?
+assert_eq "F1.1 green pack-changelog → Check 32 rc=0" "0" "$F1_RC"
+assert_contains "F1.2 green pack-changelog → CHANGELOG.md byte-identical" "$F1_OUT" "changelog/ → CHANGELOG.md byte-identical"
+assert_contains "F1.3 green pack-changelog → pack-backlog SKIPs" "$F1_OUT" "backlog/ — not present"
+assert_not_contains "F1.4 green pack-changelog → no FAIL" "$F1_OUT" "FAIL:"
+
+# F2: green pack-changelog tree + Check 33 → PASS.
+F2_REPO="$SCRATCH_ROOT/F2"
+mkdir -p "$F2_REPO"
+build_green_pack_changelog "$F2_REPO"
+F2_OUT=$(run_check check_toc_in_sync "$F2_REPO" "$PACKCL_TUPLE" 2>&1)
+F2_RC=$?
+assert_eq "F2.1 green pack-changelog → Check 33 rc=0" "0" "$F2_RC"
+assert_contains "F2.2 green pack-changelog → _toc.md byte-identical" "$F2_OUT" "changelog/_toc.md byte-identical"
+assert_not_contains "F2.3 green pack-changelog → no FAIL" "$F2_OUT" "FAIL:"
+
+# F3: green pack-changelog tree + Check 34 → PASS (no refs in version
+# entry bodies that don't resolve).
+F3_REPO="$SCRATCH_ROOT/F3"
+mkdir -p "$F3_REPO"
+build_green_pack_changelog "$F3_REPO"
+# Note: build_green_pack_changelog's v11.0.md body references BD-100
+# which is NOT defined in this scratch (no /backlog/). Check 34 will
+# correctly FAIL with dangling BD-100. To exercise the all-pass path,
+# strip the body reference before the check.
+sed -i.bak 's/References BD-100 for context.//' "$F3_REPO/changelog/v11.0.md"
+rm -f "$F3_REPO/changelog/v11.0.md.bak"
+# Regenerate the mirror so it stays byte-identical to the modified
+# entry; otherwise Check 32 would diverge (but we're not running it
+# here; Check 34 is independent of mirror state).
+bash -c "
+    . '$PER_ENTRY_LIB/_lib.sh'
+    . '$PER_ENTRY_LIB/mirror-generate.sh'
+    PE_FORCE_OVERWRITE_MIRROR=1 per_entry_regenerate_mirror pack-changelog '$F3_REPO/changelog' '$F3_REPO/CHANGELOG.md'
+" >/dev/null 2>&1
+F3_OUT=$(run_check check_cross_reference_integrity "$F3_REPO" "$PACKCL_TUPLE" 2>&1)
+F3_RC=$?
+assert_eq "F3.1 green pack-changelog → Check 34 rc=0" "0" "$F3_RC"
+assert_not_contains "F3.2 green pack-changelog → no dangling FAIL" "$F3_OUT" "FAIL:"
+
+# F4: green pack-changelog + hand-edited CHANGELOG.md → Check 32 FAIL.
+F4_REPO="$SCRATCH_ROOT/F4"
+mkdir -p "$F4_REPO"
+build_green_pack_changelog "$F4_REPO"
+printf '\nROGUE CHANGELOG LINE\n' >>"$F4_REPO/CHANGELOG.md"
+F4_PRE_SHA=$(shasum "$F4_REPO/CHANGELOG.md" | awk '{print $1}')
+F4_OUT=$(run_check check_mirror_in_sync "$F4_REPO" "$PACKCL_TUPLE" 2>&1)
+F4_RC=$?
+F4_POST_SHA=$(shasum "$F4_REPO/CHANGELOG.md" | awk '{print $1}')
+assert_eq "F4.1 hand-edited CHANGELOG.md → Check 32 rc=1" "1" "$F4_RC"
+assert_contains "F4.2 hand-edited CHANGELOG.md → FAIL out-of-sync" "$F4_OUT" "CHANGELOG.md is out of sync"
+assert_contains "F4.3 hand-edited CHANGELOG.md → FAIL names runnable form" "$F4_OUT" "PE_FORCE_OVERWRITE_MIRROR=1"
+assert_eq "F4.4 hand-edited CHANGELOG.md → working-tree restored" "$F4_PRE_SHA" "$F4_POST_SHA"
+
+# F5: cross-stream union — pack-backlog entry references pack-changelog
+# version. Exercises validate-pack.py:3280-3282 (defined_all union).
+# A pack-backlog entry referencing v11.0 should resolve via the
+# pack-changelog stream's defined IDs.
+F5_REPO="$SCRATCH_ROOT/F5"
+mkdir -p "$F5_REPO"
+build_green_pack_backlog "$F5_REPO"
+build_green_pack_changelog "$F5_REPO"
+# Append a cross-stream reference: BD-100 references v11.0 (defined in
+# pack-changelog). Without the union, this would FAIL as dangling.
+printf '\nResolved: 2026-05-16 in v11.0.\n' >>"$F5_REPO/backlog/BD-100.md"
+# Strip the v11.0.md body BD-100 ref (else BD-100 is defined and v11.0
+# tests the OTHER union direction, which we don't need here).
+sed -i.bak 's/References BD-100 for context.//' "$F5_REPO/changelog/v11.0.md"
+rm -f "$F5_REPO/changelog/v11.0.md.bak"
+# Regenerate mirrors so Check 32 is not exercised here (Check 34 only).
+bash -c "
+    . '$PER_ENTRY_LIB/_lib.sh'
+    . '$PER_ENTRY_LIB/mirror-generate.sh'
+    PE_FORCE_OVERWRITE_MIRROR=1 per_entry_regenerate_mirror pack-backlog '$F5_REPO/backlog' '$F5_REPO/BACKLOG.md'
+    PE_FORCE_OVERWRITE_MIRROR=1 per_entry_regenerate_mirror pack-changelog '$F5_REPO/changelog' '$F5_REPO/CHANGELOG.md'
+" >/dev/null 2>&1
+F5_OUT=$(run_check check_cross_reference_integrity "$F5_REPO" "$PACKCL_TUPLE" 2>&1)
+F5_RC=$?
+assert_eq "F5.1 cross-stream union → Check 34 rc=0 (v11.0 resolves via pack-changelog)" "0" "$F5_RC"
+assert_not_contains "F5.2 cross-stream union → no FAIL for v11.0 ref" "$F5_OUT" "references v11.0 — no matching"
+
+# ─────────────────────────────────────────────────────────────────
+# Group G: M2 snap-leftover regression (BD-168 retro fix M2)
+# ─────────────────────────────────────────────────────────────────
+#
+# Per BD-168 retro fix M2 (review §2.1 MUST finding #2), Check 33
+# previously created its snapshot file inside stream_dir/ via
+# tempfile.mkstemp(dir=str(stream_dir)). A SIGKILL between mkstemp
+# and the finally-block cleanup would leave a leftover
+# `.per-entry-toc-snap.XXXXXX.md` inside stream_dir/ that would FAIL
+# Check 32 pre-check (b) on the NEXT validator run.
+#
+# Fix M2 moves the snap to the system tempdir (dir=None). Regression
+# test: assert that after Check 33 runs successfully, no
+# `.per-entry-toc-snap.*` files remain inside stream_dir/.
+
+printf "\n=== Group G: M2 snap-leftover regression (no snap files in stream_dir) ===\n"
+
+G1_REPO="$SCRATCH_ROOT/G1"
+mkdir -p "$G1_REPO"
+build_green_pack_backlog "$G1_REPO"
+# Run Check 33 against the green tree (PASS path).
+G1_OUT=$(run_check check_toc_in_sync "$G1_REPO" 2>&1)
+G1_RC=$?
+assert_eq "G1.1 Check 33 PASS path → rc=0" "0" "$G1_RC"
+# Assert no snap files left behind in stream_dir/.
+G1_LEFTOVERS=$(find "$G1_REPO/backlog" -name '.per-entry-toc-snap.*' -print 2>/dev/null)
+if [[ -z "$G1_LEFTOVERS" ]]; then
+    t_pass "G1.2 Check 33 PASS path → no .per-entry-toc-snap.* leftover in stream_dir"
+else
+    t_fail "G1.2 Check 33 PASS path → snap leftover in stream_dir" "$G1_LEFTOVERS"
+fi
+
+# Same assertion against the FAIL path (hand-edited _toc.md → Check 33
+# FAILs but should still not leave a snap behind).
+G2_REPO="$SCRATCH_ROOT/G2"
+mkdir -p "$G2_REPO"
+build_green_pack_backlog "$G2_REPO"
+printf '\nROGUE TOC\n' >>"$G2_REPO/backlog/_toc.md"
+G2_OUT=$(run_check check_toc_in_sync "$G2_REPO" 2>&1)
+G2_RC=$?
+assert_eq "G2.1 Check 33 FAIL path → rc=1" "1" "$G2_RC"
+G2_LEFTOVERS=$(find "$G2_REPO/backlog" -name '.per-entry-toc-snap.*' -print 2>/dev/null)
+if [[ -z "$G2_LEFTOVERS" ]]; then
+    t_pass "G2.2 Check 33 FAIL path → no .per-entry-toc-snap.* leftover in stream_dir"
+else
+    t_fail "G2.2 Check 33 FAIL path → snap leftover in stream_dir" "$G2_LEFTOVERS"
+fi
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

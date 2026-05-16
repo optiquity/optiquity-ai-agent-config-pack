@@ -756,7 +756,7 @@ feat: v11 — BD-168 validate-pack Checks 32 (mirror-in-sync) + 33 (TOC-in-sync)
 
 **Files deleted:** none.
 
-**Pre-state.** `validate-pack.py` has 31 check functions (highest is `check_skill_cell_consistency` Check 31 at line 2425, verified by `grep -n "^def check_"`). No `STREAMS` constant. `scripts/tests/fixtures/per-entry/` does not exist.
+**Pre-state.** `validate-pack.py` has 32 check functions (amended 2026-05-16 per BD-168 retro fix — actual was 32, off-by-one in planner pass; see `IMPLEMENTATION-REPORT-BD-168.md` §7.1). `check_skill_cell_consistency` is Check 31; the 32nd function is `check_tracker_phase_task_invariants` which was already labeled "Check 32" at planner-pass time (pre-BD-168 numbering) and is renumbered to Check 35 by BD-168. Verified by `grep -n "^def check_"`. No `STREAMS` constant. `scripts/tests/fixtures/per-entry/` does not exist.
 
 **Post-state.** `validate-pack.py` has 34 check functions (Checks 32 / 33 / 34 added). STREAMS constant added. New test file + fixtures present. Running `bash scripts/validate-pack.py` exits 0 on the pack repo (Checks 32 / 33 / 34 SKIP — pack-self trees don't exist until Batch 23 BD-102 dog-food).
 
