@@ -828,7 +828,17 @@ Description: Pack-Chat-direct workflow: maintainer runs `migrate-v10-to-v11.sh`
   validation. Procedure: pre-checkpoint → dry-run → apply → tracker init →
   doctor → disable → reverse-round-trip diff → author report → ship decision.
   Per §6.J ship decision: pack ships v11.0 in flat-file mode (reverse before
-  release pin). Highest-confidence validation; predicts client migration.
+  release pin).
+
+  Batch 23 ordering (per 2026-05-17 user-Pack Chat discussion): BD-102
+  runs LAST in the live-GH test trio. BD-174 (scratch-pack-clone multi-toggle)
+  runs FIRST as safe-env pack code validation; BD-171 (real-OT scratch-clone
+  multi-toggle) runs SECOND as scratch-env client validation; BD-102 runs
+  THIRD as the final ship-decision gate on the real pack repo, informed by
+  all three test reports. Should "just work" because BD-174 + BD-171 caught
+  earlier-stage issues in safer environments. If BD-102 surfaces NEW issues
+  that BD-174/BD-171 missed, that's actionable feedback for hardening their
+  test surfaces in v11.1+.
 Resolved: n/a
 
 ---
@@ -1367,6 +1377,82 @@ Resolved: n/a
 
 ---
 
+**BD-174 — Scratch-pack-clone migration + multi-toggle test harness**
+Type: TODO(version) — surfaced 2026-05-17 from session discussion of test fixture thoroughness pre-public-release (gap identified: BD-102 dog-food runs on real pack repo; no scratch-clone equivalent for pack-on-pack code-bug-catching in safe environment)
+Status: Open
+Blockers: None on critical path; recommended sequencing pairs with BD-171 (real-OT scratch-clone) + BD-102 (real-pack dog-food) to share live-GH test infra. Position in Batch 23: FIRST in the live-GH test trio (BD-174 → BD-171 → BD-102 per 2026-05-17 ordering rationale).
+Unblocks: BD-102 dog-food (less likely to fail because BD-174 catches code bugs in safe env first); pre-public-release pack-on-pack validation in scratch environment (recovery via re-provisioning scratch — much cheaper than recovering from real-pack-repo damage if dog-food fails).
+File/Symbol:
+  - NEW `scripts/tests/test-scratch-pack-clone.sh` (harness: provision scratch GH repo via `gh repo create`, clone the pack repo into `/tmp`, push to scratch, run end-to-end migration on the scratch clone, full multi-toggle test (flat → GH Issues → flat → GH Issues), verify state integrity at each toggle, tear down scratch repo via `gh repo delete --yes`)
+  - EXTEND `.github/workflows/validate-pack.yml` (gated CI run with `if: github.event_name == 'workflow_dispatch'` — manual trigger only; same pattern as BD-171)
+  - EXTEND `test-fixtures/README.md` table (note scratch-pack-clone harness pattern alongside BD-171's scratch-OT-clone pattern)
+Description: Pack-repo dog-food test in safe scratch environment. Provisions
+  a scratch GH repo via `gh repo create`, clones the pack repo to scratch,
+  pushes scratch, runs the actual v10 → v11.0 migration end-to-end ON THE
+  SCRATCH CLONE (never the real pack repo), then runs full multi-toggle test
+  pattern (flat-file → GH Issues → flat-file → GH Issues). Each transition
+  verifies state integrity, data preservation, BACKLOG entry survival, mode-
+  file `tracker.toml` correctness. Failure at any step → re-provision scratch
+  repo + retry (recovery is cheap; original pack repo untouched).
+
+  Distinguishes from BD-102 (real-pack dog-food) in 3 ways:
+  - Repo: scratch clone vs real pack repo
+  - Toggle pattern: multi-toggle (flat→GH→flat→GH) vs single round-trip (init → reverse)
+  - Failure recovery: re-provision scratch (cheap) vs manual git revert (risky)
+
+  Ordering rationale (per 2026-05-17 user-Pack Chat discussion):
+  - BD-174 first in Batch 23: catches code bugs in safe env (pack-on-pack)
+  - BD-171 second: validates client surface (pack-on-OT-content)
+  - BD-102 last: final ship-decision gate on real pack repo, should "just work"
+    because BD-174 caught the issues in safe env first
+
+  Per pack-memory rule (`feedback_test_infra_self_provisioned.md`):
+  "provision scratch GH repos via gh CLI with per-step approval; clean up after;
+  never touch existing real repos." Closes pre-public-release gap surfaced
+  during BD-171 discussion: there's no equivalent safe-env validation for
+  pack-on-pack code bugs.
+Resolved: n/a
+
+---
+
+**BD-173 — Project-side cleanup (project-template/ trinity + agents + skills + ops docs consolidation)**
+Type: TODO(version) — surfaced 2026-05-17 from Batch 19b architect-doc out-of-scope flag + user direction to schedule project-side equivalent of Batch 19b before Batch 21
+Status: Open
+Blockers: Batch 19b completion (in_progress); also see pack-chat task list Task #13
+Unblocks: Batch 20 (BD-105/BD-103); Batch 21 (BD-109/BD-110 auditor agents) — both informed by new project-side rules; Batch 22 (BD-100 milestone audit covers both pack-side from Batch 19b AND project-side from BD-173); Batch 23 (BD-102 dog-food validates by using cleaned project-template)
+File/Symbol:
+  - `project-template/CLAUDE.md`, `project-template/AGENTS.md`, `project-template/GEMINI.md` — project trinity v11.0 ship-readiness consolidation
+  - `project-template/.claude/agents/`, `.codex/agents/`, `.gemini/agents/` — project-side agent definitions
+  - `project-template/skills/`, `.codex/skills/`, `.gemini/commands/` — project-side skills + commands
+  - `project-template/docs/pack/` — project-side ops docs (PM-CHAT.md and siblings)
+Description: Project-side analog to Batch 19b (which consolidated pack-side
+  rules/memories/ops-docs). Architect-led consolidation pass on project-template/
+  surface for v11.0 ship-readiness, informed by:
+  - User-provided OT content + memories at
+    `/Users/david/Developer/__external-docs/optiquity-ai-agent-config-pack/OT Project Untracked and Tracked Memories.txt`
+  - Existing project-template/ surface
+  - Anticipated client needs (validated by subsequent batches per
+    "every subsequent batch is a validation pass" logic)
+
+  Process (multi-pass per Batch 19b precedent, per 2026-05-17 user direction):
+  user-input collection → architect (first pass) → user review →
+  architect addendum/V2 → user review → planner → user review →
+  pack-coder × N per-commit with inline reviewers → end-of-batch
+  broad reviewer → BD status flip.
+
+  Position: Batch 19c, between Batch 19b (cleanup) and Batch 20
+  (features). Earlier-rather-than-later per user 2026-05-17 direction
+  so every subsequent batch becomes a validation pass for the new
+  project-side rules.
+
+  NOT in scope:
+  - Pack-side files (separation rule; covered by Batch 19b)
+  - Per-CLI memory-cache (only Claude has it; project-side may have
+    none per Batch 19b BD-19b research; architect determines)
+Resolved: n/a
+
+---
+
 **BD-171 — Real-OT scratch-GH-repo migration test fixture + harness**
 Type: TODO(version) — surfaced 2026-05-15 from session discussion of test fixture thoroughness pre-public-release
 Status: Open
@@ -1392,6 +1478,21 @@ Description: Real-OT migration test that complements `v10-realistic-ot` syntheti
   OT may have customization patterns the synthetic fixture doesn't model — history
   depth, file-removal patterns, conflicting `[CONDITIONAL]` block edits, edge
   `x-`-prefix conventions).
+
+  Test suite includes the FULL multi-toggle pattern (per 2026-05-17
+  user-Pack Chat discussion): flat-file (post-migration default) → GH Issues
+  (via `pack tracker init`) → flat-file (via reverse) → GH Issues (via
+  `pack tracker init` again). Each transition verifies state integrity, data
+  preservation, BACKLOG entry survival, mode-file `tracker.toml` correctness.
+  Failure at any step → re-provision scratch repo + retry (recovery is cheap;
+  original OT untouched).
+
+  Batch 23 ordering: BD-171 runs in position 2 of the live-GH test trio,
+  AFTER BD-174 (scratch-pack-clone, which catches pack code bugs symmetrically
+  in safe env) and BEFORE BD-102 (real-pack final ship gate). This positions
+  client-content validation after pack-on-pack validation for diagnostic
+  clarity — BD-171 failures after BD-174 passed are unambiguously client-
+  content-specific.
 Resolved: n/a
 
 ---
