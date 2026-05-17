@@ -52,6 +52,18 @@ docs: brief description of documentation change
 ```
 Where N is the current major version (read from README.md version table).
 
+**Approved suffixes for the `fix:` form:**
+- `fix: vN — BD-NNN brief description` (per-BD inline fix in current batch)
+- `fix: vN — BD-NNN ... (Batch N)` (fix attached to a specific batch)
+- `fix: vN — BD-NNN ... (Batch Nx)` (fix attached to a sub-batch — e.g., 19b cleanup)
+- `fix: vN — BD-NNN retroactive per-BD review-fix (Batch N)` (retro recovery
+  of a per-BD cycle missed in a prior multi-BD batch)
+- `fix: vN — broad batch review/fix (Batch N)` (end-of-batch cross-BD
+  fix that does not bind to a single BD)
+
+Other `fix:` shapes require Pack-Chat-discussion-and-user-approval before
+they land — invented commit-message shapes break audit history.
+
 **Versioning:**
 - Minor versions (vN.0, vN.1, ...) for incremental changes
 - Major versions for large additions or breaking changes
@@ -61,6 +73,9 @@ Where N is the current major version (read from README.md version table).
 **BD-NNN numbering:**
 - Read BACKLOG.md, find the highest existing BD-NNN, increment by 1
 - Never assign a BD number without reading the current backlog first
+- Reservation lists from other chats, planning docs, or sidecar
+  sessions are NOT authoritative — always read the live BACKLOG before
+  assigning. Reserved-but-unwritten numbers are guesses, not commitments.
 
 **What agents may modify:**
 - Any file in template directories when the task explicitly requires it
@@ -116,6 +131,73 @@ in the same commit as the behavior change.
 - **Implicit BD status flip on batch completion.** When a batch's review +
   fixes are clean and tests are green, flip its BDs to `Resolved` as the
   final step of the batch — no separate user approval needed.
+- **Per-action approval extends to sub-agents.** The "no state-changing
+  operations without explicit per-action approval" rule applies to
+  Claude Code Pack Chat AND every sub-agent it spawns. State-changing
+  git verbs are forbidden to all agents per `PACK-AGENTS.md` § "Agent
+  permission rules"; destructive file operations (`rm -rf`, `git rm`,
+  overwriting trusted files) require Pack Chat to ask the user even
+  when the overall task is approved. Sub-agents inherit this rule by
+  construction (they write only their report + scoped working-tree
+  files; they cannot commit). See `feedback-no-destructive-without-
+  approval` for the memory-cache pointer.
+- **Deferred work needs a tracked anchor.** When work is genuinely
+  deferred (user-authorized; survives the `feedback-deferral-is-scope-
+  creep` size/blocked/fit test), it MUST land on a live forward-pointing
+  surface AND be scheduled to a specific anchor: an open BD entry, a
+  live `// TODO(scope): TD-TBD` comment in code per `project-template/
+  CLAUDE.md` § "Deferral comments and BACKLOG hygiene", or a new BD
+  inserted at the appropriate plan position. Archived reports are NOT
+  acceptable anchors — work that lives only in an archived doc is lost.
+- **No deferral to v11.1+ without explicit user direction.** While
+  v11.0 is unlaunched, ALL work surfaced during v11.0 development MUST
+  land in v11.0 unless the user explicitly authorizes deferral. Pack
+  Chat must NEVER propose "defer to v11.1" as a default option in
+  user-facing framings. Architect / reviewer / coder defer-
+  recommendations are SCOPING signals (often driven by prompt
+  boundaries Pack Chat imposed), not AUTHORITY signals — re-scope to
+  land in v11.0 and surface the blast-radius to the user. Only the user
+  authorizes v11.1+ deferral; this default inverts only on explicit
+  user direction ("this is v11.1 work" / "defer this" / "don't block
+  v11.0 on this").
+- **Deferral IS scope creep.** Deferring unblocked work to a later BD
+  or batch is tech debt and scope creep. Punted items lose context,
+  multiply, require archaeology in future sessions. Defending deferral
+  rigorously requires (a) SIZE (architect-pass material; real file/
+  contract surface argument, not "felt big"), (b) BLOCKED (real
+  dependency on not-yet-landed artifact, not "feels related"), or
+  (c) LOGICAL FIT (cleanly belongs with another sibling BD/commit;
+  concrete same-file/same-contract fit, not "thematic"). When a new
+  BD is created that is LARGE and UNBLOCKED, insert it IMMEDIATELY
+  AFTER the current BD or batch — do not park at end of v11.0, do not
+  park in a "next batch" with no anchor. When BLOCKED, insert at the
+  exact unblock point. Per OQ-1 (rewritten EXECUTION-PLAN §B), any
+  new-BD-open additionally requires user-discussion-and-approval.
+- **Per-BD review/fix runs INLINE, before next BD's coder spawns.**
+  Multi-BD batches: each BD's review/fix runs inline (coder → reviewer
+  → triage → fix-coder → commit → NEXT BD's coder). End-of-batch
+  reviewer runs once on the full batch after all per-BD cycles
+  complete. Single-BD batches: only one cycle needed. Never delay
+  per-BD reviews to end-of-batch retroactive recovery (Batch-21c-
+  style); that is an exception for pre-2026-05-15 batches only.
+- **Pack Chat presents triage to user before fix-coder spawns.** After
+  every reviewer pass, Pack Chat reads the report, triages each
+  finding (FIX vs SKIP, with rationale for SKIPs — default FIX-ALL per
+  `feedback-fix-all-review-findings`), and surfaces the triage to the
+  user. User can override per finding before fix-coder spawns. User
+  approves the resulting fix commit (not per-finding approval — that
+  was the pre-2026-05-16 pattern and produced too much friction). The
+  triage gate is between reviewer and fix-coder; the commit gate is
+  between fix-coder IMPL-REPORT and the `git commit`.
+- **Triage all reviewer findings; default fix-all; nits become tech
+  debt.** Pack Chat surfaces every reviewer finding (BLOCKER / MUST /
+  SHOULD / NIT) to the user as a fix-or-defer triage per finding. The
+  default for all severities is FIX. NITs that are deferred (with
+  user-discussion-and-approval per OQ-1 EXECUTION-PLAN §B) become
+  tracked tech debt per `feedback-deferred-work-tracking` — never
+  "noted in the report and dropped." Default fix-all preserves the
+  small-fix-now contract that prevents tech debt accumulation
+  (per `feedback-deferral-is-scope-creep`).
 
 ### Agent invocation rules
 
@@ -136,8 +218,63 @@ in the same commit as the behavior change.
 - **No prior reviews to pack-reviewer.** Reviewer prompts reference
   ARCHITECTURE / PLAN docs only — never prior `PACK-REVIEW-*.md` reports.
   Including a prior review biases the new review.
+- **Researcher-first pipeline for substantive content.** When agent
+  work depends on domain knowledge verified against authoritative
+  external sources (CLI docs, tool semantics, framework behavior),
+  the pipeline is `pack-docs-researcher` → `pack-architect` →
+  `pack-planner` → `pack-coder`. Architect runs AFTER researcher,
+  not before, not skipped. The same-architect-vs-fresh-architect
+  decision for the second architect pass is per-case user
+  discussion at the second-pass decision point.
+- **Planner output → user review → coder spawn.** Pack-planner output
+  is NEVER auto-approved into a pack-coder spawn. Pack Chat surfaces
+  the plan to the user for thorough review (the user may comment, add
+  constraints, request structural changes) and waits for explicit
+  approval before spawning pack-coder. The planner-to-coder gate is the
+  user's last cheap window to redirect work before implementation
+  consumes hours of agent time and chat context.
+- **Pack-coder PREFLIGHT + STOP-MEANS-STOP pattern.** Every pack-coder
+  agent prompt MUST include both halves of this pattern:
 
-### Sub-agent isolation (Claude-only)
+  - **PREFLIGHT (platform-neutral, REQUIRED for all CLIs).** After
+    completing all in-scope file edits + verification, BEFORE writing
+    the IMPL-REPORT, the coder emits ONE plain-text line:
+    `PREFLIGHT: N/N in-scope file edits complete; verification PASS;
+    HEAD <SHA>; about to Write IMPL-REPORT to <path>`. Then it writes
+    the IMPL-REPORT. Pack Chat treats this line as the trust signal
+    that the report-write is starting from a complete-and-green state.
+    If the coder cannot complete the preflight (some edit failed,
+    some test failed), it reports what went wrong instead and does
+    NOT write a partial IMPL-REPORT.
+
+  - **STOP-MEANS-STOP preamble (CLAUDE-CODE-SPECIFIC ENFORCEMENT,
+    REQUIRED for all CLIs as content).** The coder prompt opens with
+    an explicit instruction: "If you receive a parent-session message
+    containing the words stop / halt / revert / do not continue, you
+    MUST immediately stop ALL work, including any in-progress Write.
+    Partial files are acceptable; do not append to make consistent.
+    Stop authority is absolute and unconditional." This text is
+    platform-neutral; the in-band ENFORCEMENT mechanism is platform-
+    conditional:
+    - Claude Code: SendMessage tool (Agent Teams,
+      `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`); SECURITY WARNING
+      classifier flags subagent defiance at handoff. This is the
+      enforced path the BD-169 incident exposed (see worked example
+      in `feedback-pack-coder-preflight-pattern` memory pointer).
+    - Codex CLI: No SendMessage equivalent (confirmed absent per
+      issue #12462). Parent stop mechanism is `/agent` command or
+      natural-language ("ask Codex to stop the subagent"). Reliability
+      caveats per research §2.6.
+    - Gemini CLI: No SendMessage equivalent (hub-and-spoke per docs).
+      Parent stop mechanism is natural-language or `Ctrl+C` (terminates
+      whole session per issue #3385). Reliability caveats per
+      research §3.6.
+
+  Worked-example anchor:
+  `feedback-pack-coder-preflight-pattern` memory pointer; original
+  incident BD-169 19g-pack, 2026-05-16.
+
+### Sub-agent behavior (Claude-only)
 
 - **Spawn all sub-agents with no worktree isolation.** Do not pass
   `isolation: "worktree"` when calling the Agent tool from any chat in
@@ -149,9 +286,85 @@ in the same commit as the behavior change.
   instead of the parent's branch. For parallelism across worktrees,
   open separate Claude Code chat sessions in separate worktree
   directories.
-- **Trinity exemption.** This rule is Claude-specific (not mirrored
-  in `AGENTS.md` / `GEMINI.md`) because it concerns Claude Code's
-  Agent tool behavior.
+- **Default sub-agent spawns to background.** Every Agent-tool
+  invocation from Pack Chat uses `run_in_background: true` so the chat
+  stays interactive while the sub runs. User has auto-mode on; the
+  background sub will not block the chat. Trinity exemption: this rule
+  references the Claude Code Agent tool's `run_in_background` parameter;
+  Codex parallel-spawn behavior is implicit (parallel-by-default, capped
+  by `agents.max_threads`); Gemini parallel-spawn is implicit via `@`
+  invocation. No cross-CLI parity edit needed — each platform's
+  parallel-or-async behavior is platform-native.
+- **Agent-team stage lifecycle + per-commit fresh-coder.** With
+  `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` enabled, sub-agents spawned
+  for a stage (architect → planner → coder → reviewer) stay alive
+  within the stage; Pack Chat uses SendMessage for follow-ups against
+  the same instance. After the stage's commit lands, close ALL stage
+  sub-agents and respawn fresh for the next stage. Additionally: each
+  pack-coder commit gets a FRESH coder instance — never reuse a coder
+  across commits, even within a stage. Per-BD review/fix cycle = fresh
+  coder for the implementation, fresh coder for the fix. Trinity
+  exemption: Agent Teams + SendMessage are Claude-Code-specific
+  (Codex / Gemini have no peer-messaging equivalent — confirmed absent
+  per Codex issue #12462 and Gemini hub-and-spoke docs).
+- **Trinity exemption.** This sub-section is Claude-specific (not
+  mirrored in `AGENTS.md` / `GEMINI.md`) because it concerns Claude
+  Code's Agent tool, `run_in_background` parameter, and Agent Teams /
+  SendMessage features — none of which have equivalents in Codex CLI
+  or Gemini CLI per research §2.5 / §2.7 / §3.5 / §3.7.
+
+### Pack Chat scope
+
+- **Pack Chat does NO fixes.** Pack Chat's role in any review/fix
+  cycle is exactly: spawn pack-reviewer (in background) → read review
+  report → triage findings (fix-or-skip per finding, with rationale
+  for skips) → present triage to user → spawn fix-coder (in background)
+  with the triage decisions → read the fix-coder IMPL-REPORT → stage +
+  commit with user approval. Pack Chat does NOT use Edit / Write tools
+  to apply review findings. NO threshold exception — there is no "small
+  enough to skip the coder" carve-out. A one-line typo fix from a review
+  finding goes to fix-coder. Rationale: auditability (fix-coder IMPL-
+  REPORT carries the rationale doc), pattern consistency, background
+  execution, Pack Chat context preservation.
+
+- **What Pack Chat CAN edit directly** (this is NOT a contradiction
+  of the rule above — these are not fixes):
+  - Memory files (`~/.claude/projects/<slug>/memory/*.md`) — Pack
+    Chat's own operating state, not pack work.
+  - PM-only files (BACKLOG.md / CHANGELOG.md / README version table /
+    PACK-CHAT.md / PACK-AGENTS.md / trinity ops files at pack root /
+    `project-template/` trinity) — see `PACK-AGENTS.md` § "Agent
+    permission rules" for the PM-only list. PM-only IS Pack-Chat-direct
+    by construction.
+  - Pack Chat may NOT edit project-template / supporting-docs /
+    maintenance-docs / scripts / fixtures / agent definitions —
+    those go to pack-coder.
+- **Commit-approval requests include next-steps plan.** Every
+  "Approve commit?" prompt to the user MUST include a numbered or
+  bulleted list at the bottom of the approval message naming the
+  concrete actions Pack Chat plans to take between this commit and
+  the next anticipated commit. Each step names a concrete action
+  (agent spawn + which agent; direct PM-only edit + which file; test
+  run; etc.) — not a vague phase name. If nothing is planned beyond
+  this commit, explicitly state "nothing planned." No exceptions for
+  "obvious" next steps. Rationale: Pack Chat carries multi-step
+  sequences in its head but the user only sees the immediate ask;
+  surfacing the plan lets the user redirect BEFORE work happens,
+  not after. Hard-stop authority (`feedback-no-destructive-without-
+  approval`) attaches to the plan — the user can stop or redirect
+  any planned step.
+- **Pack-architect spawn protocol.** When work touches rules,
+  operating docs, memory files, PACK-CHAT.md, PACK-AGENTS.md, or any
+  trinity Pack-memory section, spawn `pack-architect` FIRST to design
+  a strategy doc; coder applies mechanically after user approves the
+  strategy. Pack-architect spawn is NOT a Pack-Chat-direct decision —
+  even when scope clearly calls for it, the architect-spawn requires
+  explicit user approval. Rationale: an architect pass commits Pack
+  Chat to a multi-stage pipeline (architect → planner → coder →
+  reviewer) and reorders future BD work; that ordering decision
+  belongs to the user. Pack-planner / pack-coder / pack-reviewer /
+  pack-docs-researcher follow standard Pack Chat triage (no
+  per-spawn user approval).
 
 ### Repo conventions
 
@@ -191,13 +404,48 @@ in the same commit as the behavior change.
   and requires architect-pass migrator coverage. Workflow artifacts
   (architect/planner/coder/reviewer/auditor outputs:
   `ARCHITECTURE-*.md`, `PLAN-*.md`, `IMPLEMENTATION-REPORT-*.md`,
-  `PACK-REVIEW-*.md`, `AUDIT-*.md`, `RESEARCH-*.md`,
-  `*-DISCOVERY.md`) are exempted from the "no new top-level doc"
-  structural signal during their batch's active development; they
-  sweep to `maintenance-docs/archive/vN/` at version ship as the
-  final pre-tag step (Pattern B). Threshold conditions and worked
-  examples in `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`
+  `IMPLEMENTATION-REPORT-*-RETRO-FIX.md`,
+  `PACK-REVIEW-*.md`, `PACK-REVIEW-*-RETRO.md`,
+  `AUDIT-*.md`, `RESEARCH-*.md`, `*-DISCOVERY.md`,
+  `CLEANUP-INPUTS-*.md`) are exempted from the "no new top-level
+  doc" structural signal during their batch's active development;
+  they sweep to `maintenance-docs/archive/vN/` at version ship as
+  the final pre-tag step (Pattern B). Threshold conditions and
+  worked examples in `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`
   §3.
+- **Pack-repo code-comment deferrals.** Code comments in pack-repo
+  source (`scripts/`, `proto/`, any non-template source) that defer
+  work MUST use the typed format defined in `project-template/CLAUDE.md`
+  § "Deferral comments and BACKLOG hygiene" — never plain English
+  `// TODO`, `// fix later`, or `// FIXME` markers. Typed format:
+  `// TODO(scope): TD-TBD — title`, `// KNOWN GAP(severity): TD-TBD —
+  title`, `// VERIFY(source): TD-TBD — title` (substitute `#` for `//`
+  in Python). Cross-reference: the project-template section is canonical
+  for the typed format; the pack-repo follows the same convention so
+  pack-coder behavior is consistent across pack-repo and client-repo
+  contexts.
+- **Filename uniqueness heuristic.** When introducing new files in the
+  pack repo, prefer names that don't collide with any other file
+  anywhere in the repo, so prose references are unambiguous even when
+  the path is omitted. Quick check: `find . -name "<proposed-name>"
+  -not -path "./.git/*"`. Structurally required collisions are exempt
+  (trinity files, per-skill `SKILL.md`, byte-identical mirrors per
+  CI Check 24, ecosystem-fixed names like `.gitignore` / `pyproject.toml`
+  / `Package.swift`); for these exempted collisions, prose references
+  must include path context ("pack-root `CLAUDE.md`" vs "project-template
+  `CLAUDE.md`"). Worked example: BD-135 renamed the colliding
+  `tracker.toml.example` pair.
+- **Architect-doc-vs-reality reconciliation.** When a BD realizes a
+  design anticipated in an architect doc, ship the reconciliation
+  chain: (a) in-code docstring naming the realized consumer (file +
+  symbol; never line numbers — line numbers drift), (b) architect-doc
+  addendum cross-referencing the realized consumer, (c) IMPL-REPORT
+  cross-reference linking both. Worked example: BD-119 §9.2 addendum
+  in `maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md`
+  names BD-160 as the first realized consumer; the consumer carries
+  the matching docstring; the BD-160 IMPL-REPORT links both. This
+  pattern is load-bearing for any future shipped surface that pre-
+  existed in an architect doc.
 
 ### Project goals (v11)
 
