@@ -60,6 +60,76 @@ These rules are non-negotiable and always apply:
   before any commit.
 - **Verify staged files before committing.** The user reviews the staged file list
   and approves before the commit command runs.
+- **Stop after every reviewer pass for triage discussion.** After every
+  pack-reviewer run, Pack Chat STOPS, surfaces the findings (severity-
+  grouped) to the user, and waits for triage approval — even if the
+  reviewer verdict is fully clean. No auto-commit on clean verdicts.
+  This is distinct from the implicit-BD-status-flip rule (which fires
+  AFTER all per-BD fixes land + tests are green) and from the
+  commit-approval rule (which governs the wording of the approval
+  ask). The stop point is BEFORE Pack Chat triages — the triage
+  itself is surfaced to the user as the first action after the stop.
+- **Chat-ownership boundaries on concurrent sessions.** When two
+  pack-chats run concurrently against the same repo (e.g., sidecar +
+  primary; multiple devs; multiple worktrees on the same clone), the
+  user assigns file-ownership boundaries; no two chats touch the same
+  file. Do not read, edit, or commit files you did not request, write,
+  or that were assigned to your scope. When ownership is unclear, ask
+  the user — do not guess. This rule subsumes the "don't touch
+  v11-research/" and "don't read/commit files you didn't write"
+  directives from prior sessions.
+- **Real fixes only — no green-the-test band-aids.** A fix that
+  suppresses a failure without addressing the underlying defect is
+  itself a defect; the reviewer will flag it. Examples of forbidden
+  band-aids: assertion deletion, commenting out a failing test,
+  catching+ignoring an exception that masks a contract violation,
+  changing a test expectation to match buggy output, adding a sleep
+  to mask a race condition. If the fix would require this kind of
+  patch, surface the underlying defect to the user and either fix
+  the real cause or open a discussion with the user about scope.
+  Distinct from `feedback-fix-all-review-findings` (scope of fixes)
+  and `feedback-pack-chat-does-no-fixes` (who applies fixes): this
+  rule is the depth requirement on whatever fix the coder applies.
+- **Direct opinion, not validation.** Base analysis on evidence and
+  logic; state what you actually think. Do NOT echo the user's framing
+  to be agreeable; do NOT pre-anchor to the user's lean before
+  evaluating evidence; do NOT pad responses with affirming language
+  ("Great question," "You're absolutely right," etc.). When you
+  disagree with the user, say so explicitly with the reasoning. The
+  user has flagged sycophancy as a recurring failure mode (verbatim
+  2026-05-16: "Don't just be complementary. Base your analysis on
+  evidence and logic. Tell me what you think."). This rule applies to
+  Pack Chat surface (chat replies); agent prompts already enforce a
+  related but distinct "no solutions / no biased framing" rule under
+  `### Agent invocation rules`.
+- **Push to v11-dev only during the v11-dev phase.** Never push to
+  `main` from this chat. v11.0 ships via deliberate handoff at Batch
+  24 (the release-pin batch). This rule is short-lived (it resolves
+  when v11.0 ships and v11.0 merges to `main`) but load-bearing right
+  now. EXECUTION-PLAN-V11.0.md §A.4 carries the same rule for
+  agent / planner contexts; PACK-CHAT.md carries it here so Pack Chat
+  sees it at every session.
+- **Batch close commit shapes.** Single-BD batches: combine the fix
+  commit and the status flip into ONE final commit
+  (`fix: vN — BD-NNN ... + status flip`). Multi-BD batches: ship the
+  fix commit and the status-flip commit as TWO separate commits
+  (fix first, then a docs commit flipping all batch BDs at once,
+  e.g., `docs: vN — flip BD-NNN/MMM/PPP to Resolved`). Rationale:
+  single-BD batches have no cross-BD status state to maintain; multi-
+  BD batches benefit from a clean status-flip commit that names every
+  flipped BD for audit history. Worked precedents: Batch 17 multi-BD
+  split; Batch 18 single-BD combined.
+- **Scope-extension test for in-flight work.** When the in-flight work
+  surfaces a SYMMETRIC PAIR or SAME-FEATURE-SURFACE item (the second
+  half of the same feature; a sibling action that mirrors the original;
+  e.g., link/unlink, create/delete, parser/emitter), extend the current
+  BD's scope via SendMessage rather than open a new BD. New BDs are
+  reserved for NEW scope, NEW feature, NEW architecture (per trinity
+  `## Pack memory` `### Workflow` "One review/fix cycle per batch"
+  bullet) — not the second half of a feature already in progress.
+  Per OQ-1 (rewritten EXECUTION-PLAN §B), any new-BD-open also requires
+  user-discussion-and-approval; the scope-extension test exists to
+  prevent unnecessary BD-opens in the first place.
 - **Tag management.** After any commit that advances a minor version, move the
   bare major tag (e.g., `v8`) to the new HEAD using the standard tag move sequence.
 - **No solution-biasing.** When discussing design problems, describe the constraint
@@ -97,6 +167,16 @@ These rules are non-negotiable and always apply:
   architect-pass justification recorded in the BD. Threshold details:
   `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`
   §3.
+- **L.2 action item (architect-doc reconciliation, PM-owned).** The
+  STATUS.md disclaimer wording at `maintenance-docs/v11-implementation/
+  ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §5.3 diverges from the
+  Option A canonical wording (PLAN-PER-ENTRY-SPLIT-BATCH-19.md §5.8,
+  followed at BD-169). Per Batch 19b cleanup L.2 decision: this batch
+  does NOT edit the per-entry-split architect docs (PM-owned). Pack
+  Chat is to surface this divergence to the user at PM-discussion time
+  to pick the canonical wording and edit ARCHITECTURE-PER-ENTRY-SPLIT-
+  INTEGRATION.md §5.3 to match. Tracked as a Pack-Chat-side coordination
+  item; not a code defect.
 
 > **GitHub MCP server (optional, pack repo only):** The official GitHub
 > MCP server enables the Pack Chat to check CI status, read workflow logs,
