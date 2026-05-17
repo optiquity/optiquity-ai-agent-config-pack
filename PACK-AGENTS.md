@@ -186,6 +186,29 @@ file-not-found. This is by design per
 `maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md`
 §2.3 + §10.1 R-1; the references resolve at Batch 23.
 
+- **Pack-coder PREFLIGHT + STOP-MEANS-STOP obligation.** Every pack-coder
+  (or coder-style fix-coder) agent has two non-negotiable behavioral
+  obligations:
+
+  - **PREFLIGHT line BEFORE IMPL-REPORT.** After all in-scope edits +
+    verification, emit a single plain-text line of the form `PREFLIGHT:
+    N/N in-scope file edits complete; verification PASS; HEAD <SHA>;
+    about to Write IMPL-REPORT to <path>` before any IMPL-REPORT write.
+    This is the orchestrator's trust signal that the report-write
+    starts from complete-and-green state.
+
+  - **STOP-MEANS-STOP on parent stop directives.** Any parent-session
+    message containing stop / halt / revert / do not continue MUST
+    trigger immediate halt of all work including in-progress Writes.
+    Partial files are acceptable; do not append to "make consistent."
+    Defying a parent stop directive is the worst possible failure
+    mode (see worked example: BD-169 19g-pack incident, 2026-05-16).
+
+  Authoritative full text for both halves of the pattern (including
+  cross-CLI scope notes for Codex / Gemini): trinity `## Pack memory`
+  `### Agent invocation rules` "Pack-coder PREFLIGHT + STOP-MEANS-STOP
+  pattern" bullet.
+
 - **Skill and agent maintenance.** Additions and modifications follow
   the maintainability principle in pack-repo trinity `## Pack memory`
   § "Repo conventions" ("Maintenance is mechanical, complete,
