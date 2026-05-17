@@ -111,6 +111,8 @@ When reviewing any commit that adds or modifies CI workflow steps, apply the "wo
 
 Reviewer prompt template for CI work MUST include the "would this turn red?" requirement.
 
+**Must-include-in-prompt rule.** When the BD touches CI workflows (`.github/workflows/*.yml` or any other CI configuration), the agent prompt that generates the implementation OR the review MUST explicitly require the agent to identify, for every new or modified CI step, a concrete change that would turn it red AND confirm the wiring would surface that change. Prompts that omit this requirement have empirically missed CI gaps (BD-118 retro).
+
 ## Convention/naming docs review checklist
 
 When reviewing convention documents (naming conventions, fixture conventions, file-class conventions, etc.), the standard six dimensions are insufficient. Add these convention-specific checks:
