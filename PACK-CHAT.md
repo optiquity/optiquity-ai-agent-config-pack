@@ -167,6 +167,25 @@ These rules are non-negotiable and always apply:
   architect-pass justification recorded in the BD. Threshold details:
   `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`
   §3.
+> **GitHub MCP server (optional, pack repo only):** The official GitHub
+> MCP server enables the Pack Chat to check CI status, read workflow logs,
+> and interact with GitHub directly. Without it, the Pack Chat must ask
+> the user to check CI manually. To configure: add the GitHub MCP server
+> to the pack repo's `.mcp.json` (not the project template's
+> `.mcp.json.example` — that is for downstream projects). See
+> https://github.com/github/github-mcp-server for setup. This is a pack
+> repo operational tool, not a project dependency.
+
+---
+
+## Action items (PM coordination)
+
+Standing PM-coordination items that need Pack Chat surfacing to the
+user at PM-discussion time. Distinct from `## Behavioral rules` (which
+contains timeless standing rules) — items here have an expected
+resolution and should be closed out via a follow-up commit or
+user-discussion decision.
+
 - **L.2 action item (architect-doc reconciliation, PM-owned).** The
   STATUS.md disclaimer wording at `maintenance-docs/v11-implementation/
   ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §5.3 diverges from the
@@ -177,15 +196,6 @@ These rules are non-negotiable and always apply:
   to pick the canonical wording and edit ARCHITECTURE-PER-ENTRY-SPLIT-
   INTEGRATION.md §5.3 to match. Tracked as a Pack-Chat-side coordination
   item; not a code defect.
-
-> **GitHub MCP server (optional, pack repo only):** The official GitHub
-> MCP server enables the Pack Chat to check CI status, read workflow logs,
-> and interact with GitHub directly. Without it, the Pack Chat must ask
-> the user to check CI manually. To configure: add the GitHub MCP server
-> to the pack repo's `.mcp.json` (not the project template's
-> `.mcp.json.example` — that is for downstream projects). See
-> https://github.com/github/github-mcp-server for setup. This is a pack
-> repo operational tool, not a project dependency.
 
 ---
 

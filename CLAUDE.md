@@ -127,7 +127,9 @@ in the same commit as the behavior change.
   routing, approvals, commits, and user-facing decisions.
 - **One review/fix cycle per batch.** Run `pack-reviewer` once per batch,
   fix once, move on. Do not propose a second review pass; the final audit
-  is user-initiated. Fixes land in the current session — never as a new BD. BDs are reserved for new scope / new feature / new architecture; only the user can initiate a BD-for-fix, and Pack Chat must not propose one.
+  is user-initiated. Fixes land in the current session. New-BD-opens
+  follow the OQ-1 rule per EXECUTION-PLAN §B step 5 + W8 "Deferral IS
+  scope creep" (size/blocked/fit + user-discussion-and-approval).
 - **Implicit BD status flip on batch completion.** When a batch's review +
   fixes are clean and tests are green, flip its BDs to `Resolved` as the
   final step of the batch — no separate user approval needed.
@@ -194,10 +196,10 @@ in the same commit as the behavior change.
   SHOULD / NIT) to the user as a fix-or-defer triage per finding. The
   default for all severities is FIX. NITs that are deferred (with
   user-discussion-and-approval per OQ-1 EXECUTION-PLAN §B) become
-  tracked tech debt per `feedback-deferred-work-tracking` — never
-  "noted in the report and dropped." Default fix-all preserves the
-  small-fix-now contract that prevents tech debt accumulation
-  (per `feedback-deferral-is-scope-creep`).
+  tracked tech debt — never "noted in the report and dropped." Default
+  fix-all preserves the small-fix-now contract that prevents tech debt
+  accumulation. See `feedback-deferred-work-tracking` and
+  `feedback-deferral-is-scope-creep` for the memory-cache pointers.
 
 ### Agent invocation rules
 
