@@ -328,31 +328,57 @@ These rules govern every batch in §4. They are ordered by enforcement priority 
 4. **Push to `v11-dev` only.** Never push to `main` from this chat. v11.0 ships via deliberate handoff at Batch 24.
 5. **Tag operations are destructive on tag space.** Treat as requiring explicit approval at Batch 24 (the only batch that creates/moves tags).
 
-### B. Audit / review-fix protocol (user rule, 2026-05-11)
+### B. Audit / review-fix protocol (user rule, 2026-05-11; revised 2026-05-16 per OQ-1)
 
-1. Every audit/review pass that produces findings is fixed *in the
-   current session*. No fix-follow BDs are opened.
+1. Every audit/review pass that produces findings is FIX-NOW by default
+   in the current session. Pack Chat does not propose deferral (per
+   `feedback-deferral-is-scope-creep` in `## Pack memory`).
 
-2. Pack Chat reports the findings to the user (severity-grouped),
-   presents fix options per finding (including NITs), and asks
-   permission to fix. Pack Chat does not start the fixes before
-   approval.
+2. Pack Chat reports findings to the user (severity-grouped: MUST /
+   SHOULD / NIT), presents a fix-vs-skip triage per finding (with
+   rationale for SKIPs), and waits for triage approval. Per
+   `feedback-pack-chat-does-no-fixes`, Pack Chat does NOT apply the
+   fixes itself — a fix-coder agent does, running in the background
+   after user approves the triage.
 
-3. With user approval, Pack Chat ships the fixes in the same batch's
+3. With user approval, fix-coder lands the fixes in the same batch's
    commit, or in a small follow-up commit Pack Chat proposes and the
    user approves.
 
 4. After review fixes land and validator/CI is clean, status flips
-   per the implicit-flip rule (§C.4).
+   per the implicit-flip rule (§C.4). An audit pass IS the review for
+   that batch; no separate pack-reviewer is run on the audit-fix commit.
 
-5. If review surfaces defects beyond the audit scope, Pack Chat
-   surfaces them to the user as findings — without proposing a BD
-   or asking whether to open one. The user alone decides whether
-   a defect becomes a BD.
+5. **New-BD-opens require user-discussion-and-approval.** When a
+   review/audit finding might warrant a new BD, Pack Chat surfaces the
+   finding AND its candidacy for a new BD to the user — but does NOT
+   open the BD. New BDs are opened only when (a) the work is too large
+   for in-place fix (architect-pass material), (b) blocked by a
+   not-yet-landed dependency, or (c) belongs cleanly with an existing
+   BD (in which case the existing BD is EDITED, not a new one opened).
+   In all three cases, user discussion and approval is required before
+   any BD is opened or edited. Pack Chat must not pre-frame "should we
+   open a BD?" as a default choice — the default remains fix-now.
 
-**BDs are reserved for new scope, new features, and new architecture —
-never for closing audit findings. Only the user can initiate a
-BD-for-fix conversation; Pack Chat must not propose one.**
+6. If a new BD IS opened with user approval per (5), it is inserted
+   IMMEDIATELY AFTER the current BD or batch (unblocked) or at the
+   unblock point (blocked) — never parked at the end of v11.0, never
+   "next batch" with no anchor.
+
+**Historical context:** the prior §B text (pre-2026-05-16) said "No
+new BDs are opened for audit findings" as a flat rule. Per the
+`feedback-deferral-is-scope-creep` memory revision, the rule narrowed:
+unblocked-new-scope from audits DOES open a BD inserted-immediately-
+after. Per the OQ-1 nuance (2026-05-16), the new-BD-open additionally
+requires user-discussion-and-approval. Together: fix-now default; new
+BDs are an exception requiring (size or block or fit) AND user
+approval.
+
+**OQ-1 scope (per L.6 forward-only decision, 2026-05-16):** this
+revised §B applies to items surfaced AFTER the rewrite commit lands.
+Items already triaged under the prior §B (e.g., Batches 1-19, Batch
+19h status-flip review) stay under their original triage; the
+new "user-discussion-and-approval" clause is not retroactive.
 
 ### C. Agent / commit lifecycle
 
