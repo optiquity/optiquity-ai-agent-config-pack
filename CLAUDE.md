@@ -446,6 +446,48 @@ in the same commit as the behavior change.
   the matching docstring; the BD-160 IMPL-REPORT links both. This
   pattern is load-bearing for any future shipped surface that pre-
   existed in an architect doc.
+- **Regenerate test-fixtures/manifest.txt on every v11-surface commit.**
+  v11-surface = files under `project-template/` or `scripts/`. Any
+  commit whose diff includes a file under either directory MUST also
+  regenerate `test-fixtures/manifest.txt` and stage it alongside the
+  scope edits in the SAME commit. The trigger is intentionally
+  inclusive — false positives (e.g., a `scripts/test-*.sh` edit that
+  doesn't actually affect fixtures) cost ~30-90s of unnecessary
+  rebuild but produce no incorrect manifest change; false negatives
+  within v11-surface are impossible because every v11-surface file
+  lives under one of these two directories. v11-* fixture row SHAs
+  drift naturally with any v11-surface change (per
+  `test-fixtures/README.md` § Determinism and the `_update_manifest`
+  comment at `test-fixtures/build.sh:903-912`); a stale manifest
+  fails CI's `fixture manifest verify` step (BD-115, RELEASE-GATE
+  item 5) even when every functional test passes. **Why:** prevents
+  the 2026-05-17 incident where commit `667d2dd` shipped v11-surface
+  trinity edits without regenerating the manifest, CI failed on the
+  manifest-comparison step alone (all 40+ functional steps PASSED),
+  and recovery commit `ef9e5c7` had to land as a separate `fix:`
+  commit; the drift was the cumulative effect of three intentional
+  v11-surface commits (`cf67a96` BD-169 pack-product wording,
+  `62f9eec` BD-169 review/fix, `479fef5` Batch 19 broad review/fix)
+  since the last manifest regen at `a57dd04` (BD-160). **How to
+  apply:** before staging a commit whose diff includes any file
+  under `project-template/` or `scripts/`, run
+  `bash test-fixtures/build.sh --all --clean` from the pack root.
+  Then check `git diff test-fixtures/manifest.txt`: if non-empty,
+  `git add test-fixtures/manifest.txt` and stage it alongside the
+  scope edits in the same commit; if empty, your edit wasn't
+  v11-surface (no staging needed). The manifest diff after rebuild
+  is the canonical authority — the trigger globs are a screen for
+  WHEN to run the rebuild. `--all --clean` is the canonical default
+  (rebuilds all six fixtures deterministically; v10-* rows are
+  tag-pinned and only drift if the v10 tag moves). Actors confident
+  about which v11-* fixture is affected may substitute
+  `--name <fixture> --clean` per affected fixture, then
+  `bash test-fixtures/build.sh --verify` to confirm the remaining
+  rows are unchanged before staging. Cross-reference: the "Test
+  infra is self-provisioned" bullet above governs *test
+  provisioning*; this bullet governs *manifest maintenance* and is
+  load-bearing for the `fixture manifest verify` CI gate
+  (BD-115, RELEASE-GATE item 5).
 
 ### Project goals (v11)
 
