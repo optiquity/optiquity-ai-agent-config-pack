@@ -1377,6 +1377,45 @@ Resolved: n/a
 
 ---
 
+**BD-175 — EMERGENCY: pack/project boundary audit + re-architecture (v11 pack-bias remediation)**
+Type: TODO(version) — CODE RED, surfaced 2026-05-18 from PATH-C-CURATION walk-through; two confirmed pack-bias contamination instances (commits `240867d`, `aaa61b3`); true scope unknown (surface triage acknowledged incomplete)
+Status: Open
+Blockers: none on critical path; PAUSES BD-173 (Batch 19c) until Resolved
+Unblocks: BD-173 (19c resumes after BD-175 Resolved); structural prevention against future pack-bias regressions; clean pack/project boundary architecture before public release
+File/Symbol:
+  - All v11 commits — Phase 1 audit determines full scope
+  - Root-directory docs needing relocation (e.g., `PACK-AGENTS.md`, `HELP-FRAGMENT-PACK.md`) — Phase 2 Architect B designs new pack-only directory homes
+  - Project-side files contaminated with pack-bias references — Phase 2 Architect A re-litigates per finding
+  - CI checks, agent prompts, reviewer protocol — Phase 2 Architect C designs structural prevention
+  - Implementation work spans: pack-root trinity, project-template trinity, scripts/, supporting-docs/, project-template/.claude/agents/, PACK-CHAT.md, PACK-AGENTS.md, agent prompt files, CI workflow files (final scope per Architect B + planner)
+Description: Multiple v11 commits introduced pack-design bias into project-
+  side files. Two instances confirmed (commit `240867d` added PACK-AGENTS.md
+  reference to project-template trinity bypassing PM-CHAT.md SSOT; commit
+  `aaa61b3` modified `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`
+  during the pack-only Batch 19b in violation of stated guiding principle).
+  Surface triage incomplete; true scope unknown. Additionally, no formal
+  pack/project file+directory classification exists; shared files/
+  directories is an anti-pattern requiring re-architecture; root directory
+  holds pack docs needing new pack-only directory homes; path references
+  need lockstep updating.
+
+  Six problems (P1-P6), seven goals (G1-G7 with G2 expanded for directory
+  architecture and G7 adding stated boundary definition), eight success
+  criteria (SC1-SC8) — full text in
+  `maintenance-docs/v11-implementation/ORCHESTRATION-PLAN-BD-175.md`.
+
+  Orchestration (7 phases): (1) discovery via docs-researcher audit;
+  (2) three SEPARATE architects per blast-radius concern (re-litigation /
+  directory architecture / structural prevention); (3) independent
+  reviewer; (4) planner resolves ambiguities; (5) per-task coder spawns;
+  (6) verification; (7) close + 19c resume decision.
+
+  Different-agents-per-blast-radius rule honored across orchestration per
+  pack memory + user direction.
+Resolved: n/a
+
+---
+
 **BD-174 — Scratch-pack-clone migration + multi-toggle test harness**
 Type: TODO(version) — surfaced 2026-05-17 from session discussion of test fixture thoroughness pre-public-release (gap identified: BD-102 dog-food runs on real pack repo; no scratch-clone equivalent for pack-on-pack code-bug-catching in safe environment)
 Status: Open
