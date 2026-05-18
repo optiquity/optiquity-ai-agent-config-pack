@@ -36,6 +36,50 @@
 
 **Phase 2 architects:** Drop F-3 from the SHARED-ANTI-PATTERN catalog. If process-friction mitigation is worth designing, Architect C handles it as part of structural prevention work.
 
+### Override 9 — C's M2 (P-missed-7 two-tier codification) is CONFIRMED
+
+**Architect C said:** Codifies P-missed-7 in BOTH pack-root trinity Pack memory AND project-template trinity Project memory, with DIFFERENT wording per audience (pack version detailed; project version "shorter and inverted"). Frames as defense-in-depth, not byte-identical mirror.
+
+**User decision:** **CONFIRMED.** "Different audience means different wording is fine." Two audience-specific rules, not a mirror in the byte-identical-drift sense. Compatible with D-4 ("no mirrors as default") because the two rules are substantively different even though they share the principle.
+
+**Phase 5 coder:** implements both codification surfaces per C's M2 design. No consolidation to one surface.
+
+**Phase 3 reviewer:** no cross-trinity drift gate needed for this codification (different wording is intentional, not drift).
+
+### Override 8 — OQ-3 OPTIONAL-FEATURES.md SPLIT is CONFIRMED
+
+**Architects A + B said:** Both default to SPLIT — `OPTIONAL-FEATURES.md` MOVES to `pack-ops/OPTIONAL-FEATURES.md` (pack-side) AND a new `project-template/docs/pack/OPTIONAL-FEATURES.md` is CREATED with project-side content. `init-project.sh` gains an install stage. 5 broken project-side references resolve to the new file.
+
+**User decision:** **CONFIRMED SPLIT.** "One for pack. One for projects. There may be something common to both and maybe some individual to both. That is OK." Pack-side and project-side files are independently curated; the project-side file is NOT required to be a byte-identical mirror — content overlap is allowed where it serves both audiences, but each file's content is tailored to its audience.
+
+**Phase 5 coder:** implements both files per B's S2 commit design. Project-side content tailored to project audience (not byte-identical copy).
+
+**Phase 3 reviewer:** no byte-identity gate between pack-side and project-side OPTIONAL-FEATURES.md (intentional separate content).
+
+### Override 7 — `QUICKSTART.md` STAYS at root (no SPLIT, no move)
+
+**Architect B said:** SPLIT QUICKSTART.md into pack-side half (stays at root) + project-side half (`project-template/docs/pack/QUICKSTART.md`, ships to clients via `init-project.sh`).
+
+**User override:** **NO SPLIT.** `QUICKSTART.md` stays at root as-is. Exception authorized — it's a 47-line pre-install pack-installer doc that serves one audience (pack-installers); SPLIT is over-engineering. GitHub-landing-page visibility is the rationale for keeping at root.
+
+**Phase 5 coder:** no action needed for QUICKSTART.md. B's S1 (QUICKSTART SPLIT) commit is DROPPED. `project-template/docs/pack/QUICKSTART.md` is NOT created. `init-project.sh` does NOT gain a new install stage for it.
+
+### Override 6 — `CONCEPTUAL-REVIEW-METHODOLOGY.md` → `pack-ops/` (NOT `maintenance-docs/`)
+
+**Architect B said:** Moves `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` to `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`.
+
+**User override:** **`pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md`.** B's "maintenance-docs/ houses live methodology" reasoning is rejected. Destination is `pack-ops/`.
+
+**Phase 5 coder:** moves to `pack-ops/`, not `maintenance-docs/`. Path-reference updates target `pack-ops/`.
+
+### Override 5 — Architect B's "C2 root exemption list" is REJECTED for BACKLOG.md + CHANGELOG.md
+
+**Architect B said (in `ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §2-§3):** Designed a "three-file C2 root exemption list" of files that STAY at root despite being PACK × OPERATIONS — `BACKLOG.md`, `CHANGELOG.md`, `tracker.toml.pack-example` — with "pinned by external constraints" reasoning.
+
+**User override (no authorization for the exemption):** ONLY `tracker.toml.pack-example` was authorized to STAY per Override 1. `BACKLOG.md` and `CHANGELOG.md` MUST MOVE to a pack-only directory. The user's boundary articulation classifies them as pack operational docs (curation §5: "config pack operational docs used by the pack to do its work"), not as configs governing the pack repo (no tool reads them at a specific root location). "Pinned by external constraints" is not a valid exemption rationale — the user explicitly stated only `tracker.toml.pack-example` was exempted.
+
+**Phase 2 architect-fix-pass:** A fresh pack-architect designs the corrected placement for `BACKLOG.md` + `CHANGELOG.md`. Output amends or supersedes the affected parts of `ARCHITECTURE-DIRECTORY-REORGANIZATION.md`. Architect's call where to place them (likely the `pack-ops/` directory B designed for other C2 files, but architect decides).
+
 ### Override 4 — §F.F-7 reclass: parallel CLI dotted-dirs are NOT shared
 
 **Audit said:** §F-7 listed `.claude/` / `.codex/` / `.gemini/` parallel pair (root vs `project-template/`) as a SHARED-ANTI-PATTERN.
