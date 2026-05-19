@@ -3885,11 +3885,13 @@ def _iter_project_side_files() -> list[Path]:
                 continue
             rel = path.relative_to(REPO_ROOT)
             # Skip dotted-dir agents/skills/commands fixtures — actually
-            # those ARE in scope (.claude/skills/boundary-investigation/
-            # etc. carry the deny-list legitimately as instructional
-            # content; that's why we use the anchor-phrase + per-skill
-            # exception lists below). No skip here — all .claude/.codex/.gemini
-            # files under project-template/ are scanned.
+            # those ARE in scope (skills like boundary-investigation
+            # carry the deny-list legitimately as instructional content
+            # via the Pattern A canonical source at
+            # project-template/skills/boundary-investigation/SKILL.md;
+            # that's why we use the anchor-phrase + per-skill exception
+            # lists below). No skip here — all project-template/ files
+            # are scanned (including .claude/.codex/.gemini extras).
             out.append(rel)
     return out
 
@@ -3914,10 +3916,10 @@ def _is_legitimate_deny_list_doc(rel_path: Path) -> bool:
     """
     rel_str = str(rel_path)
     legitimate = (
-        # Boundary-investigation skill files (project-side).
-        "project-template/.claude/skills/boundary-investigation/SKILL.md",
-        "project-template/.codex/skills/boundary-investigation/SKILL.md",
-        "project-template/.gemini/skills/boundary-investigation/SKILL.md",
+        # Boundary-investigation skill (project-side, Pattern A canonical
+        # single source — auto-distributed via stage_s4_skills() to all
+        # three CLI install paths at client install time).
+        "project-template/skills/boundary-investigation/SKILL.md",
         # Project-side coder + reviewer prompts that document the rule.
         "project-template/docs/pack/prompts/coder.md",
         "project-template/docs/pack/prompts/reviewer.md",
@@ -3957,9 +3959,10 @@ def check_project_side_deny_list() -> None:
     LEGITIMATE-context anchor phrase.
 
     Specific exemptions:
-      - The `boundary-investigation` skill files (3 CLI variants under
-        `project-template/.claude/skills/boundary-investigation/`,
-        `.codex/skills/...`, `.gemini/skills/...`) — their purpose is to
+      - The `boundary-investigation` skill (Pattern A canonical single
+        source at `project-template/skills/boundary-investigation/SKILL.md`,
+        auto-distributed to all three CLI install paths via
+        `stage_s4_skills()` at client install time) — its purpose is to
         teach the deny-list, so the entries appear as instructional
         content.
       - The project-side `coder.md` + `reviewer.md` prompt templates —

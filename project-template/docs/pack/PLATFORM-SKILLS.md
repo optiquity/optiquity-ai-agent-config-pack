@@ -192,6 +192,7 @@ Step 2 below filter which Tier 0 skills each agent actually loads
 |---|---|
 | api-design | Protocol-agnostic contract design methodology |
 | architecture-review | Universal architecture assessment methodology |
+| boundary-investigation | Project-side SSOT investigation methodology; flag pack-vs-project boundary violations on every action |
 | debugging | Universal root-cause / diagnostics / fix-verification methodology |
 | dependency-intake | Universal dependency evaluation methodology |
 | documentation | Universal research methodology + drift-detection rules |
@@ -204,7 +205,7 @@ Step 2 below filter which Tier 0 skills each agent actually loads
 | testing | Universal test pyramid, design, organization, coverage |
 | ui-test-strategy | Universal UI/E2E tool selection, test design, snapshot testing *(loaded only when a UI is present — UI-presence precondition)* |
 
-**13 Tier 0 base skills.** Several of these were classified as "Tier 1
+**14 Tier 0 base skills.** Several of these were classified as "Tier 1
 role skills" in the pre-v11 model (notably `security-patterns`,
 `api-design`, `debugging`, and `ui-test-strategy`); they are
 universal-methodology skills and belong in Tier 0. The reclassification
@@ -415,7 +416,7 @@ on which tool runs the agent.
 
 ## Full skill inventory
 
-### Tier 0 base skills (13)
+### Tier 0 base skills (14)
 
 Universal-methodology skills loaded for every project regardless of D1–D5;
 the per-agent assignments in Step 2 filter which Tier 0 skills each agent
@@ -425,6 +426,7 @@ actually loads.
 |---|---|---|
 | api-design | API design philosophy, versioning, error design, protocol selection | architect, grpc-schema, reviewer |
 | architecture-review | Platform-agnostic architecture assessment methodology | architect, planner, reviewer, auditor-architecture |
+| boundary-investigation | Project-side SSOT investigation methodology; flag pack-vs-project boundary violations on every action | architect, coder, planner, reviewer, docs-researcher |
 | debugging | Root cause methodology, diagnostics, fix verification | coder, reviewer |
 | dependency-intake | Platform-agnostic dependency evaluation methodology | docs-researcher, auditor-security |
 | documentation | Platform-agnostic research methodology, drift detection (for audits) | docs-researcher, auditor-docs |
@@ -493,7 +495,7 @@ but its purpose is PM chat operational, not agent role guidance.
 |---|---|---|
 | pm-startup | PM chat session startup procedure: read state files, check TD-TBD sentinels, report ready status | PM chat only (not an agent) |
 
-**Total skills: 35** (13 Tier 0 base + 20 dimensional / intersection + 1 trigger-loaded + 1 PM chat operational).
+**Total skills: 36** (14 Tier 0 base + 20 dimensional / intersection + 1 trigger-loaded + 1 PM chat operational).
 
 ### Deferred skills (create when project need arises)
 
