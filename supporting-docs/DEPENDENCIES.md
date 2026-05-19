@@ -159,7 +159,7 @@ this extension, sub-issue links fall back to comment-marker form.
 - Verify: `gh sub-issue --help` exits 0.
 - Reference: https://github.com/yahsan2/gh-sub-issue
 
-See `OPTIONAL-FEATURES.md` § "Tracker integration (v11)" for the full
+See `docs/pack/OPTIONAL-FEATURES.md` § "Tracker integration (v11)" for the full
 walkthrough.
 
 ---
