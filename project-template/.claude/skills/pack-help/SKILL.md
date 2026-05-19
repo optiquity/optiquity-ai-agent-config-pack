@@ -10,7 +10,6 @@ allowed-tools: Bash
 
 ## Notes
 
-For full documentation, see `docs/pack/QUICKSTART.md`,
-`docs/pack/PM-CHAT.md`, `docs/pack/INSTALL-PROCEDURES.md`, and
-`docs/pack/OPTIONAL-FEATURES.md`. The shell verb `pack help`
-(LCD floor) prints the same content as this skill.
+For full documentation, see `docs/pack/PM-CHAT.md`,
+`docs/pack/INSTALL-PROCEDURES.md`, and `docs/pack/OPTIONAL-FEATURES.md`.
+The shell verb `pack help` (LCD floor) prints the same content as this skill.

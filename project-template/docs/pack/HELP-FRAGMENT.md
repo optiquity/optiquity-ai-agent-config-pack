@@ -1,9 +1,8 @@
 # Pack v11 — verb reference (this project)
 
 Verb manifest for **this project**. Run `pack help` or `/pack-help` in
-your CLI for this content. Full docs in `docs/pack/QUICKSTART.md`,
-`docs/pack/PM-CHAT.md`, `docs/pack/INSTALL-PROCEDURES.md`,
-`docs/pack/OPTIONAL-FEATURES.md`.
+your CLI for this content. Full docs in `docs/pack/PM-CHAT.md`,
+`docs/pack/INSTALL-PROCEDURES.md`, `docs/pack/OPTIONAL-FEATURES.md`.
 
 ## Project commands
 
@@ -28,6 +27,6 @@ your CLI for this content. Full docs in `docs/pack/QUICKSTART.md`,
 
 ## See also
 
-`docs/pack/QUICKSTART.md`, `docs/pack/PM-CHAT.md`,
-`docs/pack/METHODOLOGY.md`, `docs/pack/PLATFORM-SKILLS.md`,
-`docs/pack/OPTIONAL-FEATURES.md`, `docs/project/BACKLOG.md`.
+`docs/pack/PM-CHAT.md`, `docs/pack/METHODOLOGY.md`,
+`docs/pack/PLATFORM-SKILLS.md`, `docs/pack/OPTIONAL-FEATURES.md`,
+`docs/project/BACKLOG.md`.
