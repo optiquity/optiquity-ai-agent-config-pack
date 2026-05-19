@@ -120,8 +120,7 @@ sparse intersection table, and the trigger-loaded list, read
 
 ### Behavioral impact
 
-Per `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-DIMENSIONS.md`
-§7.8, the reframe is a pack-product change masquerading as a doc
+The reframe is a pack-product change masquerading as a doc
 change: PLATFORM-SKILLS.md edits affect every consuming PM chat
 session because every PM chat re-reads PLATFORM-SKILLS.md when it
 generates a prompt (per the file's own header instruction). **Actual
@@ -191,8 +190,7 @@ of the dimension reframe (it landed in v11.0 with BD-035). See
 
 ### BD-136 trinity-marker non-overlap
 
-Per `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-DIMENSIONS.md`
-§6.7, the dimension reframe and the BD-136 trinity-marker
+The dimension reframe and the BD-136 trinity-marker
 preservation mechanism are **non-overlapping**: BD-136 introduces
 Shape A / Shape B markers and a `renamed-from` annotation to
 preserve project-owned sections in the trinity files (`CLAUDE.md`,
@@ -222,8 +220,7 @@ they do not conflict.
 
 ### D5 monorepo gotcha
 
-Per `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-DIMENSIONS.md`
-§7.4: a monorepo with both an Apple app and a Linux container
+A monorepo with both an Apple app and a Linux container
 backend selects D5 = {`apple-distribution`, `linux-container`} and
 loads BOTH `deployment-apple` AND `deployment-python` globally for
 every prompt the PM chat generates. The deployment skills then apply
@@ -513,8 +510,9 @@ ls .claude/skills/pack-help/SKILL.md \
 # All three should exist.
 ```
 
-Run a Pack Chat session: `/pm-startup` should now report v11 as the
-active pack version and read in the new `## Quick reference` blocks.
+Open a PM Chat session in your client project: `/pm-startup` should
+now report v11 as the active pack version and read in the new
+`## Quick reference` blocks.
 
 ---
 
