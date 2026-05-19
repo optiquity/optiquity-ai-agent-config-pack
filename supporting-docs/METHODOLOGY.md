@@ -1506,5 +1506,5 @@ reference.
 ---
 
 *Version 2.1 — AI Agent Config Pack v10.0, April 2026*
-*Source: maintenance-docs/origins/Claude-Assisted_Project_Methodology_Guide_v1.md*
+*Source: Claude-Assisted Project Methodology Guide v1 (pack-archived design source)*
 *Update this file when new standing decisions are made. Bump the version number.*
