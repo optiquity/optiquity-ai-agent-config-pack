@@ -119,7 +119,7 @@ Checks:
       the end of `check_agent_canonical_phrases()`.
   32. Per-entry mirror in-sync (BD-168, v11.0 per-entry split): for each
       pack-side per-entry stream (`backlog/`, `changelog/`), the
-      regenerated mirror (`BACKLOG.md`, `CHANGELOG.md`) is byte-
+      regenerated mirror (`pack-ops/BACKLOG.md`, `pack-ops/CHANGELOG.md`) is byte-
       identical to what the BD-164 mirror generator would produce from
       the on-disk per-entry tree. Pre-checks fold per integration parent
       §10.4: `_rules.md` exists per stream; per-entry filename
@@ -187,9 +187,9 @@ SKILLS_DIR = REPO_ROOT / "project-template" / "skills"
 # strings here are mirrored from `pe_entry_regex_for_stream` for the
 # Python-side filename conformance pre-check (Check 32 pre-check b).
 STREAMS = [
-    # (stream_key,        stream_dir_relative,  mirror_relative,  entry_regex)
-    ("pack-backlog",      "backlog",            "BACKLOG.md",      r"^BD-\d+\.md$"),
-    ("pack-changelog",    "changelog",          "CHANGELOG.md",    r"^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$"),
+    # (stream_key,        stream_dir_relative,  mirror_relative,                entry_regex)
+    ("pack-backlog",      "backlog",            "pack-ops/BACKLOG.md",          r"^BD-\d+\.md$"),
+    ("pack-changelog",    "changelog",          "pack-ops/CHANGELOG.md",        r"^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$"),
 ]
 PER_ENTRY_LIB = REPO_ROOT / "scripts" / "lib" / "per-entry"
 CODEX_DIR = REPO_ROOT / "project-template" / ".codex"
@@ -235,7 +235,7 @@ REQUIRED_BD044_DOCS = [
 
 # The pack repo is mostly templates and documentation, where TD-TBD appears
 # as a FORMAT EXAMPLE (teaching downstream projects the deferral syntax).
-# The only meaningful TD-TBD check in the pack is: does BACKLOG.md have
+# The only meaningful TD-TBD check in the pack is: does pack-ops/BACKLOG.md have
 # any entry where TD-TBD appears where a real BD-NNN number should be?
 # The broader "no TD-TBD in committed code" check is for downstream projects.
 
@@ -315,10 +315,10 @@ def check_codex_toml() -> None:
 # ── Check 3: TD-TBD sentinels ──────────────────────────────────────────────
 
 def check_td_tbd_sentinels() -> None:
-    print("\n── Check 3: TD-TBD sentinels in BACKLOG.md ──")
-    backlog = REPO_ROOT / "BACKLOG.md"
+    print("\n── Check 3: TD-TBD sentinels in pack-ops/BACKLOG.md ──")
+    backlog = REPO_ROOT / "pack-ops" / "BACKLOG.md"
     if not backlog.exists():
-        ok("No BACKLOG.md found (nothing to check)")
+        ok("No pack-ops/BACKLOG.md found (nothing to check)")
         return
 
     # Check for TD-TBD in BACKLOG entry identifier lines (e.g., "**TD-TBD — Title**")
@@ -329,11 +329,11 @@ def check_td_tbd_sentinels() -> None:
     for i, line in enumerate(content.split("\n"), 1):
         # Match entry headers like "**TD-TBD — Some title**"
         if re.match(r"\*\*TD-TBD\s*—", line):
-            fail(f"BACKLOG.md:{i} — entry has TD-TBD instead of a real BD-NNN number")
+            fail(f"pack-ops/BACKLOG.md:{i} — entry has TD-TBD instead of a real BD-NNN number")
             found_any = True
 
     if not found_any:
-        ok("BACKLOG.md — no unprocessed TD-TBD entry headers")
+        ok("pack-ops/BACKLOG.md — no unprocessed TD-TBD entry headers")
 
 
 # ── Check 4: README version table vs git tag ────────────────────────────────
@@ -1651,12 +1651,12 @@ def check_help_fragment_freshness() -> None:
         "pack-root": {
             "root": REPO_ROOT,
             "docs": [
-                REPO_ROOT / "PACK-CHAT.md",
+                REPO_ROOT / "pack-ops" / "PACK-CHAT.md",
                 REPO_ROOT / "QUICKSTART.md",
-                REPO_ROOT / "OPTIONAL-FEATURES.md",
+                REPO_ROOT / "pack-ops" / "OPTIONAL-FEATURES.md",
                 REPO_ROOT / "supporting-docs" / "INSTALL-PROCEDURES.md",
             ],
-            "fragment": REPO_ROOT / "HELP-FRAGMENT-PACK.md",
+            "fragment": REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-PACK.md",
         },
         "project-template": {
             "root": REPO_ROOT / "project-template",
@@ -1666,7 +1666,7 @@ def check_help_fragment_freshness() -> None:
             "fragment": REPO_ROOT / "project-template" / "docs" / "pack" / "HELP-FRAGMENT.md",
         },
     }
-    tracker_fragment = REPO_ROOT / "HELP-FRAGMENT-TRACKER.md"
+    tracker_fragment = REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-TRACKER.md"
 
     any_failed = False
     for surface, cfg in surfaces.items():
@@ -1732,8 +1732,8 @@ def check_help_fragment_completeness() -> None:
     near the top. Prevents the fragment going stale as new scripts ship.
     """
     print("\n── Check 23: Help-fragment completeness (BD-082) ──")
-    fragment = REPO_ROOT / "HELP-FRAGMENT-PACK.md"
-    tracker_fragment = REPO_ROOT / "HELP-FRAGMENT-TRACKER.md"
+    fragment = REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-PACK.md"
+    tracker_fragment = REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-TRACKER.md"
     if not fragment.is_file():
         fail(f"pack-root help fragment missing: {fragment.name}")
         return
@@ -1926,7 +1926,7 @@ def check_help_fragment_tracker_byte_identity() -> None:
     S11 produce a faithful client mirror.
     """
     print("\n── Check 24: HELP-FRAGMENT-TRACKER byte-identity (BD-082, DELTA L1) ──")
-    pack_root = REPO_ROOT / "HELP-FRAGMENT-TRACKER.md"
+    pack_root = REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-TRACKER.md"
     client    = REPO_ROOT / "project-template" / "docs" / "pack" / "HELP-FRAGMENT-TRACKER.md"
     if not pack_root.is_file():
         fail(f"pack-root canonical missing: {pack_root.name}")

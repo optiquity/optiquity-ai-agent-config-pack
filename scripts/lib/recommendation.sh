@@ -128,7 +128,8 @@ recommendation_compute_signals() {
 
 _rec_compute_pack_signals() {
     local repo_root="$1"
-    local backlog="$repo_root/BACKLOG.md"
+    # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
+    local backlog="$repo_root/pack-ops/BACKLOG.md"
     local bd_active=0 bd_total=0 backlog_kb=0 growth=0
     if [[ -f "$backlog" ]]; then
         bd_total=$(grep -cE '^\*\*BD-[0-9]+ ' "$backlog" 2>/dev/null || echo 0)

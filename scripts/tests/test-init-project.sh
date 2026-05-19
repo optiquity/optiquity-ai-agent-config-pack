@@ -178,9 +178,10 @@ assert_contains "3.1 S11 stage ran" "$out" \
     && t_pass "3.2 .gemini/commands/pack-help.toml present" \
     || t_fail "3.2 .gemini/commands/pack-help.toml missing"
 
-# DELTA L1: client HELP-FRAGMENT-TRACKER.md is byte-identical to pack root.
-if cmp -s "$REPO_ROOT/HELP-FRAGMENT-TRACKER.md" "$T/docs/pack/HELP-FRAGMENT-TRACKER.md"; then
-    t_pass "3.3 client HELP-FRAGMENT-TRACKER.md byte-identical to pack root (DELTA L1)"
+# DELTA L1: client HELP-FRAGMENT-TRACKER.md is byte-identical to pack-side canonical.
+# BD-175: pack-side canonical relocated from REPO_ROOT to REPO_ROOT/pack-ops/.
+if cmp -s "$REPO_ROOT/pack-ops/HELP-FRAGMENT-TRACKER.md" "$T/docs/pack/HELP-FRAGMENT-TRACKER.md"; then
+    t_pass "3.3 client HELP-FRAGMENT-TRACKER.md byte-identical to pack-side canonical (DELTA L1)"
 else
     t_fail "3.3 byte-identity violated (DELTA L1)"
 fi

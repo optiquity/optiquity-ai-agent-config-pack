@@ -366,8 +366,8 @@ EOF
 # user_re_enable_count (informational; not used in v11 decisions
 # per V3 §28.1.4).
 #
-# Surface auto-detected from PACK-CHAT.md (pack) or docs/pack/
-# (client) presence; --surface overrides.
+# Surface auto-detected from pack-ops/ directory (pack) or docs/pack/
+# (client) presence per BD-175 reorg; --surface overrides.
 cmd_enable_recommendations() {
     local repo_root="" surface=""
     while [[ $# -gt 0 ]]; do

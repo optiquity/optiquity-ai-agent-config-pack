@@ -19,12 +19,20 @@
 
 # pack-surface: pack | client | ambiguous
 #
-# Per V3 §28.2.3 surface routing:
-#   - Pack repo:    BACKLOG.md at <target>/ with `^\*\*BD-` entries.
-#   - Client repo:  BACKLOG.md at <target>/ OR <target>/docs/project/
-#                   with `^\*\*TD-` entries.
+# Per V3 §28.2.3 surface routing (post BD-175 directory reorganization):
+#   - Pack repo:    BACKLOG.md at <target>/pack-ops/ with `^\*\*BD-` entries
+#                   (canonical post-v11.0 location).
+#   - Client repo:  BACKLOG.md at <target>/docs/project/ (canonical) OR
+#                   <target>/ (legacy v9 layout fallback) with `^\*\*TD-`
+#                   entries.
 #   - Both present: ambiguous (caller decides — pack-help prints both).
 #   - Neither:      ambiguous (no signal to disambiguate).
+#
+# Candidate scan order: pack-ops/ (post-BD-175 pack-side canonical),
+# docs/project/ (client-side canonical), root (legacy fixture / v9-layout
+# fallback; retained for test-fixture and back-compat coverage — see
+# scripts/tests/pack-help-test.sh fixture 1.3 "client repo (root
+# BACKLOG.md, TD entries)" which still writes the legacy shape).
 #
 # Used by scripts/pack-help.sh (BD-075) and any future verb that needs
 # to dispatch by surface without consulting tracker.toml.
@@ -32,7 +40,7 @@ detect_pack_surface() {
     local target="${1:-.}"
     local bd_seen=0 td_seen=0
     local backlog
-    for backlog in "$target/BACKLOG.md" "$target/docs/project/BACKLOG.md"; do
+    for backlog in "$target/pack-ops/BACKLOG.md" "$target/docs/project/BACKLOG.md" "$target/BACKLOG.md"; do
         [[ -f "$backlog" ]] || continue
         if grep -qE '^\*\*BD-[0-9]+ ' "$backlog" 2>/dev/null; then
             bd_seen=1

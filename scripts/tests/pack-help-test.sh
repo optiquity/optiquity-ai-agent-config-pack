@@ -130,9 +130,13 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$TR_CLI2" 2>/dev/null)
 rm -rf "$TR_CLI2"
 
 # 2.3 explicit --surface override on a tree without BACKLOG.md.
+# BD-175: pack-side fragments live at pack-ops/ — mirror the canonical
+# layout in the fixture so pack-help.sh's pack-ops-first resolution
+# fires the post-reorg code path.
 TR_OV=$(mktemp -d -t ph-ov.XXXXXX)
-cp "$REPO_ROOT/HELP-FRAGMENT-PACK.md" "$TR_OV/"
-cp "$REPO_ROOT/HELP-FRAGMENT-TRACKER.md" "$TR_OV/"
+mkdir -p "$TR_OV/pack-ops"
+cp "$REPO_ROOT/pack-ops/HELP-FRAGMENT-PACK.md" "$TR_OV/pack-ops/"
+cp "$REPO_ROOT/pack-ops/HELP-FRAGMENT-TRACKER.md" "$TR_OV/pack-ops/"
 output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$TR_OV" --surface pack 2>/dev/null)
 [[ "$output" == *"# Pack v11 — verb reference (pack repo)"* ]] \
     && t_pass "2.3 --surface pack override prints pack fragment" \

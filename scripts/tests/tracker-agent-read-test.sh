@@ -33,7 +33,9 @@ PATH_SAVED="$PATH"
 _setup_flat_repo() {
     local repo
     repo=$(mktemp -d -t tar-flat.XXXXXX)
-    cat > "$repo/BACKLOG.md" <<'EOF'
+    # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
+    mkdir -p "$repo/pack-ops"
+    cat > "$repo/pack-ops/BACKLOG.md" <<'EOF'
 **BD-001 — Add foo to bar**
 Type: TODO(version)
 Status: Open

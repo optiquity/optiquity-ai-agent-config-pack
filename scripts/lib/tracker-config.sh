@@ -295,7 +295,7 @@ tracker_gh_repo_setup() {
 # PACK-REVIEW-BD066-068, addresses V1 §3.4 independence axes).
 tracker_config_auto_surface() {
     local repo_root="$1"
-    if [[ -f "$repo_root/PACK-CHAT.md" ]]; then
+    if [[ -d "$repo_root/pack-ops" ]]; then
         echo "pack"
     elif [[ -d "$repo_root/docs/pack" ]]; then
         echo "client"

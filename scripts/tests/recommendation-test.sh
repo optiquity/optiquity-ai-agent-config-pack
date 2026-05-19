@@ -32,8 +32,10 @@ source "$LIB_DIR/recommendation.sh"
 printf "\n=== Group 1: signal computation ===\n"
 
 # 1.1 pack-side signals against a fixture repo with 5 active BDs.
+# BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
 TR_PACK=$(mktemp -d -t rec-pack.XXXXXX)
-cat > "$TR_PACK/BACKLOG.md" <<'EOF'
+mkdir -p "$TR_PACK/pack-ops"
+cat > "$TR_PACK/pack-ops/BACKLOG.md" <<'EOF'
 **BD-001 — First**
 Status: Open
 

@@ -113,14 +113,30 @@ tracker_doctor_run() {
 
     # (d) mirror freshness — compare BACKLOG.md mtime against
     # tracker.toml [migration].last_forward_run if both present.
-    if [[ -f "$repo_root/BACKLOG.md" ]]; then
+    # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md;
+    # client-side canonical at docs/project/BACKLOG.md (with legacy
+    # $repo_root/BACKLOG.md fallback for pre-v10 client layouts).
+    local backlog_path=""
+    case "$surface" in
+        pack)
+            backlog_path="$repo_root/pack-ops/BACKLOG.md"
+            ;;
+        *)
+            if [[ -f "$repo_root/docs/project/BACKLOG.md" ]]; then
+                backlog_path="$repo_root/docs/project/BACKLOG.md"
+            elif [[ -f "$repo_root/BACKLOG.md" ]]; then
+                backlog_path="$repo_root/BACKLOG.md"
+            fi
+            ;;
+    esac
+    if [[ -n "$backlog_path" && -f "$backlog_path" ]]; then
         local first_line
-        first_line=$(head -n 1 "$repo_root/BACKLOG.md")
+        first_line=$(head -n 1 "$backlog_path")
         if [[ "$first_line" == "<!--" ]]; then
             local mirror_mtime last_forward
             # macOS BSD stat differs from GNU stat; use date -r as the
             # portable reader.
-            mirror_mtime=$(date -r "$repo_root/BACKLOG.md" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "")
+            mirror_mtime=$(date -r "$backlog_path" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "")
             if [[ -f "$cfg_path" ]]; then
                 last_forward=$(tracker_config_get "$cfg_path" "migration.last_forward_run" 2>/dev/null || echo "")
             fi

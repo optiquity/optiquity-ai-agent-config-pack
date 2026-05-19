@@ -261,10 +261,10 @@ PYEOF
     # holding the block).
     local mirror_path=""
     case "$pack_id" in
-        BD-*)    mirror_path="$repo_root/BACKLOG.md" ;;
+        BD-*)    mirror_path="$repo_root/pack-ops/BACKLOG.md" ;;
         TD-*)    mirror_path="$repo_root/docs/project/BACKLOG.md" ;;
         phase-*) mirror_path="$repo_root/docs/project/IMPLEMENTATION-PLAN.md" ;;
-        *)       mirror_path="$repo_root/BACKLOG.md" ;;
+        *)       mirror_path="$repo_root/pack-ops/BACKLOG.md" ;;
     esac
     if [[ ! -f "$mirror_path" ]]; then
         tracker_error_emit "not-found" \

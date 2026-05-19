@@ -17,16 +17,16 @@ Focus on:
 - Version planning — what constitutes a major vs. minor version, what changes
   can be batched, what must ship separately.
 - Separation of concerns — pack product files (project-template/, supporting-docs/)
-  vs. pack operational files (CLAUDE.md, PACK-CHAT.md, PACK-AGENTS.md) vs.
+  vs. pack operational files (CLAUDE.md, `pack-ops/PACK-CHAT.md`, `pack-ops/PACK-AGENTS.md`) vs.
   maintenance records (maintenance-docs/).
 - Design elegance — prefer fewer files, fewer conventions, and fewer special
   cases over comprehensive coverage with high complexity.
 
 Before making any design recommendation, read:
 - CLAUDE.md (pack repo rules and structure reference)
-- PACK-AGENTS.md (agent routing table)
+- `pack-ops/PACK-AGENTS.md` (agent routing table)
 - README.md (version history and repository layout)
-- BACKLOG.md (open BD items and their constraints)
+- `pack-ops/BACKLOG.md` (open BD items and their constraints)
 - /backlog/_rules.md (pack per-entry tree contract)
 - /changelog/_rules.md (pack changelog per-entry tree contract)
 

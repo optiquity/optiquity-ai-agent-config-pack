@@ -340,7 +340,13 @@ _setup_test_repo() {
     local fixture_dir="$1"
     local test_repo
     test_repo=$(mktemp -d -t rtrip.XXXXXX)
-    cp "$fixture_dir/BACKLOG.md"             "$test_repo/BACKLOG.md"
+    # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
+    # Fixtures still hold the legacy root-shape; copy into pack-ops/
+    # so surface-aware forward/reverse helpers find the canonical
+    # location, AND the pack-ops/ directory marker satisfies
+    # tracker_config_auto_surface returning "pack".
+    mkdir -p "$test_repo/pack-ops"
+    cp "$fixture_dir/BACKLOG.md"             "$test_repo/pack-ops/BACKLOG.md"
     cp "$fixture_dir/IMPLEMENTATION-PLAN.md" "$test_repo/IMPLEMENTATION-PLAN.md"
     cp "$fixture_dir/tracker.toml"           "$test_repo/tracker.toml"
     mkdir -p "$test_repo/.pack-tracker"
@@ -406,7 +412,7 @@ assert_contains "2.1 reverse reports 2 phase epics" "$output2" "2 phase epic"
 # Reverse output should reconstruct each entry. The reconstructed
 # BACKLOG must contain every original pack-id and title (whitespace
 # differences are tolerable per V1 §6.7 "near-no-op").
-RECON_BACKLOG=$(cat "$REPO1/BACKLOG.md")
+RECON_BACKLOG=$(cat "$REPO1/pack-ops/BACKLOG.md")
 for needle in "BD-001" "BD-002" "TD-010" "TD-040" \
               "Add foo to bar" "Refactor bar after foo lands" "Document quux" \
               "Cross-phase TD blocked by phase task" \
@@ -478,7 +484,7 @@ sidecar=$(ls "$REPO1/.pack-tracker/reverse.sidecar."*.md 2>/dev/null | head -n 1
 [[ -n "$sidecar" && -f "$sidecar" ]] && t_pass "2.3 sidecar emitted" || t_fail "2.3 sidecar emitted"
 
 # Mirror header stripped after reverse (V1 §6.5 step 8).
-[[ "$(head -n 1 "$REPO1/BACKLOG.md")" != "<!--" ]] \
+[[ "$(head -n 1 "$REPO1/pack-ops/BACKLOG.md")" != "<!--" ]] \
     && t_pass "2.3 BACKLOG mirror header stripped" \
     || t_fail "2.3 BACKLOG mirror header stripped"
 

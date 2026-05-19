@@ -27,11 +27,11 @@ major versions.
 
 Key files to read before working on the pack:
 - `README.md` — version history and layout
-- `BACKLOG.md` — open BD-NNN items (regenerated mirror; per-entry source at `/backlog/`)
-- `CHANGELOG.md` — version history details (regenerated mirror; per-entry source at `/changelog/`)
-- `PACK-CHAT.md` — PM chat operating rules
-- `PACK-AGENTS.md` — agent routing table for pack development work
-- `/backlog/`, `/changelog/` — per-entry source-of-truth trees (read `/backlog/_rules.md` and `/changelog/_rules.md` for the per-stream contract; `BACKLOG.md` and `CHANGELOG.md` are the regenerated mirrors)
+- `pack-ops/BACKLOG.md` — open BD-NNN items (regenerated mirror; per-entry source at `/backlog/`)
+- `pack-ops/CHANGELOG.md` — version history details (regenerated mirror; per-entry source at `/changelog/`)
+- `pack-ops/PACK-CHAT.md` — PM chat operating rules
+- `pack-ops/PACK-AGENTS.md` — agent routing table for pack development work
+- `/backlog/`, `/changelog/` — per-entry source-of-truth trees (read `/backlog/_rules.md` and `/changelog/_rules.md` for the per-stream contract; `pack-ops/BACKLOG.md` and `pack-ops/CHANGELOG.md` are the regenerated mirrors)
 
 **Migrator framework (BD-119).** When authoring a new
 `scripts/migrate-vN-to-vM.sh`, source `scripts/lib/migrator-core.sh` and
@@ -80,7 +80,7 @@ they land — invented commit-message shapes break audit history.
 **What agents may modify:**
 - Any file in template directories when the task explicitly requires it
 - Files in supporting-docs/ or maintenance-docs/ when the task explicitly requires it
-- CHANGELOG.md only at version boundaries with explicit instruction
+- `pack-ops/CHANGELOG.md` only at version boundaries with explicit instruction
 - Scripts in template directories
 
 **Trinity rule — CLAUDE.md / AGENTS.md / GEMINI.md:**
@@ -96,10 +96,10 @@ every push. If it fails, fix before proceeding. Read the Actions log —
 errors name the exact file and problem. Never skip or disable the workflow.
 
 **What agents must never modify without explicit instruction:**
-- BACKLOG.md (PM chat only, after user approval)
+- `pack-ops/BACKLOG.md` (PM chat only, after user approval)
 - README.md version table (PM chat only)
-- PACK-CHAT.md (PM chat operating instructions)
-- CLAUDE.md, AGENTS.md, GEMINI.md, PACK-AGENTS.md (PM chat only)
+- `pack-ops/PACK-CHAT.md` (PM chat operating instructions)
+- CLAUDE.md, AGENTS.md, GEMINI.md, `pack-ops/PACK-AGENTS.md` (PM chat only)
 
 **No commit or push without explicit user approval.**
 Always run `git add -A && git status` and show staged files before committing.
@@ -386,7 +386,7 @@ in the same commit as the behavior change.
   an explicit "never source of truth" disclaimer; if a convenience
   view drifts, the per-entry tree (Mode 2) or the tracker (Mode 3)
   wins. Read more at `<stream>/_rules.md`.
-- **BACKLOG.md has no Resolved section.** Entries resolve in place by
+- **`pack-ops/BACKLOG.md` has no Resolved section.** Entries resolve in place by
   flipping `Status: Open` to `Status: Resolved` and filling the
   `Resolved:` line. Do not propose moving entries to a separate section.
 - **Separate pack ops from pack product.** Pack ops files (CLAUDE.md,

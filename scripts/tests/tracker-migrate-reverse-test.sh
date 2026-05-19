@@ -108,6 +108,11 @@ prefix = "BD"
 forward_complete = true
 mapping_file = ".pack-tracker/id-map.json"
 EOF
+    # BD-175: pack-side test fixture needs pack-ops/ marker for the new
+    # tracker_config_auto_surface canonical path (`[[ -d pack-ops ]]`).
+    # Without it, surface auto-detect fails and the reverse emit lands
+    # client-side at $repo/BACKLOG.md instead of $repo/pack-ops/BACKLOG.md.
+    mkdir -p "$repo/pack-ops"
     mkdir -p "$repo/.pack-tracker"
     cat > "$repo/.pack-tracker/id-map.json" <<EOF
 {
@@ -327,13 +332,14 @@ assert_contains "4.1 reports 3 entries"     "$output" "reconstructed 3 BACKLOG e
 assert_contains "4.1 reports 1 phase epic"  "$output" "1 phase epic"
 assert_contains "4.1 reports complete"      "$output" "reverse: complete"
 
-[[ -f "$REPO/BACKLOG.md" ]]            && t_pass "4.1 BACKLOG.md emitted" || t_fail "4.1 BACKLOG.md emitted"
+# BD-175: pack-side BACKLOG/CHANGELOG canonical at pack-ops/; PLAN/STATUS stay at root.
+[[ -f "$REPO/pack-ops/BACKLOG.md" ]]   && t_pass "4.1 BACKLOG.md emitted" || t_fail "4.1 BACKLOG.md emitted"
 [[ -f "$REPO/IMPLEMENTATION-PLAN.md" ]] && t_pass "4.1 IMPLEMENTATION-PLAN.md emitted" || t_fail "4.1 IMPLEMENTATION-PLAN.md emitted"
 [[ -f "$REPO/STATUS.md" ]]             && t_pass "4.1 STATUS.md emitted" || t_fail "4.1 STATUS.md emitted"
-[[ -f "$REPO/CHANGELOG.md" ]]          && t_pass "4.1 CHANGELOG.md emitted" || t_fail "4.1 CHANGELOG.md emitted"
+[[ -f "$REPO/pack-ops/CHANGELOG.md" ]] && t_pass "4.1 CHANGELOG.md emitted" || t_fail "4.1 CHANGELOG.md emitted"
 
 # 4.2 BACKLOG.md content shape
-backlog=$(cat "$REPO/BACKLOG.md")
+backlog=$(cat "$REPO/pack-ops/BACKLOG.md")
 assert_contains "4.2 BACKLOG has BD-001 entry" "$backlog" "**BD-001 — Add foo to bar**"
 assert_contains "4.2 BACKLOG has TD-010 entry" "$backlog" "**TD-010 — Document quux**"
 assert_contains "4.2 BACKLOG has Status: Open" "$backlog" "Status: Open"
@@ -360,7 +366,8 @@ assert_contains "4.4 sidecar has reactions block"  "$sidecar_content" "### react
 assert_contains "4.4 sidecar empty extra_fields at v11.0" "$sidecar_content" "empty at v11.0"
 
 # 4.5 No mirror header (V1 §6.5 step 8: stripped after reverse).
-first_line=$(head -n 1 "$REPO/BACKLOG.md")
+# BD-175: pack-side canonical at pack-ops/.
+first_line=$(head -n 1 "$REPO/pack-ops/BACKLOG.md")
 [[ "$first_line" != "<!--" ]] && t_pass "4.5 no mirror header on reverse output" \
     || t_fail "4.5 no mirror header on reverse output"
 
@@ -385,8 +392,9 @@ assert_eq "4.7 mode flipped to flat-file via --disable" "flat-file" \
 # restored from backup, (b) mode NOT flipped, (c) partial-write error.
 REPO_ATOMIC=$(mktemp -d -t tmr-atomic.XXXXXX); _build_test_repo "$REPO_ATOMIC"
 # Plant a recognizable original BACKLOG.md so we can verify restore.
+# BD-175: pack-side canonical at pack-ops/.
 ORIGINAL_BODY=$'# ORIGINAL\n\nThis content must survive the failed disable.\n'
-printf '%s' "$ORIGINAL_BODY" > "$REPO_ATOMIC/BACKLOG.md"
+printf '%s' "$ORIGINAL_BODY" > "$REPO_ATOMIC/pack-ops/BACKLOG.md"
 # Override _tmr_emit_status to simulate an emit failure.
 saved_emit=$(declare -f _tmr_emit_status)
 _tmr_emit_status() { return 1; }
@@ -408,11 +416,11 @@ mode_after=$(tracker_config_get "$REPO_ATOMIC/tracker.toml" mode.state)
 assert_eq "4.7-atomic mode NOT flipped on emit failure" "tracker" "$mode_after"
 # BACKLOG.md content restored. Compare via byte-equality on disk
 # (avoids the trailing-newline trim that command substitution does).
-if cmp -s <(printf '%s' "$ORIGINAL_BODY") "$REPO_ATOMIC/BACKLOG.md"; then
+if cmp -s <(printf '%s' "$ORIGINAL_BODY") "$REPO_ATOMIC/pack-ops/BACKLOG.md"; then
     t_pass "4.7-atomic BACKLOG.md restored to original (byte-equal)"
 else
     t_fail "4.7-atomic BACKLOG.md restored to original (byte-equal)" \
-        "actual: $(cat "$REPO_ATOMIC/BACKLOG.md" | head -c 200)"
+        "actual: $(cat "$REPO_ATOMIC/pack-ops/BACKLOG.md" | head -c 200)"
 fi
 # Backup dir cleaned up after restore.
 [[ ! -d "$REPO_ATOMIC/.pack-tracker/disable-backup" ]] \
@@ -481,11 +489,12 @@ REPO=$(mktemp -d -t tmr-repo5.XXXXXX); _build_test_repo "$REPO"
 
 export PATH="$FAKE:$PATH_SAVED"
 tracker_migrate_reverse_run "$REPO" >/dev/null 2>&1
-backlog1=$(cat "$REPO/BACKLOG.md")
+# BD-175: pack-side canonical at pack-ops/.
+backlog1=$(cat "$REPO/pack-ops/BACKLOG.md")
 status1=$(cat  "$REPO/STATUS.md")
 sleep 1
 tracker_migrate_reverse_run "$REPO" >/dev/null 2>&1
-backlog2=$(cat "$REPO/BACKLOG.md")
+backlog2=$(cat "$REPO/pack-ops/BACKLOG.md")
 status2=$(cat  "$REPO/STATUS.md")
 export PATH="$PATH_SAVED"
 

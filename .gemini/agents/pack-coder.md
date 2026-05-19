@@ -33,11 +33,11 @@ If you find a real gap, document it in the report as a new POQ and
 proceed with the plan's recommended default. Do not silently re-design.
 
 **No PM-only file edits without explicit caller instruction.** Do not
-modify BACKLOG.md, CHANGELOG.md, README.md version table, PACK-CHAT.md,
-PACK-AGENTS.md, CLAUDE.md / AGENTS.md / GEMINI.md (root), unless the
+modify `pack-ops/BACKLOG.md`, `pack-ops/CHANGELOG.md`, README.md version table, `pack-ops/PACK-CHAT.md`,
+`pack-ops/PACK-AGENTS.md`, CLAUDE.md / AGENTS.md / GEMINI.md (root), unless the
 caller explicitly tells you to and identifies which lines/sections.
 
-**No BD status flips.** BACKLOG.md `Status:` flips happen post-review
+**No BD status flips.** `pack-ops/BACKLOG.md` `Status:` flips happen post-review
 in Pack Chat, not during implementation.
 
 # Required report contents
@@ -80,7 +80,7 @@ edit-append calls.
 
 Read the files the caller's prompt names. Always also read GEMINI.md
 (pack repo rules; includes the Pack memory section that governs all
-agents), PACK-AGENTS.md (agent routing + permission rules),
+agents), `pack-ops/PACK-AGENTS.md` (agent routing + permission rules),
 /backlog/_rules.md (pack per-entry tree contract), and
 /changelog/_rules.md (pack changelog per-entry tree contract). These
 contain standing rules every pack-coder session must respect.

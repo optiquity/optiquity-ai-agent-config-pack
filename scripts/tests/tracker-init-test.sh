@@ -72,9 +72,9 @@ assert_contains "1.2 missing --repo → validation" "$err" "--repo is required"
 err=$(tracker_init_run --backend gitlab --repo x/y 2>&1 1>/dev/null) || true
 assert_contains "1.3 backend 'gitlab' rejected at v11.0" "$err" "not supported at v11.0"
 
-# 1.4 surface auto-detection — pack root (PACK-CHAT.md present).
+# 1.4 surface auto-detection — pack root (pack-ops/ marker present per BD-175).
 TR_PACK=$(mktemp -d -t tinit-pack.XXXXXX)
-touch "$TR_PACK/PACK-CHAT.md"
+mkdir -p "$TR_PACK/pack-ops"
 output=$(tracker_init_run --repo-root "$TR_PACK" --backend github --repo a/b --dry-run 2>&1)
 assert_contains "1.4 auto-detects pack surface"   "$output" "surface:    pack"
 assert_contains "1.4 default id-prefix BD"        "$output" "id-prefix:  BD"
@@ -96,14 +96,14 @@ rm -rf "$TR_AMB"
 
 # 1.7 explicit --surface overrides auto-detection.
 TR_OVR=$(mktemp -d -t tinit-ovr.XXXXXX)
-touch "$TR_OVR/PACK-CHAT.md"
+mkdir -p "$TR_OVR/pack-ops"  # BD-175: pack surface marker
 output=$(tracker_init_run --repo-root "$TR_OVR" --surface client --backend github --repo a/b --dry-run 2>&1)
-assert_contains "1.7 explicit --surface client overrides PACK-CHAT.md" "$output" "surface:    client"
+assert_contains "1.7 explicit --surface client overrides pack-ops/ auto-detect" "$output" "surface:    client"
 rm -rf "$TR_OVR"
 
 # 1.8 --dry-run stops after plan.
 TR_DRY=$(mktemp -d -t tinit-dry.XXXXXX)
-touch "$TR_DRY/PACK-CHAT.md"
+mkdir -p "$TR_DRY/pack-ops"  # BD-175: pack surface marker
 output=$(tracker_init_run --repo-root "$TR_DRY" --backend github --repo a/b --dry-run 2>&1)
 rc=$?
 assert_eq       "1.8 --dry-run rc=0"            "0" "$rc"
@@ -118,7 +118,7 @@ assert_contains "1.9 unknown flag → validation" "$err" "unknown option '--bogu
 
 # 1.10 prior-state safety rail (F8): a tree with .pack-tracker/id-map.json
 # rejects re-init absent --force, telling the user to run disable first.
-TR_PRIOR=$(mktemp -d -t tr-prior.XXXXXX); touch "$TR_PRIOR/PACK-CHAT.md"
+TR_PRIOR=$(mktemp -d -t tr-prior.XXXXXX); mkdir -p "$TR_PRIOR/pack-ops"  # BD-175: pack surface marker
 mkdir -p "$TR_PRIOR/.pack-tracker"; echo '{}' > "$TR_PRIOR/.pack-tracker/id-map.json"
 err=$(tracker_init_run --repo-root "$TR_PRIOR" --backend github --repo a/b --no-forward 2>&1 1>/dev/null) || true
 assert_contains "1.10 prior id-map.json → validation"      "$err" "ERROR: validation"
@@ -148,7 +148,7 @@ EOF
 chmod +x "$FAKE_BIN_NA/gh"
 
 TR_NA=$(mktemp -d -t tinit-na-repo.XXXXXX)
-touch "$TR_NA/PACK-CHAT.md"
+mkdir -p "$TR_NA/pack-ops"  # BD-175: pack surface marker
 
 export PATH="$FAKE_BIN_NA:$PATH_SAVED"
 err=$(tracker_init_run --repo-root "$TR_NA" --backend github --repo a/b 2>&1 1>/dev/null) || true
@@ -167,7 +167,7 @@ EOF
 chmod +x "$FAKE_BIN_NB/gh"
 
 TR_NB=$(mktemp -d -t tinit-nb-repo.XXXXXX)
-touch "$TR_NB/PACK-CHAT.md"
+mkdir -p "$TR_NB/pack-ops"  # BD-175: pack surface marker
 
 export PATH="$FAKE_BIN_NB:$PATH_SAVED"
 err=$(tracker_init_run --repo-root "$TR_NB" --backend github --repo a/b 2>&1 1>/dev/null) || true
@@ -195,7 +195,7 @@ EOF
 chmod +x "$FAKE_BIN_TPL/gh"
 
 TR_NOTPL=$(mktemp -d -t tinit-notpl.XXXXXX)
-touch "$TR_NOTPL/PACK-CHAT.md"
+mkdir -p "$TR_NOTPL/pack-ops"  # BD-175: pack surface marker
 # No .github/ISSUE_TEMPLATE/ exists.
 
 export PATH="$FAKE_BIN_TPL:$PATH_SAVED"
@@ -208,7 +208,7 @@ rm -rf "$TR_NOTPL"
 # 3.2 happy-path init with --no-forward (writes config, validates auth,
 # verifies templates, ensures labels via mocked gh; skips forward).
 TR_OK=$(mktemp -d -t tinit-ok.XXXXXX)
-touch "$TR_OK/PACK-CHAT.md"
+mkdir -p "$TR_OK/pack-ops"  # BD-175: pack surface marker
 mkdir -p "$TR_OK/.github/ISSUE_TEMPLATE"
 touch "$TR_OK/.github/ISSUE_TEMPLATE/work-item.yml"
 touch "$TR_OK/.github/ISSUE_TEMPLATE/inbound.yml"
@@ -332,9 +332,9 @@ chmod +x "$FAKE_BIN_INT/gh"
 
 # 5.1 prompt path: --backend and --repo missing, force interactive
 # via env var, pipe answers via stdin. Surface auto-detected from
-# PACK-CHAT.md.
+# pack-ops/ directory marker (BD-175).
 TR_INT1=$(mktemp -d -t tinit-int1.XXXXXX)
-touch "$TR_INT1/PACK-CHAT.md"
+mkdir -p "$TR_INT1/pack-ops"  # BD-175: pack surface marker
 mkdir -p "$TR_INT1/.github/ISSUE_TEMPLATE"
 touch "$TR_INT1/.github/ISSUE_TEMPLATE/work-item.yml"
 touch "$TR_INT1/.github/ISSUE_TEMPLATE/inbound.yml"
@@ -359,7 +359,7 @@ rm -rf "$TR_INT1"
 
 # 5.2 default-accept: blank lines accept the offered defaults.
 TR_INT2=$(mktemp -d -t tinit-int2.XXXXXX)
-touch "$TR_INT2/PACK-CHAT.md"
+mkdir -p "$TR_INT2/pack-ops"  # BD-175: pack surface marker
 mkdir -p "$TR_INT2/.github/ISSUE_TEMPLATE"
 touch "$TR_INT2/.github/ISSUE_TEMPLATE/work-item.yml"
 touch "$TR_INT2/.github/ISSUE_TEMPLATE/inbound.yml"
@@ -383,7 +383,7 @@ rm -rf "$TR_INT2"
 
 # 5.3 prompt path: empty repo answer → validation error.
 TR_INT3=$(mktemp -d -t tinit-int3.XXXXXX)
-touch "$TR_INT3/PACK-CHAT.md"
+mkdir -p "$TR_INT3/pack-ops"  # BD-175: pack surface marker
 mkdir -p "$TR_INT3/.github/ISSUE_TEMPLATE"
 touch "$TR_INT3/.github/ISSUE_TEMPLATE/work-item.yml"
 touch "$TR_INT3/.github/ISSUE_TEMPLATE/inbound.yml"
@@ -399,14 +399,14 @@ assert_contains "5.3 empty repo answer → validation" "$err" "ERROR: validation
 assert_contains "5.3 message names repo slug"        "$err" "repo slug is required"
 rm -rf "$TR_INT3"
 
-# 5.4 surface prompt: when both PACK-CHAT.md and docs/pack/ absent
+# 5.4 surface prompt: when both pack-ops/ and docs/pack/ absent (BD-175)
 # AND interactive mode, prompt for surface.
 TR_INT4=$(mktemp -d -t tinit-int4.XXXXXX)
 mkdir -p "$TR_INT4/.github/ISSUE_TEMPLATE"
 touch "$TR_INT4/.github/ISSUE_TEMPLATE/work-item.yml"
 touch "$TR_INT4/.github/ISSUE_TEMPLATE/inbound.yml"
 touch "$TR_INT4/.github/ISSUE_TEMPLATE/config.yml"
-# No PACK-CHAT.md, no docs/pack/.
+# No pack-ops/, no docs/pack/ (BD-175).
 
 export PATH="$FAKE_BIN_INT:$PATH_SAVED"
 # Pipe: surface=pack, id-prefix=BD, backend=github, repo
@@ -439,7 +439,7 @@ rm -rf "$TR_INT5"
 # tests in Group 1 already exercise this implicitly because tests run
 # in non-TTY context, but make the override explicit).
 TR_INT6=$(mktemp -d -t tinit-int6.XXXXXX)
-touch "$TR_INT6/PACK-CHAT.md"
+mkdir -p "$TR_INT6/pack-ops"  # BD-175: pack surface marker
 err=$(
     tracker_init_run --repo-root "$TR_INT6" --no-interactive 2>&1) || true
 assert_contains "5.6 --no-interactive overrides force flag → validation" "$err" "ERROR: validation"
@@ -448,7 +448,7 @@ rm -rf "$TR_INT6"
 
 # 5.7 EOF on stdin (closed input) accepts default and proceeds.
 TR_INT7=$(mktemp -d -t tinit-int7.XXXXXX)
-touch "$TR_INT7/PACK-CHAT.md"
+mkdir -p "$TR_INT7/pack-ops"  # BD-175: pack surface marker
 mkdir -p "$TR_INT7/.github/ISSUE_TEMPLATE"
 touch "$TR_INT7/.github/ISSUE_TEMPLATE/work-item.yml"
 touch "$TR_INT7/.github/ISSUE_TEMPLATE/inbound.yml"

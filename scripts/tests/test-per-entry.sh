@@ -217,8 +217,8 @@ EOF
 
 printf "\n=== Group 1: stream-shape lookups ===\n"
 
-assert_eq "1.1 pack-backlog mirror filename" "BACKLOG.md" "$(pe_canonical_mirror_for_stream pack-backlog)"
-assert_eq "1.2 pack-changelog mirror filename" "CHANGELOG.md" "$(pe_canonical_mirror_for_stream pack-changelog)"
+assert_eq "1.1 pack-backlog mirror filename" "pack-ops/BACKLOG.md" "$(pe_canonical_mirror_for_stream pack-backlog)"
+assert_eq "1.2 pack-changelog mirror filename" "pack-ops/CHANGELOG.md" "$(pe_canonical_mirror_for_stream pack-changelog)"
 assert_eq "1.3 project-backlog mirror filename" "docs/project/BACKLOG.md" "$(pe_canonical_mirror_for_stream project-backlog)"
 assert_eq "1.4 project-implementation-plan mirror filename" "docs/project/IMPLEMENTATION-PLAN.md" "$(pe_canonical_mirror_for_stream project-implementation-plan)"
 assert_eq "1.5 project-changelog mirror filename" "docs/project/CHANGELOG.md" "$(pe_canonical_mirror_for_stream project-changelog)"

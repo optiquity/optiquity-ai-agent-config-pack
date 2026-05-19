@@ -251,21 +251,27 @@ test-fixtures/                              Persistent baseline fixtures for tes
 ├── v11-tracker-on/                         v11 client + synthesized tracker.toml (gitignored)
 └── existing-project-mid-dev/               In-progress Swift+Python+gRPC project, no pack files (gitignored; BD-115)
 
+pack-ops/                                   Pack-internal operational files (v11; BD-175 directory reorg)
+├── BOUNDARY-DEFINITION.md                  G7 boundary-rule reference for pack-ops/ scope (Commit 1)
+├── .boundary-exempt-root.txt               Machine-readable allow-list of root-staying ops files (Commit 1)
+├── BACKLOG.md                              Pack improvement backlog (regenerated mirror)
+├── CHANGELOG.md                            Pack changelog (regenerated mirror)
+├── PACK-CHAT.md                            Pack CLI chat operating instructions
+├── PACK-AGENTS.md                          Pack agent routing (includes invocation guide)
+├── OPTIONAL-FEATURES.md                    Tool settings for features and settings used with non-pack related functionality
+├── HELP-FRAGMENT-PACK.md                   Pack-side verb reference (v11; rendered by pack-help.sh)
+└── HELP-FRAGMENT-TRACKER.md                Shared tracker section (v11; canonical; mirrored to project-template/docs/pack/)
+
 QUICKSTART.md                               Quick start router (three paths — NEW / EXISTING / MIGRATE)
-OPTIONAL-FEATURES.md                        Tool settings for features and settings used with non-pack related functionality
-HELP-FRAGMENT-PACK.md                       Pack-side verb reference (v11; rendered by pack-help.sh)
-HELP-FRAGMENT-TRACKER.md                    Shared tracker section (v11; canonical; mirrored to project-template/docs/pack/)
 tracker.toml.pack-example                   Pack-side tracker config template (v11; copy to tracker.toml to opt the pack repo into tracker mode)
-PACK-CHAT.md                                Pack CLI chat operating instructions
-PACK-AGENTS.md                              Pack agent routing (includes invocation guide)
-BACKLOG.md                                  Pack improvement backlog
 CLAUDE.md                                   Pack repo Claude context (not a template; "Quick reference" addendum v11)
 AGENTS.md                                   Pack repo Codex context (not a template; "Quick reference" addendum v11)
 GEMINI.md                                   Pack repo Gemini context (not a template; "Quick reference" addendum v11)
 README.md                                   This file
-CHANGELOG.md                                Pack changelog
 .github/ISSUE_TEMPLATE/                     Pack-side issue forms (v11)
 └── work-item.yml, inbound.yml, config.yml
+/backlog/                                   Pack per-entry tree (BD-NNN entries; source of truth for pack-ops/BACKLOG.md mirror)
+/changelog/                                 Pack changelog per-entry tree (source of truth for pack-ops/CHANGELOG.md mirror)
 ```
 
 > Migration guides follow the naming convention `MIGRATION-vN-to-vM.md`.

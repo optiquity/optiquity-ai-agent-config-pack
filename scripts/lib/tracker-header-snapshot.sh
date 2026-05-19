@@ -210,7 +210,14 @@ PYEOF
 # its first capture.
 tracker_header_snapshot_capture() {
     local repo_root="$1"
-    local backlog_path="$repo_root/BACKLOG.md"
+    # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md; client
+    # / legacy layout at $repo_root/BACKLOG.md. Choose by first-existing.
+    local backlog_path
+    if [[ -f "$repo_root/pack-ops/BACKLOG.md" ]]; then
+        backlog_path="$repo_root/pack-ops/BACKLOG.md"
+    else
+        backlog_path="$repo_root/BACKLOG.md"
+    fi
     local snap_path
     snap_path=$(tracker_header_snapshot_path "$repo_root")
 

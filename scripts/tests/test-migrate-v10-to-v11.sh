@@ -148,9 +148,10 @@ assert_contains "2.1 S6 ran" "$out" "S6 — render truthful migration report"
     && t_pass "2.4 .gemini pack-help command installed" \
     || t_fail "2.4 .gemini pack-help missing"
 
-# DELTA L1: client tracker fragment byte-identical to pack root.
-if cmp -s "$REPO_ROOT/HELP-FRAGMENT-TRACKER.md" "$T/docs/pack/HELP-FRAGMENT-TRACKER.md"; then
-    t_pass "2.5 HELP-FRAGMENT-TRACKER.md byte-identical to pack root (DELTA L1)"
+# DELTA L1: client tracker fragment byte-identical to pack-side canonical.
+# BD-175: pack-side canonical relocated from REPO_ROOT to REPO_ROOT/pack-ops/.
+if cmp -s "$REPO_ROOT/pack-ops/HELP-FRAGMENT-TRACKER.md" "$T/docs/pack/HELP-FRAGMENT-TRACKER.md"; then
+    t_pass "2.5 HELP-FRAGMENT-TRACKER.md byte-identical to pack-side canonical (DELTA L1)"
 else
     t_fail "2.5 byte-identity violated"
 fi

@@ -68,7 +68,7 @@ pe__stream_attr() {
     case "$1" in
         pack-backlog)
             case "$2" in
-                mirror) printf 'BACKLOG.md' ;;
+                mirror) printf 'pack-ops/BACKLOG.md' ;;
                 entry-regex) printf '^BD-[0-9]+\.md$' ;;
                 support) printf '_rules.md _intro.md _toc.md _v8-resolved-archive.md' ;;
                 dir-suffix) printf 'backlog' ;;
@@ -76,7 +76,7 @@ pe__stream_attr() {
             ;;
         pack-changelog)
             case "$2" in
-                mirror) printf 'CHANGELOG.md' ;;
+                mirror) printf 'pack-ops/CHANGELOG.md' ;;
                 entry-regex) printf '^v[0-9]+\.[0-9]+(-[a-z0-9-]+)?\.md$' ;;
                 support) printf '_rules.md _intro.md _toc.md' ;;
                 dir-suffix) printf 'changelog' ;;

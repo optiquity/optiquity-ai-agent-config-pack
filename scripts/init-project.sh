@@ -817,7 +817,13 @@ stage_s11_v11_artifacts() {
         "$copy_fn" "$PACK/project-template/docs/pack/HELP-FRAGMENT.md" \
             "$TARGET/docs/pack/HELP-FRAGMENT.md"
     fi
-    if [[ -f "$PACK/HELP-FRAGMENT-TRACKER.md" ]]; then
+    # BD-175: HELP-FRAGMENT-TRACKER.md canonical source is pack-ops/ post-reorg.
+    # Retain $PACK/HELP-FRAGMENT-TRACKER.md fallback for pre-v11 layouts
+    # (e.g., migration mid-flight, or PACK pointing at a pre-BD-175 tag).
+    if [[ -f "$PACK/pack-ops/HELP-FRAGMENT-TRACKER.md" ]]; then
+        cp -f "$PACK/pack-ops/HELP-FRAGMENT-TRACKER.md" \
+            "$TARGET/docs/pack/HELP-FRAGMENT-TRACKER.md"
+    elif [[ -f "$PACK/HELP-FRAGMENT-TRACKER.md" ]]; then
         cp -f "$PACK/HELP-FRAGMENT-TRACKER.md" \
             "$TARGET/docs/pack/HELP-FRAGMENT-TRACKER.md"
     fi

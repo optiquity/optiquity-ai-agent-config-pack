@@ -705,7 +705,12 @@ tracker_migrate_forward_run() {
     if [[ "$mirror_only" == "1" ]]; then
         local backend_slug backlog_path
         backend_slug=$(tracker_repo_slug "$cfg_path" 2>/dev/null || echo "unknown")
-        backlog_path="$repo_root/BACKLOG.md"
+        # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
+        if [[ "$surface" == "pack" ]]; then
+            backlog_path="$repo_root/pack-ops/BACKLOG.md"
+        else
+            backlog_path="$repo_root/BACKLOG.md"
+        fi
         if [[ ! -f "$backlog_path" ]]; then
             tracker_error_emit "not-found" \
                 "forward --mirror-only: BACKLOG.md not found at $backlog_path"
@@ -722,8 +727,13 @@ tracker_migrate_forward_run() {
     fi
 
     # Step 1+2: read + parse BACKLOG and IMPLEMENTATION-PLAN.
+    # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
     local backlog_path plan_path
-    backlog_path="$repo_root/BACKLOG.md"
+    if [[ "$surface" == "pack" ]]; then
+        backlog_path="$repo_root/pack-ops/BACKLOG.md"
+    else
+        backlog_path="$repo_root/BACKLOG.md"
+    fi
     plan_path="$repo_root/IMPLEMENTATION-PLAN.md"
     [[ ! -f "$plan_path" ]] && plan_path="$repo_root/maintenance-docs/IMPLEMENTATION-PLAN.md"
 
@@ -1324,8 +1334,13 @@ tracker_migrate_status_report() {
 
     # Mirror freshness — file mtime of the BACKLOG.md mirror, or
     # "(none)" if the file lacks the V1 §6.3 read-only header.
+    # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
     local mirror_path mirror_age
-    mirror_path="$repo_root/BACKLOG.md"
+    if [[ "$surface" == "pack" ]]; then
+        mirror_path="$repo_root/pack-ops/BACKLOG.md"
+    else
+        mirror_path="$repo_root/BACKLOG.md"
+    fi
     if [[ -f "$mirror_path" ]]; then
         local first_line
         first_line=$(head -n 1 "$mirror_path" 2>/dev/null || echo "")

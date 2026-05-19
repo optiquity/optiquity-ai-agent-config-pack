@@ -1046,11 +1046,26 @@ print(json.dumps(phases))')
     local backend_slug
     backend_slug=$(tracker_repo_slug "$cfg_path" 2>/dev/null || echo "unknown")
 
+    # BD-175: pack-side emits to pack-ops/; client-side emits to repo
+    # root for IMPLEMENTATION-PLAN/STATUS and (legacy) BACKLOG/CHANGELOG.
+    # Client side has its own canonical locations under docs/project/
+    # already handled by the project-side reverse path; the legacy root
+    # emit shape is preserved here for back-compat with pre-v10 client
+    # flows that landed BACKLOG/CHANGELOG at root.
     local backlog_out plan_out status_out changelog_out
-    backlog_out="$repo_root/BACKLOG.md"
-    plan_out="$repo_root/IMPLEMENTATION-PLAN.md"
-    status_out="$repo_root/STATUS.md"
-    changelog_out="$repo_root/CHANGELOG.md"
+    if [[ "$surface" == "pack" ]]; then
+        # Ensure pack-ops/ exists before emit (BD-175 directory reorg).
+        mkdir -p "$repo_root/pack-ops"
+        backlog_out="$repo_root/pack-ops/BACKLOG.md"
+        changelog_out="$repo_root/pack-ops/CHANGELOG.md"
+        plan_out="$repo_root/IMPLEMENTATION-PLAN.md"
+        status_out="$repo_root/STATUS.md"
+    else
+        backlog_out="$repo_root/BACKLOG.md"
+        plan_out="$repo_root/IMPLEMENTATION-PLAN.md"
+        status_out="$repo_root/STATUS.md"
+        changelog_out="$repo_root/CHANGELOG.md"
+    fi
 
     # PACK-REVIEW-BD066-068 Finding #3 closure: when flip_mode=1
     # (the `pack tracker disable` flow), the reverse path must be
@@ -1060,17 +1075,24 @@ print(json.dumps(phases))')
     # a partial-write error WITHOUT flipping the mode. Without this,
     # mid-run failure leaves the user with: (a) partial flat files,
     # (b) tracker.toml still saying mode=tracker — a split state.
+    # BD-175: surface-aware backup loop. Pack-side BACKLOG/CHANGELOG live
+    # under pack-ops/; client-side under root (legacy). Iterate the four
+    # destination paths derived above so the backup/restore stays in sync
+    # with the relocation.
+    local _emit_path_list
+    _emit_path_list="$backlog_out $plan_out $status_out $changelog_out"
     local backup_dir=""
     if [[ "$flip_mode" == "1" ]]; then
         backup_dir="$repo_root/$TMF_PACK_TRACKER_DIR/disable-backup"
         mkdir -p "$backup_dir"
-        local f
-        for f in BACKLOG.md IMPLEMENTATION-PLAN.md STATUS.md CHANGELOG.md; do
-            if [[ -f "$repo_root/$f" ]]; then
-                cp "$repo_root/$f" "$backup_dir/$f"
+        local f base
+        for f in $_emit_path_list; do
+            base=$(basename "$f")
+            if [[ -f "$f" ]]; then
+                cp "$f" "$backup_dir/$base"
             else
                 # Sentinel: file did not exist before the run.
-                : > "$backup_dir/$f.sentinel-absent"
+                : > "$backup_dir/$base.sentinel-absent"
             fi
         done
     fi
@@ -1114,15 +1136,19 @@ print(json.dumps(phases))')
 
     # Atomicity gate: if any emit/strip failed during a disable
     # flow, restore originals and abort BEFORE the mode flip.
+    # BD-175: surface-aware restore — mirrors the backup loop's path
+    # derivation above so pack-side pack-ops/ paths round-trip correctly.
     if [[ "$flip_mode" == "1" && "$emit_failed" == "1" ]]; then
         local restored=0
-        for f in BACKLOG.md IMPLEMENTATION-PLAN.md STATUS.md CHANGELOG.md; do
-            if [[ -f "$backup_dir/$f.sentinel-absent" ]]; then
+        local f base
+        for f in $_emit_path_list; do
+            base=$(basename "$f")
+            if [[ -f "$backup_dir/$base.sentinel-absent" ]]; then
                 # File didn't exist before the run; remove the half-written one.
-                rm -f "$repo_root/$f"
+                rm -f "$f"
                 restored=$((restored + 1))
-            elif [[ -f "$backup_dir/$f" ]]; then
-                cp "$backup_dir/$f" "$repo_root/$f"
+            elif [[ -f "$backup_dir/$base" ]]; then
+                cp "$backup_dir/$base" "$f"
                 restored=$((restored + 1))
             fi
         done

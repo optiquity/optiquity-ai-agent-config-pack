@@ -26,7 +26,7 @@ the point. Documents which base the changes apply to.
 Paste the verbatim output of the agent's pre-flight checks: `pwd`,
 `git rev-parse HEAD`, `git rev-parse --abbrev-ref HEAD`,
 `git log --oneline -N`, the `ls` of every directory touched, plus any
-prompt-required marker greps (e.g., `grep -c "BD-NNN" BACKLOG.md`). This
+prompt-required marker greps (e.g., `grep -c "BD-NNN" pack-ops/BACKLOG.md`). This
 is the evidence that the agent started from the correct state. See the
 `commit-discipline` skill for the pre-flight requirements themselves.
 
@@ -59,7 +59,7 @@ landed:
   changes touch — must show `=== Results: N passed, 0 failed ===`.
 - `python3 scripts/validate-pack.py` final tally line whenever any file
   under `project-template/`, `.claude/`, `.codex/`, `.gemini/`,
-  `BACKLOG.md`, `README.md`, or agent definitions changed.
+  `pack-ops/BACKLOG.md`, `README.md`, or agent definitions changed.
 
 "Looks right" is not verification. If a command was not run, say so and
 explain why; do not pretend.

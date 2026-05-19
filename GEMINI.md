@@ -16,10 +16,10 @@ Optiquity AI Agent Config Pack: versioned Claude Code, Codex, and Gemini CLI age
 configuration files for Swift / Python / gRPC projects. Ships template directories,
 agent files, skills, scripts, and supporting documentation.
 
-Key docs: `README.md` (version table), `BACKLOG.md` (BD-NNN items;
-regenerated mirror — per-entry source at `/backlog/`), `CHANGELOG.md`
+Key docs: `README.md` (version table), `pack-ops/BACKLOG.md` (BD-NNN items;
+regenerated mirror — per-entry source at `/backlog/`), `pack-ops/CHANGELOG.md`
 (version history; regenerated mirror — per-entry source at `/changelog/`),
-`PACK-CHAT.md` (PM chat rules), `PACK-AGENTS.md` (agent routing for pack
+`pack-ops/PACK-CHAT.md` (PM chat rules), `pack-ops/PACK-AGENTS.md` (agent routing for pack
 work). Per-entry trees: read `/backlog/_rules.md` and
 `/changelog/_rules.md` for the per-stream contract before any per-entry
 edit.
@@ -44,19 +44,19 @@ Where N is the current major version — read from README.md version table befor
 breaking changes or large additions. Bare major tag always floats to latest minor.
 Tag move sequence: delete local + remote, recreate, push.
 
-**BD numbering:** Always read BACKLOG.md to find the highest existing BD
+**BD numbering:** Always read `pack-ops/BACKLOG.md` to find the highest existing BD
 number, then increment by 1. Never assign a BD number from memory or
 from another chat's reservation list — reservations are not authoritative.
 
 **What agents may modify:**
 - Template files, supporting-docs/, maintenance-docs/: when task explicitly requires
-- CHANGELOG.md: only at version boundaries with explicit instruction
+- `pack-ops/CHANGELOG.md`: only at version boundaries with explicit instruction
 - Scripts in template directories
 
 **What agents must never modify without explicit instruction:**
-- BACKLOG.md: PM chat only, after user approval
+- `pack-ops/BACKLOG.md`: PM chat only, after user approval
 - README.md version table: PM chat only
-- PACK-CHAT.md / CLAUDE.md / AGENTS.md / PACK-AGENTS.md / GEMINI.md: PM chat only
+- `pack-ops/PACK-CHAT.md` / CLAUDE.md / AGENTS.md / `pack-ops/PACK-AGENTS.md` / GEMINI.md: PM chat only
 
 **Trinity rule — CLAUDE.md / AGENTS.md / GEMINI.md:**
 When modifying `project-template/CLAUDE.md`, make the parallel edit in
@@ -314,7 +314,7 @@ in the same commit as the behavior change.
   an explicit "never source of truth" disclaimer; if a convenience
   view drifts, the per-entry tree (Mode 2) or the tracker (Mode 3)
   wins. Read more at `<stream>/_rules.md`.
-- **BACKLOG.md has no Resolved section.** Entries resolve in place by
+- **`pack-ops/BACKLOG.md` has no Resolved section.** Entries resolve in place by
   flipping `Status: Open` to `Status: Resolved` and filling the
   `Resolved:` line. Do not propose moving entries to a separate section.
 - **Separate pack ops from pack product.** Pack ops files (CLAUDE.md,

@@ -29,7 +29,7 @@ Responsibilities:
 
 Before planning, read:
 - CLAUDE.md (pack repo rules)
-- BACKLOG.md (BD items in scope)
+- `pack-ops/BACKLOG.md` (BD items in scope)
 - README.md (repository layout — the authoritative structure reference)
 - /backlog/_rules.md (pack per-entry tree contract)
 - /changelog/_rules.md (pack changelog per-entry tree contract)

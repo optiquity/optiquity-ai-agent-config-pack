@@ -121,7 +121,9 @@ prefix = "BD"
 forward_complete = false
 mapping_file = ".pack-tracker/id-map.json"
 EOF
-    cat > "$repo/BACKLOG.md" <<'EOF'
+    # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
+    mkdir -p "$repo/pack-ops"
+    cat > "$repo/pack-ops/BACKLOG.md" <<'EOF'
 # Backlog
 
 ## Active

@@ -105,7 +105,8 @@ prefix = "BD"
 forward_complete = true
 mapping_file = ".pack-tracker/id-map.json"
 EOF
-    mkdir -p "$repo/.pack-tracker"
+    # BD-175: pack-side test fixture needs pack-ops/ for surface=pack auto-detect.
+    mkdir -p "$repo/pack-ops" "$repo/.pack-tracker"
     cat > "$repo/.pack-tracker/id-map.json" <<EOF
 {
   "BD-001": {"id": "42", "url": "http://x/42"},
@@ -243,7 +244,7 @@ touch -t 202001010000 "$REPO/.pack-tracker/id-map.json"
 # half-data into BACKLOG.md. With a sentinel pre-seeded we assert
 # the skip-guard refused BEFORE any rewrite touched the file.
 G1_SENTINEL='SENTINEL-BD132-F2: pre-existing BACKLOG must not be overwritten when skip-guard fires.'
-printf '%s\n' "$G1_SENTINEL" > "$REPO/BACKLOG.md"
+printf '%s\n' "$G1_SENTINEL" > "$REPO/pack-ops/BACKLOG.md"
 
 FAKE=$(mkfixture "g1-fake-bin")
 build_fake_gh_with_inflight "$FAKE"
@@ -269,7 +270,7 @@ assert_contains "1.6 message names BD-132 / D-5 origin"              "$out" "BD-
 # unchanged. The skip-guard must refuse BEFORE _tmr_emit_backlog
 # rewrites the file. Reading the file content (not just existence)
 # is the assertion that has discriminating power.
-g1_backlog_after=$(cat "$REPO/BACKLOG.md" 2>/dev/null || echo "<MISSING>")
+g1_backlog_after=$(cat "$REPO/pack-ops/BACKLOG.md" 2>/dev/null || echo "<MISSING>")
 assert_eq "1.7 BACKLOG.md sentinel preserved when skip-guard fires" \
     "$G1_SENTINEL" "$g1_backlog_after"
 
@@ -298,7 +299,7 @@ export PATH="$PATH_SAVED"
 
 assert_eq       "2.1 --force returns rc=0 (proceeds despite skips)"   "0" "$rc2"
 assert_contains "2.2 --force still emits WARN to stderr"             "$out2" "2 issue(s) skipped"
-[[ -f "$REPO2/BACKLOG.md" ]] \
+[[ -f "$REPO2/pack-ops/BACKLOG.md" ]] \
     && pass "2.3 --force writes (partial) BACKLOG.md" \
     || fail "2.3 --force writes (partial) BACKLOG.md" "file present" "missing"
 mode_after2=$(tracker_config_get "$REPO2/tracker.toml" mode.state)

@@ -239,6 +239,8 @@ _build_fake_gh_g2 "$FAKE"
 
 # Seed BACKLOG.md with the sentinel preamble + one entry. Seed the
 # tracker.toml + mapping so reverse can run without a real forward.
+# BD-175: pack-side test fixture needs pack-ops/ for surface=pack auto-detect.
+mkdir -p "$REPO/pack-ops" "$REPO/.pack-tracker"
 cat > "$REPO/tracker.toml" <<EOF
 schema_version = 1
 [backend]
@@ -252,11 +254,11 @@ prefix = "BD"
 forward_complete = true
 mapping_file = ".pack-tracker/id-map.json"
 EOF
-mkdir -p "$REPO/.pack-tracker"
 cat > "$REPO/.pack-tracker/id-map.json" <<'EOF'
 { "BD-001": {"id": "42", "url": "http://x/42"} }
 EOF
-cat > "$REPO/BACKLOG.md" <<EOF
+# BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
+cat > "$REPO/pack-ops/BACKLOG.md" <<EOF
 ${SENTINEL_PREAMBLE}
 **BD-001 — Add foo**
 Type: TODO(version)
@@ -271,7 +273,7 @@ EOF
 # (review F2). `cmp -s` is byte-exact and rejects any trailing-
 # newline drift, matching the BD-133 byte-identical contract.
 WORK_G2=$(mktemp -d -t bd133-2-work.XXXXXX)
-tracker_header_snapshot_extract_preamble "$REPO/BACKLOG.md" > "$WORK_G2/orig.preamble"
+tracker_header_snapshot_extract_preamble "$REPO/pack-ops/BACKLOG.md" > "$WORK_G2/orig.preamble"
 
 # Run reverse (no flip; no force needed — mapping was just written
 # but the test fixtures elsewhere bypass freshness via flip_mode=0).
@@ -288,7 +290,7 @@ assert_eq "2.1 reverse rc=0" "0" "$rc"
     || t_fail "2.1 snapshot file created on first reverse"
 
 # Extract the post-reverse preamble and assert byte-equal via cmp -s.
-tracker_header_snapshot_extract_preamble "$REPO/BACKLOG.md" > "$WORK_G2/post.preamble"
+tracker_header_snapshot_extract_preamble "$REPO/pack-ops/BACKLOG.md" > "$WORK_G2/post.preamble"
 if cmp -s "$WORK_G2/orig.preamble" "$WORK_G2/post.preamble"; then
     t_pass "2.2 post-reverse preamble byte-equal to original"
 else
@@ -297,7 +299,7 @@ else
 fi
 
 # The reconstructed BD-001 entry must still be present after the apply.
-backlog_after=$(cat "$REPO/BACKLOG.md")
+backlog_after=$(cat "$REPO/pack-ops/BACKLOG.md")
 assert_contains "2.3 BD-001 entry present after apply" "$backlog_after" "**BD-001 — Add foo**"
 assert_contains "2.3 user title preserved"   "$backlog_after" "# Backlog"
 assert_contains "2.3 H2 section preserved"   "$backlog_after" "## How to use this file"
@@ -403,7 +405,8 @@ FAKEGH
 
 REPO=$(mktemp -d -t bd133-3.XXXXXX)
 FAKE=$(mktemp -d -t bd133-3-fake.XXXXXX)
-mkdir -p "$REPO/.pack-tracker"
+# BD-175: pack-side test fixture needs pack-ops/ for surface=pack auto-detect.
+mkdir -p "$REPO/pack-ops" "$REPO/.pack-tracker"
 STATE="$REPO/.pack-tracker/fake-state.json"
 _build_stateful_fake_gh_g3 "$FAKE" "$STATE"
 
@@ -423,7 +426,8 @@ EOF
 cat > "$REPO/IMPLEMENTATION-PLAN.md" <<'EOF'
 # IMPLEMENTATION PLAN
 EOF
-cat > "$REPO/BACKLOG.md" <<EOF
+# BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
+cat > "$REPO/pack-ops/BACKLOG.md" <<EOF
 ${SENTINEL_PREAMBLE}
 **BD-001 — Add foo**
 Type: TODO(version)
@@ -445,7 +449,7 @@ EOF
 # Capture pre-forward preamble bytes for byte-equal comparison.
 # `cmp -s` against a tmp file (review F2) — see Group 2 for rationale.
 WORK_G3=$(mktemp -d -t bd133-3-work.XXXXXX)
-tracker_header_snapshot_extract_preamble "$REPO/BACKLOG.md" > "$WORK_G3/orig.preamble"
+tracker_header_snapshot_extract_preamble "$REPO/pack-ops/BACKLOG.md" > "$WORK_G3/orig.preamble"
 
 # Forward (BD-131-owned forward.sh runs but we do NOT modify it).
 export PATH="$FAKE:$PATH_SAVED"
@@ -466,7 +470,7 @@ assert_eq "3.1 reverse rc=0" "0" "$reverse_rc"
     || t_fail "3.2 snapshot file created during round-trip"
 
 # Preamble byte-equal via cmp -s.
-tracker_header_snapshot_extract_preamble "$REPO/BACKLOG.md" > "$WORK_G3/post.preamble"
+tracker_header_snapshot_extract_preamble "$REPO/pack-ops/BACKLOG.md" > "$WORK_G3/post.preamble"
 if cmp -s "$WORK_G3/orig.preamble" "$WORK_G3/post.preamble"; then
     t_pass "3.3 init→disable preamble byte-equal to original"
 else
@@ -475,7 +479,7 @@ else
 fi
 
 # Entries also present.
-backlog_after=$(cat "$REPO/BACKLOG.md")
+backlog_after=$(cat "$REPO/pack-ops/BACKLOG.md")
 assert_contains "3.4 BD-001 reconstructed" "$backlog_after" "**BD-001 — Add foo**"
 assert_contains "3.4 BD-002 reconstructed" "$backlog_after" "**BD-002 — Refactor bar**"
 
@@ -491,6 +495,8 @@ REPO=$(mktemp -d -t bd133-4.XXXXXX)
 FAKE=$(mktemp -d -t bd133-4-fake.XXXXXX)
 _build_fake_gh_g2 "$FAKE"
 
+# BD-175: pack-side test fixture needs pack-ops/ for surface=pack auto-detect.
+mkdir -p "$REPO/pack-ops" "$REPO/.pack-tracker"
 cat > "$REPO/tracker.toml" <<EOF
 schema_version = 1
 [backend]
@@ -504,11 +510,11 @@ prefix = "BD"
 forward_complete = true
 mapping_file = ".pack-tracker/id-map.json"
 EOF
-mkdir -p "$REPO/.pack-tracker"
 cat > "$REPO/.pack-tracker/id-map.json" <<'EOF'
 { "BD-001": {"id": "42", "url": "http://x/42"} }
 EOF
-cat > "$REPO/BACKLOG.md" <<EOF
+# BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
+cat > "$REPO/pack-ops/BACKLOG.md" <<EOF
 ${SENTINEL_PREAMBLE}
 **BD-001 — Add foo**
 Type: TODO(version)
@@ -518,7 +524,7 @@ EOF
 # Capture original preamble bytes via tmp file + cmp -s (review F2);
 # `$(...)` capture would mask trailing-newline drift across N cycles.
 WORK_G4=$(mktemp -d -t bd133-4-work.XXXXXX)
-tracker_header_snapshot_extract_preamble "$REPO/BACKLOG.md" > "$WORK_G4/orig.preamble"
+tracker_header_snapshot_extract_preamble "$REPO/pack-ops/BACKLOG.md" > "$WORK_G4/orig.preamble"
 
 # Run reverse 5 times in a row.
 export PATH="$FAKE:$PATH_SAVED"
@@ -531,7 +537,7 @@ for cycle in 1 2 3 4 5; do
 done
 export PATH="$PATH_SAVED"
 
-tracker_header_snapshot_extract_preamble "$REPO/BACKLOG.md" > "$WORK_G4/post.preamble"
+tracker_header_snapshot_extract_preamble "$REPO/pack-ops/BACKLOG.md" > "$WORK_G4/post.preamble"
 if cmp -s "$WORK_G4/orig.preamble" "$WORK_G4/post.preamble"; then
     t_pass "4.2 5 reverse cycles preserve preamble byte-equal"
 else
@@ -551,7 +557,7 @@ fi
 
 # Final BACKLOG.md still has exactly one title line (no duplication
 # from repeated apply cycles).
-n_titles=$(grep -c -E '^# (BACKLOG|Backlog)$' "$REPO/BACKLOG.md")
+n_titles=$(grep -c -E '^# (BACKLOG|Backlog)$' "$REPO/pack-ops/BACKLOG.md")
 assert_eq "4.4 exactly one title line after N cycles" "1" "$n_titles"
 
 rm -rf "$REPO" "$FAKE" "$WORK_G4"

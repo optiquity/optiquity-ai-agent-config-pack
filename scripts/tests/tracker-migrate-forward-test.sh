@@ -282,8 +282,10 @@ if [[ "$(command -v gh)" != "$FAKE_BIN/gh" ]]; then
 fi
 
 # Build a temp repo seeded from the fixtures.
+# BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
 TEST_REPO=$(mktemp -d -t tmf-repo.XXXXXX)
-cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO/BACKLOG.md"
+mkdir -p "$TEST_REPO/pack-ops"
+cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO/pack-ops/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO/tracker.toml"
 
@@ -359,10 +361,10 @@ else
 fi
 
 # 3.6 BACKLOG.md mirror header was added in place.
-first_line=$(head -n 1 "$TEST_REPO/BACKLOG.md")
+first_line=$(head -n 1 "$TEST_REPO/pack-ops/BACKLOG.md")
 assert_eq "3.6 BACKLOG mirror header line 1" "<!--" "$first_line"
 assert_contains "3.6 BACKLOG mirror header text" \
-    "$(head -n 5 "$TEST_REPO/BACKLOG.md" | tr '\n' ' ')" "read-only mirror"
+    "$(head -n 5 "$TEST_REPO/pack-ops/BACKLOG.md" | tr '\n' ' ')" "read-only mirror"
 
 # 3.7 tracker.toml updated with last_forward_run.
 assert_contains "3.7 tracker.toml has last_forward_run" \
@@ -395,7 +397,8 @@ assert_eq "3.8 mapping count unchanged" "$n_mapped" "$n_mapped_2"
 # 3.9 dry-run mode: parser runs, no creates.
 > "$GH_LOG"
 TEST_REPO2=$(mktemp -d -t tmf-repo-dry.XXXXXX)
-cp "$FIXTURES/BACKLOG.md" "$TEST_REPO2/BACKLOG.md"
+mkdir -p "$TEST_REPO2/pack-ops"
+cp "$FIXTURES/BACKLOG.md" "$TEST_REPO2/pack-ops/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO2/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml" "$TEST_REPO2/tracker.toml"
 output3=$(tracker_migrate_forward_run "$TEST_REPO2" 1 0 2>&1)
@@ -422,7 +425,8 @@ assert_contains "3.10 status reports last reverse run"    "$status_out" "last re
 
 # 3.11 missing tracker.toml: forward fails with typed error.
 TEST_REPO3=$(mktemp -d -t tmf-repo-noconf.XXXXXX)
-cp "$FIXTURES/BACKLOG.md" "$TEST_REPO3/BACKLOG.md"
+mkdir -p "$TEST_REPO3/pack-ops"
+cp "$FIXTURES/BACKLOG.md" "$TEST_REPO3/pack-ops/BACKLOG.md"
 err=$(tracker_migrate_forward_run "$TEST_REPO3" 0 0 2>&1) || true
 assert_contains "3.11 missing tracker.toml → validation" "$err" "ERROR: validation"
 assert_contains "3.11 error mentions pack tracker init" "$err" "pack tracker init"
@@ -501,7 +505,8 @@ chmod +x "$FAKE_BIN_PF/gh"
 
 # Run forward with fake-gh that fails on close. Expect rc=1 + partial-write.
 TEST_REPO_PF=$(mktemp -d -t tmf-repo-pf.XXXXXX)
-cp "$FIXTURES/BACKLOG.md" "$TEST_REPO_PF/BACKLOG.md"
+mkdir -p "$TEST_REPO_PF/pack-ops"
+cp "$FIXTURES/BACKLOG.md" "$TEST_REPO_PF/pack-ops/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_PF/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml" "$TEST_REPO_PF/tracker.toml"
 
@@ -624,7 +629,8 @@ rm -f "$FAKE_BIN_REC/gh.bak"
 chmod +x "$FAKE_BIN_REC/gh"
 
 TEST_REPO_REC=$(mktemp -d -t tmf-repo-rec.XXXXXX)
-cp "$FIXTURES/BACKLOG.md" "$TEST_REPO_REC/BACKLOG.md"
+mkdir -p "$TEST_REPO_REC/pack-ops"
+cp "$FIXTURES/BACKLOG.md" "$TEST_REPO_REC/pack-ops/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_REC/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml" "$TEST_REPO_REC/tracker.toml"
 
@@ -658,7 +664,8 @@ FAKE_GH_MO
 chmod +x "$FAKE_BIN_MO/gh"
 
 TEST_REPO_MO=$(mktemp -d -t tmf-repo-mo.XXXXXX)
-cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_MO/BACKLOG.md"
+mkdir -p "$TEST_REPO_MO/pack-ops"
+cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_MO/pack-ops/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_MO/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO_MO/tracker.toml"
 
@@ -673,7 +680,7 @@ assert_contains "4.5 --mirror-only reports refresh" "$output_mo" "mirror header 
 n_gh_calls=$(wc -l < "$GH_LOG_MO" | tr -d ' ')
 assert_eq "4.5 --mirror-only invokes 0 gh calls" "0" "$n_gh_calls"
 # Mirror header is now present in BACKLOG.md.
-first_line=$(head -n 1 "$TEST_REPO_MO/BACKLOG.md")
+first_line=$(head -n 1 "$TEST_REPO_MO/pack-ops/BACKLOG.md")
 assert_eq "4.5 --mirror-only writes header line 1" "<!--" "$first_line"
 # No mapping file or checkpoint file written.
 [[ ! -f "$TEST_REPO_MO/.pack-tracker/id-map.json" ]] \
@@ -745,7 +752,8 @@ FAKEGH_CP
 chmod +x "$FAKE_BIN_CP/gh"
 
 TEST_REPO_CP=$(mktemp -d -t tmf-repo-cp.XXXXXX)
-cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_CP/BACKLOG.md"
+mkdir -p "$TEST_REPO_CP/pack-ops"
+cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_CP/pack-ops/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_CP/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO_CP/tracker.toml"
 
@@ -940,7 +948,8 @@ FAKEGH_C
 chmod +x "$FAKE_BIN_C/gh"
 
 TEST_REPO_C=$(mktemp -d -t tmf-repo-c.XXXXXX)
-cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_C/BACKLOG.md"
+mkdir -p "$TEST_REPO_C/pack-ops"
+cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_C/pack-ops/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_C/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO_C/tracker.toml"
 
@@ -1048,7 +1057,8 @@ FAKEGH_R1
 chmod +x "$FAKE_BIN_R1/gh"
 
 TEST_REPO_R=$(mktemp -d -t tmf-repo-r.XXXXXX)
-cp "$FIXTURES/BACKLOG.md"             "$TEST_REPO_R/BACKLOG.md"
+mkdir -p "$TEST_REPO_R/pack-ops"
+cp "$FIXTURES/BACKLOG.md"             "$TEST_REPO_R/pack-ops/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_R/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"           "$TEST_REPO_R/tracker.toml"
 
@@ -1219,6 +1229,7 @@ printf "\n=== Group 6: BD-108 cross-entity link routing (review F3) ===\n"
 # Mini-fixture repo with one BACKLOG entry that has `Blockers:
 # phase-3.2` and an IMPLEMENTATION-PLAN with a Dependencies bullet.
 TEST_REPO_BD108=$(mktemp -d -t tmf-bd108.XXXXXX)
+mkdir -p "$TEST_REPO_BD108/pack-ops"  # BD-175 pack-side marker
 FAKE_BIN_BD108=$(mktemp -d -t tmf-fakebin-bd108.XXXXXX)
 GH_LOG_BD108=$(mktemp -t tmf-ghlog-bd108.XXXXXX)
 ISSUE_COUNTER_BD108=$(mktemp -t tmf-counter-bd108.XXXXXX)
@@ -1235,7 +1246,7 @@ echo "0" > "$ISSUE_COUNTER_BD108"
 # IMPLEMENTATION-REPORT) — so the phase-3.2 Blocker reaches the case
 # statement but tmf_mapping_get returns empty, surfacing the routing
 # decision via the partial_failures path.
-cat > "$TEST_REPO_BD108/BACKLOG.md" <<'BACKLOG'
+cat > "$TEST_REPO_BD108/pack-ops/BACKLOG.md" <<'BACKLOG'
 # BACKLOG
 
 **BD-501 — Phase-task blocker entry (BD-108 routing target)**

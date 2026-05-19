@@ -98,7 +98,8 @@ tracker_init_run() {
     # Auto-detect surface if not provided. Pack root has PACK-CHAT.md;
     # client root has docs/pack/.
     if [[ -z "$surface" ]]; then
-        if [[ -f "$repo_root/PACK-CHAT.md" ]]; then
+        # BD-175: pack-side auto-detect uses pack-ops/ directory marker.
+        if [[ -d "$repo_root/pack-ops" ]]; then
             surface="pack"
         elif [[ -d "$repo_root/docs/pack" ]]; then
             surface="client"
