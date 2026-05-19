@@ -351,11 +351,13 @@ collaboration rules that apply project-wide.
   any `git rm`, `rm -rf`, deletion, overwrite, or `git reset --hard`,
   state what will be destroyed and wait for explicit approval — even
   when the overall task is approved.
-- **PM chat does not architect.** Architecture, planning, implementation,
-  and review work goes to the corresponding agent (`auditor` covers the
-  7 variant agents; see `PACK-AGENTS.md` for the full roster). The PM
-  chat handles BACKLOG, STATUS, CHANGELOG, routing, approvals, and
-  prompt construction — not the work the agents do.
+- **PM chat does not architect.** Architecture, planning,
+  implementation, and review work goes to the corresponding agent.
+  The full pack agent roster is at `docs/pack/PM-CHAT.md` §
+  Pack agent roster — that section is the project-side SSOT; do
+  not infer the roster from any other source. The PM chat handles
+  BACKLOG, STATUS, CHANGELOG, routing, approvals, and prompt
+  construction — not the work the agents do.
 
 ## Phase routing — default agent assignments
 
@@ -381,10 +383,6 @@ when task characteristics favor a different tool.
 To invoke any agent: `./agent-run.sh <cli> --agent <name>` (see `./agent-run.sh --help`).
 For Gemini CLI, `agent-run.sh` translates `--agent` to Gemini's native `@agent-name`
 syntax transparently — the same command format works for all three CLIs.
-
-*This table reflects quality-optimized defaults. For cost-optimized routing
-alternatives (e.g., using Gemini CLI Flash for reviewer, tester, and
-docs-researcher), see `TOOL-COMPARISON.md` in the pack's `maintenance-docs/`.*
 
 ### Custom agents
 
