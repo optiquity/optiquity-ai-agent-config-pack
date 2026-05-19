@@ -131,7 +131,7 @@ B's §6.1 enumerated 8 MOVES (M1-M8). This fix-pass adds two more, M9 and M10:
 | M3 | `OPTIONAL-FEATURES.md` | `pack-ops/OPTIONAL-FEATURES.md` | ~20+ refs (B's §6.1) |
 | M4 | `PACK-AGENTS.md` | `pack-ops/PACK-AGENTS.md` | ~25+ refs (B's §6.1) |
 | M5 | `PACK-CHAT.md` | `pack-ops/PACK-CHAT.md` | ~30+ refs (B's §6.1) |
-| M6 | `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` | `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` | ~10 refs (B's §6.1) |
+| M6 | `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` | `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` (per Override 6; see §16 below) | ~10 refs (B's §6.1) |
 | M7 | `supporting-docs/DRY-RUN-MIGRATION.md` | `pack-ops/DRY-RUN-MIGRATION.md` | ~5-10 refs (B's §6.1) |
 | M8 | `supporting-docs/MERGE-STRATEGY.md` | `pack-ops/MERGE-STRATEGY.md` | ~15-20 refs (B's §6.1) |
 | **M9** | `BACKLOG.md` | `pack-ops/BACKLOG.md` | **~140 refs (see §6 below; mostly pack-side ops/agent/skill files + scripts + maintenance archive)** |
@@ -533,7 +533,7 @@ git mv CHANGELOG.md pack-ops/CHANGELOG.md
 
 After the combined Commit B lands:
 
-1. `bash scripts/validate-pack.py` — all 33 checks pass. Check 3, Check 22, Check 24, Check 32, Check 35 all touch the relocated paths; any failure here means a constant was missed.
+1. `bash scripts/validate-pack.py` — all currently-enabled checks pass. Check 3, Check 22, Check 24, Check 32, Check 35 all touch the relocated paths; any failure here means a constant was missed.
 2. `bash scripts/pack-help.sh --root .` — pack-side fragment resolves; detection picks pack-surface from new BACKLOG location.
 3. `bash scripts/pack-help.sh --root project-template` — project-side fragment resolves unchanged.
 4. `bash -c '. scripts/lib/detect.sh && detect_pack_surface .'` — returns `pack-surface: pack` (confirms detect.sh update).
@@ -563,3 +563,453 @@ After Commit B lands, scripts or agents holding stale local references to `<repo
 - **§10:** Concrete Phase 5 guidance — per-file line-numbered edits, verification protocol additions, operator-facing back-compat caveat.
 
 This fix-pass honors AUDIT-USER-CURATION.md Override 5 by moving BACKLOG.md and CHANGELOG.md to `pack-ops/`. B's other 8 design contributions (G7 boundary definition, G2 directory architecture, SC8 discoverability, M1-M8 + S1-S2 relocations, BOUNDARY-DEFINITION.md, manifest regen contract, verification protocol) stand unchanged.
+
+
+---
+
+## §12 — Phase 3 fix-pass extension (M3 / Override 7 + Override 10)
+
+**Trigger:** PACK-REVIEW-PHASE-2-DESIGNS.md M3 (lines 108-124) + AUDIT-USER-CURATION.md Override 7 + Override 10.
+
+**Authority:**
+- **Override 7:** `QUICKSTART.md` STAYS at pack root as-is. No SPLIT. Architect B's S1 commit is DROPPED. `project-template/docs/pack/QUICKSTART.md` is NOT created. `init-project.sh` does NOT gain a new install stage for it.
+- **Override 10:** Remove the `docs/pack/QUICKSTART.md` references from the 4 help files entirely (do NOT retarget). User framing: install docs (QUICKSTART) are pre-install pack-installer content; the 4 help files serve users using the pack inside their project and have no business pointing at install docs. Project-template `README.md` lines 16 + 39 are correctly worded ("in the pack root" / pack-supporting-doc read) and are NOT affected.
+
+**Scope of amendment.** This section amends Architect B's original directory doc (`ARCHITECTURE-DIRECTORY-REORGANIZATION.md`) at every location B mentions QUICKSTART SPLIT (S1) or the project-side `docs/pack/QUICKSTART.md` file. After Phase 5 coder reads B-original through B-fix-extended in order, no instruction remains anywhere to create the SPLIT files or the surfaces["project-template"]["docs"] addition.
+
+### §12.1 — Amendments to Architect B's original §4.4 (F-4 QUICKSTART.md split)
+
+**B's original §4.4 (lines 378-406 of `ARCHITECTURE-DIRECTORY-REORGANIZATION.md`):** Designs the SPLIT into pack-side half (stays at `/QUICKSTART.md`) + project-side half (`project-template/docs/pack/QUICKSTART.md`); names content-split sketch for both halves; gives path-reference impact statement; calls out `scripts/validate-pack.py:1655` as unchanged AND `scripts/validate-pack.py` Check 22 `surfaces["project-template"]["docs"]` as gaining `REPO_ROOT / "project-template" / "docs" / "pack" / "QUICKSTART.md"`.
+
+**Amendment (per Override 7 + Override 10):**
+
+The entire SPLIT design in B's §4.4 is **REPLACED** with the following resolution:
+
+> **§4.4 F-4 resolution (B-fix-extended per Override 7): KEEP AT ROOT, NO SPLIT.**
+>
+> `QUICKSTART.md` stays at pack root (`/QUICKSTART.md`) as-is. It is a pre-install pack-installer doc (~47 lines) that serves one audience — pack-installers evaluating the pack via GitHub or about to run `scripts/init-project.sh`. Audience-mixing concern from audit §F.F-4 is resolved by user direction (Override 7); the file does not need to serve a post-install in-project audience because no in-project workflow needs it (per Override 10).
+>
+> **Classification:** C1 (PACK × PRODUCT, landing-page surface). The "pack-installer GitHub visitor" audience is the same audience README.md serves, which is also C1 at pack root.
+>
+> **No SPLIT commit lands.** B's S1 commit is DROPPED in §12.2 below.
+>
+> **No project-side QUICKSTART created.** `project-template/docs/pack/QUICKSTART.md` is NOT created. `init-project.sh` gains no install stage for it.
+>
+> **Path-reference impact (amended):**
+> - Pack-only refs to `QUICKSTART.md` (HELP-FRAGMENT-PACK.md, README.md, pack-side `.claude/agents/`, `.codex/agents/`, `.gemini/agents/`, `scripts/validate-pack.py`, B-fix M9-relocated `pack-ops/BACKLOG.md` and M10-relocated `pack-ops/CHANGELOG.md` if they mention QUICKSTART, etc.): UNCHANGED — point to pack-root `/QUICKSTART.md`.
+> - Project-side refs in the 4 help files (`project-template/.gemini/commands/pack-help.toml:10`, `project-template/.claude/skills/pack-help/SKILL.md:13`, `project-template/.codex/skills/pack-help/SKILL.md:13`, `project-template/docs/pack/HELP-FRAGMENT.md:4` + `:31`): REMOVED entirely per Override 10. Wording-removal designed in §12.4 below.
+> - Project-template `README.md` lines 16 + 39: UNAFFECTED. Both already correctly disambiguate ("in the pack root" / pack-supporting-doc read).
+> - Supporting-docs refs (`MERGE-STRATEGY.md`, `METHODOLOGY.md`): Architect A's domain. These continue to point to pack-root `/QUICKSTART.md` regardless of B-fix-extension (no relocation occurred).
+>
+> **`scripts/validate-pack.py:230` (REQUIRED_BD044_DOCS):** Stays valid (`REPO_ROOT / "QUICKSTART.md"` — pack-root file unchanged). **No change.**
+>
+> **`scripts/validate-pack.py:1655` (Check 22 `surfaces["pack-root"]["docs"]`):** Stays valid (`REPO_ROOT / "QUICKSTART.md"`). **No change.** (B-fix §6.6 already records this as unchanged; B-fix-extended confirms.)
+>
+> **`scripts/validate-pack.py` Check 22 `surfaces["project-template"]["docs"]` (line 1663-1665):** The addition of `REPO_ROOT / "project-template" / "docs" / "pack" / "QUICKSTART.md"` that B's §4.4 mentioned is **DROPPED**. No project-side QUICKSTART.md exists, so no entry needs validating. The current contents of `surfaces["project-template"]["docs"]` (`PM-CHAT.md`) remain as-is.
+
+### §12.2 — Amendments to Architect B's original §6.2 (SPLIT list — S1 row)
+
+**B's original §6.2 (lines 537-541 of `ARCHITECTURE-DIRECTORY-REORGANIZATION.md`):** The SPLIT table includes:
+
+| # | Source | Pack-side stays | Project-side new | Notes |
+|---|---|---|---|---|
+| S1 | `QUICKSTART.md` | `QUICKSTART.md` (content trimmed to pack-side audience) | `project-template/docs/pack/QUICKSTART.md` (new file, project-side audience) | Per §4.4. Pack-side path unchanged; project-side path new. `init-project.sh` gains an install stage. |
+| S2 | `OPTIONAL-FEATURES.md` (conditional on Architect A) | `pack-ops/OPTIONAL-FEATURES.md` (moved per M3) | `project-template/docs/pack/OPTIONAL-FEATURES.md` (new file, IF B's recommended default per §4.5 is accepted) | Per §4.5. New project-side file under `init-project.sh` install. |
+
+**Amendment (per Override 7):**
+
+The S1 row is **DELETED**. Updated SPLIT list contains S2 only:
+
+| # | Source | Pack-side stays | Project-side new | Notes |
+|---|---|---|---|---|
+| S2 | `OPTIONAL-FEATURES.md` (per Override 8 — CONFIRMED SPLIT) | `pack-ops/OPTIONAL-FEATURES.md` (moved per M3) | `project-template/docs/pack/OPTIONAL-FEATURES.md` (new file, project-side audience) | Per §4.5 + §12 content-split sketch. `init-project.sh` gains an install stage. |
+
+Note that the S2 conditional "(conditional on Architect A)" qualifier is also lifted per Override 8 (CONFIRMED SPLIT) — Phase 5 coder lands S2 unconditionally.
+
+### §12.3 — Amendments to Architect B's original §6.4 step 5 (commit sequencing — S1 commit)
+
+**B's original §6.4 step 5 (line 563 of `ARCHITECTURE-DIRECTORY-REORGANIZATION.md`):**
+
+> 5. **Execute S1 (QUICKSTART.md split) as a third commit.** Pack-side QUICKSTART.md trims content; project-side QUICKSTART.md is created with project-targeted content; `init-project.sh` gains the install stage; references update. Architect A's per-content findings for QUICKSTART apply to whichever half the content lands on.
+
+**Amendment (per Override 7):**
+
+Step 5 is **DELETED**. The commit sequence in B's §6.4 collapses by one commit:
+
+- **Old step 5 (S1 third commit):** DELETED — no S1 commit lands.
+- **Old step 6 (S2 fourth commit, conditional):** **becomes new step 5; conditional qualifier lifted per Override 8.**
+
+Updated B's §6.4 sequence after §12.3 amendment (cross-referenced with B-fix §7.1 Option A folding):
+
+1. **Commit A (CREATE):** `pack-ops/.boundary-exempt-root.txt` + `pack-ops/BOUNDARY-DEFINITION.md` (B's N1 + N2 unchanged).
+2. **Commit B (MOVES — combined M1-M5 + M9-M10 per B-fix §7.1):** seven root → `pack-ops/` files in one commit; auto-detection, validate-pack, per-entry, recommendation, doctor, tracker-agent-read, tracker-migrate-reverse, pack-help, test-per-entry assertions, pack-side trinity, pack-* agents, pack-startup skills, README repo-layout, manifest regen.
+3. **Commit C (M6-M8):** `supporting-docs/` → `pack-ops/` for ALL THREE files (M6 `CONCEPTUAL-REVIEW-METHODOLOGY.md` → `pack-ops/` per `AUDIT-USER-CURATION.md` Override 6 — this v2 amendment closes the cascade gap acknowledged in the pre-v2 wording of this step; see §16 below for the cascade detail; M7 `DRY-RUN-MIGRATION.md` → `pack-ops/`; M8 `MERGE-STRATEGY.md` → `pack-ops/`). All three MOVES land in the same commit; reference updates; manifest regen.
+4. **Commit D (S2, per Override 8):** `pack-ops/OPTIONAL-FEATURES.md` (moved as part of Commit B's M3) gains a project-side sibling `project-template/docs/pack/OPTIONAL-FEATURES.md` created with project-side-audience content per §12 content-split sketch; `init-project.sh` gains the install stage; the 5 project-side references resolve to the new file; manifest regen.
+
+**No S1 commit appears anywhere in the sequence.** The previous "step 6 conditional on Architect A" framing collapses to an unconditional step 4 (since Override 8 confirmed SPLIT — see also S2 reviewer finding cascade, this fix-pass extension does not address S2 directly because that is Architect A's fix-pass scope, but the conditional qualifier is correctly lifted here for consistency with B's commit sequencing).
+
+### §12.4 — Wording-removal designed for each of the 4 help files (Override 10)
+
+Per Override 10, the 5 references in 4 help files to `docs/pack/QUICKSTART.md` are REMOVED entirely. The other doc names in each list (PM-CHAT.md / INSTALL-PROCEDURES.md / OPTIONAL-FEATURES.md) are PRESERVED — they are valid in-project help references. Trinity rule applies because three of the four files are CLI-parallel (`.claude/`, `.codex/`, `.gemini/` surfaces).
+
+#### §12.4.1 — `project-template/.gemini/commands/pack-help.toml` (file 1 of 4)
+
+**Affected line:** 10 (also touches line 11 due to multi-line phrasing).
+
+**Current text (lines 3-13):**
+
+```
+prompt = """
+The user wants to see the full pack verb list and colloquial
+phrasings. Run the help script and present its output verbatim
+to the user.
+
+!{bash scripts/pack-help.sh}
+
+For full documentation, see docs/pack/QUICKSTART.md,
+docs/pack/PM-CHAT.md, docs/pack/INSTALL-PROCEDURES.md, and
+docs/pack/OPTIONAL-FEATURES.md.
+"""
+```
+
+**Amended text (lines 3-13):**
+
+```
+prompt = """
+The user wants to see the full pack verb list and colloquial
+phrasings. Run the help script and present its output verbatim
+to the user.
+
+!{bash scripts/pack-help.sh}
+
+For full documentation, see docs/pack/PM-CHAT.md,
+docs/pack/INSTALL-PROCEDURES.md, and docs/pack/OPTIONAL-FEATURES.md.
+"""
+```
+
+**Mechanical edit:** Delete `docs/pack/QUICKSTART.md,` from line 10 and rewrap the surviving comma-separated list. The "For full documentation, see " prefix and the trailing-period sentence boundary stay; only the QUICKSTART token (with its trailing comma + space) is removed. The list shortens from 4 items to 3 items with appropriate `,` / `, and` placement.
+
+#### §12.4.2 — `project-template/.claude/skills/pack-help/SKILL.md` (file 2 of 4)
+
+**Affected line:** 13 (also touches lines 14-15 due to multi-line phrasing).
+
+**Current text (lines 11-16):**
+
+```
+## Notes
+
+For full documentation, see `docs/pack/QUICKSTART.md`,
+`docs/pack/PM-CHAT.md`, `docs/pack/INSTALL-PROCEDURES.md`, and
+`docs/pack/OPTIONAL-FEATURES.md`. The shell verb `pack help`
+(LCD floor) prints the same content as this skill.
+```
+
+**Amended text (lines 11-16):**
+
+```
+## Notes
+
+For full documentation, see `docs/pack/PM-CHAT.md`,
+`docs/pack/INSTALL-PROCEDURES.md`, and `docs/pack/OPTIONAL-FEATURES.md`.
+The shell verb `pack help` (LCD floor) prints the same content as this skill.
+```
+
+**Mechanical edit:** Delete the `` `docs/pack/QUICKSTART.md`, `` token from line 13 and rewrap the surviving list. Backticks preserved on the surviving items. The "The shell verb..." sentence keeps its content; only the punctuation surrounding the trailing period adjusts as the preceding list shortens by one item.
+
+#### §12.4.3 — `project-template/.codex/skills/pack-help/SKILL.md` (file 3 of 4)
+
+**Affected line:** 13 (also touches lines 14-15; this file is byte-identical to §12.4.2 today per trinity parity).
+
+**Current text:** Same as §12.4.2 above.
+
+**Amended text:** Same as §12.4.2 above.
+
+**Mechanical edit:** Same as §12.4.2. Apply in lockstep with §12.4.2 per trinity rule (Claude + Codex parity for pack-help skill).
+
+#### §12.4.4 — `project-template/docs/pack/HELP-FRAGMENT.md` (file 4 of 4)
+
+**Affected lines:** 4 (in the front-matter sentence) AND 31 (in the "See also" list). TWO removals in this file.
+
+**Reference 1 of 2 — Front-matter sentence (lines 1-7):**
+
+**Current text (lines 1-7):**
+
+```
+# Pack v11 — verb reference (this project)
+
+Verb manifest for **this project**. Run `pack help` or `/pack-help` in
+your CLI for this content. Full docs in `docs/pack/QUICKSTART.md`,
+`docs/pack/PM-CHAT.md`, `docs/pack/INSTALL-PROCEDURES.md`,
+`docs/pack/OPTIONAL-FEATURES.md`.
+```
+
+**Amended text (lines 1-7):**
+
+```
+# Pack v11 — verb reference (this project)
+
+Verb manifest for **this project**. Run `pack help` or `/pack-help` in
+your CLI for this content. Full docs in `docs/pack/PM-CHAT.md`,
+`docs/pack/INSTALL-PROCEDURES.md`, `docs/pack/OPTIONAL-FEATURES.md`.
+```
+
+**Mechanical edit:** Delete the `` `docs/pack/QUICKSTART.md`, `` token from line 4. The "Full docs in " prefix and the trailing period stay; the list shortens from 4 items to 3 items with appropriate comma placement.
+
+**Reference 2 of 2 — "See also" section (lines 29-33):**
+
+**Current text (lines 29-33):**
+
+```
+## See also
+
+`docs/pack/QUICKSTART.md`, `docs/pack/PM-CHAT.md`,
+`docs/pack/METHODOLOGY.md`, `docs/pack/PLATFORM-SKILLS.md`,
+`docs/pack/OPTIONAL-FEATURES.md`, `docs/project/BACKLOG.md`.
+```
+
+**Amended text (lines 29-33):**
+
+```
+## See also
+
+`docs/pack/PM-CHAT.md`, `docs/pack/METHODOLOGY.md`,
+`docs/pack/PLATFORM-SKILLS.md`, `docs/pack/OPTIONAL-FEATURES.md`,
+`docs/project/BACKLOG.md`.
+```
+
+**Mechanical edit:** Delete the `` `docs/pack/QUICKSTART.md`, `` token from line 31. The "## See also" heading stays; the list shortens from 6 items to 5 items with appropriate comma placement and line rewrapping.
+
+**Note on `docs/project/BACKLOG.md` reference in line 33:** This reference is to the PROJECT-side BACKLOG (the client's installed `docs/project/BACKLOG.md`), NOT the pack-side mirror. It is UNAFFECTED by B-fix M9 (B-fix M9 moves only the pack-side `BACKLOG.md` to `pack-ops/`); project-side `docs/project/BACKLOG.md` is the client's own file. Override 10 does not touch this reference.
+
+### §12.5 — Trinity rule compliance for §12.4 edits
+
+The three CLI-parallel pack-help skill files (`pack-help.toml`, `.claude/.../SKILL.md`, `.codex/.../SKILL.md`) are TRINITY (Claude + Codex + Gemini parity for the pack-help skill). Per the pack memory trinity rule:
+
+- §12.4.1 (Gemini): edit lands in the same commit as §12.4.2 + §12.4.3.
+- §12.4.2 (Claude): edit lands in the same commit as §12.4.1 + §12.4.3.
+- §12.4.3 (Codex): edit lands in the same commit as §12.4.1 + §12.4.2.
+- §12.4.4 (HELP-FRAGMENT.md): NOT trinity-parallel by name (different shape), but lives in the same project-side help surface and SHOULD land in the same commit for cohesion. Phase 5 coder treats §12.4.1-§12.4.4 as a single 4-file commit, not split across commits.
+
+After the edits land, the three trinity files (`pack-help.toml`, `.claude/.../SKILL.md`, `.codex/.../SKILL.md`) remain symmetric — they all reference the same 3 docs (PM-CHAT.md, INSTALL-PROCEDURES.md, OPTIONAL-FEATURES.md) instead of the previous 4.
+
+### §12.6 — Amendments to Architect B's original §8 (final-state directory tree)
+
+**B's original §8 tree (line 757 of `ARCHITECTURE-DIRECTORY-REORGANIZATION.md`):**
+
+```
+│   │   │   ├── HELP-FRAGMENT.md, HELP-FRAGMENT-TRACKER.md
+│   │   │   ├── PACK-FEEDBACK.md, PLATFORM-SKILLS.md, PM-CHAT.md
+│   │   │   ├── QUICKSTART.md         (NEW — project-side half from S1 split)
+│   │   │   ├── OPTIONAL-FEATURES.md  (NEW conditional — from S2 split if Architect A accepts default)
+│   │   │   └── prompts/
+```
+
+**Amendment (per Override 7 + Override 8):**
+
+The `QUICKSTART.md (NEW ...)` row is **DELETED** from the `project-template/docs/pack/` block. The `OPTIONAL-FEATURES.md` row's "(NEW conditional — from S2 split if Architect A accepts default)" qualifier becomes "(NEW — from S2 split per Override 8)" (unconditional). Amended block:
+
+```
+│   │   │   ├── HELP-FRAGMENT.md, HELP-FRAGMENT-TRACKER.md
+│   │   │   ├── PACK-FEEDBACK.md, PLATFORM-SKILLS.md, PM-CHAT.md
+│   │   │   ├── OPTIONAL-FEATURES.md  (NEW — project-side from S2 split per Override 8)
+│   │   │   └── prompts/
+```
+
+**B-fix §9 (final-state directory tree in this doc) is NOT amended** — B-fix's §9 already shows the pack-root section without a `project-template/docs/pack/QUICKSTART.md` entry (it only shows pack-root layout, not `project-template/` sub-layout). No drift to fix in B-fix §9.
+
+### §12.7 — Net effect on Phase 5 coder instructions
+
+After §11 lands, Phase 5 coder receiving B-original + B-fix-extended as a paired read sees:
+
+- **No S1 commit anywhere.** Override 7 (B's S1 dropped) is reflected in B's §4.4 (amended), §6.2 (S1 row deleted), §6.4 step 5 (deleted), §8 (project-side QUICKSTART row deleted).
+- **No `validate-pack.py` Check 22 `surfaces["project-template"]["docs"]` addition.** Override 7 (no project-side QUICKSTART exists) is reflected in §12.1 amendment.
+- **No `init-project.sh` install stage for project-side QUICKSTART.md.** Override 7.
+- **4-file wording-removal commit** for Override 10 (the 5 references to `docs/pack/QUICKSTART.md` in 4 help files), per §12.4. Trinity rule applies for the 3 CLI-parallel files. Single commit covers all 4 files.
+- **S2 commit unconditional per Override 8.** B's original §6.4 step 6 conditional-on-Architect-A qualifier is lifted (already noted in §12.3); content-split sketch in §12 below provides starting structure.
+
+**Override 7 citation:** This entire §11 is authorized by AUDIT-USER-CURATION.md §1 Override 7. No further verification needed.
+
+**Override 10 citation:** §12.4 is authorized by AUDIT-USER-CURATION.md §1 Override 10. The architect's call (per Override 10's "Architect B's call HOW to reword") is the per-file wording removals designed above; the user's call is the REMOVE direction.
+
+
+---
+
+## §13 — Phase 3 fix-pass extension (S3 OPTIONAL-FEATURES.md content-split sketch)
+
+**Trigger:** PACK-REVIEW-PHASE-2-DESIGNS.md S3 (lines 185-198) + AUDIT-USER-CURATION.md Override 8.
+
+**Authority:**
+- **Override 8 (CONFIRMED SPLIT):** "One for pack. One for projects. There may be something common to both and maybe some individual to both. That is OK." Pack-side and project-side files are independently curated; the project-side file is NOT required to be a byte-identical mirror — content overlap is allowed where it serves both audiences, but each file's content is tailored to its audience.
+
+**Reviewer's concern (S3):** B's §4.5 says "create a new file `project-template/docs/pack/OPTIONAL-FEATURES.md` with project-side-audience content (subset of pack-side, project-targeted)." The "subset" content split is not designed anywhere. Phase 5 coder receives a content-design task masquerading as a mechanical task. Without specificity, the coder will improvise — exactly the P-missed-7 anti-pattern this BD is trying to fix.
+
+**Fix shape (per reviewer):** Add a 5-10 line content-split sketch naming which sections of current `OPTIONAL-FEATURES.md` stay pack-only vs ship as project-side content. Honor Override 8: not byte-identical mirror; tailored per audience; common-to-both content acceptable.
+
+### §13.1 — Current `OPTIONAL-FEATURES.md` section inventory (pre-split)
+
+Source: `OPTIONAL-FEATURES.md` at pack root (will move to `pack-ops/OPTIONAL-FEATURES.md` per B's M3). The current file has these top-level sections (## headings):
+
+1. **Intro paragraphs** (no heading; lines 1-15): purpose statement, feature characteristics (tool-specific / experimental / higher-cost), cross-CLI-by-default disclaimer.
+2. **`## Claude Code — Agent Teams`** (lines 19-107): tool-specific Claude-only feature; status, what it is, when it matters, how to enable (settings.json env var), how to use pack agents as teammates, caveats, when to skip.
+3. **`## Codex CLI — Optional features`** (lines 111-114): placeholder section for future Codex-specific opt-in features.
+4. **`## Gemini CLI — Optional features`** (lines 118-121): placeholder section for future Gemini-specific opt-in features.
+5. **`## Tracker integration (v11)`** (lines 125-219): tracker opt-in; status, what it is, when it matters, how to enable (`pack tracker init`), how to use, caveats (gh auth, multi-project, sidecar reconciliation), failure modes (customization-detected-needs-reconciliation), how to disable, when to skip.
+6. **`## Adding new entries`** (lines 223-235): contributor guidance for adding new optional-feature sections (status / what / when / enable / use / caveats / when-to-skip shape).
+
+### §13.2 — Audience analysis
+
+**Pack-side audience** (post-move at `pack-ops/OPTIONAL-FEATURES.md`):
+- Pack maintainers deciding whether to introduce / deprecate / refine an optional feature.
+- Pack Chat orchestrating pack-self workflows that may opt into a feature (e.g., enabling Agent Teams in the pack repo for pack work).
+- Pack agents (architect / planner / reviewer) consulting the canonical pack-feature catalog when designing pack-self work.
+- Pack contributors authoring new optional-feature sections per the "Adding new entries" shape contract.
+
+**Project-side audience** (new file at `project-template/docs/pack/OPTIONAL-FEATURES.md`, installed by `init-project.sh` to client `<client>/docs/pack/OPTIONAL-FEATURES.md`):
+- Project PM chats (`pm-startup`) deciding whether to opt the client project into a feature (tracker init, Agent Teams in the client repo, etc.).
+- Project developers consulting feature catalog when reviewing CLI capability tradeoffs for the client repo.
+- Project agents (when applicable) consulting the feature catalog when in-project workflows reference opt-in features.
+
+### §13.3 — Content-split sketch (5-10 line outline per Override 8)
+
+The two files are independently curated. Sections classified as **pack-side-only**, **project-side-only**, or **common-to-both** (tailored wording per audience for common content):
+
+| Section | Pack-side (`pack-ops/`) | Project-side (`project-template/docs/pack/`) | Audience-tailoring notes |
+|---|---|---|---|
+| Intro paragraphs | KEEP — pack-maintainer framing ("pack stays cross-CLI by default") | ADAPT — project-PM framing ("your project can opt into per-CLI features without abandoning cross-CLI parity") | Common-to-both topic; different voice. |
+| `## Claude Code — Agent Teams` | KEEP FULL — pack-self use case + how pack agents work as teammates (the "pack agents at `.claude/agents/<name>.md`" reference is pack-internal) | ADAPT — project-side framing: "your client repo can adopt Agent Teams; the project agents (`.claude/agents/coder.md` etc.) work as teammate types"; reference project-side agent paths, not pack-side. | Common topic; different example paths and different motivating use cases. |
+| `## Codex CLI — Optional features` | KEEP placeholder | KEEP placeholder | Common-to-both; both are forward-pointing stubs. |
+| `## Gemini CLI — Optional features` | KEEP placeholder | KEEP placeholder | Common-to-both. |
+| `## Tracker integration (v11)` — pack surface | KEEP FULL — pack-repo tracker opt-in (`pack-tracker.sh init` from pack-repo CWD), pack-side `tracker.toml.pack-example`, pack-side recommendation signals (BD count, BACKLOG.md size), pack-self failure modes | DROP pack-self-specific subsections (pack repo CWD; pack-side example; pack-side signals) | Pack-only mechanism; not project-relevant in this form. |
+| `## Tracker integration (v11)` — project surface | (covered by pack-side narration of the dual-surface model) | KEEP FULL — project tracker opt-in (`pack-tracker.sh init` from client-repo CWD), client-side `tracker.toml.example` (installed by `init-project.sh` from `tracker.toml.project-example`), project-side recommendation signals (project BD count, project BACKLOG.md size), client-side failure modes | Project-only mechanism; the pack-side narration mentions the project-surface exists but doesn't duplicate the project-side how-to. |
+| `## Tracker integration (v11)` — `customization-detected-needs-reconciliation` reference | KEEP — points to `pack-ops/MERGE-STRATEGY.md` (per B's M8 destination) | KEEP — points to the same `pack-ops/MERGE-STRATEGY.md` (with the "in the pack repo" qualifier since the client install does not ship `pack-ops/`); OR (alternative) ship a project-side MERGE-STRATEGY excerpt at `project-template/docs/pack/MERGE-STRATEGY.md` IF Architect A's content re-litigation directs (Architect A's domain, not B). | Pack-only mechanism doc; project-side reader needs the pointer but the doc itself stays pack-side. |
+| Pack-tracker plumbing details (validate-pack Check 22 mentions, STREAMS constant references, per-entry-tree contract details) | KEEP — pack-internal plumbing relevant only to pack maintainers | OMIT entirely — project-PM doesn't need pack-internal validation details | Pack-only content; would be TYPE-2 contamination if copied to project-side. |
+| `## Adding new entries` | KEEP — pack-contributor guidance for adding to `pack-ops/OPTIONAL-FEATURES.md` | KEEP-OR-ADAPT — same shape contract applies; project-side version emphasizes the project's role: "if the project surfaces a project-specific optional feature, add it here." Some projects may not use this section at all. Phase 5 coder ships the same shape; ProjPM may rewrite or remove during project use. | Common-to-both shape contract; different scope (pack-self vs project-self). |
+
+**Pack-side file (`pack-ops/OPTIONAL-FEATURES.md`) post-split contains:** the full Agent Teams section as currently written, Codex/Gemini placeholders, the FULL Tracker integration section with pack-self framing and pack-only plumbing details, the contributor guidance. Approximate length: similar to current (~235 lines); plumbing details preserved.
+
+**Project-side file (`project-template/docs/pack/OPTIONAL-FEATURES.md`) post-split contains:** intro paragraphs in project-PM voice, Agent Teams section with project-side agent path examples and project-side use cases, Codex/Gemini placeholders, Tracker integration section with project-self framing (client CWD, client `tracker.toml.example`, project-side recommendation signals, client-side failure modes) and a pointer to `pack-ops/MERGE-STRATEGY.md` qualified with "in the pack repo", the contributor guidance adapted for project use. Approximate length: ~150-180 lines (shorter; plumbing details omitted).
+
+### §13.4 — Phase 5 coder guidance for S2 content split
+
+Phase 5 coder reading B-original §4.5 + §6.2 step 6 + B-fix-extended §12.2 + §13.3 above:
+
+1. **Pack-side file:** `git mv OPTIONAL-FEATURES.md pack-ops/OPTIONAL-FEATURES.md` (B's M3); no content edits at move time. Subsequent S2 commit may tighten pack-side wording to remove project-side voice (the intro paragraph rewording per §13.3) but content stays substantively unchanged. Length stays ~235 lines.
+2. **Project-side file:** CREATE `project-template/docs/pack/OPTIONAL-FEATURES.md` from scratch, using `pack-ops/OPTIONAL-FEATURES.md` as the SOURCE STRUCTURE TEMPLATE. Walk each section per §13.3 table. For ADAPT rows, rewrite from the project-side audience perspective (project-PM voice, client-repo CWD assumption, project-side agent path examples). For DROP rows, omit entirely. For KEEP rows, copy verbatim. For OMIT rows, suppress. Result: a project-targeted feature catalog ~150-180 lines.
+3. **`init-project.sh`:** Add the install stage: copy `project-template/docs/pack/OPTIONAL-FEATURES.md` → `<client>/docs/pack/OPTIONAL-FEATURES.md` during init. Existing install-stage scaffolding (e.g., the loop in `init-project.sh` that copies all `project-template/docs/pack/*.md` files) likely already handles this — Phase 5 coder verifies no special-casing needed.
+4. **5 project-side references** to `docs/pack/OPTIONAL-FEATURES.md` in `project-template/.gemini/commands/pack-help.toml`, `project-template/.claude/skills/pack-help/SKILL.md`, `project-template/.codex/skills/pack-help/SKILL.md`, `project-template/docs/pack/HELP-FRAGMENT.md` (front-matter + See-also): UNCHANGED — they resolve correctly to the newly-created project-side file.
+5. **No byte-identity contract** between pack-side and project-side files (different from HELP-FRAGMENT-TRACKER.md Check 24 pattern). Per Override 8, byte-identity is explicitly rejected — content overlap is acceptable where it serves both audiences, but each file is independently curated.
+
+### §13.5 — TYPE-2 contamination avoidance during the split
+
+The S3 finding warns that without specificity, the coder will improvise — reflexively copying "pack tracker integration" content into project-side without considering audience. §13.3 explicitly classifies each section to prevent this:
+
+- Pack-tracker plumbing (validate-pack Check 22, STREAMS, per-entry-tree contract): EXPLICITLY OMITTED from project-side per §13.3 "Pack-tracker plumbing details" row. Phase 5 coder DOES NOT copy these mentions into project-side.
+- Pack-self surface mentions (pack-repo CWD, pack-side `tracker.toml.pack-example`): EXPLICITLY DROPPED from project-side per §13.3 tracker pack-surface row. Project-side uses project-side framing (client CWD, client `tracker.toml.example`).
+- `pack-ops/` path references: When project-side content needs to reference a pack-only file (e.g., MERGE-STRATEGY.md), the reference is QUALIFIED with "in the pack repo" per Architect C's prevention work (the TYPE-4 contamination guardrail). Phase 5 coder applies this qualifier consistently.
+
+### §13.6 — Override 8 citation
+
+This entire §12 is authorized by AUDIT-USER-CURATION.md §1 Override 8 ("CONFIRMED SPLIT"). The user explicitly endorsed (a) pack-side and project-side as separate independently-curated files, (b) common-to-both content as acceptable, (c) per-audience tailoring as the operative principle. §13.3's table operationalizes (c); §13.4's coder guidance operationalizes (a) and (b); §13.5 operationalizes the anti-contamination contract embedded in the user's framing.
+
+---
+
+## §14 — Phase 3 fix-pass extension (N2 count-agnostic verification phrasing)
+
+**Trigger:** PACK-REVIEW-PHASE-2-DESIGNS.md N2 (lines 269-275).
+
+**Authority:** Reviewer's NIT finding accepted (triaged FIX per default-fix-all pack memory).
+
+**Reviewer's concern:** B-fix §10.4 step 1 says "`bash scripts/validate-pack.py` — all 33 checks pass." Architect C designs Checks 36, 37, 38 (new checks not yet implemented at HEAD). The hardcoded "33 checks" count will drift when C's checks land — Phase 5 coder running validate-pack post-C will see 36+ checks, and the hardcoded count becomes misleading.
+
+**Fix applied:** Edit applied INLINE at B-fix §10.4 step 1 (line 536 of this doc post-extension). The phrase "all 33 checks pass" was replaced with "all currently-enabled checks pass" — count-agnostic phrasing that holds regardless of whether the check count is 33 (pre-C) or 36+ (post-C). The verification semantics are preserved: every enabled check must pass; the count itself is not load-bearing on the assertion.
+
+**Net effect:** Phase 5 coder reading B-fix §10.4 step 1 sees a count-agnostic instruction. If validate-pack.py at Phase 5 execution time has 33 checks, all 33 must pass. If it has 36+ (post-C-fix landing first), all 36+ must pass. No hardcoded count to maintain.
+
+**Cross-reference:** This is the only count-hardcoded location in B-fix; §6 references to "Check 3, Check 22, Check 24, Check 32, Check 35" (line 536, post-fix) are check-name references (stable identifiers), not check counts (drifting numbers). No further amendment needed.
+
+---
+
+## §15 — Summary of B-fix extension
+
+- **§12 (M3 + Override 7 + Override 10):** Amends B-original at §4.4 (drop SPLIT design; KEEP-AT-ROOT resolution), §6.2 (delete S1 row from SPLIT table), §6.4 step 5 (delete S1 commit; lift S2 conditional per Override 8), §8 (delete project-side QUICKSTART row from tree). Drops the `surfaces["project-template"]["docs"]` addition to validate-pack.py Check 22. Designs per-file wording-removal for 4 help files (5 references total) per Override 10. Honors trinity rule across `.claude/` / `.codex/` / `.gemini/` parallel files.
+- **§13 (S3 + Override 8):** Provides 5-10 line content-split sketch for project-side `OPTIONAL-FEATURES.md` creation. Inventories current pack-side sections; classifies each as pack-side-only / project-side-only / common-to-both per audience analysis. Operationalizes Override 8's "common-to-both is OK; tailored per audience" principle. Provides Phase 5 coder guidance + TYPE-2 contamination avoidance contract.
+- **§14 (N2):** Replaced "all 33 checks pass" with "all currently-enabled checks pass" at §10.4 step 1 — count-agnostic.
+
+**Existing B-fix content (§1-§10) is UNCHANGED.** All extensions are at the end of the document, appended after the original §11 summary line. The original §11 summary (now displaced by these extensions) still serves as the closing for the M9/M10 BACKLOG.md/CHANGELOG.md fix-pass scope; §12-§14 are scope-additions for the Phase 3 review findings.
+
+**Phase 5 coder reads B-original + B-fix (§1-§15) in order.** No additional judgment required for the M3/Override 10/S3/N2 surfaces; the amendments at §12-§14 are mechanical.
+
+---
+
+## §16 — Phase 3 fix-pass v2 amendment (Override 6 cascade to B's design)
+
+### §16.1 — Authority
+
+`AUDIT-USER-CURATION.md` Override 6 (verbatim):
+
+> **Architect B said:** Moves `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` to `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`.
+>
+> **User override:** **`pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md`.** B's "maintenance-docs/ houses live methodology" reasoning is rejected. Destination is `pack-ops/`.
+>
+> **Phase 5 coder:** moves to `pack-ops/`, not `maintenance-docs/`. Path-reference updates target `pack-ops/`.
+
+### §16.2 — Why this amendment exists (the gap closed)
+
+During the Phase 3 fix-pass (this doc's §10-§15), Override 6 was applied to Architect A's `ARCHITECTURE-RE-LITIGATION-FRAMEWORK.md` (via the A-fix S1 amendments — see A-fix §10.2). It was NOT rippled into Architect B's `ARCHITECTURE-DIRECTORY-REORGANIZATION.md` (B-original) or into this B-fix doc itself. The pre-v2 wording of B-fix §11.3 step 3 (line 646 area, now amended in this v2) explicitly acknowledged the gap:
+
+> "Override 6 places `CONCEPTUAL-REVIEW-METHODOLOGY.md` at `pack-ops/`, not `maintenance-docs/`; that override is Architect A / B-fix cross-cutting and is NOT amended in B-fix §11 — see B-fix front-matter cross-ref."
+
+That self-flagged gap was known-but-deferred at the time of the first fix-pass. User has now authorized a small B fix-pass v2 amendment to ripple Override 6 through the 5 stale references. This §16 documents the v2 amendment and closes the gap.
+
+### §16.3 — The 5 amended locations (before / after summary)
+
+**File 1: `maintenance-docs/v11-implementation/ARCHITECTURE-DIRECTORY-REORGANIZATION.md` (B-original) — 4 locations:**
+
+1. **§4.1 F-1 resolution, step 1 bullet (was line 339):**
+   - **Before:** `CONCEPTUAL-REVIEW-METHODOLOGY.md` → `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` ... `maintenance-docs/` is the existing home for pack methodology ...
+   - **After:** `CONCEPTUAL-REVIEW-METHODOLOGY.md` → `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` ... `pack-ops/` is the home for pack operational docs ... CONCEPTUAL-REVIEW-METHODOLOGY belongs alongside them as a sibling pack-operations doc. Cross-reference to this §16 inserted in-line.
+
+2. **§4.1 "Naming rationale" paragraph (was line 349):**
+   - **Before:** A multi-sentence paragraph DEFENDING `maintenance-docs/` over `pack-ops/` on live-vs-textbook / sibling-family grounds.
+   - **After:** Replaced with an Override-6 supersession marker. The defended rationale is explicitly labeled REJECTED; the file's role as pack-internal methodology consumed by pack agents is preserved as the justification for the new `pack-ops/` placement. Cross-reference to this §16 inserted in-line.
+
+3. **§5.2 cross-reference network, design-surface bullet (was line 472):**
+   - **Before:** `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` (after F-1 move) — add a pointer ...
+   - **After:** `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` (after F-1 move per Override 6) — add a pointer ...
+
+4. **§6.1 MOVES table, M6 row (was line 531):**
+   - **Before:** Destination column = `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`.
+   - **After:** Destination column = `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` (per Override 6; see B-fix §16).
+
+**File 2: `maintenance-docs/v11-implementation/ARCHITECTURE-DIRECTORY-REORGANIZATION-FIX.md` (this doc) — 2 locations:**
+
+5. **§5 MOVES table, M6 row (was line 134):**
+   - **Before:** Destination column = `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`.
+   - **After:** Destination column = `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` (per Override 6; see §16 below).
+
+6. **§11.3 step 3, Commit C bullet (was line 646):**
+   - **Before:** Step 3 described Commit C as `supporting-docs/` → `maintenance-docs/` for M6, with an inline "wait, Override 6 places it at `pack-ops/`, not `maintenance-docs/`; that override is ... NOT amended in B-fix §11" acknowledgment.
+   - **After:** Step 3 unconditionally describes all three M6/M7/M8 moves as `supporting-docs/` → `pack-ops/`, with cross-reference to this §16 for the cascade detail. The forward-pointing speculation is replaced with a closed-gap reference.
+
+(Locations 5 + 6 are inside the file this §16 lives in. Counting independently: 5 stale references at amendment time, plus this new §16 as the documenting amendment.)
+
+### §16.4 — Sections NOT amended
+
+- **§1-§15 of this doc:** UNTOUCHED, with the sole exception of the two inline edits at §5 M6 row (table cell) and §11.3 step 3 (Commit C bullet wording). All other paragraphs, sub-sections, tables, and lists are byte-stable from the pre-v2 state.
+- **§12-§15 (just-landed Phase 3 fix-pass extensions):** UNTOUCHED. Those extensions covered M3/Override 7/Override 10 (§12), S3/Override 8 (§13), N2 count-agnostic phrasing (§14), and the §15 summary. Override 6 was out of scope for those extensions; this §16 v2 amendment is a strict scope addition, not a rewrite.
+- **Architect A's `ARCHITECTURE-RE-LITIGATION-FRAMEWORK.md`:** Already amended in A-fix S1 (see A-fix §10.2). No further A-side ripple needed for Override 6 — A's doc already names `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` explicitly. This v2 amendment brings B's docs to the same coverage A's doc already has.
+- **Architect C's design doc:** Per Pack Chat's earlier grep, C references CONCEPTUAL-REVIEW-METHODOLOGY only in the source context (`supporting-docs/` audit V4 finding) and does NOT reference any destination path. No C-side ripple needed.
+
+### §16.5 — Net effect on Phase 5 coder instructions
+
+Phase 5 coder reads B-original + B-fix (§1-§16) in sequence. The M6 destination after this v2 amendment is unambiguously `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` — both the MOVES tables (B-original §6.1, B-fix §5) and the commit-sequencing step (B-fix §11.3 step 3) agree. Path-reference updates for the file's old `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` location target the new `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` path. The cross-reference-network bullet in B's §5.2 (now amended) names the same `pack-ops/` destination, so reviewer-protocol pointers that add a citation in dimension (d) Pack rule adherence resolve to the correct file. No further architect-side amendments are needed for Override 6.
+
+### §16.6 — Cross-doc cascade closure
+
+The Override 6 cascade now has full coverage:
+
+- **A-side:** A's design + A-fix S1 amendments — `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` named explicitly throughout (A-fix §0, §2 V4 Rationale, §2 V4 Dependency, §5 conditional fallback block, OQ-1, §10.2 amendments list).
+- **B-side:** B-original + B-fix (§1-§15) + this v2 amendment (§16) — `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` now named throughout; all 5 stale `maintenance-docs/` references retargeted.
+- **C-side:** No destination references; no ripple needed.
+
+Phase 5 coder, Phase 4 planner, and Phase 3 reviewer all see a consistent destination (`pack-ops/`) across every architect doc. The cascade is closed.

@@ -23,6 +23,9 @@ Where this document recommends an action that REQUIRES a target home (e.g., "rel
 
 Where this document depends on Architect B's resolution of audit §F-1 (the `supporting-docs/` classification — specifically whether `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` is reclassified into a pack-only directory), it presents conditional decisions: PRIMARY-IF (Architect B reclassifies) and FALLBACK-IF (Architect B keeps it in `supporting-docs/`). Phase 3 reviewer reconciles the dependency.
 
+<!-- AMENDED by Phase 3 fix-pass (S1) — see PACK-REVIEW-PHASE-2-DESIGNS.md §1 S1 -->
+**Override 6 cascade (S1 fix-pass).** Per `AUDIT-USER-CURATION.md` Override 6, the V4 RELOCATE destination is `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` (NOT `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` as Architect B's §4.1 originally proposed). The operative property for this framework's cascade-subsumption logic is "pack-only directory" (which `pack-ops/` satisfies); the specific directory name does not change the cascade. Sections below name `pack-ops/` explicitly wherever the V4 destination is cited.
+
 ---
 
 ## §1 — Boundary articulation reduced to operational test
@@ -144,20 +147,21 @@ For audit completeness, this framework also notes that the V2 commit message's a
 
 **Decision: RELOCATE.**
 
-**Rationale.** The file is pack-internal methodology by content, by audience, and by install-path (it does not install to clients). Its current location in `supporting-docs/` is a categorical mistake driven by the location-default contamination pathway described in audit §F-1 (pack maintainers writing pack-internal docs default to `supporting-docs/` because the directory name does not signal "this is project-installed content"). The fix is to move the file to a pack-only directory designated by Architect B. After relocation, every reference in the file (Pack Chat, pack-architect, pack-reviewer, pack memory, ARCHITECTURE-V*.md, maintenance-docs paths) becomes LEGITIMATE pack-internal cross-reference rather than contamination.
+<!-- AMENDED by Phase 3 fix-pass (S1) — see PACK-REVIEW-PHASE-2-DESIGNS.md §1 S1 -->
+**Rationale.** The file is pack-internal methodology by content, by audience, and by install-path (it does not install to clients). Its current location in `supporting-docs/` is a categorical mistake driven by the location-default contamination pathway described in audit §F-1 (pack maintainers writing pack-internal docs default to `supporting-docs/` because the directory name does not signal "this is project-installed content"). The fix is to move the file to `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` (per `AUDIT-USER-CURATION.md` Override 6, which corrects Architect B's §4.1 `maintenance-docs/` proposal). After relocation, every reference in the file (Pack Chat, pack-architect, pack-reviewer, pack memory, ARCHITECTURE-V*.md, maintenance-docs paths) becomes LEGITIMATE pack-internal cross-reference rather than contamination.
 
 This is the SAME decision-shape that subsumes all 11 §D AMBIGUOUS-pending-§F references in this file (see §4 below): once the file moves to a pack-only directory, all 11 refs are LEGITIMATE by construction.
 
-**Dependency on Architect B.** Architect B owns the target home for relocated pack-only docs that currently live in `supporting-docs/`. This framework names the action ("RELOCATE to pack-only directory designated by Architect B") without specifying the target path. If Architect B reclassifies `supporting-docs/` itself as pack-only (per F-1 resolution path A), the file may stay in place with its content unchanged — in that case V4 becomes JUSTIFY (the location is correct after F-1 resolves; the content was already correct). If Architect B splits `supporting-docs/` into project-product and pack-product directories (F-1 resolution path B), the file moves to the pack-product half. If Architect B preserves `supporting-docs/` as project-product and carves out a new pack-internal docs directory (F-1 resolution path C), the file moves there.
+**Dependency on Architect B (RESOLVED by Override 6, S1 fix-pass).** Architect B owns the target home for relocated pack-only docs that currently live in `supporting-docs/`. Architect B's §4.1 originally proposed `maintenance-docs/`; `AUDIT-USER-CURATION.md` Override 6 rejects that and specifies `pack-ops/`. The destination is therefore `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md`. The original conditional fallbacks (F-1 path A reclassifies `supporting-docs/` as pack-only — collapse to JUSTIFY; F-1 path B splits `supporting-docs/`; F-1 path C carves out a new pack-only directory) are no longer operative: Override 6 picks the destination directly. The cascade-subsumption logic is unchanged — `pack-ops/` is a pack-only directory and satisfies the operative property.
 
 **Implementation hint.** Phase 5 coder:
-1. Read Architect B's directory architecture decision.
+1. Destination is `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` per `AUDIT-USER-CURATION.md` Override 6 (S1 fix-pass).
 2. Read Phase 4 planner's relocation order (V4 likely moves with V2 absorbed into it, and CONCEPTUAL-REVIEW-METHODOLOGY's path-reference set).
-3. Use `git mv` to preserve file history.
-4. Update path references to the file (E-5 + §F-1 noted that internal cross-refs use `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` or bare-filename patterns; full grep after move).
+3. Use `git mv supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` to preserve file history.
+4. Update path references to the file (E-5 + §F-1 noted that internal cross-refs use `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` or bare-filename patterns; full grep after move; retarget all to `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md`).
 5. Do NOT edit the file's content during the move — content was already correct for pack-internal audience; only location was wrong.
 
-**Reviewer independence-check.** Phase 3 reviewer verifies: (a) Architect B's design names a target home (this framework does not); (b) the RELOCATE decision is consistent with the F-1 resolution path Architect B chose; (c) the file's content is preserved exactly (including the +2 lines from `aaa61b3` per V2); (d) the path-reference update list is comprehensive (every reference to the old path is updated to the new path in the same commit, per E-5); (e) the file's existing cross-refs (Pack Chat, pack-architect, pack-reviewer, pack memory, maintenance-docs paths) become LEGITIMATE at the new location and need no further edit.
+**Reviewer independence-check.** Phase 3 reviewer verifies: (a) destination is `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` per Override 6 (S1 fix-pass — supersedes the earlier "Architect B picks" framing); (b) the RELOCATE landed at that path (not `maintenance-docs/`); (c) the file's content is preserved exactly (including the +2 lines from `aaa61b3` per V2); (d) the path-reference update list is comprehensive (every reference to the old `supporting-docs/` path is updated to `pack-ops/` in the same commit, per E-5); (e) the file's existing cross-refs (Pack Chat, pack-architect, pack-reviewer, pack memory, maintenance-docs paths) become LEGITIMATE at the new location and need no further edit.
 
 ---
 
@@ -290,25 +294,32 @@ Trinity rule — delete in all three files in the same commit. Sequence note: V8
 
 ---
 
-### V10 — TYPE-1 MEDIUM: 8ba0164 BD-167b PM-only-edits misrepresented scope
+<!-- AMENDED by Phase 3 fix-pass (B1) — see PACK-REVIEW-PHASE-2-DESIGNS.md §1 B1 -->
+### V10 — TYPE-1 LOW: 8ba0164 BD-167b PM-only-edits (NO ACTION — initial framing wrong)
 
-**Audit summary:** Commit `8ba0164` subject says "BD-167b per-entry split PM-only edits". "PM-only" in pack memory means files Pack Chat may edit directly. Per memory, project-template trinity is NOT PM-only. Yet `8ba0164` edited `project-template/CLAUDE.md`, `project-template/AGENTS.md`, `project-template/GEMINI.md`. Misrepresentation of scope; project-template trinity edits should have gone through fix-coder per pack memory rule.
+**Audit summary (as written, now corrected below):** Commit `8ba0164` subject says "BD-167b per-entry split PM-only edits". The audit framed this as a procedural violation on the premise that "project-template trinity is NOT PM-only" — i.e., that Pack Chat directly editing those files exceeded its permission scope.
 
-**Operational test result:**
-- Procedural violation (Pack Chat directly edited files outside its permission scope).
-- CONTENT examination: the BD-167b project-template trinity edits were per-entry-split-related (Key files section + Document locations). Need to verify whether the content edits are correct for project-side audience independent of the procedural violation.
+**Original framing was empirically wrong (B1 fix-pass).** Verified at HEAD:
+- `CLAUDE.md:336-338` (pack memory § "What Pack Chat CAN edit directly") explicitly lists "PM-only files (BACKLOG.md / CHANGELOG.md / README version table / PACK-CHAT.md / PACK-AGENTS.md / trinity ops files at pack root / `project-template/` trinity)" as Pack-Chat-direct-edit surfaces.
+- `PACK-AGENTS.md:148` (PM-only Files list) names `CLAUDE.md / AGENTS.md / GEMINI.md (root and `project-template/`)` — project-template trinity is explicitly PM-only.
 
-**Decision: VERIFY-THEN-JUSTIFY-OR-REPLACE.**
+`8ba0164` was therefore correctly scoped: BD-167b's per-entry-split PM-only edits to project-template trinity were a legitimate use of Pack Chat's direct-edit permission, not a misrepresentation. There is no procedural violation.
 
-**Rationale.** The procedural violation cannot be undone (the commit is in history; reverting would lose legitimate per-entry-split content). The fix is forward-looking: (a) audit the trinity content from BD-167b for any project-side audience mismatch; (b) if mismatch found, REPLACE per V1/V8 pattern; (c) if no mismatch, JUSTIFY (content is correct even though the edit path was wrong). Architect C should use V10 as a signal-pattern for the "PM-only-claim scope-linter" design (Architect C domain, not here).
+**Cross-reference grep result (B1 fix-pass verification).** Grepping `project-template/CLAUDE.md`, `project-template/AGENTS.md`, `project-template/GEMINI.md` for references to pack-only paths surfaces exactly two distinct cross-reference patterns at HEAD:
+1. `PACK-AGENTS.md` at CLAUDE.md:366 / AGENTS.md:343 / GEMINI.md:356 — already covered by V1 + T5-A REPLACE (TASK-T1).
+2. `maintenance-docs/` (TOOL-COMPARISON.md pointer) at CLAUDE.md:397 / AGENTS.md:374 / GEMINI.md:387 — already covered by V8 REVERT (TASK-T1).
 
-**Implementation hint.** Phase 5 task: read commit `8ba0164` diff for `project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md`, classify each hunk:
-- If hunk content is correct for project-side audience → no edit needed (JUSTIFY).
-- If hunk content references pack-only paths or pack-only mechanisms in a way V1/V3/V8 would flag → apply REPLACE per the matching V pattern.
+Both reference families are within TASK-T1 scope and require no additional V10-derived re-litigation. There are no other pack-only path references in project-template trinity at HEAD.
 
-This is a per-hunk audit, not a blanket revert.
+**Decision: NO ACTION.**
 
-**Reviewer independence-check.** Phase 3 reviewer verifies: (a) every hunk of `8ba0164` project-template trinity diff is classified (JUSTIFY or REPLACE); (b) any REPLACE applied matches the V1/V3/V8 patterns; (c) no project-side audience mismatch survives in the trinity after the audit; (d) Architect C's prevention design references V10 as a signal-pattern source.
+**Rationale.** The original premise (project-template trinity is not PM-only) is contradicted by `CLAUDE.md:336-338` and `PACK-AGENTS.md:148`. With the premise removed, there is no procedural violation to remediate. The content-level cross-references that V10 was contemplating as a per-hunk audit are already in scope of V1 + T5-A + V8 (TASK-T1); no additional hunks remain. V10 yields zero new edits and zero new tasks.
+
+**Implementation hint.** None. V10 has no Phase 5 task. Phase 4 planner does not schedule V10.
+
+**Architect C cascade (B1 fix-pass).** Architect C's M1a (memory rule), M1b (commit message rule), and M5a (Check 36 PM-only keyword) reference V10 in their "PM-only-claim scope-linter" worked example. Architect C fix-pass must drop V10 as the worked example and reframe the PM-only keyword permitted-paths to match the actual `PACK-AGENTS.md:148` list (which permits project-template trinity edits under a `PM-only` commit-message claim). A real PM-only-violation worked example exists at V2's `aaa61b3` (which DID touch outside the PM-only list by editing `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`); C-fix may substitute V2 or a synthetic test fixture.
+
+**Reviewer independence-check.** Phase 3 reviewer verifies: (a) the V10 entry above no longer claims a procedural violation; (b) the `CLAUDE.md:336-338` and `PACK-AGENTS.md:148` citations are accurate; (c) the cross-reference grep result is reproducible; (d) the Architect C cascade is surfaced; (e) §6.3 (V10 line), §6.4 (manifest-regen note), §6.5 (signal-pattern handoff), and OQ-6 are all updated consistent with NO-ACTION.
 
 ---
 
@@ -437,24 +448,24 @@ Per audit §D-9 aggregation: 4 (D-1) + 1 (D-4) + 9 (D-5) + 1 (D-7) + 2 (D-8) = 1
 
 These are not subsumed by §C V-decisions. Designed standalone:
 
+<!-- AMENDED by Phase 3 fix-pass (S2) — see PACK-REVIEW-PHASE-2-DESIGNS.md §1 S2 -->
 **D8.6 — `supporting-docs/MERGE-STRATEGY.md:465` "`OPTIONAL-FEATURES.md` — tracker opt-in walkthrough"**
 
-Same audience analysis as V5 (MERGE-STRATEGY is project-side audience by content but currently not installed). Decision splits on Architect B's MERGE-STRATEGY install decision AND Architect B's OPTIONAL-FEATURES placement decision (F-5):
-- **If MERGE-STRATEGY stays pack-only (V5 PRIMARY) AND OPTIONAL-FEATURES stays at pack root or moves to pack-only directory:** JUSTIFY (pack-only doc referencing pack-only doc).
-- **If MERGE-STRATEGY ships to clients (V5 ALTERNATIVE) AND OPTIONAL-FEATURES is installed to client `docs/pack/`:** REPLACE — change `OPTIONAL-FEATURES.md` to `docs/pack/OPTIONAL-FEATURES.md`.
-- **If MERGE-STRATEGY ships to clients but OPTIONAL-FEATURES does not:** REVERT — drop the line (project user at client repo cannot follow this pointer).
+Same audience analysis as V5 (MERGE-STRATEGY is project-side audience by content but currently not installed).
 
 **D8.7 — `supporting-docs/DEPENDENCIES.md:162` "See `OPTIONAL-FEATURES.md` § 'Tracker integration (v11)' for the full"**
 
-DEPENDENCIES.md is project-side install-reference content (verified — file head names "all tools required or optionally used by the AI Agent Config Pack"). Audience: project users running bootstrap. Not currently installed to clients. Same multi-axis dependency as D8.6.
+DEPENDENCIES.md is project-side install-reference content (verified — file head names "all tools required or optionally used by the AI Agent Config Pack"). Audience: project users running bootstrap. Not currently installed to clients.
 
-Both D8.6 and D8.7 depend on Architect B's F-5 resolution (the OPTIONAL-FEATURES install-path question). This framework recommends:
+**Decision for both D8.6 and D8.7: REPLACE per SPLIT-confirmed path (Override 8, S2 fix-pass).**
 
-**Recommended path for both D8.6 and D8.7: DUAL-INSTALL OPTIONAL-FEATURES.md.** Install OPTIONAL-FEATURES.md to `project-template/docs/pack/OPTIONAL-FEATURES.md` (so client repos have it) AND keep the pack-root copy (so pack maintainers can read it without leaving the pack repo). Then REPLACE both D8.6 and D8.7 references with `docs/pack/OPTIONAL-FEATURES.md` (which resolves at client repos). This recommendation derives from the audit's §D-8 observation that ~5 project-side files ALREADY reference `docs/pack/OPTIONAL-FEATURES.md` as if the file existed there — they fail today; DUAL-INSTALL makes them succeed. (The 5 other §D-8 references resolve under §4 AMBIGUOUS-other.)
+`AUDIT-USER-CURATION.md` Override 8 confirms B's S2 SPLIT design: pack-root `OPTIONAL-FEATURES.md` moves to `pack-ops/OPTIONAL-FEATURES.md` (pack-side) AND a new `project-template/docs/pack/OPTIONAL-FEATURES.md` is CREATED with project-side-audience content (not byte-identical mirror; "one for pack. one for projects. There may be something common to both and maybe some individual to both"). `init-project.sh` gains a stage to install the project-side file to client `docs/pack/OPTIONAL-FEATURES.md`. The pre-amendment terminology distinction (A used "DUAL-INSTALL"; B used "SPLIT") collapses under Override 8 to SPLIT — the operative end-state is two independently-curated files per audience.
 
-**Implementation hint.** For DUAL-INSTALL path: Architect B picks the canonical SSOT (pack root or project-template); Phase 5 coder copies/syncs to the other surface; init-project.sh updated to install the project-template copy to client `docs/pack/` (likely already in S6 loop pattern that handles METHODOLOGY.md and INSTALL-PROCEDURES.md). For D8.6/D8.7 specifically: update the references to `docs/pack/OPTIONAL-FEATURES.md` (path that resolves at client repos).
+The conditional decision tree in the pre-amendment text (three F-5-conditional sub-paths for D8.6 — JUSTIFY/REPLACE/REVERT — and the parallel framing for D8.7) is no longer operative; F-5 is resolved as SPLIT per Override 8.
 
-**Reviewer independence-check.** Phase 3 reviewer verifies: (a) Architect B's F-5 resolution is documented; (b) D8.6 and D8.7 fixes match the F-5 resolution; (c) under the DUAL-INSTALL path, the project-template copy of OPTIONAL-FEATURES.md is byte-identical to the pack-root copy (or carries an explicit divergence contract); (d) init-project.sh updated to install the project-template copy.
+**Implementation hint.** For both D8.6 and D8.7: REPLACE the bare `OPTIONAL-FEATURES.md` reference with `docs/pack/OPTIONAL-FEATURES.md` (the path that resolves at client repos once SPLIT lands). Both source files (`supporting-docs/MERGE-STRATEGY.md`, `supporting-docs/DEPENDENCIES.md`) remain pack-side per their own re-litigation (V5 PRIMARY pack-only, plus DEPENDENCIES.md unchanged); the reference pattern they update to (`docs/pack/OPTIONAL-FEATURES.md`) assumes the project-side install lands. Pack-side commits SPLIT in TASK-T8 first; per-file ref updates follow.
+
+**Reviewer independence-check.** Phase 3 reviewer verifies: (a) D8.6 and D8.7 both use `docs/pack/OPTIONAL-FEATURES.md` post-SPLIT; (b) the pack-side and project-side `OPTIONAL-FEATURES.md` files exist post-S2 (one at `pack-ops/`, one at `project-template/docs/pack/`); (c) per Override 8, no byte-identity gate is applied between the two files (Phase 3 reviewer does NOT flag content drift as a finding — separate curation is intentional); (d) `init-project.sh` installs the project-template copy to client `docs/pack/`.
 
 ---
 
@@ -512,55 +523,50 @@ The attribution is a "source material" note (italicized, citation-style). Two op
 
 ---
 
+<!-- AMENDED by Phase 3 fix-pass (S2) — see PACK-REVIEW-PHASE-2-DESIGNS.md §1 S2 -->
 ### A4 — `project-template/.gemini/commands/pack-help.toml:12` "docs/pack/OPTIONAL-FEATURES.md."
 
-**Verdict: CONTAMINATION (today) → LEGITIMATE (under DUAL-INSTALL of OPTIONAL-FEATURES per F-5).**
+**Verdict: LEGITIMATE post-SPLIT (Override 8, S2 fix-pass).**
 
-**Reasoning.** Project-side file (installed to client `.gemini/commands/`). References `docs/pack/OPTIONAL-FEATURES.md` as if installed at client. Currently broken — no `OPTIONAL-FEATURES.md` exists under `project-template/docs/pack/`. The 5 similar references (A4, A5, A6, A7, A8 below) are the §D-8 installed-path-mismatch pattern.
+**Reasoning.** Project-side file (installed to client `.gemini/commands/`). References `docs/pack/OPTIONAL-FEATURES.md` as if installed at client. Currently broken at HEAD; per Override 8 SPLIT, the reference will resolve once `project-template/docs/pack/OPTIONAL-FEATURES.md` exists and is installed to clients. The 5 similar references (A4, A5, A6, A7, A8 below) are the §D-8 installed-path-mismatch pattern; SPLIT resolves the cluster.
 
-**Decision: DEPENDS ON F-5 RESOLUTION.**
+**Decision: NO EDIT (LEGITIMATE post-SPLIT).** Per Override 8, F-5 resolves SPLIT. The pre-amendment conditional decision tree (DEPENDS ON F-5 RESOLUTION with three sub-paths) is no longer operative; the REVERT fallback paths are dropped.
 
-- If F-5 resolves DUAL-INSTALL (per D8.6/D8.7 recommendation): LEGITIMATE — no edit needed (the reference will resolve once `docs/pack/OPTIONAL-FEATURES.md` exists at clients).
-- If F-5 resolves keep-at-pack-root-only: REVERT — drop the reference (client can't resolve it).
-- If F-5 resolves relocate-to-pack-only-dir: REVERT — drop the reference (client can't resolve it).
+**Implementation hint.** No A4 edit. The reference becomes resolvable when TASK-T8 ships the project-side `OPTIONAL-FEATURES.md` and `init-project.sh` installs it.
 
-**Recommended: DUAL-INSTALL (per D8.6 reasoning).** Makes A4-A8 all LEGITIMATE without per-file edits.
-
-**Implementation hint.** Under DUAL-INSTALL path: no edit to A4. Under other paths: drop the reference (or replace with generic pack-side qualifier — but qualifier-style is worse UX for project users).
-
-**Reviewer independence-check.** Phase 3 reviewer verifies F-5 cascade matches the chosen path for A4-A8 consistently.
+**Reviewer independence-check.** Phase 3 reviewer verifies (a) no edit to `project-template/.gemini/commands/pack-help.toml:12`; (b) `project-template/docs/pack/OPTIONAL-FEATURES.md` exists post-TASK-T8; (c) `init-project.sh` installs it to client `docs/pack/`.
 
 ---
 
 ### A5 — `project-template/.claude/skills/pack-help/SKILL.md:15` "`docs/pack/OPTIONAL-FEATURES.md`. The shell verb `pack help`"
 
-**Verdict: same as A4.**
+**Verdict: same as A4 (LEGITIMATE post-SPLIT per Override 8, S2 fix-pass).**
 
-**Decision: same as A4 — DEPENDS ON F-5 RESOLUTION; recommended DUAL-INSTALL → LEGITIMATE.**
+**Decision: same as A4 — NO EDIT (LEGITIMATE post-SPLIT).** Per Override 8, F-5 resolves SPLIT; reference resolves once TASK-T8 lands. Fallback REVERT paths dropped.
 
 ---
 
 ### A6 — `project-template/.codex/skills/pack-help/SKILL.md:15` "Same path ref"
 
-**Verdict: same as A4.**
+**Verdict: same as A4 (LEGITIMATE post-SPLIT per Override 8, S2 fix-pass).**
 
-**Decision: same as A4 — DEPENDS ON F-5 RESOLUTION; recommended DUAL-INSTALL → LEGITIMATE.**
+**Decision: same as A4 — NO EDIT (LEGITIMATE post-SPLIT).** Per Override 8, F-5 resolves SPLIT; reference resolves once TASK-T8 lands. Fallback REVERT paths dropped.
 
 ---
 
 ### A7 — `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md:49` "See ... and `OPTIONAL-FEATURES.md` for full setup."
 
-**Verdict: same as A4 (bare filename instead of qualified path, but same resolvability question).**
+**Verdict: same as A4 — LEGITIMATE post-SPLIT (Override 8, S2 fix-pass). Bare filename resolves relative to the file's directory (`project-template/docs/pack/`) where `OPTIONAL-FEATURES.md` will exist after TASK-T8.**
 
-**Decision: same as A4 — DEPENDS ON F-5 RESOLUTION; recommended DUAL-INSTALL → LEGITIMATE.** Under DUAL-INSTALL, the bare filename resolves relative to the file's directory (`project-template/docs/pack/`) where `OPTIONAL-FEATURES.md` will exist.
+**Decision: same as A4 — NO EDIT (LEGITIMATE post-SPLIT).** Per Override 8, F-5 resolves SPLIT; reference resolves once TASK-T8 lands. Fallback REVERT paths dropped.
 
 ---
 
 ### A8 — `project-template/docs/pack/HELP-FRAGMENT.md:6` and `:33` "`docs/pack/OPTIONAL-FEATURES.md`"
 
-**Verdict: same as A4.**
+**Verdict: same as A4 (LEGITIMATE post-SPLIT per Override 8, S2 fix-pass).**
 
-**Decision: same as A4 — DEPENDS ON F-5 RESOLUTION; recommended DUAL-INSTALL → LEGITIMATE.** Note: two sites in same file; both resolve under DUAL-INSTALL with no edits.
+**Decision: same as A4 — NO EDIT (LEGITIMATE post-SPLIT).** Per Override 8, F-5 resolves SPLIT; both references resolve once TASK-T8 lands. Two sites in same file; both NO EDIT. Fallback REVERT paths dropped.
 
 ---
 
@@ -569,11 +575,11 @@ The attribution is a "source material" note (italicized, citation-style). Two op
 - A1: SUBSUMED by V5
 - A2: NEW DECISION (REPLACE METHODOLOGY.md:1509)
 - A3: SUBSUMED by V6.a
-- A4-A8: NEW DECISION cluster (5 OPTIONAL-FEATURES references) → all become LEGITIMATE under recommended DUAL-INSTALL path; alternate paths REVERT all 5.
+- A4-A8: NEW DECISION cluster (5 OPTIONAL-FEATURES references) → all LEGITIMATE post-SPLIT (Override 8, S2 fix-pass — supersedes the original "DEPENDS ON F-5" framing and drops the alternate REVERT paths).
 
 **§4 total: 8 AMBIGUOUS-other. 2 SUBSUMED; 6 NEW DECISIONS (1 standalone METHODOLOGY edit + 5 OPTIONAL-FEATURES cluster).** All 8 have designed verdicts.
 
-**Aggregate dependency on Architect B for §4:** A4-A8 (5 hits) depend on F-5 resolution. This framework recommends DUAL-INSTALL but defers the call to Architect B.
+**Aggregate dependency on Architect B for §4 (RESOLVED by Override 8, S2 fix-pass):** A4-A8 (5 hits) original F-5 dependency is resolved — F-5 = SPLIT per Override 8; all 5 references become LEGITIMATE post-SPLIT.
 
 ---
 
@@ -603,30 +609,14 @@ All 11 hits cluster in a single file: `supporting-docs/CONCEPTUAL-REVIEW-METHODO
 - The file's location in `supporting-docs/` is the categorical mistake (per V4 decision).
 - Once the file moves to a pack-only directory (per V4 RELOCATE), all 11 references become LEGITIMATE pack-internal cross-references by construction.
 
-**Conditional fallback if Architect B's F-1 resolution KEEPS the file in `supporting-docs/`:**
+<!-- AMENDED by Phase 3 fix-pass (S1) — see PACK-REVIEW-PHASE-2-DESIGNS.md §1 S1 -->
+**Conditional fallback paths (RESOLVED by Override 6, S1 fix-pass).** `AUDIT-USER-CURATION.md` Override 6 specifies the destination as `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md`. The original three F-1-conditional fallbacks (path A: reclassify `supporting-docs/` as pack-internal — V4 collapses to JUSTIFY; path B: split `supporting-docs/`; path C: re-write for project-side audience) are no longer operative. The relocation lands at `pack-ops/`; all 11 references become LEGITIMATE pack-internal cross-references at that destination by construction. The pre-amendment text recorded the "re-write for project-side audience" path as strongly-recommended-against (the file is unambiguously pack-internal methodology; no project-side equivalent exists for "Pack Chat" orchestrator, pack-architect, pack-reviewer, pack memory, or ARCHITECTURE-V*.md); that argument is preserved by Override 6's direct destination call.
 
-If, despite the operational test, Architect B chooses to keep CONCEPTUAL-REVIEW-METHODOLOGY.md in `supporting-docs/` (e.g., by reclassifying `supporting-docs/` itself as pack-internal — F-1 resolution path A — or by some other rationale), all 11 references remain in place AS-IS and become LEGITIMATE under the reclassification.
+**Decision: SUBSUMED by V4 (RELOCATE to `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` per Override 6).** No per-reference standalone tasks. All 11 references resolve as LEGITIMATE post-V4.
 
-In this case, V4 RELOCATE collapses to V4 JUSTIFY (the location is reclassified-correct; the content was already correct). The 11 references become LEGITIMATE without any per-file edit.
+**Phase 3 reviewer reconciliation note (post-S1 fix-pass).** Phase 3 reviewer verifies V4 + §5 destination matches `pack-ops/` per Override 6 (not `maintenance-docs/`, not any of the original F-1 fallbacks). No BLOCKER escalation path remains for this finding — the destination is user-authorized.
 
-**Conditional fallback if Architect B's F-1 resolution KEEPS supporting-docs/ as project-product AND CONCEPTUAL-REVIEW-METHODOLOGY.md is RE-WRITTEN for project-side audience instead of relocated:**
-
-This is the worst-case path — it would convert all 11 references from AMBIGUOUS to HIGH-priority CONTAMINATION requiring per-ref REPLACE or REVERT. This framework strongly recommends against this path because:
-- The file is unambiguously pack-internal methodology by content;
-- There is no project-side equivalent of the "Pack Chat" orchestrator, "pack-architect", "pack-reviewer", "pack memory MEMORY.md", or pack-internal "ARCHITECTURE-V*.md" architecture history;
-- Re-writing the entire file for project-side audience would lose the methodology content (no equivalent target audience exists at the project side);
-- The audit's T5-B finding (structural mirror of pack-internal patterns) is the same evidence base — re-writing for project side would require inventing project-side equivalents that do not exist.
-
-If Architect B nonetheless chooses this path, this framework defers and recommends a SPLIT: relocate the methodology content to pack-only and leave a project-side stub at `supporting-docs/` describing project-side conceptual-review patterns (if/when they exist). The stub design is outside this framework's scope.
-
-**Decision: SUBSUMED by V4 (under PRIMARY V4 RELOCATE) OR SUBSUMED by V4-collapsed-to-JUSTIFY (under F-1 path A).** Either way, no per-reference standalone tasks. The 11 references all resolve as LEGITIMATE post-V4.
-
-**Phase 3 reviewer reconciliation note.** This framework's §5 decision IS the dependency on Architect B's F-1 resolution. Phase 3 reviewer:
-- Reads Architect B's F-1 resolution.
-- Verifies V4 + §5 path matches the F-1 resolution.
-- If F-1 resolves on a path this framework strongly recommends against (the "re-write for project-side audience" path), the reviewer surfaces the conflict as a BLOCKER finding back to Pack Chat for user reconciliation. This framework's recommendation is non-binding; only the user can override.
-
-**§5 total: 11 AMBIGUOUS-pending-§F. All 11 SUBSUMED by V4 under any F-1 resolution path.** Designed actions exist for all 11 regardless of F-1 outcome.
+**§5 total: 11 AMBIGUOUS-pending-§F. All 11 SUBSUMED by V4 RELOCATE to `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` per Override 6.** Designed actions exist for all 11.
 
 ---
 
@@ -643,12 +633,12 @@ This framework does NOT plan implementation sequencing (Phase 4 planner's domain
 - **TASK-T5 (MERGE-STRATEGY edit):** V5 (audience header amendment OR per-ref replacement). Includes A1 (`:189`) and D7.1 (`:472`) and D8.6 (`:465`).
 - **TASK-T6 (METHODOLOGY edit):** A2 (`:1509` historical attribution REPLACE).
 - **TASK-T7 (CONCEPTUAL-REVIEW-METHODOLOGY RELOCATE):** V4 + V2-cascade + T5-B + §5 11-ref cluster. Single relocate operation; content preserved; all 11 ambiguous-pending-§F refs become LEGITIMATE by construction.
-- **TASK-T8 (OPTIONAL-FEATURES DUAL-INSTALL — if Architect B chooses):** D8.7 (DEPENDENCIES.md `:162`) + D8.6 (MERGE-STRATEGY `:465`) + A4-A8 (5 project-side refs) + the install plumbing. May need a separate task for the install plumbing (init-project.sh edit) followed by the per-file ref updates.
+- **TASK-T8 (OPTIONAL-FEATURES SPLIT — confirmed per Override 8, S2 fix-pass):** SPLIT the pack-root `OPTIONAL-FEATURES.md` into pack-side (`pack-ops/OPTIONAL-FEATURES.md`) + project-side (NEW `project-template/docs/pack/OPTIONAL-FEATURES.md`, content tailored per audience — not byte-identical). Install plumbing in `init-project.sh` ships the project-side file to client `docs/pack/`. Per-file ref updates: D8.7 (DEPENDENCIES.md `:162`) + D8.6 (MERGE-STRATEGY `:465`) — REPLACE bare `OPTIONAL-FEATURES.md` with `docs/pack/OPTIONAL-FEATURES.md`. A4-A8 (5 project-side refs) need no edit (LEGITIMATE post-SPLIT). May need a separate task for the install plumbing (init-project.sh edit) followed by the D8.6/D8.7 ref updates; A4-A8 verify-only.
 
 ### 6.2 Sequencing constraints
 
 - TASK-T7 (RELOCATE) and TASK-T5 (MERGE-STRATEGY edit) both depend on Architect B's F-1 resolution. T7 needs the target directory; T5 needs the install decision. Both must wait on Architect B's design.
-- TASK-T8 (OPTIONAL-FEATURES) depends on Architect B's F-5 resolution.
+- TASK-T8 (OPTIONAL-FEATURES) is the SPLIT-confirmed implementation per Override 8 (S2 fix-pass). No further F-5 resolution needed; Architect B's S2 commit design plus Override 8 fully specify TASK-T8.
 - TASK-T1 / T2 / T3 / T4 / T6 do not depend on Architect B and can sequence first if the planner wants early wins.
 - TASK-T1 should ship BEFORE any further trinity edits in unrelated BDs (so the v11 trinity reflects the corrected guidance for any new project that installs during v11.0).
 
@@ -656,7 +646,7 @@ This framework does NOT plan implementation sequencing (Phase 4 planner's domain
 
 - V2: subsumed by V4 task content preservation.
 - V9: subsumed by V5/V6/V7 (no standalone fix).
-- V10: VERIFY task — per-hunk audit of `8ba0164` against project-template trinity; may yield zero edits if all hunks are JUSTIFY; may yield 1-N edits if any hunks need REPLACE.
+- V10: NO ACTION (per B1 fix-pass — initial framing wrong; project-template trinity IS PM-only per `CLAUDE.md:336-338` + `PACK-AGENTS.md:148`; `8ba0164` was correctly scoped; all relevant cross-references are within TASK-T1 scope).
 - V11, V12: NO ACTION (audit confirmed clean).
 - T5-A: subsumed by V1.
 - T5-B: subsumed by V4.
@@ -671,14 +661,14 @@ The following tasks touch `project-template/` or `scripts/` and trigger manifest
 - TASK-T7 (CONCEPTUAL-REVIEW-METHODOLOGY relocation): depends on target — if target is under `project-template/`, triggers; if under another pack-only dir, may or may not trigger (Architect B's directory choice determines).
 - TASK-T8 (init-project.sh edit if chosen): triggers regen.
 
-V10's VERIFY task triggers regen only if it yields project-template edits.
+V10: no manifest-regen trigger — NO ACTION per B1 fix-pass.
 
 TASK-T4 (MIGRATION-v10-to-v11.md), TASK-T5 (MERGE-STRATEGY.md), TASK-T6 (METHODOLOGY.md): all live in `supporting-docs/` — do NOT trigger manifest regen per RC9 base-case rule (`supporting-docs/` is not v11-surface for the manifest).
 
 ### 6.5 Out-of-scope items surfaced for Architect C handoff
 
 - V2 commit-message-signal-pattern ("supporting-docs/ is not v11-surface per RC9 rule" appeared in commit message; commit happened anyway).
-- V9 / V10 mixed-scope-declaration heuristic.
+- V9 mixed-scope-declaration heuristic (V10 dropped per B1 fix-pass — original framing wrong; the corresponding signal pattern lives at V2 `aaa61b3` which actually touched outside the PM-only list).
 - T5-A inline-enumeration anti-pattern (structural defect in trinity prose conventions).
 - §F-1 location-default contamination pathway (pack maintainers writing pack-internal docs default to supporting-docs/).
 - F-5 installed-path-vs-source-path discrepancy detection (5+ files reference a path that doesn't exist).
@@ -708,17 +698,17 @@ Verification this framework's decisions are correctly applied requires the revie
 
 The framework has these residual open questions surfaced for Phase 3 reviewer to reconcile (NOT for the framework to resolve unilaterally):
 
-**OQ-1.** Architect B's F-1 resolution path. This framework's V4 RELOCATE assumes Architect B chooses a path where CONCEPTUAL-REVIEW-METHODOLOGY.md ends up in a pack-only directory. If Architect B instead reclassifies `supporting-docs/` wholesale as pack-internal (collapsing F-1 differently), V4 becomes JUSTIFY. If Architect B chooses a third path (re-write for project-side audience), the framework recommends against and asks Phase 3 reviewer to surface as BLOCKER. The framework's strong recommendation is RELOCATE.
+**OQ-1 (RESOLVED by Override 6, S1 fix-pass).** V4 RELOCATE destination is `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` per `AUDIT-USER-CURATION.md` Override 6. Architect B's §4.1 `maintenance-docs/` proposal is superseded; the three original F-1-conditional paths (reclassify-supporting-docs / split / re-write-for-project-side) are no longer operative. RELOCATE proceeds to `pack-ops/`; cascade-subsumption holds; all 11 §5 ambiguous-pending-§F refs become LEGITIMATE at the new location.
 
 **OQ-2.** Architect B's MERGE-STRATEGY install decision. V5 (and cascades A1, D7.1, D8.6) splits PRIMARY (pack-only) vs ALTERNATIVE (install to clients). This framework recommends PRIMARY (audience header amendment) because the file's current install state (not copied) is consistent with the PRIMARY framing and the file's pack-internal references are tractable under PRIMARY without per-line REPLACE work. ALTERNATIVE is feasible but more work. Defer to Architect B.
 
-**OQ-3.** Architect B's F-5 resolution path. This framework's recommended DUAL-INSTALL of OPTIONAL-FEATURES.md resolves 7 references (D8.6, D8.7, A4, A5, A6, A7, A8) cleanly. If Architect B chooses keep-pack-only or relocate-to-pack-only-dir paths, the 7 references all require REVERT, which damages the project-side feedback fragment UX (the references currently surface tracker-mode setup to project users; reverting loses that UX surface). Defer to Architect B but note the UX cost of non-DUAL-INSTALL paths.
+**OQ-3 (RESOLVED by Override 8, S2 fix-pass).** F-5 resolves SPLIT per `AUDIT-USER-CURATION.md` Override 8. SPLIT design: pack-root `OPTIONAL-FEATURES.md` moves to `pack-ops/OPTIONAL-FEATURES.md`; new `project-template/docs/pack/OPTIONAL-FEATURES.md` is created with project-side-audience content (not byte-identical mirror); `init-project.sh` installs the project-side file to client `docs/pack/`. All 7 §C/§D references resolve cleanly: D8.6 + D8.7 REPLACE bare `OPTIONAL-FEATURES.md` with `docs/pack/OPTIONAL-FEATURES.md`; A4-A8 NO EDIT (LEGITIMATE post-SPLIT). The pre-amendment fallback REVERT paths (which would have damaged project-side UX) are dropped.
 
 **OQ-4.** F-4 QUICKSTART.md audience split. This framework did not design F-4 because QUICKSTART.md does not surface in the §C / §D contamination findings — it is a structural anti-pattern flagged in §F but not yielding per-finding decisions for Architect A. Phase 3 reviewer verifies that Architect B addresses F-4 and that no §A-related QUICKSTART decision was missed by this framework.
 
 **OQ-5.** T5-A removal scope. This framework recommends collapsing T5-A (inline enumeration removal) into the V1 + V8 trinity edit (TASK-T1). If Architect C's prevention design recommends a different trinity structure (e.g., a structured "pack agent roster" section ONLY in PM-CHAT.md and NEVER any agent enumeration in trinity), TASK-T1's prose may need to align with Architect C's pattern. Phase 3 reviewer verifies the alignment.
 
-**OQ-6.** V10 hunk-audit yield. This framework's V10 decision is a VERIFY-THEN-DECIDE: per-hunk audit of `8ba0164` may yield zero or many REPLACE edits. The framework cannot enumerate the hunks without doing the audit work (which would conflate Architect A's design role with Phase 5 implementation). Phase 4 planner schedules the hunk audit; Phase 5 coder performs it; Phase 3 reviewer pre-approves the per-hunk decision criteria (V1/V3/V8 patterns).
+**OQ-6 (RESOLVED by B1 fix-pass).** V10 collapses to NO ACTION (see §2 V10 amended entry and §10 Phase 3 fix-pass amendments). The original VERIFY-THEN-DECIDE framing was based on an empirically wrong premise (`project-template/` trinity IS PM-only per `CLAUDE.md:336-338` + `PACK-AGENTS.md:148`). No hunk-audit task is generated; Phase 4 planner does not schedule V10; Phase 5 coder spawns nothing against V10. The only residual concern (the two cross-reference families surfacing at project-template trinity) are within TASK-T1 scope already (V1 + T5-A + V8).
 
 ---
 
@@ -735,6 +725,85 @@ Per the prompt's success criteria:
 7. **Phase 3 reviewer can verify each decision independently.** Yes. Each decision has a "Reviewer independence-check" naming concrete artifacts to inspect.
 8. **Output is markdown only.** Yes.
 9. **PREFLIGHT line emitted before final Write.** Yes (above).
+
+---
+
+## §10 — Phase 3 fix-pass amendments (B1 + S1 + S2)
+
+This section summarizes the in-place amendments made to this framework on 2026-05-19 in response to Phase 3 reviewer findings B1 (BLOCKER), S1 (SHOULD), and S2 (SHOULD) from `PACK-REVIEW-PHASE-2-DESIGNS.md`. Original section bodies are amended with `<!-- AMENDED by Phase 3 fix-pass ... -->` HTML comments immediately above each amended block to aid future archaeology.
+
+### §10.1 — B1 amendments (BLOCKER — V10 collapses to NO ACTION)
+
+**Reviewer finding (`PACK-REVIEW-PHASE-2-DESIGNS.md` §1 B1):** Architect A's V10 framing claimed `8ba0164` (BD-167b) was a misrepresented-scope violation on the premise that "project-template trinity is NOT PM-only". That premise is empirically wrong: `CLAUDE.md:336-338` and `PACK-AGENTS.md:148` both explicitly name `project-template/` trinity as PM-only (Pack-Chat-direct-editable). V10 should collapse to NO ACTION, and Architect C's cascade (M1a/M1b/M5a PM-only-keyword definition) must reframe accordingly.
+
+**Cross-reference grep (B1 verification).** Running `grep -nE '(PACK-AGENTS|PACK-CHAT|HELP-FRAGMENT-PACK|maintenance-docs|supporting-docs|MERGE-STRATEGY|MIGRATION-v10-to-v11|TOOL-COMPARISON|CONCEPTUAL-REVIEW-METHODOLOGY|pack-architect|pack-planner|pack-coder|pack-reviewer|pack-docs-researcher|pack-startup|pack-help\.sh|HELP-FRAGMENT-TRACKER|OPTIONAL-FEATURES\.md|RESEARCH-NON-APPLE-UI-SKILLS|ARCHITECTURE-V|ARCHITECTURE-SKILL|validate-pack\.py)' project-template/CLAUDE.md project-template/AGENTS.md project-template/GEMINI.md` at HEAD `8014186` surfaces exactly two distinct cross-reference families:
+
+1. `PACK-AGENTS.md` at `project-template/CLAUDE.md:366` / `project-template/AGENTS.md:343` / `project-template/GEMINI.md:356` — already covered by V1 + T5-A REPLACE (TASK-T1).
+2. `maintenance-docs/` (TOOL-COMPARISON.md pointer) at `project-template/CLAUDE.md:397` / `project-template/AGENTS.md:374` / `project-template/GEMINI.md:387` — already covered by V8 REVERT (TASK-T1).
+
+No third reference family exists. Both families are subsumed by TASK-T1. Therefore the "re-litigate V10 with corrected list" path proposed in B1's fix-shape (b) yields zero new findings — V10 collapses to NO ACTION per fix-shape (a).
+
+**Sections amended:**
+- **§2 V10 entry** (formerly "TYPE-1 MEDIUM: 8ba0164 BD-167b PM-only-edits misrepresented scope") rewritten as "TYPE-1 LOW: 8ba0164 BD-167b PM-only-edits (NO ACTION — initial framing wrong)". New body cites `CLAUDE.md:336-338` and `PACK-AGENTS.md:148`; documents the grep result; collapses decision to NO ACTION; adds explicit Architect C cascade for the M1a/M1b/M5a PM-only-keyword definition.
+- **§6.3 V10 cascade line** updated from "VERIFY task — per-hunk audit" to "NO ACTION (per B1 fix-pass — initial framing wrong)".
+- **§6.4 V10 manifest-regen line** updated from "triggers regen only if it yields project-template edits" to "no manifest-regen trigger — NO ACTION per B1 fix-pass".
+- **§6.5 V9/V10 mixed-scope-declaration heuristic line** updated to drop V10 (V9 retained); the corresponding signal pattern is documented as living at V2 (`aaa61b3` actually touched outside the PM-only list).
+- **OQ-6** updated to "(RESOLVED by B1 fix-pass)" — explicitly notes V10 yields zero hunk-audit edits and zero scheduled planner tasks.
+
+**Architect C cascade surfaced.** The amended V10 entry includes an explicit "Architect C cascade (B1 fix-pass)" paragraph instructing Architect C fix-pass to (a) drop V10 as the worked example for the M1a/M1b/M5a PM-only-keyword definition, and (b) reframe the PM-only keyword permitted-paths regex to match the actual `PACK-AGENTS.md:148` list (which permits `project-template/` trinity edits under a `PM-only` commit-message claim). A real PM-only-violation worked example exists at V2 (`aaa61b3` which DID touch outside the PM-only list by editing `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`); Architect C may substitute V2 or a synthetic test fixture.
+
+### §10.2 — S1 amendments (SHOULD — V4 destination per Override 6)
+
+**Reviewer finding (`PACK-REVIEW-PHASE-2-DESIGNS.md` §1 S1):** Architect A's V4 RELOCATE framework named "pack-only directory designated by Architect B" generically; Architect B's §4.1 chose `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`; `AUDIT-USER-CURATION.md` Override 6 rejects that and specifies `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md`. A's cascade-subsumption logic survives Override 6 (operative property is "pack-only directory"; `pack-ops/` satisfies); A's specific phrasing should name the actual destination.
+
+**Sections amended:**
+- **§0 reading guide** — added Override 6 cascade paragraph naming `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` as the V4 destination; clarified that the original F-1 conditional-decision framing is no longer operative.
+- **§2 V4 Rationale** — replaced generic "pack-only directory designated by Architect B" with explicit `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` per Override 6; cited Override 6 explicitly.
+- **§2 V4 Dependency on Architect B** — rewritten as "(RESOLVED by Override 6, S1 fix-pass)"; the three original F-1-conditional fallbacks (path A reclassify-supporting-docs / path B split / path C carve-new-dir) are documented as no-longer-operative; destination is `pack-ops/`.
+- **§2 V4 Implementation hint** — step 1 now names destination explicitly; step 3 names the full `git mv supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` command; step 4 names `pack-ops/` as the retarget path.
+- **§2 V4 Reviewer independence-check** — verifies destination is `pack-ops/` (not `maintenance-docs/`); supersedes the earlier "Architect B picks" framing.
+- **§5 conditional fallback block** — rewritten to "(RESOLVED by Override 6, S1 fix-pass)"; the three original F-1-conditional fallback paths are documented as no-longer-operative; the §5 11-ref cluster all subsumed by V4 RELOCATE to `pack-ops/`; Phase 3 reviewer reconciliation note simplified (no BLOCKER escalation path remains — destination is user-authorized).
+- **OQ-1** updated to "(RESOLVED by Override 6, S1 fix-pass)" — names `pack-ops/` destination explicitly; cascade-subsumption logic preserved.
+
+**Cascade-subsumption preserved.** The §5 11-ref cluster (all references inside `CONCEPTUAL-REVIEW-METHODOLOGY.md` to pack-only paths/agents/orchestrator) all become LEGITIMATE post-RELOCATE to `pack-ops/`. The operative property is "pack-only directory" — `pack-ops/` satisfies; the original logic does not change.
+
+### §10.3 — S2 amendments (SHOULD — D8.6/D8.7 + A4-A8 collapse to SPLIT per Override 8)
+
+**Reviewer finding (`PACK-REVIEW-PHASE-2-DESIGNS.md` §1 S2):** Architect A's framing in §3.5 D8.6/D8.7 + §4 A4-A8 cluster recommended DUAL-INSTALL with FALLBACK paths (REVERT all 5 if Architect B picks keep-pack-only or relocate-to-pack-only-dir). Architect B's framing recommended SPLIT. `AUDIT-USER-CURATION.md` Override 8 confirmed SPLIT explicitly. A's framework should collapse the conditional D8.6/D8.7 + A4-A8 framings to the SPLIT-confirmed path; FALLBACK REVERT paths drop.
+
+**Terminology reconciliation.** A's decision-category vocabulary (§1) defines DUAL-INSTALL (install a copy to project-side AND keep pack-side source) and SPLIT (cleave a single audience-mixed file into two files, one per audience) as distinct categories. Override 8 ("one for pack. one for projects. There may be something common to both and maybe some individual to both") and B's S2 design ("project-side content tailored to project audience — not byte-identical copy") both correspond to A's SPLIT category, not DUAL-INSTALL. The amendments below adopt SPLIT as the operative term.
+
+**Sections amended:**
+- **§3.5 D8.6 + D8.7 block** — collapsed three-path conditional decision tree for D8.6 (JUSTIFY/REPLACE/REVERT depending on V5 + F-5 combinations) and parallel framing for D8.7 to a single decision: REPLACE bare `OPTIONAL-FEATURES.md` with `docs/pack/OPTIONAL-FEATURES.md`. Cited Override 8 explicitly. Pre-amendment "Recommended path: DUAL-INSTALL" and "Implementation hint" prose rewritten for SPLIT. Reviewer independence-check now notes "no byte-identity gate" between the two files (Override 8).
+- **§4 A4** entry — collapsed to "LEGITIMATE post-SPLIT"; "DEPENDS ON F-5 RESOLUTION" framing dropped; alternate REVERT paths dropped; NO EDIT decision per Override 8.
+- **§4 A5 / A6 / A7 / A8** entries — same SPLIT-confirmed collapse; each is now "same as A4 — NO EDIT (LEGITIMATE post-SPLIT)" with explicit Override 8 citation.
+- **§4 totals reconciliation** — A4-A8 line updated from "all become LEGITIMATE under recommended DUAL-INSTALL path; alternate paths REVERT all 5" to "all LEGITIMATE post-SPLIT (Override 8, S2 fix-pass — supersedes the original 'DEPENDS ON F-5' framing and drops the alternate REVERT paths)".
+- **§4 aggregate dependency line** — updated from "depend on F-5 resolution... defers the call to Architect B" to "(RESOLVED by Override 8, S2 fix-pass)... F-5 = SPLIT per Override 8".
+- **§6.1 TASK-T8** — updated from "OPTIONAL-FEATURES DUAL-INSTALL — if Architect B chooses" to "OPTIONAL-FEATURES SPLIT — confirmed per Override 8"; explicit reference to `pack-ops/OPTIONAL-FEATURES.md` (pack-side) + new `project-template/docs/pack/OPTIONAL-FEATURES.md` (project-side, tailored content per audience); A4-A8 verify-only (no edits) noted.
+- **§6.2 sequencing constraints** — TASK-T8 line updated from "depends on Architect B's F-5 resolution" to "is the SPLIT-confirmed implementation per Override 8".
+- **OQ-3** updated to "(RESOLVED by Override 8, S2 fix-pass)" — names the SPLIT design explicitly; resolves all 7 references (D8.6 + D8.7 REPLACE; A4-A8 NO EDIT); fallback REVERT paths dropped.
+
+### §10.4 — Unaffected sections (intact)
+
+The following sections are explicitly unaffected by the B1/S1/S2 fix-pass and remain as originally designed:
+- §1 boundary articulation reduced to operational test
+- §2 V1, V2, V3, V5, V6 (V6.a/V6.b/V6.c), V7, V8, V9, V11, V12, T5-A, T5-B (all unaffected)
+- §3.1 (D-1), §3.2 (D-4), §3.3 (D-5), §3.4 (D-7) cascade tables (all unaffected — only §3.5 D-8 amended per S2)
+- §4 A1, A2, A3 (all unaffected — only A4-A8 amended per S2)
+- §6.1 TASK-T1 through TASK-T7 (all unaffected — only TASK-T8 amended per S2)
+- §6.4 manifest regeneration triggers (only the V10 sub-line amended per B1; rest unchanged)
+- §6.5 out-of-scope items for Architect C handoff (only the V9/V10 line amended per B1)
+- §7 Phase 3 reviewer master checklist (unaffected — the checklist remains valid for the amended framework)
+- §8 OQ-2, OQ-4, OQ-5 (unaffected — only OQ-1, OQ-3, OQ-6 amended)
+- §9 success criteria self-check (unaffected — the framework continues to meet all 9 success criteria post-amendment)
+
+### §10.5 — Cross-doc cascade concerns (informational, not blocking)
+
+This fix-pass is in-scope for Architect A only. The following cross-doc cascades are surfaced for Pack Chat / Architect B fix-pass / Architect C fix-pass triage but are NOT amended here:
+
+1. **Architect C cascade (BLOCKER B1 ripple).** Architect C's M1a (memory rule), M1b (commit message rule), M5a (Check 36 PM-only keyword permitted-paths regex), and §10.2 worked example all need to drop V10 as the worked example and reframe the PM-only keyword to match `PACK-AGENTS.md:148`. Reviewer's MUST-S6 also surfaces this. Out of scope for this fix-pass; flagged for Architect C fix-pass.
+2. **Architect B fix-pass cascade (S1 ripple).** Architect B's §4.1 chose `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` as the F-1 destination. Override 6 corrects to `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md`. Architect B fix-pass (or B-fix extension) should update B's §4.1 to honor Override 6 — Reviewer's Concern 5 row for Override 6 surfaces this as needing B fix-pass attention. Out of scope for this fix-pass; flagged for Architect B fix-pass.
+3. **Architect B fix-pass cascade (S2 ripple — none required).** Architect B's S2 commit design already aligns with Override 8 SPLIT — no B-side amendment needed for S2 itself. (B's separate fix-pass concerns are MUST-M3 QUICKSTART per Override 7 and SHOULD-S3 OPTIONAL-FEATURES content-split sketch — both out of scope for this Architect A fix-pass.)
 
 ---
 

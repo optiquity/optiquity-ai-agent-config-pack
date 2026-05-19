@@ -336,7 +336,7 @@ Plus `MIGRATION-v10-to-v11.md` has 4 contamination hits in audit §D (Pack Chat 
 **Resolution:**
 
 1. Reclassify the three PACK files OUT of `supporting-docs/`:
-   - `CONCEPTUAL-REVIEW-METHODOLOGY.md` → `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`. The file is methodology that informs pack-reviewer / pack-architect (PACK × OPERATIONS); `maintenance-docs/` is the existing home for pack methodology. Note: this is currently in active use ("Empirical basis: established 2026-05-15", referenced in CLAUDE.md pack-memory), so it is LIVE OPS not historical record — it lives at `maintenance-docs/` top level (not under `archive/` or `v11-implementation/`), siblings to `TOOL-COMPARISON.md` and `RECOMMENDATIONS.md` which are the existing live-methodology files there.
+   - `CONCEPTUAL-REVIEW-METHODOLOGY.md` → `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` **[Per Override 6 — destination is `pack-ops/`, NOT `maintenance-docs/`; see B-fix §16 for cascade explanation]**. The file is pack-internal methodology that informs pack-reviewer / pack-architect (PACK × OPERATIONS); it is currently in active use ("Empirical basis: established 2026-05-15", referenced in CLAUDE.md pack-memory), so it is LIVE OPS not historical record. `pack-ops/` is the home for pack operational docs (PACK-CHAT.md, PACK-AGENTS.md, OPTIONAL-FEATURES.md, HELP-FRAGMENT-PACK.md after relocation); CONCEPTUAL-REVIEW-METHODOLOGY belongs alongside them as a sibling pack-operations doc. The original `maintenance-docs/` proposal in this paragraph is superseded by Override 6.
    - `DRY-RUN-MIGRATION.md` → `pack-ops/DRY-RUN-MIGRATION.md`. The file describes pack-repo tooling for org maintainers; it is live operating documentation for the pack's migration harness. `pack-ops/` fits.
    - `MERGE-STRATEGY.md` → `pack-ops/MERGE-STRATEGY.md`. Same reasoning — consumed primarily by `scripts/migrate-v10-to-v11.sh` (live pack tooling).
 
@@ -346,7 +346,7 @@ Plus `MIGRATION-v10-to-v11.md` has 4 contamination hits in audit §D (Pack Chat 
 
 **Path-reference impact:** `scripts/migrate-v10-to-v11.sh` and related scripts reference `supporting-docs/MERGE-STRATEGY.md` and `supporting-docs/DRY-RUN-MIGRATION.md`. After moves, refs update to `pack-ops/MERGE-STRATEGY.md` and `pack-ops/DRY-RUN-MIGRATION.md`. `init-project.sh` does NOT currently install MERGE-STRATEGY or DRY-RUN-MIGRATION to clients (verified by `init-project.sh` grep — the file only installs METHODOLOGY.md and INSTALL-PROCEDURES.md from supporting-docs/), so no install-logic change needed.
 
-**Naming rationale for CONCEPTUAL-REVIEW-METHODOLOGY destination (`maintenance-docs/` vs `pack-ops/`):** `maintenance-docs/` is the existing home for cross-cutting pack methodology (siblings: `TOOL-COMPARISON.md`, `RECOMMENDATIONS.md`, `VERIFIED-NOTES.md`, `ANDROID-ANALYSIS.md`). CONCEPTUAL-REVIEW-METHODOLOGY shares that family — it is methodology that augments multiple pack agents (pack-reviewer, pack-architect, pack-coder). `pack-ops/` is for LIVE OPERATING DOCS read at the start of work cycles (PACK-CHAT.md, PACK-AGENTS.md, HELP-FRAGMENT-PACK.md) — methodology docs are read on-demand by agents, not on every session. The distinction is genuine: live-ops docs are the BACKLOG/CHANGELOG-class (consult every session), methodology docs are the textbook-class (consult when working in their domain). Keeping them in separate dirs preserves Pack Chat's startup-read efficiency and matches the existing maintenance-docs convention.
+**Naming rationale for CONCEPTUAL-REVIEW-METHODOLOGY destination — SUPERSEDED by Override 6:** [Per `AUDIT-USER-CURATION.md` Override 6 — destination is `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md`. The original `maintenance-docs/` rationale (live-vs-textbook distinction, sibling-family argument) is REJECTED. The file is pack-internal methodology consumed by pack-reviewer / pack-architect / pack-coder — Override 6's placement co-locates it with other `pack-ops/` operational docs that pack agents read during work cycles. The earlier live-vs-textbook framing is no longer operative; see B-fix §16 for the full cascade explanation.]
 
 ### §4.2 F-2 resolution: `project-template/docs/pack/` directory NAME
 
@@ -469,7 +469,7 @@ The boundary definition is referenced from EVERY surface where an actor might ne
 
 2. **Design / planning surfaces** (place a top-of-file pointer):
    - `README.md` § "Repository Layout" — add a one-line pointer "Boundary rules between pack-only and project-only files: see `pack-ops/BOUNDARY-DEFINITION.md`."
-   - `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` (after F-1 move) — add a pointer in dimension (d) Pack rule adherence so conceptual reviewers cite it.
+   - `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` (after F-1 move per Override 6) — add a pointer in dimension (d) Pack rule adherence so conceptual reviewers cite it.
    - `.claude/agents/pack-architect.md`, `pack-coder.md`, `pack-planner.md`, `pack-reviewer.md`, `pack-docs-researcher.md` (and trinity-parallel `.codex/agents/pack-*.toml`, `.gemini/agents/pack-*.md`) — add a "Boundary rules: read `pack-ops/BOUNDARY-DEFINITION.md` before any classification decision" line to each agent's read-list. Phase 5 coder handles trinity-parallel edits per trinity rule.
 
 3. **Workflow / CI surfaces** (machine-readable):
@@ -528,7 +528,7 @@ Mechanical `git mv` operations (history-preserving):
 | M3 | `OPTIONAL-FEATURES.md` | `pack-ops/OPTIONAL-FEATURES.md` | ~20+ refs (audit §E-4) |
 | M4 | `PACK-AGENTS.md` | `pack-ops/PACK-AGENTS.md` | ~25+ refs (audit §E-1) |
 | M5 | `PACK-CHAT.md` | `pack-ops/PACK-CHAT.md` | ~30+ refs (audit §E-5) |
-| M6 | `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` | `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` | ~10 refs (estimate from audit §D AMBIGUOUS-pending) |
+| M6 | `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` | `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` (per Override 6; see B-fix §16) | ~10 refs (estimate from audit §D AMBIGUOUS-pending) |
 | M7 | `supporting-docs/DRY-RUN-MIGRATION.md` | `pack-ops/DRY-RUN-MIGRATION.md` | ~5-10 refs (estimate; called by scripts/dry-run-migration.sh) |
 | M8 | `supporting-docs/MERGE-STRATEGY.md` | `pack-ops/MERGE-STRATEGY.md` | ~15-20 refs (audit §E-2 / §E-7 partial) |
 

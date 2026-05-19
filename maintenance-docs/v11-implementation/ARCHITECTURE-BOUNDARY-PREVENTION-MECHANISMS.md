@@ -127,6 +127,62 @@ Notes on coverage:
 | project-side coder | `project-template/docs/pack/prompts/coder.md` standard + fix-cycle variants | Pre-implementation SSOT-investigation step (see M3b §5) |
 | Project trinity | `project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` `## Project memory` section | Project-side mirror rule (see §4.2 below) |
 
+### §4.1 — User Override 9 — two-tier codification authority + Check 18 H2 parity NON-application
+
+Per `AUDIT-USER-CURATION.md` Override 9, the pack-side P-missed-7
+codification (§4 above) and the project-side mirror (§4.2 below) are
+intentionally DIFFERENT in wording. The pack-side bullet is detailed,
+names BD-175 worked examples (V1 / V3 / V4), and instructs pack actors
+to investigate project-side SSOT before defaulting to pack-style
+mechanisms. The project-side mirror is **shorter and inverted** — it
+does not need to know about Pack Chat; it needs to know that PROJECT
+SSOT is the starting point for any project-side change. Two
+audience-specific rules; not a byte-identical mirror.
+
+**Authority:** AUDIT-USER-CURATION.md §1 Override 9 (CONFIRMED):
+
+> "Different audience means different wording is fine." Two
+> audience-specific rules, not a mirror in the byte-identical-drift
+> sense. Compatible with D-4 ("no mirrors as default") because the
+> two rules are substantively different even though they share the
+> principle.
+
+**Phase 3 reviewer (per Override 9):** "no cross-trinity drift gate
+needed for this codification (different wording is intentional, not
+drift)."
+
+**Implication for Check 18 H2 parity:** Check 18 H2 parity (existing
+Trinity-files cross-CLI wording-parity gate in `scripts/validate-pack.py`)
+does NOT apply to the new bullet. Specifically:
+
+- Check 18 H2 enforces parity ACROSS THE THREE CLI FILES at a single
+  trinity location (CLAUDE.md vs AGENTS.md vs GEMINI.md at pack root,
+  OR CLAUDE.md vs AGENTS.md vs GEMINI.md at `project-template/`).
+  Within each trinity location, the three CLI files MUST stay in
+  parity (the pack-side bullet wording in pack-root CLAUDE.md MUST
+  match pack-root AGENTS.md and pack-root GEMINI.md). This standard
+  per-trinity-location parity continues to apply.
+- What Check 18 H2 does NOT enforce, and per Override 9 MUST NOT
+  enforce, is CROSS-TRINITY parity (pack-root trinity wording vs
+  project-template trinity wording). The two trinities legitimately
+  carry different wording per Override 9. Any future Check 18
+  extension or new check that would compare pack-root P-missed-7
+  text to project-template Project SSOT-first text is REJECTED by
+  this design.
+
+**Measurable consequence:** the M2 measurable test (Trinity Check 18
+H2 parity fires when the bullet is missing from one trinity file)
+applies WITHIN each trinity location. It does NOT fire because the
+pack-side wording differs from the project-side wording — those
+differ by design per Override 9.
+
+**Cross-reference to S4 fix-pass:** This §4.1 subsection was added
+by C-fix per Phase 3 reviewer S4 finding (PACK-REVIEW-PHASE-2-DESIGNS.md
+§1 S4, lines 201-216). Pre-fix, C's §4 + §4.2 implicitly aligned with
+Override 9 but did not explicitly cite it; reviewer reading C alone
+could not tell whether the two-trinity codification was user-confirmed
+or unilateral architect decision.
+
 ### §4.2 — Project-side mirror of P-missed-7
 
 The audit's TYPE-2 / TYPE-4 / TYPE-5 patterns can recur in client repos too — a project's PM Chat or reviewer can introduce inappropriate pack-style mechanisms into client project content. The mirror rule for project-side trinity is **shorter and inverted** (project trinity does not need to know about Pack Chat; it needs to know that PROJECT-side SSOT is the starting point for any project-side change):
@@ -141,9 +197,11 @@ The audit's TYPE-2 / TYPE-4 / TYPE-5 patterns can recur in client repos too — 
   in this project (e.g., docs/pack/PM-CHAT.md, docs/pack/PLATFORM-
   SKILLS.md) are part of the project SSOT and may be referenced.
   Files at the pack repo (PACK-AGENTS.md, PACK-CHAT.md, pack-*
-  agent prompts, pack-repo maintenance-docs/) are NOT part of the
-  project SSOT and must not be referenced from project files —
-  the pack repo is not present at this client install.
+  agent prompts, pack-repo maintenance-docs/, pack-repo pack-ops/
+  — any file under pack-ops/, including BOUNDARY-DEFINITION.md,
+  BACKLOG.md, CHANGELOG.md, etc. post Architect B + B-fix) are NOT
+  part of the project SSOT and must not be referenced from project
+  files — the pack repo is not present at this client install.
 ```
 
 This mirror lives under `## Project memory` in the project-template trinity. It is part of the prevention layer because the same regression pattern can enter client projects via the same review/fix mechanism that infected the pack-shipped trinity.
@@ -329,9 +387,12 @@ repo `.claude/`/`.codex/`/`.gemini/` dotted dirs at repo root).
    - File names: `PACK-AGENTS.md`, `PACK-CHAT.md`, `HELP-FRAGMENT-PACK.md`,
      `HELP-FRAGMENT-TRACKER.md`, `OPTIONAL-FEATURES.md` (current root
      location; Architect B may relocate)
-   - Path prefixes: `maintenance-docs/`, `scripts/` (pack-repo only —
-     project-side scripts live at `project-template/scripts/`),
-     `test-fixtures/`
+   - Path prefixes: `maintenance-docs/`, `pack-ops/` (pack-only
+     top-level dir per Architect B; houses BOUNDARY-DEFINITION.md,
+     PACK-AGENTS.md, PACK-CHAT.md, BACKLOG.md, CHANGELOG.md, etc.
+     post B-fix M1-M5 + M9-M10 — none of which exist at client
+     install), `scripts/` (pack-repo only — project-side scripts
+     live at `project-template/scripts/`), `test-fixtures/`
    - Agent names: `pack-architect`, `pack-coder`, `pack-planner`,
      `pack-reviewer`, `pack-docs-researcher`
    - Role names: `Pack Chat` (capitalized as orchestrator role; lower-
@@ -418,7 +479,7 @@ For every commit on every push, parse the commit subject for scope claims and co
 |---|---|
 | Subject contains literal `pack-only` (case-insensitive) | Only pack-only paths (deny `project-template/` + Architect-B-conditional project-side dirs) |
 | Subject contains literal `project-only` (case-insensitive) | Only project-side paths (deny pack-only paths) |
-| Subject contains literal `PM-only` or `pack-memory-only` | Only Pack-Chat-direct-edit surfaces per PACK-AGENTS.md (root trinity, PACK-CHAT.md, PACK-AGENTS.md, root BACKLOG/CHANGELOG, project-template trinity edits FAIL this gate — caught V10) |
+| Subject contains literal `PM-only` or `pack-memory-only` | Only Pack-Chat-direct-edit surfaces per `PACK-AGENTS.md:142-148` PM-only Files list — see §8.1a below for the verbatim list. Notably **PERMITS** edits to `project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (project-template trinity IS PM-only per PACK-AGENTS.md:148 — "root and `project-template/`"). Updated per Phase 3 reviewer finding B1-cascade + S6. |
 | No scope keyword in subject | Check skipped (commit is implicitly mixed-scope) |
 
 The keyword vocabulary is narrow (3 keyword patterns) and the deny rules are mechanically verifiable.
@@ -438,7 +499,74 @@ The PERMITTED-PATHS regex is conditional on Architect B's directory architecture
 **Measurable test for M5a:** Stage three test commits in CI fixture branch:
 - Commit subject `"pack-only: test"` touching `project-template/CLAUDE.md` → MUST FAIL Check 36 with diff callout
 - Commit subject `"project-only: test"` touching `scripts/foo.sh` → MUST FAIL
-- Commit subject `"PM-only: test"` touching `project-template/CLAUDE.md` → MUST FAIL (project-template trinity is NOT a Pack-Chat-direct surface per PACK-AGENTS.md)
+- Commit subject `"PM-only: test"` touching `project-template/CLAUDE.md` → MUST **PASS** (project-template trinity IS a Pack-Chat-direct PM-only surface per `PACK-AGENTS.md:148` — "root and `project-template/`"). Updated per Phase 3 reviewer finding B1-cascade + S6 cascade; pre-fix this test asserted FAIL, which was incorrect per the actual pack-memory rule. The correct PM-only-violation fixture must touch a file OUTSIDE the PACK-AGENTS.md:142-148 PM-only Files list — see §8.1a §10.2 worked example.
+- (Additional fixture per S6 fix:) Commit subject `"PM-only: test"` touching `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` → MUST FAIL (supporting-docs/ is project-side per CLAUDE.md trinity rule; not in the PM-only Files list). This is the corrected V2-shape fixture; the previous V10-shape fixture was based on the misreading B1 corrected.
+
+### §8.1a — Authoritative PM-only Files list (consumed by Check 36 PM-only keyword)
+
+The `PM-only` / `pack-memory-only` commit-subject keyword's permitted-paths
+regex is defined by `PACK-AGENTS.md:142-148` § "PM-only files and directories"
+Files block (verbatim at HEAD `8014186`):
+
+```
+Files:
+- BACKLOG.md (regenerated mirror; per-entry source at /backlog/)
+- CHANGELOG.md (regenerated mirror; per-entry source at /changelog/)
+- README.md version table
+- PACK-CHAT.md
+- PACK-AGENTS.md
+- CLAUDE.md / AGENTS.md / GEMINI.md (root and project-template/)
+```
+
+**Post-B + B-fix path substitution** (per `ARCHITECTURE-DIRECTORY-REORGANIZATION.md`
+M4 + M5 + `ARCHITECTURE-DIRECTORY-REORGANIZATION-FIX.md` M9 + M10):
+- `BACKLOG.md` → `pack-ops/BACKLOG.md`
+- `CHANGELOG.md` → `pack-ops/CHANGELOG.md`
+- `PACK-CHAT.md` → `pack-ops/PACK-CHAT.md`
+- `PACK-AGENTS.md` → `pack-ops/PACK-AGENTS.md`
+- Pack-root trinity (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` at repo root) UNCHANGED.
+- Project-template trinity (`project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md`)
+  UNCHANGED.
+- `README.md` version table UNCHANGED.
+
+**Pre-B + pre-B-fix path substitution** (interim state, pre-relocation): the
+PM-only Files are the bare-root paths as listed in PACK-AGENTS.md.
+
+**Check 36 PM-only keyword PERMITTED-PATHS regex (canonical, post-B + B-fix):**
+
+```
+^(pack-ops/BACKLOG\.md|pack-ops/CHANGELOG\.md|README\.md|
+ pack-ops/PACK-CHAT\.md|pack-ops/PACK-AGENTS\.md|
+ CLAUDE\.md|AGENTS\.md|GEMINI\.md|
+ project-template/CLAUDE\.md|project-template/AGENTS\.md|project-template/GEMINI\.md)$
+```
+
+**(README.md version-table edits:** Check 36 cannot mechanically distinguish
+a version-table-only edit from an other-section edit on the README. The
+permitted-paths regex therefore PERMITS any README.md touch under `PM-only`;
+the version-table-only narrower constraint stays a Pack Chat discipline
+concern (M1a memory rule), not a Check 36 mechanical concern. Mis-scoped
+README.md edits surface in M3a/M5b/M5c instead.)
+
+**Directories also listed by PACK-AGENTS.md:150-158** (`/backlog/`,
+`/changelog/`, `project-template/docs/project/backlog/`,
+`project-template/docs/project/implementation-plan/`,
+`project-template/docs/project/changelog/` and their `_rules.md` /
+`_intro.md` / `_format.md` / per-entry files) are also PM-only.
+The post-Batch-23 forward-pointing note in PACK-AGENTS.md:178-187 confirms
+these directories materialize at Batch 23 BD-102 dog-food; pre-Batch-23
+the PM-only files-only list is what Check 36 enforces. Post-Batch-23 the
+regex extends to include these per-entry tree paths.
+
+**Cross-reference to B1-cascade + S6 fix-pass:** §8.1a was added by C-fix
+per Phase 3 reviewer findings B1-cascade (BLOCKER, PACK-REVIEW-PHASE-2-DESIGNS.md
+§1 B1, lines 43-65) and S6 (SHOULD, lines 241-253). Pre-fix, C's §8.1 keyword-table
+treated project-template trinity edits as PM-only VIOLATIONS ("caught V10"),
+which reproduced Architect A's misreading of `8ba0164`'s scope. The actual
+PACK-AGENTS.md:148 PM-only list explicitly names "`CLAUDE.md` / `AGENTS.md` /
+`GEMINI.md` (root and `project-template/`)" — project-template trinity IS
+PM-only. V10 collapses to NO-ACTION per Architect A fix-pass; this design's
+Check 36 PM-only keyword definition no longer references V10.
 
 ### §8.2 — M5b: Check 37 — project-side pack-only-reference deny list (catches TYPE-4)
 
@@ -453,9 +581,10 @@ For every file under `project-template/` (and post-Architect-B, any new project-
 | `PACK-AGENTS.md` | Pack-repo only |
 | `PACK-CHAT.md` | Pack-repo only |
 | `HELP-FRAGMENT-PACK.md` | Pack-repo only |
-| `HELP-FRAGMENT-TRACKER.md` (pack-root copy; project-side has its own copy at `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md`) | Architect-B-conditional — depends on byte-identity status post-B |
+| `HELP-FRAGMENT-TRACKER.md` (bare filename; project-side has its own copy at `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md`) | Pack-only at the bare-filename level. Post-B the pack-side copy lives at `pack-ops/HELP-FRAGMENT-TRACKER.md` (per Architect B §3 #9 + B's M2); CI Check 24 enforces byte-identity between the pack-ops copy and the project-side `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md` copy. This bare-filename row catches project-side references that omit a path prefix; broader `pack-ops/` path-prefix coverage is the row below. |
 | `OPTIONAL-FEATURES.md` | Architect-B-conditional — currently pack-root only; B may decide install-to-client path |
 | `maintenance-docs/` (path prefix) | Pack-only; not installed |
+| `pack-ops/` (path prefix) | Pack-only; new top-level pack-only dir per Architect B's design (`pack-ops/PACK-AGENTS.md`, `pack-ops/PACK-CHAT.md`, `pack-ops/BACKLOG.md`, `pack-ops/CHANGELOG.md`, `pack-ops/HELP-FRAGMENT-PACK.md`, `pack-ops/HELP-FRAGMENT-TRACKER.md`, `pack-ops/OPTIONAL-FEATURES.md`, `pack-ops/MERGE-STRATEGY.md`, `pack-ops/DRY-RUN-MIGRATION.md`, `pack-ops/BOUNDARY-DEFINITION.md`, `pack-ops/.boundary-exempt-root.txt` post B-fix). Project-side files MUST NOT cross-reference any file under `pack-ops/` — the directory does not exist at client install. Symmetric with `maintenance-docs/` entry above. |
 | `pack-architect`, `pack-coder`, `pack-planner`, `pack-reviewer`, `pack-docs-researcher` (agent names, word-boundary) | Pack-only agents |
 | `Pack Chat` (capitalized, orchestrator-role reference) | Pack-only orchestrator role — DISTINCT from lower-case "pack chat" in feedback flow per audit §D-4 |
 | `tracker.toml.pack-example` | Per AUDIT-USER-CURATION.md Override 1 — STAYS at pack root; not installed |
@@ -616,7 +745,36 @@ The keyword vocabulary needs to be standardized before Check 36 is meaningful. R
 
 The vocabulary is intentionally small. Adding more keywords increases CI fragility without proportional value. The "no keyword = mixed" default makes the keyword opt-in (low friction for actors who don't want the gate; mandatory for actors who claim a scope).
 
-**Worked example (audit V10):** Commit `8ba0164` subject "docs: v11 — BD-167b per-entry split PM-only edits" claimed `PM-only` but the commit also edited project-template trinity (which is NOT a PM-only surface per PACK-AGENTS.md). Under Check 36 + M1b: this commit FAILS CI at push, before merge. Pack Chat would have re-issued either as `(no keyword)` mixed scope OR split into two commits.
+**Worked example (audit V2, corrected per Phase 3 reviewer B1-cascade + S6 fix):**
+
+**Pre-fix worked example (V10) was INCORRECT and is dropped.** Phase 3 reviewer
+finding B1 surfaced that commit `8ba0164` ("docs: v11 — BD-167b per-entry split
+PM-only edits") DID claim `PM-only` and DID touch project-template trinity —
+but project-template trinity IS PM-only per `PACK-AGENTS.md:148` ("`CLAUDE.md`
+/ `AGENTS.md` / `GEMINI.md` (root and `project-template/`)"). The commit's
+scope was correct; the audit's V10 finding misread the PM-only list. V10
+collapses to NO-ACTION per Architect A fix-pass; using `8ba0164` as the
+worked example here would encode the misreading into the M1b convention and
+Check 36 fixtures, producing a false-positive CI gate against legitimate
+PM-only commits.
+
+**Corrected worked example (audit V2 `aaa61b3`):** Commit subject
+"docs: v11 — Batch 19b cleanup — V11-12/13/14 CONCEPTUAL-REVIEW-METHODOLOGY
+verification + V11-15 reviewer-prompt-template find-replace" did NOT carry
+an explicit `PM-only` keyword, so Check 36 + M1b wouldn't have caught V2
+either under strict keyword-matching (as the §8.1 implicit-scope caveat
+notes). The instructive shape for M1b purposes is the HYPOTHETICAL: had the
+commit been issued with subject `"docs: v11 — PM-only Batch 19b cleanup"`,
+the diff (`supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`) would have
+failed Check 36 because `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`
+is NOT in the PACK-AGENTS.md:142-148 PM-only Files list (it's project-side
+per CLAUDE.md trinity rule "`supporting-docs/`" classification, regardless
+of Architect B's planned post-fix relocation to `pack-ops/`). Pack Chat
+would have re-issued without the `PM-only` keyword or split the commit.
+
+**Real-fixture worked examples** for the Check 36 regression test live in
+§8.1 above (three test commits) + the §12 test-plan summary; the V2-shape
+fixture replaces the V10-shape fixture from the pre-fix design.
 
 ---
 
@@ -630,9 +788,9 @@ Several mechanisms in this design are conditional on Architect B's directory arc
 | M3a reviewer protocol amendment | Project-side file detection scope | Whether `supporting-docs/` continues to count as project-side, or B splits/relocates it |
 | M3b implementer pre-flight | Boundary-investigation skill load | Same — affects which agent prompts gate against which directory paths |
 | M4 boundary-investigation skill | Pack-only deny-list | Files relocated by B drop from the pack-root deny-list and may gain new pack-only-dir paths |
-| M5a Check 36 commit-scope honesty | PERMITTED-PATHS regex | Same |
-| M5b Check 37 project-side deny-list | Deny-list patterns | B's renames / relocations change which patterns are deny-listed |
-| M5c Check 38 pack-only-file siting | Project-side directory boundaries | Same |
+| M5a Check 36 commit-scope honesty | PERMITTED-PATHS regex (PM-only) + permitted pack-only paths regex | Same. **Post-B-fix:** PM-only paths regex is per §8.1a, sourcing from `PACK-AGENTS.md:142-148`. The B-fix C2-at-root exemption list (`pack-ops/.boundary-exempt-root.txt`) is a **1-entry list** (only `tracker.toml.pack-example` per AUDIT-USER-CURATION.md Override 1 + Override 5 collapsing the original 3-entry closed-set proposed in B's §2.1); Check 36 / Check 38 fixtures that depend on the allow-list count assert N=1, NOT N=3. |
+| M5b Check 37 project-side deny-list | Deny-list patterns | B's renames / relocations change which patterns are deny-listed. Post-B + B-fix adds `pack-ops/` path-prefix per finding M2. |
+| M5c Check 38 pack-only-file siting | Project-side directory boundaries | Same. The 1-entry exemption list (above) governs which C2-at-root files Check 38 tolerates as exempt. |
 | M7 reviewer positive-assertion gate | "Project-side" definition | Same |
 
 **Integration strategy (Phase 3 reviewer + Phase 4 planner concern):**
@@ -678,7 +836,7 @@ Phase 5 implementation order (proposed; Phase 4 planner refines):
 8. **M1a (Pack Chat batch-scope memory rule) + M1b (commit-subject scope keyword convention).** Memory + convention; no enforcement until M5a lands.
 9. **M5a (Check 36 commit-scope honesty).** CI enforcement of M1a/b. Lands after M1a/b memory rules.
 10. **M5b (Check 37 project-side deny-list).** Lands AFTER Architect A's re-litigation has fixed the existing 17 contaminations (or with allow-list shrinking commit-by-commit during A's fix-pass).
-11. **M5c (Check 38 pack-only-file siting).** Lands AFTER Architect B's `supporting-docs/` decision.
+11. **M5c (Check 38 pack-only-file siting).** Lands AFTER Architect B's `supporting-docs/` decision. Consumes `pack-ops/.boundary-exempt-root.txt` (the 1-entry list per B-fix §4 + Overrides 1 + 5 — only `tracker.toml.pack-example`) as the allow-list for C2-at-root files; reject all other PACK × OPERATIONS files at root.
 12. **M8 (trinity-rule documentation amendment).** Pure-documentation; can land any time after M2.
 
 The dependency graph:
@@ -747,6 +905,294 @@ Each mechanism has a measurable test (§12). Each conditional dependency on Arch
 The single most leverage point per unit of CI work is M5b (Check 37 project-side deny-list) — it directly addresses the most-frequent contamination type (TYPE-4 / 17 confirmed refs) with a mechanically simple grep gate. The single most leverage point per unit of process work is M2 (P-missed-7 codification in trinity Pack memory) — it reaches every actor at session start and is the upstream of M3a / M3b / M4 / M6 / M7. Together, M2 + M5b carry the bulk of the protection; the rest of the mechanisms are defense in depth.
 
 The trinity rule itself is NOT extended to substance-checks (§9.2 / M8). Symmetry and substance-correctness are orthogonal axes; conflating them weakens both. Substance correctness lives in the boundary-investigation layer (M2 + M3a/b + M4 + M7), which addresses ALL project-side surfaces — not just trinity files.
+
+---
+
+## §16 — Phase 3 fix-pass amendments (M2 + M4 + B1-cascade + S4 + S5 + S6)
+
+This section summarizes the amendments applied by C-fix in response to
+Phase 3 reviewer findings (PACK-REVIEW-PHASE-2-DESIGNS.md). Each finding
+below names: (a) the reviewer-report severity + finding ID, (b) the sections
+amended in this doc, (c) the change applied, (d) cross-reference to the
+reviewer-report fix-shape that the change satisfies.
+
+**Authority for the fix-pass:**
+- `PACK-REVIEW-PHASE-2-DESIGNS.md` §1 + §4 (action summary)
+- `AUDIT-USER-CURATION.md` Overrides 1 + 5 + 6 + 9 (user-confirmed overrides
+  governing the M4 / S4 / S5 amendments)
+- `PACK-AGENTS.md:142-148` (authoritative PM-only Files list governing
+  the B1-cascade + S6 amendments)
+- `ARCHITECTURE-DIRECTORY-REORGANIZATION.md` (Architect B's pack-ops/ design
+  governing the M2 / S5 amendments)
+- `ARCHITECTURE-DIRECTORY-REORGANIZATION-FIX.md` (Architect B-fix exemption-list
+  reduction governing the M4 amendment)
+
+### §16.1 — M2 (MUST) — add `pack-ops/` to Check 37 deny-list
+
+- **Reviewer finding:** PACK-REVIEW-PHASE-2-DESIGNS.md §1 M2, lines 86-104.
+  C's §8.2 deny-list includes `maintenance-docs/` as a path-prefix entry but
+  NOT `pack-ops/`. Post-B + post-B-fix, `pack-ops/` is the new pack-only
+  home for relocated files. A project-side file referencing
+  `pack-ops/BOUNDARY-DEFINITION.md` would NOT be flagged because the
+  path-prefix isn't in the deny-list.
+- **Reviewer fix-shape:** Add `pack-ops/` to the deny-list path-prefix
+  entries in §8.2. Mirror this in M4's boundary-investigation skill deny-list
+  (§6 "Pack-only deny-list" section).
+- **Sections amended:**
+  - §8.2 — added a `pack-ops/` (path prefix) row in the deny-list table,
+    placed symmetrically after the `maintenance-docs/` row. The row notes
+    that `pack-ops/` houses the relocated PACK × OPERATIONS files per
+    Architect B's design + B-fix's exemption-list reduction.
+  - §6 (M4 boundary-investigation skill text, step 4 Path prefixes
+    bullet) — added `pack-ops/` alongside `maintenance-docs/`, `scripts/`,
+    `test-fixtures/`. The skill text now lists `pack-ops/` as a
+    pack-only directory that does not exist at client install.
+- **How this satisfies the fix-shape:** Both surfaces named in the
+  reviewer fix-shape (§8.2 Check 37 deny-list + §6 M4 skill deny-list)
+  are updated. Check 37's grep against project-side files will now flag
+  any literal reference to a `pack-ops/`-prefixed path with file:line +
+  pattern callout. The boundary-investigation skill methodology (step 4)
+  surfaces the same deny-target to reviewers + implementers before they
+  recommend / apply such a reference.
+
+### §16.2 — M4 (MUST) — collapse 3-entry exemption list to 1-entry per B-fix
+
+- **Reviewer finding:** PACK-REVIEW-PHASE-2-DESIGNS.md §1 M4, lines 127-140.
+  C's §11 conditional-surfaces table referenced B's original 3-entry
+  closed set (BACKLOG.md, CHANGELOG.md, tracker.toml.pack-example). B-fix
+  correctly shrinks to 1 entry (only `tracker.toml.pack-example`) per
+  AUDIT-USER-CURATION.md Overrides 1 + 5.
+- **Reviewer fix-shape:** C-fix surfaces the post-B-fix exemption list as
+  1-entry; updates any allow-list-count-based assertions accordingly.
+- **References to the 3-entry list found in C's design (pre-fix):**
+  - **§11 conditional-surfaces table** — the row for M5a Check 36 and the
+    rows for M5b Check 37 and M5c Check 38 implicitly reference B's
+    exemption-list via the "Pack-only deny-list" upstream input. The
+    explicit text did not encode the 3-entry count, but the conditional
+    surface depends on B's count — which is now 1.
+  - **§13 Order of land Step 11 (M5c)** — references B's `supporting-docs/`
+    decision but did not name the exemption-list count.
+  - No C-design body text encoded "3 entries" as a literal assertion or as
+    a test-fixture expectation. C's measurable-tests (§12) for M5a/b/c do
+    not encode N=3 anywhere — verified via grep on C's pre-fix text for
+    "3-entry", "three-entry", "closed set" (zero literal hits in C).
+  - Count before fix: 0 literal "N=3" assertions in C; 2 indirect references
+    via §11 + §13 to B's exemption list as an upstream input.
+  - Count after fix: 2 explicit "N=1, NOT N=3" disambiguations added to
+    §11 + §13 to forestall planner / coder confusion when C's design is
+    integrated with B-fix's exemption-list count.
+- **Sections amended:**
+  - §11 conditional-surfaces table rows for M5a / M5b / M5c — added an
+    explicit "1-entry list (only `tracker.toml.pack-example`), NOT 3-entry"
+    note citing Overrides 1 + 5. The M5b row also notes the M2-finding
+    addition of `pack-ops/` path-prefix.
+  - §13 Order of land Step 11 (M5c) — added explicit "1-entry list per
+    B-fix §4 + Overrides 1 + 5" annotation; reject all other PACK ×
+    OPERATIONS files at root.
+- **How this satisfies the fix-shape:** Phase 3 reviewer noted the 3-entry
+  vs 1-entry asymmetry as a planner / coder gotcha — Phase 5 coder reading
+  C's design without context would build fixtures assuming the original
+  3-entry list. The amendments cite Overrides 1 + 5 explicitly (with
+  pointers to B-fix §4 for the underlying derivation) so the planner /
+  coder cannot land an N=3 fixture by accident. Test fixtures asserting
+  Check 36 / Check 38 allow-list contents must now assert N=1.
+
+### §16.3 — B1-cascade (BLOCKER) + S6 (SHOULD) — PM-only keyword permits project-template trinity
+
+- **Reviewer findings:**
+  - B1 (BLOCKER) cascade — PACK-REVIEW-PHASE-2-DESIGNS.md §1 B1, lines
+    43-65. Architect A's V10 framing contradicts pack-memory; the cascade
+    into C is that C's M5a Check 36 PM-only keyword + §10.2 worked example
+    + §12 test plan treated `project-template/` trinity edits as PM-only
+    VIOLATIONS, but `PACK-AGENTS.md:148` explicitly lists project-template
+    trinity AS PM-only ("root and `project-template/`"). C's Check 36 PM-only
+    keyword would WRONGLY fail correct PM-only commits.
+  - S6 (SHOULD) — PACK-REVIEW-PHASE-2-DESIGNS.md §1 S6, lines 241-253.
+    Same fix as B1-cascade — handled in one coordinated amendment.
+- **Reviewer fix-shape:** Update C §8.1 + §10.2 + §12 (test plan) to make
+  the `PM-only` keyword PERMIT `project-template/` trinity edits per actual
+  `PACK-AGENTS.md:148` PM-only list. Drop the parenthetical "caught V10".
+- **Actual PACK-AGENTS.md:142-148 PM-only Files list (verbatim — used as
+  the corrected definition):**
+
+  ```
+  Files:
+  - BACKLOG.md (regenerated mirror; per-entry source at /backlog/)
+  - CHANGELOG.md (regenerated mirror; per-entry source at /changelog/)
+  - README.md version table
+  - PACK-CHAT.md
+  - PACK-AGENTS.md
+  - CLAUDE.md / AGENTS.md / GEMINI.md (root and project-template/)
+  ```
+
+- **Sections amended:**
+  - §8.1 keyword-table PM-only row — rewritten to PERMIT project-template
+    trinity, cite PACK-AGENTS.md:142-148 by line range, and reference the
+    new §8.1a verbatim list. "Caught V10" parenthetical DROPPED.
+  - §8.1 measurable-test bullet list — the PM-only test fixture that
+    previously asserted FAIL on `project-template/CLAUDE.md` edits now
+    asserts PASS (correct per actual PACK-AGENTS.md list). An additional
+    V2-shape PM-only fixture (subject `"PM-only: ..."` touching
+    `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`) added as the
+    asserts-FAIL fixture (supporting-docs is NOT in the PM-only Files
+    list per CLAUDE.md trinity rule).
+  - §8.1a (new subsection) — paste the verbatim PACK-AGENTS.md:142-148
+    PM-only Files block + the post-B + B-fix path-substitution rules
+    (paths inside `pack-ops/` after relocations) + the canonical
+    PERMITTED-PATHS regex for Check 36 PM-only keyword + a directives
+    block on README.md (Check 36 cannot distinguish version-table edits
+    from other-section edits; the narrower discipline stays Pack Chat's
+    via M1a) + a forward-pointing note on PACK-AGENTS.md:150-158
+    directories (per-entry trees Batch-23-materialized). Cross-reference
+    to B1-cascade + S6 fix-pass added at the foot of §8.1a.
+  - §10.2 worked example — V10 worked example DROPPED with explicit
+    rationale (V10 collapses to NO-ACTION per Architect A fix-pass per
+    B1; using `8ba0164` here would encode the misreading into M1b). The
+    corrected worked example uses V2 (`aaa61b3`) in its hypothetical
+    PM-only-keyword shape (had the commit subject been
+    `"docs: v11 — PM-only Batch 19b cleanup"`, the
+    `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` edit would fail
+    Check 36 because supporting-docs is NOT in the PM-only Files list).
+  - §12 test plan — M5a row implicitly references §8.1's measurable
+    tests; no separate edit needed since the §8.1 bullets are the
+    canonical test definitions and §12 says "Three test commits in CI
+    fixture branch (`pack-only` claiming touching `project-template/`,
+    etc.) — all MUST FAIL Check 36 with file-path callout." Note: §12's
+    table summary line for M5a is intentionally not re-stated — it's a
+    pointer summary, and the canonical fixtures are §8.1 which IS updated.
+    Re-stating in §12 would force a divergent fixture definition. Phase 5
+    coder reads §8.1 for fixtures and §12 for coverage.
+- **How this satisfies the fix-shape:** The reviewer fix-shape names §8.1
+  + §10.2 + §12 as the surfaces requiring update. §8.1 + §10.2 are amended
+  directly; §12 reads through to §8.1's fixtures and is now correct via
+  the §8.1 update. The PACK-AGENTS.md:142-148 list is pasted verbatim in
+  the new §8.1a so the corrected definition is traceable; the V10 worked
+  example is dropped explicitly with rationale (so future readers cannot
+  resurrect the misreading by mistake). The corrected V2-shape test
+  fixture replaces it.
+
+### §16.4 — S4 (SHOULD) — explicit Override 9 citation block
+
+- **Reviewer finding:** PACK-REVIEW-PHASE-2-DESIGNS.md §1 S4, lines 201-216.
+  C's M2 codification (§4) + project-side mirror (§4.2) are substantively
+  correct per Override 9 (different wording per audience is intentional),
+  but C did not cite Override 9 explicitly. Reviewer reading C alone could
+  not tell whether the two-trinity codification was user-confirmed or
+  unilateral. Override 9 also says "no cross-trinity drift gate" — C's
+  design implicitly aligned but did not state it.
+- **Reviewer fix-shape:** Add explicit citation: "Per
+  AUDIT-USER-CURATION.md Override 9, the pack-side and project-side
+  P-missed-7 codifications are intentionally different in wording. No
+  Check 18 H2 parity gate applies to the new bullet."
+- **Sections amended:**
+  - §4.1 (new subsection) — added immediately before §4.2. Cites Override
+    9 with a quote-block of the user-curation text; states explicitly
+    that the pack-side bullet and project-side mirror are
+    audience-specific by design. Adds an "Implication for Check 18 H2
+    parity" sub-block that distinguishes WITHIN-trinity parity (continues
+    to apply per CLI-files-cross-CLI-parity) from CROSS-trinity parity
+    (pack-root trinity vs project-template trinity) — which is REJECTED
+    per Override 9. Adds a measurable-consequence sub-block clarifying
+    that the M2 measurable test (§4 last paragraph) does NOT fire on the
+    pack-side-vs-project-side wording difference.
+- **How this satisfies the fix-shape:** Override 9 is now cited
+  explicitly with a quote-block + authority pointer. The "no cross-trinity
+  drift gate" implication is stated directly + scoped to Check 18 H2
+  parity specifically (the existing CI gate readers might worry about).
+  Future readers + Phase 4 planner + Phase 5 coder cannot infer that the
+  pack-side / project-side wording must match — and a reviewer cannot
+  introduce a new "cross-trinity drift gate" check by accident.
+
+### §16.5 — S5 (SHOULD) — `pack-ops/` path-prefix in project-side mirror deny-list
+
+- **Reviewer finding:** PACK-REVIEW-PHASE-2-DESIGNS.md §1 S5, lines 219-237.
+  C's §4.2 project-side mirror text deny-list uses bare filenames for
+  PACK-AGENTS.md / PACK-CHAT.md (correct for grep regardless of new path)
+  but does NOT name `pack-ops/` path-prefix. Symmetric with M2: the
+  project-side mirror also needs `pack-ops/` path-prefix.
+- **Reviewer fix-shape:** Add to §4.2 project-side mirror text:
+  `pack-ops/ (any file there)` to the deny-list — matches the symmetric
+  pack-side P-missed-7 expansion.
+- **Sections amended:**
+  - §4.2 project-side mirror text — the deny-list paragraph ("Files at
+    the pack repo ...") now lists `pack-repo pack-ops/ — any file under
+    pack-ops/, including BOUNDARY-DEFINITION.md, BACKLOG.md, CHANGELOG.md,
+    etc. post Architect B + B-fix" alongside the existing
+    PACK-AGENTS.md / PACK-CHAT.md / pack-* agent prompts /
+    pack-repo maintenance-docs/ entries. The added qualifier "any file
+    under pack-ops/" matches the symmetric pack-side P-missed-7
+    expansion from M2 §6 / §8.2.
+- **How this satisfies the fix-shape:** Project-side trinity readers
+  (project PM chat at client install) now see `pack-ops/` named
+  explicitly as a deny-target. The phrasing "any file under pack-ops/"
+  is path-prefix-equivalent and matches the grep contract used by
+  Check 37 (M2 amendment). Symmetric coverage with the pack-side
+  P-missed-7 expansion.
+
+### §16.6 — Unaffected sections
+
+The following sections were NOT amended by this fix-pass and remain
+intact per the reviewer's recommended scope:
+
+- §0 (scope boundary), §1 (regression mechanism), §2 (design philosophy),
+  §3 (coverage matrix structure — though individual rows reference
+  §8.1 / §8.2 updates).
+- §4 main P-missed-7 bullet text (the bullet itself is untouched;
+  §4.1 added beside it as a citation block per S4).
+- §4.2 project-side mirror BULLET STRUCTURE (only the deny-list
+  paragraph was edited per S5; the rest of the mirror text + the
+  measurable-test paragraph are unchanged).
+- §5 (M3 reviewer + implementer SSOT-investigation gates), §6 main
+  skill content (only step 4 Path-prefixes bullet was edited per M2);
+  §7 (M6 SSOT-rotation reminder), §9 (M7 + M8 trinity-rule + TYPE-5
+  gates), §10 main M1a memory-rule + §10.2 header (the worked example
+  body was rewritten per B1-cascade; the surrounding M1b convention
+  text + the keyword-table in §10.2 are unchanged).
+- §13 dependency graph (only Step 11 annotation added per M4);
+  §14 (constraints + gaps + open questions), §15 (summary).
+- Cross-references to Architect A's `ARCHITECTURE-RE-LITIGATION-FRAMEWORK.md`
+  and Architect B's `ARCHITECTURE-DIRECTORY-REORGANIZATION.md` + B-fix's
+  `ARCHITECTURE-DIRECTORY-REORGANIZATION-FIX.md` are preserved
+  throughout (the new §4.1 + §8.1a + §11 + §13 + §16 amendments cite
+  these docs explicitly to maintain the cross-reference network).
+
+### §16a — Phase 3 verification v2 amendment — HELP-FRAGMENT-TRACKER row staleness fix
+
+- **Source:** `maintenance-docs/v11-implementation/PACK-REVIEW-PHASE-2-DESIGNS-VERIFICATION.md`
+  §2 "One mild observation (informational, not a defect)" — Phase 3
+  re-verification flagged the §8.2 deny-list row for
+  `HELP-FRAGMENT-TRACKER.md` (line 584 at HEAD `8014186`) as still
+  carrying "Architect-B-conditional — depends on byte-identity status
+  post-B" wording, despite Architect B's design having finalized the
+  byte-identity contract.
+- **Why the prior wording was stale:** Architect B's
+  `ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §3 row #9 (line 167) AND
+  B's M2 row in §6.1 (line 527) unconditionally relocate
+  `HELP-FRAGMENT-TRACKER.md` to `pack-ops/HELP-FRAGMENT-TRACKER.md`
+  and unconditionally retain CI Check 24's byte-identity contract
+  between the pack-ops copy and `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md`.
+  Nothing in B-fix or B-fix v2 amendments reopens the contract. The
+  "conditional" qualifier in the §8.2 row therefore implied a design
+  uncertainty that does not exist.
+- **What was changed:** The §8.2 deny-list row at line 584 area was
+  reworded in place. The "Architect-B-conditional" qualifier is
+  dropped; the cell now affirms the finalized byte-identity contract,
+  names the post-B pack-side path (`pack-ops/HELP-FRAGMENT-TRACKER.md`),
+  cites Architect B §3 #9 + M2 as authority, and notes that broader
+  `pack-ops/` path-prefix coverage is the immediately-following row
+  (the M2 `pack-ops/` row at line 587, already added in this doc's
+  fix-pass per §16.1). The bare-filename row is retained because it
+  catches project-side references that name `HELP-FRAGMENT-TRACKER.md`
+  without a path prefix — a distinct grep shape from the `pack-ops/`
+  path-prefix row.
+- **Net effect on Phase 5 coder:** Identical to the pre-amendment
+  state. The row already correctly flagged the file as pack-only;
+  the rewording only removes a stale conditional qualifier and
+  documents the finalized contract. No fixture, no check semantics,
+  no order-of-land step changes.
+- **Sections NOT touched:** All other sections of this design
+  (§0-§15, §16.1-§16.6) are unchanged. Only the line 584 row cell
+  and this §16a note were added.
 
 ---
 
