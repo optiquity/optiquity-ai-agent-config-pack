@@ -469,7 +469,7 @@ default behavior):
 - `scripts/lib/customization-report.sh` — the report renderer
 - `scripts/tests/test-customization-preserve.sh` — class-coverage tests
 - `MIGRATION-v10-to-v11.md` — the user-facing migration narrative
-- `OPTIONAL-FEATURES.md` — tracker opt-in walkthrough
+- `docs/pack/OPTIONAL-FEATURES.md` — tracker opt-in walkthrough
 - `QUICKSTART.md` — where to start
 - `validate-pack.py` Check 25 — CI regression guard for the truthful-report contract
 
