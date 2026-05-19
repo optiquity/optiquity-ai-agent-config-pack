@@ -398,7 +398,7 @@ state-changing operations need a yes.
 
 For the per-file customization-preservation behavior of
 `pack tracker init`'s forward migration, see
-`docs/pack/MERGE-STRATEGY.md` (or `supporting-docs/MERGE-STRATEGY.md`
+`docs/pack/MERGE-STRATEGY.md` (or `pack-ops/MERGE-STRATEGY.md`
 in the pack repo).
 
 ---

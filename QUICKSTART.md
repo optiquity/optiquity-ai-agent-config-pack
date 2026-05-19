@@ -38,7 +38,7 @@ and always land in `supporting-docs/`. If you are on an older major
 version, first apply the intermediate guide(s) in sequence.
 
 For the per-file customization-preservation contract that v11 migrators
-honor, see [`supporting-docs/MERGE-STRATEGY.md`](supporting-docs/MERGE-STRATEGY.md).
+honor, see [`pack-ops/MERGE-STRATEGY.md`](pack-ops/MERGE-STRATEGY.md).
 For tracker opt-in (Phase B of the v11 migration), see
 [`pack-ops/OPTIONAL-FEATURES.md`](pack-ops/OPTIONAL-FEATURES.md).
 

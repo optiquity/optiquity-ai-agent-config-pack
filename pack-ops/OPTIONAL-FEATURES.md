@@ -211,7 +211,7 @@ encounters a file with both project-side AND pack-side edits since
 the last baseline (real-merge case), the migrator surfaces the
 disposition `customization-detected-needs-reconciliation` and writes
 a sidecar of your pre-migration content. See
-`supporting-docs/MERGE-STRATEGY.md` for the per-file class matrix and
+`pack-ops/MERGE-STRATEGY.md` for the per-file class matrix and
 the canonical sidecar conventions. Reconciliation is manual: open the
 sidecar + the destination, merge, remove the sidecar, commit. The
 truthful-report contract guarantees every file the migrator touches
