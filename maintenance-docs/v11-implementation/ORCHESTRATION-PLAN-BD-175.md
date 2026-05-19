@@ -140,7 +140,7 @@ Each architect's prompt strictly forbids designing another's domain. Each writes
 - Spawn `pack-reviewer` once
 - Reads: audit doc + all three architect design docs
 - Verifies designs are correct, complete, internally consistent, don't conflict with each other
-- Output: `PACK-REVIEW-EMERGENCY-DESIGNS.md` with BLOCKER/MUST/SHOULD/NIT findings
+- Output: `PACK-REVIEW-PHASE-2-DESIGNS.md` with BLOCKER/MUST/SHOULD/NIT findings
 
 **Pack Chat triages findings with user before any fix passes.**
 

@@ -64,6 +64,24 @@
 
 **Phase 5 coder:** no action needed for QUICKSTART.md. B's S1 (QUICKSTART SPLIT) commit is DROPPED. `project-template/docs/pack/QUICKSTART.md` is NOT created. `init-project.sh` does NOT gain a new install stage for it.
 
+### Override 10 — Remove `docs/pack/QUICKSTART.md` references from 4 help files (M3 cascade)
+
+**Reviewer said (M3):** Override 7 keeps QUICKSTART at root and drops B's S1 (create `docs/pack/QUICKSTART.md`). But 5 project-side references (in 4 files) still point to `docs/pack/QUICKSTART.md` — pointers that will be broken when no such file exists. Recommended Architect B fix-pass to resolve the broken references.
+
+**User direction:** **REMOVE the `docs/pack/QUICKSTART.md` references from the 4 help files entirely.** The user's framing: install docs (QUICKSTART) are pre-install pack-installer content, not in-project help content. The 4 help files serve users using the pack inside their project — they have no business pointing at install docs. The correct fix is REMOVAL of those references, not retargeting them.
+
+**Files affected (4 distinct files, 5 references total):**
+1. `project-template/.gemini/commands/pack-help.toml:10`
+2. `project-template/.claude/skills/pack-help/SKILL.md:13`
+3. `project-template/.codex/skills/pack-help/SKILL.md:13`
+4. `project-template/docs/pack/HELP-FRAGMENT.md` (line 4 + line 31)
+
+**Files NOT affected:** `project-template/README.md` lines 16 + 39 — both reference QUICKSTART correctly (line 16 says "in the pack root"; line 39 lists it as a pack-supporting-doc read without copying). README.md needs no change.
+
+**Phase 2 Architect B fix-pass:** designs the wording-removal for each of the 4 files. Architect's call HOW to reword (likely delete the QUICKSTART mention from each list while keeping PM-CHAT.md / INSTALL-PROCEDURES.md / OPTIONAL-FEATURES.md mentions intact); user's call is the REMOVE direction.
+
+**Phase 5 coder:** mechanical wording edit per Architect B's fix-pass design. Trinity rule applies — 4 files include `.claude/`, `.codex/`, `.gemini/` parallel surfaces, so symmetry verification at edit time.
+
 ### Override 6 — `CONCEPTUAL-REVIEW-METHODOLOGY.md` → `pack-ops/` (NOT `maintenance-docs/`)
 
 **Architect B said:** Moves `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` to `maintenance-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`.
