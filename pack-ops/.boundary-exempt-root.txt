@@ -1,0 +1,5 @@
+# pack-ops/.boundary-exempt-root.txt — machine-readable closed-set
+# Format: one filename per line; lines starting with # are comments.
+# Files in this list are C2 (PACK × OPERATIONS) allowed at pack root.
+# Adding to this list requires explicit user approval.
+tracker.toml.pack-example
