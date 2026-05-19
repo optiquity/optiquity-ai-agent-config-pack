@@ -1,5 +1,12 @@
 # MERGE-STRATEGY.md — per-file customization preservation contract
 
+> **Audience: pack-internal.** This document is pack-internal reference
+> for pack maintainers running the migrator. Project users encounter
+> the per-class disposition tokens via the `report.md` produced by the
+> migrator; they do not read this file directly. References here to
+> other pack-internal docs (e.g., `HELP-FRAGMENT-PACK.md`) and
+> pack-shipped agent files are appropriate at this pack-only path.
+
 When `init-project.sh --update` (BD-080) or `migrate-v10-to-v11.sh` (BD-085)
 refresh a project to a newer pack version, every file the migrator touches
 is dispatched to a per-class preservation strategy implemented in
