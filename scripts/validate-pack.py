@@ -144,6 +144,38 @@ Checks:
       `tracker_labels_folded_into` is NOT defined in
       `scripts/lib/tracker-labels.sh`; the literal `folded-into` does
       NOT appear in executable code under `scripts/lib/`.
+  36. Commit-scope honesty (BD-175 M5a per Architect C §8.1): for each
+      commit in the walk range (`origin/main..HEAD` with fallbacks),
+      parses the commit subject for scope keywords (`pack-only`,
+      `project-only`, `PM-only` / `pack-memory-only`) and verifies the
+      commit's touched paths match the claimed scope. PM-only PERMITTED-
+      PATHS come from `pack-ops/PACK-AGENTS.md` § "PM-only files and
+      directories" Files + Directories blocks — notably PERMITS
+      `project-template/` trinity per the B1-cascade + S6 fix-pass.
+      Implicit-scope commits (no keyword) are skipped — keyword opt-in
+      per M1b convention.
+  37. Project-side pack-only deny-list (BD-175 M5b per Architect C §8.2):
+      walks files under `project-template/` and greps for literal
+      references to pack-only files (`PACK-AGENTS.md`, `PACK-CHAT.md`,
+      `HELP-FRAGMENT-PACK.md`), pack-only path prefixes
+      (`maintenance-docs/`, `pack-ops/`), pack-* agent names, and the
+      capitalized `Pack Chat` orchestrator role. Each hit FAILs unless
+      the ±2-line context window contains a LEGITIMATE-context anchor
+      phrase (`feedback`, `report back`, `escalation`, `stop and surface`
+      per audit §D-4; plus pack-vs-project disambiguation anchors
+      `in the pack repo`, `at the pack repo`, `pack-repo`, `pack repo only`
+      per BD-175 Commit 12 anchor-phrase extension). Self-referential
+      legitimate-documentation files (boundary-investigation skill,
+      project coder/reviewer prompts, project trinity) are exempt.
+  38. Pack-only-file siting (BD-175 M5c per Architect C §8.3): walks
+      pack-root top-level prose files (.md / .txt); for each, counts
+      pack-only-signal hits (deny-list patterns from Check 37) and
+      FAILs files with signal count ≥ 3 unless the file is on the
+      exemption list at `pack-ops/.boundary-exempt-root.txt` (1-entry
+      post-B-fix per AUDIT-USER-CURATION.md Override 1 + 5 — only
+      `tracker.toml.pack-example`) or on the structural-exempt list
+      (README.md, QUICKSTART.md, pack-root trinity). Catches pack-only
+      content mis-sited outside `pack-ops/`.
 
 Two additional informational checks (no number, soft / advisory):
   - Issue template forms (BD-063): `.github/ISSUE_TEMPLATE/*.yml`
@@ -3494,6 +3526,636 @@ def check_tracker_phase_task_invariants() -> None:
         )
 
 
+# ── Check 36 / 37 / 38: BD-175 pack/project boundary prevention ────────────
+#
+# These three checks implement Architect C's M5a/M5b/M5c CI enforcement
+# layer per ARCHITECTURE-BOUNDARY-PREVENTION-MECHANISMS.md §8.
+#   - Check 36 (M5a): commit-scope honesty — catches TYPE-1/TYPE-3.
+#   - Check 37 (M5b): project-side deny-list — catches TYPE-4.
+#   - Check 38 (M5c): pack-only-file siting — catches mis-located content.
+#
+# The behavior contracts and rationales are documented in the architect
+# doc; the comments below explain the concrete code shape only.
+
+
+# Allowed scope-keyword vocabulary per pack-root trinity §
+# "Commit-subject scope-keyword convention" (added by BD-175 Commit 12).
+_SCOPE_KEYWORDS_PACK_ONLY = ("pack-only",)
+_SCOPE_KEYWORDS_PROJECT_ONLY = ("project-only",)
+_SCOPE_KEYWORDS_PM_ONLY = ("pm-only", "pack-memory-only")
+
+# PM-only PERMITTED-PATHS per `pack-ops/PACK-AGENTS.md:142-148` Files block,
+# with the post-Architect-B + B-fix path substitution: pack-root operational
+# files now live under `pack-ops/`. README.md is permitted in full (the
+# version-table-only narrower constraint stays a Pack Chat discipline rule
+# per the §8.1a (README.md) note in the architect doc).
+_PM_ONLY_PERMITTED_PATHS = {
+    "README.md",
+    "pack-ops/BACKLOG.md",
+    "pack-ops/CHANGELOG.md",
+    "pack-ops/PACK-CHAT.md",
+    "pack-ops/PACK-AGENTS.md",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "GEMINI.md",
+    "project-template/CLAUDE.md",
+    "project-template/AGENTS.md",
+    "project-template/GEMINI.md",
+}
+
+# PM-only PERMITTED-PATH PREFIXES — the per-entry tree directories per
+# `pack-ops/PACK-AGENTS.md:150-158` Directories block.
+_PM_ONLY_PERMITTED_PREFIXES = (
+    "backlog/",
+    "changelog/",
+    "project-template/docs/project/backlog/",
+    "project-template/docs/project/implementation-plan/",
+    "project-template/docs/project/changelog/",
+)
+
+# Project-side roots — where Check 37 walks for the deny-list grep.
+_PROJECT_SIDE_ROOTS = ("project-template",)
+
+# Pack-only path prefixes for scope honesty (Check 36 pack-only check):
+# a `pack-only` commit MUST NOT touch any path under these prefixes.
+_PROJECT_SIDE_PATH_PREFIXES = ("project-template/", "supporting-docs/")
+
+
+def _read_boundary_exempt_root() -> set[str]:
+    """Parse `pack-ops/.boundary-exempt-root.txt` (1-entry list per
+    AUDIT-USER-CURATION.md Overrides 1 + 5 — only `tracker.toml.pack-example`
+    post-B-fix). Returns the set of bare filenames permitted at pack root."""
+    path = REPO_ROOT / "pack-ops" / ".boundary-exempt-root.txt"
+    entries: set[str] = set()
+    if not path.is_file():
+        return entries
+    for line in path.read_text().splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        entries.add(stripped)
+    return entries
+
+
+def _commits_to_walk() -> list[tuple[str, str]]:
+    """Return (sha, subject) pairs for commits to walk under Check 36.
+
+    Range design (per Architect C §8.1 "implementation strategy" + the
+    fact that v11-dev has historical commits with imperfect scoping that
+    predate BD-175 Commit 12's convention codification):
+
+    - Default: walk ONLY HEAD (the most-recent commit). This is the
+      per-push CI gate pattern: enforce the convention on commits added
+      in this push; historical commits stay un-audited. The trade-off
+      is conservative — Check 36 catches new mis-scoping going forward,
+      not historical violations. Historical violations are caught by
+      the audit/review process, not the CI gate.
+
+    - Environment override `PACK_CHECK_36_RANGE` may set a wider git
+      log range (e.g., `origin/main..HEAD`) for one-shot audit runs.
+
+    Returns (sha, subject) tuples in chronological order (oldest first);
+    empty list means nothing to walk (e.g., merge commit with no diff).
+    """
+    range_spec = os.environ.get("PACK_CHECK_36_RANGE", "HEAD~0..HEAD")
+    # `HEAD~0..HEAD` is a no-op range that returns nothing; use `-1`
+    # form as the default.
+    if range_spec == "HEAD~0..HEAD":
+        cmd = ["git", "log", "-1", "--format=%H%x09%s", "HEAD"]
+    else:
+        cmd = ["git", "log", "--reverse", "--format=%H%x09%s", range_spec]
+    try:
+        res = subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+    except subprocess.CalledProcessError:
+        return []
+    out = res.stdout.strip()
+    if not out:
+        return []
+    commits: list[tuple[str, str]] = []
+    for line in out.splitlines():
+        if "\t" not in line:
+            continue
+        sha, subject = line.split("\t", 1)
+        commits.append((sha, subject))
+    return commits
+
+
+def _commit_paths(sha: str) -> list[str]:
+    """Return the list of paths touched by the given commit (relative to
+    repo root). Returns empty list on failure."""
+    try:
+        res = subprocess.run(
+            ["git", "show", "--name-only", "--format=", sha],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+    except subprocess.CalledProcessError:
+        return []
+    return [line for line in res.stdout.splitlines() if line]
+
+
+def _subject_has_keyword(subject: str, keywords: tuple[str, ...]) -> bool:
+    """Case-insensitive boundary-anchored match of any keyword in the
+    commit subject. The keyword must be preceded by start-of-string OR
+    a non-keyword-character (whitespace, colon, em-dash, punctuation),
+    and followed by a non-keyword-character (whitespace, colon, em-dash,
+    punctuation, end-of-string).
+
+    The keyword characters include `[a-z0-9-]`, so a keyword like
+    `pack-only` does NOT match inside `pack-only-ish` (the trailing `-`
+    is a keyword character, blocking the trailing boundary). This
+    avoids spurious matches on prose words that happen to contain the
+    keyword as a prefix or suffix.
+    """
+    subject_lower = subject.lower()
+    # Boundary class: chars that are NOT part of a scope-keyword token
+    # (whitespace, colon, em-dash, comma, period, semicolon, paren).
+    # `-` is NOT in the boundary class because `-` appears INSIDE the
+    # keywords (pack-only, project-only, etc.).
+    boundary_class = r"[\s:—,.;()\[\]]"
+    for kw in keywords:
+        if kw not in subject_lower:
+            continue
+        pattern = (
+            r"(^|" + boundary_class + r")"
+            + re.escape(kw)
+            + r"($|" + boundary_class + r")"
+        )
+        if re.search(pattern, subject_lower):
+            return True
+    return False
+
+
+def _is_pack_only_path(path: str) -> bool:
+    """A path is pack-only if it is NOT under any project-side prefix."""
+    for prefix in _PROJECT_SIDE_PATH_PREFIXES:
+        if path.startswith(prefix):
+            return False
+    return True
+
+
+def _is_project_side_path(path: str) -> bool:
+    """A path is project-side if it lives under one of the project-side
+    path prefixes."""
+    return path.startswith(_PROJECT_SIDE_PATH_PREFIXES)
+
+
+def _is_pm_only_permitted(path: str) -> bool:
+    """A path is PM-only-permitted if it appears in the canonical Files
+    list OR under one of the canonical PM-only directory prefixes."""
+    if path in _PM_ONLY_PERMITTED_PATHS:
+        return True
+    return path.startswith(_PM_ONLY_PERMITTED_PREFIXES)
+
+
+def check_commit_scope_honesty() -> None:
+    """Check 36 — commit-scope honesty (BD-175 M5a per Architect C §8.1).
+
+    For every commit in the walk range, parse the commit subject for scope
+    keywords (`pack-only`, `project-only`, `PM-only` / `pack-memory-only`)
+    and verify the commit's touched paths match the claimed scope.
+
+    Failure modes:
+      - Subject claims `pack-only` but commit touches `project-template/`
+        or `supporting-docs/`.
+      - Subject claims `project-only` but commit touches paths outside
+        `project-template/` + `supporting-docs/`.
+      - Subject claims `PM-only` / `pack-memory-only` but commit touches
+        any path NOT in the PM-only permitted-paths list (per
+        `pack-ops/PACK-AGENTS.md` § "PM-only files and directories" + the
+        per-entry directory block).
+
+    Implicit-scope commits (no keyword) are skipped — keyword opt-in per
+    M1b convention.
+    """
+    print("\n── Check 36: Commit-scope honesty (BD-175, M5a) ──")
+    commits = _commits_to_walk()
+    if not commits:
+        ok("Check 36 — no commits in walk range; nothing to verify")
+        return
+
+    any_failed = False
+    checked = 0
+    skipped = 0
+    for sha, subject in commits:
+        is_pack_only = _subject_has_keyword(subject, _SCOPE_KEYWORDS_PACK_ONLY)
+        is_project_only = _subject_has_keyword(
+            subject, _SCOPE_KEYWORDS_PROJECT_ONLY
+        )
+        is_pm_only = _subject_has_keyword(subject, _SCOPE_KEYWORDS_PM_ONLY)
+        if not (is_pack_only or is_project_only or is_pm_only):
+            skipped += 1
+            continue
+        paths = _commit_paths(sha)
+        if not paths:
+            # Merge commit or empty diff — skip.
+            skipped += 1
+            continue
+        checked += 1
+        short_sha = sha[:7]
+        offenders: list[str] = []
+        if is_pack_only:
+            offenders = [p for p in paths if _is_project_side_path(p)]
+            if offenders:
+                fail(
+                    f"Commit {short_sha} subject claims `pack-only` "
+                    f"but touches project-side paths: "
+                    + ", ".join(offenders[:8])
+                    + (f" (+ {len(offenders) - 8} more)" if len(offenders) > 8 else "")
+                )
+                any_failed = True
+        if is_project_only:
+            offenders = [p for p in paths if not _is_project_side_path(p)]
+            if offenders:
+                fail(
+                    f"Commit {short_sha} subject claims `project-only` "
+                    f"but touches pack-only paths: "
+                    + ", ".join(offenders[:8])
+                    + (f" (+ {len(offenders) - 8} more)" if len(offenders) > 8 else "")
+                )
+                any_failed = True
+        if is_pm_only:
+            offenders = [p for p in paths if not _is_pm_only_permitted(p)]
+            if offenders:
+                fail(
+                    f"Commit {short_sha} subject claims `PM-only` but "
+                    f"touches non-PM-only paths: "
+                    + ", ".join(offenders[:8])
+                    + (f" (+ {len(offenders) - 8} more)" if len(offenders) > 8 else "")
+                    + " (PM-only permitted set per pack-ops/PACK-AGENTS.md "
+                    "§ 'PM-only files and directories')"
+                )
+                any_failed = True
+
+    if not any_failed:
+        ok(
+            f"Check 36 — {checked} scope-claiming commit(s) verified clean; "
+            f"{skipped} implicit-scope commit(s) skipped"
+        )
+
+
+# Check 37 deny-list — pack-only patterns that MUST NOT appear in
+# project-side files (per Architect C §8.2 deny-list, with §16.1
+# `pack-ops/` path-prefix addition and §16a HELP-FRAGMENT-TRACKER row
+# clarification). Each entry: (literal-pattern, why) — the literal
+# pattern is a substring grep target. The exception is by anchor-phrase
+# in the surrounding context window (see _DENY_LIST_ANCHOR_PHRASES).
+_DENY_LIST_FILENAMES = (
+    ("PACK-AGENTS.md", "Pack-repo only"),
+    ("PACK-CHAT.md", "Pack-repo only"),
+    ("HELP-FRAGMENT-PACK.md", "Pack-repo only"),
+)
+
+# Path prefixes that name pack-only directories. Each match flags as
+# contamination unless an anchor-phrase exception is found in the
+# context window.
+_DENY_LIST_PATH_PREFIXES = (
+    ("maintenance-docs/", "Pack-only; not installed"),
+    ("pack-ops/", "Pack-only top-level dir (relocated PACK × OPERATIONS files)"),
+)
+
+# Pack-* agent names (word-boundary-anchored).
+_DENY_LIST_AGENT_NAMES = (
+    "pack-architect",
+    "pack-coder",
+    "pack-planner",
+    "pack-reviewer",
+    "pack-docs-researcher",
+)
+
+# Capitalized `Pack Chat` orchestrator role. Audit §D-4 LEGITIMATE exception
+# is by anchor-phrase context window.
+_DENY_LIST_ROLE_NAME = "Pack Chat"
+
+# Anchor phrases that, when found within the per-pattern context window
+# (matched line + N lines before + N lines after), mark the match as
+# LEGITIMATE per audit §D-4 (feedback-flow / escalation-path context, or
+# pack-vs-project disambiguation context — the latter per BD-175 Commit
+# 12 anchor-phrase extension to handle pack-repo disambiguation patterns
+# like "in the pack repo" on HELP-FRAGMENT-TRACKER.md:49).
+_DENY_LIST_ANCHOR_PHRASES = (
+    "feedback",
+    "report back",
+    "escalation",
+    "stop and surface",
+    # Pack-vs-project disambiguation context. These mark a deliberate
+    # callout that a named entity lives at the pack repo (not at the
+    # client install) — e.g., "tracker.toml.pack-example in the pack
+    # repo, or tracker.toml.example at a client project root".
+    "in the pack repo",
+    "at the pack repo",
+    "pack-repo",
+    "pack repo only",
+)
+
+_DENY_LIST_ANCHOR_WINDOW = 2  # lines before/after the match
+
+
+def _context_has_anchor(lines: list[str], lineno: int) -> bool:
+    """Return True if any of the anchor phrases appears in the
+    `lineno` line (1-indexed) or in the ±N surrounding lines."""
+    start = max(0, lineno - 1 - _DENY_LIST_ANCHOR_WINDOW)
+    end = min(len(lines), lineno - 1 + _DENY_LIST_ANCHOR_WINDOW + 1)
+    window = " ".join(lines[start:end]).lower()
+    for anchor in _DENY_LIST_ANCHOR_PHRASES:
+        if anchor in window:
+            return True
+    return False
+
+
+def _iter_project_side_files() -> list[Path]:
+    """Walk project-side roots and return all regular files. Skips
+    `.git/`, hidden directories, and any path under a node_modules-like
+    generated directory (none currently in project-template/ but defensive)."""
+    out: list[Path] = []
+    for root_name in _PROJECT_SIDE_ROOTS:
+        root_path = REPO_ROOT / root_name
+        if not root_path.is_dir():
+            continue
+        for path in sorted(root_path.rglob("*")):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(REPO_ROOT)
+            # Skip dotted-dir agents/skills/commands fixtures — actually
+            # those ARE in scope (.claude/skills/boundary-investigation/
+            # etc. carry the deny-list legitimately as instructional
+            # content; that's why we use the anchor-phrase + per-skill
+            # exception lists below). No skip here — all .claude/.codex/.gemini
+            # files under project-template/ are scanned.
+            out.append(rel)
+    return out
+
+
+def _is_legitimate_deny_list_doc(rel_path: Path) -> bool:
+    """Some project-side files are whole-file LEGITIMATE-context for
+    deny-list patterns per audit §D-4 — flagging them would create a
+    self-referential gate (the file's PURPOSE is to teach or document
+    the boundary).
+
+    Categories:
+      - **Boundary-discipline teaching docs:** the `boundary-investigation`
+        skill files, the project-side `coder.md` / `reviewer.md` prompts,
+        and the project trinity (which names the deny-list inside the
+        "Project SSOT-first" bullet as instructional content).
+      - **Feedback-flow / cross-repo-orchestration docs:** files whose
+        whole purpose is to describe the project-to-pack feedback flow,
+        the PM-chat-to-Pack-Chat escalation contract, or the
+        cross-system roster — per audit §D-4 LEGITIMATE designation.
+        These name `Pack Chat`, `pack-architect`, etc. throughout as
+        domain vocabulary, not contamination.
+    """
+    rel_str = str(rel_path)
+    legitimate = (
+        # Boundary-investigation skill files (project-side).
+        "project-template/.claude/skills/boundary-investigation/SKILL.md",
+        "project-template/.codex/skills/boundary-investigation/SKILL.md",
+        "project-template/.gemini/skills/boundary-investigation/SKILL.md",
+        # Project-side coder + reviewer prompts that document the rule.
+        "project-template/docs/pack/prompts/coder.md",
+        "project-template/docs/pack/prompts/reviewer.md",
+        # Project trinity — the "Project SSOT-first" bullet names the
+        # pack-only deny-list as a teaching example for project actors.
+        "project-template/CLAUDE.md",
+        "project-template/AGENTS.md",
+        "project-template/GEMINI.md",
+        # Feedback-flow / cross-repo orchestration docs (per audit §D-4
+        # LEGITIMATE designation — `Pack Chat`, pack-* agent names,
+        # cross-repo file references appear as domain vocabulary).
+        "project-template/docs/pack/PACK-FEEDBACK.md",
+        "project-template/docs/pack/PM-CHAT.md",
+        # `METHODOLOGY.md` if pack-shipped (Architect B may relocate;
+        # currently lives in `supporting-docs/`); kept here as a
+        # forward-pointer for future placement.
+        "project-template/docs/pack/METHODOLOGY.md",
+        # SETUP-EXISTING.md describes pack→project install escalation
+        # paths; references to `Pack Chat` are LEGITIMATE there.
+        "project-template/docs/pack/SETUP-EXISTING.md",
+        # INSTALL-PROCEDURES.md describes cross-repo install + custom-
+        # agent / custom-skill procedures; pack-side terminology is
+        # legitimate.
+        "project-template/docs/pack/INSTALL-PROCEDURES.md",
+    )
+    return rel_str in legitimate
+
+
+def check_project_side_deny_list() -> None:
+    """Check 37 — project-side pack-only-reference deny list
+    (BD-175 M5b per Architect C §8.2).
+
+    Walks files under `project-template/` and greps for literal
+    references to pack-only files / path prefixes / agent names / the
+    capitalized `Pack Chat` orchestrator role. Each hit is a FAIL with
+    file:line + matched pattern unless the context window contains a
+    LEGITIMATE-context anchor phrase.
+
+    Specific exemptions:
+      - The `boundary-investigation` skill files (3 CLI variants under
+        `project-template/.claude/skills/boundary-investigation/`,
+        `.codex/skills/...`, `.gemini/skills/...`) — their purpose is to
+        teach the deny-list, so the entries appear as instructional
+        content.
+      - The project-side `coder.md` + `reviewer.md` prompt templates —
+        same rationale.
+      - The project trinity files — the "Project SSOT-first" bullet
+        names the deny-list as instructional content.
+
+    Anchor-phrase exception (per audit §D-4 LEGITIMATE designation):
+      - `feedback`, `report back`, `escalation`, `stop and surface`
+        (feedback-flow context per `PACK-FEEDBACK.md` / `PM-CHAT.md` /
+        `METHODOLOGY.md` / `SETUP-EXISTING.md` LEGITIMATE designation)
+      - `in the pack repo`, `at the pack repo`, `pack-repo`,
+        `pack repo only` (pack-vs-project disambiguation context per
+        BD-175 Commit 12 anchor-phrase extension — covers patterns like
+        the `tracker.toml.pack-example` callout on
+        `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md:49`)
+    """
+    print("\n── Check 37: Project-side pack-only deny-list (BD-175, M5b) ──")
+    any_failed = False
+    files_walked = 0
+    hits_clean = 0
+
+    for rel_path in _iter_project_side_files():
+        if _is_legitimate_deny_list_doc(rel_path):
+            continue
+        full_path = REPO_ROOT / rel_path
+        try:
+            text = full_path.read_text()
+        except (UnicodeDecodeError, OSError):
+            continue
+        files_walked += 1
+        lines = text.splitlines()
+
+        for lineno, line in enumerate(lines, start=1):
+            # Filename matches (bare).
+            for fname, why in _DENY_LIST_FILENAMES:
+                if fname in line:
+                    if _context_has_anchor(lines, lineno):
+                        hits_clean += 1
+                        continue
+                    fail(
+                        f"{rel_path}:{lineno} — references pack-only "
+                        f"file `{fname}` ({why}); no LEGITIMATE-context "
+                        f"anchor phrase in ±{_DENY_LIST_ANCHOR_WINDOW} line "
+                        f"window. Remediation: replace with project-side "
+                        f"SSOT (e.g., docs/pack/PM-CHAT.md for agent "
+                        f"roster) or remove the reference."
+                    )
+                    any_failed = True
+            # Path-prefix matches.
+            for prefix, why in _DENY_LIST_PATH_PREFIXES:
+                if prefix in line:
+                    if _context_has_anchor(lines, lineno):
+                        hits_clean += 1
+                        continue
+                    fail(
+                        f"{rel_path}:{lineno} — references pack-only "
+                        f"path prefix `{prefix}` ({why}); no LEGITIMATE-"
+                        f"context anchor phrase in ±{_DENY_LIST_ANCHOR_WINDOW} "
+                        f"line window. Remediation: drop the cross-reference "
+                        f"or replace with a project-side SSOT path."
+                    )
+                    any_failed = True
+            # Agent-name word-boundary matches.
+            for agent in _DENY_LIST_AGENT_NAMES:
+                pattern = r"\b" + re.escape(agent) + r"\b"
+                if re.search(pattern, line):
+                    if _context_has_anchor(lines, lineno):
+                        hits_clean += 1
+                        continue
+                    fail(
+                        f"{rel_path}:{lineno} — references pack-only "
+                        f"agent name `{agent}` (pack-* agents are pack-"
+                        f"repo only); no LEGITIMATE-context anchor in "
+                        f"window. Remediation: use the project-side agent "
+                        f"roster at docs/pack/PM-CHAT.md (unprefixed names: "
+                        f"`architect`, `coder`, `planner`, `reviewer`, etc.)."
+                    )
+                    any_failed = True
+            # Capitalized Pack Chat orchestrator-role match.
+            if _DENY_LIST_ROLE_NAME in line:
+                if _context_has_anchor(lines, lineno):
+                    hits_clean += 1
+                    continue
+                fail(
+                    f"{rel_path}:{lineno} — references `{_DENY_LIST_ROLE_NAME}` "
+                    f"capitalized orchestrator role (pack-repo only — "
+                    f"project-side equivalent is the project's PM chat); "
+                    f"no LEGITIMATE-context anchor in window. Remediation: "
+                    f"use `PM chat` (project-side orchestrator) or drop "
+                    f"the reference."
+                )
+                any_failed = True
+
+    if not any_failed:
+        ok(
+            f"Check 37 — {files_walked} project-side file(s) walked; "
+            f"zero deny-list contamination "
+            f"({hits_clean} anchored LEGITIMATE-context hit(s) accepted)"
+        )
+
+
+# Check 38 — pack-only-file siting. For each file at pack-root (top-
+# level), count pack-only signals (deny-list pattern hits); a file with
+# count > threshold and not in the exempt list FAILs as "pack-only
+# content sited outside pack-ops/".
+_CHECK_38_PACK_ROOT_SCAN_GLOB = "*"
+_CHECK_38_SIGNAL_THRESHOLD = 3  # heuristic; ≥N signals = pack-only content
+
+
+def check_pack_only_file_siting() -> None:
+    """Check 38 — pack-only-file siting (BD-175 M5c per Architect C §8.3).
+
+    Per Architect C, the canonical post-B + B-fix design is that all
+    PACK × OPERATIONS files live under `pack-ops/`. The only exception
+    permitted at pack root is the 1-entry list in
+    `pack-ops/.boundary-exempt-root.txt` (currently `tracker.toml.pack-
+    example` per AUDIT-USER-CURATION.md Override 1).
+
+    This check walks pack-root top-level files; for each, counts the
+    pack-only-signal hits (deny-list patterns from Check 37) and FAILs
+    when (a) the file is not in the exemption list AND (b) the file
+    matches a pack-only-by-content heuristic via signal count > threshold.
+
+    Implementation note: this is a coarse gate — semantic intent is
+    not grep-detectable. The audit's V4 finding
+    (`CONCEPTUAL-REVIEW-METHODOLOGY.md` is pack-only by content but was
+    project-side by location) is the worked example this gate catches.
+    Post B + B-fix, the relocations themselves cure the V4 case; this
+    check is the regression guard.
+    """
+    print("\n── Check 38: Pack-only-file siting (BD-175, M5c) ──")
+    exempt = _read_boundary_exempt_root()
+    any_failed = False
+    files_checked = 0
+
+    # Walk pack root top-level files only (non-recursive).
+    for path in sorted(REPO_ROOT.iterdir()):
+        if not path.is_file():
+            continue
+        # Skip dotfiles (`.gitignore`, `.gitattributes`, etc. — these are
+        # ecosystem-fixed names per trinity § Filename uniqueness exception).
+        if path.name.startswith("."):
+            continue
+        # Skip the exemption list members.
+        if path.name in exempt:
+            continue
+        # Skip files explicitly intended as pack-root user-facing (README,
+        # QUICKSTART per AUDIT-USER-CURATION.md Override 7).
+        if path.name in {"README.md", "QUICKSTART.md", "LICENSE", "Makefile"}:
+            continue
+        # Skip trinity at pack root (pack-root CLAUDE/AGENTS/GEMINI are
+        # PM-only operating rules and legitimately reference pack-only
+        # mechanisms — they ARE pack-only by audience).
+        if path.name in {"CLAUDE.md", "AGENTS.md", "GEMINI.md"}:
+            continue
+        # Skip TOML / shell / Python config files that aren't markdown
+        # content (this check targets prose pack-only content that may
+        # have been mis-sited).
+        if path.suffix not in {".md", ".txt"}:
+            continue
+        files_checked += 1
+        try:
+            text = path.read_text()
+        except (UnicodeDecodeError, OSError):
+            continue
+        # Count pack-only signals in this file.
+        signals = 0
+        for fname, _ in _DENY_LIST_FILENAMES:
+            signals += text.count(fname)
+        for prefix, _ in _DENY_LIST_PATH_PREFIXES:
+            signals += text.count(prefix)
+        for agent in _DENY_LIST_AGENT_NAMES:
+            signals += len(re.findall(r"\b" + re.escape(agent) + r"\b", text))
+        signals += text.count(_DENY_LIST_ROLE_NAME)
+        if signals >= _CHECK_38_SIGNAL_THRESHOLD:
+            fail(
+                f"{path.name} — sited at pack root with {signals} "
+                f"pack-only signal(s) (deny-list patterns from Check 37); "
+                f"threshold is {_CHECK_38_SIGNAL_THRESHOLD}. Pack-only "
+                f"content should live under `pack-ops/` per BD-175 "
+                f"directory architecture. Allowed exemption files are "
+                f"listed in `pack-ops/.boundary-exempt-root.txt` "
+                f"(1-entry post-B-fix per AUDIT-USER-CURATION.md "
+                f"Override 1 + 5)."
+            )
+            any_failed = True
+
+    if not any_failed:
+        ok(
+            f"Check 38 — {files_checked} pack-root prose file(s) checked; "
+            f"no pack-only content mis-sited outside `pack-ops/`. "
+            f"Exemption list: {sorted(exempt) or 'empty'}."
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -3541,6 +4203,15 @@ def main() -> None:
     check_toc_in_sync()
     check_cross_reference_integrity()
     check_tracker_phase_task_invariants()
+    # ── BD-175 Commit 12 (Architect C M5a/b/c): pack/project boundary
+    # prevention. Order: 36 (commit-scope honesty) → 37 (project-side
+    # deny-list) → 38 (pack-only-file siting). Check 37 lands LAST in
+    # the boundary trio per C §13 bootstrap-incompatibility note — the
+    # 17 §D-9 contamination refs from audit must be resolved by Commits
+    # 4-9 before Check 37 is enabled, otherwise Check 37 FAILs at HEAD.
+    check_commit_scope_honesty()
+    check_project_side_deny_list()
+    check_pack_only_file_siting()
 
     print("\n" + "=" * 60)
     if failures:

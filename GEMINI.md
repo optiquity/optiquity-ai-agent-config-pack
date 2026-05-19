@@ -40,6 +40,20 @@ Where N is the current major version — read from README.md version table befor
 
 **Approved `fix:` suffixes:** `fix: vN — BD-NNN description` (per-BD inline) | `fix: vN — BD-NNN ... (Batch N)` (batch-scoped) | `fix: vN — BD-NNN ... (Batch Nx)` (sub-batch) | `fix: vN — BD-NNN retroactive per-BD review-fix (Batch N)` (retro recovery) | `fix: vN — broad batch review/fix (Batch N)` (cross-BD batch fix). Other `fix:` shapes need Pack-Chat-discussion-and-user-approval.
 
+**Commit-subject scope-keyword convention (CI-enforced via Check 36):**
+When a commit's scope is exclusive to one surface, the subject MAY carry
+one of three case-insensitive keywords. CI Check 36 verifies the diff
+matches the claim; mismatches fail the gate with a file-path callout.
+
+| Keyword | Meaning | Permitted touched paths |
+|---|---|---|
+| `pack-only` | Pack repo state only | Deny `project-template/` and `supporting-docs/` |
+| `project-only` | Project-side state only | Deny pack-only paths |
+| `PM-only` (or `pack-memory-only`) | Pack-Chat-direct-edit only | Per `pack-ops/PACK-AGENTS.md` PM-only Files list — PERMITS `project-template/` trinity |
+| (no keyword) | Mixed-scope implicit | Check 36 skipped |
+
+Use no keyword for mixed-surface commits — keyword opt-in.
+
 **Versioning:** Minor tags (vN.M, vN.M+1) for incremental changes. Major tags for
 breaking changes or large additions. Bare major tag always floats to latest minor.
 Tag move sequence: delete local + remote, recreate, push.
@@ -63,6 +77,14 @@ When modifying `project-template/CLAUDE.md`, make the parallel edit in
 `project-template/AGENTS.md` and `project-template/GEMINI.md` in the same commit.
 Same project rules in all three. Only exception: provably tool-specific changes.
 This rule also applies to the pack-repo copies of these three files.
+
+Note: the trinity rule enforces parity (the three CLI files express the same
+rules at a given trinity location — pack-root or project-template). It does
+NOT verify that the rule is correct for the surface it lives on (pack-root
+trinity vs project-template trinity carry different audiences and different
+rules by design). For substance correctness across pack-vs-project surfaces,
+see Pack memory `P-missed-7` (boundary discipline) and the
+`boundary-investigation` skill.
 
 **CI validation:** The `Validate Pack` GitHub Actions workflow runs on every push.
 If it fails, fix before proceeding. Never skip or disable the workflow.
@@ -165,6 +187,27 @@ in the same commit as the behavior change.
   "noted in the report and dropped." Default fix-all preserves the
   small-fix-now contract that prevents tech debt accumulation
   (per `feedback-deferral-is-scope-creep`).
+- **P-missed-7 — project-side investigation precedes pack-style
+  defaults.** Project and pack are intentionally designed differently.
+  When making ANY change to a project-side file (`project-template/`
+  trees, project-shipped content), an actor (reviewer, implementer,
+  Pack Chat triage) MUST first investigate whether a project-side SSOT
+  exists for the concept being changed. Pack-style mechanisms
+  (`pack-ops/PACK-AGENTS.md` roster, Pack Chat orchestrator role,
+  pack-* agent names, `maintenance-docs/` design records, anything
+  under `pack-ops/`) are PACK-ONLY by construction — they do not exist
+  at client install, they do not govern project behavior, and importing
+  them into project-side files is a regression that breaks at client
+  install or pollutes project-design intent. The default instinct
+  "reach for the pack mechanism I know" is bias, not a starting point.
+  Investigate the project-side SSOT FIRST. Worked examples of the
+  failure mode this rule prevents: BD-175 audit V1 (project trinity
+  acquired `PACK-AGENTS.md` reference via a review-fix commit when the
+  project-side SSOT was `docs/pack/PM-CHAT.md`), V3 (project-side
+  `PLATFORM-SKILLS.md` acquired `PACK-AGENTS.md` reference instead of
+  pointing at `PM-CHAT.md`), V4 (project-side methodology doc became
+  pack-internal by drift). See the `boundary-investigation` skill
+  (loaded by all pack agents) for the SSOT-investigation methodology.
 
 ### Agent invocation rules
 
@@ -295,6 +338,16 @@ in the same commit as the behavior change.
   belongs to the user. Pack-planner / pack-coder / pack-reviewer /
   pack-docs-researcher follow standard Pack Chat triage (no
   per-spawn user approval).
+- **Batch-scope claims are enforced by CI, not honor system.** When
+  Pack Chat frames a batch as `pack-only`, `project-only`, or
+  `PM-only` in commit subjects, CI Check 36 verifies the commit diff
+  matches the claimed scope. If a batch's work genuinely spans pack +
+  project, the commit subject MUST NOT carry an exclusive scope
+  keyword — use neutral framing ("BD-NNN cross-surface work") or
+  explicitly split the batch into separate pack-side and project-side
+  commits. Mis-framing a mixed-scope commit with a pack-only keyword
+  is a CI failure, not a discipline note. The keyword vocabulary is
+  defined in § "Conventions" → commit-subject scope-keyword convention.
 
 ### Repo conventions
 

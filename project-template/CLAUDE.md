@@ -366,6 +366,23 @@ of agent role.
   not infer the roster from any other source. The PM chat handles
   BACKLOG, STATUS, CHANGELOG, routing, approvals, and prompt
   construction — not the work the agents do.
+- **Project SSOT-first.** When making any change to a project file
+  (architecture, BACKLOG, agent prompt, skill content, etc.),
+  investigate the existing project SSOT for that concept FIRST. Do
+  not default to importing rules, file references, or orchestrator
+  roles from external sources (the AI Agent Config Pack repo itself,
+  third-party templates, other projects). Pack-shipped files
+  installed in this project (e.g., `docs/pack/PM-CHAT.md`,
+  `docs/pack/PLATFORM-SKILLS.md`, `docs/pack/PACK-FEEDBACK.md`,
+  the project trinity at the project root) are part of the project
+  SSOT and may be referenced. Files at the pack repo (PACK-AGENTS.md,
+  PACK-CHAT.md, pack-* agent prompts, pack-repo `maintenance-docs/`,
+  pack-repo `pack-ops/` — any file under `pack-ops/`, including
+  BOUNDARY-DEFINITION.md, BACKLOG.md, CHANGELOG.md, etc.) are NOT
+  part of the project SSOT and must not be referenced from project
+  files — the pack repo is not present at this client install. See
+  the `boundary-investigation` skill for the SSOT-investigation
+  methodology.
 
 ## Phase routing — default agent assignments
 

@@ -67,6 +67,26 @@ under Constraints.]
   CHANGELOG/IMPLEMENTATION-PLAN are tracker-mirrored read-only files
   there — only the PM chat (with tracker write authority) may modify
   the underlying entries.
+- **Boundary discipline (Project SSOT-first / P-missed-7):** If any task
+  in your scope would modify a file that ships as part of this project
+  (project trinity at root, `docs/pack/` content, `docs/project/`,
+  `docs/reference/`, agent prompts, skills, anything under `.claude/`
+  / `.codex/` / `.gemini/`) AND the modification adds, changes, or
+  removes a reference to a rule, role, or file path, then BEFORE
+  applying the change: investigate whether the project's SSOT for that
+  concept supports the change. Project SSOTs include `docs/pack/PM-CHAT.md`,
+  `docs/pack/PLATFORM-SKILLS.md`, `docs/pack/PACK-FEEDBACK.md`, the
+  project trinity files at project root, project-side skills at
+  `.claude/skills/<name>/`, and any project-side architecture or
+  methodology document at `docs/project/` or `docs/reference/`.
+  If the change would introduce a reference to a file outside the
+  project (e.g., the AI Agent Config Pack repo's `PACK-AGENTS.md`,
+  `PACK-CHAT.md`, anything under the pack repo's `pack-ops/` or
+  `maintenance-docs/`, a pack-* agent name, the `Pack Chat` capitalized
+  orchestrator role), STOP and report the situation in your completion
+  report under **"Boundary discipline stop"** — do not improvise a fix.
+  The pack repo is not present at this client install; referencing
+  pack-only files would break at runtime or pollute project intent.
 - **Deferral comments:** If during implementation you encounter work that
   cannot be completed within this phase scope, add a typed deferral comment
   using exactly this syntax (use the comment marker for the language you are
@@ -172,6 +192,14 @@ Success criteria: [what the reviewer will check to confirm this fix is complete]
   Writing root `.md` files is exclusively the PM chat's responsibility.
 - **Scope:** Do not make changes beyond what is required to resolve the
   listed issues.
+- **Boundary discipline (Project SSOT-first / P-missed-7):** Same rule
+  as the standard variant. If a fix would modify a project-shipped file
+  AND change a reference, investigate the project SSOT for that concept
+  FIRST. If the fix would introduce a reference to a file outside the
+  project (pack-repo `PACK-AGENTS.md`, anything under `pack-ops/` or
+  pack-repo `maintenance-docs/`, pack-* agent names, `Pack Chat`
+  capitalized orchestrator role), STOP and report under
+  **"Boundary discipline stop"** — do not improvise a fix.
 - **Deferral comments:** If during a fix you encounter related work that
   cannot be completed within this fix cycle's scope, add a typed deferral
   comment:

@@ -25,16 +25,16 @@ in tracker mode) — needed for the BACKLOG hygiene check (review
 dimension 7). Plus all files modified in Phase [X]: [LIST FILES].
 
 **Problem:** The coder's pass-[X] output has not been verified against
-the architecture, the implementation plan, or the eight review
+the architecture, the implementation plan, or the nine review
 dimensions.
 
-**Goal:** An eight-dimension review producing a Verdict line (Ready to
+**Goal:** A nine-dimension review producing a Verdict line (Ready to
 commit / Needs fixes) and a structured findings list with ✅/❌/⚠️
 markers per finding.
 
 **Success criteria:**
 - Report header line correct (per Completion report below).
-- Every one of the eight review dimensions addressed (no skipping).
+- Every one of the nine review dimensions addressed (no skipping).
 - Findings tagged ✅ PASS / ❌ FAIL / ⚠️ WARN per the format below.
 - Pass summary block present at end of report.
 - Verdict line ends the report.
@@ -44,9 +44,9 @@ markers per finding.
 
 **Constraints:**
 - Read-only review pass. Do not modify any files.
-- **Eight review dimensions (do not skip any):**
+- **Nine review dimensions (do not skip any):**
 
-Review for all eight of the following — do not skip any:
+Review for all nine of the following — do not skip any:
 
 1. **Architecture compliance** — layer boundaries respected, no forbidden imports in
    domain files, no concrete types crossing layer boundaries
@@ -84,7 +84,57 @@ Review for all eight of the following — do not skip any:
    If no "Unplanned file modifications" section is present and no unlisted files were
    changed, this item is N/A.
 
-[Add any phase-specific focus areas here — these are in addition to the eight above, not a replacement.]
+9. **Boundary discipline (Project SSOT-first)** —
+   For every recommended change that adds, modifies, or removes a rule, reference, or
+   enumeration in a project file: before recommending the change, investigate whether
+   a project SSOT for the concept exists (project trinity at root, `docs/pack/PM-CHAT.md`
+   agent roster, `docs/pack/PLATFORM-SKILLS.md` skill matrix, `docs/pack/PACK-FEEDBACK.md`
+   feedback channel, per-agent prompt template at `docs/pack/prompts/<agent>.md`,
+   project-side skill at `.claude/skills/<name>/SKILL.md` / `.codex/skills/...` /
+   `.gemini/skills/...`, project architecture or methodology under `docs/project/`
+   or `docs/reference/`).
+   - If a project SSOT exists, recommend the change cite or augment that SSOT — not
+     a pack-side equivalent.
+   - If no project SSOT exists and the project file genuinely needs the rule, flag a
+     deferred design question rather than importing an external mechanism: "no project
+     SSOT for `<concept>`; project-design rationale needed before recommending content."
+   - If the change would cross-reference a file outside the project (e.g., a pack-repo
+     file like `PACK-AGENTS.md`, `PACK-CHAT.md`, anything under `pack-ops/`, anything
+     under the pack-repo `maintenance-docs/`, a pack-* agent name, or the `Pack Chat`
+     capitalized orchestrator role), the recommendation is ❌ FAIL by construction —
+     that reference does not exist at this client install and would break or
+     pollute project intent. Recommend the project SSOT equivalent (or recommend
+     NO reference, with rationale).
+   - Output per finding under this dimension explicitly names which project SSOT
+     was investigated (file path + relevant section) or explicitly states "no SSOT
+     exists for `<concept>`".
+
+   **Positive-assertion gate (TYPE-5 detection):** when a project rule, enumeration,
+   or convention is present, the reviewer MUST positively assert ONE of:
+   - (a) "Independent project-design rationale: `<rationale text>`" — name the
+     project-side reason this rule exists for project use, independent of any
+     pack-side parallel.
+   - (b) "Structural mirror: pack-side `<X>` has parallel rule, and the mirror is
+     justified because `<why-mirror-makes-sense>`" — explicitly identify the
+     pack-side parallel and explain why the mirror is load-bearing (not coincidental).
+   - (c) "TYPE-5 finding: this project rule mirrors pack-side `<X>` without
+     independent rationale; recommend either (i) remove from project side and
+     keep pack-side only, or (ii) add project-design rationale, or (iii) confirm
+     structural mirror per (b)."
+
+   A review that passes a project rule WITHOUT one of (a) / (b) / (c) is incomplete.
+   (a) and (b) are positive assertions of rule-correctness; (c) is a flagged finding.
+
+   **Frame-rotation reminder:** when reviewing a commit or batch that touches BOTH
+   pack-side and project-side files (rare in client workflows; common in pack-
+   development), mentally rotate frames. The same dimension (e.g., "rule is
+   missing", "cross-reference is stale") has different correct answers depending
+   on which side the file lives on. Project-side correct answer: cite project
+   SSOT. Pack-side correct answer: cite pack-side SSOT. The bias to import
+   framing from the earlier-reviewed side into the later-reviewed side is real;
+   this dimension's SSOT investigation step is the explicit antidote.
+
+[Add any phase-specific focus areas here — these are in addition to the nine above, not a replacement.]
 
 - **Verification** (run after reviewing, report results):
   ```bash

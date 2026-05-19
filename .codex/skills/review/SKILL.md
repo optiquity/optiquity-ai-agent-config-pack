@@ -6,6 +6,7 @@ allowed-tools: Read, Grep, Glob, Bash
 
 ## Review priorities (check in this order)
 
+0. **Boundary discipline** — If reviewing a change to a file that ships to client repos (`project-template/` trees, or any pack-shipped client-installable surface), verify the change does NOT introduce references to pack-only files, pack-only mechanisms, pack-* agent names, or the `Pack Chat` orchestrator role. If it does, the finding is blocking. See trinity Pack memory `P-missed-7` for the underlying rule and worked examples; load the `boundary-investigation` skill for the SSOT-investigation methodology and the canonical deny-list. Frame-rotation reminder: when reviewing a commit or batch that touches both pack-side and project-side files, rotate frames — pack-side correct answer cites pack-side SSOT; project-side correct answer cites project-side SSOT.
 1. **Correctness** — Does the code do what the task requires? Check logic errors, off-by-one mistakes, edge cases, nil/null handling, and boundary conditions.
 2. **Security** — Check for credential exposure, injection vectors, unsafe deserialization, missing input validation, and overly broad permissions.
 3. **Regressions** — Does the change break existing behavior? Check callers of modified functions, changed interface contracts, and removed functionality.

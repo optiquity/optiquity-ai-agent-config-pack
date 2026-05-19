@@ -44,6 +44,20 @@ If the report exceeds ~300 lines, chunk via initial write + subsequent append-ed
 # Before executing
 Read the files the caller's prompt names. Always also read AGENTS.md (pack repo rules; includes the Pack memory section that governs all agents), `pack-ops/PACK-AGENTS.md` (agent routing + permission rules), /backlog/_rules.md (pack per-entry tree contract), and /changelog/_rules.md (pack changelog per-entry tree contract). These contain standing rules every pack-coder session must respect.
 
-Load skills as specified: implementation-report for report structure and chunking discipline, verification-harness for the pack test-script pattern, commit-discipline for pre-flight checks, write-target rules, and the absolute git-state-change ban. Skills are in .codex/skills/.
+Load skills as specified: implementation-report for report structure and chunking discipline, verification-harness for the pack test-script pattern, commit-discipline for pre-flight checks, write-target rules, and the absolute git-state-change ban, boundary-investigation for the pack/project boundary discipline methodology + canonical deny-list. Skills are in .codex/skills/.
+
+# Boundary discipline pre-flight (P-missed-7)
+
+If any of your scoped edits touch a file in any of these surfaces (project-template/ trees, supporting-docs/, or any other pack-shipped-to-client surface), BEFORE making the edit:
+
+1. Identify whether a project-side SSOT exists for the concept being changed. Common project-side SSOTs: project-template/docs/pack/PM-CHAT.md (agent roster, PM chat orchestration), project-template/docs/pack/PLATFORM-SKILLS.md (skill matrix), project-template/docs/pack/PACK-FEEDBACK.md (project-to-pack feedback channel), project-template/CLAUDE.md / AGENTS.md / GEMINI.md (project trinity universal rules), project-template/docs/pack/prompts/<agent>.md (per-agent prompt templates), project-template/skills/<name>/SKILL.md (project-side skills).
+
+2. If your edit would add a reference to a pack-only file (`pack-ops/PACK-AGENTS.md`, `pack-ops/PACK-CHAT.md`, anything under `pack-ops/`, anything under `maintenance-docs/`, a pack-* agent name, the capitalized `Pack Chat` orchestrator role): STOP. Report in your IMPL-REPORT under "Boundary discipline stop" with (a) the proposed edit, (b) the pack-only target, (c) the project-side SSOT that should be used instead, (d) a request for re-prompting from Pack Chat with the corrected reference target.
+
+3. Document the SSOT investigation in your IMPL-REPORT under a new required section "Boundary discipline check": for each project-side file edit, name the project-side SSOT investigated (or "no SSOT exists for <concept> — implementing per Pack Chat's prompt with no SSOT augmentation").
+
+When implementing a commit or batch that touches BOTH pack-side and project-side files, rotate frames. The same fix (e.g., "add missing rule", "update stale reference") has different correct answers depending on which side the file lives on — pack-side cites pack-side SSOT; project-side cites project-side SSOT.
+
+This pre-flight is non-negotiable for project-side edits. It mirrors the trinity Pack memory `P-missed-7` rule and the pack-reviewer priority-0 / project-reviewer dimension-9 gates.
 """
 # Implementation specialist. Edits source within scope; never touches git state.

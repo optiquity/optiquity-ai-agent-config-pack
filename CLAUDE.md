@@ -64,6 +64,24 @@ Where N is the current major version (read from README.md version table).
 Other `fix:` shapes require Pack-Chat-discussion-and-user-approval before
 they land — invented commit-message shapes break audit history.
 
+**Commit-subject scope-keyword convention (CI-enforced via Check 36):**
+
+When a commit's scope is exclusive to one surface, the commit subject MAY
+carry one of three case-insensitive keywords. CI Check 36 verifies the
+commit's `git diff --name-only` matches the claimed scope; mismatches fail
+the gate with a file-path callout.
+
+| Keyword (case-insensitive, in commit subject) | Meaning | Permitted touched paths |
+|---|---|---|
+| `pack-only` | Pack repo state only | Deny `project-template/` and `supporting-docs/` |
+| `project-only` | Project-side state only | Deny pack-only paths (everything outside `project-template/` + `supporting-docs/`) |
+| `PM-only` (or `pack-memory-only`) | Pack-Chat-direct-edit only | Per `pack-ops/PACK-AGENTS.md` § "PM-only files and directories" Files list — notably PERMITS `project-template/` trinity (CLAUDE.md / AGENTS.md / GEMINI.md at `project-template/` ARE PM-only per PACK-AGENTS.md) |
+| (no keyword) | Mixed-scope implicit | Check 36 skipped (no claim to verify) |
+
+The vocabulary is intentionally small. Use no keyword for mixed-surface
+commits — keyword opt-in means actors who don't want the gate don't carry
+it, but actors who claim a scope are held to it.
+
 **Versioning:**
 - Minor versions (vN.0, vN.1, ...) for incremental changes
 - Major versions for large additions or breaking changes
@@ -90,6 +108,15 @@ These three files must express the same project rules. The only exception is a
 change that is provably tool-specific (e.g., Claude Task tool syntax). Symmetry
 is the default; asymmetry requires justification. This rule also applies to the
 pack-repo copies of these three files.
+
+Note: the trinity rule enforces parity (the three CLI files express the same
+rules at a given trinity location — pack-root or project-template). It does
+NOT verify that the rule is correct for the surface it lives on (pack-root
+trinity vs project-template trinity carry different audiences and different
+rules by design). For substance correctness across pack-vs-project surfaces,
+see Pack memory `P-missed-7` (boundary discipline) and the
+`boundary-investigation` skill — those layers catch the V1-style regression
+where actors mistook trinity parity for substance correctness.
 
 **CI validation:** The `Validate Pack` GitHub Actions workflow runs on
 every push. If it fails, fix before proceeding. Read the Actions log —
@@ -200,6 +227,27 @@ in the same commit as the behavior change.
   fix-all preserves the small-fix-now contract that prevents tech debt
   accumulation. See `feedback-deferred-work-tracking` and
   `feedback-deferral-is-scope-creep` for the memory-cache pointers.
+- **P-missed-7 — project-side investigation precedes pack-style
+  defaults.** Project and pack are intentionally designed differently.
+  When making ANY change to a project-side file (`project-template/`
+  trees, project-shipped content), an actor (reviewer, implementer,
+  Pack Chat triage) MUST first investigate whether a project-side SSOT
+  exists for the concept being changed. Pack-style mechanisms
+  (`pack-ops/PACK-AGENTS.md` roster, Pack Chat orchestrator role,
+  pack-* agent names, `maintenance-docs/` design records, anything
+  under `pack-ops/`) are PACK-ONLY by construction — they do not exist
+  at client install, they do not govern project behavior, and importing
+  them into project-side files is a regression that breaks at client
+  install or pollutes project-design intent. The default instinct
+  "reach for the pack mechanism I know" is bias, not a starting point.
+  Investigate the project-side SSOT FIRST. Worked examples of the
+  failure mode this rule prevents: BD-175 audit V1 (project trinity
+  acquired `PACK-AGENTS.md` reference via a review-fix commit when the
+  project-side SSOT was `docs/pack/PM-CHAT.md`), V3 (project-side
+  `PLATFORM-SKILLS.md` acquired `PACK-AGENTS.md` reference instead of
+  pointing at `PM-CHAT.md`), V4 (project-side methodology doc became
+  pack-internal by drift). See the `boundary-investigation` skill
+  (loaded by all pack agents) for the SSOT-investigation methodology.
 
 ### Agent invocation rules
 
@@ -367,6 +415,17 @@ in the same commit as the behavior change.
   belongs to the user. Pack-planner / pack-coder / pack-reviewer /
   pack-docs-researcher follow standard Pack Chat triage (no
   per-spawn user approval).
+- **Batch-scope claims are enforced by CI, not honor system.** When
+  Pack Chat frames a batch as `pack-only`, `project-only`, or
+  `PM-only` in commit subjects, CI Check 36 verifies the commit diff
+  matches the claimed scope. If a batch's work genuinely spans pack +
+  project, the commit subject MUST NOT carry an exclusive scope
+  keyword — use neutral framing ("BD-NNN cross-surface work") or
+  explicitly split the batch into separate pack-side and project-side
+  commits. Mis-framing a mixed-scope commit with a pack-only keyword
+  is a CI failure, not a discipline note. The keyword vocabulary is
+  defined in § "Rules for agents working on this repo" → commit-
+  subject scope-keyword convention.
 
 ### Repo conventions
 
