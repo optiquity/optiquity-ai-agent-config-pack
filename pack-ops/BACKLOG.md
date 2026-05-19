@@ -1416,6 +1416,59 @@ Resolved: n/a
 
 ---
 
+**BD-176 — Expand RC9 manifest-regen trigger to include pack-ops/**
+Type: TODO(version) — surfaced 2026-05-19 during BD-175 Phase 5 Commit 2 fix triage; user-explicit defer to immediately-after-BD-175 per session direction.
+Status: Open
+Blockers: BD-175 (must close successfully first per user direction 2026-05-19)
+Unblocks: defensive future-proofing of RC9 manifest-regen rule for any future pack-ops/ additions that may affect fixtures (currently no pack-ops/ files affect manifest empirically — verified 2026-05-19 — but rule's INCLUSIVE design philosophy benefits from explicit pack-ops/ trigger)
+File/Symbol:
+  - `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (pack root) "Pack memory" § "Repo conventions" RC9 bullet — trinity rule applies
+  - `~/.claude/projects/<slug>/memory/feedback_manifest_regen_on_v11_surface.md` (user memory cache update)
+Description: When RC9 was created, the `pack-ops/` directory did not exist. BD-175 introduced `pack-ops/` as a new top-level pack-side directory hosting LIVE OPS docs (PACK-CHAT, PACK-AGENTS, BACKLOG, CHANGELOG, HELP-FRAGMENT-PACK, HELP-FRAGMENT-TRACKER, OPTIONAL-FEATURES, BOUNDARY-DEFINITION, plus future additions). RC9's "v11-surface = files under project-template/ or scripts/" no longer captures all directories whose content COULD plausibly affect manifest fixtures.
+
+  Empirical state 2026-05-19 (verified during BD-175 Phase 5 Commit 2 fix triage): pack-ops/ files do NOT currently affect manifest. `test-fixtures/build.sh` doesn't read pack-ops/ directly; `scripts/init-project.sh` doesn't copy pack-ops/ to client repos; byte-identity contract (Check 24) is enforced separately. So no current false-negative.
+
+  Defensive change: add `pack-ops/` to RC9 trigger directories per the rule's stated INCLUSIVE design philosophy ("false positives cost ~30-90s of unnecessary rebuild but produce no incorrect manifest change; false negatives within v11-surface are impossible because every v11-surface file lives under one of these two directories"). Adding `pack-ops/` extends "within v11-surface" to include the new pack-side directory introduced by BD-175.
+
+  Scope:
+  - Trinity edit in `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` "Pack memory" § "Repo conventions" RC9 bullet — update "v11-surface = files under `project-template/` or `scripts/`" to "v11-surface = files under `project-template/` or `scripts/` or `pack-ops/`"
+  - Update RC9's narrative explanation to acknowledge `pack-ops/` as the third trigger
+  - Update memory cache file `feedback_manifest_regen_on_v11_surface.md` to match
+  - No code changes needed (rule is a process directive; CI's manifest-verify check still works the same way — it just checks for drift regardless of trigger)
+
+  Implementation pattern: pack-architect spawn (per pack-memory pack-architect-spawn protocol for rules/operating-docs/memory/trinity-Pack-memory-section changes) → strategy doc → pack-coder applies mechanically → Pack Chat commits.
+
+  Position: Insert immediately after BD-175 (per user direction 2026-05-19). Implement immediately after BD-175 Resolved.
+Resolved: n/a
+
+---
+
+**BD-177 — Coordinate scripts/pack-help.sh:86 sentinel-regex with pack-ops/HELP-FRAGMENT-PACK.md:37 prose post-BD-175 Commit 2 relocation**
+Type: TODO(version) — surfaced 2026-05-19 during BD-175 Phase 5 Commit 2 fix-pass execution (PACK-REVIEW-BD-175-COMMIT-2.md D-4 sublocation L37 + IMPLEMENTATION-REPORT-BD-175-COMMIT-2-FIX.md §8 OQ-FIX-1); user-explicit defer to immediately-after-BD-176.
+Status: Open
+Blockers: BD-175 + BD-176 (must close successfully in that order per user direction 2026-05-19)
+Unblocks: path-accurate prose at HELP-FRAGMENT-PACK.md L37; closes OQ-FIX-1 anchor in Commit 2 fix-pass IMPL-REPORT
+File/Symbol:
+  - `scripts/pack-help.sh` line 86 awk regex (currently matches sentinel `/^\[Included from \`HELP-FRAGMENT-TRACKER\.md\`/`)
+  - `pack-ops/HELP-FRAGMENT-PACK.md` line 37 sentinel prose (currently says "at pack root" — stale post-Commit-2)
+  - `test-fixtures/manifest.txt` (regenerate per RC9 — `scripts/pack-help.sh` is v11-surface)
+Description: BD-175 Commit 2 relocated `HELP-FRAGMENT-TRACKER.md` from pack root to `pack-ops/`. Commit 2 fix-pass identified `pack-ops/HELP-FRAGMENT-PACK.md` L37 as stale prose ("at pack root"). Naive D-4 fix attempted but reverted when `scripts/tests/pack-help-test.sh` test 2.1 ("colloquial mapping inlined") FAILED — the L37 string is a load-bearing sentinel matched by `scripts/pack-help.sh:86` awk regex; changing prose without coordinating regex breaks tracker-fragment substitution.
+
+  User-impact severity: ZERO (sentinel substituted out at render time; never user-visible in `pack help` output).
+
+  Coordinated 2-file fix:
+  1. Update `pack-ops/HELP-FRAGMENT-PACK.md` L37 sentinel to path-accurate form (e.g., `[Included from \`pack-ops/HELP-FRAGMENT-TRACKER.md\` via \`pack-help.sh\`.]`)
+  2. Update `scripts/pack-help.sh:86` awk regex to match the new sentinel form
+  3. Re-run `scripts/tests/pack-help-test.sh` — verify substitution still fires (test 2.1)
+  4. Regenerate `test-fixtures/manifest.txt` per RC9 (`scripts/pack-help.sh` is v11-surface)
+
+  ~3-line, ~10-minute mechanical change once correctly scoped. No architect spawn needed (mechanical pack-coder work).
+
+  Position: Insert immediately after BD-176 (per user direction 2026-05-19 — both small follow-ups to BD-175, but BD-177 MUST be implemented directly after BD-176 is resolved).
+Resolved: n/a
+
+---
+
 **BD-174 — Scratch-pack-clone migration + multi-toggle test harness**
 Type: TODO(version) — surfaced 2026-05-17 from session discussion of test fixture thoroughness pre-public-release (gap identified: BD-102 dog-food runs on real pack repo; no scratch-clone equivalent for pack-on-pack code-bug-catching in safe environment)
 Status: Open
