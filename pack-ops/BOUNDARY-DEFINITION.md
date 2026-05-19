@@ -2,7 +2,7 @@
 
 **Status:** canonical rule reference (stable across pack versions; updated only when the boundary definition itself changes).
 **Audience:** pack maintainers, pack agents (pack-architect / pack-coder / pack-planner / pack-reviewer / pack-docs-researcher), future architects, project PM chats (post-install qualifier — see §6).
-**Source-of-design:** `maintenance-docs/v11-implementation/ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §1.1, §1.2, §4, §5.2 + `ARCHITECTURE-DIRECTORY-REORGANIZATION-FIX.md` §3.3 + `AUDIT-USER-CURATION.md` Overrides 1 + 5.
+**Source-of-design:** `maintenance-docs/v11-implementation/ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §1.1, §1.2, §3.3 (machine-readable format), §4, §5.2 + `ARCHITECTURE-DIRECTORY-REORGANIZATION-FIX.md` §4 (1-entry shrink) + `AUDIT-USER-CURATION.md` Overrides 1 + 5.
 
 ---
 
@@ -165,8 +165,10 @@ This doc is the SINGLE SOURCE OF TRUTH for the boundary rules. It is referenced 
 
 ### §6.1 Active operating docs (top-of-file pointer)
 
-- `pack-ops/PACK-CHAT.md` — top section "Boundary rules: see `BOUNDARY-DEFINITION.md`". Pack Chat reads PACK-CHAT.md at startup; this is the most consequential pointer.
-- `pack-ops/PACK-AGENTS.md` — top section pointer. Every pack agent that reads PACK-AGENTS.md gets the pointer.
+The `pack-ops/PACK-*.md` paths below reflect the post-Commit 2 location (after BD-175 Phase 5 Commit 2 relocates these files from pack root); pre-Commit 2, they live at pack root.
+
+- `pack-ops/PACK-CHAT.md` (post-Commit 2 location) — top section "Boundary rules: see `BOUNDARY-DEFINITION.md`". Pack Chat reads PACK-CHAT.md at startup; this is the most consequential pointer.
+- `pack-ops/PACK-AGENTS.md` (post-Commit 2 location) — top section pointer. Every pack agent that reads PACK-AGENTS.md gets the pointer.
 - Pack-root trinity (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) — pointer in the pack-memory section ("Boundary rules: see `pack-ops/BOUNDARY-DEFINITION.md`"). All three trinity files (per trinity rule in same edit). This puts the pointer in the per-session memory load for every CLI working on the pack repo.
 - `project-template/docs/pack/PM-CHAT.md` — pointer to the boundary definition from the PROJECT-side PM chat operating doc. This is critical for the V1 regression pattern (see §7.7): PM chat needs to know that pack-only files are off-limits as references in project-side artifacts. Note the project-side pointer reads "(in the pack repo)" qualifier — clients don't install `pack-ops/`.
 
@@ -246,7 +248,7 @@ The verdict procedure (§3) applied to representative files. Each example states
 - **Historical failure.** A prior commit added a reference to `PACK-AGENTS.md` (a PACK-only file) into the PROJECT trinity (`project-template/CLAUDE.md`, `project-template/AGENTS.md`, `project-template/GEMINI.md`). The implementer treated the project trinity as a place to reference pack-side files because the boundary was unstated.
 - **Why §3 would have caught it.** Apply step 1: who consumes `project-template/CLAUDE.md`? Client repos (via install) — PROJECT audience. Apply step 1 to `PACK-AGENTS.md`: who consumes it? Pack-* agents in the pack repo — PACK audience. Step 1's final clause forbids cross-audience references: a PROJECT-audience file (the project trinity) cannot reference a PACK-only file (`PACK-AGENTS.md`) because the PROJECT consumer (client repo) cannot reach the PACK file — `PACK-AGENTS.md` is not installed to clients. The placement procedure flags this as the SHARED anti-pattern variant: a reference that effectively asks one audience to read another audience's file.
 - **Why §3 step 4 prevents the recurrence.** Any new file at pack root must be C1 or C3. A new `PACK-AGENTS.md`-equivalent C2 file at root would also be rejected by the CI gate (the file is not in `pack-ops/.boundary-exempt-root.txt`). Combined: the boundary rule rejects the file-path attempt; the cross-reference rule rejects the prose-reference attempt; the CI gate enforces both.
-- **Resolution applied to this specific failure.** The reference was removed from project trinity in Phase 5 of BD-175. The project trinity now contains only PROJECT × OPERATIONS pointers (e.g., `docs/pack/PM-CHAT.md`); pack-side pointers belong in pack trinity, not project trinity.
+- **Resolution applied to this specific failure.** Commit 4 of BD-175 Phase 5 (TASK-T1 trinity REPLACE) will remove the contamination from project trinity; the V1 reference at `project-template/CLAUDE.md` and its AGENTS.md / GEMINI.md parallels is still present at the HEAD where this doc first landed (BD-175 Phase 5 Commit 1) and will be cleared by Commit 4. Post-Commit 4, the project trinity contains only PROJECT × OPERATIONS pointers (e.g., `docs/pack/PM-CHAT.md`); pack-side pointers belong in pack trinity, not project trinity. This example illustrates what §3's procedure would have flagged at the time the V1 contamination first landed.
 
 ---
 
