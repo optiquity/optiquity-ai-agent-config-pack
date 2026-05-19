@@ -248,7 +248,7 @@ Pack-repo development additionally uses `verification-harness`,
 skills. Those skills live in the pack repo's own `.claude/skills/`,
 `.codex/skills/`, `.gemini/skills/` trees (not under
 `project-template/`) and are out of scope for project-side skill
-selection. See `PACK-AGENTS.md` in the pack repo for their use.
+selection. See `docs/pack/PM-CHAT.md` § Pack agent roster for the canonical project-side agent list.
 
 ### Combining dimensions and mechanisms — worked examples
 
@@ -568,10 +568,8 @@ To add support for a new platform, language, role, protocol, or deployment
 surface: create the required skill files, then add rows to the appropriate
 dimension tables above (D1–D5), the Tier 0 base table, the intersection
 table, or the trigger-loaded table — whichever applies. See the dimension
-extension rules in the pack's design documentation
-(`maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-DIMENSIONS.md`
-§3 / §4 / §6) for the framing rules that govern each dimension and the
-governance checklist for new skills.
+extension rules in the pack's design documentation for the framing rules
+that govern each dimension and the governance checklist for new skills.
 
 ### Naming convention for new skills
 
