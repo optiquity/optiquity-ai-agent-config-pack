@@ -1476,6 +1476,57 @@ Resolved: n/a
 
 ---
 
+**BD-178 — Align pre-existing trinity asymmetries in `project-template/{CLAUDE,AGENTS,GEMINI}.md`**
+Type: TODO(version) — surfaced 2026-05-19 during BD-175 Phase 5 Commit 4 review (PACK-REVIEW-BD-175-COMMIT-4.md "pre-existing trinity asymmetry" finding); per Architect A §2 V1, pre-existing trinity wording variation was explicitly anticipated and triaged out of BD-175 scope; user-directed to address as a small follow-up BD before Batch 19c resumes.
+Status: Open
+Blockers: BD-175 + BD-176 + BD-177 (must close successfully in that order per user direction 2026-05-19)
+Unblocks: clean trinity baseline for Batch 19c (BD-173 project-side cleanup) — Batch 19c work touches the project-template trinity files extensively and benefits from starting on a fully-symmetric baseline; closes the "pre-existing asymmetry" finding from PACK-REVIEW-BD-175-COMMIT-4.md.
+File/Symbol:
+  - `project-template/CLAUDE.md` (3 known asymmetric loci: Trinity rule bullet ~L354-357, "No destructive operations" bullet ~L358-361, phase-routing intro line ~L372)
+  - `project-template/AGENTS.md` (matching loci: Trinity rule bullet ~L332-334, "No destructive operations" bullet ~L335-338, phase-routing intro line ~L349)
+  - `project-template/GEMINI.md` (matching loci: Trinity rule bullet ~L347-349, "No destructive operations" bullet ~L350-353, phase-routing intro line ~L364)
+  - `test-fixtures/manifest.txt` (regenerate per RC9 — `project-template/` is v11-surface)
+Description: BD-175 Phase 5 Commit 4 reviewer flagged that bullets in `project-template/{CLAUDE,AGENTS,GEMINI}.md` carry pre-existing asymmetric wording that predates BD-175 (since `991d9e3`, v10.1 era). Architect A §2 V1 explicitly anticipated this pattern, so the asymmetries were triaged out of BD-175 Commit 4's scope. User direction 2026-05-19 opens BD-178 to address them as a small follow-up before Batch 19c (BD-173) resumes — Batch 19c touches the project-template trinity extensively and benefits from a fully-symmetric baseline.
+
+  Implementation should run a FRESH full trinity-asymmetry sweep (e.g., 3-way diff on `project-template/{CLAUDE,AGENTS,GEMINI}.md` for every shared section) rather than fixing only the 3 loci identified below — pre-existing asymmetries beyond the known 3 may exist and should be captured in the same sweep.
+
+  **Known asymmetric loci (from initial scoping sweep) and proposed canonical wording:**
+
+  **(1) "No destructive operations" bullet** — currently asymmetric between GEMINI.md and CLAUDE.md/AGENTS.md:
+    - **CLAUDE.md + AGENTS.md (current):** "Before any `git rm`, `rm -rf`, file deletion, overwrite, or `git reset --hard`, state exactly what will be destroyed and wait for explicit approval — even when the overall task is approved."
+    - **GEMINI.md (current):** "Before any `git rm`, `rm -rf`, deletion, overwrite, or `git reset --hard`, state what will be destroyed and wait for explicit approval — even when the overall task is approved."
+    - **Differences:** GEMINI drops "file " from "file deletion"; GEMINI drops "exactly" from "state exactly what will be destroyed".
+    - **Proposed canonical wording (adopt CLAUDE.md/AGENTS.md form into GEMINI.md):** "Before any `git rm`, `rm -rf`, file deletion, overwrite, or `git reset --hard`, state exactly what will be destroyed and wait for explicit approval — even when the overall task is approved."
+    - **Reasoning:** CLAUDE/AGENTS form is more precise. "file deletion" is more specific than bare "deletion" (which could ambiguously refer to database rows, log lines, branches, etc.); "state exactly what will be destroyed" is more enforceable than "state what will be destroyed" (the word "exactly" signals that vague paraphrases like "I'll clean up" are not acceptable). Adopting the CLAUDE/AGENTS form into GEMINI keeps the higher-precision wording.
+
+  **(2) Phase-routing intro (tool-list line)** — currently asymmetric between AGENTS.md and CLAUDE.md/GEMINI.md:
+    - **CLAUDE.md + GEMINI.md (current):** "All three tools (Claude Code, Codex, Gemini CLI) can execute any phase."
+    - **AGENTS.md (current):** "Both Codex and Claude Code can execute any engineering phase in this repo."
+    - **Differences:** AGENTS uses "Both" (two-tool framing — pre-Gemini era) and excludes Gemini CLI from the list; AGENTS uses "any engineering phase in this repo" vs CLAUDE/GEMINI's shorter "any phase".
+    - **Proposed canonical wording (adopt CLAUDE.md/GEMINI.md form into AGENTS.md):** "All three tools (Claude Code, Codex, Gemini CLI) can execute any phase."
+    - **Reasoning:** CLAUDE/GEMINI form correctly reflects the current three-tool trinity (Claude Code, Codex CLI, Gemini CLI). AGENTS.md's "Both" framing is a stale relic of the two-tool era predating Gemini CLI's addition — leaving it in place is a correctness defect, not a style preference. The shorter "any phase" is also cleaner than "any engineering phase in this repo" (no information loss — context is already established by the section heading "Phase routing — default agent assignments"). Adopting the CLAUDE/GEMINI form into AGENTS updates the tool count and trims redundant words.
+
+  **(3) Trinity rule bullet** — currently asymmetric between GEMINI.md and CLAUDE.md/AGENTS.md (newly identified during BD-178 scoping sweep, not flagged in PACK-REVIEW-BD-175-COMMIT-4.md but caught by the broader sweep this BD authorizes):
+    - **CLAUDE.md + AGENTS.md (current):** "When modifying `CLAUDE.md`, `AGENTS.md`, or `GEMINI.md` at the project root, the same change applies to all three in the same set of edits. Symmetry is the default; asymmetry requires justification as provably tool-specific."
+    - **GEMINI.md (current):** "When modifying `CLAUDE.md`, `AGENTS.md`, or `GEMINI.md` at the project root, the same change applies to all three. Asymmetry requires justification as provably tool-specific."
+    - **Differences:** GEMINI drops "in the same set of edits" (the operational constraint); GEMINI drops "Symmetry is the default;" (the framing principle).
+    - **Proposed canonical wording (adopt CLAUDE.md/AGENTS.md form into GEMINI.md):** "When modifying `CLAUDE.md`, `AGENTS.md`, or `GEMINI.md` at the project root, the same change applies to all three in the same set of edits. Symmetry is the default; asymmetry requires justification as provably tool-specific."
+    - **Reasoning:** CLAUDE/AGENTS form is more enforceable. "in the same set of edits" is the load-bearing operational constraint that prevents trinity drift across commits — without it, an agent could legitimately edit one trinity file in commit A and the other two in commit B, leaving an interim state where the trinity is inconsistent. "Symmetry is the default" establishes the framing principle (the burden of proof is on the asymmetry, not on the symmetry); dropping it inverts the default. GEMINI's shorter form loses both load-bearing elements. Adopting the CLAUDE/AGENTS form into GEMINI restores the operational rigor.
+
+  **General canonicalization heuristic for any additional asymmetries found in the fresh sweep:** prefer the wording variant that (a) is more enforceable / less ambiguous, (b) preserves operational constraints (the "in the same set of edits" pattern above), (c) reflects current state (e.g., three-tool trinity vs two-tool framing). If two variants are equally valid (wording-only stylistic differences with no precision delta), prefer the CLAUDE.md form for consistency with the pack-repo's existing "CLAUDE-first" convention (CLAUDE.md is typically edited first in trinity commits; AGENTS.md and GEMINI.md mirror).
+
+  Scope:
+  - Mechanical trinity edits in `project-template/{CLAUDE,AGENTS,GEMINI}.md` to converge on the canonical wording for each identified asymmetric locus (the 3 above + any additional surfaced by the fresh sweep)
+  - Fresh full 3-way diff sweep across `project-template/{CLAUDE,AGENTS,GEMINI}.md` shared sections to catch any pre-existing asymmetries not yet identified; document each one in the IMPL-REPORT with proposed canonical wording + reasoning (same template as the 3 above)
+  - Regenerate `test-fixtures/manifest.txt` per RC9 (`project-template/` is v11-surface)
+
+  Implementation pattern: mechanical pack-coder work (no architect spawn needed — wording proposals embedded in this BD for the 3 known loci; coder applies the canonicalization heuristic to any additional asymmetries found in the sweep and surfaces them in the IMPL-REPORT for Pack Chat triage before commit). Per per-BD review/fix pattern, single pack-reviewer pass after the trinity edit lands.
+
+  Position: Insert immediately after BD-177 (per user direction 2026-05-19 — must be implemented directly after BD-177 Resolved AND before Batch 19c / BD-173 resumes; BD-173 touches project-template trinity extensively and benefits from a fully-symmetric baseline).
+Resolved: n/a
+
+---
+
 **BD-174 — Scratch-pack-clone migration + multi-toggle test harness**
 Type: TODO(version) — surfaced 2026-05-17 from session discussion of test fixture thoroughness pre-public-release (gap identified: BD-102 dog-food runs on real pack repo; no scratch-clone equivalent for pack-on-pack code-bug-catching in safe environment)
 Status: Open
