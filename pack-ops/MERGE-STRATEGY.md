@@ -468,10 +468,10 @@ default behavior):
 - `scripts/lib/customization-preserve.sh` — the BD-088 implementation
 - `scripts/lib/customization-report.sh` — the report renderer
 - `scripts/tests/test-customization-preserve.sh` — class-coverage tests
-- `MIGRATION-v10-to-v11.md` — the user-facing migration narrative
+- `supporting-docs/MIGRATION-v10-to-v11.md` — the user-facing migration narrative
 - `docs/pack/OPTIONAL-FEATURES.md` — tracker opt-in walkthrough
 - `QUICKSTART.md` — where to start
-- `validate-pack.py` Check 25 — CI regression guard for the truthful-report contract
+- `scripts/validate-pack.py` Check 25 — CI regression guard for the truthful-report contract
 
 > **Note on `scripts/lib/`.** Files under `scripts/lib/` are pack
 > implementation details (sourced by other scripts; never invoked
