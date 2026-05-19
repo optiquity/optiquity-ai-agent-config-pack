@@ -2,7 +2,7 @@
 
 Verb manifest for the **pack repository**. Run `pack help` or `/pack-help`
 in your CLI for this content. Full docs in `QUICKSTART.md`, `README.md`,
-`PACK-CHAT.md`, `OPTIONAL-FEATURES.md`.
+`pack-ops/PACK-CHAT.md`, `pack-ops/OPTIONAL-FEATURES.md`.
 
 ## Pack commands
 
@@ -38,5 +38,5 @@ in your CLI for this content. Full docs in `QUICKSTART.md`, `README.md`,
 
 ## See also
 
-`PACK-CHAT.md`, `PACK-AGENTS.md`, `OPTIONAL-FEATURES.md`, `BACKLOG.md`,
-`CHANGELOG.md`.
+`pack-ops/PACK-CHAT.md`, `pack-ops/PACK-AGENTS.md`, `pack-ops/OPTIONAL-FEATURES.md`, `pack-ops/BACKLOG.md`,
+`pack-ops/CHANGELOG.md`.

@@ -42,7 +42,7 @@ After checking out the Config Pack repo, `cd` into the repo directory and launch
 ## Optional features and settings
 
 Each CLI ships its own optional or experimental features that the Config Pack
-can plug into. See [`OPTIONAL-FEATURES.md`](OPTIONAL-FEATURES.md) for the
+can plug into. See [`pack-ops/OPTIONAL-FEATURES.md`](pack-ops/OPTIONAL-FEATURES.md) for the
 current list — including Claude Code's Agent Teams (parallel teammates that
 share a task list and message each other) and equivalents for Codex CLI and
 Gemini CLI as they ship.

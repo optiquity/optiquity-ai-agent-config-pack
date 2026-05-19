@@ -65,7 +65,7 @@ they land — invented commit-message shapes break audit history.
 - Tag move sequence: delete local + remote, recreate, push
 
 **BD-NNN numbering:**
-- Read BACKLOG.md, find the highest existing BD-NNN, increment by 1
+- Read pack-ops/BACKLOG.md, find the highest existing BD-NNN, increment by 1
 - Never assign a BD number without reading the current backlog first
 - Reservation lists from other chats, planning docs, or sidecar
   sessions are NOT authoritative — always read the live BACKLOG before

@@ -7,7 +7,7 @@ conventions automatically — without repeated prompting.
 > **Recommended first action.** In your CLI, run `/pack-startup` (pack
 > repo) or `/pm-startup` (a pack-configured project repo). These bootstrap
 > a working session. For the full pack verb list run `pack help` or
-> `/pack-help` — see [`HELP-FRAGMENT-PACK.md`](HELP-FRAGMENT-PACK.md).
+> `/pack-help` — see [`pack-ops/HELP-FRAGMENT-PACK.md`](pack-ops/HELP-FRAGMENT-PACK.md).
 
 ## Which path are you on?
 
@@ -40,7 +40,7 @@ version, first apply the intermediate guide(s) in sequence.
 For the per-file customization-preservation contract that v11 migrators
 honor, see [`supporting-docs/MERGE-STRATEGY.md`](supporting-docs/MERGE-STRATEGY.md).
 For tracker opt-in (Phase B of the v11 migration), see
-[`OPTIONAL-FEATURES.md`](OPTIONAL-FEATURES.md).
+[`pack-ops/OPTIONAL-FEATURES.md`](pack-ops/OPTIONAL-FEATURES.md).
 
 ---
 
