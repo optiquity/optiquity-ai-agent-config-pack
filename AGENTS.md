@@ -461,30 +461,53 @@ in the same commit as the behavior change.
   pattern is load-bearing for any future shipped surface that pre-
   existed in an architect doc.
 - **Regenerate test-fixtures/manifest.txt on every v11-surface commit.**
-  v11-surface = files under `project-template/` or `scripts/`. Any
-  commit whose diff includes a file under either directory MUST also
-  regenerate `test-fixtures/manifest.txt` and stage it alongside the
-  scope edits in the SAME commit. The trigger is intentionally
-  inclusive — false positives (e.g., a `scripts/test-*.sh` edit that
-  doesn't actually affect fixtures) cost ~30-90s of unnecessary
-  rebuild but produce no incorrect manifest change; false negatives
-  within v11-surface are impossible because every v11-surface file
-  lives under one of these two directories. v11-* fixture row SHAs
-  drift naturally with any v11-surface change (per
-  `test-fixtures/README.md` § Determinism and the `_update_manifest`
-  comment at `test-fixtures/build.sh:903-912`); a stale manifest
-  fails CI's `fixture manifest verify` step (BD-115, RELEASE-GATE
-  item 5) even when every functional test passes. **Why:** prevents
-  the 2026-05-17 incident where commit `667d2dd` shipped v11-surface
-  trinity edits without regenerating the manifest, CI failed on the
-  manifest-comparison step alone (all 40+ functional steps PASSED),
-  and recovery commit `ef9e5c7` had to land as a separate `fix:`
-  commit; the drift was the cumulative effect of three intentional
-  v11-surface commits (`cf67a96` BD-169 pack-product wording,
-  `62f9eec` BD-169 review/fix, `479fef5` Batch 19 broad review/fix)
-  since the last manifest regen at `a57dd04` (BD-160). **How to
-  apply:** before staging a commit whose diff includes any file
-  under `project-template/` or `scripts/`, run
+  v11-surface = files under `project-template/`, `scripts/`,
+  `pack-ops/`, or `supporting-docs/`. Any commit whose diff includes
+  a file under any of these four directories MUST also regenerate
+  `test-fixtures/manifest.txt` and stage it alongside the scope edits
+  in the SAME commit. The trigger is intentionally inclusive — false
+  positives (e.g., a `scripts/test-*.sh` edit that doesn't actually
+  affect fixtures, or a `supporting-docs/MIGRATION-v10-to-v11.md`
+  edit which is a pre-install reference not copied to clients) cost
+  ~30-90s of unnecessary rebuild but produce no incorrect manifest
+  change; false negatives within v11-surface are impossible because
+  every fixture-affecting file lives under one of these four
+  directories. Fixture-affecting paths today: all of
+  `project-template/**` and `scripts/**` (mass-copied by
+  `scripts/init-project.sh` stages S1-S11);
+  `pack-ops/HELP-FRAGMENT-TRACKER.md` (`scripts/init-project.sh`
+  stage S11 copies to client `docs/pack/`);
+  `supporting-docs/METHODOLOGY.md` and
+  `supporting-docs/INSTALL-PROCEDURES.md`
+  (`scripts/init-project.sh` stage S6 copies to client `docs/pack/`).
+  Other files under `pack-ops/` and `supporting-docs/` are not
+  fixture-affecting today, but the directory-wide trigger defends
+  against future copy-site additions to `init-project.sh` or new
+  fixture-build readers. v11-* fixture row SHAs drift naturally with
+  any v11-surface change (per `test-fixtures/README.md` § Determinism
+  and the `_update_manifest` comment at
+  `test-fixtures/build.sh:903-912`); a stale manifest fails CI's
+  `fixture manifest verify` step (BD-115, RELEASE-GATE item 5) even
+  when every functional test passes. **Why:** two incidents drove
+  this rule: (1) the 2026-05-17 incident where commit `667d2dd`
+  shipped v11-surface `project-template/` trinity edits without
+  regenerating the manifest, CI failed on the manifest-comparison
+  step alone (all 40+ functional steps PASSED), and recovery commit
+  `ef9e5c7` had to land as a separate `fix:` commit; the drift was
+  the cumulative effect of three intentional v11-surface commits
+  (`cf67a96` BD-169 pack-product wording, `62f9eec` BD-169 review/
+  fix, `479fef5` Batch 19 broad review/fix) since the last manifest
+  regen at `a57dd04` (BD-160); (2) the 2026-05-19 incident where
+  BD-175 Phase 5 Commit 8 `4120d19` modified
+  `supporting-docs/METHODOLOGY.md` (a client-installed file) without
+  regenerating the manifest under the prior strict trigger (which
+  excluded `supporting-docs/`), CI failed identically, and recovery
+  commit `6c48f88` had to land as a separate `fix:` commit. BD-176
+  expanded the trigger from 2 directories to 4 to close both classes
+  of false negative (pack-ops/ defensively; supporting-docs/
+  empirically). **How to apply:** before staging a commit whose diff
+  includes any file under `project-template/`, `scripts/`,
+  `pack-ops/`, or `supporting-docs/`, run
   `bash test-fixtures/build.sh --all --clean` from the pack root.
   Then check `git diff test-fixtures/manifest.txt`: if non-empty,
   `git add test-fixtures/manifest.txt` and stage it alongside the
