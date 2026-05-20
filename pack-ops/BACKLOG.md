@@ -1551,18 +1551,53 @@ Description: BD-175 F2a (commit `bee710c`) implemented `validate-pack.py` Check 
 
   **E — Stale `cmd_update` mapping entry (reverse-direction asymmetry, absorbed from F2a per-commit review F2A-S1 2026-05-20):** Check 39 (F2a, commit `bee710c`) only verifies one direction (file-on-disk → cmd_update mapping). The reverse direction (mapping entry → file-on-disk exists) is unverified. At HEAD, `scripts/init-project.sh:1122` maps `project-template/docs/pack/PROMPT-TEMPLATES.md` but that file was RETIRED in v10.0 (PM-CHAT.md:149-150 confirms retirement). Without bidirectional verification, stale mappings can accumulate over multiple release cycles — `pack update` may silently no-op (or fail noisily depending on cp behavior) for entries whose source files no longer exist. Scope addition: BD-180 implementation should ALSO add reverse-direction check (extension to Check 39 OR new Check 41) that flags `cmd_update` entries whose source path doesn't exist at HEAD. The PROMPT-TEMPLATES.md entry should be REMOVED from `cmd_update` as part of this BD's fixes.
 
+  **F — `cmd_update` missing `supporting-docs/METHODOLOGY.md` + `supporting-docs/INSTALL-PROCEDURES.md` entries (absorbed from BD-176 architect notable finding 2; user-approved fold 2026-05-20):** BD-176 ARCHITECTURE-BD-176.md research confirmed these 2 files install to clients via init-project.sh stage S11 (fresh-install path) but are NOT in `cmd_update`'s explicit-mapping list (the `pack update` path). Same gap class as observations B/D — files reach fresh-init clients but not update clients. Scope addition: BD-180 implementation should add explicit `cmd_update` mappings for both files (or document as intentional exemptions with rationale if architect/coder determines they should NOT install via update). These 2 files share the same install-stage code path as METHODOLOGY.md's BD-175 Commit 8 CI-failure precedent — confirming they ARE fixture-affecting + ARE distributed to clients at install time.
+
+  **G — Self-documenting "files copied to clients" list in init-project.sh (absorbed from BD-176 OQ-2 D4 deferral; user-approved fold 2026-05-20):** BD-176 architect §5.3 sketched a self-documenting authoritative list inside `scripts/init-project.sh` (or `scripts/validate-pack.py`) of files copied to clients, that RC9 + future audits could reference. Deferred from BD-176 per LOGICAL FIT — BD-180 already targets validate-pack.py / init-project.sh extensions; this fits naturally. BD-180 implementation should design + implement the self-documenting list as part of the broader cmd_update symmetry work. Design sketch in ARCHITECTURE-BD-176.md §5.3 (coder reads for context, not as required prescription).
+
   Scope:
   - Verify each of A/B/C/D — is the asymmetry intentional (with rationale) or accidental?
   - For accidental cases: add missing `cmd_update` mappings to `scripts/init-project.sh` per the F2a Check 39 template
   - For intentional cases: add exemption-allowlist entries to `_CHECK_39_EXEMPTIONS` (or new check exemptions) with rationale comment per file
   - Remove the stale `PROMPT-TEMPLATES.md` mapping per E (verify nothing else references it; the file was retired in v10.0)
   - Add reverse-direction check (extension to Check 39 OR new Check 41) per E — flags cmd_update entries whose source path doesn't exist at HEAD
+  - Add explicit `cmd_update` mappings for `supporting-docs/METHODOLOGY.md` + `supporting-docs/INSTALL-PROCEDURES.md` per F (or document intentional exemption with rationale)
+  - Implement self-documenting "files copied to clients" list per G (design sketch in `ARCHITECTURE-BD-176.md` §5.3)
   - Consider extending Check 39's scope OR adding Check 41/42 to cover the broader pattern (e.g., `.gemini/commands/*.toml`, `.claude/skills/*/SKILL.md`, per-entry templates) — coder's choice based on simplest-correct-design heuristic + minimizing check-count proliferation
   - Regenerate `test-fixtures/manifest.txt` per RC9
 
   Implementation pattern: mechanical pack-coder work (no architect spawn needed — F2a's Check 39 implementation is the template; this BD extends the pattern to additional surfaces). Per per-BD review/fix pattern, single pack-reviewer pass after the changes land.
 
   Position: Insert immediately after BD-179 (per user direction 2026-05-19 — last BD before end-of-batch reviewer; BD-180 completes the F2a-pattern coverage at all surfaces before batch audit).
+Resolved: n/a
+
+---
+
+**BD-181 — Extend `scripts/validate-pack.py` Check 18 H2 to cover pack-root trinity (parity guard)**
+Type: TODO(version) — surfaced 2026-05-20 during BD-176 ARCHITECTURE-BD-176.md research (Notable Finding 3); user-approved fold into BD-175 emergency batch 2026-05-20.
+Status: Open
+Blockers: BD-175 + BD-176 + BD-177 + BD-178 + BD-179 + BD-180 (must close successfully in that order per user direction 2026-05-20)
+Unblocks: closes the pack-root trinity drift gap that currently has NO mechanical guard (only Trinity-rule discipline + reviewer attention). BD-178 exists explicitly because pre-existing trinity asymmetries crept in at project-template level despite Trinity-rule discipline — same risk applies to pack-root trinity, possibly worse (fewer eyeballs in PR review).
+File/Symbol:
+  - `scripts/validate-pack.py` Check 18 H2 implementation around lines 1295-1300 (currently hardcodes `REPO_ROOT / "project-template" / name`; extend to take base-path parameter + add second invocation for pack root)
+  - `scripts/tests/` new fixture test for Check 18 pack-root coverage (or extension to existing test)
+  - `test-fixtures/manifest.txt` (regenerate per RC9 — `scripts/` touched)
+Description: BD-176 architect's research (ARCHITECTURE-BD-176.md §7 D6) confirmed that Check 18 H2 (`scripts/validate-pack.py:1295-1300`) is hardcoded to verify within-trinity parity ONLY for `project-template/{CLAUDE,AGENTS,GEMINI}.md`. Pack-root trinity (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md` at repo root) has NO mechanical parity guard — drift between pack-root trinity files is undetected by CI until manual reviewer audit catches it.
+
+  This is brittle. BD-178 was opened specifically because pre-existing trinity asymmetries crept in at project-template level despite Trinity-rule discipline. Same risk applies to pack-root trinity — the difference is that pack-root trinity edits are typically Pack-Chat-direct (more centralized), while project-template trinity is more broadly edited. Both surfaces benefit from automated parity guards.
+
+  Scope:
+  - Generalize Check 18 H2 function: take a base-path parameter (currently hardcoded `REPO_ROOT / "project-template"`)
+  - Add a second invocation for pack-root trinity (REPO_ROOT directly)
+  - Both invocations independent — enforces within-trinity parity at EACH location separately (does NOT enforce cross-trinity parity, per Override 9 — pack-root and project-template can differ by design)
+  - Add test fixtures for new pack-root coverage (PASS + FAIL synthetic cases)
+  - Regenerate `test-fixtures/manifest.txt` per RC9
+
+  Implementation pattern: mechanical pack-coder work (no architect spawn needed — generalizing an existing check is mechanical extension of a proven pattern). Per per-BD review/fix pattern, single pack-reviewer pass after the changes land.
+
+  Override 9 compliance: this BD does NOT enforce cross-trinity parity. Both Check 18 invocations are independent — pack-root and project-template can have DIFFERENT bullet bodies (as designed per Override 9). Only WITHIN each trinity location (across the 3 CLI files) is byte identity enforced.
+
+  Position: Insert immediately after BD-180 (per user direction 2026-05-20 — between BD-180 cmd_update work and end-of-batch reviewer; small mechanical extension; closes a real brittleness gap before batch audit).
 Resolved: n/a
 
 ---
