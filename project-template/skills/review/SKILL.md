@@ -26,3 +26,27 @@ allowed-tools: Read, Grep, Glob, Bash
 12. Findings must be evidence-based. "This might have a problem" is not a finding. "Line 42 in UserService.swift catches RPCError but does not map it to a domain error, violating the error-handling boundary rule" is.
 13. Distinguish between blocking findings (must fix before merge) and advisory findings (should fix but not blocking).
 14. Acknowledge what the implementation got right. A review that only lists problems is incomplete — it must also confirm that the plan was followed and the success criteria are met.
+
+## Carry-forward discipline
+
+A reviewer may surface a finding as "end-of-batch carry-forward" (or any analogous "defer to later phase / later BD / later batch" framing) ONLY if the finding meets ALL THREE of the following high-bar tests. Deferral is scope creep — punted findings lose context, multiply across reviews, and become tech debt that requires archaeology in future sessions. This rule enforces deferral discipline at the moment findings are classified, not after the fact.
+
+1. **SIZE.** The finding requires architect-pass material work — new design surface, new contract negotiation, structural change spanning multiple files or layers. NOT "feels big" — provide a concrete file/contract surface argument (which files, which contracts, which design decisions are open).
+2. **BLOCKED.** Real dependency on a not-yet-landed artifact — a sibling BD's implementation, a tool/framework version not yet adopted, a fixture or test harness not yet built. NOT "feels related" — name the specific blocker and the unblock event.
+3. **LOGICAL FIT.** The finding cleanly belongs with another sibling BD/commit (concrete same-file / same-contract / same-symbol fit). NOT "thematic resemblance," "broader pattern," or "related area."
+
+**Default: FIX NOW.** Every finding that does NOT meet ALL THREE tests must be surfaced as an in-scope review finding (BLOCKER / MUST / SHOULD / NIT) for fix-now triage by the PM chat, not deferred to a later reviewer pass. Every finding must be visible at fix-or-defer triage time; carry-forward is not a way to bypass that triage.
+
+**Forbidden carry-forward shapes.** These framings are NOT acceptable carry-forwards; the reviewer must classify them as in-scope findings (fix in the current cycle; expand the in-scope finding's scope to cover the broader pattern if needed):
+
+- *"This is a broader pattern than just this commit."* — If the pattern is fixable now, expand the in-scope finding's scope to cover the pattern. Do not defer.
+- *"End-of-batch reviewer might consider…"* / *"Worth ~N minutes of attention before the batch closes."* — If it's worth N minutes, it's a fix-now finding, not a carry-forward. N minutes does not justify deferral.
+- *Forward-looking conjecture* (*"X is likely to grow"*, *"this could drift"*). — Not a finding; do not surface unless it represents a current defect with concrete evidence.
+- *Design ratification* (*"this is a feature, not a bug"*, *"acknowledged tradeoff"*). — Not a finding; do not surface.
+- *"Project rule X recommends fix-now"* stated as the rationale but presented as carry-forward. — If a project rule recommends fix-now, surface as fix-now; do not contradict the rule by deferring.
+
+**If a finding qualifies as a true carry-forward**, explicitly cite which test it passes in the report using this format:
+
+> CARRY-FORWARD: SIZE / BLOCKED / LOGICAL-FIT — &lt;concrete evidence: which files, which blocker, which sibling BD&gt;
+
+If it does not qualify, surface it as a regular in-scope finding with severity. Hope is not a plan. Carry-forward without high-bar justification is tech debt accumulation by another name.
