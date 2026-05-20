@@ -237,6 +237,96 @@ lines4 = mod._strip_code_blocks(text4)
 if lines4 != ["line a", "line b", "line c"]:
     failures.append(f"T4 expected pass-through, got {lines4}")
 
+# T5: indented 4-space code block (CommonMark §4.4) is stripped.
+#     Open after a blank line; close at the first non-indented non-blank
+#     line. Bare-ref-shaped tokens INSIDE the indented block must be
+#     erased so Check 40 cannot see them.
+text5 = """before prose
+
+    indented \`BARE-REF.md\` here
+    another indented \`OTHER.md\` line
+
+after prose"""
+lines5 = mod._strip_code_blocks(text5)
+if len(lines5) != 6:
+    failures.append(f"T5 expected 6 lines, got {len(lines5)}: {lines5}")
+if lines5[0] != "before prose":
+    failures.append(f"T5 expected line 0 = 'before prose', got {lines5[0]!r}")
+if lines5[1] != "":
+    failures.append(f"T5 expected line 1 = '' (blank), got {lines5[1]!r}")
+if lines5[2] != "":
+    failures.append(f"T5 expected line 2 = '' (indented stripped), got {lines5[2]!r}")
+if lines5[3] != "":
+    failures.append(f"T5 expected line 3 = '' (indented stripped), got {lines5[3]!r}")
+if lines5[4] != "":
+    failures.append(f"T5 expected line 4 = '' (blank, closes block), got {lines5[4]!r}")
+if lines5[5] != "after prose":
+    failures.append(f"T5 expected line 5 = 'after prose', got {lines5[5]!r}")
+# Most-important assertion: bare-ref tokens must NOT survive stripping.
+stripped_text5 = "\n".join(lines5)
+if "BARE-REF.md" in stripped_text5 or "OTHER.md" in stripped_text5:
+    failures.append(
+        f"T5 indented-block content leaked through stripping: {stripped_text5!r}"
+    )
+
+# T6: indented block NOT opened without a preceding blank line.
+#     A 4-space-indented line that immediately follows a non-blank
+#     prose line is a continuation/wrapped line, not a code block.
+#     The bare-ref token in such a line must remain visible.
+text6 = """prose paragraph line 1
+    continuation \`KEEP-VISIBLE.md\` (no blank before; not a code block)
+after"""
+lines6 = mod._strip_code_blocks(text6)
+if len(lines6) != 3:
+    failures.append(f"T6 expected 3 lines, got {len(lines6)}: {lines6}")
+if "KEEP-VISIBLE.md" not in "\n".join(lines6):
+    failures.append(
+        f"T6 non-code-block 4-space indent erroneously stripped: {lines6}"
+    )
+
+# T7: indented block tolerates a blank line between two indented lines
+#     (CommonMark allows this; block continues).
+text7 = """before
+
+    indented line 1 \`A.md\`
+
+    indented line 2 \`B.md\`
+
+after"""
+lines7 = mod._strip_code_blocks(text7)
+if len(lines7) != 7:
+    failures.append(f"T7 expected 7 lines, got {len(lines7)}: {lines7}")
+stripped_text7 = "\n".join(lines7)
+if "A.md" in stripped_text7 or "B.md" in stripped_text7:
+    failures.append(
+        f"T7 indented block (with internal blank) did not fully strip: {stripped_text7!r}"
+    )
+if lines7[0] != "before" or lines7[6] != "after":
+    failures.append(f"T7 prose boundaries not preserved: {lines7}")
+
+# T8: fenced block takes precedence over a pending indented context.
+#     If a fence opens after a blank line + 4-space indent, the fence
+#     wins and no spurious indented-block state lingers.
+text8 = """before
+
+\`\`\`
+fenced content \`INSIDE-FENCE.md\`
+\`\`\`
+
+    indented \`INSIDE-INDENT.md\` after fence
+
+after"""
+lines8 = mod._strip_code_blocks(text8)
+stripped_text8 = "\n".join(lines8)
+if "INSIDE-FENCE.md" in stripped_text8:
+    failures.append(f"T8 fenced content leaked: {stripped_text8!r}")
+if "INSIDE-INDENT.md" in stripped_text8:
+    failures.append(f"T8 indented-after-fence content leaked: {stripped_text8!r}")
+if lines8[0] != "before":
+    failures.append(f"T8 prose 'before' not preserved: {lines8[0]!r}")
+if lines8[-1] != "after":
+    failures.append(f"T8 prose 'after' not preserved: {lines8[-1]!r}")
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -245,7 +335,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "_strip_code_blocks preserves line count + strips fence content" ;;
+    0) t_pass "_strip_code_blocks preserves line count + strips fence AND indented blocks" ;;
     *) t_fail "_strip_code_blocks unit tests failed" ;;
 esac
 

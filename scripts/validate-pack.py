@@ -4453,28 +4453,88 @@ _CHECK_40_HYPERLINK_PATTERN = re.compile(
 )
 
 # Code-block stripper: replace fenced code-block content (``` ... ```)
-# with empty lines so line numbers are preserved. Indented 4-space
-# blocks (after an empty line) are also dropped. Single-backtick spans
-# inside non-code-block prose are NOT stripped — those ARE the surface
-# Check 40 looks for.
+# AND indented 4-space code-block content with empty lines so line
+# numbers are preserved. Single-backtick spans inside non-code-block
+# prose are NOT stripped — those ARE the surface Check 40 looks for.
 def _strip_code_blocks(text: str) -> list[str]:
-    """Return list of lines with fenced code-block content replaced by
-    empty strings. Preserves total line count so file:line citations
-    remain accurate against the original file."""
+    """Per `ARCHITECTURE-BD-179.md` §3.2 (code-block-stripping preprocess).
+
+    Return list of lines with code-block content replaced by empty
+    strings. Two mechanisms are recognized:
+
+    1. **Fenced code blocks** (CommonMark §4.5) — lines whose first
+       non-whitespace token is ` ``` ` (with optional language id) open
+       and close the fence. All lines inside the fence (and the fence
+       lines themselves) are replaced with empty strings.
+
+    2. **Indented code blocks** (CommonMark §4.4) — outside a fenced
+       block, a line that begins with 4 spaces of indentation AND
+       follows a blank line begins an indented block. Consecutive
+       lines that ALSO begin with 4-space indentation continue the
+       block; blank lines INSIDE the block (between two indented
+       lines) are tolerated. The block ends at the first non-blank
+       line that is NOT 4-space-indented. All lines that participate
+       in the block are replaced with empty strings.
+
+       CommonMark edge cases (e.g., indented inside a list item is
+       NOT an indented code block) are intentionally NOT modeled —
+       pack-ops/ markdown convention favors fenced blocks, and the
+       simple top-level "blank line then 4-space indent" rule covers
+       every observed case without over-engineering (architect §3.2
+       acknowledges the trade-off).
+
+    Preserves total line count so file:line citations from Check 40
+    remain accurate against the original file (matching Check 37
+    convention).
+    """
+    raw_lines = text.splitlines()
     out: list[str] = []
     in_fence = False
-    for line in text.splitlines():
-        # Detect fence open/close: a line whose first non-whitespace
-        # token is ``` (with optional language id).
+    in_indented = False
+    prev_blank = True  # treat "before line 0" as blank → indent can open at line 0
+    for line in raw_lines:
         stripped = line.lstrip()
+        # Fenced-block handling takes precedence over indented detection.
         if stripped.startswith("```"):
             in_fence = not in_fence
+            in_indented = False  # fence trumps any pending indented context
             out.append("")  # the fence line itself is also stripped
+            prev_blank = False
             continue
         if in_fence:
             out.append("")
+            prev_blank = False
             continue
+
+        # Indented-block handling.
+        is_blank = line.strip() == ""
+        is_indented_4 = line.startswith("    ")
+
+        if in_indented:
+            if is_indented_4:
+                # Block continues.
+                out.append("")
+                prev_blank = False
+                continue
+            if is_blank:
+                # Blank line inside indented block — keep block open;
+                # emit empty line (line count preserved).
+                out.append("")
+                prev_blank = True
+                continue
+            # Non-indented non-blank line ends the block.
+            in_indented = False
+            # Fall through to emit this line as prose.
+        else:
+            if is_indented_4 and prev_blank:
+                # Open new indented block at this line.
+                in_indented = True
+                out.append("")
+                prev_blank = False
+                continue
+
         out.append(line)
+        prev_blank = is_blank
     return out
 
 
