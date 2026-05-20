@@ -480,7 +480,7 @@ until F4-bundle implementation.
 pack-repo root `.claude/skills/boundary-investigation/`,
 `.codex/skills/boundary-investigation/`, and
 `.gemini/skills/boundary-investigation/` (the "New skill" paragraph
-above, line ~329 area). Pack-repo agents load skills at run-time from
+at the top of §6). Pack-repo agents load skills at run-time from
 CLI-prefixed dirs at the pack root — this is structurally different
 from project-side ship-via-install and was correctly described in §6.
 
