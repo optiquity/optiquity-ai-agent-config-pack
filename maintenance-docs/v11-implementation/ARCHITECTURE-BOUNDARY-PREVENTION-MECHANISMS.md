@@ -433,7 +433,59 @@ The skill loads for ALL pack agents because all five may be invoked against proj
 
 **Project-side skill trinity:** The skill ALSO ships to `project-template/.claude/skills/boundary-investigation/` and `.codex/` / `.gemini/` parallels — project-side coders / reviewers / architects / planners working in client repos hit the same regression mechanism in their own workflows. (This is Trinity Pack memory's "Repo conventions — Skill and agent maintenance is mechanical by default" pattern: the skill is the methodology, agent prompts reference it, both pack-side and project-side surfaces get the same skill loaded.)
 
+> **F4 addendum (2026-05-19):** BD-175 commit `8f6ce51` superseded
+> this Pattern B prescription with Pattern A. See §6.1 — F4 supersession
+> addendum at the end of this section.
+
 **Measurable test for M4:** After M4 lands, both pack-reviewer and pack-coder regression tests (proposed; see §11) include a synthetic boundary-violation prompt and assert the skill's methodology was applied (IMPL-REPORT / review-report mentions the SSOT-investigation step). A baseline gold-image of the skill content is checked into `test-fixtures/` for byte-identity testing (parallels Check 31 skill-cell internal-consistency gate).
+
+### §6.1 — F4 supersession addendum
+
+**Reconciles:** The "Project-side skill trinity" paragraph above (Pattern
+B prescription) with the realized shipping shape committed in BD-175
+commit `8f6ce51` (F4 bundle).
+
+The original §6 design above prescribed **Pattern B** for the
+project-side boundary-investigation skill — 3 byte-identical SKILL.md
+files at `project-template/.claude/skills/boundary-investigation/`,
+`project-template/.codex/skills/boundary-investigation/`, and
+`project-template/.gemini/skills/boundary-investigation/`. BD-175
+commit `8f6ce51` (F4 bundle) superseded this with **Pattern A**, the
+pack's canonical skill-source convention: a single source at
+`project-template/skills/boundary-investigation/SKILL.md` that
+auto-distributes to all 3 client CLI skill directories at client install
+time.
+
+**Realized consumer:** `stage_s4_skills()` in `scripts/init-project.sh`
+— iterates `$PACK/project-template/skills/*/`, copies each `SKILL.md`
+into `$TARGET/.claude/skills/<name>/`, `$TARGET/.codex/skills/<name>/`,
+and `$TARGET/.gemini/skills/<name>/`, then verifies all three
+destinations exist. The boundary-investigation skill participates in
+this loop alongside the 30+ other Pattern A skills.
+
+**Why Pattern A:** Pack convention for byte-identical-across-CLIs skills
+(no per-CLI content variation) is the canonical
+`project-template/skills/<name>/` location, matching how 30+ other
+project-side skills already ship (`api-design`, `audit-methodology`,
+`debugging`, `python-best-practices`, etc.). Pattern A guarantees
+byte-identity by construction (single source) rather than by
+maintenance discipline (three trinity files that drift if maintainers
+diverge). Pattern B remains valid for skills with genuinely CLI-specific
+content variation (e.g., skills whose invocation syntax differs per
+CLI); boundary-investigation has no such variation. Pattern B was
+inadvertently prescribed in the original architect design and not caught
+until F4-bundle implementation.
+
+**Unchanged from §6:** The pack-side boundary-investigation skill at
+pack-repo root `.claude/skills/boundary-investigation/`,
+`.codex/skills/boundary-investigation/`, and
+`.gemini/skills/boundary-investigation/` (the "New skill" paragraph
+above, line ~329 area). Pack-repo agents load skills at run-time from
+CLI-prefixed dirs at the pack root — this is structurally different
+from project-side ship-via-install and was correctly described in §6.
+
+**Back-pointer:** commit `8f6ce51` (BD-175 F4 bundle) is the realizing
+commit for this supersession.
 
 ---
 
