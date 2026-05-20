@@ -487,6 +487,14 @@ from project-side ship-via-install and was correctly described in §6.
 **Back-pointer:** commit `8f6ce51` (BD-175 F4 bundle) is the realizing
 commit for this supersession.
 
+**Pattern reference:** This addendum follows the architect-doc-vs-reality
+reconciliation pattern templated in `ARCHITECTURE-BD-119.md` §9.2
+(addendum naming BD-160 as the first realized consumer of the
+`migrator_target_surface_for_version` design); see also pack-repo
+`CLAUDE.md` § "Architect-doc-vs-reality reconciliation" for the
+codified three-part chain (in-code docstring + architect-doc addendum
++ IMPL-REPORT cross-reference).
+
 ---
 
 ## §7 — Mechanism M6: SSOT-rotation reminder
