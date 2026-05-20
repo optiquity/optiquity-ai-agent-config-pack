@@ -869,6 +869,17 @@ stage_s11_v11_artifacts() {
         "$copy_fn" "$PACK/project-template/.gemini/commands/pack-help.toml" \
             "$TARGET/.gemini/commands/pack-help.toml"
     fi
+    # BD-180 observation A: pm-startup.toml is the Gemini surface for the
+    # /pm-startup command (parallel to pack-help.toml). The Claude and Codex
+    # surfaces live as `.claude/skills/pm-startup/SKILL.md` +
+    # `.codex/skills/pm-startup/SKILL.md` distributed by stage S4 from the
+    # canonical pool. Without this explicit copy, Gemini clients would lack
+    # the pm-startup command at fresh install.
+    if [[ -f "$PACK/project-template/.gemini/commands/pm-startup.toml" ]]; then
+        mkdir -p "$TARGET/.gemini/commands"
+        "$copy_fn" "$PACK/project-template/.gemini/commands/pm-startup.toml" \
+            "$TARGET/.gemini/commands/pm-startup.toml"
+    fi
 
     # 5. The pack-help shell script + its single dep (lib/detect.sh).
     #    The per-CLI skills/commands above invoke `bash scripts/pack-help.sh`
@@ -1105,6 +1116,13 @@ cmd_update() {
     #   pack_relpath     — path under $PACK (or $PACK/project-template/)
     #   project_relpath  — path under $TARGET
     #   class            — explicit class for customization_preserve
+    #
+    # Self-documenting fixture-affecting list lives below at
+    # `_CLIENT_INSTALLED_FILES` (BD-180 observation G per
+    # ARCHITECTURE-BD-176.md §5.3). validate-pack.py Check 41 asserts the
+    # `_CLIENT_INSTALLED_FILES` list matches the actual copy-site state of
+    # this script (cmd_update entries below + fresh-install stages
+    # S3/S4/S5/S6/S7/S8/S11).
     local entries=(
         "project-template/CLAUDE.md:CLAUDE.md:trinity"
         "project-template/AGENTS.md:AGENTS.md:trinity"
@@ -1119,7 +1137,11 @@ cmd_update() {
         "project-template/docs/pack/PM-CHAT.md:docs/pack/PM-CHAT.md:pm-chat"
         "project-template/docs/pack/PLATFORM-SKILLS.md:docs/pack/PLATFORM-SKILLS.md:generic"
         "project-template/docs/pack/PACK-FEEDBACK.md:docs/pack/PACK-FEEDBACK.md:generic"
-        "project-template/docs/pack/PROMPT-TEMPLATES.md:docs/pack/PROMPT-TEMPLATES.md:generic"
+        # BD-180 observation E (2026-05-20): PROMPT-TEMPLATES.md entry
+        # REMOVED — the file was retired in v10.0 (replaced by per-agent
+        # prompts under docs/pack/prompts/). The stale mapping had no
+        # source file to copy from. Reverse-direction Check 39 now flags
+        # such drift bidirectionally.
         "project-template/docs/pack/HELP-FRAGMENT.md:docs/pack/HELP-FRAGMENT.md:generic"
         "project-template/docs/pack/HELP-FRAGMENT-TRACKER.md:docs/pack/HELP-FRAGMENT-TRACKER.md:generic"
         "project-template/docs/pack/OPTIONAL-FEATURES.md:docs/pack/OPTIONAL-FEATURES.md:generic"
@@ -1130,6 +1152,41 @@ cmd_update() {
         "project-template/.claude/skills/pack-help/SKILL.md:.claude/skills/pack-help/SKILL.md:generic"
         "project-template/.codex/skills/pack-help/SKILL.md:.codex/skills/pack-help/SKILL.md:generic"
         "project-template/.gemini/commands/pack-help.toml:.gemini/commands/pack-help.toml:generic"
+        # BD-180 observation B (2026-05-20): pm-startup per-CLI skills
+        # parallel to pack-help. Canonical source at
+        # project-template/skills/pm-startup/SKILL.md is distributed by S4
+        # to all three CLIs at fresh install; without these entries,
+        # existing clients running `pack update` would silently NOT receive
+        # pm-startup skill content updates.
+        "project-template/.claude/skills/pm-startup/SKILL.md:.claude/skills/pm-startup/SKILL.md:generic"
+        "project-template/.codex/skills/pm-startup/SKILL.md:.codex/skills/pm-startup/SKILL.md:generic"
+        # BD-180 observation A (2026-05-20): Gemini surface for /pm-startup
+        # command. S11 explicit-copy block above mirrors the pack-help.toml
+        # treatment; this entry propagates updates to existing clients.
+        "project-template/.gemini/commands/pm-startup.toml:.gemini/commands/pm-startup.toml:generic"
+        # BD-180 observation D (2026-05-20): per-entry skeleton templates
+        # (BD-166/BD-167). Installed at fresh init by S11 step 6 (lines
+        # 891-947 — explicit `"$copy_fn"` calls for each); without these
+        # cmd_update entries, template updates (e.g., `_rules.md` schema
+        # changes) would not propagate to existing clients via
+        # `pack update`. BD-167 scaffolding contract is load-bearing.
+        "project-template/docs/project/backlog/_rules.md:docs/project/backlog/_rules.md:generic"
+        "project-template/docs/project/backlog/_intro.md:docs/project/backlog/_intro.md:generic"
+        "project-template/docs/project/implementation-plan/_rules.md:docs/project/implementation-plan/_rules.md:generic"
+        "project-template/docs/project/implementation-plan/_intro.md:docs/project/implementation-plan/_intro.md:generic"
+        "project-template/docs/project/changelog/_rules.md:docs/project/changelog/_rules.md:generic"
+        "project-template/docs/project/changelog/_intro.md:docs/project/changelog/_intro.md:generic"
+        "project-template/docs/project/changelog/_format.md:docs/project/changelog/_format.md:generic"
+        # BD-180 observation F (2026-05-20): supporting-docs/* installed
+        # to docs/pack/ by S6 (lines 565-583 — separate copy blocks below
+        # the docs/pack/*.md glob loop since these source files live under
+        # $PACK/supporting-docs/, not under $PACK/project-template/). Same
+        # gap class as observations B/D — files reached fresh-init clients
+        # but not update clients. BD-175 Commit 8 CI-failure precedent
+        # (METHODOLOGY.md manifest drift) confirms both files ARE
+        # fixture-affecting + ARE distributed at install time.
+        "supporting-docs/METHODOLOGY.md:docs/pack/METHODOLOGY.md:generic"
+        "supporting-docs/INSTALL-PROCEDURES.md:docs/pack/INSTALL-PROCEDURES.md:generic"
     )
 
     local entry pack_rel proj_rel cls theirs ours dest
@@ -1176,6 +1233,85 @@ cmd_update() {
         say "named .pre-update sidecars before continuing."
     fi
 }
+
+# ── _CLIENT_INSTALLED_FILES (BD-180 observation G per ARCHITECTURE-BD-176.md §5.3) ──
+#
+# Self-documenting authoritative inventory of files this script installs to
+# clients. `validate-pack.py` Check 41 (BD-180) verifies (a) each named
+# `pack_relpath` below exists on disk at HEAD and (b) the inventory has
+# coverage for the BD-088 update path (`cmd_update` entries above) and the
+# fresh-install stages below. Adding a new explicit client-installed file
+# requires updating BOTH this list AND the relevant copy-site (cmd_update
+# entries OR a stage loop) — Check 41 enforces the discoverability anchor;
+# Check 39 enforces the cmd_update mapping/glob symmetry.
+#
+# Format: one entry per line between START/END markers; each entry is
+#   #   <pack_relpath>  ->  <project_relpath>  [stage:<copy-site ids>]
+# where copy-site ids name the install paths (S3..S11 for fresh-install
+# stages; `cmd_update` for the BD-088 explicit-mapping update path).
+#
+# Bulk-copied directories (mass-installed by stage loops; not enumerated
+# file-by-file in the START/END block below):
+#   * project-template/skills/*/SKILL.md
+#       -> .{claude,codex,gemini}/skills/*/SKILL.md   [S4 canonical-pool loop]
+#   * project-template/.{claude,codex,gemini}/agents/*.md
+#       -> .{claude,codex,gemini}/agents/*.md
+#       [S5-adjacent per-CLI agent install + _cmd_update_iter_dir]
+#   * project-template/scripts/*
+#       -> scripts/*                                  [S5 + _cmd_update_iter_dir]
+#   * project-template/docs/pack/prompts/*.md
+#       -> docs/pack/prompts/*.md                     [S6 loop]
+#   * project-template/.github/ISSUE_TEMPLATE/*.yml
+#       -> .github/ISSUE_TEMPLATE/*.yml               [S11 step 3 + cmd_update]
+#
+# Intentionally NOT installed to clients (rationale per BD-180 observation):
+#   * project-template/.claude/settings.local.example.json
+#       -- BD-180 observation C (2026-05-20): `settings.local.*` is the
+#       Claude Code convention for per-developer customization; clients
+#       author their own; the pack does not seed. Listed here for
+#       discoverability — searchable when an actor asks "why does this
+#       exist if it never installs?"
+#
+# _CLIENT_INSTALLED_FILES_START
+#   project-template/CLAUDE.md  ->  CLAUDE.md  [stage:S7,cmd_update]
+#   project-template/AGENTS.md  ->  AGENTS.md  [stage:S7,cmd_update]
+#   project-template/GEMINI.md  ->  GEMINI.md  [stage:S7,cmd_update]
+#   project-template/.claude/settings.json  ->  .claude/settings.json  [stage:S3,cmd_update]
+#   project-template/.mcp.json.example  ->  .mcp.json.example  [stage:S3,cmd_update]
+#   project-template/.codex/config.toml  ->  .codex/config.toml  [stage:S3,cmd_update]
+#   project-template/.codex/config.toml.example  ->  .codex/config.toml.example  [stage:S3,cmd_update]
+#   project-template/.codex/requirements.toml  ->  .codex/requirements.toml  [stage:S3,cmd_update]
+#   project-template/.gemini/.env.example  ->  .gemini/.env  [stage:S3,cmd_update]
+#   project-template/.gemini/settings.json  ->  .gemini/settings.json  [stage:S3,cmd_update]
+#   project-template/.github/ISSUE_TEMPLATE/work-item.yml  ->  .github/ISSUE_TEMPLATE/work-item.yml  [stage:S11,cmd_update]
+#   project-template/.github/ISSUE_TEMPLATE/inbound.yml  ->  .github/ISSUE_TEMPLATE/inbound.yml  [stage:S11,cmd_update]
+#   project-template/.github/ISSUE_TEMPLATE/config.yml  ->  .github/ISSUE_TEMPLATE/config.yml  [stage:S11,cmd_update]
+#   project-template/docs/pack/HELP-FRAGMENT.md  ->  docs/pack/HELP-FRAGMENT.md  [stage:S6,S11,cmd_update]
+#   project-template/docs/pack/OPTIONAL-FEATURES.md  ->  docs/pack/OPTIONAL-FEATURES.md  [stage:S6,cmd_update]
+#   project-template/docs/pack/PACK-FEEDBACK.md  ->  docs/pack/PACK-FEEDBACK.md  [stage:S6,cmd_update]
+#   project-template/docs/pack/PLATFORM-SKILLS.md  ->  docs/pack/PLATFORM-SKILLS.md  [stage:S6,cmd_update]
+#   project-template/docs/pack/PM-CHAT.md  ->  docs/pack/PM-CHAT.md  [stage:S6,cmd_update]
+#   project-template/tracker.toml.project-example  ->  tracker.toml.example  [stage:S11,cmd_update]
+#   project-template/.claude/skills/pack-help/SKILL.md  ->  .claude/skills/pack-help/SKILL.md  [stage:S11,cmd_update]
+#   project-template/.codex/skills/pack-help/SKILL.md  ->  .codex/skills/pack-help/SKILL.md  [stage:S11,cmd_update]
+#   project-template/.gemini/commands/pack-help.toml  ->  .gemini/commands/pack-help.toml  [stage:S11,cmd_update]
+#   project-template/.claude/skills/pm-startup/SKILL.md  ->  .claude/skills/pm-startup/SKILL.md  [stage:S4,cmd_update]
+#   project-template/.codex/skills/pm-startup/SKILL.md  ->  .codex/skills/pm-startup/SKILL.md  [stage:S4,cmd_update]
+#   project-template/.gemini/commands/pm-startup.toml  ->  .gemini/commands/pm-startup.toml  [stage:S11,cmd_update]
+#   project-template/docs/project/backlog/_rules.md  ->  docs/project/backlog/_rules.md  [stage:S11,cmd_update]
+#   project-template/docs/project/backlog/_intro.md  ->  docs/project/backlog/_intro.md  [stage:S11,cmd_update]
+#   project-template/docs/project/implementation-plan/_rules.md  ->  docs/project/implementation-plan/_rules.md  [stage:S11,cmd_update]
+#   project-template/docs/project/implementation-plan/_intro.md  ->  docs/project/implementation-plan/_intro.md  [stage:S11,cmd_update]
+#   project-template/docs/project/changelog/_rules.md  ->  docs/project/changelog/_rules.md  [stage:S11,cmd_update]
+#   project-template/docs/project/changelog/_intro.md  ->  docs/project/changelog/_intro.md  [stage:S11,cmd_update]
+#   project-template/docs/project/changelog/_format.md  ->  docs/project/changelog/_format.md  [stage:S11,cmd_update]
+#   pack-ops/HELP-FRAGMENT-TRACKER.md  ->  docs/pack/HELP-FRAGMENT-TRACKER.md  [stage:S11]
+#   project-template/docs/pack/HELP-FRAGMENT-TRACKER.md  ->  docs/pack/HELP-FRAGMENT-TRACKER.md  [stage:S6,cmd_update]
+#   supporting-docs/METHODOLOGY.md  ->  docs/pack/METHODOLOGY.md  [stage:S6,cmd_update]
+#   supporting-docs/INSTALL-PROCEDURES.md  ->  docs/pack/INSTALL-PROCEDURES.md  [stage:S6,cmd_update]
+#   scripts/pack-help.sh  ->  scripts/pack-help.sh  [stage:S11]
+#   scripts/lib/detect.sh  ->  scripts/lib/detect.sh  [stage:S11]
+# _CLIENT_INSTALLED_FILES_END
 
 # Blast-radius sweep — §7.7
 blast_radius_sweep() {

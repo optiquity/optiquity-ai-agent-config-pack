@@ -177,22 +177,42 @@ Checks:
       (README.md, QUICKSTART.md, pack-root trinity). Catches pack-only
       content mis-sited outside `pack-ops/`.
   39. cmd_update mapping/glob symmetry (BD-175 F2a per F4 bundle
-      reviewer prevention-design feed-in #2): walks every file under
-      `project-template/docs/pack/*.md` (the fresh-install S6 glob
-      target) and verifies a corresponding explicit mapping entry
-      exists in `scripts/init-project.sh`'s `cmd_update` `entries=()`
-      array. Failure mode this gate catches: a file added to
-      `project-template/docs/pack/` (covered by S6 fresh-install glob)
-      that lacks an explicit `cmd_update` mapping — existing clients
-      running `pack update` would silently NOT receive the new file
-      (asymmetric coverage). Empirically demonstrated during BD-175
-      Commit 10 (`OPTIONAL-FEATURES.md` required an explicit
-      `cmd_update` mapping addition at L1125; without it, the file
-      would have installed at fresh init but not at update). The
-      check parses the `cmd_update` entries array via regex (does
-      not source the shell file) and supports an explicit allowlist
-      `_CHECK_39_EXEMPTIONS` for files intentionally absent from
-      `cmd_update` (default: empty — surface-over-silently-exempt).
+      reviewer prevention-design feed-in #2; BD-180 reverse-direction
+      extension 2026-05-20): bidirectional symmetry between
+      `scripts/init-project.sh` `cmd_update` `entries=()` array and
+      project-template surface.
+      - Forward direction (BD-175 F2a): walks every file under
+        `project-template/docs/pack/*.md` (the fresh-install S6 glob
+        target) and verifies a corresponding explicit mapping entry
+        exists. Catches the BD-175 Commit 10 failure mode
+        (`OPTIONAL-FEATURES.md` installed at fresh init but not at
+        update). Allowlist `_CHECK_39_EXEMPTIONS` admits files
+        intentionally absent from `cmd_update` (default: empty —
+        surface-over-silently-exempt).
+      - Reverse direction (BD-180 observation E 2026-05-20): every
+        `cmd_update` entry's `pack_relpath` must point at a file
+        that exists at HEAD. Catches stale mappings whose source
+        file was retired (empirical example: pre-BD-180,
+        `project-template/docs/pack/PROMPT-TEMPLATES.md` mapped at
+        scripts/init-project.sh:1122 referenced a file retired in
+        v10.0). Allowlist `_CHECK_39_REVERSE_EXEMPTIONS` admits
+        entries whose source intentionally lives outside the repo
+        tree (default: empty).
+      The check parses the `cmd_update` entries array via regex (does
+      not source the shell file).
+  41. _CLIENT_INSTALLED_FILES self-documenting list integrity
+      (BD-180 observation G per ARCHITECTURE-BD-176.md §5.3): the
+      `_CLIENT_INSTALLED_FILES_START` / `_CLIENT_INSTALLED_FILES_END`
+      comment block in `scripts/init-project.sh` is an authoritative
+      inventory of files install to clients. Check 41 asserts: (a)
+      the START/END markers exist exactly once each, (b) the block is
+      well-formed (at least one entry line), (c) every entry's
+      `pack_relpath` exists at HEAD, and (d) every cmd_update
+      `pack_relpath` is listed in the block. Catches drift between
+      the self-documenting comment and the actual copy-site state.
+      Allowlist `_CHECK_41_EXEMPTIONS` admits inventory entries
+      whose source intentionally lives outside repo HEAD (default:
+      empty).
   40. pack-ops/ bare cross-reference scanner (BD-179 per
       ARCHITECTURE-BD-179.md §3-§8): walks all `pack-ops/*.md` files
       EXCEPT regenerated mirrors (`pack-ops/BACKLOG.md` /
@@ -4197,23 +4217,37 @@ def check_pack_only_file_siting() -> None:
         )
 
 
-# ── Check 39: cmd_update mapping/glob symmetry (BD-175 F2a) ────────────────
+# ── Check 39: cmd_update mapping/glob symmetry (BD-175 F2a + BD-180 E) ─────
 #
-# Scope: `project-template/docs/pack/*.md` (the fresh-install S6 glob target
-# at scripts/init-project.sh:544). Any file added here is auto-copied at
-# fresh init by S6's glob loop but only copied to existing clients via
-# `pack update` if it has an explicit mapping in `cmd_update`'s
-# `entries=()` array. Coverage drift between the two paths is silent until
-# a client runs `pack update` and notices the missing file.
+# Scope: bidirectional symmetry between `scripts/init-project.sh`
+# `cmd_update` `entries=()` array and project-template surface state.
 #
-# Exemption allowlist (empty by default): files intentionally absent from
-# `cmd_update` mappings. Surface-over-silently-exempt: when in doubt,
-# leave OUT of the allowlist and let Check 39 FAIL — Pack Chat triage can
-# decide per-file. Each entry MUST include a one-line rationale comment.
+# Forward direction (BD-175 F2a; `_CHECK_39_EXEMPTIONS`):
+# `project-template/docs/pack/*.md` files must have explicit cmd_update
+# mappings (catches the BD-175 Commit 10 OPTIONAL-FEATURES.md gap).
+#
+# Reverse direction (BD-180 observation E; `_CHECK_39_REVERSE_EXEMPTIONS`):
+# every cmd_update entry's `pack_relpath` must resolve to a file at HEAD
+# (catches the pre-BD-180 PROMPT-TEMPLATES.md stale-mapping gap; retired
+# in v10.0 but mapping persisted at scripts/init-project.sh:1122).
+#
+# Exemption allowlists (empty by default): files intentionally absent from
+# `cmd_update` mappings (forward) or whose source intentionally lives
+# outside repo HEAD (reverse). Surface-over-silently-exempt: when in
+# doubt, leave OUT and let Check 39 FAIL — Pack Chat triage decides
+# per-file. Each entry MUST include a one-line rationale comment.
 _CHECK_39_EXEMPTIONS: dict[str, str] = {
     # Intentionally empty at HEAD per BD-175 F2a IMPL-REPORT §6: all six
     # files under `project-template/docs/pack/*.md` currently have explicit
     # mappings. Add entries here only with a rationale comment.
+}
+
+_CHECK_39_REVERSE_EXEMPTIONS: dict[str, str] = {
+    # Intentionally empty at HEAD per BD-180 observation E close: the
+    # PROMPT-TEMPLATES.md stale entry was REMOVED from cmd_update in this
+    # BD (retired in v10.0; mapping had been dead since the file deletion).
+    # Add entries here only when a cmd_update source intentionally lives
+    # outside the repo tree (e.g., a hypothetical extern-resolved path).
 }
 
 
@@ -4256,23 +4290,31 @@ def _parse_cmd_update_entries() -> set[str]:
 
 
 def check_cmd_update_symmetry() -> None:
-    """Check 39 — cmd_update mapping/glob coverage symmetry (BD-175 F2a).
+    """Check 39 — cmd_update mapping/glob coverage symmetry (BD-175 F2a + BD-180 E).
 
-    For every file under `project-template/docs/pack/*.md` (the S6
-    fresh-install glob target), assert that a corresponding explicit
-    `cmd_update` mapping exists in `scripts/init-project.sh`. Without
-    this gate, files added to `docs/pack/` install at fresh init but
-    silently skip existing clients running `pack update` — empirically
-    demonstrated during BD-175 Commit 10 (`OPTIONAL-FEATURES.md`).
+    Bidirectional symmetry between `scripts/init-project.sh`
+    `cmd_update` `entries=()` array and project-template surface.
 
-    Exemption allowlist: `_CHECK_39_EXEMPTIONS` (default: empty).
-    Files in the allowlist PASS with a notice; everything else MUST
-    have an explicit mapping entry.
+    Forward direction (BD-175 F2a): every file under
+    `project-template/docs/pack/*.md` (the S6 fresh-install glob target)
+    must have a corresponding explicit `cmd_update` mapping. Catches the
+    BD-175 Commit 10 OPTIONAL-FEATURES.md fresh-init-only gap.
+
+    Reverse direction (BD-180 observation E): every `cmd_update` entry's
+    `pack_relpath` must resolve to a file at HEAD. Catches stale mappings
+    whose source file was retired (pre-BD-180 example: PROMPT-TEMPLATES.md
+    retired in v10.0 but mapping persisted at scripts/init-project.sh:1122).
+
+    Exemption allowlists:
+    - `_CHECK_39_EXEMPTIONS` — forward (file-on-disk lacks mapping;
+      intentional).
+    - `_CHECK_39_REVERSE_EXEMPTIONS` — reverse (mapping points outside
+      repo HEAD; intentional).
 
     Lenient mode: if `scripts/init-project.sh` is absent (unlikely;
     REPO_ROOT issue) the check skips with a notice.
     """
-    print("\n── Check 39: cmd_update mapping/glob symmetry (BD-175, F2a) ──")
+    print("\n── Check 39: cmd_update mapping/glob symmetry (BD-175 F2a + BD-180 E) ──")
     init_sh = REPO_ROOT / "scripts" / "init-project.sh"
     if not init_sh.is_file():
         ok("scripts/init-project.sh absent — skipping (lenient)")
@@ -4293,6 +4335,8 @@ def check_cmd_update_symmetry() -> None:
         return
 
     any_failed = False
+
+    # ── Forward direction (BD-175 F2a) ───────────────────────────────────
     files_checked = 0
     exempted = 0
     for md in sorted(pack_docs_dir.glob("*.md")):
@@ -4320,13 +4364,46 @@ def check_cmd_update_symmetry() -> None:
         )
         any_failed = True
 
+    # ── Reverse direction (BD-180 observation E) ─────────────────────────
+    reverse_checked = 0
+    reverse_exempted = 0
+    for pack_rel in sorted(entries):
+        reverse_checked += 1
+        src_path = REPO_ROOT / pack_rel
+        if src_path.is_file():
+            continue
+        if pack_rel in _CHECK_39_REVERSE_EXEMPTIONS:
+            reverse_exempted += 1
+            ok(
+                f"{pack_rel} — exempt per _CHECK_39_REVERSE_EXEMPTIONS: "
+                f"{_CHECK_39_REVERSE_EXEMPTIONS[pack_rel]}"
+            )
+            continue
+        fail(
+            f"{pack_rel} — `cmd_update` entry references a source file "
+            f"that does not exist at HEAD; the mapping is stale (likely "
+            f"the source file was retired or moved without removing the "
+            f"entry). Either remove the entry from the `entries=()` array "
+            f"in `cmd_update` (scripts/init-project.sh ~L1108-L1190), or "
+            f"if the source intentionally lives outside repo HEAD, add it "
+            f"to `_CHECK_39_REVERSE_EXEMPTIONS` in scripts/validate-pack.py "
+            f"with a one-line rationale. Empirical precedent: BD-180 "
+            f"observation E removed the stale `project-template/docs/pack/"
+            f"PROMPT-TEMPLATES.md` mapping (file retired in v10.0)."
+        )
+        any_failed = True
+
     if not any_failed:
         ok(
             f"Check 39 — {files_checked} `project-template/docs/pack/*.md` "
-            f"file(s) checked; {files_checked - exempted} have explicit "
-            f"`cmd_update` mappings, {exempted} on exemption allowlist. "
-            f"No asymmetric coverage between S6 fresh-install glob and "
-            f"`cmd_update` explicit mappings."
+            f"file(s) forward-checked; {files_checked - exempted} have "
+            f"explicit `cmd_update` mappings, {exempted} on forward "
+            f"exemption allowlist. {reverse_checked} `cmd_update` "
+            f"entries reverse-checked; {reverse_checked - reverse_exempted} "
+            f"resolve to existing files at HEAD, {reverse_exempted} on "
+            f"reverse exemption allowlist. No asymmetric coverage between "
+            f"S6 fresh-install glob and `cmd_update` explicit mappings; "
+            f"no stale mappings."
         )
 
 
@@ -4718,6 +4795,193 @@ def check_bare_pack_ops_refs() -> None:
         )
 
 
+# ── Check 41: _CLIENT_INSTALLED_FILES self-doc list integrity (BD-180 G) ───
+#
+# Per ARCHITECTURE-BD-176.md §5.3 (forward-referenced from BD-176 D4
+# deferral; landed in BD-180 per LOGICAL-FIT criterion). The
+# `_CLIENT_INSTALLED_FILES_START` / `_CLIENT_INSTALLED_FILES_END` comment
+# block in `scripts/init-project.sh` is an authoritative inventory of
+# files this script installs to clients. Check 41 enforces the
+# discoverability contract:
+#   (a) START + END markers each appear exactly once,
+#   (b) the block has at least one entry line,
+#   (c) every entry's `pack_relpath` exists at HEAD,
+#   (d) every `cmd_update` `pack_relpath` is listed in the block.
+#
+# (d) is the load-bearing assertion: it prevents drift between the
+# self-documenting list and the actual `cmd_update` array — an actor
+# adding a cmd_update entry without updating the list trips this check.
+#
+# Exemption allowlist (empty by default): inventory entries whose source
+# intentionally lives outside repo HEAD. Surface-over-silently-exempt:
+# when in doubt, leave OUT and let Check 41 FAIL.
+_CHECK_41_EXEMPTIONS: dict[str, str] = {
+    # Intentionally empty at HEAD per BD-180 close: every entry in the
+    # `_CLIENT_INSTALLED_FILES_START`/`_END` block resolves to a real
+    # source file. Add entries here only when the inventory references
+    # a path that intentionally does not exist at HEAD.
+}
+
+
+def _parse_client_installed_files() -> tuple[list[str], bool, bool]:
+    """Parse `_CLIENT_INSTALLED_FILES` block from `scripts/init-project.sh`.
+
+    Returns `(entries, start_seen, end_seen)`:
+      - `entries`: list of `pack_relpath` strings extracted from each
+        entry line between START and END markers.
+      - `start_seen`: True if `_CLIENT_INSTALLED_FILES_START` marker found.
+      - `end_seen`: True if `_CLIENT_INSTALLED_FILES_END` marker found.
+
+    Entry line format (one per line, between START/END):
+      `#   <pack_relpath>  ->  <project_relpath>  [stage:<copy-site ids>]`
+
+    Comment-only lines (e.g., header context) between START and END are
+    skipped (must not contain `->`); empty lines and full-comment lines
+    without `->` are ignored.
+    """
+    init_sh = REPO_ROOT / "scripts" / "init-project.sh"
+    if not init_sh.is_file():
+        return ([], False, False)
+    text = init_sh.read_text()
+    start_marker = "_CLIENT_INSTALLED_FILES_START"
+    end_marker = "_CLIENT_INSTALLED_FILES_END"
+    start_seen = text.count(start_marker) >= 1
+    end_seen = text.count(end_marker) >= 1
+    if not (start_seen and end_seen):
+        return ([], start_seen, end_seen)
+    # Extract block body between START and END markers.
+    m = re.search(
+        rf"{re.escape(start_marker)}\s*\n(.+?)\n[^\n]*{re.escape(end_marker)}",
+        text,
+        re.DOTALL,
+    )
+    if not m:
+        return ([], start_seen, end_seen)
+    body = m.group(1)
+    entries: list[str] = []
+    for line in body.splitlines():
+        stripped = line.strip()
+        if not stripped or not stripped.startswith("#"):
+            continue
+        # Remove the leading `#` and surrounding whitespace.
+        content = stripped.lstrip("#").strip()
+        if "->" not in content:
+            continue
+        # Format: `<pack_relpath>  ->  <project_relpath>  [stage:...]`
+        pack_rel = content.split("->", 1)[0].strip()
+        if pack_rel:
+            entries.append(pack_rel)
+    return (entries, start_seen, end_seen)
+
+
+def check_client_installed_files() -> None:
+    """Check 41 — _CLIENT_INSTALLED_FILES self-doc list integrity (BD-180 G).
+
+    Verifies the `_CLIENT_INSTALLED_FILES_START`/`_END` block in
+    `scripts/init-project.sh` is well-formed AND every entry maps to a
+    real file at HEAD AND every cmd_update entry is named in the block
+    (drift-prevention contract).
+
+    Allowlist: `_CHECK_41_EXEMPTIONS` (default: empty) admits inventory
+    entries whose source intentionally lives outside repo HEAD.
+
+    Lenient mode: if `scripts/init-project.sh` is absent (unlikely;
+    REPO_ROOT issue) the check skips with a notice.
+    """
+    print("\n── Check 41: _CLIENT_INSTALLED_FILES self-doc list integrity (BD-180 G) ──")
+    init_sh = REPO_ROOT / "scripts" / "init-project.sh"
+    if not init_sh.is_file():
+        ok("scripts/init-project.sh absent — skipping (lenient)")
+        return
+
+    entries, start_seen, end_seen = _parse_client_installed_files()
+    if not start_seen or not end_seen:
+        missing = []
+        if not start_seen:
+            missing.append("_CLIENT_INSTALLED_FILES_START")
+        if not end_seen:
+            missing.append("_CLIENT_INSTALLED_FILES_END")
+        fail(
+            f"missing self-documenting list marker(s) in "
+            f"scripts/init-project.sh: {missing}. The block must be "
+            f"delimited by `_CLIENT_INSTALLED_FILES_START` and "
+            f"`_CLIENT_INSTALLED_FILES_END` comment markers per "
+            f"ARCHITECTURE-BD-176.md §5.3 / BD-180 observation G."
+        )
+        return
+
+    if not entries:
+        fail(
+            "scripts/init-project.sh has `_CLIENT_INSTALLED_FILES_START`/"
+            "`_END` markers but the block contains no parseable entries. "
+            "Each entry must be a comment line of the form "
+            "`#   <pack_relpath>  ->  <project_relpath>  [stage:...]` "
+            "between the START/END markers."
+        )
+        return
+
+    any_failed = False
+
+    # (c) Every entry's pack_relpath exists at HEAD.
+    files_checked = 0
+    exempted = 0
+    for pack_rel in entries:
+        files_checked += 1
+        if (REPO_ROOT / pack_rel).is_file():
+            continue
+        if pack_rel in _CHECK_41_EXEMPTIONS:
+            exempted += 1
+            ok(
+                f"{pack_rel} — exempt per _CHECK_41_EXEMPTIONS: "
+                f"{_CHECK_41_EXEMPTIONS[pack_rel]}"
+            )
+            continue
+        fail(
+            f"{pack_rel} — `_CLIENT_INSTALLED_FILES` inventory entry "
+            f"references a source file that does not exist at HEAD. "
+            f"Either remove the entry from the inventory block in "
+            f"scripts/init-project.sh (between `_CLIENT_INSTALLED_FILES_"
+            f"START` and `_CLIENT_INSTALLED_FILES_END`), update the "
+            f"path to match the actual source location, or — if the "
+            f"source intentionally lives outside repo HEAD — add it to "
+            f"`_CHECK_41_EXEMPTIONS` in scripts/validate-pack.py with a "
+            f"one-line rationale."
+        )
+        any_failed = True
+
+    # (d) Every cmd_update pack_relpath is listed in the inventory block.
+    cmd_update_paths = _parse_cmd_update_entries()
+    inventory_set = set(entries)
+    missing_in_inventory = sorted(cmd_update_paths - inventory_set)
+    inventory_drift = 0
+    for pack_rel in missing_in_inventory:
+        # Allow `_CHECK_41_EXEMPTIONS` to silence individual drifts (rare).
+        if pack_rel in _CHECK_41_EXEMPTIONS:
+            continue
+        fail(
+            f"{pack_rel} — `cmd_update` mapping exists but the path is "
+            f"NOT listed in the `_CLIENT_INSTALLED_FILES_START`/`_END` "
+            f"self-documenting inventory in scripts/init-project.sh. Add "
+            f"an entry to the inventory block of the form "
+            f"`#   {pack_rel}  ->  <project_relpath>  [stage:...]` so "
+            f"the discoverability contract holds. Per ARCHITECTURE-BD-176.md "
+            f"§5.3, the inventory must be the authoritative shipped-to-"
+            f"clients reference."
+        )
+        inventory_drift += 1
+        any_failed = True
+
+    if not any_failed:
+        ok(
+            f"Check 41 — {files_checked} `_CLIENT_INSTALLED_FILES` entry "
+            f"(entries) checked; {files_checked - exempted} resolve to "
+            f"existing files at HEAD, {exempted} on exemption allowlist. "
+            f"{len(cmd_update_paths)} cmd_update path(s) cross-checked "
+            f"against inventory; {inventory_drift} drift(s) (must be 0). "
+            f"Self-documenting list is consistent with copy-site state."
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -4785,6 +5049,12 @@ def main() -> None:
     # BD-179 commit qualifies all current bare-ref hits in pack-ops/*.md
     # so Check 40 PASSes at HEAD.
     check_bare_pack_ops_refs()
+    # ── BD-180 observation G: _CLIENT_INSTALLED_FILES self-documenting
+    # list integrity per ARCHITECTURE-BD-176.md §5.3. Lands AFTER Check 39
+    # (the cmd_update parser is shared) and after Check 40 (independent
+    # surfaces) so the install-coverage + cross-reference gates run
+    # before the inventory-drift gate.
+    check_client_installed_files()
 
     print("\n" + "=" * 60)
     if failures:

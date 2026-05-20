@@ -43,6 +43,7 @@ required = [
     'check_cmd_update_symmetry',
     '_parse_cmd_update_entries',
     '_CHECK_39_EXEMPTIONS',
+    '_CHECK_39_REVERSE_EXEMPTIONS',
 ]
 missing = [n for n in required if not hasattr(mod, n)]
 if missing:
@@ -215,13 +216,17 @@ if fail_count != 0:
 if "exempt per _CHECK_39_EXEMPTIONS" not in captured:
     failures.append(f"T3 (exempt path) must show exemption notice: {captured}")
 
-# T4: empty docs/pack/ directory — no files, no failures, PASS message
+# T4: empty docs/pack/ directory — forward direction passes vacuously.
+# To satisfy reverse direction we must also create the source file that
+# the entry references. The synthetic helper creates docs_pack_files in
+# docs/pack/, so reusing STUB.md as both the entry source and an on-disk
+# file under docs/pack/ satisfies both directions.
 fail_count, pass_msg, captured = run_check_with_synthetic(
-    '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"''',
-    []
+    '''        "project-template/docs/pack/STUB.md:docs/pack/STUB.md:generic"''',
+    ["STUB.md"]
 )
 if fail_count != 0:
-    failures.append(f"T4 (empty path) expected 0 failures, got {fail_count}: {captured}")
+    failures.append(f"T4 (vacuous-pass-with-stub) expected 0 failures, got {fail_count}: {captured}")
 
 # T5: comment-only entries body — array exists but no real entries.
 #     Parser should return empty set; check should FAIL (cannot prove symmetry).
@@ -246,6 +251,146 @@ EOF
 case $? in
     0) t_pass "Synthetic PASS / FAIL / exempt fragment tests" ;;
     *) t_fail "Synthetic fragment tests failed (see Python output above)" ;;
+esac
+
+# ─────────────────────────────────────────────────────────────────
+# Group 2b: Reverse-direction synthetic tests (BD-180 observation E)
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 2b: Reverse-direction (BD-180 E) synthetic tests ===\n"
+
+python3 <<EOF
+import sys, tempfile, os, re, pathlib
+sys.path.insert(0, '$REPO_ROOT/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+failures = []
+
+# Reverse-direction helper. Like run_check_with_synthetic but pack_relpaths
+# in the entries body can point at arbitrary paths; the test controls
+# which of those paths exist on disk via extant_paths.
+def run_reverse(entries_body: str, docs_pack_files: list, extant_paths: list,
+                forward_exemptions: dict = None, reverse_exemptions: dict = None) -> tuple:
+    """Return (failures_count, captured_output)."""
+    tmpdir = tempfile.mkdtemp(prefix="vp-check39-rev-")
+    root = pathlib.Path(tmpdir)
+    (root / "scripts").mkdir()
+    (root / "project-template" / "docs" / "pack").mkdir(parents=True)
+    for name in docs_pack_files:
+        (root / "project-template" / "docs" / "pack" / name).write_text("# stub\n")
+    # Stage arbitrary extant pack_relpaths.
+    for ep in extant_paths:
+        target = root / ep
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("# stub\n")
+    init_sh_content = '''#!/usr/bin/env bash
+cmd_update() {
+    local entries=(
+%s
+    )
+    echo "stub"
+}
+''' % entries_body
+    (root / "scripts" / "init-project.sh").write_text(init_sh_content)
+
+    import io, contextlib
+    saved_root = mod.REPO_ROOT
+    saved_failures = list(mod.failures)
+    saved_fwd = dict(mod._CHECK_39_EXEMPTIONS)
+    saved_rev = dict(mod._CHECK_39_REVERSE_EXEMPTIONS)
+    mod.failures.clear()
+    mod.REPO_ROOT = root
+    if forward_exemptions is not None:
+        mod._CHECK_39_EXEMPTIONS.clear()
+        mod._CHECK_39_EXEMPTIONS.update(forward_exemptions)
+    if reverse_exemptions is not None:
+        mod._CHECK_39_REVERSE_EXEMPTIONS.clear()
+        mod._CHECK_39_REVERSE_EXEMPTIONS.update(reverse_exemptions)
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            mod.check_cmd_update_symmetry()
+        new_failures = list(mod.failures)
+        captured = buf.getvalue()
+    finally:
+        mod.REPO_ROOT = saved_root
+        mod.failures.clear()
+        mod.failures.extend(saved_failures)
+        mod._CHECK_39_EXEMPTIONS.clear()
+        mod._CHECK_39_EXEMPTIONS.update(saved_fwd)
+        mod._CHECK_39_REVERSE_EXEMPTIONS.clear()
+        mod._CHECK_39_REVERSE_EXEMPTIONS.update(saved_rev)
+    return (len(new_failures), captured)
+
+# T6: reverse-PASS path — every cmd_update entry's pack_relpath exists on disk.
+entries_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"'''
+fail_count, captured = run_reverse(
+    entries_body,
+    docs_pack_files=["FOO.md"],
+    extant_paths=["project-template/docs/pack/FOO.md"],
+)
+if fail_count != 0:
+    failures.append(f"T6 (reverse PASS) expected 0 failures, got {fail_count}: {captured}")
+
+# T7: reverse-FAIL path — cmd_update entry's pack_relpath does NOT exist
+# on disk (BD-180 E PROMPT-TEMPLATES-style stale mapping).
+entries_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
+        "project-template/docs/pack/STALE.md:docs/pack/STALE.md:generic"'''
+fail_count, captured = run_reverse(
+    entries_body,
+    docs_pack_files=["FOO.md"],     # STALE.md NOT on disk
+    extant_paths=["project-template/docs/pack/FOO.md"],
+)
+if fail_count != 1:
+    failures.append(f"T7 (reverse FAIL stale) expected 1 failure, got {fail_count}: {captured}")
+if "STALE.md" not in captured:
+    failures.append(f"T7 (reverse FAIL stale) FAIL message must name STALE.md: {captured}")
+if "stale" not in captured.lower():
+    failures.append(f"T7 (reverse FAIL stale) FAIL message must contain word 'stale': {captured}")
+
+# T8: reverse-PASS-with-exemption — stale entry but on reverse exemption allowlist.
+entries_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
+        "extern/IMAGINARY.md:docs/pack/IMAGINARY.md:generic"'''
+fail_count, captured = run_reverse(
+    entries_body,
+    docs_pack_files=["FOO.md"],
+    extant_paths=["project-template/docs/pack/FOO.md"],
+    reverse_exemptions={"extern/IMAGINARY.md": "intentional extern-resolved (test stub)"},
+)
+if fail_count != 0:
+    failures.append(f"T8 (reverse exempt) expected 0 failures, got {fail_count}: {captured}")
+if "exempt per _CHECK_39_REVERSE_EXEMPTIONS" not in captured:
+    failures.append(f"T8 (reverse exempt) must show reverse exemption notice: {captured}")
+
+# T9: combined forward+reverse failures — one of each.
+entries_body = '''        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
+        "project-template/docs/pack/STALE.md:docs/pack/STALE.md:generic"'''
+fail_count, captured = run_reverse(
+    entries_body,
+    docs_pack_files=["FOO.md", "BAZ.md"],  # BAZ.md on disk but not in entries
+    extant_paths=["project-template/docs/pack/FOO.md"],  # STALE.md not extant
+)
+# Expect 2 failures: forward (BAZ.md missing mapping) + reverse (STALE.md absent source).
+if fail_count != 2:
+    failures.append(f"T9 (combined fail) expected 2 failures, got {fail_count}: {captured}")
+if "BAZ.md" not in captured:
+    failures.append(f"T9 forward leg must name BAZ.md: {captured}")
+if "STALE.md" not in captured:
+    failures.append(f"T9 reverse leg must name STALE.md: {captured}")
+
+if failures:
+    print("FAILURES")
+    for f in failures:
+        print(" ", f)
+    sys.exit(1)
+print("OK")
+EOF
+case $? in
+    0) t_pass "Reverse-direction synthetic tests (T6/T7/T8/T9)" ;;
+    *) t_fail "Reverse-direction tests failed (see Python output above)" ;;
 esac
 
 # ─────────────────────────────────────────────────────────────────
@@ -331,7 +476,8 @@ printf "\n=== Group 4: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
 if python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check39-e2e.out 2>&1; then
     if grep -q "Check 39: cmd_update mapping/glob symmetry" /tmp/vp-check39-e2e.out \
-       && grep -q "Check 39 — .* file(s) checked" /tmp/vp-check39-e2e.out; then
+       && grep -qE "Check 39 — .* file\(s\) forward-checked" /tmp/vp-check39-e2e.out \
+       && grep -qE "[0-9]+ \`cmd_update\` entries reverse-checked" /tmp/vp-check39-e2e.out; then
         t_pass "validate-pack.py exits 0; Check 39 runs and reports clean"
     else
         t_fail "validate-pack.py exits 0 but Check 39 output not detected" \
