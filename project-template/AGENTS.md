@@ -176,7 +176,7 @@ trigger-loaded list.
 pack repo are auto-distributed to all three client CLI skill directories
 (`.claude/skills/`, `.codex/skills/`, `.gemini/skills/`) via `stage_s4_skills()`
 at install time; the Tier 0 base list is then loaded by every agent for every
-project per BD-142. See `docs/pack/INSTALL-PROCEDURES.md` § "Stage S4" and the
+project per BD-142. See `scripts/init-project.sh` `stage_s4_skills()` and the
 `boundary-investigation` Tier 0 skill for the canonical reference.
 
 **Active skills:** [PM chat writes this line during project kickoff, listing
