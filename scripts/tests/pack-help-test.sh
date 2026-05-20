@@ -154,27 +154,27 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$TR_CLI2" 2>/dev/null)
     || t_fail "2.2.b client tracker body" "tracker-fragment body content missing post-substitution"
 rm -rf "$TR_CLI2"
 
-# 2.2.c NEW (BD-177 fix-pass — dual-surface regression guard via real
-# client fixture). Render pack-help.sh against test-fixtures/v11-flat-
-# file (the same fixture the BD-177 reviewer used to reproduce the
-# regression). Asserts no sentinel leak on the as-shipped client-side
-# fragment files. This complements 2.2/2.2.a which use a synthetic
-# temp tree; 2.2.c locks in the regression-reproducer surface so
-# future regex narrowing trips this check.
-FIXTURE_CLI="$REPO_ROOT/test-fixtures/v11-flat-file"
-if [[ -d "$FIXTURE_CLI/docs/pack" \
-      && -f "$FIXTURE_CLI/docs/pack/HELP-FRAGMENT.md" \
-      && -f "$FIXTURE_CLI/docs/pack/HELP-FRAGMENT-TRACKER.md" ]]; then
-    output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$FIXTURE_CLI" 2>/dev/null)
-    [[ "$output" != *'[Included from `HELP-FRAGMENT-TRACKER.md`'* \
-       && "$output" != *'[Included from `pack-ops/HELP-FRAGMENT-TRACKER.md`'* ]] \
-        && t_pass "2.2.c no sentinel leak on v11-flat-file client fixture" \
-        || t_fail "2.2.c sentinel leaked on v11-flat-file fixture" \
-                  "BD-177 regression — client-side substitution silently failed"
-else
-    t_fail "2.2.c v11-flat-file fixture missing" \
-           "expected $FIXTURE_CLI/docs/pack/HELP-FRAGMENT*.md (run test-fixtures/build.sh)"
-fi
+# 2.2.c NEW (BD-177 fix-pass — dual-surface regression guard via the
+# source-of-truth client sentinel fragments). Render pack-help.sh
+# against project-template/docs/pack/ — the in-tree source-of-truth
+# files that the install pipeline copies verbatim into client trees
+# (HELP-FRAGMENT*.md are plain markdown; no install transform touches
+# them, so source-of-truth content is byte-identical to as-installed
+# client content for the regression class this test guards). Asserts
+# no sentinel leak on the as-shipped client-side fragment files.
+# This complements 2.2/2.2.a/2.2.b (which use a synthetic temp tree
+# from the same source files); 2.2.c locks in the regression by
+# invoking pack-help.sh directly against the source-of-truth tree —
+# zero fixture-build dependency, zero temp-dir setup. BD-177 fix-pass-2
+# replaced the prior test-fixtures/v11-flat-file dependency, which
+# failed on CI runners where the fixture wasn't pre-built.
+output=$(bash "$REPO_ROOT/scripts/pack-help.sh" \
+              --root "$REPO_ROOT/project-template" --surface client 2>/dev/null)
+[[ "$output" != *'[Included from `HELP-FRAGMENT-TRACKER.md`'* \
+   && "$output" != *'[Included from `pack-ops/HELP-FRAGMENT-TRACKER.md`'* ]] \
+    && t_pass "2.2.c no sentinel leak on source-of-truth client fragments" \
+    || t_fail "2.2.c sentinel leaked on source-of-truth client fragments" \
+              "BD-177 regression — client-side substitution silently failed"
 
 # 2.2.d NEW (BD-177 fix-pass — pack-side regression guard).
 # Symmetric assertion on the pack-side surface using the real pack-ops
