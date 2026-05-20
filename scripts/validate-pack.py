@@ -176,6 +176,23 @@ Checks:
       `tracker.toml.pack-example`) or on the structural-exempt list
       (README.md, QUICKSTART.md, pack-root trinity). Catches pack-only
       content mis-sited outside `pack-ops/`.
+  39. cmd_update mapping/glob symmetry (BD-175 F2a per F4 bundle
+      reviewer prevention-design feed-in #2): walks every file under
+      `project-template/docs/pack/*.md` (the fresh-install S6 glob
+      target) and verifies a corresponding explicit mapping entry
+      exists in `scripts/init-project.sh`'s `cmd_update` `entries=()`
+      array. Failure mode this gate catches: a file added to
+      `project-template/docs/pack/` (covered by S6 fresh-install glob)
+      that lacks an explicit `cmd_update` mapping — existing clients
+      running `pack update` would silently NOT receive the new file
+      (asymmetric coverage). Empirically demonstrated during BD-175
+      Commit 10 (`OPTIONAL-FEATURES.md` required an explicit
+      `cmd_update` mapping addition at L1125; without it, the file
+      would have installed at fresh init but not at update). The
+      check parses the `cmd_update` entries array via regex (does
+      not source the shell file) and supports an explicit allowlist
+      `_CHECK_39_EXEMPTIONS` for files intentionally absent from
+      `cmd_update` (default: empty — surface-over-silently-exempt).
 
 Two additional informational checks (no number, soft / advisory):
   - Issue template forms (BD-063): `.github/ISSUE_TEMPLATE/*.yml`
@@ -4159,6 +4176,139 @@ def check_pack_only_file_siting() -> None:
         )
 
 
+# ── Check 39: cmd_update mapping/glob symmetry (BD-175 F2a) ────────────────
+#
+# Scope: `project-template/docs/pack/*.md` (the fresh-install S6 glob target
+# at scripts/init-project.sh:544). Any file added here is auto-copied at
+# fresh init by S6's glob loop but only copied to existing clients via
+# `pack update` if it has an explicit mapping in `cmd_update`'s
+# `entries=()` array. Coverage drift between the two paths is silent until
+# a client runs `pack update` and notices the missing file.
+#
+# Exemption allowlist (empty by default): files intentionally absent from
+# `cmd_update` mappings. Surface-over-silently-exempt: when in doubt,
+# leave OUT of the allowlist and let Check 39 FAIL — Pack Chat triage can
+# decide per-file. Each entry MUST include a one-line rationale comment.
+_CHECK_39_EXEMPTIONS: dict[str, str] = {
+    # Intentionally empty at HEAD per BD-175 F2a IMPL-REPORT §6: all six
+    # files under `project-template/docs/pack/*.md` currently have explicit
+    # mappings. Add entries here only with a rationale comment.
+}
+
+
+def _parse_cmd_update_entries() -> set[str]:
+    """Parse `scripts/init-project.sh` `cmd_update` `entries=()` array.
+
+    Returns the set of `pack_relpath` strings (the first colon-separated
+    field of each entry). Parses via regex against the entries array
+    delimited by `local entries=(` ... `)` — does not source the shell
+    file. Returns an empty set if the file or array cannot be found.
+    """
+    init_sh = REPO_ROOT / "scripts" / "init-project.sh"
+    if not init_sh.is_file():
+        return set()
+    text = init_sh.read_text()
+    # Match the entries array literal. Non-greedy across newlines.
+    m = re.search(
+        r"local\s+entries=\(\s*\n(.+?)\n\s*\)\s*\n",
+        text,
+        re.DOTALL,
+    )
+    if not m:
+        return set()
+    body = m.group(1)
+    paths: set[str] = set()
+    for line in body.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        # Strip surrounding quotes; entries are of the form
+        # "pack_relpath:proj_relpath:class".
+        if line.startswith('"') and '"' in line[1:]:
+            content = line[1:line.index('"', 1)]
+        else:
+            continue
+        pack_rel = content.split(":", 1)[0]
+        if pack_rel:
+            paths.add(pack_rel)
+    return paths
+
+
+def check_cmd_update_symmetry() -> None:
+    """Check 39 — cmd_update mapping/glob coverage symmetry (BD-175 F2a).
+
+    For every file under `project-template/docs/pack/*.md` (the S6
+    fresh-install glob target), assert that a corresponding explicit
+    `cmd_update` mapping exists in `scripts/init-project.sh`. Without
+    this gate, files added to `docs/pack/` install at fresh init but
+    silently skip existing clients running `pack update` — empirically
+    demonstrated during BD-175 Commit 10 (`OPTIONAL-FEATURES.md`).
+
+    Exemption allowlist: `_CHECK_39_EXEMPTIONS` (default: empty).
+    Files in the allowlist PASS with a notice; everything else MUST
+    have an explicit mapping entry.
+
+    Lenient mode: if `scripts/init-project.sh` is absent (unlikely;
+    REPO_ROOT issue) the check skips with a notice.
+    """
+    print("\n── Check 39: cmd_update mapping/glob symmetry (BD-175, F2a) ──")
+    init_sh = REPO_ROOT / "scripts" / "init-project.sh"
+    if not init_sh.is_file():
+        ok("scripts/init-project.sh absent — skipping (lenient)")
+        return
+    pack_docs_dir = REPO_ROOT / "project-template" / "docs" / "pack"
+    if not pack_docs_dir.is_dir():
+        ok("project-template/docs/pack absent — skipping (lenient)")
+        return
+
+    entries = _parse_cmd_update_entries()
+    if not entries:
+        fail(
+            "could not parse `cmd_update` entries=() array from "
+            "scripts/init-project.sh — check that the array literal is "
+            "still wrapped by `local entries=(` ... `)` per BD-175 F2a "
+            "parsing contract"
+        )
+        return
+
+    any_failed = False
+    files_checked = 0
+    exempted = 0
+    for md in sorted(pack_docs_dir.glob("*.md")):
+        files_checked += 1
+        pack_rel = f"project-template/docs/pack/{md.name}"
+        if pack_rel in entries:
+            continue
+        if md.name in _CHECK_39_EXEMPTIONS:
+            exempted += 1
+            ok(
+                f"{md.name} — exempt per _CHECK_39_EXEMPTIONS: "
+                f"{_CHECK_39_EXEMPTIONS[md.name]}"
+            )
+            continue
+        fail(
+            f"{pack_rel} — installs at fresh init (stage S6 glob loop at "
+            f"scripts/init-project.sh:544) but has no explicit `cmd_update` "
+            f"mapping; existing clients running `pack update` will silently "
+            f"skip this file. Add an entry to the `entries=()` array in "
+            f"`cmd_update` (scripts/init-project.sh ~L1108-L1133) of the "
+            f"form: \"{pack_rel}:docs/pack/{md.name}:generic\". If the file "
+            f"is intentionally pre-install-only or otherwise not for "
+            f"client install, add it to `_CHECK_39_EXEMPTIONS` in "
+            f"scripts/validate-pack.py with a one-line rationale."
+        )
+        any_failed = True
+
+    if not any_failed:
+        ok(
+            f"Check 39 — {files_checked} `project-template/docs/pack/*.md` "
+            f"file(s) checked; {files_checked - exempted} have explicit "
+            f"`cmd_update` mappings, {exempted} on exemption allowlist. "
+            f"No asymmetric coverage between S6 fresh-install glob and "
+            f"`cmd_update` explicit mappings."
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -4215,6 +4365,10 @@ def main() -> None:
     check_commit_scope_honesty()
     check_project_side_deny_list()
     check_pack_only_file_siting()
+    # ── BD-175 F2a: cmd_update mapping/glob symmetry. Lands AFTER
+    # the M5a/b/c boundary trio so the boundary-prevention surface is
+    # complete before the install-coverage gate runs.
+    check_cmd_update_symmetry()
 
     print("\n" + "=" * 60)
     if failures:
