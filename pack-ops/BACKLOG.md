@@ -1530,6 +1530,39 @@ Resolved: n/a
 
 ---
 
+**BD-179 — Validate-pack.py Check 40 pack-ops/ bare cross-reference scanner (F3 — architect-pass)**
+Type: TODO(version) — surfaced 2026-05-19 during BD-175 Phase 5 Commit 10 review feed-in observation #4 + Commit 9b IMPL-REPORT §6.3 prevention candidate; user-explicit fold into BD-175 emergency batch 2026-05-19 (option F3); user-explicit pre-approval for pack-architect spawn 2026-05-19.
+Status: Open
+Blockers: BD-175 + BD-176 + BD-177 + BD-178 (must close successfully in that order per user direction 2026-05-19)
+Unblocks: closes the bare-cross-reference defect class in `pack-ops/` markdown docs (e.g., `pack-ops/MERGE-STRATEGY.md` had 3 sibling bare refs at L471/L473/L474 partially closed by F1 commit `88a0aea`; 8 inline-prose bare refs at L271/L313/L329/L426/L440 + L270/L412/L479 + L226 still open; L472 audience-mismatch where pack-internal doc points at post-install project-side path still open); systematic prevention via new validate-pack.py check.
+File/Symbol:
+  - `scripts/validate-pack.py` (NEW Check 40 — bare cross-reference scanner for `pack-ops/` markdown)
+  - `scripts/tests/` (new fixture test for Check 40)
+  - `pack-ops/MERGE-STRATEGY.md` (and possibly other pack-ops/ docs) — qualified per architect's design after Check 40 lands
+  - `test-fixtures/manifest.txt` (regenerate per RC9 — `scripts/` + `pack-ops/` both v11-surface post-BD-176)
+Description: F1 commit `88a0aea` qualified 3 sibling bare refs in `pack-ops/MERGE-STRATEGY.md` cross-references list (L471/L473/L474) per user-approved tight scope. F1 IMPL-REPORT §6 flagged 8 OTHER bare refs to the same 2 files in inline prose elsewhere in MERGE-STRATEGY.md (5 bare `MIGRATION-v10-to-v11.md` refs at L271/L313/L329/L426/L440 + 3 bare `validate-pack.py` refs at L270/L412/L479 + 1 narrative shorthand `validate-pack` at L226 — line numbers may drift). F1 per-commit reviewer (PACK-REVIEW-BD-175-F1.md NIT) additionally flagged L472 audience-mismatch (`docs/pack/OPTIONAL-FEATURES.md` is the POST-install project-side path; MERGE-STRATEGY.md self-identifies "Audience: pack-internal" at L3 — pack-internal doc pointing at client-side path).
+
+  User-approved fold to BD-179 architect-pass per Pack Chat triage 2026-05-19 (T3a). Architect designs Check 40 to systematically address all bare-ref patterns including inline prose, with per-pattern triage decisions:
+  - Cross-references list refs: load-bearing precision (canonical "where to look next" pointer set); MUST resolve unambiguously per F1's edits
+  - Inline prose refs: softer-quality concern; architect decides whether to qualify all uniformly OR adopt per-pattern heuristic (e.g., qualify on first occurrence, bare for subsequent; or qualify when referent lives in subdirectory)
+  - Audience-mismatch refs (L472 pattern): pack-internal doc pointing at post-install client path — architect decides whether to qualify to pack-repo path (consistency wins) OR keep client-side path (Override 8 explicitly chose this — content discusses install-time migration scenarios that resolve at client repos post-install) and document the intentional audience-bridge
+
+  Scope:
+  - Architect-pass design: systematic identification of bare cross-reference patterns in `pack-ops/` markdown; per-pattern classification (load-bearing vs softer-quality vs audience-bridge); per-CLI heuristic for whether to qualify/preserve
+  - NEW `scripts/validate-pack.py` Check 40 implementing the architect's design (regex/AST-based bare-ref scanner; per-pattern allow/deny lists)
+  - Test fixtures for Check 40 (PASS + FAIL + exemption cases per the architect's design)
+  - Apply architect's per-pattern decisions to `pack-ops/MERGE-STRATEGY.md` (8 inline-prose refs + L472 audience-mismatch) — coder mechanical work after architect lands strategy doc
+  - Regenerate `test-fixtures/manifest.txt` per RC9 (`scripts/` + `pack-ops/` both v11-surface post-BD-176)
+
+  Implementation pattern: **pack-architect spawn FIRST** (per pack-memory pack-architect-spawn protocol — touches `pack-ops/` docs + new validate-pack.py check). User-explicit pre-approval for BD-179 architect spawn 2026-05-19 — Pack Chat spawns architect without re-asking when BD-179 work begins. Architect → strategy doc → coder applies mechanically → Pack Chat commits. Per per-BD review/fix pattern, single pack-reviewer pass after the changes land.
+
+  Override 9 compliance: bare-cross-reference scanner applies to `pack-ops/` markdown ONLY (pack-internal docs; auditing internal consistency). Does NOT apply to project-template/ trinity or pack-root trinity (those have separate cross-CLI reference concerns under BD-182).
+
+  Position: Insert immediately after BD-178 (per user direction 2026-05-19 — must be implemented directly after BD-178 Resolved AND before BD-180 to maintain batch chain order); architect-pass work; closes a real bare-cross-reference defect class before batch audit.
+Resolved: n/a
+
+---
+
 **BD-180 — Extend `cmd_update` mapping symmetry coverage to remaining surfaces (gemini commands + pm-startup skill + .claude settings example + per-entry templates)**
 Type: TODO(version) — surfaced 2026-05-19 during BD-175 F2a (Check 39) implementation; user-explicit fold into BD-175 emergency batch per Pack Chat triage 2026-05-19 (T3a).
 Status: Open
