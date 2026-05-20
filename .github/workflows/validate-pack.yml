@@ -157,6 +157,15 @@ jobs:
       - name: validate-pack Check 32/33/34 tests (BD-168, per-entry split validators)
         if: always()
         run: bash scripts/tests/test-validate-pack-checks-32-33-34.sh
+      - name: validate-pack Check 36/37/38 tests (BD-175 Commit 12, pack/project boundary)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-checks-36-37-38.sh
+      - name: validate-pack Check 39 tests (BD-175 F2a, install-coverage gate)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-check-39.sh
+      - name: validate-pack Check 40 tests (BD-179, pack-ops/ bare-cross-reference scanner)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-check-40.sh
       - name: tracker BD-129 gh-repo routing tests (BD-129)
         if: always()
         run: bash scripts/tests/tracker-bd129-gh-repo-test.sh
