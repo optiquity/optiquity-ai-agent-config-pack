@@ -1549,10 +1549,14 @@ Description: BD-175 F2a (commit `bee710c`) implemented `validate-pack.py` Check 
 
   **D — Per-entry skeleton templates (`project-template/docs/project/{backlog,implementation-plan,changelog}/_*.md`) in S11 fresh-install but not in `cmd_update`:** existing clients won't receive template updates via `pack update`. Per pack memory, per-entry templates are load-bearing for BD-167 scaffolding — `pack update` should propagate template fixes.
 
+  **E — Stale `cmd_update` mapping entry (reverse-direction asymmetry, absorbed from F2a per-commit review F2A-S1 2026-05-20):** Check 39 (F2a, commit `bee710c`) only verifies one direction (file-on-disk → cmd_update mapping). The reverse direction (mapping entry → file-on-disk exists) is unverified. At HEAD, `scripts/init-project.sh:1122` maps `project-template/docs/pack/PROMPT-TEMPLATES.md` but that file was RETIRED in v10.0 (PM-CHAT.md:149-150 confirms retirement). Without bidirectional verification, stale mappings can accumulate over multiple release cycles — `pack update` may silently no-op (or fail noisily depending on cp behavior) for entries whose source files no longer exist. Scope addition: BD-180 implementation should ALSO add reverse-direction check (extension to Check 39 OR new Check 41) that flags `cmd_update` entries whose source path doesn't exist at HEAD. The PROMPT-TEMPLATES.md entry should be REMOVED from `cmd_update` as part of this BD's fixes.
+
   Scope:
   - Verify each of A/B/C/D — is the asymmetry intentional (with rationale) or accidental?
   - For accidental cases: add missing `cmd_update` mappings to `scripts/init-project.sh` per the F2a Check 39 template
   - For intentional cases: add exemption-allowlist entries to `_CHECK_39_EXEMPTIONS` (or new check exemptions) with rationale comment per file
+  - Remove the stale `PROMPT-TEMPLATES.md` mapping per E (verify nothing else references it; the file was retired in v10.0)
+  - Add reverse-direction check (extension to Check 39 OR new Check 41) per E — flags cmd_update entries whose source path doesn't exist at HEAD
   - Consider extending Check 39's scope OR adding Check 41/42 to cover the broader pattern (e.g., `.gemini/commands/*.toml`, `.claude/skills/*/SKILL.md`, per-entry templates) — coder's choice based on simplest-correct-design heuristic + minimizing check-count proliferation
   - Regenerate `test-fixtures/manifest.txt` per RC9
 
