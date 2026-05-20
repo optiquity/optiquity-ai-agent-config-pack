@@ -104,7 +104,7 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" 2>/dev/null)
     && t_pass "2.1 colloquial mapping inlined" \
     || t_fail "2.1 colloquial mapping inlined"
 # Placeholder line should NOT appear in output (it must have been replaced).
-[[ "$output" != *"[Included from \`HELP-FRAGMENT-TRACKER.md\`"* ]] \
+[[ "$output" != *"[Included from \`pack-ops/HELP-FRAGMENT-TRACKER.md\`"* ]] \
     && t_pass "2.1 placeholder line replaced" \
     || t_fail "2.1 placeholder line still present"
 
@@ -156,7 +156,7 @@ rm -rf "$TR_NONE"
 TR_VER=$(mktemp -d -t ph-ver.XXXXXX)
 cat > "$TR_VER/HELP-FRAGMENT-PACK.md" <<'EOF'
 # header
-[Included from `HELP-FRAGMENT-TRACKER.md` at pack root via `pack-help.sh`.]
+[Included from `pack-ops/HELP-FRAGMENT-TRACKER.md` via `pack-help.sh`.]
 # footer
 EOF
 cat > "$TR_VER/HELP-FRAGMENT-TRACKER.md" <<'EOF'

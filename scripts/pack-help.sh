@@ -80,10 +80,10 @@ emit_fragment() {
         cat "$fragment"
         return 0
     fi
-    # The placeholder line is `[Included from \`HELP-FRAGMENT-TRACKER.md\` ...]`.
+    # The placeholder line is `[Included from \`pack-ops/HELP-FRAGMENT-TRACKER.md\` ...]`.
     # Replace exactly that one line with the tracker fragment body.
     awk -v tracker="$tracker_fragment" '
-        /^\[Included from `HELP-FRAGMENT-TRACKER\.md`/ {
+        /^\[Included from `pack-ops\/HELP-FRAGMENT-TRACKER\.md`/ {
             while ((getline line < tracker) > 0) print line
             close(tracker)
             next
