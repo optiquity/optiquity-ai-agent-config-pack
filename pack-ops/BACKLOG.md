@@ -1515,14 +1515,50 @@ Description: BD-175 Phase 5 Commit 4 reviewer flagged that bullets in `project-t
 
   **General canonicalization heuristic for any additional asymmetries found in the fresh sweep:** prefer the wording variant that (a) is more enforceable / less ambiguous, (b) preserves operational constraints (the "in the same set of edits" pattern above), (c) reflects current state (e.g., three-tool trinity vs two-tool framing). If two variants are equally valid (wording-only stylistic differences with no precision delta), prefer the CLAUDE.md form for consistency with the pack-repo's existing "CLAUDE-first" convention (CLAUDE.md is typically edited first in trinity commits; AGENTS.md and GEMINI.md mirror).
 
+  **POQ-F4-3 absorbed scope (2026-05-19 — per F4-bundle review SHOULD-2 user-approved absorb):** in addition to the asymmetric-loci alignment work above, this BD also absorbs the editorial trinity note about Tier 0 base loading that PACK-REVIEW-BD-175-F4-BUNDLE.md SHOULD-2 deferred. Add a brief informational note (1-2 sentences) in `project-template/{CLAUDE,AGENTS,GEMINI}.md` § "Skill loading" (or equivalent section header — coder picks the natural placement based on each file's existing section topology) explaining the Tier 0 base-loading concept: skills at `project-template/skills/` are auto-distributed to all 3 client CLI skill directories via `stage_s4_skills()` at install time; Tier 0 skills are loaded by all agents by default per BD-142. This is informational only — no behavior change. Apply per-trinity-file lockstep (all 3 in same edit per Trinity rule). Cross-reference: `BD-142` and `boundary-investigation` (the Tier 0 skill added by BD-175 Commit 12 + F4 bundle that motivated this note). Decline-precedence: if BD-178's broader sweep finds the trinity already has equivalent language, NO duplicate addition — document the find in IMPL-REPORT.
+
   Scope:
   - Mechanical trinity edits in `project-template/{CLAUDE,AGENTS,GEMINI}.md` to converge on the canonical wording for each identified asymmetric locus (the 3 above + any additional surfaced by the fresh sweep)
   - Fresh full 3-way diff sweep across `project-template/{CLAUDE,AGENTS,GEMINI}.md` shared sections to catch any pre-existing asymmetries not yet identified; document each one in the IMPL-REPORT with proposed canonical wording + reasoning (same template as the 3 above)
+  - POQ-F4-3 absorbed: add the Tier 0 base-loading informational note per the section above (trinity lockstep)
   - Regenerate `test-fixtures/manifest.txt` per RC9 (`project-template/` is v11-surface)
 
   Implementation pattern: mechanical pack-coder work (no architect spawn needed — wording proposals embedded in this BD for the 3 known loci; coder applies the canonicalization heuristic to any additional asymmetries found in the sweep and surfaces them in the IMPL-REPORT for Pack Chat triage before commit). Per per-BD review/fix pattern, single pack-reviewer pass after the trinity edit lands.
 
   Position: Insert immediately after BD-177 (per user direction 2026-05-19 — must be implemented directly after BD-177 Resolved AND before Batch 19c / BD-173 resumes; BD-173 touches project-template trinity extensively and benefits from a fully-symmetric baseline).
+Resolved: n/a
+
+---
+
+**BD-180 — Extend `cmd_update` mapping symmetry coverage to remaining surfaces (gemini commands + pm-startup skill + .claude settings example + per-entry templates)**
+Type: TODO(version) — surfaced 2026-05-19 during BD-175 F2a (Check 39) implementation; user-explicit fold into BD-175 emergency batch per Pack Chat triage 2026-05-19 (T3a).
+Status: Open
+Blockers: BD-175 + BD-176 + BD-177 + BD-178 + BD-179 (must close successfully in that order per user direction 2026-05-19)
+Unblocks: closes 4 operational-drift gaps at surfaces BEYOND F2a Check 39's narrow `project-template/docs/pack/*.md` scope; brings `pack update` parity to all surfaces that fresh-install covers; completes the F2a-pattern coverage before batch audit.
+File/Symbol:
+  - `scripts/init-project.sh` (`cmd_update` mapping list + S4/S6/S11 install loops at multiple surfaces — exact lines TBD by coder/architect investigation)
+  - `scripts/validate-pack.py` (possibly: extend Check 39 to broader scope, OR add Check 41/42 — implementation choice per simplest-correct-design heuristic)
+  - `test-fixtures/manifest.txt` (regenerate per RC9 — `scripts/` touched)
+Description: BD-175 F2a (commit `bee710c`) implemented `validate-pack.py` Check 39 cmd_update mapping symmetry with intentionally narrow scope (`project-template/docs/pack/*.md` only) per user-approved tight F2a fold-in. F2a's IMPL-REPORT §6 surfaced 4 OTHER surfaces where similar asymmetry exists — Check 39 doesn't catch them by design (narrow scope). Each is a small fix candidate:
+
+  **A — `project-template/.gemini/commands/pm-startup.toml` never installed (fresh-install OR update):** file exists at the project-template path but neither stage S4 nor S6 nor S11 nor `cmd_update` covers it. Possibly a missing install-loop entry, or an intentional exclusion (e.g., `.toml` not in install scope) that needs documentation. Verify intent before fix.
+
+  **B — `project-template/.claude/skills/pm-startup/SKILL.md` + `.codex/skills/pm-startup/SKILL.md` not in `cmd_update`:** S4 distributes at fresh-install (the Pattern A auto-distribute path), but `cmd_update` explicit mapping doesn't propagate — existing clients running `pack update` won't receive pm-startup skill updates. Add explicit mappings or document why pm-startup updates skip `pack update`.
+
+  **C — `project-template/.claude/settings.local.example.json` not in either path:** likely intentional (settings.local files are user-specific per project — clients customize, don't sync from pack) but needs explicit verification + documentation.
+
+  **D — Per-entry skeleton templates (`project-template/docs/project/{backlog,implementation-plan,changelog}/_*.md`) in S11 fresh-install but not in `cmd_update`:** existing clients won't receive template updates via `pack update`. Per pack memory, per-entry templates are load-bearing for BD-167 scaffolding — `pack update` should propagate template fixes.
+
+  Scope:
+  - Verify each of A/B/C/D — is the asymmetry intentional (with rationale) or accidental?
+  - For accidental cases: add missing `cmd_update` mappings to `scripts/init-project.sh` per the F2a Check 39 template
+  - For intentional cases: add exemption-allowlist entries to `_CHECK_39_EXEMPTIONS` (or new check exemptions) with rationale comment per file
+  - Consider extending Check 39's scope OR adding Check 41/42 to cover the broader pattern (e.g., `.gemini/commands/*.toml`, `.claude/skills/*/SKILL.md`, per-entry templates) — coder's choice based on simplest-correct-design heuristic + minimizing check-count proliferation
+  - Regenerate `test-fixtures/manifest.txt` per RC9
+
+  Implementation pattern: mechanical pack-coder work (no architect spawn needed — F2a's Check 39 implementation is the template; this BD extends the pattern to additional surfaces). Per per-BD review/fix pattern, single pack-reviewer pass after the changes land.
+
+  Position: Insert immediately after BD-179 (per user direction 2026-05-19 — last BD before end-of-batch reviewer; BD-180 completes the F2a-pattern coverage at all surfaces before batch audit).
 Resolved: n/a
 
 ---
