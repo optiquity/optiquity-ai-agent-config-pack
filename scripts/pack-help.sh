@@ -80,10 +80,21 @@ emit_fragment() {
         cat "$fragment"
         return 0
     fi
-    # The placeholder line is `[Included from \`pack-ops/HELP-FRAGMENT-TRACKER.md\` ...]`.
-    # Replace exactly that one line with the tracker fragment body.
+    # Replace the sibling-include placeholder line with the tracker
+    # fragment body. emit_fragment is dual-surface and must match both
+    # call sites' sentinel forms:
+    #   - Pack-side (call site L127):  pack-ops/HELP-FRAGMENT-PACK.md L37
+    #       sentinel = `[Included from \`pack-ops/HELP-FRAGMENT-TRACKER.md\` ...]`
+    #   - Client-side (call site L130-131): project-template/docs/pack/
+    #       HELP-FRAGMENT.md L26 sentinel =
+    #       `[Included from \`HELP-FRAGMENT-TRACKER.md\` ...]`
+    # The `(pack-ops\/)?` optional group matches both. BD-177 originally
+    # tightened this to a `pack-ops/`-only prefix, which silently broke
+    # the client-side substitution (sentinel leaked into rendered output);
+    # the BD-177 fix-pass broadened the pattern back to cover both
+    # surfaces while keeping the pack-side path-accurate sentinel.
     awk -v tracker="$tracker_fragment" '
-        /^\[Included from `pack-ops\/HELP-FRAGMENT-TRACKER\.md`/ {
+        /^\[Included from `(pack-ops\/)?HELP-FRAGMENT-TRACKER\.md`/ {
             while ((getline line < tracker) > 0) print line
             close(tracker)
             next

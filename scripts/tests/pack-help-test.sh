@@ -109,6 +109,17 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" 2>/dev/null)
     || t_fail "2.1 placeholder line still present"
 
 # 2.2 client surface from a fixture tree.
+# BD-177 fix-pass: dual-surface coverage. The original assertion
+# "output contains '# Tracker commands (v11+)'" was a false positive
+# because the parent H2 header `## Tracker commands (v11+)` lives in
+# the client-side HELP-FRAGMENT.md unconditionally — present even when
+# the include sentinel is NOT substituted (regression mode). Strengthen
+# by asserting (a) the literal sentinel line does NOT leak into rendered
+# output, AND (b) tracker-fragment body content (from HELP-FRAGMENT-
+# TRACKER.md) DOES appear post-substitution. Either assertion alone
+# detects the BD-177 regression; together they're robust to either
+# direction of breakage (regex too narrow OR regex matches but body
+# read fails).
 TR_CLI2=$(mktemp -d -t ph-cli2.XXXXXX)
 mkdir -p "$TR_CLI2/docs/project" "$TR_CLI2/docs/pack"
 cat > "$TR_CLI2/docs/project/BACKLOG.md" <<'EOF'
@@ -127,7 +138,54 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$TR_CLI2" 2>/dev/null)
 [[ "$output" == *"agent-run.sh"* ]] \
     && t_pass "2.2 client-only verb (agent-run) listed" \
     || t_fail "2.2 client-only verb"
+# 2.2.a NEW: literal sentinel must NOT leak into rendered output (BD-177 regression guard).
+# Match the canonical client-side sentinel form (bare-filename) AND the pack-side form
+# (pack-ops/-prefixed); neither should appear in user-visible output.
+[[ "$output" != *'[Included from `HELP-FRAGMENT-TRACKER.md`'* \
+   && "$output" != *'[Included from `pack-ops/HELP-FRAGMENT-TRACKER.md`'* ]] \
+    && t_pass "2.2.a no sentinel leak in rendered client-side output" \
+    || t_fail "2.2.a sentinel leaked" "sentinel string survived substitution"
+# 2.2.b NEW: tracker-fragment body content appears post-substitution (positive assertion).
+# Pulls a stable marker from HELP-FRAGMENT-TRACKER.md content — the
+# colloquial-mappings prose ("set up the tracker") that is unique to the
+# tracker fragment body and absent from the parent fragment.
+[[ "$output" == *"set up the tracker"* ]] \
+    && t_pass "2.2.b client tracker-fragment body content inlined" \
+    || t_fail "2.2.b client tracker body" "tracker-fragment body content missing post-substitution"
 rm -rf "$TR_CLI2"
+
+# 2.2.c NEW (BD-177 fix-pass — dual-surface regression guard via real
+# client fixture). Render pack-help.sh against test-fixtures/v11-flat-
+# file (the same fixture the BD-177 reviewer used to reproduce the
+# regression). Asserts no sentinel leak on the as-shipped client-side
+# fragment files. This complements 2.2/2.2.a which use a synthetic
+# temp tree; 2.2.c locks in the regression-reproducer surface so
+# future regex narrowing trips this check.
+FIXTURE_CLI="$REPO_ROOT/test-fixtures/v11-flat-file"
+if [[ -d "$FIXTURE_CLI/docs/pack" \
+      && -f "$FIXTURE_CLI/docs/pack/HELP-FRAGMENT.md" \
+      && -f "$FIXTURE_CLI/docs/pack/HELP-FRAGMENT-TRACKER.md" ]]; then
+    output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$FIXTURE_CLI" 2>/dev/null)
+    [[ "$output" != *'[Included from `HELP-FRAGMENT-TRACKER.md`'* \
+       && "$output" != *'[Included from `pack-ops/HELP-FRAGMENT-TRACKER.md`'* ]] \
+        && t_pass "2.2.c no sentinel leak on v11-flat-file client fixture" \
+        || t_fail "2.2.c sentinel leaked on v11-flat-file fixture" \
+                  "BD-177 regression — client-side substitution silently failed"
+else
+    t_fail "2.2.c v11-flat-file fixture missing" \
+           "expected $FIXTURE_CLI/docs/pack/HELP-FRAGMENT*.md (run test-fixtures/build.sh)"
+fi
+
+# 2.2.d NEW (BD-177 fix-pass — pack-side regression guard).
+# Symmetric assertion on the pack-side surface using the real pack-ops
+# fragments. Locks in that no future regex change can drop the pack-side
+# substitution either.
+output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" --surface pack 2>/dev/null)
+[[ "$output" != *'[Included from `HELP-FRAGMENT-TRACKER.md`'* \
+   && "$output" != *'[Included from `pack-ops/HELP-FRAGMENT-TRACKER.md`'* ]] \
+    && t_pass "2.2.d no sentinel leak on pack-repo pack-side surface" \
+    || t_fail "2.2.d sentinel leaked on pack-side surface" \
+              "BD-177 regression — pack-side substitution silently failed"
 
 # 2.3 explicit --surface override on a tree without BACKLOG.md.
 # BD-175: pack-side fragments live at pack-ops/ — mirror the canonical
