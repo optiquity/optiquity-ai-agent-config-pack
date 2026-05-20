@@ -172,6 +172,13 @@ See `docs/pack/PLATFORM-SKILLS.md` for the authoritative D1–D5 tables,
 the Tier 0 base list, the sparse intersection table, and the
 trigger-loaded list.
 
+**Tier 0 installation note.** Skills at `project-template/skills/` in the
+pack repo are auto-distributed to all three client CLI skill directories
+(`.claude/skills/`, `.codex/skills/`, `.gemini/skills/`) via `stage_s4_skills()`
+at install time; the Tier 0 base list is then loaded by every agent for every
+project per BD-142. See `docs/pack/INSTALL-PROCEDURES.md` § "Stage S4" and the
+`boundary-investigation` Tier 0 skill for the canonical reference.
+
 **Active skills:** [PM chat writes this line during project kickoff, listing
 the skills derived from PLATFORM-SKILLS.md for this project's type. Example:
 `swift-best-practices, apple-architecture-core, macos-architecture`.
@@ -363,7 +370,7 @@ of agent role.
 
 ## Phase routing — default agent assignments
 
-Both Codex and Claude Code can execute any engineering phase in this repo.
+All three tools (Claude Code, Codex, Gemini CLI) can execute any phase.
 The defaults below identify the better system for each phase. Override
 when task characteristics favor a different tool.
 

@@ -183,6 +183,13 @@ See `docs/pack/PLATFORM-SKILLS.md` for the authoritative D1–D5 tables,
 the Tier 0 base list, the sparse intersection table, and the
 trigger-loaded list.
 
+**Tier 0 installation note.** Skills at `project-template/skills/` in the
+pack repo are auto-distributed to all three client CLI skill directories
+(`.claude/skills/`, `.codex/skills/`, `.gemini/skills/`) via `stage_s4_skills()`
+at install time; the Tier 0 base list is then loaded by every agent for every
+project per BD-142. See `docs/pack/INSTALL-PROCEDURES.md` § "Stage S4" and the
+`boundary-investigation` Tier 0 skill for the canonical reference.
+
 **Active skills:** [PM chat writes this line during project kickoff, listing
 the skills derived from PLATFORM-SKILLS.md for this project's type. Example:
 `swift-best-practices, apple-architecture-core, macos-architecture`.
@@ -337,20 +344,23 @@ language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
 
 ## Project memory
 
-These rules govern every agent invocation. Each agent's full operating
-rules (Permission profile, Output policy, Hard rules) live in its own
-definition file under `.claude/agents/<agent>.md`,
-`.codex/agents/<agent>.toml`, and `.gemini/agents/<agent>.md` — the
-agent file is authoritative. This section carries only universal
-collaboration rules that apply project-wide.
+These rules govern every agent invocation in this project. Each
+agent's full operating rules (Permission profile, Output policy,
+Hard rules) live in its own definition file under
+`.claude/agents/<agent>.md`, `.codex/agents/<agent>.toml`, and
+`.gemini/agents/<agent>.md`. The agent file is authoritative for
+what that agent may and must do; this section carries only the
+universal collaboration rules that apply project-wide regardless
+of agent role.
 
 - **Trinity rule.** When modifying `CLAUDE.md`, `AGENTS.md`, or
   `GEMINI.md` at the project root, the same change applies to all
-  three. Asymmetry requires justification as provably tool-specific.
+  three in the same set of edits. Symmetry is the default;
+  asymmetry requires justification as provably tool-specific.
 - **No destructive operations without explicit approval.** Before
-  any `git rm`, `rm -rf`, deletion, overwrite, or `git reset --hard`,
-  state what will be destroyed and wait for explicit approval — even
-  when the overall task is approved.
+  any `git rm`, `rm -rf`, file deletion, overwrite, or
+  `git reset --hard`, state exactly what will be destroyed and wait
+  for explicit approval — even when the overall task is approved.
 - **PM chat does not architect.** Architecture, planning,
   implementation, and review work goes to the corresponding agent.
   The full pack agent roster is at `docs/pack/PM-CHAT.md` §
