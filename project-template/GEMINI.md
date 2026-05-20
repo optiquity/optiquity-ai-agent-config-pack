@@ -54,24 +54,25 @@ Default preference only:
 
 ## [CONDITIONAL] iOS 26 / Xcode 26.3 platform features
 
-- **Liquid Glass** is the current iOS 26 / macOS 26 design language. Use `.glassEffect()` and related modifiers.
-- **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Evaluate before third-party ML inference.
-- **Availability guards required.** Wrap in `#available(iOS 26, *)` / `#available(macOS 26, *)` if deployment target is below iOS 26.
+- **Liquid Glass** is the current iOS 26 / macOS 26 design language for materials and visual effects. Use `.glassEffect()` and related modifiers rather than custom `Material` or `UIVisualEffectView` implementations.
+- **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Evaluate before reaching for third-party ML inference.
+- **Availability guards required.** Liquid Glass and FoundationModels require iOS 26+ / macOS 26+. Wrap in `#available(iOS 26, *)` / `#available(macOS 26, *)` guards if the deployment target is below iOS 26 / macOS 26.
 - **Check Apple frameworks before third-party packages** for any new capability.
-- For implementation details on any iOS 26 API, the `docs-researcher` agent reads directly from the Xcode documentation bundle at `/Applications/Xcode.app/Contents/PlugIns/IDEIntelligenceChat.framework/Versions/A/Resources/AdditionalDocumentation/`. If Xcode is installed elsewhere, adjust the path. If the path does not exist, fall back to web search.
+- For implementation details on any iOS 26 API, the `docs-researcher` agent reads directly from the Xcode documentation bundle at `$XCODE_APP/Contents/PlugIns/IDEIntelligenceChat.framework/Versions/A/Resources/AdditionalDocumentation/` (where `$XCODE_APP` defaults to `/Applications/Xcode.app` — override in `.claude/settings.json` env block if Xcode is installed elsewhere). If the path does not exist, fall back to web search.
 
 ## Architecture — universal layer discipline
 
 These rules apply regardless of which architecture pattern this project uses.
 
-- Choose one primary architecture pattern before writing production code. **Document in `ARCHITECTURE.md` before implementation begins.**
-- Separate presentation, domain, and data/transport layers. No layer reaches past its immediate neighbor.
-- Domain layer has zero framework imports (no UIKit, AppKit, SwiftUI, gRPC, grpcio).
-- Generated Protobuf/gRPC types live in the data layer only — never in domain or presentation signatures.
-- Cross-layer dependencies are expressed as interface or protocol abstractions. Concrete implementations are injected.
-- Shared mutable state documents its owner, lifecycle, and mutation contract. Undocumented shared mutable state is a defect.
-- Services are stateless by default. Stateful services document state, threading, and invalidation.
-- Navigation logic lives outside view and view-model types.
+- Choose one primary architecture pattern per app target before writing production code. **Document the choice and rationale in `ARCHITECTURE.md` before implementation begins.**
+- Once chosen, apply the pattern consistently within its target. Any seam between two different patterns must be documented and justified.
+- Separate presentation, domain, and data/transport layers into distinct types, files, or modules. No layer may reach past its immediate neighbor (presentation → domain → data; never presentation → data directly).
+- Domain layer has zero import dependencies on UIKit, AppKit, SwiftUI, CoreData, SwiftData, gRPC, grpcio, or any persistence or networking framework.
+- Generated Protobuf and gRPC types are transport types. They live in the data layer only. They must never appear in domain-layer type signatures or in presentation/view-model types.
+- Every cross-layer dependency is expressed as an interface or protocol abstraction. Concrete implementations are injected; they are never instantiated inline by the consuming layer.
+- Shared mutable state declares its owner type, owning actor or thread, lifecycle (who creates it, who destroys it), and mutation contract at the definition site. Undocumented shared mutable state is a defect.
+- Services are stateless by default. Stateful services explicitly document their state variables, threading guarantees, and invalidation policy.
+- Navigation logic lives outside view and view-model types. Use Coordinator, NavigationStack with a typed path, or a Router depending on the chosen pattern.
 
 ## [CONDITIONAL] Architecture rules — platform-specific
 
@@ -87,8 +88,8 @@ These rules apply regardless of which architecture pattern this project uses.
 
 ## Security
 
-- Never hardcode secrets, API keys, tokens, or certificates in source or committed config.
-- Validate all data received from the network before use in domain logic or UI.
+- Never hardcode secrets, API keys, tokens, or certificates in source code or config files committed to git.
+- Validate all data received from the network before using it in domain logic or UI.
 - TLS required for all gRPC connections. Do not disable certificate validation outside development.
 
 [PLATFORM_SECURITY — fill in from security-patterns skill]
@@ -241,13 +242,13 @@ tree and the monolithic mirror are regenerated from tracker state.
 ## Scripts
 
 `agent-run.sh` lives in the **project root** and is the standard way to launch any agent.
-The `scripts/` directory contains build, test, and validation scripts. Make everything
-executable on first checkout: `chmod +x agent-run.sh scripts/*.sh`.
+The `scripts/` directory contains build, test, and validation scripts. **Copy both from the
+pack template and make executable before first use** (`chmod +x agent-run.sh scripts/*.sh`).
 
 | Script | Location | When to run | Who calls it |
 |---|---|---|---|
 | `agent-run.sh` | Project root | To launch any agent — run `./agent-run.sh --help` | Human only |
-| `bootstrap.sh` | `scripts/` | Once on first checkout or new machine — detects languages and calls bootstrap-\<lang\>.sh | Human |
+| `bootstrap.sh` | `scripts/` | Once on first checkout or new machine — detects languages and calls the right bootstrap-\<lang\>.sh | Human |
 | `bootstrap-swift.sh` | `scripts/` | Resolve SPM dependencies, verify Xcode | `bootstrap.sh` wrapper |
 | `bootstrap-python.sh` | `scripts/` | Sync Python dependencies via uv, verify buf | `bootstrap.sh` wrapper |
 | `format.sh` | `scripts/` | Before committing — detects languages and calls format-\<lang\>.sh | Human or `repo-ops` agent |
@@ -261,7 +262,7 @@ executable on first checkout: `chmod +x agent-run.sh scripts/*.sh`.
 | `test-swift.sh` | `scripts/` | Run Swift test suite | `test.sh` wrapper |
 | `test-python.sh` | `scripts/` | Run Python test suite via pytest | `test.sh` wrapper |
 | `proto-gen.sh` | `scripts/` | After editing any `.proto` file — runs buf lint then buf generate | Human or `coder` / `repo-ops` agent |
-| `agent-post-edit-check.sh` | `scripts/` | **Never call manually** — fires via Codex post_edit_command and Claude Code PostToolUse hook | Automatic hook |
+| `agent-post-edit-check.sh` | `scripts/` | **Never call manually** — fires automatically via Claude Code PostToolUse hook and Codex post_edit_command after every agent file edit | Automatic hook |
 
 **Required first-time setup (Swift projects only):** Open `scripts/validate-swift.sh`
 and `scripts/test-swift.sh` and fill in the scheme and destination variables. Until set,
