@@ -531,7 +531,7 @@ For every commit on every push, parse the commit subject for scope claims and co
 |---|---|
 | Subject contains literal `pack-only` (case-insensitive) | Only pack-only paths (deny `project-template/` + Architect-B-conditional project-side dirs) |
 | Subject contains literal `project-only` (case-insensitive) | Only project-side paths (deny pack-only paths) |
-| Subject contains literal `PM-only` or `pack-memory-only` | Only Pack-Chat-direct-edit surfaces per `PACK-AGENTS.md:142-148` PM-only Files list — see §8.1a below for the verbatim list. Notably **PERMITS** edits to `project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (project-template trinity IS PM-only per PACK-AGENTS.md:148 — "root and `project-template/`"). Updated per Phase 3 reviewer finding B1-cascade + S6. |
+| Subject contains literal `PM-only` or `pack-memory-only` | Only Pack-Chat-direct-edit surfaces per `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` (PM-only Files list) — see §8.1a below for the verbatim list. Notably **PERMITS** edits to `project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (project-template trinity IS PM-only per `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` — "root and `project-template/`"). Updated per Phase 3 reviewer finding B1-cascade + S6. |
 | No scope keyword in subject | Check skipped (commit is implicitly mixed-scope) |
 
 The keyword vocabulary is narrow (3 keyword patterns) and the deny rules are mechanically verifiable.
@@ -551,13 +551,13 @@ The PERMITTED-PATHS regex is conditional on Architect B's directory architecture
 **Measurable test for M5a:** Stage three test commits in CI fixture branch:
 - Commit subject `"pack-only: test"` touching `project-template/CLAUDE.md` → MUST FAIL Check 36 with diff callout
 - Commit subject `"project-only: test"` touching `scripts/foo.sh` → MUST FAIL
-- Commit subject `"PM-only: test"` touching `project-template/CLAUDE.md` → MUST **PASS** (project-template trinity IS a Pack-Chat-direct PM-only surface per `PACK-AGENTS.md:148` — "root and `project-template/`"). Updated per Phase 3 reviewer finding B1-cascade + S6 cascade; pre-fix this test asserted FAIL, which was incorrect per the actual pack-memory rule. The correct PM-only-violation fixture must touch a file OUTSIDE the PACK-AGENTS.md:142-148 PM-only Files list — see §8.1a §10.2 worked example.
+- Commit subject `"PM-only: test"` touching `project-template/CLAUDE.md` → MUST **PASS** (project-template trinity IS a Pack-Chat-direct PM-only surface per `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` — "root and `project-template/`"). Updated per Phase 3 reviewer finding B1-cascade + S6 cascade; pre-fix this test asserted FAIL, which was incorrect per the actual pack-memory rule. The correct PM-only-violation fixture must touch a file OUTSIDE the `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` PM-only Files list — see §8.1a §10.2 worked example.
 - (Additional fixture per S6 fix:) Commit subject `"PM-only: test"` touching `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md` → MUST FAIL (supporting-docs/ is project-side per CLAUDE.md trinity rule; not in the PM-only Files list). This is the corrected V2-shape fixture; the previous V10-shape fixture was based on the misreading B1 corrected.
 
 ### §8.1a — Authoritative PM-only Files list (consumed by Check 36 PM-only keyword)
 
 The `PM-only` / `pack-memory-only` commit-subject keyword's permitted-paths
-regex is defined by `PACK-AGENTS.md:142-148` § "PM-only files and directories"
+regex is defined by `pack-ops/PACK-AGENTS.md § "PM-only files and directories"`
 Files block (verbatim at HEAD `8014186`):
 
 ```
@@ -600,12 +600,12 @@ the version-table-only narrower constraint stays a Pack Chat discipline
 concern (M1a memory rule), not a Check 36 mechanical concern. Mis-scoped
 README.md edits surface in M3a/M5b/M5c instead.)
 
-**Directories also listed by PACK-AGENTS.md:150-158** (`/backlog/`,
+**Directories also listed by `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` Directories sub-list** (`/backlog/`,
 `/changelog/`, `project-template/docs/project/backlog/`,
 `project-template/docs/project/implementation-plan/`,
 `project-template/docs/project/changelog/` and their `_rules.md` /
 `_intro.md` / `_format.md` / per-entry files) are also PM-only.
-The post-Batch-23 forward-pointing note in PACK-AGENTS.md:178-187 confirms
+The post-Batch-23 forward-pointing note in `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` (`**Forward-pointing note (Batch 19 → Batch 23):**` sub-block) confirms
 these directories materialize at Batch 23 BD-102 dog-food; pre-Batch-23
 the PM-only files-only list is what Check 36 enforces. Post-Batch-23 the
 regex extends to include these per-entry tree paths.
@@ -615,8 +615,9 @@ per Phase 3 reviewer findings B1-cascade (BLOCKER, PACK-REVIEW-PHASE-2-DESIGNS.m
 §1 B1, lines 43-65) and S6 (SHOULD, lines 241-253). Pre-fix, C's §8.1 keyword-table
 treated project-template trinity edits as PM-only VIOLATIONS ("caught V10"),
 which reproduced Architect A's misreading of `8ba0164`'s scope. The actual
-PACK-AGENTS.md:148 PM-only list explicitly names "`CLAUDE.md` / `AGENTS.md` /
-`GEMINI.md` (root and `project-template/`)" — project-template trinity IS
+`pack-ops/PACK-AGENTS.md § "PM-only files and directories"` PM-only list
+explicitly names "`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (root and
+`project-template/`)" — project-template trinity IS
 PM-only. V10 collapses to NO-ACTION per Architect A fix-pass; this design's
 Check 36 PM-only keyword definition no longer references V10.
 
@@ -802,7 +803,7 @@ The vocabulary is intentionally small. Adding more keywords increases CI fragili
 **Pre-fix worked example (V10) was INCORRECT and is dropped.** Phase 3 reviewer
 finding B1 surfaced that commit `8ba0164` ("docs: v11 — BD-167b per-entry split
 PM-only edits") DID claim `PM-only` and DID touch project-template trinity —
-but project-template trinity IS PM-only per `PACK-AGENTS.md:148` ("`CLAUDE.md`
+but project-template trinity IS PM-only per `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` ("`CLAUDE.md`
 / `AGENTS.md` / `GEMINI.md` (root and `project-template/`)"). The commit's
 scope was correct; the audit's V10 finding misread the PM-only list. V10
 collapses to NO-ACTION per Architect A fix-pass; using `8ba0164` as the
@@ -819,7 +820,7 @@ notes). The instructive shape for M1b purposes is the HYPOTHETICAL: had the
 commit been issued with subject `"docs: v11 — PM-only Batch 19b cleanup"`,
 the diff (`supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`) would have
 failed Check 36 because `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`
-is NOT in the PACK-AGENTS.md:142-148 PM-only Files list (it's project-side
+is NOT in the `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` PM-only Files list (it's project-side
 per CLAUDE.md trinity rule "`supporting-docs/`" classification, regardless
 of Architect B's planned post-fix relocation to `pack-ops/`). Pack Chat
 would have re-issued without the `PM-only` keyword or split the commit.
@@ -840,7 +841,7 @@ Several mechanisms in this design are conditional on Architect B's directory arc
 | M3a reviewer protocol amendment | Project-side file detection scope | Whether `supporting-docs/` continues to count as project-side, or B splits/relocates it |
 | M3b implementer pre-flight | Boundary-investigation skill load | Same — affects which agent prompts gate against which directory paths |
 | M4 boundary-investigation skill | Pack-only deny-list | Files relocated by B drop from the pack-root deny-list and may gain new pack-only-dir paths |
-| M5a Check 36 commit-scope honesty | PERMITTED-PATHS regex (PM-only) + permitted pack-only paths regex | Same. **Post-B-fix:** PM-only paths regex is per §8.1a, sourcing from `PACK-AGENTS.md:142-148`. The B-fix C2-at-root exemption list (`pack-ops/.boundary-exempt-root.txt`) is a **1-entry list** (only `tracker.toml.pack-example` per AUDIT-USER-CURATION.md Override 1 + Override 5 collapsing the original 3-entry closed-set proposed in B's §2.1); Check 36 / Check 38 fixtures that depend on the allow-list count assert N=1, NOT N=3. |
+| M5a Check 36 commit-scope honesty | PERMITTED-PATHS regex (PM-only) + permitted pack-only paths regex | Same. **Post-B-fix:** PM-only paths regex is per §8.1a, sourcing from `pack-ops/PACK-AGENTS.md § "PM-only files and directories"`. The B-fix C2-at-root exemption list (`pack-ops/.boundary-exempt-root.txt`) is a **1-entry list** (only `tracker.toml.pack-example` per AUDIT-USER-CURATION.md Override 1 + Override 5 collapsing the original 3-entry closed-set proposed in B's §2.1); Check 36 / Check 38 fixtures that depend on the allow-list count assert N=1, NOT N=3. |
 | M5b Check 37 project-side deny-list | Deny-list patterns | B's renames / relocations change which patterns are deny-listed. Post-B + B-fix adds `pack-ops/` path-prefix per finding M2. |
 | M5c Check 38 pack-only-file siting | Project-side directory boundaries | Same. The 1-entry exemption list (above) governs which C2-at-root files Check 38 tolerates as exempt. |
 | M7 reviewer positive-assertion gate | "Project-side" definition | Same |
@@ -972,7 +973,7 @@ reviewer-report fix-shape that the change satisfies.
 - `PACK-REVIEW-PHASE-2-DESIGNS.md` §1 + §4 (action summary)
 - `AUDIT-USER-CURATION.md` Overrides 1 + 5 + 6 + 9 (user-confirmed overrides
   governing the M4 / S4 / S5 amendments)
-- `PACK-AGENTS.md:142-148` (authoritative PM-only Files list governing
+- `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` (authoritative PM-only Files list governing
   the B1-cascade + S6 amendments)
 - `ARCHITECTURE-DIRECTORY-REORGANIZATION.md` (Architect B's pack-ops/ design
   governing the M2 / S5 amendments)
@@ -1056,15 +1057,15 @@ reviewer-report fix-shape that the change satisfies.
     43-65. Architect A's V10 framing contradicts pack-memory; the cascade
     into C is that C's M5a Check 36 PM-only keyword + §10.2 worked example
     + §12 test plan treated `project-template/` trinity edits as PM-only
-    VIOLATIONS, but `PACK-AGENTS.md:148` explicitly lists project-template
+    VIOLATIONS, but `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` explicitly lists project-template
     trinity AS PM-only ("root and `project-template/`"). C's Check 36 PM-only
     keyword would WRONGLY fail correct PM-only commits.
   - S6 (SHOULD) — PACK-REVIEW-PHASE-2-DESIGNS.md §1 S6, lines 241-253.
     Same fix as B1-cascade — handled in one coordinated amendment.
 - **Reviewer fix-shape:** Update C §8.1 + §10.2 + §12 (test plan) to make
   the `PM-only` keyword PERMIT `project-template/` trinity edits per actual
-  `PACK-AGENTS.md:148` PM-only list. Drop the parenthetical "caught V10".
-- **Actual PACK-AGENTS.md:142-148 PM-only Files list (verbatim — used as
+  `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` PM-only list. Drop the parenthetical "caught V10".
+- **Actual `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` Files list (verbatim — used as
   the corrected definition):**
 
   ```
@@ -1079,7 +1080,7 @@ reviewer-report fix-shape that the change satisfies.
 
 - **Sections amended:**
   - §8.1 keyword-table PM-only row — rewritten to PERMIT project-template
-    trinity, cite PACK-AGENTS.md:142-148 by line range, and reference the
+    trinity, cite `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` by section anchor, and reference the
     new §8.1a verbatim list. "Caught V10" parenthetical DROPPED.
   - §8.1 measurable-test bullet list — the PM-only test fixture that
     previously asserted FAIL on `project-template/CLAUDE.md` edits now
@@ -1088,14 +1089,14 @@ reviewer-report fix-shape that the change satisfies.
     `supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md`) added as the
     asserts-FAIL fixture (supporting-docs is NOT in the PM-only Files
     list per CLAUDE.md trinity rule).
-  - §8.1a (new subsection) — paste the verbatim PACK-AGENTS.md:142-148
+  - §8.1a (new subsection) — paste the verbatim `pack-ops/PACK-AGENTS.md § "PM-only files and directories"`
     PM-only Files block + the post-B + B-fix path-substitution rules
     (paths inside `pack-ops/` after relocations) + the canonical
     PERMITTED-PATHS regex for Check 36 PM-only keyword + a directives
     block on README.md (Check 36 cannot distinguish version-table edits
     from other-section edits; the narrower discipline stays Pack Chat's
-    via M1a) + a forward-pointing note on PACK-AGENTS.md:150-158
-    directories (per-entry trees Batch-23-materialized). Cross-reference
+    via M1a) + a forward-pointing note on `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` Directories sub-list
+    (per-entry trees Batch-23-materialized). Cross-reference
     to B1-cascade + S6 fix-pass added at the foot of §8.1a.
   - §10.2 worked example — V10 worked example DROPPED with explicit
     rationale (V10 collapses to NO-ACTION per Architect A fix-pass per
@@ -1117,7 +1118,7 @@ reviewer-report fix-shape that the change satisfies.
 - **How this satisfies the fix-shape:** The reviewer fix-shape names §8.1
   + §10.2 + §12 as the surfaces requiring update. §8.1 + §10.2 are amended
   directly; §12 reads through to §8.1's fixtures and is now correct via
-  the §8.1 update. The PACK-AGENTS.md:142-148 list is pasted verbatim in
+  the §8.1 update. The `pack-ops/PACK-AGENTS.md § "PM-only files and directories"` Files list is pasted verbatim in
   the new §8.1a so the corrected definition is traceable; the V10 worked
   example is dropped explicitly with rationale (so future readers cannot
   resurrect the misreading by mistake). The corrected V2-shape test
