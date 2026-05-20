@@ -1602,6 +1602,48 @@ Resolved: n/a
 
 ---
 
+**BD-182 — Cross-CLI reference normalization across project-template trinity (settings paths, commands, tool-specific URIs)**
+Type: TODO(version) — surfaced 2026-05-20 during BD-178 SHOULD-1 fix-coder implementation (IMPLEMENTATION-REPORT-BD-178-SHOULD-1.md §3.1 observation); user-approved fold into BD-175 emergency batch 2026-05-20.
+Status: Open
+Blockers: BD-175 + BD-176 + BD-177 + BD-178 + BD-179 + BD-180 + BD-181 (must close successfully in that order per user direction 2026-05-20)
+Unblocks: closes the cross-CLI reference asymmetry that lurked under BD-178 SHOULD-1's byte-identical body-text alignment (a Gemini-CLI-running user reading project-template/GEMINI.md gets wrong settings-file path because CLAUDE-canonical wording references `.claude/settings.json`); provides systematic per-CLI reference table for future trinity edits.
+File/Symbol:
+  - `project-template/CLAUDE.md` (CLI-specific references throughout — settings paths like `.claude/settings.json`, commands like `claude help`, etc.)
+  - `project-template/AGENTS.md` (CLI-specific references for Codex CLI)
+  - `project-template/GEMINI.md` (CLI-specific references for Gemini CLI)
+  - Possibly `pack-root` trinity (CLAUDE.md / AGENTS.md / GEMINI.md at repo root) — separate trinity location with similar cross-CLI reference concerns
+  - `scripts/init-project.sh` (verify install-time tool-specific path adjustments if any)
+  - `test-fixtures/manifest.txt` (regenerate per RC9 — `project-template/` is v11-surface)
+Description: BD-178 SHOULD-1 fix-coder (commit `fa605a9`) aligned project-template/GEMINI.md body text to CLAUDE.md for 4 sections (iOS 26, Architecture, Security, Scripts) per Option 1A. The byte-identical adoption per pack memory CLAUDE-first General canonicalization heuristic correctly closed UNRESOLVED-DRIFT (per archived ARCHITECTURE-BATCH-19B-STRATEGIC-PRINCIPLES.md §D.4 L432-436 classification) — BUT side-cased a different concern: the CLAUDE-canonical iOS-26 wording references `.claude/settings.json`, which is Claude-CLI-specific. A Gemini-CLI-running user reading GEMINI.md now gets the wrong settings-file path (Gemini installs use `.gemini/`, not `.claude/`).
+
+  Per Override 9 principle (different audience = different wording; NO cross-trinity drift gate), tool-specific references ARE legitimate divergence. Each trinity file should reference its OWN CLI's settings paths, commands, etc. — NOT byte-identically copy the Claude-specific references.
+
+  This is a DIFFERENT class of issue than body-text drift:
+  - Body-text drift (SHOULD-1): same conceptual content but different wording → align to canonical (CLAUDE-first)
+  - Cross-CLI references (this BD): same conceptual content but DIFFERENT correct values per CLI → tool-specific divergence is REQUIRED (Override 9 authorized)
+
+  The same issue likely exists across the trinity for ALL CLI-specific references:
+  - Settings files: `.claude/settings.json` vs `.codex/config.toml` (or equivalent) vs `.gemini/settings.json` (or equivalent)
+  - CLI commands: `claude` vs `codex` vs `gemini` invocations
+  - Hook paths, command directories, skill directories, agent directories (per-CLI prefixes throughout)
+  - Documentation URIs, troubleshooting references
+
+  Scope:
+  - Architect-pass analysis: systematic identification of all cross-CLI references in `project-template/{CLAUDE,AGENTS,GEMINI}.md` (and possibly pack-root trinity)
+  - Per-reference classification: tool-specific (per-CLI canonical) vs tool-neutral (CLAUDE-first canonical)
+  - Per-CLI canonical reference table: for each cross-CLI reference, what's the correct per-CLI value?
+  - Trinity edits applying tool-specific canonicalization per the table
+  - Verify scripts/init-project.sh install-time path adjustments are consistent with the trinity references
+  - Regenerate `test-fixtures/manifest.txt` per RC9
+  - Update Check 18 (or add a new check) to recognize that cross-CLI references in trinity are EXPECTED to differ per Override 9 — don't false-positive as within-trinity parity violations
+
+  Implementation pattern: pack-architect spawn (per pack-memory pack-architect-spawn protocol — touches trinity Pack memory section + rules/operating-docs; user approval required for architect spawn) → strategy doc with per-reference table → pack-coder applies mechanically → Pack Chat commits.
+
+  Position: Insert immediately after BD-181 (per user direction 2026-05-20 — last BD before end-of-batch reviewer; provides clean cross-CLI reference baseline before batch audit).
+Resolved: n/a
+
+---
+
 **BD-174 — Scratch-pack-clone migration + multi-toggle test harness**
 Type: TODO(version) — surfaced 2026-05-17 from session discussion of test fixture thoroughness pre-public-release (gap identified: BD-102 dog-food runs on real pack repo; no scratch-clone equivalent for pack-on-pack code-bug-catching in safe environment)
 Status: Open
