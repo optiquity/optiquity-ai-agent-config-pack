@@ -2,7 +2,7 @@
 
 **Status:** canonical rule reference (stable across pack versions; updated only when the boundary definition itself changes).
 **Audience:** pack maintainers, pack agents (pack-architect / pack-coder / pack-planner / pack-reviewer / pack-docs-researcher), future architects, project PM chats (post-install qualifier — see §6).
-**Source-of-design:** `maintenance-docs/v11-implementation/ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §1.1, §1.2, §3.3 (machine-readable format), §4, §5.2 + `ARCHITECTURE-DIRECTORY-REORGANIZATION-FIX.md` §4 (1-entry shrink) + `AUDIT-USER-CURATION.md` Overrides 1 + 5.
+**Source-of-design:** `maintenance-docs/v11-implementation/ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §1.1, §1.2, §3.3 (machine-readable format), §4, §5.2 + `maintenance-docs/v11-implementation/ARCHITECTURE-DIRECTORY-REORGANIZATION-FIX.md` §4 (1-entry shrink) + `maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` Overrides 1 + 5.
 
 ---
 
@@ -45,11 +45,11 @@ The cross-product gives **six valid combinations**:
 | # | Audience × Function | Examples |
 |---|---|---|
 | C1 | PACK × PRODUCT | Pack repo's landing-page docs read by GitHub visitors evaluating the pack: `README.md`, `LICENSE.md`. |
-| C2 | PACK × OPERATIONS | Pack-only operating docs and design records: `PACK-CHAT.md`, `PACK-AGENTS.md`, `HELP-FRAGMENT-PACK.md`, `HELP-FRAGMENT-TRACKER.md`, `OPTIONAL-FEATURES.md`, `BACKLOG.md`, `CHANGELOG.md`, `maintenance-docs/**`, `.claude/agents/pack-*.md`, `scripts/validate-pack.py`, `scripts/pack-help.sh`, etc. |
+| C2 | PACK × OPERATIONS | Pack-only operating docs and design records: `PACK-CHAT.md`, `PACK-AGENTS.md`, `HELP-FRAGMENT-PACK.md`, `pack-ops/HELP-FRAGMENT-TRACKER.md`, `pack-ops/OPTIONAL-FEATURES.md`, `BACKLOG.md`, `CHANGELOG.md`, `maintenance-docs/**`, `.claude/agents/pack-*.md`, `scripts/validate-pack.py`, `scripts/pack-help.sh`, etc. |
 | C3 | PACK × TOOL-CONFIG | Pack-trinity (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md` at pack root), pack-side `.claude/`, `.codex/`, `.gemini/`, `.github/` directories at pack root, root `.gitignore`. |
-| C4 | PROJECT × PRODUCT | Installed-to-client content: everything under `project-template/` that ships verbatim or templated to client repos via `init-project.sh`. |
+| C4 | PROJECT × PRODUCT | Installed-to-client content: everything under `project-template/` that ships verbatim or templated to client repos via `scripts/init-project.sh`. |
 | C5 | PROJECT × OPERATIONS | Project-side operating docs that the pack provides as installable artifacts: `project-template/docs/pack/PM-CHAT.md`, `project-template/docs/pack/PACK-FEEDBACK.md`, `project-template/docs/pack/PLATFORM-SKILLS.md`, project-side agent files in `project-template/.claude/agents/*.md` (architect / coder / reviewer / ...). These are PROJECT audience because client repos read them; they are OPERATIONS because the client uses them to do work, not as the deliverable itself. |
-| C6 | PROJECT × TOOL-CONFIG | Project-side trinity (`project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), project-side `.claude/` / `.codex/` / `.gemini/` / `.github/` directories under `project-template/`. These exist at fixed paths so the trinity → installed-trinity path is mechanical for `init-project.sh`. |
+| C6 | PROJECT × TOOL-CONFIG | Project-side trinity (`project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), project-side `.claude/` / `.codex/` / `.gemini/` / `.github/` directories under `project-template/`. These exist at fixed paths so the trinity → installed-trinity path is mechanical for `scripts/init-project.sh`. |
 
 A file or directory MUST fall into exactly one of C1–C6. Files that appear to fall into more than one (the "shared" pattern) are anti-patterns and MUST be split (see §5).
 
@@ -75,7 +75,7 @@ Given any artifact, classify it and place it as follows:
 
 4. **If the verdict places a NEW file at pack root**, the file MUST be either C1 or C3. Any PACK × OPERATIONS file at root is a regression and SHOULD be rejected by a CI gate (the prevention CI gate consumes the closed-set exemption list — see §4).
 
-**The criterion that resolves all real ambiguity:** the audience is the actor that consumes the file IN THE CONTEXT WHERE THE FILE LIVES. A pack-internal agent prompt at `.claude/agents/pack-architect.md` is consumed by Claude Code WHEN THE CWD IS THE PACK REPO. Audience = PACK, unambiguously. Conversely, `project-template/.claude/agents/architect.md` is consumed by Claude Code when its CWD is the CLIENT repo (after `init-project.sh` installs it). Audience = PROJECT, unambiguously. The criterion "WHEN THE CWD IS X" resolves all real cases.
+**The criterion that resolves all real ambiguity:** the audience is the actor that consumes the file IN THE CONTEXT WHERE THE FILE LIVES. A pack-internal agent prompt at `.claude/agents/pack-architect.md` is consumed by Claude Code WHEN THE CWD IS THE PACK REPO. Audience = PACK, unambiguously. Conversely, `project-template/.claude/agents/architect.md` is consumed by Claude Code when its CWD is the CLIENT repo (after `scripts/init-project.sh` installs it). Audience = PROJECT, unambiguously. The criterion "WHEN THE CWD IS X" resolves all real cases.
 
 ---
 
@@ -91,14 +91,14 @@ pack-ops/.boundary-exempt-root.txt
 
 | # | Filename | Reason exempt |
 |---|---|---|
-| 1 | `tracker.toml.pack-example` | Per `AUDIT-USER-CURATION.md` §1 Override 1 — user direction; sufficient authority. |
+| 1 | `tracker.toml.pack-example` | Per `maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` §1 Override 1 — user direction; sufficient authority. |
 
 **Why only 1 entry and not 3?**
 
-An earlier design (`ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §2.1 + §3.3) proposed a 3-entry exemption list including `BACKLOG.md` and `CHANGELOG.md` with a "pinned by external constraints" rationale. That design was REJECTED:
+An earlier design (`maintenance-docs/v11-implementation/ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §2.1 + §3.3) proposed a 3-entry exemption list including `BACKLOG.md` and `CHANGELOG.md` with a "pinned by external constraints" rationale. That design was REJECTED:
 
-- **Override 1** (`AUDIT-USER-CURATION.md` §1) authorized ONLY `tracker.toml.pack-example` to STAY at root.
-- **Override 5** (`AUDIT-USER-CURATION.md` §1) explicitly REJECTED the proposed exemption for `BACKLOG.md` + `CHANGELOG.md`. User direction: both files MUST MOVE to `pack-ops/`. The user's boundary articulation classifies them as pack operational docs (curation §5: "config pack operational docs used by the pack to do its work"), not as configs governing the pack repo. "Pinned by external constraints" was not accepted as a valid exemption rationale — no tool reads either file at a specific root location; the asserted CI Check 32 and per-entry-tree contracts pin file CONTENT (mirror-in-sync) not file LOCATION.
+- **Override 1** (`maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` §1) authorized ONLY `tracker.toml.pack-example` to STAY at root.
+- **Override 5** (`maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` §1) explicitly REJECTED the proposed exemption for `BACKLOG.md` + `CHANGELOG.md`. User direction: both files MUST MOVE to `pack-ops/`. The user's boundary articulation classifies them as pack operational docs (curation §5: "config pack operational docs used by the pack to do its work"), not as configs governing the pack repo. "Pinned by external constraints" was not accepted as a valid exemption rationale — no tool reads either file at a specific root location; the asserted CI Check 32 and per-entry-tree contracts pin file CONTENT (mirror-in-sync) not file LOCATION.
 
 The shortened 1-entry list is the result. `BACKLOG.md` and `CHANGELOG.md` move to `pack-ops/BACKLOG.md` and `pack-ops/CHANGELOG.md` per the directory reorganization (encoded as ABSENCE from this exemption list — they are not exempted, they are relocated).
 
@@ -110,7 +110,7 @@ The shortened 1-entry list is the result. `BACKLOG.md` and `CHANGELOG.md` move t
 
 ## §5 SHARED anti-pattern catalog (post-resolution)
 
-When the boundary rules were first articulated, the audit (`AUDIT-PACK-PROJECT-BOUNDARY-VIOLATIONS.md` §F) identified seven candidate SHARED anti-patterns — artifacts that appeared to span PACK and PROJECT audiences. User curation (`AUDIT-USER-CURATION.md` Overrides 3 + 4) reclassified two of them OUT (they are independent parallel TOOL-CONFIG dirs, not shared). The remaining FIVE anti-patterns and their structural resolutions are catalogued here so future readers do not re-create a resolved issue.
+When the boundary rules were first articulated, the audit (`maintenance-docs/v11-implementation/AUDIT-PACK-PROJECT-BOUNDARY-VIOLATIONS.md` §F) identified seven candidate SHARED anti-patterns — artifacts that appeared to span PACK and PROJECT audiences. User curation (`maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` Overrides 3 + 4) reclassified two of them OUT (they are independent parallel TOOL-CONFIG dirs, not shared). The remaining FIVE anti-patterns and their structural resolutions are catalogued here so future readers do not re-create a resolved issue.
 
 ### §5.1 F-1: `supporting-docs/` audience-mixed
 
@@ -134,13 +134,13 @@ After the three moves, `supporting-docs/` is unambiguously C4 (PROJECT × PRODUC
 
 **Problem.** `QUICKSTART.md` is at pack root but contains both pack-side voice ("what is this pack") and project-side voice ("here's how to set up your coding project"). Referenced from both audiences.
 
-**Resolution.** **NO SPLIT** (per `AUDIT-USER-CURATION.md` Override 7). User exception authorized: `QUICKSTART.md` is a ~47-line pre-install pack-installer doc that serves ONE audience (pack-installers); SPLIT is over-engineering. GitHub-landing-page visibility is the rationale for keeping at root. The 5 project-side references to `docs/pack/QUICKSTART.md` (in 4 files) are REMOVED entirely per Override 10 — install docs are not in-project help content. The classification stands as C1 (PACK × PRODUCT, landing-page).
+**Resolution.** **NO SPLIT** (per `maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` Override 7). User exception authorized: `QUICKSTART.md` is a ~47-line pre-install pack-installer doc that serves ONE audience (pack-installers); SPLIT is over-engineering. GitHub-landing-page visibility is the rationale for keeping at root. The 5 project-side references to `docs/pack/QUICKSTART.md` (in 4 files) are REMOVED entirely per Override 10 — install docs are not in-project help content. The classification stands as C1 (PACK × PRODUCT, landing-page).
 
-### §5.4 F-5: `OPTIONAL-FEATURES.md` installed-path mismatch
+### §5.4 F-5: `pack-ops/OPTIONAL-FEATURES.md` installed-path mismatch
 
-**Problem.** `OPTIONAL-FEATURES.md` was at pack root only, but 5 project-side files referenced path `docs/pack/OPTIONAL-FEATURES.md` as if it were installed at client repos. `init-project.sh` did not install it.
+**Problem.** `pack-ops/OPTIONAL-FEATURES.md` was at pack root only, but 5 project-side files referenced path `docs/pack/OPTIONAL-FEATURES.md` as if it were installed at client repos. `scripts/init-project.sh` did not install it.
 
-**Resolution.** **SPLIT** (per `AUDIT-USER-CURATION.md` Override 8). The pack-root file moves to `pack-ops/OPTIONAL-FEATURES.md` (pack-side, C2). A NEW file is created at `project-template/docs/pack/OPTIONAL-FEATURES.md` with project-side-audience content (C5). `init-project.sh` gains an install stage. The two files are independently curated — content overlap is allowed where it serves both audiences, but each file's content is tailored to its audience. The 5 project-side references resolve to the new file.
+**Resolution.** **SPLIT** (per `maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` Override 8). The pack-root file moves to `pack-ops/OPTIONAL-FEATURES.md` (pack-side, C2). A NEW file is created at `project-template/docs/pack/OPTIONAL-FEATURES.md` with project-side-audience content (C5). `scripts/init-project.sh` gains an install stage. The two files are independently curated — content overlap is allowed where it serves both audiences, but each file's content is tailored to its audience. The 5 project-side references resolve to the new file.
 
 ### §5.5 F-6: trinity filename collisions
 
@@ -176,7 +176,7 @@ The `pack-ops/PACK-*.md` paths below reflect the post-Commit 2 location (after B
 
 - `README.md` § "Repository Layout" — one-line pointer "Boundary rules between pack-only and project-only files: see `pack-ops/BOUNDARY-DEFINITION.md`."
 - `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` (after F-1 move per Override 6) — pointer in dimension (d) Pack rule adherence so conceptual reviewers cite it.
-- `.claude/agents/pack-architect.md`, `pack-coder.md`, `pack-planner.md`, `pack-reviewer.md`, `pack-docs-researcher.md` (and trinity-parallel `.codex/agents/pack-*.toml`, `.gemini/agents/pack-*.md`) — "Boundary rules: read `pack-ops/BOUNDARY-DEFINITION.md` before any classification decision" line in each agent's read-list. Trinity-parallel edits required per trinity rule.
+- the pack-architect / pack-coder / pack-planner / pack-reviewer / pack-docs-researcher set of agents at `.claude/agents/` (and trinity-parallel `.codex/agents/pack-*.toml`, `.gemini/agents/pack-*.md`) — "Boundary rules: read `pack-ops/BOUNDARY-DEFINITION.md` before any classification decision" line in each agent's read-list. Trinity-parallel edits required per trinity rule.
 
 ### §6.3 Workflow / CI surfaces (machine-readable)
 
@@ -206,7 +206,7 @@ The verdict procedure (§3) applied to representative files. Each example states
 ### §7.2 C2 PACK × OPERATIONS — `pack-ops/PACK-AGENTS.md`
 
 - **Path.** `pack-ops/PACK-AGENTS.md` (post-Commit 2 location; pre-Commit 2 was at pack root).
-- **Audience.** Read by every pack-* agent that the pack spawns and by Pack Chat when triaging which agent to route work to. No client repo reads this file (it has no installer stage in `init-project.sh`). The actor consumes the file when CWD = pack repo. → **PACK.**
+- **Audience.** Read by every pack-* agent that the pack spawns and by Pack Chat when triaging which agent to route work to. No client repo reads this file (it has no installer stage in `scripts/init-project.sh`). The actor consumes the file when CWD = pack repo. → **PACK.**
 - **Function.** Operating doc — agent routing table for pack development work. Not a deliverable (clients don't see it). Not a CLI-mandated location (the pack chose where to put it). → **OPERATIONS.**
 - **Category.** C2 (PACK × OPERATIONS).
 - **Placement.** `pack-ops/PACK-AGENTS.md` per §3 step 3. NOT at pack root: §3 step 4 forbids new C2 at root and the file is not in the §4 exemption list.
@@ -222,7 +222,7 @@ The verdict procedure (§3) applied to representative files. Each example states
 ### §7.4 C4 PROJECT × PRODUCT — `project-template/skills/audit-methodology/SKILL.md`
 
 - **Path.** `project-template/skills/audit-methodology/SKILL.md`.
-- **Audience.** Client repos that have installed the pack. `init-project.sh` (or the per-CLI install stage) installs this file into the client repo at the corresponding skill location. Client developers and client-side AI agents read it when they perform audit work in the client repo. → **PROJECT.**
+- **Audience.** Client repos that have installed the pack. `scripts/init-project.sh` (or the per-CLI install stage) installs this file into the client repo at the corresponding skill location. Client developers and client-side AI agents read it when they perform audit work in the client repo. → **PROJECT.**
 - **Function.** A deliverable — the pack ships this file as part of the skill set that clients receive. The client uses the skill as part of their work. → **PRODUCT.**
 - **Category.** C4 (PROJECT × PRODUCT).
 - **Placement.** Under `project-template/skills/` per the existing subtree layout — already correctly placed.
@@ -238,10 +238,10 @@ The verdict procedure (§3) applied to representative files. Each example states
 ### §7.6 C6 PROJECT × TOOL-CONFIG — `project-template/.claude/settings.json`
 
 - **Path.** `project-template/.claude/settings.json`.
-- **Audience.** Client repos. After `init-project.sh` installs it, Claude Code in the client repo reads `<client>/.claude/settings.json` to configure its session behavior. The pack repo's own Claude Code does NOT read this file (it reads `/.claude/settings.json` at the pack root — a separate C3 file). → **PROJECT.**
+- **Audience.** Client repos. After `scripts/init-project.sh` installs it, Claude Code in the client repo reads `<client>/.claude/settings.json` to configure its session behavior. The pack repo's own Claude Code does NOT read this file (it reads `/.claude/settings.json` at the pack root — a separate C3 file). → **PROJECT.**
 - **Function.** Required at a specific location by Claude Code (the `.claude/` dotted dir is mandated by Claude Code at the consuming repo's root, and `settings.json` is the mandated filename within it). → **TOOL-CONFIG.**
 - **Category.** C6 (PROJECT × TOOL-CONFIG).
-- **Placement.** Under `project-template/.claude/` so that `init-project.sh` mechanically installs it to `<client>/.claude/` — already correctly placed. The path inside `project-template/` mirrors the post-install client path, which is the convention for all C6 files.
+- **Placement.** Under `project-template/.claude/` so that `scripts/init-project.sh` mechanically installs it to `<client>/.claude/` — already correctly placed. The path inside `project-template/` mirrors the post-install client path, which is the convention for all C6 files.
 
 ### §7.7 Anti-pattern (V1 failure mode) — project trinity acquired PACK-AGENTS.md reference
 

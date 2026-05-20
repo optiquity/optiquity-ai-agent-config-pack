@@ -192,7 +192,7 @@ Cite the rule by file + section/line for every (d) finding. No "violates pack co
 - Filename uniqueness heuristic
 - Spawn sub-agents in background; no worktree isolation from non-main clones
 
-**From `ARCHITECTURE-V1.md` and `V3.3-DELTA.md`:**
+**From the now-archived `ARCHITECTURE-V1.md` and `V3.3-DELTA.md`:**
 - Path 3 forbidden (V3.3 §1, §3 line 27)
 - Trinity rule applicability (V3.3 §9.7)
 - Per-CLI parity (V3.3 §8.4)

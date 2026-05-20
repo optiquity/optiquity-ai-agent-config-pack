@@ -27,7 +27,7 @@ The harness produces meaningful output only if the target satisfies:
   construction; for local-path mode, `git status` first.
 - **No in-flight prior migration.** No `.pack-migrate-vN-to-vM/` state
   dir and no `.pack-migrate-vN-to-vM-backup/` at the target root.
-  Finish reconciling or roll back (`MIGRATION-v10-to-v11.md` §
+  Finish reconciling or roll back (`supporting-docs/MIGRATION-v10-to-v11.md` §
   Rollback) before dry-running.
 - **No unresolved merge conflicts.** Conflict markers in tracked files
   produce noisy and misleading dry-run diffs.
@@ -90,7 +90,7 @@ A **safe** dry-run:
 
 - Adapter exit `0`.
 - Diff file-list contains only the v11 forced additions (per
-  `MIGRATION-v10-to-v11.md` § What changed in v11): trinity `## Quick
+  `supporting-docs/MIGRATION-v10-to-v11.md` § What changed in v11): trinity `## Quick
   reference` blocks, `HELP-FRAGMENT*.md`, `tracker.toml.example`,
   `.github/ISSUE_TEMPLATE/*.yml`, per-CLI `pack-help` skill/command,
   `.pack-migrate-v10-to-v11/` state dir, BD-042 relocation moves.
@@ -102,7 +102,7 @@ A **would-break-customizations** dry-run:
   AND the stdout tail shows `customization-detected-needs-reconciliation`
   rows from the BD-088 customization-preservation report. Each such
   row means the real migration would write a `<file>.v10-customized`
-  sidecar that you would manually merge per `MIGRATION-v10-to-v11.md`
+  sidecar that you would manually merge per `supporting-docs/MIGRATION-v10-to-v11.md`
   § Step 2. Recoverable, but real work — plan accordingly.
 
 A **would-fail** dry-run:
@@ -112,7 +112,7 @@ A **would-fail** dry-run:
   at clone time, missing `v10` tag in the pack repo, target not
   v10-shaped.
 
-See `MIGRATION-v10-to-v11.md` § Step 2 for the full vocabulary of the
+See `supporting-docs/MIGRATION-v10-to-v11.md` § Step 2 for the full vocabulary of the
 underlying migrator's report sections.
 
 ---
@@ -178,7 +178,7 @@ To recover:
 
 1. **Stop the real migration if still in progress.** The migrator's
    `.pack-migrate-v10-to-v11-backup/` (S1) is the rollback target —
-   see `MIGRATION-v10-to-v11.md` § Rollback.
+   see `supporting-docs/MIGRATION-v10-to-v11.md` § Rollback.
 2. **Pin both sides.** `git -C "$PACK" rev-parse HEAD` before dry-run;
    same SHA before real run. For URL mode, ensure no commits land on
    the target between dry-run clone and real run.
@@ -193,7 +193,7 @@ that is a migrator defect — file a BD with both reports attached.
 
 ## See also
 
-- `MIGRATION-v10-to-v11.md` — the actual migration narrative.
+- `supporting-docs/MIGRATION-v10-to-v11.md` — the actual migration narrative.
 - `MERGE-STRATEGY.md` — per-file customization-preservation matrix.
 - `scripts/dry-run-migration.sh --help` — canonical flag listing.
 - `BACKLOG.md` — BD-114 (harness implementation), BD-125 (this doc).

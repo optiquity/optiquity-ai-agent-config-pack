@@ -7,7 +7,7 @@
 > other pack-internal docs (e.g., `HELP-FRAGMENT-PACK.md`) and
 > pack-shipped agent files are appropriate at this pack-only path.
 
-When `init-project.sh --update` (BD-080) or `migrate-v10-to-v11.sh` (BD-085)
+When `init-project.sh --update` (BD-080) or `scripts/migrate-v10-to-v11.sh` (BD-085)
 refresh a project to a newer pack version, every file the migrator touches
 is dispatched to a per-class preservation strategy implemented in
 `scripts/lib/customization-preserve.sh` (BD-088). This document is the
@@ -97,15 +97,15 @@ the baseline (no project edit).
 
 **On `customization-detected-needs-reconciliation`:** rare — only when
 both sides edited the same scalar key with conflicting values.
-`merge-json.py` writes warnings to `<state-dir>/diffs/...merge-warnings.log`.
-Inspect, choose the correct value manually, edit `settings.json`,
-remove the sidecar.
+`scripts/merge-json.py` writes warnings to `<state-dir>/diffs/...merge-warnings.log`.
+Inspect, choose the correct value manually, edit any CLI's settings.json
+file (e.g., `project-template/.claude/settings.json`), remove the sidecar.
 
 ---
 
 ### 3. `claude-mcp-example` — `.mcp.json.example`, `.mcp.json`
 
-**Strategy:** same as `claude-settings` (JSON allowlist via `merge-json.py`).
+**Strategy:** same as `claude-settings` (JSON allowlist via `scripts/merge-json.py`).
 
 The MCP example file is a template; project edits to add custom MCP
 servers (e.g., a dev/stage GraphQL endpoint) are preserved.
@@ -116,7 +116,7 @@ servers (e.g., a dev/stage GraphQL endpoint) are preserved.
 
 **Strategy:** allowlist-based TOML key-merge via `scripts/merge-toml.py`.
 
-Mirrors `merge-json.py`'s contract but at the TOML table level. The
+Mirrors `scripts/merge-json.py`'s contract but at the TOML table level. The
 canonical OT case is `[model_providers.ollama]` / `[model_providers.lmstudio]`:
 project intentionally removes a section; pack still ships it; the
 migrator honors the project-side removal (set-difference logic).
@@ -193,11 +193,11 @@ migrator never overwrites one.
 
 **Strategy:** 3-way text dispatch.
 
-Pack-shipped agent files (e.g., `pack-architect.md`, `pack-reviewer.md`).
-Trinity rule applies — refreshes are delivered in lockstep across the
-three CLI variants. The `auditor-issue-tracking` agent (BD-109 / BD-110)
-is on the v11.x roadmap; when it ships it will route through the same
-class.
+Pack-shipped agent files (e.g., the pack-architect / pack-reviewer set of
+agents at `.claude/agents/`). Trinity rule applies — refreshes are
+delivered in lockstep across the three CLI variants. The
+`auditor-issue-tracking` agent (BD-109 / BD-110) is on the v11.x
+roadmap; when it ships it will route through the same class.
 
 ---
 
@@ -267,8 +267,8 @@ mode; the migrator overwrites them from the per-entry tree on each
 mirror-regeneration step and they are NOT treated as authoritative
 edit targets. If a developer hand-edits a mirror between
 regenerations, the next regenerator run overwrites the edit; the
-`validate-pack.py` Check 32 (mirror-in-sync) CI gate catches any
-committed divergence. See `MIGRATION-v10-to-v11.md` § "Per-entry
+`scripts/validate-pack.py` Check 32 (mirror-in-sync) CI gate catches any
+committed divergence. See `supporting-docs/MIGRATION-v10-to-v11.md` § "Per-entry
 decomposition" for the v10 → v11 decomposition contract and the
 `--force-overwrite-mirror` flag semantics for the rare advanced
 case where a hand-edited mirror must be force-overwritten.
@@ -310,8 +310,8 @@ column headers are `Base skills | Dimensional skills` (replacing
 the v10 `Tier 1 skills | Tier 2 skills`); projects with real custom
 rows under the deprecated v10 headers keep those headers
 post-migration and rename them manually. See
-`MIGRATION-v10-to-v11.md` § "Skill model changes" for the
-manual-rename note and `INSTALL-PROCEDURES.md` § "Procedure 5.1"
+`supporting-docs/MIGRATION-v10-to-v11.md` § "Skill model changes" for the
+manual-rename note and `supporting-docs/INSTALL-PROCEDURES.md` § "Procedure 5.1"
 for the v11 column convention used when a new custom agent is
 registered.
 
@@ -326,7 +326,7 @@ verify their PM-chat prompt construction continues to scope
 deployment-skill rule citations to the relevant component. No
 preservation-strategy change is needed for the gotcha; it is a
 documentation / behavioral note carried in PLATFORM-SKILLS.md
-§ "Monorepo D5 scoping note" and in `MIGRATION-v10-to-v11.md`
+§ "Monorepo D5 scoping note" and in `supporting-docs/MIGRATION-v10-to-v11.md`
 § "Skill model changes — D5 monorepo gotcha".
 
 **D2 reshape advisory (architecture §7.6).** The Apple-family
@@ -346,7 +346,7 @@ load changes.
 When the migrator writes a sidecar (`customization-detected-needs-reconciliation`
 or `removed-by-pack-customized` paths), the suffix is:
 
-- `migrate-v10-to-v11.sh` (BD-085): `<file>.v10-customized`
+- `scripts/migrate-v10-to-v11.sh` (BD-085): `<file>.v10-customized`
 - `init-project.sh --update` (BD-080): `<file>.pre-update`
 
 Sidecars are **single-slot**. If `--update` finds prior `.pre-update`
@@ -377,7 +377,7 @@ The current migrator runs in single-shot mode: pre-flight → backup →
 dispatch → install → report. A re-run requires removing the prior
 backup directory.
 
-**BD-095 (shipped 2026-05-10) extended `migrate-v10-to-v11.sh` with three modes:**
+**BD-095 (shipped 2026-05-10) extended `scripts/migrate-v10-to-v11.sh` with three modes:**
 
 - `--dry-run` — emit the dispositions TSV and report without writing
   any project files. Useful for previewing changes before commit.
@@ -409,7 +409,7 @@ mutate the working tree — they observe and either pass or fail.
   (CLAUDE / AGENTS / GEMINI carry the v11 H2 markers), HELP-FRAGMENT
   files match pack mirrors byte-for-byte, dispositions.tsv has no
   unknown rows, BD-042 / BD-091 relocated docs are in their new
-  positions, and `validate-pack.py` passes against the pack source.
+  positions, and `scripts/validate-pack.py` passes against the pack source.
 - **Gate 3 — post-Phase-B verification** fires inside `--apply` after
   Gate 2 passes, **conditionally** on tracker mode being active at
   the target (`tracker.toml` present with `mode.state = "tracker"`
@@ -423,7 +423,7 @@ mutate the working tree — they observe and either pass or fail.
 above the stage-failure range (20..30) so callers / `--resume`
 reconciliation logic can distinguish a gate failure from a stage-
 internal failure. The exit code is also documented in
-`MIGRATION-v10-to-v11.md` Step 1's exit-codes table.
+`supporting-docs/MIGRATION-v10-to-v11.md` Step 1's exit-codes table.
 
 **Gate-failure recovery.** Recovery depends on which gate fired:
 
@@ -437,7 +437,7 @@ internal failure. The exit code is also documented in
   mirror via `rsync -a --delete --exclude=.git/ --exclude=.pack-migrate-v10-to-v11-backup/ .pack-migrate-v10-to-v11-backup/ ./`
   followed by a fresh `--dry-run` + `--apply`. The Gate 2 FAIL banner
   spells out the exact commands; the canonical recipe also lives in
-  `MIGRATION-v10-to-v11.md` §Rollback. (Note: the legacy
+  `supporting-docs/MIGRATION-v10-to-v11.md` §Rollback. (Note: the legacy
   `scripts/restore-from-backup.sh` is for v9.3→v10 backups and does
   NOT apply to v10→v11; the v10→v11 backup is a faithful working-tree
   mirror with no path flattening.)
@@ -465,18 +465,20 @@ default behavior):
 
 ## Cross-references
 
+These are the pack-internal touch points for the customization-preservation contract; the `docs/pack/OPTIONAL-FEATURES.md` entry below intentionally points at the post-install project-side path because the surrounding install-time migration content resolves at client repos post-install.
+
 - `scripts/lib/customization-preserve.sh` — the BD-088 implementation
 - `scripts/lib/customization-report.sh` — the report renderer
 - `scripts/tests/test-customization-preserve.sh` — class-coverage tests
 - `supporting-docs/MIGRATION-v10-to-v11.md` — the user-facing migration narrative
-- `docs/pack/OPTIONAL-FEATURES.md` — tracker opt-in walkthrough
+- `docs/pack/OPTIONAL-FEATURES.md` — tracker opt-in walkthrough (post-install client path; see preamble above)
 - `QUICKSTART.md` — where to start
 - `scripts/validate-pack.py` Check 25 — CI regression guard for the truthful-report contract
 
 > **Note on `scripts/lib/`.** Files under `scripts/lib/` are pack
 > implementation details (sourced by other scripts; never invoked
 > directly by users). They are intentionally absent from
-> `HELP-FRAGMENT-PACK.md` and `validate-pack.py` Check 22 skips
+> `pack-ops/HELP-FRAGMENT-PACK.md` and `scripts/validate-pack.py` Check 22 skips
 > `scripts/lib/` and `scripts/tests/` references when scanning user
 > docs for verb freshness. To surface a new lib file as a user-facing
 > verb, move it to `scripts/<name>.sh` and add it to the help fragment.

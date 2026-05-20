@@ -193,6 +193,27 @@ Checks:
       not source the shell file) and supports an explicit allowlist
       `_CHECK_39_EXEMPTIONS` for files intentionally absent from
       `cmd_update` (default: empty — surface-over-silently-exempt).
+  40. pack-ops/ bare cross-reference scanner (BD-179 per
+      ARCHITECTURE-BD-179.md §3-§8): walks all `pack-ops/*.md` files
+      EXCEPT regenerated mirrors (`pack-ops/BACKLOG.md` /
+      `pack-ops/CHANGELOG.md`) and flags backtick-delimited filename
+      refs that lack a directory qualifier (`MIGRATION-v10-to-v11.md`
+      vs `supporting-docs/MIGRATION-v10-to-v11.md`). Uses regex over a
+      code-block-stripped representation of the file (code blocks
+      excluded per §3 D2 — shell-CWD-resolved by construction).
+      Two-tier exemption per §6 D5: (a) hardcoded `_CHECK_40_ALLOWLIST`
+      dict admits pack-root files, trinity members, memory cache, and
+      concept-noun / generated-file / placeholder basenames; (b)
+      `_CHECK_40_ANCHOR_PHRASES` admit refs whose surrounding ±2-line
+      window carries a pack-vs-project disambiguation anchor
+      (`in the pack repo`, `post-install`, `does not exist`,
+      `archived`, etc.). Failure messages cite file:line + the bare
+      basename + candidate-paths suggestion derived from a basename →
+      paths index (EXCLUDE `.git/`, `maintenance-docs/archive/`,
+      `test-fixtures/`, `scripts/tests/fixtures/`). Bootstrap
+      discipline per §8 D7: the BD-179 commit qualifies all
+      pre-existing bare refs (51 across 9 files per Phase 1 survey)
+      so Check 40 PASSes at HEAD.
 
 Two additional informational checks (no number, soft / advisory):
   - Issue template forms (BD-063): `.github/ISSUE_TEMPLATE/*.yml`
@@ -4309,6 +4330,334 @@ def check_cmd_update_symmetry() -> None:
         )
 
 
+# ── Check 40: pack-ops/ bare cross-reference scanner (BD-179) ──────────────
+#
+# Per ARCHITECTURE-BD-179.md §3-§8. Walks `pack-ops/*.md` (excluding
+# regenerated mirrors BACKLOG.md + CHANGELOG.md per §2.1 D1a) and flags
+# backtick-delimited filename refs that lack a directory qualifier.
+#
+# Detection: P1 (bullet) + P2 (prose) + P3 (table) + P5 (hyperlink) regex
+# patterns over a code-block-stripped representation per §3 D2. The first
+# regex matches backtick-delimited filename spans like `MIGRATION-v10-to-v11.md`
+# (no `/` in character class — qualified paths skip by construction). The
+# hyperlink regex matches `](FILENAME.md)` form for `[link](FILENAME.md)`.
+#
+# Exemption: two-tier per §6 D5.
+#   - `_CHECK_40_ALLOWLIST` — hardcoded dict (per §6.6 self-documenting
+#     comment): pack-root files / trinity / memory cache / concept-noun
+#     placeholders. PASS-with-notice.
+#   - `_CHECK_40_ANCHOR_PHRASES` — contextual anchors in ±2-line window
+#     around the hit. PASS-with-notice.
+#   - Same-dir-legitimate — bare ref whose basename has exactly one
+#     candidate path AND that path is in the same directory as the
+#     referencing doc (e.g., bare `MERGE-STRATEGY.md` inside `pack-ops/`
+#     resolves to `pack-ops/MERGE-STRATEGY.md`). PASS-with-notice. Per
+#     Phase 1 survey §7.1 implicit-rule classification.
+#
+# Failure: FAIL with file:line + candidate-paths suggestion. Per §5.1
+# triage: 0 candidates = broken ref; 1 candidate = qualify to <path>;
+# 2+ = qualify to one of <paths>.
+
+# Check 40 — pack-ops/ bare-cross-reference scanner — hardcoded allowlist.
+# Extend this list when new bare references in pack-ops/ markdown are
+# explicitly authorized (e.g., new pack-root files, new trinity members,
+# new tool-specific exempt patterns). Adding an entry here is the
+# intentional escape hatch for legitimate bareness; prefer qualifying
+# the ref over allowlisting it unless the ref's bareness is load-bearing.
+# Each addition lands in a BD's IMPL-REPORT with rationale per
+# ARCHITECTURE-BD-179.md §6.5. (Self-documenting comment per §6.6,
+# user-approved Q-B 2026-05-20.)
+_CHECK_40_ALLOWLIST: dict[str, str] = {
+    # Pack-root landing-page files — always resolvable at pack root per
+    # `pack-ops/BOUNDARY-DEFINITION.md` §2 C1 (PACK × PRODUCT) classification.
+    "README.md": "Pack-root landing-page doc (BOUNDARY-DEFINITION.md C1)",
+    "QUICKSTART.md": "Pack-root installer doc (BOUNDARY-DEFINITION.md C1 + Override 7)",
+    "LICENSE.md": "Pack-root deliverable; standard repo convention",
+    "LICENSE": "Pack-root deliverable; extension-less licence file",
+    # Pack-root trinity — always at pack root by Claude/Codex/Gemini contract
+    # (BOUNDARY-DEFINITION.md §2 C3). Bare ref in pack-ops/ disambiguates
+    # via the doc's own audience qualifier (pack-internal) per discipline.
+    "CLAUDE.md": "Pack-root trinity (C3); see also project-template/CLAUDE.md",
+    "AGENTS.md": "Pack-root trinity (C3); see also project-template/AGENTS.md",
+    "GEMINI.md": "Pack-root trinity (C3); see also project-template/GEMINI.md",
+    # Pack-memory `MEMORY.md` — the Claude-Code memory cache; bare ref
+    # legitimate from any pack-side doc (the file lives in `~/.claude/...`,
+    # not in the pack repo; bare ref is the actual reference shape).
+    "MEMORY.md": "Claude-Code memory cache (external to pack repo)",
+    # Concept-noun / generated-file / placeholder additions (OQ-S2,
+    # user-approved 2026-05-20). Files generated at runtime / opt-in /
+    # absent from pack repo at HEAD, or per-entry-tree filename
+    # PATTERN placeholders (not real files).
+    "tracker.toml": "Generated by `pack tracker init` (not in pack repo; pack ships tracker.toml.pack-example)",
+    "id-map.json": "Generated tracker-mode metadata (not in pack repo)",
+    "report.md": "Generated by scripts/lib/customization-report.sh (not in pack repo)",
+    "manifest.txt": "RC9 manifest at test-fixtures/manifest.txt (per RC9 trigger rule)",
+    "BD-NNN.md": "Per-entry backlog filename pattern (template; see /backlog/_format.md)",
+    "TD-NNN.md": "Per-entry tech-debt filename pattern (template)",
+    "phase-N.md": "Per-entry implementation-plan filename pattern (template)",
+    # Claude-Code memory-cache feedback file (OQ-S3 Option A,
+    # user-approved 2026-05-20). Same class as MEMORY.md.
+    "feedback_review_fix_one_cycle.md": "Claude-Code memory cache feedback file (external to pack repo)",
+    # Project-side HELP-FRAGMENT companion (referenced from
+    # pack-ops/HELP-FRAGMENT-TRACKER.md, which is a byte-identical
+    # mirror of project-template/docs/pack/HELP-FRAGMENT-TRACKER.md
+    # per Check 24). The bare ref is correct at the client-installed
+    # location (resolves to docs/pack/HELP-FRAGMENT.md in the
+    # client repo as a same-dir sibling); from pack-internal view it
+    # would qualify to project-template/docs/pack/HELP-FRAGMENT.md
+    # but qualifying it would break the byte-identity contract.
+    "HELP-FRAGMENT.md": "Byte-identical mirror exception (Check 24); bare ref correct at client-installed location",
+}
+
+# Anchor phrases that, when found within the per-pattern context window
+# (matched line + N lines before + N lines after), mark the match as
+# legitimate per architect doc §6.4. A SUBSET of Check 37's anchor set,
+# plus three new phrases scoped to Check 40's defect class.
+_CHECK_40_ANCHOR_PHRASES = (
+    # Inherit pack-vs-project disambiguation context from Check 37
+    # (BOUNDARY-DEFINITION.md §6 cross-reference network).
+    "in the pack repo",
+    "at the pack repo",
+    "pack-repo",
+    "in the project",
+    "at the client",
+    # Audience-bridge context per §6.4 + §7 D6. OQ-3 confirmed.
+    "post-install",
+    # OQ-S4 — self-flagging non-existence prose (e.g., L247
+    # "...cited `IMPLEMENTATION-PLAN-V11.0.md` (does not exist); ...").
+    "does not exist",
+    # OQ-S4 forward-compat — explicit "archived" qualifier in prose
+    # (e.g., L195 "from the now-archived `ARCHITECTURE-V1.md` ...").
+    "archived",
+)
+
+_CHECK_40_ANCHOR_WINDOW = 2  # lines before/after; matches Check 37 default
+
+# Filename-extension classes Check 40 recognizes (per §3.3 final regex).
+# Same set for the bullet/prose/table regex and the hyperlink regex.
+_CHECK_40_FILE_EXTS = "md|sh|py|toml|yml|yaml|json|txt"
+
+# Backtick-delimited bare ref (P1 + P2 + P3): `FILENAME.ext`. The first
+# character class excludes `/` so qualified paths (`scripts/foo.sh`,
+# `pack-ops/MERGE-STRATEGY.md`) are NOT matched. The first char is
+# `[A-Za-z]` per §3.5 final (lowercase-starting filenames like
+# `merge-json.py` must be admitted).
+_CHECK_40_BARE_REF_PATTERN = re.compile(
+    r"`([A-Za-z][A-Za-z0-9_.-]*\.(?:" + _CHECK_40_FILE_EXTS + r"))`"
+)
+
+# Markdown hyperlink (P5): `[link](FILENAME.ext)`. Same character class
+# discipline as the bare-ref pattern.
+_CHECK_40_HYPERLINK_PATTERN = re.compile(
+    r"\]\(([A-Za-z][A-Za-z0-9_.-]*\.(?:" + _CHECK_40_FILE_EXTS + r"))\)"
+)
+
+# Code-block stripper: replace fenced code-block content (``` ... ```)
+# with empty lines so line numbers are preserved. Indented 4-space
+# blocks (after an empty line) are also dropped. Single-backtick spans
+# inside non-code-block prose are NOT stripped — those ARE the surface
+# Check 40 looks for.
+def _strip_code_blocks(text: str) -> list[str]:
+    """Return list of lines with fenced code-block content replaced by
+    empty strings. Preserves total line count so file:line citations
+    remain accurate against the original file."""
+    out: list[str] = []
+    in_fence = False
+    for line in text.splitlines():
+        # Detect fence open/close: a line whose first non-whitespace
+        # token is ``` (with optional language id).
+        stripped = line.lstrip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            out.append("")  # the fence line itself is also stripped
+            continue
+        if in_fence:
+            out.append("")
+            continue
+        out.append(line)
+    return out
+
+
+# EXCLUDE directories for the basename-index walk (per §5.1 D4).
+# `scripts/tests/fixtures/` added per OQ-S1 ratification 2026-05-20.
+_CHECK_40_EXCLUDE_PARTS = (
+    ".git",
+    "maintenance-docs/archive",
+    "test-fixtures",
+    "scripts/tests/fixtures",
+    "node_modules",
+)
+
+
+def _build_basename_index() -> dict[str, list[Path]]:
+    """Walk the pack repo and build a basename → [relative-paths] index.
+    Used for the §5.1 D4 candidate-path lookup.
+
+    Per §5.1 EXCLUDE list (with OQ-S1 expansion 2026-05-20):
+      - `.git/` always skipped (pack-internal git state)
+      - `maintenance-docs/archive/` (historical content with stale refs)
+      - `test-fixtures/` (synthetic fixture content)
+      - `scripts/tests/fixtures/` (per-script synthetic fixture trees)
+      - `node_modules`-like dirs (defensive; not present at HEAD)
+    """
+    index: dict[str, list[Path]] = {}
+    for path in REPO_ROOT.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            rel = path.relative_to(REPO_ROOT)
+        except ValueError:
+            continue
+        rel_str = str(rel).replace(os.sep, "/")
+        # Skip excluded paths.
+        skip = False
+        for excl in _CHECK_40_EXCLUDE_PARTS:
+            if rel_str == excl or rel_str.startswith(excl + "/"):
+                skip = True
+                break
+        if skip:
+            continue
+        basename = path.name
+        index.setdefault(basename, []).append(rel)
+    return index
+
+
+def _check_40_context_has_anchor(lines: list[str], lineno: int) -> bool:
+    """Return True if any Check-40 anchor phrase appears in the matched
+    line or the ±_CHECK_40_ANCHOR_WINDOW surrounding lines.
+
+    Parallel helper to `_context_has_anchor` (Check 37). Per §9.6, the
+    coder may choose to refactor or to keep parallel; chose parallel
+    here to avoid touching Check 37's code path for a non-Check-37 BD.
+    """
+    start = max(0, lineno - 1 - _CHECK_40_ANCHOR_WINDOW)
+    end = min(len(lines), lineno - 1 + _CHECK_40_ANCHOR_WINDOW + 1)
+    window = " ".join(lines[start:end]).lower()
+    for anchor in _CHECK_40_ANCHOR_PHRASES:
+        if anchor in window:
+            return True
+    return False
+
+
+def check_bare_pack_ops_refs() -> None:
+    """Check 40 — pack-ops/ bare cross-reference scanner (BD-179 per
+    ARCHITECTURE-BD-179.md §3-§8).
+
+    Walks `pack-ops/*.md` (excluding `pack-ops/BACKLOG.md` and
+    `pack-ops/CHANGELOG.md` — regenerated mirrors per §2.1 D1a) and
+    flags backtick-delimited filename refs that lack a directory
+    qualifier and are not exempt per the allowlist / anchor-phrase /
+    same-dir-legitimate mechanisms.
+
+    Failure modes:
+      - Bare ref with 0 candidate paths → "broken ref"
+      - Bare ref with 1 candidate path → "qualify to <path>"
+      - Bare ref with 2+ candidate paths → "qualify to one of <paths>"
+
+    PASS notices:
+      - Allowlist hit → "exempt: <rationale>"
+      - Anchor-phrase hit → "anchor-phrase-exempt"
+      - Same-dir-legit → "same-dir resolution"
+    """
+    print("\n── Check 40: pack-ops/ bare cross-reference scanner (BD-179) ──")
+    pack_ops_dir = REPO_ROOT / "pack-ops"
+    if not pack_ops_dir.is_dir():
+        ok("pack-ops/ absent — skipping (lenient)")
+        return
+
+    # Build basename index ONCE per Check 40 invocation per §5.3.
+    index = _build_basename_index()
+
+    # Excluded files per §2.1 D1a (regenerated mirrors).
+    excluded_basenames = {"BACKLOG.md", "CHANGELOG.md"}
+
+    any_failed = False
+    files_walked = 0
+    hits_allowlist = 0
+    hits_anchor = 0
+    hits_same_dir = 0
+    hits_failed = 0
+
+    for md_path in sorted(pack_ops_dir.glob("*.md")):
+        if md_path.name in excluded_basenames:
+            continue
+        try:
+            text = md_path.read_text()
+        except (UnicodeDecodeError, OSError):
+            continue
+        files_walked += 1
+        stripped_lines = _strip_code_blocks(text)
+        rel_path = md_path.relative_to(REPO_ROOT)
+        rel_dir = str(rel_path.parent).replace(os.sep, "/")
+
+        for lineno, line in enumerate(stripped_lines, start=1):
+            # Collect all bare-ref matches on this line (both regexes).
+            matches: list[str] = []
+            for m in _CHECK_40_BARE_REF_PATTERN.finditer(line):
+                matches.append(m.group(1))
+            for m in _CHECK_40_HYPERLINK_PATTERN.finditer(line):
+                matches.append(m.group(1))
+            if not matches:
+                continue
+
+            for basename in matches:
+                # Tier 1: hardcoded allowlist.
+                if basename in _CHECK_40_ALLOWLIST:
+                    hits_allowlist += 1
+                    continue
+                # Tier 2: anchor-phrase exemption (±2-line window).
+                if _check_40_context_has_anchor(stripped_lines, lineno):
+                    hits_anchor += 1
+                    continue
+                # Tier 3: same-dir-legitimate per Phase 1 survey §7.1
+                # implicit rule. If the basename has exactly one
+                # candidate AND that candidate is in the same directory
+                # as the referencing doc, the bareness is legitimate
+                # (analogous to programming-language sibling-import
+                # semantics).
+                candidates = index.get(basename, [])
+                if len(candidates) == 1:
+                    candidate_dir = str(candidates[0].parent).replace(os.sep, "/")
+                    if candidate_dir == rel_dir:
+                        hits_same_dir += 1
+                        continue
+
+                # FAIL — emit triage per §5.1 D4 candidate-set size.
+                if not candidates:
+                    suggestion = (
+                        "broken ref — no file with that basename exists "
+                        "in the pack repo (excluding test-fixtures and "
+                        "scripts/tests/fixtures synthetic trees)"
+                    )
+                elif len(candidates) == 1:
+                    one = str(candidates[0]).replace(os.sep, "/")
+                    suggestion = f"qualify to `{one}`"
+                else:
+                    paths = [str(c).replace(os.sep, "/") for c in candidates]
+                    suggestion = (
+                        "qualify to one of: " + ", ".join(f"`{p}`" for p in sorted(paths))
+                    )
+                fail(
+                    f"{rel_path}:{lineno} — bare cross-reference "
+                    f"`{basename}` (no directory qualifier). {suggestion}. "
+                    f"Remediation: qualify the path OR add `{basename}` to "
+                    f"`_CHECK_40_ALLOWLIST` in scripts/validate-pack.py with "
+                    f"one-line rationale (per ARCHITECTURE-BD-179.md §6.5) "
+                    f"OR wrap in a fenced code block if it is a shell/code "
+                    f"example."
+                )
+                hits_failed += 1
+                any_failed = True
+
+    if not any_failed:
+        ok(
+            f"Check 40 — {files_walked} pack-ops/*.md file(s) walked; "
+            f"zero unqualified bare cross-references "
+            f"({hits_allowlist} allowlist-exempt + {hits_anchor} anchor-"
+            f"phrase-exempt + {hits_same_dir} same-dir-legit hit(s) accepted)"
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -4369,6 +4718,13 @@ def main() -> None:
     # the M5a/b/c boundary trio so the boundary-prevention surface is
     # complete before the install-coverage gate runs.
     check_cmd_update_symmetry()
+    # ── BD-179: pack-ops/ bare cross-reference scanner. Lands AFTER
+    # the M5a/b/c boundary trio + Check 39 cmd_update symmetry so the
+    # directory-boundary + install-coverage gates run before Check 40's
+    # prose-cross-reference gate. Per ARCHITECTURE-BD-179.md §8.3, the
+    # BD-179 commit qualifies all current bare-ref hits in pack-ops/*.md
+    # so Check 40 PASSes at HEAD.
+    check_bare_pack_ops_refs()
 
     print("\n" + "=" * 60)
     if failures:

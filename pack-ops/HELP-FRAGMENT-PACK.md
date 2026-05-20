@@ -34,7 +34,7 @@ in your CLI for this content. Full docs in `QUICKSTART.md`, `README.md`,
 
 ## Tracker commands (v11+)
 
-[Included from `pack-ops/HELP-FRAGMENT-TRACKER.md` via `pack-help.sh`.]
+[Included from `pack-ops/HELP-FRAGMENT-TRACKER.md` via `scripts/pack-help.sh`.]
 
 ## See also
 
