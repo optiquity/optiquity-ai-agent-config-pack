@@ -503,6 +503,17 @@ in the same commit as the behavior change.
   provisioning*; this bullet governs *manifest maintenance* and is
   load-bearing for the `fixture manifest verify` CI gate
   (BD-115, RELEASE-GATE item 5).
+- **Cross-CLI reference normalization in `project-template/` trinity.**
+  When editing references to per-CLI paths or commands in
+  `project-template/{CLAUDE,AGENTS,GEMINI}.md`, substitute the
+  audience-correct canonical value per `maintenance-docs/v11-implementation/ARCHITECTURE-BD-182.md`
+  §4.1 canonical reference table. Per Override 9, byte-identical
+  cross-trinity adoption of CLI-specific paths is WRONG even when it
+  visually closes drift — body-text drift and cross-CLI references are
+  different classes (see `ARCHITECTURE-BD-182.md` §1 table). Worked
+  example: BD-178 SHOULD-1 byte-identically aligned `GEMINI.md`'s
+  `.claude/settings.json` reference (correct for CLAUDE form, wrong
+  for Gemini-audience); BD-182 corrected to `.gemini/.env` per §4.1.
 
 ### Project goals (v11)
 
