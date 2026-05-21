@@ -1379,7 +1379,7 @@ Resolved: n/a
 
 **BD-175 — EMERGENCY: pack/project boundary audit + re-architecture (v11 pack-bias remediation)**
 Type: TODO(version) — CODE RED, surfaced 2026-05-18 from PATH-C-CURATION walk-through; two confirmed pack-bias contamination instances (commits `240867d`, `aaa61b3`); true scope unknown (surface triage acknowledged incomplete)
-Status: Open
+Status: Resolved
 Blockers: none on critical path; PAUSES BD-173 (Batch 19c) until Resolved
 Unblocks: BD-173 (19c resumes after BD-175 Resolved); structural prevention against future pack-bias regressions; clean pack/project boundary architecture before public release
 File/Symbol:
@@ -1412,13 +1412,13 @@ Description: Multiple v11 commits introduced pack-design bias into project-
 
   Different-agents-per-blast-radius rule honored across orchestration per
   pack memory + user direction.
-Resolved: n/a
+Resolved: 2026-05-21
 
 ---
 
 **BD-176 — Expand RC9 manifest-regen trigger to cover all fixture-affecting surfaces (pack-ops/ + supporting-docs/install-to-client files)**
 Type: TODO(version) — surfaced 2026-05-19 during BD-175 Phase 5 Commit 2 fix triage (pack-ops/ defensive); SCOPE EXPANDED 2026-05-19 during BD-175 Phase 5 Commit 8 CI failure (supporting-docs/install-to-client empirical false-negative). User-explicit defer to immediately-after-BD-175.
-Status: Open
+Status: Resolved
 Blockers: BD-175 (must close successfully first per user direction 2026-05-19)
 Unblocks:
   (a) defensive future-proofing of RC9 manifest-regen rule for any future pack-ops/ additions that may affect fixtures
@@ -1446,13 +1446,13 @@ Description: When RC9 was created, only `project-template/` and `scripts/` were 
   Implementation pattern: pack-architect spawn (per pack-memory pack-architect-spawn protocol for rules/operating-docs/memory/trinity-Pack-memory-section changes) → strategy doc → pack-coder applies mechanically → Pack Chat commits.
 
   Position: Insert immediately after BD-175 (per user direction 2026-05-19). Implement immediately after BD-175 Resolved.
-Resolved: n/a
+Resolved: 2026-05-21
 
 ---
 
 **BD-177 — Coordinate scripts/pack-help.sh:86 sentinel-regex with pack-ops/HELP-FRAGMENT-PACK.md:37 prose post-BD-175 Commit 2 relocation**
 Type: TODO(version) — surfaced 2026-05-19 during BD-175 Phase 5 Commit 2 fix-pass execution (PACK-REVIEW-BD-175-COMMIT-2.md D-4 sublocation L37 + IMPLEMENTATION-REPORT-BD-175-COMMIT-2-FIX.md §8 OQ-FIX-1); user-explicit defer to immediately-after-BD-176.
-Status: Open
+Status: Resolved
 Blockers: BD-175 + BD-176 (must close successfully in that order per user direction 2026-05-19)
 Unblocks: path-accurate prose at HELP-FRAGMENT-PACK.md L37; closes OQ-FIX-1 anchor in Commit 2 fix-pass IMPL-REPORT
 File/Symbol:
@@ -1472,13 +1472,13 @@ Description: BD-175 Commit 2 relocated `HELP-FRAGMENT-TRACKER.md` from pack root
   ~3-line, ~10-minute mechanical change once correctly scoped. No architect spawn needed (mechanical pack-coder work).
 
   Position: Insert immediately after BD-176 (per user direction 2026-05-19 — both small follow-ups to BD-175, but BD-177 MUST be implemented directly after BD-176 is resolved).
-Resolved: n/a
+Resolved: 2026-05-21
 
 ---
 
 **BD-178 — Align pre-existing trinity asymmetries in `project-template/{CLAUDE,AGENTS,GEMINI}.md`**
 Type: TODO(version) — surfaced 2026-05-19 during BD-175 Phase 5 Commit 4 review (PACK-REVIEW-BD-175-COMMIT-4.md "pre-existing trinity asymmetry" finding); per Architect A §2 V1, pre-existing trinity wording variation was explicitly anticipated and triaged out of BD-175 scope; user-directed to address as a small follow-up BD before Batch 19c resumes.
-Status: Open
+Status: Resolved
 Blockers: BD-175 + BD-176 + BD-177 (must close successfully in that order per user direction 2026-05-19)
 Unblocks: clean trinity baseline for Batch 19c (BD-173 project-side cleanup) — Batch 19c work touches the project-template trinity files extensively and benefits from starting on a fully-symmetric baseline; closes the "pre-existing asymmetry" finding from PACK-REVIEW-BD-175-COMMIT-4.md.
 File/Symbol:
@@ -1526,13 +1526,13 @@ Description: BD-175 Phase 5 Commit 4 reviewer flagged that bullets in `project-t
   Implementation pattern: mechanical pack-coder work (no architect spawn needed — wording proposals embedded in this BD for the 3 known loci; coder applies the canonicalization heuristic to any additional asymmetries found in the sweep and surfaces them in the IMPL-REPORT for Pack Chat triage before commit). Per per-BD review/fix pattern, single pack-reviewer pass after the trinity edit lands.
 
   Position: Insert immediately after BD-177 (per user direction 2026-05-19 — must be implemented directly after BD-177 Resolved AND before Batch 19c / BD-173 resumes; BD-173 touches project-template trinity extensively and benefits from a fully-symmetric baseline).
-Resolved: n/a
+Resolved: 2026-05-21
 
 ---
 
 **BD-179 — Validate-pack.py Check 40 pack-ops/ bare cross-reference scanner (F3 — architect-pass)**
 Type: TODO(version) — surfaced 2026-05-19 during BD-175 Phase 5 Commit 10 review feed-in observation #4 + Commit 9b IMPL-REPORT §6.3 prevention candidate; user-explicit fold into BD-175 emergency batch 2026-05-19 (option F3); user-explicit pre-approval for pack-architect spawn 2026-05-19.
-Status: Open
+Status: Resolved
 Blockers: BD-175 + BD-176 + BD-177 + BD-178 (must close successfully in that order per user direction 2026-05-19)
 Unblocks: closes the bare-cross-reference defect class in `pack-ops/` markdown docs (e.g., `pack-ops/MERGE-STRATEGY.md` had 3 sibling bare refs at L471/L473/L474 partially closed by F1 commit `88a0aea`; 8 inline-prose bare refs at L271/L313/L329/L426/L440 + L270/L412/L479 + L226 still open; L472 audience-mismatch where pack-internal doc points at post-install project-side path still open); systematic prevention via new validate-pack.py check.
 File/Symbol:
@@ -1559,13 +1559,13 @@ Description: F1 commit `88a0aea` qualified 3 sibling bare refs in `pack-ops/MERG
   Override 9 compliance: bare-cross-reference scanner applies to `pack-ops/` markdown ONLY (pack-internal docs; auditing internal consistency). Does NOT apply to project-template/ trinity or pack-root trinity (those have separate cross-CLI reference concerns under BD-182).
 
   Position: Insert immediately after BD-178 (per user direction 2026-05-19 — must be implemented directly after BD-178 Resolved AND before BD-180 to maintain batch chain order); architect-pass work; closes a real bare-cross-reference defect class before batch audit.
-Resolved: n/a
+Resolved: 2026-05-21
 
 ---
 
 **BD-180 — Extend `cmd_update` mapping symmetry coverage to remaining surfaces (gemini commands + pm-startup skill + .claude settings example + per-entry templates)**
 Type: TODO(version) — surfaced 2026-05-19 during BD-175 F2a (Check 39) implementation; user-explicit fold into BD-175 emergency batch per Pack Chat triage 2026-05-19 (T3a).
-Status: Open
+Status: Resolved
 Blockers: BD-175 + BD-176 + BD-177 + BD-178 + BD-179 (must close successfully in that order per user direction 2026-05-19)
 Unblocks: closes 4 operational-drift gaps at surfaces BEYOND F2a Check 39's narrow `project-template/docs/pack/*.md` scope; brings `pack update` parity to all surfaces that fresh-install covers; completes the F2a-pattern coverage before batch audit.
 File/Symbol:
@@ -1602,13 +1602,13 @@ Description: BD-175 F2a (commit `bee710c`) implemented `validate-pack.py` Check 
   Implementation pattern: mechanical pack-coder work (no architect spawn needed — F2a's Check 39 implementation is the template; this BD extends the pattern to additional surfaces). Per per-BD review/fix pattern, single pack-reviewer pass after the changes land.
 
   Position: Insert immediately after BD-179 (per user direction 2026-05-19 — last BD before end-of-batch reviewer; BD-180 completes the F2a-pattern coverage at all surfaces before batch audit).
-Resolved: n/a
+Resolved: 2026-05-21
 
 ---
 
 **BD-181 — Extend `scripts/validate-pack.py` Check 18 H2 to cover pack-root trinity (parity guard)**
 Type: TODO(version) — surfaced 2026-05-20 during BD-176 ARCHITECTURE-BD-176.md research (Notable Finding 3); user-approved fold into BD-175 emergency batch 2026-05-20.
-Status: Open
+Status: Resolved
 Blockers: BD-175 + BD-176 + BD-177 + BD-178 + BD-179 + BD-180 (must close successfully in that order per user direction 2026-05-20)
 Unblocks: closes the pack-root trinity drift gap that currently has NO mechanical guard (only Trinity-rule discipline + reviewer attention). BD-178 exists explicitly because pre-existing trinity asymmetries crept in at project-template level despite Trinity-rule discipline — same risk applies to pack-root trinity, possibly worse (fewer eyeballs in PR review).
 File/Symbol:
@@ -1631,13 +1631,13 @@ Description: BD-176 architect's research (ARCHITECTURE-BD-176.md §7 D6) confirm
   Override 9 compliance: this BD does NOT enforce cross-trinity parity. Both Check 18 invocations are independent — pack-root and project-template can have DIFFERENT bullet bodies (as designed per Override 9). Only WITHIN each trinity location (across the 3 CLI files) is byte identity enforced.
 
   Position: Insert immediately after BD-180 (per user direction 2026-05-20 — between BD-180 cmd_update work and end-of-batch reviewer; small mechanical extension; closes a real brittleness gap before batch audit).
-Resolved: n/a
+Resolved: 2026-05-21
 
 ---
 
 **BD-182 — Cross-CLI reference normalization across project-template trinity (settings paths, commands, tool-specific URIs)**
 Type: TODO(version) — surfaced 2026-05-20 during BD-178 SHOULD-1 fix-coder implementation (IMPLEMENTATION-REPORT-BD-178-SHOULD-1.md §3.1 observation); user-approved fold into BD-175 emergency batch 2026-05-20.
-Status: Open
+Status: Resolved
 Blockers: BD-175 + BD-176 + BD-177 + BD-178 + BD-179 + BD-180 + BD-181 (must close successfully in that order per user direction 2026-05-20)
 Unblocks: closes the cross-CLI reference asymmetry that lurked under BD-178 SHOULD-1's byte-identical body-text alignment (a Gemini-CLI-running user reading project-template/GEMINI.md gets wrong settings-file path because CLAUDE-canonical wording references `.claude/settings.json`); provides systematic per-CLI reference table for future trinity edits.
 File/Symbol:
@@ -1673,13 +1673,13 @@ Description: BD-178 SHOULD-1 fix-coder (commit `fa605a9`) aligned project-templa
   Implementation pattern: pack-architect spawn (per pack-memory pack-architect-spawn protocol — touches trinity Pack memory section + rules/operating-docs; user approval required for architect spawn) → strategy doc with per-reference table → pack-coder applies mechanically → Pack Chat commits.
 
   Position: Insert immediately after BD-181 (per user direction 2026-05-20 — last BD before end-of-batch reviewer; provides clean cross-CLI reference baseline before batch audit).
-Resolved: n/a
+Resolved: 2026-05-21
 
 ---
 
 **BD-183 — Extend `scripts/validate-pack.py` Check 16 + Check 19 to cover pack-root trinity (parity guard, mirroring BD-181) + BD-181 NIT-1 fold-in**
 Type: TODO(version) — surfaced 2026-05-20 during BD-181 per-commit review (PACK-REVIEW-BD-181.md §6 Observation A); user-approved fold into BD-175 emergency batch 2026-05-20 ("must be done in this batch before 19c restart").
-Status: Open
+Status: Resolved
 Blockers: BD-175 + BD-176 + BD-177 + BD-178 + BD-179 + BD-180 + BD-181 + BD-182 (must close successfully in that order per user direction 2026-05-20)
 Unblocks: closes the parity-guard gap for Check 16 (`check_trinity_addenda_h2`) and Check 19 (`check_trinity_no_scaffolding_comments`) at pack-root trinity. Same parity-gap risk that drove BD-181 (Check 18 H2): pack-root trinity has NO mechanical guard for these two checks today; drift detected only by manual reviewer audit. Also folds in BD-181 NIT-1 (sentinel-None call-site contract comment) per logical-fit (same file + same check-family + same docstring style).
 File/Symbol:
@@ -1706,13 +1706,13 @@ Description: BD-181 PACK-REVIEW-BD-181.md §6 Observation A identified that Chec
   Implementation pattern: mechanical pack-coder work (no architect spawn needed — generalizing existing checks is mechanical extension of the proven BD-181 pattern). Per per-BD review/fix pattern, single pack-reviewer pass after the changes land.
 
   Position: Insert immediately after BD-182 (per user direction 2026-05-20 — same parity-gap class as BD-181; mechanical extension; mandatory pre-19c-restart per user direction "must be done in this batch before 19c restart"; last BD before end-of-batch reviewer).
-Resolved: n/a
+Resolved: 2026-05-21
 
 ---
 
 **BD-184 — Add Check 42 — CI workflow wires all per-check test files (prevention check for "test silently dead in CI" gap class)**
 Type: TODO(version) — surfaced 2026-05-21 during BD-183 FIX-1 per-commit review (PACK-REVIEW-BD-183-FIX-1.md SHOULD-A + Pack Chat exhaustive scanner result); user-approved fold into BD-175 emergency batch 2026-05-21 ("Open now. Implement immediately after BD-183 closes").
-Status: Open
+Status: Resolved
 Blockers: BD-175 + BD-176 + BD-177 + BD-178 + BD-179 + BD-180 + BD-181 + BD-182 + BD-183 (must close successfully in that order per user direction 2026-05-21)
 Unblocks: closes the "missing test wiring" gap class permanently via mechanical CI guard. The same gap surfaced 5 times across 3 fix cycles in the BD-175 batch — discipline (reviewer attention) caught all 5 but a mechanical guard at commit time is cheaper than reviewer cycles.
 File/Symbol:
@@ -1737,7 +1737,7 @@ Description: The "missing test wiring" gap class has surfaced 5 times across the
   Implementation pattern: mechanical pack-coder work (no architect spawn needed — Check 42 is a straightforward file-glob-vs-workflow-grep comparison; pattern mirrors existing checks). Per per-BD review/fix pattern, single pack-reviewer pass after the changes land.
 
   Position: Insert immediately after BD-183 (per user direction 2026-05-21 — "Implement immediately after BD-183 closes"; last BD before end-of-batch reviewer for the BD-175 emergency batch).
-Resolved: n/a
+Resolved: 2026-05-21
 
 ---
 
