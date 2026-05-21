@@ -63,11 +63,18 @@ fi
 
 printf "\n=== Group 1: _parse_client_installed_files unit tests ===\n"
 
-python3 <<EOF
-import sys
-sys.path.insert(0, '$REPO_ROOT/scripts')
+# Use a quoted heredoc (`<<'EOF'`) so bash performs ZERO substitution on
+# the Python body — matches the Group 2 pattern for consistency and
+# defends against a future Group 1 assertion containing backticks
+# triggering bash command substitution. Inject REPO_ROOT and VALIDATE
+# paths via environment variables that Python reads with os.environ.
+REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 <<'EOF'
+import os, sys
+REPO_ROOT_PY = os.environ['REPO_ROOT']
+VALIDATE_PY = os.environ['VALIDATE']
+sys.path.insert(0, REPO_ROOT_PY + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', VALIDATE_PY)
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -567,6 +574,46 @@ if "END marker appears textually before the START marker" not in captured:
 if "block contains no parseable entries" in captured:
     failures.append(f"T13 (regex-shape-mismatch) must NOT trip the legacy 'no parseable entries' diagnostic: {captured}")
 
+# T14: FAIL — placeholder `# (no entries)` between markers lands in
+# case (ii), not case (iii). BD-180 FIX-2 §4.1 SHOULD: regression guard
+# documenting that the historically-recommended `# (no entries)`
+# placeholder (FIX-1 case-(i) wording, now removed) does NOT trip case
+# (iii) "no parseable entries" — it has body content (the comment line
+# is non-whitespace), so the parser sets `body_has_content=True`, the
+# entry-loop produces `entries=[]` (no `->` separator), and the caller
+# lands in case (ii) "block body could not be parsed into inventory
+# entries". Documents the empirical behavior that motivated the FIX-2
+# wording change AND defends against a future change attempting to
+# special-case the placeholder (would need an explicit parser branch
+# producing `body_has_content=False`, which this test would force the
+# author to also test).
+raw_placeholder_loop = '''#!/usr/bin/env bash
+cmd_update() {
+    local entries=(
+        "project-template/docs/pack/FOO.md:docs/pack/FOO.md:generic"
+    )
+    echo "stub"
+}
+
+# _CLIENT_INSTALLED_FILES_START
+# (no entries)
+# _CLIENT_INSTALLED_FILES_END
+'''
+fail_count, captured = run_check(
+    "",
+    [],
+    extant_paths=["project-template/docs/pack/FOO.md"],
+    raw_init_sh=raw_placeholder_loop,
+)
+if fail_count < 1:
+    failures.append(f"T14 (`# (no entries)` placeholder) expected >=1 failure, got {fail_count}: {captured}")
+if "block body could not be parsed into inventory entries" not in captured:
+    failures.append(f"T14 must land in case (ii) (entry-shape diagnostic), confirming placeholder advice would have produced a wording loop: {captured}")
+if "block contains no parseable entries" in captured:
+    failures.append(f"T14 (regex-matched + body-has-content) must NOT trip the legacy 'no parseable entries' diagnostic: {captured}")
+if "block body could not be captured" in captured:
+    failures.append(f"T14 (regex-matched) must NOT trip the body-capture regex-non-match diagnostic: {captured}")
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -575,7 +622,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "Synthetic PASS/FAIL tests (T1-T13 including T7/T7b SHOULD-2 disambiguation and T8-T10 SHOULD-1 duplicate-marker)" ;;
+    0) t_pass "Synthetic PASS/FAIL tests (T1-T14 including T7/T7b SHOULD-2 disambiguation, T8-T10 SHOULD-1 duplicate-marker, and T14 FIX-2 placeholder-loop regression guard)" ;;
     *) t_fail "Synthetic Check 41 tests failed (see Python output above)" ;;
 esac
 

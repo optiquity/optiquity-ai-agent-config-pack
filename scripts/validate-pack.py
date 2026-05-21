@@ -5020,14 +5020,15 @@ def check_client_installed_files() -> None:
                 "causes: (a) END marker appears textually before the "
                 "START marker, (b) START and END markers on the same "
                 "line, (c) no body between adjacent marker lines "
-                "(empty inventory must contain at least one comment "
-                "line — e.g., `# (no entries)` — between the markers), "
-                "(d) unusual whitespace around the markers (e.g., "
-                "missing trailing newline after START, or missing "
-                "leading newline before END). Restore the canonical "
-                "marker shape per ARCHITECTURE-BD-176.md §5.3 / BD-180 "
-                "observation G: each marker on its own comment line, "
-                "START preceding END, with body content between them."
+                "(empty inventory should not need this block at all — "
+                "if no files install to clients, remove the entire "
+                "block per ARCHITECTURE-BD-176.md §5.3), (d) unusual "
+                "whitespace around the markers (e.g., missing trailing "
+                "newline after START, or missing leading newline before "
+                "END). Restore the canonical marker shape per "
+                "ARCHITECTURE-BD-176.md §5.3 / BD-180 observation G: "
+                "each marker on its own comment line, START preceding "
+                "END, with body content between them."
             )
             return
         if body_has_content:
