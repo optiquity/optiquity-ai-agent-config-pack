@@ -314,10 +314,20 @@ if fc_a != 0:
     failures.append(f"Override 9 (Check 16) — clean location A flagged failures: {out_a}")
 if fc_b != 3:
     failures.append(f"Override 9 (Check 16) — failing location B expected 3 failures, got {fc_b}: {out_b}")
+# Leak prevention (both directions): neither location's output references the other's label.
 if "c16-loc-b" in out_a:
     failures.append(f"Override 9 (Check 16) — A leaks B label: {out_a}")
 if "c16-loc-a" in out_b:
     failures.append(f"Override 9 (Check 16) — B leaks A label: {out_b}")
+# Label presence (both directions; parity with -19.sh Group 3): each output must
+# carry its own label. Location A (PASS path) carries the bracket form `[label]`
+# in the section header + OK lines; location B (FAIL path) carries the
+# `label/name` form in FAIL lines per `check_trinity_addenda_h2`'s
+# `fail(f"{label}/{name} — …")` message shape.
+if "[c16-loc-a]" not in out_a:
+    failures.append(f"Override 9 (Check 16) — location A label missing from PASS output: {out_a}")
+if "c16-loc-b/" not in out_b:  # FAIL lines use the label/file form, not the bracket form
+    failures.append(f"Override 9 (Check 16) — location B label-prefix missing from FAIL output: {out_b}")
 
 if failures:
     print("FAILURES")

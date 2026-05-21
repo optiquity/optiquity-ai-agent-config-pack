@@ -166,6 +166,9 @@ jobs:
       - name: validate-pack Check 40 tests (BD-179, pack-ops/ bare-cross-reference scanner)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-40.sh
+      - name: validate-pack Check 18 tests (BD-181, trinity H2 structure parity)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-check-18.sh
       - name: validate-pack Check 16 tests (BD-183, trinity ## Project addenda H2 + Option (b) exemption)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-16.sh
