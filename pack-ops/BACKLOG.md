@@ -1741,6 +1741,56 @@ Resolved: 2026-05-21
 
 ---
 
+**BD-185 — Phase parts hierarchy + tracker-mode execution ordering**
+Type: feat — surfaced 2026-05-21 from Pack Chat design discussion (main v10.1 chat); user-approved as Batch 19d (immediately after Batch 19c) 2026-05-21
+Status: Open
+Blockers: Batch 19c (BD-173) completion — fires after BD-173 closes and commits. Docs-researcher prompt persisted at `maintenance-docs/v11-research/BD-185-DOCS-RESEARCHER-QUEUED-PROMPT.md` (one-time exception to "Pack Chat does not edit maintenance-docs/" rule per user direction 2026-05-21) for use at fire time; firing requires explicit user approval.
+Unblocks: Real-OT migration test (BD-171, Batch 23) gains the new form-family + ordering mechanism for empirical validation; v10→v11 and v11.0 flat→tracker migrators carry pre-existing whole-number phases through cleanly; mid-work phase-to-parts expansion gains first-class tracker representation; tracker-mode execution ordering becomes expressible without flat-file SSOT or GH Projects abuse.
+File/Symbol:
+  - `project-template/.github/ISSUE_TEMPLATE/work-item.yml` — Part field + part:M label namespace (NEW) per BD-068 form-family rules + BD-069 template_version delta
+  - `supporting-docs/METHODOLOGY.md` Part 3 § "Multi-part phases" (lines ~339-366) — extend for mid-work phase-to-parts expansion mechanism
+  - `scripts/lib/tracker-provider-*.sh` (BD-060 TrackerProvider) — bi-directional sync of part membership + execution order across forward (flat→tracker) and reverse (tracker→flat) operations
+  - `scripts/migrate-v10-to-v11.sh` + any v11.0 flat→tracker migrator — pre-existing whole-number phases pass through without renumbering; new ordering mechanism initialized from current implementation order
+  - `scripts/validate-pack.py` — new check(s) enforcing part-membership + ordering invariants (architect determines specifics)
+  - `project-template/docs/pack/PM-CHAT.md` — PM-chat orchestration text for mid-work phase-to-parts expansion (architect determines)
+  - `project-template/STATUS.md` — confirm role does NOT change (remains dashboard, not promoted to ordering SSOT)
+Description: Pack-side design work to address four problems framing the BD:
+
+  **P1.** Mid-work phase splits have no first-class tracker representation. METHODOLOGY.md §339-366 defines "Part 1, Part 2" sub-sections inside IMPLEMENTATION-PLAN.md, but the tracker form-family (`.github/ISSUE_TEMPLATE/work-item.yml`) has no Part field, no part:M label, and computes task titles as `Phase N.M` with no part awareness.
+
+  **P2.** The hierarchy changes when parts are added. Pre-mitigation: Phase N → Tasks N.1..N.k. Post-mitigation: Phase N → Parts (1..p), each part containing its own tasks. Existing task IDs (N.1..N.k) must survive this transition without renumbering. Current v11 design has no documented mechanism for grouping existing tasks under parts.
+
+  **P3.** Tracker-mode execution ordering has no native mechanism. GH Issues lack a user-mutable execution-order field. Issue numbers reflect creation order. Blockers/dependencies give only partial order. Sub-issues give containment, not sibling order. In flat-file mode, ordering lives in IMPLEMENTATION-PLAN.md as "execution notes" (METHODOLOGY:335). In tracker mode, IMPLEMENTATION-PLAN.md is a regenerated mirror — execution notes do not survive sync.
+
+  **P4.** v10→v11 and flat-file→tracker migrations must handle pre-existing whole-number phases without manual intervention, including initializing the new ordering mechanism from current implementation order. All v10.x and v11 projects already have whole-number-only phases; whatever solution is designed must absorb that state cleanly.
+
+  **Goal:** Both flat-file and tracker modes can express phase splits at creation, mid-work phase-to-parts expansion, and explicit execution ordering — all without renumbering existing phase or task IDs and without flat-file artifacts serving as the SSOT in tracker mode.
+
+  **Success Criteria:**
+  - SC1. Phases that grow too large at creation time can be split into multiple phases (each with a new immutable number), in both modes.
+  - SC2. Phases that grow too large mid-work can be expanded into multi-part form (Phase N → Part 1..p, each part containing tasks), preserving the existing phase number and all existing task IDs, in both modes.
+  - SC3. Phase numbers and task IDs (N.M) are never renumbered. Tracker entity IDs (GH Issue numbers) are inherently immutable. This invariant holds across all operations defined by this BD.
+  - SC4. Execution ordering of phases is expressible in both modes. In tracker mode, ordering does NOT depend on any flat-file artifact and does NOT use GH Projects as a single-phase ordering substitute.
+  - SC5. STATUS.md remains a dashboard. Its role does not expand to ordering SSOT in either mode.
+  - SC6. Tracker form-family (`work-item.yml` + label namespace + template_version per BD-069) supports parts and ordering with the smallest possible template_version delta consistent with BD-068 form-family rules.
+  - SC7. Bi-directional sync (BD-060 TrackerProvider, mirror semantics) preserves part membership and execution order across forward (flat→tracker) and reverse (tracker→flat) operations.
+  - SC8. The v10→v11 migrator and any v11.0 forward-migration (flat-file → tracker mode) pass pre-existing whole-number phases through unchanged and initialize the new ordering mechanism from current implementation order without manual intervention.
+
+  **Out of scope:**
+  - GH Projects integration (v11.1 scope; see `maintenance-docs/v11-research/V11.1-DISCUSSION-GITHUB-PROJECTS.md` in main branch — not present on v11-dev yet).
+  - Tracker backends other than github (linear/jira/redmine — reserved).
+  - STATUS.md schema changes beyond its current dashboard role.
+  - Letter-suffix phase forms (7a, 7b — rejected).
+
+  **Pipeline:** docs-researcher → revised-architect-prompt → architect → user review → planner → user review → coder (per pack memory `feedback_researcher_architect_planner_pipeline`). Docs-researcher prompt queued at `maintenance-docs/v11-research/BD-185-DOCS-RESEARCHER-QUEUED-PROMPT.md`; fires only after Batch 19c (BD-173) closes and commits AND explicit user approval.
+
+  **Form-family decisions reserved for architect:** labeling-overlay vs sub-issue-hierarchy for parts; ordering mechanism shape. Do NOT pre-bias in docs-researcher pass.
+
+  **Position:** Batch 19d, immediately after Batch 19c (BD-173). User-approved sequencing 2026-05-21.
+Resolved: n/a
+
+---
+
 **BD-174 — Scratch-pack-clone migration + multi-toggle test harness**
 Type: TODO(version) — surfaced 2026-05-17 from session discussion of test fixture thoroughness pre-public-release (gap identified: BD-102 dog-food runs on real pack repo; no scratch-clone equivalent for pack-on-pack code-bug-catching in safe environment)
 Status: Open
