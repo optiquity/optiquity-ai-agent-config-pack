@@ -362,8 +362,10 @@ if "could not be parsed into inventory entries" in captured:
 # captured (the `.+?` requires at least one char), so this case
 # naturally trips the body-capture regex-shape-mismatch branch with
 # the "no body between adjacent marker lines" likely-cause hint.
-# Documents that "empty inventory" requires at least one content line
-# between markers for the regex to capture cleanly.
+# Per FIX-3 Option C, empty inventory is not a supported state in
+# Check 41 at HEAD; this test asserts the case-(i) body-capture
+# diagnostic surfaces (rather than silently passing) for the truly-
+# empty shape.
 raw_truly_empty = '''#!/usr/bin/env bash
 cmd_update() {
     local entries=(
