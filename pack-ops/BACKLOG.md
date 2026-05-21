@@ -1710,6 +1710,37 @@ Resolved: n/a
 
 ---
 
+**BD-184 — Add Check 42 — CI workflow wires all per-check test files (prevention check for "test silently dead in CI" gap class)**
+Type: TODO(version) — surfaced 2026-05-21 during BD-183 FIX-1 per-commit review (PACK-REVIEW-BD-183-FIX-1.md SHOULD-A + Pack Chat exhaustive scanner result); user-approved fold into BD-175 emergency batch 2026-05-21 ("Open now. Implement immediately after BD-183 closes").
+Status: Open
+Blockers: BD-175 + BD-176 + BD-177 + BD-178 + BD-179 + BD-180 + BD-181 + BD-182 + BD-183 (must close successfully in that order per user direction 2026-05-21)
+Unblocks: closes the "missing test wiring" gap class permanently via mechanical CI guard. The same gap surfaced 5 times across 3 fix cycles in the BD-175 batch — discipline (reviewer attention) caught all 5 but a mechanical guard at commit time is cheaper than reviewer cycles.
+File/Symbol:
+  - `scripts/validate-pack.py` — new Check 42 (`check_ci_workflow_wires_per_check_tests`) — greps `scripts/tests/test-validate-pack-check-*.sh` files, compares against `.github/workflows/validate-pack.yml` `bash scripts/tests/test-validate-pack-check-*.sh` invocations; FAILs if any test file exists without corresponding workflow step
+  - `scripts/tests/test-validate-pack-check-42.sh` — new test for the new check (per user-approved per-check naming convention; mirror BD-181/BD-183 test pattern with synthetic fixture for FAIL case)
+  - `.github/workflows/validate-pack.yml` — wire the new `test-validate-pack-check-42.sh` invocation (must also be a sister-step per the very convention this BD enforces)
+  - `test-fixtures/manifest.txt` (regenerate per RC9 — `scripts/` touched but pack-internal; expected empty diff)
+Description: The "missing test wiring" gap class has surfaced 5 times across the BD-175 batch:
+  - BD-179 FIX-1 (`1e644d1`): wired 3 unwired tests (`test-validate-pack-checks-36-37-38.sh` since BD-175 Commit 12; `test-validate-pack-check-39.sh` since BD-175 F2a; `test-validate-pack-check-40.sh` since BD-179 main)
+  - BD-183 FIX-1 (`5f8f683`): wired `test-validate-pack-check-18.sh` (unwired since BD-181 main `c244314`)
+  - BD-183 FIX-2 (pending): wires `test-validate-pack-check-41.sh` (unwired since BD-180 main `78a4415`)
+
+  Each occurrence was caught by reviewer attention applying the new carry-forward discipline (BD-179 FIX-5, `ff23a00`). The discipline works, but a mechanical guard is cheaper than per-cycle reviewer attention.
+
+  Scope:
+  - Implement Check 42: parse `scripts/tests/test-validate-pack-check-*.sh` (glob with `-* matches numbered or bundled forms like `-16`, `-checks-36-37-38`); parse `.github/workflows/validate-pack.yml` for `bash scripts/tests/test-validate-pack-check-*.sh` invocations; report FAIL with specific filename(s) for any file existing without a corresponding workflow step
+  - Add test fixture `test-validate-pack-check-42.sh` mirroring BD-181/BD-183 test pattern (signature group + PASS group + FAIL synthetic group + e2e regression guard)
+  - Wire `test-validate-pack-check-42.sh` into `.github/workflows/validate-pack.yml` (this BD's own test must pass the check it implements — self-referential closure)
+  - Verify Check 42 PASSes at HEAD after the new wiring (all 9 test files including check-42 itself now wired)
+  - Regenerate `test-fixtures/manifest.txt` per RC9 (expected empty diff; pack-internal)
+
+  Implementation pattern: mechanical pack-coder work (no architect spawn needed — Check 42 is a straightforward file-glob-vs-workflow-grep comparison; pattern mirrors existing checks). Per per-BD review/fix pattern, single pack-reviewer pass after the changes land.
+
+  Position: Insert immediately after BD-183 (per user direction 2026-05-21 — "Implement immediately after BD-183 closes"; last BD before end-of-batch reviewer for the BD-175 emergency batch).
+Resolved: n/a
+
+---
+
 **BD-174 — Scratch-pack-clone migration + multi-toggle test harness**
 Type: TODO(version) — surfaced 2026-05-17 from session discussion of test fixture thoroughness pre-public-release (gap identified: BD-102 dog-food runs on real pack repo; no scratch-clone equivalent for pack-on-pack code-bug-catching in safe environment)
 Status: Open
