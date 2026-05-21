@@ -234,6 +234,20 @@ Checks:
       discipline per §8 D7: the BD-179 commit qualifies all
       pre-existing bare refs (51 across 9 files per Phase 1 survey)
       so Check 40 PASSes at HEAD.
+  42. CI workflow wires all per-check test files (BD-184): enumerates
+      `scripts/tests/test-validate-pack-check*.sh` files on disk and
+      verifies every one has a corresponding `bash scripts/tests/<file>`
+      invocation in `.github/workflows/validate-pack.yml`. The glob
+      `check*` (no trailing dash) catches BOTH single-check filenames
+      (`test-validate-pack-check-NN.sh`) AND bundled-check filenames
+      (`test-validate-pack-checks-NN-NN-NN.sh`). Closes the "missing
+      test wiring" gap class that surfaced 5 times across 3 fix cycles
+      in the BD-175 emergency batch. Self-referential closure: this
+      check's PASS state depends on its OWN test
+      (`test-validate-pack-check-42.sh`) being wired — BD-184 ships
+      check + test + wiring together so the closure holds. No
+      exemption mechanism: unwired tests must be wired (use
+      workflow `if:` gates for intentionally-not-running tests).
 
 Two additional informational checks (no number, soft / advisory):
   - Issue template forms (BD-063): `.github/ISSUE_TEMPLATE/*.yml`
@@ -5238,6 +5252,138 @@ def check_client_installed_files() -> None:
         )
 
 
+# ── Check 42: CI workflow wires all per-check test files (BD-184) ──────────
+#
+# Closes the "missing test wiring" gap class permanently via a mechanical
+# CI guard. The gap surfaced 5 times across the BD-175 batch alone:
+#   - BD-179 FIX-1 (`1e644d1`): wired
+#     `test-validate-pack-checks-36-37-38.sh` + `test-validate-pack-check-39.sh`
+#     + `test-validate-pack-check-40.sh` (3 tests; unwired since BD-175
+#     Commit 12, BD-175 F2a, BD-179 main respectively)
+#   - BD-183 FIX-1 (`5f8f683`): wired `test-validate-pack-check-18.sh`
+#     (unwired since BD-181 main `c244314`)
+#   - BD-183 FIX-2 (`99b0f12`): wired `test-validate-pack-check-41.sh`
+#     (unwired since BD-180 main `78a4415`)
+#
+# Each occurrence was caught by reviewer attention applying the BD-179
+# FIX-5 (`ff23a00`) carry-forward discipline. The discipline works, but
+# a mechanical guard at commit time is cheaper than per-cycle reviewer
+# attention. Check 42 is that mechanical guard.
+#
+# Naming-form note: the per-check test convention permits BOTH single-
+# check filenames (`test-validate-pack-check-NN.sh`; e.g.,
+# `test-validate-pack-check-16.sh`, `test-validate-pack-check-39.sh`) and
+# bundled-check filenames (`test-validate-pack-checks-NN-NN-NN.sh`; e.g.,
+# `test-validate-pack-checks-32-33-34.sh`,
+# `test-validate-pack-checks-36-37-38.sh`). The disk glob and the workflow
+# grep BOTH use `test-validate-pack-check*` (without the trailing dash)
+# so the prefix captures both `check-` AND `checks-` variants. A glob
+# of `test-validate-pack-check-*.sh` (with dash) would silently miss the
+# bundled form — empirically verified pre-implementation.
+#
+# Exemption: there is intentionally no exemption mechanism. Every
+# `test-validate-pack-check*.sh` test file under `scripts/tests/` MUST
+# have a corresponding `bash scripts/tests/<filename>` invocation in
+# `.github/workflows/validate-pack.yml`. If a test is intentionally not
+# wired (e.g., manual-trigger only), the workflow can wire it under an
+# `if:` gate — but the wiring line MUST exist so Check 42 sees it.
+
+def check_ci_workflow_wires_per_check_tests() -> None:
+    """Check 42 — CI workflow wires all per-check test files (BD-184).
+
+    Enumerates `scripts/tests/test-validate-pack-check*.sh` files on
+    disk and compares against the set of `bash scripts/tests/test-
+    validate-pack-check*.sh` invocations in
+    `.github/workflows/validate-pack.yml`. Any test file existing on
+    disk without a corresponding workflow invocation FAILs with the
+    specific filename(s) named.
+
+    Glob `test-validate-pack-check*.sh` (no trailing dash) matches BOTH
+    single-check filenames (`test-validate-pack-check-NN.sh`) AND
+    bundled-check filenames (`test-validate-pack-checks-NN-NN-NN.sh`).
+    Reverse-direction (workflow invocations without disk files) is NOT
+    a failure mode worth gating — a stale workflow line referencing a
+    deleted test would fail the actual CI run loudly, so there is no
+    silent-pass risk; the symmetric gate would add noise without
+    catching new failure modes.
+
+    Self-referential closure: Check 42 PASSing at HEAD depends on its
+    OWN test (`test-validate-pack-check-42.sh`) being wired in the
+    workflow yml. The BD-184 implementation ships the test + the
+    wiring + this check together so the closure holds.
+
+    Lenient mode: if `.github/workflows/validate-pack.yml` is absent
+    (unlikely at any reasonable pack-repo HEAD) the check SKIPs with a
+    notice; if `scripts/tests/` is absent the check SKIPs similarly.
+    """
+    print("\n── Check 42: CI workflow wires all per-check test files (BD-184) ──")
+    workflow_path = REPO_ROOT / ".github" / "workflows" / "validate-pack.yml"
+    tests_dir = REPO_ROOT / "scripts" / "tests"
+    if not workflow_path.is_file():
+        ok(".github/workflows/validate-pack.yml absent — skipping (lenient)")
+        return
+    if not tests_dir.is_dir():
+        ok("scripts/tests/ absent — skipping (lenient)")
+        return
+
+    # Enumerate per-check test files on disk. Glob `check*` (no trailing
+    # dash) catches both `check-NN.sh` and `checks-NN-NN-NN.sh` shapes.
+    disk_tests = sorted(p.name for p in tests_dir.glob("test-validate-pack-check*.sh"))
+
+    # Parse workflow yml for `bash scripts/tests/test-validate-pack-check*.sh`
+    # invocation lines. Same prefix discipline as the disk glob — the
+    # filename character class `[^\s]+` after the prefix captures both
+    # single-check and bundled-check forms. The regex anchors on the
+    # literal `bash scripts/tests/test-validate-pack-check` prefix so
+    # commented-out or prose-mentioned occurrences (e.g., in workflow
+    # comments) that lack the `bash ` lead and the `.sh` end are not
+    # falsely counted. We deliberately do NOT require the line to be a
+    # full `run:` step — counting any `bash scripts/tests/<file>.sh`
+    # occurrence is sufficient because the workflow yml is the only
+    # consumer of these test files in CI, and a non-`run:` occurrence
+    # is implausible enough that surfacing it as evidence-of-wiring is
+    # a tolerable trade-off vs. a stricter parser that would need yml
+    # awareness.
+    workflow_text = workflow_path.read_text()
+    invocation_pattern = re.compile(
+        r"bash\s+scripts/tests/(test-validate-pack-check[^\s]+\.sh)"
+    )
+    workflow_invocations = sorted(set(invocation_pattern.findall(workflow_text)))
+
+    # Diff: tests on disk without a workflow invocation.
+    disk_set = set(disk_tests)
+    wired_set = set(workflow_invocations)
+    unwired = sorted(disk_set - wired_set)
+
+    if unwired:
+        for filename in unwired:
+            fail(
+                f"scripts/tests/{filename} — per-check test file exists "
+                f"on disk but has NO corresponding `bash scripts/tests/"
+                f"{filename}` invocation in `.github/workflows/"
+                f"validate-pack.yml`. Per BD-184, every test file "
+                f"matching the glob `scripts/tests/test-validate-pack-"
+                f"check*.sh` MUST be wired into the CI workflow so the "
+                f"test runs on every push. Remediation: add a sister-"
+                f"step under the `tests:` job in `.github/workflows/"
+                f"validate-pack.yml` of the form:\n"
+                f"      - name: validate-pack <Check NN> tests (BD-NNN, "
+                f"<short description>)\n"
+                f"        if: always()\n"
+                f"        run: bash scripts/tests/{filename}\n"
+                f"This check intentionally has no exemption mechanism — "
+                f"if the test is intentionally not run in CI, wire it "
+                f"under an `if:` gate rather than leaving it unwired."
+            )
+        return
+
+    ok(
+        f"Check 42 — {len(disk_tests)} per-check test file(s) on disk; "
+        f"{len(workflow_invocations)} workflow invocation(s) found; "
+        f"zero unwired tests. CI workflow wiring is complete."
+    )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -5333,6 +5479,14 @@ def main() -> None:
     # surfaces) so the install-coverage + cross-reference gates run
     # before the inventory-drift gate.
     check_client_installed_files()
+    # ── BD-184: CI workflow wires all per-check test files. Closes the
+    # "missing test wiring" gap class permanently — surfaced 5 times in
+    # the BD-175 batch alone (caught each time by reviewer attention).
+    # Lands LAST in main() because it gates a CI infrastructure invariant
+    # rather than any single pack-product surface; logical position is
+    # end-of-list (mirrors Check 41's end-of-list landing for the
+    # adjacent BD-180 inventory gate).
+    check_ci_workflow_wires_per_check_tests()
 
     print("\n" + "=" * 60)
     if failures:

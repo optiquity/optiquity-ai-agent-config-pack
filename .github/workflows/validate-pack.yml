@@ -178,6 +178,9 @@ jobs:
       - name: validate-pack Check 19 tests (BD-183, trinity templates free of body scaffolding)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-19.sh
+      - name: validate-pack Check 42 tests (BD-184, CI workflow wires all per-check test files)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-check-42.sh
       - name: tracker BD-129 gh-repo routing tests (BD-129)
         if: always()
         run: bash scripts/tests/tracker-bd129-gh-repo-test.sh
