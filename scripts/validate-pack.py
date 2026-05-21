@@ -4823,14 +4823,41 @@ _CHECK_41_EXEMPTIONS: dict[str, str] = {
 }
 
 
-def _parse_client_installed_files() -> tuple[list[str], bool, bool]:
+def _parse_client_installed_files() -> tuple[list[str], int, int, bool, bool]:
     """Parse `_CLIENT_INSTALLED_FILES` block from `scripts/init-project.sh`.
 
-    Returns `(entries, start_seen, end_seen)`:
+    Returns `(entries, start_count, end_count, regex_matched, body_has_content)`:
       - `entries`: list of `pack_relpath` strings extracted from each
-        entry line between START and END markers.
-      - `start_seen`: True if `_CLIENT_INSTALLED_FILES_START` marker found.
-      - `end_seen`: True if `_CLIENT_INSTALLED_FILES_END` marker found.
+        entry line between START and END markers. Empty list if either
+        marker is not present exactly once OR the regex body-extraction
+        fails OR the body contains no parseable `->` entries.
+      - `start_count`: integer count of `_CLIENT_INSTALLED_FILES_START`
+        marker occurrences in the file. Caller enforces == 1.
+      - `end_count`: integer count of `_CLIENT_INSTALLED_FILES_END`
+        marker occurrences in the file. Caller enforces == 1.
+      - `regex_matched`: True if the body-extraction regex
+        `START\\s*\\n(.+?)\\n[^\\n]*END` successfully captured a block
+        body. False if regex failed (e.g., END appears textually before
+        START, START+END on the same line, no body between adjacent
+        marker lines, or unusual whitespace prevents body capture).
+        When markers are not exactly-once, `regex_matched` is False by
+        short-circuit (the caller short-circuits on the marker check
+        before consulting this field).
+      - `body_has_content`: True iff the regex matched AND the captured
+        body contains at least one non-empty, non-whitespace-only line.
+        False when regex failed (no body to inspect) OR when regex
+        matched but the body is whitespace-only.
+
+    The caller uses the `(regex_matched, body_has_content, entries)`
+    triple to distinguish three SHOULD-2 disambiguation cases:
+      (i)   `regex_matched=False`: regex-shape-mismatch (markers exist
+            exactly once but body capture failed).
+      (ii)  `regex_matched=True`, `body_has_content=True`, `entries=[]`:
+            regex-shape-mismatch within the entry-line shape (body has
+            content but no line matches `#   <pack>  ->  <proj>`).
+      (iii) `regex_matched=True`, `body_has_content=False`, `entries=[]`:
+            genuinely-empty inventory (body is whitespace-only) —
+            preserves pre-BD-180 "no parseable entries" diagnostic.
 
     Entry line format (one per line, between START/END):
       `#   <pack_relpath>  ->  <project_relpath>  [stage:<copy-site ids>]`
@@ -4838,26 +4865,45 @@ def _parse_client_installed_files() -> tuple[list[str], bool, bool]:
     Comment-only lines (e.g., header context) between START and END are
     skipped (must not contain `->`); empty lines and full-comment lines
     without `->` are ignored.
+
+    Exactly-once contract: both markers MUST appear exactly once each.
+    The header docstring for Check 41 promises `(a) START + END markers
+    each appear exactly once`; this function enforces that contract by
+    returning the raw counts so the caller can emit specific
+    `"expected exactly one ..., found N"` failure messages and the
+    validator FAILs rather than silently swallowing duplicate markers
+    (the failure mode the exactly-once contract is meant to catch).
     """
     init_sh = REPO_ROOT / "scripts" / "init-project.sh"
     if not init_sh.is_file():
-        return ([], False, False)
+        return ([], 0, 0, False, False)
     text = init_sh.read_text()
     start_marker = "_CLIENT_INSTALLED_FILES_START"
     end_marker = "_CLIENT_INSTALLED_FILES_END"
-    start_seen = text.count(start_marker) >= 1
-    end_seen = text.count(end_marker) >= 1
-    if not (start_seen and end_seen):
-        return ([], start_seen, end_seen)
-    # Extract block body between START and END markers.
+    start_count = text.count(start_marker)
+    end_count = text.count(end_marker)
+    # Exactly-once contract: short-circuit if either count != 1.
+    # Caller emits specific "expected exactly one, found N" failure.
+    if start_count != 1 or end_count != 1:
+        return ([], start_count, end_count, False, False)
+    # Extract block body between START and END markers. The non-greedy
+    # `(.+?)\n[^\n]*` capture stops at the END-marker line.
     m = re.search(
         rf"{re.escape(start_marker)}\s*\n(.+?)\n[^\n]*{re.escape(end_marker)}",
         text,
         re.DOTALL,
     )
     if not m:
-        return ([], start_seen, end_seen)
+        # Markers exist exactly once each, but the regex failed to
+        # capture a body — e.g., END appears textually before START, or
+        # START + END on the same line, or unusual whitespace (e.g.,
+        # truly-empty body between adjacent marker lines also lands
+        # here because the `.+?` capture requires at least one char).
+        # Signal to caller via regex_matched=False so the caller can
+        # emit the regex-shape-mismatch diagnostic.
+        return ([], start_count, end_count, False, False)
     body = m.group(1)
+    body_has_content = any(line.strip() for line in body.splitlines())
     entries: list[str] = []
     for line in body.splitlines():
         stripped = line.strip()
@@ -4871,7 +4917,7 @@ def _parse_client_installed_files() -> tuple[list[str], bool, bool]:
         pack_rel = content.split("->", 1)[0].strip()
         if pack_rel:
             entries.append(pack_rel)
-    return (entries, start_seen, end_seen)
+    return (entries, start_count, end_count, True, body_has_content)
 
 
 def check_client_installed_files() -> None:
@@ -4894,23 +4940,116 @@ def check_client_installed_files() -> None:
         ok("scripts/init-project.sh absent — skipping (lenient)")
         return
 
-    entries, start_seen, end_seen = _parse_client_installed_files()
-    if not start_seen or not end_seen:
-        missing = []
-        if not start_seen:
-            missing.append("_CLIENT_INSTALLED_FILES_START")
-        if not end_seen:
-            missing.append("_CLIENT_INSTALLED_FILES_END")
+    entries, start_count, end_count, regex_matched, body_has_content = (
+        _parse_client_installed_files()
+    )
+
+    # Exactly-once marker contract (BD-180 SHOULD-1 hardening). Distinct
+    # diagnostics for missing-marker (count 0) vs duplicate-marker
+    # (count >= 2) so a future maintainer who copy-pastes the inventory
+    # block during a refactor sees a clear "found N" failure rather
+    # than silent first-marker-wins behaviour.
+    if start_count != 1 or end_count != 1:
+        marker_errors: list[str] = []
+        if start_count == 0:
+            marker_errors.append(
+                "missing `_CLIENT_INSTALLED_FILES_START` marker in "
+                "scripts/init-project.sh (found 0; expected exactly 1)"
+            )
+        elif start_count > 1:
+            marker_errors.append(
+                f"duplicate `_CLIENT_INSTALLED_FILES_START` marker in "
+                f"scripts/init-project.sh (found {start_count}; "
+                f"expected exactly 1)"
+            )
+        if end_count == 0:
+            marker_errors.append(
+                "missing `_CLIENT_INSTALLED_FILES_END` marker in "
+                "scripts/init-project.sh (found 0; expected exactly 1)"
+            )
+        elif end_count > 1:
+            marker_errors.append(
+                f"duplicate `_CLIENT_INSTALLED_FILES_END` marker in "
+                f"scripts/init-project.sh (found {end_count}; "
+                f"expected exactly 1)"
+            )
         fail(
-            f"missing self-documenting list marker(s) in "
-            f"scripts/init-project.sh: {missing}. The block must be "
-            f"delimited by `_CLIENT_INSTALLED_FILES_START` and "
-            f"`_CLIENT_INSTALLED_FILES_END` comment markers per "
-            f"ARCHITECTURE-BD-176.md §5.3 / BD-180 observation G."
+            "self-documenting list marker contract violated: "
+            + "; ".join(marker_errors)
+            + ". The block must be delimited by exactly one "
+            "`_CLIENT_INSTALLED_FILES_START` marker and exactly one "
+            "`_CLIENT_INSTALLED_FILES_END` marker per ARCHITECTURE-BD-176.md "
+            "§5.3 / BD-180 observation G. Remove any duplicate markers or "
+            "add the missing marker(s)."
         )
         return
 
+    # Markers are exactly-once; disambiguate the empty-entries failure
+    # modes (BD-180 SHOULD-2 hardening). Three distinct cases per
+    # parser-output triple `(regex_matched, body_has_content, entries)`:
+    #   (i)   `regex_matched=False`: markers exist exactly once each but
+    #         their relative position / shape (e.g., END appears
+    #         textually before START, START+END on the same line, no
+    #         body between adjacent marker lines, or unusual whitespace)
+    #         prevents body capture. This is a regex-shape-mismatch at
+    #         the BODY-CAPTURE level — surface the specific diagnostic
+    #         with concrete likely-cause guidance.
+    #   (ii)  `regex_matched=True`, `body_has_content=True`, `entries=[]`:
+    #         body captured successfully and has non-empty content lines,
+    #         but no line matched the expected entry-line shape (e.g.,
+    #         garbage between markers, non-comment shell content,
+    #         comment lines without `->` separator). This is a regex-
+    #         shape-mismatch at the ENTRY-SHAPE level — surface the
+    #         entry-shape diagnostic NOT the legacy "no parseable
+    #         entries" message (the block has content but the wrong
+    #         shape; "no parseable entries" would be misleading).
+    #   (iii) `regex_matched=True`, `body_has_content=False`, `entries=[]`:
+    #         body captured but is whitespace-only (e.g., a single
+    #         indented line that captured as ` ` between markers).
+    #         Inventory is genuinely empty per the consumer's view;
+    #         surface the legacy "no parseable entries" diagnostic
+    #         (preserved pre-BD-180 message).
     if not entries:
+        if not regex_matched:
+            fail(
+                "scripts/init-project.sh has exactly one "
+                "`_CLIENT_INSTALLED_FILES_START` and exactly one "
+                "`_CLIENT_INSTALLED_FILES_END` marker, but the block "
+                "body could not be captured — the regex pattern "
+                "`START\\s*\\n(.+?)\\n[^\\n]*END` did not match. Likely "
+                "causes: (a) END marker appears textually before the "
+                "START marker, (b) START and END markers on the same "
+                "line, (c) no body between adjacent marker lines "
+                "(empty inventory must contain at least one comment "
+                "line — e.g., `# (no entries)` — between the markers), "
+                "(d) unusual whitespace around the markers (e.g., "
+                "missing trailing newline after START, or missing "
+                "leading newline before END). Restore the canonical "
+                "marker shape per ARCHITECTURE-BD-176.md §5.3 / BD-180 "
+                "observation G: each marker on its own comment line, "
+                "START preceding END, with body content between them."
+            )
+            return
+        if body_has_content:
+            fail(
+                "scripts/init-project.sh has `_CLIENT_INSTALLED_FILES_START`/"
+                "`_END` markers and the block body was captured by the "
+                "regex, but the block body could not be parsed into "
+                "inventory entries — the body has content lines but no "
+                "line matches the expected entry shape. Likely causes: "
+                "(a) entry lines missing the `->` separator, (b) entry "
+                "lines not commented (must start with `#`), (c) "
+                "malformed whitespace around `->`, (d) non-inventory "
+                "content (e.g., shell statements) between the markers. "
+                "Each entry line must be of the form "
+                "`#   <pack_relpath>  ->  <project_relpath>  [stage:...]` "
+                "between the START/END markers per ARCHITECTURE-BD-176.md "
+                "§5.3 / BD-180 observation G."
+            )
+            return
+        # regex_matched=True, body_has_content=False: body is captured
+        # but whitespace-only. Preserve the pre-BD-180 diagnostic shape
+        # so existing tests / documentation references remain valid.
         fail(
             "scripts/init-project.sh has `_CLIENT_INSTALLED_FILES_START`/"
             "`_END` markers but the block contains no parseable entries. "
