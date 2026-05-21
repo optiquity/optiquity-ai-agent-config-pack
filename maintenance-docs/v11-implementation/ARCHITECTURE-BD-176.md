@@ -506,6 +506,26 @@ When BD-180 lands the code-level check, the recommended shape is:
 
 This sketch is informational only for BD-176; the design lands in BD-180.
 
+**Addendum (2026-05-20, BD-180):** The self-documenting "files copied
+to clients" list was realized in BD-180 (commit `78a4415`) as the
+`_CLIENT_INSTALLED_FILES_START`/`_END` marker block in
+`scripts/init-project.sh` (the source authority — 38 entries at
+landing). Integrity is enforced by
+`scripts/validate-pack.py:check_client_installed_files` (Check 41),
+which verifies (a) markers exist exactly once each, (b) every listed
+`pack_relpath` resolves to an extant file at HEAD, and (c) every
+`cmd_update` mapping source path appears in the inventory (the
+cross-check that closes observation G's drift-detection gap). See
+`IMPLEMENTATION-REPORT-BD-180.md` §4 for the design refinements
+applied during realization — notably: single inventory block
+co-located with `cmd_update()` rather than dual blocks above S6 + S11
+(simpler-correct discoverability anchor); Check 41 substituted for
+the sketch's "Check 40" (Check 40 was claimed by BD-179 between
+this architect doc and BD-180 implementation); parser-based
+inventory consumption in `validate-pack.py` rather than
+`grep`-against-source matching (more robust to surrounding-prose
+drift).
+
 ### §5.4 Handoff to BD-180
 
 Adding to the BD-180 entry (Pack-Chat-direct edit when BD-180's scope is finalized — not in BD-176):
