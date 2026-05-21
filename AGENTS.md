@@ -19,6 +19,14 @@ The Optiquity AI Agent Config Pack provides versioned Claude Code, Codex, and Ge
 CLI agent configuration files for Swift / Python / gRPC projects. It ships
 template directories, agent files, skills, scripts, and supporting documentation.
 
+---
+
+## Repo structure
+
+See `README.md` — the Repository Layout section is the authoritative reference.
+Do not rely on any hardcoded directory listing here; the structure changes between
+major versions.
+
 Key files to read before working on the pack:
 - `README.md` — version history and layout
 - `pack-ops/BACKLOG.md` — open BD-NNN items (regenerated mirror; per-entry source at `/backlog/`)
@@ -36,7 +44,7 @@ regresses the framework.
 
 ---
 
-## Rules for Codex agents working on this repo
+## Rules for agents working on this repo
 
 **Commit message format:**
 ```
@@ -377,8 +385,8 @@ in the same commit as the behavior change.
   explicitly split the batch into separate pack-side and project-side
   commits. Mis-framing a mixed-scope commit with a pack-only keyword
   is a CI failure, not a discipline note. The keyword vocabulary is
-  defined in § "Rules for Codex agents working on this repo" →
-  commit-subject scope-keyword convention.
+  defined in § "Rules for agents working on this repo" → commit-
+  subject scope-keyword convention.
 
 ### Repo conventions
 
