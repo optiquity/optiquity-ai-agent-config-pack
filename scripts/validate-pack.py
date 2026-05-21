@@ -1319,30 +1319,52 @@ def check_trinity_no_scaffolding_comments() -> None:
         ok("All three trinity templates free of body-section scaffolding comments")
 
 
-def check_trinity_h2_parity() -> None:
-    """Check 18 — v10 trinity templates have matching H2 structure.
+def check_trinity_h2_parity(
+    trinity_root: Path = None,
+    label: str = "project-template",
+) -> None:
+    """Check 18 — trinity templates have matching H2 structure at a given location.
 
-    CLAUDE.md, AGENTS.md, GEMINI.md must agree on H2 names and order.
-    The trinity rule applies — symmetry is the default. The only allowed
-    asymmetry is tool-intrinsic content. GEMINI.md is permitted to add
-    these specific H2s (and only these): `## Agent roster`,
-    `## Gemini CLI operating notes`. Any other divergence is a defect.
+    CLAUDE.md, AGENTS.md, GEMINI.md must agree on H2 names and order
+    WITHIN their trinity location. The trinity rule applies — symmetry
+    is the default. The only allowed asymmetry is tool-intrinsic
+    content. GEMINI.md is permitted to add these specific H2s (and only
+    these): `## Agent roster`, `## Gemini CLI operating notes`. Any
+    other divergence is a defect.
 
     Without this check, drift like the v10.0 OT migration discovered
     (CLAUDE 'Platform and stack defaults' vs AGENTS 'Platform defaults'
     etc.) ships unnoticed and breaks Procedure 5-C.2's trinity-rule
     check during migration.
+
+    Parameters:
+        trinity_root: directory containing the 3 trinity files. Default
+            is `REPO_ROOT / "project-template"` (preserves the original
+            single-location behavior). Pass `REPO_ROOT` for the pack-root
+            trinity location.
+        label: human-readable surface name used in FAIL/OK messages and
+            file-path prefixes. Examples: `"project-template"`,
+            `"pack-root"`.
+
+    Per BD-181 (Override 9 compliance): Each invocation checks byte
+    parity WITHIN its own trinity location only. There is NO cross-
+    location parity gate — pack-root and project-template trinity carry
+    different audiences and different rules by design (per pack-root
+    trinity § Rules → Trinity rule note paragraph). Call this function
+    once per trinity location; the invocations are independent.
     """
-    print("\n── Check 18: Trinity H2 structure parity (BD-059) ──")
+    if trinity_root is None:
+        trinity_root = REPO_ROOT / "project-template"
+    print(f"\n── Check 18 [{label}]: Trinity H2 structure parity (BD-059, BD-181) ──")
     GEMINI_INTRINSIC_H2S = {"## Agent roster", "## Gemini CLI operating notes"}
     files = {
-        name: REPO_ROOT / "project-template" / name
+        name: trinity_root / name
         for name in ("CLAUDE.md", "AGENTS.md", "GEMINI.md")
     }
     h2_lists = {}
     for name, path in files.items():
         if not path.is_file():
-            fail(f"project-template/{name} — file missing")
+            fail(f"{label}/{name} — file missing")
             return
         h2_lists[name] = [
             line.rstrip()
@@ -1358,29 +1380,31 @@ def check_trinity_h2_parity() -> None:
     # between these two — Codex and Claude Code see the same content).
     if claude != agents:
         fail(
-            "CLAUDE.md ↔ AGENTS.md H2 structure diverges (no tool-intrinsic "
-            "carve-out allowed between these two):"
+            f"[{label}] CLAUDE.md ↔ AGENTS.md H2 structure diverges "
+            "(no tool-intrinsic carve-out allowed between these two):"
         )
         in_claude = [h for h in claude if h not in agents]
         in_agents = [h for h in agents if h not in claude]
         for h in in_claude:
-            fail(f"  in CLAUDE.md only: {h}")
+            fail(f"  in {label}/CLAUDE.md only: {h}")
         for h in in_agents:
-            fail(f"  in AGENTS.md only: {h}")
+            fail(f"  in {label}/AGENTS.md only: {h}")
         return
 
     # GEMINI must equal CLAUDE *modulo* the allowed Gemini-intrinsic H2s.
     gemini_filtered = [h for h in gemini if h not in GEMINI_INTRINSIC_H2S]
     if gemini_filtered != claude:
-        fail("GEMINI.md H2 structure diverges from CLAUDE.md/AGENTS.md "
-             "beyond the allowed Gemini-intrinsic H2s "
-             f"({sorted(GEMINI_INTRINSIC_H2S)}):")
+        fail(
+            f"[{label}] GEMINI.md H2 structure diverges from CLAUDE.md/AGENTS.md "
+            "beyond the allowed Gemini-intrinsic H2s "
+            f"({sorted(GEMINI_INTRINSIC_H2S)}):"
+        )
         in_claude = [h for h in claude if h not in gemini_filtered]
         in_gemini = [h for h in gemini_filtered if h not in claude]
         for h in in_claude:
-            fail(f"  in CLAUDE.md/AGENTS.md only: {h}")
+            fail(f"  in {label}/CLAUDE.md/AGENTS.md only: {h}")
         for h in in_gemini:
-            fail(f"  in GEMINI.md only (and not in allowed-intrinsic set): {h}")
+            fail(f"  in {label}/GEMINI.md only (and not in allowed-intrinsic set): {h}")
         return
 
     # Check that the Gemini-intrinsic H2s, if present, are positioned
@@ -1388,8 +1412,8 @@ def check_trinity_h2_parity() -> None:
     # `Agent roster`; after Agent behavior for `Gemini CLI operating notes`).
     # Position drift is acceptable as long as parity-modulo-intrinsic holds,
     # but log positions for telemetry.
-    ok(f"CLAUDE.md ↔ AGENTS.md H2 structures match ({len(claude)} sections)")
-    ok(f"GEMINI.md adds {len(gemini) - len(gemini_filtered)} intrinsic H2(s); "
+    ok(f"[{label}] CLAUDE.md ↔ AGENTS.md H2 structures match ({len(claude)} sections)")
+    ok(f"[{label}] GEMINI.md adds {len(gemini) - len(gemini_filtered)} intrinsic H2(s); "
        f"otherwise matches ({len(gemini_filtered)} sections)")
 
 
@@ -5147,7 +5171,14 @@ def main() -> None:
     # comment block at the function definitions above.
     check_tool_config_capability_parity()
     check_trinity_addenda_h2()
-    check_trinity_h2_parity()
+    # ── BD-181: Check 18 H2 parity runs INDEPENDENTLY at each trinity
+    # location. Per Override 9 compliance: pack-root and project-template
+    # trinity carry different audiences and different rules by design
+    # (per pack-root trinity § Rules → Trinity rule note paragraph).
+    # Each invocation enforces byte parity WITHIN its own trinity
+    # location only; there is NO cross-location parity gate.
+    check_trinity_h2_parity(REPO_ROOT / "project-template", "project-template")
+    check_trinity_h2_parity(REPO_ROOT, "pack-root")
     check_trinity_no_scaffolding_comments()
     check_gitignore_env_example_exception()
     check_issue_template_forms()
