@@ -2,7 +2,7 @@
 
 **Status:** canonical rule reference (stable across pack versions; updated only when the boundary definition itself changes).
 **Audience:** pack maintainers, pack agents (pack-architect / pack-coder / pack-planner / pack-reviewer / pack-docs-researcher), future architects, project PM chats (post-install qualifier — see §6).
-**Source-of-design:** `maintenance-docs/v11-implementation/ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §1.1, §1.2, §3.3 (machine-readable format), §4, §5.2 + `maintenance-docs/v11-implementation/ARCHITECTURE-DIRECTORY-REORGANIZATION-FIX.md` §4 (1-entry shrink) + `maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` Overrides 1 + 5.
+**Source-of-design:** `maintenance-docs/archive/v11/ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §1.1, §1.2, §3.3 (machine-readable format), §4, §5.2 + `maintenance-docs/archive/v11/ARCHITECTURE-DIRECTORY-REORGANIZATION-FIX.md` §4 (1-entry shrink) + `maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` Overrides 1 + 5.
 
 ---
 
@@ -95,7 +95,7 @@ pack-ops/.boundary-exempt-root.txt
 
 **Why only 1 entry and not 3?**
 
-An earlier design (`maintenance-docs/v11-implementation/ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §2.1 + §3.3) proposed a 3-entry exemption list including `BACKLOG.md` and `CHANGELOG.md` with a "pinned by external constraints" rationale. That design was REJECTED:
+An earlier design (`maintenance-docs/archive/v11/ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §2.1 + §3.3) proposed a 3-entry exemption list including `BACKLOG.md` and `CHANGELOG.md` with a "pinned by external constraints" rationale. That design was REJECTED:
 
 - **Override 1** (`maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` §1) authorized ONLY `tracker.toml.pack-example` to STAY at root.
 - **Override 5** (`maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` §1) explicitly REJECTED the proposed exemption for `BACKLOG.md` + `CHANGELOG.md`. User direction: both files MUST MOVE to `pack-ops/`. The user's boundary articulation classifies them as pack operational docs (curation §5: "config pack operational docs used by the pack to do its work"), not as configs governing the pack repo. "Pinned by external constraints" was not accepted as a valid exemption rationale — no tool reads either file at a specific root location; the asserted CI Check 32 and per-entry-tree contracts pin file CONTENT (mirror-in-sync) not file LOCATION.
@@ -110,7 +110,7 @@ The shortened 1-entry list is the result. `BACKLOG.md` and `CHANGELOG.md` move t
 
 ## §5 SHARED anti-pattern catalog (post-resolution)
 
-When the boundary rules were first articulated, the audit (`maintenance-docs/v11-implementation/AUDIT-PACK-PROJECT-BOUNDARY-VIOLATIONS.md` §F) identified seven candidate SHARED anti-patterns — artifacts that appeared to span PACK and PROJECT audiences. User curation (`maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` Overrides 3 + 4) reclassified two of them OUT (they are independent parallel TOOL-CONFIG dirs, not shared). The remaining FIVE anti-patterns and their structural resolutions are catalogued here so future readers do not re-create a resolved issue.
+When the boundary rules were first articulated, the audit (`maintenance-docs/archive/v11/AUDIT-PACK-PROJECT-BOUNDARY-VIOLATIONS.md` §F) identified seven candidate SHARED anti-patterns — artifacts that appeared to span PACK and PROJECT audiences. User curation (`maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` Overrides 3 + 4) reclassified two of them OUT (they are independent parallel TOOL-CONFIG dirs, not shared). The remaining FIVE anti-patterns and their structural resolutions are catalogued here so future readers do not re-create a resolved issue.
 
 ### §5.1 F-1: `supporting-docs/` audience-mixed
 

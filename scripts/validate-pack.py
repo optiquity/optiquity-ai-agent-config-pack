@@ -3714,7 +3714,7 @@ def check_tracker_phase_task_invariants() -> None:
 # ── Check 36 / 37 / 38: BD-175 pack/project boundary prevention ────────────
 #
 # These three checks implement Architect C's M5a/M5b/M5c CI enforcement
-# layer per ARCHITECTURE-BOUNDARY-PREVENTION-MECHANISMS.md §8.
+# layer per maintenance-docs/archive/v11/ARCHITECTURE-BOUNDARY-PREVENTION-MECHANISMS.md §8.
 #   - Check 36 (M5a): commit-scope honesty — catches TYPE-1/TYPE-3.
 #   - Check 37 (M5b): project-side deny-list — catches TYPE-4.
 #   - Check 38 (M5c): pack-only-file siting — catches mis-located content.

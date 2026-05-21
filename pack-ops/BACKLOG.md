@@ -1402,7 +1402,7 @@ Description: Multiple v11 commits introduced pack-design bias into project-
   Six problems (P1-P6), seven goals (G1-G7 with G2 expanded for directory
   architecture and G7 adding stated boundary definition), eight success
   criteria (SC1-SC8) — full text in
-  `maintenance-docs/v11-implementation/ORCHESTRATION-PLAN-BD-175.md`.
+  `maintenance-docs/archive/v11/ORCHESTRATION-PLAN-BD-175.md`.
 
   Orchestration (7 phases): (1) discovery via docs-researcher audit;
   (2) three SEPARATE architects per blast-radius concern (re-litigation /
