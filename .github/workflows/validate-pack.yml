@@ -166,6 +166,12 @@ jobs:
       - name: validate-pack Check 40 tests (BD-179, pack-ops/ bare-cross-reference scanner)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-40.sh
+      - name: validate-pack Check 16 tests (BD-183, trinity ## Project addenda H2 + Option (b) exemption)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-check-16.sh
+      - name: validate-pack Check 19 tests (BD-183, trinity templates free of body scaffolding)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-check-19.sh
       - name: tracker BD-129 gh-repo routing tests (BD-129)
         if: always()
         run: bash scripts/tests/tracker-bd129-gh-repo-test.sh

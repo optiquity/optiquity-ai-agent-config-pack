@@ -1265,7 +1265,10 @@ def check_gitignore_env_example_exception() -> None:
     ok("project-template/.gitignore — `.env.*` + `!.env.example` exception present")
 
 
-def check_trinity_no_scaffolding_comments() -> None:
+def check_trinity_no_scaffolding_comments(
+    trinity_root: Path = None,
+    label: str = "project-template",
+) -> None:
     """Check 19 — v10 trinity templates contain no fresh-install
     scaffolding HTML comments inside body sections.
 
@@ -1286,8 +1289,31 @@ def check_trinity_no_scaffolding_comments() -> None:
     platform-specific anti-patterns...", etc.). These leak into live
     project files when users pick "keep pack" during reconciliation
     and create persistent clutter. Catch them at validate-pack time.
+
+    Parameters:
+        trinity_root: directory containing the 3 trinity files. Default
+            `None` resolves to `REPO_ROOT / "project-template"`
+            (preserves the original single-location behavior). Pass
+            `REPO_ROOT` for the pack-root trinity location.
+        label: human-readable surface name used in FAIL/OK messages
+            and file-path prefixes. Examples: `"project-template"`,
+            `"pack-root"`.
+
+    Per BD-183 (Override 9 compliance, mirroring BD-181's Check 18
+    generalization): Each invocation checks WITHIN its own trinity
+    location only. There is NO cross-location coupling — pack-root
+    and project-template trinity carry different audiences and
+    different rules by design (per pack-root trinity § Rules →
+    Trinity rule note paragraph). Call this function once per
+    trinity location; the invocations are independent.
     """
-    print("\n── Check 19: Trinity templates free of body scaffolding (BD-059) ──")
+    # Sentinel pattern: callers in main() pass explicit (trinity_root, label).
+    # `None` default kept for backward-compat with no-arg callers (test suite
+    # / external use). Do not collapse to a literal default — call sites
+    # declare their scope explicitly per BD-183 generalization design.
+    if trinity_root is None:
+        trinity_root = REPO_ROOT / "project-template"
+    print(f"\n── Check 19 [{label}]: Trinity templates free of body scaffolding (BD-059, BD-183) ──")
     import re
     ALLOWED_OPENINGS = (
         "HOW TO USE THIS TEMPLATE",
@@ -1296,9 +1322,9 @@ def check_trinity_no_scaffolding_comments() -> None:
     )
     any_failed = False
     for name in ("CLAUDE.md", "AGENTS.md", "GEMINI.md"):
-        path = REPO_ROOT / "project-template" / name
+        path = trinity_root / name
         if not path.is_file():
-            fail(f"project-template/{name} — file missing")
+            fail(f"{label}/{name} — file missing")
             any_failed = True
             continue
         text = path.read_text()
@@ -1311,12 +1337,12 @@ def check_trinity_no_scaffolding_comments() -> None:
                 continue
             line_no = text[: m.start()].count("\n") + 1
             fail(
-                f"project-template/{name}:{line_no} — fresh-install scaffolding "
+                f"{label}/{name}:{line_no} — fresh-install scaffolding "
                 f"comment in body: {first_line[:80]!r}"
             )
             any_failed = True
     if not any_failed:
-        ok("All three trinity templates free of body-section scaffolding comments")
+        ok(f"[{label}] All three trinity templates free of body-section scaffolding comments")
 
 
 def check_trinity_h2_parity(
@@ -1353,6 +1379,12 @@ def check_trinity_h2_parity(
     trinity § Rules → Trinity rule note paragraph). Call this function
     once per trinity location; the invocations are independent.
     """
+    # Sentinel pattern (BD-181 / BD-183 NIT-1): callers in main() pass
+    # explicit (trinity_root, label). `None` default kept for backward-compat
+    # with no-arg callers (test suite Group 4 / external use). Do not collapse
+    # to a literal default like `trinity_root: Path = REPO_ROOT / "project-template"`
+    # — that would WORK for current callers but break the design intent that
+    # call sites declare scope explicitly per BD-181 generalization.
     if trinity_root is None:
         trinity_root = REPO_ROOT / "project-template"
     print(f"\n── Check 18 [{label}]: Trinity H2 structure parity (BD-059, BD-181) ──")
@@ -1640,35 +1672,92 @@ def _extract_skills_to_load_section(text: str) -> str | None:
     return m.group(1) if m else None
 
 
-def check_trinity_addenda_h2() -> None:
+# Surfaces where Check 16 (`## Project addenda` H2 + HTML-comment placeholder
+# locking) does NOT apply. The mechanism is template-only infrastructure for
+# Procedure 5-C.2 client reconciliation; surfaces that are NOT reconciled to
+# client repos (e.g., pack-root trinity) have no `## Project addenda` H2 by
+# design and the check short-circuits with an OK (exempt) message. Per
+# BD-183 §2.4 Option (b) user-approved 2026-05-21.
+_CHECK_16_EXEMPT_SURFACES: set[str] = {"pack-root"}
+
+
+def check_trinity_addenda_h2(
+    trinity_root: Path = None,
+    label: str = "project-template",
+) -> None:
     """Check 16 — v10 trinity templates carry `## Project addenda` H2
     with the HTML-comment placeholder (OQ-P6 / OQ-5C-1, BD-059 C9).
 
     The H2 is the landing point for project-original sections during
     Procedure 5-C.2 reconciliation. Locking it via this check prevents
     accidental future removal.
+
+    Parameters:
+        trinity_root: directory containing the 3 trinity files. Default
+            `None` resolves to `REPO_ROOT / "project-template"`
+            (preserves the original single-location behavior). Pass
+            `REPO_ROOT` for the pack-root trinity location.
+        label: human-readable surface name used in FAIL/OK messages
+            and file-path prefixes. Examples: `"project-template"`,
+            `"pack-root"`.
+
+    Per BD-183 (Override 9 compliance, mirroring BD-181's Check 18
+    generalization): Each invocation checks WITHIN its own trinity
+    location only. There is NO cross-location coupling — pack-root
+    and project-template trinity carry different audiences and
+    different rules by design (per pack-root trinity § Rules →
+    Trinity rule note paragraph). Call this function once per
+    trinity location; the invocations are independent.
+
+    Semantic scope (BD-183 §2.4 Option (b) — user-approved 2026-05-21):
+    the `## Project addenda` H2 + HTML-comment placeholder marker is
+    TEMPLATE-ONLY infrastructure tied to Procedure 5-C.2 reconciliation
+    at client install / migration time. Surfaces that are NEVER
+    reconciled (e.g., pack-root trinity — canonical ops-doc for
+    pack-repo agents) have no `## Project addenda` H2 by design.
+    Such surfaces are enumerated in `_CHECK_16_EXEMPT_SURFACES`
+    (module-level constant immediately above this function). When the
+    `label` parameter matches an exempt surface, this check short-
+    circuits with an `OK (surface exempt)` message after printing
+    its section header (so CI logs retain a uniform per-check
+    structure). See IMPLEMENTATION-REPORT-BD-183.md §2.4 + §3.7 for
+    the design record and the triage that landed Option (b).
     """
-    print("\n── Check 16: Trinity ## Project addenda H2 (BD-059) ──")
+    # Sentinel pattern: callers in main() pass explicit (trinity_root, label).
+    # `None` default kept for backward-compat with no-arg callers (test suite
+    # / external use). Do not collapse to a literal default — call sites
+    # declare their scope explicitly per BD-183 generalization design.
+    if trinity_root is None:
+        trinity_root = REPO_ROOT / "project-template"
+    print(f"\n── Check 16 [{label}]: Trinity ## Project addenda H2 (BD-059, BD-183) ──")
+    # Per-surface exemption (BD-183 §2.4 Option (b)): template-only check
+    # short-circuits on surfaces that are NEVER reconciled to client repos.
+    # See `_CHECK_16_EXEMPT_SURFACES` definition above for the exempt set.
+    if label in _CHECK_16_EXEMPT_SURFACES:
+        ok(f"[{label}] surface exempt — Check 16 is template-only "
+           f"(`## Project addenda` mechanism has no purpose at non-reconciled "
+           f"surface per BD-183 §2.4)")
+        return
     any_failed = False
     for name in ("CLAUDE.md", "AGENTS.md", "GEMINI.md"):
-        path = REPO_ROOT / "project-template" / name
+        path = trinity_root / name
         if not path.is_file():
-            fail(f"project-template/{name} — file missing")
+            fail(f"{label}/{name} — file missing")
             any_failed = True
             continue
         text = path.read_text()
         if "## Project addenda" not in text:
-            fail(f"project-template/{name} — missing '## Project addenda' H2")
+            fail(f"{label}/{name} — missing '## Project addenda' H2")
             any_failed = True
             continue
         if "<!-- Project addenda go here" not in text:
             fail(
-                f"project-template/{name} — '## Project addenda' H2 present "
+                f"{label}/{name} — '## Project addenda' H2 present "
                 f"but missing HTML-comment placeholder marker"
             )
             any_failed = True
             continue
-        ok(f"project-template/{name} — '## Project addenda' H2 with placeholder")
+        ok(f"[{label}] {name} — '## Project addenda' H2 with placeholder")
     if any_failed:
         return
 
@@ -5170,7 +5259,16 @@ def main() -> None:
     # Checks 12, 13, 14, 15 retired in v11 (BD-121, v9 sunset) — see
     # comment block at the function definitions above.
     check_tool_config_capability_parity()
-    check_trinity_addenda_h2()
+    # ── BD-183: Check 16 generalized with (trinity_root, label). Both
+    # invocations run; pack-root short-circuits via the per-surface
+    # exemption mechanism (`_CHECK_16_EXEMPT_SURFACES`) because Check 16
+    # enforces template-only `## Project addenda` H2 infrastructure tied
+    # to Procedure 5-C.2 client reconciliation, which has no purpose at
+    # the non-reconciled pack-root surface. Exemption was BD-183 §2.4
+    # Option (b), user-approved 2026-05-21. Per Override 9, both
+    # invocations are independent.
+    check_trinity_addenda_h2(REPO_ROOT / "project-template", "project-template")
+    check_trinity_addenda_h2(REPO_ROOT, "pack-root")
     # ── BD-181: Check 18 H2 parity runs INDEPENDENTLY at each trinity
     # location. Per Override 9 compliance: pack-root and project-template
     # trinity carry different audiences and different rules by design
@@ -5179,7 +5277,13 @@ def main() -> None:
     # location only; there is NO cross-location parity gate.
     check_trinity_h2_parity(REPO_ROOT / "project-template", "project-template")
     check_trinity_h2_parity(REPO_ROOT, "pack-root")
-    check_trinity_no_scaffolding_comments()
+    # ── BD-183: Check 19 generalized with (trinity_root, label). Empirical
+    # pre-check at HEAD confirms pack-root trinity PASSES Check 19 (zero
+    # HTML comments at pack-root → zero scaffolding to find). Both
+    # invocations run independently per Override 9 — within-trinity
+    # parity at each location; no cross-location coupling.
+    check_trinity_no_scaffolding_comments(REPO_ROOT / "project-template", "project-template")
+    check_trinity_no_scaffolding_comments(REPO_ROOT, "pack-root")
     check_gitignore_env_example_exception()
     check_issue_template_forms()
     check_template_archive_v11()
