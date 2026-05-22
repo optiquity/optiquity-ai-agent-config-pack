@@ -2704,6 +2704,31 @@ Resolution: 2026-05-09 cancelled — investigation revealed the BACKLOG entry's 
 
 ---
 
+**BD-187 — Standalone entry-type instruction doc for external-tool consumption**
+Type: TODO(version) — surfaced 2026-05-22 from BD-186 groupings requirements triage; idea to capture for future scheduling per pack memory `feedback_deferred_work_tracking` (live forward-pointing surface anchor)
+Status: Open
+Blockers: All entry-type shapes must be settled before authoring. Backlog / phase / task shapes already settled in v11.0; grouping shape settles in v11.1+ per BD-186 verdict. Doc content depends on all four shapes being final.
+Unblocks: Developers can hand the standalone doc to external tools (AI assistants, brainstorming systems, PMs in planning sessions, PRD authoring tools) to produce pack-compatible content without the external tool needing to ingest pack docs or learn pack internals.
+File/Symbol:
+  - NEW `supporting-docs/<filename-TBD>.md` — standalone reference doc; ships in pack repo. Filename + exact siting (supporting-docs/ vs project-template/docs/pack/) reserved for architect decision.
+  - Pack-side awareness (architect-decided extent): cross-references in `supporting-docs/METHODOLOGY.md`, `project-template/docs/pack/OPTIONAL-FEATURES.md`, possibly `supporting-docs/QUICKSTART.md`
+Description: A standalone reference doc capturing the pack's requirements + template structures for all entry types — backlog entries, phases, tasks, groupings. Developers hand this doc to external tools (AI assistants, brainstorming docs, planning sessions, PMs working outside the pack) as instructions for producing pack-compatible output.
+
+  **Critical scope boundary:** the doc is OUTPUT (a reference users give to others), not INPUT (the pack does NOT consume externally-produced docs in this format — that would be ingest, which V11.1-DISCUSSION-GITHUB-PROJECTS.md §11 + BD-186 framing rejects). The pack SHOULD know about the doc (METHODOLOGY cross-reference, OPTIONAL-FEATURES row) but MUST NOT require it for any pack-internal operation.
+
+  **User-facing value:** developers using external tools for brainstorming / PRDs / journey design / sprint planning can ensure their work is pack-compatible without needing to learn pack internals OR adopt the pack as the source-of-truth for that external work.
+
+  **Out of scope (clarify upfront so future architect doesn't expand):**
+  - Pack-side parsing of externally-produced content following this format (that's ingest; not in this BD)
+  - Automated round-trip between external tools and pack
+  - Deep integration with any specific external tool (Notion, Linear, Productboard, etc.)
+  - The doc is reference material; how external tools consume it is the external tool's concern
+
+  **Position:** TODO(version) parking-lot. Scheduling deferred until all entry types settle (grouping shape from BD-186 architect pass; existing backlog/phase/task shapes already final). When scheduled, position TBD by user at scheduling time — likely v11.1+ alongside or after groupings implementation.
+Resolved: n/a
+
+---
+
 ## Active — v10 Scope
 
 **BD-059 — v10 migration silently destroys project customization**
