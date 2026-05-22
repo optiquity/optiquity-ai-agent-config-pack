@@ -2707,7 +2707,7 @@ Resolution: 2026-05-09 cancelled — investigation revealed the BACKLOG entry's 
 **BD-187 — Standalone entry-type instruction doc for external-tool consumption**
 Type: TODO(version) — surfaced 2026-05-22 from BD-186 groupings requirements triage; idea to capture for future scheduling per pack memory `feedback_deferred_work_tracking` (live forward-pointing surface anchor)
 Status: Open
-Blockers: All entry-type shapes must be settled before authoring. Backlog / phase / task shapes already settled in v11.0; grouping shape settles in v11.1+ per BD-186 verdict. Doc content depends on all four shapes being final.
+Blockers: Authoring blocker — BD-186 closes (REQUIREMENTS-GROUPINGS-V11.md lands; locks grouping shape). Backlog / phase / task shapes already settled in v11.0. Scheduling judgment (separate from authoring blocker) — recommend post-v11.1 groupings ship so the doc reflects shipped reality, but technically authorable any time after BD-186 closes.
 Unblocks: Developers can hand the standalone doc to external tools (AI assistants, brainstorming systems, PMs in planning sessions, PRD authoring tools) to produce pack-compatible content without the external tool needing to ingest pack docs or learn pack internals.
 File/Symbol:
   - NEW `supporting-docs/<filename-TBD>.md` — standalone reference doc; ships in pack repo. Filename + exact siting (supporting-docs/ vs project-template/docs/pack/) reserved for architect decision.
