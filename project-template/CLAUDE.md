@@ -363,9 +363,13 @@ of agent role.
   three in the same set of edits. Symmetry is the default;
   asymmetry requires justification as provably tool-specific.
 - **No destructive operations without explicit approval.** Before
-  any `git rm`, `rm -rf`, file deletion, overwrite, or
-  `git reset --hard`, state exactly what will be destroyed and wait
-  for explicit approval — even when the overall task is approved.
+  any `git rm`, `rm -rf`, file deletion, overwrite, `git reset
+  --hard`, or `git checkout -- <path>` on a file with uncommitted
+  agent work, state exactly what will be destroyed and wait for
+  explicit approval — even when the overall task is approved.
+  `git checkout --` is destructive because it discards
+  working-tree changes irreversibly; never run it on files that
+  contain coder-written changes without per-action user approval.
 - **PM chat does not architect.** Architecture, planning,
   implementation, and review work goes to the corresponding agent.
   The full pack agent roster is at `docs/pack/PM-CHAT.md` §
