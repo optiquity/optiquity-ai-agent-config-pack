@@ -1258,6 +1258,15 @@ absorbing task to express ordering without merging entities. The
      downstream item may need a new blocker, revised scope, or cancellation itself
 ```
 
+> **Closeout-sequence rule.** Procedure 4 step 3 ("PM chat marks
+> Status: Resolved") and step 4 ("Run disposition scan") MUST
+> be preceded by the closeout sequence defined in PM-CHAT.md
+> `## Behavioral rules` ("Closeout sequence — present, wait,
+> then write."): trigger check → present content → wait for
+> approval → write → show commit message → wait for approval →
+> commit. Never write closeout files before presenting their
+> content and receiving approval.
+
 ### Procedure 5 — Custom agent and skill workflow
 
 *Relocated to [`INSTALL-PROCEDURES.md`](INSTALL-PROCEDURES.md) per BD-059. See that file for Procedure 5 and its sub-procedures (5.1–5.6).*

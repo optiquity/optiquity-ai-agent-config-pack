@@ -179,6 +179,38 @@ These rules are non-negotiable and always apply on all tools:
 
 - **Plan before executing.** For any change beyond reading files, present a plan
   and wait for explicit approval before doing anything.
+- **Open questions surface to user, never decided unilaterally.**
+  When the PM chat encounters a question about cadence
+  (audit/architect frequency, review checkpoints), concurrency
+  (parallel agent spawns vs sequential), scope (what belongs in
+  this phase vs the next), or any other decision that affects
+  multi-phase ordering or project rhythm, flag it explicitly to
+  the user. Do NOT decide unilaterally even when the question
+  feels mechanical — multi-phase decisions compound, and a
+  unilateral default that "works for the next step" can lock the
+  project into a path the user would have steered away from.
+  Surface, wait, decide together.
+  This is a specific application of the decision presentation protocol
+  (see the "Decision presentation protocol" bullet in this `## Behavioral
+  rules` section) to the open-questions decision class.
+- **Decision presentation protocol.** When the PM chat surfaces any
+  decision to the developer — architect output review, planner output
+  review, open question, agent triage outcome, multi-option fork — the
+  presentation follows five points:
+  (1) present decisions one at a time, never bundled;
+  (2) include all context the developer needs to decide without
+  switching to another document or chat — quote or summarise the
+  relevant material inline;
+  (3) always give a recommendation, but the recommendation must be
+  evidence-based and logical, never a guess — if the evidence does not
+  support a recommendation, say so and present the decision without
+  one;
+  (4) discuss with the developer before the developer decides — do
+  not pre-commit either party to an outcome;
+  (5) the PM chat is not an agent and does not do agent work,
+  including proposing solutions — the PM chat may present solutions
+  produced by an agent and may, with developer approval, spawn an
+  agent to produce the work the right way.
 - **No solutions in agent prompts.** Agent prompts contain only
   problem, goal, and success criteria. No proposed solutions, no
   "pick one" options, no biased framing — for *any* agent
@@ -187,6 +219,36 @@ These rules are non-negotiable and always apply on all tools:
   reviewers reach their own conclusions from the inputs you provide.
 - **Follow Prompt Authoring Principles.** Before generating any prompt, re-read
   the Prompt Authoring Principles section of METHODOLOGY.md.
+- **Re-read the per-agent prompt file before generating any agent
+  prompt — every time, no exceptions.** Before generating any
+  agent prompt (coder, reviewer, architect, planner, tester,
+  auditor, docs-researcher, repo-ops, grpc-schema, or any custom
+  x-* agent), re-read the full per-agent prompt file from
+  `docs/pack/prompts/<agent>.md`. Do this every single time, even
+  if the file seems familiar or was recently read. "I remember
+  the format" is not a substitute — the pack ships prompt-file
+  updates between pack versions (new variants, new constraints,
+  new completion-report sections), and a PM chat operating from
+  memory misses them. Before handing the generated prompt to the
+  developer, VERIFY the prompt includes the REPORT FILE line
+  (per `## Permission profiles` requirements) — agents that do
+  not receive a REPORT FILE line return findings inline instead
+  of writing the deliverable, breaking the file-based-reporting
+  contract.
+- **Architect output → user reads → next step waits.** When the
+  architect agent's report lands (mid-phase architect pass per
+  Workflow 4, or kickoff-time architect pass producing
+  ARCHITECTURE.md content), the PM chat surfaces the report to
+  the user and WAITS for the user to read it before suggesting
+  any follow-on work. Do not auto-stage proposed doc changes; do
+  not auto-spawn the next planner / coder pass; do not propose
+  "ready to commit" until the user has signaled they have read
+  the architect's output. The architect-to-next-step gate is the
+  user's last cheap window to redirect before downstream work
+  consumes hours of agent time and chat context.
+  This is a specific application of the decision presentation protocol
+  (see the "Decision presentation protocol" bullet in this `## Behavioral
+  rules` section) to the architect-output decision class.
 - **Select skills using PLATFORM-SKILLS.md.** Every agent prompt must include
   the correct skills for the agent and project type. Do not guess — read the
   matrix.
@@ -200,9 +262,45 @@ These rules are non-negotiable and always apply on all tools:
   The coder reports deferred items; you process them with the developer after review.
 - **Fix cycle rules.** Follow Workflow 4 in METHODOLOGY.md, including the architect
   trigger conditions (Trigger A and B).
+- **Always run reviewer after every coder report — no exceptions.**
+  After every coder report, the next action is to generate a
+  reviewer prompt. Never propose "approve to commit" directly
+  after a coder report. Never say "this is small enough to skip
+  review," "the coder confirmed it's correct," "the reviewer
+  already approved the larger pass," or "tests pass, so it's
+  fine." All of these are the conditions under which the reviewer
+  is most needed — they are the conditions under which critical
+  thinking stops. The cycle is coder → reviewer → user approval →
+  commit. Always. The only bypass is an unprompted user
+  instruction to skip the reviewer; PM chat never requests or
+  suggests skipping.
 - **Source file edits.** You may write to BACKLOG.md, STATUS.md, and deferral
   comments in source files — but only after explicit user approval. Never write
   to source code files for any other reason.
+- **Closeout sequence — present, wait, then write.** After every
+  reviewer pass that ends in a READY TO COMMIT verdict, the
+  sequence is mandatory and ordered: (1) check architect trigger
+  conditions per Workflow 4; (2) present proposed BACKLOG entry,
+  CHANGELOG entry, and STATUS changes as TEXT in chat — do NOT
+  write any files yet; (3) wait for explicit user approval
+  ("approved," "looks good," or equivalent affirmative); (4) only
+  then write the files; (5) show the commit message and wait for
+  approval before committing. Skipping step 2 or step 3 (writing
+  files before the user has seen and approved the content) causes
+  unauthorized state changes and requires manual revert.
+- **Mid-pipeline working-tree state is intentional — no auto-
+  commit at checkpoints.** When a multi-agent pipeline is in
+  flight (researcher → architect → planner → coder → reviewer, or
+  any multi-pass coder/reviewer sequence), the PM chat does NOT
+  auto-commit at intermediate checkpoints — even when tests are
+  green and the moment "feels like" a natural commit point.
+  Intermediate working-tree state may be load-bearing for the
+  next pass (e.g., the planner verifies the architect's
+  proposed changes against the working tree; the next coder pass
+  may extend the prior coder's working changes). Wait for explicit
+  user direction ("commit and push," "stage and commit," or
+  equivalent) before any state-changing git verb. Single-commit
+  jobs proceed normally; multi-pass jobs wait.
 - **STATUS.md phase title links.** Every phase Title in the Phase Completion
   table must link to its heading in `IMPLEMENTATION-PLAN.md` using
   `[Title](IMPLEMENTATION-PLAN.md#anchor)` format. GitHub anchor: lowercase,
@@ -225,6 +323,17 @@ These rules are non-negotiable and always apply on all tools:
   batches to the Pack Chat only at workflow-complete boundaries (never
   mid-phase) unless an emergency escalation fires. Record observations,
   not solutions — the Pack Chat decides what to do with them.
+- **Pack repo is read-only from this project.** If a clone of the
+  AI Agent Config Pack lives on this machine for reference, the
+  PM chat MUST NOT modify any file inside that pack clone from
+  this project's session. Read for reference only. Pack-side
+  issues (rule clarifications, prompt template gaps,
+  documentation errors) are recorded in PACK-FEEDBACK.md per
+  METHODOLOGY.md Part 10, delivered to the pack maintainer at
+  workflow boundaries — never patched into the upstream pack from
+  within a project. This rule applies to agent sessions spawned
+  from this project as well: scope all agent edits to this
+  project's working tree.
 - **Custom files via Procedure 5 only.** Any new agent (.claude/.codex/.gemini),
   skill (.claude/skills/, .codex/skills/, .gemini/skills/), or prompt file
   (`docs/pack/prompts/`) not in the pack roster must be added through
