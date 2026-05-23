@@ -721,6 +721,20 @@ See `.mcp.json.example` for configuration.
 Claude Code auto-compacts at 95% context capacity. After compaction, run
 `/pm-startup` to re-read state files from disk.
 
+> **Per-project Claude memory cache (Claude-only).** Claude Code
+> projects may use per-project memory at
+> `~/.claude/projects/<slug>/memory/` as a convenience pointer
+> index to project rules. Treat the directory as pure pointers
+> — short one-line bullets that cite anchors in
+> `docs/pack/PM-CHAT.md`, `docs/pack/METHODOLOGY.md`, or the
+> project trinity (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` at
+> project root). No body text in the cache; trinity / PM-CHAT.md
+> / METHODOLOGY.md remain authoritative. If a cache pointer
+> disagrees with the authoritative source, the source wins.
+> Codex CLI and Gemini CLI have no equivalent per-project memory
+> mechanism; PM chat sessions running under those CLIs read
+> trinity / PM-CHAT.md / METHODOLOGY.md directly each session.
+
 ---
 
 ## Tool-specific: Claude Web Projects
