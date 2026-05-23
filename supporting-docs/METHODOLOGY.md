@@ -455,7 +455,15 @@ For phases integrating external APIs or making architectural decisions:
    → developer approves doc changes → PM chat applies them via Desktop Commander or manual
    → PM chat presents coder fix plan covering both reviewer issues and new arch direction
    → developer approves → coder fix pass → reviewer (step 1)
-6. Items that pass the deferral test (see triage protocol): PM chat generates BACKLOG.md
+6. PM chat also checks for planner trigger (Trigger P-A / P-B / P-C; see
+   "Planner trigger conditions (mid-phase)" below). If a planner trigger
+   fires: PM chat surfaces the trigger and a candidate planner pass plan
+   → developer approves → planner agent runs (`planner.md` Variant: standard)
+   producing an updated IMPLEMENTATION-PLAN.md Phase N task block
+   → PM chat presents the proposed task-block change → developer approves
+   → PM chat applies the change → PM chat presents coder fix plan against
+   the revised task block → developer approves → coder fix pass → reviewer (step 1)
+7. Items that pass the deferral test (see triage protocol): PM chat generates BACKLOG.md
    addition with explicit named blocker → developer runs in standard claude
 ```
 
@@ -668,7 +676,7 @@ phase before pasting.
 | Workflow 1 — New project | `pm-chat.md` Variant: kickoff (developer-pasted to start the PM chat); `pm-chat.md` Variant: generate-setup and `pm-chat.md` Variant: generate-agent-kickoff (PM-chat self-prompts that produce `SETUP.md` and `AGENT_KICKOFF.md`); architect agent invocation with `AGENT_KICKOFF.md` (step 10 — `AGENT_KICKOFF.md` is project-generated, not a pack variant) |
 | Workflow 2 — Per-phase execution | `coder.md` Variant: standard; `reviewer.md` Variant: standard; `coder.md` Variant: fix-cycle (if reviewer finds issues) |
 | Workflow 3 — External API research | `docs-researcher.md` Variant: standard; (optional) `tester.md` Variant: standard; then Workflow 2 prompts for the implementation cycle |
-| Workflow 4 — Fix cycle | `coder.md` Variant: fix-cycle (main); `architect.md` Variant: mid-phase (when Trigger A or B fires); `reviewer.md` Variant: standard (re-runs the cycle after each fix); `pm-chat.md` Variant: backlog-status-update (for items deferred to BACKLOG) |
+| Workflow 4 — Fix cycle | `coder.md` Variant: fix-cycle (main); `architect.md` Variant: mid-phase (when Trigger A or B fires); `planner.md` Variant: standard (when Trigger P-A, P-B, or P-C fires); `reviewer.md` Variant: standard (re-runs the cycle after each fix); `pm-chat.md` Variant: backlog-status-update (for items deferred to BACKLOG) |
 | Workflow 5 — Full-codebase audit | `auditor.md` Variant: standard — a single auditor prompt that spawns the right subagents, replacing the legacy per-dimension audit prompts; `pm-chat.md` Variant: backlog-status-update (for BACKLOG intake from findings); Workflow 2 prompts for each fix prompt the audit generates |
 | Workflow 6 — New feature | PM chat updates `ARCHITECTURE.md` and `IMPLEMENTATION-PLAN.md` directly (no pack variant); `pm-chat.md` Variant: backlog-status-update (if the feature adds BACKLOG entries); then Workflow 2 prompts for each new phase |
 
