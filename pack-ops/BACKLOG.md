@@ -1793,7 +1793,7 @@ Resolved: n/a
 
 **BD-186 — Groupings requirements + v11.0/v11.1 scope decision**
 Type: feat — surfaced 2026-05-21 from sidecar Pack Chat session for v11.1+ groupings requirements gathering; user-approved as parallel to Batch 19d (BD-185) 2026-05-21
-Status: Open
+Status: Resolved
 Blockers: None. Independent of BD-185 — phase identifier grammar `phase-N` is stable across BD-185 SC3 (no renumbering invariant); user constraint C1 excludes phase parts from grouping membership; tracker-side surfaces (BD-185 part labels + execution-ordering field vs. groupings Project/Epic/Version) do not collide. Runs parallel to Batch 19d.
 Unblocks: Downstream architect / planner / coder cycles for the groupings feature implementation (architect pass reads BD-186's REQUIREMENTS-GROUPINGS-V11.md as its primary input). Per-capability v11.0-vs-v11.1 scope decisions surfaced by this BD inform whether any capability folds into existing v11.0 batches and what new BDs open for v11.1+ deferral.
 File/Symbol:
@@ -1827,7 +1827,7 @@ Description: Pack-side requirements-gathering work to refine the "groupings of p
   **Pipeline:** Pack Chat sidecar (this work) → REQUIREMENTS-GROUPINGS-V11.md → user review + approval → BD-186 Resolved → downstream architect/planner/coder cycles open as separate BDs per scope decisions.
 
   **Position:** Parallel to Batch 19d (BD-185 — phase parts + tracker-mode execution ordering). Independence from BD-185 verified — see sidecar Pack Chat analysis 2026-05-21 (phase identifier grammar stable across BD-185 SC3; user's C1 constraint excludes phase parts from grouping membership). No hard sequencing dependency in either direction; downstream grouping architect can run before/after BD-185 architect as scheduling permits.
-Resolved: n/a
+Resolved: 2026-05-23 — REQUIREMENTS-GROUPINGS-V11.md landed at `maintenance-docs/v11-research/REQUIREMENTS-GROUPINGS-V11.md` (908 lines; 17 capabilities with problem/goal/SC + user-approved design decisions + architect-level surfaces). Sidecar Pack Chat session 2026-05-21..2026-05-23 produced the artifact. BD-187 (entry-type instruction doc parking-lot) + BD-188 (sprint view parking-lot) opened during triage. Memory: feedback_groupings_design_principles + feedback_user_prescriptive_authority saved at session end. Architect-pass-ready: v11.1+ groupings architect reads this artifact as primary input.
 
 ---
 
