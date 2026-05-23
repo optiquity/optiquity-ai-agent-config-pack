@@ -2764,6 +2764,47 @@ Resolved: n/a
 
 ---
 
+**BD-189 — v11.1+ groupings implementation (architect/planner/coder cycle)**
+Type: TODO(version) — surfaced 2026-05-23 from BD-186 sidecar wrap; live forward-pointing anchor for v11.1+ groupings core implementation per pack memory `feedback_deferred_work_tracking`
+Status: Open
+Blockers: v11.0 ships (then v11.1 cycle architect pass can start)
+Unblocks: Per-capability implementation BDs that the v11.1 planner produces (BD-A through BD-K speculative per REQUIREMENTS-GROUPINGS-V11.md §5 v11.1 BD landscape); v11.1+ user-facing groupings feature
+File/Symbol:
+  - NEW `maintenance-docs/v11-implementation/ARCHITECTURE-GROUPINGS.md` (architect deliverable)
+  - NEW `maintenance-docs/v11-implementation/PLAN-GROUPINGS.md` (planner deliverable)
+  - Per-BD implementation surfaces TBD by planner (spans 17 capabilities)
+  - PRIMARY INPUTS (read-only):
+    - `maintenance-docs/v11-research/HANDOFF-V11.1-ARCHITECT.md` (READ FIRST — orientation; 155 lines)
+    - `maintenance-docs/v11-research/REQUIREMENTS-GROUPINGS-V11.md` (primary input; 908 lines; 17 capabilities + design principles + scope decisions)
+    - `maintenance-docs/v11-research/RESEARCH-TRACKER-GROUPING-PRIMITIVES-PER-BACKEND.md` (verified per-backend facts; 1762 lines; Pass-1 + Pass-2; §7 0-5 graded matrix)
+    - `maintenance-docs/v11-research/IMPLEMENTATION-REPORT-RESEARCH-TRACKER-PRIMITIVES.md` (research methodology + open questions; 390 lines)
+    - `maintenance-docs/v11-research/TOUCH-POINT-INVENTORY-GROUPINGS-V2.md` (constraint baseline; 910 lines; already triaged but useful for deeper detail per touch-point)
+    - `maintenance-docs/v11-research/V11.1-DISCUSSION-GITHUB-PROJECTS.md` (original brainstorm; superseded but §10 grouping doc shape + §14 open questions remain useful context)
+    - `maintenance-docs/v11-research/EXTERNAL-RESEARCH.md` §1-§5 + §6-§8 + §10-§12 (canonical for GitHub Issues / gh CLI / MCP / Codex / Gemini integration patterns + token cost + migration prior art + OSS abstraction patterns + failure modes + lesser-known features + CLI version verification; tracker primitive details superseded per staleness redirect at top of that doc)
+    - `pack-ops/BACKLOG.md` entries BD-186 (Resolved) + BD-187 (parking-lot, dependency: external-tool instruction doc) + BD-188 (parking-lot, dependency: sprint view) for adjacent-work context and dependency-chain visibility
+    - `CLAUDE.md` `## Pack memory` (pack-repo-trinity rules; standard pack-agent context)
+Description: Live forward-pointing anchor for the v11.1+ groupings core implementation work. All 17 capabilities of the groupings feature (per REQUIREMENTS-GROUPINGS-V11.md §4) defer to v11.1+ implementation; this BD captures the umbrella work that the v11.1 architect / planner / coder pipeline will break into per-capability BDs.
+
+  Without this BD, the deferred work would lack a live forward-pointing anchor per pack memory `feedback_deferred_work_tracking` (BD-186 is Resolved, not a live anchor; the requirements artifact alone is "input" not a forward-pointing surface). This BD-189 satisfies the rule by providing the umbrella entry until the v11.1 architect/planner work decomposes it.
+
+  **Pipeline (per REQUIREMENTS-GROUPINGS-V11.md §6):**
+  1. Architect pass produces ARCHITECTURE-GROUPINGS.md
+  2. User review
+  3. Planner pass produces PLAN-GROUPINGS.md with per-BD breakdown
+  4. User review
+  5. Coder cycles per BD with reviewer cycles per pack memory `feedback_review_fix_one_cycle`
+  6. **Migration architect/planner/coder pass is SEPARATELY scoped** per REQUIREMENTS-GROUPINGS-V11.md #16 SC16.10; the v11.1 architect will likely open it as a sibling BD (architect/planner/coder rigor required; NOT ad-hoc file copies)
+  7. End-of-batch reviewer + per-BD status flips + MIGRATION-v11.0-to-v11.x.md landing + release pin
+
+  **Scope boundary:** This BD covers the CORE groupings implementation per capabilities #1-#17 + #11 (#11 capability matrix for additional backends). BD-187 (entry-type instruction doc) and BD-188 (sprint view) are SIBLING parking-lot BDs for ADJACENT future work; they are NOT subsumed by BD-189.
+
+  **Resolution:** This BD resolves when the v11.1 planner has produced per-capability BDs and the umbrella role is no longer needed (i.e., the children carry the work forward). Alternatively, it could resolve at v11.1 ship with all children Resolved. Architect/planner decides at scheduling time.
+
+  **Position:** TODO(version) parking-lot. Scheduling: starts when v11.0 ships and v11.1 cycle begins.
+Resolved: n/a
+
+---
+
 ## Active — v10 Scope
 
 **BD-059 — v10 migration silently destroys project customization**
