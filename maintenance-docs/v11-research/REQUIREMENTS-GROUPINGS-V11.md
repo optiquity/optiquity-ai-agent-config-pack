@@ -58,7 +58,7 @@ The following design principles were stated by the user during BD-186 triage 202
 
 7. **Graceful tracker degradation (C7 elaboration).** Trackers vary enormously in grouping primitive support. Capable trackers (GH Projects v2, Linear Projects) MUST NOT be downgraded to lowest-common-denominator behavior. Incapable trackers (Forgejo Milestone-only; Jira epic-exclusive-parentage) MUST have documented mitigations (emulation via labels / sidecar custom fields / etc.) or explicit "not supported" declarations. Per principle 4 (portability) and #11.
 
-User-architect-prescriptive decision (2026-05-22): treat C6 and C7 as principle ELABORATIONS rather than separate principles (#4 absorbs C7's portability stance; #6 records C6 as a top-level consideration since external-tool accommodation is its own concern that doesn't fold cleanly into any of #1-#5).
+Framing note (Pack Chat decision during artifact write 2026-05-23): C6 and C7 are recorded as principle ELABORATIONS rather than separate principles, with C7 absorbed into principle #4 (portability) and C6 listed as a top-level consideration since external-tool accommodation is its own concern that doesn't fold cleanly into any of #1-#5. This framing choice was made during artifact composition to keep the principle count tight; the user surfaced C6 and C7 as constraints during triage but left the "principle #6 vs elaboration of #4" question open at the #11 triage point. If the architect prefers a different framing (e.g., C7 as separate principle #6), they are free to reframe in their downstream design.
 
 ---
 
@@ -855,7 +855,7 @@ NONE locked at requirements level. All design choices (empty-tree rendering in S
 
 | BD | Title | Status | Position | Anchor |
 |---|---|---|---|---|
-| BD-186 | Groupings requirements + v11.0/v11.1 scope decision | Open → flips to Resolved on this artifact landing | Batch 19d-parallel (independent of BD-185) | `pack-ops/BACKLOG.md` |
+| BD-186 | Groupings requirements + v11.0/v11.1 scope decision | Resolved 2026-05-23 (commit 5e66836) | Batch 19d-parallel (independent of BD-185) | `pack-ops/BACKLOG.md` |
 | BD-187 | Standalone entry-type instruction doc for external-tool consumption | Open (TODO(version) parking-lot) | End of v11 active section | `pack-ops/BACKLOG.md` |
 | BD-188 | Phase-Iteration sprint view (V11.1 §13 Y-6) | Open (TODO(version) parking-lot) | End of v11 active section, after BD-187 | `pack-ops/BACKLOG.md` |
 
