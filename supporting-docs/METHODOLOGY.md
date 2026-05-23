@@ -571,6 +571,40 @@ The reviewer report shows either:
 > `ARCHITECTURE.md` or `IMPLEMENTATION-PLAN.md` alone. These require an additional
 > explicit user approval beyond the general architect pass approval.
 
+#### Planner trigger conditions (mid-phase)
+
+Sibling to the architect trigger conditions above, three
+mid-phase planner triggers cover task-level revision needs:
+
+- **Trigger P-A — Task-definition ambiguity surfaced by coder.**
+  The coder's report names a task that "could not be completed
+  as specified" because the task description is ambiguous — not
+  missing data, not architectural issue, but a task-wording
+  problem. PM chat surfaces the ambiguity to the user AND a
+  candidate planner pass; user approves before the planner runs.
+- **Trigger P-B — Architect output names "planning pass needed"
+  as the follow-up.** When the architect pass concludes "the
+  design is sound; the task breakdown needs revision," PM chat
+  invokes the planner with the architect's output as input.
+- **Trigger P-C — Task-ordering revision discovered mid-phase.**
+  When coder mid-phase discovers that task B's preconditions
+  require task A's output (and the original plan had them
+  parallel or reversed), PM chat surfaces this to the user AND
+  a candidate planner pass to re-sequence.
+
+For each trigger, the planner pass produces an updated
+IMPLEMENTATION-PLAN.md Phase N task block; PM chat presents to
+user for approval before re-running the coder.
+
+**Planner-vs-architect demarcation:** A "task-definition
+ambiguity" (P-A) is a planning problem — the task wording is
+unclear about the contract or the deliverable. A "design
+problem" is an architecture problem — the contract itself is
+wrong or incomplete. If a coder reports both, run the architect
+trigger first (architect resolves the design problem; planner
+then re-shapes tasks under the corrected design). Never run
+P-A in parallel with an architect trigger — sequencing matters.
+
 ### Workflow 5 — Full-codebase audit (auditor agent)
 
 Full-codebase audits run the `auditor` parent agent, which spawns up to seven
@@ -1442,6 +1476,16 @@ Stop and reassess when you see these patterns.
 | `PACK-FEEDBACK.md` | Never | Never | Append entries; deliver batches | See Part 10; agents never write |
 | Deferral comments in source | Writes TD-TBD only | Never | Replaces TD-TBD with TD-NNN or removes | See Part 7 |
 
+> **/tmp reports are ephemeral.** When an agent prompt specifies
+> a `REPORT FILE:` path under `/tmp/...` (typically used for
+> docs-researcher reports, architect mid-phase reports, or any
+> report the developer does not want committed to the repo),
+> treat the file as ephemeral: it is safe to share externally
+> (for upstream debugging via PACK-FEEDBACK.md per Part 10),
+> nothing to revert if discarded, and never to be committed.
+> Reports intended for the repo are written under `docs/project/`
+> per the standard prompt templates.
+
 ### Desktop Commander scope for PM chat
 
 The PM chat may use Desktop Commander for:
@@ -1459,6 +1503,43 @@ The PM chat must NOT use Desktop Commander for:
 
 When Desktop Commander is unavailable, the PM chat outputs file content and
 git commands for the human to run manually. Both paths must always be available.
+
+### Rule placement: trinity vs PM-CHAT.md vs METHODOLOGY.md
+
+This placement rule is SUBSIDIARY to the PM chat omniscience
+obligation (Part 1 — Tool Roles). The default is single-source
+authoritative with PM-chat injection-into-agent-prompts as the
+delivery mechanism; duplication across surfaces is the EXCEPTION
+documented below.
+
+New rules added during pack maintenance fall into one of three
+categories based on audience:
+
+- **PM-chat orchestration rules** (workflow ordering, when to
+  spawn which agent, closeout sequence, prompt-generation
+  discipline) → `docs/pack/PM-CHAT.md` § Behavioral rules
+  (authoritative). The PM chat injects relevant subsets into
+  agent prompts at prompt-construction time per the omniscience
+  principle's briefing obligation. Agents do NOT independently
+  carry these rules.
+- **Agent-affecting rules** (no destructive operations, trinity
+  rule, agent file authority, file scope) → trinity `CLAUDE.md`
+  / `AGENTS.md` / `GEMINI.md` § Project memory (authoritative
+  for agents). These rules apply to every agent invocation
+  regardless of whether the PM chat is in the loop.
+- **Both-audience rules requiring duplication** → trinity
+  § Project memory + PM-CHAT.md § Behavioral rules. Use this
+  duplication pattern ONLY when the rule meets one of the
+  documented defense-in-depth conditions in Part 1 — Tool Roles
+  (prompt-corruption resilience for high-risk rules; cross-CLI
+  parity ergonomics until per-CLI injection logic exists).
+  Otherwise, single-source authoritative placement applies.
+
+This placement rule guides cleanup batches and pack-version
+upgrades; it does not retroactively renumber existing rules.
+Where a pre-existing duplicated rule still satisfies the
+defense-in-depth conditions, leave it; where it does not,
+schedule a single-source consolidation in a future cleanup batch.
 
 
 ---
