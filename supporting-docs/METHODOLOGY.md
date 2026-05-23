@@ -1174,6 +1174,9 @@ No phase prompt is generated until this check is complete.
    If ALL blockers resolved → set Status: Unblocked
    (When all blockers resolve, the TD becomes Unblocked — see the resolution-path
    decision logic later in this Part for the V3.3 §3 promotion paths.)
+   The PM chat reports newly-unblocked items to the user
+   proactively at every phase gate — the user should not need
+   to ask. ("TD-NNN is now unblocked by Phase N completion.")
 3. For every Unblocked item:
    - Determine resolution path using the decision logic below
    - Present list to user with proposed path for each item
