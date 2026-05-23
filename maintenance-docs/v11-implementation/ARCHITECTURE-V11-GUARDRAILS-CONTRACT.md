@@ -666,6 +666,14 @@ CONCEPTUAL-REVIEW-METHODOLOGY.md is a single doc (no trinity); the §4.2 edit is
 
 ### 5.1 Implementation order (commit sequence)
 
+**Cross-walk note (added 2026-05-23):** the H.9.1 / H.9.2 / H.9.3 / H.9.4 numbering used throughout §5 reflects the strategy doc's original commit-sequence proposal. V2 §H reassigned these to:
+- H.9.1 → H.12 (Guardrail 3 scope expansion)
+- H.9.2 → H.13 (Guardrail 2 per-line fence)
+- H.9.3 → H.14 (Guardrail 1 Check 43)
+- H.9.4 → H.15 (Guardrail 4 PREFLIGHT extension)
+
+PLAN-CLEANUP-BATCH-19C.md §3 follows V2 §H numbering. Coders consuming PLAN H.12-H.15 should mentally remap when reading this contract's §5 internal commit labels.
+
 Per the strategy doc §2.4 Option (b) commit-numbering (H.9 = leak sweep Categories A+B, H.10 = D+E+F, H.11 = Category C, H.12 = end-of-batch reviewer), the guardrail additions slot in AFTER the leak-sweep commits as defense-in-depth ratification:
 
 | Commit | Surface | Scope keyword | RC9 fires? |

@@ -483,8 +483,8 @@ The principle's value-add for V2 is therefore: (a) documenting WHY most §C plac
   user's last cheap window to redirect before downstream work
   consumes hours of agent time and chat context.
   This is a specific application of the decision presentation protocol
-  (see "Decision presentation protocol" bullet above) to the architect-
-  output decision class.
+  (see the "Decision presentation protocol" bullet in this `## Behavioral
+  rules` section) to the architect-output decision class.
 ```
 
 **Target file 2:** `supporting-docs/METHODOLOGY.md`
@@ -534,8 +534,8 @@ The principle's value-add for V2 is therefore: (a) documenting WHY most §C plac
   project into a path the user would have steered away from.
   Surface, wait, decide together.
   This is a specific application of the decision presentation protocol
-  (see "Decision presentation protocol" bullet below) to the open-
-  questions decision class.
+  (see the "Decision presentation protocol" bullet in this `## Behavioral
+  rules` section) to the open-questions decision class.
 ```
 
 ### C.12 — OT-UT-10 (/tmp reports are ephemeral) placement (V2: REVISED-WORDING per salvageability + audit §3.1.12; "Pack Chat" cross-side audience cite replaced with PACK-FEEDBACK.md channel)
@@ -1094,7 +1094,7 @@ This section is the planner's primary input. The planner refines each commit's t
 
 **RC9 manifest regen:** **REQUIRED** (`supporting-docs/` in v11-surface).
 
-**Commit message:** `feat: v11 — BD-173 METHODOLOGY.md substantive additions (mid-phase planner, rule placement subsidiary to PM-chat omniscience, /tmp ephemerality) (Batch 19c.5)`
+**Commit message:** `feat: v11 — BD-173 METHODOLOGY.md substantive additions (Batch 19c.5)`
 
 **Rationale:** Substantive procedural additions warrant inline review per post-BD-175 default. Single METHODOLOGY.md file scope.
 
@@ -1370,11 +1370,11 @@ This table is the planner's lookup index. Each row names the source (OT-item, le
 | **NEW (V2)** — Decision presentation protocol (§C.13) | H.2 | PM-CHAT.md | NEW per user direction 2026-05-23 | YES | covered by H.4 |
 | OT-UT-8 specifics (cadence/concurrency) | (none — OOS) | (none) | UNCHANGED OOS | n/a | n/a |
 | OT-UT-9 (subsumed by OT-T-7) | H.2 | PM-CHAT.md | UNCHANGED (via OT-T-7) | YES | covered by H.4 |
+| OT PM gap C (cycle-termination) | H.1 | METHODOLOGY.md | UNCHANGED (LAND per D-5) | YES | covered by H.4 |
 | OT-UT-10 (/tmp reports ephemeral) | H.5 | METHODOLOGY.md Part 9 | REVISED-WORDING per V2 §C.12 ("Pack Chat" → "PACK-FEEDBACK.md per Part 10") | YES | INLINE (this commit only) |
 | OT PM gap A (mid-phase planner P-A/P-B/P-C) | H.5 | METHODOLOGY.md Workflow 4 (new sub-section) | UNCHANGED (LAND per D-6) | YES | INLINE (this commit only) |
-| OT PM gap B (closeout elevation) | (combined with OT-T-4) | (see OT-T-4) | UNCHANGED | (see OT-T-4) | (see OT-T-4) |
-| OT PM gap C (cycle-termination) | H.1 | METHODOLOGY.md | UNCHANGED (LAND per D-5) | YES | covered by H.4 |
 | Arch derived 1 (rule placement: trinity vs PM-CHAT.md vs METHODOLOGY.md) | H.5 | METHODOLOGY.md Part 9 (new sub-section) | REVISED-PLACEMENT per V2 §D.2 (SUBSIDIARY of D-11 principle) | YES | INLINE (this commit only) |
+| OT PM gap B (closeout elevation) | (combined with OT-T-4) | (see OT-T-4) | UNCHANGED | (see OT-T-4) | (see OT-T-4) |
 | Arch derived 2 (per-project Claude memory cache convention) | H.7 | PM-CHAT.md "Tool-specific: Claude Code CLI" | REVISED-WORDING per V2 §D.1 (drop "Tier 1.5" + "pack memory" cross-cites) | YES | covered by H.9 |
 | **NEW (V2)** — D-11 PM-chat omniscience principle | H.16 | METHODOLOGY.md Part 1 (new sub-section) | NEW per V2 §D.6 | YES | INLINE (this commit only) |
 | **NEW (V2)** — Leak sweep Category A+B per-entry skeletons | H.9 | 7 per-entry skeleton files under project-template/docs/project/ | NEW | YES | INLINE (sliding from H.6) |

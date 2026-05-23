@@ -419,6 +419,17 @@ been explicitly split into multiple sequential parts by a planning agent.
 > consistent flags across the team. Run `./agent-run.sh --help` for the full roster and
 > per-CLI flag details.
 
+> **Cycle invariant — reviewer always runs.** Step 4 (reviewer)
+> runs after every step-3 coder report without exception. The PM
+> chat must not propose skipping the reviewer for any reason —
+> "small change," "comment-only," "tests pass," "coder confirmed
+> correct," or "prior reviewer already approved" are all the
+> conditions under which the reviewer is most needed. The reviewer
+> exists precisely to catch what "tests pass" does not:
+> architecture compliance, security posture, intent alignment.
+> The only bypass is an unprompted user instruction to skip;
+> PM chat never suggests it.
+
 ### Workflow 3 — Per-phase execution (with external API research)
 
 For phases integrating external APIs or making architectural decisions:
@@ -448,9 +459,29 @@ For phases integrating external APIs or making architectural decisions:
    addition with explicit named blocker → developer runs in standard claude
 ```
 
+> **Cycle termination.** The fix cycle terminates when the
+> reviewer returns Verdict: Ready to commit AND no architect
+> trigger fires per the Trigger A / Trigger B checks. A cycle
+> that fails to terminate after 3 coder passes against the same
+> phase ALWAYS triggers Trigger A and the architect pass — the
+> architect either resolves the root cause (allowing the cycle
+> to converge in the next coder pass) or escalates to the user
+> for re-scoping. There is no infinite-cycle path; either
+> reviewer-PASS terminates, or the architect pass terminates by
+> re-scoping the work.
+
 > **The PM chat does not execute fix passes directly.** After receiving reviewer output,
 > the PM chat presents a plan and waits for approval before generating any agent prompt.
 > The coder agent executes the fix; the PM chat does not.
+
+> **Present proposed doc changes and wait for the user to read.**
+> Show the user exactly what the architect proposes to change.
+> The PM chat WAITS for the user to read the architect's full
+> report before suggesting any follow-on step — do not auto-
+> advance to the next step, do not auto-stage changes, do not
+> propose "ready to commit" until the user has signaled they
+> have read the report. Get explicit approval for each change
+> before applying it.
 
 #### PM chat triage protocol — reviewer findings
 
@@ -500,6 +531,15 @@ The reviewer report shows either:
 - Any item that was previously ✅ is now ❌ or ⚠️ (regression), OR
 - The number of new ❌/⚠️ issues introduced in this pass is greater than in the
   previous pass — whichever count is larger
+
+> **Surface mechanical-looking trigger hits explicitly.** Even
+> when the trigger is technically met but the remaining issue
+> looks clearly mechanical (e.g., a missing test with no
+> architectural ambiguity), the PM chat must surface the
+> trigger check explicitly to the user, state its assessment of
+> whether a true architectural problem exists, and get explicit
+> approval before proceeding with or waiving the architect pass.
+> Never silently skip the check.
 
 > **Why this matters:** A coder running more than twice without clearing all issues,
 > or a coder introducing more issues than it fixes, signals that the problem is

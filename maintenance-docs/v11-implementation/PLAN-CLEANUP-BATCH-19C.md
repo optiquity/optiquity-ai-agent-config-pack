@@ -35,7 +35,7 @@ V2 cites V1's line numbers (recorded 2026-05-17). Multiple BDs have landed since
 | METHODOLOGY.md Part 5 Workflow 2 end | V1 L410 | `METHODOLOGY.md:398-420` (Workflow 2 block) | RESOLVED — coder inserts callout immediately after L410 closing fence (block ends L410, blank line L411) |
 | METHODOLOGY.md Workflow 4 fenced block | V1 L449 | `METHODOLOGY.md:435-449` (fenced block ends L449) | RESOLVED — cycle-termination callout lands after L449 fence close |
 | METHODOLOGY.md Workflow 4 Trigger A/B section | V1 L503 area | `METHODOLOGY.md:489-508` (Architect trigger conditions block) | RESOLVED — Trigger B paragraph ends L503; new architect-trigger callout lands after L503 |
-| METHODOLOGY.md Workflow 4 step 4 | V1 L522-523 | `METHODOLOGY.md:441-446` Workflow 4 fenced steps — note V2 text references "step 4" abstractly; the Workflow 4 fenced block is the STRENGTHEN target; the actual rendered prose-strengthen is the new architect-output-user-reads callout AFTER fence-close — see H.1 note | RESOLVED with caveat (see Planner Observations §3) |
+| METHODOLOGY.md Workflow 4 step 4 | V1 L522-523 | `METHODOLOGY.md:441-446` Workflow 4 fenced steps — note V2 text references "step 4" abstractly; the Workflow 4 fenced block is the STRENGTHEN target; the actual rendered prose-strengthen is the new architect-output-user-reads callout AFTER fence-close — see H.1 note | RESOLVED — §3 H.1 step 4 + §5 Observation 3 now mutually aligned per user direction 2026-05-23 (M-2 fix) |
 | METHODOLOGY.md Part 7 Procedure 1 step 2 | V1 L1083 | `METHODOLOGY.md:1082-1094` (Procedure 1 step 2 block) | RESOLVED — step 2 ends L1094 with "(When all blockers resolve...)"; STRENGTHEN appends inside step 2 around L1094 |
 | METHODOLOGY.md Part 7 Procedure 4 step 4 | V1 L1198 | `METHODOLOGY.md:1198-1219` (Procedure 4 fenced block) | RESOLVED — cross-ref callout lands after Procedure 4 fenced block close (L1219) |
 | METHODOLOGY.md Part 9 table | V1 L1384-1394 | `METHODOLOGY.md:1380-1394` (Part 9 + table) | RESOLVED — /tmp paragraph lands after L1394 table close |
@@ -103,10 +103,10 @@ Each H.N below carries: scope summary | files modified | edit specification | ve
 
 **Edit specification:**
 
-1. **§C.1 callout — always-reviewer cycle invariant.** Per V2 §C.1 second text block (verbatim). Insert as `>` callout block at end of Workflow 2 block, immediately after the fenced code block closing at `METHODOLOGY.md:410`. Anchor: line "Developer updates STATUS.md, syncs GitHub connector" inside fence at L409; insert blank line + callout block AFTER fence-close.
+1. **§C.1 callout — always-reviewer cycle invariant.** Per V2 §C.1 second text block (verbatim). Insert as `>` callout block at end of Workflow 2 block, immediately after the fenced code block closing at `METHODOLOGY.md:410`. Anchor: line "Developer updates STATUS.md, syncs GitHub connector" inside fence at L409; insert blank line + callout block AFTER fence-close. Insertion ordering: at HEAD post-pre-existing-changes, between the Workflow 2 fence-close (L410) and Workflow 3 header (L433) there is a pre-existing `> **agent-run.sh ...**` callout block (L412-420). The new `Cycle invariant — reviewer always runs.` callout lands IMMEDIATELY AFTER the `agent-run.sh` callout, before Workflow 3 header. Logical-flow rationale: `agent-run.sh` is annotation; `Cycle invariant` is behavioral assertion — annotation reads first, behavioral assertion follows.
 2. **§C.2 STRENGTHEN — architect-trigger surface-even-mechanical.** Per V2 §C.2 verbatim. Insert as `>` callout block immediately after Trigger B paragraph closing at L503 ("...whichever count is larger"). The next existing block is the "Why this matters" `>` callout starting at L504; insert the new callout BETWEEN Trigger B (L498-503) and the "Why this matters" callout (L504-508).
 3. **§D.3 cycle-termination callout.** Per V2 §D.3 verbatim. Insert as `>` callout block immediately after the Workflow 4 fenced code block (closes at L449), BEFORE the existing "The PM chat does not execute fix passes directly." callout at L451-453.
-4. **§C.10 METHODOLOGY half — Workflow 4 step 4 STRENGTHEN.** Per V2 §C.10 BEFORE/AFTER text. V2 BEFORE matches the existing fenced step 4 line. V2 AFTER replaces step 4 text inside the Workflow 4 fenced code block at L441 ("If NO trigger: PM chat presents fix plan..."). Note: V1's step-4 cite refers to the inside-fenced-block step 4; coder edits the fenced block contents AND prepends the new architect-output-user-reads callout (V2 §C.10 PM-CHAT.md half is separate; see Planner Observations §3). For H.1 the METHODOLOGY-half is the WHERE — apply STRENGTHEN inside the Workflow 4 fenced block at L441 step-4 wording.
+4. **§C.10 METHODOLOGY half (Workflow 4 step 4) — per planner Observation 3 (b) approved by user 2026-05-23.** Per V2 §C.10 second text block (the AFTER text for the step 4 STRENGTHEN). Per Observation 3 (b): land V2 §C.10 AFTER text as a NEW `>` callout block AFTER the fenced Workflow 4 block closes (paralleling the existing "PM chat does not execute fix passes directly." callout at L451-453), NOT as an in-fence step 4 STRENGTHEN. Substantive content preserved verbatim; rendering shape converted from V2's numbered-step format (`4. **Present proposed doc changes...**`) to `>` callout block (`> **Present proposed doc changes...**`). Insertion anchor: immediately AFTER the fenced Workflow 4 block closes (around L460 post-§D.3 insertion).
 
 **Verification commands** (sequential, all must PASS):
 
@@ -120,7 +120,7 @@ git diff --stat test-fixtures/manifest.txt
 
 **Per-commit reviewer:** SKIP (per V2 §I; non-boundary-sensitive; single-file METHODOLOGY.md additions).
 
-**Commit subject scope keyword:** `project-only` (touches only `supporting-docs/METHODOLOGY.md`, no `pack-ops/`).
+**Commit subject scope keyword:** (mixed — no keyword; touches supporting-docs/ + maintenance-docs/IMPL-REPORT + test-fixtures/manifest).
 
 **Commit message:** `feat: v11 — BD-173 METHODOLOGY.md workflow clarifications (Batch 19c.1)`
 
@@ -160,7 +160,7 @@ git diff --stat test-fixtures/manifest.txt
 
 **Per-commit reviewer:** SKIP (per V2 §I; PM-CHAT.md is project-side SSOT for PM-chat orchestration; multi-bullet block additions are non-boundary-sensitive).
 
-**Commit subject scope keyword:** `project-only` (PM-CHAT.md + METHODOLOGY.md are both project-side).
+**Commit subject scope keyword:** (mixed — no keyword; project-template/ + supporting-docs/ + maintenance-docs/IMPL-REPORT + test-fixtures/manifest).
 
 **Commit message:** `feat: v11 — BD-173 PM-CHAT.md behavioral rules consolidation (Batch 19c.2)`
 
@@ -192,7 +192,7 @@ git diff --stat test-fixtures/manifest.txt
 
 **Per-commit reviewer:** SKIP (per V2 §I; PM-CHAT.md STRENGTHEN + NEW bullet; tightly related "source-edit discipline" cluster).
 
-**Commit subject scope keyword:** `project-only`.
+**Commit subject scope keyword:** (mixed — no keyword; project-template/ + maintenance-docs/IMPL-REPORT + test-fixtures/manifest).
 
 **Commit message:** `feat: v11 — BD-173 PM-CHAT.md source-edit discipline (Batch 19c.3)`
 
@@ -239,7 +239,7 @@ diff <(grep -A6 "No destructive operations" project-template/CLAUDE.md) <(grep -
 - **Defense-in-depth exception.** Verify the trinity placement is documented as defense-in-depth per V2 §D.6.3 (the rule is agent-affecting; trinity is the correct surface despite D-11 omniscience-principle default of single-source).
 - **Sliding-window — H.1/H.2/H.3 coverage.** Verify the H.1 METHODOLOGY callouts, H.2 PM-CHAT.md behavioral-rules block, and H.3 PM-CHAT.md STRENGTHEN are reviewed by the same dimensions applicable to those commits (rule placement vs trinity vs PM-CHAT.md per D-11; cross-CLI / Override 9 considerations where applicable; manifest-regen attachment).
 
-**Commit subject scope keyword:** `project-only` (project-template trinity files only).
+**Commit subject scope keyword:** (mixed — no keyword; project-template/ trinity + maintenance-docs/IMPL-REPORT + test-fixtures/manifest).
 
 **Commit message:** `feat: v11 — BD-173 trinity destructive-ops list extension (Batch 19c.4)`
 
@@ -278,7 +278,7 @@ grep -n "^### Rule placement\|^#### Planner trigger conditions\|/tmp reports are
 - **§D.2 subsidiary reference clarity.** Verify the new Part 9 sub-section's forward-reference to Part 1 "PM chat omniscience obligation" reads cleanly even though H.16 has not landed yet (one inter-commit forward reference per V2 §H.16 Ordering rationale; H.16 closes the forward-pointer).
 - **§C.12 PACK-FEEDBACK.md cross-ref correctness.** Verify the rewrite drops "Pack Chat" audience cite per audit §3.1.12 and the PACK-FEEDBACK.md product-feature cross-ref resolves at client install.
 
-**Commit subject scope keyword:** `project-only` (single supporting-docs/ file).
+**Commit subject scope keyword:** (mixed — no keyword; supporting-docs/ + maintenance-docs/IMPL-REPORT + test-fixtures/manifest).
 
 **Commit message:** `feat: v11 — BD-173 METHODOLOGY.md substantive additions (mid-phase planner, rule placement subsidiary to PM-chat omniscience, /tmp ephemerality) (Batch 19c.5)`
 
@@ -309,7 +309,7 @@ git diff --stat test-fixtures/manifest.txt
 
 **Per-commit reviewer:** SKIP (per V2 §I; small STRENGTHEN; single sentence appended; not boundary-sensitive).
 
-**Commit subject scope keyword:** `project-only`.
+**Commit subject scope keyword:** (mixed — no keyword; supporting-docs/ + maintenance-docs/IMPL-REPORT + test-fixtures/manifest).
 
 **Commit message:** `feat: v11 — BD-173 METHODOLOGY.md proactive BACKLOG surfacing (Batch 19c.6)`
 
@@ -343,7 +343,7 @@ grep -nE "Tier 1\.5|pack memory" project-template/docs/pack/PM-CHAT.md | grep -v
 
 **Per-commit reviewer:** SKIP (per V2 §I; NEW paragraph; project-side; single file).
 
-**Commit subject scope keyword:** `project-only`.
+**Commit subject scope keyword:** (mixed — no keyword; project-template/ + maintenance-docs/IMPL-REPORT + test-fixtures/manifest).
 
 **Commit message:** `feat: v11 — BD-173 PM-CHAT.md per-project Claude memory cache convention (Batch 19c.7)`
 
@@ -403,7 +403,7 @@ git diff --stat test-fixtures/manifest.txt
 - **No new leaks introduced.** Scan the 7 files for any newly-added bare `ARCHITECTURE-*` / `AUDIT-*` / `maintenance-docs/` reference that the rewrite might have introduced inadvertently.
 - **Sliding-window — H.6/H.7 coverage.** Verify the H.6 Procedure 1 BACKLOG-surface STRENGTHEN and H.7 PM-CHAT.md per-project memory cache paragraph are reviewed by the dimensions applicable to those commits (rule placement, project-side SSOT correctness, REVISED-WORDING per V2 §D.1 drop of "Tier 1.5" / "pack memory" cross-cites).
 
-**Commit subject scope keyword:** `project-only` (all edits under `project-template/`).
+**Commit subject scope keyword:** (mixed — no keyword; project-template/ + maintenance-docs/IMPL-REPORT + test-fixtures/manifest).
 
 **Commit message:** `feat: v11 — BD-173 leak sweep Categories A + B — per-entry skeleton boundary cleanup (Batch 19c.9)`
 
@@ -503,7 +503,7 @@ git diff --stat test-fixtures/manifest.txt
 - **No new leaks introduced in rewritten content.** Verify the rewrites do not cite any pack-internal file (`supporting-docs/X.md` where `X` is not client-installed; `maintenance-docs/`; `pack-ops/`; etc.).
 - **References resolve at client install.** Verify cited files (e.g., `docs/pack/INSTALL-PROCEDURES.md`, `docs/pack/SETUP-EXISTING.md`, `docs/pack/prompts/<agent>.md`) all exist post-`init-project.sh` install (per `_CLIENT_INSTALLED_FILES_START`/`_END` + mass-copied `project-template/` tree).
 
-**Commit subject scope keyword:** `project-only` (single project-template file).
+**Commit subject scope keyword:** (mixed — no keyword; project-template/ + maintenance-docs/IMPL-REPORT + test-fixtures/manifest).
 
 **Commit message:** `feat: v11 — BD-173 leak sweep Category C — pm-chat variant rewrites to client-side equivalents (Batch 19c.11)`
 
@@ -728,7 +728,7 @@ git diff --stat test-fixtures/manifest.txt
 - **Override 9 non-applicability for the PREFLIGHT content.** Per BD-182 §4.1 + §C.6 reasoning: PREFLIGHT verification content is platform-neutral (Python invocation `python3 scripts/validate-pack.py` is the same across CLIs). Override 9 carve-out applies only to per-CLI configuration paths (e.g., `.claude/settings.json` vs `.gemini/.env`); not to platform-neutral content.
 - **CONCEPTUAL-REVIEW-METHODOLOGY.md dimension (d) addition correctness.** Verify the appended sentence preserves the existing dimension (d) framing and correctly references Check 43.
 
-**Commit subject scope keyword:** `PM-only` (PACK-AGENTS.md + pack-root trinity + pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md are all PM-only files per `CLAUDE.md` § "Rules for agents working on this repo" PM-only list; PM-only commits permit pack-root + pack-ops/ edits and deny project-template/ + supporting-docs/).
+**Commit subject scope keyword:** (mixed — no keyword; pack-ops/ + pack-root trinity + maintenance-docs/IMPL-REPORT + test-fixtures/manifest; IMPL-REPORT is not on PM-only list per PACK-AGENTS.md L143-149).
 
 **Commit message:** `feat: v11 — BD-173 Guardrail 4 — pack-coder PREFLIGHT extension (Check 43 verification step) (Batch 19c.15)`
 
@@ -777,7 +777,7 @@ git diff --stat test-fixtures/manifest.txt
 - **§D.6.3 exception text presence.** Verify the principle text includes the two documented exceptions (defense-in-depth; cross-CLI parity ergonomics) — these are load-bearing for the §C.6 + §D.7 cascade decisions already landed in H.4 + H.16.
 - **Forward-reference closure with H.5.** H.5 landed §D.2 placement rule referencing this principle; H.16's principle landing closes the forward-pointer. Verify by reading §D.2 (now landed) + new §D.6 (this commit) together — they read consistently.
 
-**Commit subject scope keyword:** `project-only` (single supporting-docs/ file).
+**Commit subject scope keyword:** (mixed — no keyword; supporting-docs/ + maintenance-docs/IMPL-REPORT + test-fixtures/manifest).
 
 **Commit message:** `feat: v11 — BD-173 METHODOLOGY.md Part 1 — PM chat omniscience principle + Claude Code Agent Teams operating note (Batch 19c.16)`
 
@@ -836,7 +836,7 @@ If H.17 is standalone status flip (no fixes), the commit touches only `pack-ops/
 **Per-commit reviewer:** END-OF-BATCH (this IS the end-of-batch reviewer pass). No further inline review attaches to H.17 — the reviewer pass at H.17 IS the inline review of the H.17 fix-commit (single review covers fix + the batch cumulative state).
 
 **Commit subject scope keyword (commit-shape-dependent):**
-- **If combined fix + status flip:** mixed scope likely (fixes may touch `project-template/` + `supporting-docs/` + `scripts/` + `pack-ops/`); use no keyword. Pack Chat verifies actual files touched.
+- **If combined fix + status flip:** mixed scope likely (fixes may touch `project-template/` + `supporting-docs/` + `scripts/` + `pack-ops/`); use no keyword. Pack Chat verifies actual files touched. Note: no scope keyword if IMPL-REPORT included (IMPL-REPORTs live under `maintenance-docs/` which is not on PM-only list per PACK-AGENTS.md L143-149).
 - **If standalone status flip on `pack-ops/BACKLOG.md` only:** `PM-only` (BACKLOG.md is PM-only).
 
 **Commit message (commit-shape-dependent):**
@@ -857,22 +857,22 @@ If H.17 is standalone status flip (no fixes), the commit touches only `pack-ops/
 | Commit | Scope summary | Files | RC9 fires? | Per-commit reviewer | Scope keyword | Commit msg |
 |---|---|---|---|---|---|---|
 | H.0 | Baseline verification (no commit) | n/a | n/a | n/a | n/a | (none) |
-| H.1 | METHODOLOGY workflow callouts (§C.1 + §C.2 + §D.3 + §C.10 half) | METHODOLOGY.md | YES | covered by H.4 | `project-only` | `feat: v11 — BD-173 METHODOLOGY.md workflow clarifications (Batch 19c.1)` |
-| H.2 | PM-CHAT.md behavioral rules consolidation (§C.1+§C.4+§C.7+§C.8+§C.9+§C.10+§C.11+§C.13 + §D.5 cross-ref) | PM-CHAT.md + METHODOLOGY.md | YES | covered by H.4 | `project-only` | `feat: v11 — BD-173 PM-CHAT.md behavioral rules consolidation (Batch 19c.2)` |
-| H.3 | PM-CHAT.md source-edit discipline (§C.5 STRENGTHEN + §C.6 PM-CHAT.md half) | PM-CHAT.md | YES | covered by H.4 | `project-only` | `feat: v11 — BD-173 PM-CHAT.md source-edit discipline (Batch 19c.3)` |
-| H.4 | Trinity destructive-ops list extension (§C.6 trinity half) | CLAUDE.md + AGENTS.md + GEMINI.md (project-template) | YES | **INLINE (sliding from H.1)** | `project-only` | `feat: v11 — BD-173 trinity destructive-ops list extension (Batch 19c.4)` |
-| H.5 | METHODOLOGY substantive additions (§D.4 + §D.2 + §C.12) | METHODOLOGY.md | YES | **INLINE (this commit only)** | `project-only` | `feat: v11 — BD-173 METHODOLOGY.md substantive additions (mid-phase planner, rule placement subsidiary to PM-chat omniscience, /tmp ephemerality) (Batch 19c.5)` |
-| H.6 | METHODOLOGY Procedure 1 BACKLOG-surface STRENGTHEN (§C.3) | METHODOLOGY.md | YES | covered by H.9 | `project-only` | `feat: v11 — BD-173 METHODOLOGY.md proactive BACKLOG surfacing (Batch 19c.6)` |
-| H.7 | PM-CHAT per-project memory cache (§D.1 REVISED) | PM-CHAT.md | YES | covered by H.9 | `project-only` | `feat: v11 — BD-173 PM-CHAT.md per-project Claude memory cache convention (Batch 19c.7)` |
+| H.1 | METHODOLOGY workflow callouts (§C.1 + §C.2 + §D.3 + §C.10 half) | METHODOLOGY.md | YES | covered by H.4 | (mixed) | `feat: v11 — BD-173 METHODOLOGY.md workflow clarifications (Batch 19c.1)` |
+| H.2 | PM-CHAT.md behavioral rules consolidation (§C.1+§C.4+§C.7+§C.8+§C.9+§C.10+§C.11+§C.13 + §D.5 cross-ref) | PM-CHAT.md + METHODOLOGY.md | YES | covered by H.4 | (mixed) | `feat: v11 — BD-173 PM-CHAT.md behavioral rules consolidation (Batch 19c.2)` |
+| H.3 | PM-CHAT.md source-edit discipline (§C.5 STRENGTHEN + §C.6 PM-CHAT.md half) | PM-CHAT.md | YES | covered by H.4 | (mixed) | `feat: v11 — BD-173 PM-CHAT.md source-edit discipline (Batch 19c.3)` |
+| H.4 | Trinity destructive-ops list extension (§C.6 trinity half) | CLAUDE.md + AGENTS.md + GEMINI.md (project-template) | YES | **INLINE (sliding from H.1)** | (mixed) | `feat: v11 — BD-173 trinity destructive-ops list extension (Batch 19c.4)` |
+| H.5 | METHODOLOGY substantive additions (§D.4 + §D.2 + §C.12) | METHODOLOGY.md | YES | **INLINE (this commit only)** | (mixed) | `feat: v11 — BD-173 METHODOLOGY.md substantive additions (mid-phase planner, rule placement subsidiary to PM-chat omniscience, /tmp ephemerality) (Batch 19c.5)` |
+| H.6 | METHODOLOGY Procedure 1 BACKLOG-surface STRENGTHEN (§C.3) | METHODOLOGY.md | YES | covered by H.9 | (mixed) | `feat: v11 — BD-173 METHODOLOGY.md proactive BACKLOG surfacing (Batch 19c.6)` |
+| H.7 | PM-CHAT per-project memory cache (§D.1 REVISED) | PM-CHAT.md | YES | covered by H.9 | (mixed) | `feat: v11 — BD-173 PM-CHAT.md per-project Claude memory cache convention (Batch 19c.7)` |
 | H.8 | (REMOVED — V1's H.8 → V2's H.17) | n/a | n/a | n/a | n/a | (none) |
-| H.9 | Leak sweep Cat A+B per-entry skeletons (30 leaks, 7 files) | 7 per-entry skeleton files | YES | **INLINE (sliding from H.6)** | `project-only` | `feat: v11 — BD-173 leak sweep Categories A + B — per-entry skeleton boundary cleanup (Batch 19c.9)` |
+| H.9 | Leak sweep Cat A+B per-entry skeletons (30 leaks, 7 files) | 7 per-entry skeleton files | YES | **INLINE (sliding from H.6)** | (mixed) | `feat: v11 — BD-173 leak sweep Categories A + B — per-entry skeleton boundary cleanup (Batch 19c.9)` |
 | H.10 | Leak sweep Cat D+E+F (detect.sh + pm-startup cluster + boundary-investigation cite; 8 leaks across 7 files) | detect.sh + PM-CHAT.md + pm-startup ×4 + boundary-investigation/SKILL.md | YES | **INLINE (this commit only)** | mixed (none) | `feat: v11 — BD-173 leak sweep Categories D + E + F — mechanical cite cleanup + BD-175 self-leak fix (Batch 19c.10)` |
-| H.11 | Leak sweep Cat C pm-chat variants rewrite (3 leaks, C-c direction) | prompts/pm-chat.md | YES | **INLINE (this commit only)** | `project-only` | `feat: v11 — BD-173 leak sweep Category C — pm-chat variant rewrites to client-side equivalents (Batch 19c.11)` |
+| H.11 | Leak sweep Cat C pm-chat variants rewrite (3 leaks, C-c direction) | prompts/pm-chat.md | YES | **INLINE (this commit only)** | (mixed) | `feat: v11 — BD-173 leak sweep Category C — pm-chat variant rewrites to client-side equivalents (Batch 19c.11)` |
 | H.12 | Guardrail 3 `_PROJECT_SIDE_ROOTS` scope expansion + Group 7 tests | validate-pack.py + scripts/tests/test-validate-pack-checks-36-37-38.sh | YES | covered by H.13 | `pack-only` | `feat: v11 — BD-173 Guardrail 3 — _PROJECT_SIDE_ROOTS expansion to full client-installed surface (Batch 19c.12)` |
 | H.13 | Guardrail 2 per-line fence + Group 6 tests + 7 fenced files | validate-pack.py + 7 fenced files + scripts/tests/ | YES | **INLINE (sliding from H.12)** | mixed (none) | `feat: v11 — BD-173 Guardrail 2 — per-line deny-list fence (Check 37 modification + 7 files fenced) (Batch 19c.13)` |
 | H.14 | Guardrail 1 Check 43 new check + 13 fixtures + CI wire | validate-pack.py + test-validate-pack-check-43.sh + fixtures/project-side-refs/ + validate-pack.yml | YES | **INLINE (this commit only)** | mixed (none) | `feat: v11 — BD-173 Guardrail 1 — Check 43 (project-side bare cross-reference scanner; V11 leak-sweep prevention) (Batch 19c.14)` |
-| H.15 | Guardrail 4 PREFLIGHT extension (pack-side PM-only) | PACK-AGENTS.md + pack-root trinity ×3 + CONCEPTUAL-REVIEW-METHODOLOGY.md | YES | **INLINE (this commit only)** | `PM-only` | `feat: v11 — BD-173 Guardrail 4 — pack-coder PREFLIGHT extension (Check 43 verification step) (Batch 19c.15)` |
-| H.16 | D-11 omniscience principle + OT-UT-1 paragraph (Part 1 landing) | METHODOLOGY.md | YES | **INLINE (this commit only)** | `project-only` | `feat: v11 — BD-173 METHODOLOGY.md Part 1 — PM chat omniscience principle + Claude Code Agent Teams operating note (Batch 19c.16)` |
+| H.15 | Guardrail 4 PREFLIGHT extension (pack-side PM-only) | PACK-AGENTS.md + pack-root trinity ×3 + CONCEPTUAL-REVIEW-METHODOLOGY.md | YES | **INLINE (this commit only)** | (mixed) | `feat: v11 — BD-173 Guardrail 4 — pack-coder PREFLIGHT extension (Check 43 verification step) (Batch 19c.15)` |
+| H.16 | D-11 omniscience principle + OT-UT-1 paragraph (Part 1 landing) | METHODOLOGY.md | YES | **INLINE (this commit only)** | (mixed) | `feat: v11 — BD-173 METHODOLOGY.md Part 1 — PM chat omniscience principle + Claude Code Agent Teams operating note (Batch 19c.16)` |
 | H.17 | End-of-batch reviewer + BD-173 status flip (combined fix+flip OR standalone flip) | (varies) | conditional | END-OF-BATCH | mixed or `PM-only` | `fix: v11 — BD-173 broad batch review/fix + status flip (Batch 19c)` OR `docs: v11 — flip BD-173 to Resolved` |
 
 **Total commits:** 16 implementation (H.1-H.16) + 1 close (H.17) = **17 commits**.
