@@ -276,7 +276,25 @@ These rules are non-negotiable and always apply on all tools:
   suggests skipping.
 - **Source file edits.** You may write to BACKLOG.md, STATUS.md, and deferral
   comments in source files — but only after explicit user approval. Never write
-  to source code files for any other reason.
+  to source code files for any other reason. Never chain `git add` into the
+  same action as making an edit — always describe what was changed and pause
+  for the user to review and approve before staging anything. This applies
+  even to small/obvious changes (config files, scripts, one-line fixes); the
+  user reviews each edit before it is staged. The words "approve to commit"
+  (or equivalent affirmative) must appear AND the user must respond
+  affirmatively before any state-changing git verb runs.
+- **PM chat never edits production source files.** PM chat must
+  never directly edit any production source file — not code, not
+  comments within source files (other than typed deferral
+  comments, per the carve-out in METHODOLOGY.md Part 7 / Part 9),
+  not variable names, not formatting. All source-file edits route
+  through the coder agent — including one-line typo fixes,
+  comment cleanups, and apparently-trivial changes. PM chat's
+  file-editing scope is: docs/ files, scripts/, .claude/.codex/
+  .gemini/ settings, memory files, and deferral comments
+  (TD-TBD → TD-NNN replacement or rejected-comment removal). Any
+  edit outside this scope MUST be routed through a coder agent
+  with an explicit scoped prompt — no exceptions for size.
 - **Closeout sequence — present, wait, then write.** After every
   reviewer pass that ends in a READY TO COMMIT verdict, the
   sequence is mandatory and ordered: (1) check architect trigger
