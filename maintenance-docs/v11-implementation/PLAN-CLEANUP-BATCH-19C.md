@@ -138,14 +138,15 @@ git diff --stat test-fixtures/manifest.txt
 
 **Edit specification:**
 
-1. **§C.11 (open-questions-surface) — NEW bullet, high-level meta-rule.** Per V2 §C.11 verbatim. Insert as NEW bullet in `## Behavioral rules` immediately after the "Plan before executing." bullet (currently L180). Position rationale: V2 §C.11 says "land early in the list as a high-level meta-rule."
-2. **§C.7 (re-read per-agent prompt files + REPORT FILE verify) — NEW bullet.** Per V2 §C.7 verbatim. Insert immediately after the existing "Follow Prompt Authoring Principles." bullet at L188.
-3. **§C.1 PM-CHAT.md half (always-reviewer-after-coder) — NEW bullet.** Per V2 §C.1 first text block (verbatim). Insert immediately after the existing "Fix cycle rules." bullet at L201-202.
-4. **§C.4 (closeout-sequence: present-before-write) — NEW bullet.** Per V2 §C.4 verbatim. Insert immediately after the existing "Source file edits." bullet at L203-205.
-5. **§C.9 (mid-pipeline working-tree intentional) — NEW bullet.** Per V2 §C.9 verbatim. Insert immediately after §C.4 closeout-sequence bullet (above).
-6. **§C.10 PM-CHAT.md half (architect-output → user-reads) — NEW bullet, REVISED-WORDING per V2 §C.10.** Per V2 §C.10 first text block (V1 cross-side citation dropped per salvageability B1). Insert immediately after the §C.7 (re-read per-agent prompt files) bullet inserted in step 2 above.
-7. **§C.8 (pack-repo-is-read-only) — NEW bullet, REVISED-WORDING per V2 §C.8.** Per V2 §C.8 verbatim (V1's "supporting-docs/" parenthetical example DROPPED; "Pack Chat" audience cite REPLACED with "the pack maintainer"; PACK-FEEDBACK.md product-feature cross-ref RETAINED). Insert immediately after the existing "Pack feedback loop." bullet at L221-227.
-8. **§D.5 METHODOLOGY.md cross-ref to PM-CHAT.md closeout-sequence rule — NEW callout block.** Per V2 §D.5 verbatim. Insert as `>` callout block in `supporting-docs/METHODOLOGY.md` Part 7 Procedure 4 area, immediately AFTER the Procedure 4 fenced code block close (L1219). The callout points readers from Procedure 4 step 3/4 back to PM-CHAT.md `## Behavioral rules` "Closeout sequence — present, wait, then write."
+1. **§C.11 (open-questions-surface) — NEW bullet, high-level meta-rule.** Per V2 §C.11 verbatim. Insert as NEW bullet in `## Behavioral rules` immediately after the "Plan before executing." bullet (currently L180). Position rationale: V2 §C.11 says "land early in the list as a high-level meta-rule." Include sibling annotation cross-referencing §C.13 per user direction 2026-05-23 (see V2 §C.11 AFTER text trailing sentence).
+2. **§C.13 (decision presentation protocol) — NEW bullet, meta-rule per user direction 2026-05-23.** Per V2 §C.13 verbatim. Insert immediately after the §C.11 bullet inserted in step 1 above. §C.13 is the meta-rule generalising §C.10 + §C.11 as sibling instances; landing adjacent to §C.11 establishes the meta-rule next to its closest specific instance.
+3. **§C.7 (re-read per-agent prompt files + REPORT FILE verify) — NEW bullet.** Per V2 §C.7 verbatim. Insert immediately after the existing "Follow Prompt Authoring Principles." bullet at L188.
+4. **§C.1 PM-CHAT.md half (always-reviewer-after-coder) — NEW bullet.** Per V2 §C.1 first text block (verbatim). Insert immediately after the existing "Fix cycle rules." bullet at L201-202.
+5. **§C.4 (closeout-sequence: present-before-write) — NEW bullet.** Per V2 §C.4 verbatim. Insert immediately after the existing "Source file edits." bullet at L203-205.
+6. **§C.9 (mid-pipeline working-tree intentional) — NEW bullet.** Per V2 §C.9 verbatim. Insert immediately after §C.4 closeout-sequence bullet (above).
+7. **§C.10 PM-CHAT.md half (architect-output → user-reads) — NEW bullet, REVISED-WORDING per V2 §C.10.** Per V2 §C.10 first text block (V1 cross-side citation dropped per salvageability B1). Insert immediately after the §C.7 (re-read per-agent prompt files) bullet inserted in step 3 above. Include sibling annotation cross-referencing §C.13 per user direction 2026-05-23 (see V2 §C.10 PM-CHAT.md AFTER text trailing sentence).
+8. **§C.8 (pack-repo-is-read-only) — NEW bullet, REVISED-WORDING per V2 §C.8.** Per V2 §C.8 verbatim (V1's "supporting-docs/" parenthetical example DROPPED; "Pack Chat" audience cite REPLACED with "the pack maintainer"; PACK-FEEDBACK.md product-feature cross-ref RETAINED). Insert immediately after the existing "Pack feedback loop." bullet at L221-227.
+9. **§D.5 METHODOLOGY.md cross-ref to PM-CHAT.md closeout-sequence rule — NEW callout block.** Per V2 §D.5 verbatim. Insert as `>` callout block in `supporting-docs/METHODOLOGY.md` Part 7 Procedure 4 area, immediately AFTER the Procedure 4 fenced code block close (L1219). The callout points readers from Procedure 4 step 3/4 back to PM-CHAT.md `## Behavioral rules` "Closeout sequence — present, wait, then write."
 
 **Verification commands:**
 
@@ -163,7 +164,7 @@ git diff --stat test-fixtures/manifest.txt
 
 **Commit message:** `feat: v11 — BD-173 PM-CHAT.md behavioral rules consolidation (Batch 19c.2)`
 
-**Pack-coder PREFLIGHT line shape:** `PREFLIGHT: 8/8 in-scope file edits complete; verification PASS; HEAD <SHA>; about to Write IMPL-REPORT to maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.2.md`
+**Pack-coder PREFLIGHT line shape:** `PREFLIGHT: 9/9 in-scope file edits complete; verification PASS; HEAD <SHA>; about to Write IMPL-REPORT to maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.2.md`
 
 ---
 
@@ -857,7 +858,7 @@ If H.17 is standalone status flip (no fixes), the commit touches only `pack-ops/
 |---|---|---|---|---|---|---|
 | H.0 | Baseline verification (no commit) | n/a | n/a | n/a | n/a | (none) |
 | H.1 | METHODOLOGY workflow callouts (§C.1 + §C.2 + §D.3 + §C.10 half) | METHODOLOGY.md | YES | covered by H.4 | `project-only` | `feat: v11 — BD-173 METHODOLOGY.md workflow clarifications (Batch 19c.1)` |
-| H.2 | PM-CHAT.md behavioral rules consolidation (§C.1+§C.4+§C.7+§C.8+§C.9+§C.10+§C.11 + §D.5 cross-ref) | PM-CHAT.md + METHODOLOGY.md | YES | covered by H.4 | `project-only` | `feat: v11 — BD-173 PM-CHAT.md behavioral rules consolidation (Batch 19c.2)` |
+| H.2 | PM-CHAT.md behavioral rules consolidation (§C.1+§C.4+§C.7+§C.8+§C.9+§C.10+§C.11+§C.13 + §D.5 cross-ref) | PM-CHAT.md + METHODOLOGY.md | YES | covered by H.4 | `project-only` | `feat: v11 — BD-173 PM-CHAT.md behavioral rules consolidation (Batch 19c.2)` |
 | H.3 | PM-CHAT.md source-edit discipline (§C.5 STRENGTHEN + §C.6 PM-CHAT.md half) | PM-CHAT.md | YES | covered by H.4 | `project-only` | `feat: v11 — BD-173 PM-CHAT.md source-edit discipline (Batch 19c.3)` |
 | H.4 | Trinity destructive-ops list extension (§C.6 trinity half) | CLAUDE.md + AGENTS.md + GEMINI.md (project-template) | YES | **INLINE (sliding from H.1)** | `project-only` | `feat: v11 — BD-173 trinity destructive-ops list extension (Batch 19c.4)` |
 | H.5 | METHODOLOGY substantive additions (§D.4 + §D.2 + §C.12) | METHODOLOGY.md | YES | **INLINE (this commit only)** | `project-only` | `feat: v11 — BD-173 METHODOLOGY.md substantive additions (mid-phase planner, rule placement subsidiary to PM-chat omniscience, /tmp ephemerality) (Batch 19c.5)` |

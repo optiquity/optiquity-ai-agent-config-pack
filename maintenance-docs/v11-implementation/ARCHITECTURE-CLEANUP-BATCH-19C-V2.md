@@ -35,6 +35,7 @@ V2 integrates the following inputs that did not exist when V1 was authored on 20
 6. **`ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md`** — implementation-ready contracts for Guardrails 1-4 (Check 43, per-line fence, scope expansion, PREFLIGHT extension).
 7. **`AUDIT-USER-CURATION.md`** — 10 user overrides on BD-175 architect output; Override 9 is load-bearing for V2 ("different audience = different wording; NO cross-trinity drift gate" — applies to BD-182 cross-CLI references and any V2 trinity edit).
 8. **`ARCHITECTURE-BD-182.md`** §4.1 — per-CLI canonical reference table (Claude vs Codex vs Gemini config / settings / hook / invocation paths) — applies to any V2 trinity edit that touches cross-CLI references.
+9. **2026-05-23 — User-articulated decision presentation protocol (5-point meta-rule).** Lands as new §C.13 PM-CHAT.md bullet in commit H.2 per §B.1 + §I + §C.0 integration. Generalises §C.10 and §C.11 as sibling instances.
 
 ### A.3 — User decisions applied (NOT re-decided in V2)
 
@@ -106,9 +107,9 @@ V2 verdict vocabulary:
 | OT-UT-3 | Mid-pipeline working-tree intentional | PM-CHAT.md NEW bullet | **UNCHANGED** | (same) |
 | OT-UT-4 | Only OPEN TDs in scope for v11 conversion | OOS | **UNCHANGED** (OOS) | (none) |
 | OT-UT-5 | Phase 58b deferred until v11 lands | OOS | **UNCHANGED** (OOS) | (none) |
-| OT-UT-6 | Architect output → user reads → next step waits | PM-CHAT.md NEW bullet + METHODOLOGY.md STRENGTHEN | **REVISED-WORDING** — drop the "project-side analog of the pack-side 'Planner output → user review → coder spawn' rule" cross-side citation from PM-CHAT.md bullet text (salvageability B1); assert the rule on its own merits | PM-CHAT.md `## Behavioral rules` + METHODOLOGY.md Workflow 4 step 4 |
+| OT-UT-6 | Architect output → user reads → next step waits | PM-CHAT.md NEW bullet + METHODOLOGY.md STRENGTHEN | **REVISED-WORDING** — drop the "project-side analog of the pack-side 'Planner output → user review → coder spawn' rule" cross-side citation from PM-CHAT.md bullet text (salvageability B1); assert the rule on its own merits + ADD one-line sibling annotation cross-referencing §C.13 (meta-rule) per user direction 2026-05-23 | PM-CHAT.md `## Behavioral rules` + METHODOLOGY.md Workflow 4 step 4 |
 | OT-UT-7 | Feature prioritization deferred until after v11 | OOS | **UNCHANGED** (OOS) | (none) |
-| OT-UT-8 (meta) | Open questions surface to user | PM-CHAT.md NEW bullet | **UNCHANGED** | (same) |
+| OT-UT-8 (meta) | Open questions surface to user | PM-CHAT.md NEW bullet | **REVISED-WORDING** — ADD one-line sibling annotation cross-referencing §C.13 (meta-rule) per user direction 2026-05-23 | (same) |
 | OT-UT-8 (specifics) | (OT-specific open questions) | OOS | **UNCHANGED** (OOS) | (none) |
 | OT-UT-9 | Re-read prompts + verify REPORT FILE present | subsumed by OT-T-7 | **UNCHANGED** | (see OT-T-7) |
 | OT-UT-10 | /tmp reports are ephemeral | METHODOLOGY.md NEW paragraph | **REVISED-WORDING** — replace "paste into Pack Chat for upstream debugging" with "for upstream debugging via PACK-FEEDBACK.md" (audit §3.1.12 + salvageability cross-side cite cleanup) | METHODOLOGY.md Part 9 |
@@ -118,6 +119,7 @@ V2 verdict vocabulary:
 | Arch derived 1 | Rule placement: trinity vs PM-CHAT.md vs METHODOLOGY.md | METHODOLOGY.md NEW sub-section (CONDITIONAL per V1 D-4) | **REVISED-PLACEMENT** — LAND in METHODOLOGY.md Part 9 as SUBSIDIARY of the new D-11 PM-chat omniscience principle (per principle-check §6 + V2 §D.6 cascade); the placement rule becomes "where rules LIVE follows the omniscience principle, with two documented exceptions" | METHODOLOGY.md Part 9 |
 | Arch derived 2 | Per-project Claude memory cache convention | PM-CHAT.md NEW paragraph (CONDITIONAL per V1 D-1) | **REVISED-WORDING** — LAND per V1 D-1 = Alt-1 reframed in §D.7; drop the "Tier 1.5 design as the pack repo (per pack memory pattern)" cross-side citation (audit §3.2.1 confirmed leak); describe the per-project Claude memory cache convention on its own merits | PM-CHAT.md "Tool-specific: Claude Code CLI" section |
 | **NEW for V2** | PM-chat omniscience obligation principle | (did not exist in V1) | **NEW** (per D-11 Alt-1) | METHODOLOGY.md `## Part 1 — Tool Roles` NEW sub-section "PM chat omniscience obligation" |
+| **NEW for V2** | Decision presentation protocol (5-point user-articulated meta-rule) | (did not exist in V1) | **NEW** (per user direction 2026-05-23) | `project-template/docs/pack/PM-CHAT.md` `## Behavioral rules` NEW bullet (§C.13) |
 
 ### B.2 — Leak-sweep additions (NEW for V2 — Option b absorption)
 
@@ -148,10 +150,10 @@ Per the guardrails contract doc, four new guardrails close the prevention gap di
 
 | Source | V1 count | V2 count |
 |---|---|---|
-| OT-item dispositions | 17 items + 5 architect-derived rows = 22 rows in V1 §I | 22 rows in V2 §B.1 (1 OT-UT-1 reframed; 1 new D-11 principle row; net +0) |
+| OT-item dispositions | 17 items + 5 architect-derived rows = 22 rows in V1 §I | 23 rows in V2 §B.1 (1 OT-UT-1 reframed in place; 1 new D-11 principle row; 1 new §C.13 decision protocol row per user direction 2026-05-23) |
 | Leak sweep | (not in V1) | 36 leaks across 6 categories |
 | Guardrails | (not in V1) | 4 new guardrails |
-| **V2 total scope** | 22 rows of OT cleanup | 22 + 6 sweep categories + 4 guardrails = 32 distinct units of work |
+| **V2 total scope** | 22 rows of OT cleanup | 23 + 6 sweep categories + 4 guardrails = 33 distinct units of work |
 
 
 ---
@@ -182,8 +184,9 @@ Per the principle-check architect recommendation (§6, cited in V2 §D.6 below),
 | §C.10 (OT-UT-6 architect-output → user-reads) | PM-CHAT.md NEW bullet + METHODOLOGY.md STRENGTHEN | PM-CHAT.md NEW bullet (authoritative) + METHODOLOGY.md STRENGTHEN (audience-specific pair, NOT a duplicate-with-divergence) | **NO REFRAME** | Same audience-specific-pair rationale as §C.1. |
 | §C.11 (OT-UT-8 open-questions-surface) | PM-CHAT.md NEW bullet | PM-CHAT.md NEW bullet (authoritative) | **NO REFRAME** | Single-surface placement; no cascade. |
 | §C.12 (OT-UT-10 /tmp reports are ephemeral) | METHODOLOGY.md NEW paragraph | METHODOLOGY.md NEW paragraph | **NO REFRAME** | Single-surface placement; no cascade. |
+| §C.13 (decision presentation protocol — META) | (did not exist in V1) | PM-CHAT.md NEW bullet (authoritative) | **NO REFRAME** | Single-surface PM-chat orchestration meta-rule; new for V2 per user direction 2026-05-23. PM-CHAT.md is the authoritative SSOT per the omniscience principle's default; no trinity or METHODOLOGY.md duplication needed. |
 
-**Cascade summary:** 1 REFRAME-EXCEPTION (§C.6 trinity STRENGTHEN documented as defense-in-depth), 1 REFRAME-DELIVERY (§C.7 PM-CHAT.md authoritative + injection delivery), 10 NO-REFRAME. The "~12 reframings" estimate in the principle-check (§6.6) over-counted because V1 was already conservatively scoped — V1 had ALREADY been making PM-CHAT.md-only placements for most rules; the cascade primarily documents the exception (§C.6) and the delivery mechanism for §C.7. The other 10 placements were not duplicate-with-divergence patterns in V1, so no reframing applies.
+**Cascade summary:** 1 REFRAME-EXCEPTION (§C.6 trinity STRENGTHEN documented as defense-in-depth), 1 REFRAME-DELIVERY (§C.7 PM-CHAT.md authoritative + injection delivery), 11 NO-REFRAME (now includes §C.13 decision presentation protocol). The "~12 reframings" estimate in the principle-check (§6.6) over-counted because V1 was already conservatively scoped — V1 had ALREADY been making PM-CHAT.md-only placements for most rules; the cascade primarily documents the exception (§C.6) and the delivery mechanism for §C.7. The other 10 placements were not duplicate-with-divergence patterns in V1, so no reframing applies.
 
 The principle's value-add for V2 is therefore: (a) documenting WHY most §C placements are PM-CHAT.md-only (it follows from the principle, not from ad-hoc choices), (b) documenting the §C.6 exception with named rationale (defense-in-depth), (c) describing the §C.7 delivery mechanism (injection at prompt-construction time), and (d) the new principle text landing in METHODOLOGY.md Part 1 (commit H.16).
 
@@ -479,6 +482,9 @@ The principle's value-add for V2 is therefore: (a) documenting WHY most §C plac
   the architect's output. The architect-to-next-step gate is the
   user's last cheap window to redirect before downstream work
   consumes hours of agent time and chat context.
+  This is a specific application of the decision presentation protocol
+  (see "Decision presentation protocol" bullet above) to the architect-
+  output decision class.
 ```
 
 **Target file 2:** `supporting-docs/METHODOLOGY.md`
@@ -527,6 +533,9 @@ The principle's value-add for V2 is therefore: (a) documenting WHY most §C plac
   unilateral default that "works for the next step" can lock the
   project into a path the user would have steered away from.
   Surface, wait, decide together.
+  This is a specific application of the decision presentation protocol
+  (see "Decision presentation protocol" bullet below) to the open-
+  questions decision class.
 ```
 
 ### C.12 — OT-UT-10 (/tmp reports are ephemeral) placement (V2: REVISED-WORDING per salvageability + audit §3.1.12; "Pack Chat" cross-side audience cite replaced with PACK-FEEDBACK.md channel)
@@ -551,6 +560,42 @@ The principle's value-add for V2 is therefore: (a) documenting WHY most §C plac
 ```
 
 **Trinity ripple:** None (METHODOLOGY.md scope, not trinity).
+
+### C.13 — Decision presentation protocol (V2: NEW per user direction 2026-05-23; META-rule generalising §C.10 + §C.11 as sibling instances)
+
+**Target file:** `project-template/docs/pack/PM-CHAT.md`
+**Target section:** `## Behavioral rules`
+**Insertion anchor:** Immediately after the §C.11 bullet ("Open questions surface to user, never decided unilaterally") inserted at H.2 step 1.
+**Edit type:** NEW bullet.
+
+**V2 text** (per user direction 2026-05-23; verbatim AFTER state):
+
+```
+- **Decision presentation protocol.** When the PM chat surfaces any
+  decision to the developer — architect output review, planner output
+  review, open question, agent triage outcome, multi-option fork — the
+  presentation follows five points:
+  (1) present decisions one at a time, never bundled;
+  (2) include all context the developer needs to decide without
+  switching to another document or chat — quote or summarise the
+  relevant material inline;
+  (3) always give a recommendation, but the recommendation must be
+  evidence-based and logical, never a guess — if the evidence does not
+  support a recommendation, say so and present the decision without
+  one;
+  (4) discuss with the developer before the developer decides — do
+  not pre-commit either party to an outcome;
+  (5) the PM chat is not an agent and does not do agent work,
+  including proposing solutions — the PM chat may present solutions
+  produced by an agent and may, with developer approval, spawn an
+  agent to produce the work the right way.
+```
+
+**Cascade verdict (per §C.0):** NO REFRAME. Single-surface PM-chat orchestration meta-rule.
+
+**Sibling instances:** §C.10 (architect-output → user-reads) and §C.11 (open-questions-surface) are specific applications of this protocol. Both bullets gain one-line sibling annotations cross-referencing §C.13 per user direction 2026-05-23.
+
+**Trinity ripple:** None. PM-CHAT.md single-surface placement.
 
 ---
 
@@ -992,7 +1037,7 @@ This section is the planner's primary input. The planner refines each commit's t
 
 ### H.2 — PM-CHAT.md `## Behavioral rules` additions (PM-chat orchestration rules)
 
-**Scope:** §C.1 PM-CHAT.md bullet (always-reviewer) + §C.4 (closeout-sequence) + §C.7 (re-read per-agent prompt files) + §C.8 (pack-repo-read-only — REVISED-WORDING per V2 §C.8) + §C.9 (mid-pipeline working-tree intentional) + §C.10 PM-CHAT.md bullet (architect-output user-reads — REVISED-WORDING per V2 §C.10) + §C.11 (open-questions surface) + §D.5 (METHODOLOGY.md Part 7 Procedure 4 cross-reference to PM-CHAT.md closeout-sequence rule).
+**Scope:** §C.1 PM-CHAT.md bullet (always-reviewer) + §C.4 (closeout-sequence) + §C.7 (re-read per-agent prompt files) + §C.8 (pack-repo-read-only — REVISED-WORDING per V2 §C.8) + §C.9 (mid-pipeline working-tree intentional) + §C.10 PM-CHAT.md bullet (architect-output user-reads — REVISED-WORDING per V2 §C.10) + §C.11 (open-questions surface) + §C.13 (decision presentation protocol — NEW per user direction 2026-05-23) + §D.5 (METHODOLOGY.md Part 7 Procedure 4 cross-reference to PM-CHAT.md closeout-sequence rule).
 
 **Files modified:**
 - `project-template/docs/pack/PM-CHAT.md`
@@ -1318,10 +1363,11 @@ This table is the planner's lookup index. Each row names the source (OT-item, le
 | OT-UT-3 (mid-pipeline working-tree intentional) | H.2 | PM-CHAT.md | UNCHANGED | YES | covered by H.4 |
 | OT-UT-4 (OPEN TDs in scope) | (none — OOS) | (none) | UNCHANGED OOS | n/a | n/a |
 | OT-UT-5 (Phase 58b deferred) | (none — OOS) | (none) | UNCHANGED OOS | n/a | n/a |
-| OT-UT-6 PM-CHAT.md half (architect-output user-reads) | H.2 | PM-CHAT.md | REVISED-WORDING per V2 §C.10 (drop pack-side cross-cite) | YES | covered by H.4 |
+| OT-UT-6 PM-CHAT.md half (architect-output user-reads) | H.2 | PM-CHAT.md | REVISED-WORDING per V2 §C.10 (drop pack-side cross-cite + add §C.13 sibling annotation per user direction 2026-05-23) | YES | covered by H.4 |
 | OT-UT-6 METHODOLOGY.md half (Workflow 4 step 4 STRENGTHEN) | H.1 | METHODOLOGY.md | UNCHANGED | YES | covered by H.4 |
 | OT-UT-7 (feature prioritization deferred) | (none — OOS) | (none) | UNCHANGED OOS | n/a | n/a |
-| OT-UT-8 meta (open-questions surface) | H.2 | PM-CHAT.md | UNCHANGED | YES | covered by H.4 |
+| OT-UT-8 meta (open-questions surface) | H.2 | PM-CHAT.md | REVISED-WORDING per V2 §C.11 (add §C.13 sibling annotation per user direction 2026-05-23) | YES | covered by H.4 |
+| **NEW (V2)** — Decision presentation protocol (§C.13) | H.2 | PM-CHAT.md | NEW per user direction 2026-05-23 | YES | covered by H.4 |
 | OT-UT-8 specifics (cadence/concurrency) | (none — OOS) | (none) | UNCHANGED OOS | n/a | n/a |
 | OT-UT-9 (subsumed by OT-T-7) | H.2 | PM-CHAT.md | UNCHANGED (via OT-T-7) | YES | covered by H.4 |
 | OT-UT-10 (/tmp reports ephemeral) | H.5 | METHODOLOGY.md Part 9 | REVISED-WORDING per V2 §C.12 ("Pack Chat" → "PACK-FEEDBACK.md per Part 10") | YES | INLINE (this commit only) |
@@ -1505,6 +1551,7 @@ Per Decision 4 (α-sliding) 2026-05-22, each INLINE reviewer covers a sliding wi
 | 15. Per-BD INLINE reviewer default applied to boundary-sensitive commits | YES — V2 §F D-10 resolution + V2 §H per-commit reviewer assignments | §F + §H |
 | 16. Word-level cleanups applied (not deferred to coder) | YES — V2 §C.6 (BD-178 baseline), §C.8 (drop pack-repo example), §C.10 (drop pack-side cross-cite), §C.12 (Pack Chat → PACK-FEEDBACK.md), §D.1 (drop Tier 1.5 + pack memory cross-cites) | §C.6, §C.8, §C.10, §C.12, §D.1 |
 | 17. Doc structure is well-organized | YES — V2 §A-§L per user prompt + V2 §M architect-review gate omitted (V2 has NO open questions; gate handoff moves directly to planner) | §A-§L |
+| 18. §C.13 user-articulated decision protocol absorbed | YES — V2 §C.13 PM-CHAT.md bullet drafted per user direction 2026-05-23; lands in commit H.2; §B.1 + §I + §C.0 + §H.2 updated; §C.10 + §C.11 sibling annotations added | §C.13 + §B.1 + §I + §C.0 + §H.2 |
 
 
 ---
