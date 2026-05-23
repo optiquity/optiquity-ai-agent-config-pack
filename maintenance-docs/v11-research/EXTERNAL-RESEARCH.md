@@ -1,5 +1,7 @@
 # v11 External Research: Tracker-Backend Capability Survey
 
+> **Update 2026-05-23 — tracker primitive details superseded.** For current verified per-backend grouping-primitive details, deprecation timelines, the 0-5 graded capability matrix, and Tier-1 third-party tracker research (Azure DevOps / YouTrack / Asana / ClickUp), read `maintenance-docs/v11-research/RESEARCH-TRACKER-GROUPING-PRIMITIVES-PER-BACKEND.md` (Pass-1 + Pass-2; 1762 lines; primary-source-cited throughout). Sections of THIS document that remain canonical: §1-§5 (GitHub Issues / gh CLI / MCP / Codex / Gemini integration patterns), §6 (token cost analysis), §7 (migration prior art), §8 (OSS abstraction patterns), §10-§12 (failure modes / lesser-known GH features / CLI version verification). §9's Linear + Jira abstraction-reference content is partially stale; defer to the newer doc.
+
 **Scope.** Read-only external survey of GitHub Issues, the `gh` CLI, the GitHub
 MCP server, Codex CLI, and Gemini CLI capabilities relevant to an *optional*
 v11 tracker integration. Linear and Jira surfaces appear only as abstraction

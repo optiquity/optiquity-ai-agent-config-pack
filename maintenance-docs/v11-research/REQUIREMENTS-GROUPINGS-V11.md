@@ -888,7 +888,7 @@ Planner finalizes the BD breakdown + ordering when v11.1 architect produces the 
 2. **User review** of architect output (per pack memory `feedback_planner_user_review_before_coder` cycle).
 3. **Planner pass** — produce PLAN-GROUPINGS.md with BD breakdown, commit sequencing, verification strategy.
 4. **User review** of planner output.
-5. **Coder cycles** — per-BD implementation with reviewer cycles per pack memory `feedback_review_fix_one_cycle` + `feedback_per_bd_inline_review`.
+5. **Coder cycles** — per-BD implementation with reviewer cycles per pack memory `feedback_review_fix_one_cycle` (covers both single-BD and multi-BD-batch review/fix cadence, including the per-BD INLINE reviewer-before-next-coder-spawn pattern).
 6. **Migration architect/planner/coder pass** (separately scoped per #16 SC16.10) — ARCHITECTURE-v11.0-to-v11.x-migration.md + PLAN-v11.0-to-v11.x-migration.md + implementation.
 7. **End-of-batch reviewer + BD status flip + MIGRATION doc landing + release pin.**
 
