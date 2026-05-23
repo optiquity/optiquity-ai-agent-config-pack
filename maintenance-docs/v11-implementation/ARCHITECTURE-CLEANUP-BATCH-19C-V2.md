@@ -936,7 +936,7 @@ V1 §F surfaced 11 open questions (D-1 through D-10 + D-11 added by PRINCIPLE-CH
 | D-7 | Prescriptiveness of closeout-sequence rule (§C.4) | LAND as written (Alt-1) | **LAND as written** — per V1 recommendation |
 | D-8 | Ship trinity STRENGTHEN for `git checkout --` in this batch | SHIP (Alt-1) | **SHIP, REVISED to apply to BD-178-canonicalized baseline** (per salvageability B5 / V2 §C.6); defense-in-depth exception documented per V2 §D.6.3 |
 | D-9 | Group by RULE vs FILE in commits | GROUP BY RULE (Alt-1) | **GROUP BY RULE** — V1 recommendation preserved; V2 §H sequencing follows the rule-grouping pattern |
-| D-10 | Per-commit reviewer vs end-of-batch only | END-OF-BATCH ONLY (Alt-1) | **HYBRID — per-BD INLINE reviewer for trinity / boundary-sensitive commits; END-OF-BATCH for non-boundary-sensitive + cross-batch surface** per user direction citing post-BD-175 per-BD-INLINE default. V2 §H attaches per-commit reviewer to H.4, H.5, H.9, H.10, H.11, H.13, H.14, H.15, H.16 (H.15 added per Decision 4 (b) 2026-05-22 user-directed symmetric trinity coverage; H.5 alignment with §I + §H.5 + §J.6). |
+| D-10 | Per-commit reviewer vs end-of-batch only | END-OF-BATCH ONLY (Alt-1) | **HYBRID — per-BD INLINE reviewer for trinity / boundary-sensitive commits; END-OF-BATCH for non-boundary-sensitive + cross-batch surface** per user direction citing post-BD-175 per-BD-INLINE default. V2 §H attaches per-commit reviewer to H.4, H.5, H.9, H.10, H.11, H.13, H.14, H.15, H.16 (H.15 added per Decision 4 (b) 2026-05-22 user-directed symmetric trinity coverage; H.5 alignment with §I + §H.5 + §J.6). Reviewer scope refined per Decision 4 (α-sliding) 2026-05-22: each INLINE reviewer covers the diff from prior INLINE commit (or H.0 baseline) through current commit, ensuring no commits are unreviewed before H.17 end-of-batch. Coverage windows: H.4 covers H.1-H.4; H.9 covers H.6+H.7+H.9; H.13 covers H.12+H.13; other INLINE commits cover their own diff only. |
 | D-11 | PM-chat omniscience principle (added by PRINCIPLE-CHECK §6) | LAND in METHODOLOGY.md Part 1 + cascade (Alt-1) | **LAND in METHODOLOGY.md Part 1 + cascade applied** per V2 §D.6 + V2 §C.0 cascade summary |
 
 **No open questions remain in V2.** The architect-doc-to-planner gate is fully resolved. Planner consumes V2 directly; no further architect pass.
@@ -1030,7 +1030,7 @@ This section is the planner's primary input. The planner refines each commit's t
 - `project-template/AGENTS.md`
 - `project-template/GEMINI.md`
 
-**Per-commit reviewer:** **REQUIRED INLINE** (trinity edit; boundary-sensitive per post-BD-175 default; reviewer verifies trinity parity + BD-178 baseline correctness + Override 9 non-applicability).
+**Per-commit reviewer:** **REQUIRED INLINE — sliding-window scope per Decision 4 (α-sliding) 2026-05-22.** Reviews the diff from the H.0 baseline through end of this commit — i.e., H.1 + H.2 + H.3 + H.4 (4 commits). Scope expands to include the H.1 METHODOLOGY workflow additions, H.2 PM-CHAT.md behavioral rules, and H.3 PM-CHAT.md STRENGTHEN in addition to this commit's trinity edit. Trinity edit; boundary-sensitive per post-BD-175 default; reviewer verifies trinity parity + BD-178 baseline correctness + Override 9 non-applicability.
 
 **RC9 manifest regen:** **REQUIRED** (`project-template/` in v11-surface; trinity edits trigger).
 
@@ -1045,7 +1045,7 @@ This section is the planner's primary input. The planner refines each commit's t
 **Files modified:**
 - `supporting-docs/METHODOLOGY.md`
 
-**Per-commit reviewer:** **REQUIRED INLINE** (substantive methodology additions; §D.4 introduces 3 new mid-phase planner triggers — non-trivial procedural surface; reviewer verifies trigger boundaries vs architect-trigger demarcation).
+**Per-commit reviewer:** **REQUIRED INLINE — sliding-window scope per Decision 4 (α-sliding) 2026-05-22.** Reviews this commit's diff only (sliding window = H.5 alone; prior INLINE reviewer was H.4 covering H.1-H.4). Substantive methodology additions; §D.4 introduces 3 new mid-phase planner triggers — non-trivial procedural surface; reviewer verifies trigger boundaries vs architect-trigger demarcation.
 
 **RC9 manifest regen:** **REQUIRED** (`supporting-docs/` in v11-surface).
 
@@ -1102,7 +1102,7 @@ V1's H.8 was the end-of-batch reviewer + status flip. V2 renumbers this to H.17 
 - `project-template/docs/project/changelog/_intro.md` (Category B)
 - `project-template/docs/project/changelog/_format.md` (Category B)
 
-**Per-commit reviewer:** **REQUIRED INLINE** (boundary-sensitive; reviewer verifies each cite is correctly dropped OR replaced; reviewer scans the 7 files for any new leaks introduced).
+**Per-commit reviewer:** **REQUIRED INLINE — sliding-window scope per Decision 4 (α-sliding) 2026-05-22.** Reviews the diff from the prior INLINE commit (H.5) through end of this commit — i.e., H.6 + H.7 + H.9 (3 commits; H.8 was removed and renumbered to H.17). Scope expands to include the H.6 METHODOLOGY Procedure 1 STRENGTHEN and H.7 PM-CHAT.md per-project Claude memory cache addition in addition to this commit's leak sweep. Boundary-sensitive; reviewer verifies each cite is correctly dropped OR replaced; reviewer scans the 7 files for any new leaks introduced.
 
 **RC9 manifest regen:** **REQUIRED** (`project-template/` in v11-surface).
 
@@ -1125,7 +1125,7 @@ V1's H.8 was the end-of-batch reviewer + status flip. V2 renumbers this to H.17 
 - `project-template/.gemini/commands/pm-startup.toml` (cite tail dropped)
 - `project-template/skills/boundary-investigation/SKILL.md` (Category F — cite replaced with prose)
 
-**Per-commit reviewer:** **REQUIRED INLINE** (boundary-sensitive; reviewer verifies each cite removal preserves surrounding prose intelligibility; reviewer verifies the pm-startup cluster sibling sweep is byte-identical across the 4 sibling files where appropriate per pack-shipped distribution pattern; reviewer specifically checks boundary-investigation skill's replacement prose — the BD-175 self-leak fix must not re-introduce a different leak).
+**Per-commit reviewer:** **REQUIRED INLINE — sliding-window scope per Decision 4 (α-sliding) 2026-05-22.** Reviews this commit's diff only (sliding window = H.10 alone; prior INLINE reviewer was H.9 covering H.6+H.7+H.9). Boundary-sensitive; reviewer verifies each cite removal preserves surrounding prose intelligibility; reviewer verifies the pm-startup cluster sibling sweep is byte-identical across the 4 sibling files where appropriate per pack-shipped distribution pattern; reviewer specifically checks boundary-investigation skill's replacement prose — the BD-175 self-leak fix must not re-introduce a different leak.
 
 **RC9 manifest regen:** **REQUIRED** (`project-template/` + `scripts/` both in v11-surface).
 
@@ -1146,7 +1146,7 @@ V1's H.8 was the end-of-batch reviewer + status flip. V2 renumbers this to H.17 
 **Files modified:**
 - `project-template/docs/pack/prompts/pm-chat.md` (three variants rewritten)
 
-**Per-commit reviewer:** **REQUIRED INLINE** (boundary-sensitive; substantive content rewrite for 3 variants; reviewer verifies each variant's rewrite achieves the same user-facing contract — generating a setup, generating an agent-kickoff, completing manual fallback — without citing pre-install template files; reviewer also verifies no new leaks are introduced in the rewritten content).
+**Per-commit reviewer:** **REQUIRED INLINE — sliding-window scope per Decision 4 (α-sliding) 2026-05-22.** Reviews this commit's diff only (sliding window = H.11 alone; prior INLINE reviewer was H.10 covering H.10). Boundary-sensitive; substantive content rewrite for 3 variants; reviewer verifies each variant's rewrite achieves the same user-facing contract — generating a setup, generating an agent-kickoff, completing manual fallback — without citing pre-install template files; reviewer also verifies no new leaks are introduced in the rewritten content.
 
 **RC9 manifest regen:** **REQUIRED** (`project-template/` in v11-surface).
 
@@ -1190,7 +1190,7 @@ V1's H.8 was the end-of-batch reviewer + status flip. V2 renumbers this to H.17 
 - `project-template/docs/pack/PM-CHAT.md` (if `_CHECK_37_PER_LINE_FENCE_FILES` includes per contract §2.3 — verify scope per coder)
 - `scripts/tests/test-validate-pack-checks-36-37-38.sh` (Group 6 test cases)
 
-**Per-commit reviewer:** **REQUIRED INLINE** (boundary-sensitive; touches project-side trinity AND prompts AND skill; reviewer verifies fence placement preserves intended exempt-content scope AND outside-fence content does NOT contain pack-internal cites — H.10 Category F should have cleared the boundary-investigation skill's `AUDIT-USER-CURATION.md` cite first; fence ratifies the cleaned state).
+**Per-commit reviewer:** **REQUIRED INLINE — sliding-window scope per Decision 4 (α-sliding) 2026-05-22.** Reviews the diff from the prior INLINE commit (H.11) through end of this commit — i.e., H.12 + H.13 (2 commits). Scope expands to include the H.12 Guardrail 3 `_PROJECT_SIDE_ROOTS` scope expansion + new validate-pack.py test cases in addition to this commit's fence work. Boundary-sensitive; touches project-side trinity AND prompts AND skill; reviewer verifies fence placement preserves intended exempt-content scope AND outside-fence content does NOT contain pack-internal cites — H.10 Category F should have cleared the boundary-investigation skill's `AUDIT-USER-CURATION.md` cite first; fence ratifies the cleaned state.
 
 **RC9 manifest regen:** **REQUIRED** (`project-template/` + `scripts/` both in v11-surface).
 
@@ -1210,7 +1210,7 @@ V1's H.8 was the end-of-batch reviewer + status flip. V2 renumbers this to H.17 
 - `scripts/tests/fixtures/project-side-refs/` (NEW directory with 13 fixture files: 7 FAIL + 5 PASS + 1 README per contract §1.10)
 - `.github/workflows/validate-pack.yml` (single new test-invocation line per contract §1.11)
 
-**Per-commit reviewer:** **REQUIRED INLINE** (NEW CI check; reviewer verifies the contract §1 implementation matches the spec — class-test allowlist; supporting-docs/ subset rule; FAIL-condition coverage; fixture-test enumeration; CI wiring).
+**Per-commit reviewer:** **REQUIRED INLINE — sliding-window scope per Decision 4 (α-sliding) 2026-05-22.** Reviews this commit's diff only (sliding window = H.14 alone; prior INLINE reviewer was H.13 covering H.12+H.13). NEW CI check; reviewer verifies the contract §1 implementation matches the spec — class-test allowlist; supporting-docs/ subset rule; FAIL-condition coverage; fixture-test enumeration; CI wiring.
 
 **RC9 manifest regen:** **REQUIRED** (`scripts/` in v11-surface; `.github/workflows/` is NOT in RC9 trigger but `scripts/` change forces regen).
 
@@ -1235,7 +1235,7 @@ V1's H.8 was the end-of-batch reviewer + status flip. V2 renumbers this to H.17 
 - `GEMINI.md` (pack root)
 - `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md`
 
-**Per-commit reviewer:** **REQUIRED INLINE** per Decision 4 (b) 2026-05-22 (user-directed symmetric trinity coverage with H.4 — pack-root trinity edit warrants per-commit review by parity with project-template trinity edit; mechanical CI parity guards (Check 18 + 16 + 19 + 42) are necessary but reviewer also verifies PREFLIGHT contract fidelity + appropriate Check 43 wording across all three pack-root trinity files + PACK-AGENTS.md + CONCEPTUAL-REVIEW-METHODOLOGY.md).
+**Per-commit reviewer:** **REQUIRED INLINE — sliding-window scope per Decision 4 (α-sliding) 2026-05-22.** Reviews this commit's diff only (sliding window = H.15 alone; prior INLINE reviewer was H.14 covering H.14). Decision 4 (b) 2026-05-22 user-directed symmetric trinity coverage with H.4 — pack-root trinity edit warrants per-commit review by parity with project-template trinity edit; mechanical CI parity guards (Check 18 + 16 + 19 + 42) are necessary but reviewer also verifies PREFLIGHT contract fidelity + appropriate Check 43 wording across all three pack-root trinity files + PACK-AGENTS.md + CONCEPTUAL-REVIEW-METHODOLOGY.md.
 
 **RC9 manifest regen:** **REQUIRED** (`pack-ops/` in v11-surface per BD-176 expansion; pack-root trinity is also in v11-surface — note: pack-root trinity is in `project-template/` only per RC9 directory list? No — pack-root trinity at `/CLAUDE.md` is NOT under `project-template/`; it lives at the pack repo root. Per BD-176 expansion, the v11-surface set is {project-template/, scripts/, pack-ops/, supporting-docs/}; pack-root trinity at the repo ROOT is NOT in this set by directory listing — BUT the pack-root trinity may be a fixture-affecting target if `test-fixtures/build.sh` reads it. Coder verifies before commit by running `bash test-fixtures/build.sh --all --clean` and inspecting the manifest diff; if non-empty, stage the manifest in the same commit; if empty, the trinity edit didn't affect fixtures.).
 
@@ -1256,7 +1256,7 @@ V1's H.8 was the end-of-batch reviewer + status flip. V2 renumbers this to H.17 
 **Files modified:**
 - `supporting-docs/METHODOLOGY.md`
 
-**Per-commit reviewer:** **REQUIRED INLINE** (substantive methodology addition; D-11 principle is the load-bearing architectural principle for V2; reviewer verifies the principle wording does NOT cite pack-side memory entries — salvageability B9 — and verifies the OT-UT-1 paragraph names all three CLIs per BD-182 §4.1 cross-CLI canonical pattern for shared documents).
+**Per-commit reviewer:** **REQUIRED INLINE — sliding-window scope per Decision 4 (α-sliding) 2026-05-22.** Reviews this commit's diff only (sliding window = H.16 alone; prior INLINE reviewer was H.15 covering H.15). Substantive methodology addition; D-11 principle is the load-bearing architectural principle for V2; reviewer verifies the principle wording does NOT cite pack-side memory entries — salvageability B9 — and verifies the OT-UT-1 paragraph names all three CLIs per BD-182 §4.1 cross-CLI canonical pattern for shared documents.
 
 **RC9 manifest regen:** **REQUIRED** (`supporting-docs/` in v11-surface).
 
@@ -1303,51 +1303,50 @@ This table is the planner's lookup index. Each row names the source (OT-item, le
 
 | Source | V2 commit | Target file(s) | V2 verdict | RC9 fires? | Per-commit reviewer? |
 |---|---|---|---|---|---|
-| OT-T-1 PM-CHAT.md half (always-reviewer-after-coder) | H.2 | PM-CHAT.md | UNCHANGED | YES | SKIP |
-| OT-T-1 METHODOLOGY.md half (cycle invariant callout) | H.1 | METHODOLOGY.md | UNCHANGED | YES (post-BD-176) | SKIP |
-| OT-T-2 (architect-trigger surface-even-mechanical) | H.1 | METHODOLOGY.md | UNCHANGED | YES | SKIP |
-| OT-T-3 (BACKLOG-between-phases proactive) | H.6 | METHODOLOGY.md | UNCHANGED (LAND per D-3) | YES | SKIP |
-| OT-T-4 PM-CHAT.md half (closeout-sequence) | H.2 | PM-CHAT.md | UNCHANGED | YES | SKIP |
-| OT-T-4 METHODOLOGY.md cross-ref (D-5) | H.2 | METHODOLOGY.md | UNCHANGED | YES | SKIP |
-| OT-T-5 (no-chained-git-add — STRENGTHEN "Source file edits") | H.3 | PM-CHAT.md | UNCHANGED | YES | SKIP |
-| OT-T-6 PM-CHAT.md half (PM-chat-never-edits-source) | H.3 | PM-CHAT.md | UNCHANGED | YES | SKIP |
-| OT-T-6 trinity half (destructive-ops list `git checkout --` extension) | H.4 | project-template/ trinity ×3 | REVISED-WORDING (BD-178 baseline; defense-in-depth exception per §D.6.3) | YES | **INLINE** |
-| OT-T-7 (re-read per-agent prompt file + REPORT FILE verify) | H.2 | PM-CHAT.md | UNCHANGED placement; REFRAME-DELIVERY via PM-chat injection | YES | SKIP |
-| OT-UT-1 (Agent Teams stage lifecycle) | H.16 | METHODOLOGY.md Part 1 (Claude Code CLI sub-section) | REVISED-PLACEMENT per V2 §D.7 (NOT in trinity; informational paragraph in METHODOLOGY) | YES | INLINE |
-| OT-UT-2 (pack-repo-is-read-only) | H.2 | PM-CHAT.md | REVISED-WORDING per V2 §C.8 (drop "supporting-docs/" example + "Pack Chat" cite) | YES | SKIP |
-| OT-UT-3 (mid-pipeline working-tree intentional) | H.2 | PM-CHAT.md | UNCHANGED | YES | SKIP |
+| OT-T-1 PM-CHAT.md half (always-reviewer-after-coder) | H.2 | PM-CHAT.md | UNCHANGED | YES | covered by H.4 |
+| OT-T-1 METHODOLOGY.md half (cycle invariant callout) | H.1 | METHODOLOGY.md | UNCHANGED | YES (post-BD-176) | covered by H.4 |
+| OT-T-2 (architect-trigger surface-even-mechanical) | H.1 | METHODOLOGY.md | UNCHANGED | YES | covered by H.4 |
+| OT-T-3 (BACKLOG-between-phases proactive) | H.6 | METHODOLOGY.md | UNCHANGED (LAND per D-3) | YES | covered by H.9 |
+| OT-T-4 PM-CHAT.md half (closeout-sequence) | H.2 | PM-CHAT.md | UNCHANGED | YES | covered by H.4 |
+| OT-T-4 METHODOLOGY.md cross-ref (D-5) | H.2 | METHODOLOGY.md | UNCHANGED | YES | covered by H.4 |
+| OT-T-5 (no-chained-git-add — STRENGTHEN "Source file edits") | H.3 | PM-CHAT.md | UNCHANGED | YES | covered by H.4 |
+| OT-T-6 PM-CHAT.md half (PM-chat-never-edits-source) | H.3 | PM-CHAT.md | UNCHANGED | YES | covered by H.4 |
+| OT-T-6 trinity half (destructive-ops list `git checkout --` extension) | H.4 | project-template/ trinity ×3 | REVISED-WORDING (BD-178 baseline; defense-in-depth exception per §D.6.3) | YES | **INLINE (sliding from H.1)** |
+| OT-T-7 (re-read per-agent prompt file + REPORT FILE verify) | H.2 | PM-CHAT.md | UNCHANGED placement; REFRAME-DELIVERY via PM-chat injection | YES | covered by H.4 |
+| OT-UT-1 (Agent Teams stage lifecycle) | H.16 | METHODOLOGY.md Part 1 (Claude Code CLI sub-section) | REVISED-PLACEMENT per V2 §D.7 (NOT in trinity; informational paragraph in METHODOLOGY) | YES | INLINE (this commit only) |
+| OT-UT-2 (pack-repo-is-read-only) | H.2 | PM-CHAT.md | REVISED-WORDING per V2 §C.8 (drop "supporting-docs/" example + "Pack Chat" cite) | YES | covered by H.4 |
+| OT-UT-3 (mid-pipeline working-tree intentional) | H.2 | PM-CHAT.md | UNCHANGED | YES | covered by H.4 |
 | OT-UT-4 (OPEN TDs in scope) | (none — OOS) | (none) | UNCHANGED OOS | n/a | n/a |
 | OT-UT-5 (Phase 58b deferred) | (none — OOS) | (none) | UNCHANGED OOS | n/a | n/a |
-| OT-UT-6 PM-CHAT.md half (architect-output user-reads) | H.2 | PM-CHAT.md | REVISED-WORDING per V2 §C.10 (drop pack-side cross-cite) | YES | SKIP |
-| OT-UT-6 METHODOLOGY.md half (Workflow 4 step 4 STRENGTHEN) | H.1 | METHODOLOGY.md | UNCHANGED | YES | SKIP |
+| OT-UT-6 PM-CHAT.md half (architect-output user-reads) | H.2 | PM-CHAT.md | REVISED-WORDING per V2 §C.10 (drop pack-side cross-cite) | YES | covered by H.4 |
+| OT-UT-6 METHODOLOGY.md half (Workflow 4 step 4 STRENGTHEN) | H.1 | METHODOLOGY.md | UNCHANGED | YES | covered by H.4 |
 | OT-UT-7 (feature prioritization deferred) | (none — OOS) | (none) | UNCHANGED OOS | n/a | n/a |
-| OT-UT-8 meta (open-questions surface) | H.2 | PM-CHAT.md | UNCHANGED | YES | SKIP |
+| OT-UT-8 meta (open-questions surface) | H.2 | PM-CHAT.md | UNCHANGED | YES | covered by H.4 |
 | OT-UT-8 specifics (cadence/concurrency) | (none — OOS) | (none) | UNCHANGED OOS | n/a | n/a |
-| OT-UT-9 (subsumed by OT-T-7) | H.2 | PM-CHAT.md | UNCHANGED (via OT-T-7) | YES | SKIP |
-| OT-UT-10 (/tmp reports ephemeral) | H.5 | METHODOLOGY.md Part 9 | REVISED-WORDING per V2 §C.12 ("Pack Chat" → "PACK-FEEDBACK.md per Part 10") | YES | INLINE |
-| OT PM gap A (mid-phase planner P-A/P-B/P-C) | H.5 | METHODOLOGY.md Workflow 4 (new sub-section) | UNCHANGED (LAND per D-6) | YES | INLINE |
+| OT-UT-9 (subsumed by OT-T-7) | H.2 | PM-CHAT.md | UNCHANGED (via OT-T-7) | YES | covered by H.4 |
+| OT-UT-10 (/tmp reports ephemeral) | H.5 | METHODOLOGY.md Part 9 | REVISED-WORDING per V2 §C.12 ("Pack Chat" → "PACK-FEEDBACK.md per Part 10") | YES | INLINE (this commit only) |
+| OT PM gap A (mid-phase planner P-A/P-B/P-C) | H.5 | METHODOLOGY.md Workflow 4 (new sub-section) | UNCHANGED (LAND per D-6) | YES | INLINE (this commit only) |
 | OT PM gap B (closeout elevation) | (combined with OT-T-4) | (see OT-T-4) | UNCHANGED | (see OT-T-4) | (see OT-T-4) |
-| OT PM gap C (cycle-termination) | H.1 | METHODOLOGY.md | UNCHANGED (LAND per D-5) | YES | SKIP |
-| Arch derived 1 (rule placement: trinity vs PM-CHAT.md vs METHODOLOGY.md) | H.5 | METHODOLOGY.md Part 9 (new sub-section) | REVISED-PLACEMENT per V2 §D.2 (SUBSIDIARY of D-11 principle) | YES | INLINE |
-| Arch derived 2 (per-project Claude memory cache convention) | H.7 | PM-CHAT.md "Tool-specific: Claude Code CLI" | REVISED-WORDING per V2 §D.1 (drop "Tier 1.5" + "pack memory" cross-cites) | YES | SKIP |
-| **NEW (V2)** — D-11 PM-chat omniscience principle | H.16 | METHODOLOGY.md Part 1 (new sub-section) | NEW per V2 §D.6 | YES | INLINE |
-| **NEW (V2)** — Leak sweep Category A+B per-entry skeletons | H.9 | 7 per-entry skeleton files under project-template/docs/project/ | NEW | YES | INLINE |
-| **NEW (V2)** — Leak sweep Category D+E+F mechanical sweep | H.10 | scripts/lib/detect.sh + PM-CHAT.md + 4 pm-startup cluster files + boundary-investigation/SKILL.md | NEW | YES | INLINE |
-| **NEW (V2)** — Leak sweep Category C pm-chat variants rewrite | H.11 | prompts/pm-chat.md | NEW (per user C-c) | YES | INLINE |
-| **NEW (V2)** — Guardrail 3 scope expansion (`_iter_client_installed_files`) | H.12 | scripts/validate-pack.py + scripts/tests/ | NEW | YES | SKIP |
-| **NEW (V2)** — Guardrail 2 per-line fence (Check 37 mod + 7 fenced files) | H.13 | scripts/validate-pack.py + 7 project-template/ files + scripts/tests/ | NEW | YES | INLINE |
-| **NEW (V2)** — Guardrail 1 Check 43 (project-side bare-cross-ref scanner) | H.14 | scripts/validate-pack.py + scripts/tests/test-validate-pack-check-43.sh (NEW) + scripts/tests/fixtures/project-side-refs/ (NEW) + .github/workflows/validate-pack.yml | NEW | YES | INLINE |
-| **NEW (V2)** — Guardrail 4 PREFLIGHT extension (Check 43 verification) | H.15 | pack-ops/PACK-AGENTS.md + pack-root trinity ×3 + pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md (+ memory cache via Pack Chat direct edit, outside commit) | NEW | YES | INLINE |
+| OT PM gap C (cycle-termination) | H.1 | METHODOLOGY.md | UNCHANGED (LAND per D-5) | YES | covered by H.4 |
+| Arch derived 1 (rule placement: trinity vs PM-CHAT.md vs METHODOLOGY.md) | H.5 | METHODOLOGY.md Part 9 (new sub-section) | REVISED-PLACEMENT per V2 §D.2 (SUBSIDIARY of D-11 principle) | YES | INLINE (this commit only) |
+| Arch derived 2 (per-project Claude memory cache convention) | H.7 | PM-CHAT.md "Tool-specific: Claude Code CLI" | REVISED-WORDING per V2 §D.1 (drop "Tier 1.5" + "pack memory" cross-cites) | YES | covered by H.9 |
+| **NEW (V2)** — D-11 PM-chat omniscience principle | H.16 | METHODOLOGY.md Part 1 (new sub-section) | NEW per V2 §D.6 | YES | INLINE (this commit only) |
+| **NEW (V2)** — Leak sweep Category A+B per-entry skeletons | H.9 | 7 per-entry skeleton files under project-template/docs/project/ | NEW | YES | INLINE (sliding from H.6) |
+| **NEW (V2)** — Leak sweep Category D+E+F mechanical sweep | H.10 | scripts/lib/detect.sh + PM-CHAT.md + 4 pm-startup cluster files + boundary-investigation/SKILL.md | NEW | YES | INLINE (this commit only) |
+| **NEW (V2)** — Leak sweep Category C pm-chat variants rewrite | H.11 | prompts/pm-chat.md | NEW (per user C-c) | YES | INLINE (this commit only) |
+| **NEW (V2)** — Guardrail 3 scope expansion (`_iter_client_installed_files`) | H.12 | scripts/validate-pack.py + scripts/tests/ | NEW | YES | covered by H.13 |
+| **NEW (V2)** — Guardrail 2 per-line fence (Check 37 mod + 7 fenced files) | H.13 | scripts/validate-pack.py + 7 project-template/ files + scripts/tests/ | NEW | YES | INLINE (sliding from H.12) |
+| **NEW (V2)** — Guardrail 1 Check 43 (project-side bare-cross-ref scanner) | H.14 | scripts/validate-pack.py + scripts/tests/test-validate-pack-check-43.sh (NEW) + scripts/tests/fixtures/project-side-refs/ (NEW) + .github/workflows/validate-pack.yml | NEW | YES | INLINE (this commit only) |
+| **NEW (V2)** — Guardrail 4 PREFLIGHT extension (Check 43 verification) | H.15 | pack-ops/PACK-AGENTS.md + pack-root trinity ×3 + pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md (+ memory cache via Pack Chat direct edit, outside commit) | NEW | YES | INLINE (this commit only) |
 | End-of-batch reviewer + BD-173 status flip | H.17 | (review pass; status flip in pack-ops/BACKLOG.md) | NEW (replaces V1 H.8) | possible (depends on fix-commit content) | n/a |
 
 **Net commit count:** 16 implementation commits (H.1-H.16) + 1 review/close commit (H.17) = 17 commits.
 
 **Net per-commit reviewer breakdown:**
-- INLINE reviewer commits: H.4, H.5, H.9, H.10, H.11, H.13, H.14, H.15, H.16 — **9 commits**.
-- SKIP commits: H.1, H.2, H.3, H.6, H.7, H.12 — **6 commits**.
-- End-of-batch reviewer: H.17 — 1 commit (covers all 16 implementation commits).
+- INLINE reviewer commits (sliding-window per Decision 4 (α-sliding) 2026-05-22): H.4 (covers H.1-H.4), H.5 (covers H.5), H.9 (covers H.6+H.7+H.9), H.10 (covers H.10), H.11 (covers H.11), H.13 (covers H.12+H.13), H.14 (covers H.14), H.15 (covers H.15), H.16 (covers H.16) — **9 sliding-window passes covering all 16 implementation commits with no gaps before H.17**.
+- End-of-batch reviewer: H.17 — 1 pass over full batch diff (H.0 → end of H.16) as backstop.
 
-**Per-commit reviewer count = 9 INLINE + 1 END-OF-BATCH = 10 reviewer passes total.** Each INLINE pass triggers a potential fix-coder cycle (default fix-all per Pack Chat protocol; user triages per finding); the end-of-batch pass covers the cumulative batch state.
+**Total reviewer passes = 9 sliding-window INLINE + 1 END-OF-BATCH = 10 passes total. Every implementation commit is reviewed at least once before H.17; H.17 provides cross-cutting integration coverage.** Each INLINE pass triggers a potential fix-coder cycle (default fix-all per Pack Chat protocol; user triages per finding); the end-of-batch pass covers the cumulative batch state.
 
 ---
 
@@ -1399,6 +1398,8 @@ V1 anticipated a `pack-docs-researcher` pass between V1 and V2. The G-1..G-9 res
 V1 §F D-10 recommended END-OF-BATCH ONLY for the single-BD batch. V2 §F D-10 resolution: HYBRID — INLINE for trinity / boundary-sensitive commits (H.4, H.5, H.9, H.10, H.11, H.13, H.14, H.15, H.16); END-OF-BATCH for non-boundary-sensitive commits + the cumulative batch surface (H.17).
 
 **Augmentation rationale:** Post-BD-175 per-BD-INLINE review pattern is the default for trinity-touching and boundary-sensitive work. The hybrid is conservative — boundary-sensitive commits get inline coverage to catch leak regressions before they stack, AND the end-of-batch reviewer covers cross-cutting concerns the per-commit reviewers might miss.
+
+**Sliding-window refinement (Decision 4 (α-sliding) 2026-05-22):** Each INLINE reviewer's scope is the diff from the prior INLINE commit (or H.0 baseline) through end of its own commit, NOT just its own commit's diff. This ensures the 6 commits marked `covered by H.N` (H.1, H.2, H.3, H.6, H.7, H.12) are reviewed before H.17 rather than only at end-of-batch — closes the gap between per-BD-INLINE intent and per-commit coverage. Coverage windows: H.4 covers H.1-H.4 (4 commits); H.5 covers H.5 only; H.9 covers H.6+H.7+H.9 (3 commits); H.10/H.11/H.14/H.15/H.16 each cover own diff only; H.13 covers H.12+H.13 (2 commits). H.17 end-of-batch reviewer remains as backstop for cross-cutting integration.
 
 **No conflict** with Batch 19b precedent — Batch 19b was multi-BD and ran per-BD inline reviews per the same default. V2 applies the default to V2's boundary-sensitive commits.
 
@@ -1461,7 +1462,9 @@ V1 §F D-10 recommended END-OF-BATCH ONLY for the single-BD batch. V2 §F D-10 r
 
 **Impact:** Batch 19c grows from V1's 8 commits to V2's 17 commits. End-of-batch reviewer scope is substantial but bounded by the per-commit inline reviewers firing on every boundary-sensitive commit.
 
-**Mitigation:** Per-commit inline reviewer on H.4, H.9, H.10, H.11, H.13, H.14, H.16 catches per-commit issues before they stack. End-of-batch reviewer on H.17 covers cross-cutting concerns. The deferral-is-scope-creep rule cuts both ways here: deferring 36 already-identified leaks behind a new BD-185 pipeline would be a worse violation (per leak-sweep strategy §2.4 + §5.4). The user's Option (b) decision is the documented defense.
+**Mitigation:** Per-commit inline reviewer on H.4, H.5, H.9, H.10, H.11, H.13, H.14, H.15, H.16 catches per-commit issues before they stack. End-of-batch reviewer on H.17 covers cross-cutting concerns. The deferral-is-scope-creep rule cuts both ways here: deferring 36 already-identified leaks behind a new BD-185 pipeline would be a worse violation (per leak-sweep strategy §2.4 + §5.4). The user's Option (b) decision is the documented defense.
+
+Per Decision 4 (α-sliding) 2026-05-22, each INLINE reviewer covers a sliding window (prior INLINE or H.0 → current commit), so SKIP-per-commit commits H.1/H.2/H.3 (covered by H.4), H.6/H.7 (covered by H.9), H.12 (covered by H.13) are reviewed before H.17 — no gaps in pre-H.17 coverage.
 
 ### K.8 — NEW V2 RISK: Guardrail 4 PREFLIGHT extension requires PM-only edits to pack-side surfaces from a single-BD batch
 
@@ -1490,7 +1493,7 @@ V1 §F D-10 recommended END-OF-BATCH ONLY for the single-BD batch. V2 §F D-10 r
 | 3. Open questions are resolved (V2 has NO open questions) | YES — V2 §F closes all 11 V1 questions (D-1..D-10 + D-11) | §F |
 | 4. Placement decisions name exact files + sections | YES — every V2 §C placement names file + section + insertion anchor + edit type | §C |
 | 5. Research-need flags are confirmed (G-1..G-9 verdicts) | YES — all 9 G verdicts reconfirmed per V2 §G | §G + salvageability §5 + research doc |
-| 6. Commit sequencing has realistic granularity | YES — 17 commits with rule-grouping; INLINE reviewer on 8 boundary-sensitive commits; END-OF-BATCH on H.17 | §H |
+| 6. Commit sequencing has realistic granularity | YES — 17 commits with rule-grouping; INLINE reviewer on 9 boundary-sensitive commits; END-OF-BATCH on H.17 | §H |
 | 7. Out-of-scope items are explicit and rationale-justified | YES — V1 §E carried verbatim + V2 §E.6 caveat for in-scope absorbed work | §E |
 | 8. OT PM's flagged gaps are addressed (YES/NO/RESEARCH per item) | YES — D-3 LAND, D-5 LAND, D-6 LAND (CONDITIONAL flags closed per V2 §B.1) | §C.3 + §D.3 + §D.4 + §C.4/§D.5 combined |
 | 9. Leak sweep absorbed with category-distinct fix-shapes | YES — Categories A+B in H.9, D+E+F in H.10, C-c in H.11 per V2 §H | §B.2 + §H.9-H.11 |
