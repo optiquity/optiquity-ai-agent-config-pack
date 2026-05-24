@@ -25,7 +25,7 @@ generate-agent-kickoff).
 **Before pasting:**
 - If you are running Gemini CLI and currently in plan mode (`/plan`), exit plan mode before continuing — kickoff requires shell execution.
 - If you are pasting this into Claude Web or ChatGPT Web without shell access, reply `manual` when asked below.
-- Shell-capable surfaces run kickoff auto-discovery (INSTALL-PROCEDURES.md Procedure 7); non-shell surfaces use SETUP-NEW.md § Manual fallback.
+- Shell-capable surfaces run kickoff auto-discovery (INSTALL-PROCEDURES.md Procedure 7); non-shell surfaces use the manual-fallback prose under the `manual` branch of this prompt (see "Next, based on your surface declaration" below).
 
 I am starting a new Claude Chat session for **[PROJECT_NAME]**.
 
@@ -91,9 +91,49 @@ directly (not via RAG — Procedure 7 is order-sensitive) and follow
 its gates G7-discovery / G7-install / G7-edit / G7-machine before
 any write or install.
 
-On `manual`: I will point you at `supporting-docs/SETUP-NEW.md` §
-Manual fallback (sub-sections 5.A–5.D) and wait for you to report
-values back, then compose the corresponding edits for you to apply.
+On `manual`: Procedure 7 is shell-only (see Procedure 7 § 7.0) and
+is not entered on non-shell surfaces. I will instead walk you
+through the manual-fallback equivalents in-chat. You run the
+commands locally and report values back to me; I will compose the
+corresponding file edits for you to paste. The manual-fallback
+covers the same four sub-flows Procedure 7 automates:
+
+- **M.A — (Apple only) Xcode scheme variables.** Run
+  `xcodebuild -list` and `xcrun simctl list devices available`
+  locally and report the chosen scheme name + a destination string
+  (e.g., `platform=iOS Simulator,name=iPhone 16,OS=latest` or
+  `platform=macOS`). I will compose the corresponding edits to
+  `scripts/validate-swift.sh`, `scripts/test-swift.sh`, the
+  `env` block of your CLI's settings file (the trinity
+  `## Document locations` table names the per-CLI path), and —
+  only if your project uses an Xcode-generated source layout (e.g.,
+  `MyApp/` and `MyAppTests/` rather than SPM's `Sources/` and
+  `Tests/`) — `SWIFT_SOURCE_DIRS` in `scripts/format-swift.sh`.
+
+- **M.B — (Apple only) Install swift-format.** Run
+  `brew install swift-format` locally. `scripts/format.sh` warns
+  and exits 0 if swift-format is not installed, so this is not
+  blocking, but you want it for local formatting.
+
+- **M.C — (gRPC only) Set up proto code generation.** Run
+  `brew install bufbuild/buf/buf`, `brew install swift-protobuf`,
+  `brew install grpc-swift` for the Apple side; for the Python
+  side, `uv add grpcio-tools grpcio grpcio-status grpcio-reflection`.
+  Then replace the example service at
+  `proto/example/v1/example_service.proto` with your own and run
+  `./scripts/proto-gen.sh`.
+
+- **M.D — (Apple only) Install Xcode companion files (machine-level,
+  once per Mac).** Create the target directories and copy the four
+  files from the pack's `xcode-companion-templates/` directory into
+  `~/Library/Developer/Xcode/CodingAssistant/`. The two
+  sub-directories are `ClaudeAgentConfig/` (CLAUDE.md + settings.json)
+  and `codex/` (AGENTS.md + config.toml). Report `done` once the
+  copy completes; replace any older companion files if previously
+  installed.
+
+After you report the values + completion of M.A–M.D, I will compose
+the corresponding edits and paste them back for you to apply.
 
 ## Variant: backlog-status-update
 
@@ -179,19 +219,26 @@ and the change summary inline in chat — no separate REPORT FILE.
 
 ## Variant: generate-setup
 
-*PM chat fills this in using SETUP_TEMPLATE.md from the pack.*
+*PM chat self-prompt — composes a project-specific `SETUP.md` from
+the planning conversation and the inlined skeleton below.*
 
-**Context:** A new project has no `SETUP.md`. The PM chat fills in the
-pack's SETUP_TEMPLATE.md with values from the planning conversation.
+**Context:** A new project has no `SETUP.md`. The PM chat assembles
+`SETUP.md` from (a) the project-planning conversation context already
+in the PM chat session, (b) the project's installed trinity
+(`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` at the project root, which
+the PM chat composes the SETUP.md against), and (c) the inlined
+skeleton below.
 
-**Required reading:** `supporting-docs/SETUP_TEMPLATE.md` from the AI
-Agent Config Pack, plus the planning conversation context already in
-the PM chat session.
+**Required reading:** Project-root trinity (`CLAUDE.md` /
+`AGENTS.md` / `GEMINI.md`) and `docs/pack/METHODOLOGY.md` (already
+installed at the client), plus the planning conversation context
+already in the PM chat session.
 
 **Problem:** The project has no `SETUP.md`.
 
-**Goal:** A complete `SETUP.md` produced from the pack template, with
-all relevant placeholders filled and inapplicable sections removed.
+**Goal:** A complete `SETUP.md` produced from the skeleton below,
+with all relevant placeholders filled and inapplicable sections
+removed.
 
 **Success criteria:**
 - Output is a single complete `SETUP.md` ready to save to the project
@@ -218,28 +265,111 @@ Fill in all placeholder values based on what we have discussed:
 do not partially fill or skip placeholders. Remove any sections that
 don't apply to this project.
 
+**SETUP.md skeleton (compose into this shape; the PM chat tailors
+section presence and contents per project):**
+
+1. **Title + 1-line description.** `# [PROJECT_NAME] — Project Setup
+   Guide` and a single sentence stating what the project is.
+
+2. **Prerequisites.** macOS [MACOS_VERSION]+, Xcode [XCODE_VERSION]
+   (Apple projects), git configured, `gh` CLI optional, AI Agent
+   Config Pack available locally. Remove items that don't apply.
+
+3. **Create the GitHub repository.** Either `gh repo create
+   [GITHUB_USERNAME]/[REPO_NAME] --private --clone` followed by
+   `cd [REPO_NAME]`, or `git clone` of an existing repo.
+
+4. *(Apple projects only)* **Create the Xcode project.** New Project
+   wizard: choose [PROJECT_TYPE], Product Name [PRODUCT_NAME],
+   Organization Identifier [BUNDLE_PREFIX], Interface SwiftUI,
+   Language Swift, Storage [STORAGE_CHOICE], Testing [TESTING_CHOICE].
+   Save to the cloned repo directory. Remove this section for
+   non-Apple projects.
+
+5. **Install the pack via `init-project.sh`.** Set `PACK=/path/to/
+   pack` and run `"$PACK/scripts/init-project.sh" .`. The script
+   previews every operation, asks for confirmation, copies the
+   unified template + METHODOLOGY.md, handles conditional file
+   removal per detected language, merges `.gitignore` entries, and
+   applies chmod +x.
+
+6. *(Apple projects only)* **Fill in Xcode scheme variables.** Open
+   `scripts/validate.sh` and `scripts/test.sh` and set
+   `XCODE_SCHEME=[SCHEME_NAME]` and `XCODE_DESTINATION=[DESTINATION]`
+   (e.g., `platform=macOS` or `platform=iOS Simulator,name=iPhone 16,
+   OS=latest`). Set the same values in the CLI's settings file `env`
+   block (the trinity `## Document locations` table names the
+   per-CLI path). For non-SPM source layouts, also set
+   `SWIFT_SOURCE_DIRS` in `scripts/format.sh`. Find valid values via
+   `xcodebuild -list` and `xcrun simctl list devices available`.
+
+7. *(Apple projects only)* **Install machine-level Xcode companion
+   files.** Create
+   `~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/`
+   and `~/Library/Developer/Xcode/CodingAssistant/codex/`, then
+   copy `CLAUDE.md` + `settings.json` and `AGENTS.md` +
+   `config.toml` respectively from the pack's
+   `xcode-companion-templates/` directory. Once per Mac.
+
+8. **Customize trinity.** Open project-root `CLAUDE.md` /
+   `AGENTS.md` / `GEMINI.md` and update at minimum: architecture
+   pattern choice (MVVM / TCA / MV / etc.), project-specific rules,
+   third-party APIs or frameworks.
+
+9. **Run bootstrap.** `./scripts/bootstrap.sh`.
+
+10. *(Apple projects only)* **Verify the project builds clean.**
+    Open `[PRODUCT_NAME].xcodeproj` in Xcode, select scheme
+    `[SCHEME_NAME]` with destination [BUILD_DESTINATION], Product →
+    Build (⌘B). Zero errors, zero warnings.
+
+11. **Initial commit.** `git add -A && git status` (verify nothing
+    sensitive staged), `git commit -m "Initial project setup:
+    [SUMMARY]"`, `git push origin main`.
+
+12. **Set up the PM chat surface.** Per the project's chosen
+    interaction surface (Claude Desktop project + GitHub connector,
+    or Claude Code CLI, or Codex CLI, or Gemini CLI). The first
+    message into a new PM chat session is the `kickoff` variant
+    from `docs/pack/prompts/pm-chat.md`.
+
+13. **What comes next.** Architecture kickoff, ARCHITECTURE.md,
+    IMPLEMENTATION-PLAN.md, then Phase 1. Do not begin
+    implementation until ARCHITECTURE.md is reviewed and approved.
+
+14. *(Optional)* **Second machine setup.** `git clone`, `cd
+    [REPO_NAME]`, `chmod +x agent-run.sh scripts/*.sh`,
+    `./scripts/bootstrap.sh`, then repeat steps 6 and 7 on the new
+    machine. Remove if the project is single-machine only.
+
 **Completion report:** The artifact is `SETUP.md` written at the
 project root (sub-case B). No separate REPORT FILE. Output the
 complete SETUP.md content ready to save.
 
 ## Variant: generate-agent-kickoff
 
-*PM chat fills this in using AGENT_KICKOFF_TEMPLATE.md from the pack.*
+*PM chat self-prompt — composes a project-specific
+`AGENT_KICKOFF.md` from the architecture-planning conversation and
+the inlined skeleton below.*
 
-**Context:** The architect kickoff session has no kickoff brief. The PM
-chat fills in the pack's AGENT_KICKOFF_TEMPLATE.md with values from the
-architecture planning conversation.
+**Context:** The architect kickoff session has no kickoff brief. The
+PM chat assembles `AGENT_KICKOFF.md` from (a) the architecture-
+planning conversation context already in the PM chat session, (b)
+the project's installed trinity (`CLAUDE.md` / `AGENTS.md` /
+`GEMINI.md`), and (c) the inlined skeleton below.
 
-**Required reading:** `supporting-docs/AGENT_KICKOFF_TEMPLATE.md` from
-the AI Agent Config Pack, plus the architecture planning conversation
-context already in the PM chat session.
+**Required reading:** Project-root trinity (`CLAUDE.md` /
+`AGENTS.md` / `GEMINI.md`) and any active skill files referenced in
+the trinity `**Active skills:**` line, plus the architecture-planning
+conversation context already in the PM chat session.
 
 **Problem:** The architect kickoff session has no `AGENT_KICKOFF.md`
 brief.
 
-**Goal:** A complete `AGENT_KICKOFF.md` produced from the pack template,
-with project description, platform, pattern, structural decisions,
-required stubs, test infrastructure, and external resources filled in.
+**Goal:** A complete `AGENT_KICKOFF.md` produced from the skeleton
+below, with project description, platform, pattern, structural
+decisions, required stubs, test infrastructure, and external
+resources filled in.
 
 **Success criteria:**
 - Output is a single complete `AGENT_KICKOFF.md` ready to save to the
@@ -292,6 +422,82 @@ do not partially fill placeholders. The structural-decisions checklist
 must be enumerated regardless of whether the planning conversation has
 resolved each item — the slots themselves drive the architect's later
 kickoff session. Remove sections that don't apply.
+
+**AGENT_KICKOFF.md skeleton (compose into this shape; the PM chat
+tailors section presence and contents per project):**
+
+1. **Title + opening directive.** `# [PROJECT_NAME] — Architecture
+   Phase Kickoff` and "You are the architecture specialist for
+   [PROJECT_NAME]. Read `CLAUDE.md` at the repo root before doing
+   anything else. It contains the project rules you must follow.
+   Then read `AGENTS.md`. Then proceed with the tasks below."
+
+2. **Project overview.** 2-3 sentence project description, then
+   bullet rows for: Platform (e.g., macOS 15+, Xcode 26.3, Swift 6,
+   SwiftUI); Architecture pattern (e.g., MVVM, TCA, layered with
+   domain/data/presentation separation); Build targets (e.g.,
+   single macOS app, iOS + macOS universal).
+
+3. **External dependencies to read before designing.** A table of
+   external APIs/frameworks/docs the architect must understand
+   first, with direct URLs the agent will fetch. Columns: Resource
+   / URL / Why it matters. Remove this section entirely if no
+   external research is needed.
+
+4. **Key domain types and protocols.** A table listing the core
+   types the architecture must define. Columns: Type / Kind
+   (Protocol / Value type / Reference type) / Description. For
+   each: define it as a protocol in the domain layer, provide a
+   stub concrete implementation in the data layer, ensure nothing
+   in domain or presentation holds a concrete type directly.
+
+5. **Architecture constraints.** Non-negotiable constraints the
+   architecture must satisfy. Include the full structural-decisions
+   checklist from the placeholder list above (Heterogeneous domain
+   collections; Domain state change notification; ViewModel-to-
+   navigation coupling; any project-specific correctness-sensitive
+   decisions). Each □ item carries the same rationale slots and
+   the same pre-decision constraint (read trinity universal rules
+   + active skills first). Then enumerated rows for: Layer
+   separation, Domain isolation, Protocol-first, plus any project-
+   specific constraints.
+
+6. **Required output — Part 1: ARCHITECTURE.md.** The architect
+   writes `ARCHITECTURE.md` at the repo root covering: chosen
+   architecture pattern (with rationale), layer map (which types
+   and files live in which layer), key protocol definitions
+   (interface for each domain protocol listed above), project-
+   specific architecture section (e.g., data persistence strategy
+   / streaming design / authentication model), known limitations
+   and future migration path, dependency decisions (third-party
+   packages and exit plan).
+
+7. **Required output — Part 2: Stub hierarchy.** After
+   ARCHITECTURE.md is complete, generate stub Swift (or Python)
+   files. For each major type: full protocol definitions, complete
+   domain model types with all fields, bare-minimum stub
+   implementations (satisfies protocol, no errors, no real
+   behavior). Enumerate the named stubs to generate as a checklist.
+
+8. **Required output — Part 3: Test infrastructure.** Create test
+   target(s) and foundational test infrastructure (enumerate
+   named test targets and named mocks per protocol). Remove this
+   section if the architecture phase is not responsible for test
+   target creation.
+
+9. **Verification.** After completing all output: run
+   `./scripts/validate.sh` (or `xcodebuild build` / `swift build`
+   as appropriate); confirm zero compiler errors, zero warnings;
+   confirm every stub compiles cleanly; report files created and
+   any open design questions or risks. Do not mark the phase
+   complete if the project does not build clean.
+
+10. **Important constraints.** Do not write production logic in
+    this phase — stubs and protocols only. Do not add SPM
+    dependencies unless `CLAUDE.md` specifically permits them in
+    this phase. Do not modify `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`,
+    or any file not listed above. If a design question requires a
+    decision, stop and ask rather than assume.
 
 **Completion report:** The artifact is `AGENT_KICKOFF.md` written at
 the project root (sub-case B). No separate REPORT FILE.
