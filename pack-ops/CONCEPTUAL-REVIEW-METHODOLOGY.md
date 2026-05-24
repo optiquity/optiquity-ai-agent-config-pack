@@ -35,7 +35,7 @@ Edge cases reachable from documented user paths in PM-CHAT.md / SETUP procedures
 Files, configs, scripts, docs, or other artifacts that mention the concept or participate in its execution. This is the highest-value dimension and the main reason conceptual review exists. See "Touch-point classification" below.
 
 ### (d) Pack rule adherence
-Does the implementation violate any strategic or tactical established pack rule? Reference: `CLAUDE.md`, `PACK-CHAT.md`, pack memory `MEMORY.md` index + linked feedback files, `ARCHITECTURE-V*.md` family. Cite the rule by file + section/line for every finding.
+Does the implementation violate any strategic or tactical established pack rule? Reference: `CLAUDE.md`, `PACK-CHAT.md`, pack memory `MEMORY.md` index + linked feedback files, `ARCHITECTURE-V*.md` family. Cite the rule by file + section/line for every finding. Boundary-discipline note: when reviewing changes that touch project-side surfaces (any file under `project-template/`, `pack-ops/HELP-FRAGMENT-TRACKER.md`, `supporting-docs/METHODOLOGY.md`, `supporting-docs/INSTALL-PROCEDURES.md`, `scripts/pack-help.sh`, or `scripts/lib/detect.sh`), the reviewer MUST verify Check 43 (`scripts/validate-pack.py check_project_side_bare_internal_refs`) passes against the working tree; any new bare cross-reference to pack-internal targets (`maintenance-docs/`, pack-only `pack-ops/`, pre-install `supporting-docs/`) is a boundary leak per `maintenance-docs/v11-implementation/ARCHITECTURE-V11-LEAK-SWEEP-STRATEGY.md` §4.1. Flag as a (d) finding with file:line + matched basename.
 
 ### (e) Design best practice adherence
 Reference: see "Design best practices" section below for the 7 universal principles.
@@ -181,6 +181,7 @@ Cite the rule by file + section/line for every (d) finding. No "violates pack co
 - BACKLOG resolves in place (no Resolved section)
 - CI validation must pass
 - Commit message format / versioning rules / BD-NNN numbering
+- Project-side boundary discipline (Check 43; per ARCHITECTURE-V11-LEAK-SWEEP-STRATEGY.md §4.1)
 
 **From `PACK-CHAT.md` and pack memory `MEMORY.md` index:**
 - Review/fix cycles per BD AND per batch (per `feedback_review_fix_one_cycle.md`)

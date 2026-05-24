@@ -198,6 +198,17 @@ file-not-found. This is by design per
     This is the orchestrator's trust signal that the report-write
     starts from complete-and-green state.
 
+    Verification includes BOTH the in-scope test suite for the BD AND
+    Check 43 (V11 leak-sweep prevention; pack/project boundary scanner).
+    When a pack-coder commit touches any file under project-template/,
+    pack-ops/, supporting-docs/, or scripts/, the coder MUST run
+    `python3 scripts/validate-pack.py` against the working tree before
+    writing the PREFLIGHT line; Check 43 (and the rest of the validate-
+    pack suite) MUST PASS. If Check 43 FAILs, the coder reports the
+    failure (with file:line + matched basename + suggested remediation)
+    INSTEAD OF writing the IMPL-REPORT — Pack Chat reviews and decides
+    whether to fix in this commit or escalate.
+
   - **STOP-MEANS-STOP on parent stop directives.** Any parent-session
     message containing stop / halt / revert / do not continue MUST
     trigger immediate halt of all work including in-progress Writes.

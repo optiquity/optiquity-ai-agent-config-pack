@@ -297,6 +297,17 @@ in the same commit as the behavior change.
     some test failed), it reports what went wrong instead and does
     NOT write a partial IMPL-REPORT.
 
+    Verification includes BOTH the in-scope test suite for the BD AND
+    Check 43 (V11 leak-sweep prevention; pack/project boundary scanner).
+    When a pack-coder commit touches any file under project-template/,
+    pack-ops/, supporting-docs/, or scripts/, the coder MUST run
+    `python3 scripts/validate-pack.py` against the working tree before
+    writing the PREFLIGHT line; Check 43 (and the rest of the validate-
+    pack suite) MUST PASS. If Check 43 FAILs, the coder reports the
+    failure (with file:line + matched basename + suggested remediation)
+    INSTEAD OF writing the IMPL-REPORT — Pack Chat reviews and decides
+    whether to fix in this commit or escalate.
+
   - **STOP-MEANS-STOP preamble (CLAUDE-CODE-SPECIFIC ENFORCEMENT,
     REQUIRED for all CLIs as content).** The coder prompt opens with
     an explicit instruction: "If you receive a parent-session message
