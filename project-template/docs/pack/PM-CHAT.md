@@ -533,8 +533,7 @@ in the pack repo).
 ## TD resolution orchestration (v11+)
 
 When a TD-NNN becomes Unblocked (per METHODOLOGY § Part 7 Procedure 1
-step 3), the PM Chat advises one of three outcomes per
-ARCHITECTURE-V3.3-DELTA.md §3.1:
+step 3), the PM Chat advises one of three outcomes:
 
 | Outcome | TD lifecycle ends as | Verb | New entity created |
 |---|---|---|---|
@@ -542,7 +541,7 @@ ARCHITECTURE-V3.3-DELTA.md §3.1:
 | **Path 1** (multi-task work; new phase warranted) | Resolved with `promoted-to:phase-N` label | `pack td promote --to=phase-N <td-id>` | new phase epic at L1 |
 | **Path 2** (single-task scope; fits as a new task in an existing phase) | Resolved with `promoted-to:phase-N.M` label | `pack td promote --to=phase-N.M <td-id>` | new phase task at L2 |
 
-**Path 3 is forbidden** per V3.3 §1 supersession + §3 line 27. There
+**Path 3 is forbidden.** There
 is no `--fold-into` verb and no `folded-into:` label. Where Path 3
 would have applied — TD whose work logically belongs inside an existing
 task — the path is "edit the existing task body manually via PM Chat
@@ -550,7 +549,7 @@ and resolve the TD via direct close" (outside the promotion mechanism).
 Or use Path 2 with a `Dependencies` bullet pointing at the absorbing
 task to express ordering without merging entities.
 
-### Advisory heuristic (V3.3 §7.1)
+### Advisory heuristic
 
 PM Chat applies the following signals when recommending an outcome:
 
@@ -567,7 +566,7 @@ PM Chat applies the following signals when recommending an outcome:
   cleanup phase that absorbs them all.
 
 PM Chat **advises**; the user can confirm or override. Presentation
-shape (V3.3 §7.1):
+shape:
 
 ```
 TD-031 is unblocked. Suggested resolution: Path 2 — promote to phase-7.4
@@ -577,7 +576,7 @@ fits the current phase scope; estimated <1 day.
 Proceed? (yes / change-to-path-1 / change-to-direct-close / show-details)
 ```
 
-### Execution workflow (V3.3 §7.2)
+### Execution workflow
 
 **Direct close.** PM Chat does not invoke planner or architect. The
 user does the work in-session (or queues it); PM Chat closes the TD
@@ -599,10 +598,10 @@ planner or architect by default. PM Chat:
    from the TD's blockers field by default).
 5. Presents the drafted task to the user for review.
 6. On user approval, writes IMPLEMENTATION-PLAN.md and (in tracker
-   mode) creates the tracker entity per V3.3 §3.4. Re-keys the TD
-   per V3.3 §3.4. For each `Dependencies` bullet entry on the new
-   task, calls `tracker_links_create_blocked_by` (BD-108) to wire
-   the cross-entity dependency edge.
+   mode) creates the tracker entity. Re-keys the TD. For each
+   `Dependencies` bullet entry on the new task, calls
+   `tracker_links_create_blocked_by` (BD-108) to wire the
+   cross-entity dependency edge.
 
 PM Chat invokes the **planner** (project-side `planner.md` agent)
 only if the user explicitly requests planning ("plan this out") or
@@ -612,8 +611,7 @@ involvement is triggered only by the user explicitly requesting
 architectural review.
 
 **Path 1 (`pack td promote --to=phase-N`).** PM Chat invokes the
-**architect** (project-side `architect.md` agent) **by default** per
-V3.3 §7.2 and IMPLEMENTATION-PLAN-ADDENDUM-4 §6.P resolution (a) for
+**architect** (project-side `architect.md` agent) **by default** for
 two reasons:
 
 1. A new phase is an architectural decision — its scope, agent
@@ -632,12 +630,12 @@ or non-trivial sequencing. The architect's output explicitly states
 self-evident from the TD content." The planner-invocation trigger
 for Path 1 is therefore explicit: **the architect's call decides**.
 
-### Verb shape (V3.3 §7.3)
+### Verb shape
 
 ```
 pack td promote --to=phase-N           # Path 1 — new phase
 pack td promote --to=phase-N.M         # Path 2 — new phase task
-pack td resolve <td-id> [--note "..."] # Direct close (V3.3 §3.2)
+pack td resolve <td-id> [--note "..."] # Direct close
 ```
 
 The `--to` argument's grammar disambiguates Path 1 (`phase-N`) from

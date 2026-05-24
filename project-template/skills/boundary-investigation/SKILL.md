@@ -121,7 +121,7 @@ canonical list):
   `PACK-FEEDBACK.md` / `PM-CHAT.md` / `METHODOLOGY.md` /
   `SETUP-EXISTING.md` is LEGITIMATE per audit §D-4)
 - **Files exempt at pack root:** `tracker.toml.pack-example` (STAYS at
-  pack root per AUDIT-USER-CURATION.md Override 1; not installed at
+  pack root per pack-repo audit finding; not installed at
   client; bare-filename refs from project-side qualified by "in the
   pack repo" are LEGITIMATE distinction-callouts)
 

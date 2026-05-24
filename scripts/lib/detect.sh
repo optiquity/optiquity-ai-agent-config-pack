@@ -19,7 +19,7 @@
 
 # pack-surface: pack | client | ambiguous
 #
-# Per V3 §28.2.3 surface routing (post BD-175 directory reorganization):
+# Surface routing (post BD-175 directory reorganization):
 #   - Pack repo:    BACKLOG.md at <target>/pack-ops/ with `^\*\*BD-` entries
 #                   (canonical post-v11.0 location).
 #   - Client repo:  BACKLOG.md at <target>/docs/project/ (canonical) OR
@@ -331,8 +331,7 @@ detect_installed_capabilities() {
 # Output:
 #   Single line `python-data: yes` or `python-data: no` on stdout.
 #
-# Markers (any one true → yes), per architecture §7.5
-# (maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-DIMENSIONS.md):
+# Markers (any one true → yes):
 #   (a) requirements.txt OR pyproject.toml OR setup.py OR setup.cfg
 #       lists any of these third-party dependencies (case-insensitive,
 #       package-name boundary anchored): sqlalchemy, alembic, pydantic,
@@ -674,8 +673,7 @@ swiftdata_marker_detected() {
 #   Single line `python-observability-marker: yes` or
 #   `python-observability-marker: no`.
 #
-# Markers (any one true → yes), per architecture §4.2 of
-# maintenance-docs/v11-implementation/ARCHITECTURE-DEPLOYMENT-PYTHON-OBSERVABILITY.md:
+# Markers (any one true → yes):
 #   (a) Dependency manifests (requirements.txt OR pyproject.toml OR
 #       setup.py OR setup.cfg OR uv.lock) list any of these
 #       observability third-party dependencies (case-insensitive,

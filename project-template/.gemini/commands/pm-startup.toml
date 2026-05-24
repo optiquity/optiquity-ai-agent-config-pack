@@ -208,8 +208,8 @@ Output a summary in exactly this format:
 Step 7 is reserved. The V1 §10.2 tracker-mode triage queue
 (provider.list filter=label:'needs-triage') lands here in a later
 BD when tracker mode is wired into pm-startup. The Step 8 numbering
-is fixed by V3 §28.1.9 to keep the recommendation check at the
-documented insertion point regardless of when Step 7 lands.
+is fixed to keep the recommendation check at the documented
+insertion point regardless of when Step 7 lands.
 -->
 
 ## Step 8 — Inflection-point recommendation check (D-19)
@@ -243,7 +243,7 @@ recommendation_render_prompt "$signals" client
 recommendation_record_shown .pack-tracker/recommendation-state.json "$signals"
 ```
 
-Then route the user's response per V3 §28.1.7:
+Then route the user's response:
 - `yes` / `y` / `enable` / `OK` / `sure` → suggest running
   `pack tracker init`. Do not auto-run; await explicit confirmation.
 - `not now` / `later` / `no` / `n` / `skip` → set the per-session
@@ -251,8 +251,4 @@ Then route the user's response per V3 §28.1.7:
 - `don't ask again` / `never` / `disable recommendations` / `stop` →
   call `recommendation_set_persistent_refusal .pack-tracker/recommendation-state.json true`
   and acknowledge.
-
-Reference: ARCHITECTURE-V3.md §28.1.5 (should-recommend test),
-§28.1.6 (refusal-respecting state machine), §28.1.7 (prompt shape
-and routing), §28.1.9 (implementation surfaces).
 """
