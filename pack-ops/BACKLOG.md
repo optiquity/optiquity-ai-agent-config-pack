@@ -2856,6 +2856,84 @@ Resolved: n/a
 
 ---
 
+**BD-191 — Product Specialist (PS) requirements + v11.0/v11.1+ scope decision**
+Type: feat — surfaced 2026-05-24 from sidecar Pack Chat session for v11.1+ Product Specialist feature requirements gathering; user-approved 2026-05-24
+Status: Open
+Blockers: None — independent of v11.0 work; runs parallel; integrates with groupings (BD-186/189) via existing #7 from-external ingest workflow with ZERO hard dependency
+Unblocks: Downstream architect / planner / coder cycles for Product Specialist feature implementation (architect pass reads BD-191's REQUIREMENTS-PS-V11.md as primary input; RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md as ancillary fact base; INTAKE-PS-V11.md as user-intent audit trail)
+File/Symbol:
+  - NEW `maintenance-docs/v11-research/REQUIREMENTS-PS-V11.md` — primary deliverable; capability requirements + v11.0/v11.1+/v11.2+ scope decision
+  - NEW (post-this-BD's-triage, end-of-sidecar) `maintenance-docs/v11-research/HANDOFF-PS-ARCHITECT.md` — entry-point doc for the v11.x PS architect (similar to HANDOFF-V11.1-ARCHITECT.md for groupings). Architect/planner may rename with a version anchor (e.g., `HANDOFF-V11.1-PS-ARCHITECT.md` or `HANDOFF-V11.2-PS-ARCHITECT.md`) at write time once scheduling is settled.
+  - INPUTS (read-only):
+    - `maintenance-docs/v11-research/INTAKE-PS-V11.md` (raw user-intent discussion: initial framing + Q1-Q10 + naming decision + research approval + §7 quality-mitigation intuition; high-fidelity verbatim user messages)
+    - `maintenance-docs/v11-research/RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md` (PS landscape Pass-1; 985 lines; 7 categories + cross-cat synthesis + §9 pack-relevance observations)
+    - `maintenance-docs/v11-research/IMPLEMENTATION-REPORT-RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md` (research methodology + open questions)
+    - `maintenance-docs/v11-research/REQUIREMENTS-GROUPINGS-V11.md` (companion v11.1+ feature; PS docs feed into #7 from-external ingest)
+    - `maintenance-docs/v11-research/INTAKE-GROUPINGS-V11.md` (groupings intake; audit-trail companion to REQUIREMENTS-GROUPINGS-V11.md; faithful-summary fidelity; OPTIONAL for context)
+    - `maintenance-docs/v11-research/HANDOFF-V11.1-ARCHITECT.md` (groupings architect handoff; may receive PS-awareness amendment during this BD's work)
+    - `pack-ops/BACKLOG.md` entries BD-186 (Resolved) + BD-189 (groupings implementation umbrella) for cross-feature context
+    - `CLAUDE.md` `## Pack memory` (pack-repo-trinity rules)
+Description: Pack-side requirements-gathering work to refine the "Product Specialist" feature shape and produce a per-capability v11.0/v11.1+/v11.2+ scope verdict. This BD covers the REQUIREMENTS pass only; downstream architect/planner/coder cycles open as separate BDs once the requirements artifact lands and capabilities have verdicts.
+
+  **Critical scope boundary:** PS is CLIENT-SIDE ONLY. Affects `project-template/` surface only; NEVER applies to pack-self development workflow. PS is for the developer's product work (PRDs, journeys, features, mappings); the existing PM Chat (project manager) continues to orchestrate pack work itself.
+
+  **Naming decision (resolved 2026-05-24):** Product Specialist (PS) over Product Manager (PM) to avoid collision with existing PM Chat terminology. Selected from options (A) full TPM rename of existing PM, (B) prose-discipline-only, (C) hybrid, (D-PS) Product Specialist abbreviation. Option (D-PS) chosen for cleanest semantic + abbreviation separation; "Specialist" semantically fits the episodic-expertise-contribution pattern better than "Manager."
+
+  **BD numbering history (2026-05-24):** This BD was originally drafted as BD-190 during the sidecar planning session. Main chat opened BD-190 in parallel for an audit-vocabulary-gap sweep (Batch 19c); PS work renumbered to BD-191 per pack memory `reference_pack_backlog_structure` ("always read the live BACKLOG before assigning"). Renumbering tracked in commit `337ac47`. Pre-renumbering commits (`17682c7` research, `df64afc` intake docs, `a6423c3` §7 add) preserved with "BD-190" in commit message text as historical record of the working assumption.
+
+  **Cross-feature relationship with groupings (BD-186 / BD-189):**
+  - ZERO HARD DEPENDENCY in either direction. Groupings stand alone per BD-186; PS is an OPTIONAL upstream feeder.
+  - PS produces PRDs / journey docs / mapping docs / feature lists that feed groupings via the existing #7 from-external ingest workflow.
+  - PS NEVER produces `GRP-NNN.md` files directly — that's groupings/coder scope (per user direction 2026-05-24).
+  - PS awareness for v11.1 groupings architect: documented in HANDOFF-V11.1-ARCHITECT.md; may be updated during this BD's work if integration surfaces requiring architect awareness emerge.
+
+  **Two modes of operation (per user direction 2026-05-24):**
+  - Mode 1: From-scratch authoring (interview + write PRD + research)
+  - Mode 2: Existing-PRD ingest + gap-fill (read existing user PRD + identify pack-integration gaps + interview to fill + restructure if needed)
+
+  **Inputs:** RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md (pre-BD-191 landscape research with quality-filtered findings across 7 categories — OSS PM tools / professional products / methodologies + frameworks / PRD templates / interview frameworks / AI-LLM tooling / dev-tool integration); INTAKE-PS-V11.md (user-intent audit trail including §7 quality-mitigation intuition); user-stated design principles (TBD during this BD's triage); existing v11 design (especially BD-186 groupings work as integration point).
+
+  **Goal:** Produce a single requirements artifact at `maintenance-docs/v11-research/REQUIREMENTS-PS-V11.md` capturing:
+  - Refined user-facing capability set (informed by RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md §9 pack-relevance observations + §9.5 defensible methodology positions + INTAKE-PS-V11.md §7 quality-mitigation intuition)
+  - Per-capability disposition (keep / modify / drop / GH-conditional / mode-1-only / mode-2-only)
+  - Per-capability v11.0 vs v11.1+ vs v11.2+ scope verdict with rationale
+  - For v11.1+ absorbed capabilities: insertion target (existing batch fold-in OR proposed new BD-NNN with position)
+  - For deferred capabilities: live forward-pointing anchor (this artifact + cross-reference to landscape research where applicable)
+  - Documented scope boundary against Wave 3 agentic-PM vapor (per §9.4 cautious framing)
+  - Cross-feature integration points with groupings explicit
+  - Tactical guiding principles for interview structure + "complete" criteria (per §7 investigation outcomes)
+
+  **Success Criteria:**
+  - SC1. Every user-facing capability surfaced during this BD's triage has a documented disposition + scope verdict.
+  - SC2. Every §9 pack-relevance observation from PS landscape research has a documented influence on the capability set OR a documented rationale for non-influence.
+  - SC3. Disposition + scope verdicts cite design principles surfaced during this BD's triage (drawn from §9 hard-things-to-be-careful + §9.2 underserved-gaps + §9.3 familiar-patterns + §9.4 LLM-PM boundary + §9.5 methodology positions + §7 quality-mitigation tactical principles).
+  - SC4. v11.1+ absorbed capabilities have either a target existing batch (with cross-reference) or a proposed new BD-NNN.
+  - SC5. Deferred capabilities are listed on a live forward-pointing surface — this artifact, optionally with new parking-lot BDs (parallel to BD-187 / BD-188 pattern for groupings).
+  - SC6. Cross-feature integration with groupings (BD-186 / BD-189) is explicit; any required modifications to BD-186 artifact or HANDOFF doc are surfaced as proposed amendments.
+  - SC7. Two operational modes (from-scratch + existing-PRD ingest) are explicitly covered with per-capability triage.
+  - SC8. Methodology-position recommendations from §9.5 are surfaced as candidate defaults for architect consideration (NOT prescribed; defensible defaults).
+  - SC9. Wave 3 vapor (autonomous agentic PM) is explicitly documented as out-of-scope per §9.4 cautious framing.
+  - SC10. **Quality-mitigation principles investigation.** The triage walkthrough must address the user-stated quality-mitigation intuition surfaced in `maintenance-docs/v11-research/INTAKE-PS-V11.md §7`:
+    - (a) Interview-structure requirements: clear problems / goals / success criteria framing; structured sections (NOT a random walk); gap-identification process across market research / ideation / creativity / scope / resources / priorities / constraints; same structured approach used for both from-scratch and existing-PRD-ingest modes
+    - (b) Audience-aware-deliverable requirements: deliverable shapes informed by pack integration knowledge (workflows / docs / scripts / tracker / groupings / phases / tasks / backlog entries) — narrower / more-specific than open-ended PM tools, which gain unknown audiences
+    - Investigation outcomes define tactical (not just strategic) guiding principles AND "complete" criteria for the interview process
+    - Investigation directly mitigates §9.1 quality-pitfall findings ("AI PRDs without facilitation = decorative artifacts"; "AI methodology selection muddles")
+    - Without this address, the requirements doc risks anchoring the PS feature on the §9.1 quality pitfalls the landscape research surfaced
+
+  **Out of scope:**
+  - Architecture (specific agent/skill design, prompt content, methodology selection algorithm, output doc shapes) — downstream architect pass per pack memory `feedback_pack_chat_does_not_architect`.
+  - Implementation planning (commit sequencing, per-BD breakdown beyond proposed BD-NNNs) — downstream planner pass per `feedback_planner_user_review_before_coder`.
+  - Edits to BD-186 / BD-189 entries or their artifacts (only PROPOSED amendments via this BD's artifact; landing requires separate Pack Chat commit + user approval).
+  - Pack-self application of PS (CLIENT-SIDE ONLY constraint per user direction 2026-05-24).
+  - Opening new BDs for PS IMPLEMENTATION work (those open later via downstream planner output OR as parking-lots if specific items defer beyond v11.1+).
+
+  **Pipeline:** Pack Chat sidecar (this work) → REQUIREMENTS-PS-V11.md → user review + approval → BD-191 Resolved → downstream architect / planner / coder cycles open as separate BDs per scope decisions.
+
+  **Position:** Independent of v11.0 work; runs parallel. User direction 2026-05-24: groupings work (BD-186 closed; BD-189 umbrella) lands first; PS implementation follows. PS scheduling likely v11.1+ or v11.2 — architect/planner judgment at scheduling time per the sidecar's scope-verdict output.
+Resolved: n/a
+
+---
+
 ## Active — v10 Scope
 
 **BD-059 — v10 migration silently destroys project customization**
