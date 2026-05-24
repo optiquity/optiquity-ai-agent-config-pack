@@ -2919,6 +2919,12 @@ Description: Pack-side requirements-gathering work to refine the "Product Specia
     - Investigation outcomes define tactical (not just strategic) guiding principles AND "complete" criteria for the interview process
     - Investigation directly mitigates §9.1 quality-pitfall findings ("AI PRDs without facilitation = decorative artifacts"; "AI methodology selection muddles")
     - Without this address, the requirements doc risks anchoring the PS feature on the §9.1 quality pitfalls the landscape research surfaced
+  - SC11. **Priority elicitation, documentation, propagation, and scope-test mechanisms.** The triage walkthrough must address priorities as a first-class cross-cutting driver of PS outcomes, captured in `maintenance-docs/v11-research/INTAKE-PS-V11.md §9` Goal 17:
+    - (a) Elicitation: priorities are a required structured section in the PS interview (paired with §7.1 interview structure); axes include product/market fit, competitive necessity vs. competitive advantage, technical constraints, resource constraints (time/money/team-size/expertise), scope decisions (MVP vs. Phase 2 vs. Phase N; in/out/conditional), plus the original cost/speed/quality/feature-sets/user-journeys axes from INTAKE §1 (a); user-named axes supported
+    - (b) Documentation: priorities surface in PRD sections, feature-inventory rows, anti-pillar reasoning, and conditional-inclusion triggers across PS deliverable shapes
+    - (c) Propagation: PS priority output flows into pack-side primitives (MVP-line → grouping membership; feature priority → phase ordering via Blockers/Unblocks and backlog severity; anti-pillar triggers → conditional-inclusion table in PRD)
+    - (d) Scope test: priorities serve as the criterion for evaluating whether added scope (capabilities, deliverables, workflow steps) genuinely advances product outcomes vs. constitutes scope creep — pairs with the user-stated scope-discipline meta-criterion captured in INTAKE-PS-V11.md §9 Goal 16
+    - Without this address, the requirements doc risks producing capability decisions disconnected from the scope-shaping force priorities exert across product success outcomes
 
   **Out of scope:**
   - Architecture (specific agent/skill design, prompt content, methodology selection algorithm, output doc shapes) — downstream architect pass per pack memory `feedback_pack_chat_does_not_architect`.

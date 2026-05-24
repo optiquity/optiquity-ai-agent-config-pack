@@ -398,7 +398,105 @@ If investigation surfaces that the intuition is incorrect or needs refinement, t
 
 ---
 
-## §9 — Forward pointer
+## §9 — User-stated goals (consolidated index)
+
+**Purpose:** Single navigable index of the 17 user-stated goals driving the PS feature design. Goals 1-15 are cross-references to existing source in this doc (and adjacent docs); Goals 16 and 17 surfaced during BD-191 sidecar discussion on 2026-05-24 AFTER §1 through §8 were authored, and carry their full statements here as canonical capture.
+
+**Audit-trail discipline:** This section does NOT rewrite or restate the verbatim user intent captured in §1, §2, §3, §5, or §7. Those sections remain source-of-truth for verbatim user quotes. This index is a navigation layer.
+
+**Source-coverage closure:** Goals 16 (scope-discipline meta-criterion) and 17 (priorities as first-class cross-cutting driver) had no prior source location in any doc. This entry is their canonical capture surface; BD-191 SC11 (added 2026-05-24 alongside this §9 addition) carries the BACKLOG-side capture for Goal 17. Goal 16 is not bound to a single SC — it applies as a criterion across all SCs and all per-capability triage decisions.
+
+### §9.1 — Goal index (17 entries)
+
+| # | Goal title | Source location |
+|---|---|---|
+| 1 | CLIENT-SIDE ONLY boundary (project work, never pack-self) | INTAKE §1 first paragraph; BD-191 description "Critical scope boundary" |
+| 2 | Two equal first-class modes: from-scratch + existing-PRD-ingest-with-gap-fill | INTAKE §2 Q3 + Q7; BD-191 description "Two modes of operation"; BD-191 SC7 |
+| 3 | Structured interview, not random walk (clear sections per category; problem/goal/SC framing; gap-identification across market research / ideation / creativity / scope / resources / priorities / constraints) | INTAKE §7.1; BD-191 SC10(a) |
+| 4 | Elicit product success inputs: definition, scope, MVP shape, future versions, resource constraints, competitive position; force intentional thinking over random scope expansion | INTAKE §1 (a); INTAKE §2 Q2 + Q4 |
+| 5 | Episodic-usage / light footprint: heavy at init + milestone spikes (explicit version releases + implicit "feature work nearing end of planned scope") + on-demand; no chronic overhead | INTAKE §1 (g); INTAKE §2 Q2; BD-191 description "Position" |
+| 6 | Multiple deliverables with appropriate shapes: full PRD with MVP line (or MVP-only PRD); journeys; ambient / shared / foundational grouping inputs; mapping docs; working docs not exec summaries | INTAKE §1 (c) (d) (e) (f); INTAKE §2 Q4; INTAKE §8 capabilities #8 / #9 / #10 |
+| 7 | Audience-aware deliverables — pack IS the audience (workflows / docs / scripts / tracker / groupings / phases / tasks / backlog entries); narrower than open-ended PM tools; differentiator | INTAKE §7.2; INTAKE §8 capability #12; BD-191 SC10(b) |
+| 8 | Smooth pack integration without forced dependency: zero dependency of groupings on PS; PS never produces GRP-NNN.md; feeds groupings via #7 from-external ingest; PS docs become reference once groupings ingested | INTAKE §2 Q5 + Q6; BD-191 description "Cross-feature relationship with groupings"; BD-191 SC6 |
+| 9 | Research orchestration with quality discipline: docs-researcher for competitive / market / tools / anything-that-aids-development; wide net + high quality bar (proven / widely-acknowledged / highly-recommended); full citations + logical reasoning + evidence; multi-stage invocation | INTAKE §1 (b); INTAKE §3 research-scope paragraph; INTAKE §8 capability #11 |
+| 10 | Quality-mitigation tactical (not just strategic) principles; "complete" criteria for interview process; counters "AI PRDs without facilitation = decorative artifacts" failure mode | INTAKE §7 (full section); INTAKE §8 capabilities #6 / #7; BD-191 SC10 |
+| 11 | Defensible methodology positioning (Continuous Discovery + OST / Mom Test / Lean Canvas or PR-FAQ / RICE or Value-Effort / common-denominator PRD / North Star + OKRs / JTBD-Christensen / Cagan vocabulary); per-project override path supported; "methodology-as-explicit-position" is itself a pack differentiator | RESEARCH §9.5; INTAKE §5 research-output headlines; INTAKE §8 capability #5; BD-191 SC8 |
+| 12 | PRD-to-code traceability — pack uniquely positioned (BD / phase / grouping / IMPL-REPORT primitives thread); features → BDs → commits / PRs; PS deliverables reference pack primitives by ID | RESEARCH §9.2 (underserved gaps); INTAKE §8 capability #14 |
+| 13 | Wave 2 only (content-gen in PM workflows); Wave 3 (autonomous agentic PM) vapor OUT of scope; pack adds value above "paste into Claude" baseline via project-context awareness + integration + methodology positioning | RESEARCH §9.4 (LLM-PM boundary); INTAKE §8 capability #17; BD-191 SC9 |
+| 14 | Architecture: PM Chat does interview; agent does heads-down doc work; sub-agent split (per-deliverable or per-stage) is architect-decided; pack pattern is agents don't interview users — PS chat does, agent writes | INTAKE §1 (bullets 1-3); INTAKE §2 Q8; INTAKE §8 capability #1 |
+| 15 | Simple lifecycle: PRD edits in place; addenda / follow-on docs for scope additions; tracked via existing pack primitives (phases for pre-scheduled; backlog for emergent); no new lifecycle states | INTAKE §2 Q9; INTAKE §8 capability #16 |
+| 16 | Scope-discipline meta-criterion — full statement in §9.2 below | Stated 2026-05-24 during BD-191 sidecar (NO PRIOR SOURCE; this entry is canonical capture) |
+| 17 | Priorities as first-class cross-cutting driver — full statement in §9.3 below | Stated 2026-05-24 during BD-191 sidecar (partial source in INTAKE §1 (a) / §2 Q2 / §2 Q4 / §7.1 / RESEARCH §9.5 captures axes-as-input; this entry expands axes and reframes as first-class driver); BACKLOG-side capture at BD-191 SC11 |
+
+### §9.2 — Goal 16: Scope-discipline meta-criterion (full statement)
+
+**Statement:** Added workflows, features, or capabilities must move toward better organization, processes, design, or implementation — NOT just be additive.
+
+**Stated:** 2026-05-24 during BD-191 sidecar session by user.
+
+**Applies to:**
+- Every PS capability triage decision (BD-191 per-capability walkthrough)
+- Every amendment proposal from `maintenance-docs/v11-research/PLANNING-PROCESS-INSIGHTS-FROM-OT.md` §5 (groupings amendments) and §6 (PS capability restructuring)
+- Every downstream architect / planner / coder amendment decision once PS work is in flight
+
+**Mechanism:** A capability or scope addition that adds workflow without serving organization / processes / design / implementation improvement is scope creep and must be challenged or rejected. Counter-test for an addition: *"Does this added scope move a stated priority (Goal 17) AND deliver organizational / process / design / implementation improvement?"* Both halves must be true.
+
+**Cross-references:** Goal 17 (priorities; the scope test's other half); INTAKE §8 capability #17 (scope-boundary cluster); BD-191 description "Out of scope" list.
+
+### §9.3 — Goal 17: Priorities as first-class cross-cutting driver (full statement)
+
+**Statement:** Priorities elicit, document, and propagate across all PS outputs. Priorities are a first-class cross-cutting driver of the PS feature's outcomes — not one input among many.
+
+**Stated:** 2026-05-24 during BD-191 sidecar session by user.
+
+**Partial source coverage in repo:** INTAKE §1 (a) names cost / speed / quality / feature-sets / user-journeys as priority axes; INTAKE §2 Q2 names priority enforcement against random scope expansion; INTAKE §2 Q4 names priorities as elicitation target; INTAKE §7.1 names priorities + resource constraints among gap-identification categories; RESEARCH §9.5 names RICE / Value-Effort / Kano as defensible prioritization methodology defaults. This entry expands the axes (adding product/market fit, competitive necessity vs. advantage, technical constraints, scope decisions) AND reframes priorities as a cross-cutting driver rather than one input among many.
+
+**Multi-axis (the axes priorities are stated along):**
+- Product / market fit (why this product, why now, who needs it)
+- Competitive necessity vs. competitive advantage (must-have to compete vs. differentiator)
+- Technical constraints (architecture, integrations, platform limits)
+- Resource constraints (time, money, team size, expertise)
+- Scope decisions (MVP vs. Phase 2 vs. Phase N; in / out / conditional)
+- Cost / speed / quality / feature sets / user journeys (per INTAKE §1 (a))
+- User-named axes ("anything else" per user framing in INTAKE §1 (a))
+
+**Mechanism:**
+- **Elicitation:** Required structured section in PS interview (paired with Goal 3 interview structure); each priority axis carries problem / goal / SC framing per Goal 3 pattern
+- **Documentation:** PRD section dedicated to priorities; feature-inventory rows carry per-feature priority signal; anti-pillar reasoning cites priority basis; conditional-inclusion triggers ARE priority statements (a trigger names a priority axis change that would move the item from out-of-scope to in-scope)
+- **Propagation:** PS-output priority flows into pack-side primitives — MVP-line in PRD maps to MVP grouping membership; feature-inventory priority maps to phase ordering via Blockers/Unblocks and to backlog severity; anti-pillar triggers map to conditional-inclusion table in PRD
+- **Scope test:** Goal 16 (scope-discipline) uses priority as the test criterion: *"Does this added scope move a stated priority?"* If no, it is scope creep regardless of intent.
+
+**Cross-references:** Goal 3 (interview structure; the elicitation mechanism); Goal 6 (deliverables; the documentation surfaces); Goal 16 (scope-discipline; the scope test); BD-191 SC11 (BACKLOG-side capture surface).
+
+### §9.4 — Mapping of goals to BD-191 success criteria
+
+BD-191 SC1-SC11 capture process-level criteria for the requirements-gathering work. Some goals bind tightly to a specific SC; others apply as cross-cutting design principles. The mapping below is informative — used by the downstream `REQUIREMENTS-PS-V11.md` distillation when surfacing which goals are SC-bound versus principles-only.
+
+| Goal | Bound SC(s) | Notes |
+|---|---|---|
+| 1 (client-side-only) | BD-191 description "Critical scope boundary" + "Out of scope" | Not SC-bound; appears as description constraint |
+| 2 (two modes) | SC7 | Direct binding |
+| 3 (interview structure) | SC10(a) | Direct binding |
+| 4 (elicit product inputs) | SC10 (via §7 reference) | Indirect — appears as part of quality-mitigation investigation |
+| 5 (episodic / light footprint) | BD-191 description "Position" | Not SC-bound; appears as scheduling constraint |
+| 6 (multiple deliverables) | SC1 + SC2 (via capabilities #8 / #9 / #10) | Indirect — per-capability disposition records the deliverable shape decisions |
+| 7 (audience-aware deliverables) | SC10(b) | Direct binding |
+| 8 (smooth pack integration) | SC6 | Direct binding |
+| 9 (research orchestration) | SC1 + SC2 (via capability #11) | Indirect — capability disposition records the research mechanism |
+| 10 (quality-mitigation tactical principles) | SC10 | Direct binding |
+| 11 (defensible methodology positioning) | SC8 | Direct binding |
+| 12 (PRD-to-code traceability) | SC1 + SC2 (via capability #14) | Indirect |
+| 13 (Wave 2 only) | SC9 | Direct binding |
+| 14 (architecture: PM Chat interviews; agent authors) | SC1 + SC2 (via capability #1) | Indirect; final architecture is downstream architect-pass decision |
+| 15 (simple lifecycle) | SC1 + SC2 (via capability #16) | Indirect |
+| 16 (scope-discipline meta-criterion) | Cross-cutting across all SCs | Not SC-bound; criterion applies to every triage decision |
+| 17 (priorities as first-class driver) | SC11 | Direct binding (added 2026-05-24) |
+
+The non-SC-bound goals (1, 5, 16) remain as design-principles input for the downstream `REQUIREMENTS-PS-V11.md` distillation and for all per-capability triage decisions.
+
+---
+
+## §10 — Forward pointer
 
 This intake doc serves as input to BD-191 (opened in BACKLOG.md at commit `32e78d2`; BD-191 entry text references INTAKE-PS-V11.md in INPUTS, with §7 investigation captured as SC10).
 
