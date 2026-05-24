@@ -338,9 +338,11 @@ These rules are non-negotiable and always apply on all tools:
   BACKLOG.md). Follow METHODOLOGY.md Part 10: observe agent performance,
   workflow issues, prompt template gaps, and user friction continuously;
   append entries to `PACK-FEEDBACK.md` as they occur; deliver feedback
+  <!-- DENY-LIST-CONTENT-START -->
   batches to the Pack Chat only at workflow-complete boundaries (never
   mid-phase) unless an emergency escalation fires. Record observations,
   not solutions — the Pack Chat decides what to do with them.
+  <!-- DENY-LIST-CONTENT-END -->
 - **Pack repo is read-only from this project.** If a clone of the
   AI Agent Config Pack lives on this machine for reference, the
   PM chat MUST NOT modify any file inside that pack clone from
@@ -525,8 +527,11 @@ state-changing operations need a yes.
 
 For the per-file customization-preservation behavior of
 `pack tracker init`'s forward migration, see
-`docs/pack/MERGE-STRATEGY.md` (or `pack-ops/MERGE-STRATEGY.md`
+`docs/pack/MERGE-STRATEGY.md`
+<!-- DENY-LIST-CONTENT-START -->
+(or `pack-ops/MERGE-STRATEGY.md`
 in the pack repo).
+<!-- DENY-LIST-CONTENT-END -->
 
 ---
 

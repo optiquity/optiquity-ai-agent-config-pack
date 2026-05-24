@@ -25,6 +25,7 @@ LIB_DIR="$SCRIPT_DIR/lib"
 source "$LIB_DIR/detect.sh"
 
 usage() {
+    # <!-- DENY-LIST-CONTENT-START -->
     cat <<'EOF'
 Usage: pack-help.sh [--surface pack|client] [--root <path>]
 
@@ -38,6 +39,7 @@ HELP-FRAGMENT-TRACKER.md per V3 §28.2.4 / DELTA L1. Pack-side
 fragments live at pack-ops/HELP-FRAGMENT-PACK.md and
 pack-ops/HELP-FRAGMENT-TRACKER.md (BD-175 reorg).
 EOF
+    # <!-- DENY-LIST-CONTENT-END -->
 }
 
 surface=""
@@ -83,6 +85,7 @@ emit_fragment() {
     # Replace the sibling-include placeholder line with the tracker
     # fragment body. emit_fragment is dual-surface and must match both
     # call sites' sentinel forms:
+    # <!-- DENY-LIST-CONTENT-START -->
     #   - Pack-side (call site L127):  pack-ops/HELP-FRAGMENT-PACK.md L37
     #       sentinel = `[Included from \`pack-ops/HELP-FRAGMENT-TRACKER.md\` ...]`
     #   - Client-side (call site L130-131): project-template/docs/pack/
@@ -90,6 +93,7 @@ emit_fragment() {
     #       `[Included from \`HELP-FRAGMENT-TRACKER.md\` ...]`
     # The `(pack-ops\/)?` optional group matches both. BD-177 originally
     # tightened this to a `pack-ops/`-only prefix, which silently broke
+    # <!-- DENY-LIST-CONTENT-END -->
     # the client-side substitution (sentinel leaked into rendered output);
     # the BD-177 fix-pass broadened the pattern back to cover both
     # surfaces while keeping the pack-side path-accurate sentinel.
@@ -103,6 +107,7 @@ emit_fragment() {
     ' "$fragment"
 }
 
+# <!-- DENY-LIST-CONTENT-START -->
 # BD-175 reorg: pack-side fragments live at $root/pack-ops/ (canonical
 # post-v11.0). Root-fallback retained so test fixtures (and unusual
 # overlay trees) that materialise the fragment files at $root/ continue
@@ -122,11 +127,13 @@ _pack_tracker_fragment_path() {
         echo "$root/HELP-FRAGMENT-TRACKER.md"
     fi
 }
+# <!-- DENY-LIST-CONTENT-END -->
 
 case "$surface" in
     pack)
         pack_frag=$(_pack_fragment_path)
         tracker_frag=$(_pack_tracker_fragment_path)
+        # <!-- DENY-LIST-CONTENT-START -->
         if [[ -z "$pack_frag" ]]; then
             # Fall back to canonical path for the error message that
             # emit_fragment will surface.
@@ -135,6 +142,7 @@ case "$surface" in
         if [[ -z "$tracker_frag" ]]; then
             tracker_frag="$root/pack-ops/HELP-FRAGMENT-TRACKER.md"
         fi
+        # <!-- DENY-LIST-CONTENT-END -->
         emit_fragment "$pack_frag" "$tracker_frag"
         ;;
     client)
@@ -150,7 +158,9 @@ case "$surface" in
         pack_frag=$(_pack_fragment_path)
         tracker_frag=$(_pack_tracker_fragment_path)
         if [[ -n "$pack_frag" ]]; then
+            # <!-- DENY-LIST-CONTENT-START -->
             [[ -z "$tracker_frag" ]] && tracker_frag="$root/pack-ops/HELP-FRAGMENT-TRACKER.md"
+            # <!-- DENY-LIST-CONTENT-END -->
             emit_fragment "$pack_frag" "$tracker_frag"
             local_emit_count=$((local_emit_count + 1))
         fi
@@ -166,7 +176,9 @@ case "$surface" in
         fi
         if (( local_emit_count == 0 )); then
             echo "pack-help: no HELP-FRAGMENT-*.md found under $root" >&2
+            # <!-- DENY-LIST-CONTENT-START -->
             echo "pack-help: expected pack-ops/HELP-FRAGMENT-PACK.md (pack repo) or" >&2
+            # <!-- DENY-LIST-CONTENT-END -->
             echo "           docs/pack/HELP-FRAGMENT.md (client project)." >&2
             exit 1
         fi

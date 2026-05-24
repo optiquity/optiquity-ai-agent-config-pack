@@ -298,7 +298,9 @@ next pack release.
    `find . -name '*.v9-customized' -not -path './.pack-migration-backup/*'`.
    The list must match the "Reconciliation required" section of the
    report one-for-one. A mismatch is a defect — STOP and surface it
+<!-- DENY-LIST-CONTENT-START -->
    to Pack Chat before proceeding.
+<!-- DENY-LIST-CONTENT-END -->
 3. **Confirm the migration branch and uncommitted state.**
    `git branch --show-current` must print `migration-v9-to-v10` (or
    whatever branch the migration created). Procedure 5-C does not
@@ -606,7 +608,9 @@ those edits.
    `diff <(awk '/^## Custom agents/,0' docs/pack/PLATFORM-SKILLS.md.v9-customized) <(awk '/^## Custom agents/,0' docs/pack/PLATFORM-SKILLS.md)`.
    The diff should be empty (no edits to Custom regions during
    migration). If the diff is non-empty, the auto-splice failed —
+<!-- DENY-LIST-CONTENT-START -->
    STOP and surface to Pack Chat.
+<!-- DENY-LIST-CONTENT-END -->
 2. **Reconcile non-Pattern-X edits.** Diff the pre-`## Custom agents`
    region of the sidecar against the same region of the live file.
    Any diff is a project edit the auto-splice did not preserve.

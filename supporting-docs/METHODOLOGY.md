@@ -107,6 +107,7 @@ Pasting results from CLI back to Claude Chat: developer only.
 
 Every project should have all of these. Create them before writing any code.
 
+<!-- DENY-LIST-CONTENT-START -->
 | Document | Purpose | Who writes | Who updates |
 |---|---|---|---|
 | `ARCHITECTURE.md` | Architectural decisions, layer map, patterns, data models | Architect agent (kickoff) | Any phase that changes architecture |
@@ -118,6 +119,7 @@ Every project should have all of these. Create them before writing any code.
 | `AGENTS.md` | Agent roster and routing table | PM chat | When agents are added or changed |
 | `PACK-FEEDBACK.md` | Upstream feedback log to Pack Chat — observations, not solutions | PM chat | Continuously (append-only); delivered at workflow boundaries (Part 10) |
 | `METHODOLOGY.md` | This file — project-agnostic methodology reference | Pack (v9) | When new standing decisions are made |
+<!-- DENY-LIST-CONTENT-END -->
 
 ### Document hygiene rules (inviolable)
 
@@ -1557,11 +1559,13 @@ schedule a single-source consolidation in a future cleanup batch.
 
 ## Part 10 — Pack Feedback Loop
 
+<!-- DENY-LIST-CONTENT-START -->
 The PM chat is the only entity that observes the AI Agent Config Pack
 running on real production work. The Pack Chat (the upstream maintainer
 of the pack) has no visibility into how the pack behaves outside the
 pack repo. The PM chat's responsibility is to observe, record, and
 report back.
+<!-- DENY-LIST-CONTENT-END -->
 
 ### What to observe
 
@@ -1576,15 +1580,19 @@ Four categories, logged continuously in `PACK-FEEDBACK.md`:
 
 - **Default:** deliver feedback batches at workflow-complete boundaries only (end of phase, fix cycle, audit cycle, feature). Never mid-phase.
 - **Emergency:** escalate immediately if something blocks the project or indicates a broken pack defect. See PACK-FEEDBACK.md `## Emergency Escalation`.
+<!-- DENY-LIST-CONTENT-START -->
 - **Question-driven:** the Pack Chat seeds open questions in PACK-FEEDBACK.md `## Pack Chat Open Questions`. The PM chat observes during normal work and answers at workflow boundaries when data is sufficient.
+<!-- DENY-LIST-CONTENT-END -->
 
 ### Workflow-boundary check (explicit trigger)
 
 At every workflow-complete boundary, **before** saying "ready for next phase," the PM chat must:
 
+<!-- DENY-LIST-CONTENT-START -->
 1. Review all Pack Chat Open Questions in PACK-FEEDBACK.md.
 2. For each question with Status: Not Ready — assess whether observations from this phase provide enough data to transition to Ready. If so, transition it and tell the user.
 3. For each question with Status: Ready — generate the delivery prompt and present it to the user for forwarding to Pack Chat.
+<!-- DENY-LIST-CONTENT-END -->
 4. Briefly report the status of all open questions to the user (even if nothing changed), so the user has visibility.
 
 ### The running doc

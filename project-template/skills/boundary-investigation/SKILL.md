@@ -22,6 +22,7 @@ dotted dirs at the pack repo root.
 
 ## Why this skill exists
 
+<!-- DENY-LIST-CONTENT-START -->
 Project and pack are intentionally designed differently. The pack repo
 maintains its own operating rules (Pack Chat, pack-architect / pack-coder
 / etc. agent roster, `pack-ops/` operational docs, `maintenance-docs/`
@@ -38,6 +39,7 @@ install — the file does not exist there. The contamination either
 breaks at install (broken cross-reference) or pollutes the project's
 design intent (importing pack-side orchestration into project-side
 content).
+<!-- DENY-LIST-CONTENT-END -->
 
 The cure is mechanical: before recommending or applying any project-side
 change, **investigate whether a project-side source of truth exists for
@@ -84,8 +86,10 @@ in `project-template/`.
   an augmentation to the SSOT (cite SSOT, edit SSOT, or reference SSOT
   — never duplicate).
 - **SSOT exists, change conflicts:** flag the conflict. Do NOT apply.
+  <!-- DENY-LIST-CONTENT-START -->
   Surface to Pack Chat (or the PM chat at a client install) for
   re-design.
+  <!-- DENY-LIST-CONTENT-END -->
 - **No SSOT exists, change is needed:** flag the gap. Do NOT improvise.
   Surface for "needs project-design rationale" — a new project-side
   SSOT may need to be designed before any project-side rule lands.
@@ -96,6 +100,7 @@ in `project-template/`.
 The pack-only deny-list (not exhaustive; CI Check 37 enforces the
 canonical list):
 
+<!-- DENY-LIST-CONTENT-START -->
 - **File names:** `PACK-AGENTS.md`, `PACK-CHAT.md`, `HELP-FRAGMENT-PACK.md`,
   `HELP-FRAGMENT-TRACKER.md` (bare-filename refs from project-side; the
   pack-ops copy lives at `pack-ops/HELP-FRAGMENT-TRACKER.md` per CI
@@ -124,6 +129,7 @@ canonical list):
   pack root per pack-repo audit finding; not installed at
   client; bare-filename refs from project-side qualified by "in the
   pack repo" are LEGITIMATE distinction-callouts)
+<!-- DENY-LIST-CONTENT-END -->
 
 ### Step 5 — Document the investigation in the deliverable
 
@@ -147,12 +153,14 @@ pack-side and project-side. The same review dimension (e.g., "rule is
 missing", "cross-reference is stale") has DIFFERENT correct answers
 depending on which side the file lives on:
 
+<!-- DENY-LIST-CONTENT-START -->
 - **Pack-side correct answer:** cite pack-side SSOT
   (`CLAUDE.md` at pack root / `pack-ops/PACK-AGENTS.md` /
   `maintenance-docs/`).
 - **Project-side correct answer:** cite project-side SSOT
   (`docs/pack/PM-CHAT.md` / `docs/pack/PLATFORM-SKILLS.md` / project
   trinity).
+<!-- DENY-LIST-CONTENT-END -->
 
 The bias to import framing from the earlier-reviewed side into the
 later-reviewed side is real. This skill's Step 2 + Step 4 are the
@@ -163,7 +171,9 @@ explicit antidote.
 A pack reviewer flagged that the project trinity agent enumeration was
 missing several auditor variants. The reviewer's recommendation was:
 
+<!-- DENY-LIST-CONTENT-START -->
 > "Add: see `PACK-AGENTS.md` for the full roster."
+<!-- DENY-LIST-CONTENT-END -->
 
 Running this skill against the recommendation:
 

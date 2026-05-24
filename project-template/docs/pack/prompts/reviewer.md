@@ -98,10 +98,14 @@ Review for all nine of the following — do not skip any:
    - If no project SSOT exists and the project file genuinely needs the rule, flag a
      deferred design question rather than importing an external mechanism: "no project
      SSOT for `<concept>`; project-design rationale needed before recommending content."
-   - If the change would cross-reference a file outside the project (e.g., a pack-repo
+   - If the change would cross-reference a file outside the project
+     <!-- DENY-LIST-CONTENT-START -->
+     (e.g., a pack-repo
      file like `PACK-AGENTS.md`, `PACK-CHAT.md`, anything under `pack-ops/`, anything
      under the pack-repo `maintenance-docs/`, a pack-* agent name, or the `Pack Chat`
-     capitalized orchestrator role), the recommendation is ❌ FAIL by construction —
+     capitalized orchestrator role),
+     <!-- DENY-LIST-CONTENT-END -->
+     the recommendation is ❌ FAIL by construction —
      that reference does not exist at this client install and would break or
      pollute project intent. Recommend the project SSOT equivalent (or recommend
      NO reference, with rationale).

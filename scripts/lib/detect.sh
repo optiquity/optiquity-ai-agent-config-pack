@@ -19,6 +19,7 @@
 
 # pack-surface: pack | client | ambiguous
 #
+# <!-- DENY-LIST-CONTENT-START -->
 # Surface routing (post BD-175 directory reorganization):
 #   - Pack repo:    BACKLOG.md at <target>/pack-ops/ with `^\*\*BD-` entries
 #                   (canonical post-v11.0 location).
@@ -33,6 +34,7 @@
 # fallback; retained for test-fixture and back-compat coverage — see
 # scripts/tests/pack-help-test.sh fixture 1.3 "client repo (root
 # BACKLOG.md, TD entries)" which still writes the legacy shape).
+# <!-- DENY-LIST-CONTENT-END -->
 #
 # Used by scripts/pack-help.sh (BD-075) and any future verb that needs
 # to dispatch by surface without consulting tracker.toml.
@@ -40,7 +42,9 @@ detect_pack_surface() {
     local target="${1:-.}"
     local bd_seen=0 td_seen=0
     local backlog
+    # <!-- DENY-LIST-CONTENT-START -->
     for backlog in "$target/pack-ops/BACKLOG.md" "$target/docs/project/BACKLOG.md" "$target/BACKLOG.md"; do
+    # <!-- DENY-LIST-CONTENT-END -->
         [[ -f "$backlog" ]] || continue
         if grep -qE '^\*\*BD-[0-9]+ ' "$backlog" 2>/dev/null; then
             bd_seen=1

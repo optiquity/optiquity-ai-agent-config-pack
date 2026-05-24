@@ -373,6 +373,201 @@ case $? in
 esac
 
 # ─────────────────────────────────────────────────────────────────
+# Group 6: Per-line fence (Guardrail 2 — BD-173 H.13)
+# ─────────────────────────────────────────────────────────────────
+#
+# Exercises `_has_per_line_fence`, `_build_fence_skip_lineset`, and
+# `_CHECK_37_PER_LINE_FENCE_FILES` per architect §2.6 spec. Each test
+# stages a synthetic input string and asserts the helper output.
+
+printf "\n=== Group 6: Per-line fence (Guardrail 2) unit tests ===\n"
+
+python3 <<EOF
+import sys, pathlib
+sys.path.insert(0, '$REPO_ROOT/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+failures = []
+
+# Guardrail 2 helper symbols must exist on the module.
+required = ['_has_per_line_fence', '_build_fence_skip_lineset',
+            '_CHECK_37_PER_LINE_FENCE_FILES', '_FENCE_MARKER_START',
+            '_FENCE_MARKER_END', '_line_is_fence_marker']
+missing = [n for n in required if not hasattr(mod, n)]
+if missing:
+    failures.append(f"missing fence helpers: {missing}")
+
+# The architect-spec constant must enumerate at least 11 entries
+# (7 original + 4 dual-surface per H.12/H.13 reorder).
+if hasattr(mod, '_CHECK_37_PER_LINE_FENCE_FILES'):
+    n = len(mod._CHECK_37_PER_LINE_FENCE_FILES)
+    if n < 11:
+        failures.append(f"_CHECK_37_PER_LINE_FENCE_FILES has {n} entries; expected >=11")
+    # Each entry must be a non-empty string.
+    for entry in mod._CHECK_37_PER_LINE_FENCE_FILES:
+        if not isinstance(entry, str) or not entry:
+            failures.append(f"invalid fence-list entry: {entry!r}")
+    # Each entry must use POSIX-form repo-relative path (no leading '/').
+    for entry in mod._CHECK_37_PER_LINE_FENCE_FILES:
+        if entry.startswith('/'):
+            failures.append(f"fence-list entry not repo-relative: {entry!r}")
+
+# G6.T1: File NOT on fence-allowlist — Check 37 normal path.
+#   We verify _has_per_line_fence returns False for an unallowlisted file.
+from pathlib import Path
+if hasattr(mod, '_has_per_line_fence'):
+    if mod._has_per_line_fence(Path("project-template/docs/pack/SOME-RANDOM.md")):
+        failures.append("G6.T1: _has_per_line_fence True for unallowlisted file")
+
+# G6.T2: File ON fence-allowlist — fence markers exempt enclosed lines.
+text_g6t2 = '''before line outside
+<!-- DENY-LIST-CONTENT-START -->
+PACK-AGENTS.md mention inside fence
+<!-- DENY-LIST-CONTENT-END -->
+after line outside
+'''
+skip = mod._build_fence_skip_lineset(text_g6t2)
+# Expect lines 3 in skip (interior of fence); 1, 2, 4, 5 NOT in skip.
+if skip is None:
+    failures.append("G6.T2: skip set is None (imbalance) — should be {3}")
+elif skip != {3}:
+    failures.append(f"G6.T2: skip set {skip} != expected {{3}}")
+
+# G6.T3: File ON fence-allowlist, hits OUTSIDE fence still scanned.
+text_g6t3 = '''PACK-AGENTS.md outside fence
+<!-- DENY-LIST-CONTENT-START -->
+PACK-AGENTS.md inside fence
+<!-- DENY-LIST-CONTENT-END -->
+'''
+skip = mod._build_fence_skip_lineset(text_g6t3)
+# Line 1 NOT in skip (outside-fence hit must still be scanned).
+if skip is None:
+    failures.append("G6.T3: skip set is None — should be {3}")
+elif 1 in skip:
+    failures.append(f"G6.T3: line 1 incorrectly in skip {skip}")
+
+# G6.T4: START without matching END — imbalance.
+text_g6t4 = '''<!-- DENY-LIST-CONTENT-START -->
+content
+(no END marker)
+'''
+skip = mod._build_fence_skip_lineset(text_g6t4)
+if skip is not None:
+    failures.append(f"G6.T4: expected None (imbalance); got {skip}")
+
+# G6.T5: END without matching START — imbalance.
+text_g6t5 = '''content
+<!-- DENY-LIST-CONTENT-END -->
+'''
+skip = mod._build_fence_skip_lineset(text_g6t5)
+if skip is not None:
+    failures.append(f"G6.T5: expected None (imbalance); got {skip}")
+
+# G6.T6: Multiple non-overlapping fences.
+text_g6t6 = '''outside1
+<!-- DENY-LIST-CONTENT-START -->
+inside-fence-A
+<!-- DENY-LIST-CONTENT-END -->
+outside2
+<!-- DENY-LIST-CONTENT-START -->
+inside-fence-B
+<!-- DENY-LIST-CONTENT-END -->
+outside3
+'''
+skip = mod._build_fence_skip_lineset(text_g6t6)
+# Lines 3 (inside-fence-A) and 7 (inside-fence-B) should be in skip.
+if skip is None:
+    failures.append("G6.T6: skip is None — should be {3, 7}")
+elif skip != {3, 7}:
+    failures.append(f"G6.T6: skip {skip} != expected {{3, 7}}")
+
+# G6.T7: Empty fence (START immediately followed by END) — permitted.
+text_g6t7 = '''before
+<!-- DENY-LIST-CONTENT-START -->
+<!-- DENY-LIST-CONTENT-END -->
+after
+'''
+skip = mod._build_fence_skip_lineset(text_g6t7)
+if skip is None:
+    failures.append("G6.T7: empty fence rejected — should be permitted")
+elif skip != set():
+    failures.append(f"G6.T7: empty fence skip {skip} != expected empty set")
+
+# G6.T8: Nested START — imbalance (no nesting support per §2.5).
+text_g6t8 = '''<!-- DENY-LIST-CONTENT-START -->
+inner1
+<!-- DENY-LIST-CONTENT-START -->
+inner2
+<!-- DENY-LIST-CONTENT-END -->
+<!-- DENY-LIST-CONTENT-END -->
+'''
+skip = mod._build_fence_skip_lineset(text_g6t8)
+if skip is not None:
+    failures.append(f"G6.T8: nested fence accepted; expected None imbalance: {skip}")
+
+# G6.T9: Shell-comment-prefix fence syntax — `# <!-- DENY-LIST-CONTENT-START -->`.
+#   The parser must recognize the shell-comment-prefixed form (per
+#   architect §2.3 shell-script fence-marker note).
+text_g6t9 = '''#!/usr/bin/env bash
+echo "before"
+# <!-- DENY-LIST-CONTENT-START -->
+echo "pack-ops/foo inside fence"
+# <!-- DENY-LIST-CONTENT-END -->
+echo "after"
+'''
+skip = mod._build_fence_skip_lineset(text_g6t9)
+if skip is None:
+    failures.append("G6.T9: shell-comment-prefix fence rejected; should be accepted")
+elif skip != {4}:
+    failures.append(f"G6.T9: shell-comment-prefix skip {skip} != expected {{4}}")
+
+# G6.T10: Indented fence markers (markdown bullets / shell function bodies).
+text_g6t10 = '''top
+  <!-- DENY-LIST-CONTENT-START -->
+  bullet line with PACK-AGENTS.md
+  <!-- DENY-LIST-CONTENT-END -->
+end
+'''
+skip = mod._build_fence_skip_lineset(text_g6t10)
+if skip is None:
+    failures.append("G6.T10: indented fence rejected; should be accepted")
+elif skip != {3}:
+    failures.append(f"G6.T10: indented skip {skip} != expected {{3}}")
+
+# G6.T11: End-to-end — run Check 37 via validate-pack.py on HEAD; PASS
+#   verifies the 11-file fence integration is sound (no imbalances,
+#   no false-positive failures from outside-fence prose).
+import subprocess
+result = subprocess.run(
+    ['python3', '$REPO_ROOT/scripts/validate-pack.py'],
+    capture_output=True, text=True,
+)
+if result.returncode != 0:
+    failures.append(
+        f"G6.T11: validate-pack.py exit {result.returncode}; expected 0. "
+        f"Tail: {result.stdout[-1000:]}"
+    )
+
+# G6.T12: Check 37 success message announces fenced-lines count.
+if 'fenced LEGITIMATE-content line' not in result.stdout:
+    failures.append("G6.T12: Check 37 success message missing fenced-lines announcement")
+
+if failures:
+    print("FAILURES")
+    for f in failures:
+        print(" ", f)
+    sys.exit(1)
+print("OK")
+EOF
+case $? in
+    0) t_pass "Group 6 — Guardrail 2 per-line fence unit tests" ;;
+    *) t_fail "Group 6 — Guardrail 2 per-line fence unit tests failed" ;;
+esac
+
+# ─────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────
 

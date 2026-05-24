@@ -1333,6 +1333,13 @@ def check_trinity_no_scaffolding_comments(
         "HOW TO USE THIS TEMPLATE",
         "Project addenda go here",
         "Trinity-rule exception",
+        # Guardrail 2 (BD-173 H.13) per-line fence markers in trinity
+        # files. The fence wraps the "Project SSOT-first" pack-only-files
+        # enumeration block per ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md
+        # §2.4. Markers are intentional structural content, not
+        # fresh-install scaffolding.
+        "DENY-LIST-CONTENT-START",
+        "DENY-LIST-CONTENT-END",
     )
     any_failed = False
     for name in ("CLAUDE.md", "AGENTS.md", "GEMINI.md"):
@@ -4081,56 +4088,140 @@ def _iter_project_side_files() -> list[Path]:
     return out
 
 
-def _is_legitimate_deny_list_doc(rel_path: Path) -> bool:
-    """Some project-side files are whole-file LEGITIMATE-context for
-    deny-list patterns per audit §D-4 — flagging them would create a
-    self-referential gate (the file's PURPOSE is to teach or document
-    the boundary).
+# Per-line fence allowlist for Check 37 (Guardrail 2 — BD-173 H.13).
+# Replaces the legacy `_is_legitimate_deny_list_doc()` whole-file
+# exemption. Files on this list MAY contain deny-list patterns INSIDE
+# paired `<!-- DENY-LIST-CONTENT-START -->` / `<!-- DENY-LIST-CONTENT-END -->`
+# fence markers; outside the fence, normal Check 37 rules apply.
+#
+# Constant shape: tuple of repo-relative path strings (POSIX form).
+# Membership test is exact-string match via `_has_per_line_fence`.
+#
+# Contract: see `maintenance-docs/v11-implementation/ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md`
+# §2.3 (constant) and §2.4 (fence-placement plan per file). The 4
+# dual-surface entries (METHODOLOGY.md, INSTALL-PROCEDURES.md,
+# detect.sh, pack-help.sh) were added 2026-05-24 per the H.12/H.13
+# reorder — see `IMPLEMENTATION-REPORT-BD-173-Batch-19c-REORDER-H.12-H.13.md`
+# for the STOP-AND-ESCALATE evidence that drove the expansion.
+_CHECK_37_PER_LINE_FENCE_FILES = (
+    # Original 7 entries (project-template/ trinity + prompts + skill + PM-CHAT.md):
+    "project-template/skills/boundary-investigation/SKILL.md",
+    "project-template/docs/pack/PM-CHAT.md",
+    "project-template/docs/pack/prompts/coder.md",
+    "project-template/docs/pack/prompts/reviewer.md",
+    "project-template/CLAUDE.md",
+    "project-template/AGENTS.md",
+    "project-template/GEMINI.md",
+    # 4 dual-surface additions (added 2026-05-24 per H.12/H.13 reorder).
+    # These files carry LEGITIMATE pack-internal references in functional
+    # dual-surface code (scripts/) or pedagogical role-name content
+    # (supporting-docs/) that the fence covers without breaking script
+    # semantics or doc explanatory purpose.
+    "supporting-docs/METHODOLOGY.md",
+    "supporting-docs/INSTALL-PROCEDURES.md",
+    "scripts/lib/detect.sh",
+    "scripts/pack-help.sh",
+    # PACK-FEEDBACK.md (added 2026-05-24 during H.13 implementation —
+    # architect-spec gap discovery, IMPL-REPORT-BD-173-Batch-19c-H.13.md
+    # §7). Architect §2.3 originally classified this file as
+    # anchor-phrase-legitimate (and thus NOT on the per-line fence list),
+    # but empirically the file's `Pack Chat` references throughout the
+    # template body lack the ±2-line "feedback" anchor in every context
+    # window — the file's whole-file domain-vocabulary nature was
+    # previously covered by the (now-removed) `_is_legitimate_deny_list_doc()`
+    # whole-file exemption. Placing this file on the per-line fence list
+    # with a whole-file fence preserves the architectural intent
+    # (pack-vs-client feedback flow is the doc's reason for existing —
+    # `Pack Chat` is unavoidable vocabulary).
+    "project-template/docs/pack/PACK-FEEDBACK.md",
+)
 
-    Categories:
-      - **Boundary-discipline teaching docs:** the `boundary-investigation`
-        skill files, the project-side `coder.md` / `reviewer.md` prompts,
-        and the project trinity (which names the deny-list inside the
-        "Project SSOT-first" bullet as instructional content).
-      - **Feedback-flow / cross-repo-orchestration docs:** files whose
-        whole purpose is to describe the project-to-pack feedback flow,
-        the PM-chat-to-Pack-Chat escalation contract, or the
-        cross-system roster — per audit §D-4 LEGITIMATE designation.
-        These name `Pack Chat`, `pack-architect`, etc. throughout as
-        domain vocabulary, not contamination.
+
+def _has_per_line_fence(rel_path: Path) -> bool:
+    """Return True if rel_path is on the per-line-fence allowlist
+    (i.e., the file MAY contain deny-list patterns INSIDE the fence
+    markers; outside the fence, normal Check 37 rules apply).
+
+    Replaces the legacy `_is_legitimate_deny_list_doc()` whole-file
+    exemption (per `maintenance-docs/v11-implementation/ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md`
+    §2.3).
     """
-    rel_str = str(rel_path)
-    legitimate = (
-        # Boundary-investigation skill (project-side, Pattern A canonical
-        # single source — auto-distributed via stage_s4_skills() to all
-        # three CLI install paths at client install time).
-        "project-template/skills/boundary-investigation/SKILL.md",
-        # Project-side coder + reviewer prompts that document the rule.
-        "project-template/docs/pack/prompts/coder.md",
-        "project-template/docs/pack/prompts/reviewer.md",
-        # Project trinity — the "Project SSOT-first" bullet names the
-        # pack-only deny-list as a teaching example for project actors.
-        "project-template/CLAUDE.md",
-        "project-template/AGENTS.md",
-        "project-template/GEMINI.md",
-        # Feedback-flow / cross-repo orchestration docs (per audit §D-4
-        # LEGITIMATE designation — `Pack Chat`, pack-* agent names,
-        # cross-repo file references appear as domain vocabulary).
-        "project-template/docs/pack/PACK-FEEDBACK.md",
-        "project-template/docs/pack/PM-CHAT.md",
-        # `METHODOLOGY.md` if pack-shipped (Architect B may relocate;
-        # currently lives in `supporting-docs/`); kept here as a
-        # forward-pointer for future placement.
-        "project-template/docs/pack/METHODOLOGY.md",
-        # SETUP-EXISTING.md describes pack→project install escalation
-        # paths; references to `Pack Chat` are LEGITIMATE there.
-        "project-template/docs/pack/SETUP-EXISTING.md",
-        # INSTALL-PROCEDURES.md describes cross-repo install + custom-
-        # agent / custom-skill procedures; pack-side terminology is
-        # legitimate.
-        "project-template/docs/pack/INSTALL-PROCEDURES.md",
-    )
-    return rel_str in legitimate
+    return str(rel_path) in _CHECK_37_PER_LINE_FENCE_FILES
+
+
+# Fence-marker line strings. The parser matches each MARKER as a
+# suffix of the line's stripped right-hand side, allowing an optional
+# shell-comment prefix (`# `) — so the same marker works in both
+# markdown files and shell scripts:
+#
+#   Markdown:  `<!-- DENY-LIST-CONTENT-START -->`
+#   Shell:     `# <!-- DENY-LIST-CONTENT-START -->`
+#
+# Per architect §2.5 invariant "each marker MUST be on its own line",
+# the parser admits leading whitespace + an optional shell-comment
+# prefix and rejects any other text on the line.
+_FENCE_MARKER_START = "<!-- DENY-LIST-CONTENT-START -->"
+_FENCE_MARKER_END = "<!-- DENY-LIST-CONTENT-END -->"
+
+
+def _line_is_fence_marker(line: str, marker: str) -> bool:
+    """Return True if line is exactly the fence marker (modulo leading
+    whitespace + an optional `# ` shell-comment prefix).
+
+    Per architect §2.3 shell-script fence-marker note: the shell `#`
+    comment form preceding the marker is admitted so the line is a
+    valid shell comment AND a valid fence marker for the parser.
+    """
+    stripped = line.strip()
+    if stripped == marker:
+        return True
+    # Admit shell-comment prefix (`# <marker>` or `#<marker>`).
+    if stripped.startswith("#"):
+        rest = stripped[1:].lstrip()
+        if rest == marker:
+            return True
+    return False
+
+
+def _build_fence_skip_lineset(text: str) -> set[int] | None:
+    """Parse the text for paired DENY-LIST-CONTENT-START / -END
+    markers and return the set of 1-indexed line numbers INSIDE any
+    fence (i.e., lines between paired markers, exclusive of the marker
+    lines themselves).
+
+    Multiple non-overlapping fences supported; nested fences NOT
+    supported (return None on imbalance — caller emits a Check 37
+    fail with the "fence-marker imbalance" diagnostic).
+
+    Per architect §2.5 invariants:
+      - Pairs MUST be balanced (every START followed by a matching END
+        before the next START).
+      - Fence range is EXCLUSIVE of the marker lines themselves.
+      - Empty fence (START immediately followed by END) is permitted.
+    """
+    skip: set[int] = set()
+    in_fence = False
+    fence_start_line = 0
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        if _line_is_fence_marker(line, _FENCE_MARKER_START):
+            if in_fence:
+                # Nested START — imbalance.
+                return None
+            in_fence = True
+            fence_start_line = lineno
+        elif _line_is_fence_marker(line, _FENCE_MARKER_END):
+            if not in_fence:
+                # END without matching START — imbalance.
+                return None
+            in_fence = False
+            # Mark the interior lines (exclusive of markers).
+            for inner in range(fence_start_line + 1, lineno):
+                skip.add(inner)
+            fence_start_line = 0
+    if in_fence:
+        # Unterminated START — imbalance.
+        return None
+    return skip
 
 
 def check_project_side_deny_list() -> None:
@@ -4169,10 +4260,9 @@ def check_project_side_deny_list() -> None:
     any_failed = False
     files_walked = 0
     hits_clean = 0
+    hits_fenced = 0
 
     for rel_path in _iter_project_side_files():
-        if _is_legitimate_deny_list_doc(rel_path):
-            continue
         full_path = REPO_ROOT / rel_path
         try:
             text = full_path.read_text()
@@ -4181,7 +4271,30 @@ def check_project_side_deny_list() -> None:
         files_walked += 1
         lines = text.splitlines()
 
+        # Guardrail 2 (BD-173 H.13): per-line fence skip-set for
+        # fence-allowlisted files. Files NOT on the allowlist get an
+        # empty skip-set (no fence support outside the allowlist).
+        if _has_per_line_fence(rel_path):
+            fence_skip = _build_fence_skip_lineset(text)
+            if fence_skip is None:
+                fail(
+                    f"{rel_path} — fence-marker imbalance "
+                    f"(unmatched `<!-- DENY-LIST-CONTENT-START -->` / "
+                    f"`<!-- DENY-LIST-CONTENT-END -->` markers; nesting "
+                    f"NOT supported per ARCHITECTURE-V11-GUARDRAILS-"
+                    f"CONTRACT.md §2.5). Remediation: balance markers "
+                    f"so every START has a matching END before the next "
+                    f"START."
+                )
+                any_failed = True
+                fence_skip = set()
+        else:
+            fence_skip = set()
+
         for lineno, line in enumerate(lines, start=1):
+            if lineno in fence_skip:
+                hits_fenced += 1
+                continue
             # Filename matches (bare).
             for fname, why in _DENY_LIST_FILENAMES:
                 if fname in line:
@@ -4246,7 +4359,9 @@ def check_project_side_deny_list() -> None:
         ok(
             f"Check 37 — {files_walked} project-side file(s) walked; "
             f"zero deny-list contamination "
-            f"({hits_clean} anchored LEGITIMATE-context hit(s) accepted)"
+            f"({hits_clean} anchored LEGITIMATE-context hit(s) accepted; "
+            f"{hits_fenced} fenced LEGITIMATE-content line(s) exempt "
+            f"per Guardrail 2)"
         )
 
 

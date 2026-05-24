@@ -80,10 +80,14 @@ under Constraints.]
   `.claude/skills/<name>/`, and any project-side architecture or
   methodology document at `docs/project/` or `docs/reference/`.
   If the change would introduce a reference to a file outside the
-  project (e.g., the AI Agent Config Pack repo's `PACK-AGENTS.md`,
+  project
+  <!-- DENY-LIST-CONTENT-START -->
+  (e.g., the AI Agent Config Pack repo's `PACK-AGENTS.md`,
   `PACK-CHAT.md`, anything under the pack repo's `pack-ops/` or
   `maintenance-docs/`, a pack-* agent name, the `Pack Chat` capitalized
-  orchestrator role), STOP and report the situation in your completion
+  orchestrator role),
+  <!-- DENY-LIST-CONTENT-END -->
+  STOP and report the situation in your completion
   report under **"Boundary discipline stop"** — do not improvise a fix.
   The pack repo is not present at this client install; referencing
   pack-only files would break at runtime or pollute project intent.
@@ -196,9 +200,13 @@ Success criteria: [what the reviewer will check to confirm this fix is complete]
   as the standard variant. If a fix would modify a project-shipped file
   AND change a reference, investigate the project SSOT for that concept
   FIRST. If the fix would introduce a reference to a file outside the
-  project (pack-repo `PACK-AGENTS.md`, anything under `pack-ops/` or
+  project
+  <!-- DENY-LIST-CONTENT-START -->
+  (pack-repo `PACK-AGENTS.md`, anything under `pack-ops/` or
   pack-repo `maintenance-docs/`, pack-* agent names, `Pack Chat`
-  capitalized orchestrator role), STOP and report under
+  capitalized orchestrator role),
+  <!-- DENY-LIST-CONTENT-END -->
+  STOP and report under
   **"Boundary discipline stop"** — do not improvise a fix.
 - **Deferral comments:** If during a fix you encounter related work that
   cannot be completed within this fix cycle's scope, add a typed deferral

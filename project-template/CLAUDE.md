@@ -386,10 +386,14 @@ of agent role.
   installed in this project (e.g., `docs/pack/PM-CHAT.md`,
   `docs/pack/PLATFORM-SKILLS.md`, `docs/pack/PACK-FEEDBACK.md`,
   the project trinity at the project root) are part of the project
-  SSOT and may be referenced. Files at the pack repo (PACK-AGENTS.md,
+  SSOT and may be referenced. Files at the pack repo
+  <!-- DENY-LIST-CONTENT-START -->
+  (PACK-AGENTS.md,
   PACK-CHAT.md, pack-* agent prompts, pack-repo `maintenance-docs/`,
   pack-repo `pack-ops/` — any file under `pack-ops/`, including
-  BOUNDARY-DEFINITION.md, BACKLOG.md, CHANGELOG.md, etc.) are NOT
+  BOUNDARY-DEFINITION.md, BACKLOG.md, CHANGELOG.md, etc.)
+  <!-- DENY-LIST-CONTENT-END -->
+  are NOT
   part of the project SSOT and must not be referenced from project
   files — the pack repo is not present at this client install. See
   the `boundary-investigation` skill for the SSOT-investigation

@@ -30,6 +30,7 @@ below.
 HTML comment above.*
 ---
 
+<!-- DENY-LIST-CONTENT-START -->
 # [PROJECT_NAME] — Pack Feedback Log
 
 ## Status
@@ -448,3 +449,4 @@ while using v9. May take months to produce data — that's expected.
 | Date | Delivered sections | Pack Chat disposition | Notes |
 |---|---|---|---|
 | *(no deliveries yet)* | | | |
+<!-- DENY-LIST-CONTENT-END -->
