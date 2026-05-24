@@ -1,0 +1,7 @@
+{
+  "_comment": "Synthetic fixture — Check 43 FAIL path (LEAK CLASS C, .mcp.json.example cite)",
+  "_purpose": "Exercises LEAK CLASS C per ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md §1.12 cross-walk row 6 (1 .mcp.json.example supporting-docs/CLI-PM-SETUP.md cite). Check 43 MUST FAIL the qualified reference below with the pre-install-only verdict.",
+  "_setup_doc": "supporting-docs/CLI-PM-SETUP.md describes the MCP setup procedure. CLI-PM-SETUP.md is NOT in the _CLIENT_INSTALLED_FILES inventory (per audit §0.3 Note 2), so this qualified path is a pre-install-only reference that cannot resolve at client install time.",
+  "_remediation": "Drop the cite OR replace with a project-side SSOT.",
+  "stub": true
+}

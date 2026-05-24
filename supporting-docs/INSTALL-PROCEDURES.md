@@ -231,7 +231,7 @@ registered?" by checking the rows above for their `x-<name>` entry.
 > `MIGRATION-v10-to-v11.md`. Procedure 5-C is retained here as
 > historical documentation only; clients still on v9.x should
 > reach out to the pack maintainer for migration guidance, or
-> recover the legacy migrator from history with
+> recover the legacy migrator from history in the pack repo with
 > `git -C "$PACK" checkout v10 -- scripts/migrate-v9-to-v10.sh
 > supporting-docs/MIGRATION-v9-to-v10.md`.
 

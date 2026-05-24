@@ -181,6 +181,9 @@ jobs:
       - name: validate-pack Check 42 tests (BD-184, CI workflow wires all per-check test files)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-42.sh
+      - name: validate-pack Check 43 tests (BD-173 H.14, V11 leak-sweep prevention, project-side bare cross-reference scanner)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-check-43.sh
       - name: tracker BD-129 gh-repo routing tests (BD-129)
         if: always()
         run: bash scripts/tests/tracker-bd129-gh-repo-test.sh

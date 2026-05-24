@@ -9,11 +9,10 @@ Applies to: All projects using Claude Code CLI, Codex CLI, or Gemini CLI with AI
 > selects agents and skills per project using `PLATFORM-SKILLS.md`.
 
 > **Single source of truth:** One copy of this file lives at
-> `supporting-docs/METHODOLOGY.md` in the AI Agent Config Pack. Copy it to your project
-> root during setup (copied to project root by `init-project.sh`; see
-> `supporting-docs/SETUP-NEW.md` Step 3). Do not modify the pack's copy for
-> project-specific needs — edit the project root copy instead and let it evolve with
-> the project.
+> `supporting-docs/METHODOLOGY.md` in the pack repo. Copy it to your project
+> root during setup (copied to project root by `init-project.sh`). Do not
+> modify the pack's copy for project-specific needs — edit the project
+> root copy instead and let it evolve with the project.
 
 ---
 
@@ -51,10 +50,10 @@ that depends on that content.
 - Makes all architectural and planning decisions
 
 > **Four PM chat options:** The PM chat can run as a Claude Desktop app project
-> (setup — see `supporting-docs/SETUP-NEW.md` Step 10, Option A), a resumable
-> Claude Code CLI session (Step 10, Option B), a Codex CLI session (Step 10,
-> Option C), or a Gemini CLI session (Step 10, Option D). Daily CLI usage
-> reference in `supporting-docs/CLI-PM-SETUP.md`.
+> (setup steps are in the pack repo at `supporting-docs/SETUP-NEW.md` Step 10,
+> Option A), a resumable Claude Code CLI session (Step 10, Option B), a Codex
+> CLI session (Step 10, Option C), or a Gemini CLI session (Step 10, Option D).
+> Daily CLI usage reference in `supporting-docs/CLI-PM-SETUP.md`.
 > The methodology, rules, and procedures are identical in both modes. `PM-CHAT.md`
 > in the project root provides startup instructions and is read by both modes —
 > directly from disk by the CLI PM chat, and via the GitHub connector by the
@@ -384,8 +383,9 @@ been explicitly split into multiple sequential parts by a planning agent.
    in context file placeholders, run `./scripts/bootstrap.sh`
 3. Create `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` (initially sparse)
 4. Commit all template and doc files before writing any code
-5. Set up the PM chat (`supporting-docs/SETUP-NEW.md` Step 10 — choose
-   Claude Desktop, Claude Code CLI, Codex CLI, or Gemini CLI)
+5. Set up the PM chat — setup steps are in the pack repo at
+   `supporting-docs/SETUP-NEW.md` Step 10 (choose Claude Desktop,
+   Claude Code CLI, Codex CLI, or Gemini CLI)
 6. Planning conversation with PM chat → establishes architecture, phase plan
 7. PM chat generates: `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`; fills in
    remaining `[PLACEHOLDER]` sections in context files using `PLATFORM-SKILLS.md`;
@@ -1621,8 +1621,9 @@ reference.
       The script previews every operation, asks for explicit
       confirmation, and on `y` executes eleven stages (S0..S10) that
       copy template files, distribute skills, set permissions, run
-      bootstrap, and emit the PM chat kickoff prompt. See
-      `supporting-docs/SETUP-NEW.md` Step 3 for the full procedure.
+      bootstrap, and emit the PM chat kickoff prompt. The full
+      procedure is documented in the pack repo at
+      `supporting-docs/SETUP-NEW.md` Step 3.
 - [ ] Create BACKLOG.md, STATUS.md, CHANGELOG.md (empty with structure)
 - [ ] **Choose PM chat mode** — Option A (Claude Desktop app, see
       `SETUP-NEW.md` Step 10 Option A), Option B (Claude Code CLI,
