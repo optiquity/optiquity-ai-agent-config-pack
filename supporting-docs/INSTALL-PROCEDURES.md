@@ -938,11 +938,15 @@ from `docs/pack/prompts/pm-chat.md` on a shell-capable surface
 Commander) and declares `shell` at the surface-declaration gate.
 
 Procedure 7 is the PM-chat-side companion to the kickoff-variant
-continuation pointer. The pointer routes to this procedure; this
-procedure fills in the Apple / gRPC toolchain that SETUP-NEW.md
-Steps 5–8 would otherwise require the developer to run by hand.
-Every auto-discovered value and every install / edit / machine-level
-write is confirmed via Form R / I / E / M before the PM chat acts.
+continuation pointer. The pointer routes to this procedure on
+shell-capable surfaces; this procedure fills in the Apple / gRPC
+toolchain (Xcode scheme variables, swift-format, gRPC tooling,
+Xcode companion files) that the developer would otherwise run by
+hand. Every auto-discovered value and every install / edit /
+machine-level write is confirmed via Form R / I / E / M before the
+PM chat acts. On non-shell surfaces, the kickoff variant's `manual`
+branch walks the developer through the same sub-flows inline
+(M.A–M.D in `docs/pack/prompts/pm-chat.md` § Variant: kickoff).
 
 Gates: **G7-discovery** (Form R), **G7-install** (Form I),
 **G7-edit** (Form E), and **G7-machine** (Form M). Each gate defaults
@@ -960,12 +964,14 @@ from its environment — this is sanctioned and not a deviation; it
 MUST NOT begin Form R discovery in the same message as the surface
 declaration. On Web / Desktop surfaces without shell access (Claude
 Web, ChatGPT Web), the assistant declares `manual`; Procedure 7 is
-not entered; the PM chat emits the `SETUP-NEW.md § Manual fallback`
-pointer and waits for developer-reported values. The exit-ramp
-reply is interpreted per the § 7.5 reply grammar (`yes` / `no` /
-`skip` / `abort` / `edit` / bare value); a positive reply
-authorizes Form R, anything else defers per the grammar's
-"unrecognized → no" rule.
+not entered; the PM chat instead walks the developer through the
+manual-fallback sub-flows inline (M.A–M.D in
+`docs/pack/prompts/pm-chat.md` § Variant: kickoff, `manual` branch)
+and composes the corresponding file edits from developer-reported
+values. The exit-ramp reply is interpreted per the § 7.5 reply
+grammar (`yes` / `no` / `skip` / `abort` / `edit` / bare value); a
+positive reply authorizes Form R, anything else defers per the
+grammar's "unrecognized → no" rule.
 
 The developer may declare `manual` even on a shell-capable surface
 (e.g., to read the planned commands before granting execution); the

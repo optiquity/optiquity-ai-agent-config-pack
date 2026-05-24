@@ -5,7 +5,7 @@
 **HEAD after edits:** `df1e97d3a9446def9ca92b7cc6a8a2cb76f81f82` (working-tree edits only; pack-coder does not commit)
 **Date:** 2026-05-24
 **Stage:** H.11 — Leak sweep Category C (pm-chat variant rewrites)
-**Scope keyword:** project-only (single-file edit under `project-template/`; manifest regen accompanies per pack-memory rule)
+**Scope keyword:** (none — mixed-scope commit touching `project-template/` + `maintenance-docs/` IMPL-REPORT + `test-fixtures/manifest.txt`; Check 36 SKIP, no claim to verify; per PLAN §3 H.11 "Commit subject scope keyword: (mixed — no keyword)")
 
 ## §1 — Scope
 
@@ -483,7 +483,7 @@ returned BOUNDARY OK. No audit-vocabulary-gap leaks to flag.
 
 The Variant 1 rewrite expanded the `manual` branch from ~3 lines
 to ~45 lines (the inlined M.A–M.D sub-flows). Total pm-chat.md
-size grew from 302 lines to 507 lines (+205 lines across all
+size grew from 301 lines to 507 lines (+206 lines across all
 three variant rewrites). This is a content-density tradeoff:
 client-installed pm-chat.md now carries all the manual-fallback
 + setup-template + kickoff-template substance inline, eliminating
@@ -499,7 +499,7 @@ generating follow-up.
 
 | Path | Change type | Lines (delta) |
 |---|---|---|
-| `project-template/docs/pack/prompts/pm-chat.md` | modified | +205 / 0 (302 → 507) |
+| `project-template/docs/pack/prompts/pm-chat.md` | modified | +206 / 0 (301 → 507) |
 | `test-fixtures/manifest.txt` | modified | +3 / -3 (v11-* row SHA refresh) |
 | `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.11.md` | new | this file |
 
