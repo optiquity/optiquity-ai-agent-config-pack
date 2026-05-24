@@ -1,6 +1,6 @@
 # INTAKE-PS-V11.md
 
-**Purpose:** Captures the user-intent discussion that led to BD-190 open. Verbatim user messages preserved where available; my (Pack Chat) responses summarized to focus on the user-intent capture. Serves as the audit-trail anchor for downstream architect / planner work on the Product Specialist (PS) v11.1+ feature.
+**Purpose:** Captures the user-intent discussion that led to BD-191 open. Verbatim user messages preserved where available; my (Pack Chat) responses summarized to focus on the user-intent capture. Serves as the audit-trail anchor for downstream architect / planner work on the Product Specialist (PS) v11.1+ feature.
 
 **Date authored:** 2026-05-24 (sidecar session "v11-dev-sidecar").
 **Fidelity:** **High-fidelity verbatim** for user messages (recent chat history; ~10 user messages preserved). Pack Chat responses paraphrased / summarized.
@@ -8,6 +8,8 @@
 - `maintenance-docs/v11-research/RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md` (PS landscape research; committed 2026-05-24 in `17682c7`)
 - `maintenance-docs/v11-research/IMPLEMENTATION-REPORT-RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md` (research methodology)
 - (Forthcoming) `maintenance-docs/v11-research/REQUIREMENTS-PS-V11.md` — distillation of this intake + research into formal requirements
+
+**Editorial note (added 2026-05-24, post-renumbering):** Throughout this doc, the canonical BD reference for the Product Specialist feature is **BD-191**. Some verbatim user quotes preserved below reference "BD-191" — that was the working assumption during the original discussion. Main chat's parallel work claimed BD-191 first (audit-vocabulary-gap sweep; Batch 19c); PS work renumbered to BD-191 per pack memory `reference_pack_backlog_structure` BD-NNN numbering rule ("always read the live BACKLOG before assigning"). Renumbering applied to Pack Chat's prose; verbatim user quotes preserved as-is for audit fidelity. Already-committed commit messages referencing "BD-191" or "Pre-BD-191" (`17682c7`, `df64afc`, `a6423c3`) are historical record and not rewritten.
 
 ---
 
@@ -228,30 +230,30 @@ User-issued 2026-05-24 after seeing the research headlines:
 
 > proceed
 
-Acknowledged commit of research deliverables and authorization to proceed to BD-190 drafting.
+Acknowledged commit of research deliverables and authorization to proceed to BD-191 drafting.
 
 ---
 
-## §6 — BD-190 entry approval ask + this intake doc creation
+## §6 — BD-191 entry approval ask + this intake doc creation
 
-Pack Chat surfaced BD-190 entry draft text on 2026-05-24, structured to mirror BD-186 (the groupings requirements-gathering BD) with:
+Pack Chat surfaced BD-191 entry draft text on 2026-05-24, structured to mirror BD-186 (the groupings requirements-gathering BD) with:
 
 - Type: feat — surfaced 2026-05-24 from sidecar Pack Chat session
 - Status: Open
 - Blockers: None — independent of v11.0 work
 - Cross-feature relationship with groupings (BD-186 / BD-189) — ZERO hard dependency
 - 8 Success Criteria covering capability triage / pack-relevance observation incorporation / cross-feature integration
-- Pipeline: Pack Chat sidecar → REQUIREMENTS-PS-V11.md → user review → BD-190 Resolved → downstream cycles
+- Pipeline: Pack Chat sidecar → REQUIREMENTS-PS-V11.md → user review → BD-191 Resolved → downstream cycles
 
 ### User intake-doc gap question (verbatim)
 
-User-issued 2026-05-24 before approving the BD-190 entry:
+User-issued 2026-05-24 before approving the BD-191 entry:
 
 > Before I approve, tell me: What doc is all the discussion and Q&A about the PS that we have done so fare captured. I I don't see it in the BD-190 text. Where is it and is it referenced in the BD-190 text?
 
 ### Pack Chat's honest answer
 
-Pack Chat acknowledged the gap: the Q&A discussion was NOT captured in any doc; existed only in chat history. The BD-186 work had the same gap (distilled into REQUIREMENTS-GROUPINGS-V11.md §1 and §2 but full discussion not preserved as a separate doc). Pack Chat proposed creating INTAKE-PS-V11.md (this doc) before BD-190 opens, and offered to retroactively create INTAKE-GROUPINGS-V11.md for BD-186.
+Pack Chat acknowledged the gap: the Q&A discussion was NOT captured in any doc; existed only in chat history. The BD-186 work had the same gap (distilled into REQUIREMENTS-GROUPINGS-V11.md §1 and §2 but full discussion not preserved as a separate doc). Pack Chat proposed creating INTAKE-PS-V11.md (this doc) before BD-191 opens, and offered to retroactively create INTAKE-GROUPINGS-V11.md for BD-186.
 
 ### User decision (verbatim)
 
@@ -259,13 +261,13 @@ User-issued 2026-05-24:
 
 > faithful summary works, both in parallel. I'll review the doc after and tell you if it needs changes. Since there are other docs that were created and are noted in BD-186, my only concern is really just conflicts, not gaps. Proceed.
 
-Pack Chat created both intake docs in parallel. This doc captures the BD-190 (PS) intake at high-fidelity verbatim; INTAKE-GROUPINGS-V11.md captures the BD-186 (groupings) intake at faithful-summary fidelity.
+Pack Chat created both intake docs in parallel. This doc captures the BD-191 (PS) intake at high-fidelity verbatim; INTAKE-GROUPINGS-V11.md captures the BD-186 (groupings) intake at faithful-summary fidelity.
 
 ---
 
-## §7 — Quality-mitigation intuition + tactical guiding principles (user-stated 2026-05-24; needs investigation during BD-190 triage)
+## §7 — Quality-mitigation intuition + tactical guiding principles (user-stated 2026-05-24; needs investigation during BD-191 triage)
 
-**Context:** During the BD-190 entry approval ask, user surfaced an intuition about quality mitigation for the PS feature. Captured here near-verbatim for downstream investigation. **NOT a locked decision — flagged for investigation during BD-190 capability triage.** The eventual `REQUIREMENTS-PS-V11.md` will distill investigation outcomes into formal design principles + constraints.
+**Context:** During the BD-191 entry approval ask, user surfaced an intuition about quality mitigation for the PS feature. Captured here near-verbatim for downstream investigation. **NOT a locked decision — flagged for investigation during BD-191 capability triage.** The eventual `REQUIREMENTS-PS-V11.md` will distill investigation outcomes into formal design principles + constraints.
 
 The intuition directly addresses two §9.1 quality-pitfall findings from `RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md`:
 - "AI-generated PRDs without facilitation = decorative artifacts"
@@ -307,11 +309,11 @@ The PS deliverables must be informed by knowing the audience — which is the pa
 
 User reasoning quoted verbatim above: "Other product manager tools are probably open ended since the creators of those tool may not know how and where the output will be used and who its audience is. We do."
 
-### §7.3 — Meta-direction (what to investigate during BD-190 triage)
+### §7.3 — Meta-direction (what to investigate during BD-191 triage)
 
 The user's intent: capture this intuition + investigate during triage. Not pre-decide.
 
-Investigation targets during BD-190 triage:
+Investigation targets during BD-191 triage:
 
 1. **Define tactical (not just strategic) guiding principles** for:
    - Interview structure: the sections; the order; the gap-identification process per category; the question shapes that elicit useful answers vs. decorative ones
@@ -325,21 +327,21 @@ Investigation targets during BD-190 triage:
 
 ### §7.4 — Status
 
-**INTUITION-STAGE ONLY.** Not locked. Investigation during BD-190 triage produces:
+**INTUITION-STAGE ONLY.** Not locked. Investigation during BD-191 triage produces:
 - Tactical guiding principles → `REQUIREMENTS-PS-V11.md` design principles section
 - "Complete" criteria → `REQUIREMENTS-PS-V11.md` capability section (likely a dedicated capability for interview-completion check)
 - Quality-mitigation pattern selection → `REQUIREMENTS-PS-V11.md` scope/boundary section
 - Possibly: new capabilities identified during investigation (gap-identification verb, deliverable-shape templates, etc.)
 
-If investigation surfaces that the intuition is incorrect or needs refinement, the BD-190 triage records the refinement; **this §7 stays as the ORIGINAL user intent for audit purposes** (audit-trail discipline; intake docs don't get retroactively rewritten with conclusions).
+If investigation surfaces that the intuition is incorrect or needs refinement, the BD-191 triage records the refinement; **this §7 stays as the ORIGINAL user intent for audit purposes** (audit-trail discipline; intake docs don't get retroactively rewritten with conclusions).
 
 ---
 
 ## §8 — Forward pointer
 
-This intake doc becomes input to BD-190 (open after this commit lands; BD-190 entry text will reference INTAKE-PS-V11.md in INPUTS, including §7's investigation tasks as SC10).
+This intake doc becomes input to BD-191 (open after this commit lands; BD-191 entry text will reference INTAKE-PS-V11.md in INPUTS, including §7's investigation tasks as SC10).
 
-REQUIREMENTS-PS-V11.md (downstream, produced during the BD-190 sidecar triage) will distill this intake doc + research findings into formal:
+REQUIREMENTS-PS-V11.md (downstream, produced during the BD-191 sidecar triage) will distill this intake doc + research findings into formal:
 
 - Design principles (drawn from §9 pack-relevance observations + user-stated intent in §1 + investigated §7 tactical principles)
 - User-stated constraints (analogous to BD-186's C1-C7, drawn from Q1-Q10 + framing + §7 intuition outcomes)

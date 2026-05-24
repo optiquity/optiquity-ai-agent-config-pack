@@ -178,6 +178,6 @@ No other files were created or modified. Pack source is unchanged (read-only res
 These are LOGICAL successors, not pack design recommendations:
 
 1. **User review of the landscape doc.** Pack Chat and the user can scan §8 (synthesis) and §9 (pack-relevance) for items to lift into requirements-gathering scope.
-2. **Architect-pass for BD-190 (or future PS-feature BD)** would consume this research as input alongside any user-specified scope constraints.
+2. **Architect-pass for BD-191 (or future PS-feature BD)** would consume this research as input alongside any user-specified scope constraints.
 3. **Methodology position decision** is a likely early-design fork (per §9.5 considerations).
 4. **Re-validation of fast-moving claims** (§5 open questions) before architect-pass commits to specific positions.
