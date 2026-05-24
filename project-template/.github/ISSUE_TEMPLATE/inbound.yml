@@ -1,5 +1,5 @@
 name: Inbound report or feedback
-description: External bug, feature request, or pack-feedback observation. Pack-feedback categories file upstream against the pack repo per V1 §7.5.
+description: External bug, feature request, or pack-feedback observation. Pack-feedback categories file upstream against the pack repo.
 title: "<category>: <short title>"
 labels:
   - inbound
@@ -11,13 +11,13 @@ body:
       value: |
         Use this form for issues filed against this project from outside the project
         development team — bug reports, feature requests, or upstream feedback against the
-        pack itself. Pack-feedback subcategories route upstream to the pack repo per
-        V1 §7.5; the chat at triage time emits the upstream issue automatically.
+        pack itself. Pack-feedback subcategories route upstream to the pack repo;
+        the chat at triage time emits the upstream issue automatically.
   - type: dropdown
     id: in-category
     attributes:
       label: Category
-      description: Select the category that best matches your report. Pack-feedback subcategories file upstream against the pack repo per V1 §7.5.
+      description: Select the category that best matches your report. Pack-feedback subcategories file upstream against the pack repo.
       options:
         - bug
         - feature-request

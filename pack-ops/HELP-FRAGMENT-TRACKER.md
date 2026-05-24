@@ -16,7 +16,7 @@ disable` restores flat-file mode.
 
 ## TD promotion (v11+)
 
-`pack td <verb>` orchestrates the V3.3 §3 two-path TD promotion + the
+`pack td <verb>` orchestrates the two-path TD promotion + the
 direct-close shape. The `pack td promote` entries below are also listed
 under "Project commands" in `HELP-FRAGMENT.md` (LCD shell verb surface);
 this fragment adds the `resolve` direct-close wrapper and the colloquial
@@ -24,11 +24,11 @@ mappings.
 
 | Verb | What it does |
 |---|---|
-| `pack td promote --to=phase-N <td-id>` | Path 1 — promote TD to a new phase epic (V3.3 §3.3). PM Chat invokes architect by default per §7.2. |
-| `pack td promote --to=phase-N.M <td-id>` | Path 2 — promote TD to a new phase task under phase N (V3.3 §3.4). Wires `Dependencies` bullets to cross-entity `blocked-by` edges per §5.1. |
-| `pack td resolve <td-id> [--note "..."]` | Direct close (V3.3 §3.2). No promotion label; no new entity. |
+| `pack td promote --to=phase-N <td-id>` | Path 1 — promote TD to a new phase epic. PM Chat invokes architect by default. |
+| `pack td promote --to=phase-N.M <td-id>` | Path 2 — promote TD to a new phase task under phase N. Wires `Dependencies` bullets to cross-entity `blocked-by` edges. |
+| `pack td resolve <td-id> [--note "..."]` | Direct close. No promotion label; no new entity. |
 
-Path 3 is forbidden per V3.3 §1 supersession + §3 line 27. There is
+Path 3 is forbidden. There is
 no `--fold-into` flag.
 
 ## Colloquial mappings

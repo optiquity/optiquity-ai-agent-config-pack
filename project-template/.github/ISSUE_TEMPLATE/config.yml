@@ -1,4 +1,4 @@
-# GitHub Issues form-family configuration (V2 §4.1).
+# GitHub Issues form-family configuration.
 # Disables blank issues so all intake routes through one of the two
 # composite forms (work-item.yml or inbound.yml). Open-ended questions
 # go to GH Discussions instead.

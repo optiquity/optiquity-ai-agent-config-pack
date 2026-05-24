@@ -81,7 +81,7 @@ from `IMPLEMENTATION-PLAN.md`.
 Read the first 5 lines of `METHODOLOGY.md` to get the version number.
 
 Resolve every BACKLOG / STATUS / IMPLEMENTATION-PLAN / CHANGELOG read through
-the trinity `## Document locations` table in the project context file (V1 §8.4).
+the trinity `## Document locations` table in the project context file.
 In flat-file mode the table points at the named files in `docs/project/`; in
 tracker mode the table points at the tracker (BACKLOG / STATUS / CHANGELOG /
 IMPLEMENTATION-PLAN are tracker-mirrored read-only files in that mode).
@@ -208,7 +208,7 @@ Output a summary in exactly this format:
 ---
 
 <!--
-Step 7 is reserved. The V1 §10.2 tracker-mode triage queue
+Step 7 is reserved. The tracker-mode triage queue
 (provider.list filter=label:'needs-triage') lands here in a later
 BD when tracker mode is wired into pm-startup. The Step 8 numbering
 is fixed to keep the recommendation check at the documented

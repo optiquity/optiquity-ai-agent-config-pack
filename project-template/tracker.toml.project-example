@@ -8,13 +8,13 @@
 # To enable tracker mode for this project:
 #   1. Copy this file to `docs/pack/tracker.toml`.
 #   2. Edit `mode.state = "tracker"`.
-#   3. Run the forward migration script (see ARCHITECTURE.md §6).
+#   3. Run the forward migration script.
 #   4. The migration will set `migration.forward_complete = true`,
 #      after which `tracker_mode()` resolves to "tracker".
 #
-# Pack-side and client-side modes are independent (V1 §3.4).
+# Pack-side and client-side modes are independent.
 #
-# Read by scripts/lib/tracker-config.sh; spec: ARCHITECTURE.md §3.1.
+# Read by scripts/lib/tracker-config.sh.
 
 schema_version = 1
 
@@ -68,8 +68,8 @@ reverse_available = false
 mapping_file = ".pack-tracker/id-map.json"
 
 # [graph]
-# Cross-entity dependency graph tuning (V3.3 §5.5; BD-108).
+# Cross-entity dependency graph tuning (BD-108).
 # K-hop bound for the link-creation cycle check. Default is 10 if
 # this section/key is absent. Raise to detect longer cycles at the
 # cost of broader graph traversal per link attempt.
-# cycle_check_k = 10  # K-hop bound for link-creation cycle check (V3.3 §5.5)
+# cycle_check_k = 10  # K-hop bound for link-creation cycle check

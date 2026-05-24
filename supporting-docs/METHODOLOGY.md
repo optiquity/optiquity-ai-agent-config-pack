@@ -1166,7 +1166,7 @@ No phase prompt is generated until this check is complete.
    - Phase N.M blocker (v11.0 additive): in tracker mode, read the
      `status:done` label on the phase task; in flat-file mode, read the `✅` marker
      on the `#### N.M` heading. Resolution is mode-agnostic via the trinity
-     Document-locations resolver (V1 §8.5 / D-6).
+     Document-locations resolver.
    - Phase task A blocked by phase task B (Dependencies field):
      same resolution as Phase N.M — read the target task's status; mode-agnostic.
    - TD-NNN blocker: does that item have Status: Resolved?
