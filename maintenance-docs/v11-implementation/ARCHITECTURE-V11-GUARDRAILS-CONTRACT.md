@@ -612,6 +612,46 @@ Test cases:
 
 **Total: 4 new fixture-test cases for Guardrail 3.**
 
+### 3.5 Architect-doc-vs-reality reconciliation (BD-173 H.12)
+
+Per the pack-memory rule "Architect-doc-vs-reality reconciliation"
+(CLAUDE.md / AGENTS.md / GEMINI.md § "Repo conventions"; worked example
+BD-119 §9.2), when a BD realizes a design anticipated in an architect
+doc, the architect doc carries an addendum naming the realized consumer.
+
+**Realized consumer of `_iter_client_installed_files()` (BD-173 H.12, commit `41041a6`):**
+The helper specified in §3.1 was first realized by BD-173 Batch 19c
+commit H.12 (`41041a6`, 2026-05-24), which added the function to
+`scripts/validate-pack.py` alongside the `_PROJECT_SIDE_ROOTS`
+replacement per §3.2 and the `_iter_project_side_files()`
+delegation-alias per §3.2 caller-update plan. The Group 7 fixture
+tests T1–T4 specified in §3.4 were appended to
+`scripts/tests/test-validate-pack-checks-36-37-38.sh` in the same
+commit and PASS at HEAD.
+
+**First downstream caller (Check 43, BD-173 H.14, commit `a6bd91d`):**
+Check 43 (`check_project_side_bare_internal_refs`) per §1.2 walks
+`_iter_client_installed_files()` directly. BD-173 H.14 (the H.14
+commit at `a6bd91d`, 2026-05-24) wires this dependency; H.14's
+implementation report at
+`IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.14.md` §2.1 documents
+the dependency.
+
+**Reconciliation chain:**
+
+- §3.1 (architect contract; this file) — function specification
+- `scripts/validate-pack.py` `_iter_client_installed_files()`
+  docstring — names §3.1 of this architect doc as the contract source
+- `IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.12.md` §1 — IMPL-REPORT
+  identifies H.12 as the realized consumer of §3.1
+- `IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.14.md` §2.1 — first
+  downstream caller (Check 43) cross-references H.12
+
+The historical framing (architect spec) and the post-realization
+framing (in-code docstring + IMPL-REPORTs) are not contradictory:
+§3 documents the architectural contract; H.12 + H.14 document the
+contract's first realization and first downstream caller.
+
 ---
 
 ## §4 Guardrail 4 — PREFLIGHT extension (pre-commit defense-in-depth)
@@ -805,7 +845,7 @@ Each commit MUST satisfy:
 | Guardrail 2 fence markers placed | All 12 files in `_CHECK_37_PER_LINE_FENCE_FILES` have at least one `<!-- DENY-LIST-CONTENT-START -->`/`<!-- DENY-LIST-CONTENT-END -->` pair (count updated 2026-05-24: 7 original → 11 post-H.12/H.13 reorder dual-surface adds → 12 post-H.13 GAP-H.13-A absorption of PACK-FEEDBACK.md; see `IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.13.md` §7.1) |
 | Guardrail 2 fixture tests pass | `bash scripts/tests/test-validate-pack-checks-36-37-38.sh` Group 6 + 7 pass |
 | Guardrail 1 function exists | `check_project_side_bare_internal_refs()` defined |
-| Guardrail 1 allowlist populated | `_CHECK_43_ALLOWLIST` defined with ~25 entries per §1.4 |
+| Guardrail 1 allowlist populated | `_CHECK_43_ALLOWLIST` defined with 60 entries total (31 architect-spec per §1.4 + 29 H.14 Option C absorption per `IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.14.md` §2.6) — original §1.4 spec called for ~25; H.14 main pass landed 31 verbatim per the §1.4 enumeration; the §7.2 audit-vocabulary-gap discovery added the 29 absorption entries |
 | Guardrail 1 fixture file exists | `scripts/tests/fixtures/project-side-refs/` contains 13 files per §1.10 enumeration |
 | Guardrail 1 fixture test file exists | `scripts/tests/test-validate-pack-check-43.sh` exists; exits 0 |
 | Guardrail 1 CI wired | `.github/workflows/validate-pack.yml` contains `bash scripts/tests/test-validate-pack-check-43.sh` invocation |

@@ -42,9 +42,18 @@ Implementation surface (H.14 main pass):
 
 Additional surface (Option C absorption pass, added 2026-05-24):
 
-6. `scripts/validate-pack.py` — `_CHECK_43_ALLOWLIST` extended with 30
-   audit-vocabulary-gap legitimate entries (basename → one-line rationale
-   per Check 40 §6.5 self-documenting convention).
+6. `scripts/validate-pack.py` — `_CHECK_43_ALLOWLIST` extended with 29
+   audit-vocabulary-gap legitimate entries[^count] (basename → one-line
+   rationale per Check 40 §6.5 self-documenting convention).
+
+[^count]: The H.14 commit message (`a6bd91d`) records "30/61" for these
+    counts. The authoritative counts are **29 absorption entries** and
+    **60 total allowlist entries** post-absorption, as verified by the
+    §2.6 sub-class table sum (2+3+8+5+1+7+3 = 29) and reflected
+    throughout this corrected narrative. The commit message is
+    immutable in git history; this footnote records the discrepancy
+    for the audit trail. (See N1+N2 H.14 INLINE reviewer fix,
+    2026-05-24.)
 7. `supporting-docs/METHODOLOGY.md` — 4 LEAK CLASS C rewrites at lines
    L14, L53 (was L54), L386 (was L387), L1624 (was L1625) per §1.14
    remediation pattern (one Cat A drop + three anchor-phrase rewrites).
@@ -213,12 +222,14 @@ Manifest is staged for the absorption commit per BD-176.
 ### 2.6 `_CHECK_43_ALLOWLIST` extension (Option C, Class 1 absorption)
 
 Per H.14 §7.2.2 Option A list, the `_CHECK_43_ALLOWLIST` constant in
-`scripts/validate-pack.py` is extended by 30 audit-vocabulary-gap
+`scripts/validate-pack.py` is extended by 29 audit-vocabulary-gap
 legitimate entries. Each new entry carries a one-line rationale per
 Check 40 §6.5 self-documenting convention. Entries are grouped by
 class with section-header comments for readability.
 
-**New entries (30 total)** — appended after the existing 31 H.14 entries:
+**New entries (29 total)** — appended after the existing 31 H.14
+entries — cover **78 catch-sites** in pre-absorption Check 43 output
+(many basenames appear multiple times across the walked surface):
 
 | Class | Count | Entries |
 |---|---|---|
@@ -235,8 +246,8 @@ existing `"agent-run.sh": "..."` entry. New entries grouped by class
 with `# ──` section-header comments. Section-opening comment notes
 this is the BD-173 H.14 Option C absorption follow-up.
 
-**Allowlist size post-absorption:** 61 entries (31 H.14 original +
-30 Option C additions).
+**Allowlist size post-absorption:** 60 entries (31 H.14 original +
+29 Option C additions).
 
 **Verification:** Check 43 at HEAD goes from 78 bare-ref FAILs (caught
 generic basenames / template placeholders / agent prompt meta-refs /
@@ -452,8 +463,9 @@ $ python3 scripts/validate-pack.py
 PASSED — all checks clean
 ```
 
-After 30 audit-vocabulary-gap allowlist additions (Class 1) + 6 LEAK
-CLASS C rewrites (Class 2), Check 43 reports:
+After 29 audit-vocabulary-gap allowlist additions (Class 1; 29
+basenames covering 78 catch-sites) + 6 LEAK CLASS C rewrites (Class 2),
+Check 43 reports:
 
 ```
 ── Check 43: Project-side bare cross-reference scanner (BD-173) ──
@@ -465,8 +477,9 @@ CLASS C rewrites (Class 2), Check 43 reports:
 
 All 43 checks PASS at HEAD. Check 43's accepted-hit counters
 (allowlist 578, anchor-phrase 18, same-dir 12, client-installed-legit
-140, fenced 585) verify the absorption: 78 catches absorbed via
-allowlist tier; 6 absorbed via anchor-phrase tier; 0 catches remain.
+140, fenced 585) verify the absorption: 78 catch-sites (29 distinct
+basenames) absorbed via allowlist tier; 6 absorbed via anchor-phrase
+tier; 0 catches remain.
 
 ### 3.2 Check 43 test script — all 7 groups PASS (post-absorption)
 
@@ -493,7 +506,7 @@ $ bash scripts/tests/test-validate-pack-check-43.sh
 ```
 
 **All 7 groups PASS** (post-Option-C-absorption). The function,
-allowlist (now 61 entries), helper-alias identity, synthetic-tree
+allowlist (now 60 entries), helper-alias identity, synthetic-tree
 fixtures, static-fixture file sanity, AND end-to-end validate-pack.py
 exit-status all verify cleanly.
 
@@ -560,16 +573,17 @@ Manifest is staged for the absorption commit per BD-176.
 
 ```python
 >>> mod = ... # load validate-pack.py
->>> mod._CHECK_43_ALLOWLIST  # 61 entries (31 H.14 original + 30 Option C absorption)
+>>> mod._CHECK_43_ALLOWLIST  # 60 entries (31 H.14 original + 29 Option C absorption)
 >>> mod._CHECK_43_ANCHOR_PHRASES is mod._CHECK_40_ANCHOR_PHRASES  # True (alias)
 >>> mod._CHECK_43_ANCHOR_WINDOW  # 2 (alias)
 >>> mod.check_project_side_bare_internal_refs  # function exists
 >>> mod._check_43_context_has_anchor  # function exists
 ```
 
-All required symbols registered. Allowlist now has 61 entries (31
-H.14 original — §1.4 verbatim — plus 30 Option C absorption entries
-covering audit-vocabulary-gap legitimates per §2.6 above).
+All required symbols registered. Allowlist now has 60 entries (31
+H.14 original — §1.4 verbatim — plus 29 Option C absorption entries
+covering audit-vocabulary-gap legitimates per §2.6 above; 29
+basenames cover 78 catch-sites in the pre-absorption Check 43 output).
 
 ### 3.6 End-to-end PASS state (post-absorption)
 
@@ -661,7 +675,7 @@ Per the original H.14 prompt + the Option C absorption-pass prompt:
 | # | Criterion | Status |
 |---|---|---|
 | 1 | `check_project_side_bare_internal_refs()` function added per §1.1 | **PASS** — function defined; 9 required symbols registered |
-| 2 | `_CHECK_43_ALLOWLIST` constant added (~30 entries) per §1.4 | **PASS** — 31 entries (H.14) + 30 absorption entries = 61 total with one-line rationale each |
+| 2 | `_CHECK_43_ALLOWLIST` constant added (~30 entries) per §1.4 | **PASS** — 31 entries (H.14) + 29 absorption entries = 60 total with one-line rationale each |
 | 3 | Anchor-phrase aliases added per §1.5 | **PASS** — `_CHECK_43_ANCHOR_PHRASES is _CHECK_40_ANCHOR_PHRASES`; window alias = 2 |
 | 4 | Function wired into main check sequence per §1.6 | **PASS** — invoked after `check_client_installed_files()` and before `check_ci_workflow_wires_per_check_tests()` in `main()` |
 | 5 | 13 fixture files created per §1.10 enumeration | **PASS** — 13 files (7 FAIL + 5 PASS + 1 README) verified by `ls \| wc -l` |
@@ -672,7 +686,7 @@ Per the original H.14 prompt + the Option C absorption-pass prompt:
 | 10 | `bash scripts/tests/test-validate-pack-check-42.sh` PASS (recognizes new test file) | **PASS (post-absorption)** — all 4 groups PASS |
 | 11 | Manifest regen handled per BD-176 (if no drift, no staging needed; if drift, stage) | **PASS** — drift produced in absorption pass (v11-* SHAs updated); manifest staged |
 | 12 | IMPL-REPORT at `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.14.md` | **PASS** — this file |
-| 13 | Option C Class 1 — `_CHECK_43_ALLOWLIST` extended with ~30 entries per §7.2.2 Option A list | **PASS** — 30 entries added per §2.6 (template placeholders, generic basenames, agent-prompt meta-refs, per-entry skeleton variants, custom skill placeholder, legacy/generated, audit-methodology examples) |
+| 13 | Option C Class 1 — `_CHECK_43_ALLOWLIST` extended with ~30 entries per §7.2.2 Option A list | **PASS** — 29 entries added per §2.6 (template placeholders, generic basenames, agent-prompt meta-refs, per-entry skeleton variants, custom skill placeholder, legacy/generated, audit-methodology examples); these 29 basenames cover 78 catch-sites in pre-absorption Check 43 output |
 | 14 | Option C Class 2 — 5-6 real LEAK CLASS C catches fixed; SETUP-NEW.md cites removed without introducing new leaks | **PASS** — 6 sites rewritten per §2.7 (1 Cat A drop + 5 anchor-phrase rewrites); no new pack-internal cites introduced |
 | 15 | Check 43 PASSes at HEAD with zero leaks | **PASS** — Check 43 reports clean; allowlist + anchor-phrase tiers cover all formerly-caught references |
 | 16 | H.14 IMPL-REPORT updated to reflect absorbed mitigations | **PASS** — this update transitions §7.2 from "discovery flagged" to "discovery absorbed" |
@@ -757,11 +771,12 @@ discovered at HEAD were a SEPARATE class.
   (a) expanding the fence in METHODOLOGY.md, (b) rewriting these
   lines per the audit §1.14 LEAK CLASS C pattern, or (c) accepting
   them.
-- **~78 audit-vocabulary-gap discoveries:** legitimate template
-  placeholders / generic basenames / agent prompt meta-references /
-  generated-file names / legacy migration docs. The architect did
-  NOT anticipate these in the §1.4 allowlist scope. They fall into
-  CLEAN AUDIT-VOCABULARY-GAP CLASS per the prompt's §7 instruction.
+- **~78 audit-vocabulary-gap catch-sites (29 distinct basenames):**
+  legitimate template placeholders / generic basenames / agent prompt
+  meta-references / generated-file names / legacy migration docs.
+  The architect did NOT anticipate these in the §1.4 allowlist scope.
+  They fall into CLEAN AUDIT-VOCABULARY-GAP CLASS per the prompt's §7
+  instruction.
 
 #### 7.2.2 Recommended disposition (Pack Chat triage input)
 
@@ -813,16 +828,16 @@ follow up with a B-line BD (Option A / B / C per Pack Chat
 decision) within the same v11.0 release window.
 
 **Actual resolution (Pack Chat triage, 2026-05-24):** Pack Chat
-chose Option C — hybrid (allowlist 78 audit-vocabulary-gap
-legitimate basenames + fix 6 real LEAK CLASS C catches). Absorption
-landed in this same H.14 commit. H.14 now lands clean (no failing-CI
-posture; no follow-up BD needed).
+chose Option C — hybrid (allowlist 29 audit-vocabulary-gap legitimate
+basenames covering 78 catch-sites + fix 6 real LEAK CLASS C catches).
+Absorption landed in this same H.14 commit. H.14 now lands clean (no
+failing-CI posture; no follow-up BD needed).
 
 **Absorption summary:**
 
 | Class | Action | Count | Detail |
 |---|---|---|---|
-| Class 1 (audit-vocabulary-gap legitimates) | `_CHECK_43_ALLOWLIST` extension | 30 new entries | Per §2.6; 7 sub-classes (template placeholders, generic basenames, agent-prompt meta-refs, per-entry skeleton variants, custom skill placeholder, legacy/generated, audit-methodology examples) |
+| Class 1 (audit-vocabulary-gap legitimates) | `_CHECK_43_ALLOWLIST` extension | 29 new entries (covering 78 catch-sites) | Per §2.6; 7 sub-classes (template placeholders, generic basenames, agent-prompt meta-refs, per-entry skeleton variants, custom skill placeholder, legacy/generated, audit-methodology examples) |
 | Class 2 (real LEAK CLASS C catches) | Cite rewrites | 6 sites | Per §2.7; 1 Cat A drop (METHODOLOGY.md L14) + 5 anchor-phrase rewrites (METHODOLOGY.md L53/L386/L1624, INSTALL-PROCEDURES.md L236, bootstrap.sh L49) |
 
 **Site-discovery reconciliation:** H.14 §7.2.1 listed 5 SETUP-NEW.md
@@ -850,8 +865,9 @@ Pack Chat triage decision and is documented in §2.6 + §2.7 + §7.2.3.
 **Original POQ (H.14 main pass):** the audit-vocabulary-gap
 allowlist scope question (Option A/B/C per §7.2.2).
 **Disposition (RESOLVED — 2026-05-24):** Pack Chat (with user
-direction) chose Option C (hybrid: allowlist 78 + fix 6 LEAK CLASS C
-catches). Implemented per §2.6 + §2.7. No outstanding POQs.
+direction) chose Option C (hybrid: allowlist 29 basenames covering
+78 catch-sites + fix 6 LEAK CLASS C catches). Implemented per §2.6 +
+§2.7. No outstanding POQs.
 
 ### 7.5 Boundary discipline check
 
@@ -871,7 +887,7 @@ boundary-investigation skill):
 | `supporting-docs/METHODOLOGY.md` | Dual-surface (pre-install pack-repo + client-installed `docs/pack/METHODOLOGY.md`) | The file IS the project-side SSOT for the methodology concept; pre-install pack-repo cite to `supporting-docs/SETUP-NEW.md` Step 3/10 is the offending reference at client install where SETUP-NEW.md doesn't exist | Rewrites either drop the cite or wrap it in "in the pack repo" anchor to make pack-as-product context explicit |
 | `supporting-docs/INSTALL-PROCEDURES.md` | Dual-surface (pre-install pack-repo + client-installed `docs/pack/INSTALL-PROCEDURES.md`) | The file IS the project-side SSOT for install procedures; historical Procedure 5-C documents the v9→v10 migration; the `git checkout v10 --` command arguments preserve the qualified path | Anchor "in the pack repo" injected inline at L236 |
 | `project-template/scripts/bootstrap.sh` | Project-side (installs at client `scripts/bootstrap.sh`) | Comment-only cite explaining init-project.sh skill distribution; `supporting-docs/SETUP-NEW.md` Step 3 documents the procedure | Anchor "in the pack repo" injected inline at L49 |
-| `scripts/validate-pack.py` | Pack-side (validate-pack tooling; not client-installed) | The allowlist constant is the project-side SSOT for what's exempt from Check 43; Option A absorption list per H.14 §7.2.2 | 30 new entries with one-line rationale per Check 40 §6.5 convention |
+| `scripts/validate-pack.py` | Pack-side (validate-pack tooling; not client-installed) | The allowlist constant is the project-side SSOT for what's exempt from Check 43; Option A absorption list per H.14 §7.2.2 | 29 new entries with one-line rationale per Check 40 §6.5 convention |
 
 No pack-internal cites introduced in any rewrite. All cite-removals
 preserve rule wording / paragraph intent. The METHODOLOGY.md /
@@ -929,15 +945,16 @@ YAML wiring. Fence-awareness added per §1.12 design intent (same
 uses).
 
 Option C absorption pass (Pack Chat triage, 2026-05-24): the §7.2
-audit-vocabulary-gap discovery is resolved. 30 audit-vocabulary-gap
-legitimate basenames added to `_CHECK_43_ALLOWLIST`; 6 real LEAK
-CLASS C catches rewritten (1 Cat A drop + 5 anchor-phrase rewrites).
+audit-vocabulary-gap discovery is resolved. 29 audit-vocabulary-gap
+legitimate basenames (covering 78 catch-sites) added to
+`_CHECK_43_ALLOWLIST`; 6 real LEAK CLASS C catches rewritten (1 Cat A
+drop + 5 anchor-phrase rewrites).
 
 Post-absorption state:
 - All 43 validate-pack.py checks PASS at HEAD.
 - All 7 groups of test-validate-pack-check-43.sh PASS.
 - All 4 groups of test-validate-pack-check-42.sh PASS.
-- `_CHECK_43_ALLOWLIST` now has 61 entries (31 + 30).
+- `_CHECK_43_ALLOWLIST` now has 60 entries (31 + 29).
 - Manifest staged with 3-row drift (v11-realistic-ot / v11-flat-file
   / v11-tracker-on SHAs updated).
 - H.14 commit lands clean (no failing-CI posture).

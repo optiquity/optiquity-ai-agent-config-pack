@@ -243,6 +243,7 @@ scripts/tests/test-validate-pack-check-39.sh         BD-175 F2a tests — cmd_up
 scripts/tests/test-validate-pack-check-40.sh         BD-179 tests — pack-ops/ bare cross-reference scanner
 scripts/tests/test-validate-pack-check-41.sh         BD-180 G tests — `_CLIENT_INSTALLED_FILES` self-doc list integrity
 scripts/tests/test-validate-pack-check-42.sh         BD-184 tests — CI workflow wires all per-check test files
+scripts/tests/test-validate-pack-check-43.sh         BD-173 H.14 tests — project-side bare cross-reference scanner (V11 leak-sweep prevention)
 
 .github/workflows/                          GitHub Actions
 └── validate-pack.yml                       Pack self-validation on every push
