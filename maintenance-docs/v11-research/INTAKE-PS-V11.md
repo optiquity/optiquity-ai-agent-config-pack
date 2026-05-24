@@ -7,6 +7,7 @@
 **Companion docs:**
 - `maintenance-docs/v11-research/RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md` (PS landscape research; committed 2026-05-24 in `17682c7`)
 - `maintenance-docs/v11-research/IMPLEMENTATION-REPORT-RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md` (research methodology)
+- `maintenance-docs/v11-research/PLANNING-PROCESS-INSIGHTS-FROM-OT.md` (OT-derived synthesis input; informative — not prescriptive; shaped the §5 groupings amendments and the §8 preliminary §6 sub-decision restructuring captured below; architect-investigation-input doc)
 - (Forthcoming) `maintenance-docs/v11-research/REQUIREMENTS-PS-V11.md` — distillation of this intake + research into formal requirements
 
 **Editorial note (added 2026-05-24, post-renumbering):** Throughout this doc, the canonical BD reference for the Product Specialist feature is **BD-191**. Some verbatim user quotes preserved below reference "BD-191" — that was the working assumption during the original discussion. Main chat's parallel work claimed BD-191 first (audit-vocabulary-gap sweep; Batch 19c); PS work renumbered to BD-191 per pack memory `reference_pack_backlog_structure` BD-NNN numbering rule ("always read the live BACKLOG before assigning"). Renumbering applied to Pack Chat's prose; verbatim user quotes preserved as-is for audit fidelity. Already-committed commit messages referencing "BD-191" or "Pre-BD-191" (`17682c7`, `df64afc`, `a6423c3`) are historical record and not rewritten.
@@ -396,6 +397,58 @@ If investigation surfaces that the intuition is incorrect or needs refinement, t
 
 **17 capabilities total** — coincidentally matches BD-186's 17-capability count.
 
+### Preliminary §6 sub-decision results (PLANNING-PROCESS-INSIGHTS-FROM-OT.md §6; user-approved 2026-05-24)
+
+**Status:** PRELIMINARY positions subject to architect challenge at v11.x+ PS design pass per pack memory `feedback_preliminary_triage_architect_challenge`. Architect WILL challenge each position based on detailed tactical information; user retains final authority. Tiered challenge bar: LOW (PS-internal); architect explores freely and may enhance, accept, reject, or replace each preliminary position.
+
+The §6 sub-decisions amend the original 17-capability list above (§8) as follows. Original §8 capability list preserved unchanged for audit-trail; this subsection captures the preliminary architect-input restructuring.
+
+**Sub-A — Add Capability N1: PS deliverable per-stream tree structure (APPROVED ACCEPT preliminary).** PS deliverables live in `project-template/docs/project/<name>/` (architect picks directory name) following the pack's existing per-stream-tree contract: `_rules.md` + `_intro.md` + `_toc.md` + per-deliverable files. Reuses pack mechanism; mirrors backlog / implementation-plan / changelog / groupings-designed pattern. Cluster: Foundation. **Architect bar:** LOW for adoption; HIGH for the per-stream-tree contract itself (locked pack mechanism).
+
+**Sub-B — Add Capability N2: Mechanical audit pass for PS deliverables (APPROVED ACCEPT preliminary).** Each PS deliverable type has a defined audit-check spec: PRD audit (anti-pillars / conditional-inclusion / outcomes-vocab / Goals-Non-Goals / architectural-commitments-section presence); Journey audit (mode-classified / success-criteria / anti-goal); Feature-list audit (problem + goals + SC / no-solutions grep / cycle-detection / seam-coverage check); Mapping-doc audit (every feature maps to ≥1 pack primitive). Mechanical where possible; user-judgment items flagged. Cluster: Deliverable outputs. **Architect bar:** LOW.
+
+**Sub-C — Add Capability N3: PRD template anti-pillars + conditional-inclusion sections (APPROVED ACCEPT preliminary).** PS PRD template ships with: Pillars / Anti-pillars (with reasoning) / Conditional-inclusions (with explicit triggers — no "we'll see") / Architectural commitments / seams section (per §5.5 reinforcement). Cluster: Interview process (template informs interview). **Architect bar:** LOW.
+
+**Sub-D — Restructure original #8/#9/#10 into N4/N5/N6 (APPROVED ACCEPT preliminary).** Replaces original PRD-authoring (#8), user-journey-docs (#9), and feature-list-+-mapping (#10) with three clearer capabilities:
+- **N4 — Narrative PRD authoring** — synthesizing vision + audience + pillars + anti-pillars + conditional-inclusions + MVP scope + post-MVP scope + architectural seams. Audience: humans (engineers, investors, re-review). Mirrors OT Phase E.1.
+- **N5 — Structured user-journey docs** — one per major journey; mode-classified per OT Phase B.1 pattern; per-journey header with goal + trigger + frequency + stage + success criteria + anti-goal.
+- **N6 — Structured feature inventory + mapping** — machine-parseable; per-feature `feature_id` + cluster + problem + goals + success_criteria + dependencies + `seam_refs:` (per §5.5 reinforcement) + cross-references to journeys / seams / pack primitives. Mapping IS PART OF N6 (combined). Mirrors OT Phase C + E.2 collapsed.
+Cluster: Deliverable outputs. **Architect bar:** LOW.
+
+**Sub-E — Research orchestration shape (E3 — DON'T PRESCRIBE).** Original Capability #11 (Research orchestration) stays as a single capability in the preliminary list with NO prescribed restructure. Architect at PS design time decides shape: split into N7a (initial discovery) + N7b (per-feature research); keep as single with internal sub-decomposition into invocation patterns; treat as a SKILL invoked from Capability #4 rather than its own capability; or other shape. Cluster: Deliverable outputs. **Architect bar:** LOW; explicit don't-prescribe gives architect maximum freedom.
+
+**Sub-F — Capability #6 7-item completeness bar (APPROVED ACCEPT preliminary).** Capability #6 (Interview "complete" criteria) gains explicit 7-item completion bar from OT Phase A v3 §1-§7 structure:
+1. Vision and pillars elicited
+2. Anti-pillars elicited with reasoning
+3. Audience staged with explicit out-of-scope
+4. MVP-scope clusters identified at M-cluster-equivalent level
+5. NFRs elicited
+6. Architectural seams MVP commits to identified
+7. Conditional-inclusion items captured with explicit triggers
+
+Cluster: Interview process. **Architect bar:** LOW.
+
+### Net preliminary capability count after §6
+
+- Original §8: 17 capabilities
+- +N1 (Foundation), +N2 (Deliverable outputs), +N3 (Interview process) = +3 net
+- D restructures original #8/#9/#10 into N4/N5/N6 = 0 net change
+- E preserves #11 as-is preliminary (architect-decides at design time) = 0 net change in preliminary state
+- F refines #6 internally = 0 net change
+
+**Preliminary total: 20 capabilities.** Architect may push to 21 (if E splits #11), to fewer (if architect rejects any preliminary N* addition), or to a different shape entirely. Architect explores freely (Sub-E E3 + general preliminary status).
+
+### Preliminary cluster summary after §6
+
+| Cluster | Capabilities (preliminary) | Note |
+|---|---|---|
+| Foundation | #1, #2, #3, +N1 | +1 (per-stream tree) |
+| Interview process | #4, #5, #6 (+ completeness bar), #7, +N3 | +1 (PRD template) |
+| Deliverable outputs | +N4, +N5, +N6, #11 (architect-decides shape), +N2 | restructured from 4 into 5 preliminary; #11 shape held |
+| Pack integration | #12, #13, #14 | unchanged |
+| Workflow + lifecycle | #15, #16 | unchanged |
+| Scope boundary | #17 | unchanged |
+
 ---
 
 ## §9 — User-stated goals (consolidated index)
@@ -427,6 +480,7 @@ If investigation surfaces that the intuition is incorrect or needs refinement, t
 | 15 | Simple lifecycle: PRD edits in place; addenda / follow-on docs for scope additions; tracked via existing pack primitives (phases for pre-scheduled; backlog for emergent); no new lifecycle states | INTAKE §2 Q9; INTAKE §8 capability #16 |
 | 16 | Scope-discipline meta-criterion — full statement in §9.2 below | Stated 2026-05-24 during BD-191 sidecar (NO PRIOR SOURCE; this entry is canonical capture) |
 | 17 | Priorities as first-class cross-cutting driver — full statement in §9.3 below | Stated 2026-05-24 during BD-191 sidecar (partial source in INTAKE §1 (a) / §2 Q2 / §2 Q4 / §7.1 / RESEARCH §9.5 captures axes-as-input; this entry expands axes and reframes as first-class driver); BACKLOG-side capture at BD-191 SC11 |
+| 18 | PS-to-pack-entry-type boundary principle (cross-feature) — full statement in §9.4 below | Stated 2026-05-24 during BD-191 sidecar (NO PRIOR SOURCE; this entry is canonical capture); BACKLOG-side capture at BD-191 SC12 |
 
 ### §9.2 — Goal 16: Scope-discipline meta-criterion (full statement)
 
@@ -468,7 +522,46 @@ If investigation surfaces that the intuition is incorrect or needs refinement, t
 
 **Cross-references:** Goal 3 (interview structure; the elicitation mechanism); Goal 6 (deliverables; the documentation surfaces); Goal 16 (scope-discipline; the scope test); BD-191 SC11 (BACKLOG-side capture surface).
 
-### §9.4 — Mapping of goals to BD-191 success criteria
+### §9.4 — Goal 18: PS-to-pack-entry-type boundary principle (full statement)
+
+**Statement:** PS workflows produce context-rich, audience-aware inputs that enable pack ENTRY-TYPE workflows to build their canonical artifacts. PS DOES NOT create canonical pack entry-type artifacts directly. PS workflows are INFORMED BY what each relevant pack entry-type's data-structure requires.
+
+**Stated:** 2026-05-24 during BD-191 sidecar session by user. NO PRIOR SOURCE; this entry is canonical capture. BACKLOG-side capture at BD-191 SC12. REQUIREMENTS-GROUPINGS-V11.md Capability #7 carries the groupings-side conversion responsibility SC.
+
+**Pack data-structure context the PS workflow must understand:**
+
+- **Phases** — top-level scheduled implementation units. Initial creation never produces phase parts; if a phase is too big at creation, split into two phases instead.
+- **Tasks** — components of phases; granular work units. In flat-file mode tasks live inline within phase content; in tracker mode tasks map to tracker work items (Linear / GH Issues / Jira Tasks / etc.).
+- **Groupings** — collections of phases (only). Phase parts and tasks cannot be members of groupings.
+- **Phase parts** — EVOLUTION artifact. Created only when an existing phase evolves after its initial creation; not an initial-creation primitive. PS workflows DO NOT need to know about phase parts — they are internal to the phase-evolution mechanism.
+
+**Primary PS feed targets:**
+- Implementation plan phases (phase-N / phase parts) — PS provides phase-level scope, task-level granularity, dependencies, success criteria for both
+- Groupings (GRP-NNN; v11.1+) — PS provides clustering signals: which phases logically belong together
+
+**Edge-case PS feed target:**
+- Backlog entries (BD-NNN) — only when PS interview surfaces an item needing TRACKING WITHOUT SCHEDULING (conditional / future scope that must not be forgotten; no MVP or phase commitment). NOT routine PS output. PS does not produce backlog entries for normal forward product work — those become phases or groupings.
+
+**Non-feed targets:**
+- Changelog entries (CL-NNN) — retrospective; records completed work, not forward product work
+- Tech debt entries (TD-NNN) — known limitations in shipped code; engineer-authored from code awareness, not PS-authored
+- Phase parts — evolution artifact, internal to phase-workflow's evolution mechanism; PS workflows should not know about them
+- Future-added entry types — inherit this boundary by default; PS feeds only if forward-product-shaped and PS-knowledge is structurally relevant
+
+**Architectural-knowledge propagation (architectural seams, NFRs, anti-pillars, conditional-inclusions):** Architectural knowledge of this kind lives in PS deliverables (PRD architectural-commitments section per §6 N3 candidate; feature inventory `seam_refs:` field per §6 N6 candidate; audit-pass coverage checks per §6 N2 candidate) and propagates to pack entry-type workflows via the conversion mechanism. PS-side structural surfaces are the canonical home; pack entry-type workflows derive what they need from PS sources during conversion. Architectural knowledge IS NOT dropped just because it is not represented as a field on every pack entry-type schema — its proper home is on the PS side.
+
+**Where input gaps would prevent any relevant pack entry-type workflow** from generating its canonical artifact, PS workflows fill those gaps via interview / research / additional content collection.
+
+**Mechanism:**
+- PS responsibility: understand the data-structure context above; produce convertible content shapes via PS deliverables (narrative PRD, journey docs, feature inventory, mapping doc — per Goal 6); fill content gaps via interview / research
+- Pack entry-type workflow responsibility: convert PS-provided content into canonical entries (including constituent tasks when creating phases); handle varied input shapes (PS deliverables + project-provided docs + non-PS varied formats)
+- Project responsibility (when PS not used): pack entry-type workflows function via direct authoring per existing pack workflows; PS is OPTIONAL (Goal 2 modes preserved)
+
+**Cross-references:** Goal 6 (PS deliverable shapes); Goal 7 (audience-aware deliverables; pack IS audience — specifies pack entry-types as the data-structure-specific audience); Goal 8 (smooth pack integration without forced dependency); Goal 14 (architecture: PM Chat interviews; agent authors).
+
+**Preliminary; subject to architect challenge at design pass.** Architect WILL challenge boundary framing based on tactical analysis. User retains final authority. Tiered challenge bar (per pack memory `feedback_preliminary_triage_architect_challenge`): HIGH bar — Goal 18 touches the boundary with existing pack entry types (which are already implemented or thoroughly architected); architect cannot arbitrarily change boundary out of scope; must investigate thoroughly.
+
+### §9.5 — Mapping of goals to BD-191 success criteria
 
 BD-191 SC1-SC11 capture process-level criteria for the requirements-gathering work. Some goals bind tightly to a specific SC; others apply as cross-cutting design principles. The mapping below is informative — used by the downstream `REQUIREMENTS-PS-V11.md` distillation when surfacing which goals are SC-bound versus principles-only.
 
@@ -491,6 +584,7 @@ BD-191 SC1-SC11 capture process-level criteria for the requirements-gathering wo
 | 15 (simple lifecycle) | SC1 + SC2 (via capability #16) | Indirect |
 | 16 (scope-discipline meta-criterion) | Cross-cutting across all SCs | Not SC-bound; criterion applies to every triage decision |
 | 17 (priorities as first-class driver) | SC11 | Direct binding (added 2026-05-24) |
+| 18 (PS-to-pack-entry-type boundary) | SC12 (groupings-side conversion responsibility lands in REQUIREMENTS-GROUPINGS-V11.md Capability #7) | Direct binding (added 2026-05-24); PS-side mechanism captured in BD-191 SC12 |
 
 The non-SC-bound goals (1, 5, 16) remain as design-principles input for the downstream `REQUIREMENTS-PS-V11.md` distillation and for all per-capability triage decisions.
 

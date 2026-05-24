@@ -133,6 +133,7 @@ All 17 capabilities defer to v11.1+ implementation. The disposition table summar
 - 5 required fields: H1 title, Kind, Description, Member-phases, back-pointer line
 - 1 optional field: Source PRD / journeys doc reference (free-text)
 - Auto-include regex (V11.1 §9 hybrid) DROPPED — defeated by recognition tooling (#6) without schema complexity; YAGNI; rejected after evaluation
+- **`mvp_priority` field REJECTED** (per `PLANNING-PROCESS-INSIGHTS-FROM-OT.md` §5.4 amendment, user-preserved 2026-05-24). Considered AND rejected per architect analysis: (a) OT structural alignment — M-clusters (the OT analog of groupings) don't carry `mvp_priority`; the per-feature `mvp_priority` field at OT is feature-level, which maps to phase-level not grouping-level in pack; (b) SC2.5 conflict — groupings have NO declared dependencies, and a `mvp_priority` field would introduce a parallel ordering surface contrary to "derive execution order from phase Blockers/Unblocks"; (c) redundant — member phases already carry their own implicit priority/ordering via Blockers/Unblocks. Cross-reference: Goal 17 (priorities as first-class cross-cutting driver per `INTAKE-PS-V11.md` §9.3) — the priority signal flows through MEMBERSHIP (which phases belong to which grouping) rather than through a grouping-level field. **Preliminary; subject to architect challenge at v11.1+ groupings design pass** (per pack memory `feedback_preliminary_triage_architect_challenge`).
 
 **Architect-level surfaces:**
 - Exact field-name strings (`**Kind:**` vs `Kind:` vs `## Kind`, etc.)
@@ -354,7 +355,8 @@ This is the STARTING set — architect refines, and BD-187 absorbs the canonical
 - SC7.4. Pack does NOT parse N external formats with bespoke parsers.
 - SC7.5. External tools guided by BD-187 produce pack-compatible content directly; ungrouped/unstructured external content is handled via the same PM-Chat workflow as a D-soft fallback.
 - SC7.6. External task-level references (when external tools use tasks instead of phases) roll up to parent phases per C1 phases-only membership; minimum-2 enforced at the phase level after rollup.
-- SC7.7. PRD/journeys cross-references are recorded as optional free-text on the grouping doc; pack does not parse referenced docs.
+- SC7.7. PRD/journeys cross-references are recorded as optional free-text on the grouping doc; pack does not parse referenced docs. When the PRD field references a PS-produced PRD doc (per BD-191 PS feature), the PS PRD template is expected to contain anti-pillars + conditional-inclusion sections (per `PLANNING-PROCESS-INSIGHTS-FROM-OT.md` §3.2 + §5.3 amendment, user-approved 2026-05-24); PM-Chat external-ingest workflow should surface these during translation so that high-value PS content is not silently dropped. **Preliminary; subject to architect challenge at v11.1+ groupings design pass** (per pack memory `feedback_preliminary_triage_architect_challenge`).
+- SC7.8. Capability #7 from-external ingest accommodates multiple project-doc input types — PS-produced deliverables (narrative PRD, journey docs, feature inventory, mapping doc per BD-191), project-provided docs (existing PRDs, market analyses, roadmaps, feature specs), and non-PS varied-format planning content. The conversion responsibility lives on the groupings side: from-external ingest workflow handles translation of these varied inputs into `GRP-NNN.md` artifacts. PS workflows do NOT produce `GRP-NNN.md` directly (per `INTAKE-PS-V11.md` §9.4 Goal 18, user-approved 2026-05-24). Where input gaps would prevent grouping creation, PS workflows fill the gaps via interview / research before handoff (PS-side responsibility per Goal 18 mechanism). **Preliminary; subject to architect challenge at v11.1+ groupings design pass** (per pack memory `feedback_preliminary_triage_architect_challenge`).
 
 **User-approved design decisions:**
 - Ingress: γ both paths supported (pack-format direct AND PM-Chat-mediated external translation per user direction 2026-05-22)
@@ -429,7 +431,7 @@ This is the STARTING set — architect refines, and BD-187 absorbs the canonical
 - SC9.6. All verbs use typed errors per BD-070.
 - SC9.7. Output format supports both human-readable and machine-parseable usage; consistent with existing pack verb conventions.
 - SC9.8. The verb set covers the core groupings UX (rebuild + drift detection + reverse + enumerate + reverse-lookup) PLUS derived queries (execution order, dependencies, intersection) — none deferred to v11.x given they are small-medium, isolated, share infrastructure, and pass logical-fit with #9 cleanly.
-- SC9.9. Underlying reverse-lookup + derived-query algorithms are implemented as SHARED INFRASTRUCTURE consumed by both query verbs AND STATUS.md generator (per #14). Architect-pass decision required on shape: persisted derived artifact (matching existing `_toc.md` pattern — episodic regeneration, regeneratable from SSOT, survives across invocations) vs rebuild-every-time (no persistence; fresh scan per invocation). Risk-of-rebuild-every-time: repeat queries pay full scan cost; STATUS.md regen pays full scan cost; PM-Chat reverse-lookup queries pay full scan cost. Risk-of-persisted-artifact: cache invalidation correctness; CI gating to verify index-vs-tree consistency. No persisted-vs-not decision locked in v11.1; architect chooses based on scale + complexity tradeoff.
+- SC9.9. Underlying reverse-lookup + derived-query algorithms are implemented as SHARED INFRASTRUCTURE consumed by both query verbs AND STATUS.md generator (per #14). Architect-pass decision required on shape: persisted derived artifact (matching existing `_toc.md` pattern — episodic regeneration, regeneratable from SSOT, survives across invocations) vs rebuild-every-time (no persistence; fresh scan per invocation). Risk-of-rebuild-every-time: repeat queries pay full scan cost; STATUS.md regen pays full scan cost; PM-Chat reverse-lookup queries pay full scan cost. Risk-of-persisted-artifact: cache invalidation correctness; CI gating to verify index-vs-tree consistency. No persisted-vs-not decision locked in v11.1; architect chooses based on scale + complexity tradeoff. Cycle-detection infrastructure (Tarjan SCC or equivalent; architect-decided per HANDOFF-V11.1-ARCHITECT.md) is shared with Capability #13 SC13.22 (phase-level dependency cycle validation per §5.1 amendment).
 
 **User-approved design decisions:**
 - Namespace split (γ from #9 triage): `pack tracker groupings ...` for tracker-only ops; `pack groupings ...` for mode-agnostic queries
@@ -632,10 +634,14 @@ The existing validate-pack infrastructure has 40+ checks covering backlog/implem
 - SC13.20. Round-trip fixture per BD-068 pattern validates forward → reverse → forward byte-equivalence for grouping projection.
 - SC13.21. Empty-state fixture covers #17 degenerate-state handling.
 
+**Dependency-graph integrity (from §5.1 amendment to PLANNING-PROCESS-INSIGHTS-FROM-OT.md, user-approved 2026-05-24):**
+- SC13.22. **Phase-level dependency cycle detection.** Cycles within a grouping's member-phase dependency graph (transitive `Blockers:` / `Unblocks:` references) fail validate-pack with a typed error per BD-070. Cycle detection runs across the union of member-phase dependency graphs for all groupings, covering inter-grouping cycle implications (where Grouping A's member phases transitively depend on Grouping B's member phases which transitively depend on Grouping A's). Detection uses shared infrastructure with the `pack groupings deps` and `pack groupings order` derived-query verbs (Capability #9 SC9.8 / SC9.9). Reasoning: pack phases carry inter-phase dependency declarations; cycles are reachable; the failure mode is documented in OT planning incident PA-013 (7 dependency cycles, 60 of 196 features unlayerable until manual cleanup); catching at validate-pack time forces input correction rather than allowing bad input to propagate to downstream consumers.
+
 **User-approved design decisions:**
 - (a) Split into focused checks per β (NOT one big `check_groupings()`)
-- (b) Extend 4 existing checks (Check 33 toc_in_sync, Check 34 cross_reference_integrity, Check 29 tracker_config, `check_init_project_structure`) + add 2 new mandatory checks (`check_grouping_per_stream_contract`, `check_grouping_membership_integrity`); SKIP conditional Kind-constraint check (per #4 sub-decision Position 3 is out); SKIP Check 32 mirror_in_sync extension (per #5 revision)
+- (b) Extend 4 existing checks (Check 33 toc_in_sync, Check 34 cross_reference_integrity, Check 29 tracker_config, `check_init_project_structure`) + add 3 new mandatory checks (`check_grouping_per_stream_contract`, `check_grouping_membership_integrity`, `check_grouping_phase_dependency_cycles` per SC13.22 / §5.1 amendment); SKIP conditional Kind-constraint check (per #4 sub-decision Position 3 is out); SKIP Check 32 mirror_in_sync extension (per #5 revision)
 - (c) Minimum fixture coverage per α (one valid + one negative per check); architect adds edge cases based on real test gaps
+- (d) §5.1 amendment (cycle detection as 3rd new mandatory check) approved 2026-05-24 per architect insight from OT PA-013 worked failure mode (see PLANNING-PROCESS-INSIGHTS-FROM-OT.md §4.2 + §5.1)
 
 **Architect-level surfaces:**
 - Exact check function signatures and internal logic
@@ -644,18 +650,23 @@ The existing validate-pack infrastructure has 40+ checks covering backlog/implem
 - Per-check test file naming (`test-validate-pack-check-N.sh` pattern)
 - CI workflow YAML structure for new check wires
 - STATUS.md content validation granularity (SC13.14 architect-level)
+- Cycle-detection algorithm choice + persistence model for SC13.22 (see HANDOFF-V11.1-ARCHITECT.md "Open architect-level surfaces" entry)
 
 **Anchor / cross-references:**
-- TOUCH-POINT-INVENTORY-GROUPINGS-V2.md §3.H + §10 (validator footprint)
+- TOUCH-POINT-INVENTORY-GROUPINGS-V2.md §3.H + §10 (validator footprint; §10 carries cycle-detection coverage entry per §5.1 amendment)
 - Check 24 (HELP-FRAGMENT byte-identity — #12), Check 27 (per-CLI parity — #12), Check 33/34 (existing per-stream checks)
 - Check 42 (CI workflow wires per-check tests)
 - BD-068 (round-trip property)
+- BD-070 (typed-error contract used by SC13.22)
 - RC9 manifest regen rule (CLAUDE.md)
 - #5 revision (no mirror; no Check 32 extension)
 - #3 (membership rules source)
+- #9 SC9.8 / SC9.9 (shared cycle-detection infrastructure with derived-query verbs per SC13.22)
 - #10 (round-trip property)
 - #14 (STATUS.md content validation)
 - #17 (empty-state cross-stream parity)
+- PLANNING-PROCESS-INSIGHTS-FROM-OT.md §4.2 + §5.1 (architect source for SC13.22; OT PA-013 worked failure mode)
+- HANDOFF-V11.1-ARCHITECT.md "Open architect-level surfaces" (algorithm + persistence choice for SC13.22)
 
 ---
 
@@ -825,7 +836,7 @@ Per C3 scoping direction, empty-state behavior should be CONSISTENT across all p
 - SC17.7. STATUS.md dashboard rendering on empty groupings (per #14) is consistent with how STATUS.md handles other dashboard-relevant empty states. Architect determines the consistent pattern with full context.
 - SC17.8. Bi-directional sync (per #10) handles transitions to and from empty state consistently across streams.
 - SC17.9. Empty state is bidirectionally reachable — user can dissolve all groupings (per #3 + min-2-with-exception mechanism) and return to empty state; pack tooling continues to function.
-- SC17.10. **Architect-pass-level parity verification:** during v11.1 architect work, verify that empty-state handling is consistent across all per-entry streams. Where parity gaps surface in existing streams, open as SEPARATE BDs outside BD-186 scope. The architect surfaces such gaps; Pack Chat does NOT pre-judge what gaps exist.
+- SC17.10. **Architect-pass-level parity verification:** during v11.1 architect work, verify that empty-state handling is consistent across all per-entry streams. Where parity gaps surface in existing streams, open as SEPARATE BDs outside BD-186 scope. The architect surfaces such gaps; Pack Chat does NOT pre-judge what gaps exist. **Refinement per `PLANNING-PROCESS-INSIGHTS-FROM-OT.md` §5.6 amendment (user-approved 2026-05-24):** the cross-stream parity matrix is an EXPLICIT architect deliverable rather than scratch work. The matrix is small (~20 cells: 4 streams × 5 empty-state aspects — validate-pack behavior, mirror/TOC generator behavior, operational verb behavior, tracker projection behavior, STATUS.md dashboard rendering); shipping it as a named architect deliverable creates audit-trail for the cross-stream design decisions and prevents the matrix from existing only as ephemeral scratch work during the architect pass. Failure-mode anchor: OT PA-016 (3 "potentially questionable orphans" surfacing at Phase D from inadequate cross-graph analysis at Phase C — see `PLANNING-PROCESS-INSIGHTS-FROM-OT.md` §4.6). **Preliminary; subject to architect challenge at v11.1+ groupings design pass** (per pack memory `feedback_preliminary_triage_architect_challenge`).
 
 **User-approved design decisions:**
 
