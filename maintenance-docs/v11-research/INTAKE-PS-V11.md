@@ -337,9 +337,70 @@ If investigation surfaces that the intuition is incorrect or needs refinement, t
 
 ---
 
-## §8 — Forward pointer
+## §8 — Candidate capability list (Pack-Chat-drafted; awaiting architect review + user approval)
 
-This intake doc becomes input to BD-191 (open after this commit lands; BD-191 entry text will reference INTAKE-PS-V11.md in INPUTS, including §7's investigation tasks as SC10).
+**Status:** DRAFT, surfaced 2026-05-24 prior to per-capability triage walkthrough. Captured here as audit-trail anchor for the pre-architect-review state. Awaiting:
+- pack-architect review pass (`maintenance-docs/v11-research/PLANNING-PROCESS-INSIGHTS-FROM-OT.md` — forthcoming; synthesis of OT feature-brainstorm-1 planning patterns into pack-applicable lessons)
+- User review for shape (anything missing / merge / split / drop / re-cluster)
+- Per-capability triage walkthrough (one at a time, default-accept mode, BD-186 pattern)
+
+**Source materials:** §1 user framing (bullets a-g) + §2 Q1-Q10 verbatim answers + §7 quality-mitigation intuition + `RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md` §9 (pack-relevance observations + §9.5 defensible methodology positions) + `INTAKE-GROUPINGS-V11.md` cross-feature context.
+
+**Note on revisions:** The architect review pass MAY surface restructuring (capability merges, splits, additions, drops) based on OT planning-process patterns. If significant restructuring lands, this section is updated explicitly. Smaller adjustments handled per-capability during triage. Final locked capability set lives in `REQUIREMENTS-PS-V11.md` (downstream output of BD-191).
+
+### Foundation (3)
+
+1. **PS feature core shape + scope boundaries.** Agent / skill / hybrid (architect-decided per Q8); CLIENT-SIDE ONLY constraint (project-template/ surface; never pack-self per user direction 2026-05-24); optional + highly-recommended posture per Q3; install ships availability not adoption.
+2. **Two operational modes.** Mode 1 from-scratch authoring (interview → write); Mode 2 existing-PRD ingest + gap-fill (read → identify pack-integration gaps → interview to fill → restructure if needed). Both modes use same structured interview approach per §7.1.
+3. **Invocation model.** Episodic — project init (big planning effort) + milestone spikes (explicit: version releases; implicit: feature work nearing end of planned scope) + on-demand. Per Q2. Light footprint between spikes; no chronic overhead.
+
+### Interview process (4)
+
+4. **Structured interview process.** Clear sections (NOT a random walk); each section has problems/goals/SC framing; gap-identification across market research / ideation / creativity / scope definition / resource constraints / priorities / constraints. Both modes use same structure. Per §7.1.
+5. **Methodology positioning.** Pack ships defensible defaults per RESEARCH §9.5 (Continuous Discovery + OST for discovery; Mom Test + past-behavior focus for interviews; Lean Canvas or PR/FAQ for hypothesis; RICE or Value/Effort for prioritization; common-denominator PRD sections; North Star + OKRs for outcomes; JTBD-Christensen for persona-vs-JTBD; Cagan vocabulary). Per-project override path supported. Methodology-as-explicit-position is a pack differentiator per §9.2.
+6. **Interview "complete" criteria.** Defines when the interview can reasonably end vs continue. Boundary between "enough to start work" and "everything answered." SC10 investigation target.
+7. **Quality-mitigation tactical principles.** Per §7 — (a) interview structure (per #4) + (b) audience-aware deliverables (per #12). Tactical (not just strategic) principles. Investigation per SC10 directly mitigates RESEARCH §9.1 hard-things-to-be-careful findings.
+
+### Deliverable outputs (4)
+
+8. **PRD authoring.** MVP-line demarcation (or MVP-only PRD); common-denominator 8 sections per RESEARCH §9.3 / §4; Goals + Non-Goals paired; outcomes-over-outputs vocabulary; hypothesis-driven framing where applicable. Per user Q4 ("not just high level executive summary; working docs").
+9. **User journey doc generation.** Optional per project type (only for products with user-facing flows). Distinct from but feeds groupings of Kind `user-journey`. Per user (d) framing.
+10. **Feature list + mapping doc generation.** Feature list breaks PRD into discrete user-facing capabilities. Mapping doc (free-text per Q5) bridges PS output → pack primitives (groupings / phases / tasks / backlog entries). Mapping doc is REFERENCE once groupings are ingested (Q5: "just references and not working docs, per se").
+11. **Research orchestration.** Spawn `docs-researcher` for competitive analysis / market research / tool research (per user (b)). PS assembles outputs from multiple sources (interview + research + existing PRD per Q7) into coherent docs.
+
+### Pack integration (3)
+
+12. **Audience-aware deliverable shapes.** PS knows the pack as audience (workflows / docs / scripts / tracker / groupings / phases / tasks / backlog entries). Deliverables CONSTRAINED by pack-integration knowledge — narrower / more-specific than open-ended PM tools. Pack-differentiator per §7.2 + RESEARCH §9.2.
+13. **Cross-feature integration with groupings (BD-186 / BD-189).** PS docs feed groupings via existing #7 from-external ingest workflow. ZERO hard dependency in either direction (per user Q5). PS NEVER produces `GRP-NNN.md` files directly (per user Q6 "out of scope"). HANDOFF-V11.1-ARCHITECT.md may receive PS-awareness amendment during this BD's work.
+14. **PRD-to-code traceability.** Pack uniquely positioned per RESEARCH §9.2. Features → BDs → commits / PRs. PS deliverables reference pack primitives by ID. Traceability is mostly REFERENCE — pack-side primitives carry the canonical state; PS docs cite them.
+
+### Workflow + lifecycle (2)
+
+15. **Workflow + doc integration.** METHODOLOGY.md procedures for PS workflows (project-init invocation; milestone-trigger invocation; existing-PRD-ingest mode). PM-CHAT.md orchestration text (PM Chat does interviewing per Q8; agent does heads-down doc work). Trinity Document locations updates. OPTIONAL-FEATURES.md section. Agent / skill file updates per per-CLI parity (Check 27). Mirror of BD-186 #12 capability shape, scoped to PS.
+16. **PRD lifecycle management.** Edits in place (Q9). Addenda / follow-on docs for scope additions (Q9). Major scope changes tracked as phases or backlog entries (Q9: "this work can be tracked as phases or backlog entries since one is pre-scheduled and the other (backlog) is not"). No new lifecycle states needed; pack-existing primitives carry the tracking.
+
+### Scope boundary (1)
+
+17. **Wave 3 vapor exclusion + minimal validation surface.** Wave 3 (autonomous agentic PM) explicitly OUT OF SCOPE per RESEARCH §9.4. PS is Wave 2 (content-gen in PM workflows) — credible territory; pack adds value above "paste into Claude" via project-context awareness + integration + methodology positioning. Validation surface MINIMAL — PS-produced docs are user-facing reference material, not pack-validated entry types like backlog/phase. Architect decides extent of any validate-pack checks for PS docs.
+
+### Cluster summary
+
+| Cluster | Count | Cross-cutters |
+|---|---|---|
+| Foundation | 3 | n/a |
+| Interview process | 4 | #4 ↔ #7 (interview structure ↔ quality-mitigation); #6 cross-cuts SC10 |
+| Deliverable outputs | 4 | #9 + #10 feed #13 (groupings integration) |
+| Pack integration | 3 | #12 cross-cuts #4-#11 (all interview + deliverables affected by audience-awareness); #13 + #14 feed downstream pack work |
+| Workflow + lifecycle | 2 | #15 references all of #4-#14 |
+| Scope boundary | 1 | #17 boundary applies to all |
+
+**17 capabilities total** — coincidentally matches BD-186's 17-capability count.
+
+---
+
+## §9 — Forward pointer
+
+This intake doc serves as input to BD-191 (opened in BACKLOG.md at commit `32e78d2`; BD-191 entry text references INTAKE-PS-V11.md in INPUTS, with §7 investigation captured as SC10).
 
 REQUIREMENTS-PS-V11.md (downstream, produced during the BD-191 sidecar triage) will distill this intake doc + research findings into formal:
 
