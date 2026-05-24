@@ -494,8 +494,19 @@ in the same commit as the behavior change.
   CI Check 24, ecosystem-fixed names like `.gitignore` / `pyproject.toml`
   / `Package.swift`); for these exempted collisions, prose references
   must include path context ("pack-root `CLAUDE.md`" vs "project-template
-  `CLAUDE.md`"). Worked example: BD-135 renamed the colliding
-  `tracker.toml.example` pair.
+  `CLAUDE.md`"). Cross-reference forms that STRIP the unique filename
+  also violate this rule's intent even when they avoid the literal
+  `.md` extension — bare-version shorthand like `V3.3 §3.X` as a
+  reference to `ARCHITECTURE-V3.3-DELTA.md` sections is a leak under
+  the rule's spirit because the reader has no filename to follow, no
+  path to resolve, and the version shorthand is ambiguous (a `V3.3`
+  reference could mean any v3.3-versioned doc). Audit vocabulary
+  scans that look only for `*.md` patterns will MISS these; reviewers
+  should treat bare-version shorthand for pack-internal docs as the
+  same leak class as explicit `*.md` cites. Worked examples: BD-135
+  renamed the colliding `tracker.toml.example` pair; BD-173 Batch 19c.H.9
+  NIT-1 fix expanded from L1207 doc-cite to 11 bare-V3.3 refs in
+  `supporting-docs/METHODOLOGY.md` (audit-vocabulary-gap pattern).
 - **Architect-doc-vs-reality reconciliation.** When a BD realizes a
   design anticipated in an architect doc, ship the reconciliation
   chain: (a) in-code docstring naming the realized consumer (file +
