@@ -263,17 +263,90 @@ Pack Chat created both intake docs in parallel. This doc captures the BD-190 (PS
 
 ---
 
-## §7 — Forward pointer
+## §7 — Quality-mitigation intuition + tactical guiding principles (user-stated 2026-05-24; needs investigation during BD-190 triage)
 
-This intake doc becomes input to BD-190 (open after this commit lands; BD-190 entry text will reference INTAKE-PS-V11.md in INPUTS).
+**Context:** During the BD-190 entry approval ask, user surfaced an intuition about quality mitigation for the PS feature. Captured here near-verbatim for downstream investigation. **NOT a locked decision — flagged for investigation during BD-190 capability triage.** The eventual `REQUIREMENTS-PS-V11.md` will distill investigation outcomes into formal design principles + constraints.
+
+The intuition directly addresses two §9.1 quality-pitfall findings from `RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md`:
+- "AI-generated PRDs without facilitation = decorative artifacts"
+- "AI picking methodology = muddled (orthodoxy splits real)"
+
+### User-stated quote (verbatim 2026-05-24)
+
+> Before I approve, you mentioned that a major issue for tools with agents in this space was the low quality. We don't need to litigate that here, but I think that there are two clear areas that could help improve quality and mitigate this issue. This is just intuition, so I'm not certain: a) The interview process needs clear problems to solve, goals, and success criteria that are related to both product definition goals, but also smooth integration into the config pack. My sense is that bad PRDs are usually produced because people don't really know what they want and the AI doesn't either. But the AI has to write something and make it look official. The interview process can highlight where there are gaps in the content needed to provide real structure, even if the gaps are market research, idiation, or creativity related. This is why the inclusion of market and competitive analysis is important. Other reasons, even if the product idea is complete, might be that the scope isn't well defined and constrained to something buildable and deliverable give resource constraints and priorities. So knowing priorities, resource constraints, and other scope related information should be part of the interview. The interview can't just be a random walk of questions, rather it must have clear sections that need answers. If a preliminary PRD is provided and doesn't provide all the scope and strucure, the interview can help fill in the gaps. And b) the interview process, in this structure, must be well informed by the fact that it needs to create deliverables, docs that touch various areas and some that even have specific structures, that can integrate smoothly with the workflows, docs, scripts, and tools (even tracker) that the config pack uses. This could narrow and specify the scope considerably. Other product manager tools are probably open ended since the creators of those tool may not know how and where the output will be used and who its audience is. We do.
+>
+> This is just my intuition, bit this needs to be captured, probably in a new or existing section of `INTAKE-PS-V11.md` or somewhere else. I want it captured so it isn't forgotten (not just in a memory file, but in a real doc), but I also want the idea that this needs to be investigated further is also included. Either way, defining real tactical (not just high level strategic) guiding principles and deliverable requirements will help structure what the interview needs to consist of and what "complete" means when it's done.
+
+### §7.1 — Intuition (a): Interview structure
+
+The interview process MUST NOT be a random walk of questions. It must have:
+
+- **Clear problems / goals / success criteria** tied to BOTH:
+  - Product definition goals (what the product does, scope, MVP shape, differentiation)
+  - Smooth integration into the config pack (downstream pack workflow compatibility)
+- **Structured sections that need answers** — not free-form chat
+- **Gap identification across categories** when content is incomplete:
+  - Market research / competitive analysis (relevant to docs-researcher invocation)
+  - Ideation (when product idea is incomplete)
+  - Creativity (when scope needs broadening or pivoting)
+  - Scope definition + constraints (what's buildable given resources)
+  - Priorities (cost / speed / quality / feature sets / user journeys; user-named in framing message §1)
+  - Resource constraints
+- **Mode-1 (from-scratch) and Mode-2 (existing-PRD-ingest) use the SAME structured approach** to surface gaps; Mode 2 reads existing PRD and identifies which sections lack required content. The structure is the audit, regardless of where input comes from.
+
+User reasoning quoted verbatim above: "bad PRDs are usually produced because people don't really know what they want and the AI doesn't either. But the AI has to write something and make it look official. The interview process can highlight where there are gaps in the content needed to provide real structure."
+
+### §7.2 — Intuition (b): Audience-aware deliverables
+
+The PS deliverables must be informed by knowing the audience — which is the pack itself (workflows, docs, scripts, tracker, groupings, phases, tasks, backlog entries, etc.). Unlike other PM tools where the audience is unknown:
+
+- PS scope is **NARROWED** by knowing the downstream audience
+- Deliverable shapes are **MORE SPECIFIC** because integration targets are known
+- Interview content is **CONSTRAINED** by what the pack needs to ingest
+- This is a **competitive advantage** the pack has over open-ended PM tools
+
+User reasoning quoted verbatim above: "Other product manager tools are probably open ended since the creators of those tool may not know how and where the output will be used and who its audience is. We do."
+
+### §7.3 — Meta-direction (what to investigate during BD-190 triage)
+
+The user's intent: capture this intuition + investigate during triage. Not pre-decide.
+
+Investigation targets during BD-190 triage:
+
+1. **Define tactical (not just strategic) guiding principles** for:
+   - Interview structure: the sections; the order; the gap-identification process per category; the question shapes that elicit useful answers vs. decorative ones
+   - Deliverable shapes: each output doc (PRD / journey docs / feature list / mapping doc); what fields/sections are required; what's optional; how each maps to pack primitives (groupings / phases / tasks / backlog entries)
+2. **Define "complete" criteria** for the interview process — when can the interview reasonably end? What's the boundary between "enough to start work" and "everything answered"?
+3. **Investigate quality mitigation patterns** from §9.1 + §9.2 landscape findings:
+   - Conversation-scaffolding-vs-artifact-generation balance (per §9.2 underserved gap)
+   - Methodology-position selection (defensible defaults per §9.5 vs neutral; per-project override path)
+   - LLM Wave 2 capability boundary vs Wave 3 vapor (per §9.4)
+4. **Cross-reference** with §9.5 defensible methodology positions to ensure the interview structure aligns with industry-defensible patterns (Continuous Discovery / OST for discovery framework; Mom Test for interview style; etc.)
+
+### §7.4 — Status
+
+**INTUITION-STAGE ONLY.** Not locked. Investigation during BD-190 triage produces:
+- Tactical guiding principles → `REQUIREMENTS-PS-V11.md` design principles section
+- "Complete" criteria → `REQUIREMENTS-PS-V11.md` capability section (likely a dedicated capability for interview-completion check)
+- Quality-mitigation pattern selection → `REQUIREMENTS-PS-V11.md` scope/boundary section
+- Possibly: new capabilities identified during investigation (gap-identification verb, deliverable-shape templates, etc.)
+
+If investigation surfaces that the intuition is incorrect or needs refinement, the BD-190 triage records the refinement; **this §7 stays as the ORIGINAL user intent for audit purposes** (audit-trail discipline; intake docs don't get retroactively rewritten with conclusions).
+
+---
+
+## §8 — Forward pointer
+
+This intake doc becomes input to BD-190 (open after this commit lands; BD-190 entry text will reference INTAKE-PS-V11.md in INPUTS, including §7's investigation tasks as SC10).
 
 REQUIREMENTS-PS-V11.md (downstream, produced during the BD-190 sidecar triage) will distill this intake doc + research findings into formal:
 
-- Design principles (drawn from §9 pack-relevance observations + user-stated intent in §1)
-- User-stated constraints (analogous to BD-186's C1-C7, drawn from Q1-Q10 + framing)
-- Capability list (informed by §1 user goals + §9.2 underserved gaps + §9.3 familiar patterns + §9.5 methodology positions)
+- Design principles (drawn from §9 pack-relevance observations + user-stated intent in §1 + investigated §7 tactical principles)
+- User-stated constraints (analogous to BD-186's C1-C7, drawn from Q1-Q10 + framing + §7 intuition outcomes)
+- Capability list (informed by §1 user goals + §9.2 underserved gaps + §9.3 familiar patterns + §9.5 methodology positions + §7 interview-structure investigation)
 - Per-capability disposition + scope verdict
 - Cross-feature integration notes with groupings (BD-186 / BD-189)
+- Interview-completion "complete" criteria (per §7.3)
 
 The intake doc itself remains the verbatim audit-trail of user intent; the requirements doc carries the distilled, decision-locked content.
 
