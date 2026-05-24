@@ -309,7 +309,7 @@ Every phase in IMPLEMENTATION-PLAN.md should follow this format:
 - **Dependencies**: zero or more nested bullets, one per dependency. Each entry is
   either a phase epic (`phase-N`), a sibling or cross-phase task (`phase-N.M`), a
   TD entry (`TD-NNN`), or a BD entry (`BD-NNN`). Trailing free-text after the ID
-  is preserved as a human-readable annotation. Parser regex (V3.3 §5.3):
+  is preserved as a human-readable annotation. Parser regex:
   `^\s*-\s+(phase-\d+(\.\d+)?|TD-\d+|BD-\d+)(\s+(.*))?$`.
   Example:
   ```
@@ -1163,17 +1163,17 @@ No phase prompt is generated until this check is complete.
 1. Read BACKLOG.md in full
 2. For every Open item, check each Blocker:
    - Phase N blocker: has that phase been committed and marked ✅ in STATUS.md?
-   - Phase N.M blocker (v11.0 additive per V3.3 §5.4): in tracker mode, read the
+   - Phase N.M blocker (v11.0 additive): in tracker mode, read the
      `status:done` label on the phase task; in flat-file mode, read the `✅` marker
      on the `#### N.M` heading. Resolution is mode-agnostic via the trinity
      Document-locations resolver (V1 §8.5 / D-6).
-   - Phase task A blocked by phase task B (Dependencies field, V3.3 §5.4):
+   - Phase task A blocked by phase task B (Dependencies field):
      same resolution as Phase N.M — read the target task's status; mode-agnostic.
    - TD-NNN blocker: does that item have Status: Resolved?
    - External condition: has the condition been met? (use judgment; flag for user if uncertain)
    If ALL blockers resolved → set Status: Unblocked
    (When all blockers resolve, the TD becomes Unblocked — see the resolution-path
-   decision logic later in this Part for the V3.3 §3 promotion paths.)
+   decision logic later in this Part for the promotion paths.)
    The PM chat reports newly-unblocked items to the user
    proactively at every phase gate — the user should not need
    to ask. ("TD-NNN is now unblocked by Phase N completion.")
@@ -1204,37 +1204,37 @@ No phase prompt is generated until this check is complete.
    Active skills line in CLAUDE.md, AGENTS.md, and GEMINI.md. Commit.
 ```
 
-**Resolution path decision logic** (per ARCHITECTURE-V3.3-DELTA.md §3.1; supersedes the v10 three-outcome shape).
+**Resolution path decision logic** (supersedes the v10 three-outcome shape).
 (See Procedure 1 step 2 above for the "blockers resolved" gate-check semantics
 including the v11.0 phase-N.M and phase-task A-blocked-by-B forms.)
 ```
 Is the work small (≤ ~30 minutes inline; no significant scope expansion;
 user available to do it) AND no blockers?
   → Yes: direct close
-         (V3.3 §3.2; verb: `pack td resolve <td-id>`; no promotion
+         (verb: `pack td resolve <td-id>`; no promotion
           label; no new entity; v10 lifecycle unchanged)
   → No: Does the work span multiple tasks, warrant its own phase
         (architectural surface; multi-day; distinct concern), OR is
         there a cluster of related TDs in the same area?
       → Yes: Path 1 — promote to a new phase epic
-             (V3.3 §3.3; verb: `pack td promote --to=phase-N`;
+             (verb: `pack td promote --to=phase-N`;
               new phase epic at L1; `derived-from:TD-NNN` on phase
               epic; `promoted-to:phase-N` on closed TD; PM Chat
-              invokes architect by default per V3.3 §7.2 / §6.P)
+              invokes architect by default)
       → No: Path 2 — promote to a new phase task under existing phase
-             (V3.3 §3.4; verb: `pack td promote --to=phase-N.M`;
+             (verb: `pack td promote --to=phase-N.M`;
               new phase task at L2 child of phase-N epic;
               `derived-from:TD-NNN` on task; `promoted-to:phase-N.M`
               on closed TD; for each `Dependencies` bullet entry on
               the new task, PM Chat creates a cross-entity
-              `blocked-by` edge per V3.3 §5.1)
+              `blocked-by` edge)
 ```
-PM Chat advises per V3.3 §7.1 heuristic (Description length, File/Symbol
+PM Chat advises per heuristic (Description length, File/Symbol
 scope, Type signal, related-TD cluster). The user can confirm or override
 via `change-to-path-1` / `change-to-path-2` / `change-to-direct-close`.
 Bias toward resolving now.
 
-**Path 3 is forbidden** per V3.3 §3 line 27 / V3.3 §1 supersession. The
+**Path 3 is forbidden** (supersedes the v10 fold-into-existing-task shape). The
 v10 "fold into existing task body via inline `(from TD-NNN)` marker
 plus `folded-into:` label" shape is rejected; where that case would
 have applied, the user edits the absorbing task body manually via PM
