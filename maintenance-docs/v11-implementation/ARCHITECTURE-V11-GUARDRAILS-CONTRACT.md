@@ -347,7 +347,7 @@ def _build_fence_skip_lineset(text: str) -> set[int]:
     ...
 ```
 
-And a new constant (UPDATED 2026-05-24 — expanded from 7 to 11 entries per H.12/H.13 reorder; see §3.3 for STOP-AND-ESCALATE evidence):
+And a new constant (UPDATED 2026-05-24 — expanded from 7 to 12 entries: H.12/H.13 reorder added 4 dual-surface entries (see §3.3 for STOP-AND-ESCALATE evidence); H.13 implementation added PACK-FEEDBACK.md as the 12th entry per architect-spec-gap absorption — see `IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.13.md` §7.1 for full GAP-H.13-A rationale):
 
 ```python
 _CHECK_37_PER_LINE_FENCE_FILES = (
@@ -372,10 +372,21 @@ _CHECK_37_PER_LINE_FENCE_FILES = (
     "supporting-docs/INSTALL-PROCEDURES.md", # `Pack Chat` escalation refs in client-installed manual-procedures doc (L301, L609)
     "scripts/lib/detect.sh",                 # `pack-ops/` references in functional code comments (L23, L31, L43); script literally scans `$target/pack-ops/BACKLOG.md` when running in pack repo per BD-175 dual-surface design
     "scripts/pack-help.sh",                  # `HELP-FRAGMENT-PACK.md` + `pack-ops/` references in functional dual-surface code (L38-L169; 15 distinct lines); script branches on detected surface
+    # 1 architect-spec-gap absorption (added 2026-05-24 during H.13
+    # implementation — see `IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.13.md`
+    # §7.1 GAP-H.13-A for full rationale). Architect §2.3 originally
+    # classified this file as anchor-phrase-legitimate (and thus NOT on
+    # the per-line fence list); empirically wrong — 17 Check 37 FAILs
+    # because `Pack Chat` references in template Status table rows,
+    # section bodies, and Delivery Log rows fall outside the ±2-line
+    # anchor window. Whole-file fence variant — the entire file body
+    # is pack-vs-client domain vocabulary (PACK-FEEDBACK.md's reason
+    # for existing).
+    "project-template/docs/pack/PACK-FEEDBACK.md",
 )
 ```
 
-(Note: PACK-FEEDBACK.md, SETUP-EXISTING.md from the current whole-file-exempt list are NOT in the per-line-fence list because their pack-internal vocabulary use is anchor-phrase-legitimate, NOT deny-list-enumeration — these continue to be handled by the anchor-phrase mechanism. The per-line fence covers files that LITERALLY enumerate the deny-list patterns OR carry legitimate dual-surface / pedagogical pack-internal references that cannot be removed without breaking the file's purpose. METHODOLOGY.md and INSTALL-PROCEDURES.md were added 2026-05-24 because their `Pack Chat` role-name pedagogical content + escalation references are LEGITIMATE — the docs teach the user about the pack-vs-client architecture, so naming `Pack Chat` is unavoidable; the fence covers these LEGITIMATE references without disrupting the rest of the file's Check 37 scan. detect.sh and pack-help.sh were added 2026-05-24 because their `pack-ops/` + `HELP-FRAGMENT-PACK.md` references are FUNCTIONAL dual-surface code that branches on detected surface — the references cannot be removed without breaking the script.)
+(Note: SETUP-EXISTING.md from the current whole-file-exempt list is NOT in the per-line-fence list because its pack-internal vocabulary use is anchor-phrase-legitimate, NOT deny-list-enumeration — it continues to be handled by the anchor-phrase mechanism. PACK-FEEDBACK.md was ORIGINALLY classified the same way by the architect; H.13 implementation empirically discovered the classification was wrong (17 Check 37 FAILs in template body rows outside the ±2-line anchor window) and absorbed PACK-FEEDBACK.md into the per-line fence list as a whole-file fence variant — see `IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.13.md` §7.1 GAP-H.13-A. The per-line fence covers files that LITERALLY enumerate the deny-list patterns OR carry legitimate dual-surface / pedagogical pack-internal references that cannot be removed without breaking the file's purpose. METHODOLOGY.md and INSTALL-PROCEDURES.md were added 2026-05-24 because their `Pack Chat` role-name pedagogical content + escalation references are LEGITIMATE — the docs teach the user about the pack-vs-client architecture, so naming `Pack Chat` is unavoidable; the fence covers these LEGITIMATE references without disrupting the rest of the file's Check 37 scan. detect.sh and pack-help.sh were added 2026-05-24 because their `pack-ops/` + `HELP-FRAGMENT-PACK.md` references are FUNCTIONAL dual-surface code that branches on detected surface — the references cannot be removed without breaking the script.)
 
 **Fence-marker syntax in shell-script files** (`scripts/lib/detect.sh`, `scripts/pack-help.sh`): the HTML-comment fence syntax `<!-- DENY-LIST-CONTENT-START -->` works in shell scripts as ordinary comment text because validate-pack.py's `_build_fence_skip_lineset()` parser looks for exact marker strings at line level (not Markdown-context-aware). Coder uses the shell `#` comment form preceding the marker so the line is a valid shell comment AND a valid fence marker for the parser: `# <!-- DENY-LIST-CONTENT-START -->`. Per §2.5 invariant "each marker MUST be on its own line (no other text on the line)" — the leading `# ` is shell-comment prefix; the rest of the line is the exact marker string. Coder verifies the parser handles the `# ` prefix correctly (or proposes a parser-adjustment fix-coder commit if not). Per pack memory `Filename uniqueness heuristic`, the `# <!-- DENY-LIST-CONTENT-START -->` form is collision-free under `grep -rn "DENY-LIST-CONTENT" .` at HEAD.
 
@@ -791,7 +802,7 @@ Each commit MUST satisfy:
 | Guardrail 3 fixture tests pass | `bash scripts/tests/test-validate-pack-checks-36-37-38.sh` exits 0; new Group 7 added |
 | Guardrail 2 helpers exist | `_has_per_line_fence()` + `_build_fence_skip_lineset()` + `_CHECK_37_PER_LINE_FENCE_FILES` defined |
 | Guardrail 2 removes `_is_legitimate_deny_list_doc()` | Function deleted; callers updated |
-| Guardrail 2 fence markers placed | All 7 files in `_CHECK_37_PER_LINE_FENCE_FILES` have at least one `<!-- DENY-LIST-CONTENT-START -->`/`<!-- DENY-LIST-CONTENT-END -->` pair |
+| Guardrail 2 fence markers placed | All 12 files in `_CHECK_37_PER_LINE_FENCE_FILES` have at least one `<!-- DENY-LIST-CONTENT-START -->`/`<!-- DENY-LIST-CONTENT-END -->` pair (count updated 2026-05-24: 7 original → 11 post-H.12/H.13 reorder dual-surface adds → 12 post-H.13 GAP-H.13-A absorption of PACK-FEEDBACK.md; see `IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.13.md` §7.1) |
 | Guardrail 2 fixture tests pass | `bash scripts/tests/test-validate-pack-checks-36-37-38.sh` Group 6 + 7 pass |
 | Guardrail 1 function exists | `check_project_side_bare_internal_refs()` defined |
 | Guardrail 1 allowlist populated | `_CHECK_43_ALLOWLIST` defined with ~25 entries per §1.4 |

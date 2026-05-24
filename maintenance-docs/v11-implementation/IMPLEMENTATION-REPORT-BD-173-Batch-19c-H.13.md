@@ -27,14 +27,14 @@ Implement Guardrail 2 per ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md §2 + PLAN H.1
 4. Extend trinity-scaffolding Check 19 `ALLOWED_OPENINGS` tuple to admit the fence-marker comment shape (architect-spec gap — see §7.2).
 5. Add Group 6 fixture-test cases per architect §2.6.
 
-### 1.2 Files modified (16 total)
+### 1.2 Files modified (16 total: 14 source + manifest + IMPL-REPORT)
 
 | # | Path | Change type | Insertions / deletions (approx) |
 |---|---|---|---|
 | 1 | `scripts/validate-pack.py` | Modified — new helpers + constant + Check 19 ALLOWED_OPENINGS + Check 37 fence integration | +170 / -50 |
 | 2 | `scripts/tests/test-validate-pack-checks-36-37-38.sh` | Modified — Group 6 added | +195 / 0 |
 | 3 | `scripts/lib/detect.sh` | Modified — fence markers around `pack-ops/` refs | +4 / 0 |
-| 4 | `scripts/pack-help.sh` | Modified — fence markers (5 non-overlapping regions) | +12 / 0 |
+| 4 | `scripts/pack-help.sh` | Modified — fence markers (6 non-overlapping regions) | +12 / 0 |
 | 5 | `project-template/CLAUDE.md` | Modified — fence around "Project SSOT-first" parenthetical | +4 / 0 |
 | 6 | `project-template/AGENTS.md` | Modified — parallel trinity edit (byte-identical) | +4 / 0 |
 | 7 | `project-template/GEMINI.md` | Modified — parallel trinity edit (byte-identical) | +4 / 0 |
@@ -187,7 +187,7 @@ Trinity byte-identical post-edit (verified via `diff` in §4).
 
 ### 2.10 `scripts/pack-help.sh`
 
-**Five fence pairs** (shell-comment syntax `# <!-- DENY-LIST-CONTENT-START -->`):
+**Six fence pairs** (shell-comment syntax `# <!-- DENY-LIST-CONTENT-START -->`):
 
 1. **`usage()` heredoc** (L27-L40 pre-edit) — fence markers placed OUTSIDE the `<<'EOF'` heredoc (after `usage() {` and after `EOF`) so they remain shell comments and do not leak into user-facing help output. Verified by running `bash scripts/pack-help.sh --help` — output is identical to pre-edit (no marker leakage).
 
@@ -201,7 +201,7 @@ Trinity byte-identical post-edit (verified via `diff` in §4).
 
 6. **Error-message line in ambiguous case** (L171 pre-edit) — tight single-line fence around `echo "pack-help: expected pack-ops/HELP-FRAGMENT-PACK.md (pack repo) or" >&2`.
 
-(Six tight fences total — counted as "five non-overlapping" in §1.2 because pair 1 covers the usage() heredoc as one region; pair 2-6 are 5 additional regions.)
+(Six tight fences total = 6 non-overlapping regions; each pair covers a distinct contiguous region.)
 
 `bash -n` syntax check confirmed clean post-edit. `bash scripts/pack-help.sh --help` and `bash scripts/pack-help.sh` (auto-detect) both execute correctly post-edit.
 
