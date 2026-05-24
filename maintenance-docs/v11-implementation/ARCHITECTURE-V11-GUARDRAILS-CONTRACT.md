@@ -34,14 +34,14 @@ This contract is derived from:
 | `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` § Review dimensions (lines 24-44, 173-203) | Reviewer dimension extension (Guardrail 4) |
 | `scripts/tests/test-validate-pack-check-40.sh` | Fixture-test pattern (Guardrail 1) |
 
-### 0.3 Implementation order (full justification in §5.1)
+### 0.3 Implementation order (full justification in §5.1; UPDATED 2026-05-24 for H.12/H.13 reorder)
 
-| Order | Guardrail | Rationale |
-|---|---|---|
-| H.9.1 | Guardrail 3 (scope expansion) | Foundation for Guardrails 1 + 2; touches only validate-pack.py + test (no fixture-affecting) |
-| H.9.2 | Guardrail 2 (per-line fence) | Modifies validate-pack.py + boundary-investigation SKILL.md (RC9 fires) |
-| H.9.3 | Guardrail 1 (Check 43) | New check + new fixture-test + CI wiring; depends on Guardrail 3 scope (RC9 fires) |
-| H.9.4 | Guardrail 4 (PREFLIGHT extension) | Doc-only; trinity PACK-AGENTS.md + CONCEPTUAL-REVIEW-METHODOLOGY.md + memory cache (no fixture-affecting; PM-only commit) |
+| Order | PLAN H.N | Guardrail | Rationale |
+|---|---|---|---|
+| H.9.2 | PLAN H.13 (lands FIRST per 2026-05-24 reorder) | Guardrail 2 (per-line fence; **11 files** — expanded from 7 per reorder; +4 dual-surface) | Modifies validate-pack.py + boundary-investigation SKILL.md + 4 dual-surface files (RC9 fires). Per 2026-05-24 STOP-AND-ESCALATE evidence, the fence must cover 4 dual-surface files (METHODOLOGY.md + INSTALL-PROCEDURES.md + detect.sh + pack-help.sh) BEFORE scope expansion ratifies the cleaned state — otherwise 26 false-positive Check 37 fails. |
+| H.9.1 | PLAN H.12 (lands AFTER per 2026-05-24 reorder) | Guardrail 3 (scope expansion) | Foundation for Guardrail 1; touches only validate-pack.py + test (no fixture-affecting beyond scripts/). Per 2026-05-24 reorder, lands AFTER Guardrail 2 (commit log shows "Batch 19c.13" BEFORE "Batch 19c.12" — intentional per user direction B2 preserving PLAN H.N names). |
+| H.9.3 | PLAN H.14 | Guardrail 1 (Check 43) | New check + new fixture-test + CI wiring; depends on Guardrail 3 scope (RC9 fires) |
+| H.9.4 | PLAN H.15 | Guardrail 4 (PREFLIGHT extension) | Doc-only; trinity PACK-AGENTS.md + CONCEPTUAL-REVIEW-METHODOLOGY.md + memory cache (PM-only commit; RC9 fires per BD-176 pack-ops/ expansion) |
 
 ---
 
@@ -347,10 +347,11 @@ def _build_fence_skip_lineset(text: str) -> set[int]:
     ...
 ```
 
-And a new constant:
+And a new constant (UPDATED 2026-05-24 — expanded from 7 to 11 entries per H.12/H.13 reorder; see §3.3 for STOP-AND-ESCALATE evidence):
 
 ```python
 _CHECK_37_PER_LINE_FENCE_FILES = (
+    # Original 7 entries (project-template/ trinity + prompts + skill + PM-CHAT.md):
     "project-template/skills/boundary-investigation/SKILL.md",
     "project-template/docs/pack/PM-CHAT.md",
     "project-template/docs/pack/prompts/coder.md",
@@ -358,10 +359,25 @@ _CHECK_37_PER_LINE_FENCE_FILES = (
     "project-template/CLAUDE.md",
     "project-template/AGENTS.md",
     "project-template/GEMINI.md",
+    # 4 dual-surface additions (added 2026-05-24 per H.12/H.13 reorder):
+    # These files have LEGITIMATE pack-internal references in functional
+    # dual-surface code (scripts/) or pedagogical role-name content
+    # (supporting-docs/) that the fence covers without breaking script
+    # semantics or doc explanatory purpose. See ARCHITECTURE-V11-
+    # GUARDRAILS-CONTRACT.md §3.3 (corrected Pre-sweep verification)
+    # and IMPLEMENTATION-REPORT-BD-173-Batch-19c-REORDER-H.12-H.13.md
+    # for the 26-leak STOP-AND-ESCALATE evidence that drove this
+    # expansion.
+    "supporting-docs/METHODOLOGY.md",        # `Pack Chat` role-name pedagogy in client-installed doc (L119, L1561, L1579, L1585, L1587)
+    "supporting-docs/INSTALL-PROCEDURES.md", # `Pack Chat` escalation refs in client-installed manual-procedures doc (L301, L609)
+    "scripts/lib/detect.sh",                 # `pack-ops/` references in functional code comments (L23, L31, L43); script literally scans `$target/pack-ops/BACKLOG.md` when running in pack repo per BD-175 dual-surface design
+    "scripts/pack-help.sh",                  # `HELP-FRAGMENT-PACK.md` + `pack-ops/` references in functional dual-surface code (L38-L169; 15 distinct lines); script branches on detected surface
 )
 ```
 
-(Note: PACK-FEEDBACK.md, METHODOLOGY.md, SETUP-EXISTING.md, INSTALL-PROCEDURES.md from the current whole-file-exempt list are NOT in the per-line-fence list because their pack-internal vocabulary use is anchor-phrase-legitimate, NOT deny-list-enumeration — these continue to be handled by the anchor-phrase mechanism. The per-line fence covers only files that LITERALLY enumerate the deny-list patterns.)
+(Note: PACK-FEEDBACK.md, SETUP-EXISTING.md from the current whole-file-exempt list are NOT in the per-line-fence list because their pack-internal vocabulary use is anchor-phrase-legitimate, NOT deny-list-enumeration — these continue to be handled by the anchor-phrase mechanism. The per-line fence covers files that LITERALLY enumerate the deny-list patterns OR carry legitimate dual-surface / pedagogical pack-internal references that cannot be removed without breaking the file's purpose. METHODOLOGY.md and INSTALL-PROCEDURES.md were added 2026-05-24 because their `Pack Chat` role-name pedagogical content + escalation references are LEGITIMATE — the docs teach the user about the pack-vs-client architecture, so naming `Pack Chat` is unavoidable; the fence covers these LEGITIMATE references without disrupting the rest of the file's Check 37 scan. detect.sh and pack-help.sh were added 2026-05-24 because their `pack-ops/` + `HELP-FRAGMENT-PACK.md` references are FUNCTIONAL dual-surface code that branches on detected surface — the references cannot be removed without breaking the script.)
+
+**Fence-marker syntax in shell-script files** (`scripts/lib/detect.sh`, `scripts/pack-help.sh`): the HTML-comment fence syntax `<!-- DENY-LIST-CONTENT-START -->` works in shell scripts as ordinary comment text because validate-pack.py's `_build_fence_skip_lineset()` parser looks for exact marker strings at line level (not Markdown-context-aware). Coder uses the shell `#` comment form preceding the marker so the line is a valid shell comment AND a valid fence marker for the parser: `# <!-- DENY-LIST-CONTENT-START -->`. Per §2.5 invariant "each marker MUST be on its own line (no other text on the line)" — the leading `# ` is shell-comment prefix; the rest of the line is the exact marker string. Coder verifies the parser handles the `# ` prefix correctly (or proposes a parser-adjustment fix-coder commit if not). Per pack memory `Filename uniqueness heuristic`, the `# <!-- DENY-LIST-CONTENT-START -->` form is collision-free under `grep -rn "DENY-LIST-CONTENT" .` at HEAD.
 
 **Modified `check_project_side_deny_list()` body:** in the per-file loop (current line 4173), replace:
 
@@ -402,7 +418,7 @@ for rel_path in _iter_client_installed_files():  # Guardrail 3 expansion
 
 ### 2.4 Affected files — fence placement plan
 
-Pre-leak-sweep, only `boundary-investigation/SKILL.md` actually contains a deny-list-enumeration block (Step 4). The other 6 files in `_CHECK_37_PER_LINE_FENCE_FILES` reference pack-only patterns in instructional prose, NOT in enumeration blocks. Per the strategy doc, the placement plan is:
+Pre-leak-sweep, only `boundary-investigation/SKILL.md` actually contains a deny-list-enumeration block (Step 4). The other 6 ORIGINAL fence files in `_CHECK_37_PER_LINE_FENCE_FILES` reference pack-only patterns in instructional prose, NOT in enumeration blocks. **The 4 dual-surface files added 2026-05-24 (per H.12/H.13 reorder)** carry legitimate pack-internal references in functional dual-surface code (`scripts/`) or pedagogical role-name content (`supporting-docs/`) — these are FUNCTIONAL/PEDAGOGICAL legitimate uses, NOT enumeration teaching. Per the strategy doc + 2026-05-24 reorder, the placement plan is:
 
 | File | Current behavior | New fence placement | Why |
 |---|---|---|---|
@@ -410,8 +426,15 @@ Pre-leak-sweep, only `boundary-investigation/SKILL.md` actually contains a deny-
 | `project-template/docs/pack/prompts/coder.md` | Whole-file exempt | Fence around the deny-list block in current lines 83-89 (the bracketed "(the AI Agent Config Pack repo's `PACK-AGENTS.md`, ...)" enumeration) AND lines 195-202 (same enumeration in the fix-cycle variant) | Same rationale; coder.md teaches the deny-list in its boundary-discipline-stop instruction block |
 | `project-template/docs/pack/prompts/reviewer.md` | Whole-file exempt | Fence around the deny-list block in current lines 102-107 | Same rationale |
 | `project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` | Whole-file exempt | Fence around the deny-list enumeration in the `## Project memory` § "Project SSOT-first" bullet — currently a single multi-line bullet listing pack-only files. Fence placement: open immediately before the first `"(PACK-AGENTS.md,`" mention; close immediately after the `"etc.)"` close-paren | The bullet IS a deny-list enumeration; surrounding bullet text is instructional |
+| `project-template/docs/pack/PM-CHAT.md` | Whole-file exempt | Empty fence pair (per §2.5 invariant) at a defensible location; or fence around any enumeration block coder identifies at HEAD | PM-CHAT.md is in `_CHECK_37_PER_LINE_FENCE_FILES` for invariant compliance; if no enumeration block exists, place empty fence |
+| **`supporting-docs/METHODOLOGY.md`** (NEW 2026-05-24) | Was anchor-phrase-legitimate (no whole-file exempt); now fence-allowlisted | Fence around the legitimate `Pack Chat` role-name pedagogical references (sites at L119 + L1561 + L1579 + L1585 + L1587 per `grep -nE "Pack Chat" supporting-docs/METHODOLOGY.md`). Multiple non-overlapping fences supported per §2.5 — coder identifies the smallest contiguous block(s) around each LEGITIMATE reference. | The METHODOLOGY doc teaches the user about pack-vs-client architecture, so naming `Pack Chat` is unavoidable; the fence covers these LEGITIMATE references without disrupting the rest of the file's Check 37 scan. Without the fence, H.12 scope expansion would surface 5 false-positive Check 37 fails. |
+| **`supporting-docs/INSTALL-PROCEDURES.md`** (NEW 2026-05-24) | Was anchor-phrase-legitimate; now fence-allowlisted | Fence around the legitimate `Pack Chat` escalation references at L301 + L609 per `grep -nE "Pack Chat" supporting-docs/INSTALL-PROCEDURES.md`. Two non-overlapping fences (or a single fence covering both lines if they're close enough). | INSTALL-PROCEDURES.md teaches the user to escalate to Pack Chat when manual procedures encounter blockers — pedagogical content that must reference `Pack Chat`. Without the fence, H.12 scope expansion would surface 2 false-positive Check 37 fails. |
+| **`scripts/lib/detect.sh`** (NEW 2026-05-24) | Out-of-Check-37-scope pre-Guardrail-3; now fence-allowlisted | Fence around `pack-ops/` references in functional code comments at L23, L31, L43. Use shell-comment fence syntax: `# <!-- DENY-LIST-CONTENT-START -->` / `# <!-- DENY-LIST-CONTENT-END -->`. | detect.sh literally needs to scan `$target/pack-ops/BACKLOG.md` when running in the pack repo per BD-175 dual-surface design; the `pack-ops/` references are FUNCTIONAL code that branches on detected surface. Without the fence, H.12 scope expansion would surface 3 false-positive Check 37 fails. |
+| **`scripts/pack-help.sh`** (NEW 2026-05-24) | Out-of-Check-37-scope pre-Guardrail-3; now fence-allowlisted | Fence around `HELP-FRAGMENT-PACK.md` + `pack-ops/` references in functional dual-surface code at L38 + L39 + L86 + L87 + L92 + L106 + L112 + L113 + L114 + L115 + L119 + L120 + L133 + L136 + L153 + L169 (15 distinct lines). Coder identifies the smallest contiguous blocks (multiple non-overlapping fences supported); use shell-comment fence syntax. | pack-help.sh runs both in pack repo where `pack-ops/` exists AND in client repos where it doesn't, and the script branches accordingly; the `pack-ops/` and `HELP-FRAGMENT-PACK.md` references cannot be removed without breaking the script. Without the fence, H.12 scope expansion would surface 22 false-positive Check 37 fails (15 distinct lines × ~1.5 hits each). |
 
-**Pre-fence-placement edits** (Category F + Category C remediations land BEFORE Guardrail 2 fence placement in commit order — see §5.1): once those land, every line inside every planned fence range is verifiably a deny-list pattern, not a pack-internal cite. Guardrail 2 then ratifies the cleaned state and prevents regression.
+**Pre-fence-placement edits** (Category F + Category C remediations land BEFORE Guardrail 2 fence placement in commit order — see §5.1): once those land, every line inside every planned fence range is verifiably a deny-list pattern OR a LEGITIMATE pack-internal reference (functional dual-surface code / pedagogical role-name explanation), not an unintended pack-internal cite. Guardrail 2 then ratifies the cleaned state and prevents regression.
+
+**Shell-script fence-marker syntax** (`scripts/lib/detect.sh`, `scripts/pack-help.sh`): per §2.3 note, use `# <!-- DENY-LIST-CONTENT-START -->` form so the line is a valid shell comment AND a valid fence marker for the parser. Coder verifies the parser handles the `# ` prefix correctly (or proposes a parser-adjustment fix-coder commit if not).
 
 ### 2.5 Fence-marker syntax invariants
 
@@ -528,7 +551,36 @@ _PROJECT_SIDE_ROOTS = ("project-template",)
 | `_PROJECT_SIDE_ROOTS` direct reads | NONE outside the line 4064 caller — confirmed by grep at §0.5 input read |
 | `_PROJECT_SIDE_PATH_PREFIXES` direct reads | UNCHANGED — keeps current behavior |
 
-**Pre-sweep PASS verification:** running Check 37 with the expanded scope at HEAD (pre-sweep) will FAIL on the 2 detect.sh leaks (which qualified `maintenance-docs/` prefix already triggers Check 37's path-prefix detection). The PM-CHAT.md `ARCHITECTURE-V3.3-DELTA.md` leak (whole-file exempt today) becomes visible after Guardrail 2 lands; expanded scope alone is not enough. detect.sh failures must be FIXED (Category D sweep) BEFORE Guardrail 3 commit lands, OR Guardrail 3 commit message must explicitly carry "Category D fixes" to land both in the same commit. Recommended: land Guardrail 3 + Category D detect.sh fixes in the SAME commit per the "self-validating change" principle (validate-pack.py PASSES at the commit head).
+**Pre-sweep PASS verification (CORRECTED 2026-05-24 per STOP-AND-ESCALATE evidence):**
+
+The original (pre-2026-05-24) wording of this paragraph claimed: "running Check 37 with the expanded scope at HEAD (pre-sweep) will FAIL on the 2 detect.sh leaks (which qualified `maintenance-docs/` prefix already triggers Check 37's path-prefix detection) ... detect.sh failures must be FIXED (Category D sweep) BEFORE Guardrail 3 commit lands."
+
+That wording was **factually wrong at HEAD**. Per the 2026-05-24 STOP-AND-ESCALATE evidence (see `IMPLEMENTATION-REPORT-BD-173-Batch-19c-REORDER-H.12-H.13.md`), running Check 37 with the expanded scope at HEAD post-H.10 (`6e2d406`) FAILS on **26 leaks**, not 2:
+
+| File | Leak count | Pattern type | Architect-anticipated (pre-2026-05-24)? |
+|---|---|---|---|
+| `supporting-docs/METHODOLOGY.md` | 5 | `Pack Chat` capitalized role-name (L119, L1561, L1579, L1585, L1587) | NO |
+| `supporting-docs/INSTALL-PROCEDURES.md` | 2 | `Pack Chat` escalation references (L301, L609) | NO |
+| `scripts/pack-help.sh` | 22 (15 distinct lines × ~1.5 hits each) | `HELP-FRAGMENT-PACK.md` + `pack-ops/` path-prefix in functional dual-surface code | NO |
+| `scripts/lib/detect.sh` | 3 | `pack-ops/` path-prefix in functional code comments (L23, L31, L43) | NO |
+
+**These 26 leaks are NOT contamination — they are LEGITIMATE pack-internal references** in (a) pedagogical client-installed docs that teach the user about pack-vs-client architecture (`Pack Chat` is unavoidable when explaining the role), or (b) functional dual-surface scripts that branch on detected surface (the `pack-ops/` references are required for the script to work in the pack repo).
+
+**Corrected ordering contract:** leak sweep (Guardrail 3 / H.10 — clears the architect-anticipated 2 detect.sh `maintenance-docs/` leaks) **AND per-line fence (Guardrail 2 / H.13 — covers the 4 dual-surface files: METHODOLOGY.md, INSTALL-PROCEDURES.md, detect.sh, pack-help.sh)** MUST BOTH be applied BEFORE scope expansion (Guardrail 3 / H.12) ratifies the cleaned state. The 4 dual-surface files carry LEGITIMATE pack-internal references that the fence wraps; the scope expansion otherwise produces 26 false-positive Check 37 fails.
+
+**Reordered commit sequence (2026-05-24 reorder per Pack Chat user direction B2):**
+1. H.10 (Cat D detect.sh fixes — clears the 2 anticipated `maintenance-docs/` leaks)
+2. H.11 (Cat C pm-chat variant rewrites — clears the 3 pre-install supporting-docs/ template leaks)
+3. **H.13 (per-line fence — covers 11 files: 7 original + 4 dual-surface additions)** — lands BEFORE H.12
+4. **H.12 (scope expansion — ratifies the now-cleaned state)** — lands AFTER H.13
+5. H.14 (Check 43 — new check; INLINE reviewer sliding-window covers H.12+H.14)
+6. H.15+ (PREFLIGHT extension + remaining commits)
+
+The PLAN H.N names are PRESERVED (per Pack Chat user direction B2 — existing H.13 references in committed BD-190 entry and 6 references in this doc would break under renumbering). Commit log will show "Batch 19c.13" landing BEFORE "Batch 19c.12" — intentional per the reorder.
+
+**Updated "self-validating change" principle:** validate-pack.py PASSES at every commit head in the reordered sequence. H.13's expanded fence + H.10's leak sweep together guarantee H.12's scope-expansion ratifies the cleaned state without producing FAILs. Without the fence expansion (the pre-2026-05-24 understanding), H.12 alone could not land — confirmed by the STOP-AND-ESCALATE.
+
+**Cross-reference:** `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-173-Batch-19c-REORDER-H.12-H.13.md` documents the 26-leak inventory, Pack Chat triage, user direction (Option B + B2), and the corrected doc-revision chain (this paragraph + §2.3 fence-files enumeration + §5.1 commit-order text + PLAN §H.12 + §H.13 + V2 §H.12 + §H.13).
 
 ### 3.4 Fixture-test extension — `scripts/tests/test-validate-pack-checks-36-37-38.sh`
 
@@ -681,20 +733,22 @@ Per the strategy doc §2.4 Option (b) commit-numbering (H.9 = leak sweep Categor
 | **H.9** | Category A+B leak sweep (per-entry skeleton sweep) | `project-only` | YES (project-template/) |
 | **H.10** | Category D+E+F leak sweep (detect.sh + pm-startup + boundary-investigation cite) | mixed (no keyword) | YES (scripts/ + project-template/) |
 | **H.11** | Category C pm-chat variant rewrites (C-c decision) | `project-only` | YES (project-template/) |
-| **H.9.1** = post-H.11 | **Guardrail 3 implementation** (validate-pack.py + fixture-test extension) | `pack-only` | NO (validate-pack.py only — scripts/) — actually YES because `scripts/` is now in the trigger set per pack memory `feedback_manifest_regen_on_v11_surface` |
-| **H.9.2** | **Guardrail 2 implementation** (validate-pack.py changes + fence markers in 7 files) | mixed | YES (project-template/ + scripts/) |
-| **H.9.3** | **Guardrail 1 implementation** (Check 43 + fixture-test + CI wiring) | mixed | YES (scripts/ + .github/workflows/) — note .github/workflows/ is NOT in the RC9 trigger set; only the scripts/ change triggers RC9 |
-| **H.9.4** | **Guardrail 4 implementation** (PACK-AGENTS.md + trinity + CONCEPTUAL-REVIEW-METHODOLOGY.md + memory cache) | `PM-only` | NO (pack-ops/ + pack-root trinity edits do not affect fixture-build inputs at HEAD per pack memory `feedback_manifest_regen_on_v11_surface`) — actually pack-ops/ IS in the trigger set per BD-176 expansion, so YES per the rule's defensive width even though pack-ops/PACK-AGENTS.md is not fixture-affecting today |
-| **H.12** | End-of-batch reviewer | (review pass; not a commit) | N/A |
+| **H.9.2** = post-H.11 = PLAN H.13 (lands FIRST per 2026-05-24 reorder) | **Guardrail 2 implementation** (validate-pack.py changes + fence markers in **11 files** — expanded from 7 per 2026-05-24 reorder; +4 dual-surface files) | mixed | YES (project-template/ + scripts/ + supporting-docs/) |
+| **H.9.1** = post-H.13 = PLAN H.12 (lands AFTER per 2026-05-24 reorder) | **Guardrail 3 implementation** (validate-pack.py + fixture-test extension) | `pack-only` | YES (scripts/ in trigger set per pack memory `feedback_manifest_regen_on_v11_surface`) |
+| **H.9.3** = PLAN H.14 | **Guardrail 1 implementation** (Check 43 + fixture-test + CI wiring) | mixed | YES (scripts/ + .github/workflows/) — note .github/workflows/ is NOT in the RC9 trigger set; only the scripts/ change triggers RC9 |
+| **H.9.4** = PLAN H.15 | **Guardrail 4 implementation** (PACK-AGENTS.md + trinity + CONCEPTUAL-REVIEW-METHODOLOGY.md + memory cache) | `PM-only` | YES (pack-ops/ in trigger set per BD-176 expansion) |
+| **H.12** = PLAN H.17 | End-of-batch reviewer | (review pass; not a commit) | N/A |
 
-**Sequence rationale:**
-- **Leak sweep first (H.9-H.11):** the sweep clears the existing leaks. Without the sweep, Guardrails 1+2+3 would FAIL at HEAD and block validate-pack.py from passing — landing them first would block all subsequent commits in the batch on CI red.
-- **Guardrail 3 second (H.9.1):** scope expansion is the foundation for Guardrails 1 + 2. Touches only `scripts/validate-pack.py` and the Check 36-37-38 fixture-test; no behavioral change to project-side files. Verifies the cleaned post-H.10 state PASSES Check 37 against the expanded scope.
-- **Guardrail 2 third (H.9.2):** per-line fence requires the deny-list-content lines to be CLEAN of pack-internal cites (Category F edit at boundary-investigation/SKILL.md:124 must land first — that's part of H.10). Fence placement ratifies the cleaned state.
-- **Guardrail 1 fourth (H.9.3):** Check 43 reuses Guardrail 3's `_iter_client_installed_files()` helper. Independent of Guardrail 2's fence placement at the function level (Check 43 has its own allowlist; Check 37's per-line fence is separate). Lands last among code changes because it's the largest single addition.
-- **Guardrail 4 last (H.9.4):** doc-only, PM-only, no CI impact. Lands AFTER Guardrail 1 (Check 43 exists for PREFLIGHT to invoke).
+**Sequence rationale (UPDATED 2026-05-24 for H.12/H.13 reorder):**
+- **Leak sweep first (H.9-H.11):** the sweep clears the existing leaks the architect originally anticipated (2 detect.sh `maintenance-docs/` leaks + Cat E pm-startup cluster + Cat F boundary-investigation cite + Cat C pre-install supporting-docs/ template refs). Without the sweep, Guardrails 1+2+3 would FAIL at HEAD and block validate-pack.py from passing.
+- **Guardrail 2 second (PLAN H.13; lands FIRST per 2026-05-24 reorder):** per-line fence requires the deny-list-content lines to be CLEAN of pack-internal cites (Category F edit at boundary-investigation/SKILL.md:124 must land first — that's part of H.10). Fence placement ratifies the cleaned state. Per 2026-05-24 STOP-AND-ESCALATE evidence (see §3.3 corrected verification + `IMPLEMENTATION-REPORT-BD-173-Batch-19c-REORDER-H.12-H.13.md`), the fence files list was expanded from 7 to 11 to cover 4 dual-surface files (`supporting-docs/METHODOLOGY.md`, `supporting-docs/INSTALL-PROCEDURES.md`, `scripts/lib/detect.sh`, `scripts/pack-help.sh`) — these carry LEGITIMATE pack-internal references that the scope expansion (PLAN H.12) would otherwise surface as 26 false-positive Check 37 fails.
+- **Guardrail 3 third (PLAN H.12; lands AFTER PLAN H.13 per 2026-05-24 reorder):** scope expansion ratifies the now-cleaned + fence-covered state. Touches only `scripts/validate-pack.py` and the Check 36-37-38 fixture-test; no behavioral change to project-side files. The reorder is the architectural correction to the pre-2026-05-24 ordering claim that Guardrail 3 could land before Guardrail 2 — the 26-leak STOP-AND-ESCALATE proved that wrong. Per Pack Chat user direction B2: PLAN H.N names PRESERVED (existing H.13 references in committed BD-190 entry and 6 references in this doc would break under renumbering); commit log will show "Batch 19c.13" landing BEFORE "Batch 19c.12" — intentional per the reorder.
+- **Guardrail 1 fourth (PLAN H.14):** Check 43 reuses Guardrail 3's `_iter_client_installed_files()` helper (so Check 43 lands AFTER Guardrail 3 / PLAN H.12). Independent of Guardrail 2's fence placement at the function level (Check 43 has its own allowlist; Check 37's per-line fence is separate). Lands last among code changes because it's the largest single addition.
+- **Guardrail 4 last (PLAN H.15):** doc-only, PM-only, no CI impact. Lands AFTER Guardrail 1 (Check 43 exists for PREFLIGHT to invoke).
 
 **Alternative order considered and rejected:** "land Guardrails first, then sweep" — REJECTED because validate-pack.py would FAIL at HEAD after the guardrail commits, blocking the sweep commits behind a red CI gate. The sweep clears the existing leaks so validate-pack.py PASSES at every commit head.
+
+**Alternative order considered 2026-05-24 (rejected per user direction):** Option A (extend whole-file `_is_legitimate_deny_list_doc()` exemption to cover 4 dual-surface files, keep original H.12 → H.13 → H.14 order) was REJECTED because it moves architectural direction AWAY from per-line fence (which the BD-175 / BD-179 framework was designed around) and TOWARD whole-file exemption (which the per-line fence framework was designed to reduce). User direction was Option B: re-order PLAN H.12 / H.13 so the per-line fence (with expanded 11-file scope) lands BEFORE the scope expansion ratifies the cleaned state. Option C (insert a new Cat G commit between H.11 and H.12) was procedurally honest but architecturally identical to Option A.
 
 ### 5.2 RC9 manifest regeneration
 

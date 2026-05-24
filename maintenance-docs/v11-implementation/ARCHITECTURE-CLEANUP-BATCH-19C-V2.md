@@ -981,7 +981,7 @@ V1 §F surfaced 11 open questions (D-1 through D-10 + D-11 added by PRINCIPLE-CH
 | D-7 | Prescriptiveness of closeout-sequence rule (§C.4) | LAND as written (Alt-1) | **LAND as written** — per V1 recommendation |
 | D-8 | Ship trinity STRENGTHEN for `git checkout --` in this batch | SHIP (Alt-1) | **SHIP, REVISED to apply to BD-178-canonicalized baseline** (per salvageability B5 / V2 §C.6); defense-in-depth exception documented per V2 §D.6.3 |
 | D-9 | Group by RULE vs FILE in commits | GROUP BY RULE (Alt-1) | **GROUP BY RULE** — V1 recommendation preserved; V2 §H sequencing follows the rule-grouping pattern |
-| D-10 | Per-commit reviewer vs end-of-batch only | END-OF-BATCH ONLY (Alt-1) | **HYBRID — per-BD INLINE reviewer for trinity / boundary-sensitive commits; END-OF-BATCH for non-boundary-sensitive + cross-batch surface** per user direction citing post-BD-175 per-BD-INLINE default. V2 §H attaches per-commit reviewer to H.4, H.5, H.9, H.10, H.11, H.13, H.14, H.15, H.16 (H.15 added per Decision 4 (b) 2026-05-22 user-directed symmetric trinity coverage; H.5 alignment with §I + §H.5 + §J.6). Reviewer scope refined per Decision 4 (α-sliding) 2026-05-22: each INLINE reviewer covers the diff from prior INLINE commit (or H.0 baseline) through current commit, ensuring no commits are unreviewed before H.17 end-of-batch. Coverage windows: H.4 covers H.1-H.4; H.9 covers H.6+H.7+H.9; H.13 covers H.12+H.13; other INLINE commits cover their own diff only. |
+| D-10 | Per-commit reviewer vs end-of-batch only | END-OF-BATCH ONLY (Alt-1) | **HYBRID — per-BD INLINE reviewer for trinity / boundary-sensitive commits; END-OF-BATCH for non-boundary-sensitive + cross-batch surface** per user direction citing post-BD-175 per-BD-INLINE default. V2 §H attaches per-commit reviewer to H.4, H.5, H.9, H.10, H.11, H.13, H.14, H.15, H.16 (H.15 added per Decision 4 (b) 2026-05-22 user-directed symmetric trinity coverage; H.5 alignment with §I + §H.5 + §J.6). Reviewer scope refined per Decision 4 (α-sliding) 2026-05-22 (UPDATED 2026-05-24 for H.12/H.13 reorder): each INLINE reviewer covers the diff from prior INLINE commit (or H.0 baseline) through current commit, ensuring no commits are unreviewed before H.17 end-of-batch. **Coverage windows (post-2026-05-24-reorder execution order: H.13 → H.12 → H.14 → ...):** H.4 covers H.1-H.4; H.9 covers H.6+H.7+H.9; H.13 covers H.13 alone; H.14 covers H.12+H.14 (sliding-window picks up intervening SKIP-per-commit H.12); other INLINE commits cover their own diff only. |
 | D-11 | PM-chat omniscience principle (added by PRINCIPLE-CHECK §6) | LAND in METHODOLOGY.md Part 1 + cascade (Alt-1) | **LAND in METHODOLOGY.md Part 1 + cascade applied** per V2 §D.6 + V2 §C.0 cascade summary |
 
 **No open questions remain in V2.** The architect-doc-to-planner gate is fully resolved. Planner consumes V2 directly; no further architect pass.
@@ -1204,13 +1204,15 @@ V1's H.8 was the end-of-batch reviewer + status flip. V2 renumbers this to H.17 
 
 ### H.12 — Guardrail 3 implementation (`_PROJECT_SIDE_ROOTS` scope expansion to client-installed surface)
 
+**EXECUTION ORDER (2026-05-24 architect-spec gap correction):** This commit lands AFTER H.13 (per-line fence) per Pack Chat user direction B2 (PLAN H.N names PRESERVED; existing H.13 references in committed BD-190 entry and 6 references in GUARDRAILS-CONTRACT.md would break under renumbering). Commit log will show "Batch 19c.13" landing BEFORE "Batch 19c.12" — intentional per reorder. See `IMPLEMENTATION-REPORT-BD-173-Batch-19c-REORDER-H.12-H.13.md` for STOP-AND-ESCALATE evidence + reorder rationale.
+
 **Scope:** Per `ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md` §3. Replace `_PROJECT_SIDE_ROOTS` constant (currently `("project-template",)` at validate-pack.py L3762) with `_iter_client_installed_files()` helper that returns the union of (a) all files under `project-template/` and (b) explicit non-project-template entries from `_CLIENT_INSTALLED_FILES` (parsed via Check 41's existing helper). Add Group 7 fixture-test cases to `scripts/tests/test-validate-pack-checks-36-37-38.sh`.
 
 **Files modified:**
 - `scripts/validate-pack.py`
 - `scripts/tests/test-validate-pack-checks-36-37-38.sh`
 
-**Per-commit reviewer:** SKIP (mechanical scope expansion; test coverage added; validate-pack.py PASSES at HEAD post-H.10 leak-sweep clearing leaks under detect.sh which would now be in scope).
+**Per-commit reviewer:** SKIP-per-commit (mechanical scope expansion; test coverage added; validate-pack.py PASSES at HEAD post-H.13 fence-coverage + H.10 leak-sweep). Per the 2026-05-24 reorder: the H.14 INLINE reviewer's sliding window covers H.12+H.14 — H.12 is NOT unreviewed.
 
 **RC9 manifest regen:** **REQUIRED** (`scripts/` in v11-surface).
 
@@ -1218,14 +1220,16 @@ V1's H.8 was the end-of-batch reviewer + status flip. V2 renumbers this to H.17 
 
 **Commit message:** `feat: v11 — BD-173 Guardrail 3 — _PROJECT_SIDE_ROOTS expansion to full client-installed surface (Batch 19c.12)`
 
-**Rationale:** Scope expansion is the foundation for Guardrails 1 + 2. Must land AFTER H.10 (Category D detect.sh fixes) — otherwise validate-pack.py FAILs at H.12 commit head because the expanded scope surfaces the pre-existing detect.sh leaks. Per the "self-validating change" principle in guardrails contract §3.3, the leak sweep must clear the existing leaks BEFORE scope expansion ratifies the cleaned state.
+**Rationale:** Scope expansion is the foundation for Guardrails 1 + 2. Must land AFTER H.10 (Category D detect.sh fixes) AND AFTER H.13 (per-line fence covers 4 dual-surface files: METHODOLOGY.md + INSTALL-PROCEDURES.md + detect.sh + pack-help.sh) — otherwise validate-pack.py FAILs at H.12 commit head because the expanded scope surfaces **26 additional pre-existing leaks** beyond the 2 detect.sh `maintenance-docs/` leaks the architect originally anticipated (per 2026-05-24 STOP-AND-ESCALATE evidence). Per the corrected "self-validating change" principle in guardrails contract §3.3: leak sweep (H.10) AND per-line fence (H.13) MUST BOTH clear/cover the existing leaks BEFORE scope expansion (H.12) ratifies the cleaned state.
 
 ### H.13 — Guardrail 2 implementation (per-line exemption fence; Check 37 modification)
 
-**Scope:** Per guardrails contract §2. Replace `_is_legitimate_deny_list_doc()` whole-file exemption with per-line `<!-- DENY-LIST-CONTENT-START -->` / `<!-- DENY-LIST-CONTENT-END -->` fence support. Place fence markers in 7 files (per `_CHECK_37_PER_LINE_FENCE_FILES` enumeration): boundary-investigation/SKILL.md, prompts/coder.md, prompts/reviewer.md, project-template trinity ×3, PM-CHAT.md. Add Group 6 fixture-test cases.
+**EXECUTION ORDER (2026-05-24 architect-spec gap correction):** This commit lands BEFORE H.12 (Guardrail 3 scope expansion) per Pack Chat user direction B2. PLAN H.N names PRESERVED. Commit log will show "Batch 19c.13" landing BEFORE "Batch 19c.12" — intentional per reorder. See `IMPLEMENTATION-REPORT-BD-173-Batch-19c-REORDER-H.12-H.13.md` for STOP-AND-ESCALATE evidence + reorder rationale.
+
+**Scope:** Per guardrails contract §2. Replace `_is_legitimate_deny_list_doc()` whole-file exemption with per-line `<!-- DENY-LIST-CONTENT-START -->` / `<!-- DENY-LIST-CONTENT-END -->` fence support. Place fence markers in **11 files** per `_CHECK_37_PER_LINE_FENCE_FILES` enumeration (originally 7; expanded by 4 dual-surface files per 2026-05-24 reorder): boundary-investigation/SKILL.md, prompts/coder.md, prompts/reviewer.md, project-template trinity ×3, PM-CHAT.md, **PLUS supporting-docs/METHODOLOGY.md, supporting-docs/INSTALL-PROCEDURES.md, scripts/lib/detect.sh, scripts/pack-help.sh**. Add Group 6 fixture-test cases.
 
 **Files modified:**
-- `scripts/validate-pack.py`
+- `scripts/validate-pack.py` (helper add + function replacement; `_CHECK_37_PER_LINE_FENCE_FILES` constant expanded from 7 to 11 entries)
 - `project-template/skills/boundary-investigation/SKILL.md` (fence markers around Step 4 enumeration block)
 - `project-template/docs/pack/prompts/coder.md` (fence markers around deny-list block at current L83-89 + L195-202)
 - `project-template/docs/pack/prompts/reviewer.md` (fence markers around deny-list block at current L102-107)
@@ -1233,17 +1237,22 @@ V1's H.8 was the end-of-batch reviewer + status flip. V2 renumbers this to H.17 
 - `project-template/AGENTS.md` (parallel fence markers per project trinity rule)
 - `project-template/GEMINI.md` (parallel fence markers per project trinity rule)
 - `project-template/docs/pack/PM-CHAT.md` (if `_CHECK_37_PER_LINE_FENCE_FILES` includes per contract §2.3 — verify scope per coder)
+- **NEW — 4 dual-surface files added 2026-05-24 per reorder:**
+  - `supporting-docs/METHODOLOGY.md` (fence markers around legitimate `Pack Chat` role-name pedagogical references at L119, L1561, L1579, L1585, L1587)
+  - `supporting-docs/INSTALL-PROCEDURES.md` (fence markers around legitimate `Pack Chat` references at L301, L609 — pedagogical content directing user to escalate to Pack Chat on manual-procedure blockers)
+  - `scripts/lib/detect.sh` (fence markers around `pack-ops/` references in functional code comments at L23, L31, L43 — script literally needs to scan `$target/pack-ops/BACKLOG.md` when running in pack repo per BD-175 dual-surface design)
+  - `scripts/pack-help.sh` (fence markers around `HELP-FRAGMENT-PACK.md` + `pack-ops/` references in functional dual-surface code at L38-L169 — 15 distinct lines; script runs both in pack repo where `pack-ops/` exists AND in client repos where it doesn't)
 - `scripts/tests/test-validate-pack-checks-36-37-38.sh` (Group 6 test cases)
 
-**Per-commit reviewer:** **REQUIRED INLINE — sliding-window scope per Decision 4 (α-sliding) 2026-05-22.** Reviews the diff from the prior INLINE commit (H.11) through end of this commit — i.e., H.12 + H.13 (2 commits). Scope expands to include the H.12 Guardrail 3 `_PROJECT_SIDE_ROOTS` scope expansion + new validate-pack.py test cases in addition to this commit's fence work. Boundary-sensitive; touches project-side trinity AND prompts AND skill; reviewer verifies fence placement preserves intended exempt-content scope AND outside-fence content does NOT contain pack-internal cites — H.10 Category F should have cleared the boundary-investigation skill's `AUDIT-USER-CURATION.md` cite first; fence ratifies the cleaned state.
+**Per-commit reviewer:** **REQUIRED INLINE — sliding-window scope per Decision 4 (α-sliding) 2026-05-22 (UPDATED 2026-05-24 for H.12/H.13 reorder).** Reviews the diff from the H.11-fix commit (`6e2d406`) through this commit's HEAD — i.e., **H.13 alone** (since H.13 now runs FIRST in the reordered sequence; H.12 follows and is reviewed by H.14's INLINE reviewer per the corrected sliding-window mapping). Boundary-sensitive; touches project-side trinity AND prompts AND skill AND supporting-docs/ AND scripts/; reviewer verifies fence placement preserves intended exempt-content scope AND outside-fence content does NOT contain pack-internal cites — H.10 Category F should have cleared the boundary-investigation skill's `AUDIT-USER-CURATION.md` cite first; fence ratifies the cleaned state. Reviewer also verifies the shell-script fence syntax (`# <!-- DENY-LIST-CONTENT-START -->`) is correctly parsed by `_build_fence_skip_lineset()`.
 
-**RC9 manifest regen:** **REQUIRED** (`project-template/` + `scripts/` both in v11-surface).
+**RC9 manifest regen:** **REQUIRED** (`project-template/` + `scripts/` + `supporting-docs/` all in v11-surface per BD-176).
 
-**Commit subject scope keyword:** (mixed — no keyword; touches `project-template/` AND `scripts/`).
+**Commit subject scope keyword:** (mixed — no keyword; touches `project-template/` AND `scripts/` AND `supporting-docs/`).
 
-**Commit message:** `feat: v11 — BD-173 Guardrail 2 — per-line deny-list fence (Check 37 modification + 7 files fenced) (Batch 19c.13)`
+**Commit message:** `feat: v11 — BD-173 Guardrail 2 — per-line deny-list fence (Check 37 modification + 11 files fenced) (Batch 19c.13)`
 
-**Rationale:** Per guardrails contract §5.1, Guardrail 2 must land AFTER H.10 (Category F removes the BD-175 self-leak from boundary-investigation/SKILL.md) — otherwise the fence would ratify a still-leaking state. Fence placement is mechanical once H.10 clears the cite.
+**Rationale:** Per guardrails contract §5.1 (corrected 2026-05-24), Guardrail 2 must land AFTER H.10 (Category F removes the BD-175 self-leak from boundary-investigation/SKILL.md) AND BEFORE H.12 (Guardrail 3 scope expansion). The fence's expanded 11-file coverage wraps the 26 dual-surface leaks H.12's scope expansion would otherwise surface (per 2026-05-24 STOP-AND-ESCALATE evidence). Fence placement is mechanical once H.10 clears the cite; the 4 newly-added dual-surface files have LEGITIMATE pack-internal references (functional dual-surface code paths + pedagogical `Pack Chat` role-name explanations) that the fence covers without disrupting the script/doc semantics.
 
 ### H.14 — Guardrail 1 implementation (Check 43 — project-side bare cross-reference scanner)
 
@@ -1255,7 +1264,7 @@ V1's H.8 was the end-of-batch reviewer + status flip. V2 renumbers this to H.17 
 - `scripts/tests/fixtures/project-side-refs/` (NEW directory with 13 fixture files: 7 FAIL + 5 PASS + 1 README per contract §1.10)
 - `.github/workflows/validate-pack.yml` (single new test-invocation line per contract §1.11)
 
-**Per-commit reviewer:** **REQUIRED INLINE — sliding-window scope per Decision 4 (α-sliding) 2026-05-22.** Reviews this commit's diff only (sliding window = H.14 alone; prior INLINE reviewer was H.13 covering H.12+H.13). NEW CI check; reviewer verifies the contract §1 implementation matches the spec — class-test allowlist; supporting-docs/ subset rule; FAIL-condition coverage; fixture-test enumeration; CI wiring.
+**Per-commit reviewer:** **REQUIRED INLINE — sliding-window scope per Decision 4 (α-sliding) 2026-05-22 (UPDATED 2026-05-24 for H.12/H.13 reorder).** Reviews the diff from the prior INLINE commit (H.13) through this commit's HEAD — i.e., **H.12 + H.14** (2 commits; H.12 ran SKIP-per-commit between H.13 and H.14 under the reordered sequence; H.14 INLINE reviewer therefore picks up the intervening H.12 scope-expansion commit). NEW CI check; reviewer verifies the contract §1 implementation matches the spec — class-test allowlist; supporting-docs/ subset rule; FAIL-condition coverage; fixture-test enumeration; CI wiring; PLUS the H.12 Guardrail 3 `_PROJECT_SIDE_ROOTS` scope expansion (`_iter_client_installed_files()` helper + Group 7 fixture-test cases) per the corrected sliding-window mapping.
 
 **RC9 manifest regen:** **REQUIRED** (`scripts/` in v11-surface; `.github/workflows/` is NOT in RC9 trigger but `scripts/` change forces regen).
 
@@ -1389,7 +1398,7 @@ This table is the planner's lookup index. Each row names the source (OT-item, le
 **Net commit count:** 16 implementation commits (H.1-H.16) + 1 review/close commit (H.17) = 17 commits.
 
 **Net per-commit reviewer breakdown:**
-- INLINE reviewer commits (sliding-window per Decision 4 (α-sliding) 2026-05-22): H.4 (covers H.1-H.4), H.5 (covers H.5), H.9 (covers H.6+H.7+H.9), H.10 (covers H.10), H.11 (covers H.11), H.13 (covers H.12+H.13), H.14 (covers H.14), H.15 (covers H.15), H.16 (covers H.16) — **9 sliding-window passes covering all 16 implementation commits with no gaps before H.17**.
+- INLINE reviewer commits (sliding-window per Decision 4 (α-sliding) 2026-05-22; UPDATED 2026-05-24 for H.12/H.13 reorder; post-reorder execution order: H.13 → H.12 → H.14): H.4 (covers H.1-H.4), H.5 (covers H.5), H.9 (covers H.6+H.7+H.9), H.10 (covers H.10), H.11 (covers H.11), **H.13 (covers H.13 alone — H.12 has not yet executed in the reordered sequence)**, **H.14 (covers H.12+H.14 — sliding-window picks up the intervening SKIP-per-commit H.12)**, H.15 (covers H.15), H.16 (covers H.16) — **9 sliding-window passes covering all 16 implementation commits with no gaps before H.17**.
 - End-of-batch reviewer: H.17 — 1 pass over full batch diff (H.0 → end of H.16) as backstop.
 
 **Total reviewer passes = 9 sliding-window INLINE + 1 END-OF-BATCH = 10 passes total. Every implementation commit is reviewed at least once before H.17; H.17 provides cross-cutting integration coverage.** Each INLINE pass triggers a potential fix-coder cycle (default fix-all per Pack Chat protocol; user triages per finding); the end-of-batch pass covers the cumulative batch state.
@@ -1445,7 +1454,7 @@ V1 §F D-10 recommended END-OF-BATCH ONLY for the single-BD batch. V2 §F D-10 r
 
 **Augmentation rationale:** Post-BD-175 per-BD-INLINE review pattern is the default for trinity-touching and boundary-sensitive work. The hybrid is conservative — boundary-sensitive commits get inline coverage to catch leak regressions before they stack, AND the end-of-batch reviewer covers cross-cutting concerns the per-commit reviewers might miss.
 
-**Sliding-window refinement (Decision 4 (α-sliding) 2026-05-22):** Each INLINE reviewer's scope is the diff from the prior INLINE commit (or H.0 baseline) through end of its own commit, NOT just its own commit's diff. This ensures the 6 commits marked `covered by H.N` (H.1, H.2, H.3, H.6, H.7, H.12) are reviewed before H.17 rather than only at end-of-batch — closes the gap between per-BD-INLINE intent and per-commit coverage. Coverage windows: H.4 covers H.1-H.4 (4 commits); H.5 covers H.5 only; H.9 covers H.6+H.7+H.9 (3 commits); H.10/H.11/H.14/H.15/H.16 each cover own diff only; H.13 covers H.12+H.13 (2 commits). H.17 end-of-batch reviewer remains as backstop for cross-cutting integration.
+**Sliding-window refinement (Decision 4 (α-sliding) 2026-05-22; UPDATED 2026-05-24 for H.12/H.13 reorder):** Each INLINE reviewer's scope is the diff from the prior INLINE commit (or H.0 baseline) through end of its own commit, NOT just its own commit's diff. This ensures the 6 commits marked `covered by H.N` (H.1, H.2, H.3, H.6, H.7, H.12) are reviewed before H.17 rather than only at end-of-batch — closes the gap between per-BD-INLINE intent and per-commit coverage. **Coverage windows (post-2026-05-24-reorder execution order: H.13 → H.12 → H.14 → ...):** H.4 covers H.1-H.4 (4 commits); H.5 covers H.5 only; H.9 covers H.6+H.7+H.9 (3 commits); H.10/H.11/H.15/H.16 each cover own diff only; **H.13 covers H.13 alone** (H.12 has not yet executed); **H.14 covers H.12+H.14** (sliding-window picks up the intervening SKIP-per-commit H.12). H.17 end-of-batch reviewer remains as backstop for cross-cutting integration.
 
 **No conflict** with Batch 19b precedent — Batch 19b was multi-BD and ran per-BD inline reviews per the same default. V2 applies the default to V2's boundary-sensitive commits.
 
