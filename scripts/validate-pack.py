@@ -3765,8 +3765,14 @@ _PM_ONLY_PERMITTED_PREFIXES = (
     "project-template/docs/project/changelog/",
 )
 
-# Project-side roots — where Check 37 walks for the deny-list grep.
-_PROJECT_SIDE_ROOTS = ("project-template",)
+# `_PROJECT_SIDE_ROOTS` is REPLACED by `_iter_client_installed_files()`.
+# See ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md §3 for the contract.
+# Reason: the previous constant restricted Check 37 to project-template/
+# only, missing scripts/lib/detect.sh (installed verbatim per
+# init-project.sh:894-895) and the other 4 client-installed files in
+# pack-ops/ + supporting-docs/ + scripts/. The new helper parses the
+# authoritative _CLIENT_INSTALLED_FILES inventory and walks the full
+# client-installed surface.
 
 # Pack-only path prefixes for scope honesty (Check 36 pack-only check):
 # a `pack-only` commit MUST NOT touch any path under these prefixes.
@@ -4063,29 +4069,55 @@ def _context_has_anchor(lines: list[str], lineno: int) -> bool:
     return False
 
 
-def _iter_project_side_files() -> list[Path]:
-    """Walk project-side roots and return all regular files. Skips
-    `.git/`, hidden directories, and any path under a node_modules-like
-    generated directory (none currently in project-template/ but defensive)."""
+def _iter_client_installed_files() -> list[Path]:
+    """Return the union of:
+      (a) all regular files under project-template/ (recursive), and
+      (b) the explicit non-project-template files in _CLIENT_INSTALLED_FILES.
+
+    This replaces _PROJECT_SIDE_ROOTS-based walks for Checks 37 + 43.
+    The source-of-truth for (b) is _CLIENT_INSTALLED_FILES_START/_END
+    in scripts/init-project.sh, parsed via Check 41's
+    _parse_client_installed_files() helper.
+
+    Returns repo-relative Path objects, sorted, deduplicated. Skips
+    binary files (deferred to caller via UnicodeDecodeError handling).
+
+    Contract: see `maintenance-docs/v11-implementation/ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md`
+    §3.1 for the verbatim function body + §3.2 for the rationale
+    (replaces `_PROJECT_SIDE_ROOTS` constant; reuses the authoritative
+    `_CLIENT_INSTALLED_FILES_START`/`_END` inventory in
+    `scripts/init-project.sh` per BD-180 G).
+    """
     out: list[Path] = []
-    for root_name in _PROJECT_SIDE_ROOTS:
-        root_path = REPO_ROOT / root_name
-        if not root_path.is_dir():
-            continue
-        for path in sorted(root_path.rglob("*")):
+    # (a) project-template/ recursive walk (existing behavior).
+    root = REPO_ROOT / "project-template"
+    if root.is_dir():
+        for path in sorted(root.rglob("*")):
             if not path.is_file():
                 continue
-            rel = path.relative_to(REPO_ROOT)
-            # Skip dotted-dir agents/skills/commands fixtures — actually
-            # those ARE in scope (skills like boundary-investigation
-            # carry the deny-list legitimately as instructional content
-            # via the Pattern A canonical source at
-            # project-template/skills/boundary-investigation/SKILL.md;
-            # that's why we use the anchor-phrase + per-skill exception
-            # lists below). No skip here — all project-template/ files
-            # are scanned (including .claude/.codex/.gemini extras).
-            out.append(rel)
+            out.append(path.relative_to(REPO_ROOT))
+    # (b) explicit non-project-template entries from _CLIENT_INSTALLED_FILES.
+    entries, _, _, _, _ = _parse_client_installed_files()
+    for entry in entries:
+        if entry.startswith("project-template/"):
+            continue  # already covered by (a)
+        full = REPO_ROOT / entry
+        if full.is_file():
+            rel = full.relative_to(REPO_ROOT)
+            if rel not in out:  # dedup defensive (project-template/ first)
+                out.append(rel)
     return out
+
+
+def _iter_project_side_files() -> list[Path]:
+    """Thin alias delegating to `_iter_client_installed_files()`.
+
+    DEPRECATED: kept as an alias so the Check 37 call-site
+    (`check_project_side_deny_list`) does not need to change. Future
+    cleanup may inline the delegation. See ARCHITECTURE-V11-GUARDRAILS-
+    CONTRACT.md §3.2 for the migration plan.
+    """
+    return _iter_client_installed_files()
 
 
 # Per-line fence allowlist for Check 37 (Guardrail 2 — BD-173 H.13).

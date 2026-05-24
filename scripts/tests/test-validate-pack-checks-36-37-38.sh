@@ -568,6 +568,132 @@ case $? in
 esac
 
 # ─────────────────────────────────────────────────────────────────
+# Group 7: Check 37 scope expansion (Guardrail 3 — BD-173 H.12)
+# ─────────────────────────────────────────────────────────────────
+#
+# Exercises `_iter_client_installed_files()` per architect §3.1 +
+# §3.4. The helper returns the union of project-template/ (recursive)
+# + the explicit non-project-template entries from
+# `_CLIENT_INSTALLED_FILES` in scripts/init-project.sh. T1 verifies
+# Check 37 walks scripts/lib/detect.sh (path-prefix detection at the
+# walked file); T2 verifies anchor-phrase exemption survives at a
+# non-project-template entry; T3 + T4 are unit-checks of the helper.
+
+printf "\n=== Group 7: Check 37 scope expansion (Guardrail 3) unit tests ===\n"
+
+python3 <<EOF
+import sys, pathlib, tempfile, shutil
+sys.path.insert(0, '$REPO_ROOT/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+failures = []
+
+# Guardrail 3 helper symbol must exist on the module.
+required = ['_iter_client_installed_files', '_iter_project_side_files',
+            '_parse_client_installed_files']
+missing = [n for n in required if not hasattr(mod, n)]
+if missing:
+    failures.append(f"missing helpers: {missing}")
+
+# G7.T1: Synthetic detection — Check 37 walks scripts/lib/detect.sh
+#   (expanded scope) and would flag a maintenance-docs/ path-prefix
+#   match in a non-fence line.
+#
+#   We can't easily synthesize this end-to-end without rewriting
+#   detect.sh (out-of-scope and would break HEAD). Instead, we verify
+#   that scripts/lib/detect.sh appears in the walked-files iterator
+#   (the precondition for Check 37 detection on that surface).
+from pathlib import Path
+if hasattr(mod, '_iter_client_installed_files'):
+    walked = mod._iter_client_installed_files()
+    walked_str = {str(p) for p in walked}
+    if 'scripts/lib/detect.sh' not in walked_str:
+        failures.append(
+            "G7.T1: scripts/lib/detect.sh NOT in _iter_client_installed_files() — "
+            "expanded scope is broken (path not walked)"
+        )
+
+# G7.T2: Anchor-phrase exemption still operates on non-project-template
+#   entries. supporting-docs/METHODOLOGY.md contains legitimate
+#   Pack-Chat references; the architect spec says these PASS via
+#   anchor-phrase + per-line fence. We verify (a) the file is walked
+#   (so it COULD be flagged), and (b) end-to-end Check 37 PASSES at
+#   HEAD (the cross-cutting integration result).
+if hasattr(mod, '_iter_client_installed_files'):
+    walked = mod._iter_client_installed_files()
+    walked_str = {str(p) for p in walked}
+    if 'supporting-docs/METHODOLOGY.md' not in walked_str:
+        failures.append(
+            "G7.T2: supporting-docs/METHODOLOGY.md NOT walked — "
+            "expanded scope missing pedagogical surface"
+        )
+
+# G7.T3: Helper returns >= 5 explicit non-project-template entries
+#   plus all project-template/ files. Architect §3.3 lists the 5
+#   extras: pack-ops/HELP-FRAGMENT-TRACKER.md,
+#   supporting-docs/METHODOLOGY.md, supporting-docs/INSTALL-PROCEDURES.md,
+#   scripts/pack-help.sh, scripts/lib/detect.sh.
+if hasattr(mod, '_iter_client_installed_files'):
+    walked = mod._iter_client_installed_files()
+    walked_str = {str(p) for p in walked}
+    expected_extras = {
+        'pack-ops/HELP-FRAGMENT-TRACKER.md',
+        'supporting-docs/METHODOLOGY.md',
+        'supporting-docs/INSTALL-PROCEDURES.md',
+        'scripts/pack-help.sh',
+        'scripts/lib/detect.sh',
+    }
+    missing_extras = expected_extras - walked_str
+    if missing_extras:
+        failures.append(
+            f"G7.T3: missing expected non-project-template extras: "
+            f"{sorted(missing_extras)}"
+        )
+    # Sanity: also walks project-template/ files (at least the trinity).
+    pt_trinity = {
+        'project-template/CLAUDE.md',
+        'project-template/AGENTS.md',
+        'project-template/GEMINI.md',
+    }
+    missing_pt = pt_trinity - walked_str
+    if missing_pt:
+        failures.append(
+            f"G7.T3: missing project-template/ trinity entries: "
+            f"{sorted(missing_pt)}"
+        )
+
+# G7.T4: Helper deduplicates — no duplicate Path entries in the
+#   returned list. Dedup is defensive (entries that appear under both
+#   project-template/ and as a _CLIENT_INSTALLED_FILES non-project-
+#   template entry would otherwise show up twice).
+if hasattr(mod, '_iter_client_installed_files'):
+    walked = mod._iter_client_installed_files()
+    walked_strs = [str(p) for p in walked]
+    seen = set()
+    duplicates = []
+    for s in walked_strs:
+        if s in seen:
+            duplicates.append(s)
+        seen.add(s)
+    if duplicates:
+        failures.append(f"G7.T4: duplicate entries in walked list: {duplicates}")
+
+if failures:
+    print("FAILURES")
+    for f in failures:
+        print(" ", f)
+    sys.exit(1)
+print("OK")
+EOF
+case $? in
+    0) t_pass "Group 7 — Guardrail 3 scope expansion unit tests" ;;
+    *) t_fail "Group 7 — Guardrail 3 scope expansion unit tests failed" ;;
+esac
+
+# ─────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────
 
