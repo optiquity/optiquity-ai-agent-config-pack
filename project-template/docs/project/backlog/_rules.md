@@ -1,8 +1,7 @@
 # Stream contract — project-backlog
 
 Per-stream contract. Pointer-heavy by design. Pack-shipped immutable
-(updates only on pack version bump per
-`ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §3.3).
+(updates only on pack version bump).
 
 ## Stream identity
 
@@ -13,27 +12,22 @@ Per-stream contract. Pointer-heavy by design. Pack-shipped immutable
 ## Filename convention
 
 Per-entry files match `^TD-\d+\.md$` (e.g., `TD-001.md`). Three-
-digit zero-padded TD-NNN per `ARCHITECTURE-V3.3-DELTA.md` §6.4.
+digit zero-padded TD-NNN.
 
 ## Entry contract
 
 One v10-grammar TD entry per file, byte-additive on the legacy
-monolithic per `ARCHITECTURE-PER-ENTRY-SPLIT.md` §3.3. The first
-line is an HTML-comment back-pointer ABOVE the bold-header per
-`ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-ADDENDUM-2.md` §2; the
-byte-identical span begins at `**TD-NNN — <Title>**`. Grammar:
-`ARCHITECTURE-V3.1-DELTA.md` §3 A2 + `ARCHITECTURE-V3.3-DELTA.md`
-§6.4.
+monolithic. The first line is an HTML-comment back-pointer ABOVE
+the bold-header; the byte-identical span begins at
+`**TD-NNN — <Title>**`.
 
 ## Lifecycle states admitted
 
 - `Open` — entry is active.
 - `Resolved` — entry is closed; carries `Resolution:` plus inline
-  `✅ RESOLVED (Phase NN)` annotation per
-  `ARCHITECTURE-PER-ENTRY-SPLIT.md` §3.3.
+  `✅ RESOLVED (Phase NN)` annotation.
 
-Project backlog uses only these two states (per
-`ARCHITECTURE-V3.3-DELTA.md` §6.3).
+Project backlog uses only these two states.
 
 ## Supporting files
 
@@ -42,8 +36,7 @@ Project backlog uses only these two states (per
 - `_toc.md`
 
 The per-entry helpers (`scripts/lib/per-entry/`) read this list at
-runtime per `ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §7.5.
-Files not matching the entry regex AND not in this list are SKIP.
+runtime. Files not matching the entry regex AND not in this list are SKIP.
 
 ## Write authority
 

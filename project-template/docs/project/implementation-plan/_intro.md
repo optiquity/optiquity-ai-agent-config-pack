@@ -38,11 +38,10 @@ mirror generator at `scripts/lib/per-entry/`.
   separate `phase-N.M.md` files). Then re-run the mirror
   regenerator before staging.
 
-- **Marking phase state.** Phase-state vocabulary is per
-  `ARCHITECTURE-V3.3-DELTA.md` §6.3: pending / in-progress / done
-  / deferred / merged-into / superseded-by. Annotate the H2 phase
-  heading with `🚧` (in-progress) / `✅` (done) / `➡` (merged /
-  superseded) per the same reference.
+- **Marking phase state.** Phase-state vocabulary:
+  pending / in-progress / done / deferred / merged-into /
+  superseded-by. Annotate the H2 phase heading with `🚧`
+  (in-progress) / `✅` (done) / `➡` (merged / superseded).
 
 ## Source of truth
 
@@ -56,7 +55,7 @@ In tracker mode (`tracker.toml` with `mode.state = "tracker"` and
 `migration.forward_complete = true`), the tracker (e.g., GH Issues)
 is source of truth and BOTH the per-entry tree and this mirror are
 regenerated from tracker state per the Mode 2 → Mode 3 transition
-contract (per `ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §5.6).
+contract.
 
 For the per-stream contract, read
 `docs/project/implementation-plan/_rules.md`.

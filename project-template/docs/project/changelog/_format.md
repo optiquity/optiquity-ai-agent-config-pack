@@ -2,14 +2,13 @@
 
 This file is the project-side CHANGELOG entry-format spec. It is
 project-side asymmetry: pack-side CHANGELOG has no `_format.md`
-analog (per `ARCHITECTURE-PER-ENTRY-SPLIT.md` §3.5 and §11). Pack-
-shipped immutable: updates only on pack version bump (per
-`ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §3.3).
+analog (see `docs/project/changelog/_rules.md` § "Supporting
+files"). Pack-shipped immutable: updates only on pack version bump.
 
 ## Entry format
 
 Each per-entry file contains one v10-grammar CHANGELOG entry. The
-shape (per `RESEARCH-PER-ENTRY-SPLIT.md` §3 lines 411–421):
+shape:
 
 ```
 ### YYYY-MM-DD — Phase N — <title>
@@ -46,14 +45,12 @@ instead of `### YYYY-MM-DD — Phase N — <title>`.
 - **Separator** (`---`) precedes every entry — including the
   first one. The mirror generator emits the separator
   deterministically; per-entry files do not contain `---`
-  separators (the file boundary IS the separator per
-  `ARCHITECTURE-PER-ENTRY-SPLIT.md` §3.0).
+  separators (the file boundary IS the separator).
 - **Architecture Iteration** label for early-project architecture
   doc iterations (rather than `Phase N`).
 - **BACKLOG.md**: mark resolved TD items ✅ in the same commit as
   the phase. (The `✅ RESOLVED (Phase NN)` annotation goes in the
-  TD entry's bold-header per
-  `ARCHITECTURE-PER-ENTRY-SPLIT.md` §3.3.)
+  TD entry's bold-header.)
 - **README.md**: update Known Limitations in the same commit when
   a TD that appears there is resolved.
 

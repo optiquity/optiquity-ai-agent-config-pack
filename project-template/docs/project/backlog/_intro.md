@@ -29,12 +29,10 @@ the per-entry mirror generator at `scripts/lib/per-entry/`.
 - **Resolving an entry.** Edit the per-entry file: flip
   `Status: Open` to `Status: Resolved`, fill in the `Resolution:`
   line, and add the `✅ RESOLVED (Phase NN)` annotation to the
-  bold-header per `ARCHITECTURE-PER-ENTRY-SPLIT.md` §3.3. Then
-  re-run the mirror regenerator before staging.
+  bold-header. Then re-run the mirror regenerator before staging.
 
 - **Cross-references.** TD-NNN, BD-NNN, phase-N, phase-N.M
-  identifiers may appear in `Blockers:` / `Unblocks:` / prose
-  per `ARCHITECTURE-V3.3-DELTA.md` §5.3.
+  identifiers may appear in `Blockers:` / `Unblocks:` / prose.
 
 ## Source of truth
 
@@ -48,7 +46,7 @@ In tracker mode (`tracker.toml` with `mode.state = "tracker"` and
 `migration.forward_complete = true`), the tracker (e.g., GH Issues)
 is source of truth and BOTH the per-entry tree and this mirror are
 regenerated from tracker state per the Mode 2 → Mode 3 transition
-contract (per `ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §5.6).
+contract.
 
 For the per-stream contract, read
 `docs/project/backlog/_rules.md`.

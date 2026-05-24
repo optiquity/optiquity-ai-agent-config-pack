@@ -1,8 +1,7 @@
 # Stream contract — project-changelog
 
 Per-stream contract. Pointer-heavy by design. Pack-shipped immutable
-(updates only on pack version bump per
-`ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §3.3).
+(updates only on pack version bump).
 
 ## Stream identity
 
@@ -16,18 +15,16 @@ Per-entry files match `^\d{4}-\d{2}-\d{2}(-.+)?\.md$` (e.g.,
 `2026-04-20-phase-35.md` or bare `2026-04-20.md` when the source
 H3 anchor has no slug suffix). Date-first for lexical sorting;
 trailing slug optional for human readability per
-`ARCHITECTURE-PER-ENTRY-SPLIT.md` §3.5 + `scripts/lib/per-entry/_lib.sh`
-post-BD-164-retro Option B (slug optional).
+`scripts/lib/per-entry/_lib.sh` post-BD-164-retro Option B
+(slug optional).
 
 ## Entry contract
 
-One v10-grammar CHANGELOG entry per file. Shape per
-`RESEARCH-PER-ENTRY-SPLIT.md` §3 lines 422–448: H3 heading
+One v10-grammar CHANGELOG entry per file. Shape: H3 heading
 (`### YYYY-MM-DD — Phase N — <title>` or `### YYYY-MM-DD —
 Architecture Iteration — <title>`), then body fields per the
 Format Rules in `_format.md`. The first line is an HTML-comment
-back-pointer ABOVE the H3 heading per
-`ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-ADDENDUM-2.md` §2.
+back-pointer ABOVE the H3 heading.
 
 ## Lifecycle states admitted
 
@@ -42,10 +39,8 @@ entry is never edited per the `_format.md` "Append-only" rule.
 - `_format.md`
 
 The per-entry helpers (`scripts/lib/per-entry/`) read this list at
-runtime per `ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §7.5.
-Files not matching the entry regex AND not in this list are SKIP.
-`_format.md` is project-side only (no pack analog per
-`ARCHITECTURE-PER-ENTRY-SPLIT.md` §3.5).
+runtime. Files not matching the entry regex AND not in this list are SKIP.
+`_format.md` is project-side only (no pack analog).
 
 ## Write authority
 

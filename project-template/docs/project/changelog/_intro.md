@@ -50,7 +50,8 @@ In tracker mode (`tracker.toml` with `mode.state = "tracker"` and
 `migration.forward_complete = true`), the tracker (e.g., GH Issues)
 is source of truth and BOTH the per-entry tree and this mirror are
 regenerated from tracker state per the Mode 2 → Mode 3 transition
-contract (per `ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §5.6).
+contract (read `docs/project/changelog/_rules.md` § "Write authority"
+for the regenerated-mirror rule).
 
 For the per-stream contract, read
 `docs/project/changelog/_rules.md`. For the entry-format spec,
