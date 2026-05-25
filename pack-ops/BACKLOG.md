@@ -2871,11 +2871,20 @@ File/Symbol:
     - `maintenance-docs/v11-research/INTAKE-PS-V11.md` (raw user-intent discussion: initial framing + Q1-Q10 + naming decision + research approval + §7 quality-mitigation intuition; high-fidelity verbatim user messages)
     - `maintenance-docs/v11-research/RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md` (PS landscape Pass-1; 985 lines; 7 categories + cross-cat synthesis + §9 pack-relevance observations)
     - `maintenance-docs/v11-research/IMPLEMENTATION-REPORT-RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md` (research methodology + open questions)
+    - `maintenance-docs/v11-research/PLANNING-PROCESS-INSIGHTS-FROM-OT.md` (pack-architect OT-pattern synthesis; 638 lines; §3 transferable patterns + §4 failure modes + §5 groupings amendment dispositions + §6 PS capability recommendations + §7 architect investigation areas + §8 challenge questions; shaped §5 groupings amendments + §6 PS preliminary restructure)
     - `maintenance-docs/v11-research/REQUIREMENTS-GROUPINGS-V11.md` (companion v11.1+ feature; PS docs feed into #7 from-external ingest)
     - `maintenance-docs/v11-research/INTAKE-GROUPINGS-V11.md` (groupings intake; audit-trail companion to REQUIREMENTS-GROUPINGS-V11.md; faithful-summary fidelity; OPTIONAL for context)
-    - `maintenance-docs/v11-research/HANDOFF-V11.1-ARCHITECT.md` (groupings architect handoff; may receive PS-awareness amendment during this BD's work)
+    - `maintenance-docs/v11-research/HANDOFF-V11.1-ARCHITECT.md` (groupings architect handoff; received §5.1 cycle-detection + §5.2 architectural-seam Kind defer architect-investigation entries during this BD's work)
     - `pack-ops/BACKLOG.md` entries BD-186 (Resolved) + BD-189 (groupings implementation umbrella) for cross-feature context
     - `CLAUDE.md` `## Pack memory` (pack-repo-trinity rules)
+  - AUDIT-TRAIL / IMPL-REPORTs (audit-trail of sidecar work; no-orphans capture per user direction 2026-05-24):
+    - `maintenance-docs/v11-research/IMPLEMENTATION-REPORT-PLANNING-PROCESS-INSIGHTS-FROM-OT.md` (pack-architect IMPL-REPORT for OT synthesis pass; methodology + sources + SC mapping)
+    - `maintenance-docs/v11-research/IMPLEMENTATION-REPORT-INTAKE-PS-V11-GOALS-INDEX.md` (pack-coder IMPL-REPORT for §9 goals consolidated index addition + Goal 16/17 capture)
+    - `maintenance-docs/v11-research/IMPLEMENTATION-REPORT-GROUPINGS-AMENDMENT-5-1.md` (pack-coder IMPL-REPORT for §5.1 cycle-detection amendment to REQUIREMENTS-GROUPINGS-V11.md / TOUCH-POINT-INVENTORY-GROUPINGS-V2.md / HANDOFF-V11.1-ARCHITECT.md)
+    - `maintenance-docs/v11-research/IMPLEMENTATION-REPORT-GROUPINGS-PS-BATCH-2-AMENDMENTS.md` (pack-coder IMPL-REPORT for §5.2/§5.3/§5.4/§5.6 groupings amendments + Goal 18 cross-surface landing + §6 PS sub-decisions Foundation/Interview/Deliverables/Pack-integration/Workflow/Boundary)
+    - `maintenance-docs/v11-research/IMPLEMENTATION-REPORT-INTAKE-PS-V11-WALKTHROUGH-UPDATES.md` (pack-coder IMPL-REPORT for INTAKE §7.5 interview flow dynamics + §8 walkthrough results subsection + §9.5 Goal 19 + §9.6 mapping renumber + Goals 5/7/10 refinements + Cap N8 + cross-ref to PLANNING-PROCESS-INSIGHTS)
+    - `maintenance-docs/v11-research/IMPLEMENTATION-REPORT-REQUIREMENTS-PS-V11.md` (pack-coder IMPL-REPORT for REQUIREMENTS-PS-V11.md authoring; 21 preliminary capabilities + 30 open architect decisions consolidated)
+    - `maintenance-docs/v11-research/IMPLEMENTATION-REPORT-HANDOFF-PS-ARCHITECT.md` (pack-coder IMPL-REPORT for HANDOFF-PS-ARCHITECT.md authoring; navigation + framing entry-point doc for v11.x+ PS architect)
 Description: Pack-side requirements-gathering work to refine the "Product Specialist" feature shape and produce a per-capability v11.0/v11.1+/v11.2+ scope verdict. This BD covers the REQUIREMENTS pass only; downstream architect/planner/coder cycles open as separate BDs once the requirements artifact lands and capabilities have verdicts.
 
   **Critical scope boundary:** PS is CLIENT-SIDE ONLY. Affects `project-template/` surface only; NEVER applies to pack-self development workflow. PS is for the developer's product work (PRDs, journeys, features, mappings); the existing PM Chat (project manager) continues to orchestrate pack work itself.
