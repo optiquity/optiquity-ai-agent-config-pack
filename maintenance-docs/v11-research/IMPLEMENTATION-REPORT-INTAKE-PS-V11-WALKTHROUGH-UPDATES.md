@@ -14,7 +14,7 @@
 |---|---|---|---|---|
 | `maintenance-docs/v11-research/INTAKE-PS-V11.md` | modified | 610 | 723 | +113 |
 
-Single file in scope; no other files edited.
+Single in-scope file EDIT (plus this IMPL-REPORT, which is a new file produced as the coder's self-report; tracked separately in the "Files changed inventory" section below).
 
 ---
 

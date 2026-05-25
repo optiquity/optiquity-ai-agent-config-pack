@@ -112,6 +112,14 @@ The methodology defaults are SHIPPED as defensible defaults with a per-project o
 
 User-stated constraints surfaced during BD-191 sidecar discussion 2026-05-24. These are LOCKED constraints (not preliminary at this level — they are direction-from-user) that bound architect design freedom. Architect challenges to these constraints require user-discussion-and-approval per pack memory `feedback_user_prescriptive_authority`.
 
+**Category clarification (user-approved 2026-05-25 per audit triage):** The user-stated direction surfaces THREE related-but-distinct categorical labels across the artifact set:
+
+- **Constraints C1-C7 (this section)** — user-prescribed SCOPE-BOUNDING locks ANCHORED ON specific goals. Each C-N constrains what PS scope can include or exclude. Architect cannot challenge C1-C7 without user-discussion-and-approval per `feedback_user_prescriptive_authority`.
+- **Cross-cutting principles (§2; Goals 1, 5, 7, 13, 16, 17, 18)** — process-bounding design principles that apply to every capability decision. Architect respects these as design discipline, not scope constraints.
+- **Locked goals (HANDOFF §3; Goals 1, 2, 5, 7, 8, 11, 13, 14, 16, 17, 18)** — user-prescribed goals locked at the SHAPE level. SUPERSET of C-anchored goals: Goals 7 / 14 / 16 / 17 are LOCKED (user-prescribed; HIGH bar to challenge) but NOT scope-bounding constraints — they apply as cross-cutting design principles or architectural mediation rather than scope locks.
+
+The asymmetry is intentional: constraints bound scope; principles bound process. A goal can be locked-as-principle without anchoring a scope constraint. Goal 14 (PM-Chat-interviews / agent-writes architecture) is the canonical example — it's LOCKED architectural mediation but does NOT bound PS scope, so it gets no C-N anchor. Architect respects all three categories; the difference matters for what kind of change requires user-discussion-and-approval vs what kind is LOW-bar challengeable.
+
 ### §3.1 — C1: CLIENT-SIDE ONLY
 
 PS affects `project-template/` surface only. PS NEVER applies to pack-self development workflow. The pack repo's own PM Chat continues to orchestrate pack-self development.
@@ -203,7 +211,7 @@ PS workflows produce context-rich, audience-aware INPUTS. Pack ENTRY-TYPE workfl
 | Scope boundary | #17 | 1 |
 | **Total** | | **21** |
 
-**Per-capability entry shape:**
+**Per-capability entry shape (10 fields per capability):**
 - Capability ID + name
 - Problem (gap / need addressed)
 - Goals (what the capability achieves; cross-references relevant user-stated goals)
@@ -240,7 +248,7 @@ PS workflows produce context-rich, audience-aware INPUTS. Pack ENTRY-TYPE workfl
 
 **Cross-references:** Caps N1 (directory structure architect-decides), #4 (structured interview), #15 (workflow + doc integration); Goals 1, 2, 14; RESEARCH §9.4 (Wave 2 boundary); INTAKE §2 Q8.
 
-**Architect bar:** LOW (PS-internal agent topology decision)
+**Architect bar:** LOW for agent topology decision (PS-internal; SC1.1, SC1.2); HIGH for CLIENT-SIDE-ONLY structural enforcement (SC1.3 touches locked pack mechanism per `reference_pack_entry_type_semantics`).
 
 **Preliminary; subject to architect challenge at PS design pass** per pack memory `feedback_preliminary_triage_architect_challenge`.
 
@@ -528,7 +536,7 @@ PS workflows produce context-rich, audience-aware INPUTS. Pack ENTRY-TYPE workfl
 **Success Criteria:**
 - SC N5.1 PS produces one structured journey doc per major journey identified during interview.
 - SC N5.2 Journey doc carries header: goal / mode (per architect-decided scheme) / trigger / frequency / stage / success criteria / anti-goal.
-- SC N5.3 Journey steps are numbered + carry `[F-NEW]`-equivalent feature-touchpoint markers cross-referencing N6 feature inventory rows.
+- SC N5.3 Journey steps are numbered + carry feature-touchpoint markers cross-referencing N6 feature inventory rows by `feature_id` (architect picks marker notation; OT Phase B.1's `[F-NEW]` is an exemplar of one such notation; pack-target projects may pick a different form).
 - SC N5.4 Phase 2/3 journeys carry seam references (architectural commitment markers per N3 + N4).
 - SC N5.5 Architect picks mode-classification scheme based on pack-target audience (not OT-specific Building/Discovery/Recovery/Setup); rationale documented.
 - SC N5.6 Journey doc is optional — products without user-facing flows do not need journey docs.
@@ -1139,7 +1147,7 @@ This section consolidates EVERY architect-decided point surfaced across all capa
 
 29. **Per-deliverable audience-primary classification (Cap #17 SC17.5; §8.5)** — Architect documents per-deliverable classification (human-primary / pack-primary / dual).
 
-30. **PS-architect post-design HANDOFF-PS-ARCHITECT.md authoring (BD-191 File/Symbol)** — Pack Chat (with user approval) authors HANDOFF-PS-ARCHITECT.md after this BD's REQUIREMENTS-PS-V11.md lands and user reviews; architect may rename with version anchor at write time once scheduling is settled.
+30. **Post-architecture review of HANDOFF-PS-ARCHITECT.md (Cap #15 + BD-191 File/Symbol)** — After your architecture output lands, review whether HANDOFF-PS-ARCHITECT.md needs amendment (rename to versioned form `HANDOFF-V11.x-PS-ARCHITECT.md` once scheduling is settled; addendum for any cross-cutting findings that emerged during design pass; cross-reference to your `ARCHITECTURE-PS-V11.x.md` output). Surface proposed amendments to Pack Chat with rationale; Pack Chat (with user approval) writes the amendment commit. You do NOT edit HANDOFF-PS-ARCHITECT.md directly; surface findings instead.
 
 **Architect-investigation cross-reference:** PLANNING-PROCESS-INSIGHTS-FROM-OT.md §8.2 lists 7 OT-derived challenge questions for the v11.x+ PS architect; this §10 list incorporates them (especially Q1 / Q2 / Q3 / Q4 / Q5 / Q6 / Q7 — agent topology, feature schema, no-solutions grep regex, work-item-level boundary, PS-to-groupings protocol, audit mechanism, completeness detection) and expands per the walkthrough refinements.
 
@@ -1152,7 +1160,7 @@ This section consolidates EVERY architect-decided point surfaced across all capa
 The v11.x+ PS architect reads `REQUIREMENTS-PS-V11.md` (this doc) as PRIMARY INPUT. Reading order:
 
 1. **REQUIREMENTS-PS-V11.md (this doc)** — formal requirements distillation; per-capability problem / goals / SC / disposition / scope / rationale / cross-references / architect-bar
-2. **INTAKE-PS-V11.md** — verbatim user-intent audit trail (consulted for verbatim quotes; relationship retention across deliverables; §7 + §7.5 quality-mitigation + flow-dynamics intuition; §9 19 goals full statements)
+2. **INTAKE-PS-V11.md** — user-intent audit trail (consulted for verbatim quotes; relationship retention across deliverables; §7 + §7.5 quality-mitigation + flow-dynamics intuition; §9 contains 19-row goal index at §9.1 + Goals 16/17/18/19 full statements at §9.2/§9.3/§9.4/§9.5 + goal-to-SC mapping at §9.6; Goals 1-15 are cross-references to source elsewhere in INTAKE/RESEARCH)
 3. **RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md** — landscape facts (consulted for §9 pack-relevance observations; §9.5 defensible methodology positions; sources + dates)
 4. **PLANNING-PROCESS-INSIGHTS-FROM-OT.md** — OT-pattern synthesis (consulted for §3 transferable patterns; §4 failure modes; §7 architect investigation areas; §8 challenge questions)
 5. **REQUIREMENTS-GROUPINGS-V11.md** — companion v11.1+ feature (consulted for Capability #7 from-external ingest details; §5 cross-feature integration)

@@ -423,6 +423,8 @@ Specific proposals to amend the 17-item candidate capability list in `INTAKE-PS-
 
 **New Capability #N1: PS deliverable per-stream tree structure.** Drawn from §4.1 alternative. PS deliverables live in `project-template/docs/project/<name>/` (architect picks `<name>`) following the pack's per-stream tree contract: `_rules.md` + `_intro.md` + `_toc.md` + per-deliverable files. NOT ad-hoc directory layout. SC: deliverables follow per-stream contract; validate-pack covers (extends existing per-stream checks Check 33/34); regen of `_toc.md` mechanical; trinity-rule trees (no parallel impact since PS docs are project-side, not pack-side).
 
+**Status: REVISED 2026-05-24 per walkthrough decision (Sub-A revised to "architect-decides structure").** The original recommendation here (adopt per-stream-tree pattern for PS deliverables) was REVISED during the BD-191 capability walkthrough — see `INTAKE-PS-V11.md` §8 Walkthrough results Cap N1 row + pack memory `feedback_pattern_matching_out_of_context_antipattern`. Architect decides PS deliverable directory structure based on PS-specific properties + stated goals + technical constraints; per-stream-tree pattern is one candidate among others. Do NOT adopt per-stream-tree without property-fit verification. See REQUIREMENTS-PS-V11.md Cap N1 for the locked preliminary framing.
+
 **New Capability #N2: PS deliverable mechanical audit pass.** Drawn from §3.8 + §4.4 + §4.6. Each PS deliverable has a defined audit-check spec. PRD audit: anti-pillars present; conditional-inclusion present; outcomes-over-outputs vocab check; Goals + Non-Goals paired. User-journey audit: mode-classified per OT Phase B.1 pattern; success-criteria stated; anti-goal stated. Feature-list audit: every feature has problem + goals + success_criteria; no-solutions-discipline grep pass with OT-seeded violation patterns; cycle detection on `depends_on` graph (per §4.2). Mapping-doc audit: every PS feature maps to at least one pack primitive. Audit is mechanical where possible (sub-agent or skill); user-judgment-required items are flagged.
 
 **New Capability #N3: PS PRD template anti-pillars + conditional-inclusion sections.** Drawn from §3.2. The PRD template ships with explicit Pillars / Anti-pillars / Conditional-inclusions structural sections (not just Goals + Non-Goals). Conditional-inclusions require explicit triggers (no "we'll see" entries). Audit per Capability #N2 verifies presence.
@@ -437,6 +439,8 @@ Restructured shape:
 - **Capability #N6: Structured feature inventory + mapping.** Machine-parseable structured artifact analogous to OT Phase E.2: each feature row carries `feature_id` + cluster + problem + goals + success_criteria + dependencies + cross-references to journeys / seams / pack primitives. The mapping doc IS the feature inventory + the per-feature pack-primitive cross-reference. Mirrors OT Phase C + Phase E.2 collapsed into one structured artifact (since PS doesn't need the planning-vs-implementation split OT used).
 
 **Split:** INTAKE-PS-V11.md §8 #11 (Research orchestration) is currently single. OT's pattern (research is invoked at multiple phases — initial Phase A research feeding vision; per-feature `external_research_needed` at Phase C; per-architect-question deferred research at Phase A §7) suggests research orchestration has multiple invocation surfaces. Recommend splitting #11 into: **Capability #N7a: Initial product-discovery research** (competitive analysis + market evidence; feeds PRD vision and anti-pillars); **Capability #N7b: Per-feature research orchestration** (feature-level `external_research_needed` cases surfaced during PRD authoring; spawn `docs-researcher` per case).
+
+**Status: REVISED 2026-05-24 per walkthrough decision (Sub-E E3 — "don't prescribe").** The original recommendation here (split #11 into N7a + N7b) was REJECTED at the walkthrough as a prescriptive split — see `INTAKE-PS-V11.md` §8 Walkthrough results Cap #11 row. Architect at PS design time decides research orchestration shape (split / single with sub-decomposition / skill-form / other). The walkthrough explicit don't-prescribe gives architect maximum design freedom; this §6.2 recommendation is INFORMATIVE only. See REQUIREMENTS-PS-V11.md Cap #11 for the locked preliminary framing.
 
 ### §6.3 — Capability additions, drops, and recluster
 
@@ -455,6 +459,8 @@ Restructured shape:
 
 **Final count after amendments:** 21 capabilities (up from 17) — but the increase reflects the OT-pattern restructuring (one PRD capability becomes three: narrative + journey + structured) rather than scope creep. The actual deliverable count stays similar (was 4 deliverable types, becomes 4 deliverable types: PRD + journeys + feature inventory + mapping). The capability count increase is decomposition-clarity, not scope growth.
 
+*Post-walkthrough composition note: the architect's pre-walkthrough estimate ("21 = +N7a/N7b split + N1/N2/N3 added") differs from the walkthrough-approved composition. The walkthrough did NOT split #11 (Sub-E E3 "don't prescribe") and DID add Cap N8 (human-readable PRD rendering generator per Goal 19) during Cluster 6. Final count is still 21 by coincidence: walkthrough preserved 1 capability where the architect proposed split (saves 1) and added 1 new capability (Cap N8). See `INTAKE-PS-V11.md` §8 Walkthrough results cluster summary for the post-walkthrough composition.*
+
 ### §6.4 — INTAKE-PS-V11.md §7 (quality-mitigation intuition) — direct addressing
 
 The user's §7 intuition has two halves: (a) interview structure with clear sections per category vs. random walk; (b) audience-aware deliverables knowing the pack as audience. OT lessons confirm both:
@@ -472,6 +478,8 @@ The user's §7 intuition has two halves: (a) interview structure with clear sect
 - Conditional-inclusion items captured with triggers (analog: Phase A §5 table)
 
 The above is a 7-item completeness bar. Capability #6 architect can refine; this is OT-evidence-based starting set.
+
+**Status: EXTENDED 2026-05-24 per walkthrough decision (Sub-F approved; priorities Item 8 added).** The walkthrough extended this 7-item completeness bar to an 8-item bar by adding **Item 8 — Priorities elicited (multi-axis per Goal 17: product/market fit; competitive necessity vs advantage; technical constraints; resource constraints; scope decisions; cost/speed/quality/features/journeys; user-named axes)**. See `INTAKE-PS-V11.md` §8 Walkthrough results Cap #6 row + `REQUIREMENTS-PS-V11.md` §7 for the locked 8-item bar. Architect may modify the 8-item bar but must defend changes with evidence and logic.
 
 ---
 

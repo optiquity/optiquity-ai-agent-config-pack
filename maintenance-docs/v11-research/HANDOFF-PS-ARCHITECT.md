@@ -42,14 +42,17 @@ Read in this sequence; each step builds on the prior. Total prerequisite reading
 5. **`maintenance-docs/v11-research/PLANNING-PROCESS-INSIGHTS-FROM-OT.md`** — pack-architect OT-pattern synthesis; ~15-20 min. §3 transferable patterns; §4 failure modes; §6 PS capability recommendations; §7 architect investigation areas; §8 challenge questions for the downstream architect (you). SOURCE-OF-TRUTH for OT-evidence-grounded recommendations. §7 and §8 are highest signal for you — they enumerate explicit investigation questions and challenge questions for your pass.
 6. **`maintenance-docs/v11-research/REQUIREMENTS-GROUPINGS-V11.md`** — companion v11.1+ feature; ~10-15 min. Read §1 (design principles), §3 (constraints), §4 Capability #7 (from-external ingest — including SC7.8 PS-to-groupings conversion responsibility). The PS feature feeds groupings via this Capability #7 path; you must understand the contract.
 7. **`maintenance-docs/v11-research/HANDOFF-V11.1-ARCHITECT.md`** — groupings architect handoff; ~5-10 min. Cross-feature context. Your architect pass MAY surface a PS-awareness amendment to this doc (you propose; Pack Chat / groupings team writes; see §7 below).
+8. **`maintenance-docs/v11-research/IMPLEMENTATION-REPORT-*.md` files** (7 IMPL-REPORTs; optional reference; ~15-20 min total if consulted) — coder/architect self-reports per the artifacts above. Consult for methodology rationale, open questions surfaced during authoring, and verification evidence. Most relevant for architect-pass: `IMPLEMENTATION-REPORT-RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md` §5 (7 open questions including "Productboard AI / Aha! AI / Linear Agent feature parity ... should be revalidated before any design decisions"); `IMPLEMENTATION-REPORT-PLANNING-PROCESS-INSIGHTS-FROM-OT.md` §4 (architect-specific open questions including validate-pack cycle-detection precondition verification per SC13.22).
 
-**Skip-or-defer:** Other docs in `maintenance-docs/v11-research/` (research audits, prior architect drafts, per-entry split research) are not load-bearing for the PS architect pass. Consult them if a `REQUIREMENTS-PS-V11.md` cross-reference points to them; otherwise skip.
+**Skip-or-defer:** Other docs in `maintenance-docs/v11-research/` (research audits, prior architect drafts, per-entry split research) are not load-bearing for the PS architect pass. Consult them if a `REQUIREMENTS-PS-V11.md` cross-reference points to them; otherwise skip. IMPL-REPORTs in reading order step 8 are optional reference (consult when their content is most relevant to your specific design question), not load-bearing for the full pass.
 
 ---
 
 ## §3 — Locked decisions (user-stated; HIGH bar to challenge)
 
 These are LOCKED constraints from user direction. You may not silently change them. If you believe a locked constraint should change, surface it to Pack Chat with evidence and propose a user discussion per `feedback_user_prescriptive_authority`. Until user-approved, you respect them.
+
+For the categorical relationship between Constraints C1-C7, Cross-cutting principles, and Locked goals (the three labels you'll see across REQUIREMENTS and HANDOFF), see `REQUIREMENTS-PS-V11.md §3` opening preamble (user-approved 2026-05-25 per audit triage).
 
 **Constraints C1-C7 (from `REQUIREMENTS-PS-V11.md` §3):**
 
@@ -75,7 +78,7 @@ These are LOCKED constraints from user direction. You may not silently change th
 - **Goal 17** (priorities as first-class cross-cutting driver; multi-axis) — non-negotiable as a category for completeness bar (Cap #6 SC item 8).
 - **Goal 18** (PS-to-pack-entry-type boundary) — anchors C7; HIGH bar.
 
-**Methodology defensible defaults (LOCKED per RESEARCH §9.5; `REQUIREMENTS-PS-V11.md` §2 + §3.5):** Continuous Discovery (Torres) / Opportunity-Solution Tree; Mom Test + past-behavior focus; Lean Canvas OR PR/FAQ; RICE or Value/Effort (default), Kano (delight); common-denominator 8-section PRD; North Star + OKRs; JTBD-Christensen (over persona); Cagan vocabulary (problems-to-solve / outcomes-over-outputs). Defaults are LOCKED; per-project override mechanism is yours to design (Decision #9 in §10).
+**Methodology defensible defaults (LOCKED per RESEARCH §9.5).** The canonical defaults table is in `REQUIREMENTS-PS-V11.md` §2 (methodology defensible-defaults table) + §3.5 (C5 constraint statement). The SHAPE is LOCKED (pack ships defensible defaults — not methodology-neutral); the specific VALUES within the defaults table are architect-decided at LOW bar per Cap #5 (architect may swap specific defaults if evidence + logic warrant; per-project override mechanism is yours to design — Decision #9 in §10). This reconciles with BD-191 SC8's "NOT prescribed; defensible defaults" framing: the values are NOT prescribed (architect picks within the locked shape); the shape that pack ships defaults at all IS LOCKED.
 
 ---
 
@@ -121,8 +124,8 @@ Per pack memory `feedback_preliminary_triage_architect_challenge`, you apply a t
 - **HIGH bar (boundary-with-existing-pack):** You investigate thoroughly. Coordinate with adjacent architects. Cannot arbitrarily change boundary out of scope. Example: PS-to-groupings cross-feature integration (Decision #21) — you investigate whether `HANDOFF-V11.1-ARCHITECT.md` needs a PS-awareness amendment; you surface the proposed amendment through Pack Chat; you do NOT modify groupings architecture out of scope.
 
 **Worked LOW vs HIGH examples in `REQUIREMENTS-PS-V11.md`:**
-- LOW — Caps #4 / #5 / #6 / #7 / N3 / N4 / N5 / N6 / N8 (interview structure; methodology positioning; completeness bar mechanism; tactical principles; PRD template; deliverable shapes; journey schema; feature inventory schema; human-readable rendering)
-- HIGH — Caps #1 / #13 / #15 / N1 (PS feature core shape + CLIENT-SIDE-ONLY structural enforcement; cross-feature integration with groupings; workflow + doc integration unnamed-point survey; PS deliverable directory structure pattern-match guard)
+- LOW — Caps #2 (two modes) / #4 / #5 / #6 / #7 / #16 (PRD lifecycle) / N3 / N4 / N5 / N6 / N8 (interview structure; methodology positioning; completeness bar mechanism; tactical principles; PRD template; deliverable shapes; journey schema; feature inventory schema; human-readable rendering); Cap #1's agent topology decision (SC1.1 / SC1.2)
+- HIGH — Cap #1's CLIENT-SIDE-ONLY structural enforcement (sub-decision SC1.3 — touches locked pack mechanism); Caps #13 / #15 / N1 (cross-feature integration with groupings; workflow + doc integration unnamed-point survey; PS deliverable directory structure pattern-match guard)
 
 **Apply the bar before each design decision.** If a decision touches a locked pack mechanism (entry-type semantics; trinity rules; pack-ops PM-only files; existing locked architecture from BD-186 groupings or earlier locked v11 design), it is HIGH bar — pause and investigate before deciding. If it stays within PS-internal surfaces (PS deliverable shapes; PS interview structure; PS skill / agent design; PS audit mechanism), it is LOW bar — decide freely.
 

@@ -186,7 +186,7 @@ Both committed pack-only at `17682c7` on 2026-05-24.
 
 Pack Chat surfaced the §9 (Pack-relevance observations) findings to the user, since §9 is the most direct input to PS feature requirements gathering:
 
-### §9.1 — Hard things to be careful of
+### §5.1 — Hard things to be careful of (RESEARCH §9.1)
 
 - AI-generated PRDs are mostly mediocre; value comes from team conversation, not artifact quality. PRD generators without facilitation produce decorative docs.
 - AI-generated personas without research grounding are doubly suspect.
@@ -194,7 +194,7 @@ Pack Chat surfaced the §9 (Pack-relevance observations) findings to the user, s
 - AI can scaffold interviews but cannot replace them (Mom Test + Continuous Discovery emphasize human listening).
 - Two-way tracker sync from a CLI tool sets a high integration bar.
 
-### §9.2 — Underserved gaps (pack opportunity)
+### §5.2 — Underserved gaps — pack opportunity (RESEARCH §9.2)
 
 - Solo / micro-team product thinking is under-served by commercial PM tools — exactly the pack's audience.
 - PRD-to-code traceability is thin in commercial tools; pack has BD/phase/grouping/IMPL-REPORT primitives that could thread it.
@@ -202,17 +202,17 @@ Pack Chat surfaced the §9 (Pack-relevance observations) findings to the user, s
 - Conversation scaffolding > artifact generation — pack's CLI-agent shape suits this.
 - Discovery-output integration with existing pack primitives — OST opportunities → backlog phases; assumption tests → BD entries.
 
-### §9.3 — Familiar patterns to adopt
+### §5.3 — Familiar patterns to adopt (RESEARCH §9.3)
 
 8 common-denominator PRD sections; Goals + Non-Goals paired; hypothesis-driven framing; outcomes-over-outputs vocabulary; Mom Test interview discipline; multiple roadmap views; integration with existing backlog/tracker.
 
-### §9.4 — LLM-PM tooling boundary
+### §5.4 — LLM-PM tooling boundary (RESEARCH §9.4)
 
 - Wave 2 (content gen in PM workflows): genuinely useful; pack can credibly operate here
 - Wave 3 (autonomous agentic PM): largely vapor; high-cost / low-credibility
 - Competition: "I'll just paste this into Claude" — pack must show visible value above that baseline
 
-### §9.5 — Defensible methodology positions
+### §5.5 — Defensible methodology positions (RESEARCH §9.5)
 
 | Area | Default the landscape supports |
 |---|---|
@@ -270,7 +270,7 @@ Pack Chat created both intake docs in parallel. This doc captures the BD-191 (PS
 
 **Context:** During the BD-191 entry approval ask, user surfaced an intuition about quality mitigation for the PS feature. Captured here near-verbatim for downstream investigation. **NOT a locked decision — flagged for investigation during BD-191 capability triage.** The eventual `REQUIREMENTS-PS-V11.md` will distill investigation outcomes into formal design principles + constraints.
 
-The intuition directly addresses two §9.1 quality-pitfall findings from `RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md`:
+The intuition directly addresses two RESEARCH §9.1 quality-pitfall findings from `RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md`:
 - "AI-generated PRDs without facilitation = decorative artifacts"
 - "AI picking methodology = muddled (orthodoxy splits real)"
 
@@ -320,11 +320,11 @@ Investigation targets during BD-191 triage:
    - Interview structure: the sections; the order; the gap-identification process per category; the question shapes that elicit useful answers vs. decorative ones
    - Deliverable shapes: each output doc (PRD / journey docs / feature list / mapping doc); what fields/sections are required; what's optional; how each maps to pack primitives (groupings / phases / tasks / backlog entries)
 2. **Define "complete" criteria** for the interview process — when can the interview reasonably end? What's the boundary between "enough to start work" and "everything answered"?
-3. **Investigate quality mitigation patterns** from §9.1 + §9.2 landscape findings:
-   - Conversation-scaffolding-vs-artifact-generation balance (per §9.2 underserved gap)
-   - Methodology-position selection (defensible defaults per §9.5 vs neutral; per-project override path)
-   - LLM Wave 2 capability boundary vs Wave 3 vapor (per §9.4)
-4. **Cross-reference** with §9.5 defensible methodology positions to ensure the interview structure aligns with industry-defensible patterns (Continuous Discovery / OST for discovery framework; Mom Test for interview style; etc.)
+3. **Investigate quality mitigation patterns** from RESEARCH §9.1 + RESEARCH §9.2 landscape findings:
+   - Conversation-scaffolding-vs-artifact-generation balance (per RESEARCH §9.2 underserved gap)
+   - Methodology-position selection (defensible defaults per RESEARCH §9.5 vs neutral; per-project override path)
+   - LLM Wave 2 capability boundary vs Wave 3 vapor (per RESEARCH §9.4)
+4. **Cross-reference** with RESEARCH §9.5 defensible methodology positions to ensure the interview structure aligns with industry-defensible patterns (Continuous Discovery / OST for discovery framework; Mom Test for interview style; etc.)
 
 ### §7.4 — Status
 
@@ -433,7 +433,7 @@ The PS interview must satisfy multiple concurrent goals AND accommodate non-line
 | Workflow + lifecycle | 2 | #15 references all of #4-#14 |
 | Scope boundary | 1 | #17 boundary applies to all |
 
-**17 capabilities total** — coincidentally matches BD-186's 17-capability count.
+**17 capabilities total** — coincidentally matches BD-186's 17-capability count. *(Note: post-walkthrough composition is 21 capabilities per "Preliminary §6 sub-decision results" subsection below + Walkthrough results subsection; the §6 results subsection adds N1/N2/N3 + restructures #8/#9/#10 → N4/N5/N6 + keeps #11 unsplit + adds N8 — total 21. Original 17-list preserved unchanged for audit-trail per pack discipline.)*
 
 ### Preliminary §6 sub-decision results (PLANNING-PROCESS-INSIGHTS-FROM-OT.md §6; user-approved 2026-05-24)
 
@@ -491,6 +491,8 @@ Cluster: Interview process. **Architect bar:** LOW.
 
 **Status:** Per-capability dispositions + scope verdicts from light walkthrough across all 21 preliminary capabilities (original 17 + 3 from §6 A/B/C + 1 from walkthrough as Cap N8; §6 D restructures #8/#9/#10 into N4/N5/N6 net-zero; §6 E keeps #11 as-is). All decisions PRELIMINARY per pack memory `feedback_preliminary_triage_architect_challenge`; architect WILL challenge each at PS design pass; user retains final authority.
 
+**Forward-reference note:** Goal 19 (referenced in Cap N8 row below) is defined at §9.5 — full statement and rationale appear there. Goal 18 (referenced in Cap N8 row's "PS doesn't produce GRP-NNN.md per Goal 18") is defined at §9.4.
+
 **Capability disposition + scope verdict (all 21 caps):**
 
 | Cap | Disposition | Scope verdict | Walkthrough notes |
@@ -538,13 +540,13 @@ Cluster: Interview process. **Architect bar:** LOW.
 
 ## §9 — User-stated goals (consolidated index)
 
-**Purpose:** Single navigable index of the 17 user-stated goals driving the PS feature design. Goals 1-15 are cross-references to existing source in this doc (and adjacent docs); Goals 16 and 17 surfaced during BD-191 sidecar discussion on 2026-05-24 AFTER §1 through §8 were authored, and carry their full statements here as canonical capture.
+**Purpose:** Single navigable index of the 19 user-stated goals driving the PS feature design. Goals 1-15 are cross-references to existing source in this doc (and adjacent docs); Goals 16, 17, 18, and 19 surfaced during BD-191 sidecar discussion on 2026-05-24 AFTER §1 through §8 were authored, and carry their full statements here as canonical capture.
 
 **Audit-trail discipline:** This section does NOT rewrite or restate the verbatim user intent captured in §1, §2, §3, §5, or §7. Those sections remain source-of-truth for verbatim user quotes. This index is a navigation layer.
 
-**Source-coverage closure:** Goals 16 (scope-discipline meta-criterion) and 17 (priorities as first-class cross-cutting driver) had no prior source location in any doc. This entry is their canonical capture surface; BD-191 SC11 (added 2026-05-24 alongside this §9 addition) carries the BACKLOG-side capture for Goal 17. Goal 16 is not bound to a single SC — it applies as a criterion across all SCs and all per-capability triage decisions.
+**Source-coverage closure:** Goals 16 (scope-discipline meta-criterion), 17 (priorities as first-class cross-cutting driver), 18 (PS-to-pack-entry-type boundary principle), and 19 (human-readable PRD rendering for user verification) had no prior source location in any doc. This entry is their canonical capture surface; BD-191 SC11 (Goal 17), SC12 (Goal 18), and SC13 (Goal 19) carry the BACKLOG-side capture (each added 2026-05-24 alongside this §9 addition). Goal 16 is not bound to a single SC — it applies as a criterion across all SCs and all per-capability triage decisions.
 
-### §9.1 — Goal index (17 entries)
+### §9.1 — Goal index (19 entries)
 
 | # | Goal title | Source location |
 |---|---|---|
@@ -675,7 +677,7 @@ Cluster: Interview process. **Architect bar:** LOW.
 
 ### §9.6 — Mapping of goals to BD-191 success criteria
 
-BD-191 SC1-SC11 capture process-level criteria for the requirements-gathering work. Some goals bind tightly to a specific SC; others apply as cross-cutting design principles. The mapping below is informative — used by the downstream `REQUIREMENTS-PS-V11.md` distillation when surfacing which goals are SC-bound versus principles-only.
+BD-191 SC1-SC13 capture process-level criteria for the requirements-gathering work. Some goals bind tightly to a specific SC; others apply as cross-cutting design principles. The mapping below is informative — used by the downstream `REQUIREMENTS-PS-V11.md` distillation when surfacing which goals are SC-bound versus principles-only.
 
 | Goal | Bound SC(s) | Notes |
 |---|---|---|
@@ -707,11 +709,11 @@ The non-SC-bound goals (1, 5, 16) remain as design-principles input for the down
 
 This intake doc serves as input to BD-191 (opened in BACKLOG.md at commit `32e78d2`; BD-191 entry text references INTAKE-PS-V11.md in INPUTS, with §7 investigation captured as SC10).
 
-REQUIREMENTS-PS-V11.md (downstream, produced during the BD-191 sidecar triage) will distill this intake doc + research findings into formal:
+REQUIREMENTS-PS-V11.md (landed 2026-05-24, 1196 lines; primary BD-191 deliverable per BD-191 SC1-SC13 coverage) distills this intake doc + research findings into formal:
 
-- Design principles (drawn from §9 pack-relevance observations + user-stated intent in §1 + investigated §7 tactical principles)
+- Design principles (drawn from RESEARCH §9 pack-relevance observations + user-stated intent in §1 + investigated §7 tactical principles)
 - User-stated constraints (analogous to BD-186's C1-C7, drawn from Q1-Q10 + framing + §7 intuition outcomes)
-- Capability list (informed by §1 user goals + §9.2 underserved gaps + §9.3 familiar patterns + §9.5 methodology positions + §7 interview-structure investigation)
+- Capability list (informed by §1 user goals + RESEARCH §9.2 underserved gaps + RESEARCH §9.3 familiar patterns + RESEARCH §9.5 methodology positions + §7 interview-structure investigation)
 - Per-capability disposition + scope verdict
 - Cross-feature integration notes with groupings (BD-186 / BD-189)
 - Interview-completion "complete" criteria (per §7.3)

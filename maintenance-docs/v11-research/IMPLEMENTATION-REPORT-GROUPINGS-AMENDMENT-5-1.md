@@ -233,3 +233,8 @@ docs: v11 — apply §5.1 amendment (inter-grouping cycle detection) to BD-186 a
 ```
 
 Suggested rationale for the `(pack-only)` scope keyword: all 4 files (3 edits + this IMPL-REPORT) live under `maintenance-docs/v11-research/` which is pack-internal; no `project-template/` touch; no `supporting-docs/` touch. CI Check 36 will verify the claim against the diff.
+
+
+---
+
+End of IMPLEMENTATION-REPORT-GROUPINGS-AMENDMENT-5-1.md.
