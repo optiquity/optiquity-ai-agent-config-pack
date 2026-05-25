@@ -81,6 +81,24 @@ that depends on that content.
 - No persistent memory — each session starts fresh with full context in the prompt
 - Receives complete instructions in the prompt; never relies on session history
 
+> **Claude-only operating convention — Agent Teams stage
+> lifecycle.** When the developer enables Claude Code's Agent
+> Teams flag (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`),
+> sub-agents spawned for a phase stage (architect → planner →
+> coder → reviewer) stay alive within the stage; the PM chat
+> uses SendMessage to send follow-up directives to the same
+> sub-agent instance. After the stage's commit lands, close
+> all stage sub-agents and respawn fresh for the next stage.
+> Additionally, each coder commit should use a FRESH coder
+> instance — never reuse a coder across commits, even within
+> the same stage. This convention is Claude-Code-specific:
+> Codex CLI's `/agent` slash command provides similar
+> long-lived-thread behavior but no peer-messaging analog;
+> Gemini CLI's `@agent` invocation is one-shot per delegation
+> (no parent-controlled keep-alive across multiple parent
+> turns). Codex / Gemini project teams: this convention does
+> not apply to your CLI's runtime behavior.
+
 ### Xcode Coding Agent
 
 - Built-in AI in Xcode 26.3 (chat panel)
@@ -99,6 +117,62 @@ that depends on that content.
 Planning and decisions: Claude Chat only.
 Execution and file changes: CLI agents only (or Desktop Commander for small doc edits).
 Pasting results from CLI back to Claude Chat: developer only.
+
+### PM chat omniscience obligation
+
+The Separation rule above describes the WHAT — who does what
+work. This sub-section describes the WHY — why the PM chat is
+positioned as the brain.
+
+The PM chat operates with a bird's-eye view of ALL workflows
+and processes in the project: every agent's role and capability,
+every methodology rule, every active phase, every standing
+constraint, every cross-agent integration point. Agents,
+by contrast, operate with a focused view of their assigned
+task and the prompt context the PM chat provides — they may
+know about other agents incidentally, but they are not
+obligated to. The PM chat is.
+
+This positioning creates an OBLIGATION: when constructing any
+agent prompt, the PM chat must give the agent all the
+information, rules, guardrails, and structure that agent needs
+to do its work effectively AND to integrate cleanly with other
+agent work it may not know about. This includes:
+
+- Citing the project-side rules the agent must respect (from
+  `docs/pack/PM-CHAT.md` § Behavioral rules, the project trinity
+  § Project memory, and this methodology document).
+- Naming the specific files the agent reads, writes, or must
+  avoid (per the per-prompt File-in-scope / Out-of-scope lists
+  in § Prompt Authoring Principles).
+- Injecting per-agent prompt-template content the agent has no
+  way to discover otherwise (REPORT FILE line, completion-
+  report shape, chunked-Write instruction).
+- Providing the integration context the agent needs to produce
+  output that fits with upstream and downstream agent work
+  (e.g., a coder receives the architect's relevant decisions;
+  a reviewer receives the planner's task contract).
+
+This obligation has two documented exceptions where duplication
+across surfaces is the correct trade-off (see Part 9 § Rule
+placement for the full taxonomy):
+
+- **Defense-in-depth duplication for high-blast-radius rules.**
+  When a rule is agent-affecting AND prompt-corruption risk is
+  non-trivial (e.g., destructive git verbs that ALL agents must
+  respect), the rule lives in the project trinity § Project
+  memory in addition to wherever else it might be invoked.
+  Trinity is read by every agent at session start regardless
+  of prompt content; this is the strongest available delivery.
+- **Cross-CLI parity ergonomics.** Where the pack ships content
+  to all three CLI tools (Claude Code, Codex CLI, Gemini CLI)
+  and per-CLI prompt-injection logic does not yet exist, the
+  shipped content may carry the rule directly to reduce
+  per-CLI implementation overhead. This exception narrows as
+  per-CLI injection mechanisms become available.
+
+When in doubt, default to single-source authoritative + PM-chat
+injection. Duplication requires a documented exception.
 
 ---
 
