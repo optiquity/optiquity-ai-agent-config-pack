@@ -1871,7 +1871,7 @@ Resolved: n/a
 
 **BD-173 — Project-side cleanup (project-template/ trinity + agents + skills + ops docs consolidation)**
 Type: TODO(version) — surfaced 2026-05-17 from Batch 19b architect-doc out-of-scope flag + user direction to schedule project-side equivalent of Batch 19b before Batch 21
-Status: Open
+Status: Resolved
 Blockers: Batch 19b completion (in_progress); also see pack-chat task list Task #13
 Unblocks: Batch 20 (BD-105/BD-103); Batch 21 (BD-109/BD-110 auditor agents) — both informed by new project-side rules; Batch 22 (BD-100 milestone audit covers both pack-side from Batch 19b AND project-side from BD-173); Batch 23 (BD-102 dog-food validates by using cleaned project-template)
 File/Symbol:
@@ -1903,7 +1903,7 @@ Description: Project-side analog to Batch 19b (which consolidated pack-side
   - Pack-side files (separation rule; covered by Batch 19b)
   - Per-CLI memory-cache (only Claude has it; project-side may have
     none per Batch 19b BD-19b research; architect determines)
-Resolved: n/a
+Resolved: 2026-05-24 — Batch 19c (H.1-H.17). 36-leak boundary sweep (Categories A+B+C+D+E+F per AUDIT-PRE-19C-BOUNDARY-LEAKS.md) + 4 Guardrails (G1 Check 43 project-side bare cross-reference scanner + G2 per-line fence Check 37 modification across 12 dual-surface files + G3 _PROJECT_SIDE_ROOTS scope expansion to _iter_client_installed_files() helper + G4 pack-coder PREFLIGHT extension with Check 43 verification step) + D-11 PM-chat omniscience principle landed in METHODOLOGY.md Part 1 + OT-UT-1 Claude Code Agent Teams informational paragraph + salvageability B1/B2/B3/B5/B9 word-level cleanups. End-of-batch review PASS-WITH-NITS (single F-1 README check-count staleness fix folded into H.17 combined commit). 43/43 validate-pack checks PASS at HEAD; 10/10 per-check test files CI-wired (Check 42); 7/7 Check 43 fixture-test groups PASS; 8/8 Check 36/37/38 fixture-test groups PASS; fixture manifest verifies clean.
 
 ---
 
