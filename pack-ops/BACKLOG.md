@@ -2964,6 +2964,54 @@ Resolved: 2026-05-25 — BD-191 closed after full sidecar requirements-gathering
 
 ---
 
+**BD-192 — v11.1+ Product Specialist (PS) implementation (architect/planner/coder cycle)**
+Type: TODO(version) — surfaced 2026-05-25 from BD-191 sidecar wrap; live forward-pointing anchor for v11.1+ PS core implementation per pack memory `feedback_deferred_work_tracking`
+Status: Open
+Blockers: v11.0 ships (then v11.1 cycle architect pass can start); BD-189 v11.1+ groupings implementation should land first per user direction 2026-05-24 (groupings infrastructure provides #7 from-external ingest path PS feeds; PS architect needs locked groupings architecture for cross-feature integration design)
+Unblocks: Per-capability implementation BDs that the v11.1 planner produces (21 preliminary capabilities + 30 open architect decisions per REQUIREMENTS-PS-V11.md §10); v11.1+ user-facing Product Specialist feature
+File/Symbol:
+  - NEW `maintenance-docs/v11-implementation/ARCHITECTURE-PS.md` (architect deliverable; may be versioned as `ARCHITECTURE-PS-V11.x.md` per HANDOFF-PS-ARCHITECT.md §10)
+  - NEW `maintenance-docs/v11-implementation/PLAN-PS.md` (planner deliverable)
+  - Per-BD implementation surfaces TBD by planner (spans 21 preliminary capabilities)
+  - PRIMARY INPUTS (read-only):
+    - `maintenance-docs/v11-research/HANDOFF-PS-ARCHITECT.md` (READ FIRST — orientation; 227 lines; navigation + framing + discipline + reading order)
+    - `maintenance-docs/v11-research/REQUIREMENTS-PS-V11.md` (primary input; 1195 lines; 21 preliminary capabilities + 30 open architect decisions + constraints C1-C7 + design principles)
+    - `maintenance-docs/v11-research/INTAKE-PS-V11.md` (user-intent audit trail; verbatim user framing + 19 goals + §7 quality-mitigation + §7.5 interview flow dynamics + §8 walkthrough results)
+    - `maintenance-docs/v11-research/RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md` (landscape facts; 985 lines; §9 pack-relevance observations + §9.5 defensible methodology positions)
+    - `maintenance-docs/v11-research/PLANNING-PROCESS-INSIGHTS-FROM-OT.md` (pack-architect OT-pattern synthesis; 638 lines; §3 patterns + §4 failure modes + §7 architect investigation areas + §8 challenge questions)
+    - `maintenance-docs/v11-research/AUDIT-PS-FULL-SESSION-ARCHITECT.md` + `maintenance-docs/v11-research/AUDIT-PS-FULL-SESSION-REVIEWER.md` (full-session audit reports from BD-191 close-out; informative context for fix-applied state)
+    - `maintenance-docs/v11-research/REQUIREMENTS-GROUPINGS-V11.md` (companion v11.1+ feature; PS docs feed groupings via #7 from-external ingest; Cap #7 SC7.8 for cross-feature contract)
+    - `maintenance-docs/v11-research/HANDOFF-V11.1-ARCHITECT.md` (groupings architect handoff; cross-feature peer doc)
+    - `pack-ops/BACKLOG.md` entries BD-186 (Resolved) + BD-189 (groupings implementation umbrella) + BD-191 (Resolved; PS requirements source-of-truth) for cross-feature and BD-context
+    - `CLAUDE.md` `## Pack memory` (pack-repo-trinity rules; standard pack-agent context; includes preliminary-triage-architect-challenge + pattern-matching-anti-pattern + pack-entry-type-semantics + user-prescriptive-authority rules established during BD-191)
+Description: Live forward-pointing anchor for the v11.1+ Product Specialist (PS) core implementation work. All 21 preliminary capabilities of the PS feature (per REQUIREMENTS-PS-V11.md §4) defer to v11.1+ implementation; this BD captures the umbrella work that the v11.1 architect / planner / coder pipeline will break into per-capability BDs.
+
+  Without this BD, the deferred work would lack a live forward-pointing anchor per pack memory `feedback_deferred_work_tracking` (BD-191 is Resolved, not a live anchor; the requirements artifact + handoff doc are "inputs" not forward-pointing surfaces). This BD-192 satisfies the rule by providing the umbrella entry until the v11.1 architect/planner work decomposes it.
+
+  **Pipeline (per REQUIREMENTS-PS-V11.md §11 + HANDOFF-PS-ARCHITECT.md §10):**
+  1. Architect pass produces `ARCHITECTURE-PS.md` (locks the 30 open architect decisions in REQUIREMENTS §10 + any additional decisions identified during deeper investigation)
+  2. User review of architect output (cheap-redirect window before planner spawn)
+  3. Planner pass produces `PLAN-PS.md` with per-BD breakdown + sequencing + verification strategy
+  4. User review of planner output (cheap-redirect window before coder spawn)
+  5. Coder cycles per BD with reviewer cycles per pack memory `feedback_review_fix_one_cycle`
+  6. End-of-batch reviewer + per-BD status flips
+  7. **Cross-feature coordination with groupings architecture (BD-189):** the PS architect's Cap #13 work (cross-feature integration) may surface a proposed amendment to HANDOFF-V11.1-ARCHITECT.md or REQUIREMENTS-GROUPINGS-V11.md Cap #7; coordination protocol per HANDOFF-PS-ARCHITECT.md §7 (PS architect surfaces; Pack Chat / groupings team coordinates writing).
+
+  **Discipline (per pack memory established during BD-191):**
+  - All preliminary positions in REQUIREMENTS-PS-V11.md §4 (21 capabilities) + §10 (30 architect decisions) are subject to architect challenge per `feedback_preliminary_triage_architect_challenge`. Tiered challenge bar: LOW (PS-internal) vs HIGH (boundary-with-existing-pack).
+  - User retains final authority on architect challenges per `feedback_user_prescriptive_authority`.
+  - Pattern-matching from adjacent pack mechanisms requires property-fit verification per `feedback_pattern_matching_out_of_context_antipattern` (especially relevant for Cap N1 PS deliverable directory structure).
+  - Pack entry-type data-structure semantics are locked per `reference_pack_entry_type_semantics` (PS workflows feed; do NOT create canonical pack entry-type artifacts).
+
+  **Scope boundary:** This BD covers the CORE PS implementation per the 21 preliminary capabilities. CLIENT-SIDE ONLY constraint (C1) applies — affects `project-template/` surface only; NEVER applies to pack-self workflow. Wave 3 (autonomous agentic PM) explicitly OUT of scope (C6 / Goal 13).
+
+  **Resolution:** This BD resolves when the v11.1 planner has produced per-capability BDs and the umbrella role is no longer needed (i.e., the children carry the work forward). Alternatively, it could resolve at v11.1 ship with all children Resolved. Architect/planner decides at scheduling time.
+
+  **Position:** v11.1+ deferred — see EXECUTION-PLAN-V11.0.md §1.6 (Group 4 deferred-to-v11.1+ list; main-chat may add this BD to the list as a separate PM-only edit). Scheduling: starts when v11.0 ships and v11.1 cycle begins. User direction 2026-05-24 indicated PS implementation follows groupings implementation (BD-189 lands first); PS scheduling likely v11.1+ or v11.2 per architect/planner judgment at scheduling time.
+Resolved: n/a
+
+---
+
 ## Active — v10 Scope
 
 **BD-059 — v10 migration silently destroys project customization**
