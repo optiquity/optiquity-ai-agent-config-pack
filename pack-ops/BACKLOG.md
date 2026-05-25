@@ -1373,6 +1373,8 @@ File/Symbol:
   - `scripts/tests/test-migrate-v10-to-v11-gates.sh` — nine new test cases (3 helpers × 3 cases each: happy path with the sub-stage applied + verifier passes; sub-stage applicable but advisory missing → verifier fails loud; sub-stage failed silently mid-run → verifier catches via state-dir absence)
   - **Carry-forward from PACK-REVIEW-BD-101-RETRO MINOR-4 (POQ-1):** while editing `scripts/lib/migrate-v10-to-v11/{apply,resume}.sh` to wire the new Gate 2 helpers, also reorder the `_v10_to_v11_orig_post_report` invocation to run AFTER Gate 2/3 verdict (currently runs before, so the gate-failure banner is silenced by the "pack tracker init" success hint). ≤10 LOC change in each of `apply.sh` + `resume.sh`. Folded here per BD-101 retro fix coder's recommendation to avoid opening a separate small BD when BD-172 already plans to touch the same file surface.
 Description: Per `PACK-REVIEW-BD-101-RETRO.md` MAJOR-2, BD-101's Gate 2 (Phase-A verify) currently checks the framework stage outputs but does not verify the three post-dispatch operations that run inside `migrator_post_dispatch_hook`: BD-104's `IMPLEMENTATION_PLAN`→`IMPLEMENTATION-PLAN` rename outcome; BD-035's python-architecture-rename advisory; BD-144's capability-rename advisory. A silent partial failure in any of those three sub-stages would ship with Gate 2 stamping PASS, so a user running `--apply` would get a green Gate 2 verdict despite an incomplete migration. Reviewer estimated this fix at 3 new helpers + 9 new test cases — too large for an in-session fix at BD-101 retro time, so BD-172 is opened explicitly per the deferred-work tracking rule. Lands in v11.0 to keep the Gate 2 contract truthful before Batch 22 (BD-100) milestone audit and Batch 23 (BD-102) dog-food migration. Implementation pattern mirrors the existing 8 verification helpers in `checkpoint.sh` (no new dependencies, no architecture change). Each new helper consults the migrator's state directory and the post-dispatch hook's output fingerprint to decide pass/fail.
+
+  **Position:** Batch 21.5 — single-BD lightweight batch between Batch 21 (auditor agents) and Batch 22 (milestone audit). User-approved 2026-05-24. Position lands precisely where the BD entry's own guidance places it ("before Batch 22 milestone audit and Batch 23 dog-food migration") so Gate 2 PASS verdict is truthful when BD-100 audits and BD-102 dog-foods.
 Resolved: n/a
 
 ---
@@ -2353,6 +2355,7 @@ Resolved: 2026-05-10 — direct execution by Pack Chat (no pack-coder agent need
 Type: TODO(version) — surfaced 2026-05-10 during OT v10→v11 trinity prep; verified scope against `scripts/lib/customization-preserve.sh:145-179` (12-class file inventory), `supporting-docs/MERGE-STRATEGY.md`, and `supporting-docs/INSTALL-PROCEDURES.md` lines 472-479 (`[CONDITIONAL]` H2 convention)
 Status: Open
 Blockers: none (independent of remaining v11.0 batches; can land any time before Batch 23 BD-102 dog-food migration)
+Position: Batch 20.5 — dedicated multi-commit architect-led batch between Batch 20 (STATUS.md + tracker reset) and Batch 21 (auditor agents). User-approved 2026-05-24. Multi-commit scope (trinity ×3 + customization-preserve.sh extension + PM-CHAT.md authoring procedure + INSTALL-PROCEDURES.md + SETUP-NEW.md + validator) warrants its own batch. Landing before Batch 21 lets the BD-109/BD-110 auditor agents potentially exercise marker-section validation. Also lands well before Batch 23 dog-food per the existing constraint.
 Unblocks: byte-identical preservation of project-customized prose inside trinity files across pack updates; eliminates the OT-style "one-shot manual re-merge after every pack refresh" burden; closes the explicit BD-088/MERGE-STRATEGY.md §1 placeholder ("Future BDs may add explicit marker-section + diff-recognition fallback"); resolves the empty-pack-H2 problem and provides a clean override mechanism for project-overrides-pack-section cases
 **Spec — Two H2 ownership shapes:**
   - **Shape A — Pack-owned H2 with project body extensions.** H2/H3 line OUTSIDE markers; pack-owned body content OUTSIDE markers; project additions wrapped in marker pairs WITHIN the section body. Pack owns the H2 name and the canonical body. Project may ADD content (fill-in placeholders, additional bullets, sub-paragraphs) inside markers but cannot delete pack body or rename the H2. On pack update: pack body refreshes via 3-way merge; project marker contents preserved byte-identical.
@@ -2724,7 +2727,7 @@ Description: A standalone reference doc capturing the pack's requirements + temp
   - Deep integration with any specific external tool (Notion, Linear, Productboard, etc.)
   - The doc is reference material; how external tools consume it is the external tool's concern
 
-  **Position:** TODO(version) parking-lot. Scheduling deferred until all entry types settle (grouping shape from BD-186 architect pass; existing backlog/phase/task shapes already final). When scheduled, position TBD by user at scheduling time — likely v11.1+ alongside or after groupings implementation.
+  **Position:** v11.1+ deferred — see EXECUTION-PLAN-V11.0.md §1.6 (Group 4 deferred-to-v11.1+ list). User-approved 2026-05-24. Scheduling: starts after v11.0 ships and v11.1 cycle begins; the standalone doc benefits from groupings implementation reality before authoring (currently shipping types: backlog / phase / task; groupings ship in v11.1+ per BD-189).
 Resolved: n/a
 
 ---
@@ -2759,7 +2762,7 @@ Description: V11.1 §13 row Y-6 optional capability: a single all-phases tracker
   - Forgejo / Gitea: no native Iteration primitive — requires emulation OR unsupported declaration per C7 graceful degradation
   - Redmine: no native Iteration primitive — same as Forgejo
 
-  **Position:** TODO(version) parking-lot. Scheduling deferred until v11.1+ groupings infrastructure lands AND observed user demand for sprint-board view emerges. Not blocking v11.1 ship. Per pack memory `feedback_deferred_work_tracking`, this BD entry IS the live forward-pointing anchor.
+  **Position:** v11.1+ deferred — see EXECUTION-PLAN-V11.0.md §1.6 (Group 4 deferred-to-v11.1+ list). User-approved 2026-05-24. Hard blocker on BD-189 v11.1+ groupings infrastructure (provides tracker projection infrastructure this BD builds on); cannot ship in v11.0. Scheduling additionally gated on observed user demand for sprint-board view. Per pack memory `feedback_deferred_work_tracking`, this BD entry IS the live forward-pointing anchor.
 Resolved: n/a
 
 ---
@@ -2800,7 +2803,7 @@ Description: Live forward-pointing anchor for the v11.1+ groupings core implemen
 
   **Resolution:** This BD resolves when the v11.1 planner has produced per-capability BDs and the umbrella role is no longer needed (i.e., the children carry the work forward). Alternatively, it could resolve at v11.1 ship with all children Resolved. Architect/planner decides at scheduling time.
 
-  **Position:** TODO(version) parking-lot. Scheduling: starts when v11.0 ships and v11.1 cycle begins.
+  **Position:** v11.1+ deferred — see EXECUTION-PLAN-V11.0.md §1.6 (Group 4 deferred-to-v11.1+ list). User-approved 2026-05-24 (title literally declares v11.1+ scope). Scheduling: starts when v11.0 ships and v11.1 cycle begins.
 Resolved: n/a
 
 ---
@@ -2947,7 +2950,7 @@ Description: Pack-side requirements-gathering work to refine the "Product Specia
 
   **Pipeline:** Pack Chat sidecar (this work) → REQUIREMENTS-PS-V11.md → user review + approval → BD-191 Resolved → downstream architect / planner / coder cycles open as separate BDs per scope decisions.
 
-  **Position:** Independent of v11.0 work; runs parallel. User direction 2026-05-24: groupings work (BD-186 closed; BD-189 umbrella) lands first; PS implementation follows. PS scheduling likely v11.1+ or v11.2 — architect/planner judgment at scheduling time per the sidecar's scope-verdict output.
+  **Position:** v11.1+ deferred — see EXECUTION-PLAN-V11.0.md §1.6 (Group 4 deferred-to-v11.1+ list). User-approved 2026-05-24. Independent of v11.0 work; runs parallel as a v11.1+ requirements pass. Implementation BDs surface from this requirements artifact; per-capability scope verdicts (v11.1 vs v11.2) decided by the sidecar's scope-verdict output. Architect/planner judgment at scheduling time.
 Resolved: n/a
 
 ---
