@@ -2807,7 +2807,7 @@ Resolved: n/a
 
 **BD-190 — Comprehensive audit-vocabulary-gap sweep across pack-shipped files (post-H.9/H.10 cascade)**
 Type: TODO(version) — surfaced 2026-05-24 during Batch 19c.H.10 audit-gap absorption pattern; trinity Filename uniqueness rule update at commit `1121b3d` formally classifies bare-version shorthand for pack-internal docs as same leak class as explicit `*.md` cites
-Status: Open
+Status: Resolved
 Blockers:
   - Batch 19c.H.10 commits first (BD-190 must not double-touch H.10's 7 files; H.10 audit-gap absorption pass already closes that set) — RESOLVED: H.10 landed at commit `6e3e082` 2026-05-24
 Unblocks:
@@ -2852,7 +2852,7 @@ Description:
   **Resolution.** This BD resolves when extended-vocabulary grep across pack-shipped files (post-H.9/H.10/H.11/H.13) returns zero matches. Check 43 (H.14) PASS at HEAD is the proof.
 
   **Position:** insert immediately after H.10 in Batch 19c sequence (between H.10 commit `6e3e082` and H.11). Per user direction 2026-05-24.
-Resolved: n/a
+Resolved: 2026-05-24 — Phase 1 inventory (`maintenance-docs/v11-implementation/AUDIT-GAP-INVENTORY-BD-190.md`, 593 lines) + Phase 2 sweep (commit `df1e97d`, 31 cite-drops across 11 pack-shipped files: 29 Class A bare-version + 2 Class D qualified-filename). IMPL-REPORT at `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-190.md`. Resolution criterion proven: extended-vocabulary grep (`V[0-9]+(\.[0-9]+)? §` + `ARCHITECTURE.md §X` qualified-filename) returns ZERO matches across all 11 sweep target files at HEAD; Check 43 PASSES at HEAD with 152 client-installed files walked + zero pack-internal bare cross-references. Status-flip delayed because BD-190 Phase 2 swept BEFORE H.14 landed (Check 43 was the resolution proof but didn't exist at sweep time); flip applied post-Batch-19c-close once H.14 PASS at HEAD made the proof testable.
 
 ---
 
