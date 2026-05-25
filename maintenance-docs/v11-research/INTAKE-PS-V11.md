@@ -336,6 +336,44 @@ Investigation targets during BD-191 triage:
 
 If investigation surfaces that the intuition is incorrect or needs refinement, the BD-191 triage records the refinement; **this §7 stays as the ORIGINAL user intent for audit purposes** (audit-trail discipline; intake docs don't get retroactively rewritten with conclusions).
 
+### §7.5 — Interview flow dynamics (user-stated 2026-05-24)
+
+**Status:** User-stated direction during BD-191 sidecar walkthrough Cluster 2 (Interview process). Refines §7.1 interview structure framing with flow dynamics requirements. Architect MUST design the interview accommodating these requirements at PS design pass.
+
+The PS interview must satisfy multiple concurrent goals AND accommodate non-linear human thought patterns. Section-by-section rigidity does not produce genuinely high-quality products; users may start anywhere, evolve ideas across sections, and require coverage reconciliation by completion.
+
+**Quality target (beyond pack ingestion):**
+- Interview must produce inputs that yield a genuinely high-quality product with real user benefits and user-liked outcomes — not just pack-ingestible artifacts.
+- Pack-as-audience (Goal 7), pack ingestion requirements (Goal 8), and implementation constraints (resource / technical limits) must be satisfied alongside product-quality outcomes.
+
+**Research role:**
+- Research / competitive analysis serves as SIGNALING — informs what to elicit, where gaps are likely, how to frame section emphasis. Per Goal 9 (research orchestration).
+
+**Flow flexibility — non-linear thought patterns:**
+- Interview CANNOT be a rigid section-by-section walk.
+- Two train-of-thought directions are supported:
+  - **Strategic → tactical** (drill down): user starts at strategic level (vision, pillars, audience) and evolves toward tactical details (specific features, user journeys, implementation constraints)
+  - **Tactical → strategic** (evolve up): user starts with a specific tactical feature or user journey and that idea evolves into a strategic guiding principle or concept that persists across other journeys and features
+- Multi-entry starting points: user can start with user journeys / strategic product goals / lists of features / competitive landscape — ANY direction
+- Architect must design entry-point flexibility so the user is invited into the conversation rather than forced through a predetermined section order
+
+**Relationship retention:**
+- When ideas are combined during the interview (e.g., feature X relates to journey Y relates to seam Z), the RELATIONSHIP between them must be retained
+- Later splitting / reconstruction of related ideas requires the relationship to survive — design the interview to capture these relationships, not just the ideas themselves
+- This is especially load-bearing for the PS deliverable shapes (N4 narrative PRD relates to N5 journeys relates to N6 feature inventory) — relationships across deliverables must be preserved
+
+**Coverage reconciliation:**
+- Eventually ALL required sections (per Capability #6 8-item completeness bar including priorities Item 8) MUST be covered AND reconciled
+- The interview can take any path but must reach completeness coverage at end
+- Reconciliation includes: surfacing gaps; addressing them via additional elicitation / research; verifying no orphan ideas
+
+**Onboarding / presentation:**
+- Initial framing matters — interview can't open with "give me a list of something"
+- User must be INVITED into the conversation; presentation must accommodate the multi-entry-points flexibility above
+- Architect must design the opening framing so users from different starting-points feel welcome
+
+**Cross-references:** Goal 3 (interview structure — this section is the flow-dynamics extension); Goal 5 (episodic / light footprint — flexibility supports new + existing-adopting both as "project init"); Goal 10 (quality-mitigation — flow dynamics is part of producing real-quality PRDs); Capability #6 (completeness bar — reconciliation references this).
+
 ---
 
 ## §8 — Candidate capability list (Pack-Chat-drafted; awaiting architect review + user approval)
@@ -449,6 +487,53 @@ Cluster: Interview process. **Architect bar:** LOW.
 | Workflow + lifecycle | #15, #16 | unchanged |
 | Scope boundary | #17 | unchanged |
 
+### Walkthrough results (user-approved 2026-05-24)
+
+**Status:** Per-capability dispositions + scope verdicts from light walkthrough across all 21 preliminary capabilities (original 17 + 3 from §6 A/B/C + 1 from walkthrough as Cap N8; §6 D restructures #8/#9/#10 into N4/N5/N6 net-zero; §6 E keeps #11 as-is). All decisions PRELIMINARY per pack memory `feedback_preliminary_triage_architect_challenge`; architect WILL challenge each at PS design pass; user retains final authority.
+
+**Capability disposition + scope verdict (all 21 caps):**
+
+| Cap | Disposition | Scope verdict | Walkthrough notes |
+|---|---|---|---|
+| #1 Core shape | KEEP | v11.x | Boundary principle (PM-chat does Q&A + agent does heads-down) LOCKED; agent topology architect-decides |
+| #2 Two modes | KEEP | v11.x (both modes) | User direction: both first-class (Goal 2) |
+| #3 Invocation | KEEP | v11.x | Goal 5 (episodic / light footprint); covers new + existing-adopting both as "project init" |
+| N1 Directory structure | KEEP | v11.x | **REVISED from per-stream-tree:** architect-decides structure based on PS-specific properties + stated goals + technical constraints. Pattern-matching out of context is anti-pattern per pack memory `feedback_pattern_matching_out_of_context_antipattern`; architect must verify property-fit before adopting any pattern |
+| #4 Structured interview | KEEP | v11.x | Flow dynamics per new §7.5 (non-linear thought patterns supported; relationship retention; coverage reconciliation; engaging onboarding) |
+| #5 Methodology positioning | KEEP | v11.x | Defensible defaults per RESEARCH §9.5 |
+| #6 Complete criteria (8-item bar) | KEEP | v11.x | **REFINED:** original 7-item bar (vision/pillars; anti-pillars; audience; MVP clusters; NFRs; seams; conditional-inclusions) PLUS new 8th item — **Priorities elicited** (multi-axis per Goal 17: product/market fit; competitive necessity vs. advantage; technical constraints; resource constraints; scope decisions; cost/speed/quality/features/journeys; user-named axes). Architect can modify 8-item bar BUT must defend changes with evidence and logic |
+| #7 Quality-mitigation | KEEP | v11.x | Refined per new §7.5 |
+| N3 PRD template anti-pillars | KEEP | v11.x | Pillars / anti-pillars / conditional-inclusions / architectural-commitments sections; differentiator vs commercial PRD templates |
+| N4 Narrative PRD | KEEP | v11.x | **PACK-PRIMARY** (Goal 7 audience-priority); human-readable rendering generated via Cap N8 (Goal 19); pack-primary source-of-truth unchanged |
+| N5 Structured journeys | KEEP | v11.x | Mode-classification scheme for pack-target audience architect-decided (OT's Building/Discovery/Recovery/Setup is OT-specific; pack-target may need different modes) |
+| N6 Feature inventory + mapping | KEEP | v11.x | Schema fields essential / extension split per architect-doc §7.4; `seam_refs:` field per §5.5 reinforcement |
+| #11 Research orchestration | KEEP | v11.x | Shape architect-decides per §6 E3 (don't prescribe split vs single vs sub-decomposition vs skill-form) |
+| N2 Audit pass | KEEP | v11.x | PRD audit / journey audit / feature-list audit / mapping-doc audit; mechanical where possible; user-judgment items flagged |
+| **N8 (NEW) Human-readable PRD rendering generator** | **KEEP** | **v11.x** | **New cap from walkthrough Cluster 6.** Reads pack-primary sources (N4 + N5 + N6 + any architect-defined cross-PS-doc source set) and produces a human-targeted PRD document optimized for visual verification. NOT pack-ingested; secondary artifact derived from pack-primary. Architect-decided shape (skill / sub-agent / external tool / pack-adjacent script), output format (markdown / HTML / PDF), section structure, trigger semantics. Per Goal 19. BACKLOG-side capture at BD-191 SC13. |
+| #12 Audience-aware | KEEP | v11.x | Pack-data-structure knowledge HIGH-bar (locked pack state per `reference_pack_entry_type_semantics`); methodology-defaults knowledge LOW-bar |
+| #13 Groupings integration | KEEP | v11.x | Cross-feature integration with BD-186/BD-189 groupings work; PS feeds via existing #7 from-external ingest |
+| #14 PRD-to-code traceability | KEEP | v11.x | Pack-differentiator per RESEARCH §9.2; features → BD-NNN/phase-N/GRP-NNN references → commits/PRs |
+| #15 Workflow + doc integration | KEEP | v11.x | **SCOPE EXPANDED:** original surfaces (METHODOLOGY.md / PM-CHAT.md / Trinity / OPTIONAL-FEATURES.md / agent + skill files / HELP-FRAGMENT) PLUS **QUICKSTART.md + `scripts/init-project.sh` + existing-project-adopting-pack workflow + architect-discovery for all unnamed integration points**. Architect surveys ALL pack docs/scripts/workflows for integration points; surfaces all of them, not just the named subset |
+| #16 PRD lifecycle | KEEP | v11.x | Edits in place; addenda for scope additions; tracked via existing pack primitives (phases / backlog) |
+| #17 Wave 3 exclusion + minimal validation | KEEP | v11.x | Wave 3 (autonomous agentic PM) OUT locked per Goal 13; validation specifics architect-decided per-deliverable; per-deliverable audience-primary classification (human / pack / dual) architect-decided |
+
+**Net preliminary capability count: 21** (was 20 before Cap N8 added during walkthrough Cluster 6).
+
+**Updated cluster summary after walkthrough:**
+
+| Cluster | Capabilities (preliminary) | Count | Note |
+|---|---|---|---|
+| Foundation | #1, #2, #3, N1 | 4 | (N1 revised to architect-decides structure) |
+| Interview process | #4, #5, #6 (8-item bar), #7, N3 | 5 | (#6 8-item bar adds priorities Item 8) |
+| Deliverable outputs | N4, N5, N6, #11, N2, **N8 (NEW)** | 6 | (N8 added from walkthrough Cluster 6) |
+| Pack integration | #12, #13, #14 | 3 | |
+| Workflow + lifecycle | #15 (scope expanded), #16 | 2 | (#15 scope expanded with QUICKSTART + init-project.sh + existing-project + architect-discovery) |
+| Scope boundary | #17 | 1 | |
+
+**Architect-challenge reinforcement (cross-cuts entire list):** Every disposition + scope verdict above is preliminary signal to the architect. Architect MUST challenge each based on detailed tactical information; user retains final authority over architect challenges. Architect explores freely (LOW bar) for PS-internal decisions; investigates thoroughly (HIGH bar) for boundary-with-existing-pack changes per pack memory `feedback_preliminary_triage_architect_challenge`. Architect may enhance, accept, reject, or replace any preliminary position based on evidence and logic.
+
+**Audience priority reinforcement (cross-cuts deliverables N4/N5/N6/N8):** Pack-primary audience is FIRST priority (Goal 7 unchanged); human-readability is SECONDARY achieved via Cap N8 generation (Goal 19); not either/or; both can exist; priority is unambiguous.
+
 ---
 
 ## §9 — User-stated goals (consolidated index)
@@ -467,12 +552,12 @@ Cluster: Interview process. **Architect bar:** LOW.
 | 2 | Two equal first-class modes: from-scratch + existing-PRD-ingest-with-gap-fill | INTAKE §2 Q3 + Q7; BD-191 description "Two modes of operation"; BD-191 SC7 |
 | 3 | Structured interview, not random walk (clear sections per category; problem/goal/SC framing; gap-identification across market research / ideation / creativity / scope / resources / priorities / constraints) | INTAKE §7.1; BD-191 SC10(a) |
 | 4 | Elicit product success inputs: definition, scope, MVP shape, future versions, resource constraints, competitive position; force intentional thinking over random scope expansion | INTAKE §1 (a); INTAKE §2 Q2 + Q4 |
-| 5 | Episodic-usage / light footprint: heavy at init + milestone spikes (explicit version releases + implicit "feature work nearing end of planned scope") + on-demand; no chronic overhead | INTAKE §1 (g); INTAKE §2 Q2; BD-191 description "Position" |
+| 5 | Episodic-usage / light footprint: heavy at init + milestone spikes (explicit version releases + implicit "feature work nearing end of planned scope") + on-demand; no chronic overhead | INTAKE §1 (g); INTAKE §2 Q2; BD-191 description "Position"; walkthrough refinement 2026-05-24 — covers BOTH new-project AND existing-project-newly-adopting-pack as "project init" cases (light-footprint applies to both) |
 | 6 | Multiple deliverables with appropriate shapes: full PRD with MVP line (or MVP-only PRD); journeys; ambient / shared / foundational grouping inputs; mapping docs; working docs not exec summaries | INTAKE §1 (c) (d) (e) (f); INTAKE §2 Q4; INTAKE §8 capabilities #8 / #9 / #10 |
-| 7 | Audience-aware deliverables — pack IS the audience (workflows / docs / scripts / tracker / groupings / phases / tasks / backlog entries); narrower than open-ended PM tools; differentiator | INTAKE §7.2; INTAKE §8 capability #12; BD-191 SC10(b) |
+| 7 | Audience-aware deliverables — pack IS the audience (workflows / docs / scripts / tracker / groupings / phases / tasks / backlog entries); narrower than open-ended PM tools; differentiator | INTAKE §7.2; INTAKE §8 capability #12; BD-191 SC10(b); walkthrough reinforcement 2026-05-24 — PACK-PRIMARY priority is FIRST; human-readable rendering is SECONDARY via Goal 19 + Cap N8; not either/or; both can exist; priority unambiguous |
 | 8 | Smooth pack integration without forced dependency: zero dependency of groupings on PS; PS never produces GRP-NNN.md; feeds groupings via #7 from-external ingest; PS docs become reference once groupings ingested | INTAKE §2 Q5 + Q6; BD-191 description "Cross-feature relationship with groupings"; BD-191 SC6 |
 | 9 | Research orchestration with quality discipline: docs-researcher for competitive / market / tools / anything-that-aids-development; wide net + high quality bar (proven / widely-acknowledged / highly-recommended); full citations + logical reasoning + evidence; multi-stage invocation | INTAKE §1 (b); INTAKE §3 research-scope paragraph; INTAKE §8 capability #11 |
-| 10 | Quality-mitigation tactical (not just strategic) principles; "complete" criteria for interview process; counters "AI PRDs without facilitation = decorative artifacts" failure mode | INTAKE §7 (full section); INTAKE §8 capabilities #6 / #7; BD-191 SC10 |
+| 10 | Quality-mitigation tactical (not just strategic) principles; "complete" criteria for interview process; counters "AI PRDs without facilitation = decorative artifacts" failure mode | INTAKE §7 (full section, extended by new §7.5 interview flow dynamics 2026-05-24); INTAKE §8 capabilities #6 / #7; BD-191 SC10 |
 | 11 | Defensible methodology positioning (Continuous Discovery + OST / Mom Test / Lean Canvas or PR-FAQ / RICE or Value-Effort / common-denominator PRD / North Star + OKRs / JTBD-Christensen / Cagan vocabulary); per-project override path supported; "methodology-as-explicit-position" is itself a pack differentiator | RESEARCH §9.5; INTAKE §5 research-output headlines; INTAKE §8 capability #5; BD-191 SC8 |
 | 12 | PRD-to-code traceability — pack uniquely positioned (BD / phase / grouping / IMPL-REPORT primitives thread); features → BDs → commits / PRs; PS deliverables reference pack primitives by ID | RESEARCH §9.2 (underserved gaps); INTAKE §8 capability #14 |
 | 13 | Wave 2 only (content-gen in PM workflows); Wave 3 (autonomous agentic PM) vapor OUT of scope; pack adds value above "paste into Claude" baseline via project-context awareness + integration + methodology positioning | RESEARCH §9.4 (LLM-PM boundary); INTAKE §8 capability #17; BD-191 SC9 |
@@ -481,6 +566,7 @@ Cluster: Interview process. **Architect bar:** LOW.
 | 16 | Scope-discipline meta-criterion — full statement in §9.2 below | Stated 2026-05-24 during BD-191 sidecar (NO PRIOR SOURCE; this entry is canonical capture) |
 | 17 | Priorities as first-class cross-cutting driver — full statement in §9.3 below | Stated 2026-05-24 during BD-191 sidecar (partial source in INTAKE §1 (a) / §2 Q2 / §2 Q4 / §7.1 / RESEARCH §9.5 captures axes-as-input; this entry expands axes and reframes as first-class driver); BACKLOG-side capture at BD-191 SC11 |
 | 18 | PS-to-pack-entry-type boundary principle (cross-feature) — full statement in §9.4 below | Stated 2026-05-24 during BD-191 sidecar (NO PRIOR SOURCE; this entry is canonical capture); BACKLOG-side capture at BD-191 SC12 |
+| 19 | Human-readable PRD rendering for user verification — full statement in §9.5 below | Stated 2026-05-24 during BD-191 sidecar Cluster 6 walkthrough (NO PRIOR SOURCE; this entry is canonical capture); BACKLOG-side capture at BD-191 SC13; implementing capability Cap N8 (§8 Walkthrough results) |
 
 ### §9.2 — Goal 16: Scope-discipline meta-criterion (full statement)
 
@@ -561,7 +647,33 @@ Cluster: Interview process. **Architect bar:** LOW.
 
 **Preliminary; subject to architect challenge at design pass.** Architect WILL challenge boundary framing based on tactical analysis. User retains final authority. Tiered challenge bar (per pack memory `feedback_preliminary_triage_architect_challenge`): HIGH bar — Goal 18 touches the boundary with existing pack entry types (which are already implemented or thoroughly architected); architect cannot arbitrarily change boundary out of scope; must investigate thoroughly.
 
-### §9.5 — Mapping of goals to BD-191 success criteria
+### §9.5 — Goal 19: Human-readable PRD rendering for user verification (full statement)
+
+**Statement:** PS produces pack-primary structured deliverables (Goal 7 audience-priority); a complementary human-readable rendering generator transforms these pack-primary sources into a human-targeted PRD document optimized for visual verification of PS output.
+
+**Stated:** 2026-05-24 during BD-191 sidecar Cluster 6 walkthrough by user. NO PRIOR SOURCE; this entry is canonical capture. BACKLOG-side capture at BD-191 SC13. Capability N8 implements the generator (§8 Walkthrough results subsection).
+
+**Real user-experience failure mode without it:** Users reviewing PS output get docs aimed at the config pack; cannot visually verify accuracy of what PS captured; frustration leads to abandonment of the PS feature entirely. Without a human-readable PRD rendering, PS becomes a black-box producing pack-targeted content the user cannot easily review.
+
+**Mechanism:**
+- PS pack-primary deliverables (N4 narrative PRD + N5 journey docs + N6 feature inventory + mapping per Cluster 3) remain the canonical source-of-truth — Goal 7 priority unchanged
+- Cap N8 (Human-readable PRD rendering generator) reads pack-primary sources and produces a human-targeted PRD rendering
+- Output: human-readable PRD doc for visual verification only; NOT pack-ingested; secondary artifact derived from pack-primary
+- Generator runs on-demand (user requests it) or as part of PS workflow milestone checkpoints (architect-decided)
+
+**Architect-decided at PS design time:**
+- Generator implementation shape (skill / sub-agent / external tool / pack-adjacent script)
+- Output format (markdown / HTML / PDF / other)
+- Section ordering and human-comprehension emphasis
+- How rendering handles structured content (feature inventory rows become prose? tables? both?)
+- Trigger semantics (on-demand verb vs auto-generate on milestone)
+- Whether rendering is one PRD or multiple (e.g., executive summary + detailed PRD)
+
+**Cross-references:** Goal 7 (pack-primary remains canonical; this goal is the SECONDARY human-readable view, NOT a competing canonical source); Goal 6 (deliverable shapes — rendering is a derived deliverable, distinct from N4/N5/N6 source deliverables); Capability N8 (the capability that implements this goal — see §8 Walkthrough results); BD-191 SC13 (BACKLOG-side capture surface).
+
+**Preliminary; subject to architect challenge at PS design pass.** Architect WILL challenge rendering mechanism, output format, and trigger semantics based on tactical analysis. User retains final authority. Tiered challenge bar (per pack memory `feedback_preliminary_triage_architect_challenge`): LOW bar — implementation specifics are PS-internal; rendering mechanism is architect's design choice.
+
+### §9.6 — Mapping of goals to BD-191 success criteria
 
 BD-191 SC1-SC11 capture process-level criteria for the requirements-gathering work. Some goals bind tightly to a specific SC; others apply as cross-cutting design principles. The mapping below is informative — used by the downstream `REQUIREMENTS-PS-V11.md` distillation when surfacing which goals are SC-bound versus principles-only.
 
@@ -585,6 +697,7 @@ BD-191 SC1-SC11 capture process-level criteria for the requirements-gathering wo
 | 16 (scope-discipline meta-criterion) | Cross-cutting across all SCs | Not SC-bound; criterion applies to every triage decision |
 | 17 (priorities as first-class driver) | SC11 | Direct binding (added 2026-05-24) |
 | 18 (PS-to-pack-entry-type boundary) | SC12 (groupings-side conversion responsibility lands in REQUIREMENTS-GROUPINGS-V11.md Capability #7) | Direct binding (added 2026-05-24); PS-side mechanism captured in BD-191 SC12 |
+| 19 (Human-readable PRD rendering for user verification) | SC13 (Human-readable PRD rendering generator) | Direct binding (added 2026-05-24); implementing capability Cap N8 captured in §8 Walkthrough results |
 
 The non-SC-bound goals (1, 5, 16) remain as design-principles input for the downstream `REQUIREMENTS-PS-V11.md` distillation and for all per-capability triage decisions.
 
