@@ -2861,7 +2861,7 @@ Resolved: 2026-05-24 — Phase 1 inventory (`maintenance-docs/v11-implementation
 
 **BD-191 — Product Specialist (PS) requirements + v11.0/v11.1+ scope decision**
 Type: feat — surfaced 2026-05-24 from sidecar Pack Chat session for v11.1+ Product Specialist feature requirements gathering; user-approved 2026-05-24
-Status: Open
+Status: Resolved
 Blockers: None — independent of v11.0 work; runs parallel; integrates with groupings (BD-186/189) via existing #7 from-external ingest workflow with ZERO hard dependency
 Unblocks: Downstream architect / planner / coder cycles for Product Specialist feature implementation (architect pass reads BD-191's REQUIREMENTS-PS-V11.md as primary input; RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md as ancillary fact base; INTAKE-PS-V11.md as user-intent audit trail)
 File/Symbol:
@@ -2960,7 +2960,7 @@ Description: Pack-side requirements-gathering work to refine the "Product Specia
   **Pipeline:** Pack Chat sidecar (this work) → REQUIREMENTS-PS-V11.md → user review + approval → BD-191 Resolved → downstream architect / planner / coder cycles open as separate BDs per scope decisions.
 
   **Position:** v11.1+ deferred — see EXECUTION-PLAN-V11.0.md §1.6 (Group 4 deferred-to-v11.1+ list). User-approved 2026-05-24. Independent of v11.0 work; runs parallel as a v11.1+ requirements pass. Implementation BDs surface from this requirements artifact; per-capability scope verdicts (v11.1 vs v11.2) decided by the sidecar's scope-verdict output. Architect/planner judgment at scheduling time.
-Resolved: n/a
+Resolved: 2026-05-25 — BD-191 closed after full sidecar requirements-gathering cycle. Primary deliverables landed: `maintenance-docs/v11-research/REQUIREMENTS-PS-V11.md` (commit `e2a0c65`; 1195 lines; 21 preliminary capabilities + 30 open architect decisions across 6 clusters); `maintenance-docs/v11-research/HANDOFF-PS-ARCHITECT.md` (commit `2ca740d`; 227 lines; navigation + framing for v11.x+ PS architect). Companion deliverables landed across 11 commits (`337ac47` renumber → `5748181` audit-fixes): INTAKE-PS-V11.md (audit trail with 19-goal index at §9 + §7.5 interview flow dynamics + §8 walkthrough results), RESEARCH-PRODUCT-SPECIALIST-LANDSCAPE.md, PLANNING-PROCESS-INSIGHTS-FROM-OT.md (OT-pattern synthesis), 8 IMPL-REPORTs (per-pass audit trail), 2 audit reports (parallel pack-architect + pack-reviewer; 22 fixes applied per IMPLEMENTATION-REPORT-AUDIT-FIXES.md). Cross-feature integration with groupings (BD-186 Resolved / BD-189 v11.1+ umbrella) landed via §5 amendments (REQUIREMENTS-GROUPINGS-V11.md §5.1 cycle-detection + §5.3 SC7.7 + §5.4 mvp_priority REJECT + §5.6 SC17.10 + new SC7.8 for Goal 18); HANDOFF-V11.1-ARCHITECT.md received §5.1 + §5.2 architect-investigation entries. New pack memory rules established and indexed: `feedback_preliminary_triage_architect_challenge`; `reference_pack_entry_type_semantics`; `feedback_pattern_matching_out_of_context_antipattern`. v11.1+ scope per main-chat BD scope markers commit `2e2f6ab`. Downstream pickup: v11.x+ PS architect reads HANDOFF-PS-ARCHITECT.md as direct entry point; locks the 30 preliminary architect decisions in REQUIREMENTS-PS-V11.md §10; produces ARCHITECTURE-PS-V11.x.md per standard pack architect/planner/coder pipeline. All preliminary positions remain subject to architect challenge per `feedback_preliminary_triage_architect_challenge`.
 
 ---
 
