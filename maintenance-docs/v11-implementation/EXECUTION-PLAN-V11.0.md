@@ -106,7 +106,7 @@ For reference. Do NOT touch in this plan.
 - BD-187 — Standalone entry-type instruction doc for external-tool consumption (added 2026-05-24 per user direction)
 - BD-188 — Phase-Iteration sprint view (added 2026-05-24 per user direction; hard-blocked on BD-189)
 - BD-189 — v11.1+ groupings implementation (added 2026-05-24 per user direction; title literally declares v11.1+ scope)
-- BD-191 — Product Specialist (PS) requirements + scope decision (added 2026-05-24 per user direction)
+- BD-192 — v11.1+ Product Specialist (PS) implementation umbrella (added 2026-05-25; replaces BD-191 in this Group 4 list — BD-191 Resolved 2026-05-25 as v11.0 requirements pass, IMPLEMENTATION work moved to BD-192 per sidecar wrap)
 
 ### 1.7 Group 5 — per-entry split (added during integration architect pass) (9 BDs)
 
