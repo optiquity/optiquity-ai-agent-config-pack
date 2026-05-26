@@ -40,9 +40,9 @@ This document is the architect-pass design for BD-185 (Phase parts hierarchy + t
 - **C-4.** Immutability invariants INV-1..INV-9 (per inventory §9) are LOCKED. Design MUST NOT violate any; violating an invariant is OUT OF SCOPE for BD-185 and surfaces to user discussion.
 - **C-5.** Trinity rule + cross-CLI parity per `CLAUDE.md` § "Trinity rule" + `ARCHITECTURE-BD-182.md` §4.1 canonical reference table for any cross-CLI references.
 
-### §1.4 — Decision log (Pack Chat review session 2026-05-25)
+### §1.4 — Decision log (Pack Chat review sessions 2026-05-25 + 2026-05-26)
 
-All 10 architect POQs were resolved during a Pack Chat review session with the user 2026-05-25. Three additional design decisions emerged from user-driven refinements during the same session, plus INV-7 breach acceptance. The 14 decisions are recorded here as a comprehensive audit trail.
+All 10 architect POQs were resolved during a Pack Chat review session with the user 2026-05-25 (D1–D14). Two additional architectural refinements (D15 + D16) emerged during a subsequent Pack Chat review session 2026-05-26 that resolved the 7 planner POQs (PLAN-BD-185.md §6 → §6a). The 16 decisions are recorded here as a comprehensive audit trail.
 
 | # | Decision | Source | Resolution | Cross-ref |
 |---|---|---|---|---|
@@ -60,8 +60,10 @@ All 10 architect POQs were resolved during a Pack Chat review session with the u
 | D12 | `pack-id-v2` marker backfill | Architect POQ-8 | LAZY — only Part-expanded tasks gain v2 marker | §4.1, §6.3 |
 | D13 | Issue Fields name collision | Architect POQ-9 | Capability-detection + `Pack Execution Order` fallback name | §5.1 |
 | D14 | Mid-development phase position | Architect POQ-10 | Append to END of sub-issue priority order (GH default) | §5.2 |
+| D15 | Task letter-suffix removed; task numbering rule clarified | User-driven (2026-05-26 POQ-4 discussion) | Letter suffix REJECTED grammar-wide; Task-M integer-only; new tasks get next integer; task number ≠ execution order; cross-refs strict | §4.1, §4.1a (NEW), §4.7 |
+| D16 | Convention Y: v11.0 archive intra-file additive-extension allowed | User-driven (2026-05-26 POQ-6 discussion) | Structural shape frozen at 5 subdirs; intra-file content may evolve via backward-compatible additive extensions; admits D5 cancelled state addition to phase-task-v11.0/SCHEMA.md + v11.0/INDEX.md forward-reference footnote | §10.1 |
 
-The full decision rationale lives in the Pack Chat session transcript 2026-05-25 (sessionId `f6d6104f-9268-42ff-90cf-ac8ae35433e3` per pack memory convention).
+The full decision rationale lives in the Pack Chat session transcripts 2026-05-25 (sessionId `f6d6104f-9268-42ff-90cf-ac8ae35433e3`) + 2026-05-26 (planner POQ resolution session) per pack memory convention.
 
 ### §1.5 — Architect-pass scope
 
@@ -129,14 +131,14 @@ The grammar is USER-LOCKED 2026-05-25. This section enumerates the canonical for
 |---|---|---|---|
 | Phase | `Phase-N` where `N` matches `[1-9][0-9]*` (integer; no leading zero except `0`; pack uses 1-indexed phases, but `Phase-0` is legal for v10-compat) | `Phase-1`, `Phase-7`, `Phase-23`, `Phase-60` | INV-1 holds: N is birth-order, immutable. |
 | Part | `Part-x` where `x` matches `[a-z]` (single lowercase ASCII letter) | `Part-a`, `Part-b`, `Part-c` | Up to 26 parts per phase. If a phase ever exceeds 26 parts, that is an architect-pass review trigger — not a BD-185 default case (planner triggers cap at 5+ tasks; 26-part phases are out of design scope). |
-| Task | `Task-Mx?` where `M` matches `[1-9][0-9]*` and optional suffix `x` matches `[a-z]` | `Task-3`, `Task-3d`, `Task-7` | M is birth-order ordinal per INV-2; the optional letter suffix `x` is a v11.1+ addition for compatible carry-forward (currently no v11.0 tasks use a letter suffix, but the grammar admits it for future flexibility). |
+| Task | `Task-M` where `M` matches `[1-9][0-9]*` (integer only; NO letter suffix per D15) | `Task-3`, `Task-7`, `Task-23` | M is birth-order ordinal per INV-2; task numbering is integer-only; new tasks always get next available integer after the last task in the phase. |
 
 **Composite identifiers:**
 
 | Form | Shape | Examples | Use |
 |---|---|---|---|
-| With Part | `Phase-N.Part-x.Task-Mx?` | `Phase-1.Part-a.Task-3d`, `Phase-7.Part-b.Task-12` | Used after mid-work split when a task belongs to a specific Part |
-| Without Part (null-Part) | `Phase-N.Task-Mx?` | `Phase-2.Task-7`, `Phase-12.Task-3` | DEFAULT for phases without Parts (most phases). Skip the `.Part-X` segment entirely. |
+| With Part | `Phase-N.Part-x.Task-M` | `Phase-1.Part-a.Task-3`, `Phase-7.Part-b.Task-12` | Used after mid-work split when a task belongs to a specific Part |
+| Without Part (null-Part) | `Phase-N.Task-M` | `Phase-2.Task-7`, `Phase-12.Task-3` | DEFAULT for phases without Parts (most phases). Skip the `.Part-X` segment entirely. |
 | Phase-only | `Phase-N` | `Phase-7` | Reference the phase epic itself |
 | Part-only | `Phase-N.Part-x` | `Phase-7.Part-a` | Reference a specific Part epic (when Parts exist on the phase) |
 
@@ -144,6 +146,7 @@ The grammar is USER-LOCKED 2026-05-25. This section enumerates the canonical for
 - Empty separator: `Phase-2..Task-7` — REJECTED by C-1. The null-Part form skips the segment ENTIRELY (no `..`).
 - Lowercase `phase` / `part` / `task`: REJECTED. The grammar uses capitalized atoms. (Rationale: matches METHODOLOGY's existing `Phase N` / `Part M` prose; visual scan distinguishes identifiers from English; aligns with `Phase-N` / `Part-M` proposals in inventory §12.2.)
 - Numeric Part identifier: REJECTED per C-1. Numeric Parts would collide with the existing `phase-N.M` legacy convention (which uses dot-separator for tasks).
+- **Letter suffix on Task** (e.g., `Task-Md`, `Task-3a`): REJECTED per D15. Rationale: task numbers are birth-order ordinals per INV-2; letter suffix as positional indicator contradicts birth-order semantic. Insertion semantic uses dependency edges (`blocked-by` / `blocks`), not letter suffix. New tasks always get next available integer.
 
 **Backward-compatibility legacy form retained:**
 
@@ -156,6 +159,16 @@ The existing v11.0 task pack-id `phase-N.M` (lowercase, with dot-separator, no l
 **Rationale (defensive justification for C-1 acceptability):**
 
 The C-1 grammar is more verbose than the proposed alternatives (`phase-N.Part-M`, `phase-N.M`, `part:M`) but is **unambiguous in all referencing contexts**. The two-atom prefix (`Phase-N.Part-a`) immediately reveals that `Part-a` is a Part identifier (not a task), distinguishing it from `Phase-N.M` (which is a task). The letter-vs-integer dichotomy (`Part-a` vs `Task-3`) prevents ambiguity in mid-form references (e.g., `Phase-1.a` would be ambiguous; `Phase-1.Part-a` is not). The architect does NOT propose an alternative — C-1 satisfies the usage-logic + concision-balance test stated by the user.
+
+### §4.1a — Task numbering rule — task number ≠ execution order
+
+**Task numbering rule (per D15 + INV-2):**
+
+- Task IDs are birth-order ordinals. M = the order in which the task was created within its phase. Stable; immutable across renames, reorders, supersessions.
+- New tasks always get the next available integer after the last task in the phase. For example: if Phase 7 currently has Task-1 through Task-12, the next task created is Task-13. Even if Task-3 has been cancelled or superseded, Task-13 is still the next.
+- **Task number does NOT define execution order.** Execution order is governed by: priority, dependencies being unblocked (`blocked-by` / `blocks` edges), and optional parallel-implementation optimizations.
+- Execution order has its own mechanism (per §5). The per-phase Issue Field (tracker mode) or `<!-- execution-order: NNN -->` marker (flat-file mode) is the execution-order SSOT.
+- Cross-references to task IDs are STRICT: `Phase-7.Task-3` refers to that exact entity. There is no 'family' resolution (e.g., `Task-3` and a hypothetical `Task-3a` are separate concepts and the latter doesn't exist by grammar).
 
 ### §4.2 — Part as a tracker entity (SC2 mandate)
 
@@ -797,7 +810,7 @@ Every checkbox from inventory §13 is addressed below: design decision OR explic
 
 | Checkbox | Decision | Where |
 |---|---|---|
-| Part identifier grammar chosen | `Phase-N.Part-x.Task-Mx?` (with-Part) / `Phase-N.Task-Mx?` (null-Part) per C-1 user-lock | §4.1 |
+| Part identifier grammar chosen | `Phase-N.Part-x.Task-M` (with-Part) / `Phase-N.Task-M` (null-Part) per C-1 user-lock; Task-M integer-only per D15 | §4.1 |
 | Part body marker decision | Trio: `<!-- pack-id: phase-N.Part-x -->`, `<!-- template_version: phase-part-v11.1 -->`, `<!-- pack-version: v11 -->` (matches existing phase-epic/phase-task pattern) | §4.3 + §11 |
 | Part label namespace decision | NO new label namespace. Identity is in pack-id markers + sub-issue parentage. Existing `status:*` labels apply to Parts. The `part:M` label namespace from BD-185 entry File/Symbol is REJECTED (identity-as-label is the wrong layer — labels are searchable annotations, not identity carriers; pack-id is the SSOT). | §4.3 + §7 |
 | Part state taxonomy | pending / in-progress / done / deferred (excludes merged-into and superseded-by per §4.4 lifecycle invariant) | §4.4 |
@@ -846,7 +859,7 @@ Every checkbox from inventory §13 is addressed below: design decision OR explic
 |---|---|
 | Check 32 (mirror in-sync) | Stream regex `^phase-\d+\.md$` unchanged (Parts inline). Mirror sort order changes (per §5.3); test fixtures updated. |
 | Check 33 (TOC in-sync) | Group regex `^phase-\d+\.md$` unchanged. TOC display order may extend to show execution order (planner discretion). |
-| Check 34 (cross-reference integrity) | Extended to admit Part-id form `Phase-N.Part-x` and `Phase-N.Part-x.Task-Mx?` in cross-references AND legacy `phase-N.M` form continues to resolve |
+| Check 34 (cross-reference integrity) | Extended to admit Part-id form `Phase-N.Part-x` and `Phase-N.Part-x.Task-M` in cross-references AND legacy `phase-N.M` form continues to resolve |
 | Check 35 (phase-task lib invariants) | Paralleled by Check 35.5: enforces phase-part-v11.1 SCHEMA + library invariants (parser/emitter at new `tracker-phase-part.sh` per D11) |
 | `check_issue_template_forms` | `expected_wi_type_options` extended from 4 to 5 (adds `phase-part-skeleton`) |
 | `check_template_archive_v11` | v11.1 cut: extends to 6 entry-type subdirs (adds `phase-part-v11.1`) — but v11.0 archive stays frozen at 5 subdirs |
@@ -924,8 +937,8 @@ Per §8.5 + inventory §7. Specific extensions:
 - Cross-ref regex (`CROSS_REF_RE` in `validate-pack.py`; Check 34 docstring) extends from `phase-N[.M]` to admit:
   - `Phase-N` (capitalized, v2 form)
   - `Phase-N.Part-x` (Part identifier)
-  - `Phase-N.Part-x.Task-Mx?` (Part-scoped task identifier)
-  - `Phase-N.Task-Mx?` (null-Part task identifier; v2 form)
+  - `Phase-N.Part-x.Task-M` (Part-scoped task identifier)
+  - `Phase-N.Task-M` (null-Part task identifier; v2 form)
 - Legacy `phase-N.M` (lowercase, dot-separator) continues to resolve.
 
 **Check 35 (`check_tracker_phase_task_invariants`, BD-106):**
@@ -937,7 +950,7 @@ Per §8.5 + inventory §7. Specific extensions:
 - `expected_wi_type_options` set extends from 4 to 5: `{bd, td, phase-epic-skeleton, phase-task-skeleton, phase-part-skeleton}`.
 
 **`check_template_archive_v11`:**
-- v11.0 archive frozen at 5 entry-type subdirs (unchanged).
+- v11.0 archive **structural shape** is frozen at 5 entry-type subdirs (bd / td / phase-epic / phase-task / inbound) — no new directories added in the v11.0 archive after v11.0 ship. **Intra-file content MAY evolve** via backward-compatible additive extensions (e.g., new admitted state values, forward-reference footnotes to v11.1+ evolutions). This matches the pack's existing design philosophy of additive extension (cf. D12 LAZY backfill). BD-185 exercises this convention: `phase-task-v11.0/SCHEMA.md` Section 3 admits new `cancelled` state value (per D5); `v11.0/INDEX.md` may add a forward-reference footnote pointing to v11.1+ archive.
 - v11.1 archive cut: NEW check `check_template_archive_v11_1` verifies 6 entry-type subdirs (`bd`, `td`, `phase-epic`, `phase-task`, `phase-part`, `inbound`) — OR (cleaner) the existing check is parameterized by version and verifies the v11.N archive matches its INDEX.md declaration.
 
 ### §10.2 — New checks introduced
