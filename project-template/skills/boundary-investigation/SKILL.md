@@ -30,7 +30,7 @@ design records). None of that infrastructure exists at a client install
 — clients receive only the `project-template/` content distributed by
 `scripts/init-project.sh`.
 
-The audit BD-175 (P-missed-7) documented the regression mechanism this
+The audit incident (P-missed-7) documented the regression mechanism this
 skill prevents: a reviewer or implementer, sticky on pack-side mental
 models from a prior review/fix cycle, recommends or applies pack-side
 mechanisms (e.g., "see `PACK-AGENTS.md` for the roster") inside a
@@ -166,7 +166,7 @@ The bias to import framing from the earlier-reviewed side into the
 later-reviewed side is real. This skill's Step 2 + Step 4 are the
 explicit antidote.
 
-## Worked example (BD-175 V1 anti-pattern)
+## Worked example (V1 anti-pattern)
 
 A pack reviewer flagged that the project trinity agent enumeration was
 missing several auditor variants. The reviewer's recommendation was:

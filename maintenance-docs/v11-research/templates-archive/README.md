@@ -45,7 +45,7 @@ templates-archive/
 - Per-entry-type schemas (`<entry-type>-v<N.M>/SCHEMA.md`) are one per
   type per minor: BD, TD, phase-epic, phase-task, inbound at v11.0.
 - A future `translations.yaml` (V2 §19.4) will live at the top of this
-  directory once `pack tracker update-templates` ships (BD-069).
+  directory once `pack tracker update-templates` ships.
 
 ## What lives here vs in `.github/ISSUE_TEMPLATE/`
 
@@ -65,5 +65,4 @@ their own archive. They pull relevant archive entries from the pack
 into their pack-side mirror at install / upgrade time, handled by
 the pack-upgrade migration sequence in `INSTALL-PROCEDURES.md`.
 
-Reference: ARCHITECTURE-V2.md §19.4, ARCHITECTURE-V3.3-DELTA.md §6.5,
-IMPLEMENTATION-PLAN.md BD-064 + Addendum 4 §2.2.
+Reference: ARCHITECTURE-V2.md §19.4, ARCHITECTURE-V3.3-DELTA.md §6.5.

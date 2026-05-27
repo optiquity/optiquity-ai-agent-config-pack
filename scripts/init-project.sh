@@ -817,14 +817,13 @@ stage_s11_v11_artifacts() {
         "$copy_fn" "$PACK/project-template/docs/pack/HELP-FRAGMENT.md" \
             "$TARGET/docs/pack/HELP-FRAGMENT.md"
     fi
-    # BD-175: HELP-FRAGMENT-TRACKER.md canonical source is pack-ops/ post-reorg.
-    # Retain $PACK/HELP-FRAGMENT-TRACKER.md fallback for pre-v11 layouts
-    # (e.g., migration mid-flight, or PACK pointing at a pre-BD-175 tag).
-    if [[ -f "$PACK/pack-ops/HELP-FRAGMENT-TRACKER.md" ]]; then
-        cp -f "$PACK/pack-ops/HELP-FRAGMENT-TRACKER.md" \
-            "$TARGET/docs/pack/HELP-FRAGMENT-TRACKER.md"
-    elif [[ -f "$PACK/HELP-FRAGMENT-TRACKER.md" ]]; then
-        cp -f "$PACK/HELP-FRAGMENT-TRACKER.md" \
+    # HELP-FRAGMENT-TRACKER.md client-shipped source is project-template/
+    # docs/pack/HELP-FRAGMENT-TRACKER.md. The pack-side and project-side
+    # versions are separate artifacts with separate audiences (pack/project
+    # separation of concerns); the project-side file is the source of truth
+    # for client install, and pack-side substitution is forbidden.
+    if [[ -f "$PACK/project-template/docs/pack/HELP-FRAGMENT-TRACKER.md" ]]; then
+        cp -f "$PACK/project-template/docs/pack/HELP-FRAGMENT-TRACKER.md" \
             "$TARGET/docs/pack/HELP-FRAGMENT-TRACKER.md"
     fi
     [[ -f "$TARGET/docs/pack/HELP-FRAGMENT.md" ]] \
@@ -1305,8 +1304,7 @@ cmd_update() {
 #   project-template/docs/project/changelog/_rules.md  ->  docs/project/changelog/_rules.md  [stage:S11,cmd_update]
 #   project-template/docs/project/changelog/_intro.md  ->  docs/project/changelog/_intro.md  [stage:S11,cmd_update]
 #   project-template/docs/project/changelog/_format.md  ->  docs/project/changelog/_format.md  [stage:S11,cmd_update]
-#   pack-ops/HELP-FRAGMENT-TRACKER.md  ->  docs/pack/HELP-FRAGMENT-TRACKER.md  [stage:S11]
-#   project-template/docs/pack/HELP-FRAGMENT-TRACKER.md  ->  docs/pack/HELP-FRAGMENT-TRACKER.md  [stage:S6,cmd_update]
+#   project-template/docs/pack/HELP-FRAGMENT-TRACKER.md  ->  docs/pack/HELP-FRAGMENT-TRACKER.md  [stage:S6,S11,cmd_update]
 #   supporting-docs/METHODOLOGY.md  ->  docs/pack/METHODOLOGY.md  [stage:S6,cmd_update]
 #   supporting-docs/INSTALL-PROCEDURES.md  ->  docs/pack/INSTALL-PROCEDURES.md  [stage:S6,cmd_update]
 #   scripts/pack-help.sh  ->  scripts/pack-help.sh  [stage:S11]

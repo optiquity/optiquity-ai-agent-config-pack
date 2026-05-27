@@ -605,7 +605,7 @@ planner or architect by default. PM Chat:
 6. On user approval, writes IMPLEMENTATION-PLAN.md and (in tracker
    mode) creates the tracker entity. Re-keys the TD. For each
    `Dependencies` bullet entry on the new task, calls
-   `tracker_links_create_blocked_by` (BD-108) to wire the
+   `tracker_links_create_blocked_by` to wire the
    cross-entity dependency edge.
 
 PM Chat invokes the **planner** (project-side `planner.md` agent)
@@ -648,11 +648,11 @@ Path 2 (`phase-N.M`). NO `--fold-into`. NO third subcommand.
 
 ### Implementation reference
 
-Orchestration library: `scripts/lib/tracker-promote.sh` (BD-107).
+Orchestration library: `scripts/lib/tracker-promote.sh`.
 Verb dispatcher: `scripts/pack-td.sh`. The library reuses the
 existing provider abstraction (`provider_create`, `provider_link`,
 `provider_sub_issue_create`, `provider_close`, `provider_set_labels`)
-and the BD-108 `tracker_links_create_blocked_by` orchestrator; no new
+and the `tracker_links_create_blocked_by` orchestrator; no new
 provider operation or capability flag is added.
 
 ---

@@ -1,5 +1,12 @@
 # Schema — `bd-v11.0` (pack-development backlog item)
 
+**SCOPE: PACK-INTERNAL.** This SCHEMA documents the pack-development
+backlog entity (BD-NNN) and applies to the pack repository only. BD
+entries are NOT a client-project concept; client projects use TD-NNN
+(see `../td-v11.0/SCHEMA.md`) for technical-debt items. This file is
+preserved here as the on-tracker representation contract for the pack
+repo's own backlog and is consumed by pack-internal migration scripts.
+
 This document fixes the on-tracker representation of a BD entry at
 template version `bd-v11.0`. The migration scripts (forward and
 reverse) and `pack tracker update-templates` (BD-069) read this file

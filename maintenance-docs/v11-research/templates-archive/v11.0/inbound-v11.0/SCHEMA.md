@@ -8,13 +8,12 @@ upstream pack-feedback (which crosses the surface boundary to the
 pack repo per V1 §7.5).
 
 Reference: ARCHITECTURE.md §7.5 / §10, ARCHITECTURE-V2.md §4.3,
-ARCHITECTURE-V3.3-DELTA.md §6.3 / §6.5, IMPLEMENTATION-PLAN.md
-BD-064 + Addendum 4 §2.2.
+ARCHITECTURE-V3.3-DELTA.md §6.3 / §6.5.
 
 ## 1. Identifier scheme
 
-- Inbound entries do not have a stable pack-side identifier prefix
-  (no BD-NNN / TD-NNN). The GH issue number is the identifier.
+- Inbound entries do not have a stable pack-side identifier prefix.
+  The GH issue number is the identifier.
 - Round-trip carrier: GH issue number plus body marker
   `<!-- pack-id: PENDING -->` (which stays `PENDING` for external
   bugs and feature requests; pack-feedback entries get rewritten
@@ -110,17 +109,16 @@ emit inbound issues.
 ## 7. `pack-id: PENDING` contract
 
 The `<!-- pack-id: PENDING -->` body marker is permanent for inbound
-entries. Unlike BD/TD entries (where chat triage rewrites `PENDING`
-to `BD-NNN` / `TD-NNN`), inbound entries have no pack-side namespace
-identity — the GH issue number is their identifier. The chat
-explicitly does NOT rewrite `PENDING` for entries with `inbound` /
-`external` / `pack-feedback` labels.
+entries. Inbound entries have no pack-side namespace identity — the GH
+issue number is their identifier. The chat explicitly does NOT rewrite
+`PENDING` for entries with `inbound` / `external` / `pack-feedback`
+labels.
 
-Forward migration (BD-065) does not write inbound entries to flat
-files (the parser reads only BACKLOG.md, which by definition holds
-no inbound entries). Reverse migration (BD-067) excludes inbound
-entries from the BACKLOG.md regen for the same reason. Mirror
-regen never sees an inbound entry's `PENDING` marker; the contract
-holds without explicit handling.
+Forward migration does not write inbound entries to flat files (the
+parser reads only BACKLOG.md, which by definition holds no inbound
+entries). Reverse migration excludes inbound entries from the
+BACKLOG.md regen for the same reason. Mirror regen never sees an
+inbound entry's `PENDING` marker; the contract holds without explicit
+handling.
 
 This is the v11.0 design (PACK-REVIEW-BD060-070 Finding #8 closure).

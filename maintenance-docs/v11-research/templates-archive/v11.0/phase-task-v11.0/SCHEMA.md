@@ -76,7 +76,7 @@ State mapping per V3.3 §6.3:
 
 ## Dependencies
 
-<one ID per line — optional; accepts phase-N, phase-N.M, TD-NNN, BD-NNN>
+<one ID per line — optional; accepts phase-N, phase-N.M, TD-NNN>
 ```
 
 Section headings are H2 (`##`). Order is fixed: Problem/Goal/Success,
@@ -88,7 +88,6 @@ Dependencies grammar (per V3.3 §5.3): one ID per line. Each line is:
 - `phase-N` — depends on the entire phase N being complete
 - `phase-N.M` — depends on a specific task in another phase
 - `TD-NNN` — depends on a TD entry
-- `BD-NNN` — depends on a BD entry
 
 Each line becomes one `provider.link()` call with `kind="blocked-by"`
 post-creation. Cycle-checking per V3.3 §5.5 / `tracker.toml [graph]

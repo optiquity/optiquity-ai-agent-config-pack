@@ -77,6 +77,10 @@ printf "\n=== Group 2: work-item.yml structure ===\n"
 check_workitem() {
     local label="$1"
     local path="$2"
+    # Optional 3rd arg: surface kind. "pack" (default) admits the `bd`
+    # wi-type option; "project" does NOT — per BD-193 boundary cleanup,
+    # BD entries are pack-internal and client projects use TD.
+    local surface_kind="${3:-pack}"
 
     assert_eq "$label name has 'work item'" "True" \
         "$(yq_get "$path" "'work item' in data['name'].lower()")"
@@ -87,7 +91,17 @@ check_workitem() {
     assert_contains "$label labels include template:work-item-v11.0" "$labels" "'template:work-item-v11.0'"
 
     options=$(yq_get "$path" "[b['attributes']['options'] for b in data['body'] if b.get('type')=='dropdown' and b.get('id')=='wi-type'][0]")
-    assert_contains "$label wi-type has bd"                    "$options" "'bd'"
+    if [[ "$surface_kind" == "pack" ]]; then
+        assert_contains "$label wi-type has bd"                "$options" "'bd'"
+    else
+        # Project-side MUST NOT admit `bd` (BD-193 F2.d).
+        if [[ "$options" == *"'bd'"* ]]; then
+            t_fail "$label wi-type must NOT have bd (project-side)" \
+                "options='$options' contains 'bd' — BD entries are pack-internal"
+        else
+            t_pass "$label wi-type correctly omits bd (project-side)"
+        fi
+    fi
     assert_contains "$label wi-type has td"                    "$options" "'td'"
     assert_contains "$label wi-type has phase-epic-skeleton"   "$options" "'phase-epic-skeleton'"
     assert_contains "$label wi-type has phase-task-skeleton"   "$options" "'phase-task-skeleton'"
@@ -107,8 +121,8 @@ check_workitem() {
     assert_contains "$label HTML-comment pack-version: v11"            "$raw" "<!-- pack-version: v11 -->"
 }
 
-check_workitem "pack-root work-item.yml"        "$REPO_ROOT/.github/ISSUE_TEMPLATE/work-item.yml"
-check_workitem "project-template work-item.yml" "$REPO_ROOT/project-template/.github/ISSUE_TEMPLATE/work-item.yml"
+check_workitem "pack-root work-item.yml"        "$REPO_ROOT/.github/ISSUE_TEMPLATE/work-item.yml"                  "pack"
+check_workitem "project-template work-item.yml" "$REPO_ROOT/project-template/.github/ISSUE_TEMPLATE/work-item.yml" "project"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 3: inbound.yml structure
@@ -172,7 +186,15 @@ pack_opts=$(yq_get "$REPO_ROOT/.github/ISSUE_TEMPLATE/work-item.yml" \
     "sorted([b['attributes']['options'] for b in data['body'] if b.get('id')=='wi-type'][0])")
 proj_opts=$(yq_get "$REPO_ROOT/project-template/.github/ISSUE_TEMPLATE/work-item.yml" \
     "sorted([b['attributes']['options'] for b in data['body'] if b.get('id')=='wi-type'][0])")
-assert_eq "5.1 wi-type options identical across surfaces" "$pack_opts" "$proj_opts"
+# Per BD-193 F2.d: pack-side admits `bd`, project-side does NOT. The
+# project-side options must be exactly the pack-side options minus `bd`.
+expected_proj_opts=$(python3 -c "
+import sys
+pack=$pack_opts
+print(sorted([o for o in pack if o != 'bd']))
+")
+assert_eq "5.1 wi-type options pack admits bd vs project omits bd" \
+    "$expected_proj_opts" "$proj_opts"
 
 pack_cats=$(yq_get "$REPO_ROOT/.github/ISSUE_TEMPLATE/inbound.yml" \
     "sorted([b['attributes']['options'] for b in data['body'] if b.get('id')=='in-category'][0])")

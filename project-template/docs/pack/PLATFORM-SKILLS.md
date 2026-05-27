@@ -219,10 +219,10 @@ This table is the authoritative source for those sparse cells:
 | Skill | Predicate | Source of truth |
 |---|---|---|
 | `python-server-architecture` | D2=python ∩ D3=server | PM chat reads D2 + D3 selections |
-| `python-data-architecture` | D2=python ∩ ((D3=server) ∨ data-marker present) | `scripts/lib/detect.sh::python_data_marker_detected()` is the canonical predicate for the data-marker branch (see BD-141); checks for relevant data / async I/O / ML dependencies in `requirements.txt` / `pyproject.toml` / `setup.py` / `setup.cfg` and for ≥5 `.py` files outside `tests/` |
-| `protobuf-patterns` | (any host language) ∩ protobuf-marker present | `scripts/lib/detect.sh::protobuf_marker_detected()` is the canonical predicate (see BD-156); checks for any `.proto` file in the project tree OR dependency manifests listing protobuf tooling (`protobuf`, `swift-protobuf` / `SwiftProtobuf`, `grpc-tools`, `grpc-swift-2`, `protoc`). Loads alongside `grpc-patterns` whenever D4=grpc; loads standalone (without `grpc-patterns`) for non-gRPC protobuf use (binary file format, IPC payloads, Twirp / Connect, persistent storage, log formats) |
-| `python-observability-patterns` | D2=python ∩ (D3=server ∨ observability-marker present) | `scripts/lib/detect.sh::python_observability_marker_detected()` is the canonical predicate (see BD-162); checks for OpenTelemetry / Prometheus client / structured-logging dependencies in `requirements.txt` / `pyproject.toml` / `setup.py` / `setup.cfg` / `uv.lock` and for source-file imports of `opentelemetry` / `prometheus_client` / `structlog`. Server projects (D3=server) load unconditionally even without the marker so observability rules apply during new-code review. |
-| `apple-swiftdata-patterns` | D1 ∈ {ios, macos} ∩ swiftdata-marker present | `scripts/lib/detect.sh::swiftdata_marker_detected()` is the canonical predicate (see BD-157); checks for any `.swift` file containing `import SwiftData` OR an `@Model` macro attribute, OR a dependency manifest (`Package.swift`, `Package.resolved`, `Podfile`, `Podfile.lock`) listing SwiftData explicitly. SwiftData is first-party Apple (iOS 17+ / macOS 14+) so the manifest marker rarely fires; the source-file markers are primary. Loads alongside `apple-architecture-core` + the per-OS architecture skill |
+| `python-data-architecture` | D2=python ∩ ((D3=server) ∨ data-marker present) | `scripts/lib/detect.sh::python_data_marker_detected()` is the canonical predicate for the data-marker branch; checks for relevant data / async I/O / ML dependencies in `requirements.txt` / `pyproject.toml` / `setup.py` / `setup.cfg` and for ≥5 `.py` files outside `tests/` |
+| `protobuf-patterns` | (any host language) ∩ protobuf-marker present | `scripts/lib/detect.sh::protobuf_marker_detected()` is the canonical predicate; checks for any `.proto` file in the project tree OR dependency manifests listing protobuf tooling (`protobuf`, `swift-protobuf` / `SwiftProtobuf`, `grpc-tools`, `grpc-swift-2`, `protoc`). Loads alongside `grpc-patterns` whenever D4=grpc; loads standalone (without `grpc-patterns`) for non-gRPC protobuf use (binary file format, IPC payloads, Twirp / Connect, persistent storage, log formats) |
+| `python-observability-patterns` | D2=python ∩ (D3=server ∨ observability-marker present) | `scripts/lib/detect.sh::python_observability_marker_detected()` is the canonical predicate; checks for OpenTelemetry / Prometheus client / structured-logging dependencies in `requirements.txt` / `pyproject.toml` / `setup.py` / `setup.cfg` / `uv.lock` and for source-file imports of `opentelemetry` / `prometheus_client` / `structlog`. Server projects (D3=server) load unconditionally even without the marker so observability rules apply during new-code review. |
+| `apple-swiftdata-patterns` | D1 ∈ {ios, macos} ∩ swiftdata-marker present | `scripts/lib/detect.sh::swiftdata_marker_detected()` is the canonical predicate; checks for any `.swift` file containing `import SwiftData` OR an `@Model` macro attribute, OR a dependency manifest (`Package.swift`, `Package.resolved`, `Podfile`, `Podfile.lock`) listing SwiftData explicitly. SwiftData is first-party Apple (iOS 17+ / macOS 14+) so the manifest marker rarely fires; the source-file markers are primary. Loads alongside `apple-architecture-core` + the per-OS architecture skill |
 | `deployment-python` | D2=python ∩ D5=linux-container | PM chat reads D2 + D5 selections |
 | *(future)* `swift-server-architecture` | D1 ∈ {macos, linux-server-with-Swift} ∩ D3=server | Deferred; placeholder for Vapor / Hummingbird |
 | *(future)* `node-server-architecture` | D1=linux-server ∩ D2=typescript ∩ D3=server | Deferred; placeholder for Node servers |
@@ -579,7 +579,7 @@ The skill catalog uses four suffixes, each tied to a different kind of
 content. **New skills must follow this convention.** Existing skills are
 not renamed in v11.0 — the cost of breaking external references
 outweighs the consistency benefit at this point; a future v12
-enforcement migration is tracked under BD-155.
+enforcement migration is tracked in future pack work.
 
 - **`*-best-practices`** — languages with idiomatic-style rules
   (formatting, dead-code policy, type-system idioms, error-handling
@@ -596,9 +596,9 @@ enforcement migration is tracked under BD-155.
 - **`*-patterns`** — cross-cutting concerns and recurring design rules
   not bound to a single platform or language. Examples:
   `grpc-patterns`, `rest-patterns`, `security-patterns`, plus the three
-  v11.0 additions: `protobuf-patterns` (BD-156, Proto3 schema design
-  standalone of gRPC), `apple-swiftdata-patterns` (BD-157, SwiftData
-  object-store rules), and `swift-concurrency-patterns` (BD-158, modern
+  v11.0 additions: `protobuf-patterns` (Proto3 schema design
+  standalone of gRPC), `apple-swiftdata-patterns` (SwiftData
+  object-store rules), and `swift-concurrency-patterns` (modern
   Swift Concurrency + GCD).
 
 When the suffix is genuinely ambiguous (e.g., a new skill could plausibly

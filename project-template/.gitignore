@@ -4,7 +4,7 @@
 .claude/rag-index/
 .claude/rag-cache/
 
-# ─── Tracker-mode local state (BD-061) ─────────────────────────────────────
+# ─── Tracker-mode local state ─────────────────────────────────────────────
 # Mapping file, migration checkpoints, and reverse-migration sidecars.
 # Never committed: contains local paths and is regenerable from the tracker.
 .pack-tracker/

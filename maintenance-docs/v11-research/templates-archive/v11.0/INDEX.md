@@ -5,13 +5,20 @@ schema descriptions. See `../README.md` for the archive contract.
 
 ## Entry types at v11.0
 
+### Client-applicable entry types
+
 | Entry type | Schema | `template_version` body marker | `template:` label |
 |---|---|---|---|
-| BD-NNN (pack-development backlog item) | [bd-v11.0/SCHEMA.md](bd-v11.0/SCHEMA.md) | `bd-v11.0` | `template:bd-v11.0` |
 | TD-NNN (project technical-debt item) | [td-v11.0/SCHEMA.md](td-v11.0/SCHEMA.md) | `td-v11.0` | `template:td-v11.0` |
 | Phase epic (`phase-N`) | [phase-epic-v11.0/SCHEMA.md](phase-epic-v11.0/SCHEMA.md) | `phase-epic-v11.0` | `template:phase-epic-v11.0` |
 | Phase task (`phase-N.M`) | [phase-task-v11.0/SCHEMA.md](phase-task-v11.0/SCHEMA.md) | `phase-task-v11.0` | `template:phase-task-v11.0` |
 | Inbound (bug / feature / pack-feedback) | [inbound-v11.0/SCHEMA.md](inbound-v11.0/SCHEMA.md) | `inbound-v11.0` | `template:inbound-v11.0` |
+
+### Pack-internal entry types (informational only; NOT applicable to client projects)
+
+| Entry type | Schema | `template_version` body marker | `template:` label |
+|---|---|---|---|
+| BD-NNN (pack-development backlog item) | [bd-v11.0/SCHEMA.md](bd-v11.0/SCHEMA.md) | `bd-v11.0` | `template:bd-v11.0` |
 
 Reference: V3.3 §6.5 D-18 carrier matrix.
 

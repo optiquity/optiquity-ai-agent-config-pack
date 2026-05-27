@@ -15,8 +15,7 @@ Per-entry files match `^\d{4}-\d{2}-\d{2}(-.+)?\.md$` (e.g.,
 `2026-04-20-phase-35.md` or bare `2026-04-20.md` when the source
 H3 anchor has no slug suffix). Date-first for lexical sorting;
 trailing slug optional for human readability per
-`scripts/lib/per-entry/_lib.sh` post-BD-164-retro Option B
-(slug optional).
+`scripts/lib/per-entry/_lib.sh` (slug optional).
 
 ## Entry contract
 

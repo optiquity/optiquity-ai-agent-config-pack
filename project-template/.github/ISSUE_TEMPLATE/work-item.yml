@@ -1,5 +1,5 @@
 name: Project work item (TD / phase-epic / phase-task)
-description: Project technical-debt item (TD-NNN), phase epic skeleton, or phase task skeleton. (Pack development BDs are filed against the pack repo, not here.)
+description: Project technical-debt item (TD-NNN), phase epic skeleton, or phase task skeleton.
 title: "TD-NNN: <short title>"
 labels:
   - work-item
@@ -20,9 +20,8 @@ body:
     id: wi-type
     attributes:
       label: Type
-      description: Pick TD for project items; phase-epic-skeleton or phase-task-skeleton for hand-edited phase skeletons (rare). The bd option exists for parity with the pack-side form but is not used in projects.
+      description: Pick TD for project items; phase-epic-skeleton or phase-task-skeleton for hand-edited phase skeletons (rare).
       options:
-        - bd
         - td
         - phase-epic-skeleton
         - phase-task-skeleton
@@ -31,8 +30,8 @@ body:
   - type: dropdown
     id: wi-kind
     attributes:
-      label: Kind (BD / TD only)
-      description: Required for Type=bd or Type=td. The METHODOLOGY § Part 7 type ("feat", "fix", "refactor", "docs", "chore", "infra").
+      label: Kind (TD only)
+      description: Required for Type=td. The METHODOLOGY § Part 7 type ("feat", "fix", "refactor", "docs", "chore", "infra").
       options:
         - feat
         - fix
@@ -46,7 +45,7 @@ body:
     id: wi-status
     attributes:
       label: Initial status
-      description: Defaults to Open for BD/TD. Phase tasks default to Pending. The chat changes status via labels post-creation.
+      description: Defaults to Open for TD. Phase tasks default to Pending. The chat changes status via labels post-creation.
       options:
         - Open
         - Unblocked
@@ -125,7 +124,7 @@ body:
     id: wi-description
     attributes:
       label: Description
-      description: For BD/TD/phase-epic-skeleton. (Phase task skeletons use Problem / Goal / Success below instead.)
+      description: For TD/phase-epic-skeleton. (Phase task skeletons use Problem / Goal / Success below instead.)
     validations:
       required: false
   - type: textarea
@@ -168,7 +167,7 @@ body:
     attributes:
       label: Dependencies (phase-task-skeleton only)
       description: |
-        One ID per line. Accepts `phase-N`, `phase-N.M`, `TD-NNN`, `BD-NNN`. The chat resolves each line to first-class `provider.link()` calls post-creation.
+        One ID per line. Accepts `phase-N`, `phase-N.M`, `TD-NNN`. The chat resolves each line to first-class `provider.link()` calls post-creation.
     validations:
       required: false
   - type: markdown

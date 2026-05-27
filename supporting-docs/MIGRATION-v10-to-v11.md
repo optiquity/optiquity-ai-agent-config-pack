@@ -65,22 +65,21 @@ project — there is no shared state between projects.
   fire. Per-user state persisted under `.pack-tracker/`.
 - TrackerProvider abstraction consumed by PM chat / Pack chat for
   tracker-aware prompts. The dedicated `auditor-issue-tracking` agent
-  (BD-109 client-side, BD-110 pack-side) is on the v11.x roadmap; the
-  provider it consumes ships in v11.0.
+  is on the v11.x roadmap; the provider it consumes ships in v11.0.
 
 **Out of scope for this version:**
 
 - Multi-tracker (Linear / Jira / Forgejo) backends — the abstraction
   exists, only `gh` is implemented in v11.
 - `--dry-run` / `--apply` / `--resume` migrator modes — shipped in
-  v11.0 by BD-095. Bare invocation defaults to `--apply` and
+  v11.0. Bare invocation defaults to `--apply` and
   auto-runs `--dry-run` first if no fresh dry-run output exists, so
   the single-shot UX is preserved. See `MERGE-STRATEGY.md` §A1 for
   full mode semantics.
 
 ---
 
-## Skill model changes (BD-142, BD-148)
+## Skill model changes
 
 v11 reframes how `docs/pack/PLATFORM-SKILLS.md` describes skill
 selection. The reframe is a **behavioral change**, not a doc-only
@@ -111,8 +110,8 @@ change — see "Behavioral impact" below.
 - **No SKILL.md content changed.** The reframe is a documentation
   and selection-model change. Every `project-template/skills/*/SKILL.md`
   file ships byte-equivalent to its v10 form (modulo the unrelated
-  Python skill split shipped as BD-035 and handled by Stage S5b of
-  the migrator — see "Migrator handling" below).
+  Python skill split handled by Stage S5b of the migrator — see
+  "Migrator handling" below).
 
 For the authoritative v11 dimension tables, the Tier 0 base list, the
 sparse intersection table, and the trigger-loaded list, read
@@ -153,7 +152,7 @@ either. **What client projects must do:**
    regardless of the reframe (see `MERGE-STRATEGY.md` per-file
    matrix entry for PLATFORM-SKILLS.md). The reframe does not
    touch their content.
-4. **Custom agents column header rename (BD-142 F3 / BD-148).**
+4. **Custom agents column header rename.**
    The illustrative row column headers in the `## Custom agents`
    section were `Tier 1 skills | Tier 2 skills` in v10 and are
    `Base skills | Dimensional skills` in v11 (semantics unchanged
@@ -178,45 +177,43 @@ ships the v11 PLATFORM-SKILLS.md template and the BD-088 mechanism
 preserves project customizations under the per-class strategy in
 `MERGE-STRATEGY.md`.
 
-The one skill *rename* in v11 — the BD-035 Python split
+The one skill *rename* in v11 — the Python split
 (`python-architecture` → `python-server-architecture` +
 `python-data-architecture`) — is handled by migrator Stage S5b,
 which writes a `*.v10-customized` advisory listing the old
 references and the disambiguation guidance. S5b ships independently
-of the dimension reframe (it landed in v11.0 with BD-035). See
-`scripts/migrate-v10-to-v11.sh` for the implementation and
-`PLAN-SKILL-DIMENSIONS.md` BD-147 for the planned extraction into
-`scripts/lib/migrator-skills.sh`.
+of the dimension reframe. See `scripts/migrate-v10-to-v11.sh` for
+the implementation.
 
-### BD-136 trinity-marker non-overlap
+### Trinity-marker non-overlap
 
-The dimension reframe and the BD-136 trinity-marker
-preservation mechanism are **non-overlapping**: BD-136 introduces
+The dimension reframe and the trinity-marker preservation mechanism
+are **non-overlapping**: the trinity-marker mechanism introduces
 Shape A / Shape B markers and a `renamed-from` annotation to
 preserve project-owned sections in the trinity files (`CLAUDE.md`,
 `AGENTS.md`, `GEMINI.md`) at project root. The PLATFORM-SKILLS.md
 reframe does NOT touch the trinity files (PLATFORM-SKILLS.md lives
-at `docs/pack/`, not at project root) and does NOT use the BD-136
+at `docs/pack/`, not at project root) and does NOT use the trinity-
 marker mechanism.
 
-The trinity files' `## Skill loading` H2 section was updated by
-BD-143 to describe the 5+3 model and to point at PLATFORM-SKILLS.md
+The trinity files' `## Skill loading` H2 section was updated in v11
+to describe the 5+3 model and to point at PLATFORM-SKILLS.md
 as the authoritative reference; the trinity rule applies (the same
 edit lands in CLAUDE.md, AGENTS.md, and GEMINI.md). The
 `**Active skills:**` line format inside that section did NOT change
 between v10 and v11 — it stays a comma-separated skill-name list
 written by the PM chat at project kickoff. Skill **names** in that
-list change only for the BD-035 Python split case (handled by S5b
+list change only for the Python split case (handled by S5b
 advisory); the dimension reframe itself produces no `Active skills`
 edits.
 
-The two mechanisms — BD-088 PLATFORM-SKILLS.md customization-
-preservation (sidecar-based) and BD-136 trinity-marker preservation
-(in-line marker-based) — operate on different file sets via
-different surfaces (Shape A pack-canonical sections vs Shape B
-project-owned override sections in the trinity, vs `## Custom *`
-sections in PLATFORM-SKILLS.md). The non-overlap is intentional;
-they do not conflict.
+The two mechanisms — PLATFORM-SKILLS.md customization-preservation
+(sidecar-based) and trinity-marker preservation (in-line marker-
+based) — operate on different file sets via different surfaces
+(Shape A pack-canonical sections vs Shape B project-owned override
+sections in the trinity, vs `## Custom *` sections in
+PLATFORM-SKILLS.md). The non-overlap is intentional; they do not
+conflict.
 
 ### D5 monorepo gotcha
 
@@ -255,7 +252,7 @@ source of truth.
 - **New directories.** `docs/project/backlog/`,
   `docs/project/implementation-plan/`, and `docs/project/changelog/`
   appear after migration, each containing:
-  - One Markdown file per entry (e.g., `docs/project/backlog/BD-NNN.md`,
+  - One Markdown file per entry (e.g., `docs/project/backlog/TD-NNN.md`,
     `docs/project/implementation-plan/phase-N.md`,
     `docs/project/changelog/YYYY-MM-DD-<slug>.md`) — authored source
     of truth.
@@ -340,8 +337,7 @@ then, divergence is caught at CI time via `validate-pack.py` Check 32
 `--force-overwrite-mirror` recovery flag described above is available
 for advanced users to acknowledge intentional overwrites. See
 `MERGE-STRATEGY.md` § "12. `generic` — everything else" for the
-mirror-vs-source treatment in the BD-088 customization-preserve
-pipeline.
+mirror-vs-source treatment in the customization-preserve pipeline.
 
 ---
 
@@ -386,7 +382,7 @@ last argument if needed.
 
 The script runs 7 framework stages (S0..S6). Stage S4 is split into two
 sub-banners (`S4a` and `S4b`) for operator clarity — both run inside the
-framework's single S4 stage and share the BD-095 sentinel
+framework's single S4 stage and share the same sentinel
 (`stage-S4.done`) and the framework exit code (`24` on failure).
 
 | Stage | What it does |
@@ -442,7 +438,7 @@ semantics + recovery contracts.
 less .pack-migrate-v10-to-v11/report.md
 ```
 
-The report is **truthful** (BD-059 / BD-088 contract): every file the
+The report is **truthful** (per the migrator contract): every file the
 migrator processed appears in exactly one section. No silent drops.
 
 Sections you may see:
@@ -573,12 +569,11 @@ surface.
 
 ---
 
-## BD-059 lessons learned — customization preservation
+## Lessons learned — customization preservation
 
-The historical v10 migrator (the v9->v10 script, sunset in v11 per
-BD-121) had a defect class that
-silently destroyed project customizations on a small set of file
-shapes (BD-059 in the BACKLOG). v11 fixes this with the BD-088
+The historical v10 migrator (the v9->v10 script, sunset in v11) had a
+defect class that silently destroyed project customizations on a small
+set of file shapes. v11 fixes this with the customization-preserve
 library:
 
 1. **Truthful report.** Every file the migrator touches appears in
@@ -592,11 +587,11 @@ library:
    refuses to run when its backup directory already exists; `--update`
    refuses when prior `.pre-update` sidecars are present. Both gates
    prevent silent overwrites.
-4. **CI regression guard.** validate-pack Check 25 (BD-089) runs a
-   4-fixture synthetic on every push to fail-closed if BD-088
-   regresses. Class-coverage delegated to
-   `scripts/tests/test-customization-preserve.sh` which CI runs per
-   BD-083.
+4. **CI regression guard.** validate-pack Check 25 runs a
+   4-fixture synthetic on every push to fail-closed if the
+   customization-preserve library regresses. Class-coverage delegated
+   to `scripts/tests/test-customization-preserve.sh` which CI runs
+   end-to-end.
 
 If the migrator reports `customization-detected-needs-reconciliation`
 on a file you didn't customize, that's a defect — please file a BD
@@ -653,7 +648,7 @@ inspect what the migrator did).
   preserved; their content may have shifted between v10 and v11 — let
   the migrator's 3-way merge handle it.
 - `XCODE_SCHEME` and `XCODE_DESTINATION` keys in `.claude/settings.json`
-  are preserved unchanged (BD-088 `claude-settings` allowlist).
+  are preserved unchanged (`claude-settings` allowlist).
 
 ### Python
 
@@ -708,7 +703,7 @@ corrupted (e.g., encoding mismatch), `cp <sidecar> <destination>` to
 restore your pre-migration copy, then manually apply the v11 changes
 the diff shows.
 
-### My customizations weren't preserved (BD-059 class regression)
+### My customizations weren't preserved
 
 This should never happen for the 12 documented classes (`MERGE-STRATEGY.md`).
 If it does:
@@ -719,8 +714,8 @@ If it does:
 4. Wait for the BD to land before re-attempting.
 
 Validate-pack Check 25 + `test-customization-preserve.sh` are the CI
-guards against this; if either is silenced or removed, BD-059 class
-defects can re-emerge.
+guards against this; if either is silenced or removed, customization-
+loss defects can re-emerge.
 
 ---
 

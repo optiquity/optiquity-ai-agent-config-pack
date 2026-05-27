@@ -17,7 +17,7 @@ network_access = true
 writable_roots = ["."]
 
 # Agent capabilities — mirrors `.claude/settings.json` env.AGENT_CAPABILITIES
-# and `.gemini/.env` AGENT_CAPABILITIES per the BD-059 trinity rule for
+# and `.gemini/.env` AGENT_CAPABILITIES per the trinity rule for
 # tool-level configuration. Update all three tools' configs together.
 [agent_capabilities]
 enabled = [

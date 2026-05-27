@@ -1,6 +1,6 @@
-name: Pack work item (BD / TD / phase-epic / phase-task)
-description: Pack-development backlog item (BD-NNN), project technical-debt item (TD-NNN), phase epic skeleton, or phase task skeleton.
-title: "BD-NNN: <short title>"
+name: Pack work item (TD / phase-epic / phase-task)
+description: Project technical-debt item (TD-NNN), phase epic skeleton, or phase task skeleton.
+title: "TD-NNN: <short title>"
 labels:
   - work-item
   - needs-triage
@@ -10,7 +10,7 @@ body:
     attributes:
       value: |
         Use this form for pack-managed work. The Type dropdown selects the entry kind; the
-        chat at triage time renames the title (e.g. `BD-NNN:` becomes the assigned ID),
+        chat at triage time renames the title (e.g. `TD-NNN:` becomes the assigned ID),
         adds the entry-specific `template:` label, and resolves Blockers/Dependencies into
         first-class links. Phase epic / phase task skeletons are rare-case fallbacks —
         day-to-day phase work is created by Pack Chat at migration time.
@@ -18,9 +18,8 @@ body:
     id: wi-type
     attributes:
       label: Type
-      description: Pick BD for pack-development items; TD for project items; phase-epic-skeleton or phase-task-skeleton for hand-edited phase skeletons (rare).
+      description: Pick TD for project items; phase-epic-skeleton or phase-task-skeleton for hand-edited phase skeletons (rare).
       options:
-        - bd
         - td
         - phase-epic-skeleton
         - phase-task-skeleton
@@ -29,8 +28,8 @@ body:
   - type: dropdown
     id: wi-kind
     attributes:
-      label: Kind (BD / TD only)
-      description: Required for Type=bd or Type=td. The METHODOLOGY § Part 7 type ("feat", "fix", "refactor", "docs", "chore", "infra").
+      label: Kind (TD only)
+      description: Required for Type=td. The METHODOLOGY § Part 7 type ("feat", "fix", "refactor", "docs", "chore", "infra").
       options:
         - feat
         - fix
@@ -44,7 +43,7 @@ body:
     id: wi-status
     attributes:
       label: Initial status
-      description: Defaults to Open for BD/TD. Phase tasks default to Pending. The chat changes status via labels post-creation.
+      description: Defaults to Open for TD. Phase tasks default to Pending. The chat changes status via labels post-creation.
       options:
         - Open
         - Unblocked
@@ -102,7 +101,7 @@ body:
     attributes:
       label: Blockers
       description: |
-        One per line. Each line is either an issue id (BD-NNN, TD-NNN, #N) or a phase token. Blockers may name 'phase-N' (entire phase) or 'phase-N.M' (specific task) — both forms are recognized. The chat resolves these to first-class links/sub-issue parents post-creation.
+        One per line. Each line is either an issue id (TD-NNN, #N) or a phase token. Blockers may name 'phase-N' (entire phase) or 'phase-N.M' (specific task) — both forms are recognized. The chat resolves these to first-class links/sub-issue parents post-creation.
     validations:
       required: false
   - type: textarea
@@ -123,7 +122,7 @@ body:
     id: wi-description
     attributes:
       label: Description
-      description: For BD/TD/phase-epic-skeleton. (Phase task skeletons use Problem / Goal / Success below instead.)
+      description: For TD/phase-epic-skeleton. (Phase task skeletons use Problem / Goal / Success below instead.)
     validations:
       required: false
   - type: textarea
@@ -166,7 +165,7 @@ body:
     attributes:
       label: Dependencies (phase-task-skeleton only)
       description: |
-        One ID per line. Accepts `phase-N`, `phase-N.M`, `TD-NNN`, `BD-NNN`. The chat resolves each line to first-class `provider.link()` calls post-creation.
+        One ID per line. Accepts `phase-N`, `phase-N.M`, `TD-NNN`. The chat resolves each line to first-class `provider.link()` calls post-creation.
     validations:
       required: false
   - type: markdown

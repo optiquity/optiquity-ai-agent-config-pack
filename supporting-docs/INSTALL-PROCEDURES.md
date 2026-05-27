@@ -21,7 +21,7 @@ procedure so legacy cross-references resolve.
 This file is shipped to every project alongside `METHODOLOGY.md` by
 `scripts/init-project.sh` and the active migrator
 (`scripts/migrate-v10-to-v11.sh` in v11; the v9->v10 migrator was
-retired in v11 per BD-121). The project-side canonical location is
+retired in v11). The project-side canonical location is
 `docs/pack/INSTALL-PROCEDURES.md`.
 
 ---
@@ -222,11 +222,11 @@ registered?" by checking the rows above for their `x-<name>` entry.
 
 ## Procedure 5-C — Customization reconciliation after v9.3 → v10 migration
 
-> **HISTORICAL — sunset in v11 (BD-121).** The v9->v10 migrator and
+> **HISTORICAL — sunset in v11.** The v9->v10 migrator and
 > its `MIGRATION-v9-to-v10.md` guide were removed in v11; this
 > procedure no longer fires for new migrations. The v11 N->N+1
-> migrator framework (BD-119, `scripts/lib/migrator-core.sh` +
-> the BD-088 customization-preservation library) handles
+> migrator framework (`scripts/lib/migrator-core.sh` +
+> the customization-preservation library) handles
 > customization reconciliation differently — see
 > `MIGRATION-v10-to-v11.md`. Procedure 5-C is retained here as
 > historical documentation only; clients still on v9.x should
@@ -661,8 +661,7 @@ listing each unresolved key.
 3. **Validate the resulting file.** For JSON:
    `python3 -m json.tool < <file> > /dev/null`. For TOML:
    `python3 -c "import tomllib; tomllib.load(open('<file>','rb'))"`.
-4. **Apply trinity rule for tool-config parity (per BD-059 success
-   criterion).** If the reconciled file affects an
+4. **Apply trinity rule for tool-config parity.** If the reconciled file affects an
    `AGENT_CAPABILITIES`-class key (env in `.claude/settings.json`,
    `[agent_capabilities]` table in `.codex/config.toml`,
    `.gemini/.env`), confirm the same value is expressed in all three
@@ -895,7 +894,7 @@ All four assertions must pass before the migration commit lands.
 
 ## Procedure 5-S — Post-migration housekeeping
 
-> **HISTORICAL — sunset in v11 (BD-121).** This procedure was
+> **HISTORICAL — sunset in v11.** This procedure was
 > triggered by the v9->v10 migrator's S7 sentinel; the migrator
 > was removed in v11. The v11 N->N+1 migrator framework handles
 > post-migration housekeeping inline (no separate procedure

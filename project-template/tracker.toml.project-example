@@ -68,7 +68,7 @@ reverse_available = false
 mapping_file = ".pack-tracker/id-map.json"
 
 # [graph]
-# Cross-entity dependency graph tuning (BD-108).
+# Cross-entity dependency graph tuning.
 # K-hop bound for the link-creation cycle check. Default is 10 if
 # this section/key is absent. Raise to detect longer cycles at the
 # cost of broader graph traversal per link attempt.

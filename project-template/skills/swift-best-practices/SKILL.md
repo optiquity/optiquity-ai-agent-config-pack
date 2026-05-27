@@ -89,4 +89,4 @@ anti-patterns are in the companion skill.
 
 36. Heterogeneous domain collections — protocol elevation over type-erasure-with-downcasting. Type-erasure wrappers that expose a `.base` accessor for downcasting to a concrete type are an LSP violation: runtime type interrogation disguised as abstraction. Prefer protocol elevation (move all needed behavior into the protocol as requirements) when callers should remain concrete-type-agnostic. Use exhaustive enums when the concrete type must be known at call sites and the type set is fixed and internal to the module.
 
-*(AsyncStream payload design — relocated to `swift-concurrency-patterns` as part of the BD-158 split.)*
+*(AsyncStream payload design — relocated to `swift-concurrency-patterns` as part of the v11.0 split into a separate skill.)*

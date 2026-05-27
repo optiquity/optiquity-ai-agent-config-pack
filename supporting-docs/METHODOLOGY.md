@@ -382,10 +382,10 @@ Every phase in IMPLEMENTATION-PLAN.md should follow this format:
 - **Files created/modified**: list
 - **Definition of done**: Measurable, verifiable criteria
 - **Dependencies**: zero or more nested bullets, one per dependency. Each entry is
-  either a phase epic (`phase-N`), a sibling or cross-phase task (`phase-N.M`), a
-  TD entry (`TD-NNN`), or a BD entry (`BD-NNN`). Trailing free-text after the ID
-  is preserved as a human-readable annotation. Parser regex:
-  `^\s*-\s+(phase-\d+(\.\d+)?|TD-\d+|BD-\d+)(\s+(.*))?$`.
+  either a phase epic (`phase-N`), a sibling or cross-phase task (`phase-N.M`), or
+  a TD entry (`TD-NNN`). Trailing free-text after the ID is preserved as a
+  human-readable annotation. Parser regex:
+  `^\s*-\s+(phase-\d+(\.\d+)?|TD-\d+)(\s+(.*))?$`.
   Example:
   ```
   - **Dependencies**:
@@ -1390,7 +1390,7 @@ absorbing task to express ordering without merging entities. The
 
 ### Procedure 5 — Custom agent and skill workflow
 
-*Relocated to [`INSTALL-PROCEDURES.md`](INSTALL-PROCEDURES.md) per BD-059. See that file for Procedure 5 and its sub-procedures (5.1–5.6).*
+*Relocated to [`INSTALL-PROCEDURES.md`](INSTALL-PROCEDURES.md). See that file for Procedure 5 and its sub-procedures (5.1–5.6).*
 
 ### Procedure 5-C — Customization reconciliation after v9.3 → v10 migration
 
@@ -1419,7 +1419,7 @@ Procedure 6 is the PM-chat-side companion to `add-capability.sh`. The
 script copies the conditional pack files and runs a read-only
 install-check discovery; Procedure 6 updates the trinity files'
 `**Active skills:**` line and `[PLACEHOLDER]` sections for the newly-
-active dimension and (as of BD-048) drives Form-I follow-ups for any
+active dimension and drives Form-I follow-ups for any
 machine-level tools the script reports as missing.
 
 Gates: **G6-drafts** (trinity drafts reviewed before any markdown
@@ -1672,7 +1672,7 @@ At every workflow-complete boundary, **before** saying "ready for next phase," t
 ### The running doc
 
 `PACK-FEEDBACK.md` lives at `docs/pack/PACK-FEEDBACK.md` in the project
-(post-BD-042 relocation), with `BACKLOG.md` and `STATUS.md` remaining
+(post-relocation), with `BACKLOG.md` and `STATUS.md` remaining
 at project root. PM-chat-owned, append-only. Agents never write to it.
 The template ships at `project-template/docs/pack/PACK-FEEDBACK.md`.
 

@@ -31,7 +31,7 @@ the per-entry mirror generator at `scripts/lib/per-entry/`.
   line, and add the `✅ RESOLVED (Phase NN)` annotation to the
   bold-header. Then re-run the mirror regenerator before staging.
 
-- **Cross-references.** TD-NNN, BD-NNN, phase-N, phase-N.M
+- **Cross-references.** TD-NNN, phase-N, phase-N.M
   identifiers may appear in `Blockers:` / `Unblocks:` / prose.
 
 ## Source of truth

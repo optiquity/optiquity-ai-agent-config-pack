@@ -1071,8 +1071,11 @@ def check_issue_template_forms() -> None:
     Verifies, per surface (pack-root and project-template):
       - work-item.yml, inbound.yml, config.yml all exist and parse as YAML
       - Forms (work-item, inbound) have name/description/labels/body keys
-      - work-item.yml's wi-type dropdown has all 4 options
-        (bd, td, phase-epic-skeleton, phase-task-skeleton) per V3.3 §6.1
+      - work-item.yml's wi-type dropdown has the per-surface expected
+        options. Pack-side admits `bd` (the pack-development entry
+        type); project-side does NOT admit `bd` because BD entries are
+        a pack-internal concept and client projects use TD entries.
+        Per V3.3 §6.1 + BD-193 boundary cleanup.
       - inbound.yml's in-category dropdown has all 7 options
         (bug, feature-request, 5× pack-feedback-*) per V2 §4.3
       - config.yml has blank_issues_enabled = false
@@ -1088,7 +1091,13 @@ def check_issue_template_forms() -> None:
         fail("PyYAML not available — cannot validate issue templates")
         return
 
-    expected_wi_type_options = {"bd", "td", "phase-epic-skeleton", "phase-task-skeleton"}
+    # Per-surface expected wi-type options. Pack-side admits `bd` (the
+    # pack-development entry type); project-side does NOT — BD entries
+    # are pack-internal by construction and client projects use TD.
+    expected_wi_type_options_per_surface = {
+        "pack-root": {"bd", "td", "phase-epic-skeleton", "phase-task-skeleton"},
+        "project-template": {"td", "phase-epic-skeleton", "phase-task-skeleton"},
+    }
     expected_in_category_options = {
         "bug", "feature-request",
         "pack-feedback-workflow", "pack-feedback-prompt",
@@ -1137,8 +1146,9 @@ def check_issue_template_forms() -> None:
                         fail(f"{label}: work-item.yml — missing wi-type dropdown")
                     else:
                         opts = set(dropdown.get("attributes", {}).get("options", []))
-                        missing = expected_wi_type_options - opts
-                        extra = opts - expected_wi_type_options
+                        expected = expected_wi_type_options_per_surface[label]
+                        missing = expected - opts
+                        extra = opts - expected
                         if missing or extra:
                             fail(
                                 f"{label}: work-item.yml — wi-type options mismatch "
@@ -1146,7 +1156,7 @@ def check_issue_template_forms() -> None:
                                 f"extra: {sorted(extra) or 'none'})"
                             )
                         else:
-                            ok(f"{label}: work-item.yml — 4 wi-type options correct (V3.3 §6.1)")
+                            ok(f"{label}: work-item.yml — {len(expected)} wi-type options correct (V3.3 §6.1 + BD-193)")
                 elif filename == "inbound.yml":
                     dropdown = next(
                         (b for b in body if b.get("type") == "dropdown" and b.get("id") == "in-category"),

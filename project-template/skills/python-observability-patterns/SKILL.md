@@ -17,7 +17,7 @@ that isn't a request-serving server (e.g., a Python data pipeline
 or worker that emits its own metrics / traces). The marker check
 is the canonical predicate
 `scripts/lib/detect.sh::python_observability_marker_detected()`
-(see `docs/pack/PLATFORM-SKILLS.md` Intersection table; BD-162).
+(see `docs/pack/PLATFORM-SKILLS.md` Intersection table).
 
 The rules cover the observability signal trinity (traces, metrics,
 logs) plus sampling, SLO shape, and retention shape — the five
