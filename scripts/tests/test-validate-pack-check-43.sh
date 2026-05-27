@@ -181,9 +181,11 @@ if not has_pt:
     failures.append("T2 _iter_client_installed_files() missing project-template/ entries")
 
 # T3: includes the explicit non-project-template entries (per
-#     _CLIENT_INSTALLED_FILES inventory).
+#     _CLIENT_INSTALLED_FILES inventory). Post-BD-193 F4/F5 + BD-194:
+#     pack-ops/HELP-FRAGMENT-TRACKER.md is NOT a client-installed file
+#     (project-template/docs/pack/HELP-FRAGMENT-TRACKER.md is the
+#     install source per BD-193 F4/F5).
 expected_extras = [
-    "pack-ops/HELP-FRAGMENT-TRACKER.md",
     "supporting-docs/METHODOLOGY.md",
     "supporting-docs/INSTALL-PROCEDURES.md",
     "scripts/pack-help.sh",

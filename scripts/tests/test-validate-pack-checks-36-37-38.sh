@@ -631,16 +631,19 @@ if hasattr(mod, '_iter_client_installed_files'):
             "expanded scope missing pedagogical surface"
         )
 
-# G7.T3: Helper returns >= 5 explicit non-project-template entries
-#   plus all project-template/ files. Architect §3.3 lists the 5
-#   extras: pack-ops/HELP-FRAGMENT-TRACKER.md,
-#   supporting-docs/METHODOLOGY.md, supporting-docs/INSTALL-PROCEDURES.md,
-#   scripts/pack-help.sh, scripts/lib/detect.sh.
+# G7.T3: Helper returns >= 4 explicit non-project-template entries
+#   plus all project-template/ files. Post-BD-193 F4/F5 + BD-194, the
+#   4 client-installed extras are: supporting-docs/METHODOLOGY.md,
+#   supporting-docs/INSTALL-PROCEDURES.md, scripts/pack-help.sh,
+#   scripts/lib/detect.sh. (Architect §3.3's pre-BD-193 5-entry list
+#   included pack-ops/HELP-FRAGMENT-TRACKER.md; per BD-193 F4/F5 the
+#   pack-side file is NOT the install source —
+#   project-template/docs/pack/HELP-FRAGMENT-TRACKER.md is — so it is
+#   correctly absent from _CLIENT_INSTALLED_FILES.)
 if hasattr(mod, '_iter_client_installed_files'):
     walked = mod._iter_client_installed_files()
     walked_str = {str(p) for p in walked}
     expected_extras = {
-        'pack-ops/HELP-FRAGMENT-TRACKER.md',
         'supporting-docs/METHODOLOGY.md',
         'supporting-docs/INSTALL-PROCEDURES.md',
         'scripts/pack-help.sh',

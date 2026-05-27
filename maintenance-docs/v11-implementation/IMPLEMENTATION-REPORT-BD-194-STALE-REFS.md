@@ -206,7 +206,7 @@ python3 scripts/validate-pack.py
 
 Result: `PASSED — all checks clean`. PASS.
 
-Invoked checks: 41 invocations across 40 unique checks (Check 16,
+Invoked checks: 43 invocations across 40 unique checks (Check 16,
 18, 19 each invoked twice — once for pack-root trinity and once for
 project-template trinity — yielding 3 extra invocations; 40 unique
 check IDs in range 1-23 + 25-43 with Check 24 absent per main BD-194
