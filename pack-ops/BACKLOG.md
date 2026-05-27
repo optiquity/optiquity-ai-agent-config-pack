@@ -3075,7 +3075,7 @@ Resolved: 2026-05-27 — Code Red 2 BD/TD/Path scope contamination cleanup compl
 
 **BD-194 — Check 24 byte-identity gate replacement (post-BD-193 architectural baseline fix)**
 Type: fix — surfaced 2026-05-27 from BD-193 Phase 4 audit §5.6 (M-8); architect-pass concern flagged pre-Code-Red-2 in pack memory `feedback_pack_project_separation_of_concerns`
-Status: Open
+Status: Resolved
 Blockers: BD-193 Resolved (this BD presupposes the pack/project separation contract that BD-193's F4/F5 established).
 Unblocks: BD-185 H.2 (H.2 fires after this BD lands to ensure no latent CI inconsistencies on the post-BD-193 baseline before BD-185 builds further form/SCHEMA divergence).
 File/Symbol:
@@ -3121,7 +3121,7 @@ Description: Replace `validate-pack.py` Check 24 (`check_help_fragment_tracker`)
   - `feedback_review_fix_one_cycle` (single review pass per BD)
 
   **Position:** Batch 19d-prep-3 — fires AFTER BD-193 Resolved + BEFORE BD-185 H.2 spawns. BD-185 H.2 builds on the post-BD-193 + post-BD-194 baseline.
-Resolved: n/a
+Resolved: 2026-05-27 — Check 24 byte-identity gate replacement completed via Candidate 6 design: Check 24 retired entirely; Check 23 modified to fail-loud on missing pack-side tracker fragment; Check 22 corrected to per-surface tracker fragment selection (latent bug fix surfaced by BD-193 Phase 4 §5.6). Implementation at 4ef6c02 across 14 files; follow-on at 6c76582 addressed 3 reviewer findings (F-1: stale refs in 3 pack-repo dotted-skill mirrors; F-3: pre-existing test failures inherited from BD-193 inventory change — CI blocker resolved; F-2: doc count NIT). validate-pack now PASS at 40 invoked checks (down from 41); 2 per-check test files updated. Pipeline: architect → planner → coder → reviewer → fix-coder; researcher SKIPPED (design space pre-enumerated). Process gap surfaced for separate update: pack-coder PREFLIGHT pattern should require per-check test runs as a verification gate.
 
 ---
 
