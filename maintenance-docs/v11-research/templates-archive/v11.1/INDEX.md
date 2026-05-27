@@ -50,17 +50,19 @@ at the v11.1 cut:
 2. `../v11.0/INDEX.md` gains a forward-reference footnote pointing at
    v11.1 evolutions.
 
-**Forms file** — Not yet created. The v11.1 forms/ subdirectory will be
-populated when the v11.1 archive cut is completed (architect-pass
-decision pending). When populated, the snapshot must reflect the
-post-BD-193 pack/project divergence: pack-root admits the `bd` wi-type
-option for filing pack-development backlog items; project-template
-does NOT, since clients use TD entries. The two forms are SEPARATE
-artifacts with SEPARATE audiences per the pack/project
-separation-of-concerns principle.
+## Forms file
 
-The live form is bumped to `template_version: work-item-v11.1`
-and gains:
+Not yet created. The v11.1 forms/ subdirectory will be populated when
+the v11.1 archive cut is completed (architect-pass decision pending).
+When populated, the snapshot must reflect the post-BD-193 pack/project
+divergence: pack-root admits the `bd` wi-type option for filing
+pack-development backlog items; project-template does NOT, since
+clients use TD entries. The two forms are SEPARATE artifacts with
+SEPARATE audiences per the pack/project separation-of-concerns
+principle.
+
+The live form will be bumped to `template_version: work-item-v11.1`
+and gain:
 - a 5th `wi-type` dropdown option (`phase-part-skeleton`);
 - a new `wi-part-letter` input (conditional on
   `wi-type=phase-part-skeleton`);

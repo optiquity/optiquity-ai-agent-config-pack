@@ -142,7 +142,7 @@ grammar; the grammar admits the additional Part-id forms):
 - `phase-N` — depends on the entire phase N being complete
 - `Phase-N.Part-x` — depends on a specific Part in another phase
 - `Phase-N.Task-M` — depends on a specific task (null-Part task
-  identifier per §4.1)
+  identifier per §1)
 - `Phase-N.Part-x.Task-M` — depends on a specific Part-scoped task
 - `phase-N.M` — legacy task identifier (continues to resolve via the
   backward-compat shim)
@@ -165,7 +165,7 @@ Phase parts are children of their phase epic (`phase-N`) via:
 - **First-class sub-issue parent** when `hierarchy.supported = true`
   in the backend's capability flags (github supports this; V1 §2.7.2).
 - **Label fallback** `parent:phase-N` on the Part otherwise (V3.2 §2.7;
-  architect §7 fallback extension TBD).
+  fallback extension TBD).
 
 Phase parts may not be parented to phase tasks —
 a Part's parent is exactly one phase epic. Cross-phase relationships
