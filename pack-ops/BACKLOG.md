@@ -3073,6 +3073,58 @@ Resolved: n/a
 
 ---
 
+**BD-194 — Check 24 byte-identity gate replacement (post-BD-193 architectural baseline fix)**
+Type: fix — surfaced 2026-05-27 from BD-193 Phase 4 audit §5.6 (M-8); architect-pass concern flagged pre-Code-Red-2 in pack memory `feedback_pack_project_separation_of_concerns`
+Status: Open
+Blockers: BD-193 Resolved (this BD presupposes the pack/project separation contract that BD-193's F4/F5 established).
+Unblocks: BD-185 H.2 (H.2 fires after this BD lands to ensure no latent CI inconsistencies on the post-BD-193 baseline before BD-185 builds further form/SCHEMA divergence).
+File/Symbol:
+  - PRIMARY INPUT (read-only):
+    - `maintenance-docs/v11-implementation/PACK-REVIEW-BD-193-PHASE-4.md` §5.6 (M-8 finding + 4 candidate design options)
+    - `scripts/validate-pack.py` `check_help_fragment_tracker()` (current byte-identity gate implementation)
+    - `pack-ops/HELP-FRAGMENT-TRACKER.md` (pack-side file)
+    - `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md` (project-side file; F4/F5 source-of-truth for client install)
+  - PRIMARY OUTPUT:
+    - `maintenance-docs/v11-implementation/ARCHITECTURE-BD-194.md` (architect deliverable; design selection + rationale)
+    - `maintenance-docs/v11-implementation/PLAN-BD-194.md` (planner deliverable; single-commit plan)
+    - `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-194.md` (coder deliverable)
+    - `scripts/validate-pack.py` (modified `check_help_fragment_tracker` per architect decision)
+Description: Replace `validate-pack.py` Check 24 (`check_help_fragment_tracker`) byte-identity gate between `pack-ops/HELP-FRAGMENT-TRACKER.md` and `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md` with an architecturally-consistent contract aligned with the BD-193 F4/F5 pack/project separation-of-concerns principle.
+
+  **Problem:** Per pack memory `feedback_pack_project_separation_of_concerns` (user-locked 2026-05-26) and BD-193 F4/F5 LOCKED disposition: `pack-ops/HELP-FRAGMENT-TRACKER.md` and `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md` are declared SEPARATE artifacts with SEPARATE audiences. The current Check 24 byte-identity gate contradicts this architectural rule — currently passes (both files happen to be byte-identical at HEAD `85196d4`) but will FAIL on the first intentional divergence.
+
+  **Latency:** Latent inconsistency. CI green at v11-dev HEAD. First future divergence (e.g., a pack-side verb description added that doesn't apply to clients) will surface this as a CI break.
+
+  **Design candidates (architect to choose / surface alternatives):**
+  1. **Delete the check entirely.** Loses safety net against accidental divergence.
+  2. **Per-surface check** (mirroring the `check_issue_template_forms` pattern adopted in BD-193 collateral CI edits). Define what each surface MUST contain; allow controlled divergence.
+  3. **Existence + structural validity invariant.** Both files must exist and parse as valid markdown; no content comparison.
+  4. **Allowed-divergence allowlist.** Byte-identity gate retained but with explicit allowlist of "OK to diverge" sections / patterns.
+  5. **Other** — architect may surface new candidates during design pass.
+
+  **Pipeline:** architect → user review → planner → user review → coder → reviewer (researcher SKIPPED — design space is already enumerated; no external research needed).
+
+  **Success Criteria:**
+  - SC1. Check function modified per architect-locked design decision
+  - SC2. Replacement contract is architecturally consistent with `feedback_pack_project_separation_of_concerns`
+  - SC3. validate-pack.py PASS at HEAD (`python3 scripts/validate-pack.py`)
+  - SC4. If divergence-allowing approach chosen: a minimal test fixture demonstrating allowed divergence (e.g., pack-side comment added) PASSES the new check
+  - SC5. Reviewer audit pass clean
+
+  **Out of scope:**
+  - Other byte-identity checks in validate-pack.py (each requires its own architect pass; this BD scoped to Check 24 only)
+  - Modifications to `HELP-FRAGMENT-TRACKER.md` content itself (this BD modifies the CI gate, not the content)
+  - BD-185 H.2-H.16 implementation (resumes after this BD)
+
+  **Pack memory anchors:**
+  - `feedback_pack_project_separation_of_concerns` (the architectural principle Check 24 must align with)
+  - `feedback_review_fix_one_cycle` (single review pass per BD)
+
+  **Position:** Batch 19d-prep-3 — fires AFTER BD-193 Resolved + BEFORE BD-185 H.2 spawns. BD-185 H.2 builds on the post-BD-193 + post-BD-194 baseline.
+Resolved: n/a
+
+---
+
 ## Active — v10 Scope
 
 **BD-059 — v10 migration silently destroys project customization**
