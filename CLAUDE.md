@@ -522,6 +522,45 @@ in the same commit as the behavior change.
   `.github/ISSUE_TEMPLATE/work-item.yml` admits `td`,
   `phase-epic-skeleton`, `phase-task-skeleton` — these are stale
   pre-BD-193 inheritance and should be removed.
+- **Enumerate ENCODING surfaces in pack-side audits.** When auditing
+  a pack-side surface for rule compliance (e.g., the deliverable-only
+  rule above), enumerate ALL surfaces that ENCODE expected state of
+  the audited surface:
+
+  - The audited surface itself (form, config, library, doc).
+  - Any validator that asserts content invariants on the surface
+    (e.g., `scripts/validate-pack.py` per-surface tables).
+  - Any TEST file that asserts content invariants on the surface
+    (e.g., `scripts/tests/test-issue-forms.sh` for issue forms).
+  - Any CI workflow definition that references the surface or its tests.
+  - Any cross-reference docs (architect docs, planner docs, IMPL-REPORTs)
+    describing the surface's expected state.
+
+  Each ENCODING surface must update in lock-step with the audited
+  surface. Asymmetric coverage (walking validators but not tests, or
+  vice versa) misses lock-step dependencies and creates audit gaps.
+
+  **Verdict sub-class.** LEAK (operational, test-encoded) — pack-self-
+  management state encoded in a test file's assertions, where the
+  assertion's truth value depends on whether the audited surface admits
+  a forbidden concept. Treat the same as a LEAK in the audited surface
+  itself.
+
+  **Why:** User-locked 2026-05-27 post-BD-185-reconciliation pack-side
+  re-audit (methodology gap MF1). The original BD-185 reconciliation
+  pack-side audit walked the form file (F1) + the validator's
+  per-surface dict (F2) but missed
+  `scripts/tests/test-issue-forms.sh` Group 2 + Group 5 assertions
+  (F3'). The test's hardcoded pack-root assertions encoded the
+  pre-cleanup state and required lock-step update with F1 + F2.
+  Caught post-fact by the PREFLIGHT per-check-test-runs gate
+  (`ba9e09d`), NOT by the audit itself. The methodology gap was
+  treating `scripts/tests/*` as "constructor context" wholesale when
+  the correct granularity is per-assertion (constructor portions
+  assert project-side emission; self-management portions assert
+  pack-side state). The `review` skill at
+  `.claude/skills/review/SKILL.md` + trinity mirrors carries the
+  operational checklist.
 - **Test infra is self-provisioned.** Tests that need GitHub repos
   provision them via `gh` CLI with per-step approval and clean up after.
   Never touch existing real repos as test targets — use scratch repos
