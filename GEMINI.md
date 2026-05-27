@@ -416,6 +416,43 @@ in the same commit as the behavior change.
   AGENTS.md, GEMINI.md, PACK-CHAT.md, PACK-AGENTS.md, BACKLOG.md, etc.)
   are NEVER mixed into pack product files (`project-template/`,
   `supporting-docs/`). Same applies in reverse.
+- **Project-side concepts on pack-side surfaces — deliverable-only.**
+  References to project-side concepts (TD entries, phases, phase
+  parts, phase tasks) on pack-side surfaces MUST be limited to
+  constructing project-side deliverables. They MUST NOT appear in
+  pack operations or pack templates/configs for pack-self-management.
+
+  **ALLOWED:** pack-side scripts that emit project-side templates
+  (e.g., `scripts/init-project.sh` stages that copy
+  `project-template/` content); pack-side validate-pack checks that
+  verify project-side structure; pack-side architecture/planner docs
+  that design project-side surfaces; pack memory rules that govern
+  project-side semantics.
+
+  **FORBIDDEN:** pack-root form admitting `td` / `phase-epic-skeleton`
+  / `phase-task-skeleton` wi-type options (pack doesn't file TDs or
+  phase-skeletons against itself); `pack-ops/` files referencing
+  project-side TD entries operationally (pack-ops uses BDs in
+  `BACKLOG.md` and batch labels in `EXECUTION-PLAN-V11.0.md`);
+  pack-root configs (`.claude/`, `.codex/`, `.gemini/` at pack-root)
+  using project-side concepts for pack-self-management.
+
+  **The test:** "Is this pack-side surface being used to CONSTRUCT a
+  project-side deliverable, or is it part of pack-self-management?"
+  If the surface IS the deliverable's source-of-truth (templates,
+  scripts that emit, validators that check), project-side references
+  are allowed. If the surface is pack-self-management, project-side
+  references are forbidden.
+
+  **Why:** User-locked 2026-05-27 during BD-185 reconciliation. The
+  rule was implicit in `feedback_pack_project_separation_of_concerns`
+  + `feedback_bd_pack_only_operational_rule` but not explicit.
+  BD-193 applied the asymmetric counterpart (removed BD from
+  project-side forms) but did not symmetrically clean up TD/phase
+  from pack-side self-management surfaces. Worked example: pack-root
+  `.github/ISSUE_TEMPLATE/work-item.yml` admits `td`,
+  `phase-epic-skeleton`, `phase-task-skeleton` — these are stale
+  pre-BD-193 inheritance and should be removed.
 - **Test infra is self-provisioned.** Tests that need GitHub repos
   provision them via `gh` CLI with per-step approval and clean up after.
   Never touch existing real repos as test targets — use scratch repos
