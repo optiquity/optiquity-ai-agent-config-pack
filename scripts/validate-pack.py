@@ -1082,9 +1082,12 @@ def check_issue_template_forms() -> None:
         only and must not appear on pack-self-management surfaces).
         Project-side admits the project-side entry types it
         constructs as a deliverable (`td`, `phase-epic-skeleton`,
-        `phase-task-skeleton`). Per V3.3 §6.1 + BD-193 (project-side)
-        + the "Project-side concepts on pack-side surfaces —
-        deliverable-only" rule (pack memory, user-locked 2026-05-27).
+        `phase-task-skeleton`, `phase-part-skeleton`). The
+        `phase-part-skeleton` option was added at v11.1 (BD-185 H.2)
+        for the mid-work phase expansion Part construct. Per
+        V3.3 §6.1 + BD-193 (project-side) + the "Project-side
+        concepts on pack-side surfaces — deliverable-only" rule
+        (pack memory, user-locked 2026-05-27).
       - inbound.yml's in-category dropdown has all 7 options
         (bug, feature-request, 5× pack-feedback-*) per V2 §4.3
       - config.yml has blank_issues_enabled = false
@@ -1104,19 +1107,24 @@ def check_issue_template_forms() -> None:
     #
     # Pack-side ("pack-root") admits ONLY `bd` — the pack repo files
     # pack-development backlog items against itself. TD entries,
-    # phase-epic-skeletons, and phase-task-skeletons are project-side
-    # concepts and MUST NOT appear on pack-self-management surfaces per
-    # the "Project-side concepts on pack-side surfaces — deliverable-only"
-    # rule (pack memory, user-locked 2026-05-27).
+    # phase-epic-skeletons, phase-task-skeletons, and phase-part-skeletons
+    # are project-side concepts and MUST NOT appear on pack-self-management
+    # surfaces per the "Project-side concepts on pack-side surfaces —
+    # deliverable-only" rule (pack memory, user-locked 2026-05-27).
     #
     # Project-side ("project-template") admits the project-side entry
     # types the pack constructs as a deliverable (`td`, `phase-epic-skeleton`,
-    # `phase-task-skeleton`). It does NOT admit `bd` because BD entries
-    # are pack-internal by construction and client projects use TD
-    # entries (BD-193).
+    # `phase-task-skeleton`, `phase-part-skeleton`). It does NOT admit
+    # `bd` because BD entries are pack-internal by construction and client
+    # projects use TD entries (BD-193).
+    #
+    # `phase-part-skeleton` was added at v11.1 (BD-185 H.2) as the 4th
+    # project-side entry type, representing the mid-work phase expansion
+    # "Part" construct introduced at v11.1. Under BD-068 soft cap of 5
+    # wi-type options per surface; no defense required.
     expected_wi_type_options_per_surface = {
         "pack-root": {"bd"},
-        "project-template": {"td", "phase-epic-skeleton", "phase-task-skeleton"},
+        "project-template": {"td", "phase-epic-skeleton", "phase-task-skeleton", "phase-part-skeleton"},
     }
     expected_in_category_options = {
         "bug", "feature-request",

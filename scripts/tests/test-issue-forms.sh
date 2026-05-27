@@ -8,12 +8,16 @@
 #   2. work-item.yml structure: per-surface wi-type options + dependent
 #      fields. Pack-root admits ONLY `bd` (pack-self-management; no
 #      phase-task fields); project-template admits the project-side
-#      deliverable types (`td`, `phase-epic-skeleton`, `phase-task-skeleton`)
-#      with phase-task fields. Labels (incl. template:work-item-v11.0),
-#      blockers description (phase tokens on project-side only), trailing
+#      deliverable types (`td`, `phase-epic-skeleton`, `phase-task-skeleton`,
+#      `phase-part-skeleton`) with phase-task fields + `wi-part-letter`
+#      input. Labels (incl. template:work-item-v11.0), blockers description
+#      (phase tokens + Part-id tokens on project-side only), trailing
 #      markdown trio (pack-id PENDING + template_version + pack-version).
 #      Per the "Project-side concepts on pack-side surfaces — deliverable-
-#      only" rule (pack memory, user-locked 2026-05-27).
+#      only" rule (pack memory, user-locked 2026-05-27). The
+#      `phase-part-skeleton` option and `wi-part-letter` field were
+#      added at v11.1 (BD-185 H.2) for the mid-work phase expansion
+#      Part construct.
 #   3. inbound.yml structure: labels, in-category dropdown's 7 options,
 #      trailing markdown trio with template_version: inbound-v11.0.
 #   4. config.yml: blank_issues_enabled false; contact_links present.
@@ -86,13 +90,15 @@ check_workitem() {
     # 3rd arg: surface kind. "pack" admits ONLY the `bd` wi-type option
     # (pack-self-management form; the pack repo files BDs against itself).
     # "project" admits the project-side entry types the pack constructs as
-    # a deliverable (`td`, `phase-epic-skeleton`, `phase-task-skeleton`).
-    # Per the "Project-side concepts on pack-side surfaces — deliverable-
-    # only" rule (pack memory, user-locked 2026-05-27) + BD-193.
+    # a deliverable (`td`, `phase-epic-skeleton`, `phase-task-skeleton`,
+    # `phase-part-skeleton`). The `phase-part-skeleton` option was added
+    # at v11.1 (BD-185 H.2). Per the "Project-side concepts on pack-side
+    # surfaces — deliverable-only" rule (pack memory, user-locked
+    # 2026-05-27) + BD-193.
     local surface_kind="${3:-pack}"
     # 4th arg: space-separated list of expected wi-type options for this
     # surface (e.g., "bd" for pack-root, "td phase-epic-skeleton
-    # phase-task-skeleton" for project-template).
+    # phase-task-skeleton phase-part-skeleton" for project-template).
     local expected_opts="$4"
 
     # Surface-aware name check. Pack-root form post-cleanup uses "Pack BD"
@@ -129,8 +135,11 @@ check_workitem() {
             t_pass "$label wi-type correctly omits bd (project-side)"
         fi
     else
-        # Pack-side: forbidden project-side concepts.
-        for forbidden in td phase-epic-skeleton phase-task-skeleton; do
+        # Pack-side: forbidden project-side concepts. `phase-part-skeleton`
+        # added to the forbidden list at v11.1 (BD-185 H.2) — Parts are a
+        # project-side mid-work expansion concept; pack-self-management
+        # does not file Parts.
+        for forbidden in td phase-epic-skeleton phase-task-skeleton phase-part-skeleton; do
             if [[ "$options" == *"'$forbidden'"* ]]; then
                 t_fail "$label wi-type must NOT have $forbidden (pack-side)" \
                     "options='$options' contains '$forbidden' — project-side concept on pack-self-management surface"
@@ -148,6 +157,17 @@ check_workitem() {
             present=$(yq_get "$path" "any(b.get('id')=='$fid' for b in data['body'])")
             assert_eq "$label phase-task field $fid present" "True" "$present"
         done
+        # wi-part-letter field exists on the project-template form only
+        # (the form that constructs the project-side phase-part-skeleton
+        # deliverable). Added at v11.1 (BD-185 H.2) for the mid-work
+        # phase expansion Part construct. Pack-root form has no
+        # phase-part fields by deliverable-only rule.
+        part_letter_present=$(yq_get "$path" "any(b.get('id')=='wi-part-letter' for b in data['body'])")
+        assert_eq "$label phase-part field wi-part-letter present" "True" "$part_letter_present"
+    else
+        # Pack-root MUST NOT have wi-part-letter (project-side concept).
+        part_letter_present=$(yq_get "$path" "any(b.get('id')=='wi-part-letter' for b in data['body'])")
+        assert_eq "$label wi-part-letter correctly absent (pack-side)" "False" "$part_letter_present"
     fi
 
     blockers_desc=$(yq_get "$path" "[b['attributes']['description'] for b in data['body'] if b.get('id')=='wi-blockers'][0]")
@@ -157,6 +177,12 @@ check_workitem() {
     if [[ "$surface_kind" == "project" ]]; then
         assert_contains "$label wi-blockers description names phase-N"   "$blockers_desc" "phase-N"
         assert_contains "$label wi-blockers description names phase-N.M" "$blockers_desc" "phase-N.M"
+        # Part-id forms admitted at v11.1 (BD-185 H.2). The Blockers
+        # description must admit both `Phase-N.Part-x` (a specific
+        # phase part) and `Phase-N.Part-x.Task-M` (a specific task
+        # under a phase part) identifier forms.
+        assert_contains "$label wi-blockers description names Phase-N.Part-x"        "$blockers_desc" "Phase-N.Part-x"
+        assert_contains "$label wi-blockers description names Phase-N.Part-x.Task-M" "$blockers_desc" "Phase-N.Part-x.Task-M"
     fi
 
     raw=$(raw_file "$path")
@@ -166,7 +192,7 @@ check_workitem() {
 }
 
 check_workitem "pack-root work-item.yml"        "$REPO_ROOT/.github/ISSUE_TEMPLATE/work-item.yml"                  "pack"    "bd"
-check_workitem "project-template work-item.yml" "$REPO_ROOT/project-template/.github/ISSUE_TEMPLATE/work-item.yml" "project" "td phase-epic-skeleton phase-task-skeleton"
+check_workitem "project-template work-item.yml" "$REPO_ROOT/project-template/.github/ISSUE_TEMPLATE/work-item.yml" "project" "td phase-epic-skeleton phase-task-skeleton phase-part-skeleton"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 3: inbound.yml structure
@@ -235,9 +261,10 @@ proj_opts=$(yq_get "$REPO_ROOT/project-template/.github/ISSUE_TEMPLATE/work-item
 # project-side wi-type option sets are DISJOINT. Pack-side admits ONLY
 # `bd` (pack-self-management); project-side admits the project-side entry
 # types the pack constructs as a deliverable (`td`, `phase-epic-skeleton`,
-# `phase-task-skeleton`). The DISJOINT contract replaces the BD-194-era
-# "project = pack - bd" invariant — the deliverable-only rule makes the
-# two surfaces' wi-type sets fully disjoint.
+# `phase-task-skeleton`, `phase-part-skeleton`). The `phase-part-skeleton`
+# option was added at v11.1 (BD-185 H.2). The DISJOINT contract replaces
+# the BD-194-era "project = pack - bd" invariant — the deliverable-only
+# rule makes the two surfaces' wi-type sets fully disjoint.
 disjoint=$(python3 -c "
 pack=$pack_opts
 proj=$proj_opts

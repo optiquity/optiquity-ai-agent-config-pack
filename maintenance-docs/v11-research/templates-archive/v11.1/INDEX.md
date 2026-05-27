@@ -52,23 +52,39 @@ at the v11.1 cut:
 
 ## Forms file
 
-Not yet created. The v11.1 forms/ subdirectory will be populated when
-the v11.1 archive cut is completed (architect-pass decision pending).
-When populated, the snapshot must reflect the post-BD-193 pack/project
-divergence: pack-root admits the `bd` wi-type option for filing
-pack-development backlog items; project-template does NOT, since
-clients use TD entries. The two forms are SEPARATE artifacts with
-SEPARATE audiences per the pack/project separation-of-concerns
-principle.
+`forms/work-item.yml` is a byte-identical snapshot of the
+project-template work-item form
+(`project-template/.github/ISSUE_TEMPLATE/work-item.yml`) post-H.2.
+This single-file snapshot pattern follows POQ-NEW-1 Option c
+(snapshot the project-template surface only) and matches the
+v11.0 archive precedent: `templates-archive/v11.0/forms/work-item.yml`
+is also project-template-shaped (post-F2.c bug-fix carve-out where
+the pack-root variant was carved out and the archive captured the
+client-facing form). The pack-root form
+(`.github/ISSUE_TEMPLATE/work-item.yml`) remains preserved in git
+history at its live path; the archive does not duplicate it.
 
-The live form will be bumped to `template_version: work-item-v11.1`
-and gain:
-- a 5th `wi-type` dropdown option (`phase-part-skeleton`);
-- a new `wi-part-letter` input (conditional on
-  `wi-type=phase-part-skeleton`);
-- description-text updates to admit `Phase-N.Part-x` and
-  `Phase-N.Part-x.Task-M` identifier forms in Blockers, Unblocks,
-  and Dependencies textareas.
+Per the pack/project separation-of-concerns principle, the two
+surfaces' work-item forms are SEPARATE artifacts with SEPARATE
+audiences: pack-root admits the `bd` wi-type option for filing
+pack-development backlog items against the pack repo; the
+project-template form does NOT admit `bd` (project clients use TD
+entries). The archive captures the client-facing form so the v11.1
+template-archive cut reflects what clients install, not what the
+pack repo files against itself.
+
+Snapshot contents (post-H.2):
+- 4 `wi-type` dropdown options:
+  `td`, `phase-epic-skeleton`, `phase-task-skeleton`,
+  `phase-part-skeleton` (new at v11.1; under BD-068 soft cap of 5).
+- `wi-part-letter` input (conditional on
+  `wi-type=phase-part-skeleton`) — captures the next available letter
+  under phase N (`a`, `b`, `c`, ...).
+- Blockers / Unblocks / Dependencies description-text extensions:
+  admit `Phase-N.Part-x` (a specific phase part) and
+  `Phase-N.Part-x.Task-M` (a specific task under a phase part)
+  identifier forms, in addition to the prior `phase-N`, `phase-N.M`,
+  and `TD-NNN` forms.
 
 Per the template-version delta table, only `work-item-v11.0` bumps to
 `work-item-v11.1`; all four prior per-entry-type `template_version`
