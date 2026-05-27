@@ -148,12 +148,15 @@ assert_contains "2.1 S6 ran" "$out" "S6 — render truthful migration report"
     && t_pass "2.4 .gemini pack-help command installed" \
     || t_fail "2.4 .gemini pack-help missing"
 
-# DELTA L1: client tracker fragment byte-identical to pack-side canonical.
-# BD-175: pack-side canonical relocated from REPO_ROOT to REPO_ROOT/pack-ops/.
-if cmp -s "$REPO_ROOT/pack-ops/HELP-FRAGMENT-TRACKER.md" "$T/docs/pack/HELP-FRAGMENT-TRACKER.md"; then
-    t_pass "2.5 HELP-FRAGMENT-TRACKER.md byte-identical to pack-side canonical (DELTA L1)"
+# BD-193 F4/F5 + BD-194: migrate-v10-to-v11.sh S5 install source for the client
+# tracker fragment is the project-template-side file (separate-artifact, separate-
+# audience per pack memory feedback_pack_project_separation_of_concerns).
+# Test asserts the install copy matches the project-template-side source
+# (migrator S5 contract per BD-193 F4/F5).
+if cmp -s "$REPO_ROOT/project-template/docs/pack/HELP-FRAGMENT-TRACKER.md" "$T/docs/pack/HELP-FRAGMENT-TRACKER.md"; then
+    t_pass "2.5 HELP-FRAGMENT-TRACKER.md matches project-template-side install source (BD-193 F4/F5)"
 else
-    t_fail "2.5 byte-identity violated"
+    t_fail "2.5 install-source mismatch (expected: project-template/docs/pack/HELP-FRAGMENT-TRACKER.md)"
 fi
 
 # 2.5b (BD-097 audit B-1) pack-help.sh + lib/detect.sh installed by

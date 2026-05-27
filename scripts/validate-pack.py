@@ -59,9 +59,13 @@ Checks:
       executable under `scripts/` is listed in
       `HELP-FRAGMENT-PACK.md` (and pack-internal scripts are marked
       `pack-internal: true`).
-  24. HELP-FRAGMENT-TRACKER byte-identity (BD-082, DELTA L1): the
-      pack-root and project-template HELP-FRAGMENT-TRACKER.md copies
-      are byte-identical.
+  24. [RETIRED in BD-194 — see ARCHITECTURE-BD-194.md]
+      HELP-FRAGMENT-TRACKER byte-identity (BD-082, DELTA L1; superseded
+      by Check 22 + Check 23 + Check 41 per-surface coverage). Per
+      pack memory feedback_pack_project_separation_of_concerns
+      (user-locked 2026-05-26), the pack-side and project-side
+      HELP-FRAGMENT-TRACKER.md files are SEPARATE artifacts with
+      SEPARATE audiences; byte-identity is coincidence, not contract.
   25. Customization-detection regression guard (BD-089): the
       customization-preserve fixture set produces the expected
       disposition + class for every fixture row, and the truthful
@@ -1879,8 +1883,17 @@ def check_help_fragment_freshness() -> None:
     Conservative: only flags verbs that match the regex shape AND are
     absent from the fragment. Editorial mentions of unrelated commands
     are not flagged.
+
+    Per BD-194: each surface authors its own HELP-FRAGMENT-TRACKER.md.
+    Per-surface tracker fragment lookup via the surfaces dictionary; no
+    cross-surface concatenation. Each surface's verbs are compared
+    against the surface's own tracker fragment. See
+    ARCHITECTURE-BD-194.md Candidate 6.
     """
     print("\n── Check 22: Help-fragment freshness (BD-082) ──")
+    # Per BD-194: each surface authors its own HELP-FRAGMENT-TRACKER.md.
+    # Per-surface fragment lookup per the surface dictionary; no
+    # cross-surface concatenation.
     surfaces = {
         "pack-root": {
             "root": REPO_ROOT,
@@ -1891,6 +1904,7 @@ def check_help_fragment_freshness() -> None:
                 REPO_ROOT / "supporting-docs" / "INSTALL-PROCEDURES.md",
             ],
             "fragment": REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-PACK.md",
+            "tracker_fragment": REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-TRACKER.md",
         },
         "project-template": {
             "root": REPO_ROOT / "project-template",
@@ -1898,20 +1912,23 @@ def check_help_fragment_freshness() -> None:
                 REPO_ROOT / "project-template" / "docs" / "pack" / "PM-CHAT.md",
             ],
             "fragment": REPO_ROOT / "project-template" / "docs" / "pack" / "HELP-FRAGMENT.md",
+            "tracker_fragment": REPO_ROOT / "project-template" / "docs" / "pack" / "HELP-FRAGMENT-TRACKER.md",
         },
     }
-    tracker_fragment = REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-TRACKER.md"
 
     any_failed = False
     for surface, cfg in surfaces.items():
         frag = cfg["fragment"]
+        tracker_frag = cfg["tracker_fragment"]
         if not frag.is_file():
             fail(f"{surface}: help fragment missing: {frag.relative_to(REPO_ROOT)}")
             any_failed = True
             continue
-        frag_text = frag.read_text()
-        if tracker_fragment.is_file():
-            frag_text += "\n" + tracker_fragment.read_text()
+        if not tracker_frag.is_file():
+            fail(f"{surface}: tracker fragment missing: {tracker_frag.relative_to(REPO_ROOT)}")
+            any_failed = True
+            continue
+        frag_text = frag.read_text() + "\n" + tracker_frag.read_text()
         surface_root = cfg["root"]
         verbs_referenced = set()
         for doc in cfg["docs"]:
@@ -1964,6 +1981,12 @@ def check_help_fragment_completeness() -> None:
     Every top-level executable script in scripts/ must appear in
     HELP-FRAGMENT-PACK.md unless the script declares `# pack-internal: true`
     near the top. Prevents the fragment going stale as new scripts ship.
+
+    Per BD-194: pack-side tracker fragment (pack-ops/HELP-FRAGMENT-TRACKER.md)
+    is REQUIRED — fail-loud if missing (no silent fallback). Pack-side
+    existence is the surface-local invariant this check enforces;
+    project-side existence is enforced independently by Check 41
+    (_CLIENT_INSTALLED_FILES). See ARCHITECTURE-BD-194.md Candidate 6.
     """
     print("\n── Check 23: Help-fragment completeness (BD-082) ──")
     fragment = REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-PACK.md"
@@ -1971,9 +1994,10 @@ def check_help_fragment_completeness() -> None:
     if not fragment.is_file():
         fail(f"pack-root help fragment missing: {fragment.name}")
         return
-    text = fragment.read_text()
-    if tracker_fragment.is_file():
-        text += "\n" + tracker_fragment.read_text()
+    if not tracker_fragment.is_file():
+        fail(f"pack-root tracker fragment missing: pack-ops/{tracker_fragment.name}")
+        return
+    text = fragment.read_text() + "\n" + tracker_fragment.read_text()
 
     scripts_dir = REPO_ROOT / "scripts"
     missing = []
@@ -2151,28 +2175,14 @@ customization_report "{state_dir}/dispositions.tsv" "{state_dir}/report.md" \\
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
-def check_help_fragment_tracker_byte_identity() -> None:
-    """Check 24 — Shared HELP-FRAGMENT-TRACKER byte-identity (BD-082, DELTA L1).
-
-    The tracker fragment is canonical at pack root and mirrored in the
-    client template at project-template/docs/pack/. Per DELTA L1 the
-    two MUST be byte-identical so install-time copies in BD-080 stage
-    S11 produce a faithful client mirror.
-    """
-    print("\n── Check 24: HELP-FRAGMENT-TRACKER byte-identity (BD-082, DELTA L1) ──")
-    pack_root = REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-TRACKER.md"
-    client    = REPO_ROOT / "project-template" / "docs" / "pack" / "HELP-FRAGMENT-TRACKER.md"
-    if not pack_root.is_file():
-        fail(f"pack-root canonical missing: {pack_root.name}")
-        return
-    if not client.is_file():
-        fail(f"client mirror missing: project-template/docs/pack/{client.name}")
-        return
-    if pack_root.read_bytes() != client.read_bytes():
-        fail(f"byte-identity violated: {pack_root.relative_to(REPO_ROOT)} != "
-             f"{client.relative_to(REPO_ROOT)}")
-        return
-    ok(f"HELP-FRAGMENT-TRACKER.md byte-identical across pack-root and client mirror")
+# ── Check 24 RETIRED in BD-194 (per ARCHITECTURE-BD-194.md Candidate 6).
+# The pack-side HELP-FRAGMENT-TRACKER.md and project-template-side
+# HELP-FRAGMENT-TRACKER.md are SEPARATE artifacts with SEPARATE audiences
+# per pack memory feedback_pack_project_separation_of_concerns (user-
+# locked 2026-05-26). Pack-side existence is asserted by Check 23
+# (fail-loud); project-side existence is asserted by Check 41
+# (_CLIENT_INSTALLED_FILES self-doc list integrity). No cross-surface
+# content invariant is required or asserted.
 
 
 # ── Check 26: BD-119 migrator-framework inventory ──────────────────────────
@@ -4760,14 +4770,16 @@ _CHECK_40_ALLOWLIST: dict[str, str] = {
     # user-approved 2026-05-20). Same class as MEMORY.md.
     "feedback_review_fix_one_cycle.md": "Claude-Code memory cache feedback file (external to pack repo)",
     # Project-side HELP-FRAGMENT companion (referenced from
-    # pack-ops/HELP-FRAGMENT-TRACKER.md, which is a byte-identical
-    # mirror of project-template/docs/pack/HELP-FRAGMENT-TRACKER.md
-    # per Check 24). The bare ref is correct at the client-installed
-    # location (resolves to docs/pack/HELP-FRAGMENT.md in the
-    # client repo as a same-dir sibling); from pack-internal view it
-    # would qualify to project-template/docs/pack/HELP-FRAGMENT.md
-    # but qualifying it would break the byte-identity contract.
-    "HELP-FRAGMENT.md": "Byte-identical mirror exception (Check 24); bare ref correct at client-installed location",
+    # pack-ops/HELP-FRAGMENT-TRACKER.md and from project-template/docs/
+    # pack/HELP-FRAGMENT-TRACKER.md). Per BD-194 the pack-side and
+    # project-side HELP-FRAGMENT-TRACKER.md files are SEPARATE artifacts
+    # with SEPARATE audiences (feedback_pack_project_separation_of_concerns,
+    # user-locked 2026-05-26); the previous "byte-identical mirror"
+    # rationale is retired with Check 24. The bare ref is correct at the
+    # client-installed location (resolves to docs/pack/HELP-FRAGMENT.md
+    # in the client repo as a same-dir sibling). Resolves via Check 41
+    # _CLIENT_INSTALLED_FILES.
+    "HELP-FRAGMENT.md": "Project-side mirror exception; resolves at client-installed location (see Check 41 _CLIENT_INSTALLED_FILES)",
 }
 
 # Anchor phrases that, when found within the per-pattern context window
@@ -5123,7 +5135,7 @@ _CHECK_43_ALLOWLIST: dict[str, str] = {
     "PLATFORM-SKILLS.md": "Project-side docs/pack/PLATFORM-SKILLS.md (client-installed)",
     "OPTIONAL-FEATURES.md": "Project-side docs/pack/OPTIONAL-FEATURES.md (client-installed)",
     "HELP-FRAGMENT.md": "Project-side docs/pack/HELP-FRAGMENT.md (client-installed)",
-    "HELP-FRAGMENT-TRACKER.md": "Project-side docs/pack/HELP-FRAGMENT-TRACKER.md (client-installed; byte-identical mirror per Check 24)",
+    "HELP-FRAGMENT-TRACKER.md": "Project-side docs/pack/HELP-FRAGMENT-TRACKER.md (client-installed; per-surface authoritative per BD-193 F4/F5 + BD-194)",
     "SETUP-EXISTING.md": "Project-side docs/pack/SETUP-EXISTING.md (client-installed install doc)",
     # Per-entry skeleton filename PATTERNS (template placeholders, not real files).
     "BD-NNN.md": "Per-entry backlog filename pattern (template)",
@@ -6064,7 +6076,9 @@ def main() -> None:
     check_pack_help_per_cli_parity()
     check_help_fragment_freshness()
     check_help_fragment_completeness()
-    check_help_fragment_tracker_byte_identity()
+    # ── Check 24 callsite removed in BD-194 (Candidate 6). See
+    # ARCHITECTURE-BD-194.md §4-§5 + the retirement comment block above
+    # the former check_help_fragment_tracker_byte_identity location.
     check_customization_detection_regression_guard()
     check_migrator_framework_inventory()
     check_agent_canonical_phrases()

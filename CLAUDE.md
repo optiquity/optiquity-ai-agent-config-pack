@@ -501,9 +501,8 @@ in the same commit as the behavior change.
   anywhere in the repo, so prose references are unambiguous even when
   the path is omitted. Quick check: `find . -name "<proposed-name>"
   -not -path "./.git/*"`. Structurally required collisions are exempt
-  (trinity files, per-skill `SKILL.md`, byte-identical mirrors per
-  CI Check 24, ecosystem-fixed names like `.gitignore` / `pyproject.toml`
-  / `Package.swift`); for these exempted collisions, prose references
+  (trinity files, per-skill `SKILL.md`, ecosystem-fixed names like
+  `.gitignore` / `pyproject.toml` / `Package.swift`); for these exempted collisions, prose references
   must include path context ("pack-root `CLAUDE.md`" vs "project-template
   `CLAUDE.md`"). Cross-reference forms that STRIP the unique filename
   also violate this rule's intent even when they avoid the literal

@@ -103,8 +103,7 @@ canonical list):
 <!-- DENY-LIST-CONTENT-START -->
 - **File names:** `PACK-AGENTS.md`, `PACK-CHAT.md`, `HELP-FRAGMENT-PACK.md`,
   `HELP-FRAGMENT-TRACKER.md` (bare-filename refs from project-side; the
-  pack-ops copy lives at `pack-ops/HELP-FRAGMENT-TRACKER.md` per CI
-  Check 24 byte-identity contract with `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md`),
+  pack-ops copy lives at `pack-ops/HELP-FRAGMENT-TRACKER.md`),
   `OPTIONAL-FEATURES.md` (bare-filename refs; project-side has its own
   `project-template/docs/pack/OPTIONAL-FEATURES.md`)
 - **Path prefixes:** `maintenance-docs/`, `pack-ops/` (any file there —

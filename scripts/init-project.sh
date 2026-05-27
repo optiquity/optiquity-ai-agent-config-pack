@@ -808,10 +808,9 @@ stage_s11_v11_artifacts() {
 
     # 1. HELP-FRAGMENT*.md → docs/pack/. HELP-FRAGMENT.md per the usual
     #    classifier-copy rule (developer-customizable). HELP-FRAGMENT-
-    #    TRACKER.md is byte-identity-required across pack-root and client
-    #    mirror per DELTA L1 (validate-pack Check 24); force-copy from
-    #    pack-root canonical regardless of class so an existing-* re-run
-    #    cannot leave stale tracker fragments in place.
+    #    TRACKER.md install path: see the comment block below for the
+    #    project-template-side source-of-truth contract (post-BD-193
+    #    F4/F5; pack-side substitution is forbidden).
     mkdir -p "$TARGET/docs/pack"
     if [[ -f "$PACK/project-template/docs/pack/HELP-FRAGMENT.md" ]]; then
         "$copy_fn" "$PACK/project-template/docs/pack/HELP-FRAGMENT.md" \

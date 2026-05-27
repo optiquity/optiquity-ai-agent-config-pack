@@ -178,12 +178,16 @@ assert_contains "3.1 S11 stage ran" "$out" \
     && t_pass "3.2 .gemini/commands/pack-help.toml present" \
     || t_fail "3.2 .gemini/commands/pack-help.toml missing"
 
-# DELTA L1: client HELP-FRAGMENT-TRACKER.md is byte-identical to pack-side canonical.
-# BD-175: pack-side canonical relocated from REPO_ROOT to REPO_ROOT/pack-ops/.
-if cmp -s "$REPO_ROOT/pack-ops/HELP-FRAGMENT-TRACKER.md" "$T/docs/pack/HELP-FRAGMENT-TRACKER.md"; then
-    t_pass "3.3 client HELP-FRAGMENT-TRACKER.md byte-identical to pack-side canonical (DELTA L1)"
+# BD-193 F4/F5 + BD-194: client HELP-FRAGMENT-TRACKER.md install source is the
+# project-template-side file (separate-artifact, separate-audience per pack memory
+# feedback_pack_project_separation_of_concerns). The pack-side
+# pack-ops/HELP-FRAGMENT-TRACKER.md is a SEPARATE artifact with a SEPARATE
+# audience and is NOT the install source. Test asserts the install copy matches
+# the project-template-side source (init-project.sh S11 contract per BD-193 F4/F5).
+if cmp -s "$REPO_ROOT/project-template/docs/pack/HELP-FRAGMENT-TRACKER.md" "$T/docs/pack/HELP-FRAGMENT-TRACKER.md"; then
+    t_pass "3.3 client HELP-FRAGMENT-TRACKER.md matches project-template-side install source (BD-193 F4/F5)"
 else
-    t_fail "3.3 byte-identity violated (DELTA L1)"
+    t_fail "3.3 install-source mismatch (expected: project-template/docs/pack/HELP-FRAGMENT-TRACKER.md)"
 fi
 
 # 3.4 (BD-097 audit B-1) pack-help.sh + lib/detect.sh installed in client,
