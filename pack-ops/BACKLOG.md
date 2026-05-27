@@ -3014,7 +3014,7 @@ Resolved: n/a
 
 **BD-193 — Code Red 2: BD/TD/Path scope contamination cleanup (Batch 19d-prep)**
 Type: fix — surfaced 2026-05-26 during BD-185 H.1 INLINE review prep from cross-cutting audit; user-locked 3-rule triage stack (operational vs explanatory + pack/project separation + token economy) established 2026-05-26 in pack memory `feedback_bd_pack_only_operational_rule`, `feedback_pack_project_separation_of_concerns`, `feedback_client_facing_token_economy`
-Status: Open
+Status: Resolved
 Blockers: None. Cleanup applies to client-facing surfaces (project-template/, supporting-docs/) and pack-archive (templates-archive/v11.0/, v11.1/) PLUS one pack-script source (scripts/init-project.sh F4/F5). All in-scope surfaces are accessible at v11-dev HEAD.
 Unblocks: BD-185 H.2 fires only after this BD lands clean — BD-185 H.2 modifies the same templates-archive/v11.1/phase-part-v11.1/SCHEMA.md surface that this BD cleans up (the 23 BD-185 cite removals). Without this BD, H.2 would build on contaminated baseline.
 File/Symbol:
@@ -3069,7 +3069,7 @@ Description: Cleanup of pack-only / client-facing scope contamination surfaced d
   - `P-missed-7` (boundary discipline; underlying motivation for Class 1 fix)
 
   **Position:** Batch 19d-prep — fires IMMEDIATELY after H.1 commit lands and BEFORE H.2 spawns. BD-185 H.2 builds on the cleaned-up phase-part-v11.1/SCHEMA.md surface; Code Red 2 must close before H.2 begins.
-Resolved: n/a
+Resolved: 2026-05-27 — Code Red 2 BD/TD/Path scope contamination cleanup completed across pack-archive (templates-archive/v11.0 + v11.1), client-facing surfaces (project-template/, supporting-docs/), and scripts (init-project.sh F4/F5). Phase 3 cleanup at 85196d4 applied 11 LOCKED + 3 LEAK + ~85 WASTE + 4 §6.* user-resolutions. Phase 4 extensive audit (PACK-REVIEW-BD-193-PHASE-4.md at 8b0718e) found 11 follow-on findings: 5 MUST + 2 SHOULD + 2 NIT + 1 AMBIGUOUS-resolved + 1 SHOULD-deferred to BD-194 (Check 24 architect-led fix). Phase 5 remediation at 8b0718e applied 10 fixes; Check 24 work tracked as BD-194 (Batch 19d-prep-3, fires before BD-185 H.2). 3-rule triage stack (operational vs explanatory + pack/project separation + token economy) captured as pack memory.
 
 ---
 
