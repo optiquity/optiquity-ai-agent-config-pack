@@ -21,6 +21,24 @@ allowed-tools: Read, Grep, Glob, Bash
 9. Check test coverage: every behavior change should have a corresponding test change. Missing tests are findings.
 10. Check for deferred work: `TODO`, `KNOWN GAP`, `VERIFY` comments must use the project's typed format with `TD-TBD`.
 
+## Surface-rule audits — enumerate ENCODING surfaces
+
+When auditing a pack-side surface (form, config, library, doc) for rule compliance — e.g., applying the trinity Pack memory rule "Project-side concepts on pack-side surfaces — deliverable-only" — enumerate ALL surfaces that ENCODE expected state of the audited surface before finalizing the review:
+
+1. The audited surface itself (form file, config file, library, doc).
+2. Any validator that asserts content invariants on the surface (e.g., `scripts/validate-pack.py` per-surface tables).
+3. Any TEST file that asserts content invariants on the surface (e.g., `scripts/tests/test-issue-forms.sh` for issue forms).
+4. Any CI workflow definition that references the surface or its tests.
+5. Any cross-reference docs (architect docs, planner docs, IMPL-REPORTs) describing the surface's expected state.
+
+Each ENCODING surface must update in lock-step with the audited surface. Asymmetric coverage (walking validators but not tests, or vice versa) misses lock-step dependencies and creates audit gaps.
+
+**Verdict sub-class.** LEAK (operational, test-encoded) — pack-self-management state encoded in a test file's assertions, where the assertion's truth value depends on whether the audited surface admits a forbidden concept. Treat the same as a LEAK in the audited surface itself.
+
+**Worked example.** The BD-185 reconciliation pack-side audit walked the form file (F1) + the validator's per-surface dict (F2) but missed `scripts/tests/test-issue-forms.sh` Group 2 + Group 5 assertions (F3'). The test's hardcoded pack-root assertions encoded the pre-cleanup state and required lock-step update with F1 + F2. Caught post-fact by the PREFLIGHT per-check-test-runs gate, not by the audit itself. Reference: trinity Pack memory § Repo conventions § "Enumerate ENCODING surfaces in pack-side audits".
+
+**Note:** This methodology is specifically for surface-rule audits (compliance with pack memory rules like deliverable-only or pack/project separation). For standard per-commit code review, the test-coverage check at item 9 above is the relevant principle.
+
 ## Reporting findings
 
 11. Every finding includes: severity (critical / major / minor), file and symbol, description of the issue, and recommended action.
