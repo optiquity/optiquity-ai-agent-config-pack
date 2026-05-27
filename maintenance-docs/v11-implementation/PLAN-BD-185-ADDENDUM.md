@@ -362,6 +362,18 @@ edits (review-skill operational mirrors).
 
 **Planner-level POQ surfaced — see §5 POQ-A1.**
 
+**POST-AUTHORING RESOLUTION (2026-05-27).** Per POQ-A1 user resolution
+(see §5.1), commit `e128a2c` was force-pushed out of `v11-dev`
+history. The trinity Pack memory rule re-landed at `f19b585` (PM-only
+correct; trinity-only diff). The companion review-skill operational
+checklist landed at `42ce52d` (pack-only correct; review-skill mirrors
+applied per `feedback_pack_chat_does_no_fixes` discipline via
+fix-coder rather than Pack Chat direct edit). validate-pack PASSES
+at the current branch tip; the Check 36 failure described above no
+longer exists on remote `v11-dev`. Recovery tag
+`pre-rewrite-e128a2c-recovery` exists locally as a rollback safety
+point.
+
 ### §3.5 — Cross-reference health of H.X surfaces (addendum-driven)
 
 For each H.X step receiving addendum edits, the cross-references in
@@ -1757,6 +1769,34 @@ scripts/validate-pack.py` exits 0") is currently NOT met at HEAD
 `e128a2c`. Either a corrective commit lands or the success criterion
 is temporarily relaxed at H.0 (with Pack Chat decision recorded in
 H.0 PREFLIGHT report).
+
+**POST-AUTHORING RESOLUTION (2026-05-27).** User selected Option (a)
+(land a corrective commit BEFORE H.2 spawns). The corrective sequence:
+
+1. Local `git reset HEAD~1` un-committed `e128a2c` (preserved working tree)
+2. Stage trinity files only; commit as `f19b585`
+   ("docs: v11 — pack memory: ENCODING-surface enumeration rule
+   (PM-only)") — PM-only correct since only trinity touched
+3. Force-push with `--force-with-lease` to overwrite remote `v11-dev`
+4. Revert review-skill files in working tree
+5. Spawn fix-coder for review-skill ENCODING section (applies same
+   content as original `e128a2c` had)
+6. Commit fix-coder's IMPL-REPORT + 3 review-skill mirrors as
+   `42ce52d` ("docs: v11 — review skill: ENCODING-surface section
+   (pack-only)") — pack-only correct since review-skill mirrors are
+   pack-side but NOT PM-only per `pack-ops/PACK-AGENTS.md:140-164`
+
+CI green on both `f19b585` and `42ce52d`. Recovery tag
+`pre-rewrite-e128a2c-recovery` exists locally as rollback safety
+point (not pushed). The H.0 success-criterion #3 is now satisfied
+at the current branch tip; no relaxation needed.
+
+**Lesson learned:** Pack Chat editing review-skill files directly
+violated `feedback_pack_chat_does_no_fixes` (review skills are NOT
+on PM-only list per PACK-AGENTS.md:140-164). Going forward, all
+non-PM-only file edits go through fix-coder regardless of size or
+apparent simplicity. The `e128a2c` mistake reinforced that the rule
+has no size threshold.
 
 ### §5.2 — POQ-A2 — Gap-allocation for 4 new Check numbers (H.10)
 
