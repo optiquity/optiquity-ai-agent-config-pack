@@ -29,11 +29,11 @@ allowed-tools: Read, Grep, Glob, Bash
 
 ## Carry-forward discipline
 
-A reviewer may surface a finding as "end-of-batch carry-forward" (or any analogous "defer to later phase / later BD / later batch" framing) ONLY if the finding meets ALL THREE of the following high-bar tests. Deferral is scope creep — punted findings lose context, multiply across reviews, and become tech debt that requires archaeology in future sessions. This rule enforces deferral discipline at the moment findings are classified, not after the fact.
+A reviewer may surface a finding as "end-of-batch carry-forward" (or any analogous "defer to later phase / later TD / later batch" framing) ONLY if the finding meets ALL THREE of the following high-bar tests. Deferral is scope creep — punted findings lose context, multiply across reviews, and become tech debt that requires archaeology in future sessions. This rule enforces deferral discipline at the moment findings are classified, not after the fact.
 
 1. **SIZE.** The finding requires architect-pass material work — new design surface, new contract negotiation, structural change spanning multiple files or layers. NOT "feels big" — provide a concrete file/contract surface argument (which files, which contracts, which design decisions are open).
-2. **BLOCKED.** Real dependency on a not-yet-landed artifact — a sibling BD's implementation, a tool/framework version not yet adopted, a fixture or test harness not yet built. NOT "feels related" — name the specific blocker and the unblock event.
-3. **LOGICAL FIT.** The finding cleanly belongs with another sibling BD/commit (concrete same-file / same-contract / same-symbol fit). NOT "thematic resemblance," "broader pattern," or "related area."
+2. **BLOCKED.** Real dependency on a not-yet-landed artifact — a sibling TD's implementation, a tool/framework version not yet adopted, a fixture or test harness not yet built. NOT "feels related" — name the specific blocker and the unblock event.
+3. **LOGICAL FIT.** The finding cleanly belongs with another sibling TD or commit (concrete same-file / same-contract / same-symbol fit). NOT "thematic resemblance," "broader pattern," or "related area."
 
 **Default: FIX NOW.** Every finding that does NOT meet ALL THREE tests must be surfaced as an in-scope review finding (BLOCKER / MUST / SHOULD / NIT) for fix-now triage by the PM chat, not deferred to a later reviewer pass. Every finding must be visible at fix-or-defer triage time; carry-forward is not a way to bypass that triage.
 
@@ -47,6 +47,6 @@ A reviewer may surface a finding as "end-of-batch carry-forward" (or any analogo
 
 **If a finding qualifies as a true carry-forward**, explicitly cite which test it passes in the report using this format:
 
-> CARRY-FORWARD: SIZE / BLOCKED / LOGICAL-FIT — &lt;concrete evidence: which files, which blocker, which sibling BD&gt;
+> CARRY-FORWARD: SIZE / BLOCKED / LOGICAL-FIT — &lt;concrete evidence: which files, which blocker, which sibling TD&gt;
 
 If it does not qualify, surface it as a regular in-scope finding with severity. Hope is not a plan. Carry-forward without high-bar justification is tech debt accumulation by another name.

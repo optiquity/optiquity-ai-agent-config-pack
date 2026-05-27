@@ -117,10 +117,10 @@ TrackerProvider abstraction but are not implemented in v11.
 flat-file format into GitHub Issues, with a one-shot forward migration
 (`pack tracker init`) and idempotent reverse (`pack tracker disable`)
 for opt-out or backup. The recommendation system observes signals from
-your project (open BD count, BACKLOG size, 30-day growth) and offers
+your project (open work-item count, BACKLOG size, 30-day growth) and offers
 tracker opt-in only when those signals warrant.
 
-**When it matters** — when your project's BD volume reaches the point
+**When it matters** — when your project's work-item volume reaches the point
 that GitHub-side cross-references, mentions, and CI-on-issue-state
 become more valuable than the "everything in `git log`" property of
 flat-file tracking. The recommendation system surfaces this naturally;
@@ -155,7 +155,7 @@ value.
 - Tracker config is per-project, not pack-wide; each project opts in
   independently.
 
-**When to skip** — if your BD volume is under ~50 open and
+**When to skip** — if your TD/work-item volume is under ~50 open and
 `docs/project/BACKLOG.md` search is comfortable, the tracker round-trip
 is more friction than flat-file. The recommendation system will not nag
 in this regime.

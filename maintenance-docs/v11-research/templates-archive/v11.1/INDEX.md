@@ -50,15 +50,14 @@ at the v11.1 cut:
 2. `../v11.0/INDEX.md` gains a forward-reference footnote pointing at
    v11.1 evolutions.
 
-## v11.1 form file
-
-The v11.1 form file at
-`maintenance-docs/v11-research/templates-archive/v11.1/forms/work-item.yml`
-is byte-identical to the live form
-(`.github/ISSUE_TEMPLATE/work-item.yml` at pack root, mirrored
-byte-identically to
-`project-template/.github/ISSUE_TEMPLATE/work-item.yml`). The archive
-form is CREATED in v11.1.
+**Forms file** — Not yet created. The v11.1 forms/ subdirectory will be
+populated when the v11.1 archive cut is completed (architect-pass
+decision pending). When populated, the snapshot must reflect the
+post-BD-193 pack/project divergence: pack-root admits the `bd` wi-type
+option for filing pack-development backlog items; project-template
+does NOT, since clients use TD entries. The two forms are SEPARATE
+artifacts with SEPARATE audiences per the pack/project
+separation-of-concerns principle.
 
 The live form is bumped to `template_version: work-item-v11.1`
 and gains:

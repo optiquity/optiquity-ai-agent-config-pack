@@ -100,7 +100,7 @@ Phase tasks are children of their phase epic (`phase-N`) via:
   in capability flags (github supports this).
 - **Label fallback** `parent:phase-N` otherwise.
 
-Phase tasks may not be parented to BD/TD entries or to other phase
+Phase tasks may not be parented to other phase
 tasks — a phase task's parent is exactly one phase epic. Cross-phase
 relationships are expressed via the Dependencies section, not parent/
 child.

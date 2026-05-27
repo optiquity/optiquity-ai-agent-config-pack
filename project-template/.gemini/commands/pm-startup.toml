@@ -206,8 +206,8 @@ Output a summary in exactly this format:
 
 <!--
 Step 7 is reserved. The tracker-mode triage queue
-(provider.list filter=label:'needs-triage') lands here in a later
-BD when tracker mode is wired into pm-startup. The Step 8 numbering
+(provider.list filter=label:'needs-triage') lands here in a future
+pack version when tracker mode is wired into pm-startup. The Step 8 numbering
 is fixed to keep the recommendation check at the documented
 insertion point regardless of when Step 7 lands.
 -->

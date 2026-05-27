@@ -594,8 +594,9 @@ library:
    end-to-end.
 
 If the migrator reports `customization-detected-needs-reconciliation`
-on a file you didn't customize, that's a defect — please file a BD
-against the `customize-preserve` library with the
+on a file you didn't customize, that's a defect — please file an
+inbound issue (`pack-feedback-friction` or `pack-feedback-prompt`)
+against the pack with the
 `.pack-migrate-v10-to-v11/dispositions.tsv` row attached.
 
 ---
@@ -709,9 +710,9 @@ This should never happen for the 12 documented classes (`MERGE-STRATEGY.md`).
 If it does:
 
 1. Save `dispositions.tsv` and the relevant `<file>.v10-customized`.
-2. File a BD with the disposition row + the file's pre-migration content.
+2. File an inbound issue with the disposition row + the file's pre-migration content.
 3. Restore from backup (Rollback section above).
-4. Wait for the BD to land before re-attempting.
+4. Wait for the pack-side fix to land before re-attempting.
 
 Validate-pack Check 25 + `test-customization-preserve.sh` are the CI
 guards against this; if either is silenced or removed, customization-
@@ -724,7 +725,7 @@ loss defects can re-emerge.
 1. **Read the `## Quick reference` block** at the top of each trinity
    file. The pack-startup / pm-startup recommendation is the documented
    first action for new sessions.
-2. **Decide on Phase B.** If your project's BD volume is moderate
+2. **Decide on Phase B.** If your project's TD/work-item volume is moderate
    (< 50 open) and BACKLOG.md is comfortable, stay flat-file. If
    you're juggling many cross-references, GitHub linking would help,
    or you want CI to gate on tracker hygiene, opt in. Recommendation:

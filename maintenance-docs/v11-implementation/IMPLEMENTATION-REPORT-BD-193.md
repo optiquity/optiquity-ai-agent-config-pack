@@ -606,8 +606,9 @@ under the F2.c + F2.d locked actions, and were applied per disposition
 report §2.3 ("the LOCKED dispositions") since they are direct
 consequences of the locked changes — not new structural decisions:
 
-1. **`scripts/validate-pack.py`** — Check 41 (issue-template-forms
-   verifier) was hard-coded to expect identical `wi-type` options on
+1. **`scripts/validate-pack.py`** — `check_issue_template_forms()`
+   (printed label "Check: Issue template forms (BD-063)") was
+   hard-coded to expect identical `wi-type` options on
    both pack-root and project-template forms. With F2.d removing `bd`
    from the project-side form, the check would fail. Per-surface
    expected options introduced (pack-root admits `bd`, project-template

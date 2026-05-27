@@ -14,7 +14,7 @@
 # MCP via [mcp_servers.<name>] tables in config.toml, both STDIO
 # (`command`) and Streamable HTTP (`url`, gated by
 # `experimental_use_rmcp_client`). v10 ships STDIO only; HTTP transport
-# stability is research OQ-1 (defer to future BD if needed).
+# stability is research OQ-1 (defer to a future pack version if needed).
 
 # Uncomment the block below to enable mcp-local-rag for Codex CLI
 # sessions in this project. Replace BASE_DIR with the absolute path of

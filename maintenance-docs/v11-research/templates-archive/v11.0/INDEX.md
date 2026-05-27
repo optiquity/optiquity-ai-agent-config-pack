@@ -27,9 +27,11 @@ Reference: V3.3 §6.5 D-18 carrier matrix.
 The forms shipped at v11.0 are preserved byte-for-byte under
 [forms/](forms/):
 
-- [forms/work-item.yml](forms/work-item.yml) — composite form for BD,
-  TD, phase-epic-skeleton, phase-task-skeleton (4-option `wi-type`
-  dropdown per V3.3 §6.1).
+- [forms/work-item.yml](forms/work-item.yml) — composite form for TD,
+  phase-epic-skeleton, phase-task-skeleton (3-option `wi-type` dropdown
+  per V3.3 §6.1 + BD-193 D16 carve-out). The original v11.0 shipped
+  form admitted a 4th `bd` option; D16 removed it from the archive as
+  a bug-fix carve-out.
 - [forms/inbound.yml](forms/inbound.yml) — composite form for bug,
   feature-request, and 5× pack-feedback subcategories (7-option
   `in-category` dropdown per V2 §4.3).

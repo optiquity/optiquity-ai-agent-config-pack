@@ -43,7 +43,7 @@ templates-archive/
 - One directory per **pack minor version** (e.g. `v11.0/`, `v11.1/`).
 - Forms are archived verbatim at every minor cut. No retroactive edits.
 - Per-entry-type schemas (`<entry-type>-v<N.M>/SCHEMA.md`) are one per
-  type per minor: BD, TD, phase-epic, phase-task, inbound at v11.0.
+  type per minor: BD (pack-internal), TD, phase-epic, phase-task, inbound at v11.0.
 - A future `translations.yaml` (V2 §19.4) will live at the top of this
   directory once `pack tracker update-templates` ships.
 

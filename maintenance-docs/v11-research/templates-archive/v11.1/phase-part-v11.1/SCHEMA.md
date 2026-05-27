@@ -167,7 +167,7 @@ Phase parts are children of their phase epic (`phase-N`) via:
 - **Label fallback** `parent:phase-N` on the Part otherwise (V3.2 §2.7;
   architect §7 fallback extension TBD).
 
-Phase parts may not be parented to BD/TD entries or to phase tasks —
+Phase parts may not be parented to phase tasks —
 a Part's parent is exactly one phase epic. Cross-phase relationships
 are expressed via the Prerequisites section, not parent/child.
 
