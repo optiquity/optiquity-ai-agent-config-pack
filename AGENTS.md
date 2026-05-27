@@ -308,6 +308,28 @@ in the same commit as the behavior change.
     INSTEAD OF writing the IMPL-REPORT — Pack Chat reviews and decides
     whether to fix in this commit or escalate.
 
+    **Per-check test runs.** When the commit modifies any of:
+    `scripts/validate-pack.py` (any function/check),
+    `scripts/init-project.sh` `_CLIENT_INSTALLED_FILES_START/_END`
+    inventory, `scripts/lib/` files referenced by validate-pack
+    checks, or any file in the `_CHECK_*_ALLOWLIST` referenced
+    surfaces — the coder MUST run all relevant per-check test files
+    at `scripts/tests/test-validate-pack-check-*.sh` before writing
+    the PREFLIGHT line. ALL tests MUST PASS. If any test FAILs, the
+    coder reports the failure (file:line + test name + diagnostic)
+    and does NOT write the IMPL-REPORT. "Relevant" = (a) the test
+    file matching the check ID being modified, AND (b) any test
+    file that exercises the same `_iter_*` helper or shared logic
+    surface; when in doubt, run ALL per-check test files (cost:
+    ~5-15s total). Worked example: BD-193 + BD-194 incident —
+    BD-193 commit `85196d4` removed `pack-ops/HELP-FRAGMENT-TRACKER.md`
+    from the inventory but didn't update `test-validate-pack-check-43.sh`
+    G2.T3 or `test-validate-pack-checks-36-37-38.sh` G7.T3
+    expected_extras; both BD-193 and BD-194 PREFLIGHTs passed because
+    `validate-pack.py` itself ran clean, but the per-check tests
+    would have FAILed on push. Caught at BD-194 reviewer pass;
+    resolved in `6c76582`.
+
   - **STOP-MEANS-STOP preamble (REQUIRED for all CLIs as content;
     Codex enforcement is UI-based).** The coder prompt opens with
     an explicit instruction: "If you receive a parent-session message
