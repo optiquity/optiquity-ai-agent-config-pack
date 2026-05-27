@@ -5,15 +5,21 @@
 # Verifies, for both surfaces (pack-root and project-template):
 #   1. All three forms (work-item.yml, inbound.yml, config.yml) parse
 #      as valid YAML and load to a dict.
-#   2. work-item.yml structure: title format, labels (incl. template:work-item-v11.0),
-#      body block presence, wi-type dropdown's 4 options, phase-task fields
-#      present, blockers help text mentions phase-N / phase-N.M, trailing
+#   2. work-item.yml structure: per-surface wi-type options + dependent
+#      fields. Pack-root admits ONLY `bd` (pack-self-management; no
+#      phase-task fields); project-template admits the project-side
+#      deliverable types (`td`, `phase-epic-skeleton`, `phase-task-skeleton`)
+#      with phase-task fields. Labels (incl. template:work-item-v11.0),
+#      blockers description (phase tokens on project-side only), trailing
 #      markdown trio (pack-id PENDING + template_version + pack-version).
+#      Per the "Project-side concepts on pack-side surfaces — deliverable-
+#      only" rule (pack memory, user-locked 2026-05-27).
 #   3. inbound.yml structure: labels, in-category dropdown's 7 options,
 #      trailing markdown trio with template_version: inbound-v11.0.
 #   4. config.yml: blank_issues_enabled false; contact_links present.
-#   5. Cross-surface invariants: forms have identical schema-relevant
-#      fields except for namespace examples (BD vs TD).
+#   5. Cross-surface invariants: wi-type option sets pack-side and
+#      project-side are DISJOINT (deliverable-only rule); in-category
+#      options identical across surfaces; title namespace BD vs TD.
 #
 # Usage: bash scripts/tests/test-issue-forms.sh
 
@@ -77,13 +83,28 @@ printf "\n=== Group 2: work-item.yml structure ===\n"
 check_workitem() {
     local label="$1"
     local path="$2"
-    # Optional 3rd arg: surface kind. "pack" (default) admits the `bd`
-    # wi-type option; "project" does NOT — per BD-193 boundary cleanup,
-    # BD entries are pack-internal and client projects use TD.
+    # 3rd arg: surface kind. "pack" admits ONLY the `bd` wi-type option
+    # (pack-self-management form; the pack repo files BDs against itself).
+    # "project" admits the project-side entry types the pack constructs as
+    # a deliverable (`td`, `phase-epic-skeleton`, `phase-task-skeleton`).
+    # Per the "Project-side concepts on pack-side surfaces — deliverable-
+    # only" rule (pack memory, user-locked 2026-05-27) + BD-193.
     local surface_kind="${3:-pack}"
+    # 4th arg: space-separated list of expected wi-type options for this
+    # surface (e.g., "bd" for pack-root, "td phase-epic-skeleton
+    # phase-task-skeleton" for project-template).
+    local expected_opts="$4"
 
-    assert_eq "$label name has 'work item'" "True" \
-        "$(yq_get "$path" "'work item' in data['name'].lower()")"
+    # Surface-aware name check. Pack-root form post-cleanup uses "Pack BD"
+    # (no "work item" string); project-template form still uses "work item"
+    # because it constructs the project-side work-item deliverable.
+    if [[ "$surface_kind" == "pack" ]]; then
+        assert_contains "$label name names BD" \
+            "$(yq_get "$path" "data['name']")" "BD"
+    else
+        assert_eq "$label name has 'work item'" "True" \
+            "$(yq_get "$path" "'work item' in data['name'].lower()")"
+    fi
 
     labels=$(yq_get "$path" "sorted(data.get('labels', []))")
     assert_contains "$label labels include work-item"        "$labels" "'work-item'"
@@ -91,29 +112,52 @@ check_workitem() {
     assert_contains "$label labels include template:work-item-v11.0" "$labels" "'template:work-item-v11.0'"
 
     options=$(yq_get "$path" "[b['attributes']['options'] for b in data['body'] if b.get('type')=='dropdown' and b.get('id')=='wi-type'][0]")
-    if [[ "$surface_kind" == "pack" ]]; then
-        assert_contains "$label wi-type has bd"                "$options" "'bd'"
-    else
-        # Project-side MUST NOT admit `bd` (BD-193 F2.d).
+    # Assert each expected option is present.
+    for opt in $expected_opts; do
+        assert_contains "$label wi-type has $opt" "$options" "'$opt'"
+    done
+    # Surface-aware negative assertion: project-side MUST NOT admit `bd`
+    # (project-template constructs the project-side form; project clients
+    # use TD entries — `bd` is pack-internal per BD-193 F2.d). Pack-side
+    # MUST NOT admit `td` / `phase-*` (pack-self-management form admits
+    # only `bd` per the deliverable-only rule).
+    if [[ "$surface_kind" == "project" ]]; then
         if [[ "$options" == *"'bd'"* ]]; then
             t_fail "$label wi-type must NOT have bd (project-side)" \
                 "options='$options' contains 'bd' — BD entries are pack-internal"
         else
             t_pass "$label wi-type correctly omits bd (project-side)"
         fi
+    else
+        # Pack-side: forbidden project-side concepts.
+        for forbidden in td phase-epic-skeleton phase-task-skeleton; do
+            if [[ "$options" == *"'$forbidden'"* ]]; then
+                t_fail "$label wi-type must NOT have $forbidden (pack-side)" \
+                    "options='$options' contains '$forbidden' — project-side concept on pack-self-management surface"
+            else
+                t_pass "$label wi-type correctly omits $forbidden (pack-side)"
+            fi
+        done
     fi
-    assert_contains "$label wi-type has td"                    "$options" "'td'"
-    assert_contains "$label wi-type has phase-epic-skeleton"   "$options" "'phase-epic-skeleton'"
-    assert_contains "$label wi-type has phase-task-skeleton"   "$options" "'phase-task-skeleton'"
 
-    for fid in wi-task-title wi-problem-goal-success wi-files wi-definition-of-done wi-dependencies; do
-        present=$(yq_get "$path" "any(b.get('id')=='$fid' for b in data['body'])")
-        assert_eq "$label phase-task field $fid present" "True" "$present"
-    done
+    # Phase-task fields exist on the project-template form only (the form
+    # that constructs the project-side phase-task-skeleton deliverable).
+    # Pack-root form has no phase-task fields post-cleanup.
+    if [[ "$surface_kind" == "project" ]]; then
+        for fid in wi-task-title wi-problem-goal-success wi-files wi-definition-of-done wi-dependencies; do
+            present=$(yq_get "$path" "any(b.get('id')=='$fid' for b in data['body'])")
+            assert_eq "$label phase-task field $fid present" "True" "$present"
+        done
+    fi
 
     blockers_desc=$(yq_get "$path" "[b['attributes']['description'] for b in data['body'] if b.get('id')=='wi-blockers'][0]")
-    assert_contains "$label wi-blockers description names phase-N"   "$blockers_desc" "phase-N"
-    assert_contains "$label wi-blockers description names phase-N.M" "$blockers_desc" "phase-N.M"
+    # Phase tokens in the Blockers description are project-side concepts;
+    # only the project-template form should name them. Pack-root form's
+    # Blockers description carries no phase grammar.
+    if [[ "$surface_kind" == "project" ]]; then
+        assert_contains "$label wi-blockers description names phase-N"   "$blockers_desc" "phase-N"
+        assert_contains "$label wi-blockers description names phase-N.M" "$blockers_desc" "phase-N.M"
+    fi
 
     raw=$(raw_file "$path")
     assert_contains "$label HTML-comment pack-id: PENDING"             "$raw" "<!-- pack-id: PENDING -->"
@@ -121,8 +165,8 @@ check_workitem() {
     assert_contains "$label HTML-comment pack-version: v11"            "$raw" "<!-- pack-version: v11 -->"
 }
 
-check_workitem "pack-root work-item.yml"        "$REPO_ROOT/.github/ISSUE_TEMPLATE/work-item.yml"                  "pack"
-check_workitem "project-template work-item.yml" "$REPO_ROOT/project-template/.github/ISSUE_TEMPLATE/work-item.yml" "project"
+check_workitem "pack-root work-item.yml"        "$REPO_ROOT/.github/ISSUE_TEMPLATE/work-item.yml"                  "pack"    "bd"
+check_workitem "project-template work-item.yml" "$REPO_ROOT/project-template/.github/ISSUE_TEMPLATE/work-item.yml" "project" "td phase-epic-skeleton phase-task-skeleton"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 3: inbound.yml structure
@@ -186,15 +230,21 @@ pack_opts=$(yq_get "$REPO_ROOT/.github/ISSUE_TEMPLATE/work-item.yml" \
     "sorted([b['attributes']['options'] for b in data['body'] if b.get('id')=='wi-type'][0])")
 proj_opts=$(yq_get "$REPO_ROOT/project-template/.github/ISSUE_TEMPLATE/work-item.yml" \
     "sorted([b['attributes']['options'] for b in data['body'] if b.get('id')=='wi-type'][0])")
-# Per BD-193 F2.d: pack-side admits `bd`, project-side does NOT. The
-# project-side options must be exactly the pack-side options minus `bd`.
-expected_proj_opts=$(python3 -c "
-import sys
+# Per the "Project-side concepts on pack-side surfaces — deliverable-only"
+# rule (pack memory, user-locked 2026-05-27) + BD-193: pack-side and
+# project-side wi-type option sets are DISJOINT. Pack-side admits ONLY
+# `bd` (pack-self-management); project-side admits the project-side entry
+# types the pack constructs as a deliverable (`td`, `phase-epic-skeleton`,
+# `phase-task-skeleton`). The DISJOINT contract replaces the BD-194-era
+# "project = pack - bd" invariant — the deliverable-only rule makes the
+# two surfaces' wi-type sets fully disjoint.
+disjoint=$(python3 -c "
 pack=$pack_opts
-print(sorted([o for o in pack if o != 'bd']))
+proj=$proj_opts
+print('True' if set(pack).isdisjoint(set(proj)) else 'False')
 ")
-assert_eq "5.1 wi-type options pack admits bd vs project omits bd" \
-    "$expected_proj_opts" "$proj_opts"
+assert_eq "5.1 wi-type options pack-side and project-side surfaces are DISJOINT (deliverable-only rule)" \
+    "True" "$disjoint"
 
 pack_cats=$(yq_get "$REPO_ROOT/.github/ISSUE_TEMPLATE/inbound.yml" \
     "sorted([b['attributes']['options'] for b in data['body'] if b.get('id')=='in-category'][0])")

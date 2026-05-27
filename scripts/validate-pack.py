@@ -1076,10 +1076,15 @@ def check_issue_template_forms() -> None:
       - work-item.yml, inbound.yml, config.yml all exist and parse as YAML
       - Forms (work-item, inbound) have name/description/labels/body keys
       - work-item.yml's wi-type dropdown has the per-surface expected
-        options. Pack-side admits `bd` (the pack-development entry
-        type); project-side does NOT admit `bd` because BD entries are
-        a pack-internal concept and client projects use TD entries.
-        Per V3.3 §6.1 + BD-193 boundary cleanup.
+        options. Pack-side admits ONLY `bd` (pack-development backlog
+        item; the pack repo files BDs against itself per the
+        deliverable-only rule — TD/phase concepts are project-side
+        only and must not appear on pack-self-management surfaces).
+        Project-side admits the project-side entry types it
+        constructs as a deliverable (`td`, `phase-epic-skeleton`,
+        `phase-task-skeleton`). Per V3.3 §6.1 + BD-193 (project-side)
+        + the "Project-side concepts on pack-side surfaces —
+        deliverable-only" rule (pack memory, user-locked 2026-05-27).
       - inbound.yml's in-category dropdown has all 7 options
         (bug, feature-request, 5× pack-feedback-*) per V2 §4.3
       - config.yml has blank_issues_enabled = false
@@ -1095,11 +1100,22 @@ def check_issue_template_forms() -> None:
         fail("PyYAML not available — cannot validate issue templates")
         return
 
-    # Per-surface expected wi-type options. Pack-side admits `bd` (the
-    # pack-development entry type); project-side does NOT — BD entries
-    # are pack-internal by construction and client projects use TD.
+    # Per-surface expected wi-type options.
+    #
+    # Pack-side ("pack-root") admits ONLY `bd` — the pack repo files
+    # pack-development backlog items against itself. TD entries,
+    # phase-epic-skeletons, and phase-task-skeletons are project-side
+    # concepts and MUST NOT appear on pack-self-management surfaces per
+    # the "Project-side concepts on pack-side surfaces — deliverable-only"
+    # rule (pack memory, user-locked 2026-05-27).
+    #
+    # Project-side ("project-template") admits the project-side entry
+    # types the pack constructs as a deliverable (`td`, `phase-epic-skeleton`,
+    # `phase-task-skeleton`). It does NOT admit `bd` because BD entries
+    # are pack-internal by construction and client projects use TD
+    # entries (BD-193).
     expected_wi_type_options_per_surface = {
-        "pack-root": {"bd", "td", "phase-epic-skeleton", "phase-task-skeleton"},
+        "pack-root": {"bd"},
         "project-template": {"td", "phase-epic-skeleton", "phase-task-skeleton"},
     }
     expected_in_category_options = {
