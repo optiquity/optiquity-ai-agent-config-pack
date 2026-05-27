@@ -3012,6 +3012,67 @@ Resolved: n/a
 
 ---
 
+**BD-193 — Code Red 2: BD/TD/Path scope contamination cleanup (Batch 19d-prep)**
+Type: fix — surfaced 2026-05-26 during BD-185 H.1 INLINE review prep from cross-cutting audit; user-locked 3-rule triage stack (operational vs explanatory + pack/project separation + token economy) established 2026-05-26 in pack memory `feedback_bd_pack_only_operational_rule`, `feedback_pack_project_separation_of_concerns`, `feedback_client_facing_token_economy`
+Status: Open
+Blockers: None. Cleanup applies to client-facing surfaces (project-template/, supporting-docs/) and pack-archive (templates-archive/v11.0/, v11.1/) PLUS one pack-script source (scripts/init-project.sh F4/F5). All in-scope surfaces are accessible at v11-dev HEAD.
+Unblocks: BD-185 H.2 fires only after this BD lands clean — BD-185 H.2 modifies the same templates-archive/v11.1/phase-part-v11.1/SCHEMA.md surface that this BD cleans up (the 23 BD-185 cite removals). Without this BD, H.2 would build on contaminated baseline.
+File/Symbol:
+  - PRIMARY INPUTS (read-only):
+    - `maintenance-docs/v11-implementation/AUDIT-INVENTORY-BD-TD-PATH.md` (Phase 1 docs-researcher output; 782 lines; raw inventory of ~140 findings across 48 files)
+    - `maintenance-docs/v11-implementation/AUDIT-DISPOSITION-BD-TD-PATH.md` (Phase 2 pack-reviewer disposition; 987 lines; per-row triage with BEFORE/AFTER text; 11 LOCKED + 3 LEAK + 105 WASTE + 110 LEGITIMATE; §6.1/§6.2/§6.3/§6.4 user-resolutions applied)
+  - **Pack-archive (templates-archive)** — F1 INDEX segregation (v11.0/v11.1/INDEX.md), F1.c PACK-INTERNAL header (bd-v11.0/SCHEMA.md), F2.a/F2.b/F2.c grammar admissions removal (phase-task-v11.0/SCHEMA.md, phase-part-v11.1/SCHEMA.md, forms/work-item.yml), 47 BD-185 narrative WASTE cites (v11.1/INDEX.md + phase-part-v11.1/SCHEMA.md), 2 §6.1 inbound-v11.0/SCHEMA.md mention-to-exclude removals
+  - **Project-template** — F2.d work-item.yml admissions removal, F3 _intro.md cross-reference removal, trinity (CLAUDE/AGENTS/GEMINI) BD-142 cite removal (identical edit; trinity-rule), 6 PLATFORM-SKILLS.md WASTE, 2 boundary-investigation/SKILL.md (§6.2 BD-175 label removal), 1 audit-methodology/SKILL.md LEAK (BD-NNN.md → TD-NNN.md), various skill/agent WASTE cites
+  - **Supporting-docs** — F2.e METHODOLOGY.md parser regex (`BD-\d+` token removal), 4 METHODOLOGY.md WASTE, 6 INSTALL-PROCEDURES.md WASTE, MIGRATION-v10-to-v11.md 1 LEAK + 23 Class B WASTE (§6.3 split; 16 Class A LEGITIMATE preserved), 5 SETUP-NEW.md/SETUP-EXISTING.md WASTE (§6.4)
+  - **Scripts** — F4/F5 init-project.sh S11 block (replace pack-ops/HELP-FRAGMENT-TRACKER.md source with project-template/docs/pack/HELP-FRAGMENT-TRACKER.md; remove pre-v11 pack-root fallback per `feedback_pack_project_separation_of_concerns`)
+  - **Test fixtures** — `test-fixtures/manifest.txt` regeneration (v11-surface trigger per `feedback_manifest_regen_on_v11_surface`)
+  - PRIMARY OUTPUT: `maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-193.md`
+Description: Cleanup of pack-only / client-facing scope contamination surfaced during BD-185 H.1 INLINE review preparation on 2026-05-26. Three classes of contamination identified + remediated via 3-rule triage stack:
+
+  **Class 1 — Operational BD-NNN leakage in client-facing content (LEAK).** Client-side entity contracts (phase-task, phase-part, work-item form) admitted BD-NNN as a dependency/blocker/peer type. Clients work with TD entries; BDs are pack-development-only. The operational admission was a boundary violation that, left uncorrected, would let client agents file BD-shaped work in client repos (a recurring `P-missed-7` regression class). 11 LOCKED dispositions (§3 of disposition report) close this class.
+
+  **Class 2 — Cross-side substitution in scripts (VIOLATION).** `scripts/init-project.sh` S11 block sourced HELP-FRAGMENT-TRACKER.md from `pack-ops/` (PACK-ONLY) and copied to client install path. The BD-175 reorg decision that established "pack-ops/HELP-FRAGMENT-TRACKER.md is the canonical source" violated pack/project separation of concerns. Even when byte-identical to the project-template/ version today, the pack and project copies serve separate audiences and can diverge. F4/F5 lock corrects the source to `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md` and removes the pre-v11 pack-root fallback.
+
+  **Class 3 — Token-economy waste in client-facing content (WASTE).** Client-facing docs (METHODOLOGY.md, SKILLS files, PLATFORM-SKILLS.md, agent definitions, trinity, INSTALL-PROCEDURES.md, SETUP-* files, templates-archive narrative) contained ~105 narrative BD-NNN cites describing pack-implementation history that clients don't need. Per pack memory `feedback_client_facing_token_economy` + RAG-indexing concern: every narrative BD cite is a few tokens of irrelevant pack-history that wastes client agent context-window space at query time. 105 WASTE rows remove BD labels while preserving descriptive content per the BEFORE/AFTER text in disposition report §4.
+
+  **Pipeline (executed):**
+  1. Phase 1 (pack-docs-researcher) — comprehensive cross-surface inventory (Surface A client-facing + Surface B scripts)
+  2. Phase 2 (pack-reviewer) — 3-rule triage stack disposition; 11 LOCKED + 4 AMBIGUOUS classes user-resolved (§6.1/§6.2/§6.3/§6.4)
+  3. Phase 3 (pack-coder; THIS BD) — single cross-surface commit applying all locked + disposed corrections
+  4. Phase 4 (pack-reviewer extensive audit; per user directive) — verify Phase 3 successful, no regressions, no remaining in-scope issues
+
+  **Success Criteria:**
+  - SC1. All 11 LOCKED dispositions applied per disposition report §3 (F1/F2/F3/F4-F5)
+  - SC2. All 3 LEAK fixes applied (A-3.3.2 verified inherited from F2.a; A-3.33.1 audit-methodology BD-NNN.md → TD-NNN.md; A-3.46.22 MIGRATION-v10-to-v11.md BD-NNN.md → TD-NNN.md)
+  - SC3. All 105 WASTE fixes applied per disposition report §4 BEFORE/AFTER tables
+  - SC4. §6.1 split-reading applied (keep work-item.yml:18 project-side boundary-defense; remove inbound-v11.0 mention-to-exclude rows 1+2)
+  - SC5. §6.2 Reading A applied (BD-175 label removal in boundary-investigation/SKILL.md; worked-example content retained)
+  - SC6. §6.3 Class A/B split applied (16 Class A LEGITIMATE preserved; 23 Class B WASTE removed)
+  - SC7. §6.4 Reading A applied (all 5 SETUP-NEW.md/SETUP-EXISTING.md WASTE removed)
+  - SC8. Trinity-rule parity preserved (CLAUDE/AGENTS/GEMINI BD-142 cite removal identical across all 3 files)
+  - SC9. `test-fixtures/manifest.txt` regenerated; staged in same commit
+  - SC10. `python3 scripts/validate-pack.py` PASS (especially Check 43 leak-sweep prevention)
+  - SC11. Phase 4 reviewer audit PASS (no regressions; no remaining in-scope issues; Phase 3 successful)
+
+  **Out of scope:**
+  - POQ-4 reversal documentation in `ARCHITECTURE-BD-185.md` / `PLAN-BD-185.md` (separate Pack Chat work; commits separately)
+  - BD-185 H.1 NIT-2 / NIT-3 cosmetic fixes (held pending Code Red 2 close)
+  - BD-185 H.2-H.16 implementation (fires after Code Red 2 lands clean)
+  - Check 24 byte-identity rule re-examination (flagged for separate architect concern; not blocking Code Red 2)
+
+  **Pack memory anchors:**
+  - `feedback_bd_pack_only_operational_rule` (Rule 1; operational vs explanatory)
+  - `feedback_pack_project_separation_of_concerns` (Rule 2; cross-side substitution forbidden)
+  - `feedback_client_facing_token_economy` (Rule 3; RAG-cost necessity test)
+  - `feedback_review_fix_one_cycle` (Phase 4 extensive audit is end-of-batch reviewer pass)
+  - `feedback_manifest_regen_on_v11_surface` (manifest regeneration requirement)
+  - `P-missed-7` (boundary discipline; underlying motivation for Class 1 fix)
+
+  **Position:** Batch 19d-prep — fires IMMEDIATELY after H.1 commit lands and BEFORE H.2 spawns. BD-185 H.2 builds on the cleaned-up phase-part-v11.1/SCHEMA.md surface; Code Red 2 must close before H.2 begins.
+Resolved: n/a
+
+---
+
 ## Active — v10 Scope
 
 **BD-059 — v10 migration silently destroys project customization**
