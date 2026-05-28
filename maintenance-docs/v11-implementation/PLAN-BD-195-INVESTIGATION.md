@@ -242,8 +242,11 @@ bind to the BD-185 attempt, Code Red 2, or v11.1 groupings. Core
 question: deepest line-level read of the epicenter — every claimed
 decision, every version attribution, every pack/project boundary
 statement, every cross-reference. This is the segment most likely to
-feed Step 1 (retained-decisions) and Step 2 (prison membership). **Note:
-R7's owned set is the *complement* of R8 within `v11-implementation/` +
+feed Step 1 (retained-decision LEADS) and to enrich the whole-repo
+supersession-mapping pass's epicenter entries; prison-membership
+IDENTIFICATION itself is owned by that dedicated supersession-mapping pass,
+NOT by R7 (see §2.7 + PLAN-BD-195-EXECUTION.md §4.1/§5). **Note: R7's owned
+set is the *complement* of R8 within `v11-implementation/` +
 `v11-research/` — see R8.**
 
 **R8 — Active v11 design records (non-epicenter maintenance-docs).**
@@ -348,11 +351,18 @@ two ordering constraints:
   findings so an ENCODING-lock-step gap (Lens E) is caught on both sides.
   Acceptable: R5 first, then R6; or both in parallel with a documented
   hand-shake at reconciliation.
-- **R7 informs Step 1/Step 2.** R7 (epicenter) produces the evidence the
-  user needs for retained-decisions (Step 1) and prison membership
-  (Step 2). Sequencing of R7 vs Steps 1–2 is covered in §4 — R7 may run
-  as a *pre-read* feeding Step 1, then the full R7 deep pass runs on
-  whatever remains outside the prison.
+- **R7 pre-read runs in parallel with Step 1 (per PLAN-BD-195-EXECUTION.md
+  §4.1/§6.1).** R7 (epicenter) runs a *scoped pre-read* → `AUDIT-BD-195-R7-PREREAD.md`,
+  which ENRICHES Step 1 (retained-decision LEADS — non-blocking; the Step-1
+  extractor reads the epicenter directly) and ENRICHES the whole-repo
+  supersession-mapping pass's epicenter entries. It is ONE of three parallel
+  pre-prison read-only passes (the Step-1 extractor, the supersession-mapping
+  pass, and this R7 pre-read) with NO inter-dependency; all three converge
+  before Step 2. **Prison-membership IDENTIFICATION is owned by the dedicated
+  whole-repo supersession-mapping pass, NOT by R7** (R7 is epicenter-scoped).
+  The full R7 deep pass then runs in Step 3 over whatever epicenter docs remain
+  outside the prison. Sequencing detail is in §4 + PLAN-BD-195-EXECUTION.md
+  §4.1/§5/§6.1.
 
 Architect segments run **after** the reconciled problem list exists
 (§4). Within the architect phase, A1…A9 are mostly parallel; any
@@ -442,10 +452,13 @@ optional free tags, so reconciliation can group across segments:
 - `version` (Lens A — seed 1), `boundary` (Lens B — seed 2),
   `xref` (Lens C), `parity` (Lens D), `encoding` (Lens E).
 - Free tags as needed: `stale-ref`, `ci-risk`, `migration-regression`,
-  `trinity`, `prison-candidate` (R7 may tag a doc it believes belongs in
-  the prison — Step 2 decides), `retained-decision` (R7 may tag a
-  user-preapproved decision that Step 1 should capture), `correctness`,
-  `consistency`, `doc-accuracy`.
+  `trinity`, `prison-candidate` (any deep segment may tag a doc it believes
+  belongs in the prison that the whole-repo supersession-mapping pass missed —
+  the late-discovery safety net per PLAN-BD-195-EXECUTION.md §4.1 residual-miss
+  handling; Step 2 decides. Prison-membership IDENTIFICATION is owned by the
+  dedicated supersession-mapping pass, NOT by this tag — see §2.7),
+  `retained-decision` (R7 may tag a user-preapproved decision that Step 1
+  should capture), `correctness`, `consistency`, `doc-accuracy`.
 
 The two seeds are first-class tags (`version`, `boundary`) so the
 reconciliation can prove they were swept everywhere AND surface the
@@ -502,12 +515,17 @@ arrow is a gate (user review where noted).
 ```
 Step 0  Investigation-approach plan (THIS DOC) ──user review──┐
                                                               │
-Step 1  Retained-Decisions extraction  ◄── R7 pre-read feeds it
+Step 1  Retained-Decisions extraction (one of THREE parallel pre-prison
+        read-only passes — Step-1 extractor ∥ supersession-mapping pass ∥
+        R7 pre-read; NO inter-dependency; R7 ENRICHES Step 1, non-blocking)
         (clean doc of user-preapproved good BD-185 decisions;
          user confirms the retained set)               ──user confirm──┐
                                                                        │
-Step 2  Prison move (superseded docs → prison dir;            ◄── R7 prison-candidate tags inform it
-        user-confirmed; presence = contaminated = ignored)    ──user approve the move──┐
+Step 2  Prison move (superseded docs → prison dir;   ◄── membership PROPOSAL assembled from the
+        user-confirmed; presence = contaminated =         whole-repo SUPERSESSION-MAPPING pass
+        ignored)                                          (the prison-ID owner) + Step-1 provenance
+                                                          + R7 epicenter context
+                                                       ──user approve the move──┐
                                                                                        │
 Step 3+4  Researcher segments R1…R9 (parallel per §2.7) over   ◄── prison dir now excluded
           the entire repo EXCEPT prison; every touch point
@@ -540,14 +558,21 @@ Step 9    ONLY THEN fresh-start BD-185 (wipe vs proven-correct; bias: complete r
   researcher coverage audit (QG-5) diffs against `git ls-files` *minus
   the prison paths*; that subtraction is only well-defined once Step 2
   has run.
-- **R7 as a pre-read for Step 1/Step 2.** R7 owns the epicenter, so it is
-  the natural source of (a) `retained-decision`-tagged items feeding
-  Step 1 and (b) `prison-candidate`-tagged items feeding Step 2. The plan
-  therefore allows R7 to run a *scoped pre-read* before Step 1, surfacing
-  candidates for the user's Step-1/Step-2 decisions; the **full R7 deep
-  pass** then runs in Step 3 over whatever epicenter docs remain OUTSIDE
-  the prison. This avoids the deadlock "R7 needs the prison defined / the
-  prison needs R7's analysis."
+- **R7 scoped pre-read runs in PARALLEL with Step 1 (no inter-dependency).**
+  R7 owns the epicenter, so it produces `AUDIT-BD-195-R7-PREREAD.md` with
+  (a) `retained-decision`-tagged LEADS that ENRICH Step 1 (non-blocking — the
+  Step-1 extractor reads the epicenter directly and does not wait on R7) and
+  (b) epicenter-deep CONTEXT that ENRICHES the whole-repo supersession-mapping
+  pass's epicenter entries. R7 is ONE of three parallel pre-prison read-only
+  passes (Step-1 extractor, supersession-mapping pass, R7 pre-read); they have
+  NO inter-dependency and all converge before Step 2. **Prison-membership
+  IDENTIFICATION is owned by the dedicated whole-repo supersession-mapping pass,
+  NOT by R7** (R7 is epicenter-scoped and would miss whole-repo supersession);
+  the prison/analysis deadlock is broken by the supersession-mapping pass + R7
+  reading IN PLACE before the Step-2 move, not by R7 preceding Step 1. The
+  **full R7 deep pass** then runs in Step 3 over whatever epicenter docs remain
+  OUTSIDE the prison. (See PLAN-BD-195-EXECUTION.md §4.1/§5/§6.1 for the
+  authoritative per-pass definitions.)
 
 ### 4.2 What the Step-0 planner does NOT decide
 
@@ -766,8 +791,11 @@ recovers; this plan produces no BD-185 work.
 - A defined reconciliation pass producing one exhaustive problem list +
   one coherent fix design (§5), with explicit overlap/conflict resolution.
 - Steps 1–2 are sequenced explicitly relative to the investigation (§4),
-  including the R7-pre-read mechanism that breaks the prison/analysis
-  ordering deadlock.
+  including the three parallel pre-prison read-only passes (Step-1 extractor
+  ∥ supersession-mapping pass ∥ R7 pre-read) that read IN PLACE before the
+  Step-2 move and so break the prison/analysis ordering deadlock — with
+  prison-membership identification owned by the supersession-mapping pass
+  (per PLAN-BD-195-EXECUTION.md §4.1/§5/§6.1).
 - Depth is enforced, not just coverage (§6, esp. QG-2/QG-4).
 
 ---
@@ -804,10 +832,16 @@ designed to contain; they are not findings about the repo.
 
 1. **Prison/analysis ordering deadlock.** Risk: the researcher passes
    need the prison defined, but defining the prison needs analysis.
-   Containment: the R7-pre-read → Step 1 → Step 2 → full-R7 sequence
-   (§4.1). Residual risk: if the user's Step-2 prison set diverges from
-   R7's pre-read candidates, R7's full pass must re-scope; acceptable
-   because R7 re-runs on the post-prison remainder by design.
+   Containment: the three PARALLEL pre-prison read-only passes (Step-1
+   extractor ∥ supersession-mapping pass ∥ R7 pre-read) read IN PLACE,
+   then Step 2 moves the prison, then the full R1…R9 (incl. full-R7) run
+   on the post-prison remainder (§4.1; PLAN-BD-195-EXECUTION.md §4.1/§5).
+   Prison-membership identification is owned by the supersession-mapping
+   pass (whole-repo), with R7 supplying epicenter enrichment. Residual
+   risk: if the user's Step-2 prison set diverges from the proposed
+   membership, the full passes re-scope; acceptable because they re-run on
+   the post-prison remainder by design (+ the §4.1 residual-miss safety net
+   in PLAN-BD-195-EXECUTION.md for any superseded doc the map missed).
 
 2. **Mis-versioning seed is deeper than the docs.** The §1.4 scan shows
    v11.1 strings in `scripts/`, `validate-pack.py`, `scripts/tests/`, and

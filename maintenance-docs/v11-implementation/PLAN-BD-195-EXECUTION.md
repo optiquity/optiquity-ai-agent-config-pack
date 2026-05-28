@@ -190,18 +190,24 @@ approve / decide). Steps 3–5 expand the investigation-approach plan §4 order.
 [Step 0 done] Investigation-approach plan approved
         │
         ▼
-Step 1  Retained-Decisions extraction  ◄── R7 SCOPED PRE-READ feeds it
+Step 1  Retained-Decisions extraction (one of THREE parallel
+        pre-prison read-only passes; NO inter-dependency)
         pack-docs-researcher (or pack-architect) reads contaminated
         sources IN PLACE → AUDIT-BD-195-RETAINED-DECISIONS.md
         ══USER══ confirms the retained set
         │  (commit: PM-discussed; doc is a workflow artifact)
         │
-        │  (parallel with Step 1, both read-only over the pre-prison repo:)
-        ├─ Supersession-mapping pass (WHOLE-REPO; dedicated agent)
+        │  (the other two parallel pre-prison read-only passes:)
+        ├─ Step 1b Supersession-mapping pass (WHOLE-REPO; dedicated agent)
         │     pack-docs-researcher reads INSIDE every doc + reads git log
         │     → AUDIT-BD-195-SUPERSEDED-MAP.md  (FACTUAL superseded→
         │        superseding mapping + evidence; NO opinion on purpose/why)
-        ▼
+        ├─ R7 scoped pre-read (epicenter; pack-docs-researcher)
+        │     → AUDIT-BD-195-R7-PREREAD.md  (retained-decision LEADS that
+        │        enrich Step 1 + epicenter CONTEXT that enriches the
+        │        supersession map; does NOT block Step 1 — Step 1 reads
+        │        the epicenter directly)
+        ▼  (all three complete before Step 2)
 Step 2  Prison creation + population
         Pack Chat ASSEMBLES the membership PROPOSAL from the
         supersession map + Step-1 provenance + R7 epicenter context
@@ -261,16 +267,20 @@ Step 9  BD-185 decision gate — wipe vs salvage (bias: complete
 - **Steps 1–2 before Step 3**: the prison directory must exist and be
   populated before the researcher segments declare their exclusion; QG-5
   diffs `git ls-files` *minus the prison paths*, well-defined only after Step 2.
-- **R7 scoped pre-read breaks the retained-decisions deadlock**: R7
-  (epicenter) is the natural source of `retained-decision`-tagged items
-  (→ Step 1) and supplies epicenter-deep CONTEXT that enriches the
-  supersession map's entries for the epicenter docs. R7 runs a scoped pre-read
-  before Step 1; the full R7 deep pass runs in Step 3 over the post-prison
-  remainder. **Prison-membership IDENTIFICATION is owned by the dedicated
-  whole-repo supersession-mapping pass (below), NOT by R7** — R7 is
-  epicenter-scoped and would miss whole-repo supersession; the two are not
-  overlapping identifications (R7 = retained-decision leads + epicenter depth;
-  the supersession map = the single factual whole-repo superseded→superseding
+- **R7 scoped pre-read runs IN PARALLEL with Step 1 and Step 1b (no
+  inter-dependency)**: R7 (epicenter) produces `AUDIT-BD-195-R7-PREREAD.md`,
+  whose outputs feed TWO consumers — neither a blocking edge into Step 1:
+  (a) `retained-decision`-tagged LEADS that ENRICH the Step-1 extraction
+  (non-blocking — the Step-1 extractor reads the epicenter directly, so it does
+  not wait on R7), and (b) epicenter-deep CONTEXT that ENRICHES the Step-1b
+  supersession map's epicenter entries. R7 is NOT a predecessor of Step 1; all
+  three pre-prison passes run concurrently and converge BEFORE Step 2. The full
+  R7 deep pass runs later, in Step 3, over the post-prison remainder.
+  **Prison-membership IDENTIFICATION is owned by the dedicated whole-repo
+  supersession-mapping pass (below), NOT by R7** — R7 is epicenter-scoped and
+  would miss whole-repo supersession; the two are not overlapping
+  identifications (R7 = retained-decision leads + epicenter depth; the
+  supersession map = the single factual whole-repo superseded→superseding
   source).
 - **The supersession-mapping pass supplies the prison-membership evidence**: a
   dedicated `pack-docs-researcher` reads INSIDE every doc across the ENTIRE
@@ -324,12 +334,18 @@ prison rule verbatim and the STOP-MEANS-STOP / read-only directive per §2.
   prefers a design-judgment framing, `pack-architect` is the alternative —
   but the task is "find and quote the preapproved decisions," which is
   researcher work; default `pack-docs-researcher`.)
-- **Inputs read.** (a) The BD-195 directive Step 1. (b) The investigation
-  plan's **R7 pre-read** scope (§1.2 untracked V2 docs + §1.3 committed
-  BD-185/BD-193/BD-194/groupings docs) — the epicenter is where the
-  preapproved decisions live. (c) Any chat-surfaced "user-approved" markers
-  the prompt names. **Prison rule note:** the prison does NOT yet exist; Step 1
-  reads the contaminated sources IN PLACE.
+- **Inputs read.** (a) The BD-195 directive Step 1. (b) The epicenter scope
+  itself (§1.2 untracked V2 docs + §1.3 committed BD-185/BD-193/BD-194/groupings
+  docs) — the extractor reads the epicenter DIRECTLY (it does not wait on R7).
+  (c) The R7 pre-read's `AUDIT-BD-195-R7-PREREAD.md` retained-decision LEADS
+  *if already available* — a non-blocking enrichment, since R7 runs in parallel
+  (see § Step 1b sibling note and §4.1); the extractor proceeds without it if
+  R7 has not yet completed. (d) Any chat-surfaced "user-approved" markers the
+  prompt names. **Prison rule note:** the prison does NOT yet exist; Step 1
+  reads the contaminated sources IN PLACE. **Sibling passes:** Step 1 is one of
+  THREE parallel pre-prison read-only passes — the Step-1 extractor, the Step-1b
+  supersession-mapping pass, and the R7 scoped pre-read — with NO
+  inter-dependency; all three converge before Step 2 (§4.1, §6.1).
 - **Outputs produced.** `maintenance-docs/v11-implementation/AUDIT-BD-195-RETAINED-DECISIONS.md`
   — a clean doc listing each preapproved good BD-185 decision with: the
   decision stated self-contained, the source doc(s) it was extracted from
@@ -427,9 +443,9 @@ to Step 1, not a successor — neither blocks the other.
   2. **Step-1 provenance.** Every source the Retained-Decisions doc extracted
      FROM is a prison candidate (its good content is now preserved elsewhere) —
      cross-checked against the map.
-  3. **R7 epicenter context.** The R7 pre-read's epicenter-deep reading enriches
-     the map's epicenter entries (it does NOT add a separate identification —
-     the map is the single whole-repo source).
+  3. **R7 epicenter context (`AUDIT-BD-195-R7-PREREAD.md`).** The R7 pre-read's
+     epicenter-deep reading enriches the map's epicenter entries (it does NOT
+     add a separate identification — the map is the single whole-repo source).
   Pack Chat assembles these into a per-doc candidate proposal with the map's
   evidence cited per candidate — NO new identification by Pack Chat, NO opinion
   added beyond what the map factually establishes.
@@ -449,9 +465,9 @@ to Step 1, not a successor — neither blocks the other.
   `maintenance-docs/` for any check, else a `.boundary-exempt` / glob-exclusion
   adjustment lands in the same Step-2 commit (surfaced to the user).
 - **Inputs read.** `AUDIT-BD-195-SUPERSEDED-MAP.md` (the primary membership
-  evidence); the Step-1 Retained-Decisions doc (provenance); R7 pre-read
-  epicenter context; the directive Step 2; the validator path globs (to
-  satisfy constraint (d)).
+  evidence); the Step-1 Retained-Decisions doc (provenance); the R7 pre-read
+  epicenter context (`AUDIT-BD-195-R7-PREREAD.md`); the directive Step 2; the
+  validator path globs (to satisfy constraint (d)).
 - **Outputs produced.** (a) The prison directory, populated. (b) Inbound-
   reference notes: any in-scope doc/script that referenced a now-prisoned file
   is FLAGGED (not yet fixed — the fix is designed in Step 5 and lands in
@@ -777,7 +793,7 @@ may re-granulate — the inventory scales 1:1 with segment count).
 | # | Step | Agent | Instances | Parallel/Sequential | Fresh discipline |
 |---|---|---|---|---|---|
 | 1 | 1 | `pack-docs-researcher` (Retained-Decisions extractor) | 1 | — | fresh; closed after Step 1 commit |
-| 2 | 1/2 | `pack-docs-researcher` (R7 scoped pre-read; epicenter context + retained-decision leads — NOT prison-candidate identification) | 1 | parallel with Step 1 + the supersession-map pass | fresh; feeds Step 1 + enriches the supersession map's epicenter entries |
+| 2 | 1/2 | `pack-docs-researcher` (R7 scoped pre-read; epicenter context + retained-decision leads — NOT prison-candidate identification) → `AUDIT-BD-195-R7-PREREAD.md` | 1 | parallel with Step 1 + the supersession-map pass (NO inter-dependency) | fresh; ENRICHES Step 1 (non-blocking) + enriches the supersession map's epicenter entries; closed after C1 |
 | 2b | 1b | `pack-docs-researcher` (whole-repo SUPERSESSION-MAPPING pass; reads inside every doc + `git log`; factual superseded→superseding map, no opinion) → `AUDIT-BD-195-SUPERSEDED-MAP.md` | 1 | parallel with Step 1 + R7 pre-read (all read-only over the pre-prison repo); completes before Step 2 | fresh; closed after C1 |
 | 3 | 2 | — (Pack Chat ASSEMBLES the membership proposal from the supersession map; performs the move; no agent identifies or moves) | 0 | — | — |
 | 4 | 3 | `pack-docs-researcher` × 9 (R1…R9) | 9 | parallel batches (§6.1) | fresh per segment; closed after Step 3 commit |
@@ -815,8 +831,10 @@ end-of-batch reviewer (sized by the Step-6 plan).
 - **Researchers (R1…R9).** Mostly independent → parallel. Two ordering
   constraints from §2.7: **R5 → R6** (or R5 ∥ R6 with a documented
   cross-reference handshake at reconciliation — R6 encodes invariants R5
-  defines); and **R7's scoped pre-read precedes Step 1** while R7's full deep
-  pass runs in Step 3 over the post-prison remainder. Concurrency cap: the user's
+  defines); and **R7's scoped pre-read runs in PARALLEL with Step 1 + Step 1b**
+  (the three pre-prison passes — see the bullet above — with no
+  inter-dependency) while R7's full deep pass runs later, in Step 3, over the
+  post-prison remainder. Concurrency cap: the user's
   machine/agent-team limit (no hard cap imposed by this plan; batch in waves if
   the host throttles). Within Agent-Teams, spawn the stage's agents, keep them
   alive for follow-ups, close ALL after the Step-3 commit, respawn fresh for
@@ -1042,6 +1060,7 @@ master plan adds three NEW workflow-artifact doc names not in §3.5 (all under
 `maintenance-docs/v11-implementation/`, all sweep to `archive/v11/` at ship):
 - `AUDIT-BD-195-RETAINED-DECISIONS.md` (Step 1)
 - `AUDIT-BD-195-SUPERSEDED-MAP.md` (Step 1b)
+- `AUDIT-BD-195-R7-PREREAD.md` (R7 scoped pre-read)
 - `AUDIT-BD-195-PRISON-MANIFEST.md` (Step 2)
 - `PLAN-BD-195-FIX-IMPLEMENTATION.md` (Step 6)
 - `IMPLEMENTATION-REPORT-BD-195-<commit-id>.md` (Step 7, per commit)
@@ -1181,6 +1200,8 @@ forward visibility; all workflow artifacts under
 - `AUDIT-BD-195-RETAINED-DECISIONS.md` (Step 1)
 - `AUDIT-BD-195-SUPERSEDED-MAP.md` (Step 1b — the dedicated whole-repo
   supersession-mapping pass's factual superseded→superseding map + evidence)
+- `AUDIT-BD-195-R7-PREREAD.md` (R7 scoped pre-read — epicenter retained-decision
+  leads + epicenter context; one of the three parallel pre-prison passes)
 - A prison directory (path a Step-2 user decision; §4.3 constraints) +
   `AUDIT-BD-195-PRISON-MANIFEST.md` (Step 2)
 - 9 × `RESEARCH-BD-195-SEGMENT-R<1..9>-<short>.md` +
@@ -1232,8 +1253,8 @@ review / pristine-bar audit.
 | Action | What it does | Who does it | Blocked by + why | Parallelizable |
 |---|---|---|---|---|
 | **G0** | Approve THIS master plan before any action runs | User reviews + approves | None | No — sequential gate; everything below is blocked by it (this plan is the authority for the sequence). |
-| **R7pre** | Scoped pre-read of the epicenter to surface `retained-decision` leads + epicenter-deep CONTEXT that enriches the supersession map (NOT prison-candidate identification — that is `S-supmap`) | `pack-docs-researcher` (1, fresh, bg) | G0 (plan must be approved) — its scope/standard come from this plan | **Yes — parallel with S1x + S-supmap** (all three read-only over the pre-prison repo, no inter-dependency). Must complete before S2-prop (its context feeds the membership proposal). |
-| **S1x** | Extract preapproved good BD-185 decisions IN PLACE → `AUDIT-BD-195-RETAINED-DECISIONS.md` (before prisoning) | `pack-docs-researcher` (1, fresh, bg) | G0 — needs the approved plan; reading sources IN PLACE requires they not yet be prisoned (Step 2 not run) | **Yes — parallel with R7pre + S-supmap** (all read-only over the pre-prison repo; R7pre enriches but does not block — the extractor reads the epicenter directly). Must complete before G1. |
+| **R7pre** | Scoped pre-read of the epicenter → `AUDIT-BD-195-R7-PREREAD.md`: `retained-decision` LEADS that enrich Step 1 (non-blocking) + epicenter-deep CONTEXT that enriches the supersession map (NOT prison-candidate identification — that is `S-supmap`) | `pack-docs-researcher` (1, fresh, bg) | G0 (plan must be approved) — its scope/standard come from this plan | **Yes — parallel with S1x + S-supmap** (all three read-only over the pre-prison repo, no inter-dependency). Must complete before S2-prop (its context feeds the membership proposal). |
+| **S1x** | Extract preapproved good BD-185 decisions IN PLACE → `AUDIT-BD-195-RETAINED-DECISIONS.md` (before prisoning) | `pack-docs-researcher` (1, fresh, bg) | G0 — needs the approved plan; reading sources IN PLACE requires they not yet be prisoned (Step 2 not run) | **Yes — parallel with R7pre + S-supmap** (all read-only over the pre-prison repo; R7pre's `AUDIT-BD-195-R7-PREREAD.md` enriches but does not block — the extractor reads the epicenter directly). Must complete before G1. |
 | **S-supmap** | Read INSIDE every doc across the ENTIRE repo + read `git log` → `AUDIT-BD-195-SUPERSEDED-MAP.md`: FACTUAL "doc X superseded by doc Y/Z" mapping + evidence (in-doc statement and/or commit message); NO opinion on purpose/why | `pack-docs-researcher` (1, fresh, bg) | G0 — needs the approved plan; reads sources IN PLACE (prison not yet created) | **Yes — parallel with S1x + R7pre** (all read-only over the pre-prison repo, no inter-dependency). Must complete before S2-prop (its map is the membership evidence). |
 | **C1** | Commit the Retained-Decisions doc + the supersession map | Pack Chat stages + commits (with user approval) | S1x + S-supmap — needs both docs | No — sequential after S1x + S-supmap (both pre-prison read-only passes complete). |
 | **G1** | Confirm the Retained-Decisions set (add/remove/adjust) | User confirms | S1x (+ C1) — confirms the produced doc | No — sequential gate; Step 2 membership leans on the confirmed set. |
