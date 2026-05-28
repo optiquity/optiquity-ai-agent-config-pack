@@ -1746,6 +1746,7 @@ Resolved: 2026-05-21
 **BD-185 — Phase parts hierarchy + tracker-mode execution ordering**
 Type: feat — surfaced 2026-05-21 from Pack Chat design discussion (main v10.1 chat); user-approved as Batch 19d (immediately after Batch 19c) 2026-05-21
 Status: Open
+Paused: 2026-05-28 — PAUSED pending Code Red 3 (BD-195). The prior BD-185 attempt is being superseded/recovered by BD-195; no new BD-185 work begins until BD-195 completes. BD-195 Step 9 decides whether the prior BD-185 work-so-far is wiped or salvaged.
 Blockers: Batch 19c (BD-173) completion — fires after BD-173 closes and commits. Docs-researcher prompt persisted at `maintenance-docs/v11-research/BD-185-DOCS-RESEARCHER-QUEUED-PROMPT.md` (one-time exception to "Pack Chat does not edit maintenance-docs/" rule per user direction 2026-05-21) for use at fire time; firing requires explicit user approval.
 Unblocks: Real-OT migration test (BD-171, Batch 23) gains the new form-family + ordering mechanism for empirical validation; v10→v11 and v11.0 flat→tracker migrators carry pre-existing whole-number phases through cleanly; mid-work phase-to-parts expansion gains first-class tracker representation; tracker-mode execution ordering becomes expressible without flat-file SSOT or GH Projects abuse.
 File/Symbol:
@@ -3122,6 +3123,36 @@ Description: Replace `validate-pack.py` Check 24 (`check_help_fragment_tracker`)
 
   **Position:** Batch 19d-prep-3 — fires AFTER BD-193 Resolved + BEFORE BD-185 H.2 spawns. BD-185 H.2 builds on the post-BD-193 + post-BD-194 baseline.
 Resolved: 2026-05-27 — Check 24 byte-identity gate replacement completed via Candidate 6 design: Check 24 retired entirely; Check 23 modified to fail-loud on missing pack-side tracker fragment; Check 22 corrected to per-surface tracker fragment selection (latent bug fix surfaced by BD-193 Phase 4 §5.6). Implementation at 4ef6c02 across 14 files; follow-on at 6c76582 addressed 3 reviewer findings (F-1: stale refs in 3 pack-repo dotted-skill mirrors; F-3: pre-existing test failures inherited from BD-193 inventory change — CI blocker resolved; F-2: doc count NIT). validate-pack now PASS at 40 invoked checks (down from 41); 2 per-check test files updated. Pipeline: architect → planner → coder → reviewer → fix-coder; researcher SKIPPED (design space pre-enumerated). Process gap surfaced for separate update: pack-coder PREFLIGHT pattern should require per-check test runs as a verification gate.
+
+**BD-195 (Code Red 3) — v11.0 pristine-state recovery before BD-185 restart (full-repo)**
+Type: fix — pack-only operational; recovery of v11.0 to a pristine post-Batch-19c state prior to restarting BD-185 (phase parts).
+Status: Open
+Alias: "Code Red 3" and "BD-195" refer to the same item (interchangeable).
+Surfaced: 2026-05-28 (user direction, after the BD-185 attempt fractured).
+
+Goal: Bring v11.0 to a pristine state following Batch 19c BEFORE any new BD-185 work begins. Supersede the entire prior BD-185 attempt with new docs while retaining the user's preapproved good decisions so they need not be re-explained. FORWARD FIX BIASED TOWARD COMPLETE REDO of the BD-185 attempt; prior committed work is not anchored on or salvaged unless a fix pass independently proves it correct.
+
+Scope: EVERYTHING — entire repo, pack and project sides, every doc/script/file, including all BD-185-attempt work, Batch 19c, and prior. No carve-outs; no prior BD (incl. BD-193/BD-194) is special-cased. ONLY excluded location: the prison directory (Step 2).
+
+Known-broken SEED (non-exhaustive): v11.0/v11.1 mis-versioning + pack/project boundary residue are the two we currently KNOW about. We do not know whether these are the only ones — the investigation must surface the rest.
+
+Surfacing standard (applies to every researcher/audit/architect pass): proactively highlight ANY potential inconsistency or needed fix, not just the known seed. Each item is presented as the AGENT's finding + recommendation (Pack Chat relays it as the agent's, never its own), with enough self-contained context that the user can decide WITHOUT re-reading the chat or cross-referencing other docs. The user decides what to act on, if anything.
+
+Quality bar: broad AND deep — never broad-but-sparse. The work may be segmented across multiple docs-researcher passes and multiple architect passes; that is expected and fine, provided all segments share the same standards, guidelines, and output-shape so the final reconciliation combines them smoothly.
+
+Steps:
+  0. Investigation-approach planning (runs FIRST): a planner agent takes this BD-195 directive and produces the INVESTIGATION PLAN — segmentation of the docs-researcher and architect passes (broad + deep), the shared standards / guidelines / output-shape across all segments (incl. the surfacing standard above), and the final reconciliation pass that combines the segments. Goes to the user for review before any researcher/architect work runs. This plan also sequences how Steps 1-2 relate to the investigation. (Distinct from the Step-6 fix-implementation planner.)
+  1. Extract the user's preapproved good BD-185 decisions into a clean Retained-Decisions doc; user confirms the retained set. Runs before Step 2 so the decisions survive prisoning/deletion of the contaminated sources.
+  2. Create a dedicated "prison" directory (distinct from maintenance-docs/archive/) and move EVERY superseded doc into it — INCLUDING superseded docs already in maintenance-docs/archive/ (archived AND superseded = doubly useless → prison). maintenance-docs/archive/ retains ONLY non-superseded historical records. Presence in the prison = superseded/contaminated = IGNORED at every step; status is unambiguous without opening the file. PRISON DISPOSITION RULE (must be stated identically in every step and every agent prompt): no agent ever audits, edits, trusts, or treats as authoritative any doc inside the prison directory — its sole status is "superseded, ignore."
+  3. Per the Step-0 plan: segmented docs-researcher + audit passes over the ENTIRE repo (pack + project), every file except the prison directory, producing ONE exhaustive, reconciled problem list (the known seed + ALL other surfaced potential issues, each per the surfacing standard). No piecemeal NIT-patching that interrupts core work.
+  4. Verify + blast radius: part of Step 3's passes (every touch point mapped).
+  5. Per the Step-0 plan: segmented architect passes design fixes for ALL surfaced problems — every touch point including the BD-185 work — combined by the final reconciliation pass.
+  6. Fix-implementation planner produces the fix plan — every touch point including the BD-185 files.
+  7. Implement the fixes.
+  8. Extensive reviews + audits of the fixes.
+  9. ONLY then, fresh-start BD-185 — decide whether the BD-185 work-so-far is wiped or the fix pass proved it correct (bias: complete redo).
+
+Position: precedes the BD-185 restart; fires before any new BD-185 work. The prior BD-185 attempt (committed H.1/H.2 + the untracked V2 analysis docs) is paused (see BD-185) and in-scope for supersession.
 
 ---
 
