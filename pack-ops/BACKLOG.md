@@ -3150,7 +3150,7 @@ Steps:
   6. Fix-implementation planner produces the fix plan — every touch point including the BD-185 files.
   7. Implement the fixes.
   8. Extensive reviews + audits of the fixes.
-  9. ONLY then, fresh-start BD-185 — decide whether the BD-185 work-so-far is wiped or the fix pass proved it correct (bias: complete redo).
+  9. ONLY then, fresh-start BD-185 — decide whether the BD-185 work-so-far is wiped or the fix pass proved it correct (bias: complete redo). Step 9 MUST examine the held BD-185-attempt artifacts for disposition (fix-in-place / prison / wipe): the 5 held untracked docs (`maintenance-docs/v11-implementation/ARCHITECTURE-BD-185-V2.md`, `ARCHITECTURE-BD-185-V2-ORDERING-ADDENDUM.md`, `PLAN-BD-185-V2.md`, `PACK-REVIEW-BD-185-H.2.md`, `maintenance-docs/v11-research/RESEARCH-BD-185-ORDERING-API.md`) + the tracked attempt records (6 `IMPLEMENTATION-REPORT-BD-185-*`, `PACK-REVIEW-BD-185-H.1.md`) — broken prison-references + v11.1 mislabel, detailed as P-09/P-17/P-18 in `maintenance-docs/v11-implementation/AUDIT-BD-195-RECONCILED-PROBLEM-LIST.md` (G3 decision, 2026-05-29: OQ-1(3)/OQ-3).
 
 Position: precedes the BD-185 restart; fires before any new BD-185 work. The prior BD-185 attempt (committed H.1/H.2 + the untracked V2 analysis docs) is paused (see BD-185) and in-scope for supersession.
 
