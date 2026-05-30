@@ -3156,6 +3156,23 @@ Position: precedes the BD-185 restart; fires before any new BD-185 work. The pri
 
 ---
 
+**BD-196 — Document concision + boundary-completeness guardrails (rule-corpus restructure + single-SSOT discoverability)**
+Type: feat — pack-only operational; STRUCTURAL (amends pack-memory rules, adds validator checks, reshapes durable pack-ops docs).
+Status: Open
+Surfaced: 2026-05-30 — user-directed effort during BD-195 to fix document bloat while keeping the guardrails authoritative.
+Blockers: None — design (`maintenance-docs/v11-implementation/ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md` v9) + plan (`maintenance-docs/v11-implementation/PLAN-DOC-CONCISION-GUARDRAILS.md`, commits C1–C12) complete and user-approved.
+Unblocks: BD-195's downstream fixes inherit a concise, single-SSOT, discoverable rule corpus; future rule changes follow the §12 propagation procedure.
+File/Symbol: per `PLAN-DOC-CONCISION-GUARDRAILS.md` C1–C12 — `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` `## Pack memory` (imperative + `[roles:]` + `[rationale: slug]`); NEW `pack-ops/PACK-MEMORY-RATIONALE.md`; reshaped `pack-ops/BOUNDARY-DEFINITION.md`; `pack-ops/PACK-CHAT.md` / `pack-ops/PACK-AGENTS.md` (collapse restatements + routing + §12 procedure); `scripts/validate-pack.py` Checks 44 (M4 concision gate) / 45 (C3 bijection) / 46 (B5 + spawn-rule) + per-check tests + CI; NEW `pack-ops/.spawn-rule-manifest.txt` / `.boundary-pointer-manifest.txt` / `.concision-allowlist.txt`; the 6 other durable `pack-ops/` docs.
+Description:
+  **Problem:** pack rule/SSOT docs accreted proof / rationale / history / temporal-provenance content (bloat), and the spawn-relevant rules are fragmented + duplicated across four surfaces with no single discoverable SSOT — rules are hard to find, drift-prone, and the guardrails are not authoritative.
+  **Goal:** eliminate the bloat AND retain the guardrails — one SSOT per concept; concise forward-only durable docs; rules discoverable one hop from each actor's entry doc; enforcement composed from validator checks. Not additive-only — stale content removed + orphaned references repaired (design §8 step 7b).
+  **Success criteria:** the v9 design's locked decisions implemented per the plan — C1 imperative+rationale split; C3 single rationale file + bijection (Check 45); M1–M4 concision incl. the M4 gate (Check 44); B5 pointer-manifest + spawn-rule anti-restate/reference-resolution (Check 46); §9 single spawn-source + `[roles:]` role-tags; §11 discoverability (index dropped, one-hop routing); §12 rule-change propagation procedure; D1 companion-template Check-37 walk; D2 purpose-classifies-location; §8 step 7b stale-reference blast-radius sweep; validate-pack + per-check tests green at every commit; C12 final end-of-batch review + whole-repo completeness audit (no surface missed).
+  **Out of scope:** the optional fence-marker refactor (design §8 step 8, deferred); BD-195's own scope; any NEW standing rule.
+  **Pipeline:** design → plan (both complete) → implementation C1–C12 with the per-commit bounded review/fix cadence + the end-of-batch reviewer (existing rule).
+Position: worked immediately; per user direction 2026-05-30 no other BD is worked until BD-196 resolves. BD-195 remains paused (Step-9 disposition pending); its disposition is decided after BD-196 completes.
+
+---
+
 ## Active — v10 Scope
 
 **BD-059 — v10 migration silently destroys project customization**
