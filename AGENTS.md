@@ -353,6 +353,144 @@ in the same commit as the behavior change.
   (Claude-side; the platform-neutral PREFLIGHT half of the lesson
   applies equally to Codex pack-coder prompts).
 
+- **Agent prompt enumerates ALL applicable rules inline.** Every
+  sub-agent prompt Pack Chat constructs (`pack-architect` /
+  `pack-planner` / `pack-coder` / `pack-reviewer` / `pack-fix-coder` /
+  `pack-docs-researcher`) MUST enumerate ALL applicable pack-memory
+  rules and trinity sections INLINE in the prompt body. Not by
+  reference ("see MEMORY.md"); not by hyperlink. The LITERAL rule
+  text — name + Why + How-to-apply paragraphs — is pasted into the
+  agent prompt. The agent reads its rules from the prompt; it does
+  not have to discover them.
+
+  **Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery.
+  Both BD-195 design failures (C6 PM-only allowlist gap; C7 Check 44
+  working-state proof failed by 1213 hits in 114 files) had the same
+  shape: the relevant rule was knowable from pack memory but the
+  architect did not enumerate it as something to verify before
+  declaring complete. Design defects shipped past architect →
+  planner → Pack Chat → coder gates, caught only at coder runtime.
+  Token cost rises (architect prompt grows from ~500 lines to
+  ~2000+ lines); rule compliance becomes auditable because the
+  agent's task and rules are co-located.
+
+  **How to apply:** Before spawning ANY sub-agent, Pack Chat
+  assembles the prompt with these sections in order: (1) STOP-MEANS-
+  STOP + permission boundaries; (2) **NEW "Rules in force" block** —
+  copy the LITERAL rule text from every applicable MEMORY.md entry;
+  each rule's name + Why + How-to-apply MUST appear verbatim;
+  applicability is by topic (architect rules for architect spawns,
+  coder rules for coder spawns, etc.) PLUS universally applicable
+  rules (trinity, prison, no-state-changing-git, no-destructive-
+  without-approval) in every spawn; (3) task description; (4) **NEW
+  "Rules-applied verification" instruction** — output ends with a
+  Rules-Applied Verification Block (see "Agent output requires
+  Rules-Applied Verification Block" below); (5) PREFLIGHT obligation
+  where applicable; (6) IMPL-REPORT / output-file requirement. Pack
+  Chat NEVER spawns an agent without the rules-in-force block.
+
+- **Agent output requires Rules-Applied Verification Block.** Every
+  sub-agent output (architect design doc / planner plan / coder
+  IMPL-REPORT / reviewer report / fix-coder report / docs-researcher
+  report) MUST end with a **Rules-Applied Verification Block**. For
+  each rule listed in the prompt's "Rules in force" block, the agent
+  records: (a) **Rule name** as named in MEMORY.md; (b) **Verification
+  evidence** — the actual measurement (grep output, file path, count,
+  diff, command result), quoted not summarized; (c) **Conclusion** —
+  `COMPLIANT` / `N/A: <reason>` / `VIOLATED: <reason>`.
+
+  **Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery.
+  Without this block, agents cite rules they've followed but skip
+  rules they didn't verify. Verification evidence is the only
+  mechanism that distinguishes "rule cited" from "rule applied."
+  Failure mode in BD-195 AC1 §6.2: architect cited prison rule,
+  manifest-regen rule, trinity rule — sound. But no verification
+  evidence for the empirical claim "the seed-corrected tree has NO
+  `v11.1`-string occurrences outside the allowlist." The claim was
+  rule-shaped (a state-claim) but had no verification block. The
+  coder later proved it false (1213 hits in 114 files). Required
+  Rules-Applied Verification Block with grep output would have
+  failed the claim at design time, not coder time.
+
+  **How to apply:** Format: per-rule table `Rule | Verification
+  evidence | Conclusion`. Pack Chat verifies the block exists, every
+  row has non-empty evidence, every VIOLATED row gets surfaced to
+  the user BEFORE any downstream work (planner spawn / coder spawn /
+  commit). Empty entries = treated as VIOLATED. N/A rows require
+  explicit justification.
+
+- **Architect/planner state-claims require Empirical-Evidence
+  Blocks.** Every architect-design or planner-plan output MUST embed
+  an **Empirical-Evidence Block** for every state-claim. A state-
+  claim is any assertion about repo state or downstream state —
+  e.g., "the tree has X," "the tree has NO X," "after step N the
+  tree will contain Y," "the allowlist covers all legitimate
+  references." Each state-claim is backed by: the actual command
+  run; the actual output captured (count, paths, lines — not
+  paraphrased); the date / HEAD-SHA at which the measurement was
+  taken; the interpretation; a conclusion (SUPPORTED / NOT-SUPPORTED
+  / PARTIAL with reason).
+
+  **Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery.
+  BD-195 AC1 §6.2 claimed "after F-AC1-04 strips the v11.1 strings
+  from validate-pack.py + test-issue-forms.sh, and F-AC1-02 retires
+  templates-archive/v11.1/, the working tree has NO `v11.1`-string
+  occurrences outside the allowlist." State-claim. No grep run. No
+  count captured. The claim was empirically wrong by three orders of
+  magnitude (1213 hits in 114 files). The architect could have
+  grepped at design time — they had the regex (they wrote it as part
+  of Check 44's pattern). Nothing required them to verify.
+
+  **How to apply:** Every architect or planner prompt requires (a)
+  enumeration of the state-claims the design makes (in advance) and
+  (b) instruction that the design output includes an Empirical-
+  Evidence Block per state-claim. Pack Chat scans every architect /
+  planner output for state-claims; any without a corresponding
+  Empirical-Evidence Block entry is surfaced as a design defect
+  (route back to architect/planner; do not advance to planner /
+  coder).
+
+- **CI guard design — measure-then-bound.** When an architect
+  designs a CI guard, validator, allowlist, or any check that will
+  run against the repo at PR-time or CI-time, the architect MUST
+  follow this contract: (1) **Measure first** — run the guard's
+  matching logic against the actual current repo state; capture the
+  complete list of occurrences; (2) **Categorize every occurrence**
+  as KEEP (legitimate → allowlist) or STRIP (contamination →
+  fix-recipe); (3) **Design fix-recipes** that strip every STRIP-
+  classified occurrence; (4) **Size the allowlist exactly to the
+  legitimate-set** — no broader; (5) **Verify post-design** the
+  guard runs clean against the projected post-fix state. A design
+  that declares an allowlist without measuring the tree first is
+  INCOMPLETE. A design that widens the allowlist to admit borderline
+  / unclassified hits is treating contamination as legitimate by
+  default — which defeats the guard's purpose.
+
+  **Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery.
+  BD-195 AC1 §6.2 designed Check 44 with an allowlist of 2 architect
+  docs + 7 anchor phrases. The architect assumed (without
+  measurement) that C1-C6 fix-recipes would leave only the
+  allowlist-covered occurrences in the tree. The actual measurement
+  at HEAD `b547524a` (after C1-C6 landed) revealed 1213 occurrences
+  across 114 files. The allowlist was undersized; the fix-recipes
+  were under-scoped to match the actual contamination. The Pack Chat
+  triage temptation was to "widen the allowlist" to make the guard
+  pass — which would have defeated Check 44's purpose (catching
+  contamination LIKE the BD-193 propagation it was designed to
+  prevent). The right fix was to redo the design with the actual
+  measurement in hand.
+
+  **How to apply:** Any architect spawn that includes a CI-guard /
+  validator / allowlist deliverable: the prompt requires the
+  architect to execute (a) measurement-first phase (grep/walk the
+  tree, produce occurrence list), (b) categorization (per-occurrence
+  KEEP/STRIP), (c) fix-recipe design for every STRIP, (d) allowlist
+  sized to KEEP only, (e) projected post-fix verification. The
+  design output includes the measurement evidence + per-occurrence
+  categorization + the projected-clean verification. Pack Chat does
+  NOT advance the design to planner if any of these steps are
+  skipped.
+
 ### Pack Chat scope
 
 - **Pack Chat does NO fixes.** Pack Chat's role in any review/fix
@@ -420,6 +558,73 @@ in the same commit as the behavior change.
   is a CI failure, not a discipline note. The keyword vocabulary is
   defined in § "Rules for agents working on this repo" → commit-
   subject scope-keyword convention.
+
+- **Pack Chat NO coder review; bounded reviewer/fix cycle.** Pack
+  Chat NEVER reviews coder output directly. Every coder run is
+  followed by a BOUNDED review/fix cycle: **maximum 2 review/fix
+  pairs + 1 final reviewer pass = 3 reviewer spawns / 2 fix-coder
+  spawns per commit**. If issues remain after the final reviewer
+  pass, this is a DESIGN-DEFECT SIGNAL — Pack Chat immediately
+  spawns `pack-architect` to diagnose root cause + propose path
+  forward; no fix-coder pass 3 is allowed.
+
+  **Cycle (per commit):**
+  1. **Coder** runs → edits + IMPL-REPORT + Rules-Applied
+     Verification Block.
+  2. **Reviewer pass 1** (`pack-reviewer` fresh; rules-in-force).
+     Clean → skip to step 7. Findings → step 3.
+  3. Pack Chat triages findings to user → user approves fix/defer
+     per finding → **Fix-coder pass 1** (`pack-fix-coder` fresh;
+     rules-in-force; applies user-approved fixes).
+  4. **Reviewer pass 2** (`pack-reviewer` fresh; rules-in-force;
+     re-verifies). Clean → skip to step 7. Findings → step 5.
+  5. Pack Chat triages → user approves → **Fix-coder pass 2**
+     (FINAL fix-coder allowed).
+  6. **Reviewer pass 3** (`pack-reviewer` fresh; FINAL reviewer
+     pass). Clean → step 7. Issues remain → **STOP cycle. Spawn
+     `pack-architect`** to diagnose root cause + propose path
+     forward to user (typical options: scope-down the commit /
+     split into smaller commits / re-sequence / revert and redesign
+     / defer to follow-up BD). User decides; no fix-coder pass 3.
+  7. Pack Chat brings G7b commit-approval to user with the latest
+     clean reviewer report attached.
+
+  **Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery.
+  Pack Chat's judgment is compromised when it doubles as reviewer
+  (BD-195 evidence: missed the C2 staging defect that required
+  `--amend`; missed the C7 working-state-proof claim that failed by
+  1213 hits). Independent reviewer-agent verification is the
+  structural fix. Bounding the cycle (max 2 review/fix pairs + 1
+  final review) prevents the infinite-loop race-condition shape
+  (where fix A breaks B, fix B re-breaks A) and surfaces design
+  defects via architect escalation rather than allowing them to
+  hide as repeated local findings. Two fix-coder passes is
+  empirically enough for genuine fix-work; if findings persist past
+  that, the commit's design is wrong — local patching can't fix it,
+  only architect-level intervention can.
+
+  **How to apply:** Pack Chat spawns each agent with rules-in-force
+  enumeration. Tracks which pass number is active and exposes it in
+  progress markers (`**Reviewer pass 1 of max-3 (C8 of 38)**`,
+  `**Fix-coder pass 1 of max-2 (C8 of 38)**`, `**Architect
+  escalation (C8 of 38)**`). Routes reports to user (does NOT use
+  Read/Edit/Bash to verify coder edits independently — even small
+  mechanical commits go through the full cycle). After Reviewer
+  pass 3: no more fix-coders; architect escalation only.
+
+  **Architect-escalation contract** (Reviewer pass 3 still dirty):
+  Pack Chat spawns `pack-architect` with the coder's IMPL-REPORT,
+  all 3 reviewer reports, both fix-coder reports, and the
+  persistent-issue list. Architect produces DIAGNOSIS (root cause)
+  + PROPOSAL (path forward options). User decides — Pack Chat does
+  not pre-select.
+
+  **Final-reviewer-pass note:** Reviewer pass 3 exists ONLY to
+  verify fix-coder pass 2 closed the prior cycle's findings. It
+  does NOT trigger a new fix round. New findings at pass 3 + any
+  unresolved prior findings together trigger architect escalation.
+
+  Sharpens "Pack Chat does NO fixes" earlier in this subsection.
 
 ### Repo conventions
 
