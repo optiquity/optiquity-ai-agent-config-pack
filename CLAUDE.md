@@ -143,8 +143,11 @@ in the same commit as the behavior change.
 ### Workflow
 
 - **Agents never commit.** No agent — including `pack-coder` — may run
-  `git add`, `git commit`, `git push`, `git tag`, or any state-changing git
-  verb. Read-only git verbs (`status`, `diff`, `log`, `rev-parse`, `show`)
+  `git add`, `git commit`, `git push`, `git tag`, or any other state-changing
+  git verb at any point in any task; only Pack Chat stages/commits, and only
+  with explicit user approval. `[roles: universal]
+  [rationale: agents-never-commit]` Read-only git verbs (`status`, `diff`,
+  `log`, `rev-parse`, `show`)
   are allowed. Only Pack Chat may stage and commit, and only with explicit
   user approval. The agent's output is its report file plus working-tree
   edits; Pack Chat reads the report, verifies, then commits.
@@ -160,7 +163,12 @@ in the same commit as the behavior change.
 - **Implicit BD status flip on batch completion.** When a batch's review +
   fixes are clean and tests are green, flip its BDs to `Resolved` as the
   final step of the batch — no separate user approval needed.
-- **Per-action approval extends to sub-agents.** The "no state-changing
+- **Per-action approval extends to sub-agents.** Every sub-agent obeys the
+  same "no state-changing operation without explicit per-action approval"
+  rule its parent obeys — never run a destructive file operation (`rm -rf`,
+  `git rm`, overwriting a trusted file) on your own authority even when the
+  overall task is approved; surface it and wait. `[roles: universal]
+  [rationale: per-action-approval-sub-agents]` The "no state-changing
   operations without explicit per-action approval" rule applies to
   Claude Code Pack Chat AND every sub-agent it spawns. State-changing
   git verbs are forbidden to all agents per `PACK-AGENTS.md` § "Agent
@@ -176,11 +184,15 @@ in the same commit as the behavior change.
   surface AND be scheduled to a specific anchor: an open BD entry, a
   live `// TODO(scope): TD-TBD` comment in code per `project-template/
   CLAUDE.md` § "Deferral comments and BACKLOG hygiene", or a new BD
-  inserted at the appropriate plan position. Archived reports are NOT
+  inserted at the appropriate plan position. `[roles: universal]
+  [rationale: deferred-work-tracked-anchor]` Archived reports are NOT
   acceptable anchors — work that lives only in an archived doc is lost.
 - **No deferral to v11.1+ without explicit user direction.** While
   v11.0 is unlaunched, ALL work surfaced during v11.0 development MUST
-  land in v11.0 unless the user explicitly authorizes deferral. Pack
+  land in v11.0 unless the user explicitly authorizes deferral; treat any
+  architect/reviewer/coder defer-recommendation as a SCOPING signal, not an
+  AUTHORITY signal — re-scope to land in v11.0 and surface the blast-radius.
+  `[roles: universal] [rationale: no-deferral-without-user-direction]` Pack
   Chat must NEVER propose "defer to v11.1" as a default option in
   user-facing framings. Architect / reviewer / coder defer-
   recommendations are SCOPING signals (often driven by prompt
@@ -189,8 +201,12 @@ in the same commit as the behavior change.
   authorizes v11.1+ deferral; this default inverts only on explicit
   user direction ("this is v11.1 work" / "defer this" / "don't block
   v11.0 on this").
-- **Deferral IS scope creep.** Deferring unblocked work to a later BD
-  or batch is tech debt and scope creep. Punted items lose context,
+- **Deferral IS scope creep.** Treat deferring unblocked work to a later
+  BD or batch as tech debt — defend any deferral only with (a) SIZE,
+  (b) BLOCKED, or (c) LOGICAL FIT (concrete file/contract evidence, not
+  "felt big"/"feels related"/"thematic"), else do the work now.
+  `[roles: universal] [rationale: deferral-is-scope-creep]` Punted items
+  lose context,
   multiply, require archaeology in future sessions. Defending deferral
   rigorously requires (a) SIZE (architect-pass material; real file/
   contract surface argument, not "felt big"), (b) BLOCKED (real
@@ -228,7 +244,14 @@ in the same commit as the behavior change.
   accumulation. See `feedback-deferred-work-tracking` and
   `feedback-deferral-is-scope-creep` for the memory-cache pointers.
 - **P-missed-7 — project-side investigation precedes pack-style
-  defaults.** Project and pack are intentionally designed differently.
+  defaults.** Before changing ANY project-side file (`project-template/`
+  trees, project-shipped content), investigate whether a project-side
+  SSOT exists for the concept and use it — never reach for a pack-style
+  mechanism (`pack-ops/` files, Pack Chat orchestrator role, pack-* agent
+  names, `maintenance-docs/` records) by default, since those are PACK-ONLY
+  and importing them is a client-install regression. `[roles: universal]
+  [rationale: boundary-investigation-precedes-pack-defaults]` Project and
+  pack are intentionally designed differently.
   When making ANY change to a project-side file (`project-template/`
   trees, project-shipped content), an actor (reviewer, implementer,
   Pack Chat triage) MUST first investigate whether a project-side SSOT
@@ -283,7 +306,15 @@ in the same commit as the behavior change.
   approval before spawning pack-coder. The planner-to-coder gate is the
   user's last cheap window to redirect work before implementation
   consumes hours of agent time and chat context.
-- **Pack-coder PREFLIGHT + STOP-MEANS-STOP pattern.** Every pack-coder
+- **Pack-coder PREFLIGHT + STOP-MEANS-STOP pattern.** Before writing your
+  IMPL-REPORT, emit ONE plain line `PREFLIGHT: N/N in-scope edits complete;
+  verification PASS; HEAD <SHA>; about to Write IMPL-REPORT to <path>` only
+  after all edits + verification (in-scope tests + `validate-pack.py` Check 43
+  + any relevant per-check tests) PASS — if any failed, report what went wrong
+  INSTEAD of a partial IMPL-REPORT; and at ANY point, a parent message saying
+  stop/halt/revert/do-not-continue halts ALL work immediately (partial files
+  OK; never append to "make consistent"). `[roles: universal]
+  [rationale: preflight-stop-means-stop]` Every pack-coder
   agent prompt MUST include both halves of this pattern:
 
   - **PREFLIGHT (platform-neutral, REQUIRED for all CLIs).** After
@@ -401,7 +432,9 @@ in the same commit as the behavior change.
   records: (a) **Rule name** as named in MEMORY.md; (b) **Verification
   evidence** — the actual measurement (grep output, file path, count,
   diff, command result), quoted not summarized; (c) **Conclusion** —
-  `COMPLIANT` / `N/A: <reason>` / `VIOLATED: <reason>`.
+  `COMPLIANT` / `N/A: <reason>` / `VIOLATED: <reason>` (empty evidence is
+  treated as VIOLATED; AMBIGUOUS is not an allowed terminal state).
+  `[roles: universal] [rationale: rules-applied-verification-block]`
 
   **Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery.
   Without this block, agents cite rules they've followed but skip
@@ -433,7 +466,8 @@ in the same commit as the behavior change.
   run; the actual output captured (count, paths, lines — not
   paraphrased); the date / HEAD-SHA at which the measurement was
   taken; the interpretation; a conclusion (SUPPORTED / NOT-SUPPORTED
-  / PARTIAL with reason).
+  / PARTIAL with reason). `[roles: architect planner]
+  [rationale: empirical-evidence-blocks]`
 
   **Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery.
   BD-195 AC1 §6.2 claimed "after F-AC1-04 strips the v11.1 strings
@@ -468,7 +502,8 @@ in the same commit as the behavior change.
   that declares an allowlist without measuring the tree first is
   INCOMPLETE. A design that widens the allowlist to admit borderline
   / unclassified hits is treating contamination as legitimate by
-  default — which defeats the guard's purpose.
+  default — which defeats the guard's purpose. `[roles: architect]
+  [rationale: ci-guard-measure-then-bound]`
 
   **Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery.
   BD-195 AC1 §6.2 designed Check 44 with an allowlist of 2 architect
@@ -682,19 +717,23 @@ in the same commit as the behavior change.
   transition contract. STATUS.md and any other convenience view carry
   an explicit "never source of truth" disclaimer; if a convenience
   view drifts, the per-entry tree (Mode 2) or the tracker (Mode 3)
-  wins. Read more at `<stream>/_rules.md`.
+  wins. Read more at `<stream>/_rules.md`. `[roles: universal]
+  [rationale: per-entry-trees-vs-mirrors]`
 - **`pack-ops/BACKLOG.md` has no Resolved section.** Entries resolve in place by
   flipping `Status: Open` to `Status: Resolved` and filling the
   `Resolved:` line. Do not propose moving entries to a separate section.
 - **Separate pack ops from pack product.** Pack ops files (CLAUDE.md,
   AGENTS.md, GEMINI.md, PACK-CHAT.md, PACK-AGENTS.md, BACKLOG.md, etc.)
   are NEVER mixed into pack product files (`project-template/`,
-  `supporting-docs/`). Same applies in reverse.
+  `supporting-docs/`). Same applies in reverse. `[roles: universal]
+  [rationale: separate-ops-from-product]`
 - **Project-side concepts on pack-side surfaces — deliverable-only.**
   References to project-side concepts (TD entries, phases, phase
   parts, phase tasks) on pack-side surfaces MUST be limited to
-  constructing project-side deliverables. They MUST NOT appear in
-  pack operations or pack templates/configs for pack-self-management.
+  constructing project-side deliverables (templates, scripts that emit,
+  validators that check); they MUST NOT appear in pack operations or
+  pack-self-management templates/configs. `[roles: universal]
+  [rationale: pack-side-project-concepts-deliverable-only]`
 
   **ALLOWED:** pack-side scripts that emit project-side templates
   (e.g., `scripts/init-project.sh` stages that copy
@@ -727,10 +766,14 @@ in the same commit as the behavior change.
   `.github/ISSUE_TEMPLATE/work-item.yml` admits `td`,
   `phase-epic-skeleton`, `phase-task-skeleton` — these are stale
   pre-BD-193 inheritance and should be removed.
-- **Enumerate ENCODING surfaces in pack-side audits.** When auditing
-  a pack-side surface for rule compliance (e.g., the deliverable-only
-  rule above), enumerate ALL surfaces that ENCODE expected state of
-  the audited surface:
+- **Enumerate ENCODING surfaces in pack-side audits.** When auditing or
+  editing any pack-side surface for rule compliance, enumerate AND update
+  in lock-step ALL surfaces that ENCODE its expected state — the surface
+  itself, every validator + every TEST file that asserts its content
+  invariants, every CI workflow referencing it, and cross-reference docs;
+  asymmetric coverage (validators but not tests, or vice versa) creates
+  audit gaps. `[roles: reviewer coder]
+  [rationale: enumerate-encoding-surfaces]`
 
   - The audited surface itself (form, config, library, doc).
   - Any validator that asserts content invariants on the surface
@@ -767,10 +810,15 @@ in the same commit as the behavior change.
   `.claude/skills/review/SKILL.md` + trinity mirrors carries the
   operational checklist.
 - **Test infra is self-provisioned.** Tests that need GitHub repos
-  provision them via `gh` CLI with per-step approval and clean up after.
-  Never touch existing real repos as test targets — use scratch repos
-  or `/tmp` clones.
+  provision them via `gh` CLI with per-step approval and clean up after;
+  never touch an existing real repo as a test target — use a scratch repo
+  or a `/tmp` clone. `[roles: universal] [rationale: test-infra-self-provisioned]`
 - **Skill and agent maintenance is mechanical by default.**
+  Keep skill/agent maintenance mechanical, complete, reviewed, and
+  rule-strict, preserving the client `x-` contract; escalate any
+  structural change — including a rule change or a broken `x-` contract —
+  to architect-then-planner, never convenience. `[roles: universal]
+  [rationale: skill-agent-maintenance-mechanical]`
   Maintenance is mechanical, complete, reviewed, and rule-strict.
   Structural change — including rule changes — requires
   architect-then-planner, never convenience. Mechanical changes
@@ -795,15 +843,21 @@ in the same commit as the behavior change.
   `// TODO`, `// fix later`, or `// FIXME` markers. Typed format:
   `// TODO(scope): TD-TBD — title`, `// KNOWN GAP(severity): TD-TBD —
   title`, `// VERIFY(source): TD-TBD — title` (substitute `#` for `//`
-  in Python). Cross-reference: the project-template section is canonical
+  in Python). `[roles: coder] [rationale: pack-repo-code-comment-deferrals]`
+  Cross-reference: the project-template section is canonical
   for the typed format; the pack-repo follows the same convention so
   pack-coder behavior is consistent across pack-repo and client-repo
   contexts.
 - **Filename uniqueness heuristic.** When introducing new files in the
   pack repo, prefer names that don't collide with any other file
   anywhere in the repo, so prose references are unambiguous even when
-  the path is omitted. Quick check: `find . -name "<proposed-name>"
-  -not -path "./.git/*"`. Structurally required collisions are exempt
+  the path is omitted (check `find . -name "<proposed-name>" -not -path
+  "./.git/*"` before naming); structurally required collisions (trinity,
+  per-skill `SKILL.md`, ecosystem-fixed names) are exempt but their prose
+  refs MUST carry path context. `[roles: universal]
+  [rationale: filename-uniqueness-heuristic]` Quick check: `find . -name
+  "<proposed-name>" -not -path "./.git/*"`. Structurally required collisions
+  are exempt
   (trinity files, per-skill `SKILL.md`, ecosystem-fixed names like
   `.gitignore` / `pyproject.toml` / `Package.swift`); for these exempted collisions, prose references
   must include path context ("pack-root `CLAUDE.md`" vs "project-template
@@ -825,7 +879,8 @@ in the same commit as the behavior change.
   chain: (a) in-code docstring naming the realized consumer (file +
   symbol; never line numbers — line numbers drift), (b) architect-doc
   addendum cross-referencing the realized consumer, (c) IMPL-REPORT
-  cross-reference linking both. Worked example: BD-119 §9.2 addendum
+  cross-reference linking both. `[roles: architect coder]
+  [rationale: architect-doc-reality-reconciliation]` Worked example: BD-119 §9.2 addendum
   in `maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md`
   names BD-160 as the first realized consumer; the consumer carries
   the matching docstring; the BD-160 IMPL-REPORT links both. This
@@ -835,8 +890,11 @@ in the same commit as the behavior change.
   v11-surface = files under `project-template/`, `scripts/`,
   `pack-ops/`, or `supporting-docs/`. Any commit whose diff includes
   a file under any of these four directories MUST also regenerate
-  `test-fixtures/manifest.txt` and stage it alongside the scope edits
-  in the SAME commit. The trigger is intentionally inclusive — false
+  `test-fixtures/manifest.txt` (run `bash test-fixtures/build.sh
+  --all --clean`) and stage it alongside the scope edits in the SAME
+  commit when the manifest diff is non-empty. `[roles: coder]
+  [rationale: regenerate-manifest-v11-surface]` The trigger is
+  intentionally inclusive — false
   positives (e.g., a `scripts/test-*.sh` edit that doesn't actually
   affect fixtures, or a `supporting-docs/MIGRATION-v10-to-v11.md`
   edit which is a pre-install reference not copied to clients) cost
@@ -900,7 +958,9 @@ in the same commit as the behavior change.
   When editing references to per-CLI paths or commands in
   `project-template/{CLAUDE,AGENTS,GEMINI}.md`, substitute the
   audience-correct canonical value per `maintenance-docs/v11-implementation/ARCHITECTURE-BD-182.md`
-  §4.1 canonical reference table. Per Override 9, byte-identical
+  §4.1 canonical reference table — NOT a byte-identical cross-trinity
+  copy. `[roles: coder] [rationale: cross-cli-reference-normalization]`
+  Per Override 9, byte-identical
   cross-trinity adoption of CLI-specific paths is WRONG even when it
   visually closes drift — body-text drift and cross-CLI references are
   different classes (see `ARCHITECTURE-BD-182.md` §1 table). Worked
