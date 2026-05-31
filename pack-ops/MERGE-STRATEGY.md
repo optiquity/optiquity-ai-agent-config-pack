@@ -197,7 +197,7 @@ Pack-shipped agent files (e.g., the pack-architect / pack-reviewer set of
 agents at `.claude/agents/`). Trinity rule applies — refreshes are
 delivered in lockstep across the three CLI variants. The
 `auditor-issue-tracking` agent (BD-109 / BD-110) is on the v11.x
-roadmap; when it ships it will route through the same class.
+roadmap and routes through the same class once it ships.
 
 ---
 
@@ -377,7 +377,7 @@ The current migrator runs in single-shot mode: pre-flight → backup →
 dispatch → install → report. A re-run requires removing the prior
 backup directory.
 
-**BD-095 (shipped 2026-05-10) extended `scripts/migrate-v10-to-v11.sh` with three modes:**
+**BD-095 extended `scripts/migrate-v10-to-v11.sh` with three modes:**
 
 - `--dry-run` — emit the dispositions TSV and report without writing
   any project files. Useful for previewing changes before commit.
@@ -395,7 +395,7 @@ backup directory.
   sidecar AND extension removal as conflict-resolution signals
   (ARCHITECTURE §6.H).
 
-**BD-101 (shipped 2026-05-10) added three verification gates** that
+**BD-101 added three verification gates** that
 fire inside the `--dry-run` and `--apply` modes above. Gates do not
 mutate the working tree — they observe and either pass or fail.
 

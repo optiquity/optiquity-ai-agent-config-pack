@@ -418,27 +418,27 @@ Every finding in every pass MUST satisfy all of:
 
 ### 3.2 Finding record shape (identical for researcher and architect)
 
-Every finding is one record with these fields, in this order:
+Per the M3 finding-record hard-cap (`ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md`
+§6): each finding is ONE record with one-line evidence per field and every
+violated rule named (not re-explained). Field order:
 
 ```
 ### <SEGMENT-ID>-F<NN> — <one-line title>
 - Severity: BLOCKER | MUST | SHOULD | NIT
-- Category: <one or more of the Lens A–E tags + free tags; see §3.3>
-- Surface(s): <absolute or repo-relative path(s) + symbol/anchor; never bare line numbers>
+- Category: Lens A–E tag(s) + free tags (§3.3)
+- Surface(s): path + symbol/anchor (never bare line numbers)
 - Pack/project side: pack-self | client-shipped | maintenance-doc | frozen-archive | cross
-- Evidence: <tight quoted excerpt or precise description — self-contained>
-- Why it's a problem: <the violated rule/expectation, CITED (rule name + where it lives)>
-- Recommendation: <the agent's recommended action — concrete>
-- Cross-segment touch points: <other segments/files this finding implicates, or "none">
-- Confidence: high | medium | low (+ one-line basis)
-- Status (reconciliation use): <left blank by segment; filled at reconciliation>
+- Evidence: one-line self-contained excerpt or precise description
+- Why it's a problem: the violated rule named + where it lives (cite, do not re-explain)
+- Recommendation: one-line concrete action
+- Cross-segment touch points: implicated segments/files, or "none"
+- Confidence: high | medium | low (one-line basis)
+- Status: blank by segment; filled at reconciliation
 ```
 
-Architect records add two fields after Recommendation:
-```
-- Fix design: <the design — what changes, where, in what order; rejected alternatives + why>
-- Blast radius: <every touch point the fix reaches, incl. ENCODING surfaces (validator/tests/CI/docs) and trinity/quad mirrors>
-```
+Architect records add (after Recommendation): **Fix design** (what changes,
+where, order; rejected alternatives) and **Blast radius** (every touch point
+incl. ENCODING surfaces — validator/tests/CI/docs — and trinity/quad mirrors).
 
 The **Cross-segment touch points** and **Blast radius** fields are the
 hooks the reconciliation uses to de-duplicate and to route coupled fixes

@@ -2,9 +2,9 @@
 
 **Purpose:** structured methodology for reviewing a CONCEPT — a cross-cutting subject-matter area that spans multiple BDs and batches — to catch integration concerns, doc-set composition issues, and architectural drift that per-BD reviews and per-batch reviews structurally cannot see.
 
-**Status:** v11.0 working methodology (created 2026-05-15). Folds into the `audit-methodology` SKILL when BD-110 lands in Batch 21. Until then, this doc is the canonical source.
+**Status:** v11.0 working methodology. Folds into the `audit-methodology` SKILL when BD-110 lands. Until then, this doc is the canonical source.
 
-**Empirical basis:** Established 2026-05-15 after the Batch 17 per-BD vs end-of-batch reviewer experiment empirically demonstrated that broader-scope reviews catch findings narrower-scope reviews miss (and vice versa). The 73% cross-cut ratio at end-of-batch suggested an even broader concept-level scope would catch a third class of findings.
+**Empirical basis:** broader-scope reviews catch findings narrower-scope reviews miss (and vice versa); concept-level scope catches a third class of findings beyond per-BD and per-batch review. Provenance for this and every other empirical-basis claim in this doc is preserved in `maintenance-docs/archive/v11/CONCEPTUAL-REVIEW-METHODOLOGY-HISTORY.md`.
 
 ---
 
@@ -91,7 +91,7 @@ In this pack, "race" is procedural, not OS-level concurrency. The detection rule
 Concrete patterns from prior v11 work:
 - Tracker init + customization preserve: init order matters — customization markers must be written BEFORE template overlay.
 - Forward migrate + cycle-check store: cycle store written by `tracker_links_create_blocked_by`; if forward migrate bypasses it (Batch 17 F1), the store is empty and cycle detection is silently disabled.
-- CI workflow + new test scripts: test scripts exist on disk but workflow doesn't invoke them (Batch 17 BD-108 F1) — CI green doesn't mean tests ran. **Batch 21c re-confirmation (2026-05-15):** four retro reviewers (BD-078, BD-079, BD-129) independently flagged 7 unwired test files; closed by single workflow edit (commit `304078f`). When reviewing any commit that adds new `*-test.sh` files, mandatory check: grep `.github/workflows/` for the new test path; if absent, MUST.
+- CI workflow + new test scripts: test scripts exist on disk but workflow doesn't invoke them — CI green doesn't mean tests ran. When reviewing any commit that adds new `*-test.sh` files, mandatory check: grep `.github/workflows/` for the new test path; if absent, MUST. (Empirically re-confirmed across multiple retro reviews — see HISTORY.)
 
 Reviewer template for race findings:
 ```
@@ -107,7 +107,7 @@ When reviewing any commit that adds or modifies CI workflow steps, apply the "wo
 
 > For each new or modified workflow step, identify a specific change to the underlying script, fixture, or configuration that SHOULD make this step fail. Then trace the wiring: would that change actually surface as a CI red? If not, the step is wired but tautological.
 
-**Empirical basis (Batch 21c, 2026-05-15):** BD-118 retro reviewer applied this interrogation and caught a MUST that the original end-of-batch review missed: the manifest-verify step's preceding `--all --clean` step rewrote the committed `manifest.txt` before `--verify` read it, so the verify step compared just-built fixtures to a just-rewritten manifest — passes by construction. The reviewer's verbatim friction note: "future per-BD review prompts for CI work should explicitly require 'for every new CI step, identify a concrete change that would turn it red, and confirm the wiring would actually surface that change' — that interrogation is what surfaced this finding retroactively."
+This interrogation has retroactively caught a MUST the original end-of-batch review missed (a manifest-verify step that passed by construction). Provenance in HISTORY.
 
 Reviewer prompt template for CI work MUST include the "would this turn red?" requirement.
 
@@ -122,7 +122,7 @@ When reviewing convention documents (naming conventions, fixture conventions, fi
 3. **Forward-compatibility for vN+1.** Does the convention scale to the next major version's surfaces without amendment? (Convention text codified in BD-N+0 must admit new classes introduced in BD-N+1 — see Batch 21c BD-122 ↔ BD-136 M-8 carry-forward in BD-136 File/Symbol.)
 4. **Examples ↔ rule alignment.** Do the worked examples instantiate the rule, or contradict it via edge-case inclusion?
 
-**Empirical basis (Batch 21c, 2026-05-15):** BD-122 retro reviewer flagged 3 findings (1 SHOULD + 2 NITs) all in the convention document's procedure-rule-column triplet that the original end-of-batch review missed; the reviewer's friction note suggested adding a convention-docs checklist to this methodology, which is now codified above.
+A retro reviewer flagged findings in the procedure-rule-column triplet that the original end-of-batch review missed, which is what motivated codifying this checklist. Provenance in HISTORY.
 
 ## Rat-hole limits (operational discipline)
 
@@ -239,19 +239,19 @@ The reviewer's "BD scope anchor" section MUST source File/Symbol from:
 
 NEVER from the parent chat's prose recollection of what files the BD touched. Recollection drifts and corrupts the reviewer's scope.
 
-**Empirical basis (Batch 21c, 2026-05-15):** the BD-112 retro trial prompt cited `scripts/lib/three-way.sh` as the BD-112 surface; actual surface (per BACKLOG + git --stat) was `scripts/lib/customization-preserve.sh`. Reviewer worked around the error but flagged it as methodology friction; subsequent prompts in the batch sourced from BACKLOG + git --stat correctly.
+A retro trial prompt once cited the wrong surface from prose recall; sourcing from BACKLOG + `git --stat` corrected it. Provenance in HISTORY.
 
 ### Filename hygiene in reference-doc citations
 
 Reference-doc paths in reviewer prompts MUST be verified against the live filesystem before sending. Do not cite docs by remembered/conventional name.
 
-**Empirical basis (Batch 21c, 2026-05-15):** five Group D+E reviewer prompts cited `IMPLEMENTATION-PLAN-V11.0.md` (does not exist); canonical filename is `EXECUTION-PLAN-V11.0.md`. Reviewers caught and worked around it; filename was later corrected in Group A+B+C+G prompts. Lesson: every reference-doc path in a reviewer prompt should be a recent `ls` confirmation, not a name recalled from training-pattern context.
+Reviewer prompts have cited `IMPLEMENTATION-PLAN-V11.0.md` (does not exist) when the canonical filename is `EXECUTION-PLAN-V11.0.md`. Lesson: every reference-doc path in a reviewer prompt should be a recent `ls` confirmation, not a name recalled from training-pattern context. Provenance in HISTORY.
 
 ### Long output chunking
 
 Coder and reviewer prompts MUST instruct the agent to chunk Write calls for outputs over ~300 lines: initial Write of the first portion, then Edit appends for the rest. A single 500+ line Write risks token-limit truncation and harder-to-review reports.
 
-**Empirical basis (Batch 21c, 2026-05-15):** three coders blew through the threshold despite the guidance in their prompts: BD-118 fix coder (588 lines, single Write succeeded), BD-116 fix coder (733 lines, single Write succeeded), BD-101 fix coder (791 lines, properly chunked via initial Write + Edit append). Single Writes succeeded but the chunking discipline is the safer default; agents that miss this guidance need explicit reminder. Future Pack Chat prompts MUST surface this rule prominently AND include the BD-101 chunking pattern as the worked example.
+Coders have blown through the threshold despite prompt guidance; single Writes can succeed but the chunking discipline is the safer default and agents that miss this guidance need explicit reminder. Pack Chat prompts MUST surface this rule prominently AND include a chunking pattern (initial Write + Edit append) as the worked example. Provenance in HISTORY.
 
 ## Concept-scope doc requirement
 
@@ -295,4 +295,4 @@ A new conceptual area review approach must be empirically validated before insti
 
 The trial requirement applies on first introduction (v11.0) and may apply on substantial methodology revisions in later versions.
 
-**Empirical confirmation (Batch 21c, 2026-05-15):** the per-BD-AND-per-batch review cycle (codified in the `feedback_review_fix_one_cycle` pack memory rule on 2026-05-15) was empirically validated retroactively across 13 BDs from prior multi-BD batches. Aggregate findings: 7+ MUSTs caught at the per-BD review layer that the original end-of-batch reviews missed (BD-078 missing acceptance criterion + test-not-CI, BD-079 test-not-CI, BD-118 CI manifest tautology, BD-095 dry-run fingerprint subset, BD-129 test-not-CI cross-BD pattern, BD-101 broken restore-from-backup.sh reference at 3 sites + Gate 2 coverage gap → BD-172). The "test-not-in-CI" heuristic was independently flagged by 4 reviewers — strongest empirical case for codifying as a named heuristic (now in the race-condition section + CI-step interrogation section above). Decision: per-BD review IS institutionalized for v11.0+ as the default for multi-BD batches, with end-of-batch review remaining the cross-cut catch.
+The per-BD-AND-per-batch review cycle was empirically validated retroactively across prior multi-BD batches: multiple MUSTs were caught at the per-BD review layer that the original end-of-batch reviews missed, and the "test-not-in-CI" heuristic was independently flagged by several reviewers (now codified in the race-condition section + CI-step interrogation section above). Decision: per-BD review IS institutionalized for v11.0+ as the default for multi-BD batches, with end-of-batch review remaining the cross-cut catch. Aggregate findings + per-BD provenance in HISTORY.

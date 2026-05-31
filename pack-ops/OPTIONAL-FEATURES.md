@@ -110,15 +110,15 @@ coordination model.
 
 ## Codex CLI — Optional features
 
-*Placeholder. The Config Pack will document Codex-specific opt-in features
-here as they ship and prove useful.*
+*Placeholder. The Config Pack documents Codex-specific opt-in features
+here once they ship and prove useful.*
 
 ---
 
 ## Gemini CLI — Optional features
 
-*Placeholder. The Config Pack will document Gemini-specific opt-in features
-here as they ship and prove useful.*
+*Placeholder. The Config Pack documents Gemini-specific opt-in features
+here once they ship and prove useful.*
 
 ---
 
