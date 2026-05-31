@@ -267,40 +267,13 @@ PACK-AGENTS.md current".
   [rationale: preflight-stop-means-stop]`
 
 - **Agent prompt enumerates ALL applicable rules inline.** Every
-  sub-agent prompt Pack Chat constructs (`pack-architect` /
-  `pack-planner` / `pack-coder` / `pack-reviewer` / `pack-fix-coder` /
-  `pack-docs-researcher`) MUST enumerate ALL applicable pack-memory
-  rules and trinity sections INLINE in the prompt body. Not by
-  reference ("see MEMORY.md"); not by hyperlink. The LITERAL rule
-  text — name + Why + How-to-apply paragraphs — is pasted into the
-  agent prompt. The agent reads its rules from the prompt; it does
-  not have to discover them.
-
-  **Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery.
-  Both BD-195 design failures (C6 PM-only allowlist gap; C7 Check 44
-  working-state proof failed by 1213 hits in 114 files) had the same
-  shape: the relevant rule was knowable from pack memory but the
-  architect did not enumerate it as something to verify before
-  declaring complete. Design defects shipped past architect →
-  planner → Pack Chat → coder gates, caught only at coder runtime.
-  Token cost rises (architect prompt grows from ~500 lines to
-  ~2000+ lines); rule compliance becomes auditable because the
-  agent's task and rules are co-located.
-
-  **How to apply:** Before spawning ANY sub-agent, Pack Chat
-  assembles the prompt with these sections in order: (1) STOP-MEANS-
-  STOP + permission boundaries; (2) **NEW "Rules in force" block** —
-  copy the LITERAL rule text from every applicable MEMORY.md entry;
-  each rule's name + Why + How-to-apply MUST appear verbatim;
-  applicability is by topic (architect rules for architect spawns,
-  coder rules for coder spawns, etc.) PLUS universally applicable
-  rules (trinity, prison, no-state-changing-git, no-destructive-
-  without-approval) in every spawn; (3) task description; (4) **NEW
-  "Rules-applied verification" instruction** — output ends with a
-  Rules-Applied Verification Block (see "Agent output requires
-  Rules-Applied Verification Block" below); (5) PREFLIGHT obligation
-  where applicable; (6) IMPL-REPORT / output-file requirement. Pack
+  sub-agent prompt Pack Chat constructs MUST enumerate ALL applicable
+  pack-memory rules + trinity sections INLINE as literal rule text
+  (name + Why + How-to-apply), never by reference or hyperlink — before
+  spawning ANY sub-agent, assemble a "Rules in force" block selecting
+  the rules tagged for the spawn's role plus the universal rules. Pack
   Chat NEVER spawns an agent without the rules-in-force block.
+  `[roles: universal] [rationale: enumerate-rules-inline]`
 
 - **Agent output requires Rules-Applied Verification Block.** Every
   sub-agent output (architect design doc / planner plan / coder
@@ -413,71 +386,13 @@ PACK-AGENTS.md current".
   subject scope-keyword convention.
 
 - **Pack Chat NO coder review; bounded reviewer/fix cycle.** Pack
-  Chat NEVER reviews coder output directly. Every coder run is
-  followed by a BOUNDED review/fix cycle: **maximum 2 review/fix
-  pairs + 1 final reviewer pass = 3 reviewer spawns / 2 fix-coder
-  spawns per commit**. If issues remain after the final reviewer
-  pass, this is a DESIGN-DEFECT SIGNAL — Pack Chat immediately
-  spawns `pack-architect` to diagnose root cause + propose path
-  forward; no fix-coder pass 3 is allowed.
-
-  **Cycle (per commit):**
-  1. **Coder** runs → edits + IMPL-REPORT + Rules-Applied
-     Verification Block.
-  2. **Reviewer pass 1** (`pack-reviewer` fresh; rules-in-force).
-     Clean → skip to step 7. Findings → step 3.
-  3. Pack Chat triages findings to user → user approves fix/defer
-     per finding → **Fix-coder pass 1** (`pack-fix-coder` fresh;
-     rules-in-force; applies user-approved fixes).
-  4. **Reviewer pass 2** (`pack-reviewer` fresh; rules-in-force;
-     re-verifies). Clean → skip to step 7. Findings → step 5.
-  5. Pack Chat triages → user approves → **Fix-coder pass 2**
-     (FINAL fix-coder allowed).
-  6. **Reviewer pass 3** (`pack-reviewer` fresh; FINAL reviewer
-     pass). Clean → step 7. Issues remain → **STOP cycle. Spawn
-     `pack-architect`** to diagnose root cause + propose path
-     forward to user (typical options: scope-down the commit /
-     split into smaller commits / re-sequence / revert and redesign
-     / defer to follow-up BD). User decides; no fix-coder pass 3.
-  7. Pack Chat brings G7b commit-approval to user with the latest
-     clean reviewer report attached.
-
-  **Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery.
-  Pack Chat's judgment is compromised when it doubles as reviewer
-  (BD-195 evidence: missed the C2 staging defect that required
-  `--amend`; missed the C7 working-state-proof claim that failed by
-  1213 hits). Independent reviewer-agent verification is the
-  structural fix. Bounding the cycle (max 2 review/fix pairs + 1
-  final review) prevents the infinite-loop race-condition shape
-  (where fix A breaks B, fix B re-breaks A) and surfaces design
-  defects via architect escalation rather than allowing them to
-  hide as repeated local findings. Two fix-coder passes is
-  empirically enough for genuine fix-work; if findings persist past
-  that, the commit's design is wrong — local patching can't fix it,
-  only architect-level intervention can.
-
-  **How to apply:** Pack Chat spawns each agent with rules-in-force
-  enumeration. Tracks which pass number is active and exposes it in
-  progress markers (`**Reviewer pass 1 of max-3 (C8 of 38)**`,
-  `**Fix-coder pass 1 of max-2 (C8 of 38)**`, `**Architect
-  escalation (C8 of 38)**`). Routes reports to user (does NOT use
-  Read/Edit/Bash to verify coder edits independently — even small
-  mechanical commits go through the full cycle). After Reviewer
-  pass 3: no more fix-coders; architect escalation only.
-
-  **Architect-escalation contract** (Reviewer pass 3 still dirty):
-  Pack Chat spawns `pack-architect` with the coder's IMPL-REPORT,
-  all 3 reviewer reports, both fix-coder reports, and the
-  persistent-issue list. Architect produces DIAGNOSIS (root cause)
-  + PROPOSAL (path forward options). User decides — Pack Chat does
-  not pre-select.
-
-  **Final-reviewer-pass note:** Reviewer pass 3 exists ONLY to
-  verify fix-coder pass 2 closed the prior cycle's findings. It
-  does NOT trigger a new fix round. New findings at pass 3 + any
-  unresolved prior findings together trigger architect escalation.
-
-  Sharpens "Pack Chat does NO fixes" earlier in this subsection.
+  Chat NEVER reviews coder output directly and does NO fixes itself;
+  every coder run is followed by a BOUNDED review/fix cycle — maximum
+  2 review/fix pairs + 1 final reviewer pass = 3 reviewer / 2 fix-coder
+  spawns per commit. If dirty after the final reviewer pass, STOP the
+  cycle and spawn `pack-architect` to diagnose root cause + propose a
+  path forward — no fix-coder pass 3 is allowed.
+  `[roles: universal] [rationale: bounded-review-fix-cycle]`
 
 ### Repo conventions
 
@@ -500,6 +415,7 @@ PACK-AGENTS.md current".
 - **`pack-ops/BACKLOG.md` has no Resolved section.** Entries resolve in place by
   flipping `Status: Open` to `Status: Resolved` and filling the
   `Resolved:` line. Do not propose moving entries to a separate section.
+  `[roles: universal]`
 - **Separate pack ops from pack product.** Pack ops files (CLAUDE.md,
   AGENTS.md, GEMINI.md, PACK-CHAT.md, PACK-AGENTS.md, BACKLOG.md, etc.)
   are NEVER mixed into pack product files (`project-template/`,

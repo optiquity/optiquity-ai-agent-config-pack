@@ -46,7 +46,7 @@ canonical:  ## Pack memory
 corpus:     ### Workflow — "Triage all reviewer findings; default fix-all; nits become tech debt"
 references: PACK-CHAT.md § "Behavioral rules" ("Stop after every reviewer pass for triage discussion"); PACK-CHAT.md § "Behavioral rules" ("Real fixes only — no green-the-test band-aids", distinct-from cross-reference)
 
-slug:       pack-chat-no-coder-review-bounded-cycle
+slug:       bounded-review-fix-cycle
 canonical:  ## Pack memory
 corpus:     ### Pack Chat scope — "Pack Chat does NO fixes" + "Pack Chat NO coder review; bounded reviewer/fix cycle"
 references: PACK-CHAT.md § "Behavioral rules" ("Real fixes only — no green-the-test band-aids", `feedback-pack-chat-does-no-fixes` distinct-from cross-reference)
