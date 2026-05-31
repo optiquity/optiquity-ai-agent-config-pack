@@ -4153,15 +4153,55 @@ def _iter_client_installed_files() -> list[Path]:
     return out
 
 
-def _iter_project_side_files() -> list[Path]:
-    """Thin alias delegating to `_iter_client_installed_files()`.
+# Companion-template directories — dev-environment configs a developer
+# applies to their editor/IDE (NOT installed by init-project.sh, so NOT
+# part of `_CLIENT_INSTALLED_FILES`). They are pack-shipped client-facing
+# surfaces, so Check 37's pack-only deny-list applies to them as
+# forward-protection (BD-196 C7, plan §3 D1). These are appended to
+# Check 37's walk via `_iter_project_side_files()` ONLY — they are
+# deliberately NOT added to `_iter_client_installed_files()`, which feeds
+# Check 41's install inventory and Check 43's bare-cross-reference walk.
+_CHECK_37_COMPANION_TEMPLATE_DIRS = (
+    "xcode-companion-templates",
+    "vscode-companion-templates",
+)
 
-    DEPRECATED: kept as an alias so the Check 37 call-site
-    (`check_project_side_deny_list`) does not need to change. Future
-    cleanup may inline the delegation. See ARCHITECTURE-V11-GUARDRAILS-
-    CONTRACT.md §3.2 for the migration plan.
+
+def _iter_project_side_files() -> list[Path]:
+    """Check 37's walk set: `_iter_client_installed_files()` PLUS the
+    companion-template directories.
+
+    Check 37 protects every pack-shipped client-facing surface from
+    pack-only-reference contamination. That surface is the union of:
+      (a) the client-installed inventory (`_iter_client_installed_files()`
+          — project-template/ recursive + the explicit
+          `_CLIENT_INSTALLED_FILES` extras), and
+      (b) the companion-template directories
+          (`_CHECK_37_COMPANION_TEMPLATE_DIRS`), which are dev-environment
+          editor/IDE configs a developer applies manually — pack-shipped
+          and client-facing, but NOT auto-installed by init-project.sh.
+
+    The companion dirs are appended HERE (Check 37's walk) and NOT in
+    `_iter_client_installed_files()` so that Check 41 (install inventory)
+    and Check 43 (bare-cross-reference scanner) are unaffected — they
+    walk only the auto-installed set. See ARCHITECTURE-V11-GUARDRAILS-
+    CONTRACT.md §3.2 for the original alias rationale; BD-196 C7 plan §3
+    D1 for the companion-template extension.
     """
-    return _iter_client_installed_files()
+    out = list(_iter_client_installed_files())
+    seen = {str(p) for p in out}
+    for dirname in _CHECK_37_COMPANION_TEMPLATE_DIRS:
+        root = REPO_ROOT / dirname
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*")):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(REPO_ROOT)
+            if str(rel) not in seen:
+                out.append(rel)
+                seen.add(str(rel))
+    return out
 
 
 # Per-line fence allowlist for Check 37 (Guardrail 2 — BD-173 H.13).
@@ -4304,11 +4344,14 @@ def check_project_side_deny_list() -> None:
     """Check 37 — project-side pack-only-reference deny list
     (BD-175 M5b per Architect C §8.2).
 
-    Walks files under `project-template/` and greps for literal
-    references to pack-only files / path prefixes / agent names / the
-    capitalized `Pack Chat` orchestrator role. Each hit is a FAIL with
-    file:line + matched pattern unless the context window contains a
-    LEGITIMATE-context anchor phrase.
+    Walks the Check 37 surface (`_iter_project_side_files()` — the
+    client-installed inventory PLUS the companion-template directories
+    `xcode-companion-templates/` + `vscode-companion-templates/` per
+    BD-196 C7) and greps for literal references to pack-only files /
+    path prefixes / agent names / the capitalized `Pack Chat`
+    orchestrator role. Each hit is a FAIL with file:line + matched
+    pattern unless the context window contains a LEGITIMATE-context
+    anchor phrase.
 
     Specific exemptions:
       - The `boundary-investigation` skill (Pattern A canonical single

@@ -684,6 +684,50 @@ if hasattr(mod, '_iter_client_installed_files'):
     if duplicates:
         failures.append(f"G7.T4: duplicate entries in walked list: {duplicates}")
 
+# G7.T5: Check 37's walk (_iter_project_side_files) is the
+#   client-installed inventory PLUS the two companion-template dirs
+#   (BD-196 C7 / plan §3 D1). The companion files appear in Check 37's
+#   walk-set but MUST NOT appear in _iter_client_installed_files()
+#   (that set feeds Check 41's install inventory + Check 43's walk,
+#   which are deliberately unaffected — companion templates are NOT
+#   auto-installed by init-project.sh). This asserts the extended
+#   walk-set membership AND the deliberate separation in lock-step.
+if hasattr(mod, '_iter_project_side_files') and hasattr(
+        mod, '_iter_client_installed_files'):
+    check37_walk = {str(p) for p in mod._iter_project_side_files()}
+    installed = {str(p) for p in mod._iter_client_installed_files()}
+    companion_expected = {
+        'xcode-companion-templates/README.md',
+        'xcode-companion-templates/ClaudeAgentConfig/CLAUDE.md',
+        'xcode-companion-templates/Codex/AGENTS.md',
+        'vscode-companion-templates/README.md',
+        'vscode-companion-templates/.vscode/settings.json',
+    }
+    # (a) companion files ARE in Check 37's walk-set (forward-protection).
+    missing_companion = companion_expected - check37_walk
+    if missing_companion:
+        failures.append(
+            f"G7.T5a: companion-template files NOT in Check 37 walk "
+            f"(_iter_project_side_files): {sorted(missing_companion)}"
+        )
+    # (b) companion files are NOT in the client-installed inventory
+    #     (Check 41/43 unaffected — separation preserved).
+    leaked = companion_expected & installed
+    if leaked:
+        failures.append(
+            f"G7.T5b: companion-template files leaked into "
+            f"_iter_client_installed_files() (Check 41/43 install "
+            f"inventory must stay companion-free): {sorted(leaked)}"
+        )
+    # (c) Check 37's walk-set strictly contains the install inventory
+    #     (the companion dirs are an ADDITION, never a replacement).
+    if not installed.issubset(check37_walk):
+        failures.append(
+            "G7.T5c: _iter_client_installed_files() is NOT a subset of "
+            "_iter_project_side_files() — Check 37 walk no longer "
+            "supersets the install inventory"
+        )
+
 if failures:
     print("FAILURES")
     for f in failures:
