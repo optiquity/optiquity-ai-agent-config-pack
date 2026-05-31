@@ -192,6 +192,16 @@ evidence, every VIOLATED row gets surfaced to the user BEFORE any downstream
 work (planner spawn / coder spawn / commit). Empty entries = treated as
 VIOLATED. N/A rows require explicit justification.
 
+Format (the literal block an agent appends as the final section of its output):
+
+```
+## Rules-Applied Verification
+| Rule | Verification evidence | Conclusion |
+|---|---|---|
+| <rule-name> | <command + actual output, or quoted file:line> | COMPLIANT / N/A:<reason> / VIOLATED:<reason> |
+| ... | ... | ... |
+```
+
 ---
 
 ## empirical-evidence-blocks
@@ -211,6 +221,19 @@ design output includes an Empirical-Evidence Block per state-claim. Pack Chat
 scans every architect / planner output for state-claims; any without a
 corresponding Empirical-Evidence Block entry is surfaced as a design defect
 (route back to architect/planner; do not advance to planner / coder).
+
+Format (one entry per state-claim; the design output embeds this block):
+
+```
+## Empirical-Evidence Block
+### State-claim 1: "<verbatim claim from design>"
+- **Command:** <bash command>
+- **Output:** <verbatim command output, code-fenced>
+- **HEAD:** <SHA>; **Date:** <YYYY-MM-DD>
+- **Interpretation:** <how the output supports the claim>
+- **Conclusion:** SUPPORTED / NOT-SUPPORTED / PARTIAL — <reason>
+### State-claim 2: ...
+```
 
 ---
 
@@ -413,7 +436,12 @@ all six fixtures deterministically; v10-* rows are tag-pinned and only drift if
 the v10 tag moves). Actors confident about which v11-* fixture is affected may
 substitute `--name <fixture> --clean` per affected fixture, then `bash
 test-fixtures/build.sh --verify` to confirm the remaining rows are unchanged
-before staging. Cross-reference: the "Test infra is self-provisioned" bullet
+before staging. Base case: the 3 pack-root trinity files
+(`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` at repo root) are NOT under any of the
+four trigger directories, so a commit touching only them is never v11-surface
+and needs no manifest regen; only their `pack-ops/` counterparts trigger (and
+even then, the empty-diff-→-not-v11-surface rule above is the final authority).
+Cross-reference: the "Test infra is self-provisioned" bullet
 above governs *test provisioning*; this bullet governs *manifest maintenance*
 and is load-bearing for the `fixture manifest verify` CI gate (BD-115,
 RELEASE-GATE item 5).
