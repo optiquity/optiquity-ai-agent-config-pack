@@ -8,6 +8,15 @@
 
 ## §0 — Supersession notice (read first)
 
+**Forward pointer — ordering subsystem superseded (BD-195 S1, 2026-05-31).**
+The tracker-mode execution-ordering subsystem of this doc — §5.1/§5.2, the D-7
+mechanism clause, D-8, §7 ordering ops, and §6 ordering reads/writes — is
+**SUPERSEDED** by `maintenance-docs/v11-implementation/ARCHITECTURE-BD-185-V2-ORDERING-ADDENDUM.md`
+§0.1. For execution-ordering, the ORDERING-ADDENDUM wins; this doc remains
+authoritative for everything else (phase-parts hierarchy, archive shape,
+decision log, contamination-correction enumeration). The supersession is
+one-directional: read the ORDERING-ADDENDUM for ordering, this doc for all else.
+
 This document **SUPERSEDES** both prior BD-185 architect docs in their entirety:
 
 - `maintenance-docs/v11-implementation/ARCHITECTURE-BD-185.md` (original)

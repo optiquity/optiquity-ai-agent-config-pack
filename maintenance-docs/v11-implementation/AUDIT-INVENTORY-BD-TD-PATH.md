@@ -757,7 +757,7 @@ The 16 USER-LOCKED decisions D1-D16 are recorded in
 Key decisions relevant to this inventory:
 
 - **D15** (User-driven 2026-05-26): Task letter-suffix REJECTED grammar-wide; Task-M integer-only; new tasks get next integer; **task number ≠ execution order**; cross-refs strict.
-- **D16** (User-driven 2026-05-26): Convention Y — v11.0 archive intra-file additive-extension allowed; structural shape frozen at 5 subdirs.
+- **D16** (User-driven 2026-05-26): Convention Y — v11.0 archive intra-file additive-extension allowed; structural shape frozen at 5 subdirs. *(Annotation — BD-195 S1 CR-1, 2026-05-31: the "frozen at 5 subdirs" wrapper recorded here is **rejected**. The v11.0 archive is **mutable while v11.0 is unshipped** — v11.0 has no release tag, so the archive is not frozen; the intra-file additive-extension permission stands, but the "frozen structural shape" framing is contamination corrected per BD-195 S1. See top-of-file CORRECTION banner.)*
 
 ### §6.3 — PLAN-BD-185.md §6a
 
