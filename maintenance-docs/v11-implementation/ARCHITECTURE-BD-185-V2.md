@@ -99,9 +99,9 @@ corrected-scope criteria are added:
 - `README.md` (version table — v11.0 top row, no tag; Repository Layout).
 - `CLAUDE.md` § "Pack memory" (boundary rules 1–13).
 - `templates-archive/README.md`, `templates-archive/translations.yaml`,
-  `templates-archive/v11.0/INDEX.md`, `templates-archive/v11.1/INDEX.md`,
-  `templates-archive/v11.1/phase-part-v11.1/SCHEMA.md` (the FIXED grammar),
-  `templates-archive/v11.1/forms/work-item.yml`.
+  `maintenance-docs/v11-research/templates-archive/v11.0/INDEX.md`, `maintenance-docs/v11-research/templates-archive/v11.1/INDEX.md`,
+  `maintenance-docs/v11-research/templates-archive/v11.1/phase-part-v11.1/SCHEMA.md` (the FIXED grammar),
+  `maintenance-docs/v11-research/templates-archive/v11.1/forms/work-item.yml`.
 - LIVE forms: `.github/ISSUE_TEMPLATE/work-item.yml` (pack-root),
   `project-template/.github/ISSUE_TEMPLATE/work-item.yml`.
 - `scripts/validate-pack.py` — `check_issue_template_forms()`,
@@ -231,7 +231,7 @@ Verified directly against the working tree at HEAD `e580dda`:
    disjoint and correct, and the validator/test assertions match. **Only the
    version FRAMING is wrong** (comments + archive directory name + SCHEMA tag +
    the v11.1/INDEX.md "bump to work-item-v11.1" claim).
-2. The contaminated `templates-archive/v11.1/forms/work-item.yml` snapshot
+2. The contaminated `maintenance-docs/v11-research/templates-archive/v11.1/forms/work-item.yml` snapshot
    **itself** carries `template:work-item-v11.0` (L7) and body marker
    `work-item-v11.0` (L186) — internally contradicting the v11.1/INDEX.md claim
    that the form bumped to `work-item-v11.1`. The contamination is incoherent on
@@ -256,9 +256,9 @@ carve-out (§2.B) requires.
 
 ### D-2 — There is NO new template-archive minor cut for BD-185
 
-BD-185 does **not** mint a `templates-archive/v11.1/` directory. The
+BD-185 does **not** mint a `maintenance-docs/v11-research/templates-archive/v11.1/` directory. The
 phase-part SCHEMA, the INDEX update, and the form snapshot all land **inside the
-existing `templates-archive/v11.0/` cut**, because:
+existing `maintenance-docs/v11-research/templates-archive/v11.0/` cut**, because:
 
 - The archive convention is **one directory per pack minor version**
   (`templates-archive/README.md` § Versioning rules). v11.0 is the live minor;
@@ -271,8 +271,8 @@ existing `templates-archive/v11.0/` cut**, because:
   describe v11.1 as future).
 
 So the phase-part entry type is the **6th entry type of the v11.0 cut**, added
-to `templates-archive/v11.0/INDEX.md`, with its SCHEMA under
-`templates-archive/v11.0/phase-part-v11.0/`. (See §10 for the full
+to `maintenance-docs/v11-research/templates-archive/v11.0/INDEX.md`, with its SCHEMA under
+`maintenance-docs/v11-research/templates-archive/v11.0/phase-part-v11.0/`. (See §10 for the full
 relocation enumeration and §4.4 for the form-snapshot decision.)
 
 ### D-3 — The v11.0 archive cut is MUTABLE while v11.0 is open (resolves the D16 entanglement)
@@ -283,7 +283,7 @@ The "structural shape frozen at 5 entry-type subdirs" framing from the
 superseded corpus is **rejected**.
 
 **Why the prior "frozen" framing was already self-contradicted.** BD-193 F2.c
-**removed** the stray `bd` option from `templates-archive/v11.0/forms/work-item.yml`.
+**removed** the stray `bd` option from `maintenance-docs/v11-research/templates-archive/v11.0/forms/work-item.yml`.
 You cannot remove content from a frozen artifact. The fact that completed,
 correct BD-193 work mutated the v11.0 archive **proves** the cut was never
 frozen. The superseded RECONCILIATION doc itself graded its own "frozen" clause
@@ -295,7 +295,7 @@ bug-fix carve-outs are all simply "changes to an unshipped artifact."
 
 **What this preserves (BD-193 must not break).** BD-193's work is correct and
 stays:
-- The `bd`-option removal from `templates-archive/v11.0/forms/work-item.yml`
+- The `bd`-option removal from `maintenance-docs/v11-research/templates-archive/v11.0/forms/work-item.yml`
   (the archived form is the client-facing/project-template shape; the pack-root
   `{bd}` form lives at its live path, not duplicated in the archive).
 - The `v11.0/INDEX.md` "Frozen forms" note at L31–34, which documents the
@@ -317,7 +317,7 @@ inference is invalid on both halves: v11.0 is not frozen, and even if a future
 release froze it, the cure would be "ship BD-185 before the v11.0 tag," not
 "mint a v11.1 cut for an unshipped version."
 
-### D-4 — `templates-archive/v11.0/INDEX.md` becomes a 6-entry-type index
+### D-4 — `maintenance-docs/v11-research/templates-archive/v11.0/INDEX.md` becomes a 6-entry-type index
 
 The phase-part row is added to the v11.0 INDEX client-applicable table
 (TD, phase-epic, phase-task, **phase-part**, inbound + the pack-internal BD
@@ -930,7 +930,7 @@ out of scope here.
 
 **Group H — Cross-reference / narrative surfaces (no functional change).**
 - `pack-ops/BACKLOG.md` BD-193 Resolved-line + BD-185 entry: narrative
-  references to `templates-archive/v11.1/...` paths describe completed history.
+  references to `maintenance-docs/v11-research/templates-archive/v11.1/...` paths describe completed history.
   Once Groups A–C relocate the files, these prose paths are stale. The BD-185
   entry's "Pipeline"/"Position" prose and the BD-193 Resolved line should be
   reconciled by Pack Chat (PM-only surface) when the correction lands — flag,

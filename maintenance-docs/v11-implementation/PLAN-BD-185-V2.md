@@ -134,7 +134,7 @@ Grouped by surface. "Inventory file" = listed in `scripts/init-project.sh`
 | `scripts/validate-pack.py` `check_issue_template_forms()` | EDIT comments only L1085–1086, L1117–1127: "added at v11.1 (BD-185 H.2)" → "added in v11.0 (BD-185)" (NO functional change) | YES | NO |
 | `scripts/validate-pack.py` `check_template_archive_v11()` | EDIT entry-type loop L1238 `("bd","td","phase-epic","phase-task","inbound")` → add `"phase-part"` (6 types); docstring L5–7 5→6 | YES | NO |
 | `scripts/tests/test-issue-forms.sh` | EDIT comments only L12, L18–19, L94–95, L138–142, L161–164, L180, L264–265: v11.1 framing → v11.0 (LEAK test-encoded; NO functional change) | YES | NO |
-| `pack-ops/BACKLOG.md` (BD-185 entry prose + BD-193 Resolved line) | FLAG to Pack Chat — PM-only; stale `templates-archive/v11.1/…` path prose. **Coder does NOT edit.** (Group H) | n/a | n/a |
+| `pack-ops/BACKLOG.md` (BD-185 entry prose + BD-193 Resolved line) | FLAG to Pack Chat — PM-only; stale `maintenance-docs/v11-research/templates-archive/v11.1/…` path prose. **Coder does NOT edit.** (Group H) | n/a | n/a |
 | Workflow artifacts (`IMPLEMENTATION-REPORT-BD-185-*.md`, `PACK-REVIEW-BD-185-*.md`, H.1 NITS report) | NO edit — Pattern B archive-sweep at version ship (Group H) | n/a | n/a |
 
 ### §2.2 — Work-stream B (phase-parts implementation)
