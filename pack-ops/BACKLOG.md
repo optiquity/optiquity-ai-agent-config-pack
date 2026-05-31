@@ -3019,7 +3019,7 @@ Resolved: n/a
 Type: fix — surfaced 2026-05-26 during BD-185 H.1 INLINE review prep from cross-cutting audit; user-locked 3-rule triage stack (operational vs explanatory + pack/project separation + token economy) established 2026-05-26 in pack memory `feedback_bd_pack_only_operational_rule`, `feedback_pack_project_separation_of_concerns`, `feedback_client_facing_token_economy`
 Status: Resolved
 Blockers: None. Cleanup applies to client-facing surfaces (project-template/, supporting-docs/) and pack-archive (templates-archive/v11.0/, v11.1/) PLUS one pack-script source (scripts/init-project.sh F4/F5). All in-scope surfaces are accessible at v11-dev HEAD.
-Unblocks: BD-185 H.2 fires only after this BD lands clean — BD-185 H.2 modifies the same templates-archive/v11.1/phase-part-v11.1/SCHEMA.md surface that this BD cleans up (the 23 BD-185 cite removals). Without this BD, H.2 would build on contaminated baseline.
+Unblocks: BD-185 H.2 fires only after this BD lands clean — BD-185 H.2 modifies the same phase-part SCHEMA surface that this BD cleans up (the 23 BD-185 cite removals); that SCHEMA was relocated by BD-195 S1·C3 from the retired `templates-archive/v11.1/phase-part-v11.1/SCHEMA.md` to `templates-archive/v11.0/phase-part-v11.0/SCHEMA.md`. Without this BD, H.2 would build on contaminated baseline.
 File/Symbol:
   - PRIMARY INPUTS (read-only):
     - `maintenance-docs/v11-implementation/AUDIT-INVENTORY-BD-TD-PATH.md` (Phase 1 docs-researcher output; 782 lines; raw inventory of ~140 findings across 48 files)
@@ -3142,6 +3142,7 @@ Segments (2026-05-31, per ARCHITECTURE-BD-195-SEGMENTATION.md; SERIAL execution 
   - S4 — Pack-self governance + agent/skill parity (6): PM-only governance + pack-agent trinity.
   Coverage: the 49 live problems partition disjointly across S1–S4 (12+13+18+6=49); P-29a struck (closed by BD-196). v11.0 sweep = 48 (P-31l → BD-189). The 12 open decisions (OQ-1,2,4,5,6,7 + OQ-3 partial + OQ-8 + NQ-1…NQ-4) are surfaced + resolved per-segment.
   Order: S0 → S1 → S2 → S3 → S4 (BD-195 complete) → BD-185 restart → v11.0 launch. Launch gate = S1 ∧ S2 ∧ S3 ∧ S4 ∧ BD-185. Each segment runs the standard per-commit bounded review/fix cycle; S1 takes a planner pass (de-contaminate/adapt the held V2 §10 recipes).
+  Missed-finding ledger (S1·C3, 2026-05-31): the BD-193 PHASE-4 (§3.1.2 / §4.7-M-5) "CONFIRMED-CORRECT" verdicts + PHASE-5 §4 S-1 framing, and the BD-185 H.1 review, BLESSED the fictional `templates-archive/v11.1/` cut rather than catching it (P-08). Corrected in S1·C3 — those records carry in-place reversal notes; the v11.1 cut is retired + the SCHEMA relocated to v11.0. Lesson for the review process: apply a v11.0-vs-v11.1 categorical check (phase-parts was always v11.0).
 
 Goal: Bring v11.0 to a pristine state following Batch 19c BEFORE any new BD-185 work begins. Supersede the entire prior BD-185 attempt with new docs while retaining the user's preapproved good decisions so they need not be re-explained. FORWARD FIX BIASED TOWARD COMPLETE REDO of the BD-185 attempt; prior committed work is not anchored on or salvaged unless a fix pass independently proves it correct.
 

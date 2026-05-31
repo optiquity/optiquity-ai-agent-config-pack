@@ -92,6 +92,16 @@ applicable first"). Matches IMPL-REPORT §3.1 F1.a description.
 
 #### §3.1.2 F1.b — `templates-archive/v11.1/INDEX.md` (INDEX segregation)
 
+> **CORRECTION (2026-05-31, BD-195 S1 — VERDICT REVERSED).** The
+> `templates-archive/v11.1/INDEX.md` this verdict CONFIRMED-CORRECT is
+> RETIRED per BD-195 S1: there was never a v11.1 archive cut. Phase-parts
+> are v11.0 scope (v11.0 is UNRELEASED, never frozen). The
+> `phase-part-v11.1` row, the `## Entry types at v11.1` heading, and the
+> "v11.0 frozen at 5 subdirs" framing were contamination. The verdict
+> below is SUPERSEDED — the corrected state folds the phase-part row
+> into `templates-archive/v11.0/INDEX.md` as `phase-part-v11.0`. This
+> historical record is preserved with the correction note in place.
+
 **CONFIRMED-CORRECT.** L12 introduces `## Entry types at v11.1` with
 identical segregation: `### Client-applicable entry types` (L14-22;
 5 rows including new phase-part-v11.1) and `### Pack-internal entry
@@ -557,6 +567,16 @@ type), not identifier-namespace (which entity-types exist at this
 level).
 
 ### §4.7 — `templates-archive/v11.1/INDEX.md` v11.1 forms claim (M-5)
+
+> **CORRECTION (2026-05-31, BD-195 S1 — FRAMING SUPERSEDED).** This
+> M-5 finding (and its remediation options, including "actually create
+> the v11.1 archive forms directory") was framed around a v11.1 archive
+> cut that never existed. Per BD-195 S1 the fictional
+> `templates-archive/v11.1/` cut is retired; the phase-part work is
+> v11.0 scope. The corrected resolution is NOT to create a v11.1 forms
+> directory but to update the existing `templates-archive/v11.0/forms/work-item.yml`
+> to the 4-option live client shape (done in BD-195 S1). The finding is
+> preserved as historical record with this correction note in place.
 
 **REMEDIATION-NEEDED-SHOULD (collateral effect of F2.d).**
 

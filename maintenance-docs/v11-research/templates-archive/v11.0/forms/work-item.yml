@@ -1,4 +1,4 @@
-name: Pack work item (TD / phase-epic / phase-task)
+name: Project work item (TD / phase-epic / phase-task)
 description: Project technical-debt item (TD-NNN), phase epic skeleton, or phase task skeleton.
 title: "TD-NNN: <short title>"
 labels:
@@ -9,20 +9,23 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this form for pack-managed work. The Type dropdown selects the entry kind; the
-        chat at triage time renames the title (e.g. `TD-NNN:` becomes the assigned ID),
-        adds the entry-specific `template:` label, and resolves Blockers/Dependencies into
-        first-class links. Phase epic / phase task skeletons are rare-case fallbacks —
-        day-to-day phase work is created by Pack Chat at migration time.
+        Use this form for project-managed work. The Type dropdown selects the entry kind;
+        the chat at triage time renames the title (e.g. `TD-NNN:` becomes the assigned
+        ID), adds the entry-specific `template:` label, and resolves Blockers/Dependencies
+        into first-class links. Phase epic / phase task skeletons are rare-case fallbacks —
+        day-to-day phase work is created by PM Chat at migration time.
+
+        Pack-development items (BD-NNN) belong in the pack repo, not in this project.
   - type: dropdown
     id: wi-type
     attributes:
       label: Type
-      description: Pick TD for project items; phase-epic-skeleton or phase-task-skeleton for hand-edited phase skeletons (rare).
+      description: Pick TD for project items; phase-epic-skeleton or phase-task-skeleton for hand-edited phase skeletons (rare); phase-part-skeleton (rare-case fallback for hand-edited Part skeletons).
       options:
         - td
         - phase-epic-skeleton
         - phase-task-skeleton
+        - phase-part-skeleton
     validations:
       required: true
   - type: dropdown
@@ -96,19 +99,27 @@ body:
       description: Required for Type=phase-task-skeleton. The chat composes the issue title as `Phase N.M — <task title>` where M is the next available task number under phase N.
     validations:
       required: false
+  - type: input
+    id: wi-part-letter
+    attributes:
+      label: Part letter (phase-part-skeleton only)
+      description: Required for Type=phase-part-skeleton. The next available letter under phase N (a, b, c, ...).
+    validations:
+      required: false
   - type: textarea
     id: wi-blockers
     attributes:
       label: Blockers
       description: |
-        One per line. Each line is either an issue id (TD-NNN, #N) or a phase token. Blockers may name 'phase-N' (entire phase) or 'phase-N.M' (specific task) — both forms are recognized. The chat resolves these to first-class links/sub-issue parents post-creation.
+        One per line. Each line is either an issue id (TD-NNN, #N) or a phase token. Blockers may name 'phase-N' (entire phase), 'phase-N.M' (specific task), 'Phase-N.Part-x' (specific phase part), or 'Phase-N.Part-x.Task-M' (specific task under a phase part) — all forms are recognized. The chat resolves these to first-class links/sub-issue parents post-creation.
     validations:
       required: false
   - type: textarea
     id: wi-unblocks
     attributes:
       label: Unblocks
-      description: Informational; one issue id per line. Inverse of Blockers across the dataset.
+      description: |
+        Informational; one issue id per line. Inverse of Blockers across the dataset. Accepts the same identifier forms as Blockers (TD-NNN, #N, phase-N, phase-N.M, Phase-N.Part-x, Phase-N.Part-x.Task-M).
     validations:
       required: false
   - type: input
@@ -165,7 +176,7 @@ body:
     attributes:
       label: Dependencies (phase-task-skeleton only)
       description: |
-        One ID per line. Accepts `phase-N`, `phase-N.M`, `TD-NNN`. The chat resolves each line to first-class `provider.link()` calls post-creation.
+        One ID per line. Accepts `phase-N`, `phase-N.M`, `Phase-N.Part-x`, `Phase-N.Part-x.Task-M`, `TD-NNN`. The chat resolves each line to first-class `provider.link()` calls post-creation.
     validations:
       required: false
   - type: markdown

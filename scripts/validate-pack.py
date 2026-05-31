@@ -1211,8 +1211,8 @@ def check_template_archive_v11() -> None:
 
     Verifies (per BD-064 + Addendum 4 §2.2):
       - templates-archive/v11.0/INDEX.md exists
-      - All five entry-type subdirectories exist with SCHEMA.md
-        (bd, td, phase-epic, phase-task, inbound)
+      - All six entry-type subdirectories exist with SCHEMA.md
+        (bd, td, phase-epic, phase-task, phase-part, inbound)
       - templates-archive/v11.0/forms/{work-item,inbound}.yml exist
         and are byte-equal to the live .github/ISSUE_TEMPLATE/ copies
 
@@ -1234,7 +1234,7 @@ def check_template_archive_v11() -> None:
     else:
         print(f"  INFO: {index.relative_to(REPO_ROOT)} missing")
 
-    for entry_type in ("bd", "td", "phase-epic", "phase-task", "inbound"):
+    for entry_type in ("bd", "td", "phase-epic", "phase-task", "phase-part", "inbound"):
         schema = archive_root / f"{entry_type}-v11.0" / "SCHEMA.md"
         if schema.is_file():
             ok(f"{schema.relative_to(REPO_ROOT)} — present")

@@ -1,7 +1,7 @@
-# Schema — `phase-part-v11.1` (phase part)
+# Schema — `phase-part-v11.0` (phase part)
 
 This document fixes the on-tracker representation of a phase part at
-template version `phase-part-v11.1`. Phase parts are sub-issue entities
+template version `phase-part-v11.0`. Phase parts are sub-issue entities
 introduced by mid-work phase expansion. A Part groups one or
 more phase tasks under a single parent phase epic, at sub-issue depth 2
 (phase epic at depth 1; tasks at depth 3 under their Part).
@@ -40,13 +40,13 @@ mid-work. Once introduced, Parts cannot be deleted nor collapsed
 
 ```
 <!-- pack-id: phase-N.Part-x -->
-<!-- template_version: phase-part-v11.1 -->
+<!-- template_version: phase-part-v11.0 -->
 <!-- pack-version: v11 -->
 ```
 
 The trio parallels the `phase-epic-v11.0` and `phase-task-v11.0` body
 marker trios (same three marker types in the same order). All three
-markers are REQUIRED on every phase-part-v11.1 entity. Parser/emitter
+markers are REQUIRED on every phase-part-v11.0 entity. Parser/emitter
 (`tracker-phase-part.sh`) validates the trio at read and write time.
 
 When created via `provider.create()` (the day-to-day path triggered by
@@ -60,13 +60,13 @@ inputs.
 ## 3. Label family
 
 Parts use the following labels. No new label namespace is introduced by
-`phase-part-v11.1`; the families parallel `phase-task-v11.0`.
+`phase-part-v11.0`; the families parallel `phase-task-v11.0`.
 
 | Label | Source | Notes |
 |---|---|---|
 | `phase-part` | chat / programmatic create | provenance; never removed |
 | `phase-N` | chat / programmatic create | parent phase membership; never removed |
-| `template:phase-part-v11.1` | chat / programmatic create | updated by `pack tracker update-templates` |
+| `template:phase-part-v11.0` | chat / programmatic create | updated by `pack tracker update-templates` |
 | `status:<pending\|in-progress\|done\|deferred>` | chat / programmatic | mirrors Part state per §4 below |
 
 **Excluded labels** (per the lifecycle invariant below):
@@ -79,8 +79,8 @@ Parts use the following labels. No new label namespace is introduced by
   unused Part exits via `status:deferred`.
 - `derived-from:TD-NNN` — Parts are not derived from TD entries; the
   TD-promotion paths (per the TD-promotion carrier matrix in
-  `../v11.0/phase-epic-v11.0/SCHEMA.md` and
-  `../v11.0/phase-task-v11.0/SCHEMA.md`) target phase-epic (path 1) and
+  `../phase-epic-v11.0/SCHEMA.md` and
+  `../phase-task-v11.0/SCHEMA.md`) target phase-epic (path 1) and
   phase-task (path 2), not phase-part.
 
 ## 4. State mapping
@@ -114,7 +114,7 @@ upstream IDs, and an optional informational Member tasks section.
 
 ```
 <!-- pack-id: phase-N.Part-x -->
-<!-- template_version: phase-part-v11.1 -->
+<!-- template_version: phase-part-v11.0 -->
 <!-- pack-version: v11 -->
 
 ## Goal
@@ -184,7 +184,7 @@ parent; 1 parent per child — both caps preserved.
 ## 7. Reverse-emit grammar
 
 **TBD — defined in `tracker-migrate-reverse.sh`.** Reverse-emit grammar
-for phase-part-v11.1 is not yet specified at this archive cut; the
+for phase-part-v11.0 is not yet specified at this archive cut; the
 first reverse-migration of a Part-aware project will exercise the
 grammar and feed it back into this SCHEMA via `tracker-migrate-reverse.sh`.
 
@@ -214,7 +214,7 @@ preserved in the reverse-migration sidecar per V1 §6.6.1.
 The optional body marker `<!-- execution-note-status: historical -->`
 is reserved for `phase-N.md` (the phase epic's prose document
 representation in flat-file mode) and does NOT apply to
-`phase-part-v11.1`. This marker signals that a phase epic's
+`phase-part-v11.0`. This marker signals that a phase epic's
 execution-note prose has been superseded by current state; Parts do
 not carry execution notes and therefore do not carry the
 historical-status marker.

@@ -12,6 +12,7 @@ schema descriptions. See `../README.md` for the archive contract.
 | TD-NNN (project technical-debt item) | [td-v11.0/SCHEMA.md](td-v11.0/SCHEMA.md) | `td-v11.0` | `template:td-v11.0` |
 | Phase epic (`phase-N`) | [phase-epic-v11.0/SCHEMA.md](phase-epic-v11.0/SCHEMA.md) | `phase-epic-v11.0` | `template:phase-epic-v11.0` |
 | Phase task (`phase-N.M`) | [phase-task-v11.0/SCHEMA.md](phase-task-v11.0/SCHEMA.md) | `phase-task-v11.0` | `template:phase-task-v11.0` |
+| Phase part (`Phase-N.Part-x`) | [phase-part-v11.0/SCHEMA.md](phase-part-v11.0/SCHEMA.md) | `phase-part-v11.0` | `template:phase-part-v11.0` |
 | Inbound (bug / feature / pack-feedback) | [inbound-v11.0/SCHEMA.md](inbound-v11.0/SCHEMA.md) | `inbound-v11.0` | `template:inbound-v11.0` |
 
 ### Pack-internal entry types (informational only; NOT applicable to client projects)
@@ -22,16 +23,19 @@ schema descriptions. See `../README.md` for the archive contract.
 
 Reference: V3.3 §6.5 D-18 carrier matrix.
 
-## Frozen forms
+## Archived forms
 
-The forms shipped at v11.0 are preserved byte-for-byte under
-[forms/](forms/):
+The forms preserved at v11.0 live under [forms/](forms/):
 
 - [forms/work-item.yml](forms/work-item.yml) — composite form for TD,
-  phase-epic-skeleton, phase-task-skeleton (3-option `wi-type` dropdown
-  per V3.3 §6.1 + BD-193 D16 carve-out). The original v11.0 shipped
-  form admitted a 4th `bd` option; D16 removed it from the archive as
-  a bug-fix carve-out.
+  phase-epic-skeleton, phase-task-skeleton, phase-part-skeleton
+  (4-option `wi-type` dropdown per V3.3 §6.1 + the BD-193 bug-fix
+  carve-out). The original v11.0 shipped form admitted a `bd` option;
+  the BD-193 bug-fix carve-out removed it from the archive (clients use
+  TD entries, not BD), leaving the four client-applicable wi-type
+  options. v11.0 is unshipped, so the archive form is mutable and
+  tracks the live client `project-template/.github/ISSUE_TEMPLATE/work-item.yml`
+  shape.
 - [forms/inbound.yml](forms/inbound.yml) — composite form for bug,
   feature-request, and 5× pack-feedback subcategories (7-option
   `in-category` dropdown per V2 §4.3).

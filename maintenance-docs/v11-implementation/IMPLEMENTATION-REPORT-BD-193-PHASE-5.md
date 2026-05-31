@@ -140,6 +140,17 @@ form's `pack-feedback-friction` / `pack-feedback-prompt` subcategories.
 
 ### S-1 — `templates-archive/v11.1/INDEX.md` L53-61
 
+> **CORRECTION (2026-05-31, BD-195 S1 — SUPERSEDED).** This S-1 rewrite
+> deepened the v11.1-archive-cut framing ("the v11.1 forms/ subdirectory
+> will be populated when the v11.1 archive cut is completed"). Per
+> BD-195 S1 there is no v11.1 archive cut — it was a mis-versioning
+> contamination. Phase-parts are v11.0 scope; v11.0 is UNRELEASED and
+> never frozen. The `templates-archive/v11.1/INDEX.md` this S-1 edited
+> is RETIRED in BD-195 S1, and the phase-part row + 4-option form now
+> live under `templates-archive/v11.0/`. This S-1 entry is preserved as
+> historical record with the correction note in place; the AFTER text
+> below is superseded.
+
 The original paragraph asserted the v11.1 forms/ subdirectory has been
 populated and is byte-identical to live pack-root and project-template
 forms. Post-BD-193 the live forms are NO LONGER byte-identical
