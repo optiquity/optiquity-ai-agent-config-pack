@@ -3158,7 +3158,8 @@ Position: precedes the BD-185 restart; fires before any new BD-185 work. The pri
 
 **BD-196 — Document concision + boundary-completeness guardrails (rule-corpus restructure + single-SSOT discoverability)**
 Type: feat — pack-only operational; STRUCTURAL (amends pack-memory rules, adds validator checks, reshapes durable pack-ops docs).
-Status: Open
+Status: Resolved
+Resolved: 2026-05-31 — implemented per PLAN C1–C12 + the S1 corpus-reconciliation follow-up; 14 CI-green commits (baseline 96b174a → S1 f52752d). One SSOT per concept (`pack-ops/PACK-MEMORY-RATIONALE.md`, bijection 20==20 via Check 45); M4 concision gate (Check 44) + B5 manifests / spawn-rule anti-restate (Check 46) + extended Check 37 companion-template walk; forward-only durable docs (history → `maintenance-docs/archive/v11/`); one-hop §11.3 routing + §12 propagation procedure. C12 end-of-batch audit CLEAN; S1 47-bullet corpus classification confirms the rule corpus is fully reconciled. Out of scope as planned: fence-marker refactor (§8 step 8); no new standing rule added.
 Surfaced: 2026-05-30 — user-directed effort during BD-195 to fix document bloat while keeping the guardrails authoritative.
 Blockers: None — design (`maintenance-docs/v11-implementation/ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md` v9) + plan (`maintenance-docs/v11-implementation/PLAN-DOC-CONCISION-GUARDRAILS.md`, commits C1–C12) complete and user-approved.
 Unblocks: BD-195's downstream fixes inherit a concise, single-SSOT, discoverable rule corpus; future rule changes follow the §12 propagation procedure.
