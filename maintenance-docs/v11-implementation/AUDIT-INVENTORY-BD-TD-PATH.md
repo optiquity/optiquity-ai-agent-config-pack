@@ -8,6 +8,23 @@
 
 ---
 
+> **CORRECTION (BD-195 S1, 2026-05-31):** This inventory treats
+> `templates-archive/v11.1/` as a real "Surface A" client-facing audit target
+> (§1, §2, §3.9, §3.10, and the tally/quick-scan rows) and records a
+> phase-parts-as-v11.1 / "v11.1 archive cut is driven by BD-185" / "NEW v11.1
+> Prerequisites grammar" / "structural shape frozen at 5 subdirs" (D16) framing.
+> Those framings are **fictional contamination**, retired per BD-195 S1·C3 (the
+> D16 "frozen at 5 subdirs" line is also tracked as reconciled-list P-31b /
+> R8-F09). The phase-part SCHEMA was relocated to
+> `maintenance-docs/v11-research/templates-archive/v11.0/phase-part-v11.0/SCHEMA.md`;
+> the `templates-archive/v11.1/` directory no longer exists. Phase-parts was
+> always **v11.0**; v11.0 is UNRELEASED and was never frozen. This is a tracked
+> historical record — its body and findings are preserved unaltered as the
+> record of what was inventoried at the time, but every affected `v11.1` path
+> reference, "v11.1 cut" framing, and "frozen at 5 subdirs" wrapper below is
+> **superseded** by the corrected v11.0 fact. See
+> `AUDIT-BD-195-S1-INFO1-SWEEP.md` (surface G4).
+
 ## §1 — Scope
 
 Code Red 2 raw inventory of BD-NNN / TD lifecycle / Path-promotion-path / TD→Part / pack-ops-copy-violation findings across two surfaces:

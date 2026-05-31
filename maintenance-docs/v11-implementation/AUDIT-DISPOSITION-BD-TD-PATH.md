@@ -10,6 +10,21 @@
 
 ---
 
+> **CORRECTION (BD-195 S1, 2026-05-31):** This disposition report triages
+> against a `templates-archive/v11.1/` cut and a phase-parts-as-v11.1 framing
+> (e.g., the `templates-archive/v11.1/INDEX.md` and
+> `templates-archive/v11.1/phase-part-v11.1/SCHEMA.md` dispositions at §4.7/§4.8
+> and the "v11.1 archive cut is driven by BD-185" rationale) that are
+> **fictional contamination**, retired per BD-195 S1·C3. The phase-part SCHEMA
+> was relocated to
+> `maintenance-docs/v11-research/templates-archive/v11.0/phase-part-v11.0/SCHEMA.md`;
+> the `templates-archive/v11.1/` directory no longer exists. Phase-parts was
+> always **v11.0**; v11.0 is UNRELEASED and was never frozen. This is a tracked
+> historical record — its body, findings, and dispositions are preserved
+> unaltered as the record of what was triaged at the time, but every affected
+> `v11.1` path reference and "v11.1 cut" framing below is **superseded** by the
+> corrected v11.0 fact. See `AUDIT-BD-195-S1-INFO1-SWEEP.md` (surface G3).
+
 ## §1 — Scope
 
 This disposition report triages the inventory findings recorded in

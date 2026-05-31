@@ -11,6 +11,30 @@
 - `maintenance-docs/archive/v11/TOUCH-POINT-INVENTORY-PER-ENTRY.md` (additional style mirror)
 - `maintenance-docs/v11-research/REQUIREMENTS-GROUPINGS-V11.md` (C1 phases-only-membership constraint that excludes phase parts from groupings)
 
+> **CORRECTION (BD-195 S1, 2026-05-31):** Several rows + decision-checklist
+> items below frame phase-parts as a **v11.1** feature landing under a
+> `templates-archive/v11.1/phase-part-v11.1/` cut (e.g., §3.I.2 L231 "Adding
+> `phase-part-v11.1` would extend this", §6 L559
+> `<!-- template_version: phase-part-v11.1 -->`, the §"check_template_archive_v11"
+> row L614 "the v11.1 cut (not v11.0) gains it", and the open Part-decision
+> checklist items L993 `template:phase-part-v11.1?` / L998 "Template archive cut
+> decision (v11.0 = closed; v11.1 = new — landing under
+> `templates-archive/v11.1/phase-part-v11.1/`)"). That phase-parts-as-v11.1
+> framing is **fictional contamination**, retired per BD-195 S1·C3. Phase-parts
+> was always **v11.0**; v11.0 is UNRELEASED and was never frozen/"closed". The
+> phase-part SCHEMA now lives at
+> `maintenance-docs/v11-research/templates-archive/v11.0/phase-part-v11.0/SCHEMA.md`;
+> the `templates-archive/v11.1/` directory no longer exists. This is a tracked,
+> completed read-only inventory (a constraint fact base) — its body is preserved
+> unaltered, but every affected `v11.1` phase-part framing below is
+> **superseded** by the corrected v11.0 fact. **Held-state note:** BD-185 is
+> PAUSED pending BD-195 Step 9 (`pack-ops/BACKLOG.md` BD-185 entry), and the
+> BD-185 V2 architect substrate that consumed this inventory
+> (`ARCHITECTURE-BD-185-V2.md`) is itself held. When the BD-185 restart resumes,
+> the open Part-decision-checklist items above (L991–L998) MUST be read against
+> the corrected v11.0 fact — NOT re-imported as live "v11.1 = new" decisions.
+> See `AUDIT-BD-195-S1-INFO1-SWEEP.md` (surface G2 + §3 sequencing note).
+
 ## Purpose
 
 Comprehensive, read-only enumeration of every file in the pack repo that touches phase parts, task hierarchy, or execution ordering — produced as a constraint fact base for the forthcoming pack-architect pass on BD-185.

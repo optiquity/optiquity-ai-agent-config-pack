@@ -16,6 +16,19 @@ Phase 2 (`AUDIT-DISPOSITION-BD-TD-PATH.md`, pack-reviewer) →
 
 ---
 
+> **CORRECTION (BD-195 S1, 2026-05-31):** The `templates-archive/v11.1/` cut
+> and the phase-parts-as-v11.1 framing this report references (e.g., the
+> `templates-archive/v11.1/INDEX.md` and `templates-archive/v11.1/phase-part-v11.1/SCHEMA.md`
+> rows at §2/§3/§4 below) are **fictional contamination**, retired per BD-195
+> S1·C3. The phase-part SCHEMA was relocated to
+> `maintenance-docs/v11-research/templates-archive/v11.0/phase-part-v11.0/SCHEMA.md`;
+> the `templates-archive/v11.1/` directory no longer exists. Phase-parts was
+> always **v11.0**; v11.0 is UNRELEASED and was never frozen. This is a tracked
+> historical record — its body, findings, and verdicts are preserved unaltered
+> as the record of what was done at the time, but every affected `v11.1` path
+> reference and "v11.1 cut" framing below is **superseded** by the corrected
+> v11.0 fact. See `AUDIT-BD-195-S1-INFO1-SWEEP.md` (surface G1).
+
 ## §1 — Scope
 
 This commit applies the BD-193 Code Red 2 cleanup of BD/TD/Path
