@@ -1083,7 +1083,7 @@ def check_issue_template_forms() -> None:
         Project-side admits the project-side entry types it
         constructs as a deliverable (`td`, `phase-epic-skeleton`,
         `phase-task-skeleton`, `phase-part-skeleton`). The
-        `phase-part-skeleton` option was added at v11.1 (BD-185 H.2)
+        `phase-part-skeleton` option was added in v11.0 (BD-185)
         for the mid-work phase expansion Part construct. Per
         V3.3 §6.1 + BD-193 (project-side) + the "Project-side
         concepts on pack-side surfaces — deliverable-only" rule
@@ -1118,9 +1118,9 @@ def check_issue_template_forms() -> None:
     # `bd` because BD entries are pack-internal by construction and client
     # projects use TD entries (BD-193).
     #
-    # `phase-part-skeleton` was added at v11.1 (BD-185 H.2) as the 4th
+    # `phase-part-skeleton` was added in v11.0 (BD-185) as the 4th
     # project-side entry type, representing the mid-work phase expansion
-    # "Part" construct introduced at v11.1. Under BD-068 soft cap of 5
+    # "Part" construct introduced in v11.0. Under BD-068 soft cap of 5
     # wi-type options per surface; no defense required.
     expected_wi_type_options_per_surface = {
         "pack-root": {"bd"},
