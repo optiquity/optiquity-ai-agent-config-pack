@@ -187,6 +187,9 @@ jobs:
       - name: validate-pack Check 45 tests (BD-196, pack-memory rule↔rationale bijection)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-45.sh
+      - name: validate-pack Check 46 tests (BD-196, boundary + spawn-rule pointer manifests)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-check-46.sh
       - name: tracker BD-129 gh-repo routing tests (BD-129)
         if: always()
         run: bash scripts/tests/tracker-bd129-gh-repo-test.sh

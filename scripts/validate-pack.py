@@ -6168,6 +6168,322 @@ def check_pack_memory_rationale_bijection() -> None:
         )
 
 
+# ── Check 46: boundary + spawn-rule pointer manifests (BD-196 C6) ──────────
+# Combined reference-resolution + anti-restate check over the two
+# machine-readable manifests authored by BD-196 (C5 + C6):
+#   - pack-ops/.boundary-pointer-manifest.txt  (B5; the deleted BOUNDARY §6
+#     entry-point network — surface → expected pointer to BOUNDARY-DEFINITION)
+#   - pack-ops/.spawn-rule-manifest.txt         (§9.6; spawn-relevant rule
+#     slug → canonical `## Pack memory` home + the reference surfaces where
+#     the collapsed one-line pointer now lives)
+#
+# Two assertions (per ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §4.3 + §9.6):
+#   (a) REFERENCE-RESOLUTION (Check-34 pattern) — every named surface in
+#       either manifest exists AND carries its expected resolving pointer.
+#   (b) ANTI-RESTATE (the §9.6 substring scan, SC7-bounded) — no canonical
+#       `## Pack memory` imperative BODY reappears verbatim in any spawn-rule
+#       reference surface or spawn-relevant skill. The predicate scans the
+#       imperative BODY (first clause, whitespace-normalized, >= a minimum
+#       length) NOT the rule NAME, so a legitimate one-line reference that
+#       merely NAMES a rule ("Agents never commit — see trinity `## Pack
+#       memory` ...") cannot false-positive (the SC7 / §4.2-storm shape).
+#
+# Implemented as ONE function per PLAN §2 G-A (the design left the 3-vs-4
+# split as a coder call; one function over both manifests minimizes surface
+# and shares the manifest-parse + resolution helpers).
+
+# The anti-restate scan targets: the spawn-rule reference surfaces +
+# the spawn-relevant skills (the 4 the design names). Skills live under
+# `.claude/skills/`; the trinity skill mirrors (.codex / .gemini) carry
+# identical content (parity-checked elsewhere) — scanning the .claude
+# copy is sufficient for the anti-restate teeth.
+_CHECK_46_ANTI_RESTATE_SURFACES = (
+    "pack-ops/PACK-AGENTS.md",
+    "pack-ops/PACK-CHAT.md",
+    ".claude/skills/commit-discipline/SKILL.md",
+    ".claude/skills/review/SKILL.md",
+    ".claude/skills/planning/SKILL.md",
+    ".claude/skills/implementation-report/SKILL.md",
+)
+
+# SC7 bound (measured 2026-05-30, HEAD 0cbd6d5): the NAIVE rule-NAME
+# predicate stormed 6/6 on legitimate name-bearing references; the BODY
+# predicate at >= 60 chars yields 0 hits post-C5-collapse AND still catches
+# an injected verbatim restatement. The scan targets the whitespace-
+# normalized imperative BODY (the text AFTER the bold rule name — see
+# _check_46_extract_pack_memory_imperative_bodies, which discards the NAME
+# group entirely), NOT the rule name. Rule-NAME length is therefore
+# irrelevant to the bound: names are never scanned, so a long name cannot
+# false-positive. The >= 60-char window is chosen empirically — every real
+# `## Pack memory` imperative BODY's leading clause exceeds it (no false-
+# negative: a genuine verbatim restatement is caught), while a legitimate
+# one-line reference (which names the rule and paraphrases, rather than
+# reproducing 60+ contiguous verbatim chars of an imperative body) cannot
+# reach the threshold (no false-positive). The bound separates one-line
+# NAME references from verbatim BODY restatements — it is body-derived,
+# not name-derived.
+_CHECK_46_ANTI_RESTATE_MIN_LEN = 60
+
+
+def _parse_manifest_records(text: str) -> list:
+    """Parse a blank-line-separated `key: value` manifest into records.
+
+    Lines beginning with `#` are comments. A blank line ends a record.
+    Repeated keys within a record are joined with a space (wrapped
+    `references:` continuation lines). Returns a list of dicts.
+    """
+    records = []
+    cur = {}
+    for raw in text.splitlines():
+        if raw.lstrip().startswith("#"):
+            continue
+        if not raw.strip():
+            if cur:
+                records.append(cur)
+                cur = {}
+            continue
+        m = re.match(r"(\w+):\s*(.*)", raw)
+        if m:
+            key, val = m.group(1), m.group(2).strip()
+            if key in cur:
+                cur[key] = (cur[key] + " " + val).strip()
+            else:
+                cur[key] = val
+        elif cur:
+            # A continuation line with no `key:` prefix (indented wrap of
+            # the previous value). Append to the last key seen.
+            last_key = list(cur.keys())[-1]
+            cur[last_key] = (cur[last_key] + " " + raw.strip()).strip()
+    if cur:
+        records.append(cur)
+    return records
+
+
+def _check_46_extract_pack_memory_imperative_bodies(min_len: int) -> list:
+    """Extract the canonical `## Pack memory` imperative BODY strings.
+
+    Each bullet is `- **<name>.** <body...>`. We take the BODY (everything
+    after the bold name), collapse whitespace, and keep the leading window
+    if it is at least `min_len` chars. Returns the candidate substrings used
+    by the anti-restate scan. The NAME is deliberately excluded so a
+    one-line reference that names the rule cannot match (SC7 bound).
+    """
+    corpus_path = REPO_ROOT / "CLAUDE.md"
+    if not corpus_path.is_file():
+        return []
+    lines = corpus_path.read_text().splitlines()
+    in_pack_memory = False
+    pm_lines = []
+    for line in lines:
+        if line.startswith("## "):
+            in_pack_memory = line.startswith("## Pack memory")
+            continue
+        if in_pack_memory:
+            pm_lines.append(line)
+    pm_text = "\n".join(pm_lines)
+
+    # Bullet bodies: text after the bold name up to the next top-level
+    # bullet, blank line, or EOF.
+    bodies = re.findall(
+        r"^- \*\*.+?\*\*\s*(.+?)(?=\n- \*\*|\n\n|\Z)",
+        pm_text,
+        re.MULTILINE | re.DOTALL,
+    )
+    candidates = []
+    for body in bodies:
+        normalized = re.sub(r"\s+", " ", body).strip()[:120]
+        if len(normalized) >= min_len:
+            candidates.append(normalized)
+    return candidates
+
+
+def check_boundary_and_spawn_pointer_manifests() -> None:
+    """Check 46 — boundary + spawn-rule pointer manifests (BD-196 C6).
+
+    (a) Reference-resolution (Check-34 pattern): every surface named in
+        pack-ops/.boundary-pointer-manifest.txt and
+        pack-ops/.spawn-rule-manifest.txt exists on disk AND carries its
+        expected resolving pointer.
+          - boundary manifest: the surface contains the `pointer` substring
+            (the BOUNDARY-DEFINITION.md basename).
+          - spawn manifest: every surface named in the record's `references`
+            field exists AND references the canonical home (`## Pack memory`)
+            so the collapsed one-line pointer resolves to the SSOT.
+    (b) Anti-restate (§9.6, SC7-bounded): no `## Pack memory` imperative
+        BODY (first clause, whitespace-normalized, >= 60 chars) reappears
+        verbatim in any spawn-rule reference surface or spawn-relevant skill.
+
+    Lenient mode: a manifest that is absent SKIPs with a notice (an
+    init/state problem, not a resolution violation).
+
+    Pattern: composes Check 34 (cross-reference integrity) for the
+    resolution half and a measure-then-bound substring scan for the
+    anti-restate half. Per ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md
+    §4.3 + §9.6; PLAN-DOC-CONCISION-GUARDRAILS.md §2 (G-A: one function).
+    """
+    print(
+        "\n── Check 46: boundary + spawn-rule pointer manifests (BD-196) ──"
+    )
+
+    boundary_manifest = REPO_ROOT / "pack-ops" / ".boundary-pointer-manifest.txt"
+    spawn_manifest = REPO_ROOT / "pack-ops" / ".spawn-rule-manifest.txt"
+
+    if not boundary_manifest.is_file() and not spawn_manifest.is_file():
+        ok(
+            "neither pointer manifest present (skipping; lenient) — "
+            "pack-ops/.boundary-pointer-manifest.txt + "
+            "pack-ops/.spawn-rule-manifest.txt are authored by BD-196 C5/C6"
+        )
+        return
+
+    any_fail = False
+
+    # ── (a1) Boundary-pointer manifest reference-resolution ──────────────
+    boundary_surfaces = 0
+    if boundary_manifest.is_file():
+        records = _parse_manifest_records(boundary_manifest.read_text())
+        for rec in records:
+            surface = rec.get("surface")
+            pointer = rec.get("pointer")
+            if not surface or not pointer:
+                fail(
+                    f"pack-ops/.boundary-pointer-manifest.txt: a record is "
+                    f"missing a `surface:` or `pointer:` field "
+                    f"(record={rec!r}). Each record requires both."
+                )
+                any_fail = True
+                continue
+            boundary_surfaces += 1
+            surface_path = REPO_ROOT / surface
+            if not surface_path.is_file():
+                fail(
+                    f"pack-ops/.boundary-pointer-manifest.txt names surface "
+                    f"`{surface}` which does NOT exist on disk. Per BD-196 / "
+                    f"ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §4.3 the "
+                    f"boundary-pointer manifest is the deleted BOUNDARY §6 "
+                    f"entry-point network; every named surface must exist. "
+                    f"Remediation: restore the surface or remove its manifest "
+                    f"record in the SAME commit."
+                )
+                any_fail = True
+                continue
+            if pointer not in surface_path.read_text():
+                fail(
+                    f"surface `{surface}` no longer carries its expected "
+                    f"BOUNDARY-DEFINITION pointer (substring `{pointer}` not "
+                    f"found). Per BD-196 the boundary pointer network is "
+                    f"CI-asserted: a surface that silently loses its pointer "
+                    f"breaks the discoverability invariant. Remediation: "
+                    f"restore the pointer to `{surface}`, or remove its "
+                    f"record from pack-ops/.boundary-pointer-manifest.txt in "
+                    f"the SAME commit."
+                )
+                any_fail = True
+
+    # ── (a2) Spawn-rule manifest reference-resolution ────────────────────
+    spawn_records = 0
+    if spawn_manifest.is_file():
+        records = _parse_manifest_records(spawn_manifest.read_text())
+        # A reference surface resolves the collapsed one-line pointer if it
+        # exists AND points at the canonical home (`## Pack memory`). The
+        # surface basename is parsed from the `references:` free-text by
+        # matching the known reference-surface basenames.
+        known_ref_files = {
+            "PACK-AGENTS.md": REPO_ROOT / "pack-ops" / "PACK-AGENTS.md",
+            "PACK-CHAT.md": REPO_ROOT / "pack-ops" / "PACK-CHAT.md",
+        }
+        for rec in records:
+            slug = rec.get("slug")
+            canonical = rec.get("canonical", "")
+            references = rec.get("references", "")
+            if not slug or not references:
+                fail(
+                    f"pack-ops/.spawn-rule-manifest.txt: a record is missing "
+                    f"a `slug:` or `references:` field (record={rec!r})."
+                )
+                any_fail = True
+                continue
+            spawn_records += 1
+            if "## Pack memory" not in canonical:
+                fail(
+                    f"pack-ops/.spawn-rule-manifest.txt slug `{slug}`: the "
+                    f"`canonical:` field must name `## Pack memory` (the "
+                    f"single spawn-source per §9.2); got `{canonical}`."
+                )
+                any_fail = True
+            # Each named reference surface must exist + point at the canonical
+            # home so the collapsed pointer resolves to the SSOT.
+            named = [b for b in known_ref_files if b in references]
+            if not named:
+                fail(
+                    f"pack-ops/.spawn-rule-manifest.txt slug `{slug}`: the "
+                    f"`references:` field names no known reference surface "
+                    f"(expected one of {sorted(known_ref_files)}); got "
+                    f"`{references[:80]}`."
+                )
+                any_fail = True
+                continue
+            for basename in named:
+                ref_path = known_ref_files[basename]
+                if not ref_path.is_file():
+                    fail(
+                        f"pack-ops/.spawn-rule-manifest.txt slug `{slug}` "
+                        f"references `{basename}` which does NOT exist."
+                    )
+                    any_fail = True
+                    continue
+                if "## Pack memory" not in ref_path.read_text():
+                    fail(
+                        f"reference surface `{basename}` (named by spawn-rule "
+                        f"slug `{slug}`) no longer points at the canonical "
+                        f"home `## Pack memory`. Per BD-196 §9.6 the collapsed "
+                        f"one-line reference MUST resolve to the SSOT. "
+                        f"Remediation: restore the `## Pack memory` reference "
+                        f"in `{basename}`, or update the manifest record."
+                    )
+                    any_fail = True
+
+    # ── (b) Anti-restate substring scan (SC7-bounded) ────────────────────
+    candidates = _check_46_extract_pack_memory_imperative_bodies(
+        _CHECK_46_ANTI_RESTATE_MIN_LEN
+    )
+    restate_hits = 0
+    for surface in _CHECK_46_ANTI_RESTATE_SURFACES:
+        surface_path = REPO_ROOT / surface
+        if not surface_path.is_file():
+            # A spawn-relevant surface absent at HEAD is unexpected but not
+            # a restatement violation; skip it silently (the boundary/spawn
+            # resolution halts above would surface a missing required file).
+            continue
+        normalized = re.sub(r"\s+", " ", surface_path.read_text())
+        for body in candidates:
+            if body in normalized:
+                restate_hits += 1
+                fail(
+                    f"anti-restate violation: surface `{surface}` contains a "
+                    f"verbatim `## Pack memory` imperative BODY "
+                    f"(>= {_CHECK_46_ANTI_RESTATE_MIN_LEN} chars): "
+                    f"`{body[:80]}...`. Per BD-196 §9.6 a spawn-relevant rule "
+                    f"is authored ONCE in `## Pack memory`; reference surfaces "
+                    f"carry a ONE-LINE pointer, never a verbatim restatement. "
+                    f"Remediation: collapse the restatement back to a one-line "
+                    f"reference of the form \"<name> — see trinity `## Pack "
+                    f"memory` `[rationale: <slug>]`\"."
+                )
+                any_fail = True
+
+    if not any_fail:
+        ok(
+            f"Check 46 — boundary manifest: {boundary_surfaces} surface(s) "
+            f"resolve their BOUNDARY-DEFINITION pointer; spawn manifest: "
+            f"{spawn_records} rule(s) resolve to `## Pack memory`; "
+            f"anti-restate: 0 verbatim imperative-body restatements across "
+            f"{len(_CHECK_46_ANTI_RESTATE_SURFACES)} spawn-relevant surface(s) "
+            f"({len(candidates)} candidate bodies scanned, "
+            f">= {_CHECK_46_ANTI_RESTATE_MIN_LEN} chars)."
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -6288,6 +6604,14 @@ def main() -> None:
     # pack-ops/PACK-MEMORY-RATIONALE.md `## <slug>` headings). Per
     # ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §5.2.
     check_pack_memory_rationale_bijection()
+    # ── BD-196 (C6): boundary + spawn-rule pointer manifests. Lands AFTER
+    # Check 45 (the adjacent BD-196 bijection gate) and composes the same
+    # reference-resolution pattern as Check 34 over the two pack-ops
+    # manifests (.boundary-pointer-manifest.txt + .spawn-rule-manifest.txt)
+    # plus the §9.6 SC7-bounded anti-restate substring scan. Per
+    # ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §4.3 + §9.6 and
+    # PLAN-DOC-CONCISION-GUARDRAILS.md §2 G-A (one combined function).
+    check_boundary_and_spawn_pointer_manifests()
 
     print("\n" + "=" * 60)
     if failures:

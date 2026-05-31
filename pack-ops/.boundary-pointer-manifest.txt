@@ -1,0 +1,70 @@
+# .boundary-pointer-manifest.txt — BOUNDARY-DEFINITION pointer network (BD-196 C6)
+#
+# Purpose: pack-ops/BOUNDARY-DEFINITION.md is the SINGLE SOURCE OF TRUTH
+# for the pack/project boundary rules. Historically BOUNDARY §6 enumerated
+# (in prose) every surface that points AT the boundary doc — the
+# "discoverability invariant" that let any actor reach the rule without
+# guessing. BD-196 C4 deleted that prose (relocated to
+# maintenance-docs/archive/v11/BOUNDARY-DEFINITION-HISTORY.md) and replaced
+# it with this machine-readable manifest. The C6 check (Check 46) reads
+# this file and asserts reference-resolution: every named surface still
+# carries its expected pointer to BOUNDARY-DEFINITION.md. A surface that
+# silently loses its pointer FAILs the check (the §6 prose could go stale
+# silently; this manifest cannot).
+#
+# This is the entry-point network ONLY (the surfaces that point AT the
+# boundary doc). The per-actor routing pointers (PACK-CHAT "File access
+# strategy", the review skill) are authored by BD-196 C8 and folded into
+# this manifest THEN — they are NOT in scope for C6.
+#
+# Measure-then-bound: this manifest enumerates ONLY surfaces that ACTUALLY
+# carry a resolving BOUNDARY-DEFINITION.md reference at the HEAD where C6
+# lands. The historical §6 prose named several surfaces (PACK-CHAT,
+# PACK-AGENTS, pack-root trinity, project PM-CHAT) that did NOT in fact
+# carry the pointer; those aspirational entries are NOT manifested here,
+# so Check 46 passes against the real tree. Adding a surface to this
+# manifest requires that surface to first acquire its pointer.
+#
+# Format (one record per surface, blank-line separated):
+#   surface:   <repo-relative path to the surface that should point at the
+#              boundary doc>
+#   pointer:   <the literal substring the surface MUST contain to resolve;
+#              today this is the boundary-doc basename `BOUNDARY-DEFINITION.md`
+#              so the check is robust to surrounding prose wording>
+#   role:      <one-line note on which actor reaches the boundary doc via
+#              this surface — documentation only; not parsed by the check>
+#
+# Lines beginning with `#` are comments. The `pointer` substring is the
+# resolution teeth; the `role` line is human-readable context.
+
+surface:   README.md
+pointer:   BOUNDARY-DEFINITION.md
+role:      Repository Layout section — pack maintainers + GitHub visitors reach the boundary doc from the layout tree.
+
+surface:   .claude/skills/boundary-investigation/SKILL.md
+pointer:   BOUNDARY-DEFINITION.md
+role:      Pack-side boundary-investigation skill (loaded by every pack agent) — names the boundary doc as the PACK × OPERATIONS SSOT for placement decisions.
+
+surface:   .codex/skills/boundary-investigation/SKILL.md
+pointer:   BOUNDARY-DEFINITION.md
+role:      Codex mirror of the pack-side boundary-investigation skill — same SSOT pointer.
+
+surface:   .gemini/skills/boundary-investigation/SKILL.md
+pointer:   BOUNDARY-DEFINITION.md
+role:      Gemini mirror of the pack-side boundary-investigation skill — same SSOT pointer.
+
+surface:   project-template/CLAUDE.md
+pointer:   BOUNDARY-DEFINITION.md
+role:      Project trinity (Claude) — names the boundary doc when teaching the pack/project boundary to client actors (the V1-regression-prevention pointer).
+
+surface:   project-template/AGENTS.md
+pointer:   BOUNDARY-DEFINITION.md
+role:      Project trinity (Codex) — trinity parity of the boundary-doc reference.
+
+surface:   project-template/GEMINI.md
+pointer:   BOUNDARY-DEFINITION.md
+role:      Project trinity (Gemini) — trinity parity of the boundary-doc reference.
+
+surface:   project-template/skills/boundary-investigation/SKILL.md
+pointer:   BOUNDARY-DEFINITION.md
+role:      Project-side boundary-investigation skill — names the boundary doc as the placement SSOT for project actors.
