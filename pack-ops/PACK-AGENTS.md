@@ -113,29 +113,19 @@ These rules are enforced across every pack agent. They are also recorded
 under "Pack memory" in CLAUDE.md / AGENTS.md / GEMINI.md so agents loading
 their tool-native context file see them every session.
 
-**Git state changes are forbidden for ALL agents.** No agent — including
-`pack-coder` — may run `git add`, `git commit`, `git push`, `git tag`,
-`git rebase`, `git merge`, `git reset`, `git stash`, or `git checkout`
-(except `git checkout -- <path>` for read-only inspection at a different
-ref). Read-only verbs (`status`, `diff`, `log`, `rev-parse`, `show`,
-`ls-files`, `blame`) are allowed.
+**Git state changes are forbidden for ALL agents; only Pack Chat stages
+or commits.** Agents never commit — see trinity `## Pack memory`
+`[rationale: agents-never-commit]` for the canonical imperative (the
+forbidden verbs, the read-only-verb allowance, and the report-plus-
+working-tree-edits deliverable contract).
 
-**Source modifications are restricted by agent role:**
-- `pack-architect`, `pack-planner`, `pack-reviewer`, `pack-docs-researcher`
-  are read-only on source. Their only Write/Edit calls go to the report
-  file the caller specifies.
-- `pack-coder` may Write/Edit source files within the scope its caller
-  defines, plus its report file. Outside that scope, read-only.
-
-**Every agent produces a report file.** The report is a markdown document
-at a caller-specified path. It is the agent's primary deliverable. For
-`pack-coder`, the report plus the working-tree edits are both consumed
-by Pack Chat.
-
-**Only Pack Chat may stage or commit.** When an agent finishes, Pack Chat
-reads the report, verifies (re-runs tests / inspects diffs), then stages
-and commits with explicit user approval. Agents cannot delegate this step
-to themselves.
+**Source-write scope is the per-agent `Mode` in the roster above.**
+Read-only agents (`pack-architect`, `pack-planner`, `pack-reviewer`,
+`pack-docs-researcher`) Write/Edit only their caller-specified report;
+`pack-coder` Write/Edits source within its caller-defined scope plus its
+report — see the "Source-write within scope; never stages or commits"
+roster cell and trinity `## Pack memory` `### Pack Chat scope` "What
+Pack Chat CAN edit directly" for the canonical write-authority split.
 
 **PM-only files and directories** are off-limits to all agents unless the
 caller's prompt explicitly scopes them in.
@@ -188,38 +178,13 @@ file-not-found. This is by design per
 §2.3 + §10.1 R-1; the references resolve at Batch 23.
 
 - **Pack-coder PREFLIGHT + STOP-MEANS-STOP obligation.** Every pack-coder
-  (or coder-style fix-coder) agent has two non-negotiable behavioral
-  obligations:
-
-  - **PREFLIGHT line BEFORE IMPL-REPORT.** After all in-scope edits +
-    verification, emit a single plain-text line of the form `PREFLIGHT:
-    N/N in-scope file edits complete; verification PASS; HEAD <SHA>;
-    about to Write IMPL-REPORT to <path>` before any IMPL-REPORT write.
-    This is the orchestrator's trust signal that the report-write
-    starts from complete-and-green state.
-
-    Verification includes BOTH the in-scope test suite for the BD AND
-    Check 43 (V11 leak-sweep prevention; pack/project boundary scanner).
-    When a pack-coder commit touches any file under project-template/,
-    pack-ops/, supporting-docs/, or scripts/, the coder MUST run
-    `python3 scripts/validate-pack.py` against the working tree before
-    writing the PREFLIGHT line; Check 43 (and the rest of the validate-
-    pack suite) MUST PASS. If Check 43 FAILs, the coder reports the
-    failure (with file:line + matched basename + suggested remediation)
-    INSTEAD OF writing the IMPL-REPORT — Pack Chat reviews and decides
-    whether to fix in this commit or escalate.
-
-  - **STOP-MEANS-STOP on parent stop directives.** Any parent-session
-    message containing stop / halt / revert / do not continue MUST
-    trigger immediate halt of all work including in-progress Writes.
-    Partial files are acceptable; do not append to "make consistent."
-    Defying a parent stop directive is the worst possible failure
-    mode (see worked example: BD-169 19g-pack incident, 2026-05-16).
-
-  Authoritative full text for both halves of the pattern (including
-  cross-CLI scope notes for Codex / Gemini): trinity `## Pack memory`
-  `### Agent invocation rules` "Pack-coder PREFLIGHT + STOP-MEANS-STOP
-  pattern" bullet.
+  (or coder-style fix-coder) agent emits the PREFLIGHT trust-signal line
+  before any IMPL-REPORT write and halts immediately on a parent stop
+  directive — see trinity `## Pack memory` `[rationale: preflight-stop-means-stop]`
+  for the canonical imperative (PREFLIGHT line format, the
+  `scripts/validate-pack.py` + Check 43 verification gate, the report-failure-
+  instead-of-IMPL-REPORT behavior, the STOP-MEANS-STOP halt rule, and
+  the cross-CLI scope notes for Codex / Gemini).
 
 - **Skill and agent maintenance.** Additions and modifications follow
   the maintainability principle in pack-repo trinity `## Pack memory`

@@ -1,0 +1,52 @@
+# .spawn-rule-manifest.txt — spawn-relevant rule reference manifest (BD-196 C5)
+#
+# Purpose: each spawn-relevant rule is authored ONCE — its imperative lives in
+# trinity `## Pack memory` (CLAUDE.md / AGENTS.md / GEMINI.md at pack root). The
+# 6 former restatements in pack-ops/PACK-AGENTS.md + pack-ops/PACK-CHAT.md have
+# been collapsed (BD-196 C5) to one-line REFERENCES. This manifest records, for
+# each collapsed rule, its canonical home + the reference surfaces where the
+# one-line pointer now lives. The C6 spawn-rule check (Check 46) reads this file
+# for two assertions: (a) reference-resolution — every named reference surface
+# carries a resolving pointer to the rule; (b) anti-restate — the canonical
+# imperative TEXT must NOT reappear verbatim in any reference surface.
+#
+# Format (one record per rule, blank-line separated):
+#   slug:       <rationale slug, or the rule-name token for rules without a
+#               [rationale:] slug in the corpus>
+#   canonical:  ## Pack memory  (trinity: CLAUDE.md / AGENTS.md / GEMINI.md @ pack root)
+#   corpus:     <the corpus subsection the canonical imperative lives in>
+#   references: <surface §/section where the collapsed one-line reference now lives>
+#               (semicolon-separated when more than one)
+#
+# Lines beginning with `#` are comments. The reference surfaces use section
+# names (not line numbers — line numbers drift).
+
+slug:       agents-never-commit
+canonical:  ## Pack memory
+corpus:     ### Workflow — "Agents never commit"
+references: PACK-AGENTS.md § "Agent permission rules" (git-state-change ban + report-deliverable contract)
+
+slug:       role-write-scope
+canonical:  ## Pack memory
+corpus:     ### Pack Chat scope — "What Pack Chat CAN edit directly" (+ the per-agent Mode column in the PACK-AGENTS.md roster)
+references: PACK-AGENTS.md § "Agent permission rules" (source-write scope per roster Mode)
+
+slug:       preflight-stop-means-stop
+canonical:  ## Pack memory
+corpus:     ### Agent invocation rules — "Pack-coder PREFLIGHT + STOP-MEANS-STOP pattern"
+references: PACK-AGENTS.md § "Agent permission rules" (Pack-coder PREFLIGHT + STOP-MEANS-STOP obligation)
+
+slug:       presents-triage-before-fix-coder
+canonical:  ## Pack memory
+corpus:     ### Workflow — "Pack Chat presents triage to user before fix-coder spawns"
+references: PACK-CHAT.md § "Behavioral rules" ("Stop after every reviewer pass for triage discussion")
+
+slug:       triage-all-fix-all
+canonical:  ## Pack memory
+corpus:     ### Workflow — "Triage all reviewer findings; default fix-all; nits become tech debt"
+references: PACK-CHAT.md § "Behavioral rules" ("Stop after every reviewer pass for triage discussion"); PACK-CHAT.md § "Behavioral rules" ("Real fixes only — no green-the-test band-aids", distinct-from cross-reference)
+
+slug:       pack-chat-no-coder-review-bounded-cycle
+canonical:  ## Pack memory
+corpus:     ### Pack Chat scope — "Pack Chat does NO fixes" + "Pack Chat NO coder review; bounded reviewer/fix cycle"
+references: PACK-CHAT.md § "Behavioral rules" ("Real fixes only — no green-the-test band-aids", `feedback-pack-chat-does-no-fixes` distinct-from cross-reference)

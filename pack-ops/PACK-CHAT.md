@@ -60,15 +60,14 @@ These rules are non-negotiable and always apply:
   before any commit.
 - **Verify staged files before committing.** The user reviews the staged file list
   and approves before the commit command runs.
-- **Stop after every reviewer pass for triage discussion.** After every
-  pack-reviewer run, Pack Chat STOPS, surfaces the findings (severity-
-  grouped) to the user, and waits for triage approval — even if the
-  reviewer verdict is fully clean. No auto-commit on clean verdicts.
-  This is distinct from the implicit-BD-status-flip rule (which fires
-  AFTER all per-BD fixes land + tests are green) and from the
-  commit-approval rule (which governs the wording of the approval
-  ask). The stop point is BEFORE Pack Chat triages — the triage
-  itself is surfaced to the user as the first action after the stop.
+- **Stop after every reviewer pass for triage discussion.** Pack Chat
+  STOPS after every pack-reviewer run, surfaces the findings to the user,
+  and waits for triage approval before any fix-coder spawn — see the
+  "Pack Chat presents triage to user before fix-coder spawns" rule in
+  trinity `## Pack memory` `### Workflow` for the canonical imperative
+  (the stop-before-triage gate, the clean-verdict-still-stops rule, and
+  the distinction from the implicit-BD-status-flip and commit-approval
+  rules).
 - **Chat-ownership boundaries on concurrent sessions.** When two
   pack-chats run concurrently against the same repo (e.g., sidecar +
   primary; multiple devs; multiple worktrees on the same clone), the
