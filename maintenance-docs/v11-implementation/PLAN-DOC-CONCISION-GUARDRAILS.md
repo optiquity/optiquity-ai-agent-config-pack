@@ -129,8 +129,15 @@ Twelve commits (C1–C12). Each is a pack-coder run + the bounded per-commit rev
 - **7b sweep:** none new.
 - **Trinity:** no.
 
+### C11a — Restore fenced format templates + manifest base-case to `PACK-MEMORY-RATIONALE.md` (mid-execution fix commit)
+- **Files:** `pack-ops/PACK-MEMORY-RATIONALE.md` (restore the fenced format templates + the manifest base-case content that earlier reshaping had dropped).
+- **Changes:** completes the rationale SSOT so it carries the full set of fenced format templates + the manifest base-case BEFORE the C11 out-of-repo cache-thinning references it. Inserted mid-execution after the C12 audit/review surfaced the gap; not part of the original SC1 sequence.
+- **Why here:** the thin cache pointers (C11) point into the rationale SSOT, so the rationale SSOT must be complete first. This commit closes the SSOT before C11's thin-pointer model takes effect — it precedes C11 in effect even though it was authored after the C10–C11 ordering was first sequenced.
+- **Working state:** `pack-ops/` touched → run full `validate-pack.py`; manifest trigger fires → rebuild + stage-if-diff.
+- **Trinity:** no.
+
 ### C11 — §9.7 thin memory-cache (OUT-OF-REPO; NOT a commit) — Pack-Chat upkeep note
-- **Files:** NONE in the pack repo. The 26 per-rule cache files at `~/.claude/projects/<slug>/memory/*.md` become thin pointers (one-line imperative + `[rationale: slug]`), maintained by Pack Chat as memory upkeep — NO pack-side generator, NO commit touching `~/.claude/`.
+- **Files:** NONE in the pack repo. **Realized scope (measured):** the out-of-repo memory dir at `~/.claude/projects/<slug>/memory/*.md` holds 27 per-rule files; only 4 were genuine trinity-rule-with-rationale duplicates (`agent-output-rules-applied-block`, `architect-planner-empirical-evidence`, `ci-guard-design-measure-then-bound`, `manifest-regen-on-v11-surface`) and were thinned to one-line-imperative + `[rationale: slug]` pointers; the other 23 are standalone SSOT memory (project state / references / feedback not in the trinity corpus) and were left intact; 14 of the 18 rationale slugs have no cache file. Maintained by Pack Chat as memory upkeep — NO pack-side generator, NO commit touching `~/.claude/`. (Matches ARCHITECTURE §9.7 "Realized scope.")
 - **Why here:** sequenced AFTER the corpus (C1) + rationale (C2) are stable so the thin pointers reference live slugs. This is a Pack-Chat-direct memory-upkeep action (Pack Chat CAN edit its own memory files), NOT a coder commit, NOT in the commit count. Listed for completeness/ordering only.
 - **Working state:** N/A (out-of-repo). Drift control = thin-pointers + trinity-wins disclaimer (already in MEMORY.md) + Pack-Chat upkeep. NO validator gate possible (§9.7).
 - **Trinity:** N/A.
@@ -155,7 +162,7 @@ C12 is REVIEW + AUDIT, not just mechanical verification. It has THREE parts. The
 | §8 step | Description | Commit(s) |
 |---|---|---|
 | 1 | Corpus C1 imperatives + `[roles:]` + `[rationale: slug]` (trinity) | C1 |
-| 2 | Author RATIONALE.md; split Why/examples | C2 |
+| 2 | Author RATIONALE.md; split Why/examples | C2; C11a (mid-execution fix — restore fenced format templates + manifest base-case, completing the rationale SSOT before C11) |
 | 3 | Reshape BOUNDARY to §7 target + §2.2/§2.3/§3-WHEN/HOW/§5 content | C4 |
 | 4 | Add M4 + C3-bijection + B5 checks (no §4.2 check) | C3 (bijection), C6 (B5), C10 (M4) |
 | 4b | `.spawn-rule-manifest.txt` + collapse 6 restatements + spawn-rule check | C5 (author/collapse), C6 (check) |

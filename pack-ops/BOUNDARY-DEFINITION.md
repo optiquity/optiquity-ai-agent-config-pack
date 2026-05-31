@@ -128,7 +128,7 @@ Placement (§2–§3) governs WHERE a file lives. These content rules govern wha
 
 ## §6 Pointer network
 
-This doc is the SINGLE SOURCE OF TRUTH for the boundary rules and is referenced from every operating-doc entry point in the pack. The pointer network is CI-asserted via the surface→pointer manifest at `pack-ops/.boundary-pointer-manifest.txt` (the manifest file and its asserting check are added by a later commit in this batch; until then this line is a forward reference resolvable as plain prose).
+This doc is the SINGLE SOURCE OF TRUTH for the boundary rules and is referenced from every operating-doc entry point in the pack. The pointer network is CI-asserted via the surface→pointer manifest at `pack-ops/.boundary-pointer-manifest.txt`; the manifest file and its asserting validator check both exist and enforce the surface→pointer mapping.
 
 ---
 
