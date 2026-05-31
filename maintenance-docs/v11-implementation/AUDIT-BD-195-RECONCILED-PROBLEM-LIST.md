@@ -107,8 +107,8 @@ Open questions for G3: **7 user decisions** (OQ-1 … OQ-7) + **1 sequencing pre
 - **Severity:** MUST
 - **Surfaces:** `README.md` § "Repository Layout" — the `supporting-docs/` block wrongly lists `MERGE-STRATEGY.md` + `DRY-RUN-MIGRATION.md` (both live ONLY in `pack-ops/`); the `pack-ops/` block omits `CONCEPTUAL-REVIEW-METHODOLOGY.md`, `DRY-RUN-MIGRATION.md`, `MERGE-STRATEGY.md` (all resident there).
 - **Found by:** R1-F01, R1-F02. Merged: two halves of one README pack-ops/-vs-supporting-docs/ mis-filing defect.
-- **Why it's a problem:** README is the designated authoritative layout (CLAUDE.md § "Repo structure"); mis-filing contradicts the canonical `pack-ops/BOUNDARY-DEFINITION.md` §5.1 (BD-175 F-1 resolution) and renders three resident files invisible. QUICKSTART.md already uses the correct `pack-ops/MERGE-STRATEGY.md`.
-- **Recommended action (as researchers stated):** Move the two mis-filed entries from the README `supporting-docs/` block to the `pack-ops/` block; add the three omitted resident files to the `pack-ops/` block. PM-only edit. BOUNDARY-DEFINITION.md §5.1 is the SSOT.
+- **Why it's a problem:** README is the designated authoritative layout (CLAUDE.md § "Repo structure"); mis-filing contradicts the canonical `pack-ops/BOUNDARY-DEFINITION.md` §5 content rules (BD-175 F-1 resolution; the §5.1 sub-section was collapsed into the flat §5 Ban-A/separated-not-combined bullets by BD-196) and renders three resident files invisible. QUICKSTART.md already uses the correct `pack-ops/MERGE-STRATEGY.md`.
+- **Recommended action (as researchers stated):** Move the two mis-filed entries from the README `supporting-docs/` block to the `pack-ops/` block; add the three omitted resident files to the `pack-ops/` block. PM-only edit. BOUNDARY-DEFINITION.md §5 (content rules) is the SSOT.
 - **Cross-surface coupling:** none beyond README (PM-only); compounds the README-currency cluster (P-03, P-04, P-19, P-20).
 
 ### P-11 — PACK-CHAT.md says "Four pack agents" but there are five (omits pack-coder)
