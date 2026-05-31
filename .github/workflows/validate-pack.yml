@@ -184,6 +184,9 @@ jobs:
       - name: validate-pack Check 43 tests (BD-173 H.14, V11 leak-sweep prevention, project-side bare cross-reference scanner)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-43.sh
+      - name: validate-pack Check 44 tests (BD-196, M4 durable-doc concision gate)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-check-44.sh
       - name: validate-pack Check 45 tests (BD-196, pack-memory rule↔rationale bijection)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-45.sh

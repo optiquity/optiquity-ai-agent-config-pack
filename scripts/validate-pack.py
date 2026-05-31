@@ -6527,6 +6527,182 @@ def check_boundary_and_spawn_pointer_manifests() -> None:
         )
 
 
+# ── Check 44: M4 durable-doc concision gate (BD-196 C10) ───────────────────
+# The M4 concision gate over the 7 durable pack-ops/ non-mirror rule docs
+# (the M4 class per ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §6 +
+# PLAN-DOC-CONCISION-GUARDRAILS.md EE-P1). Two parts:
+#
+#   (a) THE TEETH (hard-fail) — forbidden-pattern count = 0 OUTSIDE the
+#       allowlist. The forbidden patterns are report-only artifacts that
+#       MUST NOT appear in forward-only durable rule docs (the C2 surface-
+#       separation rule: SHAs/dates/Commit-N/Override-N/post-Commit/temporal
+#       'will' belong in agent reports, not durable docs). Any matched line
+#       NOT covered by a pack-ops/.concision-allowlist.txt record FAILs.
+#       The allowlist is sized to the KEEP set EXACTLY (measure-then-bound):
+#       only legitimate operational-behavioral occurrences are admitted; it
+#       is NOT widened to swallow contamination.
+#
+#   (b) ADVISORY length (soft, never fails) — each doc carries a per-doc
+#       advisory ceiling DERIVED from its measured legitimate (post-C4/C9
+#       cleaned) content (ceil(measured * 1.15) — a 15% growth headroom,
+#       per-doc, NOT a uniform round cap). Exceeding it emits an advisory
+#       OK-notice, never a failure (length is a smell, not a hard rule;
+#       the forbidden-pattern count is the enforcing teeth — ARCHITECTURE
+#       §6 "SC1 limits": enforcing limit = 0-outside-allowlist; length is
+#       per-doc advisory).
+#
+# Pattern: a fresh scan + the existing _parse_manifest_records() allowlist-
+# file read pattern (shared with Check 46). Per ARCHITECTURE-DOC-CONCISION-
+# GUARDRAILS.md §6 (M1-M4) + §7; PLAN-DOC-CONCISION-GUARDRAILS.md §3 C10.
+
+# The M4 forbidden-pattern set — IDENTICAL to the C4/C9 canonical reshape
+# probe (so the gate enforces exactly the contract those commits cleaned to):
+#   dates / 7-40-hex SHAs / Commit N / Override N / post-Commit / temporal
+#   'will '. The hex pattern is word-boundary-anchored (\b…\b) so ordinary
+#   lowercase-hex-only English words do not false-match; the 'will' pattern
+#   carries a trailing space (the canonical `\bwill ` probe form).
+_CHECK_44_FORBIDDEN_PATTERNS = (
+    ("date", re.compile(r"20[0-9]{2}-[0-9]{2}-[0-9]{2}")),
+    ("sha", re.compile(r"\b[0-9a-f]{7,40}\b")),
+    ("commit-N", re.compile(r"Commit [0-9]")),
+    ("override-N", re.compile(r"Override [0-9]")),
+    ("post-Commit", re.compile(r"post-Commit")),
+    ("will", re.compile(r"\bwill ")),
+)
+
+# The 7 durable pack-ops/ non-mirror rule docs (M4 class) + each doc's
+# per-doc ADVISORY line ceiling, DERIVED from its measured post-C4/C9
+# cleaned content as ceil(measured * 1.15). These are NOT round numbers:
+# each is anchored to the doc's actual cleaned size at HEAD 60ec0db
+# (BOUNDARY 135, CONCEPTUAL-REVIEW 298, DRY-RUN 199, HELP-PACK 42,
+# HELP-TRACKER 49, MERGE 484, OPTIONAL 235) with a uniform 15% growth
+# headroom. BACKLOG.md / CHANGELOG.md are regenerated MIRRORS, NOT in
+# the M4 class (EE-P1). The ceiling is advisory only (never fails).
+_CHECK_44_DURABLE_DOCS = (
+    ("pack-ops/BOUNDARY-DEFINITION.md", 156),
+    ("pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md", 343),
+    ("pack-ops/DRY-RUN-MIGRATION.md", 229),
+    ("pack-ops/HELP-FRAGMENT-PACK.md", 49),
+    ("pack-ops/HELP-FRAGMENT-TRACKER.md", 57),
+    ("pack-ops/MERGE-STRATEGY.md", 557),
+    ("pack-ops/OPTIONAL-FEATURES.md", 271),
+)
+
+
+def _check_44_load_allowlist() -> dict:
+    """Parse pack-ops/.concision-allowlist.txt into {doc: [snippet, ...]}.
+
+    Each record carries `doc:`, `pattern:`, `snippet:`, `reason:`. The
+    matching key is (doc, snippet-substring) — line numbers are NOT used
+    (they drift). Returns a dict mapping each doc path to its list of
+    allowlisted snippet substrings. Reuses _parse_manifest_records().
+    """
+    allowlist_path = REPO_ROOT / "pack-ops" / ".concision-allowlist.txt"
+    if not allowlist_path.is_file():
+        return {}
+    records = _parse_manifest_records(allowlist_path.read_text())
+    by_doc: dict = {}
+    for rec in records:
+        doc = rec.get("doc")
+        snippet = rec.get("snippet")
+        if doc and snippet:
+            by_doc.setdefault(doc, []).append(snippet)
+    return by_doc
+
+
+def check_durable_doc_concision() -> None:
+    """Check 44 — M4 durable-doc concision gate (BD-196 C10).
+
+    Scans the 7 durable pack-ops/ non-mirror rule docs (the M4 class) for
+    forbidden report-only patterns (dates / 7-40-hex SHAs / Commit N /
+    Override N / post-Commit / temporal 'will '). THE TEETH: any matched
+    line NOT covered by a pack-ops/.concision-allowlist.txt record
+    (doc match AND an allowlisted snippet is a substring of the line)
+    FAILs — forbidden-pattern count must be 0 OUTSIDE the allowlist.
+
+    ADVISORY: each doc also carries a per-doc advisory line ceiling
+    (derived from measured cleaned content); exceeding it emits an
+    OK-advisory notice, NEVER a failure (length is a smell, the
+    forbidden-pattern teeth are the enforcement).
+
+    Per ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §6 (M1-M4) + §7;
+    PLAN-DOC-CONCISION-GUARDRAILS.md §3 C10. The allowlist is sized to
+    the KEEP set EXACTLY (measure-then-bound) — never widened to admit a
+    contamination hit.
+
+    Lenient mode: a durable doc absent at HEAD SKIPs that doc with a
+    notice (an init/state problem, not a concision violation); a missing
+    allowlist file means an empty allowlist (every forbidden hit then
+    FAILs — fail-loud, never silently-pass).
+    """
+    print("\n── Check 44: M4 durable-doc concision gate (BD-196) ──")
+
+    allowlist = _check_44_load_allowlist()
+
+    any_fail = False
+    scanned_docs = 0
+    total_forbidden_outside = 0
+    total_allowlisted = 0
+
+    for doc_rel, advisory_ceiling in _CHECK_44_DURABLE_DOCS:
+        doc_path = REPO_ROOT / doc_rel
+        if not doc_path.is_file():
+            ok(f"{doc_rel} absent — skipping that doc (lenient)")
+            continue
+        scanned_docs += 1
+        snippets = allowlist.get(doc_rel, [])
+        lines = doc_path.read_text().splitlines()
+
+        for lineno, line in enumerate(lines, start=1):
+            matched_patterns = [
+                name for name, rx in _CHECK_44_FORBIDDEN_PATTERNS
+                if rx.search(line)
+            ]
+            if not matched_patterns:
+                continue
+            # A line is allowlisted iff one of the doc's allowlist
+            # snippets is a substring of the line (content-anchored, not
+            # line-number-anchored — line numbers drift).
+            covered = any(snip in line for snip in snippets)
+            if covered:
+                total_allowlisted += 1
+                continue
+            total_forbidden_outside += 1
+            fail(
+                f"{doc_rel}:{lineno} — M4 concision-gate forbidden pattern "
+                f"{matched_patterns} OUTSIDE the allowlist: "
+                f"`{line.strip()[:90]}`. Per BD-196 / ARCHITECTURE-DOC-"
+                f"CONCISION-GUARDRAILS.md §6 (M4), durable pack-ops/ rule "
+                f"docs are forward-only: dates / SHAs / Commit-N / "
+                f"Override-N / post-Commit / temporal 'will' are report-only "
+                f"artifacts (C2 surface-separation). Remediation: STRIP the "
+                f"pattern from the durable doc (move provenance to the agent "
+                f"report). The allowlist is sized to the legitimate KEEP set "
+                f"EXACTLY and MUST NOT be widened to admit this hit — a "
+                f"residual STRIP-class occurrence is a reshape gap, not an "
+                f"allowlist entry."
+            )
+            any_fail = True
+
+        # Advisory length (soft — never fails).
+        n_lines = len(lines)
+        if n_lines > advisory_ceiling:
+            ok(
+                f"{doc_rel} — ADVISORY: {n_lines} lines exceeds the per-doc "
+                f"advisory ceiling {advisory_ceiling} (derived from measured "
+                f"cleaned content). Advisory only — not a failure; consider "
+                f"whether new content belongs in a report/rationale surface."
+            )
+
+    if not any_fail:
+        ok(
+            f"Check 44 — {scanned_docs} durable doc(s) scanned; "
+            f"{total_forbidden_outside} forbidden pattern(s) outside the "
+            f"allowlist (0 = clean); {total_allowlisted} allowlisted "
+            f"operational occurrence(s) admitted (KEEP set)."
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -6655,6 +6831,15 @@ def main() -> None:
     # ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §4.3 + §9.6 and
     # PLAN-DOC-CONCISION-GUARDRAILS.md §2 G-A (one combined function).
     check_boundary_and_spawn_pointer_manifests()
+    # ── BD-196 (C10): M4 durable-doc concision gate. Lands AFTER Check 46
+    # (the adjacent BD-196 manifest gate) and is the LAST BD-196 check —
+    # the payoff the prior BD-196 commits (C4 reshaped BOUNDARY, C9
+    # reshaped the other 6 durable docs) prepared. M4 = forbidden-pattern
+    # count 0 OUTSIDE pack-ops/.concision-allowlist.txt (the teeth) +
+    # per-doc advisory length. Per ARCHITECTURE-DOC-CONCISION-
+    # GUARDRAILS.md §6 (M1-M4) + §7; PLAN-DOC-CONCISION-GUARDRAILS.md
+    # §3 C10.
+    check_durable_doc_concision()
 
     print("\n" + "=" * 60)
     if failures:

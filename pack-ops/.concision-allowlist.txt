@@ -1,0 +1,78 @@
+# .concision-allowlist.txt — M4 concision-gate allowlist (BD-196 C10)
+#
+# The M4 concision gate (Check 44, scripts/validate-pack.py
+# check_durable_doc_concision) scans the 7 durable pack-ops/ non-mirror
+# rule docs for FORBIDDEN PATTERNS that belong in agent reports, NOT in
+# forward-only durable rule docs (per ARCHITECTURE-DOC-CONCISION-
+# GUARDRAILS.md §6 M4 + the C2 surface-separation rule):
+#
+#   - dates           20[0-9]{2}-[0-9]{2}-[0-9]{2}
+#   - 7-40-hex SHAs    \b[0-9a-f]{7,40}\b
+#   - Commit N         Commit [0-9]
+#   - Override N       Override [0-9]
+#   - post-Commit      post-Commit
+#   - temporal 'will'  \bwill (the C4/C9 canonical probe form `\bwill `)
+#
+# THE TEETH: forbidden-pattern count = 0 OUTSIDE this allowlist. A hit on
+# any line NOT listed here FAILS the gate. This allowlist is sized to the
+# KEEP set EXACTLY (measure-then-bound, ARCHITECTURE §6 SC1 + CLAUDE.md
+# "CI guard design — measure-then-bound"): every entry is a MEASURED,
+# legitimate operational-behavioral occurrence — NOT a contamination hit
+# widened in to make the gate pass.
+#
+# KEEP basis (the only legitimate residue): operational-behavioral 'will'
+# — a 'will' that describes what a shipped pack mechanism DOES (migrator
+# routing, recommendation-system behavior, dry-run harness output), NOT a
+# temporal/roadmap 'will' (which is STRIP-class and was cleaned in C4/C9).
+# STRIP-class patterns (dates / SHAs / Commit N / Override N / post-Commit)
+# have ZERO legitimate KEEP residue across all 7 docs — none are
+# allowlisted; any future appearance is contamination by definition.
+#
+# Re-measured at HEAD 60ec0db (BD-196 C10) against the post-C4/C9 tree:
+# 6 KEEP entries; STRIP-class = 0 outside the allowlist. See
+# maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-196-C10.md
+# for the full measure→categorize table.
+#
+# FORMAT: one allowlisted occurrence per record, blank-line separated.
+#   doc:      pack-ops/<file>.md         (path relative to repo root)
+#   pattern:  the forbidden-pattern class this occurrence matches (will)
+#   snippet:  a stable substring of the allowlisted line (anchors the
+#             entry to its content, so a line that MOVES is still matched
+#             by content and an entry whose content CHANGES stops matching
+#             — line numbers are NOT used as the key because they drift)
+#   reason:   why this occurrence is legitimate (operational, not temporal)
+#
+# The check matches an occurrence to an allowlist record when the doc
+# matches AND the record's `snippet` is a substring of the offending line.
+# Line numbers are intentionally absent from the key (they drift); the
+# snippet is the stable anchor.
+
+doc: pack-ops/DRY-RUN-MIGRATION.md
+pattern: will
+snippet: It will say a sidecar
+reason: operational — describes the dry-run harness's output behavior (what it reports), not a roadmap promise.
+
+doc: pack-ops/DRY-RUN-MIGRATION.md
+pattern: will
+snippet: the exact state the real run will start from
+reason: operational — describes the recovery-procedure starting state, not a roadmap promise.
+
+doc: pack-ops/MERGE-STRATEGY.md
+pattern: will
+snippet: will route through `pack-script` 3-way text dispatch
+reason: operational — describes how the migrator routes a project-added script, not a roadmap promise.
+
+doc: pack-ops/MERGE-STRATEGY.md
+pattern: will
+snippet: not present in the pack repo will hit
+reason: operational — describes the three-way classification outcome, not a roadmap promise.
+
+doc: pack-ops/OPTIONAL-FEATURES.md
+pattern: will
+snippet: provider abstraction the agent will consume but not the agent file
+reason: operational — describes what the shipped provider abstraction is consumed by, not a roadmap promise.
+
+doc: pack-ops/OPTIONAL-FEATURES.md
+pattern: will
+snippet: The recommendation system will not nag in this regime
+reason: operational — documents recommendation-system behavior in the low-BD-volume regime, not a roadmap promise.
