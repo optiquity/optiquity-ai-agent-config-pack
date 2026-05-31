@@ -6048,6 +6048,124 @@ def check_ci_workflow_wires_per_check_tests() -> None:
     )
 
 
+def check_pack_memory_rationale_bijection() -> None:
+    """Check 45 — pack-memory rule↔rationale bijection (BD-196).
+
+    Enforces a set-equality bijection between two surfaces, over the
+    PRESENT `[rationale:]` set (per ARCHITECTURE-DOC-CONCISION-
+    GUARDRAILS.md §5.2):
+
+      - the set of `[rationale: <slug>]` slugs tagged on imperative
+        lines in `CLAUDE.md` `## Pack memory` (the corpus
+        representative — trinity parity of AGENTS.md / GEMINI.md is
+        separately enforced by Checks 16/18/19), AND
+
+      - the set of `## <slug>` section headings in
+        `pack-ops/PACK-MEMORY-RATIONALE.md`.
+
+    FAIL if the two sets are not equal in EITHER direction:
+      - an orphan corpus slug (a `[rationale: slug]` with no matching
+        `## slug` heading), OR
+      - an orphan rationale heading (a `## slug` with no live
+        `[rationale: slug]` pointer in the corpus).
+
+    Rules that carry NO `[rationale:]` tag are simply not in the set —
+    the check does not require every spawn-rule to have a rationale.
+    This makes drift impossible: you cannot delete a rule and orphan
+    its rationale, or add a rationale for a rule that does not exist.
+
+    Pattern: follows `check_mirror_in_sync` (Check 32) — a set-equality
+    assertion between two surfaces. Trigger: any commit touching either
+    file.
+
+    Lenient mode: if either surface is absent (unlikely at any
+    reasonable pack-repo HEAD) the check SKIPs with a notice rather
+    than failing — a missing surface is an init/state problem, not a
+    bijection violation.
+    """
+    print("\n── Check 45: pack-memory rule↔rationale bijection (BD-196) ──")
+
+    corpus_path = REPO_ROOT / "CLAUDE.md"
+    rationale_path = REPO_ROOT / "pack-ops" / "PACK-MEMORY-RATIONALE.md"
+
+    if not corpus_path.is_file():
+        ok("CLAUDE.md absent — skipping (lenient)")
+        return
+    if not rationale_path.is_file():
+        ok("pack-ops/PACK-MEMORY-RATIONALE.md absent — skipping (lenient)")
+        return
+
+    # Restrict the corpus scan to the `## Pack memory` section so that a
+    # `[rationale: slug]` appearing in unrelated prose elsewhere in
+    # CLAUDE.md cannot pollute the set. The section runs from its `## `
+    # heading to the next top-level `## ` heading (or EOF).
+    corpus_lines = corpus_path.read_text().splitlines()
+    in_pack_memory = False
+    pack_memory_text_lines = []
+    for line in corpus_lines:
+        if line.startswith("## "):
+            # Match the Pack memory H2 by its leading token; the heading
+            # text is `## Pack memory (project-local learnings)`.
+            in_pack_memory = line.startswith("## Pack memory")
+            continue
+        if in_pack_memory:
+            pack_memory_text_lines.append(line)
+    pack_memory_text = "\n".join(pack_memory_text_lines)
+
+    rationale_re = re.compile(r"\[rationale:\s*([a-z0-9][a-z0-9-]*)\]")
+    corpus_slugs = sorted(set(rationale_re.findall(pack_memory_text)))
+
+    # Parse `## <slug>` headings from the rationale file. Slug headings
+    # are the controlled-vocab kebab-case form; a `## ` heading that is
+    # not a slug (e.g., a prose section header) would simply not match
+    # the slug character class and be excluded — but by design every
+    # `## ` heading in the rationale file IS a slug section.
+    heading_re = re.compile(r"^##\s+([a-z0-9][a-z0-9-]*)\s*$", re.MULTILINE)
+    rationale_text = rationale_path.read_text()
+    rationale_slugs = sorted(set(heading_re.findall(rationale_text)))
+
+    corpus_set = set(corpus_slugs)
+    rationale_set = set(rationale_slugs)
+
+    orphan_corpus_slugs = sorted(corpus_set - rationale_set)
+    orphan_rationale_headings = sorted(rationale_set - corpus_set)
+
+    if orphan_corpus_slugs:
+        fail(
+            f"CLAUDE.md `## Pack memory` carries {len(orphan_corpus_slugs)} "
+            f"`[rationale: slug]` pointer(s) with NO matching `## <slug>` "
+            f"heading in pack-ops/PACK-MEMORY-RATIONALE.md: "
+            f"{orphan_corpus_slugs}. Per BD-196 / ARCHITECTURE-DOC-"
+            f"CONCISION-GUARDRAILS.md §5.2 the rule↔rationale bijection "
+            f"requires every corpus `[rationale: slug]` to resolve to "
+            f"exactly one rationale section. Remediation: add the missing "
+            f"`## <slug>` section(s) to pack-ops/PACK-MEMORY-RATIONALE.md "
+            f"in the SAME commit, or remove the orphan `[rationale: slug]` "
+            f"pointer(s) from the corpus."
+        )
+    if orphan_rationale_headings:
+        fail(
+            f"pack-ops/PACK-MEMORY-RATIONALE.md carries "
+            f"{len(orphan_rationale_headings)} `## <slug>` heading(s) with "
+            f"NO matching live `[rationale: slug]` pointer in CLAUDE.md "
+            f"`## Pack memory`: {orphan_rationale_headings}. Per BD-196 / "
+            f"ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §5.2 the rule↔"
+            f"rationale bijection requires every rationale section to map "
+            f"to exactly one live corpus pointer. Remediation: add the "
+            f"`[rationale: slug]` pointer to the matching corpus rule in "
+            f"the SAME commit, or remove the orphan `## <slug>` section "
+            f"from the rationale file."
+        )
+
+    if not orphan_corpus_slugs and not orphan_rationale_headings:
+        ok(
+            f"Check 45 — {len(corpus_slugs)} corpus `[rationale: slug]` "
+            f"pointer(s); {len(rationale_slugs)} rationale `## <slug>` "
+            f"section(s); sets are equal (bijection holds, no orphans "
+            f"in either direction)."
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -6160,6 +6278,14 @@ def main() -> None:
     # end-of-list (mirrors Check 41's end-of-list landing for the
     # adjacent BD-180 inventory gate).
     check_ci_workflow_wires_per_check_tests()
+    # ── BD-196 (C3): pack-memory rule↔rationale bijection. Lands AFTER
+    # Check 42 (the CI-wiring infrastructure gate) because it is the
+    # newest standing check and the §5.2 bijection composes the same
+    # set-equality pattern as Check 32 over a distinct pair of surfaces
+    # (CLAUDE.md `## Pack memory` `[rationale:]` set vs
+    # pack-ops/PACK-MEMORY-RATIONALE.md `## <slug>` headings). Per
+    # ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §5.2.
+    check_pack_memory_rationale_bijection()
 
     print("\n" + "=" * 60)
     if failures:
