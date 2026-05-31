@@ -2791,6 +2791,8 @@ Description: Live forward-pointing anchor for the v11.1+ groupings core implemen
 
   Without this BD, the deferred work would lack a live forward-pointing anchor per pack memory `feedback_deferred_work_tracking` (BD-186 is Resolved, not a live anchor; the requirements artifact alone is "input" not a forward-pointing surface). This BD-189 satisfies the rule by providing the umbrella entry until the v11.1 architect/planner work decomposes it.
 
+  **Inbound deferral (from BD-195 audit, 2026-05-31):** P-31l — `INTAKE-GROUPINGS-V11.md` self-flags unverified fidelity (a quality caveat, not contamination). Deferred out of the BD-195 v11.0 sweep as legit v11.1 groupings scope; address here (review fidelity, or rely on `REQUIREMENTS-GROUPINGS-V11.md`, canonical, which wins on conflict).
+
   **Pipeline (per REQUIREMENTS-GROUPINGS-V11.md §6):**
   1. Architect pass produces ARCHITECTURE-GROUPINGS.md
   2. User review
@@ -3130,7 +3132,16 @@ Status: Open
 Alias: "Code Red 3" and "BD-195" refer to the same item (interchangeable).
 Surfaced: 2026-05-28 (user direction, after the BD-185 attempt fractured).
 
-State (2026-05-31): committed work reached end of Step 3 (reconciled problem list + prison). A Step-5/6/7 fix attempt was committed then HARD-RESET to `e0239f3` — those fixes are NOT in the tree. Re-audited vs post-BD-196 HEAD `c73077d` (`maintenance-docs/v11-implementation/AUDIT-BD-195-REFRESH-POST-BD196.md`): 48/49 problems live (both BLOCKERs P-01/P-02 live), 1 closed by BD-196 (P-29a), 1 changed (P-09); 7 OQ open + 1 partial (OQ-3) + 4 new (NQ-1…NQ-4). Disposition (user, 2026-05-31): RE-SCOPE (option C) — split the BD-185-precondition slice (12 BD-185-artifact problems) from the broad repo cleanup (34); architect re-scope pass pending; the 2 BLOCKERs + the 12 open decisions are assigned + sequenced per slice by that pass. BD-196 (Resolved) provides a cleaner corpus to fix into, not a reduced problem count.
+State (2026-05-31): committed work reached end of Step 3 (reconciled problem list + prison). A Step-5/6/7 fix attempt was committed then HARD-RESET to `e0239f3` — those fixes are NOT in the tree. Re-audited vs post-BD-196 HEAD `c73077d` (`maintenance-docs/v11-implementation/AUDIT-BD-195-REFRESH-POST-BD196.md`): 48/49 problems live (both BLOCKERs P-01/P-02 live), 1 closed by BD-196 (P-29a), 1 changed (P-09); 7 OQ open + 1 partial (OQ-3) + 4 new (NQ-1…NQ-4). Disposition (user, 2026-05-31): RE-SCOPE into FOUR work-shape segments under this BD, per `maintenance-docs/v11-implementation/ARCHITECTURE-BD-195-SEGMENTATION.md` (which SUPERSEDES the rejected BD-185-gate `ARCHITECTURE-BD-195-RESCOPE.md`). v11.0 sweep = 48 problems (P-31l deferred to v11.1 groupings → BD-189). Executed serially; BD-196 (Resolved) gives a cleaner corpus to fix into, not a smaller count. See Segments below.
+
+Segments (2026-05-31, per ARCHITECTURE-BD-195-SEGMENTATION.md; SERIAL execution in this branch):
+  - S0 — re-anchor (NQ-1): re-anchor the problem-list citations to the BD-196-relocated rule-corpus locations. Prep; runs first.
+  - S1 — Mis-versioning de-contamination (12): P-01, P-02, P-08, P-09, P-12, P-13, P-16, P-17, P-18, P-31a/b/k. Both BLOCKERs. Intra-order: P-13 → P-01 → P-02 (+P-12/P-08/P-31a lock-step). Hard prerequisite for the BD-185 restart.
+  - S2 — Client-surface integrity + currency (13): everything a v11.0 client install receives. Launch-visible.
+  - S3 — Pack-internal hygiene + currency (18; 17 in the v11.0 sweep after P-31l→v11.1): pack docs/product/prison-refs, not shipped.
+  - S4 — Pack-self governance + agent/skill parity (6): PM-only governance + pack-agent trinity.
+  Coverage: the 49 live problems partition disjointly across S1–S4 (12+13+18+6=49); P-29a struck (closed by BD-196). v11.0 sweep = 48 (P-31l → BD-189). The 12 open decisions (OQ-1,2,4,5,6,7 + OQ-3 partial + OQ-8 + NQ-1…NQ-4) are surfaced + resolved per-segment.
+  Order: S0 → S1 → S2 → S3 → S4 (BD-195 complete) → BD-185 restart → v11.0 launch. Launch gate = S1 ∧ S2 ∧ S3 ∧ S4 ∧ BD-185. Each segment runs the standard per-commit bounded review/fix cycle; S1 takes a planner pass (de-contaminate/adapt the held V2 §10 recipes).
 
 Goal: Bring v11.0 to a pristine state following Batch 19c BEFORE any new BD-185 work begins. Supersede the entire prior BD-185 attempt with new docs while retaining the user's preapproved good decisions so they need not be re-explained. FORWARD FIX BIASED TOWARD COMPLETE REDO of the BD-185 attempt; prior committed work is not anchored on or salvaged unless a fix pass independently proves it correct.
 
@@ -3143,6 +3154,7 @@ Surfacing standard (applies to every researcher/audit/architect pass): proactive
 Quality bar: broad AND deep — never broad-but-sparse. The work may be segmented across multiple docs-researcher passes and multiple architect passes; that is expected and fine, provided all segments share the same standards, guidelines, and output-shape so the final reconciliation combines them smoothly.
 
 Steps:
+  STATUS (2026-05-31): Steps 0–4 done (investigation + audit, re-audited post-BD-196). Steps 5–8 now run PER-SEGMENT per the Segments subsection above, in order S0→S1→S2→S3→S4. Step 9 (BD-185 restart) runs AFTER the full sweep (its S1-complete precondition is honored by the ordering).
   0. Investigation-approach planning (runs FIRST): a planner agent takes this BD-195 directive and produces the INVESTIGATION PLAN — segmentation of the docs-researcher and architect passes (broad + deep), the shared standards / guidelines / output-shape across all segments (incl. the surfacing standard above), and the final reconciliation pass that combines the segments. Goes to the user for review before any researcher/architect work runs. This plan also sequences how Steps 1-2 relate to the investigation. (Distinct from the Step-6 fix-implementation planner.)
   1. Extract the user's preapproved good BD-185 decisions into a clean Retained-Decisions doc; user confirms the retained set. Runs before Step 2 so the decisions survive prisoning/deletion of the contaminated sources.
   2. Create a dedicated "prison" directory (distinct from maintenance-docs/archive/) and move EVERY superseded doc into it — INCLUDING superseded docs already in maintenance-docs/archive/ (archived AND superseded = doubly useless → prison). maintenance-docs/archive/ retains ONLY non-superseded historical records. Presence in the prison = superseded/contaminated = IGNORED at every step; status is unambiguous without opening the file. PRISON DISPOSITION RULE (must be stated identically in every step and every agent prompt): no agent ever audits, edits, trusts, or treats as authoritative any doc inside the prison directory — its sole status is "superseded, ignore."
