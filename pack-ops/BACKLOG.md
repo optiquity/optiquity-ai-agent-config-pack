@@ -3130,6 +3130,8 @@ Status: Open
 Alias: "Code Red 3" and "BD-195" refer to the same item (interchangeable).
 Surfaced: 2026-05-28 (user direction, after the BD-185 attempt fractured).
 
+State (2026-05-31): committed work reached end of Step 3 (reconciled problem list + prison). A Step-5/6/7 fix attempt was committed then HARD-RESET to `e0239f3` — those fixes are NOT in the tree. Re-audited vs post-BD-196 HEAD `c73077d` (`maintenance-docs/v11-implementation/AUDIT-BD-195-REFRESH-POST-BD196.md`): 48/49 problems live (both BLOCKERs P-01/P-02 live), 1 closed by BD-196 (P-29a), 1 changed (P-09); 7 OQ open + 1 partial (OQ-3) + 4 new (NQ-1…NQ-4). Disposition (user, 2026-05-31): RE-SCOPE (option C) — split the BD-185-precondition slice (12 BD-185-artifact problems) from the broad repo cleanup (34); architect re-scope pass pending; the 2 BLOCKERs + the 12 open decisions are assigned + sequenced per slice by that pass. BD-196 (Resolved) provides a cleaner corpus to fix into, not a reduced problem count.
+
 Goal: Bring v11.0 to a pristine state following Batch 19c BEFORE any new BD-185 work begins. Supersede the entire prior BD-185 attempt with new docs while retaining the user's preapproved good decisions so they need not be re-explained. FORWARD FIX BIASED TOWARD COMPLETE REDO of the BD-185 attempt; prior committed work is not anchored on or salvaged unless a fix pass independently proves it correct.
 
 Scope: EVERYTHING — entire repo, pack and project sides, every doc/script/file, including all BD-185-attempt work, Batch 19c, and prior. No carve-outs; no prior BD (incl. BD-193/BD-194) is special-cased. ONLY excluded location: the prison directory (Step 2).
@@ -3170,7 +3172,7 @@ Description:
   **Success criteria:** the v9 design's locked decisions implemented per the plan — C1 imperative+rationale split; C3 single rationale file + bijection (Check 45); M1–M4 concision incl. the M4 gate (Check 44); B5 pointer-manifest + spawn-rule anti-restate/reference-resolution (Check 46); §9 single spawn-source + `[roles:]` role-tags; §11 discoverability (index dropped, one-hop routing); §12 rule-change propagation procedure; D1 companion-template Check-37 walk; D2 purpose-classifies-location; §8 step 7b stale-reference blast-radius sweep; validate-pack + per-check tests green at every commit; C12 final end-of-batch review + whole-repo completeness audit (no surface missed).
   **Out of scope:** the optional fence-marker refactor (design §8 step 8, deferred); BD-195's own scope; any NEW standing rule.
   **Pipeline:** design → plan (both complete) → implementation C1–C12 with the per-commit bounded review/fix cadence + the end-of-batch reviewer (existing rule).
-Position: worked immediately; per user direction 2026-05-30 no other BD is worked until BD-196 resolves. BD-195 remains paused (Step-9 disposition pending); its disposition is decided after BD-196 completes.
+Position: worked immediately; per user direction 2026-05-30 no other BD is worked until BD-196 resolves. BD-195 disposition was decided after BD-196 completed (2026-05-31): re-scope, option C — see the BD-195 State line.
 
 ---
 
