@@ -1,23 +1,18 @@
 # BOUNDARY-DEFINITION — pack/project boundary rules
 
 **Status:** canonical rule reference (stable across pack versions; updated only when the boundary definition itself changes).
-**Audience:** pack maintainers, pack agents (pack-architect / pack-coder / pack-planner / pack-reviewer / pack-docs-researcher), future architects, project PM chats (post-install qualifier — see §6).
-**Source-of-design:** `maintenance-docs/archive/v11/ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §1.1, §1.2, §3.3 (machine-readable format), §4, §5.2 + `maintenance-docs/archive/v11/ARCHITECTURE-DIRECTORY-REORGANIZATION-FIX.md` §4 (1-entry shrink) + `maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` Overrides 1 + 5.
+**Audience:** pack maintainers, pack agents (pack-architect / pack-coder / pack-planner / pack-reviewer / pack-docs-researcher), future architects, project PM chats (post-install qualifier — see §5).
+**Source-of-design + history:** `maintenance-docs/archive/v11/BOUNDARY-DEFINITION-HISTORY.md` (anti-pattern catalog, worked examples, override-history, and the originating design records).
 
 ---
 
 ## §1 Purpose
 
-This document is the canonical rule for placing any file in the AI Agent Config Pack repository. Read it BEFORE classifying any new file, moving an existing one, or referencing one across the pack/project boundary.
+This document is the canonical rule for placing any file in the AI Agent Config Pack repository, and for referencing files across the pack/project boundary. Read it BEFORE classifying any new file, moving an existing one, or referencing one across the boundary.
 
-The pack repo houses two distinct audiences whose files MUST remain separated:
+The pack repo houses two distinct audiences whose files MUST remain separated: **PACK files** (read or executed by actors operating ON the pack repo — Pack Chat, pack-* agents, pack maintainers, pack CI) and **PROJECT files** (read or executed by actors operating IN client repos that have installed the pack — project PM chat, project agents, client developers, client CI).
 
-- **PACK files** — read or executed by actors operating ON the pack repo itself (Pack Chat, pack-* agents, pack maintainers, pack CI).
-- **PROJECT files** — read or executed by actors operating IN client repos that have installed the pack (project PM chat, project agents, client developers, client CI).
-
-The boundary between them is not a matter of taste; it is a deterministic rule expressed as a two-axis matrix (§2) and a four-step placement procedure (§3). Every artifact has exactly one valid placement. Files that appear to belong in two categories are anti-patterns and MUST be split (§5).
-
-This doc is referenced from every operating-doc entry point in the pack (see §6 cross-reference network). If you reached it from any single entry point — pack trinity, PACK-CHAT.md, PACK-AGENTS.md, README.md, any pack-* agent file, or project-side PM-CHAT.md — you reached the same authoritative rule.
+The boundary is not a matter of taste; it is a deterministic rule expressed as a two-axis matrix (§2) and a four-step placement procedure (§3). Every artifact has exactly one valid placement.
 
 ---
 
@@ -51,9 +46,17 @@ The cross-product gives **six valid combinations**:
 | C5 | PROJECT × OPERATIONS | Project-side operating docs that the pack provides as installable artifacts: `project-template/docs/pack/PM-CHAT.md`, `project-template/docs/pack/PACK-FEEDBACK.md`, `project-template/docs/pack/PLATFORM-SKILLS.md`, project-side agent files in `project-template/.claude/agents/*.md` (architect / coder / reviewer / ...). These are PROJECT audience because client repos read them; they are OPERATIONS because the client uses them to do work, not as the deliverable itself. |
 | C6 | PROJECT × TOOL-CONFIG | Project-side trinity (`project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), project-side `.claude/` / `.codex/` / `.gemini/` / `.github/` directories under `project-template/`. These exist at fixed paths so the trinity → installed-trinity path is mechanical for `scripts/init-project.sh`. |
 
-A file or directory MUST fall into exactly one of C1–C6. Files that appear to fall into more than one (the "shared" pattern) are anti-patterns and MUST be split (see §5).
+A file or directory MUST fall into exactly one of C1–C6. Files that appear to fall into more than one (the "shared" pattern) are anti-patterns and MUST be split.
 
 The **PROJECT × OPERATIONS** category (C5) exists for one reason: the pack ships operational content TO clients (PM chat prompts, agent definitions, methodology). The audience is PROJECT (the client's PM chat reads them in the client repo); the function is OPERATIONS (they orchestrate the client's work). This category is what makes `project-template/docs/pack/` non-anomalous — it's not "pack content in a project place"; it's "pack-AUTHORED operations content shipped for PROJECT use."
+
+### §2.2 Companion-template surfaces — governed by project-side content rules
+
+The companion-template trees (`xcode-companion-templates/`, `vscode-companion-templates/`) hold project-related developer/IDE configs a developer applies to their machine or editor workspace — they are NOT pack internals. They are **governed by the SAME content rules as any project-side asset**: their contents MUST NOT reference pack internals (pack-only docs, `pack-ops/` paths, pack-* agents, the `Pack Chat` role, BDs operationally). Bans A/B (§5) apply to these trees exactly as they apply to `project-template/`. There is no new matrix category, no rename, and no new audience: the Check 37 deny-list walk (`_iter_client_installed_files()`) is extended to cover both companion-template dirs as forward protection.
+
+### §2.3 Purpose classifies; location is convention
+
+**Governing principle: PURPOSE classifies; LOCATION is convention.** An operations directory is correctly placed wherever it sits — `scripts/`, `maintenance-docs/`, `test-fixtures/` are PACK × OPERATIONS by PURPOSE, and root-vs-`pack-ops/` is irrelevant to their correctness. The only placement teeth that remain: **no NEW loose file is dumped at pack root** — a new loose file goes to its purpose-directory (a new pack-only prose doc → `pack-ops/`; a new script → `scripts/`; etc.), enforced by Check 38 + `pack-ops/.boundary-exempt-root.txt`.
 
 ---
 
@@ -61,21 +64,34 @@ The **PROJECT × OPERATIONS** category (C5) exists for one reason: the pack ship
 
 Given any artifact, classify it and place it as follows:
 
-1. **Identify Audience.** Who runs/reads this file when it's doing its job? If the answer is "the pack's tooling, agents, or maintainers" → PACK. If "a client repo's tooling, agents, or developers (after install)" → PROJECT. If "both" → **STOP**: the artifact is a SHARED anti-pattern (see §5).
+1. **Identify Audience.** Who runs/reads this file when it's doing its job? If the answer is "the pack's tooling, agents, or maintainers" → PACK. If "a client repo's tooling, agents, or developers (after install)" → PROJECT. If "both" → **STOP**: the artifact is a SHARED anti-pattern and MUST be split.
 
 2. **Identify Function.** Is the file a deliverable visible on the GitHub landing page or installed verbatim (PRODUCT), an internal operating doc / script / methodology (OPERATIONS), or required at a fixed location by a CLI/platform (TOOL-CONFIG)?
 
 3. **Apply the placement rule from the matrix:**
    - C1 PACK × PRODUCT → pack root (only valid PACK landing-page surface).
-   - C2 PACK × OPERATIONS → `pack-ops/` (new top-level pack-only dir).
+   - C2 PACK × OPERATIONS → its purpose-directory (`pack-ops/` for prose ops docs; `scripts/` for scripts; `maintenance-docs/` for design records). Per §2.3, purpose classifies and location is convention.
    - C3 PACK × TOOL-CONFIG → pack root or its mandated dotted dir.
    - C4 PROJECT × PRODUCT → under `project-template/` per the existing subtree layout.
    - C5 PROJECT × OPERATIONS → under `project-template/docs/pack/` (kept; the directory NAME is accurate — pack-AUTHORED content).
    - C6 PROJECT × TOOL-CONFIG → `project-template/` root or its mandated dotted dir.
 
-4. **If the verdict places a NEW file at pack root**, the file MUST be either C1 or C3. Any PACK × OPERATIONS file at root is a regression and SHOULD be rejected by a CI gate (the prevention CI gate consumes the closed-set exemption list — see §4).
+4. **If the verdict places a NEW loose file at pack root**, the file MUST be either C1 or C3. Any PACK × OPERATIONS file appearing loose at root is a regression and is rejected by a CI gate (the prevention CI gate consumes the closed-set exemption list — see §4).
 
 **The criterion that resolves all real ambiguity:** the audience is the actor that consumes the file IN THE CONTEXT WHERE THE FILE LIVES. A pack-internal agent prompt at `.claude/agents/pack-architect.md` is consumed by Claude Code WHEN THE CWD IS THE PACK REPO. Audience = PACK, unambiguously. Conversely, `project-template/.claude/agents/architect.md` is consumed by Claude Code when its CWD is the CLIENT repo (after `scripts/init-project.sh` installs it). Audience = PROJECT, unambiguously. The criterion "WHEN THE CWD IS X" resolves all real cases.
+
+**HOW + WHEN addendum.** Placement (WHERE) is only one column; each rule also has a HOW (how it is applied) and a WHEN (its trigger/timing):
+
+| Rule | WHERE (placement) | HOW (applied) | WHEN (trigger/timing) |
+|---|---|---|---|
+| Audience×function verdict | per C1–C6 | run §3 four-step procedure on the artifact | at file CREATE or MOVE, before commit; CI Check 38 at PR-time (loose root files) |
+| One-directional ban (§5) | n/a (content) | Check 37 deny-list grep | at every commit touching `project-template/` (CI) |
+| Separated-not-combined (§5) | n/a (content) | opt-in labeled-block convention + EXISTING Check 37 (no new detection check) | enforced continuously by Check 37 (CI); convention applied at authoring |
+| Cross-ref-network (§6) | machine-readable | check asserts pointer set | at commit touching a doc in the pointer set (CI) |
+| Concision gate (M4) | durable rule-doc class | pattern scan + per-doc advisory length | at commit touching a named durable rule doc (CI) |
+| Rule↔rationale lock-step | `pack-ops/PACK-MEMORY-RATIONALE.md` | 1:1 slug bijection check | at commit touching CLAUDE.md pack-memory or the rationale file (CI) |
+
+The principle: **every boundary/content/concision rule is a CI check with a stated trigger**, so "when" is mechanical, not memory.
 
 ---
 
@@ -91,165 +107,29 @@ pack-ops/.boundary-exempt-root.txt
 
 | # | Filename | Reason exempt |
 |---|---|---|
-| 1 | `tracker.toml.pack-example` | Per `maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` §1 Override 1 — user direction; sufficient authority. |
+| 1 | `tracker.toml.pack-example` | Per user-curation direction in `maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` §1 — sufficient authority. |
 
-**Why only 1 entry and not 3?**
-
-An earlier design (`maintenance-docs/archive/v11/ARCHITECTURE-DIRECTORY-REORGANIZATION.md` §2.1 + §3.3) proposed a 3-entry exemption list including `BACKLOG.md` and `CHANGELOG.md` with a "pinned by external constraints" rationale. That design was REJECTED:
-
-- **Override 1** (`maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` §1) authorized ONLY `tracker.toml.pack-example` to STAY at root.
-- **Override 5** (`maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` §1) explicitly REJECTED the proposed exemption for `BACKLOG.md` + `CHANGELOG.md`. User direction: both files MUST MOVE to `pack-ops/`. The user's boundary articulation classifies them as pack operational docs (curation §5: "config pack operational docs used by the pack to do its work"), not as configs governing the pack repo. "Pinned by external constraints" was not accepted as a valid exemption rationale — no tool reads either file at a specific root location; the asserted CI Check 32 and per-entry-tree contracts pin file CONTENT (mirror-in-sync) not file LOCATION.
-
-The shortened 1-entry list is the result. `BACKLOG.md` and `CHANGELOG.md` move to `pack-ops/BACKLOG.md` and `pack-ops/CHANGELOG.md` per the directory reorganization (encoded as ABSENCE from this exemption list — they are not exempted, they are relocated).
-
-**Adding to this list requires explicit user approval.** Adding an entry is a rule change, not a routine BD. The prevention CI gate (designed by Architect C) consumes this file as its allow-list — any new C2 file appearing at root that is not in the list fails the gate.
+**Adding to this list requires explicit user approval.** Adding an entry is a rule change, not a routine BD. The prevention CI gate consumes this file as its allow-list — any new C2 file appearing loose at root that is not in the list fails the gate. (The history of why the list is 1 entry rather than 3 lives in `maintenance-docs/archive/v11/BOUNDARY-DEFINITION-HISTORY.md`.)
 
 **Why the leading `.`?** Default `ls` listings hide files starting with `.` (consistent with `.gitignore`, `.DS_Store`). The file IS checked into git (no `.gitignore` entry is needed); the leading dot is presentation, not visibility from git.
 
 ---
 
-## §5 SHARED anti-pattern catalog (post-resolution)
+## §5 Content rules (cross-boundary references)
 
-When the boundary rules were first articulated, the audit (`maintenance-docs/archive/v11/AUDIT-PACK-PROJECT-BOUNDARY-VIOLATIONS.md` §F) identified seven candidate SHARED anti-patterns — artifacts that appeared to span PACK and PROJECT audiences. User curation (`maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` Overrides 3 + 4) reclassified two of them OUT (they are independent parallel TOOL-CONFIG dirs, not shared). The remaining FIVE anti-patterns and their structural resolutions are catalogued here so future readers do not re-create a resolved issue.
+Placement (§2–§3) governs WHERE a file lives. These content rules govern what a file's CONTENT may REFERENCE across the boundary. Each is a named rule with its enforcing check:
 
-### §5.1 F-1: `supporting-docs/` audience-mixed
-
-**Problem.** `supporting-docs/` was classified as PACK-PRODUCT (project-side — content shipped to clients), but three files in the directory were PACK × OPERATIONS by content (`CONCEPTUAL-REVIEW-METHODOLOGY.md`, `DRY-RUN-MIGRATION.md`, `MERGE-STRATEGY.md`).
-
-**Resolution.** Split by audience. The three PACK-audience files move OUT of `supporting-docs/`:
-
-- `CONCEPTUAL-REVIEW-METHODOLOGY.md` → `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` (per Override 6 — destination is `pack-ops/`, NOT `maintenance-docs/`).
-- `DRY-RUN-MIGRATION.md` → `pack-ops/DRY-RUN-MIGRATION.md`.
-- `MERGE-STRATEGY.md` → `pack-ops/MERGE-STRATEGY.md`.
-
-After the three moves, `supporting-docs/` is unambiguously C4 (PROJECT × PRODUCT). The pack-memory trinity rule ("Pack ops files NEVER mixed into pack product files") becomes true by construction.
-
-### §5.2 F-2: `project-template/docs/pack/` directory NAME
-
-**Problem.** Directory NAME `pack/` lives inside `project-template/` (project-side) but its name implies "pack-side concerns." Reviewers may misread the directory's audience and treat its contents as PACK files.
-
-**Resolution.** **NO rename.** Per §2 the contents are C5 (PROJECT × OPERATIONS): pack-AUTHORED operations content for PROJECT use. The directory name `pack/` is accurate in the sense that the content's AUTHOR is the pack — it is the pack's voice instructing the project. The misleading-ness is resolved by THIS doc being discoverable from every entry point (see §6) rather than by rename. Rename costs (~20-50 path updates, migrator step for existing v10/v11 client repos, downstream-fork breakage) are not justified once the boundary rule is documented.
-
-### §5.3 F-4: `QUICKSTART.md` audience-mixed
-
-**Problem.** `QUICKSTART.md` is at pack root but contains both pack-side voice ("what is this pack") and project-side voice ("here's how to set up your coding project"). Referenced from both audiences.
-
-**Resolution.** **NO SPLIT** (per `maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` Override 7). User exception authorized: `QUICKSTART.md` is a ~47-line pre-install pack-installer doc that serves ONE audience (pack-installers); SPLIT is over-engineering. GitHub-landing-page visibility is the rationale for keeping at root. The 5 project-side references to `docs/pack/QUICKSTART.md` (in 4 files) are REMOVED entirely per Override 10 — install docs are not in-project help content. The classification stands as C1 (PACK × PRODUCT, landing-page).
-
-### §5.4 F-5: `pack-ops/OPTIONAL-FEATURES.md` installed-path mismatch
-
-**Problem.** `pack-ops/OPTIONAL-FEATURES.md` was at pack root only, but 5 project-side files referenced path `docs/pack/OPTIONAL-FEATURES.md` as if it were installed at client repos. `scripts/init-project.sh` did not install it.
-
-**Resolution.** **SPLIT** (per `maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` Override 8). The pack-root file moves to `pack-ops/OPTIONAL-FEATURES.md` (pack-side, C2). A NEW file is created at `project-template/docs/pack/OPTIONAL-FEATURES.md` with project-side-audience content (C5). `scripts/init-project.sh` gains an install stage. The two files are independently curated — content overlap is allowed where it serves both audiences, but each file's content is tailored to its audience. The 5 project-side references resolve to the new file.
-
-### §5.5 F-6: trinity filename collisions
-
-**Problem.** Same filenames (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) at pack root and `project-template/`. Naming collision at the prose level; can produce cross-bias when discussions slip on the prose disambiguation.
-
-**Resolution.** **NO RENAME — structurally required pair.** Both pairs are TOOL-CONFIG (C3 at root; C6 at `project-template/`). Each is at the location its CLI mandates (Claude Code reads `CLAUDE.md` at the consuming repo's root; Codex reads `AGENTS.md`; Gemini reads `GEMINI.md`). The collision is unavoidable. The pack-memory "Filename uniqueness heuristic" already exempts trinity files but requires prose disambiguation ("pack-root `CLAUDE.md`" vs "project-template `CLAUDE.md`"). The cross-bias risk is handled by reviewer protocol amendments and agent guardrails, not by rename.
-
-### §5.6 What was DROPPED from the catalog (Overrides 3 + 4)
-
-Two audit-flagged SHARED entries were reclassified out of the catalog by user curation:
-
-- **F-3** (`.github/` parallel pair at root and `project-template/`) — per Override 3, root `.github/` is PACK-ONLY (C3, CI + issue templates for the pack repo) and `project-template/.github/` is PROJECT-ONLY (C6, templates shipped to client repos). Same NAME because GitHub mandates `.github/` at repo root for ANY repo using GitHub features. Not shared in any meaningful sense; lockstep maintenance is process friction, not a structural anti-pattern.
-- **F-7** (parallel CLI dotted-dirs `.claude/` / `.codex/` / `.gemini/` at root vs `project-template/`) — per Override 4, root dotted-dirs are PACK-ONLY (C3, tool configs governing the pack repo) and `project-template/` dotted-dirs are PROJECT-ONLY (C6, tool configs that ship to client repos via install). Two SEPARATE sets, SEPARATE audiences, SEPARATE content. Same names because each tool mandates its dotted dir at the consuming repo's root.
-
-The resulting catalog is 5 entries, not 7.
+- **Ban A** — nothing under `project-template/` (and the rest of the client-installed set, including the companion-template trees per §2.2) may reference pack-side docs/paths/agent-names or the `Pack Chat` role. Enforced by Check 37 (`check_project_side_deny_list`).
+- **Ban B** — client-facing surfaces never treat BDs operationally (no BD dependency grammars / form admissions / parser regexes on client surfaces; explanatory mention with pack-only disclosure is allowed). Enforced by the BD-pack-only check family.
+- **Ban C (reverse direction)** — pack-self-management surfaces never use project-side concepts (TD / phase / phase-part / phase-task) operationally (the construct-a-deliverable exception stands). Enforced at review-time by the enumerate-ENCODING-surfaces audit methodology.
+- **Separated-not-combined** — a client-installed doc MAY legitimately reference BOTH the pack-side and the project-side version of a concept; when it does, the two MUST be kept SEPARATED (clearly distinguished), never conflated into one claim that erases the boundary. Enforced by the already-shipping Check 37 (a conflation — a pack-side token used as a live project instruction, outside an anchor/fence — is a Check-37 failure); an opt-in `<!-- PACK-SIDE -->` / `<!-- PROJECT-SIDE -->` labeled-block convention is available as authoring guidance (not a mandate, not a separate check).
 
 ---
 
-## §6 Cross-reference network
+## §6 Pointer network
 
-This doc is the SINGLE SOURCE OF TRUTH for the boundary rules. It is referenced from EVERY surface where an actor might need it. The references take three forms:
-
-### §6.1 Active operating docs (top-of-file pointer)
-
-The `pack-ops/PACK-*.md` paths below reflect the post-Commit 2 location (after BD-175 Phase 5 Commit 2 relocates these files from pack root); pre-Commit 2, they live at pack root.
-
-- `pack-ops/PACK-CHAT.md` (post-Commit 2 location) — top section "Boundary rules: see `BOUNDARY-DEFINITION.md`". Pack Chat reads PACK-CHAT.md at startup; this is the most consequential pointer.
-- `pack-ops/PACK-AGENTS.md` (post-Commit 2 location) — top section pointer. Every pack agent that reads PACK-AGENTS.md gets the pointer.
-- Pack-root trinity (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) — pointer in the pack-memory section ("Boundary rules: see `pack-ops/BOUNDARY-DEFINITION.md`"). All three trinity files (per trinity rule in same edit). This puts the pointer in the per-session memory load for every CLI working on the pack repo.
-- `project-template/docs/pack/PM-CHAT.md` — pointer to the boundary definition from the PROJECT-side PM chat operating doc. This is critical for the V1 regression pattern (see §7.7): PM chat needs to know that pack-only files are off-limits as references in project-side artifacts. Note the project-side pointer reads "(in the pack repo)" qualifier — clients don't install `pack-ops/`.
-
-### §6.2 Design / planning surfaces (top-of-file pointer)
-
-- `README.md` § "Repository Layout" — one-line pointer "Boundary rules between pack-only and project-only files: see `pack-ops/BOUNDARY-DEFINITION.md`."
-- `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md` (after F-1 move per Override 6) — pointer in dimension (d) Pack rule adherence so conceptual reviewers cite it.
-- the pack-architect / pack-coder / pack-planner / pack-reviewer / pack-docs-researcher set of agents at `.claude/agents/` (and trinity-parallel `.codex/agents/pack-*.toml`, `.gemini/agents/pack-*.md`) — "Boundary rules: read `pack-ops/BOUNDARY-DEFINITION.md` before any classification decision" line in each agent's read-list. Trinity-parallel edits required per trinity rule.
-
-### §6.3 Workflow / CI surfaces (machine-readable)
-
-- `pack-ops/.boundary-exempt-root.txt` — the closed-set exemption list (§4). Co-located so the boundary definition and its mechanical allow-list live next to each other.
-- The prevention CI gate (designed by Architect C) consumes BOTH this boundary definition (as the human-readable spec) AND the exemption list (as the machine-readable allow-list).
-
-### §6.4 The discoverability invariant
-
-Any actor — Pack Chat, pack-* agents, pack maintainers, project PM chats, project developers, CI scripts — can reach this doc by ONE of these paths: reading README, reading PACK-CHAT.md, reading PACK-AGENTS.md, reading the pack trinity, reading any pack-* agent file, reading project-side PM-CHAT.md, or hitting a CI gate failure message that names this doc. No actor has to GUESS where the rule lives.
-
-When adding a NEW operating-doc surface to the pack, the surface SHOULD acquire a pointer to this doc; the cross-reference network is intentionally dense so the network remains complete as the pack grows.
+This doc is the SINGLE SOURCE OF TRUTH for the boundary rules and is referenced from every operating-doc entry point in the pack. The pointer network is CI-asserted via the surface→pointer manifest at `pack-ops/.boundary-pointer-manifest.txt` (the manifest file and its asserting check are added by a later commit in this batch; until then this line is a forward reference resolvable as plain prose).
 
 ---
 
-## §7 Worked examples
-
-The verdict procedure (§3) applied to representative files. Each example states (a) the file's path, (b) the audience identification, (c) the function identification, (d) the resulting category, (e) the placement verdict.
-
-### §7.1 C1 PACK × PRODUCT — `README.md`
-
-- **Path.** `/README.md` (pack root).
-- **Audience.** GitHub visitors evaluating the pack; the GitHub repo landing page renders this file. The audience is anyone who lands on the GitHub project URL — primarily pack-installers evaluating "should I use this pack" and existing pack maintainers reaching for the version history. The actor reads this file when the file's CONTEXT is the GitHub landing page. → **PACK.**
-- **Function.** A file rendered by GitHub at a mandated location (the repo root); also the public-facing description of the pack as a deliverable. The placement constraint is external (GitHub mandates `README.md` at root). → **TOOL-CONFIG** is the dominant function (placement constraint wins) and **PRODUCT** is the secondary function. Per §2, GitHub-mandated landing-page docs are catalogued as C1 because the file's primary user-visible role is "the pack as it is shipped" — TOOL-CONFIG and PRODUCT both apply, and the example list in C1 names `README.md` explicitly.
-- **Category.** C1 (PACK × PRODUCT, with the GitHub-mandated location).
-- **Placement.** STAYS at pack root.
-
-### §7.2 C2 PACK × OPERATIONS — `pack-ops/PACK-AGENTS.md`
-
-- **Path.** `pack-ops/PACK-AGENTS.md` (post-Commit 2 location; pre-Commit 2 was at pack root).
-- **Audience.** Read by every pack-* agent that the pack spawns and by Pack Chat when triaging which agent to route work to. No client repo reads this file (it has no installer stage in `scripts/init-project.sh`). The actor consumes the file when CWD = pack repo. → **PACK.**
-- **Function.** Operating doc — agent routing table for pack development work. Not a deliverable (clients don't see it). Not a CLI-mandated location (the pack chose where to put it). → **OPERATIONS.**
-- **Category.** C2 (PACK × OPERATIONS).
-- **Placement.** `pack-ops/PACK-AGENTS.md` per §3 step 3. NOT at pack root: §3 step 4 forbids new C2 at root and the file is not in the §4 exemption list.
-
-### §7.3 C3 PACK × TOOL-CONFIG — `CLAUDE.md` (pack root)
-
-- **Path.** `/CLAUDE.md` (pack root, NOT `project-template/CLAUDE.md`).
-- **Audience.** Claude Code CLI when it starts a session WHERE CWD = pack repo. Pack agents (pack-architect / pack-coder / etc.) inherit this file as their session memory. No client repo's Claude Code session loads this file (the project-template parallel `project-template/CLAUDE.md` is what installs to clients). → **PACK.**
-- **Function.** Required at a specific location by Claude Code (per the Claude Code CLI contract, `CLAUDE.md` must be at the repo root or it is not loaded). → **TOOL-CONFIG.**
-- **Category.** C3 (PACK × TOOL-CONFIG).
-- **Placement.** STAYS at pack root. (The path is mandated; moving it would break Claude Code memory loading entirely.)
-
-### §7.4 C4 PROJECT × PRODUCT — `project-template/skills/audit-methodology/SKILL.md`
-
-- **Path.** `project-template/skills/audit-methodology/SKILL.md`.
-- **Audience.** Client repos that have installed the pack. `scripts/init-project.sh` (or the per-CLI install stage) installs this file into the client repo at the corresponding skill location. Client developers and client-side AI agents read it when they perform audit work in the client repo. → **PROJECT.**
-- **Function.** A deliverable — the pack ships this file as part of the skill set that clients receive. The client uses the skill as part of their work. → **PRODUCT.**
-- **Category.** C4 (PROJECT × PRODUCT).
-- **Placement.** Under `project-template/skills/` per the existing subtree layout — already correctly placed.
-
-### §7.5 C5 PROJECT × OPERATIONS — `project-template/docs/pack/PM-CHAT.md`
-
-- **Path.** `project-template/docs/pack/PM-CHAT.md`.
-- **Audience.** Client repos. The file installs to `<client>/docs/pack/PM-CHAT.md` and the client's PM chat reads it at startup. NOT consumed by Pack Chat in the pack repo (Pack Chat reads `pack-ops/PACK-CHAT.md`, the parallel pack-side doc — a deliberate separation per F-1 and §5.1). → **PROJECT.**
-- **Function.** Operating doc — orchestrates the client's PM workflow. Not a deliverable in the "ships verbatim" sense (it is updated per project conventions over time), and not CLI-mandated (the path under `docs/pack/` is the pack's chosen convention). → **OPERATIONS.**
-- **Category.** C5 (PROJECT × OPERATIONS). The category exists for exactly this case: pack-AUTHORED operations content for PROJECT use.
-- **Placement.** Under `project-template/docs/pack/` per §3 step 3. Already correctly placed.
-
-### §7.6 C6 PROJECT × TOOL-CONFIG — `project-template/.claude/settings.json`
-
-- **Path.** `project-template/.claude/settings.json`.
-- **Audience.** Client repos. After `scripts/init-project.sh` installs it, Claude Code in the client repo reads `<client>/.claude/settings.json` to configure its session behavior. The pack repo's own Claude Code does NOT read this file (it reads `/.claude/settings.json` at the pack root — a separate C3 file). → **PROJECT.**
-- **Function.** Required at a specific location by Claude Code (the `.claude/` dotted dir is mandated by Claude Code at the consuming repo's root, and `settings.json` is the mandated filename within it). → **TOOL-CONFIG.**
-- **Category.** C6 (PROJECT × TOOL-CONFIG).
-- **Placement.** Under `project-template/.claude/` so that `scripts/init-project.sh` mechanically installs it to `<client>/.claude/` — already correctly placed. The path inside `project-template/` mirrors the post-install client path, which is the convention for all C6 files.
-
-### §7.7 Anti-pattern (V1 failure mode) — project trinity acquired PACK-AGENTS.md reference
-
-- **Historical failure.** A prior commit added a reference to `PACK-AGENTS.md` (a PACK-only file) into the PROJECT trinity (`project-template/CLAUDE.md`, `project-template/AGENTS.md`, `project-template/GEMINI.md`). The implementer treated the project trinity as a place to reference pack-side files because the boundary was unstated.
-- **Why §3 would have caught it.** Apply step 1: who consumes `project-template/CLAUDE.md`? Client repos (via install) — PROJECT audience. Apply step 1 to `PACK-AGENTS.md`: who consumes it? Pack-* agents in the pack repo — PACK audience. Step 1's final clause forbids cross-audience references: a PROJECT-audience file (the project trinity) cannot reference a PACK-only file (`PACK-AGENTS.md`) because the PROJECT consumer (client repo) cannot reach the PACK file — `PACK-AGENTS.md` is not installed to clients. The placement procedure flags this as the SHARED anti-pattern variant: a reference that effectively asks one audience to read another audience's file.
-- **Why §3 step 4 prevents the recurrence.** Any new file at pack root must be C1 or C3. A new `PACK-AGENTS.md`-equivalent C2 file at root would also be rejected by the CI gate (the file is not in `pack-ops/.boundary-exempt-root.txt`). Combined: the boundary rule rejects the file-path attempt; the cross-reference rule rejects the prose-reference attempt; the CI gate enforces both.
-- **Resolution applied to this specific failure.** Commit 4 of BD-175 Phase 5 (TASK-T1 trinity REPLACE) will remove the contamination from project trinity; the V1 reference at `project-template/CLAUDE.md` and its AGENTS.md / GEMINI.md parallels is still present at the HEAD where this doc first landed (BD-175 Phase 5 Commit 1) and will be cleared by Commit 4. Post-Commit 4, the project trinity contains only PROJECT × OPERATIONS pointers (e.g., `docs/pack/PM-CHAT.md`); pack-side pointers belong in pack trinity, not project trinity. This example illustrates what §3's procedure would have flagged at the time the V1 contamination first landed.
-
----
-
-**End of BOUNDARY-DEFINITION.md.** When this doc changes, update the cross-reference network entry points (§6) in the same commit so readers reaching from any entry point see consistent rules.
+**End of BOUNDARY-DEFINITION.md.** When this doc changes, update the pointer manifest (§6) in the same commit so readers reaching from any entry point see consistent rules.

@@ -4812,13 +4812,15 @@ _CHECK_40_ALLOWLIST: dict[str, str] = {
 # plus three new phrases scoped to Check 40's defect class.
 _CHECK_40_ANCHOR_PHRASES = (
     # Inherit pack-vs-project disambiguation context from Check 37
-    # (BOUNDARY-DEFINITION.md §6 cross-reference network).
+    # (the pack/project boundary rules in pack-ops/BOUNDARY-DEFINITION.md).
     "in the pack repo",
     "at the pack repo",
     "pack-repo",
     "in the project",
     "at the client",
-    # Audience-bridge context per §6.4 + §7 D6. OQ-3 confirmed.
+    # Audience-bridge context (intentional client-path references in
+    # pack-internal docs that discuss what happens after init-project.sh
+    # runs). Per ARCHITECTURE-BD-179.md §7 D6. OQ-3 confirmed.
     "post-install",
     # OQ-S4 — self-flagging non-existence prose (e.g., L247
     # "...cited `IMPLEMENTATION-PLAN-V11.0.md` (does not exist); ...").
