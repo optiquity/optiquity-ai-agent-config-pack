@@ -47,6 +47,9 @@ is sufficient.
 | `/backlog/<ID>.md`, `/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is source of truth in flat-file mode (per CLAUDE.md pack-memory + `<stream>/_rules.md`); smaller token footprint than mirror for one-entry edits |
 | `/backlog/_rules.md`, `/changelog/_rules.md` (per-stream contracts) | Direct read at session start (or on per-entry-tree-aware operation) | Per-stream contract authority — filename regex, lifecycle states admitted, supporting-file basenames admitted, write-authority pointer |
 
+**Rule-SSOT routing (one hop to the authority — no index, query the SSOT directly):**
+For spawn-relevant rules, read trinity `## Pack memory`. For file placement, read `pack-ops/BOUNDARY-DEFINITION.md` §2 matrix. For a rule's rationale, read `pack-ops/PACK-MEMORY-RATIONALE.md` (`[rationale: <slug>]`). To add/change/remove a rule, follow the change-procedure in § "Keeping CLAUDE.md, AGENTS.md, GEMINI.md, and PACK-AGENTS.md current" below.
+
 ---
 
 ## Behavioral rules
@@ -288,3 +291,19 @@ conventions, agent roster, workflow, or core operating rules:
 - Review all four files for anything that has become stale
 - Update in the same commit as the structural change, or in the immediately following commit
 - Do not let a minor version tag land with stale agent context files
+
+### Rule-change propagation procedure (add / change / remove a spawn-relevant rule)
+
+This procedure also owns the ordered surfaces to touch when a spawn-relevant `## Pack memory` rule is added, changed, or removed. It composes the existing enforcement checks — it adds no new check.
+
+| # | Surface to touch | Enforcing check |
+|---|---|---|
+| 1 | Corpus imperative line ×3 trinity (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` `## Pack memory`), incl. `[roles:]` tag + `[rationale: slug]` | trinity-parity + role-tag controlled-vocab |
+| 2 | `pack-ops/PACK-MEMORY-RATIONALE.md` — add/edit/remove the `## <slug>` entry | C3 bijection (slug-set equality) |
+| 3 | Thin memory-cache pointer (out-of-repo) | Pack-Chat upkeep; trinity-wins (no validator gate, no pack generator) |
+| 4 | Any reference surface (`PACK-AGENTS.md` / `PACK-CHAT.md` one-line refs) | anti-restate scan + reference-resolution |
+| 5 | `pack-ops/.spawn-rule-manifest.txt` slug→canonical+references | reference-resolution |
+| 6 | `test-fixtures/manifest.txt` regen if a v11-surface path changed | existing manifest CI gate |
+
+- **Order:** corpus (1) → rationale (2) → references (4) + manifest (5) in the SAME commit (so C3 bijection + anti-restate never see a half-applied state) → cache (3) as Pack-Chat upkeep → manifest regen (6) last. Removing a rule reverses: drop references first, then rationale, then corpus.
+- **Order is documented, not gate-sequenced:** a commit is atomic; the propagation order is verified by END-STATE checks (bijection / anti-restate / trinity-parity / manifest), not a hard-enforced step sequence.

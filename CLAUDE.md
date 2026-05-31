@@ -138,7 +138,10 @@ Always run `git add -A && git status` and show staged files before committing.
 These entries codify learnings from prior sessions. They are authoritative —
 treat them as standing rules, not suggestions. Pack Chat and all pack agents
 must respect them. When a learning becomes stale, update or remove the entry
-in the same commit as the behavior change.
+in the same commit as the behavior change. To add, change, or remove a
+spawn-relevant rule, follow the ordered propagation procedure in
+`pack-ops/PACK-CHAT.md` § "Keeping CLAUDE.md, AGENTS.md, GEMINI.md, and
+PACK-AGENTS.md current".
 
 ### Workflow
 

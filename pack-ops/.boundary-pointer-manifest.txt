@@ -12,10 +12,16 @@
 # silently loses its pointer FAILs the check (the §6 prose could go stale
 # silently; this manifest cannot).
 #
-# This is the entry-point network ONLY (the surfaces that point AT the
-# boundary doc). The per-actor routing pointers (PACK-CHAT "File access
-# strategy", the review skill) are authored by BD-196 C8 and folded into
-# this manifest THEN — they are NOT in scope for C6.
+# This file carries TWO surface classes, both resolved by Check 46's
+# generic substring-resolution (the `pointer` field is the literal
+# substring the surface must contain):
+#   (1) the entry-point network (surfaces that point AT the boundary doc),
+#       authored by C6 — the 8 BOUNDARY-DEFINITION.md pointers below; and
+#   (2) the §11.3 per-actor rule-SSOT routing pointers (PACK-CHAT "File
+#       access strategy", the review skill, BOUNDARY self-homed), authored
+#       by BD-196 C8 and folded into this manifest in the SAME commit.
+# The index stays DROPPED (Decision B): these are one-line REFERENCES that
+# ride the existing reference-resolution, not a new index/view/check.
 #
 # Measure-then-bound: this manifest enumerates ONLY surfaces that ACTUALLY
 # carry a resolving BOUNDARY-DEFINITION.md reference at the HEAD where C6
@@ -68,3 +74,19 @@ role:      Project trinity (Gemini) — trinity parity of the boundary-doc refer
 surface:   project-template/skills/boundary-investigation/SKILL.md
 pointer:   BOUNDARY-DEFINITION.md
 role:      Project-side boundary-investigation skill — names the boundary doc as the placement SSOT for project actors.
+
+# ── §11.3 per-actor rule-SSOT routing pointers (BD-196 C8) ───────────────
+# One-line REFERENCES (not the dropped index): each actor's start doc carries
+# a one-hop pointer to its rule-SSOT. Resolved by the same substring check.
+
+surface:   pack-ops/PACK-CHAT.md
+pointer:   Rule-SSOT routing (one hop to the authority
+role:      Pack-Chat startup doc, § "File access strategy" — routes Pack Chat to the rule SSOTs (## Pack memory / BOUNDARY §2 / PACK-MEMORY-RATIONALE.md / the §12 change-procedure). §11.3 Decision C.
+
+surface:   .claude/skills/review/SKILL.md
+pointer:   Rule-SSOT routing (reviewer entry point
+role:      Review skill — routes the reviewer to its [roles: reviewer]+universal spawn rules + the placement/rationale SSOTs. §11.3 Decision C.
+
+surface:   pack-ops/BOUNDARY-DEFINITION.md
+pointer:   four-step placement procedure (§3)
+role:      BOUNDARY self-homed — the file-mover / project-side-author lands on the placement entry doc itself (§2 matrix + §3 procedure in-doc). §11.3 Decision C.
