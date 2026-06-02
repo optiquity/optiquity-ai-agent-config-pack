@@ -13,9 +13,13 @@
 #       2.2 sparse phase ([] tasks)
 #       2.3 dependency entries: kind/target/annotation captured
 #       2.4 cross-phase dependency captured (phase-7.1 → phase-3.4)
-#       2.5 TD reference inside Dependencies bullet captured
+#       2.5 (JC-1) Dependencies admit phase-/TD- targets only — NO BD-
 #       2.6 missing-file → typed error envelope
 #           (BD-106 review F1: ERROR / MESSAGE / → Run: all asserted)
+#       2.7 (JC-1) error-guard FIRES on `- BD-NNN` in target position
+#           → typed validation error, no JSON
+#       2.8 (JC-1) error-guard does NOT fire on `BD-NNN` in annotation
+#           free-text after a valid phase-/TD- target
 #   3. Emitter correctness — round-trip identity
 #       3.1 parse → emit → diff = empty against ROUNDTRIP.md fixture
 #       3.2 emitter produces deterministic output for same input
@@ -110,7 +114,9 @@ assert_eq "1.1 compose phase-12.7"  "phase-12.7" "$(tracker_phase_task_compose_p
 dep_re=$(tracker_phase_task_dependency_re)
 assert_contains "1.2 regex names phase-N(.M)" "$dep_re" "phase-[0-9]+"
 assert_contains "1.2 regex names TD-NNN"      "$dep_re" "TD-[0-9]+"
-assert_contains "1.2 regex names BD-NNN"      "$dep_re" "BD-[0-9]+"
+# JC-1: BD- is NOT a valid phase-task dependency target — the grammar
+# must NOT name it.
+assert_not_contains "1.2 regex does NOT name BD-NNN" "$dep_re" "BD-[0-9]+"
 
 # Sanity: the regex matches a real Dependencies entry.
 test_line='  - phase-3.1 (must complete schema first)'
@@ -129,7 +135,7 @@ fi
 sample_lines=(
     '  - phase-3.1 (must complete schema first)'
     '  - TD-029'
-    '  - BD-108  trailing spaces in annotation  '
+    '  - TD-108  trailing spaces in annotation  '
     '  - phase-7.4'
     '  - phase-12.7 see TD-029: blocking on schema-bootstrap'
     '- phase-1.1 zero-indent variant'
@@ -146,7 +152,7 @@ for line in "${sample_lines[@]}"; do
     # Python group 1 + group 3 (the canonical parser's reading)
     py_out=$(LINE="$line" python3 -c '
 import os, re, sys
-DEP = re.compile(r"^\s*-\s+(phase-\d+(?:\.\d+)?|TD-\d+|BD-\d+)(\s+(.*))?\s*$")
+DEP = re.compile(r"^\s*-\s+(phase-\d+(?:\.\d+)?|TD-\d+)(\s+(.*))?\s*$")
 m = DEP.match(os.environ["LINE"])
 if not m:
     sys.exit(1)
@@ -200,9 +206,67 @@ assert_eq "2.3 dep[1].annotation empty" "" \
 assert_eq "2.4 phase-7.1 dep[0].target = phase-3.4" "phase-3.4" \
     "$(printf '%s' "$parsed" | jq -r '.phases[2].tasks[0].dependencies[0].target')"
 
-# 2.5 BD reference inside Dependencies (phase-3.3 has BD-108)
-assert_eq "2.5 phase-3.3 dep[1].target = BD-108" "BD-108" \
+# 2.5 (JC-1) phase-3.3 Dependencies parse to phase-/TD- targets only —
+# BD- is NOT admitted as a phase-task dependency target. The fixture's
+# phase-3.3 deps are phase-7.4, TD-030, TD-031 (no BD- target).
+assert_eq "2.5 phase-3.3 has 3 deps" "3" \
+    "$(printf '%s' "$parsed" | jq '.phases[0].tasks[2].dependencies | length')"
+assert_eq "2.5 phase-3.3 dep[1].target = TD-030" "TD-030" \
     "$(printf '%s' "$parsed" | jq -r '.phases[0].tasks[2].dependencies[1].target')"
+parsed_3_3_targets=$(printf '%s' "$parsed" | jq -c '[.phases[0].tasks[2].dependencies[].target]')
+assert_not_contains "2.5 phase-3.3 admits NO BD- dep target" "$parsed_3_3_targets" "BD-"
+
+# 2.7 (JC-1 error-guard) the parser REJECTS a `- BD-NNN` bullet in
+# dependency-TARGET position with a typed `validation` error and emits
+# NO JSON document. Tests the captured target position only.
+guard_fixture=$(mktemp -t tpt-bd-guard.XXXXXX)
+cat > "$guard_fixture" <<'GUARDEOF'
+## Phase 5 — Guard
+
+### Tasks
+#### 5.1 — Reject BD target
+- **Problem / Goal / Success**: x
+- **Files created/modified**: y
+- **Definition of done**: z
+- **Dependencies**:
+  - BD-108
+GUARDEOF
+guard_out=$(tracker_phase_task_parse "$guard_fixture" 2>/dev/null) || true
+guard_err=$(tracker_phase_task_parse "$guard_fixture" 2>&1 1>/dev/null) || true
+if tracker_phase_task_parse "$guard_fixture" >/dev/null 2>&1; then
+    t_fail "2.7 guard FIRES on - BD-NNN in target position" "expected rc=1"
+else
+    t_pass "2.7 guard FIRES on - BD-NNN in target position"
+fi
+assert_eq "2.7 guard emits NO JSON on rejection" "" "$guard_out"
+assert_contains "2.7 guard → typed error (ERROR: validation)" "$guard_err" "ERROR: validation"
+assert_contains "2.7 guard → typed error (→ Run: trailer)"    "$guard_err" "→ Run:"
+assert_contains "2.7 guard names the offending BD- target"    "$guard_err" "BD-108"
+rm -f "$guard_fixture"
+
+# 2.8 (JC-1 error-guard) the guard does NOT false-positive on a
+# `BD-NNN` mention inside annotation free-text AFTER a valid
+# phase-/TD- target — only the captured target position is tested.
+ann_fixture=$(mktemp -t tpt-bd-ann.XXXXXX)
+cat > "$ann_fixture" <<'ANNEOF'
+## Phase 6 — Annotation
+
+### Tasks
+#### 6.1 — BD in annotation is fine
+- **Problem / Goal / Success**: x
+- **Files created/modified**: y
+- **Definition of done**: z
+- **Dependencies**:
+  - TD-031 (see BD-108 for context)
+ANNEOF
+ann_out=$(tracker_phase_task_parse "$ann_fixture" 2>/dev/null)
+ann_rc=$?
+assert_eq "2.8 guard does NOT fire on BD- in annotation free-text" "0" "$ann_rc"
+assert_eq "2.8 annotation dep target = TD-031" "TD-031" \
+    "$(printf '%s' "$ann_out" | jq -r '.phases[0].tasks[0].dependencies[0].target')"
+assert_eq "2.8 BD- preserved in annotation body" "(see BD-108 for context)" \
+    "$(printf '%s' "$ann_out" | jq -r '.phases[0].tasks[0].dependencies[0].annotation')"
+rm -f "$ann_fixture"
 
 # 2.6 missing file → typed-error envelope (BD-106 review F1 — every
 # error MUST emit the canonical ERROR / MESSAGE / → Run: shape per

@@ -387,10 +387,12 @@ PYEOF
 # into phase N's `### Tasks` zone.
 #
 # Dependencies bullet handling: the TD entry's blockers field is a
-# list of v10 grammar tokens (BD-NNN, TD-NNN, phase-N, phase-N.M). We
-# emit them verbatim — the user can hand-edit at promotion time before
-# Path 2's link orchestrator picks them up. Empty blockers → emit
-# "(none)" placeholder so the bullet is well-formed.
+# list of v10 grammar tokens (TD-NNN, phase-N, phase-N.M). We emit them
+# verbatim — the user can hand-edit at promotion time before Path 2's
+# link orchestrator picks them up. A `BD-` blocker is NOT a valid
+# phase-task dependency target (JC-1) — it is passed through to the
+# flat-file but is not linked as a phase-task dependency edge. Empty
+# blockers → emit "(none)" placeholder so the bullet is well-formed.
 tracker_promote_compose_phase_task_block() {
     local td_json="$1"
     local phase_n="$2"
@@ -1144,15 +1146,19 @@ Phase task derived from $td. See IMPLEMENTATION-PLAN.md ## Phase $phase_n / ####
                 b_raw_id="${b_raw%% *}"
                 # F8 (BD-107 review): use the canonical V3.3 §5.3 regex
                 # rather than a permissive case-glob. This rejects
-                # well-formed-but-not-quite tokens (e.g. BD-029X) at the
+                # well-formed-but-not-quite tokens (e.g. TD-029X) at the
                 # dispatcher seam, so they never reach the stricter
                 # link-orchestrator. Only call
-                # tracker_links_create_blocked_by for the four valid
-                # pack-id shapes (phase-N, phase-N.M, TD-NNN, BD-NNN).
-                # Other tokens (free-text blockers) are passed through to
-                # the flat-file but skipped at the link-orchestrator
-                # (they'll be warnings on the next forward migration).
-                if [[ "$b_raw_id" =~ ^(phase-[0-9]+(\.[0-9]+)?|TD-[0-9]+|BD-[0-9]+)$ ]]; then
+                # tracker_links_create_blocked_by for the valid
+                # phase-task dependency-target shapes (phase-N,
+                # phase-N.M, TD-NNN). `BD-` is NOT a valid phase-task
+                # dependency target (JC-1): a `BD-` blocker on a
+                # promoted TD is passed through to the flat-file but is
+                # NOT linked as a phase-task dependency edge. Other
+                # tokens (free-text blockers) are likewise passed through
+                # but skipped at the link-orchestrator (they'll be
+                # warnings on the next forward migration).
+                if [[ "$b_raw_id" =~ ^(phase-[0-9]+(\.[0-9]+)?|TD-[0-9]+)$ ]]; then
                     local edge_out
                     if edge_out=$(tracker_links_create_blocked_by \
                         "$target" "$b_raw_id" "$id_map" "$store_path" "" 2>/dev/null); then

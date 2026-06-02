@@ -72,8 +72,12 @@
 #
 #   - tracker_phase_task_dependency_re
 #       Echoes the regex (POSIX ERE) that matches a single
-#       Dependencies entry: `^\s*-\s+(phase-\d+(\.\d+)?|TD-\d+|BD-\d+)`.
-#       Open-string label / id grammar per V3.3 §5.3.
+#       Dependencies entry: `^\s*-\s+(phase-\d+(\.\d+)?|TD-\d+)`.
+#       Open-string label / id grammar per V3.3 §5.3. A phase-task
+#       Dependencies target is `phase-N(.M)` or `TD-NNN` only — `BD-`
+#       is NOT a valid phase-task dependency target (JC-1); the pack's
+#       own-backlog `BD-` handling lives in the shared link layer, not
+#       in this project phase-task grammar.
 #
 # Reference: ARCHITECTURE-V3.3-DELTA.md §2, §3.5, §4.1-§4.4, §5.3,
 #            §6.4; ARCHITECTURE-V3.2-DELTA.md §4.1, §4.2, §4.3.
@@ -110,7 +114,7 @@ tracker_phase_task_compose_pack_id() {
 # parser as the `annotation` sub-field for lossless emit.
 #
 # Capture groups (POSIX ERE; bash `[[ =~ ]]` BASH_REMATCH indices):
-#   group 1 = the pack-id (`phase-N(.M)?` | `TD-N` | `BD-N`)
+#   group 1 = the pack-id (`phase-N(.M)?` | `TD-N`)
 #   group 2 = optional `.M` (internal sub-capture of group 1)
 #   group 3 = optional ` <annotation-with-leading-whitespace>` (the
 #            full `[[:space:]]+(.*)` match — analogous to the Python
@@ -129,7 +133,7 @@ tracker_phase_task_compose_pack_id() {
 # `[[:space:]]+` consumption). Test Group 1 verifies group-1 parity
 # and documents the group-3/4 mapping.
 tracker_phase_task_dependency_re() {
-    printf '%s\n' '^[[:space:]]*-[[:space:]]+(phase-[0-9]+(\.[0-9]+)?|TD-[0-9]+|BD-[0-9]+)([[:space:]]+(.*))?$'
+    printf '%s\n' '^[[:space:]]*-[[:space:]]+(phase-[0-9]+(\.[0-9]+)?|TD-[0-9]+)([[:space:]]+(.*))?$'
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -176,7 +180,13 @@ tracker_phase_task_parse() {
         tracker_error_emit "not-found" "tracker_phase_task_parse: $path does not exist"
         return 1
     fi
-    python3 - "$path" <<'PYEOF'
+    # Capture stdout + stderr separately so the JC-1 BD-target guard
+    # (python exit 3) can be re-surfaced as a typed `validation` error
+    # without leaking the python sentinel. Non-fatal parser warnings on
+    # stderr are replayed unchanged.
+    local _tpt_err _tpt_out _tpt_rc
+    _tpt_err=$(mktemp -t tpt-parse-err.XXXXXX)
+    _tpt_out=$(python3 - "$path" 2>"$_tpt_err" <<'PYEOF'
 import json
 import re
 import sys
@@ -203,10 +213,20 @@ BULLET_HEAD = re.compile(r'^-\s+\*\*([^*]+?)\*\*\s*:\s*(.*)$')
 NESTED_BULLET = re.compile(r'^\s+-\s+(.*)$')
 
 # Dependencies-entry regex (V3.3 §5.3). Captures ID (group 1) and
-# annotation (group 3 — everything after the ID, trimmed).
+# annotation (group 3 — everything after the ID, trimmed). `BD-` is
+# NOT a valid phase-task dependency target (JC-1) — see BD_TARGET
+# error-guard below.
 DEP_ENTRY = re.compile(
-    r'^\s*-\s+(phase-\d+(?:\.\d+)?|TD-\d+|BD-\d+)(\s+(.*))?\s*$'
+    r'^\s*-\s+(phase-\d+(?:\.\d+)?|TD-\d+)(\s+(.*))?\s*$'
 )
+
+# Error-guard (JC-1): a `BD-NNN` token in dependency-TARGET position
+# (the start of the bullet, immediately after `- `) is rejected. This
+# tests the TARGET position ONLY — anchored on `- BD-\d+` — so a
+# `BD-NNN` mention inside a free-text annotation after a valid
+# `phase-`/`TD-` target (e.g. `- TD-031  (see BD-108 for context)`)
+# does NOT false-positive.
+BD_TARGET = re.compile(r'^\s*-\s+(BD-\d+)(\s|$)')
 
 # Map bullet-header names to canonical sidecar field names. The
 # match is case-insensitive and tolerates the four names from
@@ -231,6 +251,7 @@ current_task = None
 current_bullet = None      # canonical name being collected
 in_tasks_h3 = False
 warnings = []
+bd_target_errors = []   # JC-1 error-guard: BD- in dependency-target position
 
 def flush_task():
     """Finalize the current task — convert dependencies field into
@@ -245,6 +266,19 @@ def flush_task():
         for raw_line in deps_raw.splitlines():
             m = DEP_ENTRY.match(raw_line)
             if not m:
+                # JC-1 error-guard: a `BD-NNN` token in dependency-
+                # TARGET position is a hard validation error (not a
+                # silent warning). Tests the captured target position
+                # only — a `BD-NNN` inside annotation free-text after a
+                # valid target does NOT reach here (it matches
+                # DEP_ENTRY as the annotation body).
+                bm = BD_TARGET.match(raw_line)
+                if bm:
+                    bd_target_errors.append(
+                        f'phase-task {current_task["pack_id"]}: '
+                        f'{bm.group(1)}'
+                    )
+                    continue
                 # Skip non-matching lines but warn (free-text inside
                 # the dependencies bullet is supported per §5.3 only
                 # as trailing annotation on a matching ID line).
@@ -405,6 +439,14 @@ for raw in text.splitlines():
 # End-of-file flush.
 flush_phase()
 
+# JC-1 error-guard: reject any `BD-` in dependency-TARGET position.
+# Emit the offending target(s) on stderr (parsed by the bash wrapper
+# into a typed `validation` error) and exit non-zero WITHOUT printing
+# a JSON document, so the caller never sees a `BD-` dependency target.
+if bd_target_errors:
+    sys.stderr.write('BD_TARGET_REJECT: ' + '; '.join(bd_target_errors) + '\n')
+    sys.exit(3)
+
 # Strip trailing whitespace from collected body fields (parser
 # normalization; emitter re-pads as needed).
 for ph in phases:
@@ -420,6 +462,25 @@ if warnings:
     for w in warnings:
         print(f'WARNING: tracker_phase_task_parse: {w}', file=sys.stderr)
 PYEOF
+)
+    _tpt_rc=$?
+    if [[ $_tpt_rc -eq 3 ]]; then
+        # JC-1: BD- in dependency-target position. Re-surface the
+        # python sentinel as a typed validation error; emit no JSON.
+        local _tpt_targets
+        _tpt_targets=$(sed -n 's/^BD_TARGET_REJECT: //p' "$_tpt_err")
+        rm -f "$_tpt_err"
+        tracker_error_emit "validation" \
+            "BD- is not a valid phase-task dependency target; phase-task Dependencies accept phase-N(.M) and TD-NNN only (${_tpt_targets})"
+        return 1
+    fi
+    # Replay any non-fatal parser warnings on stderr, then the JSON.
+    [[ -s "$_tpt_err" ]] && cat "$_tpt_err" >&2
+    rm -f "$_tpt_err"
+    if [[ $_tpt_rc -ne 0 ]]; then
+        return "$_tpt_rc"
+    fi
+    printf '%s\n' "$_tpt_out"
 }
 
 # ─────────────────────────────────────────────────────────────────
