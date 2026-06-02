@@ -21,7 +21,7 @@ Repeat on each Mac. Reinstall after pack version updates.
 
 ## Policy
 
-These companion files mirror the v9 project-level policy:
+These companion files mirror the current project-level policy:
 - Both Claude Agent and Codex are allowed to do planning, implementation,
   testing, review, repo operations, and documentation
 - Capability is not split by tool identity — defaults may differ but both

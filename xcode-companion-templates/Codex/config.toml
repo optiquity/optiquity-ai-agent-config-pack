@@ -50,28 +50,21 @@ max_depth = 1
 
 [agents.planner]
 description = "Planning specialist for scoping work, sequencing changes, and defining verification steps before non-trivial edits."
-config_file = "agents/planner.toml"
 
 [agents.coder]
 description = "Implementation specialist for targeted code changes, refactors, and test updates."
-config_file = "agents/coder.toml"
 
 [agents.reviewer]
 description = "Read-only reviewer focused on correctness, regressions, concurrency, and missing tests."
-config_file = "agents/reviewer.toml"
 
 [agents.tester]
 description = "Read-only test strategist for unit, integration, UI, and end-to-end verification."
-config_file = "agents/tester.toml"
 
 [agents.apple_architect]
 description = "Read-only Apple-platform architect for SwiftUI-first design and UIKit or AppKit interop decisions."
-config_file = "agents/apple-architect.toml"
 
 [agents.repo_ops]
 description = "Repository operations specialist for scripts, command sequencing, and Git-safe automation."
-config_file = "agents/repo-ops.toml"
 
 [agents.docs_researcher]
 description = "Read-only documentation specialist for verifying APIs, options, and config behavior from official docs."
-config_file = "agents/docs-researcher.toml"
