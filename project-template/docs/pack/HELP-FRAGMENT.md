@@ -11,7 +11,7 @@ your CLI for this content. Full docs in `docs/pack/PM-CHAT.md`,
 | `/pm-startup` | Bootstrap a PM Chat session — sync repo, read state, run TD-TBD check, report. Run first in new sessions. |
 | `/pack-help` | Print this fragment in your CLI. `pack help` shell verb is identical. |
 | `bash scripts/init-project.sh` | One-time setup. `--update` refreshes pack files non-destructively. |
-| `bash scripts/migrate-v9-to-v10.sh` | One-time per upgrade. v10→v11 migrator ships separately. |
+| `bash scripts/migrate-v10-to-v11.sh` | One-time per upgrade. The v9→v10 migrator is sunset. |
 | `bash scripts/add-capability.sh` | Add a pack-supported capability to an existing project. |
 | `python3 scripts/merge-platform-skills.py` | Splice helper for `PLATFORM-SKILLS.md`. |
 | `python3 scripts/merge-trinity.py` | Splice helper for trinity files (CLAUDE/AGENTS/GEMINI). |

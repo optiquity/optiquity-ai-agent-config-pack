@@ -66,19 +66,20 @@ project-side SSOTs:
 
 | Concept | Project-side SSOT |
 |---|---|
-| Agent roster + PM chat orchestration rules | `project-template/docs/pack/PM-CHAT.md` |
-| Skill-selection matrix (5+3 dimensions) | `project-template/docs/pack/PLATFORM-SKILLS.md` |
-| Project-to-pack feedback channel | `project-template/docs/pack/PACK-FEEDBACK.md` |
-| Universal project rules (trinity) | `project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` |
-| Per-agent prompt templates | `project-template/docs/pack/prompts/<agent>.md` |
-| Project-side skills (methodology) | `project-template/skills/<name>/SKILL.md` |
-| Install + setup procedures | `project-template/docs/pack/INSTALL-PROCEDURES.md` |
-| Methodology + procedures | `project-template/supporting-docs/METHODOLOGY.md` (when applicable) |
+| Agent roster + PM chat orchestration rules | `docs/pack/PM-CHAT.md` |
+| Skill-selection matrix (5+3 dimensions) | `docs/pack/PLATFORM-SKILLS.md` |
+| Project-to-pack feedback channel | `docs/pack/PACK-FEEDBACK.md` |
+| Universal project rules (trinity) | `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (project root) |
+| Per-agent prompt templates | `docs/pack/prompts/<agent>.md` |
+| Project-side skills (methodology) | `.claude/skills/<name>/SKILL.md` (and `.codex/`/`.gemini/` copies) |
+| Install + setup procedures | `docs/pack/INSTALL-PROCEDURES.md` |
+| Methodology + procedures | `docs/pack/METHODOLOGY.md` (when applicable) |
 
 If the project-side SSOT for the concept is not obvious from this table,
-grep `project-template/` for keywords related to the concept. The
+grep the project tree for keywords related to the concept. The
 authoritative source for the SSOT for an actively-maintained area lives
-in `project-template/`.
+in the project's installed surface (`docs/pack/`, the project trinity, and
+the per-CLI skill directories).
 
 ### Step 3 — Decide the SSOT-relative action
 

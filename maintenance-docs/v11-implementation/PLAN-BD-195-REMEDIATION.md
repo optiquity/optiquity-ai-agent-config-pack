@@ -82,7 +82,10 @@ plus three surfaced by C2's broadened guard during review (reviewer-confirmed
 GENUINE) — NL-1 (`INSTALL-PROCEDURES.md:655` dead `V10-DESIGN.md` cite → C4)
 and NL-2/NL-3 (`scripts/lib/detect.sh:351`/`:360` `AUDIT-BD-035.md` + `BD-035`
 pack-internal citation in client-shipped script comments → new C3c). The 3
-new leaks are folded into PG-2 per user direction (2026-06-02).
+new leaks are folded into PG-2 per user direction (2026-06-02). A fourth,
+NL-4 (`project-template/README.md` pack-repo-internal layout / skill-distribution
+prose → C3a), was surfaced during C3a review and folded into C3a per user
+direction (2026-06-02).
 
 | Finding | Commit | Disposition / recipe pointer |
 |---|---|---|
@@ -157,6 +160,7 @@ new leaks are folded into PG-2 per user direction (2026-06-02).
 | NL-1 (new leak) `supporting-docs/INSTALL-PROCEDURES.md:655` | C4 | C2 §2.2 guard surfaced; dead `V10-DESIGN.md` cite → C4 recipe (drop or re-point to a client-resolvable form) |
 | NL-2 (new leak) `scripts/lib/detect.sh:351` | **C3c** | C2 §2.2 guard surfaced; `AUDIT-BD-035.md` + `BD-035` pack-self ref in client-shipped script comment → C3c recipe (reword to remove both) |
 | NL-3 (new leak) `scripts/lib/detect.sh:360` | **C3c** | C2 §2.2 guard surfaced; `AUDIT-BD-035.md` + `BD-035` pack-self ref in client-shipped script comment → C3c recipe (reword to remove both) |
+| NL-4 (new leak) `project-template/README.md` | **C3a** | C3a review surfaced; pack-repo-internal two-dir layout / `cp -r` / `init-project.sh`-distribution / skill-distribution prose on a Check-43-walked client surface → C3a recipe (NL-4 rework per the user-directive principle) |
 
 **Per-commit finding counts (actionable):** C1 = 11 · C3 = 18 (+1 new leak,
 `.mcp.json.example`) · C3c = 0 of the 67 (+2 new leaks NL-2/NL-3) · C4 = 7
@@ -578,7 +582,7 @@ C3 is SPLIT because `xcode-companion-templates/` is neither `project-template/`
 nor `supporting-docs/` (EEB-E), so a single `project-only` keyword cannot cover
 it. Two commits:
 
-**C3a — project-template/ client surfaces (`project-only`)**
+**C3a — project-template/ client surfaces (no keyword)**
 
 - **(a) Files:** `project-template/README.md`,
   `project-template/.codex/config.toml.example`,
@@ -594,10 +598,14 @@ it. Two commits:
   `project-template/skills/boundary-investigation/SKILL.md`.
 - **(b) Findings:** K2.1, K4.1, K4.2, K4.3, K4.4, K4.5, K5.1, K5.2, K5.3,
   K5.4, K5.5, K5.6, K5.8 (wait — K5.8 is xcode → C3b), B.1, B.2, B.3, B.4 +
-  the NEW `.mcp.json.example:9` CLI-PM-SETUP leak.
+  the NEW `.mcp.json.example:9` CLI-PM-SETUP leak + NL-4
+  (`project-template/README.md` pack-repo-internal layout / skill-distribution
+  prose; surfaced during C3a review, folded into C3a per user direction
+  2026-06-02).
   > Correction binding: K5.8 (`xcode-companion-templates/README.md`) and
   > B.11 (`xcode-companion-templates/Codex/config.toml`) move to **C3b**.
-  > C3a findings = K2.1, K4.1–K4.5, K5.1–K5.6, B.1, B.2, B.3, B.4 + new leak.
+  > C3a findings = K2.1, K4.1–K4.5, K5.1–K5.6, B.1, B.2, B.3, B.4 + new leak
+  > + NL-4.
 - **(c) Recipe — per-finding fix recipes (inline, verbatim):** these are the
   STRIP set caught by the C2 broadened guard.
   - **K2.1** (`skills/pm-startup/SKILL.md:174` + identical `.claude/`/`.codex/`
@@ -666,6 +674,25 @@ it. Two commits:
     `bash scripts/pack-tracker.sh <verb>` (doesn't resolve at client; the
     surface convention elsewhere is the `pack tracker <verb>` shell-verb). Fix:
     switch to `pack tracker <verb>`.
+  - **NL-4** (`project-template/README.md`, surfaced during C3a review, folded
+    in per user direction 2026-06-02): the README describes PACK-REPO INTERNALS
+    on a Check-43-walked client surface — the two-directory pack layout
+    (`project-template/` + `supporting-docs/`), the `cp -r` whole-template
+    mechanic, `init-project.sh`-driven distribution, the "Directory boundary
+    rule" and "Skill distribution" sections, and pack-only doc names. A client
+    repo has none of these directories and never runs that distribution, so
+    this is contamination by the directory-based rule. **Fix (the user-directive
+    rework principle, binding 2026-06-02):** find the pack/project boundary in
+    the README; REMOVE the pack-related content; then make the remaining
+    project/client-relevant content factually correct for the INSTALLED client
+    layout — paths as files actually land per `_CLIENT_INSTALLED_FILES` (trinity
+    at the project root; `docs/pack/<X>`; skills at
+    `.{claude,codex,gemini}/skills/<name>/SKILL.md`), NOT the pre-install
+    pack-repo source paths; and if a section cannot be made factually correct
+    for the client layout, REMOVE it. Applied: the "Directory boundary rule",
+    "Conditional files", and "Skill distribution" sections were removed (not
+    correctable for an already-installed client); the intro + contents table
+    were reworked to the client install layout.
   - **NEW leak** (`.mcp.json.example:9`): cites `supporting-docs/CLI-PM-SETUP.md`,
     a dead client path (CLI-PM-SETUP.md is NOT client-installed — only
     METHODOLOGY.md + INSTALL-PROCEDURES.md are; EEB-G). Fix: drop the
@@ -676,10 +703,14 @@ it. Two commits:
   `pack-ops/MERGE-STRATEGY.md` fallback (no project-side SSOT exists); B.2
   rewrites SSOT-table paths to client-resolvable forms; K2.1/K4.3 →
   `docs/pack/METHODOLOGY.md` (the client-installed location, EEB-G).
-- **(d) Keyword:** `project-only`. Valid: every C3a path is under
-  `project-template/` (EEB-D). `project-only` denies pack-only paths
-  (everything outside `project-template/` + `supporting-docs/`); all C3a
-  files satisfy this.
+- **(d) Keyword:** **none (no keyword).** This commit stages
+  `test-fixtures/manifest.txt` (`regenerate-manifest-v11-surface`, non-empty
+  diff — CONFIRMED non-empty for C3a); `project-only` denies any path outside
+  `project-template/`+`supporting-docs/`, so the manifest forces no-keyword
+  (mixed-scope per the Check-36 convention). `project-only` would be valid ONLY
+  if the manifest diff is empty (no `test-fixtures/` path in the commit).
+  Every C3a content path is under `project-template/` (EEB-D), but the staged
+  manifest path is not, which is why the commit cannot claim `project-only`.
 - **(e) Manifest:** RUN build. Expected NON-EMPTY (project-template/ content
   feeds fixture installs). Stage `test-fixtures/manifest.txt` in this commit.
 - **(f) Verify:** `python3 scripts/validate-pack.py` (with C2's broadened
@@ -732,8 +763,10 @@ pack-self reference (`AUDIT-BD-035.md` doc + the `BD-035` token) on a
 client-shipped surface. Per `bd-pack-only-operational-rule` (no pack-self
 refs in client-shipped content), these are reworded. Kept a SEPARATE commit
 (not folded into C3a) because `scripts/lib/detect.sh` is NOT under
-`project-template/`, so the C3a `project-only` keyword cannot cover it; this
-commit is `pack-only` (scripts/ only).
+`project-template/`; this commit is `pack-only` (scripts/ only, and
+`pack-only` tolerates `test-fixtures/`), whereas C3a's project-template
+content forces no-keyword once the regenerated manifest is staged — distinct
+scopes that warrant distinct commits.
 
 - **(a) Files:** `scripts/lib/detect.sh` (ONLY).
 - **(b) Findings:** NL-2 (`detect.sh:351`), NL-3 (`detect.sh:360`) — 2 new
@@ -818,10 +851,16 @@ commit is `pack-only` (scripts/ only).
     resolving docs, consistent with the other C4 recipes (e.g., point at the
     client-installed `docs/pack/METHODOLOGY.md` or drop the cite if the
     surrounding prose still reads correctly without it).
-- **(d) Keyword:** `project-only`. Valid: `supporting-docs/` IS project-side
-  per Check 36 (EEB-E: `_PROJECT_SIDE_PATH_PREFIXES` includes
-  `supporting-docs/`). `project-only` denies everything outside the two
-  project-side prefixes; all C4 paths are under `supporting-docs/`.
+- **(d) Keyword:** **none (no keyword).** This commit stages
+  `test-fixtures/manifest.txt` (`regenerate-manifest-v11-surface`) when the
+  diff is non-empty — EXPECTED non-empty (C4 edits client-installed,
+  fixture-feeding content; confirm at execution per (e)); `project-only`
+  denies any path outside `project-template/`+`supporting-docs/`, so the
+  staged manifest forces no-keyword (mixed-scope per the Check-36 convention).
+  `project-only` would be valid ONLY if the manifest diff is empty (no
+  `test-fixtures/` path in the commit). All C4 content paths are under
+  `supporting-docs/` (project-side per EEB-E), but the staged manifest path is
+  not, which is why the commit cannot claim `project-only`.
 - **(e) Manifest:** RUN build. Expected EMPTY (`supporting-docs/` is copied
   individually at install but its content does not change the fixture git
   SHAs the manifest pins — only `METHODOLOGY.md` ships, to `docs/pack/`;
@@ -1075,9 +1114,16 @@ commit is `pack-only` (scripts/ only).
     all 6. (`P-missed-7` / `boundary-investigation`: the project-side SSOT for
     these per-entry surfaces is the `docs/project/<stream>/_rules.md` contract
     itself; the abstract phrasing must not import a pack-only mechanism name.)
-- **(d) Keyword:** `project-only`. Valid: every C9 path is under
-  `project-template/` (EEB-D). `project-only` denies pack-only paths; all C9
-  files satisfy this.
+- **(d) Keyword:** **none (no keyword).** This commit stages
+  `test-fixtures/manifest.txt` (`regenerate-manifest-v11-surface`) when the
+  diff is non-empty — EXPECTED non-empty (C9 edits client-installed,
+  fixture-feeding content; confirm at execution per (e)); `project-only`
+  denies any path outside `project-template/`+`supporting-docs/`, so the
+  staged manifest forces no-keyword (mixed-scope per the Check-36 convention).
+  `project-only` would be valid ONLY if the manifest diff is empty (no
+  `test-fixtures/` path in the commit). Every C9 content path is under
+  `project-template/` (EEB-D), but the staged manifest path is not, which is
+  why the commit cannot claim `project-only`.
 - **(e) Manifest:** RUN `bash test-fixtures/build.sh --all --clean`. Expected
   NON-EMPTY (project-template/ content — `bootstrap.sh`, the per-entry
   `_intro`/`_rules`, and PACK-FEEDBACK.md all ship into fixture installs).
@@ -1193,8 +1239,12 @@ branch `v11-dev`, 2026-06-01.
   `docs/pack/prompts/pm-chat.md`, `skills/boundary-investigation/SKILL.md`;
   and (C9) `scripts/bootstrap.sh`, `docs/pack/PACK-FEEDBACK.md`, the 6
   per-entry `_intro`/`_rules` files — all under `project-template/`.
-- Interpretation: `project-only` is valid for C3a and C9 (every path under
-  `project-template/`).
+- Interpretation: every C3a and C9 CONTENT path is under `project-template/`.
+  This alone would admit `project-only`, but because C3a/C9 each stage the
+  regenerated `test-fixtures/manifest.txt` (`regenerate-manifest-v11-surface`),
+  the commit also touches a path outside `project-template/`+`supporting-docs/`
+  — so the final keyword is **none (no keyword)**, not `project-only` (see the
+  C3a/C9 (d) lines).
 - Conclusion: SUPPORTED.
 
 **EEB-E — Check 36 scope-keyword path model.**
@@ -1205,11 +1255,15 @@ branch `v11-dev`, 2026-06-01.
   `_PROJECT_SIDE_PATH_PREFIXES = ("project-template/", "supporting-docs/")`.
 - Interpretation: `pack-only` DENIES `project-template/` + `supporting-docs/`;
   `project-only` is the inverse (denies everything outside those two).
-  Therefore: C1/C2/C6 `pack-only` valid (scripts/ only); C3a/C9 `project-only`
-  valid (project-template/); C4 `project-only` valid (supporting-docs/ IS
-  project-side); C3b `xcode-companion-templates/` is NEITHER prefix → no
-  keyword (project-only would FAIL Check 36); C5 mixed scripts/+maintenance-
-  docs/+pack-root → no keyword.
+  Therefore: C1/C2/C6 `pack-only` valid (scripts/ only — `pack-only` tolerates
+  `test-fixtures/`); C3a/C9 content is under `project-template/` and C4 content
+  is under `supporting-docs/` (project-side), but each stages the regenerated
+  `test-fixtures/manifest.txt`, a path outside both project-side prefixes — so
+  C3a/C4/C9 carry **no keyword** (`project-only` would FAIL Check 36 on the
+  staged manifest path; mixed-scope per the Check-36 convention); C3b
+  `xcode-companion-templates/` is NEITHER prefix → no keyword (project-only
+  would FAIL Check 36); C5 mixed scripts/+maintenance-docs/+pack-root → no
+  keyword.
 - Conclusion: SUPPORTED.
 
 **EEB-F — Manifest build inputs (what feeds fixture SHAs).**

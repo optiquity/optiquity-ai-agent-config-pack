@@ -6,7 +6,7 @@
       "command": "npx",
       "args": ["-y", "mcp-local-rag"],
       "env": {
-        "_readme": "Set BASE_DIR to the absolute path of this project. See supporting-docs/CLI-PM-SETUP.md for setup instructions.",
+        "_readme": "Set BASE_DIR to the absolute path of this project.",
         "BASE_DIR": "/absolute/path/to/your-project",
         "DB_PATH": "./.claude/rag-index",
         "CACHE_DIR": "./.claude/rag-cache"

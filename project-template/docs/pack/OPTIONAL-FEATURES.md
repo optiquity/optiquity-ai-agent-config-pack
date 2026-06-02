@@ -129,10 +129,10 @@ you do not have to track it yourself.
 **How to enable** — from your project repo root:
 
 ```sh
-bash scripts/pack-tracker.sh init       # writes tracker.toml + runs forward migration
-bash scripts/pack-tracker.sh status     # mapping freshness report
-bash scripts/pack-tracker.sh doctor     # config + integrity check
-bash scripts/pack-tracker.sh disable    # reverse migration; back to flat-file
+pack tracker init       # writes tracker.toml + runs forward migration
+pack tracker status     # mapping freshness report
+pack tracker doctor     # config + integrity check
+pack tracker disable    # reverse migration; back to flat-file
 ```
 
 `tracker.toml` lives at your project root. The example template
@@ -161,7 +161,7 @@ is more friction than flat-file. The recommendation system will not nag
 in this regime.
 
 **How to disable** — the tracker is reversible at any time via
-`bash scripts/pack-tracker.sh disable`, which reads live issue state,
+`pack tracker disable`, which reads live issue state,
 writes a sidecar `BACKLOG.md` from current issues, and flips
 `tracker.toml`'s `mode.state` back to flat-file. Atomic (restores
 backup on failure), idempotent (safe to re-run). Existing GitHub issues
@@ -171,10 +171,10 @@ remain untouched.
 project-side and pack-side edits since the last baseline (real-merge
 case), it surfaces the disposition
 `customization-detected-needs-reconciliation` and writes a sidecar of
-your pre-migration content. See `MERGE-STRATEGY.md` in the pack repo
-for the per-file class matrix and sidecar conventions. Reconciliation
-is manual: open the sidecar + the destination, merge, remove the
-sidecar, commit.
+your pre-migration content. (Pack maintainers only: the per-file class
+matrix and sidecar conventions are documented in `MERGE-STRATEGY.md` in
+the pack repo.) Reconciliation is manual: open the sidecar + the
+destination, merge, remove the sidecar, commit.
 
 ---
 

@@ -10,11 +10,10 @@
 # and the .gemini/settings.json MCP block (per trinity-rule
 # parity for MCP server configuration).
 #
-# Source: V10-CODEX-MCP-RESEARCH.md (commit 73d480e). Codex supports
-# MCP via [mcp_servers.<name>] tables in config.toml, both STDIO
-# (`command`) and Streamable HTTP (`url`, gated by
-# `experimental_use_rmcp_client`). v10 ships STDIO only; HTTP transport
-# stability is research OQ-1 (defer to a future pack version if needed).
+# Codex supports MCP via [mcp_servers.<name>] tables in config.toml, both
+# STDIO (`command`) and Streamable HTTP (`url`, gated by
+# `experimental_use_rmcp_client`). The pack ships STDIO only; HTTP transport
+# stability is a known open question (defer to a future pack version if needed).
 
 # Uncomment the block below to enable mcp-local-rag for Codex CLI
 # sessions in this project. Replace BASE_DIR with the absolute path of

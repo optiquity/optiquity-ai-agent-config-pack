@@ -121,8 +121,8 @@ for Gemini):
 1. **List current ingest.** Call the `local-rag` `list` tool. This
    returns the set of currently-ingested paths.
 2. **Read the manifest.** Read `docs/pack/PM-CHAT.md` § RAG
-   ingestion manifest to determine the intended set. Default
-   manifest in v10 is exactly one path: `docs/pack/METHODOLOGY.md`
+   ingestion manifest to determine the intended set. The default
+   manifest is exactly one path: `docs/pack/METHODOLOGY.md`
    (plus any custom project documents declared under `## Additional
    project documents` near the bottom of `PM-CHAT.md`).
 3. **Compute the diff:**
@@ -167,8 +167,8 @@ declares `docs/pack/METHODOLOGY.md` but the project has not yet run
 the install copy step that creates it), skip ingest for that
 specific path and report `RAG: manifest target missing — run
 install/migration` in the Step 6 summary. This is the expected
-first-run state on a project that has not yet copied
-`supporting-docs/METHODOLOGY.md` into `docs/pack/`. Surface it to
+first-run state on a project that has not yet installed
+`docs/pack/METHODOLOGY.md`. Surface it to
 the developer so they run `init-project.sh` (new install) or the
 appropriate migrator (existing project).
 

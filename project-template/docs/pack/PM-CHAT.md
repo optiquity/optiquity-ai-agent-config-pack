@@ -527,10 +527,9 @@ state-changing operations need a yes.
 
 For the per-file customization-preservation behavior of
 `pack tracker init`'s forward migration, see
-`docs/pack/MERGE-STRATEGY.md`
 <!-- DENY-LIST-CONTENT-START -->
-(or `pack-ops/MERGE-STRATEGY.md`
-in the pack repo).
+`pack-ops/MERGE-STRATEGY.md`
+in the pack repo.
 <!-- DENY-LIST-CONTENT-END -->
 
 ---
@@ -927,4 +926,4 @@ classifier (Pattern X) treats as project-owned. Content between the
 markers is preserved verbatim across pack upgrades; content outside is
 pack-controlled. See `docs/pack/INSTALL-PROCEDURES.md` Procedure 5-C.3
 for the reconciliation workflow if a migration produces a
-`docs/pack/PM-CHAT.md.v9-customized` sidecar.
+`docs/pack/PM-CHAT.md.v10-customized` sidecar.

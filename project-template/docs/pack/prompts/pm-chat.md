@@ -32,7 +32,7 @@ I am starting a new Claude Chat session for **[PROJECT_NAME]**.
 **Project:** [2-3 sentence description of what the project is and does]
 **Platform:** [e.g., macOS 15+, Xcode 26.3, Swift 6 / Python 3.12+]
 **Current phase:** Phase [N] — [Phase title] ([not started / in progress])
-**Pack version:** AI Agent Config Pack v10
+**Pack version:** AI Agent Config Pack v11
 
 **Key architectural decisions already made:**
 - [Architecture pattern, e.g., MVVM with layered domain/data/presentation]
