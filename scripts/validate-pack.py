@@ -5264,7 +5264,13 @@ _CHECK_43_ALLOWLIST: dict[str, str] = {
     "report.md": "Generic agent report filename; no real file at HEAD (template / generated)",
     "PROMPT-TEMPLATES.md": "Legacy doc name; not in pack repo at HEAD (referenced for legacy continuity)",
     "FEATURES.md": "Generic feature-list basename; no real file at HEAD (template / placeholder)",
-    "V10-DESIGN.md": "Legacy v10-era design doc name; not in pack repo at HEAD",
+    # NOTE: `V10-DESIGN.md` was previously allowlisted as "not in pack repo
+    # at HEAD" — but it EXISTS at maintenance-docs/archive/V10-DESIGN.md, so
+    # the rationale was stale and the entry admitted a STRIP-classified leak
+    # (BD-195 K4.1, README:9 bare-prose). Removed per ci-guard-measure-then-
+    # bound (an allowlist entry must not admit a pack-only leak); the JC-2
+    # bare-prose axis now correctly fires on it. The C3a recipe strips the
+    # README:9 cite.
     "MIGRATION-v9-to-v10.md": "Legacy migration doc; sunset in v11 per BD-121 (no real file at HEAD)",
     "migrate-v9-to-v10.sh": "Legacy migration script; sunset in v11 per BD-121 (no real file at HEAD)",
     "migrate-vN-to-vM.sh": "Migrator framework filename pattern (placeholder per BD-119 architect doc)",
@@ -5272,6 +5278,15 @@ _CHECK_43_ALLOWLIST: dict[str, str] = {
     "user_repository.py": "Audit-methodology teaching example; illustrative code in skill docs (not a real file)",
     "order_repository.py": "Audit-methodology teaching example; illustrative code in skill docs (not a real file)",
     "inventory_repository.py": "Audit-methodology teaching example; illustrative code in skill docs (not a real file)",
+    # NOTE: proto self-imports are NOT allowlisted by basename. They are
+    # exempted by the DURABLE resolve-within-tree rule
+    # (`_check_43_proto_resolves_in_tree`, BD-195 C2 §2.2 Step-4): any
+    # `.proto` reference whose basename resolves to an existing file under
+    # `project-template/proto/` is legitimate project-side content
+    # (gRPC/protobuf is a supported language with dedicated skill(s)). A
+    # basename list would go stale as the proto tree grows or skills add
+    # example protos; the resolve-within-tree predicate survives that. The
+    # rule is bounded to in-tree imports only (`ci-guard-measure-then-bound`).
 }
 
 # Anchor-phrase reuse — Check 43 inherits Check 40's anchor-phrase set
@@ -5296,6 +5311,127 @@ _CHECK_43_PACK_INTERNAL_PREFIXES = ("maintenance-docs/", "pack-ops/")
 # pack-ops/ files that ARE client-installed (excluded from the pack-
 # internal-target FAIL because they resolve at client install time).
 _CHECK_43_PACK_OPS_CLIENT_INSTALLED = ("pack-ops/HELP-FRAGMENT-TRACKER.md",)
+
+# ── JC-2 broadening (BD-195 C2 §2.2) ──────────────────────────────────────
+# Four-axis broadening of the client-surface leak guard. See
+# `maintenance-docs/v11-implementation/PLAN-BD-195-REMEDIATION.md`
+# § "C2 — JC-2 client-surface leak-guard broadening" §2.2.
+#
+# (iii) Walk-extension broadening: Check 43's walk filter is the
+#       `_CHECK_40_FILE_EXTS` set. The JC-2 broadening adds the
+#       client-shipped config-example + proto extensions (`.example`
+#       double-extension files like `config.toml.example` /
+#       `.env.example`, and `.proto`) so the leak scanner inspects
+#       `.codex/config.toml.example`, `.mcp.json.example`,
+#       `.gemini/.env.example`, and the proto tree. Kept Check-43-local
+#       (NOT folded into `_CHECK_40_FILE_EXTS`) so Check 40's pack-ops/
+#       walk + the shared bare-ref regexes are unchanged.
+_CHECK_43_EXTRA_WALK_SUFFIXES = ("example", "proto")
+
+# (i) Bare-prose pack-doc-basename inventory: basenames whose EVERY
+#     repo location is under a pack-only top-level tree (`maintenance-docs/`
+#     or `pack-ops/`), minus the regenerated mirrors, the client-installed
+#     `HELP-FRAGMENT-TRACKER.md`, and any basename on `_CHECK_43_ALLOWLIST`
+#     (the curated client-resolvable set). Built from the tree (NOT a
+#     hand-typed list) per `ci-guard-measure-then-bound`. The "every
+#     location pack-only" bound is the over-fire guard: a basename that
+#     ALSO has a project-side / client-installed instance (e.g.
+#     `ARCHITECTURE.md`, `README.md`, `IMPLEMENTATION-PLAN.md`) is NOT a
+#     pack-only-doc and is excluded — only basenames that resolve
+#     EXCLUSIVELY into pack-only territory (e.g. `V10-DESIGN.md`,
+#     `V10-CODEX-MCP-RESEARCH.md`, `MERGE-STRATEGY.md`) are targets. A
+#     client surface that names one of these in NON-backtick prose (or
+#     inside a qualified `docs/pack/<basename>` path the bare-ref regex's
+#     `/`-exclusion misses) is a dead pointer.
+_CHECK_43_PACK_ONLY_DOC_TREES = ("maintenance-docs", "pack-ops")
+
+# (ii) commit-SHA-as-provenance: a `commit <7-40 hex>` provenance citation
+#      on a client surface points at pack-repo git history the client
+#      cannot resolve. Anchored to a `commit ` keyword to avoid matching
+#      arbitrary hex tokens.
+_CHECK_43_COMMIT_SHA_PATTERN = re.compile(r"\bcommit\s+[0-9a-f]{7,40}\b")
+
+# JC-2 proto-validity rule (BD-195 C2 §2.2 Step-4): the shipped proto tree
+# under this prefix. A proto reference whose basename resolves to an
+# existing file WITHIN this tree is legitimate project-side content.
+_CHECK_43_PROTO_TREE_PREFIX = "project-template/proto"
+
+
+def _check_43_proto_resolves_in_tree(basename: str) -> bool:
+    """Durable proto-validity rule (BD-195 C2 §2.2 Step-4).
+
+    Return True iff `basename` is a `.proto` filename that resolves to an
+    existing file WITHIN the shipped `project-template/proto/` tree. Such a
+    reference is a legitimate proto self-import (gRPC/protobuf is a
+    supported language with dedicated skill(s)) and is never a leak.
+
+    This REPLACES the prior two hardcoded allowlist basenames
+    (`common.proto`, `example_service.proto`) with a rule that survives the
+    proto tree growing or skills adding example protos. It is bounded
+    (`ci-guard-measure-then-bound`): it admits ONLY `.proto` basenames that
+    actually resolve inside the proto tree — never an external/non-resolving
+    proto path, never a pack-doc basename, never any other STRIP-class hit.
+    A `google/protobuf/*` well-known import does NOT resolve in-tree and is
+    therefore NOT admitted by this rule (it is an external import, out of
+    scope for the leak guard).
+
+    Defensive note: the current matcher tiers do not fire on proto imports
+    at all (`.proto` is absent from `_CHECK_40_FILE_EXTS`, so the bare-ref /
+    hyperlink regexes never produce a `.proto` basename), so this rule has
+    no effect on the present fire-set. It exists so that any FUTURE
+    matchable proto reference is correctly recognized as valid.
+    """
+    if not basename.endswith(".proto"):
+        return False
+    proto_root = REPO_ROOT / _CHECK_43_PROTO_TREE_PREFIX
+    if not proto_root.is_dir():
+        return False
+    for cand in proto_root.rglob(basename):
+        if cand.is_file():
+            return True
+    return False
+
+
+def _build_pack_only_doc_basenames() -> set[str]:
+    """Return the set of pack-only-doc basenames for the JC-2 bare-prose
+    axis (i), measured from the tree (`ci-guard-measure-then-bound`).
+
+    A basename is a target iff EVERY repo file with that basename lives
+    under a pack-only top-level tree (`_CHECK_43_PACK_ONLY_DOC_TREES`),
+    minus: the regenerated mirrors (`BACKLOG.md` / `CHANGELOG.md`), the
+    client-installed `HELP-FRAGMENT-TRACKER.md`, and any basename on
+    `_CHECK_43_ALLOWLIST` (the curated client-resolvable set). The
+    "every-location-pack-only" rule is the over-fire bound: basenames
+    with a project-side / client-installed instance (`ARCHITECTURE.md`,
+    `README.md`, `IMPLEMENTATION-PLAN.md`, …) are excluded; only
+    exclusively-pack-only docs (`V10-DESIGN.md`,
+    `V10-CODEX-MCP-RESEARCH.md`, `MERGE-STRATEGY.md`) remain. `.git/` is
+    skipped; the basename index's archive-exclusion does NOT apply here
+    (archive docs ARE pack-only and must be catchable)."""
+    mirror_skip = {"BACKLOG.md", "CHANGELOG.md", "HELP-FRAGMENT-TRACKER.md"}
+    # Map basename -> set of top-level dirs it appears under.
+    tops_by_basename: dict[str, set[str]] = {}
+    for path in REPO_ROOT.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            rel = path.relative_to(REPO_ROOT)
+        except ValueError:
+            continue
+        parts = rel.parts
+        if not parts or parts[0] == ".git":
+            continue
+        tops_by_basename.setdefault(path.name, set()).add(parts[0])
+    pack_only_trees = set(_CHECK_43_PACK_ONLY_DOC_TREES)
+    out: set[str] = set()
+    for basename, tops in tops_by_basename.items():
+        if basename in mirror_skip:
+            continue
+        if basename in _CHECK_43_ALLOWLIST:
+            continue
+        if tops and tops <= pack_only_trees:
+            out.add(basename)
+    return out
 
 
 def check_project_side_bare_internal_refs() -> None:
@@ -5340,6 +5476,10 @@ def check_project_side_bare_internal_refs() -> None:
     # (same pattern as Check 40 §5.3). Reuses Check 40's _build_basename_index.
     index = _build_basename_index()
 
+    # JC-2 axis (i): pack-only-doc basename set (built from the tree, not
+    # a hand-list) for the bare-prose detector. BD-195 C2 §2.2 Step-3 (b).
+    pack_only_doc_basenames = _build_pack_only_doc_basenames()
+
     # Build the set of supporting-docs/ filenames that ARE installed at
     # client per §1.6. Parse via Guardrail 3's helper.
     installed_supporting_docs: set[str] = set()
@@ -5366,11 +5506,16 @@ def check_project_side_bare_internal_refs() -> None:
 
     for rel_path in walked_files:
         # Apply extension filter per §1.2 (matches Check 40's
-        # _CHECK_40_FILE_EXTS). Skip files whose extension is not in
-        # the recognized set so we do not walk arbitrary binary
-        # content via the basename regex.
+        # _CHECK_40_FILE_EXTS) PLUS the JC-2 walk-extension broadening
+        # (BD-195 C2 §2.2 axis iii: `.example` double-extension config
+        # samples + `.proto`). Skip files whose extension is not in the
+        # recognized set so we do not walk arbitrary binary content via
+        # the basename regex.
         suffix = rel_path.suffix.lstrip(".")
-        if suffix not in _CHECK_40_FILE_EXTS.split("|"):
+        if (
+            suffix not in _CHECK_40_FILE_EXTS.split("|")
+            and suffix not in _CHECK_43_EXTRA_WALK_SUFFIXES
+        ):
             continue
         # Mirror-skip exclusions per §1.9.
         if rel_path.name in _CHECK_43_MIRROR_SKIP_BASENAMES:
@@ -5422,25 +5567,102 @@ def check_project_side_bare_internal_refs() -> None:
                 line,
             ):
                 fname = m.group(1)
-                # If the file is NOT client-installed, this is a
-                # pre-install-only leak class (LEAK CLASS C).
-                if fname not in installed_supporting_docs:
-                    # Apply anchor-phrase exemption per §1.5.
-                    if _check_43_context_has_anchor(stripped_lines, lineno):
-                        hits_anchor += 1
-                        continue
+                # JC-2 prefix tightening (BD-195 C2 §2.2 axis d): a
+                # qualified `supporting-docs/<X>` path on a client surface
+                # is a dead PATH regardless of whether <X> ships elsewhere
+                # — there is no `supporting-docs/` directory at a client
+                # install. Even an installed-elsewhere basename (e.g.
+                # METHODOLOGY.md, which ships to docs/pack/) must be cited
+                # by its client-resolvable `docs/pack/<X>` path, not the
+                # pre-install `supporting-docs/` path. (Previously this
+                # FAILed only when <X> was NOT in the installed set.)
+                # Anchor-phrase exemption per §1.5 preserves intentional
+                # pack-as-product cites; fenced lines are already skipped
+                # above (disjoint from the client-surface prefix-hit set).
+                if _check_43_context_has_anchor(stripped_lines, lineno):
+                    hits_anchor += 1
+                    continue
+                installed_note = (
+                    " (basename ships to a client-resolvable path; cite "
+                    "that path, e.g. docs/pack/" + fname + ")"
+                    if fname in installed_supporting_docs
+                    else " (pre-install reference; not shipped to clients "
+                    "via _CLIENT_INSTALLED_FILES inventory)"
+                )
+                fail(
+                    f"{rel_path}:{lineno} — qualified reference "
+                    f"`supporting-docs/{fname}` names the pre-install "
+                    f"`supporting-docs/` directory, absent at a client "
+                    f"install{installed_note}. Remediation: cite the "
+                    f"client-resolvable `docs/pack/<X>` path OR drop the "
+                    f"cite OR — if intentional pack-as-product cite — add "
+                    f"an anchor phrase like \"in the pack repo\" within "
+                    f"±2 lines."
+                )
+                any_failed = True
+
+            # JC-2 axis (ii) — commit-SHA-as-provenance (BD-195 C2 §2.2).
+            # A `commit <hex>` provenance citation on a client surface
+            # points at pack-repo git history the client cannot resolve.
+            if _CHECK_43_COMMIT_SHA_PATTERN.search(line):
+                if not _check_43_context_has_anchor(stripped_lines, lineno):
                     fail(
-                        f"{rel_path}:{lineno} — qualified reference "
-                        f"`supporting-docs/{fname}` (pre-install reference; "
-                        f"not shipped to clients via "
-                        f"_CLIENT_INSTALLED_FILES inventory). Remediation: "
-                        f"drop the cite OR replace with a project-side SSOT "
-                        f"(e.g., docs/pack/PM-CHAT.md for orchestration rules) "
-                        f"OR — if intentional pack-as-product cite — add an "
+                        f"{rel_path}:{lineno} — commit-SHA provenance "
+                        f"citation (`commit <sha>`) names pack-repo git "
+                        f"history not resolvable at a client install. "
+                        f"Remediation: drop the commit-SHA provenance OR "
+                        f"— if intentional pack-as-product cite — add an "
                         f"anchor phrase like \"in the pack repo\" within "
                         f"±2 lines."
                     )
                     any_failed = True
+                else:
+                    hits_anchor += 1
+
+            # JC-2 axis (i) — bare-prose pack-doc-basename (BD-195 C2 §2.2).
+            # A pack-only-doc basename named on a client surface in
+            # NON-backtick prose (or inside a qualified `docs/pack/<X>`
+            # path the bare-ref regex's `/`-exclusion misses) is a dead
+            # pointer — the doc never ships to a client. The basename set
+            # is built from the pack-only doc tree (NOT a hand-list) per
+            # ci-guard-measure-then-bound. Match on word boundaries so a
+            # basename inside a qualified path is caught; skip backtick-
+            # isolated bare refs (those are handled by the bare-ref tier
+            # below) to avoid double-flagging. Anchor-phrase exemption
+            # preserves intentional pack-as-product cites.
+            for doc_basename in pack_only_doc_basenames:
+                bp_pat = r"(?<![A-Za-z0-9_.-])" + _re_local.escape(
+                    doc_basename
+                ) + r"(?![A-Za-z0-9_.-])"
+                m = _re_local.search(bp_pat, line)
+                if not m:
+                    continue
+                # Skip the backtick-isolated bare-ref form `X.md` — that is
+                # the existing bare-ref tier's surface (handled below); the
+                # bare-PROSE axis targets the non-backtick / qualified-path
+                # form the bare-ref regex misses.
+                start = m.start()
+                end = m.end()
+                if (
+                    start > 0
+                    and line[start - 1] == "`"
+                    and end < len(line)
+                    and line[end] == "`"
+                ):
+                    continue
+                if _check_43_context_has_anchor(stripped_lines, lineno):
+                    hits_anchor += 1
+                    continue
+                fail(
+                    f"{rel_path}:{lineno} — bare-prose reference to "
+                    f"pack-only doc `{doc_basename}` (lives under "
+                    f"maintenance-docs/ or pack-ops/; never shipped to a "
+                    f"client). Remediation: drop the cite OR replace with "
+                    f"a project-side SSOT (e.g., docs/pack/PM-CHAT.md) OR "
+                    f"— if intentional pack-as-product cite — add an anchor "
+                    f"phrase like \"in the pack repo\" within ±2 lines."
+                )
+                any_failed = True
 
             # Qualified pack-ops/<X> and maintenance-docs/<X> detection
             # (LEAK CLASS D in scripts/lib/detect.sh comments / LEAK
@@ -5492,6 +5714,16 @@ def check_project_side_bare_internal_refs() -> None:
             for basename in matches:
                 # Tier 1: hardcoded allowlist (basename-keyed per §1.4).
                 if basename in _CHECK_43_ALLOWLIST:
+                    hits_allowlist += 1
+                    continue
+                # Tier 1b: durable proto-validity rule (BD-195 C2 §2.2
+                # Step-4). A `.proto` basename that resolves WITHIN
+                # `project-template/proto/` is a legitimate proto
+                # self-import — never a leak. Bounded to resolve-in-tree
+                # imports only (`ci-guard-measure-then-bound`); replaces the
+                # prior two hardcoded proto basenames so the rule survives
+                # the proto tree growing.
+                if _check_43_proto_resolves_in_tree(basename):
                     hits_allowlist += 1
                     continue
                 # Tier 2: anchor-phrase exemption (±2-line window per §1.5).

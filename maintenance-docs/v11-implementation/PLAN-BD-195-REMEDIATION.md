@@ -73,11 +73,16 @@ confirmed EEB-G).
 
 ---
 
-## 2 — Finding ledger (all 67 + the new leak)
+## 2 — Finding ledger (all 67 + 4 new leaks)
 
 Every confirmed finding maps to exactly one commit OR is non-actionable.
-Sum of actionable (63) + non-actionable (4) = **67**. The new
-`.mcp.json.example` leak (not among the 67) lands in C3.
+Sum of actionable (63) + non-actionable (4) = **67**. Four NEW leaks (not
+among the 67) are also scheduled: the `.mcp.json.example:9` leak (→ C3a),
+plus three surfaced by C2's broadened guard during review (reviewer-confirmed
+GENUINE) — NL-1 (`INSTALL-PROCEDURES.md:655` dead `V10-DESIGN.md` cite → C4)
+and NL-2/NL-3 (`scripts/lib/detect.sh:351`/`:360` `AUDIT-BD-035.md` + `BD-035`
+pack-internal citation in client-shipped script comments → new C3c). The 3
+new leaks are folded into PG-2 per user direction (2026-06-02).
 
 | Finding | Commit | Disposition / recipe pointer |
 |---|---|---|
@@ -149,10 +154,16 @@ Sum of actionable (63) + non-actionable (4) = **67**. The new
 | B.16 | C8 | C8 recipe + NUD-4 (correct row → pack-ops/) — PM-only |
 | B.17 | C8 | C8 recipe + NUD-9 Option B (reconcile vs PLATFORM-SKILLS.md) — PM-only |
 | (new leak) `.mcp.json.example:9` | C3 | C2 §2.2 guard + C3a recipe (STRIP / re-point CLI-PM-SETUP cite) |
+| NL-1 (new leak) `supporting-docs/INSTALL-PROCEDURES.md:655` | C4 | C2 §2.2 guard surfaced; dead `V10-DESIGN.md` cite → C4 recipe (drop or re-point to a client-resolvable form) |
+| NL-2 (new leak) `scripts/lib/detect.sh:351` | **C3c** | C2 §2.2 guard surfaced; `AUDIT-BD-035.md` + `BD-035` pack-self ref in client-shipped script comment → C3c recipe (reword to remove both) |
+| NL-3 (new leak) `scripts/lib/detect.sh:360` | **C3c** | C2 §2.2 guard surfaced; `AUDIT-BD-035.md` + `BD-035` pack-self ref in client-shipped script comment → C3c recipe (reword to remove both) |
 
-**Per-commit finding counts (actionable):** C1 = 11 · C3 = 18 (+1 new leak) ·
-C4 = 7 · C5 = 7 · C6 = 2 (guard-covered, no content edit) · C7 = 3 · C8 = 7 ·
-C9 = 8 = **63 actionable**. Non-actionable = 4 (K1.11–K1.14). **63 + 4 = 67.**
+**Per-commit finding counts (actionable):** C1 = 11 · C3 = 18 (+1 new leak,
+`.mcp.json.example`) · C3c = 0 of the 67 (+2 new leaks NL-2/NL-3) · C4 = 7
+(+1 new leak NL-1) · C5 = 7 · C6 = 2 (guard-covered, no content edit) ·
+C7 = 3 · C8 = 7 · C9 = 8 = **63 actionable** (of the 67). Non-actionable = 4
+(K1.11–K1.14). **63 + 4 = 67.** Separately, **4 new leaks** (not among the 67)
+are scheduled: `.mcp.json.example` (C3a), NL-1 (C4), NL-2/NL-3 (C3c).
 
 ---
 
@@ -164,9 +175,10 @@ C9 = 8 = **63 actionable**. Non-actionable = 4 (K1.11–K1.14). **63 + 4 = 67.**
 C1 (JC-1 grammar strip + error-guard)        independent — lands FIRST
         (C1b DROPPED per NUD-1)
 
-C2 (JC-2 guard broadening)  ──┐
-                              ├─► C3 (client-surface STRIP fixes)
-                              └─► C4 (supporting-docs currency)
+C2 (JC-2 guard broadening)  ──┬─► C3a/C3b (client-surface STRIP fixes)
+                              ├─► C3c (detect.sh AUDIT-BD-035/BD-035 reword,
+                              │        NL-2/NL-3 — pack-only)
+                              └─► C4 (supporting-docs currency, incl. NL-1)
 
 C5 (pack-internal dangling-doc + QUICKSTART)  independent
 C6 (JC-5 soft-advisory guard)                 independent
@@ -181,34 +193,41 @@ C9 (NUD-2/5/8 cleanup)                        depends on C2 (its fixes are
 1. **C1 first.** It changes shipped library grammar + tests and is the
    BD-185-restart hard prerequisite. No other commit depends on it, but it is
    the agreed lead.
-2. **C2 before C3, C4, C9.** The broadened Check 43/37 guard (C2) must exist
-   so the client-surface STRIP fixes (C3/C4/C9) can be verified clean
-   against the broadened walk. Measure-then-bound: C2's allowlist (the two
-   proto self-imports — §2.2 / EEB-H) is sized against the projected
-   post-C3/C4/C9 tree.
+2. **C2 before C3a/C3b/C3c, C4, C9.** The broadened Check 43/37 guard (C2)
+   must exist so the client-surface STRIP fixes (C3/C4/C9 + the 3 new leaks
+   C3c/C4 surfaced by the broadened guard) can be verified clean against the
+   broadened walk. Measure-then-bound: C2's KEEP set (the durable proto
+   resolve-within-tree rule — §2.2 / EEB-H) is sized against the projected
+   post-C3/C3c/C4/C9 tree.
 3. C5, C6 are independent of all of the above and of each other.
 4. C7, C8 are PM-only and independent (no validator dependency for content;
    C8 must still pass any README-asserting check post-edit).
 
 ### 3.2 — Red-CI window (CI-must-pass-on-every-push) — RESOLUTION
 
-Landing C2 (the broadened guard) as a standalone green commit BEFORE C3/C4/C9
-leaves CI RED in the interval: the broadened guard FIRES on the still-unfixed
-client-surface STRIP set (K4.2, the `.mcp.json.example:9` leak, the pm-startup
-`supporting-docs/` family, etc.). The pack rule "CI must pass on every push"
-forbids pushing C2 alone.
+Landing C2 (the broadened guard) as a standalone green commit BEFORE
+C3a/C3b/C3c/C4/C9 leaves CI RED in the interval: the broadened guard FIRES on
+the still-unfixed client-surface STRIP set — **13 RED-by-design fires**
+measured at HEAD (K4.2 ×2, the `.mcp.json.example:9` leak, the pm-startup
+`supporting-docs/` family ×4, K4.1 `README.md:9`, K4.4 `PM-CHAT.md:530`, B.2
+`boundary-investigation/SKILL.md:76`, plus the 3 NEW leaks NL-1
+`INSTALL-PROCEDURES.md:655` + NL-2/NL-3 `detect.sh:351`/`:360`). The pack rule
+"CI must pass on every push" forbids pushing C2 alone.
 
 **The fix:** couple the guard with the client-surface fixes at the push
 boundary and keep the rest sequential.
 
-- **Collapse C2 + C3 (+ the supporting-docs slice that C2's guard
-  fires on) into one ATOMIC push boundary.** Concretely: C2, C3a, C3b, and C4
-  are authored as separate *commits* (each a self-contained review/fix unit)
-  but are **pushed together in one push** so no intermediate push leaves the
-  broadened guard firing on an unfixed STRIP target. C9's project-surface
-  fixes are likewise included in that push group (C9 fixes are caught by the
-  C2 guard too — K2.2 bootstrap is on a `.sh` already walked, but B.5–B.10
-  and PACK-FEEDBACK are walked client surfaces).
+- **Collapse C2 + C3a/C3b/C3c + C4 (+ the supporting-docs slice that C2's
+  guard fires on) into one ATOMIC push boundary.** Concretely: C2, C3a, C3b,
+  C3c, and C4 are authored as separate *commits* (each a self-contained
+  review/fix unit) but are **pushed together in one push** so no intermediate
+  push leaves the broadened guard firing on an unfixed STRIP target. C3c
+  (`detect.sh` AUDIT-BD-035/BD-035 reword, NL-2/NL-3) and the C4 NL-1 fix
+  (`INSTALL-PROCEDURES.md:655`) are part of the same 13-fire set the guard
+  surfaces, so they belong in this push group. C9's project-surface fixes are
+  likewise included (C9 fixes are caught by the C2 guard too — K2.2 bootstrap
+  is on a `.sh` already walked, but B.5–B.10 and PACK-FEEDBACK are walked
+  client surfaces).
 
   > Rationale for separate commits inside one push: each commit keeps its own
   > bounded review/fix cycle + IMPL-REPORT (auditability), while the push
@@ -220,7 +239,7 @@ boundary and keep the rest sequential.
 | Push group | Commits | Why grouped |
 |---|---|---|
 | PG-1 | C1 | independent; green on its own (tracker libs not walked by Check 43 for the broadened ext-set until C2) |
-| PG-2 | C2 → C3a → C3b → C4 → C9 | guard + every client-surface STRIP it fires on land in ONE push; no intermediate push is red |
+| PG-2 | C2 → C3a → C3b → C3c → C4 → C9 | guard + every client-surface STRIP it fires on (the 13-fire set, incl. the 3 new leaks NL-1/NL-2/NL-3) land in ONE push; no intermediate push is red |
 | PG-3 | C5 | independent; green on its own |
 | PG-4 | C6 | independent; soft-advisory is non-fatal (exit 0) by design |
 | PG-5 | C7 | PM-only; independent |
@@ -411,7 +430,7 @@ decision · **(f)** verification commands · **(g)** executor + gate.
   | (iii) ext-scan | `.codex/config.toml.example`, `.mcp.json.example`, `.gemini/.env.example`, `proto/example/v1/example_service.proto`, `proto/common/v1/common.proto` | NOT walked (`example`/`proto` not in `_CHECK_40_FILE_EXTS`) | walk-set add |
   | (iii)+(i)+(ii) | `.codex/config.toml.example:13` — `V10-CODEX-MCP-RESEARCH.md (commit 73d480e)` | bypasses (unwalked + bare-prose + SHA) | **STRIP** (K4.2) |
   | (iii)+(i) | `.mcp.json.example:9` — `supporting-docs/CLI-PM-SETUP.md` | bypasses (unwalked); CLI-PM-SETUP NOT client-installed (only METHODOLOGY + INSTALL-PROCEDURES are) | **STRIP — NEW LEAK not in the 67** |
-  | (iii) | proto self-imports — `example/v1/example_service.proto:7` `import "common/v1/common.proto";` + `common/v1/common.proto:5` self-ref (`grep -rn` over `project-template/proto/` — full output EEB-H) | would newly match the basename regex if `.proto` is walked | **KEEP** (resolve WITHIN the shipped `proto/` tree → legitimate self-import; the sole genuine JC-2 allowlist) |
+  | (iii) | proto self-imports — `example/v1/example_service.proto:7` `import "common/v1/common.proto";` + `common/v1/common.proto:5` self-ref (`grep -rn` over `project-template/proto/` — full output EEB-H) | NOT matched by any current matcher tier — `.proto` is absent from the bare-ref `_CHECK_40_FILE_EXTS` set, so the bare-ref / hyperlink regexes never produce a `.proto` basename (zero `.proto` fires); recognized as VALID via the durable resolve-within-tree rule | **KEEP** (legitimate project-side content — gRPC/protobuf is a supported language with dedicated skill(s); a proto import resolving WITHIN the shipped `project-template/proto/` tree is recognized as VALID by a durable resolve-within-tree rule, NOT a basename allowlist) |
   | (i)+(iv) | `README.md:9` — bare-prose `V10-DESIGN.md` | bypasses (no backticks) | **STRIP** (K4.1 / JC-3) |
   | (i) | `OPTIONAL-FEATURES.md:174` — bare `MERGE-STRATEGY.md` "in the pack repo" | anchor-EXEMPT | KEEP-or-qualify (K4.5) |
   | (i) | `PM-CHAT.md:530` — `docs/pack/MERGE-STRATEGY.md` primary | passes (resolves syntactically) but dead at client | **STRIP** (K4.4) |
@@ -421,14 +440,16 @@ decision · **(f)** verification commands · **(g)** executor + gate.
   **Step 2 — Categorize.** STRIP = K4.2 (research-doc + SHA), the NEW
   `.mcp.json.example:9` CLI-PM-SETUP leak, K4.1 bare-prose V10-DESIGN.md, K4.4
   dead primary MERGE-STRATEGY path, the pm-startup
-  `supporting-docs/METHODOLOGY.md` family (K2.1/K4.3). KEEP (the ALLOWLIST set,
-  re-measured) = the two proto self-imports ONLY
+  `supporting-docs/METHODOLOGY.md` family (K2.1/K4.3). KEEP (the proto-validity
+  set, re-measured) = the proto self-imports
   (`example/v1/example_service.proto` → `common/v1/common.proto`, and
   `common/v1/common.proto`'s self-ref) — they resolve within the shipped
-  `proto/` tree. The `project-template/README.md:13/38/44` `supporting-docs/`
-  refs are NOT an allowlist KEEP: they are STRIP-or-rework lines folded into
-  the C3a JC-3 README rework (the same v10 client README B.1/K4.1/K5.1 touch),
-  so they leave the allowlist sized to the proto pair alone. Separately, the
+  `proto/` tree. These are recognized as VALID by the durable
+  resolve-within-tree rule (Step-4), NOT a basename allowlist. The
+  `project-template/README.md:13/38/44` `supporting-docs/` refs are NOT a KEEP:
+  they are STRIP-or-rework lines folded into the C3a JC-3 README rework (the
+  same v10 client README B.1/K4.1/K5.1 touch), so the KEEP set stays sized to
+  the in-tree proto imports alone. Separately, the
   correctly-anchored "in the pack repo" pack-as-product pointers (K4.5 + the 6
   anchored hits) stay exempt via the EXISTING anchor mechanism — no allowlist
   growth.
@@ -466,17 +487,31 @@ decision · **(f)** verification commands · **(g)** executor + gate.
   `supporting-docs/` CLASS-C test to FAIL on the directory prefix regardless
   of installed-basename status.
 
-  **Step 4 — Size the allowlist EXACTLY to KEEP.** The KEEP set re-measured at
-  HEAD (`grep -rn` over `project-template/proto/` + the `supporting-docs/`
-  walk in EEB-H) is the **two proto self-imports ONLY**. New allowlist entries
-  (and ONLY these):
-    - proto self-imports: `common/v1/common.proto`,
-      `example/v1/example_service.proto` (and the bare `common.proto` /
-      `example_service.proto` basenames) — these resolve WITHIN the shipped
-      `proto/` tree, so they are legitimate. (The `google/protobuf/*` /
-      `google/rpc/*` imports are external well-known protos, not
-      pack-doc-basename matches — out of scope for this guard.)
-    The allowlist gets NO other new entries. Specifically:
+  **Step 4 — Size the KEEP set EXACTLY (durable proto-validity rule).** The
+  KEEP set re-measured at HEAD (`grep -rn` over `project-template/proto/` +
+  the `supporting-docs/` walk in EEB-H) is the **proto self-imports**.
+  Recognized as VALID via a **durable resolve-within-tree rule**, NOT two
+  hardcoded basenames:
+    - **Rule (the proto-validity KEEP):** any proto `import` whose target
+      resolves to an existing file WITHIN the shipped `project-template/proto/`
+      tree is VALID (never flagged). This is implemented as a
+      resolve-within-tree predicate (`_check_43_proto_resolves_in_tree` in
+      `scripts/validate-pack.py` — a `.proto` basename that resolves to a file
+      under `project-template/proto/`), NOT as a basename allowlist. The rule
+      survives the proto tree growing or gRPC/protobuf skills adding example
+      protos, so it does not go stale the way the two prior hardcoded entries
+      (`common.proto`, `example_service.proto`) would have. (The
+      `google/protobuf/*` / `google/rpc/*` imports are external well-known
+      protos that do NOT resolve in-tree → NOT admitted by the rule; out of
+      scope for this guard.)
+    - **Defensive + bounded (`ci-guard-measure-then-bound`):** the rule is
+      DEFENSIVE — the current matcher does NOT fire on proto imports at all
+      (`.proto` is absent from `_CHECK_40_FILE_EXTS`; zero `.proto` fires), so
+      the rule has no effect on the present fire-set. It exists so any FUTURE
+      matchable proto reference is correctly recognized as valid. It is BOUNDED
+      to resolve-within-tree imports ONLY: it admits NO external/non-resolving
+      proto path, NO pack-doc basename, and NO other STRIP-class hit.
+    The KEEP set gets NO other new entries. Specifically:
     - `project-template/README.md:13/38/44` are NOT added to the allowlist —
       they are STRIP-or-rework lines resolved by the C3a JC-3 README rework;
       if the rework leaves any `supporting-docs/` ref, it must be re-pointed to
@@ -508,7 +543,9 @@ decision · **(f)** verification commands · **(g)** executor + gate.
   supporting-docs source files (validate-pack.py:4236-4237) — assert the fence
   set and the client-surface prefix-hit set are disjoint. Add/extend
   `scripts/tests/test-validate-pack-check-43.sh` with: a `.example` file
-  carrying a pack-only basename FAILs; a proto self-import PASSES (allowlist);
+  carrying a pack-only basename FAILs; the durable proto-validity rule tested
+  in BOTH directions (an in-tree proto basename is VALID; a non-resolving /
+  external proto basename — and a pack-doc basename — is NOT admitted);
   a commit-SHA provenance FAILs; a `supporting-docs/<installed-basename>` cite
   on a client surface FAILs (prefix rule); a fenced supporting-docs source
   file does NOT trip the prefix rule (disjointness). Confirm no regression on
@@ -517,8 +554,9 @@ decision · **(f)** verification commands · **(g)** executor + gate.
 - **(e) Manifest:** RUN build. Expected EMPTY (`validate-pack.py` not staged
   into fixtures — EEB-F). Stage only if non-empty.
 - **(f) Verify:** `bash scripts/tests/test-validate-pack-check-43.sh` with the
-  new cases (a `.example` carrying a pack-only basename FAILs; a proto
-  self-import PASSEs via allowlist; a commit-SHA provenance FAILs; a
+  new cases (a `.example` carrying a pack-only basename FAILs; the durable
+  proto-validity rule passes BOTH directions — in-tree proto basename VALID,
+  external/pack-doc basename NOT admitted; a commit-SHA provenance FAILs; a
   `supporting-docs/<installed-basename>` cite on a client surface FAILs; a
   fenced supporting-docs source file does NOT trip the prefix rule) &&
   `python3 scripts/validate-pack.py`.
@@ -529,8 +567,10 @@ decision · **(f)** verification commands · **(g)** executor + gate.
   > and PASSES standalone; the full-repo `validate-pack.py` green-state is
   > only asserted at the END of PG-2 (after the last STRIP fix lands).
 - **(g) Executor + gate:** fresh `pack-coder`. `ci-guard-measure-then-bound`:
-  allowlist sized to the measured KEEP set (proto pair) only — never widened
-  to admit a STRIP or unclassified hit. Bounded review/fix.
+  the proto KEEP is recognized by the durable resolve-within-tree rule
+  (bounded to in-tree proto imports ONLY — never an external/non-resolving
+  proto path, a pack-doc basename, or any other STRIP/unclassified hit), not a
+  basename allowlist. Bounded review/fix.
 
 ### C3 — Client-surface leak + currency fixes (split C3a project-template / C3b xcode)
 
@@ -684,14 +724,68 @@ it. Two commits:
 - **(f) Verify:** `python3 scripts/validate-pack.py` (full PASS).
 - **(g) Executor + gate:** fresh `pack-coder`. Bounded review/fix.
 
+**C3c — `scripts/lib/detect.sh` pack-self comment reword (NL-2/NL-3, `pack-only`)**
+
+New PG-2 commit added 2026-06-02 (user direction): C2's broadened guard
+surfaced two GENUINE new leaks in a client-shipped script's comments — a
+pack-self reference (`AUDIT-BD-035.md` doc + the `BD-035` token) on a
+client-shipped surface. Per `bd-pack-only-operational-rule` (no pack-self
+refs in client-shipped content), these are reworded. Kept a SEPARATE commit
+(not folded into C3a) because `scripts/lib/detect.sh` is NOT under
+`project-template/`, so the C3a `project-only` keyword cannot cover it; this
+commit is `pack-only` (scripts/ only).
+
+- **(a) Files:** `scripts/lib/detect.sh` (ONLY).
+- **(b) Findings:** NL-2 (`detect.sh:351`), NL-3 (`detect.sh:360`) — 2 new
+  leaks (not among the 67).
+- **(c) Recipe — per-finding fix recipes (inline, verbatim):**
+  - **NL-2** (`scripts/lib/detect.sh:351`): the comment reads
+    `(BD-035 audit finding F5 fix — see AUDIT-BD-035.md §3.)`. Reword to
+    remove BOTH the `AUDIT-BD-035.md` reference AND the `BD-035` token
+    (pack-self ref on a client-shipped surface — `bd-pack-only-operational-
+    rule`), preserving the what-it-fixes intent in client-appropriate terms
+    (e.g., state the heuristic rationale without the pack-internal audit
+    citation).
+  - **NL-3** (`scripts/lib/detect.sh:360`): the comment reads
+    `(BD-035 audit finding F1 fix — see AUDIT-BD-035.md §3.)`. Same recipe:
+    remove the `AUDIT-BD-035.md` reference AND the `BD-035` token; preserve
+    the what-it-fixes intent in client-appropriate terms.
+  > Pack-self-ref boundary (`bd-pack-only-operational-rule`): `detect.sh`
+  > ships to clients (init-project.sh stages `scripts/lib/detect.sh` — EEB-F);
+  > a `BD-035` token + `AUDIT-BD-035.md` doc cite are pack-internal and dead
+  > at a client. The reword keeps the heuristic's design rationale (the
+  > what-it-fixes intent) without naming pack-internal artifacts.
+- **(d) Keyword:** `pack-only`. Valid: the only touched path is
+  `scripts/lib/detect.sh` — under `scripts/`, NOT under `project-template/`
+  or `supporting-docs/` (Check 36 pack-only deny-set, EEB-E). `pack-only`
+  permits this edit.
+- **(e) Manifest:** `scripts/` IS a named v11 surface AND `detect.sh` IS
+  staged into fixtures (init-project.sh `cp -f .../scripts/lib/detect.sh`,
+  EEB-F) — so the regen rule fires AND the diff MAY be non-empty if the
+  reworded comment changes the staged file's content. RUN
+  `bash test-fixtures/build.sh --all --clean`; stage `test-fixtures/manifest.txt`
+  in this commit IFF the diff is non-empty (run-then-check; do not skip on a
+  prediction).
+- **(f) Verify:** `python3 scripts/validate-pack.py` (C2 broadened guard
+  present; the two `detect.sh` bare-prose `AUDIT-BD-035.md` fires must be
+  GONE — Check 43 clean on `detect.sh`). Confirm no `BD-035` / `AUDIT-BD-035.md`
+  token remains in `detect.sh` (`grep -n 'BD-035\|AUDIT-BD-035' scripts/lib/detect.sh`
+  → no output).
+- **(g) Executor + gate:** fresh `pack-coder`. `bd-pack-only-operational-rule`:
+  surgical reword removing the pack-self ref while preserving the heuristic
+  rationale. `pack-repo-code-comment-deferrals`: no deferral introduced (the
+  reword is a clear fix). Bounded review/fix.
+
 ### C4 — supporting-docs currency (incl. K5.11 per NUD-6)
 
 - **(a) Files:** `supporting-docs/SETUP-EXISTING.md`,
   `supporting-docs/SETUP-NEW.md`, `supporting-docs/DEPENDENCIES.md`,
   `supporting-docs/SETUP_TEMPLATE.md`,
   `supporting-docs/AGENT_KICKOFF_TEMPLATE.md`,
-  `supporting-docs/METHODOLOGY.md`.
-- **(b) Findings:** K5.9, K5.10, K5.11, K5.12, K5.13, K5.14, K3.6 (7).
+  `supporting-docs/METHODOLOGY.md`,
+  `supporting-docs/INSTALL-PROCEDURES.md` (NL-1, added 2026-06-02).
+- **(b) Findings:** K5.9, K5.10, K5.11, K5.12, K5.13, K5.14, K3.6 (7) +
+  NL-1 (new leak, `INSTALL-PROCEDURES.md:655`).
 - **(c) Recipe — per-finding fix recipes (inline, verbatim):**
   - **K5.9** (`SETUP-EXISTING.md:3`): doc-identity header "v10.0". Fix: v11.0.
     (NOT the accurate `git checkout v10.0` / backup-path refs — only the
@@ -715,6 +809,15 @@ it. Two commits:
     `MIGRATION-v10-to-v11.md` + the `git checkout v10 -- ...` recovery framing
     used correctly by INSTALL-PROCEDURES.md; de-version the stale v9.3→v10
     routing to the v11 baseline.
+  - **NL-1** (`INSTALL-PROCEDURES.md:655`, new leak surfaced by C2's broadened
+    guard, reviewer-confirmed GENUINE): the line cites a dead `V10-DESIGN.md`
+    reference (`V10-DESIGN.md` is pack-only at `maintenance-docs/archive/`,
+    never client-installed; Check 43 reports it as a broken/dead bare ref at a
+    client surface). Fix: drop OR re-point the dead `V10-DESIGN.md` reference
+    to a client-resolvable form — the C4 coder picks the exact target from
+    resolving docs, consistent with the other C4 recipes (e.g., point at the
+    client-installed `docs/pack/METHODOLOGY.md` or drop the cite if the
+    surrounding prose still reads correctly without it).
 - **(d) Keyword:** `project-only`. Valid: `supporting-docs/` IS project-side
   per Check 36 (EEB-E: `_PROJECT_SIDE_PATH_PREFIXES` includes
   `supporting-docs/`). `project-only` denies everything outside the two
@@ -726,7 +829,9 @@ it. Two commits:
   IFF non-empty.
 - **(f) Verify:** `python3 scripts/validate-pack.py` (C2 broadened guard
   present; must PASS). Confirm K3.6 routes to the resolving
-  `MIGRATION-v10-to-v11.md` (EXISTS — EEB-B).
+  `MIGRATION-v10-to-v11.md` (EXISTS — EEB-B). Confirm NL-1: the
+  `INSTALL-PROCEDURES.md:655` `V10-DESIGN.md` Check-43 fire is GONE (the dead
+  cite dropped or re-pointed to a client-resolvable target).
 - **(g) Executor + gate:** fresh `pack-coder`. **NUD-6 ruled → NO C4b split;
   K5.11 (METHODOLOGY.md) lands inside C4.** Bounded review/fix.
 
@@ -1018,11 +1123,13 @@ resolution, not a recipe change.
 
 ### 5.3 — No deferrals
 
-All 63 actionable findings + the new `.mcp.json.example` leak land in v11.0
-commits in this plan (`deferral-is-scope-creep` /
-`no-deferral-without-user-direction`). The 4 NUD-1 findings are NOT deferred —
-they are reclassified NOT-A-DEFECT by user ruling (non-actionable, not
-postponed). No finding is pushed to v11.1+.
+All 63 actionable findings + all 4 new leaks (`.mcp.json.example` → C3a,
+NL-1 → C4, NL-2/NL-3 → C3c) land in v11.0 commits in this plan
+(`deferral-is-scope-creep` / `no-deferral-without-user-direction`). The 3 new
+leaks surfaced by C2's broadened guard during review (reviewer-confirmed
+GENUINE) are scheduled into PG-2 per user direction (2026-06-02), not deferred.
+The 4 NUD-1 findings are NOT deferred — they are reclassified NOT-A-DEFECT by
+user ruling (non-actionable, not postponed). No finding is pushed to v11.1+.
 
 ---
 
@@ -1140,15 +1247,22 @@ branch `v11-dev`, 2026-06-01.
   `docs/pack/METHODOLOGY.md` (the client-installed location).
 - Conclusion: SUPPORTED.
 
-**EEB-H — JC-2 allowlist KEEP set (the two proto self-imports).**
+**EEB-H — JC-2 proto-validity KEEP set (durable resolve-within-tree rule).**
 - Command: `ls project-template/proto/example/v1/example_service.proto
   project-template/proto/common/v1/common.proto`.
 - Output (verbatim): both files EXIST.
-- Interpretation: the C2 allowlist (C2 §2.2 Step-4) is sized EXACTLY to these
-  two proto self-imports (they resolve within the shipped `proto/` tree) and NO
-  other new entry; `project-template/README.md:13/38/44` `supporting-docs/`
-  refs are NOT allowlisted — they are resolved by the C3a README rework (see
-  C2 §2.2 Step-2 measure table + Step-4). `ci-guard-measure-then-bound`.
+- Interpretation: the C2 proto KEEP (C2 §2.2 Step-4) is recognized by a
+  DURABLE resolve-within-tree rule (`_check_43_proto_resolves_in_tree`): any
+  proto reference whose basename resolves to an existing file WITHIN
+  `project-template/proto/` is VALID. This REPLACES the two prior hardcoded
+  allowlist basenames so the rule survives the proto tree growing or skills
+  adding example protos. It is DEFENSIVE (the current matcher does not fire on
+  proto imports — `.proto` is absent from `_CHECK_40_FILE_EXTS`, so zero
+  `.proto` fires) and BOUNDED to in-tree imports only (never admits an
+  external/non-resolving proto path or a pack-doc basename).
+  `project-template/README.md:13/38/44` `supporting-docs/` refs are NOT
+  carved out by the proto rule — they are resolved by the C3a README rework
+  (see C2 §2.2 Step-2 measure table + Step-4). `ci-guard-measure-then-bound`.
 - Conclusion: SUPPORTED.
 
 ---
