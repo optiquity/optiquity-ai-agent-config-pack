@@ -1,6 +1,6 @@
 # DEPENDENCIES.md — Tool Dependencies
 
-This document lists all tools required or optionally used by the AI Agent Config Pack v10
+This document lists all tools required or optionally used by the AI Agent Config Pack v11
 unified template. Install required tools before running `bootstrap.sh` or `validate.sh`.
 
 ---

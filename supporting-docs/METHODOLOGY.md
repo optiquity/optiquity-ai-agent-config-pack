@@ -1,7 +1,7 @@
 # METHODOLOGY.md — AI-Assisted Project Development Methodology
 
-Version: 2.1 (v10.0, April 2026)
-Applies to: All projects using Claude Code CLI, Codex CLI, or Gemini CLI with AI Agent Config Pack v10
+Version: 2.1 (v11.0, May 2026)
+Applies to: All projects using Claude Code CLI, Codex CLI, or Gemini CLI with AI Agent Config Pack v11
 
 > **Applicability note:** This document is platform-agnostic and applies to all project
 > types (Apple, Python server, monorepo) and all three CLI tools (Claude Code, Codex,
@@ -1729,6 +1729,6 @@ reference.
 
 ---
 
-*Version 2.1 — AI Agent Config Pack v10.0, April 2026*
+*Version 2.1 — AI Agent Config Pack v11.0, May 2026*
 *Source: Claude-Assisted Project Methodology Guide v1 (pack-archived design source)*
 *Update this file when new standing decisions are made. Bump the version number.*

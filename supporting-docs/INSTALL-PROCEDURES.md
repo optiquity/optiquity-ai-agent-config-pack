@@ -651,9 +651,8 @@ listing each unresolved key.
       remove it manually). If not intentional, the merge default
       stands — no edit needed.
    b. **Type mismatch.** A key was a string in v9.3, a list in v10.
-      Read the v10 schema (in the pack template comment header or
-      in `V10-DESIGN.md`); decide the correct value shape. Edit the
-      live file.
+      Read the v10 schema (in the pack template comment header);
+      decide the correct value shape. Edit the live file.
    c. **Structural conflict.** A whole table (TOML) or object
       (JSON) has divergent shape. Open the sidecar, the live file,
       and the BASE (from `git -C $PACK show v9.3:<path>` per the

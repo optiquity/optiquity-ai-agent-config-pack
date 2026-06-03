@@ -1,6 +1,6 @@
 # Setup Guide — Existing Project
 
-This guide walks you through adding the AI Agent Config Pack v10.0 to
+This guide walks you through adding the AI Agent Config Pack v11.0 to
 an **existing project** that has source code and/or documentation but
 no prior AI agent configuration.
 
@@ -9,13 +9,14 @@ no prior AI agent configuration.
 - There is **no existing** `.claude/`, `.codex/`, `.gemini/` directory
   or `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` file at the project root.
   (If any AI config is present, `init-project.sh` stops with exit
-  code 20 and routes you to `MIGRATION-v9-to-v10.md` or asks you to
+  code 20 and routes you to `MIGRATION-v10-to-v11.md` or asks you to
   archive the other AI tooling first.)
 
 **If your project is fresh (no code yet):** see `SETUP-NEW.md`.
 
-**If your project is already on a prior pack version (v9.3):** see
-`MIGRATION-v9-to-v10.md`.
+**If your project is already on a prior pack version (v10):** see
+`MIGRATION-v10-to-v11.md`. (Older `MIGRATION-v9-to-v10.md` is
+historical, available via `git checkout v10 -- <path>`.)
 
 ---
 
@@ -79,7 +80,7 @@ carefully before typing `y`:
   `.gemini/agents/`, skills, `docs/pack/`, `scripts/` entries,
   context files).
 - **Planned operations — MERGE.** `.gitignore` entries that will
-  append under a `# --- AI Agent Config Pack additions (v10.0) ---`
+  append under a `# --- AI Agent Config Pack additions (v11.0) ---`
   header. Existing patterns are preserved.
 - **Planned operations — CONDITIONAL REMOVE.** Pack-shipped files
   that don't apply to your detected languages and will not be kept.

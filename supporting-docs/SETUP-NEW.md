@@ -1,7 +1,7 @@
 # Setup Guide — New Project
 
 This guide walks you through setting up a **new project** with the AI
-Agent Config Pack v10.0. It is self-contained — follow the steps in
+Agent Config Pack v11.0. It is self-contained — follow the steps in
 order.
 
 Use this guide when you are creating a fresh repo (no code yet, or
@@ -30,13 +30,13 @@ template).
   chat).
 - **Pack cloned locally.** Clone the `optiquity-ai-agent-config-pack`
   repo to a stable location and use that location wherever
-  `/path/to/pack` appears in this guide. Check out the v10 tag or track
-  v10-dev. Set `PACK` to its absolute path in your shell:
+  `/path/to/pack` appears in this guide. Check out the v11 tag or track
+  v11-dev. Set `PACK` to its absolute path in your shell:
 
   ```bash
   export PACK=/path/to/pack
   git -C "$PACK" fetch --tags
-  git -C "$PACK" checkout v10.0   # or v10 floating tag
+  git -C "$PACK" checkout v11.0   # or v11 floating tag
   ```
 
 ---

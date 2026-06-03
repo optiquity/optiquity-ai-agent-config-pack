@@ -15,7 +15,7 @@ Not every section applies to every project. Remove sections that don't apply.
 -->
 
 ---
-*Generated from: supporting-docs/SETUP_TEMPLATE.md — AI Agent Config Pack v10*
+*Generated from: supporting-docs/SETUP_TEMPLATE.md — AI Agent Config Pack v11*
 *Note to PM chat: Replace all [PLACEHOLDERS] and remove this header before saving.*
 ---
 
@@ -32,7 +32,7 @@ for [PROJECT_NAME] on a new machine.
 - Xcode [XCODE_VERSION] installed and launched at least once
 - Git configured: `git config --global user.name "Your Name"`
 - GitHub CLI (optional): `brew install gh`
-- AI Agent Config Pack v10 available locally
+- AI Agent Config Pack v11 available locally
 
 ---
 
@@ -72,7 +72,7 @@ cd [REPO_NAME]
 
 `init-project.sh` (Step 4 below) merges pack `.gitignore` entries with
 any existing project `.gitignore`, appending missing lines under a
-header comment `# --- AI Agent Config Pack additions (v10.0) ---`
+header comment `# --- AI Agent Config Pack additions (v11.0) ---`
 and deduplicating. Existing entries and their ordering are preserved.
 Verify the result after running the script:
 
