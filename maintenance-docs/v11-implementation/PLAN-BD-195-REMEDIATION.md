@@ -29,16 +29,21 @@ document alone — no other doc is required.
   non-actionable; plus the new `.mcp.json.example` leak. Sums to 67.
 - **§3** DEPENDENCY DAG + the red-CI window resolution (the safe push order).
 - **§4** PER-COMMIT SPEC — for each commit: files, finding IDs, the full
-  inline fix recipes (and guard design for C1/C2/C6), Check-36 keyword +
+  inline fix recipes (and guard design for C1/C2/C3d/C6), Check-36 keyword +
   validity, manifest-regen decision, verification commands, executor, gate.
+  C3c (full pack-self strip), C3d (sanctioned-exception freeze + Check 47), and
+  PM-step-DD (PM-only trinity rule) realize the BD-195 dual-use-shipped-lib
+  design (`ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md` §8) inline.
 - **§5** COVERAGE-GAP RESOLUTION (K3.7) + open risks.
 - **§6** Empirical-Evidence Blocks.
 - **§7** Rules-Applied Verification Block.
 
 **Self-contained convention:** this plan RESTATES every fix recipe and guard
 design inline. Each commit spec in §4 carries (c) the verbatim per-finding fix
-recipes for the findings it fixes, and — for C1/C2/C6 — the full guard design
-(measure → categorize → fix-recipe → allowlist → verify). The §2 ledger's
+recipes for the findings it fixes, and — for C1/C2/C3d/C6 — the full guard
+design (measure → categorize → fix-recipe → allowlist → verify). C3c restates
+the full pack-self strip set inline (the architect §C/§8 strip recipe); C3d
+restates the §8.2 six lock-step encoding surfaces inline. The §2 ledger's
 disposition column names the in-plan recipe location for each finding. A coder
 reads the recipe in §4 and executes it without opening any other document.
 
@@ -158,16 +163,22 @@ direction (2026-06-02).
 | B.17 | C8 | C8 recipe + NUD-9 Option B (reconcile vs PLATFORM-SKILLS.md) — PM-only |
 | (new leak) `.mcp.json.example:9` | C3 | C2 §2.2 guard + C3a recipe (STRIP / re-point CLI-PM-SETUP cite) |
 | NL-1 (new leak) `supporting-docs/INSTALL-PROCEDURES.md:655` | C4 | C2 §2.2 guard surfaced; dead `V10-DESIGN.md` cite → C4 recipe (drop or re-point to a client-resolvable form) |
-| NL-2 (new leak) `scripts/lib/detect.sh:351` | **C3c** | C2 §2.2 guard surfaced; `AUDIT-BD-035.md` + `BD-035` pack-self ref in client-shipped script comment → C3c recipe (reword to remove both) |
-| NL-3 (new leak) `scripts/lib/detect.sh:360` | **C3c** | C2 §2.2 guard surfaced; `AUDIT-BD-035.md` + `BD-035` pack-self ref in client-shipped script comment → C3c recipe (reword to remove both) |
+| NL-2 (new leak) `scripts/lib/detect.sh:351` | **C3c** | C2 guard fires (CONFIRMED at HEAD `bb9e807`, EEB-K); `AUDIT-BD-035.md` doc cite + `BD-035` token on a client-shipped script → C3c **FULL pack-self strip** of `detect.sh` + `pack-help.sh` (all `BD-NNN` + pack-doc cites; KEEP fenced functional `pack-ops/` routing) |
+| NL-3 (new leak) `scripts/lib/detect.sh:360` | **C3c** | same as NL-2 — both `detect.sh` `AUDIT-BD-035.md` fires cleared by the C3c full strip (architect §C/§8.0, user-approved 2026-06-02) |
 | NL-4 (new leak) `project-template/README.md` | **C3a** | C3a review surfaced; pack-repo-internal two-dir layout / `cp -r` / `init-project.sh`-distribution / skill-distribution prose on a Check-43-walked client surface → C3a recipe (NL-4 rework per the user-directive principle) |
 
 **Per-commit finding counts (actionable):** C1 = 11 · C3 = 18 (+1 new leak,
-`.mcp.json.example`) · C3c = 0 of the 67 (+2 new leaks NL-2/NL-3) · C4 = 7
-(+1 new leak NL-1) · C5 = 7 · C6 = 2 (guard-covered, no content edit) ·
-C7 = 3 · C8 = 7 · C9 = 8 = **63 actionable** (of the 67). Non-actionable = 4
-(K1.11–K1.14). **63 + 4 = 67.** Separately, **4 new leaks** (not among the 67)
-are scheduled: `.mcp.json.example` (C3a), NL-1 (C4), NL-2/NL-3 (C3c).
+`.mcp.json.example`) · C3c = 0 of the 67 (+2 new leaks NL-2/NL-3 + the full
+same-class strip set in `detect.sh`/`pack-help.sh`, architect §C.3 — not among
+the 67) · C3d = 0 of the 67 (guard design: frozen constant + walk-gate +
+Check 47 + tests) · C4 = 7 (+1 new leak NL-1) · C5 = 7 · C6 = 2 (guard-covered,
+no content edit) · C7 = 3 · C8 = 7 · C9 = 8 = **63 actionable** (of the 67).
+Non-actionable = 4 (K1.11–K1.14). **63 + 4 = 67.** Separately, **4 new leaks**
+(not among the 67) are scheduled: `.mcp.json.example` (C3a), NL-1 (C4),
+NL-2/NL-3 (C3c). C3c ALSO strips the broader same-class pack-self provenance the
+guard does not yet catch (architect §C.3, user-approved); C3d adds the
+sanctioned-exception freeze + Check 47; PM-step-DD adds the trinity rule
+(PM-only). No commit fires on any of the 67 for C3c/C3d (guard/strip work).
 
 ---
 
@@ -180,8 +191,12 @@ C1 (JC-1 grammar strip + error-guard)        independent — lands FIRST
         (C1b DROPPED per NUD-1)
 
 C2 (JC-2 guard broadening)  ──┬─► C3a/C3b (client-surface STRIP fixes)
-                              ├─► C3c (detect.sh AUDIT-BD-035/BD-035 reword,
-                              │        NL-2/NL-3 — pack-only)
+                              ├─► C3c (FULL pack-self strip of detect.sh +
+                              │        pack-help.sh — NL-2/NL-3 + same-class
+                              │        set; pack-only)
+                              │         └─► C3d (sanctioned-exception freeze +
+                              │              Check 47 guard; pack-only)
+                              │               └─► PM-step-DD (trinity rule; PM-only)
                               └─► C4 (supporting-docs currency, incl. NL-1)
 
 C5 (pack-internal dangling-doc + QUICKSTART)  independent
@@ -193,44 +208,78 @@ C9 (NUD-2/5/8 cleanup)                        depends on C2 (its fixes are
                                               guard verifies them clean)
 ```
 
+> **State of execution (re-measured at HEAD `bb9e807`, 2026-06-02).** C1
+> (`8555953`), C2 (`1d3c55a`), C3a (`551a1f4`), C3b (`bb9e807`) have ALREADY
+> LANDED (PG-1 pushed; PG-2's guard + project-template/xcode surface fixes
+> committed). The C2 broadened guard is LIVE and currently fires exactly
+> **3 RED-by-design** at HEAD: NL-1 (`INSTALL-PROCEDURES.md:655`),
+> NL-2 (`detect.sh:351`), NL-3 (`detect.sh:360`) — EEB-K. The REMAINING PG-2
+> work is: **C3c** (full strip — clears NL-2/NL-3 + the broader same-class
+> set), **C3d** (freeze + Check 47), **PM-step-DD** (trinity rule), **C4**
+> (clears NL-1), **C9** (project-surface cleanup). C3d depends on C3c (the
+> frozen-constant + walk-gate are designed against the post-strip clean files;
+> the re-contamination regression injects a `BD-` into the stripped file).
+> PM-step-DD follows C3d (it codifies the rule C3d enforces).
+
 **Hard ordering edges (load-bearing):**
 1. **C1 first.** It changes shipped library grammar + tests and is the
    BD-185-restart hard prerequisite. No other commit depends on it, but it is
    the agreed lead.
-2. **C2 before C3a/C3b/C3c, C4, C9.** The broadened Check 43/37 guard (C2)
-   must exist so the client-surface STRIP fixes (C3/C4/C9 + the 3 new leaks
-   C3c/C4 surfaced by the broadened guard) can be verified clean against the
-   broadened walk. Measure-then-bound: C2's KEEP set (the durable proto
-   resolve-within-tree rule — §2.2 / EEB-H) is sized against the projected
-   post-C3/C3c/C4/C9 tree.
+2. **C2 before C3a/C3b/C3c, C4, C9 (all LANDED for C1/C2/C3a/C3b).** The
+   broadened Check 43/37 guard (C2, landed `1d3c55a`) exists so the
+   client-surface STRIP fixes (C3/C4/C9 + the new leaks NL-1/NL-2/NL-3 surfaced
+   by the broadened guard) are verified clean against the broadened walk.
+   Measure-then-bound: C2's KEEP set (the durable proto resolve-within-tree
+   rule — §2.2 / EEB-H) is sized against the projected post-C3/C3c/C4/C9 tree.
+   **C3d after C3c, PM-step-DD after C3d:** C3d freezes the sanctioned exception
+   around the POST-STRIP-clean files and its re-contamination regression injects
+   a `BD-` into the stripped `detect.sh` (so C3c must land first); PM-step-DD's
+   trinity rule codifies the dependency-direction principle that Check 47
+   enforces (so it follows C3d). C3d touches only `scripts/validate-pack.py` +
+   its test (NOT the two shipped scripts) — no overlap with C3c's files.
 3. C5, C6 are independent of all of the above and of each other.
 4. C7, C8 are PM-only and independent (no validator dependency for content;
    C8 must still pass any README-asserting check post-edit).
 
 ### 3.2 — Red-CI window (CI-must-pass-on-every-push) — RESOLUTION
 
-Landing C2 (the broadened guard) as a standalone green commit BEFORE
-C3a/C3b/C3c/C4/C9 leaves CI RED in the interval: the broadened guard FIRES on
-the still-unfixed client-surface STRIP set — **13 RED-by-design fires**
-measured at HEAD (K4.2 ×2, the `.mcp.json.example:9` leak, the pm-startup
-`supporting-docs/` family ×4, K4.1 `README.md:9`, K4.4 `PM-CHAT.md:530`, B.2
-`boundary-investigation/SKILL.md:76`, plus the 3 NEW leaks NL-1
-`INSTALL-PROCEDURES.md:655` + NL-2/NL-3 `detect.sh:351`/`:360`). The pack rule
-"CI must pass on every push" forbids pushing C2 alone.
+Landing C2 (the broadened guard) as a standalone green commit BEFORE the
+client-surface STRIP fixes leaves CI RED in the interval: the broadened guard
+FIRES on the still-unfixed client-surface STRIP set. At the ORIGINAL planning
+HEAD that set was larger; **re-measured at HEAD `bb9e807` (2026-06-02) the live
+fire-set is exactly 3** (EEB-K): NL-1 `INSTALL-PROCEDURES.md:655` (dead
+`V10-DESIGN.md`), NL-2 `detect.sh:351` + NL-3 `detect.sh:360` (both
+`AUDIT-BD-035.md`). C3a (`551a1f4`) + C3b (`bb9e807`) already cleared the
+project-template/xcode portion of the original set. The pack rule "CI must pass
+on every push" forbids pushing C2 alone — but C1/C2/C3a/C3b are already
+committed (not yet a clean push: the 3 fires above remain), so PG-2 is closed
+out by landing C3c (clears NL-2/NL-3) + C3d + PM-step-DD + C4 (clears NL-1) + C9
+before the PG-2 push.
+
+> **Post-C3c-strip fire-set (verified-by-projection, EEB-K).** C3c strips both
+> `detect.sh` `AUDIT-BD-035.md` fires (lines 351/360) → the fire-set drops from
+> **3 → 1** (only NL-1 `INSTALL-PROCEDURES.md:655` remains). C3d adds Check 47
+> and re-walks the now-clean files (no new fire — the gate is membership-only).
+> C4 then clears NL-1 → fire-set **0** (green). So `validate-pack.py` stays RED
+> across C3c/C3d and goes green only at C4 — which is why C3c/C3d/C4 are in the
+> SAME PG-2 push (no intermediate push is green; the GROUP push is the green
+> boundary).
 
 **The fix:** couple the guard with the client-surface fixes at the push
 boundary and keep the rest sequential.
 
-- **Collapse C2 + C3a/C3b/C3c + C4 (+ the supporting-docs slice that C2's
-  guard fires on) into one ATOMIC push boundary.** Concretely: C2, C3a, C3b,
-  C3c, and C4 are authored as separate *commits* (each a self-contained
-  review/fix unit) but are **pushed together in one push** so no intermediate
-  push leaves the broadened guard firing on an unfixed STRIP target. C3c
-  (`detect.sh` AUDIT-BD-035/BD-035 reword, NL-2/NL-3) and the C4 NL-1 fix
-  (`INSTALL-PROCEDURES.md:655`) are part of the same 13-fire set the guard
-  surfaces, so they belong in this push group. C9's project-surface fixes are
-  likewise included (C9 fixes are caught by the C2 guard too — K2.2 bootstrap
-  is on a `.sh` already walked, but B.5–B.10 and PACK-FEEDBACK are walked
+- **Collapse C2 + C3a/C3b/C3c/C3d + C4 + C9 (+ PM-step-DD) into one ATOMIC
+  push boundary.** Concretely: C2, C3a, C3b, C3c, C3d, and C4 are authored as
+  separate *commits* (each a self-contained review/fix unit; PM-step-DD is a
+  PM-only direct commit) but are **pushed together in one push** so no
+  intermediate push leaves the broadened guard firing on an unfixed STRIP
+  target. C3c (full `detect.sh` + `pack-help.sh` strip — clears NL-2/NL-3) and
+  the C4 NL-1 fix (`INSTALL-PROCEDURES.md:655`) are the remaining live fires
+  (EEB-K) the guard surfaces, so they belong in this push group. C3d (freeze +
+  Check 47) must land AFTER C3c (its re-contamination regression injects a
+  `BD-` into the stripped `detect.sh`); PM-step-DD follows C3d. C9's
+  project-surface fixes are likewise included (caught by the C2 guard — K2.2
+  bootstrap is on a `.sh` already walked, B.5–B.10 + PACK-FEEDBACK are walked
   client surfaces).
 
   > Rationale for separate commits inside one push: each commit keeps its own
@@ -243,7 +292,7 @@ boundary and keep the rest sequential.
 | Push group | Commits | Why grouped |
 |---|---|---|
 | PG-1 | C1 | independent; green on its own (tracker libs not walked by Check 43 for the broadened ext-set until C2) |
-| PG-2 | C2 → C3a → C3b → C3c → C4 → C9 | guard + every client-surface STRIP it fires on (the 13-fire set, incl. the 3 new leaks NL-1/NL-2/NL-3) land in ONE push; no intermediate push is red |
+| PG-2 | C2 → C3a → C3b → **C3c → C3d → PM-step-DD** → C4 → C9 | guard + every client-surface STRIP it fires on land in ONE push; the green boundary is the GROUP push after C4 clears the last fire (NL-1). C1/C2/C3a/C3b already committed (EEB-K: 3 live fires remain); C3c clears NL-2/NL-3 (3→1), C3d freezes the sanctioned exception + adds Check 47, PM-step-DD codifies the trinity rule (PM-only), C4 clears NL-1 (1→0). Pinned order: C3c BEFORE C3d (regression injects into the stripped file) BEFORE PM-step-DD; C4/C9 any order after |
 | PG-3 | C5 | independent; green on its own |
 | PG-4 | C6 | independent; soft-advisory is non-fatal (exit 0) by design |
 | PG-5 | C7 | PM-only; independent |
@@ -251,9 +300,13 @@ boundary and keep the rest sequential.
 
 > Push grouping is a Pack-Chat / user decision at execution time
 > (`agents-never-commit`); this plan supplies the SAFE order, not a push
-> instruction. Within PG-2 the commit order is C2 first (guard exists), then
-> the surface fixes in any order; the GROUP is pushed only after the last
-> surface fix in the group lands and `validate-pack.py` is green.
+> instruction. Within PG-2: C2 first (already landed), then the surface fixes.
+> The remaining PINNED sub-order is **C3c → C3d → PM-step-DD** (C3d's
+> re-contamination regression injects a `BD-` into the C3c-stripped file, and
+> PM-step-DD codifies the rule C3d enforces); C4 and C9 may land in any order
+> relative to the C3c/C3d/PM-step-DD chain. The GROUP is pushed only after the
+> LAST surface fix lands and `validate-pack.py` is green (fire-set 0 — i.e.
+> after C4 clears NL-1; EEB-K).
 
 ---
 
@@ -755,59 +808,234 @@ it. Two commits:
 - **(f) Verify:** `python3 scripts/validate-pack.py` (full PASS).
 - **(g) Executor + gate:** fresh `pack-coder`. Bounded review/fix.
 
-**C3c — `scripts/lib/detect.sh` pack-self comment reword (NL-2/NL-3, `pack-only`)**
+**C3c — Full pack-self strip of `scripts/lib/detect.sh` + `scripts/pack-help.sh` (NL-2/NL-3 + clean end-state, `pack-only`)**
 
-New PG-2 commit added 2026-06-02 (user direction): C2's broadened guard
-surfaced two GENUINE new leaks in a client-shipped script's comments — a
-pack-self reference (`AUDIT-BD-035.md` doc + the `BD-035` token) on a
-client-shipped surface. Per `bd-pack-only-operational-rule` (no pack-self
-refs in client-shipped content), these are reworded. Kept a SEPARATE commit
-(not folded into C3a) because `scripts/lib/detect.sh` is NOT under
-`project-template/`; this commit is `pack-only` (scripts/ only, and
-`pack-only` tolerates `test-fixtures/`), whereas C3a's project-template
-content forces no-keyword once the regenerated manifest is staged — distinct
-scopes that warrant distinct commits.
+REWRITTEN 2026-06-02 (user decision, superseding the original 2-line NL-2/NL-3
+reword). The architect dual-use investigation
+(`ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md` §8) + the user's binding rulings
+EXPAND C3c from "reword 2 `AUDIT-BD-035` comments" to a FULL pack-self strip of
+BOTH client-shipped scripts. Binding facts:
 
-- **(a) Files:** `scripts/lib/detect.sh` (ONLY).
-- **(b) Findings:** NL-2 (`detect.sh:351`), NL-3 (`detect.sh:360`) — 2 new
-  leaks (not among the 67).
-- **(c) Recipe — per-finding fix recipes (inline, verbatim):**
-  - **NL-2** (`scripts/lib/detect.sh:351`): the comment reads
-    `(BD-035 audit finding F5 fix — see AUDIT-BD-035.md §3.)`. Reword to
-    remove BOTH the `AUDIT-BD-035.md` reference AND the `BD-035` token
-    (pack-self ref on a client-shipped surface — `bd-pack-only-operational-
-    rule`), preserving the what-it-fixes intent in client-appropriate terms
-    (e.g., state the heuristic rationale without the pack-internal audit
-    citation).
-  - **NL-3** (`scripts/lib/detect.sh:360`): the comment reads
-    `(BD-035 audit finding F1 fix — see AUDIT-BD-035.md §3.)`. Same recipe:
-    remove the `AUDIT-BD-035.md` reference AND the `BD-035` token; preserve
-    the what-it-fixes intent in client-appropriate terms.
-  > Pack-self-ref boundary (`bd-pack-only-operational-rule`): `detect.sh`
-  > ships to clients (init-project.sh stages `scripts/lib/detect.sh` — EEB-F);
-  > a `BD-035` token + `AUDIT-BD-035.md` doc cite are pack-internal and dead
-  > at a client. The reword keeps the heuristic's design rationale (the
-  > what-it-fixes intent) without naming pack-internal artifacts.
-- **(d) Keyword:** `pack-only`. Valid: the only touched path is
-  `scripts/lib/detect.sh` — under `scripts/`, NOT under `project-template/`
-  or `supporting-docs/` (Check 36 pack-only deny-set, EEB-E). `pack-only`
-  permits this edit.
-- **(e) Manifest:** `scripts/` IS a named v11 surface AND `detect.sh` IS
-  staged into fixtures (init-project.sh `cp -f .../scripts/lib/detect.sh`,
-  EEB-F) — so the regen rule fires AND the diff MAY be non-empty if the
-  reworded comment changes the staged file's content. RUN
+- **Location stays pack-side.** `scripts/lib/detect.sh` + `scripts/pack-help.sh`
+  STAY in `scripts/` (NOT promoted to `project-template/scripts/`). Reason
+  (dependency-direction principle, §8.0): `init-project.sh` / `add-capability.sh`
+  / the migrator are PACK OPERATIONS that `source` `detect.sh` at runtime; a
+  project-side deliverable must NEVER be a runtime dependency of a pack
+  operation. The architect RETRACTED its §A "promote" recommendation. So C3c is
+  a CONTENT strip only — no `git mv`, no install-mechanism change, no caller
+  re-point.
+- **Full strip (not just the 2 CI-firing lines).** Per `bd-pack-only-operational-
+  rule` (categorical: no pack-self refs anywhere in client-shipped content) the
+  WHOLE pack-self provenance layer is stripped, even the parts CI does not yet
+  catch. The current guard fires on only the doc-BASENAME `AUDIT-BD-035.md`
+  (NL-2/NL-3); the ~32 remaining bare `BD-NNN` provenance comments + the
+  `PLATFORM-SKILLS.md` / `V10-DESIGN` / `ARCHITECTURE-SKILL-DIMENSIONS.md` cites
+  pass CI today but are the SAME-class leak (EEB-J). They are stripped here for
+  the clean end-state, not because CI forces them.
+- **KEEP the functional fenced surface-routing.** The `pack-ops/BACKLOG.md`
+  candidate-scan paths in `detect_pack_surface` (`detect.sh:22-37`/`:45-47`,
+  fenced) and the `pack-ops/HELP-FRAGMENT-*.md` fragment-resolution paths in
+  `pack-help.sh` (fenced) are LOAD-BEARING — the code must reference them to run.
+  They pass the op-vs-explanatory test (`bd-pack-only-operational-rule`):
+  functional treatment = legitimate, fence-covered. They are NOT stripped.
+
+- **(a) Files:** `scripts/lib/detect.sh`, `scripts/pack-help.sh` (both).
+- **(b) Findings:** NL-2 (`detect.sh:351`), NL-3 (`detect.sh:360`) — the 2 new
+  leaks the guard fires on — PLUS the full same-class strip set (architect §C.3,
+  user-approved): ~32 further bare `BD-NNN` provenance comments + the
+  `AUDIT-*`/`PLATFORM-SKILLS.md`/`V10-DESIGN`/`ARCHITECTURE-SKILL-DIMENSIONS.md`
+  doc cites in `detect.sh`, and the 6 `BD-NNN` + `V3 §`/`DELTA` provenance prose
+  in `pack-help.sh`. (Not among the 67; surfaced + scoped per `bd195-prompt-
+  goals-section` Q1/Q2 and approved by the user 2026-06-02.)
+- **(c) Recipe — full pack-self strip (inline, verbatim):**
+  - **`detect.sh` STRIP set (EEB-J):** remove EVERY `BD-NNN` token from `#`
+    comments (34 occurrences / 10 distinct BDs: BD-035 ×5, BD-075, BD-114,
+    BD-119, BD-141 ×9, BD-144, BD-156 ×8, BD-157 ×4, BD-162 ×2, BD-175 ×2) and
+    EVERY pack-doc cite (`AUDIT-BD-035.md`, `PLATFORM-SKILLS.md`,
+    `V10-DESIGN §5.14.2`, `ARCHITECTURE-SKILL-DIMENSIONS.md §3.5`). For each
+    stripped comment, PRESERVE the client-neutral heuristic rationale (the
+    what-it-does / what-it-fixes intent) without naming any pack artifact —
+    e.g. `# (BD-035 audit finding F5 fix — see AUDIT-BD-035.md §3.)` →
+    a plain statement of the heuristic the line implements. NL-2 (`:351`) and
+    NL-3 (`:360`) are the two such lines the guard fires on; they are stripped
+    by this same recipe along with the rest.
+  - **`pack-help.sh` STRIP set:** remove the 6 `BD-NNN` tokens (BD-075, BD-077,
+    BD-175 ×2, BD-177 ×2) and the `V3 §28.2.x` / `DELTA L1` provenance prose
+    from `#` comments; preserve the client-neutral description of what each
+    block does.
+  - **KEEP (do NOT strip):** the fenced functional `pack-ops/BACKLOG.md`
+    surface-routing paths in `detect.sh` (`:22-37`/`:45-47`) and the fenced
+    `pack-ops/HELP-FRAGMENT-PACK.md` / `pack-ops/HELP-FRAGMENT-TRACKER.md`
+    resolution paths in `pack-help.sh` — these are inside
+    `<!-- DENY-LIST-CONTENT-START/END -->` fences and are required for the code
+    to locate its inputs at runtime. The strip touches ONLY unfenced provenance
+    prose.
+  - **No new doc invented** (NUD-2-style discipline): the BD/design provenance
+    already lives in the pack-side records (`maintenance-docs/v11-implementation/`,
+    `pack-ops/BACKLOG.md`); the strip simply stops duplicating those citations
+    into a client-shipped surface. Pack design history stays pack-side.
+  > Pack-self-ref boundary (`bd-pack-only-operational-rule`): both files ship to
+  > clients (init-project.sh stages `scripts/lib/detect.sh` +
+  > `scripts/pack-help.sh` — EEB-F/EEB-J); `BD-NNN` tokens + pack-doc cites are
+  > pack-internal and dead at a client. The reword keeps the heuristic's design
+  > rationale (the what-it-does intent) without naming pack-internal artifacts.
+- **(d) Keyword:** `pack-only`. Valid: the only touched paths are
+  `scripts/lib/detect.sh` + `scripts/pack-help.sh` — under `scripts/`, NOT under
+  `project-template/` or `supporting-docs/` (Check 36 pack-only deny-set, EEB-E).
+  `pack-only` tolerates `scripts/` + `test-fixtures/` (the manifest, if staged).
+- **(e) Manifest:** `scripts/` IS a named v11 surface AND `detect.sh` +
+  `pack-help.sh` ARE staged into fixtures (init-project.sh `cp -f` of both —
+  EEB-F/EEB-J), so the regen rule fires AND the diff is LIKELY non-empty (the
+  reworded comments change the staged files' bytes). RUN
   `bash test-fixtures/build.sh --all --clean`; stage `test-fixtures/manifest.txt`
   in this commit IFF the diff is non-empty (run-then-check; do not skip on a
   prediction).
-- **(f) Verify:** `python3 scripts/validate-pack.py` (C2 broadened guard
-  present; the two `detect.sh` bare-prose `AUDIT-BD-035.md` fires must be
-  GONE — Check 43 clean on `detect.sh`). Confirm no `BD-035` / `AUDIT-BD-035.md`
-  token remains in `detect.sh` (`grep -n 'BD-035\|AUDIT-BD-035' scripts/lib/detect.sh`
-  → no output).
+- **(f) Verify:** `python3 scripts/validate-pack.py` (the two `detect.sh`
+  `AUDIT-BD-035.md` fires — NL-2/NL-3 — must be GONE; Check 43 clean on both
+  files). `grep -nE 'BD-[0-9]+|AUDIT-|PLATFORM-SKILLS|V10-DESIGN|ARCHITECTURE-'
+  scripts/lib/detect.sh scripts/pack-help.sh` → only the fenced functional
+  `pack-ops/` routing lines remain (no `BD-NNN` token, no pack-doc cite outside
+  the fence). `bash scripts/test-detect.sh` && `bash scripts/tests/pack-help-test.sh`
+  (behavior unchanged — comment-only edits, zero executable-code change; protects
+  Goal 2 / `/pack-help`). The migrator/init tests
+  (`bash scripts/tests/test-init-project.sh`,
+  `bash scripts/tests/test-migrate-v10-to-v11.sh`) stay green (pack-side sourcing
+  of `detect.sh` is unchanged — no `git mv`).
 - **(g) Executor + gate:** fresh `pack-coder`. `bd-pack-only-operational-rule`:
-  surgical reword removing the pack-self ref while preserving the heuristic
-  rationale. `pack-repo-code-comment-deferrals`: no deferral introduced (the
-  reword is a clear fix). Bounded review/fix.
+  surgical strip removing pack-self refs while preserving heuristic rationale;
+  no executable code touched (comments only). `enumerate-encoding-surfaces`: the
+  strip touches ONLY the two source files' comments — the Check-43 test fixtures
+  that assert detect.sh leak-classes (`scripts/tests/fixtures/project-side-refs/
+  project-side-fail-detect-sh-comment.sh`) use a SYNTHETIC stub, not the real
+  file's bytes, so they need no edit; the real-file cleanliness is asserted by
+  the full `validate-pack.py` run in (f). `pack-repo-code-comment-deferrals`: no
+  deferral introduced. Bounded review/fix.
+
+**C3d — Sanctioned-exception freeze + Check 47 anti-pattern guard (`pack-only`)**
+
+NEW PG-2 commit added 2026-06-02 (architect §8.1/§8.2 (a)+(b), user-approved).
+Post-C3c the two files are CLEAN but pack-side-LOCATED and client-SHIPPED — a
+deliberate, bounded exception. Today there is NO frozen sanction: branch (b) of
+`_iter_client_installed_files` (`validate-pack.py:4116-4148`) admits ANY
+non-`project-template/` map entry to the Check-43 walk with zero membership gate
+(EEB-K) — the exception is implicit and UNBOUNDED. C3d (a) freezes the exception
+to EXACTLY the two files and (b) blocks the lazy "ship a new file from
+`scripts/`" path. The §8.2 SIX lock-step encoding surfaces land here (surfaces
+1–4 + 6; surface 5 — the trinity `## Pack memory` rule — is the PM-only step
+that immediately follows, see "PM-step-DD" below).
+
+- **(a) Files:** `scripts/validate-pack.py`,
+  `scripts/tests/test-validate-pack-check-43.sh` (+ a Check-47 test — folded into
+  the same file or a new `scripts/tests/test-validate-pack-check-47.sh` per
+  `filename-uniqueness-heuristic`; if new, wire it into the CI runner so Check 42
+  stays green).
+- **(b) Findings:** none of the 67 (guard design); realizes architect §8.1/§8.2.
+- **(c) Recipe — the §8.2 surfaces 1–4 + 6 (inline, verbatim):**
+  - **Surface 1 — frozen constant.** Add `_SANCTIONED_PACK_SIDE_SHIPPED` to
+    `scripts/validate-pack.py`, a FROZEN 2-tuple holding EXACTLY
+    `("scripts/lib/detect.sh", "scripts/pack-help.sh")`, with the inline
+    contract comment from architect §8.1 (each entry is a pack-operation runtime
+    dependency AND must ship; ADDING an entry requires architect+user
+    authorization citing `ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md` §8 and
+    Check 47). The constant sanctions LOCATION (pack-side + ships), NOT content.
+  - **Surface 2 — walk-gate.** Change branch (b) of
+    `_iter_client_installed_files` so the non-`project-template/` entries are
+    admitted to the walk ONLY IF they are members of
+    `_SANCTIONED_PACK_SIDE_SHIPPED`; an UNsanctioned non-template entry is a HARD
+    error (not a silent add). CRITICAL: this is a MEMBERSHIP GATE, NOT a content
+    skip — the sanctioned files STAY fully walked and fully cleanliness-enforced
+    by Check 43/37; the gate authorizes their PRESENCE in the walk-set, never
+    relaxes their content. (Re-adding a `BD-` token to `detect.sh` post-strip
+    MUST still FAIL Check 43 — verified by the regression in surface 4.)
+  - **Surface 3 — Check 47 (`check_sanctioned_pack_side_shipped()`).** New check,
+    `# ── Check 47: ...`. Next-free integer VERIFIED = 47 (EEB-A re-measured:
+    highest existing Check = 46; 44/45/46 are the BD-196 checks). Two assertions:
+    (1) FREEZE / set-equality — the set of non-`project-template/`,
+    non-`supporting-docs/` entries parsed from `_CLIENT_INSTALLED_FILES`
+    (init-project.sh map) MUST EQUAL `_SANCTIONED_PACK_SIDE_SHIPPED` exactly
+    (neither superset nor subset) — so adding a pack-side shipped file to the map
+    WITHOUT editing the frozen constant FAILS CI; (2) the failure message names
+    the dependency-direction MEMBERSHIP TEST (a file qualifies ONLY IF (1) a pack
+    operation depends on it at runtime AND (2) a client surface requires it
+    shipped; default for new shipped files stays `project-template/scripts/`) and
+    cites this doc §8.3. `ci-guard-measure-then-bound`: the sanction is sized to
+    EXACTLY the 2-member set; the gate admits no unclassified entry; Check 47
+    fails on any superset/subset.
+  - **Surface 4 — tests.** Extend `test-validate-pack-check-43.sh` (+ Check-47
+    cases) with the regression set: (i) a CLEAN sanctioned file PASSES Check 43;
+    (ii) a sanctioned file with an INJECTED `BD-` (or pack-doc cite) still FAILS
+    Check 43 (proves the gate is membership-only, not a content silencer — the
+    load-bearing re-contamination regression); (iii) a non-template map entry NOT
+    in the frozen constant FAILS Check 47 (lazy-add blocked); (iv) a constant
+    entry NOT in the map FAILS Check 47 (set-equality, both directions). The T3
+    inventory + T8 detect.sh synthetic cases already in the test
+    (`test-validate-pack-check-43.sh:183-192/447-459`) are the integration
+    anchors.
+  - **Surface 6 — manifest.** Covered by (e).
+- **(d) Keyword:** `pack-only`. Valid: only `scripts/` paths (validate-pack.py +
+  the test) — none under `project-template/` or `supporting-docs/` (EEB-E).
+- **(e) Manifest:** RUN `bash test-fixtures/build.sh --all --clean`. Expected
+  diff EMPTY (`validate-pack.py` + the test are NOT staged into fixtures — EEB-F;
+  C3d does not touch any fixture-feeding file). Stage `manifest.txt` only if
+  non-empty.
+- **(f) Verify:** `bash scripts/tests/test-validate-pack-check-43.sh` (with the
+  new regression cases: clean sanctioned PASSES; injected-`BD-` sanctioned FAILS;
+  unsanctioned non-template map entry FAILS Check 47; constant-entry-not-in-map
+  FAILS Check 47) && `python3 scripts/validate-pack.py` (full run; Check 47 OK;
+  Check 43 still clean on the C3c-stripped files; the only remaining fire is
+  NL-1 `INSTALL-PROCEDURES.md:655` until C4 lands — see the push-group note).
+- **(g) Executor + gate:** fresh `pack-coder`. `enumerate-encoding-surfaces`:
+  surfaces 1–4 (frozen constant + walk-gate + Check 47 + tests) land together in
+  THIS single commit; surface 6 (manifest) per (e); surface 5 (trinity rule) is
+  the immediately-following PM-only step (PM-step-DD) — flagged so the encoding
+  set is complete across the C3d commit + the PM step. `ci-guard-measure-then-
+  bound` (architect §8.1/§8.2). Bounded review/fix.
+
+**PM-step-DD — Trinity `## Pack memory` dependency-direction rule (PM-only, Pack-Chat-direct)**
+
+The §8.2 surface-5 rule is PM-ONLY — Pack Chat writes it directly into the
+pack-root trinity (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` `## Pack memory`
+`### Repo conventions`), NOT a coder (trinity files are PM-only per
+`PACK-AGENTS.md` § "PM-only files and directories"; `skill-agent-maintenance-
+mechanical` routes a rule change to PM, not convenience). This is a SEPARATE
+step from C3d (different executor + different keyword), sequenced immediately
+after C3d in PG-2.
+
+- **The rule (architect §8.2/§8.3 wording):** "Client deliverables default to
+  `project-template/scripts/`. A pack-side file may be client-shipped ONLY IF it
+  is a pack-operation runtime dependency AND must ship to clients, AND ONLY via
+  `_SANCTIONED_PACK_SIDE_SHIPPED` in `validate-pack.py` with architect + user
+  sign-off (Check 47 freezes the set; the dependency-direction principle is the
+  membership test)." `[roles: coder architect] [rationale: dual-use-shipped-lib-
+  dependency-direction]` (slug is a PM editorial call at write time).
+- **(d) Keyword:** `PM-only`. Valid: only the pack-root trinity files (PM-only
+  by construction). Note: `PM-only` PERMITS `project-template/` trinity but this
+  rule lands on the PACK-ROOT trinity (it is a pack-developer repo convention,
+  not a project rule) — still within the PM-only file set.
+- **(e) Manifest:** the pack-root trinity (CLAUDE/AGENTS/GEMINI) is the
+  `regenerate-manifest-v11-surface` base-case EXEMPT (they are not under the four
+  named surfaces and do not feed fixtures). No build run required for the trinity
+  edit itself. BUT see the propagation note below — IF a `[rationale: slug]` is
+  attached, the bijection/manifest surfaces in the PACK-CHAT.md procedure apply.
+- **Propagation (binding — PACK-CHAT.md § "Rule-change propagation procedure"):**
+  a spawn-relevant `## Pack memory` rule carrying `[rationale: slug]` triggers
+  the ordered multi-surface PM-only propagation, all in the SAME commit so
+  Check 45 (rule↔rationale bijection) + the anti-restate scan never see a
+  half-applied state: (1) corpus imperative line ×3 trinity (with `[roles:]` +
+  `[rationale: slug]`); (2) `pack-ops/PACK-MEMORY-RATIONALE.md` `## <slug>` entry
+  (Check 45 bijection); (4) any one-line reference in `PACK-AGENTS.md` /
+  `PACK-CHAT.md`; (5) `pack-ops/.spawn-rule-manifest.txt` slug→canonical+refs
+  (Check 46); (6) `test-fixtures/manifest.txt` regen only if a v11-surface path
+  changed (trinity is base-case exempt → expected no manifest change). The thin
+  out-of-repo memory-cache pointer (3) is Pack-Chat upkeep. Order: corpus →
+  rationale → references + manifest in one commit → cache as upkeep.
+- **(g) Executor + gate:** **Pack-Chat-direct PM-only edit** (NOT a coder — per
+  CLAUDE.md "What Pack Chat CAN edit directly": PM-only files). No bounded
+  review/fix cycle (PM-only direct edits are not coder work); user approves the
+  commit. The pack-architect-spawn-protocol does NOT require a fresh architect
+  pass here — the rule wording is already designed in
+  `ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md` §8.2/§8.3; Pack Chat applies it
+  mechanically.
 
 ### C4 — supporting-docs currency (incl. K5.11 per NUD-6)
 
@@ -1166,23 +1394,37 @@ resolution, not a recipe change.
 | R-5 | **B.12/B.13 re-point target.** Re-pointing `ARCHITECTURE-V1.md` requires a doc that actually carries the cited §s. | Coder picks a resolving target from the EXISTS set (EEB-B: V2/V3/V3.3-DELTA) OR drops the dangling basename (§1 B.12/B.13 permit either). Verify the chosen target exists. |
 | R-6 | **New CI test files (C1 guard test, C6 advisory test).** A new `scripts/tests/test-*.sh` must be wired into the CI runner or Check 42 (CI-wires-all-per-check-tests) fails. | C1/C6 gates include wiring the new test into the runner; `enumerate-encoding-surfaces` covers this. Prefer extending existing test files where possible (C1 §2.1 Step-3 error-guard recipe adds cases to `test-tracker-phase-task.sh`). |
 | R-7 | **NUD-9 SSOT read (C8/B.17).** A blind 34→36 bump risks re-drift if PLATFORM-SKILLS.md says otherwise. | NUD-9 Option B mandates reconciling against PLATFORM-SKILLS.md and matching it — read the SSOT first; the tree-count (36, EEB-A) is corroboration, not the authority. |
+| R-8 | **C3c strips a functional fenced routing line by mistake.** The full strip touches comments throughout `detect.sh`/`pack-help.sh`; over-stripping a fenced `pack-ops/BACKLOG.md` / `HELP-FRAGMENT-*` routing path would break `detect_pack_surface` / `/pack-help` (Goal 2 regression). | C3c recipe pins the KEEP set to the fenced `<!-- DENY-LIST-CONTENT-START/END -->` blocks (EEB-J line refs); (f) runs `bash scripts/test-detect.sh` + `pack-help-test.sh` (behavior unchanged) + asserts only fenced functional `pack-ops/` lines remain via grep. Comments-only edit — zero executable-code change. |
+| R-9 | **C3d walk-gate implemented as a content SKIP (silences the guard) instead of a membership GATE.** A skip would let future re-contamination of the sanctioned files pass CI — defeating the freeze. | C3d surface-2 recipe + surface-4 regression (ii): the gate authorizes PRESENCE in the walk-set ONLY; the files stay fully cleanliness-enforced; the test injects a `BD-` into the stripped `detect.sh` and asserts Check 43 STILL FAILS. `ci-guard-measure-then-bound`: sanction sized to exactly the 2-tuple; Check 47 fails on any superset/subset. |
+| R-10 | **PM-step-DD lands a half-applied trinity rule (Check 45 bijection FAIL).** A `## Pack memory` rule with `[rationale: slug]` but no matching `PACK-MEMORY-RATIONALE.md` entry / spawn-manifest entry fails Check 45/46. | PM-step-DD (e) + propagation note: corpus ×3 + rationale entry + spawn-manifest + references land in the SAME PM-only commit (PACK-CHAT.md § rule-change-propagation order); the trinity is manifest base-case exempt so no fixture regen needed. |
 
 ### 5.3 — No deferrals
 
 All 63 actionable findings + all 4 new leaks (`.mcp.json.example` → C3a,
 NL-1 → C4, NL-2/NL-3 → C3c) land in v11.0 commits in this plan
-(`deferral-is-scope-creep` / `no-deferral-without-user-direction`). The 3 new
-leaks surfaced by C2's broadened guard during review (reviewer-confirmed
-GENUINE) are scheduled into PG-2 per user direction (2026-06-02), not deferred.
-The 4 NUD-1 findings are NOT deferred — they are reclassified NOT-A-DEFECT by
-user ruling (non-actionable, not postponed). No finding is pushed to v11.1+.
+(`deferral-is-scope-creep` / `no-deferral-without-user-direction`). The new
+leaks surfaced by C2's broadened guard (reviewer-confirmed GENUINE) are
+scheduled into PG-2 per user direction (2026-06-02), not deferred. The EXPANDED
+C3c scope (the full same-class pack-self strip of `detect.sh` + `pack-help.sh`
+beyond the 2 CI-firing lines — architect §C.3) lands in v11.0 (C3c), NOT
+deferred — per `no-deferral-without-user-direction` the user authorized the full
+strip 2026-06-02. The sanctioned-exception freeze + Check 47 (C3d) and the
+trinity rule (PM-step-DD) also land in v11.0, in the same PG-2 push. The 4 NUD-1
+findings are NOT deferred — reclassified NOT-A-DEFECT by user ruling
+(non-actionable, not postponed). No finding is pushed to v11.1+.
 
 ---
 
 ## 6 — Empirical-Evidence Blocks
 
-All measurements taken at HEAD `c440bdf742a52f6fc0d66b75f6f07a88771f374e`,
-branch `v11-dev`, 2026-06-01.
+EEB-A..EEB-H measured at HEAD `c440bdf742a52f6fc0d66b75f6f07a88771f374e`,
+branch `v11-dev`, 2026-06-01. **EEB-J + EEB-K** (the BD-195 dual-use-shipped-lib
+re-sequencing) re-measured at HEAD `bb9e807722d282ea4272c90f012d8ba63552d4e04`,
+2026-06-02 — after C1 (`8555953`) / C2 (`1d3c55a`) / C3a (`551a1f4`) / C3b
+(`bb9e807`) landed. EEB-A's `Check 1 … Check 46` ceiling is RE-CONFIRMED at
+`bb9e807` (EEB-K: highest existing Check = 46 → next-free = 47); EEB-F's
+fixture-input facts hold at `bb9e807` (init-project.sh stages both shipped
+scripts, EEB-J).
 
 **EEB-A — Check NN set, skill count, sidecar suffix.**
 - Commands: `grep -oE 'Check [0-9]+' scripts/validate-pack.py | sort -u`;
@@ -1319,6 +1561,70 @@ branch `v11-dev`, 2026-06-01.
   (see C2 §2.2 Step-2 measure table + Step-4). `ci-guard-measure-then-bound`.
 - Conclusion: SUPPORTED.
 
+**EEB-J — Full pack-self strip inventory (detect.sh + pack-help.sh) at HEAD `bb9e807`.**
+- Commands:
+  `grep -oE "BD-[0-9]+" scripts/lib/detect.sh | sort | uniq -c`;
+  `grep -nE "AUDIT-|PLATFORM-SKILLS|V10-DESIGN|ARCHITECTURE-" scripts/lib/detect.sh`;
+  `grep -oE "BD-[0-9]+" scripts/pack-help.sh | sort | uniq -c`;
+  `grep -nE "DENY-LIST-CONTENT" scripts/lib/detect.sh scripts/pack-help.sh`;
+  `grep -n "detect.sh\|pack-help" scripts/init-project.sh`.
+- Output (verbatim, key):
+  `detect.sh` BD tokens = `5 BD-035 · 1 BD-075 · 1 BD-114 · 1 BD-119 · 9 BD-141
+  · 1 BD-144 · 8 BD-156 · 4 BD-157 · 2 BD-162 · 2 BD-175` → **34 total /
+  10 distinct**; pack-doc cites in `detect.sh` comments = `:253 V10-DESIGN
+  §5.14.2`, `:307 ARCHITECTURE-SKILL-DIMENSIONS.md §3.5`, `:351/:360
+  AUDIT-BD-035.md §3`, plus `PLATFORM-SKILLS.md` at `:252/:328/:365/:487/:594/
+  :723`. `detect.sh` fences = `22 / 37 / 45 / 47` (two blocks — the functional
+  `pack-ops/BACKLOG.md` surface-routing, lines `46` etc. are INSIDE; the BD/doc
+  provenance comments at `:252/:253/:307/:351/:360/:449/:487/:554/:594/:723` are
+  OUTSIDE any fence). `pack-help.sh` BD tokens = `1 BD-075 · 1 BD-077 ·
+  2 BD-175 · 2 BD-177` → **6 total**; pack-doc/provenance prose = `V3 §28.2.x`,
+  `DELTA L1` (`:2/:4/:6/:13/:33/:38/:40`), `BD-175 reorg` at `:40/:111`; the
+  `pack-ops/HELP-FRAGMENT-*.md` resolution paths are inside fences
+  (`:28-42/:88-96/:110-130/:136-145/:161-163/:179-181`). init-project.sh stages
+  BOTH files (`cp -f .../scripts/pack-help.sh` + `cp -f .../scripts/lib/detect.sh`).
+- HEAD/date: `bb9e807` / 2026-06-02.
+- Interpretation: the STRIP set is 34 BD tokens + 4 distinct pack-doc-cite
+  families in `detect.sh` (all in `#` comments, OUTSIDE the fences) and 6 BD
+  tokens + the V3/DELTA provenance prose in `pack-help.sh`; the functional
+  `pack-ops/` routing in BOTH files is fenced → KEEP. Both ship to clients →
+  the categorical `bd-pack-only-operational-rule` applies. C3c strips the
+  unfenced provenance, preserves the fenced functional routing.
+- Conclusion: SUPPORTED.
+
+**EEB-K — Sanction currently absent/unbounded; live Check-43 fire-set = 3.**
+- Commands:
+  `sed -n '4116,4148p' scripts/validate-pack.py` (`_iter_client_installed_files`);
+  `grep -n "_SANCTIONED\|EXPECTED_NON_TEMPLATE" scripts/validate-pack.py`;
+  `grep -oE 'Check [0-9]+' scripts/validate-pack.py | grep -oE '[0-9]+' | sort -n | tail -1`;
+  `python3 scripts/validate-pack.py` (full run).
+- Output (verbatim, key): branch (b) of the walk loops
+  `for entry in entries:` with the ONLY filter
+  `if entry.startswith("project-template/"): continue` — NO frozen membership
+  gate; `grep` for `_SANCTIONED`/`EXPECTED_NON_TEMPLATE` → no match (constant
+  does not exist). Highest existing Check NN = **46** (44/45/46 = the BD-196
+  checks: M4 concision / rule↔rationale bijection / boundary-spawn manifests).
+  `validate-pack.py` exits **1** with exactly **3 FAILs**:
+  `FAIL: supporting-docs/INSTALL-PROCEDURES.md:655 — bare cross-reference
+  V10-DESIGN.md — broken ref` (NL-1);
+  `FAIL: scripts/lib/detect.sh:351 — bare-prose reference to pack-only doc
+  AUDIT-BD-035.md` (NL-2);
+  `FAIL: scripts/lib/detect.sh:360 — … AUDIT-BD-035.md` (NL-3). The guard does
+  NOT fire on any bare `BD-NNN` token (confirmed: only the `AUDIT-BD-035.md`
+  doc-BASENAME fires on `detect.sh`); `pack-help.sh` has ZERO fires.
+- HEAD/date: `bb9e807` / 2026-06-02.
+- Interpretation: (1) the sanctioned-exception is implicit + UNBOUNDED today →
+  C3d adds the frozen constant + walk-gate + Check 47 (next-free = **47**,
+  verified). (2) The live fire-set is 3, NOT the 13 measured at the original
+  planning HEAD (C3a `551a1f4` + C3b `bb9e807` already cleared the
+  project-template/xcode portion). (3) C3c strips both `detect.sh` fires
+  (351/360) → fire-set 3→1 (NL-1 only); C3d re-walks the clean files with no
+  new fire (membership-only gate); C4 clears NL-1 → 0. (4) The full strip goes
+  BEYOND CI: the ~32 bare `BD-NNN` + `PLATFORM-SKILLS.md`/`V10-DESIGN`/
+  `ARCHITECTURE-SKILL-DIMENSIONS.md` cites pass CI but are stripped for the
+  clean end-state (categorical rule).
+- Conclusion: SUPPORTED.
+
 ---
 
 ## 7 — Rules-Applied Verification Block
@@ -1326,11 +1632,11 @@ branch `v11-dev`, 2026-06-01.
 | Rule | Verification evidence (quoted) | Conclusion |
 |---|---|---|
 | agents-never-commit [universal] | No `git add/commit/push/tag` issued. Tool use: Read (3 input docs), read-only Bash (`git rev-parse`/`git status`/`grep`/`ls`/`find`/`sed`/`head`/`python3 -c` arithmetic), and one Write via heredoc to the single output doc `maintenance-docs/v11-implementation/PLAN-BD-195-REMEDIATION.md`. `git status --short` at start = clean. | COMPLIANT |
-| empirical-evidence-blocks [planner] | §6 EEB-A..EEB-H each carry command + verbatim output (counts/paths/lines, e.g. `_PROJECT_SIDE_PATH_PREFIXES = ("project-template/", "supporting-docs/")`, `Check 1 … Check 46`, `36` skill dirs, `OWN_SIDECAR_SUFFIX="v10-customized"`, `893:cp -f "$PACK/scripts/lib/detect.sh"`) + HEAD `c440bdf` + interpretation + SUPPORTED. Every sequencing/keyword/manifest claim points to an EEB. | COMPLIANT |
-| deferral-is-scope-creep [universal] | §2 ledger maps all 63 actionable findings + the new leak to a commit; §5.3 records zero deferrals; the 4 NUD-1 findings are reclassified NOT-A-DEFECT (user ruling), not postponed. | COMPLIANT |
+| empirical-evidence-blocks [planner] | §6 EEB-A..EEB-K each carry command + verbatim output (counts/paths/lines, e.g. `_PROJECT_SIDE_PATH_PREFIXES = ("project-template/", "supporting-docs/")`, `Check 1 … Check 46`, `36` skill dirs, `893:cp -f "$PACK/scripts/lib/detect.sh"`) + HEAD (`c440bdf` for A–H; `bb9e807` for J/K) + interpretation + SUPPORTED. NEW state-claims this pass: detect.sh = **34 BD / 10 distinct** + 4 pack-doc-cite families, pack-help.sh = **6 BD** + V3/DELTA prose, fenced functional routing KEEP (EEB-J); highest Check = **46** → next-free **47**, sanction absent/unbounded, **live fire-set = 3** (NL-1/NL-2/NL-3), post-C3c-strip fire-set **3→1**, C4 → **0** (EEB-K). | COMPLIANT |
+| deferral-is-scope-creep [universal] | §2 ledger maps all 63 actionable findings + 4 new leaks to a commit; the EXPANDED C3c full-strip set (architect §C.3, beyond the 2 CI-firing lines), the C3d freeze + Check 47, and PM-step-DD all land in v11.0 (PG-2) — §5.3 records zero deferrals; the 4 NUD-1 findings are reclassified NOT-A-DEFECT (user ruling), not postponed. | COMPLIANT |
 | no-deferral-without-user-direction [universal] | §5.3: all actionable work lands in v11.0 commits (C1/C3–C9); nothing pushed to v11.1+; the new `.mcp.json.example` leak lands in C3a (v11.0). | COMPLIANT |
 | boundary-investigation-precedes-pack-defaults / P-missed-7 [universal] | Project-side SSOTs named for the project-surface commits: C3a K2.1/K4.3 → client-installed `docs/pack/METHODOLOGY.md` (EEB-G), B.2 → client-resolvable skill/docs paths, K4.4 → existing fenced `pack-ops/MERGE-STRATEGY.md` (no project-side SSOT exists, §1 K4.4); C9 NUD-8 abstract phrasing must not import a pack-only mechanism name (the `docs/project/<stream>/_rules.md` contract is the project SSOT). | COMPLIANT |
-| regenerate-manifest-v11-surface [coder, plan sequences it] | Per-commit (e) manifest decisions: C1/C2/C5/C6 RUN build, expected EMPTY (EEB-F), stage IFF non-empty; C3a/C9 RUN build, expected NON-EMPTY, stage; C4 RUN build, stage IFF non-empty; C7 (pack-ops/) RUN build, expected EMPTY (EEB-F), stage IFF non-empty; C8 (README pack-root) + C3b (xcode) do NOT trigger the rule (outside the four surfaces). Run-then-check is binding; never skip on prediction (R-4). | COMPLIANT |
-| enumerate-encoding-surfaces [reviewer/coder, plan sequences it] | C1 pairs the grammar edit (bash ERE + Python `DEP_ENTRY` + parity `DEP`) with its docstrings, grammar-asserting tests, fixture bullet, and the NEW error-guard + its tests in ONE commit; C6 lands the soft-advisory guard + its test together; R-6 flags wiring new test files into the CI runner so Check 42 stays green. | COMPLIANT |
+| regenerate-manifest-v11-surface [coder, plan sequences it] | Per-commit (e) manifest decisions: C1/C2/C5/C6 RUN build, expected EMPTY (EEB-F), stage IFF non-empty; C3a/C9 RUN build, expected NON-EMPTY, stage; **C3c** RUN build, LIKELY non-empty (both shipped scripts feed fixtures — EEB-J), stage IFF non-empty; **C3d** RUN build, expected EMPTY (validate-pack.py + test not staged — EEB-F), stage IFF non-empty; **PM-step-DD** trinity is base-case EXEMPT (no fixture feed) but a `[rationale: slug]` triggers the PACK-CHAT.md propagation surfaces (bijection/spawn-manifest) in the SAME commit; C4 RUN build, stage IFF non-empty; C7 (pack-ops/) RUN build, expected EMPTY (EEB-F), stage IFF non-empty; C8 (README pack-root) + C3b (xcode) do NOT trigger the rule. Run-then-check is binding; never skip on prediction (R-4). | COMPLIANT |
+| enumerate-encoding-surfaces [reviewer/coder, plan sequences it] | C1 pairs the grammar edit with its docstrings/tests/fixture + error-guard in ONE commit; C6 lands the soft-advisory guard + its test together; **C3d realizes the architect §8.2 SIX lock-step surfaces** across the C3d commit + PM-step-DD: surfaces 1–4 (frozen `_SANCTIONED_PACK_SIDE_SHIPPED` constant + walk-gate + Check 47 + the Check-43/47 tests incl. the injected-`BD-` re-contamination regression) land together in C3d; surface 6 (manifest) per (e); surface 5 (trinity `## Pack memory` rule) is PM-step-DD (PM-only). R-6 flags wiring any new test file into the CI runner so Check 42 stays green. | COMPLIANT |
 | rules-applied-verification-block [universal] | This table. | COMPLIANT |
-| preflight-stop-means-stop [universal] | PREFLIGHT line emitted before the Write, after the full ledger self-check (63 actionable + 4 non-actionable = 67; K3.7 gap resolved into C5). No parent stop/halt issued. | COMPLIANT |
+| preflight-stop-means-stop [universal] | PREFLIGHT line emitted before the C3c/C3d/PM-step re-sequencing edits, after self-checks (next-free Check = 47 verified EEB-K; post-C3c-strip fire-set 3→1 verified EEB-K; PM-only trinity step flagged; PLAN coherent + self-contained). No parent stop/halt issued. | COMPLIANT |
