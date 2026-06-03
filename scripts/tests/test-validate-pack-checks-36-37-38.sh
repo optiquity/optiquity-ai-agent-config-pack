@@ -117,6 +117,17 @@ assert_pm("pack-ops/PACK-CHAT.md", True, "T6f")
 assert_pm("pack-ops/PACK-AGENTS.md", True, "T6g")
 assert_pm("README.md", True, "T6h")
 assert_pm("CLAUDE.md", True, "T6i")  # pack-root trinity
+# T6j: BD-198 — PACK-MEMORY-RATIONALE.md IS PM-only-permitted (rule↔rationale
+#   bijection partner of trinity `## Pack memory`; edited only in lockstep with
+#   rule changes). Positive case: a PM-only commit touching the rationale doc
+#   passes Check 36. Mirrors the PACK-AGENTS.md § "PM-only files and
+#   directories" Files-list SSOT.
+assert_pm("pack-ops/PACK-MEMORY-RATIONALE.md", True, "T6j")
+# T6k: BD-198 negative control — a non-permitted pack-ops/ file is NOT
+#   PM-only-permitted, so a PM-only commit touching it is still flagged as
+#   an offender by Check 36. Confirms the rationale-doc addition is exact
+#   (one path), not a broad pack-ops/ allowance.
+assert_pm("pack-ops/NOT-PM.md", False, "T6k")
 # T7: supporting-docs is NOT PM-only-permitted (the V2-shape fixture)
 assert_pm("supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md", False, "T7a")
 assert_pm("project-template/docs/pack/PM-CHAT.md", False, "T7b")  # docs/pack, not trinity

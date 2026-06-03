@@ -3780,9 +3780,10 @@ _SCOPE_KEYWORDS_PACK_ONLY = ("pack-only",)
 _SCOPE_KEYWORDS_PROJECT_ONLY = ("project-only",)
 _SCOPE_KEYWORDS_PM_ONLY = ("pm-only", "pack-memory-only")
 
-# PM-only PERMITTED-PATHS per `pack-ops/PACK-AGENTS.md:142-148` Files block,
-# with the post-Architect-B + B-fix path substitution: pack-root operational
-# files now live under `pack-ops/`. README.md is permitted in full (the
+# PM-only PERMITTED-PATHS per `pack-ops/PACK-AGENTS.md` § "PM-only files and
+# directories" Files list, with the post-Architect-B + B-fix path substitution:
+# pack-root operational files now live under `pack-ops/`. README.md is permitted
+# in full (the
 # version-table-only narrower constraint stays a Pack Chat discipline rule
 # per the §8.1a (README.md) note in the architect doc).
 _PM_ONLY_PERMITTED_PATHS = {
@@ -3791,6 +3792,7 @@ _PM_ONLY_PERMITTED_PATHS = {
     "pack-ops/CHANGELOG.md",
     "pack-ops/PACK-CHAT.md",
     "pack-ops/PACK-AGENTS.md",
+    "pack-ops/PACK-MEMORY-RATIONALE.md",
     "CLAUDE.md",
     "AGENTS.md",
     "GEMINI.md",
@@ -3800,7 +3802,7 @@ _PM_ONLY_PERMITTED_PATHS = {
 }
 
 # PM-only PERMITTED-PATH PREFIXES — the per-entry tree directories per
-# `pack-ops/PACK-AGENTS.md:150-158` Directories block.
+# `pack-ops/PACK-AGENTS.md` § "PM-only files and directories" Directories list.
 _PM_ONLY_PERMITTED_PREFIXES = (
     "backlog/",
     "changelog/",
