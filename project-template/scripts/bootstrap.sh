@@ -43,13 +43,6 @@ has_proto() { [[ -d proto ]]; }
 EXIT_CODE=0
 RAN_SOMETHING=0
 
-# Skills are distributed at project creation time from the pack's
-# project-template/skills/ directory directly into .claude/skills/,
-# .codex/skills/, and .gemini/skills/ by `init-project.sh` (see
-# in the pack repo: supporting-docs/SETUP-NEW.md Step 3).
-# Once committed to git they do not need to be redistributed here.
-# To update skills after a pack version upgrade, see the migration guide.
-
 if has_swift; then
   RAN_SOMETHING=1
   echo "[bootstrap] Swift detected — running bootstrap-swift.sh"

@@ -11,8 +11,7 @@
 This file is the regenerated mirror of the per-entry source-of-truth
 tree at `docs/project/changelog/`. The per-entry tree is where
 dated phase / architecture-iteration records live; this file is a
-read-stable concatenation produced by the per-entry mirror generator
-at `scripts/lib/per-entry/`.
+read-stable concatenation produced by the pack's per-entry mirror generator.
 
 Historical record of architectural decisions and phase completions.
 Current architecture is documented in the project's `ARCHITECTURE.md`.

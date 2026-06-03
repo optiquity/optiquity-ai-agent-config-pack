@@ -10,8 +10,8 @@
 This file is the regenerated mirror of the per-entry source-of-truth
 tree at `docs/project/implementation-plan/`. The per-entry tree is
 where `phase-N.md` files live (one file per phase, tasks inline);
-this file is a read-stable concatenation produced by the per-entry
-mirror generator at `scripts/lib/per-entry/`.
+this file is a read-stable concatenation produced by the pack's
+per-entry mirror generator.
 
 ## How to use this file
 

@@ -9,7 +9,7 @@
 This file is the regenerated mirror of the per-entry source-of-truth
 tree at `docs/project/backlog/`. The per-entry tree is where TD-NNN
 entries live; this file is a read-stable concatenation produced by
-the per-entry mirror generator at `scripts/lib/per-entry/`.
+the pack's per-entry mirror generator.
 
 ## How to use this file
 

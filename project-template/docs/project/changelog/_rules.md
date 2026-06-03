@@ -15,7 +15,7 @@ Per-entry files match `^\d{4}-\d{2}-\d{2}(-.+)?\.md$` (e.g.,
 `2026-04-20-phase-35.md` or bare `2026-04-20.md` when the source
 H3 anchor has no slug suffix). Date-first for lexical sorting;
 trailing slug optional for human readability per
-`scripts/lib/per-entry/_lib.sh` (slug optional).
+the pack's per-entry mirror generator (slug optional).
 
 ## Entry contract
 
@@ -37,7 +37,7 @@ entry is never edited per the `_format.md` "Append-only" rule.
 - `_toc.md`
 - `_format.md`
 
-The per-entry helpers (`scripts/lib/per-entry/`) read this list at
+The pack's per-entry mirror generator reads this list at
 runtime. Files not matching the entry regex AND not in this list are SKIP.
 `_format.md` is project-side only (no pack analog).
 

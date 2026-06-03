@@ -36,7 +36,7 @@ superseded-by. State is annotated in the H2 heading via `🚧`
 - `_intro.md`
 - `_toc.md`
 
-The per-entry helpers (`scripts/lib/per-entry/`) read this list at
+The pack's per-entry mirror generator reads this list at
 runtime. Files not matching the entry regex AND not in this list are SKIP.
 
 ## Write authority
