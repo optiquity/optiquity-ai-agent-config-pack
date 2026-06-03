@@ -299,6 +299,26 @@ STREAMS = [
     ("pack-backlog",      "backlog",            "pack-ops/BACKLOG.md",          r"^BD-\d+\.md$"),
     ("pack-changelog",    "changelog",          "pack-ops/CHANGELOG.md",        r"^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$"),
 ]
+# ── Check 48 (BD-195 C6): JC-5 soft-advisory removed-doc guard ─────────────
+# Frozen measure-then-bound set (PLAN-BD-195-REMEDIATION.md §2.3 Step-1):
+# basenames of docs REMOVED from the repo that are still cited (as accurate
+# v8/v9 + process history) inside the two regenerated mirrors. Each was
+# verified ABSENT from the tree at design time (`find . -name <name>` → 0).
+# The guard WARNs (never fail()s) on each occurrence so the accurate-history
+# citations surface without breaking CI (JC-5: NO hand-correction). The
+# scan is scoped to the two mirror files below — no full-tree walk.
+_REMOVED_DOC_BASENAMES = (
+    "GEMINI-CLI-ANALYSIS.md",
+    "ANDROID-ANALYSIS.md",
+    "V10-PREDESIGN.md",
+    "ARCHITECTURE-BD-185.md",
+    "PLAN-BD-185.md",
+)
+_REMOVED_DOC_SCAN_FILES = (
+    "pack-ops/CHANGELOG.md",
+    "pack-ops/BACKLOG.md",
+)
+
 PER_ENTRY_LIB = REPO_ROOT / "scripts" / "lib" / "per-entry"
 CODEX_DIR = REPO_ROOT / "project-template" / ".codex"
 CLAUDE_AGENTS_DIR = REPO_ROOT / "project-template" / ".claude" / "agents"
@@ -357,6 +377,18 @@ def fail(msg: str) -> None:
 
 def ok(msg: str) -> None:
     print(f"  OK: {msg}")
+
+
+def warn(msg: str) -> None:
+    """Soft-advisory output — informational only, NEVER a gate failure.
+
+    A `warn()` line is printed for the operator's attention but does NOT
+    append to `failures`, so it never changes the exit code. Used by the
+    JC-5 soft-advisory removed-doc guard (Check 48, BD-195 C6): accurate
+    v8/v9 + process-history citations to removed docs must surface as a
+    WARN without breaking CI.
+    """
+    print(f"WARN: {msg}")
 
 
 # ── Check 1: SKILL.md frontmatter ──────────────────────────────────────────
@@ -7041,6 +7073,75 @@ def check_sanctioned_pack_side_shipped() -> None:
         )
 
 
+def check_removed_doc_advisory() -> None:
+    """Check 48 — JC-5 soft-advisory removed-doc guard (BD-195 C6).
+
+    SOFT-ADVISORY ONLY: WARNs (never fail()s; never changes the exit
+    code) when a citation in either regenerated mirror resolves to a
+    doc REMOVED from the repo. Covers the K3.12 (CHANGELOG) + K3.13
+    (BACKLOG) accurate-history citations WITHOUT hand-correcting them
+    (JC-5: leave accurate v8/v9 + process history intact).
+
+    Measure-then-bound (PLAN-BD-195-REMEDIATION.md §2.3): the bounded
+    set of removed-doc basenames is frozen in `_REMOVED_DOC_BASENAMES`
+    (each verified ABSENT from the tree at design time). Every hit is a
+    warning; NONE is a STRIP / gate failure — JC-5's sole output is a
+    non-blocking advisory.
+
+    Performance: scans ONLY the two mirror files in
+    `_REMOVED_DOC_SCAN_FILES` (no full-tree walk); the basename
+    alternation is compiled ONCE. The token boundary `(?<![\\w.-])` /
+    `(?![\\w-])` ensures `ARCHITECTURE-BD-185.md` does NOT match the
+    LIVE `ARCHITECTURE-BD-185-V2.md` (and likewise `PLAN-BD-185.md` vs
+    `PLAN-BD-185-V2.md`) while still matching path-form citations such
+    as `supporting-docs/GEMINI-CLI-ANALYSIS.md` and
+    `maintenance-docs/V10-PREDESIGN.md` (a leading `/` path separator is
+    permitted; only a preceding word char, `.`, or `-` — which would
+    signal a LONGER live basename — is rejected).
+    """
+    print("\n── Check 48: JC-5 soft-advisory removed-doc guard (BD-195) ──")
+
+    # Compile the basename alternation ONCE. Leading guard rejects a
+    # preceding word char, `.`, or `-` so a longer live basename that
+    # merely ends with a removed name is not matched (but a `/` path
+    # separator IS allowed — path-form citations are still removed-doc
+    # references); trailing guard rejects a following word char or `-`
+    # so `ARCHITECTURE-BD-185.md` does not match inside the live
+    # `ARCHITECTURE-BD-185-V2.md`.
+    alternation = "|".join(re.escape(name) for name in _REMOVED_DOC_BASENAMES)
+    pattern = re.compile(r"(?<![\w.-])(?:" + alternation + r")(?![\w-])")
+
+    total_hits = 0
+    for rel in _REMOVED_DOC_SCAN_FILES:
+        path = REPO_ROOT / rel
+        if not path.is_file():
+            # Lenient: a mirror absent at this HEAD is not an advisory
+            # condition (nothing to scan).
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            # Read failure is surfaced by other checks (e.g. Check 32);
+            # the soft-advisory simply skips an unreadable mirror.
+            continue
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            for m in pattern.finditer(line):
+                total_hits += 1
+                warn(
+                    f"{rel}:{line_no} cites `{m.group(0)}` — a removed doc "
+                    f"(JC-5 accurate-history citation; advisory only, NOT a "
+                    f"gate failure, NOT hand-corrected)"
+                )
+
+    # Always an OK summary line — the advisory NEVER fails the gate.
+    ok(
+        f"Check 48 — soft-advisory removed-doc scan: {total_hits} "
+        f"removed-doc citation(s) WARNed across "
+        f"{len(_REMOVED_DOC_SCAN_FILES)} mirror file(s); advisory only "
+        f"(exit code unaffected)"
+    )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -7184,6 +7285,12 @@ def main() -> None:
     # (shared with Checks 41/43), so it sits after the inventory + walk
     # gates. Per ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.2.
     check_sanctioned_pack_side_shipped()
+    # ── BD-195 (C6): JC-5 soft-advisory removed-doc guard. Lands LAST —
+    # it is SOFT (WARN-only; never appends to `failures`, never changes
+    # the exit code) and scoped to the two regenerated mirrors, so it
+    # neither gates nor depends on any prior check. Per
+    # PLAN-BD-195-REMEDIATION.md §C6 / §2.3 (measure-then-bound JC-5).
+    check_removed_doc_advisory()
 
     print("\n" + "=" * 60)
     if failures:

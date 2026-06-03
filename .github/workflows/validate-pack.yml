@@ -193,6 +193,9 @@ jobs:
       - name: validate-pack Check 46 tests (BD-196, boundary + spawn-rule pointer manifests)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-46.sh
+      - name: validate-pack Check 48 tests (BD-195 C6, JC-5 soft-advisory removed-doc guard)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-check-removed-doc-advisory.sh
       - name: tracker BD-129 gh-repo routing tests (BD-129)
         if: always()
         run: bash scripts/tests/tracker-bd129-gh-repo-test.sh
