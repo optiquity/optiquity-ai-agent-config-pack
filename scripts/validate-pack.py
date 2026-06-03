@@ -4275,7 +4275,7 @@ _CHECK_37_PER_LINE_FENCE_FILES = (
     "scripts/lib/detect.sh",
     "scripts/pack-help.sh",
     # PACK-FEEDBACK.md (added 2026-05-24 during H.13 implementation —
-    # architect-spec gap discovery, IMPL-REPORT-BD-173-Batch-19c-H.13.md
+    # architect-spec gap discovery, IMPLEMENTATION-REPORT-BD-173-Batch-19c-H.13.md
     # §7). Architect §2.3 originally classified this file as
     # anchor-phrase-legitimate (and thus NOT on the per-line fence list),
     # but empirically the file's `Pack Chat` references throughout the

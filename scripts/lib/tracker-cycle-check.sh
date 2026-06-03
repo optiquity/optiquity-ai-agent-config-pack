@@ -90,7 +90,8 @@
 #   - IMPLEMENTATION-PLAN-ADDENDUM-4.md §6.Q (K-value MAINTAINER CHECK;
 #     option (a): K=10 default, configurable via tracker.toml [graph]
 #     cycle_check_k)
-#   - ARCHITECTURE-V1.md §9 / §27.1 Layer 2 (typed errors + verb naming)
+#   - ARCHITECTURE.md §9 (typed errors); ARCHITECTURE-V3.md §27.1 Layer 2
+#     (verb naming)
 #
 # Constraints:
 #   - Bash 3.2 compatible (no associative arrays, no mapfile).

@@ -1409,7 +1409,7 @@ absorbing task to express ordering without merging entities. The
 Triggered when either:
 
 - The developer pastes the end-of-run prompt emitted by
-  `scripts/add-capability.sh` stage A8 (V10-DESIGN §5.14.3).
+  `scripts/add-capability.sh` stage A8.
 - The developer asks the PM chat to "add Python" / "add iOS" / similar
   and the PM chat (per its PM-CHAT.md **Capability addition**
   behavioral rule) first instructs them to run `add-capability.sh`

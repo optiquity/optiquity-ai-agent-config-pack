@@ -93,8 +93,8 @@
 #   - ARCHITECTURE-V3.3-DELTA.md §5.5 (cycle detection at link-create)
 #   - ARCHITECTURE-V3.3-DELTA.md §5.6 (typed error + verb naming)
 #   - ARCHITECTURE-V3.3-DELTA.md §6.R (sidecar dependency_edges schema)
-#   - ARCHITECTURE-V1.md §5.3 (reserved link.kind open-string family)
-#   - ARCHITECTURE-V1.md §9 (typed errors per category)
+#   - ARCHITECTURE.md §5.3 (reserved link.kind open-string family)
+#   - ARCHITECTURE.md §9 (typed errors per category)
 #
 # Constraints:
 #   - Bash 3.2 compatible (no associative arrays, no mapfile).

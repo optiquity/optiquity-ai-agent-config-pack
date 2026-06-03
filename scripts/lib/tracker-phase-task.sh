@@ -80,7 +80,7 @@
 #       in this project phase-task grammar.
 #
 # Reference: ARCHITECTURE-V3.3-DELTA.md §2, §3.5, §4.1-§4.4, §5.3,
-#            §6.4; ARCHITECTURE-V3.2-DELTA.md §4.1, §4.2, §4.3.
+#            §6.4.
 #
 # Constraints:
 #   - Bash 3.2 compatible (no associative arrays, no mapfile).

@@ -31,7 +31,8 @@ if any prior AI agent config is detected.
 Follow the version-specific migration guide in `supporting-docs/`.
 
 - **v10 → v11:** [`supporting-docs/MIGRATION-v10-to-v11.md`](supporting-docs/MIGRATION-v10-to-v11.md)
-- **v9 → v10:** [`supporting-docs/MIGRATION-v9-to-v10.md`](supporting-docs/MIGRATION-v9-to-v10.md)
+- **v9 → v10:** the v9→v10 migrator and guide were sunset in v11. Recover the
+  guide from history with `git checkout v10 -- supporting-docs/MIGRATION-v9-to-v10.md`.
 
 Version-specific migration guides are always named `MIGRATION-vN-to-vM.md`
 and always land in `supporting-docs/`. If you are on an older major

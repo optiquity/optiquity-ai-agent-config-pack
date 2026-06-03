@@ -235,8 +235,8 @@ tmf_mapping_set() {
 #
 # These keep the V3.2/V3.3 schema honored: the phase epic entry can
 # carry both the gh-id mapping and the task ordering. The schema is
-# documented in maintenance-docs/v11-research/ARCHITECTURE-V3.2-DELTA.md
-# §4.1 and carried forward unchanged in V3.3 §4.1.
+# documented in maintenance-docs/v11-research/ARCHITECTURE-V3.3-DELTA.md
+# §4.1.
 
 # tmf_mapping_set_phase_task_order <data> <phase-id> <task-numbers-csv>
 # Add or update mapping["phase-N"].task_order = [<m1>, <m2>, ...].

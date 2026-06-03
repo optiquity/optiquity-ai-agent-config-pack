@@ -2,8 +2,6 @@
 
 *Location: `maintenance-docs/TOOL-COMPARISON.md`*
 *This is a living reference document. Update when tool capabilities change.*
-*Supersedes: GEMINI-CLI-ANALYSIS.md and ANDROID-ANALYSIS.md. Deprecation notices
-are added to those files in Step 2 of V9-DESIGN.md.*
 
 ---
 
@@ -210,15 +208,6 @@ setup, cross-machine workflow, and troubleshooting), see
 - swift-format, xcodebuild: macOS only.
 - uv, ruff, pyright: Cross-platform.
 - buf: Cross-platform.
-
-### Deprecated analysis documents
-The following files contain point-in-time analysis that has been superseded
-by this document:
-- `maintenance-docs/GEMINI-CLI-ANALYSIS.md` — content absorbed here
-- `maintenance-docs/ANDROID-ANALYSIS.md` — content absorbed here
-
-Both files remain in the repo for historical reference but should not be
-treated as current. This document takes precedence.
 
 ---
 
