@@ -543,3 +543,23 @@ references are different classes (see
 example: BD-178 SHOULD-1 byte-identically aligned `GEMINI.md`'s
 `.claude/settings.json` reference (correct for CLAUDE form, wrong for
 Gemini-audience); BD-182 corrected to `.gemini/.env` per §4.1.
+
+---
+
+## dependency-direction-placement
+
+Ship-status and dependency-direction are orthogonal; placement follows the
+latter. A deliverable normally lives project-side, and a new client-shipped
+script defaults to `project-template/scripts/`. But a file a PACK OPERATION
+depends on at runtime cannot live project-side without making a project
+deliverable a dependency of a pack op — forbidden. Worked example (BD-195):
+`scripts/lib/detect.sh` is `source`d by `init-project.sh:79` /
+`scripts/add-capability.sh` / the migrator (all pack operations), so it stays
+pack-side even though it ships (it is the dependency of the shipped
+`scripts/pack-help.sh`);
+promoting it to `project-template/scripts/lib/` was considered and RETRACTED for
+that inversion (`maintenance-docs/v11-implementation/ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md`
+§8.0). The pack-side-ship exception is frozen to `_SANCTIONED_PACK_SIDE_SHIPPED`;
+CI Check 47 holds the install-map's pack-side subset == that constant, so the
+lazy "ship from `scripts/` too" path fails by default — growth is a deliberate,
+sign-off-gated constant edit, never an incidental map add.

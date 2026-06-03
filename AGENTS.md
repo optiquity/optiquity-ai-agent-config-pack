@@ -482,6 +482,21 @@ PACK-AGENTS.md current".
   audience-correct canonical value per `maintenance-docs/v11-implementation/ARCHITECTURE-BD-182.md`
   §4.1 canonical reference table — NOT a byte-identical cross-trinity
   copy. `[roles: coder] [rationale: cross-cli-reference-normalization]`
+- **Dependency-direction governs file location; client deliverables default
+  to project-side.** A file's location is governed by DEPENDENCY DIRECTION,
+  not ship-status: a project-side deliverable must NEVER be a runtime
+  dependency of a pack operation (the reverse — pack-side libs being a
+  dependency of project deliverables — is fine). The default home for a new
+  client-shipped script is `project-template/scripts/`; BUT a file a pack
+  operation depends on at runtime (e.g. `init-project.sh` `source`s it) MUST
+  stay pack-side even if it also ships. A pack-side file may ship to clients
+  ONLY when BOTH (1) a pack operation depends on it at runtime AND (2) a
+  client surface invokes it — and ONLY via the frozen
+  `_SANCTIONED_PACK_SIDE_SHIPPED` allowlist in `scripts/validate-pack.py` (CI
+  Check 47 enforces install-map↔constant set-equality; growing the constant
+  requires architect+user sign-off). Current sanctioned set: exactly
+  `{scripts/lib/detect.sh, scripts/pack-help.sh}`. `[roles: architect coder]
+  [rationale: dependency-direction-placement]`
 
 ### Project goals (v11)
 
