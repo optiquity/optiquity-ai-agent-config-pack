@@ -5503,6 +5503,57 @@ def _build_pack_only_doc_basenames() -> set[str]:
     return out
 
 
+# ── BD-199: Check 43 hot-path precompilation ─────────────────────────────
+# Check 43's bare-prose tier formerly rebuilt a regex string and ran
+# re.search PER (line × basename) — O(lines × 586 basenames) ≈ 9.4M
+# re.compile cache-misses, ~355 s wall. The fix (ARCHITECTURE-BD-199-
+# VALIDATE-PACK-PERF.md §2.1–§2.2) collapses the N per-basename patterns
+# into ONE precompiled alternation, scanned ONCE per line, with a per-line
+# basename dedupe to reproduce the prior "first match per distinct basename"
+# fire-set EXACTLY. The two qualified-prefix patterns (§2.3 Lever C) are
+# likewise hoisted from re.compile-in-loop to module-precompiled constants.
+
+
+def _build_bare_prose_alternation(
+    pack_only_doc_basenames: "set[str]",
+) -> "re.Pattern[str] | None":
+    """Build the single precompiled bare-prose alternation for Check 43.
+
+    Semantically identical to the former per-basename pattern
+    `(?<![A-Za-z0-9_.-]) + re.escape(basename) + (?![A-Za-z0-9_.-])`:
+    the lookbehind/lookahead boundary classes are byte-copied, and the
+    alternatives are exactly `re.escape(b)` for each `b` in the set.
+
+    Correctness constraint (ARCHITECTURE-BD-199 §2.1): Python alternation
+    is FIRST-alternative-wins, NOT longest-match, so the alternatives are
+    sorted by DESCENDING LENGTH before joining. Longest-first guarantees
+    the regex prefers the longest valid basename at any position, which —
+    combined with the trailing boundary lookahead — reproduces the union
+    of the 586 independent single-basename searches. Returns None when the
+    set is empty (no detector to build; caller skips the tier).
+    """
+    if not pack_only_doc_basenames:
+        return None
+    ordered = sorted(pack_only_doc_basenames, key=lambda b: (-len(b), b))
+    alternation = "|".join(re.escape(b) for b in ordered)
+    return re.compile(
+        r"(?<![A-Za-z0-9_.-])(?:" + alternation + r")(?![A-Za-z0-9_.-])"
+    )
+
+
+# Qualified pack-internal prefix detectors (§2.3 Lever C). Formerly
+# re.compile'd per (line × prefix) inside the Check 43 line loop; hoisted
+# to a module-precompiled (prefix -> compiled pattern) mapping. The pattern
+# body is byte-identical to the former in-loop construction
+# (`re.escape(prefix) + r"([A-Za-z0-9_/\.-]+(?:\.[A-Za-z0-9]+)+)"`).
+_CHECK_43_PACK_INTERNAL_PREFIX_PATTERNS = {
+    prefix: re.compile(
+        re.escape(prefix) + r"([A-Za-z0-9_/\.-]+(?:\.[A-Za-z0-9]+)+)"
+    )
+    for prefix in _CHECK_43_PACK_INTERNAL_PREFIXES
+}
+
+
 def check_project_side_bare_internal_refs() -> None:
     """Check 43 — project-side / client-installed bare cross-references
     to pack-internal files (V11 leak-sweep prevention; strategy §4.1).
@@ -5548,6 +5599,10 @@ def check_project_side_bare_internal_refs() -> None:
     # JC-2 axis (i): pack-only-doc basename set (built from the tree, not
     # a hand-list) for the bare-prose detector. BD-195 C2 §2.2 Step-3 (b).
     pack_only_doc_basenames = _build_pack_only_doc_basenames()
+    # BD-199: collapse the 586 per-basename patterns into ONE precompiled
+    # descending-length-sorted alternation, built ONCE per invocation (was
+    # rebuilt+searched per line × basename → 9.4M re.compile cache-misses).
+    bare_prose_pattern = _build_bare_prose_alternation(pack_only_doc_basenames)
 
     # Build the set of supporting-docs/ filenames that ARE installed at
     # client per §1.6. Parse via Guardrail 3's helper.
@@ -5699,39 +5754,51 @@ def check_project_side_bare_internal_refs() -> None:
             # isolated bare refs (those are handled by the bare-ref tier
             # below) to avoid double-flagging. Anchor-phrase exemption
             # preserves intentional pack-as-product cites.
-            for doc_basename in pack_only_doc_basenames:
-                bp_pat = r"(?<![A-Za-z0-9_.-])" + _re_local.escape(
-                    doc_basename
-                ) + r"(?![A-Za-z0-9_.-])"
-                m = _re_local.search(bp_pat, line)
-                if not m:
-                    continue
-                # Skip the backtick-isolated bare-ref form `X.md` — that is
-                # the existing bare-ref tier's surface (handled below); the
-                # bare-PROSE axis targets the non-backtick / qualified-path
-                # form the bare-ref regex misses.
-                start = m.start()
-                end = m.end()
-                if (
-                    start > 0
-                    and line[start - 1] == "`"
-                    and end < len(line)
-                    and line[end] == "`"
-                ):
-                    continue
-                if _check_43_context_has_anchor(stripped_lines, lineno):
-                    hits_anchor += 1
-                    continue
-                fail(
-                    f"{rel_path}:{lineno} — bare-prose reference to "
-                    f"pack-only doc `{doc_basename}` (lives under "
-                    f"maintenance-docs/ or pack-ops/; never shipped to a "
-                    f"client). Remediation: drop the cite OR replace with "
-                    f"a project-side SSOT (e.g., docs/pack/PM-CHAT.md) OR "
-                    f"— if intentional pack-as-product cite — add an anchor "
-                    f"phrase like \"in the pack repo\" within ±2 lines."
-                )
-                any_failed = True
+            #
+            # BD-199: ONE precompiled alternation (built once at function
+            # entry) scanned per line via finditer, replacing the former
+            # per-(line × basename) re.search loop. Each match's basename
+            # is `m.group()`. Per-line dedupe by basename (`seen_on_line`)
+            # reproduces the former "re.search = first occurrence, once per
+            # distinct basename" fire-set EXACTLY — finditer yields ALL
+            # occurrences (incl. the same basename twice on one line), so
+            # the dedupe is the multiplicity-equivalence guarantee
+            # (ARCHITECTURE-BD-199 §2.2). The boundary classes, backtick-
+            # skip, anchor exemption, and fail() text are byte-identical to
+            # the prior per-basename loop.
+            if bare_prose_pattern is not None:
+                seen_on_line: set[str] = set()
+                for m in bare_prose_pattern.finditer(line):
+                    doc_basename = m.group()
+                    if doc_basename in seen_on_line:
+                        continue
+                    seen_on_line.add(doc_basename)
+                    # Skip the backtick-isolated bare-ref form `X.md` — that
+                    # is the existing bare-ref tier's surface (handled
+                    # below); the bare-PROSE axis targets the non-backtick /
+                    # qualified-path form the bare-ref regex misses.
+                    start = m.start()
+                    end = m.end()
+                    if (
+                        start > 0
+                        and line[start - 1] == "`"
+                        and end < len(line)
+                        and line[end] == "`"
+                    ):
+                        continue
+                    if _check_43_context_has_anchor(stripped_lines, lineno):
+                        hits_anchor += 1
+                        continue
+                    fail(
+                        f"{rel_path}:{lineno} — bare-prose reference to "
+                        f"pack-only doc `{doc_basename}` (lives under "
+                        f"maintenance-docs/ or pack-ops/; never shipped to a "
+                        f"client). Remediation: drop the cite OR replace with "
+                        f"a project-side SSOT (e.g., docs/pack/PM-CHAT.md) OR "
+                        f"— if intentional pack-as-product cite — add an anchor "
+                        f"phrase like \"in the pack repo\" within ±2 lines."
+                    )
+                    any_failed = True
 
             # Qualified pack-ops/<X> and maintenance-docs/<X> detection
             # (LEAK CLASS D in scripts/lib/detect.sh comments / LEAK
@@ -5739,13 +5806,10 @@ def check_project_side_bare_internal_refs() -> None:
             # side prose). Bare-ref regex would not match these because
             # of the `/` separator; explicit substring detection.
             for prefix in _CHECK_43_PACK_INTERNAL_PREFIXES:
-                # Use a local import only to keep the qualified-prefix
-                # detection scoped (mirrors the supporting-docs/ search
-                # above).
-                pattern = _re_local.compile(
-                    _re_local.escape(prefix)
-                    + r"([A-Za-z0-9_/\.-]+(?:\.[A-Za-z0-9]+)+)"
-                )
+                # BD-199: pattern hoisted to a module-precompiled mapping
+                # (was re.compile'd per line × prefix). Pattern body is
+                # byte-identical to the former in-loop construction.
+                pattern = _CHECK_43_PACK_INTERNAL_PREFIX_PATTERNS[prefix]
                 for m in pattern.finditer(line):
                     rest = m.group(1)
                     full_target = prefix + rest
