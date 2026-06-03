@@ -19,6 +19,9 @@
 #   Group 4: End-to-end synthetic-tree check (T1-T9 per §1.10)
 #   Group 5: Static fixture file sanity (under scripts/tests/fixtures/project-side-refs/)
 #   Group 6: End-to-end validate-pack.py exit-status on HEAD
+#   Group 7: JC-2 broadening (BD-195 C2 §2.2 Step-5)
+#   Group 8: BD-195 C3d — sanctioned pack-side-shipped freeze (Check 47) +
+#            re-contamination regression (membership-gate, not content-skip)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-43.sh
 
@@ -61,6 +64,9 @@ required = [
     '_CHECK_43_PACK_OPS_CLIENT_INSTALLED',
     '_check_43_context_has_anchor',
     '_iter_client_installed_files',
+    # BD-195 C3d (Check 47 + walk-gate) — folded into this file.
+    '_SANCTIONED_PACK_SIDE_SHIPPED',
+    'check_sanctioned_pack_side_shipped',
 ]
 missing = [n for n in required if not hasattr(mod, n)]
 if missing:
@@ -817,6 +823,188 @@ EOF
 case $? in
     0) t_pass "JC-2 broadening Step-5 cases (a-e + disjointness e')" ;;
     *) t_fail "JC-2 broadening Step-5 cases failed (see Python output)" ;;
+esac
+
+# ─────────────────────────────────────────────────────────────────
+# Group 8: BD-195 C3d — sanctioned pack-side-shipped freeze (Check 47)
+#          + the re-contamination regression (membership-gate, not skip)
+# ─────────────────────────────────────────────────────────────────
+#
+# Cases per PLAN-BD-195-REMEDIATION.md §C3d (architect §8.1/§8.2):
+#   (0)   detect.sh is EXPLICITLY in _iter_client_installed_files()'s walk-set
+#         (direct membership-admit proof — refactor-robust, independent of
+#         Check 43's content logic);
+#   (i)   a CLEAN synthetic detect.sh PASSES Check 43 (it is walked);
+#   (ii)  a synthetic detect.sh with an INJECTED pack-internal ref still
+#         FAILS Check 43 — the load-bearing re-contamination regression
+#         proving the walk-gate is MEMBERSHIP-only, not a content silencer;
+#   (iii) a non-template map entry NOT in _SANCTIONED_PACK_SIDE_SHIPPED
+#         FAILS Check 47 (lazy-add blocked);
+#   (iv)  a constant entry NOT in the map FAILS Check 47 (set-equality,
+#         both directions).
+
+printf "\n=== Group 8: BD-195 C3d sanctioned-set freeze + re-contamination regression ===\n"
+
+python3 <<EOF
+import sys, tempfile, pathlib, shutil, io, contextlib
+sys.path.insert(0, '$REPO_ROOT/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+failures = []
+
+def build_tree(detect_content: str, extra_map_entries: list = None,
+               omit_detect_from_map: bool = False) -> pathlib.Path:
+    """Build a synthetic REPO_ROOT with the two sanctioned files present
+    and a controllable _CLIENT_INSTALLED_FILES inventory."""
+    root = pathlib.Path(tempfile.mkdtemp(prefix="vp-check47-"))
+    (root / "project-template").mkdir()
+    (root / "project-template" / "CLAUDE.md").write_text("clean\n")
+    # The two sanctioned pack-side files on disk.
+    (root / "scripts" / "lib").mkdir(parents=True)
+    (root / "scripts" / "lib" / "detect.sh").write_text(detect_content)
+    (root / "scripts" / "pack-help.sh").write_text("#!/usr/bin/env bash\necho ok\n")
+    inv = [
+        "#!/usr/bin/env bash",
+        "# _CLIENT_INSTALLED_FILES_START",
+        "#   project-template/CLAUDE.md  ->  CLAUDE.md  [stage:S2]",
+        "#   supporting-docs/METHODOLOGY.md  ->  docs/pack/METHODOLOGY.md  [stage:S6]",
+        "#   scripts/pack-help.sh  ->  scripts/pack-help.sh  [stage:S5]",
+    ]
+    if not omit_detect_from_map:
+        inv.append("#   scripts/lib/detect.sh  ->  scripts/lib/detect.sh  [stage:S5]")
+    for entry in (extra_map_entries or []):
+        # Materialize the file so it is real at HEAD (Check 41-style realism).
+        p = root / entry
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("#!/usr/bin/env bash\necho extra\n")
+        inv.append(f"#   {entry}  ->  {entry}  [stage:S5]")
+    inv.append("# _CLIENT_INSTALLED_FILES_END")
+    ip = root / "scripts" / "init-project.sh"
+    ip.parent.mkdir(parents=True, exist_ok=True)
+    ip.write_text("\n".join(inv) + "\n")
+    return root
+
+def run(check_fn_name: str, root: pathlib.Path) -> tuple:
+    saved_root = mod.REPO_ROOT
+    saved_failures = list(mod.failures)
+    mod.failures.clear()
+    mod.REPO_ROOT = root
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            getattr(mod, check_fn_name)()
+        new_failures = list(mod.failures)
+        captured = buf.getvalue()
+    finally:
+        mod.REPO_ROOT = saved_root
+        mod.failures.clear()
+        mod.failures.extend(saved_failures)
+        shutil.rmtree(root, ignore_errors=True)
+    return (len(new_failures), captured)
+
+CLEAN_DETECT = "#!/usr/bin/env bash\n# detect helpers; no pack-self refs.\necho ok\n"
+# A pack-internal qualified path-prefix in a shell comment — the same
+# leak shape Check 43's T8 case exercises.
+DIRTY_DETECT = (
+    "#!/usr/bin/env bash\n"
+    "# Re-contamination: maintenance-docs/v11-implementation/ARCHITECTURE-FOO.md\n"
+    "echo ok\n"
+)
+
+# (0) MEMBERSHIP-ADMIT proof — assert scripts/lib/detect.sh is ACTUALLY in
+#     the _iter_client_installed_files() walked set. The (i)/(ii) cases below
+#     prove membership only IMPLICITLY (via the clean PASS / injected-ref
+#     FAIL); this case asserts the walk-set contains detect.sh DIRECTLY, so
+#     the proof survives a refactor that changes Check 43's content logic
+#     without touching the membership gate. (architect §8.1 (ii) / PLAN R-9.)
+membership_root = build_tree(CLEAN_DETECT)
+saved_root_m = mod.REPO_ROOT
+mod.REPO_ROOT = membership_root
+try:
+    walked = {str(p).replace("\\\\", "/") for p in mod._iter_client_installed_files()}
+finally:
+    mod.REPO_ROOT = saved_root_m
+    shutil.rmtree(membership_root, ignore_errors=True)
+if "scripts/lib/detect.sh" not in walked:
+    failures.append(
+        "(0) sanctioned scripts/lib/detect.sh NOT admitted to the "
+        "_iter_client_installed_files() walk-set (membership gate must ADMIT "
+        "it): " + str(sorted(walked))
+    )
+
+# (i) CLEAN sanctioned detect.sh PASSES Check 43 (it is walked).
+fc, cap = run("check_project_side_bare_internal_refs", build_tree(CLEAN_DETECT))
+if fc != 0:
+    failures.append(f"(i) clean sanctioned detect.sh expected PASS, got {fc}: {cap}")
+
+# (ii) INJECTED pack-internal ref into the walked detect.sh still FAILS
+#      Check 43 — membership-gate is NOT a content skip.
+root_dirty = build_tree(DIRTY_DETECT)
+# Seed the resolving pack-internal target so the bare/qualified ref resolves.
+tgt = root_dirty / "maintenance-docs" / "v11-implementation" / "ARCHITECTURE-FOO.md"
+tgt.parent.mkdir(parents=True, exist_ok=True)
+tgt.write_text("stub")
+fc, cap = run("check_project_side_bare_internal_refs", root_dirty)
+if fc < 1:
+    failures.append(
+        f"(ii) injected-ref detect.sh expected Check 43 FAIL (membership-gate, "
+        f"not content-skip), got {fc}: {cap}"
+    )
+
+# (iii) a non-template map entry NOT in the frozen constant FAILS Check 47.
+fc, cap = run(
+    "check_sanctioned_pack_side_shipped",
+    build_tree(CLEAN_DETECT, extra_map_entries=["scripts/lib/rogue.sh"]),
+)
+if fc < 1:
+    failures.append(
+        f"(iii) unsanctioned pack-side map entry expected Check 47 FAIL "
+        f"(lazy-add blocked), got {fc}: {cap}"
+    )
+elif "rogue.sh" not in cap or "_SANCTIONED_PACK_SIDE_SHIPPED" not in cap:
+    failures.append(
+        f"(iii) Check 47 failure message must name the offending path + the "
+        f"membership criterion, got: {cap}"
+    )
+
+# (iv) a constant entry NOT in the map FAILS Check 47 (set-equality both ways).
+fc, cap = run(
+    "check_sanctioned_pack_side_shipped",
+    build_tree(CLEAN_DETECT, omit_detect_from_map=True),
+)
+if fc < 1:
+    failures.append(
+        f"(iv) sanctioned entry absent from the map expected Check 47 FAIL "
+        f"(set-equality), got {fc}: {cap}"
+    )
+
+# (v) baseline: a well-formed 2-member map PASSES Check 47.
+fc, cap = run("check_sanctioned_pack_side_shipped", build_tree(CLEAN_DETECT))
+if fc != 0:
+    failures.append(f"(v) frozen 2-member map expected Check 47 PASS, got {fc}: {cap}")
+
+# (vi) the frozen constant is EXACTLY the two paths (sized to measured set).
+if tuple(mod._SANCTIONED_PACK_SIDE_SHIPPED) != (
+    "scripts/lib/detect.sh", "scripts/pack-help.sh"
+):
+    failures.append(
+        f"(vi) _SANCTIONED_PACK_SIDE_SHIPPED must be exactly the 2 measured "
+        f"paths, got {mod._SANCTIONED_PACK_SIDE_SHIPPED!r}"
+    )
+
+if failures:
+    print("FAILURES")
+    for f in failures:
+        print(" ", f)
+    sys.exit(1)
+print("OK")
+EOF
+case $? in
+    0) t_pass "C3d freeze + walk-gate: clean PASSES, injected-ref FAILS C43, lazy-add/missing FAIL C47" ;;
+    *) t_fail "BD-195 C3d Check-47 / re-contamination regression failed (see Python output)" ;;
 esac
 
 # ─────────────────────────────────────────────────────────────────

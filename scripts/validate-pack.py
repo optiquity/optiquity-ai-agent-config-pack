@@ -4113,10 +4113,32 @@ def _context_has_anchor(lines: list[str], lineno: int) -> bool:
     return False
 
 
+# Pack-side-LOCATED, client-SHIPPED files. FROZEN. Each entry is a
+# pack-operation runtime dependency (dependency-direction principle:
+# init-project.sh/add-capability.sh/migrator source detect.sh; pack-help.sh
+# sources detect.sh) AND must ship to clients (pack-help LCD floor). They
+# are held to client-surface cleanliness by Check 43 and MUST stay clean.
+# ADDING AN ENTRY requires architect+user authorization — see Check 47
+# (set-equality freeze) and ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8
+# (the dependency-direction membership criterion, §8.3).
+_SANCTIONED_PACK_SIDE_SHIPPED = (
+    "scripts/lib/detect.sh",
+    "scripts/pack-help.sh",
+)
+
+
 def _iter_client_installed_files() -> list[Path]:
     """Return the union of:
       (a) all regular files under project-template/ (recursive), and
-      (b) the explicit non-project-template files in _CLIENT_INSTALLED_FILES.
+      (b) the explicit non-project-template files in _CLIENT_INSTALLED_FILES,
+          split into two admitted classes: `supporting-docs/` entries are
+          client-installed sources and pass through WITHOUT a membership
+          check; every OTHER non-template entry (pack-side-located) is
+          admitted ONLY if it is in _SANCTIONED_PACK_SIDE_SHIPPED (membership
+          gate, NOT a content skip — admitted files stay fully walked +
+          cleanliness-enforced by Check 43; an UNsanctioned pack-side entry
+          is a hard error via Check 47). See
+          ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.1/§8.2.
 
     This replaces _PROJECT_SIDE_ROOTS-based walks for Checks 37 + 43.
     The source-of-truth for (b) is _CLIENT_INSTALLED_FILES_START/_END
@@ -4141,10 +4163,23 @@ def _iter_client_installed_files() -> list[Path]:
                 continue
             out.append(path.relative_to(REPO_ROOT))
     # (b) explicit non-project-template entries from _CLIENT_INSTALLED_FILES.
+    #     `supporting-docs/` entries are client-installed sources (walked as
+    #     before). PACK-SIDE-LOCATED entries (neither project-template/ nor
+    #     supporting-docs/) are MEMBERSHIP-GATED to _SANCTIONED_PACK_SIDE_SHIPPED:
+    #     the gate authorizes WHICH pack-side files may be walked as client
+    #     surfaces — it is NOT a content skip. Admitted files stay fully walked
+    #     and Check 43 still enforces cleanliness on them (re-adding a `BD-`
+    #     token to detect.sh post-strip still FAILS Check 43). An UNsanctioned
+    #     pack-side map entry is silently NOT admitted here and is turned into
+    #     a HARD CI error by Check 47 (set-equality freeze).
     entries, _, _, _, _ = _parse_client_installed_files()
     for entry in entries:
         if entry.startswith("project-template/"):
             continue  # already covered by (a)
+        if not entry.startswith("supporting-docs/") and (
+            entry not in _SANCTIONED_PACK_SIDE_SHIPPED
+        ):
+            continue  # membership gate — Check 47 fails on unsanctioned entries
         full = REPO_ROOT / entry
         if full.is_file():
             rel = full.relative_to(REPO_ROOT)
@@ -6935,6 +6970,75 @@ def check_durable_doc_concision() -> None:
         )
 
 
+# ── Check 47: sanctioned pack-side-shipped freeze (BD-195 C3d) ─────────────
+# Freezes the bounded exception that lets `scripts/lib/detect.sh` +
+# `scripts/pack-help.sh` ship to clients from their pack-side location.
+# Asserts the install map's pack-side subset (non-project-template/,
+# non-supporting-docs/ entries from _CLIENT_INSTALLED_FILES) EQUALS
+# _SANCTIONED_PACK_SIDE_SHIPPED exactly (set equality — neither superset
+# nor subset). Adding a pack-side shipped file to the map WITHOUT editing
+# the frozen constant FAILS CI (the lazy `ship a new file from scripts/`
+# path is mechanically blocked); a constant entry that left the map also
+# FAILS. The membership TEST: a file qualifies ONLY IF (1) a pack operation
+# depends on it at runtime AND (2) a client surface requires it shipped —
+# default for new shipped files stays project-template/scripts/. See
+# ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.2/§8.3.
+
+def check_sanctioned_pack_side_shipped() -> None:
+    """Check 47 — sanctioned pack-side-shipped set freeze (BD-195 C3d)."""
+    print("\n── Check 47: sanctioned pack-side-shipped freeze (BD-195) ──")
+    init_sh = REPO_ROOT / "scripts" / "init-project.sh"
+    if not init_sh.is_file():
+        ok("scripts/init-project.sh absent — skipping (lenient)")
+        return
+
+    entries, start_count, end_count, _, _ = _parse_client_installed_files()
+    if start_count != 1 or end_count != 1:
+        ok(
+            "_CLIENT_INSTALLED_FILES markers not exactly-once — deferring to "
+            "Check 41 (skipping set-equality)"
+        )
+        return
+
+    map_pack_side = {
+        e
+        for e in entries
+        if not e.startswith("project-template/")
+        and not e.startswith("supporting-docs/")
+    }
+    frozen = set(_SANCTIONED_PACK_SIDE_SHIPPED)
+
+    membership_test = (
+        "A file qualifies for _SANCTIONED_PACK_SIDE_SHIPPED ONLY IF (1) a pack "
+        "operation depends on it at runtime (sourced/invoked by init-project.sh, "
+        "add-capability.sh, or the migrator) AND (2) a client surface requires "
+        "it shipped. If only (2): default to project-template/scripts/. If only "
+        "(1): keep pack-side, unshipped. Growth requires architect + user "
+        "authorization citing ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.3."
+    )
+
+    if map_pack_side == frozen:
+        ok(
+            f"install-map pack-side subset == _SANCTIONED_PACK_SIDE_SHIPPED "
+            f"({len(frozen)} entr(ies)): {sorted(frozen)}"
+        )
+        return
+
+    unsanctioned = sorted(map_pack_side - frozen)
+    missing = sorted(frozen - map_pack_side)
+    if unsanctioned:
+        fail(
+            f"_CLIENT_INSTALLED_FILES ships pack-side file(s) NOT in "
+            f"_SANCTIONED_PACK_SIDE_SHIPPED: {unsanctioned}. {membership_test}"
+        )
+    if missing:
+        fail(
+            f"_SANCTIONED_PACK_SIDE_SHIPPED entr(ies) absent from the install "
+            f"map: {missing}. A sanctioned file must ship (conjunct 2); if it "
+            f"no longer ships, remove it from the frozen constant. {membership_test}"
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -7072,6 +7176,12 @@ def main() -> None:
     # GUARDRAILS.md §6 (M1-M4) + §7; PLAN-DOC-CONCISION-GUARDRAILS.md
     # §3 C10.
     check_durable_doc_concision()
+    # ── BD-195 (C3d): sanctioned pack-side-shipped freeze. Lands LAST —
+    # it freezes the bounded dual-use-shipped-lib exception to exactly
+    # {detect.sh, pack-help.sh} and reuses _parse_client_installed_files()
+    # (shared with Checks 41/43), so it sits after the inventory + walk
+    # gates. Per ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.2.
+    check_sanctioned_pack_side_shipped()
 
     print("\n" + "=" * 60)
     if failures:
