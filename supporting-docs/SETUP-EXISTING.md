@@ -73,7 +73,7 @@ carefully before typing `y`:
 - **Pack skill coverage.** For each detected language, the preview
   reports `FULL` or `NO COVERAGE`. A `NO COVERAGE` flag means the
   pack does not ship skills for that language (e.g., Kotlin,
-  TypeScript in v10.0). Installation still works — skill gaps are
+  TypeScript in v11.0). Installation still works — skill gaps are
   handled in Step 11 below.
 - **Planned operations — ADD.** Lists every new directory and file
   the script will create (`.claude/agents/`, `.codex/agents/`,
@@ -169,7 +169,7 @@ Xcode companion files; 5.B and 5.C apply only to new projects).
 ```bash
 git add -A && git status           # review — expect new files only, no modifications to existing source
 git diff --stat
-git commit -m "Add AI agent configuration (v10.0 pack install)"
+git commit -m "Add AI agent configuration (v11.0 pack install)"
 ```
 
 Do **not** merge `pack-init` into `main` yet. Step 10 may add more
@@ -255,7 +255,7 @@ the PM chat produces:
 
 ```bash
 git add -A && git diff --stat
-git commit -m "Fill in context file placeholders (v10.0 pack install)"
+git commit -m "Fill in context file placeholders (v11.0 pack install)"
 ```
 
 ---
@@ -263,7 +263,7 @@ git commit -m "Fill in context file placeholders (v10.0 pack install)"
 ## Step 11 — Skill gap follow-up (if applicable)
 
 If the `init-project.sh` preview flagged a skill-coverage gap (e.g.,
-your project uses Kotlin or TypeScript — not covered by v10.0 pack
+your project uses Kotlin or TypeScript — not covered by v11.0 pack
 skills), the PM chat appends an entry to
 `docs/pack/PACK-FEEDBACK.md` during kickoff with:
 
@@ -292,7 +292,7 @@ Once Steps 1–11 are complete, merge `pack-init` into `main`:
 
 ```bash
 git checkout main
-git merge --no-ff pack-init -m "Merge pack-init: add AI agent configuration (v10.0)"
+git merge --no-ff pack-init -m "Merge pack-init: add AI agent configuration (v11.0)"
 git branch -d pack-init
 ```
 

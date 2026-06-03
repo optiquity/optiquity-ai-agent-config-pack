@@ -191,7 +191,7 @@ Every project should have all of these. Create them before writing any code.
 | `CLAUDE.md` | Project-specific rules for all CLI agents | PM chat | When new rules are established |
 | `AGENTS.md` | Agent roster and routing table | PM chat | When agents are added or changed |
 | `PACK-FEEDBACK.md` | Upstream feedback log to Pack Chat — observations, not solutions | PM chat | Continuously (append-only); delivered at workflow boundaries (Part 10) |
-| `METHODOLOGY.md` | This file — project-agnostic methodology reference | Pack (v9) | When new standing decisions are made |
+| `METHODOLOGY.md` | This file — project-agnostic methodology reference | Pack (v11) | When new standing decisions are made |
 <!-- DENY-LIST-CONTENT-END -->
 
 ### Document hygiene rules (inviolable)

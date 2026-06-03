@@ -11,7 +11,7 @@ upgrading from v10 to v11, see `MIGRATION-v10-to-v11.md`. (The
 v9->v10 migrator was sunset in v11; v9.x is no longer supported —
 reach out for migration guidance.)
 
-**New in v10:** a single `scripts/init-project.sh` script replaces
+**New in v11:** a single `scripts/init-project.sh` script replaces
 the manual copy / conditional-remove / permissions / bootstrap dance.
 It detects project state, previews every operation, and asks for
 confirmation before writing. Per-agent prompt templates live in
@@ -262,7 +262,7 @@ Replace any older companion files if previously installed.
 
 ```bash
 git add -A && git status         # verify nothing sensitive is staged
-git commit -m "Add AI agent configuration (v10.0)"
+git commit -m "Add AI agent configuration (v11.0)"
 ```
 
 The `.gitignore` automatically excludes `.claude/settings.local.json`,

@@ -37,7 +37,7 @@ HTML comment above.*
 
 | Field | Value |
 |---|---|
-| Pack version in use | v9.[N] |
+| Pack version in use | v11.[N] |
 | Project name | [PROJECT_NAME] |
 | Project start date | [YYYY-MM-DD] |
 | Last delivery to Pack Chat | (never) |

@@ -1102,6 +1102,27 @@ after C3d in PG-2.
 - **(g) Executor + gate:** fresh `pack-coder`. **NUD-6 ruled → NO C4b split;
   K5.11 (METHODOLOGY.md) lands inside C4.** Bounded review/fix.
 
+### C4-currency — client-surface v10→v11 currency sweep (NEW PG-2 commit, 2026-06-03)
+
+NEW PG-2 commit added 2026-06-03 (per `ARCHITECTURE-BD-195-V10-CURRENCY-SWEEP.md`,
+user-approved 2026-06-03). Lands in PG-2 AFTER C4 (`2c5989f`) and BEFORE C9. It
+closes the client-surface current-version-currency audit-coverage gap — the
+dimension the original BD-195 audit under-covered, surfaced by the C4 review
+whack-a-mole. NO new BD: it completes BD-195's client-surface currency coverage.
+
+- **(b) Findings:** 9 STRIP occurrences (V1–V9) per
+  `ARCHITECTURE-BD-195-V10-CURRENCY-SWEEP.md` §4, across 4 client-installed
+  files: `supporting-docs/SETUP-NEW.md` (V1, V2),
+  `supporting-docs/SETUP-EXISTING.md` (V3–V7),
+  `supporting-docs/METHODOLOGY.md` (V8, "Source" inventory label),
+  `project-template/docs/pack/PACK-FEEDBACK.md` (V9, version-in-use field).
+  Each fix value is README-version-table-SSOT-sourced (current major v11 /
+  minor v11.0).
+- **(borderlines ruled):** B1 (`v10-grammar` ×3 — backlog/changelog
+  `_rules.md`/`_format.md`) ruled KEEP (names a stable format generation, not a
+  currency claim). B2 (`METHODOLOGY.md` `V10-DESIGN §5.14.3` pack-self-ref leak)
+  deferred to C5 (different finding family).
+
 ### C5 — Pack-internal dangling-doc fixes (+ QUICKSTART, coverage-gap resolution)
 
 - **(a) Files:** `scripts/lib/tracker-migrate-forward.sh`,
