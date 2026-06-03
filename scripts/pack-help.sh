@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# scripts/pack-help.sh — `pack help` LCD shell verb (BD-075, V3 §28.2).
+# scripts/pack-help.sh — `pack help` LCD shell verb.
 #
-# Detects the active surface (pack vs client per V3 §28.2.3), reads the
-# matching HELP-FRAGMENT-*.md, inlines the sibling HELP-FRAGMENT-TRACKER.md
-# (DELTA L1 sibling-include), and prints to stdout.
+# Detects the active surface (pack vs client), reads the matching
+# HELP-FRAGMENT-*.md, inlines the sibling HELP-FRAGMENT-TRACKER.md
+# (sibling-include), and prints to stdout.
 #
 # Usage:
 #   pack help                         # auto-detect surface from cwd
 #   pack help --surface pack|client   # explicit override
 #   pack help --root <path>           # use <path> as the target tree (default: cwd)
 #
-# Output cost target: ~400 tokens per V3 §28.2.3.
+# Output cost target: ~400 tokens.
 #
-# This is the LCD floor for D-20 / OQ-20 — it works on every CLI's
+# This is the lowest-common-denominator floor — it works on every CLI's
 # terminal pane regardless of whether per-CLI slash commands have been
-# installed yet. The per-CLI `/pack-help` skills/commands (BD-077)
-# invoke this same script.
+# installed yet. The per-CLI `/pack-help` skills/commands invoke this
+# same script.
 
 set -uo pipefail
 
@@ -30,14 +30,14 @@ usage() {
 Usage: pack-help.sh [--surface pack|client] [--root <path>]
 
 Prints the pack verb manifest for the active surface. With no flags,
-auto-detects surface from the working directory (per V3 §28.2.3:
-BACKLOG.md with `^**BD-` entries → pack; with `^**TD-` entries →
-client; ambiguous trees print both fragments).
+auto-detects surface from the working directory (BACKLOG.md with
+`^**BD-` entries → pack; with `^**TD-` entries → client; ambiguous
+trees print both fragments).
 
 Reads the appropriate HELP-FRAGMENT-*.md and inlines the sibling
-HELP-FRAGMENT-TRACKER.md per V3 §28.2.4 / DELTA L1. Pack-side
-fragments live at pack-ops/HELP-FRAGMENT-PACK.md and
-pack-ops/HELP-FRAGMENT-TRACKER.md (BD-175 reorg).
+HELP-FRAGMENT-TRACKER.md. Pack-side fragments live at
+pack-ops/HELP-FRAGMENT-PACK.md and
+pack-ops/HELP-FRAGMENT-TRACKER.md.
 EOF
     # <!-- DENY-LIST-CONTENT-END -->
 }
@@ -86,17 +86,15 @@ emit_fragment() {
     # fragment body. emit_fragment is dual-surface and must match both
     # call sites' sentinel forms:
     # <!-- DENY-LIST-CONTENT-START -->
-    #   - Pack-side (call site L127):  pack-ops/HELP-FRAGMENT-PACK.md L37
+    #   - Pack-side:   pack-ops/HELP-FRAGMENT-PACK.md
     #       sentinel = `[Included from \`pack-ops/HELP-FRAGMENT-TRACKER.md\` ...]`
-    #   - Client-side (call site L130-131): project-template/docs/pack/
-    #       HELP-FRAGMENT.md L26 sentinel =
-    #       `[Included from \`HELP-FRAGMENT-TRACKER.md\` ...]`
-    # The `(pack-ops\/)?` optional group matches both. BD-177 originally
-    # tightened this to a `pack-ops/`-only prefix, which silently broke
+    #   - Client-side: docs/pack/HELP-FRAGMENT.md
+    #       sentinel = `[Included from \`HELP-FRAGMENT-TRACKER.md\` ...]`
+    # The `(pack-ops\/)?` optional group matches both. A `pack-ops/`-only
     # <!-- DENY-LIST-CONTENT-END -->
-    # the client-side substitution (sentinel leaked into rendered output);
-    # the BD-177 fix-pass broadened the pattern back to cover both
-    # surfaces while keeping the pack-side path-accurate sentinel.
+    # prefix would silently break the client-side substitution (the
+    # sentinel would leak into rendered output), so the pattern covers
+    # both surfaces while keeping the pack-side path-accurate sentinel.
     awk -v tracker="$tracker_fragment" '
         /^\[Included from `(pack-ops\/)?HELP-FRAGMENT-TRACKER\.md`/ {
             while ((getline line < tracker) > 0) print line
@@ -108,11 +106,10 @@ emit_fragment() {
 }
 
 # <!-- DENY-LIST-CONTENT-START -->
-# BD-175 reorg: pack-side fragments live at $root/pack-ops/ (canonical
-# post-v11.0). Root-fallback retained so test fixtures (and unusual
-# overlay trees) that materialise the fragment files at $root/ continue
-# to resolve — same back-compat pattern as detect.sh::detect_pack_surface
-# legacy-root fallback.
+# Pack-side fragments live at $root/pack-ops/ (canonical). Root-fallback
+# retained so test fixtures (and unusual overlay trees) that materialise
+# the fragment files at $root/ continue to resolve — same back-compat
+# pattern as detect.sh::detect_pack_surface legacy-root fallback.
 _pack_fragment_path() {
     if [[ -f "$root/pack-ops/HELP-FRAGMENT-PACK.md" ]]; then
         echo "$root/pack-ops/HELP-FRAGMENT-PACK.md"

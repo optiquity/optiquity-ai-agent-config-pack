@@ -20,24 +20,23 @@
 # pack-surface: pack | client | ambiguous
 #
 # <!-- DENY-LIST-CONTENT-START -->
-# Surface routing (post BD-175 directory reorganization):
-#   - Pack repo:    BACKLOG.md at <target>/pack-ops/ with `^\*\*BD-` entries
-#                   (canonical post-v11.0 location).
+# Surface routing:
+#   - Pack repo:    BACKLOG.md at <target>/pack-ops/ with `^\*\*BD-` entries.
 #   - Client repo:  BACKLOG.md at <target>/docs/project/ (canonical) OR
-#                   <target>/ (legacy v9 layout fallback) with `^\*\*TD-`
+#                   <target>/ (legacy layout fallback) with `^\*\*TD-`
 #                   entries.
 #   - Both present: ambiguous (caller decides — pack-help prints both).
 #   - Neither:      ambiguous (no signal to disambiguate).
 #
-# Candidate scan order: pack-ops/ (post-BD-175 pack-side canonical),
-# docs/project/ (client-side canonical), root (legacy fixture / v9-layout
-# fallback; retained for test-fixture and back-compat coverage — see
+# Candidate scan order: pack-ops/ (pack-side canonical), docs/project/
+# (client-side canonical), root (legacy-layout fallback; retained for
+# test-fixture and back-compat coverage — see
 # scripts/tests/pack-help-test.sh fixture 1.3 "client repo (root
 # BACKLOG.md, TD entries)" which still writes the legacy shape).
 # <!-- DENY-LIST-CONTENT-END -->
 #
-# Used by scripts/pack-help.sh (BD-075) and any future verb that needs
-# to dispatch by surface without consulting tracker.toml.
+# Used by scripts/pack-help.sh and any future verb that needs to
+# dispatch by surface without consulting tracker.toml.
 detect_pack_surface() {
     local target="${1:-.}"
     local bd_seen=0 td_seen=0
@@ -249,8 +248,8 @@ detect_improperly_added_files() {
 # capabilities: <dim>:<val>, <dim>:<val>, ... | (none) | (placeholder) | (no CLAUDE.md) | (no Active skills line)
 # Reads the `**Active skills:**` line from the target project's CLAUDE.md
 # and maps each skill to a dimension value using a hardcoded table that
-# mirrors the PLATFORM-SKILLS.md dimension rows. Consumed by
-# add-capability.sh stage A2 per V10-DESIGN §5.14.2.
+# mirrors the skill-to-dimension rows. Consumed by add-capability.sh
+# stage A2.
 detect_installed_capabilities() {
     local target="${1:-.}"
     local claude="$target/CLAUDE.md"
@@ -298,13 +297,12 @@ detect_installed_capabilities() {
             realtime-patterns)     caps+=("protocol:realtime") ;;
             messaging-patterns)    caps+=("protocol:messaging") ;;
             soap-patterns)         caps+=("protocol:soap") ;;
-            # BD-144 (v11.0 skill-dimensions reframe Batch 5): D5 deployment
-            # surface — reciprocal of the renamed `deployment:apple` and the
-            # new `deployment:linux-container` rows in
-            # scripts/add-capability.sh::capability_skills(). The pre-Batch-5
+            # D5 deployment surface — reciprocal of the `deployment:apple`
+            # and `deployment:linux-container` rows in
+            # scripts/add-capability.sh::capability_skills(). Earlier
             # mappings (deployment-apple→role:apple-app,
-            # deployment-python→role:python-server) were misclassified per
-            # ARCHITECTURE-SKILL-DIMENSIONS.md §3.5; both flip atomically here.
+            # deployment-python→role:python-server) were misclassified; both
+            # flip to the deployment dimension here.
             deployment-apple)      caps+=("deployment:apple") ;;
             deployment-python)     caps+=("deployment:linux-container") ;;
         esac
@@ -321,11 +319,10 @@ detect_installed_capabilities() {
 
 # python-data: yes|no
 #
-# BD-141 (v11.0 skill-dimensions reframe Batch 2). Concrete load
-# predicate for the `python-data-architecture` skill. Replaces the
-# fuzzy "multi-file Python with data access, async I/O, or ML
-# inference; otherwise omit" prose previously used in
-# PLATFORM-SKILLS.md.
+# Concrete load predicate for the `python-data-architecture` skill.
+# Replaces a fuzzy "multi-file Python with data access, async I/O, or
+# ML inference; otherwise omit" prose heuristic with deterministic
+# markers.
 #
 # Args:
 #   $1   Target project directory. Defaults to current working
@@ -342,13 +339,12 @@ detect_installed_capabilities() {
 #       aiohttp, httpx, psycopg, psycopg2, aiomysql, asyncpg, redis,
 #       pymongo, motor, boto3, aioboto3, pyarrow, pandas, numpy,
 #       scikit-learn, torch, tensorflow.
-#       NOTE: `protobuf` and `grpc-tools` were previously in this list
-#       but are now covered exclusively by `protobuf_marker_detected()`
-#       (BD-156). A protobuf-only project (e.g., `swift-protobuf` deps,
-#       Python wire-format library) does not imply data-architecture
-#       concerns — removing the over-trigger here keeps
-#       `python-data-architecture` scoped to actual data handling.
-#       (BD-035 audit finding F5 fix — see AUDIT-BD-035.md §3.)
+#       NOTE: `protobuf` and `grpc-tools` are intentionally absent here —
+#       they are covered exclusively by `protobuf_marker_detected()`. A
+#       protobuf-only project (e.g., `swift-protobuf` deps, Python
+#       wire-format library) does not imply data-architecture concerns,
+#       so excluding them keeps `python-data-architecture` scoped to
+#       actual data handling.
 #   (b) >= 5 *.py files outside tests/ and test_*.py / *_test.py.
 #   (c) any *.py file outside tests/ contains an `import` of a
 #       stdlib data-handling module — currently `sqlite3` or `csv`.
@@ -357,13 +353,12 @@ detect_installed_capabilities() {
 #       own applicability prose names ("files-as-DB") but markers (a)
 #       and (b) miss because stdlib imports never appear in dependency
 #       manifests and the file count is below the (b) threshold.
-#       (BD-035 audit finding F1 fix — see AUDIT-BD-035.md §3.)
 #
 # Callers: scripts/init-project.sh (pack_skill_coverage_for python row);
 # scripts/add-capability.sh references the predicate by comment only
 # (the language:python skill set is coarser than init-project's
-# auto-detect). PLATFORM-SKILLS.md cites the helper as the canonical
-# predicate for the python-data-architecture row.
+# auto-detect). This helper is the canonical predicate for the
+# python-data-architecture row.
 python_data_marker_detected() {
     local target="${1:-.}"
     if [[ -z "$target" || ! -d "$target" ]]; then
@@ -388,8 +383,8 @@ python_data_marker_detected() {
     # to match. The negated-class construction below is portable and
     # avoids the bracket-escape landmine.
     local manifest pkg
-    # F5 fix (BD-035 audit): `protobuf` and `grpc-tools` removed from
-    # this list — they belong to `protobuf_marker_detected()` (BD-156).
+    # `protobuf` and `grpc-tools` are intentionally absent from this
+    # list — they belong to `protobuf_marker_detected()`.
     local pkgs="sqlalchemy|alembic|pydantic|aiohttp|httpx|psycopg|psycopg2|aiomysql|asyncpg|redis|pymongo|motor|boto3|aioboto3|pyarrow|pandas|numpy|scikit-learn|torch|tensorflow"
     local pattern="(^|[^A-Za-z0-9_-])(${pkgs})($|[^A-Za-z0-9_.-])"
     for manifest in \
@@ -446,11 +441,10 @@ python_data_marker_detected() {
 
 # protobuf-marker: yes|no
 #
-# BD-156 (v11.0 PLATFORM-SKILLS.md naming-convention codification batch).
 # Concrete load predicate for the `protobuf-patterns` skill. Mirrors the
-# BD-141 `python_data_marker_detected()` shape: single positional
-# argument defaulting to cwd; tolerates missing target as a `no`;
-# emits a single `protobuf-marker: yes|no` line on stdout.
+# `python_data_marker_detected()` shape: single positional argument
+# defaulting to cwd; tolerates missing target as a `no`; emits a single
+# `protobuf-marker: yes|no` line on stdout.
 #
 # Args:
 #   $1   Target project directory. Defaults to current working
@@ -474,18 +468,17 @@ python_data_marker_detected() {
 #         Generic (any of the above filenames OR `buf.yaml` /
 #                 `buf.gen.yaml` present).
 #
-# Manifest scan reuses the BD-141 negated-character-class pattern
-# construction (rejects substring matches and version-suffix matches
-# like `protobuf-c` via `protobuf`).
+# Manifest scan reuses the negated-character-class pattern construction
+# from python_data_marker_detected() (rejects substring matches and
+# version-suffix matches like `protobuf-c` via `protobuf`).
 #
 # Callers: scripts/init-project.sh `pack_skill_coverage_for proto` row
-# (BD-156 — wires alongside the existing `grpc-patterns` coverage);
+# (wires alongside the existing `grpc-patterns` coverage);
 # scripts/add-capability.sh references the predicate by comment only
 # (the protocol:grpc skill set declaratively adds grpc-patterns; the
 # protobuf-marker → protobuf-patterns load is intersection-table-driven
-# and applies regardless of capability declaration).
-# PLATFORM-SKILLS.md cites the helper as the canonical predicate for
-# the protobuf-patterns intersection row.
+# and applies regardless of capability declaration). This helper is the
+# canonical predicate for the protobuf-patterns intersection row.
 protobuf_marker_detected() {
     local target="${1:-.}"
     if [[ -z "$target" || ! -d "$target" ]]; then
@@ -506,7 +499,7 @@ protobuf_marker_detected() {
     fi
 
     # Marker (b): dependency manifests. Same negated-character-class
-    # boundary construction as python_data_marker_detected() (BD-141)
+    # boundary construction as python_data_marker_detected()
     # — rejects substring matches like `protobuf-c-bindings` via
     # `protobuf` and `swift-protobuf-runtime` via `swift-protobuf`.
     local manifest pkg_pattern
@@ -551,11 +544,10 @@ protobuf_marker_detected() {
 
 # swiftdata-marker: yes|no
 #
-# BD-157 (v11.0 PLATFORM-SKILLS.md naming-convention codification batch).
 # Concrete load predicate for the `apple-swiftdata-patterns` skill.
-# Mirrors the BD-156 `protobuf_marker_detected()` shape: single
-# positional argument defaulting to cwd; tolerates missing target as a
-# `no`; emits a single `swiftdata-marker: yes|no` line on stdout.
+# Mirrors the `protobuf_marker_detected()` shape: single positional
+# argument defaulting to cwd; tolerates missing target as a `no`;
+# emits a single `swiftdata-marker: yes|no` line on stdout.
 #
 # Args:
 #   $1   Target project directory. Defaults to current working
@@ -565,7 +557,7 @@ protobuf_marker_detected() {
 # Output:
 #   Single line `swiftdata-marker: yes` or `swiftdata-marker: no`.
 #
-# Markers (any one true → yes), per architecture §3.7 / BD-157:
+# Markers (any one true → yes):
 #   (a) any `.swift` file in the project tree contains
 #       `import SwiftData` (excluding nested vendored / build trees:
 #       node_modules/, .git/, build/, .venv/, venv/, .tox/, .build/,
@@ -585,14 +577,14 @@ protobuf_marker_detected() {
 #       binary distributions of SwiftData-bridging helpers).
 #
 # Callers: scripts/init-project.sh `pack_skill_coverage_for swift` row
-# (BD-157 — wires alongside the existing apple-architecture-core /
+# (wires alongside the existing apple-architecture-core /
 # swift-best-practices coverage); scripts/add-capability.sh references
 # the predicate by comment only (the platform:ios / platform:macos
 # capability rows declare apple-architecture-core deterministically;
 # the swiftdata-marker → apple-swiftdata-patterns load is intersection-
-# table-driven and applies regardless of capability declaration).
-# PLATFORM-SKILLS.md cites the helper as the canonical predicate for
-# the apple-swiftdata-patterns intersection row.
+# table-driven and applies regardless of capability declaration). This
+# helper is the canonical predicate for the apple-swiftdata-patterns
+# intersection row.
 swiftdata_marker_detected() {
     local target="${1:-.}"
     if [[ -z "$target" || ! -d "$target" ]]; then
@@ -636,9 +628,8 @@ swiftdata_marker_detected() {
     # Marker (c): dependency manifests. SwiftData is first-party so
     # this rarely fires; supports cross-compile shims and indirect
     # bridging helpers. Same negated-character-class boundary
-    # construction as protobuf_marker_detected() (BD-156) — rejects
-    # substring matches like `SwiftDataMocks` or `SwiftDataKit` via
-    # `SwiftData`.
+    # construction as protobuf_marker_detected() — rejects substring
+    # matches like `SwiftDataMocks` or `SwiftDataKit` via `SwiftData`.
     local manifest sd_pattern
     sd_pattern='(^|[^A-Za-z0-9_-])(SwiftData|swift-data)($|[^A-Za-z0-9_.-])'
     for manifest in \
@@ -659,10 +650,9 @@ swiftdata_marker_detected() {
 
 # python-observability-marker: yes|no
 #
-# BD-162 (v11.0 python-observability-patterns skill batch).
 # Concrete load predicate for the `python-observability-patterns` skill.
-# Mirrors the BD-141 `python_data_marker_detected()` and BD-156
-# `protobuf_marker_detected()` and BD-157 `swiftdata_marker_detected()`
+# Mirrors the `python_data_marker_detected()`,
+# `protobuf_marker_detected()`, and `swiftdata_marker_detected()`
 # shape: single positional argument defaulting to cwd; tolerates
 # missing target as a `no`; emits a single
 # `python-observability-marker: yes|no` line on stdout.
@@ -691,7 +681,7 @@ swiftdata_marker_detected() {
 #           starts with opentelemetry-instrumentation-) and
 #           opentelemetry-exporter-* (any package whose name starts
 #           with opentelemetry-exporter-).
-#       The exact-name list uses the BD-141 negated-character-class
+#       The exact-name list uses the negated-character-class
 #       boundary construction `(^|[^A-Za-z0-9_-])(<pkgs>)($|[^A-Za-z0-9_.-])`
 #       to reject substring matches like `not-opentelemetry-clone`
 #       via `opentelemetry-api`. The prefix-match packages use a
@@ -702,26 +692,26 @@ swiftdata_marker_detected() {
 #       the substring-rejection invariant.
 #   (b) Source file imports. Any `.py` file in the project tree
 #       (excluding nested vendored / build trees: node_modules/,
-#       .git/, build/, .venv/, venv/, .tox/, per the BD-156 prune
+#       .git/, build/, .venv/, venv/, .tox/, per the standard prune
 #       list) contains a line matching
 #       `^[[:space:]]*(import|from)[[:space:]]+(opentelemetry|prometheus_client|structlog)([[:space:]]|\.|,|$)`.
 #       Line-anchored to defeat prose mentions in comments /
-#       docstrings (per BD-141 marker-c convention). Matches
-#       `import opentelemetry`, `from opentelemetry import …`,
+#       docstrings (per the marker-c line-anchoring convention).
+#       Matches `import opentelemetry`, `from opentelemetry import …`,
 #       `from opentelemetry.foo import …` (via the `\.`
 #       alternative), `import prometheus_client`,
 #       `from prometheus_client import …`, `import structlog`,
 #       `from structlog import …`.
 #
 # Callers: scripts/init-project.sh `pack_skill_coverage_for python` row
-# (BD-162 — wires alongside the existing python-best-practices /
+# (wires alongside the existing python-best-practices /
 # python-data-architecture coverage); scripts/add-capability.sh
 # references the predicate by comment only (the language:python
 # capability set declaratively adds python-observability-patterns;
 # the role:python-server capability adds it as well — the marker-
 # gated intersection-table load applies regardless of capability
-# declaration). PLATFORM-SKILLS.md cites the helper as the canonical
-# predicate for the python-observability-patterns intersection row.
+# declaration). This helper is the canonical predicate for the
+# python-observability-patterns intersection row.
 python_observability_marker_detected() {
     local target="${1:-.}"
     if [[ -z "$target" || ! -d "$target" ]]; then
@@ -730,7 +720,7 @@ python_observability_marker_detected() {
     fi
 
     # Marker (a): dependency manifests. Two patterns combined —
-    # exact-name packages via BD-141 negated-character-class boundary,
+    # exact-name packages via the negated-character-class boundary,
     # and prefix-match packages (opentelemetry-instrumentation-*,
     # opentelemetry-exporter-*) via leading-boundary + trailing
     # name-char continuation. Both run case-insensitive (-iqE).
@@ -758,8 +748,8 @@ python_observability_marker_detected() {
 
     # Marker (b): source file imports. Scan `.py` files outside
     # vendored / build trees. Line-anchored grep rejects prose
-    # mentions in comments / docstrings (per BD-141 marker-c
-    # convention). Module-name boundary uses the
+    # mentions in comments / docstrings (per the marker-c
+    # line-anchoring convention). Module-name boundary uses the
     # `([[:space:]]|\.|,|$)` trailing alternative to admit
     # `import opentelemetry`, `from opentelemetry.trace import ...`,
     # and `from opentelemetry import trace, metrics`.
@@ -784,10 +774,10 @@ python_observability_marker_detected() {
 # target-pack-version: vN | unknown
 #
 # Detect the major pack version installed in the *target* project (NOT the
-# pack repo). Used by the BD-119 migrator framework to decide which adapter
-# applies, and by external harnesses (BD-114) to dispatch correctly.
+# pack repo). Used by the migrator framework to decide which adapter
+# applies, and by external harnesses to dispatch correctly.
 #
-# Signal cascade (architecture §5.1, cheapest first; first positive match wins):
+# Signal cascade (cheapest first; first positive match wins):
 #   1. tracker.toml `[pack]\nversion = "vN"` field, when present (opt-in:
 #      absence is NOT a v10 signal — the cascade continues).
 #   2. Trinity addenda fingerprint — v11 trinity files contain the line
