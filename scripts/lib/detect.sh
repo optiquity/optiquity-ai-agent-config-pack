@@ -299,7 +299,7 @@ detect_installed_capabilities() {
             soap-patterns)         caps+=("protocol:soap") ;;
             # D5 deployment surface — reciprocal of the `deployment:apple`
             # and `deployment:linux-container` rows in
-            # scripts/add-capability.sh::capability_skills(). Earlier
+            # capability-tables.sh::capability_skills(). Earlier
             # mappings (deployment-apple→role:apple-app,
             # deployment-python→role:python-server) were misclassified; both
             # flip to the deployment dimension here.
@@ -400,10 +400,16 @@ python_data_marker_detected() {
         fi
     done
 
-    # Marker (b): >= 5 .py files outside tests/.
+    # Marker (b): >= 5 .py files outside tests/. The
+    # `pack-capability-pool/` exclusion is LOAD-BEARING (not
+    # defensive): the BD-200 tracked pool ships `server/**/*.py`
+    # masters on every installed project, so without it the pool's own
+    # `.py` copies could inflate the count past the threshold and
+    # mis-fire `python-data: yes` on a non-Python project.
     local py_files py_count
     py_files=$(find "$target" -name "*.py" \
         -not -path "*/tests/*" \
+        -not -path "*/pack-capability-pool/*" \
         -not -name "test_*.py" \
         -not -name "*_test.py" \
         -type f 2>/dev/null)
@@ -487,11 +493,16 @@ protobuf_marker_detected() {
     fi
 
     # Marker (a): any `.proto` file in the project tree, excluding
-    # large vendored / generated trees.
+    # large vendored / generated trees. The `pack-capability-pool/`
+    # prune is LOAD-BEARING (not defensive): the BD-200 tracked pool
+    # ships `pack-capability-pool/proto/*.proto` masters on EVERY
+    # installed project, so without this exclusion a Swift-only client
+    # would mis-fire `protobuf-marker: yes` off its own pool.
     if find "$target" \
         \( -path '*/node_modules' -o -path '*/.git' \
            -o -path '*/build' -o -path '*/.venv' \
-           -o -path '*/venv' -o -path '*/.tox' \) -prune \
+           -o -path '*/venv' -o -path '*/.tox' \
+           -o -path '*/pack-capability-pool/*' \) -prune \
         -o -type f -name '*.proto' -print 2>/dev/null \
         | head -n 1 | grep -q .; then
         echo "protobuf-marker: yes"
@@ -594,14 +605,19 @@ swiftdata_marker_detected() {
 
     # Markers (a) and (b): scan `.swift` files, excluding common
     # vendored / generated / build trees. Combine into a single find
-    # → grep pipeline so we only enumerate the file list once.
+    # → grep pipeline so we only enumerate the file list once. The
+    # `pack-capability-pool/` prune is LOAD-BEARING (not defensive):
+    # the BD-200 tracked pool ships `*-swift.sh` masters and may carry
+    # `.swift` masters on every installed project, so without this
+    # exclusion the pool's own copies could mis-fire detection.
     local swift_hits
     swift_hits=$(find "$target" \
         \( -path '*/node_modules' -o -path '*/.git' \
            -o -path '*/build' -o -path '*/.venv' \
            -o -path '*/venv' -o -path '*/.tox' \
            -o -path '*/.build' -o -path '*/DerivedData' \
-           -o -path '*/Pods' -o -path '*/Carthage' \) -prune \
+           -o -path '*/Pods' -o -path '*/Carthage' \
+           -o -path '*/pack-capability-pool/*' \) -prune \
         -o -type f -name '*.swift' -print 2>/dev/null)
     if [[ -n "$swift_hits" ]]; then
         # Marker (a): `import SwiftData` (line-anchored to defeat
@@ -752,12 +768,17 @@ python_observability_marker_detected() {
     # line-anchoring convention). Module-name boundary uses the
     # `([[:space:]]|\.|,|$)` trailing alternative to admit
     # `import opentelemetry`, `from opentelemetry.trace import ...`,
-    # and `from opentelemetry import trace, metrics`.
+    # and `from opentelemetry import trace, metrics`. The
+    # `pack-capability-pool/` prune is LOAD-BEARING (not defensive):
+    # the BD-200 tracked pool ships `server/**/*.py` masters on every
+    # installed project, so without this exclusion the pool's own `.py`
+    # copies could mis-fire detection.
     local py_files
     py_files=$(find "$target" \
         \( -path '*/node_modules' -o -path '*/.git' \
            -o -path '*/build' -o -path '*/.venv' \
-           -o -path '*/venv' -o -path '*/.tox' \) -prune \
+           -o -path '*/venv' -o -path '*/.tox' \
+           -o -path '*/pack-capability-pool/*' \) -prune \
         -o -type f -name '*.py' -print 2>/dev/null)
     if [[ -n "$py_files" ]]; then
         if printf '%s\n' "$py_files" \

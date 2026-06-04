@@ -921,6 +921,81 @@ EOF
 assert_eq "import opentelemetry only in node_modules → no (vendored prune)" \
     "python-observability-marker: no" "$(python_observability_marker_detected "$fx")"
 
+# ── pack-capability-pool/ exclusion (BD-200) ──────────────────────────
+# The BD-200 tracked pool ships marker-looking masters
+# (proto/*.proto, pyproject.toml, server/**/*.py, *.swift) on EVERY
+# installed project regardless of the project's actual languages.
+# The four tree-scanning marker detectors MUST exclude the pool, else
+# a Swift-only client mis-fires protobuf/python markers off its own
+# pool. Fixture: a Swift-only tree whose ONLY proto/python content
+# lives inside pack-capability-pool/.
+fx=$(mkfixture pool-exclusion-swift-only)
+# Live-tree Swift source (the genuine project language).
+mkdir -p "$fx/Sources/App"
+cat > "$fx/Sources/App/main.swift" <<'EOF'
+import Foundation
+print("hello")
+EOF
+# pack-capability-pool/ masters that WOULD mis-fire without the prune:
+#   proto/*.proto + buf.yaml → protobuf marker (a)/(generic)
+#   pyproject.toml (grpcio-testing) → protobuf marker (b)
+#   server/**/*.py (>=5, plus an observability import) → python markers
+mkdir -p "$fx/pack-capability-pool/proto/myorg/v1"
+cat > "$fx/pack-capability-pool/proto/myorg/v1/svc.proto" <<'EOF'
+syntax = "proto3";
+package myorg.v1;
+message Ping { string id = 1; }
+EOF
+cat > "$fx/pack-capability-pool/buf.yaml" <<'EOF'
+version: v2
+EOF
+cat > "$fx/pack-capability-pool/pyproject.toml" <<'EOF'
+[project]
+dependencies = [
+  "sqlalchemy>=2.0",
+  "opentelemetry-api>=1.0",
+]
+EOF
+mkdir -p "$fx/pack-capability-pool/server/app"
+for n in 1 2 3 4 5 6; do
+  printf 'import os\n' > "$fx/pack-capability-pool/server/app/mod${n}.py"
+done
+cat > "$fx/pack-capability-pool/server/app/obs.py" <<'EOF'
+import opentelemetry
+EOF
+
+assert_eq "pool .proto/buf masters → protobuf marker NOT fired (pool prune)" \
+    "protobuf-marker: no" "$(protobuf_marker_detected "$fx")"
+assert_eq "pool pyproject + server/*.py masters → python-data NOT fired (pool prune)" \
+    "python-data: no" "$(python_data_marker_detected "$fx")"
+assert_eq "pool pyproject + obs import masters → python-observability NOT fired (pool prune)" \
+    "python-observability-marker: no" "$(python_observability_marker_detected "$fx")"
+# Control: the LIVE-tree Swift source is still detected (the prune
+# removes only the pool, never live-tree markers).
+mkdir -p "$fx/Sources/Model"
+cat > "$fx/Sources/Model/Item.swift" <<'EOF'
+import SwiftData
+@Model final class Item { var id = 0 }
+EOF
+assert_eq "live-tree import SwiftData still detected (prune removes pool only)" \
+    "swiftdata-marker: yes" "$(swiftdata_marker_detected "$fx")"
+
+# Control: a REAL live-tree .proto (NOT in the pool) still fires — the
+# exclusion narrows to the pool, it does not suppress genuine markers.
+fx=$(mkfixture pool-exclusion-live-proto)
+mkdir -p "$fx/proto/myorg/v1"
+cat > "$fx/proto/myorg/v1/svc.proto" <<'EOF'
+syntax = "proto3";
+package myorg.v1;
+message Ping { string id = 1; }
+EOF
+mkdir -p "$fx/pack-capability-pool/proto"
+cat > "$fx/pack-capability-pool/proto/pooled.proto" <<'EOF'
+syntax = "proto3";
+EOF
+assert_eq "live-tree .proto + pool both present → protobuf still fired (live marker wins)" \
+    "protobuf-marker: yes" "$(protobuf_marker_detected "$fx")"
+
 # ── Summary ────────────────────────────────────────────────────────────
 echo
 echo "=== Results: $passes passed, $fails failed ==="

@@ -126,42 +126,54 @@ existing_classifier_copy() {
 
 # language-markers: <comma list> | (none)
 # Checks for language manifest files at depth ≤ 2.
+#
+# BD-200: the TRACKED capability pool (pack-capability-pool/) holds COPIES of
+# the full conditional-master set (pyproject.toml, *.py under server/, etc.)
+# regardless of the project's actual languages. Those copies are NOT project
+# source — they exist so activate-capability.sh can re-materialize a capability
+# without a pack clone. Detection MUST ignore them, else a Swift-only project
+# would mis-detect python from its own pool and S9 would wrongly skip the
+# live-tree removal. Each marker find therefore excludes the pool path
+# (parallel to the existing dotted-dir exclusion).
 detect_language_markers() {
     local target="${1:-.}"
     local found=()
     # Swift: Package.swift, *.xcodeproj, *.xcworkspace
     if find "$target" -maxdepth 2 \( -name "Package.swift" -o -name "*.xcodeproj" -o -name "*.xcworkspace" \) \
-            -not -path '*/.*' 2>/dev/null | grep -q .; then
+            -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | grep -q .; then
         found+=("swift")
     fi
     # Python: pyproject.toml
-    if find "$target" -maxdepth 2 -name "pyproject.toml" -not -path '*/.*' 2>/dev/null | grep -q .; then
+    if find "$target" -maxdepth 2 -name "pyproject.toml" -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | grep -q .; then
         found+=("python")
     fi
     # Kotlin: build.gradle.kts, settings.gradle.kts, build.gradle
     if find "$target" -maxdepth 2 \( -name "build.gradle.kts" -o -name "settings.gradle.kts" -o -name "build.gradle" \) \
-            -not -path '*/.*' 2>/dev/null | grep -q .; then
+            -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | grep -q .; then
         found+=("kotlin")
     fi
     # TypeScript/Node: package.json, tsconfig.json
     if find "$target" -maxdepth 2 \( -name "package.json" -o -name "tsconfig.json" \) \
-            -not -path '*/.*' 2>/dev/null | grep -q .; then
+            -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | grep -q .; then
         found+=("typescript")
     fi
-    # Proto: proto/ with ≥1 .proto file
-    if [[ -d "$target/proto" ]] && find "$target/proto" -maxdepth 2 -name "*.proto" 2>/dev/null | grep -q .; then
+    # Proto: proto/ with ≥1 .proto file (keyed on the LIVE-tree proto/ dir only,
+    # so the pool's pack-capability-pool/proto/ never trips it — defensive
+    # exclusion added for parity / future refactors).
+    if [[ -d "$target/proto" ]] && find "$target/proto" -maxdepth 2 -name "*.proto" \
+            -not -path '*/pack-capability-pool/*' 2>/dev/null | grep -q .; then
         found+=("proto")
     fi
 
     # Weak evidence (extension count ≥ 3) only if no strong evidence for that language yet.
     if ! printf '%s\n' "${found[@]:-}" | grep -qx "swift"; then
         local c
-        c=$(find "$target" -maxdepth 2 -name "*.swift" -not -path '*/.*' 2>/dev/null | wc -l | tr -d ' ')
+        c=$(find "$target" -maxdepth 2 -name "*.swift" -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | wc -l | tr -d ' ')
         (( c >= 3 )) && found+=("swift")
     fi
     if ! printf '%s\n' "${found[@]:-}" | grep -qx "python"; then
         local c
-        c=$(find "$target" -maxdepth 2 -name "*.py" -not -path '*/.*' 2>/dev/null | wc -l | tr -d ' ')
+        c=$(find "$target" -maxdepth 2 -name "*.py" -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | wc -l | tr -d ' ')
         (( c >= 3 )) && found+=("python")
     fi
 
@@ -174,11 +186,16 @@ detect_language_markers() {
 }
 
 # source-files: <summary> — depth ≤ 2 counts for the covered languages.
+# The pack-capability-pool/ exclusion mirrors detect_language_markers()
+# for consistency / forward-safety: this diagnostic runs at preview time
+# (before S5b populates the pool), so the pool is absent today, but
+# excluding it here keeps the count honest if this helper is ever called
+# post-install.
 detect_source_files() {
     local target="${1:-.}"
     local s p
-    s=$(find "$target" -maxdepth 2 -name "*.swift" -not -path '*/.*' 2>/dev/null | wc -l | tr -d ' ')
-    p=$(find "$target" -maxdepth 2 -name "*.py" -not -path '*/.*' 2>/dev/null | wc -l | tr -d ' ')
+    s=$(find "$target" -maxdepth 2 -name "*.swift" -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | wc -l | tr -d ' ')
+    p=$(find "$target" -maxdepth 2 -name "*.py" -not -path '*/.*' -not -path '*/pack-capability-pool/*' 2>/dev/null | wc -l | tr -d ' ')
     echo "source-files: *.swift=$s, *.py=$p"
 }
 
@@ -534,6 +551,78 @@ stage_s5_scripts() {
     [[ -x "$TARGET/agent-run.sh" ]] || fail_stage S5 "agent-run.sh missing or not executable"
 }
 
+# stage_s5b_populate_pool — populate the TRACKED client capability pool.
+#
+# BD-200: materialize $TARGET/pack-capability-pool/ with the FULL conditional
+# master roster so the client can ACTIVATE a capability (re-materialize its
+# conditional files into the live tree) on a fresh clone with NO pack present.
+#
+# Language-INDEPENDENT: runs for EVERY install regardless of detected
+# languages, so even a Swift-only project ships a COMPLETE pool. It runs after
+# S5 and BEFORE S9 (S9 removes the *live-tree* copies for absent languages; the
+# pool retains all masters — the two stages are independent).
+#
+# GAP-A (load-bearing, ADVERSARIAL-REVIEW §3.2): the ROOT conditional files
+# (pyproject.toml / pyrightconfig.json / server/ / proto/) are NEVER installed
+# into the live tree by any stage — only the conditional SCRIPTS are S5-copied.
+# So the pool MUST be sourced DIRECTLY from $PACK/project-template/, not
+# captured from the (never-populated-with-root-files) live tree.
+#
+# Roster is single-sourced: derived from capability_files() in
+# project-template/scripts/capability-tables.sh (sourced pack->pack), so the
+# pool set never drifts from the capability-resolution table. FRESH-INSTALL
+# only — NO `pack update` refresh / wipe-repopulate (that is BD-202).
+stage_s5b_populate_pool() {
+    say "── S5b — populate capability pool (pack-capability-pool/) ──"
+    local pack_pt="$PACK/project-template"
+    local tables="$pack_pt/scripts/capability-tables.sh"
+    [[ -f "$tables" ]] || fail_stage S5b "missing capability tables: $tables"
+    # Source the single-source table (pack->pack read; sourceable-only,
+    # no top-level side effects). Defines capability_files().
+    # shellcheck source=../project-template/scripts/capability-tables.sh
+    source "$tables"
+
+    # Derive the conditional-master roster = union of capability_files() over
+    # every capability the table knows. Keeping it derived (not hardcoded)
+    # single-sources the roster against the capability-resolution table.
+    local all_caps="language:python language:swift language:cpp language:c \
+language:objc platform:macos platform:ios platform:android platform:web-browser \
+platform:embedded-mcu protocol:grpc protocol:rest protocol:graphql \
+protocol:realtime protocol:messaging protocol:soap deployment:apple \
+deployment:linux-container role:python-server"
+    local roster="" cap files
+    for cap in $all_caps; do
+        files=$(capability_files "$cap")
+        [[ -n "$files" ]] && roster="$roster $files"
+    done
+    # Dedup + stable order.
+    roster=$(printf '%s\n' $roster | sort -u)
+
+    local pool="$TARGET/pack-capability-pool"
+    mkdir -p "$pool"
+    local rel copied=0 missing=0
+    for rel in $roster; do
+        local src="$pack_pt/$rel"
+        local dst="$pool/$rel"
+        if [[ ! -e "$src" ]]; then
+            warn "pool master absent (skipped): $src"
+            missing=$((missing + 1))
+            continue
+        fi
+        mkdir -p "$(dirname "$dst")"
+        if [[ -d "$src" ]]; then
+            cp -R "$src" "$(dirname "$dst")/"
+        else
+            cp "$src" "$dst"
+        fi
+        copied=$((copied + 1))
+    done
+    # Conditional scripts in the pool stay executable (they may be copied into
+    # the live tree at activation time).
+    chmod +x "$pool/scripts"/*.sh 2>/dev/null || true
+    info "capability pool populated: $copied master(s) copied${missing:+, $missing absent}"
+}
+
 stage_s6_docs_pack() {
     say "── S6 — copy docs/pack/ content ──"
     local pack_docs="$PACK/project-template/docs/pack"
@@ -669,6 +758,18 @@ stage_s9_conditional_remove() {
     # defensive, but it pins the contract for future refactors.
     is_x_prefixed() { [[ "$(basename "$1")" == x-* ]]; }
 
+    # BD-200 defensive guard: S9 must NEVER remove anything under the TRACKED
+    # capability pool (pack-capability-pool/), which is populated by S5b and
+    # retains ALL conditional masters regardless of detected languages. The
+    # current S9 roster names no pool paths, so this is defensive — but it pins
+    # the contract for future refactors, mirroring is_x_prefixed above.
+    is_pool_path() {
+        case "$1" in
+            pack-capability-pool|pack-capability-pool/*) return 0 ;;
+            *) return 1 ;;
+        esac
+    }
+
     # Python conditional removals
     if (( has_python == 0 )); then
         local f
@@ -676,12 +777,13 @@ stage_s9_conditional_remove() {
                  scripts/bootstrap-python.sh scripts/format-python.sh \
                  scripts/validate-python.sh scripts/test-python.sh; do
             is_x_prefixed "$f" && continue
+            is_pool_path "$f" && continue
             if [[ -e "$TARGET/$f" ]]; then
                 rm -rf "$TARGET/$f"
                 removed=$((removed + 1))
             fi
         done
-        if [[ -d "$TARGET/server" ]] && ! is_x_prefixed "server"; then
+        if [[ -d "$TARGET/server" ]] && ! is_x_prefixed "server" && ! is_pool_path "server"; then
             rm -rf "$TARGET/server"
             removed=$((removed + 1))
         fi
@@ -692,6 +794,7 @@ stage_s9_conditional_remove() {
         for f in scripts/bootstrap-swift.sh scripts/format-swift.sh \
                  scripts/validate-swift.sh scripts/test-swift.sh; do
             is_x_prefixed "$f" && continue
+            is_pool_path "$f" && continue
             if [[ -e "$TARGET/$f" ]]; then
                 rm -f "$TARGET/$f"
                 removed=$((removed + 1))
@@ -703,12 +806,13 @@ stage_s9_conditional_remove() {
         local f
         for f in scripts/proto-gen.sh scripts/validate-proto.sh; do
             is_x_prefixed "$f" && continue
+            is_pool_path "$f" && continue
             if [[ -e "$TARGET/$f" ]]; then
                 rm -f "$TARGET/$f"
                 removed=$((removed + 1))
             fi
         done
-        if [[ -d "$TARGET/proto" ]] && ! is_x_prefixed "proto"; then
+        if [[ -d "$TARGET/proto" ]] && ! is_x_prefixed "proto" && ! is_pool_path "proto"; then
             rm -rf "$TARGET/proto"
             removed=$((removed + 1))
         fi
@@ -1257,6 +1361,15 @@ cmd_update() {
 #       [S5-adjacent per-CLI agent install + _cmd_update_iter_dir]
 #   * project-template/scripts/*
 #       -> scripts/*                                  [S5 + _cmd_update_iter_dir]
+#   * <conditional masters: project-template/{pyproject.toml,pyrightconfig.json,
+#       server/,proto/} + project-template/scripts/{bootstrap,format,validate,
+#       test}-{python,swift}.sh + proto-gen.sh + validate-proto.sh>
+#       -> pack-capability-pool/*                     [stage:S5b]
+#       (BD-200: the TRACKED client capability pool. Sources are all
+#       project-template/ conditional masters — already on the inventory via
+#       the project-template/ recursive walk; NOT a _SANCTIONED_PACK_SIDE_SHIPPED
+#       entry, so Check 47's frozen 2-tuple is UNMOVED. Roster derived from
+#       capability_files() in project-template/scripts/capability-tables.sh.)
 #   * project-template/docs/pack/prompts/*.md
 #       -> docs/pack/prompts/*.md                     [S6 loop]
 #   * project-template/.github/ISSUE_TEMPLATE/*.yml
@@ -1431,6 +1544,7 @@ main() {
     stage_s3_configs
     stage_s4_skills
     stage_s5_scripts
+    stage_s5b_populate_pool
     stage_s6_docs_pack
     stage_s7_trinity
     stage_s8_gitignore
