@@ -3268,6 +3268,29 @@ Resolved: n/a
 
 ---
 
+**BD-200 — Project-side capability addition (no pack-clone dependency): copy-all-skills at install + project-side add-capability script + workflow + Procedure 6 redesign**
+Type: feat — STRUCTURAL. Spans client-shipped scripts, the skill-distribution mechanism, and multiple client docs (METHODOLOGY Procedure 6, HELP-FRAGMENT, PM-CHAT, INSTALL-PROCEDURES). Requires the full pipeline (architect → planner → coder → bounded review/fix). No scope keyword on the entry; phase commits declare their own.
+Status: Open
+Blockers: Follows BD-195 (resolved first — BD-195 hands off all capability-addition findings to this BD). Architect design precedes any implementation.
+Unblocks: a client project can add a pack-supported capability (a D1–D5 dimension — platform / language / protocol / deployment surface, e.g. add embedded-Python or a server component to an existing Swift/iOS project) WITHOUT a pack-repo clone. Precedes v11.0 launch (launch gate: S1 ∧ S2 ∧ S3 ∧ S4 ∧ BD-195 ∧ **BD-200** ∧ BD-185).
+File/Symbol:
+  - NEW project-side capability-addition script (default home `project-template/scripts/` per `dependency-direction-placement`) — a client-runnable form that needs NO `$PACK` checkout.
+  - `scripts/init-project.sh` `stage_s4_skills()` — copy ALL skills into the client project at install (skills are small), not only the project's currently-selected coverage, so any capability can activate client-side.
+  - `scripts/add-capability.sh` (pack-side; the current pack-only operation that hard-exits without `$PACK` and copies from `$PACK/project-template/`) — relationship to the new project-side form to be designed (fork / shared core / replace).
+  - `supporting-docs/METHODOLOGY.md` Procedure 6 — redesign as a self-contained project-side workflow (no "run from the pack").
+  - `project-template/docs/pack/HELP-FRAGMENT.md` (the `add-capability` client verb row), `project-template/docs/pack/PM-CHAT.md` "Capability addition" rule, `supporting-docs/INSTALL-PROCEDURES.md` — rework the references to the project-side mechanism.
+  - `project-template/docs/pack/PLATFORM-SKILLS.md` + `README.md` skill count, `scripts/validate-pack.py` (install-map / `_CLIENT_INSTALLED_FILES` / Check 41 / Check 47 implications of shipping all skills + a project-side script).
+Description:
+  **Problem:** `add-capability.sh` is a PACK operation — it hard-exits when `$PACK` is unset and copies conditional files FROM `$PACK/project-template/`, so it is inoperable in a client project (no `$PACK` there). Yet `METHODOLOGY.md` Procedure 6 (a client-installed doc) and multiple client surfaces instruct developers to "run `add-capability.sh` from the pack," making capability-addition depend on retaining the pack clone. Surfaced by the BD-195 completeness re-audit (the `add-capability` cross-surface finding) + architect verdict `ARCHITECTURE-BD-195-ADD-CAPABILITY-SHIPPING.md`.
+  **Goal (user direction, 2026-06-03):** make capability-addition a PROJECT-SIDE ability with NO pack-clone dependency. Copy ALL skills into the client at install (they are small) so any capability can activate client-side; provide a project-side capability-addition script + a self-contained project-side workflow (Procedure 6 redesign); rework the client-surface references to the project-side mechanism.
+  **Scope:** the project-side capability-addition mechanism + copy-all-skills install change + Procedure 6 redesign + the client-surface reference rework + the dependency-direction / install-map / skill-inventory ripple.
+  **Out of scope:** BD-195's other v11.0-pristine contamination findings (handled in BD-195).
+  **Acceptance criteria:** a client can add a capability (e.g. add Python to a Swift-only project) with NO pack clone present; all skills ship into the client at install; Procedure 6 + the client-surface references describe the project-side mechanism (no "run from the pack"); skill count + PLATFORM-SKILLS.md reconciled; validate-pack green; the dependency-direction rule + Check 47 honored.
+  **References:** BD-195 completeness re-audit (parallel-workflow audit, 2026-06-03 — the `add-capability` cross-surface finding); `ARCHITECTURE-BD-195-ADD-CAPABILITY-SHIPPING.md` (the architect verdict that triggered this); user design decision 2026-06-03 (project-side capability addition; copy-all-skills); `dependency-direction-placement` (trinity `## Pack memory`).
+Resolved: n/a
+
+---
+
 ## Active — v10 Scope
 
 **BD-059 — v10 migration silently destroys project customization**
