@@ -3272,9 +3272,9 @@ Resolved: 2026-06-03 — Check 43 (`check_project_side_bare_internal_refs`) opti
 
 **BD-200 — Project-side capability ACTIVATION (no pack-clone dependency): project-side `activate-capability.sh` + tracked conditional-file pool + single-source capability tables + Procedure 6 redesign**
 Type: feat — STRUCTURAL. Spans client-shipped scripts, the conditional-file distribution mechanism, a capability-table single-source refactor, and multiple client docs (METHODOLOGY Procedure 6, HELP-FRAGMENT, PM-CHAT, INSTALL-PROCEDURES). The cross-version `pack update` pool refresh + the general update-propagation engine moved to BD-202 (see Scope split). Requires the full pipeline (first architect → ADVERSARIAL fresh-architect review → planner → coder → bounded review/fix). No scope keyword on the entry; phase commits declare their own.
-Status: Open
+Status: Resolved
 Blockers: Follows BD-195 (Resolved 2026-06-03). The ADVERSARIAL fresh-architect review COMPLETED 2026-06-04 (`ARCHITECTURE-BD-200-ADVERSARIAL-REVIEW.md`) — it is the AUTHORITATIVE corrected design (the first `ARCHITECTURE-BD-200.md` is the superseded subject). It corrected the gitignored-pool choice + 4 further gaps (GAP-A root-files-never-installed, GAP-B total update delete gap, GAP-C `.pack-*` name reflex, GAP-D single-source unresolved). Planner next, against the corrected design. NOT blocked by BD-202 (only the deferred cross-version pool refresh is BD-202-coupled).
-Unblocks: a client project can ACTIVATE a pack-supported capability (a D1–D5 dimension — platform / language / protocol / deployment surface, e.g. add Python or a server component to an existing Swift/iOS project) WITHOUT a pack-repo clone, on ANY clone of the project. Precedes v11.0 launch (launch gate: S1 ∧ S2 ∧ S3 ∧ S4 ∧ BD-195 ∧ **BD-200** ∧ BD-197 ∧ BD-185 — BD-197 added to the gate per user direction 2026-06-04).
+Unblocks: a client project can ACTIVATE a pack-supported capability (a D1–D5 dimension — platform / language / protocol / deployment surface, e.g. add Python or a server component to an existing Swift/iOS project) WITHOUT a pack-repo clone, on ANY clone of the project. Precedes v11.0 launch (launch gate: S1 ∧ S2 ∧ S3 ∧ S4 ∧ BD-195 ∧ **BD-200** ∧ BD-203 ∧ BD-204 ∧ BD-197 ∧ BD-185 ∧ BD-205 — BD-203/204 (pack self-migration, pack-only) + BD-205 (final v11.0 readiness audit) added per user direction 2026-06-04; launch order: BD-200 → BD-203 → BD-204 → BD-197 → BD-185 → BD-205 → launch).
 Corrected problem (measure-first, HEAD `972c3a1`, 2026-06-03):
   - Copy-ALL-skills is ALREADY the install behavior (`stage_s4_skills()` copies every skill to all three trinity dirs unconditionally); skill count (36) is ALREADY reconciled in README + PLATFORM-SKILLS. These are NO-OPS, not work items — the original entry's "copy all skills at install" + "skill-count reconcile" directives were STALE and are removed in this re-scope (architect §7 + user direction 2026-06-04).
   - The real pack-clone dependency: `add-capability.sh` copies conditional files (`pyproject.toml`, `pyrightconfig.json`, `server/`, `proto/`, per-language `*-python.sh`/`*-swift.sh`/`proto-*.sh`) from `$PACK/project-template/`, and `stage_s9_conditional_remove()` DELETES exactly those at install for languages the project lacks. A client without the pack clone has no source to re-materialize them — THIS is the problem BD-200 solves.
@@ -3303,7 +3303,7 @@ Description:
   **Out of scope:** BD-195's other v11.0-pristine findings (handled in BD-195); the copy-all-skills install change + skill-count reconciliation (NO-OPS — removed from scope).
   **Acceptance criteria:** a client can ACTIVATE a capability (e.g. add Python to a Swift-only project) with NO pack clone present, on a FRESH clone of the project; `pack-capability-pool/` is tracked and travels with the repo; capability tables single-sourced (zero drift by construction); Procedure 6 + client-surface references describe the project-side mechanism (no "run from the pack", zero pack-self tokens — Check 43 + Check 37 clean); `validate-pack` green; dependency-direction rule + Check 47 honored (no allowlist growth). (Cross-version `pack update` pool-refresh correctness → BD-202 acceptance, not BD-200's.)
   **References:** `ARCHITECTURE-BD-200-ADVERSARIAL-REVIEW.md` (AUTHORITATIVE corrected design — §1-9 + the §10 BD-200↔BD-202 sequencing); `ARCHITECTURE-BD-200.md` (superseded first design — the review's subject); `ARCHITECTURE-BD-195-ADD-CAPABILITY-SHIPPING.md` (the verdict that triggered this); BD-202 (the general update engine the pool refresh registers with); user design decisions 2026-06-03 / 2026-06-04 (OQ-1/2/3 + tracked pool + single-source + Option-1 scope split); `dependency-direction-placement` (trinity `## Pack memory`).
-Resolved: n/a
+Resolved: 2026-06-04 — shipped C1–C5 + the integrated close-out review. C1 single-source `capability-tables.sh` (+ behavior-preserving `add-capability.sh` refactor); C2 fresh-install pool stage (S5b) + S9 pool-skip + detector pool-exclusions + the F1 `detect.sh` cross-ref; C3 client `activate-capability.sh` (P0–P8, no `$PACK`, `x-`-on-overwrite guard, prompt-gitignore) + verb/reference rework (incl. the R3 INSTALL-PROCEDURES correctness fix) + a 27/0 activation harness; C4 self-contained Procedure 6 redesign (zero pack-self tokens). The integrated close-out review (`PACK-REVIEW-BD-200-INTEGRATED.md`) was CLEAN on every acceptance criterion (fresh-clone no-`$PACK` activation, tracked pool incl. GAP-A root files, single-source, whole-surface boundary, detection completeness, Check 47 frozen); its one finding (F-1 misleading P0 message) was fixed in C5. The cross-version `pack update` pool refresh + general update engine are deferred to BD-202 (Option-1 scope split). validate-pack GREEN; full CI suite GREEN (run on `3e8a8a4`; close-out review committed `cbcc79e`). Advances the v11.0 launch gate.
 
 ---
 
@@ -3324,6 +3324,55 @@ Acceptance criteria: `pack update` propagates pack deletes (AC-1..AC-4) with `x-
 References: `ARCHITECTURE-BD-200-ADVERSARIAL-REVIEW.md` §10 (taxonomy + sequencing + EEB-BASE/CLASSIFY/PRESERVE/XCLASS + the EEB-B self-correction); BD-200 (pool = AC-1 consumer).
 Resolved: n/a
 Position: v11.1; co-design with BD-200; must land by the first post-v11.0 `pack update` unless the reversal trigger pulls it into v11.0.
+
+---
+
+**BD-203 — Pack self-migration Phase 1: monolithic flat files → per-entry directory trees (Mode 1 → Mode 2)**
+Type: feat — STRUCTURAL, pack-only. The pack DOGFOODS its own Mode-1→2 per-entry conversion on its OWN `pack-ops/BACKLOG.md` / `CHANGELOG.md` / implementation-plan. Requires the full pipeline (architect → planner → (coder → bounded review/fix) per commit) + a full integrated correctness audit at the end. Pack-only; phase commits declare `pack-only`.
+Status: Open
+Target: v11.0 (launch-gate item, user 2026-06-04).
+Blockers: Follows BD-200 (Resolved 2026-06-04). Sequenced BEFORE BD-197 (user 2026-06-04). Phase 1 of the two-phase pack self-migration; BD-204 (Mode 2→3 GH Issues) follows and depends on this.
+Unblocks: the pack's own backlog/changelog/implementation-plan become per-entry DIRECTORY trees (`/backlog/`, `/changelog/`, `/implementation-plan/`) as SSOT, with the monolithic `pack-ops/*.md` as REGENERATED MIRRORS — making the pack actually match what `CLAUDE.md` + README already (falsely) describe. BD-204 (GH Issues) builds on it.
+Problem (measured 2026-06-04): the pack is fully MONOLITHIC — `/backlog/`, `/changelog/`, `/implementation-plan/` do NOT exist; no `tracker.toml`; `pack-ops/BACKLOG.md` is the de-facto primary — yet `CLAUDE.md` (~lines 30/31/34) + README describe the pack as already per-entry-SSOT-with-mirrors (referencing nonexistent `/backlog/_rules.md`). A live doc-vs-reality gap. This BD converts the pack to the per-entry mode it ships to clients (dogfood) and closes that gap.
+Scope: create `/backlog/`, `/changelog/`, `/implementation-plan/` per-entry SSOT trees from the current monolithic content; the regeneration mechanism (per-entry tree → monolithic mirror, byte-stable); the `_rules.md` per-stream contracts; wire regeneration into the workflow.
+Out of scope: GH Issues / tracker Mode 3 (→ BD-204); editing the trinity `CLAUDE.md`/README (per user 2026-06-04 — they self-correct once the trees exist; do NOT touch them).
+Acceptance criteria (END-OF-BD FULL CORRECTNESS AUDIT): `/backlog/`, `/changelog/`, `/implementation-plan/` exist as per-entry SSOT; the monolithic mirrors regenerate byte-stably from the trees; per-entry content is LOSSLESS vs the current monolithic (no BD/entry/section lost or altered — content-faithful); `_rules.md` contracts present; validate-pack green; a full integrated correctness audit confirms the conversion is lossless and reality now matches the docs.
+References: `project_pack_self_migration_launch_gate` (pack memory); `CLAUDE.md` repo-structure §; the client-shipped per-entry feature (Mode 1/2); BD-200 (precedes); BD-204 (follows).
+Resolved: n/a
+Position: v11.0 launch gate; after BD-200, before BD-197 (user 2026-06-04); BD-204 follows.
+
+---
+
+**BD-204 — Pack self-migration Phase 2: per-entry directory trees → GH Issues (tracker Mode 2 → Mode 3)**
+Type: feat — STRUCTURAL, **pack-only (HARD CONSTRAINT)**. The pack DOGFOODS its own Mode-2→3 tracker (GH Issues) migration on its OWN backlog. Full pipeline (architect → planner → (coder → bounded review/fix) per commit) + a full integrated correctness audit at the end. Phase commits declare `pack-only`.
+Status: Open
+Target: v11.0 (launch-gate item, user 2026-06-04).
+Blockers: Follows BD-203 (the per-entry trees must exist first). Sequenced BEFORE BD-197 (user 2026-06-04).
+Unblocks: the pack tracks its OWN backlog in GH Issues (tracker Mode 3); the per-entry tree + monolithic mirror become regenerated-FROM-tracker per the Mode-2→3 contract; exercises the TrackerProvider / GH-Issues machinery on the pack's own backlog (real dogfood).
+HARD CONSTRAINT (user 2026-06-04): **pack-only — this BD must NOT touch `project-template/` or ANY project-side / client asset or workflow. If it affects the project side at all, that is a VIOLATION.** CI Check 36 `pack-only` enforces every commit; any project-side diff fails the gate.
+Problem: Phase 2 of the pack dogfooding its own tracker feature — after BD-203 makes the pack per-entry, this moves the SSOT to GH Issues, proving the Mode-2→3 forward migration on the pack itself.
+Scope: migrate the pack's per-entry backlog → GH Issues (tracker Mode 3) per the forward-migration contract; `tracker.toml` (`mode.state = "tracker"`, `migration.forward_complete = true`); the per-entry tree + monolithic mirror become regenerated-from-tracker; verify forward + reverse (round-trip) on the pack's own backlog — all pack-side only.
+Out of scope: BD-203's per-entry conversion (prerequisite); ANY project-side change (a violation if it occurs).
+Acceptance criteria (END-OF-BD FULL CORRECTNESS AUDIT): the pack's backlog is tracked in GH Issues; forward migration LOSSLESS (every BD → an issue, content-faithful); round-trip (forward+reverse) verified; the Mode-2→3 contract honored (tree + mirror regenerate from tracker); validate-pack green; **zero project-side changes (Check 36 `pack-only` clean on every commit)**; full integrated correctness audit.
+References: `project_pack_self_migration_launch_gate`; BD-060 TrackerProvider abstraction; the tracker Mode 1/2/3 feature; BD-203 (prerequisite).
+Resolved: n/a
+Position: v11.0 launch gate; after BD-203, before BD-197 (user 2026-06-04).
+
+---
+
+**BD-205 — v11.0 final repo readiness audit + full test/audit/fix cycle (the last gate before launch)**
+Type: feat/audit — STRUCTURAL. The comprehensive pre-launch readiness gate: a full test → audit → fix cycle, iterated until clean (auditor/reviewer agents + fix-coders per the loop).
+Status: Open
+Target: v11.0 (launch-gate item — the FINAL one, user 2026-06-04).
+Blockers: AFTER BD-185 (user 2026-06-04) — runs only once every other launch-gate item (BD-195, BD-200, BD-203, BD-204, BD-197, BD-185) is Resolved. It is the LAST gate before launch.
+Unblocks: v11.0 launch — a verified-ready, correct repo.
+Scope: run ALL repo tests (every test suite + validate-pack); a whole-repo v11.0 readiness audit (every launch-gate BD landed correctly; whole-repo correctness; the pack self-migration is sound; no contamination/regressions); the live-GH dog-food (incorporating the prior Batch 23 trio — BD-174 scratch-clone multi-toggle, BD-171, BD-102 dog-food migration) + the prior Batch 22 (BD-100) milestone-audit scope; iterate test → audit → fix until ZERO findings.
+Out of scope: net-new features (this is a readiness GATE, not a build phase); any fix it surfaces is applied in-cycle, not deferred.
+Acceptance criteria: every repo test green; the readiness audit CLEAN (no outstanding findings after the final pass); the live-GH dog-food passes; no launch blockers remain; the repo is verified v11.0-ready and correct.
+Note: this incorporates/supersedes the stale `EXECUTION-PLAN-V11.0.md` Batch 22 (BD-100 final audit) + Batch 23 (live-GH trio) ordering, repositioned AFTER BD-185 as the single final gate. Confirm those BDs' scope is folded in (not duplicated) when BD-205 fires; the live-GH test trio still needs its architect+planner coverage-gap pass before firing (see `project_batch23_test_coverage_gaps`).
+References: `project_pack_self_migration_launch_gate`; `project_batch23_test_coverage_gaps` (pack memory); `EXECUTION-PLAN-V11.0.md` Batch 22/23; BD-100, BD-102, BD-174, BD-171.
+Resolved: n/a
+Position: v11.0 launch gate — the FINAL item; after BD-185; immediately before launch (user 2026-06-04).
 
 ---
 
