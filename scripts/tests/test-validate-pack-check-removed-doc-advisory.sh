@@ -2,18 +2,22 @@
 # scripts/tests/test-validate-pack-check-removed-doc-advisory.sh
 #
 # Tests for the JC-5 soft-advisory removed-doc guard (Check 48, BD-195
-# C6). The guard WARNs — and NEVER fail()s — when a citation in either
-# regenerated mirror (pack-ops/CHANGELOG.md, pack-ops/BACKLOG.md)
-# resolves to a doc REMOVED from the repo. The core contract under test:
-# the advisory is NON-FATAL (validate-pack exits 0 / PASS) WITH the WARN
-# lines present, and it never appends to the `failures` fire-set.
+# C6). The guard WARNs — and NEVER fail()s — when a citation in a scanned
+# file resolves to a doc REMOVED from the repo. The core contract under
+# test: the advisory is NON-FATAL (validate-pack exits 0 / PASS) WITH any
+# WARN lines present, and it never appends to the `failures` fire-set.
+#
+# BD-203 A12: the scan is REPOINTED from the two deleted monoliths
+# (pack-ops/BACKLOG.md, pack-ops/CHANGELOG.md) to the `/backlog/` +
+# `/changelog/` per-entry trees (`_REMOVED_DOC_SCAN_DIRS`). SKIP-on-absent
+# is preserved (trees absent pre-conversion → 0 hits, still PASS).
 #
 # Group 0 — module import + new symbols reachable.
 # Group 1 — UNIT: run check_removed_doc_advisory() against a synthetic
-#           tmp mirror; assert WARN emitted, `failures` unchanged,
+#           per-entry tree dir; assert WARN emitted, `failures` unchanged,
 #           and the live `-V2` collision basenames are NOT matched.
 # Group 2 — END-TO-END: validate-pack.py exits 0 on HEAD WITH Check 48
-#           WARN lines present (asserting the advisory is non-fatal).
+#           running (advisory non-fatal; 0 hits when trees absent).
 #
 # Usage: bash scripts/tests/test-validate-pack-check-removed-doc-advisory.sh
 
@@ -49,7 +53,7 @@ required = [
     'check_removed_doc_advisory',
     'warn',
     '_REMOVED_DOC_BASENAMES',
-    '_REMOVED_DOC_SCAN_FILES',
+    '_REMOVED_DOC_SCAN_DIRS',
 ]
 missing = [n for n in required if not hasattr(mod, n)]
 if missing:
@@ -69,15 +73,19 @@ fi
 # Group 1: UNIT — synthetic mirror; warn-only + collision-safety
 # ─────────────────────────────────────────────────────────────────
 
-printf "\n=== Group 1: UNIT — warn-only behavior on a synthetic mirror ===\n"
+printf "\n=== Group 1: UNIT — warn-only behavior on a synthetic per-entry tree ===\n"
 
 TMP_UNIT="$(mktemp -d)"
 trap 'rm -rf "$TMP_UNIT"' EXIT
-mkdir -p "$TMP_UNIT/pack-ops"
-# Synthetic mirror: 2 removed-doc citations (one backticked, one
-# path-form) + 1 LIVE `-V2` basename that must NOT be matched + 1
-# longer basename that must NOT be matched.
-cat > "$TMP_UNIT/pack-ops/CHANGELOG.md" <<'EOF'
+mkdir -p "$TMP_UNIT/changelog"
+# BD-203 A12: the scan walks a per-entry tree dir. Synthetic changelog
+# entry: 2 removed-doc citations (one backticked, one path-form) + 1
+# LIVE `-V2` basename that must NOT be matched + 1 longer basename that
+# must NOT be matched.
+cat > "$TMP_UNIT/changelog/v11.md" <<'EOF'
+<!-- per-entry source: /changelog/v11.md; contract: /changelog/_rules.md -->
+## v11 — May 2026
+
 - Supersedes GEMINI-CLI-ANALYSIS.md (removed; should WARN).
 - See `supporting-docs/V10-PREDESIGN.md` (removed; should WARN).
 - The live `ARCHITECTURE-BD-185-V2.md` must NOT match (collision).
@@ -93,10 +101,10 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 # Repoint the guard at the synthetic tmp tree; scan only the synthetic
-# CHANGELOG mirror.
+# changelog per-entry tree dir.
 from pathlib import Path
 mod.REPO_ROOT = Path('$TMP_UNIT')
-mod._REMOVED_DOC_SCAN_FILES = ('pack-ops/CHANGELOG.md',)
+mod._REMOVED_DOC_SCAN_DIRS = ('changelog',)
 
 failures_before = len(mod.failures)
 buf = io.StringIO()
@@ -144,20 +152,23 @@ fi
 # Group 2: END-TO-END — advisory is NON-FATAL on HEAD
 # ─────────────────────────────────────────────────────────────────
 
-printf "\n=== Group 2: END-TO-END — validate-pack.py exit 0 WITH Check 48 WARNs ===\n"
+printf "\n=== Group 2: END-TO-END — validate-pack.py exit 0 WITH Check 48 non-fatal ===\n"
 
+# BD-203 A12: the scan is repointed to the `/backlog/` + `/changelog/`
+# per-entry trees. The advisory is soft (exit 0) regardless of how many
+# removed-doc citations it WARNs — at the pre-conversion state the trees
+# are absent, so Check 48 reports 0 hits; once the trees exist the
+# relocated accurate-history citations WARN there. Either way the gate
+# stays GREEN. This E2E asserts: validate-pack exits 0 AND Check 48 ran
+# AND its non-fatal summary line is present.
 if python3 "$VALIDATE" > /tmp/vp-rmadv-e2e.out 2>&1; then
-    # Exit 0 (PASS). Now confirm Check 48 ran AND emitted WARN lines for
-    # the K3.12/K3.13 removed-doc citations — i.e. the advisory is
-    # present yet non-fatal.
     if grep -q "Check 48: JC-5 soft-advisory removed-doc guard" /tmp/vp-rmadv-e2e.out \
-       && grep -qE "^WARN: pack-ops/CHANGELOG\.md:.* cites .* — a removed doc" /tmp/vp-rmadv-e2e.out \
-       && grep -qE "^WARN: pack-ops/BACKLOG\.md:.* cites .* — a removed doc" /tmp/vp-rmadv-e2e.out \
+       && grep -qE "Check 48 — soft-advisory removed-doc scan: [0-9]+ removed-doc citation\(s\) WARNed across [0-9]+ per-entry tree dir\(s\)" /tmp/vp-rmadv-e2e.out \
        && grep -q "PASSED — all checks clean" /tmp/vp-rmadv-e2e.out; then
-        t_pass "validate-pack.py exits 0 (PASS) WITH Check 48 WARN lines present (non-fatal)"
+        t_pass "validate-pack.py exits 0 (PASS); Check 48 ran non-fatally (per-entry tree scan)"
     else
-        t_fail "validate-pack.py exited 0 but Check 48 WARN/PASS evidence not detected" \
-            "Check 48 lines: $(grep -E 'Check 48|^WARN: pack-ops' /tmp/vp-rmadv-e2e.out | head -6)"
+        t_fail "validate-pack.py exited 0 but Check 48 run/summary evidence not detected" \
+            "Check 48 lines: $(grep -E 'Check 48' /tmp/vp-rmadv-e2e.out | head -6)"
     fi
 else
     t_fail "validate-pack.py exited NON-ZERO on HEAD — the advisory must be soft (exit 0)" \

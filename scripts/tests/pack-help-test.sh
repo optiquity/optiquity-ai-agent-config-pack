@@ -28,16 +28,24 @@ source "$LIB_DIR/detect.sh"
 
 printf "\n=== Group 1: detect_pack_surface ===\n"
 
-# 1.1 pack repo: BACKLOG.md at root with BD-NNN entries.
+# 1.1 pack repo: BD-203 A14b — the canonical pack signal is the
+# `/backlog/` per-entry tree carrying `BD-NNN[suffix].md` entry files
+# (the no-mirror SSOT). The pack-surface branch of detect_pack_surface
+# is repointed to the tree; include a suffix-form entry to exercise the
+# widened detection regex.
 TR_PACK=$(mktemp -d -t ph-pack.XXXXXX)
-cat > "$TR_PACK/BACKLOG.md" <<'EOF'
+mkdir -p "$TR_PACK/backlog"
+cat > "$TR_PACK/backlog/BD-001.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-001.md; contract: /backlog/_rules.md -->
 **BD-001 — A**
 Status: Open
-
-**BD-002 — B**
-Status: Open
 EOF
-assert_eq "1.1 pack repo → pack-surface: pack" \
+cat > "$TR_PACK/backlog/BD-167b.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-167b.md; contract: /backlog/_rules.md -->
+**BD-167b — Suffix entry**
+Status: Resolved
+EOF
+assert_eq "1.1 pack repo (/backlog/ tree) → pack-surface: pack" \
     "pack-surface: pack" "$(detect_pack_surface "$TR_PACK")"
 rm -rf "$TR_PACK"
 

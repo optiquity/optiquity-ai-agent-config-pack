@@ -188,7 +188,9 @@ Write authority: PACK-CHAT.md (Pack Chat) + METHODOLOGY.md Part 7
 EOF
 }
 
-# Build a minimal pack-changelog monolithic mirror (2 v11.x entries).
+# Build a minimal pack-changelog monolith (BD-203 per-release shape: two
+# `## vN` releases — v11 carries nested `### vN.M` + a `### New` block
+# that must ride inside the v11.md entry; v7 is H2-only).
 # $1 = output file path
 fixture_pack_changelog_mirror() {
     cat >"$1" <<'EOF'
@@ -205,9 +207,13 @@ All notable changes to the AI Agent Config Pack are documented here.
 - Sample bullet one.
 - Sample bullet two.
 
-### v11.1 — Patch release
+### New
 
-- Patch bullet one.
+- Nested subsection bullet.
+
+## v7 — January 2025
+
+- Legacy H2-only release (no nested H3).
 EOF
 }
 
@@ -217,12 +223,17 @@ EOF
 
 printf "\n=== Group 1: stream-shape lookups ===\n"
 
-assert_eq "1.1 pack-backlog mirror filename" "pack-ops/BACKLOG.md" "$(pe_canonical_mirror_for_stream pack-backlog)"
-assert_eq "1.2 pack-changelog mirror filename" "pack-ops/CHANGELOG.md" "$(pe_canonical_mirror_for_stream pack-changelog)"
+# BD-203: pack-stream mirror-filename asserts removed — under the
+# no-mirror model the pack monoliths are deleted; the per-entry tree +
+# `_toc.md` is the SOLE SSOT. The `mirror` attribute is retained only as
+# a constant (deletion-target reference); it is no longer a live mirror
+# path, so asserting it as a pack deliverable is wrong-model. Project
+# streams DO still use mirror-generate (pending BD-206) — keep 1.3–1.5.
 assert_eq "1.3 project-backlog mirror filename" "docs/project/BACKLOG.md" "$(pe_canonical_mirror_for_stream project-backlog)"
 assert_eq "1.4 project-implementation-plan mirror filename" "docs/project/IMPLEMENTATION-PLAN.md" "$(pe_canonical_mirror_for_stream project-implementation-plan)"
 assert_eq "1.5 project-changelog mirror filename" "docs/project/CHANGELOG.md" "$(pe_canonical_mirror_for_stream project-changelog)"
-assert_eq "1.6 pack-backlog entry regex"  "^BD-[0-9]+\.md$" "$(pe_entry_regex_for_stream pack-backlog)"
+# BD-203 A4: pack-backlog entry regex admits the suffix form.
+assert_eq "1.6 pack-backlog entry regex"  "^BD-[0-9]+[a-z]*\.md$" "$(pe_entry_regex_for_stream pack-backlog)"
 assert_eq "1.7 project-backlog entry regex" "^TD-[0-9]+\.md$" "$(pe_entry_regex_for_stream project-backlog)"
 assert_eq "1.8 pack-backlog known supporting includes _v8-resolved-archive.md" \
     "yes" "$(pe_supporting_files_known_for_stream pack-backlog | grep -q '_v8-resolved-archive.md' && echo yes || echo no)"
@@ -527,30 +538,28 @@ per_entry_regenerate_toc pack-backlog "$PB_DIR" 2>/dev/null
 assert_byte_identical "9.8 TOC regeneration is byte-deterministic" "$PB_ROOT/_toc.md.snap1" "$PB_DIR/_toc.md"
 
 # ─────────────────────────────────────────────────────────────────
-# Group 10: pack-changelog round-trip (second stream coverage)
+# Group 10: pack-changelog per-release decompose (BD-203 CHANGE 2)
 # ─────────────────────────────────────────────────────────────────
+#
+# BD-203 retires the pack mirror round-trip: the per-entry tree is the
+# SOLE SSOT. This group verifies the per-RELEASE granularity (one
+# `vN.md` per `## vN` H2) — the entry body is the ENTIRE H2 block, so
+# nested `### vN.M` / `### New` subsections ride INSIDE the release file
+# (no data loss), and H2-only releases (v7) are preserved.
 
-printf "\n=== Group 10: pack-changelog round-trip ===\n"
+printf "\n=== Group 10: pack-changelog per-release decompose (BD-203 CHANGE 2) ===\n"
 
-PC_ROOT="$SCRATCH_ROOT/pack-changelog-roundtrip"
+PC_ROOT="$SCRATCH_ROOT/pack-changelog-per-release"
 PC_DIR="$PC_ROOT/changelog"
 mkdir -p "$PC_DIR"
 
 fixture_pack_changelog_mirror "$PC_ROOT/CHANGELOG.md"
 
-# Build the supporting files that the mirror generator will need.
-cat >"$PC_DIR/_intro.md" <<'EOF'
-# Changelog
-
-All notable changes to the AI Agent Config Pack are documented here.
-
----
-
-## v11 — May 2026
-EOF
-
 cat >"$PC_DIR/_rules.md" <<'EOF'
 # Per-stream contract — pack-changelog
+
+The per-entry tree (+ `_toc.md`) is the SOLE source of truth and
+readable form. There is no monolithic mirror.
 
 ## Supporting files
 
@@ -559,25 +568,33 @@ cat >"$PC_DIR/_rules.md" <<'EOF'
 - `_toc.md`
 EOF
 
-cp "$PC_ROOT/CHANGELOG.md" "$PC_ROOT/CHANGELOG.md.baseline"
-
 per_entry_decompose pack-changelog "$PC_ROOT/CHANGELOG.md" "$PC_DIR" 2>/dev/null
 
-[[ -f "$PC_DIR/v11.0.md" ]] && t_pass "10.1 v11.0.md exists" || t_fail "10.1 v11.0.md exists"
-[[ -f "$PC_DIR/v11.1.md" ]] && t_pass "10.2 v11.1.md exists" || t_fail "10.2 v11.1.md exists"
+# Per-release granularity: one file per `## vN` (NOT per `### vN.M`).
+[[ -f "$PC_DIR/v11.md" ]] && t_pass "10.1 v11.md exists (per-release)" || t_fail "10.1 v11.md exists (per-release)"
+[[ -f "$PC_DIR/v7.md" ]] && t_pass "10.2 v7.md exists (H2-only release preserved)" || t_fail "10.2 v7.md exists (H2-only release preserved)"
+# No per-point-release files under the new granularity.
+[[ -f "$PC_DIR/v11.0.md" ]] && t_fail "10.2b no per-point-release v11.0.md" "should not exist under per-release granularity" \
+    || t_pass "10.2b no per-point-release v11.0.md (per-release granularity)"
 
-# Verify back-pointer + first-bold-header invariant.
-LINE1_V110=$(head -n 1 "$PC_DIR/v11.0.md")
-assert_eq "10.3 v11.0.md line 1 is back-pointer" \
-    '<!-- per-entry source: /changelog/v11.0.md; contract: /changelog/_rules.md -->' \
-    "$LINE1_V110"
+# Verify back-pointer + first-header invariant (the H2 line is the
+# byte-identical span anchor for the release file).
+LINE1_V11=$(head -n 1 "$PC_DIR/v11.md")
+assert_eq "10.3 v11.md line 1 is back-pointer" \
+    '<!-- per-entry source: /changelog/v11.md; contract: /changelog/_rules.md -->' \
+    "$LINE1_V11"
 
-# TOC regeneration coverage for changelog.
+# Nested subsections preserved verbatim inside the release entry.
+V11_BODY=$(cat "$PC_DIR/v11.md")
+assert_contains "10.3a v11.md preserves nested '### v11.0' subsection" "$V11_BODY" "### v11.0 — Initial v11 release"
+assert_contains "10.3b v11.md preserves nested '### New' subsection" "$V11_BODY" "### New"
+
+# TOC regeneration coverage for changelog (groups by major version).
 per_entry_regenerate_toc pack-changelog "$PC_DIR" 2>/dev/null
 PC_TOC=$(cat "$PC_DIR/_toc.md")
 assert_contains "10.4 changelog _toc.md groups by major version v11" "$PC_TOC" "## v11"
-assert_contains "10.5 changelog _toc.md links v11.0 entry" "$PC_TOC" "[v11.0](./v11.0.md)"
-assert_contains "10.6 changelog _toc.md links v11.1 entry" "$PC_TOC" "[v11.1](./v11.1.md)"
+assert_contains "10.5 changelog _toc.md links v11 release entry" "$PC_TOC" "[v11](./v11.md)"
+assert_contains "10.6 changelog _toc.md links v7 release entry" "$PC_TOC" "[v7](./v7.md)"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 11: bash 3.2 compatibility smoke

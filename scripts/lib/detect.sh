@@ -21,18 +21,22 @@
 #
 # <!-- DENY-LIST-CONTENT-START -->
 # Surface routing:
-#   - Pack repo:    BACKLOG.md at <target>/pack-ops/ with `^\*\*BD-` entries.
+#   - Pack repo:    the `/backlog/` per-entry tree at <target>/backlog/
+#                   with `BD-NNN[suffix].md` entry files (BD-203 no-mirror
+#                   SSOT; there is no monolithic pack-ops/BACKLOG.md).
 #   - Client repo:  BACKLOG.md at <target>/docs/project/ (canonical) OR
 #                   <target>/ (legacy layout fallback) with `^\*\*TD-`
 #                   entries.
 #   - Both present: ambiguous (caller decides — pack-help prints both).
 #   - Neither:      ambiguous (no signal to disambiguate).
 #
-# Candidate scan order: pack-ops/ (pack-side canonical), docs/project/
-# (client-side canonical), root (legacy-layout fallback; retained for
-# test-fixture and back-compat coverage — see
-# scripts/tests/pack-help-test.sh fixture 1.3 "client repo (root
-# BACKLOG.md, TD entries)" which still writes the legacy shape).
+# Candidate scan order: pack-side `/backlog/` per-entry tree (pack-side
+# canonical), then docs/project/ (client-side canonical), root
+# (legacy-layout fallback; retained for test-fixture and back-compat
+# coverage — see scripts/tests/pack-help-test.sh fixture 1.3 "client
+# repo (root BACKLOG.md, TD entries)" which still writes the legacy
+# shape). BD-203 repoints ONLY the pack-side branch to the tree; the
+# client branches still detect a client monolith until BD-206.
 # <!-- DENY-LIST-CONTENT-END -->
 #
 # Used by scripts/pack-help.sh and any future verb that needs to
@@ -41,8 +45,25 @@ detect_pack_surface() {
     local target="${1:-.}"
     local bd_seen=0 td_seen=0
     local backlog
+    # BD-203 A14b — PACK-SURFACE branch (repointed to the no-mirror tree):
+    # the pack signal is a `/backlog/` per-entry tree carrying at least
+    # one `BD-NNN[suffix].md` entry file. The CLIENT-surface branches
+    # below are UNTOUCHED (they still detect a client monolith until
+    # BD-206). detect.sh is in `_SANCTIONED_PACK_SIDE_SHIPPED` (CI Check
+    # 47); this pack-surface-only conditional leaves the install
+    # map↔constant equality unaffected.
+    if [[ -d "$target/backlog" ]]; then
+        local ent
+        for ent in "$target/backlog"/BD-*.md; do
+            [[ -f "$ent" ]] || continue
+            if printf '%s\n' "$(basename "$ent")" | grep -qE '^BD-[0-9]+[a-z]*\.md$'; then
+                bd_seen=1
+                break
+            fi
+        done
+    fi
     # <!-- DENY-LIST-CONTENT-START -->
-    for backlog in "$target/pack-ops/BACKLOG.md" "$target/docs/project/BACKLOG.md" "$target/BACKLOG.md"; do
+    for backlog in "$target/docs/project/BACKLOG.md" "$target/BACKLOG.md"; do
     # <!-- DENY-LIST-CONTENT-END -->
         [[ -f "$backlog" ]] || continue
         if grep -qE '^\*\*BD-[0-9]+ ' "$backlog" 2>/dev/null; then

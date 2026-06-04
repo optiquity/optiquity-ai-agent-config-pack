@@ -128,17 +128,35 @@ recommendation_compute_signals() {
 
 _rec_compute_pack_signals() {
     local repo_root="$1"
-    # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
-    local backlog="$repo_root/pack-ops/BACKLOG.md"
+    # BD-203 A14a: pack-side BACKLOG is the `/backlog/` per-entry tree
+    # (the no-mirror SSOT) — there is no monolithic pack-ops/BACKLOG.md.
+    # Count entry files (`BD-NNN[suffix].md`), sum their byte size for
+    # the tree-size signal, and count Open/Unblocked entries for the
+    # active signal. Tree-absent (pre-conversion) → all-zero signals.
+    local backlog_dir="$repo_root/backlog"
     local bd_active=0 bd_total=0 backlog_kb=0 growth=0
-    if [[ -f "$backlog" ]]; then
-        bd_total=$(grep -cE '^\*\*BD-[0-9]+ ' "$backlog" 2>/dev/null || echo 0)
-        bd_active=$(_rec_count_active_entries "$backlog" "BD")
-        local bytes
-        bytes=$(wc -c < "$backlog" | tr -d ' ')
-        backlog_kb=$(( bytes / 1024 ))
+    if [[ -d "$backlog_dir" ]]; then
+        local f base bytes total_bytes=0
+        for f in "$backlog_dir"/*.md; do
+            [[ -f "$f" ]] || continue
+            base=$(basename "$f")
+            # Skip supporting files (leading underscore); count only
+            # `BD-NNN[suffix].md` entry files.
+            case "$base" in
+                _*) continue ;;
+            esac
+            printf '%s\n' "$base" | grep -qE '^BD-[0-9]+[a-z]*\.md$' || continue
+            bd_total=$(( bd_total + 1 ))
+            bytes=$(wc -c < "$f" | tr -d ' ')
+            total_bytes=$(( total_bytes + bytes ))
+            # Active = Status: Open or Status: Unblocked in the entry body.
+            if grep -qE '^Status:[[:space:]]*(Open|Unblocked)[[:space:]]*$' "$f" 2>/dev/null; then
+                bd_active=$(( bd_active + 1 ))
+            fi
+        done
+        backlog_kb=$(( total_bytes / 1024 ))
     fi
-    growth=$(_rec_backlog_growth_30d "$repo_root" "$backlog")
+    growth=$(_rec_backlog_growth_30d "$repo_root" "$backlog_dir")
     printf '{"bd_count_active":%d,"bd_count_total":%d,"backlog_kb":%d,"backlog_growth_30d":%d}\n' \
         "$bd_active" "$bd_total" "$backlog_kb" "$growth"
 }

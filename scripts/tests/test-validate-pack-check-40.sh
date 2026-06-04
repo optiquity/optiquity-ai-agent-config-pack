@@ -604,8 +604,12 @@ fail_count, pass_msg, captured = run_check_with_synthetic(
 if fail_count != 0:
     failures.append(f"T6 (code-block PASS) expected 0 failures, got {fail_count}: {captured}")
 
-# T7: EXCLUDED files. BACKLOG.md and CHANGELOG.md in pack-ops/ are
-#     SKIPPED entirely per §2.1 D1a, even if they contain bare refs.
+# T7: EXCLUDED basenames. BD-203 no-mirror model: BACKLOG.md and
+#     CHANGELOG.md are the deleted monoliths (the per-entry trees are the
+#     SSOT). The Check 40 walk excludes these basenames, so even a
+#     synthetic pack-ops/BACKLOG.md carrying a bare ref is SKIPPED (the
+#     exclusion is inert once the files are gone, and harmless while they
+#     still exist during conversion). NOT "regenerated mirrors".
 fail_count, pass_msg, captured = run_check_with_synthetic(
     {
         "BACKLOG.md": "Has bare \`UNQUALIFIED-REF.md\` ref — should be skipped.\n",
@@ -613,10 +617,10 @@ fail_count, pass_msg, captured = run_check_with_synthetic(
     },
 )
 if fail_count != 0:
-    failures.append(f"T7 (mirror SKIP) expected 0 failures, got {fail_count}: {captured}")
+    failures.append(f"T7 (monolith-basename SKIP) expected 0 failures, got {fail_count}: {captured}")
 if "BACKLOG.md" in captured.replace("excluded", "").replace("BACKLOG.md/", ""):
-    # Allow mention of BACKLOG.md only in 'excluded mirrors' messaging
-    pass  # Lenient — the message format may include the name in context
+    # Lenient — the message format may include the name in context
+    pass
 
 # T8: FAIL path — 2+ candidates (DISAMBIGUATE).
 fail_count, pass_msg, captured = run_check_with_synthetic(

@@ -81,8 +81,10 @@ display_name_for_stream = {
 
 # Entry-file regex per stream (must mirror _lib.sh hard-coded values).
 entry_regex_for_stream = {
-    "pack-backlog":                re.compile(r"^BD-\d+\.md$"),
-    "pack-changelog":              re.compile(r"^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$"),
+    # BD-203 A4: admit the pack-backlog suffix form (`BD-167b.md`).
+    "pack-backlog":                re.compile(r"^BD-\d+[a-z]*\.md$"),
+    # BD-203 A3/CHANGE 2: per-release pack-changelog granularity (`vN.md`).
+    "pack-changelog":              re.compile(r"^v\d+\.md$"),
     "project-backlog":             re.compile(r"^TD-\d+\.md$"),
     "project-implementation-plan": re.compile(r"^phase-\d+\.md$"),
     # Slug is optional per sidecar §3.5; mirrors _lib.sh:101.
@@ -118,9 +120,12 @@ for name in sorted(os.listdir(stream_dir)):
     group = ""
 
     if key in ("pack-backlog", "project-backlog"):
-        # Title from `**ID — Title**` line.
+        # Title from `**ID — Title**` line. BD-203 A6: admit the suffix
+        # form (`BD-167b`) and an optional parenthetical qualifier
+        # (`BD-195 (Code Red 3)`) so those entries get their real title,
+        # not the filename fallback.
         for ln in body_lines:
-            m = re.match(r"^\*\*[A-Z]+-\d+ — (.+?)\*\*", ln)
+            m = re.match(r"^\*\*[A-Z]+-\d+[a-z]*(?:\s*\([^)]*\))? — (.+?)\*\*", ln)
             if m:
                 title = m.group(1).strip()
                 break
@@ -134,15 +139,17 @@ for name in sorted(os.listdir(stream_dir)):
             group = "Open"  # default if Status absent
 
     elif key == "pack-changelog":
-        # Title from `### vN.M — <date_or_title>` line. Use whatever
-        # follows the version + ` — `.
+        # BD-203 CHANGE 2 — per-release granularity: the entry is one
+        # `vN.md` per major release; the body's first header is the
+        # `## vN — <date>` H2. Title = whatever follows the version + ` — `.
         for ln in body_lines:
-            m = re.match(r"^### (v\d+\.\d+(?:-[a-z0-9-]+)?) — (.+)$", ln)
+            m = re.match(r"^## (v\d+) — (.+)$", ln)
             if m:
                 title = m.group(2).strip()
                 break
-        # Group: major version (vN from vN.M).
-        m = re.match(r"^(v\d+)\.", entry_id)
+        # Group: the major version itself (each release is its own group;
+        # under per-release granularity each group holds exactly one entry).
+        m = re.match(r"^(v\d+)$", entry_id)
         if m:
             group = m.group(1)
         else:
@@ -197,9 +204,13 @@ for (filename, entry_id, group, title) in entries:
 # Stream-specific group ordering.
 def order_groups(key, group_order):
     if key in ("pack-backlog", "project-backlog"):
-        # Status order: Open / Resolved / Deferred / Cancelled / Deprecated;
-        # any unknown statuses follow alphabetically.
-        canonical = ["Open", "Resolved", "Deferred", "Cancelled", "Deprecated"]
+        # BD-203 A7 — RATIFIED status order (BD-203 entry + amendment E2):
+        # actionable-first (Open → Unblocked → Deferred) then terminal
+        # (Resolved → Deprecated → Cancelled). `Unblocked` is admitted as
+        # a canonical lifecycle state per D2. Any unknown statuses follow
+        # alphabetically.
+        canonical = ["Open", "Unblocked", "Deferred", "Resolved",
+                     "Deprecated", "Cancelled"]
         head = [g for g in canonical if g in group_order]
         tail = sorted(g for g in group_order if g not in canonical)
         return head + tail
@@ -230,8 +241,10 @@ def entry_sort_key(key, entry_tuple):
         m = re.match(r"^[A-Z]+-(\d+)$", entry_id)
         return int(m.group(1)) if m else 0
     if key == "pack-changelog":
-        # By minor version descending within major (v11.1 above v11.0).
-        m = re.match(r"^v\d+\.(\d+)", entry_id)
+        # BD-203 CHANGE 2 — per-release granularity: each major-version
+        # group holds exactly one `vN` entry, so within-group sort is
+        # a no-op. Stable key by major version descending.
+        m = re.match(r"^v(\d+)$", entry_id)
         if m:
             return -int(m.group(1))
         return 0

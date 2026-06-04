@@ -1,5 +1,15 @@
-# scripts/lib/per-entry/mirror-generate.sh — regenerate the canonical
-# monolithic mirror file from a per-entry tree (BD-164).
+# scripts/lib/per-entry/mirror-generate.sh — regenerate a monolithic
+# mirror file from a per-entry tree (BD-164).
+#
+# BD-203 STATUS — DEPRECATED FOR PACK STREAMS. Under the no-mirror model
+# the pack-backlog / pack-changelog per-entry tree (+ `_toc.md`) is the
+# SOLE source of truth and readable form; there is NO regenerated
+# monolithic pack mirror, and this generator is NOT called for the pack
+# streams. The file is retained physically ONLY because the project
+# streams (project-backlog / project-implementation-plan /
+# project-changelog) still call it. The project-side retirement is
+# tracked separately.
+# TODO(v11.0): TD-TBD — retire mirror-generate project-side at BD-206
 #
 # Public API:
 #   per_entry_regenerate_mirror <stream_key> <stream_dir> <mirror_path>

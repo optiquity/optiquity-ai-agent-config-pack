@@ -31,30 +31,47 @@ source "$LIB_DIR/recommendation.sh"
 
 printf "\n=== Group 1: signal computation ===\n"
 
-# 1.1 pack-side signals against a fixture repo with 5 active BDs.
-# BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
+# 1.1 pack-side signals against a fixture repo with 5 BD entries.
+# BD-203 A14a: pack-side BACKLOG is the `/backlog/` per-entry tree (the
+# no-mirror SSOT) — there is no monolithic pack-ops/BACKLOG.md. The
+# signal counts entry files (incl. the suffix form `BD-167b.md`),
+# Open/Unblocked = active. 5 entries: 3 active (Open/Open/Unblocked) +
+# Resolved + Cancelled.
 TR_PACK=$(mktemp -d -t rec-pack.XXXXXX)
-mkdir -p "$TR_PACK/pack-ops"
-cat > "$TR_PACK/pack-ops/BACKLOG.md" <<'EOF'
+mkdir -p "$TR_PACK/backlog"
+cat > "$TR_PACK/backlog/BD-001.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-001.md; contract: /backlog/_rules.md -->
 **BD-001 — First**
 Status: Open
-
+EOF
+cat > "$TR_PACK/backlog/BD-002.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-002.md; contract: /backlog/_rules.md -->
 **BD-002 — Second**
 Status: Open
-
-**BD-003 — Third**
+EOF
+cat > "$TR_PACK/backlog/BD-167b.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-167b.md; contract: /backlog/_rules.md -->
+**BD-167b — Suffix entry (active)**
 Status: Unblocked
-
+EOF
+cat > "$TR_PACK/backlog/BD-004.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-004.md; contract: /backlog/_rules.md -->
 **BD-004 — Fourth**
 Status: Resolved
-
+EOF
+cat > "$TR_PACK/backlog/BD-005.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-005.md; contract: /backlog/_rules.md -->
 **BD-005 — Fifth**
 Status: Cancelled
 EOF
+# Supporting file (leading underscore) must NOT be counted as an entry.
+cat > "$TR_PACK/backlog/_rules.md" <<'EOF'
+# Per-stream contract — pack-backlog (test fixture)
+EOF
 sigs=$(recommendation_compute_signals "pack" "$TR_PACK")
-assert_eq "1.1 bd_count_active=3 (Open + Unblocked)" "3" \
+assert_eq "1.1 bd_count_active=3 (Open + Unblocked, incl. suffix entry)" "3" \
     "$(printf '%s' "$sigs" | jq -r '.bd_count_active')"
-assert_eq "1.1 bd_count_total=5" "5" \
+assert_eq "1.1 bd_count_total=5 (entry files; _rules.md excluded)" "5" \
     "$(printf '%s' "$sigs" | jq -r '.bd_count_total')"
 assert_eq "1.1 backlog_growth_30d=0 (no git)" "0" \
     "$(printf '%s' "$sigs" | jq -r '.backlog_growth_30d')"

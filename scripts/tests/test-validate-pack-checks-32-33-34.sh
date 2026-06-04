@@ -139,10 +139,11 @@ sys.modules["validate_pack"] = vp
 spec.loader.exec_module(vp)
 
 # Monkey-patch: REPO_ROOT → scratch_repo; STREAMS → pack-backlog only
-# (or with extras parsed from the env var).
+# (or with extras parsed from the env var). BD-203 A4: the pack-backlog
+# entry regex admits the suffix form (`BD-167b.md`).
 vp.REPO_ROOT = scratch_repo
 streams = [
-    ("pack-backlog", "backlog", "BACKLOG.md", r"^BD-\d+\.md$"),
+    ("pack-backlog", "backlog", "BACKLOG.md", r"^BD-\d+[a-z]*\.md$"),
 ]
 if extra_str:
     for tup in extra_str.split():
@@ -249,7 +250,20 @@ Status: Open
 Blockers: None
 Unblocks: None
 File/Symbol: n/a
-Description: Third entry; references BD-100 in body.
+Description: Third entry; references BD-100 and the suffix entry BD-167b in body.
+EOF
+    # BD-203 A4/A15-T2: a suffix-form entry file (`BD-167b.md`) exercising
+    # the widened entry regex (`^BD-\d+[a-z]*\.md$`) + the widened Check 34
+    # cross-ref token (`BD-\d+[a-z]*`). BD-102 references BD-167b above.
+    cat >"$backlog_dir/BD-167b.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-167b.md; contract: /backlog/_rules.md -->
+**BD-167b — Suffix-form entry**
+Type: TODO(version)
+Status: Resolved
+Blockers: None
+Unblocks: None
+File/Symbol: n/a
+Description: Suffix entry; self-reference BD-167b in body resolves.
 EOF
 
     # Generate the canonical BACKLOG.md mirror via the BD-164 helper.
@@ -270,25 +284,28 @@ EOF
 # Materialize a green pack-changelog per-entry tree under <scratch_repo>:
 #   <scratch_repo>/changelog/_rules.md
 #   <scratch_repo>/changelog/_intro.md
-#   <scratch_repo>/changelog/v10.0.md, v10.1.md, v11.0.md
-#   <scratch_repo>/CHANGELOG.md  (regenerated mirror)
+#   <scratch_repo>/changelog/v11.md, v10.md
 #   <scratch_repo>/changelog/_toc.md  (regenerated TOC)
-# Entries match the pack-changelog regex `^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$`
-# per validate-pack.py STREAMS. Three entries exercise grouping by major
-# version (BD-164 toc-regenerate axis). Added in BD-168 retro fix S2.
+# BD-203 CHANGE 2: per-release granularity — entries match the
+# pack-changelog regex `^v\d+\.md$` (one `vN.md` per major release).
+# No monolith mirror is emitted (no-mirror SSOT). Two releases exercise
+# grouping by major version (BD-164 toc-regenerate axis).
 # $1 = scratch_repo path
 build_green_pack_changelog() {
     local scratch_repo="$1"
     local changelog_dir="$scratch_repo/changelog"
     mkdir -p "$changelog_dir"
 
-    # _rules.md (declares supporting files).
+    # _rules.md (declares supporting files; no-mirror statement).
     cat >"$changelog_dir/_rules.md" <<'EOF'
 # Per-stream contract — pack-changelog (test fixture)
 
 Stream identity: pack-changelog
-Filename convention: ^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$
+Filename convention: ^v\d+\.md$
 Lifecycle states: none (versions are immutable post-ship)
+
+The per-entry tree (+ `_toc.md`) is the SOLE source of truth and
+readable form. There is no monolithic mirror.
 
 ## Supporting files
 
@@ -306,36 +323,32 @@ Test-fixture preamble.
 ---
 EOF
 
-    # Three version entries. v11.0 is the current version; v10.x are
-    # historical. The toc-regenerate.sh axis is "version" grouping by
-    # major.
-    cat >"$changelog_dir/v11.0.md" <<'EOF'
-<!-- per-entry source: /changelog/v11.0.md; contract: /changelog/_rules.md -->
+    # Two release entries (per-release granularity). v11 carries a nested
+    # `### v11.0` subsection inside the release file; v10 is H2-only. The
+    # toc-regenerate.sh axis is "version" grouping by major.
+    # NB: the nested subsection header deliberately carries NO `vN.M`
+    # token (it would be tokenized by Check 34's CROSS_REF_RE as a
+    # cross-reference and flagged dangling, since per-release granularity
+    # defines `v11`, not `v11.0`). This fixture exercises Check 32′/33/34;
+    # nested-subsection-preservation is covered by test-per-entry.sh
+    # Group 10.
+    cat >"$changelog_dir/v11.md" <<'EOF'
+<!-- per-entry source: /changelog/v11.md; contract: /changelog/_rules.md -->
 ## v11 — May 2026
 
-- Initial v11.0 release. References BD-100 for context.
-EOF
-    cat >"$changelog_dir/v10.1.md" <<'EOF'
-<!-- per-entry source: /changelog/v10.1.md; contract: /changelog/_rules.md -->
-## v10.1 — April 2026
+### Initial release
 
-- v10.1 minor release.
+- Initial v11 release. References BD-100 for context.
 EOF
-    cat >"$changelog_dir/v10.0.md" <<'EOF'
-<!-- per-entry source: /changelog/v10.0.md; contract: /changelog/_rules.md -->
-## v10.0 — March 2026
+    cat >"$changelog_dir/v10.md" <<'EOF'
+<!-- per-entry source: /changelog/v10.md; contract: /changelog/_rules.md -->
+## v10 — March 2026
 
-- v10.0 first release.
+- v10 release (H2-only).
 EOF
 
-    # Generate the canonical CHANGELOG.md mirror via the BD-164 helper.
-    bash -c "
-        . '$PER_ENTRY_LIB/_lib.sh'
-        . '$PER_ENTRY_LIB/mirror-generate.sh'
-        per_entry_regenerate_mirror pack-changelog '$changelog_dir' '$scratch_repo/CHANGELOG.md'
-    " >/dev/null 2>&1
-
-    # Generate the canonical _toc.md via the BD-164 helper.
+    # Generate the canonical _toc.md via the BD-164 helper (no mirror —
+    # under the no-mirror model `_toc.md` is the readable index).
     bash -c "
         . '$PER_ENTRY_LIB/_lib.sh'
         . '$PER_ENTRY_LIB/toc-regenerate.sh'
@@ -371,72 +384,89 @@ assert_contains "D1.2 STREAMS includes pack-changelog" "$D1_OUT" "pack-changelog
 assert_contains "D1.3 STREAMS tuples are 4-tuples" "$D1_OUT" "tuple_lens=[4, 4]"
 
 # ─────────────────────────────────────────────────────────────────
-# Group A: Check 32 (mirror-in-sync) — green + red
+# Group A: Check 32′ (no pack monolith exists — BD-203 inverted)
 # ─────────────────────────────────────────────────────────────────
+#
+# BD-203 retires the old "mirror-in-sync" Check 32 and replaces it with
+# an inverted guard (still named `check_mirror_in_sync`): for each pack
+# stream whose per-entry tree is present, assert the monolith is ABSENT
+# and `_rules.md` + `_toc.md` are present + filenames conform. Green =
+# tree present + NO monolith; red = monolith present (or missing
+# supporting file / non-conforming filename). `build_green_pack_backlog`
+# emits the BACKLOG.md monolith as conversion input, so each green case
+# DELETES it first.
 
-printf "\n=== Group A: Check 32 (mirror-in-sync) ===\n"
+printf "\n=== Group A: Check 32′ (no pack monolith exists — BD-203) ===\n"
 
-# A1: green tree + in-sync mirror → check passes.
+# A1: green tree + NO monolith → check passes.
 A1_REPO="$SCRATCH_ROOT/A1"
 mkdir -p "$A1_REPO"
 build_green_pack_backlog "$A1_REPO"
+rm -f "$A1_REPO/BACKLOG.md"   # no-mirror SSOT: monolith deleted
 A1_OUT=$(run_check check_mirror_in_sync "$A1_REPO" 2>&1)
 A1_RC=$?
-assert_eq "A1.1 in-sync mirror → check rc=0" "0" "$A1_RC"
-assert_contains "A1.2 in-sync mirror → OK byte-identical" "$A1_OUT" "byte-identical"
-assert_not_contains "A1.3 in-sync mirror → no FAIL" "$A1_OUT" "FAIL:"
+assert_eq "A1.1 tree + no monolith → check rc=0" "0" "$A1_RC"
+assert_contains "A1.2 tree + no monolith → OK no monolith present" "$A1_OUT" "no monolith present"
+assert_not_contains "A1.3 tree + no monolith → no FAIL" "$A1_OUT" "FAIL:"
 
-# A2: green tree + hand-edited mirror → check FAILs.
+# A2: tree present + monolith STILL present → check FAILs (wrong-model).
 A2_REPO="$SCRATCH_ROOT/A2"
 mkdir -p "$A2_REPO"
-build_green_pack_backlog "$A2_REPO"
-# Hand-edit the mirror by appending a stray line.
-printf '\nROGUE LINE — hand-edited\n' >>"$A2_REPO/BACKLOG.md"
-A2_PRE_SHA=$(shasum "$A2_REPO/BACKLOG.md" | awk '{print $1}')
+build_green_pack_backlog "$A2_REPO"   # leaves BACKLOG.md monolith in place
 A2_OUT=$(run_check check_mirror_in_sync "$A2_REPO" 2>&1)
 A2_RC=$?
-A2_POST_SHA=$(shasum "$A2_REPO/BACKLOG.md" | awk '{print $1}')
-assert_eq "A2.1 hand-edited mirror → check rc=1" "1" "$A2_RC"
-assert_contains "A2.2 hand-edited mirror → FAIL out-of-sync" "$A2_OUT" "out of sync"
-assert_contains "A2.3 hand-edited mirror → FAIL names regenerator" "$A2_OUT" "per_entry_regenerate_mirror"
-assert_eq "A2.4 hand-edited mirror → working-tree restored to pre-check state" "$A2_PRE_SHA" "$A2_POST_SHA"
+assert_eq "A2.1 monolith present + tree → check rc=1" "1" "$A2_RC"
+assert_contains "A2.2 monolith present → FAIL says still present" "$A2_OUT" "still present"
+assert_contains "A2.3 monolith present → FAIL says delete the monolith" "$A2_OUT" "delete the monolith"
 
-# A3: green tree + missing _rules.md → check FAILs (pre-check a).
+# A3: green tree + missing _rules.md → check FAILs.
 A3_REPO="$SCRATCH_ROOT/A3"
 mkdir -p "$A3_REPO"
 build_green_pack_backlog "$A3_REPO"
+rm -f "$A3_REPO/BACKLOG.md"
 rm "$A3_REPO/backlog/_rules.md"
 A3_OUT=$(run_check check_mirror_in_sync "$A3_REPO" 2>&1)
 A3_RC=$?
 assert_eq "A3.1 missing _rules.md → check rc=1" "1" "$A3_RC"
 assert_contains "A3.2 missing _rules.md → FAIL names _rules.md" "$A3_OUT" "_rules.md missing"
 
-# A4: green tree + non-conforming filename → check FAILs (pre-check b).
+# A4: green tree + missing _toc.md → check FAILs (no-mirror readable index).
 A4_REPO="$SCRATCH_ROOT/A4"
 mkdir -p "$A4_REPO"
 build_green_pack_backlog "$A4_REPO"
-# Add a stray non-conforming file (neither matches BD-NNN.md nor a known
-# supporting basename).
-printf 'rogue\n' >"$A4_REPO/backlog/ROGUE-FILE.md"
+rm -f "$A4_REPO/BACKLOG.md"
+rm "$A4_REPO/backlog/_toc.md"
 A4_OUT=$(run_check check_mirror_in_sync "$A4_REPO" 2>&1)
 A4_RC=$?
-assert_eq "A4.1 non-conforming filename → check rc=1" "1" "$A4_RC"
-assert_contains "A4.2 non-conforming filename → FAIL names the file" "$A4_OUT" "ROGUE-FILE.md"
-assert_contains "A4.3 non-conforming filename → FAIL says non-conforming" "$A4_OUT" "non-conforming filenames"
+assert_eq "A4.1 missing _toc.md → check rc=1" "1" "$A4_RC"
+assert_contains "A4.2 missing _toc.md → FAIL names _toc.md" "$A4_OUT" "_toc.md missing"
 
-# A5 (folded pre-check c): hand-edit the v8 archive content → mirror
-# divergence catches it (per integration parent §10.4 — c folds into
-# the main divergence check).
+# A5: green tree + non-conforming filename → check FAILs. The suffix
+# entry BD-167b.md in the green fixture CONFORMS (widened regex), so the
+# stray ROGUE-FILE.md is the only non-conforming offender.
 A5_REPO="$SCRATCH_ROOT/A5"
 mkdir -p "$A5_REPO"
 build_green_pack_backlog "$A5_REPO"
-# Edit the v8 archive (frozen-historical block); mirror regenerator
-# would re-emit the new content; on-disk mirror is unchanged → divergence.
-printf '\nv8-archive hand-edit\n' >>"$A5_REPO/backlog/_v8-resolved-archive.md"
+rm -f "$A5_REPO/BACKLOG.md"
+printf 'rogue\n' >"$A5_REPO/backlog/ROGUE-FILE.md"
 A5_OUT=$(run_check check_mirror_in_sync "$A5_REPO" 2>&1)
 A5_RC=$?
-assert_eq "A5.1 v8-archive edit → mirror divergence rc=1" "1" "$A5_RC"
-assert_contains "A5.2 v8-archive edit → FAIL out-of-sync" "$A5_OUT" "out of sync"
+assert_eq "A5.1 non-conforming filename → check rc=1" "1" "$A5_RC"
+assert_contains "A5.2 non-conforming filename → FAIL names the file" "$A5_OUT" "ROGUE-FILE.md"
+assert_contains "A5.3 non-conforming filename → FAIL says non-conforming" "$A5_OUT" "non-conforming filenames"
+
+# A6: the suffix entry BD-167b.md CONFORMS under the widened regex — a
+# green tree carrying it (no monolith) passes Check 32′.
+A6_REPO="$SCRATCH_ROOT/A6"
+mkdir -p "$A6_REPO"
+build_green_pack_backlog "$A6_REPO"
+rm -f "$A6_REPO/BACKLOG.md"
+[[ -f "$A6_REPO/backlog/BD-167b.md" ]] && t_pass "A6.0 suffix entry BD-167b.md present in fixture" \
+    || t_fail "A6.0 suffix entry BD-167b.md present in fixture"
+A6_OUT=$(run_check check_mirror_in_sync "$A6_REPO" 2>&1)
+A6_RC=$?
+assert_eq "A6.1 suffix entry conforms → check rc=0" "0" "$A6_RC"
+assert_not_contains "A6.2 suffix entry conforms → BD-167b.md NOT flagged non-conforming" "$A6_OUT" "BD-167b.md"
 
 # ─────────────────────────────────────────────────────────────────
 # Group B: Check 33 (TOC-in-sync) — green + red
@@ -553,6 +583,35 @@ C5_RC=$?
 assert_eq "C5.1 dangling phase-3 → check rc=1" "1" "$C5_RC"
 assert_contains "C5.2 dangling phase-3 → FAIL names phase-3" "$C5_OUT" "phase-3"
 
+# C6 (BD-203 A5/A15-T2): a body reference to the suffix entry `BD-167b`
+# RESOLVES — the widened CROSS_REF_RE token (`BD-\d+[a-z]*`) tokenizes
+# `BD-167b`, and the widened entry regex defines `BD-167b` (the fixture's
+# BD-167b.md). Before BD-203 the token yielded NOTHING on `BD-167b`
+# (a `\b` cannot sit between `7` and `b`), so the ref was invisible.
+C6_REPO="$SCRATCH_ROOT/C6"
+mkdir -p "$C6_REPO"
+build_green_pack_backlog "$C6_REPO"
+# BD-100 references the suffix entry BD-167b (defined in the fixture).
+printf '\nDescription continued: superseded by BD-167b.\n' \
+    >>"$C6_REPO/backlog/BD-100.md"
+C6_OUT=$(run_check check_cross_reference_integrity "$C6_REPO" 2>&1)
+C6_RC=$?
+assert_eq "C6.1 suffix ref BD-167b resolves → check rc=0" "0" "$C6_RC"
+assert_not_contains "C6.2 suffix ref BD-167b → no dangling FAIL" "$C6_OUT" "BD-167b — no matching"
+
+# C7 (BD-203 A5): a DANGLING suffix reference (`BD-999z`, not defined) is
+# now VISIBLE to Check 34 (the token admits the suffix) and FAILs — the
+# widening admits the suffix in BOTH directions (resolve + dangling).
+C7_REPO="$SCRATCH_ROOT/C7"
+mkdir -p "$C7_REPO"
+build_green_pack_backlog "$C7_REPO"
+printf '\nDescription continued: see BD-999z for related context.\n' \
+    >>"$C7_REPO/backlog/BD-100.md"
+C7_OUT=$(run_check check_cross_reference_integrity "$C7_REPO" 2>&1)
+C7_RC=$?
+assert_eq "C7.1 dangling suffix ref BD-999z → check rc=1" "1" "$C7_RC"
+assert_contains "C7.2 dangling suffix ref → FAIL names BD-999z" "$C7_OUT" "BD-999z"
+
 # ─────────────────────────────────────────────────────────────────
 # Group E: SKIP behavior (per integration parent §10.5)
 # ─────────────────────────────────────────────────────────────────
@@ -589,28 +648,25 @@ assert_contains "E1.6 no tree → Check 34 says 'no per-entry trees present'" "$
 # validate-pack.py:3280-3282 (the union of defined IDs across loaded
 # streams used by Check 34).
 #
-# The extra_streams seam in run_check (lines 105-110) accepts
-# pipe-delimited tuples; the pack-changelog tuple is
-# "pack-changelog|changelog|CHANGELOG.md|^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$".
+# The extra_streams seam in run_check accepts pipe-delimited tuples; the
+# pack-changelog tuple uses the BD-203 per-release regex `^v\d+\.md$`.
 
-printf "\n=== Group F: pack-changelog stream coverage (BD-168 retro fix S2) ===\n"
+printf "\n=== Group F: pack-changelog stream coverage (BD-203 per-release) ===\n"
 
 # Tuple constant for the pack-changelog stream (4-part pipe-delimited).
-# NB: escape the pipe-internal regex carefully — bash word-splits on
-# whitespace, so embedded pipes are fine; the python wrapper splits
-# each tuple on '|'.
-PACKCL_TUPLE='pack-changelog|changelog|CHANGELOG.md|^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$'
+# BD-203: per-release granularity → entry regex `^v\d+\.md$`.
+PACKCL_TUPLE='pack-changelog|changelog|CHANGELOG.md|^v\d+\.md$'
 
-# F1: green pack-changelog tree + Check 32 → PASS.
-# pack-backlog SKIPs (no /backlog/ in scratch); pack-changelog
-# byte-identical → overall PASS.
+# F1: green pack-changelog tree + NO monolith → Check 32′ PASS.
+# pack-backlog SKIPs (no /backlog/ in scratch); pack-changelog passes
+# (tree present, no monolith) → overall PASS.
 F1_REPO="$SCRATCH_ROOT/F1"
 mkdir -p "$F1_REPO"
 build_green_pack_changelog "$F1_REPO"
 F1_OUT=$(run_check check_mirror_in_sync "$F1_REPO" "$PACKCL_TUPLE" 2>&1)
 F1_RC=$?
-assert_eq "F1.1 green pack-changelog → Check 32 rc=0" "0" "$F1_RC"
-assert_contains "F1.2 green pack-changelog → CHANGELOG.md byte-identical" "$F1_OUT" "changelog/ → CHANGELOG.md byte-identical"
+assert_eq "F1.1 green pack-changelog → Check 32′ rc=0" "0" "$F1_RC"
+assert_contains "F1.2 green pack-changelog → no monolith present" "$F1_OUT" "changelog/ — no monolith present"
 assert_contains "F1.3 green pack-changelog → pack-backlog SKIPs" "$F1_OUT" "backlog/ — not present"
 assert_not_contains "F1.4 green pack-changelog → no FAIL" "$F1_OUT" "FAIL:"
 
@@ -624,70 +680,51 @@ assert_eq "F2.1 green pack-changelog → Check 33 rc=0" "0" "$F2_RC"
 assert_contains "F2.2 green pack-changelog → _toc.md byte-identical" "$F2_OUT" "changelog/_toc.md byte-identical"
 assert_not_contains "F2.3 green pack-changelog → no FAIL" "$F2_OUT" "FAIL:"
 
-# F3: green pack-changelog tree + Check 34 → PASS (no refs in version
-# entry bodies that don't resolve).
+# F3: green pack-changelog tree + Check 34 → PASS (no dangling refs).
 F3_REPO="$SCRATCH_ROOT/F3"
 mkdir -p "$F3_REPO"
 build_green_pack_changelog "$F3_REPO"
-# Note: build_green_pack_changelog's v11.0.md body references BD-100
-# which is NOT defined in this scratch (no /backlog/). Check 34 will
-# correctly FAIL with dangling BD-100. To exercise the all-pass path,
-# strip the body reference before the check.
-sed -i.bak 's/References BD-100 for context.//' "$F3_REPO/changelog/v11.0.md"
-rm -f "$F3_REPO/changelog/v11.0.md.bak"
-# Regenerate the mirror so it stays byte-identical to the modified
-# entry; otherwise Check 32 would diverge (but we're not running it
-# here; Check 34 is independent of mirror state).
-bash -c "
-    . '$PER_ENTRY_LIB/_lib.sh'
-    . '$PER_ENTRY_LIB/mirror-generate.sh'
-    PE_FORCE_OVERWRITE_MIRROR=1 per_entry_regenerate_mirror pack-changelog '$F3_REPO/changelog' '$F3_REPO/CHANGELOG.md'
-" >/dev/null 2>&1
+# The v11.md body references BD-100 which is NOT defined in this scratch
+# (no /backlog/). Check 34 would correctly FAIL with dangling BD-100. To
+# exercise the all-pass path, strip the body reference before the check.
+sed -i.bak 's/References BD-100 for context.//' "$F3_REPO/changelog/v11.md"
+rm -f "$F3_REPO/changelog/v11.md.bak"
 F3_OUT=$(run_check check_cross_reference_integrity "$F3_REPO" "$PACKCL_TUPLE" 2>&1)
 F3_RC=$?
 assert_eq "F3.1 green pack-changelog → Check 34 rc=0" "0" "$F3_RC"
 assert_not_contains "F3.2 green pack-changelog → no dangling FAIL" "$F3_OUT" "FAIL:"
 
-# F4: green pack-changelog + hand-edited CHANGELOG.md → Check 32 FAIL.
+# F4: pack-changelog tree present + monolith STILL present → Check 32′
+# FAIL (wrong-model; the monolith must be deleted under no-mirror).
 F4_REPO="$SCRATCH_ROOT/F4"
 mkdir -p "$F4_REPO"
 build_green_pack_changelog "$F4_REPO"
-printf '\nROGUE CHANGELOG LINE\n' >>"$F4_REPO/CHANGELOG.md"
-F4_PRE_SHA=$(shasum "$F4_REPO/CHANGELOG.md" | awk '{print $1}')
+printf '# stale monolith\n' >"$F4_REPO/CHANGELOG.md"
 F4_OUT=$(run_check check_mirror_in_sync "$F4_REPO" "$PACKCL_TUPLE" 2>&1)
 F4_RC=$?
-F4_POST_SHA=$(shasum "$F4_REPO/CHANGELOG.md" | awk '{print $1}')
-assert_eq "F4.1 hand-edited CHANGELOG.md → Check 32 rc=1" "1" "$F4_RC"
-assert_contains "F4.2 hand-edited CHANGELOG.md → FAIL out-of-sync" "$F4_OUT" "CHANGELOG.md is out of sync"
-assert_contains "F4.3 hand-edited CHANGELOG.md → FAIL names runnable form" "$F4_OUT" "PE_FORCE_OVERWRITE_MIRROR=1"
-assert_eq "F4.4 hand-edited CHANGELOG.md → working-tree restored" "$F4_PRE_SHA" "$F4_POST_SHA"
+assert_eq "F4.1 monolith present + changelog tree → Check 32′ rc=1" "1" "$F4_RC"
+assert_contains "F4.2 monolith present → FAIL says CHANGELOG.md still present" "$F4_OUT" "CHANGELOG.md still present"
+assert_contains "F4.3 monolith present → FAIL says delete the monolith" "$F4_OUT" "delete the monolith"
 
-# F5: cross-stream union — pack-backlog entry references pack-changelog
-# version. Exercises validate-pack.py:3280-3282 (defined_all union).
-# A pack-backlog entry referencing v11.0 should resolve via the
-# pack-changelog stream's defined IDs.
+# F5: cross-stream union — pack-backlog entry references a pack-changelog
+# release. Exercises the defined_all union. A pack-backlog entry
+# referencing v10.0 should resolve via the pack-changelog stream's
+# defined IDs (NB: the per-release changelog defines `v10` / `v11` as
+# entry IDs; the CROSS_REF_RE `vN.M` token requires a minor — so the
+# union here is exercised via the pack-changelog body referencing a
+# pack-backlog BD that IS defined).
 F5_REPO="$SCRATCH_ROOT/F5"
 mkdir -p "$F5_REPO"
 build_green_pack_backlog "$F5_REPO"
+rm -f "$F5_REPO/BACKLOG.md"
 build_green_pack_changelog "$F5_REPO"
-# Append a cross-stream reference: BD-100 references v11.0 (defined in
-# pack-changelog). Without the union, this would FAIL as dangling.
-printf '\nResolved: 2026-05-16 in v11.0.\n' >>"$F5_REPO/backlog/BD-100.md"
-# Strip the v11.0.md body BD-100 ref (else BD-100 is defined and v11.0
-# tests the OTHER union direction, which we don't need here).
-sed -i.bak 's/References BD-100 for context.//' "$F5_REPO/changelog/v11.0.md"
-rm -f "$F5_REPO/changelog/v11.0.md.bak"
-# Regenerate mirrors so Check 32 is not exercised here (Check 34 only).
-bash -c "
-    . '$PER_ENTRY_LIB/_lib.sh'
-    . '$PER_ENTRY_LIB/mirror-generate.sh'
-    PE_FORCE_OVERWRITE_MIRROR=1 per_entry_regenerate_mirror pack-backlog '$F5_REPO/backlog' '$F5_REPO/BACKLOG.md'
-    PE_FORCE_OVERWRITE_MIRROR=1 per_entry_regenerate_mirror pack-changelog '$F5_REPO/changelog' '$F5_REPO/CHANGELOG.md'
-" >/dev/null 2>&1
+# The pack-changelog v11.md references BD-100, which IS defined in the
+# pack-backlog stream → resolves only via the defined_all union across
+# both loaded streams. Without the union this would FAIL as dangling.
 F5_OUT=$(run_check check_cross_reference_integrity "$F5_REPO" "$PACKCL_TUPLE" 2>&1)
 F5_RC=$?
-assert_eq "F5.1 cross-stream union → Check 34 rc=0 (v11.0 resolves via pack-changelog)" "0" "$F5_RC"
-assert_not_contains "F5.2 cross-stream union → no FAIL for v11.0 ref" "$F5_OUT" "references v11.0 — no matching"
+assert_eq "F5.1 cross-stream union → Check 34 rc=0 (BD-100 resolves via pack-backlog)" "0" "$F5_RC"
+assert_not_contains "F5.2 cross-stream union → no dangling FAIL" "$F5_OUT" "FAIL:"
 
 # ─────────────────────────────────────────────────────────────────
 # Group G: M2 snap-leftover regression (BD-168 retro fix M2)

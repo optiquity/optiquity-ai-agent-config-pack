@@ -296,17 +296,28 @@ SKILLS_DIR = REPO_ROOT / "project-template" / "skills"
 # Python-side filename conformance pre-check (Check 32 pre-check b).
 STREAMS = [
     # (stream_key,        stream_dir_relative,  mirror_relative,                entry_regex)
-    ("pack-backlog",      "backlog",            "pack-ops/BACKLOG.md",          r"^BD-\d+\.md$"),
-    ("pack-changelog",    "changelog",          "pack-ops/CHANGELOG.md",        r"^v\d+\.\d+(?:-[a-z0-9-]+)?\.md$"),
+    # BD-203: `mirror_relative` is retained as the deletion-target reference
+    # only — for the PACK the per-entry tree + `_toc.md` is the SOLE SSOT;
+    # there is no regenerated monolithic mirror (Check 32 inverted to 32′).
+    # A4: pack-backlog regex admits the suffix form (`BD-167b.md`); A3:
+    # pack-changelog regex is per-release granularity (`vN.md`).
+    ("pack-backlog",      "backlog",            "pack-ops/BACKLOG.md",          r"^BD-\d+[a-z]*\.md$"),
+    ("pack-changelog",    "changelog",          "pack-ops/CHANGELOG.md",        r"^v\d+\.md$"),
 ]
 # ── Check 48 (BD-195 C6): JC-5 soft-advisory removed-doc guard ─────────────
 # Frozen measure-then-bound set (PLAN-BD-195-REMEDIATION.md §2.3 Step-1):
 # basenames of docs REMOVED from the repo that are still cited (as accurate
-# v8/v9 + process history) inside the two regenerated mirrors. Each was
-# verified ABSENT from the tree at design time (`find . -name <name>` → 0).
-# The guard WARNs (never fail()s) on each occurrence so the accurate-history
-# citations surface without breaking CI (JC-5: NO hand-correction). The
-# scan is scoped to the two mirror files below — no full-tree walk.
+# v8/v9 + process history). Each was verified ABSENT from the tree at design
+# time (`find . -name <name>` → 0). The guard WARNs (never fail()s) on each
+# occurrence so the accurate-history citations surface without breaking CI
+# (JC-5: NO hand-correction).
+#
+# BD-203 A12: the accurate-history citations relocate from the two deleted
+# monoliths INTO the per-entry trees, so the scan is REPOINTED to walk the
+# `/backlog/` + `/changelog/` per-entry directories (every `*.md` entry +
+# supporting file). SKIP-on-absent is preserved (the trees are absent
+# pre-conversion), so Check 48 reports 0 hits cleanly at the pre-conversion
+# state. No full-repo walk — scoped to the two tree dirs.
 _REMOVED_DOC_BASENAMES = (
     "GEMINI-CLI-ANALYSIS.md",
     "ANDROID-ANALYSIS.md",
@@ -314,9 +325,9 @@ _REMOVED_DOC_BASENAMES = (
     "ARCHITECTURE-BD-185.md",
     "PLAN-BD-185.md",
 )
-_REMOVED_DOC_SCAN_FILES = (
-    "pack-ops/CHANGELOG.md",
-    "pack-ops/BACKLOG.md",
+_REMOVED_DOC_SCAN_DIRS = (
+    "changelog",
+    "backlog",
 )
 
 PER_ENTRY_LIB = REPO_ROOT / "scripts" / "lib" / "per-entry"
@@ -363,8 +374,9 @@ REQUIRED_BD044_DOCS = [
 
 # The pack repo is mostly templates and documentation, where TD-TBD appears
 # as a FORMAT EXAMPLE (teaching downstream projects the deferral syntax).
-# The only meaningful TD-TBD check in the pack is: does pack-ops/BACKLOG.md have
-# any entry where TD-TBD appears where a real BD-NNN number should be?
+# The only meaningful TD-TBD check in the pack is: does any `/backlog/*.md`
+# per-entry file (BD-203 no-mirror SSOT) have an entry where TD-TBD appears
+# where a real BD-NNN number should be?
 # The broader "no TD-TBD in committed code" check is for downstream projects.
 
 failures = []
@@ -455,25 +467,35 @@ def check_codex_toml() -> None:
 # ── Check 3: TD-TBD sentinels ──────────────────────────────────────────────
 
 def check_td_tbd_sentinels() -> None:
-    print("\n── Check 3: TD-TBD sentinels in pack-ops/BACKLOG.md ──")
-    backlog = REPO_ROOT / "pack-ops" / "BACKLOG.md"
-    if not backlog.exists():
-        ok("No pack-ops/BACKLOG.md found (nothing to check)")
+    # BD-203 A10: repoint the TD-TBD guard from the monolith to the
+    # `/backlog/` per-entry tree (the no-mirror SSOT). SKIP-on-absent is
+    # preserved (the tree is absent pre-conversion). Scans every
+    # `/backlog/*.md` entry body for an `**TD-TBD —` entry header (a PM
+    # forgot to assign a real BD-NNN number). TD-TBD in descriptive text
+    # (e.g., "The coder writes TD-TBD") is expected and excluded.
+    print("\n── Check 3: TD-TBD sentinels in /backlog/ per-entry tree ──")
+    backlog_dir = REPO_ROOT / "backlog"
+    if not backlog_dir.is_dir():
+        ok("No /backlog/ tree found (nothing to check)")
         return
 
-    # Check for TD-TBD in BACKLOG entry identifier lines (e.g., "**TD-TBD — Title**")
-    # This catches entries where the PM chat forgot to assign a real BD-NNN number.
-    # TD-TBD in descriptive text (e.g., "The coder writes TD-TBD") is expected and excluded.
-    content = backlog.read_text()
     found_any = False
-    for i, line in enumerate(content.split("\n"), 1):
-        # Match entry headers like "**TD-TBD — Some title**"
-        if re.match(r"\*\*TD-TBD\s*—", line):
-            fail(f"pack-ops/BACKLOG.md:{i} — entry has TD-TBD instead of a real BD-NNN number")
-            found_any = True
+    for entry in sorted(backlog_dir.glob("*.md")):
+        if entry.name.startswith("_"):
+            continue  # supporting files are not entry content
+        try:
+            content = entry.read_text()
+        except (OSError, UnicodeDecodeError):
+            continue
+        rel = entry.relative_to(REPO_ROOT)
+        for i, line in enumerate(content.split("\n"), 1):
+            # Match entry headers like "**TD-TBD — Some title**"
+            if re.match(r"\*\*TD-TBD\s*—", line):
+                fail(f"{rel}:{i} — entry has TD-TBD instead of a real BD-NNN number")
+                found_any = True
 
     if not found_any:
-        ok("pack-ops/BACKLOG.md — no unprocessed TD-TBD entry headers")
+        ok("/backlog/ — no unprocessed TD-TBD entry headers")
 
 
 # ── Check 4: README version table vs git tag ────────────────────────────────
@@ -3104,14 +3126,18 @@ def check_skill_cell_consistency() -> None:
         )
 
 
-# ── Check 32: per-entry mirror is in-sync with per-entry tree (BD-168) ─────
-
-# Note: an earlier draft of BD-168 defined a `_per_entry_run_helper(helper_func,
-# args)` seam intended for shared subprocess invocation. The seam was never
-# used — Check 32 inlines its own subprocess.run() to pass the
-# PE_FORCE_OVERWRITE_MIRROR env var, and Check 33 also inlines for symmetry.
-# The dead-code seam was removed per BD-168 retro fix N1 (favor actual-use
-# over speculative-API per `ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`).
+# ── Check 32′: no pack monolith exists (BD-203, inverts BD-168 Check 32) ───
+#
+# BD-203 retires the old "mirror-in-sync" Check 32 and REPLACES it with an
+# inverted guard. Under the no-mirror model a pack stream's per-entry tree
+# (+ `_toc.md`) is the SOLE source of truth + readable form; there is NO
+# regenerated monolithic mirror to be "in sync" with. The guard's job
+# therefore inverts to: for each pack stream whose tree is present, assert
+# the monolith file is ABSENT and the `_rules.md` + `_toc.md` supporting
+# files are present. The check still SKIPs when the tree is absent
+# (pre-conversion state), so it is vacuously satisfied today (tree absent)
+# and PASSES by construction at the post-conversion end-state (tree present
+# + monolith deleted). See ARCHITECTURE-BD-203-V3.md §4 (Check 32′).
 
 
 def _list_unknown_files(stream_dir: Path, entry_regex: str,
@@ -3139,49 +3165,34 @@ def _list_unknown_files(stream_dir: Path, entry_regex: str,
 
 
 def check_mirror_in_sync() -> None:
-    """Check 32 — per-entry mirror is in-sync with per-entry tree (BD-168).
-
-    Pseudo-code sketches the behavioral contract; planner refines exact
-    implementation (per Addendum #1 §9.2 disclaimer).
+    """Check 32′ — no pack monolith exists (BD-203; inverts BD-168 Check 32).
 
     For each pack-side stream in STREAMS:
 
-      - SKIP if the per-entry tree directory is absent (pre-BD-102
-        dog-food pack-self / pre-v11.0 client) per
-        ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.5.
+      - SKIP if the per-entry tree directory is absent (pre-conversion
+        pack-self / pre-v11.0 client). Vacuously satisfied today.
 
-      - Pre-check (a) per §10.4: `_rules.md` exists per stream; FAIL
-        with "missing _rules.md for stream X".
+      - Assert the monolith file (the stream's former `mirror_relative`)
+        is ABSENT. Under the no-mirror model the tree is the SOLE SSOT;
+        a monolith co-existing with a tree is the wrong-model state the
+        check now forbids. FAIL if the monolith is present.
 
-      - Pre-check (b) per §10.4: per-entry filenames conform to the
-        stream's regex (e.g., `^BD-\\d+\\.md$` for pack-backlog); FAIL
-        with "non-conforming filenames: ..." enumerating offenders.
+      - Assert `_rules.md` is present (the per-entry contract SSOT).
 
-      - Pre-check (c) per §10.4: `_v8-resolved-archive.md` byte-stable —
-        folded into the main divergence check (the v8 archive is part
-        of the regenerated mirror's trailing block; if it differs, the
-        cmp below catches it).
+      - Assert `_toc.md` is present (the no-mirror readable index).
 
-      - Main check: invoke the BD-164 mirror generator
-        (`scripts/lib/per-entry/mirror-generate.sh::per_entry_regenerate_mirror`)
-        against the on-disk per-entry tree, redirecting the canonical
-        mirror argument to a temp file (the helper short-circuits to
-        no-op if the on-disk mirror is byte-identical to what it would
-        produce). Diff the temp output against the on-disk mirror; FAIL
-        on any difference.
+      - Assert per-entry filenames conform to the stream's entry regex
+        (a useful tree-integrity invariant); FAIL on non-conforming
+        filenames.
 
-    Failure mode: developer hand-edited the mirror, OR forgot to invoke
-    the regenerator before committing.
-
-    Recovery: run the mirror regenerator and re-commit (named in the
-    FAIL message).
+    Never regenerates a mirror — under no-mirror there is nothing to
+    regenerate or sync.
     """
-    print("\n── Check 32: per-entry mirror is in-sync with per-entry tree (BD-168) ──")
+    print("\n── Check 32′: no pack monolith exists (BD-203) ──")
 
-    # The set of known supporting basenames the BD-164 helpers may emit
-    # per stream. Mirrors `pe_supporting_files_known_for_stream` in
-    # `scripts/lib/per-entry/_lib.sh` (kept in lockstep — same hard-
-    # coded source-of-truth split per integration parent §7.5).
+    # The set of known supporting basenames a pack stream may carry.
+    # Mirrors `pe_supporting_files_known_for_stream` in
+    # `scripts/lib/per-entry/_lib.sh` (kept in lockstep).
     known_supporting_for = {
         "pack-backlog":   {"_rules.md", "_intro.md", "_toc.md",
                            "_v8-resolved-archive.md"},
@@ -3194,22 +3205,42 @@ def check_mirror_in_sync() -> None:
 
         if not stream_dir.is_dir():
             ok(
-                f"{stream_rel}/ — not present (skipping; pre-v11.0 "
-                f"client or pre-BD-102 dog-food pack-self per integration "
-                f"parent §10.5)"
+                f"{stream_rel}/ — not present (skipping; pre-conversion "
+                f"pack-self or pre-v11.0 client)"
             )
             continue
 
-        # Pre-check (a): _rules.md exists per stream.
+        # Inverted assertion: the tree is present, so the monolith MUST
+        # be absent (no-mirror SSOT).
+        if mirror_path.is_file():
+            fail(
+                f"{mirror_rel} still present while {stream_rel}/ tree "
+                f"exists — under the no-mirror model the per-entry tree "
+                f"(+ _toc.md) is the SOLE source of truth; delete the "
+                f"monolith ({mirror_rel}) so the tree is the only SSOT"
+            )
+            continue
+
+        # _rules.md must exist (per-entry contract SSOT).
         rules_path = stream_dir / "_rules.md"
         if not rules_path.is_file():
             fail(
-                f"{stream_rel}/_rules.md missing — required for v11.0 "
-                f"per-entry contract (integration parent §10.4 pre-check)"
+                f"{stream_rel}/_rules.md missing — required for the "
+                f"per-entry contract (the sole rules SSOT)"
             )
             continue
 
-        # Pre-check (b): per-entry filenames conform.
+        # _toc.md must exist (no-mirror readable index).
+        toc_path = stream_dir / "_toc.md"
+        if not toc_path.is_file():
+            fail(
+                f"{stream_rel}/_toc.md missing — required as the "
+                f"no-mirror readable index (regenerate via "
+                f"per_entry_regenerate_toc {stream_key} {stream_dir})"
+            )
+            continue
+
+        # Filename conformance (tree-integrity invariant).
         known_supporting = known_supporting_for.get(stream_key, set())
         unknown = _list_unknown_files(stream_dir, entry_regex, known_supporting)
         if unknown:
@@ -3220,128 +3251,10 @@ def check_mirror_in_sync() -> None:
             )
             continue
 
-        # Main check: regenerate to a temp file under the same
-        # directory as the canonical mirror (the helper requires the
-        # mirror dir to exist so it can mktemp there for atomic mv).
-        # Use a unique temp filename under REPO_ROOT to keep the
-        # comparison byte-stable; clean up on every exit path.
-        mirror_dir = mirror_path.parent
-        if not mirror_dir.is_dir():
-            fail(
-                f"{mirror_rel}: parent directory does not exist — "
-                f"per-entry tree present but canonical mirror parent "
-                f"missing (cannot regenerate)"
-            )
-            continue
-
-        # Build a temp regenerated copy by point-in-time-snapshotting
-        # the on-disk mirror, asking the helper to regenerate the
-        # mirror in place (which is a no-op iff in sync), then
-        # comparing the post-helper mirror to the snapshot. This
-        # avoids redirecting the helper's output (the helper writes
-        # its output to <mirror_path>; we want to leave the on-disk
-        # mirror untouched for the comparison).
-        snap_fd, snap_path = tempfile.mkstemp(
-            prefix=".per-entry-snap.", suffix=".md",
-            dir=str(mirror_dir),
+        ok(
+            f"{stream_rel}/ — no monolith present; _rules.md + _toc.md "
+            f"present; filenames conform (no-mirror SSOT)"
         )
-        try:
-            os.close(snap_fd)
-            if mirror_path.is_file():
-                # Snapshot existing mirror.
-                snap_data = mirror_path.read_bytes()
-                Path(snap_path).write_bytes(snap_data)
-            else:
-                # No on-disk mirror at all — divergence with empty.
-                fail(
-                    f"{mirror_rel}: per-entry tree present at "
-                    f"{stream_rel}/ but mirror file absent — run "
-                    f"`bash -c '. scripts/lib/per-entry/_lib.sh && "
-                    f". scripts/lib/per-entry/mirror-generate.sh && "
-                    f"per_entry_regenerate_mirror {stream_key} "
-                    f"{stream_dir} {mirror_path}'` to materialize"
-                )
-                continue
-
-            # Invoke the regenerator. With PE_FORCE_OVERWRITE_MIRROR=1
-            # we bypass the divergence prompt + non-zero exit, so the
-            # helper either no-ops (in sync) or rewrites the mirror
-            # (out of sync). We restore the snapshot before returning
-            # in either case.
-            #
-            # S5 (BD-168 retro fix): the helper's pe_warn
-            # "PE_FORCE_OVERWRITE_MIRROR=1; overwriting hand-edited
-            # mirror at <path>" (Addendum #2 §4.5 audit-trail) is
-            # captured into result.stderr but is INTENTIONALLY silently
-            # discarded on the divergence path below — in CI the
-            # validator's FAIL message IS the audit trail, so the
-            # helper's audit-trail line is redundant; the §4.5
-            # audit-trail intent was anchored on the migrator path
-            # (where the user runs the helper directly), not the CI
-            # path. The discard is documented here so future readers
-            # don't add a noisy re-surface accidentally.
-            env = os.environ.copy()
-            env["PE_FORCE_OVERWRITE_MIRROR"] = "1"
-            quoted_args = " ".join(
-                f"'{a}'" for a in [stream_key, str(stream_dir), str(mirror_path)]
-            )
-            script = (
-                f". '{PER_ENTRY_LIB}/_lib.sh' && "
-                f". '{PER_ENTRY_LIB}/mirror-generate.sh' && "
-                f"per_entry_regenerate_mirror {quoted_args}"
-            )
-            result = subprocess.run(
-                ["bash", "-c", script],
-                capture_output=True,
-                text=True,
-                stdin=subprocess.DEVNULL,
-                env=env,
-            )
-            if result.returncode != 0:
-                # Helper failed for a reason other than divergence
-                # (we forced through divergence with the env var).
-                # Restore snapshot then FAIL with stderr.
-                Path(snap_path).replace(mirror_path)
-                fail(
-                    f"{mirror_rel}: mirror regenerator failed "
-                    f"(rc={result.returncode}); stderr: "
-                    f"{result.stderr.strip()}"
-                )
-                continue
-
-            # Compare new on-disk mirror vs. snapshot.
-            new_data = mirror_path.read_bytes()
-            if new_data == snap_data:
-                # In sync — leave on-disk file untouched.
-                Path(snap_path).unlink()
-                ok(
-                    f"{stream_rel}/ → {mirror_rel} byte-identical "
-                    f"({len(new_data)} bytes)"
-                )
-            else:
-                # Divergence — RESTORE the snapshot (so the working
-                # tree is unchanged) and FAIL.
-                Path(snap_path).replace(mirror_path)
-                fail(
-                    f"{mirror_rel} is out of sync with {stream_rel}/ — "
-                    f"re-run `bash -c '. scripts/lib/per-entry/_lib.sh "
-                    f"&& . scripts/lib/per-entry/mirror-generate.sh "
-                    f"&& PE_FORCE_OVERWRITE_MIRROR=1 "
-                    f"per_entry_regenerate_mirror {stream_key} "
-                    f"{stream_dir} {mirror_path}'` before committing "
-                    f"(the helper is sourced-not-executed; "
-                    f"PE_FORCE_OVERWRITE_MIRROR=1 bypasses the "
-                    f"divergence abort); restored on-disk mirror to "
-                    f"pre-check state"
-                )
-        finally:
-            # Defensive cleanup: if snap_path still exists the path
-            # above didn't tidy up.
-            if Path(snap_path).exists():
-                try:
-                    Path(snap_path).unlink()
-                except OSError:
-                    pass
 
 
 # ── Check 33: per-entry _toc.md is in-sync with per-entry tree (BD-168) ────
@@ -3493,10 +3406,16 @@ def check_toc_in_sync() -> None:
 # regex matches BD-NNN, TD-NNN, vN.M (with optional `-suffix`),
 # `phase-N`, and `phase-N.M`. Conservative — false positives in code
 # blocks / quoted text are tolerated per §11.2.
+# BD-203 A5: admit the suffix form `BD-167b` / `TD-NNNb` in the
+# cross-ref TOKEN. Per ARCHITECTURE-BD-203-V3.md EE-5 the prior regex
+# yields NO token on `BD-167b` (a `\b` cannot sit between `7` and `b`),
+# so a `BD-167b` reference was INVISIBLE to Check 34 — the fix is to
+# ADMIT the suffix (NOT to strip a stray `b`, which was the research's
+# WRONG recipe). The trailing `\b` still anchors after the suffix letter.
 CROSS_REF_RE = re.compile(
     r"\b("
-    r"BD-\d+"
-    r"|TD-\d+"
+    r"BD-\d+[a-z]*"
+    r"|TD-\d+[a-z]*"
     r"|phase-\d+(?:\.\d+)?"
     r"|v\d+\.\d+(?:-[a-z0-9-]+)?"
     r")\b"
@@ -3819,9 +3738,11 @@ _SCOPE_KEYWORDS_PM_ONLY = ("pm-only", "pack-memory-only")
 # version-table-only narrower constraint stays a Pack Chat discipline rule
 # per the §8.1a (README.md) note in the architect doc).
 _PM_ONLY_PERMITTED_PATHS = {
+    # BD-203 A13: `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md` are
+    # removed here — under the no-mirror model they are deleted, and the
+    # per-entry trees they become are covered by the `backlog/` +
+    # `changelog/` entries in `_PM_ONLY_PERMITTED_PREFIXES` below.
     "README.md",
-    "pack-ops/BACKLOG.md",
-    "pack-ops/CHANGELOG.md",
     "pack-ops/PACK-CHAT.md",
     "pack-ops/PACK-AGENTS.md",
     "pack-ops/PACK-MEMORY-RATIONALE.md",
@@ -5114,9 +5035,14 @@ def check_bare_pack_ops_refs() -> None:
     """Check 40 — pack-ops/ bare cross-reference scanner (BD-179 per
     ARCHITECTURE-BD-179.md §3-§8).
 
-    Walks `pack-ops/*.md` (excluding `pack-ops/BACKLOG.md` and
-    `pack-ops/CHANGELOG.md` — regenerated mirrors per §2.1 D1a) and
-    flags backtick-delimited filename refs that lack a directory
+    Walks `pack-ops/*.md` and flags backtick-delimited filename refs that
+    lack a directory qualifier and are not exempt. `pack-ops/BACKLOG.md`
+    and `pack-ops/CHANGELOG.md` are excluded by basename: under the
+    BD-203 no-mirror model these monoliths are deleted (the per-entry
+    `/backlog/` + `/changelog/` trees are the SSOT), so once gone the
+    glob never yields them and the exclusion is inert; while they still
+    exist (during conversion) the exclusion keeps the scan off
+    conversion-input content.
     qualifier and are not exempt per the allowlist / anchor-phrase /
     same-dir-legitimate mechanisms.
 
@@ -5139,7 +5065,12 @@ def check_bare_pack_ops_refs() -> None:
     # Build basename index ONCE per Check 40 invocation per §5.3.
     index = _build_basename_index()
 
-    # Excluded files per §2.1 D1a (regenerated mirrors).
+    # Excluded basenames. BD-203 no-mirror model: BACKLOG.md /
+    # CHANGELOG.md are the deleted monoliths (the `/backlog/` +
+    # `/changelog/` per-entry trees are the SSOT); once deleted this set
+    # never matches, and during conversion it keeps the scan off the
+    # conversion-input monoliths. NOT "regenerated mirrors" — there is
+    # no mirror.
     excluded_basenames = {"BACKLOG.md", "CHANGELOG.md"}
 
     any_failed = False
@@ -7141,27 +7072,28 @@ def check_removed_doc_advisory() -> None:
     """Check 48 — JC-5 soft-advisory removed-doc guard (BD-195 C6).
 
     SOFT-ADVISORY ONLY: WARNs (never fail()s; never changes the exit
-    code) when a citation in either regenerated mirror resolves to a
-    doc REMOVED from the repo. Covers the K3.12 (CHANGELOG) + K3.13
-    (BACKLOG) accurate-history citations WITHOUT hand-correcting them
-    (JC-5: leave accurate v8/v9 + process history intact).
+    code) when a citation in a scanned file resolves to a doc REMOVED
+    from the repo. Covers the K3.12 + K3.13 accurate-history citations
+    WITHOUT hand-correcting them (JC-5: leave accurate v8/v9 + process
+    history intact).
+
+    BD-203 A12: the citations relocated from the two deleted monoliths
+    INTO the per-entry trees, so the scan walks every `*.md` file under
+    the `/backlog/` + `/changelog/` directories (`_REMOVED_DOC_SCAN_DIRS`)
+    instead of the monolith files. SKIP-on-absent is preserved (a tree
+    absent at this HEAD is not an advisory condition).
 
     Measure-then-bound (PLAN-BD-195-REMEDIATION.md §2.3): the bounded
     set of removed-doc basenames is frozen in `_REMOVED_DOC_BASENAMES`
     (each verified ABSENT from the tree at design time). Every hit is a
-    warning; NONE is a STRIP / gate failure — JC-5's sole output is a
-    non-blocking advisory.
+    warning; NONE is a STRIP / gate failure.
 
-    Performance: scans ONLY the two mirror files in
-    `_REMOVED_DOC_SCAN_FILES` (no full-tree walk); the basename
-    alternation is compiled ONCE. The token boundary `(?<![\\w.-])` /
-    `(?![\\w-])` ensures `ARCHITECTURE-BD-185.md` does NOT match the
-    LIVE `ARCHITECTURE-BD-185-V2.md` (and likewise `PLAN-BD-185.md` vs
+    The token boundary `(?<![\\w.-])` / `(?![\\w-])` ensures
+    `ARCHITECTURE-BD-185.md` does NOT match the LIVE
+    `ARCHITECTURE-BD-185-V2.md` (and likewise `PLAN-BD-185.md` vs
     `PLAN-BD-185-V2.md`) while still matching path-form citations such
     as `supporting-docs/GEMINI-CLI-ANALYSIS.md` and
-    `maintenance-docs/V10-PREDESIGN.md` (a leading `/` path separator is
-    permitted; only a preceding word char, `.`, or `-` — which would
-    signal a LONGER live basename — is rejected).
+    `maintenance-docs/V10-PREDESIGN.md`.
     """
     print("\n── Check 48: JC-5 soft-advisory removed-doc guard (BD-195) ──")
 
@@ -7176,33 +7108,36 @@ def check_removed_doc_advisory() -> None:
     pattern = re.compile(r"(?<![\w.-])(?:" + alternation + r")(?![\w-])")
 
     total_hits = 0
-    for rel in _REMOVED_DOC_SCAN_FILES:
-        path = REPO_ROOT / rel
-        if not path.is_file():
-            # Lenient: a mirror absent at this HEAD is not an advisory
+    dirs_scanned = 0
+    for stream_rel in _REMOVED_DOC_SCAN_DIRS:
+        stream_dir = REPO_ROOT / stream_rel
+        if not stream_dir.is_dir():
+            # Lenient: a tree absent at this HEAD is not an advisory
             # condition (nothing to scan).
             continue
-        try:
-            text = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            # Read failure is surfaced by other checks (e.g. Check 32);
-            # the soft-advisory simply skips an unreadable mirror.
-            continue
-        for line_no, line in enumerate(text.splitlines(), start=1):
-            for m in pattern.finditer(line):
-                total_hits += 1
-                warn(
-                    f"{rel}:{line_no} cites `{m.group(0)}` — a removed doc "
-                    f"(JC-5 accurate-history citation; advisory only, NOT a "
-                    f"gate failure, NOT hand-corrected)"
-                )
+        dirs_scanned += 1
+        for entry in sorted(stream_dir.glob("*.md")):
+            rel = entry.relative_to(REPO_ROOT)
+            try:
+                text = entry.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                # Read failure is surfaced by other checks; the
+                # soft-advisory simply skips an unreadable file.
+                continue
+            for line_no, line in enumerate(text.splitlines(), start=1):
+                for m in pattern.finditer(line):
+                    total_hits += 1
+                    warn(
+                        f"{rel}:{line_no} cites `{m.group(0)}` — a removed doc "
+                        f"(JC-5 accurate-history citation; advisory only, NOT a "
+                        f"gate failure, NOT hand-corrected)"
+                    )
 
     # Always an OK summary line — the advisory NEVER fails the gate.
     ok(
         f"Check 48 — soft-advisory removed-doc scan: {total_hits} "
-        f"removed-doc citation(s) WARNed across "
-        f"{len(_REMOVED_DOC_SCAN_FILES)} mirror file(s); advisory only "
-        f"(exit code unaffected)"
+        f"removed-doc citation(s) WARNed across {dirs_scanned} per-entry "
+        f"tree dir(s); advisory only (exit code unaffected)"
     )
 
 

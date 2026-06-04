@@ -1,6 +1,14 @@
 # scripts/lib/per-entry/_lib.sh — shared parser + stream-shape constants
 # for the per-entry split helpers (BD-164).
 #
+# BD-203 no-mirror model (PACK streams): the per-entry tree + `_toc.md`
+# is the SOLE source of truth and readable form for the pack-backlog /
+# pack-changelog streams. There is NO regenerated monolithic mirror.
+# The `mirror` stream-attribute below is retained as a CONSTANT only
+# (deletion-target reference + historical contract); mirror-generate.sh
+# is deprecated-for-pack and is retained physically ONLY because the
+# project streams still call it, pending BD-206's project-side retirement.
+#
 # Sourced by per-entry/decompose.sh, per-entry/mirror-generate.sh,
 # per-entry/toc-regenerate.sh. Holds:
 #   - Hard-coded stream-shape table (5 streams; entry regex + state
@@ -68,16 +76,28 @@ pe__stream_attr() {
     case "$1" in
         pack-backlog)
             case "$2" in
+                # BD-203: `mirror` is RETAINED as a constant only as the
+                # deletion-target reference + historical contract — for the
+                # PACK the per-entry tree + `_toc.md` is the SOLE SSOT;
+                # there is no regenerated monolithic mirror. The pack-stream
+                # branches of mirror-generate are dead-for-pack (the file is
+                # kept only for project streams pending BD-206).
                 mirror) printf 'pack-ops/BACKLOG.md' ;;
-                entry-regex) printf '^BD-[0-9]+\.md$' ;;
+                # BD-203 A4: admit the suffix form (`BD-167b.md`,
+                # `BD-169b.md`) — sized to exactly the 2 suffix entries.
+                entry-regex) printf '^BD-[0-9]+[a-z]*\.md$' ;;
                 support) printf '_rules.md _intro.md _toc.md _v8-resolved-archive.md' ;;
                 dir-suffix) printf 'backlog' ;;
             esac
             ;;
         pack-changelog)
             case "$2" in
+                # BD-203: `mirror` retained as a constant only (no live
+                # pack mirror — see the pack-backlog note above).
                 mirror) printf 'pack-ops/CHANGELOG.md' ;;
-                entry-regex) printf '^v[0-9]+\.[0-9]+(-[a-z0-9-]+)?\.md$' ;;
+                # BD-203 A3/CHANGE 2: per-release granularity — one `vN.md`
+                # file per major release (`v11.md`, `v7.md`).
+                entry-regex) printf '^v[0-9]+\.md$' ;;
                 support) printf '_rules.md _intro.md _toc.md' ;;
                 dir-suffix) printf 'changelog' ;;
             esac

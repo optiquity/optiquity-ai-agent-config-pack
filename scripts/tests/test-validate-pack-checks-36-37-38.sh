@@ -111,8 +111,13 @@ def assert_pm(path, expected, label):
 assert_pm("project-template/CLAUDE.md", True, "T6a")
 assert_pm("project-template/AGENTS.md", True, "T6b")
 assert_pm("project-template/GEMINI.md", True, "T6c")
-assert_pm("pack-ops/BACKLOG.md", True, "T6d")
-assert_pm("pack-ops/CHANGELOG.md", True, "T6e")
+# BD-203 A13: `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md` are NO
+# LONGER PM-only-permitted FILES — under the no-mirror model they are
+# deleted; the per-entry trees they become (`backlog/`, `changelog/`)
+# are covered by the PERMITTED-PREFIXES (see T8a/T8b below). The former
+# T6d/T6e file asserts are removed accordingly.
+assert_pm("pack-ops/BACKLOG.md", False, "T6d")
+assert_pm("pack-ops/CHANGELOG.md", False, "T6e")
 assert_pm("pack-ops/PACK-CHAT.md", True, "T6f")
 assert_pm("pack-ops/PACK-AGENTS.md", True, "T6g")
 assert_pm("README.md", True, "T6h")

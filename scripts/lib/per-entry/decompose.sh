@@ -77,8 +77,11 @@ with open(mono_path, "r", encoding="utf-8", newline="") as f:
     text = f.read()
 
 # Normalize: ensure trailing newline so the last entry's tail is
-# captured cleanly. Round-trip preserves trailing-newline behavior
-# because mirror generator emits the same shape.
+# captured cleanly. (BD-203: decompose is the one-time monolith→tree
+# CONVERSION verb; for the PACK the per-entry tree + `_toc.md` is the
+# SOLE source of truth after conversion — there is NO regenerated
+# monolithic mirror. mirror-generate is retained for project streams
+# only, pending BD-206.)
 if not text.endswith("\n"):
     text += "\n"
 
@@ -88,12 +91,16 @@ if not text.endswith("\n"):
 # span from the entry anchor through the last narrative line of
 # the entry (inclusive). The anchors:
 #
-#   pack-backlog                  **BD-NNN — Title**
-#   pack-changelog                ## vN — <date>  AND ### vN.M ...
-#                                  (the unit is the H3 vN.M block;
-#                                  H2 vN is grouping handled by
-#                                  mirror generator at emit time)
-#   project-backlog               **TD-NNN — Title**
+#   pack-backlog                  **BD-NNN[suffix] — Title**
+#                                  (BD-203: admits the suffix + a
+#                                   parenthetical qualifier before the
+#                                   em-dash)
+#   pack-changelog                ## vN — <date>
+#                                  (BD-203: the unit is one `vN.md` per
+#                                   major release; the entry body is the
+#                                   ENTIRE H2 block incl. nested `### vN.M`
+#                                   / `### New/Updated` subsections)
+#   project-backlog               **TD-NNN[suffix] — Title**
 #   project-implementation-plan   ## Phase N — Title  (phase-N.md;
 #                                  per Addendum #1 §6.4 BD-167 spec
 #                                  decision: tasks-inline, no
@@ -108,25 +115,42 @@ if not text.endswith("\n"):
 # `## Deferred`).
 
 if key == "pack-backlog":
-    anchor_re = re.compile(r"^\*\*(BD-\d+) — ")
-    id_extract = lambda line: re.match(r"^\*\*(BD-\d+) — ", line).group(1)
+    # BD-203 ENGINE CHANGE 1 — widen the backlog anchor to admit EVERY
+    # header form so no entry is dropped at conversion: an optional
+    # lowercase suffix-letter run after the number (`BD-167b`,
+    # `BD-169b`) AND an optional parenthetical qualifier between the ID
+    # and the em-dash (`BD-195 (Code Red 3)`). The captured ID is the
+    # `BD-\d+[a-z]*` group ONLY — the parenthetical lives in the body's
+    # header line, NOT in the filename (filename = ID; there is exactly
+    # one BD-195 so `BD-195.md` is unambiguous). See
+    # maintenance-docs/v11-implementation/ARCHITECTURE-BD-203-V3.md §2.2.
+    anchor_re = re.compile(r"^\*\*(BD-\d+[a-z]*)(?:\s*\([^)]*\))?\s+— ")
+    id_extract = lambda line: anchor_re.match(line).group(1)
     # Section H2 boundaries that close an entry: any new `## ` heading.
     section_break_re = re.compile(r"^## ")
 elif key == "pack-changelog":
-    # Each H3 `### vN.M` is one entry; the file is sliced at H3 boundaries.
-    # The H2 `## vN — <date>` is regrouped by the mirror generator.
-    # Suffix shape harmonized with _lib.sh:77 + toc-regenerate.sh:85 — the
-    # canonical pack-changelog convention per sidecar §3.2 line 302 is
-    # `v10.0-post-release` (lowercase, leading-hyphen, [a-z0-9-]).
-    anchor_re = re.compile(r"^### (v\d+\.\d+(?:-[a-z0-9-]+)?)\b")
-    id_extract = lambda line: re.match(r"^### (v\d+\.\d+(?:-[a-z0-9-]+)?)\b", line).group(1)
-    # The H2 `## vN — <date>` line ends an entry only by introducing
-    # the next H2; the next entry-anchor (next `### vN.M`) ends it
-    # within the same H2. Either signals close.
+    # BD-203 ENGINE CHANGE 2 — pack-changelog grouping-preservation: the
+    # entry unit is one `vN.md` per major release, anchored on the
+    # `## vN — <date>` H2. The body is the ENTIRE H2 block (any nested
+    # `### vN.M` / `### New/Updated` subsections ride inside it,
+    # preserved verbatim). This is the only granularity that preserves
+    # all releases including v1–v7 (H2-only, no `### vN.M` child). See
+    # ARCHITECTURE-BD-203-V3.md §2.3.
+    anchor_re = re.compile(r"^## (v\d+)\b")
+    id_extract = lambda line: re.match(r"^## (v\d+)\b", line).group(1)
+    # Under per-release granularity the H2 IS the anchor; a nested
+    # `### vN.M` does NOT close the entry (it is part of the H2 block).
+    # An entry closes only at the next `## ` heading — which is always
+    # another anchor here (every `## ` in the changelog is a `## vN`),
+    # so section_break_re never fires on a non-anchor line. Kept for
+    # parity with the other streams' close logic.
     section_break_re = re.compile(r"^## ")
 elif key == "project-backlog":
-    anchor_re = re.compile(r"^\*\*(TD-\d+) — ")
-    id_extract = lambda line: re.match(r"^\*\*(TD-\d+) — ", line).group(1)
+    # BD-203 ENGINE CHANGE 1 (parallel TD- widening — additive, fixes
+    # project too; the firewall rule is widening never narrows). Admits
+    # `TD-NNNb` / parenthetical analog, mirroring the pack-backlog anchor.
+    anchor_re = re.compile(r"^\*\*(TD-\d+[a-z]*)(?:\s*\([^)]*\))?\s+— ")
+    id_extract = lambda line: anchor_re.match(line).group(1)
     section_break_re = re.compile(r"^## ")
 elif key == "project-implementation-plan":
     # phase-N.md per Addendum #1 §6.4 (tasks inline, no per-task files).
@@ -162,17 +186,16 @@ else:
 #   2. On anchor match: close prior entry (write to disk); open new entry.
 #   3. On section-break that is NOT an anchor: close prior entry; do
 #      not open a new one (lines until next anchor are ignored — they
-#      belong to the mirror preamble or trailing _v8-resolved-archive
-#      block, which the mirror generator re-injects from supporting
-#      files).
+#      are non-entry preamble / scaffolding, NOT per-entry content).
 #   4. EOF: close prior entry if open.
 #
 # An entry's CONTENT is ALL lines from the anchor line through the
 # line BEFORE the boundary (exclusive of the boundary line itself).
 # Trailing blank lines and any `---` separator immediately AFTER the
 # entry but BEFORE the next anchor are NOT part of the entry's
-# byte-identical span — they are inter-entry connective tissue
-# re-emitted by the mirror generator.
+# byte-identical span — they are inter-entry connective tissue. (BD-203:
+# for the PACK there is no regenerated monolithic mirror; the per-entry
+# tree + `_toc.md` is the sole SSOT + readable form.)
 
 lines = text.splitlines(keepends=True)
 
@@ -272,8 +295,9 @@ for line in lines:
         # lines are NOT entry content; ignore until the next anchor.
     elif current_id is not None:
         current_buf.append(line)
-    # else: pre-first-anchor preamble; ignore (handled by mirror
-    # generator from `_intro.md`).
+    # else: pre-first-anchor preamble; ignore (BD-203: the human-only
+    # orientation preamble lives in `_intro.md`; there is no mirror to
+    # re-inject it into for the pack).
 
 # EOF: close any open entry.
 if current_id is not None:
