@@ -17,6 +17,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ADD_CAP_SH="$REPO_ROOT/scripts/add-capability.sh"
+CAP_TABLES_SH="$REPO_ROOT/project-template/scripts/capability-tables.sh"
 FIXTURE="$REPO_ROOT/test-fixtures/v11-flat-file"
 
 PASSED=0
@@ -33,17 +34,15 @@ assert_not_contains() {
     else t_fail "$1" "should NOT contain '$3'"; fi
 }
 
-# Source add-capability.sh's capability_install_checks() function for
-# direct table inspection without invoking the full pipeline. We need
-# to bypass the script's argv parsing / set -e behavior, so we extract
-# only the function definition via sed.
+# Source the capability_install_checks() function for direct table
+# inspection without invoking the full pipeline. The three table functions
+# are single-sourced in project-template/scripts/capability-tables.sh (the
+# authored source add-capability.sh and the client activate-capability.sh
+# both consume); it is sourceable-only (no top-level side effects), so we
+# source it directly rather than extracting a single function.
 load_install_checks_fn() {
-    local tmp
-    tmp=$(mktemp -t bd048-fn.XXXXXX)
-    sed -n '/^capability_install_checks() {/,/^}$/p' "$ADD_CAP_SH" > "$tmp"
     # shellcheck disable=SC1090
-    source "$tmp"
-    rm -f "$tmp"
+    source "$CAP_TABLES_SH"
 }
 
 make_clean_fixture_clone() {

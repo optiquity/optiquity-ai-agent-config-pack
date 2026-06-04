@@ -115,97 +115,30 @@ fi
 
 TARGET=$(cd "$TARGET" 2>/dev/null && pwd || echo "$TARGET")
 
-# ── Capability → (skills, files) resolution table ──────────────────────────
+# ── Capability → (skills, files, install-checks) resolution tables ─────────
+# The three table functions capability_skills(), capability_files(), and
+# capability_install_checks() are single-sourced in
+# project-template/scripts/capability-tables.sh (sourced lazily by
+# _load_capability_tables() below, after $PACK is validated at stage A0).
 # Mirrors init-project.sh §7.6 stage S9 conditional-removal table, inverted.
 
-capability_skills() {
-    local cap="$1"
-    case "$cap" in
-        # BD-141: python-data-architecture's load predicate is defined in
-        # scripts/lib/detect.sh::python_data_marker_detected(). add-capability.sh
-        # adds it as part of the language:python skill set (coarser tool —
-        # explicit user intent to add the capability); init-project.sh applies
-        # the predicate at scaffold time via pack_skill_coverage_for().
-        # BD-162: python-observability-patterns' load predicate is defined
-        # in scripts/lib/detect.sh::python_observability_marker_detected();
-        # see maintenance-docs/v11-implementation/ARCHITECTURE-DEPLOYMENT-PYTHON-OBSERVABILITY.md.
-        # Added to the language:python capability row on the same coarse-
-        # tool path as python-data-architecture (BD-141 precedent) — when
-        # a developer explicitly opts into Python via add-capability they
-        # get the full Python-skill family declaratively. The marker-gated
-        # intersection load (PLATFORM-SKILLS.md Intersection table) still
-        # applies at PM-chat skill-selection time.
-        language:python)    echo "python-best-practices python-data-architecture python-observability-patterns dependency-python" ;;
-        # BD-158: swift-concurrency-patterns is D1-implied for D1 ∈
-        # {ios, macos} alongside swift-best-practices — every Apple
-        # project deals with concurrency, no marker predicate. Added
-        # to the language:swift capability row so add-capability
-        # operations register the skill on the same path as
-        # swift-best-practices. The companion intersection-loaded
-        # skill (apple-swiftdata-patterns) remains marker-gated and
-        # is NOT added here — see the apple-swiftdata-patterns
-        # comment under platform:macos / platform:ios.
-        language:swift)     echo "swift-best-practices swift-concurrency-patterns apple-architecture-core dependency-swift" ;;
-        language:cpp)       echo "cpp-language" ;;
-        language:c)          echo "c-language" ;;
-        language:objc)      echo "objc-language" ;;
-        # BD-157: platform:macos / platform:ios add the Apple-platform
-        # skill set deterministically. The companion
-        # `apple-swiftdata-patterns` skill is intersection-loaded by
-        # marker (`scripts/lib/detect.sh::swiftdata_marker_detected()`),
-        # not by capability — a project that uses SwiftData
-        # (`import SwiftData` OR `@Model`) will have the marker
-        # fire and the intersection-table loader pulls in
-        # apple-swiftdata-patterns alongside the platform skills
-        # listed here. See PLATFORM-SKILLS.md "Intersection table".
-        platform:macos)     echo "macos-architecture apple-architecture-core" ;;
-        platform:ios)       echo "ios-architecture apple-architecture-core" ;;
-        # BD-144 (v11.0 skill-dimensions reframe Batch 5): forward-declared
-        # D1 platform rows. The SKILL.md targets ship in Phase 3
-        # (web-architecture / android-architecture / embedded-mcu-architecture);
-        # until then warn_if_missing_skills() emits a stderr warning when the
-        # resolved skill directory is absent, but the operation still proceeds
-        # so PM-chat-driven projects can declare D1 ahead of skill ship.
-        platform:android)      echo "android-architecture" ;;
-        platform:web-browser)  echo "web-architecture" ;;
-        platform:embedded-mcu) echo "embedded-mcu-architecture" ;;
-        # BD-156: protocol:grpc adds grpc-patterns only. The companion
-        # `protobuf-patterns` skill is intersection-loaded by marker
-        # (`scripts/lib/detect.sh::protobuf_marker_detected()`), not by
-        # capability — the same `.proto` files that justify a `grpc`
-        # capability also trigger the marker, so intersection loading
-        # picks up protobuf-patterns automatically. Standalone-protobuf
-        # projects (binary file format / IPC / Twirp / Connect) load
-        # protobuf-patterns via the marker without ever declaring
-        # protocol:grpc. See PLATFORM-SKILLS.md "Intersection table".
-        protocol:grpc)      echo "grpc-patterns" ;;
-        protocol:rest)      echo "rest-patterns" ;;
-        protocol:graphql)   echo "graphql-patterns" ;;
-        protocol:realtime)  echo "realtime-patterns" ;;
-        protocol:messaging) echo "messaging-patterns" ;;
-        protocol:soap)      echo "soap-patterns" ;;
-        # BD-144 (v11.0 skill-dimensions reframe Batch 5): D5 deployment
-        # surface. `role:apple-app` was renamed to `deployment:apple` (Apple-app
-        # is a D5 deployment surface, not a D3 architectural role per
-        # ARCHITECTURE-SKILL-DIMENSIONS.md §3.5). `deployment:linux-container`
-        # carries `deployment-python` (formerly bundled into role:python-server,
-        # which now resolves to the D2∩D3 intersection per architecture §3.7).
-        deployment:apple)             echo "deployment-apple" ;;
-        deployment:linux-container)   echo "deployment-python" ;;
-        # BD-144: role:python-server preserved as a legitimate D3 role token.
-        # Resolved skill list updated per architecture §3.7 intersection table:
-        # D2=python ∩ D3=server → python-server-architecture +
-        # python-data-architecture. `deployment-python` was dropped from this
-        # row; it now loads via the new `deployment:linux-container` D5 row.
-        # BD-162: python-observability-patterns added — architect §4.1 of
-        # maintenance-docs/v11-implementation/ARCHITECTURE-DEPLOYMENT-PYTHON-OBSERVABILITY.md
-        # specifies the D3=server branch loads observability unconditionally
-        # (alongside the marker-gated load for non-server Python processes).
-        # This row encodes the explicit-D3 declaration path; the marker-gated
-        # intersection-table load handles the auto-detect path.
-        role:python-server) echo "python-server-architecture python-data-architecture python-observability-patterns" ;;
-        *) return 1 ;;
-    esac
+# _load_capability_tables — source the single-source capability tables.
+#
+# The authored source lives at project-template/scripts/capability-tables.sh
+# (it ships to clients via the S5 glob; the client activate-capability.sh
+# sources its own installed copy). The pack-side path requires $PACK, which
+# is only guaranteed AFTER stage_a0_preflight validates it — so this helper
+# is invoked from stage_a1_resolve (the first stage that calls the tables),
+# NOT at top-level load. Guarded against double-source.
+_load_capability_tables() {
+    [[ -n "${_CAPABILITY_TABLES_LOADED:-}" ]] && return 0
+    local tables="$PACK/project-template/scripts/capability-tables.sh"
+    if [[ ! -f "$tables" ]]; then
+        die "missing capability tables: $tables" "$EXIT_PACK_INVALID"
+    fi
+    # shellcheck source=../project-template/scripts/capability-tables.sh
+    source "$tables"
+    _CAPABILITY_TABLES_LOADED=1
 }
 
 # warn_if_missing_skills <skill> [<skill>...]
@@ -228,129 +161,6 @@ warn_if_missing_skills() {
         fi
     done
     return 0
-}
-
-capability_files() {
-    local cap="$1"
-    case "$cap" in
-        language:python)
-            echo "pyproject.toml pyrightconfig.json server scripts/bootstrap-python.sh scripts/format-python.sh scripts/validate-python.sh scripts/test-python.sh" ;;
-        language:swift)
-            echo "scripts/bootstrap-swift.sh scripts/format-swift.sh scripts/validate-swift.sh scripts/test-swift.sh" ;;
-        protocol:grpc)
-            echo "proto scripts/proto-gen.sh scripts/validate-proto.sh" ;;
-        *) echo "" ;;
-    esac
-}
-
-# ── Capability → install-check rows (BD-048) ───────────────────────────────
-# Each capability emits zero or more rows of the shape:
-#     <tool>:::<install-command>:::<purpose>
-# where <tool> is the binary or package name probed by the discovery stage,
-# and <install-command> is the concrete command the developer runs if the
-# probe reports missing. Rows are newline-separated; fields are `:::`-
-# delimited (not pipe — install commands themselves often contain `|` as
-# an "or" separator between platform alternatives, which would break
-# pipe-based parsing). Mirrors the BD-047 kickoff Form-I shape
-# (INSTALL-PROCEDURES.md § 7.2.3 / 7.3.1 / 7.3.2) applied at
-# capability-addition time.
-#
-# Discovery is read-only: `command -v <tool>` for binaries; `python3 -c
-# 'import <pkg>'` may be added by future rows for Python-package probes.
-# This script never installs anything — A7 reports status; the A8 PM-chat
-# prompt repeats the install commands so Procedure 6 can drive Form I
-# follow-ups under developer approval.
-#
-# Adding a new capability row: extend capability_skills() AND
-# capability_files() AND this table — three parallel surfaces, one
-# capability per case branch.
-capability_install_checks() {
-    local cap="$1"
-    case "$cap" in
-        language:python)
-            cat <<'EOF'
-python3:::see https://www.python.org/downloads/ (Python 3.12+ recommended):::Python interpreter required by scripts/bootstrap-python.sh and scripts/test-python.sh
-uv:::brew install uv  (macOS) | curl -LsSf https://astral.sh/uv/install.sh | sh  (Linux):::Project-standard Python package manager (pyproject.toml workflow)
-EOF
-            ;;
-        language:swift)
-            cat <<'EOF'
-swift:::install Xcode 26.3+ from the App Store, or swift.org/install for Linux:::Swift toolchain required by scripts/bootstrap-swift.sh / validate-swift.sh
-swift-format:::brew install swift-format  (macOS) | swift package update + use SPM plugin (Linux):::Formatter invoked by scripts/format-swift.sh
-EOF
-            ;;
-        platform:macos|platform:ios)
-            cat <<'EOF'
-xcodebuild:::install Xcode 26.3+ from the App Store:::Apple platform builds (xcodebuild + Simulator) require Xcode
-xcrun:::installed alongside Xcode (no separate install):::simctl device discovery during validate-swift.sh / kickoff Procedure 7
-EOF
-            ;;
-        platform:android)
-            cat <<'EOF'
-adb:::install Android Studio (https://developer.android.com/studio) which bundles platform-tools:::Android device + emulator interaction
-java:::brew install --cask temurin@17  (macOS) | apt install openjdk-17-jdk  (Debian/Ubuntu):::JDK 17+ required by Android Gradle Plugin
-EOF
-            ;;
-        platform:web-browser)
-            cat <<'EOF'
-node:::brew install node  (macOS) | nvm install --lts  (any platform):::Node.js runtime for web tooling and bundlers
-EOF
-            ;;
-        platform:embedded-mcu)
-            cat <<'EOF'
-cmake:::brew install cmake  (macOS) | apt install cmake  (Debian/Ubuntu):::Cross-compile build orchestration for MCU targets
-arm-none-eabi-gcc:::brew install --cask gcc-arm-embedded  (macOS) | apt install gcc-arm-none-eabi  (Debian/Ubuntu):::ARM Cortex-M cross compiler (adjust per MCU family)
-EOF
-            ;;
-        language:cpp|language:c)
-            cat <<'EOF'
-clang:::install Xcode Command Line Tools: xcode-select --install  (macOS) | apt install clang  (Debian/Ubuntu):::C/C++ compiler
-cmake:::brew install cmake  (macOS) | apt install cmake  (Debian/Ubuntu):::Build orchestration (project-typical)
-EOF
-            ;;
-        language:objc)
-            cat <<'EOF'
-clang:::install Xcode 26.3+ from the App Store:::Objective-C is built by clang shipped with Xcode
-EOF
-            ;;
-        protocol:grpc)
-            # BD-048: Apple-side gRPC tooling rows mirror Procedure 7 §7.3.1.
-            # Python rows mirror §7.3.2 — they're emitted unconditionally
-            # here because protocol:grpc is dimension-only (the table doesn't
-            # know whether the project also has language:python). The
-            # discovery stage probes each tool independently; missing
-            # Python tools on a Swift-only project show as "skip if
-            # not adding Python" in the install-hint output.
-            cat <<'EOF'
-buf:::brew install bufbuild/buf/buf  (macOS) | go install github.com/bufbuild/buf/cmd/buf@latest  (any platform):::Proto lint + breaking-change detection (scripts/validate-proto.sh)
-protoc-gen-swift:::brew install swift-protobuf:::Swift code generator for .proto files (Apple-side; skip if no Apple target)
-protoc-gen-grpc-swift:::brew install grpc-swift:::Swift gRPC code generator (Apple-side; skip if no Apple target)
-grpcio-tools:::uv add grpcio-tools  (in project root) | pip install grpcio-tools:::Python proto/gRPC code generator (skip if no Python target)
-grpcio:::uv add grpcio  (in project root) | pip install grpcio:::Python gRPC runtime (skip if no Python target)
-EOF
-            ;;
-        protocol:rest|protocol:graphql|protocol:realtime|protocol:messaging|protocol:soap)
-            # No machine-level installs implied; tooling is library-level
-            # and lands via language-package-manager rows on the language
-            # capability the project already has.
-            : ;;
-        deployment:apple)
-            cat <<'EOF'
-xcodebuild:::install Xcode 26.3+ from the App Store:::Apple-app deployment surface requires the full Xcode toolchain (archive + notarize)
-EOF
-            ;;
-        deployment:linux-container)
-            cat <<'EOF'
-docker:::install Docker Desktop (https://docs.docker.com/get-docker/) or use Colima (brew install colima):::Container build + run for linux-container deployment
-EOF
-            ;;
-        role:python-server)
-            cat <<'EOF'
-uv:::brew install uv  (macOS) | curl -LsSf https://astral.sh/uv/install.sh | sh  (Linux):::Project-standard Python package manager (pyproject.toml workflow)
-EOF
-            ;;
-        *) : ;;
-    esac
 }
 
 # probe_tool_present <tool>
@@ -423,6 +233,12 @@ stage_a0_preflight() {
 stage_a1_resolve() {
     say ""
     say "── A1 — resolve capability arguments ──"
+    # Load the single-source capability tables now that stage A0 has
+    # validated $PACK. The tables live at
+    # $PACK/project-template/scripts/capability-tables.sh and are first
+    # called below — sourcing them earlier (top-level) would dereference
+    # $PACK before A0's validation.
+    _load_capability_tables
     RESOLVED_SKILLS=()
     RESOLVED_FILES=()
     local cap skills files
