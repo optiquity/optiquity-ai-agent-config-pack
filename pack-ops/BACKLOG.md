@@ -3328,7 +3328,7 @@ Position: v11.1; co-design with BD-200; must land by the first post-v11.0 `pack 
 ---
 
 **BD-203 — Pack self-migration Phase 1: monolithic flat files → per-entry directory trees (Mode 1 → Mode 2)**
-Type: feat — STRUCTURAL, pack-only. The pack DOGFOODS its own Mode-1→2 per-entry conversion on its OWN `pack-ops/BACKLOG.md` + `CHANGELOG.md` (TWO streams only — the pack has NO implementation-plan monolith; that earlier mention was an erroneous insertion, corrected 2026-06-04). Requires a FRESH ADVERSARIAL architect (the first `ARCHITECTURE-BD-203.md` is REJECTED + superseded — see Binding decisions) → planner → (coder → bounded review/fix) per commit + a full integrated correctness audit at the end. Pack-only; phase commits declare `pack-only`.
+Type: feat — STRUCTURAL, pack-only. The pack DOGFOODS its own Mode-1→2 per-entry conversion on its OWN `pack-ops/BACKLOG.md` + `CHANGELOG.md` (TWO streams only — the pack has NO implementation-plan monolith; that earlier mention was an erroneous insertion, corrected 2026-06-04). Requires the pipeline: BOTH pack-side + project-side blast-radius RESEARCH first (`RESEARCH-BD-203-BLAST-RADIUS.md` + `RESEARCH-PROJECT-PER-ENTRY-BLAST-RADIUS.md`) → an architect that reviews BOTH and DECIDES whether the pack + project designs are done together or separately (user 2026-06-04; the two prior designs `ARCHITECTURE-BD-203.md` + `ARCHITECTURE-BD-203-ADVERSARIAL.md` are REJECTED + superseded) → planner → (coder → bounded review/fix) per commit + a full integrated correctness audit at the end. The pack CONVERSION is pack-only; phase commits declare `pack-only`.
 Status: Open
 Target: v11.0 (launch-gate item, user 2026-06-04).
 Blockers: Follows BD-200 (Resolved 2026-06-04). Sequenced BEFORE BD-197 (user 2026-06-04). Phase 1 of the two-phase pack self-migration; BD-204 (Mode 2→3 GH Issues) follows and depends on this.
@@ -3355,12 +3355,13 @@ Type: feat — STRUCTURAL, **pack-only (HARD CONSTRAINT)**. The pack DOGFOODS it
 Status: Open
 Target: v11.0 (launch-gate item, user 2026-06-04).
 Blockers: Follows BD-203 (the per-entry trees must exist first). Sequenced BEFORE BD-197 (user 2026-06-04).
-Unblocks: the pack tracks its OWN backlog in GH Issues (tracker Mode 3); the per-entry tree + monolithic mirror become regenerated-FROM-tracker per the Mode-2→3 contract; exercises the TrackerProvider / GH-Issues machinery on the pack's own backlog (real dogfood).
+Unblocks: the pack tracks its OWN backlog in GH Issues (tracker Mode 3); the per-entry tree is regenerated-FROM-tracker per the Mode-2↔3 contract (NO monolithic mirror — corrected standard); exercises the TrackerProvider / GH-Issues machinery on the pack's own backlog (real dogfood).
 HARD CONSTRAINT (user 2026-06-04): **pack-only — this BD must NOT touch `project-template/` or ANY project-side / client asset or workflow. If it affects the project side at all, that is a VIOLATION.** CI Check 36 `pack-only` enforces every commit; any project-side diff fails the gate.
-Problem: Phase 2 of the pack dogfooding its own tracker feature — after BD-203 makes the pack per-entry, this moves the SSOT to GH Issues, proving the Mode-2→3 forward migration on the pack itself.
-Scope: migrate the pack's per-entry backlog → GH Issues (tracker Mode 3) per the forward-migration contract; `tracker.toml` (`mode.state = "tracker"`, `migration.forward_complete = true`); the per-entry tree + monolithic mirror become regenerated-from-tracker; verify forward + reverse (round-trip) on the pack's own backlog — all pack-side only.
-Out of scope: BD-203's per-entry conversion (prerequisite); ANY project-side change (a violation if it occurs).
-Acceptance criteria (END-OF-BD FULL CORRECTNESS AUDIT): the pack's backlog is tracked in GH Issues; forward migration LOSSLESS (every BD → an issue, content-faithful); round-trip (forward+reverse) verified; the Mode-2→3 contract honored (tree + mirror regenerate from tracker); validate-pack green; **zero project-side changes (Check 36 `pack-only` clean on every commit)**; full integrated correctness audit.
+REVERSIBILITY (HARD REQUIREMENT, user 2026-06-04): the per-entry ↔ GH-Issues conversion MUST round-trip LOSSLESSLY (per-entry → GH-Issues → per-entry == original) — not a one-way push. BD-204's full spec (no-mirror, reversible, entry-preserving) is designed in the BD-203 architect pass.
+Problem: Phase 2 of the pack dogfooding its own tracker feature — after BD-203 makes the pack per-entry, this moves the SSOT to GH Issues, proving the reversible Mode-2↔3 migration on the pack itself.
+Scope: migrate the pack's per-entry backlog → GH Issues (tracker Mode 3) per the forward-migration contract; `tracker.toml` (`mode.state = "tracker"`, `migration.forward_complete = true`); the per-entry tree is regenerated-from-tracker (NO monolithic mirror); verify forward + REVERSE (lossless round-trip) on the pack's own backlog — all pack-side only.
+Out of scope: BD-203's per-entry conversion (prerequisite); ANY project-side change (a violation if it occurs); the PROJECT tracker (→ BD-207).
+Acceptance criteria (END-OF-BD FULL CORRECTNESS AUDIT): the pack's backlog is tracked in GH Issues; forward migration LOSSLESS (every BD → an issue, content-faithful, EVERY entry preserved); REVERSIBILITY verified — the round-trip per-entry → GH-Issues → per-entry is LOSSLESS (== original); the Mode-2↔3 contract honored (per-entry tree regenerates from tracker, NO monolithic mirror); validate-pack green; **zero project-side changes (Check 36 `pack-only` clean on every commit)**; full integrated correctness audit.
 References: `project_pack_self_migration_launch_gate`; BD-060 TrackerProvider abstraction; the tracker Mode 1/2/3 feature; BD-203 (prerequisite).
 Resolved: n/a
 Position: v11.0 launch gate; after BD-203, before BD-197 (user 2026-06-04).
@@ -3395,6 +3396,22 @@ Acceptance criteria (full correctness audit): the client per-entry feature produ
 References: `project_pack_self_migration_launch_gate` (pack memory); BD-203 (corrects the standard + converts the pack); the client per-entry feature (Mode 1/2) + `supporting-docs/MIGRATION-v10-to-v11.md`.
 Resolved: n/a
 Position: after BD-203; target TBD (v11.0 launch-coherence likely — confirm).
+
+---
+
+**BD-207 — Project-side per-entry ↔ GH-Issues reversible tracker (apply the tracker standard to client assets)**
+Type: feat — STRUCTURAL. The PROJECT analog of BD-204: the client-shipped per-entry → GH-Issues (tracker Mode 3) conversion + its REVERSE (Mode 3 → per-entry), made REVERSIBLE/round-trippable + no-mirror + entry-preserving per the corrected standard. Project-side product change. Full pipeline. Designed in/with the BD-203 architect pass (per the architect's together-vs-separate decision); implemented later.
+Status: Open
+Target: TBD — project-side implementation, later. Launch-coherence flag (like BD-206): the corrected tracker standard ships to clients via the trinity; if v11.0 ships it, the client tracker feature ideally matches before launch — confirm v11.0-vs-later with user (after the architect's design clarifies).
+Blockers: Follows BD-206 (project per-entry trees must exist first) + the corrected standard (BD-203). Designed alongside BD-203/BD-206 per the architect's together-vs-separate decision (user 2026-06-04).
+Unblocks: client projects convert their per-entry trees ↔ GH Issues REVERSIBLY (lossless round-trip), no monolithic mirror, every entry preserved — the same standard as the pack (BD-204).
+REVERSIBILITY (HARD REQUIREMENT, user 2026-06-04): the client per-entry ↔ GH-Issues conversion MUST round-trip LOSSLESSLY (per-entry → GH-Issues → per-entry == original); not a one-way push.
+Scope: the client-shipped tracker feature (Mode 2↔3) corrected to no-mirror + REVERSIBLE + entry-preserving; the reverse-migration path; client tracker docs/rules/validators. Same standard as BD-204, applied to project assets.
+Out of scope: the pack tracker (BD-204); the project monolith→per-entry conversion (BD-206); the pack conversion (BD-203).
+Acceptance criteria (full correctness audit): the client per-entry ↔ GH-Issues round-trips LOSSLESSLY (verified); NO monolithic mirror; every entry preserved; reversibility proven; validate-pack green.
+References: `project_pack_self_migration_launch_gate` (pack memory); BD-204 (pack analog); BD-206 (project per-entry prerequisite); BD-203 (corrected standard + design); the tracker Mode 1/2/3 feature (BD-060 TrackerProvider).
+Resolved: n/a
+Position: project-side tracker; after BD-206; target TBD (confirm with user).
 
 ---
 
