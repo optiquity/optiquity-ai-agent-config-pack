@@ -61,7 +61,7 @@ Default preference only:
 - **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Evaluate before third-party ML inference.
 - **Availability guards required.** Wrap in `#available(iOS 26, *)` / `#available(macOS 26, *)` if deployment target is below iOS 26.
 - **Check Apple frameworks before third-party packages** for any new capability.
-- For iOS 26 API details, read directly from the Xcode documentation bundle at `/Applications/Xcode.app/Contents/PlugIns/IDEIntelligenceChat.framework/Versions/A/Resources/AdditionalDocumentation/`. If the path does not exist, fall back to web search.
+- For implementation details on any iOS 26 API, the `docs-researcher` agent reads directly from the Xcode documentation bundle at `$XCODE_APP/Contents/PlugIns/IDEIntelligenceChat.framework/Versions/A/Resources/AdditionalDocumentation/` (where `$XCODE_APP` defaults to `/Applications/Xcode.app` — override in the `.codex/config.toml` `[env]` table if Xcode is installed elsewhere). If the path does not exist, fall back to web search.
 
 ## Architecture — universal layer discipline
 
@@ -425,6 +425,6 @@ and full skill assignments. All custom agent names begin with `x-`.
 
 <!-- Project addenda go here. Project-original H2 sections that don't
 fit into pack-defined sections above land under this heading after a
-v9.3 → v10 migration. See docs/pack/INSTALL-PROCEDURES.md Procedure
+v10 → v11 migration. See docs/pack/INSTALL-PROCEDURES.md Procedure
 5-C.2 step 2.b for the migration reconciliation workflow. New projects
 start with this H2 empty. The marker is preserved across pack upgrades. -->

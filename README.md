@@ -146,8 +146,8 @@ supporting-docs/                            Pack product docs (copied to or cons
 ├── CLI-PM-SETUP.md                         CLI PM chat daily usage reference
 ├── DEPENDENCIES.md                         Tool dependencies reference
 ├── SETUP_TEMPLATE.md                       Per-project setup template (PM chat fills in)
-├── SETUP-NEW.md                            Guide for setting up a new project (v10)
-├── SETUP-EXISTING.md                       Guide for adding the pack to an existing project (v10)
+├── SETUP-NEW.md                            Guide for setting up a new project (v11)
+├── SETUP-EXISTING.md                       Guide for adding the pack to an existing project (v11)
 ├── AGENT_KICKOFF_TEMPLATE.md               Architecture kickoff template
 ├── MIGRATION-v10-to-v11.md                 Upgrade guide (v10.0 → v11.0)
 └── MIGRATION-v8-to-v9.md                   Upgrade guide (historical; v8.x → v9.0)
