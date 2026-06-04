@@ -3128,7 +3128,8 @@ Resolved: 2026-05-27 — Check 24 byte-identity gate replacement completed via C
 
 **BD-195 (Code Red 3) — v11.0 pristine-state recovery before BD-185 restart (full-repo)**
 Type: fix — pack-only operational; recovery of v11.0 to a pristine post-Batch-19c state prior to restarting BD-185 (phase parts).
-Status: Open
+Status: Resolved
+Resolved: 2026-06-03 — v11.0-pristine recovery complete. Executed PLAN-BD-195-REMEDIATION.md C1–C9 (audit fix set + NL leak set) across PG-1/PG-2 + a batched final push; added the architect-designed client-surface v10→v11 currency sweep; then ran a parallel multi-agent COMPLETENESS RE-AUDIT (6 dimensions) that surfaced + fixed 12 net-new findings (v10-currency, dangling removed-doc cites, cross-CLI/RAG capability notes, docstring/fixture drift) the first audit missed, plus the trinity `## Project addenda` reconciliation-pointer correction. validate-pack GREEN; full per-check CI suite GREEN (run 26927439269, ~4min, on `1fa4c95`). Project-side capability-addition work (add-capability.sh pack-only verdict; Procedure 6 redesign) carved out to BD-200 per user direction. The C2-introduced validate-pack runtime regression split out + resolved as BD-199. Final HEAD 1fa4c95.
 Alias: "Code Red 3" and "BD-195" refer to the same item (interchangeable).
 Surfaced: 2026-05-28 (user direction, after the BD-185 attempt fractured).
 
@@ -3251,7 +3252,7 @@ Resolved: n/a
 
 **BD-199 — Optimize validate-pack.py runtime regression (Check 43 per-iteration regex recompilation)**
 Type: fix — pack tooling performance. Behavior-preserving optimization of the project-side bare-cross-reference scanner. Commit pack-only (`scripts/` only).
-Status: Open
+Status: Resolved
 Blockers: Lands AFTER BD-195's content commits (C6–C8) and BEFORE the BD-195 batched push — the fix touches `scripts/validate-pack.py`, which C5/C6 also edit, so sequencing avoids conflict. Design doc: `maintenance-docs/v11-implementation/ARCHITECTURE-BD-199-VALIDATE-PACK-PERF.md`.
 Unblocks: CI `tests` job returns to minutes (from ~2h); every reviewer/coder validate-pack verification + every test that invokes validate-pack speeds up proportionally.
 File/Symbol:
@@ -3264,7 +3265,7 @@ Description:
   **Out of scope:** any change to WHAT Check 43 detects; the test-suite structure (reducing redundant validate-pack invocations across CI steps is a separate possible follow-up).
   **Acceptance criteria:** validate-pack wall-time drops from minutes to ~seconds; `re._compile` call count drops from ~11.4M to ~K; validate-pack findings byte-identical before/after; existing Check-43 test passes; validate-pack GREEN (fire-set 0).
   **References:** `ARCHITECTURE-BD-199-VALIDATE-PACK-PERF.md` (design, in progress); cProfile data 2026-06-03 (HEAD `696528b`); regression introduced by BD-195 C2 (broadened Check 43 file walk).
-Resolved: n/a
+Resolved: 2026-06-03 — Check 43 (`check_project_side_bare_internal_refs`) optimized behavior-identically: per-iteration regex (re)compilation replaced by a precompiled, length-sorted alternation + per-line candidate dedupe + hoisted prefix patterns. Equivalence proven (exhaustive OLD-vs-NEW finding diff over the full project-side tree = 0 mismatches; Check-43 test passes). Check-43 wall 355s→0.62s; `re._compile` ~11.4M→3; full validate-pack minutes→~1.2s; CI tests job ~2h→~4min (run 26927439269). Commit `bf9d157`; design `ARCHITECTURE-BD-199-VALIDATE-PACK-PERF.md`.
 
 ---
 
