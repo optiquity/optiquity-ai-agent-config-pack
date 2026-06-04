@@ -448,7 +448,8 @@ When acting in this repo:
 ## Project addenda
 
 <!-- Project addenda go here. Project-original H2 sections that don't
-fit into pack-defined sections above land under this heading after a
-v10 → v11 migration. See docs/pack/INSTALL-PROCEDURES.md Procedure
-5-C.2 step 2.b for the migration reconciliation workflow. New projects
-start with this H2 empty. The marker is preserved across pack upgrades. -->
+fit into pack-defined sections above land under this heading when you
+reconcile your customizations during a v10 → v11 migration. See
+MIGRATION-v10-to-v11.md § "Step 2 — Review the migration report" for
+the reconciliation workflow. New projects start with this H2 empty.
+The marker is preserved across pack upgrades. -->
