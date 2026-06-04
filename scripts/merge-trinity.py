@@ -8,10 +8,15 @@ high-stakes: the script does NOT auto-merge intermixed prose. Instead it
 classifies each file via the four-case three-way classifier, and on
 real-merge-required it performs a structural splice that preserves two
 project-owned regions (Active-skills line, `### Custom agents` sub-section)
-while taking the rest of the v10 template. The migrate-v9-to-v10.sh caller
-is responsible for writing the project's pre-migration file as a
-`<file>.v9-customized` sidecar so the developer can reconcile per
-Procedure 5-C from INSTALL-PROCEDURES.md.
+while taking the rest of the v10 template. This script has NO live caller
+at HEAD: the migrate-v9-to-v10.sh migrator that invoked it was sunset in
+v11 (BD-121), and the v11 customization-preserve path
+(scripts/lib/customization-preserve.sh) routes trinity `.md` files through
+its text strategy rather than this structural splice. A migrator that does
+invoke it is responsible for writing the project's pre-migration file as a
+`<file>.<sidecar-suffix>` sidecar (the live v10→v11 migrator emits the
+`v10-customized` suffix) so the developer can reconcile per Procedure 5-C
+from INSTALL-PROCEDURES.md.
 
 Per V10-DESIGN §6.6: the three files are processed atomically. Either all
 three merged outputs are written, or none are. A B6 pre-check validates

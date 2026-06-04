@@ -2,9 +2,10 @@
 # pack-internal: true  (invoked only by migrators; not a user-facing verb)
 """
 merge-toml.py — three-way TOML key-merge per V10-MIGRATION-FIX-DESIGN.md
-Part 3.7 (BD-059). Used by migrate-v9-to-v10.sh for K2
-(`.codex/config.toml`) and K3 (`.codex/requirements.toml`) when the
-four-case classifier returns real-merge-required.
+Part 3.7 (BD-059). Invoked by scripts/lib/customization-preserve.sh
+(structured-config dispatch) for the TOML allowlist (e.g.
+`.codex/config.toml`, `.codex/requirements.toml`) when the four-case
+classifier returns real-merge-required.
 
 Algorithm mirrors merge-json.py — recursive merge over the union of keys
 in BASE, OURS, THEIRS, with set-difference logic for arrays — applied at

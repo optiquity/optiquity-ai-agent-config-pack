@@ -2,9 +2,10 @@
 # pack-internal: true  (invoked only by migrators; not a user-facing verb)
 """
 merge-json.py — three-way JSON key-merge per V10-MIGRATION-FIX-DESIGN.md
-Part 3.7 (BD-059). Used by migrate-v9-to-v10.sh for K1 (`.claude/settings.json`)
-and K4 (`.mcp.json.example`) when the four-case classifier returns
-real-merge-required.
+Part 3.7 (BD-059). Invoked by scripts/lib/customization-preserve.sh
+(structured-config dispatch) for the JSON allowlist (e.g.
+`.claude/settings.json`, `.mcp.json.example`) when the four-case classifier
+returns real-merge-required.
 
 Algorithm:
 

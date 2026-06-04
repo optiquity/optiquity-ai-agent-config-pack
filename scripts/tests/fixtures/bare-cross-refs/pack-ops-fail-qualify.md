@@ -11,5 +11,5 @@ MUST FAIL each one with a "qualify to `<one-path>`" message.
 - JSON merge helper: `merge-json.py`
 - TOML merge helper: `merge-toml.py`
 - Migration narrative: `MIGRATION-v10-to-v11.md`
-- Frozen migrator: `migrate-v9-to-v10.sh`
+- Backup restore: `restore-from-backup.sh`
 - Install procedure: `INSTALL-PROCEDURES.md`
