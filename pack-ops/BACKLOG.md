@@ -4944,4 +4944,16 @@ File/Symbol: `project-template/docs/pack/PLATFORM-SKILLS.md` "Extending this fil
 Description: Per `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-DIMENSIONS.md` §7.10 the skill catalog uses four suffixes inconsistently — `*-best-practices` (idiomatic-style rules), `*-language` (ownership/memory/interop), `*-architecture` (platform-specific structural rules), `*-patterns` (cross-cutting concerns). The convention is not enforced. BD-149 codifies the convention in PLATFORM-SKILLS.md "Extending this file" so new skills follow it; existing skills are NOT renamed in v11.0 because the cost of breaking external references outweighs the consistency benefit at this point. v12 enforcement migration: identify non-compliant existing skill names, rename them, run BD-147's `migrator_skill_rename` API across client projects, update all SKILL.md cross-references and trinity prose, ship a v11→v12 migrator stage analogous to BD-035 / S5b. Defer until v12 per architecture §7.10 disposition.
 Resolved: n/a
 
+---
+
+**BD-201 — Antigravity (Gemini CLI successor) MCP config relocation: settings.json → mcp_config.json**
+Type: TODO(version) — client config currency; deferred to a later v11.x minor. To be grouped with the larger Gemini → Antigravity support transition (a v11 minor-version upgrade), NOT implemented in v11.0.
+Status: Deferred
+Blockers: EXTERNAL — Antigravity GA + published migration docs (~2026-06-18); AND a product decision to undertake the full Gemini → Antigravity support transition as a v11.x minor. Cannot be worked until the exact `mcp_config.json` path/mechanics are documented by Google.
+Unblocks: Antigravity-native MCP config for client projects (the `mcpServers` block relocated to `mcp_config.json`).
+File/Symbol: `project-template/.gemini/settings.json` (`_tools` forward-looking note); `project-template/.mcp.json.example` (`_tools` forward-looking note); `project-template/GEMINI.md` if it references the `mcpServers` location — replace the "exact path per Antigravity migration docs" placeholders with the real `mcp_config.json` path; add the `settings.json` → `mcp_config.json` migration step to the Gemini setup docs.
+Description: The v11.0 completeness re-audit (BD-195, 2026-06-03) shipped forward-looking notes in the two Gemini/MCP config files stating that Gemini's successor Antigravity preserves MCP but relocates the `mcpServers` block from `settings.json` to a dedicated `mcp_config.json` (exact path per Antigravity migration docs; stdio command/args/env shape unchanged). Those notes are correct as-is for v11.0. This BD captures the concrete relocation work — substitute the real `mcp_config.json` path, document the migration step, verify the stdio shape is unchanged — to be done as part of the larger Gemini → Antigravity support transition, scheduled as a v11.x minor-version upgrade after Antigravity GA.
+Context: Surfaced 2026-06-03 during BD-195 completeness re-audit (RAG/cross-CLI fix, commit `cad79f7`). User direction 2026-06-03: do NOT implement in v11.0; group with the broader Gemini → Antigravity transition and schedule as a later v11 minor.
+Resolved: n/a
+
 *(Items move here when pushed to a future version beyond v9, with the target version noted)*
