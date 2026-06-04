@@ -53,13 +53,16 @@ What the convention guarantees:
 
 - **Pack-controlled deletions skip `x-*`.** Every site in the pack's
   scripts (`init-project.sh`, the active `migrate-vN-to-vM.sh`
-  migrator, `add-capability.sh`) that removes files from these
-  locations honors the `x-` prefix and leaves project-added files
-  in place.
+  migrator) that removes files from these locations honors the `x-`
+  prefix and leaves project-added files in place.
 - **Pack-controlled overwrites skip `x-*`.** When the migration or
   init script copies a pack file into one of these directories, the
   copy targets only the pack-roster filename — never an `x-*`
-  collision.
+  collision. `activate-capability.sh` is also an overwrite site: when
+  it re-materializes a capability's conditional files from
+  `pack-capability-pool/`, it never overwrites a live-tree file whose
+  basename begins with `x-` — it skips and warns, preserving the
+  project-authored file.
 - **Pack-roster filenames never start with `x-`.** A future pack
   release will not introduce a roster file named `x-foo.md`. The
   pack reserves the prefix.

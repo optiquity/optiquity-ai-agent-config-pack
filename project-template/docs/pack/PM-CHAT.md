@@ -384,9 +384,11 @@ These rules are non-negotiable and always apply on all tools:
   instruction: if output exceeds ~300 lines, write in chunks (initial
   Write + successive Edit appends). The agent files carry this rule
   too, but stating it in the prompt is defense-in-depth.
-- **Capability addition.** If the developer asks to add a pack-supported
+- **Capability addition.** If the developer asks to add a supported
   dimension (platform, language, protocol, role), direct them to run
-  `scripts/add-capability.sh` from the pack first; then run METHODOLOGY.md
+  `scripts/activate-capability.sh` first (it re-materializes the
+  capability's conditional files from the tracked `pack-capability-pool/`,
+  on any clone, with nothing else required); then run METHODOLOGY.md
   Procedure 6. (Procedure 6 stays in METHODOLOGY because capability
   addition fires repeatedly, not as a one-shot.)
 
