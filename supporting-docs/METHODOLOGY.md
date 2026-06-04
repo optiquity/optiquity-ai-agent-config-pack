@@ -1404,23 +1404,27 @@ absorbing task to express ordering without merging entities. The
 
 *Relocated to [`INSTALL-PROCEDURES.md`](INSTALL-PROCEDURES.md). Triggered by `.pack-migration-backup/v9.3-to-v10.0/postrun-pending`.*
 
-### Procedure 6 — Adding a pack-supported capability
+### Procedure 6 — Activating a supported capability
 
 Triggered when either:
 
 - The developer pastes the end-of-run prompt emitted by
-  `scripts/add-capability.sh` stage A8.
+  `scripts/activate-capability.sh`.
 - The developer asks the PM chat to "add Python" / "add iOS" / similar
   and the PM chat (per its PM-CHAT.md **Capability addition**
-  behavioral rule) first instructs them to run `add-capability.sh`
-  from the pack before resuming.
+  behavioral rule) first instructs them to run
+  `scripts/activate-capability.sh --add <dimension>:<value>` before
+  resuming.
 
-Procedure 6 is the PM-chat-side companion to `add-capability.sh`. The
-script copies the conditional pack files and runs a read-only
-install-check discovery; Procedure 6 updates the trinity files'
-`**Active skills:**` line and `[PLACEHOLDER]` sections for the newly-
-active dimension and drives Form-I follow-ups for any
-machine-level tools the script reports as missing.
+`scripts/activate-capability.sh` is a self-contained project script: it
+re-materializes the conditional files for the requested capability from
+the tracked `pack-capability-pool/` directory into the live tree and
+emits a PM-chat prompt. No external clone is needed — the pool travels
+with the project. Procedure 6 is the PM-chat-side companion to that
+script: it updates the trinity files' `**Active skills:**` line and
+`[PLACEHOLDER]` sections for the newly-active dimension and drives
+Form-I follow-ups for any machine-level tools that still need to be
+installed.
 
 Gates: **G6-drafts** (trinity drafts reviewed before any markdown
 write), **G6-install** (install commands surfaced for missing tools
@@ -1429,11 +1433,11 @@ reviewed before any `brew install` / `uv add` / equivalent runs), and
 
 | Step | Action | Gate |
 |---|---|---|
-| **6.1** | Read the `add-capability.sh` report — either pasted into the session or read from `.pack-add-capability-prompt.md` at the project root (written by stage A8). Verify script stages A0–A8 completed. The prompt includes a **Capability install-check discovery** section listing every tool probed and its present/missing status, plus a **Missing tools — proposed install commands** block when any probe reported missing. | — |
+| **6.1** | Read the `activate-capability.sh` prompt — either pasted into the session or read from `.pack-activate-capability-prompt.md` at the project root (written by the script's final stage; the file is gitignored local state). The prompt names the activated `--add <dimension>:<value>` capabilities, lists the files re-materialized from `pack-capability-pool/`, and reports the current vs. target `**Active skills:**` line. | — |
 | **6.2** | Read the newly-activated `SKILL.md` files from `.claude/skills/<name>/SKILL.md` (skills are already on disk from the initial pack install). Extract the content relevant to each trinity `[PLACEHOLDER]` section. | — |
 | **6.3** | Draft updates to the trinity files: update the `**Active skills:**` line; fill `[PLATFORM_DEFAULTS]`, `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`, `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`, `[PLATFORM_ANTIPATTERNS]` as applicable for the newly-added dimension. Present drafts side-by-side for all three trinity files (TRIO) — byte-identical content in every section the trinity rule covers. | **G6-drafts** — developer confirms trinity drafts before any write |
 | **6.4** | If the project now qualifies for a PLATFORM-SKILLS.md dimension row that was not previously selected (e.g., project gains an iOS row after adding iOS to a macOS-only selection), surface the dimension row for explicit acknowledgement. Informational — PLATFORM-SKILLS.md rows describe the pack's matrix, not the project's selection, so typically no edit is needed. | — |
-| **6.5** | For each missing tool listed in the prompt's install-hint block, render a **Form I** in the shape of `INSTALL-PROCEDURES.md § 7.2.3` (Command / Purpose / Side effects / Skip impact). Default each Form I to `skip`; the developer replies `yes` per tool to authorize. Already-present tools require no Form I. Tools the developer skips are recorded in the chat — Procedure 6 does not modify the prompt file or any project doc to record skips. | **G6-install** — developer confirms each install before it runs |
+| **6.5** | Identify any machine-level tools the newly-activated dimension needs (from the dimension's `SKILL.md` content read in 6.2 and `INSTALL-PROCEDURES.md`). For each such tool not already present, render a **Form I** in the shape of `INSTALL-PROCEDURES.md § 7.2.3` (Command / Purpose / Side effects / Skip impact). Default each Form I to `skip`; the developer replies `yes` per tool to authorize. Already-present tools require no Form I. Tools the developer skips are recorded in the chat — Procedure 6 does not modify any project doc to record skips. | **G6-install** — developer confirms each install before it runs |
 | **6.6** | Run the Procedure 5.5 detection scan once drafts are applied — verify no `x-` files were touched; verify PLATFORM-SKILLS.md `## Custom agents` / `## Custom skills` project-owned regions are unchanged. | — |
 | **6.7** | Present `git add` list and commit message (`feat: project — add <dimension>:<value> capability`); developer approves per CLAUDE.md pack rule (same gate as Procedure 5 G-commit). | **G6-commit** |
 
@@ -1453,18 +1457,11 @@ prompt file; any `SKILL.md` (already on disk); `BACKLOG.md`;
 mirrors INSTALL-PROCEDURES.md § 7.2.3 (kickoff swift-format install)
 and § 7.3.1 / 7.3.2 (kickoff gRPC tooling). The same idempotency rules
 apply: an already-present tool reports a single-line `note: <tool>
-already installed — skipping` and does not render a Form I. The
-discovery itself runs script-side (`add-capability.sh` stage A7) so
-the PM chat enters Procedure 6 with the discovery already done — no
-G6-discovery gate is needed (the script's read-only A7 stage is
-G7-discovery's capability-addition equivalent).
-
-**Adding a new capability row.** A new pack-supported dimension /
-value extends three parallel surfaces in `scripts/add-capability.sh`:
-`capability_skills()` (skill list), `capability_files()` (conditional
-files to copy), and `capability_install_checks()` (tool probes +
-install commands). Keep all three in sync — the script depends on
-them being parallel for stages A1, A5, and A7 respectively.
+already installed — skipping` and does not render a Form I. Tool
+discovery is PM-chat-side in step 6.5 (read from the activated
+dimension's `SKILL.md` and `INSTALL-PROCEDURES.md`), so no
+G6-discovery gate is needed — the PM chat surveys the needed tools
+as part of drafting and gates only the install at G6-install.
 
 ### Procedure 7 — Kickoff auto-discovery and install-check
 
