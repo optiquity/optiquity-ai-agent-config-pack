@@ -148,10 +148,13 @@ stage_p0_preflight() {
     if [[ ! -d "$POOL" ]]; then
         say ""
         say "STOP — capability pool pack-capability-pool/ is absent."
-        say "It is a tracked directory created at project setup; if it is"
-        say "missing, your project was set up before capability activation"
-        say "was available. Re-run scripts/init-project.sh --update to"
-        say "materialize the pool, then re-run this script."
+        say "The pool is a tracked directory materialized only at fresh"
+        say "project setup, by scripts/init-project.sh with a version that"
+        say "supports capability activation. If it is missing, this project"
+        say "was set up before that support existed."
+        say "No in-place back-fill into an existing project exists yet:"
+        say "scripts/init-project.sh --update does NOT create the pool. The"
+        say "only path that populates it today is a fresh project setup."
         exit "$EXIT_NO_POOL"
     fi
 
