@@ -57,7 +57,7 @@ always points to the latest minor of that major version.
 
 | Version | Date         | Key Additions |
 |---------|--------------|---------------|
-| v11.0   | May 2026     | Issue-tracker integration (Phase A — D-1..D-23 surfacing as forced trinity addenda + per-CLI `/pack-help` + HELP-FRAGMENT shared content; Phase B — opt-in tracker abstraction with `gh` backend, forward/reverse migration, recommendation system); BD-088 customization-preservation library + truthful report (BD-059 fix); migrate-v10-to-v11.sh + BD-119 N→N+1 migrator framework + BD-147 reusable migrator-skills.sh + BD-144 capability-translation stage; init-project.sh `--update`; **skill-dimensions reframe (BD-141..BD-150 + BD-156..BD-159)** — 5 dimensions D1–D5 + Tier 0 base + intersection + trigger-loaded model in PLATFORM-SKILLS.md (BD-142); trinity Skill-loading prose realigned (BD-143); add-capability.sh D5 rename + intersection fix (BD-144); init-project.sh D1/D5 detection hint + python-data marker (BD-141, BD-145); 3 new `*-patterns` skills — protobuf-patterns (BD-156), apple-swiftdata-patterns (BD-157), swift-concurrency-patterns (BD-158); naming-convention codification + maintainability principle in pack memory (BD-149, BD-159); MIGRATION-v10-to-v11.md + MERGE-STRATEGY.md skill-model behavioral note (BD-148); validate-pack.py expanded to 40 invoked checks (38 numbered Check 1–11, 16–23, and 25–43; 2 unnumbered informational — issue-template-forms and template-archive-v11; Checks 12–15 retired per v9 sunset; Check 24 retired per BD-194) — per-CLI parity, help-fragment freshness/completeness, customization regression guard, BD-146 Check 31 skill-cell internal-consistency gate, BD-168 Checks 32/33/34 per-entry split validators (mirror-in-sync, TOC-in-sync, cross-reference integrity), BD-175 Checks 36/37/38 pack/project boundary (commit-scope honesty, project-side pack-only deny-list, pack-only-file siting) + Check 39 cmd_update mapping/glob symmetry, BD-179 Check 40 pack-ops/ bare cross-reference scanner, BD-180 Check 41 `_CLIENT_INSTALLED_FILES` self-doc list integrity, BD-184 Check 42 CI workflow wires all per-check test files, BD-173 H.14 Check 43 project-side bare cross-reference scanner (V11 leak-sweep prevention); aggregate CI test runner across 41 suites |
+| v11.0   | May 2026     | Issue-tracker integration (Phase A — D-1..D-23 surfacing as forced trinity addenda + per-CLI `/pack-help` + HELP-FRAGMENT shared content; Phase B — opt-in tracker abstraction with `gh` backend, forward/reverse migration, recommendation system); BD-088 customization-preservation library + truthful report (BD-059 fix); migrate-v10-to-v11.sh + BD-119 N→N+1 migrator framework + BD-147 reusable migrator-skills.sh + BD-144 capability-translation stage; init-project.sh `--update`; **skill-dimensions reframe (BD-141..BD-150 + BD-156..BD-159)** — 5 dimensions D1–D5 + Tier 0 base + intersection + trigger-loaded model in PLATFORM-SKILLS.md (BD-142); trinity Skill-loading prose realigned (BD-143); add-capability.sh D5 rename + intersection fix (BD-144); init-project.sh D1/D5 detection hint + python-data marker (BD-141, BD-145); 3 new `*-patterns` skills — protobuf-patterns (BD-156), apple-swiftdata-patterns (BD-157), swift-concurrency-patterns (BD-158); naming-convention codification + maintainability principle in pack memory (BD-149, BD-159); MIGRATION-v10-to-v11.md + MERGE-STRATEGY.md skill-model behavioral note (BD-148); validate-pack.py expanded to 45 invoked checks (43 numbered Check 1–11, 16–23, and 25–48; 2 unnumbered informational — issue-template-forms and template-archive-v11; Checks 12–15 retired per v9 sunset; Check 24 retired per BD-194) — per-CLI parity, help-fragment freshness/completeness, customization regression guard, BD-146 Check 31 skill-cell internal-consistency gate, BD-168 Checks 32/33/34 per-entry split validators (mirror-in-sync, TOC-in-sync, cross-reference integrity), BD-175 Checks 36/37/38 pack/project boundary (commit-scope honesty, project-side pack-only deny-list, pack-only-file siting) + Check 39 cmd_update mapping/glob symmetry, BD-179 Check 40 pack-ops/ bare cross-reference scanner, BD-180 Check 41 `_CLIENT_INSTALLED_FILES` self-doc list integrity, BD-184 Check 42 CI workflow wires all per-check test files, BD-173 H.14 Check 43 project-side bare cross-reference scanner (V11 leak-sweep prevention); aggregate CI test runner across 41 suites |
 | v10.0   | Apr 29, 2026 | Procedure 7 kickoff auto-discovery + Procedure 5-S post-migration housekeeping; per-agent prompt templates under docs/pack/prompts/ with labeled-section convention (BD-049); init-project.sh + migrate-v9-to-v10.sh; capabilities pattern (BD-045); METHODOLOGY canonical at docs/pack/; format-vs-solutions worked examples; validate-pack.py expanded to 10 checks |
 | v9.3    | Apr 2026     | BD-043 Gemini native subagent architecture (`.gemini/agents/` with YAML frontmatter); GEMINI.md stripped to project context only; agent-run.sh transparent `@agent-name` translation; full Gemini doc audit |
 | v9.2    | Apr 2026     | BD-042 pack reference docs moved to docs/pack/; document locations section added to context files |
@@ -98,7 +98,7 @@ project-template/                           Unified project template (v11)
 │   ├── work-item.yml                       BD or TD entry form
 │   ├── inbound.yml                         External-input entry form
 │   └── config.yml                          Disables blank issues
-├── skills/                                 Canonical skill library (34 skills — 13 Tier 0 base + 19 dimensional/intersection + 1 trigger-loaded + 1 PM chat operational; per `docs/pack/PLATFORM-SKILLS.md` Full skill inventory) — distributed
+├── skills/                                 Canonical skill library (36 skills — 14 Tier 0 base + 20 dimensional/intersection + 1 trigger-loaded + 1 PM chat operational; per `docs/pack/PLATFORM-SKILLS.md` Full skill inventory) — distributed
 │                                           to .claude/skills/, .codex/skills/, .gemini/skills/
 │                                           at project creation by init-project.sh; not
 │                                           present as a sub-directory in projects
@@ -149,9 +149,7 @@ supporting-docs/                            Pack product docs (copied to or cons
 ├── SETUP-NEW.md                            Guide for setting up a new project (v10)
 ├── SETUP-EXISTING.md                       Guide for adding the pack to an existing project (v10)
 ├── AGENT_KICKOFF_TEMPLATE.md               Architecture kickoff template
-├── MERGE-STRATEGY.md                       Per-file customization-preservation matrix (v11)
 ├── MIGRATION-v10-to-v11.md                 Upgrade guide (v10.0 → v11.0)
-├── DRY-RUN-MIGRATION.md                    Companion guide for scripts/dry-run-migration.sh (v11; BD-114 / BD-125)
 └── MIGRATION-v8-to-v9.md                   Upgrade guide (historical; v8.x → v9.0)
                                             (v9->v10 migrator + guide were sunset in v11 per BD-121;
                                             recover from history with `git checkout v10 -- ...`)
@@ -160,14 +158,12 @@ maintenance-docs/                           Pack maintainer docs (design records
 ├── TOOL-COMPARISON.md                      Cross-tool capability reference
 ├── VERIFIED-NOTES.md                       Verified facts from official docs
 ├── RECOMMENDATIONS.md                      Practical recommendations for new projects
-├── GEMINI-CLI-ANALYSIS.md                  Gemini CLI analysis (deprecated)
-├── ANDROID-ANALYSIS.md                     Android support analysis (deprecated)
 ├── archive/                                Superseded design records, plans, verifications, audits (v9, v10, v11, and earlier; per-version subdirectories — v11/ added by BD-150 Pattern B sweep per BD-159 maintainability principle)
 │   ├── V9-DESIGN.md                        v9 architecture design record
 │   ├── V9-AUDIT-REPORT.md                  v9 audit report
 │   ├── V10-DESIGN.md                       v10 architecture design record
 │   ├── V10-IMPLEMENTATION-PLAN.md          v10 implementation plan
-│   ├── V10-PREDESIGN.md, V10-DESIGN-PROCESS-PLAN.md
+│   ├── V10-DESIGN-PROCESS-PLAN.md
 │   ├── V10-AUDIT-REPORT.md, V10-AUDIT-REPORT-2.md
 │   ├── V10-PROMPT-STRUCTURE-{DESIGN,PLAN}.md
 │   ├── V10-PHASE-3B-{DESIGN,PLAN}{,-v2}.md
@@ -192,7 +188,7 @@ vscode-companion-templates/                 Machine-level VS Code config (per pr
                                             supporting files: _rules.md, _intro.md, _toc.md
 
 scripts/                                    Pack-level scripts
-├── validate-pack.py                        CI structural validation (40 invoked checks — 38 numbered Check 1–11, 16–23, and 25–43; 2 unnumbered informational — issue-template-forms and template-archive-v11; Checks 12–15 retired per v9 sunset; Check 24 retired per BD-194; pack-internal)
+├── validate-pack.py                        CI structural validation (45 invoked checks — 43 numbered Check 1–11, 16–23, and 25–48; 2 unnumbered informational — issue-template-forms and template-archive-v11; Checks 12–15 retired per v9 sunset; Check 24 retired per BD-194; pack-internal)
 ├── init-project.sh                         Initialize the pack in a new or existing project (v10; --update mode v11)
 ├── migrate-v10-to-v11.sh                   v10.0 → v11.0 migrator (v11; thin adapter on the BD-119 framework at lib/migrator-*.sh)
                                             (v9->v10 migrator + harness + fixtures were sunset in v11 per BD-121)
@@ -269,7 +265,9 @@ pack-ops/                                   Pack-internal operational files (v11
 ├── PACK-AGENTS.md                          Pack agent routing (includes invocation guide)
 ├── OPTIONAL-FEATURES.md                    Tool settings for features and settings used with non-pack related functionality
 ├── HELP-FRAGMENT-PACK.md                   Pack-side verb reference (v11; rendered by pack-help.sh)
-└── HELP-FRAGMENT-TRACKER.md                Shared tracker section (v11; pack-side authoritative; project-template/docs/pack/ is the separate project-side authoritative copy per BD-193 F4/F5)
+├── HELP-FRAGMENT-TRACKER.md                Shared tracker section (v11; pack-side authoritative; project-template/docs/pack/ is the separate project-side authoritative copy per BD-193 F4/F5)
+├── MERGE-STRATEGY.md                       Per-file customization-preservation matrix (v11)
+└── DRY-RUN-MIGRATION.md                    Companion guide for scripts/dry-run-migration.sh (v11; BD-114 / BD-125)
 
 QUICKSTART.md                               Quick start router (three paths — NEW / EXISTING / MIGRATE)
 tracker.toml.pack-example                   Pack-side tracker config template (v11; copy to tracker.toml to opt the pack repo into tracker mode)
