@@ -127,12 +127,16 @@ report — see the "Source-write within scope; never stages or commits"
 roster cell and trinity `## Pack memory` `### Pack Chat scope` "What
 Pack Chat CAN edit directly" for the canonical write-authority split.
 
-**PM-only files and directories** are off-limits to all agents unless the
+**pack-chat-only files and directories** are off-limits to all agents unless the
 caller's prompt explicitly scopes them in.
 
 Files:
-- `BACKLOG.md` (regenerated mirror; per-entry source at `/backlog/`)
-- `CHANGELOG.md` (regenerated mirror; per-entry source at `/changelog/`)
+- `BACKLOG.md` (regenerated mirror; per-entry source at `/backlog/`) — kept
+  pack-chat-only-permitted by BD-209's A13 fold; removal is scheduled for
+  BD-203 Commit 2 (which `git rm`s the monolith).
+- `CHANGELOG.md` (regenerated mirror; per-entry source at `/changelog/`) — kept
+  pack-chat-only-permitted by BD-209's A13 fold; removal is scheduled for
+  BD-203 Commit 2 (which `git rm`s the monolith).
 - `README.md` version table
 - `PACK-CHAT.md`
 - `PACK-AGENTS.md`
@@ -151,22 +155,22 @@ Directories:
 Within these directories, `_rules.md`, `_intro.md`, `_v8-resolved-archive.md`,
 and `_format.md` are pack-shipped immutable (updated on pack version bump
 only); `_toc.md` is derived (regenerator output); per-entry files (e.g.,
-`BD-NNN.md`, `TD-NNN.md`, `phase-N.md`, `YYYY-MM-DD-*.md`) are PM-only
+`BD-NNN.md`, `TD-NNN.md`, `phase-N.md`, `YYYY-MM-DD-*.md`) are pack-chat-only
 writes.
 
 `pack-coder` MAY scope a per-entry directory in for an explicit BD when
 Pack Chat's prompt scopes it — the same exception clause that applies to
-the PM-only files above.
+the pack-chat-only files above.
 
 Per trinity `## Pack memory` `[rationale: pack-chat-minor-edits-only]`, scoping
-a PM-only file into a coder prompt is the DEFAULT path for any MAJOR edit to it
+a pack-chat-only file into a coder prompt is the DEFAULT path for any MAJOR edit to it
 (Pack Chat does only MINOR bookkeeping edits directly); the imperative + the
 minor-vs-major boundary live in the corpus, not here.
 
 Per-entry decomposition mandatorily extends the source-of-truth surface
 from monolithic files to per-entry trees. The protected surface MUST
 follow or the source-of-truth invariant breaks: agents could write
-per-entry files directly, bypassing Pack Chat / PM Chat write authority.
+per-entry files directly, bypassing Pack Chat write authority.
 This addition is a Signal 9 trip per
 `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`
 §3.2 (line 305–306); the architect pass behind v11.0 per-entry split is

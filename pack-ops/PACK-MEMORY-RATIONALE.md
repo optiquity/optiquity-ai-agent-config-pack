@@ -176,7 +176,7 @@ original incident BD-169 19g-pack, 2026-05-16.
 ## enumerate-rules-inline
 
 **Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery. Both BD-195
-design failures (C6 PM-only allowlist gap; C7 Check 44 working-state proof
+design failures (C6 pack-chat-only allowlist gap; C7 Check 44 working-state proof
 failed by 1213 hits in 114 files) had the same shape: the relevant rule was
 knowable from pack memory but the architect did not enumerate it as something
 to verify before declaring complete. Design defects shipped past architect →
@@ -567,17 +567,17 @@ sign-off-gated constant edit, never an incidental map add.
 ## pack-chat-minor-edits-only
 
 **Why.** User-authorized 2026-06-04 (BD-208). The pre-BD-208 convention let
-Pack Chat edit PM-only files directly at ANY depth. Coder edits flow through
+Pack Chat edit pack-chat-only files directly at ANY depth. Coder edits flow through
 the bounded review/fix cycle; Pack-Chat-direct edits did not (Pack Chat cannot
 review itself — see `bounded-review-fix-cycle`). On a large structural BD
-(BD-203) this forced a split: Pack Chat hand-edited substantial PM-only content
+(BD-203) this forced a split: Pack Chat hand-edited substantial pack-chat-only content
 with NO independent review while the coder's edits got the cycle. The asymmetry
 let un-reviewed substantive edits of LANDED content land. BD-208 (Option B)
 makes the review uniform per CLASS: substantive edits of already-landed content
 + rule edits + out-of-small-set edits run through a coder + reviewer; NEW-entry
 authoring stays Pack-Chat-direct under the user's governance approval.
 
-**How to apply.** Classify every PM-only edit by the §2 boundary in
+**How to apply.** Classify every pack-chat-only edit by the §2 boundary in
 ARCHITECTURE-BD-208.md (Option B): MINOR (Pack-Chat-direct) = (a) a bookkeeping
 token (status flip / version bump / dated note / table row / decided-block
 append) OR (b) authoring a GENUINELY NEW entry (BD-open at a new ID /
@@ -585,14 +585,14 @@ version-boundary CHANGELOG entry) — the user's governance approval IS the revi
 MAJOR (→ coder) = a substantive edit of ALREADY-LANDED content (re-scope /
 multi-field rewrite / structural rewrite), a rule edit, or any out-of-small-set
 edit. A delete-and-reauthor of a landed ID is MAJOR (landed-content edit), not a
-new author. Tie-break: when unsure new-vs-landed, MAJOR. Scoping a PM-only file
+new author. Tie-break: when unsure new-vs-landed, MAJOR. Scoping a pack-chat-only file
 INTO a coder prompt is the supported path and is NOT a boundary violation (the
 same scope-in clause PACK-AGENTS.md § "Agent permission rules" already grants
 per-entry dirs). A bookkeeping edit gets Pack Chat's `validate-pack`/parity/grep
 sanity pass; a new-entry author rides the user's governance review; neither
 self-promotes into a substantive edit of landed content (that is MAJOR).
 
-**Rejected alternative.** "Let Pack Chat keep editing PM-only at any depth, just
+**Rejected alternative.** "Let Pack Chat keep editing pack-chat-only at any depth, just
 add a post-hoc reviewer pass on Pack-Chat edits." Rejected: Pack Chat cannot
 spawn a reviewer on its OWN in-place edits without first packaging them as a
 coder deliverable (no IMPL-REPORT, no fresh-context diff to review) — the

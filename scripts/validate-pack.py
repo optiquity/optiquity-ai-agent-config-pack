@@ -151,9 +151,9 @@ Checks:
   36. Commit-scope honesty (BD-175 M5a per Architect C §8.1): for each
       commit in the walk range (`origin/main..HEAD` with fallbacks),
       parses the commit subject for scope keywords (`pack-only`,
-      `project-only`, `PM-only` / `pack-memory-only`) and verifies the
-      commit's touched paths match the claimed scope. PM-only PERMITTED-
-      PATHS come from `pack-ops/PACK-AGENTS.md` § "PM-only files and
+      `project-only`, `pack-chat-only`) and verifies the
+      commit's touched paths match the claimed scope. pack-chat-only PERMITTED-
+      PATHS come from `pack-ops/PACK-AGENTS.md` § "pack-chat-only files and
       directories" Files + Directories blocks — notably PERMITS
       `project-template/` trinity per the B1-cascade + S6 fix-pass.
       Implicit-scope commits (no keyword) are skipped — keyword opt-in
@@ -3729,19 +3729,22 @@ def check_tracker_phase_task_invariants() -> None:
 # "Commit-subject scope-keyword convention" (added by BD-175 Commit 12).
 _SCOPE_KEYWORDS_PACK_ONLY = ("pack-only",)
 _SCOPE_KEYWORDS_PROJECT_ONLY = ("project-only",)
-_SCOPE_KEYWORDS_PM_ONLY = ("pm-only", "pack-memory-only")
+_SCOPE_KEYWORDS_PACK_CHAT_ONLY = ("pack-chat-only",)
 
-# PM-only PERMITTED-PATHS per `pack-ops/PACK-AGENTS.md` § "PM-only files and
-# directories" Files list, with the post-Architect-B + B-fix path substitution:
-# pack-root operational files now live under `pack-ops/`. README.md is permitted
-# in full (the
+# pack-chat-only PERMITTED-PATHS per `pack-ops/PACK-AGENTS.md` § "pack-chat-only
+# files and directories" Files list, with the post-Architect-B + B-fix path
+# substitution: pack-root operational files now live under `pack-ops/`.
+# README.md is permitted in full (the
 # version-table-only narrower constraint stays a Pack Chat discipline rule
 # per the §8.1a (README.md) note in the architect doc).
-_PM_ONLY_PERMITTED_PATHS = {
-    # BD-203 A13: `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md` are
-    # removed here — under the no-mirror model they are deleted, and the
-    # per-entry trees they become are covered by the `backlog/` +
-    # `changelog/` entries in `_PM_ONLY_PERMITTED_PREFIXES` below.
+_PACK_CHAT_ONLY_PERMITTED_PATHS = {
+    # BD-209 (A13 fold): `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md` are
+    # pack-chat-only-permitted Files: they exist on disk as Pack-Chat-edited
+    # monoliths until BD-203 Commit 2 deletes them (and re-removes them from
+    # this set in the same atomic commit). Restored here by BD-209 — the
+    # BD-203 Commit-1 A13 removal was premature.
+    "pack-ops/BACKLOG.md",
+    "pack-ops/CHANGELOG.md",
     "README.md",
     "pack-ops/PACK-CHAT.md",
     "pack-ops/PACK-AGENTS.md",
@@ -3754,9 +3757,9 @@ _PM_ONLY_PERMITTED_PATHS = {
     "project-template/GEMINI.md",
 }
 
-# PM-only PERMITTED-PATH PREFIXES — the per-entry tree directories per
-# `pack-ops/PACK-AGENTS.md` § "PM-only files and directories" Directories list.
-_PM_ONLY_PERMITTED_PREFIXES = (
+# pack-chat-only PERMITTED-PATH PREFIXES — the per-entry tree directories per
+# `pack-ops/PACK-AGENTS.md` § "pack-chat-only files and directories" Directories list.
+_PACK_CHAT_ONLY_PERMITTED_PREFIXES = (
     "backlog/",
     "changelog/",
     "project-template/docs/project/backlog/",
@@ -3905,19 +3908,19 @@ def _is_project_side_path(path: str) -> bool:
     return path.startswith(_PROJECT_SIDE_PATH_PREFIXES)
 
 
-def _is_pm_only_permitted(path: str) -> bool:
-    """A path is PM-only-permitted if it appears in the canonical Files
-    list OR under one of the canonical PM-only directory prefixes."""
-    if path in _PM_ONLY_PERMITTED_PATHS:
+def _is_pack_chat_only_permitted(path: str) -> bool:
+    """A path is pack-chat-only-permitted if it appears in the canonical Files
+    list OR under one of the canonical pack-chat-only directory prefixes."""
+    if path in _PACK_CHAT_ONLY_PERMITTED_PATHS:
         return True
-    return path.startswith(_PM_ONLY_PERMITTED_PREFIXES)
+    return path.startswith(_PACK_CHAT_ONLY_PERMITTED_PREFIXES)
 
 
 def check_commit_scope_honesty() -> None:
     """Check 36 — commit-scope honesty (BD-175 M5a per Architect C §8.1).
 
     For every commit in the walk range, parse the commit subject for scope
-    keywords (`pack-only`, `project-only`, `PM-only` / `pack-memory-only`)
+    keywords (`pack-only`, `project-only`, `pack-chat-only`)
     and verify the commit's touched paths match the claimed scope.
 
     Failure modes:
@@ -3925,9 +3928,9 @@ def check_commit_scope_honesty() -> None:
         or `supporting-docs/`.
       - Subject claims `project-only` but commit touches paths outside
         `project-template/` + `supporting-docs/`.
-      - Subject claims `PM-only` / `pack-memory-only` but commit touches
-        any path NOT in the PM-only permitted-paths list (per
-        `pack-ops/PACK-AGENTS.md` § "PM-only files and directories" + the
+      - Subject claims `pack-chat-only` but commit touches
+        any path NOT in the pack-chat-only permitted-paths list (per
+        `pack-ops/PACK-AGENTS.md` § "pack-chat-only files and directories" + the
         per-entry directory block).
 
     Implicit-scope commits (no keyword) are skipped — keyword opt-in per
@@ -3947,8 +3950,10 @@ def check_commit_scope_honesty() -> None:
         is_project_only = _subject_has_keyword(
             subject, _SCOPE_KEYWORDS_PROJECT_ONLY
         )
-        is_pm_only = _subject_has_keyword(subject, _SCOPE_KEYWORDS_PM_ONLY)
-        if not (is_pack_only or is_project_only or is_pm_only):
+        is_pack_chat_only = _subject_has_keyword(
+            subject, _SCOPE_KEYWORDS_PACK_CHAT_ONLY
+        )
+        if not (is_pack_only or is_project_only or is_pack_chat_only):
             skipped += 1
             continue
         paths = _commit_paths(sha)
@@ -3979,16 +3984,16 @@ def check_commit_scope_honesty() -> None:
                     + (f" (+ {len(offenders) - 8} more)" if len(offenders) > 8 else "")
                 )
                 any_failed = True
-        if is_pm_only:
-            offenders = [p for p in paths if not _is_pm_only_permitted(p)]
+        if is_pack_chat_only:
+            offenders = [p for p in paths if not _is_pack_chat_only_permitted(p)]
             if offenders:
                 fail(
-                    f"Commit {short_sha} subject claims `PM-only` but "
-                    f"touches non-PM-only paths: "
+                    f"Commit {short_sha} subject claims `pack-chat-only` but "
+                    f"touches non-pack-chat-only paths: "
                     + ", ".join(offenders[:8])
                     + (f" (+ {len(offenders) - 8} more)" if len(offenders) > 8 else "")
-                    + " (PM-only permitted set per pack-ops/PACK-AGENTS.md "
-                    "§ 'PM-only files and directories')"
+                    + " (pack-chat-only permitted set per pack-ops/PACK-AGENTS.md "
+                    "§ 'pack-chat-only files and directories')"
                 )
                 any_failed = True
 
@@ -4524,7 +4529,7 @@ def check_pack_only_file_siting() -> None:
         if path.name in {"README.md", "QUICKSTART.md", "LICENSE", "Makefile"}:
             continue
         # Skip trinity at pack root (pack-root CLAUDE/AGENTS/GEMINI are
-        # PM-only operating rules and legitimately reference pack-only
+        # pack-chat-only operating rules and legitimately reference pack-only
         # mechanisms — they ARE pack-only by audience).
         if path.name in {"CLAUDE.md", "AGENTS.md", "GEMINI.md"}:
             continue

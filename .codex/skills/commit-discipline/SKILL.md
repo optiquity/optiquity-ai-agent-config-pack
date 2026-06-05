@@ -1,6 +1,6 @@
 ---
 name: commit-discipline
-description: Use at the start of every pack agent run. Codifies pre-flight checks, the write-target rule (under pwd only), the absolute git-state-change ban, PM-only file boundaries, and the trinity rule cross-reference.
+description: Use at the start of every pack agent run. Codifies pre-flight checks, the write-target rule (under pwd only), the absolute git-state-change ban, pack-chat-only file boundaries, and the trinity rule cross-reference.
 allowed-tools: Read, Bash
 ---
 
@@ -104,7 +104,7 @@ and write the situation into the implementation report under section 6
 either wrong or the agent is misreading it; either way the resolution
 is Pack Chat's, not the agent's.
 
-## 4. PM-only file boundaries
+## 4. pack-chat-only file boundaries
 
 Without explicit caller instruction in the prompt, the following files
 are OFF-LIMITS to all pack agents:
@@ -124,12 +124,12 @@ are OFF-LIMITS to all pack agents:
 
 "Explicit caller instruction" means the prompt names the file AND the
 section/lines/changes. A vague "you may need to update related docs"
-does not authorize a PM-only edit.
+does not authorize a pack-chat-only edit.
 
-If the prompt's stated goal seems to require a PM-only edit but the
+If the prompt's stated goal seems to require a pack-chat-only edit but the
 prompt does not authorize one, surface the gap as a POQ in the report
 and proceed with the non-PM portion of the work. Do not silently edit
-the PM-only file.
+the pack-chat-only file.
 
 ## 5. Trinity rule cross-reference
 
@@ -165,7 +165,7 @@ frontmatter) but identical prose.
   worktree write rejected once → wrong path; re-issue under the
   worktree.
 - Updating `pack-ops/BACKLOG.md` to flip a Status field after a successful test
-  run → PM-only, forbidden by section 4. Pack Chat does the flip after
+  run → pack-chat-only, forbidden by section 4. Pack Chat does the flip after
   review.
 - Editing `CLAUDE.md` with a "minor clarification" without touching
   `AGENTS.md` and `GEMINI.md` → trinity violation, defect.

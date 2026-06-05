@@ -47,7 +47,7 @@ required = [
     '_subject_has_keyword',
     '_is_pack_only_path',
     '_is_project_side_path',
-    '_is_pm_only_permitted',
+    '_is_pack_chat_only_permitted',
     '_context_has_anchor',
     '_read_boundary_exempt_root',
 ]
@@ -91,53 +91,59 @@ def assert_match(subject, keywords, expected, label):
 assert_match("feat: pack-only — internal cleanup", mod._SCOPE_KEYWORDS_PACK_ONLY, True, "T1")
 # T2: project-only keyword detected
 assert_match("feat: project-only — coder.md update", mod._SCOPE_KEYWORDS_PROJECT_ONLY, True, "T2")
-# T3: PM-only keyword detected (both forms)
-assert_match("docs: PM-only — BACKLOG update", mod._SCOPE_KEYWORDS_PM_ONLY, True, "T3a")
-assert_match("docs: pack-memory-only — trinity edit", mod._SCOPE_KEYWORDS_PM_ONLY, True, "T3b")
+# T3: pack-chat-only keyword detected; retired tokens NOT recognized
+assert_match("docs: pack-chat-only — governance edit", mod._SCOPE_KEYWORDS_PACK_CHAT_ONLY, True, "T3c")
+assert_match("docs: PM-only — BACKLOG update", mod._SCOPE_KEYWORDS_PACK_CHAT_ONLY, False, "T3d: retired pm-only NOT recognized — Check 36 SKIPS, not reject")
+assert_match("docs: pack-memory-only — trinity edit", mod._SCOPE_KEYWORDS_PACK_CHAT_ONLY, False, "T3e: retired pack-memory-only NOT recognized")
 # T4: no keyword — implicit scope (all return False)
 assert_match("feat: BD-175 cross-surface work", mod._SCOPE_KEYWORDS_PACK_ONLY, False, "T4a")
 assert_match("feat: BD-175 cross-surface work", mod._SCOPE_KEYWORDS_PROJECT_ONLY, False, "T4b")
-assert_match("feat: BD-175 cross-surface work", mod._SCOPE_KEYWORDS_PM_ONLY, False, "T4c")
+assert_match("feat: BD-175 cross-surface work", mod._SCOPE_KEYWORDS_PACK_CHAT_ONLY, False, "T4c")
 # T5: keyword embedded in a larger word should NOT match (boundary anchor)
 assert_match("feat: pack-only-ish thing", mod._SCOPE_KEYWORDS_PACK_ONLY, False, "T5 (embedded)")
+# T5b/T5c: pack-chat-only must NOT collide with pack-only (either direction)
+assert_match("feat: vN — BD-209 rename (pack-chat-only)", mod._SCOPE_KEYWORDS_PACK_ONLY, False, "T5b: pack-only kw does NOT fire on a pack-chat-only subject")
+assert_match("feat: thing (pack-only)", mod._SCOPE_KEYWORDS_PACK_CHAT_ONLY, False, "T5c: pack-chat-only kw does NOT fire on a pack-only subject")
+# T5d: pack-chat-only embedded in a larger word should NOT match
+assert_match("feat: pack-chat-only-ish thing", mod._SCOPE_KEYWORDS_PACK_CHAT_ONLY, False, "T5d: embedded")
 
-# Scope-rule tests: PM-only PERMITTED-PATHS
-# T6: project-template trinity IS PM-only-permitted (B1 cascade fix)
+# Scope-rule tests: pack-chat-only PERMITTED-PATHS
+# T6: project-template trinity IS pack-chat-only-permitted (B1 cascade fix)
 def assert_pm(path, expected, label):
-    actual = mod._is_pm_only_permitted(path)
+    actual = mod._is_pack_chat_only_permitted(path)
     if actual != expected:
         failures.append(f"{label}: path={path!r} expected={expected} actual={actual}")
 
 assert_pm("project-template/CLAUDE.md", True, "T6a")
 assert_pm("project-template/AGENTS.md", True, "T6b")
 assert_pm("project-template/GEMINI.md", True, "T6c")
-# BD-203 A13: `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md` are NO
-# LONGER PM-only-permitted FILES — under the no-mirror model they are
-# deleted; the per-entry trees they become (`backlog/`, `changelog/`)
-# are covered by the PERMITTED-PREFIXES (see T8a/T8b below). The former
-# T6d/T6e file asserts are removed accordingly.
-assert_pm("pack-ops/BACKLOG.md", False, "T6d")
-assert_pm("pack-ops/CHANGELOG.md", False, "T6e")
+# BD-209 (A13 fold): `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md` are
+# pack-chat-only-permitted Files: they exist on disk as Pack-Chat-edited
+# monoliths until BD-203 Commit 2 deletes them (and re-removes them from
+# the permitted set in the same atomic commit). Restored by BD-209 — the
+# BD-203 Commit-1 A13 removal was premature.
+assert_pm("pack-ops/BACKLOG.md", True, "T6d")
+assert_pm("pack-ops/CHANGELOG.md", True, "T6e")
 assert_pm("pack-ops/PACK-CHAT.md", True, "T6f")
 assert_pm("pack-ops/PACK-AGENTS.md", True, "T6g")
 assert_pm("README.md", True, "T6h")
 assert_pm("CLAUDE.md", True, "T6i")  # pack-root trinity
-# T6j: BD-198 — PACK-MEMORY-RATIONALE.md IS PM-only-permitted (rule↔rationale
+# T6j: BD-198 — PACK-MEMORY-RATIONALE.md IS pack-chat-only-permitted (rule↔rationale
 #   bijection partner of trinity `## Pack memory`; edited only in lockstep with
-#   rule changes). Positive case: a PM-only commit touching the rationale doc
-#   passes Check 36. Mirrors the PACK-AGENTS.md § "PM-only files and
+#   rule changes). Positive case: a pack-chat-only commit touching the rationale doc
+#   passes Check 36. Mirrors the PACK-AGENTS.md § "pack-chat-only files and
 #   directories" Files-list SSOT.
 assert_pm("pack-ops/PACK-MEMORY-RATIONALE.md", True, "T6j")
 # T6k: BD-198 negative control — a non-permitted pack-ops/ file is NOT
-#   PM-only-permitted, so a PM-only commit touching it is still flagged as
+#   pack-chat-only-permitted, so a pack-chat-only commit touching it is still flagged as
 #   an offender by Check 36. Confirms the rationale-doc addition is exact
 #   (one path), not a broad pack-ops/ allowance.
 assert_pm("pack-ops/NOT-PM.md", False, "T6k")
-# T7: supporting-docs is NOT PM-only-permitted (the V2-shape fixture)
+# T7: supporting-docs is NOT pack-chat-only-permitted (the V2-shape fixture)
 assert_pm("supporting-docs/CONCEPTUAL-REVIEW-METHODOLOGY.md", False, "T7a")
 assert_pm("project-template/docs/pack/PM-CHAT.md", False, "T7b")  # docs/pack, not trinity
 assert_pm("scripts/init-project.sh", False, "T7c")
-# T8: per-entry tree directories are PM-only-permitted
+# T8: per-entry tree directories are pack-chat-only-permitted
 assert_pm("backlog/BD-175.md", True, "T8a")
 assert_pm("changelog/v11.0.md", True, "T8b")
 assert_pm("project-template/docs/project/backlog/_rules.md", True, "T8c")

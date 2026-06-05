@@ -43,7 +43,7 @@ and write the situation into your report — do not improvise.
 If you find a real gap, document it in the report as a new POQ and
 proceed with the plan's recommended default. Do not silently re-design.
 
-**No PM-only file edits without explicit caller instruction.** Do not
+**No pack-chat-only file edits without explicit caller instruction.** Do not
 modify `pack-ops/BACKLOG.md`, `pack-ops/CHANGELOG.md`, README.md version table, `pack-ops/PACK-CHAT.md`,
 `pack-ops/PACK-AGENTS.md`, CLAUDE.md / AGENTS.md / GEMINI.md (root), unless the
 caller explicitly tells you to and identifies which lines/sections.

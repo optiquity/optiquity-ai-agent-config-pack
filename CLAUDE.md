@@ -75,7 +75,7 @@ the gate with a file-path callout.
 |---|---|---|
 | `pack-only` | Pack repo state only | Deny `project-template/` and `supporting-docs/` |
 | `project-only` | Project-side state only | Deny pack-only paths (everything outside `project-template/` + `supporting-docs/`) |
-| `PM-only` (or `pack-memory-only`) | Pack-Chat-direct-edit only | Per `pack-ops/PACK-AGENTS.md` § "PM-only files and directories" Files list — notably PERMITS `project-template/` trinity (CLAUDE.md / AGENTS.md / GEMINI.md at `project-template/` ARE PM-only per PACK-AGENTS.md) |
+| `pack-chat-only` | Pack-Chat-direct-edit only | Per `pack-ops/PACK-AGENTS.md` § "pack-chat-only files and directories" Files list — notably PERMITS `project-template/` trinity (CLAUDE.md / AGENTS.md / GEMINI.md at `project-template/` ARE pack-chat-only per PACK-AGENTS.md) |
 | (no keyword) | Mixed-scope implicit | Check 36 skipped (no claim to verify) |
 
 The vocabulary is intentionally small. Use no keyword for mixed-surface
@@ -373,16 +373,16 @@ PACK-AGENTS.md current".
   of the rule above — these are not fixes):
   - Memory files (`~/.claude/projects/<slug>/memory/*.md`) — Pack
     Chat's own operating state, not pack work.
-  - PM-only files (BACKLOG.md / CHANGELOG.md / README version table /
+  - pack-chat-only files (BACKLOG.md / CHANGELOG.md / README version table /
     PACK-CHAT.md / PACK-AGENTS.md / trinity ops files at pack root /
     `project-template/` trinity) — see `PACK-AGENTS.md` § "Agent
-    permission rules" for the PM-only list. PM-only IS Pack-Chat-direct
+    permission rules" for the pack-chat-only list. pack-chat-only IS Pack-Chat-direct
     by construction.
   - Pack Chat may NOT edit project-template / supporting-docs /
     maintenance-docs / scripts / fixtures / agent definitions —
     those go to pack-coder.
 - **Pack Chat does MINOR edits only; coder does every MAJOR edit and
-  everything outside the small set.** On the small PM-only set — `BACKLOG.md`,
+  everything outside the small set.** On the small pack-chat-only set — `BACKLOG.md`,
   `CHANGELOG.md`, the `README.md` version table, `PACK-CHAT.md`,
   `PACK-AGENTS.md`, the trinity `CLAUDE/AGENTS/GEMINI.md` (pack root +
   `project-template/`), `PACK-MEMORY-RATIONALE.md`, and the per-entry tree
@@ -401,8 +401,8 @@ PACK-AGENTS.md current".
   reauthoring an existing entry-ID is a substantive edit of landed content (=
   MAJOR), NOT a new authoring — the new-entry carve-out covers genuinely new IDs
   only. When in doubt between a new-entry author and an existing-content edit, it
-  is MAJOR (route to coder). Pack Chat scoping a PM-only file INTO a coder prompt
-  is the supported path for major PM-only work — it is NOT a boundary violation.
+  is MAJOR (route to coder). Pack Chat scoping a pack-chat-only file INTO a coder prompt
+  is the supported path for major pack-chat-only work — it is NOT a boundary violation.
   Pack Chat retains only:
   commits (`agents-never-commit`), irreducible user-approved destructive ops
   (deletions), and its own out-of-repo memory files. A Pack-Chat-direct edit is
@@ -418,7 +418,7 @@ PACK-AGENTS.md current".
   bulleted list at the bottom of the approval message naming the
   concrete actions Pack Chat plans to take between this commit and
   the next anticipated commit. Each step names a concrete action
-  (agent spawn + which agent; direct PM-only edit + which file; test
+  (agent spawn + which agent; direct pack-chat-only edit + which file; test
   run; etc.) — not a vague phase name. If nothing is planned beyond
   this commit, explicitly state "nothing planned." No exceptions for
   "obvious" next steps. Rationale: Pack Chat carries multi-step
@@ -441,7 +441,7 @@ PACK-AGENTS.md current".
   per-spawn user approval).
 - **Batch-scope claims are enforced by CI, not honor system.** When
   Pack Chat frames a batch as `pack-only`, `project-only`, or
-  `PM-only` in commit subjects, CI Check 36 verifies the commit diff
+  `pack-chat-only` in commit subjects, CI Check 36 verifies the commit diff
   matches the claimed scope. If a batch's work genuinely spans pack +
   project, the commit subject MUST NOT carry an exclusive scope
   keyword — use neutral framing ("BD-NNN cross-surface work") or
