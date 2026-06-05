@@ -16,9 +16,11 @@ Note what was fetched, or confirm "already up to date."
 
 ## Step 2 — Read core state files
 
-Read `pack-ops/BACKLOG.md` in full.
+Read the `/backlog/` per-entry tree (start with `/backlog/_toc.md` for
+the index, then individual `/backlog/BD-NNN.md` entries as needed).
 
-Read only the most recent dated entry from `pack-ops/CHANGELOG.md`.
+Read only the most recent release from the `/changelog/` per-entry tree
+(`/changelog/_toc.md` lists releases newest-first; read the top entry).
 
 Read the version table section from `README.md` — the table under
 `## Version History` is sorted newest-first. The first data row is the
@@ -27,11 +29,12 @@ current version.
 Read `pack-ops/PACK-CHAT.md` in full — this establishes your behavioral rules
 for this session.
 
-Pack streams under `/backlog/` and `/changelog/` are per-entry trees
-when present; read `/backlog/_rules.md` and `/changelog/_rules.md` for
-the per-stream contract before any per-entry edit. The `pack-ops/BACKLOG.md` and
-`pack-ops/CHANGELOG.md` files are regenerated mirrors of those
-per-entry trees, not source of truth.
+Pack streams under `/backlog/` and `/changelog/` are per-entry trees —
+the SOLE source of truth and readable form (each with a generated
+`_toc.md` index). Read `/backlog/_rules.md` and `/changelog/_rules.md`
+for the per-stream contract before any per-entry edit. There is no
+monolithic mirror — BD-203 deleted `pack-ops/BACKLOG.md` +
+`pack-ops/CHANGELOG.md`.
 
 ## Step 3 — Check CI tooling
 

@@ -15,7 +15,7 @@ Responsibilities:
 - Verify that every BD item in scope is fully addressed by the plan.
 - Do not invent file structures or conventions. Read the current state first.
 
-Before planning, read: CLAUDE.md (pack repo rules), `pack-ops/BACKLOG.md` (BD items in scope), README.md (repository layout — the authoritative structure reference), /backlog/_rules.md (pack per-entry tree contract), /changelog/_rules.md (pack changelog per-entry tree contract).
+Before planning, read: CLAUDE.md (pack repo rules), the `/backlog/` per-entry tree (`/backlog/_toc.md` index — BD items in scope), README.md (repository layout — the authoritative structure reference), /backlog/_rules.md (pack per-entry tree contract), /changelog/_rules.md (pack changelog per-entry tree contract).
 
 Output:
 - Goal and BD items addressed.

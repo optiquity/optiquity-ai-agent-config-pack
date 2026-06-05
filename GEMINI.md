@@ -24,11 +24,13 @@ See `README.md` (version table + Repository Layout) — authoritative reference;
 not rely on hardcoded directory listings here (structure changes between major
 versions).
 
-Key docs: `README.md` (version table), `pack-ops/BACKLOG.md` (BD-NNN items;
-regenerated mirror — per-entry source at `/backlog/`), `pack-ops/CHANGELOG.md`
-(version history; regenerated mirror — per-entry source at `/changelog/`),
+Key docs: `README.md` (version table), `/backlog/` (BD-NNN items;
+per-entry tree, sole SSOT — `/backlog/_toc.md` index), `/changelog/`
+(version history; per-entry tree, sole SSOT — `/changelog/_toc.md` index),
 `pack-ops/PACK-CHAT.md` (PM chat rules), `pack-ops/PACK-AGENTS.md` (agent routing for pack
-work). Per-entry trees: read `/backlog/_rules.md` and
+work). Per-entry trees are the SOLE SSOT + readable form (there is no
+monolithic mirror — BD-203 deleted `pack-ops/BACKLOG.md` +
+`pack-ops/CHANGELOG.md`): read `/backlog/_rules.md` and
 `/changelog/_rules.md` for the per-stream contract before any per-entry
 edit.
 
@@ -66,17 +68,17 @@ Use no keyword for mixed-surface commits — keyword opt-in.
 breaking changes or large additions. Bare major tag always floats to latest minor.
 Tag move sequence: delete local + remote, recreate, push.
 
-**BD numbering:** Always read `pack-ops/BACKLOG.md` to find the highest existing BD
+**BD numbering:** Always read the `/backlog/` tree (e.g. `/backlog/_toc.md`) to find the highest existing BD
 number, then increment by 1. Never assign a BD number from memory or
 from another chat's reservation list — reservations are not authoritative.
 
 **What agents may modify:**
 - Template files, supporting-docs/, maintenance-docs/: when task explicitly requires
-- `pack-ops/CHANGELOG.md`: only at version boundaries with explicit instruction
+- The `/changelog/` tree: only at version boundaries with explicit instruction
 - Scripts in template directories
 
 **What agents must never modify without explicit instruction:**
-- `pack-ops/BACKLOG.md`: PM chat only, after user approval
+- The `/backlog/` + `/changelog/` per-entry trees: PM chat only, after user approval
 - README.md version table: PM chat only
 - `pack-ops/PACK-CHAT.md` / CLAUDE.md / AGENTS.md / `pack-ops/PACK-AGENTS.md` / GEMINI.md: PM chat only
 
@@ -300,7 +302,7 @@ PACK-AGENTS.md current".
 
 - **What Pack Chat CAN edit directly** (this is NOT a contradiction
   of the rule above — these are not fixes):
-  - pack-chat-only files (BACKLOG.md / CHANGELOG.md / README version table /
+  - pack-chat-only files (the `/backlog/` + `/changelog/` trees / README version table /
     PACK-CHAT.md / PACK-AGENTS.md / trinity ops files at pack root /
     `project-template/` trinity) — see `PACK-AGENTS.md` § "Agent
     permission rules" for the pack-chat-only list. pack-chat-only IS Pack-Chat-direct
@@ -315,8 +317,8 @@ PACK-AGENTS.md current".
     maintenance-docs / scripts / fixtures / agent definitions —
     those go to pack-coder.
 - **Pack Chat does MINOR edits only; coder does every MAJOR edit and
-  everything outside the small set.** On the small pack-chat-only set — `BACKLOG.md`,
-  `CHANGELOG.md`, the `README.md` version table, `PACK-CHAT.md`,
+  everything outside the small set.** On the small pack-chat-only set — the
+  `/backlog/` + `/changelog/` trees, the `README.md` version table, `PACK-CHAT.md`,
   `PACK-AGENTS.md`, the trinity `CLAUDE/AGENTS/GEMINI.md` (pack root +
   `project-template/`), `PACK-MEMORY-RATIONALE.md`, and the per-entry tree
   directories (`/backlog/`, `/changelog/`, `project-template/docs/project/
@@ -395,28 +397,31 @@ PACK-AGENTS.md current".
 
 ### Repo conventions
 
-- **Per-entry trees vs mirrors — mode-dependent source of truth.**
-  In flat-file mode (the default — no `tracker.toml`, or `tracker.toml`
-  with `mode.state = "flat-file"`), the pack `/backlog/` and `/changelog/`
-  trees, and the project `docs/project/backlog/` /
-  `implementation-plan/` / `changelog/` trees, are source of truth for
-  entry content. The monolithic `BACKLOG.md` / `CHANGELOG.md` /
-  `IMPLEMENTATION-PLAN.md` files at the canonical locations are
-  regenerated mirrors — read-stable but never source of truth. In
-  tracker mode (`tracker.toml` with `mode.state = "tracker"` and
-  `migration.forward_complete = true`), the tracker (e.g., GH Issues)
-  is source of truth and BOTH the per-entry tree and the monolithic
-  mirror are regenerated from tracker state per the Mode 2 → Mode 3
-  transition contract. STATUS.md and any other convenience view carry
-  an explicit "never source of truth" disclaimer; if a convenience
-  view drifts, the per-entry tree (Mode 2) or the tracker (Mode 3)
-  wins. Read more at `<stream>/_rules.md`. `[roles: universal]`
-- **`pack-ops/BACKLOG.md` has no Resolved section.** Entries resolve in place by
-  flipping `Status: Open` to `Status: Resolved` and filling the
-  `Resolved:` line. Do not propose moving entries to a separate section.
-  `[roles: universal]`
+- **Per-entry trees — sole SSOT (pack: no mirror).**
+  The pack `/backlog/` and `/changelog/` per-entry trees (each with a
+  generated `_toc.md` index) are the **SOLE source of truth and readable
+  form** for pack entries. **There is no monolithic mirror** — BD-203
+  deleted `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md`; do not
+  recreate them. The project streams (`docs/project/backlog/` /
+  `implementation-plan/` / `changelog/`) are per-entry source of truth in
+  flat-file mode (the default — no `tracker.toml`, or `tracker.toml` with
+  `mode.state = "flat-file"`); their monolithic `BACKLOG.md` /
+  `IMPLEMENTATION-PLAN.md` / `CHANGELOG.md` files remain regenerated
+  mirrors (read-stable but never source of truth) until BD-206 retires
+  the project-side mirror. In tracker mode (`tracker.toml` with
+  `mode.state = "tracker"` and `migration.forward_complete = true`), the
+  tracker (e.g., GH Issues) is source of truth and the per-entry tree is
+  regenerated from tracker state per the Mode 2 → Mode 3 transition
+  contract. STATUS.md and any other convenience view carry an explicit
+  "never source of truth" disclaimer; if a convenience view drifts, the
+  per-entry tree (Mode 2) or the tracker (Mode 3) wins. Read more at
+  `<stream>/_rules.md`. `[roles: universal]`
+- **The `/backlog/` tree has no Resolved section.** Entries resolve in place by
+  flipping `Status: Open` to `Status: Resolved` in their per-entry file
+  (`/backlog/BD-NNN.md`) and filling the `Resolved:` line. Do not propose
+  moving entries to a separate section. `[roles: universal]`
 - **Separate pack ops from pack product.** Pack ops files (CLAUDE.md,
-  AGENTS.md, GEMINI.md, PACK-CHAT.md, PACK-AGENTS.md, BACKLOG.md, etc.)
+  AGENTS.md, GEMINI.md, PACK-CHAT.md, PACK-AGENTS.md, the `/backlog/` + `/changelog/` trees, etc.)
   are NEVER mixed into pack product files (`project-template/`,
   `supporting-docs/`). Same applies in reverse. `[roles: universal]`
 - **Project-side concepts on pack-side surfaces — deliverable-only.**

@@ -37,5 +37,5 @@ in your CLI for this content. Full docs in `QUICKSTART.md`, `README.md`,
 
 ## See also
 
-`pack-ops/PACK-CHAT.md`, `pack-ops/PACK-AGENTS.md`, `pack-ops/OPTIONAL-FEATURES.md`, `pack-ops/BACKLOG.md`,
-`pack-ops/CHANGELOG.md`.
+`pack-ops/PACK-CHAT.md`, `pack-ops/PACK-AGENTS.md`, `pack-ops/OPTIONAL-FEATURES.md`, the `/backlog/` tree,
+the `/changelog/` tree.

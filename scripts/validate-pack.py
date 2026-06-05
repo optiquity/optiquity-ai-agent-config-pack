@@ -121,14 +121,14 @@ Checks:
       cites only known skills (skill exists on disk AND is listed in
       PLATFORM-SKILLS.md) — see the in-line `[extension]` block at
       the end of `check_agent_canonical_phrases()`.
-  32. Per-entry mirror in-sync (BD-168, v11.0 per-entry split): for each
-      pack-side per-entry stream (`backlog/`, `changelog/`), the
-      regenerated mirror (`pack-ops/BACKLOG.md`, `pack-ops/CHANGELOG.md`) is byte-
-      identical to what the BD-164 mirror generator would produce from
-      the on-disk per-entry tree. Pre-checks fold per integration parent
-      §10.4: `_rules.md` exists per stream; per-entry filename
-      conformance; `_v8-resolved-archive.md` byte-stable (covered by
-      the main divergence check). SKIPs when the per-entry tree is
+  32. No pack monolith exists — Check 32′ (BD-203 no-mirror inversion of
+      the BD-168 Check 32): for each pack-side per-entry stream
+      (`backlog/`, `changelog/`), assert the former monolith
+      (`pack-ops/BACKLOG.md`, `pack-ops/CHANGELOG.md`) is ABSENT — under
+      the no-mirror model the per-entry tree (+ `_toc.md`) is the SOLE
+      source of truth; the monolith is a deleted conversion-input, NOT a
+      regenerated mirror. Also assert `_rules.md` + `_toc.md` are present
+      and per-entry filenames conform. SKIPs when the per-entry tree is
       absent (pre-BD-102 dog-food pack-self / pre-v11.0 client per §10.5).
       Pack-side scope only per §10.6 (project-side trees are validated
       by the client's CI).
@@ -140,8 +140,12 @@ Checks:
       `BD-NNN`, `TD-NNN`, `vN.M`, `phase-N[.M]` reference inside per-
       entry files resolves to a defined entry ID in the loaded streams
       (filename minus `.md` IS the ID per integration parent §10.3).
-      Self-references and references inside `_v8-resolved-archive.md`
-      are exempt per §11.3. SKIPs when no per-entry tree exists.
+      Self-references are exempt; supporting files (leading-underscore
+      basenames such as `_toc.md`) are not walked. (The former
+      `_v8-resolved-archive.md` SKIP is DEAD post-BD-203 B8 — the
+      BD-001..019 entries are now normal per-entry files, so no
+      v8-archive supporting file is emitted.) SKIPs when no per-entry
+      tree exists.
   35. Phase-task lib invariants (BD-106 / V3.3 §3 line 27): renumbered
       from Check 32 in BD-168 to make room for the per-entry split
       validators. `scripts/lib/tracker-phase-task.sh` exists;
@@ -219,8 +223,11 @@ Checks:
       empty).
   40. pack-ops/ bare cross-reference scanner (BD-179 per
       ARCHITECTURE-BD-179.md §3-§8): walks all `pack-ops/*.md` files
-      EXCEPT regenerated mirrors (`pack-ops/BACKLOG.md` /
-      `pack-ops/CHANGELOG.md`) and flags backtick-delimited filename
+      except the deleted-monolith basenames (`pack-ops/BACKLOG.md` /
+      `pack-ops/CHANGELOG.md`) — a defensive exemption retained post-BD-203
+      so the scan never matches the conversion-input monoliths (there is
+      no regenerated mirror under the no-mirror model) — and flags
+      backtick-delimited filename
       refs that lack a directory qualifier (`MIGRATION-v10-to-v11.md`
       vs `supporting-docs/MIGRATION-v10-to-v11.md`). Uses regex over a
       code-block-stripped representation of the file (code blocks
@@ -3143,10 +3150,13 @@ def check_skill_cell_consistency() -> None:
 def _list_unknown_files(stream_dir: Path, entry_regex: str,
                         known_supporting: set) -> list:
     """List basenames in `stream_dir` that are neither known supporting
-    files (e.g. `_rules.md`, `_intro.md`, `_toc.md`,
-    `_v8-resolved-archive.md`, `_format.md`) nor matching the entry
-    regex. Used by Check 32 pre-check (b) — non-conforming filenames
-    per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.4.
+    files (e.g. `_rules.md`, `_intro.md`, `_toc.md`) nor matching the
+    entry regex. Used by Check 32 pre-check (b) — non-conforming
+    filenames per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10.4.
+    (Post-BD-203 B8 there is no `_v8-resolved-archive.md` supporting
+    file — the BD-001..019 entries are now normal per-entry files — so
+    it is no longer a known-supporting basename; see the
+    `known_supporting_for` set in `check_mirror_in_sync`.)
     """
     if not stream_dir.is_dir():
         return []
@@ -3194,8 +3204,7 @@ def check_mirror_in_sync() -> None:
     # Mirrors `pe_supporting_files_known_for_stream` in
     # `scripts/lib/per-entry/_lib.sh` (kept in lockstep).
     known_supporting_for = {
-        "pack-backlog":   {"_rules.md", "_intro.md", "_toc.md",
-                           "_v8-resolved-archive.md"},
+        "pack-backlog":   {"_rules.md", "_intro.md", "_toc.md"},
         "pack-changelog": {"_rules.md", "_intro.md", "_toc.md"},
     }
 
@@ -3421,6 +3430,70 @@ CROSS_REF_RE = re.compile(
     r")\b"
 )
 
+# BD-203 FLAG-b (measure-then-bound): under per-release changelog
+# granularity (CHANGE 2) the pack-changelog defined-ID set is the set of
+# MAJOR versions (`v11`, `v10`, … — one `vN.md` per `## vN` release). A
+# point-release reference `vN.M` (e.g. `v11.0`, `v9.3`) lives INSIDE its
+# major release file's body (the H2 block carries the nested `### vN.M`
+# subsections verbatim — ARCHITECTURE-BD-203-V3.md §2.3). So a `vN.M`
+# reference RESOLVES iff its MAJOR `vN` entry is defined. This mapping is
+# sized EXACTLY to the per-release granularity decision (resolve `vN.M`
+# to `vN`); it does NOT widen the allowlist to admit unclassified hits —
+# a `vN.M` whose major `vN` is undefined still FAILs.
+_VERSION_POINT_RE = re.compile(r"^v(\d+)\.\d+(?:-[a-z0-9-]+)?$")
+
+
+def _resolves_to_defined_id(ref: str, defined_all: set,
+                            loaded_prefixes: set,
+                            highest_defined_major: int = None) -> bool:
+    """True iff `ref` resolves to a defined entry ID OR is an out-of-scope
+    cross-stream reference per the Check 34 documented contract.
+
+    Resolution paths:
+      - Direct hit in the loaded defined-ID set.
+      - (BD-203 FLAG-b) a `vN.M` point-release reference whose MAJOR
+        `vN` entry is defined (the point release lives inside the major
+        `vN.md` release file under per-release granularity). Sized
+        EXACTLY to the granularity mapping — a `vN.M` whose major is
+        undefined still FAILs.
+      - (BD-203 D1, measure-then-bound forward-ref tolerance) a `vN.M`
+        point-release reference whose MAJOR `vN` is GREATER than the
+        highest defined changelog major is a genuine FORWARD reference
+        (a version that does not exist YET — e.g. "required before
+        tagging v12.0" when the highest released major is v11). This is
+        sized EXACTLY to `major > highest-defined-major`, NOT a token
+        allowlist: a `vN.M` whose major is `<=` the highest defined but
+        undefined (an in-range gap / typo) still FAILs. When no
+        changelog major is loaded (`highest_defined_major is None`) this
+        path does not fire.
+      - (Cross-stream tolerance, §10.6 — the check's documented
+        contract) a reference whose ID-prefix belongs to a stream that
+        is NOT loaded is out of scope for this validation. A pack-side
+        run loads only the pack streams (pack-backlog ↔ pack-changelog),
+        so a `TD-` reference (project-backlog) is tolerated — the
+        project tree is not present to validate against. This makes the
+        implementation honor the docstring's "cross-stream references
+        are tolerated" clause (previously asserted but not enforced).
+    """
+    if ref in defined_all:
+        return True
+    m = _VERSION_POINT_RE.match(ref)
+    if m and f"v{m.group(1)}" in defined_all:
+        return True
+    # BD-203 D1 — measure-then-bound forward-ref tolerance: a `vN.M`
+    # whose MAJOR `vN` exceeds the highest defined changelog major is a
+    # forward reference to a version that does not exist yet (not a
+    # dangling entry-ref). Sized to `major > highest-defined` — an
+    # in-range-but-undefined major (a gap/typo) still FAILs.
+    if (m and highest_defined_major is not None
+            and int(m.group(1)) > highest_defined_major):
+        return True
+    # Cross-stream tolerance: if the ref's prefix is not among the
+    # loaded streams' prefixes, it targets an unloaded stream (§10.6).
+    if "TD-" not in loaded_prefixes and ref.startswith("TD-"):
+        return True
+    return False
+
 
 def _collect_defined_ids(stream_key: str, stream_dir: Path,
                          entry_regex: str) -> set:
@@ -3446,16 +3519,18 @@ def _collect_defined_ids(stream_key: str, stream_dir: Path,
 def _extract_references(text: str) -> list:
     """Extract (ref, line_no) pairs from `text` matching CROSS_REF_RE.
 
-    Note: the v8-archive SKIP per integration parent §11.3 is enforced
-    at the FILE level by the caller (the walk loop in
-    `check_cross_reference_integrity` skips `_v8-resolved-archive.md`
-    entirely). The earlier draft included a defensive in-text
-    `skip_v8_archive` parameter that suppressed references after any
-    line matching `^## Resolved — v\\d+\\b`; that parameter was removed
-    per BD-168 retro fix N2 because (a) the file-level skip is
-    sufficient and (b) the in-text version risked false negatives in
+    Note: post-BD-203 B8 there is no `_v8-resolved-archive.md` SKIP — the
+    BD-001..019 entries are now normal per-entry files, so no v8-archive
+    supporting file is emitted. The caller's walk loop in
+    `check_cross_reference_integrity` skips leading-underscore supporting
+    files generically (`startswith("_")`), which covers any such file
+    without a special case. (An earlier draft also carried a defensive
+    in-text `skip_v8_archive` parameter that suppressed references after
+    any line matching `^## Resolved — v\\d+\\b`; that parameter was
+    removed per BD-168 retro fix N2 because the file-level skip is
+    sufficient and the in-text version risked false negatives in
     per-entry pack-changelog files that might legitimately carry a
-    `## Resolved — v11.0` H2 in their bodies.
+    `## Resolved — v11.0` H2 in their bodies.)
     """
     refs = []
     for line_no, line in enumerate(text.splitlines(), start=1):
@@ -3482,9 +3557,12 @@ def check_cross_reference_integrity() -> None:
         file + line number + ref if the ref is not in the union of
         defined IDs across all loaded streams.
 
-      - SKIP the `_v8-resolved-archive.md` archive section (per
-        integration parent §11.3) — references inside it are
-        historical and not subject to integrity validation.
+      - Supporting files (leading-underscore basenames such as
+        `_toc.md`) are not walked. (Post-BD-203 B8 there is no
+        `_v8-resolved-archive.md` archive file — the BD-001..019 entries
+        are now normal per-entry files — so the former §11.3 archive SKIP
+        is dead; the generic leading-underscore guard covers any such
+        supporting file.)
 
     Cross-stream references are tolerated (a pack BD referencing a
     project TD is out of scope for pack-side validation per §10.6).
@@ -3519,10 +3597,41 @@ def check_cross_reference_integrity() -> None:
     for ids in defined_by_stream.values():
         defined_all |= ids
 
-    # The v8-archive SKIP per §11.3 applies to references INSIDE the
-    # `_v8-resolved-archive.md` supporting file (per-stream only;
-    # currently lives under pack-backlog).
-    v8_archive_basenames = {"_v8-resolved-archive.md"}
+    # BD-203 D1 — compute the highest defined changelog MAJOR once (the
+    # pack-changelog defined IDs are `vN`; parse the integer N from each
+    # `^v\d+$` member). Used by `_resolves_to_defined_id` to tolerate a
+    # genuine `vN.M` FORWARD reference (major > highest-defined). `None`
+    # when no changelog major is loaded (the forward-ref path then does
+    # not fire). Sized to the forward-ref category, never a token list.
+    _major_re = re.compile(r"^v(\d+)$")
+    _defined_majors = [
+        int(mm.group(1)) for did in defined_all
+        for mm in (_major_re.match(did),) if mm
+    ]
+    highest_defined_major = max(_defined_majors) if _defined_majors else None
+
+    # The ID-prefixes of the LOADED streams (for cross-stream tolerance,
+    # §10.6). A reference whose prefix is not loaded targets an unloaded
+    # stream and is out of scope. Map each loaded stream key to its
+    # reference-token prefix.
+    _stream_prefix = {
+        "pack-backlog": "BD-",
+        "pack-changelog": "v",
+        "project-backlog": "TD-",
+        "project-implementation-plan": "phase-",
+        "project-changelog": "",
+    }
+    loaded_prefixes = {
+        _stream_prefix[k] for k in defined_by_stream
+        if k in _stream_prefix
+    }
+
+    # BD-203 B8: the former `_v8-resolved-archive.md` SKIP is DEAD — the
+    # 19 BD-001..019 entries are now normal `BD-00N.md` per-entry files
+    # (pre-normalize Commit 1), so no v8-archive supporting file is
+    # emitted. Any leading-underscore supporting file is already skipped
+    # by the `startswith("_")` guard below; no special-case basename set
+    # is needed.
 
     any_dangling = False
     total_files = 0
@@ -3538,9 +3647,6 @@ def check_cross_reference_integrity() -> None:
         # _rules.md / _intro.md — those are not entry content).
         for child in sorted(stream_dir.iterdir()):
             if not child.is_file():
-                continue
-            if child.name in v8_archive_basenames:
-                # SKIP the v8 archive entirely per §11.3.
                 continue
             if child.name.startswith("_"):
                 # Other supporting files (e.g., _toc.md) — not entry
@@ -3567,7 +3673,10 @@ def check_cross_reference_integrity() -> None:
             total_refs += len(refs)
             seen_ids_this_file = set()
             for ref, line_no in refs:
-                if ref in defined_all:
+                if _resolves_to_defined_id(
+                    ref, defined_all, loaded_prefixes,
+                    highest_defined_major,
+                ):
                     continue
                 # Self-reference (a file referencing its own ID) is
                 # always defined — the ID lives in the filename.
@@ -3596,8 +3705,8 @@ def check_cross_reference_integrity() -> None:
             ok(
                 f"cross-reference integrity: {total_refs} reference(s) "
                 f"across {total_files} per-entry file(s); all resolved "
-                f"to defined IDs (or self-reference, or v8-archive "
-                f"SKIPed per §11.3)"
+                f"to defined IDs (or self-reference; leading-underscore "
+                f"supporting files are not walked)"
             )
 
 
@@ -3738,13 +3847,14 @@ _SCOPE_KEYWORDS_PACK_CHAT_ONLY = ("pack-chat-only",)
 # version-table-only narrower constraint stays a Pack Chat discipline rule
 # per the §8.1a (README.md) note in the architect doc).
 _PACK_CHAT_ONLY_PERMITTED_PATHS = {
-    # BD-209 (A13 fold): `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md` are
-    # pack-chat-only-permitted Files: they exist on disk as Pack-Chat-edited
-    # monoliths until BD-203 Commit 2 deletes them (and re-removes them from
-    # this set in the same atomic commit). Restored here by BD-209 — the
-    # BD-203 Commit-1 A13 removal was premature.
-    "pack-ops/BACKLOG.md",
-    "pack-ops/CHANGELOG.md",
+    # BD-203 Commit 2 (A13-INVERSE): `pack-ops/BACKLOG.md` +
+    # `pack-ops/CHANGELOG.md` are DELETED at BD-203 Commit 2 — the
+    # per-entry trees `/backlog/` + `/changelog/` (covered by
+    # `_PACK_CHAT_ONLY_PERMITTED_PREFIXES` below) are the sole SSOT under
+    # the no-mirror model. A `git rm`'d file cannot be a pack-chat-only
+    # permitted PATH, so the two monolith entries are removed here in
+    # lockstep with the deletion (the inverse of BD-209's A13 fold, which
+    # had restored them transiently while both files still existed).
     "README.md",
     "pack-ops/PACK-CHAT.md",
     "pack-ops/PACK-AGENTS.md",
@@ -4765,9 +4875,11 @@ def check_cmd_update_symmetry() -> None:
 
 # ── Check 40: pack-ops/ bare cross-reference scanner (BD-179) ──────────────
 #
-# Per ARCHITECTURE-BD-179.md §3-§8. Walks `pack-ops/*.md` (excluding
-# regenerated mirrors BACKLOG.md + CHANGELOG.md per §2.1 D1a) and flags
-# backtick-delimited filename refs that lack a directory qualifier.
+# Per ARCHITECTURE-BD-179.md §3-§8. Walks `pack-ops/*.md` (excluding the
+# deleted-monolith basenames BACKLOG.md + CHANGELOG.md per §2.1 D1a — a
+# defensive exemption retained post-BD-203; there is no regenerated mirror
+# under the no-mirror model) and flags backtick-delimited filename refs
+# that lack a directory qualifier.
 #
 # Detection: P1 (bullet) + P2 (prose) + P3 (table) + P5 (hyperlink) regex
 # patterns over a code-block-stripped representation per §3 D2. The first
@@ -7291,7 +7403,10 @@ def main() -> None:
     check_sanctioned_pack_side_shipped()
     # ── BD-195 (C6): JC-5 soft-advisory removed-doc guard. Lands LAST —
     # it is SOFT (WARN-only; never appends to `failures`, never changes
-    # the exit code) and scoped to the two regenerated mirrors, so it
+    # the exit code) and scoped to the per-entry trees (`/backlog/` +
+    # `/changelog/` per BD-203 A12 `_REMOVED_DOC_SCAN_DIRS`, where the
+    # accurate-history citations relocated when the monoliths were
+    # deleted — no regenerated mirror under the no-mirror model), so it
     # neither gates nor depends on any prior check. Per
     # PLAN-BD-195-REMEDIATION.md §C6 / §2.3 (measure-then-bound JC-5).
     check_removed_doc_advisory()

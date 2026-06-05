@@ -8,7 +8,8 @@
 #   2. Empty-tree behavior: regenerate over empty stream produces a
 #      mirror sourced from _intro.md only (no entries).
 #   3. Supporting-file admission: `_quotas.md` (unknown) is SKIP;
-#      `_v8-resolved-archive.md` (known) is emitted.
+#      `_intro.md` (known) is emitted. (BD-203 B8: the former
+#      `_v8-resolved-archive.md` positive case is retired.)
 #   4. Divergence-warning routing: interactive vs non-interactive
 #      paths exercised via PE_FORCE_OVERWRITE_MIRROR + non-TTY stdin.
 #
@@ -78,7 +79,11 @@ trap 'rm -rf "$SCRATCH_ROOT"' EXIT INT TERM
 # Fixture helpers
 # ─────────────────────────────────────────────────────────────────
 
-# Build a synthetic pack-backlog mirror (3 entries + intro + v8 archive).
+# Build a synthetic pack-backlog mirror (3 entries + intro).
+# BD-203 B8: no trailing v8 archive — `_v8-resolved-archive.md` is
+# retired from the pack-backlog stream (the 19 v8 table rows are now
+# real entries), so the round-trip fixture exercises entries + intro
+# only.
 # $1 = output file path
 fixture_pack_backlog_mirror() {
     cat >"$1" <<'EOF'
@@ -121,19 +126,10 @@ Resolved: 2026-05-13 — sample resolution narrative.
 **BD-102 — Sample third entry, deferred**
 Type: TODO(version)
 Status: Deferred
-Blockers: v12.0
+Blockers: BD-101
 Unblocks: None
 File/Symbol: n/a
 Description: Deferred to a later version.
-
----
-
-## Resolved — v8 (March 2026)
-
-Legacy v8 historical block — frozen.
-
-- v8.0 — Initial release (2026-03-01).
-- v8.1 — Bugfix release (2026-03-15).
 EOF
 }
 
@@ -154,18 +150,10 @@ The v11.0 implementation surface.
 EOF
 }
 
-# Build the synthetic _v8 archive (the trailing frozen-historical block).
-# $1 = output _v8-resolved-archive.md path
-fixture_pack_backlog_v8_archive() {
-    cat >"$1" <<'EOF'
-## Resolved — v8 (March 2026)
-
-Legacy v8 historical block — frozen.
-
-- v8.0 — Initial release (2026-03-01).
-- v8.1 — Bugfix release (2026-03-15).
-EOF
-}
+# (BD-203 B8) The synthetic `_v8-resolved-archive.md` fixture builder is
+# RETIRED — `_v8-resolved-archive.md` is no longer a pack-backlog
+# supporting file (the 19 v8 summary-table rows are now real `BD-00N.md`
+# entries after the pre-normalize step).
 
 # Build the synthetic _rules.md declaring supporting files.
 # $1 = output _rules.md path
@@ -184,7 +172,6 @@ Write authority: PACK-CHAT.md (Pack Chat) + METHODOLOGY.md Part 7
 - `_rules.md`
 - `_intro.md`
 - `_toc.md`
-- `_v8-resolved-archive.md`
 EOF
 }
 
@@ -235,8 +222,12 @@ assert_eq "1.5 project-changelog mirror filename" "docs/project/CHANGELOG.md" "$
 # BD-203 A4: pack-backlog entry regex admits the suffix form.
 assert_eq "1.6 pack-backlog entry regex"  "^BD-[0-9]+[a-z]*\.md$" "$(pe_entry_regex_for_stream pack-backlog)"
 assert_eq "1.7 project-backlog entry regex" "^TD-[0-9]+\.md$" "$(pe_entry_regex_for_stream project-backlog)"
-assert_eq "1.8 pack-backlog known supporting includes _v8-resolved-archive.md" \
-    "yes" "$(pe_supporting_files_known_for_stream pack-backlog | grep -q '_v8-resolved-archive.md' && echo yes || echo no)"
+# BD-203 B8: the pack-backlog stream NO LONGER carries
+# `_v8-resolved-archive.md` — the 19 v8 summary-table rows (BD-001..019)
+# are now real `BD-00N.md` entries (pre-normalize Commit 1), so the
+# archive supporting file is retired from the pack-backlog support set.
+assert_eq "1.8 pack-backlog known supporting EXCLUDES _v8-resolved-archive.md (BD-203 B8)" \
+    "no" "$(pe_supporting_files_known_for_stream pack-backlog | grep -q '_v8-resolved-archive.md' && echo yes || echo no)"
 assert_eq "1.9 project-changelog known supporting includes _format.md" \
     "yes" "$(pe_supporting_files_known_for_stream project-changelog | grep -q '_format.md' && echo yes || echo no)"
 
@@ -302,13 +293,13 @@ mkdir -p "$PB_DIR"
 # Build the input mirror.
 fixture_pack_backlog_mirror "$PB_ROOT/BACKLOG.md"
 
-# Set up the per-entry tree directory with intro + _v8 archive +
-# _rules.md so the mirror generator can re-emit the byte-identical
-# mirror. (The decompose helper does NOT write supporting files;
-# that is BD-167's job. For the round-trip test we pre-populate
-# them — same as the post-migration state will be.)
+# Set up the per-entry tree directory with intro + _rules.md so the
+# mirror generator can re-emit the byte-identical mirror. (The decompose
+# helper does NOT write supporting files; that is BD-167's job. For the
+# round-trip test we pre-populate them — same as the post-migration
+# state will be.) BD-203 B8: no `_v8-resolved-archive.md` — retired from
+# the pack-backlog stream.
 fixture_pack_backlog_intro "$PB_DIR/_intro.md"
-fixture_pack_backlog_v8_archive "$PB_DIR/_v8-resolved-archive.md"
 fixture_pack_backlog_rules "$PB_DIR/_rules.md"
 
 # Save a baseline copy of the mirror for byte-identity comparison.
@@ -413,7 +404,11 @@ assert_eq "6.2 empty-tree mirror does NOT contain BD- entries" \
     "no" "$(printf '%s' "$EMPTY_OUT" | grep -q '^\*\*BD-' && echo yes || echo no)"
 
 # ─────────────────────────────────────────────────────────────────
-# Group 7: supporting-file admission (`_quotas.md` SKIP, `_v8-resolved-archive.md` emitted)
+# Group 7: supporting-file admission (`_quotas.md` SKIP, `_intro.md` emitted)
+# BD-203 B8: this group exercises the admitted ∩ known intersection
+# logic. The former positive case used `_v8-resolved-archive.md`, which
+# is retired from the pack-backlog known set; the known basename
+# `_intro.md` is used instead (unchanged intersection semantics).
 # ─────────────────────────────────────────────────────────────────
 
 printf "\n=== Group 7: supporting-file admission ===\n"
@@ -422,11 +417,10 @@ SF_ROOT="$SCRATCH_ROOT/supporting-files"
 SF_DIR="$SF_ROOT/backlog"
 mkdir -p "$SF_DIR"
 fixture_pack_backlog_intro "$SF_DIR/_intro.md"
-fixture_pack_backlog_v8_archive "$SF_DIR/_v8-resolved-archive.md"
 
 # _rules.md ADMITS an unknown supporting file `_quotas.md` plus the
-# known _v8-resolved-archive.md. The helpers should SKIP the unknown
-# basename per integration parent §7.5 final paragraph.
+# known `_intro.md`. The helpers should SKIP the unknown basename per
+# integration parent §7.5 final paragraph and keep the known one.
 cat >"$SF_DIR/_rules.md" <<'EOF'
 # Per-stream contract — pack-backlog (extended for test 7)
 
@@ -435,7 +429,6 @@ cat >"$SF_DIR/_rules.md" <<'EOF'
 - `_rules.md`
 - `_intro.md`
 - `_toc.md`
-- `_v8-resolved-archive.md`
 - `_quotas.md`
 EOF
 
@@ -447,13 +440,12 @@ echo "## Quotas (synthetic — should NOT appear in mirror)" >"$SF_DIR/_quotas.m
 EFFECTIVE=$(pe_supporting_files_effective pack-backlog "$SF_DIR")
 assert_eq "7.1 effective set excludes unknown _quotas.md" \
     "no" "$(printf '%s' "$EFFECTIVE" | tr ' ' '\n' | grep -Fxq '_quotas.md' && echo yes || echo no)"
-assert_eq "7.2 effective set includes known _v8-resolved-archive.md" \
-    "yes" "$(printf '%s' "$EFFECTIVE" | tr ' ' '\n' | grep -Fxq '_v8-resolved-archive.md' && echo yes || echo no)"
+assert_eq "7.2 effective set includes known _intro.md (BD-203 B8)" \
+    "yes" "$(printf '%s' "$EFFECTIVE" | tr ' ' '\n' | grep -Fxq '_intro.md' && echo yes || echo no)"
 
-# Regenerate; the mirror should contain v8 archive content but NOT _quotas.md content.
+# Regenerate; the mirror should contain the intro content but NOT _quotas.md content.
 per_entry_regenerate_mirror pack-backlog "$SF_DIR" "$SF_ROOT/BACKLOG.md" 2>/dev/null
 SF_MIRROR_OUT=$(cat "$SF_ROOT/BACKLOG.md")
-assert_contains "7.3 mirror contains v8 archive content" "$SF_MIRROR_OUT" "Resolved — v8 (March 2026)"
 assert_eq "7.4 mirror does NOT contain _quotas.md content" \
     "no" "$(printf '%s' "$SF_MIRROR_OUT" | grep -q 'Quotas (synthetic' && echo yes || echo no)"
 
@@ -467,7 +459,6 @@ DW_ROOT="$SCRATCH_ROOT/divergence"
 DW_DIR="$DW_ROOT/backlog"
 mkdir -p "$DW_DIR"
 fixture_pack_backlog_intro "$DW_DIR/_intro.md"
-fixture_pack_backlog_v8_archive "$DW_DIR/_v8-resolved-archive.md"
 fixture_pack_backlog_rules "$DW_DIR/_rules.md"
 
 # Build a baseline mirror via the regenerator (so we know the

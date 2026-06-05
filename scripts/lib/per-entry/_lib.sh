@@ -86,7 +86,7 @@ pe__stream_attr() {
                 # BD-203 A4: admit the suffix form (`BD-167b.md`,
                 # `BD-169b.md`) — sized to exactly the 2 suffix entries.
                 entry-regex) printf '^BD-[0-9]+[a-z]*\.md$' ;;
-                support) printf '_rules.md _intro.md _toc.md _v8-resolved-archive.md' ;;
+                support) printf '_rules.md _intro.md _toc.md' ;;
                 dir-suffix) printf 'backlog' ;;
             esac
             ;;
@@ -206,7 +206,6 @@ pe_stream_for_path() {
 #     - `_rules.md`
 #     - `_intro.md`
 #     - `_toc.md`
-#     - `_v8-resolved-archive.md`
 #
 # Lines outside this section are ignored. Backticks optional. Each
 # bullet item names a single basename. Empty lines OK.

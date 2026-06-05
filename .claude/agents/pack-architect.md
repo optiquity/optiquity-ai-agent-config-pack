@@ -24,7 +24,7 @@ Before making any design recommendation, read:
 - CLAUDE.md (pack repo rules and structure reference)
 - `pack-ops/PACK-AGENTS.md` (agent routing table)
 - README.md (version history and repository layout)
-- `pack-ops/BACKLOG.md` (open BD items and their constraints)
+- `/backlog/` per-entry tree (`/backlog/_toc.md` index — open BD items and their constraints)
 - /backlog/_rules.md (pack per-entry tree contract)
 - /changelog/_rules.md (pack changelog per-entry tree contract)
 

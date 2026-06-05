@@ -109,8 +109,8 @@ is Pack Chat's, not the agent's.
 Without explicit caller instruction in the prompt, the following files
 are OFF-LIMITS to all pack agents:
 
-- `pack-ops/BACKLOG.md`
-- `pack-ops/CHANGELOG.md`
+- the `/backlog/` per-entry tree
+- the `/changelog/` per-entry tree
 - `README.md` (specifically the version table; other sections are also
   off-limits unless the prompt names them)
 - `pack-ops/PACK-CHAT.md`
@@ -164,7 +164,7 @@ frontmatter) but identical prose.
 - Writing the implementation report to `/tmp/<file>.md` because the
   worktree write rejected once → wrong path; re-issue under the
   worktree.
-- Updating `pack-ops/BACKLOG.md` to flip a Status field after a successful test
+- Updating `/backlog/BD-NNN.md` to flip a Status field after a successful test
   run → pack-chat-only, forbidden by section 4. Pack Chat does the flip after
   review.
 - Editing `CLAUDE.md` with a "minor clarification" without touching

@@ -196,4 +196,4 @@ that is a migrator defect — file a BD with both reports attached.
 - `supporting-docs/MIGRATION-v10-to-v11.md` — the actual migration narrative.
 - `MERGE-STRATEGY.md` — per-file customization-preservation matrix.
 - `scripts/dry-run-migration.sh --help` — canonical flag listing.
-- `BACKLOG.md` — BD-114 (harness implementation), BD-125 (this doc).
+- `/backlog/` — BD-114 (harness implementation), BD-125 (this doc).

@@ -130,7 +130,7 @@ backends (Forgejo / Linear / Jira) plug in via the TrackerProvider
 abstraction in `scripts/lib/tracker-provider.sh` but are not implemented
 in v11.
 
-**What it is** — moves issue tracking out of `BACKLOG.md` flat-file
+**What it is** — moves issue tracking out of the `/backlog/` flat-file
 format into GitHub Issues (or another tracker), with a one-shot forward
 migration (`pack tracker init`) and idempotent reverse
 (`pack tracker disable`) for opt-out or backup. Adds an inflection-point
@@ -200,7 +200,7 @@ bash scripts/pack-tracker.sh disable
 ```
 
 `disable` runs the reverse migration internally: it reads live issue
-state, writes a sidecar `BACKLOG.md` from current issues, and flips
+state, writes a sidecar `docs/project/backlog/` tree from current issues, and flips
 `tracker.toml`'s `mode.state` back to flat-file. Atomic — restores
 backup on failure. Idempotent — safe to re-run. After `disable`, the
 flat-file tracking workflow resumes; existing issues remain on GitHub

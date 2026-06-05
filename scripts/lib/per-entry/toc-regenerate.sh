@@ -237,8 +237,13 @@ ordered_groups = order_groups(key, group_order)
 def entry_sort_key(key, entry_tuple):
     filename, entry_id, title = entry_tuple
     if key in ("pack-backlog", "project-backlog"):
-        # By numeric ID ascending.
-        m = re.match(r"^[A-Z]+-(\d+)$", entry_id)
+        # By numeric ID ascending. BD-203 B9: admit the suffix form
+        # (`BD-167b`) so a suffix entry sorts ADJACENT to its base ID
+        # within its status group (the captured group is the numeric
+        # part; the suffix letters are non-capturing). Without the
+        # `[a-z]*` the regex returns 0 for a suffix ID, sending it to
+        # the group top.
+        m = re.match(r"^[A-Z]+-(\d+)[a-z]*$", entry_id)
         return int(m.group(1)) if m else 0
     if key == "pack-changelog":
         # BD-203 CHANGE 2 — per-release granularity: each major-version

@@ -358,7 +358,7 @@ that govern project-side semantics.
 **FORBIDDEN:** pack-root form admitting `td` / `phase-epic-skeleton` /
 `phase-task-skeleton` wi-type options (pack doesn't file TDs or phase-skeletons
 against itself); `pack-ops/` files referencing project-side TD entries
-operationally (pack-ops uses BDs in `BACKLOG.md` and batch labels in
+operationally (pack-ops uses BDs in `/backlog/` and batch labels in
 `maintenance-docs/v11-implementation/EXECUTION-PLAN-V11.0.md`); pack-root
 configs (`.claude/`, `.codex/`,
 `.gemini/` at pack-root) using project-side concepts for pack-self-management.

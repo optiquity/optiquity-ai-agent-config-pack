@@ -44,11 +44,11 @@ If you find a real gap, document it in the report as a new POQ and
 proceed with the plan's recommended default. Do not silently re-design.
 
 **No pack-chat-only file edits without explicit caller instruction.** Do not
-modify `pack-ops/BACKLOG.md`, `pack-ops/CHANGELOG.md`, README.md version table, `pack-ops/PACK-CHAT.md`,
+modify the `/backlog/` + `/changelog/` per-entry trees, README.md version table, `pack-ops/PACK-CHAT.md`,
 `pack-ops/PACK-AGENTS.md`, CLAUDE.md / AGENTS.md / GEMINI.md (root), unless the
 caller explicitly tells you to and identifies which lines/sections.
 
-**No BD status flips.** `pack-ops/BACKLOG.md` `Status:` flips happen post-review
+**No BD status flips.** `/backlog/BD-NNN.md` `Status:` flips happen post-review
 in Pack Chat, not during implementation.
 
 # Required report contents

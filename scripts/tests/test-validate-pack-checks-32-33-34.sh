@@ -168,10 +168,11 @@ PYEOF
 # Materialize a green pack-backlog per-entry tree under <scratch_repo>:
 #   <scratch_repo>/backlog/_rules.md
 #   <scratch_repo>/backlog/_intro.md
-#   <scratch_repo>/backlog/_v8-resolved-archive.md
 #   <scratch_repo>/backlog/BD-100.md, BD-101.md, BD-102.md
-#   <scratch_repo>/BACKLOG.md  (regenerated mirror)
 #   <scratch_repo>/backlog/_toc.md  (regenerated TOC)
+# BD-203 B8: no `_v8-resolved-archive.md` — the 19 BD-001..019 v8
+# summary-table rows are now real `BD-00N.md` entries (pre-normalize),
+# so the archive supporting file is retired from the pack-backlog stream.
 # All files use the BD-164 helpers so the on-disk shape is what the
 # helpers emit (byte-identical round-trip from the start).
 # $1 = scratch_repo path
@@ -193,7 +194,6 @@ Lifecycle states: Open, Resolved
 - `_rules.md`
 - `_intro.md`
 - `_toc.md`
-- `_v8-resolved-archive.md`
 EOF
 
     # _intro.md (preamble).
@@ -205,15 +205,6 @@ Test-fixture preamble.
 ---
 
 ## Active — v11 Scope
-EOF
-
-    # _v8-resolved-archive.md (frozen-historical block; contains a
-    # historical reference to BD-999 which does NOT exist in the
-    # current tree — exercises Check 34 §11.3 SKIP path).
-    cat >"$backlog_dir/_v8-resolved-archive.md" <<'EOF'
-## Resolved — v8 (March 2026)
-
-- v8.0 — Initial release. See BD-999 (historical, not in current tree).
 EOF
 
     # Three entry files. BD-100 references BD-101 (defined); BD-101
@@ -542,18 +533,13 @@ assert_contains "C2.2 dangling BD-555 → FAIL names BD-555" "$C2_OUT" "BD-555"
 assert_contains "C2.3 dangling BD-555 → FAIL names BD-100.md" "$C2_OUT" "BD-100.md"
 assert_contains "C2.4 dangling BD-555 → FAIL says no matching entry file" "$C2_OUT" "no matching entry file found"
 
-# C3: ref inside _v8-resolved-archive.md → check passes (archive
-# SKIPed per integration parent §11.3). The fixture's v8 archive
-# already contains "BD-999" (which is NOT defined). Confirm no FAIL
-# for BD-999 in the green run (already covered by C1 — re-assert here
-# explicitly).
-C3_REPO="$SCRATCH_ROOT/C3"
-mkdir -p "$C3_REPO"
-build_green_pack_backlog "$C3_REPO"
-C3_OUT=$(run_check check_cross_reference_integrity "$C3_REPO" 2>&1)
-C3_RC=$?
-assert_eq "C3.1 BD-999 inside v8 archive → check rc=0 (SKIPed)" "0" "$C3_RC"
-assert_not_contains "C3.2 BD-999 inside v8 archive → no FAIL for BD-999" "$C3_OUT" "BD-999"
+# C3: (RETIRED — BD-203 B8) The former C3 exercised the
+# `_v8-resolved-archive.md` SKIP path (a `BD-999` historical reference
+# inside the archive that Check 34 SKIPed per §11.3). The archive
+# supporting file is retired (the 19 v8 table rows are now real
+# `BD-00N.md` entries), so there is no archive section to SKIP and this
+# test no longer applies. Leading-underscore supporting files are still
+# skipped generically by the walk loop's `startswith("_")` guard.
 
 # C4: self-reference → check passes (BD-101 references itself in body;
 # already in the green fixture). Re-assert explicitly.
@@ -725,6 +711,104 @@ F5_OUT=$(run_check check_cross_reference_integrity "$F5_REPO" "$PACKCL_TUPLE" 2>
 F5_RC=$?
 assert_eq "F5.1 cross-stream union → Check 34 rc=0 (BD-100 resolves via pack-backlog)" "0" "$F5_RC"
 assert_not_contains "F5.2 cross-stream union → no dangling FAIL" "$F5_OUT" "FAIL:"
+
+# ─────────────────────────────────────────────────────────────────
+# Group F2: Check 34 vN.M resolution (BD-203 D1 forward-ref + FLAG-b)
+# ─────────────────────────────────────────────────────────────────
+#
+# BD-203 D1 (measure-then-bound forward-ref tolerance): a `vN.M`
+# point-release reference whose MAJOR `vN` is GREATER than the highest
+# defined changelog major is a genuine FORWARD reference (a version that
+# does not exist yet) → RESOLVES. Sized to `major > highest-defined`,
+# NOT a token allowlist: a `vN.M` whose major is `<=` the highest defined
+# but UNDEFINED (an in-range gap / typo) STILL FAILs. And the landed
+# FLAG-b mapping (`vN.M`→`vN` when the major IS defined) still resolves.
+# These exercise the pack-changelog defined-major set (the green fixture
+# defines majors {v10, v11} → highest defined major = 11).
+
+printf "\n=== Group F2: Check 34 vN.M resolution (BD-203 D1 + FLAG-b) ===\n"
+
+# F2a (D1 GREEN — forward-ref): a `vN.M` whose major (12) > highest
+# defined (11) resolves — a forward reference to an unreleased version.
+F2A_REPO="$SCRATCH_ROOT/F2a"
+mkdir -p "$F2A_REPO"
+build_green_pack_changelog "$F2A_REPO"
+# Strip the body BD-100 ref (no /backlog/ here) and add a forward `v12.0`.
+sed -i.bak 's/References BD-100 for context.//' "$F2A_REPO/changelog/v11.md"
+rm -f "$F2A_REPO/changelog/v11.md.bak"
+printf '\n- Required before tagging v12.0 (forward reference).\n' \
+    >>"$F2A_REPO/changelog/v11.md"
+F2A_OUT=$(run_check check_cross_reference_integrity "$F2A_REPO" "$PACKCL_TUPLE" 2>&1)
+F2A_RC=$?
+assert_eq "F2a.1 forward-ref v12.0 (major>highest) resolves → rc=0" "0" "$F2A_RC"
+assert_not_contains "F2a.2 forward-ref v12.0 → no dangling FAIL" "$F2A_OUT" "references v12.0"
+
+# F2b (D1 RED — in-range gap): construct a changelog defining majors
+# {v9, v11} (a GAP at v10), then reference `v10.0`. v10 is undefined and
+# 10 <= highest-defined (11), so the forward-ref path does NOT fire and
+# the reference STILL FAILs as a dangling/gap ref (the measure-then-bound
+# boundary — the tolerance never swallows an in-range undefined major).
+F2B_REPO="$SCRATCH_ROOT/F2b"
+mkdir -p "$F2B_REPO/changelog"
+cat >"$F2B_REPO/changelog/_rules.md" <<'EOF'
+# Per-stream contract — pack-changelog (test fixture)
+
+Stream identity: pack-changelog
+Filename convention: ^v\d+\.md$
+Lifecycle states: none (versions are immutable post-ship)
+
+The per-entry tree (+ `_toc.md`) is the SOLE source of truth and
+readable form. There is no monolithic mirror.
+
+## Supporting files
+
+- `_rules.md`
+- `_intro.md`
+- `_toc.md`
+EOF
+cat >"$F2B_REPO/changelog/_intro.md" <<'EOF'
+# Changelog (test fixture)
+
+Test-fixture preamble.
+
+---
+EOF
+cat >"$F2B_REPO/changelog/v11.md" <<'EOF'
+<!-- per-entry source: /changelog/v11.md; contract: /changelog/_rules.md -->
+## v11 — May 2026
+
+- Initial v11 release. Backport noted in v10.0 (in-range gap).
+EOF
+cat >"$F2B_REPO/changelog/v9.md" <<'EOF'
+<!-- per-entry source: /changelog/v9.md; contract: /changelog/_rules.md -->
+## v9 — Jan 2026
+
+- v9 release (H2-only).
+EOF
+bash -c "
+    . '$PER_ENTRY_LIB/_lib.sh'
+    . '$PER_ENTRY_LIB/toc-regenerate.sh'
+    per_entry_regenerate_toc pack-changelog '$F2B_REPO/changelog'
+" >/dev/null 2>&1
+F2B_OUT=$(run_check check_cross_reference_integrity "$F2B_REPO" "$PACKCL_TUPLE" 2>&1)
+F2B_RC=$?
+assert_eq "F2b.1 in-range gap v10.0 (10<=highest=11, undefined) still FAILs → rc=1" "1" "$F2B_RC"
+assert_contains "F2b.2 in-range gap v10.0 → FAIL names v10.0" "$F2B_OUT" "references v10.0"
+
+# F2c (FLAG-b regression guard): an in-range `vN.M` whose major IS
+# defined (`v11.0`, v11 defined) resolves via the landed FLAG-b mapping
+# (`vN.M`→`vN`). Guards against a D1 edit regressing the FLAG-b path.
+F2C_REPO="$SCRATCH_ROOT/F2c"
+mkdir -p "$F2C_REPO"
+build_green_pack_changelog "$F2C_REPO"
+sed -i.bak 's/References BD-100 for context.//' "$F2C_REPO/changelog/v11.md"
+rm -f "$F2C_REPO/changelog/v11.md.bak"
+printf '\n- Shipped in v11.0 (in-range, major defined).\n' \
+    >>"$F2C_REPO/changelog/v11.md"
+F2C_OUT=$(run_check check_cross_reference_integrity "$F2C_REPO" "$PACKCL_TUPLE" 2>&1)
+F2C_RC=$?
+assert_eq "F2c.1 in-range v11.0 (major v11 defined) resolves via FLAG-b → rc=0" "0" "$F2C_RC"
+assert_not_contains "F2c.2 in-range v11.0 → no dangling FAIL" "$F2C_OUT" "references v11.0"
 
 # ─────────────────────────────────────────────────────────────────
 # Group G: M2 snap-leftover regression (BD-168 retro fix M2)

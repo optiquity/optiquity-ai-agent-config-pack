@@ -16,8 +16,8 @@ Agent Config Pack (the `optiquity-ai-agent-config-pack` repo). You:
   MAJOR edit — substantive edits of already-landed content, rule edits, anything
   outside the small set — to a pack-coder per trinity `## Pack memory`
   `[rationale: pack-chat-minor-edits-only]`
-- Track open backlog items (BD-NNN format in BACKLOG.md)
-- Maintain CHANGELOG.md and README.md version history
+- Track open backlog items (BD-NNN format in the `/backlog/` tree)
+- Maintain the `/changelog/` tree and README.md version history
 - Follow the same core behavioral rules as any PM chat
 
 You are **not** a coding project PM chat. You do not generate coder/reviewer agent
@@ -45,12 +45,12 @@ is sufficient.
 
 | File | How to access | Why |
 |---|---|---|
-| `BACKLOG.md` | Direct read | Open BD-NNN items, current backlog state |
-| `CHANGELOG.md` | Direct read (last entry only) | Current version and recent changes |
+| `/backlog/_toc.md` | Direct read | Open BD-NNN items, current backlog state (the no-mirror readable index) |
+| `/changelog/_toc.md` | Direct read (newest release first) | Current version and recent changes (the no-mirror readable index) |
 | `README.md` | Direct read (version table section) | Pack version history at a glance |
 | `supporting-docs/METHODOLOGY.md` | Direct read (on demand) | Author of this file — read directly when needed |
 | `project-template/docs/pack/prompts/*.md` | Direct read (on demand) | Author of this set of files — read directly when needed |
-| `/backlog/<ID>.md`, `/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is source of truth in flat-file mode (per CLAUDE.md pack-memory + `<stream>/_rules.md`); smaller token footprint than mirror for one-entry edits |
+| `/backlog/<ID>.md`, `/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is the SOLE source of truth + readable form (no monolithic mirror; per CLAUDE.md pack-memory + `<stream>/_rules.md`); read one entry file for one-entry edits |
 | `/backlog/_rules.md`, `/changelog/_rules.md` (per-stream contracts) | Direct read at session start (or on per-entry-tree-aware operation) | Per-stream contract authority — filename regex, lifecycle states admitted, supporting-file basenames admitted, write-authority pointer |
 
 **Rule-SSOT routing (one hop to the authority — no index, query the SSOT directly):**
@@ -153,7 +153,7 @@ These rules are non-negotiable and always apply:
   only — do not propose a solution unless asked.
 - **Separation of pack operations and pack product.** The files and workflows used
   to maintain the pack repo (PACK-CHAT.md, PACK-AGENTS.md, CLAUDE.md, AGENTS.md,
-  GEMINI.md, BACKLOG.md, CHANGELOG.md, README.md) are completely separate from
+  GEMINI.md, the `/backlog/` + `/changelog/` trees, README.md) are completely separate from
   the files the pack ships to coding projects (everything under `project-template/`,
   `supporting-docs/`, `maintenance-docs/`). Never mix the two — do not add product
   file references to operational key-file lists, do not add pack-maintenance
@@ -220,7 +220,7 @@ user-discussion decision.
 
 When `/pack-startup` runs, the recommendation system in
 `scripts/lib/recommendation.sh` (D-19) computes pack-side signals
-(active BD count, BACKLOG.md size, 30-day BD growth) and decides
+(active BD count, `/backlog/` tree size, 30-day BD growth) and decides
 whether to surface a tracker opt-in recommendation. Pack Chat behavior:
 
 - **If the recommendation fires** — `pack-startup` prints a single

@@ -22,7 +22,7 @@ Responsibilities:
 
 Before planning, read:
 - GEMINI.md (pack repo rules)
-- `pack-ops/BACKLOG.md` (BD items in scope)
+- `/backlog/` per-entry tree (`/backlog/_toc.md` index — BD items in scope)
 - README.md (repository layout — the authoritative structure reference)
 - /backlog/_rules.md (pack per-entry tree contract)
 - /changelog/_rules.md (pack changelog per-entry tree contract)

@@ -117,13 +117,19 @@ def assert_pm(path, expected, label):
 assert_pm("project-template/CLAUDE.md", True, "T6a")
 assert_pm("project-template/AGENTS.md", True, "T6b")
 assert_pm("project-template/GEMINI.md", True, "T6c")
-# BD-209 (A13 fold): `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md` are
-# pack-chat-only-permitted Files: they exist on disk as Pack-Chat-edited
-# monoliths until BD-203 Commit 2 deletes them (and re-removes them from
-# the permitted set in the same atomic commit). Restored by BD-209 — the
-# BD-203 Commit-1 A13 removal was premature.
-assert_pm("pack-ops/BACKLOG.md", True, "T6d")
-assert_pm("pack-ops/CHANGELOG.md", True, "T6e")
+# BD-203 Commit 2 (A13-INVERSE): `pack-ops/BACKLOG.md` +
+# `pack-ops/CHANGELOG.md` are DELETED at BD-203 Commit 2 — the per-entry
+# trees `/backlog/` + `/changelog/` are the sole SSOT under the no-mirror
+# model. A `git rm`'d file cannot be a pack-chat-only-permitted PATH, so
+# the two monoliths are NO LONGER permitted Files (the inverse of
+# BD-209's transient A13 fold). The per-entry trees ARE permitted via the
+# PREFIXES set (T6d2/T6e2).
+assert_pm("pack-ops/BACKLOG.md", False, "T6d")
+assert_pm("pack-ops/CHANGELOG.md", False, "T6e")
+# T6d2/T6e2: the per-entry trees remain pack-chat-only-permitted via the
+# `backlog/` + `changelog/` PREFIXES — the no-mirror SSOT surfaces.
+assert_pm("backlog/BD-203.md", True, "T6d2")
+assert_pm("changelog/v11.md", True, "T6e2")
 assert_pm("pack-ops/PACK-CHAT.md", True, "T6f")
 assert_pm("pack-ops/PACK-AGENTS.md", True, "T6g")
 assert_pm("README.md", True, "T6h")

@@ -15,7 +15,7 @@ Focus on:
 - Separation of concerns — pack product files (project-template/, supporting-docs/) vs. pack operational files (CLAUDE.md, `pack-ops/PACK-CHAT.md`, `pack-ops/PACK-AGENTS.md`) vs. maintenance records (maintenance-docs/).
 - Design elegance — prefer fewer files, fewer conventions, and fewer special cases over comprehensive coverage with high complexity.
 
-Before making any design recommendation, read: CLAUDE.md (pack repo rules and structure reference), `pack-ops/PACK-AGENTS.md` (agent routing table), README.md (version history and repository layout), `pack-ops/BACKLOG.md` (open BD items and their constraints), /backlog/_rules.md (pack per-entry tree contract), /changelog/_rules.md (pack changelog per-entry tree contract).
+Before making any design recommendation, read: CLAUDE.md (pack repo rules and structure reference), `pack-ops/PACK-AGENTS.md` (agent routing table), README.md (version history and repository layout), the `/backlog/` per-entry tree (`/backlog/_toc.md` index — open BD items and their constraints), /backlog/_rules.md (pack per-entry tree contract), /changelog/_rules.md (pack changelog per-entry tree contract).
 
 Do not propose solutions unless asked. Describe the constraint or design problem, then wait for direction.
 

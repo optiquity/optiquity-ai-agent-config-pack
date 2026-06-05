@@ -172,9 +172,15 @@ commits (§5). Actor per §6.
   `_REMOVED_DOC_SCAN_FILES` (the two monoliths) → scan the `/backlog/` + `/changelog/` entry files. WHY: the
   accurate-history citations relocate INTO the per-entry files; without repoint Check 48's WARN scope silently
   empties (coverage regression). File: `scripts/validate-pack.py`.
-- **A13 — Remove the two monolith paths from `_PM_ONLY_PERMITTED_PATHS`.** `validate-pack.py:3823-3824`.
-  The `_PM_ONLY_PERMITTED_PREFIXES` already lists `backlog/` + `changelog/` (`:3839-3840`), so the tree is
-  covered. WHY: sized exactly to the deletion. File: `scripts/validate-pack.py`.
+- **A13 — (SUPERSEDED by BD-209; the removal MOVES to Phase D as A13-INVERSE).** C-1 originally removed the
+  two monolith paths from the permitted set. BD-209 (landed `b83c942`, Resolved `4c370da`) RESTORED them
+  (A13-fold) because both files still exist on disk until Commit 2's `git rm` — see
+  `ARCHITECTURE-BD-209.md` §6/§10.1. CURRENT state (HEAD `4c370da`): `_PACK_CHAT_ONLY_PERMITTED_PATHS`
+  (`validate-pack.py:3740`) INCLUDES `"pack-ops/BACKLOG.md"` (`:3746`) + `"pack-ops/CHANGELOG.md"` (`:3747`);
+  the prefixes `backlog/`/`changelog/` are at `_PACK_CHAT_ONLY_PERMITTED_PREFIXES` (`:3762-3764`). The
+  re-removal is now a Phase-D task (D4, A13-INVERSE) done in LOCKSTEP with the `git rm`. WHY the move: a
+  permitted PATH must name an existing on-disk file; removing it BEFORE the `git rm` is what created the
+  BD-209-folded transient inconsistency. File: `scripts/validate-pack.py`.
 - **A14 — Repoint the pack-side RUNTIME-DEP read sites.** (a) `recommendation.sh:131-132`
   `_rec_compute_pack_signals` — count `/backlog/*.md` entry files + sum tree size instead of grepping/`wc`-ing
   the monolith (pack-only; runs at `/pack-startup`). (b) `detect.sh:45` `detect_pack_surface` — repoint the
@@ -191,8 +197,10 @@ commits (§5). Actor per §6.
   2. (T2) `test-validate-pack-checks-32-33-34.sh`: rewrite Group A (Check 32 → Check 32′ inverted: green =
   tree present + NO monolith; red = monolith present); update fixtures to the widened regexes + the suffix
   entry; add a `BD-167b.md` cross-ref case (Check 34). (T3) `test-validate-pack-check-removed-doc-advisory.sh`:
-  re-target Check 48 to per-entry-tree fixtures. (T4) `test-validate-pack-checks-36-37-38.sh`: drop the T6d/T6e
-  asserts that the two monoliths are PM-only (they no longer exist post-deletion). (T5)
+  re-target Check 48 to per-entry-tree fixtures. (T4) `test-validate-pack-checks-36-37-38.sh`: BD-209 flipped T6d/T6e to `True`
+  (`:125-126` `assert_pm("pack-ops/BACKLOG.md", True, "T6d")` / `CHANGELOG.md`, via the renamed helper
+  `_is_pack_chat_only_permitted` `:113`); the A13-INVERSE (Phase D, D4) flips them back to `False` / removes
+  them in lockstep with the `git rm` (a deleted file is not a permitted path). (T5)
   `test-validate-pack-check-40.sh`: update if it asserts the mirror-exclusion. Files under `scripts/tests/`.
   WHY: `enumerate-encoding-surfaces` — validator + its TEST must move together or audit gap.
 - **A16 — Regenerate `test-fixtures/manifest.txt`.** Run `bash test-fixtures/build.sh --all --clean`; stage
@@ -214,7 +222,7 @@ commits (§5). Actor per §6.
 - **B0c — VERIFY the Phase-B0 diff gate.** The monolith→monolith diff must show ONLY (a) +19 new entry blocks,
   (b) −5 scaffolding H2s + the table wrapper + blurbs, and NO change to any existing entry body. (Verification
   task; gates B0 before any decompose.)
-- File touched by B0a/B0b: `pack-ops/BACKLOG.md` (PM-only — see §6 actor tension).
+- File touched by B0a/B0b: `pack-ops/BACKLOG.md` (pack-chat-only — see §6 actor tension).
 
 ### Phase B — build the trees + verify (non-destructive; monoliths still present)
 
@@ -244,9 +252,10 @@ commits (§5). Actor per §6.
   Phase B0 touched `pack-ops/BACKLOG.md` so the B0+B commit IS v11-surface — regenerate + stage iff non-empty).
 - **B8 — DROP the `_v8-resolved-archive.md` residue in lockstep (carry-forward: C-1 review SHOULD-1,
   user-approved 2026-06-04).** Remove `_v8-resolved-archive.md` from: (a) the pack-backlog `support` attr in
-  `scripts/lib/per-entry/_lib.sh:73`; (b) `known_supporting_for["pack-backlog"]` in
-  `scripts/validate-pack.py:3186-3187`; (c) the dead `v8_archive_basenames` SKIP in Check 34
-  (`scripts/validate-pack.py:3606,3623`). Update the lockstep ENCODING test
+  `scripts/lib/per-entry/_lib.sh:89`; (b) `known_supporting_for["pack-backlog"]` in
+  `scripts/validate-pack.py:3196-3199` (the `"_v8-resolved-archive.md"` entry at `:3198`); (c) the dead
+  `v8_archive_basenames` SKIP in Check 34 (`scripts/validate-pack.py:3525,3542`). (Anchors re-measured at
+  HEAD `4c370da`.) Update the lockstep ENCODING test
   `scripts/tests/test-validate-pack-checks-32-33-34.sh` if it asserts the archive basename. WHY: amendment §G
   reverses V3 §3.2 — the 19 BD-001..019 become real entries and NO `_v8-resolved-archive.md` is emitted, so
   these allowlist/SKIP references are DEAD; A1–A16 did not schedule the removal (plan gap). Lands in Phase B
@@ -261,27 +270,34 @@ commits (§5). Actor per §6.
 
 ### Phase C — doc model correction (trinity rule + structure surfaces; the ~16 wrong-model surfaces)
 
-- **C1 — Trinity `## Pack memory` "Per-entry trees vs mirrors" RULE rewrite ×3.** `CLAUDE.md:433-448` +
-  `AGENTS.md` + `GEMINI.md` parallels. Correct the FLAT-FILE clause: the per-entry tree (+ `_toc.md`) is the
-  SOLE SSOT and readable form; delete the "monolithic ... are regenerated mirrors" sentence FOR THE PACK.
-  Keep mode-dependent framing; correct the tracker-mode clause in lockstep (BD-204 ratifies the implementation).
-  Follows the PACK-CHAT propagation procedure (§9). **EE-P5: this rule has NO rationale slug → NO RATIONALE.md
-  / NO spawn-manifest edit.** PM-only (trinity = Pack-Chat-direct).
-- **C2 — Trinity "Key files" structure lines ×3.** `CLAUDE.md:30,31,34` + AGENTS/GEMINI parallels (GEMINI is a
-  prose form — `cross-cli-reference-normalization`, audience-correct value not byte-copy). Drop "regenerated
-  mirror; per-entry source at /backlog/"; state the tree is the SSOT. PM-only.
-- **C3 — `pack-ops/PACK-AGENTS.md` corrections.** (a) PM-only files list `134,135` "regenerated mirror"
-  parenthetical → the monolith entries are REMOVED (the files are deleted in Phase D); the `/backlog/`+`/changelog/`
-  Directories block already covers the tree. (b) Drop/retire the "Forward-pointing note (Batch 19 → Batch 23)"
-  block (`170-179`) — the trees are created by BD-203 NOW, not Batch 23. (c) Correct the "Per-entry decomposition
-  mandatorily extends..." note (`161-168`) wording to reflect the now-existing trees. PM-only.
-- **C4 — `pack-ops/PACK-CHAT.md` corrections.** File-access table `47` "smaller token footprint than mirror"
-  row → no-mirror wording. PM-only.
-- **C5 — `README.md` corrections.** The "populated at Batch 23" lines (`185-187`), the two "regenerated mirror"
-  rows (`262,263`), and the "source of truth for ... mirror" rows (`280,281`). PM-only (README structure/version
-  lines = Pack-Chat-direct).
+- **C1 — Trinity `## Pack memory` "Per-entry trees vs mirrors" RULE rewrite ×3.** Current anchors (HEAD
+  `4c370da`): `CLAUDE.md:465` (rule body L465-481, "regenerated mirrors — read-stable" L472), `AGENTS.md:398`
+  (mirror clause L405), `GEMINI.md:398` (mirror clause L405). **BD-209 left this rule's MIRROR MODEL INTACT**
+  (it renamed only the commit-scope keyword, not the per-entry/mirror model), so the correction still fully
+  applies. Correct the FLAT-FILE clause: the per-entry tree (+ `_toc.md`) is the SOLE SSOT and readable form;
+  delete the "monolithic ... are regenerated mirrors" sentence FOR THE PACK. Keep mode-dependent framing;
+  correct the tracker-mode clause in lockstep (BD-204 ratifies the implementation). Follows the PACK-CHAT
+  propagation procedure (§8). **EE-P5: this rule has NO rationale slug → NO RATIONALE.md / NO spawn-manifest
+  edit.** pack-chat-only (trinity = Pack-Chat-direct).
+- **C2 — Trinity "Key files" structure lines ×3.** Current anchors (HEAD `4c370da`): `CLAUDE.md:30,31,34`;
+  `AGENTS.md:32,33,36`; `GEMINI.md:27-29` ("Key docs:" prose form — `cross-cli-reference-normalization`,
+  audience-correct value not byte-copy). All still carry "regenerated mirror; per-entry source at /backlog/"
+  (BD-209 did not touch them). Drop that wording; state the tree is the SSOT. pack-chat-only.
+- **C3 — `pack-ops/PACK-AGENTS.md` corrections.** Current anchors (HEAD `4c370da`; the section is now
+  `## pack-chat-only files and directories`, BD-209-renamed, heading L130). (a) the `BACKLOG.md`/`CHANGELOG.md`
+  Files-list rows (`:134,137`, "regenerated mirror; per-entry source at … — kept …") — REMOVE both rows
+  (this is the doc leg of the Phase-D D4 A13-INVERSE; the files are `git rm`'d in Commit 2). (b) Drop/retire
+  the "Forward-pointing note (Batch 19 → Batch 23)" block — the trees are created by BD-203 NOW, not Batch 23
+  (re-grep for the block; lines shifted under BD-208/BD-209). (c) Correct the "Per-entry decomposition
+  mandatorily extends..." note wording to reflect the now-existing trees. pack-chat-only.
+- **C4 — `pack-ops/PACK-CHAT.md` corrections.** File-access table `:53` ("Per-entry tree is source of truth
+  in flat-file mode … smaller token footprint than mirror") + the `:47-48` per-entry rows → no-mirror wording.
+  pack-chat-only.
+- **C5 — `README.md` corrections.** Current anchors (HEAD `4c370da`, unchanged by BD-209): the "populated at
+  Batch 23" lines (`:185,187`), the two "regenerated mirror" rows (`:262,263`), and the "source of truth for
+  … mirror" rows (`:280,281`). pack-chat-only (README structure/version lines = Pack-Chat-direct).
 - **C6 — `pack-ops/HELP-FRAGMENT-PACK.md`.** Key-files list `40,41` — the two monolith refs become the tree.
-  NOT a trinity/README/PACK-AGENTS file → see §6 actor (pack-product? PM-only? — SURFACE G-3).
+  NOT a trinity/README/PACK-AGENTS file → see §6 actor (pack-product? pack-chat-only? — SURFACE G-3).
 - **C7 — Pack-copied agent/skill prompts ×3 CLIs.** `.claude/.codex/.gemini` copies of pack-architect/
   pack-coder/pack-planner + the pack-startup / commit-discipline / implementation-report / boundary-investigation
   skills that embed the Key-files / structure prose (research §5 enumerates the lines). Correct in lockstep ×3.
@@ -291,15 +307,28 @@ commits (§5). Actor per §6.
 - **C8 — Regenerate `test-fixtures/manifest.txt`** (Phase C touches `pack-ops/` + `.claude/.codex/.gemini` +
   README — v11-surface for the `pack-ops/`/`scripts` parts; regenerate + stage iff non-empty).
 
-### Phase D — DELETE the monoliths (gated, destructive, user-approved)
+### Phase D — DELETE the monoliths + A13-INVERSE (gated, destructive, user-approved)
 
 - **D1 — `git rm pack-ops/BACKLOG.md pack-ops/CHANGELOG.md`.** GATED on B6 oracle GREEN + the Phase-B0 diff
-  gate + Phases A+C landed. The single destructive step; explicit user approval required
-  (`feedback-no-destructive-without-approval`). Actor: Pack Chat (the monoliths are PM-only — §6 tension).
+  gate + Phase A landed. The single destructive step; explicit user approval required
+  (`feedback-no-destructive-without-approval`). Actor: Pack Chat (the monoliths are pack-chat-only — §6).
+- **D4 — A13-INVERSE: re-remove the monoliths from the pack-chat-only permitted set, IN LOCKSTEP with D1
+  (load-bearing; the inverse of BD-209's §6 A13-fold).** Three ENCODING surfaces move together (per
+  `ARCHITECTURE-BD-209.md` §6/§10.1):
+  (a) **validator** — remove `"pack-ops/BACKLOG.md"` (`validate-pack.py:3746`) + `"pack-ops/CHANGELOG.md"`
+  (`:3747`) from `_PACK_CHAT_ONLY_PERMITTED_PATHS` (`:3740`) and replace the BD-209 restore comment
+  (`:3741-3745`) with a "deleted at BD-203 Commit 2" note;
+  (b) **test** — flip `assert_pm("pack-ops/BACKLOG.md", True, "T6d")` (`test-validate-pack-checks-36-37-38.sh:125`)
+  + `:126` T6e back to `False` (or remove), rewriting the A13/restore comment;
+  (c) **governance doc** — remove the `BACKLOG.md`/`CHANGELOG.md` rows from the PACK-AGENTS pack-chat-only
+  Files list (`PACK-AGENTS.md:134,137`) — folded into C3 (§Phase C). WHY: a `git rm`'d file cannot be a
+  pack-chat-only-permitted PATH; leaving it listed re-creates the doc-vs-validator drift BD-209 just fixed.
+  The prefixes (`backlog/`/`changelog/`, `:3762-3764`) STAY — they cover the per-entry trees. Actor:
+  validator/test = pack-coder (edits, scoped in); the lockstep is committed atomically with D1's `git rm`.
 - **D2 — Final reference sweep → zero ACTIONABLE hits.** `grep -rn "pack-ops/BACKLOG.md\|pack-ops/CHANGELOG.md"`
-  returns only `maintenance-docs/` historical prose (LEAVE — fail-loud principle 2). validate-pack GREEN with
-  Check 32′ asserting absence + tree present.
-- **D3 — Regenerate `test-fixtures/manifest.txt`** (deletion touches `pack-ops/` — v11-surface).
+  returns only `maintenance-docs/` historical prose (LEAVE — fail-loud principle 2) + any deliberate BD-209
+  restore-comment removal. validate-pack GREEN with Check 32′ asserting absence + tree present.
+- **D3 — Regenerate `test-fixtures/manifest.txt`** (deletion + D4 touch `pack-ops/`/`scripts/` — v11-surface).
 
 ### Phase E — final integrated correctness audit (end-of-batch reviewer)
 
@@ -315,21 +344,21 @@ commits (§5). Actor per §6.
 **Engine (`scripts/lib/per-entry/`):** `decompose.sh` (A1, A2, A8), `_lib.sh` (A3, A4, A8),
 `toc-regenerate.sh` (A3, A4, A6, A7), `mirror-generate.sh` (A8 comment-only).
 **Validators (`scripts/`):** `validate-pack.py` (A3 STREAMS, A4, A5, A9 Check 32′, A10 Check 3, A11 Check 40,
-A12 Check 48, A13 PM-only), `lib/recommendation.sh` (A14a), `lib/detect.sh` (A14b — client-adjacent).
+A12 Check 48, A13 pack-chat-only permitted-set — SUPERSEDED by BD-209 restore; the re-removal is Phase-D D4 A13-INVERSE), `lib/recommendation.sh` (A14a), `lib/detect.sh` (A14b — client-adjacent).
 **Tests (`scripts/tests/`):** `test-per-entry.sh`, `test-validate-pack-checks-32-33-34.sh`,
 `test-validate-pack-check-removed-doc-advisory.sh`, `test-validate-pack-checks-36-37-38.sh`,
 `test-validate-pack-check-40.sh` (A15).
 **Monolith (`pack-ops/`):** `BACKLOG.md` (B0a/B0b pre-normalize; D1 delete), `CHANGELOG.md` (D1 delete).
 **New trees:** `/backlog/{_rules,_intro,_toc}.md` + 209 `BD-NNN[b].md`; `/changelog/{_rules,_intro,_toc}.md`
 + 11 `vN.md` (B2–B5).
-**Trinity (PM-only):** `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` (C1 rule + C2 structure).
-**Pack-ops governance (PM-only):** `PACK-AGENTS.md` (C3), `PACK-CHAT.md` (C4), `README.md` (C5).
+**Trinity (pack-chat-only):** `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` (C1 rule + C2 structure).
+**Pack-ops governance (pack-chat-only):** `PACK-AGENTS.md` (C3), `PACK-CHAT.md` (C4), `README.md` (C5).
 **Pack-ops product/help:** `HELP-FRAGMENT-PACK.md` (C6 — actor SURFACE G-3).
 **Pack-copied prompts/skills ×3 CLIs (pack-product):** `.claude/.codex/.gemini` agent + skill files (C7).
 **Fixtures:** `test-fixtures/manifest.txt` (A16, B7, C8, D3 — regenerated, never hand-edited).
 
 **Cross-reference audit (must move WITH the deletion so no commit half-corrects):** the trinity `## Pack
-memory` rule (C1), README layout (C5), PACK-AGENTS PM-only + forward-note (C3), PACK-CHAT file-access (C4),
+memory` rule (C1), README layout (C5), PACK-AGENTS pack-chat-only + forward-note (C3), PACK-CHAT file-access (C4),
 the per-entry tooling header comments (A8), HELP-FRAGMENT-PACK (C6), pack-copied skill prose (C7). These are
 the "~16 surfaces" — all corrected in the SAME atomic Commit 2 as the deletion (§4 RESOLUTION A; no commit leaves them half-corrected).
 
@@ -419,9 +448,9 @@ the expected-RED 32′"; Pack Chat's post-`git rm` run reaches FULL GREEN before
 ## 5. COMMIT SEQUENCING — Section (C)
 
 **Actor model (user decision 2026-06-04).** A **pack-coder does ALL editing** for BD-203 — every major
-edit, INCLUDING the PM-only files (`pack-ops/BACKLOG.md`/`CHANGELOG.md`, the trinity, `README.md`,
+edit, INCLUDING the pack-chat-only files (`pack-ops/BACKLOG.md`/`CHANGELOG.md`, the trinity, `README.md`,
 `PACK-AGENTS.md`, `PACK-CHAT.md`), which Pack Chat scopes INTO the coder's prompt via the existing
-PACK-AGENTS.md "PM-only off-limits UNLESS explicitly scoped in" clause (PACK-AGENTS.md:130-131,157-159).
+PACK-AGENTS.md "pack-chat-only off-limits UNLESS explicitly scoped in" clause (PACK-AGENTS.md:130-131,157-159).
 **Pack Chat does ONLY:** the git commits (`agents-never-commit`) + the irreducible destructive DELETION of the
 two monoliths in Commit 2 (destructive, user-approved). This RESOLVES former TENSION 1/2/3 + G-3 + G-6 — they all
 collapse to "coder edits (scoped in); Pack Chat commits + deletes."
@@ -445,15 +474,15 @@ Approval gate before EACH commit; Commit 2 additionally needs explicit destructi
 |---|---|---|---|---|---|
 | **C-1** (landed) | `feat: v11 — BD-203 per-entry engine + validator redesign (no asset change) (pack-only)` | `pack-only` | A1–A16 | `scripts/lib/per-entry/{decompose,_lib,toc-regenerate,mirror-generate}.sh`, `scripts/validate-pack.py`, `scripts/lib/{recommendation,detect}.sh`, `scripts/tests/{test-per-entry,test-validate-pack-checks-32-33-34,test-validate-pack-check-removed-doc-advisory,test-validate-pack-checks-36-37-38,test-validate-pack-check-40}.sh`, `test-fixtures/manifest.txt` | pack-coder; GREEN (tree absent → 32′ SKIPs) |
 | **Commit 1** (pre-normalize) | `feat: v11 — BD-203 pre-normalize monolith to uniform entries (pack-only)` | `pack-only` | B0a–B0c | `pack-ops/BACKLOG.md` (pre-normalize), `test-fixtures/manifest.txt` | **pack-coder** (Pack Chat scopes `pack-ops/BACKLOG.md` IN). Monolith→monolith; NO tree → 32′/33/34 SKIP → GREEN. B0c diff gate is a coder review artifact. |
-| **Commit 2** (ATOMIC convert) | `feat: v11 — BD-203 convert to per-entry sole-SSOT; delete monolith (pack-only)` | `pack-only` | B1–B9, C1–C8, D1–D3 | `/backlog/**` + `/changelog/**` (new trees), trinity ×3, `pack-ops/{PACK-AGENTS,PACK-CHAT,HELP-FRAGMENT-PACK}.md`, `README.md`, `.claude/.codex/.gemini` agent+skill copies, `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md` (`git rm`), `test-fixtures/manifest.txt` | **SPLIT (§6):** pack-coder does ALL EDITS (build trees, `_rules`/`_intro`, decompose, toc, B8/B9, fix ~16 refs) — scoped into the trees + the PM-only doc surfaces; coder PREFLIGHT = §7 oracle GREEN + validate-pack GREEN **EXCEPT** the expected-RED Check 32′. Then **Pack-Chat-direct** `git rm` the two monoliths (destructive, user-approved) + FULL validate-pack (NOW GREEN incl. 32′) BEFORE committing. |
+| **Commit 2** (ATOMIC convert) | `feat: v11 — BD-203 convert to per-entry sole-SSOT; delete monolith (pack-only)` | `pack-only` | B1–B9, C1–C8, D1–D3 | `/backlog/**` + `/changelog/**` (new trees), trinity ×3, `pack-ops/{PACK-AGENTS,PACK-CHAT,HELP-FRAGMENT-PACK}.md`, `README.md`, `.claude/.codex/.gemini` agent+skill copies, `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md` (`git rm`), `test-fixtures/manifest.txt` | **SPLIT (§6):** pack-coder does ALL EDITS (build trees, `_rules`/`_intro`, decompose, toc, B8/B9, fix ~16 refs) — scoped into the trees + the pack-chat-only doc surfaces; coder PREFLIGHT = §7 oracle GREEN + validate-pack GREEN **EXCEPT** the expected-RED Check 32′. Then **Pack-Chat-direct** `git rm` the two monoliths (destructive, user-approved) + FULL validate-pack (NOW GREEN incl. 32′) BEFORE committing. |
 
 **Keyword verification (Check 36).** Every commit is `pack-only`. `pack-only` DENIES `project-template/` +
 `supporting-docs/`. NONE of C-1 / Commit 1 / Commit 2 touches those prefixes (project-side surfaces are
 BD-206 — §3); the new trees `/backlog/`+`/changelog/` are at repo root (not under the denied prefixes) →
 permitted; the `git rm` of the two `pack-ops/` monoliths in Commit 2 is also within `pack-only`. **Keyword-token
 trap (`commit-subject-keyword-token-trap`):** the ONLY scope-keyword token in each subject is the trailing
-`(pack-only)`; even though Commit 2 is scoped to a coder over PM-only files, the SUBJECT must never carry the
-literal `PM-only`/`project-only`/`pack-memory-only` token (it would DENY `scripts/`/non-project paths and FAIL
+`(pack-only)`; even though Commit 2 is scoped to a coder over pack-chat-only files, the SUBJECT must never carry the
+literal `pack-chat-only`/`project-only` token (note BD-209 HARD-RETIRED `pack-chat-only`/`pack-memory-only` — they no longer parse, but `pack-chat-only` DOES, and would DENY `scripts/`/non-project paths and FAIL
 the gate) — describe the work with non-keyword words ("convert", "per-entry", "delete monolith"). **Commit 2
 fixes all ~16 wrong-model surfaces + the skill/agent copies in ONE commit** (no split). The coder applies the
 trinity `## Pack memory` rule correction MECHANICALLY (architect-defined in the approved design pair) and
@@ -471,13 +500,13 @@ longer exists. This is a real consequence of self-migrating the very backlog tha
 ## 6. ACTOR ASSIGNMENT — Section (D) — RESOLVED (user decision 2026-06-04)
 
 **USER DECISION (2026-06-04).** A **pack-coder does ALL editing** for BD-203 — every major edit, INCLUDING
-the PM-only files — which Pack Chat scopes INTO the coder's prompt via the existing PACK-AGENTS.md "PM-only
+the pack-chat-only files — which Pack Chat scopes INTO the coder's prompt via the existing PACK-AGENTS.md "pack-chat-only
 off-limits to all agents UNLESS the caller's prompt explicitly scopes them in" clause (PACK-AGENTS.md:130-131)
 + the "`pack-coder` MAY scope a per-entry directory in for an explicit BD" clause (PACK-AGENTS.md:157-159).
 **Pack Chat does ONLY** the git commits (`agents-never-commit`) and the irreducible destructive DELETION of
 the monoliths in Commit 2. This RESOLVES former TENSION 1/2/3 + G-3 + G-6.
 
-**Authority recap (PACK-AGENTS.md § "PM-only files and directories").** PM-only files
+**Authority recap (PACK-AGENTS.md § "pack-chat-only files and directories").** pack-chat-only files
 (`pack-ops/BACKLOG.md`/`CHANGELOG.md`, the pack-root trinity `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`,
 `README.md`, `PACK-AGENTS.md`, `PACK-CHAT.md`, `PACK-MEMORY-RATIONALE.md`) + the `/backlog/`+`/changelog/`
 per-entry trees are off-limits to agents EXCEPT when the caller scopes them in — which is exactly what Pack
@@ -487,7 +516,7 @@ copies, manifest) was never restricted from the coder.
 ### RESOLVED dispositions (former tensions/surfaces collapse to "coder edits, scoped in")
 - **TENSION 1 (B0 pre-normalize + the EDIT side of the delete) → pack-coder, scoped in.** Pack Chat scopes
   `pack-ops/BACKLOG.md` into the Commit-1 coder prompt (B0 pre-normalization in place). The `git rm` DELETION
-  (Commit 2) is the only PM-only action Pack Chat retains (destructive, irreducible).
+  (Commit 2) is the only pack-chat-only action Pack Chat retains (destructive, irreducible).
 - **TENSION 2 (the 209+11 generated per-entry files) → pack-coder, scoped in.** The coder runs the decompose
   engine (scoped the `/backlog/`+`/changelog/` directories in) and stages the generated tree.
 - **TENSION 3 (`_rules.md`/`_intro.md`/`_toc.md`) → pack-coder, scoped in.** The coder authors `_rules.md` +
@@ -534,7 +563,7 @@ guard change IS needed, that is an architect escalation, not a planner invention
 | Commit 1 | B0a–B0c (pre-normalize monolith) | pack-coder (Pack Chat scopes `pack-ops/BACKLOG.md` IN) |
 | Commit 2 — edits | B1 (mkdir), B4 (decompose), B5 (toc), B8/B9 carry-fwd | pack-coder (scoped `/backlog/`+`/changelog/` IN) |
 | Commit 2 — edits | B2 (`_rules.md`), B3 (`_intro.md`) | pack-coder (scoped `/backlog/`+`/changelog/` IN) |
-| Commit 2 — edits | C1/C2 trinity, C3 PACK-AGENTS, C4 PACK-CHAT, C5 README, C6 HELP-FRAGMENT, C7 `.claude/.codex/.gemini` copies, C8 manifest | pack-coder (Pack Chat scopes the PM-only doc surfaces IN) |
+| Commit 2 — edits | C1/C2 trinity, C3 PACK-AGENTS, C4 PACK-CHAT, C5 README, C6 HELP-FRAGMENT, C7 `.claude/.codex/.gemini` copies, C8 manifest | pack-coder (Pack Chat scopes the pack-chat-only doc surfaces IN) |
 | Commit 2 — coder PREFLIGHT | B6 oracle GREEN + validate-pack GREEN EXCEPT expected-RED Check 32′ | pack-coder (verification boundary; reviewer confirms) |
 | Commit 2 — delete + final verify | D1 `git rm` monoliths → D2 sweep → D3 manifest → FULL validate-pack GREEN | **Pack-Chat-direct** (destructive, user-approved — the ONLY non-coder action; the GREEN-restoring step) |
 | BD-203 status flip → `/backlog/BD-203.md` (G-7) | pack-coder (scoped IN) or Pack-Chat-direct per batch-close shape |
@@ -569,7 +598,7 @@ All counts are MEASURED at conversion time, NEVER hard-coded (EE-P1: the count i
    hits.
 7. **Validator oracle.** `python3 scripts/validate-pack.py` GREEN with no monolith: Check 32′ asserts absence
    + tree present; Check 33 toc-in-sync active+passing; Check 34 cross-ref active+passing (admits `BD-167b`);
-   Check 3 (repointed) / Check 40 (corrected) / Check 48 (repointed) / PM-only (corrected) all pass.
+   Check 3 (repointed) / Check 40 (corrected) / Check 48 (repointed) / Check 36 pack-chat-only permitted set (D4 A13-INVERSE — monoliths re-removed) all pass.
 
 ### ENCODING SURFACES per changed check (`enumerate-encoding-surfaces` — lock-step update required)
 
@@ -582,7 +611,7 @@ All counts are MEASURED at conversion time, NEVER hard-coded (EE-P1: the count i
 | Check 3 repoint (A10) | (no dedicated test today — verify manual scan; consider adding) | validate-pack.yml:97 | — |
 | Check 40 correct (A11) | `scripts/tests/test-validate-pack-check-40.sh` (A15-T5) | validate-pack.yml:168 | — |
 | Check 48 repoint (A12) | `scripts/tests/test-validate-pack-check-removed-doc-advisory.sh` (A15-T3) | validate-pack.yml:198 | — |
-| PM-only path list (A13) | `scripts/tests/test-validate-pack-checks-36-37-38.sh` T6d/T6e (A15-T4) | validate-pack.yml:162 | PACK-AGENTS PM-only list (C3) |
+| Check 36 permitted-path set — D4 A13-INVERSE (`validate-pack.py:3746,3747`) | `scripts/tests/test-validate-pack-checks-36-37-38.sh` T6d/T6e (`:125,126`, flip True→False) | validate-pack.yml:162 | PACK-AGENTS pack-chat-only Files list (`:134,137`) (C3) |
 | Engine mirror-demote (A8) | `scripts/tests/test-per-entry.sh` Groups 3/4/5/6 (A15-T1) | validate-pack.yml:156 | `_lib.sh`/`mirror-generate.sh` headers (A8) |
 
 **Manifest discipline (`manifest-regen-on-v11-surface`).** Every commit (C-1, Commit 1, Commit 2) touches a v11-surface
@@ -653,7 +682,7 @@ byte-identical copy.
   LOGICAL-FIT deferral. BD-203 corrects only any wrong-model COMMENT adjacent to the pack-surface. Confirm
   the BD-204 anchor with the user (the BD-204 entry already carries the second-pass ratification clause).
 - **G-6 — RESOLVED (user decision 2026-06-04).** Commit 2 is ONE `pack-only` commit by a single coder (scoped
-  the PM-only files in); no split. See §6.
+  the pack-chat-only files in); no split. See §6.
 - **G-7 — BD-203's own `Status: Open → Resolved` flip has no monolith to land in (§5).** The flip normally
   edits `pack-ops/BACKLOG.md`, which Commit 2 `git rm`s. The flip must land in the new `/backlog/BD-203.md`
   post-conversion (or be folded into the implicit batch-completion flip). A self-migration artifact — confirm
@@ -692,22 +721,24 @@ resolve gaps (`scope-deliverables-to-the-ask`).
 
 ## RULES-APPLIED VERIFICATION BLOCK
 
-**REVISION 1 (2026-06-04, single-actor):** §5 + §6 updated per user decision — a pack-coder does ALL editing (PM-only files scoped in); Pack Chat does only the commits + the monolith deletion. §9 G-1/G-3/G-6 marked RESOLVED. (The commit STRUCTURE in this note was subsequently re-sequenced — see RE-SEQUENCE below; the actor principle stands.)
+**REVISION 1 (2026-06-04, single-actor):** §5 + §6 updated per user decision — a pack-coder does ALL editing (pack-chat-only files scoped in); Pack Chat does only the commits + the monolith deletion. §9 G-1/G-3/G-6 marked RESOLVED. (The commit STRUCTURE in this note was subsequently re-sequenced — see RE-SEQUENCE below; the actor principle stands.)
 
 **CARRY-FORWARD (2026-06-04, C-1 review, user-approved):** §2 Phase B gained B8 (drop the dead `_v8-resolved-archive.md` residue across `_lib.sh` + `validate-pack.py` Check 32 allowlist + Check 34 SKIP — review SHOULD-1) and B9 (widen pack-backlog TOC `entry_sort_key` for the suffix form — review NIT-1). Both LOGICAL-FIT (observable/testable only at Phase B). No §5/§6 change forced.
 
 **RE-SEQUENCE (2026-06-04, RESOLUTION A, user-approved):** §4/§5/§6 re-sequenced to a 2-commit ATOMIC structure (Commit 1 pre-normalize; Commit 2 build+ref-fix+delete). Driver: the landed Check 32′ (`validate-pack.py:3215`, re-verified this pass) FAILs on the tree+monolith coexistence window the old staged order required. §6 adds the Commit-2 verification split (coder reaches GREEN-except-expected-RED-32′; Pack Chat `git rm`s + reaches FULL GREEN before committing). Preserved: B0c diff gate, B6 oracle, B8/B9 + FLAG-(b) carry-forwards, manifest discipline. No Check-32′ design change (guard stays strict). Design / verification strategy / EE-P1..P7 UNCHANGED.
 
+**RECONCILE post-BD-209 (2026-06-05, HEAD `4c370da`):** BD-209 landed (source `b83c942`, CI green) — it HARD-RETIRED the `PM-only`/`pack-memory-only` commit-scope keyword → `pack-chat-only` (token + internal vars + the PACK-AGENTS § heading), and did the A13-RESTORE (`pack-ops/BACKLOG.md`/`CHANGELOG.md` are BACK in `_PACK_CHAT_ONLY_PERMITTED_PATHS`). This pass: (1) renamed all ~25 descriptive `PM-only` → `pack-chat-only`; (2) re-anchored A13 (SUPERSEDED — removal moved to a NEW Phase-D task **D4 A13-INVERSE**), C1–C6, B8, and the §7 encoding rows against re-measured HEAD-`4c370da` line numbers; (3) added **D4 A13-INVERSE** — the inverse of BD-209 §6: re-remove BACKLOG/CHANGELOG from `_PACK_CHAT_ONLY_PERMITTED_PATHS` (`:3746,3747`) + flip test T6d/T6e `True→False` (`:125,126`) + drop the PACK-AGENTS Files rows (`:134,137`), IN LOCKSTEP with the `git rm`; (4) confirmed every mirror-model correction (C1–C6) STILL applies — BD-209 renamed the keyword only, NOT the per-entry/mirror model (the wrong text is intact: `CLAUDE.md:465/472`, `README:262/263/280/281`, etc.). Atomic 2-commit structure + the coder-builds/Pack-Chat-deletes split UNCHANGED. EE-P1..P7 unchanged (entry counts/oracle untouched by BD-209).
+
 | Rule (as named in prompt) | Verification evidence (QUOTED, not summarized) | Conclusion |
 |---|---|---|
-| **read-in-full + no-derivation** | READ-IN-FULL row below: every named doc + memory file Read DIRECTLY via the Read tool with per-file proof (line count or first/last line); the design PAIR, both research docs, BD-203/204/206 entries, trinity `## Pack memory`, PACK-AGENTS, PACK-CHAT, the 4 per-entry tooling files, the validator checks, and all 15 curated memory files. No named doc derived. | COMPLIANT |
-| **empirical-evidence-blocks (planner state-claims)** | §1 EE-P1..EE-P7 + §4 re-sequence: every state-claim carries command + verbatim output + HEAD + interpretation + SUPPORTED. The Check-32′-FAILs-on-coexistence claim driving RESOLUTION A was re-verified DIRECTLY this pass at `validate-pack.py:3215` (`if mirror_path.is_file(): fail("<mirror> still present while <stream>/ tree exists")`) → SUPPORTED. | COMPLIANT |
+| **read-in-full + no-derivation** | READ-IN-FULL row below + the RECONCILE additions: this pass Read DIRECTLY `PLAN-BD-203.md`, `ARCHITECTURE-BD-209.md` (IN FULL, 501 lines), `scripts/validate-pack.py` (permitted-set + Check 36 + A13 region), `pack-ops/PACK-AGENTS.md` (pack-chat-only section), and `CLAUDE.md ## Pack memory` (the Per-entry-trees-vs-mirrors rule + Pack-Chat-scope prose, read directly via grep+Read at HEAD `4c370da`). The prompt named NO separate memory files (their rules live in `## Pack memory`, applied from the trinity read per the user curation rule). No named doc derived. | COMPLIANT |
+| **empirical-evidence-blocks (planner state-claims)** | §1 EE-P1..EE-P7 + §4 re-sequence + the BD-209 RECONCILE: every re-anchored line number was re-measured DIRECTLY at HEAD `4c370da` this pass — `_PACK_CHAT_ONLY_PERMITTED_PATHS:3740` with BACKLOG`:3746`/CHANGELOG`:3747` (grep'd), test T6d/T6e=`True` at `:125,126` (grep'd), PACK-AGENTS `## pack-chat-only files and directories:130` + Files rows `:134,137` (grep'd), B8 anchors `_lib.sh:89`/`validate-pack.py:3198,3525,3542` (grep'd), Check 32′ `:3215` (Read). The mirror-model-still-present claim verified by grep (`CLAUDE.md:472` 'regenerated mirrors — read-stable', `README:262/263/280/281`). All SUPPORTED. | COMPLIANT |
 | **bounded-review-fix-cycle** | §5/§6 (re-sequenced) per-commit cadence for C-1/Commit-1/Commit-2: fresh pack-coder → review-1 → [clean⇒commit \| fix-1 → review-2 → [clean⇒commit \| fix-2 → review-3 → architect-escalate]]; max 3 reviewer/2 fix-coder; fresh coder per commit; Commit-2's coder PREFLIGHT is GREEN-except-expected-RED-32′ (§6 split) and Pack Chat's post-`git rm` run is FULL-GREEN before commit; end-of-batch reviewer (Phase E). | COMPLIANT |
 | **agents-never-commit** | §0 + §5/§6 (re-sequenced): the coder edits but NEVER commits and NEVER runs the destructive `git rm` (`per-action-approval-sub-agents`); Pack Chat stages/commits every commit + performs the Commit-2 `git rm` (user-approved). The plan plans commits; runs no git. | COMPLIANT |
 | **per-action-approval-sub-agents** | §6 Commit-2 verification split: the coder may NOT run the destructive `git rm` on its own authority → the delete + FULL-green verify is Pack-Chat-direct (user-approved); the coder's PREFLIGHT stops at GREEN-except-expected-RED-32′. | COMPLIANT |
 | **manifest-regen-on-v11-surface** | §2 A16/B7/B8/B9/C8/D3 + §7: every commit (C-1, Commit 1, Commit 2) touches a v11-surface dir (`scripts/`/`pack-ops/`) — incl. the B8/B9 `scripts/` edits — → regenerate `test-fixtures/manifest.txt` via `bash test-fixtures/build.sh --all --clean`, stage iff non-empty. | COMPLIANT |
 | **ci-guard-measure-then-bound** | §7 "CI-guard measure-then-bound": Check 34/STREAMS widening sized to EXACTLY the 2 measured suffix entries (V3 EE-5/EE-6); Check 32′ verified against projected no-monolith end-state; §2 B8 SHRINKS the Check 32 `known_supporting` allowlist + Check 34 SKIP to drop the now-DEAD `_v8-resolved-archive.md` (no longer emitted post-amendment-§G) — allowlist sized to KEEP-only, never swallowing a dead entry. | COMPLIANT |
-| **separate-pack-ops-from-pack-product** | §3/§5/§6 (re-sequenced): one atomic Commit 2 `pack-only`; pack-ops governance (trinity/README/PACK-AGENTS/PACK-CHAT) and pack-product (skill/agent copies) are both edited by the scoped-in coder but tracked as distinct surfaces in the §3 file list; no pack-ops file mixed into a `project-only`/`PM-only` scope claim (the commit claims `pack-only`, which permits both). | COMPLIANT |
+| **separate-pack-ops-from-pack-product** | §3/§5/§6 (re-sequenced): one atomic Commit 2 `pack-only`; pack-ops governance (trinity/README/PACK-AGENTS/PACK-CHAT) and pack-product (skill/agent copies) are both edited by the scoped-in coder but tracked as distinct surfaces in the §3 file list; no pack-ops file mixed into a `project-only`/`pack-chat-only` scope claim (the commit claims `pack-only`, which permits both). | COMPLIANT |
 | **pack-project-separation + no-deferral-without-user-direction** | §3 "NOT touched (BD-206 boundary)"; §8 trinity pack-copy ≠ project-copy (separate artifacts, BD-206); NO pack-side BD-203 work deferred (all in §2 Phases A–E). | COMPLIANT |
 | **filename-uniqueness-heuristic** | This plan is `PLAN-BD-203.md` (repo-unique — `find` confirms no collision). New per-stream `_rules.md`/`_intro.md`/`_toc.md` are structurally-required collisions (per-stream) — prose carries `/backlog/`+`/changelog/` path context throughout. | COMPLIANT |
 | **pack-repo-code-comment-deferrals** | §2 A8: any deferral comment uses the typed `# TODO(version): TD-TBD — retire mirror-generate project-side at BD-206`, never plain `# TODO`/`# FIXME`. | COMPLIANT |
@@ -724,19 +755,23 @@ resolve gaps (`scope-deliverables-to-the-ask`).
 | BD-203 entry (`pack-ops/BACKLOG.md:3330-3351`) | YES | Read offset 3330 lim 90; header L3330 → Position L3351. |
 | BD-204 entry (`:3355-3369`) | YES | same Read; header L3355 → Position L3369 (REVERSIBILITY second-pass clause L3362). |
 | BD-206 entry (`:3389-3400`) | YES | same Read; header L3389 → Position L3400. |
-| `CLAUDE.md` (incl. `## Pack memory`) | YES | Provided in full via system context; the "Per-entry trees vs mirrors" rule Read directly at L433-448 (`[roles: universal]`, NO rationale slug — EE-P5). |
-| `pack-ops/PACK-AGENTS.md` | YES | 226 lines; L1 "# PACK-AGENTS.md" → L226 "Always run `git add -A && git status` ... before any commit." PM-only list L130-159 + forward-note L170-179 read. |
+| `CLAUDE.md` (incl. `## Pack memory`) | YES | Original pass: rule at L433-448 (`[roles: universal]`, NO rationale slug — EE-P5). RECONCILE pass (HEAD `4c370da`): the rule shifted to **L465-481** (mirror clause L472); keyword table row L78 now `pack-chat-only`. Re-read directly this pass. |
+| `pack-ops/PACK-AGENTS.md` | YES | Re-read at HEAD `4c370da` (this pass): `## pack-chat-only files and directories` heading L130 (BD-209-renamed); `BACKLOG.md`/`CHANGELOG.md` Files rows L134/L137 ("regenerated mirror; … — kept …"); exception clause L162. |
 | `pack-ops/PACK-CHAT.md` | YES | 310 lines; L1 "# PACK-CHAT.md" → L310 "... not a hard-enforced step sequence." Rule-change propagation procedure L295-309 read. |
 | `scripts/lib/per-entry/_lib.sh` | YES | 439 lines; L1 header → L439 `pe_id_from_filename`; stream tuples L64-122. |
 | `scripts/lib/per-entry/decompose.sh` | YES | 288 lines; L1 → L287 PYEOF; anchors L110-153. |
 | `scripts/lib/per-entry/toc-regenerate.sh` | YES | 295 lines; L1 → L294; order_groups L198-221, title regex L123, entry regex L83-90. |
 | `scripts/lib/per-entry/mirror-generate.sh` | YES | header L1-60 read directly (purpose statement). |
-| `scripts/validate-pack.py` | YES | Read STREAMS L296-355, Check 32 L3142-3345, Check 33/34 L3490-3649, PM-only L3821-3859, Check 3 L457-496, Check 40 L5113-5172, Check 48 L7140-7194 directly. **Re-sequence pass: re-read the LANDED Check 32′ L3195-3249 directly — L3215 `if mirror_path.is_file(): fail(...)` is the coexistence-FAIL that drives RESOLUTION A.** |
+| `scripts/validate-pack.py` | YES | **Re-read at HEAD `4c370da` (this pass):** `_PACK_CHAT_ONLY_PERMITTED_PATHS` L3740 (BACKLOG L3746 + CHANGELOG L3747, with the BD-209 A13-restore comment L3741-3745); `_PACK_CHAT_ONLY_PERMITTED_PREFIXES` L3762-3768; `_SCOPE_KEYWORDS_PACK_CHAT_ONLY = ("pack-chat-only",)` L3732; `_is_pack_chat_only_permitted` L3911; Check 36 driver L3919-3996; Check 32′ L3195-3249 (L3215 `if mirror_path.is_file(): fail(...)`); Check 34 `v8_archive_basenames` L3525/3542. |
 | `scripts/lib/detect.sh` | YES | L38-62 read directly (`detect_pack_surface` + DENY-LIST markers). |
 | `scripts/lib/recommendation.sh` | YES | monolith read sites grepped L131-132,152-153 directly. |
 | `scripts/tests/test-per-entry.sh` | YES | L1-100 read + mirror/round-trip lines grepped (220-524). |
 | `scripts/tests/test-validate-pack-checks-32-33-34.sh` | YES | mirror/Group-A lines grepped (3-399). |
 | `.github/workflows/validate-pack.yml` | YES | grepped test enumeration L156-198 (EE-P6). |
+| `ARCHITECTURE-BD-209.md` (RECONCILE pass, IN FULL) | YES | 501 lines; L1 "# ARCHITECTURE — BD-209: rename the `PM-only` commit-scope keyword → `pack-chat-only`" → L500 "*End ARCHITECTURE-BD-209.md*"; §6 A13-fold L310-341, §10.1 BD-203-Commit-2-inverse L417-421. |
+| `scripts/validate-pack.py` (RECONCILE pass) | YES | Read L3730-3789 directly: `_SCOPE_KEYWORDS_PACK_CHAT_ONLY` L3732, `_PACK_CHAT_ONLY_PERMITTED_PATHS` L3740 (BACKLOG L3746/CHANGELOG L3747 + restore-comment L3741-3745), prefixes L3762-3768; grepped Check 36 driver + B8 `v8_archive_basenames` L3525/3542. |
+| `pack-ops/PACK-AGENTS.md` (RECONCILE pass) | YES | grepped `## pack-chat-only files and directories` L130, Files rows BACKLOG L134/CHANGELOG L137, exception clause L162. |
+| `CLAUDE.md ## Pack memory` (RECONCILE pass) | YES | grepped + Read the `Per-entry trees vs mirrors` rule L465-481 (mirror clause L472 'regenerated mirrors — read-stable'), keyword table L78 (`pack-chat-only`), Pack-Chat-scope prose L376-444. |
 | `feedback_fail_loud_delete_old_source.md` | YES | 55 lines; L1 frontmatter → L55 "do not invent scope." |
 | `feedback_researcher_maps_blast_radius_before_architect.md` | YES | 41 lines; L1 → L41 "[[adversarial-architect-review-on-major-gap]]." |
 | `feedback_review_fix_cycle.md` | YES | 33 lines (32 + reminder); L1 → L32 cross-refs. |
@@ -753,9 +788,11 @@ resolve gaps (`scope-deliverables-to-the-ask`).
 | `feedback_agents_read_rule_docs_in_full.md` | YES | 97 lines; L1 → L97 "... reinforced in every spawn prompt." |
 | `project_pack_self_migration_launch_gate.md` | YES | 49 lines; L1 frontmatter → L48 "tracker-mode feature design (BD-060 ...)." |
 
-**No named document was derived rather than read.** Every named document was Read directly via the Read tool;
-all load-bearing numbers (209 projected count, 5 scaffolding H2s + 3 suffix forms, 11 changelog releases,
-trees-absent, the no-rationale-slug fact, the CI test enumeration) were independently re-measured this pass at
-HEAD `a630a31` via Bash/Read.
+**No named document was derived rather than read.** Original-pass numbers (209 projected count, 5 scaffolding
+H2s + 3 suffix forms, 11 changelog releases, trees-absent, no-rationale-slug, CI test enumeration) were
+measured at HEAD `a630a31`. The **BD-209 RECONCILE pass (HEAD `4c370da`)** re-read `ARCHITECTURE-BD-209.md` IN
+FULL + `validate-pack.py` / `PACK-AGENTS.md` / `CLAUDE.md ## Pack memory` directly, and re-measured EVERY
+re-anchored line number via grep/Read (A13 restore set, test T6d/T6e, B8 v8-archive anchors, C1–C6 mirror-model
+anchors). EE-P1..P7 (entry counts/oracle) are unaffected by BD-209 and stand at their `a630a31` measurement.
 
 **End of PLAN-BD-203.md**

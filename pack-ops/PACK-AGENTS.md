@@ -100,8 +100,8 @@ When a separate session produces output the pack chat needs:
 | Implementation (writing/editing source) | `pack-coder` (separate session or sub-agent) | Plan execution against source; produces report + working-tree edits |
 | Pre-commit review | `pack-reviewer` (sub-agent) | Bounded scope, checklist-driven |
 | Tool documentation verification | `pack-docs-researcher` (sub-agent or separate) | Web search, source verification |
-| Writing BACKLOG.md entries | Pack chat only | PM-level decisions, user approval required |
-| Writing CHANGELOG.md entries | Pack chat only | Version-level decisions |
+| Writing `/backlog/` entries | Pack chat only | PM-level decisions, user approval required |
+| Writing `/changelog/` entries | Pack chat only | Version-level decisions |
 | Writing to README.md version table | Pack chat only | Version-level decisions |
 | Staging, committing, or pushing | Pack chat only | After explicit user approval; agents cannot run state-changing git verbs |
 
@@ -131,12 +131,6 @@ Pack Chat CAN edit directly" for the canonical write-authority split.
 caller's prompt explicitly scopes them in.
 
 Files:
-- `BACKLOG.md` (regenerated mirror; per-entry source at `/backlog/`) — kept
-  pack-chat-only-permitted by BD-209's A13 fold; removal is scheduled for
-  BD-203 Commit 2 (which `git rm`s the monolith).
-- `CHANGELOG.md` (regenerated mirror; per-entry source at `/changelog/`) — kept
-  pack-chat-only-permitted by BD-209's A13 fold; removal is scheduled for
-  BD-203 Commit 2 (which `git rm`s the monolith).
 - `README.md` version table
 - `PACK-CHAT.md`
 - `PACK-AGENTS.md`
@@ -152,9 +146,9 @@ Directories:
 - `project-template/docs/project/implementation-plan/`
 - `project-template/docs/project/changelog/`
 
-Within these directories, `_rules.md`, `_intro.md`, `_v8-resolved-archive.md`,
-and `_format.md` are pack-shipped immutable (updated on pack version bump
-only); `_toc.md` is derived (regenerator output); per-entry files (e.g.,
+Within these directories, `_rules.md`, `_intro.md`, and `_format.md` are
+pack-shipped immutable (updated on pack version bump only); `_toc.md` is
+derived (regenerator output); per-entry files (e.g.,
 `BD-NNN.md`, `TD-NNN.md`, `phase-N.md`, `YYYY-MM-DD-*.md`) are pack-chat-only
 writes.
 
@@ -167,25 +161,20 @@ a pack-chat-only file into a coder prompt is the DEFAULT path for any MAJOR edit
 (Pack Chat does only MINOR bookkeeping edits directly); the imperative + the
 minor-vs-major boundary live in the corpus, not here.
 
-Per-entry decomposition mandatorily extends the source-of-truth surface
-from monolithic files to per-entry trees. The protected surface MUST
-follow or the source-of-truth invariant breaks: agents could write
-per-entry files directly, bypassing Pack Chat write authority.
-This addition is a Signal 9 trip per
+Per-entry decomposition makes the per-entry trees the sole source of
+truth (no monolithic mirror). The protected surface MUST cover them or
+the source-of-truth invariant breaks: agents could write per-entry files
+directly, bypassing Pack Chat write authority. This addition is a
+Signal 9 trip per
 `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`
 §3.2 (line 305–306); the architect pass behind v11.0 per-entry split is
 the Signal 9 justification.
 
-**Forward-pointing note (Batch 19 → Batch 23):** the pack-self
-per-entry trees `/backlog/` and `/changelog/` enumerated above are
-created at Batch 23 (BD-102 dog-food) when the pack-self decompose
-fires. Until then, the directory references in this list and in
-the trinity Key files block + pack-* agent prompts are
-forward-pointing — a pack agent attempting to read
-`/backlog/_rules.md` between Batch 19 and Batch 23 will hit
-file-not-found. This is by design per
-`maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md`
-§2.3 + §10.1 R-1; the references resolve at Batch 23.
+The pack-self per-entry trees `/backlog/` and `/changelog/` enumerated
+above were created by BD-203 (pack self-migration Phase 1), which
+converted the monolithic `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md`
+into the trees and DELETED the monoliths (no mirror). The trees are the
+live SSOT; there is no longer any monolithic file to read or regenerate.
 
 - **Pack-coder PREFLIGHT + STOP-MEANS-STOP obligation.** Every pack-coder
   (or coder-style fix-coder) agent emits the PREFLIGHT trust-signal line
@@ -225,7 +214,7 @@ Every agent session on this repo:
 ## Key conventions to follow
 
 - Commit format: `feat: vN — BD-NNN description` / `fix: description` (N = current major version)
-- BD-NNN numbering: read BACKLOG.md to find next available number
+- BD-NNN numbering: read the `/backlog/` tree (e.g. `/backlog/_toc.md`) to find next available number
 - Skills live in `.claude/skills/` (Claude), `.codex/skills/` (Codex), `.gemini/skills/` (Gemini)
 - Agent files: `.claude/agents/` (markdown), `.codex/agents/` (TOML), `.gemini/agents/` (markdown with YAML frontmatter)
 - Pack repo context files: CLAUDE.md (Claude), AGENTS.md (Codex), GEMINI.md (Gemini), PACK-AGENTS.md (this file)
