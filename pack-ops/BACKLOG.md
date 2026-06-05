@@ -3420,7 +3420,7 @@ Position: project-side tracker; after BD-206; target TBD (confirm with user).
 **BD-208 — Pack Chat editing-scope rule: coder does all MAJOR edits (incl. PM-only files, scoped in) under the standard review/fix cycle; Pack Chat does only MINOR edits to the small PM-only set + commits + irreducible destructive ops**
 Type: feat — STRUCTURAL, pack-self governance (trinity `## Pack memory` rule change). Formalizes the editing-actor model the user authorized 2026-06-04. Closes the review-cycle ASYMMETRY the user identified: coder edits flow through the bounded review/fix cycle naturally; Pack-Chat-direct edits did NOT (Pack Chat cannot review itself, no natural fix loop) — so on a large structural BD the old "Pack Chat edits PM-only directly" convention forced a messy split with substantial un-reviewed hand-edits.
 Pipeline: architect-first (this IS a trinity `## Pack memory` rule change → pack-architect designs the rule + propagation + the precise minor-vs-major boundary) → planner → (coder → bounded review/fix) per commit.
-Status: Open
+Status: Resolved
 Target: v11.0 (governs the launch-gate migration BDs 203/204/206/207 + BD-205's fix-cycle + all future BDs).
 Blockers: none — runs in PARALLEL with BD-203 (which already proceeds under the existing PACK-AGENTS "PM-only off-limits UNLESS explicitly scoped in" exception clause; BD-208 formalizes the DEFAULT). Should land before the "and more" BDs that rely on the formalized standard.
 Unblocks: a UNIFORM review/fix cycle on ALL substantive edits regardless of actor; eliminates the Pack-Chat-vs-coder editing split on large structural BDs.
@@ -3435,7 +3435,7 @@ Scope: design (architect) + apply the trinity `## Pack memory` rule change (new 
 Out of scope: re-litigating WHICH files are PM-only (the small set is user-confirmed); the per-BD application to 203/204/206/207 (already authorized + proceeding under the existing scope-in clause).
 Acceptance criteria: the new editing-actor rule lands in the trinity `## Pack memory` + propagates to PACK-AGENTS/PACK-CHAT/RATIONALE in lockstep (trinity parity held); the minor-vs-major boundary precisely defined; no contradiction with existing scope rules; validate-pack green.
 References: `feedback_pack_chat_boundaries`, `feedback_review_cycle_position_checkpoint`, `feedback_review_fix_cycle` (memory); `pack-ops/PACK-AGENTS.md` § PM-only; the BD-203 actor-assignment tensions that surfaced this (`PLAN-BD-203.md` §6); user direction 2026-06-04.
-Resolved: n/a
+Resolved: commit 86c4b4d (2026-06-05) — editing-actor rule landed (trinity ## Pack memory `pack-chat-minor-edits-only` + lockstep propagation); review CLEAN; CI green.
 Position: pack-self governance; parallel with BD-203; lands before the "and more" BDs.
 
 ---
