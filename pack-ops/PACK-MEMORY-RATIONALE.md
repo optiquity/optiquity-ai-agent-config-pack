@@ -563,3 +563,39 @@ that inversion (`maintenance-docs/v11-implementation/ARCHITECTURE-BD-195-DUAL-US
 CI Check 47 holds the install-map's pack-side subset == that constant, so the
 lazy "ship from `scripts/` too" path fails by default — growth is a deliberate,
 sign-off-gated constant edit, never an incidental map add.
+
+## pack-chat-minor-edits-only
+
+**Why.** User-authorized 2026-06-04 (BD-208). The pre-BD-208 convention let
+Pack Chat edit PM-only files directly at ANY depth. Coder edits flow through
+the bounded review/fix cycle; Pack-Chat-direct edits did not (Pack Chat cannot
+review itself — see `bounded-review-fix-cycle`). On a large structural BD
+(BD-203) this forced a split: Pack Chat hand-edited substantial PM-only content
+with NO independent review while the coder's edits got the cycle. The asymmetry
+let un-reviewed substantive edits of LANDED content land. BD-208 (Option B)
+makes the review uniform per CLASS: substantive edits of already-landed content
++ rule edits + out-of-small-set edits run through a coder + reviewer; NEW-entry
+authoring stays Pack-Chat-direct under the user's governance approval.
+
+**How to apply.** Classify every PM-only edit by the §2 boundary in
+ARCHITECTURE-BD-208.md (Option B): MINOR (Pack-Chat-direct) = (a) a bookkeeping
+token (status flip / version bump / dated note / table row / decided-block
+append) OR (b) authoring a GENUINELY NEW entry (BD-open at a new ID /
+version-boundary CHANGELOG entry) — the user's governance approval IS the review.
+MAJOR (→ coder) = a substantive edit of ALREADY-LANDED content (re-scope /
+multi-field rewrite / structural rewrite), a rule edit, or any out-of-small-set
+edit. A delete-and-reauthor of a landed ID is MAJOR (landed-content edit), not a
+new author. Tie-break: when unsure new-vs-landed, MAJOR. Scoping a PM-only file
+INTO a coder prompt is the supported path and is NOT a boundary violation (the
+same scope-in clause PACK-AGENTS.md § "Agent permission rules" already grants
+per-entry dirs). A bookkeeping edit gets Pack Chat's `validate-pack`/parity/grep
+sanity pass; a new-entry author rides the user's governance review; neither
+self-promotes into a substantive edit of landed content (that is MAJOR).
+
+**Rejected alternative.** "Let Pack Chat keep editing PM-only at any depth, just
+add a post-hoc reviewer pass on Pack-Chat edits." Rejected: Pack Chat cannot
+spawn a reviewer on its OWN in-place edits without first packaging them as a
+coder deliverable (no IMPL-REPORT, no fresh-context diff to review) — the
+clean structural fix is to route major edits through the coder that already
+produces the reviewable artifact. This composes `bounded-review-fix-cycle`
+rather than bolting a second review path onto Pack Chat.

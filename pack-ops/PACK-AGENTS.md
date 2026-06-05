@@ -158,6 +158,11 @@ writes.
 Pack Chat's prompt scopes it — the same exception clause that applies to
 the PM-only files above.
 
+Per trinity `## Pack memory` `[rationale: pack-chat-minor-edits-only]`, scoping
+a PM-only file into a coder prompt is the DEFAULT path for any MAJOR edit to it
+(Pack Chat does only MINOR bookkeeping edits directly); the imperative + the
+minor-vs-major boundary live in the corpus, not here.
+
 Per-entry decomposition mandatorily extends the source-of-truth surface
 from monolithic files to per-entry trees. The protected surface MUST
 follow or the source-of-truth invariant breaks: agents could write
