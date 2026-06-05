@@ -32,8 +32,10 @@
 #     C1: green tree + all refs resolve → check passes.
 #     C2: green tree + dangling BD-NNN ref → check FAILs with offending
 #         file:line + ref name.
-#     C3: green tree + ref inside _v8-resolved-archive.md → check
-#         passes (archive SKIPed per integration parent §11.3).
+#     C3: (RETIRED — BD-203 B8) formerly exercised the removed
+#         `_v8-resolved-archive.md` cross-ref SKIP; that supporting file
+#         no longer exists, so the case no longer applies (the generic
+#         leading-underscore guard now covers supporting files).
 #     C4: green tree + self-reference → check passes.
 #
 # Plus structural smoke:
@@ -58,7 +60,9 @@
 #   maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md
 #     §10.1 (Check 32 contract); §10.2 (Check 33); §10.3 (Check 34);
 #     §10.4 (pre-check folding); §10.5 (SKIP behavior); §10.6 (pack-side
-#     scope); §11.3 (v8-archive SKIP for cross-refs).
+#     scope). (The former §11.3 `_v8-resolved-archive.md` cross-ref SKIP
+#     is removed by BD-203 B8; supporting files are now skipped generically
+#     by the walk loop's leading-underscore guard.)
 #   maintenance-docs/v11-implementation/PLAN-PER-ENTRY-SPLIT-BATCH-19.md
 #     §5.6 (BD-168 contract).
 
@@ -533,10 +537,10 @@ assert_contains "C2.2 dangling BD-555 → FAIL names BD-555" "$C2_OUT" "BD-555"
 assert_contains "C2.3 dangling BD-555 → FAIL names BD-100.md" "$C2_OUT" "BD-100.md"
 assert_contains "C2.4 dangling BD-555 → FAIL says no matching entry file" "$C2_OUT" "no matching entry file found"
 
-# C3: (RETIRED — BD-203 B8) The former C3 exercised the
-# `_v8-resolved-archive.md` SKIP path (a `BD-999` historical reference
-# inside the archive that Check 34 SKIPed per §11.3). The archive
-# supporting file is retired (the 19 v8 table rows are now real
+# C3: (RETIRED — BD-203 B8) The former C3 exercised the removed
+# `_v8-resolved-archive.md` cross-ref SKIP path (a `BD-999` historical
+# reference inside the archive that the old special-case SKIPed). The
+# archive supporting file is retired (the 19 v8 table rows are now real
 # `BD-00N.md` entries), so there is no archive section to SKIP and this
 # test no longer applies. Leading-underscore supporting files are still
 # skipped generically by the walk loop's `startswith("_")` guard.

@@ -27,7 +27,6 @@
 - [BD-192](./BD-192.md) — v11.1+ Product Specialist (PS) implementation (architect/planner/coder cycle)
 - [BD-198](./BD-198.md) — Formalize `pack-ops/PACK-MEMORY-RATIONALE.md` as a PM-only surface (close BD-196 classification gap)
 - [BD-202](./BD-202.md) — Universal `pack update` propagation engine (delete + clean-modify correctness across asset classes; `x-`-safe, customization-preserving)
-- [BD-203](./BD-203.md) — Pack self-migration Phase 1: monolithic flat files → per-entry directory trees (Mode 1 → Mode 2)
 - [BD-204](./BD-204.md) — Pack self-migration Phase 2: per-entry directory trees → GH Issues (tracker Mode 2 → Mode 3)
 - [BD-205](./BD-205.md) — v11.0 final repo readiness audit + full test/audit/fix cycle (the last gate before launch)
 - [BD-206](./BD-206.md) — Project-side per-entry no-mirror application (apply the corrected standard to client assets)
@@ -218,6 +217,7 @@
 - [BD-196](./BD-196.md) — Document concision + boundary-completeness guardrails (rule-corpus restructure + single-SSOT discoverability)
 - [BD-199](./BD-199.md) — Optimize validate-pack.py runtime regression (Check 43 per-iteration regex recompilation)
 - [BD-200](./BD-200.md) — Project-side capability ACTIVATION (no pack-clone dependency): project-side `activate-capability.sh` + tracked conditional-file pool + single-source capability tables + Procedure 6 redesign
+- [BD-203](./BD-203.md) — Pack self-migration Phase 1: monolithic flat files → per-entry directory trees (Mode 1 → Mode 2)
 - [BD-208](./BD-208.md) — Pack Chat editing-scope rule: coder does all MAJOR edits (incl. PM-only files, scoped in) under the standard review/fix cycle; Pack Chat does only MINOR edits to the small PM-only set + commits + irreducible destructive ops
 - [BD-209](./BD-209.md) — Rename the `PM-only` commit-scope keyword → `pack-chat-only` (overloaded name; misleads agents)
 
