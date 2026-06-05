@@ -3416,6 +3416,26 @@ Position: pack-self governance; parallel with BD-203; lands before the "and more
 
 ---
 
+**BD-209 — Rename the `PM-only` commit-scope keyword → `pack-chat-only` (overloaded name; misleads agents)**
+Type: feat — STRUCTURAL, pack-self governance. A CI-enforced commit-scope-keyword CONVENTION rename (Check 36) with a wide blast radius. Pipeline: `pack-docs-researcher` (EXHAUSTIVE blast-radius enumeration of every `PM-only`/`pack-memory-only` reference) → `pack-architect` (final name + alias-vs-retire policy + internal-var renames + token-collision verification + FOLD the BD-203 A13 fix) → planner → (coder → bounded review/fix) per commit + correctness audit.
+Status: Open
+Target: v11.0 (governs commit-scope discipline; lands BEFORE BD-203 Commit 2).
+Blockers: none — runs NOW. SEQUENCING (user 2026-06-05): rename FIRST — BD-203 is PAUSED between its Commit 1 (pre-normalize, landed `a5a8ad8`) and Commit 2 (atomic build-trees + doc-corrections + delete); BD-209 lands the rename so Commit 2 builds the new `/backlog/` trees + `_rules.md` + corrects the governance docs with the CORRECT keyword from birth (not the bad name then re-renamed).
+Unblocks: a correctly-named commit-scope keyword that does not mislead agents; the A13 Check-36 inconsistency cleaned up (folded in).
+Problem (user 2026-06-05): the `PM-only` (alias `pack-memory-only`) commit-scope keyword is OVERLOADED + misnamed. "Pack Chat" = the project-manager chat in the PACK repo (pack-self governance); "PM Chat" = the manager chats in PROJECT/client repos. So a keyword named `PM-only` that actually means "only-Pack-Chat-edited pack-governance files" points an agent toward the PROJECT side — exactly backwards. Rename before it spreads into BD-203's new per-entry trees + `_rules.md`.
+Binding decisions (user 2026-06-05 — FIXED; architect designs WITHIN them):
+  - NAME = `pack-chat-only` (user-confirmed). The architect VERIFIES it does not token-collide with `pack-only` under Check 36's parsing (it does not substring-match) before finalizing.
+  - The architect DECIDES: keep `PM-only`/`pack-memory-only` as DEPRECATED ALIASES (transition) vs hard-retire; whether to rename the internal `_PM_ONLY_PERMITTED_PATHS`/`_PREFIXES` vars to `_PACK_CHAT_ONLY_*`; how historical `(PM-only)` commits are handled (Check 36 checks HEAD only — historical commits are not re-checked).
+  - FOLD the BD-203 A13 sequencing fix: A13 (in BD-203 C-1) removed `pack-ops/BACKLOG.md`/`CHANGELOG.md` from the permitted set TOO EARLY (before Commit 2 deletes them) — restore them to the `pack-chat-only` permitted set as part of BD-209; the removal moves to BD-203 Commit 2 (with the `git rm`). This retroactively validates the buried `fcdcbc4`/`4623284` commits.
+Scope: rename `PM-only`/`pack-memory-only` → `pack-chat-only` across: `scripts/validate-pack.py` Check 36 token parsing + `_PM_ONLY_PERMITTED_PATHS`/`_PREFIXES`; the trinity commit-scope-keyword convention table (CLAUDE/AGENTS/GEMINI); `pack-ops/PACK-AGENTS.md` "PM-only files and directories" section; `pack-ops/PACK-CHAT.md`; the Check-36 tests (`test-validate-pack-checks-36-37-38.sh`); the `commit-subject-keyword-token-trap` memory + any doc/template reference; + restore BACKLOG/CHANGELOG to the permitted set (A13 fold).
+Out of scope: changing WHICH files are governance (only the keyword NAME changes); the BD-203 conversion (resumes at Commit 2 after this).
+Acceptance criteria (correctness audit): the keyword is `pack-chat-only` everywhere; Check 36 parses it + the alias policy is implemented + tested; no token-collision with `pack-only`; historical `(PM-only)` commits do not break CI; the A13 fold restores BACKLOG/CHANGELOG to the permitted set (validate-pack green; `fcdcbc4`/`4623284` no longer Check-36-inconsistent); commit-gating works end-to-end.
+References: `feedback_commit_subject_keyword_token_trap` (memory); `pack-ops/PACK-AGENTS.md` § PM-only; BD-208 (editing-actor rule referencing the set); BD-203 A13 (the folded fix); user direction 2026-06-05.
+Resolved: n/a
+Position: pack-self governance; rename-first, between BD-203 Commit 1 and Commit 2.
+
+---
+
 **BD-059 — v10 migration silently destroys project customization**
 Type: TODO(version)
 Status: Resolved
