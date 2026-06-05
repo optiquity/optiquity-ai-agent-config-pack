@@ -24,15 +24,17 @@
 #     B. Regenerated mirrors are byte-identical to a fresh regeneration
 #        run against the on-disk per-entry tree (round-trip from the
 #        outside).
-#     C. validate-pack.py Check 32/33/34 run cleanly when invoked in
+#     C. validate-pack.py Check 32′/33/34 run cleanly when invoked in
 #        this environment. NOTE: validate-pack.py's REPO_ROOT is
 #        derived from `__file__` not cwd, so it always validates the
 #        PACK itself (where pack-side per-entry trees don't exist yet
 #        until BD-102 dog-food per integration parent §10.5). The
-#        expected behavior is therefore SKIP for Check 32/33/34 with
-#        the "pre-BD-102 dog-food pack-self" message. We assert that
-#        SKIP wording AND exit-0, which is the load-bearing CI signal
-#        for the pack-side scope.
+#        expected behavior is therefore SKIP for Check 32′/33/34. The
+#        BD-203-inverted Check 32′ ("no pack monolith exists") emits the
+#        "pre-conversion pack-self" SKIP message; Check 33/34 retain the
+#        "pre-BD-102 dog-food pack-self" message. We assert those SKIP
+#        wordings AND exit-0, which is the load-bearing CI signal for
+#        the pack-side scope.
 #
 # Wired in CI by validate-pack.yml AFTER the "build test fixtures" +
 # "fixture manifest verify" steps and BEFORE the migrator/per-entry
@@ -289,7 +291,7 @@ for spec in \
 done
 
 # ─────────────────────────────────────────────────────────────────────────
-# Group C — validate-pack.py Check 32/33/34 behave correctly given the
+# Group C — validate-pack.py Check 32′/33/34 behave correctly given the
 #           pack-side scope (per integration parent §10.6) when run in
 #           this CI environment
 # ─────────────────────────────────────────────────────────────────────────
@@ -299,25 +301,28 @@ done
 # it always validates the pack itself. Pack-side per-entry trees
 # (`backlog/`, `changelog/` at pack-repo root) don't materialize until
 # Batch 23 (BD-102) dog-food per integration parent §10.5. Expected
-# behavior right now: Check 32/33/34 print OK + SKIP message naming
-# "pre-BD-102 dog-food pack-self" and the validator exits 0.
+# behavior right now: Check 32′/33/34 print OK + a SKIP message and the
+# validator exits 0. BD-203 inverted the old "mirror-in-sync" Check 32
+# into Check 32′ ("no pack monolith exists"); its SKIP message names
+# "pre-conversion pack-self", while Check 33/34 retain the
+# "pre-BD-102 dog-food pack-self" wording.
 #
-# The assertions: (a) exit code 0, (b) Check 32 OK lines reference
-# pack-side `backlog/` + `changelog/` with the SKIP message, (c) Check
+# The assertions: (a) exit code 0, (b) Check 32′ OK lines reference
+# pack-side `backlog/` + `changelog/` with its SKIP message, (c) Check
 # 33 same shape, (d) Check 34 reports "no per-entry trees present".
 # These are the load-bearing CI signals that the pack-side scope is
-# honored and the SKIP-message wording stays in sync with the renumber-
-# cascade canonical anchor (BD-102).
+# honored and the SKIP-message wording stays in sync (Check 33/34
+# anchor on the renumber-cascade BD-102 label).
 #
 # Note on scope: this group verifies the validator's CI behavior given
 # the current pack-side absence of per-entry trees. When pack-self
-# dog-food lands at Batch 23, Check 32/33/34 will start asserting
-# byte-identical mirror regeneration against the materialized
-# pack-side trees, and this test group will need its expectations
-# revisited.
+# dog-food lands at Batch 23, Check 32′/33/34 will start asserting
+# against the materialized pack-side trees (Check 32′ that NO monolith
+# co-exists with the tree), and this test group will need its
+# expectations revisited.
 
 echo
-echo "=== Group C: validate-pack.py Check 32/33/34 pack-side SKIP behavior ==="
+echo "=== Group C: validate-pack.py Check 32′/33/34 pack-side SKIP behavior ==="
 
 VALIDATOR_OUT="$SCRATCH/validate-pack.out"
 VALIDATOR_RC=0
@@ -327,14 +332,15 @@ assert_eq "C.1 validate-pack.py exits 0" "0" "$VALIDATOR_RC"
 
 VALIDATOR_TEXT=$(cat "$VALIDATOR_OUT")
 
-# Check 32 banner present and SKIP messages reference both pack-side
-# streams with the durable "pre-BD-102 dog-food pack-self" anchor.
-assert_contains "C.2 Check 32 banner present" "$VALIDATOR_TEXT" \
-    "── Check 32: per-entry mirror is in-sync with per-entry tree (BD-168) ──"
-assert_contains "C.3 Check 32 backlog/ SKIP wording (BD-102 anchor)" "$VALIDATOR_TEXT" \
-    "backlog/ — not present (skipping; pre-v11.0 client or pre-BD-102 dog-food pack-self"
-assert_contains "C.4 Check 32 changelog/ SKIP wording (BD-102 anchor)" "$VALIDATOR_TEXT" \
-    "changelog/ — not present (skipping; pre-v11.0 client or pre-BD-102 dog-food pack-self"
+# Check 32′ banner present and SKIP messages reference both pack-side
+# streams with the "pre-conversion pack-self" anchor (BD-203 inverted
+# Check 32 → 32′; the SKIP wording changed in lockstep with the banner).
+assert_contains "C.2 Check 32′ banner present" "$VALIDATOR_TEXT" \
+    "── Check 32′: no pack monolith exists (BD-203) ──"
+assert_contains "C.3 Check 32′ backlog/ SKIP wording (pre-conversion anchor)" "$VALIDATOR_TEXT" \
+    "backlog/ — not present (skipping; pre-conversion pack-self or pre-v11.0 client)"
+assert_contains "C.4 Check 32′ changelog/ SKIP wording (pre-conversion anchor)" "$VALIDATOR_TEXT" \
+    "changelog/ — not present (skipping; pre-conversion pack-self or pre-v11.0 client)"
 
 # Check 33 banner + same SKIP wording.
 assert_contains "C.5 Check 33 banner present" "$VALIDATOR_TEXT" \
