@@ -331,7 +331,7 @@ A12 Check 48, A13 PM-only), `lib/recommendation.sh` (A14a), `lib/detect.sh` (A14
 **Cross-reference audit (must move WITH the deletion so no commit half-corrects):** the trinity `## Pack
 memory` rule (C1), README layout (C5), PACK-AGENTS PM-only + forward-note (C3), PACK-CHAT file-access (C4),
 the per-entry tooling header comments (A8), HELP-FRAGMENT-PACK (C6), pack-copied skill prose (C7). These are
-the "~16 surfaces" — all sequenced in Phase C BEFORE Phase D deletion (§4 ordering).
+the "~16 surfaces" — all corrected in the SAME atomic Commit 2 as the deletion (§4 RESOLUTION A; no commit leaves them half-corrected).
 
 **NOT touched (BD-206 boundary, denied by `pack-only`):** `supporting-docs/MIGRATION-v10-to-v11.md`,
 `pack-ops/MERGE-STRATEGY.md:256-274` (project-side model in a pack-ops file — V3 flag),
@@ -346,59 +346,73 @@ tracker is exercised) — SURFACE G-5.
 
 ## 4. FILE-DEPENDENCY ANALYSIS + SAFE ORDER — Section (B)
 
-### Dependency graph (why this order keeps validate-pack GREEN at EVERY commit)
+### Dependency graph (RE-SEQUENCED 2026-06-04 — RESOLUTION A atomic conversion)
+
+**THE CONTRADICTION that forced this re-sequence (user-found, RESOLVED A 2026-06-04).** C-1's landed
+Check 32′ (`validate-pack.py:3215`) FAILs when a per-entry tree dir is present AND the monolith file still
+exists (`"<mirror> still present while <stream>/ tree exists → FAIL"`). The OLD staged order (build trees →
+fix doc refs → delete) left the tree + monolith COEXISTING at the build and doc-fix commit end-states →
+Check 32′ RED → no green PREFLIGHT reachable. **Check 32′ forbids exactly the tree+monolith window the
+staged order needed.** RESOLUTION A collapses build + ref-fix + delete into ONE atomic commit so the
+tree+monolith window never persists across a commit boundary.
 
 ```
-Phase A (engine + validators + tests)        Phase B0 (pre-normalize monolith)
-  A1 anchor ─┐                                 B0a promote 19 rows ─┐
-  A2 changelog grouping ─┤                     B0b flatten scaffolding ─┤
-  A3/A4 regex lockstep ──┤── all 3 surfaces    B0c diff gate ───────────┘
-  A5 Check34 token ──────┤   (lib+toc+vp.py)         │ (edits pack-ops/BACKLOG.md only;
-  A6/A7 TOC ─────────────┤                           │  trees not yet built → CI green)
-  A8 mirror demote ──────┤                           ▼
-  A9 Check 32′ ──────────┤                     Phase B (build trees + verify)
-  A10-13 Check3/40/48/PM ┤                       B1 mkdir → B2 _rules → B3 _intro
-  A14 runtime repoint ───┤                       → B4 decompose (NEEDS A1/A2 anchors
-  A15 tests lockstep ────┤                            + B0 uniform monolith)
-  A16 manifest ──────────┘                       → B5 toc (NEEDS A6/A7)
-        │                                        → B6 ORACLE GREEN (gate)
-        │ CI green: trees absent → 32′ asserts          │
-        │ absence (TRUE today), 33/34 SKIP               ▼
-        └───────────────────────────────────────►  Phase C (doc corrections)
-                                                     C1 rule → C2-C7 surfaces → C8 manifest
-                                                          │ CI green: monolith still present;
-                                                          │ 32′ now also checks tree present
-                                                          ▼
-                                                   Phase D (DELETE — gated, destructive)
-                                                     D1 git rm → D2 sweep → D3 manifest
-                                                          │ CI green: 32′ already inverted;
-                                                          │ post-delete = tree present + no monolith
-                                                          ▼
-                                                   Phase E (final audit + end-of-batch reviewer)
+COMMIT 1 (pre-normalize, B0)                COMMIT 2 (ATOMIC convert)
+  B0a promote 19 rows ─┐                      EDITS (pack-coder, scoped in):
+  B0b flatten scaffolding ─┤                    B1 mkdir → B2 _rules → B3 _intro
+  B0c diff gate ───────────┘                    → B4 decompose (NEEDS A1/A2 + B0 uniform monolith)
+        │ edits pack-ops/BACKLOG.md ONLY        → B5 toc (NEEDS A6/A7) → B8/B9 carry-fwd
+        │ NO tree yet → 32′/33/34 SKIP          → C1–C8 fix ALL ~16 doc-model refs
+        │ → GREEN                               → B6 ORACLE GREEN (gate) + manifest
+        ▼                                       │ coder PREFLIGHT: oracle GREEN +
+  (commit; Pack Chat)                           │ validate-pack GREEN EXCEPT 32′
+        │                                       │ (32′ expected-RED: tree built, monolith
+        └──────────────────────────────────►   │  still present — by design, §6 split)
+                                                ▼
+                                          DELETE + FINAL VERIFY (Pack-Chat-direct):
+                                            D1 git rm pack-ops/BACKLOG.md + CHANGELOG.md
+                                            → D2 ref sweep → D3 manifest
+                                            → FULL validate-pack (NOW GREEN incl. 32′:
+                                               tree present + monolith ABSENT)
+                                            → commit the ATOMIC commit (Pack Chat)
+                                                ▼
+                                          Phase E (end-of-batch reviewer)
 ```
 
-### Ordering justification (the atomicity invariant — V3 §4 / R2)
+(Phase A engine + validators + tests landed at C-1 already — `A1` anchor, `A2` changelog grouping,
+`A3/A4` regex lockstep, `A5` Check-34 token, `A6/A7` TOC, `A8` mirror-demote, `A9` Check 32′, `A10-13`
+Check3/40/48/PM, `A14` runtime repoint, `A15` tests, `A16` manifest. C-1 was GREEN because the tree was
+absent → 32′ SKIPs. C-1 is unchanged by this re-sequence.)
 
-1. **Phase A FIRST, before the tree exists.** Checks 32/33/34 SKIP today (EE-P4: trees absent). The moment
-   `/backlog/` is created they flip ACTIVE. So the Check-32→32′ inversion + the regex widenings + the test
-   reworks MUST land while the tree is still absent — Check 32′ "assert no monolith" is vacuously TRUE today
-   (tree absent → its is_dir gate SKIPs), and 33/34 still SKIP. Phase A commit is GREEN.
-2. **Phase B0 edits the monolith only.** Pre-normalization is monolith→monolith; no tree yet → Checks 32′/33/34
-   still SKIP; Check 3 (now repointed in A10 to the tree) SKIPs on tree-absent. GREEN. The Phase-B0 diff gate
-   (B0c) is a human/coder review artifact, not a CI gate.
-3. **Phase B builds the tree + verifies BEFORE deletion.** Once `/backlog/` exists, 32′ asserts (monolith
-   present + tree present + `_toc.md`/`_rules.md` present) — all TRUE (monolith NOT yet deleted) → GREEN;
-   33 asserts toc-in-sync (B5 regenerated it) → GREEN; 34 asserts cross-refs resolve against the widened
-   defined-ID set → GREEN. The oracle (B6) gates Phase D.
-4. **Phase C corrects docs while the monolith still exists.** No validator asserts doc PROSE about mirrors,
-   so C is CI-neutral; it is sequenced before D so the deletion does not leave a half-corrected doc set.
-5. **Phase D deletes LAST, with 32′ already inverted.** Post-delete: tree present + monolith absent → 32′
-   PASSES by construction. This is the ONLY commit where a monolith vanishes, and 32′ was built (A9) to pass
-   exactly that end-state. GREEN.
+### Ordering justification (RESOLUTION A — atomicity is the invariant; SUPERSEDES the old staged order)
 
-**No commit leaves CI red mid-sequence** because the validator redesign (Phase A) precedes the state change
-(B/D), and Check 32′'s assertion is satisfiable at every intermediate state (tree-absent → SKIP; tree+monolith
-→ both-present OK; tree-only → no-monolith OK).
+**State-claim (SUPPORTED, measured at `validate-pack.py:3215`):** Check 32′ has exactly THREE satisfiable
+states — (i) tree-absent → SKIP (`is_dir` gate, `:3206`); (ii) tree present + monolith ABSENT → PASS; (iii)
+tree present + monolith PRESENT → **FAIL** (`:3215-3221`). State (iii) is the tree+monolith COEXISTENCE
+window. Any commit whose END-STATE is (iii) is RED. The old staged order's build-commit and doc-fix-commit
+both ended in state (iii) → the old §4 "tree+monolith → both-present OK" claim (former point 3/5) was FALSE
+against the landed guard. This re-sequence eliminates state (iii) as a commit end-state.
+
+1. **C-1 (Phase A) — landed, GREEN, unchanged.** Engine + validators + tests landed while the tree was absent
+   (state i → SKIP). Not re-touched.
+2. **Commit 1 (pre-normalize, B0a–B0c) — monolith→monolith, GREEN.** Edits `pack-ops/BACKLOG.md` only; NO
+   tree yet → 32′/33/34 SKIP (state i); Check 3 (A10-repointed) SKIPs on tree-absent. The B0c diff gate is a
+   coder/review artifact (preserved), not a CI gate. Commit end-state = (i) → GREEN.
+3. **Commit 2 (ATOMIC: build B1–B9 + ref-fix C1–C8 + delete D1–D3) — the ONLY state-(ii) end-state.** The
+   EDITS (build trees, author `_rules`/`_intro`, decompose, toc, B8/B9, fix the ~16 refs) transit through
+   state (iii) WITHIN the commit's working tree — but the commit is NOT taken there. The destructive
+   `git rm` (D1) removes the monoliths in the SAME commit, so the commit's END-STATE is (ii): tree present +
+   monolith absent → 32′ PASS; 33 toc-in-sync PASS (B5); 34 cross-ref PASS (widened defined-ID set); the ref
+   sweep (D2) confirms zero actionable hits → FULL validate-pack GREEN. The oracle (B6) gates the deletion
+   (safe-before-delete) INSIDE the commit.
+
+**Why atomic is irreducible here:** the no-mirror invariant (Check 32′) and the "verify-before-delete"
+invariant (the oracle must run while the monolith still exists, to diff the tree against it) are jointly
+satisfiable ONLY if build-verify-delete share one commit. Splitting them re-introduces state (iii) at a
+commit boundary. No commit leaves CI red because Commit 1 ends in state (i) and Commit 2 ends in state (ii);
+state (iii) exists only transiently inside Commit 2's working tree, never as a committed end-state. The
+coder/Pack-Chat verification boundary inside Commit 2 is specified in §5/§6 (the coder reaches "GREEN except
+the expected-RED 32′"; Pack Chat's post-`git rm` run reaches FULL GREEN before the commit).
 
 ---
 
@@ -409,43 +423,48 @@ edit, INCLUDING the PM-only files (`pack-ops/BACKLOG.md`/`CHANGELOG.md`, the tri
 `PACK-AGENTS.md`, `PACK-CHAT.md`), which Pack Chat scopes INTO the coder's prompt via the existing
 PACK-AGENTS.md "PM-only off-limits UNLESS explicitly scoped in" clause (PACK-AGENTS.md:130-131,157-159).
 **Pack Chat does ONLY:** the git commits (`agents-never-commit`) + the irreducible destructive DELETION of the
-two monoliths at C-4 (destructive, user-approved). This RESOLVES former TENSION 1/2/3 + G-3 + G-6 — they all
+two monoliths in Commit 2 (destructive, user-approved). This RESOLVES former TENSION 1/2/3 + G-3 + G-6 — they all
 collapse to "coder edits (scoped in); Pack Chat commits + deletes."
 
-Per-commit cadence (C-1/C-2/C-3): **fresh pack-coder per commit** → **bounded review/fix cycle**
-(`review-fix-cycle`: review-1 → [clean ⇒ commit | findings ⇒ fix-1 → review-2 → [clean ⇒ commit | fix-2 →
-review-3 → architect-escalate if dirty]]; max 3 reviewer / 2 fix-coder per commit). Pack Chat restates cycle
-position at each coder/fix completion (`review-cycle-position-checkpoint`) and NEVER self-reviews. C-4's
-post-deletion state is reviewer-verified (no coder edit — Pack Chat performs the `git rm`). End-of-batch
-reviewer (Phase E) runs once on the full batch. Approval gate before EACH commit; C-4 additionally needs
-explicit destructive approval.
+**RE-SEQUENCED 2026-06-04 — RESOLUTION A (atomic).** The old 4-commit staged order (build → ref-fix →
+delete) is REPLACED by a 2-commit atomic structure: the landed Check 32′ (`validate-pack.py:3215`) FAILs on
+the tree+monolith coexistence window the staged order required (see §4). C-1 (engine + validators, already
+landed) is unchanged; the former C-2/C-3/C-4 collapse into **Commit 1 (pre-normalize)** + **Commit 2 (atomic
+convert: build + ref-fix + delete)**.
 
-| # | Commit subject (proposed) | Keyword | Tasks | File set | Actor |
+Per-commit cadence: **fresh pack-coder per commit** → **bounded review/fix cycle** (`review-fix-cycle`:
+review-1 → [clean ⇒ commit | findings ⇒ fix-1 → review-2 → [clean ⇒ commit | fix-2 → review-3 →
+architect-escalate if dirty]]; max 3 reviewer / 2 fix-coder per commit). Pack Chat restates cycle position at
+each coder/fix completion (`review-cycle-position-checkpoint`) and NEVER self-reviews. **Commit 2's coder does
+all EDITS but NOT the `git rm` (`per-action-approval-sub-agents` forbids a coder running a destructive
+deletion on its own authority); Pack Chat performs the `git rm` + the FULL post-delete validate-pack run
+before committing (§6 verification split).** End-of-batch reviewer (Phase E) runs once on the full batch.
+Approval gate before EACH commit; Commit 2 additionally needs explicit destructive approval for the `git rm`.
+
+| # | Commit subject (proposed) | Keyword | Tasks | File set | Actor + verification |
 |---|---|---|---|---|---|
-| **C-1** | `feat: v11 — BD-203 per-entry engine + validator redesign (no asset change) (pack-only)` | `pack-only` | A1–A16 | `scripts/lib/per-entry/{decompose,_lib,toc-regenerate,mirror-generate}.sh`, `scripts/validate-pack.py`, `scripts/lib/{recommendation,detect}.sh`, `scripts/tests/{test-per-entry,test-validate-pack-checks-32-33-34,test-validate-pack-check-removed-doc-advisory,test-validate-pack-checks-36-37-38,test-validate-pack-check-40}.sh`, `test-fixtures/manifest.txt` | pack-coder |
-| **C-2** | `feat: v11 — BD-203 pre-normalize + build per-entry trees; oracle verified (pack-only)` | `pack-only` | B0a–B0c, B1–B7 | `pack-ops/BACKLOG.md` (pre-normalize), `/backlog/**` (new tree), `/changelog/**` (new tree), `test-fixtures/manifest.txt` | **pack-coder** (Pack Chat scopes `pack-ops/BACKLOG.md`/`CHANGELOG.md` + the `/backlog/`+`/changelog/` trees IN) |
-| **C-3** | `feat: v11 — BD-203 correct no-mirror doc model across pack surfaces (pack-only)` | `pack-only` | C1–C8 | trinity ×3 (`CLAUDE/AGENTS/GEMINI.md`), `pack-ops/{PACK-AGENTS,PACK-CHAT,HELP-FRAGMENT-PACK}.md`, `README.md`, `.claude/.codex/.gemini` pack agent+skill copies, `test-fixtures/manifest.txt` | **pack-coder** (Pack Chat scopes trinity + `README.md` + `PACK-AGENTS.md` + `PACK-CHAT.md` IN; ALL ~16 surfaces + skill/agent copies in ONE commit) |
-| **C-4** | `feat: v11 — BD-203 delete monolith flat files; tree is sole SSOT (pack-only)` | `pack-only` | D1–D3 | `pack-ops/BACKLOG.md` (rm), `pack-ops/CHANGELOG.md` (rm), `test-fixtures/manifest.txt` | **Pack-Chat-direct** (DELETION only; destructive, user-approved) |
+| **C-1** (landed) | `feat: v11 — BD-203 per-entry engine + validator redesign (no asset change) (pack-only)` | `pack-only` | A1–A16 | `scripts/lib/per-entry/{decompose,_lib,toc-regenerate,mirror-generate}.sh`, `scripts/validate-pack.py`, `scripts/lib/{recommendation,detect}.sh`, `scripts/tests/{test-per-entry,test-validate-pack-checks-32-33-34,test-validate-pack-check-removed-doc-advisory,test-validate-pack-checks-36-37-38,test-validate-pack-check-40}.sh`, `test-fixtures/manifest.txt` | pack-coder; GREEN (tree absent → 32′ SKIPs) |
+| **Commit 1** (pre-normalize) | `feat: v11 — BD-203 pre-normalize monolith to uniform entries (pack-only)` | `pack-only` | B0a–B0c | `pack-ops/BACKLOG.md` (pre-normalize), `test-fixtures/manifest.txt` | **pack-coder** (Pack Chat scopes `pack-ops/BACKLOG.md` IN). Monolith→monolith; NO tree → 32′/33/34 SKIP → GREEN. B0c diff gate is a coder review artifact. |
+| **Commit 2** (ATOMIC convert) | `feat: v11 — BD-203 convert to per-entry sole-SSOT; delete monolith (pack-only)` | `pack-only` | B1–B9, C1–C8, D1–D3 | `/backlog/**` + `/changelog/**` (new trees), trinity ×3, `pack-ops/{PACK-AGENTS,PACK-CHAT,HELP-FRAGMENT-PACK}.md`, `README.md`, `.claude/.codex/.gemini` agent+skill copies, `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md` (`git rm`), `test-fixtures/manifest.txt` | **SPLIT (§6):** pack-coder does ALL EDITS (build trees, `_rules`/`_intro`, decompose, toc, B8/B9, fix ~16 refs) — scoped into the trees + the PM-only doc surfaces; coder PREFLIGHT = §7 oracle GREEN + validate-pack GREEN **EXCEPT** the expected-RED Check 32′. Then **Pack-Chat-direct** `git rm` the two monoliths (destructive, user-approved) + FULL validate-pack (NOW GREEN incl. 32′) BEFORE committing. |
 
 **Keyword verification (Check 36).** Every commit is `pack-only`. `pack-only` DENIES `project-template/` +
-`supporting-docs/`. NONE of C-1..C-4 touches those prefixes (the project-side surfaces are BD-206 — §3). The
-new trees `/backlog/`+`/changelog/` are at repo root (not under the denied prefixes) → permitted. **Keyword-token
+`supporting-docs/`. NONE of C-1 / Commit 1 / Commit 2 touches those prefixes (project-side surfaces are
+BD-206 — §3); the new trees `/backlog/`+`/changelog/` are at repo root (not under the denied prefixes) →
+permitted; the `git rm` of the two `pack-ops/` monoliths in Commit 2 is also within `pack-only`. **Keyword-token
 trap (`commit-subject-keyword-token-trap`):** the ONLY scope-keyword token in each subject is the trailing
-`(pack-only)`; the prose carries NO `PM-only`/`project-only`/`pack-memory-only` literal even though C-2/C-3 span
-PM-only + coder actors — describe the mix with non-keyword words ("doc model", "trees"), never the literal
-`PM-only` token (it would DENY `scripts/` and FAIL the gate) — even though C-2/C-3 are written/scoped to a
-coder, the commit SUBJECT must never carry the literal `PM-only` token. **C-3 is ONE commit (no C-3a/C-3b
-split — G-6 resolved):** a single coder, scoped the PM-only files in, corrects all ~16 wrong-model surfaces +
-the skill/agent copies in one `pack-only` commit. The coder applies the trinity `## Pack memory` rule
-correction MECHANICALLY (already architect-defined in the approved design pair) and follows the §8 lockstep
-trinity/PACK-AGENTS propagation.
+`(pack-only)`; even though Commit 2 is scoped to a coder over PM-only files, the SUBJECT must never carry the
+literal `PM-only`/`project-only`/`pack-memory-only` token (it would DENY `scripts/`/non-project paths and FAIL
+the gate) — describe the work with non-keyword words ("convert", "per-entry", "delete monolith"). **Commit 2
+fixes all ~16 wrong-model surfaces + the skill/agent copies in ONE commit** (no split). The coder applies the
+trinity `## Pack memory` rule correction MECHANICALLY (architect-defined in the approved design pair) and
+follows the §8 lockstep trinity/PACK-AGENTS propagation.
 
 **Commit-shape note (`PACK-CHAT.md` "Batch close commit shapes").** Single-BD batch → the final fix +
 status-flip combine into one commit. BD-203's `Status: Open → Resolved` flip lands in `pack-ops/BACKLOG.md`
-— BUT that file is DELETED at C-4. **The status flip must instead land in the new per-entry file
+— BUT that file is `git rm`'d in Commit 2. **The status flip must instead land in the new per-entry file
 `/backlog/BD-203.md`** (the post-conversion SSOT). SURFACE G-7: sequence the BD-203 status flip as an edit to
-`/backlog/BD-203.md` AFTER C-4 (or fold into the implicit batch-completion flip), since the monolith no longer
-exists. This is a real consequence of self-migrating the very backlog that tracks this BD.
+`/backlog/BD-203.md` AFTER Commit 2 (or fold into the implicit batch-completion flip), since the monolith no
+longer exists. This is a real consequence of self-migrating the very backlog that tracks this BD.
 
 ---
 
@@ -456,7 +475,7 @@ the PM-only files — which Pack Chat scopes INTO the coder's prompt via the exi
 off-limits to all agents UNLESS the caller's prompt explicitly scopes them in" clause (PACK-AGENTS.md:130-131)
 + the "`pack-coder` MAY scope a per-entry directory in for an explicit BD" clause (PACK-AGENTS.md:157-159).
 **Pack Chat does ONLY** the git commits (`agents-never-commit`) and the irreducible destructive DELETION of
-the monoliths at C-4. This RESOLVES former TENSION 1/2/3 + G-3 + G-6.
+the monoliths in Commit 2. This RESOLVES former TENSION 1/2/3 + G-3 + G-6.
 
 **Authority recap (PACK-AGENTS.md § "PM-only files and directories").** PM-only files
 (`pack-ops/BACKLOG.md`/`CHANGELOG.md`, the pack-root trinity `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`,
@@ -466,18 +485,18 @@ Chat does here for every BD-203 edit. `pack-product` (engine, validators, tests,
 copies, manifest) was never restricted from the coder.
 
 ### RESOLVED dispositions (former tensions/surfaces collapse to "coder edits, scoped in")
-- **TENSION 1 (B0 pre-normalize + the EDIT side of D) → pack-coder, scoped in.** Pack Chat scopes
-  `pack-ops/BACKLOG.md`/`CHANGELOG.md` into the C-2 coder prompt; the coder performs the B0 pre-normalization
-  in place. The DELETION (C-4) is the only PM-only action Pack Chat retains (destructive, irreducible).
+- **TENSION 1 (B0 pre-normalize + the EDIT side of the delete) → pack-coder, scoped in.** Pack Chat scopes
+  `pack-ops/BACKLOG.md` into the Commit-1 coder prompt (B0 pre-normalization in place). The `git rm` DELETION
+  (Commit 2) is the only PM-only action Pack Chat retains (destructive, irreducible).
 - **TENSION 2 (the 209+11 generated per-entry files) → pack-coder, scoped in.** The coder runs the decompose
   engine (scoped the `/backlog/`+`/changelog/` directories in) and stages the generated tree.
 - **TENSION 3 (`_rules.md`/`_intro.md`/`_toc.md`) → pack-coder, scoped in.** The coder authors `_rules.md` +
   `_intro.md` (per the design's no-mirror contract + D1 audience/purpose headers) and regenerates `_toc.md`,
   all within the scoped-in directories.
-- **G-3 (`HELP-FRAGMENT-PACK.md` actor) → pack-coder, scoped in.** Folded into the C-3 coder scope; no
+- **G-3 (`HELP-FRAGMENT-PACK.md` actor) → pack-coder, scoped in.** Folded into the Commit-2 coder scope; no
   separate decision needed.
-- **G-6 (C-3 split-vs-combine) → ONE commit.** A single C-3 coder corrects all ~16 surfaces + the skill/agent
-  copies in one `pack-only` commit; no C-3a/C-3b split.
+- **G-6 (split-vs-combine) → ONE atomic commit.** A single Commit-2 coder corrects all ~16 surfaces + the
+  skill/agent copies in one `pack-only` commit; no split.
 
 The trinity `## Pack memory` rule correction is still **architect-defined** (fixed in the approved design
 pair); the coder applies it MECHANICALLY and follows the §8 lockstep trinity/PACK-AGENTS propagation. Because
@@ -485,19 +504,39 @@ the coder (not Pack Chat) makes every edit, the standard bounded review/fix cycl
 commit) applies cleanly — no Pack-Chat-direct edit needs the `review-cycle-position-checkpoint`
 "Pack-Chat-edit-is-an-implementation" carve-out.
 
+### Commit-2 verification split (load-bearing — the coder cannot reach FULL green at its stage)
+Commit 2 is atomic in the COMMITTED end-state, but its work is performed by two actors with DIFFERENT
+verification boundaries (per `per-action-approval-sub-agents`: a coder may NOT run a destructive `git rm` on
+its own authority):
+
+1. **pack-coder (ALL edits, scoped in).** Builds the trees, authors `_rules.md`/`_intro.md`, decomposes,
+   regenerates TOCs, applies B8/B9, and fixes the ~16 doc-model refs. After the edits the working tree is in
+   state (iii) — tree built + monoliths STILL PRESENT — so **Check 32′ is RED BY DESIGN**. The coder therefore
+   CANNOT reach full validate-pack GREEN. **Coder PREFLIGHT contract:** (a) the §7 ORACLE is GREEN — the tree
+   captures every entry, content-faithful, count == measured (B6 safe-before-delete); AND (b) `validate-pack`
+   is GREEN on EVERY check EXCEPT Check 32′, which is EXPECTED-RED-until-deletion (the coder asserts the ONLY
+   failing check is 32′ with the "monolith still present while tree exists" message, and no other). The coder
+   reports this expected-32′-RED state explicitly; it is NOT a PREFLIGHT failure.
+2. **Pack-Chat-direct (the destructive delete + final verify).** Pack Chat performs
+   `git rm pack-ops/BACKLOG.md pack-ops/CHANGELOG.md` (user-approved), runs the D2 ref sweep, regenerates the
+   manifest (D3), and runs the **FULL `validate-pack` — now GREEN incl. Check 32′** (tree present + monolith
+   ABSENT = state (ii)) — BEFORE taking the commit. Only this FULL-green run authorizes the commit.
+
+**No Check-32′ design change is needed** — Resolution A keeps the guard strict (it correctly forbids the
+tree+monolith coexistence END-STATE); the split simply assigns the transient-RED window to the coder's
+edit stage and the GREEN-restoring `git rm` to Pack Chat within the SAME commit. (If a reviewer judges a
+guard change IS needed, that is an architect escalation, not a planner invention — SURFACE, do not invent.)
+
 **Net actor map:**
-| Tasks | Actor |
-|---|---|
-| A1–A16 (engine/validator/test/manifest) | pack-coder |
-| B0a–B0c (pre-normalize monolith) | pack-coder (Pack Chat scopes `pack-ops/BACKLOG.md`/`CHANGELOG.md` IN) |
-| B1 (mkdir), B4 (decompose), B5 (toc) | pack-coder (scoped `/backlog/`+`/changelog/` IN) |
-| B2 (`_rules.md`), B3 (`_intro.md`) | pack-coder (scoped `/backlog/`+`/changelog/` IN) |
-| B6 oracle verify | pack-coder (verification); reviewer confirms |
-| C1/C2 trinity, C3 PACK-AGENTS, C4 PACK-CHAT, C5 README | pack-coder (Pack Chat scopes the PM-only files IN) |
-| C6 HELP-FRAGMENT-PACK | pack-coder (scoped IN) |
-| C7 `.claude/.codex/.gemini` copies | pack-coder (pack-product) |
-| C8 manifest regen | pack-coder |
-| D1 delete monoliths | **Pack-Chat-direct** (destructive, user-approved — the ONLY non-coder action) |
+| Commit | Tasks | Actor |
+|---|---|---|
+| C-1 (landed) | A1–A16 (engine/validator/test/manifest) | pack-coder |
+| Commit 1 | B0a–B0c (pre-normalize monolith) | pack-coder (Pack Chat scopes `pack-ops/BACKLOG.md` IN) |
+| Commit 2 — edits | B1 (mkdir), B4 (decompose), B5 (toc), B8/B9 carry-fwd | pack-coder (scoped `/backlog/`+`/changelog/` IN) |
+| Commit 2 — edits | B2 (`_rules.md`), B3 (`_intro.md`) | pack-coder (scoped `/backlog/`+`/changelog/` IN) |
+| Commit 2 — edits | C1/C2 trinity, C3 PACK-AGENTS, C4 PACK-CHAT, C5 README, C6 HELP-FRAGMENT, C7 `.claude/.codex/.gemini` copies, C8 manifest | pack-coder (Pack Chat scopes the PM-only doc surfaces IN) |
+| Commit 2 — coder PREFLIGHT | B6 oracle GREEN + validate-pack GREEN EXCEPT expected-RED Check 32′ | pack-coder (verification boundary; reviewer confirms) |
+| Commit 2 — delete + final verify | D1 `git rm` monoliths → D2 sweep → D3 manifest → FULL validate-pack GREEN | **Pack-Chat-direct** (destructive, user-approved — the ONLY non-coder action; the GREEN-restoring step) |
 | BD-203 status flip → `/backlog/BD-203.md` (G-7) | pack-coder (scoped IN) or Pack-Chat-direct per batch-close shape |
 
 
@@ -546,10 +585,10 @@ All counts are MEASURED at conversion time, NEVER hard-coded (EE-P1: the count i
 | PM-only path list (A13) | `scripts/tests/test-validate-pack-checks-36-37-38.sh` T6d/T6e (A15-T4) | validate-pack.yml:162 | PACK-AGENTS PM-only list (C3) |
 | Engine mirror-demote (A8) | `scripts/tests/test-per-entry.sh` Groups 3/4/5/6 (A15-T1) | validate-pack.yml:156 | `_lib.sh`/`mirror-generate.sh` headers (A8) |
 
-**Manifest discipline (`manifest-regen-on-v11-surface`).** Every commit C-1/C-2/C-3/C-4 touches a v11-surface
+**Manifest discipline (`manifest-regen-on-v11-surface`).** Every commit (C-1, Commit 1, Commit 2) touches a v11-surface
 dir (`scripts/`, `pack-ops/`) → each regenerates `test-fixtures/manifest.txt` (`bash test-fixtures/build.sh
 --all --clean`) and stages it iff the diff is non-empty. (The new `/backlog/`+`/changelog/` trees are NOT
-v11-surface dirs, but C-2 also edits `pack-ops/BACKLOG.md`, so C-2 IS v11-surface.)
+v11-surface dirs, but Commit 1 + Commit 2 also edit `pack-ops/` (pre-normalize / `git rm`), so each IS v11-surface.)
 
 ### CI-guard measure-then-bound (`ci-guard-design-measure-then-bound`)
 The validator redesign was MEASURED against actual state (EE-P1/P2 + V3 EE-5/EE-6): Check 34/STREAMS widening
@@ -578,7 +617,7 @@ Phase B, never a live mirror).
 | 4 | Reference surfaces (`PACK-AGENTS.md`/`PACK-CHAT.md` one-line refs) | **YES** — C3/C4 (same commit as C1) |
 | 5 | `pack-ops/.spawn-rule-manifest.txt` slug→canonical+references | **NO** — gated on a slug (EE-P5: no slug for this rule) |
 | 6 | `test-fixtures/manifest.txt` regen | **YES** — C8 |
-- **Order:** corpus (1) → references (4) in the SAME commit (C-3) → cache (3) Pack-Chat upkeep → manifest (6)
+- **Order:** corpus (1) → references (4) in the SAME commit (Commit 2) → cache (3) Pack-Chat upkeep → manifest (6)
   regen. Order is END-STATE-verified (trinity-parity), not gate-sequenced — a commit is atomic.
 - **Trinity-parity vs substance (V3 §3.3.1 / CLAUDE.md note + P-missed-7):** the trinity rule enforces PARITY
   (the 3 CLI files say the same thing at pack-root); it does NOT verify correctness. The no-mirror substance
@@ -594,13 +633,13 @@ byte-identical copy.
 ## 9. SURFACE, DO NOT RESOLVE — Section (G) — open gaps / boundary decisions for Pack Chat / user
 
 - **G-1 — RESOLVED (user decision 2026-06-04).** The pack-coder does ALL editing, scoped in (incl. the B0
-  pre-normalization of `pack-ops/BACKLOG.md`/`CHANGELOG.md`); Pack Chat performs ONLY the C-4 deletion +
+  pre-normalization of `pack-ops/BACKLOG.md`); Pack Chat performs ONLY the Commit-2 `git rm` deletion +
   commits. See §6. No open decision.
 - **G-2 — `detect.sh` client-behavior adjacency (§2 A14b / V3 §3.5 R4).** Repointing the pack-surface branch
   of `detect_pack_surface` touches a `_SANCTIONED_PACK_SIDE_SHIPPED` file (CI Check 47). Must be a
   pack-surface-only conditional leaving the client branch + the install-map↔constant equality untouched.
   Confirm the approach before the coder edits it.
-- **G-3 — RESOLVED (user decision 2026-06-04).** `pack-ops/HELP-FRAGMENT-PACK.md` (C6) is edited by the C-3
+- **G-3 — RESOLVED (user decision 2026-06-04).** `pack-ops/HELP-FRAGMENT-PACK.md` (C6) is edited by the Commit-2
   pack-coder, scoped in. No actor decision needed. See §6.
 - **G-4 — pack-vs-project skill-master divergence (C7 / V3 R5).** BD-203 corrects the pack-copied
   `.claude/.codex/.gemini` boundary-investigation/pack-startup/etc. skill prose, but the
@@ -613,10 +652,10 @@ byte-identical copy.
   BD-203 time. Their runtime repoint to the tree is BD-204 (testable only when the tracker is exercised) — a
   LOGICAL-FIT deferral. BD-203 corrects only any wrong-model COMMENT adjacent to the pack-surface. Confirm
   the BD-204 anchor with the user (the BD-204 entry already carries the second-pass ratification clause).
-- **G-6 — RESOLVED (user decision 2026-06-04).** C-3 is ONE `pack-only` commit by a single coder (scoped the
-  PM-only files in); no C-3a/C-3b split. See §6.
+- **G-6 — RESOLVED (user decision 2026-06-04).** Commit 2 is ONE `pack-only` commit by a single coder (scoped
+  the PM-only files in); no split. See §6.
 - **G-7 — BD-203's own `Status: Open → Resolved` flip has no monolith to land in (§5).** The flip normally
-  edits `pack-ops/BACKLOG.md`, which C-4 deletes. The flip must land in the new `/backlog/BD-203.md`
+  edits `pack-ops/BACKLOG.md`, which Commit 2 `git rm`s. The flip must land in the new `/backlog/BD-203.md`
   post-conversion (or be folded into the implicit batch-completion flip). A self-migration artifact — confirm
   sequencing.
 - **G-8 — `_intro.md` content scope (resolved by amendment, noted).** The amendment §F RESOLVED the V3 open
@@ -626,7 +665,7 @@ byte-identical copy.
   (§7 #4) is a transient that MUST be deleted after the diff and NEVER committed (it would re-introduce a
   mirror shape). Flag to the coder/Pack Chat as a hard no-commit artifact.
 - **G-10 — Reviewer prompt hygiene.** Per `### Agent invocation rules` "No prior reviews to pack-reviewer":
-  the reviewer prompts for C-1..C-4 reference THIS plan + the design pair ONLY, never a prior
+  the reviewer prompts for C-1 / Commit 1 / Commit 2 reference THIS plan + the design pair ONLY, never a prior
   `PACK-REVIEW-*.md`.
 
 These are SURFACED, not resolved. The plan implements the FIXED V3+amendment design; it does not redesign or
@@ -653,19 +692,22 @@ resolve gaps (`scope-deliverables-to-the-ask`).
 
 ## RULES-APPLIED VERIFICATION BLOCK
 
-**REVISION (2026-06-04):** §5 + §6 updated per user decision — a pack-coder does ALL editing (PM-only files scoped in); Pack Chat does only the commits + the C-4 monolith deletion. §9 G-1/G-3/G-6 marked RESOLVED. Design / SAFE order / verification strategy / EE blocks UNCHANGED.
+**REVISION 1 (2026-06-04, single-actor):** §5 + §6 updated per user decision — a pack-coder does ALL editing (PM-only files scoped in); Pack Chat does only the commits + the monolith deletion. §9 G-1/G-3/G-6 marked RESOLVED. (The commit STRUCTURE in this note was subsequently re-sequenced — see RE-SEQUENCE below; the actor principle stands.)
 
 **CARRY-FORWARD (2026-06-04, C-1 review, user-approved):** §2 Phase B gained B8 (drop the dead `_v8-resolved-archive.md` residue across `_lib.sh` + `validate-pack.py` Check 32 allowlist + Check 34 SKIP — review SHOULD-1) and B9 (widen pack-backlog TOC `entry_sort_key` for the suffix form — review NIT-1). Both LOGICAL-FIT (observable/testable only at Phase B). No §5/§6 change forced.
+
+**RE-SEQUENCE (2026-06-04, RESOLUTION A, user-approved):** §4/§5/§6 re-sequenced to a 2-commit ATOMIC structure (Commit 1 pre-normalize; Commit 2 build+ref-fix+delete). Driver: the landed Check 32′ (`validate-pack.py:3215`, re-verified this pass) FAILs on the tree+monolith coexistence window the old staged order required. §6 adds the Commit-2 verification split (coder reaches GREEN-except-expected-RED-32′; Pack Chat `git rm`s + reaches FULL GREEN before committing). Preserved: B0c diff gate, B6 oracle, B8/B9 + FLAG-(b) carry-forwards, manifest discipline. No Check-32′ design change (guard stays strict). Design / verification strategy / EE-P1..P7 UNCHANGED.
 
 | Rule (as named in prompt) | Verification evidence (QUOTED, not summarized) | Conclusion |
 |---|---|---|
 | **read-in-full + no-derivation** | READ-IN-FULL row below: every named doc + memory file Read DIRECTLY via the Read tool with per-file proof (line count or first/last line); the design PAIR, both research docs, BD-203/204/206 entries, trinity `## Pack memory`, PACK-AGENTS, PACK-CHAT, the 4 per-entry tooling files, the validator checks, and all 15 curated memory files. No named doc derived. | COMPLIANT |
-| **empirical-evidence-blocks (planner state-claims)** | §1 EE-P1..EE-P7: every state-claim (209 count, 5 scaffolding H2s + 3 suffix forms, 11 changelog releases, trees-absent, NO rationale slug, CI test enumeration, round-trip-test premise) carries the actual command + verbatim output + HEAD `a630a31` + date 2026-06-04 + interpretation + SUPPORTED. The 209/distribution were re-measured live this pass. | COMPLIANT |
-| **bounded-review-fix-cycle** | §5 (revised) per-commit cadence for C-1/C-2/C-3: fresh pack-coder → review-1 → [clean⇒commit \| fix-1 → review-2 → [clean⇒commit \| fix-2 → review-3 → architect-escalate]]; max 3 reviewer/2 fix-coder; fresh coder per commit; C-4 (deletion, no coder edit) is reviewer-verified; end-of-batch reviewer (Phase E). | COMPLIANT |
-| **agents-never-commit** | §0 + §5/§6 (revised): the coder edits but NEVER commits; Pack Chat stages/commits every commit + performs the C-4 destructive `git rm` (user-approved). The plan plans commits; runs no git. | COMPLIANT |
-| **manifest-regen-on-v11-surface** | §2 A16/B7/B8/B9/C8/D3 + §7: every commit C-1..C-4 touches a v11-surface dir (`scripts/`/`pack-ops/`) — incl. the B8/B9 `scripts/` edits — → regenerate `test-fixtures/manifest.txt` via `bash test-fixtures/build.sh --all --clean`, stage iff non-empty. | COMPLIANT |
+| **empirical-evidence-blocks (planner state-claims)** | §1 EE-P1..EE-P7 + §4 re-sequence: every state-claim carries command + verbatim output + HEAD + interpretation + SUPPORTED. The Check-32′-FAILs-on-coexistence claim driving RESOLUTION A was re-verified DIRECTLY this pass at `validate-pack.py:3215` (`if mirror_path.is_file(): fail("<mirror> still present while <stream>/ tree exists")`) → SUPPORTED. | COMPLIANT |
+| **bounded-review-fix-cycle** | §5/§6 (re-sequenced) per-commit cadence for C-1/Commit-1/Commit-2: fresh pack-coder → review-1 → [clean⇒commit \| fix-1 → review-2 → [clean⇒commit \| fix-2 → review-3 → architect-escalate]]; max 3 reviewer/2 fix-coder; fresh coder per commit; Commit-2's coder PREFLIGHT is GREEN-except-expected-RED-32′ (§6 split) and Pack Chat's post-`git rm` run is FULL-GREEN before commit; end-of-batch reviewer (Phase E). | COMPLIANT |
+| **agents-never-commit** | §0 + §5/§6 (re-sequenced): the coder edits but NEVER commits and NEVER runs the destructive `git rm` (`per-action-approval-sub-agents`); Pack Chat stages/commits every commit + performs the Commit-2 `git rm` (user-approved). The plan plans commits; runs no git. | COMPLIANT |
+| **per-action-approval-sub-agents** | §6 Commit-2 verification split: the coder may NOT run the destructive `git rm` on its own authority → the delete + FULL-green verify is Pack-Chat-direct (user-approved); the coder's PREFLIGHT stops at GREEN-except-expected-RED-32′. | COMPLIANT |
+| **manifest-regen-on-v11-surface** | §2 A16/B7/B8/B9/C8/D3 + §7: every commit (C-1, Commit 1, Commit 2) touches a v11-surface dir (`scripts/`/`pack-ops/`) — incl. the B8/B9 `scripts/` edits — → regenerate `test-fixtures/manifest.txt` via `bash test-fixtures/build.sh --all --clean`, stage iff non-empty. | COMPLIANT |
 | **ci-guard-measure-then-bound** | §7 "CI-guard measure-then-bound": Check 34/STREAMS widening sized to EXACTLY the 2 measured suffix entries (V3 EE-5/EE-6); Check 32′ verified against projected no-monolith end-state; §2 B8 SHRINKS the Check 32 `known_supporting` allowlist + Check 34 SKIP to drop the now-DEAD `_v8-resolved-archive.md` (no longer emitted post-amendment-§G) — allowlist sized to KEEP-only, never swallowing a dead entry. | COMPLIANT |
-| **separate-pack-ops-from-pack-product** | §3/§5/§6 (revised): one C-3 `pack-only` commit; pack-ops governance (trinity/README/PACK-AGENTS/PACK-CHAT) and pack-product (skill/agent copies) are both edited by the scoped-in coder but tracked as distinct surfaces in the §3 file list; no pack-ops file mixed into a `project-only`/`PM-only` scope claim (the commit claims `pack-only`, which permits both). | COMPLIANT |
+| **separate-pack-ops-from-pack-product** | §3/§5/§6 (re-sequenced): one atomic Commit 2 `pack-only`; pack-ops governance (trinity/README/PACK-AGENTS/PACK-CHAT) and pack-product (skill/agent copies) are both edited by the scoped-in coder but tracked as distinct surfaces in the §3 file list; no pack-ops file mixed into a `project-only`/`PM-only` scope claim (the commit claims `pack-only`, which permits both). | COMPLIANT |
 | **pack-project-separation + no-deferral-without-user-direction** | §3 "NOT touched (BD-206 boundary)"; §8 trinity pack-copy ≠ project-copy (separate artifacts, BD-206); NO pack-side BD-203 work deferred (all in §2 Phases A–E). | COMPLIANT |
 | **filename-uniqueness-heuristic** | This plan is `PLAN-BD-203.md` (repo-unique — `find` confirms no collision). New per-stream `_rules.md`/`_intro.md`/`_toc.md` are structurally-required collisions (per-stream) — prose carries `/backlog/`+`/changelog/` path context throughout. | COMPLIANT |
 | **pack-repo-code-comment-deferrals** | §2 A8: any deferral comment uses the typed `# TODO(version): TD-TBD — retire mirror-generate project-side at BD-206`, never plain `# TODO`/`# FIXME`. | COMPLIANT |
@@ -689,7 +731,7 @@ resolve gaps (`scope-deliverables-to-the-ask`).
 | `scripts/lib/per-entry/decompose.sh` | YES | 288 lines; L1 → L287 PYEOF; anchors L110-153. |
 | `scripts/lib/per-entry/toc-regenerate.sh` | YES | 295 lines; L1 → L294; order_groups L198-221, title regex L123, entry regex L83-90. |
 | `scripts/lib/per-entry/mirror-generate.sh` | YES | header L1-60 read directly (purpose statement). |
-| `scripts/validate-pack.py` | YES | Read STREAMS L296-355, Check 32 L3142-3345, Check 33/34 L3490-3649, PM-only L3821-3859, Check 3 L457-496, Check 40 L5113-5172, Check 48 L7140-7194 directly. |
+| `scripts/validate-pack.py` | YES | Read STREAMS L296-355, Check 32 L3142-3345, Check 33/34 L3490-3649, PM-only L3821-3859, Check 3 L457-496, Check 40 L5113-5172, Check 48 L7140-7194 directly. **Re-sequence pass: re-read the LANDED Check 32′ L3195-3249 directly — L3215 `if mirror_path.is_file(): fail(...)` is the coexistence-FAIL that drives RESOLUTION A.** |
 | `scripts/lib/detect.sh` | YES | L38-62 read directly (`detect_pack_surface` + DENY-LIST markers). |
 | `scripts/lib/recommendation.sh` | YES | monolith read sites grepped L131-132,152-153 directly. |
 | `scripts/tests/test-per-entry.sh` | YES | L1-100 read + mirror/round-trip lines grepped (220-524). |
