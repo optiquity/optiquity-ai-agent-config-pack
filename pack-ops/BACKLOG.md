@@ -6,30 +6,6 @@ Format follows the standard BACKLOG item format from METHODOLOGY.md Part 7.
 
 ---
 
-## How to use this file
-
-- Reference items in commit messages: `feat: v9 — BD-020 description`
-- When an item is resolved, set Status: Resolved with the commit hash and date
-- To cancel or deprecate an item: set Status to Cancelled or Deprecated, add a
-  Resolution field with date, disposition (cancelled|deprecated), and brief rationale.
-  Then review all items that listed this item as a blocker — they require human
-  judgment, not automatic unblocking
-- Items deferred to a future version: set Blockers to the target version
-- New items get the next available BD-NNN number
-- This file ships in the repo so agents can read it and understand current scope
-
----
-
-## Active — v11 Scope
-
-The v11.0 implementation surface. 53 BD entries (BD-060..BD-112)
-derived from the planning corpus at `maintenance-docs/v11-research/`
-(IMPLEMENTATION-PLAN.md + four addenda; ARCHITECTURE-V3.3-DELTA.md is
-the live design). Sequencing per merged §3.3 commit order. See the
-plan docs for full Verification + Definition-of-Done per BD.
-
----
-
 **BD-060 — TrackerProvider abstraction skeleton + GH backend implementation**
 Type: TODO(version)
 Status: Resolved
@@ -3440,8 +3416,6 @@ Position: pack-self governance; parallel with BD-203; lands before the "and more
 
 ---
 
-## Active — v10 Scope
-
 **BD-059 — v10 migration silently destroys project customization**
 Type: TODO(version)
 Status: Resolved
@@ -3713,31 +3687,155 @@ Resolution: April 2026, deprecated — superseded by BD-024 (unified template an
 
 ---
 
-## Resolved — v8 (March 2026)
+**BD-001 — Rename ios-architect → apple-architect**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 08f7158 (v8, March 2026)
+Description: Rename ios-architect → apple-architect.
 
-All BD-001 through BD-019 items resolved across Groups 1–6.
+---
 
-| Item | Description | Commit |
-|---|---|---|
-| BD-001 | Rename ios-architect → apple-architect | 08f7158 |
-| BD-002 | Add post_edit_command to .codex/config.toml (all 3 templates) | 08f7158 |
-| BD-003 | Add scripts setup and usage docs to CLAUDE.md, AGENTS.md, QUICKSTART.md | 9cd9a7f |
-| BD-004 | Resolve format.sh hook discrepancy | 08f7158 |
-| BD-005 | Add XCODE_SCHEME warnings to validate.sh, test.sh, agent-post-edit-check.sh | 08f7158 |
-| BD-006 | Add python-architect agent + python-architecture skill (python-server, monorepo) | 61b3381 |
-| BD-007 | New-project generation templates (SETUP_TEMPLATE.md, AGENT_KICKOFF_TEMPLATE.md) | 2fc4a0c |
-| BD-008 | Add METHODOLOGY.md to all templates and supporting-docs | 2fc4a0c |
-| BD-009 | Add PROMPT-TEMPLATES.md to supporting-docs (14 templates) | 2fc4a0c |
-| BD-010 | Update QUICKSTART.md Steps 11–13 for PM chat and new-project workflow | 2fc4a0c |
-| BD-011 | Add VS Code companion files in vscode-companion-templates/ | 61b3381 |
-| BD-012 | Commit Methodology Guide v1 to maintenance-docs/origins/ | 2fc4a0c |
-| BD-013 | Gemini CLI analysis document | 9a6ba5b |
-| BD-014 | Android support analysis document | 9a6ba5b |
-| BD-015 | Document SETUP.md/AGENT_KICKOFF.md generation workflow | 2fc4a0c |
-| BD-016 | Merge OT content into apple-app CLAUDE.md/AGENTS.md | 9cd9a7f |
-| BD-017 | Fix availability guard omission in iOS 26 platform features section | 08f7158 |
-| BD-018 | v7→v8 migration guide | 9a6ba5b |
-| BD-019 | Desktop Commander usage and PM chat scope limits (METHODOLOGY.md) | 2fc4a0c |
+**BD-002 — Add post_edit_command to .codex/config.toml (all 3 templates)**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 08f7158 (v8, March 2026)
+Description: Add post_edit_command to .codex/config.toml (all 3 templates).
+
+---
+
+**BD-003 — Add scripts setup and usage docs to CLAUDE.md, AGENTS.md, QUICKSTART.md**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 9cd9a7f (v8, March 2026)
+Description: Add scripts setup and usage docs to CLAUDE.md, AGENTS.md, QUICKSTART.md.
+
+---
+
+**BD-004 — Resolve format.sh hook discrepancy**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 08f7158 (v8, March 2026)
+Description: Resolve format.sh hook discrepancy.
+
+---
+
+**BD-005 — Add XCODE_SCHEME warnings to validate.sh, test.sh, agent-post-edit-check.sh**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 08f7158 (v8, March 2026)
+Description: Add XCODE_SCHEME warnings to validate.sh, test.sh, agent-post-edit-check.sh.
+
+---
+
+**BD-006 — Add python-architect agent + python-architecture skill (python-server, monorepo)**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 61b3381 (v8, March 2026)
+Description: Add python-architect agent + python-architecture skill (python-server, monorepo).
+
+---
+
+**BD-007 — New-project generation templates (SETUP_TEMPLATE.md, AGENT_KICKOFF_TEMPLATE.md)**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 2fc4a0c (v8, March 2026)
+Description: New-project generation templates (SETUP_TEMPLATE.md, AGENT_KICKOFF_TEMPLATE.md).
+
+---
+
+**BD-008 — Add METHODOLOGY.md to all templates and supporting-docs**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 2fc4a0c (v8, March 2026)
+Description: Add METHODOLOGY.md to all templates and supporting-docs.
+
+---
+
+**BD-009 — Add PROMPT-TEMPLATES.md to supporting-docs (14 templates)**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 2fc4a0c (v8, March 2026)
+Description: Add PROMPT-TEMPLATES.md to supporting-docs (14 templates).
+
+---
+
+**BD-010 — Update QUICKSTART.md Steps 11–13 for PM chat and new-project workflow**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 2fc4a0c (v8, March 2026)
+Description: Update QUICKSTART.md Steps 11–13 for PM chat and new-project workflow.
+
+---
+
+**BD-011 — Add VS Code companion files in vscode-companion-templates/**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 61b3381 (v8, March 2026)
+Description: Add VS Code companion files in vscode-companion-templates/.
+
+---
+
+**BD-012 — Commit Methodology Guide v1 to maintenance-docs/origins/**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 2fc4a0c (v8, March 2026)
+Description: Commit Methodology Guide v1 to maintenance-docs/origins/.
+
+---
+
+**BD-013 — Gemini CLI analysis document**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 9a6ba5b (v8, March 2026)
+Description: Gemini CLI analysis document.
+
+---
+
+**BD-014 — Android support analysis document**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 9a6ba5b (v8, March 2026)
+Description: Android support analysis document.
+
+---
+
+**BD-015 — Document SETUP.md/AGENT_KICKOFF.md generation workflow**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 2fc4a0c (v8, March 2026)
+Description: Document SETUP.md/AGENT_KICKOFF.md generation workflow.
+
+---
+
+**BD-016 — Merge OT content into apple-app CLAUDE.md/AGENTS.md**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 9cd9a7f (v8, March 2026)
+Description: Merge OT content into apple-app CLAUDE.md/AGENTS.md.
+
+---
+
+**BD-017 — Fix availability guard omission in iOS 26 platform features section**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 08f7158 (v8, March 2026)
+Description: Fix availability guard omission in iOS 26 platform features section.
+
+---
+
+**BD-018 — v7→v8 migration guide**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 9a6ba5b (v8, March 2026)
+Description: v7→v8 migration guide.
+
+---
+
+**BD-019 — Desktop Commander usage and PM chat scope limits (METHODOLOGY.md)**
+Type: TODO(version)
+Status: Resolved
+Resolved: commit 2fc4a0c (v8, March 2026)
+Description: Desktop Commander usage and PM chat scope limits (METHODOLOGY.md).
 
 ---
 
@@ -4921,8 +5019,6 @@ Resolved: April 2026, v10.0 — commits f9ebff2 (design+plan) + a7d3542 (3-file
   patch) + d7ff978 (§12 delta verification).
 
 ---
-
-## Deferred
 
 **BD-031 — Evaluate publishing pack skills to skills.sh**
 Type: TODO(version)
