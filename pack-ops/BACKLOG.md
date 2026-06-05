@@ -3418,7 +3418,7 @@ Position: pack-self governance; parallel with BD-203; lands before the "and more
 
 **BD-209 — Rename the `PM-only` commit-scope keyword → `pack-chat-only` (overloaded name; misleads agents)**
 Type: feat — STRUCTURAL, pack-self governance. A CI-enforced commit-scope-keyword CONVENTION rename (Check 36) with a wide blast radius. Pipeline: `pack-docs-researcher` (EXHAUSTIVE blast-radius enumeration of every `PM-only`/`pack-memory-only` reference) → `pack-architect` (final name + alias-vs-retire policy + internal-var renames + token-collision verification + FOLD the BD-203 A13 fix) → planner → (coder → bounded review/fix) per commit + correctness audit.
-Status: Open
+Status: Resolved
 Target: v11.0 (governs commit-scope discipline; lands BEFORE BD-203 Commit 2).
 Blockers: none — runs NOW. SEQUENCING (user 2026-06-05): rename FIRST — BD-203 is PAUSED between its Commit 1 (pre-normalize, landed `a5a8ad8`) and Commit 2 (atomic build-trees + doc-corrections + delete); BD-209 lands the rename so Commit 2 builds the new `/backlog/` trees + `_rules.md` + corrects the governance docs with the CORRECT keyword from birth (not the bad name then re-renamed).
 Unblocks: a correctly-named commit-scope keyword that does not mislead agents; the A13 Check-36 inconsistency cleaned up (folded in).
@@ -3431,7 +3431,7 @@ Scope: rename `PM-only`/`pack-memory-only` → `pack-chat-only` across: `scripts
 Out of scope: changing WHICH files are governance (only the keyword NAME changes); the BD-203 conversion (resumes at Commit 2 after this).
 Acceptance criteria (correctness audit): the keyword is `pack-chat-only` everywhere; Check 36 parses it + the alias policy is implemented + tested; no token-collision with `pack-only`; historical `(PM-only)` commits do not break CI; the A13 fold restores BACKLOG/CHANGELOG to the permitted set (validate-pack green; `fcdcbc4`/`4623284` no longer Check-36-inconsistent); commit-gating works end-to-end.
 References: `feedback_commit_subject_keyword_token_trap` (memory); `pack-ops/PACK-AGENTS.md` § PM-only; BD-208 (editing-actor rule referencing the set); BD-203 A13 (the folded fix); user direction 2026-06-05.
-Resolved: n/a
+Resolved: commit b83c942 (2026-06-05) — keyword renamed PM-only/pack-memory-only → pack-chat-only (HARD-RETIRE; old tokens no longer recognized) across the 16 Sense-A surfaces + A13 fold (BACKLOG/CHANGELOG restored to the permitted set); Sense-B project PM-Chat rule untouched; grep-zero gate clean (4 legitimate remainders); validate-pack + CI green; review APPROVED.
 Position: pack-self governance; rename-first, between BD-203 Commit 1 and Commit 2.
 
 ---
