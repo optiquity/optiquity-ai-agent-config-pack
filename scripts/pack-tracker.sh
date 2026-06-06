@@ -52,6 +52,8 @@ source "$LIB_DIR/template-translations.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/tracker-doctor.sh"
 # shellcheck disable=SC1091
+source "$LIB_DIR/tracker-edit.sh"
+# shellcheck disable=SC1091
 source "$LIB_DIR/recommendation.sh"
 
 usage() {

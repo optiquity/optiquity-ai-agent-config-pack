@@ -616,6 +616,105 @@ assert_contains "3.3 unknown backend → message names backend" "$err" "Unknown 
 unset _TRACKER_PROVIDER_BACKEND_OVERRIDE
 
 # ─────────────────────────────────────────────────────────────────
+# Group 4: Mode-3 pack edit path (tracker_edit_entry — BD-204 §2.3)
+# ─────────────────────────────────────────────────────────────────
+#
+# The full-CRUD Update verb. Verifies that an entry edit dispatches
+# provider_update (body/labels) and that a Status change crossing the
+# open↔closed boundary ALSO dispatches provider_close (with the DP-3
+# state_reason) or provider_reopen — while an update-only edit (or an
+# open→open Status change) does NOT cross the boundary.
+#
+# We stub the provider_* write ops to log their argv into TED_CALLS
+# (mirrors the Group-3 STUB_CALLS pattern) so we assert which ops fire
+# without a live backend. We stub tracker_edit_mode + the config
+# helpers so the path reaches the id-map lookup offline.
+
+printf "\n=== Group 4: Mode-3 pack edit path (tracker_edit_entry) ===\n"
+
+# shellcheck disable=SC1091
+source "$REPO_ROOT/scripts/lib/tracker-edit.sh"
+
+# Offline harness: a scratch repo with an id-map mapping BD-001 → 42.
+TED_REPO="$(mktemp -d -t tracker-edit.XXXXXX)"
+mkdir -p "$TED_REPO/.pack-tracker"
+cat > "$TED_REPO/.pack-tracker/id-map.json" <<'EOF'
+{ "BD-001": { "id": "42" } }
+EOF
+
+# Force tracker mode + a no-op config resolution so the path reaches
+# the id-map lookup without a real tracker.toml.
+tracker_edit_mode()             { echo "tracker"; }
+tracker_config_auto_surface()   { echo "pack"; }
+tracker_config_resolve_path()   { echo ""; }
+
+# Stub the provider write ops: record op + key args, succeed.
+TED_CALLS=""
+provider_update() { TED_CALLS="$TED_CALLS|update:$1"; return 0; }
+provider_close()  { TED_CALLS="$TED_CALLS|close:$1:$2"; return 0; }
+provider_reopen() { TED_CALLS="$TED_CALLS|reopen:$1"; return 0; }
+
+# 4.1 body-only edit → provider_update fires, NO boundary cross.
+# NB: call WITHOUT a command-substitution capture so the stubs' TED_CALLS
+# mutations propagate to this (parent) shell; capture the return shape
+# separately into a tmp file.
+TED_CALLS=""
+ted_out=$(mktemp -t tracker-edit-out.XXXXXX)
+tracker_edit_entry "BD-001" '{"body":"new prose"}' "$TED_REPO" > "$ted_out"
+assert_contains "4.1 body edit dispatches provider_update" "$TED_CALLS" "|update:42"
+if [[ "$TED_CALLS" == *"|close:"* || "$TED_CALLS" == *"|reopen:"* ]]; then
+    t_fail "4.1 body edit must NOT cross boundary" "calls=$TED_CALLS"
+else
+    t_pass "4.1 body-only edit does not cross open/closed boundary"
+fi
+assert_eq "4.1 returns updated=true" "true" "$(jq -r '.updated' "$ted_out")"
+rm -f "$ted_out"
+
+# 4.2 open→open Status change (Open→Deferred) → update only, no cross.
+TED_CALLS=""
+tracker_edit_entry "BD-001" '{"status":"Deferred","old_status":"Open"}' "$TED_REPO" >/dev/null
+assert_contains "4.2 Open→Deferred dispatches provider_update" "$TED_CALLS" "|update:42"
+if [[ "$TED_CALLS" == *"|close:"* || "$TED_CALLS" == *"|reopen:"* ]]; then
+    t_fail "4.2 Open→Deferred must NOT cross boundary" "calls=$TED_CALLS"
+else
+    t_pass "4.2 Open→Deferred (both open) does not cross boundary"
+fi
+
+# 4.3 open→closed (Open→Resolved) → update + provider_close completed.
+TED_CALLS=""
+tracker_edit_entry "BD-001" '{"status":"Resolved","old_status":"Open"}' "$TED_REPO" >/dev/null
+assert_contains "4.3 Open→Resolved dispatches provider_update" "$TED_CALLS" "|update:42"
+assert_contains "4.3 Open→Resolved closes with completed" "$TED_CALLS" "|close:42:completed"
+
+# 4.4 open→closed (Open→Cancelled) → provider_close not_planned (DP-3).
+TED_CALLS=""
+tracker_edit_entry "BD-001" '{"status":"Cancelled","old_status":"Open"}' "$TED_REPO" >/dev/null
+assert_contains "4.4 Open→Cancelled closes with not_planned" "$TED_CALLS" "|close:42:not_planned"
+
+# 4.5 closed→open (Resolved→Open) → update + provider_reopen.
+TED_CALLS=""
+tracker_edit_entry "BD-001" '{"status":"Open","old_status":"Resolved"}' "$TED_REPO" >/dev/null
+assert_contains "4.5 Resolved→Open dispatches provider_update" "$TED_CALLS" "|update:42"
+assert_contains "4.5 Resolved→Open reopens" "$TED_CALLS" "|reopen:42"
+if [[ "$TED_CALLS" == *"|close:"* ]]; then
+    t_fail "4.5 reopen path must NOT also close" "calls=$TED_CALLS"
+else
+    t_pass "4.5 reopen path does not also close"
+fi
+
+# 4.6 unmapped pack-id → typed not-found error (no provider op).
+TED_CALLS=""
+err=$(tracker_edit_entry "BD-999" '{"body":"x"}' "$TED_REPO" 2>&1 1>/dev/null) || true
+assert_contains "4.6 unmapped id → not-found error" "$err" "ERROR: not-found"
+if [[ -n "$TED_CALLS" ]]; then
+    t_fail "4.6 unmapped id must dispatch no provider op" "calls=$TED_CALLS"
+else
+    t_pass "4.6 unmapped id dispatches no provider op"
+fi
+
+rm -rf "$TED_REPO"
+
+# ─────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────
 
