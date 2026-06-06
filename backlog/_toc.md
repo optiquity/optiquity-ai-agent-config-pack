@@ -32,7 +32,6 @@
 - [BD-206](./BD-206.md) — Project-side per-entry no-mirror application (apply the corrected standard to client assets)
 - [BD-207](./BD-207.md) — Project-side per-entry ↔ GH-Issues reversible tracker (apply the tracker standard to client assets)
 - [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
-- [BD-211](./BD-211.md) — Canonicalize the per-entry header grammar: eliminate suffix sub-entry forms + normalize title parentheticals; validator-enforced (BD-204 prerequisite)
 
 ## Unblocked
 
@@ -220,6 +219,7 @@
 - [BD-203](./BD-203.md) — Pack self-migration Phase 1: monolithic flat files → per-entry directory trees (Mode 1 → Mode 2)
 - [BD-208](./BD-208.md) — Pack Chat editing-scope rule: coder does all MAJOR edits (incl. PM-only files, scoped in) under the standard review/fix cycle; Pack Chat does only MINOR edits to the small PM-only set + commits + irreducible destructive ops
 - [BD-209](./BD-209.md) — Rename the `PM-only` commit-scope keyword → `pack-chat-only` (overloaded name; misleads agents)
+- [BD-211](./BD-211.md) — Canonicalize the per-entry header grammar: eliminate suffix sub-entry forms + normalize title parentheticals; validator-enforced (BD-204 prerequisite)
 
 ## Deprecated
 
