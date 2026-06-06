@@ -346,7 +346,8 @@ assert_contains "4.1 reports complete"      "$output" "reverse: complete"
 
 # 4.2 tree content shape (concatenate the reconstructed entry files).
 # BD-204 C-4 LOW-1 (PACK-REVIEW-BD-204-C4): the pack tree emit is filtered
-# to the `pack-backlog` entry regex (`^BD-[0-9]+[a-z]*\.md$`) — the SAME
+# to the `pack-backlog` entry regex (`^BD-[0-9]+\.md$`, canonical per
+# BD-211 — simplified from the former `^BD-[0-9]+[a-z]*\.md$`) — the SAME
 # single source the backup set + `_toc.md` regen use — so the emit set ==
 # the backup set == the `_toc.md` set by construction. On this MIXED fixture
 # (BD-001, BD-002, TD-010 all reconstruct) only the `BD-*` ids are emitted to

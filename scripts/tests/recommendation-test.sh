@@ -34,7 +34,7 @@ printf "\n=== Group 1: signal computation ===\n"
 # 1.1 pack-side signals against a fixture repo with 5 BD entries.
 # BD-203 A14a: pack-side BACKLOG is the `/backlog/` per-entry tree (the
 # no-mirror SSOT) — there is no monolithic pack-ops/BACKLOG.md. The
-# signal counts entry files (incl. the suffix form `BD-167b.md`),
+# signal counts canonical `BD-NNN.md` entry files (BD-211 — no suffix),
 # Open/Unblocked = active. 5 entries: 3 active (Open/Open/Unblocked) +
 # Resolved + Cancelled.
 TR_PACK=$(mktemp -d -t rec-pack.XXXXXX)
@@ -49,9 +49,9 @@ cat > "$TR_PACK/backlog/BD-002.md" <<'EOF'
 **BD-002 — Second**
 Status: Open
 EOF
-cat > "$TR_PACK/backlog/BD-167b.md" <<'EOF'
-<!-- per-entry source: /backlog/BD-167b.md; contract: /backlog/_rules.md -->
-**BD-167b — Suffix entry (active)**
+cat > "$TR_PACK/backlog/BD-900.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-900.md; contract: /backlog/_rules.md -->
+**BD-900 — Canonical entry (active)**
 Status: Unblocked
 EOF
 cat > "$TR_PACK/backlog/BD-004.md" <<'EOF'
@@ -69,7 +69,7 @@ cat > "$TR_PACK/backlog/_rules.md" <<'EOF'
 # Per-stream contract — pack-backlog (test fixture)
 EOF
 sigs=$(recommendation_compute_signals "pack" "$TR_PACK")
-assert_eq "1.1 bd_count_active=3 (Open + Unblocked, incl. suffix entry)" "3" \
+assert_eq "1.1 bd_count_active=3 (Open + Unblocked, canonical entries)" "3" \
     "$(printf '%s' "$sigs" | jq -r '.bd_count_active')"
 assert_eq "1.1 bd_count_total=5 (entry files; _rules.md excluded)" "5" \
     "$(printf '%s' "$sigs" | jq -r '.bd_count_total')"

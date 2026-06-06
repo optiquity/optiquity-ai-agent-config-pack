@@ -27,26 +27,24 @@ index); to change an entry, edit its per-entry file and regenerate
 
 ## Filename convention
 
-Per-entry files match `^BD-\d+[a-z]*\.md$` (e.g., `BD-060.md`,
-`BD-167b.md`). Three-or-more-digit BD-NNN with an OPTIONAL lowercase
-suffix-letter run admitting the sub-entry forms `BD-167b.md` /
-`BD-169b.md`.
+Per-entry files match `^BD-\d+\.md$` (e.g., `BD-060.md`, `BD-167.md`).
+Three-or-more-digit BD-NNN; NO letter suffix (canonical per BD-211 — a
+sub-part is an in-body section, not a suffixed entry).
 
 ## ID-extraction rule
 
-The per-entry **filename is the ID**. For a header
-`**BD-167b — <Title>**` the file is `BD-167b.md`. For a header carrying
-a parenthetical qualifier — `**BD-195 (Code Red 3) — <Title>**` — the
-file is `BD-195.md`: the parenthetical is TITLE TEXT, not part of the
-ID (there is exactly one BD-195, so `BD-195.md` is unambiguous), and it
-is preserved byte-faithfully in the entry body's bold-header line. The
-ID is the captured `BD-\d+[a-z]*` group only.
+The per-entry **filename is the ID**. For a header `**BD-167 — <Title>**`
+the file is `BD-167.md`. A parenthetical qualifier, if present, is TITLE
+TEXT after the em-dash — never between the ID and the em-dash; it is
+preserved byte-faithfully in the entry body's bold-header line. The ID
+is the captured `BD-\d+` group only (canonical per BD-211 — no letter
+suffix, no pre-em-dash parenthetical).
 
 ## Entry contract
 
 One BD entry per file. The first line is an HTML-comment back-pointer
 ABOVE the bold-header; the entry's content span begins at
-`**BD-NNN[suffix] — <Title>**`, followed by the `Type:` / `Status:` /
+`**BD-NNN — <Title>**`, followed by the `Type:` / `Status:` /
 `Description:` (and optional `Blockers:` / `Unblocks:` / `File/Symbol:`
 / `Resolved:` / `Position:`) fields per the standard BACKLOG item
 format (METHODOLOGY.md Part 7).

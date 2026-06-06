@@ -143,11 +143,11 @@ sys.modules["validate_pack"] = vp
 spec.loader.exec_module(vp)
 
 # Monkey-patch: REPO_ROOT → scratch_repo; STREAMS → pack-backlog only
-# (or with extras parsed from the env var). BD-203 A4: the pack-backlog
-# entry regex admits the suffix form (`BD-167b.md`).
+# (or with extras parsed from the env var). BD-211: the pack-backlog
+# entry regex is canonical `BD-NNN.md` (no letter suffix).
 vp.REPO_ROOT = scratch_repo
 streams = [
-    ("pack-backlog", "backlog", "BACKLOG.md", r"^BD-\d+[a-z]*\.md$"),
+    ("pack-backlog", "backlog", "BACKLOG.md", r"^BD-\d+\.md$"),
 ]
 if extra_str:
     for tup in extra_str.split():
@@ -172,7 +172,7 @@ PYEOF
 # Materialize a green pack-backlog per-entry tree under <scratch_repo>:
 #   <scratch_repo>/backlog/_rules.md
 #   <scratch_repo>/backlog/_intro.md
-#   <scratch_repo>/backlog/BD-100.md, BD-101.md, BD-102.md
+#   <scratch_repo>/backlog/BD-100.md, BD-101.md, BD-102.md, BD-700.md
 #   <scratch_repo>/backlog/_toc.md  (regenerated TOC)
 # BD-203 B8: no `_v8-resolved-archive.md` — the 19 BD-001..019 v8
 # summary-table rows are now real `BD-00N.md` entries (pre-normalize),
@@ -245,20 +245,20 @@ Status: Open
 Blockers: None
 Unblocks: None
 File/Symbol: n/a
-Description: Third entry; references BD-100 and the suffix entry BD-167b in body.
+Description: Third entry; references BD-100 and the canonical entry BD-700 in body.
 EOF
-    # BD-203 A4/A15-T2: a suffix-form entry file (`BD-167b.md`) exercising
-    # the widened entry regex (`^BD-\d+[a-z]*\.md$`) + the widened Check 34
-    # cross-ref token (`BD-\d+[a-z]*`). BD-102 references BD-167b above.
-    cat >"$backlog_dir/BD-167b.md" <<'EOF'
-<!-- per-entry source: /backlog/BD-167b.md; contract: /backlog/_rules.md -->
-**BD-167b — Suffix-form entry**
+    # BD-211: a canonical entry file (`BD-700.md`) exercising the
+    # canonical entry regex (`^BD-\d+\.md$`) + the Check 34 cross-ref
+    # token (`BD-\d+`). BD-102 references BD-700 above.
+    cat >"$backlog_dir/BD-700.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-700.md; contract: /backlog/_rules.md -->
+**BD-700 — Canonical entry**
 Type: TODO(version)
 Status: Resolved
 Blockers: None
 Unblocks: None
 File/Symbol: n/a
-Description: Suffix entry; self-reference BD-167b in body resolves.
+Description: Canonical entry; self-reference BD-700 in body resolves.
 EOF
 
     # Generate the canonical BACKLOG.md mirror via the BD-164 helper.
@@ -436,8 +436,8 @@ A4_RC=$?
 assert_eq "A4.1 missing _toc.md → check rc=1" "1" "$A4_RC"
 assert_contains "A4.2 missing _toc.md → FAIL names _toc.md" "$A4_OUT" "_toc.md missing"
 
-# A5: green tree + non-conforming filename → check FAILs. The suffix
-# entry BD-167b.md in the green fixture CONFORMS (widened regex), so the
+# A5: green tree + non-conforming filename → check FAILs. The canonical
+# entry BD-700.md in the green fixture CONFORMS (canonical regex), so the
 # stray ROGUE-FILE.md is the only non-conforming offender.
 A5_REPO="$SCRATCH_ROOT/A5"
 mkdir -p "$A5_REPO"
@@ -450,18 +450,18 @@ assert_eq "A5.1 non-conforming filename → check rc=1" "1" "$A5_RC"
 assert_contains "A5.2 non-conforming filename → FAIL names the file" "$A5_OUT" "ROGUE-FILE.md"
 assert_contains "A5.3 non-conforming filename → FAIL says non-conforming" "$A5_OUT" "non-conforming filenames"
 
-# A6: the suffix entry BD-167b.md CONFORMS under the widened regex — a
-# green tree carrying it (no monolith) passes Check 32′.
+# A6: the canonical entry BD-700.md CONFORMS under the canonical regex —
+# a green tree carrying it (no monolith) passes Check 32′.
 A6_REPO="$SCRATCH_ROOT/A6"
 mkdir -p "$A6_REPO"
 build_green_pack_backlog "$A6_REPO"
 rm -f "$A6_REPO/BACKLOG.md"
-[[ -f "$A6_REPO/backlog/BD-167b.md" ]] && t_pass "A6.0 suffix entry BD-167b.md present in fixture" \
-    || t_fail "A6.0 suffix entry BD-167b.md present in fixture"
+[[ -f "$A6_REPO/backlog/BD-700.md" ]] && t_pass "A6.0 canonical entry BD-700.md present in fixture" \
+    || t_fail "A6.0 canonical entry BD-700.md present in fixture"
 A6_OUT=$(run_check check_mirror_in_sync "$A6_REPO" 2>&1)
 A6_RC=$?
-assert_eq "A6.1 suffix entry conforms → check rc=0" "0" "$A6_RC"
-assert_not_contains "A6.2 suffix entry conforms → BD-167b.md NOT flagged non-conforming" "$A6_OUT" "BD-167b.md"
+assert_eq "A6.1 canonical entry conforms → check rc=0" "0" "$A6_RC"
+assert_not_contains "A6.2 canonical entry conforms → BD-700.md NOT flagged non-conforming" "$A6_OUT" "BD-700.md"
 
 # ─────────────────────────────────────────────────────────────────
 # Group B: Check 33 (TOC-in-sync) — green + red
@@ -573,34 +573,32 @@ C5_RC=$?
 assert_eq "C5.1 dangling phase-3 → check rc=1" "1" "$C5_RC"
 assert_contains "C5.2 dangling phase-3 → FAIL names phase-3" "$C5_OUT" "phase-3"
 
-# C6 (BD-203 A5/A15-T2): a body reference to the suffix entry `BD-167b`
-# RESOLVES — the widened CROSS_REF_RE token (`BD-\d+[a-z]*`) tokenizes
-# `BD-167b`, and the widened entry regex defines `BD-167b` (the fixture's
-# BD-167b.md). Before BD-203 the token yielded NOTHING on `BD-167b`
-# (a `\b` cannot sit between `7` and `b`), so the ref was invisible.
+# C6 (BD-211): a body reference to the canonical defined entry `BD-700`
+# RESOLVES — the CROSS_REF_RE token (`BD-\d+`) tokenizes `BD-700`, and
+# the canonical entry regex defines `BD-700` (the fixture's BD-700.md).
 C6_REPO="$SCRATCH_ROOT/C6"
 mkdir -p "$C6_REPO"
 build_green_pack_backlog "$C6_REPO"
-# BD-100 references the suffix entry BD-167b (defined in the fixture).
-printf '\nDescription continued: superseded by BD-167b.\n' \
+# BD-100 references the canonical entry BD-700 (defined in the fixture).
+printf '\nDescription continued: superseded by BD-700.\n' \
     >>"$C6_REPO/backlog/BD-100.md"
 C6_OUT=$(run_check check_cross_reference_integrity "$C6_REPO" 2>&1)
 C6_RC=$?
-assert_eq "C6.1 suffix ref BD-167b resolves → check rc=0" "0" "$C6_RC"
-assert_not_contains "C6.2 suffix ref BD-167b → no dangling FAIL" "$C6_OUT" "BD-167b — no matching"
+assert_eq "C6.1 canonical ref BD-700 resolves → check rc=0" "0" "$C6_RC"
+assert_not_contains "C6.2 canonical ref BD-700 → no dangling FAIL" "$C6_OUT" "BD-700 — no matching"
 
-# C7 (BD-203 A5): a DANGLING suffix reference (`BD-999z`, not defined) is
-# now VISIBLE to Check 34 (the token admits the suffix) and FAILs — the
-# widening admits the suffix in BOTH directions (resolve + dangling).
+# C7 (BD-211): a DANGLING canonical reference (`BD-556`, not defined) is
+# VISIBLE to Check 34 (the token `BD-\d+` tokenizes it) and FAILs —
+# mirrors the C2 dangling-`BD-555` precedent with a distinct id.
 C7_REPO="$SCRATCH_ROOT/C7"
 mkdir -p "$C7_REPO"
 build_green_pack_backlog "$C7_REPO"
-printf '\nDescription continued: see BD-999z for related context.\n' \
+printf '\nDescription continued: see BD-556 for related context.\n' \
     >>"$C7_REPO/backlog/BD-100.md"
 C7_OUT=$(run_check check_cross_reference_integrity "$C7_REPO" 2>&1)
 C7_RC=$?
-assert_eq "C7.1 dangling suffix ref BD-999z → check rc=1" "1" "$C7_RC"
-assert_contains "C7.2 dangling suffix ref → FAIL names BD-999z" "$C7_OUT" "BD-999z"
+assert_eq "C7.1 dangling canonical ref BD-556 → check rc=1" "1" "$C7_RC"
+assert_contains "C7.2 dangling canonical ref → FAIL names BD-556" "$C7_OUT" "BD-556"
 
 # ─────────────────────────────────────────────────────────────────
 # Group E: SKIP behavior (per integration parent §10.5)
@@ -861,6 +859,122 @@ if [[ -z "$G2_LEFTOVERS" ]]; then
 else
     t_fail "G2.2 Check 33 FAIL path → snap leftover in stream_dir" "$G2_LEFTOVERS"
 fi
+
+# ─────────────────────────────────────────────────────────────────
+# Group H: BD-211 canonical line-2 header guard (Check 32′)
+# ─────────────────────────────────────────────────────────────────
+#
+# The net-new header guard inside check_mirror_in_sync asserts that the
+# line-2 bold header of each ID-shaped-stream entry matches
+# `**<ID>-NNN — <Title>**` (NO letter suffix, NO pre-em-dash
+# parenthetical). measure-then-bound: a POSITIVE control (clean header
+# passes, no false positive) + a NEGATIVE test (a suffix header AND a
+# pre-em-dash parenthetical header BOTH reject, no false negative).
+#
+# The fixture filenames are CANONICAL (`BD-500.md` / `BD-501.md` /
+# `BD-502.md`) so they pass the filename-conformance loop and REACH the
+# header guard; only the line-2 header text is non-canonical for the
+# negative cases.
+
+printf "\n=== Group H: BD-211 canonical line-2 header guard ===\n"
+
+# H1 (NEGATIVE): a canonical-filename entry whose line-2 header carries a
+# letter suffix → guard REJECTS, rc=1, output names the offending file.
+H1_REPO="$SCRATCH_ROOT/H1"
+mkdir -p "$H1_REPO"
+build_green_pack_backlog "$H1_REPO"
+rm -f "$H1_REPO/BACKLOG.md"
+cat >"$H1_REPO/backlog/BD-500.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-500.md; contract: /backlog/_rules.md -->
+**BD-500b — Suffix header**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: n/a
+Description: Suffix-form line-2 header (non-canonical per BD-211).
+EOF
+H1_OUT=$(run_check check_mirror_in_sync "$H1_REPO" 2>&1)
+H1_RC=$?
+assert_eq "H1.1 suffix line-2 header → check rc=1" "1" "$H1_RC"
+assert_contains "H1.2 suffix line-2 header → FAIL names BD-500.md" "$H1_OUT" "BD-500.md"
+assert_contains "H1.3 suffix line-2 header → FAIL says non-canonical header" "$H1_OUT" "non-canonical line-2 header"
+
+# H2 (NEGATIVE): a canonical-filename entry whose line-2 header carries a
+# pre-em-dash parenthetical qualifier → guard REJECTS, rc=1, names file.
+H2_REPO="$SCRATCH_ROOT/H2"
+mkdir -p "$H2_REPO"
+build_green_pack_backlog "$H2_REPO"
+rm -f "$H2_REPO/BACKLOG.md"
+cat >"$H2_REPO/backlog/BD-501.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-501.md; contract: /backlog/_rules.md -->
+**BD-501 (Qualifier) — Parenthetical header**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: n/a
+Description: Pre-em-dash parenthetical line-2 header (non-canonical per BD-211).
+EOF
+H2_OUT=$(run_check check_mirror_in_sync "$H2_REPO" 2>&1)
+H2_RC=$?
+assert_eq "H2.1 parenthetical line-2 header → check rc=1" "1" "$H2_RC"
+assert_contains "H2.2 parenthetical line-2 header → FAIL names BD-501.md" "$H2_OUT" "BD-501.md"
+assert_contains "H2.3 parenthetical line-2 header → FAIL says non-canonical header" "$H2_OUT" "non-canonical line-2 header"
+
+# H3 (NEGATIVE, both forms in one tree): the guard names BOTH offenders.
+H3_REPO="$SCRATCH_ROOT/H3"
+mkdir -p "$H3_REPO"
+build_green_pack_backlog "$H3_REPO"
+rm -f "$H3_REPO/BACKLOG.md"
+cat >"$H3_REPO/backlog/BD-500.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-500.md; contract: /backlog/_rules.md -->
+**BD-500b — Suffix header**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: n/a
+Description: Suffix-form line-2 header (non-canonical per BD-211).
+EOF
+cat >"$H3_REPO/backlog/BD-501.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-501.md; contract: /backlog/_rules.md -->
+**BD-501 (Qualifier) — Parenthetical header**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: n/a
+Description: Pre-em-dash parenthetical line-2 header (non-canonical per BD-211).
+EOF
+H3_OUT=$(run_check check_mirror_in_sync "$H3_REPO" 2>&1)
+H3_RC=$?
+assert_eq "H3.1 both non-canonical headers → check rc=1" "1" "$H3_RC"
+assert_contains "H3.2 both non-canonical → FAIL names BD-500.md" "$H3_OUT" "BD-500.md"
+assert_contains "H3.3 both non-canonical → FAIL names BD-501.md" "$H3_OUT" "BD-501.md"
+
+# H4 (POSITIVE control): a canonical-filename entry with a CLEAN line-2
+# header passes the guard (rc=0, not flagged) — no false positive. The
+# green fixture already carries canonical headers; add one more clean
+# entry to prove the guard admits a fresh canonical header.
+H4_REPO="$SCRATCH_ROOT/H4"
+mkdir -p "$H4_REPO"
+build_green_pack_backlog "$H4_REPO"
+rm -f "$H4_REPO/BACKLOG.md"
+cat >"$H4_REPO/backlog/BD-502.md" <<'EOF'
+<!-- per-entry source: /backlog/BD-502.md; contract: /backlog/_rules.md -->
+**BD-502 — Clean header**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: n/a
+Description: Canonical line-2 header (passes the BD-211 guard).
+EOF
+H4_OUT=$(run_check check_mirror_in_sync "$H4_REPO" 2>&1)
+H4_RC=$?
+assert_eq "H4.1 clean line-2 header → check rc=0" "0" "$H4_RC"
+assert_not_contains "H4.2 clean line-2 header → BD-502.md NOT flagged" "$H4_OUT" "non-canonical line-2 header"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

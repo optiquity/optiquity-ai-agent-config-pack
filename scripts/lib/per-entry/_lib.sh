@@ -83,9 +83,11 @@ pe__stream_attr() {
                 # branches of mirror-generate are dead-for-pack (the file is
                 # kept only for project streams pending BD-206).
                 mirror) printf 'pack-ops/BACKLOG.md' ;;
-                # BD-203 A4: admit the suffix form (`BD-167b.md`,
-                # `BD-169b.md`) — sized to exactly the 2 suffix entries.
-                entry-regex) printf '^BD-[0-9]+[a-z]*\.md$' ;;
+                # BD-211: canonical filename is `BD-NNN.md` — NO letter
+                # suffix (a sub-part is an in-body section, not a suffixed
+                # entry). The former suffix sub-entries were folded into
+                # their base BD-167/BD-169 entries as in-body sections.
+                entry-regex) printf '^BD-[0-9]+\.md$' ;;
                 support) printf '_rules.md _intro.md _toc.md' ;;
                 dir-suffix) printf 'backlog' ;;
             esac

@@ -219,8 +219,8 @@ printf "\n=== Group 1: stream-shape lookups ===\n"
 assert_eq "1.3 project-backlog mirror filename" "docs/project/BACKLOG.md" "$(pe_canonical_mirror_for_stream project-backlog)"
 assert_eq "1.4 project-implementation-plan mirror filename" "docs/project/IMPLEMENTATION-PLAN.md" "$(pe_canonical_mirror_for_stream project-implementation-plan)"
 assert_eq "1.5 project-changelog mirror filename" "docs/project/CHANGELOG.md" "$(pe_canonical_mirror_for_stream project-changelog)"
-# BD-203 A4: pack-backlog entry regex admits the suffix form.
-assert_eq "1.6 pack-backlog entry regex"  "^BD-[0-9]+[a-z]*\.md$" "$(pe_entry_regex_for_stream pack-backlog)"
+# BD-211: pack-backlog entry regex is canonical `BD-NNN.md` (no suffix).
+assert_eq "1.6 pack-backlog entry regex"  "^BD-[0-9]+\.md$" "$(pe_entry_regex_for_stream pack-backlog)"
 assert_eq "1.7 project-backlog entry regex" "^TD-[0-9]+\.md$" "$(pe_entry_regex_for_stream project-backlog)"
 # BD-203 B8: the pack-backlog stream NO LONGER carries
 # `_v8-resolved-archive.md` — the 19 v8 summary-table rows (BD-001..019)

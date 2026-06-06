@@ -442,7 +442,8 @@ assert_contains "2.1 reverse reports 2 phase epics" "$output2" "2 phase epic"
 # differences are tolerable per V1 §6.7 "near-no-op").
 # BD-204 C-4: the pack reverse now emits the per-entry TREE (no monolith).
 # BD-204 C-4 LOW-1 (PACK-REVIEW-BD-204-C4): the pack tree emit is filtered
-# to the `pack-backlog` entry regex (`^BD-[0-9]+[a-z]*\.md$`) — the SAME
+# to the `pack-backlog` entry regex (`^BD-[0-9]+\.md$`, canonical per
+# BD-211 — simplified from the former `^BD-[0-9]+[a-z]*\.md$`) — the SAME
 # single source the backup set + `_toc.md` regen use — so the emit set ==
 # the backup set == the `_toc.md` set by construction. On this MIXED fixture
 # (BD-001/BD-002 + TD-010/TD-040) only the `BD-*` ids are written to the pack

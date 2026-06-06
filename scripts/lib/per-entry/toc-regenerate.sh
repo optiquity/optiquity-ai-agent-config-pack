@@ -81,8 +81,9 @@ display_name_for_stream = {
 
 # Entry-file regex per stream (must mirror _lib.sh hard-coded values).
 entry_regex_for_stream = {
-    # BD-203 A4: admit the pack-backlog suffix form (`BD-167b.md`).
-    "pack-backlog":                re.compile(r"^BD-\d+[a-z]*\.md$"),
+    # BD-211: canonical pack-backlog filename `BD-NNN.md` — NO letter
+    # suffix (must mirror _lib.sh).
+    "pack-backlog":                re.compile(r"^BD-\d+\.md$"),
     # BD-203 A3/CHANGE 2: per-release pack-changelog granularity (`vN.md`).
     "pack-changelog":              re.compile(r"^v\d+\.md$"),
     "project-backlog":             re.compile(r"^TD-\d+\.md$"),
@@ -120,12 +121,13 @@ for name in sorted(os.listdir(stream_dir)):
     group = ""
 
     if key in ("pack-backlog", "project-backlog"):
-        # Title from `**ID — Title**` line. BD-203 A6: admit the suffix
-        # form (`BD-167b`) and an optional parenthetical qualifier
-        # (`BD-195 (Code Red 3)`) so those entries get their real title,
-        # not the filename fallback.
+        # Title from the canonical `**ID — Title**` line. BD-211: the ID
+        # is `[A-Z]+-\d+` with NO letter suffix and NO pre-em-dash
+        # parenthetical (a parenthetical, if present, is TITLE TEXT after
+        # the em-dash). Prefix-agnostic `[A-Z]+` serves BD AND TD
+        # (CROSS-SURFACE).
         for ln in body_lines:
-            m = re.match(r"^\*\*[A-Z]+-\d+[a-z]*(?:\s*\([^)]*\))? — (.+?)\*\*", ln)
+            m = re.match(r"^\*\*[A-Z]+-\d+ — (.+?)\*\*", ln)
             if m:
                 title = m.group(1).strip()
                 break
@@ -237,13 +239,11 @@ ordered_groups = order_groups(key, group_order)
 def entry_sort_key(key, entry_tuple):
     filename, entry_id, title = entry_tuple
     if key in ("pack-backlog", "project-backlog"):
-        # By numeric ID ascending. BD-203 B9: admit the suffix form
-        # (`BD-167b`) so a suffix entry sorts ADJACENT to its base ID
-        # within its status group (the captured group is the numeric
-        # part; the suffix letters are non-capturing). Without the
-        # `[a-z]*` the regex returns 0 for a suffix ID, sending it to
-        # the group top.
-        m = re.match(r"^[A-Z]+-(\d+)[a-z]*$", entry_id)
+        # By numeric ID ascending. BD-211: canonical IDs are
+        # `[A-Z]+-NNN` with NO letter suffix; the captured group is the
+        # numeric part. Prefix-agnostic `[A-Z]+` serves BD AND TD
+        # (CROSS-SURFACE).
+        m = re.match(r"^[A-Z]+-(\d+)$", entry_id)
         return int(m.group(1)) if m else 0
     if key == "pack-changelog":
         # BD-203 CHANGE 2 — per-release granularity: each major-version

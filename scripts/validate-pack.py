@@ -306,9 +306,10 @@ STREAMS = [
     # BD-203: `mirror_relative` is retained as the deletion-target reference
     # only — for the PACK the per-entry tree + `_toc.md` is the SOLE SSOT;
     # there is no regenerated monolithic mirror (Check 32 inverted to 32′).
-    # A4: pack-backlog regex admits the suffix form (`BD-167b.md`); A3:
-    # pack-changelog regex is per-release granularity (`vN.md`).
-    ("pack-backlog",      "backlog",            "pack-ops/BACKLOG.md",          r"^BD-\d+[a-z]*\.md$"),
+    # BD-211: pack-backlog regex is canonical `BD-NNN.md` — NO letter
+    # suffix (the former suffix sub-entries were folded into their base
+    # entries); A3: pack-changelog regex is per-release granularity (`vN.md`).
+    ("pack-backlog",      "backlog",            "pack-ops/BACKLOG.md",          r"^BD-\d+\.md$"),
     ("pack-changelog",    "changelog",          "pack-ops/CHANGELOG.md",        r"^v\d+\.md$"),
 ]
 # ── Check 48 (BD-195 C6): JC-5 soft-advisory removed-doc guard ─────────────
@@ -3186,6 +3187,27 @@ def _list_unknown_files(stream_dir: Path, entry_regex: str,
     return unknown
 
 
+# BD-211: canonical per-entry line-2 header for ID-shaped streams —
+# `**<ID>-NNN — <Title>**` where <ID> is BD or TD. NO letter suffix and
+# NO pre-em-dash parenthetical qualifier (a parenthetical, if present, is
+# TITLE TEXT after the em-dash). Used by the Check 32′ header guard.
+_CANON_HEADER_RE = re.compile(r"^\*\*(?:BD|TD)-\d+ — .+\*\*$")
+
+
+def _stream_is_id_shaped(entry_regex: str) -> bool:
+    """Return True iff `entry_regex` is an `[A-Z]+-\\d+`-shaped ID stream
+    (pack-backlog / project-backlog) vs a version-shaped stream
+    (pack-changelog `^v\\d+\\.md$`). Derived from the SAME STREAMS
+    `entry_regex` the filename loop consumes — the single source of
+    stream-applicability for both the filename conformance check and the
+    BD-211 canonical-header guard (enumerate-encoding-surfaces: no
+    hard-coded "pack-backlog" in two places). The canonical ID streams
+    anchor their filename regex on an uppercase letter run before the
+    digit run; version streams anchor on a literal `v`.
+    """
+    return bool(re.match(r"^\^[A-Z]+-", entry_regex))
+
+
 def check_mirror_in_sync() -> None:
     """Check 32′ — no pack monolith exists (BD-203; inverts BD-168 Check 32).
 
@@ -3271,6 +3293,46 @@ def check_mirror_in_sync() -> None:
                 f"basenames {sorted(known_supporting)}"
             )
             continue
+
+        # BD-211: canonical line-2 header guard. For each ID-shaped
+        # stream (derived from the SAME entry_regex the filename loop
+        # uses — version-shaped streams like pack-changelog are SKIPped
+        # so the version grammar is never mis-asserted), the line-2 bold
+        # header (BELOW the line-1 `<!-- per-entry source: ... -->`
+        # back-pointer) MUST match `**<ID>-NNN — <Title>**` with NO
+        # letter suffix and NO pre-em-dash parenthetical. This is the
+        # tree-integrity invariant "the FILENAME is the ID, the HEADER
+        # must match the ID-grammar".
+        if _stream_is_id_shaped(entry_regex):
+            bad_headers = []
+            for child in sorted(stream_dir.iterdir()):
+                if not child.is_file():
+                    continue
+                name = child.name
+                if name in known_supporting:
+                    continue
+                if not re.compile(entry_regex).match(name):
+                    continue
+                try:
+                    with open(child, "r", encoding="utf-8", newline="") as f:
+                        lines = f.read().splitlines()
+                except OSError:
+                    continue
+                # Line 2 is the bold header below the line-1 back-pointer.
+                header = lines[1] if len(lines) >= 2 else ""
+                if not _CANON_HEADER_RE.match(header):
+                    bad_headers.append((name, header))
+            if bad_headers:
+                detail = "; ".join(
+                    f"{n}: {h!r}" for n, h in bad_headers
+                )
+                fail(
+                    f"{stream_rel}/: non-canonical line-2 header(s) "
+                    f"(BD-211 — must be `**<ID>-NNN — <Title>**`, NO "
+                    f"letter suffix, NO pre-em-dash parenthetical): "
+                    f"{detail}"
+                )
+                continue
 
         ok(
             f"{stream_rel}/ — no monolith present; _rules.md + _toc.md "
@@ -3427,16 +3489,15 @@ def check_toc_in_sync() -> None:
 # regex matches BD-NNN, TD-NNN, vN.M (with optional `-suffix`),
 # `phase-N`, and `phase-N.M`. Conservative — false positives in code
 # blocks / quoted text are tolerated per §11.2.
-# BD-203 A5: admit the suffix form `BD-167b` / `TD-NNNb` in the
-# cross-ref TOKEN. Per ARCHITECTURE-BD-203-V3.md EE-5 the prior regex
-# yields NO token on `BD-167b` (a `\b` cannot sit between `7` and `b`),
-# so a `BD-167b` reference was INVISIBLE to Check 34 — the fix is to
-# ADMIT the suffix (NOT to strip a stray `b`, which was the research's
-# WRONG recipe). The trailing `\b` still anchors after the suffix letter.
+# BD-211: the cross-ref TOKEN for BD/TD is canonical `BD-NNN` / `TD-NNN`
+# — NO letter suffix (the former suffix sub-entries were folded into
+# their base entries; no suffix ID exists). CROSS-SURFACE: the `TD-\d+`
+# token serves the project stream. The `vN.M` version token keeps its
+# `-suffix` group (version-shaped, not ID-shaped).
 CROSS_REF_RE = re.compile(
     r"\b("
-    r"BD-\d+[a-z]*"
-    r"|TD-\d+[a-z]*"
+    r"BD-\d+"
+    r"|TD-\d+"
     r"|phase-\d+(?:\.\d+)?"
     r"|v\d+\.\d+(?:-[a-z0-9-]+)?"
     r")\b"

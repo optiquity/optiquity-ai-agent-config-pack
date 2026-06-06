@@ -115,16 +115,15 @@ if not text.endswith("\n"):
 # `## Deferred`).
 
 if key == "pack-backlog":
-    # BD-203 ENGINE CHANGE 1 — widen the backlog anchor to admit EVERY
-    # header form so no entry is dropped at conversion: an optional
-    # lowercase suffix-letter run after the number (`BD-167b`,
-    # `BD-169b`) AND an optional parenthetical qualifier between the ID
-    # and the em-dash (`BD-195 (Code Red 3)`). The captured ID is the
-    # `BD-\d+[a-z]*` group ONLY — the parenthetical lives in the body's
-    # header line, NOT in the filename (filename = ID; there is exactly
-    # one BD-195 so `BD-195.md` is unambiguous). See
-    # maintenance-docs/v11-implementation/ARCHITECTURE-BD-203-V3.md §2.2.
-    anchor_re = re.compile(r"^\*\*(BD-\d+[a-z]*)(?:\s*\([^)]*\))?\s+— ")
+    # BD-211 — canonical backlog anchor: `**BD-NNN — <Title>**`. NO
+    # letter suffix and NO pre-em-dash parenthetical qualifier (a
+    # parenthetical, if present, is TITLE TEXT after the em-dash). The
+    # captured ID is the `BD-\d+` group. The former suffix sub-entries
+    # were folded into their base BD-167/BD-169 entries as in-body sections
+    # and the BD-195 pre-em-dash parenthetical was normalized before any
+    # re-decompose. See
+    # maintenance-docs/v11-implementation/ARCHITECTURE-BD-211.md §3.2.
+    anchor_re = re.compile(r"^\*\*(BD-\d+)\s+— ")
     id_extract = lambda line: anchor_re.match(line).group(1)
     # Section H2 boundaries that close an entry: any new `## ` heading.
     section_break_re = re.compile(r"^## ")
@@ -146,10 +145,11 @@ elif key == "pack-changelog":
     # parity with the other streams' close logic.
     section_break_re = re.compile(r"^## ")
 elif key == "project-backlog":
-    # BD-203 ENGINE CHANGE 1 (parallel TD- widening — additive, fixes
-    # project too; the firewall rule is widening never narrows). Admits
-    # `TD-NNNb` / parenthetical analog, mirroring the pack-backlog anchor.
-    anchor_re = re.compile(r"^\*\*(TD-\d+[a-z]*)(?:\s*\([^)]*\))?\s+— ")
+    # BD-211 — canonical TD anchor: `**TD-NNN — <Title>**`, mirroring the
+    # pack-backlog anchor (NO letter suffix, NO pre-em-dash parenthetical).
+    # CROSS-SURFACE: serves the project stream; agrees with the already-
+    # canonical project-template `_rules.md` (`^TD-\d+\.md$`).
+    anchor_re = re.compile(r"^\*\*(TD-\d+)\s+— ")
     id_extract = lambda line: anchor_re.match(line).group(1)
     section_break_re = re.compile(r"^## ")
 elif key == "project-implementation-plan":

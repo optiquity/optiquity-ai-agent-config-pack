@@ -141,11 +141,11 @@ _rec_compute_pack_signals() {
             [[ -f "$f" ]] || continue
             base=$(basename "$f")
             # Skip supporting files (leading underscore); count only
-            # `BD-NNN[suffix].md` entry files.
+            # canonical `BD-NNN.md` entry files (BD-211 — no suffix).
             case "$base" in
                 _*) continue ;;
             esac
-            printf '%s\n' "$base" | grep -qE '^BD-[0-9]+[a-z]*\.md$' || continue
+            printf '%s\n' "$base" | grep -qE '^BD-[0-9]+\.md$' || continue
             bd_total=$(( bd_total + 1 ))
             bytes=$(wc -c < "$f" | tr -d ' ')
             total_bytes=$(( total_bytes + bytes ))

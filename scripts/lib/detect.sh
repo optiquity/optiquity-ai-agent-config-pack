@@ -56,7 +56,7 @@ detect_pack_surface() {
         local ent
         for ent in "$target/backlog"/BD-*.md; do
             [[ -f "$ent" ]] || continue
-            if printf '%s\n' "$(basename "$ent")" | grep -qE '^BD-[0-9]+[a-z]*\.md$'; then
+            if printf '%s\n' "$(basename "$ent")" | grep -qE '^BD-[0-9]+\.md$'; then
                 bd_seen=1
                 break
             fi
