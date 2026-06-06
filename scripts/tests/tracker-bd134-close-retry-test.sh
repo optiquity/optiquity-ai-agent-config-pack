@@ -80,6 +80,10 @@ export TMF_STABILIZE_SLEEP_SECS=0
 
 # Source libs.
 # shellcheck disable=SC1091
+source "$LIB_DIR/per-entry/_lib.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/per-entry/decompose.sh"
+# shellcheck disable=SC1091
 source "$LIB_DIR/tracker-errors.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/tracker-config.sh"
@@ -103,9 +107,21 @@ mkfixture() {
     printf '%s' "$dir"
 }
 
-# build_repo: minimal repo with a 2-entry BACKLOG (one Resolved → close
-# attempted) + tracker.toml. Uses the same shape as the existing
-# tracker-migrate-forward-test fixtures.
+# build_repo: minimal repo with a 2-entry BD backlog (both Resolved →
+# close attempted in step 8) + tracker.toml.
+#
+# BD-204 C-5 (C2a): the pack-surface forward read-side now enumerates the
+# per-entry TREE under `<repo>/backlog/` (the no-monolith SSOT) — there is
+# NO `pack-ops/BACKLOG.md` to read. So this fixture SEEDS THE TREE: it
+# decomposes the inline 2-entry monolith into the per-entry tree via
+# `per_entry_decompose "pack-backlog"` (the same C-5 reconcile applied to
+# tracker-migrate-roundtrip-test.sh / tracker-migrate-forward-test.sh).
+# The `pack-ops/` directory marker is still created so
+# `tracker_config_auto_surface` returns "pack"; under the no-monolith
+# model NO `pack-ops/BACKLOG.md` is written (fail-loud — there is no
+# monolith to read). The close-retry behavior under test (transient/
+# persistent close, bounded attempts, partial-write surfacing) is
+# unchanged — only the fixture SEED moves monolith → tree.
 build_repo() {
     local repo="$1"
     cat > "$repo/tracker.toml" <<EOF
@@ -121,9 +137,13 @@ prefix = "BD"
 forward_complete = false
 mapping_file = ".pack-tracker/id-map.json"
 EOF
-    # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
+    # pack-surface marker (so tracker_config_auto_surface returns "pack").
     mkdir -p "$repo/pack-ops"
-    cat > "$repo/pack-ops/BACKLOG.md" <<'EOF'
+    # Seed the per-entry TREE (no monolith) for the C-5 forward read-side.
+    mkdir -p "$repo/backlog"
+    local _mono
+    _mono=$(mktemp -t bd134-mono.XXXXXX)
+    cat > "$_mono" <<'EOF'
 # Backlog
 
 ## Active
@@ -150,6 +170,8 @@ Resolution: done in commit def5678
 
 ---
 EOF
+    per_entry_decompose "pack-backlog" "$_mono" "$repo/backlog" >/dev/null
+    rm -f "$_mono"
     cat > "$repo/IMPLEMENTATION-PLAN.md" <<'EOF'
 # Implementation Plan
 EOF
