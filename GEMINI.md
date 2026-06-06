@@ -71,6 +71,8 @@ Tag move sequence: delete local + remote, recreate, push.
 **BD numbering:** Always read the `/backlog/` tree (e.g. `/backlog/_toc.md`) to find the highest existing BD
 number, then increment by 1. Never assign a BD number from memory or
 from another chat's reservation list — reservations are not authoritative.
+No letter suffix on a SEPARATE BD — integer ID only, never a trailing letter;
+next INTEGER; a sub-part is a SECTION in the parent BD's body.
 
 **What agents may modify:**
 - Template files, supporting-docs/, maintenance-docs/: when task explicitly requires

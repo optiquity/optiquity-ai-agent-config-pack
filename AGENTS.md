@@ -96,6 +96,10 @@ it, but actors who claim a scope are held to it.
 - Reservation lists from other chats, planning docs, or sidecar
   sessions are NOT authoritative — always read the live `/backlog/` tree before
   assigning. Reserved-but-unwritten numbers are guesses, not commitments.
+- **No letter suffix.** A SEPARATE BD never carries a letter suffix — an
+  integer ID only, never an integer followed by a trailing letter. Assign the
+  next INTEGER. A sub-part of an existing BD lives as a SECTION inside that
+  BD's body, never a suffixed entry.
 
 **What agents may modify:**
 - Any file in template directories when the task explicitly requires it
