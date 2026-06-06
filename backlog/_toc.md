@@ -32,6 +32,7 @@
 - [BD-206](./BD-206.md) — Project-side per-entry no-mirror application (apply the corrected standard to client assets)
 - [BD-207](./BD-207.md) — Project-side per-entry ↔ GH-Issues reversible tracker (apply the tracker standard to client assets)
 - [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
+- [BD-211](./BD-211.md) — Canonicalize the per-entry header grammar: eliminate suffix sub-entry forms + normalize title parentheticals; validator-enforced (BD-204 prerequisite)
 
 ## Unblocked
 
