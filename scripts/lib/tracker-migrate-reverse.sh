@@ -74,6 +74,25 @@ if ! declare -f tracker_header_snapshot_capture >/dev/null 2>&1; then
     source "$_tmr_dir/tracker-header-snapshot.sh"
     unset _tmr_self _tmr_dir
 fi
+# shellcheck disable=SC1091
+# BD-204 C-4: the pack-surface reverse branch emits the per-entry TREE
+# (`/backlog/BD-NNN.md` + `_toc.md`) directly — NOT the `# BACKLOG`
+# monolith. The per-entry engine provides the atomic per-file write,
+# the line-1 back-pointer, the entry-file lister, and the `_toc.md`
+# regenerator. Source both idempotently.
+if ! declare -f pe_write_atomic >/dev/null 2>&1; then
+    _tmr_self="${BASH_SOURCE[0]}"
+    _tmr_dir="$(cd "$(dirname "$_tmr_self")" && pwd)"
+    source "$_tmr_dir/per-entry/_lib.sh"
+    unset _tmr_self _tmr_dir
+fi
+# shellcheck disable=SC1091
+if ! declare -f per_entry_regenerate_toc >/dev/null 2>&1; then
+    _tmr_self="${BASH_SOURCE[0]}"
+    _tmr_dir="$(cd "$(dirname "$_tmr_self")" && pwd)"
+    source "$_tmr_dir/per-entry/toc-regenerate.sh"
+    unset _tmr_self _tmr_dir
+fi
 
 # ─────────────────────────────────────────────────────────────────
 # BD-106 helpers: phase-task id-map reads (V3.2 §4.2 / V3.3 §4.2)
@@ -679,6 +698,130 @@ PYEOF
     rm -f "$entries_file"
 }
 
+# BD-204 C-4: emit the per-entry TREE for the PACK surface (no monolith).
+# For each reconstructed entry, write `<backlog_dir>/<pack-id>.md` via
+# pe_write_atomic with the line-1 per-entry back-pointer, then regenerate
+# `_toc.md` (DP-4). This is the no-monolith replacement for the pack-branch
+# call to _tmr_emit_backlog — the `# BACKLOG` monolith is never written on
+# the pack surface. The in-body `pack-extra-fields` named scalars
+# (`Target:`/`Position:`/etc., carried on the entry object as `extra_fields`)
+# render INLINE into the entry (§2.4.1); prose sub-blocks ride the body
+# verbatim. The client `else` branch still calls _tmr_emit_backlog (BD-207).
+#
+# $1 = entries JSON array, $2 = backend slug, $3 = backlog tree dir
+_tmr_emit_pack_tree() {
+    local entries="$1"
+    local backend_slug="$2"
+    local backlog_dir="$3"
+
+    mkdir -p "$backlog_dir"
+
+    # File-pass per Finding #13 (PACK-REVIEW-BD066-068): description text
+    # containing `"""` would terminate an embedded triple-quoted string.
+    local entries_file
+    entries_file=$(mktemp -t tmr-emit-pack-tree.XXXXXX)
+    printf '%s' "$entries" > "$entries_file"
+
+    # Render each entry body (everything from line 2 onward — the line-1
+    # back-pointer is prepended in bash so the canonical pe_backpointer_line
+    # form is reused, not re-derived in Python). Emit a NUL-delimited
+    # stream of `<pack_id>\t<rendered-body>` pairs (pack_id has no tab/NUL)
+    # to a temp FILE — bash command substitution `$(...)` strips NUL bytes,
+    # so the stream is read from disk via `read -r -d ''`, not captured.
+    local rendered_file
+    rendered_file=$(mktemp -t tmr-pack-tree-render.XXXXXX)
+    python3 - "$entries_file" >"$rendered_file" <<'PYEOF'
+import json, sys
+with open(sys.argv[1]) as f:
+    entries = json.load(f)
+
+for e in entries:
+    pid = e.get("pack_id", "")
+    if not pid:
+        continue
+    title  = e.get("title", "")
+    typ    = e.get("type", "TODO(version)")
+    status = e.get("status", "Open")
+    scope  = e.get("scope", "") or ""
+    sev    = e.get("severity", "") or ""
+    bl     = e.get("blockers", []) or []
+    ub     = e.get("unblocks", []) or []
+    fs     = e.get("file_symbol", "") or ""
+    desc   = e.get("description", "") or ""
+    ctx    = e.get("context", "") or ""
+    res    = e.get("resolution", "") or ""
+    # In-body pack-extra-fields named scalars (Target/Position/etc.),
+    # rendered INLINE (§2.4.1). Carried on the entry object as an ordered
+    # list of [label, value] pairs (or a dict); absent today until the
+    # reverse decode populates it — handled defensively so the tree emit
+    # is forward-compatible with the carrier landing.
+    extra = e.get("extra_fields", None)
+
+    lines = [f"**{pid} — {title}**", f"Type: {typ}", f"Status: {status}"]
+    if scope:
+        lines.append(f"Scope: {scope}")
+    if sev:
+        lines.append(f"Severity: {sev}")
+    lines.append("Blockers: " + (", ".join(bl) if bl else "None"))
+    lines.append("Unblocks: " + (", ".join(ub) if ub else "None"))
+    if fs:
+        lines.append(f"File/Symbol: {fs}")
+    if desc:
+        lines.append(f"Description: {desc}")
+    if ctx:
+        lines.append(f"Context: {ctx}")
+    if res:
+        lines.append(f"Resolution: {res}")
+    else:
+        lines.append("Resolved: n/a")
+    # Inline the named-scalar extra fields (Target/Position/...).
+    if isinstance(extra, dict):
+        pairs = list(extra.items())
+    elif isinstance(extra, list):
+        pairs = [(p[0], p[1]) for p in extra if isinstance(p, (list, tuple)) and len(p) == 2]
+    else:
+        pairs = []
+    for label, value in pairs:
+        lines.append(f"{label}: {value}")
+
+    body = "\n".join(lines).rstrip("\n") + "\n"
+    sys.stdout.write(pid + "\t" + body + "\0")
+PYEOF
+    rm -f "$entries_file"
+
+    # Write one tree file per entry, line-1 back-pointer + body.
+    # LOW-1 (PACK-REVIEW-BD-204-C4): emit a tree file ONLY for pack_ids that
+    # match the pack-backlog stream entry regex — the SAME single regex source
+    # (`pe_entry_regex_for_stream pack-backlog`) that `pe_list_entry_files`
+    # (the backup set) and `per_entry_regenerate_toc` (the `_toc.md` set) use,
+    # matched the SAME way (against the `<pid>.md` basename). This makes the
+    # emit set == the backup set == the `_toc.md` set by construction, for any
+    # input. A non-matching pack_id (e.g. a `TD-*` id on a mixed input) is not
+    # a pack-backlog entry, so it is skipped. No second copy of the regex.
+    local pack_entry_regex
+    pack_entry_regex=$(pe_entry_regex_for_stream "pack-backlog") \
+        || pe_die "unknown stream key: pack-backlog"
+    local pid body bp dest
+    while IFS= read -r -d '' record; do
+        pid="${record%%$'\t'*}"
+        body="${record#*$'\t'}"
+        [[ -n "$pid" ]] || continue
+        # Filter to the pack-backlog entry regex (matched against the
+        # `<pid>.md` basename, identically to pe_list_entry_files).
+        if ! printf '%s\n' "$pid.md" | grep -E -q "$pack_entry_regex"; then
+            continue
+        fi
+        bp=$(pe_backpointer_line "pack-backlog" "$pid")
+        dest="$backlog_dir/$pid.md"
+        { printf '%s\n' "$bp"; printf '%s' "$body"; } | pe_write_atomic "$dest"
+    done < "$rendered_file"
+    rm -f "$rendered_file"
+
+    # DP-4: regenerate `_toc.md` on every pack reverse/regen pass
+    # (keeps Check 33's tree ⟺ `_toc.md` invariant satisfied).
+    per_entry_regenerate_toc "pack-backlog" "$backlog_dir"
+}
+
 # Emit IMPLEMENTATION-PLAN.md skeleton from phase epic titles. Per
 # V1 §6.5 step 5, skipped if the file already exists.
 _tmr_emit_implementation_plan() {
@@ -1054,12 +1197,17 @@ print(json.dumps(phases))')
     # already handled by the project-side reverse path; the legacy root
     # emit shape is preserved here for back-compat with pre-v10 client
     # flows that landed BACKLOG/CHANGELOG at root.
-    local backlog_out plan_out status_out changelog_out
+    # BD-204 C-4: the PACK surface emits the per-entry TREE (no monolith).
+    # `backlog_tree_dir` is the `/backlog/` tree; the client `else` branch
+    # keeps the legacy monolith path (`backlog_out`) untouched (BD-207).
+    local backlog_out plan_out status_out changelog_out backlog_tree_dir
     if [[ "$surface" == "pack" ]]; then
-        # Ensure pack-ops/ exists before emit (BD-175 directory reorg).
+        # Ensure pack-ops/ exists for PLAN/STATUS (BD-175 directory reorg).
         mkdir -p "$repo_root/pack-ops"
-        backlog_out="$repo_root/pack-ops/BACKLOG.md"
-        changelog_out="$repo_root/pack-ops/CHANGELOG.md"
+        # No-monolith: the pack BACKLOG is the per-entry tree at /backlog/,
+        # and the pack CHANGELOG stays flat-file (out of BD-204 scope). The
+        # pack reverse never writes pack-ops/BACKLOG.md or pack-ops/CHANGELOG.md.
+        backlog_tree_dir="$repo_root/backlog"
         plan_out="$repo_root/IMPLEMENTATION-PLAN.md"
         status_out="$repo_root/STATUS.md"
     else
@@ -1077,12 +1225,20 @@ print(json.dumps(phases))')
     # a partial-write error WITHOUT flipping the mode. Without this,
     # mid-run failure leaves the user with: (a) partial flat files,
     # (b) tracker.toml still saying mode=tracker — a split state.
-    # BD-175: surface-aware backup loop. Pack-side BACKLOG/CHANGELOG live
-    # under pack-ops/; client-side under root (legacy). Iterate the four
-    # destination paths derived above so the backup/restore stays in sync
-    # with the relocation.
+    # BD-175: surface-aware backup loop. Client-side BACKLOG/CHANGELOG live
+    # under root (legacy); iterate the destination paths so backup/restore
+    # stays in sync with the relocation.
+    # BD-204 C-4 (§3.3 T8): on the PACK surface the BACKLOG destination is
+    # the `/backlog/*.md` SET (pe_list_entry_files), so the atomic
+    # backup/restore snapshots the whole tree, not a single monolith path.
     local _emit_path_list
-    _emit_path_list="$backlog_out $plan_out $status_out $changelog_out"
+    if [[ "$surface" == "pack" ]]; then
+        local _tree_files
+        _tree_files=$(pe_list_entry_files "pack-backlog" "$backlog_tree_dir" | tr '\n' ' ')
+        _emit_path_list="$_tree_files $plan_out $status_out"
+    else
+        _emit_path_list="$backlog_out $plan_out $status_out $changelog_out"
+    fi
     local backup_dir=""
     if [[ "$flip_mode" == "1" ]]; then
         backup_dir="$repo_root/$TMF_PACK_TRACKER_DIR/disable-backup"
@@ -1099,42 +1255,51 @@ print(json.dumps(phases))')
         done
     fi
 
-    # BD-133 / D-6: capture the BACKLOG.md header preamble (everything
-    # before the first **BD-NNN — / **TD-NNN — / **phase-N heading)
-    # BEFORE _tmr_emit_backlog overwrites the file. First-write-wins
-    # via the snapshot file at .pack-tracker/backlog-header.snapshot,
-    # so the header survives N round-trips byte-identical to its first
-    # capture. Run on every reverse path (not gated by flip_mode) so
-    # plain `reverse` (without --disable) also preserves the header.
-    # The capture is a no-op if the snapshot already exists or if the
-    # current preamble is trivial (bare `# BACKLOG`).
-    tracker_header_snapshot_capture "$repo_root" || true
-
+    # BD-204 C-4 / DP-5: header-snapshot is RETIRED on the pack surface.
+    # No `# BACKLOG` monolith exists under no-mirror, and `_intro.md` is a
+    # pack-authored static file (untouched by reverse) — so there is no
+    # preamble to capture / re-apply. The capture/apply calls run ONLY on
+    # the client `else` branch (BD-207), where the legacy monolith preamble
+    # still exists.
     local emit_failed=0
-    _tmr_emit_backlog             "$issue_jsons" "$backend_slug" "$backlog_out" || emit_failed=1
-    # BD-133 / D-6: re-prepend the captured preamble. Runs immediately
-    # after the entries-only emit, before sidecar / mirror-strip /
-    # atomicity-gate steps. If the emit failed (emit_failed=1) the
-    # apply is skipped — the atomicity gate below will restore the
-    # original BACKLOG.md from backup_dir, which already had the
-    # preamble in place.
-    if [[ "$emit_failed" == "0" ]]; then
-        tracker_header_snapshot_apply "$repo_root" "$backlog_out" || emit_failed=1
+    if [[ "$surface" == "pack" ]]; then
+        # BD-204 C-4 / C3: emit the per-entry TREE directly (no monolith),
+        # then regenerate `_toc.md` (DP-4). No header-snapshot, no sidecar.
+        _tmr_emit_pack_tree "$issue_jsons" "$backend_slug" "$backlog_tree_dir" || emit_failed=1
+        _tmr_emit_implementation_plan "$phase_jsons" "$plan_out"                 || emit_failed=1
+        _tmr_emit_status              "$issue_jsons" "$phase_jsons" "$status_out" || emit_failed=1
+
+        # Step 8: strip mirror header from the emitted PLAN/STATUS only;
+        # the tree entries are written without a mirror header (line-1 is
+        # the per-entry back-pointer), and the pack CHANGELOG is not emitted.
+        tracker_mirror_header_strip "$plan_out"   || emit_failed=1
+        tracker_mirror_header_strip "$status_out" || emit_failed=1
+    else
+        # Client surface (legacy monolith path — BD-207, UNTOUCHED).
+        # BD-133 / D-6: capture the BACKLOG.md header preamble BEFORE
+        # _tmr_emit_backlog overwrites the file (first-write-wins via
+        # .pack-tracker/backlog-header.snapshot).
+        tracker_header_snapshot_capture "$repo_root" || true
+
+        _tmr_emit_backlog             "$issue_jsons" "$backend_slug" "$backlog_out" || emit_failed=1
+        if [[ "$emit_failed" == "0" ]]; then
+            tracker_header_snapshot_apply "$repo_root" "$backlog_out" || emit_failed=1
+        fi
+        _tmr_emit_implementation_plan "$phase_jsons" "$plan_out"                    || emit_failed=1
+        _tmr_emit_status              "$issue_jsons" "$phase_jsons"  "$status_out"  || emit_failed=1
+        _tmr_emit_changelog           "$changelog_out"                              || emit_failed=1
+
+        # Step 7.5: sidecar (V1 §6.6 + §6.6.1).
+        local sidecar_path
+        sidecar_path=$(tracker_sidecar_emit "$repo_root" "$mapping" "$include_comments") || true
+
+        # Step 8: strip mirror header from emitted files. Reverse
+        # convention: the file is now authoritative, no header needed.
+        tracker_mirror_header_strip "$backlog_out"   || emit_failed=1
+        tracker_mirror_header_strip "$plan_out"      || emit_failed=1
+        tracker_mirror_header_strip "$status_out"    || emit_failed=1
+        tracker_mirror_header_strip "$changelog_out" || emit_failed=1
     fi
-    _tmr_emit_implementation_plan "$phase_jsons" "$plan_out"                    || emit_failed=1
-    _tmr_emit_status              "$issue_jsons" "$phase_jsons"  "$status_out"  || emit_failed=1
-    _tmr_emit_changelog           "$changelog_out"                              || emit_failed=1
-
-    # Step 7.5: sidecar (V1 §6.6 + §6.6.1).
-    local sidecar_path
-    sidecar_path=$(tracker_sidecar_emit "$repo_root" "$mapping" "$include_comments") || true
-
-    # Step 8: strip mirror header from emitted files. Reverse
-    # convention: the file is now authoritative, no header needed.
-    tracker_mirror_header_strip "$backlog_out"   || emit_failed=1
-    tracker_mirror_header_strip "$plan_out"      || emit_failed=1
-    tracker_mirror_header_strip "$status_out"    || emit_failed=1
-    tracker_mirror_header_strip "$changelog_out" || emit_failed=1
 
     # Atomicity gate: if any emit/strip failed during a disable
     # flow, restore originals and abort BEFORE the mode flip.
@@ -1167,7 +1332,21 @@ print(json.dumps(phases))')
     # Clean up backup on success.
     [[ -n "$backup_dir" && -d "$backup_dir" ]] && rm -rf "$backup_dir"
 
-    cat <<EOF
+    # BD-204 C-4: surface-aware completion summary. The pack surface emits
+    # the per-entry tree (+ `_toc.md`) and writes no sidecar; the client
+    # surface keeps the legacy monolith + sidecar summary (BD-207).
+    if [[ "$surface" == "pack" ]]; then
+        cat <<EOF
+
+reverse: complete.
+  entries:    $n_entries
+  phases:     $n_phases
+  files:      backlog/ tree (+ _toc.md), IMPLEMENTATION-PLAN.md (if absent), STATUS.md
+  sidecar:    none (BD-204: dropped on the pack surface)
+  mode-flip:  $([[ "$flip_mode" == "1" ]] && echo "yes (mode.state=flat-file)" || echo "no")
+EOF
+    else
+        cat <<EOF
 
 reverse: complete.
   entries:    $n_entries
@@ -1176,4 +1355,5 @@ reverse: complete.
   sidecar:    $sidecar_path
   mode-flip:  $([[ "$flip_mode" == "1" ]] && echo "yes (mode.state=flat-file)" || echo "no")
 EOF
+    fi
 }

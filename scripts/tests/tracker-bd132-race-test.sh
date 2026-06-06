@@ -236,15 +236,14 @@ build_test_repo "$REPO"
 # we want to isolate Part 3's silent-skip behavior in this group.
 touch -t 202001010000 "$REPO/.pack-tracker/id-map.json"
 
-# F-2: pre-seed BACKLOG.md with sentinel content so assertion 1.7
-# tests something discriminating. Without this seed the previous
-# assertion `[[ ! -f BACKLOG.md ]]` was trivially true: the fixture
-# never wrote BACKLOG.md and the failure path wouldn't have either,
-# so the assertion had no power to detect a regression that wrote
-# half-data into BACKLOG.md. With a sentinel pre-seeded we assert
-# the skip-guard refused BEFORE any rewrite touched the file.
-G1_SENTINEL='SENTINEL-BD132-F2: pre-existing BACKLOG must not be overwritten when skip-guard fires.'
-printf '%s\n' "$G1_SENTINEL" > "$REPO/pack-ops/BACKLOG.md"
+# F-2 / BD-204 C-4: pre-seed a sentinel entry into the per-entry TREE so
+# assertion 1.7 tests something discriminating. The pack reverse now emits
+# the /backlog/ tree (no monolith); the silent-data-loss guard must refuse
+# BEFORE any tree file is written. With a sentinel tree file pre-seeded we
+# assert the skip-guard refused BEFORE the tree emit touched disk.
+mkdir -p "$REPO/backlog"
+G1_SENTINEL='SENTINEL-BD132-F2: pre-existing tree entry must not be overwritten when skip-guard fires.'
+printf '%s\n' "$G1_SENTINEL" > "$REPO/backlog/BD-001.md"
 
 FAKE=$(mkfixture "g1-fake-bin")
 build_fake_gh_with_inflight "$FAKE"
@@ -266,12 +265,13 @@ assert_contains "1.4 partial-write error code surfaced"              "$out" "ERR
 assert_contains "1.5 message points at silent-data-loss guard"       "$out" "silent-data-loss guard"
 assert_contains "1.6 message names BD-132 / D-5 origin"              "$out" "BD-132"
 
-# 1.7 (F-2): verify the pre-seeded BACKLOG.md sentinel survived
-# unchanged. The skip-guard must refuse BEFORE _tmr_emit_backlog
-# rewrites the file. Reading the file content (not just existence)
-# is the assertion that has discriminating power.
-g1_backlog_after=$(cat "$REPO/pack-ops/BACKLOG.md" 2>/dev/null || echo "<MISSING>")
-assert_eq "1.7 BACKLOG.md sentinel preserved when skip-guard fires" \
+# 1.7 (F-2 / BD-204 C-4): verify the pre-seeded tree-entry sentinel
+# survived unchanged. The skip-guard must refuse BEFORE the pack tree
+# emit (_tmr_emit_pack_tree) writes any /backlog/*.md file. Reading the
+# file content (not just existence) is the assertion that has
+# discriminating power.
+g1_backlog_after=$(cat "$REPO/backlog/BD-001.md" 2>/dev/null || echo "<MISSING>")
+assert_eq "1.7 tree-entry sentinel preserved when skip-guard fires" \
     "$G1_SENTINEL" "$g1_backlog_after"
 
 # 1.8: verify mode NOT flipped (the guard runs before _tmr_update_tracker_toml).
@@ -299,9 +299,11 @@ export PATH="$PATH_SAVED"
 
 assert_eq       "2.1 --force returns rc=0 (proceeds despite skips)"   "0" "$rc2"
 assert_contains "2.2 --force still emits WARN to stderr"             "$out2" "2 issue(s) skipped"
-[[ -f "$REPO2/pack-ops/BACKLOG.md" ]] \
-    && pass "2.3 --force writes (partial) BACKLOG.md" \
-    || fail "2.3 --force writes (partial) BACKLOG.md" "file present" "missing"
+# BD-204 C-4: the pack reverse emits the per-entry TREE (no monolith);
+# under --force it writes the partial tree set.
+[[ -n "$(ls "$REPO2"/backlog/BD-*.md 2>/dev/null)" ]] \
+    && pass "2.3 --force writes (partial) tree set" \
+    || fail "2.3 --force writes (partial) tree set" "tree files present" "missing"
 mode_after2=$(tracker_config_get "$REPO2/tracker.toml" mode.state)
 assert_eq "2.4 --force flips mode to flat-file" "flat-file" "$mode_after2"
 

@@ -17,15 +17,21 @@
 #   (first-write-wins) so the preamble does not degrade across
 #   multiple round-trips.
 #
-# Test groups:
+# BD-204 C-4 RETIREMENT (pack surface):
+#   The header-snapshot is RETIRED on the PACK reverse path (DP-5): the
+#   pack reverse now emits the per-entry TREE (no `# BACKLOG` monolith),
+#   and `_intro.md` is a pack-authored static file (untouched by reverse)
+#   — so there is no monolith preamble for the pack reverse to capture /
+#   re-apply. The former Groups 2-4 (pack-surface reverse-path header
+#   preservation in pack-ops/BACKLOG.md) are therefore REMOVED. The
+#   `tracker-header-snapshot.sh` module is DORMANT, not deleted (it still
+#   serves the client `else` branch — BD-207), so its direct module-API
+#   unit tests (Group 1) are KEPT.
+#
+# Test groups (post-BD-204-C-4):
 #   1. Direct module API — tracker_header_snapshot_capture /
-#      tracker_header_snapshot_apply behaviors in isolation.
-#   2. Reverse-only round-trip — sentinel preamble survives one
-#      reverse cycle (no init, mapping pre-seeded).
-#   3. init→disable round-trip — full forward + reverse cycle via
-#      the round-trip stateful fake gh; preamble survives.
-#   4. Multi-cycle stability — N round-trips do not degrade the
-#      preamble (no header-eating-itself).
+#      tracker_header_snapshot_apply behaviors in isolation (the module
+#      stays dormant-valid; these unit tests are retained).
 
 set -u
 
@@ -200,367 +206,19 @@ assert_eq "1.6 apply is no-op when snapshot absent" "$before" "$after"
 rm -rf "$TMP_REPO"
 
 # ─────────────────────────────────────────────────────────────────
-# Group 2: reverse-only round-trip (mapping pre-seeded; no real
-# forward call, so no BD-131-owned forward.sh path is exercised).
+# Groups 2-4 RETIRED (BD-204 C-4 / DP-5).
 # ─────────────────────────────────────────────────────────────────
-
-printf "\n=== Group 2: reverse-only header preservation ===\n"
-
-# Build a fake gh that returns one canned BD-001 issue.
-_build_fake_gh_g2() {
-    local bin="$1"
-    cat > "$bin/gh" <<'FG'
-#!/usr/bin/env bash
-label=""
-for ((i=1; i<=$#; i++)); do
-    if [[ "${!i}" == "--label" ]]; then j=$((i+1)); label="${!j}"; break; fi
-done
-case "$1 $2" in
-    "issue list")
-        case "$label" in
-            bd-entry)   echo '[{"number":42,"title":"BD-001: Add foo","state":"OPEN","labels":[{"name":"bd-entry"}],"assignees":[],"milestone":null,"url":"http://x/42"}]' ;;
-            *)          echo '[]' ;;
-        esac
-        ;;
-    "issue view")
-        echo '{"number":42,"title":"BD-001: Add foo","body":"<!-- pack-id: BD-001 -->\n\n## Description\n\nx","state":"OPEN","stateReason":null,"labels":[{"name":"bd-entry"},{"name":"status:open"}],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/42"}'
-        ;;
-    "repo view") echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
-    *) ;;
-esac
-exit 0
-FG
-    chmod +x "$bin/gh"
-}
-
-REPO=$(mktemp -d -t bd133-2.XXXXXX)
-FAKE=$(mktemp -d -t bd133-2-fake.XXXXXX)
-_build_fake_gh_g2 "$FAKE"
-
-# Seed BACKLOG.md with the sentinel preamble + one entry. Seed the
-# tracker.toml + mapping so reverse can run without a real forward.
-# BD-175: pack-side test fixture needs pack-ops/ for surface=pack auto-detect.
-mkdir -p "$REPO/pack-ops" "$REPO/.pack-tracker"
-cat > "$REPO/tracker.toml" <<EOF
-schema_version = 1
-[backend]
-name = "github"
-repo = "fixture-org/fixture-repo"
-[mode]
-state = "tracker"
-[id_namespace]
-prefix = "BD"
-[migration]
-forward_complete = true
-mapping_file = ".pack-tracker/id-map.json"
-EOF
-cat > "$REPO/.pack-tracker/id-map.json" <<'EOF'
-{ "BD-001": {"id": "42", "url": "http://x/42"} }
-EOF
-# BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
-cat > "$REPO/pack-ops/BACKLOG.md" <<EOF
-${SENTINEL_PREAMBLE}
-**BD-001 — Add foo**
-Type: TODO(version)
-Status: Open
-Description: x
-EOF
-
-# Capture original preamble bytes for byte-equal comparison.
-# Use a tmp file + `cmp -s` rather than `$(...)` capture: command
-# substitution strips trailing newlines, so a file diff like
-# `\n\n` vs `\n\n\n` would falsely compare equal as bash strings
-# (review F2). `cmp -s` is byte-exact and rejects any trailing-
-# newline drift, matching the BD-133 byte-identical contract.
-WORK_G2=$(mktemp -d -t bd133-2-work.XXXXXX)
-tracker_header_snapshot_extract_preamble "$REPO/pack-ops/BACKLOG.md" > "$WORK_G2/orig.preamble"
-
-# Run reverse (no flip; no force needed — mapping was just written
-# but the test fixtures elsewhere bypass freshness via flip_mode=0).
-export PATH="$FAKE:$PATH_SAVED"
-tracker_migrate_reverse_run "$REPO" 0 0 0 0 >/dev/null 2>&1
-rc=$?
-export PATH="$PATH_SAVED"
-
-assert_eq "2.1 reverse rc=0" "0" "$rc"
-
-# Snapshot file should now exist.
-[[ -f "$REPO/.pack-tracker/backlog-header.snapshot" ]] \
-    && t_pass "2.1 snapshot file created on first reverse" \
-    || t_fail "2.1 snapshot file created on first reverse"
-
-# Extract the post-reverse preamble and assert byte-equal via cmp -s.
-tracker_header_snapshot_extract_preamble "$REPO/pack-ops/BACKLOG.md" > "$WORK_G2/post.preamble"
-if cmp -s "$WORK_G2/orig.preamble" "$WORK_G2/post.preamble"; then
-    t_pass "2.2 post-reverse preamble byte-equal to original"
-else
-    t_fail "2.2 post-reverse preamble byte-equal to original" \
-        "diff: orig=$(wc -c < "$WORK_G2/orig.preamble")b post=$(wc -c < "$WORK_G2/post.preamble")b"
-fi
-
-# The reconstructed BD-001 entry must still be present after the apply.
-backlog_after=$(cat "$REPO/pack-ops/BACKLOG.md")
-assert_contains "2.3 BD-001 entry present after apply" "$backlog_after" "**BD-001 — Add foo**"
-assert_contains "2.3 user title preserved"   "$backlog_after" "# Backlog"
-assert_contains "2.3 H2 section preserved"   "$backlog_after" "## How to use this file"
-
-rm -rf "$REPO" "$FAKE" "$WORK_G2"
-
-# ─────────────────────────────────────────────────────────────────
-# Group 3: full forward → reverse round-trip via stateful fake gh.
-# This exercises the same path the BD-102 Phase A dog-food caught.
-# ─────────────────────────────────────────────────────────────────
-
-printf "\n=== Group 3: forward → reverse header preservation ===\n"
-
-# Reuse the stateful fake-gh shape from the round-trip test (inlined
-# here so this suite stands alone — no cross-test dependency).
-_build_stateful_fake_gh_g3() {
-    local bin_dir="$1"
-    local state_file="$2"
-    cat > "$bin_dir/gh" <<'FAKEGH'
-#!/usr/bin/env bash
-STATE="@@STATE@@"
-if [[ ! -f "$STATE" ]]; then
-    printf '%s\n' '{"next_id": 100, "issues": {}, "create_log": []}' > "$STATE"
-fi
-case "$1 $2" in
-    "issue create")
-        title=""; body=""; labels="[]"; body_file=""
-        shift 2
-        while [[ $# -gt 0 ]]; do
-            case "$1" in
-                --title)      title="$2"; shift 2 ;;
-                --body-file)  body_file="$2"; shift 2 ;;
-                --label)      labels=$(jq -nc --arg s "$2" '$s | split(",")'); shift 2 ;;
-                --assignee|--milestone) shift 2 ;;
-                *) shift ;;
-            esac
-        done
-        [[ -n "$body_file" && -f "$body_file" ]] && body=$(cat "$body_file")
-        st=$(cat "$STATE")
-        new_id=$(printf '%s' "$st" | jq -r .next_id)
-        new_st=$(printf '%s' "$st" | jq -c \
-            --arg id "$new_id" --arg title "$title" --arg body "$body" --argjson labels "$labels" \
-            '.next_id = (.next_id | tonumber + 1)
-             | .issues[$id] = {
-                 number: ($id | tonumber), title: $title, body: $body,
-                 state: "open", stateReason: null,
-                 labels: $labels | map({name: .}),
-                 assignees: [], milestone: null,
-                 createdAt: null, updatedAt: null, closedAt: null,
-                 url: ("https://github.com/fixture-org/bd133/issues/" + $id)
-               }
-             | .create_log += [($title + " | " + ($labels | join(",")))]')
-        printf '%s' "$new_st" > "$STATE"
-        echo "https://github.com/fixture-org/bd133/issues/$new_id"
-        ;;
-    "issue view")
-        id="$3"; shift 3
-        while [[ $# -gt 0 ]]; do
-            case "$1" in --json) shift 2 ;; --jq) shift 2 ;; *) shift ;; esac
-        done
-        cat "$STATE" | jq -c --arg id "$id" '.issues[$id]'
-        ;;
-    "issue close")
-        id="$3"; reason="completed"; shift 3
-        while [[ $# -gt 0 ]]; do
-            case "$1" in --reason) reason="$2"; shift 2 ;; *) shift ;; esac
-        done
-        st=$(cat "$STATE")
-        new_st=$(printf '%s' "$st" | jq -c --arg id "$id" --arg reason "$reason" \
-            '.issues[$id].state = "closed" | .issues[$id].stateReason = $reason')
-        printf '%s' "$new_st" > "$STATE"
-        ;;
-    "issue reopen")
-        id="$3"; st=$(cat "$STATE")
-        new_st=$(printf '%s' "$st" | jq -c --arg id "$id" \
-            '.issues[$id].state = "open" | .issues[$id].stateReason = null')
-        printf '%s' "$new_st" > "$STATE"
-        ;;
-    "issue comment"|"issue edit") ;;
-    "search issues") echo "[]" ;;
-    "issue list")
-        label=""
-        for ((i=1; i<=$#; i++)); do
-            if [[ "${!i}" == "--label" ]]; then j=$((i+1)); label="${!j}"; break; fi
-        done
-        st=$(cat "$STATE")
-        printf '%s' "$st" | jq -c --arg label "$label" '
-            [ .issues[] | select(.labels | map(.name) | index($label)) ]
-            | map({number: .number, title: .title, state: .state,
-                   labels: .labels, url: .url, id: (.number | tostring)})'
-        ;;
-    "repo view") echo '{"nameWithOwner":"fixture-org/bd133"}' ;;
-    "api graphql") echo "{}" ;;
-    "extension list") echo "" ;;
-    *) ;;
-esac
-exit 0
-FAKEGH
-    sed -i.bak "s|@@STATE@@|$state_file|g" "$bin_dir/gh"
-    rm -f "$bin_dir/gh.bak"
-    chmod +x "$bin_dir/gh"
-}
-
-REPO=$(mktemp -d -t bd133-3.XXXXXX)
-FAKE=$(mktemp -d -t bd133-3-fake.XXXXXX)
-# BD-175: pack-side test fixture needs pack-ops/ for surface=pack auto-detect.
-mkdir -p "$REPO/pack-ops" "$REPO/.pack-tracker"
-STATE="$REPO/.pack-tracker/fake-state.json"
-_build_stateful_fake_gh_g3 "$FAKE" "$STATE"
-
-cat > "$REPO/tracker.toml" <<EOF
-schema_version = 1
-[backend]
-name = "github"
-repo = "fixture-org/bd133"
-[mode]
-state = "tracker"
-[id_namespace]
-prefix = "BD"
-[migration]
-forward_complete = false
-mapping_file = ".pack-tracker/id-map.json"
-EOF
-cat > "$REPO/IMPLEMENTATION-PLAN.md" <<'EOF'
-# IMPLEMENTATION PLAN
-EOF
-# BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
-cat > "$REPO/pack-ops/BACKLOG.md" <<EOF
-${SENTINEL_PREAMBLE}
-**BD-001 — Add foo**
-Type: TODO(version)
-Status: Open
-Blockers: None
-Unblocks: None
-Description: Add the foo to the bar.
-
----
-
-**BD-002 — Refactor bar**
-Type: TODO(version)
-Status: Open
-Blockers: None
-Unblocks: None
-Description: Refactor.
-EOF
-
-# Capture pre-forward preamble bytes for byte-equal comparison.
-# `cmp -s` against a tmp file (review F2) — see Group 2 for rationale.
-WORK_G3=$(mktemp -d -t bd133-3-work.XXXXXX)
-tracker_header_snapshot_extract_preamble "$REPO/pack-ops/BACKLOG.md" > "$WORK_G3/orig.preamble"
-
-# Forward (BD-131-owned forward.sh runs but we do NOT modify it).
-export PATH="$FAKE:$PATH_SAVED"
-tracker_migrate_forward_run "$REPO" 0 0 0 >/dev/null 2>&1
-forward_rc=$?
-# Reverse (with flip — `pack tracker disable` semantic). force=1 to
-# bypass the BD-132 freshness window for this synchronous test.
-tracker_migrate_reverse_run "$REPO" 0 1 0 1 >/dev/null 2>&1
-reverse_rc=$?
-export PATH="$PATH_SAVED"
-
-assert_eq "3.1 forward rc=0" "0" "$forward_rc"
-assert_eq "3.1 reverse rc=0" "0" "$reverse_rc"
-
-# Snapshot file should exist.
-[[ -f "$REPO/.pack-tracker/backlog-header.snapshot" ]] \
-    && t_pass "3.2 snapshot file created during round-trip" \
-    || t_fail "3.2 snapshot file created during round-trip"
-
-# Preamble byte-equal via cmp -s.
-tracker_header_snapshot_extract_preamble "$REPO/pack-ops/BACKLOG.md" > "$WORK_G3/post.preamble"
-if cmp -s "$WORK_G3/orig.preamble" "$WORK_G3/post.preamble"; then
-    t_pass "3.3 init→disable preamble byte-equal to original"
-else
-    t_fail "3.3 init→disable preamble byte-equal to original" \
-        "orig=$(wc -c < "$WORK_G3/orig.preamble")b post=$(wc -c < "$WORK_G3/post.preamble")b"
-fi
-
-# Entries also present.
-backlog_after=$(cat "$REPO/pack-ops/BACKLOG.md")
-assert_contains "3.4 BD-001 reconstructed" "$backlog_after" "**BD-001 — Add foo**"
-assert_contains "3.4 BD-002 reconstructed" "$backlog_after" "**BD-002 — Refactor bar**"
-
-rm -rf "$REPO" "$FAKE" "$WORK_G3"
-
-# ─────────────────────────────────────────────────────────────────
-# Group 4: multi-cycle stability — N reverses do not eat the header.
-# ─────────────────────────────────────────────────────────────────
-
-printf "\n=== Group 4: multi-cycle stability ===\n"
-
-REPO=$(mktemp -d -t bd133-4.XXXXXX)
-FAKE=$(mktemp -d -t bd133-4-fake.XXXXXX)
-_build_fake_gh_g2 "$FAKE"
-
-# BD-175: pack-side test fixture needs pack-ops/ for surface=pack auto-detect.
-mkdir -p "$REPO/pack-ops" "$REPO/.pack-tracker"
-cat > "$REPO/tracker.toml" <<EOF
-schema_version = 1
-[backend]
-name = "github"
-repo = "fixture-org/fixture-repo"
-[mode]
-state = "tracker"
-[id_namespace]
-prefix = "BD"
-[migration]
-forward_complete = true
-mapping_file = ".pack-tracker/id-map.json"
-EOF
-cat > "$REPO/.pack-tracker/id-map.json" <<'EOF'
-{ "BD-001": {"id": "42", "url": "http://x/42"} }
-EOF
-# BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
-cat > "$REPO/pack-ops/BACKLOG.md" <<EOF
-${SENTINEL_PREAMBLE}
-**BD-001 — Add foo**
-Type: TODO(version)
-Status: Open
-EOF
-
-# Capture original preamble bytes via tmp file + cmp -s (review F2);
-# `$(...)` capture would mask trailing-newline drift across N cycles.
-WORK_G4=$(mktemp -d -t bd133-4-work.XXXXXX)
-tracker_header_snapshot_extract_preamble "$REPO/pack-ops/BACKLOG.md" > "$WORK_G4/orig.preamble"
-
-# Run reverse 5 times in a row.
-export PATH="$FAKE:$PATH_SAVED"
-for cycle in 1 2 3 4 5; do
-    tracker_migrate_reverse_run "$REPO" 0 0 0 0 >/dev/null 2>&1
-    cycle_rc=$?
-    if [[ "$cycle_rc" != "0" ]]; then
-        t_fail "4.1 reverse cycle $cycle rc=0" "rc=$cycle_rc"
-    fi
-done
-export PATH="$PATH_SAVED"
-
-tracker_header_snapshot_extract_preamble "$REPO/pack-ops/BACKLOG.md" > "$WORK_G4/post.preamble"
-if cmp -s "$WORK_G4/orig.preamble" "$WORK_G4/post.preamble"; then
-    t_pass "4.2 5 reverse cycles preserve preamble byte-equal"
-else
-    t_fail "4.2 5 reverse cycles preserve preamble byte-equal" \
-        "orig=$(wc -c < "$WORK_G4/orig.preamble")b post=$(wc -c < "$WORK_G4/post.preamble")b"
-fi
-
-# Snapshot file is byte-identical to the original preamble (first-
-# write-wins). Compare the two on-disk files directly via cmp -s
-# (review F2: $()/cat would strip trailing newlines and mask drift).
-if cmp -s "$REPO/.pack-tracker/backlog-header.snapshot" "$WORK_G4/orig.preamble"; then
-    t_pass "4.3 snapshot equals original preamble (first-write-wins)"
-else
-    t_fail "4.3 snapshot equals original preamble (first-write-wins)" \
-        "snap=$(wc -c < "$REPO/.pack-tracker/backlog-header.snapshot")b orig=$(wc -c < "$WORK_G4/orig.preamble")b"
-fi
-
-# Final BACKLOG.md still has exactly one title line (no duplication
-# from repeated apply cycles).
-n_titles=$(grep -c -E '^# (BACKLOG|Backlog)$' "$REPO/pack-ops/BACKLOG.md")
-assert_eq "4.4 exactly one title line after N cycles" "1" "$n_titles"
-
-rm -rf "$REPO" "$FAKE" "$WORK_G4"
+#
+# The former Groups 2 (reverse-only header preservation), 3 (init→disable
+# round-trip), and 4 (multi-cycle stability) exercised the PACK-surface
+# reverse-path header-snapshot integration on pack-ops/BACKLOG.md. Under
+# BD-204 the pack reverse emits the per-entry TREE (no monolith) and does
+# NOT call tracker_header_snapshot_capture / _apply on the pack surface
+# (DP-5) — `_intro.md` is a pack-authored static file untouched by reverse.
+# Those integration assertions therefore have no pack-surface target and
+# are removed. The tracker-header-snapshot.sh module remains DORMANT (it
+# still serves the client `else` branch — BD-207); its direct module-API
+# unit tests are kept above (Group 1).
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

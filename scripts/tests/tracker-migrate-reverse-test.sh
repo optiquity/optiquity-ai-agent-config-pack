@@ -24,6 +24,7 @@ t_fail() { FAIL=$((FAIL + 1)); printf "  \033[31mFAIL\033[0m %s\n" "$1"; [[ -n "
 
 assert_eq()       { if [[ "$2" == "$3" ]]; then t_pass "$1"; else t_fail "$1" "expected='$2' actual='$3'"; fi; }
 assert_contains() { if [[ "$2" == *"$3"* ]]; then t_pass "$1"; else t_fail "$1" "needle='$3' missing"; fi; }
+assert_not_contains() { if [[ "$2" != *"$3"* ]]; then t_pass "$1"; else t_fail "$1" "needle='$3' unexpectedly present"; fi; }
 
 # shellcheck disable=SC1091
 source "$LIB_DIR/tracker-errors.sh"
@@ -333,44 +334,58 @@ assert_contains "4.1 reports 3 entries"     "$output" "reconstructed 3 BACKLOG e
 assert_contains "4.1 reports 1 phase epic"  "$output" "1 phase epic"
 assert_contains "4.1 reports complete"      "$output" "reverse: complete"
 
-# BD-175: pack-side BACKLOG/CHANGELOG canonical at pack-ops/; PLAN/STATUS stay at root.
-[[ -f "$REPO/pack-ops/BACKLOG.md" ]]   && t_pass "4.1 BACKLOG.md emitted" || t_fail "4.1 BACKLOG.md emitted"
+# BD-204 C-4: the PACK reverse emits the per-entry TREE (no monolith);
+# PLAN/STATUS stay at root. The pack BACKLOG/CHANGELOG monoliths are NOT
+# written (no-monolith / out-of-scope changelog).
+[[ -f "$REPO/backlog/BD-001.md" ]]     && t_pass "4.1 per-entry tree emitted" || t_fail "4.1 per-entry tree emitted"
+[[ -f "$REPO/backlog/_toc.md" ]]       && t_pass "4.1 _toc.md regenerated (DP-4)" || t_fail "4.1 _toc.md regenerated (DP-4)"
 [[ -f "$REPO/IMPLEMENTATION-PLAN.md" ]] && t_pass "4.1 IMPLEMENTATION-PLAN.md emitted" || t_fail "4.1 IMPLEMENTATION-PLAN.md emitted"
 [[ -f "$REPO/STATUS.md" ]]             && t_pass "4.1 STATUS.md emitted" || t_fail "4.1 STATUS.md emitted"
-[[ -f "$REPO/pack-ops/CHANGELOG.md" ]] && t_pass "4.1 CHANGELOG.md emitted" || t_fail "4.1 CHANGELOG.md emitted"
+[[ ! -f "$REPO/pack-ops/BACKLOG.md" ]] && t_pass "4.1 no pack BACKLOG monolith written (no-monolith)" || t_fail "4.1 no pack BACKLOG monolith written (no-monolith)"
+[[ ! -f "$REPO/pack-ops/CHANGELOG.md" ]] && t_pass "4.1 no pack CHANGELOG monolith written (out of scope)" || t_fail "4.1 no pack CHANGELOG monolith written (out of scope)"
 
-# 4.2 BACKLOG.md content shape
-backlog=$(cat "$REPO/pack-ops/BACKLOG.md")
-assert_contains "4.2 BACKLOG has BD-001 entry" "$backlog" "**BD-001 — Add foo to bar**"
-assert_contains "4.2 BACKLOG has TD-010 entry" "$backlog" "**TD-010 — Document quux**"
-assert_contains "4.2 BACKLOG has Status: Open" "$backlog" "Status: Open"
-assert_contains "4.2 BACKLOG has File/Symbol"  "$backlog" "File/Symbol: scripts/foo.sh"
-assert_contains "4.2 BACKLOG has Description"  "$backlog" "Description: Implements foo on bar."
-# F5 closure: TD-010 carries scope:dependency on the tracker side, so
-# the v10 Type field substitutes the scope value into TODO(...).
-assert_contains "4.2 TD-010 Type substitutes scope value" \
-    "$backlog" "Type: TODO(dependency)"
+# 4.2 tree content shape (concatenate the reconstructed entry files).
+# BD-204 C-4 LOW-1 (PACK-REVIEW-BD-204-C4): the pack tree emit is filtered
+# to the `pack-backlog` entry regex (`^BD-[0-9]+[a-z]*\.md$`) — the SAME
+# single source the backup set + `_toc.md` regen use — so the emit set ==
+# the backup set == the `_toc.md` set by construction. On this MIXED fixture
+# (BD-001, BD-002, TD-010 all reconstruct) only the `BD-*` ids are emitted to
+# the pack tree; the `TD-010` id is NOT a pack-backlog entry and is skipped.
+# (TD decode coverage is preserved by the Group 1 unit tests 1.2.)
+backlog=$(cat "$REPO"/backlog/BD-*.md 2>/dev/null)
+assert_contains "4.2 tree has BD-001 entry" "$backlog" "**BD-001 — Add foo to bar**"
+assert_contains "4.2 tree has Status: Open" "$backlog" "Status: Open"
+assert_contains "4.2 tree has File/Symbol"  "$backlog" "File/Symbol: scripts/foo.sh"
+assert_contains "4.2 tree has Description"  "$backlog" "Description: Implements foo on bar."
+# LOW-1 negative assertions: a non-`BD-*` reconstructed id (TD-010) is NOT
+# emitted to the pack tree, and no `backlog/TD-*.md` file is written — the
+# emit set is provably the BD-only `pack-backlog` set.
+[[ ! -f "$REPO/backlog/TD-010.md" ]] \
+    && t_pass "4.2 TD-010 NOT emitted to pack tree (emit==backup==toc set)" \
+    || t_fail "4.2 TD-010 NOT emitted to pack tree (emit==backup==toc set)"
+assert_not_contains "4.2 tree body carries no TD-010 entry" \
+    "$backlog" "**TD-010 — Document quux**"
 
 # 4.3 STATUS reports counts
 status_md=$(cat "$REPO/STATUS.md")
 assert_contains "4.3 STATUS phase line"     "$status_md" "Phase 3 — Foundations"
 assert_contains "4.3 STATUS Open count"     "$status_md" "Open: 3"
 
-# 4.4 Sidecar emitted
+# 4.4 BD-204 C-4 / DP-2: NO sidecar on the pack reverse (the carrier is
+# the form family + the Issue body; the sidecar file is dropped). The
+# tracker-sidecar.sh module stays dormant (its direct-API tests live in
+# 4.7b / 4.8 below — the module is not deleted), but the reverse
+# orchestrator no longer EMITS a sidecar on the pack surface.
 sidecar=$(ls "$REPO/.pack-tracker/reverse.sidecar."*.md 2>/dev/null | head -n 1)
-[[ -n "$sidecar" && -f "$sidecar" ]] && t_pass "4.4 sidecar file present" || t_fail "4.4 sidecar file present" "missing"
-sidecar_content=$(cat "$sidecar")
-assert_contains "4.4 sidecar has BD-001 section"   "$sidecar_content" "## BD-001 (gh #42)"
-assert_contains "4.4 sidecar has phase-3 section"  "$sidecar_content" "## phase-3 (gh #58)"
-assert_contains "4.4 sidecar has extra_fields"     "$sidecar_content" "### extra_fields"
-assert_contains "4.4 sidecar has reactions block"  "$sidecar_content" "### reactions"
-assert_contains "4.4 sidecar empty extra_fields at v11.0" "$sidecar_content" "empty at v11.0"
+[[ -z "$sidecar" ]] && t_pass "4.4 NO sidecar on pack reverse (DP-2 dropped)" \
+    || t_fail "4.4 NO sidecar on pack reverse (DP-2 dropped)" "unexpected: $sidecar"
 
-# 4.5 No mirror header (V1 §6.5 step 8: stripped after reverse).
-# BD-175: pack-side canonical at pack-ops/.
-first_line=$(head -n 1 "$REPO/pack-ops/BACKLOG.md")
-[[ "$first_line" != "<!--" ]] && t_pass "4.5 no mirror header on reverse output" \
-    || t_fail "4.5 no mirror header on reverse output"
+# 4.5 BD-204 C-4: each tree entry's line 1 is the per-entry back-pointer
+# (not a mirror header). Verify on BD-001.
+first_line=$(head -n 1 "$REPO/backlog/BD-001.md")
+[[ "$first_line" == "<!-- per-entry source: /backlog/BD-001.md;"* ]] \
+    && t_pass "4.5 tree entry line-1 is the per-entry back-pointer" \
+    || t_fail "4.5 tree entry line-1 is the per-entry back-pointer" "got: $first_line"
 
 # 4.6 last_reverse_run set; mode not flipped (no --disable).
 assert_contains "4.6 tracker.toml has last_reverse_run" \
@@ -391,12 +406,15 @@ assert_eq "4.7 mode flipped to flat-file via --disable" "flat-file" \
 # 4.7-atomic Disable atomicity (PACK-REVIEW-BD066-068 #3 fix):
 # simulate an emit failure mid-disable; expect (a) flat files
 # restored from backup, (b) mode NOT flipped, (c) partial-write error.
+# BD-204 C-4 (§3.3 T8): the pack backup/restore set is the /backlog/*.md
+# TREE (pe_list_entry_files), so plant a recognizable original tree entry
+# and verify it is restored after the failed emit.
 REPO_ATOMIC=$(mktemp -d -t tmr-atomic.XXXXXX); _build_test_repo "$REPO_ATOMIC"
-# Plant a recognizable original BACKLOG.md so we can verify restore.
-# BD-175: pack-side canonical at pack-ops/.
-ORIGINAL_BODY=$'# ORIGINAL\n\nThis content must survive the failed disable.\n'
-printf '%s' "$ORIGINAL_BODY" > "$REPO_ATOMIC/pack-ops/BACKLOG.md"
-# Override _tmr_emit_status to simulate an emit failure.
+mkdir -p "$REPO_ATOMIC/backlog"
+ORIGINAL_BODY=$'<!-- per-entry source: /backlog/BD-001.md; contract: /backlog/_rules.md -->\n**BD-001 — ORIGINAL**\nThis content must survive the failed disable.\n'
+printf '%s' "$ORIGINAL_BODY" > "$REPO_ATOMIC/backlog/BD-001.md"
+# Override _tmr_emit_status to simulate an emit failure (runs AFTER the
+# tree emit, so the failure trips the atomicity gate → restore).
 saved_emit=$(declare -f _tmr_emit_status)
 _tmr_emit_status() { return 1; }
 
@@ -415,13 +433,13 @@ assert_contains "4.7-atomic message names flat files restored"   "$err" "files r
 # Mode NOT flipped.
 mode_after=$(tracker_config_get "$REPO_ATOMIC/tracker.toml" mode.state)
 assert_eq "4.7-atomic mode NOT flipped on emit failure" "tracker" "$mode_after"
-# BACKLOG.md content restored. Compare via byte-equality on disk
-# (avoids the trailing-newline trim that command substitution does).
-if cmp -s <(printf '%s' "$ORIGINAL_BODY") "$REPO_ATOMIC/pack-ops/BACKLOG.md"; then
-    t_pass "4.7-atomic BACKLOG.md restored to original (byte-equal)"
+# Tree entry restored. Compare via byte-equality on disk (avoids the
+# trailing-newline trim that command substitution does).
+if cmp -s <(printf '%s' "$ORIGINAL_BODY") "$REPO_ATOMIC/backlog/BD-001.md"; then
+    t_pass "4.7-atomic tree entry restored to original (byte-equal)"
 else
-    t_fail "4.7-atomic BACKLOG.md restored to original (byte-equal)" \
-        "actual: $(cat "$REPO_ATOMIC/pack-ops/BACKLOG.md" | head -c 200)"
+    t_fail "4.7-atomic tree entry restored to original (byte-equal)" \
+        "actual: $(cat "$REPO_ATOMIC/backlog/BD-001.md" | head -c 200)"
 fi
 # Backup dir cleaned up after restore.
 [[ ! -d "$REPO_ATOMIC/.pack-tracker/disable-backup" ]] \
@@ -453,15 +471,20 @@ rm -rf "$REPO_DATED" "$FAKE_DATED"
 
 # 4.8 Sidecar extension hooks (PACK-REVIEW-BD062-069-071 #8 fix):
 # overriding _tmsc_reactions_for_entry changes sidecar output.
+# BD-204 C-4: the pack reverse no longer EMITS a sidecar (DP-2 dropped),
+# so this exercises the dormant tracker-sidecar.sh module via a DIRECT
+# tracker_sidecar_emit call (matching 4.7b) instead of the orchestrator —
+# the module is dormant, not deleted, so its hook contract stays covered.
 saved_hook=$(declare -f _tmsc_reactions_for_entry)
 _tmsc_reactions_for_entry() {
     echo "👍 5  ❤️ 2  (overridden for test)"
 }
 
 REPO_OVR=$(mktemp -d -t tmr-ovr.XXXXXX); _build_test_repo "$REPO_OVR"
+mapping_ovr=$(cat "$REPO_OVR/.pack-tracker/id-map.json" 2>/dev/null || echo '{}')
 FAKE_OVR=$(mktemp -d -t tmr-fake-ovr.XXXXXX); _build_fake_gh "$FAKE_OVR"
 export PATH="$FAKE_OVR:$PATH_SAVED"
-tracker_migrate_reverse_run "$REPO_OVR" >/dev/null 2>&1
+tracker_sidecar_emit "$REPO_OVR" "$mapping_ovr" 0 >/dev/null 2>&1
 export PATH="$PATH_SAVED"
 sidecar_ovr=$(ls "$REPO_OVR/.pack-tracker/reverse.sidecar."*.md 2>/dev/null | head -n 1)
 assert_contains "4.8 reactions hook override emits custom text" \
@@ -490,16 +513,17 @@ REPO=$(mktemp -d -t tmr-repo5.XXXXXX); _build_test_repo "$REPO"
 
 export PATH="$FAKE:$PATH_SAVED"
 tracker_migrate_reverse_run "$REPO" >/dev/null 2>&1
-# BD-175: pack-side canonical at pack-ops/.
-backlog1=$(cat "$REPO/pack-ops/BACKLOG.md")
+# BD-204 C-4: the pack reverse emits the per-entry tree; assert the
+# tree (concatenated) + STATUS.md are byte-equal across runs.
+backlog1=$(cat "$REPO"/backlog/BD-*.md "$REPO/backlog/_toc.md" 2>/dev/null)
 status1=$(cat  "$REPO/STATUS.md")
 sleep 1
 tracker_migrate_reverse_run "$REPO" >/dev/null 2>&1
-backlog2=$(cat "$REPO/pack-ops/BACKLOG.md")
+backlog2=$(cat "$REPO"/backlog/BD-*.md "$REPO/backlog/_toc.md" 2>/dev/null)
 status2=$(cat  "$REPO/STATUS.md")
 export PATH="$PATH_SAVED"
 
-assert_eq "5.1 BACKLOG.md byte-equal across runs" "$backlog1" "$backlog2"
+assert_eq "5.1 tree byte-equal across runs" "$backlog1" "$backlog2"
 assert_eq "5.1 STATUS.md byte-equal across runs"  "$status1"  "$status2"
 rm -rf "$FAKE" "$REPO"
 

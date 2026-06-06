@@ -412,13 +412,29 @@ assert_contains "2.1 reverse reports 2 phase epics" "$output2" "2 phase epic"
 # Reverse output should reconstruct each entry. The reconstructed
 # BACKLOG must contain every original pack-id and title (whitespace
 # differences are tolerable per V1 §6.7 "near-no-op").
-RECON_BACKLOG=$(cat "$REPO1/pack-ops/BACKLOG.md")
-for needle in "BD-001" "BD-002" "TD-010" "TD-040" \
-              "Add foo to bar" "Refactor bar after foo lands" "Document quux" \
-              "Cross-phase TD blocked by phase task" \
-              "scripts/foo.sh" "scripts/bar.sh" "docs/quux.md" \
-              "scripts/cross-phase.sh"; do
+# BD-204 C-4: the pack reverse now emits the per-entry TREE (no monolith).
+# BD-204 C-4 LOW-1 (PACK-REVIEW-BD-204-C4): the pack tree emit is filtered
+# to the `pack-backlog` entry regex (`^BD-[0-9]+[a-z]*\.md$`) — the SAME
+# single source the backup set + `_toc.md` regen use — so the emit set ==
+# the backup set == the `_toc.md` set by construction. On this MIXED fixture
+# (BD-001/BD-002 + TD-010/TD-040) only the `BD-*` ids are written to the pack
+# tree; the `TD-*` ids are not pack-backlog entries and are skipped on disk.
+# Entry SURVIVAL through forward → state → reverse (incl. TD-010/TD-040) is
+# proven by the reconstruction-count assertion above ("reconstructed 4
+# BACKLOG entries") and the TD-040 Blockers round-trip is verified at the
+# reconstruction layer in 2.2c below.
+RECON_BACKLOG=$(cat "$REPO1"/backlog/BD-*.md 2>/dev/null)
+for needle in "BD-001" "BD-002" \
+              "Add foo to bar" "Refactor bar after foo lands" \
+              "scripts/foo.sh" "scripts/bar.sh"; do
     assert_contains "2.2 reverse output preserves '$needle'" "$RECON_BACKLOG" "$needle"
+done
+# LOW-1 negative assertions: non-`BD-*` reconstructed ids are NOT emitted to
+# the pack tree (the emit set is provably the BD-only `pack-backlog` set).
+for td in "TD-010" "TD-040"; do
+    [[ ! -f "$REPO1/backlog/$td.md" ]] \
+        && t_pass "2.2 $td NOT emitted to pack tree (emit==backup==toc set)" \
+        || t_fail "2.2 $td NOT emitted to pack tree (emit==backup==toc set)"
 done
 
 # Status preserved: BD-001 Open, BD-002 Unblocked, TD-010 Open.
@@ -442,19 +458,43 @@ else
     t_fail "2.2 BD-002 Blockers: BD-001 should round-trip post-BD-111" "got: $bd002_block_line"
 fi
 
-# 2.2 BD-108 F5 — TD-040 Blockers `phase-1.2, TD-010` round-trip
+# 2.2c BD-108 F5 — TD-040 Blockers `phase-1.2, TD-010` round-trip
 # coverage. End-to-end the v11.0 phase-N.M grammar must survive
 # forward → state-file → reverse without the entry being dropped or
 # the pack-id being misclassified. With BD-111 (link swap) +
 # PACK-REVIEW-BD-111 F1 retrofit (reverse reads first-class edges),
 # resolvable Blockers references (those with id-map entries) round-
 # trip via the first-class GraphQL channel.
-if printf '%s' "$RECON_BACKLOG" | grep -q "TD-040"; then
-    t_pass "2.2 TD-040 entry survives forward → state → reverse (BD-108 F5)"
-else
-    t_fail "2.2 TD-040 entry survives forward → state → reverse (BD-108 F5)" \
-        "TD-040 missing from reconstructed BACKLOG"
-fi
+#
+# BD-204 C-4 LOW-1: TD-040 is a non-`BD-*` id, so post-LOW-1 it is
+# correctly NOT emitted to the pack tree (the tree is the BD-only
+# `pack-backlog` set). The TD-040 SURVIVAL + Blockers round-trip is a
+# RECONSTRUCTION property (independent of the on-disk emit surface), so
+# it is verified here at the reconstruction layer via the public
+# `tracker_migrate_reverse_reconstruct` (the same decoder the orchestrator
+# calls per issue), with the fake-gh re-exported on PATH for the
+# first-class-edge fetch. No coverage is lost relative to the pre-LOW-1
+# pack-tree-read assertion.
+TD040_NUM=$(jq -r '."TD-040".id // empty' "$mapping_file")
+[[ -n "$TD040_NUM" ]] \
+    && t_pass "2.2c TD-040 mapped to a tracker issue (survives forward)" \
+    || t_fail "2.2c TD-040 mapped to a tracker issue (survives forward)" \
+        "TD-040 missing from id-map"
+# Fetch via the provider (same normalization the reverse orchestrator
+# uses) and reconstruct via the public per-issue decoder; the fake-gh is
+# re-exported on PATH for both the provider get + the first-class-edge fetch.
+export PATH="$FAKE1:$PATH_SAVED"
+# tracker_provider_gh_get returns the canonical single issue OBJECT (the
+# same normalized shape the reverse orchestrator feeds to the per-issue
+# reconstruct decoder). reconstruct's arg2 is the mapping JSON CONTENT
+# (loaded via tmf_mapping_load) — the same value the orchestrator passes.
+TD040_ISSUE=$(tracker_provider_gh_get "$TD040_NUM" 2>/dev/null)
+TD040_MAPPING=$(tmf_mapping_load "$mapping_file")
+TD040_ENTRY=$(tracker_migrate_reverse_reconstruct "$TD040_ISSUE" "$TD040_MAPPING" 2>/dev/null)
+export PATH="$PATH_SAVED"
+# The entry reconstructs with the correct pack-id (not dropped / misclassified).
+assert_eq "2.2c TD-040 reconstructs with correct pack-id (BD-108 F5)" \
+    "TD-040" "$(printf '%s' "$TD040_ENTRY" | jq -r '.pack_id // ""')"
 # TD-040 has Blockers `phase-1.2, TD-010`. The forward orchestrator
 # resolves `TD-010` via the id-map (TD-010 was created earlier in
 # the same forward run) → `addBlockedBy(TD-040, TD-010)` issued →
@@ -465,28 +505,40 @@ fi
 # scripts/lib/tracker-migrate-forward.sh:942-960 case
 # `phase-N.M` which silently skips when no mapping exists). So the
 # expected post-BD-111 round-trip behavior for TD-040 is: Blockers
-# line contains `TD-010` (the resolvable upstream); `phase-1.2` is
+# list contains `TD-010` (the resolvable upstream); `phase-1.2` is
 # silently dropped at forward-write time and absent from reverse.
 # This is correct behavior given the v11.0 boundary; future BD-105
 # / BD-106 phase-task-as-first-class-issue work would lift this
 # limit and at that point the assertion can extend to also include
 # `phase-1.2`.
-td040_block_line=$(printf '%s' "$RECON_BACKLOG" | grep -A 3 "TD-040" | grep "Blockers:")
-if [[ "$td040_block_line" == *"TD-010"* ]]; then
-    t_pass "2.2 TD-040 Blockers: TD-010 round-trips post-BD-111 (resolvable Blockers via first-class edges)"
+td040_blockers=$(printf '%s' "$TD040_ENTRY" | jq -r '.blockers // [] | join(",")')
+if [[ "$td040_blockers" == *"TD-010"* ]]; then
+    t_pass "2.2c TD-040 Blockers: TD-010 round-trips post-BD-111 (resolvable Blockers via first-class edges)"
 else
-    t_fail "2.2 TD-040 Blockers: TD-010 should round-trip post-BD-111" \
-        "got: $td040_block_line"
+    t_fail "2.2c TD-040 Blockers: TD-010 should round-trip post-BD-111" \
+        "got: $td040_blockers"
 fi
 
-# Sidecar present.
+# BD-204 C-4 / DP-2: NO sidecar on the pack surface (the carrier is the
+# form family + the Issue body; the `.pack-tracker/reverse.sidecar.*` file
+# is dropped). Assert no sidecar file was written.
 sidecar=$(ls "$REPO1/.pack-tracker/reverse.sidecar."*.md 2>/dev/null | head -n 1)
-[[ -n "$sidecar" && -f "$sidecar" ]] && t_pass "2.3 sidecar emitted" || t_fail "2.3 sidecar emitted"
+[[ -z "$sidecar" ]] && t_pass "2.3 NO sidecar on pack reverse (DP-2 dropped)" \
+    || t_fail "2.3 NO sidecar on pack reverse (DP-2 dropped)" "unexpected sidecar: $sidecar"
 
-# Mirror header stripped after reverse (V1 §6.5 step 8).
-[[ "$(head -n 1 "$REPO1/pack-ops/BACKLOG.md")" != "<!--" ]] \
-    && t_pass "2.3 BACKLOG mirror header stripped" \
-    || t_fail "2.3 BACKLOG mirror header stripped"
+# BD-204 C-4: the pack reverse materializes the per-entry TREE (no
+# monolith). The fixture pre-seeds pack-ops/BACKLOG.md as the forward
+# INPUT (read until C-5 repoints forward), so its presence is expected;
+# the load-bearing assertion is that the reverse EMITTED the tree.
+[[ -f "$REPO1/backlog/BD-001.md" && -f "$REPO1/backlog/_toc.md" ]] \
+    && t_pass "2.3 per-entry tree + _toc.md emitted" \
+    || t_fail "2.3 per-entry tree + _toc.md emitted"
+
+# BD-204 C-4: each tree entry's line 1 is the per-entry back-pointer
+# (not a mirror header). Verify on BD-001.
+[[ "$(head -n 1 "$REPO1/backlog/BD-001.md")" == "<!-- per-entry source: /backlog/BD-001.md;"* ]] \
+    && t_pass "2.3 tree entry line-1 is the per-entry back-pointer" \
+    || t_fail "2.3 tree entry line-1 is the per-entry back-pointer"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 3: F→R→F produces byte-equivalent tracker state
@@ -497,13 +549,18 @@ printf "\n=== Group 3: F→R→F byte-equivalent on tracker side ===\n"
 # Capture first-forward signature.
 SIG_BEFORE=$(_state_create_signature "$STATE1")
 
-# Set up a fresh state file but preserve the reverse-emitted flat
-# files (reverse already wrote BACKLOG.md / IMPLEMENTATION-PLAN.md).
-# Wipe mapping + state so the second forward starts fresh.
+# Set up a fresh state file but preserve the flat input. Wipe mapping
+# + state so the second forward starts fresh.
+# BD-204 C-4: the pack reverse no longer writes pack-ops/BACKLOG.md (it
+# emits the per-entry tree). The forward read-side still reads the
+# monolith until C-5 repoints it, so the second forward reads the
+# unchanged fixture-copied pack-ops/BACKLOG.md — identical to the input
+# Group 1's first forward consumed, so the F→R→F signature stays byte-
+# equal. (C-5 repoints forward to read the tree.)
 rm -f "$REPO1/.pack-tracker/id-map.json"
 rm -f "$STATE1"
 
-# Re-run forward against the reverse output. Re-uses the same fake
+# Re-run forward against the same flat input. Re-uses the same fake
 # gh + state file path; fake gh re-initializes state on first call.
 export PATH="$FAKE1:$PATH_SAVED"
 output3=$(tracker_migrate_forward_run "$REPO1" 0 0 0 2>&1)
@@ -522,10 +579,17 @@ assert_eq "3.1 F→R→F tracker signature byte-equal" "$SIG_BEFORE" "$SIG_AFTER
 rm -rf "$REPO1" "$FAKE1"
 
 # ─────────────────────────────────────────────────────────────────
-# Group 4: sidecar extra_fields empty at v11.0
+# Group 4: BD-204 C-4 / DP-2 — NO sidecar on the pack surface
 # ─────────────────────────────────────────────────────────────────
+#
+# Pre-C-4 this group asserted the reverse sidecar carried an
+# extra_fields block per entry. Per DP-2 (user 2026-06-06) the
+# `.pack-tracker/reverse.sidecar.*` file is DROPPED on the pack surface
+# — the carrier is the form family + the Issue body (the in-body
+# pack-extra-fields block renders INLINE into the tree). This group now
+# proves the pack reverse writes NO sidecar and materializes the tree.
 
-printf "\n=== Group 4: sidecar extra_fields empty at v11.0 ===\n"
+printf "\n=== Group 4: BD-204 NO sidecar on pack reverse (DP-2) ===\n"
 
 REPO2=$(_setup_test_repo "$FIXTURE_V11_0")
 FAKE2=$(mktemp -d -t rtrip-fake2.XXXXXX)
@@ -537,24 +601,29 @@ tracker_migrate_forward_run "$REPO2" 0 0 0 >/dev/null 2>&1
 tracker_migrate_reverse_run "$REPO2" 0 0 0 >/dev/null 2>&1
 export PATH="$PATH_SAVED"
 
+# No sidecar file written on the pack surface.
 sidecar2=$(ls "$REPO2/.pack-tracker/reverse.sidecar."*.md 2>/dev/null | head -n 1)
-sidecar_content=$(cat "$sidecar2")
-assert_contains "4.1 sidecar has BD-001 section"   "$sidecar_content" "## BD-001"
-assert_contains "4.1 sidecar has BD-002 section"   "$sidecar_content" "## BD-002"
-assert_contains "4.1 sidecar has TD-010 section"   "$sidecar_content" "## TD-010"
-assert_contains "4.1 sidecar has TD-040 section (BD-108 F5)" \
-    "$sidecar_content" "## TD-040"
-assert_contains "4.1 sidecar has phase-1 section"  "$sidecar_content" "## phase-1"
-assert_contains "4.1 sidecar has phase-2 section"  "$sidecar_content" "## phase-2"
-assert_contains "4.1 sidecar marks extra_fields empty at v11.0" \
-    "$sidecar_content" "empty at v11.0"
+[[ -z "$sidecar2" ]] && t_pass "4.1 NO sidecar on pack reverse (DP-2 dropped)" \
+    || t_fail "4.1 NO sidecar on pack reverse (DP-2 dropped)" "unexpected sidecar: $sidecar2"
 
-# extra_fields is structurally present for every entry — readiness
-# guard for v11.x. Count occurrences of "### extra_fields" — should
-# be one per sidecar entry (4 BD/TD + 2 phase = 6 after BD-108 F5
-# fixture extension; was 5 pre-fix).
-n_extra_fields=$(printf '%s' "$sidecar_content" | grep -c "^### extra_fields")
-assert_eq "4.1 sidecar has 6 extra_fields blocks (one per entry)" "6" "$n_extra_fields"
+# The per-entry tree carries every `pack-backlog` (BD-only) entry (the
+# fixture's pre-seeded pack-ops/BACKLOG.md is the forward INPUT, not a
+# reverse-written monolith). BD-204 C-4 LOW-1: the emit is filtered to the
+# `pack-backlog` entry regex, so non-`BD-*` ids (TD-010/TD-040) are NOT
+# emitted to the pack tree — the emit set == the backup set == the `_toc.md`
+# set by construction.
+tree_all=$(cat "$REPO2"/backlog/BD-*.md 2>/dev/null)
+for needle in "BD-001" "BD-002"; do
+    assert_contains "4.1 tree carries $needle entry" "$tree_all" "$needle"
+done
+for td in "TD-010" "TD-040"; do
+    [[ ! -f "$REPO2/backlog/$td.md" ]] \
+        && t_pass "4.1 $td NOT emitted to pack tree (emit==backup==toc set)" \
+        || t_fail "4.1 $td NOT emitted to pack tree (emit==backup==toc set)"
+done
+[[ -f "$REPO2/backlog/_toc.md" ]] \
+    && t_pass "4.1 _toc.md regenerated (DP-4)" \
+    || t_fail "4.1 _toc.md regenerated (DP-4)"
 
 rm -rf "$REPO2" "$FAKE2"
 
