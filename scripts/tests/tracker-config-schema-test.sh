@@ -439,6 +439,95 @@ else
 fi
 rm -rf "$fix"
 
+# ── Test 15: Live tracker-mode tracker.toml, NO [mirror] → N/A (BD-204) ──
+# The Mode-3 pack live config: mode='tracker', forward_complete=true,
+# NO [mirror] table at all. Check 29′ must soft-pass (no-mirror surface).
+printf "\n=== Test 15: live tracker.toml no-mirror → staleness N/A ===\n"
+read -r -d '' LIVE_TRACKER_NOMIRROR <<'TOML' || true
+schema_version = 1
+
+[backend]
+name = "github"
+repo = "DShaneNYC/optiquity-ai-agent-config-pack"
+
+[mode]
+state = "tracker"
+opted_in_at = "2026-05-15T12:00:00Z"
+
+[id_namespace]
+prefix = "BD"
+
+[cli_acceleration]
+prefer = "gh"
+
+[migration]
+forward_complete = true
+reverse_available = false
+last_forward_run = "2026-05-15T12:00:00Z"
+mapping_file = ".pack-tracker/id-map.json"
+TOML
+
+fix=$(build_fixture "$GOOD_PACK" "$GOOD_CLIENT")
+printf '%s\n' "$LIVE_TRACKER_NOMIRROR" > "$fix/tracker.toml"
+# No mirror files at all — no-mirror surface must soft-pass.
+out=$(run_check29_at "$fix" 2>&1); rc=$?
+if [[ $rc -eq 0 ]]; then t_pass "15.1 no-mirror live tracker.toml → exit 0"
+else t_fail "15.1 no-mirror live tracker.toml → exit 0" "rc=$rc out=${out:0:400}"; fi
+if echo "$out" | grep -q "no-mirror surface, mirror-staleness check N/A"; then
+    t_pass "15.2 staleness leg reports N/A for no-mirror surface"
+else
+    t_fail "15.2 staleness leg reports N/A for no-mirror surface" "out=${out:0:400}"
+fi
+rm -rf "$fix"
+
+# ── Test 16: Live tracker + [mirror] enabled=true + missing file → FAIL ──
+# Negative case — guard must NOT over-admit: a config that DECLARES a
+# mirror (enabled=true) but is missing the mirror file still FAILs.
+printf "\n=== Test 16: live tracker.toml claims mirror but missing → FAIL ===\n"
+read -r -d '' LIVE_TRACKER_CLAIMS_MIRROR <<'TOML' || true
+schema_version = 1
+
+[backend]
+name = "github"
+repo = "DShaneNYC/optiquity-ai-agent-config-pack"
+
+[mode]
+state = "tracker"
+opted_in_at = "2026-05-15T12:00:00Z"
+
+[mirror]
+enabled = true
+location_backlog   = "BACKLOG.md"
+location_status    = "STATUS.md"
+location_changelog = "CHANGELOG.md"
+regenerate_on_write = true
+
+[id_namespace]
+prefix = "BD"
+
+[cli_acceleration]
+prefer = "gh"
+
+[migration]
+forward_complete = true
+reverse_available = false
+last_forward_run = "2026-05-15T12:00:00Z"
+mapping_file = ".pack-tracker/id-map.json"
+TOML
+
+fix=$(build_fixture "$GOOD_PACK" "$GOOD_CLIENT")
+printf '%s\n' "$LIVE_TRACKER_CLAIMS_MIRROR" > "$fix/tracker.toml"
+# Deliberately plant NO mirror files — the declared mirror is missing.
+out=$(run_check29_at "$fix" 2>&1); rc=$?
+if [[ $rc -ne 0 ]]; then t_pass "16.1 claims-mirror-but-missing → exit nonzero"
+else t_fail "16.1 claims-mirror-but-missing → exit nonzero" "rc=$rc out=${out:0:400}"; fi
+if echo "$out" | grep -q "BACKLOG.md.*does not exist on disk"; then
+    t_pass "16.2 message names missing mirror file (guard did not over-admit)"
+else
+    t_fail "16.2 message names missing mirror file (guard did not over-admit)" "out=${out:0:600}"
+fi
+rm -rf "$fix"
+
 # ── Summary ─────────────────────────────────────────────────────────
 printf "\n=== Summary ===\n"
 printf "PASS: %d\n" "$PASS"

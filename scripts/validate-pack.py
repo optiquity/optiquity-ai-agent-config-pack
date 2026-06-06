@@ -2730,6 +2730,18 @@ def _check_mirror_staleness(live_cfg_path: Path) -> None:
            "mirror-staleness check N/A")
         return
 
+    # BD-204 Check 29′ — no-mirror surface guard (measure-then-bound).
+    # The Mode-3 pack live tracker.toml omits the [mirror] table (no
+    # monolith to point at). When the live config has NO [mirror] table
+    # OR mirror.enabled is false/absent, staleness is N/A — soft-pass,
+    # exactly as flat-file mode does above. A config that DECLARES
+    # [mirror] enabled=true but is missing the file falls through to the
+    # staleness branches below and still FAILs (guard does not widen).
+    if "mirror" not in cfg or not cfg.get("mirror", {}).get("enabled"):
+        ok(f"{rel} — no [mirror] table / mirror disabled — no-mirror "
+           "surface, mirror-staleness check N/A")
+        return
+
     last_fwd = migration.get("last_forward_run")
     if not isinstance(last_fwd, str) or not last_fwd.strip():
         fail(f"{rel} — mode='tracker' + forward_complete=true but "
