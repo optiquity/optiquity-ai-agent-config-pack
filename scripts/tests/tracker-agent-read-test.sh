@@ -4,7 +4,9 @@
 #
 # Three groups:
 #   1. Mode detection — flat-file vs tracker
-#   2. Flat-file read — entry block extraction from BACKLOG.md
+#   2. Flat-file read — pack BD-* from the /backlog per-entry tree
+#      (BD-204 C-6: pack monolith DELETED; tree is the SSOT) + TD-*
+#      project-mirror fallback (UNTOUCHED by C-6)
 #   3. Tracker-mode read — mapping-resolution + provider_get
 #   4. Direct-execution entrypoint — `bash tracker-agent-read.sh PACK-ID`
 
@@ -26,33 +28,36 @@ source "$LIB_DIR/tracker-agent-read.sh"
 
 PATH_SAVED="$PATH"
 
-# Build a small flat-mode test repo. Pack BACKLOG.md holds BD-* only
-# (per v11.0 per-stream-aware shape: BD-* live in pack BACKLOG.md;
-# TD-* live in docs/project/BACKLOG.md; phase-* live in
-# docs/project/IMPLEMENTATION-PLAN.md per BD-167 retro M2 fix).
+# Build a small flat-mode test repo. Pack BD-* live in the per-entry
+# tree under /backlog/ (BD-204 C-6: the pack monolith pack-ops/BACKLOG.md
+# is DELETED — BD-203 no-mirror SSOT; the per-entry tree is the SSOT and
+# the ONLY pack-surface read source). TD-* live in docs/project/BACKLOG.md
+# (project mirror — UNTOUCHED by C-6; BD-207 owns the client tree
+# repoint).
 _setup_flat_repo() {
     local repo
     repo=$(mktemp -d -t tar-flat.XXXXXX)
-    # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
-    mkdir -p "$repo/pack-ops"
-    cat > "$repo/pack-ops/BACKLOG.md" <<'EOF'
+    # BD-204 C-6: pack BD-* SSOT is the per-entry tree at /backlog/.
+    # Each file IS the entry (with a line-1 back-pointer per Addendum-2
+    # §2, stripped on agent-read output).
+    mkdir -p "$repo/backlog"
+    cat > "$repo/backlog/BD-001.md" <<'EOF'
+<!-- per-entry source: backlog/BD-001.md; contract: backlog/_rules.md -->
 **BD-001 — Add foo to bar**
 Type: TODO(version)
 Status: Open
 Blockers: None
 Description: Foo on bar surface.
 Resolved: n/a
-
----
-
+EOF
+    cat > "$repo/backlog/BD-002.md" <<'EOF'
+<!-- per-entry source: backlog/BD-002.md; contract: backlog/_rules.md -->
 **BD-002 — Refactor bar**
 Type: TODO(version)
 Status: Unblocked
 Blockers: BD-001
 Description: Refactor bar.
 Resolved: n/a
-
----
 EOF
     # Project-side mirror — TD-* fallback (BD-167 retro M2 fix:
     # TD-* now reads from docs/project/BACKLOG.md when no per-entry
@@ -150,18 +155,26 @@ printf "\n=== Group 2: flat-file read ===\n"
 
 REPO_F=$(_setup_flat_repo)
 
-# 2.1 Read BD-001
+# 2.1 Read BD-001 — pack per-entry tree SSOT (BD-204 C-6).
 out=$(tracker_agent_read_entry "BD-001" "$REPO_F")
 rc=$?
 assert_eq       "2.1 BD-001 rc=0"               "0" "$rc"
-assert_contains "2.1 BD-001 source line"        "$out" "Source: flat-file (BACKLOG.md)"
+assert_contains "2.1 BD-001 source line (per-entry tree)" "$out" "Source: flat-file (per-entry:"
+assert_contains "2.1 BD-001 names per-entry file" "$out" "backlog/BD-001.md"
 assert_contains "2.1 BD-001 entry header"       "$out" "**BD-001 — Add foo to bar**"
 assert_contains "2.1 BD-001 description"        "$out" "Foo on bar surface."
-# Entry block is bounded — should NOT include BD-002.
+# Each per-entry file IS the entry — BD-002 cannot leak.
 if [[ "$out" == *"BD-002"* ]]; then
     t_fail "2.1 BD-001 entry block bounded" "BD-002 leaked into BD-001 output"
 else
     t_pass "2.1 BD-001 entry block bounded"
+fi
+# C-6 fail-loud: NO pack monolith read — the back-pointer line-1
+# comment is stripped and the deleted monolith is never consulted.
+if [[ "$out" == *"<!-- per-entry source:"* ]]; then
+    t_fail "2.1 BD-001 back-pointer stripped" "back-pointer leaked into output"
+else
+    t_pass "2.1 BD-001 back-pointer stripped"
 fi
 
 # 2.2 Read BD-002 — has Blockers field
@@ -187,10 +200,25 @@ assert_contains "2.5 empty pack-id → validation" "$err" "ERROR: validation"
 err=$(tracker_agent_read_entry "BD-001" "/no/such/repo" 2>&1 1>/dev/null) || true
 assert_contains "2.6 bad repo-root → validation" "$err" "ERROR: validation"
 
-# 2.7 No BACKLOG.md → not-found
+# 2.7 No per-entry tree → not-found (BD-204 C-6: NO pack monolith
+# fallback — the deleted pack-ops/BACKLOG.md is never consulted).
 TR_EMPTY=$(mktemp -d -t tar-empty.XXXXXX)
 err=$(tracker_agent_read_entry "BD-001" "$TR_EMPTY" 2>&1 1>/dev/null) || true
-assert_contains "2.7 no BACKLOG.md → not-found" "$err" "ERROR: not-found"
+assert_contains "2.7 no tree → not-found"        "$err" "ERROR: not-found"
+assert_contains "2.7 BD-* fail-loud names the per-entry tree (no monolith)" \
+    "$err" "no monolith fallback"
+# Defensive: even if a stale monolith were present it must NOT be read.
+mkdir -p "$TR_EMPTY/pack-ops"
+cat > "$TR_EMPTY/pack-ops/BACKLOG.md" <<'EOF'
+**BD-001 — STALE MONOLITH (must never be read)**
+Description: deleted-monolith sentinel.
+EOF
+out_stale=$(tracker_agent_read_entry "BD-001" "$TR_EMPTY" 2>&1) || true
+if [[ "$out_stale" == *"STALE MONOLITH"* ]]; then
+    t_fail "2.7 BD-* never reads the pack monolith" "deleted monolith was read"
+else
+    t_pass "2.7 BD-* never reads the pack monolith"
+fi
 rm -rf "$TR_EMPTY"
 
 rm -rf "$REPO_F"
@@ -442,12 +470,12 @@ fi
 err=$(tracker_agent_read_entry "phase-3.2" "$REPO_PFB" 2>&1 1>/dev/null) || true
 assert_contains "5.3 phase-3.2 routes to plan mirror" "$err" "IMPLEMENTATION-PLAN.md"
 
-# 5.7 Unknown pack-id prefix falls through to pack BACKLOG.md.
-# (Use the BD-* fixture which has pack BACKLOG.md; X-007 won't be
-# found, but the not-found message should name BACKLOG.md — proving
-# the default-branch routing.)
+# 5.7 Unknown pack-id prefix → pack-surface default. BD-204 C-6: the
+# `*)` default fails loud with a typed not-found (NO pack monolith
+# fallback — pack-ops/BACKLOG.md is deleted, BD-203 no-mirror SSOT).
 err=$(tracker_agent_read_entry "X-007" "$REPO_PFB" 2>&1 1>/dev/null) || true
-assert_contains "5.7 unknown prefix → pack BACKLOG.md default" "$err" "ERROR: not-found"
+assert_contains "5.7 unknown prefix → not-found"            "$err" "ERROR: not-found"
+assert_contains "5.7 unknown prefix names no-monolith fallback" "$err" "no monolith fallback"
 
 rm -rf "$REPO_PFB"
 

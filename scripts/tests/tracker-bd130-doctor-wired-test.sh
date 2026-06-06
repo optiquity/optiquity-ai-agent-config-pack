@@ -180,6 +180,65 @@ assert_match "7.3 probe returns rc=2 (calling-convention failure)" \
 assert_no_match "7.4 probe does NOT emit raw 'command not found'" \
     "command not found" "$probe_out"
 
+# ─────────────────────────────────────────────────────────────────
+# Group 8: pack-surface freshness reads the /backlog tree, NOT the
+# deleted pack monolith (BD-204 C-6 / C7b REPOINT).
+# The pack monolith pack-ops/BACKLOG.md is DELETED (BD-203 no-mirror
+# SSOT). The doctor's pack-surface freshness check (d) must map to the
+# /backlog per-entry tree's regen index (_toc.md) and must NEVER read
+# pack-ops/BACKLOG.md. We source the lib + its deps directly and run
+# tracker_doctor_run against a pack fixture that holds the tree AND a
+# stale monolith sentinel; the doctor must report on the tree and must
+# NOT surface the monolith.
+# ─────────────────────────────────────────────────────────────────
+echo "=== Group 8: pack-surface freshness reads /backlog tree (C-6) ==="
+LIB_DIR="$REPO_ROOT/scripts/lib"
+PACK_FIX="$(mktemp -d)"
+trap 'rm -rf "$SCRATCH" "$PACK_FIX"' EXIT
+# Pack surface marker.
+touch "$PACK_FIX/PACK-CHAT.md"
+# Per-entry tree + regen index (the SSOT).
+mkdir -p "$PACK_FIX/backlog"
+cat > "$PACK_FIX/backlog/BD-001.md" <<'EOF'
+<!-- per-entry source: backlog/BD-001.md; contract: backlog/_rules.md -->
+**BD-001 — Seed entry**
+Status: Open
+EOF
+cat > "$PACK_FIX/backlog/_toc.md" <<'EOF'
+# Backlog index
+- BD-001 — Seed entry (Open)
+EOF
+# Stale monolith sentinel — must NEVER be read by the pack-surface
+# freshness check.
+mkdir -p "$PACK_FIX/pack-ops"
+cat > "$PACK_FIX/pack-ops/BACKLOG.md" <<'EOF'
+<!--
+STALE PACK MONOLITH — must never be read by doctor (BD-203 deleted it).
+-->
+EOF
+
+doctor8_out=$(bash -c '
+  set +e
+  LIB_DIR="'"$LIB_DIR"'"
+  source "$LIB_DIR/tracker-errors.sh"
+  source "$LIB_DIR/tracker-config.sh"
+  source "$LIB_DIR/tracker-provider.sh"
+  source "$LIB_DIR/tracker-provider-gh.sh"
+  source "$LIB_DIR/template-version.sh" 2>/dev/null
+  source "$LIB_DIR/template-translations.sh" 2>/dev/null
+  source "$LIB_DIR/tracker-doctor.sh"
+  tracker_doctor_run "'"$PACK_FIX"'"
+' 2>&1)
+
+assert_match "8.1 pack doctor reports the /backlog tree regen index" \
+    "/backlog" "$doctor8_out"
+assert_no_match "8.2 pack doctor does NOT report a BACKLOG.md mirror line" \
+    "BACKLOG.md mirror" "$doctor8_out"
+assert_no_match "8.3 pack doctor does NOT report a BACKLOG.md mirror header" \
+    "BACKLOG.md has read-only mirror header" "$doctor8_out"
+assert_no_match "8.4 pack doctor emits no 'command not found'" \
+    "command not found" "$doctor8_out"
+
 echo
 echo "=== Results: $PASS passed, $FAIL failed ==="
 [[ "$FAIL" -eq 0 ]] || exit 1

@@ -111,49 +111,81 @@ tracker_doctor_run() {
         echo "  [INFO] no mapping file (expected before first forward run)"
     fi
 
-    # (d) mirror freshness — compare BACKLOG.md mtime against
-    # tracker.toml [migration].last_forward_run if both present.
-    # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md;
-    # client-side canonical at docs/project/BACKLOG.md (with legacy
-    # $repo_root/BACKLOG.md fallback for pre-v10 client layouts).
-    local backlog_path=""
+    # (d) mirror / tree-regen freshness.
+    #
+    # BD-204 C-6 (C7b REPOINT): the pack monolith `pack-ops/BACKLOG.md`
+    # is DELETED (BD-203 no-mirror SSOT). On the PACK surface the
+    # per-entry tree under `/backlog/` IS the SSOT (flat-file mode) /
+    # the regenerated mirror of tracker state (tracker mode); the
+    # "mirror header / mtime" freshness concept maps to the tree's
+    # regen-state via the generated `_toc.md` index (DP-4 regen cadence
+    # marker). The PROJECT surface (`*)` branch) is UNTOUCHED (BD-207
+    # owns the client tree repoint): clients still ship the
+    # docs/project/BACKLOG.md monolith mirror.
     case "$surface" in
         pack)
-            backlog_path="$repo_root/pack-ops/BACKLOG.md"
+            # Pack-surface: check the per-entry tree's regen index
+            # (`/backlog/_toc.md`) mtime against last_forward_run. The
+            # `_toc.md` is regenerated whenever the tree changes, so it
+            # is the no-mirror analogue of the old monolith-header mtime.
+            local toc_path
+            toc_path="$repo_root/backlog/_toc.md"
+            if [[ -f "$toc_path" ]]; then
+                local toc_mtime last_forward
+                # macOS BSD stat differs from GNU stat; use date -r as
+                # the portable reader.
+                toc_mtime=$(date -r "$toc_path" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "")
+                if [[ -f "$cfg_path" ]]; then
+                    last_forward=$(tracker_config_get "$cfg_path" "migration.last_forward_run" 2>/dev/null || echo "")
+                fi
+                if [[ -n "$toc_mtime" && -n "$last_forward" ]]; then
+                    if [[ "$toc_mtime" > "$last_forward" || "$toc_mtime" == "$last_forward" ]]; then
+                        echo "  [OK]   /backlog tree regen index is current (_toc.md mtime=$toc_mtime, last_forward=$last_forward)"
+                    else
+                        echo "  [WARN] /backlog tree regen index is older than last_forward_run  → Run: pack tracker init --forward"
+                        n_warn=$((n_warn + 1))
+                    fi
+                else
+                    echo "  [OK]   /backlog per-entry tree present (_toc.md index)"
+                fi
+            else
+                echo "  [INFO] /backlog/_toc.md absent (flat-file pre-regen or scratch tree)"
+            fi
             ;;
         *)
+            local backlog_path=""
             if [[ -f "$repo_root/docs/project/BACKLOG.md" ]]; then
                 backlog_path="$repo_root/docs/project/BACKLOG.md"
             elif [[ -f "$repo_root/BACKLOG.md" ]]; then
                 backlog_path="$repo_root/BACKLOG.md"
             fi
+            if [[ -n "$backlog_path" && -f "$backlog_path" ]]; then
+                local first_line
+                first_line=$(head -n 1 "$backlog_path")
+                if [[ "$first_line" == "<!--" ]]; then
+                    local mirror_mtime last_forward
+                    # macOS BSD stat differs from GNU stat; use date -r as the
+                    # portable reader.
+                    mirror_mtime=$(date -r "$backlog_path" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "")
+                    if [[ -f "$cfg_path" ]]; then
+                        last_forward=$(tracker_config_get "$cfg_path" "migration.last_forward_run" 2>/dev/null || echo "")
+                    fi
+                    if [[ -n "$mirror_mtime" && -n "$last_forward" ]]; then
+                        if [[ "$mirror_mtime" > "$last_forward" || "$mirror_mtime" == "$last_forward" ]]; then
+                            echo "  [OK]   BACKLOG.md mirror is current (mtime=$mirror_mtime, last_forward=$last_forward)"
+                        else
+                            echo "  [WARN] BACKLOG.md mirror is older than last_forward_run  → Run: pack tracker mirror-rebuild"
+                            n_warn=$((n_warn + 1))
+                        fi
+                    else
+                        echo "  [OK]   BACKLOG.md has read-only mirror header"
+                    fi
+                else
+                    echo "  [INFO] BACKLOG.md has no mirror header (flat-file mode or post-reverse state)"
+                fi
+            fi
             ;;
     esac
-    if [[ -n "$backlog_path" && -f "$backlog_path" ]]; then
-        local first_line
-        first_line=$(head -n 1 "$backlog_path")
-        if [[ "$first_line" == "<!--" ]]; then
-            local mirror_mtime last_forward
-            # macOS BSD stat differs from GNU stat; use date -r as the
-            # portable reader.
-            mirror_mtime=$(date -r "$backlog_path" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "")
-            if [[ -f "$cfg_path" ]]; then
-                last_forward=$(tracker_config_get "$cfg_path" "migration.last_forward_run" 2>/dev/null || echo "")
-            fi
-            if [[ -n "$mirror_mtime" && -n "$last_forward" ]]; then
-                if [[ "$mirror_mtime" > "$last_forward" || "$mirror_mtime" == "$last_forward" ]]; then
-                    echo "  [OK]   BACKLOG.md mirror is current (mtime=$mirror_mtime, last_forward=$last_forward)"
-                else
-                    echo "  [WARN] BACKLOG.md mirror is older than last_forward_run  → Run: pack tracker mirror-rebuild"
-                    n_warn=$((n_warn + 1))
-                fi
-            else
-                echo "  [OK]   BACKLOG.md has read-only mirror header"
-            fi
-        else
-            echo "  [INFO] BACKLOG.md has no mirror header (flat-file mode or post-reverse state)"
-        fi
-    fi
 
     # (f) issue-template dir presence. Both the `pack` and `client`
     # surfaces resolve to the same `.github/ISSUE_TEMPLATE` location

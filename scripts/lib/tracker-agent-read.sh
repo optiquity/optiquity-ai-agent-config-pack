@@ -244,27 +244,43 @@ PYEOF
         return 0
     fi
 
-    # Fall through: per-entry tree absent (pre-v11.0 client) OR
-    # per-entry file missing (entry not in tree — could be a stale
-    # mirror or a typo). Per-stream-aware mirror selection mirroring
-    # the prefer-branch's stream resolution above:
-    #   BD-*     → pack BACKLOG.md (pre-v11.0 backward compat)
+    # Fall through: per-entry tree absent OR per-entry file missing.
+    # Per-stream-aware fallback selection mirroring the prefer-branch's
+    # stream resolution above:
+    #   BD-*     → pack per-entry tree IS the SSOT; NO monolith fallback
     #   TD-*     → project mirror docs/project/BACKLOG.md
     #   phase-*  → project mirror docs/project/IMPLEMENTATION-PLAN.md
-    #   *        → pack BACKLOG.md (unknown prefix; preserves
-    #              pre-v11.0 backward-compat default)
-    # Per integration parent §18.2 #2 backward-compat contract: shim
-    # preserves pre-v11.0 BD-* behavior; new v11.0 TD-* / phase-*
-    # IDs need stream-correct mirrors when the per-entry tree is
-    # absent (greenfield project mid-migration) or the per-entry
-    # file is temporarily absent (mid-promote with mirror still
-    # holding the block).
+    #   *        → pack surface (unknown prefix); NO monolith fallback
+    #
+    # BD-204 C-6 (C4 REPOINT): the pack monolith `pack-ops/BACKLOG.md`
+    # is DELETED (BD-203 no-mirror SSOT). The pack-surface read path is
+    # the per-entry tree handled by the prefer-branch above — when that
+    # branch did not resolve the entry there is NO monolith to fall
+    # back to, so the pack-surface fall-through (BD-* and the `*)`
+    # unknown-prefix default) fails loud with a typed not-found error
+    # rather than reading a deleted file. The project-side TD-* /
+    # phase-* mirror fallback is UNTOUCHED (BD-207 owns the project
+    # tree repoint): clients still ship those monolith mirrors.
+    # Single-pass dispatch: the two pack-surface fall-through arms
+    # (BD-* and the `*)` unknown-prefix default) fail loud with a typed
+    # not-found (no monolith fallback); only TD-*/phase- proceed to the
+    # project mirror block below. (BD-204 C-6-FIX1 / NIT-1: previously a
+    # no-op `case` arm followed by a separate `if BD-*` error block —
+    # consolidated to one `case` for clarity; behavior unchanged.)
     local mirror_path=""
     case "$pack_id" in
-        BD-*)    mirror_path="$repo_root/pack-ops/BACKLOG.md" ;;
+        BD-*)
+            tracker_error_emit "not-found" \
+                "agent_read: $pack_id not found in pack per-entry tree at $repo_root/backlog/$pack_id.md (no monolith fallback — BD-203 no-mirror SSOT)"
+            return 1
+            ;;
         TD-*)    mirror_path="$repo_root/docs/project/BACKLOG.md" ;;
         phase-*) mirror_path="$repo_root/docs/project/IMPLEMENTATION-PLAN.md" ;;
-        *)       mirror_path="$repo_root/pack-ops/BACKLOG.md" ;;
+        *)
+            tracker_error_emit "not-found" \
+                "agent_read: $pack_id not found in pack per-entry tree at $repo_root/backlog (no monolith fallback — BD-203 no-mirror SSOT)"
+            return 1
+            ;;
     esac
     if [[ ! -f "$mirror_path" ]]; then
         tracker_error_emit "not-found" \
