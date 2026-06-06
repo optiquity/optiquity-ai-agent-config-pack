@@ -194,10 +194,8 @@
 - [BD-165](./BD-165.md) — `_v10_to_v11_decompose_streams` 6th sub-operation in v10→v11 post-dispatch hook + `--force-overwrite-mirror` flag (BD-095 bridge)
 - [BD-166](./BD-166.md) — `init-project.sh` greenfield per-entry tree install (S11 stage extension)
 - [BD-167](./BD-167.md) — Per-entry split client artifact installs (pack-product templates + install plumbing; absorbs BD-161)
-- [BD-167b](./BD-167b.md) — Per-entry split PM-only edits (trinity Key files + PACK-AGENTS.md PM-only directories list + CLAUDE.md pack-memory bullet + pack-* agent prompts × 15)
 - [BD-168](./BD-168.md) — `validate-pack.py` Check 32 (mirror-in-sync) + Check 33 (TOC-in-sync) + Check 34 (cross-reference integrity)
 - [BD-169](./BD-169.md) — Per-entry split pack-product wording updates (PM-CHAT.md + STATUS.md disclaimer + MERGE-STRATEGY + MIGRATION-v10-to-v11 + audit-methodology SKILL.md scope + skill directives)
-- [BD-169b](./BD-169b.md) — Per-entry split PM-only wording updates (PACK-CHAT.md row + README.md Repository Layout entries)
 - [BD-170](./BD-170.md) — Pre-decomposed v11-realistic-ot fixture per-entry tree extension (combined with BD-160 in commit 19f per Pack-Chat-direct R-2 resolution)
 - [BD-173](./BD-173.md) — Project-side cleanup (project-template/ trinity + agents + skills + ops docs consolidation)
 - [BD-175](./BD-175.md) — EMERGENCY: pack/project boundary audit + re-architecture (v11 pack-bias remediation)
@@ -215,7 +213,7 @@
 - [BD-191](./BD-191.md) — Product Specialist (PS) requirements + v11.0/v11.1+ scope decision
 - [BD-193](./BD-193.md) — Code Red 2: BD/TD/Path scope contamination cleanup (Batch 19d-prep)
 - [BD-194](./BD-194.md) — Check 24 byte-identity gate replacement (post-BD-193 architectural baseline fix)
-- [BD-195](./BD-195.md) — v11.0 pristine-state recovery before BD-185 restart (full-repo)
+- [BD-195](./BD-195.md) — v11.0 pristine-state recovery before BD-185 restart (full-repo) (Code Red 3)
 - [BD-196](./BD-196.md) — Document concision + boundary-completeness guardrails (rule-corpus restructure + single-SSOT discoverability)
 - [BD-199](./BD-199.md) — Optimize validate-pack.py runtime regression (Check 43 per-iteration regex recompilation)
 - [BD-200](./BD-200.md) — Project-side capability ACTIVATION (no pack-clone dependency): project-side `activate-capability.sh` + tracked conditional-file pool + single-source capability tables + Procedure 6 redesign
