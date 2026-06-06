@@ -202,6 +202,7 @@ _tmr_decode_status() {
         case "$label" in
             status:open)        echo "Open" ;;
             status:unblocked)   echo "Unblocked" ;;
+            status:deferred)    echo "Deferred" ;;
             status:resolved)    echo "Resolved" ;;
             status:cancelled)   echo "Cancelled" ;;
             status:deprecated)  echo "Deprecated" ;;
@@ -244,6 +245,7 @@ _tmr_decode_status() {
     # Open: derive from label.
     case "$label" in
         status:unblocked)   echo "Unblocked" ;;
+        status:deferred)    echo "Deferred" ;;
         *)                  echo "Open" ;;
     esac
 }

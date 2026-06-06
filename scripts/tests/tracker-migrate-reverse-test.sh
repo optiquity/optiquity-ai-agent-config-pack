@@ -132,6 +132,7 @@ printf "\n=== Group 1: per-entry decoders ===\n"
 
 assert_eq "1.1 status:open → Open"           "Open"       "$(_tmr_decode_status '["status:open"]')"
 assert_eq "1.1 status:unblocked → Unblocked" "Unblocked"  "$(_tmr_decode_status '["status:unblocked"]')"
+assert_eq "1.1 status:deferred → Deferred"   "Deferred"   "$(_tmr_decode_status '["status:deferred"]')"
 assert_eq "1.1 status:resolved → Resolved"   "Resolved"   "$(_tmr_decode_status '["status:resolved"]')"
 assert_eq "1.1 status:cancelled → Cancelled" "Cancelled"  "$(_tmr_decode_status '["status:cancelled"]')"
 assert_eq "1.1 no status → Open default"     "Open"       "$(_tmr_decode_status '[]')"
