@@ -51,6 +51,19 @@ if ! declare -f tracker_mirror_header_write >/dev/null 2>&1; then
     unset _tmf_self _tmf_dir
 fi
 
+# BD-204 C-5 (C2a): the pack-surface forward read-side enumerates the
+# per-entry TREE (`/backlog/*.md`) instead of the deleted monolith. The
+# per-entry engine provides the entry-file lister and the line-1
+# back-pointer stripper. Source idempotently (no side effects beyond
+# function definitions).
+# shellcheck disable=SC1091
+if ! declare -f pe_list_entry_files >/dev/null 2>&1; then
+    _tmf_self="${BASH_SOURCE[0]}"
+    _tmf_dir="$(cd "$(dirname "$_tmf_self")" && pwd)"
+    source "$_tmf_dir/per-entry/_lib.sh"
+    unset _tmf_self _tmf_dir
+fi
+
 # BATCH-17 F1 (cross-BD review): step 7 (Blockers: phase-N.M /
 # BD-NNN / TD-NNN) and step 7b (phase-task Dependencies bullets) must
 # go through BD-108's `tracker_links_create_blocked_by` orchestrator
@@ -353,11 +366,23 @@ tmf_parse_backlog() {
         tracker_error_emit "not-found" "BACKLOG.md not found at $path"
         return 1
     fi
-    python3 - "$path" <<'PYEOF'
+    _tmf_parse_backlog_file "$path"
+}
+
+# BD-204 C-5 (C2a): parse a monolith-grammar entry-stream FILE into the
+# entries-JSON array. Factored out of tmf_parse_backlog so the pack
+# read-side can feed it either the monolith file (client branch — BD-207)
+# OR a tree-derived entry-stream temp file (pack branch — see
+# tmf_parse_backlog_tree) WITHOUT diverging the parse grammar. The
+# downstream entries-JSON shape (and therefore the provider_create payload
+# path) is identical for both. The python heredoc reads the path via
+# sys.argv (a `python3 - <file>` stdin-heredoc cannot ALSO read piped
+# stdin), so the tree path materializes its stream to a temp file first.
+_tmf_parse_backlog_file() {
+    python3 - "$1" <<'PYEOF'
 import re, json, sys
-path = sys.argv[1]
-with open(path) as f:
-    text = f.read()
+with open(sys.argv[1]) as _f:
+    text = _f.read()
 
 ENTRY_HEADER = re.compile(r'^\*\*((?:BD|TD)-\d{3})\s*[—-]\s*(.+?)\*\*\s*$')
 FIELD_LINE   = re.compile(r'^([A-Z][A-Za-z/ -]+):\s*(.*)$')
@@ -468,6 +493,41 @@ for raw in text.splitlines():
 flush_entry()
 print(json.dumps(entries, ensure_ascii=False))
 PYEOF
+}
+
+# BD-204 C-5 (C2a): parse the per-entry TREE under <stream_dir> into the
+# SAME entries-JSON array tmf_parse_backlog produces. Enumerates the
+# stream's entry files via pe_list_entry_files (the SAME single source the
+# backup set + `_toc.md` regen use), strips each file's line-1 back-pointer,
+# and concatenates the entry bodies into the monolith-grammar stream the
+# shared `_tmf_parse_backlog_text` core consumes — keeping the downstream
+# provider_create payload path byte-for-byte identical to the monolith read.
+# $1 = stream key (e.g. pack-backlog); $2 = stream dir (e.g. <root>/backlog).
+tmf_parse_backlog_tree() {
+    local key="$1"
+    local stream_dir="$2"
+    if [[ ! -d "$stream_dir" ]]; then
+        tracker_error_emit "not-found" "per-entry tree not found at $stream_dir"
+        return 1
+    fi
+    # Build the monolith-grammar entry stream into a temp file: each entry's
+    # body (line-1 back-pointer stripped) followed by a `---` separator, in
+    # the canonical sort order pe_list_entry_files returns. The temp file
+    # lets the shared file-based parser core run unchanged.
+    local stream_file f rc
+    stream_file=$(mktemp -t tmf-tree-stream.XXXXXX) || {
+        tracker_error_emit "validation" "tmf_parse_backlog_tree: mktemp failed"
+        return 1
+    }
+    while IFS= read -r f; do
+        [[ -n "$f" ]] || continue
+        pe_strip_backpointer_stdin < "$f" >> "$stream_file"
+        printf '\n---\n' >> "$stream_file"
+    done < <(pe_list_entry_files "$key" "$stream_dir")
+    _tmf_parse_backlog_file "$stream_file"
+    rc=$?
+    rm -f "$stream_file"
+    return $rc
 }
 
 # Parse IMPLEMENTATION-PLAN.md and emit a JSON array of phase entries:
@@ -727,10 +787,13 @@ tracker_migrate_forward_run() {
     fi
 
     # Step 1+2: read + parse BACKLOG and IMPLEMENTATION-PLAN.
-    # BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
+    # BD-204 C-5 (C2a): the pack-surface read-side enumerates the per-entry
+    # TREE under `/backlog/` (the no-monolith SSOT) — there is NO
+    # `pack-ops/BACKLOG.md` to read. The client `else` branch keeps reading
+    # the monolith (BD-207 owns the client tree repoint).
     local backlog_path plan_path
     if [[ "$surface" == "pack" ]]; then
-        backlog_path="$repo_root/pack-ops/BACKLOG.md"
+        backlog_path="$repo_root/backlog"
     else
         backlog_path="$repo_root/BACKLOG.md"
     fi
@@ -738,7 +801,13 @@ tracker_migrate_forward_run() {
     [[ ! -f "$plan_path" ]] && plan_path="$repo_root/maintenance-docs/IMPLEMENTATION-PLAN.md"
 
     local entries phases
-    entries=$(tmf_parse_backlog "$backlog_path") || return 1
+    if [[ "$surface" == "pack" ]]; then
+        # BD-204 C-5 (C2a): parse the per-entry tree into the same
+        # entries-JSON shape the monolith parse produces.
+        entries=$(tmf_parse_backlog_tree "pack-backlog" "$backlog_path") || return 1
+    else
+        entries=$(tmf_parse_backlog "$backlog_path") || return 1
+    fi
     if [[ -f "$plan_path" ]]; then
         phases=$(tmf_parse_implementation_plan "$plan_path") || phases='[]'
     else
@@ -1203,11 +1272,19 @@ tracker_migrate_forward_run() {
     # the V1 §6.3 read-only header). Failures surface to the
     # partial_failures list so the user knows to re-run with
     # --mirror-only per V1 §6.4 (PACK-REVIEW-BD065 Finding #9 closure).
+    # BD-204 C-5 (C2b RETIRE pack): the pack surface has NO monolith under
+    # the no-monolith SSOT model — regenerating one would VIOLATE the
+    # fail-loud / no-mirror standard and trip validate-pack Check 32′. The
+    # tree IS the mirror and is regenerated by the reverse/regen path
+    # (C-4), not by a forward mirror-write. So SKIP Step-10 on the pack
+    # branch entirely; the client `else` branch keeps Step-10 (BD-207).
     local backend_slug
     backend_slug=$(tracker_repo_slug "$cfg_path" 2>/dev/null || echo "unknown")
-    if ! _tmf_regen_mirror "$backlog_path" "$backend_slug" 2>/dev/null; then
-        printf 'step-10 mirror regen: %s (re-run with --mirror-only to recover)\n' \
-            "$backlog_path" >> "$partial_failures"
+    if [[ "$surface" != "pack" ]]; then
+        if ! _tmf_regen_mirror "$backlog_path" "$backend_slug" 2>/dev/null; then
+            printf 'step-10 mirror regen: %s (re-run with --mirror-only to recover)\n' \
+                "$backlog_path" >> "$partial_failures"
+        fi
     fi
 
     # Step 11: write mapping + tracker.toml [migration].
@@ -1413,6 +1490,13 @@ _tmf_labels_for_entry() {
     case "$status" in
         Open)        status_label="status:open" ;;
         Unblocked)   status_label="status:unblocked" ;;
+        # BD-204 DP-3 (C-5 carry-forward #1): Deferred is an OPEN state
+        # disambiguated by the status:deferred label — the FORWARD
+        # complement to the C-1 reverse-decode `status:deferred → Deferred`
+        # branch. Without this case, a Deferred entry fell through to the
+        # `*) status:open` default and reverse-decoded to Open, breaking the
+        # lossless round-trip on all 11 live Deferred entries.
+        Deferred)    status_label="status:deferred" ;;
         Resolved)    status_label="status:resolved" ;;
         Cancelled)   status_label="status:cancelled" ;;
         Deprecated)  status_label="status:deprecated" ;;

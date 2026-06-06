@@ -45,6 +45,10 @@ export TMF_CLOSE_RETRY_BACKOFF_SECS="0 0 0"
 
 # Source all libs the same way tracker-migrate.sh does.
 # shellcheck disable=SC1091
+source "$LIB_DIR/per-entry/_lib.sh"
+# shellcheck disable=SC1091
+source "$LIB_DIR/per-entry/decompose.sh"
+# shellcheck disable=SC1091
 source "$LIB_DIR/tracker-errors.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/tracker-config.sh"
@@ -54,6 +58,45 @@ source "$LIB_DIR/tracker-provider.sh"
 source "$LIB_DIR/tracker-provider-gh.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/tracker-migrate-forward.sh"
+
+# ─────────────────────────────────────────────────────────────────
+# BD-204 C-5 (C2a) — pack-tree seed helper
+# ─────────────────────────────────────────────────────────────────
+#
+# The pack-surface forward read-side now enumerates the per-entry TREE
+# under `/backlog/` (the no-monolith SSOT). The integration groups below
+# therefore seed a BD-only per-entry tree into each test repo instead of
+# `pack-ops/BACKLOG.md`. The pack backlog is BD-only by design (TD is the
+# project namespace), so the seed filters the mixed fixture monolith to its
+# BD-* entries, then decomposes them into one-entry-per-file tree files via
+# the per-entry engine (the SAME `pack-backlog` regex the production read
+# uses). NO `pack-ops/BACKLOG.md` monolith is written — under the
+# no-monolith model there is none to read (fail-loud). The `pack-ops/`
+# directory marker is still created so tracker_config_auto_surface returns
+# "pack". (Group 1's parser tests still run tmf_parse_backlog directly on
+# the mixed monolith fixture — that is the client-branch parser and is
+# unaffected by the pack read-side repoint.)
+#
+# $1 = test repo root; $2 = path to a monolith fixture (mixed BD/TD ok)
+_seed_pack_tree() {
+    local repo="$1"
+    local mono="$2"
+    mkdir -p "$repo/pack-ops" "$repo/backlog"
+    local bd_only
+    bd_only=$(mktemp -t tmf-bdonly.XXXXXX)
+    python3 - "$mono" > "$bd_only" <<'PY'
+import re, sys
+text = open(sys.argv[1]).read()
+blocks = re.split(r'\n---\n', text)
+out = []
+for b in blocks:
+    if re.search(r'^\*\*BD-\d{3}', b.strip(), re.M):
+        out.append(b.strip())
+sys.stdout.write('\n\n---\n\n'.join(out) + '\n\n---\n')
+PY
+    per_entry_decompose "pack-backlog" "$bd_only" "$repo/backlog" >/dev/null
+    rm -f "$bd_only"
+}
 
 # ─────────────────────────────────────────────────────────────────
 # Group 1: parser correctness
@@ -166,6 +209,18 @@ assert_contains "2.6 labels has status:open" "$labels_open" '"status:open"'
 labels_resolved=$(_tmf_labels_for_entry '{"pack_id":"TD-010","status":"Resolved"}')
 assert_contains "2.6 td-entry label"           "$labels_resolved" '"td-entry"'
 assert_contains "2.6 status:resolved"          "$labels_resolved" '"status:resolved"'
+# BD-204 DP-3 (C-5 carry-forward #1): a Deferred entry forward-encodes with
+# the status:deferred label (NOT the status:open default). This is the
+# FORWARD complement to the C-1 reverse-decode `status:deferred → Deferred`
+# branch — without it, all 11 live Deferred entries would forward-encode as
+# status:open and reverse-decode to Open, breaking the lossless round-trip.
+labels_deferred=$(_tmf_labels_for_entry '{"pack_id":"BD-001","status":"Deferred"}')
+assert_contains "2.6 status:deferred (DP-3 carry-forward #1)" "$labels_deferred" '"status:deferred"'
+if printf '%s' "$labels_deferred" | grep -q '"status:open"'; then
+    t_fail "2.6 Deferred does NOT fall through to status:open" "got status:open for a Deferred entry"
+else
+    t_pass "2.6 Deferred does NOT fall through to status:open"
+fi
 
 # 2.7 mirror header
 header=$(tmf_mirror_header "test-org/test-repo")
@@ -282,10 +337,9 @@ if [[ "$(command -v gh)" != "$FAKE_BIN/gh" ]]; then
 fi
 
 # Build a temp repo seeded from the fixtures.
-# BD-175: pack-side BACKLOG canonical at pack-ops/BACKLOG.md.
+# BD-204 C-5 (C2a): seed the BD-only per-entry tree (no monolith).
 TEST_REPO=$(mktemp -d -t tmf-repo.XXXXXX)
-mkdir -p "$TEST_REPO/pack-ops"
-cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO/pack-ops/BACKLOG.md"
+_seed_pack_tree "$TEST_REPO" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO/tracker.toml"
 
@@ -298,30 +352,34 @@ export _TRACKER_PROVIDER_BACKEND_OVERRIDE="github"
 output=$(tracker_migrate_forward_run "$TEST_REPO" 0 0 2>&1)
 rc=$?
 assert_eq "3.1 first run rc=0" "0" "$rc"
-assert_contains "3.1 reports 5 entries"  "$output" "parsed 5 BACKLOG entries"
+# BD-204 C-5 (C2a): the pack tree is BD-only — the mixed fixture's BD-* set
+# is {BD-001, BD-002, BD-003} (TD-010/TD-011 are the project namespace, not
+# pack-backlog entries). So the pack forward parses 3 entries.
+assert_contains "3.1 reports 3 entries"  "$output" "parsed 3 BACKLOG entries"
 assert_contains "3.1 reports 2 phases"   "$output" "2 phase(s)"
 assert_contains "3.1 reports complete"   "$output" "forward: complete"
 
 # 3.2 fake gh log captured `issue create` per entry + per phase.
 n_creates=$(grep -c "^issue create " "$GH_LOG" || true)
-# 5 BACKLOG entries + 2 phase epics = 7 creates expected.
-assert_eq "3.2 issue create called 7 times (5 entries + 2 phases)" "7" "$n_creates"
+# 3 BD entries + 2 phase epics = 5 creates expected.
+assert_eq "3.2 issue create called 5 times (3 entries + 2 phases)" "5" "$n_creates"
 
-# 3.3 fake gh log captured at least 1 `issue close` (BD-003 Resolved + TD-011 Cancelled).
+# 3.3 fake gh log captured ≥1 `issue close` (BD-003 Resolved — the only
+# closed-state entry in the BD-only set; TD-011 Cancelled was a TD, dropped).
 n_closes=$(grep -c "^issue close " "$GH_LOG" || true)
-[[ "$n_closes" -ge 2 ]] && t_pass "3.3 issue close called for resolved/cancelled entries (count=$n_closes)" \
-    || t_fail "3.3 issue close" "expected ≥2, got $n_closes"
+[[ "$n_closes" -ge 1 ]] && t_pass "3.3 issue close called for resolved entry (count=$n_closes)" \
+    || t_fail "3.3 issue close" "expected ≥1, got $n_closes"
 
 # 3.4 mapping file written.
 mfile="$TEST_REPO/.pack-tracker/id-map.json"
 [[ -f "$mfile" ]] && t_pass "3.4 mapping file written" \
     || t_fail "3.4 mapping file written" "missing $mfile"
 n_mapped=$(jq 'length' "$mfile")
-# 5 BACKLOG entries + 2 phases = 7 mapping entries.
-assert_eq "3.4 mapping has 7 entries" "7" "$n_mapped"
+# 3 BD entries + 2 phases = 5 mapping entries.
+assert_eq "3.4 mapping has 5 entries" "5" "$n_mapped"
 
-# 3.5 mapping has the expected pack ids.
-for pid in BD-001 BD-002 BD-003 TD-010 TD-011 phase-1 phase-2; do
+# 3.5 mapping has the expected pack ids (BD-only tree + phase epics).
+for pid in BD-001 BD-002 BD-003 phase-1 phase-2; do
     if jq -e --arg k "$pid" 'has($k)' "$mfile" >/dev/null; then
         t_pass "3.5 mapping has $pid"
     else
@@ -360,11 +418,15 @@ else
         "missing (was forward migration's blocked-by orchestrator wired?)"
 fi
 
-# 3.6 BACKLOG.md mirror header was added in place.
-first_line=$(head -n 1 "$TEST_REPO/pack-ops/BACKLOG.md")
-assert_eq "3.6 BACKLOG mirror header line 1" "<!--" "$first_line"
-assert_contains "3.6 BACKLOG mirror header text" \
-    "$(head -n 5 "$TEST_REPO/pack-ops/BACKLOG.md" | tr '\n' ' ')" "read-only mirror"
+# 3.6 BD-204 C-5 (C2b RETIRE pack): the pack forward retires Step-10 — under
+# the no-monolith SSOT model NO `pack-ops/BACKLOG.md` mirror is regenerated
+# (regenerating one would VIOLATE the fail-loud / no-mirror standard and trip
+# validate-pack Check 32′). The tree IS the mirror, regenerated by the
+# reverse/regen path (C-4), not by a forward mirror-write.
+[[ ! -f "$TEST_REPO/pack-ops/BACKLOG.md" ]] \
+    && t_pass "3.6 pack forward writes NO pack-ops/BACKLOG.md monolith (Step-10 retired)" \
+    || t_fail "3.6 pack forward writes NO pack-ops/BACKLOG.md monolith (Step-10 retired)" \
+        "unexpected monolith regenerated by forward"
 
 # 3.7 tracker.toml updated with last_forward_run.
 assert_contains "3.7 tracker.toml has last_forward_run" \
@@ -397,14 +459,13 @@ assert_eq "3.8 mapping count unchanged" "$n_mapped" "$n_mapped_2"
 # 3.9 dry-run mode: parser runs, no creates.
 > "$GH_LOG"
 TEST_REPO2=$(mktemp -d -t tmf-repo-dry.XXXXXX)
-mkdir -p "$TEST_REPO2/pack-ops"
-cp "$FIXTURES/BACKLOG.md" "$TEST_REPO2/pack-ops/BACKLOG.md"
+_seed_pack_tree "$TEST_REPO2" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO2/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml" "$TEST_REPO2/tracker.toml"
 output3=$(tracker_migrate_forward_run "$TEST_REPO2" 1 0 2>&1)
 rc3=$?
 assert_eq "3.9 dry-run rc=0"           "0" "$rc3"
-assert_contains "3.9 dry-run prints summary" "$output3" "parsed 5 BACKLOG entries"
+assert_contains "3.9 dry-run prints summary" "$output3" "parsed 3 BACKLOG entries"
 assert_contains "3.9 dry-run stops after parse" "$output3" "stopping after parse"
 n_creates_3=$(grep -c "^issue create " "$GH_LOG" || true)
 assert_eq "3.9 dry-run: 0 creates" "0" "$n_creates_3"
@@ -423,10 +484,11 @@ assert_contains "3.10 status reports template freshness"  "$status_out" "templat
 assert_contains "3.10 status reports last forward run"    "$status_out" "last forward run:"
 assert_contains "3.10 status reports last reverse run"    "$status_out" "last reverse run:"
 
-# 3.11 missing tracker.toml: forward fails with typed error.
+# 3.11 missing tracker.toml: forward fails with typed error. (Only the
+# pack-ops/ surface marker is needed — forward errors at the tracker.toml
+# check before any entry read, so no tree seed is required.)
 TEST_REPO3=$(mktemp -d -t tmf-repo-noconf.XXXXXX)
 mkdir -p "$TEST_REPO3/pack-ops"
-cp "$FIXTURES/BACKLOG.md" "$TEST_REPO3/pack-ops/BACKLOG.md"
 err=$(tracker_migrate_forward_run "$TEST_REPO3" 0 0 2>&1) || true
 assert_contains "3.11 missing tracker.toml → validation" "$err" "ERROR: validation"
 assert_contains "3.11 error mentions pack tracker init" "$err" "pack tracker init"
@@ -505,8 +567,7 @@ chmod +x "$FAKE_BIN_PF/gh"
 
 # Run forward with fake-gh that fails on close. Expect rc=1 + partial-write.
 TEST_REPO_PF=$(mktemp -d -t tmf-repo-pf.XXXXXX)
-mkdir -p "$TEST_REPO_PF/pack-ops"
-cp "$FIXTURES/BACKLOG.md" "$TEST_REPO_PF/pack-ops/BACKLOG.md"
+_seed_pack_tree "$TEST_REPO_PF" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_PF/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml" "$TEST_REPO_PF/tracker.toml"
 
@@ -629,8 +690,7 @@ rm -f "$FAKE_BIN_REC/gh.bak"
 chmod +x "$FAKE_BIN_REC/gh"
 
 TEST_REPO_REC=$(mktemp -d -t tmf-repo-rec.XXXXXX)
-mkdir -p "$TEST_REPO_REC/pack-ops"
-cp "$FIXTURES/BACKLOG.md" "$TEST_REPO_REC/pack-ops/BACKLOG.md"
+_seed_pack_tree "$TEST_REPO_REC" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_REC/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml" "$TEST_REPO_REC/tracker.toml"
 
@@ -690,8 +750,8 @@ assert_eq "4.5 --mirror-only writes header line 1" "<!--" "$first_line"
 rm -rf "$FAKE_BIN_MO" "$GH_LOG_MO" "$TEST_REPO_MO"
 
 # 4.6 Checkpoint cadence integration test (PACK-REVIEW-BD065 Finding
-# #6 closure). Lower TMF_CHECKPOINT_INTERVAL=2 against the 5-entry
-# fixture: expect checkpoint writes after entries 2 and 4, and
+# #6 closure). Lower TMF_CHECKPOINT_INTERVAL=2 against the BD-only tree
+# (3 BD entries): expect a checkpoint write after entry 2, and the
 # checkpoint cleared after the post-loop step 11.
 FAKE_BIN_CP=$(mktemp -d -t tmf-fakebin-cp.XXXXXX)
 GH_LOG_CP=$(mktemp -t tmf-ghlog-cp.XXXXXX)
@@ -752,8 +812,7 @@ FAKEGH_CP
 chmod +x "$FAKE_BIN_CP/gh"
 
 TEST_REPO_CP=$(mktemp -d -t tmf-repo-cp.XXXXXX)
-mkdir -p "$TEST_REPO_CP/pack-ops"
-cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_CP/pack-ops/BACKLOG.md"
+_seed_pack_tree "$TEST_REPO_CP" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_CP/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO_CP/tracker.toml"
 
@@ -774,13 +833,13 @@ source "$LIB_DIR/tracker-migrate-forward.sh"
 
 assert_eq "4.6 forward with cadence=2 rc=0" "0" "$rc_cp"
 # Checkpoint file is cleared at end-of-run (step 11), but mid-run
-# writes were performed. The mapping file should reflect all 5
+# writes were performed. The mapping file should reflect all 3 BD
 # entries + 2 phases.
 mfile_cp="$TEST_REPO_CP/.pack-tracker/id-map.json"
 [[ -f "$mfile_cp" ]] && t_pass "4.6 mapping file written" \
     || t_fail "4.6 mapping file written"
 n_mapped_cp=$(jq 'length' "$mfile_cp")
-assert_eq "4.6 mapping has 7 entries" "7" "$n_mapped_cp"
+assert_eq "4.6 mapping has 5 entries" "5" "$n_mapped_cp"
 # Checkpoint should be cleared after success.
 ckp_cp="$TEST_REPO_CP/.pack-tracker/forward.checkpoint.json"
 [[ ! -f "$ckp_cp" ]] && t_pass "4.6 checkpoint cleared after success" \
@@ -923,11 +982,11 @@ case "\$1 \$2" in
         counter=\$(cat "$ISSUE_COUNTER_C")
         next=\$((counter + 1))
         echo "\$next" > "$ISSUE_COUNTER_C"
-        # Fail on the 4th create — the fixture has 5 entries, so at
-        # least one entry will fail mid-loop, exercising the BD-131
-        # creation_ok=0 branch via the tmf provider_create
-        # early-return.
-        if [[ "\$next" == "4" ]]; then
+        # Fail on the 2nd create — the BD-only tree has 3 BD entries, so
+        # failing on the 2nd entry create fails mid-entry-loop, exercising
+        # the BD-131 creation_ok=0 branch via the tmf provider_create
+        # early-return (a partial-CREATE, not a partial-close).
+        if [[ "\$next" == "2" ]]; then
             echo "HTTP 422: validation failed" >&2
             exit 1
         fi
@@ -948,8 +1007,7 @@ FAKEGH_C
 chmod +x "$FAKE_BIN_C/gh"
 
 TEST_REPO_C=$(mktemp -d -t tmf-repo-c.XXXXXX)
-mkdir -p "$TEST_REPO_C/pack-ops"
-cp "$FIXTURES/BACKLOG.md"            "$TEST_REPO_C/pack-ops/BACKLOG.md"
+_seed_pack_tree "$TEST_REPO_C" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_C/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"          "$TEST_REPO_C/tracker.toml"
 
@@ -1024,10 +1082,12 @@ GH_LOG_R1=$(mktemp -t tmf-ghlog-r1.XXXXXX)
 ISSUE_COUNTER_R1=$(mktemp -t tmf-counter-r1.XXXXXX)
 echo "0" > "$ISSUE_COUNTER_R1"
 
-# Phase 1 fake gh: identical to 5.3's — fails on the 4th `issue
-# create`. Splitting the fake into two binaries (R1 = fail-on-4th,
-# R2 = always-succeed) makes the swap explicit between the partial
-# run and the resume run.
+# Phase 1 fake gh: fails on the 3rd `issue create`. With the BD-only tree
+# (3 BD entries) and cadence=2, a checkpoint is written after entry 2; the
+# 3rd entry create then fails, leaving 2 created + a checkpoint (the resume
+# seed). Splitting the fake into two binaries (R1 = fail-on-3rd, R2 =
+# always-succeed) makes the swap explicit between the partial and resume
+# runs.
 cat > "$FAKE_BIN_R1/gh" <<FAKEGH_R1
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "$GH_LOG_R1"
@@ -1036,7 +1096,7 @@ case "\$1 \$2" in
         counter=\$(cat "$ISSUE_COUNTER_R1")
         next=\$((counter + 1))
         echo "\$next" > "$ISSUE_COUNTER_R1"
-        if [[ "\$next" == "4" ]]; then
+        if [[ "\$next" == "3" ]]; then
             echo "HTTP 422: validation failed" >&2
             exit 1
         fi
@@ -1057,8 +1117,7 @@ FAKEGH_R1
 chmod +x "$FAKE_BIN_R1/gh"
 
 TEST_REPO_R=$(mktemp -d -t tmf-repo-r.XXXXXX)
-mkdir -p "$TEST_REPO_R/pack-ops"
-cp "$FIXTURES/BACKLOG.md"             "$TEST_REPO_R/pack-ops/BACKLOG.md"
+_seed_pack_tree "$TEST_REPO_R" "$FIXTURES/BACKLOG.md"
 cp "$FIXTURES/IMPLEMENTATION-PLAN.md" "$TEST_REPO_R/IMPLEMENTATION-PLAN.md"
 cp "$FIXTURES/tracker.toml"           "$TEST_REPO_R/tracker.toml"
 
@@ -1098,11 +1157,11 @@ ISSUE_COUNTER_R2=$(mktemp -t tmf-counter-r2.XXXXXX)
 # step 8.5 will poll for state=closed).
 CLOSED_IDS_R2=$(mktemp -t tmf-closed-r2.XXXXXX)
 : > "$CLOSED_IDS_R2"
-# Continue the gh-id sequence past where phase 1 stopped (3 entries
-# created → next id is 4) so the resume's new creates do not collide
-# with the partial mapping. Phase 1's 4th attempt failed; phase 2
-# must satisfy entries 4 + 5 + 2 phase epics = 4 more creates.
-echo "3" > "$ISSUE_COUNTER_R2"
+# Continue the gh-id sequence past where phase 1 stopped (2 entries
+# created → next id is 3) so the resume's new creates do not collide
+# with the partial mapping. Phase 1's 3rd attempt failed; phase 2 must
+# satisfy the 3rd BD entry + 2 phase epics = 3 more creates.
+echo "2" > "$ISSUE_COUNTER_R2"
 
 cat > "$FAKE_BIN_R2/gh" <<FAKEGH_R2
 #!/usr/bin/env bash
@@ -1191,11 +1250,11 @@ assert_eq "5.4 phase-2 tracker_mode() → tracker" "tracker" "$mode_after_resume
 [[ ! -f "$ckp_r" ]] && t_pass "5.4 phase-2 checkpoint cleared after resume success" \
     || t_fail "5.4 phase-2 checkpoint cleared after resume success" "$ckp_r still present"
 
-# Mapping must be complete: 5 entries + 2 phase epics = 7 ids.
+# Mapping must be complete: 3 BD entries + 2 phase epics = 5 ids.
 mfile_r="$TEST_REPO_R/.pack-tracker/id-map.json"
 n_mapped_r=$(jq 'length' "$mfile_r")
-assert_eq "5.4 phase-2 mapping has 7 entries (5 BACKLOG + 2 phases)" \
-    "7" "$n_mapped_r"
+assert_eq "5.4 phase-2 mapping has 5 entries (3 BD + 2 phases)" \
+    "5" "$n_mapped_r"
 
 rm -rf "$FAKE_BIN_R1" "$GH_LOG_R1" "$ISSUE_COUNTER_R1" \
        "$FAKE_BIN_R2" "$GH_LOG_R2" "$ISSUE_COUNTER_R2" \
@@ -1229,7 +1288,9 @@ printf "\n=== Group 6: BD-108 cross-entity link routing (review F3) ===\n"
 # Mini-fixture repo with one BACKLOG entry that has `Blockers:
 # phase-3.2` and an IMPLEMENTATION-PLAN with a Dependencies bullet.
 TEST_REPO_BD108=$(mktemp -d -t tmf-bd108.XXXXXX)
-mkdir -p "$TEST_REPO_BD108/pack-ops"  # BD-175 pack-side marker
+mkdir -p "$TEST_REPO_BD108/pack-ops"   # surface marker → pack
+mkdir -p "$TEST_REPO_BD108/backlog"    # BD-204 C-5: per-entry tree (no monolith)
+BD108_MONO=$(mktemp -t tmf-bd108-mono.XXXXXX)
 FAKE_BIN_BD108=$(mktemp -d -t tmf-fakebin-bd108.XXXXXX)
 GH_LOG_BD108=$(mktemp -t tmf-ghlog-bd108.XXXXXX)
 ISSUE_COUNTER_BD108=$(mktemp -t tmf-counter-bd108.XXXXXX)
@@ -1246,7 +1307,9 @@ echo "0" > "$ISSUE_COUNTER_BD108"
 # IMPLEMENTATION-REPORT) — so the phase-3.2 Blocker reaches the case
 # statement but tmf_mapping_get returns empty, surfacing the routing
 # decision via the partial_failures path.
-cat > "$TEST_REPO_BD108/pack-ops/BACKLOG.md" <<'BACKLOG'
+# BD-204 C-5 (C2a): write the mini-fixture to a temp monolith, then
+# decompose it into the BD-only per-entry tree the pack forward reads.
+cat > "$BD108_MONO" <<'BACKLOG'
 # BACKLOG
 
 **BD-501 — Phase-task blocker entry (BD-108 routing target)**
@@ -1272,6 +1335,7 @@ Resolved: n/a
 
 ---
 BACKLOG
+per_entry_decompose "pack-backlog" "$BD108_MONO" "$TEST_REPO_BD108/backlog" >/dev/null
 
 cat > "$TEST_REPO_BD108/IMPLEMENTATION-PLAN.md" <<'PLAN'
 # IMPLEMENTATION PLAN
@@ -1421,7 +1485,7 @@ n_api_graphql=$(grep -c "^api graphql" "$GH_LOG_BD108" 2>/dev/null || true)
        "expected ≥1 api-graphql call for BD-502 → phase-3 sub-issue; got $n_api_graphql"
 
 unset _TRACKER_PROVIDER_BACKEND_OVERRIDE
-rm -rf "$FAKE_BIN_BD108" "$GH_LOG_BD108" "$ISSUE_COUNTER_BD108" "$TEST_REPO_BD108"
+rm -rf "$FAKE_BIN_BD108" "$GH_LOG_BD108" "$ISSUE_COUNTER_BD108" "$TEST_REPO_BD108" "$BD108_MONO"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

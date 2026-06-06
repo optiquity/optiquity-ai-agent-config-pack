@@ -649,8 +649,11 @@ tracker_config_auto_surface()   { echo "pack"; }
 tracker_config_resolve_path()   { echo ""; }
 
 # Stub the provider write ops: record op + key args, succeed.
+# provider_update also records its payload ($2) into TED_UPDATE_PAYLOAD so
+# the status:* label swap (which rides the update add_labels) is assertable.
 TED_CALLS=""
-provider_update() { TED_CALLS="$TED_CALLS|update:$1"; return 0; }
+TED_UPDATE_PAYLOAD=""
+provider_update() { TED_CALLS="$TED_CALLS|update:$1"; TED_UPDATE_PAYLOAD="$2"; return 0; }
 provider_close()  { TED_CALLS="$TED_CALLS|close:$1:$2"; return 0; }
 provider_reopen() { TED_CALLS="$TED_CALLS|reopen:$1"; return 0; }
 
@@ -690,6 +693,22 @@ assert_contains "4.3 Open→Resolved closes with completed" "$TED_CALLS" "|close
 TED_CALLS=""
 tracker_edit_entry "BD-001" '{"status":"Cancelled","old_status":"Open"}' "$TED_REPO" >/dev/null
 assert_contains "4.4 Open→Cancelled closes with not_planned" "$TED_CALLS" "|close:42:not_planned"
+
+# 4.4b BD-204 C-5 (carry-forward #2 — explicit Deprecated close-path
+# assertion). open→closed (Open→Deprecated) → provider_close not_planned
+# (DP-3, the Deprecated row) + the status:deprecated label rides the
+# provider_update add_labels. Pre-C-5 the Deprecated close-with-reason
+# path was covered only TRANSITIVELY by the Cancelled case (4.4); this
+# pins the Deprecated row directly (both close with not_planned per DP-3,
+# but the label disambiguates Deprecated from Cancelled on reverse decode).
+TED_CALLS=""
+TED_UPDATE_PAYLOAD=""
+tracker_edit_entry "BD-001" '{"status":"Deprecated","old_status":"Open"}' "$TED_REPO" >/dev/null
+assert_contains "4.4b Open→Deprecated dispatches provider_update" "$TED_CALLS" "|update:42"
+assert_contains "4.4b Open→Deprecated closes with not_planned (DP-3 Deprecated row)" \
+    "$TED_CALLS" "|close:42:not_planned"
+assert_contains "4.4b Open→Deprecated adds status:deprecated label" \
+    "$(printf '%s' "$TED_UPDATE_PAYLOAD" | jq -c '.add_labels // []')" '"status:deprecated"'
 
 # 4.5 closed→open (Resolved→Open) → update + provider_reopen.
 TED_CALLS=""
