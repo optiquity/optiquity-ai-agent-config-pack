@@ -95,7 +95,7 @@ redesign.
 > **Empirical-Evidence Block (the generalization seam: stream-key registry already parameterizes by (key,dir)).**
 > `CMD`: `sed -n '72,130p' scripts/lib/per-entry/_lib.sh ; grep -n "pe_write_atomic\|pe_list_entry_files\|per_entry_regenerate_toc\|pe_id_from_filename\|pe_backpointer_line\|pe_entry_regex_for_stream" scripts/lib/per-entry/_lib.sh scripts/lib/per-entry/toc-regenerate.sh`
 > `OUT`: `PE_STREAM_KEYS="pack-backlog pack-changelog project-backlog ..."` (`_lib.sh:72`); per-stream
-> attrs via `pe__stream_attr` (`:74`) — `pack-backlog` → entry-regex `^BD-[0-9]+[a-z]*\.md$`,
+> attrs via `pe__stream_attr` (`:74`) — `pack-backlog` → entry-regex `^BD-[0-9]+\.md$` (canonical, suffix-free per BD-211),
 > dir-suffix `backlog`; `project-backlog` → `^TD-[0-9]+\.md$`, `docs/project/backlog`. Write API:
 > `pe_write_atomic` (`:393`, stdin→atomic file), `pe_list_entry_files <key> <dir>` (`:426`),
 > `pe_id_from_filename` (`:453`), `pe_backpointer_line` (`:300`), `pe_strip_backpointer_stdin`
@@ -118,9 +118,12 @@ redesign.
 > pack surface MUST update its encoding tests in lock-step (enumerate-encoding-surfaces). `CONCL`: SUPPORTED.
 
 > **Empirical-Evidence Block (status distribution + the 11-Deferred canary at `bc6861e`).**
-> `CMD`: `grep -rh "^Status:" backlog/*.md | sort | uniq -c | sort -rn ; ls backlog/ | grep -cE '^BD-[0-9]+[a-z]*\.md$'`
-> `OUT`: confirm against current tree at run time; spec measured `168 Resolved, 28 Open, 11 Deferred,
-> 3 Deprecated, 1 Unblocked, 1 Cancelled = 212`. `AT`: HEAD `bc6861e`, 2026-06-06. `INTERP`: the
+> `CMD`: `for f in backlog/BD-[0-9]*.md; do awk '/^Status:/{print; exit}' "$f"; done | sort | uniq -c | sort -rn ; ls backlog/ | grep -cE '^BD-[0-9]+\.md$'`
+> `OUT`: confirm against current tree at run time; entry-level distribution (post-BD-211) is
+> `167 Resolved, 28 Open, 11 Deferred, 3 Deprecated, 1 Unblocked, 1 Cancelled = 211` (count regex is the
+> canonical suffix-free `^BD-[0-9]+\.md$`; a bare `grep -h '^Status:' | uniq -c` returns 169 Resolved because
+> BD-167.md/BD-169.md each carry a SECOND `Status:` line inside their folded former-167b/169b sections — read
+> the first `^Status:` per file). `AT`: HEAD `bc6861e`, 2026-06-06. `INTERP`: the
 > 11 `Deferred` entries are the lossless canary for the DP-3 gap-fix; the count is DYNAMIC (measured at
 > audit time, never hard-coded). `CONCL`: SUPPORTED (re-measure live at audit time per §4).
 
@@ -160,10 +163,10 @@ forces the ordering:
    **→ last.**
 
 **Why the flip is last (the hard gate):** the flip writes a live tracker-mode `tracker.toml`
-(`mode.state="tracker"`, `forward_complete=true`) and moves the pack's own 212 entries to real GH
+(`mode.state="tracker"`, `forward_complete=true`) and moves the pack's own 211 entries to real GH
 Issues. If ANY of C-1..C-6 is wrong, the flip either fails CI (Check 29′/32′/33) or silently loses
-data on the first reverse. The scratch-repo proof (C-7) is the dress rehearsal on the four stress
-cases; the flip is the production run.
+data on the first reverse. The scratch-repo proof (C-7) is the dress rehearsal on the three stress
+cases (post-BD-211; suffix-free); the flip is the production run.
 
 ---
 
@@ -416,9 +419,23 @@ commit when the manifest diff is non-empty (manifest-regen rule; ALL of C-1..C-7
   - A new pack-side test, e.g. `scripts/tests/tracker-bd204-lossless-roundtrip-test.sh` (filename-unique
     — verify `find . -name "tracker-bd204-lossless-roundtrip-test.sh" -not -path "./.git/*"` returns
     nothing before naming).
-  - A small FIXTURE tree under `scripts/tests/fixtures/` containing the FOUR stress cases (a suffix
-    entry `BD-NNNb`, a parenthetical entry `BD-NNN (Code Red N)`, a `Deferred` entry, and a large
-    multi-block entry with `Segments:`/`Steps:`/`State:`).
+  - A small FIXTURE tree under `scripts/tests/fixtures/` containing the THREE suffix-free stress cases
+    (post-BD-211 there is NO suffix case — see the SUFFIX-FREE note below): (a) a **parenthetical-title**
+    entry — a `**BD-NNN — <title> (Qualifier)**` header where the parenthetical is admissible TITLE TEXT
+    AFTER the em-dash (the live exemplar is BD-195's `(Code Red 3)`); (b) a **`Deferred`** entry (the
+    `Deferred` count is the round-trip canary); (c) a **large multi-block** entry with
+    `Segments:`/`Steps:`/`State:`/`Goal:`/`Scope:` blocks (BD-195 is also this exemplar).
+  - **SUFFIX-FREE (HARD — post-BD-211):** the fixture MUST be suffix-free and MAY carry ONLY a
+    POST-em-dash parenthetical. There is NO suffix case. A `BD-NNNb` filename/header OR a pre-em-dash
+    parenthetical (`**BD-NNN (Qualifier) — …**`) would FAIL `validate-pack.py`'s `_CANON_HEADER_RE`
+    (`^\*\*(?:BD|TD)-\d+ — .+\*\*$`, applied in Check 32′ via `_stream_is_id_shaped`) and the shared
+    engine's canonical filename regex `^BD-[0-9]+\.md$` — so seeding one is not a valid fixture, it is a
+    validator failure. (BD-211 folded the former `BD-167b`/`BD-169b` into their parents as in-body sections,
+    deleted the suffix files, and made the grammar/validator FORBID the form.)
+  - **No migrator code change for the grammar (item (a)):** per ARCHITECTURE-BD-204-POST-BD211-RECON §A,
+    the migrator is ALREADY canonical (the marker reader is `[A-Za-z]+-\d+(?:\.\d+)?`, the forward
+    `ENTRY_HEADER` is `(?:BD|TD)-\d{3}`, the emit filter consumes the BD-211-canonical shared regex — NO
+    `[a-z]*` admission anywhere). C-7 is **test + fixture only**; no `scripts/lib/tracker-*.sh` edit.
   - `test-fixtures/manifest.txt` — regen if non-empty.
 - **Change recipe (design §3.1 / §3.2 / §3.4; test-infra self-provisioned):** implement the oracle as a
   deterministic diff against a LIVE scratch repo:
@@ -426,11 +443,11 @@ commit when the manifest diff is non-empty (manifest-regen rule; ALL of C-1..C-7
      `test-infra-self-provisioned`); install the form family; seed the fixture tree.
   2. **Run** `tree → Issues → tree` (forward then reverse) against the scratch repo.
   3. **Oracle legs (§3.2):**
-     - **Count oracle:** `count(/backlog/*.md matching ^BD-\d+[a-z]*\.md$)` BEFORE == AFTER ==
+     - **Count oracle:** `count(/backlog/*.md matching ^BD-\d+\.md$)` (canonical, suffix-free per BD-211) BEFORE == AFTER ==
        `count(pack-owned Issues)` (the `work-item` lane only; inbound excluded). DYNAMIC count
        (measured live; never hard-coded).
      - **Identity oracle:** the SET of `pack-id`s BEFORE == AFTER == the SET of `pack-id` markers across
-       pack-owned Issues (the suffix + parenthetical entries appear in all three).
+       pack-owned Issues (the parenthetical-title, `Deferred`, and large-multi-block entries all appear in all three; post-BD-211 there is no suffix entry to stress).
      - **Content-faithfulness oracle:** per entry, `diff <(original span, back-pointer stripped via
        pe_strip_backpointer_stdin) <(reconstructed span, stripped)` is EMPTY (the large-entry body
        diffs clean).
@@ -442,9 +459,26 @@ commit when the manifest diff is non-empty (manifest-regen rule; ALL of C-1..C-7
        reverse, assert the new BD appears + the status round-trips + re-forward re-creates the state.
   4. **Cleanup contract:** `gh repo delete` in the same run (trap-on-exit + explicit delete); the test
      asserts the scratch repo is gone at the end. NEVER touch the real pack repo as a test target.
-- **Per-commit verification:**
-  - `python3 scripts/validate-pack.py` (green).
-  - **FULL CI battery** + the new oracle test run green on the scratch repo (per-step `gh` approval).
+  5. **CI-execution model — MANUAL-ONLY + default-SKIP guard (RECON §E / §3.3; HARD):**
+     - **NOT wired into CI.** `tracker-bd204-lossless-roundtrip-test.sh` is NOT added to any CI workflow
+       (`.github/workflows/`) or any unattended `run-all` test list. This is the PRIMARY control — the
+       unattended battery never runs `gh repo create`. (Every existing tracker test is mock-based; this is
+       the first and only LIVE-repo test, so it stays out of the unattended battery per
+       `test-infra-self-provisioned`.)
+     - **Default-SKIP guard (the fail-safe).** The test's FIRST action: if `PACK_TRACKER_LIVE_GH` is
+       unset/empty OR `gh auth status` is not OK → print exactly
+       `SKIP: live-GH oracle (set PACK_TRACKER_LIVE_GH=1 + gh auth to run)` and `exit 0`. (Reuses the
+       suite's existing `gh auth status` / `command -v gh` preflight idiom — property-fit, not invented.)
+       So even if the test is invoked unattended, it can NEVER reach `gh repo create`.
+- **Per-commit verification (TWO distinct runs — the `FULL CI battery` phrase resolves to these two):**
+  - **Run 1 — unattended CI leg (green in CI):** `python3 scripts/validate-pack.py` (green) AND the
+    EXISTING unattended mock battery (the `scripts/tests/` unit + `test-v11-*.sh` integration tests,
+    incl. `bash scripts/tests/test-v11-realistic-ot.sh` for banner-pinning). With no `PACK_TRACKER_LIVE_GH`,
+    the new oracle test SKIPs (prints the SKIP line, `exit 0`) — it does NOT run live and does NOT gate CI.
+  - **Run 2 — MANUAL live oracle (gated, not CI):** run
+    `PACK_TRACKER_LIVE_GH=1 bash scripts/tests/tracker-bd204-lossless-roundtrip-test.sh` with `gh` authed
+    and per-step `gh` approval (the `gh repo create`/`gh repo delete` self-provisioning). This is the C-8
+    dress rehearsal; it is run by Pack Chat / the user, never unattended.
   - Manifest regen flagged.
 - **Dependency/ordering rationale:** DEPENDS on ALL machinery (C-1..C-6). The dress rehearsal that gates
   C-8. **After C-1..C-6.**
@@ -468,7 +502,7 @@ commit when the manifest diff is non-empty (manifest-regen rule; ALL of C-1..C-7
   `[mirror]` table, SKIP the Step-10 monolith regen (C-5). Then regenerate the tree FROM the tracker
   (now SSOT) + `_toc.md` (DP-4).
 - **GATING (hard — this is the only commit with a heavyweight gate):**
-  1. C-7 green (scratch-repo proof passes the full §3.2 oracle on the four stress cases).
+  1. C-7 green (scratch-repo proof passes the full §3.2 oracle on the three stress cases — post-BD-211, suffix-free).
   2. **Explicit user approval** for the real flip (heavyweight, infrequent, §2.12). Pack Chat surfaces
      the scratch-proof artifacts + the flip plan; the user approves before the forward runs against the
      real pack GH repo.
@@ -532,7 +566,7 @@ project-side asset. Reviewer verifies the client `else` branches (forward/revers
 ## 5. Dogfood-flip gating (restated — the heavyweight gate)
 
 The real pack-repo Mode-2→3 migration (C-8) is the LAST step and is gated on:
-1. **A green scratch-repo proof (C-7)** — the full §3.2 oracle passes on the four stress cases on a
+1. **A green scratch-repo proof (C-7)** — the full §3.2 oracle passes on the three stress cases (post-BD-211, suffix-free) on a
    self-provisioned personal scratch repo, created via `gh repo create` with per-step user approval and
    destroyed via `gh repo delete` (trap-on-exit; the test asserts the repo is gone). NEVER the real
    pack repo as a test target.
