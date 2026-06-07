@@ -6,6 +6,23 @@
 > **Branch:** `v11-dev`. **Date:** 2026-06-06.
 > **Spec executed:** `maintenance-docs/v11-implementation/ARCHITECTURE-BD-204.md` (all 5 DPs RESOLVED).
 > **Brief:** `backlog/BD-204.md` (HARD: pack-only; lossless reversibility; tracker-agnostic; NO monolith; full-CRUD true-SSOT; issue-number independence; surface-generalizable).
+>
+> **── LOSSLESS-FIX SUPERSESSION (2026-06-07, design HEAD `1a8e32e`) ──**
+> C-1..C-6 landed CI-green but shipped a CRITICAL silent field-drop gap: the
+> forward migrator carried a 9-field whitelist and the reverse pack emit
+> (`_tmr_emit_pack_tree`) is a LOSSY fixed-order template projection (it injects
+> `Blockers: None`/`Unblocks: None`/`Resolved: n/a`, drops 19 top-level field
+> classes, and shreds prose blocks into `unblocks`); the `pack-extra-fields`
+> carrier the prior design named is DEAD from both ends. The user-APPROVED fix is
+> `maintenance-docs/v11-implementation/ARCHITECTURE-BD-204-LOSSLESS-FIX.md` (spec)
+> + `SWEEP-BD-204-RULES-COMPLIANCE.md` (S-1..S-9 ledger) +
+> `RESEARCH-BD-204-GH-ISSUES-RULES.md` (30-rule platform law). The lossless-fix
+> commit sequence is added below as **§3.LF** (commits C-RS / C-4.5 / C-4.6 /
+> C-4.7, a C-3 amendment, a C-7 REBUILD, C-8 scope additions, and a separate
+> manual REHEARSAL PROTOCOL gating C-8). The full sequenced table +
+> recipe/verification/keyword/routing also lives in the companion deliverable
+> `PLAN-BD-204-LOSSLESS-FIX-SEQUENCE.md`. The original C-1..C-7 recipes in §3 are
+> HISTORY (landed or superseded by §3.LF); read §3.LF for the go-forward plan.
 
 ## 0. Consequence statement (read-back)
 
@@ -518,6 +535,189 @@ commit when the manifest diff is non-empty (manifest-regen rule; ALL of C-1..C-7
   - Manifest regen flagged if any v11-surface dir is in the diff.
 - **Dependency/ordering rationale:** DEPENDS on C-7 green + user approval. **Last.**
 - **Bounded review/fix cycle applies** to any code/config edits; the live RUN is user-gated.
+
+---
+
+## 3.LF — LOSSLESS-FIX COMMIT SEQUENCE (the go-forward plan; supersedes §3 C-1..C-7 where they conflict)
+
+> **Spec:** `ARCHITECTURE-BD-204-LOSSLESS-FIX.md` (READ IN FULL — the fixed design; this section SEQUENCES it, it does not re-decide it). Ledger: `SWEEP-BD-204-RULES-COMPLIANCE.md`. Law: `RESEARCH-BD-204-GH-ISSUES-RULES.md` (30 rules).
+> **HEAD (verified):** `1a8e32e` (`git rev-parse HEAD`). **Branch:** `v11-dev`. **Date:** 2026-06-07. **Scope:** PACK-ONLY.
+> **Each commit** is a single `pack-coder` spawn under the BOUNDED review/fix cycle (coder -> reviewer -> triage -> fix-coder -> commit; max 2 review/fix pairs + 1 final reviewer pass; architect escalation if dirty after the final) UNLESS marked otherwise. Every `scripts/`-touching commit regenerates+stages `test-fixtures/manifest.txt` (`bash test-fixtures/build.sh --all --clean`) in the SAME commit when the manifest diff is non-empty (regenerate-manifest-v11-surface). The new-check number is the NEXT FREE registry integer (49 today — the coder reads `validate-pack.py` at impl time; NEVER hardcoded).
+
+> **Empirical-Evidence Block (the current state the sequence starts from).**
+> `CMD`: `git rev-parse HEAD` ; `grep -n 'extra_fields\|Blockers: " + ' scripts/lib/tracker-migrate-reverse.sh` ; `grep -nE 'tmf_compose_issue_body\(' scripts/lib/tracker-migrate-forward.sh` ; `grep -oE 'Check [0-9]+' scripts/validate-pack.py | grep -oE '[0-9]+' | sort -n | tail -1`
+> `OUT`: HEAD `1a8e32e0cb0515bb705eb20db31aa0a434f23858`; reverse `_tmr_emit_pack_tree` is the LOSSY fixed-order projection (`lines.append("Blockers: " + (... if bl else "None"))`, `else: lines.append("Resolved: n/a")`, the dead `extra = e.get("extra_fields", None)` read at `:758`); `tmf_compose_issue_body(pack_id, description, context, resolution, file_symbol)` (5-param, no `raw_body`); highest check banner = `48`. `AT`: HEAD `1a8e32e`, 2026-06-07. `INTERP`: the carrier/emit/guard described in §3.LF are NET-NEW on top of the landed C-1..C-6; the next free check integer is 49 today. `CONCL`: SUPPORTED.
+
+### 3.LF.0 The dependency-ordering rationale (why this order)
+
+1. **C-RS (entry re-scope) FIRST** — per the adversarial-architect discipline (design §5.a): re-scope `backlog/BD-204.md` so NO downstream coder reads a stale "the carrier is solved" directive. Pure-doc; no code dep; must precede the code commits.
+2. **C-4.5 (carrier + emit rewrite + size + neutralization + provider caps)** — the load-bearing fix. The byte-faithful CI guard (C-4.6) can only run GREEN against the fixed migrator, so the carrier MUST land first (design §4.2 EE: the current fixed-order emit FALSE-FAILS the byte leg on 20 no-Blockers entries; the §3.3 emit rewrite is the precondition for a green guard).
+3. **C-3 amendment** — `tracker-edit.sh` blob+H2 sync + normalization-tolerant comparator. Depends on the C-4.5 blob-aware composer existing (it must call the same blob emit). Sequence AFTER C-4.5. (Design §5.b folds it into "the existing C-3 CRUD commit"; since C-3 already LANDED, it is a follow-up amendment commit here.)
+4. **C-4.6 (CI guard)** — asserts byte-faithfulness + size + title + control-char on the REAL tree. MUST follow C-4.5 (else it goes RED on the lossy emit). Check 42 (no exemption) forces the per-check test + its workflow-yml wiring in the SAME commit.
+5. **C-4.7 (schema-doc reconciliation)** — `backlog/_rules.md` byte-faithful statement + the Position/template contradiction fix. Independent of the guard mechanically, but sequence AFTER C-4.6 so the schema doc states the as-built (guard-enforced) contract.
+6. **C-7 REBUILD** — the live oracle, rebuilt to exercise the fixed behavior + operational rules. Depends on C-4.5/C-4.6 (it tests them). Its unit-level legs run unattended; the full live round-trip stays manual + default-SKIP.
+7. **C-DOCS (S-2 chain-doc reconciliation)** — its OWN `docs:` commit (OQ-2 RESOLVED), NOT folded into C-4.5. Pure `maintenance-docs/`; lands LAST so the docs describe the fully-as-built carrier+guard+oracle. See 3.LF.8.
+8. **REHEARSAL PROTOCOL (gate (a))** — the repeatable scratch-rehearsal that empirically confirms the documented-silent platform behaviors BEFORE C-8. Not a commit; a manual, user-gated procedure.
+9. **C-8 (real flip)** — gated on a GREEN rehearsal + explicit user approval + per-step approval. LAST.
+
+### 3.LF.1 The ordered commit table
+
+| # | Commit | Scope (one line) | Keyword | Routing | Gate / depends-on |
+|---|---|---|---|---|---|
+| 1 | **C-RS** | re-scope `backlog/BD-204.md` (LOSSLESS FIELD-CARRIER FIX section + Option-A archive=scratch-disposal wording fix) | `pack-only` | **pack-coder** (MAJOR: substantive edit to ALREADY-LANDED entry content -> NOT Pack-Chat-direct; the pack-chat-only file is scoped INTO the coder prompt) | first; no code dep |
+| 2 | **C-4.5** | gz64 verbatim-body-blob carrier (forward parse `raw_body` + composer gz64 emit + size-budget fail-loud + autolink neutralization of the H2 projection) + reverse reconstruct (python3 decode, corrupt-blob fail-loud) + `_tmr_emit_pack_tree` REWRITE (verbatim `raw_body`, DELETE dead `extra_fields` render) + provider capabilities + pacing gate + unit/roundtrip tests + fixtures + manifest. **CODE+TESTS+MANIFEST ONLY** (the S-2 chain-doc corrections are the separate C-DOCS commit — OQ-2). | `pack-only` | pack-coder | after C-RS |
+| 3 | **C-3 amendment** | `tracker-edit.sh` regenerates BOTH H2 + gz64 blob on every `provider_update`; reverse divergence comparator made normalization-tolerant + its test + manifest | `pack-only` | pack-coder | after C-4.5 (needs the blob-aware composer) |
+| 4 | **C-4.6** | new validate-pack `check_migrator_field_faithfulness` (next free integer): byte-faithful + size(composed-body) + title<=256 + control-char legs, on the REAL tree; per-check test; **workflow-yml wiring (Check 42)**; positive/negative fixtures; manifest | `pack-only` | pack-coder | after C-4.5 (runs GREEN on fixed migrator) |
+| 5 | **C-4.7** | `backlog/_rules.md` field-faithful-migration statement + Position/METHODOLOGY contradiction fix (pack-only path = `_rules.md` only; METHODOLOGY NOT edited) | `pack-only` | **pack-coder** (MAJOR: contract change to landed content -> coder, even though `_rules.md` is pack-chat-only) | after C-4.6 |
+| 6 | **C-7 REBUILD** | rebuilt live oracle: drop-set + no-Description fixtures; size/pacing/autolink-neutralization/corrupt-blob/normalization/credential-preflight/archive-disposal legs; manual-only + default-SKIP; unit-level legs in the unattended battery; manifest | `pack-only` | pack-coder | after C-4.5/C-4.6 |
+| 7 | **C-DOCS** | S-2 committed-chain-doc reconciliation: `ARCHITECTURE-BD-204.md` (carrier text -> gz64 blob; size/pacing/neutralization/storage-format; archive wording -> Option-A) + `RECON` attested-no-change; `PLAN-BD-204.md` already reconciled (this §3.LF) | `pack-only` | pack-coder (maintenance-docs; NOT pack-chat-only) | after C-7 (docs describe the fully-as-built shape); could land any time after C-RS (docs-only) |
+| - | **REHEARSAL PROTOCOL** | repeatable scratch-repo rehearsal confirming the gate-(a) documented-silent behaviors; per-step user approval; archive-not-delete | n/a (manual procedure, not a commit) | Pack Chat / user (NOT a coder; agents never run live GH) | before C-8 |
+| 8 | **C-8** | real pack-repo Mode-2->3 flip via the PACED, mention-neutralized create loop, targeting the REAL (NEVER-archived) repo | `pack-only` | Pack Chat / user live RUN (per-step approval); coder only for any code/config edits | LAST; green rehearsal + explicit user approval |
+
+### 3.LF.2 C-RS — entry re-scope (FIRST)
+
+- **Commit subject:** `docs: v11 — BD-204 re-scope: lossless field-carrier fix + Option-A archive wording (pack-only)`
+- **File scope:** `backlog/BD-204.md` ONLY.
+- **Routing (flagged):** `backlog/BD-204.md` is a pack-chat-only file, BUT re-scoping ALREADY-LANDED entry content is a MAJOR edit per `pack-chat-minor-edits-only` (substantive edit to landed content, not a new-entry author and not a bookkeeping token). Therefore Pack Chat SCOPES `backlog/BD-204.md` INTO a `pack-coder` prompt; the coder applies the two changes mechanically. (Pack Chat scoping a pack-chat-only file into a coder prompt is the supported path, NOT a boundary violation.)
+- **Change recipe (design §5.a — verbatim text the architect specified):**
+  1. ADD ONE authoritative section to the entry body — the `LOSSLESS FIELD-CARRIER + GH-RULES FIX (user 2026-06-06/07 ...)` block (design §5.a quotes it in full: the gap, the verbatim-body-blob fix, SIZE/PORTABILITY/OPERATIONAL/GO-FORWARD-GUARDS/CI lines). Insert it as a new field block; do NOT rewrite other field lines.
+  2. REPLACE the `Scope:` line's `Dogfood-sequence gated (scratch-repo proof -> archive -> real flip) per user direction.` (currently `backlog/BD-204.md:20`) with the SETTLED Option-A wording (design §5.a): `Dogfood-sequence gated (REPEATABLE scratch-repo proof — as many throwaway scratch repos as needed, each ARCHIVED at end + a manual-delete recommendation to the user — then, on a green rehearsal + explicit user approval, flip the REAL (never-archived, stays-editable) pack repo) per user direction.`
+  3. Surface the IMPLEMENTATION CARRY-FORWARD line (Deferred forward-encode) as a NOTE — already landed (`_tmf_labels_for_entry` `Deferred -> status:deferred`); do NOT re-open.
+- **Per-commit verification (FULL unattended battery — see 3.LF.9):** `python3 scripts/validate-pack.py` (green; Check 34 cross-reference-integrity unaffected) + the FULL workflow battery (3.LF.9). No `scripts/` touched -> NO manifest regen. Edit-in-place (targeted field-block insert + the one `Scope:` line replace), NOT a full entry rewrite.
+- **Bounded review/fix cycle applies.**
+
+### 3.LF.3 C-4.5 — gz64 carrier + reverse emit rewrite + size + neutralization + provider caps (CODE+TESTS+MANIFEST ONLY)
+
+- **Commit subject:** `feat: v11 — BD-204 field-faithful gz64 body-blob carrier + verbatim emit rewrite + size budget + autolink neutralization (pack-only)`
+- **File scope (by path + symbol):**
+  - `scripts/lib/tracker-migrate-forward.sh`:
+    - `_tmf_parse_backlog_file` — ADD `raw_body` (verbatim captured span = lines 2..EOF, the bold-header line + every field/prose line; no re-parse, no `parse_id_list`, no continuation folding) to the entry object.
+    - `tmf_compose_issue_body` — ADD a 6th DEFAULTED param `raw_body` (`${6:-}` so the phase 4-arg call still works); emit ONE marker `<!-- pack-entry-body-gz64: <base64(python3 gzip mtime=0(raw_body))> -->` alongside the existing pack-id/template_version/pack-version trio; ENFORCE the §3.3c size budget on the ACTUAL composed-body byte length vs the active provider's `provider_body_limit - SAFETY_MARGIN` (STORED-BYTE axis) -> FAIL LOUD with the entry id + byte count, NEVER truncate; APPLY the §3.3d autolink neutralization of the VISIBLE H2 PROJECTION ONLY (PINNED inline-code-span variant — wrap any projected value containing `#NNN`/bare-`@`/bare-commit-SHA/bare-URL in backticks, longer fence if the value already has a backtick; blob UNTOUCHED). The H2 sections STILL emit (advisory).
+    - BD call site (`tmf_compose_issue_body "$pack_id" ... "$file_symbol"`, currently `:901`) — pass the entry's `raw_body` as the 6th arg. Phase call site (currently `:959`) — pass NOTHING (relies on `${6:-}`).
+  - `scripts/lib/tracker-migrate-reverse.sh`:
+    - `tracker_migrate_reverse_reconstruct` — read the `pack-entry-body-gz64` marker -> python3 base64-decode + gunzip -> `raw_body` on the reconstructed object; FAIL LOUD on absent/malformed/invalid-gzip/CRC-fail (`corrupt-blob: issue #N ...; reverse aborted`), NEVER silent-empty.
+    - `_tmr_emit_pack_tree` — REWRITE the pack branch to write `pe_backpointer_line` (line 1, derived) + `raw_body` (lines 2..EOF, verbatim from the blob); DELETE the dead `extra = e.get("extra_fields", None)` read (`:758`) + its `[label,value]` render loop + the `Blockers: None`/`Unblocks: None`/`Resolved: n/a` injection (the lossy fixed-order projection). The CLIENT (`surface != "pack"`) branch / `_tmr_emit_backlog` is UNTOUCHED (BD-207).
+  - `scripts/lib/tracker-provider.sh` + `tracker-provider-gh.sh` — DECLARE `provider_body_limit` (GH 65536) + `provider_body_storage_format` (`raw_text`) + `provider_min_write_interval_s` (1) + `provider_writes_per_hour_max` (500), alongside the existing capability block. The migrator reads the ACTIVE provider's `provider_body_limit` (no hardcoded 65536 in the migrator); FAIL LOUD on a `rich_text_normalizing` backend.
+  - `scripts/lib/tracker-migrate-forward.sh` — PACING GATE in the create loop (between successive `provider_create` calls, `:911`/`:965`): `sleep provider_min_write_interval_s` before each create after the first; HONOR `retry-after` on a 403/429 (the provider already classifies the error; the loop now BACKS OFF, never tight-retries).
+  - Tests (lock-step, enumerate-encoding-surfaces): `scripts/tests/tracker-migrate-forward-test.sh` (assert the gz64 blob appears + decodes; assert the size-overflow path FAILs loud on a synthetic over-limit entry; assert the H2 neutralization wraps the trigger value + the blob decodes verbatim; assert the pacing sleeps >= interval via a test seam + honors retry-after on a simulated 429), `scripts/tests/tracker-migrate-reverse-test.sh` (assert the blob decodes + the pack emit writes it back verbatim incl. a no-Blockers entry with NO injected `None`; corrupt-blob fail-loud), `scripts/tests/tracker-migrate-roundtrip-test.sh` + `scripts/tests/fixtures/roundtrip/bd-v11.0/BACKLOG.md` (add an entry with top-level drop-set fields + a prose block + no Blockers; byte-faithful round-trip), `scripts/tests/tracker-provider-test.sh` (GH declares `provider_body_limit=65536`; a smaller-limit mock triggers the loud-fail at its bound).
+  - **S-2 chain-doc corrections are NOT in this commit (OQ-2 RESOLVED):** they ship as the separate C-DOCS `docs:` commit (3.LF.8). C-4.5 is code+tests+manifest ONLY — no `maintenance-docs/` edit here (keeps the carrier-code diff clean).
+  - `test-fixtures/manifest.txt` — regen if non-empty (scripts/ touched).
+- **Per-commit verification (FULL unattended battery, 3.LF.9):** `python3 scripts/validate-pack.py` + the FULL workflow battery, with EMPHASIS on `tracker-migrate-forward-test.sh` + `tracker-migrate-reverse-test.sh` + `tracker-migrate-roundtrip-test.sh` + `tracker-provider-test.sh` + `test-v11-realistic-ot.sh` (banner-pinning). Manifest regen.
+- **Keyword:** `pack-only`. ALL touched paths are pack-side (`scripts/`, `maintenance-docs/`) — NO `project-template/`, NO `supporting-docs/`. CLEAN.
+- **Bounded review/fix cycle applies.**
+
+### 3.LF.4 C-3 amendment — tracker-edit.sh blob+H2 sync + normalization-tolerant comparator
+
+- **Commit subject:** `feat: v11 — BD-204 tracker-edit syncs gz64 blob + H2 on every update; normalization-tolerant divergence comparator (pack-only)`
+- **File scope (by path + symbol):**
+  - `scripts/lib/tracker-edit.sh` — `tracker_edit_entry` / its body composer (currently builds the `provider_update` payload at `:212`-`:237`): regenerate BOTH the H2 sections AND the `pack-entry-body-gz64` blob from the SAME in-memory entry object on every `provider_update`, so a tracker-side edit updates both representations atomically (it must call the C-4.5 blob-aware composer).
+  - `scripts/lib/tracker-migrate-reverse.sh` — the §3.3a (ii) divergence comparator: on reading an Issue, RECOMPUTE the H2 projection from the blob and COMPARE to the Issue's H2; on mismatch FAIL LOUD (`divergence: issue #N ... reconcile before reverse`). The comparator is NORMALIZATION-TOLERANT (N-2): canonicalize `\r\n`/`\r` -> `\n`, strip per-line trailing whitespace, single trailing-newline normalize (`rstrip('\n') + '\n'`) — EXACTLY GH's documented munging, NO broader (no interior-whitespace/case/Unicode/content change), so it neither false-positives an untouched-but-GH-normalized body nor false-negatives a real edit. `--force` (existing refusal-unless-force idiom) may override to blob-wins.
+  - Tests: the closest Mode-3 edit test (coder greps `scripts/tests/` for the `tracker_edit` / `provider_update` path) — assert blob and H2 agree after `provider_update`; assert the comparator MATCHES an untouched-but-CRLF+trailing-space body (no false-positive) and MISMATCHES a one-word content edit (caught).
+  - `test-fixtures/manifest.txt` — regen if non-empty.
+- **Per-commit verification:** `python3 scripts/validate-pack.py` + FULL battery (3.LF.9). Manifest regen.
+- **Keyword:** `pack-only`.
+- **Bounded review/fix cycle applies.**
+
+### 3.LF.5 C-4.6 — the CI faithfulness guard
+
+- **Commit subject:** `feat: v11 — BD-204 check_migrator_field_faithfulness: byte-faithful + size + title + control-char guard on the real tree (pack-only)`
+- **File scope (by path + symbol):**
+  - `scripts/validate-pack.py` — NEW `check_migrator_field_faithfulness` (the NEXT FREE registry integer — 49 today; coder reads the registry, NEVER hardcodes) + its registration in `main()`. **GUARD-SEAM HARD CONSTRAINT (OQ-4 RESOLVED): the check SHELLS OUT to the REAL migrator functions via a bash sub-invocation — it drives the genuine `tracker-migrate-forward.sh` / `tracker-migrate-reverse.sh` functions (no network), and NEVER re-implements the gzip+base64 codec (or any parse/compose/emit step) in Python. A second codec could drift from the real one and FALSE-PASS a lossy migration; the guard must exercise the exact production code path.** For each `backlog/BD-*.md` against the REAL tree: (1) byte-faithful gz64 round-trip — snapshot the ORIGINAL body span (lines 2..EOF, `pe_strip_backpointer_stdin`); drive forward `_tmf_parse_backlog_file` -> `tmf_compose_issue_body` -> reverse `tracker_migrate_reverse_reconstruct` -> `_tmr_emit_pack_tree` (pack branch) IN THE REAL LIBS via the bash sub-invocation (no `gh`/network); assert RECONSTRUCTED == ORIGINAL byte-for-byte; FAIL naming the entry + a unified diff. (2) SIZE — assert `len(composed Issue body)` (the SAME composed-body measurement the forward composer + the C-7 size leg use, computed by the real composer) within `provider_body_limit - SAFETY_MARGIN`. (3) TITLE — ID-prefixed bold-header title <= 256 (R-TITLE-1). (4) CONTROL-CHAR — no NUL/CR/C0-other-than-tab/LF in any body (R-BODY-6).
+  - `.github/workflows/validate-pack.yml` — WIRE the new per-check test (`bash scripts/tests/test-validate-pack-check-<NN>-field-faithfulness.sh`). MANDATORY in THIS commit or Check 42 (`check_ci_workflow_wires_per_check_tests`, no exemption) goes RED.
+  - `scripts/tests/test-validate-pack-check-<NN>-field-faithfulness.sh` (NEW; follow the existing `test-validate-pack-check-NN.sh` naming convention; verify `find . -name '<file>' -not -path './.git/*'` empty before naming) — POSITIVE (all-211 byte round-trip PASSES) + NEGATIVE (a synthetic lossy/injecting emit FAILS; a synthetic over-limit body FAILS the size leg; an over-length title FAILS; a control-byte body FAILS).
+  - `test-fixtures/manifest.txt` — regen if non-empty.
+- **Per-commit verification:** `python3 scripts/validate-pack.py` (the new check GREEN on the C-4.5-fixed tree; Check 42 GREEN with the wiring) + FULL battery (3.LF.9) + `bash scripts/tests/test-validate-pack-check-<NN>-field-faithfulness.sh`. Manifest regen.
+- **Keyword:** `pack-only`.
+- **Ordering (HARD):** AFTER C-4.5 — against the pre-fix lossy emit the byte leg FALSE-FAILS 20 no-Blockers entries (design §4.2 EE); the guard is unshippable until the C-4.5 emit rewrite lands.
+- **Bounded review/fix cycle applies.**
+
+### 3.LF.6 C-4.7 — schema-doc reconciliation
+
+- **Commit subject:** `docs: v11 — BD-204 backlog/_rules.md field-faithful migration + Position/template contradiction fix (pack-only)`
+- **File scope:** `backlog/_rules.md` ONLY (the entry-contract SSOT; currently names `Position:` as optional at `:49` while METHODOLOGY Part 7 does not).
+- **Routing (flagged):** `backlog/_rules.md` is pack-chat-only, BUT this is a CONTRACT change to ALREADY-LANDED content -> MAJOR per `pack-chat-minor-edits-only` -> route to **pack-coder** (Pack Chat scopes the pack-chat-only file into the prompt).
+- **Boundary (flagged):** the reconciliation stays on `backlog/_rules.md` (pack-ops surface). `supporting-docs/METHODOLOGY.md` is NOT edited — it ships to clients (`supporting-docs/`), and editing it forfeits the `pack-only` keyword and crosses the boundary (design R9 / §3.5; `boundary-investigation-precedes-pack-defaults`). The 3 project-side `_rules.md` under `project-template/docs/project/` are NOT touched (diverge until BD-206/207 — correct-by-design, G-3).
+- **Change recipe (design §3.5):** state in `backlog/_rules.md` that the migrator is FIELD-FAITHFUL (carries every top-level field verbatim) and that the template enumerates the COMMON fields while extension fields (Target, Position, ...) are admitted + preserved; stop enumerating a divergent optional-field list that contradicts the template. Edit-in-place (targeted), NOT a full rewrite.
+- **Per-commit verification:** `python3 scripts/validate-pack.py` (Check 34 cross-reference-integrity green; no validator pins the old `_rules.md` field-list text — coder grep-confirms) + FULL battery (3.LF.9). No `scripts/` touched -> NO manifest regen.
+- **Keyword:** `pack-only`.
+- **Bounded review/fix cycle applies.**
+
+### 3.LF.7 C-7 REBUILD — the live oracle, rebuilt
+
+- **Commit subject:** `feat: v11 — BD-204 rebuild lossless oracle: drop-set fixtures + operational-rule legs + archive-disposal + credential preflight (pack-only)`
+- **File scope (by path):**
+  - `scripts/tests/tracker-bd204-lossless-roundtrip-test.sh` (REBUILD the parked file).
+  - `scripts/tests/fixtures/tracker-bd204-lossless/BACKLOG.md` (+ `tracker.toml`) — ADD a fixture entry carrying TOP-LEVEL drop-set fields (`Target:`/`Position:`/`Scope:`/`Problem:`/`References:`/`Out of scope:`) interleaved with carried fields (order-faithful stress) + a NO-`Description:` entry (worst-case cohort) + a 4-form autolink entry (`#NNN`/bare-`@`/bare-commit-SHA/bare-URL); keep the BD-903 sub-blocks-inside-Description case.
+  - `test-fixtures/manifest.txt` — regen if non-empty.
+- **Change recipe (design §5.c) — the rebuilt legs:**
+  1. **Drop-set + no-Description content-faithfulness leg** — pre-fix FAIL, post-fix clean; truly exercises the drop.
+  2. **Size leg** — a near-budget fixture; assert the composer's overflow fail-loud fires above `provider_body_limit - margin` on the ACTUAL composed body (SAME measurement as the C-4.6 guard + the forward composer); a within-budget entry passes.
+  3. **Pacing leg** — assert the create loop sleeps >= `provider_min_write_interval_s` between creates (test seam / fake clock — no real CI wait) + honors `retry-after` on a simulated 429.
+  4. **Autolink-neutralization leg** — composed H2 wraps each 4-form trigger value in an inline-code span (NO live link of ANY form) AND the gz64 blob still decodes verbatim.
+  5. **Corrupt-blob leg** — feed a deliberately corrupted `pack-entry-body-gz64` marker; reverse FAILS LOUD (never emits an empty/partial body).
+  6. **Normalization-comparator leg** — an untouched-but-GH-normalized body (CRLF + trailing spaces) -> comparator MATCHES (no false-positive); a one-word edit -> MISMATCHES (caught).
+  7. **CREDENTIAL-CAPABILITY PREFLIGHT leg (design §5.f)** — the FIRST live action (before any `gh repo create`): verify the credential can CREATE repos, WRITE issues, and ARCHIVE — and record that DELETE is NOT required; FAIL LOUD on any MISSING required permission (`credential-preflight: token missing <permission> ...; aborting before any live write`); optional `gh --version` floor. The default-SKIP guard (`PACK_TRACKER_LIVE_GH` + `gh auth status`) STAYS.
+  8. **ARCHIVE-not-delete disposal (design §5.c; reference_gh_pat_no_delete)** — REPLACE the parked test's `gh repo delete` + assert-gone with `gh repo archive "$SCRATCH_REPO" --yes` + assert `gh repo view --json isArchived` == true; trap ARCHIVES on FAILURE too (never leave a WRITABLE orphan); the run RECOMMENDS manual deletion (`RECOMMEND: manually delete the scratch repo <slug> ...`); a grep-guard asserts the test source contains NO `gh repo delete`.
+  9. **REPEATABLE multi-rehearsal** — each run provisions a uniquely-named throwaway scratch repo (the existing `pack-bd204-oracle-$$-<ts>` pattern), archives at end, recommends manual delete; no single-shot assumption.
+  10. **CI-execution model** — manual-only + default-SKIP STAYS; the unit-level legs (size/pacing/neutralization/corrupt-blob/normalization — no live GH) ALSO run in the unattended battery (the in-process check or a mock-based unit test), so CI tests them even though the full live round-trip stays manual.
+- **Per-commit verification (TWO runs):** Run 1 (unattended CI) — `python3 scripts/validate-pack.py` + the FULL battery (3.LF.9); with no `PACK_TRACKER_LIVE_GH` the live oracle SKIPs (`exit 0`); the unit-level legs run via the mock/in-process path. Run 2 (MANUAL live) — `PACK_TRACKER_LIVE_GH=1 bash scripts/tests/tracker-bd204-lossless-roundtrip-test.sh` with per-step `gh` approval (this is the REHEARSAL, 3.LF.10). Manifest regen.
+- **Keyword:** `pack-only`.
+- **Bounded review/fix cycle applies** to the test/fixture code; the live RUN is the separate rehearsal.
+
+### 3.LF.8 C-DOCS — S-2 corrections owed to the COMMITTED chain docs (own `docs:` commit; OQ-2 RESOLVED)
+
+- **Commit subject:** `docs: v11 — BD-204 reconcile committed chain docs to gz64 carrier (pack-only)`
+- **Decision (OQ-2 RESOLVED):** the S-2 corrections are their OWN separate `docs:` commit, NOT folded into C-4.5. C-4.5 is code+tests+manifest only. Rationale: clean diff isolation (the carrier-code review is not diluted by prose-doc edits) and the chain docs are pure `maintenance-docs/` with no code dependency, so the commit lands green independently.
+- **File scope:** `maintenance-docs/v11-implementation/ARCHITECTURE-BD-204.md` (+ `ARCHITECTURE-BD-204-POST-BD211-RECON.md` attested-no-change; `PLAN-BD-204.md` already reconciled). NO `scripts/` -> NO manifest regen.
+- **Routing:** the chain docs are NOT pack-chat-only -> a `pack-coder` applies them under the bounded review/fix cycle.
+- **Change recipe (design §5.d / sweep S-2; `architect-doc-reality-reconciliation`):**
+  - `ARCHITECTURE-BD-204.md` — §2.4.1/§2.4.2/§2.11/§3.1 carrier text -> gz64 verbatim-body blob; the "zero-orphaned" claim re-grounded on the byte-faithful blob + the new faithfulness check; ADD the size budget (stored-byte axis), pacing, mention-neutralization, `provider_body_storage_format`; §3.4/§2.12 archive wording -> Option-A scratch-disposal. Named by §/symbol, never line number.
+  - `PLAN-BD-204.md` (this file) — already reconciled by the §3.LF amendment; the coder need NOT re-edit it (flag in the C-DOCS prompt to avoid a double edit).
+  - `ARCHITECTURE-BD-204-POST-BD211-RECON.md` — ATTESTED no rule-driven change (S-2.3); leave as accurate history.
+- **Slotting (why LAST):** C-DOCS lands AFTER C-7 (before the rehearsal / C-8) so the docs describe the fully-as-built shape (carrier + guard + rebuilt oracle). Because it touches only `maintenance-docs/` it has no code dependency and could in principle land any time after C-RS; LAST is cleanest — the reconciled docs then reflect the final realized state, not an intermediate one.
+- **Per-commit verification:** `python3 scripts/validate-pack.py` (Check 40 bare-`pack-ops/`-ref scanner + Check 43 + cross-reference checks green on the edited maintenance-docs) + the FULL battery (3.LF.9). No `scripts/` -> no manifest regen.
+- **Keyword:** `pack-only`.
+- **Bounded review/fix cycle applies.**
+
+### 3.LF.9 The FULL unattended CI battery (per-commit verification — verify-full-ci-suite)
+
+Per `verify-full-ci-suite`, EACH commit's verification runs `python3 scripts/validate-pack.py` AND the ENTIRE unattended battery enumerated from `.github/workflows/validate-pack.yml` — not a named subset. The battery (from the workflow `run:` lines at HEAD `1a8e32e`) is:
+
+`tracker-migrate-reverse-test.sh`, `tracker-migrate-roundtrip-test.sh`, `test-tracker-phase-task.sh`, `test-tracker-links.sh`, `test-tracker-cycle-check.sh`, `tracker-errors-test.sh`, `tracker-config-schema-test.sh`, `recommendation-state-schema-test.sh`, `test-per-entry.sh`, `test-validate-pack-checks-32-33-34.sh`, `test-validate-pack-checks-36-37-38.sh`, `test-validate-pack-check-39.sh`, `test-validate-pack-check-40.sh`, `test-validate-pack-check-41.sh`, `test-validate-pack-check-18.sh`, `test-validate-pack-check-16.sh`, `test-validate-pack-check-19.sh`, `test-validate-pack-check-42.sh`, `test-validate-pack-check-43.sh`, `test-validate-pack-check-44.sh`, `test-validate-pack-check-45.sh`, `test-validate-pack-check-46.sh`, `test-validate-pack-check-removed-doc-advisory.sh`, `tracker-bd129-gh-repo-test.sh`, `tracker-bd130-doctor-wired-test.sh`, `tracker-bd132-race-test.sh`, `tracker-bd133-header-preservation-test.sh`, `tracker-bd134-close-retry-test.sh`, `recommendation-test.sh`, `pack-help-test.sh`, `test-customization-preserve.sh`, `test-init-project.sh`, `test-migrate-v10-to-v11.sh`, `test-migrate-v10-to-v11-dry-run.sh`, `test-migrate-v10-to-v11-gates.sh`, `test-migrate-v10-to-v11-decompose.sh`, `test-v11-realistic-ot.sh`, `template-translations-test.sh`, `template-version-test.sh`, `test-issue-forms.sh` — PLUS, once C-4.5 lands, `tracker-migrate-forward-test.sh` + `tracker-provider-test.sh` (the coder confirms they are wired or wires them), and once C-4.6 lands, `test-validate-pack-check-<NN>-field-faithfulness.sh` (wired by C-4.6, enforced by Check 42).
+
+> **Empirical-Evidence Block (the battery list is the workflow's `run:` set, not a subset — verify-full-ci-suite).**
+> `CMD`: `grep -nE 'run: bash scripts/tests/' .github/workflows/validate-pack.yml`
+> `OUT`: the ~41 `run: bash scripts/tests/<file>` lines enumerated above (plus the `validate-pack.py` step). `AT`: HEAD `1a8e32e`, 2026-06-07. `INTERP`: the per-commit battery = this complete list (the live oracle is the SEPARATE manual rehearsal, default-SKIP in the unattended run). `test-v11-realistic-ot.sh` is on EVERY commit (banner-pinning — a clean `validate-pack` can still go CI-RED on a stale banner assertion). `CONCL`: SUPPORTED.
+
+### 3.LF.10 THE REHEARSAL PROTOCOL (gate (a) — manual, before C-8)
+
+The repeatable scratch-rehearsal empirically confirms the documented-silent platform behaviors the unattended battery CANNOT (they need a live repo) BEFORE the real flip. It is a manual, user-gated procedure run via the rebuilt C-7 oracle (3.LF.7) — NOT a coder spawn, NOT a CI job; agents NEVER run live GH on their own authority.
+
+- **Who runs it:** Pack Chat / the user, with PER-STEP user approval on every `gh` mutation (create / issue-write / archive). The `gh repo create`/`gh repo archive` are surfaced and approved one at a time.
+- **How:** `PACK_TRACKER_LIVE_GH=1 bash scripts/tests/tracker-bd204-lossless-roundtrip-test.sh` against an authenticated `gh`. As MANY throwaway scratch repos as needed; each uniquely-named; each ARCHIVED at end (NEVER deleted by tooling — `reference_gh_pat_no_delete`); a manual-delete recommendation surfaced.
+- **What it must confirm (design §11.2 known-unknown -> leg map) BEFORE C-8:** (DS-1) stored byte-verbatim — read the stored Issue body back, decode the gz64 blob, assert byte-identical; (DS-2) web-edit normalization — edit the body via API/web, re-read, the §3.3a comparator does NOT false-positive an untouched-but-normalized body AND DOES catch a real edit; (DS-3) size near-budget — a near-`provider_body_limit-margin` entry succeeds, one over -> GH 422; (KU-OPS-2/3) paced create — a paced forward create at >=1s spacing trips NO 403/429 and no abuse-flag; (KU-OPS-6) autolink-render — the 4-form fixture renders NO live link; (KU-CRED) the preflight verifies create+issues+archive (NOT delete) and the disposal archives + asserts `isArchived` + recommends manual delete.
+- **Pass criterion:** ALL legs green on a clean rehearsal run, with the scratch repo archived (read-only) at end and the manual-delete recommendation surfaced.
+- **Output -> C-8 gate:** a GREEN rehearsal is a PRECONDITION for C-8; Pack Chat surfaces the rehearsal artifacts + the flip plan to the user, who approves the real flip explicitly before it fires.
+
+### 3.LF.11 C-8 — the real pack-repo Mode-2->3 flip (GATED — last; scope additions)
+
+- **Commit subject:** `feat: v11 — BD-204 dogfood flip: pack backlog → GH Issues (Mode 3) (pack-only)` (the existing §3 C-8 subject).
+- **File scope:** as the existing §3 C-8 (the live `tracker.toml`, the regenerated `/backlog/*.md` + `_toc.md`, `.pack-tracker/id-map.json`), PLUS the scope ADDITIONS below.
+- **Scope additions (design §5.b C-8):**
+  - The forward run MUST use the §3.3d PACED create loop (>=1s between creates; honor retry-after) so the 211-issue create stays under GH's 80/min + 500/hr secondary cap and never trips abuse-flagging on the personal account.
+  - The forward run MUST use the §3.3d mention-neutralized composer (no spurious `#NNN` backlinks / `@` notifications on the live repo).
+  - The flip MUST target the REAL (NEVER-archived, stays-editable) pack repo — the BD-204.md `Scope:` "archive" step is teardown of the THROWAWAY scratch repo, not an operate-on-archived step (archived repos are read-only — any write fails outright). The REAL repo is NEVER archived.
+- **GATING (hard):** (1) a GREEN rehearsal (3.LF.10); (2) EXPLICIT user approval for the real flip (heavyweight, infrequent); (3) the live RUN is performed by Pack Chat / the user with PER-STEP approval — NOT a `pack-coder` running `gh` against the real repo on its own authority (agents never run state-changing live ops without per-action approval). The coder's role is limited to any code/config edits.
+- **Per-commit verification:** `python3 scripts/validate-pack.py` (Check 29' soft-passes the live no-mirror config; Check 32' green; Check 33 green on the regenerated `_toc.md`; the NEW faithfulness check green) + FULL battery (3.LF.9) + a post-flip lossless spot-check (count + identity + status + the byte-faithful oracle against the REAL tree-from-tracker vs the pre-flip tree). Manifest regen if any v11-surface dir is in the diff.
+- **Keyword:** `pack-only`.
+- **Bounded review/fix cycle applies** to any code/config edits; the live RUN is user-gated.
+
+### 3.LF.12 Resolved questions (user decisions, 2026-06-07)
+
+- **OQ-1 — RESOLVED: the fix stays IN BD-204; NO discrete BD-212.** It completes BD-204's own lossless-reversibility requirement (an acceptance-criterion gap in the landed C-1..C-6), so it is not new scope — the C-RS re-scope encodes it inside BD-204. Rationale: a fix to a BD's own un-met acceptance criterion belongs to that BD, not a new ID; opening BD-212 would fragment the launch-gate audit trail. (The BD-212 alternative is removed.)
+- **OQ-2 — RESOLVED: the S-2 committed-chain-doc corrections are their OWN separate `docs:` commit (C-DOCS), NOT folded into C-4.5.** C-4.5 is now code+tests+manifest only. Rationale: keeping the maintenance-docs reconciliation in a distinct commit gives clean diff isolation (the carrier code review is not diluted by prose-doc edits) and the chain docs are pure `maintenance-docs/` with no code dependency, so the commit lands green independently. Slotting: see C-DOCS in 3.LF.8 + the table (slotted LAST, after C-7, before the rehearsal/C-8 — it reconciles docs to the fully-as-built carrier+guard+oracle, so it reads the complete realized state; it can in principle land anywhere after C-RS since it touches only docs, but last is cleanest because the docs then describe the final shape).
+- **OQ-3 — RESOLVED: KEEP both the blob AND the H2 projection; the C-3 amendment STAYS as its own commit.** The readable GH Issue (H2 sections) + the lossless blob are both retained (design §3.3 B-3); there is NO blob-only simplification. `tracker-edit.sh`'s blob+H2 sync + the normalization-tolerant divergence comparator therefore remain necessary and ship as the standalone C-3 amendment commit (3.LF.4). Rationale: blob-only would sacrifice the human-readable Issue B-3 deliberately preserves; keeping both requires the sync, which is its own concern (the Mode-3 edit path), not the migrator carrier — so a standalone commit, not a fold into C-4.5.
+- **OQ-4 — RESOLVED: the C-4.6 guard SHELLS OUT to the REAL migrator functions; NO Python codec re-implementation.** HARD CONSTRAINT pinned in the C-4.6 recipe (3.LF.5): the check drives the real `tracker-migrate-forward.sh` / `tracker-migrate-reverse.sh` functions via a bash sub-invocation (no network), NEVER a re-coded gzip+base64 in Python. Rationale: a second codec could drift from the real one and FALSE-PASS a lossy migration — the guard must exercise the exact production code path, so its byte-faithfulness verdict is about the shipped migrator, not a parallel re-implementation.
 
 ---
 
