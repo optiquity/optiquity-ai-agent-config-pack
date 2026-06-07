@@ -555,6 +555,28 @@ print(m.group(1) if m else "")')
     resolution=$(printf  '%s' "$body" | _tmr_extract_section "Resolution")
     file_symbol=$(printf '%s' "$body" | _tmr_extract_section "File / Symbol")
 
+    # BD-204 §3.3: decode the verbatim-body-blob carrier. The
+    # pack-entry-body-gz64 marker is AUTHORITATIVE for the pack-surface emit
+    # (the H2 sections above are the advisory projection). Codec PINNED to
+    # python3 (base64-decode + gunzip, mtime-agnostic). Corrupt-blob handling
+    # is FAIL-LOUD, never silent-empty: an absent marker yields an empty
+    # raw_body (legacy/phase issues with no blob — the emit then falls back to
+    # the projection), but a PRESENT-but-malformed marker (bad base64, not
+    # valid gzip, CRC fail) ABORTS the reverse — a silent-empty would be the
+    # exact lossy class this carrier exists to kill.
+    local raw_body issue_num_for_err
+    issue_num_for_err=$(printf '%s' "$issue" | jq -r '.number // .id // "?"')
+    # FAIL-LOUD on a present-but-corrupt blob; the decoder writes the typed
+    # error to stderr and returns non-zero, which aborts reverse here.
+    if ! raw_body=$(printf '%s' "$body" | _tmr_decode_body_blob "$issue_num_for_err"); then
+        return 1
+    fi
+    # Trailing-newline guard: `$(...)` strips trailing newlines, but raw_body
+    # ends with exactly one `\n` (the per-entry file's final newline). The
+    # decoder's sentinel X (always appended) is stripped here, preserving the
+    # exact bytes the verbatim emit must write back.
+    raw_body="${raw_body%X}"
+
     local sub_issue_parent issue_number first_class_edges
     sub_issue_parent=$(printf '%s' "$issue" | jq -r '.parent // ""')
     issue_number=$(printf  '%s' "$issue" | jq -r '.number // ""')
@@ -582,6 +604,7 @@ print(m.group(1) if m else "")')
         --arg description "$description" \
         --arg context "$context" \
         --arg resolution "$resolution" \
+        --arg raw_body "$raw_body" \
         '{
             pack_id: $pack_id,
             title: $title,
@@ -594,8 +617,61 @@ print(m.group(1) if m else "")')
             file_symbol: $file_symbol,
             description: $description,
             context: $context,
-            resolution: $resolution
+            resolution: $resolution,
+            raw_body: $raw_body
         }'
+}
+
+# BD-204 §3.3: decode the pack-entry-body-gz64 marker from an Issue body
+# (stdin). Codec PINNED to python3 (base64-decode + gunzip). Emits the
+# decoded verbatim raw_body on stdout FOLLOWED BY a single sentinel `X`
+# (the caller strips it; it preserves any trailing newline through `$(...)`
+# capture). FAIL-LOUD contract:
+#   - marker ABSENT          → emit just the sentinel, return 0 (legacy/phase
+#                              fallback: empty raw_body, no blob to decode).
+#   - marker PRESENT-but-bad → abort (return 1) with a corrupt-blob error;
+#                              NEVER emit an empty/partial body.
+# $1 = issue number (for the error message).
+_tmr_decode_body_blob() {
+    local issue_num="$1"
+    local body
+    body=$(cat; printf X); body="${body%X}"
+    local payload
+    payload=$(printf '%s' "$body" \
+        | sed -nE 's/.*<!-- pack-entry-body-gz64:[[:space:]]*([A-Za-z0-9+/=]+)[[:space:]]*-->.*/\1/p' \
+        | head -1)
+    if [[ -z "$payload" ]]; then
+        # No base64 payload extracted. If the marker token IS present, it is
+        # malformed → fail loud; otherwise the blob is genuinely absent.
+        if printf '%s' "$body" | grep -q 'pack-entry-body-gz64'; then
+            tracker_error_emit "validation" \
+"corrupt-blob: issue #$issue_num pack-entry-body-gz64 failed to decode (no base64 payload); reverse aborted — NEVER emits an empty/partial entry body"
+            return 1
+        fi
+        # Genuinely absent — legacy/phase issue with no blob.
+        printf 'X'
+        return 0
+    fi
+    local decoded rc
+    decoded=$(printf '%s' "$payload" | python3 -c '
+import sys, base64, gzip, io
+data = sys.stdin.read().strip()
+try:
+    raw = base64.b64decode(data, validate=True)
+    out = gzip.GzipFile(fileobj=io.BytesIO(raw)).read()
+except Exception as exc:
+    sys.stderr.write(str(exc))
+    sys.exit(3)
+sys.stdout.buffer.write(out)
+sys.stdout.buffer.write(b"X")
+' 2>/dev/null)
+    rc=$?
+    if [[ "$rc" -ne 0 ]]; then
+        tracker_error_emit "validation" \
+"corrupt-blob: issue #$issue_num pack-entry-body-gz64 failed to decode (invalid base64/gzip/CRC); reverse aborted — NEVER emits an empty/partial entry body"
+        return 1
+    fi
+    printf '%s' "$decoded"
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -698,15 +774,23 @@ PYEOF
     rm -f "$entries_file"
 }
 
-# BD-204 C-4: emit the per-entry TREE for the PACK surface (no monolith).
-# For each reconstructed entry, write `<backlog_dir>/<pack-id>.md` via
-# pe_write_atomic with the line-1 per-entry back-pointer, then regenerate
-# `_toc.md` (DP-4). This is the no-monolith replacement for the pack-branch
-# call to _tmr_emit_backlog — the `# BACKLOG` monolith is never written on
-# the pack surface. The in-body `pack-extra-fields` named scalars
-# (`Target:`/`Position:`/etc., carried on the entry object as `extra_fields`)
-# render INLINE into the entry (§2.4.1); prose sub-blocks ride the body
-# verbatim. The client `else` branch still calls _tmr_emit_backlog (BD-207).
+# BD-204 C-4 / §3.3 (C-4.5): emit the per-entry TREE for the PACK surface
+# (no monolith). For each reconstructed entry, write
+# `<backlog_dir>/<pack-id>.md` via pe_write_atomic with the line-1 per-entry
+# back-pointer + the VERBATIM body span (lines 2..EOF) decoded from the
+# pack-entry-body-gz64 blob (carried on the entry object as `raw_body`), then
+# regenerate `_toc.md` (DP-4). This is the no-monolith replacement for the
+# pack-branch call to _tmr_emit_backlog.
+#
+# BD-204 §3.3 / §4.2 (A-1): the pack branch writes `raw_body` VERBATIM rather
+# than the fixed-order template projection. The old projection unconditionally
+# injected `Blockers: None` / `Unblocks: None` / `Resolved: n/a` and appended
+# extras LAST — false-failing the 20 no-Blockers entries and reordering fields.
+# The verbatim emit reproduces the original body BYTE-FOR-BYTE (back-pointer
+# stripped), so the round-trip is lossless. The dead `extra_fields` read +
+# its per-field render loop are DELETED (the abandoned per-field model; the
+# blob replaces them). The CLIENT (`surface != "pack"`) branch /
+# _tmr_emit_backlog is UNTOUCHED — BD-207 owns the client `# BACKLOG` monolith.
 #
 # $1 = entries JSON array, $2 = backend slug, $3 = backlog tree dir
 _tmr_emit_pack_tree() {
@@ -739,52 +823,12 @@ for e in entries:
     pid = e.get("pack_id", "")
     if not pid:
         continue
-    title  = e.get("title", "")
-    typ    = e.get("type", "TODO(version)")
-    status = e.get("status", "Open")
-    scope  = e.get("scope", "") or ""
-    sev    = e.get("severity", "") or ""
-    bl     = e.get("blockers", []) or []
-    ub     = e.get("unblocks", []) or []
-    fs     = e.get("file_symbol", "") or ""
-    desc   = e.get("description", "") or ""
-    ctx    = e.get("context", "") or ""
-    res    = e.get("resolution", "") or ""
-    # In-body pack-extra-fields named scalars (Target/Position/etc.),
-    # rendered INLINE (§2.4.1). Carried on the entry object as an ordered
-    # list of [label, value] pairs (or a dict); absent today until the
-    # reverse decode populates it — handled defensively so the tree emit
-    # is forward-compatible with the carrier landing.
-    extra = e.get("extra_fields", None)
-
-    lines = [f"**{pid} — {title}**", f"Type: {typ}", f"Status: {status}"]
-    if scope:
-        lines.append(f"Scope: {scope}")
-    if sev:
-        lines.append(f"Severity: {sev}")
-    lines.append("Blockers: " + (", ".join(bl) if bl else "None"))
-    lines.append("Unblocks: " + (", ".join(ub) if ub else "None"))
-    if fs:
-        lines.append(f"File/Symbol: {fs}")
-    if desc:
-        lines.append(f"Description: {desc}")
-    if ctx:
-        lines.append(f"Context: {ctx}")
-    if res:
-        lines.append(f"Resolution: {res}")
-    else:
-        lines.append("Resolved: n/a")
-    # Inline the named-scalar extra fields (Target/Position/...).
-    if isinstance(extra, dict):
-        pairs = list(extra.items())
-    elif isinstance(extra, list):
-        pairs = [(p[0], p[1]) for p in extra if isinstance(p, (list, tuple)) and len(p) == 2]
-    else:
-        pairs = []
-    for label, value in pairs:
-        lines.append(f"{label}: {value}")
-
-    body = "\n".join(lines).rstrip("\n") + "\n"
+    # BD-204 §3.3: the body is the VERBATIM captured span (lines 2..EOF)
+    # decoded from the pack-entry-body-gz64 blob. It already ends with the
+    # original file's single trailing newline. No re-projection, no injected
+    # Blockers/Unblocks/Resolved lines, no field reordering, no appended
+    # extras — the round-trip is byte-faithful.
+    body = e.get("raw_body", "") or ""
     sys.stdout.write(pid + "\t" + body + "\0")
 PYEOF
     rm -f "$entries_file"

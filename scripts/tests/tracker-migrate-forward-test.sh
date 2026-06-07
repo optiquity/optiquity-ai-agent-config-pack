@@ -222,6 +222,130 @@ else
     t_pass "2.6 Deferred does NOT fall through to status:open"
 fi
 
+# ─────────────────────────────────────────────────────────────────
+# 2.8 BD-204 §3.3 — verbatim-body-blob carrier (gz64 blob + size budget +
+#     autolink neutralization). Codec PINNED to python3 (mtime=0).
+# ─────────────────────────────────────────────────────────────────
+
+# 2.8.1 the gz64 blob appears alongside the marker trio AND decodes verbatim.
+bd204_raw=$'**BD-900 — Carrier fixture**\nType: TODO(version)\nStatus: Open\nDescription: line one\n\nan interior blank line and a paren ) and a fence ```\nResolved: n/a\n'
+body_blob=$(tmf_compose_issue_body "BD-900" "line one" "" "" "" "$bd204_raw")
+assert_contains "2.8.1 body has gz64 blob marker" "$body_blob" "<!-- pack-entry-body-gz64:"
+# Extract + decode the blob; assert byte-identical to the source raw_body.
+blob_payload=$(printf '%s' "$body_blob" | sed -nE 's/.*<!-- pack-entry-body-gz64:[[:space:]]*([A-Za-z0-9+/=]+)[[:space:]]*-->.*/\1/p' | head -1)
+decoded_raw=$(printf '%s' "$blob_payload" | python3 -c 'import sys,base64,gzip,io; sys.stdout.buffer.write(gzip.GzipFile(fileobj=io.BytesIO(base64.b64decode(sys.stdin.read()))).read()); sys.stdout.buffer.write(b"X")')
+decoded_raw="${decoded_raw%X}"
+if [[ "$decoded_raw" == "$bd204_raw" ]]; then
+    t_pass "2.8.1 gz64 blob decodes BYTE-IDENTICAL to raw_body (interior blank/paren/fence preserved)"
+else
+    t_fail "2.8.1 gz64 blob decodes BYTE-IDENTICAL to raw_body" "decoded differs"
+fi
+
+# 2.8.2 mtime=0 determinism: two composes of the same entry yield the same blob.
+body_blob2=$(tmf_compose_issue_body "BD-900" "line one" "" "" "" "$bd204_raw")
+blob2=$(printf '%s' "$body_blob2" | sed -nE 's/.*<!-- pack-entry-body-gz64:[[:space:]]*([A-Za-z0-9+/=]+)[[:space:]]*-->.*/\1/p' | head -1)
+assert_eq "2.8.2 gz64 blob is deterministic (mtime=0)" "$blob_payload" "$blob2"
+
+# 2.8.3 phase-style 4-arg compose emits NO blob marker (no raw_body source).
+body_phase=$(tmf_compose_issue_body "phase-1" "Phase epic" "" "")
+if printf '%s' "$body_phase" | grep -q "pack-entry-body-gz64"; then
+    t_fail "2.8.3 4-arg compose omits blob marker" "blob unexpectedly present"
+else
+    t_pass "2.8.3 4-arg compose omits blob marker (DEFAULTED 6th param)"
+fi
+
+# 2.8.4 §3.3d autolink neutralization wraps the H2 PROJECTION trigger value in
+#       an inline-code span (NO live autolink) AND the blob decodes verbatim.
+tg_raw=$'**BD-901 — Autolink fixture**\nType: TODO(version)\nStatus: Open\nResolved: commit 08f7158 and #123 and @objc and https://x.test/y\n'
+body_tg=$(tmf_compose_issue_body "BD-901" "see commit 08f7158 and #123 and @objc and https://x.test/y" "" "" "" "$tg_raw")
+# The visible H2 Description value must be wrapped in a code span (backtick).
+desc_proj=$(printf '%s' "$body_tg" | awk '/^## Description/{getline;getline;print;exit}')
+assert_contains "2.8.4 H2 projection wraps trigger value in code span" "$desc_proj" '`'
+# The blob still decodes to the verbatim original tokens.
+tg_payload=$(printf '%s' "$body_tg" | sed -nE 's/.*<!-- pack-entry-body-gz64:[[:space:]]*([A-Za-z0-9+/=]+)[[:space:]]*-->.*/\1/p' | head -1)
+tg_decoded=$(printf '%s' "$tg_payload" | python3 -c 'import sys,base64,gzip,io; sys.stdout.buffer.write(gzip.GzipFile(fileobj=io.BytesIO(base64.b64decode(sys.stdin.read()))).read()); sys.stdout.buffer.write(b"X")')
+tg_decoded="${tg_decoded%X}"
+assert_eq "2.8.4 blob decodes verbatim (autolink tokens untouched in blob)" "$tg_raw" "$tg_decoded"
+assert_contains "2.8.4 blob carries the raw commit SHA verbatim" "$tg_decoded" "08f7158"
+
+# 2.8.5 §3.3c SIZE BUDGET — a smaller-limit provider FAILs loud (never
+#       truncates) above its bound; a within-budget entry passes. The stub
+#       declares a 2,500-byte limit; with the 2,048-byte safety margin the
+#       effective budget is ~452 bytes, so a large body overflows and a tiny
+#       one fits (the limit > margin so the budget stays positive).
+source "$REPO_ROOT/scripts/tests/fixtures/tracker-provider/stub-backend.sh"
+tracker_provider_stub_capabilities() { echo '{"backend_name":"stub","body":{"limit":2500,"storage_format":"raw_text"},"rate_limits":{"min_write_interval_s":1}}'; }
+export _TRACKER_PROVIDER_BACKEND_OVERRIDE=stub
+big_raw=$(printf '**BD-902 — Big**\n'; for i in $(seq 1 60); do printf 'Description line %s padding padding padding padding padding padding\n' "$i"; done)
+size_err=$(tmf_compose_issue_body "BD-902" "x" "" "" "" "$big_raw" 2>&1); size_rc=$?
+assert_eq "2.8.5 over-budget compose rc=1 (fail loud)" "1" "$size_rc"
+assert_contains "2.8.5 size-budget error names entry + byte count" "$size_err" "size-budget: entry BD-902"
+assert_contains "2.8.5 size-budget error states never-truncate" "$size_err" "NEVER truncates"
+small_out=$(tmf_compose_issue_body "BD-903" "x" "" "" "" $'**BD-903 — tiny**\nStatus: Open\n' 2>&1); small_rc=$?
+assert_eq "2.8.5 within-budget compose rc=0" "0" "$small_rc"
+assert_contains "2.8.5 within-budget body carries the blob" "$small_out" "pack-entry-body-gz64"
+
+# 2.8.6 §3.3c a rich_text_normalizing backend FAILs loud (carrier needs raw_text).
+tracker_provider_stub_capabilities() { echo '{"backend_name":"stub","body":{"limit":65536,"storage_format":"rich_text_normalizing"}}'; }
+rt_err=$(tmf_compose_issue_body "BD-904" "x" "" "" "" $'**BD-904 — rt**\n' 2>&1); rt_rc=$?
+assert_eq "2.8.6 rich_text backend compose rc=1" "1" "$rt_rc"
+assert_contains "2.8.6 rich_text error requires raw_text" "$rt_err" "requires raw_text"
+unset _TRACKER_PROVIDER_BACKEND_OVERRIDE
+# Restore the GH backend capabilities for the rest of the suite.
+unset -f tracker_provider_stub_capabilities 2>/dev/null || true
+
+# 2.8.7 §3.3d PACING — the create loop sleeps >= the min-write interval before
+#       each create after the first (test seam: a counting fake sleep, no real
+#       wall-clock wait).
+PACE_LOG=$(mktemp -t tmf-pace-log.XXXXXX)
+cat > "$REPO_ROOT/scripts/tests/.tmf-fake-sleep.$$" <<FSLEEP
+#!/usr/bin/env bash
+printf '%s\n' "\$1" >> "$PACE_LOG"
+FSLEEP
+chmod +x "$REPO_ROOT/scripts/tests/.tmf-fake-sleep.$$"
+export TMF_PACING_SLEEP_CMD="$REPO_ROOT/scripts/tests/.tmf-fake-sleep.$$"
+export TMF_PACING_INTERVAL_OVERRIDE=1
+_TMF_CREATES_DONE=0
+# First create: NOT paced.
+_tmf_pace_before_create
+[[ ! -s "$PACE_LOG" ]] && t_pass "2.8.7 first create is un-paced (no sleep)" || t_fail "2.8.7 first create is un-paced" "log=$(cat "$PACE_LOG")"
+# After one create, the gate sleeps the interval.
+_TMF_CREATES_DONE=1
+_tmf_pace_before_create
+paced=$(cat "$PACE_LOG")
+assert_eq "2.8.7 second create sleeps >= interval (=1)" "1" "$paced"
+rm -f "$PACE_LOG" "$REPO_ROOT/scripts/tests/.tmf-fake-sleep.$$"
+unset TMF_PACING_SLEEP_CMD TMF_PACING_INTERVAL_OVERRIDE
+
+# 2.8.8 §3.3d retry-after — on a simulated 429/secondary-rate-limit, the
+#       backoff helper HONORS retry-after (backs off) rather than tight-retry.
+BACKOFF_LOG=$(mktemp -t tmf-backoff-log.XXXXXX)
+cat > "$REPO_ROOT/scripts/tests/.tmf-fake-sleep2.$$" <<FSLEEP2
+#!/usr/bin/env bash
+printf '%s\n' "\$1" >> "$BACKOFF_LOG"
+FSLEEP2
+chmod +x "$REPO_ROOT/scripts/tests/.tmf-fake-sleep2.$$"
+export TMF_PACING_SLEEP_CMD="$REPO_ROOT/scripts/tests/.tmf-fake-sleep2.$$"
+# A secondary-rate-limit error WITH a Retry-After hint → backoff returns 0
+# (caller may retry) and sleeps the hinted seconds.
+if _tmf_create_backoff "ERROR: rate-limit-secondary
+Retry-After: 7"; then
+    t_pass "2.8.8 backoff returns 0 (retry permitted) on rate-limit-secondary"
+else
+    t_fail "2.8.8 backoff returns 0 on rate-limit-secondary"
+fi
+assert_eq "2.8.8 backoff honors Retry-After hint (7s)" "7" "$(cat "$BACKOFF_LOG")"
+# A non-pacing error → backoff returns 1 (caller aborts), no sleep.
+: > "$BACKOFF_LOG"
+if _tmf_create_backoff "ERROR: not-found"; then
+    t_fail "2.8.8 backoff returns 1 on non-pacing error"
+else
+    t_pass "2.8.8 backoff returns 1 (abort) on a non-pacing error"
+fi
+[[ ! -s "$BACKOFF_LOG" ]] && t_pass "2.8.8 no backoff sleep on a non-pacing error" || t_fail "2.8.8 no sleep on non-pacing error"
+rm -f "$BACKOFF_LOG" "$REPO_ROOT/scripts/tests/.tmf-fake-sleep2.$$"
+unset TMF_PACING_SLEEP_CMD
+
 # 2.7 mirror header
 header=$(tmf_mirror_header "test-org/test-repo")
 assert_contains "2.7 header opens with comment"     "$header" "<!--"

@@ -766,9 +766,15 @@ tracker_provider_gh_capabilities() {
     "language": "github-qualifier",
     "result_ceiling_per_query": 1000
   },
+  "body": {
+    "limit": 65536,
+    "storage_format": "raw_text"
+  },
   "rate_limits": {
     "writes_per_minute_recommended": 60,
-    "reads_per_minute_recommended": 120
+    "reads_per_minute_recommended": 120,
+    "min_write_interval_s": 1,
+    "writes_per_hour_max": 500
   },
   "raw_escape_hatch": true
 }

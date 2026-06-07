@@ -41,6 +41,7 @@ t_fail() { FAIL=$((FAIL + 1)); printf "  \033[31mFAIL\033[0m %s\n" "$1"; [[ -n "
 
 assert_eq()       { if [[ "$2" == "$3" ]]; then t_pass "$1"; else t_fail "$1" "expected='$2' actual='$3'"; fi; }
 assert_contains() { if [[ "$2" == *"$3"* ]]; then t_pass "$1"; else t_fail "$1" "needle='$3' missing"; fi; }
+assert_not_contains() { if [[ "$2" != *"$3"* ]]; then t_pass "$1"; else t_fail "$1" "needle='$3' unexpectedly present"; fi; }
 
 # Source the libs so we can call orchestrators directly.
 # shellcheck disable=SC1091
@@ -397,23 +398,26 @@ export PATH="$PATH_SAVED"
 assert_eq       "1.1 forward run rc=0"           "0" "$rc1"
 # BD-204 C-5 (C2a): the pack-surface forward read-side now enumerates the
 # BD-only per-entry TREE (the no-monolith SSOT). The bd-v11.0 fixture's
-# BD-* set is {BD-001, BD-002} (TD-010/TD-040 are the project namespace,
-# never in the pack backlog), so the pack forward parses 2 entries.
-# Entry count: 2 BD + 2 phase epics = 4 issues in the recorded state.
+# BD-* set is {BD-001, BD-002, BD-003} (TD-010/TD-040 are the project
+# namespace, never in the pack backlog), so the pack forward parses 3
+# entries. BD-003 (BD-204 §3.3) carries top-level drop-set fields
+# (Target/Scope/Problem/Position/References/Out of scope) + a multi-paragraph
+# prose block + NO Blockers — the field-faithful-carrier stress case.
+# Entry count: 3 BD + 2 phase epics = 5 issues in the recorded state.
 # (TD decode/reconstruct survival is covered at the decode-unit layer in
 # tracker-migrate-reverse-test.sh Group 1/2 + the 2.2c decode test below,
 # which no longer depends on a TD forward-creation that the BD-only pack
 # round-trip does not perform.)
-assert_contains "1.1 forward run reports 2 entries" "$output1" "parsed 2 BACKLOG entries"
+assert_contains "1.1 forward run reports 3 entries" "$output1" "parsed 3 BACKLOG entries"
 assert_contains "1.1 forward run reports 2 phases"  "$output1" "2 phase(s)"
 
-# State should have 2 BD + 2 phase epics = 4 issues.
-assert_eq "1.1 tracker state has 4 issues" "4" "$(_state_issue_count "$STATE1")"
+# State should have 3 BD + 2 phase epics = 5 issues.
+assert_eq "1.1 tracker state has 5 issues" "5" "$(_state_issue_count "$STATE1")"
 
 # Mapping file populated.
 mapping_file="$REPO1/.pack-tracker/id-map.json"
 [[ -f "$mapping_file" ]] && t_pass "1.1 mapping file written" || t_fail "1.1 mapping file written"
-assert_eq "1.1 mapping has 4 entries" "4" "$(jq 'length' "$mapping_file")"
+assert_eq "1.1 mapping has 5 entries" "5" "$(jq 'length' "$mapping_file")"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 2: reverse against recorded state reconstructs flat files
@@ -433,8 +437,8 @@ rc2=$?
 export PATH="$PATH_SAVED"
 
 assert_eq       "2.1 reverse rc=0" "0" "$rc2"
-# BD-204 C-5: the BD-only pack round-trip reconstructs 2 BD entries.
-assert_contains "2.1 reverse reports 2 entries"     "$output2" "reconstructed 2 BACKLOG entries"
+# BD-204 C-5: the BD-only pack round-trip reconstructs 3 BD entries.
+assert_contains "2.1 reverse reports 3 entries"     "$output2" "reconstructed 3 BACKLOG entries"
 assert_contains "2.1 reverse reports 2 phase epics" "$output2" "2 phase epic"
 
 # Reverse output should reconstruct each entry. The reconstructed
@@ -470,6 +474,40 @@ done
 for line in "Status: Open" "Status: Unblocked"; do
     assert_contains "2.2 status line preserved: $line" "$RECON_BACKLOG" "$line"
 done
+
+# 2.2d BD-204 §3.3 — the field-faithful carrier round-trips BD-003's
+# top-level drop-set fields + multi-paragraph prose BYTE-FOR-BYTE. The
+# reconstructed BD-003.md (lines 2..EOF, back-pointer stripped) must equal
+# the source fixture entry's lines 2..EOF exactly. This leg has TEETH: the
+# pre-fix emit dropped Target/Scope/Problem/Position/References/Out-of-scope
+# and re-projected a lossy fixed-order body (it would diff non-empty here).
+src_bd003=$(python3 - "$FIXTURE_V11_0/BACKLOG.md" <<'PY'
+import re, sys
+text = open(sys.argv[1]).read()
+for block in re.split(r'\n---\n', text):
+    b = block.strip('\n')
+    if b.startswith('**BD-003 '):
+        sys.stdout.write(b + "\n")
+        break
+PY
+)
+if [[ -f "$REPO1/backlog/BD-003.md" ]]; then
+    recon_bd003=$(sed -n '2,$p' "$REPO1/backlog/BD-003.md")
+    if [[ "$recon_bd003" == "$src_bd003" ]]; then
+        t_pass "2.2d BD-003 drop-set + prose round-trips BYTE-FOR-BYTE (field-faithful carrier)"
+    else
+        t_fail "2.2d BD-003 round-trips BYTE-FOR-BYTE" "$(diff <(printf '%s\n' "$src_bd003") <(printf '%s\n' "$recon_bd003") | head -12)"
+    fi
+    # Drop-set fields each present verbatim (defense-in-depth on the byte leg).
+    for f in "Target: v11.0" "Scope: Exercise the field-faithful" "Problem: The pre-fix" "Position: after BD-002" "References: BD-204" "Out of scope: anything BD-207"; do
+        assert_contains "2.2d BD-003 carries drop-set field '$f'" "$recon_bd003" "$f"
+    done
+    # No-Blockers entry: NO injected Blockers/Unblocks/Resolved lines.
+    assert_not_contains "2.2d BD-003 no injected 'Blockers: None'" "$recon_bd003" "Blockers: None"
+    assert_not_contains "2.2d BD-003 no injected 'Resolved: n/a'"  "$recon_bd003" "Resolved: n/a"
+else
+    t_fail "2.2d BD-003 reconstructed to pack tree" "BD-003.md missing"
+fi
 
 # Blockers — BD-111 closes the round-trip gap. With the BD-111 link
 # swap (forward writes addBlockedBy GraphQL edge) plus the BD-111
@@ -615,7 +653,7 @@ rc3=$?
 export PATH="$PATH_SAVED"
 
 assert_eq       "3.1 second forward rc=0"   "0" "$rc3"
-assert_eq       "3.1 second forward state has 4 issues" "4" "$(_state_issue_count "$STATE1")"
+assert_eq       "3.1 second forward state has 5 issues" "5" "$(_state_issue_count "$STATE1")"
 
 # Compare create-call signatures — these capture "<title> | <labels>"
 # for every create. Byte-equal means tracker side is round-trip stable

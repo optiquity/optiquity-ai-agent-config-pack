@@ -45,10 +45,23 @@ source "$LIB_DIR/tracker-migrate-reverse.sh"
 
 PATH_SAVED="$PATH"
 
+# BD-204 §3.3: the canonical fixture entry bodies (raw_body = lines 2..EOF of
+# the per-entry file). The reverse pack emit now writes raw_body VERBATIM from
+# the pack-entry-body-gz64 blob, so the fake-gh issues MUST carry the blob and
+# the round-trip is byte-faithful. BD-001 is a NO-Blockers entry (proves the
+# rewrite injects NO `Blockers: None` / `Resolved: n/a` lines — invariant 7).
+FIX_BD001_RAWBODY=$'**BD-001 — Add foo to bar**\nType: TODO(version)\nStatus: Open\nFile/Symbol: scripts/foo.sh\nDescription: Implements foo on bar.\n'
+FIX_BD002_RAWBODY=$'**BD-002 — Refactor bar**\nType: TODO(version)\nStatus: Unblocked\nBlockers: BD-001\nFile/Symbol: scripts/bar.sh\nDescription: Refactor.\n'
+# Precompute the gz64 blobs via the PRODUCTION encoder (codec parity).
+FIX_BD001_BLOB=$(printf '%s' "$FIX_BD001_RAWBODY" | _tmf_gz64_encode)
+FIX_BD002_BLOB=$(printf '%s' "$FIX_BD002_RAWBODY" | _tmf_gz64_encode)
+
 # Build a fake gh that handles both forward AND reverse paths:
 # returns canned BD-001 / TD-010 / phase-3 view JSONs.
 _build_fake_gh() {
     local bin="$1"
+    # Quoted heredoc (no expansion); substitute the precomputed blob payloads
+    # afterward via sed (the base64 alphabet contains no sed-special chars).
     cat > "$bin/gh" <<'FG'
 #!/usr/bin/env bash
 # Parse --label out of `issue list` flags (V1 §6.5 step 1 calls
@@ -73,10 +86,10 @@ case "$1 $2" in
     "issue view")
         case "$3" in
             42)
-                echo '{"number":42,"title":"BD-001: Add foo to bar","body":"<!-- pack-id: BD-001 -->\n<!-- template_version: bd-v11.0 -->\n<!-- pack-version: v11 -->\n\n## Description\n\nImplements foo on bar.\n\n## Context\n\nProject background.\n\n## File / Symbol\n\nscripts/foo.sh","state":"OPEN","stateReason":null,"labels":[{"name":"bd-entry"},{"name":"status:open"},{"name":"type:feat"},{"name":"template:bd-v11.0"}],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/42"}'
+                echo '{"number":42,"title":"BD-001: Add foo to bar","body":"<!-- pack-id: BD-001 -->\n<!-- template_version: bd-v11.0 -->\n<!-- pack-version: v11 -->\n<!-- pack-entry-body-gz64: @@BD001_BLOB@@ -->\n\n## Description\n\nImplements foo on bar.\n\n## File / Symbol\n\nscripts/foo.sh","state":"OPEN","stateReason":null,"labels":[{"name":"bd-entry"},{"name":"status:open"},{"name":"type:feat"},{"name":"template:bd-v11.0"}],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/42"}'
                 ;;
             43)
-                echo '{"number":43,"title":"BD-002: Refactor bar","body":"<!-- pack-id: BD-002 -->\n<!-- template_version: bd-v11.0 -->\n\n## Description\n\nRefactor.","state":"OPEN","stateReason":null,"labels":[{"name":"bd-entry"},{"name":"status:unblocked"}],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/43"}'
+                echo '{"number":43,"title":"BD-002: Refactor bar","body":"<!-- pack-id: BD-002 -->\n<!-- template_version: bd-v11.0 -->\n<!-- pack-entry-body-gz64: @@BD002_BLOB@@ -->\n\n## Description\n\nRefactor.","state":"OPEN","stateReason":null,"labels":[{"name":"bd-entry"},{"name":"status:unblocked"}],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/43"}'
                 ;;
             55)
                 echo '{"number":55,"title":"TD-010: Document quux","body":"<!-- pack-id: TD-010 -->\n<!-- template_version: td-v11.0 -->\n\n## Description\n\nDoc gap.","state":"OPEN","stateReason":null,"labels":[{"name":"td-entry"},{"name":"status:open"},{"name":"scope:dependency"}],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/55"}'
@@ -91,6 +104,9 @@ case "$1 $2" in
 esac
 exit 0
 FG
+    # Inject the precomputed gz64 blobs (base64 → no sed metacharacters).
+    sed -i.bak "s|@@BD001_BLOB@@|$FIX_BD001_BLOB|; s|@@BD002_BLOB@@|$FIX_BD002_BLOB|" "$bin/gh"
+    rm -f "$bin/gh.bak"
     chmod +x "$bin/gh"
 }
 
@@ -251,6 +267,35 @@ assert_eq "2.1 reconstruct file_symbol" "scripts/foo.sh"   "$(printf '%s' "$rec"
 assert_contains "2.1 reconstruct description" "$(printf '%s' "$rec" | jq -r .description)" "Implements foo"
 assert_contains "2.1 reconstruct context"     "$(printf '%s' "$rec" | jq -r .context)"     "Background"
 
+# 2.1b BD-204 §3.3: a PRESENT-but-corrupt pack-entry-body-gz64 marker FAILs
+# LOUD (never silent-empty). Feed a deliberately mangled base64 payload.
+corrupt_issue=$(jq -n '{
+  number: 77, id: "77",
+  title: "BD-077: Corrupt blob",
+  body: "<!-- pack-id: BD-077 -->\n<!-- pack-entry-body-gz64: NOTVALIDgzip== -->\n\n## Description\n\nx",
+  state: "open",
+  labels: ["bd-entry","status:open"]
+}')
+corrupt_err=$(tracker_migrate_reverse_reconstruct "$corrupt_issue" '{}' 2>&1); corrupt_rc=$?
+assert_eq       "2.1b corrupt-blob reconstruct rc=1 (fail loud)" "1" "$corrupt_rc"
+assert_contains "2.1b corrupt-blob error names issue + reason"   "$corrupt_err" "corrupt-blob: issue #77"
+assert_contains "2.1b corrupt-blob error states never-empty"     "$corrupt_err" "NEVER emits an empty/partial entry body"
+
+# 2.1c BD-204 §3.3: a well-formed blob decodes to raw_body on the object,
+# byte-faithful (the decode-identity invariant).
+src_raw=$'**BD-078 — Blob decode**\nType: TODO(version)\nStatus: Open\nDescription: round trip me\n'
+good_blob=$(printf '%s' "$src_raw" | _tmf_gz64_encode)
+good_issue=$(jq -n --arg blob "$good_blob" '{
+  number: 78, id: "78",
+  title: "BD-078: Blob decode",
+  body: ("<!-- pack-id: BD-078 -->\n<!-- pack-entry-body-gz64: " + $blob + " -->\n\n## Description\n\nround trip me"),
+  state: "open",
+  labels: ["bd-entry","status:open"]
+}')
+good_rec=$(tracker_migrate_reverse_reconstruct "$good_issue" '{}')
+got_raw=$(printf '%s' "$good_rec" | jq -j '.raw_body'; printf X); got_raw="${got_raw%X}"
+assert_eq "2.1c blob decodes to byte-faithful raw_body" "$src_raw" "$got_raw"
+
 # 2.2 Unblocks-inverse pass
 entries='[
   {"pack_id":"BD-001","blockers":["BD-002"]},
@@ -358,6 +403,24 @@ assert_contains "4.2 tree has BD-001 entry" "$backlog" "**BD-001 — Add foo to 
 assert_contains "4.2 tree has Status: Open" "$backlog" "Status: Open"
 assert_contains "4.2 tree has File/Symbol"  "$backlog" "File/Symbol: scripts/foo.sh"
 assert_contains "4.2 tree has Description"  "$backlog" "Description: Implements foo on bar."
+
+# BD-204 §3.3 / §4.2: the pack emit writes raw_body VERBATIM from the blob.
+# Assert the reconstructed BD-001.md (lines 2..EOF, back-pointer stripped) is
+# BYTE-IDENTICAL to the canonical fixture raw_body — the byte-faithful leg.
+recon_bd001=$(sed -n '2,$p' "$REPO/backlog/BD-001.md")
+if [[ "$recon_bd001"$'\n' == "$FIX_BD001_RAWBODY" ]]; then
+    t_pass "4.2 BD-001 reconstructed body is BYTE-IDENTICAL to source (verbatim emit)"
+else
+    t_fail "4.2 BD-001 reconstructed body is BYTE-IDENTICAL to source (verbatim emit)" \
+        "recon='$recon_bd001'"
+fi
+# BD-204 §4.2 invariant 7: a NO-Blockers entry must NOT get injected
+# `Blockers: None` / `Unblocks: None` / `Resolved: n/a` lines (the old emit's
+# bug). The fixture BD-001 has no Blockers line and is not Resolved.
+bd001_body=$(cat "$REPO/backlog/BD-001.md")
+assert_not_contains "4.2 BD-001 no injected 'Blockers: None'"  "$bd001_body" "Blockers: None"
+assert_not_contains "4.2 BD-001 no injected 'Unblocks: None'"  "$bd001_body" "Unblocks: None"
+assert_not_contains "4.2 BD-001 no injected 'Resolved: n/a'"   "$bd001_body" "Resolved: n/a"
 # LOW-1 negative assertions: a non-`BD-*` reconstructed id (TD-010) is NOT
 # emitted to the pack tree, and no `backlog/TD-*.md` file is written — the
 # emit set is provably the BD-only `pack-backlog` set.

@@ -196,6 +196,39 @@ assert_eq "1.1 capabilities raw_escape_hatch=true" "true" "$(printf '%s' "$out" 
 assert_eq "1.1 capabilities hierarchy.depth_ceiling=8" "8" "$(printf '%s' "$out" | jq -r '.hierarchy.depth_ceiling')"
 assert_eq "1.1 capabilities dependencies.kinds count=4" "4" "$(printf '%s' "$out" | jq -r '.dependencies.kinds | length')"
 
+# 1.1b BD-204 §3.3c/§3.3d: the GH backend DECLARES the body + pacing
+# capabilities the migrator reads (provider_body_limit=65536, raw_text
+# storage; min-write interval 1s + 500 writes/hour secondary cap).
+assert_eq "1.1b capabilities body.limit=65536"           "65536"    "$(printf '%s' "$out" | jq -r '.body.limit')"
+assert_eq "1.1b capabilities body.storage_format=raw_text" "raw_text" "$(printf '%s' "$out" | jq -r '.body.storage_format')"
+assert_eq "1.1b capabilities rate_limits.min_write_interval_s=1" "1"  "$(printf '%s' "$out" | jq -r '.rate_limits.min_write_interval_s')"
+assert_eq "1.1b capabilities rate_limits.writes_per_hour_max=500" "500" "$(printf '%s' "$out" | jq -r '.rate_limits.writes_per_hour_max')"
+
+# 1.1c BD-204 §3.3c: the migrator reads the ACTIVE provider's body.limit (no
+# hardcoded 65536). A smaller-limit raw_text mock triggers the composer's
+# loud-fail at ITS OWN bound (tracker-agnostic, R-PROVIDER); the GH limit
+# lets the same body pass. Drive the production composer + the stub backend.
+# shellcheck disable=SC1091
+source "$REPO_ROOT/scripts/lib/per-entry/_lib.sh" 2>/dev/null || true
+# shellcheck disable=SC1091
+source "$REPO_ROOT/scripts/lib/tracker-migrate-forward.sh"
+source "$FIXTURES/stub-backend.sh"
+_p11c_raw=$(printf '**BD-905 — provider-limit stress**\n'; for i in $(seq 1 40); do printf 'pad %s pad pad pad pad pad pad pad pad pad pad pad\n' "$i"; done)
+# Small-limit mock: a 2100-byte body limit (margin 2048 → ~52-byte budget),
+# so ANY real composed body (H2 + markers + blob) overflows; the GH backend
+# (65536) lets the same body pass — proving the migrator reads the ACTIVE
+# provider's limit, not a hardcoded 65536.
+tracker_provider_stub_capabilities() { echo '{"backend_name":"stub","body":{"limit":2100,"storage_format":"raw_text"}}'; }
+export _TRACKER_PROVIDER_BACKEND_OVERRIDE=stub
+p11c_err=$(tmf_compose_issue_body "BD-905" "x" "" "" "" "$_p11c_raw" 2>&1); p11c_rc=$?
+assert_eq       "1.1c smaller-limit mock fails loud at its bound (rc=1)" "1" "$p11c_rc"
+assert_contains "1.1c smaller-limit fail names entry"                    "$p11c_err" "size-budget: entry BD-905"
+# Same body under the GH backend (65536 limit) passes.
+unset _TRACKER_PROVIDER_BACKEND_OVERRIDE
+p11c_ok=$(tmf_compose_issue_body "BD-905" "x" "" "" "" "$_p11c_raw" 2>&1); p11c_ok_rc=$?
+assert_eq "1.1c same body passes under GH 65536 limit (rc=0)" "0" "$p11c_ok_rc"
+unset -f tracker_provider_stub_capabilities 2>/dev/null || true
+
 # 1.2 get — full canonical Issue
 reset_fake_gh
 export FAKE_GH_STDOUT_FILE="$FIXTURES/gh-issue-view.json"

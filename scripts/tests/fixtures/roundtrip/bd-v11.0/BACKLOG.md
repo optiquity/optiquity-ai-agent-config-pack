@@ -45,3 +45,23 @@ Description: Exercises the v11.0 phase-N.M Blockers grammar through
 Resolved: n/a
 
 ---
+
+**BD-003 — Drop-set + prose stress (BD-204 §3.3 carrier)**
+Type: TODO(version)
+Status: Open
+Target: v11.0
+Scope: Exercise the field-faithful gz64 carrier end to end.
+Problem: The pre-fix migrator dropped every non-carry field on
+  forward and re-projected a lossy fixed-order body on reverse.
+Position: after BD-002
+References: BD-204, RESEARCH-BD-204-GH-ISSUES-RULES.md
+File/Symbol: scripts/lib/tracker-migrate-forward.sh
+Description: A multi-paragraph description with an interior blank line.
+
+  This second paragraph and the top-level drop-set fields above
+  (Target/Scope/Problem/Position/References) must survive the
+  forward → tracker → reverse round-trip BYTE-FOR-BYTE via the
+  pack-entry-body-gz64 blob — none are in the 9-field carry set.
+Out of scope: anything BD-207 owns on the client surface.
+
+---

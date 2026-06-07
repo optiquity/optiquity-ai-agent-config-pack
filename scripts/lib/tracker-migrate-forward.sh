@@ -116,6 +116,27 @@ TMF_STABILIZE_MAX_ATTEMPTS="${TMF_STABILIZE_MAX_ATTEMPTS:-30}"
 TMF_STABILIZE_SLEEP_SECS="${TMF_STABILIZE_SLEEP_SECS:-2}"
 TMF_STABILIZE_FAIL_LIMIT="${TMF_STABILIZE_FAIL_LIMIT:-3}"
 
+# BD-204 §3.3c size-budget safety margin (bytes). A small fixed reserve for
+# the marker wrapper + provider-side rendering overhead, subtracted from the
+# active provider's provider_body_limit before the overflow check. The
+# composer FAILs loud (never truncates) when the composed body would exceed
+# `provider_body_limit − TMF_SIZE_SAFETY_MARGIN`. Test seam.
+TMF_SIZE_SAFETY_MARGIN="${TMF_SIZE_SAFETY_MARGIN:-2048}"
+
+# BD-204 §3.3d bulk-create pacing. The forward create loop sleeps the active
+# provider's declared min-write interval BEFORE each create after the first,
+# so a 211-issue burst stays under GH's 80/min + 500/hour secondary cap and
+# never trips abuse detection (R-OPS-2/3). The provider DECLARES the rate
+# (rate_limits.min_write_interval_s); the loop ENFORCES the gap. TEST SEAM:
+# TMF_PACING_SLEEP_CMD lets a unit test substitute a counting no-op for
+# `sleep` so the pacing assertion needs no real wall-clock wait;
+# TMF_PACING_INTERVAL_OVERRIDE pins the interval offline (no live provider).
+TMF_PACING_SLEEP_CMD="${TMF_PACING_SLEEP_CMD:-sleep}"
+TMF_PACING_INTERVAL_OVERRIDE="${TMF_PACING_INTERVAL_OVERRIDE:-}"
+# Module-level pacing state: how many creates have fired this run. The gate
+# sleeps only when >0 (i.e. before the SECOND and later creates).
+_TMF_CREATES_DONE=0
+
 # BD-134 close-retry parameters. The initial step-8 close loop has a
 # ~5% partial-write rate observed in BD-102 Phase A dog-food (3 of 56
 # named close failures: BD-021/022/023). Cause is most likely transient
@@ -404,6 +425,37 @@ entries = []
 current = None
 field_being_collected = None
 
+# BD-204 §3.3 verbatim-body-blob carrier: capture the entry's RAW span
+# (lines 2..EOF of its per-entry file = the bold-header line + every
+# field/prose line below it, verbatim — no re-parse, no parse_id_list, no
+# continuation folding). This is the round-trip TRUTH the gz64 blob carries;
+# the parsed fields below are only the label/link/H2 PROJECTION.
+#
+# The capture is DECOUPLED from the projection's flush logic (which closes a
+# field-entry on an interior `## ` H2 — e.g. BD-167/169 in-body `## Sub-entry`
+# sections). The raw span is bounded ONLY by the entry boundaries: the next
+# `**BD-NNN — ...**` header or the inter-entry `---` separator. An interior
+# H2 is entry CONTENT and rides into raw_body verbatim. raw_body excludes the
+# line-1 back-pointer (stripped upstream) and the `---` separator (a stream
+# artifact); trailing blank lines the separator-join injects are stripped so
+# raw_body equals the original file's lines 2..EOF exactly (every per-entry
+# file ends with one trailing newline, no blank line).
+raw_body_by_pid = {}
+raw_pid = None
+raw_lines = None
+
+def finalize_raw():
+    global raw_pid, raw_lines
+    if raw_pid is None:
+        raw_lines = None
+        return
+    rl = list(raw_lines or [])
+    while rl and rl[-1] == "":
+        rl.pop()
+    raw_body_by_pid[raw_pid] = ("\n".join(rl) + "\n") if rl else ""
+    raw_pid = None
+    raw_lines = None
+
 def flush_field():
     global field_being_collected, current
     if not current or not field_being_collected:
@@ -429,15 +481,28 @@ for raw in text.splitlines():
     line = raw
 
     if SEPARATOR.match(line):
+        # The `---` separator is the entry boundary: it closes BOTH the
+        # projection entry AND the verbatim raw-body capture.
         flush_entry()
+        finalize_raw()
         continue
     if SECTION_H2.match(line):
+        # An interior H2 closes the PROJECTION field-entry (a `## ` line is
+        # not a carried field), but it is entry CONTENT for the verbatim
+        # capture — keep accumulating raw_lines.
         flush_entry()
+        if raw_lines is not None:
+            raw_lines.append(line)
         continue
 
     m = ENTRY_HEADER.match(line)
     if m:
+        # A new header is the entry boundary: close the prior projection +
+        # raw capture, then begin both fresh WITH the header line captured.
         flush_entry()
+        finalize_raw()
+        raw_pid = m.group(1)
+        raw_lines = [line]
         current = {
             "pack_id":     m.group(1),
             "title":       m.group(2).strip(),
@@ -452,6 +517,14 @@ for raw in text.splitlines():
         }
         field_being_collected = None
         continue
+
+    # Verbatim capture: every entry-body line (after the header, including
+    # interior `## Sub-entry` H2 sections and the prose below them) rides into
+    # raw_body exactly as read. This runs BEFORE the `current is None` guard so
+    # that content following an interior H2 (which closed the projection entry)
+    # is still captured for the verbatim blob.
+    if raw_lines is not None:
+        raw_lines.append(line)
 
     if current is None:
         continue
@@ -491,6 +564,15 @@ for raw in text.splitlines():
         continue
 
 flush_entry()
+finalize_raw()
+
+# Attach the verbatim captured span to each parsed entry by pack_id. An
+# interior `## Sub-entry` H2 closes the projection entry mid-file but the
+# raw capture spans the whole entry (header → `---`), so each pack_id maps to
+# exactly its full lines-2..EOF body.
+for e in entries:
+    e["raw_body"] = raw_body_by_pid.get(e.get("pack_id", ""), "")
+
 print(json.dumps(entries, ensure_ascii=False))
 PYEOF
 }
@@ -598,12 +680,141 @@ PYEOF
 # Type: / Status: / Blockers: / Unblocks: are NOT in the body — they
 # map to labels and link relationships per V1 §4.1. File/Symbol IS in
 # the body per V1 §4.1 ("kept verbatim; not a GH first-class concept").
+#
+# BD-204 §3.3: the composer ALSO emits the verbatim-body-blob carrier — a
+# 6th DEFAULTED `raw_body` param (`${6:-}`, so the 4-arg phase call site
+# still works) is gzip(mtime=0)+base64-encoded into ONE
+# `<!-- pack-entry-body-gz64: ... -->` marker alongside the existing trio.
+# The blob is AUTHORITATIVE for reverse; the H2 sections are the advisory
+# human/GH-render PROJECTION. Two further §3.3c/§3.3d invariants:
+#   - SIZE BUDGET (§3.3c): the composer reads the ACTIVE provider's
+#     provider_body_limit + provider_body_storage_format, FAILs loud on a
+#     rich_text_normalizing backend, and FAILs loud (never truncates) when
+#     the composed body exceeds provider_body_limit − TMF_SIZE_SAFETY_MARGIN.
+#   - AUTOLINK NEUTRALIZATION (§3.3d): each VISIBLE H2 field value that
+#     contains a `#NNN`/bare-`@`/bare-commit-SHA/bare-URL autolink trigger is
+#     wrapped in an inline-code span (longer fence if it already has a
+#     backtick). The BLOB is UNTOUCHED — it carries the verbatim bytes, so
+#     reverse decodes the original tokens exactly (ZERO round-trip effect).
+
+# BD-204 §3.3: deterministic gzip(mtime=0)+base64 of stdin → one line on
+# stdout (the gz64 marker payload). Codec PINNED to python3 on EVERY path
+# (forward encode + reverse decode) per the all-python3 tracker-lib idiom;
+# NO shell gzip(1)/base64(1) whose flags/availability vary by platform.
+_tmf_gz64_encode() {
+    python3 -c '
+import sys, gzip, io, base64
+raw = sys.stdin.buffer.read()
+buf = io.BytesIO()
+with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz:
+    gz.write(raw)
+sys.stdout.write(base64.b64encode(buf.getvalue()).decode("ascii"))
+'
+}
+
+# BD-204 §3.3d: neutralize the autolink/mention triggers in a VISIBLE H2
+# field VALUE (stdin → stdout). Form-AGNOSTIC inline-code-span variant: if
+# the value contains ANY trigger (`#NNN`, a bare `@token` outside code, a
+# bare 7-40-hex commit-SHA outside code, or a bare `http(s)://` URL), wrap
+# the WHOLE value in a backtick fence (n+1 backticks where the value already
+# contains a run of n backticks) so GitHub renders no autolink form. A
+# value with no trigger passes through byte-unchanged (no-op). The blob is
+# never routed through this — only the advisory projection.
+_tmf_neutralize_autolinks() {
+    python3 -c '
+import sys, re
+val = sys.stdin.read()
+# Strip the single trailing newline printf adds back later; operate on the
+# value text only.
+trigger = False
+if re.search(r"#\d+", val):
+    trigger = True
+# bare @token (letter/digit/underscore start) — mention autolink
+if re.search(r"(^|[^`\w])@[A-Za-z0-9][A-Za-z0-9_-]*", val):
+    trigger = True
+# bare commit-SHA hex 7..40 as a standalone token
+if re.search(r"(^|[^`\w])[0-9a-fA-F]{7,40}([^`\w]|$)", val):
+    trigger = True
+# bare URL
+if re.search(r"https?://", val):
+    trigger = True
+if not trigger:
+    sys.stdout.write(val)
+    sys.exit(0)
+# Choose a fence longer than the longest backtick run already present.
+runs = re.findall(r"`+", val)
+longest = max((len(r) for r in runs), default=0)
+fence = "`" * (longest + 1)
+# A space pad keeps the span well-formed when the value starts/ends with a
+# backtick (CommonMark inline-code trimming rule); harmless otherwise only
+# when padding is needed.
+if val.startswith("`") or val.endswith("`"):
+    sys.stdout.write(fence + " " + val + " " + fence)
+else:
+    sys.stdout.write(fence + val + fence)
+'
+}
+
+# BD-204 §3.3c: read a scalar capability value from the ACTIVE provider.
+# $1 = jq path expression (e.g. .body_limit). Echoes the value or empty.
+_tmf_provider_capability() {
+    local jq_path="$1"
+    local caps
+    caps=$(provider_capabilities 2>/dev/null) || return 1
+    printf '%s' "$caps" | jq -r "$jq_path // empty" 2>/dev/null
+}
+
+# BD-204 §3.3d: pacing gate. Call IMMEDIATELY BEFORE each provider_create in
+# the forward bulk-create loops. Sleeps the active provider's declared
+# min-write interval before the SECOND and every later create (the first
+# create is not preceded by a gap). Reads the interval from the active
+# provider's rate_limits.min_write_interval_s (or TMF_PACING_INTERVAL_OVERRIDE
+# offline); a zero/absent interval is a no-op (non-rate-limited backends).
+# The retry-after backoff on a 403/429 is handled at the create call site
+# (the provider already classifies rate-limit-secondary; the loop BACKS OFF
+# rather than tight-retrying — see _tmf_create_backoff).
+_tmf_pace_before_create() {
+    if [[ "${_TMF_CREATES_DONE:-0}" -eq 0 ]]; then
+        return 0
+    fi
+    local interval="${TMF_PACING_INTERVAL_OVERRIDE:-}"
+    if [[ -z "$interval" ]]; then
+        interval=$(_tmf_provider_capability '.rate_limits.min_write_interval_s')
+    fi
+    [[ -n "$interval" && "$interval" =~ ^[0-9]+$ && "$interval" -gt 0 ]] || return 0
+    "${TMF_PACING_SLEEP_CMD:-sleep}" "$interval" 2>/dev/null || true
+}
+
+# BD-204 §3.3d: on a create failure, back off (never tight-retry) when the
+# provider classified the error as rate-limit-secondary. Honors a numeric
+# retry-after hint when present in the captured stderr; otherwise falls back
+# to the provider's min-write interval. Returns 0 if a backoff was applied
+# (caller MAY retry), 1 if the error is not a pacing class (caller aborts).
+# $1 = captured stderr text from the failed provider_create.
+_tmf_create_backoff() {
+    local err="$1"
+    case "$err" in
+        *"rate-limit-secondary"*|*"secondary rate limit"*|*"abuse"*) ;;
+        *) return 1 ;;
+    esac
+    local wait_s
+    wait_s=$(printf '%s' "$err" | sed -nE 's/.*[Rr]etry-?[Aa]fter:?[[:space:]]*([0-9]+).*/\1/p' | head -1)
+    if [[ -z "$wait_s" || ! "$wait_s" =~ ^[0-9]+$ ]]; then
+        wait_s="${TMF_PACING_INTERVAL_OVERRIDE:-}"
+        [[ -z "$wait_s" ]] && wait_s=$(_tmf_provider_capability '.rate_limits.min_write_interval_s')
+    fi
+    [[ -n "$wait_s" && "$wait_s" =~ ^[0-9]+$ && "$wait_s" -gt 0 ]] || wait_s=1
+    "${TMF_PACING_SLEEP_CMD:-sleep}" "$wait_s" 2>/dev/null || true
+    return 0
+}
+
 tmf_compose_issue_body() {
     local pack_id="$1"
     local description="$2"
     local context="${3:-}"
     local resolution="${4:-}"
     local file_symbol="${5:-}"
+    local raw_body="${6:-}"
     local template_version
     case "$pack_id" in
         BD-*) template_version="bd-v11.0" ;;
@@ -612,21 +823,64 @@ tmf_compose_issue_body() {
         *)    template_version="work-item-v11.0" ;;
     esac
 
-    {
+    # §3.3d: neutralize the H2 PROJECTION field values (blob untouched).
+    local n_description n_context n_resolution n_file_symbol
+    n_description=$(printf '%s' "$description" | _tmf_neutralize_autolinks)
+    n_context=$(printf     '%s' "$context"     | _tmf_neutralize_autolinks)
+    n_resolution=$(printf  '%s' "$resolution"  | _tmf_neutralize_autolinks)
+    n_file_symbol=$(printf '%s' "$file_symbol" | _tmf_neutralize_autolinks)
+
+    # §3.3: the verbatim-body-blob (only when a raw_body span exists — a
+    # synthesized phase epic passes none, so it gets no blob marker).
+    local blob=""
+    if [[ -n "$raw_body" ]]; then
+        blob=$(printf '%s' "$raw_body" | _tmf_gz64_encode)
+    fi
+
+    local body
+    body=$(
         printf '<!-- pack-id: %s -->\n' "$pack_id"
         printf '<!-- template_version: %s -->\n' "$template_version"
         printf '<!-- pack-version: v11 -->\n'
-        printf '\n## Description\n\n%s\n' "$description"
+        if [[ -n "$blob" ]]; then
+            printf '<!-- pack-entry-body-gz64: %s -->\n' "$blob"
+        fi
+        printf '\n## Description\n\n%s\n' "$n_description"
         if [[ -n "$file_symbol" ]]; then
-            printf '\n## File / Symbol\n\n%s\n' "$file_symbol"
+            printf '\n## File / Symbol\n\n%s\n' "$n_file_symbol"
         fi
         if [[ -n "$context" ]]; then
-            printf '\n## Context\n\n%s\n' "$context"
+            printf '\n## Context\n\n%s\n' "$n_context"
         fi
         if [[ -n "$resolution" ]]; then
-            printf '\n## Resolution\n\n%s\n' "$resolution"
+            printf '\n## Resolution\n\n%s\n' "$n_resolution"
         fi
-    }
+    )
+
+    # §3.3c SIZE BUDGET — enforced on the STORED bytes of the ACTUAL composed
+    # body against the ACTIVE provider's declared limit (NO hardcoded 65536).
+    # A rich_text_normalizing backend MISFITS the raw_text gz64 carrier →
+    # fail loud. Over budget → fail loud with id + byte count, never truncate.
+    local storage_format body_limit
+    storage_format=$(_tmf_provider_capability '.body.storage_format')
+    if [[ "$storage_format" == "rich_text_normalizing" ]]; then
+        tracker_error_emit "validation" \
+"provider declares rich_text_normalizing storage; the pack-entry-body-gz64 body-blob carrier requires raw_text — unsupported backend for v11.x (entry $pack_id)"
+        return 1
+    fi
+    body_limit=$(_tmf_provider_capability '.body.limit')
+    if [[ -n "$body_limit" && "$body_limit" =~ ^[0-9]+$ ]]; then
+        local body_bytes budget
+        body_bytes=$(printf '%s' "$body" | wc -c | tr -d ' ')
+        budget=$(( body_limit - TMF_SIZE_SAFETY_MARGIN ))
+        if [[ "$body_bytes" -gt "$budget" ]]; then
+            tracker_error_emit "validation" \
+"size-budget: entry $pack_id projected body $body_bytes bytes exceeds provider body limit $body_limit (margin $TMF_SIZE_SAFETY_MARGIN); forward aborted — split the entry or raise the limit; the migrator NEVER truncates"
+            return 1
+        fi
+    fi
+
+    printf '%s\n' "$body"
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -850,6 +1104,10 @@ tracker_migrate_forward_run() {
     # _tmf_update_tracker_toml header for the BD-131 semantics).
     local creation_ok=1
 
+    # BD-204 §3.3d: reset the per-run pacing counter so the FIRST create of
+    # this run is un-paced and each later create sleeps the min-write gap.
+    _TMF_CREATES_DONE=0
+
     # Steps 4–9: per-entry work.
     local idx=0 created=0 skipped=0 recovered=0 closed=0
     local completed_ids='[]'
@@ -892,13 +1150,28 @@ tracker_migrate_forward_run() {
                 ;;
             create)
                 local title body labels_json result
-                local description context resolution file_symbol
+                local description context resolution file_symbol raw_body
                 title="$pack_id: $(printf '%s' "$entry" | jq -r '.title')"
                 description=$(printf '%s' "$entry" | jq -r '.description // ""')
                 context=$(printf '%s'     "$entry" | jq -r '.context // ""')
                 resolution=$(printf '%s'  "$entry" | jq -r '.resolution // ""')
                 file_symbol=$(printf '%s' "$entry" | jq -r '.file_symbol // ""')
-                body=$(tmf_compose_issue_body "$pack_id" "$description" "$context" "$resolution" "$file_symbol")
+                # BD-204 §3.3: the verbatim captured span (raw_body) is the
+                # round-trip TRUTH the gz64 blob carries. Capture it with a
+                # trailing-newline guard — `$(...)` strips trailing newlines,
+                # but raw_body ends with exactly one `\n` (the per-entry file's
+                # final newline), so append a sentinel before capture and strip
+                # it after, preserving the exact bytes the blob must encode.
+                raw_body=$(printf '%s' "$entry" | jq -j '.raw_body // ""'; printf X)
+                raw_body="${raw_body%X}"
+                # BD-204 §3.3c: composer FAILs loud on a size-budget overflow
+                # or a rich_text_normalizing backend; abort the run (never
+                # create a partial Issue), mirroring the create-failure path.
+                if ! body=$(tmf_compose_issue_body "$pack_id" "$description" "$context" "$resolution" "$file_symbol" "$raw_body"); then
+                    creation_ok=0
+                    rm -f "$partial_failures"
+                    return 1
+                fi
                 labels_json=$(_tmf_labels_for_entry "$entry")
 
                 local payload
@@ -908,15 +1181,36 @@ tracker_migrate_forward_run() {
                     --argjson l "$labels_json" \
                     '{title: $t, body: $b, labels: $l}')
 
-                if ! result=$(provider_create "$payload"); then
-                    # BD-131: mark creation surface incomplete so any
-                    # future refactor that elects to continue past a
-                    # create failure (instead of early-return) routes
-                    # through step 11 with the right semantics.
-                    creation_ok=0
-                    rm -f "$partial_failures"
-                    return 1
+                # BD-204 §3.3d: pace before each create after the first.
+                _tmf_pace_before_create
+                local create_err
+                create_err=$(mktemp -t tmf-create-err.XXXXXX)
+                if ! result=$(provider_create "$payload" 2>"$create_err"); then
+                    # BD-204 §3.3d: on a secondary-rate-limit / abuse class
+                    # failure, BACK OFF (honor retry-after) and retry ONCE —
+                    # never tight-retry. Any other failure aborts as before.
+                    if _tmf_create_backoff "$(cat "$create_err")"; then
+                        result=$(provider_create "$payload" 2>"$create_err") || {
+                            cat "$create_err" >&2
+                            rm -f "$create_err"
+                            creation_ok=0
+                            rm -f "$partial_failures"
+                            return 1
+                        }
+                    else
+                        cat "$create_err" >&2
+                        rm -f "$create_err"
+                        # BD-131: mark creation surface incomplete so any
+                        # future refactor that elects to continue past a
+                        # create failure (instead of early-return) routes
+                        # through step 11 with the right semantics.
+                        creation_ok=0
+                        rm -f "$partial_failures"
+                        return 1
+                    fi
                 fi
+                rm -f "$create_err"
+                _TMF_CREATES_DONE=$((_TMF_CREATES_DONE + 1))
                 gh_id=$(printf '%s' "$result" | jq -r '.id')
                 url=$(printf '%s'   "$result" | jq -r '.url // ""')
                 mapping=$(tmf_mapping_set "$mapping" "$pack_id" "$gh_id" "$url")
@@ -962,6 +1256,9 @@ tracker_migrate_forward_run() {
             --arg t "$phase_title" \
             --arg b "$phase_body" \
             '{title: $t, body: $b, labels: ["phase-epic", "template:phase-epic-v11.0"]}')
+        # BD-204 §3.3d: pace before each create after the first (phase epics
+        # are part of the same bulk-create burst as the entry creates).
+        _tmf_pace_before_create
         if ! phase_result=$(provider_create "$phase_payload"); then
             # BD-131: see paired creation_ok comment above.
             creation_ok=0
@@ -972,6 +1269,7 @@ tracker_migrate_forward_run() {
             rm -f "$partial_failures"
             return 1
         fi
+        _TMF_CREATES_DONE=$((_TMF_CREATES_DONE + 1))
         phase_gh_id=$(printf '%s' "$phase_result" | jq -r '.id')
         phase_url=$(printf '%s'   "$phase_result" | jq -r '.url // ""')
         mapping=$(tmf_mapping_set "$mapping" "$phase_id" "$phase_gh_id" "$phase_url")
