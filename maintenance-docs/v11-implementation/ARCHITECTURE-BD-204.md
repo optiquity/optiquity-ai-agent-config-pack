@@ -143,7 +143,7 @@ lossless-round-trip FAILURE on 11 entries).
 | `Open` | 28 | open | — | `status:open` | open + (no/other label) → Open |
 | `Unblocked` | 1 | open | — | `status:unblocked` | open + `status:unblocked` → Unblocked |
 | **`Deferred`** (NEW) | **11** | **open** | — | **`status:deferred`** | **open + `status:deferred` → Deferred** [NEW reverse branch] |
-| `Resolved` | 168 | closed | `completed` | `status:resolved` | closed + completed → Resolved |
+| `Resolved` | 167 | closed | `completed` | `status:resolved` | closed + completed → Resolved |
 | `Deprecated` | 3 | closed | `not_planned` | `status:deprecated` | closed + not_planned + `status:deprecated` → Deprecated |
 | `Cancelled` | 1 | closed | `not_planned` | `status:cancelled` | closed + not_planned + (no deprecated label) → Cancelled |
 
@@ -177,7 +177,7 @@ is adopted; the `Pending/In Progress/Done` dropdown options are dormant-valid sh
 (not pack-backlog states, **not pruned**). **Pruning the shared form — considered & rejected:** it
 would be a project-side touch (pack-only VIOLATION) and the form is shared with the project-side
 phase-task taxonomy where those three ARE states. Every live pack state is covered; the status
-distribution sums to 212 (`28+1+11+168+3+1`).
+distribution sums to 211 (`28+1+11+167+3+1`).
 
 ---
 
@@ -194,13 +194,13 @@ is not, Check 33 (TOC-in-sync) goes RED. Coupling them keeps the no-mirror invar
 `_toc.md`) always satisfied. This is the cheap, always-correct cadence.
 
 **Tradeoff:** regenerating `_toc.md` on every regen costs one `python3` pass per regen
-(`toc-regenerate.sh:57`). At 212 entries this is sub-second; the cost is negligible vs the
+(`toc-regenerate.sh:57`). At 211 entries this is sub-second; the cost is negligible vs the
 RED-CI risk of decoupling. No adversarial alternative survives the cost/benefit.
 
 **RESOLVED (user 2026-06-06): regenerate `_toc.md` on EVERY Mode-3 tree-materialization** (every
 regen pass, not only `pack tracker disable`). **The looser "only on disable" cadence — considered &
 rejected:** it decouples the tree from `_toc.md` between regens and risks Check 33 (TOC-in-sync)
-going RED; the every-regen cost is sub-second at 212 entries, so the looser cadence buys nothing.
+going RED; the every-regen cost is sub-second at 211 entries, so the looser cadence buys nothing.
 
 ---
 
@@ -506,14 +506,15 @@ Per the HARD invariant, every leading-label field in a real pack entry must land
 the Issue body — none may be orphaned by the sidecar drop.
 
 > **Empirical-Evidence Block (every named field across the stress set maps to form/body; zero orphaned).**
-> `CMD`: `for f in backlog/BD-195.md backlog/BD-204.md backlog/BD-167b.md backlog/BD-185.md; do grep -nE '^[A-Z][A-Za-z/ -]*:' "$f"; done`
+> `CMD`: `for f in backlog/BD-195.md backlog/BD-204.md backlog/BD-167.md backlog/BD-185.md; do grep -nE '^[A-Z][A-Za-z/ -]*:' "$f"; done` (BD-167b deleted by BD-211 — its FORMER fields now live as an in-body section of BD-167; the field census is unchanged because folding preserved every field, so BD-167 is read in its place)
 > `OUT` (distinct leading-label fields found): `Type:`, `Status:`, `Resolved:`, `Alias:`,
 > `Surfaced:`, `Goal:`, `Scope:`, `Quality bar:`, `Steps:`, `Position:` (BD-195, the large entry);
 > `Type:`, `Status:`, `Target:`, `Blockers:`, `Unblocks:`, `Problem:`, `Scope:`, `Out of scope:`,
 > `References:`, `Resolved:`, `Position:` (BD-204); `Type:`, `Status:`, `Blockers:`, `Unblocks:`,
-> `Description:`, `Resolved:` (BD-167b, suffix); `Type:`, `Status:`, `Paused:`, `Blockers:`,
-> `Unblocks:`, `File/Symbol:`, `Description:`, `Resolved:` (BD-185, parenthetical). `AT`: HEAD
-> `e83aed7`, 2026-06-06. `INTERP`: mapping — `Type:`/`Status:`/`Blockers:`/`Unblocks:`/`File/Symbol:`/
+> `Description:`, `Resolved:` (BD-167, incl. the folded former-167b sub-entry section — same field
+> set, no suffix); `Type:`, `Status:`, `Paused:`, `Blockers:`,
+> `Unblocks:`, `File/Symbol:`, `Description:`, `Resolved:` (BD-185). `AT`: HEAD
+> `9fb29a5`, 2026-06-06. `INTERP`: mapping — `Type:`/`Status:`/`Blockers:`/`Unblocks:`/`File/Symbol:`/
 > `Description:`/`Context:`/`Resolution:` → form fields (`wi-*`, §2.4 table); `Resolved:` → form
 > `wi-resolution`/body; `Target:`/`Position:` → in-body `pack-extra-fields` block; `Alias:`/`Surfaced:`/
 > `Paused:`/`Goal:`/`Scope:`/`Quality bar:`/`Steps:`/`Problem:`/`Out of scope:`/`References:` → Issue
@@ -551,7 +552,7 @@ contract by decision (§2.4.3). No sidecar file participates in the round-trip.
 
 | Rule | Evidence | Conclusion |
 |---|---|---|
-| **Empirical-Evidence Blocks (zero-orphaned-fields claim)** | §2.4.2 block: the leading-label field census across BD-195 (large) / BD-204 / BD-167b (suffix) / BD-185 (parenthetical) maps EVERY field to a form field or the Issue body — `Type/Status/Blockers/Unblocks/File-Symbol/Description/Context/Resolution`→form; `Target/Position`→in-body `pack-extra-fields`; `Alias/Surfaced/Paused/Goal/Scope/Quality bar/Steps/Problem/Out of scope/References`→Issue body. ZERO orphaned. Plus the `template_version` in-body marker + derivable `template_archive_path` block. All at HEAD `e83aed7`, 2026-06-06, verbatim, SUPPORTED. | COMPLIANT |
+| **Empirical-Evidence Blocks (zero-orphaned-fields claim)** | §2.4.2 block: the leading-label field census across BD-195 (large + parenthetical title) / BD-204 / BD-167 (incl. the folded former-167b section; post-BD-211 suffix-free) / BD-185 maps EVERY field to a form field or the Issue body — `Type/Status/Blockers/Unblocks/File-Symbol/Description/Context/Resolution`→form; `Target/Position`→in-body `pack-extra-fields`; `Alias/Surfaced/Paused/Goal/Scope/Quality bar/Steps/Problem/Out of scope/References`→Issue body. ZERO orphaned. Plus the `template_version` in-body marker + derivable `template_archive_path` block. All at HEAD `9fb29a5`, 2026-06-06, verbatim, SUPPORTED. | COMPLIANT |
 | **HARD invariant honored (form family + entry body; nothing on a sidecar)** | All content rides the form family + the Issue body (incl. the in-body `pack-extra-fields` block); the `.pack-tracker/reverse.sidecar.*` file is DROPPED; §2.4.3 explicitly drops GH-only non-entry artifacts (reactions/comments/attachments/audit log) with a future-BD deferral note. | COMPLIANT |
 | **Tracker-agnostic (the drop's own rationale)** | The dropped sidecar FORMAT was GH-specific and non-portable; the in-body `pack-extra-fields` block is a plain HTML comment in the issue body/description — a field every tracker has — so the carrier ports (Jira/Linear/etc.). No GH-specific non-entry format survives in the contract. | COMPLIANT |
 | **Pattern-matching out of context** | Property-fit verified: the v10-monolith sidecar FILE's "flat grammar cannot hold it" rationale does NOT hold (the inline per-entry tree holds named scalars; flat mode has no comments/logs); the in-body HTML-comment carrier is reused because it MATCHES the sibling `pack-id`/`template_version` markers' property (`work-item.yml:103-105`). | COMPLIANT |
@@ -590,10 +591,15 @@ case in `_tmr_decode_status`'s **open-state `case "$label"` block** (the canonic
 > added. `CONCL`: SUPPORTED.
 
 > **Empirical-Evidence Block (status distribution sums to the entry count).**
-> `CMD`: `grep -rh "^Status:" backlog/*.md | sort | uniq -c | sort -rn` ; `ls backlog/ | grep -cE '^BD-[0-9]+[a-z]*\.md$'`
-> `OUT`: `168 Resolved, 28 Open, 11 Deferred, 3 Deprecated, 1 Unblocked, 1 Cancelled`; entry-file
-> count `212`. `28+1+11+168+3+1 = 212`. `AT`: HEAD `e83aed7`, 2026-06-05. `INTERP`: the DP-3 matrix
-> covers every live state with zero unmapped entries; the count reconciles exactly. `CONCL`: SUPPORTED.
+> `CMD`: `grep -rh "^Status:" backlog/*.md | sort | uniq -c | sort -rn` ; `ls backlog/ | grep -cE '^BD-[0-9]+\.md$'`
+> `CMD`: `for f in backlog/BD-[0-9]*.md; do awk '/^Status:/{print; exit}' "$f"; done | sort | uniq -c` (ENTRY-LEVEL — the first `^Status:` line per file; a bare `grep -h '^Status:'` would double-count BD-167/BD-169, which each carry a second in-body `Status:` from their folded former-167b/169b sub-entry sections)
+> `OUT`: `167 Resolved, 28 Open, 11 Deferred, 3 Deprecated, 1 Unblocked, 1 Cancelled`; entry-file
+> count `211`. `28+1+11+167+3+1 = 211`. `AT`: HEAD `9fb29a5`, 2026-06-06 (re-measured post-BD-211 —
+> the canonical count regex is `^BD-\d+\.md$`, no suffix admission; BD-211 folded BD-167b/BD-169b
+> into their parents, so the count is 211 not 212 and the entry-level Resolved total is 167 not 168 —
+> 168 was a line-count artifact double-counting the two folded sub-entry `Status: Resolved` lines).
+> `INTERP`: the DP-3 matrix covers every live state with zero unmapped entries; the count reconciles
+> exactly at the entry level. `CONCL`: SUPPORTED.
 
 #### §2.6.1 — `_tmr_decode_status` has TWO label switches; which is in-scope for the pack round-trip
 
@@ -637,27 +643,40 @@ test-surface completeness fix, not part of the load-bearing live round-trip path
 `ARCHITECTURE-V3.3-DELTA.md:364-366`) as the round-trip KEY, NEVER the GH issue number (issue
 numbers are non-portable + non-stable across delete/recreate, `backlog/BD-204.md:11`). The
 filename-is-ID contract (`backlog/_rules.md:35-43`) is the tree-side identity; the marker is the
-tracker-side identity; they are the same `BD-\d+[a-z]*` token.
+tracker-side identity; they are the same `BD-\d+` token (canonical per BD-211 — no `[a-z]*` suffix
+admission; the reverse marker reader at `tracker-migrate-reverse.sh` (the `pack-id` extraction in
+the roster loop) uses `[A-Za-z]+-\d+(?:\.\d+)?`, which admits the `phase-N.M` form but no
+letter-suffix run — already suffix-free, consistent with the validator's `_CANON_HEADER_RE`).
 
-**The suffix + parenthetical round-trip (OPEN mechanic, BD-203 §3.7 RATIFY #2 — architect resolves):**
+**The parenthetical round-trip (OPEN mechanic, BD-203 §3.7 RATIFY #2 — architect resolves):**
 
-- **Suffix (`BD-167b`):** the base marker carries the FULL ID including suffix —
-  `<!-- pack-id: BD-167b -->`. The marker is a stable, parseable position (an HTML comment with a
-  fixed `pack-id:` key), NOT title prose. Forward writes the suffix into the marker; reverse reads
-  `pe_id_from_filename`-compatible `BD-\d+[a-z]*` from the marker → writes `BD-167b.md`.
+- **Suffix sub-entries: ELIMINATED (BD-211).** The letter-suffix sub-entry form (`BD-167b` /
+  `BD-169b`) was retired entirely by BD-211 (2026-06-06): the two suffix files were folded into
+  their parents as in-body sections, the shared per-entry grammar engine + `backlog/_rules.md` were
+  simplified to canonical `^BD-\d+\.md$` (no suffix admission), and `scripts/validate-pack.py`'s
+  `_CANON_HEADER_RE` (in Check 32′) now FAILS any non-canonical header (a suffix or a pre-em-dash
+  parenthetical). The marker therefore carries a suffix-free base ID — `<!-- pack-id: BD-NNN -->` —
+  and the reverse marker reader (`tracker-migrate-reverse.sh`, the `pack-id` extraction in the
+  roster loop) uses `[A-Za-z]+-\d+(?:\.\d+)?`, which admits the `phase-N.M` form but no
+  letter-suffix run, so it is already consistent with the canonical grammar. No suffix entry can
+  exist to round-trip; the migrator and the validator agree on the suffix-free grammar.
 - **Parenthetical (`BD-195 (Code Red 3)`):** the parenthetical is TITLE TEXT, not part of the ID
   (`backlog/_rules.md:39-43`). It rides the Issue TITLE verbatim (`BD-195: (Code Red 3) <title>` →
   body header `**BD-195 (Code Red 3) — <title>**`). The marker carries `BD-195` (base ID, the
   filename); the parenthetical is preserved byte-faithfully in the title/body-header, NOT inferred
   from prose. Reverse reconstructs the bold-header line from the title + marker.
 
-> **Empirical-Evidence Block (the exact suffix + parenthetical stress set).**
-> `CMD`: `ls backlog/ | grep -E '^BD-[0-9]+[a-z]\.md$'` ; `grep -l "Code Red" backlog/*.md`
-> `OUT`: suffix files: `BD-167b.md`, `BD-169b.md` (2). Parenthetical (`Code Red`) entries:
-> `BD-185.md`, `BD-193.md`, `BD-195.md` (3). `AT`: HEAD `e83aed7`, 2026-06-05. `INTERP`: the
-> lossless audit's identity stress set is exactly these 2 suffix + 3 parenthetical entries; the
-> marker-carries-full-ID (suffix) + title-carries-parenthetical (base-ID marker) design covers both.
-> `CONCL`: SUPPORTED.
+> **Empirical-Evidence Block (the post-BD-211 suffix-free stress set).**
+> `CMD`: `ls backlog/ | grep -E '^BD-[0-9]+[a-z]+\.md$' || echo ZERO` ; `for f in backlog/BD-*.md; do sed -n '2p' "$f" | grep -qE '^\*\*BD-[0-9]+ — .*\(Code Red' && echo "$f"; done`
+> `OUT`: suffix files: `ZERO` (BD-211 folded BD-167b/BD-169b into their parents and deleted the two
+> files). The sole entry whose canonical line-2 header carries a `(Code Red ...)` qualifier
+> parenthetical is `backlog/BD-195.md` (`**BD-195 — v11.0 pristine-state recovery before BD-185
+> restart (full-repo) (Code Red 3)**`; a post-em-dash parenthetical is admissible TITLE TEXT —
+> the canonical guard forbids only a PRE-em-dash parenthetical). `AT`: HEAD `9fb29a5`, 2026-06-06. `INTERP`: there is NO suffix entry left to
+> stress; the identity stress set reduces to the title-parenthetical case (`BD-195` — also the
+> large multi-block entry) plus a `Deferred` entry (status stress, §3.2). The parenthetical rides
+> the Issue title verbatim with a suffix-free base-ID marker; that single mechanism covers the only
+> surviving non-trivial identity case. `CONCL`: SUPPORTED.
 
 ---
 
@@ -677,7 +696,7 @@ tracker-side identity; they are the same `BD-\d+[a-z]*` token.
   promotion it is a pack-owned issue and reverses into the tree on the next regen.
 
 **The filter (the lane boundary, concrete):** regen selects issues WHERE `work-item` label present
-AND `pack-id` marker matches `BD-\d+[a-z]*` (not `PENDING`) AND `needs-triage` absent. This is a
+AND `pack-id` marker matches `BD-\d+` (not `PENDING`) AND `needs-triage` absent. This is a
 provider-side label/marker filter (tracker-agnostic — labels are a `DESIGN-BRIEF.md:248`
 capability-flag floor every backend has).
 
@@ -760,9 +779,9 @@ hot path:
 `per-entry tree → GH Issues → per-entry tree` is lossless iff, for every entry, the
 reconstructed `/backlog/BD-NNN.md`:
 
-1. **Same filename** (identity preserved) — keyed on the `pack-id` marker (§2.7), incl. the 2
-   suffix entries (`BD-167b`, `BD-169b`) and the 3 parenthetical entries (`BD-185/193/195`).
-2. **Byte-faithful entry span** — the bold-header `**BD-NNN[suffix] — <Title>**` (incl.
+1. **Same filename** (identity preserved) — keyed on the `pack-id` marker (§2.7), incl. the
+   parenthetical-title entry (`BD-195`; post-BD-211 the tree is suffix-free — no suffix entry exists).
+2. **Byte-faithful entry span** — the bold-header `**BD-NNN — <Title>**` (incl.
    parenthetical title text), the `Status:` line, and every body field/sub-block, byte-identical
    to the original (the line-1 back-pointer is regenerated, not compared — it is a derived
    supporting artifact per `_lib.sh:300`).
@@ -781,17 +800,19 @@ back-pointer + `_toc.md` are derived, regenerated each cycle, not round-trip-com
 The audit is a deterministic diff, modeled on the BD-203 entry-count + content-faithfulness oracle
 (`ARCHITECTURE-BD-203-V3.md:307-321`), adapted to tree↔Issues↔tree:
 
-- **Count oracle:** `count(/backlog/*.md matching ^BD-\d+[a-z]*\.md$)` BEFORE == `count` AFTER ==
+- **Count oracle:** `count(/backlog/*.md matching ^BD-\d+\.md$)` BEFORE == `count` AFTER ==
   `count(pack-owned Issues)` (the `work-item` lane only; inbound issues excluded). Measured live at
-  audit time (the count is dynamic — 212 today; never hard-coded, per BD-203 EE-1).
+  audit time (the count is dynamic — 211 today, post-BD-211; never hard-coded, per BD-203 EE-1). The
+  count regex is the canonical suffix-free `^BD-\d+\.md$` (BD-211; no `[a-z]*` admission).
 - **Identity oracle:** the SET of `pack-id`s in the tree BEFORE == the SET AFTER == the SET of
-  `pack-id` markers across pack-owned Issues. Stress set: the 2 suffix + 3 parenthetical entries
-  appear in all three sets.
+  `pack-id` markers across pack-owned Issues. Stress set (post-BD-211, suffix-free): the
+  parenthetical-title entry (`BD-195`), a `Deferred` entry, and the large multi-block entry
+  (`BD-195`) appear in all three sets — there is no longer any suffix entry to stress.
 - **Content-faithfulness oracle:** for each entry, `diff <(original entry span, back-pointer
   stripped via pe_strip_backpointer_stdin) <(reconstructed entry span, back-pointer stripped)` is
   EMPTY. The large-entry stress case (BD-195's `Segments:`/`Steps:`/`State:` blocks) is in scope —
   its body must diff clean.
-- **Status oracle:** the status distribution BEFORE (`168 Resolved, 28 Open, 11 Deferred, 3
+- **Status oracle:** the status distribution BEFORE (`167 Resolved, 28 Open, 11 Deferred, 3
   Deprecated, 1 Unblocked, 1 Cancelled`) == AFTER. The `Deferred` count (11) is the canary for the
   DP-3 gap-fix.
 - **No-monolith / no-sidecar oracle:** `! -f pack-ops/BACKLOG.md` throughout (Check 32′ green); no
@@ -831,17 +852,46 @@ Reversibility cannot be proven without a live GH repo (BD-111's "Live GH repo ac
    (per-step user approval, `test-infra-self-provisioned`), install the form family, run
    `tree → Issues → tree` against it, run the §3.2 oracle, then `gh repo delete` (cleanup). NEVER
    touch the real pack repo as a test target. The scratch run uses a FIXTURE tree (a small
-   representative set incl. a suffix entry, a parenthetical entry, a Deferred entry, and a large
-   multi-block entry — the four stress cases) so the oracle is fast + deterministic.
+   representative set incl. a parenthetical-title entry, a Deferred entry, and a large
+   multi-block entry — the three stress cases; post-BD-211 there is no suffix case) so the oracle is
+   fast + deterministic.
 2. **Archive** — after the scratch proof is green, the audit artifacts (the oracle diffs) are
    recorded in the IMPL-REPORT (not committed as a kept mirror).
 3. **Real flip** — the actual pack-repo Mode-2→3 migration, gated on the scratch proof + explicit
-   user approval (heavyweight, infrequent, §2.12). This is the dogfood: the pack's OWN 212 entries
-   move to the pack's real GH Issues.
+   user approval (heavyweight, infrequent, §2.12). This is the dogfood: the pack's OWN 211 entries
+   (post-BD-211; measured live at flip time, never hard-coded) move to the pack's real GH Issues.
 
 **Cleanup contract:** every scratch repo created is deleted in the same test run (trap-on-exit +
 explicit `gh repo delete`); a scratch repo is never left dangling. The test asserts the scratch
 repo is gone at the end.
+
+**C-7 CI-execution model — MANUAL-ONLY, gated, with a default-SKIP guard (the test never runs
+`gh repo create` unattended).** The C-7 lossless oracle is the ONE test in the pack that requires a
+LIVE GH repo (the §3.4 EE block: forward/reverse shell out to real `gh issue create/list`). Every
+OTHER tracker test in the battery is mock-based (a fake `gh` on `PATH`; no live GitHub state is
+touched). Wiring a live `gh repo create` test into the unattended CI `tests` job would (a) create
+real GitHub repos on every push (cost, rate-limit, dangling-repo risk) and (b) violate
+`test-infra-self-provisioned`, which gates every scratch-repo create/delete on PER-STEP user
+approval — impossible in unattended CI. The decision is therefore:
+
+- **The C-7 oracle test is NOT part of the automated CI `tests` job.** It is a MANUAL, user-gated
+  test, run locally with per-step `gh` approval as the C-8 dress rehearsal — exactly the
+  `test-infra-self-provisioned` contract. The `validate-pack.py` + the mock-based tracker battery
+  remain the unattended CI gate; C-7 sits OUTSIDE it.
+- **The test carries a default-SKIP guard so it can never run live unattended.** At the top of
+  `tracker-bd204-lossless-roundtrip-test.sh` the test (1) requires an explicit opt-in env var
+  (e.g. `PACK_TRACKER_LIVE_GH=1`) AND (2) requires authenticated `gh` (`gh auth status` OK); if
+  EITHER is absent it prints a clean `SKIP: live-GH oracle (set PACK_TRACKER_LIVE_GH=1 + gh auth
+  to run)` and exits 0. So if the test is ever invoked by a generic `scripts/tests/*.sh` sweep in
+  CI, it SKIPs cleanly rather than attempting `gh repo create`. The guard is a fail-safe; the
+  PRIMARY control is that C-7 is not enumerated in the CI battery at all.
+- **Consequence for the planner.** The C-7 recipe must (a) NOT add the test to any CI workflow /
+  unattended `run-all` test list; (b) implement the env-var + `gh auth` SKIP guard as the test's
+  first action; (c) state that C-7's `**FULL CI battery**` per-commit verification means the
+  EXISTING mock-based battery + `validate-pack.py` (which run green unattended), PLUS the live
+  oracle run MANUALLY with the opt-in env var + per-step `gh` approval — these are two distinct
+  runs, not one. The ambiguity in PLAN §C-7's `"FULL CI battery + the new oracle test"` resolves
+  to: the battery is unattended-CI; the oracle is the manual gated run.
 
 > **Empirical-Evidence Block (the audit needs a live repo — provider ops shell out to gh).**
 > `CMD`: `grep -n "provider_create\|provider_list\|gh issue" scripts/lib/tracker-provider-gh.sh | head`
@@ -895,7 +945,8 @@ will emit to `docs/project/backlog/` via the same `per_entry_*` engine with stre
 `per_entry_emit <stream_key> <stream_dir> <entries>` + `per_entry_regenerate_toc <stream_key>
 <stream_dir>` — the SAME code path, different `(key, dir)`. BD-204 wires the pack instance; the
 shared layer carries NO pack-specifics (no hard-wired `/backlog/`, no BD-only assumption — the
-stream key drives the entry regex `^BD-\d+[a-z]*\.md$` vs the client's `^TD-\d+\.md$`).
+stream key drives the entry regex `^BD-\d+\.md$` vs the client's `^TD-\d+\.md$` (both canonical,
+suffix-free per BD-211).
 
 **Pack/project separation (`feedback_pack_project_separation_of_concerns`):** the pack and client
 emit TARGETS are SEPARATE (pack → `/backlog/`; client → `docs/project/backlog/`); the shared
@@ -931,7 +982,7 @@ the Issue body; reverse renders it inline into `/backlog/BD-NNN.md`), needing no
 
 | Rule (as named in prompt / CLAUDE.md) | Verification evidence (quoted / measured) | Conclusion |
 |---|---|---|
-| **Empirical-Evidence Blocks (architect)** | Every state-claim carries a block: §2.1 (no-mirror landed `_rules.md:18-26`); §2.2 (6-site monolith census, grep verbatim); §2.2.C1 (Check 29 `_check_mirror_staleness` hard-fails a no-mirror live config at its `last_forward_run`/`[mirror]`-table branches — symbol-anchored, not line); §2.3 (`provider_update` unwired except `tracker-promote.sh:801,1215`, no `provider_delete`); §2.4 (reconstruct field-set); §2.6 (no `Deferred` branch `:192-239`; distribution sums to 212); §2.7 (2 suffix + 3 parenthetical); §3.3 (guard `:1032-1042`); §3.4 (gh shell-out); §4.2 (surface branch `:1056,:709`). All at HEAD `e83aed7` (`git rev-parse HEAD → e83aed72a25b...`), 2026-06-05, verbatim output, SUPPORTED. | COMPLIANT |
+| **Empirical-Evidence Blocks (architect)** | Every state-claim carries a block: §2.1 (no-mirror landed `_rules.md:18-26`); §2.2 (6-site monolith census, grep verbatim); §2.2.C1 (Check 29 `_check_mirror_staleness` hard-fails a no-mirror live config at its `last_forward_run`/`[mirror]`-table branches — symbol-anchored, not line); §2.3 (`provider_update` unwired except `tracker-promote.sh:801,1215`, no `provider_delete`); §2.4 (reconstruct field-set); §2.6 (no `Deferred` branch `:192-239`; distribution sums to 211 post-BD-211); §2.7 (suffix-free post-BD-211; parenthetical-title `BD-195`); §3.3 (guard `:1032-1042`); §3.4 (gh shell-out); §4.2 (surface branch `:1056,:709`). All at HEAD `e83aed7` (`git rev-parse HEAD → e83aed72a25b...`), 2026-06-05, verbatim output, SUPPORTED. | COMPLIANT |
 | **CI-guard measure-then-bound** | §2.2 measures all 6 runtime monolith sites FIRST (grep census), categorizes each KEEP/REPOINT/RETIRE, gives a fix-recipe per site, and §2.2.C1 sizes the Check 29′ soft-pass allowlist exactly to the 3 legitimate live-config shapes (flat-file / tracker-no-mirror / tracker-with-mirror), refusing to widen to swallow a claims-mirror-but-missing config; verified clean against the projected post-fix state (Check 32′/29′/33 green). | COMPLIANT |
 | **Architect reaches own conclusions** | The 12 areas + 5 DECISION POINTS are resolved from the brief's CONSTRAINTS (the tiers) + independent re-measurement, not an imported solution. DP-1's (A) recommendation, the §2.3 "delete = close-with-reason" call, and the DP-5 retire-not-repoint call are the architect's own reasoning. | COMPLIANT |
 | **Pattern-matching out of context** | Each locked-mechanism reuse is property-fit-verified: the overflow carrier (§2.4) is the form family + the in-body `pack-extra-fields` block (the locked sibling-marker carrier, `work-item.yml:103-105`) — the v10-monolith sidecar FILE is DROPPED (DP-2 RESOLVED, user 2026-06-06) because its flat-grammar-overflow rationale does not hold and a GH-specific sidecar would not port across trackers; `provider_delete` REJECTED (§2.3) because the pack lifecycle has no hard-delete property (close-with-reason is the fit); the `Deferred` row mapped to OPEN (not closed) by lifecycle-semantics fit, not by resemblance to Resolved. | COMPLIANT |
