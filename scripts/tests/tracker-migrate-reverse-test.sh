@@ -89,7 +89,7 @@ case "$1 $2" in
                 echo '{"number":42,"title":"BD-001: Add foo to bar","body":"<!-- pack-id: BD-001 -->\n<!-- template_version: bd-v11.0 -->\n<!-- pack-version: v11 -->\n<!-- pack-entry-body-gz64: @@BD001_BLOB@@ -->\n\n## Description\n\nImplements foo on bar.\n\n## File / Symbol\n\nscripts/foo.sh","state":"OPEN","stateReason":null,"labels":[{"name":"bd-entry"},{"name":"status:open"},{"name":"type:feat"},{"name":"template:bd-v11.0"}],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/42"}'
                 ;;
             43)
-                echo '{"number":43,"title":"BD-002: Refactor bar","body":"<!-- pack-id: BD-002 -->\n<!-- template_version: bd-v11.0 -->\n<!-- pack-entry-body-gz64: @@BD002_BLOB@@ -->\n\n## Description\n\nRefactor.","state":"OPEN","stateReason":null,"labels":[{"name":"bd-entry"},{"name":"status:unblocked"}],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/43"}'
+                echo '{"number":43,"title":"BD-002: Refactor bar","body":"<!-- pack-id: BD-002 -->\n<!-- template_version: bd-v11.0 -->\n<!-- pack-entry-body-gz64: @@BD002_BLOB@@ -->\n\n## Description\n\nRefactor.\n\n## File / Symbol\n\nscripts/bar.sh","state":"OPEN","stateReason":null,"labels":[{"name":"bd-entry"},{"name":"status:unblocked"}],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/43"}'
                 ;;
             55)
                 echo '{"number":55,"title":"TD-010: Document quux","body":"<!-- pack-id: TD-010 -->\n<!-- template_version: td-v11.0 -->\n\n## Description\n\nDoc gap.","state":"OPEN","stateReason":null,"labels":[{"name":"td-entry"},{"name":"status:open"},{"name":"scope:dependency"}],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/55"}'
@@ -295,6 +295,56 @@ good_issue=$(jq -n --arg blob "$good_blob" '{
 good_rec=$(tracker_migrate_reverse_reconstruct "$good_issue" '{}')
 got_raw=$(printf '%s' "$good_rec" | jq -j '.raw_body'; printf X); got_raw="${got_raw%X}"
 assert_eq "2.1c blob decodes to byte-faithful raw_body" "$src_raw" "$got_raw"
+
+# 2.1d BD-204 §3.3a (ii): the NORMALIZATION-TOLERANT divergence comparator.
+# The blob is authoritative; the visible H2 is the advisory projection. On a
+# direct GH edit of the H2 (not propagated to the blob), reverse FAILs loud.
+# The comparator normalizes EXACTLY CRLF/CR→LF + per-line trailing-ws strip +
+# single trailing newline — GH's documented body munging — so it neither
+# false-positives an untouched-but-normalized body NOR false-negatives a real
+# one-word content edit.
+div_raw=$'**BD-079 — Divergence probe**\nType: TODO(version)\nStatus: Open\nFile/Symbol: scripts/probe.sh\nDescription: The quick brown fox.\n'
+div_blob=$(printf '%s' "$div_raw" | _tmf_gz64_encode)
+
+# 2.1d-i NO-FALSE-POSITIVE: an UNTOUCHED body whose H2 GitHub has merely
+# normalized (CRLF line endings + per-line trailing spaces) MATCHES the blob.
+# Build the H2 with REAL \r\n line endings + trailing spaces via $'...' (jq
+# --arg does NOT interpret escapes, so the bytes must already be real).
+div_h2_normalized=$'## Description\r\n\r\nThe quick brown fox.   \r\n\r\n## File / Symbol  \r\n\r\nscripts/probe.sh  '
+div_issue_norm=$(jq -n --arg blob "$div_blob" --arg h2 "$div_h2_normalized" '{
+  number: 79, id: "79",
+  title: "BD-079: Divergence probe",
+  body: ("<!-- pack-id: BD-079 -->\n<!-- pack-entry-body-gz64: " + $blob + " -->\n\n" + $h2),
+  state: "open",
+  labels: ["bd-entry","status:open"]
+}')
+div_norm_rc=0
+div_norm_err=$(tracker_migrate_reverse_reconstruct "$div_issue_norm" '{}' 2>&1 1>/dev/null) || div_norm_rc=1
+assert_eq "2.1d-i comparator MATCHES a CRLF+trailing-space-normalized body (no false-positive)" \
+    "0" "$div_norm_rc"
+
+# 2.1d-ii MISMATCH CAUGHT: a real ONE-WORD content edit to the visible H2
+# (fox → cat) diverges from the blob → comparator FAILs loud (rc=1) with the
+# `divergence:` message naming the issue + the divergent section. Real LF bytes.
+div_h2_edited=$'## Description\n\nThe quick brown cat.\n\n## File / Symbol\n\nscripts/probe.sh'
+div_issue_edit=$(jq -n --arg blob "$div_blob" --arg h2 "$div_h2_edited" '{
+  number: 79, id: "79",
+  title: "BD-079: Divergence probe",
+  body: ("<!-- pack-id: BD-079 -->\n<!-- pack-entry-body-gz64: " + $blob + " -->\n\n" + $h2),
+  state: "open",
+  labels: ["bd-entry","status:open"]
+}')
+div_edit_err=$(tracker_migrate_reverse_reconstruct "$div_issue_edit" '{}' 2>&1 1>/dev/null); div_edit_rc=$?
+assert_eq       "2.1d-ii comparator MISMATCHES a one-word content edit (caught, rc=1)" "1" "$div_edit_rc"
+assert_contains "2.1d-ii divergence error names the issue + 'divergence:'" "$div_edit_err" "divergence: issue #79"
+assert_contains "2.1d-ii divergence error names the divergent section"     "$div_edit_err" "Description"
+
+# 2.1d-iii FORCE override: the SAME one-word-edit body with force=1 → blob-wins
+# (rc=0, no abort) + a WARN surfaced. The blob is never mutated (the reverse
+# proceeds with the authoritative blob content).
+div_force_warn=$(tracker_migrate_reverse_reconstruct "$div_issue_edit" '{}' 1 2>&1 1>/dev/null); div_force_rc=$?
+assert_eq       "2.1d-iii --force overrides divergence to blob-wins (rc=0)" "0" "$div_force_rc"
+assert_contains "2.1d-iii --force surfaces a blob-wins WARN" "$div_force_warn" "blob wins"
 
 # 2.2 Unblocks-inverse pass
 entries='[

@@ -754,14 +754,52 @@ else
     t_pass "4.5 reopen path does not also close"
 fi
 
-# 4.6 unmapped pack-id → typed not-found error (no provider op).
+# 4.7 BD-204 §3.3a (i): a CONTENT-bearing edit RECOMPOSES the body via the
+# C-4.5 composer so the provider_update payload carries BOTH the H2 sections
+# AND the pack-entry-body-gz64 blob — regenerated from the SAME entry object,
+# atomically (the producer keeps the two views in sync). The status:* label
+# swap still rides the same single payload.
+TED_CALLS=""
+TED_UPDATE_PAYLOAD=""
+ted_raw_body=$'**BD-001 — Add foo to bar**\nType: TODO(version)\nStatus: Open\nFile/Symbol: scripts/foo.sh\nDescription: Implements foo, now improved.\n'
+ted_patch=$(jq -n --arg rb "$ted_raw_body" \
+    '{description:"Implements foo, now improved.", file_symbol:"scripts/foo.sh", raw_body:$rb}')
+tracker_edit_entry "BD-001" "$ted_patch" "$TED_REPO" >/dev/null
+assert_contains "4.7 content edit dispatches provider_update" "$TED_CALLS" "|update:42"
+ted_body=$(printf '%s' "$TED_UPDATE_PAYLOAD" | jq -r '.body // ""')
+assert_contains "4.7 recomposed payload carries the gz64 blob" "$ted_body" "pack-entry-body-gz64:"
+assert_contains "4.7 recomposed payload carries the ## Description H2" "$ted_body" "## Description"
+assert_contains "4.7 recomposed payload carries the edited H2 value" "$ted_body" "Implements foo, now improved."
+assert_contains "4.7 recomposed payload carries the ## File / Symbol H2" "$ted_body" "## File / Symbol"
+# 4.7b SYNC PROOF: the gz64 blob in the recomposed payload decodes to a raw_body
+# whose blob-projected H2 AGREES with the payload's H2 (blob ↔ H2 in sync). Re-
+# run the blob's raw_body through the reverse comparator against the payload body
+# itself: a synced pair MATCHES (rc=0). Source the reverse lib for the check.
+if ! declare -f _tmr_check_blob_h2_divergence >/dev/null 2>&1; then
+    # shellcheck disable=SC1091
+    source "$REPO_ROOT/scripts/lib/tracker-migrate-reverse.sh"
+fi
+ted_blob_payload=$(printf '%s' "$ted_body" \
+    | sed -nE 's/.*<!-- pack-entry-body-gz64:[[:space:]]*([A-Za-z0-9+/=]+)[[:space:]]*-->.*/\1/p' | head -1)
+ted_decoded=$(printf '%s' "$ted_blob_payload" | python3 -c '
+import sys, base64, gzip, io
+d=sys.stdin.read().strip()
+raw=base64.b64decode(d, validate=True)
+sys.stdout.buffer.write(gzip.GzipFile(fileobj=io.BytesIO(raw)).read())
+sys.stdout.buffer.write(b"X")')
+ted_decoded="${ted_decoded%X}"
+ted_sync_rc=0
+_tmr_check_blob_h2_divergence "$ted_decoded" "$ted_body" 42 BD-001 0 >/dev/null 2>&1 || ted_sync_rc=1
+assert_eq "4.7b recomposed blob ↔ H2 agree after provider_update (no divergence)" "0" "$ted_sync_rc"
+
+# 4.8 unmapped pack-id → typed not-found error (no provider op).
 TED_CALLS=""
 err=$(tracker_edit_entry "BD-999" '{"body":"x"}' "$TED_REPO" 2>&1 1>/dev/null) || true
-assert_contains "4.6 unmapped id → not-found error" "$err" "ERROR: not-found"
+assert_contains "4.8 unmapped id → not-found error" "$err" "ERROR: not-found"
 if [[ -n "$TED_CALLS" ]]; then
-    t_fail "4.6 unmapped id must dispatch no provider op" "calls=$TED_CALLS"
+    t_fail "4.8 unmapped id must dispatch no provider op" "calls=$TED_CALLS"
 else
-    t_pass "4.6 unmapped id dispatches no provider op"
+    t_pass "4.8 unmapped id dispatches no provider op"
 fi
 
 rm -rf "$TED_REPO"

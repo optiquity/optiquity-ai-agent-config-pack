@@ -54,6 +54,15 @@ _ted_dir="$(cd "$(dirname "$_ted_self")" && pwd)"
     source "$_ted_dir/tracker-provider.sh"
     source "$_ted_dir/tracker-provider-gh.sh"
 }
+# BD-204 §3.3a (i): a body-content edit MUST regenerate BOTH the H2 sections
+# AND the pack-entry-body-gz64 blob from the SAME entry object — the edit path
+# is the producer that owns keeping the two views in sync. It calls the C-4.5
+# blob-aware composer (`tmf_compose_issue_body`); it does NOT re-implement the
+# gz64 blob or the H2 emit here. Source the forward lib idempotently so the
+# composer is available.
+# shellcheck disable=SC1091
+[[ -z "$(declare -f tmf_compose_issue_body 2>/dev/null)" ]] && \
+    source "$_ted_dir/tracker-migrate-forward.sh"
 unset _ted_self _ted_dir
 
 # ─────────────────────────────────────────────────────────────────
@@ -127,8 +136,25 @@ tracker_edit_mode() {
 # Apply an edit to a tracked entry against the tracker SSOT (Mode 3).
 #
 # <patch-json> describes the edit. Recognized keys (all optional):
-#   body          — the recomposed Issue body (prose sub-blocks:
-#                   Description / Context / Resolution / etc.)
+#   description   — the entry's Description field value (drives the
+#                   `## Description` H2 + rides into the recomposed blob)
+#   context       — the entry's Context field value
+#   resolution    — the entry's Resolution field value
+#   file_symbol   — the entry's File / Symbol field value
+#   raw_body      — the VERBATIM entry span (lines 2..EOF: the bold-header
+#                   line + every field/prose line). When ANY of the five
+#                   content keys above is present, the edit path RECOMPOSES
+#                   the Issue body via the C-4.5 blob-aware composer
+#                   (`tmf_compose_issue_body`), regenerating BOTH the H2
+#                   sections AND the `pack-entry-body-gz64` blob from the
+#                   SAME entry object atomically (§3.3a (i) / B-3). This is
+#                   the producer that keeps the two body representations in
+#                   sync — a tracker-side edit never updates one without the
+#                   other. The composed body REPLACES any literal `body` key.
+#   body          — a pre-composed Issue body (LEGACY / label-or-status-only
+#                   edits). Used VERBATIM only when NO content key above is
+#                   present; if a content key IS present, the recomposed body
+#                   wins (so the blob+H2 sync is never bypassed).
 #   title         — new title text
 #   status        — the NEW pack Status value (Open / Unblocked /
 #                   Deferred / Resolved / Deprecated / Cancelled).
@@ -208,6 +234,45 @@ tracker_edit_entry() {
     local new_status old_status
     new_status=$(printf '%s' "$patch" | jq -r '.status // empty')
     old_status=$(printf '%s' "$patch" | jq -r '.old_status // empty')
+
+    # BD-204 §3.3a (i): if the patch carries ANY entry-content field
+    # (description / context / resolution / file_symbol / raw_body), RECOMPOSE
+    # the Issue body via the C-4.5 blob-aware composer so BOTH the H2 sections
+    # AND the pack-entry-body-gz64 blob are regenerated from the SAME entry
+    # object atomically — a tracker-side edit never updates one representation
+    # without the other. The composed body REPLACES any literal `body` key.
+    # The composer (`tmf_compose_issue_body`) is the SINGLE real codec; no
+    # gz64/H2 emit is re-implemented here.
+    local has_content
+    has_content=$(printf '%s' "$patch" | jq -r '
+        if ((.description // "") != "" or (.context // "") != ""
+            or (.resolution // "") != "" or (.file_symbol // "") != ""
+            or (.raw_body // "") != "")
+        then "1" else "" end')
+    if [[ "$has_content" == "1" ]]; then
+        local ed_description ed_context ed_resolution ed_file_symbol ed_raw_body
+        ed_description=$(printf '%s' "$patch" | jq -r '.description // ""')
+        ed_context=$(printf     '%s' "$patch" | jq -r '.context // ""')
+        ed_resolution=$(printf  '%s' "$patch" | jq -r '.resolution // ""')
+        ed_file_symbol=$(printf '%s' "$patch" | jq -r '.file_symbol // ""')
+        # Trailing-newline-faithful raw_body extraction (jq -j + sentinel guard,
+        # matching the forward BD call-site idiom) so the verbatim final newline
+        # reaches the composer/encoder intact.
+        ed_raw_body=$(printf '%s' "$patch" | jq -j '.raw_body // ""'; printf X)
+        ed_raw_body="${ed_raw_body%X}"
+        local composed_body
+        if ! composed_body=$(tmf_compose_issue_body "$pack_id" \
+                "$ed_description" "$ed_context" "$ed_resolution" \
+                "$ed_file_symbol" "$ed_raw_body"); then
+            tracker_error_emit "validation" \
+                "tracker_edit: body recompose failed for $pack_id (size-budget or storage-format; see backend message)" \
+                "(no provider_update attempted — the blob+H2 sync would be incomplete)"
+            return 1
+        fi
+        # Inject the recomposed body into the patch (overriding any literal
+        # `body`), so the single payload build below carries the synced body.
+        patch=$(printf '%s' "$patch" | jq --arg b "$composed_body" '.body = $b')
+    fi
 
     # Build the provider_update payload (§2.3; reuses the
     # tracker-promote.sh:801 `provider_update "$gh_id" "$payload"` call

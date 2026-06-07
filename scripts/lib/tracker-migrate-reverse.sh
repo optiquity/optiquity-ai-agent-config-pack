@@ -93,6 +93,19 @@ if ! declare -f per_entry_regenerate_toc >/dev/null 2>&1; then
     source "$_tmr_dir/per-entry/toc-regenerate.sh"
     unset _tmr_self _tmr_dir
 fi
+# shellcheck disable=SC1091
+# BD-204 §3.3a (ii): the divergence comparator RECOMPUTES the H2 projection
+# from the gz64 blob and compares it to the Issue's stored H2. It reuses the
+# REAL forward projection codec (`_tmf_parse_backlog_file` to re-parse the
+# blob's raw_body into fields + `_tmf_neutralize_autolinks` to project each
+# field exactly as the composer does) — NO second H2 emit is re-implemented
+# here. Source the forward lib idempotently so those symbols are available.
+if ! declare -f _tmf_neutralize_autolinks >/dev/null 2>&1; then
+    _tmr_self="${BASH_SOURCE[0]}"
+    _tmr_dir="$(cd "$(dirname "$_tmr_self")" && pwd)"
+    source "$_tmr_dir/tracker-migrate-forward.sh"
+    unset _tmr_self _tmr_dir
+fi
 
 # ─────────────────────────────────────────────────────────────────
 # BD-106 helpers: phase-task id-map reads (V3.2 §4.2 / V3.3 §4.2)
@@ -523,6 +536,10 @@ PYEOF
 tracker_migrate_reverse_reconstruct() {
     local issue="$1"
     local mapping="$2"
+    # BD-204 §3.3a (ii): force=1 overrides the blob↔H2 divergence comparator to
+    # blob-wins (existing refusal-unless-force idiom; threaded from the run
+    # loop). Defaults to 0 so direct callers get the loud divergence backstop.
+    local force="${3:-0}"
 
     local pack_id title body labels status type scope severity
     pack_id=$(printf '%s' "$issue" | python3 -c '
@@ -576,6 +593,17 @@ print(m.group(1) if m else "")')
     # decoder's sentinel X (always appended) is stripped here, preserving the
     # exact bytes the verbatim emit must write back.
     raw_body="${raw_body%X}"
+
+    # BD-204 §3.3a (ii): blob↔H2 divergence backstop. The blob is authoritative
+    # for the reverse; the visible H2 is the advisory projection. If a direct GH
+    # edit changed the visible H2 without updating the blob, a silent blob-wins
+    # reverse would discard the edit — so RECOMPUTE the H2 projection from the
+    # blob and COMPARE (normalization-tolerant) to the Issue's stored H2; FAIL
+    # LOUD on a mismatch unless --force (blob-wins). Runs only when a blob is
+    # present (no-op for legacy/phase issues with no carrier).
+    if ! _tmr_check_blob_h2_divergence "$raw_body" "$body" "$issue_num_for_err" "$pack_id" "$force"; then
+        return 1
+    fi
 
     local sub_issue_parent issue_number first_class_edges
     sub_issue_parent=$(printf '%s' "$issue" | jq -r '.parent // ""')
@@ -672,6 +700,134 @@ sys.stdout.buffer.write(b"X")
         return 1
     fi
     printf '%s' "$decoded"
+}
+
+# BD-204 §3.3a (ii): the NORMALIZATION-TOLERANT divergence comparator (N-2).
+# Blob is AUTHORITATIVE; the visible H2 sections are the advisory projection.
+# A human (or any non-tracker-edit writer) editing the visible `## Description`
+# without touching the hidden blob creates DIVERGENCE — a silent blob-wins
+# reverse would discard the edit. This makes it LOUD: on reading an Issue,
+# RECOMPUTE the H2 projection from the blob (re-parse the decoded raw_body into
+# fields via the REAL forward parser, then project each field through the REAL
+# `_tmf_neutralize_autolinks` exactly as the composer does) and COMPARE it to
+# the Issue's actual stored H2 sections; on mismatch FAIL LOUD.
+#
+# NORMALIZATION-TOLERANT (N-2): GitHub munges a body on a web round-trip even
+# when no human changed content — it canonicalizes line endings (CRLF/CR → LF)
+# and strips per-line trailing whitespace. A byte-exact compare would then
+# FALSE-POSITIVE on an untouched issue (a noise generator that blocks
+# legitimate reverses). The comparator normalizes BOTH sides identically,
+# applying EXACTLY these transforms and NO broader:
+#   (1) line-ending canonicalization — `\r\n` and bare `\r` → `\n`;
+#   (2) per-line trailing-whitespace strip; and
+#   (3) a single trailing-newline normalization (`rstrip('\n') + '\n'`).
+# It does NOT touch interior whitespace, case, Unicode form, or content bytes —
+# so a REAL human edit (any content/word/structural change) still MISMATCHES
+# and is caught (no false-negative).
+#
+# The blob ITSELF needs no tolerance: it rides inside an HTML comment in the
+# safe base64 alphabet; GH's body normalization preserves the comment + the
+# alphabet, so the blob decodes byte-identically regardless. Only the VISIBLE
+# H2 (plain markdown) is normalization-exposed — hence the comparator covers
+# exactly the H2 leg.
+#
+# Args:
+#   $1 = decoded raw_body (the blob's authoritative content, lines 2..EOF)
+#   $2 = the Issue's full body text (the stored H2 sections live here)
+#   $3 = issue number (for the divergence error message)
+#   $4 = pack-id (for the error message)
+#   $5 = force flag (1 = blob-wins override; suppresses the abort)
+# Returns 0 if consistent (or raw_body empty / force set), 1 on divergence.
+_tmr_check_blob_h2_divergence() {
+    local raw_body="$1"
+    local issue_body="$2"
+    local issue_num="$3"
+    local pack_id="$4"
+    local force="${5:-0}"
+
+    # No blob → nothing to diverge from (the H2 is the only representation;
+    # legacy/phase issues with no carrier). Skip the check.
+    [[ -z "$raw_body" ]] && return 0
+
+    # Re-parse the blob's raw_body into the projection fields via the REAL
+    # forward parser (a single-entry file = the verbatim span). Recompute each
+    # H2 field VALUE through the REAL neutralizer the composer uses.
+    local _tmp_raw
+    _tmp_raw=$(mktemp -t tmrdiv.XXXXXX)
+    printf '%s' "$raw_body" > "$_tmp_raw"
+    local parsed
+    parsed=$(_tmf_parse_backlog_file "$_tmp_raw" 2>/dev/null)
+    rm -f "$_tmp_raw"
+    # An unparseable blob (no recognizable entry) cannot be projected — leave
+    # the existing corrupt-blob / decode-identity guards to own that class and
+    # skip the H2 comparison rather than false-flag.
+    [[ -z "$parsed" || "$parsed" == "[]" ]] && return 0
+
+    local exp_description exp_context exp_resolution exp_file_symbol
+    exp_description=$(printf '%s' "$parsed" | jq -r '.[0].description // ""')
+    exp_context=$(printf     '%s' "$parsed" | jq -r '.[0].context // ""')
+    exp_resolution=$(printf  '%s' "$parsed" | jq -r '.[0].resolution // ""')
+    exp_file_symbol=$(printf '%s' "$parsed" | jq -r '.[0].file_symbol // ""')
+    # Project each field exactly as the composer does (neutralize the visible
+    # H2 value; blob untouched). Empty values stay empty (no-op).
+    exp_description=$(printf '%s' "$exp_description" | _tmf_neutralize_autolinks)
+    exp_context=$(printf     '%s' "$exp_context"     | _tmf_neutralize_autolinks)
+    exp_resolution=$(printf  '%s' "$exp_resolution"  | _tmf_neutralize_autolinks)
+    exp_file_symbol=$(printf '%s' "$exp_file_symbol" | _tmf_neutralize_autolinks)
+
+    # Extract the Issue's ACTUAL stored H2 section values (the same extractor
+    # reconstruct already uses).
+    local got_description got_context got_resolution got_file_symbol
+    got_description=$(printf '%s' "$issue_body" | _tmr_extract_section "Description")
+    got_context=$(printf     '%s' "$issue_body" | _tmr_extract_section "Context")
+    got_resolution=$(printf  '%s' "$issue_body" | _tmr_extract_section "Resolution")
+    got_file_symbol=$(printf '%s' "$issue_body" | _tmr_extract_section "File / Symbol")
+
+    # Normalize BOTH sides identically (CRLF/CR → LF; per-line trailing-ws
+    # strip; single trailing-newline) and compare, all in one python3 pass so
+    # the transform set is applied exactly once and identically to each side.
+    local mismatch
+    mismatch=$(TMR_DIV_ED="$exp_description" TMR_DIV_GD="$got_description" \
+               TMR_DIV_EC="$exp_context"     TMR_DIV_GC="$got_context" \
+               TMR_DIV_ER="$exp_resolution"  TMR_DIV_GR="$got_resolution" \
+               TMR_DIV_EF="$exp_file_symbol" TMR_DIV_GF="$got_file_symbol" \
+               python3 -c '
+import os
+def norm(s):
+    # (1) line-ending canonicalization: CRLF and bare CR -> LF.
+    s = s.replace("\r\n", "\n").replace("\r", "\n")
+    # (2) per-line trailing-whitespace strip.
+    s = "\n".join(line.rstrip(" \t") for line in s.split("\n"))
+    # (3) single trailing-newline normalization.
+    s = s.rstrip("\n") + "\n"
+    return s
+pairs = [
+    ("Description", "TMR_DIV_ED", "TMR_DIV_GD"),
+    ("Context",     "TMR_DIV_EC", "TMR_DIV_GC"),
+    ("Resolution",  "TMR_DIV_ER", "TMR_DIV_GR"),
+    ("File / Symbol","TMR_DIV_EF","TMR_DIV_GF"),
+]
+bad = []
+for name, ek, gk in pairs:
+    if norm(os.environ.get(ek, "")) != norm(os.environ.get(gk, "")):
+        bad.append(name)
+print(",".join(bad))
+')
+    if [[ -n "$mismatch" ]]; then
+        if [[ "$force" == "1" ]]; then
+            # --force: blob-wins override (explicit operator decision). The
+            # comparator never mutates the blob; reverse proceeds with the
+            # authoritative blob content. Surface a WARN so the override is
+            # not silent.
+            printf 'WARN: reverse: issue #%s (%s) body H2 sections disagree with the pack-entry-body-gz64 blob (%s); --force set: blob wins, the GH-side H2 edit is discarded\n' \
+                "$issue_num" "$pack_id" "$mismatch" >&2
+            return 0
+        fi
+        tracker_error_emit "validation" \
+"divergence: issue #$issue_num ($pack_id) body H2 sections disagree with the pack-entry-body-gz64 blob ($mismatch) — a direct GH edit was not propagated to the blob; reconcile before reverse (or pass --force to override to blob-wins, discarding the GH-side H2 edit)"
+        return 1
+    fi
+    return 0
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -1161,8 +1317,20 @@ print(m.group(1) if m else "")')
                     '. + [{phase_number: ($p | sub("phase-"; "")), title: $i.title, gh_id: $i.id}]')
                 ;;
             BD-*|TD-*)
-                local rec
-                rec=$(tracker_migrate_reverse_reconstruct "$issue" "$mapping")
+                local rec rec_rc
+                # Thread `force` so the §3.3a (ii) divergence comparator (and the
+                # §3.3 corrupt-blob guard, which share the return-1 fail-loud
+                # channel) can override to blob-wins. A non-zero rc is a HARD
+                # fail-loud abort (divergence / corrupt blob) — NOT a soft skip:
+                # it must surface, never silently append an empty/partial entry.
+                rec=$(tracker_migrate_reverse_reconstruct "$issue" "$mapping" "$force")
+                rec_rc=$?
+                if [[ "$rec_rc" -ne 0 ]]; then
+                    rm -f "$skipped_log"
+                    tracker_error_emit "validation" \
+                        "reverse: reconstruction aborted for $pack_id (gh #$gh_id) — see the divergence/corrupt-blob diagnostic above; reverse stopped (pass --force to override to blob-wins where applicable)"
+                    return 1
+                fi
                 issue_jsons=$(printf '%s' "$issue_jsons" | jq -c --argjson r "$rec" '. + [$r]')
                 ;;
             *)
