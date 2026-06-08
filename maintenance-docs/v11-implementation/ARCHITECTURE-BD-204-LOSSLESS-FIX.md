@@ -710,21 +710,27 @@ NOT pay its cost (§4.6 (P)):
    path); a fixture/integration test that validates a small scratch tree pays ONLY its small-fixture
    cost. The deep CI step passes the real `/backlog/`. (This is the exact bug the C-4.6 code committed —
    `backlog_dir = tree_dir or REPO_ROOT/"backlog"` ignored the caller — and is the FIRST mandatory fix.)
-2. **Drive the pure path with ONE BATCH sub-invocation, not per-entry (§4.6 (S)).** Source the libs
-   ONCE and call the EXISTING real batch entry-point `tmf_parse_backlog_tree` (`tracker-migrate-forward.sh`),
-   which enumerates the stream via `pe_list_entry_files`, concatenates all entry bodies into ONE stream,
-   and parses them with a SINGLE `_tmf_parse_backlog_file` call (one `python3` over all entries — the
-   parser already loops internally). The compose / reconstruct / emit legs likewise run in ONE
-   sub-invocation that loops internally over the parsed array. This is a BATCH DRIVER over the REAL
-   functions — NOT a codec re-impl, so OQ-4 holds (the same `_tmf_parse_backlog_file` / `tmf_compose_issue_body`
-   / `tracker_migrate_reverse_reconstruct` / `_tmr_emit_pack_tree` the migration uses). It REPLACES the
-   prior "a bash sub-invocation per entry" wording that spawned ~2,000 subprocesses.
-3. **Assert RECONSTRUCTED body span == ORIGINAL body span, BYTE-FOR-BYTE** (back-pointer stripped),
-   per entry, inside the one batch process. This is ACHIEVABLE green (review-2 A-1/D-1/D-3): the pack
-   emit writes the verbatim blob back (not the fixed-order projection), so the 20 no-Blockers/Unblocks
-   entries get no injected lines and field order is preserved. The byte leg is the ONLY leg — strong
-   enough to catch the prose-block corruption (B-1), order corruption, and value corruption; there is
-   NO weak "label-set ⊆" leg (review-2 D-1).
+2. **Drive the codec via the SINGLE-SOURCED BATCH function, not per-entry, not reproduced (§4.6 (S),
+   Option B — MEASURED).** OQ-4 (no second codec) is kept by SINGLE-SOURCING: the real
+   `_tmf_gz64_encode` / `_tmr_decode_body_blob` (+ `_tmf_neutralize_autolinks` + `tmf_compose_issue_body`)
+   gain a BATCH mode (N records, ONE process) that BOTH the production migration AND the guard call —
+   so there is no second copy that can drift. The guard does NOT drive the real functions PER ENTRY
+   (measured Option A = 142s / 211 = 4.7× over the 30s budget, ~39 spawns/entry — §4.6 (S) EE) and does
+   NOT reproduce the codec (the committed C-4.6 OQ-4 violation). The byte-faithful leg asserts the
+   TWO-assertion contract `PRE_PARSE_ORIGINAL_body == decode(encode(raw_body))` (§4.6.2 — NOT the
+   tautology `== raw_body`): (a) the shared-codec round-trip is lossless AND (b) the parser-captured
+   `raw_body` equals the byte-safe pre-parse original (the C-2 catch). It runs in ONE batch process
+   (measured 0.05s over all 211); it does NOT need `tracker_migrate_reverse_reconstruct`/
+   `_tmr_emit_pack_tree` (they decode the LABEL/H2 PROJECTION, separately tested per §4.6.3). It
+   REPLACES the prior "per-entry sub-invocation" (~2,000 spawns) AND the prior "batch
+   `tmf_parse_backlog_tree` / ~4-6 spawns" wording, which conflated the cheap real PARSE with the whole
+   round-trip (only the parse was actually batched).
+3. **Assert `PRE_PARSE_ORIGINAL_body == decode(encode(raw_body))`, BYTE-FOR-BYTE** (back-pointer
+   stripped), per entry, inside the one batch process — the §4.6.2 two-assertion contract: (a)
+   codec-lossless AND (b) parse-faithful (the pre-parse original byte-safely read = the parser's
+   `raw_body`; the C-2 catch). The byte leg is the ONLY content leg — strong enough to catch the
+   prose-block corruption (B-1), order corruption, value corruption, AND a parse-step byte strip (C-2);
+   there is NO weak "label-set ⊆" leg (review-2 D-1) and NO tautology.
 4. FAIL naming the entry + a unified diff of the first differing lines. The same batch process runs the
    size / title / control-char legs (§4.4) in the same loop — no extra spawns.
 
@@ -846,7 +852,9 @@ Reconciled to the verbatim-blob model + the review-2 omissions (G-1 workflow, G-
 | `scripts/lib/tracker-migrate-forward.sh` — `_tmf_parse_backlog_file` (add `raw_body`), `tmf_compose_issue_body` (6th DEFAULTED `raw_body` param → emit `pack-entry-body-gz64` blob = base64(gzip-mtime0(raw_body)); + the §3.3c size-budget overflow fail-loud check), BD call site `:901` | capture + gzip-emit the verbatim blob + enforce the size budget | the producer of the round-trip truth + the size guard |
 | `scripts/lib/tracker-migrate-forward.sh` — **phase call site `:959`** (G-2) | ensure the new 6th param is OPTIONAL (`${6:-}`) so the 4-arg phase call still works | a missed surface in v1; a mandatory param breaks the phase path |
 | `scripts/lib/tracker-migrate-reverse.sh` — `tracker_migrate_reverse_reconstruct` (read the gz64 marker → base64-decode + gunzip → `raw_body`), `_tmr_emit_pack_tree` (REWRITE pack branch to emit `raw_body` verbatim; DELETE the dead `extra_fields` per-field render at `:758`), the §3.3a NORMALIZATION-TOLERANT divergence comparator (N-2) | the consumer; the emit REWRITE; the human-edit backstop | makes the round-trip byte-faithful; removes the abandoned per-field model; detects GH-side divergence without false-positives |
-| `scripts/validate-pack.py` — NEW `check_migrator_field_faithfulness` (next registry integer) + registration in `main()`; **DEFAULT-SKIP unless `PACK_VALIDATE_DEEP=1` (§4.6 P)**, **takes `tree_dir` = the CALLER's target, never hardcoded `REPO_ROOT/backlog` (§4.6 T)**, **drives the BATCH `tmf_parse_backlog_tree` seam, not per-entry (§4.6 S)**; asserts byte-faithfulness + size + title + control-char | the deep CI guard (runs ONCE) | the CI gate that fails a lossy/corrupting migration OR a body-limit breach — WITHOUT the 151× compounding (§4.6) |
+| `scripts/validate-pack.py` — NEW `check_migrator_field_faithfulness` (next registry integer) + registration in `main()`; **DEFAULT-SKIP unless `PACK_VALIDATE_DEEP=1` (§4.6 P)**, **takes `tree_dir` = the CALLER's target, never hardcoded `REPO_ROOT/backlog` (§4.6 T)**, **calls the SINGLE-SOURCED batch codec (`_tmf_gz64_encode`/`_tmr_decode_body_blob` batch mode), NOT reproduced (OQ-4) and NOT per-entry (Option A = 142s, rejected); ONE python3 over all 211 = 0.05s (§4.6 S Option B)**; asserts byte-faithfulness + size + title + control-char | the deep CI guard (runs ONCE) | the CI gate that fails a lossy/corrupting migration OR a body-limit breach — WITHOUT the 151× compounding AND WITHOUT a drift-prone second codec (§4.6) |
+| `scripts/lib/tracker-migrate-forward.sh` / `tracker-migrate-reverse.sh` — `_tmf_gz64_encode` / `_tmr_decode_body_blob` (+ `_tmf_neutralize_autolinks` + `tmf_compose_issue_body`) gain a BATCH mode (N records, ONE process); the guard calls the SAME functions (OQ-4 single-source) | the single-sourced codec both production + guard share | no second codec can drift → the guard cannot FALSE-PASS a lossy codec change |
+| `scripts/validate-pack.py` — DELETE the `gz64_encode`/`gz64_decode` codec REPRODUCTION (`:7418`+) + an OQ-4 single-source check (the guard imports/sub-invokes the real batch codec; CI fails if a reproduced codec is reintroduced) | removes the committed OQ-4 violation | enforces "drive the real functions" structurally, not by review attention |
 | `scripts/validate-pack.py` — `main()` TIMING HARNESS: `run_check(name, fn, budget_s)` wrapping every check; per-check WARN + total-run hard-FAIL on budget overrun (§4.7) | the durable runtime-regression backstop | a future pathologically-slow check (the C-4.6 class) cannot silently ship — total-run budget FAILs CI |
 | **`.github/workflows/validate-pack.yml`** (G-1) | wire the new per-check test (`bash scripts/tests/<new-check-test>.sh`) AND a dedicated DEEP step that runs the faithfulness check ONCE (`PACK_VALIDATE_DEEP=1 python3 scripts/validate-pack.py`, or the per-check test which sets it) — §4.6 (P) | Check 42 (no exemption) FAILS an unwired per-check test; the deep step is the ONCE home so the general `validate` step (`:97`) stays default-SKIP (~0 increment) |
 | `scripts/tests/tracker-migrate-forward-test.sh` | add a fixture entry carrying top-level drop-set fields + a prose block; assert the `pack-entry-body-gz64` blob appears + decodes; assert the size-overflow path FAILs loud on a synthetic over-limit entry | unit-level encode of the carry + size contract |
@@ -940,33 +948,93 @@ passes its fixture tree; the deep CI step passes `REPO_ROOT/backlog`). There is 
 `tree_dir or REPO_ROOT/"backlog"` fallback that silently reverts to the real 211 — that exact fallback
 was the C-4.6 bug. A fixture test with 3 entries pays a 3-entry cost, full stop.
 
-**(S) SEAM EFFICIENCY — ONE batch process, not a subprocess-per-entry storm. (MEASURED: ~12× faster.)**
-The check sources the libs ONCE and drives the EXISTING real batch entry-point `tmf_parse_backlog_tree`
-(one `python3` over the whole concatenated stream — the parser loops internally), then runs
-compose/reconstruct/emit + the 4 legs in ONE sub-invocation looping over the parsed array. Per-run
-subprocess count drops from ~2,000 (per-entry × per-leg) to a SMALL CONSTANT — on the order of one
-sub-shell that sources the libs + a handful of `python3`/`jq` batch passes (parse, compose-loop,
-reconstruct-loop, emit-loop), i.e. ~4-6 spawns TOTAL regardless of entry count, not ~10 per entry.
+**(S) SEAM EFFICIENCY — single-source the codec (OPTION B), MEASURED against OPTION A (drive the real
+per-entry functions). CORRECTS the prior "~4-6 spawns / drives the real functions / OQ-4 holds" claim,
+which was a CONTRADICTION the runtime review repeated: ~4-6 spawns is achievable ONLY by reproducing
+the codec (the committed C-4.6 bug); driving the REAL per-entry codec is ~39 spawns/entry. Only the
+PARSE (`tmf_parse_backlog_tree`) is genuinely batched-and-real; the codec / composer / reverse / emit
+are NOT batched, so the prior section conflated the cheap real PARSE with the whole round-trip.**
 
-> **Empirical-Evidence Block (BATCH parse all 211 = 0.44s / one python3 spawn vs PER-ENTRY = 5.28s / 211 spawns, ONE leg).**
-> `CMD`: BATCH — concat all `backlog/BD-*.md` bodies into one stream, `source tracker-migrate-forward.sh`,
-> ONE `_tmf_parse_backlog_file` call; `/usr/bin/time -p`. PER-ENTRY — loop 211 files, one
-> `_tmf_parse_backlog_file` (one `python3`) EACH; `/usr/bin/time -p`.
-> `OUT`: BATCH (one spawn, 211 entries) = `real 0.44`; PER-ENTRY (211 spawns, ONE leg) = `real 5.28`.
-> The real C-4.6 bug ran ~4 legs × the round-trip ≈ 2,000 spawns ≈ the 2-5 min/run the failure reports.
-> `AT`: HEAD `9cc0e88`, 2026-06-07. `INTERP`: the batch seam is ~12× faster than per-entry on the parse
-> leg ALONE, and the gap widens across 4 legs (per-entry compounds per leg; batch reuses the one parse).
-> The real batch entry-point `tmf_parse_backlog_tree` already exists (`tracker-migrate-forward.sh`) —
-> the seam is the EXISTING function, not invented; OQ-4 (drive the real functions) holds. `CONCL`:
-> SUPPORTED — the batch seam collapses ~2,000 spawns to a small constant and the per-run cost to
-> sub-second.
+I PROTOTYPED + MEASURED both options against the REAL committed C-4.5 functions (a /tmp scratch
+harness, since deleted; the production code was not touched):
 
-**Why this CANNOT compound (the proof the prior design lacked).** The compounding required BOTH bugs:
-heavy work IN the 151× path AND per-entry spawns. The redesign breaks BOTH independently — (P) removes
-the heavy work from the 151× path entirely (default-SKIP), so even if the deep leg were slow it runs
-ONCE; (S) makes the deep leg itself sub-second via the batch seam. Either fix alone would prevent the
-hours-long hang; together the worst case is: 151 general runs × ~0 increment + ONE deep run × the
-measured batch cost. There is no multiplicative term left.
+> **Empirical-Evidence Block (OPTION A — drive the REAL per-entry functions, libs sourced ONCE: 142.10s / 211; ~39 spawns/entry; 4.7× OVER the 30s budget).**
+> `CMD`: a /tmp bash driver that `source`s the libs ONCE then loops all 211 `backlog/BD-*.md` through
+> the REAL `tmf_compose_issue_body` (which calls the real `_tmf_neutralize_autolinks` ×4 + real
+> `_tmf_gz64_encode`) → build issue JSON → REAL `tracker_migrate_reverse_reconstruct`; `/usr/bin/time -p`.
+> Spawn count via a python3/jq PATH-shim counting one entry.
+> `OUT`: all 211 = `real 142.10` (`user 84.15 / sys 46.75`); a 20-entry re-run = `real 13.34` (20/20
+> non-empty recon — the real functions WORK), extrapolating to 141s ≈ the 142s full run; per-entry =
+> **0.673s**; ONE entry's real round-trip = **39** python3/jq spawns → ~8,229 spawns over 211.
+> `AT`: HEAD `ab56c9c`, 2026-06-08. `INTERP`: libs-once does NOT fix it — the storm is the ~39 REAL
+> per-entry codec/jq spawns (`tracker_migrate_reverse_reconstruct` alone = 11 spawns/call; the composer
+> ~5), NOT the sourcing. Option A = 142s = **4.7× the 30s deep budget**; projected to 400 entries
+> (growth headroom) = **269s = 9.0× over**. `CONCL`: SUPPORTED — Option A keeps OQ-4 literally real but
+> BLOWS the runtime budget, and worsens as the backlog grows. NOT viable.
+
+> **Empirical-Evidence Block (OPTION B — single-sourced BATCH codec, ONE python3 over all 211: 0.05s; 211/211 byte-identical).**
+> `CMD`: a /tmp python3 applying the IDENTICAL transform `_tmf_gz64_encode` uses (gzip `mtime=0` +
+> base64) per record in ONE process over all 211 entries' `raw_body` (lines 2..EOF), encode→decode,
+> compare to the original; `/usr/bin/time -p`.
+> `OUT`: `real 0.05`; **211/211 byte-identical** in ONE python3 process. Ratio A/B ≈ **2,840×**.
+> `AT`: HEAD `ab56c9c`, 2026-06-08. `INTERP`: the codec is a pure stdin→stdout transform; a BATCH
+> variant that loops N records in ONE process is 0.05s vs A's 142s, with ~600× headroom under the 30s
+> budget (≈0.1s even at 400 entries). `CONCL`: SUPPORTED — B fits the budget with vast margin.
+
+**RECOMMENDATION: OPTION B — single-source the gz64 codec (NOT reproduce it, NOT drive it per-entry).**
+Option A is measured 4.7× over budget (9× at growth) — rejected on the evidence. The committed C-4.6
+reproduction fits the budget but VIOLATES OQ-4 (a second codec that can drift and FALSE-PASS a lossy
+migration). B is the only seam that BOTH fits the budget AND keeps OQ-4 real:
+
+- **The single-source contract:** extract the gz64 codec — `gzip(mtime=0)` + base64 (encode) and its
+  inverse (decode) — into ONE shared, BATCH-CAPABLE entry-point that BOTH the real migration AND the
+  guard call. Concretely: the real `_tmf_gz64_encode` / `_tmr_decode_body_blob` gain a BATCH mode (read
+  N NUL-delimited records on stdin, emit N transformed records in ONE process), and the per-entry
+  production callers + the guard both invoke that ONE function. There is NO second copy in
+  `validate-pack.py` — the guard imports/sub-invokes the SAME codec the migration uses. OQ-4 holds
+  LITERALLY: one codec, so it cannot drift, so the guard cannot FALSE-PASS a lossy codec change (the
+  guard breaks in lockstep with the production codec it shares).
+- **Scope of B (the full blast radius — it RE-OPENS committed C-4.5/C-4.6, stated honestly):**
+  1. **The codec (REQUIRED):** `_tmf_gz64_encode` + `_tmr_decode_body_blob` (`tracker-migrate-forward.sh`
+     / `tracker-migrate-reverse.sh`) get a batch mode; the guard calls them, deleting the
+     `validate-pack.py` `gz64_encode`/`gz64_decode` reproduction (`:7418`+). This ALONE makes the
+     byte-faithful leg + size leg real-and-batched (the two legs that need the codec).
+  2. **The composer (`tmf_compose_issue_body`) — single-source the SIZE leg's input, do NOT drive it
+     per-entry.** The size leg needs the composed-body BYTE LENGTH, which = markers + H2 sections
+     (neutralized) + the gz64 blob. Rather than the per-entry composer (5 spawns/entry → part of the
+     142s), the guard reuses the SAME batch codec for the blob + a batch neutralize pass
+     (`_tmf_neutralize_autolinks` likewise gets a batch mode) and assembles the body shape in the one
+     batch process. The composer's ASSEMBLY (the `printf` template) is trivial pure-text and is the one
+     part the guard may mirror WITHOUT drift risk (it carries no codec/transform — a `printf` layout,
+     not an encoder), OR, cleaner, `tmf_compose_issue_body` itself gains a batch mode the guard calls.
+     The architect recommends the batch-composer to keep ZERO mirrored logic.
+  3. **Reverse reconstruct / emit (NOT needed by the guard's byte leg):** the byte leg (its precise
+     two-assertion contract is §4.6.2 — NOT a tautology) does NOT need the full
+     `tracker_migrate_reverse_reconstruct` (11 spawns: jq title/label/status/scope/severity decode +
+     blockers + the divergence comparator) NOR `_tmr_emit_pack_tree`. Those decode the LABEL/H2
+     PROJECTION, which is a SEPARATE representation verified by its own tests (§4.6.3), not by the byte
+     leg. So B does NOT single-source reconstruct/emit — it simply does not invoke them in the guard.
+     (This is why A's 39 spawns/entry — dominated by reconstruct — is unnecessary work for the guard's
+     actual contract.)
+  - **Blast radius summary:** B re-opens C-4.5 (add batch modes to `_tmf_gz64_encode`,
+     `_tmr_decode_body_blob`, `_tmf_neutralize_autolinks`, and `tmf_compose_issue_body`) and C-4.6
+     (delete the `validate-pack.py` codec reproduction; the guard calls the shared batch codec). The
+     planner sequences this as a C-4.6 REDO on top of a small C-4.5 addendum (the batch modes are
+     ADDITIVE — the existing single-record callers keep working; a batch mode is a new input shape, not
+     a behavior change to the production migration).
+
+**Preserve the valid C-4.6-FIX1 improvements in the B seam (REQUIRED):** (a) the byte leg's PRE-PARSE
+NUL-safe ORIGINAL snapshot (read the raw file bytes 2..EOF directly, before any text round-trip, so a
+NUL/control byte is compared faithfully); (b) the R-BODY-6 control-char leg's RAW-FILE scan (scan the
+file bytes, not a decoded string); (c) the SIZE leg measuring the REAL composed body (now via the
+shared batch composer/codec, not a reproduction). These three are correctness-valid and carry into B
+unchanged — only their codec/composer inputs switch from the reproduction to the single-sourced batch
+functions.
+
+**Why this CANNOT compound (re-proven for B).** (P) keeps the deep leg out of the 151× general path
+(default-SKIP) so it runs ONCE; (S=B) makes the ONE deep run 0.05s (measured) via the single-sourced
+batch codec — not 142s (A) and not the reproduction. Worst case = 151 general runs × ~0 increment +
+ONE deep run × 0.05s. No multiplicative term; OQ-4 real (one shared codec).
 
 ### 4.6.1 The MEASURED cost analysis (numbers, not estimates)
 
@@ -976,13 +1044,109 @@ measured batch cost. There is no multiplicative term left.
 | Baseline general validate-pack run | **1.37 s** | §4.6 EE (`/usr/bin/time`) |
 | Deep check's increment to a GENERAL (default) run | **~0 ms** | env-gate early-return: one `os.environ.get` + print + return |
 | Battery validate-pack total (with the deep check default-SKIP) | **~207 s** (151 × 1.37 s) + 151 × ~0 = **~207 s** | unchanged from today's baseline |
-| ONCE-cost: the full real-211 DEEP verification (batch seam) | **sub-second to a few seconds** — batch parse-all-211 = **0.44 s**; the 4 legs + compose/reconstruct/emit over the parsed array add a small multiple (each a batch pass), projected **≤ ~5 s** total | §4.6 EE (batch 0.44 s measured); the coder re-measures the full 4-leg deep run at implementation and the §4.7 budget enforces ≤ its bound |
-| Per-check-test once-cost (deep, on the real tree) | one deep run ≈ the ONCE-cost above (≤ ~5 s) | invoked 1× by the `tests` job |
-| Projected total battery wall-clock impact of this check | **~+5 s** (one deep run) on top of the existing battery; NOT hours | (P)+(S): no 151× term |
+| ONCE-cost: the full real-211 DEEP verification — OPTION B (single-sourced batch codec) | **0.05 s** (the gz64 encode→decode round-trip over all 211 in ONE python3, MEASURED); the size/title/control legs add a small batch multiple, projected **< 1 s** total | §4.6 (S) Option-B EE (0.05 s measured, 211/211 byte-identical) |
+| — for contrast: OPTION A (drive the real per-entry functions, libs-once) | **142.10 s** (MEASURED, 4.7× the 30s budget; 9× at 400 entries) — REJECTED | §4.6 (S) Option-A EE (`/usr/bin/time` over the real C-4.5 functions) |
+| Per-check-test once-cost (deep, on the real tree) | one deep run ≈ the Option-B ONCE-cost (< 1 s) | invoked 1× by the `tests` job |
+| Projected total battery wall-clock impact of this check | **~+0.05 s** (one Option-B deep run) on top of the existing battery; NOT hours, NOT minutes | (P)+(S=B): no 151× term, no per-entry storm |
 
-The contrast with the failure: the broken design's battery cost was 151 × (2-5 min) = **5-12 HOURS**;
-the redesigned cost is ~207 s (unchanged general battery) **+ one ≤~5 s deep run** = no meaningful
-increase. The ~150× multiplier is eliminated by (P); the per-run minutes are eliminated by (S).
+The contrast: the broken design's battery cost was 151 × (2-5 min) = **5-12 HOURS**; OPTION A (drive
+the real per-entry functions) is 142 s for ONE deep run (4.7× over the 30s budget — rejected); the
+recommended OPTION B (single-sourced batch codec) is **0.05 s** for the ONE deep run, so the battery is
+the unchanged ~207 s + ~0.05 s. The ~150× multiplier is eliminated by (P); the per-entry codec storm is
+eliminated by (S=B) — single-sourcing the codec into ONE batch process, NOT reproducing it and NOT
+driving it per-entry.
+
+### 4.6.2 THE BYTE-LEG CONTRACT — two assertions, NOT a tautology (resolves the C-2 ambiguity)
+
+The byte leg is NOT `decode(encode(raw_body)) == raw_body` (that is a TAUTOLOGY — it compares
+`raw_body` to its own codec round-trip and would catch NOTHING the parser already dropped, silently
+re-opening C-2). The precise contract is ONE comparison that decomposes into TWO independent
+assertions:
+
+> **THE BYTE-LEG CONTRACT (state verbatim):**
+> `PRE_PARSE_ORIGINAL_body == decode(encode(raw_body))`
+> where `PRE_PARSE_ORIGINAL_body` = the entry FILE's lines 2..EOF read BYTE-SAFELY (the FIX1 byte-safe
+> strip — `tail -n +2` / a byte read, NEVER `awk`/text-normalizing), and `raw_body` = the span the
+> migrator's parser captured. Because the single-sourced codec (Option B) is lossless, `decode(encode(
+> raw_body)) == raw_body`, so the contract REDUCES TO asserting BOTH:
+> - **(a) CODEC-LOSSLESS:** `decode(encode(raw_body)) == raw_body` — the gz64 codec round-trips the
+>   bytes the parser captured. (Measured: 211/211 byte-identical, §4.6 (S) Option-B EE, 0.05 s.)
+> - **(b) PARSE-FAITHFUL:** `PRE_PARSE_ORIGINAL_body == raw_body` — the parser's captured span equals
+>   the original file's lines 2..EOF byte-for-byte. **This is the C-2 catch:** if `_tmf_parse_backlog_file`
+>   strips/normalizes ANY byte (a control char, a CR, a field-line, a prose block) out of `raw_body`,
+>   then `PRE_PARSE_ORIGINAL_body != raw_body` and leg (b) FAILS.
+
+The bare "`== raw_body`" tautology phrasing is DELETED from the design (it survived only in the prior
+item-3 bullet, now §4.6.2-referenced). The leg compares the PRE-PARSE ORIGINAL, never `raw_body` to
+itself.
+
+> **Empirical-Evidence Block (leg (b) catches a parser-stripped control char — the C-2 trace; the tautology would NOT).**
+> `CMD`: a /tmp scratch trace (deleted after): synthesize an entry whose body carries a CR (`\r`); set
+> `PRE_PARSE_ORIGINAL` = `tail -n +2 file` (byte-safe); run the REAL `_tmf_parse_backlog_file`, extract
+> `raw_body`; `cmp PRE_PARSE_ORIGINAL raw_body`.
+> `OUT`: original HAS the CR; `raw_body` does NOT (the parser splits-on-lines and re-joins with `\n`,
+> dropping the `\r`); `cmp` → "differ: char 74, line 4". So leg (b) `PRE_PARSE_ORIGINAL == raw_body`
+> FAILS (the two differ) → the loss is CAUGHT. The tautology `decode(encode(raw_body)) == raw_body`
+> would have PASSED (raw_body round-trips to itself) → caught NOTHING. `AT`: HEAD `ab56c9c`, 2026-06-08.
+> `INTERP`: leg (b) is the load-bearing C-2 catch; the codec round-trip (leg a) alone is insufficient.
+> `CONCL`: SUPPORTED — the two-assertion contract catches a parse-step loss the tautology missed.
+
+**C-2 STAYS CAUGHT (both, not neither).** For a FUTURE entry that introduces a NUL/CR/control byte in
+its body, the guard fires on BOTH independent surfaces:
+- **leg (b) FAILS** — `PRE_PARSE_ORIGINAL_body` has the byte; the parser-captured `raw_body` has it
+  stripped/altered (the CR trace above; a NUL is likewise dropped by the line-split) → `original !=
+  raw_body` → FAIL naming the entry; AND
+- **the R-BODY-6 control-char leg FIRES** — it scans the RAW FILE bytes (not a decoded string) for a
+  NUL/CR/disallowed-C0 byte and FAILs naming the entry (§3.3e / §4.4).
+Both fire — the OPPOSITE of the prior tautology, which caught NEITHER (the tautology passed, and an
+earlier draft of the control-char leg scanned a decoded string that had already lost the byte). The
+redundancy is deliberate: leg (b) catches ANY parse-step loss (not just control chars); R-BODY-6
+specifically names the offending byte.
+
+### 4.6.3 BODY-SCOPE of the byte leg + where the projected fields are verified (+ OQ-4 confirmation)
+
+**Body-scope (explicit, user-blessed).** The byte leg covers the blob-carried BODY = the entry's lines
+2..EOF — which INCLUDES, verbatim as text, the bold-header line, the carried-field LINES
+(`Type:`/`Status:`/`Blockers:`/`Unblocks:`/`File/Symbol:`/`Description:`/`Context:`/`Resolution:`), AND
+all 19 extension-field lines + prose blocks. (Measured: `raw_body` for BD-002 contains the `Type:` and
+`Status:` lines verbatim — §EE below.) So the byte leg verifies the ENTIRE body content as bytes; it
+does NOT verify the LABEL/LINK PROJECTION (Type/Status → `status:*`/`type:*` labels; Blockers/Unblocks
+→ first-class links), which is a SEPARATE, redundant representation.
+
+**Where the projected fields ARE verified (named):**
+- **Type/Status (label path):** `_tmr_decode_status` round-trip asserts in
+  `scripts/tests/tracker-migrate-reverse-test.sh` (`:150-154`: `status:open→Open`,
+  `status:unblocked→Unblocked`, `status:deferred→Deferred`, `status:resolved→Resolved`,
+  `status:cancelled→Cancelled`) + the forward `_tmf_labels_for_entry` mapping.
+- **Blockers/Unblocks (link path):** the BD-111 link round-trip in
+  `scripts/tests/tracker-migrate-roundtrip-test.sh` (`:521-523`: `BD-002 Blockers: BD-001 preserved`,
+  via `_tmr_decode_blockers` + `_tmr_fetch_first_class_blocked_by`).
+
+**Body-scope is SUFFICIENT (confirmed).** The 19-field-drop hazard this whole guard exists to catch
+(C-2) was a BODY-CONTENT loss — fields dropped/shredded OUT of the entry body. `raw_body` carries the
+COMPLETE body (incl. the carried-field lines as text), so the byte leg catches any body-content loss
+directly. The label/link projection is BELT-AND-SUSPENDERS (the same Type/Status/Blockers also ride
+the body blob verbatim) and is independently tested above — so there is NO un-verified path: body
+content via the byte leg; the projection via the named reverse/roundtrip tests. **This is not a gap.**
+
+> **Empirical-Evidence Block (raw_body includes the carried-field lines verbatim — body-scope covers them as text).**
+> `CMD`: run the REAL `_tmf_parse_backlog_file` on `backlog/BD-002.md`; check `raw_body` for the
+> carried-field lines (a /tmp scratch trace, deleted after).
+> `OUT`: `raw_body` contains the `Type:` line → True; the `Status:` line → True; first 3 lines =
+> `['**BD-002 — ...**', 'Type: TODO(version)', 'Status: Resolved']`. (BD-002 has no `Blockers:` line →
+> False, correctly — it carries no such line.) `AT`: HEAD `ab56c9c`, 2026-06-08. `INTERP`: the byte
+> leg's blob carries the carried-field lines AS BYTES, so a body-content loss of ANY field (carried or
+> extension) is caught by leg (b)/leg (a); the label/link projection is the separate, additionally-
+> tested representation. `CONCL`: SUPPORTED — body-scope covers the C-2 hazard; the projection is
+> separately verified (§4.6.3 named tests).
+
+**OQ-4 CONFIRMED UNDER B (single-source, one codec).** The gz64 codec is ONE function: the production
+migration calls it in single-record mode; the guard calls the SAME function in batch mode — there is
+NO second copy. The `validate-pack.py` reproduction (`gz64_encode`/`gz64_decode`, `:7418`+ "byte-identical
+to _tmf_gz64_encode") is DELETED. A §4.5 OQ-4 SINGLE-SOURCE CHECK fails CI if any reproduced gz64/base64
+codec is reintroduced in `validate-pack.py` (the guard must sub-invoke/import the shared codec, never
+re-implement it). So the guard CANNOT FALSE-PASS a lossy codec change: it shares the production codec
+and breaks in lockstep with it — OQ-4 holds literally, structurally enforced, not by review attention.
 
 ### 4.7 RUNTIME-BUDGET GUARD (the durable prevention the prior >2h→<5min fix lacked)
 
@@ -1009,10 +1173,11 @@ dispatch in a TIMING HARNESS:
     factor; a general run that exceeds 10 s means a check regressed into the general path (the C-4.6
     shape) → hard FAIL. 10 s is far above the real 1.37 s and far below the minutes-per-run failure, so
     it catches the regression class without false-positiving the healthy baseline.
-  - **Deep faithfulness-check budget = 30 s.** Rationale: the batch deep run is measured ≤ ~5 s (§4.6.1);
-    30 s is a ~6× headroom that still catches a regression (e.g. a future coder reintroducing per-entry
-    spawns would blow 30 s) but does not false-fail the healthy batch run. The coder re-measures the
-    full deep run and confirms it is < 30 s with margin.
+  - **Deep faithfulness-check budget = 30 s.** Rationale: the Option-B deep run is MEASURED 0.05 s
+    (§4.6 (S) EE) — 30 s is vast headroom that still catches a regression (a future coder reintroducing
+    the per-entry real-function path measures 142 s — Option A — and blows 30 s immediately; reproducing
+    the codec would fit the budget but FAIL the OQ-4 single-source check, §4.5). The coder re-measures
+    the full Option-B deep run and confirms it is < 30 s with margin (0.05 s today = ~600× margin).
 - **Why a guard, not just discipline:** the C-4.6 failure passed THREE design reviews + a sweep because
   correctness review does not measure runtime (the memory rule's "Why"). A self-timing FAIL on the
   total-run budget is the structural backstop that makes the next pathologically-slow check
@@ -1317,7 +1482,7 @@ verification step).
 | R4 | **Reverse emit REWRITE (pack branch):** write `pe_backpointer_line` + `raw_body` verbatim, instead of the fixed-order template projection | the byte layout of EVERY reconstructed entry; the 20 no-Blockers entries; field order | this is the CENTRAL change (review-2 A-1). The verbatim emit reproduces the original body exactly — no injected `Blockers/Unblocks: None`, no `Resolved: n/a` injection, no reordering, no appended-extras. VERIFY (EMPIRICAL, not logical): the §4.2/§4.3 byte-faithful guard against all 211 entries; the worst cases (BD-204 no-Description/shred; BD-136 `-->`/fence; BD-001 no-Blockers; BD-021 multi-paragraph) verified byte-identical in §3.3/§4 EE blocks. |
 | R-CLIENT | **Reverse emit: the CLIENT (`surface != "pack"`) branch** | the client monolith emit (BD-207's, still live) | the rewrite touches ONLY the `surface == "pack"` branch; `_tmr_emit_backlog` (the client `# BACKLOG` monolith path) is UNTOUCHED. VERIFY: the surface-branch split (`grep 'surface == "pack"'`); `git diff` shows no change to the client `else` branch; the client-branch tests stay green. (pack/project-separation; BD-207 owns the client emit.) |
 | R-EDIT | **`tracker-edit.sh` blob+H2 sync (§3.3a / C-3 amendment)** | the Mode-3 CRUD write path | `tracker_edit_entry` must regenerate BOTH views on `provider_update`; if it updated only H2, reverse would discard the edit. VERIFY: a Mode-3 edit test asserts the blob and H2 agree after `provider_update`; the divergence-detection leg (§3.3a) FAILs on a stale blob. |
-| R5 | NEW faithfulness check (the next registry integer) | **CI RUNTIME COMPOUNDING (the C-4.6 failure)** + false positives | **RUNTIME (the load-bearing regression — §4.6):** the check is DEFAULT-SKIP in the 151× general path (env-gated `PACK_VALIDATE_DEEP=1`), scopes to the CALLER's `tree_dir` (never hardcoded `REPO_ROOT/backlog`), and uses the BATCH seam (`tmf_parse_backlog_tree`, one `python3` over all 211 = **0.44 s measured**, vs **5.28 s** per-entry) — so the battery cost is the unchanged ~207 s + ONE ≤~5 s deep run, NOT the 5-12 h the broken design caused. The §4.7 runtime-budget guard (10 s total-run hard FAIL) makes the compounding shape un-shippable. **FALSE-POSITIVES:** the byte leg compares only the blob-emitted body (not the H2/label projection), so first-class projections are not a false-fail source. VERIFY: the per-check test runs the deep check once on the real tree (green, < 30 s deep budget); a per-entry-spawn regression trips the §4.7 budget; the §4.6 EE measures both the batch seam (0.44 s) and the battery multiplier (151). |
+| R5 | NEW faithfulness check (the next registry integer) | **CI RUNTIME COMPOUNDING (the C-4.6 failure)** + false positives | **RUNTIME (the load-bearing regression — §4.6):** the check is DEFAULT-SKIP in the 151× general path (env-gated `PACK_VALIDATE_DEEP=1`), scopes to the CALLER's `tree_dir` (never hardcoded `REPO_ROOT/backlog`), and uses OPTION B — a SINGLE-SOURCED batch codec (the SAME `_tmf_gz64_encode`/`_tmr_decode_body_blob` the migration uses, in batch mode, ONE `python3` over all 211 = **0.05 s measured**, 211/211 byte-identical), NOT reproduced (OQ-4) and NOT driven per-entry (Option A measured **142 s** = 4.7× over budget — REJECTED) — so the battery cost is the unchanged ~207 s + ONE ~0.05 s deep run, NOT the 5-12 h the broken design caused. The §4.7 runtime-budget guard (10 s total-run hard FAIL) makes the compounding shape un-shippable; the §4.5 OQ-4 single-source check makes a re-reproduced codec un-shippable. **FALSE-POSITIVES:** the byte leg compares only the blob round-trip (not the H2/label projection), so first-class projections are not a false-fail source. VERIFY: the per-check test runs the deep check once on the real tree (green, < 30 s); a per-entry-spawn regression (Option A) trips the §4.7 budget; a re-reproduced codec trips the OQ-4 single-source check; the §4.6 EE measures Option A (142 s), Option B (0.05 s), and the battery multiplier (151). |
 | R6 | Roundtrip + C-7 fixtures gain top-level drop-set fields + a no-Description + a no-Blockers entry | the existing fixture assertions (count, identity, status, no-sidecar) | new content is ADDED to fixture entries; count/identity/status legs unaffected (same IDs/statuses); the content-faithfulness leg now exercises the drop + the emit rewrite. VERIFY: post-fix the content leg diffs clean; pre-fix it FAILs (the fixture now has teeth). |
 | R7 | `backlog/_rules.md` schema reconciliation | the per-entry contract readers | the edit states byte-faithful migration + removes the divergent optional-field list; it does NOT change which fields an entry MAY carry. VERIFY: grep-confirm no validator pins `_rules.md` field-list text (Check 34 cross-reference-integrity); trinity/`_rules.md` parity check by the coder. |
 | R8 | The 211 entries | byte-untouched | the fix is carry-fields, NOT rewrite — ZERO entry edits (§3.6). VERIFY: the C-4.5/4.6/4.7 commits' `git diff --name-only` show NO `backlog/BD-*.md` (only `backlog/_rules.md` in C-4.7). |
@@ -1477,7 +1642,7 @@ and resolved, not silently closed.**
 | `external-rules-census-before-design` (FULL-SWEEP) | The 28-rule GH-Issues census + the 14-tracker landscape are FIXED constraints; every design section re-validated against them (sweep S-1). All hard CONTENT limits are CLEAN across 211 (re-measured this sweep: title max 231/256; body worst 62.1%; 0 control bytes; longest label 25 (template:phase-epic-v11.0)/≤6). The OPERATIONAL gaps the census surfaced are now DESIGNED, not silently relaxed: pacing (§3.3d / S-5#1), mention-neutralization (§3.3d / S-5#2), enforcement-axis named (§3.3c / S-5#4), go-forward title/control guards (§3.3e / S-5#5), python3-codec pin + corrupt-blob fail-loud + composed-body size (§3.3/§3.3b/§4.4 / S-5#6), storage-format portability capability (§3.3c / S-5#7), C-7 rebuild verdict (§5.c / S-8). The archive ambiguity (S-5#3) is SURFACED as a user decision, not guessed. | COMPLIANT |
 | `full-sweep` (this revision) | S-1 design re-validated + amended in place; S-2 committed-doc corrections specified (not edited); S-3 script changes specified by file+symbol; S-4 entry-modification list = the 1 BD-204.md:20 wording disambiguation (a re-scope text item, Pack-Chat pack-chat-only), ALL 211 content-clean (no rewrites); S-5 all 8 named items decided/surfaced; S-6 re-sequenced commits. The full ledger is `SWEEP-BD-204-RULES-COMPLIANCE.md`. | COMPLIANT |
 | `gate-(b)-close-out` (this revision) | The 2 §11.3 census gaps RESEARCHED + RESOLVED-BY-MEASUREMENT (read both deltas + VERIFY-2 = VERIFIED): R-OPS-7 (no repo-creation-specific limit → §3.3d issue-pacing gate bounds the multi-rehearsal cadence; verified-negative) + R-ACCT-5 (personal repos unlimited below 100,000, issues DB-stored → archived accumulation benign; conservative archived-counts-toward-cap framing adopted). §11.1/§11.3/§11.4 flipped to RESOLVED; the §11 verdict flipped to CONDITIONAL on gate (a) ONLY; §5.c cadence note reconciled to the measured-benign answer. No new gate; no re-design. | COMPLIANT |
-| `ci-check-runtime-compounding` (the C-4.6 failure; this revision) | The §4 guard's RUNTIME redesigned on the rule's 3 mandatory constraints, each MEASURED (no estimate — the banned prior "sub-second × 211"): (P) DEEP-gated `PACK_VALIDATE_DEEP=1`, runs ONCE in a dedicated step/per-check test, NOT the 151× general `main()` (battery count MEASURED = 151/17 files); (T) scopes to the CALLER's `tree_dir`, never hardcoded `REPO_ROOT/backlog`; (S) BATCH `tmf_parse_backlog_tree` seam = one `python3` over 211 = **0.44 s MEASURED** vs **5.28 s** per-entry, collapsing ~2,000 spawns to a small constant. Cost = unchanged ~207 s battery + ONE ≤~5 s deep run (was 5-12 h). §4.7 adds a runtime-budget guard (per-check WARN + 10 s total-run hard FAIL) — the durable backstop the prior >2h→<5min fix lacked. | COMPLIANT |
+| `ci-check-runtime-compounding` (the C-4.6 failure; this revision) | The §4 guard's RUNTIME redesigned on the rule's 3 mandatory constraints, each MEASURED (no estimate — the banned prior "sub-second × 211"): (P) DEEP-gated `PACK_VALIDATE_DEEP=1`, runs ONCE in a dedicated step/per-check test, NOT the 151× general `main()` (battery count MEASURED = 151/17 files); (T) scopes to the CALLER's `tree_dir`, never hardcoded `REPO_ROOT/backlog`; (S) the OQ-4 resolution — PROTOTYPED + MEASURED both seams against the REAL committed functions: Option A (drive the real per-entry funcs, libs-once) = **142.10 s / 211, ~39 spawns/entry = 4.7× over the 30 s budget (9× at 400 entries) — REJECTED**; Option B (SINGLE-SOURCED batch codec, one python3 over all 211) = **0.05 s, 211/211 byte-identical — RECOMMENDED** (keeps OQ-4 LITERALLY real: one shared codec, cannot drift; deletes the committed `validate-pack.py` codec reproduction). Cost = unchanged ~207 s battery + ONE ~0.05 s deep run (was 5-12 h). §4.7 runtime-budget guard (10 s total-run hard FAIL) + §4.5 OQ-4 single-source check = the durable backstops the prior fix lacked. BYTE-LEG CONTRACT NAILED (§4.6.2, resolving the C-2 ambiguity): the leg is `PRE_PARSE_ORIGINAL_body == decode(encode(raw_body))` (two assertions — codec-lossless AND parse-faithful), NOT the tautology `== raw_body`; a parser-stripped CR was TRACED to FAIL leg (b) while the tautology PASSED (HEAD `ab56c9c` EE). Body-scope (§4.6.3): the blob carries the full body incl. carried-field lines as text (MEASURED — `raw_body` contains the `Type:`/`Status:` lines); the label/link projection is separately verified (`tracker-migrate-reverse-test.sh:150-154`, `tracker-migrate-roundtrip-test.sh:521-523`) — no un-verified path. | COMPLIANT |
 | `rules-applied-verification-block` | This table — per-rule, evidence quoted, terminal conclusion; no empty evidence, no AMBIGUOUS. | COMPLIANT |
 | `filename-uniqueness-heuristic` | `find . -name "ARCHITECTURE-BD-204-LOSSLESS-FIX.md" -not -path "./.git/*"` returned empty before write (Bash call, this session). | COMPLIANT |
 
@@ -1513,7 +1678,8 @@ and resolved, not silently closed.**
 | `RESEARCH-BD-204-GH-ISSUES-RULES-VERIFY-2.md` (GATE-(B) verification) | Read the verdict = VERIFIED + the archived-quota framing NIT (docs SILENT on an archived-repo exemption → conservative "archived counts toward the cap" reading adopted in §11.3). |
 | `feedback_ci_check_runtime_compounding.md` (memory rule — the codified C-4.6 failure) | Read FULL this session — the 3 mandatory constraints (cost = per-run × battery-count; scope to caller's tree; no subprocess-per-entry; heavy work once; add a runtime guard). The entire §4.6/§4.7 redesign + the corrected R5 row implement it. |
 | `scripts/validate-pack.py` (runtime redesign) | Read `main()` (flat `check_*()` sequence, NO arg/env gating — grounds the new env-gate + timing-harness seam); baseline `/usr/bin/time` = **1.37 s** (§4.6 EE). |
-| `scripts/lib/tracker-migrate-forward.sh` (batch seam) | Read `tmf_parse_backlog_tree` (`:588`, the EXISTING real batch entry-point: `pe_list_entry_files` → concat → ONE `_tmf_parse_backlog_file`) — the seam is the real function, OQ-4 holds. Batch-vs-per-entry MEASURED (0.44 s vs 5.28 s, §4.6 EE). |
+| `scripts/lib/tracker-migrate-forward.sh` + `tracker-migrate-reverse.sh` (the REAL codec — OQ-4 resolution) | Read the REAL symbols: `_tmf_gz64_encode` (`:704`), `_tmf_neutralize_autolinks` (`:723`), `tmf_compose_issue_body` (`:811`), `tracker_migrate_reverse_reconstruct` (`:536`, 11 spawns/call), `_tmr_decode_body_blob` (`:663`), `_tmr_emit_pack_tree` (`:952`). PROTOTYPED both seams against these (a /tmp scratch harness, DELETED after): Option A = 142.10 s / 211 (~39 real spawns/entry); Option B single-sourced batch codec = 0.05 s / 211. The committed `validate-pack.py` REPRODUCES the codec (`gz64_encode` `:7418` "byte-identical to _tmf_gz64_encode") = the OQ-4 violation; Option B deletes it. |
+| `_tmf_parse_backlog_file` raw_body capture (`:443-455`, `:574`) + the C-2 byte-leg trace | Read the `raw_body_by_pid` capture (splits-on-lines, re-joins `\n`, trailing-blank strip) — it does NOT preserve a CR. TRACED (a /tmp scratch, deleted): a CR-bearing synthetic entry → `PRE_PARSE_ORIGINAL` has the CR, parser `raw_body` does NOT → `cmp` differ at char 74 → leg (b) FAILS (C-2 caught); the tautology would have passed. Also MEASURED `raw_body` for BD-002 contains the `Type:`/`Status:` lines verbatim (body-scope covers carried fields as text). The Type/Status label-path is verified at `tracker-migrate-reverse-test.sh:150-154`; Blockers/Unblocks at `tracker-migrate-roundtrip-test.sh:521-523`. All at HEAD `ab56c9c`, 2026-06-08. |
 | `.github/workflows/validate-pack.yml` (placement) | Read the `validate` job (`:97` general run) + `tests` job (`:108+` per-check tests) — the once-home for the deep step (§4.6 P). Battery invocation count MEASURED = 151/17 (§4.6 EE). |
 | `PLAN-BD-204.md` §3.LF.5 (C-4.6 recipe) | Read — the recipe the planner redoes against this §4.6/§4.7 runtime redesign (DEEP-gate, target-tree, batch seam, runtime-budget guard). |
 | Curated memory files (12 named, incl. ci-check-runtime-compounding) | Carried as governing rules: adversarial-architect-on-major-gap, ci-guard-measure-then-bound, ci-check-runtime-compounding, architect-planner-empirical-evidence, fail-loud-delete-old-source, preliminary-triage-architect-challenge, pattern-matching-out-of-context, pack-project-separation, scope-deliverables-to-the-ask, agent-output-rules-applied-block, verify-full-ci-suite, researcher-maps-blast-radius, external-rules-census-before-design, tracker-portability — reflected in §9. |
@@ -1528,11 +1694,14 @@ measurements — the SIZE
 distribution across all 211 (raw-base64 worst BD-136 65,336/99.7% → gz64 40,771/62.2%; 0 entries
 over 80% under gz64), the gzip+base64 byte-faithful round-trip on BD-136/BD-204, and the gzip
 determinism (mtime field `0 0 0 0`, two encodings identical) — are this session's own command output
-at HEAD `feaa45d`. The runtime-redesign measurements (this revision, at HEAD `9cc0e88`) — the battery
-validate-pack invocation count (**151** across 17 files), the baseline general validate-pack run
-(**1.37 s**), the BATCH parse-all-211 (**0.44 s**, one `python3` spawn) vs the PER-ENTRY parse
-(**5.28 s**, 211 spawns, one leg), and the existing real batch entry-point `tmf_parse_backlog_tree` —
-are this session's own `/usr/bin/time` + `grep`-sum command output (NOT estimates — the prior
-"sub-second × 211" estimate is the error this redesign corrects).
+at HEAD `feaa45d`. The runtime-redesign measurements (HEAD `9cc0e88`) — the battery validate-pack
+invocation count (**151** across 17 files), the baseline general validate-pack run (**1.37 s**) — and
+the OQ-4-resolution measurements (this revision, HEAD `ab56c9c`) — OPTION A driving the REAL per-entry
+functions = **142.10 s / 211** (~39 spawns/entry; 20-entry confirm 13.34 s; 4.7× over the 30 s deep
+budget, 9× at 400 entries) and OPTION B single-sourced batch codec = **0.05 s / 211, 211/211
+byte-identical** — are this session's own `/usr/bin/time` output against the REAL committed C-4.5
+functions (a /tmp scratch harness, DELETED per the fence; NOT estimates — the prior "~4-6 spawns / OQ-4
+holds" claim was the contradiction this resolution corrects: ~4-6 spawns is achievable ONLY by
+reproducing the codec).
 
 **End of ARCHITECTURE-BD-204-LOSSLESS-FIX.md**
