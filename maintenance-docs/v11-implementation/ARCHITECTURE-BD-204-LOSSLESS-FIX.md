@@ -669,7 +669,8 @@ The conjunction of four gaps (RESEARCH §4, re-confirmed §1/§2): (1) the only 
 oracle is manual-only + default-SKIP; (2) every fixture carries only the 9 carry-set fields; (3) the
 CI round-trip test asserts structure, not field-completeness; (4) no validate-pack check measures
 field faithfulness. The single missing assertion: **a forward→reverse field-faithfulness check that
-runs UNATTENDED in CI against the REAL 211-entry tree.**
+runs UNATTENDED in CI against the REAL 211-entry tree — ONCE, in a dedicated deep-gated step (§4.6),
+NOT inside the general validate-pack the battery calls 151×.**
 
 The C-7 oracle cannot BE that check — it requires a live GH repo (per-step approval; impossible
 unattended) and its fixture can't carry the drop. So the guard must be a MOCK-FREE, NO-NETWORK check
@@ -690,25 +691,42 @@ corrected to "the next registry integer.")
 > `feaa45d`, 2026-06-07. `INTERP`: 48 is taken; the next integer is 49 today, but the coder reads the
 > live registry (a future BD may take 49 first). `CONCL`: SUPPORTED.
 
-**Mechanism (no live GH; runs in CI on every push):** a new `def check_*` in `scripts/validate-pack.py`
-that, for the REAL `/backlog/` tree, drives the migrator's pure functions in-process and asserts a
-BYTE-FAITHFUL round-trip via the verbatim-blob carrier (§3.3):
+> **RUNTIME-CORRECTED DESIGN (the C-4.6 failure: the prior wording of this section caused a 1.5h+
+> battery hang — see §4.6). The CORRECTNESS of the 4 legs / byte-faithful assertion / no-drop-allowlist
+> / OQ-4 (drive the REAL functions) is UNCHANGED; only the PLACEMENT, the TARGET-TREE SCOPING, and the
+> SEAM are redesigned per the `ci-check-runtime-compounding` rule. The three mandatory runtime
+> constraints — (P) heavy whole-real-tree work runs ONCE, not in the 151× general `main()`; (T) scope to
+> the CALLER's target tree, never a hardcoded `REPO_ROOT/backlog`; (S) ONE batch sub-invocation, not a
+> subprocess-per-entry storm — are designed in §4.6, with the runtime-budget guard in §4.7.**
 
-1. For each `backlog/BD-*.md`, snapshot the ORIGINAL body span (lines 2..EOF, back-pointer stripped
-   via `pe_strip_backpointer_stdin`).
-2. Drive the pure path in-process (a bash sub-invocation of the libs, no network): forward
-   `_tmf_parse_backlog_file` → `tmf_compose_issue_body` (emits the `pack-entry-body-gz64` blob) →
-   feed the composed Issue body through `tracker_migrate_reverse_reconstruct` → `_tmr_emit_pack_tree`
-   (pack branch — the §3.3 verbatim-blob emit), producing the reconstructed body span.
-3. **Assert RECONSTRUCTED body span == ORIGINAL body span, BYTE-FOR-BYTE** (back-pointer stripped).
-   This is now ACHIEVABLE green (review-2 A-1/D-1/D-3): because the pack emit writes the verbatim
-   blob back (not the fixed-order template projection), the 20 no-Blockers/Unblocks entries no longer
-   get injected `Blockers: None` / `Unblocks: None` lines, and field order is preserved. The byte leg
-   is the ONLY leg — it is strong enough to catch the prose-block corruption (B-1: a shredded
-   `unblocks` would make the reconstructed body differ) AND order corruption AND value corruption.
-   There is NO weak "label-set ⊆" leg (review-2 D-1 proved a label-set leg FALSE-PASSES the
-   prose-block loss — it is removed).
-4. FAIL naming the entry + a unified diff of the first differing lines.
+**Mechanism (no live GH; runs ONCE, deep-gated — NOT on every general validate-pack invocation; §4.6).**
+The check drives the migrator's pure functions in-process and asserts a BYTE-FAITHFUL round-trip via
+the verbatim-blob carrier (§3.3), over the CALLER's TARGET TREE (the deep CI step passes the real
+`/backlog/`; a fixture test passes its small scratch tree). It is GATED so the 151× general battery does
+NOT pay its cost (§4.6 (P)):
+
+1. **Resolve the TARGET TREE from the caller (§4.6 (T)), never hardcode `REPO_ROOT/backlog`.** The check
+   takes a `tree_dir` parameter (default = the caller's invocation target, NOT a fixed real-backlog
+   path); a fixture/integration test that validates a small scratch tree pays ONLY its small-fixture
+   cost. The deep CI step passes the real `/backlog/`. (This is the exact bug the C-4.6 code committed —
+   `backlog_dir = tree_dir or REPO_ROOT/"backlog"` ignored the caller — and is the FIRST mandatory fix.)
+2. **Drive the pure path with ONE BATCH sub-invocation, not per-entry (§4.6 (S)).** Source the libs
+   ONCE and call the EXISTING real batch entry-point `tmf_parse_backlog_tree` (`tracker-migrate-forward.sh`),
+   which enumerates the stream via `pe_list_entry_files`, concatenates all entry bodies into ONE stream,
+   and parses them with a SINGLE `_tmf_parse_backlog_file` call (one `python3` over all entries — the
+   parser already loops internally). The compose / reconstruct / emit legs likewise run in ONE
+   sub-invocation that loops internally over the parsed array. This is a BATCH DRIVER over the REAL
+   functions — NOT a codec re-impl, so OQ-4 holds (the same `_tmf_parse_backlog_file` / `tmf_compose_issue_body`
+   / `tracker_migrate_reverse_reconstruct` / `_tmr_emit_pack_tree` the migration uses). It REPLACES the
+   prior "a bash sub-invocation per entry" wording that spawned ~2,000 subprocesses.
+3. **Assert RECONSTRUCTED body span == ORIGINAL body span, BYTE-FOR-BYTE** (back-pointer stripped),
+   per entry, inside the one batch process. This is ACHIEVABLE green (review-2 A-1/D-1/D-3): the pack
+   emit writes the verbatim blob back (not the fixed-order projection), so the 20 no-Blockers/Unblocks
+   entries get no injected lines and field order is preserved. The byte leg is the ONLY leg — strong
+   enough to catch the prose-block corruption (B-1), order corruption, and value corruption; there is
+   NO weak "label-set ⊆" leg (review-2 D-1).
+4. FAIL naming the entry + a unified diff of the first differing lines. The same batch process runs the
+   size / title / control-char legs (§4.4) in the same loop — no extra spawns.
 
 **Why the byte-leg is now both achievable AND strong (review-2 A-1 + D-1 reconciled).** The original
 design had a dilemma: the byte leg false-failed 20 entries (against the fixed-order emit), and the
@@ -801,7 +819,7 @@ census — the proxy upper-bounds the H2 by the raw body and is fine for ranking
 and the forward composer's overflow check (§3.3 step 2) both compute on the byte length of the
 genuinely composed body so the enforced number is the real wire size, never an estimate. It FAILs
 naming any entry whose composed body breaches the budget — so a new or grown entry that would exceed
-the body limit is caught UNATTENDED in CI, BEFORE the C-8 flip. (Today the worst composed body, BD-136,
+the body limit is caught in CI (in the ONCE deep-gated run, §4.6 — NOT the 151× general path), BEFORE the C-8 flip. (Today the worst composed body, BD-136,
 is 40,771 bytes / 62.2% — the guard runs green; a future entry that grew past the budget goes RED.)
 The same identical measurement (composed-body byte length) is used in THREE places — the forward
 composer's pre-create overflow check, this CI guard's size leg, and the C-7 oracle's size assertion
@@ -828,8 +846,9 @@ Reconciled to the verbatim-blob model + the review-2 omissions (G-1 workflow, G-
 | `scripts/lib/tracker-migrate-forward.sh` — `_tmf_parse_backlog_file` (add `raw_body`), `tmf_compose_issue_body` (6th DEFAULTED `raw_body` param → emit `pack-entry-body-gz64` blob = base64(gzip-mtime0(raw_body)); + the §3.3c size-budget overflow fail-loud check), BD call site `:901` | capture + gzip-emit the verbatim blob + enforce the size budget | the producer of the round-trip truth + the size guard |
 | `scripts/lib/tracker-migrate-forward.sh` — **phase call site `:959`** (G-2) | ensure the new 6th param is OPTIONAL (`${6:-}`) so the 4-arg phase call still works | a missed surface in v1; a mandatory param breaks the phase path |
 | `scripts/lib/tracker-migrate-reverse.sh` — `tracker_migrate_reverse_reconstruct` (read the gz64 marker → base64-decode + gunzip → `raw_body`), `_tmr_emit_pack_tree` (REWRITE pack branch to emit `raw_body` verbatim; DELETE the dead `extra_fields` per-field render at `:758`), the §3.3a NORMALIZATION-TOLERANT divergence comparator (N-2) | the consumer; the emit REWRITE; the human-edit backstop | makes the round-trip byte-faithful; removes the abandoned per-field model; detects GH-side divergence without false-positives |
-| `scripts/validate-pack.py` — NEW `check_migrator_field_faithfulness` (the next registry integer, 49 today) + registration in `main()`; asserts BOTH byte-faithfulness AND the §3.3c size budget per entry | the unattended CI guard | the CI gate that fails a lossy/corrupting migration OR a body-limit breach |
-| **`.github/workflows/validate-pack.yml`** (G-1 — was MISSING in v1) | wire the new per-check test (`bash scripts/tests/<new-check-test>.sh`) | Check 42 (`check_ci_workflow_wires_per_check_tests`, no exemption) FAILS if a `test-validate-pack-check*.sh` is on disk but not wired here |
+| `scripts/validate-pack.py` — NEW `check_migrator_field_faithfulness` (next registry integer) + registration in `main()`; **DEFAULT-SKIP unless `PACK_VALIDATE_DEEP=1` (§4.6 P)**, **takes `tree_dir` = the CALLER's target, never hardcoded `REPO_ROOT/backlog` (§4.6 T)**, **drives the BATCH `tmf_parse_backlog_tree` seam, not per-entry (§4.6 S)**; asserts byte-faithfulness + size + title + control-char | the deep CI guard (runs ONCE) | the CI gate that fails a lossy/corrupting migration OR a body-limit breach — WITHOUT the 151× compounding (§4.6) |
+| `scripts/validate-pack.py` — `main()` TIMING HARNESS: `run_check(name, fn, budget_s)` wrapping every check; per-check WARN + total-run hard-FAIL on budget overrun (§4.7) | the durable runtime-regression backstop | a future pathologically-slow check (the C-4.6 class) cannot silently ship — total-run budget FAILs CI |
+| **`.github/workflows/validate-pack.yml`** (G-1) | wire the new per-check test (`bash scripts/tests/<new-check-test>.sh`) AND a dedicated DEEP step that runs the faithfulness check ONCE (`PACK_VALIDATE_DEEP=1 python3 scripts/validate-pack.py`, or the per-check test which sets it) — §4.6 (P) | Check 42 (no exemption) FAILS an unwired per-check test; the deep step is the ONCE home so the general `validate` step (`:97`) stays default-SKIP (~0 increment) |
 | `scripts/tests/tracker-migrate-forward-test.sh` | add a fixture entry carrying top-level drop-set fields + a prose block; assert the `pack-entry-body-gz64` blob appears + decodes; assert the size-overflow path FAILs loud on a synthetic over-limit entry | unit-level encode of the carry + size contract |
 | `scripts/tests/tracker-migrate-reverse-test.sh` | assert the blob decodes and the pack emit writes it back verbatim (incl. an entry with NO Blockers — no injected `None`) | unit-level encode of the reverse/emit contract |
 | `scripts/tests/tracker-migrate-roundtrip-test.sh` + `fixtures/roundtrip/bd-v11.0/BACKLOG.md` | add an entry with top-level drop-set fields + a prose block + no Blockers; assert byte-faithful round-trip | the mock round-trip now exercises the drop + the emit rewrite |
@@ -869,6 +888,145 @@ correct-by-design, not a defect — flagged so review-2 does not mis-flag it.
 > `AT`: HEAD `feaa45d`, 2026-06-07. `INTERP`: no check asserts tracker forward→reverse body
 > faithfulness; the new check is net-new and takes the next registry integer (49 today). `CONCL`:
 > SUPPORTED.
+
+### 4.6 RUNTIME / PLACEMENT REDESIGN (the C-4.6 failure: cost = per-run × battery-invocation-count)
+
+The C-4.6 implementation of this guard hung the test battery for 1.5h+ because two bugs stacked
+MULTIPLICATIVELY (codified in the `ci-check-runtime-compounding` memory rule): (1) it ran the heavy
+whole-real-211 scan INSIDE the general `validate-pack` `main()` that the battery calls scores of times,
+ignoring the caller's target tree; (2) it spawned a fresh `python3`/`jq` PER ENTRY × PER LEG ≈ 2,000
+subprocesses/run. My prior §4 "sub-second × 211, bounded" estimate was wrong on BOTH axes AND omitted
+the battery multiplier — the exact estimate-not-measurement error that rule bans. This section
+re-designs the RUNTIME on the three mandatory constraints, each with a MEASURED Empirical-Evidence
+Block (no estimates).
+
+**The battery multiplier (measured — this is why a once-fine check is catastrophic at scale).**
+
+> **Empirical-Evidence Block (the battery invokes validate-pack 151× across 17 files).**
+> `CMD`: `grep -rcE 'validate-pack\.py' scripts/tests/*.sh | grep -v ':0$'` then sum.
+> `OUT`: 151 invocations across 17 files (top: `test-validate-pack-check-40.sh` 14×,
+> `...checks-36-37-38.sh` 12×, `...check-45.sh` 12×, ..., `test-v11-realistic-ot.sh` 7×). Sum = **151**.
+> `AT`: HEAD `9cc0e88`, 2026-06-07. `INTERP`: ANY per-invocation cost the check adds to the general
+> `main()` is paid 151× by the battery. A 2-minute real-211 scan × 151 = ~5 hours — the observed hang.
+> `CONCL`: SUPPORTED — the multiplier is 151, not 1; the design MUST keep the general-path increment at
+> ~0. (The memory rule cited ~155/18; my live count is 151/17 at this HEAD — same order, same lesson.)
+
+**(P) PLACEMENT — the heavy whole-real-tree verification runs ONCE, NOT in the 151× general `main()`.**
+`validate-pack.py` `main()` today is a flat sequence of `check_*()` calls with NO arg/env gating
+(measured: `grep -nE 'sys.argv|os.environ|argparse' validate-pack.py` → no top-level CLI/env seam).
+The redesign adds ONE env gate: the faithfulness check's heavy whole-real-tree leg runs ONLY when
+`PACK_VALIDATE_DEEP=1` is set; in the DEFAULT (unset) general path — the 151× battery path and the
+ordinary `python3 scripts/validate-pack.py` — the check is a NO-OP (it prints a one-line
+`SKIP: field-faithfulness deep check (set PACK_VALIDATE_DEEP=1)` and returns immediately, paying ~0).
+The DEEP leg runs in exactly TWO homes, ONCE each:
+- the new per-check test `test-validate-pack-check-<NN>-field-faithfulness.sh` (which sets
+  `PACK_VALIDATE_DEEP=1` and points the check at the real tree) — invoked ONCE by the `tests` job; and
+- a dedicated workflow step (`PACK_VALIDATE_DEEP=1 python3 scripts/validate-pack.py`, or equivalently
+  the per-check test) in `.github/workflows/validate-pack.yml`, run ONCE per push.
+This is the SAME placement pattern the rule mandates ("heavy whole-real-tree verification runs ONCE, a
+dedicated CI step / the per-check test, NOT inside the general validate-pack"). The general `main()` is
+unchanged in cost.
+
+> **Empirical-Evidence Block (baseline general validate-pack runtime — the budget the deep check must NOT inflate).**
+> `CMD`: `/usr/bin/time -p python3 scripts/validate-pack.py` (HEAD `9cc0e88`, no deep check).
+> `OUT`: `real 1.37` (`user 0.94 / sys 0.39`). `AT`: HEAD `9cc0e88`, 2026-06-07. `INTERP`: a clean
+> general run is 1.37s; × 151 ≈ 207s of validate-pack across the battery TODAY. The deep check's
+> default-SKIP path adds one early `os.environ.get` + a print + return ≈ 0 ms — so the battery
+> validate-pack total stays ~207s, NOT hours. `CONCL`: SUPPORTED — general-path increment ~0.
+
+**(T) TARGET-TREE SCOPING — the check scans the CALLER's tree, never a hardcoded `REPO_ROOT/backlog`.**
+The check signature takes `tree_dir`; the resolution order is the CALLER's target (the per-check test
+passes its fixture tree; the deep CI step passes `REPO_ROOT/backlog`). There is NO
+`tree_dir or REPO_ROOT/"backlog"` fallback that silently reverts to the real 211 — that exact fallback
+was the C-4.6 bug. A fixture test with 3 entries pays a 3-entry cost, full stop.
+
+**(S) SEAM EFFICIENCY — ONE batch process, not a subprocess-per-entry storm. (MEASURED: ~12× faster.)**
+The check sources the libs ONCE and drives the EXISTING real batch entry-point `tmf_parse_backlog_tree`
+(one `python3` over the whole concatenated stream — the parser loops internally), then runs
+compose/reconstruct/emit + the 4 legs in ONE sub-invocation looping over the parsed array. Per-run
+subprocess count drops from ~2,000 (per-entry × per-leg) to a SMALL CONSTANT — on the order of one
+sub-shell that sources the libs + a handful of `python3`/`jq` batch passes (parse, compose-loop,
+reconstruct-loop, emit-loop), i.e. ~4-6 spawns TOTAL regardless of entry count, not ~10 per entry.
+
+> **Empirical-Evidence Block (BATCH parse all 211 = 0.44s / one python3 spawn vs PER-ENTRY = 5.28s / 211 spawns, ONE leg).**
+> `CMD`: BATCH — concat all `backlog/BD-*.md` bodies into one stream, `source tracker-migrate-forward.sh`,
+> ONE `_tmf_parse_backlog_file` call; `/usr/bin/time -p`. PER-ENTRY — loop 211 files, one
+> `_tmf_parse_backlog_file` (one `python3`) EACH; `/usr/bin/time -p`.
+> `OUT`: BATCH (one spawn, 211 entries) = `real 0.44`; PER-ENTRY (211 spawns, ONE leg) = `real 5.28`.
+> The real C-4.6 bug ran ~4 legs × the round-trip ≈ 2,000 spawns ≈ the 2-5 min/run the failure reports.
+> `AT`: HEAD `9cc0e88`, 2026-06-07. `INTERP`: the batch seam is ~12× faster than per-entry on the parse
+> leg ALONE, and the gap widens across 4 legs (per-entry compounds per leg; batch reuses the one parse).
+> The real batch entry-point `tmf_parse_backlog_tree` already exists (`tracker-migrate-forward.sh`) —
+> the seam is the EXISTING function, not invented; OQ-4 (drive the real functions) holds. `CONCL`:
+> SUPPORTED — the batch seam collapses ~2,000 spawns to a small constant and the per-run cost to
+> sub-second.
+
+**Why this CANNOT compound (the proof the prior design lacked).** The compounding required BOTH bugs:
+heavy work IN the 151× path AND per-entry spawns. The redesign breaks BOTH independently — (P) removes
+the heavy work from the 151× path entirely (default-SKIP), so even if the deep leg were slow it runs
+ONCE; (S) makes the deep leg itself sub-second via the batch seam. Either fix alone would prevent the
+hours-long hang; together the worst case is: 151 general runs × ~0 increment + ONE deep run × the
+measured batch cost. There is no multiplicative term left.
+
+### 4.6.1 The MEASURED cost analysis (numbers, not estimates)
+
+| Cost component | Measured value | Basis |
+|---|---|---|
+| Battery validate-pack invocation count | **151** (17 files) | §4.6 EE (grep-sum, HEAD `9cc0e88`) |
+| Baseline general validate-pack run | **1.37 s** | §4.6 EE (`/usr/bin/time`) |
+| Deep check's increment to a GENERAL (default) run | **~0 ms** | env-gate early-return: one `os.environ.get` + print + return |
+| Battery validate-pack total (with the deep check default-SKIP) | **~207 s** (151 × 1.37 s) + 151 × ~0 = **~207 s** | unchanged from today's baseline |
+| ONCE-cost: the full real-211 DEEP verification (batch seam) | **sub-second to a few seconds** — batch parse-all-211 = **0.44 s**; the 4 legs + compose/reconstruct/emit over the parsed array add a small multiple (each a batch pass), projected **≤ ~5 s** total | §4.6 EE (batch 0.44 s measured); the coder re-measures the full 4-leg deep run at implementation and the §4.7 budget enforces ≤ its bound |
+| Per-check-test once-cost (deep, on the real tree) | one deep run ≈ the ONCE-cost above (≤ ~5 s) | invoked 1× by the `tests` job |
+| Projected total battery wall-clock impact of this check | **~+5 s** (one deep run) on top of the existing battery; NOT hours | (P)+(S): no 151× term |
+
+The contrast with the failure: the broken design's battery cost was 151 × (2-5 min) = **5-12 HOURS**;
+the redesigned cost is ~207 s (unchanged general battery) **+ one ≤~5 s deep run** = no meaningful
+increase. The ~150× multiplier is eliminated by (P); the per-run minutes are eliminated by (S).
+
+### 4.7 RUNTIME-BUDGET GUARD (the durable prevention the prior >2h→<5min fix lacked)
+
+The placement + seam fix this check; the GUARD prevents the CLASS from recurring on ANY future check.
+`validate-pack.py` `main()` calls each `check_*()` directly with no timing. The redesign wraps check
+dispatch in a TIMING HARNESS:
+
+- **Mechanism:** a `run_check(name, fn, budget_s)` wrapper records `t0 = time.monotonic()` before `fn()`
+  and `elapsed = time.monotonic() - t0` after; if `elapsed > budget_s` it emits a LOUD warning
+  (`RUNTIME-BUDGET: check '<name>' took <elapsed>s > budget <budget_s>s — investigate before merge`).
+  `main()` routes every check through `run_check` (a mechanical wrap of the existing flat call list).
+- **FAIL vs WARN (the policy):** in the DEFAULT general path, a per-check budget overrun is a LOUD
+  WARN (validate-pack still completes — a slow check must not block unrelated work mid-investigation);
+  but a TOTAL-RUNTIME budget on the whole general run is a hard FAIL (`RUNTIME-BUDGET: validate-pack
+  total <elapsed>s > <total_budget>s`), so a compounding regression like C-4.6 CANNOT silently ship —
+  CI goes RED. The deep (`PACK_VALIDATE_DEEP=1`) run carries its own larger per-check budget for the
+  faithfulness check.
+- **Budget VALUES (measured-then-bounded — the §3 measure-then-bound discipline, RUNTIME axis):**
+  - **Per general check budget = 2.0 s.** Rationale: the slowest GENERAL check today is well under the
+    1.37 s WHOLE-run baseline (§4.6 EE), so 2.0 s per check is a generous ceiling no current check
+    approaches; a check that exceeds it is anomalous and warrants the WARN. (The coder measures the
+    slowest current check at implementation and sets the budget to ~2× it, never below the measured max.)
+  - **Total general-run budget = 10 s.** Rationale: 1.37 s baseline (§4.6 EE) × a generous ~7× safety
+    factor; a general run that exceeds 10 s means a check regressed into the general path (the C-4.6
+    shape) → hard FAIL. 10 s is far above the real 1.37 s and far below the minutes-per-run failure, so
+    it catches the regression class without false-positiving the healthy baseline.
+  - **Deep faithfulness-check budget = 30 s.** Rationale: the batch deep run is measured ≤ ~5 s (§4.6.1);
+    30 s is a ~6× headroom that still catches a regression (e.g. a future coder reintroducing per-entry
+    spawns would blow 30 s) but does not false-fail the healthy batch run. The coder re-measures the
+    full deep run and confirms it is < 30 s with margin.
+- **Why a guard, not just discipline:** the C-4.6 failure passed THREE design reviews + a sweep because
+  correctness review does not measure runtime (the memory rule's "Why"). A self-timing FAIL on the
+  total-run budget is the structural backstop that makes the next pathologically-slow check
+  un-shippable regardless of review attention. This is the RUNTIME analogue of
+  `ci-guard-measure-then-bound` (which bounds the allowlist, not the clock).
+
+> **Empirical-Evidence Block (the budget values bracket the measured reality — no false-positive on the healthy baseline, catches the failure shape).**
+> `CMD`: baseline general run `/usr/bin/time` (1.37 s, §4.6 EE) vs the 10 s total budget; the C-4.6
+> failure shape (2-5 min/run × 151) vs the 10 s total budget.
+> `OUT`: 1.37 s ≪ 10 s (healthy run passes with ~7× margin); 2-5 min/run ≫ 10 s (the failure shape
+> hard-FAILs the total-run budget immediately). `AT`: HEAD `9cc0e88`, 2026-06-07. `INTERP`: the 10 s
+> total budget is above the healthy baseline (no false-positive) and far below the failure (catches the
+> regression class); the per-check 2 s WARN + deep 30 s budgets are similarly bracketed. `CONCL`:
+> SUPPORTED — measured-then-bounded, both directions verified.
 
 ---
 
@@ -1159,7 +1317,7 @@ verification step).
 | R4 | **Reverse emit REWRITE (pack branch):** write `pe_backpointer_line` + `raw_body` verbatim, instead of the fixed-order template projection | the byte layout of EVERY reconstructed entry; the 20 no-Blockers entries; field order | this is the CENTRAL change (review-2 A-1). The verbatim emit reproduces the original body exactly — no injected `Blockers/Unblocks: None`, no `Resolved: n/a` injection, no reordering, no appended-extras. VERIFY (EMPIRICAL, not logical): the §4.2/§4.3 byte-faithful guard against all 211 entries; the worst cases (BD-204 no-Description/shred; BD-136 `-->`/fence; BD-001 no-Blockers; BD-021 multi-paragraph) verified byte-identical in §3.3/§4 EE blocks. |
 | R-CLIENT | **Reverse emit: the CLIENT (`surface != "pack"`) branch** | the client monolith emit (BD-207's, still live) | the rewrite touches ONLY the `surface == "pack"` branch; `_tmr_emit_backlog` (the client `# BACKLOG` monolith path) is UNTOUCHED. VERIFY: the surface-branch split (`grep 'surface == "pack"'`); `git diff` shows no change to the client `else` branch; the client-branch tests stay green. (pack/project-separation; BD-207 owns the client emit.) |
 | R-EDIT | **`tracker-edit.sh` blob+H2 sync (§3.3a / C-3 amendment)** | the Mode-3 CRUD write path | `tracker_edit_entry` must regenerate BOTH views on `provider_update`; if it updated only H2, reverse would discard the edit. VERIFY: a Mode-3 edit test asserts the blob and H2 agree after `provider_update`; the divergence-detection leg (§3.3a) FAILs on a stale blob. |
-| R5 | NEW faithfulness check (the next registry integer, 49 today) | CI runtime; false positives | the check drives pure functions (no `gh`, no network) — per-entry parse/compose/emit, sub-second × 211. The byte leg has NO false-positive class: the H2/label projection is NOT compared (only the blob-emitted body is), so first-class projections are not a false-fail source. VERIFY: run the check across all 211 post-fix → green (the §4.3 worst-case empirical verification + the coder's full-tree confirmation). |
+| R5 | NEW faithfulness check (the next registry integer) | **CI RUNTIME COMPOUNDING (the C-4.6 failure)** + false positives | **RUNTIME (the load-bearing regression — §4.6):** the check is DEFAULT-SKIP in the 151× general path (env-gated `PACK_VALIDATE_DEEP=1`), scopes to the CALLER's `tree_dir` (never hardcoded `REPO_ROOT/backlog`), and uses the BATCH seam (`tmf_parse_backlog_tree`, one `python3` over all 211 = **0.44 s measured**, vs **5.28 s** per-entry) — so the battery cost is the unchanged ~207 s + ONE ≤~5 s deep run, NOT the 5-12 h the broken design caused. The §4.7 runtime-budget guard (10 s total-run hard FAIL) makes the compounding shape un-shippable. **FALSE-POSITIVES:** the byte leg compares only the blob-emitted body (not the H2/label projection), so first-class projections are not a false-fail source. VERIFY: the per-check test runs the deep check once on the real tree (green, < 30 s deep budget); a per-entry-spawn regression trips the §4.7 budget; the §4.6 EE measures both the batch seam (0.44 s) and the battery multiplier (151). |
 | R6 | Roundtrip + C-7 fixtures gain top-level drop-set fields + a no-Description + a no-Blockers entry | the existing fixture assertions (count, identity, status, no-sidecar) | new content is ADDED to fixture entries; count/identity/status legs unaffected (same IDs/statuses); the content-faithfulness leg now exercises the drop + the emit rewrite. VERIFY: post-fix the content leg diffs clean; pre-fix it FAILs (the fixture now has teeth). |
 | R7 | `backlog/_rules.md` schema reconciliation | the per-entry contract readers | the edit states byte-faithful migration + removes the divergent optional-field list; it does NOT change which fields an entry MAY carry. VERIFY: grep-confirm no validator pins `_rules.md` field-list text (Check 34 cross-reference-integrity); trinity/`_rules.md` parity check by the coder. |
 | R8 | The 211 entries | byte-untouched | the fix is carry-fields, NOT rewrite — ZERO entry edits (§3.6). VERIFY: the C-4.5/4.6/4.7 commits' `git diff --name-only` show NO `backlog/BD-*.md` (only `backlog/_rules.md` in C-4.7). |
@@ -1319,6 +1477,7 @@ and resolved, not silently closed.**
 | `external-rules-census-before-design` (FULL-SWEEP) | The 28-rule GH-Issues census + the 14-tracker landscape are FIXED constraints; every design section re-validated against them (sweep S-1). All hard CONTENT limits are CLEAN across 211 (re-measured this sweep: title max 231/256; body worst 62.1%; 0 control bytes; longest label 25 (template:phase-epic-v11.0)/≤6). The OPERATIONAL gaps the census surfaced are now DESIGNED, not silently relaxed: pacing (§3.3d / S-5#1), mention-neutralization (§3.3d / S-5#2), enforcement-axis named (§3.3c / S-5#4), go-forward title/control guards (§3.3e / S-5#5), python3-codec pin + corrupt-blob fail-loud + composed-body size (§3.3/§3.3b/§4.4 / S-5#6), storage-format portability capability (§3.3c / S-5#7), C-7 rebuild verdict (§5.c / S-8). The archive ambiguity (S-5#3) is SURFACED as a user decision, not guessed. | COMPLIANT |
 | `full-sweep` (this revision) | S-1 design re-validated + amended in place; S-2 committed-doc corrections specified (not edited); S-3 script changes specified by file+symbol; S-4 entry-modification list = the 1 BD-204.md:20 wording disambiguation (a re-scope text item, Pack-Chat pack-chat-only), ALL 211 content-clean (no rewrites); S-5 all 8 named items decided/surfaced; S-6 re-sequenced commits. The full ledger is `SWEEP-BD-204-RULES-COMPLIANCE.md`. | COMPLIANT |
 | `gate-(b)-close-out` (this revision) | The 2 §11.3 census gaps RESEARCHED + RESOLVED-BY-MEASUREMENT (read both deltas + VERIFY-2 = VERIFIED): R-OPS-7 (no repo-creation-specific limit → §3.3d issue-pacing gate bounds the multi-rehearsal cadence; verified-negative) + R-ACCT-5 (personal repos unlimited below 100,000, issues DB-stored → archived accumulation benign; conservative archived-counts-toward-cap framing adopted). §11.1/§11.3/§11.4 flipped to RESOLVED; the §11 verdict flipped to CONDITIONAL on gate (a) ONLY; §5.c cadence note reconciled to the measured-benign answer. No new gate; no re-design. | COMPLIANT |
+| `ci-check-runtime-compounding` (the C-4.6 failure; this revision) | The §4 guard's RUNTIME redesigned on the rule's 3 mandatory constraints, each MEASURED (no estimate — the banned prior "sub-second × 211"): (P) DEEP-gated `PACK_VALIDATE_DEEP=1`, runs ONCE in a dedicated step/per-check test, NOT the 151× general `main()` (battery count MEASURED = 151/17 files); (T) scopes to the CALLER's `tree_dir`, never hardcoded `REPO_ROOT/backlog`; (S) BATCH `tmf_parse_backlog_tree` seam = one `python3` over 211 = **0.44 s MEASURED** vs **5.28 s** per-entry, collapsing ~2,000 spawns to a small constant. Cost = unchanged ~207 s battery + ONE ≤~5 s deep run (was 5-12 h). §4.7 adds a runtime-budget guard (per-check WARN + 10 s total-run hard FAIL) — the durable backstop the prior >2h→<5min fix lacked. | COMPLIANT |
 | `rules-applied-verification-block` | This table — per-rule, evidence quoted, terminal conclusion; no empty evidence, no AMBIGUOUS. | COMPLIANT |
 | `filename-uniqueness-heuristic` | `find . -name "ARCHITECTURE-BD-204-LOSSLESS-FIX.md" -not -path "./.git/*"` returned empty before write (Bash call, this session). | COMPLIANT |
 
@@ -1352,7 +1511,12 @@ and resolved, not silently closed.**
 | `RESEARCH-BD-204-GH-ISSUES-RULES-VERIFY.md` (audit trail) | Read (1-60 + verdict) — confirms the rules doc's values + census numbers; CORRECTIONS-NEEDED resolved by the fold-in (3 missed rules + 2 nuances already in the 28-rule set). |
 | `RESEARCH-BD-204-GH-ISSUES-RULES.md` (GATE-(B) deltas: R-OPS-7 + R-ACCT-5) | Read the two new rule rows + §3 map rows + the §0/§8 second-fold-in ledger this session — R-OPS-7 (repo-creation: no repo-specific limit; rides the general secondary caps) + R-ACCT-5 (personal repos unlimited < 100,000; 10 GB on-disk `.git` recommendation; issues DB-stored). Grounds the §11.3 RESOLVED-BY-MEASUREMENT flips. |
 | `RESEARCH-BD-204-GH-ISSUES-RULES-VERIFY-2.md` (GATE-(B) verification) | Read the verdict = VERIFIED + the archived-quota framing NIT (docs SILENT on an archived-repo exemption → conservative "archived counts toward the cap" reading adopted in §11.3). |
-| Curated memory files (11 named in the prompt) | Carried as governing rules: adversarial-architect-on-major-gap, ci-guard-measure-then-bound, architect-planner-empirical-evidence, fail-loud-delete-old-source, preliminary-triage-architect-challenge, pattern-matching-out-of-context, pack-project-separation, scope-deliverables-to-the-ask, agent-output-rules-applied-block, verify-full-ci-suite, researcher-maps-blast-radius, external-rules-census-before-design, tracker-portability — reflected in §9. |
+| `feedback_ci_check_runtime_compounding.md` (memory rule — the codified C-4.6 failure) | Read FULL this session — the 3 mandatory constraints (cost = per-run × battery-count; scope to caller's tree; no subprocess-per-entry; heavy work once; add a runtime guard). The entire §4.6/§4.7 redesign + the corrected R5 row implement it. |
+| `scripts/validate-pack.py` (runtime redesign) | Read `main()` (flat `check_*()` sequence, NO arg/env gating — grounds the new env-gate + timing-harness seam); baseline `/usr/bin/time` = **1.37 s** (§4.6 EE). |
+| `scripts/lib/tracker-migrate-forward.sh` (batch seam) | Read `tmf_parse_backlog_tree` (`:588`, the EXISTING real batch entry-point: `pe_list_entry_files` → concat → ONE `_tmf_parse_backlog_file`) — the seam is the real function, OQ-4 holds. Batch-vs-per-entry MEASURED (0.44 s vs 5.28 s, §4.6 EE). |
+| `.github/workflows/validate-pack.yml` (placement) | Read the `validate` job (`:97` general run) + `tests` job (`:108+` per-check tests) — the once-home for the deep step (§4.6 P). Battery invocation count MEASURED = 151/17 (§4.6 EE). |
+| `PLAN-BD-204.md` §3.LF.5 (C-4.6 recipe) | Read — the recipe the planner redoes against this §4.6/§4.7 runtime redesign (DEEP-gate, target-tree, batch seam, runtime-budget guard). |
+| Curated memory files (12 named, incl. ci-check-runtime-compounding) | Carried as governing rules: adversarial-architect-on-major-gap, ci-guard-measure-then-bound, ci-check-runtime-compounding, architect-planner-empirical-evidence, fail-loud-delete-old-source, preliminary-triage-architect-challenge, pattern-matching-out-of-context, pack-project-separation, scope-deliverables-to-the-ask, agent-output-rules-applied-block, verify-full-ci-suite, researcher-maps-blast-radius, external-rules-census-before-design, tracker-portability — reflected in §9. |
 
 **No named document was derived rather than read.** Every doc, code file, fixture, and contract
 above was opened directly via Read/Bash; v1 measurements at HEAD `feaa45d` (2026-06-06); fix-1 and
@@ -1364,6 +1528,11 @@ measurements — the SIZE
 distribution across all 211 (raw-base64 worst BD-136 65,336/99.7% → gz64 40,771/62.2%; 0 entries
 over 80% under gz64), the gzip+base64 byte-faithful round-trip on BD-136/BD-204, and the gzip
 determinism (mtime field `0 0 0 0`, two encodings identical) — are this session's own command output
-at HEAD `feaa45d`.
+at HEAD `feaa45d`. The runtime-redesign measurements (this revision, at HEAD `9cc0e88`) — the battery
+validate-pack invocation count (**151** across 17 files), the baseline general validate-pack run
+(**1.37 s**), the BATCH parse-all-211 (**0.44 s**, one `python3` spawn) vs the PER-ENTRY parse
+(**5.28 s**, 211 spawns, one leg), and the existing real batch entry-point `tmf_parse_backlog_tree` —
+are this session's own `/usr/bin/time` + `grep`-sum command output (NOT estimates — the prior
+"sub-second × 211" estimate is the error this redesign corrects).
 
 **End of ARCHITECTURE-BD-204-LOSSLESS-FIX.md**
