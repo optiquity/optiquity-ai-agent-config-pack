@@ -702,6 +702,59 @@ sys.stdout.buffer.write(b"X")
     printf '%s' "$decoded"
 }
 
+# BD-204 §3.LF.3a — BATCH MODE for the gz64 decode (Option B single-source;
+# design §4.6 (S) item 1). ADDITIVE: a NEW length-framed multi-record input
+# shape; the single-record _tmr_decode_body_blob above is byte-unchanged. The
+# per-record transform is the IDENTICAL base64-decode + gunzip (the inverse of
+# _tmf_gz64_encode), looped internally in ONE python3 over all N records (no
+# per-entry subprocess storm; ci-check-runtime-compounding). The C-4.6 deep
+# guard's byte leg pairs THIS with _tmf_gz64_encode_batch — ONE shared codec,
+# so it cannot drift from production (OQ-4 holds).
+#
+# This batch entry-point takes ALREADY-EXTRACTED base64 payloads (the bare
+# pack-entry-body-gz64 token, NOT the surrounding Issue body) — the seam the
+# guard needs for decode(encode(raw_body)). Marker extraction + the fail-loud
+# corrupt-blob handling stay in the single-record _tmr_decode_body_blob (the
+# production reverse path); the guard supplies valid payloads it just produced.
+#
+# FRAMING (the _TMF_BATCH length-prefixed protocol; arbitrary bytes safe on the
+# DECODED output, which may contain NUL/newline):
+#   stdin : "N\n"; then per record a base64 ASCII payload, length-framed
+#           ("L\n" + L bytes).
+#   stdout: "N\n"; then per record the decoded raw bytes, length-framed.
+# A record whose payload fails base64/gzip decode aborts the whole batch
+# (exit 3) — the guard treats a non-zero exit as a corrupt-blob FAIL.
+_tmr_decode_body_blob_batch() {
+    python3 -c '
+import sys, base64, gzip, io
+def read_frames(stream):
+    n_line = stream.readline()
+    if not n_line:
+        return []
+    n = int(n_line.decode("ascii").strip())
+    out = []
+    for _ in range(n):
+        l = int(stream.readline().decode("ascii").strip())
+        out.append(stream.read(l))
+    return out
+def decode_one(payload):
+    data = payload.decode("ascii").strip()
+    raw = base64.b64decode(data, validate=True)
+    return gzip.GzipFile(fileobj=io.BytesIO(raw)).read()
+recs = read_frames(sys.stdin.buffer)
+w = sys.stdout.buffer
+w.write(("%d\n" % len(recs)).encode("ascii"))
+for payload in recs:
+    try:
+        out = decode_one(payload)
+    except Exception as exc:
+        sys.stderr.write(str(exc))
+        sys.exit(3)
+    w.write(("%d\n" % len(out)).encode("ascii"))
+    w.write(out)
+'
+}
+
 # BD-204 §3.3a (ii): the NORMALIZATION-TOLERANT divergence comparator (N-2).
 # Blob is AUTHORITATIVE; the visible H2 sections are the advisory projection.
 # A human (or any non-tracker-edit writer) editing the visible `## Description`

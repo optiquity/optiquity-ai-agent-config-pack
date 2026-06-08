@@ -294,6 +294,138 @@ unset _TRACKER_PROVIDER_BACKEND_OVERRIDE
 # Restore the GH backend capabilities for the rest of the suite.
 unset -f tracker_provider_stub_capabilities 2>/dev/null || true
 
+# ─────────────────────────────────────────────────────────────────
+# 2.9 BD-204 §3.LF.3a — single-source BATCH MODE for the gz64 codec /
+#     neutralizer / composer (Option B; design §4.6 (S)). The C-4.6 deep guard
+#     calls these batch functions (ONE python3 over all N records) so its byte
+#     leg shares the PRODUCTION codec (OQ-4 — no second copy can drift). These
+#     tests prove BATCH-EQUIVALENCE: batch(N records) == single-record applied
+#     N times, BYTE-IDENTICAL. The single-record path is verified UNCHANGED by
+#     §2.8 above + the 211-entry round-trip (roundtrip test).
+# ─────────────────────────────────────────────────────────────────
+
+# _tmf_batch_frame: emit the _TMF_BATCH length-prefixed framing for a set of
+# records passed as a NUL-delimited blob on stdin (so any byte — newline,
+# paren, fence — survives). Output: "N\n"; then per record "L\n" + L bytes.
+_tmf_batch_frame() {
+    python3 -c '
+import sys
+data = sys.stdin.buffer.read()
+recs = data.split(b"\x00")
+if recs and recs[-1] == b"":
+    recs = recs[:-1]
+w = sys.stdout.buffer
+w.write(("%d\n" % len(recs)).encode("ascii"))
+for r in recs:
+    w.write(("%d\n" % len(r)).encode("ascii"))
+    w.write(r)
+'
+}
+
+# _tmf_batch_unframe_idx: read a _TMF_BATCH framed stream on stdin and print
+# record $1 (0-based) raw bytes to stdout (no trailing sentinel issue — caller
+# compares via files or $(...)+X).
+_tmf_batch_nth() {
+    python3 -c '
+import sys
+idx = int(sys.argv[1])
+data = sys.stdin.buffer.read()
+i = data.index(b"\n"); n = int(data[:i]); pos = i+1
+got = []
+for _ in range(n):
+    j = data.index(b"\n", pos); L = int(data[pos:j]); pos = j+1
+    got.append(data[pos:pos+L]); pos += L
+sys.stdout.buffer.write(got[idx])
+sys.stdout.buffer.write(b"X")
+' "$1"
+}
+
+# 2.9.1 _tmf_gz64_encode batch == single-record applied N times (byte-identical).
+b_r1=$'**BD-900 — Carrier**\nStatus: Open\ninterior blank\n\nparen ) fence ```\n'
+b_r2=$'simple body\n'
+b_r3=$'commit 08f7158 and #123 and @objc\n'
+b_r4=$'trailing newlines body\n\n\n'
+# single-record encodings
+s_e1=$(printf '%s' "$b_r1" | _tmf_gz64_encode)
+s_e2=$(printf '%s' "$b_r2" | _tmf_gz64_encode)
+s_e3=$(printf '%s' "$b_r3" | _tmf_gz64_encode)
+s_e4=$(printf '%s' "$b_r4" | _tmf_gz64_encode)
+# batch encoding (NUL-delimit the 4 records, frame, run batch)
+batch_enc_out=$(printf '%s\x00%s\x00%s\x00%s\x00' "$b_r1" "$b_r2" "$b_r3" "$b_r4" \
+    | _tmf_batch_frame | _tmf_gz64_encode_batch | base64)
+# decode the framed batch output and compare each record
+be0=$(printf '%s' "$batch_enc_out" | base64 -d | _tmf_batch_nth 0); be0="${be0%X}"
+be1=$(printf '%s' "$batch_enc_out" | base64 -d | _tmf_batch_nth 1); be1="${be1%X}"
+be2=$(printf '%s' "$batch_enc_out" | base64 -d | _tmf_batch_nth 2); be2="${be2%X}"
+be3=$(printf '%s' "$batch_enc_out" | base64 -d | _tmf_batch_nth 3); be3="${be3%X}"
+assert_eq "2.9.1 gz64 batch rec0 == single-record" "$s_e1" "$be0"
+assert_eq "2.9.1 gz64 batch rec1 == single-record" "$s_e2" "$be1"
+assert_eq "2.9.1 gz64 batch rec2 == single-record" "$s_e3" "$be2"
+assert_eq "2.9.1 gz64 batch rec3 == single-record (trailing newlines)" "$s_e4" "$be3"
+
+# 2.9.2 _tmf_neutralize_autolinks batch == single-record applied N times.
+n_v1='plain value no trigger'
+n_v2='see #123 and commit 08f7158 here'
+n_v3='a `code` span with @objc mention'
+n_v4='http://x.test/y url trigger'
+s_n1=$(printf '%s' "$n_v1" | _tmf_neutralize_autolinks)
+s_n2=$(printf '%s' "$n_v2" | _tmf_neutralize_autolinks)
+s_n3=$(printf '%s' "$n_v3" | _tmf_neutralize_autolinks)
+s_n4=$(printf '%s' "$n_v4" | _tmf_neutralize_autolinks)
+batch_neu=$(printf '%s\x00%s\x00%s\x00%s\x00' "$n_v1" "$n_v2" "$n_v3" "$n_v4" \
+    | _tmf_batch_frame | _tmf_neutralize_autolinks_batch | base64)
+bn0=$(printf '%s' "$batch_neu" | base64 -d | _tmf_batch_nth 0); bn0="${bn0%X}"
+bn1=$(printf '%s' "$batch_neu" | base64 -d | _tmf_batch_nth 1); bn1="${bn1%X}"
+bn2=$(printf '%s' "$batch_neu" | base64 -d | _tmf_batch_nth 2); bn2="${bn2%X}"
+bn3=$(printf '%s' "$batch_neu" | base64 -d | _tmf_batch_nth 3); bn3="${bn3%X}"
+assert_eq "2.9.2 neutralize batch rec0 == single-record (no trigger pass-through)" "$s_n1" "$bn0"
+assert_eq "2.9.2 neutralize batch rec1 == single-record (#NNN + SHA trigger)" "$s_n2" "$bn1"
+assert_eq "2.9.2 neutralize batch rec2 == single-record (backtick fence widen)" "$s_n3" "$bn2"
+assert_eq "2.9.2 neutralize batch rec3 == single-record (URL trigger)" "$s_n4" "$bn3"
+
+# 2.9.3 tmf_compose_issue_body batch == single-record applied N times. Each
+# record is SIX length-framed fields: pack_id, description, context,
+# resolution, file_symbol, raw_body. Uses the default GH provider (no live
+# call; the size gate is skipped offline — within-budget bodies are identical).
+c_raw1=$'**BD-136 — fixture**\nStatus: Open\ninterior ) fence ```\n'
+c_raw3=$'**BD-204 — fixture**\nResolved: see #123 and commit 08f7158\n'
+s_c1=$(tmf_compose_issue_body "BD-136" "line one" "" "" "" "$c_raw1")
+s_c2=$(tmf_compose_issue_body "TD-010" "td desc" "ctx here" "" "scripts/foo.sh" $'**TD-010**\nbody\n')
+s_c3=$(tmf_compose_issue_body "BD-204" "see commit 08f7158 and #123" "" "resolved in 08f7158" "" "$c_raw3")
+s_c4=$(tmf_compose_issue_body "phase-1" "Phase epic" "" "" "" "")
+# Build the 6-field-per-record framed batch input via python (NUL-safe).
+compose_batch_out=$(python3 -c '
+import sys
+records = [
+  ["BD-136", "line one", "", "", "", "**BD-136 — fixture**\nStatus: Open\ninterior ) fence ```\n"],
+  ["TD-010", "td desc", "ctx here", "", "scripts/foo.sh", "**TD-010**\nbody\n"],
+  ["BD-204", "see commit 08f7158 and #123", "", "resolved in 08f7158", "", "**BD-204 — fixture**\nResolved: see #123 and commit 08f7158\n"],
+  ["phase-1", "Phase epic", "", "", "", ""],
+]
+w = sys.stdout.buffer
+w.write(("%d\n" % len(records)).encode("ascii"))
+for rec in records:
+    for f in rec:
+        fb = f.encode("utf-8")
+        w.write(("%d\n" % len(fb)).encode("ascii"))
+        w.write(fb)
+' | tmf_compose_issue_body_batch | base64)
+cb0=$(printf '%s' "$compose_batch_out" | base64 -d | _tmf_batch_nth 0); cb0="${cb0%X}"
+cb1=$(printf '%s' "$compose_batch_out" | base64 -d | _tmf_batch_nth 1); cb1="${cb1%X}"
+cb2=$(printf '%s' "$compose_batch_out" | base64 -d | _tmf_batch_nth 2); cb2="${cb2%X}"
+cb3=$(printf '%s' "$compose_batch_out" | base64 -d | _tmf_batch_nth 3); cb3="${cb3%X}"
+# single-record $(...) strips the one trailing \n; the batch payload retains it
+# (printf '%s\n'). Compare with the trailing \n appended to the single capture.
+assert_eq "2.9.3 compose batch rec0 == single-record (BD-136 + blob)"   "$s_c1"$'\n' "$cb0"
+assert_eq "2.9.3 compose batch rec1 == single-record (TD + ctx + file)" "$s_c2"$'\n' "$cb1"
+assert_eq "2.9.3 compose batch rec2 == single-record (BD-204 + resol)"  "$s_c3"$'\n' "$cb2"
+assert_eq "2.9.3 compose batch rec3 == single-record (phase, no blob)"  "$s_c4"$'\n' "$cb3"
+
+# 2.9.4 ADDITIVE invariant — the single-record _tmf_gz64_encode is UNCHANGED by
+# the batch addendum (re-encode rec0 and confirm it still equals s_e1 above).
+reverify_e1=$(printf '%s' "$b_r1" | _tmf_gz64_encode)
+assert_eq "2.9.4 single-record _tmf_gz64_encode byte-unchanged (additive)" "$s_e1" "$reverify_e1"
+
 # 2.8.7 §3.3d PACING — the create loop sleeps >= the min-write interval before
 #       each create after the first (test seam: a counting fake sleep, no real
 #       wall-clock wait).

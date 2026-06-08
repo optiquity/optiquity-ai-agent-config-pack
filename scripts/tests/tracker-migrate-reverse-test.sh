@@ -346,6 +346,92 @@ div_force_warn=$(tracker_migrate_reverse_reconstruct "$div_issue_edit" '{}' 1 2>
 assert_eq       "2.1d-iii --force overrides divergence to blob-wins (rc=0)" "0" "$div_force_rc"
 assert_contains "2.1d-iii --force surfaces a blob-wins WARN" "$div_force_warn" "blob wins"
 
+# 2.1e BD-204 §3.LF.3a — single-source BATCH MODE for the gz64 decode (Option B;
+# design §4.6 (S) item 1). The C-4.6 deep guard pairs _tmf_gz64_encode_batch
+# with _tmr_decode_body_blob_batch (ONE python3 over all N records, no per-entry
+# spawn storm) — ONE shared codec that cannot drift from production (OQ-4).
+# These tests prove BATCH-EQUIVALENCE: batch decode(N) == single-record decode
+# applied N times, AND batch decode(batch encode(X)) == X byte-identical.
+
+# _tmr_batch_frame / _tmr_batch_nth: the _TMF_BATCH length-prefixed framing
+# helpers (arbitrary bytes safe), local to this suite.
+_tmr_batch_frame() {
+    python3 -c '
+import sys
+data = sys.stdin.buffer.read()
+recs = data.split(b"\x00")
+if recs and recs[-1] == b"":
+    recs = recs[:-1]
+w = sys.stdout.buffer
+w.write(("%d\n" % len(recs)).encode("ascii"))
+for r in recs:
+    w.write(("%d\n" % len(r)).encode("ascii"))
+    w.write(r)
+'
+}
+_tmr_batch_nth() {
+    python3 -c '
+import sys
+idx = int(sys.argv[1])
+data = sys.stdin.buffer.read()
+i = data.index(b"\n"); n = int(data[:i]); pos = i+1
+got = []
+for _ in range(n):
+    j = data.index(b"\n", pos); L = int(data[pos:j]); pos = j+1
+    got.append(data[pos:pos+L]); pos += L
+sys.stdout.buffer.write(got[idx])
+sys.stdout.buffer.write(b"X")
+' "$1"
+}
+
+# 2.1e-i batch decode == single-record decode, applied N times (byte-identical).
+# The single-record DECODE seam used by 2.1c extracts the marker then python-
+# decodes; here we decode bare payloads directly (the guard's seam). Build 4
+# payloads via _tmf_gz64_encode (single-record), decode each single + batch.
+e_raw1=$'**BD-136 — decode**\nStatus: Open\ninterior ) fence ```\n'
+e_raw2=$'simple\n'
+e_raw3=$'**BD-204 — decode**\nResolved: #123 commit 08f7158\n'
+e_raw4=$'trailing newlines\n\n\n'
+e_p1=$(printf '%s' "$e_raw1" | _tmf_gz64_encode)
+e_p2=$(printf '%s' "$e_raw2" | _tmf_gz64_encode)
+e_p3=$(printf '%s' "$e_raw3" | _tmf_gz64_encode)
+e_p4=$(printf '%s' "$e_raw4" | _tmf_gz64_encode)
+# single-record decode (bare payload → raw bytes; sentinel preserves trailing \n)
+sd1=$(printf '%s' "$e_p1" | python3 -c 'import sys,base64,gzip,io; sys.stdout.buffer.write(gzip.GzipFile(fileobj=io.BytesIO(base64.b64decode(sys.stdin.read().strip()))).read()); sys.stdout.buffer.write(b"X")'); sd1="${sd1%X}"
+# batch decode over the 4 payloads
+batch_dec=$(printf '%s\x00%s\x00%s\x00%s\x00' "$e_p1" "$e_p2" "$e_p3" "$e_p4" \
+    | _tmr_batch_frame | _tmr_decode_body_blob_batch | base64)
+bd0=$(printf '%s' "$batch_dec" | base64 -d | _tmr_batch_nth 0); bd0="${bd0%X}"
+bd1=$(printf '%s' "$batch_dec" | base64 -d | _tmr_batch_nth 1); bd1="${bd1%X}"
+bd2=$(printf '%s' "$batch_dec" | base64 -d | _tmr_batch_nth 2); bd2="${bd2%X}"
+bd3=$(printf '%s' "$batch_dec" | base64 -d | _tmr_batch_nth 3); bd3="${bd3%X}"
+assert_eq "2.1e-i batch decode rec0 == single-record decode" "$sd1" "$bd0"
+# 2.1e-ii batch decode round-trips to the ORIGINAL raw_body byte-for-byte.
+assert_eq "2.1e-ii batch decode(encode rec0)==original (BD-136 fixture)" "$e_raw1" "$bd0"
+assert_eq "2.1e-ii batch decode(encode rec1)==original" "$e_raw2" "$bd1"
+assert_eq "2.1e-ii batch decode(encode rec2)==original (BD-204 fixture)" "$e_raw3" "$bd2"
+assert_eq "2.1e-ii batch decode(encode rec3)==original (trailing newlines)" "$e_raw4" "$bd3"
+
+# 2.1e-iii ONE-codec proof: batch decode of a BATCH-ENCODED payload set ==
+# the originals (the encode/decode batch seam C-4.6 depends on, end to end).
+batch_enc_payloads=$(printf '%s\x00%s\x00%s\x00%s\x00' "$e_raw1" "$e_raw2" "$e_raw3" "$e_raw4" \
+    | _tmr_batch_frame | _tmf_gz64_encode_batch | base64)
+# Re-frame the batch-encoded payloads (already length-framed) directly into decode.
+roundtrip_dec=$(printf '%s' "$batch_enc_payloads" | base64 -d | _tmr_decode_body_blob_batch | base64)
+rd0=$(printf '%s' "$roundtrip_dec" | base64 -d | _tmr_batch_nth 0); rd0="${rd0%X}"
+rd3=$(printf '%s' "$roundtrip_dec" | base64 -d | _tmr_batch_nth 3); rd3="${rd3%X}"
+assert_eq "2.1e-iii batch encode→batch decode rec0 == original (shared codec)" "$e_raw1" "$rd0"
+assert_eq "2.1e-iii batch encode→batch decode rec3 == original (shared codec)" "$e_raw4" "$rd3"
+
+# 2.1e-iv ADDITIVE invariant — the single-record _tmr_decode_body_blob path is
+# UNCHANGED (re-run the 2.1c reconstruct seam and confirm byte-faithful).
+add_src=$'**BD-078 — additive**\nType: TODO(version)\nStatus: Open\nDescription: still works\n'
+add_blob=$(printf '%s' "$add_src" | _tmf_gz64_encode)
+add_issue=$(jq -n --arg blob "$add_blob" '{number:78,id:"78",title:"BD-078: additive",body:("<!-- pack-id: BD-078 -->\n<!-- pack-entry-body-gz64: " + $blob + " -->\n\n## Description\n\nstill works"),state:"open",labels:["bd-entry","status:open"]}')
+add_rec=$(tracker_migrate_reverse_reconstruct "$add_issue" '{}')
+add_got=$(printf '%s' "$add_rec" | jq -j '.raw_body'; printf X); add_got="${add_got%X}"
+assert_eq "2.1e-iv single-record decode path byte-unchanged (additive)" "$add_src" "$add_got"
+
 # 2.2 Unblocks-inverse pass
 entries='[
   {"pack_id":"BD-001","blockers":["BD-002"]},

@@ -712,6 +712,50 @@ sys.stdout.write(base64.b64encode(buf.getvalue()).decode("ascii"))
 '
 }
 
+# BD-204 §3.LF.3a — BATCH MODE for the gz64 encode (Option B single-source;
+# design §4.6 (S)). ADDITIVE: a NEW input shape (a length-framed multi-record
+# stdin), NOT a behavior change to the single-record _tmf_gz64_encode above.
+# The per-record transform is the IDENTICAL gzip(mtime=0)+base64 — there is ONE
+# codec, looped internally in ONE python3 over all N records (no per-entry
+# subprocess storm; ci-check-runtime-compounding). The C-4.6 deep guard calls
+# THIS function so its byte leg shares the production codec (OQ-4 holds: no
+# second copy can drift).
+#
+# FRAMING (the _TMF_BATCH length-prefixed protocol — arbitrary bytes safe,
+# incl. NUL / newline, on both input and output):
+#   stdin : a decimal record-count line "N\n"; then per record a decimal
+#           byte-length line "L\n" followed by exactly L payload bytes.
+#   stdout: the same shape — "N\n"; then per record "L\n" + L payload bytes,
+#           where each payload is the base64(gzip(mtime=0, record)) ASCII text.
+# The ordering of output records matches input order 1:1.
+_tmf_gz64_encode_batch() {
+    python3 -c '
+import sys, gzip, io, base64
+def read_frames(stream):
+    n_line = stream.readline()
+    if not n_line:
+        return []
+    n = int(n_line.decode("ascii").strip())
+    out = []
+    for _ in range(n):
+        l = int(stream.readline().decode("ascii").strip())
+        out.append(stream.read(l))
+    return out
+def encode_one(raw):
+    buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz:
+        gz.write(raw)
+    return base64.b64encode(buf.getvalue())
+recs = read_frames(sys.stdin.buffer)
+w = sys.stdout.buffer
+w.write(("%d\n" % len(recs)).encode("ascii"))
+for raw in recs:
+    payload = encode_one(raw)
+    w.write(("%d\n" % len(payload)).encode("ascii"))
+    w.write(payload)
+'
+}
+
 # BD-204 §3.3d: neutralize the autolink/mention triggers in a VISIBLE H2
 # field VALUE (stdin → stdout). Form-AGNOSTIC inline-code-span variant: if
 # the value contains ANY trigger (`#NNN`, a bare `@token` outside code, a
@@ -752,6 +796,58 @@ if val.startswith("`") or val.endswith("`"):
     sys.stdout.write(fence + " " + val + " " + fence)
 else:
     sys.stdout.write(fence + val + fence)
+'
+}
+
+# BD-204 §3.LF.3a — BATCH MODE for the autolink neutralizer (Option B
+# single-source; design §4.6 (S) item 2). ADDITIVE: a NEW length-framed
+# multi-record input shape; the single-record _tmf_neutralize_autolinks above
+# is byte-unchanged. The per-record transform is the IDENTICAL trigger-detect +
+# fence-wrap logic, looped internally in ONE python3 over all N records. The
+# C-4.6 SIZE leg projects the H2 field values through THIS function so the
+# guard's projection is the production neutralizer, not a reproduction.
+#
+# FRAMING: the _TMF_BATCH length-prefixed protocol (see _tmf_gz64_encode_batch).
+# Each record is a field-value string (decoded as UTF-8 text); the output
+# payload is the neutralized text (UTF-8 bytes).
+_tmf_neutralize_autolinks_batch() {
+    python3 -c '
+import sys, re
+def read_frames(stream):
+    n_line = stream.readline()
+    if not n_line:
+        return []
+    n = int(n_line.decode("ascii").strip())
+    out = []
+    for _ in range(n):
+        l = int(stream.readline().decode("ascii").strip())
+        out.append(stream.read(l))
+    return out
+def neutralize(val):
+    trigger = False
+    if re.search(r"#\d+", val):
+        trigger = True
+    if re.search(r"(^|[^`\w])@[A-Za-z0-9][A-Za-z0-9_-]*", val):
+        trigger = True
+    if re.search(r"(^|[^`\w])[0-9a-fA-F]{7,40}([^`\w]|$)", val):
+        trigger = True
+    if re.search(r"https?://", val):
+        trigger = True
+    if not trigger:
+        return val
+    runs = re.findall(r"`+", val)
+    longest = max((len(r) for r in runs), default=0)
+    fence = "`" * (longest + 1)
+    if val.startswith("`") or val.endswith("`"):
+        return fence + " " + val + " " + fence
+    return fence + val + fence
+recs = read_frames(sys.stdin.buffer)
+w = sys.stdout.buffer
+w.write(("%d\n" % len(recs)).encode("ascii"))
+for raw in recs:
+    out = neutralize(raw.decode("utf-8")).encode("utf-8")
+    w.write(("%d\n" % len(out)).encode("ascii"))
+    w.write(out)
 '
 }
 
@@ -881,6 +977,108 @@ tmf_compose_issue_body() {
     fi
 
     printf '%s\n' "$body"
+}
+
+# BD-204 §3.LF.3a — BATCH MODE for the Issue-body composer (Option B
+# single-source; design §4.6 (S) item 2 — "the architect recommends the
+# batch-composer to keep ZERO mirrored logic"). ADDITIVE: a NEW length-framed
+# multi-record input shape; the single-record tmf_compose_issue_body above is
+# byte-unchanged. The per-record assembly is the IDENTICAL logic — same
+# template_version selection, same _tmf_neutralize_autolinks projection (with
+# the same command-substitution trailing-newline strip), same _tmf_gz64_encode
+# blob, same printf layout, same whole-body trailing-newline collapse + single
+# trailing "\n" — looped internally in ONE python3 over all N records. The
+# C-4.6 SIZE leg calls THIS to measure the REAL composed body length, not a
+# reproduction.
+#
+# Difference from the single-record path (BY DESIGN, not a regression): the
+# batch composer does NOT apply the §3.3c provider size-budget / storage-format
+# FAIL-LOUD gate. That gate is a production per-create concern; the guard
+# measures the composed length itself against provider_body_limit - margin
+# (§3.LF.5). For every input that the single-record path does NOT abort, the
+# batch output is BYTE-IDENTICAL (asserted by the batch-equivalence test).
+#
+# FRAMING (the _TMF_BATCH length-prefixed protocol; arbitrary bytes safe):
+#   stdin : "N\n"; then per record SIX length-framed fields in order —
+#           pack_id, description, context, resolution, file_symbol, raw_body
+#           (each: a decimal byte-length line "L\n" + L payload bytes).
+#   stdout: "N\n"; then per record ONE length-framed composed-body payload.
+tmf_compose_issue_body_batch() {
+    python3 -c '
+import sys, re, gzip, io, base64
+def read_field(stream):
+    l = int(stream.readline().decode("ascii").strip())
+    return stream.read(l)
+def neutralize(val):
+    # IDENTICAL logic to _tmf_neutralize_autolinks.
+    trigger = False
+    if re.search(r"#\d+", val):
+        trigger = True
+    if re.search(r"(^|[^`\w])@[A-Za-z0-9][A-Za-z0-9_-]*", val):
+        trigger = True
+    if re.search(r"(^|[^`\w])[0-9a-fA-F]{7,40}([^`\w]|$)", val):
+        trigger = True
+    if re.search(r"https?://", val):
+        trigger = True
+    if not trigger:
+        out = val
+    else:
+        runs = re.findall(r"`+", val)
+        longest = max((len(r) for r in runs), default=0)
+        fence = "`" * (longest + 1)
+        if val.startswith("`") or val.endswith("`"):
+            out = fence + " " + val + " " + fence
+        else:
+            out = fence + val + fence
+    # The single-record callers capture via $(...), which strips trailing
+    # newlines — mirror that here.
+    return out.rstrip("\n")
+def gz64(raw_bytes):
+    buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz:
+        gz.write(raw_bytes)
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+def compose(pack_id, description, context, resolution, file_symbol, raw_body):
+    if pack_id.startswith("BD-"):
+        template_version = "bd-v11.0"
+    elif pack_id.startswith("TD-"):
+        template_version = "td-v11.0"
+    elif pack_id.startswith("phase-"):
+        template_version = "phase-epic-v11.0"
+    else:
+        template_version = "work-item-v11.0"
+    n_description = neutralize(description)
+    n_context = neutralize(context)
+    n_resolution = neutralize(resolution)
+    n_file_symbol = neutralize(file_symbol)
+    blob = gz64(raw_body.encode("utf-8")) if raw_body != "" else ""
+    parts = []
+    parts.append("<!-- pack-id: %s -->\n" % pack_id)
+    parts.append("<!-- template_version: %s -->\n" % template_version)
+    parts.append("<!-- pack-version: v11 -->\n")
+    if blob != "":
+        parts.append("<!-- pack-entry-body-gz64: %s -->\n" % blob)
+    parts.append("\n## Description\n\n%s\n" % n_description)
+    if file_symbol != "":
+        parts.append("\n## File / Symbol\n\n%s\n" % n_file_symbol)
+    if context != "":
+        parts.append("\n## Context\n\n%s\n" % n_context)
+    if resolution != "":
+        parts.append("\n## Resolution\n\n%s\n" % n_resolution)
+    body = "".join(parts)
+    # body=$(...) strips trailing newlines; printf %s\\n adds one back.
+    return body.rstrip("\n") + "\n"
+sin = sys.stdin.buffer
+n_line = sin.readline()
+n = int(n_line.decode("ascii").strip()) if n_line else 0
+w = sys.stdout.buffer
+w.write(("%d\n" % n).encode("ascii"))
+for _ in range(n):
+    fields = [read_field(sin).decode("utf-8") for _ in range(6)]
+    out = compose(*fields).encode("utf-8")
+    w.write(("%d\n" % len(out)).encode("ascii"))
+    w.write(out)
+'
 }
 
 # ─────────────────────────────────────────────────────────────────
