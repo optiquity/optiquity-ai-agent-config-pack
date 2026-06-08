@@ -577,11 +577,13 @@ else
 fi
 
 method="$REPO_ROOT/supporting-docs/METHODOLOGY.md"
-if grep -q "V3.3 §3" "$method"; then
-    t_pass "8.3 METHODOLOGY.md cites V3.3 §3"
-else
-    t_fail "8.3 METHODOLOGY.md cites V3.3 §3"
-fi
+# Note (BD-204 C-4.6 F-4): the former `grep -q "V3.3 §3"` assertion was
+# REMOVED. That internal `ARCHITECTURE-V3.3-DELTA §3` citation was stripped
+# off the client-facing METHODOLOGY.md by BD-195/BD-200 (internal-ref cleanup
+# on client surfaces). The promotion-paths SUBSTANCE remains — Path 3 is
+# still forbidden (asserted below) and the Path 1/2/direct-close decision
+# logic is intact — so the fix is test-only: drop the stale citation grep,
+# keep the substance assertion. METHODOLOGY.md is NOT edited.
 if grep -q "Path 3 is forbidden\|Path 3 forbidden" "$method"; then
     t_pass "8.3 METHODOLOGY.md names Path 3 forbidden"
 else
