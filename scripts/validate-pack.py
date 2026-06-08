@@ -280,6 +280,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
 from pathlib import Path
 
@@ -409,6 +410,62 @@ def warn(msg: str) -> None:
     WARN without breaking CI.
     """
     print(f"WARN: {msg}")
+
+
+# ── RUNTIME-BUDGET GUARD (BD-204 §4.7) ─────────────────────────────────────
+#
+# The durable prevention the prior >2h→<5min C-4.6 fix lacked. `main()` routes
+# EVERY check through `run_check`, which times the wrapped call. Per the
+# `ci-check-runtime-compounding` memory rule, a check that is fine ONCE is
+# catastrophic at the battery's ~151× validate-pack invocation count, so a
+# pathologically-slow check must not silently ship. The harness times each
+# check (per-check WARN on overrun) and `main()` enforces a TOTAL-RUN HARD-FAIL
+# on the GENERAL path only.
+#
+# Budget VALUES (measured-then-bounded per §4.7; the §3 measure-then-bound
+# discipline, RUNTIME axis):
+#   - Per-check WARN budget = 2.0 s. The slowest GENERAL check is well under
+#     the ~1.3-1.4 s whole-run baseline (§4.6 EE), so 2.0 s per check is a
+#     generous ceiling no current check approaches.
+#   - Total general-run budget = 10 s. ~1.37 s baseline × a generous ~7×
+#     safety factor; a general run over 10 s means a check regressed into the
+#     general path (the C-4.6 shape) → hard FAIL. The 10 s total bound is NOT
+#     applied to the deep (`PACK_VALIDATE_DEEP=1`) run — the deep run carries
+#     its own larger TOTAL budget (~35 s = ~5 s general allowance + the 30 s
+#     deep faithfulness-leg) so a legitimate deep run is never falsely failed.
+RUN_CHECK_PER_CHECK_WARN_BUDGET_S = 2.0
+RUN_CHECK_TOTAL_GENERAL_BUDGET_S = 10.0
+RUN_CHECK_TOTAL_DEEP_BUDGET_S = 35.0
+# Deep FAITHFULNESS-LEG per-check budget = 30 s (§4.7: "Deep faithfulness-check
+# budget = 30 s"). This is the per-check WARN budget for Check 49's deep leg —
+# DISTINCT from the deep TOTAL-run budget (35 s = ~5 s general allowance + this
+# 30 s leg), which `main()` enforces below. The deep leg is MEASURED ~2.9 s, so
+# 30 s is ~10× headroom; an Option-A per-entry-spawn regression (~142 s) blows
+# it immediately.
+RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
+
+# Accumulated per-check timings (name, elapsed_s) for the total-run guard.
+_check_timings = []
+
+
+def run_check(name, fn, budget_s=RUN_CHECK_PER_CHECK_WARN_BUDGET_S):
+    """Time the wrapped check `fn` (a zero-arg callable); WARN on per-check
+    budget overrun (§4.7).
+
+    Records `(name, elapsed_s)` in `_check_timings` so `main()` can enforce the
+    TOTAL-RUN budget after all checks complete. A per-check overrun is a LOUD
+    WARN (validate-pack still completes — a slow check must not block unrelated
+    work mid-investigation); the TOTAL-RUN budget is the hard FAIL (`main()`).
+    """
+    t0 = time.monotonic()
+    fn()
+    elapsed = time.monotonic() - t0
+    _check_timings.append((name, elapsed))
+    if elapsed > budget_s:
+        warn(
+            f"RUNTIME-BUDGET: check '{name}' took {elapsed:.2f}s > budget "
+            f"{budget_s:.2f}s — investigate before merge"
+        )
 
 
 # ── Check 1: SKILL.md frontmatter ──────────────────────────────────────────
@@ -7331,6 +7388,472 @@ def check_removed_doc_advisory() -> None:
     )
 
 
+# ── Check 49: migrator field/body faithfulness (BD-204 §4.2/§4.6) ──────────
+#
+# The deep CI guard that fails a LOSSY or CORRUPTING forward→reverse tracker
+# migration (the C-2 19-field-drop hazard) OR a body-limit/title breach — the
+# exact gap that shipped green in the dead `pack-extra-fields` carrier. It
+# drives the SINGLE-SOURCED batch codec (Option B; design §4.6 (S)), NOT a
+# reproduced codec (OQ-4 — see the §4.5 single-source check below) and NOT the
+# per-entry real functions (Option A = measured 142 s, rejected).
+#
+# Three mandatory runtime constraints (`ci-check-runtime-compounding`, §4.6):
+#   (P) ENV-GATE — the FIRST statement early-returns a SKIP unless
+#       PACK_VALIDATE_DEEP=1, BEFORE any tree read, so the 151× general battery
+#       path pays ~0 (the prior C-4.6 ran the heavy scan in the 151× main()).
+#   (T) TARGET-TREE SCOPING — the check validates the CALLER's `tree_dir`, with
+#       NO `tree_dir or REPO_ROOT/"backlog"` fallback (that `or` was the exact
+#       C-4.6 bug: a 3-entry fixture paid the full real-211 cost).
+#   (S) SEAM = the SHARED BATCH CODEC — ONE python3 over all entries via the
+#       real `_tmf_gz64_encode_batch` / `_tmr_decode_body_blob_batch` /
+#       `_tmf_neutralize_autolinks_batch` / `tmf_compose_issue_body_batch`
+#       (measured 0.05 s), so the guard shares the production codec and cannot
+#       FALSE-PASS a lossy codec change.
+#
+# The BYTE LEG is the §4.6.2 TWO-ASSERTION contract (NOT the forbidden
+# `decode(encode(raw_body)) == raw_body` tautology):
+#   (a) CODEC-LOSSLESS  decode(encode(raw_body)) == raw_body — the shared batch
+#       codec round-trips the captured bytes; AND
+#   (b) PARSE-FAITHFUL  PRE_PARSE_ORIGINAL_body == raw_body — the parser's
+#       captured span equals the entry FILE's lines 2..EOF read BYTE-SAFELY
+#       (a direct byte read of the file after the first `\n`, NEVER awk/a
+#       text-normalizing read). THIS IS THE C-2 CATCH: if the parser strips/
+#       normalizes ANY byte (a CR, a NUL, a field line, a prose block) leg (b)
+#       FAILs. (Belt-and-suspenders with R-BODY-6, which scans the same raw
+#       file bytes for a control byte.)
+#
+# Plus, per design §4.4/§3.3c/§3.3e:
+#   - R-BODY-6 control-char leg: scan the entry FILE bytes (pre-parse, not a
+#     decoded string) for NUL / CR / disallowed-C0-other-than-tab/LF.
+#   - SIZE leg: the REAL composed Issue body length (via the shared batch
+#     composer/codec) < provider_body_limit − SAFETY_MARGIN.
+#   - TITLE leg: the ID-prefixed bold-header title ≤ 256 CODEPOINTS (R-TITLE-1).
+
+# The bash seam that sources the migrator libs ONCE and drives the shared batch
+# functions in ONE process each (Option B; design §4.6 (S)). It materializes
+# the parse JSON + the framed decode + the framed composed-body into a temp
+# dir, and prints `body_limit<TAB>margin` on stdout for the size leg. The
+# guard's Python side reads the FILE bytes directly for the PRE-PARSE ORIGINAL
+# (leg b) + R-BODY-6, so this seam carries only the codec/composer work.
+_CHECK_49_SEAM_SCRIPT = r'''
+set -u
+LIB="$1"; TREE_KEY="$2"; TREE_DIR="$3"; OUTDIR="$4"
+. "$LIB/per-entry/_lib.sh"
+. "$LIB/tracker-errors.sh"
+. "$LIB/tracker-config.sh" 2>/dev/null || true
+. "$LIB/tracker-provider.sh"
+. "$LIB/tracker-provider-gh.sh"
+. "$LIB/tracker-migrate-forward.sh"
+. "$LIB/tracker-migrate-reverse.sh"
+
+# 1. Parse the TARGET tree → entries JSON (the SAME real parser the migration
+#    uses; raw_body is the round-trip truth).
+tmf_parse_backlog_tree "$TREE_KEY" "$TREE_DIR" > "$OUTDIR/tree.json" || exit 11
+
+# 2. Frame every raw_body (length-prefixed _TMF_BATCH protocol; arbitrary
+#    bytes safe), then drive the SHARED BATCH codec encode→decode in ONE
+#    python3 each (Option B; no per-entry storm, no reproduction).
+python3 - "$OUTDIR/tree.json" > "$OUTDIR/raw.frame" <<'PY'
+import sys, json
+d = json.load(open(sys.argv[1]))
+recs = [e["raw_body"].encode("utf-8") for e in d]
+w = sys.stdout.buffer
+w.write(("%d\n" % len(recs)).encode("ascii"))
+for r in recs:
+    w.write(("%d\n" % len(r)).encode("ascii")); w.write(r)
+PY
+_tmf_gz64_encode_batch     < "$OUTDIR/raw.frame" > "$OUTDIR/enc.frame" || exit 12
+_tmr_decode_body_blob_batch < "$OUTDIR/enc.frame" > "$OUTDIR/dec.frame" || exit 13
+
+# 3. Drive the SHARED BATCH composer over all entries (the REAL composer's
+#    assembly: markers + neutralized H2 + gz64 blob) for the SIZE leg — its
+#    output frame carries the real composed-body length per entry.
+python3 - "$OUTDIR/tree.json" <<'PY' | tmf_compose_issue_body_batch > "$OUTDIR/composed.frame" || exit 14
+import sys, json
+d = json.load(open(sys.argv[1]))
+w = sys.stdout.buffer
+w.write(("%d\n" % len(d)).encode("ascii"))
+for e in d:
+    for key in ("pack_id", "description", "context", "resolution",
+                "file_symbol", "raw_body"):
+        b = (e.get(key) or "").encode("utf-8")
+        w.write(("%d\n" % len(b)).encode("ascii")); w.write(b)
+PY
+
+# 4. The ACTIVE provider's body limit + the migrator's safety margin (the SAME
+#    measurement the forward composer's §3.3c overflow gate uses).
+BODY_LIMIT="$(printf '%s' "$(provider_capabilities 2>/dev/null)" | jq -r '.body.limit // empty' 2>/dev/null)"
+MARGIN="${TMF_SIZE_SAFETY_MARGIN:-2048}"
+printf '%s\t%s\n' "$BODY_LIMIT" "$MARGIN"
+'''
+
+
+def _check_49_read_frames(path):
+    """Read a _TMF_BATCH length-prefixed framed stream → list[bytes]."""
+    data = Path(path).read_bytes()
+    i = data.index(b"\n")
+    n = int(data[:i])
+    pos = i + 1
+    out = []
+    for _ in range(n):
+        j = data.index(b"\n", pos)
+        length = int(data[pos:j])
+        pos = j + 1
+        out.append(data[pos:pos + length])
+        pos += length
+    return out
+
+
+def _check_49_stream_key_for_tree(tree_path) -> str:
+    """Resolve the per-entry STREAM KEY for a target tree (BD-204 C-4.6 F-3).
+
+    The key only labels the stream for the seam's `pe_list_entry_files`
+    entry-regex; the codec/byte work is key-agnostic. DERIVE it from the
+    target tree's directory name against the `STREAMS` table (the SSOT for
+    `stream_key ↔ stream_dir_relative`) — never hardcode — so a changelog-
+    stream caller (`pack-changelog`) or a relocated tree resolves correctly.
+    Defaults to `pack-backlog` (both §3.LF.5 deep homes target `/backlog/`)
+    when no `STREAMS` row matches the tree's basename.
+    """
+    name = Path(tree_path).name
+    for stream_key, stream_dir_relative, _mirror, _regex in STREAMS:
+        if name == Path(stream_dir_relative).name:
+            return stream_key
+    return "pack-backlog"
+
+
+# Disallowed control bytes (R-BODY-6): NUL, CR, and any C0 control char OTHER
+# than tab (0x09) and LF (0x0A). DEL (0x7f) is included.
+_CHECK_49_DISALLOWED_CONTROL = (
+    set(range(0x00, 0x20)) - {0x09, 0x0A}
+) | {0x7F}
+
+# R-TITLE-1: the stored ID-prefixed title must be ≤ 256 CODEPOINTS.
+_CHECK_49_TITLE_MAX_CODEPOINTS = 256
+# The per-entry bold-header grammar (mirrors `_tmf_parse_backlog_file`'s
+# ENTRY_HEADER) — group 1 = pack-id, group 2 = title text.
+_CHECK_49_ENTRY_HEADER_RE = re.compile(
+    r"^\*\*((?:BD|TD)-\d{3})\s*[—-]\s*(.+?)\*\*\s*$"
+)
+
+
+def check_migrator_field_faithfulness(tree_dir) -> None:
+    """Check 49 — migrator field/body faithfulness (BD-204 §4.2/§4.6).
+
+    `tree_dir` = the CALLER's target per-entry tree (a `Path`). DEEP-GATED:
+    runs the heavy whole-tree verification ONLY under PACK_VALIDATE_DEEP=1
+    (§4.6 (P)); the default path is a ~0 ms SKIP. There is NO
+    `tree_dir or REPO_ROOT/"backlog"` fallback (§4.6 (T) — that `or` was the
+    C-4.6 bug).
+    """
+    # (P) ENV-GATE — the FIRST statement, BEFORE any tree read. The 151×
+    # general battery path early-returns here paying ~0.
+    if os.environ.get("PACK_VALIDATE_DEEP") != "1":
+        ok("SKIP: field-faithfulness deep check (set PACK_VALIDATE_DEEP=1)")
+        return
+
+    print("\n── Check 49: migrator field/body faithfulness (BD-204, DEEP) ──")
+    tree_path = Path(tree_dir)
+    if not tree_path.is_dir():
+        fail(f"Check 49 — target tree {tree_path} is not a directory")
+        return
+
+    lib_dir = REPO_ROOT / "scripts" / "lib"
+    # Stream key: DERIVE from `tree_dir` rather than hardcode (BD-204 C-4.6
+    # review F-3). The key only labels the stream for `pe_list_entry_files`'s
+    # entry-regex; the byte work is key-agnostic. Match the target tree's
+    # directory name against the STREAMS table (the SSOT for stream_key ↔
+    # stream_dir) so a future changelog-stream caller (or a relocated tree)
+    # resolves the correct key instead of mis-labelling everything
+    # `pack-backlog`. Default to `pack-backlog` for the `/backlog/` deep homes
+    # (both §3.LF.5 deep homes today) when no STREAMS row matches.
+    tree_key = _check_49_stream_key_for_tree(tree_path)
+
+    with tempfile.TemporaryDirectory(prefix="vp-check49-") as outdir:
+        # (S) SEAM = the SHARED BATCH CODEC — ONE bash invocation sourcing the
+        # libs once and driving the real batch functions in one python3 each.
+        result = subprocess.run(
+            ["bash", "-c", _CHECK_49_SEAM_SCRIPT, "_",
+             str(lib_dir), tree_key, str(tree_path), outdir],
+            capture_output=True, text=True, stdin=subprocess.DEVNULL,
+        )
+        if result.returncode != 0:
+            fail(
+                f"Check 49 — shared batch-codec seam failed "
+                f"(rc={result.returncode}); stderr: {result.stderr.strip()}"
+            )
+            return
+
+        try:
+            entries = json.loads((Path(outdir) / "tree.json").read_text())
+            decoded = _check_49_read_frames(Path(outdir) / "dec.frame")
+            composed = _check_49_read_frames(Path(outdir) / "composed.frame")
+        except Exception as exc:  # noqa: BLE001 — surface any seam-output defect
+            fail(f"Check 49 — could not read seam output: {exc}")
+            return
+
+        last = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else ""
+        body_limit_raw, _, margin_raw = last.partition("\t")
+        body_limit = int(body_limit_raw) if body_limit_raw.isdigit() else None
+        margin = int(margin_raw) if margin_raw.strip().isdigit() else 2048
+
+        n = len(entries)
+        if not (len(decoded) == n and len(composed) == n):
+            fail(
+                f"Check 49 — seam record-count mismatch: {n} entries, "
+                f"{len(decoded)} decoded, {len(composed)} composed"
+            )
+            return
+
+        any_fail = False
+        for idx, entry in enumerate(entries):
+            pid = entry.get("pack_id", f"<entry-{idx}>")
+            raw_body = (entry.get("raw_body") or "").encode("utf-8")
+
+            # (a) CODEC-LOSSLESS — decode(encode(raw_body)) == raw_body.
+            if decoded[idx] != raw_body:
+                any_fail = True
+                fail(
+                    f"Check 49 — {pid}: codec round-trip is LOSSY "
+                    f"(decode(encode(raw_body)) != raw_body): "
+                    f"{_check_49_first_diff(raw_body, decoded[idx])}"
+                )
+
+            # (b) PARSE-FAITHFUL — PRE_PARSE_ORIGINAL_body == raw_body.
+            # PRE_PARSE_ORIGINAL = the FILE's lines 2..EOF read BYTE-SAFELY
+            # (a direct byte read after the first `\n`; NEVER awk). The C-2
+            # catch: a parser-stripped/normalized byte makes this differ.
+            entry_file = tree_path / f"{pid}.md"
+            pre_parse_original = None
+            if entry_file.is_file():
+                file_bytes = entry_file.read_bytes()
+                nl = file_bytes.find(b"\n")
+                pre_parse_original = file_bytes[nl + 1:] if nl >= 0 else b""
+                if pre_parse_original != raw_body:
+                    any_fail = True
+                    fail(
+                        f"Check 49 — {pid}: PARSE-FAITHFUL leg FAILED "
+                        f"(PRE_PARSE_ORIGINAL != raw_body — the C-2 catch; a "
+                        f"parse step stripped/normalized a byte): "
+                        f"{_check_49_first_diff(pre_parse_original, raw_body)}"
+                    )
+
+                # R-BODY-6 control-char leg — scan the RAW FILE bytes (pre-parse,
+                # not a decoded string) for a disallowed control byte.
+                bad = _check_49_first_control_byte(pre_parse_original)
+                if bad is not None:
+                    any_fail = True
+                    off, byte = bad
+                    fail(
+                        f"Check 49 — {pid}: R-BODY-6 disallowed control byte "
+                        f"0x{byte:02x} at body offset {off} (raw-file scan; "
+                        f"NUL/CR/C0-other-than-tab-LF/DEL forbidden)"
+                    )
+
+            # SIZE leg — the REAL composed Issue body length (shared batch
+            # composer) < provider_body_limit − SAFETY_MARGIN.
+            if body_limit is not None:
+                composed_bytes = len(composed[idx])
+                budget = body_limit - margin
+                if composed_bytes > budget:
+                    any_fail = True
+                    fail(
+                        f"Check 49 — {pid}: composed Issue body "
+                        f"{composed_bytes} bytes exceeds provider body limit "
+                        f"{body_limit} − margin {margin} = {budget}"
+                    )
+
+            # TITLE leg — the ID-prefixed bold-header title ≤ 256 codepoints
+            # (R-TITLE-1; CODEPOINT count, not byte count). The stored title
+            # is `<ID>: <title>`.
+            title = entry.get("title", "")
+            if title:
+                stored_title = f"{pid}: {title}"
+                if len(stored_title) > _CHECK_49_TITLE_MAX_CODEPOINTS:
+                    any_fail = True
+                    fail(
+                        f"Check 49 — {pid}: stored title {len(stored_title)} "
+                        f"codepoints exceeds R-TITLE-1 limit "
+                        f"{_CHECK_49_TITLE_MAX_CODEPOINTS}"
+                    )
+
+        if not any_fail:
+            limit_note = (
+                f"size leg vs provider body limit {body_limit} − margin {margin}"
+                if body_limit is not None
+                else "size leg SKIPPED (provider declares no body limit)"
+            )
+            ok(
+                f"Check 49 — {n} entries byte-faithful (codec-lossless + "
+                f"parse-faithful), control-char-clean, title ≤ "
+                f"{_CHECK_49_TITLE_MAX_CODEPOINTS} codepoints, {limit_note}"
+            )
+
+
+def _check_49_first_control_byte(data: bytes):
+    """Return (offset, byte) of the first disallowed control byte, or None."""
+    for off, byte in enumerate(data):
+        if byte in _CHECK_49_DISALLOWED_CONTROL:
+            return (off, byte)
+    return None
+
+
+def _check_49_first_diff(a: bytes, b: bytes) -> str:
+    """A short unified-style description of the first differing byte (§4.2)."""
+    minlen = min(len(a), len(b))
+    for i in range(minlen):
+        if a[i] != b[i]:
+            return (
+                f"first differ at byte {i}: "
+                f"{a[max(0, i - 8):i + 8]!r} vs {b[max(0, i - 8):i + 8]!r}"
+            )
+    return f"lengths differ: {len(a)} vs {len(b)} bytes"
+
+
+# ── Check 50: OQ-4 single-source codec guard (BD-204 §4.5) ─────────────────
+#
+# Structurally enforces "the guard drives the REAL functions, never a copy":
+# FAILs CI if a reproduced gz64/base64 codec is (re)introduced INTO
+# `validate-pack.py`. The C-4.6 (revert-#2) regression reproduced the
+# gzip+base64 codec in Python — an OQ-4 violation a lossy codec change could
+# FALSE-PASS, since a second copy can drift from the production
+# `_tmf_gz64_encode` / `_tmr_decode_body_blob`. Check 49 instead sub-invokes
+# the SHARED BATCH codec; this check makes a re-reproduction un-shippable
+# regardless of review attention.
+#
+# Measure-then-bound (the §3 discipline): the guard's matching logic must run
+# clean against validate-pack.py at HEAD AFTER the fix (Check 49 calls the
+# shared codec via a `bash -c` seam — there is NO `import gzip`/`base64` doing
+# the transform in this file). So the bound is "zero codec-transform tokens in
+# this file's Python"; the seam string + this prose are not transform code.
+def _check_50_strip_quoted_spans(line: str) -> str:
+    """Remove single- and double-quoted spans from a source line, returning the
+    UNQUOTED residual (for Check 50's per-occurrence token test).
+
+    A deliberately small, robust quote-span stripper — NOT a full Python
+    tokenizer (over-engineering it is out of scope; this is sufficient for the
+    exploit class, a reproduced codec line that self-quotes its own token in a
+    trailing string/comment). It walks the line char-by-char, dropping any span
+    bounded by a matching `'` or `"` (the opening quote selects the closer);
+    quote chars escaped with a backslash inside a span do not close it. A
+    forbidden token that lives ONLY inside a quoted span (the denylist literals,
+    a self-quoting comment copy) is removed; a BARE executable token in the
+    code outside any quote survives in the residual and is flagged.
+    """
+    out = []
+    i = 0
+    n = len(line)
+    quote = None  # the active opening quote char, or None outside a span
+    while i < n:
+        ch = line[i]
+        if quote is None:
+            if ch == "'" or ch == '"':
+                quote = ch  # enter a quoted span; drop its contents
+            else:
+                out.append(ch)
+        else:
+            # Inside a quoted span: an escaped quote does not close it.
+            if ch == "\\" and i + 1 < n:
+                i += 2
+                continue
+            if ch == quote:
+                quote = None  # span closed; the span chars were dropped
+        i += 1
+    return "".join(out)
+
+
+_CHECK_50_FORBIDDEN_CODEC_TOKENS = (
+    # A Python-level import of the codec primitives in validate-pack.py would
+    # only exist to reproduce the transform — the seam runs the codec in a
+    # subprocess (`bash -c`), it does not import gzip/base64 into THIS module.
+    "import gzip",
+    "import base64",
+    "gzip.GzipFile",
+    "gzip.compress",
+    "gzip.decompress",
+    "base64.b64encode",
+    "base64.b64decode",
+)
+
+
+def check_validate_pack_no_reproduced_codec() -> None:
+    """Check 50 — OQ-4 single-source codec guard (BD-204 §4.5).
+
+    Scans `validate-pack.py`'s OWN Python source for a reproduced gz64/base64
+    codec. Any forbidden token OUTSIDE the bash-seam string literal / comments
+    FAILs — Check 49 must sub-invoke the shared batch codec, never re-implement
+    it (the guard cannot FALSE-PASS a lossy codec change if it shares the one
+    production codec).
+    """
+    print("\n── Check 50: OQ-4 single-source codec guard (BD-204 §4.5) ──")
+    self_path = Path(__file__).resolve()
+    src_lines = self_path.read_text().splitlines()
+
+    # Determine the bash-seam string-literal span so a `gzip`/`base64` token
+    # INSIDE the seam (which runs in a subprocess, the single-sourced codec's
+    # python3 — NOT a Python reproduction in this module) is not falsely
+    # flagged. The seam is the `_CHECK_49_SEAM_SCRIPT = r'''` ... `'''` block.
+    seam_start = seam_end = None
+    for i, line in enumerate(src_lines):
+        if line.startswith("_CHECK_49_SEAM_SCRIPT = r'''"):
+            seam_start = i
+        elif seam_start is not None and seam_end is None and line.rstrip() == "'''":
+            seam_end = i
+            break
+
+    hits = []
+    for lineno, line in enumerate(src_lines, start=1):
+        idx0 = lineno - 1
+        # Skip the seam string literal (the legitimate single-sourced codec
+        # invocation that runs in a subprocess).
+        if seam_start is not None and seam_end is not None and \
+                seam_start <= idx0 <= seam_end:
+            continue
+        # Skip pure-comment lines and the forbidden-token tuple that NAMES the
+        # tokens (this guard's own bound declaration) — a `#`-led line or the
+        # `_CHECK_50_FORBIDDEN_CODEC_TOKENS` literal is prose/data, not codec
+        # transform code.
+        stripped = line.lstrip()
+        if stripped.startswith("#"):
+            continue
+        # The token-list literal lines carry the tokens as quoted strings; the
+        # span between the tuple open and close is data, not executable codec.
+        #
+        # Strip every quoted-string span (single- AND double-quoted) from the
+        # line FIRST, then test for the BARE token in the UNQUOTED residual.
+        # This is per-OCCURRENCE, not per-line: a line that carries BOTH a real
+        # bare codec call AND a quoted copy of the same token in a trailing
+        # comment/string (e.g. `gzip.compress(buf) # "gzip.compress"`) keeps the
+        # executable `gzip.compress(buf)` in the residual and is FLAGGED — the
+        # prior per-line `f'"{token}"' in line` escape excused the whole line on
+        # the quoted copy alone, letting a self-quoting reproduced codec EVADE
+        # the guard (BD-204 C-4.6 review F-1). Legitimate denylist literals
+        # (the bare `"gzip.compress"` definitions) have NO unquoted occurrence,
+        # so they survive the strip with no residual hit and still PASS.
+        residual = _check_50_strip_quoted_spans(line)
+        for token in _CHECK_50_FORBIDDEN_CODEC_TOKENS:
+            if token in residual:
+                hits.append((lineno, token, line.strip()))
+
+    if hits:
+        for lineno, token, text in hits:
+            fail(
+                f"Check 50 — validate-pack.py:{lineno} reproduces the gz64/"
+                f"base64 codec (`{token}`): `{text}`. The faithfulness guard "
+                f"(Check 49) MUST sub-invoke the SHARED batch codec "
+                f"(`_tmf_gz64_encode_batch` / `_tmr_decode_body_blob_batch`), "
+                f"never a copy (OQ-4 — a second codec can drift and FALSE-PASS "
+                f"a lossy migration). Remove the reproduced codec; call the "
+                f"shared seam."
+            )
+        return
+
+    ok(
+        "Check 50 — no reproduced gz64/base64 codec in validate-pack.py; "
+        "Check 49 sub-invokes the shared batch codec (OQ-4 single-source)"
+    )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -7338,20 +7861,25 @@ def main() -> None:
     print("Pack Structural Validation")
     print("=" * 60)
 
-    check_skill_frontmatter()
-    check_codex_toml()
-    check_td_tbd_sentinels()
-    check_readme_version()
-    check_agent_count()
-    check_prompts_directory()
-    check_pack_agent_roster()
-    check_reserved_x_prefix()
-    check_init_project_structure()
-    check_prompt_triad_compliance()
-    check_pack_agent_trinity()
+    # ── BD-204 §4.7: EVERY check routes through `run_check` (the runtime-
+    # budget TIMING HARNESS). A per-check overrun WARNs; the TOTAL-RUN budget
+    # is enforced as a hard FAIL at the END of main() (general path only).
+    # Arg-bearing checks (trinity 16/18/19) wrap in a named lambda so the
+    # timing label stays meaningful.
+    run_check("check_skill_frontmatter", check_skill_frontmatter)
+    run_check("check_codex_toml", check_codex_toml)
+    run_check("check_td_tbd_sentinels", check_td_tbd_sentinels)
+    run_check("check_readme_version", check_readme_version)
+    run_check("check_agent_count", check_agent_count)
+    run_check("check_prompts_directory", check_prompts_directory)
+    run_check("check_pack_agent_roster", check_pack_agent_roster)
+    run_check("check_reserved_x_prefix", check_reserved_x_prefix)
+    run_check("check_init_project_structure", check_init_project_structure)
+    run_check("check_prompt_triad_compliance", check_prompt_triad_compliance)
+    run_check("check_pack_agent_trinity", check_pack_agent_trinity)
     # Checks 12, 13, 14, 15 retired in v11 (BD-121, v9 sunset) — see
     # comment block at the function definitions above.
-    check_tool_config_capability_parity()
+    run_check("check_tool_config_capability_parity", check_tool_config_capability_parity)
     # ── BD-183: Check 16 generalized with (trinity_root, label). Both
     # invocations run; pack-root short-circuits via the per-surface
     # exemption mechanism (`_CHECK_16_EXEMPT_SURFACES`) because Check 16
@@ -7360,81 +7888,87 @@ def main() -> None:
     # the non-reconciled pack-root surface. Exemption was BD-183 §2.4
     # Option (b), user-approved 2026-05-21. Per Override 9, both
     # invocations are independent.
-    check_trinity_addenda_h2(REPO_ROOT / "project-template", "project-template")
-    check_trinity_addenda_h2(REPO_ROOT, "pack-root")
+    run_check("check_trinity_addenda_h2[project-template]",
+              lambda: check_trinity_addenda_h2(REPO_ROOT / "project-template", "project-template"))
+    run_check("check_trinity_addenda_h2[pack-root]",
+              lambda: check_trinity_addenda_h2(REPO_ROOT, "pack-root"))
     # ── BD-181: Check 18 H2 parity runs INDEPENDENTLY at each trinity
     # location. Per Override 9 compliance: pack-root and project-template
     # trinity carry different audiences and different rules by design
     # (per pack-root trinity § Rules → Trinity rule note paragraph).
     # Each invocation enforces byte parity WITHIN its own trinity
     # location only; there is NO cross-location parity gate.
-    check_trinity_h2_parity(REPO_ROOT / "project-template", "project-template")
-    check_trinity_h2_parity(REPO_ROOT, "pack-root")
+    run_check("check_trinity_h2_parity[project-template]",
+              lambda: check_trinity_h2_parity(REPO_ROOT / "project-template", "project-template"))
+    run_check("check_trinity_h2_parity[pack-root]",
+              lambda: check_trinity_h2_parity(REPO_ROOT, "pack-root"))
     # ── BD-183: Check 19 generalized with (trinity_root, label). Empirical
     # pre-check at HEAD confirms pack-root trinity PASSES Check 19 (zero
     # HTML comments at pack-root → zero scaffolding to find). Both
     # invocations run independently per Override 9 — within-trinity
     # parity at each location; no cross-location coupling.
-    check_trinity_no_scaffolding_comments(REPO_ROOT / "project-template", "project-template")
-    check_trinity_no_scaffolding_comments(REPO_ROOT, "pack-root")
-    check_gitignore_env_example_exception()
-    check_issue_template_forms()
-    check_template_archive_v11()
-    check_pack_help_per_cli_parity()
-    check_help_fragment_freshness()
-    check_help_fragment_completeness()
+    run_check("check_trinity_no_scaffolding_comments[project-template]",
+              lambda: check_trinity_no_scaffolding_comments(REPO_ROOT / "project-template", "project-template"))
+    run_check("check_trinity_no_scaffolding_comments[pack-root]",
+              lambda: check_trinity_no_scaffolding_comments(REPO_ROOT, "pack-root"))
+    run_check("check_gitignore_env_example_exception", check_gitignore_env_example_exception)
+    run_check("check_issue_template_forms", check_issue_template_forms)
+    run_check("check_template_archive_v11", check_template_archive_v11)
+    run_check("check_pack_help_per_cli_parity", check_pack_help_per_cli_parity)
+    run_check("check_help_fragment_freshness", check_help_fragment_freshness)
+    run_check("check_help_fragment_completeness", check_help_fragment_completeness)
     # ── Check 24 callsite removed in BD-194 (Candidate 6). See
     # ARCHITECTURE-BD-194.md §4-§5 + the retirement comment block above
     # the former check_help_fragment_tracker_byte_identity location.
-    check_customization_detection_regression_guard()
-    check_migrator_framework_inventory()
-    check_agent_canonical_phrases()
-    check_pm_startup_per_cli_parity()
-    check_tracker_config()
-    check_recommendation_state_schema()
-    check_skill_cell_consistency()
+    run_check("check_customization_detection_regression_guard", check_customization_detection_regression_guard)
+    run_check("check_migrator_framework_inventory", check_migrator_framework_inventory)
+    run_check("check_agent_canonical_phrases", check_agent_canonical_phrases)
+    run_check("check_pm_startup_per_cli_parity", check_pm_startup_per_cli_parity)
+    run_check("check_tracker_config", check_tracker_config)
+    run_check("check_recommendation_state_schema", check_recommendation_state_schema)
+    run_check("check_skill_cell_consistency", check_skill_cell_consistency)
     # ── BD-168 (Batch 19, Commit 19e): per-entry split validators. ──
     # Order: 32 (mirror-in-sync) → 33 (TOC-in-sync) → 34 (cross-refs).
     # Per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10. Each SKIPs
     # gracefully when the per-entry tree is absent (pre-BD-102
     # dog-food pack-self / pre-v11.0 client).
-    check_mirror_in_sync()
-    check_toc_in_sync()
-    check_cross_reference_integrity()
-    check_tracker_phase_task_invariants()
+    run_check("check_mirror_in_sync", check_mirror_in_sync)
+    run_check("check_toc_in_sync", check_toc_in_sync)
+    run_check("check_cross_reference_integrity", check_cross_reference_integrity)
+    run_check("check_tracker_phase_task_invariants", check_tracker_phase_task_invariants)
     # ── BD-175 Commit 12 (Architect C M5a/b/c): pack/project boundary
     # prevention. Order: 36 (commit-scope honesty) → 37 (project-side
     # deny-list) → 38 (pack-only-file siting). Check 37 lands LAST in
     # the boundary trio per C §13 bootstrap-incompatibility note — the
     # 17 §D-9 contamination refs from audit must be resolved by Commits
     # 4-9 before Check 37 is enabled, otherwise Check 37 FAILs at HEAD.
-    check_commit_scope_honesty()
-    check_project_side_deny_list()
-    check_pack_only_file_siting()
+    run_check("check_commit_scope_honesty", check_commit_scope_honesty)
+    run_check("check_project_side_deny_list", check_project_side_deny_list)
+    run_check("check_pack_only_file_siting", check_pack_only_file_siting)
     # ── BD-175 F2a: cmd_update mapping/glob symmetry. Lands AFTER
     # the M5a/b/c boundary trio so the boundary-prevention surface is
     # complete before the install-coverage gate runs.
-    check_cmd_update_symmetry()
+    run_check("check_cmd_update_symmetry", check_cmd_update_symmetry)
     # ── BD-179: pack-ops/ bare cross-reference scanner. Lands AFTER
     # the M5a/b/c boundary trio + Check 39 cmd_update symmetry so the
     # directory-boundary + install-coverage gates run before Check 40's
     # prose-cross-reference gate. Per ARCHITECTURE-BD-179.md §8.3, the
     # BD-179 commit qualifies all current bare-ref hits in pack-ops/*.md
     # so Check 40 PASSes at HEAD.
-    check_bare_pack_ops_refs()
+    run_check("check_bare_pack_ops_refs", check_bare_pack_ops_refs)
     # ── BD-180 observation G: _CLIENT_INSTALLED_FILES self-documenting
     # list integrity per ARCHITECTURE-BD-176.md §5.3. Lands AFTER Check 39
     # (the cmd_update parser is shared) and after Check 40 (independent
     # surfaces) so the install-coverage + cross-reference gates run
     # before the inventory-drift gate.
-    check_client_installed_files()
+    run_check("check_client_installed_files", check_client_installed_files)
     # ── BD-173 H.14: project-side bare cross-reference scanner
     # (V11 leak-sweep prevention; class-test counterpart to Check 37's
     # name-enumeration). Lands AFTER Check 40 (independent surface)
     # and AFTER Check 41 (reuses _parse_client_installed_files()) so
     # the inventory-drift gate runs before Check 43's class-test gate.
     # Per ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md §1.1-§1.12.
-    check_project_side_bare_internal_refs()
+    run_check("check_project_side_bare_internal_refs", check_project_side_bare_internal_refs)
     # ── BD-184: CI workflow wires all per-check test files. Closes the
     # "missing test wiring" gap class permanently — surfaced 5 times in
     # the BD-175 batch alone (caught each time by reviewer attention).
@@ -7442,7 +7976,7 @@ def main() -> None:
     # rather than any single pack-product surface; logical position is
     # end-of-list (mirrors Check 41's end-of-list landing for the
     # adjacent BD-180 inventory gate).
-    check_ci_workflow_wires_per_check_tests()
+    run_check("check_ci_workflow_wires_per_check_tests", check_ci_workflow_wires_per_check_tests)
     # ── BD-196 (C3): pack-memory rule↔rationale bijection. Lands AFTER
     # Check 42 (the CI-wiring infrastructure gate) because it is the
     # newest standing check and the §5.2 bijection composes the same
@@ -7450,7 +7984,7 @@ def main() -> None:
     # (CLAUDE.md `## Pack memory` `[rationale:]` set vs
     # pack-ops/PACK-MEMORY-RATIONALE.md `## <slug>` headings). Per
     # ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §5.2.
-    check_pack_memory_rationale_bijection()
+    run_check("check_pack_memory_rationale_bijection", check_pack_memory_rationale_bijection)
     # ── BD-196 (C6): boundary + spawn-rule pointer manifests. Lands AFTER
     # Check 45 (the adjacent BD-196 bijection gate) and composes the same
     # reference-resolution pattern as Check 34 over the two pack-ops
@@ -7458,7 +7992,7 @@ def main() -> None:
     # plus the §9.6 SC7-bounded anti-restate substring scan. Per
     # ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §4.3 + §9.6 and
     # PLAN-DOC-CONCISION-GUARDRAILS.md §2 G-A (one combined function).
-    check_boundary_and_spawn_pointer_manifests()
+    run_check("check_boundary_and_spawn_pointer_manifests", check_boundary_and_spawn_pointer_manifests)
     # ── BD-196 (C10): M4 durable-doc concision gate. Lands AFTER Check 46
     # (the adjacent BD-196 manifest gate) and is the LAST BD-196 check —
     # the payoff the prior BD-196 commits (C4 reshaped BOUNDARY, C9
@@ -7467,13 +8001,13 @@ def main() -> None:
     # per-doc advisory length. Per ARCHITECTURE-DOC-CONCISION-
     # GUARDRAILS.md §6 (M1-M4) + §7; PLAN-DOC-CONCISION-GUARDRAILS.md
     # §3 C10.
-    check_durable_doc_concision()
+    run_check("check_durable_doc_concision", check_durable_doc_concision)
     # ── BD-195 (C3d): sanctioned pack-side-shipped freeze. Lands LAST —
     # it freezes the bounded dual-use-shipped-lib exception to exactly
     # {detect.sh, pack-help.sh} and reuses _parse_client_installed_files()
     # (shared with Checks 41/43), so it sits after the inventory + walk
     # gates. Per ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.2.
-    check_sanctioned_pack_side_shipped()
+    run_check("check_sanctioned_pack_side_shipped", check_sanctioned_pack_side_shipped)
     # ── BD-195 (C6): JC-5 soft-advisory removed-doc guard. Lands LAST —
     # it is SOFT (WARN-only; never appends to `failures`, never changes
     # the exit code) and scoped to the per-entry trees (`/backlog/` +
@@ -7482,7 +8016,40 @@ def main() -> None:
     # deleted — no regenerated mirror under the no-mirror model), so it
     # neither gates nor depends on any prior check. Per
     # PLAN-BD-195-REMEDIATION.md §C6 / §2.3 (measure-then-bound JC-5).
-    check_removed_doc_advisory()
+    run_check("check_removed_doc_advisory", check_removed_doc_advisory)
+    # ── BD-204 (C-4.6): migrator field/body faithfulness (DEEP-gated) +
+    # the OQ-4 single-source codec guard. Check 49 is the deep CI guard
+    # that fails a lossy/corrupting forward→reverse migration OR a body-
+    # limit/title breach; it is a ~0 ms SKIP unless PACK_VALIDATE_DEEP=1
+    # (§4.6 (P)), so the 151× general battery path is unaffected. The
+    # caller passes the REAL `/backlog/` tree as the explicit target
+    # (§4.6 (T): the caller chooses the target; there is NO internal
+    # `or REPO_ROOT/"backlog"` fallback in the check body). Check 50
+    # forbids a reproduced gz64/base64 codec in validate-pack.py — Check
+    # 49 sub-invokes the SHARED batch codec (§4.5, OQ-4).
+    run_check("check_migrator_field_faithfulness",
+              lambda: check_migrator_field_faithfulness(REPO_ROOT / "backlog"),
+              budget_s=RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S)
+    run_check("check_validate_pack_no_reproduced_codec", check_validate_pack_no_reproduced_codec)
+
+    # ── BD-204 §4.7 RUNTIME-BUDGET GUARD — the TOTAL-RUN hard FAIL. A
+    # general run over the 10 s total budget means a check regressed into
+    # the general path (the C-4.6 compounding shape) → CI RED. This bound
+    # is GENERAL-PATH-ONLY: a deep run (PACK_VALIDATE_DEEP=1) carries its
+    # own larger total budget so a legitimate deep run is never falsely
+    # failed. (The per-check WARN budget is enforced inside `run_check`.)
+    total_elapsed = sum(elapsed for _, elapsed in _check_timings)
+    deep = os.environ.get("PACK_VALIDATE_DEEP") == "1"
+    total_budget = (
+        RUN_CHECK_TOTAL_DEEP_BUDGET_S if deep else RUN_CHECK_TOTAL_GENERAL_BUDGET_S
+    )
+    if total_elapsed > total_budget:
+        path_label = "deep" if deep else "general"
+        fail(
+            f"RUNTIME-BUDGET: validate-pack total {total_elapsed:.2f}s > "
+            f"{total_budget:.2f}s ({path_label} path) — a check regressed "
+            f"into the run; investigate before merge"
+        )
 
     print("\n" + "=" * 60)
     if failures:

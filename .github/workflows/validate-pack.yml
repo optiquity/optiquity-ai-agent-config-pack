@@ -95,6 +95,13 @@ jobs:
         run: pip install pyyaml
       - name: Run pack validation
         run: python3 scripts/validate-pack.py
+      # BD-204 C-4.6 (SHOULD-1, deep home #2): the field-faithfulness deep
+      # guard (Check 49) is ENV-GATED — it SKIPs on the general step above
+      # and runs ONCE here on the real `/backlog/` per push, driving the
+      # shared batch codec (Option B). The general step stays env-UNSET so
+      # the 151× battery path pays ~0 (§4.6 (P)).
+      - name: Run pack validation (DEEP field-faithfulness, BD-204 §4.6)
+        run: PACK_VALIDATE_DEEP=1 python3 scripts/validate-pack.py
 
   tests:
     runs-on: ubuntu-latest
@@ -196,6 +203,9 @@ jobs:
       - name: validate-pack Check 48 tests (BD-195 C6, JC-5 soft-advisory removed-doc guard)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-removed-doc-advisory.sh
+      - name: validate-pack Check 49/50 tests (BD-204 C-4.6, migrator field/body faithfulness deep guard + OQ-4 single-source + runtime-budget)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-check-49-field-faithfulness.sh
       - name: tracker BD-129 gh-repo routing tests (BD-129)
         if: always()
         run: bash scripts/tests/tracker-bd129-gh-repo-test.sh
