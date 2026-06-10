@@ -110,6 +110,14 @@ solve (the adversarial case + its banner/doctor mitigation are kept above for th
 HTML-comment block)**. The separate `.pack-tracker/reverse.sidecar.*` FILE is **DROPPED ENTIRELY
 for BD-204 / v11.0.** NOTHING rides a sidecar file.
 
+> **As-built note (reconciled 2026-06-10 per `ARCHITECTURE-BD-204-LOSSLESS-FIX.md` §1.3/§3.3).**
+> DP-2's substance — form family + Issue body, NO sidecar — is unchanged, but the in-body
+> carrier is REALIZED as the `pack-entry-body-gz64` VERBATIM-BODY BLOB (§2.4.1 as-built), not
+> the `pack-extra-fields` named-scalar block this dated record names (that block was a phantom
+> — never produced by forward, never read by reverse — and is deleted from the design).
+> Mentions of `pack-extra-fields` in this §1 decision record describe the superseded pre-fix
+> realization; the as-built carrier is §2.4.1's gz64 blob. See §7 for the reconciliation ledger.
+
 **HARD INVARIANT (user-imposed):** ALL flat-file / entry content MUST be preserved using the form
 family + the entry body (including the in-body `pack-extra-fields` block for `Target:`/`Position:`/
 etc.). Nothing rides a sidecar.
@@ -243,6 +251,12 @@ BD, not BD-204.
 > human-only, untouched by reverse). No HARD-tier challenges; every decision point is resolved.
 > The §2 OPEN mechanics are architect-resolved.
 
+> **As-built note (reconciled 2026-06-10, C-DOCS review-fix pass).** The summary's DP-2 line
+> above is the dated 2026-06-06 decision record verbatim; its "in-body `pack-extra-fields`
+> block" phrase describes the superseded pre-fix realization. The as-built in-body carrier is
+> the `pack-entry-body-gz64` verbatim-body blob (§2.4.1 as-built); disposition in the §7
+> reconciliation ledger.
+
 ---
 
 ## 2. The 12 design areas
@@ -261,9 +275,10 @@ BD, not BD-204.
 
 1. `provider_list` (the read op, `tracker-provider.sh:125`) enumerates pack-owned Issues
    (filtered by the `work-item` label + `pack-id` marker — lane separation, §2.8).
-2. For each Issue, `_tmr_reverse_reconstruct` (`tracker-migrate-reverse.sh:506`) builds an
-   in-memory entry object (`pack_id/title/status/type/blockers/unblocks/description/context/
-   resolution` + the in-body `pack-extra-fields` block overflow — no sidecar file).
+2. For each Issue, `tracker_migrate_reverse_reconstruct` (`scripts/lib/tracker-migrate-reverse.sh`)
+   builds an in-memory entry object (`pack_id/title/status/type/blockers/unblocks/description/context/
+   resolution` + the verbatim `raw_body` decoded from the in-body `pack-entry-body-gz64` blob
+   (§2.4.1 as-built) — no sidecar file).
 3. The reverse emitter writes the per-entry tree DIRECTLY (one file per entry via
    `pe_write_atomic` + `pe_backpointer_line`, §2.2) — NOT a monolith.
 4. `per_entry_regenerate_toc pack-backlog /backlog` regenerates `_toc.md` (DP-4).
@@ -425,10 +440,11 @@ tracker floor (`DESIGN-BRIEF.md:252` status-taxonomy-is-backend-declared).
 
 ### 2.4 Overflow carrier — field-overflow boundary (carrier = form family + Issue body; NO sidecar file)
 
-The carrier is RESOLVED at DP-2 (user 2026-06-06): the **form family + the GH Issue BODY** (prose +
-the in-body `pack-extra-fields` HTML-comment block). The `.pack-tracker/reverse.sidecar.*` FILE is
+The carrier is RESOLVED at DP-2 (user 2026-06-06): the **form family + the GH Issue BODY** —
+as-built (reconciled 2026-06-10), the in-body carrier is the `pack-entry-body-gz64` verbatim-body
+blob (§2.4.1). The `.pack-tracker/reverse.sidecar.*` FILE is
 DROPPED for v11.0 — nothing rides a sidecar. The architect resolves the BOUNDARY: which fields ride
-a form field vs the Issue body vs the in-body `pack-extra-fields` block. There is NO "spill to a
+a form field (label/link/H2 projection) vs the Issue body (the blob). There is NO "spill to a
 sidecar file" option.
 
 > **Empirical-Evidence Block (the built reverse reconstruct field-set vs real pack-entry fields).**
@@ -450,20 +466,22 @@ sidecar file" option.
 | `Unblocks:` | `wi-unblocks` body (informational) | inverse of blockers; no link semantics |
 | `File/Symbol:` | `wi-file-symbol` input → body | free-form (D-17 textarea) |
 | `Description:`/`Context:`/`Resolution:` | `wi-description`/`wi-context`/`wi-resolution` body | free-text prose (D-17) |
-| **`Target:`** (e.g. "v11.0") | **in-body `pack-extra-fields` block** (Issue body) | pack-specific, no form field; lives IN the Issue (SSOT); rendered inline into the regenerated entry |
-| **`Position:`** | **in-body `pack-extra-fields` block** (Issue body) | pack-specific ordering hint, no form field; in-Issue, rendered inline |
-| **`Alias:`/`Surfaced:`/`Paused:`/`Problem:`/`Out of scope:`/`References:`/`Quality bar:`** (any other named entry field) | **Issue BODY** (free-text section) or in-body `pack-extra-fields` (named scalar) | every leading-label entry field maps to the body; none is orphaned (§2.4.1 census) |
-| **structured sub-blocks** (`Segments:`/`Steps:`/`State:`/`Goal:`/`Scope:`/`Quality bar:` in large entries) | **Issue BODY verbatim** (D-17 free-text); any NAMED scalar field needing parseable recovery → the in-body `pack-extra-fields` block | the body is the faithful free-text carrier; prose preserved verbatim; no sidecar |
+| **`Target:`** (e.g. "v11.0") | **the in-body verbatim-body blob** (`pack-entry-body-gz64`, §2.4.1 as-built) | pack-specific, no form field; lives IN the Issue (SSOT); recovered byte-faithfully from the blob on regen |
+| **`Position:`** | **the in-body verbatim-body blob** (`pack-entry-body-gz64`, §2.4.1 as-built) | pack-specific ordering hint, no form field; in-Issue, recovered from the blob |
+| **`Alias:`/`Surfaced:`/`Paused:`/`Problem:`/`Out of scope:`/`References:`/`Quality bar:`** (any other named entry field) | **Issue BODY** — the gz64 verbatim-body blob (round-trip source) + the visible H2 projection | every leading-label entry field rides the blob byte-verbatim; none is orphaned (§2.4.2 re-grounded) |
+| **structured sub-blocks** (`Segments:`/`Steps:`/`State:`/`Goal:`/`Scope:`/`Quality bar:` in large entries) | **Issue BODY verbatim** — the gz64 verbatim-body blob (no per-field capture, no re-parse on the carry path) | the blob is the faithful byte carrier; prose preserved verbatim; no sidecar |
 | parenthetical title (`(Code Red 3)`) | identity carrier (§2.7), NOT a field | title text, round-trips via the ID carrier |
 
-**Boundary principle (the locked model, property-fit-verified):** a field rides a FORM field iff
-a finite enum drives a label/link/state-transition (D-17, `ARCHITECTURE-V3.3-DELTA.md:312`);
-otherwise it rides the Issue BODY (free-text prose, byte-faithful) or, if it is a named pack field
-the form grammar cannot name, the in-body `pack-extra-fields` HTML-comment block (which lives IN
-the Issue body, the SSOT). There is NO sidecar file. No pack field has "nowhere to go" — every
-named entry field maps to a form field or the Issue body (§2.4.1 census proves zero orphaned
-fields). The large-entry stress case (BD-195's `Segments:`/`Steps:`/`Goal:`/`Scope:`) rides the
-Issue body verbatim — the body-faithfulness audit (§3) proves it.
+**Boundary principle (as-built, property-fit-verified):** a field rides a FORM field iff
+a finite enum drives a label/link/state-transition (D-17, `ARCHITECTURE-V3.3-DELTA.md` §6.1) —
+and that projection is ADVISORY. The round-trip source for the ENTIRE entry body is the
+`pack-entry-body-gz64` VERBATIM-BODY BLOB (§2.4.1), which lives IN the Issue body (the SSOT)
+and carries every field line and prose block byte-faithfully with NO per-field capture. There
+is NO sidecar file and NO named-scalar `pack-extra-fields` block (deleted — it was never
+implemented; see §2.4.1 as-built). No pack field has "nowhere to go" — every named entry field
+and prose block rides the blob BY CONSTRUCTION (§2.4.2 re-grounded). The large-entry stress
+case (BD-195's `Segments:`/`Steps:`/`Goal:`/`Scope:`) rides the blob verbatim — enforced by
+the unattended faithfulness guard (§2.4.2).
 
 ### 2.4.1 Overflow physical home — DROP the sidecar file; carrier = form family + Issue body (DP-2 RESOLVED)
 
@@ -482,23 +500,69 @@ HARD tracker-agnostic requirement (`backlog/BD-204.md:14`). So anything GH-Issue
 NOT part of the entry body is DROPPED for v11.0 (§2.4.2). A future, multi-tracker-agnostic
 preservation mechanism is a FUTURE BD, not v11.0.
 
-**The carrier, stated once.** Round-tripping NAMED pack fields (`Target:`/`Position:`/any future
-v11.x named field) live IN the GH Issue BODY as a hidden HTML-comment block, parallel to the
+**The carrier, stated once (AS-BUILT — reconciled 2026-06-10 per
+`ARCHITECTURE-BD-204-LOSSLESS-FIX.md` §3.3; supersedes the `pack-extra-fields` named-scalar
+block, which was a phantom — never produced by forward, never read by reverse — and is deleted).**
+The round-trip source for the ENTIRE entry body — named pack fields (`Target:`/`Position:`/any
+future named field), the common fields, AND every prose sub-block — is ONE hidden HTML-comment
+marker carrying the entry's verbatim captured span (lines 2..EOF: the bold-header line + every
+field/prose line), deterministic-gzip (`mtime=0`) + base64-encoded, emitted alongside the
 existing marker trio (`work-item.yml:103-105`):
 
 ```
-<!-- pack-extra-fields:
-Target: v11.0
-Position: v11.0 launch gate; after BD-203, before BD-197
--->
+<!-- pack-entry-body-gz64: H4sIAAAAAAAAA8tIzcnJVyjPL8pJUQQAlRmFGwwAAAA= -->
 ```
 
-This block IS in the Issue body — so the tracker is the SOLE SSOT for these fields (HARD true-SSOT,
-`backlog/BD-204.md:14`) and they cannot go missing independently of the Issue. On regen, the block
-is read back and rendered INLINE into `/backlog/BD-NNN.md` (one-file-read; §3.1 byte-faithful). The
-prose sub-blocks (`Description:`/`Context:`/`Resolution:`/`Goal:`/`Scope:`/`Steps:`/`Segments:`/
-`State:`/`Problem:`/`Out of scope:`/`References:`/`Quality bar:`) ride the visible Issue body
-verbatim (D-17 free-text). No sidecar file is written or read on the pack surface.
+This blob IS in the Issue body — so the tracker is the SOLE SSOT for every field (HARD true-SSOT,
+the `backlog/BD-204.md` DECISION TIERS HARD bullet) and no field can go missing independently of
+the Issue. On regen, reverse base64-decodes + gunzips the blob (the codec is python3-pinned on
+both paths) and writes the body back BYTE-FOR-BYTE: the reconstructed `/backlog/BD-NNN.md` = the derived back-pointer line + the
+verbatim body. Decode is FAIL-LOUD on a corrupt/absent-payload blob (never silent-empty). The
+visible H2 sections (`## Description` / `## File / Symbol` / `## Context` / `## Resolution`)
+STILL emit as the human/GH-readable PROJECTION — they are NOT the round-trip source; the blob is
+authoritative, and a blob↔H2 divergence (e.g., a direct GH web edit not propagated to the blob)
+is DETECTED by a normalization-tolerant comparator and surfaced loudly, never silently resolved
+(`--force` = explicit operator blob-wins override). There is NO per-field capture, NO field
+re-parsing on the carry path, and NO sidecar file written or read on the pack surface.
+
+**Realized consumers (file + symbol — never line numbers):** forward —
+`scripts/lib/tracker-migrate-forward.sh` `_tmf_parse_backlog_file` (captures `raw_body`, the
+verbatim lines-2..EOF span, alongside the unchanged field extraction) and `tmf_compose_issue_body`
+(DEFAULTED 6th `raw_body` param so the 4-arg phase call site keeps working; emits the
+`pack-entry-body-gz64` marker via `_tmf_gz64_encode`); reverse —
+`scripts/lib/tracker-migrate-reverse.sh` `_tmr_decode_body_blob` (python3 decode; corrupt-blob
+FAIL-LOUD), `_tmr_check_blob_h2_divergence` (the normalization-tolerant comparator: CRLF/CR→LF,
+per-line trailing-whitespace strip, single trailing newline — exactly GH's munging, no broader),
+and `_tmr_emit_pack_tree` (pack branch REWRITTEN to write `pe_backpointer_line` + `raw_body`
+verbatim; the dead `extra_fields` per-field render is DELETED); Mode-3 edits —
+`scripts/lib/tracker-edit.sh` `tracker_edit_entry` regenerates BOTH the H2 projection AND the
+blob on every `provider_update`.
+
+**As-built operational contract (size / pacing / neutralization / storage format —
+`ARCHITECTURE-BD-204-LOSSLESS-FIX.md` §3.3c/§3.3d):**
+
+- **Size budget (stored-byte axis).** The composed Issue body (H2 projection + blob + markers)
+  is measured in STORED BYTES against the ACTIVE provider's declared body limit — the GH backend
+  declares `body.limit: 65536` in its capability block (`scripts/lib/tracker-provider-gh.sh`).
+  `tmf_compose_issue_body` FAILs loud when the composed body exceeds
+  `provider_body_limit − TMF_SIZE_SAFETY_MARGIN` — it NEVER truncates (silent truncation would
+  re-open the lossy class this carrier kills). Worst entry today (BD-136) is ~62% of the GH
+  limit under gz64 (the gzip layer is what keeps the doubled H2+blob payload bounded).
+- **Write pacing.** The forward create loop sleeps ≥ the provider's declared
+  `rate_limits.min_write_interval_s` (GH: 1s) between successive `provider_create` calls and
+  honors retry-after backoff on a 403/429 (GH secondary caps: 80/min, `writes_per_hour_max:
+  500`) — realized in `scripts/lib/tracker-migrate-forward.sh` (the pacing gate;
+  `TMF_PACING_SLEEP_CMD` is the test seam so pacing assertions need no wall-clock wait).
+- **Autolink/mention neutralization (projection only).** `_tmf_neutralize_autolinks`
+  (`scripts/lib/tracker-migrate-forward.sh`) wraps any projected H2 value containing an
+  autolink trigger (`#NNN`, bare `@`, bare commit-SHA, bare URL) in an inline-code span, so the
+  real-repo create scatters no spurious backlinks / mention notifications. The blob is
+  UNTOUCHED — reverse recovers the verbatim original tokens; zero round-trip effect.
+- **`provider_body_storage_format`.** Each provider declares `body.storage_format`
+  (`raw_text` | `rich_text_normalizing`). The gz64 blob carrier REQUIRES `raw_text` (GH declares
+  it); the migrator FAILs loud on a `rich_text_normalizing` backend (which would rewrite/strip
+  the HTML comment) rather than silently corrupting — the carrier is the raw-text-body-class
+  realization; class-appropriate carriers for rich-text trackers are a future BD.
 
 **§2.4.2 — Zero-orphaned-fields verification (every entry field maps to a form field or the body).**
 
@@ -514,12 +578,37 @@ the Issue body — none may be orphaned by the sidecar drop.
 > `Description:`, `Resolved:` (BD-167, incl. the folded former-167b sub-entry section — same field
 > set, no suffix); `Type:`, `Status:`, `Paused:`, `Blockers:`,
 > `Unblocks:`, `File/Symbol:`, `Description:`, `Resolved:` (BD-185). `AT`: HEAD
-> `9fb29a5`, 2026-06-06. `INTERP`: mapping — `Type:`/`Status:`/`Blockers:`/`Unblocks:`/`File/Symbol:`/
-> `Description:`/`Context:`/`Resolution:` → form fields (`wi-*`, §2.4 table); `Resolved:` → form
-> `wi-resolution`/body; `Target:`/`Position:` → in-body `pack-extra-fields` block; `Alias:`/`Surfaced:`/
-> `Paused:`/`Goal:`/`Scope:`/`Quality bar:`/`Steps:`/`Problem:`/`Out of scope:`/`References:` → Issue
-> BODY (free-text sections, verbatim). EVERY field lands in a form field or the Issue body; NONE
-> requires a sidecar; ZERO orphaned. `CONCL`: SUPPORTED.
+> `9fb29a5`, 2026-06-06. `INTERP` (as-built, reconciled 2026-06-10): `Type:`/`Status:`/
+> `Blockers:`/`Unblocks:`/`File/Symbol:`/`Description:`/`Context:`/`Resolution:` ADDITIONALLY
+> project to form fields / labels / links (`wi-*`, §2.4 table) — but the ROUND-TRIP SOURCE for
+> every field above, common or extension (`Target:`/`Position:`/`Alias:`/`Surfaced:`/`Paused:`/
+> `Goal:`/`Scope:`/`Quality bar:`/`Steps:`/`Problem:`/`Out of scope:`/`References:`), is the
+> `pack-entry-body-gz64` blob carrying the entry body byte-verbatim. EVERY field lands in the
+> Issue body BY CONSTRUCTION (the carrier never enumerates fields); NONE requires a sidecar;
+> ZERO orphaned. `CONCL`: SUPPORTED.
+
+**Re-grounding (2026-06-10).** The census above measures the INPUT entries; the original INTERP
+asserted a prose mapping whose `pack-extra-fields` leg was never implemented (the lossless-fix
+audit, `ARCHITECTURE-BD-204-LOSSLESS-FIX.md` §2 claim A — the EE "measured the input, not the
+migrated output"). The zero-orphaned claim now rests on TWO as-built mechanisms, not a mapping
+table: (a) the **byte-faithful gz64 verbatim-body blob** (§2.4.1) — the carrier carries bytes,
+not fields, so no field (present or future) CAN be orphaned; and (b) the **unattended CI
+faithfulness guard** `check_migrator_field_faithfulness` (Check 49, `scripts/validate-pack.py`;
+deep-gated under `PACK_VALIDATE_DEEP=1` so the general battery path pays ~0; per-check test
+`scripts/tests/test-validate-pack-check-49-field-faithfulness.sh`, wired into
+`.github/workflows/validate-pack.yml` alongside a dedicated `PACK_VALIDATE_DEEP=1` workflow
+step), which asserts per entry on the REAL tree, via the single-sourced batch codec
+(`_tmf_gz64_encode_batch` / `_tmr_decode_body_blob_batch` — the ADDITIVE batch siblings of the
+single-record `_tmf_gz64_encode` / `_tmr_decode_body_blob` the production migration calls,
+sourced from the SAME migrator lib files; batch and single-record are equivalence-bound by
+per-commit byte-identity tests — forward `tracker-migrate-forward-test.sh` cases 2.9.1–2.9.4
+(gz64 / neutralizer / composer batch == single-record, plus the single-record-byte-unchanged
+additive invariant) and reverse `tracker-migrate-reverse-test.sh` cases 2.1e-i/ii (batch decode
+== single-record decode; batch decode(encode(x)) == x) — and Check 50 (the OQ-4 single-source
+codec guard, `scripts/validate-pack.py`) FAILs CI if validate-pack.py itself reproduces the
+codec, so no second codec can drift and FALSE-PASS a lossy change): the byte-faithful
+contract `PRE_PARSE_ORIGINAL_body == decode(encode(raw_body))`, the composed-body size budget,
+title ≤ 256 (R-TITLE-1), and no disallowed control byte (R-BODY-6).
 
 **`template_version` + `template_archive_path` survive without a sidecar.** `template_version` is a
 DUAL carrier per D-18 — its in-body marker `<!-- template_version: work-item-v11.0 -->`
@@ -552,9 +641,9 @@ contract by decision (§2.4.3). No sidecar file participates in the round-trip.
 
 | Rule | Evidence | Conclusion |
 |---|---|---|
-| **Empirical-Evidence Blocks (zero-orphaned-fields claim)** | §2.4.2 block: the leading-label field census across BD-195 (large + parenthetical title) / BD-204 / BD-167 (incl. the folded former-167b section; post-BD-211 suffix-free) / BD-185 maps EVERY field to a form field or the Issue body — `Type/Status/Blockers/Unblocks/File-Symbol/Description/Context/Resolution`→form; `Target/Position`→in-body `pack-extra-fields`; `Alias/Surfaced/Paused/Goal/Scope/Quality bar/Steps/Problem/Out of scope/References`→Issue body. ZERO orphaned. Plus the `template_version` in-body marker + derivable `template_archive_path` block. All at HEAD `9fb29a5`, 2026-06-06, verbatim, SUPPORTED. | COMPLIANT |
-| **HARD invariant honored (form family + entry body; nothing on a sidecar)** | All content rides the form family + the Issue body (incl. the in-body `pack-extra-fields` block); the `.pack-tracker/reverse.sidecar.*` file is DROPPED; §2.4.3 explicitly drops GH-only non-entry artifacts (reactions/comments/attachments/audit log) with a future-BD deferral note. | COMPLIANT |
-| **Tracker-agnostic (the drop's own rationale)** | The dropped sidecar FORMAT was GH-specific and non-portable; the in-body `pack-extra-fields` block is a plain HTML comment in the issue body/description — a field every tracker has — so the carrier ports (Jira/Linear/etc.). No GH-specific non-entry format survives in the contract. | COMPLIANT |
+| **Empirical-Evidence Blocks (zero-orphaned-fields claim)** | §2.4.2 block (re-grounded 2026-06-10): the leading-label field census across BD-195 (large + parenthetical title) / BD-204 / BD-167 (incl. the folded former-167b section; post-BD-211 suffix-free) / BD-185 — `Type/Status/Blockers/Unblocks/File-Symbol/Description/Context/Resolution` additionally project to form fields; the ROUND-TRIP SOURCE for every field (incl. `Target/Position` and `Alias/Surfaced/Paused/Goal/Scope/Quality bar/Steps/Problem/Out of scope/References`) is the gz64 verbatim-body blob (as-built §2.4.1). ZERO orphaned BY CONSTRUCTION + the Check-49 faithfulness guard. Plus the `template_version` in-body marker + derivable `template_archive_path` block. Census at HEAD `9fb29a5`, 2026-06-06, verbatim, SUPPORTED. | COMPLIANT |
+| **HARD invariant honored (form family + entry body; nothing on a sidecar)** | All content rides the form family + the Issue body (incl. the in-body `pack-entry-body-gz64` verbatim-body blob, as-built §2.4.1); the `.pack-tracker/reverse.sidecar.*` file is DROPPED; §2.4.3 explicitly drops GH-only non-entry artifacts (reactions/comments/attachments/audit log) with a future-BD deferral note. | COMPLIANT |
+| **Tracker-agnostic (the drop's own rationale)** | The dropped sidecar FORMAT was GH-specific and non-portable; the in-body `pack-entry-body-gz64` blob is a plain HTML comment in the issue body/description — a field every tracker has — so the carrier ports across the RAW-TEXT-BODY class (`provider_body_storage_format == raw_text`; a `rich_text_normalizing` backend fails loud — §2.4.1 as-built contract). No GH-specific non-entry format survives in the contract. | COMPLIANT |
 | **Pattern-matching out of context** | Property-fit verified: the v10-monolith sidecar FILE's "flat grammar cannot hold it" rationale does NOT hold (the inline per-entry tree holds named scalars; flat mode has no comments/logs); the in-body HTML-comment carrier is reused because it MATCHES the sibling `pack-id`/`template_version` markers' property (`work-item.yml:103-105`). | COMPLIANT |
 | **Scope held** | DP-2 RESOLVED + every sidecar reference swept (§2.1/§2.4/§2.4.1/§2.10/§2.11/§2.12/§3.1/§3.2/§4.3/§5); DP-1/DP-3/DP-4/DP-5 untouched; code remove-vs-dormant flagged to planner/coder, not decided. | COMPLIANT |
 
@@ -730,8 +819,8 @@ account is personal (`DShaneNYC/optiquity-ai-agent-config-pack`).
 | GH custom Issue Types | partial | NO (org-only) | **EXCLUDED** | NOT used |
 
 **No design element needs a capability outside the verified set.** The structured carrier is the
-form-family body + labels + the in-body `pack-extra-fields` block (NOT custom Issue Fields, NOT a
-sidecar file). The status machine is labels + GH
+form-family body + labels + the in-body `pack-entry-body-gz64` verbatim-body blob (as-built
+§2.4.1; NOT custom Issue Fields, NOT a sidecar file). The status machine is labels + GH
 open/closed `state_reason` (all GA + personal). The identity carrier is a body HTML comment (no
 capability needed). If a future need for a typed field arises, it is a future-option-when-GA, not a
 BD-204 fork. **No researcher availability pass is triggered** — the design stays inside the
@@ -743,11 +832,19 @@ verified GA + personal set.
 
 The reversibility design + audit + test approach is §3 (full treatment). Summary of the guarantee:
 `per-entry tree → GH Issues → per-entry tree == original`, byte-faithful on entry spans, correct
-under repeated on/off/on/off with interleaved CRUD. The lossless contract rests on: (a) identity
-keyed on `pack-id` (§2.7, stable across delete/recreate); (b) the in-body `pack-extra-fields` block
-(in the Issue body, the SSOT) for any named field the form grammar cannot name — no sidecar file (§2.4.1); (c) the silent-data-loss guard that FAILs rather
-than drops (`tracker-migrate-reverse.sh:1032-1042`); (d) the complete status mapping incl. the
-`Deferred` row (§2.6, the round-trip-completeness fix).
+under repeated on/off/on/off with interleaved CRUD. The lossless contract rests on (as-built,
+reconciled 2026-06-10): (a) identity keyed on `pack-id` (§2.7, stable across delete/recreate);
+(b) the byte-faithful `pack-entry-body-gz64` VERBATIM-BODY BLOB (in the Issue body, the SSOT) —
+the ENTIRE entry body crosses the gap verbatim, with no field enumeration, so EVERY named field
+and prose block round-trips — no sidecar file (§2.4.1 as-built); (c) the silent-data-loss guard
+that FAILs rather than drops (`tracker-migrate-reverse.sh`, the `n_skipped` partial-write
+refusal) PLUS the corrupt-blob FAIL-LOUD decode (`_tmr_decode_body_blob` — never silent-empty)
+PLUS the blob↔H2 divergence backstop (`_tmr_check_blob_h2_divergence`, normalization-tolerant);
+(d) the complete status mapping incl. the `Deferred` row (§2.6, the round-trip-completeness
+fix); (e) the unattended CI faithfulness guard `check_migrator_field_faithfulness` (Check 49,
+`scripts/validate-pack.py`, deep-gated under `PACK_VALIDATE_DEEP=1`) asserting the byte-faithful
+round-trip + size + title + control-char legs per entry on the REAL tree, so a lossy regression
+is un-mergeable.
 
 ---
 
@@ -757,18 +854,24 @@ Mode transitions are heavyweight + infrequent + lossless by design (`backlog/BD-
 hot path:
 
 - **ON (forward, Mode 2 → 3):** `pack tracker init --forward` — reads the tree (C2a repoint),
-  creates an Issue per entry (`provider_create` via the form shape), writes the `pack-id` markers,
-  creates dependency links (BD-111), sets `tracker.toml` (`mode.state="tracker"`,
-  `forward_complete=true`), SKIPS the monolith mirror regen (C2b). One-shot, idempotent (existing
-  checkpoint markers, BD-065/131). The tree is then regenerated FROM the tracker (now SSOT).
+  creates an Issue per entry (`provider_create` via the form shape) in a PACED loop (as-built:
+  the create loop sleeps ≥ the provider's `rate_limits.min_write_interval_s` — GH: 1s — between
+  creates and honors retry-after backoff on a 403/429, staying under GH's 80/min + 500/hr
+  secondary caps; §2.4.1 as-built contract), with autolink/mention triggers in the visible H2
+  projection neutralized (`_tmf_neutralize_autolinks`; the blob is untouched), writes the
+  `pack-id` markers, creates dependency links (BD-111), sets `tracker.toml`
+  (`mode.state="tracker"`, `forward_complete=true`), SKIPS the monolith mirror regen (C2b).
+  One-shot, idempotent (existing checkpoint markers, BD-065/131). The tree is then regenerated
+  FROM the tracker (now SSOT).
 - **OFF (reverse, Mode 3 → 2):** `pack tracker disable` — reconstructs entries from Issues, emits
   the per-entry TREE directly (C3 repoint), regenerates `_toc.md` (DP-4), flips `tracker.toml` back
   to flat-file. The silent-data-loss guard + the atomic backup/restore loop
   (`tracker-migrate-reverse.sh:1085-1098`) make the flip atomic (no split state).
 - **Repeated on/off/on/off:** each ON re-creates Issues keyed on the SAME `pack-id` markers (not
-  issue numbers, §2.7); each OFF re-emits the SAME tree files (filename-is-ID). Named overflow
-  fields cross the gap IN the Issue body (the `pack-extra-fields` block + the `template_version`
-  marker) — no sidecar file. Idempotency + identity-stability
+  issue numbers, §2.7); each OFF re-emits the SAME tree files (filename-is-ID). The ENTIRE entry
+  body crosses the gap IN the Issue body (the `pack-entry-body-gz64` verbatim-body blob + the
+  `template_version` marker) — no sidecar file. The blob is deterministic (gzip `mtime=0`), so
+  the round-trip reaches a fixed point after one cycle; idempotency + identity-stability
   make repeated cycles converge to the original — proven by the §3 audit.
 
 ---
@@ -787,10 +890,20 @@ reconstructed `/backlog/BD-NNN.md`:
    supporting artifact per `_lib.sh:300`).
 3. **Status round-trips** — every `Status:` value decodes back to itself (the DP-3 matrix +
    the new `Deferred` branch close the one gap that breaks 11 entries).
-4. **Overflow recovered** — `Target:`/`Position:`/structured-sub-blocks recovered from the Issue
-   body (the visible sections + the in-body `pack-extra-fields` block; §2.4.1), byte-faithfully.
+4. **Entire body recovered (as-built, reconciled 2026-06-10)** — `Target:`/`Position:`/every
+   named field/structured sub-block recovered from the Issue body via the `pack-entry-body-gz64`
+   verbatim-body blob (§2.4.1 as-built), byte-faithfully — the blob carries the entry's lines
+   2..EOF verbatim, so recovery is BY CONSTRUCTION, not per-field mapping; the visible H2
+   sections are projection only. Decode is FAIL-LOUD on a corrupt blob (never silent-empty).
    NO sidecar file participates. GH-only non-entry artifacts (reactions/comments/attachments/audit
    log) are OUT of the contract by decision (§2.4.3).
+
+This contract is ENFORCED unattended: `check_migrator_field_faithfulness` (Check 49,
+`scripts/validate-pack.py`; deep-gated under `PACK_VALIDATE_DEEP=1`; per-check test wired into
+`.github/workflows/validate-pack.yml`) asserts, per entry against the REAL tree via the
+single-sourced batch codec, `PRE_PARSE_ORIGINAL_body == decode(encode(raw_body))` plus the
+composed-body size budget (stored bytes vs the provider's declared limit), title ≤ 256, and the
+control-char guard — so a regression of any contract item above fails CI before it can ship.
 
 "Lossless" applies to LIVE content only (`feedback_fail_loud_delete_old_source.md:35`); the
 back-pointer + `_toc.md` are derived, regenerated each cycle, not round-trip-compared.
@@ -845,25 +958,50 @@ tree set on the pack branch). This is the architect's lossless-audit coverage of
 ### 3.4 The test approach (live scratch repo, self-provisioned)
 
 Reversibility cannot be proven without a live GH repo (BD-111's "Live GH repo access" blocker;
-`test-infra-self-provisioned`). The dogfood test sequence (gated per `backlog/BD-204.md:20`,
-"scratch-repo proof → archive → real flip"):
+`test-infra-self-provisioned`). The dogfood test sequence (gated per the re-scoped
+`backlog/BD-204.md` `Scope:` line — Option A, SETTLED: a REPEATABLE scratch-repo proof, each
+scratch repo ARCHIVED at end + a manual-delete recommendation, then the REAL — never-archived —
+flip):
 
-1. **Scratch-repo proof** — provision a personal-account scratch repo via `gh repo create`
-   (per-step user approval, `test-infra-self-provisioned`), install the form family, run
-   `tree → Issues → tree` against it, run the §3.2 oracle, then `gh repo delete` (cleanup). NEVER
-   touch the real pack repo as a test target. The scratch run uses a FIXTURE tree (a small
-   representative set incl. a parenthetical-title entry, a Deferred entry, and a large
-   multi-block entry — the three stress cases; post-BD-211 there is no suffix case) so the oracle is
-   fast + deterministic.
-2. **Archive** — after the scratch proof is green, the audit artifacts (the oracle diffs) are
-   recorded in the IMPL-REPORT (not committed as a kept mirror).
-3. **Real flip** — the actual pack-repo Mode-2→3 migration, gated on the scratch proof + explicit
-   user approval (heavyweight, infrequent, §2.12). This is the dogfood: the pack's OWN 211 entries
-   (post-BD-211; measured live at flip time, never hard-coded) move to the pack's real GH Issues.
+1. **Scratch-repo proof (REPEATABLE)** — provision a personal-account, uniquely-named throwaway
+   scratch repo via `gh repo create` (per-step user approval, `test-infra-self-provisioned`),
+   preceded by the CREDENTIAL-CAPABILITY PREFLIGHT as the first live action (verify the token
+   can create repos, write issues, and ARCHIVE — and that repo-delete is NOT required and never
+   attempted; `gh` ≥ 2.0 floor; FAIL LOUD on any missing required permission before any bulk
+   write). Install the form family, run `tree → Issues → tree` against it, run the §3.2 oracle.
+   As many rehearsal runs as needed — there is no single-shot assumption. NEVER touch the real
+   pack repo as a test target. The scratch run uses a FIXTURE tree (a small representative set
+   incl. a parenthetical-title entry, a Deferred entry, and a large multi-block entry — plus,
+   as rebuilt, drop-set-field and no-Description entries and a 4-form autolink entry) so the
+   oracle is fast + deterministic.
+2. **Scratch disposal = ARCHIVE (Option A — the tool NEVER deletes)** — at end of each run the
+   scratch repo is ARCHIVED (`gh repo archive`, asserted read-only via `isArchived == true`);
+   the trap-on-exit ARCHIVES on failure too (never leave a WRITABLE orphan). Manual deletion is
+   a USER-ONLY recommended step the run prints (the credential deliberately lacks repo-delete; a
+   grep-guard asserts the test source contains no `gh repo delete`). The "archive" in the gate
+   wording is disposal of the THROWAWAY scratch repo — the REAL pack repo is NEVER archived (it
+   stays live and editable). The audit artifacts (the oracle diffs) are recorded in the
+   IMPL-REPORT (not committed as a kept mirror).
+3. **Real flip** — the actual pack-repo Mode-2→3 migration, gated on a green rehearsal + explicit
+   user approval (heavyweight, infrequent, §2.12), using the PACED, autolink-neutralized create
+   loop (§2.4.1 as-built contract) against the REAL (never-archived) repo. This is the dogfood:
+   the pack's OWN 211 entries (post-BD-211; measured live at flip time, never hard-coded) move
+   to the pack's real GH Issues.
 
-**Cleanup contract:** every scratch repo created is deleted in the same test run (trap-on-exit +
-explicit `gh repo delete`); a scratch repo is never left dangling. The test asserts the scratch
-repo is gone at the end.
+**Disposal contract (Option A, as-built — supersedes the pre-fix delete-cleanup):** every scratch
+repo created is ARCHIVED (read-only) in the same run — on success AND via trap-on-exit on failure;
+the tooling NEVER runs `gh repo delete` (deletion is a user-only manual step the run RECOMMENDS).
+The test asserts the scratch repo is ARCHIVED (`isArchived == true`) at the end — not gone.
+Realized in `scripts/tests/tracker-bd204-lossless-roundtrip-test.sh` (the rebuilt C-7 oracle: the
+credential preflight, the archive-only disposal + trap, the manual-delete RECOMMEND line, and the
+no-`gh repo delete` grep-guard), alongside its drop-set / size / pacing / autolink-neutralization
+/ corrupt-blob / normalization-comparator legs. The live round-trip — the oracle itself, ALL its
+legs included — stays manual + default-SKIP unattended (CI-execution model below); the SAME
+unit-level contracts are covered unattended in the battery via "the in-process check or a
+mock-based unit test" (`ARCHITECTURE-BD-204-LOSSLESS-FIX.md` §5.c): the Check-49 per-check test
+(`test-validate-pack-check-49-field-faithfulness.sh`) plus the mock-based
+`tracker-migrate-forward-test.sh` (pacing / size / neutralization legs) and
+`tracker-migrate-reverse-test.sh` (corrupt-blob / comparator legs).
 
 **C-7 CI-execution model — MANUAL-ONLY, gated, with a default-SKIP guard (the test never runs
 `gh repo create` unattended).** The C-7 lossless oracle is the ONE test in the pack that requires a
@@ -973,8 +1111,10 @@ no pack path reads a sidecar. Consequently the built `scripts/lib/tracker-sideca
 the pack surface for v11.0. Whether to DELETE `tracker-sidecar.sh` outright or leave it DORMANT (it
 may still serve the client surface / a future tracker-agnostic mechanism) is a remove-vs-dormant
 call left to the planner/coder — the architect flags it, does not decide it. The in-body
-`pack-extra-fields` block is emitted/parsed on the existing entry-body path (forward writes it into
-the Issue body; reverse renders it inline into `/backlog/BD-NNN.md`), needing no sidecar lib.
+`pack-entry-body-gz64` blob (as-built §2.4.1) is emitted/decoded on the entry-body path (forward
+`tmf_compose_issue_body` writes it into the Issue body; reverse `_tmr_decode_body_blob` +
+`_tmr_emit_pack_tree` write the body back verbatim into `/backlog/BD-NNN.md`), needing no sidecar
+lib.
 
 ---
 
@@ -997,6 +1137,12 @@ the Issue body; reverse renders it inline into `/backlog/BD-NNN.md`), needing no
 | **Architect-doc-vs-reality reconciliation** | This doc realizes the BD-203 §3.7 anticipated interface; it names the realized consumers by file + symbol (never line numbers): `_tmr_emit_backlog` (pack branch → `per_entry_*`), `_tmr_decode_status` (+`Deferred` branch), `_check_mirror_staleness` (→ Check 29′ no-mirror guard), `tracker_header_snapshot_capture` (retired pack-side). | COMPLIANT |
 | **Rules-Applied Verification Block + Read-docs-in-full** | This block + the READ-IN-FULL attestation below; every row quoted evidence (none empty). | COMPLIANT |
 | **Agents never commit** | No `git add/commit/push/tag` or any state-changing verb run; the sole write is this ONE design doc (`maintenance-docs/v11-implementation/ARCHITECTURE-BD-204.md`). | COMPLIANT |
+
+> **As-built note (reconciled 2026-06-10, C-DOCS review-fix pass).** The "Pattern-matching out
+> of context" row above is the dated 2026-06-05 audit record verbatim; its "in-body
+> `pack-extra-fields` block" carrier claim describes the superseded pre-fix realization. The
+> as-built carrier is the `pack-entry-body-gz64` verbatim-body blob (§2.4.1 as-built);
+> disposition in the §7 reconciliation ledger.
 
 ### READ-IN-FULL attestation (per-file direct-read proof, this session)
 
@@ -1039,5 +1185,87 @@ sites re-anchored by SYMBOL (line numbers drift / were wrong at HEAD `e83aed7`).
 | **Architect-doc-reality-reconciliation** | All four re-anchors name the realized consumer by file + symbol, never line number (the rule the unifying recipe applies). | COMPLIANT |
 | **Empirical-Evidence Blocks** | SHOULD-2 carries an EE block (call-site census + dispatch-path proof + header-comment confirmation, HEAD `e83aed7`, 2026-06-06, SUPPORTED); NIT-3 EE re-measured the real fail-branches. | COMPLIANT |
 | **Scope held** | Only the 4 cited sites + their §5 summary echoes touched; DP-1..DP-5 resolutions byte-unchanged; no design substance altered. | COMPLIANT |
+
+---
+
+## 7. Lossless-fix as-built reconciliation (2026-06-10, BD-204 C-DOCS) — Rules-Applied mini-block
+
+Per `architect-doc-reality-reconciliation` + sweep finding S-2 (`SWEEP-BD-204-RULES-COMPLIANCE.md`)
+and `PLAN-BD-204-LOSSLESS-FIX-SEQUENCE.md` §4, this committed design doc is reconciled to the
+AS-BUILT lossless field-carrier fix. The governing spec for the as-built design is
+`ARCHITECTURE-BD-204-LOSSLESS-FIX.md` (§3.3/§3.3a-e carrier + operational contract, §4 CI guard,
+§5.c rebuilt oracle, §5.f credential preflight); this section is the reconciliation ledger.
+
+**What changed in this doc (edited in place, by section):**
+
+| Section | Reconciliation |
+|---|---|
+| §1 DP-2 | As-built note added: the in-body carrier is realized as the gz64 verbatim-body blob; the `pack-extra-fields` named-scalar block was a phantom (never produced, never read) and is deleted. DP-2's substance (form family + Issue body, NO sidecar) unchanged. |
+| §2.1 step 2 | Regen path reads the verbatim `raw_body` decoded from the `pack-entry-body-gz64` blob. |
+| §2.4 table + boundary principle | `Target:`/`Position:`/extension-field/sub-block carrier cells → the gz64 blob; the form/label projection stated as advisory; round-trip source = the blob. |
+| §2.4.1 | Carrier statement REPLACED with the as-built gz64 verbatim-body blob (captured span lines 2..EOF; deterministic gzip `mtime=0` + base64; python3-pinned codec; corrupt-blob FAIL-LOUD; blob authoritative over the H2 projection with a normalization-tolerant divergence backstop). ADDED the as-built operational contract: stored-byte size budget vs the provider-declared body limit with fail-loud-never-truncate above `limit − margin`; ≥1s write pacing + retry-after; inline-code-span autolink/mention neutralization of the projection only; `provider_body_storage_format` (`raw_text` required, `rich_text_normalizing` fails loud). Realized consumers named by file + symbol. |
+| §2.4.2 | Zero-orphaned claim RE-GROUNDED on the byte-faithful blob (no field enumeration → no orphan possible) + the unattended faithfulness guard `check_migrator_field_faithfulness` (Check 49), replacing the input-census prose mapping the lossless-fix audit found unimplemented (claim A). |
+| §2.4.1 mini-block | Evidence cells updated to the blob carrier + the raw-text-class portability boundary. |
+| §2.10 | Structured-carrier phrase → the gz64 blob. |
+| §2.11 | Lossless-contract pillars rebuilt: blob carrier, partial-write + corrupt-blob + divergence guards (by symbol, not line), status matrix, and the Check-49 CI guard. |
+| §2.12 | ON-transition gains the paced + neutralized create loop; the repeated-cycle bullet crosses the gap via the deterministic blob (fixed point after one cycle). |
+| §3.1 | Contract item 4 → "entire body recovered" via the blob, by construction; added the unattended enforcement paragraph (Check 49: byte/size/title/control-char legs). |
+| §3.4 | Test-approach sequence + disposal contract → Option-A scratch disposal: credential-capability preflight first; REPEATABLE uniquely-named scratch repos; ARCHIVE-only end-state (`isArchived == true` asserted; trap-archives on failure); the tool NEVER deletes (`gh repo delete` grep-guarded out); manual delete is a USER-ONLY recommended step; the REAL pack repo is NEVER archived; real flip uses the paced, neutralized loop. Rebuilt-oracle legs named. |
+| §4.3 | Sidecar-drop code note → the blob emit/decode path by symbol. |
+
+**Realized consumers (file + symbol — the reconciliation chain):**
+`scripts/lib/tracker-migrate-forward.sh` — `_tmf_parse_backlog_file` (`raw_body` capture),
+`tmf_compose_issue_body` (defaulted 6th `raw_body` param; blob emit; size budget; storage-format
+refusal), `_tmf_gz64_encode` / `_tmf_gz64_encode_batch`, `_tmf_neutralize_autolinks` /
+`_tmf_neutralize_autolinks_batch`, the create-loop pacing gate (`TMF_PACING_SLEEP_CMD` seam).
+`scripts/lib/tracker-migrate-reverse.sh` — `_tmr_decode_body_blob` / `_tmr_decode_body_blob_batch`
+(corrupt-blob fail-loud), `_tmr_check_blob_h2_divergence` (normalization-tolerant comparator),
+`_tmr_emit_pack_tree` (verbatim `raw_body` emit; dead `extra_fields` render deleted).
+`scripts/lib/tracker-edit.sh` — `tracker_edit_entry` (blob + H2 regenerated together on every
+`provider_update`). `scripts/lib/tracker-provider-gh.sh` — the capability block (`body.limit:
+65536`, `body.storage_format: "raw_text"`, `rate_limits.min_write_interval_s: 1`,
+`rate_limits.writes_per_hour_max: 500`). `scripts/validate-pack.py` —
+`check_migrator_field_faithfulness` (Check 49, `PACK_VALIDATE_DEEP`-gated) + the `run_check`
+timing harness. `scripts/tests/test-validate-pack-check-49-field-faithfulness.sh` +
+`.github/workflows/validate-pack.yml` (the per-check wiring + the dedicated
+`PACK_VALIDATE_DEEP=1` step). `scripts/tests/tracker-bd204-lossless-roundtrip-test.sh` (the
+rebuilt C-7 oracle).
+
+**Dated records intentionally left byte-stable:** the §1 DP-2 RESOLVED wording (user-decision
+record; the as-built note adjoins it), the end-of-§1 "DECISION POINTS summary" blockquote (its
+own adjoining as-built note added by the review-fix pass — SHOULD-2), the §2.4.1 "RESOLVED,
+FIXED constraint (user 2026-06-06)" blockquote (its supersession is carried by the
+immediately-following "carrier, stated once (AS-BUILT …)" paragraph in the same subsection),
+the §2.4.2 EE `CMD`/`OUT` (a real input census), the `template_version` EE `CMD` string, §5
+(the 2026-06-05 Rules-Applied
+audit; its "Pattern-matching out of context" row gained an adjoining as-built note — NIT-3) and
+§6 (the 2026-06-06 consistency pass) — where those dated records name the `pack-extra-fields`
+carrier they describe the superseded pre-fix design; the as-built carrier is §2.4.1's gz64 blob.
+`PLAN-BD-204.md` was already reconciled via its §3.LF amendment;
+`ARCHITECTURE-BD-204-POST-BD211-RECON.md` is attested accurate history (S-2.3) — neither is
+edited by this pass.
+
+| Rule | Evidence | Conclusion |
+|---|---|---|
+| **Architect-doc-vs-reality reconciliation** | Every reconciled claim names its realized consumer by file + symbol (never line numbers); the governing spec (`ARCHITECTURE-BD-204-LOSSLESS-FIX.md`) and the ledger (`SWEEP-BD-204-RULES-COMPLIANCE.md` S-2) are cross-referenced; the IMPL-REPORT (`IMPL-REPORT-BD-204-C-DOCS.md`) links both. | COMPLIANT |
+| **Edit-in-place, not full rewrite** | Targeted section edits only; DP-1/DP-3/DP-4/DP-5, §2.2/§2.3/§2.5–§2.9, §3.2/§3.3, §4.1/§4.2, §5 (dated table rows; an as-built note adjoins the table per the review-fix pass), §6 byte-stable (dated records preserved with an explicit disposition above). | COMPLIANT |
+| **Fail-loud / delete the old source** | The phantom `pack-extra-fields` carrier is REMOVED from every live design statement (not left as a silent contradiction); dated records that mention it are explicitly marked superseded. | COMPLIANT |
+| **Scope held** | Only this file edited (C-DOCS is docs-only, pack-only); no entry, script, plan, or RECON edit. | COMPLIANT |
+
+**Review-fix pass (2026-06-10, per `PACK-REVIEW-BD-204-C-DOCS.md`; folded into this commit):**
+MUST-1 — §2.1 step 2's phantom `_tmr_reverse_reconstruct` + stale line ref replaced with the
+real symbol `tracker_migrate_reverse_reconstruct` (file + symbol, no line number). SHOULD-1 —
+§2.4.2's batch-codec attribution restated as-built (production calls the single-record
+`_tmf_gz64_encode` / `_tmr_decode_body_blob`; Check 49 sub-invokes the ADDITIVE batch siblings
+from the same libs; equivalence-bound by the forward 2.9.1–2.9.4 / reverse 2.1e-i/ii
+byte-identity tests; Check 50 forbids a reproduced codec). SHOULD-2 / NIT-3 — as-built notes
+adjoined to the end-of-§1 summary blockquote and the §5 audit table; both added to the
+byte-stable disposition list above. NIT-1 — the §2.4.1 comparator enumeration corrected to
+CRLF/CR→LF (matching the as-built `norm()` in `_tmr_check_blob_h2_divergence`). NIT-2 — the two
+carried-over `file:line` refs re-anchored by section/field (`ARCHITECTURE-V3.3-DELTA.md` §6.1;
+the `backlog/BD-204.md` DECISION TIERS HARD bullet). After this pass, every reconciled claim
+satisfies the file+symbol/never-line-numbers rule in the table above.
+
+---
 
 **End of ARCHITECTURE-BD-204.md**
