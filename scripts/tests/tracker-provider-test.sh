@@ -107,6 +107,16 @@ cat > "$FAKE_BIN_DIR/gh" <<'FAKE_GH'
 if [[ -n "${FAKE_GH_LOG:-}" ]]; then
     printf '%s\n' "$*" >> "$FAKE_GH_LOG"
 fi
+# BD-204: when FAKE_GH_REPO_VIEW_FAIL is set, any `repo ...` call
+# reproduces the non-clone-cwd failure of the real argument-less
+# `gh repo view` (which does NOT honor GH_REPO — verified empirically
+# 2026-06-10). The check runs AFTER logging so a regression that
+# re-consults `gh repo view` is visible in FAKE_GH_LOG and fails the
+# op (rc=1), exactly like the live rehearsal failure.
+if [[ -n "${FAKE_GH_REPO_VIEW_FAIL:-}" && "${1:-}" == "repo" ]]; then
+    echo "failed to run git: fatal: not a git repository (or any of the parent directories): .git" >&2
+    exit 1
+fi
 _fake_gh_select_stdout() {
     if [[ -z "${FAKE_GH_DISPATCH_DIR:-}" ]]; then
         printf '%s' "${FAKE_GH_STDOUT_FILE:-}"
@@ -163,6 +173,9 @@ if [[ "$which_gh" != "$FAKE_BIN_DIR/gh" ]]; then
     exit 2
 fi
 
+# BD-204: start from a known GH_REPO-unset state (see reset_fake_gh).
+unset GH_REPO
+
 # Source the library under test.
 # shellcheck disable=SC1091
 source "$LIB_DIR/tracker-provider.sh"
@@ -170,9 +183,16 @@ source "$LIB_DIR/tracker-provider.sh"
 source "$LIB_DIR/tracker-provider-gh.sh"
 
 # Helper: reset fake gh vars between tests.
+# GH_REPO is scrubbed too (BD-204): an ambient GH_REPO from the
+# developer's shell — or one exported by a previous test — would flip
+# _gh_owner_repo from the `gh repo view` fallback path (which the
+# legacy 1.17/1.20 chain tests pin) to the GH_REPO-preferred path.
+# No tracker.toml is in scope in this suite, so tracker_gh_repo_setup
+# never re-exports it. FAKE_GH_REPO_VIEW_FAIL is the BD-204 fake-gh
+# kill switch for `gh repo view`.
 reset_fake_gh() {
     unset FAKE_GH_STDOUT_FILE FAKE_GH_STDERR_FILE FAKE_GH_EXIT FAKE_GH_LOG \
-          FAKE_GH_DISPATCH_DIR
+          FAKE_GH_DISPATCH_DIR FAKE_GH_REPO_VIEW_FAIL GH_REPO
 }
 
 # Helper: write content to a tmp file and echo path.
@@ -337,7 +357,12 @@ assert_eq "1.16 set_milestone v11.1" "v11.1" "$(printf '%s' "$out" | jq -r '.mil
 # (BD-111). Comment-marker path remains available via provider_comment()
 # / provider_raw() for callers explicitly wanting the V3 §28 fallback.
 #
-# This test exercises the gh invocation chain:
+# This test exercises the gh invocation chain. Owner/repo resolution
+# goes through _gh_owner_repo (BD-204): GH_REPO is unset in this
+# suite's default state (reset_fake_gh scrubs it), so the chain takes
+# the documented FALLBACK path — `gh repo view` IS consulted here.
+# The GH_REPO-preferred path (no `gh repo view` at all) is pinned by
+# 1.17f/1.17g below.
 #   1. gh repo view --json nameWithOwner --jq .nameWithOwner   → "owner/repo"
 #   2. gh api /repos/owner/repo/issues/42 --jq .node_id        → "NODE_42"
 #   3. gh api /repos/owner/repo/issues/99 --jq .node_id        → "NODE_99"
@@ -363,7 +388,7 @@ out=$(provider_link 42 99 blocked-by)
 assert_eq "1.17a link kind=blocked-by"  "blocked-by" "$(printf '%s' "$out" | jq -r '.kind')"
 assert_eq "1.17a link linked_to=99"     "99"         "$(printf '%s' "$out" | jq -r '.linked_to')"
 log_contents=$(cat "$log")
-assert_contains "1.17a invokes gh repo view"           "$log_contents" "repo view"
+assert_contains "1.17a invokes gh repo view (GH_REPO-unset fallback)" "$log_contents" "repo view"
 assert_contains "1.17a resolves issue 42 node-id"      "$log_contents" "/repos/optiquity/pack/issues/42"
 assert_contains "1.17a resolves issue 99 node-id"      "$log_contents" "/repos/optiquity/pack/issues/99"
 assert_contains "1.17a invokes graphql addBlockedBy"   "$log_contents" "addBlockedBy"
@@ -425,6 +450,70 @@ reset_fake_gh
 out=$(provider_link 42 99 duplicates)
 assert_eq "1.17e link kind=duplicates" "duplicates" "$(printf '%s' "$out" | jq -r '.kind')"
 
+# 1.17f BD-204 (BD-129-class gap): GH_REPO-PREFERRED resolution.
+# Argument-less `gh repo view` does NOT honor GH_REPO and dies from a
+# non-clone cwd ("fatal: not a git repository") — both BD-204 live
+# rehearsal runs failed at forward step-7 exactly here. With GH_REPO
+# set, the link chain must succeed WITHOUT consulting `gh repo view`:
+# FAKE_GH_REPO_VIEW_FAIL makes the fake reproduce the non-clone-cwd
+# death, so any regression back to repo-view slug resolution fails
+# this test loudly instead of passing via a friendly stub.
+reset_fake_gh
+export FAKE_GH_DISPATCH_DIR="$LINK_DISPATCH_DIR"
+export FAKE_GH_REPO_VIEW_FAIL=1
+export FAKE_GH_LOG="$log"
+export GH_REPO="optiquity/pack"
+: > "$log"
+out=$(provider_link 42 99 blocked-by)
+rc17f=$?
+assert_eq "1.17f link succeeds via GH_REPO with repo-view dead (rc=0)" "0" "$rc17f"
+assert_eq "1.17f link kind=blocked-by"  "blocked-by" "$(printf '%s' "$out" | jq -r '.kind')"
+log_contents=$(cat "$log")
+if printf '%s' "$log_contents" | grep -q "repo view"; then
+    t_fail "1.17f must not consult 'gh repo view' when GH_REPO is set" "log: ${log_contents:0:200}"
+else
+    t_pass "1.17f does not consult 'gh repo view' when GH_REPO is set"
+fi
+assert_contains "1.17f REST path uses GH_REPO slug"   "$log_contents" "/repos/optiquity/pack/issues/42"
+assert_contains "1.17f graphql addBlockedBy fires"    "$log_contents" "addBlockedBy"
+
+# 1.17g host-prefixed GH_REPO: tracker-config.sh's canonical export
+# shape is `[HOST/]OWNER/REPO`; REST paths and owner/name splits need
+# bare `OWNER/REPO`, so _gh_owner_repo strips the HOST/ prefix.
+export GH_REPO="github.com/optiquity/pack"
+: > "$log"
+out=$(provider_link 42 99 blocked-by)
+rc17g=$?
+assert_eq "1.17g link succeeds via host-prefixed GH_REPO (rc=0)" "0" "$rc17g"
+log_contents=$(cat "$log")
+assert_contains "1.17g REST path uses bare OWNER/REPO (HOST/ stripped)" \
+    "$log_contents" "/repos/optiquity/pack/issues/42"
+if printf '%s' "$log_contents" | grep -q "/repos/github.com/"; then
+    t_fail "1.17g HOST/ prefix must not leak into REST path" "log: ${log_contents:0:200}"
+else
+    t_pass "1.17g HOST/ prefix does not leak into REST path"
+fi
+
+# 1.17h degenerate GH_REPO shapes (BD-204 review F-4): the post-strip
+# shape guard in _gh_owner_repo rejects >=3-slash and trailing-slash
+# values with a typed validation error instead of passing a malformed
+# slug through to the REST path. FAKE_GH_REPO_VIEW_FAIL stays exported
+# from 1.17f, so any silent fallback to `gh repo view` would also fail
+# loudly here.
+export GH_REPO="a/b/c/d"
+err=$(provider_link 42 99 blocked-by 2>&1 1>/dev/null)
+rc17h=$?
+assert_eq "1.17h link fails loud on degenerate GH_REPO=a/b/c/d (rc=1)" "1" "$rc17h"
+assert_contains "1.17h typed validation error names the slug contract" \
+    "$err" "not a [HOST/]OWNER/REPO slug"
+export GH_REPO="optiquity/pack/"
+err=$(provider_link 42 99 blocked-by 2>&1 1>/dev/null)
+rc17h2=$?
+assert_eq "1.17h link fails loud on trailing-slash GH_REPO (rc=1)" "1" "$rc17h2"
+assert_contains "1.17h trailing-slash rejection is the typed validation error" \
+    "$err" "not a [HOST/]OWNER/REPO slug"
+unset GH_REPO FAKE_GH_REPO_VIEW_FAIL
+
 # Cleanup 1.17 dispatch dir.
 rm -rf "$LINK_DISPATCH_DIR"
 rm -f "$log"
@@ -449,7 +538,10 @@ assert_contains "1.19 unlink duplicates → validation (comment-based)" "$err" "
 
 # 1.20 unlink — first-class GraphQL `removeBlockedBy` for blocks/blocked-by
 # (BD-111 scope-extended 2026-05-15; symmetric pair of 1.17 addBlockedBy).
-# Same dispatch-mode fake-gh harness as 1.17. Asserts the gh argv chain:
+# Same dispatch-mode fake-gh harness as 1.17. As in 1.17, owner/repo
+# resolution goes through _gh_owner_repo (BD-204) and GH_REPO is unset
+# here, so step 1 below is the documented fallback; the GH_REPO-
+# preferred path for unlink is pinned by 1.20d. Asserts the gh argv chain:
 #   1. gh repo view --json nameWithOwner --jq .nameWithOwner   → "owner/repo"
 #   2. gh api /repos/owner/repo/issues/42 --jq .node_id        → "NODE_42"
 #   3. gh api /repos/owner/repo/issues/99 --jq .node_id        → "NODE_99"
@@ -471,7 +563,7 @@ out=$(provider_unlink 42 99 blocked-by)
 assert_eq "1.20a unlink kind=blocked-by"     "blocked-by" "$(printf '%s' "$out" | jq -r '.kind')"
 assert_eq "1.20a unlink unlinked_from=99"    "99"         "$(printf '%s' "$out" | jq -r '.unlinked_from')"
 log_contents=$(cat "$log")
-assert_contains "1.20a invokes gh repo view"             "$log_contents" "repo view"
+assert_contains "1.20a invokes gh repo view (GH_REPO-unset fallback)" "$log_contents" "repo view"
 assert_contains "1.20a resolves issue 42 node-id"        "$log_contents" "/repos/optiquity/pack/issues/42"
 assert_contains "1.20a resolves issue 99 node-id"        "$log_contents" "/repos/optiquity/pack/issues/99"
 assert_contains "1.20a invokes graphql removeBlockedBy"  "$log_contents" "removeBlockedBy"
@@ -521,6 +613,28 @@ assert_contains "1.20c unlink chain HTTP-404 → typed not-found" "$err" "ERROR:
 rm -f "$nf_err_file"
 unset FAKE_GH_DISPATCH_DIR FAKE_GH_STDERR_FILE FAKE_GH_EXIT
 
+# 1.20d BD-204: unlink takes the GH_REPO-preferred path too — same
+# contract as 1.17f, on the removeBlockedBy side. Repo-view dead;
+# resolution must come from GH_REPO.
+reset_fake_gh
+export FAKE_GH_DISPATCH_DIR="$UNLINK_DISPATCH_DIR"
+export FAKE_GH_REPO_VIEW_FAIL=1
+export FAKE_GH_LOG="$log"
+export GH_REPO="optiquity/pack"
+: > "$log"
+out=$(provider_unlink 42 99 blocked-by)
+rc20d=$?
+assert_eq "1.20d unlink succeeds via GH_REPO with repo-view dead (rc=0)" "0" "$rc20d"
+log_contents=$(cat "$log")
+if printf '%s' "$log_contents" | grep -q "repo view"; then
+    t_fail "1.20d must not consult 'gh repo view' when GH_REPO is set" "log: ${log_contents:0:200}"
+else
+    t_pass "1.20d does not consult 'gh repo view' when GH_REPO is set"
+fi
+assert_contains "1.20d REST path uses GH_REPO slug"      "$log_contents" "/repos/optiquity/pack/issues/42"
+assert_contains "1.20d graphql removeBlockedBy fires"    "$log_contents" "removeBlockedBy"
+unset GH_REPO FAKE_GH_REPO_VIEW_FAIL
+
 # Cleanup 1.20 dispatch dir.
 rm -rf "$UNLINK_DISPATCH_DIR"
 rm -f "$log"
@@ -550,6 +664,75 @@ else
     fi
 fi
 rm -f "$empty_file"
+
+# 1.21b BD-204: sub_issue_create (extension-absent GraphQL path)
+# resolves owner/repo via GH_REPO with `gh repo view` dead — same
+# contract as 1.17f for the addSubIssue chain. The extension cache is
+# pinned to "no" so the GraphQL path (the only one that resolves a
+# slug) is taken. The graphql response is discarded by the op, so any
+# stub content works.
+reset_fake_gh
+_GH_SUB_ISSUE_EXT_CACHED="no"
+SUB_DISPATCH_DIR=$(mktemp -d -t prov-sub-dispatch.XXXXXX)
+printf '%s' "NODE_100" > "$SUB_DISPATCH_DIR/api-issue-100"
+printf '%s' "NODE_42"  > "$SUB_DISPATCH_DIR/api-issue-42"
+printf '%s' "{}"       > "$SUB_DISPATCH_DIR/api-graphql"
+export FAKE_GH_DISPATCH_DIR="$SUB_DISPATCH_DIR"
+export FAKE_GH_REPO_VIEW_FAIL=1
+export GH_REPO="optiquity/pack"
+log=$(mktemp -t prov-sub-log.XXXXXX); export FAKE_GH_LOG="$log"
+out=$(provider_sub_issue_create 100 '{"existing_id":"42"}')
+rc21b=$?
+assert_eq "1.21b sub_issue_create succeeds via GH_REPO with repo-view dead (rc=0)" "0" "$rc21b"
+assert_eq "1.21b parent_id=100" "100" "$(printf '%s' "$out" | jq -r '.parent_id')"
+assert_eq "1.21b child_id=42"   "42"  "$(printf '%s' "$out" | jq -r '.child_id')"
+log_contents=$(cat "$log")
+if printf '%s' "$log_contents" | grep -q "repo view"; then
+    t_fail "1.21b must not consult 'gh repo view' when GH_REPO is set" "log: ${log_contents:0:200}"
+else
+    t_pass "1.21b does not consult 'gh repo view' when GH_REPO is set"
+fi
+assert_contains "1.21b REST path uses GH_REPO slug" "$log_contents" "/repos/optiquity/pack/issues/100"
+assert_contains "1.21b graphql addSubIssue fires"   "$log_contents" "addSubIssue"
+
+# 1.21c BD-204: sub_issue_list's GraphQL owner/name SPLIT strips the
+# HOST/ prefix from a host-prefixed GH_REPO (the canonical
+# [HOST/]OWNER/REPO shape tracker-config.sh exports) — `owner` must
+# never come out as the host segment.
+export GH_REPO="github.com/optiquity/pack"
+: > "$log"
+out=$(provider_sub_issue_list 100)
+rc21c=$?
+assert_eq "1.21c sub_issue_list succeeds via host-prefixed GH_REPO (rc=0)" "0" "$rc21c"
+log_contents=$(cat "$log")
+assert_contains "1.21c graphql owner=optiquity (HOST/ stripped)" "$log_contents" "owner=optiquity"
+assert_contains "1.21c graphql repo=pack"                        "$log_contents" "repo=pack"
+if printf '%s' "$log_contents" | grep -q "owner=github.com"; then
+    t_fail "1.21c HOST/ prefix must not leak into owner split" "log: ${log_contents:0:200}"
+else
+    t_pass "1.21c HOST/ prefix does not leak into owner split"
+fi
+
+# 1.21d BD-204: sub_issue_unlink (extension-absent removeSubIssue
+# path) — fifth and last of the five former repo-view resolution
+# sites — also resolves via GH_REPO with repo-view dead.
+export GH_REPO="optiquity/pack"
+: > "$log"
+out=$(provider_sub_issue_unlink 100 42)
+rc21d=$?
+assert_eq "1.21d sub_issue_unlink succeeds via GH_REPO with repo-view dead (rc=0)" "0" "$rc21d"
+log_contents=$(cat "$log")
+if printf '%s' "$log_contents" | grep -q "repo view"; then
+    t_fail "1.21d must not consult 'gh repo view' when GH_REPO is set" "log: ${log_contents:0:200}"
+else
+    t_pass "1.21d does not consult 'gh repo view' when GH_REPO is set"
+fi
+assert_contains "1.21d graphql removeSubIssue fires" "$log_contents" "removeSubIssue"
+
+rm -rf "$SUB_DISPATCH_DIR"
+rm -f "$log"
+unset GH_REPO FAKE_GH_REPO_VIEW_FAIL FAKE_GH_LOG FAKE_GH_DISPATCH_DIR
+unset _GH_SUB_ISSUE_EXT_CACHED
 
 # 1.22 raw — graphql path requires body
 reset_fake_gh

@@ -954,6 +954,52 @@ assert_eq "7.3 second edge number=55" "55" "$g73_second"
 PATH="$PATH_SAVED"
 rm -rf "$FAKE_G7"
 
+# 7.3b BD-204 review F-1: the GH_REPO-preferred path strips the
+# optional HOST/ prefix from the canonical [HOST/]OWNER/REPO export
+# shape BEFORE the cut -d/ owner/name split — a verbatim host-prefixed
+# value yielded owner=HOST, name=OWNER (GraphQL NOT_FOUND, swallowed
+# best-effort → silent [] Blockers loss on GHE reverse migrations).
+# The fake gh logs its argv and DIES on `repo view`, so this leg also
+# proves the GH_REPO value (not the fallback) supplied the slug.
+FAKE_G73B=$(mktemp -d -t tmr-fake-g73b.XXXXXX)
+G73B_LOG="$FAKE_G73B/gh.log"
+cat > "$FAKE_G73B/gh" <<FG73B
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$G73B_LOG"
+case "\$1 \$2" in
+    "repo view")   echo "fatal: not a git repository" >&2; exit 1 ;;
+    "api graphql") cat "$G7_FIXTURE" ;;
+    *)             ;;
+esac
+exit 0
+FG73B
+chmod +x "$FAKE_G73B/gh"
+PATH="$FAKE_G73B:$PATH_SAVED"
+export GH_REPO="github.example.com/fixture-org/fixture-repo"
+g73b_edges=$(_tmr_fetch_first_class_blocked_by 42)
+g73b_count=$(printf '%s' "$g73b_edges" | jq 'length' 2>/dev/null || echo 0)
+assert_eq "7.3b host-prefixed GH_REPO: fetch parses 2 edges" "2" "$g73b_count"
+g73b_query=$(grep "api graphql" "$G73B_LOG")
+assert_contains     "7.3b owner split = fixture-org (HOST/ stripped)" \
+    "$g73b_query" 'owner: "fixture-org"'
+assert_contains     "7.3b name split = fixture-repo" \
+    "$g73b_query" 'name: "fixture-repo"'
+assert_not_contains "7.3b host must not leak into owner split" \
+    "$g73b_query" 'owner: "github.example.com"'
+# Plain owner/repo still works verbatim (one-slash shape is never
+# inspected by the strip).
+: > "$G73B_LOG"
+export GH_REPO="fixture-org/fixture-repo"
+g73b_edges=$(_tmr_fetch_first_class_blocked_by 42)
+g73b_count=$(printf '%s' "$g73b_edges" | jq 'length' 2>/dev/null || echo 0)
+assert_eq "7.3b plain GH_REPO: fetch parses 2 edges" "2" "$g73b_count"
+g73b_query=$(grep "api graphql" "$G73B_LOG")
+assert_contains "7.3b plain GH_REPO: owner split = fixture-org" \
+    "$g73b_query" 'owner: "fixture-org"'
+unset GH_REPO
+PATH="$PATH_SAVED"
+rm -rf "$FAKE_G73B"
+
 # 7.4 fetch helper degrades to [] on missing/empty response.
 FAKE_G74=$(mktemp -d -t tmr-fake-g74.XXXXXX)
 cat > "$FAKE_G74/gh" <<'FG74'

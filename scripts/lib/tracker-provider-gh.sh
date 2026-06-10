@@ -130,6 +130,83 @@ _gh_run() {
     printf '%s' "$stdout"
 }
 
+# _gh_owner_repo
+# Resolve the bare OWNER/REPO slug used by REST paths
+# (/repos/<owner_repo>/issues/N) and GraphQL owner/name splits.
+#
+# BD-204 (closes a BD-129-class gap): the previous idiom at the five
+# resolution sites in this file — argument-less `gh repo view --json
+# nameWithOwner` — does NOT honor the GH_REPO env var. From a working
+# directory that is not a clone of the target repo it dies with
+# "failed to run git: fatal: not a git repository", killing
+# link/unlink/sub-issue ops before any mutation fires (observed
+# empirically in the BD-204 live rehearsal: the forward migration
+# runs from a temp seeded tree, not a clone). The five sites slipped
+# past BD-129 because they resolve the slug ITSELF rather than
+# passing --repo to an operation.
+#
+# Resolution order:
+#   1. Ensure tracker_gh_repo_setup has run (same guard _gh_run uses)
+#      so GH_REPO is exported from the active tracker.toml's
+#      backend.repo when a tracker config is in scope.
+#   2. Prefer ${GH_REPO} when set. tracker-config.sh exports the
+#      canonical `[HOST/]OWNER/REPO` shape; strip the optional HOST/
+#      prefix because REST paths and owner/name splits need the bare
+#      `OWNER/REPO` form. A set-but-degenerate GH_REPO (slash-less,
+#      >=3 slashes like a/b/c/d, empty owner or repo segment after
+#      the strip e.g. a trailing slash) is a typed validation error
+#      (fail loud, never silently fall back past a caller-supplied
+#      value). Exception: a leading slash on a two-slash value
+#      (/owner/repo) is normalized — the empty leading segment is
+#      stripped as a zero-length HOST — and accepted.
+#   3. ONLY when GH_REPO is unset/empty: fall back to `gh repo view
+#      --json nameWithOwner` via _gh_run (which classifies failures
+#      into typed errors). This path requires a cwd whose git remote
+#      points at a known GitHub host.
+#   4. If neither source yields a slug, fail loud with a typed
+#      validation error.
+_gh_owner_repo() {
+    if declare -f tracker_gh_repo_setup >/dev/null 2>&1; then
+        tracker_gh_repo_setup
+    fi
+    local slug="${GH_REPO:-}"
+    if [[ -n "$slug" ]]; then
+        # [HOST/]OWNER/REPO → OWNER/REPO (two slashes → strip the
+        # leading HOST/ segment; one slash → already bare).
+        case "$slug" in
+            */*/*) slug="${slug#*/}" ;;
+        esac
+        # Post-strip shape guard (BD-204 review F-4): accept exactly
+        # OWNER/REPO — one slash, both segments non-empty. Degenerate
+        # shapes (slash-less; >=3 slashes pre-strip, e.g. a/b/c/d;
+        # trailing slash; empty owner or repo segment post-strip,
+        # e.g. /owner or host//repo) fail loud here with a typed
+        # validation error instead of passing a malformed slug through
+        # to the REST path / owner-name split. One benign exception:
+        # a leading slash on a two-slash value (/owner/repo) is NOT
+        # rejected — the empty leading segment is stripped above as a
+        # zero-length HOST and the remaining valid OWNER/REPO is
+        # accepted.
+        local owner_part="${slug%%/*}"
+        local repo_part="${slug#*/}"
+        if [[ "$slug" != */* || -z "$owner_part" || -z "$repo_part" \
+              || "$repo_part" == */* ]]; then
+            tracker_error_emit "validation" \
+                "owner_repo: GH_REPO='$GH_REPO' is not a [HOST/]OWNER/REPO slug"
+            return 1
+        fi
+        printf '%s' "$slug"
+        return 0
+    fi
+    slug=$(_gh_run gh repo view --json nameWithOwner --jq '.nameWithOwner') || return 1
+    if [[ -z "$slug" ]]; then
+        tracker_error_emit "validation" \
+            "owner_repo: cannot resolve OWNER/REPO (GH_REPO unset and 'gh repo view' returned empty); set backend.repo in tracker.toml or export GH_REPO"
+        return 1
+    fi
+    printf '%s' "$slug"
+}
+
 # Default JSON field set for list (matches V1 §2.2 list-projection).
 _gh_list_fields() {
     echo "number,title,state,labels,milestone,assignees,createdAt,updatedAt,url"
@@ -517,11 +594,12 @@ tracker_provider_gh_link() {
     case "$kind" in
         blocks|blocked-by)
             # First-class GH issue-dependency mutation.
-            # Resolve owner/repo and node-ids (matches sub_issue_create
+            # Resolve owner/repo via _gh_owner_repo (GH_REPO-preferred,
+            # BD-204) and node-ids (matches sub_issue_create
             # extension-absent path).
             local owner_repo issue_node other_node query
             local source_node target_node
-            owner_repo=$(_gh_run gh repo view --json nameWithOwner --jq '.nameWithOwner') || return 1
+            owner_repo=$(_gh_owner_repo) || return 1
             issue_node=$(_gh_run gh api "/repos/$owner_repo/issues/$id"       --jq '.node_id') || return 1
             other_node=$(_gh_run gh api "/repos/$owner_repo/issues/$other_id" --jq '.node_id') || return 1
             # blocked-by: id is blocked by other_id  → addBlockedBy(issueId=id,       blockingIssueId=other_id)
@@ -601,11 +679,12 @@ tracker_provider_gh_unlink() {
         blocks|blocked-by)
             # First-class GH issue-dependency removal mutation
             # (BD-111 symmetric pair of addBlockedBy in
-            # tracker_provider_gh_link). Resolve owner/repo and
+            # tracker_provider_gh_link). Resolve owner/repo (via
+            # _gh_owner_repo, GH_REPO-preferred — BD-204) and
             # node-ids the same way the link side does.
             local owner_repo issue_node other_node query
             local source_node target_node
-            owner_repo=$(_gh_run gh repo view --json nameWithOwner --jq '.nameWithOwner') || return 1
+            owner_repo=$(_gh_owner_repo) || return 1
             issue_node=$(_gh_run gh api "/repos/$owner_repo/issues/$id"       --jq '.node_id') || return 1
             other_node=$(_gh_run gh api "/repos/$owner_repo/issues/$other_id" --jq '.node_id') || return 1
             # blocked-by: id no-longer blocked by other_id  → removeBlockedBy(issueId=id,       blockingIssueId=other_id)
@@ -663,7 +742,7 @@ tracker_provider_gh_sub_issue_create() {
         _gh_run gh sub-issue add --parent "$parent_id" --child "$child_id" >/dev/null || return 1
     else
         local owner_repo parent_node child_node query
-        owner_repo=$(_gh_run gh repo view --json nameWithOwner --jq '.nameWithOwner') || return 1
+        owner_repo=$(_gh_owner_repo) || return 1
         parent_node=$(_gh_run gh api "/repos/$owner_repo/issues/$parent_id" --jq '.node_id') || return 1
         child_node=$(_gh_run gh api  "/repos/$owner_repo/issues/$child_id"  --jq '.node_id') || return 1
         query='mutation($parentId: ID!, $childId: ID!) { addSubIssue(input: { issueId: $parentId, subIssueId: $childId }) { issue { number } } }'
@@ -683,7 +762,7 @@ tracker_provider_gh_sub_issue_list() {
         _gh_run gh sub-issue list --parent "$parent_id" --json number,title,state || return 1
     else
         local owner_repo owner repo query
-        owner_repo=$(_gh_run gh repo view --json nameWithOwner --jq '.nameWithOwner') || return 1
+        owner_repo=$(_gh_owner_repo) || return 1
         owner=$(printf '%s' "$owner_repo" | cut -d/ -f1)
         repo=$(printf  '%s' "$owner_repo" | cut -d/ -f2)
         query='query($owner: String!, $repo: String!, $number: Int!) { repository(owner: $owner, name: $repo) { issue(number: $number) { subIssues(first: 100) { nodes { number title state } } } } }'
@@ -703,7 +782,7 @@ tracker_provider_gh_sub_issue_unlink() {
         _gh_run gh sub-issue remove --parent "$parent_id" --child "$child_id" >/dev/null || return 1
     else
         local owner_repo parent_node child_node query
-        owner_repo=$(_gh_run gh repo view --json nameWithOwner --jq '.nameWithOwner') || return 1
+        owner_repo=$(_gh_owner_repo) || return 1
         parent_node=$(_gh_run gh api "/repos/$owner_repo/issues/$parent_id" --jq '.node_id') || return 1
         child_node=$(_gh_run gh api  "/repos/$owner_repo/issues/$child_id"  --jq '.node_id') || return 1
         query='mutation($parentId: ID!, $childId: ID!) { removeSubIssue(input: { issueId: $parentId, subIssueId: $childId }) { issue { number } } }'

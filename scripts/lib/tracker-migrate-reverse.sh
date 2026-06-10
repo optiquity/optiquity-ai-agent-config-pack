@@ -397,7 +397,26 @@ _tmr_fetch_first_class_blocked_by() {
     # may export GH_REPO; failing that, fall back to `gh repo view`.
     local owner_repo owner repo
     if [[ -n "${GH_REPO:-}" && "$GH_REPO" == */* ]]; then
+        # BD-204 review F-1: tracker-config exports the canonical
+        # [HOST/]OWNER/REPO shape (tracker_gh_repo_setup in
+        # tracker-config.sh documents both 'owner/repo' and
+        # 'github.example.com/owner/repo'); strip the optional HOST/
+        # prefix so the cut -d/ owner/name split below yields
+        # OWNER/REPO, not HOST/OWNER. A verbatim host-prefixed value
+        # made the GraphQL repository(owner:, name:) lookup NOT_FOUND
+        # and silently degraded Blockers to [] during GHE reverse
+        # migrations. Inline strip (same case */*/* idiom as the
+        # provider lib) rather than a cross-lib call — _gh_owner_repo
+        # is a private helper of tracker-provider-gh.sh. The
+        # best-effort contract is preserved: a still-degenerate value
+        # always keeps >=1 slash post-strip (so the [] shape guard
+        # below cannot catch it) and instead degrades via the failed
+        # GraphQL repository() lookup → swallowed provider_raw error
+        # branch → [] — it never aborts the reverse run.
         owner_repo="$GH_REPO"
+        case "$owner_repo" in
+            */*/*) owner_repo="${owner_repo#*/}" ;;
+        esac
     else
         owner_repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null) || {
             echo "[]"
