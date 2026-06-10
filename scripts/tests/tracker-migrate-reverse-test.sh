@@ -1017,7 +1017,7 @@ cat > "$FAKE_G76/gh" <<'FG76'
 # decoder falls through to body comment markers.
 case "$1 $2" in
     "repo view")   echo "fixture-org/fixture-repo" ;;
-    "api graphql") echo '{"data":{"repository":{"issue":{"blockedByIssues":{"nodes":[]}}}}}' ;;
+    "api graphql") echo '{"data":{"repository":{"issue":{"blockedBy":{"nodes":[]}}}}}' ;;
     *) ;;
 esac
 exit 0

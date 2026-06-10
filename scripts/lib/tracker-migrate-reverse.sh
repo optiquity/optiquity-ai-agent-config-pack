@@ -370,19 +370,15 @@ PYEOF
 # back to comment-marker-only behavior, which is still strictly an
 # improvement over the pre-BD-111 state for legacy issues.
 #
-# GraphQL query — repository(owner, name).issue(number).blockedByIssues
-# (first: 50) { nodes { number } }. The field name `blockedByIssues`
-# is the symmetric guess paired with the `addBlockedBy` mutation
-# (EXTERNAL-RESEARCH §1.3 line 86) and the existing `subIssues` field
-# accessor used at `tracker_provider_gh_sub_issue_list:686` (which
-# pairs with the `addSubIssue` mutation). The cap of 50 matches the
-# documented per-relationship ceiling (EXTERNAL-RESEARCH §1.8 line
-# 188; capabilities.dependencies.per_relationship_ceiling=50). The
-# exact field name is unverified offline; flagged for confirmation
-# at BD-088 / BD-093 integration-test land-time same as the link /
-# unlink mutation names. If GH's actual field is named `blockedBy`
-# (no `Issues` suffix) or `blockingIssues`, the fix is one line in
-# the query string below plus one path in the jq filter.
+# GraphQL query — repository(owner, name).issue(number).blockedBy
+# (first: 50) { nodes { number } }. The field name `blockedBy` is
+# LIVE-VERIFIED (schema introspection of `Issue`, 2026-06-10, BD-204):
+# `Issue.blockedBy` is an IssueConnection (args orderBy/after/before/
+# first/last) — the same nodes { number } shape assumed here, pairing
+# with the `addBlockedBy` mutation the forward side writes. The cap
+# of 50 matches the documented per-relationship ceiling
+# (EXTERNAL-RESEARCH §1.8 line 188;
+# capabilities.dependencies.per_relationship_ceiling=50).
 #
 # Routes through `provider_raw "POST" "graphql" "$query"`; any backend
 # error (auth, network, schema-reshape) classifies via
@@ -418,7 +414,7 @@ _tmr_fetch_first_class_blocked_by() {
     # values are tracker-controlled (owner/repo from gh; number is
     # integer), so direct interpolation is safe.
     local query response
-    query='query { repository(owner: "'"$owner"'", name: "'"$repo"'") { issue(number: '"$issue_number"') { blockedByIssues(first: 50) { nodes { number } } } } }'
+    query='query { repository(owner: "'"$owner"'", name: "'"$repo"'") { issue(number: '"$issue_number"') { blockedBy(first: 50) { nodes { number } } } } }'
     # provider_raw routes through _gh_run → _gh_classify_error. We
     # swallow any error and fall back to []; the reverse decoder must
     # remain best-effort per the function header rationale.
@@ -431,12 +427,12 @@ _tmr_fetch_first_class_blocked_by() {
         return 0
     fi
     # Extract the issue numbers. A well-formed response is:
-    #   {"data": {"repository": {"issue": {"blockedByIssues": {"nodes": [{"number": N}, ...]}}}}}
+    #   {"data": {"repository": {"issue": {"blockedBy": {"nodes": [{"number": N}, ...]}}}}}
     # The jq filter is defensive against missing keys (`// empty`)
     # and emits the integer numbers as a JSON array. On parse failure,
     # echo [] (the // [] guard at the end).
     printf '%s' "$response" \
-        | jq -c '[.data.repository.issue.blockedByIssues.nodes[]?.number] // []' 2>/dev/null \
+        | jq -c '[.data.repository.issue.blockedBy.nodes[]?.number] // []' 2>/dev/null \
         || echo "[]"
 }
 
@@ -445,7 +441,7 @@ _tmr_fetch_first_class_blocked_by() {
 # is open-string); for v11.0 we combine three sources:
 #
 #   1. (NEW — BD-111 retrofit, PACK-REVIEW-BD-111 F1) First-class
-#      `blockedByIssues` GraphQL edges. Pre-fetched by the caller
+#      `blockedBy` GraphQL edges. Pre-fetched by the caller
 #      (typically `tracker_migrate_reverse_reconstruct`) via
 #      `_tmr_fetch_first_class_blocked_by` and passed in as a JSON
 #      array of gh-issue-numbers (arg 4). Post-BD-111 writes from
@@ -610,7 +606,7 @@ print(m.group(1) if m else "")')
     issue_number=$(printf  '%s' "$issue" | jq -r '.number // ""')
 
     # BD-111 retrofit (PACK-REVIEW-BD-111 F1, scope-extension second
-    # pass 2026-05-15): fetch first-class `blockedByIssues` GraphQL
+    # pass 2026-05-15): fetch first-class `blockedBy` GraphQL
     # edges so post-BD-111 forward writes round-trip through reverse.
     # Best-effort — empty array on any error (auth, network, schema-
     # reshape); the decoder still reads body comment markers as the

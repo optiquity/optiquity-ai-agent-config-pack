@@ -217,7 +217,7 @@ case "$1 $2" in
         # BD-111 retrofit (PACK-REVIEW-BD-111 F1, scope-extension second
         # pass 2026-05-15): the round-trip fake-gh now handles the
         # `addBlockedBy` mutation (forward write side) and the
-        # `blockedByIssues` query (reverse read side) so post-BD-111
+        # `blockedBy` query (reverse read side) so post-BD-111
         # forward writes round-trip through reverse correctly.
         #
         # Arg parse: walk argv looking for -f query=... and -F key=val.
@@ -236,7 +236,7 @@ case "$1 $2" in
                     shift 2 ;;
                 -F) case "$2" in
                         issueId=*)          f_issue_id="${2#issueId=}" ;;
-                        blockedByIssueId=*) f_blocked_by="${2#blockedByIssueId=}" ;;
+                        blockingIssueId=*)  f_blocked_by="${2#blockingIssueId=}" ;;
                         owner=*)            f_owner="${2#owner=}" ;;
                         repo=*)             f_repo="${2#repo=}" ;;
                         number=*)           f_number="${2#number=}" ;;
@@ -270,7 +270,7 @@ case "$1 $2" in
                 printf '%s' "$new_st" > "$STATE"
             fi
             echo '{"data":{"removeBlockedBy":{"issue":{"number":0}}}}'
-        elif [[ "$gquery" == *"blockedByIssues"* ]]; then
+        elif [[ "$gquery" == *"blockedBy(first"* ]]; then
             # Reverse read: query embeds owner/name/number directly via
             # shell interpolation (per _tmr_fetch_first_class_blocked_by).
             # Extract the issue number from the query string.
@@ -283,7 +283,7 @@ case "$1 $2" in
                 edges='[]'
             fi
             jq -nc --argjson nodes "$edges" \
-                '{data: {repository: {issue: {blockedByIssues: {nodes: $nodes}}}}}'
+                '{data: {repository: {issue: {blockedBy: {nodes: $nodes}}}}}'
         else
             echo "{}"
         fi
@@ -511,11 +511,11 @@ fi
 
 # Blockers — BD-111 closes the round-trip gap. With the BD-111 link
 # swap (forward writes addBlockedBy GraphQL edge) plus the BD-111
-# retrofit per PACK-REVIEW-BD-111 F1 (reverse reads blockedByIssues
+# retrofit per PACK-REVIEW-BD-111 F1 (reverse reads blockedBy
 # GraphQL edges in addition to body comment markers), the Blockers
 # field round-trips through forward → state → reverse. The stateful
 # fake-gh now records first_class_edges in state on addBlockedBy and
-# serves them on blockedByIssues; the reverse decoder folds them
+# serves them on blockedBy; the reverse decoder folds them
 # into the Blockers list per scripts/lib/tracker-migrate-reverse.sh
 # `_tmr_fetch_first_class_blocked_by` + `_tmr_decode_blockers`.
 bd002_block_line=$(printf '%s' "$RECON_BACKLOG" | grep -A 3 "BD-002" | grep "Blockers:")

@@ -2,7 +2,7 @@
   "data": {
     "repository": {
       "issue": {
-        "blockedByIssues": {
+        "blockedBy": {
           "nodes": [
             {"number": 43},
             {"number": 55}

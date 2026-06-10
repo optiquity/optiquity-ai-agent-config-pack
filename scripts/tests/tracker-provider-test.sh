@@ -341,7 +341,7 @@ assert_eq "1.16 set_milestone v11.1" "v11.1" "$(printf '%s' "$out" | jq -r '.mil
 #   1. gh repo view --json nameWithOwner --jq .nameWithOwner   → "owner/repo"
 #   2. gh api /repos/owner/repo/issues/42 --jq .node_id        → "NODE_42"
 #   3. gh api /repos/owner/repo/issues/99 --jq .node_id        → "NODE_99"
-#   4. gh api graphql -f query=... -F issueId=... -F blockedByIssueId=...
+#   4. gh api graphql -f query=... -F issueId=... -F blockingIssueId=...
 #      → addBlockedBy response fixture
 # The dispatch-dir fake-gh mode (set FAKE_GH_DISPATCH_DIR) supplies
 # different stdout per invocation by inspecting argv. The FAKE_GH_LOG
@@ -357,7 +357,7 @@ export FAKE_GH_DISPATCH_DIR="$LINK_DISPATCH_DIR"
 log=$(mktemp -t prov-link-log.XXXXXX); export FAKE_GH_LOG="$log"
 
 # 1.17a kind=blocked-by — id 42 is blocked by 99 →
-#       addBlockedBy(issueId=NODE_42, blockedByIssueId=NODE_99)
+#       addBlockedBy(issueId=NODE_42, blockingIssueId=NODE_99)
 : > "$log"
 out=$(provider_link 42 99 blocked-by)
 assert_eq "1.17a link kind=blocked-by"  "blocked-by" "$(printf '%s' "$out" | jq -r '.kind')"
@@ -368,7 +368,7 @@ assert_contains "1.17a resolves issue 42 node-id"      "$log_contents" "/repos/o
 assert_contains "1.17a resolves issue 99 node-id"      "$log_contents" "/repos/optiquity/pack/issues/99"
 assert_contains "1.17a invokes graphql addBlockedBy"   "$log_contents" "addBlockedBy"
 assert_contains "1.17a issueId=NODE_42 (blocked-by)"   "$log_contents" "issueId=NODE_42"
-assert_contains "1.17a blockedByIssueId=NODE_99"       "$log_contents" "blockedByIssueId=NODE_99"
+assert_contains "1.17a blockingIssueId=NODE_99"        "$log_contents" "blockingIssueId=NODE_99"
 # (PACK-REVIEW-BD-111 F7: a former positive `assert_contains
 # "graphql"` line was removed from here — it was redundant with the
 # `addBlockedBy` check above and the negative if/grep block below
@@ -381,7 +381,7 @@ else
 fi
 
 # 1.17b kind=blocks — operands invert: 42 blocks 99 →
-#       addBlockedBy(issueId=NODE_99, blockedByIssueId=NODE_42)
+#       addBlockedBy(issueId=NODE_99, blockingIssueId=NODE_42)
 : > "$log"
 out=$(provider_link 42 99 blocks)
 assert_eq "1.17b link kind=blocks"  "blocks" "$(printf '%s' "$out" | jq -r '.kind')"
@@ -389,7 +389,7 @@ assert_eq "1.17b link linked_to=99" "99"     "$(printf '%s' "$out" | jq -r '.lin
 log_contents=$(cat "$log")
 assert_contains "1.17b invokes graphql addBlockedBy" "$log_contents" "addBlockedBy"
 assert_contains "1.17b issueId=NODE_99 (inverted)"   "$log_contents" "issueId=NODE_99"
-assert_contains "1.17b blockedByIssueId=NODE_42"     "$log_contents" "blockedByIssueId=NODE_42"
+assert_contains "1.17b blockingIssueId=NODE_42"      "$log_contents" "blockingIssueId=NODE_42"
 
 # 1.17c EMU FORBIDDEN error path. PACK-REVIEW-BD-111 F6: this test
 # does NOT specifically isolate the api-graphql step — `FAKE_GH_EXIT`
@@ -453,7 +453,7 @@ assert_contains "1.19 unlink duplicates → validation (comment-based)" "$err" "
 #   1. gh repo view --json nameWithOwner --jq .nameWithOwner   → "owner/repo"
 #   2. gh api /repos/owner/repo/issues/42 --jq .node_id        → "NODE_42"
 #   3. gh api /repos/owner/repo/issues/99 --jq .node_id        → "NODE_99"
-#   4. gh api graphql -f query=... -F issueId=... -F blockedByIssueId=...
+#   4. gh api graphql -f query=... -F issueId=... -F blockingIssueId=...
 #      → removeBlockedBy response fixture (gh-remove-blocked-by.json)
 reset_fake_gh
 UNLINK_DISPATCH_DIR=$(mktemp -d -t prov-unlink-dispatch.XXXXXX)
@@ -465,7 +465,7 @@ export FAKE_GH_DISPATCH_DIR="$UNLINK_DISPATCH_DIR"
 log=$(mktemp -t prov-unlink-log.XXXXXX); export FAKE_GH_LOG="$log"
 
 # 1.20a kind=blocked-by — id 42 no-longer blocked by 99 →
-#       removeBlockedBy(issueId=NODE_42, blockedByIssueId=NODE_99)
+#       removeBlockedBy(issueId=NODE_42, blockingIssueId=NODE_99)
 : > "$log"
 out=$(provider_unlink 42 99 blocked-by)
 assert_eq "1.20a unlink kind=blocked-by"     "blocked-by" "$(printf '%s' "$out" | jq -r '.kind')"
@@ -476,7 +476,7 @@ assert_contains "1.20a resolves issue 42 node-id"        "$log_contents" "/repos
 assert_contains "1.20a resolves issue 99 node-id"        "$log_contents" "/repos/optiquity/pack/issues/99"
 assert_contains "1.20a invokes graphql removeBlockedBy"  "$log_contents" "removeBlockedBy"
 assert_contains "1.20a issueId=NODE_42 (blocked-by)"     "$log_contents" "issueId=NODE_42"
-assert_contains "1.20a blockedByIssueId=NODE_99"         "$log_contents" "blockedByIssueId=NODE_99"
+assert_contains "1.20a blockingIssueId=NODE_99"          "$log_contents" "blockingIssueId=NODE_99"
 # Negative: must NOT invoke addBlockedBy nor any comment-write path.
 if printf '%s' "$log_contents" | grep -q "addBlockedBy"; then
     t_fail "1.20a should not invoke addBlockedBy on unlink" "log: ${log_contents:0:200}"
@@ -490,7 +490,7 @@ else
 fi
 
 # 1.20b kind=blocks — operands invert: 42 no-longer blocks 99 →
-#       removeBlockedBy(issueId=NODE_99, blockedByIssueId=NODE_42)
+#       removeBlockedBy(issueId=NODE_99, blockingIssueId=NODE_42)
 : > "$log"
 out=$(provider_unlink 42 99 blocks)
 assert_eq "1.20b unlink kind=blocks"          "blocks" "$(printf '%s' "$out" | jq -r '.kind')"
@@ -498,7 +498,7 @@ assert_eq "1.20b unlink unlinked_from=99"     "99"     "$(printf '%s' "$out" | j
 log_contents=$(cat "$log")
 assert_contains "1.20b invokes graphql removeBlockedBy" "$log_contents" "removeBlockedBy"
 assert_contains "1.20b issueId=NODE_99 (inverted)"      "$log_contents" "issueId=NODE_99"
-assert_contains "1.20b blockedByIssueId=NODE_42"        "$log_contents" "blockedByIssueId=NODE_42"
+assert_contains "1.20b blockingIssueId=NODE_42"         "$log_contents" "blockingIssueId=NODE_42"
 
 # 1.20c missing-edge / not-found error path. Same caveat as 1.17c
 # (PACK-REVIEW-BD-111 F6): `FAKE_GH_EXIT` is global, so the chain

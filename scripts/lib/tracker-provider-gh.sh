@@ -491,17 +491,14 @@ tracker_provider_gh_set_milestone() {
 # Implementation per V1 §2.7.1 row 12:
 #   - blocks/blocked-by: first-class GitHub issue-dependency GraphQL
 #     mutation (BD-111; GA 2025-08-21 per EXTERNAL-RESEARCH §1.3).
-#     Mutation name `addBlockedBy` per EXTERNAL-RESEARCH §1.3; the
-#     argument shape (`issueId` + `blockedByIssueId`) follows the
-#     symmetric convention established by `addSubIssue` (issueId +
-#     subIssueId) elsewhere in this file. The exact argument key is
-#     unverified offline and is flagged for confirmation at BD-088
-#     or BD-093 integration-test land-time; if GH's actual schema
-#     names the second arg `blockedById` (or any other shape), the
-#     fix is one line in the mutation string below plus one fixture
-#     line update. `kind="blocks"` is expressed by inverting the
-#     operands (B blocked-by A == A blocks B) since EXTERNAL-RESEARCH
-#     names only the `addBlockedBy` direction.
+#     Mutation name `addBlockedBy` per EXTERNAL-RESEARCH §1.3. The
+#     argument shape (`issueId` + `blockingIssueId`) is LIVE-VERIFIED
+#     (schema introspection of `AddBlockedByInput`, 2026-06-10,
+#     BD-204): inputFields are `issueId: ID!` (the issue that IS
+#     blocked) + `blockingIssueId: ID!` (the issue that BLOCKS it),
+#     plus optional clientMutationId. `kind="blocks"` is expressed by
+#     inverting the operands (B blocked-by A == A blocks B) since
+#     EXTERNAL-RESEARCH names only the `addBlockedBy` direction.
 #   - related/duplicates: comment-based marker (no first-class API).
 #   - parent/child: delegates to sub_issue_create.
 #
@@ -527,8 +524,8 @@ tracker_provider_gh_link() {
             owner_repo=$(_gh_run gh repo view --json nameWithOwner --jq '.nameWithOwner') || return 1
             issue_node=$(_gh_run gh api "/repos/$owner_repo/issues/$id"       --jq '.node_id') || return 1
             other_node=$(_gh_run gh api "/repos/$owner_repo/issues/$other_id" --jq '.node_id') || return 1
-            # blocked-by: id is blocked by other_id  → addBlockedBy(issueId=id,       blockedByIssueId=other_id)
-            # blocks:     id blocks other_id          → addBlockedBy(issueId=other_id, blockedByIssueId=id)
+            # blocked-by: id is blocked by other_id  → addBlockedBy(issueId=id,       blockingIssueId=other_id)
+            # blocks:     id blocks other_id          → addBlockedBy(issueId=other_id, blockingIssueId=id)
             if [[ "$kind" == "blocked-by" ]]; then
                 source_node="$issue_node"
                 target_node="$other_node"
@@ -536,8 +533,8 @@ tracker_provider_gh_link() {
                 source_node="$other_node"
                 target_node="$issue_node"
             fi
-            query='mutation($issueId: ID!, $blockedByIssueId: ID!) { addBlockedBy(input: { issueId: $issueId, blockedByIssueId: $blockedByIssueId }) { issue { number } } }'
-            _gh_run gh api graphql -f "query=$query" -F "issueId=$source_node" -F "blockedByIssueId=$target_node" >/dev/null || return 1
+            query='mutation($issueId: ID!, $blockingIssueId: ID!) { addBlockedBy(input: { issueId: $issueId, blockingIssueId: $blockingIssueId }) { issue { number } } }'
+            _gh_run gh api graphql -f "query=$query" -F "issueId=$source_node" -F "blockingIssueId=$target_node" >/dev/null || return 1
             ;;
         related|duplicates)
             local body
@@ -567,22 +564,16 @@ tracker_provider_gh_link() {
 # Implementation per V1 §2.7.1 row 13 (BD-111 scope-extended
 # 2026-05-15 to include the symmetric `removeBlockedBy` unlink path):
 #   - blocks/blocked-by: first-class GitHub issue-dependency removal
-#     GraphQL mutation. Mutation name `removeBlockedBy` chosen as the
-#     symmetric pair to `addBlockedBy` (which EXTERNAL-RESEARCH §1.3
-#     line 86 names literally and pairs with "removal" generically;
-#     line 86: "GraphQL mutations including `addBlockedBy` / removal").
-#     The remove-side literal name is unverified offline (could be
-#     `removeBlockedBy`, `deleteBlockedBy`, or `removeBlockedByDependency`);
-#     `removeBlockedBy` is the most likely guess given GH's symmetric
-#     `addSubIssue` / `removeSubIssue` precedent already used in this
-#     file. Argument shape (`issueId` + `blockedByIssueId`) mirrors
-#     `addBlockedBy`. Operand inversion for `kind="blocks"` matches
-#     the link side: removing "B blocked-by A" is the same edge as
-#     removing "A blocks B". Verify against the live schema at
-#     BD-088 / BD-093 integration-test land-time; if either the
-#     mutation name or arg shape differs, the fix is one line in the
-#     mutation string below plus one fixture line update in
-#     `gh-remove-blocked-by.json`.
+#     GraphQL mutation. Mutation name `removeBlockedBy` (the symmetric
+#     pair of `addBlockedBy`, matching GH's `addSubIssue` /
+#     `removeSubIssue` precedent already used in this file) and the
+#     argument shape (`issueId` + `blockingIssueId`, mirroring
+#     `addBlockedBy`) are LIVE-VERIFIED (schema introspection of
+#     `RemoveBlockedByInput`, 2026-06-10, BD-204): inputFields are
+#     `issueId` + `blockingIssueId` plus optional clientMutationId.
+#     Operand inversion for `kind="blocks"` matches the link side:
+#     removing "B blocked-by A" is the same edge as removing
+#     "A blocks B".
 #   - parent/child: first-class via sub_issue_unlink (unchanged).
 #   - related/duplicates: still comment-based on the link side; surface
 #     a typed validation error here (callers remove the marker comment
@@ -617,8 +608,8 @@ tracker_provider_gh_unlink() {
             owner_repo=$(_gh_run gh repo view --json nameWithOwner --jq '.nameWithOwner') || return 1
             issue_node=$(_gh_run gh api "/repos/$owner_repo/issues/$id"       --jq '.node_id') || return 1
             other_node=$(_gh_run gh api "/repos/$owner_repo/issues/$other_id" --jq '.node_id') || return 1
-            # blocked-by: id no-longer blocked by other_id  → removeBlockedBy(issueId=id,       blockedByIssueId=other_id)
-            # blocks:     id no-longer blocks other_id       → removeBlockedBy(issueId=other_id, blockedByIssueId=id)
+            # blocked-by: id no-longer blocked by other_id  → removeBlockedBy(issueId=id,       blockingIssueId=other_id)
+            # blocks:     id no-longer blocks other_id       → removeBlockedBy(issueId=other_id, blockingIssueId=id)
             if [[ "$kind" == "blocked-by" ]]; then
                 source_node="$issue_node"
                 target_node="$other_node"
@@ -626,8 +617,8 @@ tracker_provider_gh_unlink() {
                 source_node="$other_node"
                 target_node="$issue_node"
             fi
-            query='mutation($issueId: ID!, $blockedByIssueId: ID!) { removeBlockedBy(input: { issueId: $issueId, blockedByIssueId: $blockedByIssueId }) { issue { number } } }'
-            _gh_run gh api graphql -f "query=$query" -F "issueId=$source_node" -F "blockedByIssueId=$target_node" >/dev/null || return 1
+            query='mutation($issueId: ID!, $blockingIssueId: ID!) { removeBlockedBy(input: { issueId: $issueId, blockingIssueId: $blockingIssueId }) { issue { number } } }'
+            _gh_run gh api graphql -f "query=$query" -F "issueId=$source_node" -F "blockingIssueId=$target_node" >/dev/null || return 1
             ;;
         related|duplicates)
             tracker_error_emit "validation" \
