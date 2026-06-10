@@ -45,9 +45,20 @@ suffix, no pre-em-dash parenthetical).
 One BD entry per file. The first line is an HTML-comment back-pointer
 ABOVE the bold-header; the entry's content span begins at
 `**BD-NNN — <Title>**`, followed by the `Type:` / `Status:` /
-`Description:` (and optional `Blockers:` / `Unblocks:` / `File/Symbol:`
-/ `Resolved:` / `Position:`) fields per the standard BACKLOG item
-format (METHODOLOGY.md Part 7).
+`Description:` fields per the standard BACKLOG item format
+(METHODOLOGY.md Part 7).
+
+**Field-faithful — the contract does not gate on a field allowlist.**
+The Mode-2→3 migrator is FIELD-FAITHFUL: it carries every top-level
+entry field VERBATIM (the entry body is preserved byte-for-byte as the
+`pack-entry-body-gz64` blob), so the contract does NOT depend on
+enumerating which fields are "allowed". METHODOLOGY.md Part 7 (the
+template SSOT) enumerates the COMMON fields (`Type:` / `Status:` /
+`Blockers:` / `Unblocks:` / `File/Symbol:` / `Description:` /
+`Context:` / `Resolution:`); EXTENSION fields (`Target:`, `Position:`,
+etc.) are ADMITTED and PRESERVED. A future BD adding a field needs no
+contract change here — the carrier carries whatever bytes the entry
+body has.
 
 ## Lifecycle states admitted
 
