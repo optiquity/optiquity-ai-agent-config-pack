@@ -1,0 +1,22 @@
+# Fixture tracker.toml for the BD-204 live lossless-round-trip oracle
+# (scripts/tests/tracker-bd204-lossless-roundtrip-test.sh). The repo slug
+# is a placeholder: the oracle copies this file into its /tmp work root
+# and substitutes the uniquely-named scratch repo slug at runtime. The
+# placeholder is never used live (tracker_gh_repo_setup would reject it
+# only after a substitution bug — the oracle asserts the substitution).
+
+schema_version = 1
+
+[backend]
+name = "github"
+repo = "scratch-owner/__BD204_SCRATCH_SLUG__"
+
+[mode]
+state = "flat-file"
+
+[id_namespace]
+prefix = "BD"
+
+[migration]
+forward_complete = false
+mapping_file = ".pack-tracker/id-map.json"
