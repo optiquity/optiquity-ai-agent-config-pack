@@ -160,10 +160,21 @@ case "$1 $2" in
         shift 3
         while [[ $# -gt 0 ]]; do
             case "$1" in
-                --reason) reason="$2"; shift 2 ;;
+                --reason|-r) reason="$2"; shift 2 ;;
                 *) shift ;;
             esac
         done
+        # BD-204: enforce the REAL gh CLI close-reason vocabulary
+        # {completed|not planned|duplicate} — "not planned" takes a
+        # SPACE. Nonzero exit otherwise, exactly like the real CLI, so
+        # the interface token not_planned can never silently mock-pass.
+        case "$reason" in
+            completed|"not planned"|duplicate) ;;
+            *)
+                echo "fake-gh: invalid --reason '$reason' (real gh vocabulary: {completed|not planned|duplicate})" >&2
+                exit 1
+                ;;
+        esac
         st=$(cat "$STATE")
         new_st=$(printf '%s' "$st" | jq -c --arg id "$id" --arg reason "$reason" \
             '.issues[$id].state = "closed" | .issues[$id].stateReason = $reason')
@@ -228,10 +239,21 @@ case "$1 $2" in
         # Honor --jq .nameWithOwner if requested (real gh would
         # apply the filter server-side; we approximate). BD-111
         # retrofit (PACK-REVIEW-BD-111 F1, scope-extension second
-        # pass): the production code does
-        # `_gh_run gh repo view --json nameWithOwner --jq .nameWithOwner`
-        # in multiple places (sub_issue_create, link, unlink,
-        # _tmr_fetch_first_class_blocked_by). Without this filter
+        # pass); resolution description updated for BD-204: production
+        # resolves the OWNER/REPO slug via the `_gh_owner_repo` helper
+        # in scripts/lib/tracker-provider-gh.sh (callers:
+        # tracker_provider_gh_link / tracker_provider_gh_unlink /
+        # tracker_provider_gh_sub_issue_create /
+        # tracker_provider_gh_sub_issue_list /
+        # tracker_provider_gh_sub_issue_unlink), which PREFERS
+        # ${GH_REPO} (stripping an optional HOST/ prefix, with a
+        # post-strip shape guard) and
+        # runs `_gh_run gh repo view --json nameWithOwner --jq
+        # .nameWithOwner` ONLY as the GH_REPO-unset fallback;
+        # _tmr_fetch_first_class_blocked_by in
+        # scripts/lib/tracker-migrate-reverse.sh mirrors the same
+        # GH_REPO-preferred order inline. This arm therefore serves
+        # the GH_REPO-unset fallback path. Without the --jq filter
         # the JSON object string would propagate into URL paths.
         rv_jq=""
         for ((i=1; i<=$#; i++)); do

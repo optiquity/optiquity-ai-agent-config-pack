@@ -276,7 +276,17 @@ tree_id_set() {
 }
 N_BASELINE=$(count_tree_entries "$BASELINE_DIR")
 [[ "$N_BASELINE" -gt 0 ]] || die "seed: baseline tree is empty"
-echo "── seeded: $N_BASELINE canonical entries in the baseline tree ──"
+# BD-204 close-reason canary (C-8 live-flip defect): the closed-status
+# entry count is measured, never hard-coded (same idiom as the Deferred
+# canary). The fixture carries BD-902 (Resolved → close reason
+# completed) AND BD-909 (Deprecated → interface reason not_planned,
+# which the provider must translate to the gh CLI form "not planned" at
+# the close boundary), so every rehearsal exercises BOTH live close
+# paths — pre-fix, the not-planned path was never exercised live and
+# the C-8 flip failed all five Deprecated/Cancelled closes 3x each.
+N_CLOSED_BASELINE=$(grep -hcE '^Status: (Resolved|Cancelled|Deprecated)$' "$BASELINE_DIR"/BD-*.md | awk '{s+=$1} END {print s}')
+[[ "$N_CLOSED_BASELINE" -ge 2 ]] || die "seed: expected >=2 closed-status entries (Resolved + the BD-909 Deprecated canary); got $N_CLOSED_BASELINE"
+echo "── seeded: $N_BASELINE canonical entries in the baseline tree ($N_CLOSED_BASELINE closed-status) ──"
 
 # Count of pack-owned Issues = the work-item lane only (bd-entry label;
 # inbound + unlabeled size-leg probes excluded) — PLAN § C-7 count oracle.
@@ -344,6 +354,28 @@ assert_eq "identity oracle: tree id-set == issue pack-id marker set" \
 gh_id_for() {
     printf '%s' "$MAPPING_JSON" | jq -r --arg k "$1" '.[$k].id // empty'
 }
+
+# ─────────────────────────────────────────────────────────────────
+# BD-909 close-path canary (C-8 live-flip defect): forward step 8 must
+# have closed every closed-status entry — including the Deprecated
+# canary, whose interface reason not_planned is translated to the gh
+# CLI vocabulary "not planned" (SPACE) at the close boundary. The
+# summary count is the loud signal (pre-fix the run died partial-write
+# before reaching it); the per-issue state read pins the canary live.
+# ─────────────────────────────────────────────────────────────────
+echo "── BD-909 close-path canary (not_planned → 'not planned') ──"
+assert_contains "close canary: forward 1 closed every closed-status entry" \
+    "$FWD1_OUT" "closed:     $N_CLOSED_BASELINE"
+_909_gid=$(gh_id_for "BD-909")
+[[ -n "$_909_gid" ]] || die "close canary: BD-909 has no id-map entry"
+_909_state_json=$(gh issue view "$_909_gid" -R "$SCRATCH_REPO" --json state,stateReason 2>/dev/null)
+assert_eq "close canary: BD-909 (Deprecated) is CLOSED on the live repo" \
+    "CLOSED" "$(printf '%s' "$_909_state_json" | jq -r '.state')"
+# Read-back representation is RECORDED, not pinned: the casing/shape gh
+# returns for --json stateReason on a not-planned close is live evidence
+# the reverse decoder (_tmr_decode_status `not_planned|duplicate` arm)
+# depends on — the status oracle below fails loudly on any mismatch.
+echo "  close canary: BD-909 stateReason read-back = '$(printf '%s' "$_909_state_json" | jq -r '.stateReason')'"
 
 # ─────────────────────────────────────────────────────────────────
 # DS-1 — stored byte-verbatim (§11.2): read each STORED Issue body
@@ -645,6 +677,13 @@ assert_eq "status oracle: distribution BEFORE == AFTER" \
 _def_before=$(grep -hc '^Status: Deferred$' "$BASELINE_DIR"/BD-*.md | awk '{s+=$1} END {print s}')
 _def_after=$(grep -hc '^Status: Deferred$' "$WORK_ROOT/backlog"/BD-*.md | awk '{s+=$1} END {print s}')
 assert_eq "status oracle: Deferred canary count round-trips" "$_def_before" "$_def_after"
+# BD-204 close-reason canary: the Deprecated count round-trips too —
+# this leg fails loudly if the live stateReason read-back does not
+# decode through _tmr_decode_status's `not_planned|duplicate` arm
+# (+ the status:deprecated label disambiguator) back to Deprecated.
+_dep_before=$(grep -hc '^Status: Deprecated$' "$BASELINE_DIR"/BD-*.md | awk '{s+=$1} END {print s}')
+_dep_after=$(grep -hc '^Status: Deprecated$' "$WORK_ROOT/backlog"/BD-*.md | awk '{s+=$1} END {print s}')
+assert_eq "status oracle: Deprecated canary count round-trips (not-planned close path)" "$_dep_before" "$_dep_after"
 
 # No-monolith / no-sidecar oracle (PLAN § C-7 oracle leg 5).
 if [[ ! -f "$WORK_ROOT/pack-ops/BACKLOG.md" ]]; then

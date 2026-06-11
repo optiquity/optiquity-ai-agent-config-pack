@@ -38,9 +38,10 @@ assert_contains() {
 }
 
 # BD-134: keep test runtimes bounded — skip real backoff sleeps.
-# The retry sweep is exercised in this suite (4.3 + Group 7) and in
-# the dedicated tracker-bd134-close-retry-test.sh; both rely on env
-# overrides to avoid 1s/2s/4s sleeps during CI.
+# The retry sweep is exercised in this suite (4.3) and in the
+# dedicated tracker-bd134-close-retry-test.sh; both rely on env
+# overrides to avoid 1s/2s/4s sleeps during CI. (Group 7 below is the
+# BD-204 close-reason translation group, not a retry-sweep group.)
 export TMF_CLOSE_RETRY_BACKOFF_SECS="0 0 0"
 
 # Source all libs the same way tracker-migrate.sh does.
@@ -531,6 +532,24 @@ case "\$1 \$2" in
         printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
         ;;
     "issue close")
+        # BD-204: enforce the REAL gh CLI close-reason vocabulary
+        # {completed|not planned|duplicate} — reject anything else with
+        # a nonzero exit, like the real CLI ("not planned" takes a
+        # SPACE; the interface token not_planned must never reach gh).
+        _cr=""; _cp=""
+        for _ca in "\$@"; do
+            [[ "\$_cp" == "--reason" || "\$_cp" == "-r" ]] && _cr="\$_ca"
+            _cp="\$_ca"
+        done
+        if [[ -n "\$_cr" ]]; then
+            case "\$_cr" in
+                completed|"not planned"|duplicate) ;;
+                *)
+                    echo "fake-gh: invalid --reason '\$_cr' (real gh vocabulary: {completed|not planned|duplicate})" >&2
+                    exit 1
+                    ;;
+            esac
+        fi
         # Track the closed id so the stabilization poll (BD-132 F-7)
         # can see it reflected in subsequent \`issue list --state
         # closed --label …\` calls. The id is the 3rd positional arg.
@@ -950,6 +969,22 @@ case "$1 $2" in
         printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "$next"
         ;;
     "issue close")
+        # BD-204: enforce the REAL gh CLI close-reason vocabulary
+        # {completed|not planned|duplicate} — nonzero exit otherwise.
+        _cr=""; _cp=""
+        for _ca in "$@"; do
+            [[ "$_cp" == "--reason" || "$_cp" == "-r" ]] && _cr="$_ca"
+            _cp="$_ca"
+        done
+        if [[ -n "$_cr" ]]; then
+            case "$_cr" in
+                completed|"not planned"|duplicate) ;;
+                *)
+                    echo "fake-gh: invalid --reason '$_cr' (real gh vocabulary: {completed|not planned|duplicate})" >&2
+                    exit 1
+                    ;;
+            esac
+        fi
         # BD-132 F-7: track the closed id for stabilization poll visibility.
         printf '%s\n' "$3" >> "@@CLOSED_IDS@@"
         ;;
@@ -1094,6 +1129,22 @@ case "\$1 \$2" in
         printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
         ;;
     "issue close")
+        # BD-204: enforce the REAL gh CLI close-reason vocabulary
+        # {completed|not planned|duplicate} — nonzero exit otherwise.
+        _cr=""; _cp=""
+        for _ca in "\$@"; do
+            [[ "\$_cp" == "--reason" || "\$_cp" == "-r" ]] && _cr="\$_ca"
+            _cp="\$_ca"
+        done
+        if [[ -n "\$_cr" ]]; then
+            case "\$_cr" in
+                completed|"not planned"|duplicate) ;;
+                *)
+                    echo "fake-gh: invalid --reason '\$_cr' (real gh vocabulary: {completed|not planned|duplicate})" >&2
+                    exit 1
+                    ;;
+            esac
+        fi
         # BD-132 F-7: track closed id for stabilization poll.
         printf '%s\n' "\$3" >> "$CLOSED_IDS_CP"
         ;;
@@ -1314,7 +1365,24 @@ case "\$1 \$2" in
         fi
         printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
         ;;
-    "issue close")           ;;
+    "issue close")
+        # BD-204: enforce the REAL gh CLI close-reason vocabulary
+        # {completed|not planned|duplicate} — nonzero exit otherwise.
+        _cr=""; _cp=""
+        for _ca in "\$@"; do
+            [[ "\$_cp" == "--reason" || "\$_cp" == "-r" ]] && _cr="\$_ca"
+            _cp="\$_ca"
+        done
+        if [[ -n "\$_cr" ]]; then
+            case "\$_cr" in
+                completed|"not planned"|duplicate) ;;
+                *)
+                    echo "fake-gh: invalid --reason '\$_cr' (real gh vocabulary: {completed|not planned|duplicate})" >&2
+                    exit 1
+                    ;;
+            esac
+        fi
+        ;;
     "issue reopen"|"issue edit"|"issue comment") ;;
     "search issues")         echo '[]' ;;
     "issue list")            echo '[]' ;;
@@ -1424,7 +1492,24 @@ case "\$1 \$2" in
         fi
         printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
         ;;
-    "issue close")           ;;
+    "issue close")
+        # BD-204: enforce the REAL gh CLI close-reason vocabulary
+        # {completed|not planned|duplicate} — nonzero exit otherwise.
+        _cr=""; _cp=""
+        for _ca in "\$@"; do
+            [[ "\$_cp" == "--reason" || "\$_cp" == "-r" ]] && _cr="\$_ca"
+            _cp="\$_ca"
+        done
+        if [[ -n "\$_cr" ]]; then
+            case "\$_cr" in
+                completed|"not planned"|duplicate) ;;
+                *)
+                    echo "fake-gh: invalid --reason '\$_cr' (real gh vocabulary: {completed|not planned|duplicate})" >&2
+                    exit 1
+                    ;;
+            esac
+        fi
+        ;;
     "issue reopen"|"issue edit"|"issue comment") ;;
     "search issues")         echo '[]' ;;
     "issue list")            echo '[]' ;;
@@ -1496,6 +1581,22 @@ case "\$1 \$2" in
         printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
         ;;
     "issue close")
+        # BD-204: enforce the REAL gh CLI close-reason vocabulary
+        # {completed|not planned|duplicate} — nonzero exit otherwise.
+        _cr=""; _cp=""
+        for _ca in "\$@"; do
+            [[ "\$_cp" == "--reason" || "\$_cp" == "-r" ]] && _cr="\$_ca"
+            _cp="\$_ca"
+        done
+        if [[ -n "\$_cr" ]]; then
+            case "\$_cr" in
+                completed|"not planned"|duplicate) ;;
+                *)
+                    echo "fake-gh: invalid --reason '\$_cr' (real gh vocabulary: {completed|not planned|duplicate})" >&2
+                    exit 1
+                    ;;
+            esac
+        fi
         printf '%s\n' "\$3" >> "$CLOSED_IDS_R2"
         ;;
     "issue reopen"|"issue edit"|"issue comment") ;;
@@ -1723,7 +1824,27 @@ case "\$1 \$2" in
         echo "\$next" > "$ISSUE_COUNTER_BD108"
         printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
         ;;
-    "issue close"|"issue reopen"|"issue edit"|"issue comment") ;;
+    "issue close")
+        # BD-204: enforce the REAL gh CLI close-reason vocabulary
+        # {completed|not planned|duplicate} — nonzero exit otherwise.
+        # (No closed-status entry in this mini-fixture; the guard keeps
+        # every close stub in this suite vocabulary-strict.)
+        _cr=""; _cp=""
+        for _ca in "\$@"; do
+            [[ "\$_cp" == "--reason" || "\$_cp" == "-r" ]] && _cr="\$_ca"
+            _cp="\$_ca"
+        done
+        if [[ -n "\$_cr" ]]; then
+            case "\$_cr" in
+                completed|"not planned"|duplicate) ;;
+                *)
+                    echo "fake-gh: invalid --reason '\$_cr' (real gh vocabulary: {completed|not planned|duplicate})" >&2
+                    exit 1
+                    ;;
+            esac
+        fi
+        ;;
+    "issue reopen"|"issue edit"|"issue comment") ;;
     "search issues") echo '[]' ;;
     "issue list")    echo '[]' ;;
     "issue view")    echo '{"labels":[], "assignees":[]}' ;;
@@ -1808,6 +1929,181 @@ n_api_graphql=$(grep -c "^api graphql" "$GH_LOG_BD108" 2>/dev/null || true)
 
 unset _TRACKER_PROVIDER_BACKEND_OVERRIDE
 rm -rf "$FAKE_BIN_BD108" "$GH_LOG_BD108" "$ISSUE_COUNTER_BD108" "$TEST_REPO_BD108" "$BD108_MONO"
+
+# ─────────────────────────────────────────────────────────────────
+# Group 7: BD-204 close-reason CLI-boundary translation (C-8 live flip)
+# ─────────────────────────────────────────────────────────────────
+#
+# The C-8 live flip (2026-06-11) failed ALL FIVE Deprecated/Cancelled
+# closes (BD-021/022/023/103/123) 3x each: tracker_provider_gh_close
+# passed the provider INTERFACE token `not_planned` straight to
+# `gh issue close --reason`, whose real vocabulary is
+# {completed|not planned|duplicate} — "not planned" takes a SPACE.
+# Every mock accepted any reason string, so the drift never failed
+# offline; the live-oracle fixture had no Deprecated/Cancelled entry,
+# so it never failed live either. This group pins the END-TO-END
+# forward path: a Deprecated entry AND a Cancelled entry must reach
+# the gh CLI as `--reason not planned` (the translated form), against
+# a fake gh that — like every close stub in this suite now — REJECTS
+# any reason outside the real CLI vocabulary.
+
+printf "\n=== Group 7: BD-204 close-reason CLI-boundary translation ===\n"
+
+TEST_REPO_CR=$(mktemp -d -t tmf-closereason.XXXXXX)
+mkdir -p "$TEST_REPO_CR/pack-ops"   # surface marker → pack
+mkdir -p "$TEST_REPO_CR/backlog"    # per-entry tree (no monolith)
+CR_MONO=$(mktemp -t tmf-cr-mono.XXXXXX)
+FAKE_BIN_CR=$(mktemp -d -t tmf-fakebin-cr.XXXXXX)
+GH_LOG_CR=$(mktemp -t tmf-ghlog-cr.XXXXXX)
+ISSUE_COUNTER_CR=$(mktemp -t tmf-counter-cr.XXXXXX)
+CLOSED_IDS_CR=$(mktemp -t tmf-closed-cr.XXXXXX)
+: > "$CLOSED_IDS_CR"
+echo "600" > "$ISSUE_COUNTER_CR"
+
+cat > "$CR_MONO" <<'BACKLOG'
+# BACKLOG
+
+**BD-601 — Deprecated close-reason entry**
+Type: TODO(version)
+Status: Deprecated
+Blockers: None
+Unblocks: None
+File/Symbol: scripts/foo.sh
+Description: Deprecated entry — step 8 must close it with the interface
+  reason not_planned, translated to the gh CLI form at the boundary.
+Resolved: n/a
+
+---
+
+**BD-602 — Cancelled close-reason entry**
+Type: TODO(version)
+Status: Cancelled
+Blockers: None
+Unblocks: None
+File/Symbol: scripts/bar.sh
+Description: Cancelled entry — same not_planned interface reason, same
+  CLI translation as the Deprecated row (DP-3).
+Resolved: n/a
+
+---
+BACKLOG
+per_entry_decompose "pack-backlog" "$CR_MONO" "$TEST_REPO_CR/backlog" >/dev/null
+
+cat > "$TEST_REPO_CR/IMPLEMENTATION-PLAN.md" <<'PLAN'
+# IMPLEMENTATION PLAN
+PLAN
+cp "$FIXTURES/tracker.toml" "$TEST_REPO_CR/tracker.toml"
+
+# Vocabulary-enforcing fake gh: same shape as Group 3 (create counter,
+# closed-id tracking for the BD-132 stabilization poll), with the
+# BD-204 close-reason guard.
+cat > "$FAKE_BIN_CR/gh" <<FAKEGH_CR
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$GH_LOG_CR"
+case "\$1 \$2" in
+    "issue create")
+        counter=\$(cat "$ISSUE_COUNTER_CR")
+        next=\$((counter + 1))
+        echo "\$next" > "$ISSUE_COUNTER_CR"
+        printf 'https://github.com/fixture-org/fixture-repo/issues/%s\n' "\$next"
+        ;;
+    "issue close")
+        # BD-204: enforce the REAL gh CLI close-reason vocabulary
+        # {completed|not planned|duplicate} — nonzero exit otherwise.
+        _cr=""; _cp=""
+        for _ca in "\$@"; do
+            [[ "\$_cp" == "--reason" || "\$_cp" == "-r" ]] && _cr="\$_ca"
+            _cp="\$_ca"
+        done
+        if [[ -n "\$_cr" ]]; then
+            case "\$_cr" in
+                completed|"not planned"|duplicate) ;;
+                *)
+                    echo "fake-gh: invalid --reason '\$_cr' (real gh vocabulary: {completed|not planned|duplicate})" >&2
+                    exit 1
+                    ;;
+            esac
+        fi
+        printf '%s\n' "\$3" >> "$CLOSED_IDS_CR"
+        ;;
+    "issue reopen"|"issue edit"|"issue comment") ;;
+    "search issues") echo '[]' ;;
+    "issue list")
+        # BD-132 F-7: state=closed poll → return tracked ids.
+        want_closed=0
+        for arg in "\$@"; do
+            [[ "\$arg" == "closed" ]] && want_closed=1
+        done
+        if [[ "\$want_closed" == "1" ]]; then
+            python3 - <<PY
+import json
+ids = []
+try:
+    with open("$CLOSED_IDS_CR") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                ids.append(line)
+except FileNotFoundError:
+    pass
+print(json.dumps([{"number": int(i)} for i in ids]))
+PY
+        else
+            echo '[]'
+        fi
+        ;;
+    "issue view")    echo '{"labels":[], "assignees":[]}' ;;
+    "repo view")     echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
+    "api graphql")   echo '{}' ;;
+    "extension list") echo "" ;;
+    *)               ;;
+esac
+exit 0
+FAKEGH_CR
+chmod +x "$FAKE_BIN_CR/gh"
+
+export _TRACKER_PROVIDER_BACKEND_OVERRIDE="github"
+PATH_SAVED_CR="$PATH"
+export PATH="$FAKE_BIN_CR:$PATH_SAVED_CR"
+output_cr=$(tracker_migrate_forward_run "$TEST_REPO_CR" 0 0 2>&1)
+rc_cr=$?
+export PATH="$PATH_SAVED_CR"
+unset _TRACKER_PROVIDER_BACKEND_OVERRIDE
+
+# 7.1 the run completes clean: both closes were ACCEPTED by the
+# vocabulary-enforcing fake (pre-fix this run died partial-write with
+# both closes failing 3x — exactly the C-8 live-flip shape).
+assert_eq "7.1 forward over Deprecated+Cancelled fixture rc=0" "0" "$rc_cr"
+# (This suite has no assert_not_contains helper — same grep idiom as 4.2.)
+if [[ "$output_cr" == *"ERROR: partial-write"* ]]; then
+    t_fail "7.1 no partial-write (closes accepted by the vocabulary-enforcing fake)" \
+        "partial-write surfaced: ${output_cr:0:200}"
+else
+    t_pass "7.1 no partial-write (closes accepted by the vocabulary-enforcing fake)"
+fi
+assert_contains "7.1 summary reports both entries closed" "$output_cr" "closed:     2"
+
+# 7.2 BOTH closes reach the gh CLI in the TRANSLATED form. The create
+# counter starts at 600 and the tree enumerates BD-601 then BD-602, so
+# the gh ids are 601 and 602 deterministically.
+log_cr=$(cat "$GH_LOG_CR")
+assert_contains "7.2 Deprecated close reaches gh as --reason not planned" \
+    "$log_cr" "issue close 601 --reason not planned"
+assert_contains "7.2 Cancelled close reaches gh as --reason not planned" \
+    "$log_cr" "issue close 602 --reason not planned"
+n_translated=$(grep -c -- "--reason not planned" "$GH_LOG_CR" || true)
+assert_eq "7.2 exactly 2 translated close invocations" "2" "$n_translated"
+
+# 7.3 the interface token never leaks through to the CLI.
+if grep -q -- "--reason not_planned" "$GH_LOG_CR"; then
+    t_fail "7.3 interface token not_planned must NOT reach the gh CLI" \
+        "$(grep -- '--reason' "$GH_LOG_CR" | head -2 | tr '\n' ' ')"
+else
+    t_pass "7.3 interface token not_planned does not reach the gh CLI"
+fi
+
+rm -rf "$FAKE_BIN_CR" "$GH_LOG_CR" "$ISSUE_COUNTER_CR" "$CLOSED_IDS_CR" \
+       "$TEST_REPO_CR" "$CR_MONO"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

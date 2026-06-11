@@ -435,6 +435,17 @@ tracker_provider_gh_update() {
 
 # tracker_provider_gh_close <id> [<reason>]
 # reason: completed|not_planned|duplicate (V1 §2.7.1 row 6)
+#
+# BD-204 (C-8 live-flip defect, 2026-06-11): the gh CLI's accepted
+# `--reason` vocabulary is {completed|not planned|duplicate} — the
+# not-planned token takes a SPACE (`gh issue close --help`). The
+# provider INTERFACE keeps the REST/GraphQL-style token `not_planned`
+# (callers and the success JSON below are untouched); the translation
+# to the CLI form happens ONLY at the `gh issue close` invocation
+# boundary. `completed` and `duplicate` are identical in both
+# vocabularies. Pre-fix, `not_planned` was passed through verbatim and
+# every Deprecated/Cancelled close in the C-8 live flip (BD-021/022/
+# 023/103/123) failed 3x each.
 tracker_provider_gh_close() {
     local id="$1"
     local reason="${2:-completed}"
@@ -449,7 +460,9 @@ tracker_provider_gh_close() {
             return 1
             ;;
     esac
-    _gh_run gh issue close "$id" --reason "$reason" >/dev/null || return 1
+    local cli_reason="$reason"
+    [[ "$reason" == "not_planned" ]] && cli_reason="not planned"
+    _gh_run gh issue close "$id" --reason "$cli_reason" >/dev/null || return 1
     printf '{"id": "%s", "state": "closed", "state_reason": "%s"}\n' "$id" "$reason"
 }
 

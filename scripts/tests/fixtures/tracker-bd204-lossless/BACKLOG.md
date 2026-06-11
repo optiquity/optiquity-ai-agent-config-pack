@@ -113,3 +113,18 @@ Description: The large multi-block exemplar (BD-195-shaped) for the
 Resolved: n/a
 
 ---
+
+**BD-909 — Deprecated close-path canary**
+Type: TODO(version)
+Status: Deprecated
+Blockers: None
+Unblocks: None
+Description: The Deprecated close is the not-planned canary — forward
+  step 8 closes this entry with the interface reason not_planned, which
+  the provider must translate to the gh CLI vocabulary at the close
+  boundary (the C-8 live-flip defect path: BD-021/022/023/103/123 each
+  failed 3x because the interface token reached the CLI verbatim). The
+  status oracle then pins the Deprecated decode on the next reverse.
+Resolved: n/a
+
+---

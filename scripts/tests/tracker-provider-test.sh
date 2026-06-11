@@ -117,6 +117,31 @@ if [[ -n "${FAKE_GH_REPO_VIEW_FAIL:-}" && "${1:-}" == "repo" ]]; then
     echo "failed to run git: fatal: not a git repository (or any of the parent directories): .git" >&2
     exit 1
 fi
+# BD-204 close-reason vocabulary enforcement (C-8 live-flip defect):
+# the REAL gh CLI accepts only {completed|not planned|duplicate} for
+# `issue close --reason` — "not planned" takes a SPACE. Reject any
+# other value with a nonzero exit, exactly like the real CLI, so
+# provider-vocabulary drift (e.g. the interface token `not_planned`
+# leaking through to the CLI) can never silently mock-pass again.
+if [[ "${1:-}" == "issue" && "${2:-}" == "close" ]]; then
+    _close_reason=""
+    _prev_arg=""
+    for _arg in "$@"; do
+        if [[ "$_prev_arg" == "--reason" || "$_prev_arg" == "-r" ]]; then
+            _close_reason="$_arg"
+        fi
+        _prev_arg="$_arg"
+    done
+    if [[ -n "$_close_reason" ]]; then
+        case "$_close_reason" in
+            completed|"not planned"|duplicate) ;;
+            *)
+                echo "fake-gh: invalid --reason '$_close_reason' (real gh vocabulary: {completed|not planned|duplicate})" >&2
+                exit 1
+                ;;
+        esac
+    fi
+fi
 _fake_gh_select_stdout() {
     if [[ -z "${FAKE_GH_DISPATCH_DIR:-}" ]]; then
         printf '%s' "${FAKE_GH_STDOUT_FILE:-}"
@@ -306,6 +331,32 @@ reset_fake_gh
 out=$(provider_close 42 completed)
 assert_eq "1.9 close state=closed" "closed" "$(printf '%s' "$out" | jq -r '.state')"
 assert_eq "1.9 close state_reason=completed" "completed" "$(printf '%s' "$out" | jq -r '.state_reason')"
+
+# 1.9b close — the interface reason `not_planned` TRANSLATES to the gh
+# CLI vocabulary "not planned" (SPACE) at the invocation boundary
+# (BD-204 C-8 live-flip defect: all five Deprecated/Cancelled closes
+# failed 3x each because `not_planned` was passed through verbatim;
+# the real CLI vocabulary is {completed|not planned|duplicate} per
+# `gh issue close --help`). The interface — the reason arg and the
+# returned state_reason — keeps `not_planned`. The fake gh above now
+# REJECTS any non-CLI-vocabulary reason, so this leg fails loudly if
+# the translation ever regresses.
+reset_fake_gh
+log=$(mktemp -t prov-close-log.XXXXXX); export FAKE_GH_LOG="$log"
+out=$(provider_close 42 not_planned)
+rc19b=$?
+assert_eq "1.9b close not_planned rc=0 (vocabulary-enforcing fake accepts the translated reason)" "0" "$rc19b"
+assert_eq "1.9b close state_reason stays the interface token not_planned" "not_planned" "$(printf '%s' "$out" | jq -r '.state_reason')"
+log_contents=$(cat "$log")
+assert_contains "1.9b gh argv carries --reason not planned (SPACE — the CLI vocabulary)" \
+    "$log_contents" "issue close 42 --reason not planned"
+if printf '%s' "$log_contents" | grep -q -- "--reason not_planned"; then
+    t_fail "1.9b interface token not_planned must NOT reach the gh CLI" "log: ${log_contents:0:200}"
+else
+    t_pass "1.9b interface token not_planned does not reach the gh CLI"
+fi
+rm -f "$log"
+unset FAKE_GH_LOG
 
 # 1.10 close — invalid reason
 reset_fake_gh

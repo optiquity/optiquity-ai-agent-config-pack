@@ -198,6 +198,23 @@ case "\$1 \$2" in
         ;;
     "issue close")
         id="\$3"
+        # BD-204: enforce the REAL gh CLI close-reason vocabulary
+        # {completed|not planned|duplicate} BEFORE the transient-failure
+        # simulation — a wrong-vocabulary close must never "recover".
+        _cr=""; _cp=""
+        for _ca in "\$@"; do
+            [[ "\$_cp" == "--reason" || "\$_cp" == "-r" ]] && _cr="\$_ca"
+            _cp="\$_ca"
+        done
+        if [[ -n "\$_cr" ]]; then
+            case "\$_cr" in
+                completed|"not planned"|duplicate) ;;
+                *)
+                    echo "fake-gh: invalid --reason '\$_cr' (real gh vocabulary: {completed|not planned|duplicate})" >&2
+                    exit 1
+                    ;;
+            esac
+        fi
         # Fail the first time we see this id; succeed thereafter.
         if grep -q "^seen:\$id\$" "$state_file" 2>/dev/null; then
             # Already attempted once → succeed on retry.
