@@ -1,7 +1,8 @@
 # tracker.toml — pack repo tracker configuration (example)
 #
 # This file is OPTIONAL. Without it, the pack runs in flat-file mode
-# (BACKLOG.md / STATUS.md / CHANGELOG.md as source-of-truth).
+# (the /backlog/ + /changelog/ per-entry trees as source-of-truth;
+# the pack has no monolith mirror files post-BD-203).
 #
 # To enable tracker mode for the pack repo:
 #   1. Copy this file to `tracker.toml` in the pack root.
@@ -23,21 +24,24 @@ repo = "DShaneNYC/optiquity-ai-agent-config-pack"
 # instance = ""                    # set for jira: full URL
 
 [mode]
-# "tracker"   = use tracker as source-of-truth; mirrors regenerated.
+# "tracker"   = use tracker as source-of-truth; the per-entry trees +
+#               _toc.md regenerate from tracker state (no monolith
+#               mirrors on the pack surface post-BD-203).
 # "flat-file" = pre-v11 behavior; tracker.toml present but disabled.
 state = "flat-file"
 # Set when first switching to tracker mode (ISO 8601 UTC).
 # opted_in_at = "2026-05-15T12:00:00Z"
 # opted_in_by = "you@example.com"
 
-[mirror]
-# Whether write paths regenerate the markdown mirror automatically.
-enabled = true
-# Bare names; trinity ## Document locations resolves to actual paths.
-location_backlog   = "BACKLOG.md"
-location_status    = "STATUS.md"
-location_changelog = "CHANGELOG.md"
-regenerate_on_write = true
+# NO [mirror] table on the pack surface (BD-204, completing BD-203's
+# no-monolith repoint). The pack deleted its monolith mirrors at
+# BD-203 — the /backlog/ + /changelog/ per-entry trees (with
+# regenerated _toc.md) are the sole flat representation, and _toc.md
+# regeneration is not a "mirror file" in the Check 29 sense.
+# validate-pack.py treats the absent table as a no-mirror surface
+# (mirror-staleness N/A). The client-side example
+# (project-template/tracker.toml.project-example) keeps its [mirror]
+# table until BD-206 retires the project-side monolith mirrors.
 
 [id_namespace]
 # "BD" for the pack repo; "TD" for client projects.

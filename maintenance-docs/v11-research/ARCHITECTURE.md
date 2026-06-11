@@ -523,6 +523,22 @@ last_reverse_run = null
 mapping_file = ".pack-tracker/id-map.json"
 ```
 
+> **As-built addendum (2026-06-11, BD-204 — architect-doc-vs-reality
+> reconciliation):** the `[mirror]` table in the schema block above is
+> SURFACE-CONDITIONAL as built, not unconditional. Under the no-monolith
+> model realized at BD-203 (the pack deleted its monolith mirrors; the
+> `/backlog/` + `/changelog/` per-entry trees with regenerated `_toc.md`
+> are the pack's sole flat representation) and BD-204 (surface-aware
+> writer + validator), the PACK surface omits `[mirror]` entirely, while
+> the CLIENT surface keeps the bare-name keys shown above until BD-206
+> retires the project-side monolith mirrors. Realized consumers (file +
+> symbol): `scripts/lib/tracker-init.sh` — `_tracker_init_write_config`
+> (surface-aware emission: pack omits the table, client keeps it);
+> `scripts/validate-pack.py` — `_validate_tracker_toml` (per-surface
+> `mirror_required`: client-required, pack-optional/omitted; a present
+> table is key/type-validated on either surface). The schema block above
+> is preserved byte-stable as the dated design record.
+
 A surface in flat-file mode has either no `tracker.toml` (default) or
 `mode.state = "flat-file"`. The presence and content of `tracker.toml` is
 the **only** mode-detection signal — no env-var sniffing, no presence-of-

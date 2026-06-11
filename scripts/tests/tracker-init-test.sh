@@ -10,7 +10,10 @@
 #   3. Templates verification — missing template files surface
 #      not-found typed code.
 #   4. tracker.toml emission — written shape matches V1 §3.1; opted_in_at
-#      preservation across re-runs; default values.
+#      preservation across re-runs; default values. Surface-aware
+#      [mirror] emission (BD-204): pack configs omit the table (no
+#      monolith post-BD-203); client configs keep the bare-name keys
+#      (until BD-206).
 #   5. Label canonical set — tracker_labels_canonical_set emits the
 #      expected count + every required family member.
 #
@@ -59,18 +62,27 @@ source "$LIB_DIR/tracker-init.sh"
 
 printf "\n=== Group 1: flag parsing ===\n"
 
+# Legs 1.1-1.3 used to omit --repo-root, defaulting to $(pwd) — so a
+# runtime .pack-tracker/id-map.json at the suite's cwd (e.g. the real
+# pack tree in tracker mode) tripped the prior-state rail before flag
+# validation. Point them at a scratch root with a pack-ops/ surface
+# marker so they pass regardless of cwd state (BD-204 review NIT-2).
+TR_FLAGVAL=$(mktemp -d -t tinit-flagval.XXXXXX)
+mkdir -p "$TR_FLAGVAL/pack-ops"
+
 # 1.1 missing --backend → validation error.
-err=$(tracker_init_run --repo /x/y 2>&1 1>/dev/null) || true
+err=$(tracker_init_run --repo-root "$TR_FLAGVAL" --repo /x/y 2>&1 1>/dev/null) || true
 assert_contains "1.1 missing --backend → validation" "$err" "ERROR: validation"
 assert_contains "1.1 message names --backend"        "$err" "--backend is required"
 
 # 1.2 missing --repo → validation error.
-err=$(tracker_init_run --backend github 2>&1 1>/dev/null) || true
+err=$(tracker_init_run --repo-root "$TR_FLAGVAL" --backend github 2>&1 1>/dev/null) || true
 assert_contains "1.2 missing --repo → validation" "$err" "--repo is required"
 
 # 1.3 unsupported backend.
-err=$(tracker_init_run --backend gitlab --repo x/y 2>&1 1>/dev/null) || true
+err=$(tracker_init_run --repo-root "$TR_FLAGVAL" --backend gitlab --repo x/y 2>&1 1>/dev/null) || true
 assert_contains "1.3 backend 'gitlab' rejected at v11.0" "$err" "not supported at v11.0"
+rm -rf "$TR_FLAGVAL"
 
 # 1.4 surface auto-detection — pack root (pack-ops/ marker present per BD-175).
 TR_PACK=$(mktemp -d -t tinit-pack.XXXXXX)
@@ -236,6 +248,21 @@ assert_eq "3.3 id_namespace.prefix=BD"  "BD"     "$(tracker_config_get "$cfg" id
 assert_eq "3.3 mapping_file path"       ".pack-tracker/id-map.json" \
     "$(tracker_config_get "$cfg" migration.mapping_file)"
 
+# 3.3b BD-204: pack-surface init writes NO [mirror] table. The pack
+# surface has no monolith mirrors post-BD-203 (per-entry trees are the
+# sole flat representation); validate-pack.py Check 29′ treats the
+# absent table as a no-mirror surface.
+if grep -q '^\[mirror\]' "$cfg"; then
+    t_fail "3.3b pack-surface config omits [mirror] table" "found [mirror] in $cfg"
+else
+    t_pass "3.3b pack-surface config omits [mirror] table"
+fi
+if grep -qE 'location_backlog|location_status|location_changelog|regenerate_on_write' "$cfg"; then
+    t_fail "3.3c pack-surface config has no mirror keys" "found a mirror key in $cfg"
+else
+    t_pass "3.3c pack-surface config has no mirror keys"
+fi
+
 # 3.4 opted_in_at persists across re-runs.
 prior_opted_in=$(tracker_config_get "$cfg" mode.opted_in_at)
 sleep 1   # ensure timestamp would change if we re-wrote it
@@ -244,6 +271,32 @@ tracker_init_run --repo-root "$TR_OK" --backend github --repo DShaneNYC/x --no-f
 export PATH="$PATH_SAVED"
 new_opted_in=$(tracker_config_get "$cfg" mode.opted_in_at)
 assert_eq "3.4 opted_in_at preserved across re-runs" "$prior_opted_in" "$new_opted_in"
+
+# 3.5 BD-204: client-surface init KEEPS the [mirror] table with the
+# bare-name keys (the client model still has monolith mirrors until
+# BD-206; bare names resolve via the project trinity ## Document
+# locations — see project-template/tracker.toml.project-example).
+TR_CLIOK=$(mktemp -d -t tinit-cliok.XXXXXX)
+mkdir -p "$TR_CLIOK/docs/pack"  # client surface marker
+mkdir -p "$TR_CLIOK/.github/ISSUE_TEMPLATE"
+touch "$TR_CLIOK/.github/ISSUE_TEMPLATE/work-item.yml"
+touch "$TR_CLIOK/.github/ISSUE_TEMPLATE/inbound.yml"
+touch "$TR_CLIOK/.github/ISSUE_TEMPLATE/config.yml"
+
+export PATH="$FAKE_BIN_TPL:$PATH_SAVED"
+output=$(tracker_init_run --repo-root "$TR_CLIOK" --backend github --repo your-org/y --no-forward 2>&1)
+rc=$?
+export PATH="$PATH_SAVED"
+assert_eq "3.5 client happy-path rc=0" "0" "$rc"
+cfg_cli="$TR_CLIOK/docs/pack/tracker.toml"
+[[ -f "$cfg_cli" ]] || t_fail "3.5 client tracker.toml exists at docs/pack/" "missing $cfg_cli"
+assert_eq "3.5 mirror.enabled=true"      "true"         "$(tracker_config_get "$cfg_cli" mirror.enabled)"
+assert_eq "3.5 mirror.location_backlog"  "BACKLOG.md"   "$(tracker_config_get "$cfg_cli" mirror.location_backlog)"
+assert_eq "3.5 mirror.location_status"   "STATUS.md"    "$(tracker_config_get "$cfg_cli" mirror.location_status)"
+assert_eq "3.5 mirror.location_changelog" "CHANGELOG.md" "$(tracker_config_get "$cfg_cli" mirror.location_changelog)"
+assert_eq "3.5 mirror.regenerate_on_write=true" "true"  "$(tracker_config_get "$cfg_cli" mirror.regenerate_on_write)"
+assert_eq "3.5 id_namespace.prefix=TD"   "TD"           "$(tracker_config_get "$cfg_cli" id_namespace.prefix)"
+rm -rf "$TR_CLIOK"
 
 rm -rf "$FAKE_BIN_TPL" "$TR_OK"
 

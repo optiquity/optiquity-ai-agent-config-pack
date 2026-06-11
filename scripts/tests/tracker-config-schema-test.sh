@@ -14,7 +14,10 @@
 #   4.  Wrong id_namespace.prefix on client-example → FAIL on that key
 #   5.  Mode value not in the supported set        → FAIL on mode.state
 #   6.  cli_acceleration.prefer not in supported set → FAIL on that key
-#   7.  Missing [mirror] table                     → FAIL on mirror
+#   7.  Missing [mirror] table on CLIENT example   → FAIL on mirror
+#       (BD-204: [mirror] is per-surface — required on the client
+#       example until BD-206; the PACK example omits it post-BD-203,
+#       which Test 1's no-[mirror] GOOD_PACK pins as PASS)
 #   8.  Missing migration.mapping_file             → FAIL on that key
 #   9.  TOML parse error                           → FAIL on parse
 #   10. schema_version = true (bool-as-int trap)   → FAIL on bool (F3)
@@ -22,6 +25,10 @@
 #   12. backend.repo empty string                  → FAIL on empty (F4)
 #   13. Live tracker.toml with stale mirror        → FAIL on staleness (F1)
 #   14. Live tracker.toml flat-file mode           → soft-pass (F1)
+#   15. Live tracker-mode toml, no [mirror]        → soft-pass (BD-204)
+#   16. Live tracker + declared-but-missing mirror → FAIL (BD-204)
+#   17. Pack example WITH [mirror] missing a key   → FAIL (BD-204:
+#       optional-when-absent, but validated when present)
 #
 # Usage: bash scripts/tests/tracker-config-schema-test.sh
 #
@@ -81,7 +88,9 @@ build_fixture() {
 export REAL_REPO_ROOT="$REPO_ROOT"
 
 # Canonical good bodies (modeled on the live example files; minimum
-# set of keys Check 29 inspects).
+# set of keys Check 29 inspects). GOOD_PACK carries NO [mirror] table
+# (BD-204: the live pack example omits it post-BD-203 — Test 1 passing
+# with this body pins that Check 29 accepts the no-[mirror] pack shape).
 read -r -d '' GOOD_PACK <<'TOML' || true
 schema_version = 1
 
@@ -91,13 +100,6 @@ repo = "DShaneNYC/optiquity-ai-agent-config-pack"
 
 [mode]
 state = "flat-file"
-
-[mirror]
-enabled = true
-location_backlog   = "BACKLOG.md"
-location_status    = "STATUS.md"
-location_changelog = "CHANGELOG.md"
-regenerate_on_write = true
 
 [id_namespace]
 prefix = "BD"
@@ -218,22 +220,26 @@ else
 fi
 rm -rf "$fix"
 
-# ── Test 7: Missing [mirror] table ──────────────────────────────────
-printf "\n=== Test 7: missing [mirror] table ===\n"
+# ── Test 7: Missing [mirror] table on the CLIENT example ────────────
+# BD-204: [mirror] is per-surface. The CLIENT example still requires
+# it (until BD-206); the PACK example legitimately omits it (Test 1's
+# GOOD_PACK has no [mirror] and passes). Strip the table from the
+# client body and pin the FAIL.
+printf "\n=== Test 7: missing [mirror] table on client example ===\n"
 # Strip the entire [mirror] block (table header + 5 keys).
-bad=$(printf '%s\n' "$GOOD_PACK" | awk '
+bad=$(printf '%s\n' "$GOOD_CLIENT" | awk '
   /^\[mirror\]$/ { skip=1; next }
   skip && /^\[/ { skip=0 }
   !skip { print }
 ')
-fix=$(build_fixture "$bad" "$GOOD_CLIENT")
+fix=$(build_fixture "$GOOD_PACK" "$bad")
 out=$(run_check29_at "$fix" 2>&1); rc=$?
-if [[ $rc -ne 0 ]]; then t_pass "7.1 missing mirror → exit nonzero"
-else t_fail "7.1 missing mirror → exit nonzero" "rc=$rc"; fi
-if echo "$out" | grep -q "missing required key: mirror"; then
-    t_pass "7.2 message names mirror as missing"
+if [[ $rc -ne 0 ]]; then t_pass "7.1 missing mirror on client → exit nonzero"
+else t_fail "7.1 missing mirror on client → exit nonzero" "rc=$rc"; fi
+if echo "$out" | grep -q "project-example — missing required key: mirror"; then
+    t_pass "7.2 message names mirror as missing on the client example"
 else
-    t_fail "7.2 message names mirror as missing" "out=${out:0:400}"
+    t_fail "7.2 message names mirror as missing on the client example" "out=${out:0:400}"
 fi
 rm -rf "$fix"
 
@@ -525,6 +531,31 @@ if echo "$out" | grep -q "BACKLOG.md.*does not exist on disk"; then
     t_pass "16.2 message names missing mirror file (guard did not over-admit)"
 else
     t_fail "16.2 message names missing mirror file (guard did not over-admit)" "out=${out:0:600}"
+fi
+rm -rf "$fix"
+
+# ── Test 17: Pack example WITH [mirror] but missing a key → FAIL ────
+# BD-204 negative case — [mirror] is OPTIONAL on the pack example, but
+# when the table IS present its keys are still validated (the schema
+# branch must not widen into ignoring a malformed table).
+printf "\n=== Test 17: pack example with malformed [mirror] ===\n"
+read -r -d '' PACK_BAD_MIRROR <<'TOML' || true
+[mirror]
+enabled = true
+location_backlog   = "BACKLOG.md"
+regenerate_on_write = true
+TOML
+bad="$GOOD_PACK
+
+$PACK_BAD_MIRROR"
+fix=$(build_fixture "$bad" "$GOOD_CLIENT")
+out=$(run_check29_at "$fix" 2>&1); rc=$?
+if [[ $rc -ne 0 ]]; then t_pass "17.1 present-but-malformed mirror on pack → exit nonzero"
+else t_fail "17.1 present-but-malformed mirror on pack → exit nonzero" "rc=$rc out=${out:0:400}"; fi
+if echo "$out" | grep -q "pack-example — missing required key: mirror.location_status"; then
+    t_pass "17.2 message names the missing mirror key on the pack example"
+else
+    t_fail "17.2 message names the missing mirror key on the pack example" "out=${out:0:400}"
 fi
 rm -rf "$fix"
 

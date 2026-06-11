@@ -92,7 +92,9 @@ Checks:
       and carry the required keys/types per
       `maintenance-docs/v11-research/ARCHITECTURE.md` §3.1
       (`schema_version`, `[backend].name`, `[backend].repo`, `[mode].state`,
-      `[mirror]`, `[id_namespace].prefix`, `[cli_acceleration].prefer`,
+      `[mirror]` (per-surface, BD-204: required on the client example;
+      optional/omitted on the no-monolith pack example),
+      `[id_namespace].prefix`, `[cli_acceleration].prefer`,
       `[migration].forward_complete`, `[migration].reverse_available`,
       `[migration].mapping_file`). Catches schema drift in the
       example files that ship to clients via init-project.sh.
@@ -2598,7 +2600,8 @@ _TRACKER_PREFER = ("gh", "mcp", "auto")
 _TRACKER_SCHEMA_VERSION = 1
 
 
-def _validate_tracker_toml(path: Path, expected_prefix: str) -> bool:
+def _validate_tracker_toml(path: Path, expected_prefix: str,
+                           mirror_required: bool) -> bool:
     """Validate a single tracker.toml example file.
 
     Returns True on PASS, False on FAIL. Records each failure via
@@ -2608,6 +2611,13 @@ def _validate_tracker_toml(path: Path, expected_prefix: str) -> bool:
     `expected_prefix` is the [id_namespace].prefix value the example
     file is supposed to ship with — "BD" for the pack-side example,
     "TD" for the client-side example.
+
+    `mirror_required` is the per-surface [mirror] requirement (BD-204):
+    True for the client-side example (the client model keeps monolith
+    mirrors until BD-206), False for the pack-side example (the pack
+    deleted its monolith mirrors at BD-203, so the table's absence is
+    valid-by-construction). When the table IS present, its keys are
+    validated on either surface.
     """
     rel = path.relative_to(REPO_ROOT)
     if not path.is_file():
@@ -2681,9 +2691,14 @@ def _validate_tracker_toml(path: Path, expected_prefix: str) -> bool:
              f"{list(_TRACKER_MODES)}, got {mode_state!r}")
         failed = True
 
-    # [mirror] table — presence of the table itself, plus the four
-    # operational keys init-project / mirror regen rely on.
-    mirror = _require("mirror", dict)
+    # [mirror] table — surface-conditional presence (BD-204). Required
+    # on the client surface (mirror_required=True); optional on the
+    # pack surface, where the no-monolith shape omits it entirely.
+    # When present (either surface), the table and its operational
+    # keys are validated as before.
+    mirror = None
+    if mirror_required or "mirror" in data:
+        mirror = _require("mirror", dict)
     if mirror is not None:
         for k, ty in (
             ("enabled", bool),
@@ -2854,7 +2869,10 @@ def check_tracker_config() -> None:
     Both the pack-side `tracker.toml.pack-example` and the client-side
     `project-template/tracker.toml.project-example` must parse as TOML
     and carry the required keys/types per
-    `maintenance-docs/v11-research/ARCHITECTURE.md` §3.1.
+    `maintenance-docs/v11-research/ARCHITECTURE.md` §3.1. The [mirror]
+    table requirement is per-surface (BD-204): required on the client
+    example, optional-by-construction on the pack example (the pack
+    deleted its monolith mirrors at BD-203).
 
     Catches schema drift in the example files that ship to clients
     via `init-project.sh` (per-BD-080 stage S11). If the examples
@@ -2881,8 +2899,13 @@ def check_tracker_config() -> None:
     pack_example = REPO_ROOT / "tracker.toml.pack-example"
     client_example = REPO_ROOT / "project-template" / "tracker.toml.project-example"
 
-    _validate_tracker_toml(pack_example, expected_prefix="BD")
-    _validate_tracker_toml(client_example, expected_prefix="TD")
+    # mirror_required is per-surface (BD-204): the pack example omits
+    # [mirror] (no monolith post-BD-203); the client example keeps it
+    # until BD-206.
+    _validate_tracker_toml(pack_example, expected_prefix="BD",
+                           mirror_required=False)
+    _validate_tracker_toml(client_example, expected_prefix="TD",
+                           mirror_required=True)
 
     # V1 §A.2 acceptance criterion B — mirror-staleness warning when
     # a live tracker.toml exists, mode is tracker, and forward

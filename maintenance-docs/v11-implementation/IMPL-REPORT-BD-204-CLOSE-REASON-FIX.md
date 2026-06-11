@@ -24,7 +24,8 @@ $ gh issue close --help | grep -i reason
 live flip (`/tmp/bd204-c8-flip.log` lines 26-33): `ERROR: partial-write` with
 all five Deprecated/Cancelled entry closes failing —
 `step-8 close: BD-021/022/023/103/123 — failed after 3 attempts` each.
-`completed` (162 Resolved closes succeeded live) and `duplicate` are identical
+`completed` (167 Resolved closes succeeded live, per the flip-log
+`closed:     167` summary line) and `duplicate` are identical
 in both vocabularies; only `not_planned` needed translation.
 
 Why no harness caught it: every fake-gh `issue close` stub accepted any
