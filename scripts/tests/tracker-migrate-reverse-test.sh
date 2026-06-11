@@ -346,6 +346,52 @@ div_force_warn=$(tracker_migrate_reverse_reconstruct "$div_issue_edit" '{}' 1 2>
 assert_eq       "2.1d-iii --force overrides divergence to blob-wins (rc=0)" "0" "$div_force_rc"
 assert_contains "2.1d-iii --force surfaces a blob-wins WARN" "$div_force_warn" "blob wins"
 
+# 2.1f BD-204 rehearsal run-3 Defect C: resolution-projection SYMMETRY for
+# an UNRESOLVED entry (`Resolved: n/a`). The blob carries `Resolved: n/a`
+# verbatim; the parser projects an EMPTY resolution; the composer's
+# empty-omission rule emits NO `## Resolution` H2 — so a tracker-side
+# recompose (the oracle's status-flip CRUD update: description + raw_body,
+# empty resolution) must NOT diverge. Run 3 flagged exactly this phantom
+# `(Resolution)` divergence on issue #4 (BD-904) and aborted the post-CRUD
+# reverse (cascading the BD-908-missing / count / status-round-trip FAILs).
+na_raw=$'**BD-080 — n/a resolution probe**\nType: TODO(version)\nStatus: Deferred\nBlockers: None\nUnblocks: None\nDescription: status flipped mid-cycle; unresolved entry.\nResolved: n/a\n'
+na_body=$(tmf_compose_issue_body "BD-080" "status flipped mid-cycle; unresolved entry." "" "" "" "$na_raw")
+# The composed body must NOT carry a phantom Resolution H2 (the projection
+# side of the same symmetry rule, pinned at the composer output here).
+assert_not_contains "2.1f composed body has NO phantom ## Resolution for 'Resolved: n/a'" \
+    "$na_body" "## Resolution"
+na_issue=$(jq -n --arg body "$na_body" '{
+  number: 80, id: "80",
+  title: "BD-080: n/a resolution probe",
+  body: $body,
+  state: "open",
+  labels: ["bd-entry","status:deferred"]
+}')
+na_err=$(tracker_migrate_reverse_reconstruct "$na_issue" '{}' 2>&1 1>/dev/null); na_rc=$?
+assert_eq "2.1f n/a-resolution entry does NOT flag divergence (rc=0; run-3 Defect C)" "0" "$na_rc"
+assert_not_contains "2.1f no phantom '(Resolution)' divergence error" "$na_err" "divergence"
+na_rec=$(tracker_migrate_reverse_reconstruct "$na_issue" '{}' 2>/dev/null)
+assert_eq "2.1f status decodes Deferred (status-flip round-trips)" \
+    "Deferred" "$(printf '%s' "$na_rec" | jq -r .status)"
+na_got_raw=$(printf '%s' "$na_rec" | jq -j '.raw_body'; printf X); na_got_raw="${na_got_raw%X}"
+assert_eq "2.1f blob raw_body (incl. 'Resolved: n/a' line) byte-faithful" "$na_raw" "$na_got_raw"
+
+# 2.1f-ii a REAL visible-H2 edit on the SAME n/a entry must STILL flag —
+# the symmetry fix is no per-field carve-out: the comparator stays
+# fail-loud on genuine divergence.
+na_edit_body="${na_body/unresolved entry./EDITED entry.}"
+na_edit_issue=$(jq -n --arg body "$na_edit_body" '{
+  number: 81, id: "81",
+  title: "BD-080: n/a resolution probe",
+  body: $body,
+  state: "open",
+  labels: ["bd-entry","status:deferred"]
+}')
+na_edit_err=$(tracker_migrate_reverse_reconstruct "$na_edit_issue" '{}' 2>&1 1>/dev/null); na_edit_rc=$?
+assert_eq       "2.1f-ii REAL H2 edit on the n/a entry STILL flags (rc=1)" "1" "$na_edit_rc"
+assert_contains "2.1f-ii divergence names the issue" "$na_edit_err" "divergence: issue #81"
+assert_contains "2.1f-ii divergence names the Description section" "$na_edit_err" "Description"
+
 # 2.1e BD-204 §3.LF.3a — single-source BATCH MODE for the gz64 decode (Option B;
 # design §4.6 (S) item 1). The C-4.6 deep guard pairs _tmf_gz64_encode_batch
 # with _tmr_decode_body_blob_batch (ONE python3 over all N records, no per-entry

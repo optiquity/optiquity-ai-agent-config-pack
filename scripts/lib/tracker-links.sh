@@ -238,6 +238,17 @@ tracker_links_create_blocked_by() {
     # fallback pre-BD-111 per V1 §2.7.1 row 12). Tests for this
     # library run against a stub backend that echoes success without
     # hitting the network.
+    #
+    # RE-RUN IDEMPOTENCY (BD-204 rehearsal run-3 Defect B): the
+    # already-exists consult is PROVIDER-TRUTH, inside provider_link
+    # (the gh backend reads `Issue.blockedBy` and skips the mutation
+    # when the edge exists). The cycle-graph store below is NOT used
+    # as a create-dedup: its idempotency is WRITE-side only (store_add
+    # dedups tuples) and it is the cycle-check runtime view — store
+    # presence cannot prove the tracker-side edge still exists (store
+    # loss / GH-side unlink would make a store-based skip silently
+    # wrong), so the orchestrator intentionally re-calls provider_link
+    # on every run and lets the provider decide.
     if ! provider_link "$src_id" "$tgt_id" "blocked-by" >/dev/null 2>&1; then
         # Provider already emitted its typed error block. We do not
         # double-format; just bubble up.

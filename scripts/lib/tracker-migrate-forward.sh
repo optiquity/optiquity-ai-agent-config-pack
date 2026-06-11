@@ -474,6 +474,28 @@ def flush_entry():
     for k in ("blockers", "unblocks"):
         if isinstance(current.get(k), str):
             current[k] = parse_id_list(current[k])
+    # BD-204 rehearsal run-3 Defect C: the `Resolved:` header maps onto the
+    # `resolution` key (mapping below), and the entry grammar's UNRESOLVED
+    # placeholder is the literal bare `n/a` (`Resolved: n/a` on every open
+    # entry per backlog/_rules.md; the reverse emitter's inverse rule in
+    # _tmr_emit_backlog writes `Resolution: <res>` when non-empty, else
+    # `Resolved: n/a`). A bare `n/a` therefore means NO resolution — project
+    # it as EMPTY so all three projection actors agree: the composer
+    # (tmf_compose_issue_body) emits NO `## Resolution` H2 (empty-omission
+    # rule), the divergence comparator (_tmr_check_blob_h2_divergence, which
+    # re-parses the blob through THIS parser) expects NO H2, and a
+    # tracker-side edit (tracker_edit_entry / the run-3 oracle CRUD leg)
+    # that recomposes with an empty resolution matches both. Pre-fix, the
+    # phantom `## Resolution\n\nn/a` projection made the post-edit reverse
+    # flag a false `(Resolution)` divergence (run-3 issue #4 / BD-904).
+    # Scope-audited: ONLY the resolution key normalizes, and ONLY a bare
+    # (whitespace-trimmed, case-insensitive) `n/a` — placeholder-with-
+    # content values (e.g. `File/Symbol: n/a — new dir`) and real
+    # resolution text (`Resolved: 2026-04-01 — fixed...`) are untouched;
+    # File/Symbol and Context have no bare-`n/a` placeholder convention.
+    res = current.get("resolution", "")
+    if isinstance(res, str) and res.strip().lower() == "n/a":
+        current["resolution"] = ""
     entries.append(current)
     current = None
 
@@ -1839,6 +1861,13 @@ tracker_migrate_forward_run() {
         tmf_checkpoint_clear "$checkpoint_file"
     fi
 
+    # BD-204 F-2: the link counts are "ensured present" semantics, NOT
+    # "created this run" — the provider's read-before-write skip returns
+    # success (with an additive already_linked marker) for a pre-existing
+    # edge, so a skip-all RE-run reports the same counts as the run that
+    # created the links. The orchestrator discards provider stdout, so it
+    # cannot split ensured-vs-created without threading the marker through;
+    # the printed "(ensured present)" qualifier makes the semantics explicit.
     cat <<EOF
 forward: complete.
   entries:    $entry_count
@@ -1847,7 +1876,7 @@ forward: complete.
   recovered:  $recovered
   closed:     $closed
   phases:     $phase_count (created: $phase_created)
-  links:      parent=$linked_parent, blocked-by=$linked_blocked
+  links:      parent=$linked_parent, blocked-by=$linked_blocked (ensured present)
   mapping:    $mapping_file
 EOF
 

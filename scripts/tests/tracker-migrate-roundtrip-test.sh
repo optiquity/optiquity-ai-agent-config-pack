@@ -178,7 +178,42 @@ case "$1 $2" in
         printf '%s' "$new_st" > "$STATE"
         ;;
 
-    "issue comment"|"issue edit")
+    "issue comment")
+        ;;
+
+    "issue edit")
+        # BD-204 run-3 (Defect C mock leg): apply body + label edits to
+        # state so the REAL provider_update path (gh issue edit
+        # --body-file/--add-label/--remove-label) is exercisable in the
+        # post-CRUD round-trip (Group 6). Previously a no-op.
+        id="$3"
+        ed_body_file=""; ed_add_labels=""; ed_remove_labels=""
+        shift 3
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --body-file)    ed_body_file="$2"; shift 2 ;;
+                --add-label)    ed_add_labels="$2"; shift 2 ;;
+                --remove-label) ed_remove_labels="$2"; shift 2 ;;
+                --title|--add-assignee|--remove-assignee|--milestone) shift 2 ;;
+                *) shift ;;
+            esac
+        done
+        st=$(cat "$STATE")
+        new_st="$st"
+        if [[ -n "$ed_body_file" && -f "$ed_body_file" ]]; then
+            ed_body=$(cat "$ed_body_file")
+            new_st=$(printf '%s' "$new_st" | jq -c --arg id "$id" --arg b "$ed_body" \
+                '.issues[$id].body = $b')
+        fi
+        if [[ -n "$ed_add_labels" ]]; then
+            new_st=$(printf '%s' "$new_st" | jq -c --arg id "$id" --arg l "$ed_add_labels" \
+                '.issues[$id].labels = ((.issues[$id].labels + ($l | split(",") | map({name: .}))) | unique_by(.name))')
+        fi
+        if [[ -n "$ed_remove_labels" ]]; then
+            new_st=$(printf '%s' "$new_st" | jq -c --arg id "$id" --arg l "$ed_remove_labels" \
+                '.issues[$id].labels = (.issues[$id].labels | map(select(.name as $n | (($l | split(",")) | index($n)) | not)))')
+        fi
+        printf '%s' "$new_st" > "$STATE"
         ;;
 
     "search issues")
@@ -251,7 +286,24 @@ case "$1 $2" in
             # node-ids are NODE_<N> (synthesized below in api /repos/...).
             src_n="${f_issue_id#NODE_}"
             tgt_n="${f_blocked_by#NODE_}"
+            # BD-204 run-3 (Defect B mock leg): DUPLICATE-EDGE SENTINEL.
+            # Live GH's addBlockedBy is NOT idempotent — re-attempting an
+            # EXISTING edge fails (rehearsal run-3 evidence: every forward
+            # re-run failed `step-7 link blocked-by`). Mirror that here so
+            # the Group-6 re-run leg has TEETH: production must
+            # read-before-write (Issue.blockedBy query) and SKIP the
+            # mutation; a regression that re-attempts it trips this exit 1.
+            # NOTE: the error text below is a STAND-IN (no live duplicate-
+            # edge error text was captured); production code must NEVER
+            # classify on it.
             if [[ -n "$src_n" && -n "$tgt_n" ]]; then
+                dup=$(jq -r --arg src "$src_n" --arg tgt "$tgt_n" \
+                    '[.first_class_edges // [] | .[] | select(.issue == ($src | tonumber) and .blocked_by == ($tgt | tonumber))] | length' \
+                    "$STATE")
+                if [[ "$dup" -gt 0 ]]; then
+                    echo "GraphQL: duplicate blocked-by edge (fake-gh sentinel; addBlockedBy is not idempotent on live GH)" >&2
+                    exit 1
+                fi
                 st=$(cat "$STATE")
                 new_st=$(printf '%s' "$st" | jq -c \
                     --arg src "$src_n" --arg tgt "$tgt_n" \
@@ -742,6 +794,127 @@ for v in bd-v11.0 bd-v11.1 bd-v11.2; do
     [[ -d "$FIXTURES_ROOT/$v" ]] && t_pass "5.2 $v directory exists" \
         || t_fail "5.2 $v directory exists"
 done
+
+# ─────────────────────────────────────────────────────────────────
+# Group 6: BD-204 rehearsal run-3 — forward RE-RUN link idempotency
+# (Defect B) + post-CRUD reverse with n/a-resolution projection
+# symmetry (Defect C). Reproduces the live oracle's repeated-cycle +
+# interleaved-CRUD topologies that run 3 failed:
+#   - Defect B: forward re-run re-attempted `addBlockedBy` for an
+#     existing edge → partial-write rc=1 (live GH is not idempotent).
+#     The fake-gh addBlockedBy arm carries a DUPLICATE-EDGE SENTINEL
+#     (exit 1 on an existing edge), so these legs FAIL if production
+#     ever re-attempts the mutation instead of read-skipping.
+#   - Defect C: a blob-consistent status-flip update (description +
+#     raw_body recompose; the entry's `Resolved: n/a` projects EMPTY)
+#     made the next reverse flag a phantom `(Resolution)` divergence
+#     and abort — cascading BD-908-missing / count / status failures.
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 6: BD-204 run-3 re-run idempotency + post-CRUD reverse (Defects B + C) ===\n"
+
+REPO6=$(_setup_test_repo "$FIXTURE_V11_0")
+FAKE6=$(mktemp -d -t rtrip-fake6.XXXXXX)
+STATE6="$REPO6/.pack-tracker/fake-tracker-state.json"
+_build_stateful_fake_gh "$FAKE6" "$STATE6"
+
+# Forward run 1 — creates the issues + the BD-002 blocked-by BD-001 edge.
+export PATH="$FAKE6:$PATH_SAVED"
+out6a=$(tracker_migrate_forward_run "$REPO6" 0 0 0 2>&1); rc6a=$?
+export PATH="$PATH_SAVED"
+assert_eq "6.1 forward 1 rc=0" "0" "$rc6a"
+edges_after_1=$(jq '.first_class_edges // [] | length' "$STATE6")
+[[ "$edges_after_1" -ge 1 ]] \
+    && t_pass "6.1 forward 1 created >=1 first-class blocked-by edge (got $edges_after_1)" \
+    || t_fail "6.1 forward 1 created >=1 first-class blocked-by edge" "got $edges_after_1"
+
+# 6.2 Defect B — forward RE-RUN with tracker state + id-map INTACT (the
+# run-3 repeated-cycle topology; Group 3 above wipes both, so this leg is
+# the only mock coverage of the re-link path). Must be a clean skip-all
+# run: rc=0, no creates, NO step-7 partial-write, edge set unchanged.
+export PATH="$FAKE6:$PATH_SAVED"
+out6b=$(tracker_migrate_forward_run "$REPO6" 0 0 0 2>&1); rc6b=$?
+export PATH="$PATH_SAVED"
+assert_eq           "6.2 forward RE-RUN rc=0 (no step-7 partial-write — Defect B)" "0" "$rc6b"
+assert_contains     "6.2 re-run created NOTHING (idempotent)" "$out6b" "created:    0"
+assert_not_contains "6.2 re-run has NO step-7 link failure" "$out6b" "step-7 link blocked-by"
+assert_not_contains "6.2 re-run has NO partial-write error" "$out6b" "partial-write"
+edges_after_2=$(jq '.first_class_edges // [] | length' "$STATE6")
+assert_eq "6.2 edge set unchanged after re-run (no duplicate edge)" \
+    "$edges_after_1" "$edges_after_2"
+
+# 6.3 Defect C — interleaved CRUD, then reverse (the run-3 cycle-3
+# topology). (a) provider_create a NEW BD-009 mid-cycle (the BD-908
+# analog) + register it in the id-map exactly as the forward loop does.
+export _TRACKER_PROVIDER_CONFIG_PATH="$REPO6/tracker.toml"
+bd9_raw=$'**BD-009 — Interleaved-CRUD create**\nType: TODO(version)\nStatus: Open\nBlockers: None\nUnblocks: None\nDescription: created mid-cycle; must appear after the next reverse.\nResolved: n/a\n'
+bd9_body=$(tmf_compose_issue_body "BD-009" "created mid-cycle; must appear after the next reverse." "" "" "" "$bd9_raw")
+bd9_payload=$(jq -n --arg t "BD-009: Interleaved-CRUD create" --arg b "$bd9_body" \
+    '{title: $t, body: $b, labels: ["bd-entry", "template:bd-v11.0", "status:open"]}')
+export PATH="$FAKE6:$PATH_SAVED"
+bd9_result=$(provider_create "$bd9_payload"); bd9_rc=$?
+export PATH="$PATH_SAVED"
+assert_eq "6.3 provider_create BD-009 rc=0" "0" "$bd9_rc"
+bd9_id=$(printf '%s' "$bd9_result" | jq -r '.id')
+map6=$(tmf_mapping_load "$REPO6/.pack-tracker/id-map.json")
+map6=$(tmf_mapping_set "$map6" "BD-009" "$bd9_id" "")
+tmf_mapping_save "$REPO6/.pack-tracker/id-map.json" "$map6"
+
+# (b) Blob-consistent status-flip update BD-002 Unblocked → Deferred via
+# the REAL provider_update, with the SAME recompose call shape the live
+# oracle used: parsed description (+ this entry's File/Symbol) + the
+# flipped raw_body; resolution stays EMPTY because the entry is
+# unresolved (`Resolved: n/a`) — the exact Defect-C case.
+bd2_tmp=$(mktemp -t rtrip-bd2.XXXXXX)
+pe_strip_backpointer_stdin < "$REPO6/backlog/BD-002.md" \
+    | sed 's/^Status: Unblocked$/Status: Deferred/' > "$bd2_tmp"
+bd2_raw=$(cat "$bd2_tmp"; printf X); bd2_raw="${bd2_raw%X}"
+bd2_parsed=$(_tmf_parse_backlog_file "$bd2_tmp")
+rm -f "$bd2_tmp"
+bd2_desc=$(printf '%s' "$bd2_parsed" | jq -r '.[0].description // ""')
+bd2_fs=$(printf   '%s' "$bd2_parsed" | jq -r '.[0].file_symbol // ""')
+bd2_body=$(tmf_compose_issue_body "BD-002" "$bd2_desc" "" "" "$bd2_fs" "$bd2_raw")
+bd2_update=$(jq -n --arg b "$bd2_body" \
+    '{body: $b, add_labels: ["status:deferred"], remove_labels: ["status:unblocked"]}')
+bd2_gh_id=$(tmf_mapping_get "$map6" "BD-002")
+export PATH="$FAKE6:$PATH_SAVED"
+provider_update "$bd2_gh_id" "$bd2_update" >/dev/null 2>&1; up_rc=$?
+export PATH="$PATH_SAVED"
+assert_eq "6.3 provider_update BD-002 rc=0 (blob + H2 + label in one write)" "0" "$up_rc"
+
+# (c) Reverse (cycle 3, post-CRUD): pre-fix this aborted with the phantom
+# `(Resolution)` divergence on the flipped entry; post-fix it completes
+# and the three cascade failures clear (BD-009 appears, count, status).
+export PATH="$FAKE6:$PATH_SAVED"
+out6c=$(tracker_migrate_reverse_run "$REPO6" 0 0 0 2>&1); rc6c=$?
+export PATH="$PATH_SAVED"
+assert_eq           "6.3 post-CRUD reverse rc=0 (NO phantom Resolution divergence — Defect C)" "0" "$rc6c"
+assert_not_contains "6.3 reverse output has NO divergence error" "$out6c" "divergence:"
+if [[ -f "$REPO6/backlog/BD-009.md" ]]; then
+    bd9_recon=$(pe_strip_backpointer_stdin < "$REPO6/backlog/BD-009.md"; printf X); bd9_recon="${bd9_recon%X}"
+    assert_eq "6.3 BD-009 appears byte-verbatim (cascade clears)" "$bd9_raw" "$bd9_recon"
+else
+    t_fail "6.3 BD-009 appears byte-verbatim (cascade clears)" "BD-009.md missing from the reconstructed tree"
+fi
+grep -q '^Status: Deferred$' "$REPO6/backlog/BD-002.md" \
+    && t_pass "6.3 BD-002 status round-trips as Deferred (cascade clears)" \
+    || t_fail "6.3 BD-002 status round-trips as Deferred (cascade clears)"
+bd2_recon=$(pe_strip_backpointer_stdin < "$REPO6/backlog/BD-002.md"; printf X); bd2_recon="${bd2_recon%X}"
+assert_eq "6.3 BD-002 flipped entry byte-verbatim from the blob" "$bd2_raw" "$bd2_recon"
+count6=$(ls "$REPO6/backlog" | grep -Ec '^BD-[0-9]+\.md$')
+assert_eq "6.3 count oracle after create (cascade clears)" "4" "$count6"
+
+# (d) Re-forward (cycle 3, post-CRUD): skip-all + the SAME blocked-by
+# re-link must read-skip again (Defect B against the 4-entry tree).
+export PATH="$FAKE6:$PATH_SAVED"
+out6d=$(tracker_migrate_forward_run "$REPO6" 0 0 0 2>&1); rc6d=$?
+export PATH="$PATH_SAVED"
+assert_eq           "6.4 post-CRUD re-forward rc=0 (Defect B)" "0" "$rc6d"
+assert_contains     "6.4 re-forward created NOTHING (state already on the tracker)" "$out6d" "created:    0"
+assert_contains     "6.4 re-forward sees all 4 entries" "$out6d" "entries:    4"
+assert_not_contains "6.4 re-forward has NO step-7 link failure" "$out6d" "step-7 link blocked-by"
+
+rm -rf "$REPO6" "$FAKE6"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

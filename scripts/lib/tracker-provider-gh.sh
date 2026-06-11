@@ -583,6 +583,12 @@ tracker_provider_gh_set_milestone() {
 # callers that explicitly want it via provider_comment() or
 # provider_raw() (BD-060-era comment-marker behavior — colloquially
 # "the V3 §28 fallback" — is preserved as an escape hatch).
+#
+# IDEMPOTENT for blocks/blocked-by (BD-204 rehearsal run-3 Defect B):
+# a read-before-write (`Issue.blockedBy` query) skips the addBlockedBy
+# mutation when the edge already exists, so forward re-runs (the
+# repeated-cycle / post-CRUD topologies) re-attempt links safely. The
+# skip path returns the normal success JSON plus `already_linked: true`.
 tracker_provider_gh_link() {
     local id="$1"
     local other_id="$2"
@@ -600,6 +606,42 @@ tracker_provider_gh_link() {
             local owner_repo issue_node other_node query
             local source_node target_node
             owner_repo=$(_gh_owner_repo) || return 1
+            # BD-204 rehearsal run-3 Defect B: provider-truth
+            # READ-BEFORE-WRITE. GH's `addBlockedBy` mutation is NOT
+            # idempotent — re-attempting an EXISTING edge fails (live
+            # evidence: rehearsal run 3, every forward re-run failed
+            # `step-7 link blocked-by: BD-907 -> BD-901` → partial-write).
+            # Before mutating, query the BLOCKED issue's existing
+            # blockedBy edges via the SAME live-verified `Issue.blockedBy`
+            # read shape the reverse path uses
+            # (_tmr_fetch_first_class_blocked_by; `first: 50` == the
+            # documented per-relationship ceiling, so the read sees the
+            # full edge set) and SKIP the mutation when the edge already
+            # exists (idempotent success — same success-JSON shape, plus
+            # an additive `already_linked` marker). The read is
+            # BEST-EFFORT BY DESIGN: on ANY read failure (auth, network,
+            # backend without the read surface, mock returning `{}`) we
+            # fall through to the mutation — exactly today's behavior —
+            # and we NEVER classify on error text (no captured live
+            # duplicate-edge error exists to pin a string against).
+            local blocked_num blocking_num
+            if [[ "$kind" == "blocked-by" ]]; then
+                blocked_num="$id";       blocking_num="$other_id"
+            else
+                blocked_num="$other_id"; blocking_num="$id"
+            fi
+            local lk_owner lk_name read_query existing
+            lk_owner=$(printf '%s' "$owner_repo" | cut -d/ -f1)
+            lk_name=$(printf  '%s' "$owner_repo" | cut -d/ -f2)
+            read_query='query { repository(owner: "'"$lk_owner"'", name: "'"$lk_name"'") { issue(number: '"$blocked_num"') { blockedBy(first: 50) { nodes { number } } } } }'
+            if existing=$(_gh_run gh api graphql -f "query=$read_query" 2>/dev/null); then
+                if printf '%s' "$existing" | jq -e --arg n "$blocking_num" \
+                    '[.data.repository.issue.blockedBy.nodes[]?.number | tostring] | index($n) != null' >/dev/null 2>&1; then
+                    printf '{"id": "%s", "linked_to": "%s", "kind": "%s", "already_linked": true}\n' \
+                        "$id" "$other_id" "$kind"
+                    return 0
+                fi
+            fi
             issue_node=$(_gh_run gh api "/repos/$owner_repo/issues/$id"       --jq '.node_id') || return 1
             other_node=$(_gh_run gh api "/repos/$owner_repo/issues/$other_id" --jq '.node_id') || return 1
             # blocked-by: id is blocked by other_id  → addBlockedBy(issueId=id,       blockingIssueId=other_id)

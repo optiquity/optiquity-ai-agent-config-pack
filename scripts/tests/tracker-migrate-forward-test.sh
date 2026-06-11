@@ -117,6 +117,13 @@ assert_eq "1.1 entry[1].blockers[1]"      "phase-1" "$(printf '%s' "$entries" | 
 assert_eq "1.1 entry[2].status"           "Resolved" "$(printf '%s' "$entries" | jq -r '.[2].status')"
 assert_contains "1.1 entry[2].resolution captures commit" \
     "$(printf '%s' "$entries" | jq -r '.[2].resolution')" "abc1234"
+# BD-204 run-3 Defect C: the bare `Resolved: n/a` placeholder (unresolved
+# entry; BD-001 in the fixture) parses to an EMPTY resolution, so the
+# composer's empty-omission rule emits NO `## Resolution` H2 and the
+# blob↔H2 divergence comparator expects none. Real resolution text
+# (entry[2], asserted above) is untouched.
+assert_eq "1.1 entry[0].resolution EMPTY for bare 'Resolved: n/a' (run-3 Defect C)" \
+    "" "$(printf '%s' "$entries" | jq -r '.[0].resolution')"
 assert_eq "1.1 entry[3].pack_id"          "TD-010"  "$(printf '%s' "$entries" | jq -r '.[3].pack_id')"
 assert_eq "1.1 entry[4].status"           "Cancelled" "$(printf '%s' "$entries" | jq -r '.[4].status')"
 
@@ -525,8 +532,8 @@ case "\$1 \$2" in
         ;;
     "issue close")
         # Track the closed id so the stabilization poll (BD-132 F-7)
-        # can see it reflected in subsequent `issue list --state
-        # closed --label …` calls. The id is the 3rd positional arg.
+        # can see it reflected in subsequent \`issue list --state
+        # closed --label …\` calls. The id is the 3rd positional arg.
         printf '%s\n' "\$3" >> "$CLOSED_IDS_FILE"
         ;;
     "issue reopen"|"issue edit"|"issue comment")
@@ -818,6 +825,17 @@ res_bd1=$(printf  '%s' "$entry_bd1" | jq -r '.resolution')
 body_bd1=$(tmf_compose_issue_body "BD-001" "$desc_bd1" "$ctx_bd1" "$res_bd1" "$fs_value")
 assert_contains "4.2 composed body has File / Symbol heading" "$body_bd1" "## File / Symbol"
 assert_contains "4.2 composed body has scripts/foo.sh"        "$body_bd1" "scripts/foo.sh"
+# BD-204 run-3 Defect C: BD-001 carries the bare `Resolved: n/a`
+# placeholder, so the parse→compose chain emits NO `## Resolution` H2
+# (pre-fix it emitted a phantom `## Resolution\n\nn/a` section).
+# (This suite has no assert_not_contains helper — use the same grep
+# idiom as the 2.5 "Resolution absent when empty" leg.)
+if printf '%s' "$body_bd1" | grep -q "^## Resolution"; then
+    t_fail "4.2 composed body has NO ## Resolution for bare 'Resolved: n/a' (run-3 Defect C)" \
+        "phantom Resolution section present"
+else
+    t_pass "4.2 composed body has NO ## Resolution for bare 'Resolved: n/a' (run-3 Defect C)"
+fi
 
 # 4.3 Partial-write surfacing (Finding #5): fake gh that fails on
 # `issue close` produces an end-of-run partial-write typed error.

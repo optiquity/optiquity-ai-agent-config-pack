@@ -391,11 +391,22 @@ echo "── KU-OPS-6 autolink render (live) ──"
 _904_gid=$(gh_id_for "BD-904")
 _904_html=$(gh api "repos/$SCRATCH_REPO/issues/$_904_gid" \
     -H "Accept: application/vnd.github.html+json" --jq .body_html 2>/dev/null)
+# Run-3 Defect-A hardening: an EMPTY fetch would FALSE-PASS all four
+# negative assertions below — pin non-emptiness FIRST so the leg is honest.
+if [[ -n "$_904_html" ]]; then
+    t_pass "KU-OPS-6: rendered body_html fetched non-empty (negative assertions have teeth)"
+else
+    t_fail "KU-OPS-6: rendered body_html fetched non-empty" "empty fetch — the four assert_not_contains below would false-pass"
+fi
 assert_not_contains "KU-OPS-6: rendered body has no user-mention link" "$_904_html" "user-mention"
 assert_not_contains "KU-OPS-6: rendered body has no issue-link autolink" "$_904_html" "issue-link"
 assert_not_contains "KU-OPS-6: rendered body has no commit-link autolink" "$_904_html" "commit-link"
 assert_not_contains "KU-OPS-6: rendered body has no live URL anchor" "$_904_html" 'href="https://example.invalid'
-assert_contains "KU-OPS-6: triggers render inside a code span" "$_904_html" "<code>"
+# Run-3 Defect A: GH renders the neutralized span as
+# `<code class="notranslate">…</code>` (live evidence, rehearsal run 3),
+# so the literal `<code>` needle can never match — match the open tag
+# prefix `<code` (attribute-tolerant) instead.
+assert_contains "KU-OPS-6: triggers render inside a code span" "$_904_html" "<code"
 
 # ─────────────────────────────────────────────────────────────────
 # DS-3 — size leg (§3.LF.7 leg 2): the composer's overflow fail-loud
