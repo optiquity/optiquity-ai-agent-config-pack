@@ -12,7 +12,6 @@
 - [BD-093](./BD-093.md) — v11.0 release pin (tag, README, CHANGELOG, MIGRATION cross-link)
 - [BD-100](./BD-100.md) — Pack-implementation milestone checkpoints (3 strategic audits during v11)
 - [BD-102](./BD-102.md) — Pack-repo dog-food migration (final v11 validation)
-- [BD-103](./BD-103.md) — `pack tracker reset` verb + 3-level recovery documentation
 - [BD-105](./BD-105.md) — STATUS.md phase-row dual-link rendering (tracker mode)
 - [BD-109](./BD-109.md) — Project-side `auditor-issue-tracking` sub-agent
 - [BD-110](./BD-110.md) — Pack-side `pack-auditor` agent
@@ -32,6 +31,8 @@
 - [BD-206](./BD-206.md) — Project-side per-entry no-mirror application (apply the corrected standard to client assets)
 - [BD-207](./BD-207.md) — Project-side per-entry ↔ GH-Issues reversible tracker (apply the tracker standard to client assets)
 - [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
+- [BD-212](./BD-212.md) — `pack tracker reset` verb + 3-level recovery (pack side; supersedes BD-103 with BD-213)
+- [BD-213](./BD-213.md) — `pack tracker reset` + 3-level recovery, project-side application (supersedes BD-103 with BD-212)
 
 ## Unblocked
 
@@ -226,6 +227,7 @@
 - [BD-021](./BD-021.md) — Redesign Apple platform architecture skills (three-tier)
 - [BD-022](./BD-022.md) — C project template and c-language skill
 - [BD-023](./BD-023.md) — Mixed-language skills for Apple projects (Objective-C, C, C++, graphics)
+- [BD-103](./BD-103.md) — `pack tracker reset` verb + 3-level recovery documentation
 
 ## Cancelled
 
