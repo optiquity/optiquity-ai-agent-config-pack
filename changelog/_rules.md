@@ -23,6 +23,16 @@ form** for the pack changelog. **There is no monolithic mirror.** The
 former `pack-ops/CHANGELOG.md` monolith was deleted at BD-203; do not
 recreate it.
 
+**Mode invariance.** The pack-changelog stream is FLAT-FILE IN BOTH
+modes: pack tracker mode (BD-204) applies to the pack-backlog stream
+only, and is in any case a per-checkout LOCAL opt-in of the
+maintainer's checkout — in every checkout without a local
+`tracker.toml`, this stream, like every committed stream, is simply
+flat-file. The tracker migration neither reads nor writes
+`/changelog/` (the pack reverse emits no changelog). The write
+procedure in § "Write authority" below applies regardless of the
+pack's tracker mode.
+
 ## Filename convention
 
 Per-entry files match `^v\d+\.md$` (e.g., `v11.md`, `v7.md`). One file

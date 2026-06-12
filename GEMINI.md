@@ -414,14 +414,25 @@ PACK-AGENTS.md current".
   `mode.state = "tracker"` and `migration.forward_complete = true`), the
   tracker (e.g., GH Issues) is source of truth and the per-entry tree is
   regenerated from tracker state per the Mode 2 → Mode 3 transition
-  contract. STATUS.md and any other convenience view carry an explicit
+  contract. In tracker mode the tree + `_toc.md` are a ONE-WAY
+  regenerated mirror — never hand-edit them; a hand-edit is overwritten
+  without detection at the next `pack tracker tree-rebuild`, and all
+  entry writes go through the tracker tooling (tracker mode is a
+  per-checkout LOCAL opt-in — the committed PACK repo is always flat-file;
+  `tracker.toml` is local and gitignored). Write procedure per
+  `<stream>/_rules.md`.
+  STATUS.md and any other convenience view carry an explicit
   "never source of truth" disclaimer; if a convenience view drifts, the
   per-entry tree (Mode 2) or the tracker (Mode 3) wins. Read more at
   `<stream>/_rules.md`. `[roles: universal]`
 - **The `/backlog/` tree has no Resolved section.** Entries resolve in place by
-  flipping `Status: Open` to `Status: Resolved` in their per-entry file
-  (`/backlog/BD-NNN.md`) and filling the `Resolved:` line. Do not propose
-  moving entries to a separate section. `[roles: universal]`
+  flipping `Status: Open` to `Status: Resolved` and filling the `Resolved:`
+  line. Do not propose moving entries to a separate section. The flip's
+  write channel is mode-dependent: in flat-file mode, flip in the
+  per-entry file (`/backlog/BD-NNN.md`) and regenerate `_toc.md`; in
+  local tracker mode, the flip is a tracker write via the tracker
+  tooling, and the tree reflects it at the next regeneration.
+  `[roles: universal]`
 - **Separate pack ops from pack product.** Pack ops files (CLAUDE.md,
   AGENTS.md, GEMINI.md, PACK-CHAT.md, PACK-AGENTS.md, the `/backlog/` + `/changelog/` trees, etc.)
   are NEVER mixed into pack product files (`project-template/`,

@@ -50,11 +50,75 @@ is sufficient.
 | `README.md` | Direct read (version table section) | Pack version history at a glance |
 | `supporting-docs/METHODOLOGY.md` | Direct read (on demand) | Author of this file — read directly when needed |
 | `project-template/docs/pack/prompts/*.md` | Direct read (on demand) | Author of this set of files — read directly when needed |
-| `/backlog/<ID>.md`, `/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is the SOLE source of truth + readable form (no monolithic mirror; per CLAUDE.md pack-memory + `<stream>/_rules.md`); read one entry file for one-entry edits |
+| `/backlog/<ID>.md`, `/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is the SOLE source of truth + readable form in flat-file mode and a read-stable regenerated mirror in tracker mode (no monolithic mirror; per CLAUDE.md pack-memory + `<stream>/_rules.md`) — direct read valid in both modes; read one entry file for one-entry edits (flat-file mode only — Mode-3 edits go through the tracker tooling per § "Backlog write paths by mode (Mode-3 operations)") |
 | `/backlog/_rules.md`, `/changelog/_rules.md` (per-stream contracts) | Direct read at session start (or on per-entry-tree-aware operation) | Per-stream contract authority — filename regex, lifecycle states admitted, supporting-file basenames admitted, write-authority pointer |
 
 **Rule-SSOT routing (one hop to the authority — no index, query the SSOT directly):**
 For spawn-relevant rules, read trinity `## Pack memory`. For file placement, read `pack-ops/BOUNDARY-DEFINITION.md` §2 matrix. For a rule's rationale, read `pack-ops/PACK-MEMORY-RATIONALE.md` (`[rationale: <slug>]`). To add/change/remove a rule, follow the change-procedure in § "Keeping CLAUDE.md, AGENTS.md, GEMINI.md, and PACK-AGENTS.md current" below.
+
+---
+
+## Backlog write paths by mode (Mode-3 operations)
+
+The write-side complement of the read-side table above. The per-stream
+contract is `/backlog/_rules.md` + `/changelog/_rules.md` (one hop —
+this section points, never restates); the one-line imperative lives in
+trinity `## Pack memory` § "Repo conventions" (the per-entry-trees
+bullet).
+
+1. **Mode detection.** At session start / before any backlog write,
+   read the local `tracker.toml` (`[mode] state` +
+   `[migration] forward_complete`; absent file = flat-file). Tracker
+   mode is a per-checkout LOCAL opt-in — the file is gitignored and
+   never committed, so the repo's committed state is always
+   flat-file. The pack is currently Mode 3 ON THE MAINTAINER'S
+   MACHINE; every other checkout is flat-file.
+2. **Write channel per mode.** Flat-file: per-entry file edit +
+   `_toc.md` regen per `/backlog/_rules.md`. Tracker: ALL entry
+   creates / edits / status-flips via the tracker tooling (the
+   `pack tracker` `edit` / `new-entry` verbs) — NEVER the Edit/Write
+   tools against `/backlog/`.
+3. **One-way overwrite.** In tracker mode the tree + `_toc.md` are a
+   one-way regenerated mirror (tracker → tree, always — NOT a sync).
+   A hand-edit is invalid and is OVERWRITTEN WITHOUT DETECTION at
+   the next `pack tracker tree-rebuild`.
+4. **Flat-file ignores GH Issues.** In flat-file mode GH Issues are
+   IGNORED by all tooling; inbound feedback remains a human/PM
+   triage channel only.
+5. **Regen cadence + committed artifacts.** After any tracker write
+   batch, and ALWAYS before committing tree state, run
+   `pack tracker tree-rebuild`. The committed artifacts flowing
+   through the normal commit gates (staged-file review + user
+   approval) are the regenerated tree + `_toc.md` ONLY; the local
+   `tracker.toml` and `.pack-tracker/` are NEVER staged (gitignored
+   local state).
+6. **GH-web is not a write path.** Body edits → the divergence
+   comparator blocks loudly at the next rebuild (`--force` =
+   explicit blob-wins override). Label/state-only flips → a
+   coherence defect; recovery = re-apply the status via the tracker
+   tooling (the blob is truth).
+7. **Two lanes.** Pack-owned issues (`work-item` + resolved
+   `pack-id`) reverse into the tree; inbound-feedback issues
+   (`inbound` + `needs-triage` / `pack-id: PENDING`) are NEVER swept
+   until promoted at triage.
+8. **Minor-edit authority mapping.** The trinity
+   `pack-chat-minor-edits-only` boundary is UNCHANGED; only the
+   write CHANNEL changes in Mode 3. A bookkeeping edit Pack Chat may
+   apply directly (a `Status:`/`Resolved:` flip; a new-BD author) is
+   performed via the tracker tooling commands (Bash), not via
+   Edit-tool writes to the tree. MAJOR edits still route to
+   pack-coder — the coder likewise mutates via the tooling and runs
+   the rebuild.
+9. **Changelog unaffected.** The `/changelog/` stream stays
+   flat-file in both modes; its write procedure never changes with
+   tracker mode.
+10. **Publication + single writing authority.** The committed tree
+    is the published flat-file SSOT; the COMMIT of a regenerated
+    tree is the publication act, and exactly ONE writing authority
+    exists — the maintainer's Pack Chat on the machine holding the
+    local Mode-3 state. The full caveat (what a second writer must
+    not do; the safe degradation back to flat-file) lives at
+    `/backlog/_rules.md` § "Source of truth — mode-dependent (no monolith in either mode)" (one hop).
 
 ---
 

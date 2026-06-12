@@ -15,15 +15,53 @@ pack changes the per-entry contract.
 - Pack version that minted this contract: v11.0
 - Directory: `/backlog/`
 
-## Source of truth — no mirror
+## Source of truth — mode-dependent (no monolith in either mode)
 
-The per-entry tree at `/backlog/` (plus its generated `/backlog/_toc.md`
-index) is the **SOLE source of truth and readable form** for pack
-backlog entries. **There is no monolithic mirror.** The former
-`pack-ops/BACKLOG.md` monolith was deleted at BD-203; do not recreate
-it. To read entries, read the per-entry files (or `_toc.md` for an
-index); to change an entry, edit its per-entry file and regenerate
-`_toc.md`.
+The stream operates in one of two modes, read from the LOCAL pack
+`tracker.toml` (`[mode] state` + `[migration] forward_complete`;
+absent file = flat-file). Tracker mode is a per-checkout LOCAL
+opt-in: `tracker.toml` is gitignored and never committed, so the
+repo's COMMITTED state is always flat-file — every checkout and
+every version bump ships flat-file — and a local opt-in is sticky
+across pulls and version bumps by construction.
+
+**Flat-file mode (default).** The per-entry tree at `/backlog/` (plus
+its generated `/backlog/_toc.md` index) is the SOLE source of truth
+and readable form. There is no monolithic mirror — the former
+`pack-ops/BACKLOG.md` was deleted at BD-203; do not recreate it. GH
+Issues are IGNORED by all tooling in this mode; inbound-feedback
+issues are a human/PM triage channel only. Validation runs against
+the tree.
+
+**Tracker mode (`state = "tracker"` + `forward_complete = true`,
+local).** The tracker is the SOLE source of truth on the opted-in
+checkout. Entry identity is the `<!-- pack-id: BD-NNN -->` body
+marker — never an issue number. The per-entry tree + `_toc.md` are a
+REGENERATED MIRROR of tracker state: read-stable, never hand-written.
+A hand-edit to any `BD-NNN.md` or to `_toc.md` is INVALID and is
+OVERWRITTEN WITHOUT DETECTION at the next tree rebuild — the write
+direction is one-way (tracker → tree, always); this is a
+regeneration, NOT a sync. There is still no monolith, ever. `_toc.md`
+regenerates on EVERY tree materialization.
+
+**Published tree + single writing authority.** Because tracker mode
+is local, the COMMITTED tree (+ `_toc.md`) remains the published
+flat-file SSOT for every non-opted checkout; the (single)
+tracker-mode maintainer keeps it current by running
+`pack tracker tree-rebuild` and committing the regenerated tree
+through the normal commit gates — the COMMIT is the publication act.
+While the maintainer's local state is tracker mode, the committed
+tree is a PUBLISHED MIRROR of the tracker even though the repo's
+committed state is formally flat-file. A second writer must NOT
+(a) hand-edit `/backlog/` entry files or `_toc.md` and commit — the
+edit is silently CLOBBERED at the maintainer's next tree-rebuild
+publication (the tracker, not the committed tree, is what the
+maintainer's rebuild reads); nor (b) opt in to tracker mode on a
+second machine and publish concurrently — two publishers race on the
+committed tree. Entry-state changes route through the tracker (GH
+Issues) or through the maintainer. If the single-writer assumption
+ever breaks, the safe degradation is `pack tracker disable` back to
+flat-file, where the committed tree is directly writable again.
 
 ## Filename convention
 
@@ -90,5 +128,24 @@ history.
 Writes are Pack-Chat authority (the pack-backlog tree is a pack-chat-only
 directory per `pack-ops/PACK-AGENTS.md` § "pack-chat-only files and
 directories"; agents edit it only when a caller scopes it in for an
-explicit BD). After any entry edit, regenerate `_toc.md` via
-`per_entry_regenerate_toc pack-backlog /backlog` before staging.
+explicit BD). The write PROCEDURE is mode-dependent (mode per
+§ "Source of truth — mode-dependent (no monolith in either mode)"):
+
+- **Flat-file mode:** edit the per-entry file directly; entries
+  resolve in place. After any entry edit, regenerate `_toc.md` via
+  `per_entry_regenerate_toc pack-backlog /backlog` before staging.
+  Never hand-edit `_toc.md` (derived index).
+- **Tracker mode:** ALL entry creates / edits / status flips go
+  through the tracker tooling (`pack tracker` verbs /
+  `tracker_edit_entry`), which recomposes the H2 projection + the
+  `pack-entry-body-gz64` blob atomically. NEVER edit a `BD-NNN.md`
+  file or `_toc.md` by hand — the edit is overwritten without
+  detection at the next rebuild. Direct GH-web edits are NOT a write
+  path: body edits are blocked loudly by the divergence comparator
+  at the next rebuild (`--force` = blob-wins); label/state-only
+  flips are a coherence defect detected by `pack tracker doctor` and
+  at rebuild. After any tracker write batch — and ALWAYS before
+  committing tree state — run `pack tracker tree-rebuild`, then
+  stage the regenerated tree + `_toc.md` through the normal commit
+  gates. The local `tracker.toml` and `.pack-tracker/` are NEVER
+  staged (gitignored local state).

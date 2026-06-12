@@ -12,9 +12,13 @@ Items use `BD-NNN` identifiers (pack backlog) rather than `TD-NNN`
 (project backlog). Format follows the standard BACKLOG item format from
 METHODOLOGY.md Part 7.
 
-This directory is the **sole source of truth and readable form** for
+In flat-file mode (the default, and always the repo's committed state)
+this directory is the **sole source of truth and readable form** for
 pack backlog entries — one `BD-NNN.md` file per entry, plus a generated
-`_toc.md` index. There is no monolithic `BACKLOG.md` mirror.
+`_toc.md` index. There is no monolithic `BACKLOG.md` mirror in either
+mode. For what changes under a local tracker-mode opt-in, see
+`_rules.md` § "Source of truth — mode-dependent (no monolith in either
+mode)".
 
 ## Reading entries
 
@@ -25,15 +29,17 @@ pack backlog entries — one `BD-NNN.md` file per entry, plus a generated
 
 ## Adding a new entry
 
-Find the highest existing `BD-NNN` (across the tree), increment by 1,
-write a new per-entry file at `/backlog/BD-NNN.md`, then regenerate
-`_toc.md`. Pack Chat writes; agents edit only when scoped in.
+Find the highest existing `BD-NNN` (across the tree), increment by 1.
+How the entry is then written depends on the stream's mode — follow
+`_rules.md` § "Write authority". Pack Chat writes; agents edit only
+when scoped in.
 
 ## Resolving an entry
 
-Edit the per-entry file: flip `Status: Open` to `Status: Resolved` and
-fill the `Resolved:` line. Entries resolve in place — there is no
-separate Resolved section. Then regenerate `_toc.md`.
+Entries resolve in place (`Status: Open` flips to `Status: Resolved`,
+with the `Resolved:` line filled) — there is no separate Resolved
+section. The write channel is mode-dependent — follow `_rules.md`
+§ "Write authority".
 
 ## Cross-references
 
