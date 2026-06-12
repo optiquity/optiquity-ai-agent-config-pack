@@ -197,7 +197,14 @@ tracker_edit_mode() {
 #   description   — the entry's Description field value (drives the
 #                   `## Description` H2 + rides into the recomposed blob)
 #   context       — the entry's Context field value
-#   resolution    — the entry's Resolution field value
+#   resolution    — the entry's Resolution field value. A bare
+#                   (trimmed, case-insensitive) `n/a` normalizes to
+#                   EMPTY — the same `Resolved: n/a` unresolved-
+#                   placeholder rule the forward parser applies
+#                   (flush_entry in `_tmf_parse_backlog_file`,
+#                   scripts/lib/tracker-migrate-forward.sh), so an
+#                   explicit override and a parsed value pass through
+#                   ONE normalization seam (no divergence-by-override).
 #   file_symbol   — the entry's File / Symbol field value
 #   raw_body      — the VERBATIM entry span (lines 2..EOF: the bold-header
 #                   line + every field/prose line). When ANY of the five
@@ -209,6 +216,35 @@ tracker_edit_mode() {
 #                   the producer that keeps the two body representations in
 #                   sync — a tracker-side edit never updates one without the
 #                   other. The composed body REPLACES any literal `body` key.
+#                   PROJECTION DERIVATION + PRECEDENCE (C-8 maiden-run fix):
+#                   when raw_body is present, any projection field
+#                   (description / context / resolution / file_symbol)
+#                   ABSENT from the patch is derived by PARSING raw_body
+#                   through the REAL forward parser
+#                   (`_tmf_parse_backlog_file`) — the same grammar the
+#                   forward migration and the reverse divergence comparator
+#                   use. An explicitly-provided patch field ALWAYS overrides
+#                   the parsed value (per the cmd_edit patch contract,
+#                   absent and empty are identical — empty flags never
+#                   ride). The blob carries raw_body verbatim either way;
+#                   only the H2 projection derivation is affected.
+#                   RAW-BODY GUARDS: a parseable raw_body must contain
+#                   exactly ONE entry span, and its bold-header ID must
+#                   match <pack-id> — either mismatch refuses with a
+#                   typed validation error BEFORE any provider op (the
+#                   same single-entry + id-match gates `cmd_new_entry`
+#                   in scripts/pack-tracker.sh enforces on this grammar).
+#                   PROJECTION-ONLY GUARD: a patch carrying projection
+#                   fields but NO raw_body, against an issue whose
+#                   CURRENT body carries a `pack-entry-body-gz64` blob,
+#                   is REFUSED fail-loud — recomposing from projection
+#                   fields alone emits a blob-less body, and the
+#                   provider_update would silently destroy the existing
+#                   blob (the verbatim entry-span SSOT). Supply the full
+#                   updated span via raw_body / --raw-body-file.
+#                   Status / label / title-only patches (no content
+#                   fields at all) never enter the recompose branch and
+#                   are unaffected by both guards.
 #   body          — a pre-composed Issue body (LEGACY / label-or-status-only
 #                   edits). Used VERBATIM only when NO content key above is
 #                   present; if a content key IS present, the recomposed body
@@ -300,7 +336,10 @@ tracker_edit_entry() {
     # object atomically — a tracker-side edit never updates one representation
     # without the other. The composed body REPLACES any literal `body` key.
     # The composer (`tmf_compose_issue_body`) is the SINGLE real codec; no
-    # gz64/H2 emit is re-implemented here.
+    # gz64/H2 emit is re-implemented here. The projection-only guard below
+    # enforces the never-one-without-the-other claim on the one shape that
+    # could break it: content fields WITHOUT raw_body against a blob-carrying
+    # issue are refused fail-loud, never recomposed-by-destruction.
     local has_content
     has_content=$(printf '%s' "$patch" | jq -r '
         if ((.description // "") != "" or (.context // "") != ""
@@ -318,6 +357,122 @@ tracker_edit_entry() {
         # reaches the composer/encoder intact.
         ed_raw_body=$(printf '%s' "$patch" | jq -j '.raw_body // ""'; printf X)
         ed_raw_body="${ed_raw_body%X}"
+        # n/a normalization symmetry: mirror the parser's resolution-only
+        # bare-`n/a` placeholder rule (flush_entry in
+        # `_tmf_parse_backlog_file`, scripts/lib/tracker-migrate-forward.sh)
+        # on the EXPLICIT patch value too — one seam, no divergence-by-
+        # override. A bare (trimmed, case-insensitive) `n/a` means NO
+        # resolution (`Resolved: n/a` per backlog/_rules.md): it normalizes
+        # to empty, and — when raw_body is present — derives from the parse
+        # below like any other absent field (the parser applies the SAME
+        # rule to the raw_body's `Resolved:` line, so the two sources agree
+        # by construction). Pre-fix, an explicit literal `n/a` overrode the
+        # parser-normalized EMPTY with a phantom `## Resolution` H2 — a
+        # guaranteed comparator divergence even when the input textually
+        # AGREED with the raw_body.
+        local _ted_res_norm
+        _ted_res_norm=$(printf '%s' "$ed_resolution" \
+            | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+            | tr '[:upper:]' '[:lower:]')
+        if [[ "$_ted_res_norm" == "n/a" ]]; then
+            ed_resolution=""
+        fi
+        # C-8 maiden-run defect fix: when the patch carries raw_body but OMITS
+        # a projection field (description / context / resolution /
+        # file_symbol), derive the absent field by PARSING the raw_body
+        # through the REAL forward parser (`_tmf_parse_backlog_file` in
+        # scripts/lib/tracker-migrate-forward.sh — the single grammar the
+        # forward migration, cmd_new_entry, and the reverse divergence
+        # comparator `_tmr_check_blob_h2_divergence` all share; no field
+        # extraction is re-implemented here). Pre-fix, a raw-body-only patch
+        # composed EMPTY H2 projections while the blob carried the full body
+        # — blob correct, H2 hollow — and every subsequent materialization
+        # (correctly) failed the divergence comparator.
+        #
+        # PRECEDENCE: an explicitly-provided patch field ALWAYS overrides the
+        # parsed value; only fields absent from the patch are parse-derived
+        # (absent == empty per the cmd_edit patch contract — empty flags
+        # never ride). An unparseable raw_body (no recognizable entry
+        # header) derives nothing: the comparator skips the H2 check for
+        # unparseable blobs (the corrupt-blob guards own that class), so
+        # composing with the patch's literal fields stays
+        # comparator-consistent.
+        # PROJECTION-ONLY GUARD: a patch with content fields but NO raw_body
+        # recomposes through the composer's empty-raw_body branch, which
+        # emits NO `pack-entry-body-gz64` marker — against an issue whose
+        # current body carries a blob, the provider_update below would
+        # REPLACE the body and silently destroy the verbatim-span SSOT
+        # (silent because both reverse comparators skip blob-less issues;
+        # the raw span's Type:/Status:/Blockers:/Unblocks: lines and any
+        # interior content outside the four H2 projections would be
+        # unrecoverable). Read the current body and refuse fail-loud BEFORE
+        # any provider write. Status/label/title-only patches never enter
+        # this branch (no content field ⇒ no recompose), so they keep
+        # working unchanged.
+        # TODO(tracker): TD-TBD — merge-edit for projection-only patches
+        # (read the current blob, splice the edited fields into raw_body,
+        # recompose) is the follow-up merge-edit BD's scope; until it lands
+        # this guard refuses the shape.
+        if [[ -z "$ed_raw_body" ]]; then
+            local _ted_cur_issue _ted_cur_body
+            if ! _ted_cur_issue=$(provider_get "$gh_id" 2>/dev/null); then
+                tracker_error_emit "validation" \
+                    "tracker_edit: projection-only edit refused for $pack_id — cannot read the current issue body (gh-id $gh_id) to verify it carries no pack-entry-body-gz64 blob (recomposing without raw_body would destroy one); supply the FULL updated entry span via --raw-body-file, or re-run after addressing the backend failure"
+                return 1
+            fi
+            _ted_cur_body=$(printf '%s' "$_ted_cur_issue" | jq -r '.body // ""')
+            if [[ "$_ted_cur_body" == *"pack-entry-body-gz64"* ]]; then
+                tracker_error_emit "validation" \
+                    "tracker_edit: projection-only edit refused for $pack_id — the issue body carries a pack-entry-body-gz64 blob (the verbatim entry-span SSOT), and recomposing from projection fields alone would silently destroy it; supply the FULL updated entry span via --raw-body-file (projection-field merge-edit is the follow-up merge-edit BD's scope)"
+                return 1
+            fi
+        fi
+        if [[ -n "$ed_raw_body" ]]; then
+            local _ted_tmp_raw _ted_parsed
+            _ted_tmp_raw=$(mktemp -t ted-rawbody.XXXXXX) || {
+                tracker_error_emit "validation" \
+                    "tracker_edit: mktemp failed (raw_body projection parse)"
+                return 1
+            }
+            printf '%s' "$ed_raw_body" > "$_ted_tmp_raw"
+            _ted_parsed=$(_tmf_parse_backlog_file "$_ted_tmp_raw" 2>/dev/null)
+            rm -f "$_ted_tmp_raw"
+            if [[ -n "$_ted_parsed" && "$_ted_parsed" != "[]" ]]; then
+                # RAW-BODY GUARDS: the SAME single-entry + id-match gates
+                # `cmd_new_entry` (scripts/pack-tracker.sh) enforces on this
+                # grammar. Pre-guard, a raw_body headed by a DIFFERENT entry
+                # ID (or carrying several spans) rode into the blob verbatim
+                # — the H2 comparator compares field VALUES, not ids, so the
+                # corruption stayed invisible until the next tree
+                # materialization emitted a wrong-headed entry file under
+                # this pack-id's mapping.
+                local _ted_n_parsed _ted_parsed_id
+                _ted_n_parsed=$(printf '%s' "$_ted_parsed" | jq 'length')
+                if [[ "$_ted_n_parsed" != "1" ]]; then
+                    tracker_error_emit "validation" \
+                        "tracker_edit: raw_body must contain exactly ONE entry span (parsed $_ted_n_parsed) — first line must be the \`**$pack_id — <Title>**\` bold header"
+                    return 1
+                fi
+                _ted_parsed_id=$(printf '%s' "$_ted_parsed" | jq -r '.[0].pack_id // ""')
+                if [[ "$_ted_parsed_id" != "$pack_id" ]]; then
+                    tracker_error_emit "validation" \
+                        "tracker_edit: edit target $pack_id does not match the raw_body's bold-header ID $_ted_parsed_id"
+                    return 1
+                fi
+                if [[ -z "$ed_description" ]]; then
+                    ed_description=$(printf '%s' "$_ted_parsed" | jq -r '.[0].description // ""')
+                fi
+                if [[ -z "$ed_context" ]]; then
+                    ed_context=$(printf '%s' "$_ted_parsed" | jq -r '.[0].context // ""')
+                fi
+                if [[ -z "$ed_resolution" ]]; then
+                    ed_resolution=$(printf '%s' "$_ted_parsed" | jq -r '.[0].resolution // ""')
+                fi
+                if [[ -z "$ed_file_symbol" ]]; then
+                    ed_file_symbol=$(printf '%s' "$_ted_parsed" | jq -r '.[0].file_symbol // ""')
+                fi
+            fi
+        fi
         local composed_body
         if ! composed_body=$(tmf_compose_issue_body "$pack_id" \
                 "$ed_description" "$ed_context" "$ed_resolution" \

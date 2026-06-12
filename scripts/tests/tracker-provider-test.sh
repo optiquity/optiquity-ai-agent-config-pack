@@ -1045,6 +1045,216 @@ ted_sync_rc=0
 _tmr_check_blob_h2_divergence "$ted_decoded" "$ted_body" 42 BD-001 0 >/dev/null 2>&1 || ted_sync_rc=1
 assert_eq "4.7b recomposed blob ↔ H2 agree after provider_update (no divergence)" "0" "$ted_sync_rc"
 
+# 4.7c BD-204 C-8 maiden-run regression (edit-verb projection defect): a
+# RAW-BODY-ONLY patch (no description / context / resolution / file_symbol
+# in the patch — the `pack tracker edit --raw-body-file` shape) MUST derive
+# the H2 projection fields by PARSING the raw_body, never compose hollow
+# H2s. Pre-fix, this exact shape composed an empty `## Description` (and no
+# other H2s) while the blob carried the full body; the reverse comparator
+# then (correctly) flagged `(Description,Resolution,File / Symbol)`
+# divergence on every subsequent materialization. PINNED red-green: the
+# comparator-CLEAN assert below FAILS on the pre-fix tracker-edit.sh.
+TED_CALLS=""
+TED_UPDATE_PAYLOAD=""
+ted_raw_body=$'**BD-001 — Add foo to bar**\nType: TODO(version)\nStatus: Open\nFile/Symbol: scripts/foo.sh\nDescription: Raw-body-only edit description.\nContext: Maiden-run C-8 shape.\nResolution: 2026-06-10 — verified via comparator.\n'
+ted_patch=$(jq -n --arg rb "$ted_raw_body" '{raw_body:$rb}')
+tracker_edit_entry "BD-001" "$ted_patch" "$TED_REPO" >/dev/null
+assert_contains "4.7c raw-body-only edit dispatches provider_update" "$TED_CALLS" "|update:42"
+ted_body=$(printf '%s' "$TED_UPDATE_PAYLOAD" | jq -r '.body // ""')
+assert_contains "4.7c raw-body-only edit derives the Description H2 from raw_body" \
+    "$ted_body" "Raw-body-only edit description."
+assert_contains "4.7c raw-body-only edit derives the File / Symbol H2 from raw_body" \
+    "$ted_body" "scripts/foo.sh"
+assert_contains "4.7c raw-body-only edit derives the Context H2 from raw_body" \
+    "$ted_body" "Maiden-run C-8 shape."
+assert_contains "4.7c raw-body-only edit derives the Resolution H2 from raw_body" \
+    "$ted_body" "verified via comparator."
+# The REAL body comparator is the oracle: decode the payload's gz64 blob and
+# run `_tmr_check_blob_h2_divergence` against the payload body itself — a
+# correctly-derived projection is CLEAN (rc=0); the pre-fix hollow
+# projection DIVERGES (rc=1).
+ted_blob_payload=$(printf '%s' "$ted_body" \
+    | sed -nE 's/.*<!-- pack-entry-body-gz64:[[:space:]]*([A-Za-z0-9+/=]+)[[:space:]]*-->.*/\1/p' | head -1)
+ted_decoded=$(printf '%s' "$ted_blob_payload" | python3 -c '
+import sys, base64, gzip, io
+d=sys.stdin.read().strip()
+raw=base64.b64decode(d, validate=True)
+sys.stdout.buffer.write(gzip.GzipFile(fileobj=io.BytesIO(raw)).read())
+sys.stdout.buffer.write(b"X")')
+ted_decoded="${ted_decoded%X}"
+ted_sync_rc=0
+_tmr_check_blob_h2_divergence "$ted_decoded" "$ted_body" 42 BD-001 0 >/dev/null 2>&1 || ted_sync_rc=1
+assert_eq "4.7c raw-body-only edit: blob ↔ H2 comparator CLEAN (pre-fix shape diverged)" "0" "$ted_sync_rc"
+
+# 4.7d PRECEDENCE (C-8 fix contract): a MIXED patch (raw_body + explicit
+# description) — the explicitly-provided field OVERRIDES the parsed value;
+# fields ABSENT from the patch still derive from raw_body. (When a caller
+# supplies an explicit value that disagrees with raw_body, the blob stays
+# the verbatim truth and the comparator's job is to flag exactly that
+# divergence — this leg asserts only the precedence contract.)
+TED_CALLS=""
+TED_UPDATE_PAYLOAD=""
+ted_patch=$(jq -n --arg rb "$ted_raw_body" \
+    '{raw_body:$rb, description:"Explicit override description."}')
+tracker_edit_entry "BD-001" "$ted_patch" "$TED_REPO" >/dev/null
+ted_body=$(printf '%s' "$TED_UPDATE_PAYLOAD" | jq -r '.body // ""')
+assert_contains "4.7d mixed patch: explicit description wins over parsed" \
+    "$ted_body" "Explicit override description."
+if [[ "$ted_body" == *"Raw-body-only edit description."* ]]; then
+    t_fail "4.7d mixed patch: parsed description must NOT appear in the H2" \
+        "body carries the parsed value alongside the explicit one"
+else
+    t_pass "4.7d mixed patch: parsed description does not appear in the H2"
+fi
+assert_contains "4.7d mixed patch: absent context still derives from raw_body" \
+    "$ted_body" "Maiden-run C-8 shape."
+assert_contains "4.7d mixed patch: absent resolution still derives from raw_body" \
+    "$ted_body" "verified via comparator."
+
+# 4.7e n/a NORMALIZATION SYMMETRY (review F4): an explicit literal-`n/a`
+# resolution passes through the SAME bare-`n/a` placeholder normalization
+# the forward parser applies to a `Resolved: n/a` line (one seam, no
+# divergence-by-override) — trimmed + case-insensitive, exactly like the
+# parser's `res.strip().lower() == "n/a"`. Pre-fix, the explicit value
+# overrode the parser-normalized EMPTY with a phantom `## Resolution` H2 —
+# a GUARANTEED comparator divergence even though the input textually
+# AGREED with the raw_body's `Resolved: n/a`.
+TED_CALLS=""
+TED_UPDATE_PAYLOAD=""
+ted_raw_body_na=$'**BD-001 — Add foo to bar**\nType: TODO(version)\nStatus: Open\nDescription: n/a normalization leg.\nResolved: n/a\n'
+ted_patch=$(jq -n --arg rb "$ted_raw_body_na" '{raw_body:$rb, resolution:" N/A "}')
+tracker_edit_entry "BD-001" "$ted_patch" "$TED_REPO" >/dev/null
+ted_body=$(printf '%s' "$TED_UPDATE_PAYLOAD" | jq -r '.body // ""')
+if [[ "$ted_body" == *"## Resolution"* ]]; then
+    t_fail "4.7e explicit literal-n/a resolution emits NO Resolution H2" \
+        "body carries a phantom ## Resolution H2"
+else
+    t_pass "4.7e explicit literal-n/a resolution emits NO Resolution H2"
+fi
+# The REAL comparator agrees: blob (Resolved: n/a → parses empty) ↔ H2
+# (no Resolution section) are CLEAN — pre-fix this shape DIVERGED.
+ted_blob_payload=$(printf '%s' "$ted_body" \
+    | sed -nE 's/.*<!-- pack-entry-body-gz64:[[:space:]]*([A-Za-z0-9+/=]+)[[:space:]]*-->.*/\1/p' | head -1)
+ted_decoded=$(printf '%s' "$ted_blob_payload" | python3 -c '
+import sys, base64, gzip, io
+d=sys.stdin.read().strip()
+raw=base64.b64decode(d, validate=True)
+sys.stdout.buffer.write(gzip.GzipFile(fileobj=io.BytesIO(raw)).read())
+sys.stdout.buffer.write(b"X")')
+ted_decoded="${ted_decoded%X}"
+ted_sync_rc=0
+_tmr_check_blob_h2_divergence "$ted_decoded" "$ted_body" 42 BD-001 0 >/dev/null 2>&1 || ted_sync_rc=1
+assert_eq "4.7e explicit literal-n/a: blob ↔ H2 comparator CLEAN (pre-fix diverged)" "0" "$ted_sync_rc"
+
+# 4.7f RAW-BODY ID-MATCH GUARD (review F2): a raw_body headed by a
+# DIFFERENT entry ID than the edit target refuses with a typed validation
+# error BEFORE any provider op — the same id-match gate cmd_new_entry
+# enforces on the same grammar. Pre-guard, this shape dispatched rc=0 and
+# stored a blob whose verbatim span claimed the WRONG id (invisible to the
+# H2 comparator, which compares field values, not ids; the corruption
+# surfaced only at the next tree materialization). NB: call WITHOUT a
+# command-substitution capture so the stubs' TED_CALLS mutations would
+# propagate if a provider op (wrongly) fired; stderr goes to a tmp file.
+TED_CALLS=""
+TED_UPDATE_PAYLOAD=""
+ted_raw_wrong=$'**BD-002 — A different entry**\nType: TODO(version)\nStatus: Open\nDescription: Wrong-id span.\n'
+ted_patch=$(jq -n --arg rb "$ted_raw_wrong" '{raw_body:$rb}')
+ted_err_out=$(mktemp -t tracker-edit-err.XXXXXX)
+rc47f=0
+tracker_edit_entry "BD-001" "$ted_patch" "$TED_REPO" >/dev/null 2>"$ted_err_out" || rc47f=1
+err=$(cat "$ted_err_out"); rm -f "$ted_err_out"
+assert_eq "4.7f wrong-id raw_body → rc!=0" "1" "$rc47f"
+assert_contains "4.7f wrong-id raw_body → typed validation error" "$err" "ERROR: validation"
+assert_contains "4.7f error names both ids" \
+    "$err" "BD-001 does not match the raw_body's bold-header ID BD-002"
+if [[ -n "$TED_CALLS" ]]; then
+    t_fail "4.7f wrong-id raw_body dispatches NO provider op" "calls=$TED_CALLS"
+else
+    t_pass "4.7f wrong-id raw_body dispatches NO provider op"
+fi
+
+# 4.7g RAW-BODY SINGLE-ENTRY GUARD (review F2): a raw_body parsing to
+# MORE than one entry span refuses (derivation reads `.[0]` but the blob
+# would carry BOTH spans verbatim into the next tree materialization).
+TED_CALLS=""
+ted_raw_multi=$'**BD-001 — Add foo to bar**\nType: TODO(version)\nStatus: Open\nDescription: First span.\n\n---\n\n**BD-002 — Second span**\nType: TODO(version)\nStatus: Open\nDescription: Second span.\n'
+ted_patch=$(jq -n --arg rb "$ted_raw_multi" '{raw_body:$rb}')
+ted_err_out=$(mktemp -t tracker-edit-err.XXXXXX)
+rc47g=0
+tracker_edit_entry "BD-001" "$ted_patch" "$TED_REPO" >/dev/null 2>"$ted_err_out" || rc47g=1
+err=$(cat "$ted_err_out"); rm -f "$ted_err_out"
+assert_eq "4.7g multi-entry raw_body → rc!=0" "1" "$rc47g"
+assert_contains "4.7g multi-entry raw_body → typed validation error" "$err" "ERROR: validation"
+assert_contains "4.7g error names the parsed count" "$err" "exactly ONE entry span (parsed 2)"
+if [[ -n "$TED_CALLS" ]]; then
+    t_fail "4.7g multi-entry raw_body dispatches NO provider op" "calls=$TED_CALLS"
+else
+    t_pass "4.7g multi-entry raw_body dispatches NO provider op"
+fi
+
+# 4.7h PROJECTION-ONLY GUARD (review F1 / POQ-1): a projection-only patch
+# (content fields, NO raw_body — e.g. the canonical resolve flow
+# `--status Resolved --resolution ...`) against an issue whose CURRENT
+# body carries a pack-entry-body-gz64 blob REFUSES fail-loud with a typed
+# validation error BEFORE any provider write. Pre-guard, this shape
+# recomposed a BLOB-LESS body and provider_update REPLACED the issue body,
+# silently destroying the verbatim-span SSOT (silent: both reverse
+# comparators skip blob-less issues). Stub provider_get to serve a
+# blob-carrying current body; the fake's write state (TED_CALLS /
+# TED_UPDATE_PAYLOAD) proves the issue body is left UNCHANGED.
+ted_cur_body_47h='pre-existing issue body
+<!-- pack-id: BD-001 -->
+<!-- pack-entry-body-gz64: SGVsbG8= -->'
+# NB: the lib invokes provider_get inside a command substitution (a
+# subshell), so the stub logs to a FILE — a shell-variable mutation would
+# not propagate back to this (parent) shell.
+TED_GET_LOG="$TED_REPO/provider-get-calls.log"
+: > "$TED_GET_LOG"
+provider_get() {
+    printf 'get:%s\n' "$1" >> "$TED_GET_LOG"
+    jq -n --arg b "$ted_cur_body_47h" '{id: "42", body: $b, state: "open"}'
+}
+TED_CALLS=""
+TED_UPDATE_PAYLOAD="__UNTOUCHED__"
+ted_err_out=$(mktemp -t tracker-edit-err.XXXXXX)
+rc47h=0
+tracker_edit_entry "BD-001" \
+    '{"status":"Resolved","old_status":"Open","resolution":"2026-06-12 — done."}' \
+    "$TED_REPO" >/dev/null 2>"$ted_err_out" || rc47h=1
+err=$(cat "$ted_err_out"); rm -f "$ted_err_out"
+assert_eq "4.7h projection-only patch on blob-carrying issue → rc!=0" "1" "$rc47h"
+assert_contains "4.7h refusal is a typed validation error" "$err" "ERROR: validation"
+assert_contains "4.7h refusal names the blob constraint" "$err" "pack-entry-body-gz64"
+assert_contains "4.7h refusal is actionable (--raw-body-file)" "$err" "--raw-body-file"
+assert_contains "4.7h guard read the current body via provider_get" \
+    "$(cat "$TED_GET_LOG")" "get:42"
+if [[ -n "$TED_CALLS" ]]; then
+    t_fail "4.7h refused edit dispatches NO provider write (issue body unchanged)" \
+        "calls=$TED_CALLS"
+else
+    t_pass "4.7h refused edit dispatches NO provider write (issue body unchanged)"
+fi
+assert_eq "4.7h update payload untouched (no body write reached the fake)" \
+    "__UNTOUCHED__" "$TED_UPDATE_PAYLOAD"
+
+# 4.7i STATUS/LABEL-ONLY PATCHES KEEP WORKING (review F1, non-regression
+# pin): a patch with NO content fields never enters the recompose branch —
+# it neither reads the current body (no provider_get) nor recomposes it
+# (update payload carries NO body key), so the blob-carrying issue body is
+# untouched by construction and the status flip still dispatches.
+# provider_get stays stubbed from 4.7h: the leg proves the guard does NOT
+# consult it on this shape.
+: > "$TED_GET_LOG"
+TED_CALLS=""
+TED_UPDATE_PAYLOAD=""
+tracker_edit_entry "BD-001" '{"status":"Deferred","old_status":"Open"}' "$TED_REPO" >/dev/null
+assert_contains "4.7i status-only patch on blob-carrying issue still updates" \
+    "$TED_CALLS" "|update:42"
+assert_eq "4.7i status-only patch never reads the body (no recompose, no guard)" \
+    "" "$(cat "$TED_GET_LOG")"
+assert_eq "4.7i status-only update payload carries NO body key (blob untouched)" \
+    "false" "$(printf '%s' "$TED_UPDATE_PAYLOAD" | jq 'has("body")')"
+
 # 4.8 unmapped pack-id → typed not-found error (no provider op).
 TED_CALLS=""
 err=$(tracker_edit_entry "BD-999" '{"body":"x"}' "$TED_REPO" 2>&1 1>/dev/null) || true
