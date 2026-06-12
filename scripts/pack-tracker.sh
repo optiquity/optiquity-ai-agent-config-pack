@@ -15,10 +15,25 @@
 #   mirror-rebuild          Rebuild flat-file mirror without re-running
 #                           the full forward migration. Wraps
 #                           `tracker-migrate.sh forward --mirror-only`.
+#                           CLIENT surface only — the pack surface fails
+#                           loud and names `tree-rebuild` (BD-204).
+#   tree-rebuild            BD-204 Mode-3 ops contract §2: reverse-driven,
+#                           NO-flip, TREE-ONLY materialization of the
+#                           /backlog per-entry tree (+ `_toc.md`) from
+#                           tracker state. Pack surface only at v11.0.
+#   edit                    BD-204 OQ-A: thin flag-parsing wrapper over
+#                           `tracker_edit_entry` (scripts/lib/tracker-edit.sh)
+#                           — the Mode-3 entry-edit write channel.
+#   new-entry               BD-204 OQ-A: create a NEW tracked entry in
+#                           Mode 3 — compose via `tmf_compose_issue_body`,
+#                           `provider_create`, id-map append, freshness
+#                           stamp, then the tree-rebuild path.
 #   enable-recommendations  Toggle proactive Layer-3 recommendations.
 #                           (Stubbed at v11.0; body lands in BD-073.)
 #
-# Reference: ARCHITECTURE-V2.md §22.1.
+# Reference: ARCHITECTURE-V2.md §22.1;
+#            ARCHITECTURE-BD-204-MODE3-OPS-CONTRACT.md §2/§3 (+ its
+#            AMENDMENT-2 §B8 D2 — the local-opt-in model).
 
 set -euo pipefail
 
@@ -74,6 +89,34 @@ Verbs:
   mirror-rebuild [--repo-root PATH]
         Rebuild the flat-file mirror without re-running forward
         migration. Wraps `tracker-migrate.sh forward --mirror-only`.
+        CLIENT surface only: the pack surface has no mirror (BD-203)
+        and fails loud — run `tree-rebuild` there instead.
+
+  tree-rebuild [--repo-root PATH] [--force]
+        Regenerate the /backlog per-entry tree (+ _toc.md) from
+        tracker state — one-way (tracker → tree, always), no mode
+        flip, tree-only (no STATUS.md / IMPLEMENTATION-PLAN.md
+        deposit). Hand-edits to tree files are OVERWRITTEN WITHOUT
+        DETECTION. --force = blob-wins override for the divergence
+        and status-coherence comparators. Tracker mode + pack
+        surface only at v11.0 (client trees: BD-207).
+
+  edit <pack-id> [--status S] [--old-status S] [--title T]
+       [--description D] [--context C] [--resolution R]
+       [--file-symbol F] [--raw-body-file PATH] [--body-file PATH]
+       [--add-label L]... [--remove-label L]... [--repo-root PATH]
+        Mode-3 entry edit: applies the patch against the tracker
+        SSOT via tracker_edit_entry (blob + H2 recomposed atomically;
+        status flips cross the open/closed boundary per DP-3). Run
+        `tree-rebuild` afterward to materialize the tree.
+
+  new-entry --id BD-NNN --body-file PATH [--repo-root PATH]
+        Mode-3 entry create: --body-file carries the VERBATIM entry
+        span (the `**BD-NNN — Title**` bold-header line + every
+        field/prose line, exactly as a per-entry file's lines 2..EOF).
+        Composes the Issue body (gz64 blob + H2 projection), creates
+        the Issue, appends the id-map, stamps last_tracker_write,
+        then runs the tree-rebuild path so the entry materializes.
 
   doctor [--repo-root PATH]
         Validate tracker.toml, mapping integrity, mirror freshness,
@@ -143,6 +186,328 @@ cmd_mirror_rebuild() {
     done
     [[ -z "$repo_root" ]] && repo_root="$(pwd)"
     tracker_migrate_forward_run "$repo_root" 0 0 1   # mirror_only=1
+}
+
+# ─────────────────────────────────────────────────────────────────
+# Verb: tree-rebuild (BD-204 Mode-3 ops contract §2)
+# ─────────────────────────────────────────────────────────────────
+
+# cmd_tree_rebuild [--repo-root PATH] [--force]
+#
+# The routine Mode-3 tree refresh: reverse-driven, NO mode flip,
+# TREE-ONLY emission (the `tree_only` arm of
+# `tracker_migrate_reverse_run` in scripts/lib/tracker-migrate-reverse.sh
+# — `_toc.md` regen inherited by construction via `_tmr_emit_pack_tree`).
+# One-way write (tracker → tree, always): hand-edits to /backlog files
+# are overwritten WITHOUT detection. Gates (fail loud):
+#   - pack surface only at v11.0 — the client tree materialization is
+#     BD-207 scope;
+#   - tracker mode only (`tracker_mode` == "tracker", which requires
+#     mode.state="tracker" AND migration.forward_complete=true) — in
+#     flat-file mode the tree IS the SSOT; nothing to rebuild from.
+# --force = blob-wins override for the divergence comparator
+# (`_tmr_check_blob_h2_divergence`) AND the status-coherence comparator
+# (`_tmr_check_status_coherence`), matching their shared semantics.
+# Design: ARCHITECTURE-BD-204-MODE3-OPS-CONTRACT.md §2 (+ AMENDMENT-2
+# §B8 D2-1).
+cmd_tree_rebuild() {
+    local repo_root="" force=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --repo-root) repo_root="$2"; shift 2 ;;
+            --force)     force=1; shift ;;
+            -h|--help)   usage; return 0 ;;
+            *)
+                tracker_error_emit "validation" "tree-rebuild: unknown option '$1'"
+                return 1
+                ;;
+        esac
+    done
+    [[ -z "$repo_root" ]] && repo_root="$(pwd)"
+    if [[ ! -d "$repo_root" ]]; then
+        tracker_error_emit "validation" "tree-rebuild: --repo-root is not a directory: $repo_root"
+        return 1
+    fi
+
+    local surface cfg_path mode
+    surface=$(tracker_config_auto_surface "$repo_root" 2>/dev/null) || surface="pack"
+    if [[ "$surface" != "pack" ]]; then
+        tracker_error_emit "validation" \
+            "tree-rebuild: pack surface only at v11.0 (detected surface=$surface) — the client per-entry tree materialization is BD-207 scope; clients keep \`pack tracker mirror-rebuild\` until then"
+        return 1
+    fi
+    cfg_path=$(tracker_config_resolve_path "$surface" "$repo_root") || return 1
+    mode=$(tracker_mode "$cfg_path")
+    if [[ "$mode" != "tracker" ]]; then
+        tracker_error_emit "validation" \
+            "tree-rebuild: not in tracker mode (mode=$mode) — the per-entry tree is the SSOT in flat-file mode; nothing to rebuild from"
+        return 1
+    fi
+
+    # Engine: reverse run with dry_run=0, flip=0, comments=0, the
+    # caller's force, tree_only=1.
+    tracker_migrate_reverse_run "$repo_root" 0 0 0 "$force" 1
+}
+
+# ─────────────────────────────────────────────────────────────────
+# Verbs: edit + new-entry (BD-204 OQ-A — Mode-3 write channel)
+# ─────────────────────────────────────────────────────────────────
+
+# cmd_edit <pack-id> [flags]
+#
+# Thin flag-parsing wrapper over `tracker_edit_entry`
+# (scripts/lib/tracker-edit.sh): each flag maps 1:1 onto the patch-JSON
+# keys that function already documents (description / context /
+# resolution / file_symbol / raw_body / body / title / status /
+# old_status / add_labels / remove_labels). No mutation logic lives
+# here; the lib owns the blob+H2 recompose, the DP-3 boundary cross,
+# and the last_tracker_write stamp. File-valued flags
+# (--raw-body-file / --body-file) read with a trailing-newline sentinel
+# so verbatim bytes reach the composer intact. Gate: pack surface only
+# at v11.0 (the same fail-loud gate cmd_tree_rebuild / cmd_new_entry
+# carry — client edits are BD-207 scope); the tracker-mode gate stays
+# in tracker_edit_entry itself (defense-in-depth — flat-file misuse
+# fails loud in the lib).
+cmd_edit() {
+    local pack_id="" repo_root=""
+    local f_status="" f_old_status="" f_title=""
+    local f_description="" f_context="" f_resolution="" f_file_symbol=""
+    local f_raw_body_file="" f_body_file=""
+    local add_labels_json='[]' remove_labels_json='[]'
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --repo-root)     repo_root="$2"; shift 2 ;;
+            --id)            pack_id="$2"; shift 2 ;;
+            --status)        f_status="$2"; shift 2 ;;
+            --old-status)    f_old_status="$2"; shift 2 ;;
+            --title)         f_title="$2"; shift 2 ;;
+            --description)   f_description="$2"; shift 2 ;;
+            --context)       f_context="$2"; shift 2 ;;
+            --resolution)    f_resolution="$2"; shift 2 ;;
+            --file-symbol)   f_file_symbol="$2"; shift 2 ;;
+            --raw-body-file) f_raw_body_file="$2"; shift 2 ;;
+            --body-file)     f_body_file="$2"; shift 2 ;;
+            --add-label)
+                add_labels_json=$(printf '%s' "$add_labels_json" | jq -c --arg l "$2" '. + [$l]')
+                shift 2 ;;
+            --remove-label)
+                remove_labels_json=$(printf '%s' "$remove_labels_json" | jq -c --arg l "$2" '. + [$l]')
+                shift 2 ;;
+            -h|--help)       usage; return 0 ;;
+            -*)
+                tracker_error_emit "validation" "edit: unknown option '$1'"
+                return 1
+                ;;
+            *)
+                if [[ -z "$pack_id" ]]; then
+                    pack_id="$1"; shift
+                else
+                    tracker_error_emit "validation" "edit: unexpected argument '$1'"
+                    return 1
+                fi
+                ;;
+        esac
+    done
+    [[ -z "$repo_root" ]] && repo_root="$(pwd)"
+    if [[ -z "$pack_id" ]]; then
+        tracker_error_emit "validation" "edit: pack-id required (positional or --id)"
+        return 1
+    fi
+
+    # Gate: pack surface only (mirrors cmd_tree_rebuild / cmd_new_entry).
+    # The tracker-mode gate stays in tracker_edit_entry (defense-in-depth).
+    local surface
+    surface=$(tracker_config_auto_surface "$repo_root" 2>/dev/null) || surface="pack"
+    if [[ "$surface" != "pack" ]]; then
+        tracker_error_emit "validation" \
+            "edit: pack surface only at v11.0 (detected surface=$surface) — client edits are BD-207 scope"
+        return 1
+    fi
+
+    local raw_body="" body=""
+    if [[ -n "$f_raw_body_file" ]]; then
+        if [[ ! -f "$f_raw_body_file" ]]; then
+            tracker_error_emit "validation" "edit: --raw-body-file not found: $f_raw_body_file"
+            return 1
+        fi
+        # Sentinel guard: preserve the file's exact trailing newline
+        # through command substitution (the blob must carry it).
+        raw_body=$(cat "$f_raw_body_file"; printf X); raw_body="${raw_body%X}"
+    fi
+    if [[ -n "$f_body_file" ]]; then
+        if [[ ! -f "$f_body_file" ]]; then
+            tracker_error_emit "validation" "edit: --body-file not found: $f_body_file"
+            return 1
+        fi
+        body=$(cat "$f_body_file"; printf X); body="${body%X}"
+    fi
+
+    # Build the patch: only non-empty keys ride (tracker_edit_entry
+    # treats absent and empty identically).
+    local patch
+    patch=$(jq -n \
+        --arg status      "$f_status" \
+        --arg old_status  "$f_old_status" \
+        --arg title       "$f_title" \
+        --arg description "$f_description" \
+        --arg context     "$f_context" \
+        --arg resolution  "$f_resolution" \
+        --arg file_symbol "$f_file_symbol" \
+        --arg raw_body    "$raw_body" \
+        --arg body        "$body" \
+        --argjson al "$add_labels_json" \
+        --argjson rl "$remove_labels_json" \
+        '{}
+         + (if $status      != "" then {status: $status}           else {} end)
+         + (if $old_status  != "" then {old_status: $old_status}   else {} end)
+         + (if $title       != "" then {title: $title}             else {} end)
+         + (if $description != "" then {description: $description} else {} end)
+         + (if $context     != "" then {context: $context}         else {} end)
+         + (if $resolution  != "" then {resolution: $resolution}   else {} end)
+         + (if $file_symbol != "" then {file_symbol: $file_symbol} else {} end)
+         + (if $raw_body    != "" then {raw_body: $raw_body}       else {} end)
+         + (if $body        != "" then {body: $body}               else {} end)
+         + (if ($al | length) > 0 then {add_labels: $al}           else {} end)
+         + (if ($rl | length) > 0 then {remove_labels: $rl}        else {} end)')
+    if [[ "$patch" == "{}" ]]; then
+        tracker_error_emit "validation" "edit: empty patch — pass at least one of --status/--title/--description/--context/--resolution/--file-symbol/--raw-body-file/--body-file/--add-label/--remove-label"
+        return 1
+    fi
+
+    tracker_edit_entry "$pack_id" "$patch" "$repo_root"
+}
+
+# cmd_new_entry --id BD-NNN --body-file PATH [--repo-root PATH]
+#
+# Mode-3 create path (BD-204 OQ-A; architecture §0 recommendation
+# approved by user ruling 1). NO new codec and NO raw `gh`:
+#   1. gates — tracker mode + pack surface (fail loud; client creates
+#      are BD-207 scope); --id shape `^BD-[0-9]+$` (canonical per
+#      BD-211 — no letter suffix); duplicate-id refusal against the
+#      id-map.
+#   2. parse the --body-file verbatim entry span through the REAL
+#      forward parser (`_tmf_parse_backlog_file` in
+#      scripts/lib/tracker-migrate-forward.sh) — the projection fields
+#      + raw_body come from the same grammar the migration uses.
+#   3. compose via `tmf_compose_issue_body` (gz64 blob + H2 projection,
+#      size-budget gate intact); labels via `_tmf_labels_for_entry`
+#      (the existing forward label map); `provider_create`.
+#   4. id-map append (`tmf_mapping_set` + `tmf_mapping_save`);
+#      `tracker_edit_stamp_last_write` (scripts/lib/tracker-edit.sh).
+#   5. finish with the tree-rebuild path so the entry materializes in
+#      /backlog and `_toc.md` regenerates (DP-4 by construction).
+cmd_new_entry() {
+    local repo_root="" pack_id="" body_file=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --repo-root) repo_root="$2"; shift 2 ;;
+            --id)        pack_id="$2"; shift 2 ;;
+            --body-file) body_file="$2"; shift 2 ;;
+            -h|--help)   usage; return 0 ;;
+            *)
+                tracker_error_emit "validation" "new-entry: unknown option '$1'"
+                return 1
+                ;;
+        esac
+    done
+    [[ -z "$repo_root" ]] && repo_root="$(pwd)"
+    if [[ ! -d "$repo_root" ]]; then
+        tracker_error_emit "validation" "new-entry: --repo-root is not a directory: $repo_root"
+        return 1
+    fi
+
+    # Gate: --id shape (canonical pack-backlog ID per BD-211 — integer
+    # only, no letter suffix).
+    if [[ ! "$pack_id" =~ ^BD-[0-9]+$ ]]; then
+        tracker_error_emit "validation" \
+            "new-entry: --id must match ^BD-[0-9]+\$ (canonical pack-backlog ID, no letter suffix); got '${pack_id:-<empty>}'"
+        return 1
+    fi
+    if [[ -z "$body_file" || ! -f "$body_file" ]]; then
+        tracker_error_emit "validation" \
+            "new-entry: --body-file required (the verbatim entry span: bold-header line + field/prose lines); got '${body_file:-<empty>}'"
+        return 1
+    fi
+
+    # Gates: pack surface + tracker mode (mirrors cmd_tree_rebuild).
+    local surface cfg_path mode
+    surface=$(tracker_config_auto_surface "$repo_root" 2>/dev/null) || surface="pack"
+    if [[ "$surface" != "pack" ]]; then
+        tracker_error_emit "validation" \
+            "new-entry: pack surface only at v11.0 (detected surface=$surface) — client creates are BD-207 scope"
+        return 1
+    fi
+    cfg_path=$(tracker_config_resolve_path "$surface" "$repo_root") || return 1
+    mode=$(tracker_mode "$cfg_path")
+    if [[ "$mode" != "tracker" ]]; then
+        tracker_error_emit "validation" \
+            "new-entry: not in tracker mode (mode=$mode) — in flat-file mode author the per-entry file directly per /backlog/_rules.md"
+        return 1
+    fi
+    export _TRACKER_PROVIDER_CONFIG_PATH="$cfg_path"
+
+    # Gate: duplicate-id refusal against the id-map.
+    local mapping_file mapping
+    mapping_file=$(_tmf_mapping_file "$repo_root")
+    mapping=$(tmf_mapping_load "$mapping_file")
+    if printf '%s' "$mapping" | jq -e --arg k "$pack_id" 'has($k)' >/dev/null 2>&1; then
+        tracker_error_emit "validation" \
+            "new-entry: $pack_id already exists in the id-map ($mapping_file) — use \`pack tracker edit\` to change an existing entry"
+        return 1
+    fi
+
+    # Parse the verbatim entry span through the REAL forward parser.
+    local entries n_parsed entry parsed_id
+    entries=$(_tmf_parse_backlog_file "$body_file") || return 1
+    n_parsed=$(printf '%s' "$entries" | jq 'length')
+    if [[ "$n_parsed" != "1" ]]; then
+        tracker_error_emit "validation" \
+            "new-entry: --body-file must contain exactly ONE entry span (parsed $n_parsed) — first line must be the \`**$pack_id — <Title>**\` bold header"
+        return 1
+    fi
+    entry=$(printf '%s' "$entries" | jq -c '.[0]')
+    parsed_id=$(printf '%s' "$entry" | jq -r '.pack_id')
+    if [[ "$parsed_id" != "$pack_id" ]]; then
+        tracker_error_emit "validation" \
+            "new-entry: --id $pack_id does not match the body's bold-header ID $parsed_id"
+        return 1
+    fi
+
+    # Compose (the SINGLE real codec; fail-loud size-budget gate inside)
+    # + labels via the existing forward label map.
+    local title description context resolution file_symbol raw_body body labels_json
+    title="$pack_id: $(printf '%s' "$entry" | jq -r '.title')"
+    description=$(printf '%s' "$entry" | jq -r '.description // ""')
+    context=$(printf '%s'     "$entry" | jq -r '.context // ""')
+    resolution=$(printf '%s'  "$entry" | jq -r '.resolution // ""')
+    file_symbol=$(printf '%s' "$entry" | jq -r '.file_symbol // ""')
+    # Trailing-newline guard (matches the forward create call-site idiom).
+    raw_body=$(printf '%s' "$entry" | jq -j '.raw_body // ""'; printf X)
+    raw_body="${raw_body%X}"
+    body=$(tmf_compose_issue_body "$pack_id" "$description" "$context" \
+        "$resolution" "$file_symbol" "$raw_body") || return 1
+    labels_json=$(_tmf_labels_for_entry "$entry")
+
+    local payload result gh_id url
+    payload=$(jq -n --arg t "$title" --arg b "$body" --argjson l "$labels_json" \
+        '{title: $t, body: $b, labels: $l}')
+    if ! result=$(provider_create "$payload"); then
+        tracker_error_emit "partial-write" \
+            "new-entry: provider_create failed for $pack_id (no id-map entry written; re-run after addressing the backend failure)"
+        return 1
+    fi
+    gh_id=$(printf '%s' "$result" | jq -r '.id')
+    url=$(printf '%s'   "$result" | jq -r '.url // ""')
+
+    # id-map append + freshness stamp.
+    mapping=$(tmf_mapping_set "$mapping" "$pack_id" "$gh_id" "$url")
+    tmf_mapping_save "$mapping_file" "$mapping"
+    tracker_edit_stamp_last_write "$cfg_path"
+
+    echo "new-entry: created $pack_id (gh-id $gh_id); rebuilding the tree"
+
+    # Materialize: the tree-rebuild path (entry file + _toc.md regen).
+    tracker_migrate_reverse_run "$repo_root" 0 0 0 0 1
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -440,6 +805,9 @@ main() {
         init)                    cmd_init "$@" ;;
         status)                  cmd_status "$@" ;;
         mirror-rebuild)          cmd_mirror_rebuild "$@" ;;
+        tree-rebuild)            cmd_tree_rebuild "$@" ;;
+        edit)                    cmd_edit "$@" ;;
+        new-entry)               cmd_new_entry "$@" ;;
         disable)                 cmd_disable "$@" ;;
         doctor)                  cmd_doctor "$@" ;;
         update-templates)        cmd_update_templates "$@" ;;

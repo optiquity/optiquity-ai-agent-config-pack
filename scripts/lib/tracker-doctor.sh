@@ -9,10 +9,14 @@
 # (f) issue-template dir presence, (g) capability cache refresh —
 # re-probe the backend's provider_capabilities and diff against
 # the cached snapshot at .pack-tracker/capabilities.json
-# (V2 §22.1 doctor sub-surface). Reports OK / WARN / INFO per
-# check; each WARN line names a recovery verb from the user-facing
-# `pack tracker` surface (V3 §27.1 Layer 2). Returns 0 if zero
-# warnings.
+# (V2 §22.1 doctor sub-surface), (h) status-coherence advisory
+# (BD-204 Mode-3 ops contract §4.1 — tracker mode + pack surface
+# only; the ADVISORY layer of the §3 comparator whose BLOCKING
+# layer is `_tmr_check_status_coherence` in
+# scripts/lib/tracker-migrate-reverse.sh). Reports OK / WARN / INFO
+# per check; each WARN line names a recovery verb from the
+# user-facing `pack tracker` surface (V3 §27.1 Layer 2). Returns 0
+# if zero warnings.
 #
 # Sourced by both `scripts/pack-tracker.sh` (the user-facing
 # `pack tracker doctor` verb) and `scripts/tracker-migrate.sh`
@@ -124,32 +128,44 @@ tracker_doctor_run() {
     # docs/project/BACKLOG.md monolith mirror.
     case "$surface" in
         pack)
-            # Pack-surface: check the per-entry tree's regen index
-            # (`/backlog/_toc.md`) mtime against last_forward_run. The
-            # `_toc.md` is regenerated whenever the tree changes, so it
-            # is the no-mirror analogue of the old monolith-header mtime.
+            # Pack-surface (BD-204 Mode-3 ops contract §4.1 — leg (d)
+            # REPOINT): compare the LOCAL tracker.toml freshness keys
+            # migration.last_tracker_write (stamped by
+            # `tracker_edit_stamp_last_write` in scripts/lib/tracker-edit.sh)
+            # vs migration.last_tree_regen (stamped by
+            # `_tmr_update_tracker_toml` in
+            # scripts/lib/tracker-migrate-reverse.sh on every pack tree
+            # materialization). The former `_toc.md`-mtime heuristic is
+            # retired — mtime does not survive fresh checkouts. The keys
+            # live in LOCAL gitignored state per
+            # ARCHITECTURE-BD-204-MODE3-OPS-CONTRACT-AMENDMENT-2.md §B3.
             local toc_path
             toc_path="$repo_root/backlog/_toc.md"
             if [[ -f "$toc_path" ]]; then
-                local toc_mtime last_forward
-                # macOS BSD stat differs from GNU stat; use date -r as
-                # the portable reader.
-                toc_mtime=$(date -r "$toc_path" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "")
-                if [[ -f "$cfg_path" ]]; then
-                    last_forward=$(tracker_config_get "$cfg_path" "migration.last_forward_run" 2>/dev/null || echo "")
-                fi
-                if [[ -n "$toc_mtime" && -n "$last_forward" ]]; then
-                    if [[ "$toc_mtime" > "$last_forward" || "$toc_mtime" == "$last_forward" ]]; then
-                        echo "  [OK]   /backlog tree regen index is current (_toc.md mtime=$toc_mtime, last_forward=$last_forward)"
-                    else
-                        echo "  [WARN] /backlog tree regen index is older than last_forward_run  → Run: pack tracker init --forward"
-                        n_warn=$((n_warn + 1))
-                    fi
-                else
-                    echo "  [OK]   /backlog per-entry tree present (_toc.md index)"
-                fi
+                echo "  [OK]   /backlog per-entry tree present (_toc.md index)"
             else
                 echo "  [INFO] /backlog/_toc.md absent (flat-file pre-regen or scratch tree)"
+            fi
+            local last_write last_regen
+            last_write=""
+            last_regen=""
+            if [[ -f "$cfg_path" ]]; then
+                last_write=$(tracker_config_get "$cfg_path" "migration.last_tracker_write" 2>/dev/null || echo "")
+                last_regen=$(tracker_config_get "$cfg_path" "migration.last_tree_regen" 2>/dev/null || echo "")
+            fi
+            if [[ -n "$last_write" && -n "$last_regen" ]]; then
+                # ISO 8601 Z-suffixed UTC sorts lexicographically.
+                if [[ "$last_write" > "$last_regen" ]]; then
+                    echo "  [WARN] tree is stale relative to tracker writes (last_tracker_write=$last_write > last_tree_regen=$last_regen)  → Run: pack tracker tree-rebuild"
+                    n_warn=$((n_warn + 1))
+                else
+                    echo "  [OK]   /backlog tree regen is current (last_tree_regen=$last_regen >= last_tracker_write=$last_write)"
+                fi
+            else
+                # Absent-key tolerance (INFO, not WARN): an older or
+                # freshly-opted tracker.toml has neither key until the
+                # first tracker write / tree-rebuild stamps them.
+                echo "  [INFO] tree-freshness keys absent (last_tracker_write / last_tree_regen unset until the first tracker write / tree-rebuild); comparison skipped"
             fi
             ;;
         *)
@@ -292,6 +308,97 @@ tracker_doctor_run() {
             printf '%s\n' "$caps_now" > "$caps_file"
         else
             echo "  [INFO] provider_capabilities unavailable; skipping cache refresh"
+        fi
+    fi
+
+    # (h) status-coherence advisory (BD-204 Mode-3 ops contract §4.1;
+    # §3 layer 2). Tracker mode + PACK surface only — the client arm is
+    # untouched (BD-207). Enumerates pack-owned issues via ONE paginated
+    # provider_list read at a FULL-COVERAGE limit (default 1000 —
+    # matching `_tmf_wait_for_close_stabilization` in
+    # scripts/lib/tracker-migrate-forward.sh; a SATURATED read, i.e.
+    # items returned >= limit, WARNs loudly — a coverage check must
+    # never sample silently). Labels + state + body in the one read —
+    # no per-issue provider_get sweep; the list fields carry body +
+    # stateReason per `_gh_list_fields` in
+    # scripts/lib/tracker-provider-gh.sh. The read decodes
+    # the label/state PROJECTION via `_tmr_decode_status` and the blob
+    # truth via `_tmr_decode_body_blob` (both in
+    # scripts/lib/tracker-migrate-reverse.sh), and WARNs per mismatch
+    # with the same recovery text as the blocking comparator. INFO-skips
+    # in flat-file mode and when the provider (gh/network) or the
+    # reverse-lib decoders are unavailable — the leg-(g)
+    # graceful-degradation pattern. Doctor is advisory (WARN, rc=1);
+    # the BLOCKING gate is `_tmr_check_status_coherence` at every tree
+    # materialization.
+    local doc_mode="flat-file"
+    [[ -f "$cfg_path" ]] && doc_mode=$(tracker_mode "$cfg_path" 2>/dev/null || echo "flat-file")
+    if [[ "$surface" == "pack" ]]; then
+        if [[ "$doc_mode" != "tracker" ]]; then
+            echo "  [INFO] status-coherence advisory skipped (flat-file mode — GH Issues are ignored by all tooling)"
+        elif ! declare -f _tmr_decode_status >/dev/null 2>&1 \
+             || ! declare -f _tmr_decode_body_blob >/dev/null 2>&1 \
+             || ! declare -f provider_list >/dev/null 2>&1; then
+            echo "  [INFO] status-coherence advisory skipped (reverse-lib decoders / provider not sourced by this caller)"
+        else
+            export _TRACKER_PROVIDER_CONFIG_PATH="$cfg_path"
+            # SHOULD-1 (PACK-REVIEW-MODE3-OPS-COMMIT2): full-coverage
+            # read. The previous fixed `100` cap silently covered ~47%
+            # of the 213 live pack entries with no truncation signal.
+            # Default 1000 per the forward-side full-coverage precedent
+            # (`_tmf_wait_for_close_stabilization` in
+            # scripts/lib/tracker-migrate-forward.sh); env seam
+            # TRACKER_DOCTOR_COH_LIMIT follows the TMF_*/TMR_* override
+            # pattern (tests + oversized future trees).
+            local coh_items
+            local coh_limit="${TRACKER_DOCTOR_COH_LIMIT:-1000}"
+            if ! coh_items=$(provider_list '{"label":"bd-entry","state":"all"}' "$coh_limit" 2>/dev/null); then
+                echo "  [INFO] status-coherence advisory skipped (provider unavailable — gh/network)"
+            else
+                local coh_n coh_i coh_issue coh_body coh_pid coh_num
+                local coh_proj coh_raw coh_blob_status coh_checked=0 coh_bad=0
+                coh_n=$(printf '%s' "$coh_items" | jq '.items | length' 2>/dev/null || echo 0)
+                # Saturation guard: a read that returns exactly the
+                # requested limit may have truncated — WARN loudly, never
+                # sample silently in a coverage advisory.
+                if [[ "$coh_n" -ge "$coh_limit" ]]; then
+                    echo "  [WARN] status-coherence: provider_list read SATURATED at the $coh_limit-item limit ($coh_n returned) — coverage may be truncated; re-run with TRACKER_DOCTOR_COH_LIMIT raised (a coverage advisory must never sample silently)"
+                    n_warn=$((n_warn + 1))
+                fi
+                coh_i=0
+                while [[ "$coh_i" -lt "$coh_n" ]]; do
+                    coh_issue=$(printf '%s' "$coh_items" | jq -c ".items[$coh_i]")
+                    coh_i=$((coh_i + 1))
+                    coh_body=$(printf '%s' "$coh_issue" | jq -r '.body // ""')
+                    [[ -z "$coh_body" ]] && continue
+                    coh_num=$(printf '%s' "$coh_issue" | jq -r '.number // .id // "?"')
+                    coh_pid=$(printf '%s' "$coh_body" \
+                        | sed -n -E 's/.*<!-- pack-id:[[:space:]]*([A-Za-z]+-[0-9]+)[[:space:]]*-->.*/\1/p' \
+                        | head -1)
+                    [[ -z "$coh_pid" ]] && continue
+                    # Decode the blob (skip the issue on a decode failure —
+                    # corrupt blobs are the blocking comparator's domain).
+                    if ! coh_raw=$(printf '%s' "$coh_body" | _tmr_decode_body_blob "$coh_num" 2>/dev/null); then
+                        continue
+                    fi
+                    coh_raw="${coh_raw%X}"
+                    [[ -z "$coh_raw" ]] && continue
+                    coh_blob_status=$(printf '%s' "$coh_raw" \
+                        | sed -n -E 's/^Status:[[:space:]]*//p' | head -1 \
+                        | sed -E 's/[[:space:]]+$//')
+                    [[ -z "$coh_blob_status" ]] && continue
+                    coh_proj=$(_tmr_decode_status "$coh_issue")
+                    coh_checked=$((coh_checked + 1))
+                    if [[ "$coh_blob_status" != "$coh_proj" ]]; then
+                        echo "  [WARN] status-coherence: $coh_pid (issue #$coh_num) label/state projection '$coh_proj' != blob Status: '$coh_blob_status' (blob is truth)  → Run: pack tracker edit --status $coh_blob_status (re-converges label/state with the blob)"
+                        n_warn=$((n_warn + 1))
+                        coh_bad=$((coh_bad + 1))
+                    fi
+                done
+                if [[ "$coh_bad" -eq 0 ]]; then
+                    echo "  [OK]   status coherence: $coh_checked pack-owned issue(s) checked; label/state projection matches the blob Status on every one"
+                fi
+            fi
         fi
     fi
 

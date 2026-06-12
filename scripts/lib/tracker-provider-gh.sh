@@ -208,8 +208,14 @@ _gh_owner_repo() {
 }
 
 # Default JSON field set for list (matches V1 §2.2 list-projection).
+# BD-204 Mode-3 ops contract §4.1 leg (h): the list field set carries
+# body + stateReason so the doctor's status-coherence advisory
+# (`tracker_doctor_run` leg (h) in scripts/lib/tracker-doctor.sh) reads
+# labels + state + body in ONE paginated provider_list call — no
+# per-issue provider_get sweep. Additive: existing consumers read
+# .id/.number/.labels and are unaffected.
 _gh_list_fields() {
-    echo "number,title,state,labels,milestone,assignees,createdAt,updatedAt,url"
+    echo "number,title,body,state,stateReason,labels,milestone,assignees,createdAt,updatedAt,url"
 }
 
 # Full JSON field set for get (canonical Issue shape).
@@ -314,7 +320,12 @@ for d in items:
         "id":         str(d.get("number", "")),
         "number":     str(d.get("number", "")),
         "title":      d.get("title", ""),
+        "body":       d.get("body", "") or "",
         "state":      (d.get("state", "OPEN") or "OPEN").lower(),
+        # GraphQL-enum casing normalized to lowercase, matching
+        # _gh_normalize_issue so _tmr_decode_status reads list items
+        # and get items identically (BD-204 §4.1 leg (h)).
+        "state_reason": (d.get("stateReason") or "").lower() or None,
         "labels":     [l.get("name", "") for l in labels if isinstance(l, dict)],
         "assignees":  [a.get("login", "") for a in assignees if isinstance(a, dict)],
         "milestone":  milestone.get("title") if isinstance(milestone, dict) else None,

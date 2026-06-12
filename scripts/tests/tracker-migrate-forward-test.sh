@@ -1092,6 +1092,9 @@ export PATH="$PATH_SAVED"
     || t_fail "4.5 --mirror-only on pack surface returns non-zero (fail-loud)" "rc=$rc_mo"
 assert_contains "4.5 --mirror-only pack error is typed validation" "$output_mo" "ERROR: validation"
 assert_contains "4.5 --mirror-only pack error names no-mirror SSOT" "$output_mo" "not applicable on the no-mirror pack surface"
+# BD-204 Mode-3 ops contract §2 ride-along (a) (plan leg 3): the
+# fail-loud message now NAMES the replacement verb.
+assert_contains "4.5 --mirror-only pack error names tree-rebuild" "$output_mo" "pack tracker tree-rebuild"
 # NO monolith regenerated — the pack branch never writes pack-ops/BACKLOG.md.
 [[ ! -f "$TEST_REPO_MO/pack-ops/BACKLOG.md" ]] \
     && t_pass "4.5 --mirror-only writes NO pack-ops/BACKLOG.md monolith" \
@@ -1105,6 +1108,41 @@ assert_eq "4.5 --mirror-only invokes 0 gh calls" "0" "$n_gh_calls"
     || t_fail "4.5 --mirror-only writes no id-map.json"
 
 rm -rf "$FAKE_BIN_MO" "$GH_LOG_MO" "$TEST_REPO_MO"
+
+# 4.5b CLIENT-surface --mirror-only regression (BD-204 Mode-3 ops
+# contract, plan leg 4): the client arm is UNTOUCHED by the pack
+# tree-rebuild work — `mirror-rebuild` still legitimately refreshes the
+# client BACKLOG.md mirror header (rc=0, header written, body
+# preserved). BD-207 owns the client repoint.
+GH_LOG_MOC=$(mktemp -t tmf-ghlog-moc.XXXXXX)
+FAKE_BIN_MOC=$(mktemp -d -t tmf-fakebin-moc.XXXXXX)
+cat > "$FAKE_BIN_MOC/gh" <<FAKE_GH_MOC
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$GH_LOG_MOC"
+exit 0
+FAKE_GH_MOC
+chmod +x "$FAKE_BIN_MOC/gh"
+
+TEST_REPO_MOC=$(mktemp -d -t tmf-repo-moc.XXXXXX)
+mkdir -p "$TEST_REPO_MOC/docs/pack"   # surface marker → client (no pack-ops/)
+cp "$FIXTURES/tracker.toml" "$TEST_REPO_MOC/docs/pack/tracker.toml"
+printf '# BACKLOG\n\n**TD-001 — Client seed entry**\nStatus: Open\n' > "$TEST_REPO_MOC/BACKLOG.md"
+
+export PATH="$FAKE_BIN_MOC:$PATH_SAVED"
+output_moc=$(tracker_migrate_forward_run "$TEST_REPO_MOC" 0 0 1 2>&1)
+rc_moc=$?
+export PATH="$PATH_SAVED"
+
+assert_eq       "4.5b client --mirror-only rc=0 (regression)" "0" "$rc_moc"
+assert_contains "4.5b client --mirror-only refreshes the mirror header" \
+    "$output_moc" "BACKLOG.md mirror header refreshed"
+head_moc=$(head -n 1 "$TEST_REPO_MOC/BACKLOG.md")
+assert_eq "4.5b client BACKLOG.md gains the read-only mirror header" "<!--" "$head_moc"
+grep -q "TD-001 — Client seed entry" "$TEST_REPO_MOC/BACKLOG.md" \
+    && t_pass "4.5b client BACKLOG.md body preserved under the header" \
+    || t_fail "4.5b client BACKLOG.md body preserved under the header"
+
+rm -rf "$FAKE_BIN_MOC" "$GH_LOG_MOC" "$TEST_REPO_MOC"
 
 # 4.6 Checkpoint cadence integration test (PACK-REVIEW-BD065 Finding
 # #6 closure). Lower TMF_CHECKPOINT_INTERVAL=2 against the BD-only tree

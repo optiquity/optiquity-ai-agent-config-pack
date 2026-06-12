@@ -154,7 +154,10 @@ bash scripts/pack-tracker.sh disable    # reverse migration; back to flat-file
 ```
 
 `tracker.toml` lives at the repo root (project) or pack root (pack
-repo). The pack-side example template `tracker.toml.pack-example`
+repo). On the pack repo the live `tracker.toml` is LOCAL and
+gitignored (BD-204): the committed repo always ships flat-file, and
+your local opt-in survives pulls and version bumps. The pack-side
+example template `tracker.toml.pack-example`
 ships at the pack root; the client-side template
 `project-template/tracker.toml.project-example` is installed by
 `init-project.sh` at v11 as `tracker.toml.example` at the client

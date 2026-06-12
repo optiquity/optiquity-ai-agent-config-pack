@@ -182,9 +182,9 @@ vscode-companion-templates/                 Machine-level VS Code config (per pr
 .claude/skills/, .codex/skills/,            Pack agent skills (copied from project-template/skills/)
   .gemini/skills/
 
-/backlog/                                   Pack-self per-entry backlog tree (BD-203; sole SSOT + readable form — no monolithic mirror);
+/backlog/                                   Pack-self per-entry backlog tree (BD-203; sole SSOT + readable form, committed state — no monolithic mirror);
                                             supporting files: _rules.md, _intro.md, _toc.md
-/changelog/                                 Pack-self per-entry changelog tree (BD-203; sole SSOT + readable form — no monolithic mirror);
+/changelog/                                 Pack-self per-entry changelog tree (BD-203; sole SSOT + readable form, committed state — no monolithic mirror);
                                             supporting files: _rules.md, _intro.md, _toc.md
 
 scripts/                                    Pack-level scripts
@@ -194,7 +194,7 @@ scripts/                                    Pack-level scripts
                                             (v9->v10 migrator + harness + fixtures were sunset in v11 per BD-121)
 ├── add-capability.sh                       Add a pack-supported capability to an existing project (v10)
 ├── pack-help.sh                            LCD shell help-verb (v11; renders HELP-FRAGMENT)
-├── pack-tracker.sh                         Tracker — init / status / mirror-rebuild / disable / doctor / update-templates / enable-recommendations (v11)
+├── pack-tracker.sh                         Tracker — init / status / tree-rebuild / edit / new-entry / mirror-rebuild / disable / doctor / update-templates / enable-recommendations (v11)
 ├── pack-td.sh                              TD orchestration — promote (Path 1/2) / resolve (direct close per V3.3 §3) (v11)
 ├── tracker-migrate.sh                      Lower-level tracker forward/reverse wrapper (v11)
 ├── restore-from-backup.sh                  v9.3 → v10 backup restore (v10; legacy)
@@ -275,8 +275,8 @@ GEMINI.md                                   Pack repo Gemini context (not a temp
 README.md                                   This file
 .github/ISSUE_TEMPLATE/                     Pack-side issue forms (v11)
 └── work-item.yml, inbound.yml, config.yml
-/backlog/                                   Pack per-entry tree (BD-NNN entries; sole SSOT + readable form — no monolithic mirror)
-/changelog/                                 Pack changelog per-entry tree (sole SSOT + readable form — no monolithic mirror)
+/backlog/                                   Pack per-entry tree (BD-NNN entries; sole SSOT + readable form, committed state — no monolithic mirror)
+/changelog/                                 Pack changelog per-entry tree (sole SSOT + readable form, committed state — no monolithic mirror)
 ```
 
 > Migration guides follow the naming convention `MIGRATION-vN-to-vM.md`.

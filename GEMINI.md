@@ -25,10 +25,10 @@ not rely on hardcoded directory listings here (structure changes between major
 versions).
 
 Key docs: `README.md` (version table), `/backlog/` (BD-NNN items;
-per-entry tree, sole SSOT — `/backlog/_toc.md` index), `/changelog/`
-(version history; per-entry tree, sole SSOT — `/changelog/_toc.md` index),
+per-entry tree, sole SSOT (committed state) — `/backlog/_toc.md` index), `/changelog/`
+(version history; per-entry tree, sole SSOT (committed state) — `/changelog/_toc.md` index),
 `pack-ops/PACK-CHAT.md` (PM chat rules), `pack-ops/PACK-AGENTS.md` (agent routing for pack
-work). Per-entry trees are the SOLE SSOT + readable form (there is no
+work). Per-entry trees are the SOLE SSOT + readable form (committed state; there is no
 monolithic mirror — BD-203 deleted `pack-ops/BACKLOG.md` +
 `pack-ops/CHANGELOG.md`): read `/backlog/_rules.md` and
 `/changelog/_rules.md` for the per-stream contract before any per-entry

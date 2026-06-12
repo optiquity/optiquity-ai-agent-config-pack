@@ -98,6 +98,12 @@ Checks:
       `[migration].forward_complete`, `[migration].reverse_available`,
       `[migration].mapping_file`). Catches schema drift in the
       example files that ship to clients via init-project.sh.
+      Check 29″ (BD-204 local-opt-in model): FAILs if a live
+      `tracker.toml` is ever git-TRACKED at the pack root — the pack's
+      committed state is always flat-file; tracker mode is a
+      per-checkout LOCAL opt-in (`/tracker.toml` is root-anchored
+      gitignored). Probed via `git ls-files --error-unmatch`;
+      soft-passes when the root is not a git work tree.
   30. Recommendation-state JSON schema (BD-079): if
       `.pack-tracker/recommendation-state.json` exists at the pack
       root, it parses as JSON and matches the v1 schema documented in
@@ -130,7 +136,11 @@ Checks:
       the no-mirror model the per-entry tree (+ `_toc.md`) is the SOLE
       source of truth; the monolith is a deleted conversion-input, NOT a
       regenerated mirror. Also assert `_rules.md` + `_toc.md` are present
-      and per-entry filenames conform. SKIPs when the per-entry tree is
+      and per-entry filenames conform, and (BD-204 Mode-3 ops contract)
+      that each pack stream's `_rules.md` carries its required mode
+      markers ("Flat-file mode" + "Tracker mode" for `backlog/`;
+      "Mode invariance" for `changelog/`) — marker presence only.
+      SKIPs when the per-entry tree is
       absent (pre-BD-102 dog-food pack-self / pre-v11.0 client per §10.5).
       Pack-side scope only per §10.6 (project-side trees are validated
       by the client's CI).
@@ -2894,6 +2904,17 @@ def check_tracker_config() -> None:
     inputs owned by BD-115/116/117 fixtures and may model historical
     schemas for migration-regression coverage. See F6 in
     PACK-REVIEW-BD-078-RETRO.md.
+
+    Check 29″ (BD-204 local-opt-in model,
+    ARCHITECTURE-BD-204-MODE3-OPS-CONTRACT-AMENDMENT-2.md §B7): the
+    live `tracker.toml` must NEVER be git-tracked at the pack root.
+    The repo's committed state is always flat-file — tracker mode is a
+    per-checkout LOCAL opt-in carried by a gitignored root
+    `/tracker.toml` — so a TRACKED `tracker.toml` would ship a
+    tracker-mode default to every checkout. FAILs when
+    `git ls-files --error-unmatch tracker.toml` succeeds; soft-passes
+    when the file is absent, untracked, or REPO_ROOT is not a git
+    work tree (per-check fixture runs).
     """
     print("\n── Check 29: Tracker-config schema (BD-078) ──")
     pack_example = REPO_ROOT / "tracker.toml.pack-example"
@@ -2916,6 +2937,29 @@ def check_tracker_config() -> None:
     else:
         ok("tracker.toml absent at pack root — mirror-staleness "
            "leg soft-passes (lazy-create is by design)")
+
+    # Check 29″ — never-tracked leg (BD-204 local-opt-in model). The
+    # CI realization of "the repo's committed state is always
+    # flat-file": a git-TRACKED root tracker.toml is a hard FAIL.
+    # `git ls-files --error-unmatch` rc==0 means TRACKED; any non-zero
+    # rc (file absent, untracked, not a git work tree) soft-passes.
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "ls-files",
+             "--error-unmatch", "tracker.toml"],
+            capture_output=True, text=True)
+        tracked = (proc.returncode == 0)
+    except Exception:
+        tracked = False
+    if tracked:
+        fail("tracker.toml is git-TRACKED at the pack root — the "
+             "pack's committed state is always flat-file; tracker "
+             "mode is a per-checkout LOCAL opt-in and `tracker.toml` "
+             "is gitignored (BD-204). Untrack it: "
+             "`git rm --cached tracker.toml`")
+    else:
+        ok("tracker.toml is not git-tracked at the pack root "
+           "(local-opt-in contract holds — Check 29″)")
 
 
 # ── Check 30: Recommendation-state JSON schema (BD-079) ─────────────────────
@@ -3273,6 +3317,17 @@ def _list_unknown_files(stream_dir: Path, entry_regex: str,
 # TITLE TEXT after the em-dash). Used by the Check 32′ header guard.
 _CANON_HEADER_RE = re.compile(r"^\*\*(?:BD|TD)-\d+ — .+\*\*$")
 
+# BD-204 Mode-3 ops contract (ARCHITECTURE-BD-204-MODE3-OPS-CONTRACT.md
+# §4.2): per-stream required mode markers in `_rules.md`. Check 32′
+# asserts marker/heading PRESENCE only — never prose-pinning
+# (anti-fragility). Allowlist sized to exactly the two pack streams
+# (measure-then-bound: the markers landed in the Mode-3 ops Commit 1;
+# project streams gain theirs at BD-206/207 and are NOT asserted here).
+_RULES_MODE_MARKERS = {
+    "pack-backlog":   ("Flat-file mode", "Tracker mode"),
+    "pack-changelog": ("Mode invariance",),
+}
+
 
 def _stream_is_id_shaped(entry_regex: str) -> bool:
     """Return True iff `entry_regex` is an `[A-Z]+-\\d+`-shaped ID stream
@@ -3302,6 +3357,10 @@ def check_mirror_in_sync() -> None:
         check now forbids. FAIL if the monolith is present.
 
       - Assert `_rules.md` is present (the per-entry contract SSOT).
+
+      - Assert `_rules.md` carries the stream's required mode markers
+        (BD-204 Mode-3 ops contract; `_RULES_MODE_MARKERS` — marker
+        presence only, never prose-pinning).
 
       - Assert `_toc.md` is present (the no-mirror readable index).
 
@@ -3352,6 +3411,29 @@ def check_mirror_in_sync() -> None:
                 f"per-entry contract (the sole rules SSOT)"
             )
             continue
+
+        # BD-204 Mode-3 ops contract: required mode markers in _rules.md
+        # (marker presence only — see _RULES_MODE_MARKERS above). The
+        # pack-backlog contract must carry both mode headings
+        # ("Flat-file mode" / "Tracker mode"); the pack-changelog
+        # contract must carry the "Mode invariance" marker.
+        required_markers = _RULES_MODE_MARKERS.get(stream_key, ())
+        if required_markers:
+            try:
+                rules_text = rules_path.read_text(
+                    encoding="utf-8", errors="replace")
+            except OSError:
+                rules_text = ""
+            missing_markers = [m for m in required_markers
+                               if m not in rules_text]
+            if missing_markers:
+                fail(
+                    f"{stream_rel}/_rules.md missing required mode "
+                    f"marker(s) {missing_markers} — the Mode-3 ops "
+                    f"contract (BD-204) requires the mode-conditional "
+                    f"sections; restore the marker heading(s)"
+                )
+                continue
 
         # _toc.md must exist (no-mirror readable index).
         toc_path = stream_dir / "_toc.md"

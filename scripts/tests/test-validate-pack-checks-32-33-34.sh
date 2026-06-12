@@ -185,13 +185,24 @@ build_green_pack_backlog() {
     local backlog_dir="$scratch_repo/backlog"
     mkdir -p "$backlog_dir"
 
-    # _rules.md (declares supporting files).
+    # _rules.md (declares supporting files). Carries the BD-204 Mode-3
+    # ops-contract mode markers ("Flat-file mode" / "Tracker mode")
+    # that the Check 32′ marker assertion requires on the pack-backlog
+    # stream (marker presence only — see _RULES_MODE_MARKERS in
+    # scripts/validate-pack.py).
     cat >"$backlog_dir/_rules.md" <<'EOF'
 # Per-stream contract — pack-backlog (test fixture)
 
 Stream identity: pack-backlog
 Filename convention: ^BD-\d+\.md$
 Lifecycle states: Open, Resolved
+
+## Source of truth — mode-dependent (test fixture)
+
+**Flat-file mode (default).** The per-entry tree is the SSOT.
+
+**Tracker mode.** The tracker is the SSOT; the tree is a regenerated
+mirror.
 
 ## Supporting files
 
@@ -292,6 +303,8 @@ build_green_pack_changelog() {
     mkdir -p "$changelog_dir"
 
     # _rules.md (declares supporting files; no-mirror statement).
+    # Carries the BD-204 "Mode invariance" marker the Check 32′ marker
+    # assertion requires on the pack-changelog stream.
     cat >"$changelog_dir/_rules.md" <<'EOF'
 # Per-stream contract — pack-changelog (test fixture)
 
@@ -301,6 +314,9 @@ Lifecycle states: none (versions are immutable post-ship)
 
 The per-entry tree (+ `_toc.md`) is the SOLE source of truth and
 readable form. There is no monolithic mirror.
+
+**Mode invariance.** This stream is flat-file in both modes (test
+fixture).
 
 ## Supporting files
 
@@ -462,6 +478,50 @@ A6_OUT=$(run_check check_mirror_in_sync "$A6_REPO" 2>&1)
 A6_RC=$?
 assert_eq "A6.1 canonical entry conforms → check rc=0" "0" "$A6_RC"
 assert_not_contains "A6.2 canonical entry conforms → BD-700.md NOT flagged non-conforming" "$A6_OUT" "BD-700.md"
+
+# A7: BD-204 Mode-3 ops contract — Check 32′ mode-marker assertions
+# (PLAN-BD-204-MODE3-OPS-CONTRACT.md §5 leg 11). Markers PRESENT →
+# PASS (A1/A6 already prove this with the marker-carrying fixture);
+# markers ABSENT → FAIL with the marker-naming banner. pack-backlog
+# requires BOTH "Flat-file mode" and "Tracker mode".
+A7_REPO="$SCRATCH_ROOT/A7"
+mkdir -p "$A7_REPO"
+build_green_pack_backlog "$A7_REPO"
+rm -f "$A7_REPO/BACKLOG.md"
+# Strip BOTH mode markers from the fixture's _rules.md.
+python3 - "$A7_REPO/backlog/_rules.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+text = open(p).read()
+text = text.replace("Flat-file mode", "First mode").replace("Tracker mode", "Second mode")
+open(p, "w").write(text)
+PYEOF
+A7_OUT=$(run_check check_mirror_in_sync "$A7_REPO" 2>&1)
+A7_RC=$?
+assert_eq "A7.1 mode markers absent → Check 32′ rc=1" "1" "$A7_RC"
+assert_contains "A7.2 marker FAIL names missing markers" "$A7_OUT" "missing required mode marker"
+assert_contains "A7.3 marker FAIL names Flat-file mode" "$A7_OUT" "Flat-file mode"
+assert_contains "A7.4 marker FAIL names Tracker mode"   "$A7_OUT" "Tracker mode"
+assert_contains "A7.5 marker FAIL cites the Mode-3 ops contract (BD-204)" "$A7_OUT" "BD-204"
+
+# A7b: ONE marker absent (Tracker mode only) → still FAIL, names
+# exactly the missing one.
+A7B_REPO="$SCRATCH_ROOT/A7B"
+mkdir -p "$A7B_REPO"
+build_green_pack_backlog "$A7B_REPO"
+rm -f "$A7B_REPO/BACKLOG.md"
+python3 - "$A7B_REPO/backlog/_rules.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+text = open(p).read()
+text = text.replace("Tracker mode", "Second mode")
+open(p, "w").write(text)
+PYEOF
+A7B_OUT=$(run_check check_mirror_in_sync "$A7B_REPO" 2>&1)
+A7B_RC=$?
+assert_eq "A7b.1 one marker absent → Check 32′ rc=1" "1" "$A7B_RC"
+assert_contains "A7b.2 FAIL names the missing Tracker mode marker" "$A7B_OUT" "Tracker mode"
+assert_not_contains "A7b.3 FAIL does NOT name the present Flat-file marker as missing" "$A7B_OUT" "'Flat-file mode'"
 
 # ─────────────────────────────────────────────────────────────────
 # Group B: Check 33 (TOC-in-sync) — green + red
@@ -713,6 +773,24 @@ F5_OUT=$(run_check check_cross_reference_integrity "$F5_REPO" "$PACKCL_TUPLE" 2>
 F5_RC=$?
 assert_eq "F5.1 cross-stream union → Check 34 rc=0 (BD-100 resolves via pack-backlog)" "0" "$F5_RC"
 assert_not_contains "F5.2 cross-stream union → no dangling FAIL" "$F5_OUT" "FAIL:"
+
+# F6: BD-204 Mode-3 ops contract — the pack-changelog stream's
+# Check 32′ marker assertion ("Mode invariance"). Present → PASS
+# (F1's fixture carries it); absent → FAIL naming the marker.
+F6_REPO="$SCRATCH_ROOT/F6"
+mkdir -p "$F6_REPO"
+build_green_pack_changelog "$F6_REPO"
+python3 - "$F6_REPO/changelog/_rules.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+text = open(p).read().replace("Mode invariance", "Mode sameness")
+open(p, "w").write(text)
+PYEOF
+F6_OUT=$(run_check check_mirror_in_sync "$F6_REPO" "$PACKCL_TUPLE" 2>&1)
+F6_RC=$?
+assert_eq "F6.1 Mode-invariance marker absent → Check 32′ rc=1" "1" "$F6_RC"
+assert_contains "F6.2 marker FAIL names Mode invariance" "$F6_OUT" "Mode invariance"
+assert_contains "F6.3 marker FAIL is the missing-marker banner" "$F6_OUT" "missing required mode marker"
 
 # ─────────────────────────────────────────────────────────────────
 # Group F2: Check 34 vN.M resolution (BD-203 D1 forward-ref + FLAG-b)

@@ -2,7 +2,7 @@
 # scripts/tests/tracker-migrate-reverse-test.sh — offline test suite
 # for V1 §6.5 reverse migration + V1 §6.6/§6.6.1 sidecar (BD-067).
 #
-# Six groups:
+# Groups:
 #   1. Per-entry decoders — status/type/scope/severity/blockers/sections
 #   2. Reconstruction — full Issue → v10 record round-trip
 #   3. Mirror header strip — idempotency + presence/absence
@@ -10,6 +10,11 @@
 #      + sidecar; mode flip on `--disable`
 #   5. Idempotency — second reverse produces byte-equal flat files
 #   6. Doctor verb — basic checks
+#   7. BD-111 retrofit — first-class blocked-by round-trip
+#   8. BD-204 Mode-3 ops verbs — `pack tracker tree-rebuild` (tree-only
+#      arm, gates, hand-edit overwrite proof) + the blocking
+#      status-coherence comparator (blob is status truth; --force =
+#      blob-wins) + the surface-neutralized silent-data-loss guard text
 
 set -u
 
@@ -272,6 +277,19 @@ assert_contains "1.5c V3.3 D-21: phase epic STILL admitted as sub-issue parent" 
 
 printf "\n=== Group 2: reconstruction ===\n"
 
+# NIT-1 hermeticity (PACK-REVIEW-MODE3-OPS-COMMIT2): every successful
+# tracker_migrate_reverse_reconstruct call below reaches
+# _tmr_fetch_first_class_blocked_by (scripts/lib/tracker-migrate-reverse.sh),
+# whose GH_REPO-absent fallback shells out to `gh repo view` — and whose
+# follow-on GraphQL fetch would hit the REAL gh on a machine where that
+# fallback succeeds. Wrap the whole group in the suite's fake-gh PATH
+# pattern (the same _build_fake_gh stub Groups 4/5 use): `repo view`
+# answers the fixture slug and the catch-all arm answers `gh api
+# graphql` with empty output, so the fetch degrades to [] exactly as
+# the offline baseline. No behavior-assertion changes.
+FAKE_G2=$(mktemp -d -t tmr-fake-g2.XXXXXX); _build_fake_gh "$FAKE_G2"
+export PATH="$FAKE_G2:$PATH_SAVED"
+
 issue=$(jq -n '{
   number: 42, id: "42",
   title: "BD-001: Add foo to bar",
@@ -510,6 +528,10 @@ ub_bd2=$(printf '%s' "$out" | jq -r '.[] | select(.pack_id=="BD-002") | .unblock
 ub_phase3_consumers=$(printf '%s' "$out" | jq -r '.[] | select(.pack_id=="BD-001") | .unblocks | length')
 assert_eq "2.2 BD-002 unblocks BD-001" "BD-001" "$ub_bd2"
 assert_eq "2.2 BD-001 unblocks 0"      "0"      "$ub_phase3_consumers"
+
+# End of the NIT-1 Group-2 hermetic wrap — restore the real PATH.
+export PATH="$PATH_SAVED"
+rm -rf "$FAKE_G2"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 3: mirror header strip
@@ -845,6 +867,13 @@ _build_test_repo "$REPO_DR"
 mkdir -p "$REPO_DR/.github/ISSUE_TEMPLATE"
 touch "$REPO_DR/.github/ISSUE_TEMPLATE/work-item.yml"
 
+# BD-204 leg (h): the doctor's status-coherence advisory calls
+# provider_list on tracker-mode pack fixtures — keep the suite hermetic
+# by serving the fake gh for every Group 6 doctor invocation (zero live
+# gh/network calls).
+FAKE_DR=$(mktemp -d -t tmr-fake-doctor.XXXXXX); _build_fake_gh "$FAKE_DR"
+export PATH="$FAKE_DR:$PATH_SAVED"
+
 # Source the doctor function (defined in scripts/tracker-migrate.sh).
 # We can't source the dispatcher itself (it has set -euo pipefail and
 # main "$@" at end), so define a stand-alone here matching the impl.
@@ -927,6 +956,10 @@ assert_contains "6.3 doctor reports inbound version"    "$output" "inbound=inbou
 # Empty production manifest → reports "0 transitions (current)".
 assert_contains "6.3 doctor reports empty manifest"     "$output" "0 transitions (current)"
 rm -rf "$REPO_FRESH"
+
+# Restore the real PATH after the Group 6 fake-gh wrap.
+export PATH="$PATH_SAVED"
+rm -rf "$FAKE_DR"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 7: BD-111 retrofit — first-class blocked-by round-trip
@@ -1147,6 +1180,260 @@ g76_count=$(printf '%s' "$g76_blockers" | jq 'length')
 assert_eq "7.6 legacy-only: exactly 1 blocker (no first-class)" "1" "$g76_count"
 PATH="$PATH_SAVED"
 rm -rf "$FAKE_G76"
+
+# ─────────────────────────────────────────────────────────────────
+# Group 8: BD-204 Mode-3 ops verbs — tree-rebuild + status coherence
+#   (ARCHITECTURE-BD-204-MODE3-OPS-CONTRACT.md §2/§3 + AMENDMENT-2
+#    §B8 D2; PLAN-BD-204-MODE3-OPS-CONTRACT.md §5 legs 1/2/5/8/9)
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 8: BD-204 Mode-3 ops verbs (tree-rebuild + status coherence) ===\n"
+
+PACK_TRACKER_SH="$REPO_ROOT/scripts/pack-tracker.sh"
+
+# 8.1 (plan leg 1) tree-rebuild happy path: tree files + _toc.md
+# regenerated; last_tree_regen stamped; mode.state UNCHANGED; NO
+# STATUS.md / IMPLEMENTATION-PLAN.md at the fixture root; no monolith.
+FAKE8=$(mktemp -d -t tmr-fake8.XXXXXX); _build_fake_gh "$FAKE8"
+REPO8=$(mktemp -d -t tmr-repo8.XXXXXX); _build_test_repo "$REPO8"
+export PATH="$FAKE8:$PATH_SAVED"
+out8=$(bash "$PACK_TRACKER_SH" tree-rebuild --repo-root "$REPO8" 2>&1)
+rc8=$?
+export PATH="$PATH_SAVED"
+assert_eq       "8.1 tree-rebuild rc=0"                       "0" "$rc8"
+assert_contains "8.1 reports tree-rebuild complete"           "$out8" "tree-rebuild: complete"
+[[ -f "$REPO8/backlog/BD-001.md" ]] && t_pass "8.1 tree entry materialized" || t_fail "8.1 tree entry materialized"
+[[ -f "$REPO8/backlog/_toc.md" ]]   && t_pass "8.1 _toc.md regenerated (DP-4 by construction)" || t_fail "8.1 _toc.md regenerated (DP-4 by construction)"
+[[ ! -f "$REPO8/STATUS.md" ]] \
+    && t_pass "8.1 NO STATUS.md deposited at fixture root (tree-only)" \
+    || t_fail "8.1 NO STATUS.md deposited at fixture root (tree-only)"
+[[ ! -f "$REPO8/IMPLEMENTATION-PLAN.md" ]] \
+    && t_pass "8.1 NO IMPLEMENTATION-PLAN.md deposited at fixture root (tree-only)" \
+    || t_fail "8.1 NO IMPLEMENTATION-PLAN.md deposited at fixture root (tree-only)"
+[[ ! -f "$REPO8/pack-ops/BACKLOG.md" ]] \
+    && t_pass "8.1 no monolith written (Check 32-prime shape)" \
+    || t_fail "8.1 no monolith written (Check 32-prime shape)"
+assert_contains "8.1 last_tree_regen stamped in tracker.toml" \
+    "$(cat "$REPO8/tracker.toml")" 'last_tree_regen = "'
+assert_eq "8.1 mode.state UNCHANGED (no flip)" "tracker" \
+    "$(tracker_config_get "$REPO8/tracker.toml" mode.state)"
+
+# 8.2 (plan leg 8) hand-edit overwrite proof — the contract's teeth:
+# hand-edit a tree file in tracker mode, run tree-rebuild, hand-edit
+# GONE (one-way write proven by test, not prose). The file returns to
+# byte-identity with the pre-edit regenerated content.
+pre_edit_snapshot=$(cat "$REPO8/backlog/BD-001.md")
+printf 'HAND-EDIT SENTINEL — this line must be clobbered\n' >> "$REPO8/backlog/BD-001.md"
+grep -q "HAND-EDIT SENTINEL" "$REPO8/backlog/BD-001.md" \
+    && t_pass "8.2 hand-edit landed on disk (precondition)" \
+    || t_fail "8.2 hand-edit landed on disk (precondition)"
+export PATH="$FAKE8:$PATH_SAVED"
+bash "$PACK_TRACKER_SH" tree-rebuild --repo-root "$REPO8" >/dev/null 2>&1
+rc82=$?
+export PATH="$PATH_SAVED"
+assert_eq "8.2 second tree-rebuild rc=0" "0" "$rc82"
+if grep -q "HAND-EDIT SENTINEL" "$REPO8/backlog/BD-001.md"; then
+    t_fail "8.2 hand-edit OVERWRITTEN WITHOUT DETECTION (one-way write)" "sentinel survived"
+else
+    t_pass "8.2 hand-edit OVERWRITTEN WITHOUT DETECTION (one-way write)"
+fi
+assert_eq "8.2 regenerated file byte-equal to pre-edit content" \
+    "$pre_edit_snapshot" "$(cat "$REPO8/backlog/BD-001.md")"
+
+# 8.3 (plan leg 2) flat-file-mode refusal (fail-loud message asserted).
+python3 - "$REPO8/tracker.toml" <<'PYEOF'
+import re, sys
+p = sys.argv[1]
+text = open(p).read()
+text = text.replace('state = "tracker"', 'state = "flat-file"')
+open(p, "w").write(text)
+PYEOF
+out83=$(bash "$PACK_TRACKER_SH" tree-rebuild --repo-root "$REPO8" 2>&1)
+rc83=$?
+[[ "$rc83" -ne 0 ]] \
+    && t_pass "8.3 flat-file mode → tree-rebuild refuses (rc!=0)" \
+    || t_fail "8.3 flat-file mode → tree-rebuild refuses (rc!=0)" "rc=$rc83"
+assert_contains "8.3 refusal is typed validation"      "$out83" "ERROR: validation"
+assert_contains "8.3 refusal names not-in-tracker-mode" "$out83" "not in tracker mode"
+assert_contains "8.3 refusal names the flat-file SSOT" "$out83" "the per-entry tree is the SSOT in flat-file mode"
+rm -rf "$FAKE8" "$REPO8"
+
+# 8.4 (plan leg 9) client-surface refusal names BD-207. A client-shaped
+# repo (docs/pack/ marker, NO pack-ops/) auto-detects surface=client;
+# tree_only is pack-surface-only at v11.0.
+REPO84=$(mktemp -d -t tmr-repo84.XXXXXX)
+mkdir -p "$REPO84/docs/pack"
+cat > "$REPO84/docs/pack/tracker.toml" <<'EOF'
+schema_version = 1
+[backend]
+name = "github"
+repo = "fixture-org/fixture-repo"
+[mode]
+state = "tracker"
+[id_namespace]
+prefix = "TD"
+[migration]
+forward_complete = true
+mapping_file = ".pack-tracker/id-map.json"
+EOF
+out84=$(bash "$PACK_TRACKER_SH" tree-rebuild --repo-root "$REPO84" 2>&1)
+rc84=$?
+[[ "$rc84" -ne 0 ]] \
+    && t_pass "8.4 client surface → tree-rebuild refuses (rc!=0)" \
+    || t_fail "8.4 client surface → tree-rebuild refuses (rc!=0)" "rc=$rc84"
+assert_contains "8.4 refusal names pack-surface-only"  "$out84" "pack surface only at v11.0"
+assert_contains "8.4 refusal names BD-207"             "$out84" "BD-207"
+# Engine-seam guard (defensive double of the verb gate): a DIRECT
+# engine call with tree_only=1 on the client surface also refuses.
+out84b=$(tracker_migrate_reverse_run "$REPO84" 0 0 0 0 1 2>&1)
+rc84b=$?
+[[ "$rc84b" -ne 0 ]] \
+    && t_pass "8.4 engine seam: direct tree_only=1 call on client surface refuses" \
+    || t_fail "8.4 engine seam: direct tree_only=1 call on client surface refuses" "rc=$rc84b"
+assert_contains "8.4 engine-seam refusal names BD-207" "$out84b" "BD-207"
+rm -rf "$REPO84"
+
+# 8.5 (plan leg 5) status-coherence comparator — blob is status truth.
+# Unit legs first: blob Status vs projection mismatch fails loud;
+# --force = blob-wins (WARN, rc=0); matching pair passes; no-Status
+# blob skips (field-faithful contract).
+div_raw=$'**BD-001 — Add foo to bar**\nType: TODO(version)\nStatus: Resolved\nDescription: x.\n'
+err85=$(_tmr_check_status_coherence "$div_raw" "Open" 42 "BD-001" 0 2>&1 1>/dev/null)
+rc85=$?
+[[ "$rc85" -ne 0 ]] \
+    && t_pass "8.5 unit: divergent blob/projection Status fails loud (rc!=0)" \
+    || t_fail "8.5 unit: divergent blob/projection Status fails loud (rc!=0)" "rc=$rc85"
+assert_contains "8.5 unit: error names the pack-id"        "$err85" "BD-001"
+assert_contains "8.5 unit: error names BOTH values"        "$err85" "'Open'"
+assert_contains "8.5 unit: error names the blob value"     "$err85" "'Resolved'"
+assert_contains "8.5 unit: error names the recovery verb"  "$err85" "pack tracker edit --status Resolved"
+warn85=$(_tmr_check_status_coherence "$div_raw" "Open" 42 "BD-001" 1 2>&1 1>/dev/null)
+rc85f=$?
+assert_eq       "8.5 unit: --force = blob-wins (rc=0)"     "0" "$rc85f"
+assert_contains "8.5 unit: --force override is WARNed, never silent" "$warn85" "blob wins"
+rc85m=0
+_tmr_check_status_coherence "$div_raw" "Resolved" 42 "BD-001" 0 >/dev/null 2>&1 || rc85m=1
+assert_eq "8.5 unit: matching blob/projection passes" "0" "$rc85m"
+rc85n=0
+_tmr_check_status_coherence $'**BD-001 — X**\nType: TODO(version)\nDescription: no status field.\n' "Open" 42 "BD-001" 0 >/dev/null 2>&1 || rc85n=1
+assert_eq "8.5 unit: blob without a Status line skips (field-faithful)" "0" "$rc85n"
+
+# 8.5 e2e: a divergent issue blocks tree-rebuild; --force lets the
+# blob's Status reach the tree file. Custom single-issue fixture:
+# labels/state project Open, blob says Status: Resolved.
+DIV_RAWBODY=$'**BD-001 — Add foo to bar**\nType: TODO(version)\nStatus: Resolved\nFile/Symbol: scripts/foo.sh\nDescription: Implements foo on bar.\n'
+DIV_BLOB=$(printf '%s' "$DIV_RAWBODY" | _tmf_gz64_encode)
+FAKE85=$(mktemp -d -t tmr-fake85.XXXXXX)
+cat > "$FAKE85/gh" <<'FG85'
+#!/usr/bin/env bash
+label=""
+for ((i=1; i<=$#; i++)); do
+    if [[ "${!i}" == "--label" ]]; then
+        j=$((i+1)); label="${!j}"; break
+    fi
+done
+case "$1 $2" in
+    "issue list")
+        case "$label" in
+            bd-entry) echo '[{"number":42,"title":"BD-001: Add foo to bar","state":"OPEN","labels":[{"name":"bd-entry"}],"assignees":[],"milestone":null,"url":"http://x/42"}]' ;;
+            *)        echo '[]' ;;
+        esac
+        ;;
+    "issue view")
+        echo '{"number":42,"title":"BD-001: Add foo to bar","body":"<!-- pack-id: BD-001 -->\n<!-- template_version: bd-v11.0 -->\n<!-- pack-version: v11 -->\n<!-- pack-entry-body-gz64: @@DIV_BLOB@@ -->\n\n## Description\n\nImplements foo on bar.\n\n## File / Symbol\n\nscripts/foo.sh","state":"OPEN","stateReason":null,"labels":[{"name":"bd-entry"},{"name":"status:open"}],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/42"}'
+        ;;
+    "repo view") echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
+    *) ;;
+esac
+exit 0
+FG85
+sed -i.bak "s|@@DIV_BLOB@@|$DIV_BLOB|" "$FAKE85/gh"
+rm -f "$FAKE85/gh.bak"
+chmod +x "$FAKE85/gh"
+REPO85=$(mktemp -d -t tmr-repo85.XXXXXX)
+cat > "$REPO85/tracker.toml" <<'EOF'
+schema_version = 1
+[backend]
+name = "github"
+repo = "fixture-org/fixture-repo"
+[mode]
+state = "tracker"
+[id_namespace]
+prefix = "BD"
+[migration]
+forward_complete = true
+mapping_file = ".pack-tracker/id-map.json"
+EOF
+mkdir -p "$REPO85/pack-ops" "$REPO85/.pack-tracker"
+printf '{ "BD-001": {"id": "42", "url": "http://x/42"} }\n' > "$REPO85/.pack-tracker/id-map.json"
+export PATH="$FAKE85:$PATH_SAVED"
+out85=$(bash "$PACK_TRACKER_SH" tree-rebuild --repo-root "$REPO85" 2>&1)
+rc85e=$?
+export PATH="$PATH_SAVED"
+[[ "$rc85e" -ne 0 ]] \
+    && t_pass "8.5 e2e: divergent issue blocks tree-rebuild (rc!=0)" \
+    || t_fail "8.5 e2e: divergent issue blocks tree-rebuild (rc!=0)" "rc=$rc85e"
+assert_contains "8.5 e2e: failure names status-coherence" "$out85" "status-coherence"
+assert_contains "8.5 e2e: failure lists the pack-id"      "$out85" "BD-001"
+[[ ! -f "$REPO85/backlog/BD-001.md" ]] \
+    && t_pass "8.5 e2e: blocked rebuild wrote no tree file" \
+    || t_fail "8.5 e2e: blocked rebuild wrote no tree file"
+export PATH="$FAKE85:$PATH_SAVED"
+out85f=$(bash "$PACK_TRACKER_SH" tree-rebuild --repo-root "$REPO85" --force 2>&1)
+rc85ef=$?
+export PATH="$PATH_SAVED"
+assert_eq "8.5 e2e: --force rc=0 (blob-wins)" "0" "$rc85ef"
+assert_contains "8.5 e2e: --force override surfaces a WARN" "$out85f" "blob wins"
+if grep -q "^Status: Resolved$" "$REPO85/backlog/BD-001.md" 2>/dev/null; then
+    t_pass "8.5 e2e: the blob's Status: Resolved reached the tree file"
+else
+    t_fail "8.5 e2e: the blob's Status: Resolved reached the tree file" \
+        "got: $(grep '^Status:' "$REPO85/backlog/BD-001.md" 2>/dev/null)"
+fi
+rm -rf "$FAKE85" "$REPO85"
+
+# 8.6 surface-neutralized silent-data-loss guard text (BD-204 ride-along
+# (b)): the pack surface reconstructs the TREE, not BACKLOG.md — the
+# guard message is surface-neutral. Static pin on the lib (mirrors the
+# bd130 suite's grep-leg pattern).
+if grep -q "Reconstructing the flat-file state now would drop" "$LIB_DIR/tracker-migrate-reverse.sh"; then
+    t_pass "8.6 guard message is surface-neutralized"
+else
+    t_fail "8.6 guard message is surface-neutralized" "new wording missing"
+fi
+if grep -q "Reconstructing BACKLOG.md now would drop" "$LIB_DIR/tracker-migrate-reverse.sh"; then
+    t_fail "8.6 old BACKLOG.md guard wording removed" "old wording still present"
+else
+    t_pass "8.6 old BACKLOG.md guard wording removed"
+fi
+
+# 8.7 SHOULD-2 (PACK-REVIEW-MODE3-OPS-COMMIT2) fail-loud emit gate: a
+# PACK emit failure on the non-flip tree-rebuild arm must (a) NOT stamp
+# [migration].last_tree_regen, (b) NOT print the success summary,
+# (c) return rc!=0. Direct engine call (the 8.4 engine-seam pattern)
+# with _tmr_emit_pack_tree overridden to fail — the exact
+# `|| emit_failed=1` seam in tracker_migrate_reverse_run, exercised
+# deterministically (no disk-failure simulation); the override is
+# scoped to the command-substitution subshell and never leaks.
+FAKE87=$(mktemp -d -t tmr-fake87.XXXXXX); _build_fake_gh "$FAKE87"
+REPO87=$(mktemp -d -t tmr-repo87.XXXXXX); _build_test_repo "$REPO87"
+export PATH="$FAKE87:$PATH_SAVED"
+out87=$(
+    _tmr_emit_pack_tree() { echo "SIMULATED EMIT FAILURE (8.7)" >&2; return 1; }
+    tracker_migrate_reverse_run "$REPO87" 0 0 0 0 1 2>&1
+)
+rc87=$?
+export PATH="$PATH_SAVED"
+[[ "$rc87" -ne 0 ]] \
+    && t_pass "8.7 emit failure → tree-rebuild rc!=0 (fail loud)" \
+    || t_fail "8.7 emit failure → tree-rebuild rc!=0 (fail loud)" "rc=$rc87"
+assert_not_contains "8.7 emit failure → NO success summary" "$out87" "tree-rebuild: complete"
+assert_contains "8.7 emit failure → typed partial-write error"     "$out87" "ERROR: partial-write"
+assert_contains "8.7 emit failure → names the failed emit step"    "$out87" "tree-rebuild: emit step failed"
+assert_contains "8.7 emit failure → states the stamp was withheld" "$out87" "last_tree_regen NOT stamped"
+assert_not_contains "8.7 emit failure → last_tree_regen NOT stamped in tracker.toml" \
+    "$(cat "$REPO87/tracker.toml")" "last_tree_regen"
+rm -rf "$FAKE87" "$REPO87"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

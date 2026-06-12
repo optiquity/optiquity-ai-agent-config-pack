@@ -4,8 +4,20 @@
 # (the /backlog/ + /changelog/ per-entry trees as source-of-truth;
 # the pack has no monolith mirror files post-BD-203).
 #
-# To enable tracker mode for the pack repo:
-#   1. Copy this file to `tracker.toml` in the pack root.
+# LOCAL OPT-IN MODEL (BD-204). Tracker mode is a per-checkout LOCAL
+# opt-in: the live `tracker.toml` you create from this example is
+# LOCAL and gitignored (root-anchored `/tracker.toml` rule) — it is
+# NEVER committed, so your mode survives pulls and version bumps, and
+# no one else's checkout changes. The repo's COMMITTED state is
+# always flat-file: every checkout and every version bump ships
+# flat-file. While opted in, the committed /backlog/ tree is the
+# PUBLISHED flat-file SSOT kept current via `pack tracker
+# tree-rebuild` + the normal commit gates; single-writer caveat in
+# /backlog/_rules.md § "Source of truth".
+#
+# To enable tracker mode for the pack repo (locally):
+#   1. Copy this file to `tracker.toml` in the pack root (your
+#      checkout only — the copy is gitignored, never committed).
 #   2. Edit `mode.state = "tracker"`.
 #   3. Run the forward migration script (see ARCHITECTURE.md §6).
 #   4. The migration will set `migration.forward_complete = true`,
@@ -24,9 +36,11 @@ repo = "DShaneNYC/optiquity-ai-agent-config-pack"
 # instance = ""                    # set for jira: full URL
 
 [mode]
-# "tracker"   = use tracker as source-of-truth; the per-entry trees +
-#               _toc.md regenerate from tracker state (no monolith
-#               mirrors on the pack surface post-BD-203).
+# "tracker"   = use tracker as source-of-truth ON THIS CHECKOUT; the
+#               per-entry trees + _toc.md regenerate from tracker
+#               state (no monolith mirrors on the pack surface
+#               post-BD-203). The mode is local (gitignored file) —
+#               the committed repo stays flat-file regardless.
 # "flat-file" = pre-v11 behavior; tracker.toml present but disabled.
 state = "flat-file"
 # Set when first switching to tracker mode (ISO 8601 UTC).

@@ -10,6 +10,11 @@
 # Mapping file, migration checkpoints, and reverse-migration sidecars.
 # Never committed: contains local paths and is regenerable from the tracker.
 .pack-tracker/
+# Local tracker-mode opt-in (BD-204): the repo's committed state is always
+# flat-file; your local mode survives pulls. ROOT-ANCHORED on purpose — the
+# committed test fixtures named tracker.toml deeper in the tree
+# (scripts/tests/fixtures/**/tracker.toml) must stay tracked.
+/tracker.toml
 
 # ── Generated Protobuf output ─────────────────────────────────────────────────
 # Regenerate with scripts/proto-gen.sh

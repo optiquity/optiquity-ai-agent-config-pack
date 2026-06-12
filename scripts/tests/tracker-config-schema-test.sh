@@ -559,6 +559,65 @@ else
 fi
 rm -rf "$fix"
 
+# ── Test 18: Check 29″ — never-tracked tracker.toml (BD-204) ────────
+# The local-opt-in model's CI realization: a git-TRACKED root
+# tracker.toml FAILs; an untracked one (and a non-git fixture root)
+# soft-passes. Per ARCHITECTURE-BD-204-MODE3-OPS-CONTRACT-AMENDMENT-2
+# §B7 / D2-5. Scratch git repos are self-provisioned + cleaned up.
+printf "\n=== Test 18: Check 29-doubleprime never-tracked tracker.toml ===\n"
+
+# 18a: non-git fixture root (every prior test's shape) → soft-pass
+# (already implicitly proven by Tests 1–17 exiting per their schema
+# expectations; pin the OK banner explicitly here).
+fix=$(build_fixture "$GOOD_PACK" "$GOOD_CLIENT")
+out=$(run_check29_at "$fix" 2>&1); rc=$?
+if echo "$out" | grep -q "not git-tracked at the pack root"; then
+    t_pass "18a.1 non-git fixture root → 29″ soft-pass banner"
+else
+    t_fail "18a.1 non-git fixture root → 29″ soft-pass banner" "out=${out:0:400}"
+fi
+rm -rf "$fix"
+
+# 18b: git repo with an UNTRACKED tracker.toml → soft-pass.
+fix=$(build_fixture "$GOOD_PACK" "$GOOD_CLIENT")
+git -C "$fix" init -q -b main
+git -C "$fix" config user.email test@example.com
+git -C "$fix" config user.name test
+printf '%s\n' "$GOOD_PACK" > "$fix/tracker.toml"   # untracked live file
+out=$(run_check29_at "$fix" 2>&1); rc=$?
+if [[ $rc -eq 0 ]]; then t_pass "18b.1 untracked live tracker.toml → exit 0"
+else t_fail "18b.1 untracked live tracker.toml → exit 0" "rc=$rc out=${out:0:400}"; fi
+if echo "$out" | grep -q "not git-tracked at the pack root"; then
+    t_pass "18b.2 untracked live tracker.toml → 29″ OK banner"
+else
+    t_fail "18b.2 untracked live tracker.toml → 29″ OK banner" "out=${out:0:400}"
+fi
+rm -rf "$fix"
+
+# 18c: git repo with a COMMITTED tracker.toml → FAIL naming the
+# local-opt-in contract + the untrack recovery.
+fix=$(build_fixture "$GOOD_PACK" "$GOOD_CLIENT")
+git -C "$fix" init -q -b main
+git -C "$fix" config user.email test@example.com
+git -C "$fix" config user.name test
+printf '%s\n' "$GOOD_PACK" > "$fix/tracker.toml"
+git -C "$fix" add tracker.toml
+git -C "$fix" commit -qm "fixture: tracked tracker.toml"
+out=$(run_check29_at "$fix" 2>&1); rc=$?
+if [[ $rc -ne 0 ]]; then t_pass "18c.1 TRACKED tracker.toml → exit nonzero"
+else t_fail "18c.1 TRACKED tracker.toml → exit nonzero" "rc=$rc out=${out:0:400}"; fi
+if echo "$out" | grep -q "tracker.toml is git-TRACKED at the pack root"; then
+    t_pass "18c.2 FAIL names the tracked state"
+else
+    t_fail "18c.2 FAIL names the tracked state" "out=${out:0:400}"
+fi
+if echo "$out" | grep -q "git rm --cached tracker.toml"; then
+    t_pass "18c.3 FAIL names the untrack recovery"
+else
+    t_fail "18c.3 FAIL names the untrack recovery" "out=${out:0:400}"
+fi
+rm -rf "$fix"
+
 # ── Summary ─────────────────────────────────────────────────────────
 printf "\n=== Summary ===\n"
 printf "PASS: %d\n" "$PASS"

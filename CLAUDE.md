@@ -27,11 +27,11 @@ major versions.
 
 Key files to read before working on the pack:
 - `README.md` — version history and layout
-- `/backlog/` — open BD-NNN items (per-entry tree; sole SSOT — read `/backlog/_toc.md` for an index, `/backlog/_rules.md` for the contract)
-- `/changelog/` — version history details (per-entry tree; sole SSOT — read `/changelog/_toc.md` for an index, `/changelog/_rules.md` for the contract)
+- `/backlog/` — open BD-NNN items (per-entry tree; sole SSOT (committed state) — read `/backlog/_toc.md` for an index, `/backlog/_rules.md` for the contract)
+- `/changelog/` — version history details (per-entry tree; sole SSOT (committed state) — read `/changelog/_toc.md` for an index, `/changelog/_rules.md` for the contract)
 - `pack-ops/PACK-CHAT.md` — PM chat operating rules
 - `pack-ops/PACK-AGENTS.md` — agent routing table for pack development work
-- `/backlog/`, `/changelog/` — per-entry source-of-truth trees + readable form; the SOLE SSOT (read `/backlog/_rules.md` and `/changelog/_rules.md` for the per-stream contract). There is no monolithic mirror — BD-203 deleted `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md`.
+- `/backlog/`, `/changelog/` — per-entry source-of-truth trees + readable form; the SOLE SSOT (committed state; read `/backlog/_rules.md` and `/changelog/_rules.md` for the per-stream contract). There is no monolithic mirror — BD-203 deleted `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md`.
 
 **Migrator framework (BD-119).** When authoring a new
 `scripts/migrate-vN-to-vM.sh`, source `scripts/lib/migrator-core.sh` and

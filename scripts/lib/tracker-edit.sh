@@ -112,6 +112,64 @@ _ted_status_label() {
 }
 
 # ─────────────────────────────────────────────────────────────────
+# BD-204 Mode-3 ops contract §2 — freshness bookkeeping
+# ─────────────────────────────────────────────────────────────────
+
+# tracker_edit_stamp_last_write <cfg-path>
+# Stamp [migration].last_tracker_write (ISO 8601 UTC, now) into the
+# LOCAL tracker.toml. Single-home writer for the key (the
+# `set_in_section` pattern shared with `_tmr_update_tracker_toml` in
+# scripts/lib/tracker-migrate-reverse.sh, which owns the sibling key
+# migration.last_tree_regen). Callers: `tracker_edit_entry` below
+# (after its full mutation sequence succeeds) and `cmd_new_entry` in
+# scripts/pack-tracker.sh (after provider_create + id-map append).
+# Consumer: `tracker_doctor_run` leg (d) pack arm in
+# scripts/lib/tracker-doctor.sh (stale-tree comparison against
+# migration.last_tree_regen). The key lives in LOCAL gitignored state
+# per ARCHITECTURE-BD-204-MODE3-OPS-CONTRACT-AMENDMENT-2.md §B3.
+# No-op (rc=0) when the config file is absent.
+tracker_edit_stamp_last_write() {
+    local cfg="$1"
+    if [[ -z "$cfg" || ! -f "$cfg" ]]; then
+        return 0
+    fi
+    local now_iso
+    now_iso=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+    python3 - "$cfg" "$now_iso" <<'PYEOF'
+import re, sys
+cfg, now = sys.argv[1], sys.argv[2]
+with open(cfg) as f:
+    text = f.read()
+
+def set_in_section(text, section, key, value):
+    section_re = re.compile(r'^\[' + re.escape(section) + r'\][ \t]*$', re.M)
+    m = section_re.search(text)
+    if not m:
+        return text.rstrip() + f'\n\n[{section}]\n{key} = "{value}"\n'
+    start = m.end()
+    nxt = re.search(r'^\[', text[start:], re.M)
+    end = start + (nxt.start() if nxt else len(text) - start)
+    block = text[start:end]
+    # Use [ \t]* not \s* — \s consumes newlines and breaks the
+    # line boundary needed for re.sub line-replacement.
+    if re.search(rf'^[ \t]*{re.escape(key)}[ \t]*=', block, re.M):
+        block = re.sub(rf'^[ \t]*{re.escape(key)}[ \t]*=.*$',
+                       f'{key} = "{value}"', block, flags=re.M)
+    elif re.search(rf'^[ \t]*#[ \t]*{re.escape(key)}[ \t]*=', block, re.M):
+        block = re.sub(rf'^[ \t]*#[ \t]*{re.escape(key)}[ \t]*=.*$',
+                       f'{key} = "{value}"', block, flags=re.M)
+    else:
+        block = block.rstrip() + f'\n{key} = "{value}"\n'
+    return text[:start] + block + text[end:]
+
+text = set_in_section(text, "migration", "last_tracker_write", now)
+
+with open(cfg, "w") as f:
+    f.write(text)
+PYEOF
+}
+
+# ─────────────────────────────────────────────────────────────────
 # Public API
 # ─────────────────────────────────────────────────────────────────
 
@@ -342,6 +400,13 @@ tracker_edit_entry() {
             fi
         fi
     fi
+
+    # BD-204 Mode-3 ops contract §2: stamp migration.last_tracker_write
+    # ONLY after the FULL mutation sequence succeeded (provider_update +
+    # any open↔closed boundary cross above) — a failed edit returns
+    # before this line and stamps nothing. Consumer:
+    # `tracker_doctor_run` leg (d) in scripts/lib/tracker-doctor.sh.
+    tracker_edit_stamp_last_write "$cfg_path"
 
     printf '{"pack_id": "%s", "gh_id": "%s", "updated": true}\n' "$pack_id" "$gh_id"
 }

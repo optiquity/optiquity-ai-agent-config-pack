@@ -239,6 +239,165 @@ assert_no_match "8.3 pack doctor does NOT report a BACKLOG.md mirror header" \
 assert_no_match "8.4 pack doctor emits no 'command not found'" \
     "command not found" "$doctor8_out"
 
+# ─────────────────────────────────────────────────────────────────
+# Group 9: BD-204 Mode-3 ops contract §4.1 — leg (d) freshness-key
+# repoint + leg (h) status-coherence advisory (PLAN §5 leg 7).
+# All offline: a fake gh on PATH serves the pack-owned issue list;
+# the divergent issue's blob is encoded with the PRODUCTION
+# `_tmf_gz64_encode` codec (no codec reproduction).
+# ─────────────────────────────────────────────────────────────────
+echo "=== Group 9: BD-204 doctor leg (d) repoint + leg (h) coherence ==="
+
+DR9="$(mktemp -d)"
+FAKE9="$(mktemp -d)"
+trap 'rm -rf "$SCRATCH" "$PACK_FIX" "$DR9" "$FAKE9"' EXIT
+mkdir -p "$DR9/pack-ops" "$DR9/backlog" "$DR9/.pack-tracker"
+cat > "$DR9/backlog/_toc.md" <<'EOF'
+# Backlog index
+- BD-001 — Seed entry (Open)
+EOF
+printf '{ "BD-001": {"id": "42", "url": "http://x/42"} }\n' > "$DR9/.pack-tracker/id-map.json"
+
+# tracker.toml writer: $1 = extra [migration] key lines (may be empty).
+_dr9_write_cfg() {
+    cat > "$DR9/tracker.toml" <<EOF
+schema_version = 1
+[backend]
+name = "github"
+repo = "fixture-org/fixture-repo"
+[mode]
+state = "tracker"
+[id_namespace]
+prefix = "BD"
+[migration]
+forward_complete = true
+mapping_file = ".pack-tracker/id-map.json"
+$1
+EOF
+}
+
+# Divergent fixture issue: labels/state project Open; the blob's
+# Status: line says Resolved. Blob via the production encoder.
+DR9_RAW=$'**BD-001 — Seed entry**\nType: TODO(version)\nStatus: Resolved\nDescription: Divergent fixture.\n'
+DR9_BLOB=$(DR9_RAW="$DR9_RAW" bash -c '
+  set +e
+  source "'"$LIB_DIR"'/tracker-errors.sh"
+  source "'"$LIB_DIR"'/tracker-config.sh"
+  source "'"$LIB_DIR"'/tracker-provider.sh"
+  source "'"$LIB_DIR"'/tracker-provider-gh.sh"
+  source "'"$LIB_DIR"'/tracker-migrate-forward.sh"
+  printf "%s" "$DR9_RAW" | _tmf_gz64_encode
+')
+cat > "$FAKE9/gh" <<'FG9'
+#!/usr/bin/env bash
+# Args log for leg 9.4b (full-coverage --limit assertion); ${0%/*}
+# resolves to this stub's own FAKE9 dir.
+echo "GH9: $*" >> "${0%/*}/calls.log"
+case "$1 $2" in
+    "issue list")
+        echo '[{"number":42,"title":"BD-001: Seed entry","body":"<!-- pack-id: BD-001 -->\n<!-- pack-entry-body-gz64: @@DR9_BLOB@@ -->\n\n## Description\n\nDivergent fixture.","state":"OPEN","stateReason":null,"labels":[{"name":"bd-entry"},{"name":"status:open"}],"assignees":[],"milestone":null,"url":"http://x/42"}]'
+        ;;
+    "repo view") echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
+    *) ;;
+esac
+exit 0
+FG9
+sed -i.bak "s|@@DR9_BLOB@@|$DR9_BLOB|" "$FAKE9/gh"
+rm -f "$FAKE9/gh.bak"
+chmod +x "$FAKE9/gh"
+PATH_SAVED9="$PATH"
+
+# 9.1 absent-keys tolerance: neither freshness key set → INFO, not WARN.
+_dr9_write_cfg ""
+export PATH="$FAKE9:$PATH_SAVED9"
+out91=$(bash "$TRACKER_MIGRATE" doctor --repo-root "$DR9" 2>&1)
+export PATH="$PATH_SAVED9"
+assert_match "9.1 absent freshness keys → INFO (tolerated)" \
+    "[INFO] tree-freshness keys absent" "$out91"
+assert_no_match "9.1 absent freshness keys → no stale-tree WARN" \
+    "tree is stale relative to tracker writes" "$out91"
+
+# 9.2 stale tree: last_tracker_write > last_tree_regen → WARN naming
+# the recovery verb.
+_dr9_write_cfg 'last_tracker_write = "2026-06-12T10:00:00Z"
+last_tree_regen = "2026-06-12T09:00:00Z"'
+export PATH="$FAKE9:$PATH_SAVED9"
+out92=$(bash "$TRACKER_MIGRATE" doctor --repo-root "$DR9" 2>&1)
+rc92=$?
+export PATH="$PATH_SAVED9"
+assert_match "9.2 stale tree → WARN" \
+    "[WARN] tree is stale relative to tracker writes" "$out92"
+assert_match "9.2 stale-tree WARN names the recovery verb" \
+    "→ Run: pack tracker tree-rebuild" "$out92"
+if [[ "$rc92" -ne 0 ]]; then
+    t_pass "9.2 doctor rc=1 on stale-tree WARN"
+else
+    t_fail "9.2 doctor rc=1 on stale-tree WARN" "rc=0"
+fi
+
+# 9.3 fresh tree: last_tree_regen >= last_tracker_write → OK.
+_dr9_write_cfg 'last_tracker_write = "2026-06-12T09:00:00Z"
+last_tree_regen = "2026-06-12T10:00:00Z"'
+export PATH="$FAKE9:$PATH_SAVED9"
+out93=$(bash "$TRACKER_MIGRATE" doctor --repo-root "$DR9" 2>&1)
+export PATH="$PATH_SAVED9"
+assert_match "9.3 fresh tree → OK regen-current line" \
+    "/backlog tree regen is current" "$out93"
+assert_no_match "9.3 fresh tree → no stale-tree WARN" \
+    "tree is stale relative to tracker writes" "$out93"
+
+# 9.4 leg (h): the mocked divergent issue (projection Open vs blob
+# Status: Resolved) → status-coherence WARN naming the recovery verb.
+# (Same cfg as 9.3 — coherence is independent of the freshness keys.)
+assert_match "9.4 status-coherence WARN fires on the divergent issue" \
+    "[WARN] status-coherence: BD-001" "$out93"
+assert_match "9.4 coherence WARN names blob-truth values" \
+    "'Open' != blob Status: 'Resolved'" "$out93"
+assert_match "9.4 coherence WARN names the recovery verb" \
+    "→ Run: pack tracker edit --status Resolved" "$out93"
+
+# 9.4b SHOULD-1 (PACK-REVIEW-MODE3-OPS-COMMIT2): the leg-(h) read is
+# FULL-COVERAGE — the doctor must request the 1000-item default limit
+# (the old fixed `100` cap silently covered ~47% of the 213 live pack
+# entries). Asserted against the fake-gh args log from the 9.3/9.4 run.
+assert_match "9.4b leg (h) provider_list requests the full-coverage limit (--limit 1000)" \
+    "--limit 1000 --label bd-entry --state all" \
+    "$(cat "$FAKE9/calls.log" 2>/dev/null)"
+
+# 9.4c SHOULD-1 saturation guard: a read that returns exactly the
+# requested limit may have truncated → loud WARN (rc=1), never a
+# silent sample. Force saturation deterministically by shrinking the
+# limit to 1 via the TRACKER_DOCTOR_COH_LIMIT env seam — the fake gh
+# returns exactly 1 issue, so items returned == limit.
+export PATH="$FAKE9:$PATH_SAVED9"
+out94c=$(TRACKER_DOCTOR_COH_LIMIT=1 bash "$TRACKER_MIGRATE" doctor --repo-root "$DR9" 2>&1)
+rc94c=$?
+export PATH="$PATH_SAVED9"
+assert_match "9.4c saturated read → loud truncation WARN" \
+    "[WARN] status-coherence: provider_list read SATURATED at the 1-item limit" "$out94c"
+assert_match "9.4c saturation WARN names the recovery seam" \
+    "TRACKER_DOCTOR_COH_LIMIT" "$out94c"
+if [[ "$rc94c" -ne 0 ]]; then
+    t_pass "9.4c doctor rc=1 on saturation WARN"
+else
+    t_fail "9.4c doctor rc=1 on saturation WARN" "rc=0"
+fi
+
+# 9.5 leg (h) INFO-skip in flat-file mode (GH Issues ignored).
+python3 - "$DR9/tracker.toml" <<'PYEOF'
+import sys
+p = sys.argv[1]
+text = open(p).read().replace('state = "tracker"', 'state = "flat-file"')
+open(p, "w").write(text)
+PYEOF
+export PATH="$FAKE9:$PATH_SAVED9"
+out95=$(bash "$TRACKER_MIGRATE" doctor --repo-root "$DR9" 2>&1)
+export PATH="$PATH_SAVED9"
+assert_match "9.5 flat-file mode → coherence advisory INFO-skipped" \
+    "[INFO] status-coherence advisory skipped (flat-file mode" "$out95"
+assert_no_match "9.5 flat-file mode → no coherence WARN" \
+    "[WARN] status-coherence" "$out95"
+
 echo
 echo "=== Results: $PASS passed, $FAIL failed ==="
 [[ "$FAIL" -eq 0 ]] || exit 1

@@ -1055,7 +1055,332 @@ else
     t_pass "4.8 unmapped id dispatches no provider op"
 fi
 
+# 4.9 BD-204 Mode-3 ops contract §2 (plan leg 6): tracker_edit_entry
+# stamps migration.last_tracker_write on SUCCESS — and NOT on failure
+# (the stamp runs only after the FULL mutation sequence, update + any
+# boundary cross). Re-point the stubbed config resolution at a REAL
+# local tracker.toml so `tracker_edit_stamp_last_write` has a target.
+TED_CFG="$TED_REPO/tracker.toml"
+_ted_write_cfg() {
+    cat > "$TED_CFG" <<'EOF'
+schema_version = 1
+[backend]
+name = "github"
+repo = "fixture-org/fixture-repo"
+[mode]
+state = "tracker"
+[id_namespace]
+prefix = "BD"
+[migration]
+forward_complete = true
+mapping_file = ".pack-tracker/id-map.json"
+EOF
+}
+_ted_write_cfg
+eval "tracker_config_resolve_path() { echo '$TED_CFG'; }"
+
+# 4.9a success → stamped.
+TED_CALLS=""
+tracker_edit_entry "BD-001" '{"status":"Deferred","old_status":"Open"}' "$TED_REPO" >/dev/null
+if grep -q 'last_tracker_write = "' "$TED_CFG"; then
+    t_pass "4.9a successful edit stamps last_tracker_write"
+else
+    t_fail "4.9a successful edit stamps last_tracker_write" "key absent"
+fi
+
+# 4.9b provider_update failure → rc!=0, NO stamp.
+_ted_write_cfg
+provider_update() { TED_CALLS="$TED_CALLS|update:$1"; return 1; }
+rc49b=0
+tracker_edit_entry "BD-001" '{"status":"Deferred","old_status":"Open"}' "$TED_REPO" >/dev/null 2>&1 || rc49b=1
+assert_eq "4.9b failed update → rc!=0" "1" "$rc49b"
+if grep -q 'last_tracker_write = "' "$TED_CFG"; then
+    t_fail "4.9b failed update does NOT stamp last_tracker_write" "key present"
+else
+    t_pass "4.9b failed update does NOT stamp last_tracker_write"
+fi
+
+# 4.9c update succeeds but the boundary cross fails → rc!=0, NO stamp
+# (the stamp requires the FULL sequence — update + close — to succeed).
+_ted_write_cfg
+provider_update() { TED_CALLS="$TED_CALLS|update:$1"; TED_UPDATE_PAYLOAD="$2"; return 0; }
+provider_close()  { TED_CALLS="$TED_CALLS|close:$1:$2"; return 1; }
+rc49c=0
+tracker_edit_entry "BD-001" '{"status":"Resolved","old_status":"Open"}' "$TED_REPO" >/dev/null 2>&1 || rc49c=1
+assert_eq "4.9c failed boundary cross → rc!=0" "1" "$rc49c"
+if grep -q 'last_tracker_write = "' "$TED_CFG"; then
+    t_fail "4.9c failed boundary cross does NOT stamp last_tracker_write" "key present"
+else
+    t_pass "4.9c failed boundary cross does NOT stamp last_tracker_write"
+fi
+# Restore the all-success stubs.
+provider_close()  { TED_CALLS="$TED_CALLS|close:$1:$2"; return 0; }
+
 rm -rf "$TED_REPO"
+
+# ─────────────────────────────────────────────────────────────────
+# Group 5: BD-204 OQ-A verbs — `pack tracker edit` / `pack tracker
+# new-entry` (PLAN-BD-204-MODE3-OPS-CONTRACT.md §5 leg 10)
+# ─────────────────────────────────────────────────────────────────
+#
+# End-to-end via `bash scripts/pack-tracker.sh <verb>` (a fresh shell —
+# the Group-4 function stubs do not apply) against a stateful fake gh:
+# `issue create` captures the composed body/labels/title and returns a
+# fixed issue URL; `issue view` serves the captured body back so the
+# new-entry verb's finishing tree-rebuild materializes exactly what was
+# created. All offline; zero live GitHub calls.
+
+printf "\n=== Group 5: BD-204 OQ-A verbs (pack tracker edit / new-entry) ===\n"
+
+PACK_TRACKER_SH="$REPO_ROOT/scripts/pack-tracker.sh"
+G5_REPO=$(mktemp -d -t tracker-verbs.XXXXXX)
+G5_STATE=$(mktemp -d -t tracker-verbs-state.XXXXXX)
+mkdir -p "$G5_REPO/pack-ops" "$G5_REPO/.pack-tracker"
+cat > "$G5_REPO/tracker.toml" <<'EOF'
+schema_version = 1
+[backend]
+name = "github"
+repo = "fixture-org/fixture-repo"
+[mode]
+state = "tracker"
+[id_namespace]
+prefix = "BD"
+[migration]
+forward_complete = true
+mapping_file = ".pack-tracker/id-map.json"
+EOF
+printf '{}\n' > "$G5_REPO/.pack-tracker/id-map.json"
+
+G5_FAKE=$(mktemp -d -t tracker-verbs-fake.XXXXXX)
+cat > "$G5_FAKE/gh" <<'FG5'
+#!/usr/bin/env bash
+STATE="__G5_STATE__"
+printf '%s\n' "$*" >> "$STATE/gh.log"
+case "$1 $2" in
+    "issue create")
+        # Kill switch (leg 5.7): force the create to fail like a real
+        # backend error so the new-entry failure branch is exercised.
+        if [[ -n "${G5_CREATE_FAIL:-}" ]]; then
+            echo "fake-gh(G5): issue create forced failure (provider_create-failure leg)" >&2
+            exit 1
+        fi
+        bf=""; lab=""; ttl=""
+        args=("$@")
+        for ((i=0; i<$#; i++)); do
+            case "${args[$i]}" in
+                --body-file) bf="${args[$((i+1))]}" ;;
+                --label)     lab="${args[$((i+1))]}" ;;
+                --title)     ttl="${args[$((i+1))]}" ;;
+            esac
+        done
+        [[ -n "$bf" ]] && cp "$bf" "$STATE/created-body"
+        printf '%s' "$lab" > "$STATE/created-labels"
+        printf '%s' "$ttl" > "$STATE/created-title"
+        echo "http://x/issues/77"
+        ;;
+    "issue list") echo '[]' ;;
+    "issue view")
+        python3 - "$STATE/created-body" "$STATE/created-labels" "$STATE/created-title" <<'PY'
+import json, sys
+body = open(sys.argv[1]).read()
+labels = [l for l in open(sys.argv[2]).read().split(",") if l]
+title = open(sys.argv[3]).read()
+print(json.dumps({
+    "number": 77, "title": title, "body": body,
+    "state": "OPEN", "stateReason": None,
+    "labels": [{"name": l} for l in labels],
+    "assignees": [], "milestone": None,
+    "createdAt": None, "updatedAt": None, "closedAt": None,
+    "url": "http://x/issues/77",
+}))
+PY
+        ;;
+    "issue edit")
+        bf=""
+        args=("$@")
+        for ((i=0; i<$#; i++)); do
+            [[ "${args[$i]}" == "--body-file" ]] && bf="${args[$((i+1))]}"
+        done
+        [[ -n "$bf" ]] && cp "$bf" "$STATE/edited-body"
+        ;;
+    "issue close") ;;
+    "repo view") echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
+    *) ;;
+esac
+exit 0
+FG5
+sed -i.bak "s|__G5_STATE__|$G5_STATE|" "$G5_FAKE/gh"
+rm -f "$G5_FAKE/gh.bak"
+chmod +x "$G5_FAKE/gh"
+
+G5_BODY=$(mktemp -t tracker-verbs-body.XXXXXX)
+cat > "$G5_BODY" <<'EOF'
+**BD-002 — New tracked entry**
+Type: TODO(version)
+Status: Open
+Description: Created via the new-entry verb.
+EOF
+
+G5_PATH_SAVED="$PATH"
+export PATH="$G5_FAKE:$PATH"
+
+# 5.1 new-entry happy path: compose + create + labels + id-map append +
+# last_tracker_write stamp + tree materialization (+ _toc.md).
+out51=$(bash "$PACK_TRACKER_SH" new-entry --id BD-002 --body-file "$G5_BODY" --repo-root "$G5_REPO" 2>&1)
+rc51=$?
+assert_eq       "5.1 new-entry rc=0"                          "0" "$rc51"
+assert_contains "5.1 reports the created gh-id"               "$out51" "new-entry: created BD-002 (gh-id 77)"
+assert_eq "5.1 created title is 'BD-NNN: <title>' form" \
+    "BD-002: New tracked entry" "$(cat "$G5_STATE/created-title" 2>/dev/null)"
+g5_labels=$(cat "$G5_STATE/created-labels" 2>/dev/null)
+assert_contains "5.1 labels carry bd-entry (forward label map)"      "$g5_labels" "bd-entry"
+assert_contains "5.1 labels carry status:open (forward label map)"   "$g5_labels" "status:open"
+assert_contains "5.1 labels carry template:bd-v11.0"                 "$g5_labels" "template:bd-v11.0"
+g5_created_body=$(cat "$G5_STATE/created-body" 2>/dev/null)
+assert_contains "5.1 composed body carries the pack-id marker" "$g5_created_body" "<!-- pack-id: BD-002 -->"
+assert_contains "5.1 composed body carries the gz64 blob"      "$g5_created_body" "pack-entry-body-gz64:"
+assert_contains "5.1 composed body carries the H2 projection"  "$g5_created_body" "## Description"
+assert_eq "5.1 id-map gains BD-002 → 77" "77" \
+    "$(jq -r '.["BD-002"].id' "$G5_REPO/.pack-tracker/id-map.json")"
+assert_contains "5.1 last_tracker_write stamped" \
+    "$(cat "$G5_REPO/tracker.toml")" 'last_tracker_write = "'
+[[ -f "$G5_REPO/backlog/BD-002.md" ]] \
+    && t_pass "5.1 entry materialized in the tree (tree-rebuild finish)" \
+    || t_fail "5.1 entry materialized in the tree (tree-rebuild finish)"
+[[ -f "$G5_REPO/backlog/_toc.md" ]] \
+    && t_pass "5.1 _toc.md regenerated" \
+    || t_fail "5.1 _toc.md regenerated"
+# Byte-faithful round-trip: tree file lines 2..EOF == the input span.
+if cmp -s <(sed -n '2,$p' "$G5_REPO/backlog/BD-002.md") "$G5_BODY"; then
+    t_pass "5.1 tree entry lines 2..EOF byte-equal to the input span"
+else
+    t_fail "5.1 tree entry lines 2..EOF byte-equal to the input span" \
+        "got: $(sed -n '2,$p' "$G5_REPO/backlog/BD-002.md" | head -c 200)"
+fi
+
+# 5.2 duplicate-id refusal against the id-map.
+out52=$(bash "$PACK_TRACKER_SH" new-entry --id BD-002 --body-file "$G5_BODY" --repo-root "$G5_REPO" 2>&1)
+rc52=$?
+[[ "$rc52" -ne 0 ]] \
+    && t_pass "5.2 duplicate id → new-entry refuses (rc!=0)" \
+    || t_fail "5.2 duplicate id → new-entry refuses (rc!=0)" "rc=$rc52"
+assert_contains "5.2 refusal names the id-map"     "$out52" "already exists in the id-map"
+assert_contains "5.2 refusal points at edit"       "$out52" "pack tracker edit"
+
+# 5.3 --id shape validation (canonical, no letter suffix) + id/body
+# mismatch refusal.
+out53=$(bash "$PACK_TRACKER_SH" new-entry --id BD-2b --body-file "$G5_BODY" --repo-root "$G5_REPO" 2>&1)
+rc53=$?
+[[ "$rc53" -ne 0 ]] \
+    && t_pass "5.3 malformed --id → refusal (rc!=0)" \
+    || t_fail "5.3 malformed --id → refusal (rc!=0)" "rc=$rc53"
+assert_contains "5.3 refusal names the canonical shape" "$out53" "^BD-[0-9]+\$"
+out53b=$(bash "$PACK_TRACKER_SH" new-entry --id BD-003 --body-file "$G5_BODY" --repo-root "$G5_REPO" 2>&1)
+rc53b=$?
+[[ "$rc53b" -ne 0 ]] \
+    && t_pass "5.3 --id vs body-header mismatch → refusal (rc!=0)" \
+    || t_fail "5.3 --id vs body-header mismatch → refusal (rc!=0)" "rc=$rc53b"
+assert_contains "5.3 mismatch refusal names both ids" "$out53b" "does not match"
+
+# 5.4 edit verb: flag → patch-JSON mapping drives the lib path — a
+# status flip dispatches `issue edit` (label swap) + `issue close`
+# (DP-3 boundary cross), and stamps last_tracker_write.
+: > "$G5_STATE/gh.log"
+out54=$(bash "$PACK_TRACKER_SH" edit BD-002 --status Resolved --old-status Open --repo-root "$G5_REPO" 2>&1)
+rc54=$?
+assert_eq "5.4 edit rc=0" "0" "$rc54"
+g5_log=$(cat "$G5_STATE/gh.log")
+assert_contains "5.4 status flip dispatches issue edit 77"      "$g5_log" "issue edit 77"
+assert_contains "5.4 label swap adds status:resolved"           "$g5_log" "status:resolved"
+assert_contains "5.4 label swap removes status:open"            "$g5_log" "status:open"
+assert_contains "5.4 boundary cross closes with completed"      "$g5_log" "issue close 77 --reason completed"
+assert_contains "5.4 edit output reports updated=true"          "$out54" '"updated": true'
+
+# 5.5 edit verb: content flags recompose blob + H2 via the lib's
+# composer path (the --raw-body-file bytes reach the issue body).
+: > "$G5_STATE/gh.log"
+G5_BODY2=$(mktemp -t tracker-verbs-body2.XXXXXX)
+cat > "$G5_BODY2" <<'EOF'
+**BD-002 — New tracked entry**
+Type: TODO(version)
+Status: Resolved
+Description: Edited via the edit verb.
+EOF
+out55=$(bash "$PACK_TRACKER_SH" edit BD-002 --description "Edited via the edit verb." --raw-body-file "$G5_BODY2" --repo-root "$G5_REPO" 2>&1)
+rc55=$?
+assert_eq "5.5 content edit rc=0" "0" "$rc55"
+g5_edited=$(cat "$G5_STATE/edited-body" 2>/dev/null)
+assert_contains "5.5 edited body carries the gz64 blob"        "$g5_edited" "pack-entry-body-gz64:"
+assert_contains "5.5 edited body carries the new H2 value"     "$g5_edited" "Edited via the edit verb."
+
+# 5.6 edit verb: empty patch refusal.
+out56=$(bash "$PACK_TRACKER_SH" edit BD-002 --repo-root "$G5_REPO" 2>&1)
+rc56=$?
+[[ "$rc56" -ne 0 ]] \
+    && t_pass "5.6 empty patch → edit refuses (rc!=0)" \
+    || t_fail "5.6 empty patch → edit refuses (rc!=0)" "rc=$rc56"
+assert_contains "5.6 refusal names empty patch" "$out56" "empty patch"
+
+# 5.7 new-entry provider_create failure: the failure branch's stated
+# invariant — typed partial-write, rc!=0, NO id-map entry written, NO
+# last_tracker_write re-stamp, NO tree materialization (mapping-save +
+# freshness stamp + the tree-rebuild finish are ordered strictly AFTER
+# a successful create). G5_CREATE_FAIL drives the fake gh's failing
+# `issue create` arm.
+G5_BODY3=$(mktemp -t tracker-verbs-body3.XXXXXX)
+cat > "$G5_BODY3" <<'EOF'
+**BD-004 — Create-failure probe**
+Type: TODO(version)
+Status: Open
+Description: Must never land; provider_create fails in this leg.
+EOF
+g5_idmap_before=$(cat "$G5_REPO/.pack-tracker/id-map.json")
+g5_toml_before=$(cat "$G5_REPO/tracker.toml")
+out57=$(G5_CREATE_FAIL=1 bash "$PACK_TRACKER_SH" new-entry --id BD-004 --body-file "$G5_BODY3" --repo-root "$G5_REPO" 2>&1)
+rc57=$?
+[[ "$rc57" -ne 0 ]] \
+    && t_pass "5.7 create failure → new-entry rc!=0" \
+    || t_fail "5.7 create failure → new-entry rc!=0" "rc=$rc57"
+assert_contains "5.7 typed partial-write error surfaced"   "$out57" "ERROR: partial-write"
+assert_contains "5.7 error states the no-id-map invariant" "$out57" "no id-map entry written"
+assert_eq "5.7 id-map byte-unchanged (no BD-004 entry)" \
+    "$g5_idmap_before" "$(cat "$G5_REPO/.pack-tracker/id-map.json")"
+assert_eq "5.7 tracker.toml byte-unchanged (last_tracker_write NOT re-stamped)" \
+    "$g5_toml_before" "$(cat "$G5_REPO/tracker.toml")"
+[[ ! -f "$G5_REPO/backlog/BD-004.md" ]] \
+    && t_pass "5.7 no tree file materialized (tree-rebuild path never runs)" \
+    || t_fail "5.7 no tree file materialized (tree-rebuild path never runs)"
+
+# 5.8 edit verb pack-surface gate: a client-shaped repo (docs/pack/
+# marker, NO pack-ops/) auto-detects surface=client; `edit` is
+# pack-surface-only at v11.0 and refuses naming BD-207 — the same
+# fail-loud gate cmd_tree_rebuild / cmd_new_entry carry (reverse-suite
+# leg 8.4 pins the tree-rebuild side of this gate).
+G5_CLIENT=$(mktemp -d -t tracker-verbs-client.XXXXXX)
+mkdir -p "$G5_CLIENT/docs/pack"
+cat > "$G5_CLIENT/docs/pack/tracker.toml" <<'EOF'
+schema_version = 1
+[backend]
+name = "github"
+repo = "fixture-org/fixture-repo"
+[mode]
+state = "tracker"
+[id_namespace]
+prefix = "TD"
+[migration]
+forward_complete = true
+mapping_file = ".pack-tracker/id-map.json"
+EOF
+out58=$(bash "$PACK_TRACKER_SH" edit BD-002 --status Resolved --repo-root "$G5_CLIENT" 2>&1)
+rc58=$?
+[[ "$rc58" -ne 0 ]] \
+    && t_pass "5.8 client surface → edit refuses (rc!=0)" \
+    || t_fail "5.8 client surface → edit refuses (rc!=0)" "rc=$rc58"
+assert_contains "5.8 refusal names pack-surface-only" "$out58" "pack surface only at v11.0"
+assert_contains "5.8 refusal names BD-207"            "$out58" "BD-207"
+
+export PATH="$G5_PATH_SAVED"
+rm -rf "$G5_REPO" "$G5_STATE" "$G5_FAKE" "$G5_BODY" "$G5_BODY2" "$G5_BODY3" "$G5_CLIENT"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

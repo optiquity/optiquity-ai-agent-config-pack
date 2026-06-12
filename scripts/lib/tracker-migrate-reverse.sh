@@ -627,6 +627,15 @@ print(m.group(1) if m else "")')
         return 1
     fi
 
+    # BD-204 Mode-3 ops contract §3 layer 1: the blocking status-coherence
+    # comparator (blob is status truth; `--force` = blob-wins). Runs beside
+    # the body comparator above at EVERY tree materialization — both the
+    # tree_only arm (`pack tracker tree-rebuild`) and the full
+    # reverse/disable path reach this via the run loop.
+    if ! _tmr_check_status_coherence "$raw_body" "$status" "$issue_num_for_err" "$pack_id" "$force"; then
+        return 1
+    fi
+
     local sub_issue_parent issue_number first_class_edges
     sub_issue_parent=$(printf '%s' "$issue" | jq -r '.parent // ""')
     issue_number=$(printf  '%s' "$issue" | jq -r '.number // ""')
@@ -900,6 +909,65 @@ print(",".join(bad))
         fi
         tracker_error_emit "validation" \
 "divergence: issue #$issue_num ($pack_id) body H2 sections disagree with the pack-entry-body-gz64 blob ($mismatch) — a direct GH edit was not propagated to the blob; reconcile before reverse (or pass --force to override to blob-wins, discarding the GH-side H2 edit)"
+        return 1
+    fi
+    return 0
+}
+
+# BD-204 Mode-3 ops contract §3 (ARCHITECTURE-BD-204-MODE3-OPS-CONTRACT.md
+# §3, layer 1): the BLOCKING status-coherence comparator. Status truth is
+# the BLOB — the entry's `Status:` line inside the pack-entry-body-gz64
+# raw_body is the round-trip source; the `status:*` label + GH open/closed
+# state + state_reason are PROJECTION (DP-3). A label/state-only change
+# made in the GH UI (no blob update) creates a PROJECTION-DIVERGENCE
+# defect; this comparator makes it LOUD at every tree materialization
+# (the `pack tracker tree-rebuild` tree_only arm AND the full
+# reverse/disable path — both route through
+# `tracker_migrate_reverse_reconstruct`, where this is invoked beside
+# `_tmr_check_blob_h2_divergence`). `--force` = blob-wins, matching the
+# body comparator's `--force` semantics: the regenerated tree file gets
+# the blob's `Status:` (the verbatim raw_body emit already guarantees
+# that); the override is WARNed, never silent. The ADVISORY counterpart
+# is `tracker_doctor_run` leg (h) in scripts/lib/tracker-doctor.sh
+# (WARN-only; doctor never mutates entry state).
+#
+# Args:
+#   $1 = decoded raw_body (the blob's authoritative content; empty when
+#        the issue carries no blob — legacy/phase issues skip the check)
+#   $2 = projection status (the `_tmr_decode_status` result for the
+#        issue's labels/state/state_reason)
+#   $3 = issue number (for the error message)
+#   $4 = pack-id (for the error message)
+#   $5 = force flag (1 = blob-wins override; WARN instead of abort)
+# Returns 0 when coherent (or skipped / forced), 1 on divergence.
+_tmr_check_status_coherence() {
+    local raw_body="$1"
+    local projection_status="$2"
+    local issue_num="$3"
+    local pack_id="$4"
+    local force="${5:-0}"
+
+    # No blob → no blob-truth to compare against (legacy/phase issues).
+    [[ -z "$raw_body" ]] && return 0
+
+    # First `Status:` line of the blob's raw_body. The contract is
+    # field-faithful (backlog/_rules.md): an entry with NO Status line
+    # is admitted — nothing to compare, skip.
+    local blob_status
+    blob_status=$(printf '%s' "$raw_body" \
+        | sed -n -E 's/^Status:[[:space:]]*//p' | head -1 \
+        | sed -E 's/[[:space:]]+$//')
+    [[ -z "$blob_status" ]] && return 0
+
+    if [[ "$blob_status" != "$projection_status" ]]; then
+        if [[ "$force" == "1" ]]; then
+            printf 'WARN: reverse: issue #%s (%s) label/state projection decodes Status %s but the pack-entry-body-gz64 blob says Status: %s; --force set: blob wins — the tree gets the blob Status; re-apply the status via the tracker tooling (`pack tracker edit --status %s ...`) so label/state re-converge with the blob\n' \
+                "$issue_num" "$pack_id" "$projection_status" "$blob_status" "$blob_status" >&2
+            return 0
+        fi
+        tracker_error_emit "validation" \
+"status-coherence: issue #$issue_num ($pack_id) label/state projection decodes Status '$projection_status' but the pack-entry-body-gz64 blob's Status: line is '$blob_status' — a label/state-only change (e.g. a GH-UI flip) does not change the entry (the blob is status truth, DP-3)." \
+"Recovery: re-apply the status via the tracker tooling (\`pack tracker edit --status $blob_status ...\`) so label/state re-converge with the blob — the doctor WARN clears once they match. Or pass --force to override to blob-wins (the tree gets the blob's Status: $blob_status)."
         return 1
     fi
     return 0
@@ -1196,17 +1264,30 @@ EOF
 
 # Update tracker.toml [migration].last_reverse_run timestamp +
 # optionally flip mode.state to flat-file (for `pack tracker disable`).
+#
+# BD-204 Mode-3 ops contract §2: arg 3 (`stamp_tree_regen`, default 0)
+# additionally stamps [migration].last_tree_regen — set to 1 by
+# `tracker_migrate_reverse_run` on EVERY pack tree materialization
+# (the tree_only arm AND the full reverse/disable path). The key lives
+# in the LOCAL, gitignored tracker.toml (the local-opt-in model per
+# ARCHITECTURE-BD-204-MODE3-OPS-CONTRACT-AMENDMENT-2.md §B3); its
+# consumer is `tracker_doctor_run` leg (d) pack arm in
+# scripts/lib/tracker-doctor.sh, which compares it against
+# migration.last_tracker_write (stamped by `tracker_edit_entry` in
+# scripts/lib/tracker-edit.sh).
 _tmr_update_tracker_toml() {
     local cfg="$1"
     local flip_to_flat_file="${2:-0}"
+    local stamp_tree_regen="${3:-0}"
     if [[ ! -f "$cfg" ]]; then
         return 0
     fi
     local now_iso
     now_iso=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-    python3 - "$cfg" "$now_iso" "$flip_to_flat_file" <<'PYEOF'
+    python3 - "$cfg" "$now_iso" "$flip_to_flat_file" "$stamp_tree_regen" <<'PYEOF'
 import re, sys
 cfg, now, flip = sys.argv[1], sys.argv[2], sys.argv[3] == "1"
+stamp_tree = sys.argv[4] == "1"
 with open(cfg) as f:
     text = f.read()
 
@@ -1232,6 +1313,8 @@ def set_in_section(text, section, key, value):
     return text[:start] + block + text[end:]
 
 text = set_in_section(text, "migration", "last_reverse_run", now)
+if stamp_tree:
+    text = set_in_section(text, "migration", "last_tree_regen", now)
 if flip:
     text = set_in_section(text, "mode", "state", "flat-file")
 
@@ -1244,7 +1327,7 @@ PYEOF
 # Top-level orchestrator
 # ─────────────────────────────────────────────────────────────────
 
-# tracker_migrate_reverse_run <repo-root> [<dry-run>] [<flip-mode-to-flat-file>] [<include-comments>] [<force>]
+# tracker_migrate_reverse_run <repo-root> [<dry-run>] [<flip-mode-to-flat-file>] [<include-comments>] [<force>] [<tree_only>]
 # Runs V1 §6.5 steps 1–9. flip_mode=1 turns this into the
 # `pack tracker disable` semantic (reverse + flip mode).
 #
@@ -1252,12 +1335,27 @@ PYEOF
 # entry point), refuse to proceed if a forward run appears to be
 # in flight (forward.checkpoint.json present, OR mapping file mtime
 # is fresher than TMR_RACE_FRESHNESS_SECS). Override with force=1.
+#
+# BD-204 Mode-3 ops contract §2: tree_only=1 (6th positional, default 0)
+# is the `pack tracker tree-rebuild` engine arm (caller:
+# `cmd_tree_rebuild` in scripts/pack-tracker.sh) — the reverse-driven,
+# NO-flip, TREE-ONLY materialization. The pack branch then runs ONLY
+# roster build → reconstruct (silent-data-loss + divergence +
+# status-coherence guards intact) → `_tmr_emit_pack_tree` (whose final
+# action is the `_toc.md` regen — DP-4 inherited by construction) →
+# timestamp stamp. It SKIPS `_tmr_emit_implementation_plan`,
+# `_tmr_emit_status`, and the mirror-header strips — the routine regen
+# must NOT deposit a root STATUS.md / IMPLEMENTATION-PLAN.md on the
+# pack repo. tree_only=1 is PACK-SURFACE-ONLY at v11.0: the client
+# surface fails loud naming BD-207 (the client tree repoint owner);
+# the client branch's emit code is untouched.
 tracker_migrate_reverse_run() {
     local repo_root="$1"
     local dry_run="${2:-0}"
     local flip_mode="${3:-0}"
     local include_comments="${4:-0}"
     local force="${5:-0}"
+    local tree_only="${6:-0}"
 
     if [[ ! -d "$repo_root" ]]; then
         tracker_error_emit "validation" "reverse: repo-root not a directory: $repo_root"
@@ -1267,6 +1365,16 @@ tracker_migrate_reverse_run() {
     local cfg_path surface
     surface=$(tracker_config_auto_surface "$repo_root" 2>/dev/null) || surface="pack"
     cfg_path=$(tracker_config_resolve_path "$surface" "$repo_root") || return 1
+
+    # BD-204 §2: tree_only is pack-surface-only at v11.0. Fail loud here
+    # (the engine seam) so a direct engine call cannot silently ignore
+    # the flag and over-emit on the client surface; `cmd_tree_rebuild`
+    # in scripts/pack-tracker.sh gates the same condition at the verb.
+    if [[ "$tree_only" == "1" && "$surface" != "pack" ]]; then
+        tracker_error_emit "validation" \
+            "tree-rebuild: tree_only is pack-surface-only at v11.0 (surface=$surface) — the client per-entry tree materialization is BD-207 scope; use the client reverse/mirror path until BD-207 lands"
+        return 1
+    fi
     if [[ ! -f "$cfg_path" ]]; then
         tracker_error_emit "validation" \
             "reverse: tracker.toml not found at $cfg_path  (nothing to reverse from)"
@@ -1465,7 +1573,7 @@ print(json.dumps(phases))')
         rm -f "$skipped_log"
         tracker_error_emit "partial-write" \
             "reverse: $n_skipped issue(s) failed to reconstruct (silent-data-loss guard)" \
-            "Reconstructing BACKLOG.md now would drop these entries from disk." \
+            "Reconstructing the flat-file state now would drop these entries from disk." \
             "Cause is typically gh issue close eventual consistency (BD-132 / D-5):" \
             "wait 30+ seconds and re-run, OR run \`pack tracker init --no-forward\` to" \
             "refresh tracker state and try again. Pass --force only if you have" \
@@ -1553,14 +1661,20 @@ print(json.dumps(phases))')
         # BD-204 C-4 / C3: emit the per-entry TREE directly (no monolith),
         # then regenerate `_toc.md` (DP-4). No header-snapshot, no sidecar.
         _tmr_emit_pack_tree "$issue_jsons" "$backend_slug" "$backlog_tree_dir" || emit_failed=1
-        _tmr_emit_implementation_plan "$phase_jsons" "$plan_out"                 || emit_failed=1
-        _tmr_emit_status              "$issue_jsons" "$phase_jsons" "$status_out" || emit_failed=1
+        # BD-204 Mode-3 ops contract §2: the tree_only arm
+        # (`pack tracker tree-rebuild`) SKIPS the PLAN/STATUS emits + the
+        # mirror-header strips — the routine regen must not deposit a
+        # root STATUS.md / IMPLEMENTATION-PLAN.md on the pack repo.
+        if [[ "$tree_only" != "1" ]]; then
+            _tmr_emit_implementation_plan "$phase_jsons" "$plan_out"                 || emit_failed=1
+            _tmr_emit_status              "$issue_jsons" "$phase_jsons" "$status_out" || emit_failed=1
 
-        # Step 8: strip mirror header from the emitted PLAN/STATUS only;
-        # the tree entries are written without a mirror header (line-1 is
-        # the per-entry back-pointer), and the pack CHANGELOG is not emitted.
-        tracker_mirror_header_strip "$plan_out"   || emit_failed=1
-        tracker_mirror_header_strip "$status_out" || emit_failed=1
+            # Step 8: strip mirror header from the emitted PLAN/STATUS only;
+            # the tree entries are written without a mirror header (line-1 is
+            # the per-entry back-pointer), and the pack CHANGELOG is not emitted.
+            tracker_mirror_header_strip "$plan_out"   || emit_failed=1
+            tracker_mirror_header_strip "$status_out" || emit_failed=1
+        fi
     else
         # Client surface (legacy monolith path — BD-207, UNTOUCHED).
         # BD-133 / D-6: capture the BACKLOG.md header preamble BEFORE
@@ -1614,15 +1728,53 @@ print(json.dumps(phases))')
     fi
 
     # Step 9: update tracker.toml. Now safe to flip mode (if requested).
-    _tmr_update_tracker_toml "$cfg_path" "$flip_mode"
+    # BD-204 Mode-3 ops contract §2: every PACK tree materialization (the
+    # tree_only arm AND the full reverse/disable path) also stamps
+    # [migration].last_tree_regen in the LOCAL tracker.toml — the doctor
+    # leg-(d) freshness key (scripts/lib/tracker-doctor.sh).
+    # SHOULD-2 (PACK-REVIEW-MODE3-OPS-COMMIT2): the stamp is
+    # SUCCESS-ONLY — gated on emit_failed==0, mirroring the
+    # success-only `tracker_edit_stamp_last_write` call site in
+    # scripts/lib/tracker-edit.sh. A partial-emit stamp would freshen
+    # the doctor leg-(d) staleness key and mask exactly the condition
+    # it exists to surface.
+    local _stamp_tree=0
+    [[ "$surface" == "pack" && "$emit_failed" == "0" ]] && _stamp_tree=1
+    _tmr_update_tracker_toml "$cfg_path" "$flip_mode" "$_stamp_tree"
 
     # Clean up backup on success.
     [[ -n "$backup_dir" && -d "$backup_dir" ]] && rm -rf "$backup_dir"
 
+    # SHOULD-2 (PACK-REVIEW-MODE3-OPS-COMMIT2): PACK-surface fail-loud
+    # gate for the non-flip emit phase (the tree-rebuild arm + the
+    # flip=0 reverse). The flip=1 path is covered by the atomicity gate
+    # above; the client surface keeps its inherited best-effort shape
+    # (BD-207 scope). A partial emit must not LOOK like success: no
+    # success summary, rc!=0 (the last_tree_regen stamp gate is at
+    # Step 9 above).
+    if [[ "$surface" == "pack" && "$emit_failed" == "1" ]]; then
+        local _fail_verb="reverse"
+        [[ "$tree_only" == "1" ]] && _fail_verb="tree-rebuild"
+        tracker_error_emit "partial-write" \
+            "$_fail_verb: emit step failed; tree state may be partial; [migration].last_tree_regen NOT stamped" \
+            "Re-run 'pack tracker tree-rebuild' after addressing the underlying error."
+        return 1
+    fi
+
     # BD-204 C-4: surface-aware completion summary. The pack surface emits
     # the per-entry tree (+ `_toc.md`) and writes no sidecar; the client
     # surface keeps the legacy monolith + sidecar summary (BD-207).
-    if [[ "$surface" == "pack" ]]; then
+    if [[ "$surface" == "pack" && "$tree_only" == "1" ]]; then
+        # BD-204 Mode-3 ops contract §2: tree-rebuild summary (tree-only;
+        # no PLAN/STATUS deposit, never a flip).
+        cat <<EOF
+
+tree-rebuild: complete.
+  entries:    $n_entries
+  files:      backlog/ tree (+ _toc.md) — one-way regeneration from tracker state
+  mode-flip:  no (tree-rebuild never flips)
+EOF
+    elif [[ "$surface" == "pack" ]]; then
         cat <<EOF
 
 reverse: complete.

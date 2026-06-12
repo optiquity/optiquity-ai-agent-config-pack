@@ -27,9 +27,11 @@ Read `pack-ops/PACK-CHAT.md` in full — this establishes your behavioral rules
 for this session.
 
 Pack streams under `/backlog/` and `/changelog/` are per-entry trees —
-the SOLE source of truth and readable form (each with a generated
-`_toc.md` index). Read `/backlog/_rules.md` and `/changelog/_rules.md`
-for the per-stream contract before any per-entry edit. There is no
+the SOLE source of truth and readable form of the committed state
+(each with a generated `_toc.md` index; the committed repo is always
+flat-file — a local tracker opt-in changes the write channel). Read
+`/backlog/_rules.md` and `/changelog/_rules.md` for the per-stream
+contract before any per-entry edit. There is no
 monolithic mirror — BD-203 deleted `pack-ops/BACKLOG.md` +
 `pack-ops/CHANGELOG.md`.
 
@@ -79,8 +81,11 @@ Run only in flat-file mode. In tracker mode this step is skipped
 entirely (the recommendation system targets flat-file users who
 have not yet opted in).
 
-Tracker-mode detection: `tracker.toml` exists at the pack root and
-its `[mode] state` is `"tracker"`. Otherwise the surface is flat-file.
+Tracker-mode detection: `tracker.toml` exists at the pack root, its
+`[mode] state` is `"tracker"`, AND its `[migration] forward_complete`
+is `true` (the same three-part test `tracker_mode()` in
+`scripts/lib/tracker-config.sh` applies). Otherwise the surface is
+flat-file.
 
 In flat-file mode, source the lib and run the test:
 

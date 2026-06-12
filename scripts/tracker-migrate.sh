@@ -65,6 +65,10 @@ Subcommands:
         Reverse-migrate tracker entries back into BACKLOG.md /
         IMPLEMENTATION-PLAN.md. --disable also flips mode to
         flat-file. Idempotent on re-run.
+        Pack surface: the ROUTINE tree refresh is `pack tracker
+        tree-rebuild` (reverse-driven, tree-only, no mode flip) —
+        use this `reverse` subcommand for the full reverse/disable
+        path only.
 
   doctor [--repo-root PATH]
         Validate tracker.toml, mapping integrity, mirror freshness,
