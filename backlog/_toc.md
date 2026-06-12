@@ -26,13 +26,12 @@
 - [BD-192](./BD-192.md) — v11.1+ Product Specialist (PS) implementation (architect/planner/coder cycle)
 - [BD-198](./BD-198.md) — Formalize `pack-ops/PACK-MEMORY-RATIONALE.md` as a PM-only surface (close BD-196 classification gap)
 - [BD-202](./BD-202.md) — Universal `pack update` propagation engine (delete + clean-modify correctness across asset classes; `x-`-safe, customization-preserving)
-- [BD-204](./BD-204.md) — Pack self-migration Phase 2: per-entry backlog → GH Issues (tracker Mode 2 → Mode 3)
 - [BD-205](./BD-205.md) — v11.0 final repo readiness audit + full test/audit/fix cycle (the last gate before launch)
 - [BD-206](./BD-206.md) — Project-side per-entry no-mirror application (apply the corrected standard to client assets)
-- [BD-207](./BD-207.md) — Project-side per-entry ↔ GH-Issues reversible tracker (apply the tracker standard to client assets)
 - [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
 - [BD-212](./BD-212.md) — `pack tracker reset` verb + 3-level recovery (pack side; supersedes BD-103 with BD-213)
 - [BD-213](./BD-213.md) — `pack tracker reset` + 3-level recovery, project-side application (supersedes BD-103 with BD-212)
+- [BD-214](./BD-214.md) — Tracker-deferral cleanup: strip tracker artifacts, block the mode flip (pack + project)
 
 ## Unblocked
 
@@ -51,6 +50,9 @@
 - [BD-154](./BD-154.md) — Skill-versioning frontmatter convention (deferred to v12)
 - [BD-155](./BD-155.md) — Naming-convention enforcement migration (deferred to v12)
 - [BD-201](./BD-201.md) — Antigravity (Gemini CLI successor) MCP config relocation: settings.json → mcp_config.json
+- [BD-204](./BD-204.md) — Pack self-migration Phase 2: per-entry backlog → GH Issues (tracker Mode 2 → Mode 3)
+- [BD-207](./BD-207.md) — Project-side per-entry ↔ GH-Issues reversible tracker (apply the tracker standard to client assets)
+- [BD-215](./BD-215.md) — Tracker-agnostic canonical entry format: redesign + re-author all BD entries
 
 ## Resolved
 
