@@ -167,6 +167,27 @@ assert_eq "1.1b state=closed + status:deprecated → Deprecated" "Deprecated" "$
 assert_eq "1.1b state=open no label → Open"          "Open"       "$(_tmr_decode_status "$manual_open")"
 assert_eq "1.1b state=open status:unblocked → Unblocked" "Unblocked" "$(_tmr_decode_status "$manual_unblocked")"
 
+# 1.1c BD-204 C-8 defect 1 (stateReason casing): the LIVE gh read-back
+# carries GraphQL-enum casing — verbatim live evidence (2026-06-11):
+#   {"number":21,"state":"CLOSED","stateReason":"NOT_PLANNED"}
+# The decoder's lowercase matches hold ONLY because the provider
+# boundary normalizes casing (`_gh_normalize_issue` in
+# scripts/lib/tracker-provider-gh.sh). These legs pin the REAL chain —
+# live-shape raw gh JSON → production normalizer → decoder — for all
+# three closed arms (Cancelled / Deprecated-by-label / Resolved).
+# Pre-fix, NOT_PLANNED fell through the `*` arm and decoded Resolved
+# (the lossy-class reverse bug: BD-021/103/123 all read back as
+# Resolved instead of Deprecated/Cancelled).
+_live_np='{"number":21,"title":"BD-021: x","body":"","state":"CLOSED","stateReason":"NOT_PLANNED","labels":[],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/21"}'
+_live_dep='{"number":23,"title":"BD-023: x","body":"","state":"CLOSED","stateReason":"NOT_PLANNED","labels":[{"name":"status:deprecated"}],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/23"}'
+_live_comp='{"number":24,"title":"BD-024: x","body":"","state":"CLOSED","stateReason":"COMPLETED","labels":[],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/24"}'
+assert_eq "1.1c live CLOSED+NOT_PLANNED → normalize → Cancelled" \
+    "Cancelled" "$(_tmr_decode_status "$(printf '%s' "$_live_np" | _gh_normalize_issue)")"
+assert_eq "1.1c live CLOSED+NOT_PLANNED + status:deprecated → normalize → Deprecated" \
+    "Deprecated" "$(_tmr_decode_status "$(printf '%s' "$_live_dep" | _gh_normalize_issue)")"
+assert_eq "1.1c live CLOSED+COMPLETED → normalize → Resolved" \
+    "Resolved" "$(_tmr_decode_status "$(printf '%s' "$_live_comp" | _gh_normalize_issue)")"
+
 assert_eq "1.2 BD type"   "TODO(version)" "$(_tmr_decode_type "BD-001" '["bd-entry"]')"
 # v10 grammar (METHODOLOGY §988): Type: TODO(<scope>) — parenthetical
 # is the scope label VALUE, falling back to the literal placeholder

@@ -439,19 +439,39 @@ if "MERGE-STRATEGY.md" not in index:
 if "validate-pack.py" not in index:
     failures.append("T2 scripts/validate-pack.py missing from index")
 
-# T3: NO fixture-tree file should appear with its short basename only
-#     (per §5.1 D4 EXCLUDE + OQ-S1 expansion). Test fixture files have
-#     unique-ish names; we check that test-fixtures/ basenames don't
-#     overshadow real candidates.
-#
-#     Pick a real basename that lives BOTH in scripts/tests/fixtures/
-#     and outside (if any). The classic case: tracker.toml lives in
-#     fixture trees but not in the pack at HEAD; without EXCLUDE, it
-#     would show up. With OQ-S1 EXCLUDE applied, it must NOT appear.
-if "tracker.toml" in index:
+# T3: fixture-tree EXCLUDE semantics, on an ISOLATED synthetic tree
+#     (per §5.1 D4 EXCLUDE + OQ-S1 expansion; reshaped for BD-204 C-8
+#     SHOULD-2). The original leg asserted "tracker.toml" absent from
+#     the LIVE index, premised on "tracker.toml lives in fixture trees
+#     but not in the pack at HEAD" — FALSE on any tracker-enabled
+#     (Mode-3) working tree, where a root tracker.toml is a legitimate
+#     runtime artifact, so the leg failed locally on such trees while
+#     validate-pack itself stayed green. Build the index against a
+#     synthetic tree instead: same-basename copies under BOTH excluded
+#     fixture roots must be EXCLUDED while a root-level copy must be
+#     INDEXED — pinning that the EXCLUDE is effective AND not
+#     over-broad, independent of the live tree's tracker mode.
+import tempfile, shutil, pathlib
+t3_tmp = tempfile.mkdtemp(prefix="vp-check40-t3-")
+t3_root = pathlib.Path(t3_tmp)
+(t3_root / "test-fixtures" / "ft").mkdir(parents=True)
+(t3_root / "test-fixtures" / "ft" / "tracker.toml").write_text("fixture copy")
+(t3_root / "scripts" / "tests" / "fixtures" / "rt").mkdir(parents=True)
+(t3_root / "scripts" / "tests" / "fixtures" / "rt" / "tracker.toml").write_text("fixture copy")
+(t3_root / "tracker.toml").write_text("root runtime analog")
+saved_root_t3 = mod.REPO_ROOT
+try:
+    mod.REPO_ROOT = t3_root
+    t3_index = mod._build_basename_index()
+finally:
+    mod.REPO_ROOT = saved_root_t3
+    shutil.rmtree(t3_tmp, ignore_errors=True)
+t3_cands = sorted(str(p) for p in t3_index.get("tracker.toml", []))
+if t3_cands != ["tracker.toml"]:
     failures.append(
-        "T3 EXCLUDE failed — bare tracker.toml leaked into index "
-        f"(candidates: {index['tracker.toml']})"
+        "T3 EXCLUDE failed — expected exactly the root tracker.toml "
+        f"candidate, got: {t3_cands} (fixture-tree copies must be "
+        "excluded; the non-fixture root copy must be indexed)"
     )
 
 # T4: EXCLUDE_PARTS must list both 'test-fixtures' and

@@ -672,6 +672,152 @@ print(json.dumps(phases, ensure_ascii=False))
 PYEOF
 }
 
+# tmf_blockers_cycle_precheck <entries-json>
+#
+# BD-204 (C-8 live-flip defect 2, 2026-06-11): parse-time cycle
+# detection over the Blockers digraph, run BEFORE ANY provider call
+# (including `--dry-run`, which makes the dry run a zero-mutation
+# tree-level data check).
+#
+# Why: the live backlog carried a mutual block (BD-094 `Blockers: ...,
+# BD-095, ...` + BD-095 `Blockers: ..., BD-094`). The per-edge BD-108
+# cycle check inside tracker_links_create_blocked_by DID refuse the
+# second edge pre-call on every run (verified empirically against the
+# live cycle-graph store, 2026-06-11), but the step-7 arms swallowed
+# its typed error (`>/dev/null 2>&1`), so each run ended partial-write
+# with only the bare unactionable line `step-7 link blocked-by:
+# BD-095 -> BD-094` — indistinguishable from a provider failure and
+# retried verbatim on every re-run (3x live). GH itself can never
+# represent the cycle (its own addBlockedBy validation rejects it), so
+# cyclic Blockers data is a DATA error the user must fix in the
+# backlog files; fail loud before mutating anything.
+#
+# Edge vocabulary: the participating tokens are those the step-7 link
+# arms are DESIGNED to route to blocked-by edges (BD-108 F3) —
+# `BD-NNN`, `TD-NNN`, `phase-N.M`. Bare `phase-N` tokens are v10
+# sub-issue PARENT links (step 6) and do not participate in blocked-by
+# cycle detection (same exclusion as the V3.3 §5.5 cycle checker).
+# KNOWN GAP(functional): TD-TBD — step 7's actual phase-task glob
+# (`phase-[0-9][0-9]*.[0-9][0-9]*`, the BD-108 F9 "tightening") only
+# matches when BOTH N and M have two or more digits (`phase-12.34`
+# matches; `phase-3.2` and `phase-10.2` fall to the `phase-[0-9]*`
+# parent arm), so realistic single-digit `phase-N.M` blockers are
+# misrouted to the sub-issue-parent path. Latent at v11.0
+# (phase-tasks are never in the id-map per BD-108 §10.2, and both
+# arms silent-skip absent targets); a dedicated backlog entry anchors
+# the glob fix. Harmless for THIS pre-pass: `phase-N.M` tokens are
+# pure sinks in the digraph (only BD/TD entries have outgoing edges),
+# so they can never close a cycle, and the pre-pass matching a
+# superset of actual step-7 routing cannot cause a false refusal.
+# Step-7b phase-task `Dependencies` edges
+# are not covered here (they come from IMPLEMENTATION-PLAN.md, parsed
+# later); they remain guarded per-edge by the BD-108 orchestrator
+# check, whose refusal the step-7/7b arms now surface instead of
+# swallowing.
+#
+# Detection is a full (un-bounded) iterative DFS — unlike the K-hop
+# BFS in tracker-cycle-check.sh this is a complete static pass over
+# the parsed data, so even cycles longer than [graph] cycle_check_k
+# are caught here.
+#
+# rc=0 → acyclic (safe to proceed); rc=1 → cycle(s) found, typed
+# validation error on stderr naming every cycle's full path, or the
+# entries JSON could not be parsed (fail-closed, schema-reshape).
+tmf_blockers_cycle_precheck() {
+    local entries="$1"
+    local tmp
+    tmp=$(mktemp -t tmf-cyclepre.XXXXXX)
+    printf '%s' "$entries" > "$tmp"
+    local cycles rc=0
+    cycles=$(python3 - "$tmp" <<'PYEOF'
+import json, re, sys
+
+try:
+    with open(sys.argv[1]) as f:
+        entries = json.load(f)
+except (OSError, ValueError):
+    sys.exit(1)
+if not isinstance(entries, list):
+    sys.exit(1)
+
+# Tokens step 7 is DESIGNED to route to blocked-by edges (BD-108 F3;
+# most-specific-first routing in the link loop): BD-NNN / TD-NNN /
+# phase-N.M. Bare phase-N is a sub-issue parent link, not a blocked-by
+# edge. NOTE: this regex accepts single-digit phase-N.M, which step
+# 7's actual glob currently misroutes to the parent arm (see the
+# KNOWN GAP note in the shell-side docstring above) — a harmless
+# superset here, since phase-N.M tokens are sinks and cannot close a
+# cycle.
+edge_re = re.compile(r'^(?:BD-[0-9]+|TD-[0-9]+|phase-[0-9]+\.[0-9]+)$')
+
+out = {}
+for e in entries:
+    if not isinstance(e, dict):
+        continue
+    pid = e.get('pack_id')
+    if not pid:
+        continue
+    for b in (e.get('blockers') or []):
+        if isinstance(b, str) and edge_re.match(b):
+            out.setdefault(pid, []).append(b)
+
+# Iterative DFS with GRAY/BLACK coloring; every back edge to a GRAY
+# node names one cycle via the current stack path.
+WHITE, GRAY, BLACK = 0, 1, 2
+color = {}
+cycles = []
+for start in sorted(out.keys()):
+    if color.get(start, WHITE) != WHITE:
+        continue
+    stack = [(start, iter(out.get(start, [])))]
+    stack_path = [start]
+    color[start] = GRAY
+    while stack:
+        node, it = stack[-1]
+        advanced = False
+        for nxt in it:
+            c = color.get(nxt, WHITE)
+            if c == GRAY:
+                i = stack_path.index(nxt)
+                cycles.append(stack_path[i:] + [nxt])
+            elif c == WHITE:
+                color[nxt] = GRAY
+                stack_path.append(nxt)
+                stack.append((nxt, iter(out.get(nxt, []))))
+                advanced = True
+                break
+        if not advanced:
+            stack.pop()
+            stack_path.pop()
+            color[node] = BLACK
+
+if cycles:
+    for cyc in cycles:
+        print("cycle path: %s ('->' = blocked-by)" % " -> ".join(cyc))
+    sys.exit(2)
+sys.exit(0)
+PYEOF
+)
+    rc=$?
+    rm -f "$tmp"
+    if [[ $rc -eq 2 ]]; then
+        {
+            printf 'ERROR: validation\n'
+            printf 'MESSAGE: forward: Blockers data contains dependency cycle(s) — refusing before any provider call. Cyclic Blockers data is a data error regardless of tracker backend; fix the Blockers: lines of the entries named below and re-run.\n'
+            while IFS= read -r _tmf_cyc_line; do
+                [[ -n "$_tmf_cyc_line" ]] && printf '  %s\n' "$_tmf_cyc_line"
+            done <<<"$cycles"
+            printf '→ Run: pack tracker doctor\n'
+        } >&2
+        return 1
+    elif [[ $rc -ne 0 ]]; then
+        tracker_error_emit "schema-reshape" \
+            "forward: Blockers cycle pre-check could not parse the entries JSON (fail-closed)"
+        return 1
+    fi
+    return 0
+}
+
 # ─────────────────────────────────────────────────────────────────
 # Issue body composer (V1 §6.2 step 4c)
 # ─────────────────────────────────────────────────────────────────
@@ -1303,6 +1449,16 @@ tracker_migrate_forward_run() {
     n_entries=$(printf '%s' "$entries" | jq 'length')
     n_phases=$(printf '%s'  "$phases"  | jq 'length')
     echo "forward: parsed $n_entries BACKLOG entries, $n_phases phase(s)"
+
+    # BD-204 C-8 defect 2: parse-time Blockers cycle pre-pass. Runs
+    # BEFORE the dry-run return and BEFORE any provider call, so (a) a
+    # data cycle fails the run loud — naming both IDs and the full
+    # cycle path — with ZERO tracker mutations, and (b) `--dry-run` is
+    # a zero-cost tree-level check that catches cyclic Blockers data
+    # before any live run. See tmf_blockers_cycle_precheck for the
+    # live BD-094/BD-095 incident rationale.
+    tmf_blockers_cycle_precheck "$entries" || return 1
+
     if [[ "$dry_run" == "1" ]]; then
         echo "forward: --dry-run set; stopping after parse + plan summary"
         return 0
@@ -1524,6 +1680,15 @@ tracker_migrate_forward_run() {
     # may be added by step 5 phase-creation between iterations).
     local cycle_store_path
     cycle_store_path="$repo_root/$TMF_PACK_TRACKER_DIR/links-graph.json"
+    # BD-204 C-8 defect 2: capture the link orchestrator's stderr per
+    # edge instead of swallowing it (`2>&1` → /dev/null pre-fix). The
+    # BD-108 pre-call cycle refusal and any provider error both carry a
+    # typed `MESSAGE:` line; folding it into the partial-failure entry
+    # makes the two failure classes distinguishable and actionable
+    # (the live C-8 flip retried the same swallowed BD-095 -> BD-094
+    # cycle refusal 3x because the bare step-7 line named no cause).
+    local link_err
+    link_err=$(mktemp -t tmf-linkerr.XXXXXX)
     local lidx=0 linked_parent=0 linked_blocked=0
     while [[ $lidx -lt $entry_count ]]; do
         local entry pack_id gh_id
@@ -1563,11 +1728,17 @@ tracker_migrate_forward_run() {
                         # but builds the baseline for subsequent links.
                         if tracker_links_create_blocked_by \
                             "$pack_id" "$raw" "$mapping" "$cycle_store_path" "" \
-                            >/dev/null 2>&1; then
+                            >/dev/null 2>"$link_err"; then
                             linked_blocked=$((linked_blocked + 1))
                         else
-                            printf 'step-7 link blocked-by (phase-task): %s -> %s\n' \
-                                "$pack_id" "$raw" >> "$partial_failures"
+                            # BD-204 C-8 defect 2: surface the typed
+                            # MESSAGE (cycle refusal vs provider error)
+                            # instead of swallowing it.
+                            local link_reason
+                            link_reason=$(sed -n 's/^MESSAGE: //p' "$link_err" | head -n 1)
+                            printf 'step-7 link blocked-by (phase-task): %s -> %s%s\n' \
+                                "$pack_id" "$raw" "${link_reason:+ — $link_reason}" \
+                                >> "$partial_failures"
                         fi
                     fi
                     ;;
@@ -1577,11 +1748,18 @@ tracker_migrate_forward_run() {
                     parent_gh_id=$(tmf_mapping_get "$mapping" "$raw" || echo "")
                     if [[ -n "$parent_gh_id" ]]; then
                         if provider_sub_issue_create "$parent_gh_id" \
-                            "{\"existing_id\": \"$gh_id\"}" >/dev/null 2>&1; then
+                            "{\"existing_id\": \"$gh_id\"}" >/dev/null 2>"$link_err"; then
                             linked_parent=$((linked_parent + 1))
                         else
-                            printf 'step-6 sub_issue_create: %s -> %s\n' \
-                                "$pack_id" "$raw" >> "$partial_failures"
+                            # BD-204 C-8 defect 2 (review-2 NIT-2):
+                            # surface the typed MESSAGE instead of
+                            # swallowing it — mirrors the three
+                            # blocked-by arms.
+                            local parent_link_reason
+                            parent_link_reason=$(sed -n 's/^MESSAGE: //p' "$link_err" | head -n 1)
+                            printf 'step-6 sub_issue_create: %s -> %s%s\n' \
+                                "$pack_id" "$raw" "${parent_link_reason:+ — $parent_link_reason}" \
+                                >> "$partial_failures"
                         fi
                     fi
                     ;;
@@ -1595,11 +1773,19 @@ tracker_migrate_forward_run() {
                         # the cycle-graph store on initial migration.
                         if tracker_links_create_blocked_by \
                             "$pack_id" "$raw" "$mapping" "$cycle_store_path" "" \
-                            >/dev/null 2>&1; then
+                            >/dev/null 2>"$link_err"; then
                             linked_blocked=$((linked_blocked + 1))
                         else
-                            printf 'step-7 link blocked-by: %s -> %s\n' \
-                                "$pack_id" "$raw" >> "$partial_failures"
+                            # BD-204 C-8 defect 2: surface the typed
+                            # MESSAGE (cycle refusal vs provider error)
+                            # instead of swallowing it. The live flip
+                            # retried `BD-095 -> BD-094` 3x because
+                            # this line carried no cause.
+                            local link_reason
+                            link_reason=$(sed -n 's/^MESSAGE: //p' "$link_err" | head -n 1)
+                            printf 'step-7 link blocked-by: %s -> %s%s\n' \
+                                "$pack_id" "$raw" "${link_reason:+ — $link_reason}" \
+                                >> "$partial_failures"
                         fi
                     fi
                     ;;
@@ -1671,11 +1857,17 @@ tracker_migrate_forward_run() {
                 # mirrors the F1 fix to step 7's blocked-by arms.
                 if tracker_links_create_blocked_by \
                     "$pt_src" "$pt_tgt" "$mapping" "$cycle_store_path" "" \
-                    >/dev/null 2>&1; then
+                    >/dev/null 2>"$link_err"; then
                     linked_blocked=$((linked_blocked + 1))
                 else
-                    printf 'step-7b link blocked-by (phase-task dep): %s -> %s\n' \
-                        "$pt_src" "$pt_tgt" >> "$partial_failures"
+                    # BD-204 C-8 defect 2: surface the typed MESSAGE
+                    # (cycle refusal vs provider error) instead of
+                    # swallowing it — mirrors the step-7 arms.
+                    local pt_link_reason
+                    pt_link_reason=$(sed -n 's/^MESSAGE: //p' "$link_err" | head -n 1)
+                    printf 'step-7b link blocked-by (phase-task dep): %s -> %s%s\n' \
+                        "$pt_src" "$pt_tgt" "${pt_link_reason:+ — $pt_link_reason}" \
+                        >> "$partial_failures"
                 fi
             done <<<"$pt_pairs"
         else
@@ -1890,13 +2082,13 @@ EOF
         while IFS= read -r line; do
             extras+=("  - $line")
         done < "$partial_failures"
-        rm -f "$partial_failures"
+        rm -f "$partial_failures" "$link_err"
         tracker_error_emit "partial-write" \
             "Forward migration completed with $n_pf step failure(s); per-step list above. Idempotent re-run will retry." \
             "${extras[@]}"
         return 1
     fi
-    rm -f "$partial_failures"
+    rm -f "$partial_failures" "$link_err"
     return 0
 }
 

@@ -285,6 +285,25 @@ assert_eq "1.2 get assignees[0]=david"       "david"   "$(printf '%s' "$out" | j
 assert_eq "1.2 get milestone=v11.0"          "v11.0"   "$(printf '%s' "$out" | jq -r '.milestone')"
 assert_contains "1.2 get title preserved" "$(printf '%s' "$out" | jq -r '.title')" "tracker-provider abstraction"
 
+# 1.2b BD-204 C-8 defect 1 (stateReason casing): the LIVE gh read-back
+# carries GraphQL-enum casing — verbatim live evidence (2026-06-11):
+#   $ gh issue view 21 -R DShaneNYC/optiquity-ai-agent-config-pack \
+#       --json number,state,stateReason
+#   {"number":21,"state":"CLOSED","stateReason":"NOT_PLANNED"}
+# The provider boundary (`_gh_normalize_issue`) must lowercase BOTH
+# state AND state_reason to the canonical interface vocabulary; pre-fix
+# stateReason passed through verbatim and every closed
+# Deprecated/Cancelled issue decoded to Resolved on reverse.
+reset_fake_gh
+closed_np_fixture=$(make_tmp_with '{"number":21,"title":"BD-021: closed not-planned","body":"","state":"CLOSED","stateReason":"NOT_PLANNED","labels":[],"assignees":[],"milestone":null,"createdAt":null,"updatedAt":null,"closedAt":null,"url":"http://x/21"}')
+export FAKE_GH_STDOUT_FILE="$closed_np_fixture"
+out=$(provider_get 21)
+assert_eq "1.2b normalize: live state CLOSED → canonical closed" \
+    "closed" "$(printf '%s' "$out" | jq -r '.state')"
+assert_eq "1.2b normalize: live stateReason NOT_PLANNED → canonical not_planned" \
+    "not_planned" "$(printf '%s' "$out" | jq -r '.state_reason')"
+rm -f "$closed_np_fixture"
+
 # 1.3 get — id required validation
 reset_fake_gh
 err=$(provider_get "" 2>&1 1>/dev/null) || true

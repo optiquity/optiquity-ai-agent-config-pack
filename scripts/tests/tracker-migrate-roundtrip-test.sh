@@ -43,6 +43,17 @@ assert_eq()       { if [[ "$2" == "$3" ]]; then t_pass "$1"; else t_fail "$1" "e
 assert_contains() { if [[ "$2" == *"$3"* ]]; then t_pass "$1"; else t_fail "$1" "needle='$3' missing"; fi; }
 assert_not_contains() { if [[ "$2" != *"$3"* ]]; then t_pass "$1"; else t_fail "$1" "needle='$3' unexpectedly present"; fi; }
 
+# BD-204 C-8 SHOULD-1: the bd-v11.0 fixture now carries a closed-status
+# entry (BD-004, Status: Cancelled), so every forward run executes the
+# step-8 close loop + the BD-132 close-stabilization poll. Zero the
+# poll's sleep (documented test seam in tracker-migrate-forward.sh) to
+# keep runs fast; set before the libs are sourced so the lib's
+# source-time default-assignment (${TMF_STABILIZE_SLEEP_SECS:-2}) keeps
+# the override — the variable stays mutable after sourcing (the poll
+# reads it at call time), so this placement is convention, not a hard
+# requirement.
+TMF_STABILIZE_SLEEP_SECS=0
+
 # Source the libs so we can call orchestrators directly.
 # shellcheck disable=SC1091
 source "$LIB_DIR/per-entry/_lib.sh"
@@ -125,7 +136,7 @@ case "$1 $2" in
                  number: ($id | tonumber),
                  title: $title,
                  body: $body,
-                 state: "open",
+                 state: "OPEN",
                  stateReason: null,
                  labels: $labels | map({name: .}),
                  assignees: [],
@@ -168,16 +179,26 @@ case "$1 $2" in
         # {completed|not planned|duplicate} — "not planned" takes a
         # SPACE. Nonzero exit otherwise, exactly like the real CLI, so
         # the interface token not_planned can never silently mock-pass.
+        # BD-204 C-8 defect 1 (stateReason casing): the live gh
+        # READ-BACK carries GraphQL-enum casing, not the CLI input form
+        # (live evidence 2026-06-11: `gh issue view 21 ... --json
+        # number,state,stateReason` → {"state":"CLOSED","stateReason":
+        # "NOT_PLANNED"}). Store the read-back shape so the production
+        # normalizer (`_gh_normalize_issue` lowercasing) is GENUINELY
+        # exercised — a mock storing/serving a lowercase reason would
+        # mask a normalization regression.
         case "$reason" in
-            completed|"not planned"|duplicate) ;;
+            completed) readback_reason="COMPLETED" ;;
+            "not planned") readback_reason="NOT_PLANNED" ;;
+            duplicate) readback_reason="DUPLICATE" ;;
             *)
                 echo "fake-gh: invalid --reason '$reason' (real gh vocabulary: {completed|not planned|duplicate})" >&2
                 exit 1
                 ;;
         esac
         st=$(cat "$STATE")
-        new_st=$(printf '%s' "$st" | jq -c --arg id "$id" --arg reason "$reason" \
-            '.issues[$id].state = "closed" | .issues[$id].stateReason = $reason')
+        new_st=$(printf '%s' "$st" | jq -c --arg id "$id" --arg reason "$readback_reason" \
+            '.issues[$id].state = "CLOSED" | .issues[$id].stateReason = $reason')
         printf '%s' "$new_st" > "$STATE"
         ;;
 
@@ -185,7 +206,7 @@ case "$1 $2" in
         id="$3"
         st=$(cat "$STATE")
         new_st=$(printf '%s' "$st" | jq -c --arg id "$id" \
-            '.issues[$id].state = "open" | .issues[$id].stateReason = null')
+            '.issues[$id].state = "OPEN" | .issues[$id].stateReason = null')
         printf '%s' "$new_st" > "$STATE"
         ;;
 
@@ -232,7 +253,30 @@ case "$1 $2" in
         ;;
 
     "issue list")
-        echo "[]"
+        # BD-204 C-8 SHOULD-1: serve from state (was a canned []). The
+        # fixture now carries a closed-status entry (BD-004 Cancelled),
+        # so forward's BD-132 close-stabilization poll (`issue list
+        # --label X --state closed`) must see the close reflected; a
+        # canned [] would poll to the attempt ceiling and fail the run
+        # as a partial-write. Filters honored: --label (single value),
+        # --state (open|closed|all; state is stored in the read-back
+        # casing OPEN/CLOSED). Output: a JSON array, as the real
+        # `gh issue list --json` returns.
+        li_label=""; li_state="open"
+        shift 2
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --label) li_label="$2"; shift 2 ;;
+                --state) li_state="$2"; shift 2 ;;
+                --json|--limit|--milestone|--search) shift 2 ;;
+                *) shift ;;
+            esac
+        done
+        jq -c --arg label "$li_label" --arg state "$li_state" \
+            '[.issues[]
+              | select(($state == "all") or ((.state // "") == ($state | ascii_upcase)))
+              | select(($label == "") or (any((.labels // [])[]; .name == $label)))]' \
+            "$STATE"
         ;;
 
     "repo view")
@@ -472,26 +516,47 @@ export PATH="$PATH_SAVED"
 assert_eq       "1.1 forward run rc=0"           "0" "$rc1"
 # BD-204 C-5 (C2a): the pack-surface forward read-side now enumerates the
 # BD-only per-entry TREE (the no-monolith SSOT). The bd-v11.0 fixture's
-# BD-* set is {BD-001, BD-002, BD-003} (TD-010/TD-040 are the project
-# namespace, never in the pack backlog), so the pack forward parses 3
-# entries. BD-003 (BD-204 §3.3) carries top-level drop-set fields
+# BD-* set is {BD-001, BD-002, BD-003, BD-004} (TD-010/TD-040 are the
+# project namespace, never in the pack backlog), so the pack forward parses
+# 4 entries. BD-003 (BD-204 §3.3) carries top-level drop-set fields
 # (Target/Scope/Problem/Position/References/Out of scope) + a multi-paragraph
 # prose block + NO Blockers — the field-faithful-carrier stress case.
-# Entry count: 3 BD + 2 phase epics = 5 issues in the recorded state.
+# BD-004 (BD-204 C-8 SHOULD-1) is the closed-status carrier (Status:
+# Cancelled): forward CLOSES it through the production close path
+# (interface token not_planned → gh CLI "not planned"); the fake gh stores
+# the live read-back shape (CLOSED/NOT_PLANNED); 1.2 + 2.2e pin the
+# close→read-back→normalize→decode chain end-to-end.
+# Entry count: 4 BD + 2 phase epics = 6 issues in the recorded state.
 # (TD decode/reconstruct survival is covered at the decode-unit layer in
 # tracker-migrate-reverse-test.sh Group 1/2 + the 2.2c decode test below,
 # which no longer depends on a TD forward-creation that the BD-only pack
 # round-trip does not perform.)
-assert_contains "1.1 forward run reports 3 entries" "$output1" "parsed 3 BACKLOG entries"
+assert_contains "1.1 forward run reports 4 entries" "$output1" "parsed 4 BACKLOG entries"
 assert_contains "1.1 forward run reports 2 phases"  "$output1" "2 phase(s)"
 
-# State should have 3 BD + 2 phase epics = 5 issues.
-assert_eq "1.1 tracker state has 5 issues" "5" "$(_state_issue_count "$STATE1")"
+# State should have 4 BD + 2 phase epics = 6 issues.
+assert_eq "1.1 tracker state has 6 issues" "6" "$(_state_issue_count "$STATE1")"
 
 # Mapping file populated.
 mapping_file="$REPO1/.pack-tracker/id-map.json"
 [[ -f "$mapping_file" ]] && t_pass "1.1 mapping file written" || t_fail "1.1 mapping file written"
-assert_eq "1.1 mapping has 5 entries" "5" "$(jq 'length' "$mapping_file")"
+assert_eq "1.1 mapping has 6 entries" "6" "$(jq 'length' "$mapping_file")"
+
+# 1.2 BD-204 C-8 SHOULD-1 — the fake-gh `issue close` handler is now
+# exercised by a CI-run leg: forward's step-8 close loop closed BD-004
+# (Status: Cancelled → reason not_planned → gh CLI "not planned"); the
+# handler validates the real CLI vocabulary (a regressed token would
+# exit 1 and fail the rc=0 assert above as a partial-write) and stores
+# the LIVE READ-BACK shape. Assert the stored shape carries the
+# GraphQL-enum casing — uppercase NOT_PLANNED is exactly what the
+# production normalize→decode chain must handle (pinned in 2.2e).
+assert_contains "1.2 forward closed 1 entry (BD-004 Cancelled)" "$output1" "closed:     1"
+assert_contains "1.2 close-stabilization ran and completed"     "$output1" "close-stabilization OK"
+bd004_stored=$(jq -c '[.issues[] | select((.title // "") | startswith("BD-004:"))] | .[0] // {}' "$STATE1")
+assert_eq "1.2 BD-004 stored state is read-back CLOSED" \
+    "CLOSED" "$(printf '%s' "$bd004_stored" | jq -r '.state // ""')"
+assert_eq "1.2 BD-004 stored stateReason is read-back enum NOT_PLANNED" \
+    "NOT_PLANNED" "$(printf '%s' "$bd004_stored" | jq -r '.stateReason // ""')"
 
 # ─────────────────────────────────────────────────────────────────
 # Group 2: reverse against recorded state reconstructs flat files
@@ -511,8 +576,8 @@ rc2=$?
 export PATH="$PATH_SAVED"
 
 assert_eq       "2.1 reverse rc=0" "0" "$rc2"
-# BD-204 C-5: the BD-only pack round-trip reconstructs 3 BD entries.
-assert_contains "2.1 reverse reports 3 entries"     "$output2" "reconstructed 3 BACKLOG entries"
+# BD-204 C-5: the BD-only pack round-trip reconstructs 4 BD entries.
+assert_contains "2.1 reverse reports 4 entries"     "$output2" "reconstructed 4 BACKLOG entries"
 assert_contains "2.1 reverse reports 2 phase epics" "$output2" "2 phase epic"
 
 # Reverse output should reconstruct each entry. The reconstructed
@@ -582,6 +647,35 @@ if [[ -f "$REPO1/backlog/BD-003.md" ]]; then
 else
     t_fail "2.2d BD-003 reconstructed to pack tree" "BD-003.md missing"
 fi
+
+# 2.2e BD-204 C-8 SHOULD-1 — closed-status (Cancelled) e2e decode. The
+# forward close path stored the live read-back shape (asserted in 1.2);
+# fetch BD-004 through the production provider boundary
+# (`tracker_provider_gh_get` → `_gh_normalize_issue` lowercasing) and
+# decode through the public per-issue decoder the reverse orchestrator
+# calls. The uppercase NOT_PLANNED must normalize to not_planned and
+# decode to Cancelled — pre-C-8 this chain yielded Resolved (the
+# lossy class this leg pins against regression).
+map_rt=$(tmf_mapping_load "$mapping_file")
+bd004_gh_id=$(tmf_mapping_get "$map_rt" "BD-004")
+[[ -n "$bd004_gh_id" ]] \
+    && t_pass "2.2e BD-004 present in id-map" \
+    || t_fail "2.2e BD-004 present in id-map"
+export PATH="$FAKE1:$PATH_SAVED"
+BD004_ISSUE=$(tracker_provider_gh_get "$bd004_gh_id" 2>/dev/null)
+BD004_ENTRY=$(tracker_migrate_reverse_reconstruct "$BD004_ISSUE" "$map_rt" 2>/dev/null)
+export PATH="$PATH_SAVED"
+assert_eq "2.2e BD-004 read-back normalizes to state=closed" \
+    "closed" "$(printf '%s' "$BD004_ISSUE" | jq -r '.state // ""')"
+assert_eq "2.2e BD-004 read-back normalizes to state_reason=not_planned" \
+    "not_planned" "$(printf '%s' "$BD004_ISSUE" | jq -r '.state_reason // ""')"
+assert_eq "2.2e BD-004 decodes to Cancelled (normalize→decode, BD-204 C-8)" \
+    "Cancelled" "$(printf '%s' "$BD004_ENTRY" | jq -r '.status // ""')"
+# Orchestrator-path survival: the reverse run (2.1) reconstructed the
+# closed entry to the tree with its blob bytes intact.
+grep -q '^Status: Cancelled$' "$REPO1/backlog/BD-004.md" 2>/dev/null \
+    && t_pass "2.2e BD-004 reconstructed to tree with Status: Cancelled" \
+    || t_fail "2.2e BD-004 reconstructed to tree with Status: Cancelled"
 
 # Blockers — BD-111 closes the round-trip gap. With the BD-111 link
 # swap (forward writes addBlockedBy GraphQL edge) plus the BD-111
@@ -727,7 +821,7 @@ rc3=$?
 export PATH="$PATH_SAVED"
 
 assert_eq       "3.1 second forward rc=0"   "0" "$rc3"
-assert_eq       "3.1 second forward state has 5 issues" "5" "$(_state_issue_count "$STATE1")"
+assert_eq       "3.1 second forward state has 6 issues" "6" "$(_state_issue_count "$STATE1")"
 
 # Compare create-call signatures — these capture "<title> | <labels>"
 # for every create. Byte-equal means tracker side is round-trip stable
@@ -924,16 +1018,16 @@ grep -q '^Status: Deferred$' "$REPO6/backlog/BD-002.md" \
 bd2_recon=$(pe_strip_backpointer_stdin < "$REPO6/backlog/BD-002.md"; printf X); bd2_recon="${bd2_recon%X}"
 assert_eq "6.3 BD-002 flipped entry byte-verbatim from the blob" "$bd2_raw" "$bd2_recon"
 count6=$(ls "$REPO6/backlog" | grep -Ec '^BD-[0-9]+\.md$')
-assert_eq "6.3 count oracle after create (cascade clears)" "4" "$count6"
+assert_eq "6.3 count oracle after create (cascade clears)" "5" "$count6"
 
 # (d) Re-forward (cycle 3, post-CRUD): skip-all + the SAME blocked-by
-# re-link must read-skip again (Defect B against the 4-entry tree).
+# re-link must read-skip again (Defect B against the 5-entry tree).
 export PATH="$FAKE6:$PATH_SAVED"
 out6d=$(tracker_migrate_forward_run "$REPO6" 0 0 0 2>&1); rc6d=$?
 export PATH="$PATH_SAVED"
 assert_eq           "6.4 post-CRUD re-forward rc=0 (Defect B)" "0" "$rc6d"
 assert_contains     "6.4 re-forward created NOTHING (state already on the tracker)" "$out6d" "created:    0"
-assert_contains     "6.4 re-forward sees all 4 entries" "$out6d" "entries:    4"
+assert_contains     "6.4 re-forward sees all 5 entries" "$out6d" "entries:    5"
 assert_not_contains "6.4 re-forward has NO step-7 link failure" "$out6d" "step-7 link blocked-by"
 
 rm -rf "$REPO6" "$FAKE6"

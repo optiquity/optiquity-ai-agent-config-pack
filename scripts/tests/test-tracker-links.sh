@@ -286,6 +286,10 @@ tracker_links_create_blocked_by "TD-031" "phase-3.2" "$ID_MAP" "$store" "" >/dev
 err=$(tracker_links_create_blocked_by "phase-3.2" "TD-031" "$ID_MAP" "$store" "" 2>&1) || true
 assert_contains "5.5 cycle refused with typed validation error" "$err" "ERROR: validation"
 assert_contains "5.5 cycle error names 'pack tracker doctor' verb" "$err" "pack tracker doctor"
+# BD-204 C-8 defect 2: the refusal surfaced through the orchestrator
+# names the FULL cycle path (both IDs), not just the cycle length.
+assert_contains "5.5 cycle refusal names the cycle path (BD-204 C-8)" \
+    "$err" "cycle path: phase-3.2 -> TD-031 -> phase-3.2"
 
 # Confirm rc=1 on cycle refusal
 if tracker_links_create_blocked_by "phase-3.2" "TD-031" "$ID_MAP" "$store" "" >/dev/null 2>&1; then

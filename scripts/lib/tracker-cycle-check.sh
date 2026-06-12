@@ -288,21 +288,37 @@ for e in edges:
 # a cycle.
 frontier = set([tgt])
 visited  = set([tgt])
+# BD-204 C-8 defect 2: track BFS predecessors so the refusal names the
+# CONCRETE cycle path (both IDs + every intermediate hop), not just the
+# cycle length — the bare length message left the live BD-094/BD-095
+# mutual-block failure unactionable once the forward arms collapsed it
+# into a generic step-7 partial-failure line.
+parent = {}
 for hop in range(1, k + 1):
     next_frontier = set()
     for node in frontier:
         for nxt in out.get(node, []):
             if nxt == src:
-                # Cycle found within K hops. Refuse the edge.
+                # Cycle found within K hops. Refuse the edge, naming
+                # the full cycle path. Reconstruct tgt → ... → node via
+                # the predecessor map; the proposed edge src→tgt opens
+                # the path and the found edge node→src closes it.
+                seq = [node]
+                while seq[-1] != tgt:
+                    seq.append(parent[seq[-1]])
+                seq.reverse()
+                path = ' -> '.join([src] + seq + [src])
                 sys.stderr.write(
                     'ERROR: validation\n'
                     'MESSAGE: cycle_check: edge %s blocked-by %s would '
-                    'close a cycle of length %d\n'
-                    '→ Run: pack tracker doctor\n' % (src, tgt, hop + 1)
+                    'close a cycle of length %d '
+                    "(cycle path: %s; '->' = blocked-by)\n"
+                    '→ Run: pack tracker doctor\n' % (src, tgt, hop + 1, path)
                 )
                 sys.exit(2)
             if nxt not in visited:
                 visited.add(nxt)
+                parent[nxt] = node
                 next_frontier.add(nxt)
     if not next_frontier:
         break

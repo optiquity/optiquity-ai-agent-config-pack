@@ -219,6 +219,22 @@ _gh_full_fields() {
 
 # Normalize a single gh `issue view` JSON object to the canonical
 # Issue shape (V1 §2.2). Reads JSON from stdin; emits JSON to stdout.
+#
+# BD-204 (C-8 live-flip defect 1, 2026-06-11): the live gh read-back
+# carries GraphQL-enum casing for BOTH state AND stateReason — verbatim
+# live evidence from the real repo:
+#   $ gh issue view 21 -R ... --json number,state,stateReason
+#   {"number":21,"state":"CLOSED","stateReason":"NOT_PLANNED"}
+# `state` was already lowercased here; `stateReason` was passed through
+# VERBATIM, so every consumer comparing against the canonical lowercase
+# interface vocabulary {completed|not_planned|duplicate} silently
+# missed (e.g. `_tmr_decode_status` in
+# scripts/lib/tracker-migrate-reverse.sh decoded every closed
+# Deprecated/Cancelled issue through its `*` fallback to Resolved — a
+# lossy-class reverse-migration bug). Normalize stateReason to
+# lowercase HERE, at the provider boundary, so all consumers are fixed
+# at once. The write side is untouched: provider_close() already emits
+# the lowercase interface token in its success JSON.
 _gh_normalize_issue() {
     python3 -c '
 import json, sys
@@ -229,13 +245,16 @@ def opt(d, k, default=None):
 labels_in    = opt(data, "labels", []) or []
 assignees_in = opt(data, "assignees", []) or []
 milestone_in = opt(data, "milestone", None)
+# BD-204 C-8: live gh returns enum casing (NOT_PLANNED / COMPLETED /
+# DUPLICATE); canonical Issue carries the lowercase interface token.
+state_reason_in = opt(data, "stateReason")
 issue = {
     "id":           str(opt(data, "number", "")),
     "number":       str(opt(data, "number", "")),
     "title":        opt(data, "title", ""),
     "body":         opt(data, "body", ""),
     "state":        (opt(data, "state", "OPEN") or "OPEN").lower(),
-    "state_reason": opt(data, "stateReason"),
+    "state_reason": state_reason_in.lower() if isinstance(state_reason_in, str) else None,
     "labels":       [l.get("name", "") for l in labels_in if isinstance(l, dict)],
     "assignees":    [a.get("login", "") for a in assignees_in if isinstance(a, dict)],
     "milestone":    (milestone_in or {}).get("title") if isinstance(milestone_in, dict) else None,

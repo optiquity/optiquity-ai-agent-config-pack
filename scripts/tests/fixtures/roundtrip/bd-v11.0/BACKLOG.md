@@ -65,3 +65,17 @@ Description: A multi-paragraph description with an interior blank line.
 Out of scope: anything BD-207 owns on the client surface.
 
 ---
+
+**BD-004 — Cancelled close round-trip (BD-204 C-8 read-back casing)**
+Type: TODO(version)
+Status: Cancelled
+Blockers: None
+Unblocks: None
+File/Symbol: scripts/cancelled-surface.sh
+Description: Exercises the closed-status forward path end to end —
+  step-8 close (interface token not_planned → gh CLI "not planned"),
+  the fake gh's live read-back storage (CLOSED/NOT_PLANNED), and the
+  production normalize→decode chain back to Cancelled on reverse.
+Resolved: n/a
+
+---

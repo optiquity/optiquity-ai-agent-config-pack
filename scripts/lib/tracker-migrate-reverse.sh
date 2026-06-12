@@ -219,6 +219,13 @@ except Exception:
 #   state=open + status:unblocked label                 → Unblocked
 #   state=open + (no/other label)                       → Open
 #
+# Casing contract (BD-204 C-8, 2026-06-11): state + state_reason
+# arrive LOWERCASE in the canonical Issue JSON. The live gh read-back
+# carries GraphQL-enum casing ("CLOSED" / "NOT_PLANNED"); the provider
+# boundary normalizes it (`_gh_normalize_issue` in
+# scripts/lib/tracker-provider-gh.sh) so this decoder's lowercase
+# matches hold against live data.
+#
 # Legacy/test path is preserved for the existing labels-only test
 # fixtures in tracker-migrate-reverse-test.sh Group 1.
 _tmr_decode_status() {

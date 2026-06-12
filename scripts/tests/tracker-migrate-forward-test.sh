@@ -2106,6 +2106,146 @@ rm -rf "$FAKE_BIN_CR" "$GH_LOG_CR" "$ISSUE_COUNTER_CR" "$CLOSED_IDS_CR" \
        "$TEST_REPO_CR" "$CR_MONO"
 
 # ─────────────────────────────────────────────────────────────────
+# Group 8: BD-204 C-8 defect 2 — Blockers-cycle pre-pass (fail loud
+# BEFORE any provider call)
+# ─────────────────────────────────────────────────────────────────
+#
+# The live C-8 flip carried a mutual block (BD-094 `Blockers: BD-088,
+# BD-095, BD-085` + BD-095 `Blockers: BD-085, BD-088, BD-094`). The
+# BD-108 per-edge cycle check refused the second edge pre-call on
+# every run, but the step-7 arms swallowed the typed error, so each
+# run ended partial-write with only the bare unactionable line
+# `step-7 link blocked-by: BD-095 -> BD-094` — retried verbatim 3x.
+# This group pins the END-TO-END contract of the parse-time pre-pass
+# (tmf_blockers_cycle_precheck): a forward run over the same 2-cycle
+# topology fails LOUD — naming both IDs and the full cycle path —
+# with ZERO provider calls (no issue create, no link mutation), on
+# both the real run and `--dry-run`.
+
+printf "\n=== Group 8: BD-204 C-8 Blockers-cycle pre-pass ===\n"
+
+TEST_REPO_CY=$(mktemp -d -t tmf-cycle.XXXXXX)
+mkdir -p "$TEST_REPO_CY/pack-ops"   # surface marker → pack
+mkdir -p "$TEST_REPO_CY/backlog"    # per-entry tree (no monolith)
+CY_MONO=$(mktemp -t tmf-cy-mono.XXXXXX)
+FAKE_BIN_CY=$(mktemp -d -t tmf-fakebin-cy.XXXXXX)
+GH_LOG_CY=$(mktemp -t tmf-ghlog-cy.XXXXXX)
+
+# The BD-094/BD-095 mutual-block topology, renumbered: BD-701 and
+# BD-702 mutually blocked, both sharing the non-cyclic blocker BD-703
+# (mirrors BD-085/BD-088 in the live data).
+cat > "$CY_MONO" <<'BACKLOG'
+# BACKLOG
+
+**BD-701 — Mutual-block half A (live BD-094 shape)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-703, BD-702
+Unblocks: None
+File/Symbol: scripts/foo.sh
+Description: Mutually blocked with BD-702 — the live C-8 2-cycle.
+Resolved: n/a
+
+---
+
+**BD-702 — Mutual-block half B (live BD-095 shape)**
+Type: TODO(version)
+Status: Open
+Blockers: BD-703, BD-701
+Unblocks: None
+File/Symbol: scripts/bar.sh
+Description: Mutually blocked with BD-701 — the live C-8 2-cycle.
+Resolved: n/a
+
+---
+
+**BD-703 — Shared non-cyclic blocker (live BD-085/BD-088 shape)**
+Type: TODO(version)
+Status: Open
+Blockers: None
+Unblocks: None
+File/Symbol: scripts/baz.sh
+Description: Upstream of both halves; not part of the cycle.
+Resolved: n/a
+
+---
+BACKLOG
+per_entry_decompose "pack-backlog" "$CY_MONO" "$TEST_REPO_CY/backlog" >/dev/null
+
+cat > "$TEST_REPO_CY/IMPLEMENTATION-PLAN.md" <<'PLAN'
+# IMPLEMENTATION PLAN
+PLAN
+cp "$FIXTURES/tracker.toml" "$TEST_REPO_CY/tracker.toml"
+
+# Logging-only fake gh: every invocation is a provider-call witness.
+# The pre-pass contract is that the log stays EMPTY.
+cat > "$FAKE_BIN_CY/gh" <<FAKEGH_CY
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$GH_LOG_CY"
+case "\$1 \$2" in
+    "search issues"|"issue list") echo '[]' ;;
+    "issue view")    echo '{"labels":[], "assignees":[]}' ;;
+    "repo view")     echo '{"nameWithOwner":"fixture-org/fixture-repo"}' ;;
+    "api graphql")   echo '{}' ;;
+    "extension list") echo "" ;;
+    *)               ;;
+esac
+exit 0
+FAKEGH_CY
+chmod +x "$FAKE_BIN_CY/gh"
+
+export _TRACKER_PROVIDER_BACKEND_OVERRIDE="github"
+PATH_SAVED_CY="$PATH"
+export PATH="$FAKE_BIN_CY:$PATH_SAVED_CY"
+output_cy=$(tracker_migrate_forward_run "$TEST_REPO_CY" 0 0 2>&1)
+rc_cy=$?
+output_cy_dry=$(tracker_migrate_forward_run "$TEST_REPO_CY" 1 0 2>&1)
+rc_cy_dry=$?
+export PATH="$PATH_SAVED_CY"
+unset _TRACKER_PROVIDER_BACKEND_OVERRIDE
+
+# 8.1 the run fails loud (rc=1) with a typed validation error.
+assert_eq "8.1 forward over 2-cycle fixture rc=1 (loud pre-call refusal)" "1" "$rc_cy"
+assert_contains "8.1 loud refusal is a typed validation error" \
+    "$output_cy" "ERROR: validation"
+assert_contains "8.1 refusal names the Blockers data-cycle cause" \
+    "$output_cy" "Blockers data contains dependency cycle"
+
+# 8.2 the refusal names BOTH IDs and the FULL cycle path.
+assert_contains "8.2 refusal names the cycle path (both IDs, closed loop)" \
+    "$output_cy" "cycle path: BD-701 -> BD-702 -> BD-701"
+
+# 8.3 ZERO provider calls — no create, no link mutation, nothing. The
+# pre-pass runs before step 1, so the gh log must be byte-empty.
+if [[ ! -s "$GH_LOG_CY" ]]; then
+    t_pass "8.3 NO provider call before the refusal (gh log empty)"
+else
+    t_fail "8.3 NO provider call before the refusal (gh log empty)" \
+        "gh log: $(head -3 "$GH_LOG_CY" | tr '\n' ' ')"
+fi
+# No mapping file / cycle store either (nothing mutated on disk).
+[[ ! -f "$TEST_REPO_CY/.pack-tracker/id-map.json" ]] \
+    && t_pass "8.3 no id-map written (run refused pre-mutation)" \
+    || t_fail "8.3 no id-map written (run refused pre-mutation)"
+
+# 8.4 --dry-run catches the same cycle (tree-level check before any
+# live run) with the same loud message.
+assert_eq "8.4 --dry-run over 2-cycle fixture rc=1" "1" "$rc_cy_dry"
+assert_contains "8.4 --dry-run names the cycle path" \
+    "$output_cy_dry" "cycle path: BD-701 -> BD-702 -> BD-701"
+
+# 8.5 the legacy swallowed shape is GONE: the refusal must NOT surface
+# as a bare step-7 partial-failure line (the pre-fix C-8 symptom).
+if [[ "$output_cy" != *"step-7 link blocked-by"* ]]; then
+    t_pass "8.5 refusal is NOT the swallowed step-7 partial-failure shape"
+else
+    t_fail "8.5 refusal is NOT the swallowed step-7 partial-failure shape" \
+        "${output_cy:0:200}"
+fi
+
+rm -rf "$FAKE_BIN_CY" "$GH_LOG_CY" "$TEST_REPO_CY" "$CY_MONO"
+
+# ─────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────
 

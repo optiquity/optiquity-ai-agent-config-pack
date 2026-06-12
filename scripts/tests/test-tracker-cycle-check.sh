@@ -300,6 +300,19 @@ write_store "$store" "TD-031,phase-3.2"
 err=$(tracker_cycle_check_would_form_cycle "phase-3.2" "TD-031" "$store" 10 2>&1) || true
 assert_contains "5.3 cycle error names 'pack tracker doctor' verb" "$err" "pack tracker doctor"
 
+# 5.4 BD-204 C-8 defect 2: the refusal names the FULL cycle path (both
+# IDs + every intermediate hop), not just the cycle length — the bare
+# length message left the live BD-094/BD-095 mutual-block failure
+# unactionable. 2-cycle: src -> tgt -> src.
+assert_contains "5.4 2-cycle refusal names the cycle path (BD-204 C-8)" \
+    "$err" "cycle path: phase-3.2 -> TD-031 -> phase-3.2"
+# 3-cycle: the intermediate hop appears in the path.
+store_p3="$FIXTURES/store-3cycle-path.json"
+write_store "$store_p3" "TD-031,TD-040" "TD-040,TD-029"
+err=$(tracker_cycle_check_would_form_cycle "TD-029" "TD-031" "$store_p3" 10 2>&1) || true
+assert_contains "5.4 3-cycle refusal names the full path incl. intermediate hop" \
+    "$err" "cycle path: TD-029 -> TD-031 -> TD-040 -> TD-029"
+
 # Also verify the schema-reshape path names the same verb.
 err=$(tracker_cycle_check_would_form_cycle "phase-3.1" "phase-3.2" "$malformed" 10 2>&1) || true
 assert_contains "5.3 schema-reshape error names 'pack tracker doctor' verb" "$err" "pack tracker doctor"
