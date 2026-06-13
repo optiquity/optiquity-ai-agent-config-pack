@@ -39,18 +39,15 @@ Current architecture is documented in the project's `ARCHITECTURE.md`.
 
 ## Source of truth
 
-In flat-file mode (the default — no `tracker.toml`, or
-`tracker.toml` with `mode.state = "flat-file"`), the per-entry
+Flat-file per-entry is the sole supported mode: the per-entry
 files at `docs/project/changelog/` are source of truth for entry
 content. This file is the regenerated mirror — never source of
-truth.
-
-In tracker mode (`tracker.toml` with `mode.state = "tracker"` and
-`migration.forward_complete = true`), the tracker (e.g., GH Issues)
-is source of truth and BOTH the per-entry tree and this mirror are
-regenerated from tracker state per the Mode 2 → Mode 3 transition
-contract (read `docs/project/changelog/_rules.md` § "Write authority"
+truth (read `docs/project/changelog/_rules.md` § "Write authority"
 for the regenerated-mirror rule).
+
+Tracker mode is deferred indefinitely (no release version);
+the ability to flip to a tracker (e.g., GH Issues) is blocked and the
+tracker code is retained dormant for a future resumption.
 
 For the per-stream contract, read
 `docs/project/changelog/_rules.md`. For the entry-format spec,

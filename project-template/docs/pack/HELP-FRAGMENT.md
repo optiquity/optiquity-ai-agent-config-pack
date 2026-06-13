@@ -19,9 +19,10 @@ your CLI for this content. Full docs in `docs/pack/PM-CHAT.md`,
 | `pack td resolve <td-id>` | Direct-close wrapper. No promotion label; no new entity. |
 | `pack help` | Print this fragment (LCD shell verb). |
 
-## Tracker commands (v11+)
+## Tracker commands (deferred)
 
 [Included from `HELP-FRAGMENT-TRACKER.md` in this directory via `pack-help.sh`.]
+Tracker integration is deferred; the verbs refuse with a deferred message.
 
 ## See also
 

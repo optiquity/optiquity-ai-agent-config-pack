@@ -107,74 +107,23 @@ features here as they ship and prove useful.*
 
 ---
 
-## Tracker integration (v11)
+## Tracker integration (deferred)
 
-**Status** — v11.0+; opt-in per project. Default backend: `gh` (GitHub
-Issues). Other backends (Forgejo / Linear / Jira) plug in via the
-TrackerProvider abstraction but are not implemented in v11.
+**Status** — DEFERRED indefinitely (no release version).
 
-**What it is** — moves issue tracking out of `docs/project/BACKLOG.md`
-flat-file format into GitHub Issues, with a one-shot forward migration
-(`pack tracker init`) and idempotent reverse (`pack tracker disable`)
-for opt-out or backup. The recommendation system observes signals from
-your project (open work-item count, BACKLOG size, 30-day growth) and offers
-tracker opt-in only when those signals warrant.
+**What it was** — an opt-in per-project mode that would move issue
+tracking out of `docs/project/BACKLOG.md` flat-file format into a
+tracker backend (default `gh` / GitHub Issues), with a forward
+migration and an idempotent reverse, plus a recommendation system that
+suggested opting in based on project signals.
 
-**When it matters** — when your project's work-item volume reaches the point
-that GitHub-side cross-references, mentions, and CI-on-issue-state
-become more valuable than the "everything in `git log`" property of
-flat-file tracking. The recommendation system surfaces this naturally;
-you do not have to track it yourself.
-
-**How to enable** — from your project repo root:
-
-```sh
-pack tracker init       # writes tracker.toml + runs forward migration
-pack tracker status     # mapping freshness report
-pack tracker doctor     # config + integrity check
-pack tracker disable    # reverse migration; back to flat-file
-```
-
-`tracker.toml` lives at your project root. The example template
-`tracker.toml.example` is installed by `init-project.sh` at v11 — copy
-it to `tracker.toml` and edit before running `pack tracker init`. Every
-commonly-tuned field appears as a commented-out section with a default
-value.
-
-**Caveats**
-
-- The forward migration is idempotent but rewrites issue bodies on
-  every run; a heavily-edited issue body may need
-  `customization-detected-needs-reconciliation` resolution (see Failure
-  modes below).
-- The `gh` backend requires `gh auth login` against the right account
-  and `gh repo view` succeeding from your project root. CI-only tokens
-  may lack required scopes.
-- Reverse migration writes a sidecar `BACKLOG.md` from the live issues
-  — it does NOT recover prior flat-file content. Use `git` for that.
-- Tracker config is per-project, not pack-wide; each project opts in
-  independently.
-
-**When to skip** — if your TD/work-item volume is under ~50 open and
-`docs/project/BACKLOG.md` search is comfortable, the tracker round-trip
-is more friction than flat-file. The recommendation system will not nag
-in this regime.
-
-**How to disable** — the tracker is reversible at any time via
-`pack tracker disable`, which reads live issue state,
-writes a sidecar `BACKLOG.md` from current issues, and flips
-`tracker.toml`'s `mode.state` back to flat-file. Atomic (restores
-backup on failure), idempotent (safe to re-run). Existing GitHub issues
-remain untouched.
-
-**Failure modes** — when the migrator encounters a file with both
-project-side and pack-side edits since the last baseline (real-merge
-case), it surfaces the disposition
-`customization-detected-needs-reconciliation` and writes a sidecar of
-your pre-migration content. (Pack maintainers only: the per-file class
-matrix and sidecar conventions are documented in `MERGE-STRATEGY.md` in
-the pack repo.) Reconciliation is manual: open the sidecar + the
-destination, merge, remove the sidecar, commit.
+**Current state** — tracker integration is deferred and flat-file
+per-entry is the sole supported mode. The ability to flip to tracker
+mode is blocked, and the recommendation system surfaces nothing. The
+tracker code (the TrackerProvider abstraction, migrators, and verbs) is
+retained dormant and test-covered for a possible future resumption;
+there are no opt-in steps to run at this time. Continue to use the
+flat-file per-entry trees under `docs/project/`.
 
 ---
 

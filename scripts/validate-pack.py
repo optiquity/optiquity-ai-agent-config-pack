@@ -7964,39 +7964,83 @@ def check_validate_pack_no_reproduced_codec() -> None:
 # Anti-regression guard for the BD-214 tracker deferral (design §6.3). Five
 # cheap, bounded legs (grep over ≤3 named files or 2 bounded per-entry trees;
 # no whole-tree scan, no subprocess-per-entry — satisfies the runtime-
-# compounding rule). This C1 commit ships ONLY legs 1, 2, and 4 — the legs
-# whose conditions are TRUE at the C1 boundary:
+# compounding rule). All FIVE legs are now asserted (legs 1/2/4 landed in C1;
+# legs 3 and 5 land in C3 alongside their fix-recipes — the pm-startup ×4
+# Step-8 strip completes leg-3's `== 0`, and the install-map removal makes
+# leg-5's `tracker.toml.example` absent):
 #   leg 1 — the deferral clamp marker is created by C1 (tracker-config.sh);
 #   leg 2 — the three verb gates are created by C1 (pack-tracker.sh init +
 #           enable-recommendations; tracker-migrate.sh forward arm);
+#   leg 3 — `recommendation_should_recommend` occurrences OUTSIDE the
+#           allowlist {scripts/lib/recommendation.sh, scripts/tests/,
+#           maintenance-docs/} == 0 (the 7 skill files — pack-startup ×3 +
+#           pm-startup ×4 — are stripped across C2/C3; the strip COMPLETES
+#           at C3, so this leg is added here);
 #   leg 4 — entry-content grep-zero is ALREADY true at HEAD (line-anchored
 #           patterns; the one BD-204:24 mid-line prose hit is excluded by the
-#           `^` anchor — empty allowlist by construction).
-# Legs 3 (recommendation removed from the 7 skill files) and 5
-# (tracker.toml.example absent from the install map) land in LATER commits
-# (C2/C3) alongside their fix-recipes, per the incremental-leg ordering — they
-# are intentionally NOT asserted here (their conditions are not yet true).
+#           `^` anchor — empty allowlist by construction);
+#   leg 5 — `tracker.toml.example` is absent from the init-project.sh install
+#           map (anti-reintroduction); C3 removes it from the map + the
+#           self-doc block in the SAME commit as this leg.
 _CHECK_51_CLAMP_FILE = "scripts/lib/tracker-config.sh"
+# Leg 3 — recommendation invoker grep. The ONLY surfaces that wire the D-19
+# recommendation invocation are the per-CLI session-startup skill/command
+# files (design §6.3 / EE-7: pack-startup ×3 + pm-startup ×4). The scan is
+# BOUNDED to those skill/command directories — a whole-tree rglob would be a
+# runtime-compounding hazard across the battery's ~151 validate-pack
+# invocations (feedback-ci-check-runtime-compounding); the dormant lib + its
+# tests + historical maintenance-docs (the legitimate carriers) live OUTSIDE
+# this bounded surface, so no allowlist is needed within it.
+_CHECK_51_RECOMMEND_TOKEN = "recommendation_should_recommend"
+# MAINTENANCE GUARD: this tuple is the EXHAUSTIVE set of CLI-surface
+# skill/command directories leg 3 scans for live D-19 recommendation
+# invokers. The leg is a bounded scan over exactly these dirs (not a
+# whole-tree rglob), so any FUTURE CLI surface that can host
+# `recommendation_should_recommend` (a new per-CLI skill or command
+# directory) MUST be ADDED here — otherwise leg 3 develops a blind spot
+# and a re-armed recommendation invoker on the new surface would pass the
+# guard undetected. Keep this set in lock-step with the per-CLI startup
+# skill/command surface (currently pack-startup ×3 + pm-startup ×4 per
+# design §6.3 / EE-7).
+_CHECK_51_RECOMMEND_SKILL_DIRS = (
+    ".claude/skills",
+    ".codex/skills",
+    ".gemini/commands",
+    "project-template/.claude/skills",
+    "project-template/.codex/skills",
+    "project-template/skills",
+    "project-template/.gemini/commands",
+)
 # Leg 4 line-anchored entry-content artifact patterns (empty allowlist).
 _CHECK_51_ENTRY_TREES = ("backlog", "changelog")
 _CHECK_51_ENTRY_PATTERNS = (
     re.compile(r"^<!-- pack-entry-body-gz64:"),
     re.compile(r"^<!-- pack-id:"),
 )
+# Leg 5 — the install-map source token that, if present in init-project.sh,
+# would re-ship the deferred `tracker.toml.example` flip material to clients.
+_CHECK_51_INSTALL_MAP_FILE = "scripts/init-project.sh"
+_CHECK_51_INSTALL_MAP_TOKEN = "tracker.toml.project-example:tracker.toml.example"
 
 
 def check_tracker_deferral_flip_block() -> None:
-    """Check 51 — BD-214 tracker-deferral flip-block guard (legs 1/2/4).
+    """Check 51 — BD-214 tracker-deferral flip-block guard (legs 1–5).
 
     leg 1: `tracker-config.sh` carries the BD-214 deferral clamp marker
            (`PACK_TRACKER_DEFERRAL_OVERRIDE` + the dated BD-214 comment).
     leg 2: the three verb gates are present — `pack-tracker.sh` gates
            `cmd_init` + `cmd_enable_recommendations`, and
            `tracker-migrate.sh`'s forward arm refuses.
+    leg 3: `recommendation_should_recommend` occurrences OUTSIDE the
+           allowlist {scripts/lib/recommendation.sh, scripts/tests/,
+           maintenance-docs/} == 0 (no live invoker re-arms the deferred
+           D-19 recommendation seam).
     leg 4: line-anchored entry-content artifact grep-zero over the per-entry
            trees (`backlog/` + `changelog/`) == 0 (empty allowlist).
+    leg 5: `tracker.toml.example` is absent from the init-project.sh install
+           map (the deferred flip material no longer ships to clients).
     """
-    print("\n── Check 51: BD-214 tracker-deferral flip-block guard (legs 1/2/4) ──")
+    print("\n── Check 51: BD-214 tracker-deferral flip-block guard (legs 1-5) ──")
     any_fail = False
 
     # ── leg 1 — clamp marker in tracker-config.sh ──
@@ -8062,6 +8106,36 @@ def check_tracker_deferral_flip_block() -> None:
             "deferral gate. The reverse arm stays un-gated (escape hatch)."
         )
 
+    # ── leg 3 — recommendation-invoker grep-zero (bounded to skill dirs) ──
+    # Scan ONLY the per-CLI session-startup skill/command directories (the
+    # sole surfaces that wire the D-19 invocation). Bounded by construction —
+    # no whole-tree scan (runtime-compounding rule). A token hit here is a
+    # live invoker re-arming the deferred D-19 seam (BD-214 scope 6).
+    leg3_hits = []
+    for skill_dir in _CHECK_51_RECOMMEND_SKILL_DIRS:
+        base = REPO_ROOT / skill_dir
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*")):
+            if not path.is_file():
+                continue
+            try:
+                text = path.read_text()
+            except (OSError, UnicodeDecodeError):
+                continue
+            if _CHECK_51_RECOMMEND_TOKEN in text:
+                leg3_hits.append(path.relative_to(REPO_ROOT).as_posix())
+    if leg3_hits:
+        any_fail = True
+        for hit in leg3_hits:
+            fail(
+                f"Check 51 leg 3 — live `{_CHECK_51_RECOMMEND_TOKEN}` invoker "
+                f"in a session-startup skill/command file: {hit}. The D-19 "
+                f"tracker opt-in recommendation is deferred (BD-214); no live "
+                f"skill surface may re-arm it. Replace the Step-8 body with a "
+                f"deferred note (the dormant lib + its tests keep the token)."
+            )
+
     # ── leg 4 — line-anchored entry-content artifact grep-zero ──
     leg4_hits = []
     for tree in _CHECK_51_ENTRY_TREES:
@@ -8087,12 +8161,31 @@ def check_tracker_deferral_flip_block() -> None:
                 f"deferred (BD-214 scope 1)."
             )
 
+    # ── leg 5 — tracker.toml.example absent from the install map ──
+    install_map_path = REPO_ROOT / _CHECK_51_INSTALL_MAP_FILE
+    if not install_map_path.is_file():
+        any_fail = True
+        fail(f"Check 51 leg 5 — {_CHECK_51_INSTALL_MAP_FILE} not found")
+    else:
+        install_map_text = install_map_path.read_text()
+        if _CHECK_51_INSTALL_MAP_TOKEN in install_map_text:
+            any_fail = True
+            fail(
+                f"Check 51 leg 5 — {_CHECK_51_INSTALL_MAP_FILE} still maps "
+                f"`tracker.toml.example` into the client install "
+                f"(`{_CHECK_51_INSTALL_MAP_TOKEN}` present). The deferred "
+                f"tracker flip material must NOT ship to clients (BD-214 D-C); "
+                f"remove the install-map entry, the S11 copy, and the self-doc "
+                f"comment line in the same commit (Checks 39/41/46 re-pin)."
+            )
+
     if not any_fail:
         ok(
             "Check 51 — BD-214 flip-block guard: clamp marker present (leg 1), "
             "init + enable-recommendations + forward-arm gates present (leg 2), "
+            "no live recommendation invoker in skill files (leg 3), "
             "entry-content artifact grep-zero over backlog/ + changelog/ "
-            "(leg 4). Legs 3/5 land in later commits with their fix-recipes."
+            "(leg 4), tracker.toml.example absent from the install map (leg 5)."
         )
 
 

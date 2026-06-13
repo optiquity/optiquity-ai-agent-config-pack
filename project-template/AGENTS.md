@@ -201,18 +201,16 @@ for the creation workflow.
 Project documentation is organized into three directories under `docs/`.
 All filenames are unique — reference them by name; use these paths to locate them.
 
-The Source column indicates whether files in each directory are
-flat-file (source of truth in the working tree) or tracker-mirrored
-(read-only mirror; edit via Pack/PM Chat). In flat-file mode (default),
-all rows read `flat`. In tracker mode, `docs/project/` becomes `mixed`
-because BACKLOG.md, STATUS.md, CHANGELOG.md, and IMPLEMENTATION-PLAN.md
-are tracker-mirrored while ARCHITECTURE.md remains flat. `pm-startup`
-Step 2 reads this column to branch by source.
+The Source column indicates that files in each directory are flat-file
+(source of truth in the working tree). Flat-file per-entry is the sole
+supported mode; tracker mode is deferred indefinitely (no release
+version — tracker code is retained dormant for a future resumption),
+so all rows read `flat`. `pm-startup` Step 2 reads this column.
 
 | Directory | Contents | Updated by | Source |
 |---|---|---|---|
 | `docs/pack/` | `METHODOLOGY.md`, `INSTALL-PROCEDURES.md`, `prompts/`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) | flat |
-| `docs/project/` | `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` (regenerated mirrors for BACKLOG/IMPLEMENTATION-PLAN/CHANGELOG — per-entry source in subdirs) | PM chat and developer during active development | flat (or `mixed` in tracker mode) |
+| `docs/project/` | `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`, `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` (regenerated mirrors for BACKLOG/IMPLEMENTATION-PLAN/CHANGELOG — per-entry source in subdirs) | PM chat and developer during active development | flat |
 | `docs/reference/` | Project-specific user-facing documentation (how-to guides, API references) | Developer as needed | flat |
 
 Root-level files: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `README.md`, `agent-run.sh`.
@@ -223,9 +221,10 @@ Root-level files: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `README.md`, `agent-run
 flat-file mode; read each `<stream>/_rules.md` for the per-stream
 contract before any per-entry edit. The monolithic `BACKLOG.md`,
 `IMPLEMENTATION-PLAN.md`, and `CHANGELOG.md` files in `docs/project/`
-are regenerated mirrors — read-stable but never source of truth. In
-tracker mode, the tracker is source of truth and both the per-entry
-tree and the monolithic mirror are regenerated from tracker state.
+are regenerated mirrors — read-stable but never source of truth.
+Flat-file per-entry is the sole supported mode; tracker integration is
+deferred indefinitely (no release version) with the tracker code
+retained dormant for a future resumption.
 
 ## Scripts
 

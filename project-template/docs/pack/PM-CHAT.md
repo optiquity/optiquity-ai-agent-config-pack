@@ -503,36 +503,16 @@ Every prompt to repo-ops must include:
 
 ---
 
-## Recommendation routing (v11+)
+## Recommendation routing (deferred)
 
-When `/pm-startup` runs, the recommendation system in
-`scripts/lib/recommendation.sh` (D-19) computes 6 client-side signals
-(active TD count, BACKLOG size, phase count, IMPLEMENTATION-PLAN.md
-size, TD-TBD comment count, typed-deferral count) and decides whether
-to surface a tracker opt-in recommendation. PM chat behavior:
-
-- **If the recommendation fires** — `pm-startup` prints a single
-  paragraph naming the signals and asks whether to opt the project in.
-  PM chat presents the question without editorializing; the user
-  decides. On approval, PM chat runs `pack tracker init` and reports
-  the outcome.
-- **If declined** — PM chat records the decision (state file under
-  `.pack-tracker/recommendation-state.json`); the recommendation will
-  not re-fire for a configured cooldown window.
-- **If permanently declined** — PM chat records the persistent refusal
-  flag; the recommendation never re-fires for this project.
-
-PM chat does NOT silently opt the project into tracker mode. The
-recommendation is informational; opt-in requires explicit user
-consent. This mirrors the BACKLOG / CHANGELOG approval rule —
-state-changing operations need a yes.
-
-For the per-file customization-preservation behavior of
-`pack tracker init`'s forward migration, see
-<!-- DENY-LIST-CONTENT-START -->
-`pack-ops/MERGE-STRATEGY.md`
-in the pack repo.
-<!-- DENY-LIST-CONTENT-END -->
+The D-19 tracker opt-in recommendation is DEFERRED to a future release: tracker
+integration is deferred indefinitely and flat-file per-entry is the
+sole supported mode, so `/pm-startup` surfaces no opt-in recommendation
+and PM chat has nothing to route. The recommendation system
+(`scripts/lib/recommendation.sh`) is retained dormant and test-covered
+for a future resumption. PM chat continues to operate the project in
+flat-file mode (the BACKLOG / CHANGELOG approval rule still applies —
+state-changing operations need a yes).
 
 ---
 
@@ -603,11 +583,11 @@ planner or architect by default. PM Chat:
 4. Drafts any `Dependencies` bullet entries the user named (sourced
    from the TD's blockers field by default).
 5. Presents the drafted task to the user for review.
-6. On user approval, writes IMPLEMENTATION-PLAN.md and (in tracker
-   mode) creates the tracker entity. Re-keys the TD. For each
-   `Dependencies` bullet entry on the new task, calls
-   `tracker_links_create_blocked_by` to wire the
-   cross-entity dependency edge.
+6. On user approval, writes IMPLEMENTATION-PLAN.md (flat-file is the
+   sole supported mode; tracker integration is deferred to a future release).
+   Re-keys the TD. Dependency edges between entries are recorded in the
+   flat-file entry bodies. (The tracker-entity / `tracker_links_create_blocked_by`
+   orchestration is retained dormant for a future tracker resumption.)
 
 PM Chat invokes the **planner** (project-side `planner.md` agent)
 only if the user explicitly requests planning ("plan this out") or
@@ -709,8 +689,8 @@ claude --resume [project-short-name]-pm  # or start fresh + /rename if no sessio
 ### Startup procedure
 
 Run `/pm-startup`. The skill reads BACKLOG entries, STATUS entries (resolve
-via the trinity `## Document locations` table — flat-file mode reads
-BACKLOG.md / STATUS.md; tracker mode reads the tracker), PM-CHAT.md,
+via the trinity `## Document locations` table — reads BACKLOG.md /
+STATUS.md, the per-entry tree), PM-CHAT.md,
 CHANGELOG.md, IMPLEMENTATION-PLAN.md, METHODOLOGY.md, and PLATFORM-SKILLS.md.
 It reports current state and flags any TD-TBD sentinels.
 
@@ -752,8 +732,8 @@ via the GitHub connector. Conversations persist across sessions and machines.
 
 Start a new conversation within the project. Read BACKLOG entries, STATUS
 entries (resolve via the trinity `## Document locations` table —
-flat-file mode reads BACKLOG.md / STATUS.md; tracker mode reads the
-tracker), PLATFORM-SKILLS.md, and the current phase from
+reads BACKLOG.md / STATUS.md, the per-entry tree),
+PLATFORM-SKILLS.md, and the current phase from
 IMPLEMENTATION-PLAN.md. The project knowledge base provides searchable
 access to METHODOLOGY.md without manual re-reading.
 
@@ -797,8 +777,8 @@ gemini
 
 No startup skill — Gemini CLI loads GEMINI.md automatically. After resuming
 a saved session, read BACKLOG entries, STATUS entries (resolve via the
-trinity `## Document locations` table — flat-file mode reads BACKLOG.md /
-STATUS.md; tracker mode reads the tracker), PLATFORM-SKILLS.md, and the
+trinity `## Document locations` table — reads BACKLOG.md /
+STATUS.md, the per-entry tree), PLATFORM-SKILLS.md, and the
 current phase from IMPLEMENTATION-PLAN.md to verify state is current.
 
 ### File access
@@ -834,8 +814,8 @@ PLATFORM-SKILLS.md into the thread as initial context.
 **Normal resume:** Continue the existing thread.
 
 **After a long gap:** Re-paste BACKLOG / STATUS entries (resolve via the
-trinity `## Document locations` table — flat-file mode pastes BACKLOG.md /
-STATUS.md; tracker mode pastes the tracker mirror) and the current phase
+trinity `## Document locations` table — pastes BACKLOG.md /
+STATUS.md, the per-entry tree) and the current phase
 from IMPLEMENTATION-PLAN.md to refresh context.
 
 ### Session management (Codex CLI)
@@ -863,8 +843,8 @@ Codex CLI: native filesystem access and git. File access works like Claude Code 
 
 ChatGPT Web has no built-in compaction. Long threads degrade — start a new
 thread and re-paste key context (BACKLOG / STATUS entries via the trinity
-resolver — flat-file mode reads BACKLOG.md / STATUS.md; tracker mode reads
-the tracker — plus current phase, PLATFORM-SKILLS.md) when the thread
+resolver — reads BACKLOG.md / STATUS.md, the per-entry tree
+— plus current phase, PLATFORM-SKILLS.md) when the thread
 becomes unwieldy.
 
 Codex CLI: use `--resume` to continue. No automatic compaction.
@@ -880,8 +860,8 @@ the shared state:
 2. `git pull` on the new tool's machine
 3. Start or resume a session on the new tool
 4. Read BACKLOG entries, STATUS entries (resolve via the trinity
-   `## Document locations` table — flat-file mode reads BACKLOG.md /
-   STATUS.md; tracker mode reads the tracker), PLATFORM-SKILLS.md, and
+   `## Document locations` table — reads BACKLOG.md /
+   STATUS.md, the per-entry tree), PLATFORM-SKILLS.md, and
    current phase from IMPLEMENTATION-PLAN.md to reconstruct context
 
 What transfers: all project state (committed to repo).

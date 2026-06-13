@@ -16,8 +16,8 @@ implementation begins.]
 
 **Required reading:** `ARCHITECTURE.md` in full. `CHANGELOG.md`.
 `BACKLOG` entries (resolve via the trinity `## Document locations`
-table; reads the flat-file mirror in flat-file mode and the tracker
-in tracker mode). Use Glob to list every source file. Read them all.
+table; reads the per-entry tree). Use Glob to list every source file.
+Read them all.
 Build your own complete inventory — do NOT rely on any pre-specified
 list of components.
 

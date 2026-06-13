@@ -1,18 +1,20 @@
-# Tracker commands (v11+)
+# Tracker commands (deferred)
 
-Tracker mode opts the surface into GH Issues as the source of truth.
-The flat files become read-only mirrors. Reversible — `pack tracker
-disable` restores flat-file mode.
+Tracker (GH Issues) integration is **deferred indefinitely, with no
+release version**. **Flat-file per-entry is the sole supported
+mode.** The `pack tracker` verbs below refuse with a deferred message;
+the tracker code is retained dormant and test-covered for a future
+resumption.
 
 | Verb | What it does |
 |---|---|
-| `pack tracker init` | Opt-in: write `tracker.toml`, validate `gh auth`, ensure labels, run forward migration. |
-| `pack tracker status` | One-screen view of tracker state (mode, repo, mapping, freshness). Read-only. |
-| `pack tracker disable` | Reverse migration; flip back to flat-file. Atomic — restores backup on failure. |
-| `pack tracker doctor` | Validate config, mapping, mirror, templates, capability cache. Surfaces typed errors. |
-| `pack tracker mirror-rebuild` | Refresh BACKLOG.md mirror header without re-running forward migration. |
-| `pack tracker update-templates` | Apply translation rules to upgrade entries to current `template_version`. |
-| `pack tracker enable-recommendations` | Clear "don't ask again" so recommendations re-evaluate at next session. |
+| `pack tracker init` | DEFERRED — refuses with a deferred message; flat-file is the supported mode. |
+| `pack tracker status` | DEFERRED — refuses; no tracker state exists in flat-file mode. |
+| `pack tracker disable` | DEFERRED — there is no tracker mode to disable; flat-file is already the mode. |
+| `pack tracker doctor` | DEFERRED — refuses; nothing to validate in flat-file mode. |
+| `pack tracker mirror-rebuild` | DEFERRED — refuses; there is no mirror. |
+| `pack tracker update-templates` | DEFERRED — refuses. |
+| `pack tracker enable-recommendations` | DEFERRED — refuses; the recommendation system is dormant. |
 
 ## TD promotion (v11+)
 
@@ -33,17 +35,20 @@ no `--fold-into` flag.
 
 ## Colloquial mappings
 
+The tracker phrases below map to verbs that are DEFERRED — each
+refuses with a deferred message; flat-file is the supported mode.
+
 | Phrase | Verb |
 |---|---|
-| "set up the tracker" / "enable issue tracking" | `pack tracker init` |
-| "switch back to flat files" / "turn off the tracker" | `pack tracker disable` |
-| "tracker doctor" / "are we good?" | `pack tracker doctor` |
-| "tracker status" / "what's the tracker doing?" | `pack tracker status` |
-| "upgrade the templates" / "templates are stale" | `pack tracker update-templates` |
-| "rebuild the mirror" / "regenerate BACKLOG.md" | `pack tracker mirror-rebuild` |
-| "remind me about the tracker again" | `pack tracker enable-recommendations` |
+| "set up the tracker" / "enable issue tracking" | `pack tracker init` (deferred) |
+| "switch back to flat files" / "turn off the tracker" | `pack tracker disable` (deferred) |
+| "tracker doctor" / "are we good?" | `pack tracker doctor` (deferred) |
+| "tracker status" / "what's the tracker doing?" | `pack tracker status` (deferred) |
+| "upgrade the templates" / "templates are stale" | `pack tracker update-templates` (deferred) |
+| "rebuild the mirror" / "regenerate BACKLOG.md" | `pack tracker mirror-rebuild` (deferred) |
+| "remind me about the tracker again" | `pack tracker enable-recommendations` (deferred) |
 | "promote this TD to a new phase" / "make a phase out of this" | `pack td promote --to=phase-N <td-id>` (Path 1) |
 | "promote this TD to a task in phase N" / "add as a task under phase N" | `pack td promote --to=phase-N.M <td-id>` (Path 2) |
 | "close this TD inline" / "this TD is small, just close it" | `pack td resolve <td-id>` (direct close) |
 
-See the tracker example template (`tracker.toml.pack-example` in the pack repo, or `tracker.toml.example` at a client project root) and `OPTIONAL-FEATURES.md` for full setup.
+The tracker example template (`tracker.toml.pack-example` in the pack repo; a new install no longer copies a `tracker.toml.example` into the project root) is the dormant config record for the deferred tracker feature; see `OPTIONAL-FEATURES.md` § "Tracker integration (deferred)".

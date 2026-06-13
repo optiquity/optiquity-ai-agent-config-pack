@@ -11,10 +11,13 @@
 # for stale cross-references.
 #
 # v11 additions (BD-080): stage S11 installs v11 client-side artifacts
-# (HELP-FRAGMENT.md + HELP-FRAGMENT-TRACKER.md, tracker.toml.example
-# — sourced from project-template/tracker.toml.project-example,
+# (HELP-FRAGMENT.md + HELP-FRAGMENT-TRACKER.md,
 # .github/ISSUE_TEMPLATE/* issue forms, per-CLI pack-help skills /
-# command). The --update flag refreshes a previously-installed pack to
+# command). NOTE (BD-214, 2026-06-13): tracker.toml.example is NO LONGER
+# installed — tracker integration is deferred and flat-file is the sole
+# supported mode (the dormant config record stays committed pack-side at
+# project-template/tracker.toml.project-example). The --update flag
+# refreshes a previously-installed pack to
 # the current pack version using the BD-088 customization-preservation
 # contract; no destructive overwrites of project edits.
 #
@@ -905,7 +908,7 @@ EOF
 # ── Stage S11 — v11 client-side artifacts (BD-080) ────────────────────────
 
 stage_s11_v11_artifacts() {
-    say "── S11 — v11 client artifacts (HELP-FRAGMENT, tracker, issue forms, pack-help) ──"
+    say "── S11 — v11 client artifacts (HELP-FRAGMENT, issue forms, pack-help) ──"
 
     local copy_fn="cp"
     [[ "$CLASS" == existing-* ]] && copy_fn="existing_classifier_copy"
@@ -934,14 +937,14 @@ stage_s11_v11_artifacts() {
     [[ -f "$TARGET/docs/pack/HELP-FRAGMENT-TRACKER.md" ]] \
         || fail_stage S11 "docs/pack/HELP-FRAGMENT-TRACKER.md missing after copy"
 
-    # 2. tracker.toml.example at project root.
-    #    Source: project-template/tracker.toml.project-example (BD-135).
-    #    Destination basename remains tracker.toml.example for client
-    #    projects (only one such file exists client-side; no collision).
-    if [[ -f "$PACK/project-template/tracker.toml.project-example" ]]; then
-        "$copy_fn" "$PACK/project-template/tracker.toml.project-example" \
-            "$TARGET/tracker.toml.example"
-    fi
+    # 2. tracker.toml.example — NO LONGER INSTALLED (BD-214, 2026-06-13).
+    #    Tracker integration is deferred indefinitely and flat-file
+    #    per-entry is the sole supported mode, so the flip-material config
+    #    template is not copied to clients (design D-C). The dormant config
+    #    record stays committed pack-side at
+    #    project-template/tracker.toml.project-example for a future
+    #    resumption; existing clients keep any inert copy (the BD-214 clamp
+    #    makes it harmless).
 
     # 3. .github/ISSUE_TEMPLATE/* issue forms (BD-063).
     if [[ -d "$PACK/project-template/.github/ISSUE_TEMPLATE" ]]; then
@@ -1247,7 +1250,11 @@ cmd_update() {
         "project-template/docs/pack/HELP-FRAGMENT.md:docs/pack/HELP-FRAGMENT.md:generic"
         "project-template/docs/pack/HELP-FRAGMENT-TRACKER.md:docs/pack/HELP-FRAGMENT-TRACKER.md:generic"
         "project-template/docs/pack/OPTIONAL-FEATURES.md:docs/pack/OPTIONAL-FEATURES.md:generic"
-        "project-template/tracker.toml.project-example:tracker.toml.example:generic"
+        # BD-214 (2026-06-13): tracker.toml.example entry REMOVED — tracker
+        # integration is deferred indefinitely and flat-file is the sole
+        # supported mode. The deferred flip material no longer ships to
+        # clients (design D-C); the dormant config record stays committed
+        # pack-side (project-template/tracker.toml.project-example).
         "project-template/.github/ISSUE_TEMPLATE/work-item.yml:.github/ISSUE_TEMPLATE/work-item.yml:generic"
         "project-template/.github/ISSUE_TEMPLATE/inbound.yml:.github/ISSUE_TEMPLATE/inbound.yml:generic"
         "project-template/.github/ISSUE_TEMPLATE/config.yml:.github/ISSUE_TEMPLATE/config.yml:generic"
@@ -1402,7 +1409,6 @@ cmd_update() {
 #   project-template/docs/pack/PACK-FEEDBACK.md  ->  docs/pack/PACK-FEEDBACK.md  [stage:S6,cmd_update]
 #   project-template/docs/pack/PLATFORM-SKILLS.md  ->  docs/pack/PLATFORM-SKILLS.md  [stage:S6,cmd_update]
 #   project-template/docs/pack/PM-CHAT.md  ->  docs/pack/PM-CHAT.md  [stage:S6,cmd_update]
-#   project-template/tracker.toml.project-example  ->  tracker.toml.example  [stage:S11,cmd_update]
 #   project-template/.claude/skills/pack-help/SKILL.md  ->  .claude/skills/pack-help/SKILL.md  [stage:S11,cmd_update]
 #   project-template/.codex/skills/pack-help/SKILL.md  ->  .codex/skills/pack-help/SKILL.md  [stage:S11,cmd_update]
 #   project-template/.gemini/commands/pack-help.toml  ->  .gemini/commands/pack-help.toml  [stage:S11,cmd_update]

@@ -1,18 +1,20 @@
 # Migrating from v10 to v11
 
 This guide is the authoritative narrative for upgrading an existing
-**v10**-pack-configured project to **v11**. Two phases:
+**v10**-pack-configured project to **v11**. Migration is complete after
+Phase A; Phase B (tracker opt-in) is DEFERRED.
 
 1. **Phase A — forced v10→v11 changes.** Everyone runs this. Trinity
-   refresh, HELP-FRAGMENT install, per-CLI `pack-help` surfaces,
-   `tracker.toml.example` (installed at project root from the pack's
-   `project-template/tracker.toml.project-example`), issue templates,
-   BD-042 doc relocation tail. Driven by `scripts/migrate-v10-to-v11.sh`
-   (BD-085).
-2. **Phase B — optional tracker opt-in.** Per surface, per user. Run
-   only if you want to move issue tracking out of `BACKLOG.md` /
-   `STATUS.md` flat files into GitHub Issues. Driven by
-   `pack tracker init` (post-migration).
+   refresh, HELP-FRAGMENT install, per-CLI `pack-help` surfaces, issue
+   templates, BD-042 doc relocation tail. Driven by
+   `scripts/migrate-v10-to-v11.sh` (BD-085). (`tracker.toml.example` is
+   NO LONGER installed — see Phase B.)
+2. **Phase B (tracker opt-in) — DEFERRED.** Tracker integration is
+   deferred indefinitely (no release version, BD-214); flat-file
+   per-entry is the sole supported mode. The ability to flip to tracker
+   mode is blocked and the tracker code is retained dormant for a future
+   resumption — there is no `pack tracker init` opt-in to run. Migration
+   is Phase-A complete without it.
 
 If you're on **v9.x or earlier**, the v9->v10 migrator was sunset
 in v11 (BD-121); v9 is no longer supported. Reach out to the pack
@@ -45,13 +47,18 @@ project — there is no shared state between projects.
   root (`METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, etc.) are moved to
   `docs/pack/` (with `git mv` when tracked, sidecared otherwise).
 - Issue template forms (`.github/ISSUE_TEMPLATE/work-item.yml`,
-  `inbound.yml`, `config.yml`) installed for projects opting into
-  GitHub Issues.
-- `tracker.toml.example` installed at project root (template for
-  Phase B; sourced from the pack's
-  `project-template/tracker.toml.project-example`).
+  `inbound.yml`, `config.yml`) installed (the `inbound.yml` flat-file
+  feedback channel is live; the work-item form is a dormant baseline).
+- `tracker.toml.example` is NO LONGER installed at project root —
+  tracker integration is deferred (BD-214). The dormant config record
+  stays committed pack-side at
+  `project-template/tracker.toml.project-example`.
 
-**Optional (Phase B):**
+**Phase B (DEFERRED — BD-214):**
+
+The tracker feature below is deferred indefinitely and its code is
+retained DORMANT and test-covered for a future resumption. None of it
+is reachable in v11.0 — flat-file per-entry is the sole supported mode.
 
 - TrackerProvider abstraction (V1 §2.1): 18 ops + raw + capabilities,
   one canonical implementation against `gh`. Future backends
@@ -59,13 +66,10 @@ project — there is no shared state between projects.
 - Forward migration `BACKLOG.md` → GitHub Issues (V1 §6.2),
   reverse migration GitHub Issues → `BACKLOG.md` sidecar (V1 §6.5).
   Both idempotent.
-- Inflection-point recommendation system (D-19): pack-startup /
-  pm-startup observe pack/project signals (BD count, BACKLOG size,
-  growth rate) and recommend tracker opt-in when threshold heuristics
-  fire. Per-user state persisted under `.pack-tracker/`.
+- Inflection-point recommendation system (D-19): the recommendation is
+  deferred — startup surfaces no tracker opt-in.
 - TrackerProvider abstraction consumed by PM chat / Pack chat for
-  tracker-aware prompts. The dedicated `auditor-issue-tracking` agent
-  is on the v11.x roadmap; the provider it consumes ships in v11.0.
+  tracker-aware prompts (dormant).
 
 **Out of scope for this version:**
 
@@ -393,7 +397,7 @@ framework's single S4 stage and share the same sentinel
 | S3 | Dispatch v10 → v11 changes via BD-088 (trinity / configs / scripts / agents / docs) |
 | S4a | BD-104 rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md` at project root. History-preserving via `git mv` for tracked source; plain `mv` fallback for untracked. No-op if the source is absent. Halts with the typed error `migration-rename-collision` if both names already exist (the user inspects, resolves, re-runs). |
 | S4b | BD-042 relocation tail (legacy root docs → `docs/pack/`) |
-| S5 | Install v11 client artifacts (HELP-FRAGMENT*.md, tracker.toml.example, issue forms, per-CLI pack-help). The tracker example is sourced from the pack's `project-template/tracker.toml.project-example` and lands at the project root as `tracker.toml.example`. |
+| S5 | Install v11 client artifacts (HELP-FRAGMENT*.md, issue forms, per-CLI pack-help). `tracker.toml.example` is NO LONGER installed — tracker integration is deferred (BD-214); the dormant config record stays committed pack-side at `project-template/tracker.toml.project-example`. |
 | S6 | Render truthful migration report at `.pack-migrate-v10-to-v11/report.md` |
 
 **Exit codes:**
@@ -522,9 +526,8 @@ git diff --staged | less
 #     block (or a fresh template if you had no customizations).
 #   - .gitignore may have been merged with new pack additions.
 #   - docs/pack/HELP-FRAGMENT.md and docs/pack/HELP-FRAGMENT-TRACKER.md
-#     are new.
-#   - tracker.toml.example is new at project root (sourced from
-#     the pack's project-template/tracker.toml.project-example).
+#     are new (HELP-FRAGMENT-TRACKER.md is a deferred stub — BD-214).
+#   - tracker.toml.example is NOT installed (tracker deferred — BD-214).
 #   - .github/ISSUE_TEMPLATE/{work-item,inbound,config}.yml are new.
 #   - per-CLI pack-help skill / command are new.
 #   - Any reconciliation files you edited.
@@ -534,38 +537,19 @@ git commit -m "chore: migrate to AI Agent Config Pack v11"
 
 ---
 
-## Step 5 — Phase B (optional) — Tracker opt-in
+## Step 5 — Phase B (tracker opt-in) — DEFERRED
 
-If you want to move issue tracking out of `BACKLOG.md` flat-file format
-into GitHub Issues, run the tracker opt-in flow:
+Tracker integration is DEFERRED indefinitely (no release version,
+BD-214). Flat-file per-entry is the sole supported mode; the ability to
+flip to tracker mode is blocked and `pack tracker init` refuses with a
+deferred message. There is no opt-in flow to run — migration is
+Phase-A complete without it.
 
-```sh
-bash scripts/pack-tracker.sh init
-```
-
-This is **per-surface, per-user**. It is NOT done by `migrate-v10-to-v11.sh`
-because the choice is a deliberate one — many projects prefer flat-file
-tracking (visible in `git log`, no GitHub round-trip) and v11 ships
-fully without ever opting in.
-
-`pack-tracker.sh init` will:
-
-1. Read `tracker.toml.example` at project root (installed by the v11
-   migrator from the pack's
-   `project-template/tracker.toml.project-example`) and prompt you for
-   provider config (default: `gh`).
-2. Create `tracker.toml` with your settings.
-3. Optionally run `forward` migration: `BACKLOG.md` entries become
-   GitHub Issues with the `bd:NNN` label.
-4. Add a `.pack-tracker/state` directory for sidecar tracking-state.
-
-To opt out later: `bash scripts/pack-tracker.sh disable` (idempotent;
-runs the reverse migration internally).
-
-To check tracker health: `bash scripts/pack-tracker.sh doctor`.
-
-For verbs: `bash scripts/pack-help.sh` shows the full tracker command
-surface.
+The tracker code (the TrackerProvider abstraction, the forward/reverse
+migrators, and the `pack tracker` verbs) is retained DORMANT and
+test-covered for a possible future resumption. Continue to use the
+flat-file per-entry trees under `docs/project/` (visible in `git log`,
+no GitHub round-trip).
 
 ---
 
@@ -725,11 +709,10 @@ loss defects can re-emerge.
 1. **Read the `## Quick reference` block** at the top of each trinity
    file. The pack-startup / pm-startup recommendation is the documented
    first action for new sessions.
-2. **Decide on Phase B.** If your project's TD/work-item volume is moderate
-   (< 50 open) and BACKLOG.md is comfortable, stay flat-file. If
-   you're juggling many cross-references, GitHub linking would help,
-   or you want CI to gate on tracker hygiene, opt in. Recommendation:
-   pack-startup will prompt you when its heuristics fire.
+2. **Phase B is deferred.** Tracker integration is deferred indefinitely
+   (BD-214); flat-file per-entry is the sole supported mode and there is
+   no opt-in to decide on. Continue with flat-file `BACKLOG.md` /
+   per-entry tracking — startup surfaces no tracker recommendation.
 3. **Commit early after each reconciliation.** Don't accumulate a
    100-line reconciliation diff. Commit each `<file>.v10-customized`
    resolution as a separate small commit.

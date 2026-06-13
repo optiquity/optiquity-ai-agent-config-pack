@@ -538,9 +538,12 @@ EOF
             ;;
         v11)
             # v11 inherits the v10 customization surface and adds the v11-
-            # specific surfaces (HELP-FRAGMENT, tracker.toml, ISSUE_TEMPLATE,
-            # per-CLI pack-help). Only customization-relevant surfaces are
-            # listed — every shipped vN file does not necessarily appear.
+            # specific surfaces (HELP-FRAGMENT, ISSUE_TEMPLATE, per-CLI
+            # pack-help). Only customization-relevant surfaces are listed —
+            # every shipped vN file does not necessarily appear.
+            # tracker.toml.example is NOT listed: a v11 install no longer
+            # creates it (tracker integration is deferred; flat-file is the
+            # sole supported mode).
             cat <<'EOF'
 CLAUDE.md
 AGENTS.md
@@ -551,7 +554,6 @@ GEMINI.md
 .codex/config.toml
 BACKLOG.md
 docs/pack/HELP-FRAGMENT.md
-tracker.toml.example
 .github/ISSUE_TEMPLATE/work-item.yml
 .claude/skills/pack-help/SKILL.md
 .codex/skills/pack-help/SKILL.md

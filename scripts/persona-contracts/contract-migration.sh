@@ -330,7 +330,7 @@ fi
 #
 # Mapping to stage_s11_v11_artifacts() sub-stages:
 #   1. HELP-FRAGMENT*.md          → docs/pack/HELP-FRAGMENT.md, HELP-FRAGMENT-TRACKER.md
-#   2. tracker.toml.example       → tracker.toml.example
+#   2. tracker.toml.example       → NO LONGER installed (tracker deferred, BD-214)
 #   3. .github/ISSUE_TEMPLATE/*   → handled by glob block below
 #   4. per-CLI pack-help          → .claude/skills/pack-help/SKILL.md,
 #                                   .codex/skills/pack-help/SKILL.md,
@@ -363,7 +363,9 @@ fi
 v11_artifacts=(
     "docs/pack/HELP-FRAGMENT.md"
     "docs/pack/HELP-FRAGMENT-TRACKER.md"
-    "tracker.toml.example"
+    # BD-214: tracker.toml.example is NO LONGER installed by the migrator
+    # (tracker deferred; flat-file is the sole supported mode). Absence is
+    # asserted below.
     "scripts/pack-help.sh"
     "scripts/lib/detect.sh"
     ".claude/skills/pack-help/SKILL.md"
@@ -406,6 +408,12 @@ for f in "${v11_artifacts[@]}"; do
         t_fail "v11 artifact ${f} MISSING post-migrate"
     fi
 done
+# BD-214: tracker.toml.example must NOT be installed by the migrator.
+if [[ ! -f "$SANDBOX/tracker.toml.example" ]]; then
+    t_pass "v11 artifact tracker.toml.example NOT installed (tracker deferred, BD-214)"
+else
+    t_fail "v11 artifact tracker.toml.example unexpectedly installed (should be deferred, BD-214)"
+fi
 
 # Issue forms (BD-063): every project-template/.github/ISSUE_TEMPLATE/*.yml
 # should be present.

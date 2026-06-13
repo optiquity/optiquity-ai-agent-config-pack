@@ -22,10 +22,9 @@
 #
 # The v10→v11 transition's post-dispatch work (BD-042 legacy-doc
 # relocation; additive install of v11 artifacts like HELP-FRAGMENT,
-# tracker.toml.example — sourced from
-# project-template/tracker.toml.project-example,
 # ISSUE_TEMPLATE forms, per-CLI pack-help, and the
 # bare scripts/pack-help.sh + scripts/lib/detect.sh files) is performed
+# (tracker.toml.example is NO LONGER installed — tracker deferred, BD-214)
 # inside `migrator_post_dispatch_hook` rather than via the framework's
 # declarative `migrator_relocations` / `migrator_artifact_installs`
 # hooks. Two reasons:
@@ -296,14 +295,12 @@ _v10_to_v11_install_v11_artifacts() {
         fi
     done
 
-    # tracker.toml.example
-    #   Source: project-template/tracker.toml.project-example (BD-135).
-    #   Destination basename remains tracker.toml.example client-side.
-    if [[ -f "$PACK/project-template/tracker.toml.project-example" \
-       && ! -f "$_MIGRATOR_TARGET/tracker.toml.example" ]]; then
-        cp "$PACK/project-template/tracker.toml.project-example" \
-            "$_MIGRATOR_TARGET/tracker.toml.example"
-    fi
+    # tracker.toml.example — NO LONGER INSTALLED (BD-214, 2026-06-13).
+    #   Tracker integration is deferred indefinitely and flat-file
+    #   per-entry is the sole supported mode, so the v10→v11 migrator no
+    #   longer lays down the flip-material config template (design D-C).
+    #   The dormant config record stays committed pack-side at
+    #   project-template/tracker.toml.project-example for a future resumption.
 
     # .github/ISSUE_TEMPLATE/*
     if [[ -d "$PACK/project-template/.github/ISSUE_TEMPLATE" ]]; then
@@ -675,9 +672,9 @@ _v10_to_v11_translate_capability_tokens() {
 }
 
 # migrator_post_report_hook — version-specific guidance text printed after
-# the report is rendered. v10→v11 points users at `pack tracker init` for
-# the opt-in tracker integration. Mirrors the monolith's stage_s6_report
-# tail at lines 401–403.
+# the report is rendered. v10→v11 surfaces the per-entry decomposition
+# advisory; tracker integration is deferred (BD-214), so no `pack tracker
+# init` opt-in is advertised. Mirrors the monolith's stage_s6_report tail.
 #
 # Also surfaces the BD-165 v11.0 per-entry decomposition advisory per
 # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §8.18 / §9.4. v11.0
@@ -707,8 +704,9 @@ migrator_post_report_hook() {
     say "(or, if you committed the v10 state, \`git reset --hard <pre-migration-commit>\`)."
     say "After restore, re-running this migrator will re-decompose."
     say ""
-    say "To opt into the v11 issue-tracker integration, run:"
-    say "  pack tracker init"
+    say "Issue-tracker integration is DEFERRED (BD-214): flat-file per-entry is"
+    say "the sole supported mode in v11. The tracker code is retained dormant for"
+    say "a future resumption; there is no tracker opt-in to run at this time."
 }
 
 # ── Source the framework + run ─────────────────────────────────────────────

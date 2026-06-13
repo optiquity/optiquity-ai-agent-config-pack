@@ -132,9 +132,11 @@ assert_contains "2.1 S6 ran" "$out" "S6 — render truthful migration report"
 [[ -f "$T/docs/pack/HELP-FRAGMENT-TRACKER.md" ]] \
     && t_pass "2.4 HELP-FRAGMENT-TRACKER.md installed" \
     || t_fail "2.4 HELP-FRAGMENT-TRACKER.md missing"
-[[ -f "$T/tracker.toml.example" ]] \
-    && t_pass "2.4 tracker.toml.example installed" \
-    || t_fail "2.4 tracker.toml.example missing"
+# BD-214: the v10→v11 migrator NO LONGER installs tracker.toml.example
+# (tracker deferred; flat-file is the sole supported mode). Assert ABSENT.
+[[ ! -f "$T/tracker.toml.example" ]] \
+    && t_pass "2.4 tracker.toml.example NOT installed (tracker deferred, BD-214)" \
+    || t_fail "2.4 tracker.toml.example unexpectedly installed (should be deferred, BD-214)"
 [[ -f "$T/.github/ISSUE_TEMPLATE/work-item.yml" ]] \
     && t_pass "2.4 issue forms installed" \
     || t_fail "2.4 issue forms missing"

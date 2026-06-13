@@ -168,7 +168,7 @@ done
 #
 # Mapping to stage_s11_v11_artifacts() sub-stages:
 #   1. HELP-FRAGMENT*.md         → docs/pack/HELP-FRAGMENT.md, HELP-FRAGMENT-TRACKER.md
-#   2. tracker.toml.example      → tracker.toml.example
+#   2. tracker.toml.example      → NO LONGER installed (tracker deferred, BD-214)
 #   3. .github/ISSUE_TEMPLATE/*  → handled by glob block below (F1 fix —
 #                                  mirrors the migration contract's pattern;
 #                                  pre-fix this surface was unverified by
@@ -189,7 +189,8 @@ done
 s11_files=(
     "docs/pack/HELP-FRAGMENT.md"
     "docs/pack/HELP-FRAGMENT-TRACKER.md"
-    "tracker.toml.example"
+    # BD-214: tracker.toml.example is NO LONGER installed (tracker deferred;
+    # flat-file is the sole supported mode). Absence is asserted below.
     "scripts/pack-help.sh"
     "scripts/lib/detect.sh"
     ".claude/skills/pack-help/SKILL.md"
@@ -223,6 +224,12 @@ for f in "${s11_files[@]}"; do
         t_fail "S11 artifact ${f} MISSING"
     fi
 done
+# BD-214: tracker.toml.example must NOT be installed (tracker deferred).
+if [[ ! -f "$SANDBOX/tracker.toml.example" ]]; then
+    t_pass "S11 artifact tracker.toml.example NOT installed (tracker deferred, BD-214)"
+else
+    t_fail "S11 artifact tracker.toml.example unexpectedly installed (should be deferred, BD-214)"
+fi
 # F1: S11 sub-stage 3 — .github/ISSUE_TEMPLATE/*.yml issue forms (BD-063).
 # Mirrors contract-migration.sh:333-347. Pre-F1 this surface was checked
 # only by the migration contract; a regression in greenfield issue-form

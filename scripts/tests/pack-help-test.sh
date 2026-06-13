@@ -140,7 +140,7 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$TR_CLI2" 2>/dev/null)
 [[ "$output" == *"# Pack v11 — verb reference (this project)"* ]] \
     && t_pass "2.2 client-side header present" \
     || t_fail "2.2 client-side header" "got: ${output:0:200}"
-[[ "$output" == *"# Tracker commands (v11+)"* ]] \
+[[ "$output" == *"# Tracker commands (deferred)"* ]] \
     && t_pass "2.2 client tracker section inlined" \
     || t_fail "2.2 client tracker section inlined"
 [[ "$output" == *"agent-run.sh"* ]] \

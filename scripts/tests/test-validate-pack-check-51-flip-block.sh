@@ -2,27 +2,35 @@
 # scripts/tests/test-validate-pack-check-51-flip-block.sh — dedicated
 # test for BD-214 Check 51 (tracker-deferral flip-block guard).
 #
-# This C1 commit ships Check 51 legs 1, 2, and 4 ONLY (legs 3/5 land in
-# later commits with their fix-recipes). This test asserts EXACTLY legs
-# 1/2/4 — PASS on the well-formed C1 tree, and FAIL when any of the three
-# legs' conditions is broken in a synthetic tree.
+# Check 51 now ships ALL FIVE legs (legs 1/2/4 landed in C1; legs 3 and
+# 5 land in C3 with their fix-recipes — the pm-startup ×4 Step-8 strip
+# completes leg-3's `== 0`, and the install-map removal makes leg-5's
+# `tracker.toml.example` absent). This test asserts legs 1-5 — PASS on the
+# well-formed tree, and FAIL when any leg's condition is broken in a
+# synthetic tree.
 #
 # Legs asserted here:
 #   leg 1 — clamp marker present in tracker-config.sh
 #   leg 2 — verb gates present (init + enable-recommendations + forward arm)
+#   leg 3 — no live `recommendation_should_recommend` invoker in the
+#           per-CLI session-startup skill/command directories
 #   leg 4 — entry-content artifact grep-zero (line-anchored) over the
 #           backlog/ + changelog/ per-entry trees
+#   leg 5 — `tracker.toml.example` absent from the init-project.sh install map
 #
 # Coverage:
 #   Group 0: module import + Check 51 symbol registration
 #   Group 1: synthetic-tree end-to-end:
-#            T1 PASS — clamp + gates present, entry trees clean
+#            T1 PASS — clamp + gates present, entry trees clean, skills
+#                      clean, install map clean
 #            T2 FAIL — clamp marker removed (leg 1)
 #            T3 FAIL — cmd_init gate removed (leg 2)
 #            T4 FAIL — forward-arm gate removed (leg 2)
 #            T5 FAIL — a line-anchored entry artifact present (leg 4)
 #            T6 PASS — a MID-LINE artifact (prose example) does NOT trip
 #                      leg 4 (the `^` anchor excludes it; empty allowlist)
+#            T7 FAIL — a live recommendation invoker in a skill file (leg 3)
+#            T8 FAIL — tracker.toml.example present in the install map (leg 5)
 #   Group 2: end-to-end validate-pack.py exit-status on HEAD (Check 51 clean)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-51-flip-block.sh
@@ -71,7 +79,7 @@ fi
 # ─────────────────────────────────────────────────────────────────
 # Group 1: synthetic-tree end-to-end (PASS + injected-FAIL cases)
 # ─────────────────────────────────────────────────────────────────
-printf "\n=== Group 1: End-to-end synthetic-tree tests (legs 1/2/4) ===\n"
+printf "\n=== Group 1: End-to-end synthetic-tree tests (legs 1-5) ===\n"
 
 python3 <<EOF
 import sys, tempfile, pathlib, shutil, io, contextlib
@@ -123,13 +131,40 @@ GOOD_TRACKER_MIGRATE = (
     "}\n"
 )
 
+# Leg 5 — a clean install map (no tracker.toml.example token) vs a
+# contaminated one (the token present).
+GOOD_INIT_PROJECT = (
+    "#!/usr/bin/env bash\n"
+    "entries=(\n"
+    '    "project-template/CLAUDE.md:CLAUDE.md:trinity"\n'
+    ")\n"
+)
+BAD_INIT_PROJECT = (
+    "#!/usr/bin/env bash\n"
+    "entries=(\n"
+    '    "project-template/tracker.toml.project-example:tracker.toml.example:generic"\n'
+    ")\n"
+)
+# Leg 3 — a clean skill file (no invoker) vs one re-arming the seam.
+CLEAN_SKILL = "# pm-startup\n## Step 8 — recommendation check (deferred)\nNothing.\n"
+BAD_SKILL = (
+    "# pm-startup\n## Step 8\n"
+    'should=\$(recommendation_should_recommend "\$signals" "\$state" client flat-file)\n'
+)
+
 def build_tree(root, *, clamp=GOOD_CLAMP, pack_tracker=GOOD_PACK_TRACKER,
-               tracker_migrate=GOOD_TRACKER_MIGRATE, backlog_entry=None):
+               tracker_migrate=GOOD_TRACKER_MIGRATE, backlog_entry=None,
+               init_project=GOOD_INIT_PROJECT, skill=CLEAN_SKILL):
     root = pathlib.Path(root)
     (root / "scripts" / "lib").mkdir(parents=True, exist_ok=True)
     (root / "scripts" / "lib" / "tracker-config.sh").write_text(clamp)
     (root / "scripts" / "pack-tracker.sh").write_text(pack_tracker)
     (root / "scripts" / "tracker-migrate.sh").write_text(tracker_migrate)
+    (root / "scripts" / "init-project.sh").write_text(init_project)
+    # leg-3 skill surface (one of the bounded skill dirs the check scans).
+    skill_dir = root / "project-template" / "skills" / "pm-startup"
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    (skill_dir / "SKILL.md").write_text(skill)
     (root / "backlog").mkdir(parents=True, exist_ok=True)
     (root / "changelog").mkdir(parents=True, exist_ok=True)
     (root / "backlog" / "BD-001.md").write_text(
@@ -201,6 +236,16 @@ fc, cap = run(dict(backlog_entry=midline_entry))
 if fc != 0:
     failures.append(f"T6 (mid-line artifact must NOT trip leg 4) expected 0 failures, got {fc}: {cap}")
 
+# T7: FAIL — a live recommendation invoker in a skill file (leg 3).
+fc, cap = run(dict(skill=BAD_SKILL))
+if fc < 1 or "leg 3" not in cap:
+    failures.append(f"T7 (leg 3 FAIL) expected leg-3 failure, got {fc}: {cap}")
+
+# T8: FAIL — tracker.toml.example present in the install map (leg 5).
+fc, cap = run(dict(init_project=BAD_INIT_PROJECT))
+if fc < 1 or "leg 5" not in cap:
+    failures.append(f"T8 (leg 5 FAIL) expected leg-5 failure, got {fc}: {cap}")
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -209,7 +254,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "End-to-end synthetic-tree tests T1-T6 (legs 1/2/4 PASS + injected FAILs + mid-line exclusion)" ;;
+    0) t_pass "End-to-end synthetic-tree tests T1-T8 (legs 1-5 PASS + injected FAILs + mid-line exclusion)" ;;
     *) t_fail "End-to-end check_tracker_deferral_flip_block tests failed (see Python output)" ;;
 esac
 
@@ -219,9 +264,9 @@ esac
 printf "\n=== Group 2: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
 if python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check51-e2e.out 2>&1; then
-    if grep -q "Check 51: BD-214 tracker-deferral flip-block guard (legs 1/2/4)" /tmp/vp-check51-e2e.out \
+    if grep -q "Check 51: BD-214 tracker-deferral flip-block guard (legs 1-5)" /tmp/vp-check51-e2e.out \
        && grep -q "Check 51 — BD-214 flip-block guard:" /tmp/vp-check51-e2e.out; then
-        t_pass "validate-pack.py exits 0; Check 51 runs and reports legs 1/2/4 clean at HEAD"
+        t_pass "validate-pack.py exits 0; Check 51 runs and reports legs 1-5 clean at HEAD"
     else
         t_fail "validate-pack.py exits 0 but Check 51 clean-output not detected" \
             "Tail: $(tail -10 /tmp/vp-check51-e2e.out)"

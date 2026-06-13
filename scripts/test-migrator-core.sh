@@ -356,7 +356,9 @@ rc=$?
 # v10 surface (per migrator-core.sh §3 / architecture) includes CLAUDE.md,
 # AGENTS.md, GEMINI.md, the three .claude/.codex/.gemini agent dirs, and
 # .codex/config.toml + BACKLOG.md. v10 must NOT advertise the v11-only
-# additions (HELP-FRAGMENT.md, tracker.toml.example, ISSUE_TEMPLATE).
+# additions (HELP-FRAGMENT.md, ISSUE_TEMPLATE). tracker.toml.example is
+# deferred (BD-214) and is absent from BOTH the v10 and v11 surfaces, so
+# the v10 assertion below also confirms it stays absent here.
 if [[ $rc -eq 0 \
    && "$out" == *"CLAUDE.md"* \
    && "$out" == *"AGENTS.md"* \
@@ -388,12 +390,12 @@ if [[ $rc -eq 0 \
    && "$out" == *"AGENTS.md"* \
    && "$out" == *"GEMINI.md"* \
    && "$out" == *"docs/pack/HELP-FRAGMENT.md"* \
-   && "$out" == *"tracker.toml.example"* \
+   && "$out" != *"tracker.toml.example"* \
    && "$out" == *".github/ISSUE_TEMPLATE/work-item.yml"* \
    && "$out" == *".claude/skills/pack-help/SKILL.md"* \
    && "$out" == *".codex/skills/pack-help/SKILL.md"* \
    && "$out" == *".gemini/commands/pack-help.toml"* ]]; then
-    pass "v11 surface inherits v10 + adds HELP-FRAGMENT/tracker.toml.example/ISSUE_TEMPLATE/per-CLI pack-help"
+    pass "v11 surface inherits v10 + adds HELP-FRAGMENT/ISSUE_TEMPLATE/per-CLI pack-help; excludes deferred tracker.toml.example"
 else
     fail "target_surface_v11" "v10 entries + v11 additions" "rc=$rc out=$out"
 fi

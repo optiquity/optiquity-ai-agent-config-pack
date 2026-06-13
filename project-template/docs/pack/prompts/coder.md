@@ -63,10 +63,10 @@ under Constraints.]
   `BACKLOG.md`, `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`, `CLAUDE.md`,
   `AGENTS.md`, `README.md`, or any other `.md` file in the project root.
   Writing root `.md` files is exclusively the PM chat's responsibility.
-  This restriction applies identically in tracker mode: BACKLOG/STATUS/
-  CHANGELOG/IMPLEMENTATION-PLAN are tracker-mirrored read-only files
-  there — only the PM chat (with tracker write authority) may modify
-  the underlying entries.
+  The per-entry BACKLOG/STATUS/CHANGELOG/IMPLEMENTATION-PLAN trees are
+  likewise PM-chat-owned — only the PM chat may modify those entries.
+  (Flat-file per-entry is the sole supported mode; tracker integration
+  is deferred to a future release.)
 - **Boundary discipline (Project SSOT-first / P-missed-7):** If any task
   in your scope would modify a file that ships as part of this project
   (project trinity at root, `docs/pack/` content, `docs/project/`,

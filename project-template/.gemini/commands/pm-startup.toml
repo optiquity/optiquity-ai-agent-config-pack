@@ -64,9 +64,8 @@ Note what was fetched, or confirm "already up to date."
 
 Read these in full:
 - BACKLOG entries (resolve via the trinity `## Document locations` table;
-  reads `BACKLOG.md` in flat-file mode, the tracker in tracker mode)
-- STATUS entries (same resolver as above; reads `STATUS.md` in flat-file mode,
-  the tracker in tracker mode)
+  reads `BACKLOG.md`, the per-entry tree)
+- STATUS entries (same resolver as above; reads `STATUS.md`, the per-entry tree)
 - `PM-CHAT.md`
 - `PLATFORM-SKILLS.md`
 
@@ -79,12 +78,12 @@ Read the first 5 lines of `METHODOLOGY.md` to get the version number.
 
 Resolve every BACKLOG / STATUS / IMPLEMENTATION-PLAN / CHANGELOG read through
 the trinity `## Document locations` table in the project context file.
-In flat-file mode the table points at the named files in `docs/project/`; in
-tracker mode the table points at the tracker (BACKLOG / STATUS / CHANGELOG /
-IMPLEMENTATION-PLAN are tracker-mirrored read-only files in that mode).
+The table points at the named files in `docs/project/` (the per-entry tree).
+Flat-file per-entry is the sole supported mode; tracker integration is
+deferred to a future release.
 
 Project streams under `docs/project/backlog/`, `docs/project/implementation-plan/`,
-and `docs/project/changelog/` are per-entry trees in flat-file mode; read each
+and `docs/project/changelog/` are per-entry trees; read each
 `<stream>/_rules.md` for the per-stream contract before any per-entry edit. The
 `docs/project/BACKLOG.md`, `docs/project/IMPLEMENTATION-PLAN.md`, and
 `docs/project/CHANGELOG.md` files are regenerated mirrors of those per-entry
@@ -206,49 +205,17 @@ Output a summary in exactly this format:
 
 <!--
 Step 7 is reserved. The tracker-mode triage queue
-(provider.list filter=label:'needs-triage') lands here in a future
-pack version when tracker mode is wired into pm-startup. The Step 8 numbering
+(provider.list filter=label:'needs-triage') would land here if tracker
+integration resumes (it is DEFERRED to a future release). The Step 8 numbering
 is fixed to keep the recommendation check at the documented
 insertion point regardless of when Step 7 lands.
 -->
 
-## Step 8 — Inflection-point recommendation check (D-19)
+## Step 8 — Inflection-point recommendation check (deferred)
 
-Run only in flat-file mode. In tracker mode this step is skipped
-entirely (the recommendation system targets flat-file users who
-have not yet opted in).
-
-Tracker-mode detection: `docs/pack/tracker.toml` exists at the
-project root and its `[mode] state` is `"tracker"`. Otherwise the
-surface is flat-file.
-
-In flat-file mode, source the lib (located inside the pack copy
-under `docs/pack/scripts/lib/recommendation.sh` for client-side
-projects, or via the pack-installed copy under `scripts/lib/` for
-projects whose `init-project.sh` ships the libs) and run the test:
-
-```bash
-source scripts/lib/recommendation.sh
-signals=$(recommendation_compute_signals client "$(pwd)")
-state=$(recommendation_state_load .pack-tracker/recommendation-state.json client)
-should=$(recommendation_should_recommend "$signals" "$state" client flat-file)
-```
-
-If `$should == "true"` AND no per-session "not now" dismiss is in
-effect (chat-session memory only — not on disk), surface the prompt
-once and record that the show happened:
-
-```bash
-recommendation_render_prompt "$signals" client
-recommendation_record_shown .pack-tracker/recommendation-state.json "$signals"
-```
-
-Then route the user's response:
-- `yes` / `y` / `enable` / `OK` / `sure` → suggest running
-  `pack tracker init`. Do not auto-run; await explicit confirmation.
-- `not now` / `later` / `no` / `n` / `skip` → set the per-session
-  in-memory dismiss flag for this chat session. Do not modify state.
-- `don't ask again` / `never` / `disable recommendations` / `stop` →
-  call `recommendation_set_persistent_refusal .pack-tracker/recommendation-state.json true`
-  and acknowledge.
+The D-19 tracker opt-in recommendation is DEFERRED to a future release: tracker
+integration is deferred indefinitely and flat-file per-entry is the sole
+supported mode, so this step surfaces nothing. The recommendation system
+(`scripts/lib/recommendation.sh`) is retained dormant and test-covered
+for a future resumption; the step number is reserved.
 """
