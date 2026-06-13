@@ -1,0 +1,598 @@
+bd214-gh-issue-deletion.sh  (stamp 20260613T190725Z)
+target: DShaneNYC/optiquity-ai-agent-config-pack
+mode  : EXECUTE (real deletion)
+-----------------------------------------------------------------------------
+PREFLIGHT
+-----------------------------------------------------------------------------
+  auth: account DShaneNYC present, 'repo' scope present.
+  repo: DShaneNYC/optiquity-ai-agent-config-pack viewerCanAdminister=true.
+
+-----------------------------------------------------------------------------
+SNAPSHOT (issues) -> /tmp/bd214-gh-issue-deletion-manifest-20260613T190725Z.json
+-----------------------------------------------------------------------------
+  captured 213 issues into manifest.
+
+-----------------------------------------------------------------------------
+SNAPSHOT (labels)
+-----------------------------------------------------------------------------
+  captured 58 labels into manifest.
+
+-----------------------------------------------------------------------------
+SAFETY GATE
+-----------------------------------------------------------------------------
+  total issues in repo : 213
+  candidate issues     : 213 (bd-entry label OR pack-id marker)
+  STRAY (non-candidate): 0
+  total labels in repo : 58
+  pack-managed labels  : 49
+  GitHub default labels: 9 (will NOT be touched)
+
+  Safety gate PASSED: zero stray issues.
+
+-----------------------------------------------------------------------------
+PREVIEW — what WOULD be deleted
+-----------------------------------------------------------------------------
+ISSUES TO DELETE: 213
+  #1     pack-id=BD-001    state=CLOSED   BD-001: Rename ios-architect → apple-architect
+  #2     pack-id=BD-002    state=CLOSED   BD-002: Add post_edit_command to .codex/config.toml (all 3 templates)
+  #3     pack-id=BD-003    state=CLOSED   BD-003: Add scripts setup and usage docs to CLAUDE.md, AGENTS.md, QUICKSTART.md
+  #4     pack-id=BD-004    state=CLOSED   BD-004: Resolve format.sh hook discrepancy
+  #5     pack-id=BD-005    state=CLOSED   BD-005: Add XCODE_SCHEME warnings to validate.sh, test.sh, agent-post-edit-check.sh
+  #6     pack-id=BD-006    state=CLOSED   BD-006: Add python-architect agent + python-architecture skill (python-server, monorepo)
+  #7     pack-id=BD-007    state=CLOSED   BD-007: New-project generation templates (SETUP_TEMPLATE.md, AGENT_KICKOFF_TEMPLATE.md)
+  #8     pack-id=BD-008    state=CLOSED   BD-008: Add METHODOLOGY.md to all templates and supporting-docs
+  #9     pack-id=BD-009    state=CLOSED   BD-009: Add PROMPT-TEMPLATES.md to supporting-docs (14 templates)
+  #10    pack-id=BD-010    state=CLOSED   BD-010: Update QUICKSTART.md Steps 11–13 for PM chat and new-project workflow
+  #11    pack-id=BD-011    state=CLOSED   BD-011: Add VS Code companion files in vscode-companion-templates/
+  #12    pack-id=BD-012    state=CLOSED   BD-012: Commit Methodology Guide v1 to maintenance-docs/origins/
+  #13    pack-id=BD-013    state=CLOSED   BD-013: Gemini CLI analysis document
+  #14    pack-id=BD-014    state=CLOSED   BD-014: Android support analysis document
+  #15    pack-id=BD-015    state=CLOSED   BD-015: Document SETUP.md/AGENT_KICKOFF.md generation workflow
+  #16    pack-id=BD-016    state=CLOSED   BD-016: Merge OT content into apple-app CLAUDE.md/AGENTS.md
+  #17    pack-id=BD-017    state=CLOSED   BD-017: Fix availability guard omission in iOS 26 platform features section
+  #18    pack-id=BD-018    state=CLOSED   BD-018: v7→v8 migration guide
+  #19    pack-id=BD-019    state=CLOSED   BD-019: Desktop Commander usage and PM chat scope limits (METHODOLOGY.md)
+  #20    pack-id=BD-020    state=OPEN     BD-020: C++ server support analysis
+  #21    pack-id=BD-021    state=CLOSED   BD-021: Redesign Apple platform architecture skills (three-tier)
+  #22    pack-id=BD-022    state=CLOSED   BD-022: C project template and c-language skill
+  #23    pack-id=BD-023    state=CLOSED   BD-023: Mixed-language skills for Apple projects (Objective-C, C, C++, graphics)
+  #24    pack-id=BD-024    state=CLOSED   BD-024: Unified template and platform skills redesign
+  #25    pack-id=BD-025    state=CLOSED   BD-025: Update DEPENDENCIES.md for Codex and Gemini CLIs
+  #26    pack-id=BD-026    state=CLOSED   BD-026: Split scripts by language/platform
+  #27    pack-id=BD-027    state=CLOSED   BD-027: Auditor agent design and implementation
+  #28    pack-id=BD-028    state=CLOSED   BD-028: PM-CHAT.md expansion for all three tools
+  #29    pack-id=BD-029    state=CLOSED   BD-029: Pack self-validation CI/CD
+  #30    pack-id=BD-030    state=CLOSED   BD-030: TOOL-COMPARISON.md living capability reference
+  #31    pack-id=BD-031    state=OPEN     BD-031: Evaluate publishing pack skills to skills.sh
+  #32    pack-id=BD-032    state=CLOSED   BD-032: Validate auditor observability infrastructure vs. configuration boundary
+  #33    pack-id=BD-033    state=CLOSED   BD-033: Validate auditor systemic error handling threshold
+  #34    pack-id=BD-034    state=CLOSED   BD-034: Validate auditor-ui scope breadth after ops split
+  #35    pack-id=BD-035    state=CLOSED   BD-035: Validate python-architecture skill loading for non-server Python
+  #36    pack-id=BD-036    state=OPEN     BD-036: IDE and editor coverage gaps
+  #37    pack-id=BD-037    state=OPEN     BD-037: Platform update cycle observability
+  #38    pack-id=BD-038    state=CLOSED   BD-038: Dynamic skill management mid-project
+  #39    pack-id=BD-039    state=OPEN     BD-039: Prototype / speed mode
+  #40    pack-id=BD-040    state=OPEN     BD-040: Fully autonomous execution mode
+  #41    pack-id=BD-041    state=CLOSED   BD-041: Project initialization brief guidance
+  #42    pack-id=BD-042    state=CLOSED   BD-042: Move pack reference docs out of project root
+  #43    pack-id=BD-043    state=CLOSED   BD-043: Gemini CLI native subagent architecture and full doc audit
+  #44    pack-id=BD-044    state=CLOSED   BD-044: Project setup paths: init-project.sh, QUICKSTART router, and existing-project onboarding
+  #45    pack-id=BD-045    state=CLOSED   BD-045: Champion the capabilities design pattern alongside LSP in architecture guidance
+  #46    pack-id=BD-046    state=CLOSED   BD-046: v10: Custom agent/skill support and prompt template reorganization
+  #47    pack-id=BD-047    state=CLOSED   BD-047: PM chat kickoff auto-discovery and install-check enhancement
+  #48    pack-id=BD-048    state=CLOSED   BD-048: Capability-addition discovery + install-check symmetry with kickoff
+  #49    pack-id=BD-049    state=CLOSED   BD-049: Prompt template labeled-section convention + validate-pack.py Check 10
+  #50    pack-id=BD-050    state=CLOSED   BD-050: Kickoff surface-declaration gate auto-inferable + kickoff prose hardcoded environmental assumptions (F-A)
+  #51    pack-id=BD-051    state=CLOSED   BD-051: METHODOLOGY canonical location at docs/pack/ + legacy cleanup (F-C + F-D, combined)
+  #52    pack-id=BD-052    state=CLOSED   BD-052: Migration leaves Pack version stale in STATUS.md (F-E)
+  #53    pack-id=BD-053    state=CLOSED   BD-053: Migration does not address unfilled trinity placeholders (F-F)
+  #54    pack-id=BD-054    state=CLOSED   BD-054: Solution leakage in PM-chat-generated prompts (F-G)
+  #55    pack-id=BD-055    state=OPEN     BD-055: Codex CLI: confirm surface-declaration gate behavior under workspace-write sandbox
+  #56    pack-id=BD-056    state=OPEN     BD-056: Codex CLI: document Form I `yes`-path sandbox escalation in METHODOLOGY § Procedure 7.3
+  #57    pack-id=BD-057    state=OPEN     BD-057: Gemini CLI: add plan-mode-detection check at start of Procedure 7 Form R
+  #58    pack-id=BD-058    state=OPEN     BD-058: Desktop Commander: document MCP-scope check in pre-Form-M discovery
+  #59    pack-id=BD-059    state=CLOSED   BD-059: v10 migration silently destroys project customization
+  #60    pack-id=BD-060    state=CLOSED   BD-060: TrackerProvider abstraction skeleton + GH backend implementation
+  #61    pack-id=BD-061    state=CLOSED   BD-061: `tracker.toml` schema + detection helper + gitignore entry
+  #62    pack-id=BD-062    state=CLOSED   BD-062: Trinity `## Document locations` Source column extension (D-6)
+  #63    pack-id=BD-063    state=CLOSED   BD-063: Issue forms `work-item.yml` and `inbound.yml` (D-4-V2)
+  #64    pack-id=BD-064    state=CLOSED   BD-064: Template-archive directory bootstrap + bd-v11.0 schemas
+  #65    pack-id=BD-065    state=CLOSED   BD-065: `tracker-migrate.sh forward` + idempotency markers + checkpoint
+  #66    pack-id=BD-066    state=CLOSED   BD-066: `pack tracker init` wrapper + label / template ensure step
+  #67    pack-id=BD-067    state=CLOSED   BD-067: `tracker-migrate.sh reverse` + sidecar (V1 §6.6 + §6.6.1, A2)
+  #68    pack-id=BD-068    state=CLOSED   BD-068: Round-trip test fixture + multi-template-version coverage
+  #69    pack-id=BD-069    state=CLOSED   BD-069: `template_version` HTML-comment + label dual carrier (D-18)
+  #70    pack-id=BD-070    state=CLOSED   BD-070: Typed error surfacing + diagnostic helper
+  #71    pack-id=BD-071    state=CLOSED   BD-071: Agent read-pattern adaptation (D-9, V1 §8 + V1 §13)
+  #72    pack-id=BD-072    state=CLOSED   BD-072: `scripts/lib/recommendation.sh` + state-file schema (D-19)
+  #73    pack-id=BD-073    state=CLOSED   BD-073: `pack tracker enable-recommendations` subcommand
+  #74    pack-id=BD-074    state=CLOSED   BD-074: `pack-startup` Step 8 + `pm-startup` Step 8 (D-19 integration)
+  #75    pack-id=BD-075    state=CLOSED   BD-075: `scripts/pack-help.sh` LCD shell verb + surface detection
+  #76    pack-id=BD-076    state=CLOSED   BD-076: HELP-FRAGMENT files (canonical + per-surface; L1 layout)
+  #77    pack-id=BD-077    state=CLOSED   BD-077: Per-CLI `pack-help` command/skill (Trinity-replicated × 2 surfaces)
+  #78    pack-id=BD-078    state=CLOSED   BD-078: validate-pack.py Check (`check_tracker_config`) (V1 §A.2)
+  #79    pack-id=BD-079    state=CLOSED   BD-079: validate-pack.py Check (recommendation-state schema)
+  #80    pack-id=BD-080    state=CLOSED   BD-080: `init-project.sh` extensions for v11 artifacts
+  #81    pack-id=BD-081    state=CLOSED   BD-081: Trinity addenda: per-CLI command files at pack-root + client (P-help reference)
+  #82    pack-id=BD-082    state=CLOSED   BD-082: validate-pack.py Checks for help / per-CLI parity / byte-identity
+  #83    pack-id=BD-083    state=CLOSED   BD-083: Aggregate CI workflow update + test runner
+  #84    pack-id=BD-084    state=CLOSED   BD-084: Create `supporting-docs/MIGRATION-v10-to-v11.md`
+  #85    pack-id=BD-085    state=CLOSED   BD-085: `scripts/migrate-v10-to-v11.sh` (the migration script itself)
+  #86    pack-id=BD-086    state=CLOSED   BD-086: README.md version table v11.0 row + Repository Layout updates
+  #87    pack-id=BD-087    state=CLOSED   BD-087: CHANGELOG.md v11.0 entry
+  #88    pack-id=BD-088    state=CLOSED   BD-088: Customization-preservation algorithm + truthful report (BD-059 fix)
+  #89    pack-id=BD-089    state=CLOSED   BD-089: validate-pack.py Check (customization-detection regression guard)
+  #90    pack-id=BD-090    state=CLOSED   BD-090: QUICKSTART.md callout + cross-references
+  #91    pack-id=BD-091    state=CLOSED   BD-091: BD-042 doc relocation (Phase 1: relocate)
+  #92    pack-id=BD-092    state=CLOSED   BD-092: Cross-reference sweep for relocated docs + v11 verbs
+  #93    pack-id=BD-093    state=OPEN     BD-093: v11.0 release pin (tag, README, CHANGELOG, MIGRATION cross-link)
+  #94    pack-id=BD-094    state=CLOSED   BD-094: `MERGE-STRATEGY.md` deliverable (per-file matrix + A1 UX)
+  #95    pack-id=BD-095    state=CLOSED   BD-095: `migrate-v10-to-v11.sh` two-phase `--dry-run` / `--apply` / `--resume` workflow
+  #96    pack-id=BD-096    state=CLOSED   BD-096: Synthetic-fixture set (general-use coverage; OT is one example)
+  #97    pack-id=BD-097    state=CLOSED   BD-097: Pre-release semantic audit pass
+  #98    pack-id=BD-098    state=CLOSED   BD-098: `OPTIONAL-FEATURES.md` tracker walkthrough (elevated user-doc home)
+  #99    pack-id=BD-099    state=CLOSED   BD-099: `DEPENDENCIES.md` `gh` optional-dep pointer
+  #100   pack-id=BD-100    state=OPEN     BD-100: Pack-implementation milestone checkpoints (3 strategic audits during v11)
+  #101   pack-id=BD-101    state=CLOSED   BD-101: Client-migration validation gates (3 in-script gates with pass/fail)
+  #102   pack-id=BD-102    state=OPEN     BD-102: Pack-repo dog-food migration (final v11 validation)
+  #103   pack-id=BD-103    state=CLOSED   BD-103: `pack tracker reset` verb + 3-level recovery documentation
+  #104   pack-id=BD-104    state=CLOSED   BD-104: Cross-pack rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md`
+  #105   pack-id=BD-105    state=OPEN     BD-105: STATUS.md phase-row dual-link rendering (tracker mode)
+  #106   pack-id=BD-106    state=CLOSED   BD-106: Phase task entity model + identifier scheme + parser/emitter
+  #107   pack-id=BD-107    state=CLOSED   BD-107: TD-NNN promotion-path tooling (Path 1 + Path 2 + direct close)
+  #108   pack-id=BD-108    state=CLOSED   BD-108: Cross-entity dependency link orchestration + cycle check + gate-check extension
+  #109   pack-id=BD-109    state=OPEN     BD-109: Project-side `auditor-issue-tracking` sub-agent
+  #110   pack-id=BD-110    state=OPEN     BD-110: Pack-side `pack-auditor` agent
+  #111   pack-id=BD-111    state=CLOSED   BD-111: Switch blocks/blocked-by from comment-marker to first-class GH dependency API
+  #112   pack-id=BD-112    state=CLOSED   BD-112: Three-way diff filename mangling can collide on similar paths
+  #113   pack-id=BD-113    state=CLOSED   BD-113: `test-fixtures/` persistent baseline directory + deterministic rebuild
+  #114   pack-id=BD-114    state=CLOSED   BD-114: `dry-run-migration.sh` parameterized read-only migration harness
+  #115   pack-id=BD-115    state=CLOSED   BD-115: `existing-project-mid-dev` fixture (pack added to in-progress project)
+  #116   pack-id=BD-116    state=CLOSED   BD-116: Persona contract assertions (template-derived expected output)
+  #117   pack-id=BD-117    state=CLOSED   BD-117: `RELEASE-GATE.md` per-major-version checklist
+  #118   pack-id=BD-118    state=CLOSED   BD-118: CI wiring for persona contracts + fixture verification
+  #119   pack-id=BD-119    state=CLOSED   BD-119: General N→N+1 migrator framework (`scripts/lib/migrator-core.sh`)
+  #120   pack-id=BD-120    state=CLOSED   BD-120: Parameterize realistic-OT fixture generator for any vN
+  #121   pack-id=BD-121    state=CLOSED   BD-121: Sunset v9 migration infrastructure
+  #122   pack-id=BD-122    state=CLOSED   BD-122: Document `test-fixtures/` `<vN>-<persona>` versioning convention
+  #123   pack-id=BD-123    state=CLOSED   BD-123: Relocate `tracker.toml.example` from repo root to `project-template/`
+  #124   pack-id=BD-124    state=CLOSED   BD-124: Pack-coder skills: `implementation-report`, `verification-harness`, `commit-discipline`
+  #125   pack-id=BD-125    state=CLOSED   BD-125: `dry-run-migration.sh` input contract + usage doc
+  #126   pack-id=BD-126    state=CLOSED   BD-126: pm-startup per-CLI sync + Procedure 5-S revert + validator Check 28 + manifest-missing handling
+  #127   pack-id=BD-127    state=CLOSED   BD-127: v10.1 backport doc-tidy: HISTORICAL prose qualifiers, METHODOLOGY CLI-PM-SETUP rephrase, agent-list pointer, PM-CHAT Edit-allowed alignment
+  #128   pack-id=BD-128    state=CLOSED   BD-128: CI test-suite repair: BD-080 Group 3 + v10-realistic-ot fixture + migrator collateral
+  #129   pack-id=BD-129    state=CLOSED   BD-129: Tracker libs pass `--repo` to all gh invocations (don't depend on git remote)
+  #130   pack-id=BD-130    state=CLOSED   BD-130: Wire `tracker_doctor_run` so `pack tracker doctor` works (BD-067 fix incomplete)
+  #131   pack-id=BD-131    state=CLOSED   BD-131: Set `forward_complete = true` at end of clean forward migration
+  #132   pack-id=BD-132    state=CLOSED   BD-132: BLOCKER: tracker disable/init close-step race destroys ~33% of BACKLOG entries
+  #133   pack-id=BD-133    state=CLOSED   BD-133: Reverse migration preserves BACKLOG.md header preamble
+  #134   pack-id=BD-134    state=CLOSED   BD-134: Tracker forward close retry-with-backoff (eliminate ~5% partial-write rate)
+  #135   pack-id=BD-135    state=CLOSED   BD-135: Disambiguate `tracker.toml.example` filename pair (rename pack-side and client-side)
+  #136   pack-id=BD-136    state=OPEN     BD-136: Trinity marker-section preservation pattern (Shape A + Shape B) + PM-chat authoring procedure
+  #137   pack-id=BD-137    state=CLOSED   BD-137: Retire `scripts/test-migrator-behavior-preservation.sh` (BD-119 byte-equivalence harness)
+  #138   pack-id=BD-138    state=CLOSED   BD-138: Schedule BD-136 implementation as a v11.0 batch (no v11.1 deferral)
+  #139   pack-id=BD-139    state=CLOSED   BD-139: BD-104 audit fix-follow (1 MAJOR + 2 MINOR + 2 NIT)
+  #140   pack-id=BD-140    state=CLOSED   BD-140: Skill-dimensions reframe — BACKLOG entries (umbrella)
+  #141   pack-id=BD-141    state=CLOSED   BD-141: Concrete python-data-architecture load predicate (lib/detect.sh marker function)
+  #142   pack-id=BD-142    state=CLOSED   BD-142: PLATFORM-SKILLS.md — 5 dimensions + Tier 0 + intersection + trigger tables
+  #143   pack-id=BD-143    state=CLOSED   BD-143: Trinity Skill-loading prose + audit-methodology rule 20 + architecture-review skill list
+  #144   pack-id=BD-144    state=CLOSED   BD-144: add-capability.sh D5 rename (role:apple-app → deployment:apple) + role:python-server intersection fix + v10→v11 migrator translation
+  #145   pack-id=BD-145    state=CLOSED   BD-145: init-project.sh — D1/D5 detection hint + python-data marker integration
+  #146   pack-id=BD-146    state=CLOSED   BD-146: validate-pack.py Check 31 (skill-cell consistency) + Check 27 extension
+  #147   pack-id=BD-147    state=CLOSED   BD-147: Extract S5b BD-035 rename helper into scripts/lib/migrator-skills.sh + Check 26 extension + BD-119 docs update
+  #148   pack-id=BD-148    state=CLOSED   BD-148: MIGRATION-v10-to-v11.md + MERGE-STRATEGY.md skill-model-changes documentation
+  #149   pack-id=BD-149    state=CLOSED   BD-149: PLATFORM-SKILLS.md "Extending this file" naming convention codification (no skill renames)
+  #150   pack-id=BD-150    state=CLOSED   BD-150: CHANGELOG v11.0 entry for skill-dimensions reframe + README skill-count refresh
+  #151   pack-id=BD-151    state=OPEN     BD-151: Tier 0 observability skill (deferred to v12)
+  #152   pack-id=BD-152    state=OPEN     BD-152: Tier 0 accessibility skill (deferred to v12)
+  #153   pack-id=BD-153    state=OPEN     BD-153: Tier 0 concurrency-architecture skill (deferred to v12)
+  #154   pack-id=BD-154    state=OPEN     BD-154: Skill-versioning frontmatter convention (deferred to v12)
+  #155   pack-id=BD-155    state=OPEN     BD-155: Naming-convention enforcement migration (deferred to v12)
+  #156   pack-id=BD-156    state=CLOSED   BD-156: protobuf-patterns skill — extract Proto3 schema rules from grpc-patterns; standalone-usable via intersection table
+  #157   pack-id=BD-157    state=CLOSED   BD-157: apple-swiftdata-patterns skill — SwiftData object-store rules for Apple platforms
+  #158   pack-id=BD-158    state=CLOSED   BD-158: swift-concurrency-patterns skill — Modern Swift Concurrency (async/await, actors, Sendable) + Grand Central Dispatch (GCD)
+  #159   pack-id=BD-159    state=CLOSED   BD-159: Codify skill / agent maintainability principle in pack memory + PACK-AGENTS pointer + PACK-CHAT triage rule
+  #160   pack-id=BD-160    state=CLOSED   BD-160: Wire `v11-realistic-ot` fixture (extend `_build_realistic_for_version v11` case dispatch + verify C2/C3 customizations apply on v11 surface)
+  #161   pack-id=BD-161    state=CLOSED   BD-161: v10→v11 migrator: install net-new v11 SKILL.md dirs (BD-156/157/158 + python-server-architecture / python-data-architecture split)
+  #162   pack-id=BD-162    state=CLOSED   BD-162: Extend `deployment-python/SKILL.md` with metrics + tracing + sampling + alerting + retention rules (cross-cutting from BD-032 audit)
+  #163   pack-id=BD-163    state=CLOSED   BD-163: CI repair: declare fixture dependencies in test runners + reorder workflow + audit + document invariant (retroactive BD-147 CI fix)
+  #164   pack-id=BD-164    state=CLOSED   BD-164: Per-entry split helpers (decompose + mirror generator + `_toc.md` regenerator)
+  #165   pack-id=BD-165    state=CLOSED   BD-165: `_v10_to_v11_decompose_streams` 6th sub-operation in v10→v11 post-dispatch hook + `--force-overwrite-mirror` flag (BD-095 bridge)
+  #166   pack-id=BD-166    state=CLOSED   BD-166: `init-project.sh` greenfield per-entry tree install (S11 stage extension)
+  #167   pack-id=BD-167    state=CLOSED   BD-167: Per-entry split client artifact installs (pack-product templates + install plumbing; absorbs BD-161)
+  #168   pack-id=BD-168    state=CLOSED   BD-168: `validate-pack.py` Check 32 (mirror-in-sync) + Check 33 (TOC-in-sync) + Check 34 (cross-reference integrity)
+  #169   pack-id=BD-169    state=CLOSED   BD-169: Per-entry split pack-product wording updates (PM-CHAT.md + STATUS.md disclaimer + MERGE-STRATEGY + MIGRATION-v10-to-v11 + audit-methodology SKILL.md scope + skill directives)
+  #170   pack-id=BD-170    state=CLOSED   BD-170: Pre-decomposed v11-realistic-ot fixture per-entry tree extension (combined with BD-160 in commit 19f per Pack-Chat-direct R-2 resolution)
+  #171   pack-id=BD-171    state=OPEN     BD-171: Real-OT scratch-GH-repo migration test fixture + harness
+  #172   pack-id=BD-172    state=OPEN     BD-172: Extend Gate 2 (Phase A verify) to cover post-dispatch operations (BD-104 rename + BD-035 advisory + BD-144 advisory)
+  #173   pack-id=BD-173    state=CLOSED   BD-173: Project-side cleanup (project-template/ trinity + agents + skills + ops docs consolidation)
+  #174   pack-id=BD-174    state=OPEN     BD-174: Scratch-pack-clone migration + multi-toggle test harness
+  #175   pack-id=BD-175    state=CLOSED   BD-175: EMERGENCY: pack/project boundary audit + re-architecture (v11 pack-bias remediation)
+  #176   pack-id=BD-176    state=CLOSED   BD-176: Expand RC9 manifest-regen trigger to cover all fixture-affecting surfaces (pack-ops/ + supporting-docs/install-to-client files)
+  #177   pack-id=BD-177    state=CLOSED   BD-177: Coordinate scripts/pack-help.sh:86 sentinel-regex with pack-ops/HELP-FRAGMENT-PACK.md:37 prose post-BD-175 Commit 2 relocation
+  #178   pack-id=BD-178    state=CLOSED   BD-178: Align pre-existing trinity asymmetries in `project-template/{CLAUDE,AGENTS,GEMINI}.md`
+  #179   pack-id=BD-179    state=CLOSED   BD-179: Validate-pack.py Check 40 pack-ops/ bare cross-reference scanner (F3 — architect-pass)
+  #180   pack-id=BD-180    state=CLOSED   BD-180: Extend `cmd_update` mapping symmetry coverage to remaining surfaces (gemini commands + pm-startup skill + .claude settings example + per-entry templates)
+  #181   pack-id=BD-181    state=CLOSED   BD-181: Extend `scripts/validate-pack.py` Check 18 H2 to cover pack-root trinity (parity guard)
+  #182   pack-id=BD-182    state=CLOSED   BD-182: Cross-CLI reference normalization across project-template trinity (settings paths, commands, tool-specific URIs)
+  #183   pack-id=BD-183    state=CLOSED   BD-183: Extend `scripts/validate-pack.py` Check 16 + Check 19 to cover pack-root trinity (parity guard, mirroring BD-181) + BD-181 NIT-1 fold-in
+  #184   pack-id=BD-184    state=CLOSED   BD-184: Add Check 42 — CI workflow wires all per-check test files (prevention check for "test silently dead in CI" gap class)
+  #185   pack-id=BD-185    state=OPEN     BD-185: Phase parts hierarchy + tracker-mode execution ordering
+  #186   pack-id=BD-186    state=CLOSED   BD-186: Groupings requirements + v11.0/v11.1 scope decision
+  #187   pack-id=BD-187    state=OPEN     BD-187: Standalone entry-type instruction doc for external-tool consumption
+  #188   pack-id=BD-188    state=OPEN     BD-188: Phase-Iteration sprint view (single all-phases tracker Project sliced by Iteration field)
+  #189   pack-id=BD-189    state=OPEN     BD-189: v11.1+ groupings implementation (architect/planner/coder cycle)
+  #190   pack-id=BD-190    state=CLOSED   BD-190: Comprehensive audit-vocabulary-gap sweep across pack-shipped files (post-H.9/H.10 cascade)
+  #191   pack-id=BD-191    state=CLOSED   BD-191: Product Specialist (PS) requirements + v11.0/v11.1+ scope decision
+  #192   pack-id=BD-192    state=OPEN     BD-192: v11.1+ Product Specialist (PS) implementation (architect/planner/coder cycle)
+  #193   pack-id=BD-193    state=CLOSED   BD-193: Code Red 2: BD/TD/Path scope contamination cleanup (Batch 19d-prep)
+  #194   pack-id=BD-194    state=CLOSED   BD-194: Check 24 byte-identity gate replacement (post-BD-193 architectural baseline fix)
+  #195   pack-id=BD-195    state=CLOSED   BD-195: v11.0 pristine-state recovery before BD-185 restart (full-repo) (Code Red 3)
+  #196   pack-id=BD-196    state=CLOSED   BD-196: Document concision + boundary-completeness guardrails (rule-corpus restructure + single-SSOT discoverability)
+  #197   pack-id=BD-197    state=OPEN     BD-197: Worktree isolation: remove the prohibition and enable safe, opt-in parallel agent execution (pack + client; graceful degradation)
+  #198   pack-id=BD-198    state=OPEN     BD-198: Formalize `pack-ops/PACK-MEMORY-RATIONALE.md` as a PM-only surface (close BD-196 classification gap)
+  #199   pack-id=BD-199    state=CLOSED   BD-199: Optimize validate-pack.py runtime regression (Check 43 per-iteration regex recompilation)
+  #200   pack-id=BD-200    state=CLOSED   BD-200: Project-side capability ACTIVATION (no pack-clone dependency): project-side `activate-capability.sh` + tracked conditional-file pool + single-source capability tables + Procedure 6 redesign
+  #201   pack-id=BD-201    state=OPEN     BD-201: Antigravity (Gemini CLI successor) MCP config relocation: settings.json → mcp_config.json
+  #202   pack-id=BD-202    state=OPEN     BD-202: Universal `pack update` propagation engine (delete + clean-modify correctness across asset classes; `x-`-safe, customization-preserving)
+  #203   pack-id=BD-203    state=CLOSED   BD-203: Pack self-migration Phase 1: monolithic flat files → per-entry directory trees (Mode 1 → Mode 2)
+  #204   pack-id=BD-204    state=OPEN     BD-204: Pack self-migration Phase 2: per-entry backlog → GH Issues (tracker Mode 2 → Mode 3)
+  #205   pack-id=BD-205    state=OPEN     BD-205: v11.0 final repo readiness audit + full test/audit/fix cycle (the last gate before launch)
+  #206   pack-id=BD-206    state=OPEN     BD-206: Project-side per-entry no-mirror application (apply the corrected standard to client assets)
+  #207   pack-id=BD-207    state=OPEN     BD-207: Project-side per-entry ↔ GH-Issues reversible tracker (apply the tracker standard to client assets)
+  #208   pack-id=BD-208    state=CLOSED   BD-208: Pack Chat editing-scope rule: coder does all MAJOR edits (incl. PM-only files, scoped in) under the standard review/fix cycle; Pack Chat does only MINOR edits to the small PM-only set + commits + irreducible destructive ops
+  #209   pack-id=BD-209    state=CLOSED   BD-209: Rename the `PM-only` commit-scope keyword → `pack-chat-only` (overloaded name; misleads agents)
+  #210   pack-id=BD-210    state=OPEN     BD-210: v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
+  #211   pack-id=BD-211    state=CLOSED   BD-211: Canonicalize the per-entry header grammar: eliminate suffix sub-entry forms + normalize title parentheticals; validator-enforced (BD-204 prerequisite)
+  #212   pack-id=BD-212    state=OPEN     BD-212: `pack tracker reset` verb + 3-level recovery (pack side; supersedes BD-103 with BD-213)
+  #213   pack-id=BD-213    state=OPEN     BD-213: `pack tracker reset` + 3-level recovery, project-side application (supersedes BD-103 with BD-212)
+
+LABELS TO DELETE: 49
+  bd-entry
+  derived-from:TD-031
+  derived-from:TD-040
+  external
+  inbound
+  needs-triage
+  pack-feedback
+  pf-category:agent-perf
+  pf-category:friction
+  pf-category:open-question
+  pf-category:prompt
+  pf-category:workflow
+  phase-epic
+  phase-task
+  promoted-to:phase-3.4
+  promoted-to:phase-7
+  scope:dependency
+  scope:feature
+  scope:perf
+  scope:version
+  severity:critical
+  severity:functional
+  severity:polish
+  status:cancelled
+  status:deferred
+  status:deprecated
+  status:done
+  status:in-progress
+  status:in-review
+  status:open
+  status:pending
+  status:resolved
+  status:unblocked
+  td-entry
+  template:bd-v11.0
+  template:inbound-v11.0
+  template:phase-epic-v11.0
+  template:phase-task-v11.0
+  template:td-v11.0
+  template:work-item-v11.0
+  type:bug
+  type:chore
+  type:docs
+  type:feat
+  type:feature
+  type:fix
+  type:infra
+  type:refactor
+  work-item
+
+RECOMMENDATION: archive a copy of the manifest OUTSIDE /tmp before any
+real run — it is the ONLY audit artifact (a personal account logs no
+issue-deletion event). Manifest: /tmp/bd214-gh-issue-deletion-manifest-20260613T190725Z.json
+
+-----------------------------------------------------------------------------
+DESTRUCTIVE EXECUTION GATE
+This will PERMANENTLY delete the issues + labels previewed above on
+DShaneNYC/optiquity-ai-agent-config-pack. There is no undo and no audit trail on a personal account.
+Type EXACTLY the following phrase to proceed, or anything else to abort:
+  DELETE ALL PACK ISSUES AND LABELS
+-----------------------------------------------------------------------------
+confirmation> 
+-----------------------------------------------------------------------------
+EXECUTE — deleting issues (serial, >=1s pacing)
+-----------------------------------------------------------------------------
+  [1/213] #1 pack-id=BD-001 node=I_kwDORzTrHM8AAAABFKq8Vg -> DELETED
+  [2/213] #2 pack-id=BD-002 node=I_kwDORzTrHM8AAAABFKrASw -> DELETED
+  [3/213] #3 pack-id=BD-003 node=I_kwDORzTrHM8AAAABFKrC-Q -> DELETED
+  [4/213] #4 pack-id=BD-004 node=I_kwDORzTrHM8AAAABFKrGWw -> DELETED
+  [5/213] #5 pack-id=BD-005 node=I_kwDORzTrHM8AAAABFKrKOw -> DELETED
+  [6/213] #6 pack-id=BD-006 node=I_kwDORzTrHM8AAAABFKrNzQ -> DELETED
+  [7/213] #7 pack-id=BD-007 node=I_kwDORzTrHM8AAAABFKrRwg -> DELETED
+  [8/213] #8 pack-id=BD-008 node=I_kwDORzTrHM8AAAABFKrVOw -> DELETED
+  [9/213] #9 pack-id=BD-009 node=I_kwDORzTrHM8AAAABFKrZRw -> DELETED
+  [10/213] #10 pack-id=BD-010 node=I_kwDORzTrHM8AAAABFKrb0w -> DELETED
+  [11/213] #11 pack-id=BD-011 node=I_kwDORzTrHM8AAAABFKrdiQ -> DELETED
+  [12/213] #12 pack-id=BD-012 node=I_kwDORzTrHM8AAAABFKrfuw -> DELETED
+  [13/213] #13 pack-id=BD-013 node=I_kwDORzTrHM8AAAABFKrhRQ -> DELETED
+  [14/213] #14 pack-id=BD-014 node=I_kwDORzTrHM8AAAABFKrjbQ -> DELETED
+  [15/213] #15 pack-id=BD-015 node=I_kwDORzTrHM8AAAABFKrnHQ -> DELETED
+  [16/213] #16 pack-id=BD-016 node=I_kwDORzTrHM8AAAABFKrq5A -> DELETED
+  [17/213] #17 pack-id=BD-017 node=I_kwDORzTrHM8AAAABFKrvKg -> DELETED
+  [18/213] #18 pack-id=BD-018 node=I_kwDORzTrHM8AAAABFKryww -> DELETED
+  [19/213] #19 pack-id=BD-019 node=I_kwDORzTrHM8AAAABFKr1jg -> DELETED
+  [20/213] #20 pack-id=BD-020 node=I_kwDORzTrHM8AAAABFKr5kg -> DELETED
+  [21/213] #21 pack-id=BD-021 node=I_kwDORzTrHM8AAAABFKr8vw -> DELETED
+  [22/213] #22 pack-id=BD-022 node=I_kwDORzTrHM8AAAABFKsAFw -> DELETED
+  [23/213] #23 pack-id=BD-023 node=I_kwDORzTrHM8AAAABFKsBng -> DELETED
+  [24/213] #24 pack-id=BD-024 node=I_kwDORzTrHM8AAAABFKsDvw -> DELETED
+  [25/213] #25 pack-id=BD-025 node=I_kwDORzTrHM8AAAABFKsF7Q -> DELETED
+  [26/213] #26 pack-id=BD-026 node=I_kwDORzTrHM8AAAABFKsHbw -> DELETED
+  [27/213] #27 pack-id=BD-027 node=I_kwDORzTrHM8AAAABFKsJFQ -> DELETED
+  [28/213] #28 pack-id=BD-028 node=I_kwDORzTrHM8AAAABFKsMqg -> DELETED
+  [29/213] #29 pack-id=BD-029 node=I_kwDORzTrHM8AAAABFKsQHw -> DELETED
+  [30/213] #30 pack-id=BD-030 node=I_kwDORzTrHM8AAAABFKsTWA -> DELETED
+  [31/213] #31 pack-id=BD-031 node=I_kwDORzTrHM8AAAABFKsW1w -> DELETED
+  [32/213] #32 pack-id=BD-032 node=I_kwDORzTrHM8AAAABFKsbDA -> DELETED
+  [33/213] #33 pack-id=BD-033 node=I_kwDORzTrHM8AAAABFKseMg -> DELETED
+  [34/213] #34 pack-id=BD-034 node=I_kwDORzTrHM8AAAABFKsicg -> DELETED
+  [35/213] #35 pack-id=BD-035 node=I_kwDORzTrHM8AAAABFKsmmQ -> DELETED
+  [36/213] #36 pack-id=BD-036 node=I_kwDORzTrHM8AAAABFKsoRQ -> DELETED
+  [37/213] #37 pack-id=BD-037 node=I_kwDORzTrHM8AAAABFKsp6Q -> DELETED
+  [38/213] #38 pack-id=BD-038 node=I_kwDORzTrHM8AAAABFKsrnA -> DELETED
+  [39/213] #39 pack-id=BD-039 node=I_kwDORzTrHM8AAAABFKstyA -> DELETED
+  [40/213] #40 pack-id=BD-040 node=I_kwDORzTrHM8AAAABFKswqw -> DELETED
+  [41/213] #41 pack-id=BD-041 node=I_kwDORzTrHM8AAAABFKs0Ag -> DELETED
+  [42/213] #42 pack-id=BD-042 node=I_kwDORzTrHM8AAAABFKs22A -> DELETED
+  [43/213] #43 pack-id=BD-043 node=I_kwDORzTrHM8AAAABFKs68A -> DELETED
+  [44/213] #44 pack-id=BD-044 node=I_kwDORzTrHM8AAAABFKs-oQ -> DELETED
+  [45/213] #45 pack-id=BD-045 node=I_kwDORzTrHM8AAAABFKtCIQ -> DELETED
+  [46/213] #46 pack-id=BD-046 node=I_kwDORzTrHM8AAAABFKtFvA -> DELETED
+  [47/213] #47 pack-id=BD-047 node=I_kwDORzTrHM8AAAABFKtJUw -> DELETED
+  [48/213] #48 pack-id=BD-048 node=I_kwDORzTrHM8AAAABFKtMlw -> DELETED
+  [49/213] #49 pack-id=BD-049 node=I_kwDORzTrHM8AAAABFKtQSw -> DELETED
+  [50/213] #50 pack-id=BD-050 node=I_kwDORzTrHM8AAAABFKtRyA -> DELETED
+  [51/213] #51 pack-id=BD-051 node=I_kwDORzTrHM8AAAABFKtT6w -> DELETED
+  [52/213] #52 pack-id=BD-052 node=I_kwDORzTrHM8AAAABFKtWJQ -> DELETED
+  [53/213] #53 pack-id=BD-053 node=I_kwDORzTrHM8AAAABFKtZ3A -> DELETED
+  [54/213] #54 pack-id=BD-054 node=I_kwDORzTrHM8AAAABFKtd6w -> DELETED
+  [55/213] #55 pack-id=BD-055 node=I_kwDORzTrHM8AAAABFKthaQ -> DELETED
+  [56/213] #56 pack-id=BD-056 node=I_kwDORzTrHM8AAAABFKtlTA -> DELETED
+  [57/213] #57 pack-id=BD-057 node=I_kwDORzTrHM8AAAABFKtpXA -> DELETED
+  [58/213] #58 pack-id=BD-058 node=I_kwDORzTrHM8AAAABFKttHA -> DELETED
+  [59/213] #59 pack-id=BD-059 node=I_kwDORzTrHM8AAAABFKtv0g -> DELETED
+  [60/213] #60 pack-id=BD-060 node=I_kwDORzTrHM8AAAABFKtzTw -> DELETED
+  [61/213] #61 pack-id=BD-061 node=I_kwDORzTrHM8AAAABFKt2oA -> DELETED
+  [62/213] #62 pack-id=BD-062 node=I_kwDORzTrHM8AAAABFKt4vA -> DELETED
+  [63/213] #63 pack-id=BD-063 node=I_kwDORzTrHM8AAAABFKt6Uw -> DELETED
+  [64/213] #64 pack-id=BD-064 node=I_kwDORzTrHM8AAAABFKt8HA -> DELETED
+  [65/213] #65 pack-id=BD-065 node=I_kwDORzTrHM8AAAABFKuAKQ -> DELETED
+  [66/213] #66 pack-id=BD-066 node=I_kwDORzTrHM8AAAABFKuDtw -> DELETED
+  [67/213] #67 pack-id=BD-067 node=I_kwDORzTrHM8AAAABFKuG3A -> DELETED
+  [68/213] #68 pack-id=BD-068 node=I_kwDORzTrHM8AAAABFKuKcw -> DELETED
+  [69/213] #69 pack-id=BD-069 node=I_kwDORzTrHM8AAAABFKuN_Q -> DELETED
+  [70/213] #70 pack-id=BD-070 node=I_kwDORzTrHM8AAAABFKuRWg -> DELETED
+  [71/213] #71 pack-id=BD-071 node=I_kwDORzTrHM8AAAABFKuUUw -> DELETED
+  [72/213] #72 pack-id=BD-072 node=I_kwDORzTrHM8AAAABFKuXiA -> DELETED
+  [73/213] #73 pack-id=BD-073 node=I_kwDORzTrHM8AAAABFKuZiQ -> DELETED
+  [74/213] #74 pack-id=BD-074 node=I_kwDORzTrHM8AAAABFKubEw -> DELETED
+  [75/213] #75 pack-id=BD-075 node=I_kwDORzTrHM8AAAABFKucnA -> DELETED
+  [76/213] #76 pack-id=BD-076 node=I_kwDORzTrHM8AAAABFKufLQ -> DELETED
+  [77/213] #77 pack-id=BD-077 node=I_kwDORzTrHM8AAAABFKuhAQ -> DELETED
+  [78/213] #78 pack-id=BD-078 node=I_kwDORzTrHM8AAAABFKuj6Q -> DELETED
+  [79/213] #79 pack-id=BD-079 node=I_kwDORzTrHM8AAAABFKunJA -> DELETED
+  [80/213] #80 pack-id=BD-080 node=I_kwDORzTrHM8AAAABFKuqqw -> DELETED
+  [81/213] #81 pack-id=BD-081 node=I_kwDORzTrHM8AAAABFKutjQ -> DELETED
+  [82/213] #82 pack-id=BD-082 node=I_kwDORzTrHM8AAAABFKuwUQ -> DELETED
+  [83/213] #83 pack-id=BD-083 node=I_kwDORzTrHM8AAAABFKuzhg -> DELETED
+  [84/213] #84 pack-id=BD-084 node=I_kwDORzTrHM8AAAABFKu2uw -> DELETED
+  [85/213] #85 pack-id=BD-085 node=I_kwDORzTrHM8AAAABFKu5HQ -> DELETED
+  [86/213] #86 pack-id=BD-086 node=I_kwDORzTrHM8AAAABFKu76Q -> DELETED
+  [87/213] #87 pack-id=BD-087 node=I_kwDORzTrHM8AAAABFKu-CQ -> DELETED
+  [88/213] #88 pack-id=BD-088 node=I_kwDORzTrHM8AAAABFKu_rg -> DELETED
+  [89/213] #89 pack-id=BD-089 node=I_kwDORzTrHM8AAAABFKvBug -> DELETED
+  [90/213] #90 pack-id=BD-090 node=I_kwDORzTrHM8AAAABFKvEWw -> DELETED
+  [91/213] #91 pack-id=BD-091 node=I_kwDORzTrHM8AAAABFKvHVQ -> DELETED
+  [92/213] #92 pack-id=BD-092 node=I_kwDORzTrHM8AAAABFKvLRQ -> DELETED
+  [93/213] #93 pack-id=BD-093 node=I_kwDORzTrHM8AAAABFKvObw -> DELETED
+  [94/213] #94 pack-id=BD-094 node=I_kwDORzTrHM8AAAABFKvRsQ -> DELETED
+  [95/213] #95 pack-id=BD-095 node=I_kwDORzTrHM8AAAABFKvVKQ -> DELETED
+  [96/213] #96 pack-id=BD-096 node=I_kwDORzTrHM8AAAABFKvYqQ -> DELETED
+  [97/213] #97 pack-id=BD-097 node=I_kwDORzTrHM8AAAABFKvbvQ -> DELETED
+  [98/213] #98 pack-id=BD-098 node=I_kwDORzTrHM8AAAABFKvfZA -> DELETED
+  [99/213] #99 pack-id=BD-099 node=I_kwDORzTrHM8AAAABFKvhjA -> DELETED
+  [100/213] #100 pack-id=BD-100 node=I_kwDORzTrHM8AAAABFKvjGA -> DELETED
+  [101/213] #101 pack-id=BD-101 node=I_kwDORzTrHM8AAAABFKvktg -> DELETED
+  [102/213] #102 pack-id=BD-102 node=I_kwDORzTrHM8AAAABFKvnag -> DELETED
+  [103/213] #103 pack-id=BD-103 node=I_kwDORzTrHM8AAAABFKvrTA -> DELETED
+  [104/213] #104 pack-id=BD-104 node=I_kwDORzTrHM8AAAABFKvucQ -> DELETED
+  [105/213] #105 pack-id=BD-105 node=I_kwDORzTrHM8AAAABFKvx1A -> DELETED
+  [106/213] #106 pack-id=BD-106 node=I_kwDORzTrHM8AAAABFKv1Hw -> DELETED
+  [107/213] #107 pack-id=BD-107 node=I_kwDORzTrHM8AAAABFKv4lw -> DELETED
+  [108/213] #108 pack-id=BD-108 node=I_kwDORzTrHM8AAAABFKv70w -> DELETED
+  [109/213] #109 pack-id=BD-109 node=I_kwDORzTrHM8AAAABFKv-7g -> DELETED
+  [110/213] #110 pack-id=BD-110 node=I_kwDORzTrHM8AAAABFKwC3g -> DELETED
+  [111/213] #111 pack-id=BD-111 node=I_kwDORzTrHM8AAAABFKwEZg -> DELETED
+  [112/213] #112 pack-id=BD-112 node=I_kwDORzTrHM8AAAABFKwGlw -> DELETED
+  [113/213] #113 pack-id=BD-113 node=I_kwDORzTrHM8AAAABFKwIAA -> DELETED
+  [114/213] #114 pack-id=BD-114 node=I_kwDORzTrHM8AAAABFKwKjw -> DELETED
+  [115/213] #115 pack-id=BD-115 node=I_kwDORzTrHM8AAAABFKwO9Q -> DELETED
+  [116/213] #116 pack-id=BD-116 node=I_kwDORzTrHM8AAAABFKwSfw -> DELETED
+  [117/213] #117 pack-id=BD-117 node=I_kwDORzTrHM8AAAABFKwVaw -> DELETED
+  [118/213] #118 pack-id=BD-118 node=I_kwDORzTrHM8AAAABFKwZZw -> DELETED
+  [119/213] #119 pack-id=BD-119 node=I_kwDORzTrHM8AAAABFKwcfw -> DELETED
+  [120/213] #120 pack-id=BD-120 node=I_kwDORzTrHM8AAAABFKwfXw -> DELETED
+  [121/213] #121 pack-id=BD-121 node=I_kwDORzTrHM8AAAABFKwjgw -> DELETED
+  [122/213] #122 pack-id=BD-122 node=I_kwDORzTrHM8AAAABFKwlww -> DELETED
+  [123/213] #123 pack-id=BD-123 node=I_kwDORzTrHM8AAAABFKwnlg -> DELETED
+  [124/213] #124 pack-id=BD-124 node=I_kwDORzTrHM8AAAABFKwpKQ -> DELETED
+  [125/213] #125 pack-id=BD-125 node=I_kwDORzTrHM8AAAABFKwq5g -> DELETED
+  [126/213] #126 pack-id=BD-126 node=I_kwDORzTrHM8AAAABFKwupQ -> DELETED
+  [127/213] #127 pack-id=BD-127 node=I_kwDORzTrHM8AAAABFKwyLg -> DELETED
+  [128/213] #128 pack-id=BD-128 node=I_kwDORzTrHM8AAAABFKw1Yw -> DELETED
+  [129/213] #129 pack-id=BD-129 node=I_kwDORzTrHM8AAAABFKw4tA -> DELETED
+  [130/213] #130 pack-id=BD-130 node=I_kwDORzTrHM8AAAABFKw8AQ -> DELETED
+  [131/213] #131 pack-id=BD-131 node=I_kwDORzTrHM8AAAABFKw-9A -> DELETED
+  [132/213] #132 pack-id=BD-132 node=I_kwDORzTrHM8AAAABFKxCdw -> DELETED
+  [133/213] #133 pack-id=BD-133 node=I_kwDORzTrHM8AAAABFKxF9w -> DELETED
+  [134/213] #134 pack-id=BD-134 node=I_kwDORzTrHM8AAAABFKxJUA -> DELETED
+  [135/213] #135 pack-id=BD-135 node=I_kwDORzTrHM8AAAABFKxKqg -> DELETED
+  [136/213] #136 pack-id=BD-136 node=I_kwDORzTrHM8AAAABFKxMdw -> DELETED
+  [137/213] #137 pack-id=BD-137 node=I_kwDORzTrHM8AAAABFKxOJg -> DELETED
+  [138/213] #138 pack-id=BD-138 node=I_kwDORzTrHM8AAAABFKxQ9g -> DELETED
+  [139/213] #139 pack-id=BD-139 node=I_kwDORzTrHM8AAAABFKxTww -> DELETED
+  [140/213] #140 pack-id=BD-140 node=I_kwDORzTrHM8AAAABFKxWqw -> DELETED
+  [141/213] #141 pack-id=BD-141 node=I_kwDORzTrHM8AAAABFKxZgA -> DELETED
+  [142/213] #142 pack-id=BD-142 node=I_kwDORzTrHM8AAAABFKxcQg -> DELETED
+  [143/213] #143 pack-id=BD-143 node=I_kwDORzTrHM8AAAABFKxfLQ -> DELETED
+  [144/213] #144 pack-id=BD-144 node=I_kwDORzTrHM8AAAABFKxhxA -> DELETED
+  [145/213] #145 pack-id=BD-145 node=I_kwDORzTrHM8AAAABFKxkfQ -> DELETED
+  [146/213] #146 pack-id=BD-146 node=I_kwDORzTrHM8AAAABFKxl6g -> DELETED
+  [147/213] #147 pack-id=BD-147 node=I_kwDORzTrHM8AAAABFKxnbQ -> DELETED
+  [148/213] #148 pack-id=BD-148 node=I_kwDORzTrHM8AAAABFKxo1A -> DELETED
+  [149/213] #149 pack-id=BD-149 node=I_kwDORzTrHM8AAAABFKxqPg -> DELETED
+  [150/213] #150 pack-id=BD-150 node=I_kwDORzTrHM8AAAABFKxrwA -> DELETED
+  [151/213] #151 pack-id=BD-151 node=I_kwDORzTrHM8AAAABFKxuhg -> DELETED
+  [152/213] #152 pack-id=BD-152 node=I_kwDORzTrHM8AAAABFKxxLw -> DELETED
+  [153/213] #153 pack-id=BD-153 node=I_kwDORzTrHM8AAAABFKxzxQ -> DELETED
+  [154/213] #154 pack-id=BD-154 node=I_kwDORzTrHM8AAAABFKx2mA -> DELETED
+  [155/213] #155 pack-id=BD-155 node=I_kwDORzTrHM8AAAABFKx58g -> DELETED
+  [156/213] #156 pack-id=BD-156 node=I_kwDORzTrHM8AAAABFKx9JA -> DELETED
+  [157/213] #157 pack-id=BD-157 node=I_kwDORzTrHM8AAAABFKx__w -> DELETED
+  [158/213] #158 pack-id=BD-158 node=I_kwDORzTrHM8AAAABFKyC1Q -> DELETED
+  [159/213] #159 pack-id=BD-159 node=I_kwDORzTrHM8AAAABFKyFzQ -> DELETED
+  [160/213] #160 pack-id=BD-160 node=I_kwDORzTrHM8AAAABFKyHUA -> DELETED
+  [161/213] #161 pack-id=BD-161 node=I_kwDORzTrHM8AAAABFKyIpQ -> DELETED
+  [162/213] #162 pack-id=BD-162 node=I_kwDORzTrHM8AAAABFKyKFA -> DELETED
+  [163/213] #163 pack-id=BD-163 node=I_kwDORzTrHM8AAAABFKyNRA -> DELETED
+  [164/213] #164 pack-id=BD-164 node=I_kwDORzTrHM8AAAABFKyQOA -> DELETED
+  [165/213] #165 pack-id=BD-165 node=I_kwDORzTrHM8AAAABFKyTCQ -> DELETED
+  [166/213] #166 pack-id=BD-166 node=I_kwDORzTrHM8AAAABFKyVvw -> DELETED
+  [167/213] #167 pack-id=BD-167 node=I_kwDORzTrHM8AAAABFKyYrg -> DELETED
+  [168/213] #168 pack-id=BD-168 node=I_kwDORzTrHM8AAAABFKybwA -> DELETED
+  [169/213] #169 pack-id=BD-169 node=I_kwDORzTrHM8AAAABFKyfBQ -> DELETED
+  [170/213] #170 pack-id=BD-170 node=I_kwDORzTrHM8AAAABFKyiAg -> DELETED
+  [171/213] #171 pack-id=BD-171 node=I_kwDORzTrHM8AAAABFKykpg -> DELETED
+  [172/213] #172 pack-id=BD-172 node=I_kwDORzTrHM8AAAABFKymHQ -> DELETED
+  [173/213] #173 pack-id=BD-173 node=I_kwDORzTrHM8AAAABFKynlA -> DELETED
+  [174/213] #174 pack-id=BD-174 node=I_kwDORzTrHM8AAAABFKypCw -> DELETED
+  [175/213] #175 pack-id=BD-175 node=I_kwDORzTrHM8AAAABFKyr7Q -> DELETED
+  [176/213] #176 pack-id=BD-176 node=I_kwDORzTrHM8AAAABFKyu5A -> DELETED
+  [177/213] #177 pack-id=BD-177 node=I_kwDORzTrHM8AAAABFKyx3g -> DELETED
+  [178/213] #178 pack-id=BD-178 node=I_kwDORzTrHM8AAAABFKy07Q -> DELETED
+  [179/213] #179 pack-id=BD-179 node=I_kwDORzTrHM8AAAABFKy3-w -> DELETED
+  [180/213] #180 pack-id=BD-180 node=I_kwDORzTrHM8AAAABFKy67A -> DELETED
+  [181/213] #181 pack-id=BD-181 node=I_kwDORzTrHM8AAAABFKy9tw -> DELETED
+  [182/213] #182 pack-id=BD-182 node=I_kwDORzTrHM8AAAABFKzA1Q -> DELETED
+  [183/213] #183 pack-id=BD-183 node=I_kwDORzTrHM8AAAABFKzDZQ -> DELETED
+  [184/213] #184 pack-id=BD-184 node=I_kwDORzTrHM8AAAABFKzE0A -> DELETED
+  [185/213] #185 pack-id=BD-185 node=I_kwDORzTrHM8AAAABFKzGgw -> DELETED
+  [186/213] #186 pack-id=BD-186 node=I_kwDORzTrHM8AAAABFKzIRw -> DELETED
+  [187/213] #187 pack-id=BD-187 node=I_kwDORzTrHM8AAAABFKzLMA -> DELETED
+  [188/213] #188 pack-id=BD-188 node=I_kwDORzTrHM8AAAABFKzN3Q -> DELETED
+  [189/213] #189 pack-id=BD-189 node=I_kwDORzTrHM8AAAABFKzQpQ -> DELETED
+  [190/213] #190 pack-id=BD-190 node=I_kwDORzTrHM8AAAABFKzTlw -> DELETED
+  [191/213] #191 pack-id=BD-191 node=I_kwDORzTrHM8AAAABFKzWlg -> DELETED
+  [192/213] #192 pack-id=BD-192 node=I_kwDORzTrHM8AAAABFKzZVA -> DELETED
+  [193/213] #193 pack-id=BD-193 node=I_kwDORzTrHM8AAAABFKzcTQ -> DELETED
+  [194/213] #194 pack-id=BD-194 node=I_kwDORzTrHM8AAAABFKzfZA -> DELETED
+  [195/213] #195 pack-id=BD-195 node=I_kwDORzTrHM8AAAABFKzh2A -> DELETED
+  [196/213] #196 pack-id=BD-196 node=I_kwDORzTrHM8AAAABFKzjZw -> DELETED
+  [197/213] #197 pack-id=BD-197 node=I_kwDORzTrHM8AAAABFKzk4g -> DELETED
+  [198/213] #198 pack-id=BD-198 node=I_kwDORzTrHM8AAAABFKznDw -> DELETED
+  [199/213] #199 pack-id=BD-199 node=I_kwDORzTrHM8AAAABFKzpwg -> DELETED
+  [200/213] #200 pack-id=BD-200 node=I_kwDORzTrHM8AAAABFKztCg -> DELETED
+  [201/213] #201 pack-id=BD-201 node=I_kwDORzTrHM8AAAABFKzwfQ -> DELETED
+  [202/213] #202 pack-id=BD-202 node=I_kwDORzTrHM8AAAABFKzzRQ -> DELETED
+  [203/213] #203 pack-id=BD-203 node=I_kwDORzTrHM8AAAABFKz26g -> DELETED
+  [204/213] #204 pack-id=BD-204 node=I_kwDORzTrHM8AAAABFKz59w -> DELETED
+  [205/213] #205 pack-id=BD-205 node=I_kwDORzTrHM8AAAABFKz9WA -> DELETED
+  [206/213] #206 pack-id=BD-206 node=I_kwDORzTrHM8AAAABFK0Aww -> DELETED
+  [207/213] #207 pack-id=BD-207 node=I_kwDORzTrHM8AAAABFK0DcQ -> DELETED
+  [208/213] #208 pack-id=BD-208 node=I_kwDORzTrHM8AAAABFK0Fjg -> DELETED
+  [209/213] #209 pack-id=BD-209 node=I_kwDORzTrHM8AAAABFK0Hrw -> DELETED
+  [210/213] #210 pack-id=BD-210 node=I_kwDORzTrHM8AAAABFK0JKQ -> DELETED
+  [211/213] #211 pack-id=BD-211 node=I_kwDORzTrHM8AAAABFK0MTA -> DELETED
+  [212/213] #212 pack-id=BD-212 node=I_kwDORzTrHM8AAAABFK0QKg -> DELETED
+  [213/213] #213 pack-id=BD-213 node=I_kwDORzTrHM8AAAABFK0S7g -> DELETED
+  issue delete loop complete: 213 deleted, 0 skipped (NOT_FOUND), 0 non-terminal failures.
+
+-----------------------------------------------------------------------------
+EXECUTE — deleting pack-managed labels (>=1s pacing)
+-----------------------------------------------------------------------------
+  label DELETED: bd-entry
+  label DELETED: derived-from:TD-031
+  label DELETED: derived-from:TD-040
+  label DELETED: external
+  label DELETED: inbound
+  label DELETED: needs-triage
+  label DELETED: pack-feedback
+  label DELETED: pf-category:agent-perf
+  label DELETED: pf-category:friction
+  label DELETED: pf-category:open-question
+  label DELETED: pf-category:prompt
+  label DELETED: pf-category:workflow
+  label DELETED: phase-epic
+  label DELETED: phase-task
+  label DELETED: promoted-to:phase-3.4
+  label DELETED: promoted-to:phase-7
+  label DELETED: scope:dependency
+  label DELETED: scope:feature
+  label DELETED: scope:perf
+  label DELETED: scope:version
+  label DELETED: severity:critical
+  label DELETED: severity:functional
+  label DELETED: severity:polish
+  label DELETED: status:cancelled
+  label DELETED: status:deferred
+  label DELETED: status:deprecated
+  label DELETED: status:done
+  label DELETED: status:in-progress
+  label DELETED: status:in-review
+  label DELETED: status:open
+  label DELETED: status:pending
+  label DELETED: status:resolved
+  label DELETED: status:unblocked
+  label DELETED: td-entry
+  label DELETED: template:bd-v11.0
+  label DELETED: template:inbound-v11.0
+  label DELETED: template:phase-epic-v11.0
+  label DELETED: template:phase-task-v11.0
+  label DELETED: template:td-v11.0
+  label DELETED: template:work-item-v11.0
+  label DELETED: type:bug
+  label DELETED: type:chore
+  label DELETED: type:docs
+  label DELETED: type:feat
+  label DELETED: type:feature
+  label DELETED: type:fix
+  label DELETED: type:infra
+  label DELETED: type:refactor
+  label DELETED: work-item
+  label delete loop complete.
+
+-----------------------------------------------------------------------------
+VERIFY (post-execute)
+-----------------------------------------------------------------------------
+  [ADVISORY, may lag the search index] issues still indexed with 'bd-entry': 0
+  (A non-zero count here is NOT a failure — the search index can lag deletes by minutes.
+   The authoritative observable is the REST 410-Gone spot-check below.)
+  [AUTHORITATIVE] spot-check #1 via REST -> HTTP/2.0 410 Gone
+    verdict: PASS (issue is hard-deleted; 410 Gone is the authoritative post-delete observable)
+  pack-managed labels remaining: 0 (expect 0)
+
+-----------------------------------------------------------------------------
+EXECUTE COMPLETE. Manifest (pre-delete snapshot) retained: /tmp/bd214-gh-issue-deletion-manifest-20260613T190725Z.json
+Record a dated note on BD-214 with counts + manifest location.
+-----------------------------------------------------------------------------
