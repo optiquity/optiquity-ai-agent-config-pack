@@ -18,16 +18,12 @@
 - [BD-172](./BD-172.md) — Extend Gate 2 (Phase A verify) to cover post-dispatch operations (BD-104 rename + BD-035 advisory + BD-144 advisory)
 - [BD-185](./BD-185.md) — Phase-parts hierarchy + flat-file execution ordering
 - [BD-187](./BD-187.md) — Standalone entry-type instruction doc for external-tool consumption
-- [BD-188](./BD-188.md) — Phase-Iteration sprint view (single all-phases tracker Project sliced by Iteration field)
 - [BD-189](./BD-189.md) — v11.1+ groupings implementation (architect/planner/coder cycle)
 - [BD-192](./BD-192.md) — v11.1+ Product Specialist (PS) implementation (architect/planner/coder cycle)
-- [BD-198](./BD-198.md) — Formalize `pack-ops/PACK-MEMORY-RATIONALE.md` as a PM-only surface (close BD-196 classification gap)
 - [BD-202](./BD-202.md) — Universal `pack update` propagation engine (delete + clean-modify correctness across asset classes; `x-`-safe, customization-preserving)
 - [BD-205](./BD-205.md) — v11.0 final repo readiness audit + full test/audit/fix cycle (the last gate before launch)
 - [BD-206](./BD-206.md) — Project-side per-entry no-mirror application (apply the corrected standard to client assets)
 - [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
-- [BD-212](./BD-212.md) — `pack tracker reset` verb + 3-level recovery (pack side; supersedes BD-103 with BD-213)
-- [BD-213](./BD-213.md) — `pack tracker reset` + 3-level recovery, project-side application (supersedes BD-103 with BD-212)
 - [BD-214](./BD-214.md) — Tracker-deferral cleanup: strip tracker artifacts, block the mode flip (pack + project)
 
 ## Unblocked
@@ -46,9 +42,12 @@
 - [BD-153](./BD-153.md) — Tier 0 concurrency-architecture skill (deferred to v12)
 - [BD-154](./BD-154.md) — Skill-versioning frontmatter convention (deferred to v12)
 - [BD-155](./BD-155.md) — Naming-convention enforcement migration (deferred to v12)
+- [BD-188](./BD-188.md) — Phase-Iteration sprint view (single all-phases tracker Project sliced by Iteration field)
 - [BD-201](./BD-201.md) — Antigravity (Gemini CLI successor) MCP config relocation: settings.json → mcp_config.json
 - [BD-204](./BD-204.md) — Pack self-migration Phase 2: per-entry backlog → GH Issues (tracker Mode 2 → Mode 3)
 - [BD-207](./BD-207.md) — Project-side per-entry ↔ GH-Issues reversible tracker (apply the tracker standard to client assets)
+- [BD-212](./BD-212.md) — `pack tracker reset` verb + 3-level recovery (pack side; supersedes BD-103 with BD-213)
+- [BD-213](./BD-213.md) — `pack tracker reset` + 3-level recovery, project-side application (supersedes BD-103 with BD-212)
 - [BD-215](./BD-215.md) — Tracker-agnostic canonical entry format: redesign + re-author all BD entries
 - [BD-216](./BD-216.md) — Phase-parts tracker representation + tracker-mode execution ordering (tracker legs of BD-185)
 
@@ -215,6 +214,7 @@
 - [BD-194](./BD-194.md) — Check 24 byte-identity gate replacement (post-BD-193 architectural baseline fix)
 - [BD-195](./BD-195.md) — v11.0 pristine-state recovery before BD-185 restart (full-repo) (Code Red 3)
 - [BD-196](./BD-196.md) — Document concision + boundary-completeness guardrails (rule-corpus restructure + single-SSOT discoverability)
+- [BD-198](./BD-198.md) — Formalize `pack-ops/PACK-MEMORY-RATIONALE.md` as a PM-only surface (close BD-196 classification gap)
 - [BD-199](./BD-199.md) — Optimize validate-pack.py runtime regression (Check 43 per-iteration regex recompilation)
 - [BD-200](./BD-200.md) — Project-side capability ACTIVATION (no pack-clone dependency): project-side `activate-capability.sh` + tracked conditional-file pool + single-source capability tables + Procedure 6 redesign
 - [BD-203](./BD-203.md) — Pack self-migration Phase 1: monolithic flat files → per-entry directory trees (Mode 1 → Mode 2)
