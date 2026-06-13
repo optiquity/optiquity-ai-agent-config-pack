@@ -10,16 +10,13 @@
 - [BD-039](./BD-039.md) — Prototype / speed mode
 - [BD-040](./BD-040.md) — Fully autonomous execution mode
 - [BD-093](./BD-093.md) — v11.0 release pin (tag, README, CHANGELOG, MIGRATION cross-link)
-- [BD-100](./BD-100.md) — Pack-implementation milestone checkpoints (3 strategic audits during v11)
-- [BD-102](./BD-102.md) — Pack-repo dog-food migration (final v11 validation)
-- [BD-105](./BD-105.md) — STATUS.md phase-row dual-link rendering (tracker mode)
+- [BD-105](./BD-105.md) — STATUS.md phase-row link rendering (flat-file; tracker dual-link half deferred)
 - [BD-109](./BD-109.md) — Project-side `auditor-issue-tracking` sub-agent
 - [BD-110](./BD-110.md) — Pack-side `pack-auditor` agent
 - [BD-136](./BD-136.md) — Trinity marker-section preservation pattern (Shape A + Shape B) + PM-chat authoring procedure
-- [BD-171](./BD-171.md) — Real-OT scratch-GH-repo migration test fixture + harness
+- [BD-171](./BD-171.md) — Real-OT scratch-clone FLAT-FILE v10→v11 migration test harness
 - [BD-172](./BD-172.md) — Extend Gate 2 (Phase A verify) to cover post-dispatch operations (BD-104 rename + BD-035 advisory + BD-144 advisory)
-- [BD-174](./BD-174.md) — Scratch-pack-clone migration + multi-toggle test harness
-- [BD-185](./BD-185.md) — Phase parts hierarchy + tracker-mode execution ordering
+- [BD-185](./BD-185.md) — Phase-parts hierarchy + flat-file execution ordering
 - [BD-187](./BD-187.md) — Standalone entry-type instruction doc for external-tool consumption
 - [BD-188](./BD-188.md) — Phase-Iteration sprint view (single all-phases tracker Project sliced by Iteration field)
 - [BD-189](./BD-189.md) — v11.1+ groupings implementation (architect/planner/coder cycle)
@@ -53,6 +50,7 @@
 - [BD-204](./BD-204.md) — Pack self-migration Phase 2: per-entry backlog → GH Issues (tracker Mode 2 → Mode 3)
 - [BD-207](./BD-207.md) — Project-side per-entry ↔ GH-Issues reversible tracker (apply the tracker standard to client assets)
 - [BD-215](./BD-215.md) — Tracker-agnostic canonical entry format: redesign + re-author all BD entries
+- [BD-216](./BD-216.md) — Phase-parts tracker representation + tracker-mode execution ordering (tracker legs of BD-185)
 
 ## Resolved
 
@@ -229,7 +227,10 @@
 - [BD-021](./BD-021.md) — Redesign Apple platform architecture skills (three-tier)
 - [BD-022](./BD-022.md) — C project template and c-language skill
 - [BD-023](./BD-023.md) — Mixed-language skills for Apple projects (Objective-C, C, C++, graphics)
+- [BD-100](./BD-100.md) — Pack-implementation milestone checkpoints (3 strategic audits during v11)
+- [BD-102](./BD-102.md) — Pack-repo dog-food migration (final v11 validation)
 - [BD-103](./BD-103.md) — `pack tracker reset` verb + 3-level recovery documentation
+- [BD-174](./BD-174.md) — Scratch-pack-clone migration + multi-toggle test harness
 
 ## Cancelled
 
