@@ -40,7 +40,8 @@ version, first apply the intermediate guide(s) in sequence.
 
 For the per-file customization-preservation contract that v11 migrators
 honor, see [`pack-ops/MERGE-STRATEGY.md`](pack-ops/MERGE-STRATEGY.md).
-For tracker opt-in (Phase B of the v11 migration), see
+Tracker (GH Issues) integration is deferred (dormant) per BD-214 —
+flat-file per-entry is the sole supported mode; see
 [`pack-ops/OPTIONAL-FEATURES.md`](pack-ops/OPTIONAL-FEATURES.md).
 
 ---

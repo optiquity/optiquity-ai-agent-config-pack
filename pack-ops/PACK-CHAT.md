@@ -50,7 +50,7 @@ is sufficient.
 | `README.md` | Direct read (version table section) | Pack version history at a glance |
 | `supporting-docs/METHODOLOGY.md` | Direct read (on demand) | Author of this file — read directly when needed |
 | `project-template/docs/pack/prompts/*.md` | Direct read (on demand) | Author of this set of files — read directly when needed |
-| `/backlog/<ID>.md`, `/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is the SOLE source of truth + readable form in flat-file mode and a read-stable regenerated mirror in tracker mode (no monolithic mirror; per CLAUDE.md pack-memory + `<stream>/_rules.md`) — direct read valid in both modes; read one entry file for one-entry edits (flat-file mode only — Mode-3 edits go through the tracker tooling per § "Backlog write paths by mode (Mode-3 operations)") |
+| `/backlog/<ID>.md`, `/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is the SOLE source of truth + readable form (flat-file is the sole supported mode; tracker is deferred — BD-214); no monolithic mirror (per CLAUDE.md pack-memory + `<stream>/_rules.md`); read one entry file for one-entry edits per § "Backlog write paths" |
 | `/backlog/_rules.md`, `/changelog/_rules.md` (per-stream contracts) | Direct read at session start (or on per-entry-tree-aware operation) | Per-stream contract authority — filename regex, lifecycle states admitted, supporting-file basenames admitted, write-authority pointer |
 
 **Rule-SSOT routing (one hop to the authority — no index, query the SSOT directly):**
@@ -58,7 +58,7 @@ For spawn-relevant rules, read trinity `## Pack memory`. For file placement, rea
 
 ---
 
-## Backlog write paths by mode (Mode-3 operations)
+## Backlog write paths
 
 The write-side complement of the read-side table above. The per-stream
 contract is `/backlog/_rules.md` + `/changelog/_rules.md` (one hop —
@@ -66,59 +66,29 @@ this section points, never restates); the one-line imperative lives in
 trinity `## Pack memory` § "Repo conventions" (the per-entry-trees
 bullet).
 
-1. **Mode detection.** At session start / before any backlog write,
-   read the local `tracker.toml` (`[mode] state` +
-   `[migration] forward_complete`; absent file = flat-file). Tracker
-   mode is a per-checkout LOCAL opt-in — the file is gitignored and
-   never committed, so the repo's committed state is always
-   flat-file. The pack is currently Mode 3 ON THE MAINTAINER'S
-   MACHINE; every other checkout is flat-file.
-2. **Write channel per mode.** Flat-file: per-entry file edit +
-   `_toc.md` regen per `/backlog/_rules.md`. Tracker: ALL entry
-   creates / edits / status-flips via the tracker tooling (the
-   `pack tracker` `edit` / `new-entry` verbs) — NEVER the Edit/Write
-   tools against `/backlog/`.
-3. **One-way overwrite.** In tracker mode the tree + `_toc.md` are a
-   one-way regenerated mirror (tracker → tree, always — NOT a sync).
-   A hand-edit is invalid and is OVERWRITTEN WITHOUT DETECTION at
-   the next `pack tracker tree-rebuild`.
-4. **Flat-file ignores GH Issues.** In flat-file mode GH Issues are
-   IGNORED by all tooling; inbound feedback remains a human/PM
-   triage channel only.
-5. **Regen cadence + committed artifacts.** After any tracker write
-   batch, and ALWAYS before committing tree state, run
-   `pack tracker tree-rebuild`. The committed artifacts flowing
-   through the normal commit gates (staged-file review + user
-   approval) are the regenerated tree + `_toc.md` ONLY; the local
-   `tracker.toml` and `.pack-tracker/` are NEVER staged (gitignored
-   local state).
-6. **GH-web is not a write path.** Body edits → the divergence
-   comparator blocks loudly at the next rebuild (`--force` =
-   explicit blob-wins override). Label/state-only flips → a
-   coherence defect; recovery = re-apply the status via the tracker
-   tooling (the blob is truth).
-7. **Two lanes.** Pack-owned issues (`work-item` + resolved
-   `pack-id`) reverse into the tree; inbound-feedback issues
-   (`inbound` + `needs-triage` / `pack-id: PENDING`) are NEVER swept
-   until promoted at triage.
-8. **Minor-edit authority mapping.** The trinity
-   `pack-chat-minor-edits-only` boundary is UNCHANGED; only the
-   write CHANNEL changes in Mode 3. A bookkeeping edit Pack Chat may
-   apply directly (a `Status:`/`Resolved:` flip; a new-BD author) is
-   performed via the tracker tooling commands (Bash), not via
-   Edit-tool writes to the tree. MAJOR edits still route to
-   pack-coder — the coder likewise mutates via the tooling and runs
-   the rebuild.
-9. **Changelog unaffected.** The `/changelog/` stream stays
-   flat-file in both modes; its write procedure never changes with
-   tracker mode.
-10. **Publication + single writing authority.** The committed tree
-    is the published flat-file SSOT; the COMMIT of a regenerated
-    tree is the publication act, and exactly ONE writing authority
-    exists — the maintainer's Pack Chat on the machine holding the
-    local Mode-3 state. The full caveat (what a second writer must
-    not do; the safe degradation back to flat-file) lives at
-    `/backlog/_rules.md` § "Source of truth — mode-dependent (no monolith in either mode)" (one hop).
+Flat-file is the sole supported mode. Tracker (GH Issues) integration
+is DEFERRED indefinitely (BD-214) — the flip ability is blocked on both
+surfaces and the tracker code is retained dormant for a future
+resumption.
+
+1. **Write channel.** Edit the per-entry file directly, then
+   regenerate `_toc.md` per `/backlog/_rules.md`. There is no
+   monolithic mirror.
+2. **GH Issues ignored.** GH Issues are IGNORED by all tooling;
+   inbound feedback remains a human/PM triage channel only.
+3. **Committed artifacts.** The committed artifacts flowing through
+   the normal commit gates (staged-file review + user approval) are
+   the per-entry tree + `_toc.md`.
+4. **Minor-edit authority mapping.** The trinity
+   `pack-chat-minor-edits-only` boundary is UNCHANGED. A bookkeeping
+   edit Pack Chat may apply directly (a `Status:`/`Resolved:` flip; a
+   new-BD author) edits the per-entry file directly. MAJOR edits
+   route to pack-coder.
+5. **Changelog.** The `/changelog/` stream is flat-file; its write
+   procedure is in `/changelog/_rules.md`.
+
+For the full flat-file source-of-truth contract see `/backlog/_rules.md`
+§ "Source of truth — flat-file (no monolith)" (one hop).
 
 ---
 
@@ -280,32 +250,16 @@ user-discussion decision.
 
 ---
 
-## Recommendation routing (v11+)
+## Recommendation routing (deferred)
 
-When `/pack-startup` runs, the recommendation system in
-`scripts/lib/recommendation.sh` (D-19) computes pack-side signals
-(active BD count, `/backlog/` tree size, 30-day BD growth) and decides
-whether to surface a tracker opt-in recommendation. Pack Chat behavior:
-
-- **If the recommendation fires** — `pack-startup` prints a single
-  paragraph naming the signals and asks whether to opt in. Pack Chat
-  presents the question to the user without editorializing; the user
-  decides. On approval, Pack Chat runs `pack tracker init` and reports
-  the outcome.
-- **If declined** — Pack Chat records the decision (state file under
-  `.pack-tracker/recommendation-state.json`); the recommendation will
-  not re-fire for a configured cooldown window.
-- **If permanently declined** — Pack Chat records the persistent
-  refusal flag; the recommendation never re-fires for this pack repo.
-
-Pack Chat does NOT silently opt the pack repo into tracker mode. The
-recommendation is informational; opt-in requires explicit user
-consent. This mirrors the BACKLOG / CHANGELOG approval rule —
-state-changing operations need a yes.
-
-For the per-file customization-preservation behavior of
-`pack tracker init`'s forward migration, see
-`pack-ops/MERGE-STRATEGY.md`.
+The D-19 inflection-point recommendation system
+(`scripts/lib/recommendation.sh`) surfaced a tracker opt-in
+recommendation during `/pack-startup`. Tracker (GH Issues) integration
+is now DEFERRED indefinitely (BD-214): the recommendation is no longer
+surfaced (pack-startup Step 8 carries a deferred note), the flip ability
+is blocked on both surfaces, and `scripts/lib/recommendation.sh` is
+retained dormant and test-covered for a future resumption. Pack Chat takes no
+recommendation action while the feature is deferred.
 
 ---
 

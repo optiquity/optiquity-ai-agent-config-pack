@@ -71,18 +71,18 @@ Verbs:
   promote --to=phase-N <td-id> [--repo-root PATH] [--flat-file-only]
                                 [--apply-backlog-patch | --no-apply-backlog-patch]
         Path 1 — promote TD to a new phase epic. Appends the phase
-        section to IMPLEMENTATION-PLAN.md, creates the phase epic
-        in tracker mode, re-keys the TD to Resolved with
-        Resolution naming the new phase.
+        section to IMPLEMENTATION-PLAN.md (tracker mode is deferred —
+        BD-214; flat-file is the supported mode), re-keys the TD to
+        Resolved with Resolution naming the new phase.
 
   promote --to=phase-N.M <td-id> [--repo-root PATH] [--flat-file-only]
                                   [--apply-backlog-patch | --no-apply-backlog-patch]
         Path 2 — promote TD to a new phase task under phase N.
         Inserts the task block into phase N's ### Tasks zone of
-        IMPLEMENTATION-PLAN.md; in tracker mode creates the phase
-        task issue parented to phase-N epic; for each Dependencies
-        bullet entry on the TD, calls tracker_links_create_blocked_by
-        (BD-108) to wire the cross-entity dependency edge.
+        IMPLEMENTATION-PLAN.md (tracker mode is deferred — BD-214;
+        flat-file is the supported mode); for each Dependencies
+        bullet entry on the TD, the cross-entity dependency edge is
+        recorded for the deferred tracker (BD-108).
 
   --apply-backlog-patch (default ON when invoked directly): print a
   BACKLOG patch advisory to stderr so the human-facing shell user

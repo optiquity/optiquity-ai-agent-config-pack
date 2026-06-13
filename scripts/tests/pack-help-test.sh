@@ -105,7 +105,7 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" 2>/dev/null)
 [[ "$output" == *"## Pack commands"* ]] \
     && t_pass "2.1 pack commands section present" \
     || t_fail "2.1 pack commands section"
-[[ "$output" == *"# Tracker commands (v11+)"* ]] \
+[[ "$output" == *"# Tracker commands (deferred)"* ]] \
     && t_pass "2.1 tracker section inlined" \
     || t_fail "2.1 tracker section inlined"
 [[ "$output" == *"set up the tracker"* ]] \

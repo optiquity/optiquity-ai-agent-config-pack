@@ -122,104 +122,32 @@ here once they ship and prove useful.*
 
 ---
 
-## Tracker integration (v11)
+## Tracker integration (deferred)
 
-**Status** — v11.0+; opt-in; per-surface (pack repo and per-project repo
-opt-in independently). Default backend: `gh` (GitHub Issues). Other
-backends (Forgejo / Linear / Jira) plug in via the TrackerProvider
-abstraction in `scripts/lib/tracker-provider.sh` but are not implemented
-in v11.
+**Status** — DEFERRED indefinitely, with no release version (BD-214).
+**Flat-file per-entry is the sole supported mode.** There are no opt-in
+steps.
 
-**What it is** — moves issue tracking out of the `/backlog/` flat-file
-format into GitHub Issues (or another tracker), with a one-shot forward
-migration (`pack tracker init`) and idempotent reverse
-(`pack tracker disable`) for opt-out or backup. Adds an inflection-point
-recommendation
-system that observes pack/project signals (BD count, BACKLOG size,
-30-day growth) and offers tracker opt-in only when the signals warrant.
+**What it was** — a planned, opt-in mode that would move issue tracking
+out of the `/backlog/` flat-file format into GitHub Issues (or another
+tracker via the TrackerProvider abstraction), with forward / reverse
+migration and an inflection-point recommendation system. The design
+shipped as DORMANT code (`scripts/lib/tracker-*.sh`,
+`scripts/pack-tracker.sh`, `scripts/lib/recommendation.sh`,
+`scripts/tracker-migrate.sh`) and is retained, test-covered, for a
+future resumption.
 
-**When it matters** — when the project's BD volume reaches the point
-that GitHub-side cross-references, mentions, and CI-on-issue-state
-become more valuable than the "everything in `git log`" property of
-flat-file tracking. The recommendation system surfaces this naturally;
-you do not have to track it yourself.
+**Why it is deferred** — the ability to flip to tracker mode is BLOCKED
+on both surfaces (`tracker_mode()` clamps to flat-file; the
+`pack tracker` flip verbs refuse with a deferred message). Resumption is gated
+on the entry-format redesign (BD-215) landing first.
 
-**How to enable** — from the pack repo or a pack-configured project:
-
-```sh
-bash scripts/pack-tracker.sh init       # writes tracker.toml + runs forward migration
-bash scripts/pack-tracker.sh status     # mapping freshness report
-bash scripts/pack-tracker.sh doctor     # config + integrity check
-bash scripts/pack-tracker.sh disable    # reverse migration; back to flat-file
-```
-
-`tracker.toml` lives at the repo root (project) or pack root (pack
-repo). On the pack repo the live `tracker.toml` is LOCAL and
-gitignored (BD-204): the committed repo always ships flat-file, and
-your local opt-in survives pulls and version bumps. The pack-side
-example template `tracker.toml.pack-example`
-ships at the pack root; the client-side template
-`project-template/tracker.toml.project-example` is installed by
-`init-project.sh` at v11 as `tracker.toml.example` at the client
-project root.
-
-The example templates surface every commonly-tuned field as a
-commented-out section with a default value. Notably the v11.0
-additive `[graph] cycle_check_k` (default 10; raise if your cross-
-entity dependency graph regularly has chains longer than 10 hops)
-controls the BFS hop bound for the link-creation-time cycle
-detector — see ARCHITECTURE-V3.3-DELTA.md §5.5 for the bounded-
-search semantics.
-
-**How to use the pack's pieces with it** — once opted in, PM chat /
-Pack chat queries route tracker reads through the TrackerProvider in
-`scripts/lib/tracker-provider.sh` so prompts stay accurate as issues
-evolve. The dedicated `auditor-issue-tracking` agent is on the v11.x
-roadmap (BD-109 client-side, BD-110 pack-side); v11.0 ships the
-provider abstraction the agent will consume but not the agent file
-itself.
-
-**Caveats**
-
-- The forward migration is idempotent but rewrites issue bodies on
-  every run; a heavily-edited issue body may need
-  `customization-detected-needs-reconciliation` resolution similar to
-  BD-088's contract. See `MERGE-STRATEGY.md`.
-- The `gh` backend requires `gh auth login` against the right account
-  and `gh repo view` succeeding from the repo. CI-only tokens may lack
-  required scopes.
-- Reverse migration writes a sidecar BACKLOG.md from the live issues —
-  it does NOT recover prior flat-file content. Use `git` for that.
-- Multi-project: tracker config is per-repo, not pack-wide.
-
-**When to skip** — if your BD volume is under ~50 open and BACKLOG.md
-search is comfortable, the tracker round-trip is more friction than
-flat-file. The recommendation system will not nag in this regime.
-
-**How to disable** — the tracker is reversible at any time:
-
-```sh
-bash scripts/pack-tracker.sh disable
-```
-
-`disable` runs the reverse migration internally: it reads live issue
-state, writes a sidecar `docs/project/backlog/` tree from current issues, and flips
-`tracker.toml`'s `mode.state` back to flat-file. Atomic — restores
-backup on failure. Idempotent — safe to re-run. After `disable`, the
-flat-file tracking workflow resumes; existing issues remain on GitHub
-untouched (the disable does not delete them).
-
-**Failure modes** — when the tracker's forward / reverse migration
-encounters a file with both project-side AND pack-side edits since
-the last baseline (real-merge case), the migrator surfaces the
-disposition `customization-detected-needs-reconciliation` and writes
-a sidecar of your pre-migration content. See
-`pack-ops/MERGE-STRATEGY.md` for the per-file class matrix and
-the canonical sidecar conventions. Reconciliation is manual: open the
-sidecar + the destination, merge, remove the sidecar, commit. The
-truthful-report contract guarantees every file the migrator touches
-appears in the rendered report under exactly one disposition; nothing
-silently changes.
+**What ships today** — the dormant code and the committed example
+templates (`tracker.toml.pack-example`,
+`project-template/tracker.toml.project-example`) remain in the tree as a
+record of the dormant feature. No surface opts any repo into tracker
+mode, and even a hand-copied `tracker.toml` is inert under the
+flat-file clamp.
 
 ---
 

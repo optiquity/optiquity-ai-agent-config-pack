@@ -1,21 +1,23 @@
-# Tracker commands (v11+)
+# Tracker commands (deferred)
 
-Tracker mode opts the surface into GH Issues as the source of truth.
-The flat files become read-only mirrors. Reversible — `pack tracker
-disable` restores flat-file mode.
+Tracker (GH Issues) integration is **deferred indefinitely, with no
+release version** (BD-214). **Flat-file per-entry is the sole supported
+mode.** The `pack tracker` verbs below refuse with a deferred message;
+the tracker code is retained dormant and test-covered for a future
+resumption.
 
 | Verb | What it does |
 |---|---|
-| `pack tracker init` | Opt-in: write `tracker.toml`, validate `gh auth`, ensure labels, run forward migration. (Pack repo: the file is local + gitignored — your checkout only; the repo always ships flat-file.) |
-| `pack tracker status` | One-screen view of tracker state (mode, repo, mapping, freshness). Read-only. |
-| `pack tracker disable` | Reverse migration; flip back to flat-file. Atomic — restores backup on failure. |
-| `pack tracker doctor` | Validate config, mapping, tree/mirror freshness, status coherence, templates, capability cache. Surfaces typed errors. |
-| `pack tracker tree-rebuild` | Pack repo: regenerate the `/backlog/` tree + `_toc.md` from tracker state — one-way, no mode flip; hand-edits are overwritten without detection. |
-| `pack tracker edit` | Pack repo (tracker mode): edit a tracked entry against the tracker SSOT — status flips, field/body edits. |
-| `pack tracker new-entry` | Pack repo (tracker mode): create a new tracked BD entry from a verbatim entry-span file, then rebuild the tree. |
-| `pack tracker mirror-rebuild` | Client surface only: refresh the BACKLOG.md mirror header without re-running forward migration. On the pack surface this fails loud — use `pack tracker tree-rebuild`. |
-| `pack tracker update-templates` | Apply translation rules to upgrade entries to current `template_version`. |
-| `pack tracker enable-recommendations` | Clear "don't ask again" so recommendations re-evaluate at next session. |
+| `pack tracker init` | DEFERRED — refuses with a deferred message; flat-file is the supported mode. |
+| `pack tracker status` | DEFERRED — refuses; no tracker state exists in flat-file mode. |
+| `pack tracker disable` | DEFERRED — there is no tracker mode to disable; flat-file is already the mode. |
+| `pack tracker doctor` | DEFERRED — refuses; nothing to validate in flat-file mode. |
+| `pack tracker tree-rebuild` | DEFERRED — refuses; the flat-file tree is hand-maintained, not rebuilt from a tracker. |
+| `pack tracker edit` | DEFERRED — refuses; edit the per-entry `BD-NNN.md` file directly. |
+| `pack tracker new-entry` | DEFERRED — refuses; author the per-entry `BD-NNN.md` file directly. |
+| `pack tracker mirror-rebuild` | DEFERRED — refuses; there is no mirror. |
+| `pack tracker update-templates` | DEFERRED — refuses. |
+| `pack tracker enable-recommendations` | DEFERRED — refuses; the recommendation system is dormant. |
 
 ## TD promotion (v11+)
 
@@ -36,18 +38,19 @@ no `--fold-into` flag.
 
 ## Colloquial mappings
 
+The tracker phrases below map to verbs that are DEFERRED (BD-214) — each
+refuses with a deferred message; flat-file is the supported mode.
+
 | Phrase | Verb |
 |---|---|
-| "set up the tracker" / "enable issue tracking" | `pack tracker init` |
-| "switch back to flat files" / "turn off the tracker" | `pack tracker disable` |
-| "tracker doctor" / "are we good?" | `pack tracker doctor` |
-| "tracker status" / "what's the tracker doing?" | `pack tracker status` |
-| "upgrade the templates" / "templates are stale" | `pack tracker update-templates` |
-| "rebuild the tree" / "regenerate the backlog tree" | `pack tracker tree-rebuild` (pack repo) |
-| "rebuild the mirror" / "regenerate BACKLOG.md" | `pack tracker mirror-rebuild` (client surface; the pack repo has no mirror — use `tree-rebuild`) |
-| "remind me about the tracker again" | `pack tracker enable-recommendations` |
+| "set up the tracker" / "enable issue tracking" | `pack tracker init` (deferred) |
+| "switch back to flat files" / "turn off the tracker" | `pack tracker disable` (deferred) |
+| "tracker doctor" / "are we good?" | `pack tracker doctor` (deferred) |
+| "tracker status" / "what's the tracker doing?" | `pack tracker status` (deferred) |
+| "upgrade the templates" / "templates are stale" | `pack tracker update-templates` (deferred) |
+| "rebuild the tree" / "regenerate the backlog tree" | `pack tracker tree-rebuild` (deferred) |
+| "rebuild the mirror" / "regenerate BACKLOG.md" | `pack tracker mirror-rebuild` (deferred) |
+| "remind me about the tracker again" | `pack tracker enable-recommendations` (deferred) |
 | "promote this TD to a new phase" / "make a phase out of this" | `pack td promote --to=phase-N <td-id>` (Path 1) |
 | "promote this TD to a task in phase N" / "add as a task under phase N" | `pack td promote --to=phase-N.M <td-id>` (Path 2) |
 | "close this TD inline" / "this TD is small, just close it" | `pack td resolve <td-id>` (direct close) |
-
-See the tracker example template (`tracker.toml.pack-example` in the pack repo, or `tracker.toml.example` at a client project root) and `OPTIONAL-FEATURES.md` for full setup.

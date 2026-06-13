@@ -27,11 +27,11 @@ in your CLI for this content. Full docs in `QUICKSTART.md`, `README.md`,
 | `scripts/dry-run-migration.sh` | Read-only migration dry-run harness. Clones target into `/tmp`, runs the appropriate per-version migrator with `--dry-run`, captures the full diff. Three modes: synthetic fixture / git URL / local-path. Used as the v11+ release-gate harness; safe for any v10 client. |
 | `scripts/restore-from-backup.sh` | Restore a v9.3 → v10 pre-migration tree (use the v11 migrator's printed `rsync` recipe for v11 backups). |
 | `scripts/add-capability.sh` | Extend an existing project with an additional language/platform capability. |
-| `scripts/pack-tracker.sh <subcmd>` | Tracker mode — `init`, `status`, `tree-rebuild`, `edit`, `new-entry`, `mirror-rebuild`, `disable`, `doctor`, `update-templates`, `enable-recommendations`. |
+| `scripts/pack-tracker.sh <subcmd>` | Tracker mode (DEFERRED — BD-214; verbs refuse) — `init`, `status`, `tree-rebuild`, `edit`, `new-entry`, `mirror-rebuild`, `disable`, `doctor`, `update-templates`, `enable-recommendations`. |
 | `scripts/pack-td.sh <subcmd>` | TD orchestration — `promote --to=phase-N` (Path 1), `promote --to=phase-N.M` (Path 2), `resolve` (direct close per V3.3 §3.2). |
-| `scripts/tracker-migrate.sh <subcmd>` | Tracker forward / reverse / status / doctor (lower-level wrapper). |
+| `scripts/tracker-migrate.sh <subcmd>` | Tracker forward / reverse / status / doctor (lower-level wrapper; DEFERRED — BD-214). |
 
-## Tracker commands (v11+)
+## Tracker commands (deferred)
 
 [Included from `pack-ops/HELP-FRAGMENT-TRACKER.md` via `scripts/pack-help.sh`.]
 

@@ -78,45 +78,10 @@ to keep the recommendation check at the documented insertion point
 regardless of when the intermediate steps land.
 -->
 
-## Step 8 — Inflection-point recommendation check (D-19)
+## Step 8 — Inflection-point recommendation check (deferred)
 
-Run only in flat-file mode. In tracker mode this step is skipped
-entirely (the recommendation system targets flat-file users who
-have not yet opted in).
-
-Tracker-mode detection: `tracker.toml` exists at the pack root, its
-`[mode] state` is `"tracker"`, AND its `[migration] forward_complete`
-is `true` (the same three-part test `tracker_mode()` in
-`scripts/lib/tracker-config.sh` applies). Otherwise the surface is
-flat-file.
-
-In flat-file mode, source the lib and run the test:
-
-```bash
-source scripts/lib/recommendation.sh
-signals=$(recommendation_compute_signals pack "$(pwd)")
-state=$(recommendation_state_load .pack-tracker/recommendation-state.json pack)
-should=$(recommendation_should_recommend "$signals" "$state" pack flat-file)
-```
-
-If `$should == "true"` AND no per-session "not now" dismiss is in
-effect (chat-session memory only — not on disk), surface the prompt
-once and record that the show happened:
-
-```bash
-recommendation_render_prompt "$signals" pack
-recommendation_record_shown .pack-tracker/recommendation-state.json "$signals"
-```
-
-Then route the user's response per V3 §28.1.7:
-- `yes` / `y` / `enable` / `OK` / `sure` → suggest running
-  `pack tracker init`. Do not auto-run; await explicit confirmation.
-- `not now` / `later` / `no` / `n` / `skip` → set the per-session
-  in-memory dismiss flag for this chat session. Do not modify state.
-- `don't ask again` / `never` / `disable recommendations` / `stop` →
-  call `recommendation_set_persistent_refusal .pack-tracker/recommendation-state.json true`
-  and acknowledge.
-
-Reference: ARCHITECTURE-V3.md §28.1.5 (should-recommend test),
-§28.1.6 (refusal-respecting state machine), §28.1.7 (prompt shape
-and routing), §28.1.9 (implementation surfaces).
+The D-19 tracker opt-in recommendation is DEFERRED (BD-214): tracker
+integration is deferred indefinitely and flat-file per-entry is the sole
+supported mode, so this step surfaces nothing. The recommendation system
+(`scripts/lib/recommendation.sh`) is retained dormant and test-covered
+for a future resumption; the step number is reserved.
