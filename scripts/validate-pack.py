@@ -7959,6 +7959,143 @@ def check_validate_pack_no_reproduced_codec() -> None:
     )
 
 
+# ── Check 51: BD-214 tracker-deferral flip-block guard ─────────────────────
+#
+# Anti-regression guard for the BD-214 tracker deferral (design §6.3). Five
+# cheap, bounded legs (grep over ≤3 named files or 2 bounded per-entry trees;
+# no whole-tree scan, no subprocess-per-entry — satisfies the runtime-
+# compounding rule). This C1 commit ships ONLY legs 1, 2, and 4 — the legs
+# whose conditions are TRUE at the C1 boundary:
+#   leg 1 — the deferral clamp marker is created by C1 (tracker-config.sh);
+#   leg 2 — the three verb gates are created by C1 (pack-tracker.sh init +
+#           enable-recommendations; tracker-migrate.sh forward arm);
+#   leg 4 — entry-content grep-zero is ALREADY true at HEAD (line-anchored
+#           patterns; the one BD-204:24 mid-line prose hit is excluded by the
+#           `^` anchor — empty allowlist by construction).
+# Legs 3 (recommendation removed from the 7 skill files) and 5
+# (tracker.toml.example absent from the install map) land in LATER commits
+# (C2/C3) alongside their fix-recipes, per the incremental-leg ordering — they
+# are intentionally NOT asserted here (their conditions are not yet true).
+_CHECK_51_CLAMP_FILE = "scripts/lib/tracker-config.sh"
+# Leg 4 line-anchored entry-content artifact patterns (empty allowlist).
+_CHECK_51_ENTRY_TREES = ("backlog", "changelog")
+_CHECK_51_ENTRY_PATTERNS = (
+    re.compile(r"^<!-- pack-entry-body-gz64:"),
+    re.compile(r"^<!-- pack-id:"),
+)
+
+
+def check_tracker_deferral_flip_block() -> None:
+    """Check 51 — BD-214 tracker-deferral flip-block guard (legs 1/2/4).
+
+    leg 1: `tracker-config.sh` carries the BD-214 deferral clamp marker
+           (`PACK_TRACKER_DEFERRAL_OVERRIDE` + the dated BD-214 comment).
+    leg 2: the three verb gates are present — `pack-tracker.sh` gates
+           `cmd_init` + `cmd_enable_recommendations`, and
+           `tracker-migrate.sh`'s forward arm refuses.
+    leg 4: line-anchored entry-content artifact grep-zero over the per-entry
+           trees (`backlog/` + `changelog/`) == 0 (empty allowlist).
+    """
+    print("\n── Check 51: BD-214 tracker-deferral flip-block guard (legs 1/2/4) ──")
+    any_fail = False
+
+    # ── leg 1 — clamp marker in tracker-config.sh ──
+    clamp_path = REPO_ROOT / _CHECK_51_CLAMP_FILE
+    if not clamp_path.is_file():
+        any_fail = True
+        fail(f"Check 51 leg 1 — {_CHECK_51_CLAMP_FILE} not found")
+    else:
+        clamp_text = clamp_path.read_text()
+        if "PACK_TRACKER_DEFERRAL_OVERRIDE" not in clamp_text \
+                or "BD-214" not in clamp_text:
+            any_fail = True
+            fail(
+                f"Check 51 leg 1 — {_CHECK_51_CLAMP_FILE} is missing the BD-214 "
+                f"deferral clamp marker (`PACK_TRACKER_DEFERRAL_OVERRIDE` + a "
+                f"`BD-214` dated comment). The clamp must be the first statement "
+                f"of `tracker_mode()` forcing flat-file while tracker is deferred."
+            )
+
+    # ── leg 2 — the three verb gates ──
+    pack_tracker_path = REPO_ROOT / "scripts/pack-tracker.sh"
+    tracker_migrate_path = REPO_ROOT / "scripts/tracker-migrate.sh"
+    pt_text = pack_tracker_path.read_text() if pack_tracker_path.is_file() else ""
+    tm_text = tracker_migrate_path.read_text() if tracker_migrate_path.is_file() else ""
+
+    def _gate_in_function(text: str, func: str) -> bool:
+        """True iff the named function body carries the BD-214 deferral gate.
+
+        Accepts EITHER a direct `PACK_TRACKER_DEFERRAL_OVERRIDE` check OR a
+        call to the shared `_tracker_deferral_gate` helper (which wraps the
+        override seam + typed refusal). Both are valid encodings of the gate.
+        """
+        marker = f"{func}() {{"
+        start = text.find(marker)
+        if start == -1:
+            return False
+        # Function body = from the marker to the next top-level `\n}` (a `}`
+        # at column 0). Bounded slice; no whole-file scan beyond this span.
+        end = text.find("\n}", start)
+        body = text[start:end] if end != -1 else text[start:]
+        return ("PACK_TRACKER_DEFERRAL_OVERRIDE" in body
+                or "_tracker_deferral_gate" in body)
+
+    if not _gate_in_function(pt_text, "cmd_init"):
+        any_fail = True
+        fail(
+            "Check 51 leg 2 — scripts/pack-tracker.sh `cmd_init` is missing the "
+            "BD-214 deferral gate (must refuse `pack tracker init` while tracker "
+            "is deferred, unless PACK_TRACKER_DEFERRAL_OVERRIDE=1)."
+        )
+    if not _gate_in_function(pt_text, "cmd_enable_recommendations"):
+        any_fail = True
+        fail(
+            "Check 51 leg 2 — scripts/pack-tracker.sh "
+            "`cmd_enable_recommendations` is missing the BD-214 deferral gate "
+            "(must refuse re-arming the D-19 recommendation seam while deferred)."
+        )
+    if not _gate_in_function(tm_text, "cmd_forward"):
+        any_fail = True
+        fail(
+            "Check 51 leg 2 — scripts/tracker-migrate.sh `cmd_forward` (the "
+            "FORWARD arm — the low-level flip path) is missing the BD-214 "
+            "deferral gate. The reverse arm stays un-gated (escape hatch)."
+        )
+
+    # ── leg 4 — line-anchored entry-content artifact grep-zero ──
+    leg4_hits = []
+    for tree in _CHECK_51_ENTRY_TREES:
+        tree_dir = REPO_ROOT / tree
+        if not tree_dir.is_dir():
+            continue
+        for md in sorted(tree_dir.glob("*.md")):
+            try:
+                lines = md.read_text().splitlines()
+            except OSError:
+                continue
+            for lineno, line in enumerate(lines, start=1):
+                for pat in _CHECK_51_ENTRY_PATTERNS:
+                    if pat.match(line):
+                        leg4_hits.append(f"{tree}/{md.name}:{lineno}: {line[:60]}")
+    if leg4_hits:
+        any_fail = True
+        for hit in leg4_hits:
+            fail(
+                f"Check 51 leg 4 — entry-content tracker artifact present "
+                f"(line-anchored, empty allowlist): {hit}. Committed entries "
+                f"must carry ZERO tracker body/id artifacts while tracker is "
+                f"deferred (BD-214 scope 1)."
+            )
+
+    if not any_fail:
+        ok(
+            "Check 51 — BD-214 flip-block guard: clamp marker present (leg 1), "
+            "init + enable-recommendations + forward-arm gates present (leg 2), "
+            "entry-content artifact grep-zero over backlog/ + changelog/ "
+            "(leg 4). Legs 3/5 land in later commits with their fix-recipes."
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -8136,6 +8273,14 @@ def main() -> None:
               lambda: check_migrator_field_faithfulness(REPO_ROOT / "backlog"),
               budget_s=RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S)
     run_check("check_validate_pack_no_reproduced_codec", check_validate_pack_no_reproduced_codec)
+    # ── BD-214 (C1): tracker-deferral flip-block guard. Lands LAST — it is
+    # the newest standing check, and its legs are cheap bounded greps over
+    # named files + the two per-entry trees (no whole-tree scan). C1 ships
+    # legs 1/2/4 only (the legs true at the C1 boundary); legs 3/5 land in
+    # C2/C3 with their fix-recipes per the incremental-leg ordering. Per
+    # ARCHITECTURE-BD-214-TRACKER-DEFERRAL.md §6.3 + PLAN-BD-214-TRACKER-
+    # DEFERRAL.md §4.
+    run_check("check_tracker_deferral_flip_block", check_tracker_deferral_flip_block)
 
     # ── BD-204 §4.7 RUNTIME-BUDGET GUARD — the TOTAL-RUN hard FAIL. A
     # general run over the 10 s total budget means a check regressed into

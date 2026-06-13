@@ -144,7 +144,24 @@ EOF
 # Verb: init
 # ─────────────────────────────────────────────────────────────────
 
+# BD-214 deferral gate (2026-06-12): tracker mode is deferred
+# indefinitely; flat-file per-entry is the SOLE supported mode. The gate
+# refuses the flip verbs with a typed error unless the TEST-ONLY seam
+# PACK_TRACKER_DEFERRAL_OVERRIDE=1 is set (keeps the dormant tracker code
+# testable; never set it live). Recorded in BD-214 / BD-204.
+_tracker_deferral_gate() {
+    if [[ "${PACK_TRACKER_DEFERRAL_OVERRIDE:-0}" != "1" ]]; then
+        tracker_error_emit "not-implemented" \
+            "tracker support is deferred indefinitely (no release version)." \
+            "Flat-file per-entry is the sole supported mode." \
+            "Recorded in BD-214 / BD-204."
+        return 1
+    fi
+    return 0
+}
+
 cmd_init() {
+    _tracker_deferral_gate || return 1
     tracker_init_run "$@"
 }
 
@@ -760,6 +777,9 @@ EOF
                 ;;
         esac
     done
+    # BD-214 deferral gate: enable-recommendations re-arms the D-19 tracker
+    # recommendation seam — refuse while tracker mode is deferred.
+    _tracker_deferral_gate || return 1
     [[ -z "$repo_root" ]] && repo_root="$(pwd)"
     if [[ -z "$surface" ]]; then
         if ! surface=$(tracker_config_auto_surface "$repo_root" 2>/dev/null); then

@@ -29,6 +29,11 @@
 
 set -u
 
+# BD-214 deferral clamp: tracker mode is deferred indefinitely; flat-file is
+# the sole supported mode. This TEST-ONLY seam keeps the dormant tracker
+# code exercised under the clamp (never set it in a live run).
+export PACK_TRACKER_DEFERRAL_OVERRIDE=1
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LIB_DIR="$REPO_ROOT/scripts/lib"
 FIXTURES_ROOT="$REPO_ROOT/scripts/tests/fixtures/roundtrip"

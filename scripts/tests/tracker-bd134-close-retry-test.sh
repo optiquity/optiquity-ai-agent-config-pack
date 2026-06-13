@@ -30,6 +30,11 @@
 
 set -uo pipefail
 
+# BD-214 deferral clamp: tracker mode is deferred indefinitely; flat-file is
+# the sole supported mode. This TEST-ONLY seam keeps the dormant tracker
+# code exercised under the clamp (never set it in a live run).
+export PACK_TRACKER_DEFERRAL_OVERRIDE=1
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACK_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 LIB_DIR="$PACK_ROOT/scripts/lib"

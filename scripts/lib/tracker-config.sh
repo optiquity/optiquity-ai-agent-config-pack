@@ -185,6 +185,16 @@ tracker_config_get() {
 # deliberately tolerant: any failure to interpret the file as
 # tracker-mode falls back to "flat-file".
 tracker_mode() {
+    # BD-214 deferral clamp (2026-06-12): tracker mode is deferred
+    # indefinitely; flat-file per-entry is the SOLE supported mode.
+    # PACK_TRACKER_DEFERRAL_OVERRIDE=1 is a TEST-ONLY seam that keeps the
+    # dormant tracker code testable; it must NEVER be set in a live run.
+    # Recorded in BD-214 / BD-204.
+    if [[ "${PACK_TRACKER_DEFERRAL_OVERRIDE:-0}" != "1" ]]; then
+        echo "tracker mode is deferred; operating flat-file (BD-214)" >&2
+        echo "flat-file"
+        return 0
+    fi
     local path="$1"
     if [[ -z "$path" ]] || [[ ! -f "$path" ]]; then
         echo "flat-file"

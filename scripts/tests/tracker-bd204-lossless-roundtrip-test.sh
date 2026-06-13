@@ -53,6 +53,11 @@
 
 set -u
 
+# BD-214 deferral clamp: tracker mode is deferred indefinitely; flat-file is
+# the sole supported mode. This TEST-ONLY seam keeps the dormant tracker
+# code exercised under the clamp (never set it in a live run).
+export PACK_TRACKER_DEFERRAL_OVERRIDE=1
+
 # ─────────────────────────────────────────────────────────────────
 # DEFAULT-SKIP GUARD — the FIRST action (PLAN § C-7 step 5; HARD).
 # Reuses the suite's `command -v gh` + `gh auth status` preflight idiom.

@@ -100,6 +100,20 @@ cmd_forward() {
     done
     [[ -z "$repo_root" ]] && repo_root="$(pwd)"
 
+    # BD-214 deferral gate (2026-06-12): the forward arm is the low-level
+    # flat-file → tracker flip path; refuse it while tracker mode is
+    # deferred indefinitely. PACK_TRACKER_DEFERRAL_OVERRIDE=1 is a
+    # TEST-ONLY seam (keeps the dormant tracker code testable; never set it
+    # live). The reverse arm stays UN-gated (escape hatch). Recorded in
+    # BD-214 / BD-204.
+    if [[ "${PACK_TRACKER_DEFERRAL_OVERRIDE:-0}" != "1" ]]; then
+        tracker_error_emit "not-implemented" \
+            "tracker support is deferred indefinitely (no release version)." \
+            "Flat-file per-entry is the sole supported mode." \
+            "Recorded in BD-214 / BD-204."
+        return 1
+    fi
+
     tracker_migrate_forward_run "$repo_root" "$dry_run" "$resume" "$mirror_only"
 }
 

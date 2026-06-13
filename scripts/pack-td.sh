@@ -255,8 +255,8 @@ cmd_promote() {
             cat >&2 <<EOF
 ─────────────────────────────────────────────────────────────────
 BACKLOG patch (apply manually OR re-run via PM Chat which applies):
-  Status: Open       → Status: Resolved
-  Resolution: n/a    → Resolution: $res_text
+  Status: Open    → Status: Resolved
+  Resolved: n/a   → Resolved: $res_text
 For TD entry: $td_id
 ─────────────────────────────────────────────────────────────────
 EOF
