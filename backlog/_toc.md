@@ -49,6 +49,7 @@
 - [BD-213](./BD-213.md) — `pack tracker reset` + 3-level recovery, project-side application (supersedes BD-103 with BD-212)
 - [BD-215](./BD-215.md) — Tracker-agnostic canonical entry format: redesign + re-author all BD entries
 - [BD-216](./BD-216.md) — Phase-parts tracker representation + tracker-mode execution ordering (tracker legs of BD-185)
+- [BD-217](./BD-217.md) — Codex + Gemini worktree-isolation support (platform-specific; the cross-CLI half of BD-197)
 
 ## Resolved
 
