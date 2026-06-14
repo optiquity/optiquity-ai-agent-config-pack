@@ -90,9 +90,14 @@ KNOWN_CLIS=(claude codex gemini)
 
 # Flags for read-only agents on the claude CLI.
 # --permission-mode bypassPermissions: removes tool-use confirmation prompts
-#   so compilers and linters run without interruption. Safe here because
-#   Edit/Write tools are excluded at the agent-definition level.
-# --disallowedTools: blocks git commit and push regardless of permission mode.
+#   so compilers and linters run without interruption.
+# --disallowedTools: blocks state-changing git verbs regardless of permission
+#   mode. Read-only here is enforced by this launch-time flag profile, NOT by
+#   removing Write/Edit at the agent-definition level: read-only agents keep
+#   Write/Edit so they can produce their single report file, and the prompt
+#   constrains those tools to the report path. The disallowed git verbs and
+#   the read-only mandate header in each agent's definition file are what make
+#   the agent read-only.
 CLAUDE_READONLY_FLAGS=(
     "--permission-mode" "bypassPermissions"
     "--disallowedTools" "Bash(git commit:*)" "Bash(git push:*)"

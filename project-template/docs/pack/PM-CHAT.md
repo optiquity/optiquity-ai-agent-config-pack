@@ -408,6 +408,44 @@ section is the PM-chat-facing reinforcement. When constructing a
 prompt, your job is to align with what the agent's file already
 says, not to restate or override it.**
 
+### Permission classes (read-write / read-only)
+
+The three profiles collapse into **two permission classes** that
+govern how the PM chat spawns each agent and what it may do to the
+working tree. This `## Permission profiles` section — the table below
+plus each agent's own definition file — is the authoritative
+project-side declaration of which class every agent belongs to. The
+class is the single fact that drives spawn behavior; the profile adds
+the per-profile prompt requirements.
+
+- **Read-write (RW)** — `coder` (Write-capable scoped) and `repo-ops`
+  (Write-capable script). RW agents may write or edit files within the
+  explicit scope the prompt defines, then emit a patch plus a report.
+  They NEVER stage or commit — staging and committing happen in the PM
+  chat with explicit developer approval. Because an RW agent mutates
+  the working tree, the PM chat is responsible for keeping concurrent
+  RW agents on non-overlapping scopes so their edits do not collide.
+- **Read-only (RO)** — the 14 remaining agents (`architect`,
+  `planner`, `reviewer`, `tester`, `docs-researcher`, `grpc-schema`,
+  `auditor`, and the seven `auditor-*` cluster members). An RO agent's
+  only permitted file write is its single caller-specified report; the
+  codebase is read-only otherwise. Several RO agents carry `Write` /
+  `Edit` in their tool set ONLY to enable that report deliverable —
+  using them outside the prompted report path is a defect, so the tool
+  set alone does not classify an agent. The class is carried by the
+  agent's prose mandate header (`**Read-only.**` vs
+  `**Write-capable (scoped).**` / `**Write-capable (script).**`) plus
+  the table below and, for Claude Code launches, the `agent-run.sh`
+  `READONLY_AGENTS` runtime-flag dispatch.
+
+Both classes share the same hard rule: no agent runs a state-changing
+git verb — read-only git verbs (`status`, `diff`, `log`,
+`rev-parse`, `show`) are allowed; staging, committing, and any other
+working-tree- or ref-mutating git verb belong to the PM chat alone.
+The three independent declarations of an agent's class — its prose
+mandate header, this table, and the `READONLY_AGENTS` array — must
+always agree.
+
 ### Profile assignment
 
 | Agent | Profile |
