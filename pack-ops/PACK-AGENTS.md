@@ -10,13 +10,18 @@ Read by Claude Code, Codex, and Gemini when operating on this repo.
 Five dedicated agents exist for structured pack development work.
 Agent files are in `.claude/agents/`, `.codex/agents/`, and `.gemini/agents/`.
 
-| Agent | Role | Mode |
-|---|---|---|
-| `pack-architect` | Architecture and design decisions — file structure, naming conventions, cross-tool parity, migration strategy, version planning | Read-only |
-| `pack-planner` | Implementation planning — task breakdown, file dependency analysis, commit sequencing, verification strategy | Read-only |
-| `pack-coder` | Implementation execution — writes/edits scripts, fixtures, configs, agent files per an approved ARCHITECTURE/PLAN; runs verification; produces a report | Source-write within scope; **never** stages or commits |
-| `pack-reviewer` | Change review — trinity rule compliance, stale cross-references, doc consistency, CI alignment, migration safety | Read-only |
-| `pack-docs-researcher` | CLI tool documentation verification — features, flags, file formats against official docs. Tool dependency evaluation | Read-only |
+| Agent | Class | Role | Mode |
+|---|---|---|---|
+| `pack-architect` | RO | Architecture and design decisions — file structure, naming conventions, cross-tool parity, migration strategy, version planning | Read-only |
+| `pack-planner` | RO | Implementation planning — task breakdown, file dependency analysis, commit sequencing, verification strategy | Read-only |
+| `pack-coder` | RW | Implementation execution — writes/edits scripts, fixtures, configs, agent files per an approved ARCHITECTURE/PLAN; runs verification; produces a report | Source-write within scope; **never** stages or commits |
+| `pack-reviewer` | RO | Change review — trinity rule compliance, stale cross-references, doc consistency, CI alignment, migration safety | Read-only |
+| `pack-docs-researcher` | RO | CLI tool documentation verification — features, flags, file formats against official docs. Tool dependency evaluation | Read-only |
+
+The `Class` column is the **pack-side SSOT** for the read-write / read-only
+two-class agent model (see "Two agent classes" below). It is checked
+against each agent file's prose mandate header by `scripts/validate-pack.py`
+Check 52 (set-equality; binds to the prose header, never `tools:`).
 
 ### Skills loaded by pack agents
 
@@ -126,6 +131,35 @@ Read-only agents (`pack-architect`, `pack-planner`, `pack-reviewer`,
 report — see the "Source-write within scope; never stages or commits"
 roster cell and trinity `## Pack memory` `### Pack Chat scope` "What
 Pack Chat CAN edit directly" for the canonical write-authority split.
+
+### Two agent classes
+
+Every pack agent is one of exactly two classes. The class is the
+load-bearing safety classification — the platform provides **no safety
+net for subagents** (a non-isolated background subagent can write the
+parent working tree freely), so RW agents MUST be spawned with worktree
+isolation, and the class is what makes that enforceable.
+
+- **RW (read-write) — `pack-coder`.** Writes/edits source files within
+  the caller-scoped file set, runs verification, and emits a patch plus
+  its report. NEVER runs a state-changing git verb. When isolation is
+  opted-in, an RW agent emits its `git diff` patch to the named `/tmp`
+  handoff dir and the orchestrator applies it.
+- **RO (read-only) — `pack-architect`, `pack-planner`, `pack-reviewer`,
+  `pack-docs-researcher`.** Write ONLY their single caller-specified
+  report; read-only on the codebase otherwise. (`pack-reviewer` carries
+  `Write, Edit` in its `tools:` to emit that one report — it is still
+  RO; the class is keyed off the prose mandate header, never `tools:`.)
+
+Both classes obey `agents-never-commit` + the full destructive-git-verb
+ban identically (trinity `## Pack memory` `[rationale: agents-never-commit]`).
+
+The class is declared with TRIPLE reinforcement: (1) the `Class` column
+in the `## Pack agents` roster above (the SSOT); (2) the prose mandate
+header on every pack agent file (`**Source-write within scope.**` for RW
+/ `**Read-only.**` for RO); (3) the inline rules-in-force block in every
+spawn prompt. `scripts/validate-pack.py` Check 52 asserts set-equality
+between (1) and (2) — it reads the prose header, NEVER `tools:`.
 
 **pack-chat-only files and directories** are off-limits to all agents unless the
 caller's prompt explicitly scopes them in.

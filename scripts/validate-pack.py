@@ -8220,6 +8220,164 @@ def check_tracker_deferral_flip_block() -> None:
         )
 
 
+# ── Check 52: BD-197 pack RW/RO two-class consistency (Guard-B) ────────────
+#
+# Guard-B (design §13.2 / §4.3 pack): assert SET-EQUALITY between
+#   {the PACK-AGENTS roster `Class` cells}  ↔  {the per-agent-file PROSE
+#    mandate headers}
+# for the 5 pack agents × 3 CLIs.
+#
+# BINDS TO THE PROSE HEADER, NEVER `tools:` (design §13.2). `pack-reviewer`
+# carries `Write, Edit` in its `tools:` yet is RO — keying on `tools:` would
+# misclassify it. The discriminator is the mandate header
+# (`**Source-write within scope.**` = RW / `**Read-only.**` = RO) and the
+# roster `Class` column; the tool list is irrelevant to the class.
+#
+# Measure-then-bound (ci-guard-design-measure-then-bound): sized to EXACTLY
+# the measured 5-agent pack set (1 RW `pack-coder` + 4 RO) — no broader. A
+# NEW pack agent or a CLI surface that is not in this measured set MUST be
+# ADDED to `_CHECK_52_PACK_AGENTS` / `_CHECK_52_AGENT_DIRS` in lock-step,
+# else the guard develops a blind spot.
+#
+# Runtime (ci-check-runtime-compounding): a SINGLE bounded pass — at most
+# 5 agents × 3 CLI dirs = 15 file reads + one roster read; NO whole-tree
+# scan, NO subprocess-per-entry. Negligible across the battery's ~191
+# validate-pack invocations.
+_CHECK_52_ROSTER_FILE = "pack-ops/PACK-AGENTS.md"
+# The EXHAUSTIVE measured pack-agent set (design §4.3 / RESEARCH-BD-197-
+# AGENT-PERMISSION-INVENTORY §1.1): 1 RW + 4 RO. The roster Class cells are
+# read from PACK-AGENTS.md; this tuple only bounds WHICH agents the guard
+# inspects (the SSOT for the class VALUE is the roster, not this tuple).
+_CHECK_52_PACK_AGENTS = (
+    "pack-architect",
+    "pack-coder",
+    "pack-docs-researcher",
+    "pack-planner",
+    "pack-reviewer",
+)
+# The three CLI agent dirs + the per-CLI file extension. Bounded — adding a
+# CLI surface requires extending this map (enumerate-encoding-surfaces).
+_CHECK_52_AGENT_DIRS = (
+    (".claude/agents", "md"),
+    (".codex/agents", "toml"),
+    (".gemini/agents", "md"),
+)
+# Prose mandate-header signatures (the class discriminator — NEVER `tools:`).
+_CHECK_52_RW_HEADER = "**Source-write within scope.**"
+_CHECK_52_RO_HEADER = "**Read-only.**"
+
+
+def _check_52_roster_classes(roster_text: str) -> dict:
+    """Parse the PACK-AGENTS `## Pack agents` roster table; return
+    {agent_name: "RW"|"RO"|"<bad>"} from the `Class` column.
+
+    The roster row shape is `| `agent` | Class | Role | Mode |`. We locate
+    each measured agent by its backticked name cell and read the SECOND
+    pipe-delimited cell (the Class column). Bounded string ops; no regex
+    backtracking risk.
+    """
+    classes = {}
+    for line in roster_text.splitlines():
+        if not line.lstrip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 2:
+            continue
+        name_cell = cells[0].strip().strip("`")
+        if name_cell in _CHECK_52_PACK_AGENTS:
+            classes[name_cell] = cells[1].strip()
+    return classes
+
+
+def _check_52_header_class(text: str):
+    """Classify an agent file by its PROSE mandate header. Returns
+    "RW" / "RO" / None (no recognized header) — NEVER keys on `tools:`."""
+    has_rw = _CHECK_52_RW_HEADER in text
+    has_ro = _CHECK_52_RO_HEADER in text
+    if has_rw and not has_ro:
+        return "RW"
+    if has_ro and not has_rw:
+        return "RO"
+    # Both present, or neither — ambiguous → treat as unclassified so the
+    # set-equality leg FAILs loudly (a file must carry exactly one header).
+    return None
+
+
+def check_pack_rw_ro_two_class() -> None:
+    """Check 52 — BD-197 pack RW/RO two-class consistency (Guard-B).
+
+    Asserts set-equality between the PACK-AGENTS roster `Class` cells and
+    the per-agent-file PROSE mandate headers, for the 5 pack agents × 3
+    CLIs. Binds to the prose header, NEVER `tools:` (pack-reviewer carries
+    Write/Edit yet is RO). Sized to exactly the measured 5-agent set.
+    """
+    print("\n── Check 52: BD-197 pack RW/RO two-class consistency (Guard-B) ──")
+    any_fail = False
+
+    # ── Read the roster SSOT (the Class column). ──
+    roster_path = REPO_ROOT / _CHECK_52_ROSTER_FILE
+    if not roster_path.is_file():
+        fail(f"Check 52 — roster SSOT {_CHECK_52_ROSTER_FILE} not found")
+        return
+    roster_classes = _check_52_roster_classes(roster_path.read_text())
+
+    # Every measured agent MUST have a roster Class cell of RW or RO.
+    for agent in _CHECK_52_PACK_AGENTS:
+        cls = roster_classes.get(agent)
+        if cls is None:
+            any_fail = True
+            fail(
+                f"Check 52 — agent `{agent}` has NO `Class` cell in the "
+                f"{_CHECK_52_ROSTER_FILE} `## Pack agents` roster. Every "
+                f"pack agent MUST carry an RW/RO Class (the pack-side SSOT)."
+            )
+        elif cls not in ("RW", "RO"):
+            any_fail = True
+            fail(
+                f"Check 52 — agent `{agent}` roster Class is `{cls}` "
+                f"(expected exactly `RW` or `RO`) in {_CHECK_52_ROSTER_FILE}."
+            )
+
+    # ── Read each agent file's PROSE header; compare to the roster. ──
+    for agent in _CHECK_52_PACK_AGENTS:
+        roster_cls = roster_classes.get(agent)
+        for dir_rel, ext in _CHECK_52_AGENT_DIRS:
+            agent_path = REPO_ROOT / dir_rel / f"{agent}.{ext}"
+            if not agent_path.is_file():
+                any_fail = True
+                fail(
+                    f"Check 52 — agent file {dir_rel}/{agent}.{ext} not found "
+                    f"(the measured pack set is 5 agents × 3 CLIs)."
+                )
+                continue
+            header_cls = _check_52_header_class(agent_path.read_text())
+            if header_cls is None:
+                any_fail = True
+                fail(
+                    f"Check 52 — {dir_rel}/{agent}.{ext} carries no single "
+                    f"recognized prose mandate header (expected exactly one of "
+                    f"`{_CHECK_52_RW_HEADER}` or `{_CHECK_52_RO_HEADER}`)."
+                )
+                continue
+            if roster_cls in ("RW", "RO") and header_cls != roster_cls:
+                any_fail = True
+                fail(
+                    f"Check 52 — class MISMATCH for `{agent}`: roster Class "
+                    f"`{roster_cls}` (in {_CHECK_52_ROSTER_FILE}) ≠ prose "
+                    f"header `{header_cls}` (in {dir_rel}/{agent}.{ext}). The "
+                    f"roster Class column and the per-agent prose mandate "
+                    f"header must agree (set-equality; Guard-B binds to the "
+                    f"prose header, never `tools:`)."
+                )
+
+    if not any_fail:
+        ok(
+            "Check 52 — pack RW/RO two-class set-equality holds: 5 agents × 3 "
+            "CLIs; roster `Class` cells (1 RW `pack-coder` + 4 RO) ↔ per-agent "
+            "prose mandate headers (bound to the header, never `tools:`)."
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -8405,6 +8563,12 @@ def main() -> None:
     # ARCHITECTURE-BD-214-TRACKER-DEFERRAL.md §6.3 + PLAN-BD-214-TRACKER-
     # DEFERRAL.md §4.
     run_check("check_tracker_deferral_flip_block", check_tracker_deferral_flip_block)
+    # ── BD-197 (C3): pack RW/RO two-class consistency (Guard-B). A bounded
+    # single-pass set-equality between the PACK-AGENTS roster `Class` cells
+    # and the per-agent-file PROSE mandate headers (5 agents × 3 CLIs); binds
+    # to the prose header, never `tools:` (pack-reviewer Write/Edit-yet-RO).
+    # Per ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.2 + §4.3.
+    run_check("check_pack_rw_ro_two_class", check_pack_rw_ro_two_class)
 
     # ── BD-204 §4.7 RUNTIME-BUDGET GUARD — the TOTAL-RUN hard FAIL. A
     # general run over the 10 s total budget means a check regressed into

@@ -212,6 +212,9 @@ jobs:
       - name: validate-pack Check 51 tests (BD-214 C1, tracker-deferral flip-block guard legs 1/2/4)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-51-flip-block.sh
+      - name: validate-pack Check 52 tests (BD-197 C3, pack RW/RO two-class consistency Guard-B)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-check-52.sh
       - name: tracker deferral gate tests (BD-214 C1, flip-block behavioral refusals)
         if: always()
         run: bash scripts/tests/tracker-deferral-gate-test.sh
