@@ -227,6 +227,9 @@ jobs:
       - name: validate-pack Check 57 tests (BD-197 C7b, PROJECT destructive-git-verb enumeration parity Guard-C project)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-57.sh
+      - name: validate-pack Check 54 tests (BD-197 C8b, OPTIONAL-FEATURES presence-check Guard-A′)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-check-54.sh
       - name: tracker deferral gate tests (BD-214 C1, flip-block behavioral refusals)
         if: always()
         run: bash scripts/tests/tracker-deferral-gate-test.sh

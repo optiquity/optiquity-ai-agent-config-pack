@@ -8566,6 +8566,131 @@ def check_worktree_isolation_prohibition_flip_block() -> None:
     )
 
 
+# ── Check 54: BD-197 OPTIONAL-FEATURES presence-check (Guard-A′) ────────────
+#
+# Guard-A′ (design §13.1a / §11.5 gate (b)): the POSITIVE presence-check —
+# the INVERSE of Guard-A (Check 53). Guard-A asserts the removed PROHIBITION
+# prose does NOT reappear; Guard-A′ asserts the worktree-isolation feature
+# STAYS DOCUMENTED on BOTH surfaces — that each OPTIONAL-FEATURES file DOES
+# mention the legitimate setting keys + the in-session backstop recipe. This
+# keeps the un-prohibited feature from silently vanishing from the docs.
+#
+# MANDATED 3-TOKEN FORM (user-approved 2026-06-14; BD-197 Note 14; design
+# §13.1a / §18.4): assert BOTH `pack-ops/OPTIONAL-FEATURES.md` (authored in
+# C5) AND `project-template/docs/pack/OPTIONAL-FEATURES.md` (authored in C8a)
+# each mention the THREE tokens — `baseRef` (the REQUIRED base setting key),
+# `bgIsolation` (the background-SESSION gate / BD-218 pointer — documented in
+# its correct role, NOT as a subagent control), and `permissions.deny` (the
+# documented-optional in-session mechanical-backstop recipe token, §18.2(ii)).
+# The `permissions.deny`-token assertion was originally framed "optional
+# (P3-architect call)" in the design; BD-197 Note 14 SUPERSEDES that — it is
+# now a MANDATED C8b deliverable.
+#
+# MEASURE-THEN-BOUND (ci-guard-design-measure-then-bound), live at C8b
+# commit-time (HEAD 286b4b1, 2026-06-14): the exact token strings each file
+# carries were measured —
+#   `grep -c 'baseRef'         pack-ops/OPTIONAL-FEATURES.md            => 10`
+#   `grep -c 'bgIsolation'     pack-ops/OPTIONAL-FEATURES.md            =>  6`
+#   `grep -c 'permissions\.deny' pack-ops/OPTIONAL-FEATURES.md          =>  4`
+#   `grep -c 'baseRef'         project-template/docs/pack/OPTIONAL-FEATURES.md => 10`
+#   `grep -c 'bgIsolation'     project-template/docs/pack/OPTIONAL-FEATURES.md =>  6`
+#   `grep -c 'permissions\.deny' project-template/docs/pack/OPTIONAL-FEATURES.md => 4`
+# All three tokens are present in BOTH files → the guard is GREEN ON ARRIVAL
+# (C5 authored the pack tokens, C8a the project tokens). The assertion is
+# sized to EXACTLY these 3 tokens × 2 files — no broader. The prose
+# per-spawn `isolation` PARAMETER is explicitly NOT folded into the bounded
+# check (it is prose, not a settings key — design §13.1a). The third token
+# is the EXACT recipe string the docs carry (`permissions.deny`, matched as a
+# literal substring with a real dot), NOT a broad pattern.
+#
+# WHY SUBSTRING (not regex): the three tokens are literal identifiers
+# (`baseRef`, `bgIsolation`) and a literal recipe heading (`permissions.deny`,
+# whose `.` is a real dot in the file, e.g. the prose ``the `permissions.deny`
+# recipe`` and the JSON `"permissions": { "deny": [ ... ] }` block). A plain
+# substring test for `permissions.deny` matches the documented recipe heading
+# exactly and is sized no broader than the authored token. No setting-key
+# token false-matches unrelated prose (they are unique identifiers).
+#
+# RUNTIME (ci-check-runtime-compounding): exactly TWO single-file reads (one
+# per OPTIONAL-FEATURES surface), each followed by three bounded `in` substring
+# tests — NO whole-tree walk, NO subprocess, NO subprocess-per-entry. Trivial
+# (well under the per-check WARN budget) across the battery's validate-pack
+# invocations; `run_check` times it.
+_CHECK_54_OPTIONAL_FEATURES_SURFACES = (
+    "pack-ops/OPTIONAL-FEATURES.md",
+    "project-template/docs/pack/OPTIONAL-FEATURES.md",
+)
+# The MANDATED 3-token set (design §13.1a / BD-197 Note 14), sized to exactly
+# the C5/C8a-authored tokens measured at C8b commit-time (no broader). Matched
+# as literal substrings. `permissions.deny` is the in-session backstop recipe
+# token (the `.` is a literal dot in the docs); the prose `isolation` param is
+# deliberately NOT in this set.
+_CHECK_54_REQUIRED_TOKENS = (
+    "baseRef",
+    "bgIsolation",
+    "permissions.deny",
+)
+
+
+def check_optional_features_presence() -> None:
+    """Check 54 — BD-197 OPTIONAL-FEATURES presence-check (Guard-A′).
+
+    The POSITIVE inverse of Guard-A (Check 53): asserts BOTH OPTIONAL-FEATURES
+    surfaces (`pack-ops/OPTIONAL-FEATURES.md` from C5 +
+    `project-template/docs/pack/OPTIONAL-FEATURES.md` from C8a) each mention
+    the MANDATED three tokens — `baseRef`, `bgIsolation`, and the
+    `permissions.deny` recipe token (user-approved 2026-06-14; BD-197 Note 14;
+    design §13.1a / §11.5 gate (b)). Keeps the un-prohibited worktree-isolation
+    feature + its in-session backstop recipe DOCUMENTED on both surfaces.
+    Measure-then-bound: sized to exactly the 3 authored tokens × 2 files. Two
+    single-file reads + bounded substring tests; no subprocess, no whole-tree
+    scan.
+    """
+    print("\n── Check 54: BD-197 OPTIONAL-FEATURES presence-check (Guard-A′) ──")
+    any_fail = False
+    checked = 0
+    for surface in _CHECK_54_OPTIONAL_FEATURES_SURFACES:
+        path = REPO_ROOT / surface
+        if not path.is_file():
+            any_fail = True
+            fail(
+                f"Check 54 (Guard-A′) — OPTIONAL-FEATURES surface {surface} not "
+                f"found (the presence-check covers exactly 2 surfaces: pack + "
+                f"project)."
+            )
+            continue
+        try:
+            text = path.read_text()
+        except (OSError, UnicodeDecodeError):
+            any_fail = True
+            fail(f"Check 54 (Guard-A′) — could not read {surface}.")
+            continue
+        checked += 1
+        missing = [tok for tok in _CHECK_54_REQUIRED_TOKENS if tok not in text]
+        if missing:
+            any_fail = True
+            fail(
+                f"Check 54 (Guard-A′) — {surface} is MISSING worktree-isolation "
+                f"documentation token(s): {', '.join(missing)}. BOTH "
+                f"OPTIONAL-FEATURES surfaces MUST document the worktree "
+                f"isolation feature — `baseRef` (required base setting), "
+                f"`bgIsolation` (background-session gate / BD-218), and the "
+                f"`permissions.deny` in-session backstop recipe (MANDATED per "
+                f"BD-197 Note 14). The feature must not silently vanish from "
+                f"the docs (design §13.1a, the positive inverse of Guard-A)."
+            )
+
+    if not any_fail:
+        ok(
+            f"Check 54 (Guard-A′) — OPTIONAL-FEATURES presence holds across "
+            f"{checked} surface(s) (pack + project): all "
+            f"{len(_CHECK_54_REQUIRED_TOKENS)} mandated tokens "
+            f"(`baseRef`, `bgIsolation`, `permissions.deny` recipe) documented "
+            f"in each. The un-prohibited worktree-isolation feature + its "
+            f"in-session backstop recipe stay documented (BD-197 Note 14)."
+        )
+
+
 # ── Check 56: BD-197 destructive-git-verb enumeration parity (Guard-C) ─────
 #
 # Guard-C (design §13.3 / §5.4): assert the §5.1 destructive-git-verb DENYLIST
@@ -9410,6 +9535,22 @@ def main() -> None:
     # ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.1 + §11.5.
     run_check("check_worktree_isolation_prohibition_flip_block",
               check_worktree_isolation_prohibition_flip_block)
+    # ── BD-197 (C8b): OPTIONAL-FEATURES presence-check (Guard-A′). The POSITIVE
+    # inverse of Guard-A (Check 53): a bounded TWO-single-file pass asserting
+    # BOTH OPTIONAL-FEATURES surfaces (pack-ops/OPTIONAL-FEATURES.md from C5 +
+    # project-template/docs/pack/OPTIONAL-FEATURES.md from C8a) each mention the
+    # MANDATED three tokens — `baseRef`, `bgIsolation`, and the
+    # `permissions.deny` recipe token (user-approved 2026-06-14; BD-197 Note 14;
+    # design §13.1a / §18.4 — supersedes the design's earlier "optional" framing)
+    # — so the un-prohibited worktree-isolation feature + its in-session backstop
+    # recipe stay DOCUMENTED on both surfaces. Measure-then-bound: sized to
+    # exactly the 3 authored tokens × 2 files (the prose `isolation` param is NOT
+    # folded in — design §13.1a). GREEN on arrival (C5 + C8a authored the
+    # tokens). Check number 54 — reserved for Guard-A′ across the prior BD-197
+    # commits; with this landing, checks 52–57 are contiguous. Per
+    # ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.1a + §11.5 gate (b).
+    run_check("check_optional_features_presence",
+              check_optional_features_presence)
     # ── BD-197 (C5): destructive-git-verb enumeration parity (Guard-C). A
     # bounded 10-single-file pass asserting the §5.1 canonical verb set + the
     # catch-all principle phrase appear in every surface enumerating the
