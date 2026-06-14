@@ -26,10 +26,6 @@
 - [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
 - [BD-219](./BD-219.md) — CI runtime optimization: tests-job matrix-sharding + `validate-pack --only-check` (effectiveness-preserving)
 
-## Unblocked
-
-- [BD-197](./BD-197.md) — Worktree isolation: remove the prohibition and enable safe, opt-in parallel agent execution (pack + client; graceful degradation)
-
 ## Deferred
 
 - [BD-031](./BD-031.md) — Evaluate publishing pack skills to skills.sh
@@ -216,6 +212,7 @@
 - [BD-194](./BD-194.md) — Check 24 byte-identity gate replacement (post-BD-193 architectural baseline fix)
 - [BD-195](./BD-195.md) — v11.0 pristine-state recovery before BD-185 restart (full-repo) (Code Red 3)
 - [BD-196](./BD-196.md) — Document concision + boundary-completeness guardrails (rule-corpus restructure + single-SSOT discoverability)
+- [BD-197](./BD-197.md) — Worktree isolation: remove the prohibition and enable safe, opt-in parallel agent execution (pack + client; graceful degradation)
 - [BD-198](./BD-198.md) — Formalize `pack-ops/PACK-MEMORY-RATIONALE.md` as a PM-only surface (close BD-196 classification gap)
 - [BD-199](./BD-199.md) — Optimize validate-pack.py runtime regression (Check 43 per-iteration regex recompilation)
 - [BD-200](./BD-200.md) — Project-side capability ACTIVATION (no pack-clone dependency): project-side `activate-capability.sh` + tracked conditional-file pool + single-source capability tables + Procedure 6 redesign
