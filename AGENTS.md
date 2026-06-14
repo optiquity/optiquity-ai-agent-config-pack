@@ -154,7 +154,21 @@ PACK-AGENTS.md current".
 - **Agents never commit.** No agent — including `pack-coder` — may run
   `git add`, `git commit`, `git push`, `git tag`, or any other state-changing
   git verb at any point in any task; only Pack Chat stages/commits, and only
-  with explicit user approval. `[roles: universal]
+  with explicit user approval. The denied set (RW and RO agents alike,
+  including but not limited to): `commit`, `push`, `add` / stage
+  (`add -p`, `stage`, `restore --staged`), `stash` (all subcommands),
+  `rm`, `mv`, `reset` (all modes), `restore`, `checkout` (incl.
+  `checkout --`, branch switch), `clean`, `merge`, `rebase`,
+  `cherry-pick`, `revert`, `am`, `apply`, `branch -d`/`-D`/create,
+  `switch`, `worktree` (add/remove/move/prune), `config` (write),
+  `remote` (write), `update-ref`, `update-index`, `pull`, `fetch`, `gc`,
+  `reflog expire`, `filter-branch`, `tag` (create/delete), `notes`
+  (write), `replace`. (`git diff` is the agent's read-only patch-emit and
+  is allowed; only `git apply` — the patch-APPLYING form — is denied, and
+  only the orchestrator applies patches.) Principle (the catch-all):
+  read-only git verbs are allowed only; any git verb that changes
+  repository, index, working-tree, ref, or config state is forbidden —
+  including but not limited to the enumerated denylist. `[roles: universal]
   [rationale: agents-never-commit]`
 - **Pack Chat does not architect.** Architecture, planning, implementation,
   and review work goes to `pack-architect` / `pack-planner` / `pack-coder` /

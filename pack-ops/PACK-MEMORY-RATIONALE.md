@@ -28,10 +28,36 @@ set (Check 45, wired in commit C3).
 
 ## agents-never-commit
 
-Read-only git verbs (`status`, `diff`, `log`, `rev-parse`, `show`) are
-allowed. Only Pack Chat may stage and commit, and only with explicit user
-approval. The agent's output is its report file plus working-tree edits; Pack
-Chat reads the report, verifies, then commits.
+Read-only git verbs (`status`, `diff` — incl. `diff > file`, the agent's
+patch-emit — `log`, `rev-parse`, `show`, `ls-files`, `blame`) are allowed.
+Only Pack Chat may stage and commit, and only with explicit user approval.
+The agent's output is its report file plus working-tree edits (or, in the
+isolated regime, a `git diff` patch emitted to the named `/tmp` handoff
+dir); Pack Chat reads the report, verifies / applies the patch, then
+commits.
+
+**The denied set (RW and RO agents alike — "including but not limited
+to").** No agent may run any state-changing git verb at any point:
+`commit`, `push`, `add` / stage (`add -p`, `stage`, `restore --staged`),
+`stash` (all subcommands), `rm`, `mv`, `reset` (all modes), `restore`,
+`checkout` (incl. `checkout --` and branch switch), `clean`, `merge`,
+`rebase`, `cherry-pick`, `revert`, `am`, `apply`, `branch -d`/`-D`/create,
+`switch`, `worktree` (add/remove/move/prune), `config` (write), `remote`
+(write), `update-ref`, `update-index`, `pull`, `fetch`, `gc`, `reflog
+expire`, `filter-branch`, `tag` (create/delete), `notes` (write),
+`replace`. Verb-precision matters for the merge-back model: `git apply`
+(the patch-APPLYING form) is DENIED to agents — only the orchestrator
+applies patches — while `git diff` (the patch-EMIT) stays allowed; a
+backstop that keys on the git verb must deny `apply` and never `diff`
+(the `git diff > file` shell redirect is not a git verb and is not
+tripped).
+
+**Principle (the catch-all).** Read-only git verbs are allowed only; any
+git verb that changes repository, index, working-tree, ref, or config
+state is forbidden — including but not limited to the enumerated denylist.
+If a verb is not on the allowed read-only list and the agent is unsure, it
+is treated as forbidden. This closes the "the list never told me" gap for
+any unlisted future verb.
 
 ---
 

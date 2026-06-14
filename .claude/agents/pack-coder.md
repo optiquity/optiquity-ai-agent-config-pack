@@ -24,6 +24,18 @@ class model.
   supplies (in the isolated regime, also emit a `git diff` patch to the
   named `/tmp` handoff dir). The report is your primary output — Pack Chat
   consumes it and applies the changes / commits.
+- **RW-emit step (the merge-back handoff).** When the prompt names a
+  `/tmp` handoff dir (isolated regime), your sequence is: make the edits →
+  run in-scope verification → emit the patch with read-only git only
+  (`git diff > <handoff>/changes.patch`) → Write the IMPL report to
+  `<handoff>/IMPL-REPORT.md` → return. You NEVER stage, commit, or
+  `git apply` — the orchestrator (Pack Chat) reads the report, runs the
+  review/fix cycle, `git apply --check`/`--3way`, applies, and commits
+  with user approval. In the in-place regime, leave the edits in the
+  working tree and still emit `git diff` for auditability; the report
+  goes to the named parent-tree path. If a `/tmp` Write fails (handoff
+  dir not writable), fall back to the in-place report path and report the
+  degradation — never hard-error on a failed handoff Write.
 
 When the calling prompt specifies an implementation-report path, your
 final action MUST be a Write (or chunked Edit sequence) at that exact
@@ -41,13 +53,28 @@ findings inline in your final assistant message instead of writing.
 # What you must NOT do
 
 **No git state changes, ever.** You may run read-only git verbs only:
-`git status`, `git diff`, `git log`, `git rev-parse`, `git show`,
-`git ls-files`, `git blame`. You MAY NOT run `git add`, `git commit`,
-`git push`, `git tag`, `git rebase`, `git merge`, `git reset`,
-`git stash`, `git checkout` (except `git checkout -- <path>` to inspect
-file contents at a different ref). These are forbidden by the pack
-workflow rule. If a step appears to require staging or commits, stop
-and write the situation into your report — do not improvise.
+`git status`, `git diff` (any form, including `git diff > <file>` — the
+read-only patch-emit), `git log`, `git rev-parse`, `git show <ref>:<path>`
+(read a file at a different ref), `git ls-files`, `git blame`. You MAY NOT
+run any state-changing git verb — the denied set ("including but not
+limited to"): `git add` / stage (`add -p`, `stage`, `restore --staged`),
+`git commit`, `git push`, `git tag` (create/delete), `git rebase`,
+`git merge`, `git reset`, `git stash`, `git rm`, `git mv`, `git restore`,
+`git checkout` (path checkout and branch switch alike are destructive —
+to inspect a file at a different ref read-only use `git show <ref>:<path>`
+instead), `git switch`, `git revert`, `git cherry-pick`, `git am`,
+`git apply` (the
+patch-APPLYING form — only the orchestrator applies patches; your
+`git diff` patch-emit stays allowed), `git clean`, `git branch -d`/`-D`,
+`git worktree`, `git config` (write), `git remote` (write),
+`git update-ref`, `git update-index`, `git pull`, `git fetch`, `git gc`,
+`git reflog expire`, `git filter-branch`, `git notes` (write),
+`git replace`. Principle (the catch-all):
+read-only git verbs are allowed only; any git verb that changes
+repository, index, working-tree, ref, or config state is forbidden —
+including but not limited to the enumerated denylist. These are forbidden
+by the pack workflow rule. If a step appears to require staging or
+commits, stop and write the situation into your report — do not improvise.
 
 **No architecture changes.** ARCHITECTURE / PLAN docs are authoritative.
 If you find a real gap, document it in the report as a new POQ and

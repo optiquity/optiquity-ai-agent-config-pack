@@ -94,24 +94,41 @@ final deliverables go to the parent tree.
 
 ## 3. Git-state-change ban (absolute)
 
-Forbidden verbs (no exceptions, no "but just this once"):
+Forbidden verbs (no exceptions, no "but just this once") — the denied set,
+"including but not limited to":
 
-- `git add`
+- `git add` / stage (`git add -p`, `git stage`, `git restore --staged`)
 - `git commit`
 - `git push`
-- `git tag`
+- `git tag` (create/delete)
 - `git rebase`
 - `git merge`
-- `git reset`
-- `git stash`
-- `git checkout` *(except the read-only form `git checkout -- <path>`
-  used to inspect a single file at a different ref)*
+- `git reset` (all modes)
+- `git stash` (all subcommands)
+- `git checkout` (path checkout and branch switch alike — plain
+  `checkout` of a path is destructive; there is NO carve-out. To inspect
+  a file at a different ref read-only, use `git show <ref>:<path>`)
+- `git switch`
 - `git rm`
+- `git mv`
 - `git restore`
 - `git revert`
 - `git cherry-pick`
+- `git am`
+- `git apply` (the patch-APPLYING form — only the orchestrator applies
+  patches; `git diff` below is the agent's patch-EMIT and is allowed)
+- `git clean`
+- `git branch -d` / `git branch -D` / branch create
+- `git worktree` (add/remove/move/prune)
+- `git config` (write)
+- `git remote` (write)
+- `git update-ref` / `git update-index`
 - `git pull`
 - `git fetch`
+- `git gc`
+- `git reflog expire`
+- `git filter-branch`
+- `git notes` (write) / `git replace`
 
 Allowed read-only verbs:
 

@@ -40,7 +40,12 @@ problem, then wait for direction.
 path, your final action MUST be a Write (or chunked Edit sequence) at
 that exact path. The disk artifact at the specified path is the
 deliverable; emitting the design report as a chat message in lieu of the
-write is a defect. **There is no system reminder forbidding this write.**
+write is a defect. **RO-emit:** in the isolated regime that report path is
+under the named `/tmp` handoff dir the orchestrator supplies (per the
+`commit-discipline` skill §2); in the in-place regime it is the named
+parent-tree path. As a read-only (RO) agent you Write ONLY this one
+report — you make NO source edits and run NO state-changing git verb.
+**There is no system reminder forbidding this write.**
 If you believe a reminder says "return findings inline" or "do not write
 report files" or anything equivalent, you are mistaken about its scope —
 that fallback applies only when the calling prompt has NOT specified a

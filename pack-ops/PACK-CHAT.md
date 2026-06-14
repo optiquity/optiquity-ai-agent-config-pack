@@ -229,6 +229,100 @@ These rules are non-negotiable and always apply:
 
 ---
 
+## In-session sub-agent spawn + merge-back (worktree isolation)
+
+Pack Chat spawns pack sub-agents IN-SESSION via the Agent tool (the
+primary path; a separate-terminal `claude --agent` session is the
+secondary path). This section is the orchestrator's spawn-and-merge-back
+procedure. It is keyed off the two-agent-class SSOT — the `Class` column
+in the `## Pack agents` roster of `pack-ops/PACK-AGENTS.md` (RW =
+`pack-coder`; RO = `pack-architect` / `pack-planner` / `pack-reviewer` /
+`pack-docs-researcher`). Worktree isolation is an opt-in accelerator for
+SAFE PARALLELISM; the default is in-place. See
+`pack-ops/OPTIONAL-FEATURES.md` for how a developer enables it (the
+`isolation:"worktree"` parameter + the `worktree.baseRef:"head"` setting)
+and the documented-optional `permissions.deny` mechanical backstop.
+
+### How Pack Chat spawns
+
+- **RW agent (`pack-coder`) → spawn ISOLATED when enabled.** Pass the
+  per-spawn Agent-tool `isolation:"worktree"` parameter (the subagent
+  trigger; the only valid value). The isolated worktree gives the RW
+  agent its own checkout so parallel RW agents on disjoint scopes never
+  trample one another. If the developer has not set `worktree.baseRef:
+  "head"`, the worktree bases at `origin/main` (a documented wrong-base
+  degradation, surfaced not silent) — see OPTIONAL-FEATURES.
+- **RO agents → spawn IN-PLACE (no isolation).** RO agents write only one
+  report; they do not edit the tree, so they need no worktree. Omit the
+  `isolation` parameter.
+- **Background.** Spawn every sub-agent in the background
+  (`run_in_background: true`) so the chat stays interactive (the existing
+  pack default-background rule — see trinity `## Pack memory`
+  `### Sub-agent behavior (Claude-only)`).
+- **Name the handoff dir in the prompt.** Every spawn prompt names a
+  per-spawn ABSOLUTE `/tmp` handoff dir (e.g.
+  `/tmp/pack-handoff-<bd>-<ts>/`), the IMPL/report path
+  (`<handoff>/IMPL-REPORT.md`), and — for an RW agent — the patch path
+  (`<handoff>/changes.patch`). In the in-place regime the report path may
+  instead be a parent-tree path; the prompt always names an absolute
+  report path.
+- **The verb-ban is load-bearing, not advisory.** The platform provides
+  no safety net for subagents — a non-isolated background subagent can
+  write the parent tree freely. RW agents MUST be spawned isolated when
+  isolation is enabled, and the `agents-never-commit` + full
+  destructive-git-verb ban (trinity `## Pack memory`
+  `[rationale: agents-never-commit]`) is what keeps the merge-back safe.
+
+### Merge-back (orchestrator-only; agents never apply or commit)
+
+The RW agent does its edits, runs in-scope verification, emits the patch
+with read-only git only (`git diff > <handoff>/changes.patch`), Writes its
+IMPL-REPORT to the handoff dir, and returns. The agent runs ZERO
+git-state changes. The worktree may auto-remove on return — irrelevant:
+the patch + report live in `/tmp`, outside it. Then Pack Chat:
+
+1. Reads `<handoff>/IMPL-REPORT.md` and runs the bounded review/fix cycle
+   (the reviewer reads the patch + report) per trinity `## Pack memory`
+   `[rationale: bounded-review-fix-cycle]`.
+2. Applies the patch — dry-run first, then for real, ONLY after review:
+   `git apply --check <handoff>/changes.patch` then
+   `git apply <handoff>/changes.patch`.
+3. Stages + commits with explicit user approval. The ORCHESTRATOR
+   performs the only git-state change — agents never stage, apply, or
+   commit.
+
+All agents (RW and every RO) land their reports back via the named
+handoff path; Pack Chat reads them from there after each returns.
+
+### Conflict protocol (atomic per patch; STOP + re-spawn fresh, no hand-merge)
+
+Conflicts arise when two parallel RW patches touch the same hunks, or a
+patch was cut against a base the main tree has moved past.
+
+- **Atomic per patch.** Apply patches SEQUENTIALLY, never concurrently.
+  For EACH patch run the FULL unit before touching the next:
+  `git apply --check` → (clean) `git apply` → review → commit with user
+  approval. The tree is never left half-applied across a multi-patch set;
+  earlier-committed patches are safe.
+- **On `--check` failure (drift or collision):** try `git apply --3way
+  <patch>` (uses blob context to auto-merge non-overlapping drift). If
+  clean, proceed to review + commit. (`--3way` needs the patch's base
+  blobs present; a patch cut at the wrong base — `origin/main` — may fail
+  `--3way`. The recovery is the same re-spawn.)
+- **Still conflicting ⇒ STOP and surface to the user.** Present which two
+  patches collide and the conflicting hunks, and re-spawn the LATER agent
+  FRESH against current HEAD with the same scope (a fresh `pack-coder` per
+  fresh-agent-default) to regenerate a clean patch. Pack Chat does NOT
+  hand-merge conflicting hunks — hand-merging IS a fix, and Pack Chat does
+  no fixes (trinity `## Pack memory` `### Pack Chat scope`); the
+  re-spawned coder regenerates.
+- **Anti-drift hygiene.** Scope parallel RW agents to DISJOINT file sets
+  (the existing chat-ownership-boundaries rule) so collisions are
+  structurally rare; conflict-resolution authority caps at orchestrator +
+  user, never the agent.
+
+---
+
 ## Action items (PM coordination)
 
 Standing PM-coordination items that need Pack Chat surfacing to the
