@@ -8968,6 +8968,246 @@ def check_project_rw_ro_two_class() -> None:
         )
 
 
+# ── Check 57: BD-197 PROJECT destructive-git-verb enumeration parity ───────
+#              (Guard-C project)
+#
+# Guard-C PROJECT (design §13.3 / §5.4): the project analog of Check 56
+# (Guard-C pack). Asserts that the destructive-git-verb DENYLIST is
+# ENUMERATED CONSISTENTLY across every PROJECT surface that carries the
+# "No destructive operations" / agents-never-commit ban — so the project
+# trinity rule, the 48 per-agent Hard rules, and the `agent-run.sh`
+# `--disallowedTools` launcher flags cannot silently drift to a stale/short
+# verb list. Without this guard, a future edit could drop `git checkout`
+# from one project surface (say the launcher) while leaving it in the
+# trinity prose, and nothing would catch the divergence. Ships in C7b AFTER
+# C7a (3457569) made the project verb enumeration consistent, so it is GREEN
+# on arrival.
+#
+# FOLD-vs-NEW-CHECK (decision 8 / §J3, the C7b coder's call): a NEW
+# STANDALONE Check 57 — NOT folded into Check 56 (Guard-C pack). Rationale:
+#   - Check 56 is sized to the FULL §5.1 28-verb set across 10 PACK surfaces
+#     that all carry the AGENT ABSOLUTE ban (a closed enumeration). The
+#     PROJECT surfaces are heterogeneous: the project trinity carries the
+#     PM/human "No destructive operations — needs approval" rule (a SUBSET:
+#     working-tree/ref mutators only, with the `including but not limited to`
+#     catch-all), while the 48 agent files + the launcher carry the agent
+#     ban. So the project-consistent verb set is a measured INTERSECTION of
+#     8 verbs (below), NOT the 28-verb pack set, and the catch-all principle
+#     phrase is TRINITY-ONLY (the agent files use a closed "Forbidden: …"
+#     enumeration with no catch-all). Folding two different canonical verb
+#     sets + a surface-conditional principle-phrase assertion into Check 56
+#     would force it to model two structurally-different surface families —
+#     the same over-complication the C5 coder cited for keeping Check 56
+#     standalone. A separate, single-responsibility Check 57 is cleaner
+#     (decision 8 escape hatch: "author a standalone check ONLY if folding
+#     over-complicates").
+#   - C7b is therefore PRESENT (not dropped); the plan's "may drop to 11
+#     commits if folded" branch does not apply (this guard is standalone).
+#
+# MEASURE-THEN-BOUND (ci-guard-design-measure-then-bound), live at C7b
+# commit-time (HEAD 3457569, 2026-06-14): the asserted CANONICAL set is the
+# 8-verb INTERSECTION measured present-and-consistent across ALL 52 project
+# surfaces (trinity ×3 + 48 agent files + agent-run.sh) with the
+# `_check_57_verb_present` matcher below:
+#     checkout, clean, merge, rebase, reset, restore, stash, worktree
+# EXCLUDED verbs + WHY (each measured NOT consistent across all 52, so
+# asserting it would FALSE-FAIL a legitimately-divergent surface):
+#   - `commit`/`push`/`apply`/`tag`: absent from the project TRINITY
+#     "No destructive operations" bullet (3/3 trinity files) — that rule is
+#     the human/PM needs-approval rule scoped to working-tree/ref mutators;
+#     publish/index ops + `git apply` live in the AGENT ban, not the trinity.
+#   - `add`: the only trinity hit is "`git worktree` (add/remove/prune)" — a
+#     worktree-subcommand description, NOT the `git add` verb; the matcher's
+#     ≥4-member slash-run rule correctly rejects that 3-member parenthetical,
+#     so `add` measures 49/52 (trinity-absent) and is EXCLUDED.
+#   - `rm`/`mv`/`config`/`switch`/`cherry-pick`/`revert`/`am`/etc.: not
+#     enumerated consistently across the project families (e.g. `rm` is in
+#     the trinity + launcher but not the agent Hard rules; `config` never
+#     appears as a project deny verb).
+# The 8-verb intersection is the verb-precise project-consistent set: it is
+# the set of working-tree/ref mutators that the project trinity rule, the
+# agent Hard rules, AND the launcher flags ALL enumerate. `git apply` (the
+# verb-precise deny, §5.1 G-4) IS in the agent ban + launcher but NOT the
+# trinity, so it is NOT in the consistent intersection — Check 56 (pack)
+# already covers `apply` parity; Check 57 covers only the project-consistent
+# intersection. Sized to the measured-consistent set, no broader.
+#
+# PRINCIPLE PHRASE (measure-then-bound, surface-scoped): the catch-all
+# `including but not limited to` is asserted ONLY on the 3 trinity surfaces
+# (measured present 3/3 there, 0/49 in the agent files + launcher). The
+# trinity rule is open-ended (needs-approval, "including but not limited
+# to the ones enumerated here"); the agent files carry a CLOSED absolute
+# enumeration ("You MAY NOT run X, Y, Z" / "Forbidden: …") with no
+# catch-all, and the launcher is a flag array. Asserting the catch-all on
+# the agent files / launcher would FALSE-FAIL — so it is bounded to the
+# trinity, where it is the load-bearing close of the open denylist.
+#
+# FORMAT-AGNOSTIC MATCHER (the project format variety the design names):
+# the project surfaces enumerate verbs in THREE shapes —
+#   (a) `git <verb>` prose (the trinity bullet + the agent Hard rules);
+#   (b) `Bash(git <verb>:*)` launcher flags (agent-run.sh) — matched by the
+#       same `git <verb>` rule since "Bash(git reset:" contains "git reset";
+#   (c) a slash-separated `Forbidden: a/b/c/d` list (the 6 Codex auditor
+#       `.toml` files) — matched by a slash-run of ≥4 verb tokens, which
+#       distinguishes the deny list from the 3-member `(add/remove/prune)`
+#       worktree-subcommand parenthetical.
+# Word-boundary safe (so `clean` ≠ "cleanup", `merge` ≠ "merged"); no
+# substring false-positive.
+#
+# RUNTIME (ci-check-runtime-compounding): 52 single-file reads (3 trinity +
+# 48 agents + 1 launcher) + bounded regex tests per file; NO subprocess, NO
+# whole-tree scan, NO per-entry subprocess storm. Trivial across the
+# battery's ~200+ validate-pack invocations (measured wall-time in the C7b
+# IMPL-REPORT).
+_CHECK_57_TRINITY_SURFACES = (
+    "project-template/CLAUDE.md",
+    "project-template/AGENTS.md",
+    "project-template/GEMINI.md",
+)
+# The 16 project agents × 3 CLIs (the same exhaustive set Check 55 binds to;
+# kept as a local tuple so a NEW project agent or CLI surface must be added
+# here in lock-step — enumerate-encoding-surfaces — else the guard develops a
+# blind spot). The per-CLI extension differs (.md for Claude/Gemini, .toml
+# for Codex).
+_CHECK_57_PROJECT_AGENTS = (
+    "architect", "planner", "reviewer", "tester", "docs-researcher",
+    "grpc-schema", "auditor", "auditor-architecture", "auditor-code",
+    "auditor-docs", "auditor-ops", "auditor-security", "auditor-tests",
+    "auditor-ui", "coder", "repo-ops",
+)
+_CHECK_57_AGENT_DIRS = (
+    ("project-template/.claude/agents", "md"),
+    ("project-template/.codex/agents", "toml"),
+    ("project-template/.gemini/agents", "md"),
+)
+_CHECK_57_LAUNCHER_SURFACE = "project-template/agent-run.sh"
+# The CANONICAL project-consistent verb set — the 8-verb INTERSECTION
+# measured present in ALL 52 project surfaces (HEAD 3457569, 2026-06-14).
+# These are the working-tree/ref mutators the project trinity rule, the agent
+# Hard rules, AND the launcher --disallowedTools ALL enumerate. Sized to the
+# measured-consistent set (see the measure-then-bound block above for every
+# excluded verb + why).
+_CHECK_57_CANONICAL_VERBS = (
+    "checkout", "clean", "merge", "rebase",
+    "reset", "restore", "stash", "worktree",
+)
+# The catch-all principle phrase — asserted ONLY on the trinity surfaces
+# (the open needs-approval rule); the agent files carry a closed enumeration
+# with no catch-all (measure-then-bound, surface-scoped).
+_CHECK_57_PRINCIPLE_PHRASE = "including but not limited to"
+
+
+def _check_57_verb_present(text: str, verb: str) -> bool:
+    """True iff `verb` appears as a destructive-git-verb token in `text`,
+    format-agnostic across the project surface families:
+      (a) `git <verb>` (trinity prose + agent Hard rules) — also matches the
+          launcher `Bash(git <verb>:*)` form (it contains `git <verb>`);
+      (b) a slash-separated deny list `a/b/c/d` with >=4 members (the Codex
+          auditor `Forbidden: …` form).
+    Word-bounded so `clean` does not match inside `cleanup`, and the
+    >=4-member slash-run rule rejects the 3-member `(add/remove/prune)`
+    worktree-subcommand parenthetical (so `add` is not a false positive)."""
+    v = re.escape(verb)
+    # (a) `git <verb>` form (covers prose + the launcher `Bash(git <verb>:`).
+    if re.search(r"git\s+" + v + r"(?![\w-])", text):
+        return True
+    # (b) slash-separated forbidden list with >=4 slash-joined verb tokens.
+    for m in re.finditer(r"(?:[a-z][a-z-]*/){3,}[a-z][a-z-]*", text):
+        if verb in m.group(0).split("/"):
+            return True
+    return False
+
+
+def check_project_destructive_git_verb_parity() -> None:
+    """Check 57 — BD-197 PROJECT destructive-git-verb enumeration parity
+    (Guard-C project).
+
+    The project analog of Check 56 (Guard-C pack). Asserts the
+    project-consistent canonical verb set (the measured 8-verb intersection)
+    appears in every project surface that enumerates the "No destructive
+    operations" / agents-never-commit ban — the project trinity ×3, the 48
+    per-agent Hard rules (16 agents × 3 CLIs), and the `agent-run.sh`
+    `--disallowedTools` launcher flags — and that the catch-all principle
+    phrase appears on the trinity (the open needs-approval rule). Standalone
+    Check 57 (decision 8 — folding into Check 56 over-complicates: different
+    canonical set + a trinity-only catch-all). Format-agnostic matcher
+    (`git <verb>` prose / `Bash(git <verb>:*)` launcher / slash-list).
+    52 single-file reads; no subprocess.
+    """
+    print(
+        "\n── Check 57: BD-197 PROJECT destructive-git-verb enumeration "
+        "parity (Guard-C project) ──"
+    )
+    any_fail = False
+    checked = 0
+
+    # Build the full project surface list: trinity ×3 + 48 agents + launcher.
+    surfaces = list(_CHECK_57_TRINITY_SURFACES)
+    for dir_rel, ext in _CHECK_57_AGENT_DIRS:
+        for agent in _CHECK_57_PROJECT_AGENTS:
+            surfaces.append(f"{dir_rel}/{agent}.{ext}")
+    surfaces.append(_CHECK_57_LAUNCHER_SURFACE)
+
+    for surface in surfaces:
+        path = REPO_ROOT / surface
+        if not path.is_file():
+            any_fail = True
+            fail(
+                f"Check 57 (Guard-C project) — verb-parity surface {surface} "
+                f"not found (the measured enumeration set is "
+                f"{len(surfaces)} project surfaces: trinity ×3, 48 agent "
+                f"files, agent-run.sh)."
+            )
+            continue
+        try:
+            text = path.read_text()
+        except (OSError, UnicodeDecodeError):
+            any_fail = True
+            fail(f"Check 57 (Guard-C project) — could not read {surface}.")
+            continue
+        checked += 1
+        missing_verbs = [
+            v for v in _CHECK_57_CANONICAL_VERBS
+            if not _check_57_verb_present(text, v)
+        ]
+        if missing_verbs:
+            any_fail = True
+            fail(
+                f"Check 57 (Guard-C project) — {surface} is MISSING "
+                f"destructive git verb(s) from the project-consistent "
+                f"denylist: {', '.join(missing_verbs)}. Every project surface "
+                f"that enumerates the No-destructive / agents-never-commit "
+                f"ban MUST carry the full canonical verb set "
+                f"(enumerate-encoding-surfaces; the project trinity rule, the "
+                f"48 agent Hard rules, and the agent-run.sh --disallowedTools "
+                f"flags must stay in parity)."
+            )
+        # The catch-all principle phrase is asserted ONLY on the trinity
+        # surfaces (the open needs-approval rule; the agent files + launcher
+        # carry a closed enumeration with no catch-all — measure-then-bound).
+        if surface in _CHECK_57_TRINITY_SURFACES \
+                and _CHECK_57_PRINCIPLE_PHRASE not in text:
+            any_fail = True
+            fail(
+                f"Check 57 (Guard-C project) — trinity surface {surface} is "
+                f"MISSING the catch-all principle phrase "
+                f"`{_CHECK_57_PRINCIPLE_PHRASE}` that closes the open "
+                f"No-destructive denylist. The verb list AND the catch-all "
+                f"must both appear in the trinity so an unlisted future verb "
+                f"is still covered."
+            )
+
+    if not any_fail:
+        ok(
+            f"Check 57 (Guard-C project) — destructive-git-verb enumeration "
+            f"parity holds across {checked} project surface(s) (trinity ×3, "
+            f"48 agent Hard rules [16 agents × 3 CLIs], agent-run.sh "
+            f"--disallowedTools): all {len(_CHECK_57_CANONICAL_VERBS)} "
+            f"canonical project-consistent verbs present in each; the "
+            f"catch-all principle phrase present on each trinity surface."
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -9191,6 +9431,23 @@ def main() -> None:
     # after 52/53/56; 54 is reserved for the C8b Guard-A′ — a non-contiguous
     # gap is expected and tolerated; numbers ≠ commit order).
     run_check("check_project_rw_ro_two_class", check_project_rw_ro_two_class)
+    # ── BD-197 (C7b): PROJECT destructive-git-verb enumeration parity
+    # (Guard-C project). A bounded 52-single-file pass asserting the
+    # project-consistent canonical verb set (the measured 8-verb intersection
+    # checkout/clean/merge/rebase/reset/restore/stash/worktree) appears in
+    # every project surface enumerating the No-destructive / agents-never-
+    # commit ban (project trinity ×3, the 48 per-agent Hard rules [16 × 3
+    # CLIs], agent-run.sh --disallowedTools), plus the catch-all principle
+    # phrase on the trinity. The PROJECT analog of Guard-C pack (Check 56).
+    # STANDALONE per decision 8 (folding into Check 56 over-complicates:
+    # different canonical verb set + a trinity-only catch-all — see the
+    # check's fold-vs-new-check comment block). Format-agnostic matcher
+    # (`git <verb>` prose / `Bash(git <verb>:*)` launcher / Codex slash-list).
+    # Check number 57 (next available after 52/53/55/56; 54 is reserved for
+    # the C8b Guard-A′ — the gap is expected). Per ARCHITECTURE-BD-197-
+    # WORKTREE-ISOLATION-RECONCILED.md §13.3 + §5.4.
+    run_check("check_project_destructive_git_verb_parity",
+              check_project_destructive_git_verb_parity)
 
     # ── BD-204 §4.7 RUNTIME-BUDGET GUARD — the TOTAL-RUN hard FAIL. A
     # general run over the 10 s total budget means a check regressed into
