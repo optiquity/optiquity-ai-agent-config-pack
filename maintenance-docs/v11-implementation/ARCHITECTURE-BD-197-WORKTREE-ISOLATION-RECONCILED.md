@@ -142,9 +142,9 @@ The user's note 6 fixes the priority order. The design serves them in this order
 
 ### 2.1 UC-1 / P1 — PRIMARY (the thing to get right)
 
-**Pack Chat + PM Chat spawn agents IN-SESSION, in the BACKGROUND, with opt-in worktree isolation (via `bgIsolation`) for SAFE PARALLEL read-write agents (coders).** Merge-back is the `/tmp` patch the agent writes before return — **auto-removal-bug-safe** because no branch-with-commits ever exists (agents-never-commit). Read-only background agents need NO isolation (they don't write the tree; they emit one report). This is the full mechanism of §1.4 + §3 + §6.
+**Pack Chat + PM Chat spawn agents IN-SESSION, in the BACKGROUND, with opt-in worktree isolation (via the per-spawn Agent-tool `isolation:"worktree"` PARAMETER — the subagent trigger; `bgIsolation` is the SEPARATE background-SESSION gate, BD-218, NOT this trigger) for SAFE PARALLEL read-write agents (coders).** Merge-back is the `/tmp` patch the agent writes before return — **auto-removal-bug-safe** because no branch-with-commits ever exists (agents-never-commit). Read-only background agents need NO isolation (they don't write the tree; they emit one report). This is the full mechanism of §1.4 + §3 + §6.
 
-The "P1 is buggy" concern is RESOLVED (note 6): the platform's worktree auto-removal IS buggy, but the `/tmp`-patch design neutralizes it (work is safe in `/tmp` before removal). The adversarial challenge was to mode-DETECTION (which setting triggers isolation), not to merge-back safety — and that challenge is now fixed (§3).
+The "P1 is buggy" concern is RESOLVED (note 6): the platform's worktree auto-removal IS buggy, but the `/tmp`-patch design neutralizes it (work is safe in `/tmp` before removal). The adversarial challenge was to mode-DETECTION (the trigger), not to merge-back safety — and that challenge is now fixed (§3): the subagent trigger is the Agent-tool `isolation:"worktree"` PARAMETER, not a `bgIsolation`/`baseRef` setting (Correction pass 2026-06-14, FACT-5).
 
 ### 2.2 UC-secondary / P3-launcher — SECONDARY (support IF FEASIBLE)
 
@@ -305,9 +305,9 @@ Read-only git verbs an agent MAY run: `status`, `diff` (incl. `diff > file` redi
 
 **Project-side (separate artifacts):** the project trinity `## Project memory` "No destructive operations" rule + the 48 agent files' Hard rules + Codex `## Permission profile` blocks already mostly enumerate reset/stash; P3 closes any gap surface-by-surface (enumerate-encoding-surfaces).
 
-**Mechanical backstop (adversarial D-NEW-2 — the load-bearing addition):**
-- **Pack-side:** a **PreToolUse hook** (or `--disallowedTools` on the named `Bash(git <verb>:*)` patterns) for spawned agents. The matcher is VERB-PRECISE per §5.1 — it names `Bash(git apply:*)` in the deny set but NEVER `Bash(git diff:*)` (the patch-emit stays allowed; confirm the `git diff > file` redirect is not tripped). Pack Chat retains commit ability (the hook scopes to agent spawns, not the chat).
-- **Project-side:** the hardening MUST also land in `agent-run.sh` `CLAUDE_READONLY_FLAGS` / `--disallowedTools` (add `Bash(git stash:*)`, `Bash(git reset:*)`, `Bash(git restore:*)`, `Bash(git checkout:*)`, `Bash(git apply:*)`, `Bash(git worktree:*)`, `Bash(git clean:*)`), NOT only in prose. **Reconciliation nuance (adversarial §7):** the shipped `project-template/.claude/settings.json` ALLOWS `"Bash(git add *)"` at the permission layer (for the human/PM). The `agents-never-commit` ban for agents is therefore enforced by the agent Hard rule + `agent-run.sh --disallowedTools`, NOT by the shipped settings.json. The prose ban and the launch-flag enforcement MUST NOT diverge — the launch flags are an encoding surface (enumerate-encoding-surfaces).
+**Mechanical backstop (adversarial D-NEW-2; RECONCILED to §18.2 — the in-session backstop model).** The §18.2 layer-map is the authoritative resolution; this bullet states it for the §5.3 surface. The pack ships NO settings file and NO new pack-side file (J4 = NO; §18.2 EB-D), so the IN-SESSION mechanical layer is NOT a shipped pack PreToolUse hook:
+- **Pack-side (in-session Agent-tool path, BOTH Pack Chat and PM Chat).** The always-on layer is (i) the shipped PROSE deny-list (§5.1/§5.2 — carried in the trinity/skill/agent surfaces below). The in-session MECHANICAL hard-deny is (ii) the **documented-OPTIONAL user-configured `permissions.deny` recipe** — session-scoped + sub-agent-inherited + deny-first per F2 — which the pack DOCUMENTS in OPTIONAL-FEATURES (pack §9 / project §12.3) for the user to add to THEIR OWN `settings.json`; the pack does NOT ship it (§18.2(ii)). A user-configured **PreToolUse hook is SECONDARY defence-in-depth** whose `if`-matcher FAILS OPEN (F2), so `permissions.deny` is the documented-primary mechanical layer and the hook is explicitly secondary — and like `permissions.deny`, the hook is NOT shipped by the pack (the user adds it). Any such recipe/hook is VERB-PRECISE per §5.1 — it names `Bash(git apply:*)` in the deny set but NEVER `Bash(git diff:*)` (the patch-emit stays allowed; confirm the `git diff > file` redirect is not tripped). Pack Chat retains commit ability (a `permissions.deny`/hook the user scopes to agent work, not the chat). **No new shipped pack-side file** (§18.2 EB-D; Check-47 `_SANCTIONED_PACK_SIDE_SHIPPED` frozen).
+- **Project-side (LAUNCHER path, layer iii).** The launcher hardening lands in `agent-run.sh` `CLAUDE_READONLY_FLAGS` / `--disallowedTools` (add `Bash(git stash:*)`, `Bash(git reset:*)`, `Bash(git restore:*)`, `Bash(git checkout:*)`, `Bash(git apply:*)`, `Bash(git worktree:*)`, `Bash(git clean:*)`), NOT only in prose — this covers the `claude --agent` launcher path ONLY (NOT the in-session Agent-tool path, which is layer ii). **Reconciliation nuance (adversarial §7):** the shipped `project-template/.claude/settings.json` ALLOWS `"Bash(git add *)"` at the permission layer (for the human/PM). The `agents-never-commit` ban for agents is therefore enforced by the agent Hard rule + `agent-run.sh --disallowedTools` (launcher) + the documented-optional user `permissions.deny` (in-session), NOT by the shipped settings.json. The prose ban and the launch-flag enforcement MUST NOT diverge — the launch flags are an encoding surface (enumerate-encoding-surfaces).
 
 ### 5.4 CI guard (verb-enumeration parity — measure-then-bound)
 Assert the folded verb set appears in every surface that enumerates the ban (trinity, commit-discipline ×3, pack-coder ×3, project Hard rules, agent-run.sh flags). MAY fold into existing trinity-parity + bijection checks rather than a new check (prefer fewer checks — design-elegance). Measure the current enumeration coverage first; size the assertion to the measured surface set.
@@ -398,7 +398,7 @@ Both docs model the existing Agent-Teams opt-in section shape and document ALL m
 
 **Adversarial-added decisions (D-NEW-1..4) — INTEGRATED, recorded for traceability:**
 - **D-NEW-1 (re-documented 2026-06-14):** adopt the §3 two-independent-mechanisms model + the §3.3 three-point runtime ground-truth contract; the pack does NOT parse settings at runtime; `baseRef` is a base-modifier, never a trigger; the subagent trigger is the `isolation:"worktree"` PARAMETER. (The earlier "§3.3 complete [9-cell] matrix" is removed.) [§3 — integrated]
-- **D-NEW-2:** folded verb-hardening also lands in `agent-run.sh --disallowedTools` (project) + a pack PreToolUse hook, reconciled against the shipped `settings.json` `git add` allow. [§5.3 — integrated]
+- **D-NEW-2 (RECONCILED to §18.2, 2026-06-14):** folded verb-hardening lands in (project, launcher) `agent-run.sh --disallowedTools` + (in-session, both surfaces) the documented-OPTIONAL user `permissions.deny` recipe (NOT shipped; a user-configured PreToolUse hook is SECONDARY/fails-open, also NOT shipped) — reconciled against the shipped `settings.json` `git add` allow. The pack ships NO PreToolUse hook and NO settings file (J4 = NO; §18.2 EB-D). [§5.3 / §18.2 — integrated]
 - **D-NEW-3 (REVISED by the 2nd-adversarial fix):** the P2 completeness gate is a **prohibition-ONLY absence-gate** (matches the prohibition PROSE only — never the `baseRef`/`bgIsolation` setting-key names, which P3 must legitimately write) PLUS a **separate OPTIONAL-FEATURES presence-check**; the allowlist is MEASURED against the current tree and sized exactly to the LEAVE set; the stale static "3 BD-197-process files" count is DROPPED. (The original D-NEW-3 "regex includes `bgIsolation`" was self-defeating — it forbade the design's own deliverable; corrected here per BD-197 note 10.) [§11.5 / §13.1 — integrated]
 - **D-NEW-4:** graceful-degradation acceptance tests the #39886 silent-fall-to-MAIN cell + the TEAMS-on isolated cell, not just happy paths. [§8 — integrated]
 
@@ -533,10 +533,10 @@ Each guard follows: (1) measure the tree first; (2) categorize every occurrence 
 - **Runtime:** scope to active tree (exclude archive/test-fixtures), single whole-tree `rg`, per-check runtime guard.
 
 ### 13.1a Guard A′ — OPTIONAL-FEATURES presence-check (the separate POSITIVE gate, matches §11.5 gate (b))
-- **Asserts (P3 acceptance):** BOTH OPTIONAL-FEATURES surfaces (`pack-ops/OPTIONAL-FEATURES.md` + `project-template/docs/pack/OPTIONAL-FEATURES.md`) DO mention `baseRef` AND `bgIsolation` — the keys are DOCUMENTED, not forbidden. This is the inverse of Guard A: a PRESENCE check on the legitimate key names, not an absence check.
-- **Asserted tokens reconciled to the corrected §9 content (measure-then-bound):** the corrected OPTIONAL-FEATURES content (§9) documents BOTH tokens — `baseRef` as the REQUIRED base key (`"head"`, with the `fresh`=origin/main consequence) and `bgIsolation` accurately as the background-SESSION gate with a pointer to BD-218 (NOT a subagent control). So both `baseRef` and `bgIsolation` legitimately appear in each file after P3, and the presence-check tokens (`baseRef`, `bgIsolation`) match the real post-edit content. The check does NOT assert `bgIsolation` is a subagent trigger — only that the key is documented (in its correct background-session role). It also does NOT require the per-spawn `isolation` param token (that is prose, not a settings key); P3 MAY additionally assert the `isolation` param is documented, but the bounded presence-check is sized to the two settings keys.
-- **Measure:** baseline at this HEAD = 0 mentions of either key in either file (measured §11.5 gate (b): pack 0 / project 0 — the keys do not exist pre-P3); the guard turns GREEN only after P3 authors the sections.
-- **Runtime:** two single-file `rg -c` reads; trivial.
+- **Asserts (P3 acceptance):** BOTH OPTIONAL-FEATURES surfaces (`pack-ops/OPTIONAL-FEATURES.md` + `project-template/docs/pack/OPTIONAL-FEATURES.md`) DO mention `baseRef` AND `bgIsolation` AND the `permissions.deny` recipe token — the keys + the in-session backstop recipe are DOCUMENTED, not forbidden. This is the inverse of Guard A: a PRESENCE check on the legitimate key/recipe names, not an absence check. The `permissions.deny`-token assertion is **MANDATED (user-approved 2026-06-14; see BD-197 Note 14; §18.4)**, not an optional architect call.
+- **Asserted tokens reconciled to the corrected §9 content + §18.2(ii) (measure-then-bound):** the corrected OPTIONAL-FEATURES content (§9) documents `baseRef` as the REQUIRED base key (`"head"`, with the `fresh`=origin/main consequence) and `bgIsolation` accurately as the background-SESSION gate with a pointer to BD-218 (NOT a subagent control); §18.2(ii) adds the documented-optional `permissions.deny` recipe (the in-session mechanical backstop). So all THREE tokens — `baseRef`, `bgIsolation`, and the `permissions.deny` recipe token — legitimately appear in each file after P3, and the presence-check is sized to EXACTLY those three (the third token = the exact `permissions.deny` recipe string C5/C8a author, RE-MEASURED at C8b commit-time, NOT a broad pattern). The check does NOT assert `bgIsolation` is a subagent trigger — only that the key is documented (in its correct background-session role). It also does NOT require the per-spawn `isolation` param token (that is prose, not a settings key) — the bounded presence-check stays sized to the two settings keys + the one recipe token, no broader.
+- **Measure:** baseline at this HEAD = 0 mentions of any of the three tokens in either file (measured §11.5 gate (b): `baseRef`/`bgIsolation` pack 0 / project 0; the `permissions.deny` recipe token also 0 / 0 — none exist pre-P3); the guard turns GREEN only after P3 authors the sections (pack `baseRef`+`bgIsolation`+recipe in C5; project in C8a).
+- **Runtime:** six single-file `rg -c` reads (3 tokens × 2 files); trivial.
 
 ### 13.2 Guard B — RW/RO declaration consistency (×2, one per surface)
 - **Pack:** set-equality {PACK-AGENTS roster `Class` cells} ↔ {agent-file PROSE mandate headers}. **Bind to the PROSE header, NEVER `tools:`** (`pack-reviewer` carries `Write,Edit` yet is RO — adversarial §8). Measure: 5 agents = 1 RW + 4 RO; any mismatch FAILS.
@@ -606,7 +606,7 @@ The mode-decision contract is now complete on the CORRECTED model (Correction pa
 | 2 | empirical-evidence-blocks | §1.1 carries FIVE Empirical-Evidence Blocks (FACT-1..5), each with source (probe / schemastore URL), verbatim value (the schema enums + descriptions), date 2026-06-14, interpretation, and SUPPORTED conclusion. Repo-state claims (HEAD `ae3d9325...`, branch `v11-dev`) confirmed via `git rev-parse`. No Agent-tool re-probe was run (probing complete). | COMPLIANT |
 | 3 | architect-doc-reality-reconciliation | The "## Correction pass (2026-06-14)" note (near top) names what reality (the 2.1.173 probe + schemastore `worktree` object) forced which change; §14 carries a dedicated correction-pass bullet cross-referencing **BD-218** for the scoped-out background-session axis. | COMPLIANT |
 | 4 | pack-project-separation-of-concerns | §9 keeps pack (`pack-ops/OPTIONAL-FEATURES.md`) and client (`project-template/docs/pack/OPTIONAL-FEATURES.md`) as SEPARATE, independently-authored, client-native artifacts ("Separate artifact; not a fallback for the pack version" — unchanged). The corrected mode-setting bullets were applied to the PACK section only; the client paragraph's separate-authoring directive is intact. No pack-self concept bled into client content. | COMPLIANT |
-| 5 | ci-guard-design-measure-then-bound | §13.1a Guard-A′ asserted tokens reconciled to the corrected §9 content: both `baseRef` (required key) and `bgIsolation` (background-session gate / BD-218 pointer) legitimately appear in each OPTIONAL-FEATURES file post-P3, so the presence-check is sized to exactly those two settings keys (no broader; the prose `isolation` param is explicitly NOT folded into the bounded check). §11.5 gate (b) baseline (pack 0 / project 0) unchanged and still valid. | COMPLIANT |
+| 5 | ci-guard-design-measure-then-bound | §13.1a Guard-A′ asserted tokens reconciled to the corrected §9 content + §18.2(ii): `baseRef` (required key), `bgIsolation` (background-session gate / BD-218 pointer), and the MANDATED (user-approved 2026-06-14; see BD-197 Note 14; §18.4) `permissions.deny` recipe token all legitimately appear in each OPTIONAL-FEATURES file post-P3, so the presence-check is sized to exactly those three tokens (no broader; the third = the exact recipe string C5/C8a author, re-measured at C8b commit-time; the prose `isolation` param is explicitly NOT folded into the bounded check). §11.5 gate (b) baseline (`baseRef`/`bgIsolation` pack 0 / project 0; `permissions.deny` token 0 / 0) unchanged and still valid. | COMPLIANT |
 | 6 | no-deferral-without-user-direction | ONLY background-session isolation is deferred — to BD-218 (Deferred, v11.1, user-authorized 2026-06-14; confirmed in `backlog/BD-218.md`). UC-1 subagent isolation + the launcher stay in v11.0; nothing else deferred. The wrong-base degradation is documented in v11.0, not deferred. | COMPLIANT |
 | 7 | scope-deliverables-to-the-ask | Focused correction: edits confined to the overturned mode model (§0 decisions 3/7 + change-summary, §1.1, §3, §7 launcher-proof, §8, §9 pack bullets, §10 D6/D-NEW-1, §6.3 row-labels, §12.1a/§12.5, §13.1a, §14, §15, §16, Status, Correction-pass note). Validated sections (§2, §4, §5, §6 protocol, §11 plan, §12.2/12.3) preserved verbatim except sentences stating the wrong mode model. No re-design. | COMPLIANT |
 | 8 | agents-never-commit | Only read-only git verbs run this pass: `git rev-parse HEAD` → `ae3d9325889c41f7cba7a4289437cf7a87d04292`, `git rev-parse --abbrev-ref HEAD` → `v11-dev`; all other commands were `grep`/`python3`/`Read`. No `add/commit/push/stash/reset/restore/checkout/mv/rm/apply` issued. Exactly ONE file edited: this reconciled design doc. | COMPLIANT |
@@ -872,6 +872,314 @@ the 186 validate-pack invocations in the battery.
 (content + carved-out `test-fixtures/manifest.txt`) → the Decision-6 split
 (plan rows C6a/C7a/C8a; user decision 6, SPLIT over neutral framing) is
 restored.**
+
+## 18. In-session spawn symmetry + unified backstop (BD-197 scope correction, 2026-06-14)
+
+**What forced this section (architect-doc-reality-reconciliation).** A user-caught
+gap: BD-197's PRIMARY use case (§2.1, UC-1) is the orchestrator chat spawning
+sub-agents **IN-SESSION via the Agent/Task tool** with `isolation:"worktree"` +
+`/tmp`-patch merge-back — for **BOTH Pack Chat (pack) AND PM Chat (project)**. The
+plan under-scoped the PROJECT side: `project-template/docs/pack/PM-CHAT.md`
+documents agent spawning ONLY via `agent-run.sh` flag profiles (the SECONDARY
+launcher) — it carries NO in-session Agent/Task-tool spawn instruction (measured
+§18.E EB-A). And the in-session destructive-git-verb BACKSTOP was treated as
+"solved by `agent-run.sh --disallowedTools`," which covers only the LAUNCHER; the
+in-session Agent-tool path (both surfaces) has no `--disallowedTools` and needs its
+own backstop story. This section corrects/extends THREE items — (a) in-session spawn
+symmetry pack↔project, (b) a unified in-session backstop model, (c) the §2.1 scrub —
+on the verified facts F1–F5 in `RESEARCH-BD-197-INSESSION-BACKSTOP.md` (HEAD
+`05ad61b`, 2026-06-14). It changes NO validated decision (use-case scope §2, merge-back
+§4, RW/RO §4.3, conflict §6, degradation §8, D1–D6, the 12-commit sequence). It only
+makes the PROJECT in-session path explicit (symmetric to pack) and pins the in-session
+backstop the research established.
+
+**F1–F5 (cited; design ONLY on these — do not re-research).** From
+`RESEARCH-BD-197-INSESSION-BACKSTOP.md` (GA, verified 2026-06-14):
+- **F1.** Agent-definition frontmatter `tools:`/`disallowedTools:` is TOOL-NAME-level
+  only — it CANNOT deny a specific Bash git verb (cannot deny `git commit` while
+  allowing `git diff`). The in-session mechanical deny CANNOT come from agent files.
+- **F2 (decisive).** `permissions.deny` (e.g. `Bash(git commit:*)`) is SESSION-SCOPED
+  and INHERITED by sub-agents (incl. background); PreToolUse hooks FIRE inside
+  sub-agent calls. ONE user-configured `permissions.deny` block mechanically covers
+  ALL in-session sub-agents on a surface. PreToolUse `if`-matchers FAIL OPEN →
+  `permissions.deny` is the authoritative hard-deny layer; a hook is secondary.
+- **F3.** The pack ships NO settings file (hard constraint). So the in-session
+  mechanical backstop is USER-ACTIVATED: the pack DOCUMENTS a `permissions.deny`
+  recipe (in OPTIONAL-FEATURES) for the user to add to THEIR settings; out-of-box,
+  only the always-on PROSE deny-list + agents-never-commit behavior apply. This
+  "prose (shipped) + documented-optional user `permissions.deny` (not shipped)" model
+  is VIABLE and is the answer — **NO new shipped pack-side file is needed (J4 = NO).**
+- **F4.** The launcher backstop is `claude --agent … --disallowedTools
+  'Bash(git <verb>:*)'` (one rule per verb; GA; project `agent-run.sh` already uses it
+  for commit/push — extend to the full §5.1 verb set).
+- **F5.** WorktreeCreate/WorktreeRemove hooks fire on worktree lifecycle, NOT on
+  git-verb attempts — NOT usable to enforce the ban.
+
+### 18.1 (a) In-session spawn symmetry (pack ↔ project)
+
+**Pack-side status (PACK-CHAT.md) — IN-SESSION spawn is NOT yet documented; C4 adds it.**
+PACK-CHAT.md TODAY documents delegation to pack agents via the Task tool for "focused
+bounded questions" (`## Behavioral rules` → "Delegate to pack agents when appropriate")
+and a separate-terminal `claude --agent` path, but it does NOT document the in-session
+`isolation:"worktree"` + RW/RO + background + `/tmp`-patch merge-back contract
+(measured §18.E EB-B: zero `isolation`/`/tmp`/handoff/merge-back hits in PACK-CHAT.md).
+That contract is the §12.2 pack-side deliverable codified in C4 ("the merge-back flow
+(§4.1) codified in `pack-ops/PACK-CHAT.md`"). **So C4 is the commit that ADDS the
+pack-side in-session spawn treatment** — this section makes explicit that C4's
+PACK-CHAT.md edit is the orchestrator IN-SESSION spawn procedure (not only the
+post-return apply procedure): it must state that Pack Chat spawns RW agents (coders)
+IN-SESSION via the Agent tool with `isolation:"worktree"`, RO agents without
+isolation, in the background, and names the per-spawn `/tmp` handoff dir. The
+merge-back/apply half (§4.1 steps 3–5, §6 conflict) is the same C4 edit. The plan's
+C4 scope already lists PACK-CHAT.md — this is a CONTENT clarification, not a new commit.
+
+**Project-side gap (PM-CHAT.md) — MUST be added, SYMMETRIC, client-native.** PM-CHAT.md
+must document, for PM Chat, the SAME in-session spawn model the pack side gets — authored
+CLIENT-NATIVE ("PM Chat", client paths, the project agent roster), NOT a byte-copy of
+PACK-CHAT.md (pack-project-separation). Specifically, a new in-session-spawn subsection
+(natural home: alongside `## Permission profiles`, where the only spawn mechanism today
+is the per-profile `agent-run.sh` flag block) must state:
+
+1. **Two spawn paths, both documented.** (i) PRIMARY — IN-SESSION via the Agent/Task
+   tool from PM Chat (symmetric to Pack Chat); (ii) SECONDARY — the existing
+   `agent-run.sh <cli> --agent <name>` launcher (the human-driven path the
+   `## Permission profiles` flag blocks already describe). The launcher remains the
+   documented secondary path; the in-session path is the new primary.
+2. **`isolation:"worktree"` for RW agents only.** PM Chat spawns the RW agent
+   (`coder`; `repo-ops` is RW-script) IN-SESSION with the Agent-tool `isolation:"worktree"`
+   parameter (the subagent trigger; only valid value); RO agents (the 14 read-only
+   profiles) are spawned WITHOUT isolation (they don't write the tree — they emit one
+   report). This keys off the `## Permission profiles` RW/RO classification already in
+   PM-CHAT.md (the project SSOT, D2) — RW ⇒ isolate; RO ⇒ in-place.
+3. **Background spawning.** Spawn in the background so PM Chat stays interactive (the
+   client-native analog of the pack-side default-background rule; client-native phrasing
+   per cross-CLI-reference-normalization — no pack-self `run_in_background` rule citation).
+4. **The orchestrator `/tmp`-patch merge-back.** PM Chat names a per-spawn absolute
+   `/tmp` handoff dir + the IMPL-report path + the patch path; the RW agent (isolated or
+   in-place) edits, runs in-scope verification, emits a read-only `git diff` patch +
+   writes its report to the handoff dir, and returns; PM Chat reads the report, runs the
+   review/fix cycle, `git apply --check`/`--3way`, applies, and commits with developer
+   approval — the agent performs ZERO git-state changes (agents-never-commit). This is
+   §4.1 authored client-native (orchestrator = "PM Chat"; the project's own merge-back
+   procedure, NOT a reference to the pack flow).
+5. **Conflict + degradation** point at the project's own §6/§8 client-native homes (the
+   PM-CHAT merge-back procedure + project OPTIONAL-FEATURES) — no pack-self references.
+
+**Symmetry, not copy.** The pack and project in-session spawn treatments express the
+SAME mechanism (Agent-tool `isolation:"worktree"` for RW, background, `/tmp`-patch
+merge-back) but are SEPARATE artifacts authored for their own audiences — Pack Chat /
+pack agents / `pack-ops/` paths on one side; PM Chat / project agents / client paths on
+the other. Neither is a fallback for the other (pack-project-separation-of-concerns).
+The plan already routes PM-CHAT.md through C7a (§12.2 project: "the same flow authored
+INDEPENDENTLY into `project-template/docs/pack/PM-CHAT.md`"); this section makes explicit
+that C7a's PM-CHAT.md content MUST include the in-session Agent-tool spawn instruction
+(paths 1–5 above), not merely the post-return merge-back procedure — closing the
+under-scope.
+
+### 18.2 (b) Unified in-session backstop model (both surfaces) + launcher
+
+The destructive-git-verb ban for in-session sub-agents (both Pack Chat and PM Chat
+spawns) is enforced by THREE layers, derived from F1–F5. F1 establishes the layer that
+does NOT exist (no per-agent-file or per-spawn mechanical verb-deny), so the model rests
+on the session-level layers + prose.
+
+**(i) Always-on PROSE deny-list — OUT-OF-BOX (shipped).** The §5.1 verb set + the §5.2
+read-only-only principle line, carried in:
+- PACK side: the trinity `## Pack memory` `agents-never-commit` bullet ×3, the
+  commit-discipline skill ×3, `pack-coder` ×3, PACK-MEMORY-RATIONALE, PACK-AGENTS
+  reference (§5.3 prose surfaces — already the plan's C2/C4 scope).
+- PROJECT side: the project trinity `## Project memory` "No destructive operations"
+  rule ×3, the 48 agent-file Hard rules + Codex `## Permission profile` blocks, the
+  project commit-discipline/implementation-report skills (§5.3 project — already the
+  plan's C7a scope).
+This is the LOAD-BEARING default: with no user settings, this prose + the
+agents-never-commit behavioral contract are the ONLY active deny layers for in-session
+sub-agents (F3 honest limit). It is shipped; it covers BOTH spawn paths because the
+agents read it regardless of how they were launched.
+
+**(ii) DOCUMENTED-OPTIONAL user-configured `permissions.deny` recipe — the in-session
+mechanical hard-deny (NOT shipped; user-activated).** Per F2, ONE `permissions.deny`
+block in the user's own `settings.json` (user or project scope) listing the §5.1 verbs
+as scoped Bash rules (e.g. `"Bash(git commit:*)"`, `"Bash(git push:*)"`,
+`"Bash(git add:*)"`, `"Bash(git reset:*)"`, `"Bash(git restore:*)"`,
+`"Bash(git checkout:*)"`, `"Bash(git apply:*)"`, `"Bash(git worktree:*)"`,
+`"Bash(git clean:*)"`, …) is SESSION-SCOPED and INHERITED by ALL in-session sub-agents
+(including background ones) and is deny-first (not bypassed by `bypassPermissions`). This
+is the authoritative hard-deny for the in-session Agent-tool path — the ONLY in-session
+mechanical layer (F1: agent files cannot do verb-granular deny; no per-spawn param). The
+pack DOCUMENTS this recipe in OPTIONAL-FEATURES (pack + project, separately authored,
+client-native), NOT a shipped settings file. A PreToolUse hook (matcher `Bash`,
+returning `permissionDecision:"deny"` for the §5.1 verbs) is noted as a SECONDARY
+defence-in-depth option — but its `if`-matcher FAILS OPEN (F2), so `permissions.deny` is
+the documented-primary mechanical layer and the hook is explicitly secondary. **WHERE it
+lands:** an addition to BOTH OPTIONAL-FEATURES isolation sections (§9 / §12.3) — the
+PACK section in `pack-ops/OPTIONAL-FEATURES.md` (plan C5) and the CLIENT section in
+`project-template/docs/pack/OPTIONAL-FEATURES.md` (plan C8a), each authored for its
+audience. This is additive to the existing OPTIONAL-FEATURES content the plan already
+specifies for C5/C8a; it documents the optional in-session mechanical backstop alongside
+the `baseRef`/`bgIsolation` mode-setting content.
+
+**(iii) Launcher `--disallowedTools` — the LAUNCHER mechanical backstop (project
+`agent-run.sh`).** Per F4, the launcher path (`claude --agent <name>` run by
+`agent-run.sh`) is hardened with `--disallowedTools` carrying one scoped
+`Bash(git <verb>:*)` rule per §5.1 verb. The project `agent-run.sh` already passes
+`Bash(git commit:*)`/`Bash(git push:*)` (+ `add`/`mv` in the per-profile flag blocks);
+C7a extends it to the full §5.1 set (`stash`, `reset`, `restore`, `checkout`, `apply`,
+`worktree`, `clean`, …) — VERB-PRECISE: deny `Bash(git apply:*)`, NEVER `Bash(git diff:*)`
+(the agent's patch-emit; §5.1/§5.3 G-4). This layer is INDEPENDENT of the in-session
+path (it covers `claude --agent` launches only) and is ALREADY in §5.3 / plan C7a.
+
+**Layer-to-path map (the gap this closes).**
+
+| Spawn path | Layer (i) prose | Layer (ii) `permissions.deny` (optional) | Layer (iii) `--disallowedTools` |
+|---|---|---|---|
+| IN-SESSION Agent-tool (Pack Chat) | YES (shipped) | YES, if user configures (F2 inheritance) | N/A (not a launcher) |
+| IN-SESSION Agent-tool (PM Chat) | YES (shipped) | YES, if user configures (F2 inheritance) | N/A (not a launcher) |
+| LAUNCHER `claude --agent` (project `agent-run.sh`) | YES (shipped) | (also inherited if configured) | YES (project `agent-run.sh`, C7a) |
+
+The pre-correction model wrongly assumed `--disallowedTools` covered the in-session path;
+the corrected model: the in-session path's mechanical layer is (ii) (`permissions.deny`,
+F2), documented-optional; (iii) covers only the launcher. Both spawn paths always carry
+(i) the shipped prose.
+
+**J4 = NO new shipped pack-side file.** Per F3, the in-session backstop is "shipped prose
++ documented-optional user `permissions.deny`." None of the three layers introduces a NEW
+shipped pack-side file: (i) edits EXISTING prose surfaces; (ii) is DOCUMENTATION in
+EXISTING OPTIONAL-FEATURES files (the user authors the actual `settings.json`, which the
+pack never ships — BD-197 hard constraint); (iii) edits the EXISTING project
+`agent-run.sh`. Therefore the frozen Check-47 `_SANCTIONED_PACK_SIDE_SHIPPED` allowlist
+(`{scripts/lib/detect.sh, scripts/pack-help.sh}`) is UNTOUCHED — no architect+user
+sign-off for a new shipped file is required (dependency-direction-placement). If any
+future implementer finds a layer that WOULD need a new shipped pack-side file, that is a
+STOP-and-escalate (architect + user sign-off + Check-47 allowlist growth) — but the F1–F5
+model does not.
+
+### 18.3 (c) §2.1 stale-residue scrub (applied this pass)
+
+The §2.1 UC-1 paragraph still framed isolation as "(via `bgIsolation`)" — WRONG per the
+2026-06-14 Correction pass (the subagent trigger is the `isolation:"worktree"` PARAMETER;
+`bgIsolation` is the background-SESSION gate → BD-218). Applied in §2.1:
+- Line 145: "opt-in worktree isolation (via `bgIsolation`)" → "opt-in worktree isolation
+  (via the per-spawn Agent-tool `isolation:"worktree"` PARAMETER — the subagent trigger;
+  `bgIsolation` is the SEPARATE background-SESSION gate, BD-218, NOT this trigger)".
+- Line 147: "(which setting triggers isolation)" → "(the trigger)" + an explicit
+  clarifier that the subagent trigger is the `isolation:"worktree"` PARAMETER, not a
+  `bgIsolation`/`baseRef` setting (FACT-5).
+
+A whole-design re-grep for residual `bgIsolation`-as-subagent-trigger phrasing
+(`isolation \(via .?bgIsolation`, `which setting triggers isolation`,
+`bgIsolation.*trigger` / `trigger.*bgIsolation` as an assertion) returns ZERO active hits
+post-scrub (§18.E EB-C). Every other `bgIsolation` mention in the design correctly
+describes it as the background-SESSION axis (BD-218) or explicitly labels the old framing
+as superseded (the Correction-pass note, §3, §10 D6, §14) — those are NOT residue and are
+LEFT intact (architect-doc-reality-reconciliation: the supersession record stays).
+
+### 18.4 Commit-scope implications for the planner (C4 / C5 / C7a / C8a)
+
+This section adds NO new commit. It SHARPENS the CONTENT of four already-planned commits.
+The planner re-plans the content scope; the commit sequence (C0–C8b) is unchanged.
+
+- **C4 (pack; `pack-only`).** Its PACK-CHAT.md edit MUST be the IN-SESSION orchestrator
+  spawn procedure, not only the post-return apply procedure: Pack Chat spawns RW agents
+  IN-SESSION via the Agent tool with `isolation:"worktree"`, RO agents without isolation,
+  in the background, naming the `/tmp` handoff dir (§18.1 pack-side). The §5.3 prose
+  deny-list (layer i) is already C2/C4 scope — unchanged. No new pack-side file (J4=NO).
+- **C5 (pack OPTIONAL-FEATURES; `pack-only`).** The pack OPTIONAL-FEATURES isolation
+  section gains the layer-(ii) `permissions.deny` recipe as the documented-optional
+  in-session mechanical backstop (§18.2(ii)), authored alongside the `baseRef`/`bgIsolation`
+  mode-setting content already specified. Note the PreToolUse hook as secondary
+  (fails-open). This is additive prose in the EXISTING file — no shipped settings file.
+- **C7a (project; `project-only`).** Its PM-CHAT.md edit MUST include the in-session
+  Agent-tool spawn instruction (§18.1 paths 1–5: two spawn paths documented;
+  `isolation:"worktree"` for RW only; background; `/tmp`-patch merge-back; client-native;
+  conflict/degradation point at project homes) — symmetric to C4's pack-side treatment,
+  authored client-native. The launcher `--disallowedTools` extension (layer iii, F4) is
+  already C7a scope (§5.3 project) — unchanged. The launcher remains the documented
+  SECONDARY path; the in-session path is the new PRIMARY documented path. No pack-self
+  references.
+- **C8a (project OPTIONAL-FEATURES; `project-only`).** The client OPTIONAL-FEATURES
+  isolation section gains the layer-(ii) `permissions.deny` recipe authored CLIENT-NATIVE
+  (separate artifact from the pack version; not a fallback), alongside the
+  `baseRef`/`bgIsolation` mode-setting content already specified. Note the hook as
+  secondary.
+
+Guard implications: Guard-A′ (C8b) already asserts both OPTIONAL-FEATURES
+surfaces document `baseRef` + `bgIsolation`; the bounded presence-check is **MANDATED
+(user-approved 2026-06-14; see BD-197 Note 14)** to ALSO assert the `permissions.deny`
+recipe token in both OPTIONAL-FEATURES files (the user approved extending Guard-A′ so the
+in-session backstop recipe cannot silently vanish — this SUPERSEDES this section's
+earlier "optional (P3-architect call)" framing). It remains a measure-then-bound decision
+at guard-author time (the C8b coder sizes the third asserted token to EXACTLY the
+`permissions.deny` recipe string C5/C8a author, re-measured at C8b commit-time — not a
+broad pattern), but the EXTENSION ITSELF is now binding, not an architect's call. The
+prose deny-list verb-parity (Guard-C, §13.3) is unchanged.
+
+### 18.E Empirical-Evidence Blocks (this pass)
+
+**EB-A — PM-CHAT.md documents spawning ONLY via `agent-run.sh`, no in-session Agent-tool path.**
+- Command: `grep -niE "agent-run\.sh|agent tool|in-session|isolation|worktree|/tmp|handoff|merge-back|Task tool" project-template/docs/pack/PM-CHAT.md`
+- Output (HEAD `05ad61b`, 2026-06-14): the only spawn-mechanism hits are the three
+  `agent-run.sh` flag-profile blocks (`agent-run.sh flag profile (Claude Code)`:455;
+  `(Codex CLI)`:484; `(same as coder)`:501) + incidental prose ("parallel agent spawns
+  vs sequential":185; "spawn an agent to produce the work":212; "agent sessions spawned
+  from this project":354). ZERO hits for `isolation`, `worktree`, `/tmp`, `handoff`,
+  `merge-back`, or "Agent tool"/"Task tool" as a spawn mechanism.
+- Interpretation: PM-CHAT.md's documented spawn mechanism is exclusively the
+  `agent-run.sh` launcher; it carries NO in-session Agent/Task-tool spawn instruction and
+  NO `isolation:"worktree"`/merge-back contract. The under-scope is real.
+- Conclusion: **SUPPORTED.**
+
+**EB-B — PACK-CHAT.md does NOT yet document the in-session isolation/merge-back contract.**
+- Command: `grep -niE "isolation|agent tool|in-session|run_in_background|/tmp|handoff|merge-back|patch" pack-ops/PACK-CHAT.md`
+- Output (HEAD `05ad61b`, 2026-06-14): ZERO hits for `isolation`, `/tmp`, `handoff`,
+  `merge-back`, `run_in_background`, or "Agent tool" as a spawn contract; the only
+  related hits are "multiple worktrees on the same clone":116 (concurrent-session
+  ownership, benign — §11.2 LEAVE) and "patch":130 (the no-band-aid rule, unrelated).
+  PACK-CHAT.md DOES document Task-tool delegation in prose (`## Behavioral rules` →
+  "Use sub-agent invocation (Task tool) for focused bounded questions"), but NOT the
+  `isolation:"worktree"` + RW/RO + background + `/tmp`-patch contract.
+- Interpretation: the pack-side in-session spawn contract is NOT yet in PACK-CHAT.md; it
+  is the C4 deliverable (§12.2 pack-side). C4 ADDS it; this section clarifies C4's content.
+- Conclusion: **SUPPORTED.**
+
+**EB-C — §2.1 residue scrubbed; zero active residual subagent-trigger phrasing.**
+- Command: `grep -niE "isolation \(via .?bgIsolation|opt-in worktree isolation \(via .?bgIsolation|which setting triggers isolation" maintenance-docs/v11-implementation/ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md`
+- Output (HEAD `05ad61b`, 2026-06-14, post-scrub): ZERO hits (pre-scrub: 1 hit at line 145
+  + 1 at line 147). The §2.1 line now reads "via the per-spawn Agent-tool
+  `isolation:"worktree"` PARAMETER — the subagent trigger; `bgIsolation` is the SEPARATE
+  background-SESSION gate, BD-218, NOT this trigger".
+- Interpretation: the lone Correction-pass-missed residue is fixed; remaining `bgIsolation`
+  mentions are the correct background-session axis or the explicit supersession record.
+- Conclusion: **SUPPORTED.**
+
+**EB-D — J4 = NO new shipped pack-side file; Check-47 allowlist untouched.**
+- Command/source: F3 (`RESEARCH-BD-197-INSESSION-BACKSTOP.md` Q3 bottom-line) + the
+  Check-47 `_SANCTIONED_PACK_SIDE_SHIPPED` allowlist per `CLAUDE.md` §
+  dependency-direction-placement (frozen set `{scripts/lib/detect.sh, scripts/pack-help.sh}`).
+- Output (verbatim, F3): "The pack ships NEITHER — it DOCUMENTS the recommended
+  `permissions.deny` block (and optional hook) in OPTIONAL-FEATURES for the user to add."
+  The three backstop layers edit only EXISTING surfaces (prose; OPTIONAL-FEATURES docs;
+  `agent-run.sh`); none creates a new shipped pack-side file.
+- Interpretation: no new entry in `_SANCTIONED_PACK_SIDE_SHIPPED`; no Check-47 growth; no
+  architect+user sign-off for a new shipped file required (dependency-direction-placement).
+- Conclusion: **SUPPORTED (J4 = NO).**
+
+### 18.R Rules-Applied Verification Block (§18 pass)
+
+| Rule (as named in prompt) | Verification evidence (quoted/measured) | Conclusion |
+|---|---|---|
+| empirical-evidence-blocks [architect] | §18.E EB-A..EB-D: each state-claim (PM-CHAT.md lacks in-session spawn; PACK-CHAT.md current treatment; §2.1 residue location; J4=NO) backed by the actual command + verbatim output + HEAD `05ad61b` + date 2026-06-14 + interpretation + SUPPORTED conclusion. F1–F5 cite `RESEARCH-BD-197-INSESSION-BACKSTOP.md`. | COMPLIANT |
+| verify-availability-not-just-existence [architect] | The backstop model is designed ONLY on F1–F5 (GA, cited). Layer (i) prose (always available), (ii) `permissions.deny` GA + session-inherited (F2), (iii) `--disallowedTools` GA-local-confirmed (F4). The fails-open PreToolUse `if`-matcher is marked SECONDARY (F2), not relied on. No capability assumed outside F1–F5; PreToolUse-hook self-contained-validator robustness is noted-not-required. | COMPLIANT |
+| pack-project-separation-of-concerns [universal] | §18.1 mandates PM-CHAT.md authored CLIENT-NATIVE ("PM Chat", client paths), NOT a byte-copy of PACK-CHAT.md; §18.2(ii) keeps pack vs project OPTIONAL-FEATURES as SEPARATE artifacts (C5 pack / C8a project), "not a fallback"; §18.4 forbids pack-self references in the project commits. No pack-self concept imported into client content. | COMPLIANT |
+| edit-in-place-not-full-rewrite [universal] | ONE new additive section (§18) appended before the End marker (asserted End-marker count = 1) + two targeted §2.1 string replacements (each asserted exactly 1 occurrence). No §0–§17 content modified or dropped. Section map re-counted post-edit: §18.F EB shows §0–§18 intact (see final-message §6). | COMPLIANT |
+| dependency-direction-placement [architect] | §18.2 J4=NO (EB-D): all three layers edit EXISTING surfaces; none creates a new shipped pack-side file; the frozen Check-47 `_SANCTIONED_PACK_SIDE_SHIPPED` set is untouched; any future new-shipped-file layer is flagged as STOP+escalate (architect+user sign-off + allowlist growth). | COMPLIANT |
+| architect-doc-reality-reconciliation [architect] | §18 opening names what the user-caught gap + the verified research forced; cross-references `RESEARCH-BD-197-INSESSION-BACKSTOP.md` (F1–F5) + BD-218 (the `bgIsolation` background-session axis) at the §2.1 scrub and the layer-map. | COMPLIANT |
+| scope-deliverables-to-the-ask [universal] | Delivered exactly (a) in-session spawn symmetry, (b) unified backstop, (c) §2.1 scrub + the C4/C5/C7a/C8a commit-scope implications. No redesign of validated decisions; the Guard-A′ `permissions.deny`-token extension is MANDATED (user-approved 2026-06-14; see BD-197 Note 14) — sized measure-then-bound to the authored recipe token at C8b commit-time. | COMPLIANT |
+| no-deferral-without-user-direction [universal] | Everything (in-session spawn for BOTH surfaces + the prose deny-list + the documented-optional `permissions.deny` + the launcher `--disallowedTools`) stays v11.0; ONLY background-session isolation (`bgIsolation`/EnterWorktree) remains deferred to BD-218 (user-authorized 2026-06-14). | COMPLIANT |
+| agents-never-commit [universal] | No state-changing git verb run this pass (only `git rev-parse`, `grep`, `sed -n`, `python3`, Read). Exactly ONE file edited: this reconciled design doc. | COMPLIANT |
+| rules-applied-verification-block [universal] | This §18.R table; every row carries quoted/measured evidence; no empty cell. | COMPLIANT |
+
+---
 
 ---
 *End of ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md*
