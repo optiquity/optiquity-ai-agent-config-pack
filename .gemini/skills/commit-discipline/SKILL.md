@@ -1,6 +1,6 @@
 ---
 name: commit-discipline
-description: Use at the start of every pack agent run. Codifies pre-flight checks, the write-target rule (under pwd only), the absolute git-state-change ban, pack-chat-only file boundaries, and the trinity rule cross-reference.
+description: Use at the start of every pack agent run. Codifies pre-flight regime detection, the regime-aware write-target rule, the absolute git-state-change ban, pack-chat-only file boundaries, and the trinity rule cross-reference.
 allowed-tools: Read, Bash
 ---
 
@@ -13,53 +13,84 @@ final report.
 
 ## 1. Pre-flight checks (run BEFORE any work)
 
-Run all of these first. If any check fails, STOP and report — do not
-invent state, do not proceed.
+Run all of these first. The pre-flight DETECTS your execution regime — it
+is non-fatal in both directions. If a check reveals a genuine mismatch
+(wrong base SHA, a required doc absent), STOP and report — do not invent
+state, do not proceed.
 
 ```bash
-pwd                                    # Must end in worktree path, not main checkout
+pwd                                    # Detect regime: a worktree-agent-* path = ISOLATED; otherwise IN-PLACE
 git rev-parse HEAD                     # Must equal the expected base SHA from the prompt
-git rev-parse --abbrev-ref HEAD        # Must start with `worktree-agent-`
+git rev-parse --abbrev-ref HEAD        # A worktree-agent-* branch = ISOLATED; otherwise IN-PLACE
 git log --oneline -10                  # Verify expected ancestor commits are present
 ls <every dir the agent will touch>    # Verify expected files exist
 grep -c "<marker>" <authoritative-doc> # Optional: confirm authoritative content present
 ```
 
+**Detect your regime, then branch your write-target + handoff on it
+(see section 2). Neither regime is an error:**
+
+- `pwd` / HEAD indicate a `worktree-agent-*` worktree ⇒ you are
+  **ISOLATED**: code Writes go under `pwd`; the IMPL report + the
+  `git diff` patch go to the named `/tmp` handoff dir the prompt supplies.
+- Otherwise ⇒ you are **IN-PLACE** (the default; no `isolation` param was
+  passed): code Writes go under the parent working tree (today's
+  deliverable); the report goes to the named parent path.
+
+Key the branch on GROUND TRUTH (the actual `pwd` / HEAD), never on a
+settings value — settings can lie (platform bugs can silently disagree
+with `settings.json`), so the runtime self-detect is the only
+deterministic signal.
+
 Paste this output verbatim into section 2 of the implementation report
 (see the `implementation-report` skill). The pre-flight is the evidence
-that the run started from the correct state.
+that the run started from the correct state and which regime it ran in.
 
 Common failure modes the pre-flight catches:
 
-- `pwd` resolves to the main checkout, not the worktree (the most
-  common cause of the C-2 mis-routed-Write incident).
 - HEAD does not match the SHA in the prompt — the prompt was written
-  against a different base, or the worktree drifted.
+  against a different base, or the working tree drifted.
 - A required doc the prompt told the agent to read is absent — likely
   a typo in the path, or the prompt was written against a different
   branch.
 
-## 2. Write-target rule
+## 2. Write-target rule (regime-aware)
 
-**Every `Write` and `Edit` MUST go to a path under `pwd`.** No exceptions.
+Your write-targets follow the regime you detected in section 1:
 
-When `pwd` is `/Users/<user>/Developer/<repo>/.claude/worktrees/agent-<id>/`,
-the only valid write paths are under that prefix. Writing to
-`/Users/<user>/Developer/<repo>/<file>` (the main checkout) is FORBIDDEN
-even when the file path "looks right" — the main checkout belongs to the
-user's interactive shell and Pack Chat, not to the agent.
+- **IN-PLACE regime (default):** code Writes/Edits go to paths under the
+  parent working tree (the caller-scoped file set). The IMPL report goes
+  to the named parent-tree report path. This is today's behavior.
+- **ISOLATED regime (opt-in, `isolation:"worktree"` was passed):** code
+  Writes/Edits go to paths under `pwd` (your `worktree-agent-*` checkout).
+  The IMPL report + the `git diff` patch go to the named `/tmp` handoff
+  dir the prompt supplies — under the isolated regime, parent-tree writes
+  are rejected by the sandbox and `/tmp` ("Additional working
+  directories") is the reliable cross-boundary write target. If a `/tmp`
+  handoff Write FAILS (the handoff dir is not writable), fall back to the
+  in-place report path and report the degradation — never hard-error on a
+  failed handoff Write.
 
-If a `Write` returns "permission denied" or "file outside workspace,"
-the path is wrong — re-issue the same content under the worktree path.
-NEVER work around the rejection by re-targeting the main checkout. The
-BD-119 C-2 incident was exactly this failure mode: a Write rejected
-under the worktree path was retried against the main checkout, which
-silently bypassed the workspace boundary.
+**Absolute prohibition (both regimes): NEVER retarget another agent's
+main checkout.** When `pwd` is a `worktree-agent-*` checkout, writing to
+the user's main checkout path (e.g.
+`/Users/<user>/Developer/<repo>/<file>`) is FORBIDDEN even when the file
+path "looks right" — the main checkout belongs to the user's interactive
+shell and the orchestrator, not to the agent. The BD-119 C-2 incident was
+exactly this failure mode: a Write rejected under the worktree path was
+retried against the main checkout, which silently bypassed the workspace
+boundary. If a `Write` returns "permission denied" or "file outside
+workspace," the path is wrong for your regime — re-issue under the
+correct target (parent tree IN-PLACE; `pwd` for code + `/tmp` for the
+handoff ISOLATED), never against another agent's main checkout. This is a
+cautionary guard, NOT a blanket "every Write must be under `pwd`" — in
+the IN-PLACE regime the correct target IS the parent tree.
 
 The "Additional working directories" note in the harness environment
 (e.g., `/tmp/...`, `/private/tmp/...`) lists paths the agent may also
-write to for scratch work. Those are not substitutes for the worktree
-path; final deliverables go under the worktree only.
+write to. In the ISOLATED regime that `/tmp` handoff dir is exactly where
+the patch + report land; in the IN-PLACE regime it is scratch only and
+final deliverables go to the parent tree.
 
 ## 3. Git-state-change ban (absolute)
 
@@ -85,18 +116,29 @@ Forbidden verbs (no exceptions, no "but just this once"):
 Allowed read-only verbs:
 
 - `git status`
-- `git diff` (any form, including `git diff <ref>...HEAD`)
+- `git diff` (any form, including `git diff <ref>...HEAD` and
+  `git diff > <file>` — the read-only patch-emit; the `> <file>`
+  redirection is a shell operation, not a git verb)
 - `git log`
 - `git rev-parse`
 - `git show <ref>:<path>` (read a file's content at a different ref)
 - `git ls-files`
 - `git blame`
 
-The agent's deliverable is the report file plus working-tree edits.
-Pack Chat reads the report, verifies the edits, runs tests if needed,
-and ONLY THEN stages and commits with explicit user approval. An agent
-that stages or commits has bypassed the user-approval gate — that is
-the entire reason the ban exists.
+**Read-only-only principle (the catch-all).** Read-only git verbs are
+allowed only; any git verb that changes repository, index, working-tree,
+ref, or config state is forbidden — including but not limited to the
+verbs enumerated above. If a verb is not on the allowed read-only list
+and you are unsure, treat it as forbidden. This principle closes the
+"the list never told me" gap for any unlisted verb.
+
+The agent's deliverable is the report file plus its edits (in-place
+working-tree edits, or — in the isolated regime — the `git diff` patch
+emitted to the `/tmp` handoff dir). Pack Chat reads the report, verifies
+the edits / applies the patch, runs tests if needed, and ONLY THEN stages
+and commits with explicit user approval. An agent that stages or commits
+has bypassed the user-approval gate — that is the entire reason the ban
+exists.
 
 If a step in the prompt appears to require staging or committing, STOP
 and write the situation into the implementation report under section 6
@@ -161,9 +203,13 @@ frontmatter) but identical prose.
 
 - Running `git add` to "tidy up" before reporting → forbidden by
   section 3.
-- Writing the implementation report to `/tmp/<file>.md` because the
-  worktree write rejected once → wrong path; re-issue under the
-  worktree.
+- Targeting the wrong write-path for your regime → IN-PLACE writes go to
+  the parent tree; ISOLATED writes go under `pwd` (code) and the `/tmp`
+  handoff dir (patch + report). Writing the report to `/tmp` is CORRECT
+  when you are isolated and the prompt named a `/tmp` handoff dir — it is
+  NOT a "wrong path." The defect is mismatching the target to the
+  regime, or (in any regime) retargeting another agent's main checkout
+  (section 2).
 - Updating `/backlog/BD-NNN.md` to flip a Status field after a successful test
   run → pack-chat-only, forbidden by section 4. Pack Chat does the flip after
   review.

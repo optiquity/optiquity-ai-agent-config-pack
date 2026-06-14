@@ -8,18 +8,26 @@ allowed-tools: Read, Write, Edit, Bash
 
 Every pack-coder run produces one report markdown file at the path the
 caller's prompt specifies. The report is the agent's primary deliverable —
-Pack Chat reads it, verifies the working-tree edits against it, and only
-then stages and commits. Treat the report as a self-contained artifact:
-Pack Chat must be able to re-derive every change from the report alone if
-the worktree is lost.
+Pack Chat reads it, verifies the edits against it (or applies the patch),
+and only then stages and commits. Treat the report as a self-contained
+artifact: Pack Chat must be able to re-derive every change from the report
+alone — in the in-place regime the edits live in the parent working tree;
+in the isolated regime the change set is captured as the `git diff` patch
+persisted to the `/tmp` handoff dir (so it survives the worktree's
+auto-removal on agent return).
 
 ## Required sections (all of them, in this order)
 
-### 1. Branch + final HEAD SHA
+### 1. Branch + final HEAD SHA (and regime)
 
-State the branch name and the HEAD SHA from `git rev-parse HEAD`. Pack-coder
-does not commit, so the SHA is unchanged from the worktree base — that's
-the point. Documents which base the changes apply to.
+State the branch name, the HEAD SHA from `git rev-parse HEAD`, and which
+regime you ran in (IN-PLACE or ISOLATED — see the `commit-discipline`
+skill §1). Pack-coder does not commit, so the SHA is unchanged from the
+base it started at — that's the point. In the in-place regime the base is
+the parent branch HEAD; in the isolated regime it is the
+`worktree-agent-*` checkout's HEAD (the isolated worktree branched at the
+parent HEAD when `worktree.baseRef:"head"` is set). Documents which base
+the changes apply to.
 
 ### 2. Pre-flight check output
 
@@ -40,12 +48,17 @@ section 4.
 ### 4. Full file contents and unified diffs
 
 - **New files:** paste full contents verbatim inside a fenced block.
-- **Modified files:** paste a unified diff against the worktree base,
-  produced via `diff -u <(git show <base-SHA>:<path>) <path>`. Use the
-  base SHA recorded in section 1.
+- **Modified files:** paste a unified diff against the base recorded in
+  section 1, produced via `diff -u <(git show <base-SHA>:<path>) <path>`.
+  - In the IN-PLACE regime this is the diff against the parent branch base.
+  - In the ISOLATED regime the canonical change set is the `git diff`
+    patch you emitted to the `/tmp` handoff dir; paste that patch here (and
+    name its handoff path) so the report is self-contained even after the
+    worktree auto-removes.
 
 This is the section Pack Chat reads to re-apply changes from the report
-alone if needed. Do not abbreviate; do not say "see the worktree."
+alone (or to `git apply` the patch) if needed. Do not abbreviate; do not
+say "see the working tree."
 
 ### 5. Verification output
 

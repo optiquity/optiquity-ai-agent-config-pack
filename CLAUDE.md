@@ -322,16 +322,20 @@ PACK-AGENTS.md current".
 
 ### Sub-agent behavior (Claude-only)
 
-- **Spawn all sub-agents with no worktree isolation.** Do not pass
-  `isolation: "worktree"` when calling the Agent tool from any chat in
-  this repo. Run agents in-place against the parent chat's working
-  tree. The Agent tool places sub-worktrees under the main clone's
-  `.git/worktrees/` and checks them out at `origin/main` regardless
-  of which worktree the parent chat is in — so an agent spawned from
-  a v11-dev (or any non-main) chat would audit / edit stable content
-  instead of the parent's branch. For parallelism across worktrees,
-  open separate Claude Code chat sessions in separate worktree
-  directories.
+- **Sub-agents run in-place by default; isolation is opt-in.** Sub-agents
+  run IN-PLACE against the parent chat's working tree by default (no
+  isolation). A chat MAY opt a sub-agent into isolated parallel execution
+  by passing the per-spawn Agent-tool `isolation:"worktree"` parameter
+  (the TRIGGER; `"worktree"` is the only valid value); the developer
+  should set `worktree.baseRef:"head"` in settings so the worktree bases
+  at local HEAD (unset/`fresh` bases at origin/main — a documented
+  wrong-base degradation) — see OPTIONAL-FEATURES. When isolation is
+  active, read-write agents emit a patch to the named `/tmp` handoff dir
+  and the orchestrator applies it; agents never commit. The agent
+  VERIFIES its actual regime at runtime (pwd/HEAD ground-truth), never
+  trusting settings. `worktree.bgIsolation` governs background SESSIONS
+  only (not sub-agents) — BD-218. Trinity-exempt (Claude-only;
+  Codex/Gemini = BD-217).
 - **Default sub-agent spawns to background.** Every Agent-tool
   invocation from Pack Chat uses `run_in_background: true` so the chat
   stays interactive while the sub runs. User has auto-mode on; the
