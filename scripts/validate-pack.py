@@ -4125,6 +4125,18 @@ _PACK_CHAT_ONLY_PERMITTED_PREFIXES = (
 # a `pack-only` commit MUST NOT touch any path under these prefixes.
 _PROJECT_SIDE_PATH_PREFIXES = ("project-template/", "supporting-docs/")
 
+# Scope-neutral generated artifact(s): auto-generated files that the
+# `regenerate-manifest-v11-surface` rule FORCES to co-vary with a v11-surface
+# edit on EITHER surface. They carry no surface-specific semantic content, so
+# they are permitted in BOTH `project-only` and `pack-only` commits without
+# counting as an offender. Sized EXACTLY to the measured forced-co-variant set
+# (ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §17.3): manifest only.
+# A hand-edited manifest is independently caught by `build.sh --verify`, so
+# admitting it here does NOT let content smuggle past the boundary.
+_SCOPE_NEUTRAL_GENERATED_PATHS = frozenset({
+    "test-fixtures/manifest.txt",
+})
+
 
 def _read_boundary_exempt_root() -> set[str]:
     """Parse `pack-ops/.boundary-exempt-root.txt` (1-entry list per
@@ -4253,6 +4265,17 @@ def _is_project_side_path(path: str) -> bool:
     return path.startswith(_PROJECT_SIDE_PATH_PREFIXES)
 
 
+def _is_scope_neutral_generated(path: str) -> bool:
+    """True if `path` is an auto-generated, scope-neutral artifact that the
+    regenerate-manifest rule forces to co-vary with v11-surface edits on
+    EITHER surface (ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §17).
+    Such paths are not offenders in either `project-only` or `pack-only`
+    commits. Exact-string set-membership — NOT a `test-fixtures/` prefix, so
+    the static `v11-trinity-marker-prepped/` snapshot + the `build.sh`/README
+    recipe (real pack-side content) still count toward scope."""
+    return path in _SCOPE_NEUTRAL_GENERATED_PATHS
+
+
 def _is_pack_chat_only_permitted(path: str) -> bool:
     """A path is pack-chat-only-permitted if it appears in the canonical Files
     list OR under one of the canonical pack-chat-only directory prefixes."""
@@ -4310,7 +4333,11 @@ def check_commit_scope_honesty() -> None:
         short_sha = sha[:7]
         offenders: list[str] = []
         if is_pack_only:
-            offenders = [p for p in paths if _is_project_side_path(p)]
+            offenders = [
+                p for p in paths
+                if _is_project_side_path(p)
+                and not _is_scope_neutral_generated(p)
+            ]
             if offenders:
                 fail(
                     f"Commit {short_sha} subject claims `pack-only` "
@@ -4320,7 +4347,11 @@ def check_commit_scope_honesty() -> None:
                 )
                 any_failed = True
         if is_project_only:
-            offenders = [p for p in paths if not _is_project_side_path(p)]
+            offenders = [
+                p for p in paths
+                if not _is_project_side_path(p)
+                and not _is_scope_neutral_generated(p)
+            ]
             if offenders:
                 fail(
                     f"Commit {short_sha} subject claims `project-only` "

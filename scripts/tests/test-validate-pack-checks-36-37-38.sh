@@ -47,6 +47,7 @@ required = [
     '_subject_has_keyword',
     '_is_pack_only_path',
     '_is_project_side_path',
+    '_is_scope_neutral_generated',
     '_is_pack_chat_only_permitted',
     '_context_has_anchor',
     '_read_boundary_exempt_root',
@@ -170,6 +171,94 @@ assert_pside("pack-ops/BACKLOG.md", False, "T11a")
 assert_pside("scripts/foo.sh", False, "T11b")
 assert_pside("maintenance-docs/v11-implementation/PLAN.md", False, "T11c")
 assert_pside("CLAUDE.md", False, "T11d")  # pack-root trinity is pack-only-by-location
+
+# -----------------------------------------------------------------
+# Check 36 scope-neutral generated-artifact carve-out (BD-197 C0;
+# ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md section 17.6).
+# NOTE: this Group-1 heredoc is UNQUOTED (<<EOF), so the shell expands
+# the body — do NOT use backticks in this block (they would be parsed
+# as command substitution). The regenerate-manifest-v11-surface rule
+# FORCES the pack-side test-fixtures/manifest.txt into ANY commit that
+# edits v11-surface content (incl. project-template/). Without the
+# carve-out a project-only commit that stages the manifest fails
+# Check 36. The carve-out exempts EXACTLY test-fixtures/manifest.txt
+# (exact-string set-membership, NOT a test-fixtures/ prefix) from BOTH
+# the pack-only and project-only offender tests, while EVERY other
+# cross-surface path is still caught.
+# -----------------------------------------------------------------
+
+# Predicate-level controls (NC-1..NC-3): exact-string membership only.
+def assert_neutral(path, expected, label):
+    actual = mod._is_scope_neutral_generated(path)
+    if actual != expected:
+        failures.append(f"{label}: path={path!r} expected_neutral={expected} actual={actual}")
+
+# NC-1: predicate admits the manifest.
+assert_neutral("test-fixtures/manifest.txt", True, "NC-1")
+# NC-2: predicate rejects a non-carved pack path.
+assert_neutral("scripts/validate-pack.py", False, "NC-2")
+# NC-3: predicate rejects sibling test-fixtures paths (no prefix widening) --
+#   proves the carve-out is exact-string, NOT a test-fixtures/ prefix that
+#   would wrongly exempt the static snapshot + the build.sh/README recipe.
+assert_neutral("test-fixtures/v11-trinity-marker-prepped/CLAUDE.md", False, "NC-3a")
+assert_neutral("test-fixtures/build.sh", False, "NC-3b")
+
+# Offender-level controls (NC-4..NC-7): reproduce the two patched offender
+# comprehensions exactly as they appear in check_commit_scope_honesty().
+def project_only_offenders(paths):
+    return [
+        p for p in paths
+        if not mod._is_project_side_path(p)
+        and not mod._is_scope_neutral_generated(p)
+    ]
+
+def pack_only_offenders(paths):
+    return [
+        p for p in paths
+        if mod._is_project_side_path(p)
+        and not mod._is_scope_neutral_generated(p)
+    ]
+
+# NC-4: a project-only commit = project content + manifest PASSES (empty).
+nc4 = project_only_offenders(
+    ["project-template/docs/pack/PM-CHAT.md", "test-fixtures/manifest.txt"]
+)
+if nc4 != []:
+    failures.append(f"NC-4: project-only [project content + manifest] expected [] got {nc4}")
+
+# NC-5: a pack-only commit = pack content + manifest PASSES (empty).
+nc5 = pack_only_offenders(
+    ["pack-ops/PACK-CHAT.md", "test-fixtures/manifest.txt"]
+)
+if nc5 != []:
+    failures.append(f"NC-5: pack-only [pack content + manifest] expected [] got {nc5}")
+
+# NC-6: a REAL cross-surface offender STILL FAILS -- the guard is NOT
+#   weakened. A project-only commit that also stages real pack source
+#   (scripts/validate-pack.py) is still flagged; only the manifest is carved.
+nc6 = project_only_offenders(
+    ["project-template/docs/pack/PM-CHAT.md", "scripts/validate-pack.py",
+     "test-fixtures/manifest.txt"]
+)
+if nc6 != ["scripts/validate-pack.py"]:
+    failures.append(
+        f"NC-6: project-only real cross-surface offender expected "
+        f"['scripts/validate-pack.py'] got {nc6}"
+    )
+
+# NC-7 (not-weakened, exactness): the static snapshot is NOT carved -- a
+#   project-only commit touching it STILL FAILS (proves NC-3 at the
+#   offender level, not just the predicate level).
+nc7 = project_only_offenders(
+    ["project-template/docs/pack/PM-CHAT.md",
+     "test-fixtures/v11-trinity-marker-prepped/CLAUDE.md",
+     "test-fixtures/manifest.txt"]
+)
+if nc7 != ["test-fixtures/v11-trinity-marker-prepped/CLAUDE.md"]:
+    failures.append(
+        f"NC-7: project-only touching static snapshot expected "
+        f"['test-fixtures/v11-trinity-marker-prepped/CLAUDE.md'] got {nc7}"
+    )
 
 if failures:
     print("FAILURES")
