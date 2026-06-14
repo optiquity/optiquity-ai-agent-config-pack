@@ -5195,6 +5195,15 @@ _CHECK_40_ALLOWLIST: dict[str, str] = {
     # legitimate from any pack-side doc (the file lives in `~/.claude/...`,
     # not in the pack repo; bare ref is the actual reference shape).
     "MEMORY.md": "Claude-Code memory cache (external to pack repo)",
+    # Claude-Code `settings.json` — external user/project config the
+    # developer authors; the pack ships NO settings file (BD-197 hard
+    # constraint). Bare ref is load-bearing in OPTIONAL-FEATURES because
+    # the same key (`worktree.baseRef`, `permissions.deny`) lives at EITHER
+    # user scope (`~/.claude/settings.json`) OR project scope
+    # (`.claude/settings.json`) — qualifying to one path would misrepresent
+    # the documented "user OR project scope" choice. Same external-to-pack
+    # class as MEMORY.md. (BD-197 C5; ARCHITECTURE-BD-179.md §6.5.)
+    "settings.json": "Claude-Code user/project config (external to pack repo; scope-agnostic per BD-197 OPTIONAL-FEATURES)",
     # Concept-noun / generated-file / placeholder additions (OQ-S2,
     # user-approved 2026-05-20). Files generated at runtime / opt-in /
     # absent from pack repo at HEAD, or per-entry-tree filename
@@ -8378,6 +8387,341 @@ def check_pack_rw_ro_two_class() -> None:
         )
 
 
+# ── Check 53: BD-197 worktree-isolation prohibition flip-block (Guard-A) ───
+#
+# Guard-A (design §13.1 / §11.5 gate (a)): assert the worktree-isolation
+# PROHIBITION PROSE — removed in C2 (the bug-era "Spawn all sub-agents with
+# no worktree isolation" / "Do not pass `isolation:"worktree"`" rule) — does
+# NOT reappear in any ACTIVE pack surface. This is the anti-regression /
+# flip-block guard for the BD-197 un-prohibition.
+#
+# MATCHER — the PROHIBITION SIGNATURE ONLY (design §13.1, 2nd-adversarial
+# G-1/G-2): `no worktree isolation` OR `Do not pass .*isolation.*worktree`.
+# NEVER the bare setting-key names `baseRef`/`bgIsolation` — those are
+# legitimate post-BD-197 content (the OPTIONAL-FEATURES section + the trinity
+# mode-model bullet WRITE them); forbidding them would defeat the gate. The
+# signature is the removed PROHIBITION wording, not the feature vocabulary.
+#
+# MEASURE-THEN-BOUND (ci-guard-design-measure-then-bound), live at C5
+# commit-time (HEAD 9b7c74c, 2026-06-14): `rg -l --hidden --no-ignore
+# 'no worktree isolation|Do not pass .*isolation.*worktree' -g '!.git'
+# -g '!test-fixtures'` returns 25 files — ALL under `maintenance-docs/`
+# (9 under `maintenance-docs/archive/`, 16 under
+# `maintenance-docs/v11-implementation/`). Categorization:
+#   - STRIP set is EMPTY: every active rule surface (CLAUDE.md, root
+#     AGENTS/GEMINI, the commit-discipline skill ×3, pack-ops operating
+#     docs) returns 0 — C1/C2 stripped the active prohibition prose.
+#   - KEEP set = the 25 process/history carriers, which by construction
+#     live ONLY in `maintenance-docs/archive/` (retired history) and
+#     `maintenance-docs/v11-implementation/` (the BD-196/BD-197 process
+#     docs: research/design/plan/IMPL/review docs that QUOTE the
+#     prohibition while documenting its removal). These two directories
+#     are PROCESS/HISTORY surfaces — agents do not load them as rules — so
+#     prohibition prose there is legitimate documentation of the removed
+#     rule, not a re-instated active prohibition.
+#
+# ALLOWLIST = the two non-active process directories (sized to exactly where
+# the legitimate carriers live, no broader). This is the measure-then-bound
+# answer that is ALSO re-measure-stable: every future BD-197 review/IMPL doc
+# lands under `maintenance-docs/v11-implementation/` and is absorbed without
+# a static per-file list going stale (a per-file frozen list would be stale
+# the moment this very C5 IMPL-REPORT lands). The directory scope is bounded
+# to history/process — it does NOT admit any active rule surface.
+#
+# NARROW self-exception (decision 1; Check-51 self-skip precedent at
+# `check_help_fragment_completeness` `entry.name == "validate-pack.py"`):
+# because `scripts/` IS in the active scan scope, the validator source
+# (this file, which QUOTES the matcher regex literal in the constants below)
+# and the single new per-check test SELF-MATCH. So Guard-A:
+#   (i)  self-skips the validator itself (`entry.name == "validate-pack.py"`);
+#   (ii) allowlists ONLY the single new test file
+#        `scripts/tests/test-validate-pack-check-53.sh` (NARROW — NOT the
+#        whole `scripts/tests/` dir; that dir holds many unrelated tests and
+#        a future test must not be able to smuggle prohibition prose).
+#
+# RUNTIME (ci-check-runtime-compounding): a SINGLE in-process whole-tree walk
+# (`REPO_ROOT.rglob("*")`, the Check-40 precedent), text/markdown files only,
+# in-process `re` matching — NO subprocess, NO subprocess-per-entry, NO `rg`
+# fork. The active-tree exclusion list (`.git/`, `test-fixtures/`, the two
+# allowlisted process dirs) keeps the scanned set small. Negligible across
+# the battery's ~202 validate-pack invocations; `run_check` times it and
+# WARNs on the 2.0 s per-check budget.
+_CHECK_53_PROHIBITION_PATTERNS = (
+    re.compile(r"no worktree isolation"),
+    re.compile(r"Do not pass .*isolation.*worktree"),
+)
+# Files Guard-A scans: regular files with these suffixes (rule/prose surfaces).
+_CHECK_53_SCAN_SUFFIXES = (".md", ".txt", ".py", ".sh", ".toml")
+# ALLOWLIST — directory prefixes whose prohibition-prose hits are LEGITIMATE
+# (history + BD-197 process docs). Sized to exactly the measured KEEP set's
+# bounding dirs (measure-then-bound; re-measure-stable). Both are process/
+# history surfaces, never active rule surfaces.
+_CHECK_53_ALLOWLIST_DIR_PREFIXES = (
+    "maintenance-docs/archive/",
+    "maintenance-docs/v11-implementation/",
+)
+# ALWAYS-EXCLUDED dirs (not scanned at all): pack-internal git state +
+# synthetic fixtures (the latter can carry arbitrary injected strings).
+_CHECK_53_EXCLUDE_DIR_PREFIXES = (
+    ".git/",
+    "test-fixtures/",
+    "scripts/tests/fixtures/",
+    "node_modules/",
+)
+# NARROW self-exception (decision 1): the single new per-check test file is
+# allowlisted by EXACT path (it QUOTES the matcher regex). NOT the whole
+# `scripts/tests/` dir. The validator itself is self-skipped by name below.
+_CHECK_53_SELF_TEST_ALLOWLIST = frozenset({
+    "scripts/tests/test-validate-pack-check-53.sh",
+})
+_CHECK_53_SELF_SKIP_NAME = "validate-pack.py"
+
+
+def _check_53_is_allowlisted(rel_str: str) -> bool:
+    """True iff `rel_str` (POSIX relative path) is a legitimate prohibition-
+    prose carrier: a process/history doc dir, the single new check-53 test,
+    or the self-skipped validator. Bounded prefix/membership tests only."""
+    if rel_str == f"scripts/{_CHECK_53_SELF_SKIP_NAME}":
+        return True
+    if rel_str in _CHECK_53_SELF_TEST_ALLOWLIST:
+        return True
+    for prefix in _CHECK_53_ALLOWLIST_DIR_PREFIXES:
+        if rel_str.startswith(prefix):
+            return True
+    return False
+
+
+def check_worktree_isolation_prohibition_flip_block() -> None:
+    """Check 53 — BD-197 worktree-isolation prohibition flip-block (Guard-A).
+
+    Asserts the removed worktree-isolation PROHIBITION PROSE
+    (`no worktree isolation` / `Do not pass ...isolation...worktree`) does
+    NOT reappear in any ACTIVE pack surface. The matcher keys on the
+    prohibition SIGNATURE only — NEVER the legitimate setting keys
+    `baseRef`/`bgIsolation`. Measure-then-bound allowlist = the two
+    process/history directories that carry the legitimate documentation of
+    the removed rule, PLUS the narrow self-exception (validator self-skip +
+    ONLY the single check-53 test). Single in-process whole-tree walk; no
+    subprocess.
+    """
+    print("\n── Check 53: BD-197 worktree-isolation prohibition flip-block (Guard-A) ──")
+    offenders = []
+    for path in sorted(REPO_ROOT.rglob("*")):
+        # Self-skip the validator by NAME (Check-51 precedent) — it quotes
+        # the matcher regex literal and would otherwise self-match.
+        if path.name == _CHECK_53_SELF_SKIP_NAME:
+            continue
+        if not path.is_file():
+            continue
+        if path.suffix not in _CHECK_53_SCAN_SUFFIXES:
+            continue
+        try:
+            rel = path.relative_to(REPO_ROOT)
+        except ValueError:
+            continue
+        rel_str = str(rel).replace(os.sep, "/")
+        # Skip always-excluded dirs (git state, fixtures).
+        skip = False
+        for excl in _CHECK_53_EXCLUDE_DIR_PREFIXES:
+            if rel_str == excl.rstrip("/") or rel_str.startswith(excl):
+                skip = True
+                break
+        if skip:
+            continue
+        # Skip allowlisted legitimate carriers (process/history docs + the
+        # single check-53 test).
+        if _check_53_is_allowlisted(rel_str):
+            continue
+        try:
+            text = path.read_text()
+        except (OSError, UnicodeDecodeError):
+            continue
+        for pat in _CHECK_53_PROHIBITION_PATTERNS:
+            if pat.search(text):
+                offenders.append(rel_str)
+                break
+
+    if offenders:
+        for off in sorted(offenders):
+            fail(
+                f"Check 53 (Guard-A) — worktree-isolation PROHIBITION prose "
+                f"reappeared in an active pack surface: {off}. BD-197 REMOVED "
+                f"the prohibition (`no worktree isolation` / `Do not pass "
+                f"isolation:\"worktree\"`); it must not return. If this is a "
+                f"legitimate process/history doc, it belongs under "
+                f"`maintenance-docs/archive/` or "
+                f"`maintenance-docs/v11-implementation/` (the measured KEEP "
+                f"dirs); an active rule surface must NOT re-state the removed "
+                f"prohibition. The matcher keys on the prohibition signature "
+                f"only — never the legitimate `baseRef`/`bgIsolation` keys."
+            )
+        return
+
+    ok(
+        "Check 53 (Guard-A) — worktree-isolation prohibition stays removed: "
+        "zero prohibition-prose hits in active surfaces (allowlist = the two "
+        "process/history doc dirs + the narrow validator/check-53-test "
+        "self-exception; matcher keys on the prohibition signature, never the "
+        "`baseRef`/`bgIsolation` setting keys)."
+    )
+
+
+# ── Check 56: BD-197 destructive-git-verb enumeration parity (Guard-C) ─────
+#
+# Guard-C (design §13.3 / §5.4): assert the §5.1 destructive-git-verb DENYLIST
+# + the catch-all principle line are ENUMERATED CONSISTENTLY across every
+# surface that carries the `agents-never-commit` ban — so no surface silently
+# drifts to a stale/short verb list (the C4 verb-folding must stay in parity).
+#
+# FOLD-vs-STANDALONE (decision 8 / §J3): the plan PREFERS folding verb-parity
+# into an existing parity check. Surveyed at C5 commit-time — NO existing check
+# fits without over-complication:
+#   - Checks 16/18/19 (trinity parity) enforce BYTE parity WITHIN a single
+#     trinity location; they neither span the non-trinity surfaces (the
+#     commit-discipline skill ×3, pack-coder ×3, PACK-MEMORY-RATIONALE) nor
+#     model "verb-SET membership" (their unit is whole-H2-block byte-equality).
+#   - Check 45 (rationale↔rule bijection) operates over `[rationale:]` SLUGS,
+#     not verb tokens; Check 46 is an ANTI-RESTATE substring scan (the
+#     opposite teeth — it forbids verbatim re-statement, it does not assert a
+#     shared vocabulary).
+#   The 10 surfaces use THREE heterogeneous phrasings (trinity prose; the
+#   skill's bulleted `- `git <verb>`` list; the pack-coder per-CLI prose with
+#   the Codex `.toml` carrying ONE mid-sentence block). Folding a verb-set
+#   membership assertion into any of the above would force that check to grow
+#   a second, structurally-different unit — over-complication. So Guard-C is
+#   a STANDALONE Check 56 (decision 8 escape hatch).
+#
+# MEASURE-THEN-BOUND (ci-guard-design-measure-then-bound), live at the N-2
+# fix (HEAD 9b7c74c, 2026-06-14): all 28 verbs of the FULL §5.1 set asserted
+# below + the catch-all principle phrase `including but not limited to` were
+# measured present in ALL 10 surfaces (C4 landed the folded enumeration; S-1
+# widened the asserted tuple from the 19-verb representative subset toward the
+# full §5.1 set by adding `add`/`rm`/`mv`/`config`/`remote`/`gc`/`tag`/
+# `notes`; N-2 added the last verb `am`). The asserted CANONICAL set is the
+# FULL §5.1 set with NO exceptions, sized to the measured-consistent set.
+# `am` is matched word-bounded by `_check_56_verb_present` as
+# `(?<![\w-])am(?![\w-])`, which does NOT false-match inside "stream" /
+# "command" / "spam" / "amend" (review-2 proved the old "substring-unsafe"
+# rationale false; `am` is present-and-consistent across all 10 surfaces and
+# asserts cleanly at 28/28). Each verb is matched as `git <verb>` (the
+# phrasing all surfaces share) OR the bare token in a context-bounded way via
+# word boundaries.
+#
+# RUNTIME (ci-check-runtime-compounding): 10 single-file reads + bounded
+# substring/regex tests; NO subprocess, NO whole-tree scan. Trivial across the
+# battery's ~202 validate-pack invocations.
+_CHECK_56_VERB_PARITY_SURFACES = (
+    "CLAUDE.md",
+    "AGENTS.md",
+    "GEMINI.md",
+    "pack-ops/PACK-MEMORY-RATIONALE.md",
+    ".claude/skills/commit-discipline/SKILL.md",
+    ".codex/skills/commit-discipline/SKILL.md",
+    ".gemini/skills/commit-discipline/SKILL.md",
+    ".claude/agents/pack-coder.md",
+    ".codex/agents/pack-coder.toml",
+    ".gemini/agents/pack-coder.md",
+)
+# The CANONICAL §5.1 verb set — the FULL §5.1 destructive-git-verb denylist,
+# the complete 28-verb set with NO exceptions, measured present in ALL 10
+# surfaces (S-1 widened to 27; N-2 added the last verb `am`, HEAD 9b7c74c,
+# 2026-06-14). `apply` is INCLUDED (the verb-precise deny; design §5.1 G-4 —
+# denied for agents while `git diff` stays allowed). The 8 short/long verbs
+# `add`/`rm`/`mv`/`config`/`remote`/`gc`/`tag`/`notes` were added at S-1 and
+# `am` at N-2, each after measuring it present-and-consistent across all 10
+# surfaces with the actual `_check_56_verb_present` matcher (no false-positive:
+# each is genuinely enumerated in every surface's denylist). `am` matches
+# word-bounded via `(?<![\w-])am(?![\w-])`, which does NOT false-match inside
+# "stream" / "command" / "spam" / "amend" (review-2 disproved the prior
+# "substring-unsafe" rationale). Sized to the measured-consistent set, which
+# IS the full §5.1 set. Each is matched word-bounded.
+_CHECK_56_CANONICAL_VERBS = (
+    "commit", "push", "stash", "reset", "restore", "checkout",
+    "clean", "merge", "rebase", "cherry-pick", "revert", "apply",
+    "switch", "worktree", "update-ref", "update-index", "pull",
+    "filter-branch", "replace",
+    # S-1 additions (toward full §5.1 set; all measured present-and-consistent):
+    "add", "rm", "mv", "config", "remote", "gc", "tag", "notes",
+    # N-2 addition (completes the full §5.1 set — 28 verbs, no exceptions):
+    "am",
+)
+# The catch-all principle phrase — the load-bearing closing of the denylist
+# (design §5.2). Measured present in all 10 surfaces.
+_CHECK_56_PRINCIPLE_PHRASE = "including but not limited to"
+
+
+def _check_56_verb_present(text: str, verb: str) -> bool:
+    """True iff `verb` appears as a git-verb token in `text`. Word-bounded
+    (so `pull` does not match inside `pull-request` etc.); the verb may be
+    written as `git <verb>` (trinity/pack-coder prose) or as a bulleted
+    `<verb>` token (the commit-discipline skill list)."""
+    # `\b<verb>\b` with the verb's hyphen escaped — \b handles the boundary
+    # for `cherry-pick`/`filter-branch`/`update-ref` (the `-` is a non-word
+    # char so \b sits at the start/end of the whole hyphenated token).
+    pat = re.compile(r"(?<![\w-])" + re.escape(verb) + r"(?![\w-])")
+    return bool(pat.search(text))
+
+
+def check_destructive_git_verb_parity() -> None:
+    """Check 56 — BD-197 destructive-git-verb enumeration parity (Guard-C).
+
+    Asserts the §5.1 denylist's canonical verb set + the catch-all principle
+    phrase appear in every surface that enumerates the `agents-never-commit`
+    ban (trinity ×3, PACK-MEMORY-RATIONALE, commit-discipline ×3, pack-coder
+    ×3). Standalone (decision 8 — folding over-complicates). Sized to the
+    measured-consistent verb set. 10 single-file reads; no subprocess.
+    """
+    print("\n── Check 56: BD-197 destructive-git-verb enumeration parity (Guard-C) ──")
+    any_fail = False
+    checked = 0
+    for surface in _CHECK_56_VERB_PARITY_SURFACES:
+        path = REPO_ROOT / surface
+        if not path.is_file():
+            any_fail = True
+            fail(
+                f"Check 56 (Guard-C) — verb-parity surface {surface} not found "
+                f"(the measured enumeration set is 10 surfaces)."
+            )
+            continue
+        try:
+            text = path.read_text()
+        except (OSError, UnicodeDecodeError):
+            any_fail = True
+            fail(f"Check 56 (Guard-C) — could not read {surface}.")
+            continue
+        checked += 1
+        missing_verbs = [
+            v for v in _CHECK_56_CANONICAL_VERBS
+            if not _check_56_verb_present(text, v)
+        ]
+        if missing_verbs:
+            any_fail = True
+            fail(
+                f"Check 56 (Guard-C) — {surface} is MISSING destructive git "
+                f"verb(s) from the §5.1 denylist: {', '.join(missing_verbs)}. "
+                f"Every surface that enumerates the agents-never-commit ban "
+                f"MUST carry the full canonical verb set (enumerate-encoding-"
+                f"surfaces; the C4 verb-folding must stay in parity)."
+            )
+        if _CHECK_56_PRINCIPLE_PHRASE not in text:
+            any_fail = True
+            fail(
+                f"Check 56 (Guard-C) — {surface} is MISSING the catch-all "
+                f"principle phrase `{_CHECK_56_PRINCIPLE_PHRASE}` that closes "
+                f"the denylist (design §5.2). The verb list AND the catch-all "
+                f"must both appear so an unlisted future verb is still covered."
+            )
+
+    if not any_fail:
+        ok(
+            f"Check 56 (Guard-C) — destructive-git-verb enumeration parity "
+            f"holds across {checked} surface(s) (trinity ×3, "
+            f"PACK-MEMORY-RATIONALE, commit-discipline ×3, pack-coder ×3): "
+            f"all {len(_CHECK_56_CANONICAL_VERBS)} canonical §5.1 verbs + the "
+            f"catch-all principle phrase present in each."
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -8569,6 +8913,27 @@ def main() -> None:
     # to the prose header, never `tools:` (pack-reviewer Write/Edit-yet-RO).
     # Per ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.2 + §4.3.
     run_check("check_pack_rw_ro_two_class", check_pack_rw_ro_two_class)
+    # ── BD-197 (C5): worktree-isolation prohibition flip-block (Guard-A). A
+    # single in-process whole-tree walk asserting the REMOVED prohibition
+    # prose (`no worktree isolation` / `Do not pass ...isolation...worktree`)
+    # does not reappear in any active pack surface. Matcher keys on the
+    # prohibition signature ONLY — never the legitimate `baseRef`/`bgIsolation`
+    # keys (design §11.5 G-1/G-2). Allowlist = the two process/history doc
+    # dirs + the narrow validator self-skip + the single check-53 test
+    # (decision 1, Check-51 self-skip precedent). Per
+    # ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.1 + §11.5.
+    run_check("check_worktree_isolation_prohibition_flip_block",
+              check_worktree_isolation_prohibition_flip_block)
+    # ── BD-197 (C5): destructive-git-verb enumeration parity (Guard-C). A
+    # bounded 10-single-file pass asserting the §5.1 canonical verb set + the
+    # catch-all principle phrase appear in every surface enumerating the
+    # agents-never-commit ban (trinity ×3, PACK-MEMORY-RATIONALE,
+    # commit-discipline ×3, pack-coder ×3). STANDALONE per decision 8 (folding
+    # into an existing parity check over-complicates — see the check's
+    # fold-vs-standalone comment block). Per
+    # ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.3 + §5.4.
+    run_check("check_destructive_git_verb_parity",
+              check_destructive_git_verb_parity)
 
     # ── BD-204 §4.7 RUNTIME-BUDGET GUARD — the TOTAL-RUN hard FAIL. A
     # general run over the 10 s total budget means a check regressed into
