@@ -8722,6 +8722,252 @@ def check_destructive_git_verb_parity() -> None:
         )
 
 
+# ── Check 55: BD-197 project RW/RO two-class consistency (Guard-B project) ──
+#
+# Guard-B PROJECT (design §13.2 / §4.3 project): assert SET-EQUALITY across
+# the THREE project legs:
+#   {PM-CHAT.md `## Permission profiles` Read-only rows}
+#     ↔ {`project-template/agent-run.sh` READONLY_AGENTS array}
+#     ↔ {per-agent-file PROSE mandate headers (RO)}
+# and that the RW set = exactly {`coder`, `repo-ops`}, for the 16 project
+# agents × 3 CLIs. This is the PROJECT analog of Guard-B(pack) (Check 52,
+# C3). It ships in C6b AFTER C6a made the three legs set-consistent, so it
+# is GREEN on arrival.
+#
+# BINDS TO THE PROSE HEADER, NEVER `tools:` (design §13.2). Several RO
+# project agents (`reviewer`, `architect`, `auditor`, …) carry
+# `Write, Edit` in their Claude `tools:` line yet are RO — keying on
+# `tools:` would misclassify them. The Gemini agent files carry NO `tools:`
+# field at all (measured 0/16), so a `tools:`-keyed guard is impossible
+# there anyway. The discriminator is the prose mandate header
+# (`**Read-only.**` = RO / `**Write-capable (scoped).**` /
+# `**Write-capable (script).**` = RW), the PM-CHAT profile table, and the
+# `READONLY_AGENTS` runtime array — never the tool list.
+#
+# Measure-then-bound (ci-guard-design-measure-then-bound): sized to EXACTLY
+# the measured 16-agent project set (2 RW `coder`/`repo-ops` + 14 RO) — no
+# broader. A NEW project agent or a CLI surface not in this measured set
+# MUST be ADDED to `_CHECK_55_PROJECT_AGENTS` / `_CHECK_55_RW_AGENTS` /
+# `_CHECK_55_AGENT_DIRS` in lock-step, else the guard develops a blind spot.
+#
+# Runtime (ci-check-runtime-compounding): a SINGLE bounded pass — at most
+# 16 agents × 3 CLI dirs = 48 file reads + one PM-CHAT read + one
+# agent-run.sh read; NO whole-tree scan, NO subprocess-per-entry. Negligible
+# across the battery's ~200+ validate-pack invocations.
+_CHECK_55_PM_CHAT_FILE = "project-template/docs/pack/PM-CHAT.md"
+_CHECK_55_AGENT_RUN_FILE = "project-template/agent-run.sh"
+# The EXHAUSTIVE measured project-agent set (design §4.3 / RESEARCH-BD-197-
+# AGENT-PERMISSION-INVENTORY §1.2): 16 agents = 2 RW + 14 RO.
+_CHECK_55_PROJECT_AGENTS = (
+    "architect",
+    "planner",
+    "reviewer",
+    "tester",
+    "docs-researcher",
+    "grpc-schema",
+    "auditor",
+    "auditor-architecture",
+    "auditor-code",
+    "auditor-docs",
+    "auditor-ops",
+    "auditor-security",
+    "auditor-tests",
+    "auditor-ui",
+    "coder",
+    "repo-ops",
+)
+# The measured RW set — exactly two agents (design §4.3 / §13.2 project).
+# Everything else in `_CHECK_55_PROJECT_AGENTS` is RO. This tuple is the
+# bound the guard asserts the three legs agree on.
+_CHECK_55_RW_AGENTS = ("coder", "repo-ops")
+# The three CLI agent dirs + the per-CLI file extension (project-template/).
+# Bounded — adding a CLI surface requires extending this map
+# (enumerate-encoding-surfaces).
+_CHECK_55_AGENT_DIRS = (
+    ("project-template/.claude/agents", "md"),
+    ("project-template/.codex/agents", "toml"),
+    ("project-template/.gemini/agents", "md"),
+)
+# Prose mandate-header signatures (the class discriminator — NEVER `tools:`).
+# RW has two flavors on the project side: `coder` is scoped, `repo-ops` is
+# script. Either RW header classifies the file RW; the RO header classifies
+# it RO.
+_CHECK_55_RW_HEADERS = (
+    "**Write-capable (scoped).**",
+    "**Write-capable (script).**",
+)
+_CHECK_55_RO_HEADER = "**Read-only.**"
+
+
+def _check_55_pm_chat_ro_rows(pm_chat_text: str) -> set:
+    """Parse the PM-CHAT `## Permission profiles` profile-assignment table;
+    return the SET of agent names whose Profile cell is `Read-only`.
+
+    The table row shape is `| `agent` | <Profile> |`. We locate each
+    measured agent by its backticked name cell and read the SECOND
+    pipe-delimited cell (the Profile). Bounded string ops; no regex
+    backtracking risk. A row whose profile starts with `Write-capable`
+    is NOT in the RO set.
+    """
+    ro_rows = set()
+    for line in pm_chat_text.splitlines():
+        if not line.lstrip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 2:
+            continue
+        name_cell = cells[0].strip().strip("`")
+        if name_cell in _CHECK_55_PROJECT_AGENTS:
+            if cells[1].strip() == "Read-only":
+                ro_rows.add(name_cell)
+    return ro_rows
+
+
+def _check_55_readonly_agents(agent_run_text: str) -> set:
+    """Parse the `READONLY_AGENTS=( ... )` bash array in agent-run.sh; return
+    the SET of agent names it lists. Bounded line scan between the opening
+    `READONLY_AGENTS=(` and the closing `)`."""
+    agents = set()
+    in_array = False
+    for line in agent_run_text.splitlines():
+        stripped = line.strip()
+        if not in_array:
+            if stripped.startswith("READONLY_AGENTS=("):
+                in_array = True
+            continue
+        if stripped.startswith(")"):
+            break
+        # Strip inline comments + whitespace; one agent token per line.
+        token = stripped.split("#", 1)[0].strip()
+        if token:
+            agents.add(token)
+    return agents
+
+
+def _check_55_header_class(text: str):
+    """Classify an agent file by its PROSE mandate header. Returns
+    "RW" / "RO" / None (no recognized header) — NEVER keys on `tools:`."""
+    has_rw = any(h in text for h in _CHECK_55_RW_HEADERS)
+    has_ro = _CHECK_55_RO_HEADER in text
+    if has_rw and not has_ro:
+        return "RW"
+    if has_ro and not has_rw:
+        return "RO"
+    # Both present, or neither — ambiguous → treat as unclassified so the
+    # set-equality leg FAILs loudly (a file must carry exactly one header).
+    return None
+
+
+def check_project_rw_ro_two_class() -> None:
+    """Check 55 — BD-197 project RW/RO two-class consistency (Guard-B project).
+
+    Asserts set-equality across three project legs — the PM-CHAT
+    `## Permission profiles` Read-only rows, the `agent-run.sh`
+    READONLY_AGENTS array, and the per-agent-file PROSE mandate headers —
+    and that the RW set = exactly {`coder`, `repo-ops`}, for the 16 project
+    agents × 3 CLIs. Binds to the prose header, NEVER `tools:` (project RO
+    agents carry Write/Edit; Gemini files carry no `tools:`). Sized to the
+    measured 16-agent set (2 RW + 14 RO).
+    """
+    print("\n── Check 55: BD-197 project RW/RO two-class consistency "
+          "(Guard-B project) ──")
+    any_fail = False
+
+    expected_rw = set(_CHECK_55_RW_AGENTS)
+    expected_ro = set(_CHECK_55_PROJECT_AGENTS) - expected_rw
+
+    # ── Leg 1: the PM-CHAT profile-assignment table (the SSOT). ──
+    pm_chat_path = REPO_ROOT / _CHECK_55_PM_CHAT_FILE
+    if not pm_chat_path.is_file():
+        fail(f"Check 55 — PM-CHAT SSOT {_CHECK_55_PM_CHAT_FILE} not found")
+        return
+    pm_ro = _check_55_pm_chat_ro_rows(pm_chat_path.read_text())
+
+    # ── Leg 2: the agent-run.sh READONLY_AGENTS array. ──
+    agent_run_path = REPO_ROOT / _CHECK_55_AGENT_RUN_FILE
+    if not agent_run_path.is_file():
+        fail(f"Check 55 — {_CHECK_55_AGENT_RUN_FILE} not found")
+        return
+    run_ro = _check_55_readonly_agents(agent_run_path.read_text())
+    # Bound the array RO set to the measured project agents (a stray token
+    # would otherwise pollute the set-equality below).
+    run_ro_measured = run_ro & set(_CHECK_55_PROJECT_AGENTS)
+
+    # Leg 1 ↔ expected RO.
+    if pm_ro != expected_ro:
+        any_fail = True
+        fail(
+            f"Check 55 — PM-CHAT `## Permission profiles` Read-only rows "
+            f"{sorted(pm_ro)} ≠ expected RO set {sorted(expected_ro)} "
+            f"(measured 14 RO; the RW set is {sorted(expected_rw)}). The "
+            f"PM-CHAT profile table is the project RW/RO SSOT — it must list "
+            f"exactly the 14 Read-only agents."
+        )
+
+    # Leg 2 ↔ expected RO (the runtime projection must match the SSOT).
+    if run_ro_measured != expected_ro:
+        any_fail = True
+        fail(
+            f"Check 55 — {_CHECK_55_AGENT_RUN_FILE} READONLY_AGENTS "
+            f"{sorted(run_ro_measured)} ≠ expected RO set "
+            f"{sorted(expected_ro)}. READONLY_AGENTS is a CI-checked "
+            f"projection of the PM-CHAT profile table; the two must agree."
+        )
+    # Any token in the array that is NOT a known project agent is a defect.
+    stray = run_ro - set(_CHECK_55_PROJECT_AGENTS)
+    if stray:
+        any_fail = True
+        fail(
+            f"Check 55 — {_CHECK_55_AGENT_RUN_FILE} READONLY_AGENTS lists "
+            f"unknown agent(s) {sorted(stray)} not in the measured 16-agent "
+            f"project set (enumerate-encoding-surfaces: extend "
+            f"_CHECK_55_PROJECT_AGENTS in lock-step)."
+        )
+
+    # ── Leg 3: each agent file's PROSE header; compare to expected class. ──
+    for agent in _CHECK_55_PROJECT_AGENTS:
+        expected_cls = "RW" if agent in expected_rw else "RO"
+        for dir_rel, ext in _CHECK_55_AGENT_DIRS:
+            agent_path = REPO_ROOT / dir_rel / f"{agent}.{ext}"
+            if not agent_path.is_file():
+                any_fail = True
+                fail(
+                    f"Check 55 — agent file {dir_rel}/{agent}.{ext} not found "
+                    f"(the measured project set is 16 agents × 3 CLIs)."
+                )
+                continue
+            header_cls = _check_55_header_class(agent_path.read_text())
+            if header_cls is None:
+                any_fail = True
+                fail(
+                    f"Check 55 — {dir_rel}/{agent}.{ext} carries no single "
+                    f"recognized prose mandate header (expected exactly one of "
+                    f"`{_CHECK_55_RO_HEADER}` or one of "
+                    f"{list(_CHECK_55_RW_HEADERS)})."
+                )
+                continue
+            if header_cls != expected_cls:
+                any_fail = True
+                fail(
+                    f"Check 55 — class MISMATCH for `{agent}`: expected "
+                    f"`{expected_cls}` (PM-CHAT table + READONLY_AGENTS) ≠ "
+                    f"prose header `{header_cls}` (in {dir_rel}/{agent}.{ext}). "
+                    f"The PM-CHAT profile table, the READONLY_AGENTS array, "
+                    f"and the per-agent prose mandate header must agree "
+                    f"(set-equality; Guard-B binds to the prose header, never "
+                    f"`tools:`)."
+                )
+
+    if not any_fail:
+        ok(
+            "Check 55 — project RW/RO two-class set-equality holds: 16 agents "
+            "× 3 CLIs; PM-CHAT `## Permission profiles` Read-only rows (14) ↔ "
+            "agent-run.sh READONLY_AGENTS (14) ↔ per-agent prose mandate "
+            "headers; RW set = {`coder`, `repo-ops`} (bound to the prose "
+            "header, never `tools:`)."
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -8934,6 +9180,17 @@ def main() -> None:
     # ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.3 + §5.4.
     run_check("check_destructive_git_verb_parity",
               check_destructive_git_verb_parity)
+    # ── BD-197 (C6b): project RW/RO two-class consistency (Guard-B project).
+    # A bounded single-pass set-equality across the three project legs — the
+    # PM-CHAT `## Permission profiles` Read-only rows, the agent-run.sh
+    # READONLY_AGENTS array, and the per-agent-file PROSE mandate headers
+    # (16 agents × 3 CLIs); binds to the prose header, never `tools:` (project
+    # RO agents carry Write/Edit; Gemini files carry no `tools:`). The PROJECT
+    # analog of Guard-B(pack) (Check 52). Per ARCHITECTURE-BD-197-WORKTREE-
+    # ISOLATION-RECONCILED.md §13.2 + §4.3. Check number 55 (next available
+    # after 52/53/56; 54 is reserved for the C8b Guard-A′ — a non-contiguous
+    # gap is expected and tolerated; numbers ≠ commit order).
+    run_check("check_project_rw_ro_two_class", check_project_rw_ro_two_class)
 
     # ── BD-204 §4.7 RUNTIME-BUDGET GUARD — the TOTAL-RUN hard FAIL. A
     # general run over the 10 s total budget means a check regressed into
