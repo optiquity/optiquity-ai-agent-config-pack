@@ -112,10 +112,11 @@ findings inline in your final assistant message instead of writing.
   git verbs only: `git status`, `git diff`, `git log`, `git rev-parse`,
   `git show`, `git ls-files`, `git blame`. You MAY NOT run `git add`,
   `git commit`, `git push`, `git tag`, `git rebase`, `git merge`,
-  `git reset`, `git stash`, or `git checkout` (except
-  `git checkout -- <path>` to inspect file contents at a different
-  ref). Staging and committing happen in the PM chat with explicit
-  user approval.
+  `git reset`, `git restore`, `git stash`, `git checkout`,
+  `git clean`, `git apply`, or `git worktree`. To inspect a file
+  at a different ref, use the read-only `git show <ref>:<path>`,
+  never a path checkout. Staging and committing happen in the PM
+  chat with explicit user approval.
 - **Chunk long writes.** If your report exceeds ~300 lines, write it
   in chunks: initial Write call for the front matter and first
   section(s), then append remaining sections via Edit or successive

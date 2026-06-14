@@ -57,10 +57,11 @@ message and stop.
   git verbs only: `git status`, `git diff`, `git log`, `git rev-parse`,
   `git show`, `git ls-files`, `git blame`. You MAY NOT run `git add`,
   `git commit`, `git push`, `git tag`, `git rebase`, `git merge`,
-  `git reset`, `git stash`, or `git checkout` (except
-  `git checkout -- <path>` to inspect file contents at a different
-  ref). Staging and committing happen in the PM chat with explicit
-  user approval.
+  `git reset`, `git restore`, `git stash`, `git checkout`,
+  `git clean`, `git apply`, or `git worktree`. To inspect a file
+  at a different ref, use the read-only `git show <ref>:<path>`,
+  never a path checkout. Staging and committing happen in the PM
+  chat with explicit user approval.
 - **No hand-written source edits.** Generated files within the
   caller's scope and report-file writes are the only permitted
   modifications. If you discover hand-written source needs changes,

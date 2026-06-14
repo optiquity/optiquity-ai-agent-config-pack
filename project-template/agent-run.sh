@@ -92,15 +92,24 @@ KNOWN_CLIS=(claude codex gemini)
 # --permission-mode bypassPermissions: removes tool-use confirmation prompts
 #   so compilers and linters run without interruption.
 # --disallowedTools: blocks state-changing git verbs regardless of permission
-#   mode. Read-only here is enforced by this launch-time flag profile, NOT by
-#   removing Write/Edit at the agent-definition level: read-only agents keep
-#   Write/Edit so they can produce their single report file, and the prompt
-#   constrains those tools to the report path. The disallowed git verbs and
-#   the read-only mandate header in each agent's definition file are what make
-#   the agent read-only.
+#   mode (deny rules are not bypassed by bypassPermissions). Read-only here is
+#   enforced by this launch-time flag profile, NOT by removing Write/Edit at
+#   the agent-definition level: read-only agents keep Write/Edit so they can
+#   produce their single report file, and the prompt constrains those tools to
+#   the report path. The disallowed git verbs and the read-only mandate header
+#   in each agent's definition file are what make the agent read-only.
+#   The verb list is verb-precise: it denies the patch-APPLYING form
+#   (git apply) but never git diff — agents emit their merge-back patch with
+#   `git diff > <handoff>/changes.patch`, which must stay allowed. One scoped
+#   Bash(git <verb>:*) rule per denied verb.
 CLAUDE_READONLY_FLAGS=(
     "--permission-mode" "bypassPermissions"
-    "--disallowedTools" "Bash(git commit:*)" "Bash(git push:*)"
+    "--disallowedTools"
+    "Bash(git commit:*)" "Bash(git push:*)"
+    "Bash(git add:*)" "Bash(git mv:*)" "Bash(git rm:*)"
+    "Bash(git stash:*)" "Bash(git reset:*)" "Bash(git restore:*)"
+    "Bash(git checkout:*)" "Bash(git apply:*)" "Bash(git worktree:*)"
+    "Bash(git clean:*)" "Bash(git rebase:*)" "Bash(git merge:*)"
 )
 
 # Flags for read-only agents on the codex CLI.
@@ -148,6 +157,10 @@ Arguments:
   --agent <name>  Agent to run (required)
   --skip <list>   (gemini auditor only) Comma-separated list of subagents to skip
                   Example: --skip auditor-ui,auditor-tests
+  --worktree [p]  (claude only) Run the agent in an isolated git worktree
+                  based at the current HEAD. Optional path; defaults to a
+                  sibling dir. SECONDARY/opt-in — probe cwd-scoping once before
+                  relying on it (see the run_in_worktree comment in this file).
   [args...]       Additional arguments passed through to the CLI unchanged
 
 Agent roster (16):
@@ -157,7 +170,9 @@ Agent roster (16):
 
 Read-only agents — automatically receive CLI-appropriate flags:
   claude: --permission-mode bypassPermissions
-          --disallowedTools Bash(git commit:*) Bash(git push:*)
+          --disallowedTools denies state-changing git verbs (commit, push,
+          add, mv, rm, stash, reset, restore, checkout, apply, worktree,
+          clean, rebase, merge) — git diff stays allowed for patch emit
   codex:  --sandbox workspace-write  (.git protected read-only by sandbox)
           -a never
   gemini: default mode  (per-command approval; plan mode blocks builds)
@@ -214,6 +229,68 @@ die() {
     echo "error: $*" >&2
     echo "Run ./agent-run.sh --help for usage." >&2
     exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Isolated-worktree launch (claude --agent in a git worktree) — SECONDARY,
+# human-driven parallel-agent path. Opt-in via --worktree [path].
+# ---------------------------------------------------------------------------
+#
+# Creates a detached git worktree based at the CURRENT HEAD, then runs
+# `claude --agent <name>` with its working directory inside the worktree so
+# the agent edits an isolated checkout. Basing at HEAD is deterministic and
+# does NOT depend on any settings.json key (it uses `git worktree add
+# --detach <path> HEAD` directly), so it works on a fresh client with no
+# settings file — your feature-branch HEAD is the base, never origin/main.
+#
+# CWD-SCOPING CAVEAT (read before relying on this): whether `claude --agent`
+# launched with its cwd inside a worktree reliably keeps ALL of its git
+# operations scoped to that worktree (vs leaking to the parent repo) is
+# environment- and version-dependent and has NOT been verified for your CLI
+# version by this script. Probe it ONCE in your environment before trusting
+# parallel isolated runs:
+#   1. Run a no-op isolated agent: ./agent-run.sh claude --agent coder --worktree
+#   2. After it returns, in the MAIN checkout run `git status` and confirm the
+#      main working tree is unchanged (the agent's edits stayed in the worktree).
+# If the probe shows the agent's git leaked into the parent repo, DO NOT use
+# --worktree; fall back to the MANUAL procedure:
+#   git worktree add --detach ../wt-<task> HEAD
+#   (cd ../wt-<task> && claude --agent <name>)
+#   # then review + merge the worktree's changes back with ordinary git.
+# Either way the agent still never stages or commits — you bring its work back
+# (the PM-chat merge-back applies the patch the agent leaves; see
+# docs/pack/PM-CHAT.md "In-session agent spawning" and
+# docs/pack/OPTIONAL-FEATURES.md).
+run_in_worktree() {
+    local agent="$1"; shift
+    local wt_path="$1"; shift
+    local extra=("$@")
+
+    command -v git &>/dev/null || die "--worktree requires git on PATH."
+    git rev-parse --is-inside-work-tree &>/dev/null \
+        || die "--worktree must be run from inside a git repository."
+
+    # Default worktree path under the repo's parent dir if none given.
+    if [[ "$wt_path" == "(default)" ]]; then
+        local repo_root base ts
+        repo_root="$(git rev-parse --show-toplevel)"
+        base="$(basename "$repo_root")"
+        ts="$(date +%Y%m%d-%H%M%S)"
+        wt_path="${repo_root}/../${base}-wt-${agent}-${ts}"
+    fi
+
+    [[ ! -e "$wt_path" ]] || die "worktree path already exists: $wt_path"
+
+    echo "[worktree] Creating detached worktree at HEAD: $wt_path"
+    git worktree add --detach "$wt_path" HEAD \
+        || die "git worktree add failed (see message above)."
+
+    echo "[worktree] Launching: claude --agent $agent  (cwd=$wt_path)"
+    echo "[worktree] Reminder: confirm the main checkout is unchanged after"
+    echo "[worktree] this returns (cwd-scoping caveat — see this script's"
+    echo "[worktree] run_in_worktree comment). The agent never commits; bring"
+    echo "[worktree] its work back via the PM-chat patch merge-back."
+    ( cd "$wt_path" && claude --agent "$agent" "${extra[@]+"${extra[@]}"}" )
 }
 
 # ---------------------------------------------------------------------------
@@ -356,9 +433,10 @@ command -v "$CLI" &>/dev/null \
 [[ $# -gt 0 ]] \
     || die "--agent <name> is required."
 
-# Scan remaining args for --agent and --skip values.
+# Scan remaining args for --agent, --skip, and --worktree values.
 AGENT=""
 SKIP_LIST=""
+WORKTREE_OPT=""
 FILTERED_ARGS=()
 prev=""
 i=0
@@ -379,6 +457,17 @@ while [[ $i -lt ${#argv[@]} ]]; do
         i=$((i + 1))
         continue
     fi
+    if [[ "$arg" == "--worktree" ]]; then
+        # Optional value: a worktree path. Default if omitted.
+        if [[ $((i + 1)) -lt ${#argv[@]} ]] && [[ "${argv[$((i + 1))]}" != -* ]]; then
+            i=$((i + 1))
+            WORKTREE_OPT="${argv[$i]}"
+        else
+            WORKTREE_OPT="(default)"
+        fi
+        i=$((i + 1))
+        continue
+    fi
     FILTERED_ARGS+=("$arg")
     i=$((i + 1))
 done
@@ -394,6 +483,13 @@ if [[ -n "$SKIP_LIST" ]]; then
     if [[ "$CLI" != "gemini" ]] || [[ "$AGENT" != "auditor" ]]; then
         die "--skip is only valid for 'gemini --agent auditor'"
     fi
+fi
+
+# --worktree runs the agent in an isolated git worktree (claude only — it is
+# the only CLI this script launches via `claude --agent` in a worktree cwd).
+# See the "Isolated-worktree launch" helper below for the cwd-scoping caveat.
+if [[ -n "$WORKTREE_OPT" ]] && [[ "$CLI" != "claude" ]]; then
+    die "--worktree is only supported for the claude CLI"
 fi
 
 # ---------------------------------------------------------------------------
@@ -477,9 +573,16 @@ elif [[ "$CLI" == "codex" ]]; then
     exec codex "${EXTRA[@]}" "${codex_opts[@]+"${codex_opts[@]}"}" "$activation_msg"
 else
     # Claude Code has native --agent support
-    if [[ "${#EXTRA[@]}" -gt 0 ]]; then
-        exec claude --agent "$AGENT" "${EXTRA[@]}" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+    # Assemble the full claude argument list (read-only/write flags + passthrough).
+    CLAUDE_ARGS=()
+    [[ "${#EXTRA[@]}" -gt 0 ]] && CLAUDE_ARGS+=("${EXTRA[@]}")
+    [[ "${#FILTERED_ARGS[@]}" -gt 0 ]] && CLAUDE_ARGS+=("${FILTERED_ARGS[@]}")
+
+    if [[ -n "$WORKTREE_OPT" ]]; then
+        # SECONDARY isolated-worktree path (opt-in). See run_in_worktree for
+        # the cwd-scoping caveat + manual fallback.
+        run_in_worktree "$AGENT" "$WORKTREE_OPT" "${CLAUDE_ARGS[@]+"${CLAUDE_ARGS[@]}"}"
     else
-        exec claude --agent "$AGENT" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+        exec claude --agent "$AGENT" "${CLAUDE_ARGS[@]+"${CLAUDE_ARGS[@]}"}"
     fi
 fi

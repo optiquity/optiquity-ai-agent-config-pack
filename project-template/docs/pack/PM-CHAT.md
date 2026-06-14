@@ -446,6 +446,89 @@ The three independent declarations of an agent's class — its prose
 mandate header, this table, and the `READONLY_AGENTS` array — must
 always agree.
 
+### In-session agent spawning
+
+There are **two ways** the PM chat puts an agent to work, and the
+permission class above drives which one to use.
+
+1. **In-session via the Agent/Task tool (PRIMARY).** When the PM chat
+   runs inside a CLI that exposes an Agent/Task tool, it spawns the
+   agent from within the current session — no separate terminal. This
+   is the default path: the PM chat stays in control of the
+   conversation, reads the agent's report when it returns, and drives
+   the review and commit steps itself.
+2. **Via the `agent-run.sh` launcher (SECONDARY).** A developer (or the
+   PM chat asking the developer) runs `./agent-run.sh <cli> --agent
+   <name>` in a separate terminal — the human-driven path the
+   per-profile flag blocks below describe. Use this when a separate
+   terminal session is wanted, when the CLI in use has no Agent/Task
+   tool, or for the optional isolated-worktree launcher (see
+   `docs/pack/OPTIONAL-FEATURES.md`).
+
+**Isolation is for read-write agents only.** When the PM chat spawns a
+read-write agent (`coder`, or `repo-ops` for scripted writes) in-session
+via the Agent/Task tool, it spawns that agent with the worktree-isolation
+parameter (`isolation:"worktree"` — the only valid value for the
+parameter) so the agent edits its own checkout and cannot collide with
+concurrent work in the main working tree. Read-only agents (the 14
+report-only profiles) are spawned **without** isolation — they do not
+write the tree, they emit one report — so an isolated checkout buys them
+nothing. The class is the single fact that decides this: RW ⇒ isolate;
+RO ⇒ in-place. Read the permission-class table above to classify the
+agent before spawning.
+
+There is **no platform safety net** that stops a non-isolated read-write
+agent from writing the main working tree, and nothing at the platform
+level commits on the PM chat's behalf or blocks a stray git verb. So two
+guarantees are **load-bearing, not advisory**: every read-write agent
+MUST be spawned with `isolation:"worktree"`, and the no-state-changing-git
+rule above (agents never stage, commit, or run any other working-tree- or
+ref-mutating git verb) is what keeps an isolated agent's work safe to
+merge back. Hold both.
+
+**Spawn in the background.** Spawn agents in the background so the PM
+chat stays interactive while the agent runs — you keep answering the
+developer and queuing the next step instead of blocking on the agent.
+The exact way to background a spawn is CLI-specific; use whatever your
+CLI offers for asynchronous agent execution.
+
+**Merge-back — the `/tmp` patch handoff.** A read-write agent never
+stages or commits. The PM chat brings its edits back via a patch the
+agent writes before it returns:
+
+1. **The PM chat names three absolute paths in the spawn prompt:** a
+   per-spawn handoff directory under `/tmp` (e.g.
+   `/tmp/proj-handoff-<task>-<timestamp>/`), the report path inside it
+   (`<handoff>/REPORT.md`), and the patch path inside it
+   (`<handoff>/changes.patch`).
+2. **The agent does its edits, runs the in-scope verification, then
+   emits the patch using read-only git only** — `git diff >
+   <handoff>/changes.patch` (`git diff` is read-only; the `> file`
+   redirect is shell, not a git verb) — and writes its report to the
+   handoff directory, then returns. The agent runs **zero**
+   state-changing git verbs. (If the `/tmp` write fails because the
+   handoff directory is not writable, the agent falls back to the
+   report path the prompt named and reports the degradation — it never
+   hard-errors on a failed handoff write.)
+3. **The PM chat reads the report, runs the bounded review/fix cycle,
+   then applies the patch itself:** `git apply --check
+   <handoff>/changes.patch` (dry-run) then `git apply
+   <handoff>/changes.patch`, and commits with developer approval. The
+   PM chat performs the only git-state change — agents never stage,
+   apply, or commit.
+
+**On conflict, do not hand-merge.** If `git apply --check` fails (the
+patch was cut against a base the working tree has moved past, or two
+parallel read-write agents touched the same hunks), try `git apply
+--3way`; if it still conflicts, STOP, surface the colliding patches to
+the developer, and re-spawn a fresh `coder` against the current HEAD with
+the same scope to regenerate a clean patch. The PM chat does not
+hand-merge conflicting hunks — re-spawning a fresh coder is the fix.
+Scope parallel read-write agents to non-overlapping files so conflicts
+stay rare. The degradation cases (an isolated agent that silently fell
+back to the main tree, or a worktree based at the wrong ref) are covered
+in `docs/pack/OPTIONAL-FEATURES.md`.
+
 ### Profile assignment
 
 | Agent | Profile |

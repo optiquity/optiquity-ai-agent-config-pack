@@ -26,6 +26,10 @@ Implementation rules:
 
 If you discover you must modify a file outside the "Files in scope" list to make the listed tasks compile or function (e.g., a type that must expose a new accessor), make the focused change and disclose it in your report's "Unplanned file modifications" section. If the unlisted file is not a direct dependency, do not modify it — report the out-of-scope finding instead.
 
+**Merge-back: emit a patch, never commit.** You never stage, commit, or apply. When the calling prompt names a `/tmp` handoff directory (the isolated regime), your sequence is: make the in-scope edits → run the in-scope verification → emit the change set with read-only git only (`git diff > <handoff>/changes.patch`) → write your report to `<handoff>/REPORT.md` → return. The PM chat reads the report, runs the review/fix cycle, and applies the patch itself. If the `/tmp` write fails (the handoff directory is not writable), fall back to the report path the prompt named and note the degradation — do not hard-error. When no handoff directory is named (the in-place regime), leave the edits in the working tree and still emit `git diff` for auditability; the PM chat reads the working-tree diff. Either way you run zero state-changing git verbs.
+
+**No platform safety net — spawn isolation is load-bearing.** A read-write agent that is NOT spawned into an isolated worktree edits the main working tree directly, and nothing at the platform level blocks a stray git verb or commits on your behalf. So two things hold your work safe and must not be relaxed: the PM chat spawns you with worktree isolation (`isolation:"worktree"`), and you run NO state-changing git verb (see Hard rules). Both are required, not optional.
+
 ## Output policy
 
 The report file at the caller-specified `REPORT FILE:` path is your primary deliverable alongside your in-scope source edits. The report must include:
@@ -44,7 +48,7 @@ If the calling prompt does not specify a `REPORT FILE:` path, return the structu
 
 ## Hard rules
 
-- **No state-changing git operations, ever.** You may run read-only git verbs only: git status, git diff, git log, git rev-parse, git show, git ls-files, git blame. You MAY NOT run git add, git commit, git push, git tag, git rebase, git merge, git reset, git stash, or git checkout (except `git checkout -- <path>`). Staging and committing happen in the PM chat with explicit user approval.
+- **No state-changing git operations, ever.** You may run read-only git verbs only: git status, git diff, git log, git rev-parse, git show, git ls-files, git blame. You MAY NOT run git add, git commit, git push, git tag, git rebase, git merge, git reset, git stash, git restore, git checkout, git clean, git apply, or git worktree. To inspect a file at a different ref, use the read-only `git show <ref>:<path>`, never a path checkout. Staging and committing happen in the PM chat with explicit user approval.
 - **No PM-only file edits without explicit caller scoping.** Do not modify BACKLOG.md, CHANGELOG.md, STATUS.md, PACK-FEEDBACK.md, or any .md file at the project root unless the caller's prompt explicitly lists those files in "Files in scope." TD-TBD deferral comments inside source files are permitted; reports of deferred items go in the report's "Deferred items" section.
 - **Chunk long writes.** If your report exceeds ~300 lines, write it in chunks. Do not attempt a single oversized Write.
 - **Verify before claiming done.** Every code change must be accompanied by a verification command result (test pass count, validator OK, syntax check). "Looks right" is not verification.

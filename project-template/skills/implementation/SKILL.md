@@ -30,3 +30,32 @@ allowed-tools: Read, Grep, Glob, Edit, Write, MultiEdit, Bash
 13. Run the test suite. Fix any regressions introduced by the change.
 14. Review your own diff before submitting. Check for: accidentally committed debug code, missing test updates, files that should not have changed.
 15. Report the change in the completion report: what changed, which files were created or modified, and the verification path.
+
+## Reporting the change set (regime-aware)
+
+A write-capable agent never stages or commits — the PM chat brings the
+edits back. How the change set is handed off depends on the regime the
+agent is running in. Detect it from where the agent is working, not from
+any setting:
+
+- **In-place (default).** The agent edits the main working tree. The
+  completion report records the change set as the working-tree diff
+  against the base HEAD it started from (`git diff` is read-only). The
+  PM chat reads the report and the working-tree diff, then stages and
+  commits with developer approval.
+- **Isolated (opt-in worktree).** The agent edits its own checkout and
+  the calling prompt names a `/tmp` handoff directory. The agent emits
+  the change set as a patch with read-only git
+  (`git diff > <handoff>/changes.patch`) and writes its report into the
+  same handoff directory, then returns. The patch — not the worktree —
+  is the persisted artifact, so the change set survives even after the
+  isolated worktree is cleaned up. The PM chat applies the patch
+  (`git apply --check` then `git apply`) and commits with developer
+  approval.
+
+Either way the agent runs only read-only git verbs (`git diff`, never
+`git apply` or any state-changing verb); applying and committing belong
+to the PM chat alone. If the `/tmp` handoff write fails because the
+directory is not writable, fall back to the report path the prompt
+named and note the degradation — do not hard-error on a failed handoff
+write.

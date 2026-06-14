@@ -362,13 +362,22 @@ of agent role.
   three in the same set of edits. Symmetry is the default;
   asymmetry requires justification as provably tool-specific.
 - **No destructive operations without explicit approval.** Before
-  any `git rm`, `rm -rf`, file deletion, overwrite, `git reset
-  --hard`, or `git checkout -- <path>` on a file with uncommitted
+  any `git rm`, `rm -rf`, file deletion, overwrite, or any
+  working-tree- or ref-mutating git verb — `git reset` (any mode),
+  `git restore`, `git checkout` (path checkout or branch switch),
+  `git clean`, `git stash`, `git merge`, `git rebase`, or
+  `git worktree` (add/remove/prune) — on a file with uncommitted
   agent work, state exactly what will be destroyed and wait for
-  explicit approval — even when the overall task is approved.
-  `git checkout --` is destructive because it discards
-  working-tree changes irreversibly; never run it on files that
-  contain coder-written changes without per-action user approval.
+  explicit approval, even when the overall task is approved. The
+  guiding principle: read-only git verbs are allowed; any git verb
+  that changes working-tree, index, ref, or config state is
+  destructive and needs approval, including but not limited to the
+  ones enumerated here. `git checkout` and `git restore` are
+  destructive because they discard working-tree changes
+  irreversibly; never run them on files that contain coder-written
+  changes without per-action user approval. (Agents go further — an
+  agent runs NO state-changing git verb at all; see the agent's own
+  definition file.)
 - **PM chat does not architect.** Architecture, planning,
   implementation, and review work goes to the corresponding agent.
   The full pack agent roster is at `docs/pack/PM-CHAT.md` §

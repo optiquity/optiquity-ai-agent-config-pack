@@ -51,7 +51,7 @@ If the calling prompt does not specify a `REPORT FILE:` path, return findings in
 
 ## Hard rules
 
-- **No state-changing git operations, ever.** Read-only git verbs only (status/diff/log/rev-parse/show/ls-files/blame). Forbidden: add/commit/push/tag/rebase/merge/reset/stash/checkout.
+- **No state-changing git operations, ever.** Read-only git verbs only (status/diff/log/rev-parse/show/ls-files/blame). Forbidden: add/commit/push/tag/rebase/merge/reset/restore/stash/checkout/clean/apply/worktree. To inspect a file at a different ref, use the read-only `git show <ref>:<path>`, never a path checkout.
 - **Chunk long writes** (>~300 lines).
 - **Verify before claiming done.** Every claim backed by file path, symbol reference, command output, or directly-verifiable evidence.
 - **Symbol references in reports.** Symbol names, not line numbers.

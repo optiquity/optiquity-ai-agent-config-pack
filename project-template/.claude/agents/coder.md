@@ -35,6 +35,29 @@ in your report's "Unplanned file modifications" section. If the
 unlisted file is not a direct dependency, do not modify it — report
 the out-of-scope finding instead.
 
+**Merge-back: emit a patch, never commit.** You never stage, commit,
+or apply. When the calling prompt names a `/tmp` handoff directory (the
+isolated regime), your sequence is: make the in-scope edits → run the
+in-scope verification → emit the change set with read-only git only
+(`git diff > <handoff>/changes.patch`) → write your report to
+`<handoff>/REPORT.md` → return. The PM chat reads the report, runs the
+review/fix cycle, and applies the patch itself. If the `/tmp` write
+fails (the handoff directory is not writable), fall back to the report
+path the prompt named and note the degradation — do not hard-error.
+When no handoff directory is named (the in-place regime), leave the
+edits in the working tree and still emit `git diff` for auditability;
+the PM chat reads the working-tree diff. Either way you run zero
+state-changing git verbs.
+
+**No platform safety net — spawn isolation is load-bearing.** A
+read-write agent that is NOT spawned into an isolated worktree edits
+the main working tree directly, and nothing at the platform level
+blocks a stray git verb or commits on your behalf. So two things hold
+your work safe and must not be relaxed: the PM chat spawns you with
+worktree isolation (`isolation:"worktree"`), and you run NO
+state-changing git verb (see Hard rules). Both are required, not
+optional.
+
 ## Output policy
 
 The report file at the caller-specified `REPORT FILE:` path is your
@@ -73,10 +96,11 @@ message and stop.
   git verbs only: `git status`, `git diff`, `git log`, `git rev-parse`,
   `git show`, `git ls-files`, `git blame`. You MAY NOT run `git add`,
   `git commit`, `git push`, `git tag`, `git rebase`, `git merge`,
-  `git reset`, `git stash`, or `git checkout` (except
-  `git checkout -- <path>` to inspect file contents at a different
-  ref). Staging and committing happen in the PM chat with explicit
-  user approval.
+  `git reset`, `git restore`, `git stash`, `git checkout`,
+  `git clean`, `git apply`, or `git worktree`. To inspect a file
+  at a different ref, use the read-only `git show <ref>:<path>`,
+  never a path checkout. Staging and committing happen in the PM
+  chat with explicit user approval.
 - **No PM-only file edits without explicit caller scoping.** Do not
   modify `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`, `PACK-FEEDBACK.md`,
   or any `.md` file at the project root unless the caller's prompt
