@@ -639,11 +639,11 @@ routing, not architecture. Pack Chat asks "is this mechanical or
 structural?" and routes structural cases to `pack-architect` — that's
 exactly the rule's intent.
 
-### 6.11 Worktree isolation broken from v11-dev clone
-(`feedback_worktree_isolation_broken_from_v11_clone.md`)
+### 6.11 Worktree isolation (opt-in; BD-197)
 
-**No conflict.** Orthogonal — that rule governs sub-agent spawning
-mechanics.
+**No conflict.** Orthogonal — the worktree-isolation rule governs
+sub-agent spawning mechanics (sub-agents run in-place by default; a
+chat MAY opt a sub-agent into an isolated worktree per BD-197).
 
 ### 6.12 No prior reviews to pack-reviewer (CLAUDE.md lines 135-137)
 

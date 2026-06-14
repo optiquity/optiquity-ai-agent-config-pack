@@ -85,7 +85,7 @@ Tag-state legend: `R/r` = has `[roles:]` / has `[rationale:]`; `—` = absent.
 
 | # | Bullet | Tag-state | Class | Rationale (Test A / Test B) | Evidence |
 |---|---|---|---|---|---|
-| 24 | Spawn all sub-agents with no worktree isolation | —/— | STAY-INLINE | A=NO: Pack-Chat Agent-tool invocation parameter (Pack Chat sets `isolation`); the spawned agent does not apply it. Claude-only (trinity-exempt). | L348-357 |
+| 24 | Sub-agent worktree isolation (opt-in; BD-197 replaced the prior bug-era prohibition) | —/— | STAY-INLINE | A=NO: Pack-Chat Agent-tool invocation parameter (Pack Chat sets `isolation`); the spawned agent does not apply it. Claude-only (trinity-exempt). | `### Sub-agent behavior (Claude-only)` worktree bullet (line numbers drift) |
 | 25 | Default sub-agent spawns to background | —/— | STAY-INLINE | A=NO: Pack-Chat `run_in_background` parameter choice; orchestration. Claude-only. | L358-366 |
 | 26 | Agent-team stage lifecycle + per-commit fresh-coder | —/— | STAY-INLINE | A=NO: Pack-Chat lifecycle management (spawn/close/respawn); orchestration. Claude-only. | L367-378 |
 | 27 | Trinity exemption | —/— | STAY-INLINE | A=NO: a META-note explaining why §3.3 is Claude-only; not a rule at all, a documentation note. | L379-383 |

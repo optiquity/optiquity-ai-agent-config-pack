@@ -62,10 +62,11 @@ split).
   This setting exists at the project level, not the agent level —
   so the rule is "set baseRef appropriately" project-wide, not a
   per-agent guard.
-- Pack-side memory pointer (cross-reference, not authority):
-  `~/.claude/projects/-Users-david-Developer-optiquity-ai-agent-config-pack/memory/feedback_worktree_isolation_broken_from_v11_clone.md`
-  — empirically established by the pack repo for its v11-dev/main
-  split. The web evidence above shows the mechanism is general.
+- Pack-side: BD-197 enables safe, opt-in worktree isolation —
+  sub-agents run in-place by default, and a chat MAY opt a sub-agent
+  into an isolated worktree (with `worktree.baseRef = "head"` so the
+  worktree bases at local HEAD). The web evidence above shows the
+  underlying base-branch mechanism is general.
 
 **Architect implication:** Confirms §F D-1's open question and the
 proposed `### Sub-agent behavior (Claude-only)` sub-section in

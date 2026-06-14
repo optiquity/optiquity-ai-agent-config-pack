@@ -184,7 +184,7 @@ All 14 §8 steps covered. Step 8 is design-deferred (explicit "not in this work"
 
 For each commit, Pack Chat runs the bounded cycle (max 3 reviewer / 2 fix-coder spawns):
 
-1. **Coder** (fresh per commit; `run_in_background:true`; NO worktree isolation; rules-in-force enumerated inline; progress marker `**Coder C<N> of 12**`; STOP-MEANS-STOP preamble) → working-tree edits + IMPL-REPORT + Rules-Applied Verification Block + PREFLIGHT line.
+1. **Coder** (fresh per commit; `run_in_background:true`; in-place by default, with opt-in worktree isolation per BD-197; rules-in-force enumerated inline; progress marker `**Coder C<N> of 12**`; STOP-MEANS-STOP preamble) → working-tree edits + IMPL-REPORT + Rules-Applied Verification Block + PREFLIGHT line.
 2. **Reviewer pass 1** (`pack-reviewer` fresh; rules-in-force; PLAN+design only, NO prior reviews). Clean → step 7. Findings → 3.
 3. Pack Chat triages every finding to user (default FIX-ALL; SKIP needs rationale+approval) → **Fix-coder pass 1**.
 4. **Reviewer pass 2** (fresh). Clean → 7. Findings → 5.

@@ -414,9 +414,9 @@ new "user-discussion-and-approval" clause is not retroactive.
 
 ### D. Worktree / isolation (CLAUDE.md Pack memory)
 
-1. **No `isolation: "worktree"` on Agent calls** from any chat in this repo. The Agent tool's worktree mode places sub-worktrees under the main clone's `.git/worktrees/` and checks out `origin/main` regardless of parent cwd — agents land on stable v10.1 content instead of v11-dev.
-2. Run agents in-place against the parent chat's working tree.
-3. For parallelism across worktrees, open separate Claude Code chat sessions in separate worktree directories. Never use Agent-tool worktree isolation.
+1. **Sub-agents run in-place by default** (no isolation), against the parent chat's working tree.
+2. **Opt-in worktree isolation is supported (BD-197).** A chat MAY opt a sub-agent into isolated parallel execution by passing the per-spawn Agent-tool `isolation: "worktree"` parameter; the developer sets `worktree.baseRef: "head"` in settings so the isolated worktree bases at local HEAD (unset/`fresh` bases at `origin/main` — a documented wrong-base degradation). RW agents emit a `/tmp` patch the orchestrator applies; agents never commit. Claude-only (trinity-exempt; Codex/Gemini = BD-217). See `OPTIONAL-FEATURES.md`.
+3. For parallelism, a chat can opt sub-agents into isolated worktrees (per item 2) or open separate Claude Code chat sessions in separate worktree directories.
 4. **Parallel in-place agents are allowed** when their file sets are disjoint. Conflicting agents must be sequenced. (See per-batch conflict notes in §4.)
 
 ### E. Trinity / scope discipline

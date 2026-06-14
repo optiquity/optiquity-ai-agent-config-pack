@@ -920,16 +920,17 @@ README edit.
   supporting-docs/ maintenance-docs/v11-implementation/` — expected
   matches only inside this PLAN doc and the architecture doc.
 
-### 4.8 Worktree isolation broken from v11-dev clone
+### 4.8 Worktree isolation (opt-in; BD-197)
 
-- **Risk.** When Pack Chat spawns sub-agents via the Agent tool, the
-  sub-worktree lands at `origin/main` (v10.1 HEAD), not v11-dev.
-  Sub-agents would audit / edit stable content instead of the v11-dev
-  branch.
-- **Mitigation.** **Do not pass `isolation: "worktree"` when spawning
-  sub-agents from any chat in this repo.** Run agents in-place against
-  the parent chat's working tree. For the FINAL Phase-2A handoff
-  spawning, this rule applies.
+- **Default.** Sub-agents run in-place against the parent chat's
+  working tree (no isolation).
+- **Opt-in (BD-197).** A chat MAY opt a sub-agent into an isolated
+  worktree by passing the per-spawn Agent-tool `isolation: "worktree"`
+  parameter, with `worktree.baseRef: "head"` set in settings so the
+  worktree bases at local HEAD (unset/`fresh` bases at `origin/main` —
+  a documented wrong-base degradation). Claude-only (trinity-exempt).
+  See `OPTIONAL-FEATURES.md`. For the FINAL Phase-2A handoff spawning,
+  in-place is the simplest default.
 
 ### 4.9 CI gating
 
@@ -959,8 +960,10 @@ README edit.
   directive, problem/goal/success criteria, and the chunk-long-writes
   instruction. No proposed solutions in prompts; coder reaches own
   conclusions.
-- **Sub-agent isolation.** Do not pass `isolation: "worktree"` when
-  spawning. Run in-place against the parent chat's working tree.
+- **Sub-agent isolation.** In-place by default; opt-in worktree
+  isolation per BD-197 (pass `isolation: "worktree"` with
+  `worktree.baseRef: "head"` set). Run in-place against the parent
+  chat's working tree unless isolation is explicitly opted in.
 
 ---
 
@@ -1039,12 +1042,13 @@ is the convener for the Phase 2A spawn.
 
 ### 6.4 Sub-agent spawn instruction
 
-When spawning the Phase 2A architect: **do NOT pass
-`isolation: "worktree"`.** Run in-place against the v11-dev working
-tree. Per CLAUDE.md "Sub-agent isolation" — worktree isolation lands
-at `origin/main`, not v11-dev. Use a fresh non-worktree-isolated
-sub-agent or open a separate Claude Code chat session in the v11-dev
-worktree directory.
+When spawning the Phase 2A architect: in-place is the simplest
+default — run against the v11-dev working tree. Per CLAUDE.md
+"Sub-agent behavior (Claude-only)", worktree isolation is opt-in
+(BD-197): a chat MAY pass `isolation: "worktree"` with
+`worktree.baseRef: "head"` set so the worktree bases at local HEAD
+(unset/`fresh` bases at `origin/main`). Alternatively, open a separate
+Claude Code chat session in the v11-dev worktree directory.
 
 ---
 
@@ -1290,6 +1294,7 @@ make.
 - **Total new BDs: 19** (14 v11.0 batch BDs + 5 v12-deferred BDs).
 - **Critical path: 6 batches** (BD-140 → BD-141 → BD-142 → BD-143 → BD-146 → BD-150). BD-156, BD-157, BD-158 sit off-path; all three hard-block BD-149.
 - **After BD-150 ships and is Resolved:** spawn `pack-architect` for
-  Phase 2A (web / Android / embedded-MCU per-skill rule design). Do
-  NOT pass `isolation: "worktree"` to the spawn.
+  Phase 2A (web / Android / embedded-MCU per-skill rule design).
+  In-place by default; opt-in worktree isolation per BD-197 (pass
+  `isolation: "worktree"` with `worktree.baseRef: "head"` set).
 
