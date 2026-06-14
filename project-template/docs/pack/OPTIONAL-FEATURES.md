@@ -93,6 +93,184 @@ wall-clock time.
 
 ---
 
+## Claude Code — Isolated parallel agents (worktree isolation)
+
+**Status:** Claude Code only — no Codex or Gemini CLI equivalent yet (the
+cross-CLI worktree story is tracked separately and is out of scope here). The
+subagent-isolation trigger is a per-spawn Agent-tool parameter; the base
+posture is a `settings.json` key you set manually. The pack ships NO settings
+file — you add the keys to your OWN settings (see below).
+
+**What it is.** When the PM chat spawns a read-write agent (your `coder`, or
+`repo-ops` for scripted writes) in the background to make edits in parallel, it
+can isolate that agent in its own git worktree so the agent's edits never touch
+your main working tree directly. The agent edits in the worktree, emits a `git
+diff` patch to a named handoff directory, and returns; the PM chat reads the
+patch, runs the review/fix cycle, applies it onto your branch, and commits — the
+agent itself never stages or commits (the no-state-changing-git contract is
+preserved end-to-end). Read-only agents (your `architect`, `reviewer`,
+`planner`, the `auditor` family, and the other report-only profiles) need NO
+isolation — they emit a report and write nothing to the tree. The in-session
+spawn + merge-back procedure lives in `docs/pack/PM-CHAT.md` ("In-session agent
+spawning").
+
+**When this matters for your project.** Isolation matters when the PM chat
+spawns SEVERAL read-write agents in parallel and you do not want their edits to
+collide in one shared working tree, or when you want a clean patch-handoff
+boundary for each coder. For a single sequential coder it is optional; the
+in-place (non-isolated) regime is the default floor and works without any
+settings.
+
+**How to enable isolated parallel subagents — TWO INDEPENDENT mechanisms.**
+The feature is governed by two orthogonal knobs. Do not conflate them.
+
+1. **TRIGGER (per task) — the per-spawn Agent-tool `isolation` parameter.**
+   The PM chat decides per spawn whether an agent runs isolated, by passing the
+   Agent-tool `isolation:"worktree"` parameter when it spawns a read-write
+   agent. `"worktree"` is the ONLY valid value for this parameter — `head` and
+   `none` are SETTINGS values (see `baseRef`/`bgIsolation` below), NOT parameter
+   values. Omitting the parameter runs the agent in-place (the default). This is
+   a per-spawn decision the PM chat makes; it is not a `settings.json` key, and
+   the PM chat does NOT isolate by writing settings (that would conflict with
+   the no-write-settings posture and could surprise another session sharing the
+   same checkout).
+
+2. **BASE (REQUIRED setting) — `worktree.baseRef`.** Set
+   `worktree.baseRef: "head"` in your `settings.json` so an isolated worktree
+   branches from your LOCAL HEAD (the branch you are working on). The valid
+   values are `"head"` and `"fresh"`.
+   - **Consequence if unset:** `baseRef` defaults to `"fresh"`, which branches
+     the worktree from `origin/<default>` (i.e. `origin/main`) — the historical
+     "checks out main" wrong-base behavior. An isolated agent would then base
+     its work at `origin/main`, NOT your current branch. The work still
+     functions (the patch still applies onto your branch), but it is the wrong
+     base — so `baseRef: "head"` is REQUIRED for branch work.
+   - **Where it lives:** put `worktree.baseRef: "head"` in `settings.json` at
+     PER-PROJECT scope (`.claude/settings.json` in your repo, recommended) OR at
+     GLOBAL scope (`~/.claude/settings.json`, which affects every project on
+     your machine — your choice).
+
+   ```json
+   {
+     "worktree": {
+       "baseRef": "head"
+     }
+   }
+   ```
+
+**Background sessions are a SEPARATE mechanism (not this feature).**
+`worktree.bgIsolation` (enum `["worktree", "none"]`, default `"worktree"`)
+governs TOP-LEVEL background `claude` sessions via the
+`EnterWorktree`/`ExitWorktree` flow: `"worktree"` blocks Edit/Write in the main
+checkout until `EnterWorktree` is called; `"none"` lets background jobs edit the
+working copy directly. `bgIsolation` does NOT control Agent-tool subagents — it
+is not the subagent-isolation trigger, and it is not a boolean
+(`bgIsolation: true` is invalid). The background-session isolation story is a
+separate concern slated for a future pack version; do not set `bgIsolation`
+expecting it to isolate the agents the PM chat spawns.
+
+**In-session destructive-git-verb backstop — the documented-optional
+`permissions.deny` recipe.** The default protection for in-session sub-agents is
+the always-on PROSE deny-list every agent reads (the no-state-changing-git rule
+in your project trinity `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`, the
+`commit-discipline` skill, and each agent's own definition file) plus the
+behavioral contract that agents never stage, commit, or run any other
+working-tree- or ref-mutating git verb. On top of that, you can add an OPTIONAL
+mechanical hard-deny that the pack DOES NOT ship — you add it to YOUR OWN
+`settings.json` (user or project scope). In the Claude Code permission model, a
+`permissions.deny` block is SESSION-SCOPED and INHERITED by all in-session
+sub-agents (including background ones) and is deny-first (it is NOT bypassed by
+`bypassPermissions`). It is the ONLY in-session mechanical layer available: an
+agent-definition `tools:` field cannot deny a specific git sub-verb (it is
+tool-name-level only), and there is no per-spawn tool-deny parameter. List the
+destructive git verbs as scoped `Bash` rules:
+
+```json
+{
+  "permissions": {
+    "deny": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(git stash:*)",
+      "Bash(git reset:*)",
+      "Bash(git restore:*)",
+      "Bash(git checkout:*)",
+      "Bash(git apply:*)",
+      "Bash(git worktree:*)",
+      "Bash(git clean:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)"
+    ]
+  }
+}
+```
+
+This recipe is VERB-PRECISE: it denies `Bash(git apply:*)` (the patch-APPLYING
+form, which only the PM chat runs) but NEVER `Bash(git diff:*)` — `git diff` is
+the agent's read-only patch-emit and must stay allowed (the `git diff > file`
+redirection is a shell-level construct, not a git verb, so it is not tripped). A
+user `PreToolUse` hook (matcher `Bash`, returning `permissionDecision: "deny"`
+for the same verbs) is a SECONDARY defence-in-depth option only — its
+`if`-matcher fails OPEN, so `permissions.deny` is the documented-primary
+mechanical layer. The pack ships neither the settings file nor the hook; this is
+a recipe you opt into. Without it, the in-session protection degrades to the
+always-on prose deny-list plus the behavioral contract (still load-bearing, just
+not mechanically enforced).
+
+**The `agent-run.sh --worktree` launcher (a SECONDARY path).** Separate from the
+in-session spawn above, `agent-run.sh` carries an optional `--worktree [path]`
+flag (claude only) that runs `claude --agent <name>` inside an isolated git
+worktree for a human-driven parallel-agent run. It bases the worktree at your
+CURRENT HEAD deterministically with `git worktree add --detach <path> HEAD`, so
+it does NOT depend on the `worktree.baseRef` setting — it works on a fresh
+client with no settings file, and your branch HEAD is always the base, never
+`origin/main`. The launcher is SECONDARY/opt-in with a cwd-scoping caveat:
+whether `claude --agent` launched with its cwd inside a worktree reliably keeps
+ALL of its git operations scoped to that worktree (rather than leaking to the
+parent repo) is environment- and version-dependent. Probe it ONCE before
+relying on it — run `./agent-run.sh claude --agent coder --worktree`, then in
+your main checkout run `git status` and confirm the main working tree is
+unchanged. If the probe shows the agent's git leaked into the parent repo, do
+NOT use `--worktree`; fall back to the manual procedure (below). Either way the
+agent still never stages or commits — you bring its work back via the PM-chat
+patch merge-back (`docs/pack/PM-CHAT.md`). See the `run_in_worktree` comment in
+`agent-run.sh` for the full caveat.
+
+**Caveats.**
+- **Version-sensitive.** Worktree isolation behavior has shifted across Claude
+  Code releases; confirm your version's behavior before relying on it.
+- **Auto-removal can delete unmerged branches.** When an isolated subagent exits
+  cleanly, Claude Code auto-removes its worktree and branch. A branch with
+  unmerged commits can be silently deleted — which is why the merge-back model
+  captures the agent's work as a patch in the handoff directory BEFORE return
+  (the patch survives auto-removal), and why agents never commit.
+- **Best-effort isolation / silent fall-to-main.** Isolation can silently fall
+  back to editing the main checkout. The PM chat therefore detects the ACTUAL
+  regime from what the agent reports (a patch handoff ⇒ isolated; in-place edits
+  ⇒ in-place), never from an assumed settings value.
+- **`baseRef` unset/`fresh` wrong-base.** As above, an unset/`fresh` `baseRef`
+  bases isolated work at `origin/main` rather than your branch — a documented
+  degradation, surfaced by the PM chat, never silent.
+
+**The pack ships NO settings file.** You add `worktree.baseRef`,
+`worktree.bgIsolation` (if you use background sessions), and the
+`permissions.deny` recipe to your OWN `settings.json`. The pack documents these
+keys; it never writes a settings file into your repo.
+
+**Claude-only note.** This feature is specific to Claude Code's Agent-tool
+`isolation` parameter and `worktree` settings. Codex CLI and Gemini CLI have no
+equivalent at this time; their worktree story is tracked separately and is out
+of scope here. There is no cross-CLI parity claim for this feature.
+
+**Manual worktree (no pack mechanism needed).** If you simply want to work on
+parallel branches yourself, run `git worktree add ../my-worktree <branch>` by
+hand and open a separate session in that directory — that is plain git and needs
+nothing from the pack; the pack only guarantees that nothing it ships breaks
+inside a manual worktree.
+
+---
+
 ## Codex CLI — Optional features
 
 *Placeholder. The Config Pack will document Codex-specific opt-in
