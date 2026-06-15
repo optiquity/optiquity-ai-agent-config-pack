@@ -104,6 +104,30 @@ _stub_record() {
 SCRATCH=$(mktemp -d -t tpr1.XXXXXX)
 trap 'rm -rf "$SCRATCH"' EXIT
 
+# ─────────────────────────────────────────────────────────────────
+# BD-219 CI-red fix: fake gh on PATH (process-wide, offline-deterministic).
+# The tracker-mode (flat_only=0) legs reach _tracker_labels_create /
+# _tracker_labels_existing in tracker-labels.sh, which shell `gh label
+# create` / `gh label list` DIRECTLY — the provider stub seam
+# (_TRACKER_PROVIDER_BACKEND_OVERRIDE=stub) never intercepts those. On an
+# unauthenticated CI runner the real `gh` fails → the lib rolls back and
+# returns empty → the whole tracker-mode cascade fails. This shim makes the
+# label calls succeed offline so every leg runs the SAME code path as on an
+# authed machine, keeping the test WIRED + offline (no live gh auth). Lives
+# under $SCRATCH so the existing EXIT trap cleans it up.
+mkdir -p "$SCRATCH/bin"
+cat > "$SCRATCH/bin/gh" <<'GHEOF'
+#!/usr/bin/env bash
+case "$1 $2" in
+  "label list")   printf '[]' ;;     # empty existing set → all canonical labels "missing" → created
+  "label create") exit 0 ;;          # idempotent --force create → success
+  "auth status")  echo "Logged in to github.com"; exit 0 ;;
+  *)              exit 0 ;;           # no other live-gh call is reached by these legs
+esac
+GHEOF
+chmod +x "$SCRATCH/bin/gh"
+export PATH="$SCRATCH/bin:$PATH"
+
 # Helper: build a fresh worktree fixture for a single test.
 mk_worktree() {
     local name="$1"
@@ -272,7 +296,7 @@ PYEOF
 # `## Phase 3` only, no `## Phase 7`. So a fresh --to=phase-7 should
 # succeed and append the new ## Phase 7 heading.
 result_f2=$(tracker_promote_path1 "TD-031" "phase-7" "$wt_f2" 1 2>/dev/null) || true
-plan_after_f2_count=$(grep -cE '^## Phase 7 ' "$wt_f2/IMPLEMENTATION-PLAN.md" || echo 0)
+plan_after_f2_count=$(grep -cE '^## Phase 7 ' "$wt_f2/IMPLEMENTATION-PLAN.md" || true)
 if [[ "$plan_after_f2_count" -ge 1 ]]; then
     t_pass "3.5 F2: phase-72 Resolution does NOT false-positive --to=phase-7"
 else

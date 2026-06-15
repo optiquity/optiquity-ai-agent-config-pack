@@ -263,11 +263,11 @@ esac
 
 printf "\n=== Group 3: Override 9 — Check 16 invocations independent (no cross-location coupling) ===\n"
 
-python3 <<EOF
-import sys, tempfile, pathlib, shutil, io, contextlib
-sys.path.insert(0, '$REPO_ROOT/scripts')
+REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 <<'EOF'
+import os, sys, tempfile, pathlib, shutil, io, contextlib
+sys.path.insert(0, os.path.join(os.environ["REPO_ROOT"], "scripts"))
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', os.environ["VALIDATE"])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

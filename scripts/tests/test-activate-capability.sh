@@ -172,7 +172,7 @@ else
 
         # A second activation run must NOT duplicate the .gitignore line (dedupe).
         env -u PACK bash -c "cd '$CLONE' && bash '$ACTIVATE_REL' --add language:python" >/dev/null 2>&1 || true
-        GI_HITS=$(grep -Fxc ".pack-activate-capability-prompt.md" "$CLONE/.gitignore" 2>/dev/null || echo 0)
+        GI_HITS=$(grep -Fxc ".pack-activate-capability-prompt.md" "$CLONE/.gitignore" 2>/dev/null || true)
         if [[ "$GI_HITS" == "1" ]]; then
             t_pass "second activation run does not duplicate the .gitignore line (count=1)"
         else

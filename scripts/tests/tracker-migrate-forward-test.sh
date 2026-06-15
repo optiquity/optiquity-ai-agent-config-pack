@@ -780,7 +780,13 @@ TEST_REPO_ST=$(mktemp -d -t tmf-repo-status.XXXXXX)
 _seed_pack_tree "$TEST_REPO_ST" "$FIXTURES/BACKLOG.md"   # pack-ops/ marker → pack surface
 cp "$FIXTURES/tracker.toml" "$TEST_REPO_ST/tracker.toml"
 printf '# Backlog index\n\n- BD-001\n' > "$TEST_REPO_ST/backlog/_toc.md"
-toc_mtime_st=$(date -r "$TEST_REPO_ST/backlog/_toc.md" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "")
+# BD-219 CI-fix: portable file-mtime → ISO-8601 UTC. `date -r FILE` is a
+# BSD-vs-GNU flag-semantics hazard (BSD `-r` historically expects epoch
+# seconds, not a file); python3 yields the byte-identical UTC string on both
+# platforms (matches the production `date -r … -u` output on the GNU CI runner).
+toc_mtime_st=$(MTIME_FILE="$TEST_REPO_ST/backlog/_toc.md" python3 -c \
+    'import os,datetime; print(datetime.datetime.fromtimestamp(int(os.path.getmtime(os.environ["MTIME_FILE"])), datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))' \
+    2>/dev/null || echo "")
 # Stale monolith sentinel: if the pack branch ever read it, the V1 §6.3
 # `<!--` header would make mirror_age its mtime / "(no mirror header)".
 printf '<!-- STALE MONOLITH SENTINEL -->\n**BD-001 — should never be read**\n' \

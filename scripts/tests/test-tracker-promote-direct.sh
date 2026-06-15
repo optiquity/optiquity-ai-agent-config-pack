@@ -260,9 +260,10 @@ fi
 if grep -nE 'fold-into' "$REPO_ROOT/scripts/pack-td.sh" >/dev/null; then
     # Verify the rejection stanza contains tracker_error_emit naming
     # Path 3 forbidden. python-grep across the stanza body.
-    rejection_count=$(python3 - <<'PYEOF'
+    rejection_count=$(REPO_ROOT="$REPO_ROOT" python3 - <<'PYEOF'
+import os
 import re
-with open("/Users/david/Developer/optiquity-ai-agent-config-pack-v11-dev/scripts/pack-td.sh") as f:
+with open(os.path.join(os.environ["REPO_ROOT"], "scripts", "pack-td.sh")) as f:
     src = f.read()
 # Find the case branch handling --fold-into. The line opens with
 # `--fold-into=*|--fold-into)` followed by the rejection body and `;;`.

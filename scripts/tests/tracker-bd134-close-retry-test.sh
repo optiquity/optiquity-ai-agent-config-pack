@@ -322,7 +322,7 @@ assert_contains "1.5 retry sweep shows persistent=0 for transient case" \
 assert_contains "1.6 forward summary shows closed: 2" \
     "$out" "closed:     2"
 # The fake gh logged "seen:<id>" for each close that was attempted.
-seen_count=$(grep -c '^seen:' "$STATE" 2>/dev/null || echo 0)
+seen_count=$(grep -c '^seen:' "$STATE" 2>/dev/null || true)
 assert_eq "1.7 each issue saw exactly one initial-failure attempt" "2" "$seen_count"
 
 # ── Group 2: persistent close → bounded failure surfaces ──────────────
@@ -357,12 +357,12 @@ assert_contains "2.6 retry sweep persistent count surfaces" \
 
 # CRITICAL: bounded — exactly 3 attempts per id (1 initial + 2 retries).
 # 2 ids × 3 attempts = 6 total `gh issue close` invocations.
-total_attempts=$(grep -c '^attempt:' "$STATE2" 2>/dev/null || echo 0)
+total_attempts=$(grep -c '^attempt:' "$STATE2" 2>/dev/null || true)
 assert_eq "2.7 close attempts bounded (3 per id × 2 ids = 6 — NOT infinite)" \
     "6" "$total_attempts"
 
 # Verify the per-id breakdown is exactly 3 each.
-bd001_attempts=$(grep -c "^attempt:1001\|^attempt:1002\|^attempt:2001\|^attempt:2002" "$STATE2" 2>/dev/null || echo 0)
+bd001_attempts=$(grep -c "^attempt:1001\|^attempt:1002\|^attempt:2001\|^attempt:2002" "$STATE2" 2>/dev/null || true)
 # We don't know the exact ids issued by the create counter, so just
 # verify the total is 6 (above) and each id was attempted 3 times.
 ids_seen=$(grep '^attempt:' "$STATE2" | sed 's/^attempt://' | sort -u | wc -l | tr -d ' ')

@@ -19,10 +19,22 @@
 # ── MEASURE-THEN-BOUND DISCREPANCY WITH THE ARCHITECTURE (BD-219 C3) ──
 # The ARCHITECTURE-BD-219 §5.2 PRELIMINARY classification listed FOUR STRIP
 # candidates (the three `test-tracker-promote-*.sh` as "live-GH" + this
-# bd204 oracle). The C3 coder's empirical re-measure (run-each-offline) found
-# the three `test-tracker-promote-*.sh` scripts use a STUB backend
-# (`_TRACKER_PROVIDER_BACKEND_OVERRIDE=stub`; zero live `gh` calls) and pass
-# offline (EXIT 0) — so they are KEEP, not STRIP, and are WIRED by C3.
+# bd204 oracle). The C3 coder re-classified the three `test-tracker-promote-*.sh`
+# scripts as KEEP (WIRED), not STRIP.
+#
+# CORRECTION (BD-219 CI-fix, 2026-06-15): C3's re-classification rationale was
+# partly inaccurate. The stub seam (`_TRACKER_PROVIDER_BACKEND_OVERRIDE=stub`)
+# intercepts only the `tracker_provider_*` calls — it does NOT make these tests
+# "zero live `gh` calls". Their tracker-mode (flat_only=0) legs reach
+# `_tracker_labels_create` / `_tracker_labels_existing` in tracker-labels.sh,
+# which shell `gh label create` / `gh label list` DIRECTLY, bypassing the stub.
+# On the C3 dev box those calls were masked by an authenticated `gh`; on a fresh
+# unauthenticated CI runner they failed (run 27549132073, RED). The KEEP/WIRED
+# decision STANDS and is now MADE TRUE offline: each promote test installs a
+# fake `gh` on PATH (process-wide, mirroring tracker-bd129-gh-repo-test.sh) so
+# the direct-`gh` label calls succeed deterministically with no live auth. The
+# allowlist is therefore UNCHANGED — these three stay KEEP/WIRED, sized to
+# exactly the ONE genuinely live-GH/manual-only script below.
 # Per ci-guard-design-measure-then-bound ("if your measurement disagrees with
 # the table, follow your measurement"), the allowlist is sized to exactly the
 # ONE genuinely live-GH/manual-only script below.
