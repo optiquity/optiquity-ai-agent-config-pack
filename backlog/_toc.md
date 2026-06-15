@@ -25,6 +25,7 @@
 - [BD-206](./BD-206.md) — Project-side per-entry no-mirror application (apply the corrected standard to client assets)
 - [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
 - [BD-219](./BD-219.md) — CI runtime optimization: tests-job matrix-sharding + `validate-pack --only-check` (effectiveness-preserving)
+- [BD-221](./BD-221.md) — Convert Gemini CLI support to Antigravity (full Gemini → Antigravity transition)
 
 ## Deferred
 
