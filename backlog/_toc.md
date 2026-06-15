@@ -48,6 +48,7 @@
 - [BD-216](./BD-216.md) — Phase-parts tracker representation + tracker-mode execution ordering (tracker legs of BD-185)
 - [BD-217](./BD-217.md) — Codex + Gemini worktree-isolation support (platform-specific; the cross-CLI half of BD-197)
 - [BD-218](./BD-218.md) — Background-session isolation (`worktree.bgIsolation` + EnterWorktree/ExitWorktree); the background-job half of BD-197
+- [BD-220](./BD-220.md) — Refactor the CI long-pole tests internally to lower the shard floor (effectiveness-preserving)
 
 ## Resolved
 
