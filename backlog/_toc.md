@@ -16,7 +16,6 @@
 - [BD-136](./BD-136.md) — Trinity marker-section preservation pattern (Shape A + Shape B) + PM-chat authoring procedure
 - [BD-171](./BD-171.md) — Real-OT scratch-clone FLAT-FILE v10→v11 migration test harness
 - [BD-172](./BD-172.md) — Extend Gate 2 (Phase A verify) to cover post-dispatch operations (BD-104 rename + BD-035 advisory + BD-144 advisory)
-- [BD-185](./BD-185.md) — Phase-parts hierarchy + flat-file execution ordering
 - [BD-187](./BD-187.md) — Standalone entry-type instruction doc for external-tool consumption
 - [BD-189](./BD-189.md) — v11.1+ groupings implementation (architect/planner/coder cycle)
 - [BD-192](./BD-192.md) — v11.1+ Product Specialist (PS) implementation (architect/planner/coder cycle)
@@ -41,6 +40,7 @@
 - [BD-153](./BD-153.md) — Tier 0 concurrency-architecture skill (deferred to v12)
 - [BD-154](./BD-154.md) — Skill-versioning frontmatter convention (deferred to v12)
 - [BD-155](./BD-155.md) — Naming-convention enforcement migration (deferred to v12)
+- [BD-185](./BD-185.md) — Phase-parts hierarchy + flat-file execution ordering
 - [BD-188](./BD-188.md) — Phase-Iteration sprint view (single all-phases tracker Project sliced by Iteration field)
 - [BD-201](./BD-201.md) — Antigravity (Gemini CLI successor) MCP config relocation: settings.json → mcp_config.json
 - [BD-204](./BD-204.md) — Pack self-migration Phase 2: per-entry backlog → GH Issues (tracker Mode 2 → Mode 3)
