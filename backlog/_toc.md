@@ -24,7 +24,6 @@
 - [BD-205](./BD-205.md) — v11.0 final repo readiness audit + full test/audit/fix cycle (the last gate before launch)
 - [BD-206](./BD-206.md) — Project-side per-entry no-mirror application (apply the corrected standard to client assets)
 - [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
-- [BD-219](./BD-219.md) — CI runtime optimization: tests-job matrix-sharding + `validate-pack --only-check` (effectiveness-preserving)
 - [BD-221](./BD-221.md) — Convert Gemini CLI support to Antigravity (full Gemini → Antigravity transition)
 - [BD-222](./BD-222.md) — Standing CI guard against CI-environment-fragile wired tests (hardcoded dev paths / un-shimmed live-`gh` / double-zero antipattern)
 - [BD-223](./BD-223.md) — Ship a committed (public) test-fixtures suite + a separate private gitignored suite
@@ -225,6 +224,7 @@
 - [BD-209](./BD-209.md) — Rename the `PM-only` commit-scope keyword → `pack-chat-only` (overloaded name; misleads agents)
 - [BD-211](./BD-211.md) — Canonicalize the per-entry header grammar: eliminate suffix sub-entry forms + normalize title parentheticals; validator-enforced (BD-204 prerequisite)
 - [BD-214](./BD-214.md) — Tracker-deferral cleanup: strip tracker artifacts, block the mode flip (pack + project)
+- [BD-219](./BD-219.md) — CI runtime optimization: tests-job matrix-sharding + `validate-pack --only-check` (effectiveness-preserving)
 
 ## Deprecated
 
