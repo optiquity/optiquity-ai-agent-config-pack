@@ -542,7 +542,16 @@ write_prompt_file() {
     if (( ${#all_skills[@]} == 0 )); then
         union_display="(nothing to show)"
     else
-        union_display=$(printf '%s\n' "${all_skills[@]}" | grep -v '^$' | sort -u | paste -sd, - | sed 's/,/, /g')
+        # `${ACTIVE_SKILLS[@]:-}` injects an empty placeholder element when
+        # ACTIVE_SKILLS is empty (the placeholder-CLAUDE.md case), so all_skills
+        # can contain only empty strings. `grep -v '^$'` then matches nothing
+        # and exits 1; under `set -o pipefail` that propagates and `set -e`
+        # would abort write_prompt_file before the file-write below. Tolerate
+        # ONLY grep's no-match (a legitimate empty result) with `|| true` scoped
+        # to grep alone — a real failure in sort/paste/sed is still caught by
+        # pipefail. (BD-219 same-class hardening alongside the `${#arr[@]:-0}`
+        # fix.)
+        union_display=$(printf '%s\n' "${all_skills[@]}" | { grep -v '^$' || true; } | sort -u | paste -sd, - | sed 's/,/, /g')
     fi
 
     local report
@@ -577,16 +586,25 @@ EOF
     report+="Active skills after your Procedure 6 run should be:"$'\n'"  $union_display"$'\n\n'
 
     # BD-048 install-check section. Stage A7 populates DISCOVERY_LINES and
-    # INSTALL_HINTS; the already-active early-exit path skips A7, so guard
-    # with `:-` defaults to keep this prompt block well-formed in both modes.
+    # INSTALL_HINTS; the already-active early-exit path skips A7, so both
+    # arrays are unconditionally initialized at every entry point (stage A7
+    # lines, and the main() pre-flight for the early-exit path) — there is no
+    # unset case to default. Use the canonical `${#arr[@]}` length form, NOT
+    # `${#arr[@]:-0}`: combining the length sigil `#` with the `:-` default
+    # operator is a non-portable, parser-version-dependent construct. bash 3.2
+    # silently ignores the `:-0` and returns the length; bash 4.4+/5.x (the CI
+    # Linux runner) parses it differently and the arithmetic expansion aborts
+    # under `set -euo pipefail`, which exited write_prompt_file before the
+    # file-write below — the BD-219 CI failure (prompt file never created
+    # though the A7/A8 banners printed). See IMPL-REPORT-BD-219-ADDCAP-FIX.md.
     local dl il
-    if (( ${#DISCOVERY_LINES[@]:-0} > 0 )); then
+    if (( ${#DISCOVERY_LINES[@]} > 0 )); then
         report+="Capability install-check discovery (read-only, BD-048):"$'\n'
         for dl in "${DISCOVERY_LINES[@]}"; do
             report+="$dl"$'\n'
         done
         report+=$'\n'
-        if (( ${#INSTALL_HINTS[@]:-0} > 0 )); then
+        if (( ${#INSTALL_HINTS[@]} > 0 )); then
             report+="Missing tools — proposed install commands (run with developer approval per Procedure 6 G6-install):"$'\n'
             for il in "${INSTALL_HINTS[@]}"; do
                 report+="$il"$'\n'
