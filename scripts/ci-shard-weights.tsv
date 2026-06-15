@@ -1,0 +1,91 @@
+# scripts/ci-shard-weights.tsv — BD-219 CI shard balance weights (DATA, not logic).
+#
+# One row per CI-wired test-runner script: <repo-relative-path>\t<measured_seconds>.
+# Consumed by scripts/lib/ci-shard-plan.py (LPT bin-packing). A script absent
+# from this file gets the module's DEFAULT_WEIGHT_S (median) — graceful
+# degradation (BD-219 §6.5): an un-weighted test never breaks the partition,
+# it only mildly unbalances it until the next weight refresh.
+#
+# Seed values: the named heavy steps are the MEASURED CI per-step durations
+# from RESEARCH-BD-219-CI-RUNTIME-OPTIMIZATION.md §1.2 (run 27512425188).
+# The remaining wired tests carry a representative measured/estimated weight
+# (most validate-pack-Check and tracker-unit tests run ~1–2 s; the ~24 full-
+# validator spawns ~1.3 s each — RESEARCH §1.4). Refresh procedure (pack
+# maintenance, BD-219 §6.5): `gh run view <id> --json jobs` → update rows.
+#
+# Tab-separated. `#` comment lines and blank lines are ignored.
+#
+# ── Measured heavy steps (RESEARCH §1.2 — the long poles the shards split) ──
+scripts/tests/test-migrate-v10-to-v11-gates.sh	94.0
+scripts/tests/tracker-migrate-forward-test.sh	61.0
+scripts/tests/tracker-migrate-roundtrip-test.sh	52.0
+scripts/tests/tracker-migrate-reverse-test.sh	34.0
+scripts/tests/test-migrate-v10-to-v11-dry-run.sh	31.0
+scripts/tests/test-migrate-v10-to-v11.sh	29.0
+scripts/tests/test-migrate-v10-to-v11-decompose.sh	14.0
+scripts/test-persona-contracts.sh	11.0
+scripts/tests/test-validate-pack-check-49-field-faithfulness.sh	10.0
+scripts/tests/tracker-provider-test.sh	8.0
+#
+# ── Remaining wired test runners (representative weights) ──
+scripts/test-detect.sh	3.0
+scripts/test-migrator-capability-translation.sh	5.0
+scripts/test-migrator-core.sh	4.0
+scripts/test-migrator-manifest.sh	4.0
+scripts/test-migrator-skills.sh	3.0
+scripts/tests/pack-help-test.sh	2.0
+scripts/tests/recommendation-state-schema-test.sh	2.0
+scripts/tests/recommendation-test.sh	2.0
+scripts/tests/template-translations-test.sh	2.0
+scripts/tests/template-version-test.sh	2.0
+scripts/tests/test-customization-preserve.sh	3.0
+scripts/tests/test-init-project.sh	5.0
+scripts/tests/test-issue-forms.sh	2.0
+scripts/tests/test-per-entry.sh	2.0
+scripts/tests/test-tracker-cycle-check.sh	2.0
+scripts/tests/test-tracker-links.sh	2.0
+scripts/tests/test-tracker-phase-task.sh	2.0
+scripts/tests/test-v11-realistic-ot.sh	2.0
+scripts/tests/test-validate-pack-check-16.sh	1.5
+scripts/tests/test-validate-pack-check-18.sh	1.5
+scripts/tests/test-validate-pack-check-19.sh	1.5
+scripts/tests/test-validate-pack-check-39.sh	1.5
+scripts/tests/test-validate-pack-check-40.sh	1.5
+scripts/tests/test-validate-pack-check-41.sh	1.5
+scripts/tests/test-validate-pack-check-42.sh	1.5
+scripts/tests/test-validate-pack-check-43.sh	1.5
+scripts/tests/test-validate-pack-check-44.sh	1.5
+scripts/tests/test-validate-pack-check-45.sh	1.5
+scripts/tests/test-validate-pack-check-46.sh	1.5
+scripts/tests/test-validate-pack-check-50-codec-single-source.sh	1.5
+scripts/tests/test-validate-pack-check-51-flip-block.sh	1.5
+scripts/tests/test-validate-pack-check-52.sh	1.5
+scripts/tests/test-validate-pack-check-53.sh	1.5
+scripts/tests/test-validate-pack-check-54.sh	1.5
+scripts/tests/test-validate-pack-check-55.sh	1.5
+scripts/tests/test-validate-pack-check-56.sh	1.5
+scripts/tests/test-validate-pack-check-57.sh	1.5
+scripts/tests/test-validate-pack-check-removed-doc-advisory.sh	1.5
+scripts/tests/test-validate-pack-checks-32-33-34.sh	2.0
+scripts/tests/test-validate-pack-checks-36-37-38.sh	2.0
+scripts/tests/tracker-agent-read-test.sh	2.0
+scripts/tests/tracker-bd129-gh-repo-test.sh	2.0
+scripts/tests/tracker-bd130-doctor-wired-test.sh	2.0
+scripts/tests/tracker-bd132-race-test.sh	2.0
+scripts/tests/tracker-bd133-header-preservation-test.sh	2.0
+scripts/tests/tracker-bd134-close-retry-test.sh	2.0
+scripts/tests/tracker-config-schema-test.sh	2.0
+scripts/tests/tracker-config-test.sh	2.0
+scripts/tests/tracker-deferral-gate-test.sh	2.0
+scripts/tests/tracker-errors-test.sh	2.0
+scripts/tests/tracker-init-test.sh	2.0
+#
+# ── Newly-wired KEEP tests (BD-219 C3 measure-then-bound; offline-confirmed) ──
+scripts/test-compare-agent-trinity.sh	1.0
+scripts/test-dry-run-migration.sh	3.0
+scripts/test-restore-from-backup.sh	1.5
+scripts/tests/test-activate-capability.sh	4.0
+scripts/tests/test-add-capability.sh	2.0
+scripts/tests/test-tracker-promote-direct.sh	1.0
+scripts/tests/test-tracker-promote-path1.sh	3.0
+scripts/tests/test-tracker-promote-path2.sh	7.0

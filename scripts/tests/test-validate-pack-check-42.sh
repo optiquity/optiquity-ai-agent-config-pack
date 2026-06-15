@@ -1,35 +1,40 @@
 #!/usr/bin/env bash
 # scripts/tests/test-validate-pack-check-42.sh — synthetic fixture tests
-# for BD-184 Check 42 (CI workflow wires all per-check test files).
+# for Check 42 (CI workflow wires every CI-eligible test).
+#
+# BD-184 introduced Check 42 over the per-check test subset. BD-219 C3
+# GENERALIZED it to FULL set-equality over the whole CI-eligible test set:
+#     disk_KEEP_set == wired_set
+# where disk_KEEP_set = {scripts/test*.sh + scripts/tests/*.sh} − allowlist
+# and allowlist = scripts/ci-test-wiring-allowlist.txt (the measure-then-bound
+# STRIP set). This test is updated in lock-step (enumerate-encoding-surfaces).
 #
 # Check 42 closes the "missing test wiring" gap class that surfaced 5
 # times across the BD-175 emergency batch (BD-179 FIX-1: 3 tests;
 # BD-183 FIX-1: 1 test; BD-183 FIX-2: 1 test) — each caught by reviewer
-# attention, now caught mechanically.
+# attention, now caught mechanically — and (BD-219) extends it to ALL
+# test scripts on disk, not just the per-check subset.
 #
 # Mirrors the test-validate-pack-check-41.sh harness pattern: each test
-# stages a synthetic REPO_ROOT with controlled scripts/tests/ + workflow
-# yml content, invokes Check 42 against the tmp tree, and asserts PASS
-# / FAIL as expected.
+# stages a synthetic REPO_ROOT with controlled scripts/ + scripts/tests/ +
+# allowlist + workflow yml content, invokes Check 42 against the tmp tree,
+# and asserts PASS / FAIL as expected.
 #
 # Coverage:
 #   Group 0: Module import + Check 42 symbol registration
 #   Group 1: Real-state-at-HEAD PASS verification (self-referential
 #            closure: check-42 test + check-42 wiring present together)
 #   Group 2: Synthetic PASS/FAIL tests covering:
-#            - PASS path (every disk test has a wiring line)
-#            - FAIL path: single-form (`check-NN.sh`) unwired
-#            - FAIL path: bundled-form (`checks-NN-NN-NN.sh`) unwired
-#            - FAIL path: multiple unwired tests of mixed naming forms
-#            - PASS path: extra workflow invocations without disk file
-#              (reverse-direction not gated; documented in Check 42
-#              docstring)
-#            - Lenient skip when scripts/tests/ absent
+#            - PASS path (every disk KEEP test has a wiring line)
+#            - FAIL path: a tests/ KEEP script unwired
+#            - FAIL path: a scripts-root KEEP script unwired
+#            - FAIL path: multiple unwired KEEP scripts across both dirs
+#            - PASS path: allowlisted (STRIP) script unwired (no failure)
+#            - FAIL path: allowlist staleness (allowlisted-but-now-wired)
+#            - Lenient skip when no test scripts present
 #            - Lenient skip when .github/workflows/validate-pack.yml absent
-#            - Naming-form coverage: glob and grep BOTH catch `check-`
-#              AND `checks-` shapes
 #   Group 3: End-to-end validate-pack.py exit-status on HEAD; Check 42
-#            output detected with correct counts.
+#            output detected with the generalized message.
 #
 # Usage: bash scripts/tests/test-validate-pack-check-42.sh
 
@@ -86,7 +91,7 @@ printf "\n=== Group 1: Real-state-at-HEAD PASS verification ===\n"
 # the Python body. Inject REPO_ROOT and VALIDATE paths via environment
 # variables.
 REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 <<'EOF'
-import os, sys, re, pathlib
+import os, sys, pathlib
 REPO_ROOT_PY = os.environ['REPO_ROOT']
 VALIDATE_PY = os.environ['VALIDATE']
 sys.path.insert(0, REPO_ROOT_PY + '/scripts')
@@ -97,29 +102,23 @@ spec.loader.exec_module(mod)
 
 failures = []
 
-# Enumerate real disk tests under scripts/tests/test-validate-pack-check*.sh.
-tests_dir = pathlib.Path(REPO_ROOT_PY) / "scripts" / "tests"
-disk_tests = sorted(p.name for p in tests_dir.glob("test-validate-pack-check*.sh"))
+# Enumerate the real FULL disk test set (BD-219 generalized scope):
+# scripts/test*.sh + scripts/tests/*.sh.
+scripts_dir = pathlib.Path(REPO_ROOT_PY) / "scripts"
+tests_dir = scripts_dir / "tests"
+disk = set()
+for p in scripts_dir.glob("test*.sh"):
+    disk.add("scripts/" + p.name)
+for p in tests_dir.glob("*.sh"):
+    disk.add("scripts/tests/" + p.name)
 
-# Sanity: real state should have >=8 test files today (the BD-184 commit
-# adds the 9th; pre-BD-184 commits had 8). After BD-184 lands, expect
-# >=9. The lower bound 8 is generous and forward-compatible.
-if len(disk_tests) < 8:
-    failures.append(f"real scripts/tests/ has only {len(disk_tests)} per-check test files (expected >=8)")
+# Sanity: real state should have many test scripts today (>=60).
+if len(disk) < 60:
+    failures.append(f"real disk test set has only {len(disk)} scripts (expected >=60)")
 
-# Spot-check: both naming forms (check- single AND checks- bundled)
-# must be present on disk at HEAD.
-has_single_form = any("check-" in name and "checks-" not in name for name in disk_tests)
-has_bundled_form = any("checks-" in name for name in disk_tests)
-if not has_single_form:
-    failures.append(f"real scripts/tests/ has no `check-NN.sh` single-form test (expected at least one; got {disk_tests})")
-if not has_bundled_form:
-    failures.append(f"real scripts/tests/ has no `checks-NN-NN-NN.sh` bundled-form test (expected at least one; got {disk_tests})")
-
-# Sanity: BD-184's own test must be present on disk (the self-
-# referential closure requires it).
-if "test-validate-pack-check-42.sh" not in disk_tests:
-    failures.append("test-validate-pack-check-42.sh not present on disk — BD-184 self-referential closure broken (this test should have been created by the BD-184 implementation)")
+# Sanity: BD-184's own test must be present (self-referential closure).
+if "scripts/tests/test-validate-pack-check-42.sh" not in disk:
+    failures.append("scripts/tests/test-validate-pack-check-42.sh not present on disk — self-referential closure broken")
 
 # Now invoke Check 42 against real REPO_ROOT and assert PASS.
 import io, contextlib
@@ -137,17 +136,17 @@ finally:
 
 if len(new_failures) != 0:
     failures.append(f"real-state Check 42 PASS expected 0 failures, got {len(new_failures)}: {captured}")
-if "zero unwired tests" not in captured:
-    failures.append(f"real-state Check 42 PASS message missing 'zero unwired tests': {captured}")
+if "disk_KEEP_set == wired_set" not in captured:
+    failures.append(f"real-state Check 42 PASS message missing 'disk_KEEP_set == wired_set': {captured}")
 if "CI workflow wiring is complete" not in captured:
     failures.append(f"real-state Check 42 PASS message missing closure phrase: {captured}")
 
-# Self-referential closure check: at HEAD post-BD-184, check-42 itself
-# must appear in the workflow yml.
+# Self-referential closure check: at HEAD check-42 itself must appear in the
+# workflow yml as a `run: bash scripts/tests/test-validate-pack-check-42.sh`.
 workflow_path = pathlib.Path(REPO_ROOT_PY) / ".github" / "workflows" / "validate-pack.yml"
 workflow_text = workflow_path.read_text()
 if "bash scripts/tests/test-validate-pack-check-42.sh" not in workflow_text:
-    failures.append("test-validate-pack-check-42.sh has no `bash scripts/tests/...` wiring in .github/workflows/validate-pack.yml — BD-184 self-referential closure broken (this test wiring should have been added by the BD-184 implementation)")
+    failures.append("test-validate-pack-check-42.sh has no `bash scripts/tests/...` wiring in validate-pack.yml — self-referential closure broken")
 
 if failures:
     print("FAILURES")
@@ -181,35 +180,51 @@ spec.loader.exec_module(mod)
 
 failures = []
 
-# Helper: build a synthetic REPO_ROOT with controlled
-# scripts/tests/test-validate-pack-check*.sh files + a controlled
-# .github/workflows/validate-pack.yml. Returns (failures_count,
-# captured_output) from a Check 42 invocation against the tmp root.
+# Helper: build a synthetic REPO_ROOT with controlled scripts/test*.sh +
+# scripts/tests/*.sh files, a controlled scripts/ci-test-wiring-allowlist.txt,
+# and a controlled .github/workflows/validate-pack.yml. Returns
+# (failures_count, captured_output) from a Check 42 invocation against the
+# tmp tree. Mirrors the GENERALIZED Check 42 invariant (BD-219 C3):
+#     disk_KEEP_set == wired_set   (disk_KEEP_set = disk − allowlist)
 #
-# `test_filenames`: list of base filenames to stage under scripts/tests/.
-# `wired_filenames`: list of base filenames whose `bash scripts/tests/<f>`
-#   lines are present in the synthetic workflow yml.
-# `omit_workflow`: when True, do not create the workflow yml file (lenient
-#   skip test).
-# `omit_tests_dir`: when True, do not create scripts/tests/ (lenient
-#   skip test).
-def run_check(test_filenames, wired_filenames,
-              omit_workflow=False, omit_tests_dir=False):
+# `root_scripts`:  base filenames to stage under scripts/      (test*.sh).
+# `tests_scripts`: base filenames to stage under scripts/tests/.
+# `wired`:         repo-relative paths whose `run: bash <path>` line is
+#                  present in the synthetic workflow yml (the new parser
+#                  anchors on `run:\s+bash\s+scripts/...`).
+# `allowlist`:     repo-relative paths to write into the allowlist file.
+# `omit_workflow`: when True, do not create the workflow yml (lenient skip).
+# `omit_all_tests`: when True, create NO test scripts at all (lenient skip).
+def run_check(root_scripts=None, tests_scripts=None, wired=None,
+              allowlist=None, omit_workflow=False, omit_all_tests=False):
+    root_scripts = root_scripts or []
+    tests_scripts = tests_scripts or []
+    wired = wired or []
+    allowlist = allowlist or []
     tmpdir = tempfile.mkdtemp(prefix="vp-check42-")
     root = pathlib.Path(tmpdir)
 
-    if not omit_tests_dir:
-        tests_dir = root / "scripts" / "tests"
+    scripts_dir = root / "scripts"
+    scripts_dir.mkdir(parents=True)
+    if not omit_all_tests:
+        for name in root_scripts:
+            (scripts_dir / name).write_text("#!/usr/bin/env bash\n# stub\nexit 0\n")
+        tests_dir = scripts_dir / "tests"
         tests_dir.mkdir(parents=True)
-        for name in test_filenames:
+        for name in tests_scripts:
             (tests_dir / name).write_text("#!/usr/bin/env bash\n# stub\nexit 0\n")
+
+    # Always write the allowlist file (possibly empty header only).
+    al_lines = ["# synthetic allowlist"]
+    for p in allowlist:
+        al_lines.append(p)
+    (scripts_dir / "ci-test-wiring-allowlist.txt").write_text("\n".join(al_lines) + "\n")
 
     if not omit_workflow:
         workflow_dir = root / ".github" / "workflows"
         workflow_dir.mkdir(parents=True)
-        # Build a minimal yml. The check looks for
-        # `bash scripts/tests/<filename>` substrings; full yml syntax is
-        # NOT required (the check uses a regex, not a yml parser).
+        # The new parser anchors on `run: bash scripts/...sh`. Full yml syntax
+        # is NOT required (regex, not a yml parser).
         lines = [
             "name: Validate Pack (synthetic)",
             "on: push",
@@ -218,10 +233,10 @@ def run_check(test_filenames, wired_filenames,
             "    runs-on: ubuntu-latest",
             "    steps:",
         ]
-        for name in wired_filenames:
-            lines.append(f"      - name: synthetic step for {name}")
+        for p in wired:
+            lines.append(f"      - name: synthetic step for {p}")
             lines.append(f"        if: always()")
-            lines.append(f"        run: bash scripts/tests/{name}")
+            lines.append(f"        run: bash {p}")
         (workflow_dir / "validate-pack.yml").write_text("\n".join(lines) + "\n")
 
     saved_root = mod.REPO_ROOT
@@ -241,181 +256,137 @@ def run_check(test_filenames, wired_filenames,
         shutil.rmtree(tmpdir, ignore_errors=True)
     return (len(new_failures), captured)
 
-# T1: PASS path — every disk test has a wiring line; both single + bundled
-# naming forms present. Verifies the glob/grep correctness for the canonical
-# good state.
+# T1: PASS path — every disk KEEP test (scripts/ root AND scripts/tests/)
+# has a wiring line; allowlist empty. Canonical good state.
 fail_count, captured = run_check(
-    test_filenames=[
+    root_scripts=["test-detect.sh"],
+    tests_scripts=[
         "test-validate-pack-check-16.sh",
-        "test-validate-pack-check-42.sh",
         "test-validate-pack-checks-32-33-34.sh",
     ],
-    wired_filenames=[
-        "test-validate-pack-check-16.sh",
-        "test-validate-pack-check-42.sh",
-        "test-validate-pack-checks-32-33-34.sh",
+    wired=[
+        "scripts/test-detect.sh",
+        "scripts/tests/test-validate-pack-check-16.sh",
+        "scripts/tests/test-validate-pack-checks-32-33-34.sh",
     ],
 )
 if fail_count != 0:
-    failures.append(f"T1 (PASS — all wired, mixed naming forms) expected 0 failures, got {fail_count}: {captured}")
-if "zero unwired tests" not in captured:
-    failures.append(f"T1 PASS message missing 'zero unwired tests': {captured}")
-if "3 per-check test file" not in captured:
-    failures.append(f"T1 PASS message missing '3 per-check test file' count: {captured}")
-if "3 workflow invocation" not in captured:
-    failures.append(f"T1 PASS message missing '3 workflow invocation' count: {captured}")
+    failures.append(f"T1 (PASS — all wired) expected 0 failures, got {fail_count}: {captured}")
+if "disk_KEEP_set == wired_set" not in captured:
+    failures.append(f"T1 PASS message missing 'disk_KEEP_set == wired_set': {captured}")
+if "3 test script(s) on disk" not in captured:
+    failures.append(f"T1 PASS message missing '3 test script(s) on disk' count: {captured}")
+if "3 wired in workflow" not in captured:
+    failures.append(f"T1 PASS message missing '3 wired in workflow' count: {captured}")
 
-# T2: FAIL path — single-form test (`check-NN.sh`) unwired. Verifies the
-# check catches the BD-179 FIX-1 / BD-183 FIX-1 / BD-183 FIX-2 gap class
-# for the single-check naming form.
+# T2: FAIL path — a scripts/tests/ KEEP script unwired.
 fail_count, captured = run_check(
-    test_filenames=[
+    tests_scripts=[
         "test-validate-pack-check-16.sh",
         "test-validate-pack-check-42.sh",
     ],
-    wired_filenames=[
-        "test-validate-pack-check-16.sh",
+    wired=[
+        "scripts/tests/test-validate-pack-check-16.sh",
         # check-42 wiring omitted intentionally
     ],
 )
 if fail_count != 1:
-    failures.append(f"T2 (FAIL — single-form check-42 unwired) expected 1 failure, got {fail_count}: {captured}")
-if "test-validate-pack-check-42.sh" not in captured:
-    failures.append(f"T2 FAIL message must name the unwired filename test-validate-pack-check-42.sh: {captured}")
-if "per-check test file exists on disk but has NO corresponding" not in captured:
-    failures.append(f"T2 FAIL message must include the canonical 'exists on disk but has NO corresponding' phrasing: {captured}")
+    failures.append(f"T2 (FAIL — tests/ KEEP unwired) expected 1 failure, got {fail_count}: {captured}")
+if "scripts/tests/test-validate-pack-check-42.sh" not in captured:
+    failures.append(f"T2 FAIL message must name the unwired path scripts/tests/test-validate-pack-check-42.sh: {captured}")
+if "exists on disk but has NO" not in captured:
+    failures.append(f"T2 FAIL message must include the canonical 'exists on disk but has NO' phrasing: {captured}")
 if "validate-pack.yml" not in captured:
     failures.append(f"T2 FAIL message must reference .github/workflows/validate-pack.yml: {captured}")
 
-# T3: FAIL path — bundled-form test (`checks-NN-NN-NN.sh`) unwired.
-# Verifies the check catches the gap class for the BUNDLED naming form
-# (BD-179 FIX-1 wired `test-validate-pack-checks-36-37-38.sh`, the only
-# bundled-form occurrence to date).
+# T3: FAIL path — a scripts/ ROOT KEEP script unwired (the generalized
+# scope: BD-219 added scripts-root test*.sh to the disk set).
 fail_count, captured = run_check(
-    test_filenames=[
-        "test-validate-pack-check-16.sh",
-        "test-validate-pack-checks-36-37-38.sh",
+    root_scripts=[
+        "test-detect.sh",
+        "test-compare-agent-trinity.sh",
     ],
-    wired_filenames=[
-        "test-validate-pack-check-16.sh",
-        # checks-36-37-38 wiring omitted intentionally
+    wired=[
+        "scripts/test-detect.sh",
+        # test-compare-agent-trinity wiring omitted intentionally
     ],
 )
 if fail_count != 1:
-    failures.append(f"T3 (FAIL — bundled-form checks-36-37-38 unwired) expected 1 failure, got {fail_count}: {captured}")
-if "test-validate-pack-checks-36-37-38.sh" not in captured:
-    failures.append(f"T3 FAIL message must name the unwired bundled filename test-validate-pack-checks-36-37-38.sh: {captured}")
+    failures.append(f"T3 (FAIL — scripts-root KEEP unwired) expected 1 failure, got {fail_count}: {captured}")
+if "scripts/test-compare-agent-trinity.sh" not in captured:
+    failures.append(f"T3 FAIL message must name the unwired scripts-root path: {captured}")
 
-# T4: FAIL path — MULTIPLE unwired tests of mixed naming forms.
-# Empirical precedent: BD-179 FIX-1 wired 3 unwired tests in one fix
-# commit (1 bundled + 2 single). Check 42 must surface ALL unwired
-# filenames, not just the first.
+# T4: FAIL path — MULTIPLE unwired KEEP scripts across both dirs. Check 42
+# must surface ALL unwired paths, not just the first.
 fail_count, captured = run_check(
-    test_filenames=[
-        "test-validate-pack-check-16.sh",
+    root_scripts=["test-detect.sh", "test-restore-from-backup.sh"],
+    tests_scripts=[
         "test-validate-pack-check-39.sh",
-        "test-validate-pack-check-40.sh",
         "test-validate-pack-checks-36-37-38.sh",
     ],
-    wired_filenames=[
-        "test-validate-pack-check-16.sh",
-        # 3 unwired: check-39, check-40, checks-36-37-38
+    wired=[
+        "scripts/test-detect.sh",
+        # 3 unwired: test-restore-from-backup, check-39, checks-36-37-38
     ],
 )
 if fail_count != 3:
-    failures.append(f"T4 (FAIL — 3 unwired mixed forms) expected 3 failures, got {fail_count}: {captured}")
-for missing in ("test-validate-pack-check-39.sh",
-                "test-validate-pack-check-40.sh",
-                "test-validate-pack-checks-36-37-38.sh"):
+    failures.append(f"T4 (FAIL — 3 unwired KEEP) expected 3 failures, got {fail_count}: {captured}")
+for missing in ("scripts/test-restore-from-backup.sh",
+                "scripts/tests/test-validate-pack-check-39.sh",
+                "scripts/tests/test-validate-pack-checks-36-37-38.sh"):
     if missing not in captured:
-        failures.append(f"T4 FAIL message must name all unwired filenames; missing {missing}: {captured}")
+        failures.append(f"T4 FAIL message must name all unwired paths; missing {missing}: {captured}")
 
-# T5: PASS path — extra workflow invocations WITHOUT a disk file are
-# tolerated (reverse-direction is NOT gated per Check 42 docstring).
-# Documents the intentional asymmetry: a stale workflow line pointing at
-# a deleted test would fail CI loudly at runtime, so there's no silent-
-# pass risk. The check is one-directional (disk → workflow).
+# T5: PASS path — an allowlisted (STRIP) script is unwired → NO failure
+# (the measure-then-bound exemption). Verifies the allowlist subtraction.
 fail_count, captured = run_check(
-    test_filenames=[
-        "test-validate-pack-check-16.sh",
+    root_scripts=["test-detect.sh"],
+    tests_scripts=["tracker-bd204-lossless-roundtrip-test.sh"],
+    wired=["scripts/test-detect.sh"],
+    allowlist=["scripts/tests/tracker-bd204-lossless-roundtrip-test.sh"],
+)
+if fail_count != 0:
+    failures.append(f"T5 (PASS — allowlisted STRIP unwired) expected 0 failures, got {fail_count}: {captured}")
+if "1 allowlisted (intentionally-OUT)" not in captured:
+    failures.append(f"T5 PASS message missing '1 allowlisted (intentionally-OUT)': {captured}")
+
+# T6: FAIL path — allowlist STALENESS: an allowlisted script is ALSO wired
+# (someone wired it without removing its allowlist line). BD-219 C3 new
+# failure mode.
+fail_count, captured = run_check(
+    root_scripts=["test-detect.sh"],
+    tests_scripts=["tracker-bd204-lossless-roundtrip-test.sh"],
+    wired=[
+        "scripts/test-detect.sh",
+        "scripts/tests/tracker-bd204-lossless-roundtrip-test.sh",
     ],
-    wired_filenames=[
-        "test-validate-pack-check-16.sh",
-        "test-validate-pack-check-99.sh",  # phantom — no disk file
-    ],
+    allowlist=["scripts/tests/tracker-bd204-lossless-roundtrip-test.sh"],
 )
-if fail_count != 0:
-    failures.append(f"T5 (PASS — extra workflow invocation without disk file) expected 0 failures, got {fail_count}: {captured}")
-if "zero unwired tests" not in captured:
-    failures.append(f"T5 PASS message missing 'zero unwired tests': {captured}")
+if fail_count != 1:
+    failures.append(f"T6 (FAIL — allowlist staleness) expected 1 failure, got {fail_count}: {captured}")
+if "Allowlist staleness" not in captured:
+    failures.append(f"T6 FAIL message must say 'Allowlist staleness': {captured}")
+if "tracker-bd204-lossless-roundtrip-test.sh" not in captured:
+    failures.append(f"T6 FAIL message must name the stale-allowlisted path: {captured}")
 
-# T6: SKIP path — scripts/tests/ absent (lenient mode). Check 42 must
-# skip with a notice; no failure.
-fail_count, captured = run_check(
-    test_filenames=[],
-    wired_filenames=[],
-    omit_tests_dir=True,
-)
+# T7: SKIP path — no test scripts at all (lenient mode).
+fail_count, captured = run_check(omit_all_tests=True)
 if fail_count != 0:
-    failures.append(f"T6 (SKIP — scripts/tests/ absent) expected 0 failures, got {fail_count}: {captured}")
-if "scripts/tests/ absent" not in captured:
-    failures.append(f"T6 SKIP message must say 'scripts/tests/ absent': {captured}")
-if "skipping (lenient)" not in captured:
-    failures.append(f"T6 SKIP message must say 'skipping (lenient)': {captured}")
-
-# T7: SKIP path — .github/workflows/validate-pack.yml absent (lenient
-# mode). Check 42 must skip with a notice; no failure.
-fail_count, captured = run_check(
-    test_filenames=["test-validate-pack-check-16.sh"],
-    wired_filenames=[],
-    omit_workflow=True,
-)
-if fail_count != 0:
-    failures.append(f"T7 (SKIP — workflow yml absent) expected 0 failures, got {fail_count}: {captured}")
-if ".github/workflows/validate-pack.yml absent" not in captured:
-    failures.append(f"T7 SKIP message must reference workflow yml absence: {captured}")
+    failures.append(f"T7 (SKIP — no test scripts) expected 0 failures, got {fail_count}: {captured}")
 if "skipping (lenient)" not in captured:
     failures.append(f"T7 SKIP message must say 'skipping (lenient)': {captured}")
 
-# T8: regression guard — verify the glob `test-validate-pack-check*.sh`
-# (no trailing dash) catches BOTH `check-NN.sh` AND `checks-NN-NN-NN.sh`
-# shapes. Build a synth tree with only the bundled-form test, wire ONLY
-# the single-form, and assert FAIL on the bundled form — this proves the
-# disk-enumeration step DOES see the bundled file. (If the glob had been
-# `test-validate-pack-check-*.sh` with the dash, the bundled file would
-# be invisible to the disk-walk and T8 would silently PASS — wrong
-# answer.)
+# T8: SKIP path — .github/workflows/validate-pack.yml absent (lenient mode).
 fail_count, captured = run_check(
-    test_filenames=[
-        "test-validate-pack-checks-32-33-34.sh",  # bundled-only on disk
-    ],
-    wired_filenames=[
-        # nothing wired
-    ],
-)
-if fail_count != 1:
-    failures.append(f"T8 (regression guard: glob catches bundled form) expected 1 failure, got {fail_count}: {captured}")
-if "test-validate-pack-checks-32-33-34.sh" not in captured:
-    failures.append(f"T8 regression guard must name the bundled-form filename: {captured}")
-
-# T9: regression guard — verify the workflow grep
-# `bash scripts/tests/test-validate-pack-check[^\s]+\.sh` catches BOTH
-# naming forms in the workflow yml. Build a synth tree where the disk
-# test is bundled-form AND the workflow ALSO has the bundled-form
-# wiring; assert PASS (no false-positive FAIL from the grep missing the
-# bundled-form workflow line).
-fail_count, captured = run_check(
-    test_filenames=[
-        "test-validate-pack-checks-32-33-34.sh",
-    ],
-    wired_filenames=[
-        "test-validate-pack-checks-32-33-34.sh",
-    ],
+    tests_scripts=["test-validate-pack-check-16.sh"],
+    omit_workflow=True,
 )
 if fail_count != 0:
-    failures.append(f"T9 (regression guard: workflow grep catches bundled form) expected 0 failures, got {fail_count}: {captured}")
-if "zero unwired tests" not in captured:
-    failures.append(f"T9 PASS message missing 'zero unwired tests': {captured}")
+    failures.append(f"T8 (SKIP — workflow yml absent) expected 0 failures, got {fail_count}: {captured}")
+if ".github/workflows/validate-pack.yml absent" not in captured:
+    failures.append(f"T8 SKIP message must reference workflow yml absence: {captured}")
+if "skipping (lenient)" not in captured:
+    failures.append(f"T8 SKIP message must say 'skipping (lenient)': {captured}")
 
 if failures:
     print("FAILURES")
@@ -425,7 +396,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "Synthetic PASS/FAIL tests (T1-T9 covering single + bundled naming forms, multi-unwired surfacing, lenient skips, and glob/grep regression guards)" ;;
+    0) t_pass "Synthetic PASS/FAIL tests (T1-T8: KEEP wiring across both dirs, multi-unwired surfacing, allowlist exemption + staleness, lenient skips)" ;;
     *) t_fail "Synthetic Check 42 tests failed (see Python output above)" ;;
 esac
 
@@ -436,10 +407,10 @@ esac
 printf "\n=== Group 3: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
 if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 42 > /tmp/vp-check42-e2e.out 2>&1; then
-    if grep -q "Check 42: CI workflow wires all per-check test files" /tmp/vp-check42-e2e.out \
-       && grep -qE "Check 42 — [0-9]+ per-check test file" /tmp/vp-check42-e2e.out \
+    if grep -q "Check 42: CI workflow wires every CI-eligible test" /tmp/vp-check42-e2e.out \
+       && grep -qE "Check 42 — [0-9]+ test script\(s\) on disk" /tmp/vp-check42-e2e.out \
        && grep -q "CI workflow wiring is complete" /tmp/vp-check42-e2e.out; then
-        t_pass "validate-pack.py exits 0; Check 42 runs and reports clean"
+        t_pass "validate-pack.py --only-check 42 exits 0; Check 42 runs and reports clean"
     else
         t_fail "validate-pack.py exits 0 but Check 42 output not detected" \
             "Tail: $(tail -10 /tmp/vp-check42-e2e.out)"

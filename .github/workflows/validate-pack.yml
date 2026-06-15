@@ -185,7 +185,7 @@ jobs:
       - name: validate-pack Check 19 tests (BD-183, trinity templates free of body scaffolding)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-19.sh
-      - name: validate-pack Check 42 tests (BD-184, CI workflow wires all per-check test files)
+      - name: validate-pack Check 42 tests (BD-184/BD-219, CI workflow wires every CI-eligible test)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-42.sh
       - name: validate-pack Check 43 tests (BD-173 H.14, V11 leak-sweep prevention, project-side bare cross-reference scanner)
@@ -230,6 +230,12 @@ jobs:
       - name: validate-pack Check 54 tests (BD-197 C8b, OPTIONAL-FEATURES presence-check Guard-A′)
         if: always()
         run: bash scripts/tests/test-validate-pack-check-54.sh
+      - name: validate-pack Check 58/59/60 tests (BD-219 C3, CI-runtime upkeep guards)
+        if: always()
+        run: bash scripts/tests/test-validate-pack-checks-58-59-60.sh
+      - name: ci-shard-plan module tests (BD-219 C3, shard partition single source)
+        if: always()
+        run: bash scripts/tests/test-ci-shard-plan.sh
       - name: tracker deferral gate tests (BD-214 C1, flip-block behavioral refusals)
         if: always()
         run: bash scripts/tests/tracker-deferral-gate-test.sh
@@ -281,6 +287,30 @@ jobs:
       - name: migrator-capability-translation tests (BD-144)
         if: always()
         run: bash scripts/test-migrator-capability-translation.sh
+      # ── BD-219 C3: offline KEEP tests previously unwired (measure-then-bound).
+      # Confirmed offline-deterministic (EXIT 0, no live network/gh) by the
+      # BD-219 C3 measure step + wired so Check 42's generalized set-equality
+      # (disk_KEEP_set == wired_set) holds. The three tracker-promote tests use
+      # a STUB backend (zero live gh) — re-classified KEEP vs the architecture's
+      # preliminary STRIP. See scripts/ci-test-wiring-allowlist.txt.
+      - name: compare-agent-trinity tests (BD-219 C3 wire)
+        if: always()
+        run: bash scripts/test-compare-agent-trinity.sh
+      - name: restore-from-backup tests (BD-219 C3 wire)
+        if: always()
+        run: bash scripts/test-restore-from-backup.sh
+      - name: activate-capability tests (BD-200, BD-219 C3 wire)
+        if: always()
+        run: bash scripts/tests/test-activate-capability.sh
+      - name: tracker-promote direct-close tests (BD-107, offline stub; BD-219 C3 wire)
+        if: always()
+        run: bash scripts/tests/test-tracker-promote-direct.sh
+      - name: tracker-promote path1 tests (BD-107, offline stub; BD-219 C3 wire)
+        if: always()
+        run: bash scripts/tests/test-tracker-promote-path1.sh
+      - name: tracker-promote path2 tests (BD-107, offline stub; BD-219 C3 wire)
+        if: always()
+        run: bash scripts/tests/test-tracker-promote-path2.sh
       - name: build test fixtures (BD-115/116/117)
         if: always()
         run: bash test-fixtures/build.sh --all --clean
@@ -312,6 +342,18 @@ jobs:
       - name: persona contracts (BD-116, RELEASE-GATE item 3)
         if: always()
         run: bash scripts/test-persona-contracts.sh
+      # ── BD-219 C3: fixture-dependent KEEP tests (cohesion group — MUST run
+      # AFTER "build test fixtures"). test-dry-run-migration needs
+      # test-fixtures/v10-realistic-ot; test-add-capability needs
+      # test-fixtures/v11-flat-file. Confirmed EXIT 0 with fixtures present
+      # (BD-219 C3 measure step). ci-shard-plan.py pins both into the
+      # fixture-owning shard (FIXTURE_COHESION_GROUP).
+      - name: dry-run-migration tests (BD-114, fixture-dependent; BD-219 C3 wire)
+        if: always()
+        run: bash scripts/test-dry-run-migration.sh
+      - name: add-capability tests (BD-048, fixture-dependent; BD-219 C3 wire)
+        if: always()
+        run: bash scripts/tests/test-add-capability.sh
       - name: template-translations tests
         if: always()
         run: bash scripts/tests/template-translations-test.sh

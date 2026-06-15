@@ -1,0 +1,33 @@
+# scripts/ci-test-wiring-allowlist.txt — BD-219 CI-wiring guard allowlist.
+#
+# The measure-then-bound STRIP set: test scripts that legitimately exist on
+# disk but are INTENTIONALLY NOT wired into the CI `tests` job, each with a
+# one-line reason. Consumed by validate-pack.py Check 42 (generalized in
+# BD-219 C3): the wiring-completeness invariant is
+#     disk_KEEP_set == wired_set
+# where disk_KEEP_set = {scripts/test*.sh + scripts/tests/*.sh} − THIS list.
+# Also consumed by scripts/lib/ci-shard-plan.py (these scripts are never
+# partitioned into a shard).
+#
+# BOUNDED (ci-guard-design-measure-then-bound): sized to EXACTLY the confirmed
+# intentionally-OUT scripts — no broader. Adding a line here to dodge a failing
+# KEEP test is the forbidden anti-pattern. A script belongs here ONLY if it
+# (a) touches a LIVE network/GH surface (cannot run offline-deterministically
+# in CI), or (b) is a manual-only dev utility with no offline-deterministic
+# mode.
+#
+# ── MEASURE-THEN-BOUND DISCREPANCY WITH THE ARCHITECTURE (BD-219 C3) ──
+# The ARCHITECTURE-BD-219 §5.2 PRELIMINARY classification listed FOUR STRIP
+# candidates (the three `test-tracker-promote-*.sh` as "live-GH" + this
+# bd204 oracle). The C3 coder's empirical re-measure (run-each-offline) found
+# the three `test-tracker-promote-*.sh` scripts use a STUB backend
+# (`_TRACKER_PROVIDER_BACKEND_OVERRIDE=stub`; zero live `gh` calls) and pass
+# offline (EXIT 0) — so they are KEEP, not STRIP, and are WIRED by C3.
+# Per ci-guard-design-measure-then-bound ("if your measurement disagrees with
+# the table, follow your measurement"), the allowlist is sized to exactly the
+# ONE genuinely live-GH/manual-only script below.
+#
+# One repo-relative path per line. `#` comments + blank lines ignored.
+# An inline `# reason` after the path is allowed (ignored by the parser).
+#
+scripts/tests/tracker-bd204-lossless-roundtrip-test.sh  # live-GH manual-only oracle: DEFAULT-SKIPs without PACK_TRACKER_LIVE_GH + gh auth, and `gh repo create`s a real scratch repo when run live (test-infra-self-provisioned). Its header HARD-mandates "NOT wired into any CI workflow or unattended run-all list"; its unit-level legs already run wired in tracker-migrate-forward/reverse-test.sh + validate-pack Check 49.

@@ -257,20 +257,19 @@ Checks:
       discipline per §8 D7: the BD-179 commit qualifies all
       pre-existing bare refs (51 across 9 files per Phase 1 survey)
       so Check 40 PASSes at HEAD.
-  42. CI workflow wires all per-check test files (BD-184): enumerates
-      `scripts/tests/test-validate-pack-check*.sh` files on disk and
-      verifies every one has a corresponding `bash scripts/tests/<file>`
-      invocation in `.github/workflows/validate-pack.yml`. The glob
-      `check*` (no trailing dash) catches BOTH single-check filenames
-      (`test-validate-pack-check-NN.sh`) AND bundled-check filenames
-      (`test-validate-pack-checks-NN-NN-NN.sh`). Closes the "missing
-      test wiring" gap class that surfaced 5 times across 3 fix cycles
-      in the BD-175 emergency batch. Self-referential closure: this
-      check's PASS state depends on its OWN test
-      (`test-validate-pack-check-42.sh`) being wired — BD-184 ships
-      check + test + wiring together so the closure holds. No
-      exemption mechanism: unwired tests must be wired (use
-      workflow `if:` gates for intentionally-not-running tests).
+  42. CI workflow wires every CI-eligible test (BD-184, BD-219):
+      set-equality gate `disk_KEEP_set == wired_set` where
+      `disk_KEEP_set` = {`scripts/test*.sh` + `scripts/tests/*.sh`}
+      minus `scripts/ci-test-wiring-allowlist.txt` (the
+      measure-then-bound STRIP set), and `wired_set` = scripts with
+      a `run: bash scripts/…sh` invocation in
+      `.github/workflows/validate-pack.yml`. Fails naming: (a) any
+      KEEP script on disk with no wiring line; (b) any allowlisted
+      script that is now wired (allowlist staleness). Closes the
+      "missing test wiring" gap class (BD-184 original scope, now
+      generalized in BD-219 to the full CI-eligible set).
+      Self-referential closure: `test-validate-pack-check-42.sh`
+      must itself appear in both the disk KEEP set and the wired set.
 
 Two additional informational checks (no number, soft / advisory):
   - Issue template forms (BD-063): `.github/ISSUE_TEMPLATE/*.yml`
@@ -455,6 +454,20 @@ RUN_CHECK_TOTAL_DEEP_BUDGET_S = 35.0
 # 30 s is ~10× headroom; an Option-A per-entry-spawn regression (~142 s) blows
 # it immediately.
 RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
+
+# ── BD-219 C3: CHECK_REGISTRY expected size — the registry-completeness
+# bookkeeping constant (Check 59). The no-flag full run executes EVERY entry
+# of `_build_check_registry()`; this constant is the explicit invariant that
+# replaces the implicit "the per-check e2e leg proves the check is wired into
+# main()" property that `--only-check` (BD-219 C1) would otherwise drop.
+# UPDATE IN LOCK-STEP whenever a check is added/removed (a one-line edit, like
+# the agent-count check). At BD-219 C3 the registry holds 60 entries:
+#   57 entries at C1's CHECK_REGISTRY introduction (§EE-P5)
+# + 3 net-new C3 checks (58 validate-no-flag, 59 registry-completeness,
+#                        60 shard-coverage mirror).
+# (Generalized Check 42 keeps its slot; numbers ≠ entry count — Checks
+# 16/18/19 each register TWICE and 2 checks carry number=None.)
+CHECK_REGISTRY_EXPECTED_COUNT = 60
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
@@ -6649,7 +6662,7 @@ def check_client_installed_files() -> None:
         )
 
 
-# ── Check 42: CI workflow wires all per-check test files (BD-184) ──────────
+# ── Check 42: CI workflow wires every CI-eligible test (BD-184, BD-219) ────
 #
 # Closes the "missing test wiring" gap class permanently via a mechanical
 # CI guard. The gap surfaced 5 times across the BD-175 batch alone:
@@ -6686,99 +6699,281 @@ def check_client_installed_files() -> None:
 # `if:` gate — but the wiring line MUST exist so Check 42 sees it.
 
 def check_ci_workflow_wires_per_check_tests() -> None:
-    """Check 42 — CI workflow wires all per-check test files (BD-184).
+    """Check 42 — CI workflow wires every CI-eligible test (BD-184, BD-219).
 
-    Enumerates `scripts/tests/test-validate-pack-check*.sh` files on
-    disk and compares against the set of `bash scripts/tests/test-
-    validate-pack-check*.sh` invocations in
-    `.github/workflows/validate-pack.yml`. Any test file existing on
-    disk without a corresponding workflow invocation FAILs with the
-    specific filename(s) named.
+    GENERALIZED in BD-219 C3 from the per-check subset to the FULL
+    CI-eligible test set. Invariant (full set-equality):
 
-    Glob `test-validate-pack-check*.sh` (no trailing dash) matches BOTH
-    single-check filenames (`test-validate-pack-check-NN.sh`) AND
-    bundled-check filenames (`test-validate-pack-checks-NN-NN-NN.sh`).
-    Reverse-direction (workflow invocations without disk files) is NOT
-    a failure mode worth gating — a stale workflow line referencing a
-    deleted test would fail the actual CI run loudly, so there is no
-    silent-pass risk; the symmetric gate would add noise without
-    catching new failure modes.
+        disk_KEEP_set == wired_set
 
-    Self-referential closure: Check 42 PASSing at HEAD depends on its
-    OWN test (`test-validate-pack-check-42.sh`) being wired in the
-    workflow yml. The BD-184 implementation ships the test + the
-    wiring + this check together so the closure holds.
+    where
+        disk_KEEP_set = {scripts/test*.sh + scripts/tests/*.sh} − allowlist
+        wired_set     = the `run: bash scripts/…sh` test runners in the yml
+        allowlist     = scripts/ci-test-wiring-allowlist.txt (the BD-219
+                        measure-then-bound STRIP set: scripts that legitimately
+                        exist on disk but are intentionally NOT wired — each
+                        with a one-line reason; sized to EXACTLY the confirmed
+                        STRIP set, no broader).
 
-    Lenient mode: if `.github/workflows/validate-pack.yml` is absent
-    (unlikely at any reasonable pack-repo HEAD) the check SKIPs with a
-    notice; if `scripts/tests/` is absent the check SKIPs similarly.
+    FAILs naming:
+      (a) each KEEP script on disk with NO `run: bash …` invocation in the
+          workflow yml (the original BD-184 failure mode, now over the full
+          set), AND
+      (b) each allowlisted-but-now-wired script (allowlist staleness — an
+          intentionally-OUT script that someone wired without removing its
+          allowlist line).
+
+    The `test-fixtures/build.sh` build/verify steps are NOT test runners and
+    are excluded from `wired_set` by the `scripts/` path anchor. The 1-line
+    allowlist reason text after a path is ignored by the parser.
+
+    Cheap (ci-check-runtime-compounding): one workflow-text regex + two dir
+    globs + one small allowlist read; no subprocess-per-script, no real-tree
+    scan. Routes through `run_check` (per-check WARN budget).
+
+    Lenient mode: if `.github/workflows/validate-pack.yml` is absent (unlikely
+    at any reasonable pack-repo HEAD) the check SKIPs; likewise if neither
+    `scripts/` nor `scripts/tests/` holds any test*.sh.
     """
-    print("\n── Check 42: CI workflow wires all per-check test files (BD-184) ──")
+    print("\n── Check 42: CI workflow wires every CI-eligible test (BD-184, BD-219) ──")
     workflow_path = REPO_ROOT / ".github" / "workflows" / "validate-pack.yml"
+    scripts_dir = REPO_ROOT / "scripts"
     tests_dir = REPO_ROOT / "scripts" / "tests"
+    allowlist_path = REPO_ROOT / "scripts" / "ci-test-wiring-allowlist.txt"
     if not workflow_path.is_file():
         ok(".github/workflows/validate-pack.yml absent — skipping (lenient)")
         return
-    if not tests_dir.is_dir():
-        ok("scripts/tests/ absent — skipping (lenient)")
+
+    # ── Enumerate the FULL disk test-script set (repo-relative paths).
+    # scripts/test*.sh + scripts/tests/*.sh (the BD-219 §EE-P3 measure set).
+    disk_paths = set()
+    for p in scripts_dir.glob("test*.sh"):
+        disk_paths.add(f"scripts/{p.name}")
+    if tests_dir.is_dir():
+        for p in tests_dir.glob("*.sh"):
+            disk_paths.add(f"scripts/tests/{p.name}")
+    if not disk_paths:
+        ok("no scripts/test*.sh or scripts/tests/*.sh present — skipping (lenient)")
         return
 
-    # Enumerate per-check test files on disk. Glob `check*` (no trailing
-    # dash) catches both `check-NN.sh` and `checks-NN-NN-NN.sh` shapes.
-    disk_tests = sorted(p.name for p in tests_dir.glob("test-validate-pack-check*.sh"))
+    # ── Load the measure-then-bound allowlist (STRIP set). One repo-relative
+    # path per line; `#` comments + blanks ignored; an inline `# reason` after
+    # the path is dropped (first whitespace token only).
+    allowlist = set()
+    if allowlist_path.is_file():
+        for raw in allowlist_path.read_text().splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            allowlist.add(line.split()[0])
 
-    # Parse workflow yml for `bash scripts/tests/test-validate-pack-check*.sh`
-    # invocation lines. Same prefix discipline as the disk glob — the
-    # filename character class `[^\s]+` after the prefix captures both
-    # single-check and bundled-check forms. The regex anchors on the
-    # literal `bash scripts/tests/test-validate-pack-check` prefix so
-    # commented-out or prose-mentioned occurrences (e.g., in workflow
-    # comments) that lack the `bash ` lead and the `.sh` end are not
-    # falsely counted. We deliberately do NOT require the line to be a
-    # full `run:` step — counting any `bash scripts/tests/<file>.sh`
-    # occurrence is sufficient because the workflow yml is the only
-    # consumer of these test files in CI, and a non-`run:` occurrence
-    # is implausible enough that surfacing it as evidence-of-wiring is
-    # a tolerable trade-off vs. a stricter parser that would need yml
-    # awareness.
+    # ── Parse the wired test runners from the workflow yml. Anchor on
+    # `run: bash scripts/…sh` so prose/comment mentions are not counted, and
+    # so the `test-fixtures/build.sh` build/verify steps (not under scripts/)
+    # are excluded by construction.
     workflow_text = workflow_path.read_text()
-    invocation_pattern = re.compile(
-        r"bash\s+scripts/tests/(test-validate-pack-check[^\s]+\.sh)"
-    )
-    workflow_invocations = sorted(set(invocation_pattern.findall(workflow_text)))
+    wired_pattern = re.compile(r"run:\s+bash\s+(scripts/[^\s]+\.sh)")
+    wired_set = set(wired_pattern.findall(workflow_text))
 
-    # Diff: tests on disk without a workflow invocation.
-    disk_set = set(disk_tests)
-    wired_set = set(workflow_invocations)
-    unwired = sorted(disk_set - wired_set)
+    disk_keep_set = disk_paths - allowlist
 
-    if unwired:
-        for filename in unwired:
+    # (a) KEEP scripts on disk with no workflow invocation.
+    unwired = sorted(disk_keep_set - wired_set)
+    # (b) allowlisted scripts that are now ALSO wired (allowlist staleness).
+    stale_allowlist = sorted(allowlist & wired_set)
+
+    if unwired or stale_allowlist:
+        for path in unwired:
             fail(
-                f"scripts/tests/{filename} — per-check test file exists "
-                f"on disk but has NO corresponding `bash scripts/tests/"
-                f"{filename}` invocation in `.github/workflows/"
-                f"validate-pack.yml`. Per BD-184, every test file "
-                f"matching the glob `scripts/tests/test-validate-pack-"
-                f"check*.sh` MUST be wired into the CI workflow so the "
-                f"test runs on every push. Remediation: add a sister-"
-                f"step under the `tests:` job in `.github/workflows/"
-                f"validate-pack.yml` of the form:\n"
-                f"      - name: validate-pack <Check NN> tests (BD-NNN, "
-                f"<short description>)\n"
+                f"{path} — test script exists on disk but has NO "
+                f"`run: bash {path}` invocation in `.github/workflows/"
+                f"validate-pack.yml`. Per BD-184/BD-219, every CI-eligible "
+                f"test script MUST be wired into the CI workflow so it runs "
+                f"on every push. Remediation: add a step under the `tests:` "
+                f"job of the form:\n"
+                f"      - name: <short description>\n"
                 f"        if: always()\n"
-                f"        run: bash scripts/tests/{filename}\n"
-                f"This check intentionally has no exemption mechanism — "
-                f"if the test is intentionally not run in CI, wire it "
-                f"under an `if:` gate rather than leaving it unwired."
+                f"        run: bash {path}\n"
+                f"If the script is intentionally NOT run in CI (live-network "
+                f"/ manual-only), add it to scripts/ci-test-wiring-allowlist."
+                f"txt with a one-line reason instead of leaving it unwired."
+            )
+        for path in stale_allowlist:
+            fail(
+                f"{path} — listed in scripts/ci-test-wiring-allowlist.txt "
+                f"(intentionally-OUT) BUT is now wired in the CI workflow "
+                f"(`run: bash {path}`). Allowlist staleness: remove its line "
+                f"from scripts/ci-test-wiring-allowlist.txt (the allowlist "
+                f"must be sized to EXACTLY the still-unwired STRIP set)."
             )
         return
 
     ok(
-        f"Check 42 — {len(disk_tests)} per-check test file(s) on disk; "
-        f"{len(workflow_invocations)} workflow invocation(s) found; "
-        f"zero unwired tests. CI workflow wiring is complete."
+        f"Check 42 — {len(disk_paths)} test script(s) on disk; "
+        f"{len(allowlist)} allowlisted (intentionally-OUT); "
+        f"{len(disk_keep_set)} KEEP; {len(wired_set)} wired in workflow; "
+        f"disk_KEEP_set == wired_set. CI workflow wiring is complete."
     )
+
+
+def check_validate_job_carries_no_only_check() -> None:
+    """Check 58 — the authoritative `validate` job carries NO `--only-check`.
+
+    BD-219 C3 (design §6.4). The `--only-check` selector (BD-219 C1) is an
+    opt-in per-check narrowing for the test battery's e2e legs. The full
+    `validate` job MUST run ALL checks (no flag = all) so the authoritative
+    coverage can never be silently narrowed. This check parses the workflow
+    yml and FAILs if any `python3 scripts/validate-pack.py` invocation in the
+    `validate` job carries a `--only-check` flag.
+
+    Cheap (ci-check-runtime-compounding): one workflow-text regex; no
+    subprocess, no real-tree scan. Routes through `run_check`.
+
+    Lenient: workflow absent → SKIP.
+    """
+    print("\n── Check 58: validate job runs ALL checks (no --only-check) (BD-219) ──")
+    workflow_path = REPO_ROOT / ".github" / "workflows" / "validate-pack.yml"
+    if not workflow_path.is_file():
+        ok(".github/workflows/validate-pack.yml absent — skipping (lenient)")
+        return
+    workflow_text = workflow_path.read_text()
+
+    # Any `validate-pack.py` invocation line carrying `--only-check` anywhere
+    # on it is a violation: the authoritative full run must never be narrowed.
+    # The match is line-scoped so a `--only-check` on an unrelated line cannot
+    # false-trigger.
+    offenders = []
+    invoke = re.compile(r"validate-pack\.py")
+    flag = re.compile(r"--only-check")
+    for raw in workflow_text.splitlines():
+        if invoke.search(raw) and flag.search(raw):
+            offenders.append(raw.strip())
+
+    if offenders:
+        for line in offenders:
+            fail(
+                f"the authoritative validate-pack.py run carries `--only-check`"
+                f" — the full run must execute ALL checks (no flag = all). "
+                f"Offending workflow line: `{line}`. Remove `--only-check` from"
+                f" the full-run invocation; `--only-check` is for the per-check "
+                f"test e2e legs only (BD-219 C1/C3)."
+            )
+        return
+    ok("Check 58 — no `--only-check` on any validate-pack.py full-run "
+       "invocation in the workflow; the authoritative run executes all checks.")
+
+
+def check_check_registry_completeness() -> None:
+    """Check 59 — CHECK_REGISTRY completeness (BD-219, the moved wiring proof).
+
+    BD-219 C3 (design §6.4). Under `--only-check` (BD-219 C1) the per-check
+    test e2e legs no longer IMPLICITLY prove "this check is wired into the
+    full run" (selecting a check proves it is in the registry, not that the
+    no-flag run executes it). This check restores that proof as an EXPLICIT
+    asserted invariant:
+
+      - `len(_build_check_registry()) == CHECK_REGISTRY_EXPECTED_COUNT`
+        (a one-line bookkeeping constant, like the existing agent-count
+        check — updated in lock-step whenever a check is added/removed), AND
+      - every registry entry is a well-formed `(number, label, fn, budget)`
+        4-tuple with a UNIQUE label and a CALLABLE fn (so the no-flag full
+        run can dispatch every entry — `main()` iterates the registry).
+
+    Net effectiveness UNCHANGED (stronger, in fact: an asserted invariant
+    rather than an implicit e2e side-effect).
+
+    Cheap (ci-check-runtime-compounding): builds the in-memory registry once
+    (no subprocess, no I/O). Routes through `run_check`.
+    """
+    print("\n── Check 59: CHECK_REGISTRY completeness (BD-219 wiring proof) ──")
+    registry = _build_check_registry()
+    n = len(registry)
+
+    if n != CHECK_REGISTRY_EXPECTED_COUNT:
+        fail(
+            f"CHECK_REGISTRY has {n} entr(y/ies) but "
+            f"CHECK_REGISTRY_EXPECTED_COUNT == {CHECK_REGISTRY_EXPECTED_COUNT}."
+            f" A check was added or removed without updating the expected-count"
+            f" constant (the one-line bookkeeping edit, like the agent-count "
+            f"check). Set CHECK_REGISTRY_EXPECTED_COUNT to {n} if the change is"
+            f" intentional, or restore the missing registry entry."
+        )
+        return
+
+    # Structural integrity: each entry is a 4-tuple; label unique; fn callable.
+    labels = set()
+    bad = []
+    for entry in registry:
+        if not (isinstance(entry, tuple) and len(entry) == 4):
+            bad.append(f"malformed entry (not a 4-tuple): {entry!r}")
+            continue
+        number, label, fn, budget = entry
+        if not callable(fn):
+            bad.append(f"entry {label!r}: fn is not callable")
+        if label in labels:
+            bad.append(f"duplicate registry label: {label!r}")
+        labels.add(label)
+
+    if bad:
+        for b in bad:
+            fail(f"CHECK_REGISTRY integrity: {b}")
+        return
+
+    ok(
+        f"Check 59 — CHECK_REGISTRY has {n} entr(y/ies) "
+        f"(== CHECK_REGISTRY_EXPECTED_COUNT); every entry is a well-formed "
+        f"(number, label, fn, budget) 4-tuple with a unique label + callable "
+        f"fn. The no-flag full run executes every registered check."
+    )
+
+
+def check_ci_shard_coverage() -> None:
+    """Check 60 — CI shard partition covers the wired set (BD-219 mirror).
+
+    BD-219 C3 (design §6.3). The AUTHORITATIVE run-time coverage assertion
+    lives in the C2 `tests-result` aggregation JOB (once per CI run). This is
+    the convenience MIRROR: a thin validate-pack check that sub-invokes
+    `scripts/lib/ci-shard-plan.py --assert-coverage` so a developer running
+    `validate-pack` locally surfaces shard-coverage drift without pushing.
+
+    `--assert-coverage` exits 0 iff `union(shards) == wired_KEEP_set`, shards
+    pairwise-disjoint, and the fixture cohesion group is co-located in one
+    shard.
+
+    Cheap (ci-check-runtime-compounding): ONE sub-invocation of a stdlib-only
+    module that reads three small committed files (the yml, the weights TSV,
+    the allowlist) — NOT a subprocess-per-script and NOT a real-tree scan.
+    The heavier assertion is NOT duplicated onto the ~24-spawn battery path:
+    this is a single bounded subprocess routed through `run_check` (per-check
+    WARN budget catches a regression).
+
+    Lenient: if the shard-plan module is absent, SKIP (the module is the
+    BD-219 C3 deliverable; absence at a pre-BD-219 HEAD is not a failure).
+    """
+    print("\n── Check 60: CI shard partition covers the wired set (BD-219) ──")
+    module_path = REPO_ROOT / "scripts" / "lib" / "ci-shard-plan.py"
+    if not module_path.is_file():
+        ok("scripts/lib/ci-shard-plan.py absent — skipping (lenient)")
+        return
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(module_path), "--assert-coverage"],
+            capture_output=True, text=True,
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        fail(f"Check 60 — could not run ci-shard-plan.py --assert-coverage: {exc}")
+        return
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip()
+        fail(
+            f"ci-shard-plan.py --assert-coverage FAILED (exit "
+            f"{proc.returncode}) — the CI shard partition does NOT cover the "
+            f"wired KEEP set exactly. Detail:\n{detail}"
+        )
+        return
+    ok("Check 60 — ci-shard-plan.py --assert-coverage passed; "
+       "union(shards) == wired_KEEP_set, pairwise-disjoint, fixture cohesion "
+       "group co-located.")
 
 
 def check_pack_memory_rationale_bijection() -> None:
@@ -9474,13 +9669,14 @@ def _build_check_registry():
         # the inventory-drift gate runs before Check 43's class-test gate.
         # Per ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md §1.1-§1.12.
         (43, "check_project_side_bare_internal_refs", check_project_side_bare_internal_refs, W),
-        # ── BD-184: CI workflow wires all per-check test files. Closes the
-        # "missing test wiring" gap class permanently — surfaced 5 times in
-        # the BD-175 batch alone (caught each time by reviewer attention).
-        # Lands LAST in main() because it gates a CI infrastructure invariant
-        # rather than any single pack-product surface; logical position is
-        # end-of-list (mirrors Check 41's end-of-list landing for the
-        # adjacent BD-180 inventory gate).
+        # ── BD-184 / BD-219: CI workflow wires every CI-eligible test.
+        # Set-equality gate `disk_KEEP_set == wired_set` over the full
+        # CI-eligible test set (BD-219 generalized from BD-184's original
+        # per-check subset). Closes the "missing test wiring" gap class
+        # permanently. Lands LAST in main() because it gates a CI
+        # infrastructure invariant rather than any single pack-product
+        # surface; logical position is end-of-list (mirrors Check 41's
+        # end-of-list landing for the adjacent BD-180 inventory gate).
         (42, "check_ci_workflow_wires_per_check_tests", check_ci_workflow_wires_per_check_tests, W),
         # ── BD-196 (C3): pack-memory rule↔rationale bijection. Lands AFTER
         # Check 42 (the CI-wiring infrastructure gate) because it is the
@@ -9614,6 +9810,25 @@ def _build_check_registry():
         # WORKTREE-ISOLATION-RECONCILED.md §13.3 + §5.4.
         (57, "check_project_destructive_git_verb_parity",
               check_project_destructive_git_verb_parity, W),
+        # ── BD-219 (C3): CI-runtime-optimization upkeep guards. Land LAST —
+        # they gate CI-infrastructure invariants (the workflow + the shard
+        # partition + the registry itself) rather than any single pack-product
+        # surface, mirroring Check 42's end-of-list landing for the adjacent
+        # CI-wiring gate. Numbers 58/59/60 are the next contiguous integers
+        # after the highest wired check (57) at the C3 boundary. Per
+        # ARCHITECTURE-BD-219-CI-RUNTIME-OPTIMIZATION.md §6.3/§6.4 +
+        # PLAN-BD-219-CI-RUNTIME-OPTIMIZATION.md §C3.
+        # Check 58 — the authoritative `validate` job carries no --only-check.
+        (58, "check_validate_job_carries_no_only_check",
+              check_validate_job_carries_no_only_check, W),
+        # Check 59 — CHECK_REGISTRY completeness (the moved wiring proof:
+        # restores C1's e2e legs' dropped implicit "wired into main()" proof).
+        (59, "check_check_registry_completeness",
+              check_check_registry_completeness, W),
+        # Check 60 — CI shard partition covers the wired set (the convenience
+        # validate-pack mirror of ci-shard-plan.py --assert-coverage; the
+        # authoritative run-time assertion is the C2 tests-result job).
+        (60, "check_ci_shard_coverage", check_ci_shard_coverage, W),
     ]
 
 
