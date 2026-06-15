@@ -26,6 +26,7 @@
 - [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
 - [BD-219](./BD-219.md) — CI runtime optimization: tests-job matrix-sharding + `validate-pack --only-check` (effectiveness-preserving)
 - [BD-221](./BD-221.md) — Convert Gemini CLI support to Antigravity (full Gemini → Antigravity transition)
+- [BD-222](./BD-222.md) — Standing CI guard against CI-environment-fragile wired tests (hardcoded dev paths / un-shimmed live-`gh` / double-zero antipattern)
 
 ## Deferred
 
