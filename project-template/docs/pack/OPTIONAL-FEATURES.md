@@ -305,6 +305,119 @@ flat-file per-entry trees under `docs/project/`.
 
 ---
 
+## CI test parallelization (GitHub Actions matrix)
+
+**Status:** Standard GitHub Actions — available on all plan tiers (Free,
+Team, Enterprise), all account types (personal and organization), and all
+runner types (`ubuntu-latest` and self-hosted alike). Platform-agnostic —
+works with any test framework and any language.
+
+**What it is.** When your project's CI runs many independent test suites
+sequentially in a single job, wall-clock time accumulates linearly with
+the number of suites. GitHub Actions `strategy: matrix` distributes a set
+of test scripts (or other tasks) across parallel runners, so total
+wall-clock time drops from Σ(all suites) to max(slowest suite) — without
+dropping any test or weakening any assertion. Combined with `fail-fast:
+false`, every suite runs in every push even when an earlier one fails,
+preserving full failure visibility. An aggregation job (`if: always()` +
+an explicit success assertion on the matrix result) serves as the single
+stable required status check regardless of shard count.
+
+**When this matters for your project.** This is worth doing when: (a) your
+CI has multiple independent test suites running in one job, (b) total
+wall-clock time is causing friction (slow feedback, queue pile-ups), and
+(c) the test suites can each run independently on a clean runner (no
+hard inter-suite ordering dependency). A single-suite project or a project
+whose CI already completes quickly does not benefit.
+
+**How to enable.** No external service or paid feature is required — this
+is a standard GitHub Actions workflow pattern. Add three jobs to your
+workflow:
+
+1. **`plan` job** — an upstream job that computes the test partition and
+   writes it to `$GITHUB_OUTPUT` as JSON:
+   ```yaml
+   plan:
+     runs-on: ubuntu-latest
+     outputs:
+       matrix: ${{ steps.plan.outputs.matrix }}
+     steps:
+       - uses: actions/checkout@v4
+       - id: plan
+         run: echo 'matrix={"include":[{"suite":"unit"},{"suite":"integration"}]}' >> "$GITHUB_OUTPUT"
+   ```
+   Replace the static `include` list with a dynamic generator script if
+   your suite list grows or changes.
+
+2. **`tests` job** — a matrix job that consumes the partition:
+   ```yaml
+   tests:
+     needs: [plan]
+     runs-on: ubuntu-latest
+     strategy:
+       fail-fast: false   # surface ALL failures, not just the first
+       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+     steps:
+       - uses: actions/checkout@v4
+       - name: run suite ${{ matrix.suite }}
+         run: bash scripts/test-${{ matrix.suite }}.sh
+   ```
+
+3. **`tests-result` aggregation job** — the single required status check:
+   ```yaml
+   tests-result:
+     needs: [plan, tests]
+     if: always()
+     runs-on: ubuntu-latest
+     steps:
+       - name: assert all suites passed
+         run: |
+           echo "tests result = ${{ needs.tests.result }}"
+           test "${{ needs.tests.result }}" = "success"
+   ```
+
+**Required-status-check rename consideration.** If your branch protection
+requires a check named `tests`, converting `tests` to a matrix renames
+the check to `tests (suite-name)` per combination — the old `tests` check
+disappears. Before merging the matrix change, update your branch
+protection rule to require `tests-result` (the aggregation job) instead of
+`tests`. This is a one-time admin step; `tests-result` then remains stable
+regardless of how many suites you add or remove.
+
+**No pack-specific setup needed.** Your project's existing test scripts
+(`scripts/test.sh`, `scripts/test-swift.sh`, `scripts/test-python.sh`,
+etc.) run inside the matrix exactly as they would in any shell step — no
+changes to the scripts themselves. The matrix controls orchestration; the
+scripts remain standalone and human-runnable locally without change.
+
+**Caveats.**
+- **Suite independence is required.** Each matrix combination runs on a
+  fresh runner with a clean checkout. Suites that depend on shared mutable
+  state (a running database, a network service, a shared file) need that
+  state to be self-provisioned per runner (Docker service containers, or
+  a setup step that creates the fixture from scratch).
+- **Fixture build cost is paid per shard.** If a suite requires a
+  build artifact (compiled binaries, generated files, test fixtures),
+  each runner that needs it builds it independently unless you use GitHub
+  Actions artifact upload/download between jobs. For short builds the
+  overhead is acceptable; for long builds consider caching or a
+  pre-build job.
+- **Slow single test within a suite sets the floor.** Parallelizing
+  suites helps only at the suite level. If one suite contains a single
+  test that takes 90 s, that suite cannot finish faster than 90 s
+  regardless of how many shards you add. Split long-running individual
+  tests into separate suites to lower the floor.
+- **`fail-fast: false` is required.** The default (`fail-fast: true`)
+  cancels sibling matrix combinations when one fails — you lose failure
+  visibility across suites. Always set `fail-fast: false` for test
+  matrices.
+
+**When to skip.** CI already fast or single-suite; test suites have
+hard inter-suite ordering dependencies; project does not use GitHub
+Actions.
+
+---
+
 ## Adding new entries
 
 If your project adopts a CLI-specific opt-in feature the pack does not
