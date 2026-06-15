@@ -21,8 +21,11 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PACK_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-HARNESS="$SCRIPT_DIR/dry-run-migration.sh"
+# scripts/tests/fixture-dependent/ → pack root is three levels up (BD-219
+# location-based fixture cohesion). The dry-run-migration.sh harness stays at
+# scripts/ (not moved), so reach it two levels up.
+PACK_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+HARNESS="$SCRIPT_DIR/../../dry-run-migration.sh"
 FIXTURE="$PACK_ROOT/test-fixtures/v10-realistic-ot"
 
 PASS_COUNT=0

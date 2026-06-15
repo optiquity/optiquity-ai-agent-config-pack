@@ -48,7 +48,9 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# scripts/tests/fixture-dependent/ → repo root is three levels up (BD-219
+# location-based fixture cohesion).
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FIXTURE_NAME="v11-realistic-ot"
 FIXTURE_DIR="$REPO_ROOT/test-fixtures/$FIXTURE_NAME"
 PE_LIB_DIR="$REPO_ROOT/scripts/lib/per-entry"

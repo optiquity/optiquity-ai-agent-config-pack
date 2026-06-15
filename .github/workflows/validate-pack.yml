@@ -2,20 +2,26 @@
 # branch. Failures block merge to main. Fix immediately - read the
 # Actions log; errors name the exact file and problem.
 #
-# Three jobs (BD-219 C2: the `tests` job is a sharded matrix):
+# Four jobs (BD-219 redesign: the `tests` job is a DYNAMIC sharded matrix):
 #   - validate:     runs scripts/validate-pack.py (structural Checks) — full
 #                   run, not sharded.
-#   - tests:        a STATIC matrix (`strategy.matrix.include`, 4 shards) that
-#                   partitions the enumerated wired test scripts across parallel
-#                   runners (BD-219 lever 1 — cut CI wall-time). Each shard runs
-#                   the tests in its `scripts` string via a run-loop; a failure
-#                   in one test does not mask another's (rc accumulates per
-#                   shard; `fail-fast: false` keeps other shards running). The
-#                   `include` array is the SINGLE source of truth for the wired
-#                   test set — see the block above the `tests:` job for the
-#                   refresh procedure.
-#   - tests-result: aggregates the matrix into one signal (`needs: [tests]`) and
-#                   re-asserts shard-coverage at run time (--assert-coverage).
+#   - plan:         a tiny job that emits the shard partition AT CI RUN TIME by
+#                   running `scripts/lib/ci-shard-plan.py --emit-matrix` (an LPT
+#                   bin-pack over the DISK-derived wired test set) into
+#                   `$GITHUB_OUTPUT`. There is NO frozen `include` array and no
+#                   refresh step — the matrix self-derives from disk every run.
+#   - tests:        a DYNAMIC matrix derived from `plan`
+#                   (`strategy.matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}`,
+#                   4 shards) that partitions the wired test scripts across
+#                   parallel runners (BD-219 lever 1 — cut CI wall-time). Each
+#                   shard runs the tests in its `scripts` string via a run-loop;
+#                   a failure in one test does not mask another's (rc accumulates
+#                   per shard; `fail-fast: false` keeps other shards running).
+#                   Adding a test requires only committing the test file — it is
+#                   auto-discovered and sharded on the next push (no manual
+#                   wiring step).
+#   - tests-result: aggregates the matrix into one signal (`needs: [plan, tests]`)
+#                   and re-asserts shard-coverage at run time (--assert-coverage).
 #
 # RELEASE-GATE wiring (BD-117 / BD-118): the `tests` job exercises the
 # CI-eligible release-gate items so every push proves them. Specifically:
@@ -54,16 +60,18 @@
 # (b) = missing manifest update / fixture content drift; (c) = pack
 # behavior regression surfaced by a contract.
 #
-# Step ordering invariant for the tests: job (BD-163, BD-219 C2)
-# ==============================================================
+# Step ordering invariant for the tests: job (BD-163, BD-219 redesign)
+# ===================================================================
 # Tests that depend on built fixtures (in test-fixtures/<name>/) MUST
 # run AFTER the fixtures are built. The fixtures are gitignored build
-# artifacts; CI runners do not have them until built. Under BD-219 C2's
-# sharded matrix this invariant is held by the FIXTURE COHESION GROUP:
-# ci-shard-plan.py pins all fixture-dependent tests into ONE shard, and
-# only that shard runs the conditional "build test fixtures" step (gated
-# by `--shard N --needs-fixtures`) before its run-loop. Cohesion-group
-# tests today (FIXTURE_COHESION_GROUP in scripts/lib/ci-shard-plan.py):
+# artifacts; CI runners do not have them until built. Under BD-219's
+# sharded matrix this invariant is held by LOCATION-based fixture
+# cohesion: fixture-dependent tests live under
+# `scripts/tests/fixture-dependent/`, and ci-shard-plan.py pins
+# everything in that subdir into ONE shard. Only that shard runs the
+# conditional "build test fixtures" step (gated by
+# `--shard N --needs-fixtures`) before its run-loop. The current
+# members (auto-derived from that subdir):
 #   - test-v11-realistic-ot.sh   - built fixtures (BD-160/170 + per-entry)
 #   - test-migrator-skills.sh    - v10-realistic-ot (G1 golden snapshot)
 #   - test-persona-contracts.sh  - existing-project-mid-dev + v10-realistic-ot
@@ -74,7 +82,7 @@
 # or via `_materialize_for_contract`'s built-fixture die-check
 # (test-fixtures/build.sh, used by persona-contracts). The shard
 # co-location is a defense-in-depth complement to those preconditions:
-# the in-script checks give a clear local-dev error; the cohesion-group
+# the in-script checks give a clear local-dev error; the location-based
 # pinning keeps CI green by guaranteeing the build step runs in the same
 # shard, before, those tests.
 #
@@ -116,41 +124,51 @@ jobs:
       - name: Run pack validation (DEEP field-faithfulness, BD-204 §4.6)
         run: PACK_VALIDATE_DEEP=1 python3 scripts/validate-pack.py
 
-  # BD-219 C2: the `tests` job is a SHARDED MATRIX. The wired KEEP test set
-  # is partitioned into 4 parallel shards (BD-219 lever 1: cut CI wall-time).
-  #
-  # The `matrix.include` below is a STATIC, SELF-DESCRIBING array — the FROZEN
-  # OUTPUT of `python3 scripts/lib/ci-shard-plan.py --emit-matrix` (an LPT
-  # bin-pack over scripts/ci-shard-weights.tsv, generated at MAINTENANCE time,
-  # NOT at CI runtime). It is the SINGLE source of truth for "which test runs
-  # in which shard" AND the wired-set membership list simultaneously:
-  #   wired_set == union(matrix.include[].scripts)
-  # Both readers parse this array (no `run: bash` per-step lines any more):
-  #   - scripts/lib/ci-shard-plan.py parse_wired_tests()
-  #   - scripts/validate-pack.py Check 42 (disk_KEEP_set == wired_set) + Check 60
-  #
-  # ⚠ REFRESH PROCEDURE (when a test is added / removed / re-weighted): re-run
-  #   `python3 scripts/lib/ci-shard-plan.py --emit-matrix`
-  # and paste its output back into this `include` block (expanded to the yml
-  # list shape below). Do NOT hand-edit the partition — it is frozen generated
-  # output (like the `_toc.md` indices). The CI guards catch a stale paste:
-  # Check 42 FAILs if a disk KEEP test is missing from the array, and
-  # `--assert-coverage` (the `tests-result` job + Check 60) FAILs if the
-  # partition no longer covers the wired KEEP set exactly.
+  # BD-219 redesign: the `plan` job emits the DYNAMIC shard partition at CI run
+  # time. `ci-shard-plan.py --emit-matrix` LPT-bin-packs the DISK-derived wired
+  # KEEP set ({scripts/test*.sh + scripts/tests/*.sh
+  # + scripts/tests/fixture-dependent/*.sh} − allowlist) over
+  # scripts/ci-shard-weights.tsv and prints the single-line matrix JSON, which
+  # this job captures into $GITHUB_OUTPUT for the `tests` job to consume via
+  # `fromJSON`. There is NO frozen `include` array and no refresh step — the
+  # matrix self-derives from disk every run. The module is stdlib-only (no
+  # pyyaml needed here). The wired set has ONE source (disk); Check 42 +
+  # `--assert-coverage` re-prove coverage.
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - id: plan
+        run: echo "matrix=$(python3 scripts/lib/ci-shard-plan.py --emit-matrix)" >> "$GITHUB_OUTPUT"
+
+  # BD-219 redesign: the `tests` job is a DYNAMIC sharded MATRIX. The wired KEEP
+  # test set is partitioned into 4 parallel shards (BD-219 lever 1: cut CI
+  # wall-time). The partition comes from the `plan` job at run time:
+  #   strategy.matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+  # `fromJSON` of `{"include":[{"shard":N,"scripts":"..."}]}` yields the GA
+  # dynamic-matrix shape (matrix.shard + matrix.scripts resolve per combination).
+  # The wired set has ONE source — disk — read identically by:
+  #   - scripts/lib/ci-shard-plan.py parse_wired_tests()  (drives --emit-matrix)
+  #   - scripts/validate-pack.py Check 42 (allowlist validity + partitionability)
+  #     + Check 60 (--assert-coverage mirror)
+  # Adding a test requires only committing the test file in the right place
+  # (scripts/tests/ for a normal test; scripts/tests/fixture-dependent/ for a
+  # fixture-dependent test) — it is auto-discovered, sharded, and (if fixture-
+  # dependent) auto-pinned into the fixture-building shard on the next push.
+  # There is no static array to paste and nothing to keep in sync.
   tests:
+    needs: [plan]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - shard: 1
-            scripts: "scripts/tests/tracker-migrate-reverse-test.sh scripts/tests/test-migrate-v10-to-v11.sh scripts/test-persona-contracts.sh scripts/tests/test-tracker-promote-path2.sh scripts/test-migrator-core.sh scripts/test-detect.sh scripts/test-dry-run-migration.sh scripts/test-migrator-skills.sh scripts/tests/test-tracker-promote-path1.sh scripts/tests/template-version-test.sh scripts/tests/test-add-capability.sh scripts/tests/test-tracker-links.sh scripts/tests/test-v11-realistic-ot.sh scripts/tests/tracker-agent-read-test.sh scripts/tests/tracker-bd133-header-preservation-test.sh scripts/tests/tracker-deferral-gate-test.sh scripts/tests/test-validate-pack-check-16.sh scripts/tests/test-validate-pack-check-40.sh scripts/tests/test-validate-pack-check-44.sh scripts/tests/test-validate-pack-check-51-flip-block.sh scripts/tests/test-validate-pack-check-55.sh scripts/test-compare-agent-trinity.sh"
-          - shard: 2
-            scripts: "scripts/tests/test-migrate-v10-to-v11-gates.sh scripts/tests/test-activate-capability.sh scripts/tests/test-validate-pack-checks-58-59-60.sh scripts/tests/test-issue-forms.sh scripts/tests/test-tracker-phase-task.sh scripts/tests/tracker-bd129-gh-repo-test.sh scripts/tests/tracker-bd134-close-retry-test.sh scripts/tests/tracker-errors-test.sh scripts/tests/test-validate-pack-check-18.sh scripts/tests/test-validate-pack-check-41.sh scripts/tests/test-validate-pack-check-45.sh scripts/tests/test-validate-pack-check-52.sh scripts/tests/test-validate-pack-check-56.sh scripts/tests/test-tracker-promote-direct.sh"
-          - shard: 3
-            scripts: "scripts/tests/tracker-migrate-forward-test.sh scripts/tests/test-migrate-v10-to-v11-decompose.sh scripts/tests/test-validate-pack-check-49-field-faithfulness.sh scripts/test-migrator-capability-translation.sh scripts/tests/test-init-project.sh scripts/tests/test-ci-shard-plan.sh scripts/tests/pack-help-test.sh scripts/tests/recommendation-test.sh scripts/tests/test-per-entry.sh scripts/tests/test-validate-pack-checks-32-33-34.sh scripts/tests/tracker-bd130-doctor-wired-test.sh scripts/tests/tracker-config-schema-test.sh scripts/tests/tracker-init-test.sh scripts/tests/test-validate-pack-check-39.sh scripts/tests/test-validate-pack-check-43.sh scripts/tests/test-validate-pack-check-50-codec-single-source.sh scripts/tests/test-validate-pack-check-54.sh scripts/tests/test-validate-pack-check-removed-doc-advisory.sh"
-          - shard: 4
-            scripts: "scripts/tests/tracker-migrate-roundtrip-test.sh scripts/tests/test-migrate-v10-to-v11-dry-run.sh scripts/tests/tracker-provider-test.sh scripts/test-migrator-manifest.sh scripts/tests/test-customization-preserve.sh scripts/tests/recommendation-state-schema-test.sh scripts/tests/template-translations-test.sh scripts/tests/test-tracker-cycle-check.sh scripts/tests/test-validate-pack-checks-36-37-38.sh scripts/tests/tracker-bd132-race-test.sh scripts/tests/tracker-config-test.sh scripts/test-restore-from-backup.sh scripts/tests/test-validate-pack-check-19.sh scripts/tests/test-validate-pack-check-42.sh scripts/tests/test-validate-pack-check-46.sh scripts/tests/test-validate-pack-check-53.sh scripts/tests/test-validate-pack-check-57.sh"
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -162,9 +180,10 @@ jobs:
         run: pip install pyyaml
 
       # ── BD-219 §2.5: build fixtures ONLY in the shard that owns the fixture
-      # cohesion group (ci-shard-plan.py pins all FIXTURE_COHESION_GROUP members
-      # into one shard). `--shard N --needs-fixtures` exits 0 iff this shard
-      # owns a fixture-dependent test. The BD-115/116/117 build + BD-118
+      # cohesion set (ci-shard-plan.py pins everything under
+      # scripts/tests/fixture-dependent/ into one shard — location-based
+      # cohesion). `--shard N --needs-fixtures` exits 0 iff this shard owns a
+      # fixture-dependent test. The BD-115/116/117 build + BD-118
       # manifest-restore + BD-115 verify ORDER is preserved (steps a/a2/b of the
       # header comment), run once in the fixture-owning shard.
       - name: build test fixtures (only if this shard needs them)
@@ -191,14 +210,14 @@ jobs:
           done
           exit $rc
 
-  # BD-219 C2: single aggregated signal for the sharded `tests` matrix.
-  # `needs: [tests]` succeeds only if EVERY shard succeeded; the second step
-  # re-proves at run time that the static `include` partition still covers the
-  # wired KEEP set exactly (catches a stale/hand-edited matrix the static array
-  # could otherwise drift into). This is the AUTHORITATIVE run-time coverage
-  # assertion (Check 60 is the convenience validate-pack mirror).
+  # BD-219 redesign: single aggregated signal for the sharded `tests` matrix.
+  # `needs: [plan, tests]` succeeds only if EVERY shard succeeded; the second
+  # step re-proves at run time that the disk-derived partition covers the wired
+  # KEEP set exactly (catches any drift between disk, the emitted matrix, and the
+  # shards). This is the AUTHORITATIVE run-time coverage assertion (Check 60 is
+  # the convenience validate-pack mirror).
   tests-result:
-    needs: [tests]
+    needs: [plan, tests]
     if: always()
     runs-on: ubuntu-latest
     steps:

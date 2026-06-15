@@ -2,12 +2,15 @@
 #
 # The measure-then-bound STRIP set: test scripts that legitimately exist on
 # disk but are INTENTIONALLY NOT wired into the CI `tests` job, each with a
-# one-line reason. Consumed by validate-pack.py Check 42 (generalized in
-# BD-219 C3): the wiring-completeness invariant is
-#     disk_KEEP_set == wired_set
-# where disk_KEEP_set = {scripts/test*.sh + scripts/tests/*.sh} − THIS list.
-# Also consumed by scripts/lib/ci-shard-plan.py (these scripts are never
-# partitioned into a shard).
+# one-line reason. BD-219 redesign: the CI matrix is DISK-derived at run time
+# (the `plan` job's ci-shard-plan.py --emit-matrix over the disk KEEP set), so
+# a test is wired simply by existing on disk — this list is what SUBTRACTS a
+# test from that disk-derived set. The disk KEEP set is
+#     {scripts/test*.sh + scripts/tests/*.sh
+#      + scripts/tests/fixture-dependent/*.sh} − THIS list.
+# Consumed by scripts/lib/ci-shard-plan.py (these scripts are never partitioned
+# into a shard) and VALIDATED by validate-pack.py Check 42 (every entry must
+# exist on disk + match the disk-glob shape; the KEEP set must stay non-empty).
 #
 # BOUNDED (ci-guard-design-measure-then-bound): sized to EXACTLY the confirmed
 # intentionally-OUT scripts — no broader. Adding a line here to dodge a failing

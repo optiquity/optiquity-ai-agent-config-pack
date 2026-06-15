@@ -222,8 +222,8 @@ scripts/                                    Pack-level scripts
 
 scripts/test-migrator-core.sh               BD-119 unit tests — public API surface (v11)
 scripts/test-migrator-manifest.sh           BD-119 unit tests — manifest parser/validator (v11)
-scripts/test-migrator-skills.sh             BD-147 unit tests — skill-rename helper + golden-snapshot regression (v11)
-scripts/test-persona-contracts.sh           BD-116 aggregator — runs all three persona contracts (v11)
+scripts/tests/fixture-dependent/test-migrator-skills.sh    BD-147 unit tests — skill-rename helper + golden-snapshot regression (v11; fixture-dependent, BD-219)
+scripts/tests/fixture-dependent/test-persona-contracts.sh  BD-116 aggregator — runs all three persona contracts (v11; fixture-dependent, BD-219)
 scripts/persona-contracts/                  BD-116 per-persona contract scripts (v11)
 ├── contract-greenfield.sh                  init on empty dir matches template
 ├── contract-mid-dev.sh                     init on existing-project-mid-dev fixture preserves user files

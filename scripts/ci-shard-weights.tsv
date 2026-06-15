@@ -23,7 +23,7 @@ scripts/tests/tracker-migrate-reverse-test.sh	34.0
 scripts/tests/test-migrate-v10-to-v11-dry-run.sh	31.0
 scripts/tests/test-migrate-v10-to-v11.sh	29.0
 scripts/tests/test-migrate-v10-to-v11-decompose.sh	14.0
-scripts/test-persona-contracts.sh	11.0
+scripts/tests/fixture-dependent/test-persona-contracts.sh	11.0
 scripts/tests/test-validate-pack-check-49-field-faithfulness.sh	10.0
 scripts/tests/tracker-provider-test.sh	8.0
 #
@@ -32,7 +32,7 @@ scripts/test-detect.sh	3.0
 scripts/test-migrator-capability-translation.sh	5.0
 scripts/test-migrator-core.sh	4.0
 scripts/test-migrator-manifest.sh	4.0
-scripts/test-migrator-skills.sh	3.0
+scripts/tests/fixture-dependent/test-migrator-skills.sh	3.0
 scripts/tests/pack-help-test.sh	2.0
 scripts/tests/recommendation-state-schema-test.sh	2.0
 scripts/tests/recommendation-test.sh	2.0
@@ -45,7 +45,7 @@ scripts/tests/test-per-entry.sh	2.0
 scripts/tests/test-tracker-cycle-check.sh	2.0
 scripts/tests/test-tracker-links.sh	2.0
 scripts/tests/test-tracker-phase-task.sh	2.0
-scripts/tests/test-v11-realistic-ot.sh	2.0
+scripts/tests/fixture-dependent/test-v11-realistic-ot.sh	2.0
 scripts/tests/test-validate-pack-check-16.sh	1.5
 scripts/tests/test-validate-pack-check-18.sh	1.5
 scripts/tests/test-validate-pack-check-19.sh	1.5
@@ -82,10 +82,10 @@ scripts/tests/tracker-init-test.sh	2.0
 #
 # ── Newly-wired KEEP tests (BD-219 C3 measure-then-bound; offline-confirmed) ──
 scripts/test-compare-agent-trinity.sh	1.0
-scripts/test-dry-run-migration.sh	3.0
+scripts/tests/fixture-dependent/test-dry-run-migration.sh	3.0
 scripts/test-restore-from-backup.sh	1.5
 scripts/tests/test-activate-capability.sh	4.0
-scripts/tests/test-add-capability.sh	2.0
+scripts/tests/fixture-dependent/test-add-capability.sh	2.0
 scripts/tests/test-tracker-promote-direct.sh	1.0
 scripts/tests/test-tracker-promote-path1.sh	3.0
 scripts/tests/test-tracker-promote-path2.sh	7.0

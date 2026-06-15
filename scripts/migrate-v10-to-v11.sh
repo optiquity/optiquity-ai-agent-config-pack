@@ -434,7 +434,8 @@ _v10_to_v11_install_v11_artifacts() {
 # v10→v11-specific banner and the `python-architecture` →
 # (`python-server-architecture` | `python-data-architecture`) parameters.
 # Behavior is byte-equivalent to the pre-extraction inline implementation
-# (verified by `scripts/test-migrator-skills.sh` golden-snapshot harness).
+# (verified by `scripts/tests/fixture-dependent/test-migrator-skills.sh`
+# golden-snapshot harness).
 #
 # Files scanned (project-root-relative; only those that exist):
 #   docs/pack/PLATFORM-SKILLS.md

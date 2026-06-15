@@ -257,19 +257,19 @@ Checks:
       discipline per §8 D7: the BD-179 commit qualifies all
       pre-existing bare refs (51 across 9 files per Phase 1 survey)
       so Check 40 PASSes at HEAD.
-  42. CI workflow wires every CI-eligible test (BD-184, BD-219):
-      set-equality gate `disk_KEEP_set == wired_set` where
-      `disk_KEEP_set` = {`scripts/test*.sh` + `scripts/tests/*.sh`}
-      minus `scripts/ci-test-wiring-allowlist.txt` (the
-      measure-then-bound STRIP set), and `wired_set` = scripts with
-      a `run: bash scripts/…sh` invocation in
-      `.github/workflows/validate-pack.yml`. Fails naming: (a) any
-      KEEP script on disk with no wiring line; (b) any allowlisted
-      script that is now wired (allowlist staleness). Closes the
-      "missing test wiring" gap class (BD-184 original scope, now
-      generalized in BD-219 to the full CI-eligible set).
-      Self-referential closure: `test-validate-pack-check-42.sh`
-      must itself appear in both the disk KEEP set and the wired set.
+  42. CI test-wiring allowlist is valid + bounded (BD-184, BD-219
+      redesign): RE-SCOPED. The CI `tests` matrix is now disk-derived
+      at run time (the `plan` job's `ci-shard-plan.py --emit-matrix`),
+      so `wired_set == disk_KEEP_set` by construction and the old
+      `disk_KEEP_set == wired_set` equality is a tautology with no
+      failure mode (the "missing test wiring" gap is eliminated by
+      construction). Check 42 now asserts (1) ALLOWLIST VALIDITY —
+      every `scripts/ci-test-wiring-allowlist.txt` entry exists on
+      disk AND matches the disk-glob shape ({`scripts/test*.sh` +
+      `scripts/tests/*.sh` + `scripts/tests/fixture-dependent/*.sh`});
+      and (2) PARTITIONABILITY — the disk KEEP set (disk glob minus
+      allowlist) is non-empty. Fails naming a stale (not-on-disk),
+      malformed (wrong-shape), or all-swallowing allowlist.
 
 Two additional informational checks (no number, soft / advisory):
   - Issue template forms (BD-063): `.github/ISSUE_TEMPLATE/*.yml`
@@ -461,13 +461,18 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # replaces the implicit "the per-check e2e leg proves the check is wired into
 # main()" property that `--only-check` (BD-219 C1) would otherwise drop.
 # UPDATE IN LOCK-STEP whenever a check is added/removed (a one-line edit, like
-# the agent-count check). At BD-219 C3 the registry holds 60 entries:
+# the agent-count check). At the BD-219 dynamic-autoregen redesign the registry
+# holds 61 entries:
 #   57 entries at C1's CHECK_REGISTRY introduction (§EE-P5)
 # + 3 net-new C3 checks (58 validate-no-flag, 59 registry-completeness,
-#                        60 shard-coverage mirror).
-# (Generalized Check 42 keeps its slot; numbers ≠ entry count — Checks
-# 16/18/19 each register TWICE and 2 checks carry number=None.)
-CHECK_REGISTRY_EXPECTED_COUNT = 60
+#                        60 shard-coverage mirror)
+# + 1 net-new BD-219-redesign check (61 fixture-location backstop).
+# (Re-scoped Check 42 keeps its slot; numbers ≠ entry count — Checks
+# 16/18/19 each register TWICE and 2 checks carry number=None.) This constant
+# is the explicit invariant; the actual count is COMPUTED from
+# len(_build_check_registry()) and asserted equal by Check 59 — never
+# hard-coded anywhere else.
+CHECK_REGISTRY_EXPECTED_COUNT = 61
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
@@ -6662,102 +6667,91 @@ def check_client_installed_files() -> None:
         )
 
 
-# ── Check 42: CI workflow wires every CI-eligible test (BD-184, BD-219) ────
+# ── Check 42: CI test-wiring allowlist is valid + bounded (BD-184, BD-219) ──
 #
-# Closes the "missing test wiring" gap class permanently via a mechanical
-# CI guard. The gap surfaced 5 times across the BD-175 batch alone:
-#   - BD-179 FIX-1 (`1e644d1`): wired
-#     `test-validate-pack-checks-36-37-38.sh` + `test-validate-pack-check-39.sh`
-#     + `test-validate-pack-check-40.sh` (3 tests; unwired since BD-175
-#     Commit 12, BD-175 F2a, BD-179 main respectively)
-#   - BD-183 FIX-1 (`5f8f683`): wired `test-validate-pack-check-18.sh`
-#     (unwired since BD-181 main `c244314`)
-#   - BD-183 FIX-2 (`99b0f12`): wired `test-validate-pack-check-41.sh`
-#     (unwired since BD-180 main `78a4415`)
+# History: Check 42 was introduced by BD-184 to close the "missing test
+# wiring" gap class (a disk test with no CI invocation) — a gap that
+# surfaced 5 times across the BD-175 batch alone (BD-179/BD-183 FIXes).
+# BD-219 C3 generalized it to full disk_KEEP_set == wired_set over a
+# STATIC `tests`-job matrix.
 #
-# Each occurrence was caught by reviewer attention applying the BD-179
-# FIX-5 (`ff23a00`) carry-forward discipline. The discipline works, but
-# a mechanical guard at commit time is cheaper than per-cycle reviewer
-# attention. Check 42 is that mechanical guard.
+# BD-219 redesign (dynamic auto-regen): the CI `tests` matrix is now
+# DERIVED FROM DISK at run time (the `plan` job's `--emit-matrix`), so
+# `wired_set` IS `disk_KEEP_set` by construction — the old equality is a
+# tautology and the old failure mode ("forgot to paste the matrix")
+# cannot occur. Adding a test requires only committing the test file; it
+# is auto-discovered and sharded on the next push. The gap class Check 42
+# closed is therefore eliminated by construction, NOT by this guard.
 #
-# Naming-form note: the per-check test convention permits BOTH single-
-# check filenames (`test-validate-pack-check-NN.sh`; e.g.,
-# `test-validate-pack-check-16.sh`, `test-validate-pack-check-39.sh`) and
-# bundled-check filenames (`test-validate-pack-checks-NN-NN-NN.sh`; e.g.,
-# `test-validate-pack-checks-32-33-34.sh`,
-# `test-validate-pack-checks-36-37-38.sh`). The disk glob and the workflow
-# grep BOTH use `test-validate-pack-check*` (without the trailing dash)
-# so the prefix captures both `check-` AND `checks-` variants. A glob
-# of `test-validate-pack-check-*.sh` (with dash) would silently miss the
-# bundled form — empirically verified pre-implementation.
+# Re-scoped charge (the assertions that STILL carry signal):
+#   - ALLOWLIST VALIDITY (measure-then-bound, the core surviving guard):
+#     every entry of scripts/ci-test-wiring-allowlist.txt must (a) exist
+#     on disk and (b) match the disk-glob shape (scripts/test*.sh OR
+#     scripts/tests/*.sh OR scripts/tests/fixture-dependent/*.sh) — so
+#     the allowlist stays sized to EXACTLY the genuinely-excludable set.
+#   - PARTITIONABILITY (cheap structural sanity): the disk KEEP set is
+#     non-empty (an empty KEEP = the allowlist swallowed everything =
+#     contamination FAIL); lenient SKIP if literally no test on disk.
 #
-# Exemption: there is intentionally no exemption mechanism. Every
-# `test-validate-pack-check*.sh` test file under `scripts/tests/` MUST
-# have a corresponding `bash scripts/tests/<filename>` invocation in
-# `.github/workflows/validate-pack.yml`. If a test is intentionally not
-# wired (e.g., manual-trigger only), the workflow can wire it under an
-# `if:` gate — but the wiring line MUST exist so Check 42 sees it.
+# The disk glob here enumerates the SAME three explicit non-recursive
+# dirs as ci-shard-plan.py parse_wired_tests() (test-ci-shard-plan.sh
+# Group 6 asserts the two agree). scripts/tests/fixtures/ (the inert
+# test-DATA tree) is NEVER swept in — no recursion.
 
 def check_ci_workflow_wires_per_check_tests() -> None:
-    """Check 42 — CI workflow wires every CI-eligible test (BD-184, BD-219).
+    """Check 42 — CI test-wiring allowlist is valid + bounded (BD-184, BD-219).
 
-    GENERALIZED in BD-219 C3 from the per-check subset to the FULL
-    CI-eligible test set. Invariant (full set-equality):
+    RE-SCOPED in the BD-219 dynamic-autoregen redesign. The CI `tests` matrix is
+    now disk-derived at run time (the `plan` job's `ci-shard-plan.py
+    --emit-matrix`), so `wired_set == disk_KEEP_set` by construction and the old
+    `disk_KEEP_set == wired_set` equality is a tautology with no failure mode.
+    This check now asserts the two properties that STILL carry signal:
 
-        disk_KEEP_set == wired_set
+      (1) Allowlist VALIDITY (measure-then-bound). For every entry of
+          scripts/ci-test-wiring-allowlist.txt:
+            (a) the path EXISTS on disk (a stale allowlist line for a deleted
+                test → FAIL naming it), AND
+            (b) the path matches the disk-glob shape — scripts/test*.sh OR
+                scripts/tests/*.sh OR scripts/tests/fixture-dependent/*.sh
+                (an entry the glob could never produce is meaningless → FAIL).
+      (2) PARTITIONABILITY (cheap structural sanity). The disk KEEP set
+          (disk glob − allowlist) is NON-EMPTY (an empty KEEP means the
+          allowlist swallowed every test = contamination → FAIL). Lenient SKIP
+          when literally no test script is on disk.
 
-    where
-        disk_KEEP_set = {scripts/test*.sh + scripts/tests/*.sh} − allowlist
-        wired_set     = the `scripts/…sh` tokens in the `tests`-job
-                        `matrix.include[].scripts` strings (BD-219 C2: the
-                        static, self-describing shard partition is the wired-set
-                        SSOT — `wired_set == union(include[].scripts)`)
-        allowlist     = scripts/ci-test-wiring-allowlist.txt (the BD-219
-                        measure-then-bound STRIP set: scripts that legitimately
-                        exist on disk but are intentionally NOT wired — each
-                        with a one-line reason; sized to EXACTLY the confirmed
-                        STRIP set, no broader).
+    disk glob = {scripts/test*.sh + scripts/tests/*.sh
+                 + scripts/tests/fixture-dependent/*.sh} — three EXPLICIT
+    non-recursive dirs (mirrors ci-shard-plan.py parse_wired_tests();
+    scripts/tests/fixtures/ inert data is never swept in). The 1-line allowlist
+    reason text after a path is ignored by the parser.
 
-    FAILs naming:
-      (a) each KEEP script on disk NOT present in any `tests`-job
-          `matrix.include[].scripts` string (the original BD-184 failure mode,
-          now over the full set + the BD-219 C2 static-matrix source), AND
-      (b) each allowlisted-but-now-wired script (allowlist staleness — an
-          intentionally-OUT script that someone wired without removing its
-          allowlist line).
+    Cheap (ci-check-runtime-compounding): three dir globs + one small allowlist
+    read; no subprocess, no real-tree scan, no yml read. Routes through
+    `run_check` (per-check WARN budget).
 
-    The `test-fixtures/build.sh` build/verify orchestration is NOT under
-    `scripts/`, so the `scripts/` token anchor excludes it by construction; the
-    1-line allowlist reason text after a path is ignored by the parser. The
-    wired-set extraction is byte-identical to ci-shard-plan.py
-    parse_wired_tests() (test-ci-shard-plan.sh Group 6 asserts they agree).
-
-    Cheap (ci-check-runtime-compounding): one workflow-text line scan (the
-    `scripts:` value harvest) + two dir globs + one small allowlist read; no
-    subprocess-per-script, no real-tree scan. Routes through `run_check`
-    (per-check WARN budget).
-
-    Lenient mode: if `.github/workflows/validate-pack.yml` is absent (unlikely
-    at any reasonable pack-repo HEAD) the check SKIPs; likewise if neither
-    `scripts/` nor `scripts/tests/` holds any test*.sh.
+    Lenient mode: if neither `scripts/` nor `scripts/tests/` holds any test*.sh
+    the check SKIPs.
     """
-    print("\n── Check 42: CI workflow wires every CI-eligible test (BD-184, BD-219) ──")
-    workflow_path = REPO_ROOT / ".github" / "workflows" / "validate-pack.yml"
+    print("\n── Check 42: CI test-wiring allowlist is valid + bounded (BD-184, BD-219 redesign) ──")
     scripts_dir = REPO_ROOT / "scripts"
     tests_dir = REPO_ROOT / "scripts" / "tests"
+    fxdep_dir = tests_dir / "fixture-dependent"
     allowlist_path = REPO_ROOT / "scripts" / "ci-test-wiring-allowlist.txt"
-    if not workflow_path.is_file():
-        ok(".github/workflows/validate-pack.yml absent — skipping (lenient)")
-        return
 
-    # ── Enumerate the FULL disk test-script set (repo-relative paths).
-    # scripts/test*.sh + scripts/tests/*.sh (the BD-219 §EE-P3 measure set).
+    # ── Enumerate the FULL disk test-script set (repo-relative paths) over the
+    # SAME three explicit non-recursive dirs as ci-shard-plan.py
+    # parse_wired_tests(). The fixture-dependent/ subdir is enumerated
+    # explicitly; scripts/tests/fixtures/ (inert test data) is never reached
+    # (no recursion) — a recursion would catastrophically wire the data files.
     disk_paths = set()
     for p in scripts_dir.glob("test*.sh"):
         disk_paths.add(f"scripts/{p.name}")
     if tests_dir.is_dir():
         for p in tests_dir.glob("*.sh"):
             disk_paths.add(f"scripts/tests/{p.name}")
+    if fxdep_dir.is_dir():
+        for p in fxdep_dir.glob("*.sh"):
+            disk_paths.add(f"scripts/tests/fixture-dependent/{p.name}")
     if not disk_paths:
         ok("no scripts/test*.sh or scripts/tests/*.sh present — skipping (lenient)")
         return
@@ -6773,65 +6767,213 @@ def check_ci_workflow_wires_per_check_tests() -> None:
                 continue
             allowlist.add(line.split()[0])
 
-    # ── Parse the wired test set from the `tests`-job matrix `include` array
-    # (BD-219 C2). The wired set is `union(matrix.include[].scripts)`: each
-    # `scripts:` mapping value is a space-separated test list, harvested for
-    # `scripts/…sh` tokens. The `test-fixtures/build.sh` build/verify steps are
-    # not under `scripts/`, so the `scripts/` anchor excludes them by
-    # construction; prose/comment mentions outside a `scripts:` value are not
-    # counted. This extraction is byte-identical to ci-shard-plan.py
-    # parse_wired_tests() (test-ci-shard-plan.sh Group 6 asserts the two agree).
-    workflow_text = workflow_path.read_text()
-    scripts_line_pattern = re.compile(r"^\s*scripts:\s*(.+)$")
-    wired_token_pattern = re.compile(r"scripts/[^\s\"']+\.sh")
-    wired_set = set()
-    for raw in workflow_text.splitlines():
-        m = scripts_line_pattern.match(raw)
-        if not m:
-            continue
-        wired_set.update(wired_token_pattern.findall(m.group(1)))
+    # A path matches the disk-glob shape iff the glob COULD produce it:
+    #   scripts/<test*.sh>  OR  scripts/tests/<*.sh>  OR
+    #   scripts/tests/fixture-dependent/<*.sh>
+    def _matches_glob_shape(path):
+        if not path.endswith(".sh"):
+            return False
+        rest = path[len("scripts/"):] if path.startswith("scripts/") else None
+        if rest is None:
+            return False
+        if "/" not in rest:
+            return rest.startswith("test")           # scripts/test*.sh
+        if rest.startswith("tests/"):
+            tail = rest[len("tests/"):]
+            if "/" not in tail:
+                return True                           # scripts/tests/*.sh
+            if tail.startswith("fixture-dependent/"):
+                leaf = tail[len("fixture-dependent/"):]
+                return "/" not in leaf                # .../fixture-dependent/*.sh
+        return False
+
+    problems = False
+    # (1a) stale allowlist entry — path not on disk.
+    for path in sorted(allowlist):
+        if not (REPO_ROOT / path).is_file():
+            problems = True
+            fail(
+                f"{path} — listed in scripts/ci-test-wiring-allowlist.txt "
+                f"(intentionally-OUT) but DOES NOT EXIST on disk. Allowlist "
+                f"staleness: remove its line (the allowlist must be sized to "
+                f"EXACTLY the still-present STRIP set)."
+            )
+    # (1b) malformed allowlist entry — path not matching the disk-glob shape.
+    for path in sorted(allowlist):
+        if not _matches_glob_shape(path):
+            problems = True
+            fail(
+                f"{path} — listed in scripts/ci-test-wiring-allowlist.txt but "
+                f"does NOT match the disk-glob shape (scripts/test*.sh OR "
+                f"scripts/tests/*.sh OR scripts/tests/fixture-dependent/*.sh). "
+                f"An allowlist entry the glob can never produce is meaningless; "
+                f"fix the path or remove the line."
+            )
 
     disk_keep_set = disk_paths - allowlist
 
-    # (a) KEEP scripts on disk with no workflow invocation.
-    unwired = sorted(disk_keep_set - wired_set)
-    # (b) allowlisted scripts that are now ALSO wired (allowlist staleness).
-    stale_allowlist = sorted(allowlist & wired_set)
+    # (2) partitionability: an empty KEEP set means the allowlist swallowed
+    # every test on disk — contamination.
+    if not disk_keep_set:
+        problems = True
+        fail(
+            f"the disk KEEP set is EMPTY ({len(disk_paths)} test script(s) on "
+            f"disk, all {len(allowlist)} of them allowlisted). The allowlist "
+            f"has swallowed every test — the CI matrix would partition NOTHING. "
+            f"Shrink scripts/ci-test-wiring-allowlist.txt to EXACTLY the "
+            f"genuinely-un-runnable-in-CI set."
+        )
 
-    if unwired or stale_allowlist:
-        for path in unwired:
-            fail(
-                f"{path} — test script exists on disk but has NO "
-                f"entry in the `tests`-job `matrix.include[].scripts` strings "
-                f"of `.github/workflows/validate-pack.yml`. Per BD-184/BD-219, "
-                f"every CI-eligible test script MUST be wired into the CI "
-                f"workflow so it runs (sharded) on every push. Remediation: the "
-                f"shard matrix is the FROZEN output of the shard generator — "
-                f"re-run `python3 scripts/lib/ci-shard-plan.py --emit-matrix` "
-                f"and refresh the static `tests`-job `matrix.include` block in "
-                f"the workflow yml with its output (do NOT hand-add a `run: "
-                f"bash` step — there are none any more; the run-loop executes "
-                f"`${{{{ matrix.scripts }}}}`).\n"
-                f"If the script is intentionally NOT run in CI (live-network "
-                f"/ manual-only), add it to scripts/ci-test-wiring-allowlist."
-                f"txt with a one-line reason instead of leaving it unwired."
-            )
-        for path in stale_allowlist:
-            fail(
-                f"{path} — listed in scripts/ci-test-wiring-allowlist.txt "
-                f"(intentionally-OUT) BUT is now wired in the CI workflow "
-                f"(present in a `tests`-job `matrix.include[].scripts` string). "
-                f"Allowlist staleness: remove its line from "
-                f"scripts/ci-test-wiring-allowlist.txt (the allowlist must be "
-                f"sized to EXACTLY the still-unwired STRIP set)."
-            )
+    if problems:
         return
 
     ok(
         f"Check 42 — {len(disk_paths)} test script(s) on disk; "
-        f"{len(allowlist)} allowlisted (intentionally-OUT); "
-        f"{len(disk_keep_set)} KEEP; {len(wired_set)} wired in workflow; "
-        f"disk_KEEP_set == wired_set. CI workflow wiring is complete."
+        f"{len(allowlist)} allowlisted (intentionally-OUT, all valid: "
+        f"exist + glob-shaped); {len(disk_keep_set)} KEEP (non-empty, "
+        f"partitionable). The CI matrix is disk-derived at run time "
+        f"(ci-shard-plan.py --emit-matrix); the allowlist is valid + bounded."
+    )
+
+
+# ── Check 61: fixture-dependent test location backstop (BD-219 redesign) ────
+#
+# The BD-219 dynamic-autoregen redesign uses LOCATION-based fixture cohesion:
+# a test that depends on a BUILT fixture (test-fixtures/<name>/, a gitignored
+# build artifact) MUST live under scripts/tests/fixture-dependent/, so the
+# partitioner auto-pins it into the single shard that builds fixtures. A
+# fixture-dependent test SAVED ELSEWHERE would land in a non-fixture shard and
+# either redden CI (loud) or silently SKIP (effectiveness loss). This backstop
+# converts "saved in the wrong dir" from a silent-SKIP / CI-RED surprise into a
+# named, early, fix-recipe'd guard hit.
+#
+# Signal (H2 lower-bound, measure-then-bound): a KEEP test whose BODY references
+# a built `test-fixtures/<NAME>` path where NAME is a build.sh FIXTURE_NAMES
+# entry. False positives (a prose/comment mention that is NOT a real fixture
+# dependency) are designed to ZERO on the current tree by rewording the two
+# benign comment mentions (pack-help-test.sh, test-migrate-v10-to-v11-decompose.sh)
+# so they do not name a FIXTURE_NAMES fixture verbatim — Check 61 needs NO
+# exempt list. If a NEW non-fixture test legitimately must name a FIXTURE_NAMES
+# path in prose, reword the mention (the cheap, drift-free fix) rather than
+# widening this guard.
+
+
+def _load_fixture_names():
+    """Return the build.sh FIXTURE_NAMES set (the H2 backstop signal source).
+
+    Single source: parse the `readonly FIXTURE_NAMES=( ... )` array in
+    test-fixtures/build.sh. Returns an empty set if the file or array is absent
+    (the caller treats an empty set as "no signal" → lenient SKIP).
+    """
+    build_sh = REPO_ROOT / "test-fixtures" / "build.sh"
+    if not build_sh.is_file():
+        return set()
+    text = build_sh.read_text()
+    m = re.search(r"readonly\s+FIXTURE_NAMES=\((.*?)\)", text, re.DOTALL)
+    if not m:
+        return set()
+    return set(re.findall(r'"([^"]+)"', m.group(1)))
+
+
+def check_fixture_dependent_location() -> None:
+    """Check 61 — fixture-dependent tests live under fixture-dependent/ (BD-219).
+
+    BD-219 dynamic-autoregen redesign backstop. Fixture cohesion is LOCATION-
+    based: a test that depends on a built fixture MUST live under
+    scripts/tests/fixture-dependent/ (the partitioner pins everything there into
+    the single fixture-building shard). This guard catches a fixture-dependent
+    test saved in the WRONG directory before it can ship as a silent-SKIP or a
+    CI-RED surprise.
+
+    For each KEEP test (disk glob − allowlist) whose BODY references a built
+    `test-fixtures/<NAME>` path (NAME ∈ build.sh FIXTURE_NAMES) AND is NOT under
+    scripts/tests/fixture-dependent/ → FAIL naming the file + the remediation
+    "move it to scripts/tests/fixture-dependent/".
+
+    False-positive bound (measure-then-bound): the only NON-fixture-dependent
+    tests that name a FIXTURE_NAMES path do so in benign comments; those
+    comments are reworded in the same commit so this guard has ZERO false
+    positives and needs NO exempt list. The 5 genuinely-fixture-dependent tests
+    live under fixture-dependent/ and so do NOT trigger the backstop.
+
+    Cheap (ci-check-runtime-compounding): three dir globs + one small read +
+    one regex per KEEP file (same cost class as Check 42); no subprocess, no
+    real-tree scan. Routes through `run_check`.
+
+    Lenient: if build.sh / FIXTURE_NAMES is absent (no signal) → SKIP.
+    """
+    print("\n── Check 61: fixture-dependent tests live under fixture-dependent/ (BD-219) ──")
+    scripts_dir = REPO_ROOT / "scripts"
+    tests_dir = scripts_dir / "tests"
+    fxdep_dir = tests_dir / "fixture-dependent"
+    allowlist_path = scripts_dir / "ci-test-wiring-allowlist.txt"
+
+    fixture_names = _load_fixture_names()
+    if not fixture_names:
+        ok("test-fixtures/build.sh FIXTURE_NAMES absent — skipping (lenient)")
+        return
+
+    # Disk KEEP set — same three explicit non-recursive dirs as Check 42.
+    disk_paths = set()
+    for p in scripts_dir.glob("test*.sh"):
+        disk_paths.add(f"scripts/{p.name}")
+    if tests_dir.is_dir():
+        for p in tests_dir.glob("*.sh"):
+            disk_paths.add(f"scripts/tests/{p.name}")
+    if fxdep_dir.is_dir():
+        for p in fxdep_dir.glob("*.sh"):
+            disk_paths.add(f"scripts/tests/fixture-dependent/{p.name}")
+    if not disk_paths:
+        ok("no scripts/test*.sh or scripts/tests/*.sh present — skipping (lenient)")
+        return
+
+    allowlist = set()
+    if allowlist_path.is_file():
+        for raw in allowlist_path.read_text().splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            allowlist.add(line.split()[0])
+    keep = sorted(disk_paths - allowlist)
+
+    # H2 signal: a body reference to test-fixtures/<NAME> for a FIXTURE_NAMES
+    # NAME. Anchor the path so a bare `test-fixtures/manifest.txt` or
+    # `test-fixtures/<non-FIXTURE_NAMES>/` does not match.
+    names_alt = "|".join(re.escape(n) for n in sorted(fixture_names))
+    signal = re.compile(r"test-fixtures/(?:" + names_alt + r")(?:[/\"' ]|$)")
+
+    prefix = "scripts/tests/fixture-dependent/"
+    misplaced = []
+    for rel in keep:
+        if rel.startswith(prefix):
+            continue  # correctly placed — location is the cohesion signal
+        try:
+            body = (REPO_ROOT / rel).read_text()
+        except OSError:
+            continue
+        if signal.search(body):
+            misplaced.append(rel)
+
+    if misplaced:
+        for rel in misplaced:
+            fail(
+                f"{rel} — references a built fixture (test-fixtures/<FIXTURE_NAME>) "
+                f"but is NOT under scripts/tests/fixture-dependent/. The BD-219 "
+                f"CI partitioner uses LOCATION-based fixture cohesion: a "
+                f"fixture-dependent test MUST live under "
+                f"scripts/tests/fixture-dependent/ so it is pinned into the "
+                f"single shard that builds fixtures. Remediation: move it to "
+                f"scripts/tests/fixture-dependent/ (and fix its `../` repo-root "
+                f"depth). If the reference is a benign prose/comment mention "
+                f"(NOT a real fixture dependency), reword the comment so it does "
+                f"not name a FIXTURE_NAMES fixture verbatim."
+            )
+        return
+
+    ok(
+        f"Check 61 — {len(keep)} KEEP test(s) scanned; every test that "
+        f"references a built fixture lives under scripts/tests/fixture-dependent/"
+        f" (location-based cohesion intact; zero misplaced fixture tests)."
     )
 
 
@@ -6949,25 +7091,28 @@ def check_check_registry_completeness() -> None:
 def check_ci_shard_coverage() -> None:
     """Check 60 — CI shard partition covers the wired set (BD-219 mirror).
 
-    BD-219 C3 (design §6.3). The AUTHORITATIVE run-time coverage assertion
-    lives in the C2 `tests-result` aggregation JOB (once per CI run). This is
-    the convenience MIRROR: a thin validate-pack check that sub-invokes
-    `scripts/lib/ci-shard-plan.py --assert-coverage` so a developer running
-    `validate-pack` locally surfaces shard-coverage drift without pushing.
+    BD-219 C3 (design §6.3); BD-219 redesign repoints the source to disk. The
+    AUTHORITATIVE run-time coverage assertion lives in the `tests-result`
+    aggregation JOB (once per CI run). This is the convenience MIRROR: a thin
+    validate-pack check that sub-invokes `scripts/lib/ci-shard-plan.py
+    --assert-coverage` so a developer running `validate-pack` locally surfaces
+    shard-coverage drift without pushing.
 
-    `--assert-coverage` exits 0 iff `union(shards) == wired_KEEP_set`, shards
-    pairwise-disjoint, and the fixture cohesion group is co-located in one
-    shard.
+    `--assert-coverage` exits 0 iff `union(shards) == wired_KEEP_set` (the
+    DISK-derived KEEP set — BD-219 redesign; no static yml include array), shards
+    pairwise-disjoint, and the fixture cohesion set (tests under
+    scripts/tests/fixture-dependent/ — LOCATION-based cohesion) is co-located in
+    one shard.
 
     Cheap (ci-check-runtime-compounding): ONE sub-invocation of a stdlib-only
-    module that reads three small committed files (the yml, the weights TSV,
-    the allowlist) — NOT a subprocess-per-script and NOT a real-tree scan.
-    The heavier assertion is NOT duplicated onto the ~24-spawn battery path:
-    this is a single bounded subprocess routed through `run_check` (per-check
-    WARN budget catches a regression).
+    module that globs the test dirs and reads two small committed files (the
+    weights TSV + the allowlist) — NOT a subprocess-per-script and NOT a
+    real-tree scan. The heavier assertion is NOT duplicated onto the ~24-spawn
+    battery path: this is a single bounded subprocess routed through `run_check`
+    (per-check WARN budget catches a regression).
 
     Lenient: if the shard-plan module is absent, SKIP (the module is the
-    BD-219 C3 deliverable; absence at a pre-BD-219 HEAD is not a failure).
+    BD-219 deliverable; absence at a pre-BD-219 HEAD is not a failure).
     """
     print("\n── Check 60: CI shard partition covers the wired set (BD-219) ──")
     module_path = REPO_ROOT / "scripts" / "lib" / "ci-shard-plan.py"
@@ -9688,12 +9833,12 @@ def _build_check_registry():
         # the inventory-drift gate runs before Check 43's class-test gate.
         # Per ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md §1.1-§1.12.
         (43, "check_project_side_bare_internal_refs", check_project_side_bare_internal_refs, W),
-        # ── BD-184 / BD-219: CI workflow wires every CI-eligible test.
-        # Set-equality gate `disk_KEEP_set == wired_set` over the full
-        # CI-eligible test set (BD-219 generalized from BD-184's original
-        # per-check subset). Closes the "missing test wiring" gap class
-        # permanently. Lands LAST in main() because it gates a CI
-        # infrastructure invariant rather than any single pack-product
+        # ── BD-184 / BD-219 redesign: CI test-wiring allowlist is valid +
+        # bounded. RE-SCOPED — the CI matrix is now disk-derived at run time
+        # (the `plan` job's --emit-matrix), so the old `disk_KEEP_set ==
+        # wired_set` equality is a tautology; Check 42 now asserts allowlist
+        # validity (exist + glob-shaped) + KEEP partitionability. Lands at
+        # the CI-infra end of main() rather than any single pack-product
         # surface; logical position is end-of-list (mirrors Check 41's
         # end-of-list landing for the adjacent BD-180 inventory gate).
         (42, "check_ci_workflow_wires_per_check_tests", check_ci_workflow_wires_per_check_tests, W),
@@ -9846,8 +9991,15 @@ def _build_check_registry():
               check_check_registry_completeness, W),
         # Check 60 — CI shard partition covers the wired set (the convenience
         # validate-pack mirror of ci-shard-plan.py --assert-coverage; the
-        # authoritative run-time assertion is the C2 tests-result job).
+        # authoritative run-time assertion is the tests-result job).
         (60, "check_ci_shard_coverage", check_ci_shard_coverage, W),
+        # Check 61 — fixture-dependent test location backstop (BD-219 dynamic-
+        # autoregen redesign): a test that references a built fixture but is NOT
+        # under scripts/tests/fixture-dependent/ fails loud with a "move it"
+        # remediation. Lands at the end of the registry alongside the adjacent
+        # CI-infra guards (42/58/59/60).
+        (61, "check_fixture_dependent_location",
+              check_fixture_dependent_location, W),
     ]
 
 

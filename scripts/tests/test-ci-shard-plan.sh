@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
-# scripts/tests/test-ci-shard-plan.sh — BD-219 C3 tests for the single-source
-# CI shard partition module scripts/lib/ci-shard-plan.py.
+# scripts/tests/test-ci-shard-plan.sh — tests for the single-source CI shard
+# partition module scripts/lib/ci-shard-plan.py.
+#
+# BD-219 dynamic-autoregen redesign: the wired set is DISK-derived
+# (parse_wired_tests() globs three explicit dirs minus the allowlist) and
+# fixture cohesion is LOCATION-based (detect_fixture_dependent() = tests under
+# scripts/tests/fixture-dependent/). There is no static yml include array and no
+# FIXTURE_COHESION_GROUP frozenset.
 #
 # Covers: --emit-matrix (valid JSON, N shards, non-empty, full coverage),
 # --assert-coverage (exit 0 on real state; FAIL when a script lands in no
-# shard / in two shards / cohesion group split), --shard N --needs-fixtures
-# (exactly the fixture-owning shard returns true), graceful degradation on a
-# missing/unknown weight, and the parse-equivalence with Check 42's wired-set
-# parse.
+# shard / in two shards / cohesion split), --shard N --needs-fixtures (exactly
+# the fixture-owning shard returns true), graceful degradation on a
+# missing/unknown weight, the disk-source parse-equivalence with Check 42's disk
+# glob, and the location-based detect_fixture_dependent() measure-then-bound
+# proof (exactly the relocated fixture-dependent tests, no more/less).
 #
 # Usage: bash scripts/tests/test-ci-shard-plan.sh
 
@@ -147,13 +154,13 @@ rc = csp.cmd_assert_coverage(4)
 if rc == 0:
     errs.append("(b) duplicated-script partition unexpectedly PASSED --assert-coverage")
 
-# (c) cohesion group split across two shards.
+# (c) cohesion set split across two shards (location-based detection).
 def split_cohesion(wired, allowlist, weights, n):
     shards = orig(wired, allowlist, weights, n)
-    # find a cohesion member and move it to a different shard
+    # find a fixture-dependent test (location-based) and move it elsewhere
     for i, sc in enumerate(shards):
         for s in list(sc):
-            if csp._basename(s) in csp.FIXTURE_COHESION_GROUP:
+            if csp.detect_fixture_dependent([s]):
                 target = (i + 1) % n
                 sc.remove(s); shards[target].append(s)
                 return shards
@@ -227,28 +234,37 @@ case $? in
 esac
 
 # ─────────────────────────────────────────────────────────────────
-# Group 6: parse equivalence with Check 42's wired-set parse
+# Group 6: disk-source equivalence with Check 42's disk glob
 # ─────────────────────────────────────────────────────────────────
-printf "\n=== Group 6: wired-set parse equivalence with Check 42 ===\n"
+printf "\n=== Group 6: disk-source equivalence with Check 42 ===\n"
 REPO_ROOT="$REPO_ROOT" python3 <<'EOF'
-import os, sys, re, pathlib
+import os, sys, pathlib
 import importlib.util
 root = os.environ['REPO_ROOT']
 spec = importlib.util.spec_from_file_location("csp", root + "/scripts/lib/ci-shard-plan.py")
 csp = importlib.util.module_from_spec(spec); spec.loader.exec_module(csp)
-wf = pathlib.Path(root) / ".github" / "workflows" / "validate-pack.yml"
-text = wf.read_text()
-csp_wired = set(csp.parse_wired_tests(text))
-# BD-219 C2: Check 42 uses the SAME extraction — harvest scripts/...sh tokens
-# from the `tests`-job matrix.include[].scripts strings (the static partition
-# is the wired-set SSOT; there are no more `run: bash` test runners).
-scripts_line = re.compile(r"^\s*scripts:\s*(.+)$")
-token = re.compile(r"scripts/[^\s\"']+\.sh")
-c42 = set()
-for ln in text.splitlines():
-    m = scripts_line.match(ln)
-    if m:
-        c42.update(token.findall(m.group(1)))
+# BD-219 redesign: the wired set is DISK-derived (no yml arg). Check 42 globs
+# the SAME three explicit non-recursive dirs minus the allowlist. Compute that
+# disk KEEP set here and assert it equals parse_wired_tests() — single source
+# of truth = disk; the inert scripts/tests/fixtures/ data tree is never swept in.
+csp_wired = set(csp.parse_wired_tests())
+scripts_dir = pathlib.Path(root) / "scripts"
+tests_dir = scripts_dir / "tests"
+fxdep_dir = tests_dir / "fixture-dependent"
+disk = set()
+for p in scripts_dir.glob("test*.sh"):
+    disk.add("scripts/" + p.name)
+for p in tests_dir.glob("*.sh"):
+    disk.add("scripts/tests/" + p.name)
+for p in fxdep_dir.glob("*.sh"):
+    disk.add("scripts/tests/fixture-dependent/" + p.name)
+c42 = disk - csp.load_allowlist()
+# Guard: no inert data file from scripts/tests/fixtures/ leaked into either set.
+leaked = sorted(p for p in (csp_wired | c42) if "/tests/fixtures/" in p)
+if leaked:
+    print("FAILURES")
+    print("  inert data-dir files wrongly wired:", leaked)
+    sys.exit(1)
 if csp_wired != c42:
     print("FAILURES")
     print("  csp-only:", sorted(csp_wired - c42))
@@ -257,8 +273,46 @@ if csp_wired != c42:
 print("OK count=%d" % len(csp_wired))
 EOF
 case $? in
-    0) t_pass "ci-shard-plan wired-set parse == Check 42 wired-set parse (single source of truth)" ;;
-    *) t_fail "wired-set parse divergence between ci-shard-plan and Check 42" ;;
+    0) t_pass "ci-shard-plan disk wired-set == Check 42 disk glob (single source = disk; no fixtures/ data leak)" ;;
+    *) t_fail "disk-source divergence between ci-shard-plan and Check 42 (or fixtures/ data leak)" ;;
+esac
+
+# ─────────────────────────────────────────────────────────────────
+# Group 7: location-based detect_fixture_dependent() measure-then-bound
+# ─────────────────────────────────────────────────────────────────
+printf "\n=== Group 7: detect_fixture_dependent() == the fixture-dependent/ subdir ===\n"
+REPO_ROOT="$REPO_ROOT" python3 <<'EOF'
+import os, sys, pathlib
+import importlib.util
+root = os.environ['REPO_ROOT']
+spec = importlib.util.spec_from_file_location("csp", root + "/scripts/lib/ci-shard-plan.py")
+csp = importlib.util.module_from_spec(spec); spec.loader.exec_module(csp)
+keep = csp.parse_wired_tests()
+detected = set(csp.detect_fixture_dependent(keep))
+# Ground truth: exactly the *.sh files physically under fixture-dependent/
+# that are also in the KEEP set (none are allowlisted today).
+fxdep_dir = pathlib.Path(root) / "scripts" / "tests" / "fixture-dependent"
+on_disk = set("scripts/tests/fixture-dependent/" + p.name
+              for p in fxdep_dir.glob("*.sh")) & set(keep)
+errs = []
+# No false positive: every detected path is under fixture-dependent/.
+for p in detected:
+    if not p.startswith("scripts/tests/fixture-dependent/"):
+        errs.append("false positive (not under fixture-dependent/): " + p)
+# Exact match: detected == on-disk fixture-dependent/ KEEP set.
+if detected != on_disk:
+    errs.append("missing (FN): %s" % sorted(on_disk - detected))
+    errs.append("extra (FP): %s" % sorted(detected - on_disk))
+# Non-empty sanity (the redesign relocates 5 tests; never silently zero).
+if not detected:
+    errs.append("detect_fixture_dependent returned EMPTY (expected the relocated tests)")
+if errs:
+    print("FAILURES"); [print(" ", e) for e in errs]; sys.exit(1)
+print("OK count=%d" % len(detected))
+EOF
+case $? in
+    0) t_pass "detect_fixture_dependent(keep) == exactly the scripts/tests/fixture-dependent/ KEEP tests (no FP/FN)" ;;
+    *) t_fail "detect_fixture_dependent location detection is not exactly the fixture-dependent/ subdir" ;;
 esac
 
 # ─────────────────────────────────────────────────────────────────

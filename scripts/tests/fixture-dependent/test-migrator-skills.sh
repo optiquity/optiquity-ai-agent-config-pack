@@ -57,7 +57,9 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PACK_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# scripts/tests/fixture-dependent/ → pack root is three levels up (BD-219
+# location-based fixture cohesion).
+PACK_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 # ── BD-163 — fixture-precondition helper ───────────────────────────────
 # Verifies that `test-fixtures/<name>/` exists AND has been built (per

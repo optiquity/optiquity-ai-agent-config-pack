@@ -203,6 +203,30 @@ Allowed and recommended:
 - `set -uo pipefail` (skip `-e` so individual assertion failures
   accumulate instead of aborting).
 
+## Where a test runner lives (CI auto-discovery + fixture placement)
+
+**Where a test runner lives.** A new pack test runner goes in
+`scripts/tests/` (or, for the legacy top-level set, `scripts/test*.sh`).
+CI **auto-discovers and shards** it — the `Validate Pack` workflow's
+`tests` job is a DYNAMIC matrix derived at CI time from disk by
+`scripts/lib/ci-shard-plan.py --emit-matrix` (BD-219). There is **no
+manual wiring step**: write the test, commit it, and it runs (sharded)
+on the next push. (A test that genuinely cannot run offline-
+deterministically in CI — a live-network/manual-only utility — is the
+rare exception: add it to `scripts/ci-test-wiring-allowlist.txt` with a
+one-line reason instead of leaving it unwired.)
+
+**Fixture-dependent tests go in a dedicated subdir.** A test that
+depends on a BUILT fixture (`test-fixtures/<name>/`, a gitignored build
+artifact) MUST live in **`scripts/tests/fixture-dependent/`**. The
+partitioner auto-pins everything in that subdir into the single shard
+that builds fixtures, so the fixture is present before the test runs.
+**Check 61** (`scripts/validate-pack.py`) enforces this: a fixture-
+dependent test placed anywhere else fails loud with a "move it to
+`scripts/tests/fixture-dependent/`" remediation. (Tests in that subdir
+sit one level deeper, so compute the repo root with the matching `../`
+depth — see the relocated examples there.)
+
 ## When to extend an existing script vs. add a new one
 
 - Same target unit / same surface → extend the existing script.

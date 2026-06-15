@@ -53,11 +53,12 @@
 #         naming "force-overwrite-mirror"). Same contract that
 #         test-per-entry.sh Group 8 relies on.
 #
-# Build-your-own fixture: the in-tree test-fixtures/v10-realistic-ot/
-# does not have docs/project/*.md files (per IMPL-REPORT-BD-165 §7.2);
-# this runner synthesizes the minimum v10-shape fixture with the
-# requisite docs/project/{BACKLOG,IMPLEMENTATION-PLAN,CHANGELOG}.md
-# content directly under /tmp.
+# Build-your-own fixture: the in-tree v10-realistic-ot build artifact
+# (under test-fixtures/) does not have docs/project/*.md files (per
+# IMPL-REPORT-BD-165 §7.2); this runner synthesizes the minimum v10-shape
+# fixture with the requisite
+# docs/project/{BACKLOG,IMPLEMENTATION-PLAN,CHANGELOG}.md content directly
+# under /tmp. It is NOT fixture-dependent — it builds its own under /tmp.
 #
 # Bash 3.2 + macOS BSD utility compatible. NO associative arrays, NO
 # `&>`, NO GNU-only flags.

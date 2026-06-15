@@ -15,7 +15,9 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# scripts/tests/fixture-dependent/ → repo root is three levels up (BD-219
+# location-based fixture cohesion).
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 ADD_CAP_SH="$REPO_ROOT/scripts/add-capability.sh"
 CAP_TABLES_SH="$REPO_ROOT/project-template/scripts/capability-tables.sh"
 FIXTURE="$REPO_ROOT/test-fixtures/v11-flat-file"

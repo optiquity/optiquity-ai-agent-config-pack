@@ -27,7 +27,10 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONTRACTS_DIR="$SCRIPT_DIR/persona-contracts"
+# scripts/tests/fixture-dependent/ → the shared persona-contracts dir stays at
+# scripts/persona-contracts/ (not moved); reach it two levels up (BD-219
+# location-based fixture cohesion).
+CONTRACTS_DIR="$SCRIPT_DIR/../../persona-contracts"
 
 if [[ ! -d "$CONTRACTS_DIR" ]]; then
     printf 'error: persona-contracts dir missing: %s\n' "$CONTRACTS_DIR" >&2

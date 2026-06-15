@@ -174,8 +174,9 @@ rm -rf "$TR_CLI2"
 # from the same source files); 2.2.c locks in the regression by
 # invoking pack-help.sh directly against the source-of-truth tree —
 # zero fixture-build dependency, zero temp-dir setup. BD-177 fix-pass-2
-# replaced the prior test-fixtures/v11-flat-file dependency, which
-# failed on CI runners where the fixture wasn't pre-built.
+# replaced the prior dependency on a built v11-flat-file fixture (under
+# test-fixtures/), which failed on CI runners where the fixture wasn't
+# pre-built. This test is NOT fixture-dependent (no built fixture is read).
 output=$(bash "$REPO_ROOT/scripts/pack-help.sh" \
               --root "$REPO_ROOT/project-template" --surface client 2>/dev/null)
 [[ "$output" != *'[Included from `HELP-FRAGMENT-TRACKER.md`'* \
