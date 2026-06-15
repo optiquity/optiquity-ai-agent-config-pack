@@ -27,6 +27,7 @@
 - [BD-221](./BD-221.md) — Convert Gemini CLI support to Antigravity (full Gemini → Antigravity transition)
 - [BD-222](./BD-222.md) — Standing CI guard against CI-environment-fragile wired tests (hardcoded dev paths / un-shimmed live-`gh` / double-zero antipattern)
 - [BD-223](./BD-223.md) — Ship a committed (public) test-fixtures suite + a separate private gitignored suite
+- [BD-224](./BD-224.md) — Expand the `/pack-*` slash-command set + improve `/pack-help` coverage (brainstorm-gated)
 
 ## Deferred
 
