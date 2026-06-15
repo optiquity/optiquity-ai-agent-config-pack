@@ -193,7 +193,7 @@ esac
 # ─────────────────────────────────────────────────────────────────
 printf "\n=== Group 2: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
-if python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check53-e2e.out 2>&1; then
+if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 53 > /tmp/vp-check53-e2e.out 2>&1; then
     if grep -q "Check 53: BD-197 worktree-isolation prohibition flip-block" /tmp/vp-check53-e2e.out \
        && grep -q "Check 53 (Guard-A) — worktree-isolation prohibition stays removed" /tmp/vp-check53-e2e.out; then
         t_pass "validate-pack.py exits 0; Check 53 runs and reports prohibition-stays-removed clean at HEAD"

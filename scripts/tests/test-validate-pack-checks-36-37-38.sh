@@ -659,7 +659,7 @@ elif skip != {3}:
 #   no false-positive failures from outside-fence prose).
 import subprocess
 result = subprocess.run(
-    ['python3', '$REPO_ROOT/scripts/validate-pack.py'],
+    ['python3', '$REPO_ROOT/scripts/validate-pack.py', '--only-check', '37'],
     capture_output=True, text=True,
 )
 if result.returncode != 0:

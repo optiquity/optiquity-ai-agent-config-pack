@@ -120,7 +120,7 @@ esac
 # ─────────────────────────────────────────────────────────────────
 printf "\n=== Group 2: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
-if python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check50-e2e.out 2>&1; then
+if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 50 > /tmp/vp-check50-e2e.out 2>&1; then
     if grep -q "Check 50: OQ-4 single-source codec guard" /tmp/vp-check50-e2e.out \
        && grep -q "Check 50 — no reproduced gz64/base64 codec" /tmp/vp-check50-e2e.out; then
         t_pass "validate-pack.py exits 0; Check 50 runs and reports no reproduced codec at HEAD"

@@ -762,7 +762,7 @@ esac
 
 printf "\n=== Group 7: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
-if python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check40-e2e.out 2>&1; then
+if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 40 > /tmp/vp-check40-e2e.out 2>&1; then
     if grep -q "Check 40: pack-ops/ bare cross-reference scanner" /tmp/vp-check40-e2e.out \
        && grep -q "Check 40 — .* pack-ops/\\*\\.md file(s) walked" /tmp/vp-check40-e2e.out; then
         t_pass "validate-pack.py exits 0; Check 40 runs and reports clean"

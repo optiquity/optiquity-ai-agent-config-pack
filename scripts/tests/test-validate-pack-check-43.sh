@@ -600,7 +600,7 @@ esac
 
 printf "\n=== Group 6: End-to-end validate-pack.py — Check 43 ran ===\n"
 
-python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check43-e2e.out 2>&1 || true
+python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 43 > /tmp/vp-check43-e2e.out 2>&1 || true
 if grep -q "Check 43: Project-side bare cross-reference scanner" /tmp/vp-check43-e2e.out; then
     t_pass "validate-pack.py runs; Check 43 executes (PG-2 red-by-design tolerated)"
 else

@@ -259,7 +259,7 @@ esac
 # ─────────────────────────────────────────────────────────────────
 printf "\n=== Group 2: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
-if python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check55-e2e.out 2>&1; then
+if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 55 > /tmp/vp-check55-e2e.out 2>&1; then
     if grep -q "Check 55: BD-197 project RW/RO two-class consistency" /tmp/vp-check55-e2e.out \
        && grep -q "Check 55 — project RW/RO two-class set-equality holds" /tmp/vp-check55-e2e.out; then
         t_pass "validate-pack.py exits 0; Check 55 runs and reports set-equality clean at HEAD"

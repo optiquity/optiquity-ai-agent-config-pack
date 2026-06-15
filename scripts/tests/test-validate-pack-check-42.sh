@@ -435,7 +435,7 @@ esac
 
 printf "\n=== Group 3: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
-if python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check42-e2e.out 2>&1; then
+if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 42 > /tmp/vp-check42-e2e.out 2>&1; then
     if grep -q "Check 42: CI workflow wires all per-check test files" /tmp/vp-check42-e2e.out \
        && grep -qE "Check 42 — [0-9]+ per-check test file" /tmp/vp-check42-e2e.out \
        && grep -q "CI workflow wiring is complete" /tmp/vp-check42-e2e.out; then

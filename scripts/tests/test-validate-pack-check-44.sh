@@ -223,7 +223,7 @@ esac
 
 printf "\n=== Group 2: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
-if python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check44-e2e.out 2>&1; then
+if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 44 > /tmp/vp-check44-e2e.out 2>&1; then
     if grep -q "Check 44: M4 durable-doc concision gate" /tmp/vp-check44-e2e.out \
        && grep -q "Check 44 — .* durable doc(s) scanned; 0 forbidden pattern(s) outside the allowlist" /tmp/vp-check44-e2e.out; then
         t_pass "validate-pack.py exits 0; Check 44 runs clean (0 forbidden outside allowlist) at HEAD"

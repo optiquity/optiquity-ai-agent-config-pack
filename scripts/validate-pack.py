@@ -9335,260 +9335,352 @@ def check_project_destructive_git_verb_parity() -> None:
 
 # ── Main ────────────────────────────────────────────────────────────────────
 
-def main() -> None:
+def _build_check_registry():
+    """Build the ordered CHECK_REGISTRY: the SINGLE source of the full-run
+    check sequence AND the `--only-check` selector's resolution target.
+
+    Each entry is a 4-tuple `(number, label, fn, budget_s)`:
+      - `number`: the integer "Check N" the check prints in its banner, or
+        `None` for the two historically-unnumbered checks
+        (`check_issue_template_forms`, `check_template_archive_v11`, whose
+        banners read `── Check: … ──`). A `number` is NOT unique — Checks
+        16/18/19 each register TWICE (project-template + pack-root surfaces),
+        so an integer selector matches BOTH entries of that number (preserving
+        the "both invocations execute" per-check test assertions).
+      - `label`: the existing `run_check` timing label (unique).
+      - `fn`: a zero-arg callable (arg-bearing checks wrap in a named lambda so
+        the timing label stays meaningful).
+      - `budget_s`: the per-check WARN budget (defaults to the standard
+        per-check budget; Check 49's deep faithfulness leg keeps its larger
+        budget).
+
+    The order is the full-run execution order (preserving per-check WARN timing
+    + landing-order rationale documented inline below). `main()` iterates this
+    registry for the no-flag full run, and resolves `--only-check` against it.
+    Introduced by BD-219 C1 (the `--only-check` selector + a future C3 registry-
+    completeness guard share this one source). Numbers are documented by the
+    per-check banners, not hard-coded elsewhere.
+    """
+    W = RUN_CHECK_PER_CHECK_WARN_BUDGET_S
+    # ── BD-204 §4.7: EVERY check routes through `run_check` (the runtime-
+    # budget TIMING HARNESS) when dispatched. A per-check overrun WARNs; the
+    # TOTAL-RUN budget is enforced as a hard FAIL at the END of main() (general
+    # path only, no-flag full run). Arg-bearing checks (trinity 16/18/19) wrap
+    # in a named lambda so the timing label stays meaningful.
+    return [
+        (1, "check_skill_frontmatter", check_skill_frontmatter, W),
+        (2, "check_codex_toml", check_codex_toml, W),
+        (3, "check_td_tbd_sentinels", check_td_tbd_sentinels, W),
+        (4, "check_readme_version", check_readme_version, W),
+        (5, "check_agent_count", check_agent_count, W),
+        (6, "check_prompts_directory", check_prompts_directory, W),
+        (7, "check_pack_agent_roster", check_pack_agent_roster, W),
+        (8, "check_reserved_x_prefix", check_reserved_x_prefix, W),
+        (9, "check_init_project_structure", check_init_project_structure, W),
+        (10, "check_prompt_triad_compliance", check_prompt_triad_compliance, W),
+        (11, "check_pack_agent_trinity", check_pack_agent_trinity, W),
+        # Checks 12, 13, 14, 15 retired in v11 (BD-121, v9 sunset) — see
+        # comment block at the function definitions above.
+        (17, "check_tool_config_capability_parity", check_tool_config_capability_parity, W),
+        # ── BD-183: Check 16 generalized with (trinity_root, label). Both
+        # invocations run; pack-root short-circuits via the per-surface
+        # exemption mechanism (`_CHECK_16_EXEMPT_SURFACES`) because Check 16
+        # enforces template-only `## Project addenda` H2 infrastructure tied
+        # to Procedure 5-C.2 client reconciliation, which has no purpose at
+        # the non-reconciled pack-root surface. Exemption was BD-183 §2.4
+        # Option (b), user-approved 2026-05-21. Per Override 9, both
+        # invocations are independent. (Both register under number 16 — an
+        # integer `--only-check 16` selects BOTH.)
+        (16, "check_trinity_addenda_h2[project-template]",
+              lambda: check_trinity_addenda_h2(REPO_ROOT / "project-template", "project-template"), W),
+        (16, "check_trinity_addenda_h2[pack-root]",
+              lambda: check_trinity_addenda_h2(REPO_ROOT, "pack-root"), W),
+        # ── BD-181: Check 18 H2 parity runs INDEPENDENTLY at each trinity
+        # location. Per Override 9 compliance: pack-root and project-template
+        # trinity carry different audiences and different rules by design
+        # (per pack-root trinity § Rules → Trinity rule note paragraph).
+        # Each invocation enforces byte parity WITHIN its own trinity
+        # location only; there is NO cross-location parity gate.
+        (18, "check_trinity_h2_parity[project-template]",
+              lambda: check_trinity_h2_parity(REPO_ROOT / "project-template", "project-template"), W),
+        (18, "check_trinity_h2_parity[pack-root]",
+              lambda: check_trinity_h2_parity(REPO_ROOT, "pack-root"), W),
+        # ── BD-183: Check 19 generalized with (trinity_root, label). Empirical
+        # pre-check at HEAD confirms pack-root trinity PASSES Check 19 (zero
+        # HTML comments at pack-root → zero scaffolding to find). Both
+        # invocations run independently per Override 9 — within-trinity
+        # parity at each location; no cross-location coupling.
+        (19, "check_trinity_no_scaffolding_comments[project-template]",
+              lambda: check_trinity_no_scaffolding_comments(REPO_ROOT / "project-template", "project-template"), W),
+        (19, "check_trinity_no_scaffolding_comments[pack-root]",
+              lambda: check_trinity_no_scaffolding_comments(REPO_ROOT, "pack-root"), W),
+        (20, "check_gitignore_env_example_exception", check_gitignore_env_example_exception, W),
+        # The next two checks print an UNNUMBERED banner (`── Check: … ──`), so
+        # they carry `number=None` — selectable by label only, never by integer.
+        (None, "check_issue_template_forms", check_issue_template_forms, W),
+        (None, "check_template_archive_v11", check_template_archive_v11, W),
+        (21, "check_pack_help_per_cli_parity", check_pack_help_per_cli_parity, W),
+        (22, "check_help_fragment_freshness", check_help_fragment_freshness, W),
+        (23, "check_help_fragment_completeness", check_help_fragment_completeness, W),
+        # ── Check 24 callsite removed in BD-194 (Candidate 6). See
+        # ARCHITECTURE-BD-194.md §4-§5 + the retirement comment block above
+        # the former check_help_fragment_tracker_byte_identity location.
+        (25, "check_customization_detection_regression_guard", check_customization_detection_regression_guard, W),
+        (26, "check_migrator_framework_inventory", check_migrator_framework_inventory, W),
+        (27, "check_agent_canonical_phrases", check_agent_canonical_phrases, W),
+        (28, "check_pm_startup_per_cli_parity", check_pm_startup_per_cli_parity, W),
+        (29, "check_tracker_config", check_tracker_config, W),
+        (30, "check_recommendation_state_schema", check_recommendation_state_schema, W),
+        (31, "check_skill_cell_consistency", check_skill_cell_consistency, W),
+        # ── BD-168 (Batch 19, Commit 19e): per-entry split validators. ──
+        # Order: 32 (mirror-in-sync) → 33 (TOC-in-sync) → 34 (cross-refs).
+        # Per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10. Each SKIPs
+        # gracefully when the per-entry tree is absent (pre-BD-102
+        # dog-food pack-self / pre-v11.0 client).
+        (32, "check_mirror_in_sync", check_mirror_in_sync, W),
+        (33, "check_toc_in_sync", check_toc_in_sync, W),
+        (34, "check_cross_reference_integrity", check_cross_reference_integrity, W),
+        (35, "check_tracker_phase_task_invariants", check_tracker_phase_task_invariants, W),
+        # ── BD-175 Commit 12 (Architect C M5a/b/c): pack/project boundary
+        # prevention. Order: 36 (commit-scope honesty) → 37 (project-side
+        # deny-list) → 38 (pack-only-file siting). Check 37 lands LAST in
+        # the boundary trio per C §13 bootstrap-incompatibility note — the
+        # 17 §D-9 contamination refs from audit must be resolved by Commits
+        # 4-9 before Check 37 is enabled, otherwise Check 37 FAILs at HEAD.
+        (36, "check_commit_scope_honesty", check_commit_scope_honesty, W),
+        (37, "check_project_side_deny_list", check_project_side_deny_list, W),
+        (38, "check_pack_only_file_siting", check_pack_only_file_siting, W),
+        # ── BD-175 F2a: cmd_update mapping/glob symmetry. Lands AFTER
+        # the M5a/b/c boundary trio so the boundary-prevention surface is
+        # complete before the install-coverage gate runs.
+        (39, "check_cmd_update_symmetry", check_cmd_update_symmetry, W),
+        # ── BD-179: pack-ops/ bare cross-reference scanner. Lands AFTER
+        # the M5a/b/c boundary trio + Check 39 cmd_update symmetry so the
+        # directory-boundary + install-coverage gates run before Check 40's
+        # prose-cross-reference gate. Per ARCHITECTURE-BD-179.md §8.3, the
+        # BD-179 commit qualifies all current bare-ref hits in pack-ops/*.md
+        # so Check 40 PASSes at HEAD.
+        (40, "check_bare_pack_ops_refs", check_bare_pack_ops_refs, W),
+        # ── BD-180 observation G: _CLIENT_INSTALLED_FILES self-documenting
+        # list integrity per ARCHITECTURE-BD-176.md §5.3. Lands AFTER Check 39
+        # (the cmd_update parser is shared) and after Check 40 (independent
+        # surfaces) so the install-coverage + cross-reference gates run
+        # before the inventory-drift gate.
+        (41, "check_client_installed_files", check_client_installed_files, W),
+        # ── BD-173 H.14: project-side bare cross-reference scanner
+        # (V11 leak-sweep prevention; class-test counterpart to Check 37's
+        # name-enumeration). Lands AFTER Check 40 (independent surface)
+        # and AFTER Check 41 (reuses _parse_client_installed_files()) so
+        # the inventory-drift gate runs before Check 43's class-test gate.
+        # Per ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md §1.1-§1.12.
+        (43, "check_project_side_bare_internal_refs", check_project_side_bare_internal_refs, W),
+        # ── BD-184: CI workflow wires all per-check test files. Closes the
+        # "missing test wiring" gap class permanently — surfaced 5 times in
+        # the BD-175 batch alone (caught each time by reviewer attention).
+        # Lands LAST in main() because it gates a CI infrastructure invariant
+        # rather than any single pack-product surface; logical position is
+        # end-of-list (mirrors Check 41's end-of-list landing for the
+        # adjacent BD-180 inventory gate).
+        (42, "check_ci_workflow_wires_per_check_tests", check_ci_workflow_wires_per_check_tests, W),
+        # ── BD-196 (C3): pack-memory rule↔rationale bijection. Lands AFTER
+        # Check 42 (the CI-wiring infrastructure gate) because it is the
+        # newest standing check and the §5.2 bijection composes the same
+        # set-equality pattern as Check 32 over a distinct pair of surfaces
+        # (CLAUDE.md `## Pack memory` `[rationale:]` set vs
+        # pack-ops/PACK-MEMORY-RATIONALE.md `## <slug>` headings). Per
+        # ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §5.2.
+        (45, "check_pack_memory_rationale_bijection", check_pack_memory_rationale_bijection, W),
+        # ── BD-196 (C6): boundary + spawn-rule pointer manifests. Lands AFTER
+        # Check 45 (the adjacent BD-196 bijection gate) and composes the same
+        # reference-resolution pattern as Check 34 over the two pack-ops
+        # manifests (.boundary-pointer-manifest.txt + .spawn-rule-manifest.txt)
+        # plus the §9.6 SC7-bounded anti-restate substring scan. Per
+        # ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §4.3 + §9.6 and
+        # PLAN-DOC-CONCISION-GUARDRAILS.md §2 G-A (one combined function).
+        (46, "check_boundary_and_spawn_pointer_manifests", check_boundary_and_spawn_pointer_manifests, W),
+        # ── BD-196 (C10): M4 durable-doc concision gate. Lands AFTER Check 46
+        # (the adjacent BD-196 manifest gate) and is the LAST BD-196 check —
+        # the payoff the prior BD-196 commits (C4 reshaped BOUNDARY, C9
+        # reshaped the other 6 durable docs) prepared. M4 = forbidden-pattern
+        # count 0 OUTSIDE pack-ops/.concision-allowlist.txt (the teeth) +
+        # per-doc advisory length. Per ARCHITECTURE-DOC-CONCISION-
+        # GUARDRAILS.md §6 (M1-M4) + §7; PLAN-DOC-CONCISION-GUARDRAILS.md
+        # §3 C10.
+        (44, "check_durable_doc_concision", check_durable_doc_concision, W),
+        # ── BD-195 (C3d): sanctioned pack-side-shipped freeze. Lands LAST —
+        # it freezes the bounded dual-use-shipped-lib exception to exactly
+        # {detect.sh, pack-help.sh} and reuses _parse_client_installed_files()
+        # (shared with Checks 41/43), so it sits after the inventory + walk
+        # gates. Per ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.2.
+        (47, "check_sanctioned_pack_side_shipped", check_sanctioned_pack_side_shipped, W),
+        # ── BD-195 (C6): JC-5 soft-advisory removed-doc guard. Lands LAST —
+        # it is SOFT (WARN-only; never appends to `failures`, never changes
+        # the exit code) and scoped to the per-entry trees (`/backlog/` +
+        # `/changelog/` per BD-203 A12 `_REMOVED_DOC_SCAN_DIRS`, where the
+        # accurate-history citations relocated when the monoliths were
+        # deleted — no regenerated mirror under the no-mirror model), so it
+        # neither gates nor depends on any prior check. Per
+        # PLAN-BD-195-REMEDIATION.md §C6 / §2.3 (measure-then-bound JC-5).
+        (48, "check_removed_doc_advisory", check_removed_doc_advisory, W),
+        # ── BD-204 (C-4.6): migrator field/body faithfulness (DEEP-gated) +
+        # the OQ-4 single-source codec guard. Check 49 is the deep CI guard
+        # that fails a lossy/corrupting forward→reverse migration OR a body-
+        # limit/title breach; it is a ~0 ms SKIP unless PACK_VALIDATE_DEEP=1
+        # (§4.6 (P)), so the 151× general battery path is unaffected. The
+        # caller passes the REAL `/backlog/` tree as the explicit target
+        # (§4.6 (T): the caller chooses the target; there is NO internal
+        # `or REPO_ROOT/"backlog"` fallback in the check body). Check 50
+        # forbids a reproduced gz64/base64 codec in validate-pack.py — Check
+        # 49 sub-invokes the SHARED batch codec (§4.5, OQ-4). Check 49 keeps
+        # its larger deep-faithfulness per-check WARN budget.
+        (49, "check_migrator_field_faithfulness",
+              lambda: check_migrator_field_faithfulness(REPO_ROOT / "backlog"),
+              RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S),
+        (50, "check_validate_pack_no_reproduced_codec", check_validate_pack_no_reproduced_codec, W),
+        # ── BD-214 (C1): tracker-deferral flip-block guard. Lands LAST — it is
+        # the newest standing check, and its legs are cheap bounded greps over
+        # named files + the two per-entry trees (no whole-tree scan). C1 ships
+        # legs 1/2/4 only (the legs true at the C1 boundary); legs 3/5 land in
+        # C2/C3 with their fix-recipes per the incremental-leg ordering. Per
+        # ARCHITECTURE-BD-214-TRACKER-DEFERRAL.md §6.3 + PLAN-BD-214-TRACKER-
+        # DEFERRAL.md §4.
+        (51, "check_tracker_deferral_flip_block", check_tracker_deferral_flip_block, W),
+        # ── BD-197 (C3): pack RW/RO two-class consistency (Guard-B). A bounded
+        # single-pass set-equality between the PACK-AGENTS roster `Class` cells
+        # and the per-agent-file PROSE mandate headers (5 agents × 3 CLIs); binds
+        # to the prose header, never `tools:` (pack-reviewer Write/Edit-yet-RO).
+        # Per ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.2 + §4.3.
+        (52, "check_pack_rw_ro_two_class", check_pack_rw_ro_two_class, W),
+        # ── BD-197 (C5): worktree-isolation prohibition flip-block (Guard-A). A
+        # single in-process whole-tree walk asserting the REMOVED prohibition
+        # prose (`no worktree isolation` / `Do not pass ...isolation...worktree`)
+        # does not reappear in any active pack surface. Matcher keys on the
+        # prohibition signature ONLY — never the legitimate `baseRef`/`bgIsolation`
+        # keys (design §11.5 G-1/G-2). Allowlist = the two process/history doc
+        # dirs + the narrow validator self-skip + the single check-53 test
+        # (decision 1, Check-51 self-skip precedent). Per
+        # ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.1 + §11.5.
+        (53, "check_worktree_isolation_prohibition_flip_block",
+              check_worktree_isolation_prohibition_flip_block, W),
+        # ── BD-197 (C8b): OPTIONAL-FEATURES presence-check (Guard-A′). The POSITIVE
+        # inverse of Guard-A (Check 53): a bounded TWO-single-file pass asserting
+        # BOTH OPTIONAL-FEATURES surfaces (pack-ops/OPTIONAL-FEATURES.md from C5 +
+        # project-template/docs/pack/OPTIONAL-FEATURES.md from C8a) each mention the
+        # MANDATED three tokens — `baseRef`, `bgIsolation`, and the
+        # `permissions.deny` recipe token (user-approved 2026-06-14; BD-197 Note 14;
+        # design §13.1a / §18.4 — supersedes the design's earlier "optional" framing)
+        # — so the un-prohibited worktree-isolation feature + its in-session backstop
+        # recipe stay DOCUMENTED on both surfaces. Measure-then-bound: sized to
+        # exactly the 3 authored tokens × 2 files (the prose `isolation` param is NOT
+        # folded in — design §13.1a). GREEN on arrival (C5 + C8a authored the
+        # tokens). Check number 54. Per
+        # ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.1a + §11.5 gate (b).
+        (54, "check_optional_features_presence",
+              check_optional_features_presence, W),
+        # ── BD-197 (C5): destructive-git-verb enumeration parity (Guard-C). A
+        # bounded 10-single-file pass asserting the §5.1 canonical verb set + the
+        # catch-all principle phrase appear in every surface enumerating the
+        # agents-never-commit ban (trinity ×3, PACK-MEMORY-RATIONALE,
+        # commit-discipline ×3, pack-coder ×3). STANDALONE per decision 8 (folding
+        # into an existing parity check over-complicates — see the check's
+        # fold-vs-standalone comment block). Per
+        # ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.3 + §5.4.
+        (56, "check_destructive_git_verb_parity",
+              check_destructive_git_verb_parity, W),
+        # ── BD-197 (C6b): project RW/RO two-class consistency (Guard-B project).
+        # A bounded single-pass set-equality across the three project legs — the
+        # PM-CHAT `## Permission profiles` Read-only rows, the agent-run.sh
+        # READONLY_AGENTS array, and the per-agent-file PROSE mandate headers
+        # (16 agents × 3 CLIs); binds to the prose header, never `tools:` (project
+        # RO agents carry Write/Edit; Gemini files carry no `tools:`). The PROJECT
+        # analog of Guard-B(pack) (Check 52). Per ARCHITECTURE-BD-197-WORKTREE-
+        # ISOLATION-RECONCILED.md §13.2 + §4.3. Check number 55 (a non-contiguous
+        # gap relative to commit order is expected and tolerated; numbers ≠
+        # commit order).
+        (55, "check_project_rw_ro_two_class", check_project_rw_ro_two_class, W),
+        # ── BD-197 (C7b): PROJECT destructive-git-verb enumeration parity
+        # (Guard-C project). A bounded 52-single-file pass asserting the
+        # project-consistent canonical verb set (the measured 8-verb intersection
+        # checkout/clean/merge/rebase/reset/restore/stash/worktree) appears in
+        # every project surface enumerating the No-destructive / agents-never-
+        # commit ban (project trinity ×3, the 48 per-agent Hard rules [16 × 3
+        # CLIs], agent-run.sh --disallowedTools), plus the catch-all principle
+        # phrase on the trinity. The PROJECT analog of Guard-C pack (Check 56).
+        # STANDALONE per decision 8 (folding into Check 56 over-complicates:
+        # different canonical verb set + a trinity-only catch-all — see the
+        # check's fold-vs-new-check comment block). Format-agnostic matcher
+        # (`git <verb>` prose / `Bash(git <verb>:*)` launcher / Codex slash-list).
+        # Check number 57. Per ARCHITECTURE-BD-197-
+        # WORKTREE-ISOLATION-RECONCILED.md §13.3 + §5.4.
+        (57, "check_project_destructive_git_verb_parity",
+              check_project_destructive_git_verb_parity, W),
+    ]
+
+
+def _resolve_only_check(registry, selector):
+    """Resolve a `--only-check` selector against the CHECK_REGISTRY.
+
+    `selector` is the raw string from argparse. It matches an entry by:
+      - INTEGER check number (e.g. `52`, or `16` which matches BOTH the
+        project-template and pack-root entries of Check 16), OR
+      - the exact `run_check` LABEL string (e.g.
+        `check_pack_rw_ro_two_class`, or `check_trinity_h2_parity[pack-root]`).
+
+    Returns the ordered list of matching `(number, label, fn, budget_s)`
+    entries (registry order preserved). Returns an EMPTY list when nothing
+    matches — `main()` turns that into a LOUD non-zero named error (never a
+    silent no-op, which would turn a per-check test into a tautology =
+    effectiveness loss).
+    """
+    matches = []
+    # Numeric selector: match ALL entries whose number equals the integer.
+    if selector.isdigit():
+        want = int(selector)
+        matches = [e for e in registry if e[0] == want]
+    # Label selector (also tried when a numeric selector found nothing, so a
+    # numeric-looking label could still resolve — though no label is numeric).
+    if not matches:
+        matches = [e for e in registry if e[1] == selector]
+    return matches
+
+
+def main(only_check=None) -> None:
+    """Run the structural validation checks.
+
+    `only_check` (BD-219 C1): when `None` (the no-flag default, and the value
+    used by every in-process caller such as the §4.7 runtime-budget test's
+    `mod.main()`), run the FULL CHECK_REGISTRY and enforce the TOTAL-RUN budget
+    — byte-identical to the pre-BD-219 behavior. When a selector string is
+    given (via `--only-check` in `__main__`), run ONLY the matching registry
+    entries; the TOTAL-RUN budget is SUPPRESSED (a single check is not the real
+    surface) while the per-check WARN budget STAYS active.
+    """
     print("=" * 60)
     print("Pack Structural Validation")
     print("=" * 60)
 
-    # ── BD-204 §4.7: EVERY check routes through `run_check` (the runtime-
-    # budget TIMING HARNESS). A per-check overrun WARNs; the TOTAL-RUN budget
-    # is enforced as a hard FAIL at the END of main() (general path only).
-    # Arg-bearing checks (trinity 16/18/19) wrap in a named lambda so the
-    # timing label stays meaningful.
-    run_check("check_skill_frontmatter", check_skill_frontmatter)
-    run_check("check_codex_toml", check_codex_toml)
-    run_check("check_td_tbd_sentinels", check_td_tbd_sentinels)
-    run_check("check_readme_version", check_readme_version)
-    run_check("check_agent_count", check_agent_count)
-    run_check("check_prompts_directory", check_prompts_directory)
-    run_check("check_pack_agent_roster", check_pack_agent_roster)
-    run_check("check_reserved_x_prefix", check_reserved_x_prefix)
-    run_check("check_init_project_structure", check_init_project_structure)
-    run_check("check_prompt_triad_compliance", check_prompt_triad_compliance)
-    run_check("check_pack_agent_trinity", check_pack_agent_trinity)
-    # Checks 12, 13, 14, 15 retired in v11 (BD-121, v9 sunset) — see
-    # comment block at the function definitions above.
-    run_check("check_tool_config_capability_parity", check_tool_config_capability_parity)
-    # ── BD-183: Check 16 generalized with (trinity_root, label). Both
-    # invocations run; pack-root short-circuits via the per-surface
-    # exemption mechanism (`_CHECK_16_EXEMPT_SURFACES`) because Check 16
-    # enforces template-only `## Project addenda` H2 infrastructure tied
-    # to Procedure 5-C.2 client reconciliation, which has no purpose at
-    # the non-reconciled pack-root surface. Exemption was BD-183 §2.4
-    # Option (b), user-approved 2026-05-21. Per Override 9, both
-    # invocations are independent.
-    run_check("check_trinity_addenda_h2[project-template]",
-              lambda: check_trinity_addenda_h2(REPO_ROOT / "project-template", "project-template"))
-    run_check("check_trinity_addenda_h2[pack-root]",
-              lambda: check_trinity_addenda_h2(REPO_ROOT, "pack-root"))
-    # ── BD-181: Check 18 H2 parity runs INDEPENDENTLY at each trinity
-    # location. Per Override 9 compliance: pack-root and project-template
-    # trinity carry different audiences and different rules by design
-    # (per pack-root trinity § Rules → Trinity rule note paragraph).
-    # Each invocation enforces byte parity WITHIN its own trinity
-    # location only; there is NO cross-location parity gate.
-    run_check("check_trinity_h2_parity[project-template]",
-              lambda: check_trinity_h2_parity(REPO_ROOT / "project-template", "project-template"))
-    run_check("check_trinity_h2_parity[pack-root]",
-              lambda: check_trinity_h2_parity(REPO_ROOT, "pack-root"))
-    # ── BD-183: Check 19 generalized with (trinity_root, label). Empirical
-    # pre-check at HEAD confirms pack-root trinity PASSES Check 19 (zero
-    # HTML comments at pack-root → zero scaffolding to find). Both
-    # invocations run independently per Override 9 — within-trinity
-    # parity at each location; no cross-location coupling.
-    run_check("check_trinity_no_scaffolding_comments[project-template]",
-              lambda: check_trinity_no_scaffolding_comments(REPO_ROOT / "project-template", "project-template"))
-    run_check("check_trinity_no_scaffolding_comments[pack-root]",
-              lambda: check_trinity_no_scaffolding_comments(REPO_ROOT, "pack-root"))
-    run_check("check_gitignore_env_example_exception", check_gitignore_env_example_exception)
-    run_check("check_issue_template_forms", check_issue_template_forms)
-    run_check("check_template_archive_v11", check_template_archive_v11)
-    run_check("check_pack_help_per_cli_parity", check_pack_help_per_cli_parity)
-    run_check("check_help_fragment_freshness", check_help_fragment_freshness)
-    run_check("check_help_fragment_completeness", check_help_fragment_completeness)
-    # ── Check 24 callsite removed in BD-194 (Candidate 6). See
-    # ARCHITECTURE-BD-194.md §4-§5 + the retirement comment block above
-    # the former check_help_fragment_tracker_byte_identity location.
-    run_check("check_customization_detection_regression_guard", check_customization_detection_regression_guard)
-    run_check("check_migrator_framework_inventory", check_migrator_framework_inventory)
-    run_check("check_agent_canonical_phrases", check_agent_canonical_phrases)
-    run_check("check_pm_startup_per_cli_parity", check_pm_startup_per_cli_parity)
-    run_check("check_tracker_config", check_tracker_config)
-    run_check("check_recommendation_state_schema", check_recommendation_state_schema)
-    run_check("check_skill_cell_consistency", check_skill_cell_consistency)
-    # ── BD-168 (Batch 19, Commit 19e): per-entry split validators. ──
-    # Order: 32 (mirror-in-sync) → 33 (TOC-in-sync) → 34 (cross-refs).
-    # Per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §10. Each SKIPs
-    # gracefully when the per-entry tree is absent (pre-BD-102
-    # dog-food pack-self / pre-v11.0 client).
-    run_check("check_mirror_in_sync", check_mirror_in_sync)
-    run_check("check_toc_in_sync", check_toc_in_sync)
-    run_check("check_cross_reference_integrity", check_cross_reference_integrity)
-    run_check("check_tracker_phase_task_invariants", check_tracker_phase_task_invariants)
-    # ── BD-175 Commit 12 (Architect C M5a/b/c): pack/project boundary
-    # prevention. Order: 36 (commit-scope honesty) → 37 (project-side
-    # deny-list) → 38 (pack-only-file siting). Check 37 lands LAST in
-    # the boundary trio per C §13 bootstrap-incompatibility note — the
-    # 17 §D-9 contamination refs from audit must be resolved by Commits
-    # 4-9 before Check 37 is enabled, otherwise Check 37 FAILs at HEAD.
-    run_check("check_commit_scope_honesty", check_commit_scope_honesty)
-    run_check("check_project_side_deny_list", check_project_side_deny_list)
-    run_check("check_pack_only_file_siting", check_pack_only_file_siting)
-    # ── BD-175 F2a: cmd_update mapping/glob symmetry. Lands AFTER
-    # the M5a/b/c boundary trio so the boundary-prevention surface is
-    # complete before the install-coverage gate runs.
-    run_check("check_cmd_update_symmetry", check_cmd_update_symmetry)
-    # ── BD-179: pack-ops/ bare cross-reference scanner. Lands AFTER
-    # the M5a/b/c boundary trio + Check 39 cmd_update symmetry so the
-    # directory-boundary + install-coverage gates run before Check 40's
-    # prose-cross-reference gate. Per ARCHITECTURE-BD-179.md §8.3, the
-    # BD-179 commit qualifies all current bare-ref hits in pack-ops/*.md
-    # so Check 40 PASSes at HEAD.
-    run_check("check_bare_pack_ops_refs", check_bare_pack_ops_refs)
-    # ── BD-180 observation G: _CLIENT_INSTALLED_FILES self-documenting
-    # list integrity per ARCHITECTURE-BD-176.md §5.3. Lands AFTER Check 39
-    # (the cmd_update parser is shared) and after Check 40 (independent
-    # surfaces) so the install-coverage + cross-reference gates run
-    # before the inventory-drift gate.
-    run_check("check_client_installed_files", check_client_installed_files)
-    # ── BD-173 H.14: project-side bare cross-reference scanner
-    # (V11 leak-sweep prevention; class-test counterpart to Check 37's
-    # name-enumeration). Lands AFTER Check 40 (independent surface)
-    # and AFTER Check 41 (reuses _parse_client_installed_files()) so
-    # the inventory-drift gate runs before Check 43's class-test gate.
-    # Per ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md §1.1-§1.12.
-    run_check("check_project_side_bare_internal_refs", check_project_side_bare_internal_refs)
-    # ── BD-184: CI workflow wires all per-check test files. Closes the
-    # "missing test wiring" gap class permanently — surfaced 5 times in
-    # the BD-175 batch alone (caught each time by reviewer attention).
-    # Lands LAST in main() because it gates a CI infrastructure invariant
-    # rather than any single pack-product surface; logical position is
-    # end-of-list (mirrors Check 41's end-of-list landing for the
-    # adjacent BD-180 inventory gate).
-    run_check("check_ci_workflow_wires_per_check_tests", check_ci_workflow_wires_per_check_tests)
-    # ── BD-196 (C3): pack-memory rule↔rationale bijection. Lands AFTER
-    # Check 42 (the CI-wiring infrastructure gate) because it is the
-    # newest standing check and the §5.2 bijection composes the same
-    # set-equality pattern as Check 32 over a distinct pair of surfaces
-    # (CLAUDE.md `## Pack memory` `[rationale:]` set vs
-    # pack-ops/PACK-MEMORY-RATIONALE.md `## <slug>` headings). Per
-    # ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §5.2.
-    run_check("check_pack_memory_rationale_bijection", check_pack_memory_rationale_bijection)
-    # ── BD-196 (C6): boundary + spawn-rule pointer manifests. Lands AFTER
-    # Check 45 (the adjacent BD-196 bijection gate) and composes the same
-    # reference-resolution pattern as Check 34 over the two pack-ops
-    # manifests (.boundary-pointer-manifest.txt + .spawn-rule-manifest.txt)
-    # plus the §9.6 SC7-bounded anti-restate substring scan. Per
-    # ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §4.3 + §9.6 and
-    # PLAN-DOC-CONCISION-GUARDRAILS.md §2 G-A (one combined function).
-    run_check("check_boundary_and_spawn_pointer_manifests", check_boundary_and_spawn_pointer_manifests)
-    # ── BD-196 (C10): M4 durable-doc concision gate. Lands AFTER Check 46
-    # (the adjacent BD-196 manifest gate) and is the LAST BD-196 check —
-    # the payoff the prior BD-196 commits (C4 reshaped BOUNDARY, C9
-    # reshaped the other 6 durable docs) prepared. M4 = forbidden-pattern
-    # count 0 OUTSIDE pack-ops/.concision-allowlist.txt (the teeth) +
-    # per-doc advisory length. Per ARCHITECTURE-DOC-CONCISION-
-    # GUARDRAILS.md §6 (M1-M4) + §7; PLAN-DOC-CONCISION-GUARDRAILS.md
-    # §3 C10.
-    run_check("check_durable_doc_concision", check_durable_doc_concision)
-    # ── BD-195 (C3d): sanctioned pack-side-shipped freeze. Lands LAST —
-    # it freezes the bounded dual-use-shipped-lib exception to exactly
-    # {detect.sh, pack-help.sh} and reuses _parse_client_installed_files()
-    # (shared with Checks 41/43), so it sits after the inventory + walk
-    # gates. Per ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md §8.2.
-    run_check("check_sanctioned_pack_side_shipped", check_sanctioned_pack_side_shipped)
-    # ── BD-195 (C6): JC-5 soft-advisory removed-doc guard. Lands LAST —
-    # it is SOFT (WARN-only; never appends to `failures`, never changes
-    # the exit code) and scoped to the per-entry trees (`/backlog/` +
-    # `/changelog/` per BD-203 A12 `_REMOVED_DOC_SCAN_DIRS`, where the
-    # accurate-history citations relocated when the monoliths were
-    # deleted — no regenerated mirror under the no-mirror model), so it
-    # neither gates nor depends on any prior check. Per
-    # PLAN-BD-195-REMEDIATION.md §C6 / §2.3 (measure-then-bound JC-5).
-    run_check("check_removed_doc_advisory", check_removed_doc_advisory)
-    # ── BD-204 (C-4.6): migrator field/body faithfulness (DEEP-gated) +
-    # the OQ-4 single-source codec guard. Check 49 is the deep CI guard
-    # that fails a lossy/corrupting forward→reverse migration OR a body-
-    # limit/title breach; it is a ~0 ms SKIP unless PACK_VALIDATE_DEEP=1
-    # (§4.6 (P)), so the 151× general battery path is unaffected. The
-    # caller passes the REAL `/backlog/` tree as the explicit target
-    # (§4.6 (T): the caller chooses the target; there is NO internal
-    # `or REPO_ROOT/"backlog"` fallback in the check body). Check 50
-    # forbids a reproduced gz64/base64 codec in validate-pack.py — Check
-    # 49 sub-invokes the SHARED batch codec (§4.5, OQ-4).
-    run_check("check_migrator_field_faithfulness",
-              lambda: check_migrator_field_faithfulness(REPO_ROOT / "backlog"),
-              budget_s=RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S)
-    run_check("check_validate_pack_no_reproduced_codec", check_validate_pack_no_reproduced_codec)
-    # ── BD-214 (C1): tracker-deferral flip-block guard. Lands LAST — it is
-    # the newest standing check, and its legs are cheap bounded greps over
-    # named files + the two per-entry trees (no whole-tree scan). C1 ships
-    # legs 1/2/4 only (the legs true at the C1 boundary); legs 3/5 land in
-    # C2/C3 with their fix-recipes per the incremental-leg ordering. Per
-    # ARCHITECTURE-BD-214-TRACKER-DEFERRAL.md §6.3 + PLAN-BD-214-TRACKER-
-    # DEFERRAL.md §4.
-    run_check("check_tracker_deferral_flip_block", check_tracker_deferral_flip_block)
-    # ── BD-197 (C3): pack RW/RO two-class consistency (Guard-B). A bounded
-    # single-pass set-equality between the PACK-AGENTS roster `Class` cells
-    # and the per-agent-file PROSE mandate headers (5 agents × 3 CLIs); binds
-    # to the prose header, never `tools:` (pack-reviewer Write/Edit-yet-RO).
-    # Per ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.2 + §4.3.
-    run_check("check_pack_rw_ro_two_class", check_pack_rw_ro_two_class)
-    # ── BD-197 (C5): worktree-isolation prohibition flip-block (Guard-A). A
-    # single in-process whole-tree walk asserting the REMOVED prohibition
-    # prose (`no worktree isolation` / `Do not pass ...isolation...worktree`)
-    # does not reappear in any active pack surface. Matcher keys on the
-    # prohibition signature ONLY — never the legitimate `baseRef`/`bgIsolation`
-    # keys (design §11.5 G-1/G-2). Allowlist = the two process/history doc
-    # dirs + the narrow validator self-skip + the single check-53 test
-    # (decision 1, Check-51 self-skip precedent). Per
-    # ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.1 + §11.5.
-    run_check("check_worktree_isolation_prohibition_flip_block",
-              check_worktree_isolation_prohibition_flip_block)
-    # ── BD-197 (C8b): OPTIONAL-FEATURES presence-check (Guard-A′). The POSITIVE
-    # inverse of Guard-A (Check 53): a bounded TWO-single-file pass asserting
-    # BOTH OPTIONAL-FEATURES surfaces (pack-ops/OPTIONAL-FEATURES.md from C5 +
-    # project-template/docs/pack/OPTIONAL-FEATURES.md from C8a) each mention the
-    # MANDATED three tokens — `baseRef`, `bgIsolation`, and the
-    # `permissions.deny` recipe token (user-approved 2026-06-14; BD-197 Note 14;
-    # design §13.1a / §18.4 — supersedes the design's earlier "optional" framing)
-    # — so the un-prohibited worktree-isolation feature + its in-session backstop
-    # recipe stay DOCUMENTED on both surfaces. Measure-then-bound: sized to
-    # exactly the 3 authored tokens × 2 files (the prose `isolation` param is NOT
-    # folded in — design §13.1a). GREEN on arrival (C5 + C8a authored the
-    # tokens). Check number 54 — reserved for Guard-A′ across the prior BD-197
-    # commits; with this landing, checks 52–57 are contiguous. Per
-    # ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.1a + §11.5 gate (b).
-    run_check("check_optional_features_presence",
-              check_optional_features_presence)
-    # ── BD-197 (C5): destructive-git-verb enumeration parity (Guard-C). A
-    # bounded 10-single-file pass asserting the §5.1 canonical verb set + the
-    # catch-all principle phrase appear in every surface enumerating the
-    # agents-never-commit ban (trinity ×3, PACK-MEMORY-RATIONALE,
-    # commit-discipline ×3, pack-coder ×3). STANDALONE per decision 8 (folding
-    # into an existing parity check over-complicates — see the check's
-    # fold-vs-standalone comment block). Per
-    # ARCHITECTURE-BD-197-WORKTREE-ISOLATION-RECONCILED.md §13.3 + §5.4.
-    run_check("check_destructive_git_verb_parity",
-              check_destructive_git_verb_parity)
-    # ── BD-197 (C6b): project RW/RO two-class consistency (Guard-B project).
-    # A bounded single-pass set-equality across the three project legs — the
-    # PM-CHAT `## Permission profiles` Read-only rows, the agent-run.sh
-    # READONLY_AGENTS array, and the per-agent-file PROSE mandate headers
-    # (16 agents × 3 CLIs); binds to the prose header, never `tools:` (project
-    # RO agents carry Write/Edit; Gemini files carry no `tools:`). The PROJECT
-    # analog of Guard-B(pack) (Check 52). Per ARCHITECTURE-BD-197-WORKTREE-
-    # ISOLATION-RECONCILED.md §13.2 + §4.3. Check number 55 (next available
-    # after 52/53/56; 54 is reserved for the C8b Guard-A′ — a non-contiguous
-    # gap is expected and tolerated; numbers ≠ commit order).
-    run_check("check_project_rw_ro_two_class", check_project_rw_ro_two_class)
-    # ── BD-197 (C7b): PROJECT destructive-git-verb enumeration parity
-    # (Guard-C project). A bounded 52-single-file pass asserting the
-    # project-consistent canonical verb set (the measured 8-verb intersection
-    # checkout/clean/merge/rebase/reset/restore/stash/worktree) appears in
-    # every project surface enumerating the No-destructive / agents-never-
-    # commit ban (project trinity ×3, the 48 per-agent Hard rules [16 × 3
-    # CLIs], agent-run.sh --disallowedTools), plus the catch-all principle
-    # phrase on the trinity. The PROJECT analog of Guard-C pack (Check 56).
-    # STANDALONE per decision 8 (folding into Check 56 over-complicates:
-    # different canonical verb set + a trinity-only catch-all — see the
-    # check's fold-vs-new-check comment block). Format-agnostic matcher
-    # (`git <verb>` prose / `Bash(git <verb>:*)` launcher / Codex slash-list).
-    # Check number 57 (next available after 52/53/55/56; 54 is reserved for
-    # the C8b Guard-A′ — the gap is expected). Per ARCHITECTURE-BD-197-
-    # WORKTREE-ISOLATION-RECONCILED.md §13.3 + §5.4.
-    run_check("check_project_destructive_git_verb_parity",
-              check_project_destructive_git_verb_parity)
+    registry = _build_check_registry()
+
+    if only_check is None:
+        selected = registry
+    else:
+        selected = _resolve_only_check(registry, only_check)
+        if not selected:
+            # LOUD named error — never a silent no-op (effectiveness guard).
+            fail(
+                f"--only-check: unknown selector '{only_check}' — no check "
+                f"matches that number or run_check label. Run with no flag to "
+                f"list all checks, or pass a valid 'Check N' number / label."
+            )
+            print("\n" + "=" * 60)
+            print(f"FAILED — {len(failures)} issue(s) found")
+            sys.exit(1)
+        labels = ", ".join(e[1] for e in selected)
+        print(f"\n(--only-check {only_check}: running {len(selected)} "
+              f"selected check(s): {labels})")
+
+    for number, label, fn, budget_s in selected:
+        run_check(label, fn, budget_s=budget_s)
 
     # ── BD-204 §4.7 RUNTIME-BUDGET GUARD — the TOTAL-RUN hard FAIL. A
     # general run over the 10 s total budget means a check regressed into
@@ -9596,18 +9688,25 @@ def main() -> None:
     # is GENERAL-PATH-ONLY: a deep run (PACK_VALIDATE_DEEP=1) carries its
     # own larger total budget so a legitimate deep run is never falsely
     # failed. (The per-check WARN budget is enforced inside `run_check`.)
-    total_elapsed = sum(elapsed for _, elapsed in _check_timings)
-    deep = os.environ.get("PACK_VALIDATE_DEEP") == "1"
-    total_budget = (
-        RUN_CHECK_TOTAL_DEEP_BUDGET_S if deep else RUN_CHECK_TOTAL_GENERAL_BUDGET_S
-    )
-    if total_elapsed > total_budget:
-        path_label = "deep" if deep else "general"
-        fail(
-            f"RUNTIME-BUDGET: validate-pack total {total_elapsed:.2f}s > "
-            f"{total_budget:.2f}s ({path_label} path) — a check regressed "
-            f"into the run; investigate before merge"
+    # BD-219 C1: SUPPRESSED under `--only-check` — the sum of a single
+    # selected check is not the real surface, so failing on it would be
+    # meaningless. The no-flag full run keeps the total-run budget LIVE.
+    if only_check is None:
+        total_elapsed = sum(elapsed for _, elapsed in _check_timings)
+        deep = os.environ.get("PACK_VALIDATE_DEEP") == "1"
+        total_budget = (
+            RUN_CHECK_TOTAL_DEEP_BUDGET_S if deep else RUN_CHECK_TOTAL_GENERAL_BUDGET_S
         )
+        if total_elapsed > total_budget:
+            path_label = "deep" if deep else "general"
+            fail(
+                f"RUNTIME-BUDGET: validate-pack total {total_elapsed:.2f}s > "
+                f"{total_budget:.2f}s ({path_label} path) — a check regressed "
+                f"into the run; investigate before merge"
+            )
+    else:
+        print("(total-run budget N/A in single-check mode; "
+              "per-check WARN budget stays active)")
 
     print("\n" + "=" * 60)
     if failures:
@@ -9619,4 +9718,20 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="validate-pack.py",
+        description="Pack structural validation. With no arguments, runs ALL "
+                    "checks (the authoritative full run).",
+    )
+    parser.add_argument(
+        "--only-check",
+        metavar="N|LABEL",
+        default=None,
+        help="Run ONLY the check matching this number (e.g. 52) or run_check "
+             "label (e.g. check_pack_rw_ro_two_class). The no-flag run is "
+             "unchanged: ALL checks. (BD-219)",
+    )
+    args = parser.parse_args()
+    main(only_check=args.only_check)

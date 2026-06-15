@@ -161,7 +161,7 @@ printf "\n=== Group 2: END-TO-END — validate-pack.py exit 0 WITH Check 48 non-
 # relocated accurate-history citations WARN there. Either way the gate
 # stays GREEN. This E2E asserts: validate-pack exits 0 AND Check 48 ran
 # AND its non-fatal summary line is present.
-if python3 "$VALIDATE" > /tmp/vp-rmadv-e2e.out 2>&1; then
+if python3 "$VALIDATE" --only-check 48 > /tmp/vp-rmadv-e2e.out 2>&1; then
     if grep -q "Check 48: JC-5 soft-advisory removed-doc guard" /tmp/vp-rmadv-e2e.out \
        && grep -qE "Check 48 — soft-advisory removed-doc scan: [0-9]+ removed-doc citation\(s\) WARNed across [0-9]+ per-entry tree dir\(s\)" /tmp/vp-rmadv-e2e.out \
        && grep -q "PASSED — all checks clean" /tmp/vp-rmadv-e2e.out; then

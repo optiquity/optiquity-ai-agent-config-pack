@@ -85,7 +85,7 @@ fi
 
 printf "\n=== Group 1: deep run on the REAL backlog tree (>=211) PASSES ===\n"
 
-PACK_VALIDATE_DEEP=1 python3 "$VALIDATE" > /tmp/vp-check49-deep.out 2>&1
+PACK_VALIDATE_DEEP=1 python3 "$VALIDATE" --only-check 49 > /tmp/vp-check49-deep.out 2>&1
 deep_rc=$?
 if grep -qE "Check 49 — [0-9]+ entries byte-faithful" /tmp/vp-check49-deep.out \
         && [[ "$deep_rc" -eq 0 ]]; then
@@ -105,7 +105,7 @@ else
 fi
 
 # Confirm the GENERAL (deep UNSET) path is a ~0 ms SKIP before any tree scan.
-python3 "$VALIDATE" > /tmp/vp-check49-general.out 2>&1
+python3 "$VALIDATE" --only-check 49 > /tmp/vp-check49-general.out 2>&1
 if grep -q "SKIP: field-faithfulness deep check" /tmp/vp-check49-general.out; then
     t_pass "general path (PACK_VALIDATE_DEEP unset) is a SKIP early-return"
 else

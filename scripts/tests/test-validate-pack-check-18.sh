@@ -426,7 +426,7 @@ printf "        BD-181 pre-implementation empirical drift check (per BACKLOG)\n"
 printf "        confirms pack-root trinity has pre-existing H2 drift at HEAD.\n"
 printf "        This test only confirms that BOTH invocations actually execute.\n"
 
-python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check18-e2e.out 2>&1 || true
+python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 18 > /tmp/vp-check18-e2e.out 2>&1 || true
 
 # Confirm both invocations ran (their headers appear in the output).
 if grep -q "Check 18 \[project-template\]" /tmp/vp-check18-e2e.out \

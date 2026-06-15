@@ -474,7 +474,7 @@ esac
 
 printf "\n=== Group 4: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
-if python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check39-e2e.out 2>&1; then
+if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 39 > /tmp/vp-check39-e2e.out 2>&1; then
     if grep -q "Check 39: cmd_update mapping/glob symmetry" /tmp/vp-check39-e2e.out \
        && grep -qE "Check 39 — .* file\(s\) forward-checked" /tmp/vp-check39-e2e.out \
        && grep -qE "[0-9]+ \`cmd_update\` entries reverse-checked" /tmp/vp-check39-e2e.out; then

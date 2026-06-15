@@ -534,7 +534,7 @@ esac
 
 printf "\n=== Group 6: End-to-end validate-pack.py — Check 16 main() state (BD-183 §2.4 Option (b)) ===\n"
 
-python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check16-e2e.out 2>&1
+python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 16 > /tmp/vp-check16-e2e.out 2>&1
 e2e_status=$?
 
 # validate-pack.py must exit 0 (all checks clean post-BD-183 Option (b)).

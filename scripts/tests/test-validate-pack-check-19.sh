@@ -402,7 +402,7 @@ esac
 
 printf "\n=== Group 5: End-to-end validate-pack.py — Check 19 main() state (BD-183) ===\n"
 
-python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check19-e2e.out 2>&1
+python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 19 > /tmp/vp-check19-e2e.out 2>&1
 e2e_status=$?
 
 # validate-pack.py must exit 0 (all checks clean post-BD-183).

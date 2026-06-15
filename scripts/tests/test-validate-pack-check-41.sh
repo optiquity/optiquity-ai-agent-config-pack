@@ -634,7 +634,7 @@ esac
 
 printf "\n=== Group 3: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
-if python3 "$REPO_ROOT/scripts/validate-pack.py" > /tmp/vp-check41-e2e.out 2>&1; then
+if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 41 > /tmp/vp-check41-e2e.out 2>&1; then
     if grep -q "Check 41: _CLIENT_INSTALLED_FILES self-doc list integrity" /tmp/vp-check41-e2e.out \
        && grep -qE "Check 41 — [0-9]+ \`_CLIENT_INSTALLED_FILES\` entry" /tmp/vp-check41-e2e.out \
        && grep -q "Self-documenting list is consistent" /tmp/vp-check41-e2e.out; then
