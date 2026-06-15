@@ -2,11 +2,20 @@
 # branch. Failures block merge to main. Fix immediately - read the
 # Actions log; errors name the exact file and problem.
 #
-# Two jobs:
-#   - validate: runs scripts/validate-pack.py (structural Checks)
-#   - tests:    runs each enumerated scripts/tests/*-test.sh independently
-#               (per-name list below — not a glob) so a failure in one suite
-#               does not mask another's results.
+# Three jobs (BD-219 C2: the `tests` job is a sharded matrix):
+#   - validate:     runs scripts/validate-pack.py (structural Checks) — full
+#                   run, not sharded.
+#   - tests:        a STATIC matrix (`strategy.matrix.include`, 4 shards) that
+#                   partitions the enumerated wired test scripts across parallel
+#                   runners (BD-219 lever 1 — cut CI wall-time). Each shard runs
+#                   the tests in its `scripts` string via a run-loop; a failure
+#                   in one test does not mask another's (rc accumulates per
+#                   shard; `fail-fast: false` keeps other shards running). The
+#                   `include` array is the SINGLE source of truth for the wired
+#                   test set — see the block above the `tests:` job for the
+#                   refresh procedure.
+#   - tests-result: aggregates the matrix into one signal (`needs: [tests]`) and
+#                   re-asserts shard-coverage at run time (--assert-coverage).
 #
 # RELEASE-GATE wiring (BD-117 / BD-118): the `tests` job exercises the
 # CI-eligible release-gate items so every push proves them. Specifically:
@@ -45,26 +54,29 @@
 # (b) = missing manifest update / fixture content drift; (c) = pack
 # behavior regression surfaced by a contract.
 #
-# Step ordering invariant for the tests: job (BD-163)
-# ===================================================
+# Step ordering invariant for the tests: job (BD-163, BD-219 C2)
+# ==============================================================
 # Tests that depend on built fixtures (in test-fixtures/<name>/) MUST
-# come AFTER the "build test fixtures" step. The fixtures are
-# gitignored build artifacts; CI runners do not have them until built.
-# Affected tests today:
-#   - migrator-skills tests (BD-147) - depends on v10-realistic-ot
-#                                      (G1 golden-snapshot regression)
-#   - persona contracts (BD-116)     - depends on existing-project-mid-dev
-#                                      and v10-realistic-ot via
-#                                      `test-fixtures/build.sh
-#                                      --for-contract <persona>`
-#   - fixture manifest verify (BD-115) - depends on all built fixtures
+# run AFTER the fixtures are built. The fixtures are gitignored build
+# artifacts; CI runners do not have them until built. Under BD-219 C2's
+# sharded matrix this invariant is held by the FIXTURE COHESION GROUP:
+# ci-shard-plan.py pins all fixture-dependent tests into ONE shard, and
+# only that shard runs the conditional "build test fixtures" step (gated
+# by `--shard N --needs-fixtures`) before its run-loop. Cohesion-group
+# tests today (FIXTURE_COHESION_GROUP in scripts/lib/ci-shard-plan.py):
+#   - test-v11-realistic-ot.sh   - built fixtures (BD-160/170 + per-entry)
+#   - test-migrator-skills.sh    - v10-realistic-ot (G1 golden snapshot)
+#   - test-persona-contracts.sh  - existing-project-mid-dev + v10-realistic-ot
+#   - test-dry-run-migration.sh  - v10-realistic-ot
+#   - test-add-capability.sh     - v11-flat-file
 # Each fixture-dependent test runner ALSO declares its precondition
 # inline via the `require_fixture` helper (test-migrator-skills.sh)
 # or via `_materialize_for_contract`'s built-fixture die-check
-# (test-fixtures/build.sh, used by persona-contracts). CI step ordering
-# is a defense-in-depth complement to those preconditions: the in-script
-# checks give a clear local-dev error; the ordering keeps CI green even
-# if a future runner forgets to call `require_fixture`.
+# (test-fixtures/build.sh, used by persona-contracts). The shard
+# co-location is a defense-in-depth complement to those preconditions:
+# the in-script checks give a clear local-dev error; the cohesion-group
+# pinning keeps CI green by guaranteeing the build step runs in the same
+# shard, before, those tests.
 #
 # All test scripts run offline. tracker-provider / tracker-errors use
 # PATH-prepended fake `gh` stubs (no live-network requirement).
@@ -75,7 +87,8 @@
 # Branch protection: to enforce that failures block merge to main,
 # configure in GitHub repo settings: Settings → Branches → Add rule →
 # Branch name pattern: main → Require status checks to pass → select
-# the "validate" and "tests" jobs. One-time repo admin action.
+# the "validate" and "tests-result" jobs (tests-result aggregates every
+# matrix shard into one signal). One-time repo admin action.
 
 name: Validate Pack
 
@@ -103,8 +116,41 @@ jobs:
       - name: Run pack validation (DEEP field-faithfulness, BD-204 §4.6)
         run: PACK_VALIDATE_DEEP=1 python3 scripts/validate-pack.py
 
+  # BD-219 C2: the `tests` job is a SHARDED MATRIX. The wired KEEP test set
+  # is partitioned into 4 parallel shards (BD-219 lever 1: cut CI wall-time).
+  #
+  # The `matrix.include` below is a STATIC, SELF-DESCRIBING array — the FROZEN
+  # OUTPUT of `python3 scripts/lib/ci-shard-plan.py --emit-matrix` (an LPT
+  # bin-pack over scripts/ci-shard-weights.tsv, generated at MAINTENANCE time,
+  # NOT at CI runtime). It is the SINGLE source of truth for "which test runs
+  # in which shard" AND the wired-set membership list simultaneously:
+  #   wired_set == union(matrix.include[].scripts)
+  # Both readers parse this array (no `run: bash` per-step lines any more):
+  #   - scripts/lib/ci-shard-plan.py parse_wired_tests()
+  #   - scripts/validate-pack.py Check 42 (disk_KEEP_set == wired_set) + Check 60
+  #
+  # ⚠ REFRESH PROCEDURE (when a test is added / removed / re-weighted): re-run
+  #   `python3 scripts/lib/ci-shard-plan.py --emit-matrix`
+  # and paste its output back into this `include` block (expanded to the yml
+  # list shape below). Do NOT hand-edit the partition — it is frozen generated
+  # output (like the `_toc.md` indices). The CI guards catch a stale paste:
+  # Check 42 FAILs if a disk KEEP test is missing from the array, and
+  # `--assert-coverage` (the `tests-result` job + Check 60) FAILs if the
+  # partition no longer covers the wired KEEP set exactly.
   tests:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+            scripts: "scripts/tests/tracker-migrate-reverse-test.sh scripts/tests/test-migrate-v10-to-v11.sh scripts/test-persona-contracts.sh scripts/tests/test-tracker-promote-path2.sh scripts/test-migrator-core.sh scripts/test-detect.sh scripts/test-dry-run-migration.sh scripts/test-migrator-skills.sh scripts/tests/test-tracker-promote-path1.sh scripts/tests/template-version-test.sh scripts/tests/test-add-capability.sh scripts/tests/test-tracker-links.sh scripts/tests/test-v11-realistic-ot.sh scripts/tests/tracker-agent-read-test.sh scripts/tests/tracker-bd133-header-preservation-test.sh scripts/tests/tracker-deferral-gate-test.sh scripts/tests/test-validate-pack-check-16.sh scripts/tests/test-validate-pack-check-40.sh scripts/tests/test-validate-pack-check-44.sh scripts/tests/test-validate-pack-check-51-flip-block.sh scripts/tests/test-validate-pack-check-55.sh scripts/test-compare-agent-trinity.sh"
+          - shard: 2
+            scripts: "scripts/tests/test-migrate-v10-to-v11-gates.sh scripts/tests/test-activate-capability.sh scripts/tests/test-validate-pack-checks-58-59-60.sh scripts/tests/test-issue-forms.sh scripts/tests/test-tracker-phase-task.sh scripts/tests/tracker-bd129-gh-repo-test.sh scripts/tests/tracker-bd134-close-retry-test.sh scripts/tests/tracker-errors-test.sh scripts/tests/test-validate-pack-check-18.sh scripts/tests/test-validate-pack-check-41.sh scripts/tests/test-validate-pack-check-45.sh scripts/tests/test-validate-pack-check-52.sh scripts/tests/test-validate-pack-check-56.sh scripts/tests/test-tracker-promote-direct.sh"
+          - shard: 3
+            scripts: "scripts/tests/tracker-migrate-forward-test.sh scripts/tests/test-migrate-v10-to-v11-decompose.sh scripts/tests/test-validate-pack-check-49-field-faithfulness.sh scripts/test-migrator-capability-translation.sh scripts/tests/test-init-project.sh scripts/tests/test-ci-shard-plan.sh scripts/tests/pack-help-test.sh scripts/tests/recommendation-test.sh scripts/tests/test-per-entry.sh scripts/tests/test-validate-pack-checks-32-33-34.sh scripts/tests/tracker-bd130-doctor-wired-test.sh scripts/tests/tracker-config-schema-test.sh scripts/tests/tracker-init-test.sh scripts/tests/test-validate-pack-check-39.sh scripts/tests/test-validate-pack-check-43.sh scripts/tests/test-validate-pack-check-50-codec-single-source.sh scripts/tests/test-validate-pack-check-54.sh scripts/tests/test-validate-pack-check-removed-doc-advisory.sh"
+          - shard: 4
+            scripts: "scripts/tests/tracker-migrate-roundtrip-test.sh scripts/tests/test-migrate-v10-to-v11-dry-run.sh scripts/tests/tracker-provider-test.sh scripts/test-migrator-manifest.sh scripts/tests/test-customization-preserve.sh scripts/tests/recommendation-state-schema-test.sh scripts/tests/template-translations-test.sh scripts/tests/test-tracker-cycle-check.sh scripts/tests/test-validate-pack-checks-36-37-38.sh scripts/tests/tracker-bd132-race-test.sh scripts/tests/tracker-config-test.sh scripts/test-restore-from-backup.sh scripts/tests/test-validate-pack-check-19.sh scripts/tests/test-validate-pack-check-42.sh scripts/tests/test-validate-pack-check-46.sh scripts/tests/test-validate-pack-check-53.sh scripts/tests/test-validate-pack-check-57.sh"
     steps:
       - uses: actions/checkout@v6
         with:
@@ -115,251 +161,54 @@ jobs:
       - name: Install dependencies
         run: pip install pyyaml
 
-      # Per-suite steps - independent so one failure surfaces all.
-      - name: detect.sh tests
-        if: always()
-        run: bash scripts/test-detect.sh
-      - name: tracker-provider tests (BD-060, offline gh stubs)
-        if: always()
-        run: bash scripts/tests/tracker-provider-test.sh
-      - name: tracker-config tests (BD-061)
-        if: always()
-        run: bash scripts/tests/tracker-config-test.sh
-      - name: tracker-init tests
-        if: always()
-        run: bash scripts/tests/tracker-init-test.sh
-      - name: tracker-agent-read tests
-        if: always()
-        run: bash scripts/tests/tracker-agent-read-test.sh
-      - name: tracker-migrate forward tests (BD-065)
-        if: always()
-        run: bash scripts/tests/tracker-migrate-forward-test.sh
-      - name: tracker-migrate reverse tests (BD-068)
-        if: always()
-        run: bash scripts/tests/tracker-migrate-reverse-test.sh
-      - name: tracker-migrate roundtrip tests (BD-070)
-        if: always()
-        run: bash scripts/tests/tracker-migrate-roundtrip-test.sh
-      - name: tracker phase-task tests (BD-106)
-        if: always()
-        run: bash scripts/tests/test-tracker-phase-task.sh
-      - name: tracker links tests (BD-108)
-        if: always()
-        run: bash scripts/tests/test-tracker-links.sh
-      - name: tracker cycle-check tests (BD-108)
-        if: always()
-        run: bash scripts/tests/test-tracker-cycle-check.sh
-      - name: tracker error mapping tests (BD-066)
-        if: always()
-        run: bash scripts/tests/tracker-errors-test.sh
-      - name: tracker-config-schema tests (BD-078, validate-pack Check 29)
-        if: always()
-        run: bash scripts/tests/tracker-config-schema-test.sh
-      - name: recommendation-state-schema tests (BD-079, validate-pack Check 30)
-        if: always()
-        run: bash scripts/tests/recommendation-state-schema-test.sh
-      - name: per-entry helper tests (BD-164)
-        if: always()
-        run: bash scripts/tests/test-per-entry.sh
-      - name: validate-pack Check 32/33/34 tests (BD-168, per-entry split validators)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-checks-32-33-34.sh
-      - name: validate-pack Check 36/37/38 tests (BD-175 Commit 12, pack/project boundary)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-checks-36-37-38.sh
-      - name: validate-pack Check 39 tests (BD-175 F2a, install-coverage gate)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-39.sh
-      - name: validate-pack Check 40 tests (BD-179, pack-ops/ bare-cross-reference scanner)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-40.sh
-      - name: validate-pack Check 41 tests (BD-180, _CLIENT_INSTALLED_FILES self-doc list integrity)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-41.sh
-      - name: validate-pack Check 18 tests (BD-181, trinity H2 structure parity)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-18.sh
-      - name: validate-pack Check 16 tests (BD-183, trinity ## Project addenda H2 + Option (b) exemption)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-16.sh
-      - name: validate-pack Check 19 tests (BD-183, trinity templates free of body scaffolding)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-19.sh
-      - name: validate-pack Check 42 tests (BD-184/BD-219, CI workflow wires every CI-eligible test)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-42.sh
-      - name: validate-pack Check 43 tests (BD-173 H.14, V11 leak-sweep prevention, project-side bare cross-reference scanner)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-43.sh
-      - name: validate-pack Check 44 tests (BD-196, M4 durable-doc concision gate)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-44.sh
-      - name: validate-pack Check 45 tests (BD-196, pack-memory rule↔rationale bijection)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-45.sh
-      - name: validate-pack Check 46 tests (BD-196, boundary + spawn-rule pointer manifests)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-46.sh
-      - name: validate-pack Check 48 tests (BD-195 C6, JC-5 soft-advisory removed-doc guard)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-removed-doc-advisory.sh
-      - name: validate-pack Check 49/50 tests (BD-204 C-4.6, migrator field/body faithfulness deep guard + OQ-4 single-source + runtime-budget)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-49-field-faithfulness.sh
-      - name: validate-pack Check 50 tests (BD-214 C1, OQ-4 single-source codec guard dedicated test)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-50-codec-single-source.sh
-      - name: validate-pack Check 51 tests (BD-214 C1, tracker-deferral flip-block guard legs 1/2/4)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-51-flip-block.sh
-      - name: validate-pack Check 52 tests (BD-197 C3, pack RW/RO two-class consistency Guard-B)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-52.sh
-      - name: validate-pack Check 53 tests (BD-197 C5, worktree-isolation prohibition flip-block Guard-A)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-53.sh
-      - name: validate-pack Check 56 tests (BD-197 C5, destructive-git-verb enumeration parity Guard-C)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-56.sh
-      - name: validate-pack Check 55 tests (BD-197 C6b, project RW/RO two-class consistency Guard-B project)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-55.sh
-      - name: validate-pack Check 57 tests (BD-197 C7b, PROJECT destructive-git-verb enumeration parity Guard-C project)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-57.sh
-      - name: validate-pack Check 54 tests (BD-197 C8b, OPTIONAL-FEATURES presence-check Guard-A′)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-check-54.sh
-      - name: validate-pack Check 58/59/60 tests (BD-219 C3, CI-runtime upkeep guards)
-        if: always()
-        run: bash scripts/tests/test-validate-pack-checks-58-59-60.sh
-      - name: ci-shard-plan module tests (BD-219 C3, shard partition single source)
-        if: always()
-        run: bash scripts/tests/test-ci-shard-plan.sh
-      - name: tracker deferral gate tests (BD-214 C1, flip-block behavioral refusals)
-        if: always()
-        run: bash scripts/tests/tracker-deferral-gate-test.sh
-      - name: tracker BD-129 gh-repo routing tests (BD-129)
-        if: always()
-        run: bash scripts/tests/tracker-bd129-gh-repo-test.sh
-      - name: tracker BD-130 doctor-wired tests (BD-130)
-        if: always()
-        run: bash scripts/tests/tracker-bd130-doctor-wired-test.sh
-      - name: tracker BD-132 init-disable race tests (BD-132)
-        if: always()
-        run: bash scripts/tests/tracker-bd132-race-test.sh
-      - name: tracker BD-133 header-preservation tests (BD-133)
-        if: always()
-        run: bash scripts/tests/tracker-bd133-header-preservation-test.sh
-      - name: tracker BD-134 close-retry tests (BD-134)
-        if: always()
-        run: bash scripts/tests/tracker-bd134-close-retry-test.sh
-      - name: recommendation tests (BD-072 / D-19)
-        if: always()
-        run: bash scripts/tests/recommendation-test.sh
-      - name: pack-help tests (BD-075 / D-20)
-        if: always()
-        run: bash scripts/tests/pack-help-test.sh
-      - name: customization-preserve tests (BD-088)
-        if: always()
-        run: bash scripts/tests/test-customization-preserve.sh
-      - name: init-project tests (BD-080)
-        if: always()
-        run: bash scripts/tests/test-init-project.sh
-      - name: migrate-v10-to-v11 tests (BD-085)
-        if: always()
-        run: bash scripts/tests/test-migrate-v10-to-v11.sh
-      - name: migrate-v10-to-v11 dry-run/apply/resume tests (BD-095)
-        if: always()
-        run: bash scripts/tests/test-migrate-v10-to-v11-dry-run.sh
-      - name: migrate-v10-to-v11 verification gates (BD-101)
-        if: always()
-        run: bash scripts/tests/test-migrate-v10-to-v11-gates.sh
-      - name: migrate-v10-to-v11 decompose tests (BD-165)
-        if: always()
-        run: bash scripts/tests/test-migrate-v10-to-v11-decompose.sh
-      - name: migrator-core tests (BD-119)
-        if: always()
-        run: bash scripts/test-migrator-core.sh
-      - name: migrator-manifest tests (BD-119)
-        if: always()
-        run: bash scripts/test-migrator-manifest.sh
-      - name: migrator-capability-translation tests (BD-144)
-        if: always()
-        run: bash scripts/test-migrator-capability-translation.sh
-      # ── BD-219 C3: offline KEEP tests previously unwired (measure-then-bound).
-      # Confirmed offline-deterministic (EXIT 0, no live network/gh) by the
-      # BD-219 C3 measure step + wired so Check 42's generalized set-equality
-      # (disk_KEEP_set == wired_set) holds. The three tracker-promote tests use
-      # a STUB backend (zero live gh) — re-classified KEEP vs the architecture's
-      # preliminary STRIP. See scripts/ci-test-wiring-allowlist.txt.
-      - name: compare-agent-trinity tests (BD-219 C3 wire)
-        if: always()
-        run: bash scripts/test-compare-agent-trinity.sh
-      - name: restore-from-backup tests (BD-219 C3 wire)
-        if: always()
-        run: bash scripts/test-restore-from-backup.sh
-      - name: activate-capability tests (BD-200, BD-219 C3 wire)
-        if: always()
-        run: bash scripts/tests/test-activate-capability.sh
-      - name: tracker-promote direct-close tests (BD-107, offline stub; BD-219 C3 wire)
-        if: always()
-        run: bash scripts/tests/test-tracker-promote-direct.sh
-      - name: tracker-promote path1 tests (BD-107, offline stub; BD-219 C3 wire)
-        if: always()
-        run: bash scripts/tests/test-tracker-promote-path1.sh
-      - name: tracker-promote path2 tests (BD-107, offline stub; BD-219 C3 wire)
-        if: always()
-        run: bash scripts/tests/test-tracker-promote-path2.sh
-      - name: build test fixtures (BD-115/116/117)
-        if: always()
-        run: bash test-fixtures/build.sh --all --clean
-      # BD-118 retro fix: `--all --clean` runs `_update_manifest`, which
-      # overwrites the checked-out committed `test-fixtures/manifest.txt`
-      # on the runner with the freshly-built SHAs. Without restoring the
-      # committed manifest here, the next step (`--verify`) would compare
-      # the just-built fixtures against the just-written manifest and
-      # always pass by construction (tautological). Restoring HEAD's
-      # version makes the verify step actually compare against the
-      # canonical pinned SHAs. Read-only `git checkout -- <path>` form;
-      # no branch state is mutated.
-      - name: restore committed manifest before verify (BD-118 retro)
-        if: always()
-        run: git checkout HEAD -- test-fixtures/manifest.txt
-      - name: fixture manifest verify (BD-115, RELEASE-GATE item 5)
-        if: always()
-        run: bash test-fixtures/build.sh --verify
-      - name: v11-realistic-ot integration test (BD-160/170 + BD-164 + BD-168)
-        if: always()
-        run: bash scripts/tests/test-v11-realistic-ot.sh
-      # BD-163: migrator-skills tests MUST run AFTER "build test fixtures"
-      # because G1 (golden-snapshot regression) depends on the built
-      # `test-fixtures/v10-realistic-ot/` fixture (gitignored build
-      # artifact). The runner also calls `require_fixture` defensively.
-      - name: migrator-skills tests (BD-147)
-        if: always()
-        run: bash scripts/test-migrator-skills.sh
-      - name: persona contracts (BD-116, RELEASE-GATE item 3)
-        if: always()
-        run: bash scripts/test-persona-contracts.sh
-      # ── BD-219 C3: fixture-dependent KEEP tests (cohesion group — MUST run
-      # AFTER "build test fixtures"). test-dry-run-migration needs
-      # test-fixtures/v10-realistic-ot; test-add-capability needs
-      # test-fixtures/v11-flat-file. Confirmed EXIT 0 with fixtures present
-      # (BD-219 C3 measure step). ci-shard-plan.py pins both into the
-      # fixture-owning shard (FIXTURE_COHESION_GROUP).
-      - name: dry-run-migration tests (BD-114, fixture-dependent; BD-219 C3 wire)
-        if: always()
-        run: bash scripts/test-dry-run-migration.sh
-      - name: add-capability tests (BD-048, fixture-dependent; BD-219 C3 wire)
-        if: always()
-        run: bash scripts/tests/test-add-capability.sh
-      - name: template-translations tests
-        if: always()
-        run: bash scripts/tests/template-translations-test.sh
-      - name: template-version tests
-        if: always()
-        run: bash scripts/tests/template-version-test.sh
-      - name: issue-forms tests (BD-063)
-        if: always()
-        run: bash scripts/tests/test-issue-forms.sh
+      # ── BD-219 §2.5: build fixtures ONLY in the shard that owns the fixture
+      # cohesion group (ci-shard-plan.py pins all FIXTURE_COHESION_GROUP members
+      # into one shard). `--shard N --needs-fixtures` exits 0 iff this shard
+      # owns a fixture-dependent test. The BD-115/116/117 build + BD-118
+      # manifest-restore + BD-115 verify ORDER is preserved (steps a/a2/b of the
+      # header comment), run once in the fixture-owning shard.
+      - name: build test fixtures (only if this shard needs them)
+        if: always()
+        run: |
+          if python3 scripts/lib/ci-shard-plan.py --shard ${{ matrix.shard }} --needs-fixtures; then
+            bash test-fixtures/build.sh --all --clean
+            git checkout HEAD -- test-fixtures/manifest.txt   # BD-118 retro: restore committed manifest before --verify (read-only path checkout; no branch state)
+            bash test-fixtures/build.sh --verify
+          fi
+
+      # ── BD-219 §2.4: run every test in this shard's `scripts` string. Each
+      # test runs once; the shard exits non-zero on ANY failure (rc accumulates)
+      # so a failure surfaces without masking the others. `fail-fast: false`
+      # (above) keeps the other shards running.
+      - name: run shard ${{ matrix.shard }}
+        if: always()
+        run: |
+          rc=0
+          for t in ${{ matrix.scripts }}; do
+            echo "::group::$t"
+            bash "$t" || rc=1
+            echo "::endgroup::"
+          done
+          exit $rc
+
+  # BD-219 C2: single aggregated signal for the sharded `tests` matrix.
+  # `needs: [tests]` succeeds only if EVERY shard succeeded; the second step
+  # re-proves at run time that the static `include` partition still covers the
+  # wired KEEP set exactly (catches a stale/hand-edited matrix the static array
+  # could otherwise drift into). This is the AUTHORITATIVE run-time coverage
+  # assertion (Check 60 is the convenience validate-pack mirror).
+  tests-result:
+    needs: [tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: assert all shards succeeded
+        run: test "${{ needs.tests.result }}" = "success"
+      - name: assert shard partition covers the wired set exactly
+        run: python3 scripts/lib/ci-shard-plan.py --assert-coverage

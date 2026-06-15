@@ -239,8 +239,16 @@ csp = importlib.util.module_from_spec(spec); spec.loader.exec_module(csp)
 wf = pathlib.Path(root) / ".github" / "workflows" / "validate-pack.yml"
 text = wf.read_text()
 csp_wired = set(csp.parse_wired_tests(text))
-# Check 42 uses the same anchor regex over `run: bash scripts/...sh`.
-c42 = set(re.compile(r"run:\s+bash\s+(scripts/[^\s]+\.sh)").findall(text))
+# BD-219 C2: Check 42 uses the SAME extraction — harvest scripts/...sh tokens
+# from the `tests`-job matrix.include[].scripts strings (the static partition
+# is the wired-set SSOT; there are no more `run: bash` test runners).
+scripts_line = re.compile(r"^\s*scripts:\s*(.+)$")
+token = re.compile(r"scripts/[^\s\"']+\.sh")
+c42 = set()
+for ln in text.splitlines():
+    m = scripts_line.match(ln)
+    if m:
+        c42.update(token.findall(m.group(1)))
 if csp_wired != c42:
     print("FAILURES")
     print("  csp-only:", sorted(csp_wired - c42))

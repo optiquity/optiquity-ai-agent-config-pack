@@ -6708,7 +6708,10 @@ def check_ci_workflow_wires_per_check_tests() -> None:
 
     where
         disk_KEEP_set = {scripts/test*.sh + scripts/tests/*.sh} − allowlist
-        wired_set     = the `run: bash scripts/…sh` test runners in the yml
+        wired_set     = the `scripts/…sh` tokens in the `tests`-job
+                        `matrix.include[].scripts` strings (BD-219 C2: the
+                        static, self-describing shard partition is the wired-set
+                        SSOT — `wired_set == union(include[].scripts)`)
         allowlist     = scripts/ci-test-wiring-allowlist.txt (the BD-219
                         measure-then-bound STRIP set: scripts that legitimately
                         exist on disk but are intentionally NOT wired — each
@@ -6716,20 +6719,23 @@ def check_ci_workflow_wires_per_check_tests() -> None:
                         STRIP set, no broader).
 
     FAILs naming:
-      (a) each KEEP script on disk with NO `run: bash …` invocation in the
-          workflow yml (the original BD-184 failure mode, now over the full
-          set), AND
+      (a) each KEEP script on disk NOT present in any `tests`-job
+          `matrix.include[].scripts` string (the original BD-184 failure mode,
+          now over the full set + the BD-219 C2 static-matrix source), AND
       (b) each allowlisted-but-now-wired script (allowlist staleness — an
           intentionally-OUT script that someone wired without removing its
           allowlist line).
 
-    The `test-fixtures/build.sh` build/verify steps are NOT test runners and
-    are excluded from `wired_set` by the `scripts/` path anchor. The 1-line
-    allowlist reason text after a path is ignored by the parser.
+    The `test-fixtures/build.sh` build/verify orchestration is NOT under
+    `scripts/`, so the `scripts/` token anchor excludes it by construction; the
+    1-line allowlist reason text after a path is ignored by the parser. The
+    wired-set extraction is byte-identical to ci-shard-plan.py
+    parse_wired_tests() (test-ci-shard-plan.sh Group 6 asserts they agree).
 
-    Cheap (ci-check-runtime-compounding): one workflow-text regex + two dir
-    globs + one small allowlist read; no subprocess-per-script, no real-tree
-    scan. Routes through `run_check` (per-check WARN budget).
+    Cheap (ci-check-runtime-compounding): one workflow-text line scan (the
+    `scripts:` value harvest) + two dir globs + one small allowlist read; no
+    subprocess-per-script, no real-tree scan. Routes through `run_check`
+    (per-check WARN budget).
 
     Lenient mode: if `.github/workflows/validate-pack.yml` is absent (unlikely
     at any reasonable pack-repo HEAD) the check SKIPs; likewise if neither
@@ -6767,13 +6773,23 @@ def check_ci_workflow_wires_per_check_tests() -> None:
                 continue
             allowlist.add(line.split()[0])
 
-    # ── Parse the wired test runners from the workflow yml. Anchor on
-    # `run: bash scripts/…sh` so prose/comment mentions are not counted, and
-    # so the `test-fixtures/build.sh` build/verify steps (not under scripts/)
-    # are excluded by construction.
+    # ── Parse the wired test set from the `tests`-job matrix `include` array
+    # (BD-219 C2). The wired set is `union(matrix.include[].scripts)`: each
+    # `scripts:` mapping value is a space-separated test list, harvested for
+    # `scripts/…sh` tokens. The `test-fixtures/build.sh` build/verify steps are
+    # not under `scripts/`, so the `scripts/` anchor excludes them by
+    # construction; prose/comment mentions outside a `scripts:` value are not
+    # counted. This extraction is byte-identical to ci-shard-plan.py
+    # parse_wired_tests() (test-ci-shard-plan.sh Group 6 asserts the two agree).
     workflow_text = workflow_path.read_text()
-    wired_pattern = re.compile(r"run:\s+bash\s+(scripts/[^\s]+\.sh)")
-    wired_set = set(wired_pattern.findall(workflow_text))
+    scripts_line_pattern = re.compile(r"^\s*scripts:\s*(.+)$")
+    wired_token_pattern = re.compile(r"scripts/[^\s\"']+\.sh")
+    wired_set = set()
+    for raw in workflow_text.splitlines():
+        m = scripts_line_pattern.match(raw)
+        if not m:
+            continue
+        wired_set.update(wired_token_pattern.findall(m.group(1)))
 
     disk_keep_set = disk_paths - allowlist
 
@@ -6786,14 +6802,16 @@ def check_ci_workflow_wires_per_check_tests() -> None:
         for path in unwired:
             fail(
                 f"{path} — test script exists on disk but has NO "
-                f"`run: bash {path}` invocation in `.github/workflows/"
-                f"validate-pack.yml`. Per BD-184/BD-219, every CI-eligible "
-                f"test script MUST be wired into the CI workflow so it runs "
-                f"on every push. Remediation: add a step under the `tests:` "
-                f"job of the form:\n"
-                f"      - name: <short description>\n"
-                f"        if: always()\n"
-                f"        run: bash {path}\n"
+                f"entry in the `tests`-job `matrix.include[].scripts` strings "
+                f"of `.github/workflows/validate-pack.yml`. Per BD-184/BD-219, "
+                f"every CI-eligible test script MUST be wired into the CI "
+                f"workflow so it runs (sharded) on every push. Remediation: the "
+                f"shard matrix is the FROZEN output of the shard generator — "
+                f"re-run `python3 scripts/lib/ci-shard-plan.py --emit-matrix` "
+                f"and refresh the static `tests`-job `matrix.include` block in "
+                f"the workflow yml with its output (do NOT hand-add a `run: "
+                f"bash` step — there are none any more; the run-loop executes "
+                f"`${{{{ matrix.scripts }}}}`).\n"
                 f"If the script is intentionally NOT run in CI (live-network "
                 f"/ manual-only), add it to scripts/ci-test-wiring-allowlist."
                 f"txt with a one-line reason instead of leaving it unwired."
@@ -6802,9 +6820,10 @@ def check_ci_workflow_wires_per_check_tests() -> None:
             fail(
                 f"{path} — listed in scripts/ci-test-wiring-allowlist.txt "
                 f"(intentionally-OUT) BUT is now wired in the CI workflow "
-                f"(`run: bash {path}`). Allowlist staleness: remove its line "
-                f"from scripts/ci-test-wiring-allowlist.txt (the allowlist "
-                f"must be sized to EXACTLY the still-unwired STRIP set)."
+                f"(present in a `tests`-job `matrix.include[].scripts` string). "
+                f"Allowlist staleness: remove its line from "
+                f"scripts/ci-test-wiring-allowlist.txt (the allowlist must be "
+                f"sized to EXACTLY the still-unwired STRIP set)."
             )
         return
 

@@ -7,7 +7,11 @@
 #     disk_KEEP_set == wired_set
 # where disk_KEEP_set = {scripts/test*.sh + scripts/tests/*.sh} − allowlist
 # and allowlist = scripts/ci-test-wiring-allowlist.txt (the measure-then-bound
-# STRIP set). This test is updated in lock-step (enumerate-encoding-surfaces).
+# STRIP set). BD-219 C2 RE-ANCHORED the wired-set source: it is now the
+# `scripts/...sh` tokens harvested from the `tests`-job static
+# `matrix.include[].scripts` strings (the sharded matrix is the wired-set SSOT
+# — no more `run: bash` test runners). The synthetic ymls below build that
+# include shape. This test is updated in lock-step (enumerate-encoding-surfaces).
 #
 # Check 42 closes the "missing test wiring" gap class that surfaced 5
 # times across the BD-175 emergency batch (BD-179 FIX-1: 3 tests;
@@ -142,11 +146,13 @@ if "CI workflow wiring is complete" not in captured:
     failures.append(f"real-state Check 42 PASS message missing closure phrase: {captured}")
 
 # Self-referential closure check: at HEAD check-42 itself must appear in the
-# workflow yml as a `run: bash scripts/tests/test-validate-pack-check-42.sh`.
+# workflow yml as a token inside a `tests`-job matrix.include[].scripts string
+# (BD-219 C2: the static shard matrix is the wired-set source — there is no
+# `run: bash` test runner any more).
 workflow_path = pathlib.Path(REPO_ROOT_PY) / ".github" / "workflows" / "validate-pack.yml"
 workflow_text = workflow_path.read_text()
-if "bash scripts/tests/test-validate-pack-check-42.sh" not in workflow_text:
-    failures.append("test-validate-pack-check-42.sh has no `bash scripts/tests/...` wiring in validate-pack.yml — self-referential closure broken")
+if "scripts/tests/test-validate-pack-check-42.sh" not in workflow_text:
+    failures.append("test-validate-pack-check-42.sh has no entry in any tests-job matrix.include[].scripts string in validate-pack.yml — self-referential closure broken")
 
 if failures:
     print("FAILURES")
@@ -189,9 +195,10 @@ failures = []
 #
 # `root_scripts`:  base filenames to stage under scripts/      (test*.sh).
 # `tests_scripts`: base filenames to stage under scripts/tests/.
-# `wired`:         repo-relative paths whose `run: bash <path>` line is
-#                  present in the synthetic workflow yml (the new parser
-#                  anchors on `run:\s+bash\s+scripts/...`).
+# `wired`:         repo-relative paths placed into the synthetic workflow yml's
+#                  `tests`-job `matrix.include[].scripts` strings (BD-219 C2:
+#                  Check 42 harvests scripts/...sh tokens from those values —
+#                  there are no more `run: bash` test runners).
 # `allowlist`:     repo-relative paths to write into the allowlist file.
 # `omit_workflow`: when True, do not create the workflow yml (lenient skip).
 # `omit_all_tests`: when True, create NO test scripts at all (lenient skip).
@@ -223,20 +230,39 @@ def run_check(root_scripts=None, tests_scripts=None, wired=None,
     if not omit_workflow:
         workflow_dir = root / ".github" / "workflows"
         workflow_dir.mkdir(parents=True)
-        # The new parser anchors on `run: bash scripts/...sh`. Full yml syntax
-        # is NOT required (regex, not a yml parser).
+        # BD-219 C2: Check 42 harvests scripts/...sh tokens from the `tests`-job
+        # `matrix.include[].scripts` strings. Build a static include array
+        # (2 shards, the wired paths split between them) so the parser exercises
+        # the multi-shard union path. Full yml syntax is NOT required (the
+        # parser is a line scan over `scripts:` values, not a yaml parser), but
+        # the include shape mirrors the real workflow.
         lines = [
             "name: Validate Pack (synthetic)",
             "on: push",
             "jobs:",
             "  tests:",
             "    runs-on: ubuntu-latest",
-            "    steps:",
+            "    strategy:",
+            "      fail-fast: false",
+            "      matrix:",
+            "        include:",
         ]
-        for p in wired:
-            lines.append(f"      - name: synthetic step for {p}")
-            lines.append(f"        if: always()")
-            lines.append(f"        run: bash {p}")
+        # Split wired paths into two shards (round-robin) to exercise the
+        # union-across-shards extraction. Empty shard → empty scripts string
+        # (the union is still correct).
+        shard_a = [p for i, p in enumerate(wired) if i % 2 == 0]
+        shard_b = [p for i, p in enumerate(wired) if i % 2 == 1]
+        lines.append("          - shard: 1")
+        lines.append('            scripts: "' + " ".join(shard_a) + '"')
+        lines.append("          - shard: 2")
+        lines.append('            scripts: "' + " ".join(shard_b) + '"')
+        lines.append("    steps:")
+        lines.append("      - name: run shard ${{ matrix.shard }}")
+        lines.append("        if: always()")
+        lines.append("        run: |")
+        lines.append("          rc=0")
+        lines.append("          for t in ${{ matrix.scripts }}; do bash \"$t\" || rc=1; done")
+        lines.append("          exit $rc")
         (workflow_dir / "validate-pack.yml").write_text("\n".join(lines) + "\n")
 
     saved_root = mod.REPO_ROOT
