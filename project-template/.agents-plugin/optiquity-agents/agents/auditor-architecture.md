@@ -1,7 +1,9 @@
+<!-- RE-VERIFY at impl: plugin agents/ inner template schema + frontmatter field set, gemini-cli #27305, antigravity.google/docs/cli-plugins -->
 ---
 name: auditor-architecture
 description: "Audit subagent for architecture compliance, design quality, and observability infrastructure — layer boundaries, LSP/SOLID, coupling, interface uniformity, observability wiring."
-model: gemini-2.5-pro
+# RE-VERIFY at impl: model IDs — reference the Antigravity default model; do not pin a Gemini model string. antigravity.google/docs/*
+model: default
 temperature: 0.2
 max_turns: 30
 ---

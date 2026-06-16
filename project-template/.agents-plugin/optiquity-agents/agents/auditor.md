@@ -1,7 +1,9 @@
+<!-- RE-VERIFY at impl: plugin agents/ inner template schema + frontmatter field set, gemini-cli #27305, antigravity.google/docs/cli-plugins -->
 ---
 name: auditor
 description: "Use for full-codebase structural audits across multiple quality dimensions. Retrospective and periodic — run after substantial implementation, not per-phase. Read-only."
-model: gemini-2.5-pro
+# RE-VERIFY at impl: model IDs — reference the Antigravity default model; do not pin a Gemini model string. antigravity.google/docs/*
+model: default
 temperature: 0.2
 max_turns: 30
 ---
@@ -28,15 +30,20 @@ thresholds, ownership precedence, and report format.
 
 ## Orchestration
 
-Gemini CLI subagents cannot call other subagents. This means:
+<!-- RE-VERIFY at impl: subagent invocation + whether a subagent may invoke another, antigravity.google/docs/subagents -->
+On the Antigravity CLI subagents are conversation-scoped (defined via the
+runtime `define_subagent` / `invoke_subagent` pattern — see
+`RUNTIME-SUBAGENT-PATTERN.md` in this plugin) and a subagent does not
+delegate to a sibling subagent. This means:
 
-- **Interactive mode:** If invoked as a subagent via `@auditor`, you cannot
-  delegate to `@auditor-security` etc. In interactive mode, describe what
-  each cluster should audit and ask the user to invoke each subagent
-  separately, then re-invoke you with their reports for consolidation.
-- **Headless mode (recommended):** Use `./agent-run.sh gemini --agent auditor`
+- **Interactive mode:** If you are activated as the auditor subagent
+  directly, you cannot delegate to the `auditor-security` subagent etc. In
+  interactive mode, describe what each cluster should audit and ask the
+  user to run each subagent separately, then re-activate you with their
+  reports for consolidation.
+- **Headless mode (recommended):** Use `./agent-run.sh agy --agent auditor`
   which handles all orchestration transparently — running each subagent in
-  its own Gemini session, collecting reports, and invoking this parent with
+  its own `agy` session, collecting reports, and invoking this parent with
   all reports as input for consolidation.
 
 When you receive subagent reports as input (from `agent-run.sh` orchestration),

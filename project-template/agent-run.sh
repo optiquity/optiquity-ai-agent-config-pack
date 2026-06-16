@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# agent-run.sh — Launch a Claude Code, Codex, or Gemini agent with appropriate flags.
+# agent-run.sh — Launch a Claude Code, Codex, or Antigravity agent with appropriate flags.
 #
 # Usage:
 #   ./agent-run.sh <cli> --agent <name> [additional args...]
-#   ./agent-run.sh gemini --agent auditor [--skip auditor-ui,auditor-tests] [-p "<prompt>"]
+#   ./agent-run.sh agy --agent auditor [--skip auditor-ui,auditor-tests] [-p "<prompt>"]
 #   ./agent-run.sh --help
 #
 # Place this file in the project root. Modify the configuration section
@@ -18,14 +18,18 @@
 #   and .codex/agents/*.toml. The script activates the agent by passing
 #   its role instruction as the session prompt.
 #
-# Gemini CLI: no --agent flag. Agent definitions live in .gemini/agents/
-#   as .md files with YAML frontmatter (native subagents). The script
-#   translates to @agent-name syntax:
-#   Interactive (no -p): launches gemini -i "@agent-name".
-#   Headless (-p): prepends @agent-name to the -p prompt value.
+# Antigravity CLI (agy): no --agent flag. The agent roster ships as a
+#   plugin bundle under .agents-plugin/optiquity-agents/ (plugin.json +
+#   agents/*.md). Install it once with `agy plugin install
+#   ./.agents-plugin/optiquity-agents`. The script activates an agent by
+#   reading its role text and supplying it as the session prompt (headless
+#   `agy -p`), defining a conversation-scoped subagent at runtime where the
+#   plugin schema is not yet available. See .agents-plugin/optiquity-agents/
+#   RUNTIME-SUBAGENT-PATTERN.md.
+#   # RE-VERIFY at impl: agent invocation, antigravity.google/docs/subagents
 #
-# For the Gemini auditor, subagents cannot call other subagents, so this
-# script provides external orchestration. See audit-methodology rules 56–60.
+# For the Antigravity auditor, subagents cannot call other subagents, so
+# this script provides external orchestration. See audit-methodology rules 56–60.
 
 set -euo pipefail
 
@@ -72,7 +76,7 @@ KNOWN_AGENTS=(
     auditor-ops
 )
 
-# Auditor subagents (in execution order for Gemini external orchestration).
+# Auditor subagents (in execution order for Antigravity external orchestration).
 # Order matches `audit-methodology` rule 53 cluster order, except auditor-ops
 # is placed after auditor-tests so deployment/config issues come before pure
 # code/ui findings in the consolidation pass.
@@ -86,7 +90,7 @@ AUDITOR_SUBAGENTS=(
     auditor-docs
 )
 
-KNOWN_CLIS=(claude codex gemini)
+KNOWN_CLIS=(claude codex agy)
 
 # Flags for read-only agents on the claude CLI.
 # --permission-mode bypassPermissions: removes tool-use confirmation prompts
@@ -126,20 +130,29 @@ CODEX_READONLY_FLAGS=(
     "-a" "never"
 )
 
-# Flags for read-only agents on the gemini CLI.
-# No --approval-mode flag: use Gemini default mode (per-command approval).
-# Plan Mode (--approval-mode=plan) is read-only and blocks all command
-# execution — xcodebuild, swift test, scripts — which breaks reviewer and
-# tester workflows. Default mode allows build/test tools to run while
-# prompting for approval before each command. Read-only agents are instructed
-# not to modify source files (same trust model as Claude Code reviewer).
-GEMINI_READONLY_FLAGS=()
+# Flags for read-only agents on the Antigravity CLI (agy).
+# --sandbox: confines tool execution so builds and tests that need disk
+#   writes (DerivedData, /tmp, build caches) run, while the workspace and
+#   .git stay protected. Read-only agents keep their write tools but are
+#   instructed not to modify source files (same trust model as Claude Code's
+#   reviewer and Codex, which can write but don't). No
+#   --dangerously-skip-permissions for read-only agents — they should still
+#   prompt before any state change.
+# # RE-VERIFY at impl: agy --sandbox semantics + read-only flag profile,
+# #   antigravity.google/docs/cli-plugins
+AGY_READONLY_FLAGS=(
+    "--sandbox"
+)
 
-# Flags for write agents on the gemini CLI.
-# --approval-mode=yolo: auto-approves tool calls for unattended automation.
-# Equivalent to --yolo.
-GEMINI_WRITE_FLAGS=(
-    "--approval-mode=yolo"
+# Flags for write agents on the Antigravity CLI (agy).
+# --sandbox: same workspace/.git protection as above.
+# --dangerously-skip-permissions: auto-approves tool calls for unattended
+#   automation (the Antigravity analog of an auto-approve/yolo mode).
+# # RE-VERIFY at impl: agy --dangerously-skip-permissions flag spelling +
+# #   --model selection, antigravity.google/docs/cli-plugins
+AGY_WRITE_FLAGS=(
+    "--sandbox"
+    "--dangerously-skip-permissions"
 )
 
 # ---------------------------------------------------------------------------
@@ -153,9 +166,9 @@ Usage:
   ./agent-run.sh --help
 
 Arguments:
-  <cli>           CLI to use: claude | codex | gemini
+  <cli>           CLI to use: claude | codex | agy
   --agent <name>  Agent to run (required)
-  --skip <list>   (gemini auditor only) Comma-separated list of subagents to skip
+  --skip <list>   (agy auditor only) Comma-separated list of subagents to skip
                   Example: --skip auditor-ui,auditor-tests
   --worktree [p]  (claude only) Run the agent in an isolated git worktree
                   based at the current HEAD. Optional path; defaults to a
@@ -175,7 +188,8 @@ Read-only agents — automatically receive CLI-appropriate flags:
           clean, rebase, merge) — git diff stays allowed for patch emit
   codex:  --sandbox workspace-write  (.git protected read-only by sandbox)
           -a never
-  gemini: default mode  (per-command approval; plan mode blocks builds)
+  agy:    --sandbox  (workspace + .git protected; agent instructed not to
+          modify source; still prompts before state changes)
 
   Agents: architect, reviewer, planner, tester, docs-researcher, grpc-schema,
           auditor, auditor-architecture, auditor-code, auditor-docs,
@@ -184,7 +198,7 @@ Read-only agents — automatically receive CLI-appropriate flags:
 Write agents — run with default or auto-approve permissions:
   claude: default permissions
   codex:  default (workspace-write sandbox)
-  gemini: --approval-mode=yolo
+  agy:    --sandbox --dangerously-skip-permissions (unattended automation)
 
   Agents: coder, repo-ops
 
@@ -194,10 +208,11 @@ Auditor orchestration (per audit-methodology rules 56–60):
           invocation prompt (e.g., "Skip auditor-ui and auditor-tests").
   codex:  Uses max_depth=2 in .codex/config.toml to spawn registered subagents
           by name. Pass skip rules as prose in the invocation prompt.
-  gemini: External orchestration by this script (Gemini subagents cannot call
-          other subagents). Activates each non-skipped subagent via
-          @agent-name in its own Gemini session, captures reports, then
-          invokes the auditor parent with all reports as input.
+  agy:    External orchestration by this script (Antigravity subagents cannot
+          call other subagents). Activates each non-skipped subagent in its
+          own agy session (headless agy -p, supplying the subagent's role
+          text), captures reports, then invokes the auditor parent with all
+          reports as input.
           Use --skip to exclude subagents (e.g., --skip auditor-ui for
           server-only projects, --skip auditor-tests for brand-new projects).
           auditor-ops never accepts a skip — every project deploys somewhere.
@@ -294,20 +309,22 @@ run_in_worktree() {
 }
 
 # ---------------------------------------------------------------------------
-# Gemini auditor orchestration (external)
+# Antigravity (agy) auditor orchestration (external)
 # ---------------------------------------------------------------------------
 #
-# Gemini CLI subagents cannot call other subagents. This script provides
-# external orchestration: each auditor subagent runs in its own Gemini
-# session in default mode (per-command approval), activated via @agent-name. The subagent's
-# agent file (.gemini/agents/<name>.md) provides its system prompt, scope,
-# and skill loading instructions. The -p prompt adds project-specific
-# context (PLATFORM-SKILLS.md, audit-methodology rules).
+# Antigravity CLI subagents cannot call other subagents. This script provides
+# external orchestration: each auditor subagent runs in its own agy session
+# (headless agy -p, --sandbox), activated by supplying the subagent's role
+# text from the plugin bundle. The subagent's role file
+# (.agents-plugin/optiquity-agents/agents/<name>.md) provides its system
+# prompt, scope, and skill loading instructions. The -p prompt adds
+# project-specific context (PLATFORM-SKILLS.md, audit-methodology rules).
+# # RE-VERIFY at impl: agent invocation, antigravity.google/docs/subagents
 #
 # Reports are captured to per-subagent files in a temp directory. The parent
 # consolidation prompt is passed via stdin (not -p) to avoid ARG_MAX limits.
 
-run_gemini_auditor() {
+run_agy_auditor() {
     local skip_list="$1"
     shift
     local extra_args=("$@")
@@ -324,10 +341,10 @@ run_gemini_auditor() {
     fi
 
     local tmpdir
-    tmpdir="$(mktemp -d -t gemini-auditor-XXXXXX)"
+    tmpdir="$(mktemp -d -t agy-auditor-XXXXXX)"
     trap 'rm -rf "$tmpdir"' EXIT
 
-    echo "[auditor] Starting Gemini auditor orchestration"
+    echo "[auditor] Starting Antigravity (agy) auditor orchestration"
     echo "[auditor] Temp directory: $tmpdir"
 
     local ran_subagents=()
@@ -343,14 +360,16 @@ run_gemini_auditor() {
         echo "[auditor] Running subagent: $sub"
         local report_file="$tmpdir/${sub}.report"
 
-        # Per-subagent prompt: the agent file (.gemini/agents/<sub>.md)
-        # provides the system prompt with scope, skills, and output format.
-        # This prompt adds project-specific context and activates the agent
-        # via @agent-name syntax.
+        # Per-subagent prompt: the agent role file
+        # (.agents-plugin/optiquity-agents/agents/<sub>.md) provides the
+        # system prompt with scope, skills, and output format. This prompt
+        # supplies the role file path and adds project-specific context.
+        # (Antigravity has no @agent-name; the script names the role file.)
+        # # RE-VERIFY at impl: agent invocation, antigravity.google/docs/subagents
         local prompt
-        prompt="@${sub} Run your audit cluster for this project.
+        prompt="You are now active as the ${sub} agent. Load your role definition from .agents-plugin/optiquity-agents/agents/${sub}.md and follow those instructions. Run your audit cluster for this project.
 
-Your agent file defines your scope, skills to load, and output format.
+Your role file defines your scope, skills to load, and output format.
 Additionally:
 1. Read PLATFORM-SKILLS.md to determine which platform skills to load
    for this project's type.
@@ -361,7 +380,7 @@ Additionally:
 If you find nothing, emit the report header plus 'No findings in this
 cluster.' so the parent confirms you ran."
 
-        if gemini "${GEMINI_READONLY_FLAGS[@]}" -p "$prompt" > "$report_file" 2>&1; then
+        if agy "${AGY_READONLY_FLAGS[@]}" -p "$prompt" > "$report_file" 2>&1; then
             ran_subagents+=("$sub")
             echo "[auditor]   report captured: $report_file"
         else
@@ -375,7 +394,7 @@ cluster.' so the parent confirms you ran."
     echo "[auditor] Running auditor parent for consolidation"
     local parent_prompt_file="$tmpdir/parent.prompt"
     {
-        echo "@auditor You are the auditor parent. Your agent file defines your coordination rules."
+        echo "You are now active as the auditor parent. Load your role definition from .agents-plugin/optiquity-agents/agents/auditor.md; it defines your coordination rules."
         echo ""
         echo "You have received the following subagent reports. Produce a"
         echo "consolidated audit report per the audit-methodology skill (rules"
@@ -410,7 +429,7 @@ cluster.' so the parent confirms you ran."
     } > "$parent_prompt_file"
 
     # Pass the prompt via stdin to avoid ARG_MAX limits on -p.
-    gemini "${GEMINI_READONLY_FLAGS[@]}" "${extra_args[@]+"${extra_args[@]}"}" < "$parent_prompt_file"
+    agy "${AGY_READONLY_FLAGS[@]}" "${extra_args[@]+"${extra_args[@]}"}" < "$parent_prompt_file"
 }
 
 # ---------------------------------------------------------------------------
@@ -478,10 +497,10 @@ done
 is_in_array "$AGENT" "${KNOWN_AGENTS[@]}" \
     || die "unknown agent '$AGENT'. Known agents: ${KNOWN_AGENTS[*]}"
 
-# --skip is only meaningful for gemini auditor
+# --skip is only meaningful for the agy auditor
 if [[ -n "$SKIP_LIST" ]]; then
-    if [[ "$CLI" != "gemini" ]] || [[ "$AGENT" != "auditor" ]]; then
-        die "--skip is only valid for 'gemini --agent auditor'"
+    if [[ "$CLI" != "agy" ]] || [[ "$AGENT" != "auditor" ]]; then
+        die "--skip is only valid for 'agy --agent auditor'"
     fi
 fi
 
@@ -496,9 +515,9 @@ fi
 # Build extra flags and launch
 # ---------------------------------------------------------------------------
 
-# Special case: gemini auditor uses external orchestration
-if [[ "$CLI" == "gemini" ]] && [[ "$AGENT" == "auditor" ]]; then
-    run_gemini_auditor "$SKIP_LIST" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+# Special case: agy auditor uses external orchestration
+if [[ "$CLI" == "agy" ]] && [[ "$AGENT" == "auditor" ]]; then
+    run_agy_auditor "$SKIP_LIST" "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
     exit $?
 fi
 
@@ -507,22 +526,27 @@ if is_in_array "$AGENT" "${READONLY_AGENTS[@]}"; then
     case "$CLI" in
         claude) EXTRA=("${CLAUDE_READONLY_FLAGS[@]}") ;;
         codex)  EXTRA=("${CODEX_READONLY_FLAGS[@]}") ;;
-        gemini) EXTRA=("${GEMINI_READONLY_FLAGS[@]}") ;;
+        agy)    EXTRA=("${AGY_READONLY_FLAGS[@]}") ;;
     esac
 else
     # Write agents
     case "$CLI" in
-        gemini) EXTRA=("${GEMINI_WRITE_FLAGS[@]}") ;;
+        agy)    EXTRA=("${AGY_WRITE_FLAGS[@]}") ;;
         # claude and codex use default permissions for write agents
     esac
 fi
 
-if [[ "$CLI" == "gemini" ]]; then
-    # Gemini CLI has no --agent flag. Always launch interactive (-i).
+if [[ "$CLI" == "agy" ]]; then
+    # Antigravity CLI has no --agent flag. Launch an interactive session and
+    # supply the activation message as the initial prompt. The agent roster
+    # ships as the .agents-plugin/optiquity-agents/ plugin bundle; this
+    # message names the role file so the session adopts that role.
     # If -p/--prompt is in the args, treat its value as activation context
     # (not a task to execute) — strip -p and include the value in the
     # activation message. The actual task prompt is always pasted by the
     # user after the agent acknowledges.
+    # # RE-VERIFY at impl: agent invocation + interactive vs headless launch,
+    # #   antigravity.google/docs/subagents
     other_args=()
     user_context=""
     prompt_next=false
@@ -536,12 +560,12 @@ if [[ "$CLI" == "gemini" ]]; then
             other_args+=("$arg")
         fi
     done
-    activation_msg="@${AGENT} You are now active as the ${AGENT} agent. Load your agent definition from .gemini/agents/${AGENT}.md."
+    activation_msg="You are now active as the ${AGENT} agent. Load your role definition from .agents-plugin/optiquity-agents/agents/${AGENT}.md and follow those instructions."
     if [[ -n "$user_context" ]]; then
         activation_msg="${activation_msg} Initial context: ${user_context}."
     fi
     activation_msg="${activation_msg} Do not begin any work — acknowledge your role and wait for me to paste the task prompt."
-    exec gemini "${EXTRA[@]+"${EXTRA[@]}"}" "${other_args[@]+"${other_args[@]}"}" -i "$activation_msg"
+    exec agy "${EXTRA[@]+"${EXTRA[@]}"}" "${other_args[@]+"${other_args[@]}"}" "$activation_msg"
 elif [[ "$CLI" == "codex" ]]; then
     # Codex CLI has no --agent flag. Always launch interactive.
     # Any positional arg is treated as activation context (not a task to

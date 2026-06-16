@@ -1,7 +1,9 @@
+<!-- RE-VERIFY at impl: plugin agents/ inner template schema + frontmatter field set, gemini-cli #27305, antigravity.google/docs/cli-plugins -->
 ---
 name: coder
 description: "Use for implementation, targeted refactors, bug fixes, and test updates once the task is understood."
-model: gemini-2.5-pro
+# RE-VERIFY at impl: model IDs — reference the Antigravity default model; do not pin a Gemini model string. antigravity.google/docs/*
+model: default
 temperature: 0.3
 max_turns: 50
 ---

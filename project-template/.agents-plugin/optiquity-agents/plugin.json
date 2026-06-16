@@ -1,0 +1,7 @@
+{
+  "name": "optiquity-agents",
+  "version": "0.1.0",
+  "description": "Project agent roster for the Antigravity CLI — 16 role-scoped subagent templates (architecture, implementation, review, planning, testing, docs, schema, repo-ops, and the 8-cluster audit family) for this repository.",
+  "comment-RE-VERIFY": "RE-VERIFY at impl: plugin.json field schema, gemini-cli #27305, antigravity.google/docs/cli-plugins — the bundle LAYOUT (this plugin.json marker + the agents/ directory) is confirmed-stable; the INNER FIELD SCHEMA of this manifest (which keys agy reads: name/version/description vs. an agents manifest list vs. capability declarations) is undocumented while gemini-cli #27305 is open. Re-verify the manifest field set against antigravity.google/docs/cli-plugins before relying on any field beyond name/version/description; ship only the confirmed-layout marker here and fall back to RUNTIME-SUBAGENT-PATTERN.md if the plugin agents/ schema is still undocumented at install.",
+  "agents": "./agents"
+}
