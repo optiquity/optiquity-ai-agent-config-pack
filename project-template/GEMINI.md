@@ -455,8 +455,8 @@ table above and tool-side discovery and do NOT need a parallel section. -->
 ## Agent roster
 
 Agent role definitions ship as an Antigravity plugin bundle at
-`.agents-plugin/optiquity-agents/` — a `plugin.json` manifest plus
-`agents/*.md` (16 role templates) and a `RUNTIME-SUBAGENT-PATTERN.md` fallback.
+`.agents-plugin/optiquity-agents/` — a `.agents-plugin/optiquity-agents/plugin.json` manifest plus
+`agents/*.md` (16 role templates) and a `.agents-plugin/optiquity-agents/RUNTIME-SUBAGENT-PATTERN.md` fallback.
 Install the bundle once with `agy plugin install ./.agents-plugin/optiquity-agents`;
 the roster is then available to every session.
 

@@ -7,7 +7,8 @@ roster on the Antigravity CLI (`agy`) while the plugin `agents/` inner
 template schema remains undocumented. It is **forward-looking** — re-verify
 every command below against `antigravity.google/docs/subagents` and
 `antigravity.google/docs/cli-plugins` before relying on it. The plugin
-bundle in this directory (`plugin.json` + `agents/`) is the **primary**
+bundle in this directory (`.agents-plugin/optiquity-agents/plugin.json` +
+`agents/`) is the **primary**
 contract; this runtime pattern is the hedge for when the plugin install
 path is not yet available on your `agy` version.
 

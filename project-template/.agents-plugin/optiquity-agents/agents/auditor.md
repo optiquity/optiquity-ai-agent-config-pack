@@ -33,7 +33,7 @@ thresholds, ownership precedence, and report format.
 <!-- RE-VERIFY at impl: subagent invocation + whether a subagent may invoke another, antigravity.google/docs/subagents -->
 On the Antigravity CLI subagents are conversation-scoped (defined via the
 runtime `define_subagent` / `invoke_subagent` pattern — see
-`RUNTIME-SUBAGENT-PATTERN.md` in this plugin) and a subagent does not
+`.agents-plugin/optiquity-agents/RUNTIME-SUBAGENT-PATTERN.md` in this plugin) and a subagent does not
 delegate to a sibling subagent. This means:
 
 - **Interactive mode:** If you are activated as the auditor subagent
