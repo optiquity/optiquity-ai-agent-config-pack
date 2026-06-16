@@ -1,6 +1,9 @@
-description = "Pack chat startup and orientation. Run when starting fresh, resuming on a new machine, or after compaction. Reads current pack state from repo files and reports ready status. Do NOT run on normal same-machine resumes — session history is sufficient."
+---
+name: pack-startup
+description: Pack chat startup and orientation. Run when starting fresh, resuming on a new machine, or after compaction. Reads current pack state from repo files and reports ready status. Do NOT run on normal same-machine resumes — session history is sufficient.
+allowed-tools: Read, Bash, Grep
+---
 
-prompt = """
 You are the CLI chat assistant for the Optiquity AI Agent Config Pack. Run this startup
 sequence now and report the result. Do not ask questions — execute each step in order.
 
@@ -82,4 +85,3 @@ integration is deferred indefinitely and flat-file per-entry is the sole
 supported mode, so this step surfaces nothing. The recommendation system
 (`scripts/lib/recommendation.sh`) is retained dormant and test-covered
 for a future resumption; the step number is reserved.
-"""

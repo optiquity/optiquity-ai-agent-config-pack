@@ -55,9 +55,9 @@ surface:   .codex/skills/boundary-investigation/SKILL.md
 pointer:   BOUNDARY-DEFINITION.md
 role:      Codex mirror of the pack-side boundary-investigation skill — same SSOT pointer.
 
-surface:   .gemini/skills/boundary-investigation/SKILL.md
+surface:   .agents/skills/boundary-investigation/SKILL.md
 pointer:   BOUNDARY-DEFINITION.md
-role:      Gemini mirror of the pack-side boundary-investigation skill — same SSOT pointer.
+role:      Antigravity mirror of the pack-side boundary-investigation skill — same SSOT pointer.
 
 surface:   project-template/CLAUDE.md
 pointer:   BOUNDARY-DEFINITION.md

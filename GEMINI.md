@@ -1,6 +1,6 @@
 # GEMINI.md — AI Agent Config Pack (Pack Repo)
 
-Context file for Gemini CLI working on this repo. Loaded automatically at session start.
+Context file for Antigravity CLI working on this repo. Loaded automatically at session start.
 Keep this file concise — it is loaded into every prompt.
 
 ## Quick reference
@@ -12,7 +12,7 @@ Keep this file concise — it is loaded into every prompt.
 
 ## What this repo is
 
-Optiquity AI Agent Config Pack: versioned Claude Code, Codex, and Gemini CLI agent
+Optiquity AI Agent Config Pack: versioned Claude Code, Codex, and Antigravity CLI agent
 configuration files for Swift / Python / gRPC projects. Ships template directories,
 agent files, skills, scripts, and supporting documentation.
 
@@ -210,8 +210,15 @@ PACK-AGENTS.md current".
 
 ### Agent invocation rules
 
-- **Pack agent invocation.** Pack agents are invoked from `gemini` via
-  `@pack-<name>`, or as a sub-agent within Pack Chat. The pack repo has no
+- **Pack agent invocation.** Pack agents ship as an Antigravity plugin
+  bundle at pack-root `.agents-plugin/pack-agents/` (a `plugin.json` manifest
+  plus `agents/*.md` role templates and a pack-audience
+  `RUNTIME-SUBAGENT-PATTERN.md` fallback). Install the bundle once with
+  `agy plugin install ./.agents-plugin/pack-agents`, then invoke a pack agent
+  via Antigravity's subagent mechanism (`agy` then the bundled `pack-<name>`
+  role), or run one as a sub-agent within Pack Chat. (Re-verify the Antigravity
+  agent-invocation mechanism against `antigravity.google/docs/subagents` before
+  relying on it; the subagent API is in preview.) The pack repo has no
   `agent-run.sh` — that's a project template helper, not a pack invocation
   method.
 - **Agent prompt requirements.** Every agent prompt must include: context
@@ -323,12 +330,15 @@ PACK-AGENTS.md current".
     `project-template/` trinity) — see `PACK-AGENTS.md` § "Agent
     permission rules" for the pack-chat-only list. pack-chat-only IS Pack-Chat-direct
     by construction.
-  - Per V2 §D, Gemini has no pack-shipped per-project memory cache
-    (Gemini's "memory" IS the `GEMINI.md` hierarchy itself — there is
+  - Per V2 §D, Antigravity has no pack-shipped per-project memory cache
+    (Antigravity's "memory" IS the `GEMINI.md` hierarchy itself — there is
     no separate generated state directory analogous to the Claude
-    memory cache). Pack rules reach Gemini via this `GEMINI.md`
-    trinity surface only; the `/memory show` and `/memory reload`
-    commands operate on this same hierarchy.
+    memory cache). Pack rules reach Antigravity via this `GEMINI.md`
+    trinity surface only; the global context file `~/.gemini/GEMINI.md`
+    layers on top of it. (Re-verify the exact memory-show/reload and
+    cross-session memory-write verbs against `antigravity.google/docs/*`
+    before relying on a specific command; the verb names are unconfirmed
+    for the preview CLI.)
   - Pack Chat may NOT edit project-template / supporting-docs /
     maintenance-docs / scripts / fixtures / agent definitions —
     those go to pack-coder.
@@ -530,10 +540,12 @@ PACK-AGENTS.md current".
 
 ---
 
-## Gemini CLI operating notes
+## Antigravity CLI operating notes
 
-Use `/chat save <tag>` to save session state before ending a session.
-Use `save_memory` to persist cross-session facts to ~/.gemini/GEMINI.md.
-Read-only agents (pack-reviewer, pack-docs-researcher) run in default mode — per-command approval. Do not use Plan Mode (`--approval-mode=plan`); it blocks all command execution. Invoke pack agents directly (`gemini` then `@pack-reviewer`) — the pack repo does not have agent-run.sh.
-Native file write tools replace Desktop Commander — both achieve the same result.
-Session files are local; sync state between machines via project docs (committed to repo).
+- **Session management:** Use `/resume` to continue a previous conversation, `/switch` to move between conversations, `/fork` to branch a conversation, and `/rewind` to step a conversation back to an earlier point.
+- **Context handling:** Antigravity manages conversation context automatically; rely on `/fork` and `/rewind` to prune or branch context rather than a manual compaction command.
+- **Cross-session memory:** Persist facts to your global context file `~/.gemini/GEMINI.md` so they load in every session. (Re-verify the exact memory-write verb against `antigravity.google/docs/*` before relying on a specific command; the verb name is unconfirmed for the preview CLI.)
+- **Permissions:** Read-only agents (pack-reviewer, pack-docs-researcher) run under a permission profile that still allows build and test tools; configure via `/permissions` and keep the `request-review` posture as the default so writes surface for approval rather than running unattended. Invoke pack agents via Antigravity's subagent mechanism from the installed `.agents-plugin/pack-agents/` bundle — the pack repo does not have agent-run.sh.
+- **File writes:** Antigravity CLI native file write tools replace Desktop Commander — both achieve the same result.
+- **Checkpointing:** Automatic snapshots are available for recovery.
+- **Session files are local:** Sync state between machines via project docs committed to the repo, not session files.

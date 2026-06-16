@@ -13,7 +13,7 @@ It is NOT a template and is NOT copied to coding projects.
 ## What this repo is
 
 The Optiquity AI Agent Config Pack provides
-versioned Claude Code, Codex, and Gemini CLI agent configuration files for
+versioned Claude Code, Codex, and Antigravity CLI agent configuration files for
 Swift / Python / gRPC projects. It ships template directories, agent files,
 skills, scripts, and supporting documentation.
 
@@ -349,16 +349,18 @@ PACK-AGENTS.md current".
   VERIFIES its actual regime at runtime (pwd/HEAD ground-truth), never
   trusting settings. `worktree.bgIsolation` governs background SESSIONS
   only (not sub-agents) — BD-218. Trinity-exempt (Claude-only;
-  Codex/Gemini = BD-217).
+  Codex/Antigravity = BD-217).
 - **Default sub-agent spawns to background.** Every Agent-tool
   invocation from Pack Chat uses `run_in_background: true` so the chat
   stays interactive while the sub runs. User has auto-mode on; the
   background sub will not block the chat. Trinity exemption: this rule
   references the Claude Code Agent tool's `run_in_background` parameter;
   Codex parallel-spawn behavior is implicit (parallel-by-default, capped
-  by `agents.max_threads`); Gemini parallel-spawn is implicit via `@`
-  invocation. No cross-CLI parity edit needed — each platform's
-  parallel-or-async behavior is platform-native.
+  by `agents.max_threads`); Antigravity parallel-spawn is implicit via its
+  dynamic-subagent mechanism (the `define_subagent` / plugin-roster
+  subagent invocation; preview — coordinate BD-217). No cross-CLI parity
+  edit needed — each platform's parallel-or-async behavior is
+  platform-native.
 - **Agent-team stage lifecycle + per-commit fresh-coder.** With
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` enabled, sub-agents spawned
   for a stage (architect → planner → coder → reviewer) stay alive
@@ -369,13 +371,14 @@ PACK-AGENTS.md current".
   across commits, even within a stage. Per-BD review/fix cycle = fresh
   coder for the implementation, fresh coder for the fix. Trinity
   exemption: Agent Teams + SendMessage are Claude-Code-specific
-  (Codex / Gemini have no peer-messaging equivalent — confirmed absent
-  per Codex issue #12462 and Gemini hub-and-spoke docs).
+  (Codex / Antigravity have no peer-messaging equivalent — confirmed
+  absent per Codex issue #12462 and Antigravity's hub-and-spoke
+  subagent model).
 - **Trinity exemption.** This sub-section is Claude-specific (not
   mirrored in `AGENTS.md` / `GEMINI.md`) because it concerns Claude
   Code's Agent tool, `run_in_background` parameter, and Agent Teams /
   SendMessage features — none of which have equivalents in Codex CLI
-  or Gemini CLI per research §2.5 / §2.7 / §3.5 / §3.7.
+  or Antigravity CLI per research §2.5 / §2.7 / §3.5 / §3.7.
 
 ### Pack Chat scope
 
