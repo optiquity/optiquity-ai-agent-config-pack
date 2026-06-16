@@ -3,14 +3,15 @@
 <!--
 HOW TO USE THIS TEMPLATE
 
-This is the Gemini CLI context file for your project. It is loaded automatically
-by Gemini CLI at session start via the GEMINI.md hierarchy.
+This is the Antigravity CLI context file for your project. It is loaded
+automatically by Antigravity CLI (`agy`) at session start via the GEMINI.md
+hierarchy (Antigravity reads GEMINI.md / AGENTS.md for backward compatibility).
 
 Fill in [PROJECT_NAME], [PLATFORM_TARGETS], and [TRANSPORT] during project setup.
 Remove this comment block after filling in the placeholders.
 
-This file is the Gemini CLI equivalent of CLAUDE.md. Both files should express
-the same project rules — only tool-specific operating notes differ.
+This file is the Antigravity CLI equivalent of CLAUDE.md. Both files should
+express the same project rules — only tool-specific operating notes differ.
 -->
 
 ---
@@ -30,7 +31,7 @@ Transport: [TRANSPORT] (e.g., gRPC + Proto3 for first-party; REST for third-part
 
 ## Capability policy
 
-Gemini CLI may perform all major engineering tasks in this repository:
+Antigravity CLI may perform all major engineering tasks in this repository:
 planning, architecture, implementation, refactoring, debugging, testing,
 code review, dependency review, repo operations, documentation.
 
@@ -58,7 +59,7 @@ Default preference only:
 - **FoundationModels** is Apple's on-device LLM framework (iOS 26+). Evaluate before reaching for third-party ML inference.
 - **Availability guards required.** Liquid Glass and FoundationModels require iOS 26+ / macOS 26+. Wrap in `#available(iOS 26, *)` / `#available(macOS 26, *)` guards if the deployment target is below iOS 26 / macOS 26.
 - **Check Apple frameworks before third-party packages** for any new capability.
-- For implementation details on any iOS 26 API, the `docs-researcher` agent reads directly from the Xcode documentation bundle at `$XCODE_APP/Contents/PlugIns/IDEIntelligenceChat.framework/Versions/A/Resources/AdditionalDocumentation/` (where `$XCODE_APP` defaults to `/Applications/Xcode.app` — override in `.gemini/.env` if Xcode is installed elsewhere). If the path does not exist, fall back to web search.
+- For implementation details on any iOS 26 API, the `docs-researcher` agent reads directly from the Xcode documentation bundle at `$XCODE_APP/Contents/PlugIns/IDEIntelligenceChat.framework/Versions/A/Resources/AdditionalDocumentation/` (where `$XCODE_APP` defaults to `/Applications/Xcode.app` — export it in your shell environment, or via the `env` block of `.agents/mcp_config.json`, if Xcode is installed elsewhere). If the path does not exist, fall back to web search.
 
 ## Architecture — universal layer discipline
 
@@ -170,7 +171,7 @@ Before adding any third-party framework or API:
 ## Skill loading
 
 Agent prompts specify which skills to load. Skills are located in
-`.gemini/skills/<name>/SKILL.md`. The PM chat selects skills based on
+`.agents/skills/<name>/SKILL.md`. The PM chat selects skills based on
 `PLATFORM-SKILLS.md` — the skill-selection matrix for this project.
 
 Skill selection follows a 5-dimension model: D1 (runtime / OS substrate),
@@ -186,7 +187,7 @@ trigger-loaded list.
 
 **Tier 0 installation note.** Skills at `project-template/skills/` in the
 pack repo are auto-distributed to all three client CLI skill directories
-(`.claude/skills/`, `.codex/skills/`, `.gemini/skills/`) via `stage_s4_skills()`
+(`.claude/skills/`, `.codex/skills/`, `.agents/skills/`) via `stage_s4_skills()`
 at install time; the Tier 0 base list is then loaded by every agent for every
 project. See `scripts/init-project.sh` `stage_s4_skills()` and the
 `boundary-investigation` Tier 0 skill for the canonical reference.
@@ -203,7 +204,7 @@ removed by updating this line and the project description above — then committ
 
 Project-specific (custom) skills use the `x-` prefix and live alongside
 pack skills in `.claude/skills/x-<name>/`, `.codex/skills/x-<name>/`, and
-`.gemini/skills/x-<name>/`. Pack-supplied skills never begin with `x-`.
+`.agents/skills/x-<name>/`. Pack-supplied skills never begin with `x-`.
 See `docs/pack/INSTALL-PROCEDURES.md` § "Project file conventions in
 pack-controlled directories" for the full convention and Procedure 5.2
 for the creation workflow.
@@ -347,8 +348,9 @@ language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
 These rules govern every agent invocation in this project. Each
 agent's full operating rules (Permission profile, Output policy,
 Hard rules) live in its own definition file under
-`.claude/agents/<agent>.md`, `.codex/agents/<agent>.toml`, and
-`.gemini/agents/<agent>.md`. The agent file is authoritative for
+`.claude/agents/<agent>.md`, `.codex/agents/<agent>.toml`, and the
+Antigravity plugin bundle `.agents-plugin/optiquity-agents/agents/<agent>.md`.
+The agent file is authoritative for
 what that agent may and must do; this section carries only the
 universal collaboration rules that apply project-wide regardless
 of agent role.
@@ -405,7 +407,7 @@ of agent role.
 
 ## Phase routing — default agent assignments
 
-All three tools (Claude Code, Codex, Gemini CLI) can execute any phase.
+All three tools (Claude Code, Codex, Antigravity CLI) can execute any phase.
 The defaults below identify the better system for each phase. Override
 when task characteristics favor a different tool.
 
@@ -425,8 +427,12 @@ when task characteristics favor a different tool.
 | Local validation | **Codex** | repo-ops | Workspace-write sandbox; can execute scripts |
 
 To invoke any agent: `./agent-run.sh <cli> --agent <name>` (see `./agent-run.sh --help`).
-For Gemini CLI, `agent-run.sh` translates `--agent` to Gemini's native `@agent-name`
-syntax transparently — the same command format works for all three CLIs.
+For Antigravity CLI (`agy`), `agent-run.sh` resolves `--agent` to the role
+defined in the plugin bundle (`.agents-plugin/optiquity-agents/agents/<name>.md`)
+and launches it via Antigravity's subagent mechanism — the same command format
+works for all three CLIs. (Re-verify the Antigravity agent-invocation mechanism
+against `antigravity.google/docs/subagents` before relying on it; the subagent
+API is in preview.)
 
 ### Custom agents
 
@@ -440,21 +446,28 @@ and full skill assignments. All custom agent names begin with `x-`.
 | (Developer / PM chat adds rows per project during Procedure 5) |  |  |
 
 <!-- Trinity-rule exception: this `## Agent roster` section is present in
-GEMINI.md only. Gemini CLI auto-discovers agents via filesystem scan of
-`.gemini/agents/`; the explicit roster below is a presentation aid for the
+GEMINI.md only. The Antigravity CLI agent roster ships as a plugin bundle
+(`.agents-plugin/optiquity-agents/`) rather than being auto-discovered from a
+flat agents directory; the explicit roster below is a presentation aid for the
 human reader of GEMINI.md. CLAUDE.md and AGENTS.md rely on the phase-routing
 table above and tool-side discovery and do NOT need a parallel section. -->
 
 ## Agent roster
 
-Agent definitions live in `.gemini/agents/*.md` — 16 agents with YAML
-frontmatter (`name`, `description`, `model`, `temperature`, `max_turns`).
-Gemini CLI discovers these automatically at session start.
+Agent role definitions ship as an Antigravity plugin bundle at
+`.agents-plugin/optiquity-agents/` — a `plugin.json` manifest plus
+`agents/*.md` (16 role templates) and a `RUNTIME-SUBAGENT-PATTERN.md` fallback.
+Install the bundle once with `agy plugin install ./.agents-plugin/optiquity-agents`;
+the roster is then available to every session.
 
-Invoke any agent with `@agent-name` in an interactive Gemini session, or via
-`./agent-run.sh gemini --agent <name>` for consistent permission flags.
-The script translates `--agent` to Gemini's native `@agent-name` syntax
-transparently.
+Invoke any agent via `./agent-run.sh agy --agent <name>` for consistent
+permission flags. The script resolves `--agent` to the matching role template
+in the bundle and launches it through Antigravity's subagent mechanism. If your
+`agy` version does not yet accept the plugin `agents/` template schema, fall
+back to the runtime `define_subagent` pattern documented in
+`.agents-plugin/optiquity-agents/RUNTIME-SUBAGENT-PATTERN.md`. (Re-verify the
+Antigravity agent-invocation mechanism against `antigravity.google/docs/subagents`
+before relying on it; the subagent API is in preview.)
 
 Roster (16 agents, behaviorally equivalent to the Claude and Codex versions):
 architect, coder, reviewer, planner, tester, docs-researcher, grpc-schema,
@@ -471,14 +484,13 @@ When acting in this repo:
 - Match local style when it does not violate these rules.
 - Prefer changing the smallest correct surface area.
 
-## Gemini CLI operating notes
+## Antigravity CLI operating notes
 
-- **Session save:** Use `/chat save <tag>` before ending a session.
-- **Session resume:** Use `/chat resume <tag>` to restore.
-- **Context compression:** Use `/compress` when context grows large.
-- **Cross-session memory:** Use `save_memory` to persist facts to `~/.gemini/GEMINI.md`.
-- **Approval mode:** Read-only and review agents use Gemini default mode (per-command approval) so build and test tools like xcodebuild can run. Plan Mode (`--approval-mode=plan`) blocks all command execution and must not be used as the standard mode for read-only agents. `agent-run.sh` sets the correct mode automatically.
-- **File writes:** Gemini CLI native file write tools. No Desktop Commander needed.
+- **Session management:** Use `/resume` to continue a previous conversation, `/switch` to move between conversations, `/fork` to branch a conversation, and `/rewind` to step a conversation back to an earlier point.
+- **Context handling:** Antigravity manages conversation context automatically; rely on `/fork` and `/rewind` to prune or branch context rather than a manual compaction command.
+- **Cross-session memory:** Persist facts to your global context file `~/.gemini/GEMINI.md` so they load in every session. (Re-verify the exact memory-write verb against `antigravity.google/docs/*` before relying on a specific command; the verb name is unconfirmed for the preview CLI.)
+- **Permissions:** Read-only and review agents run under a permission profile that still allows build and test tools like xcodebuild (configure via `/permissions`); keep the `request-review` posture as the default so writes surface for approval rather than running unattended. `agent-run.sh` sets the correct profile automatically.
+- **File writes:** Antigravity CLI native file write tools. No Desktop Commander needed.
 - **Checkpointing:** Automatic snapshots are available for recovery.
 - **Session files are local.** Sync state between machines via project docs committed to the repo, not session files.
 

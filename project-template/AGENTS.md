@@ -174,7 +174,7 @@ trigger-loaded list.
 
 **Tier 0 installation note.** Skills at `project-template/skills/` in the
 pack repo are auto-distributed to all three client CLI skill directories
-(`.claude/skills/`, `.codex/skills/`, `.gemini/skills/`) via `stage_s4_skills()`
+(`.claude/skills/`, `.codex/skills/`, `.agents/skills/`) via `stage_s4_skills()`
 at install time; the Tier 0 base list is then loaded by every agent for every
 project. See `scripts/init-project.sh` `stage_s4_skills()` and the
 `boundary-investigation` Tier 0 skill for the canonical reference.
@@ -191,7 +191,7 @@ removed by updating this line and the project description above — then committ
 
 Project-specific (custom) skills use the `x-` prefix and live alongside
 pack skills in `.claude/skills/x-<name>/`, `.codex/skills/x-<name>/`, and
-`.gemini/skills/x-<name>/`. Pack-supplied skills never begin with `x-`.
+`.agents/skills/x-<name>/`. Pack-supplied skills never begin with `x-`.
 See `docs/pack/INSTALL-PROCEDURES.md` § "Project file conventions in
 pack-controlled directories" for the full convention and Procedure 5.2
 for the creation workflow.
@@ -328,8 +328,9 @@ When citing a code location in a report, use the symbol name not the line number
 These rules govern every agent invocation in this project. Each
 agent's full operating rules (Permission profile, Output policy,
 Hard rules) live in its own definition file under
-`.claude/agents/<agent>.md`, `.codex/agents/<agent>.toml`, and
-`.gemini/agents/<agent>.md`. The agent file is authoritative for
+`.claude/agents/<agent>.md`, `.codex/agents/<agent>.toml`, and the
+Antigravity plugin bundle `.agents-plugin/optiquity-agents/agents/<agent>.md`.
+The agent file is authoritative for
 what that agent may and must do; this section carries only the
 universal collaboration rules that apply project-wide regardless
 of agent role.
@@ -386,7 +387,7 @@ of agent role.
 
 ## Phase routing — default agent assignments
 
-All three tools (Claude Code, Codex, Gemini CLI) can execute any phase.
+All three tools (Claude Code, Codex, Antigravity CLI) can execute any phase.
 The defaults below identify the better system for each phase. Override
 when task characteristics favor a different tool.
 
@@ -406,8 +407,12 @@ when task characteristics favor a different tool.
 | Local validation | **Codex** | repo-ops | Workspace-write sandbox; can execute scripts |
 
 To invoke any agent: `./agent-run.sh <cli> --agent <name>` (see `./agent-run.sh --help`).
-For Gemini CLI, `agent-run.sh` translates `--agent` to Gemini's native `@agent-name`
-syntax transparently — the same command format works for all three CLIs.
+For Antigravity CLI (`agy`), `agent-run.sh` resolves `--agent` to the role
+defined in the plugin bundle (`.agents-plugin/optiquity-agents/agents/<name>.md`)
+and launches it via Antigravity's subagent mechanism — the same command format
+works for all three CLIs. (Re-verify the Antigravity agent-invocation mechanism
+against `antigravity.google/docs/subagents` before relying on it; the subagent
+API is in preview.)
 
 ### Custom agents
 
