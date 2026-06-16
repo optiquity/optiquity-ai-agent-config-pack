@@ -247,7 +247,7 @@ trigger here is `audit-methodology` itself.
 Pack-repo development additionally uses `verification-harness`,
 `implementation-report`, and `commit-discipline` as trigger-loaded
 skills. Those skills live in the pack repo's own `.claude/skills/`,
-`.codex/skills/`, `.gemini/skills/` trees (not under
+`.codex/skills/`, `.agents/skills/` trees (not under
 `project-template/`) and are out of scope for project-side skill
 selection. See `docs/pack/PM-CHAT.md` § Pack agent roster for the canonical project-side agent list.
 
@@ -409,7 +409,7 @@ Load the following skills for this task:
 ```
 
 The agent reads each skill's SKILL.md at the start of the session. Skills are
-located in `.claude/skills/`, `.codex/skills/`, or `.gemini/skills/` depending
+located in `.claude/skills/`, `.codex/skills/`, or `.agents/skills/` depending
 on which tool runs the agent.
 
 ---
@@ -483,19 +483,22 @@ the remaining 14 load directly from a single D1/D2/D4/D5 selector
 |---|---|---|
 | audit-methodology | Audit report format, severity scale, subagent coordination, file scopes, ownership precedence | `auditor` parent + all 7 subagents |
 
-### PM chat operational skill (1)
+### PM chat operational skill (2)
 
-This skill is outside the dimension model and the trigger model. It is
-not loaded by any agent — it is used exclusively by the PM chat itself
-for session startup and orientation. It exists in the skill directory
-because the template's skill loading mechanism is uniform across tools,
-but its purpose is PM chat operational, not agent role guidance.
+These skills are outside the dimension model and the trigger model. They
+are not loaded by any agent — they are used exclusively by the PM chat
+itself (and, for `pack-help`, as a quick command reference for any tool's
+user) for session startup, orientation, and pack-command lookup. They
+exist in the skill directory because the template's skill loading
+mechanism is uniform across tools, but their purpose is PM chat
+operational, not agent role guidance.
 
 | Skill | Description | Loaded by |
 |---|---|---|
 | pm-startup | PM chat session startup procedure: read state files, check TD-TBD sentinels, report ready status | PM chat only (not an agent) |
+| pack-help | Show all pack commands and colloquial mappings (the `/pack-help` quick reference); replaces the former per-CLI `pack-help` slash-command | PM chat / any tool user (not an agent) |
 
-**Total skills: 36** (14 Tier 0 base + 20 dimensional / intersection + 1 trigger-loaded + 1 PM chat operational).
+**Total skills: 37** (14 Tier 0 base + 20 dimensional / intersection + 1 trigger-loaded + 2 PM chat operational).
 
 ### Deferred skills (create when project need arises)
 

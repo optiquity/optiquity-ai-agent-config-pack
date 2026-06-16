@@ -15,7 +15,7 @@ part of kickoff, then removes this comment block.
 
 This file is read by the PM chat on all three tools:
 - Claude Code CLI: direct file read, or /pm-startup skill
-- Gemini CLI: loaded via GEMINI.md hierarchy or direct read
+- Antigravity CLI (`agy`): loaded via the GEMINI.md hierarchy or direct read
 - Codex CLI / ChatGPT Web: pasted or read via GitHub connector
 -->
 
@@ -75,7 +75,7 @@ If the developer has not provided a design brief — target platform(s), primary
 language(s), key external APIs or services, and a rough architecture direction —
 stop. Do not attempt to make these decisions yourself. Ask the developer to
 produce a design brief in a separate conversation first (a Claude Web side chat,
-a Gemini CLI session, or any other workspace). The brief should specify at
+an Antigravity CLI session, or any other workspace). The brief should specify at
 minimum:
 
 - Target platform(s) and deployment model
@@ -126,11 +126,11 @@ directory map.
 | `PLATFORM-SKILLS.md` | Direct read (full) | Referenced when generating every agent prompt |
 | `METHODOLOGY.md` | RAG query (Claude CLI) or direct read (other tools) | Large, stable |
 | `docs/pack/prompts/<agent>.md` | Direct read, on demand at generation time | Per-agent prompt files (Part 4) |
-| `.claude/agents/`, `.codex/agents/`, `.gemini/agents/`, `.claude/skills/`, `.codex/skills/`, `.gemini/skills/`, `docs/pack/prompts/` | Directory listing | Detection scan for custom, registered, improperly-added files (Procedure 5.5) |
+| `.claude/agents/`, `.codex/agents/`, `.agents-plugin/optiquity-agents/agents/`, `.claude/skills/`, `.codex/skills/`, `.agents/skills/`, `docs/pack/prompts/` | Directory listing | Detection scan for custom, registered, improperly-added files (Procedure 5.5) |
 | `ARCHITECTURE.md` | Direct read (targeted sections) | Large; read sections relevant to current decision |
 | `CLAUDE.md` | Direct read (full) | Root-level; referenced when generating Claude agent prompts |
 | `AGENTS.md` | Direct read (full) | Root-level; Codex agent context file |
-| `GEMINI.md` | Direct read (full) | Root-level; referenced when generating Gemini agent prompts |
+| `GEMINI.md` | Direct read (full) | Root-level; Antigravity CLI context file; referenced when generating Antigravity agent prompts |
 
 ### RAG ingestion manifest
 
@@ -290,8 +290,8 @@ These rules are non-negotiable and always apply on all tools:
   not variable names, not formatting. All source-file edits route
   through the coder agent — including one-line typo fixes,
   comment cleanups, and apparently-trivial changes. PM chat's
-  file-editing scope is: docs/ files, scripts/, .claude/.codex/
-  .gemini/ settings, memory files, and deferral comments
+  file-editing scope is: docs/ files, scripts/, .claude/ .codex/
+  .agents/ settings and config, memory files, and deferral comments
   (TD-TBD → TD-NNN replacement or rejected-comment removal). Any
   edit outside this scope MUST be routed through a coder agent
   with an explicit scoped prompt — no exceptions for size.
@@ -354,8 +354,9 @@ These rules are non-negotiable and always apply on all tools:
   within a project. This rule applies to agent sessions spawned
   from this project as well: scope all agent edits to this
   project's working tree.
-- **Custom files via Procedure 5 only.** Any new agent (.claude/.codex/.gemini),
-  skill (.claude/skills/, .codex/skills/, .gemini/skills/), or prompt file
+- **Custom files via Procedure 5 only.** Any new agent (.claude/.codex agents,
+  or the Antigravity plugin bundle `.agents-plugin/optiquity-agents/agents/`),
+  skill (.claude/skills/, .codex/skills/, .agents/skills/), or prompt file
   (`docs/pack/prompts/`) not in the pack roster must be added through
   INSTALL-PROCEDURES.md Procedure 5 and **must use the `x-` prefix**
   (see `docs/pack/INSTALL-PROCEDURES.md` § Project file conventions in
@@ -398,8 +399,9 @@ These rules are non-negotiable and always apply on all tools:
 
 Each agent in this project belongs to one of three permission
 profiles. The agent's own definition file
-(`.claude/agents/<agent>.md`, `.codex/agents/<agent>.toml`,
-`.gemini/agents/<agent>.md`) is the authoritative source for the
+(`.claude/agents/<agent>.md`, `.codex/agents/<agent>.toml`, or the
+Antigravity plugin bundle `.agents-plugin/optiquity-agents/agents/<agent>.md`)
+is the authoritative source for the
 agent's full operating rules. The table and per-profile guidance
 below tell the PM chat what to put **into** the prompt to align with
 what the agent already enforces — they are the PM-chat-facing mirror
@@ -836,7 +838,7 @@ Claude Code auto-compacts at 95% context capacity. After compaction, run
 > project root). No body text in the cache; trinity / PM-CHAT.md
 > / METHODOLOGY.md remain authoritative. If a cache pointer
 > disagrees with the authoritative source, the source wins.
-> Codex CLI and Gemini CLI have no equivalent per-project memory
+> Codex CLI and Antigravity CLI have no equivalent per-project memory
 > mechanism; PM chat sessions running under those CLIs read
 > trinity / PM-CHAT.md / METHODOLOGY.md directly each session.
 
@@ -871,54 +873,61 @@ knowledge persists across conversations automatically. No manual compaction need
 
 ---
 
-## Tool-specific: Gemini CLI
+## Tool-specific: Antigravity CLI
+
+<!-- RE-VERIFY at impl: Antigravity CLI session/context/memory commands, antigravity.google/docs/getting-started — the preview CLI verb names below are unconfirmed -->
 
 ### Session management
 
 **First start:**
 ```bash
 cd /path/to/your-project
-gemini
+agy
 ```
-Gemini CLI loads the project's GEMINI.md automatically via the GEMINI.md hierarchy.
-
-**Save before ending:**
-```bash
-/chat save [project-short-name]-pm
-```
+Antigravity CLI (`agy`) loads the project's GEMINI.md automatically via the
+GEMINI.md hierarchy (Antigravity reads GEMINI.md / AGENTS.md for backward
+compatibility).
 
 **Resume:**
 ```bash
 cd /path/to/your-project
-gemini
-/chat resume [project-short-name]-pm
+agy
 ```
+Antigravity manages conversation context automatically across sessions; there is
+no manual `/chat save` / `/chat resume` step. (Re-verify the exact session-restore
+behavior against `antigravity.google/docs/*` before relying on it; the preview CLI
+verbs are unconfirmed.)
 
 ### Startup procedure
 
-No startup skill — Gemini CLI loads GEMINI.md automatically. After resuming
-a saved session, read BACKLOG entries, STATUS entries (resolve via the
+No startup skill — Antigravity CLI loads GEMINI.md automatically. After resuming
+a session, read BACKLOG entries, STATUS entries (resolve via the
 trinity `## Document locations` table — reads BACKLOG.md /
 STATUS.md, the per-entry tree), PLATFORM-SKILLS.md, and the
 current phase from IMPLEMENTATION-PLAN.md to verify state is current.
 
 ### File access
 
-Gemini CLI has native filesystem access. Read files directly. For large files,
-read targeted sections rather than the full file. The GEMINI.md hierarchy
+Antigravity CLI has native filesystem access. Read files directly. For large
+files, read targeted sections rather than the full file. The GEMINI.md hierarchy
 provides persistent project context without RAG.
 
 ### Context management
 
-Use `/compress` when context grows large. After compression, re-read state
-(BACKLOG / STATUS entries via the trinity resolver — see Step 2 of
-`/pm-startup` — and PLATFORM-SKILLS.md) to restore accuracy.
+Antigravity manages conversation context automatically; rely on `/fork` and
+`/rewind` to prune or branch context rather than a manual compaction command.
+After branching, re-read state (BACKLOG / STATUS entries via the trinity
+resolver — see Step 2 of `/pm-startup` — and PLATFORM-SKILLS.md) to restore
+accuracy.
 
 ### Cross-session memory
 
-Use `save_memory` to persist important cross-session facts to `~/.gemini/GEMINI.md`.
-This is for facts that must survive session loss — project decisions, conventions,
-recurring context. Do not store state that belongs in project files.
+Persist important cross-session facts to your global context file
+`~/.gemini/GEMINI.md` so they load in every session. This is for facts that
+must survive session loss — project decisions, conventions, recurring context.
+Do not store state that belongs in project files. (Re-verify the exact
+memory-write verb against `antigravity.google/docs/*` before relying on a
+specific command; the verb name is unconfirmed for the preview CLI.)
 
 ---
 

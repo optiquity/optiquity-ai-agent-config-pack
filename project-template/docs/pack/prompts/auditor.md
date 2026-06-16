@@ -73,8 +73,12 @@ only.
 - **Spawn the subagents** per the per-tool mechanism (rules 56–60):
   - Claude Code: parallel `Task` tool calls in a single message
   - Codex CLI: native subagent invocation via `max_depth=2` config
-  - Gemini CLI: native subagents in `.gemini/agents/`, but subagents cannot call
-    subagents — `agent-run.sh run_gemini_auditor` provides external orchestration
+  - Antigravity CLI: subagents from the plugin bundle
+    (`.agents-plugin/optiquity-agents/agents/`) launched via Antigravity's
+    subagent mechanism; if subagents cannot themselves spawn subagents,
+    `./agent-run.sh agy --agent <subagent>` provides external orchestration.
+    (Re-verify the subagent-spawn depth and mechanism against
+    `antigravity.google/docs/subagents`; the subagent API is in preview.)
 
 **Completion report:**
 REPORT FILE: `[PM chat supplies path; e.g., docs/project/audit-report-YYYY-MM-DD.md]`

@@ -23,7 +23,7 @@ generate-agent-kickoff).
 **Convention exception:** kickoff is a context handoff, not an agent-task prompt. The labeled-section convention does not apply. All other variants and all other prompt files in this directory follow it.
 
 **Before pasting:**
-- If you are running Gemini CLI and currently in plan mode (`/plan`), exit plan mode before continuing — kickoff requires shell execution.
+- If you are running Antigravity CLI in a non-executing context-only mode, switch to an execution-capable mode before continuing — kickoff requires shell execution. (Re-verify the exact mode-switch verb against `antigravity.google/docs/*`; the preview CLI verbs are unconfirmed.)
 - If you are pasting this into Claude Web or ChatGPT Web without shell access, reply `manual` when asked below.
 - Shell-capable surfaces run kickoff auto-discovery (INSTALL-PROCEDURES.md Procedure 7); non-shell surfaces use the manual-fallback prose under the `manual` branch of this prompt (see "Next, based on your surface declaration" below).
 
@@ -41,7 +41,7 @@ I am starting a new Claude Chat session for **[PROJECT_NAME]**.
 
 **Before I do anything else:** I will declare my surface and pause
 for your reply before running any non-read-only action. The recognized
-surfaces are Claude Code CLI, Codex CLI, Gemini CLI, or Claude Desktop
+surfaces are Claude Code CLI, Codex CLI, Antigravity CLI, or Claude Desktop
 with Desktop Commander (shell-capable — I typically declare `shell`
 by inference); and Claude Web or ChatGPT Web (no shell — I declare
 `manual` and route to the manual fallback). Reply `yes` to authorize
@@ -326,7 +326,7 @@ section presence and contents per project):**
 
 12. **Set up the PM chat surface.** Per the project's chosen
     interaction surface (Claude Desktop project + GitHub connector,
-    or Claude Code CLI, or Codex CLI, or Gemini CLI). The first
+    or Claude Code CLI, or Codex CLI, or Antigravity CLI). The first
     message into a new PM chat session is the `kickoff` variant
     from `docs/pack/prompts/pm-chat.md`.
 
@@ -501,4 +501,4 @@ the project root (sub-case B). No separate REPORT FILE.
 
 Output the complete AGENT_KICKOFF.md content ready to save to the project root.
 The developer will paste this directly into a CLI session with the architect agent:
-`./agent-run.sh claude --agent architect` (or `codex`/`gemini` as appropriate).
+`./agent-run.sh claude --agent architect` (or `codex`/`agy` as appropriate).

@@ -71,7 +71,7 @@ under Constraints.]
   in your scope would modify a file that ships as part of this project
   (project trinity at root, `docs/pack/` content, `docs/project/`,
   `docs/reference/`, agent prompts, skills, anything under `.claude/`
-  / `.codex/` / `.gemini/`) AND the modification adds, changes, or
+  / `.codex/` / `.agents/` / `.agents-plugin/`) AND the modification adds, changes, or
   removes a reference to a rule, role, or file path, then BEFORE
   applying the change: investigate whether the project's SSOT for that
   concept supports the change. Project SSOTs include `docs/pack/PM-CHAT.md`,

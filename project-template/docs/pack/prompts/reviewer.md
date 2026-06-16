@@ -90,7 +90,7 @@ Review for all nine of the following — do not skip any:
    agent roster, `docs/pack/PLATFORM-SKILLS.md` skill matrix, `docs/pack/PACK-FEEDBACK.md`
    feedback channel, per-agent prompt template at `docs/pack/prompts/<agent>.md`,
    project-side skill at `.claude/skills/<name>/SKILL.md` / `.codex/skills/...` /
-   `.gemini/skills/...`, project architecture or methodology under `docs/project/`
+   `.agents/skills/...`, project architecture or methodology under `docs/project/`
    or `docs/reference/`).
    - If a project SSOT exists, recommend the change cite or augment that SSOT — not
      a pack-side equivalent.

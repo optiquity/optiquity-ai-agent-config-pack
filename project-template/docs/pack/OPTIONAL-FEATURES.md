@@ -4,7 +4,7 @@ This file documents tool-specific features and settings that your project
 can opt into without abandoning the cross-CLI parity the Config Pack
 provides by default. Each entry is independent — turning one on does not
 affect the rest of the pack, and the standard PM Chat workflow continues
-to work identically across Claude Code, Codex CLI, and Gemini CLI.
+to work identically across Claude Code, Codex CLI, and Antigravity CLI.
 
 These features tend to be:
 - **Tool-specific** (only available in one CLI)
@@ -19,7 +19,7 @@ benefit outweighs the asymmetry.
 ## Claude Code — Agent Teams
 
 **Status:** Experimental in Claude Code v2.1.32+, gated by an environment
-variable. Claude Code only — no Codex or Gemini CLI equivalent.
+variable. Claude Code only — no Codex or Antigravity CLI equivalent.
 
 **What it is.** A native Claude Code feature that coordinates multiple
 Claude Code instances working in parallel. One session acts as the team
@@ -95,7 +95,7 @@ wall-clock time.
 
 ## Claude Code — Isolated parallel agents (worktree isolation)
 
-**Status:** Claude Code only — no Codex or Gemini CLI equivalent yet (the
+**Status:** Claude Code only — no Codex or Antigravity CLI equivalent yet (the
 cross-CLI worktree story is tracked separately and is out of scope here). The
 subagent-isolation trigger is a per-spawn Agent-tool parameter; the base
 posture is a `settings.json` key you set manually. The pack ships NO settings
@@ -259,9 +259,9 @@ patch merge-back (`docs/pack/PM-CHAT.md`). See the `run_in_worktree` comment in
 keys; it never writes a settings file into your repo.
 
 **Claude-only note.** This feature is specific to Claude Code's Agent-tool
-`isolation` parameter and `worktree` settings. Codex CLI and Gemini CLI have no
-equivalent at this time; their worktree story is tracked separately and is out
-of scope here. There is no cross-CLI parity claim for this feature.
+`isolation` parameter and `worktree` settings. Codex CLI and Antigravity CLI
+have no equivalent at this time; their worktree story is tracked separately and
+is out of scope here. There is no cross-CLI parity claim for this feature.
 
 **Manual worktree (no pack mechanism needed).** If you simply want to work on
 parallel branches yourself, run `git worktree add ../my-worktree <branch>` by
@@ -278,10 +278,23 @@ features here as they ship and prove useful.*
 
 ---
 
-## Gemini CLI — Optional features
+## Antigravity CLI — Optional features
 
-*Placeholder. The Config Pack will document Gemini-specific opt-in
-features here as they ship and prove useful.*
+<!-- RE-VERIFY at impl: Antigravity worktree feature, antigravity.google/docs/getting-started -->
+
+**Status:** Forward-looking — no opt-in steps to run today.
+
+**Worktree-based parallel agents.** Antigravity CLI is expected to offer a
+worktree mode for running isolated parallel agents (analogous to the Claude
+Code "Isolated parallel agents" entry above), with automatic worktree
+cleanup. The cross-CLI worktree story — bringing Codex and Antigravity into
+parity with the Claude Code isolation model — is tracked separately and is
+out of scope for the base pack. There are no Antigravity-specific opt-in
+settings to configure at this time; this section will document them once the
+Antigravity worktree feature stabilizes (the feature and its CLI surface are
+in preview and have open data-loss reports, so the pack ships nothing that
+depends on it yet). Re-verify the worktree behavior against
+`antigravity.google/docs/getting-started` before relying on it.
 
 ---
 
