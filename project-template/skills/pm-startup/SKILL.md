@@ -222,11 +222,3 @@ supported mode, so this step surfaces nothing. The recommendation system
 (`scripts/lib/recommendation.sh`) is retained dormant and test-covered
 for a future resumption; the step number is reserved.
 
-<!--
-This skill replaces the former Gemini-CLI `.gemini/commands/pm-startup.toml`
-slash-command. Under Antigravity CLI, slash-command behavior is expressed as
-a skill: skills in `project-template/skills/<name>/SKILL.md` install to the
-workspace skills directory `.agents/skills/<name>/SKILL.md` (the Antigravity
-workspace skills path) rather than to `.gemini/commands/*.toml`.
--->
-
