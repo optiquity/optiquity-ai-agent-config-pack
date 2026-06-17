@@ -17,7 +17,7 @@
 - [BD-171](./BD-171.md) — Real-OT scratch-clone FLAT-FILE v10→v11 migration test harness
 - [BD-172](./BD-172.md) — Extend Gate 2 (Phase A verify) to cover post-dispatch operations (BD-104 rename + BD-035 advisory + BD-144 advisory)
 - [BD-187](./BD-187.md) — Standalone entry-type instruction doc for external-tool consumption
-- [BD-189](./BD-189.md) — v11.1+ groupings implementation (architect/planner/coder cycle)
+- [BD-189](./BD-189.md) — Flat-file groupings implementation (architect/planner/coder cycle)
 - [BD-192](./BD-192.md) — v11.1+ Product Specialist (PS) implementation (architect/planner/coder cycle)
 - [BD-202](./BD-202.md) — Universal `pack update` propagation engine (delete + clean-modify correctness across asset classes; `x-`-safe, customization-preserving)
 - [BD-205](./BD-205.md) — v11.0 final repo readiness audit + full test/audit/fix cycle (the last gate before launch)
@@ -54,6 +54,7 @@
 - [BD-217](./BD-217.md) — Codex + Gemini worktree-isolation support (platform-specific; the cross-CLI half of BD-197)
 - [BD-218](./BD-218.md) — Background-session isolation (`worktree.bgIsolation` + EnterWorktree/ExitWorktree); the background-job half of BD-197
 - [BD-220](./BD-220.md) — Refactor the CI long-pole tests internally to lower the shard floor (effectiveness-preserving)
+- [BD-227](./BD-227.md) — Tracker-only groupings support (the tracker-mode projection of groupings)
 
 ## Resolved
 
