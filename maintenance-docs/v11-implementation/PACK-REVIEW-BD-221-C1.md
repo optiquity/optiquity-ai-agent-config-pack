@@ -1,235 +1,138 @@
-# PACK-REVIEW — BD-221 C1 (project agent-model fork → Antigravity plugin)
+# PACK-REVIEW-C1 — BD-221 completion cluster, commit C1
 
-**Reviewer:** fresh pack-reviewer (IN-PLACE, read-only on the codebase; the
-only write is this report). **Date:** 2026-06-15.
-**Tree:** `/Users/david/Developer/optiquity-ai-agent-config-pack-v11-dev`
-(branch `v11-dev`). **Live HEAD this review:** `e73ab3f` (`git rev-parse
-HEAD` → `e73ab3f0bce201d2d9f39074b4cd52d54b0be3a5`). C1 is implemented
-IN-PLACE in the working tree, UNCOMMITTED (parked for review).
-
-> Note on HEAD: the C1 IMPL-REPORT records its run-time HEAD as `c9ef6c5`;
-> the live HEAD is now `e73ab3f` because `backlog/BD-185.md` (deferred) was
-> committed after the coder run. That commit is UNRELATED to C1 and is
-> ignored per the prompt; the C1 working-tree delta is unchanged.
+**Scope reviewed:** Commit C1 (`project-only`) of the BD-221 completion cluster,
+applied uncommitted in the main working tree at
+`/Users/david/Developer/optiquity-ai-agent-config-pack-v11-dev`.
+**Regime:** IN-PLACE, read-only. No file modified, staged, or committed by this review.
+**Base HEAD:** `114faf9` (post-C0). **Branch:** `v11-dev`.
+**Reviewed against:** PLAN FINAL2 §C1 (lines 112–119) + DESIGN v2 §5.6 (OQ-D) / OQ-8 / EB-4.
 
 ---
 
-## 1. VERDICT
+## Overall verdict: **CLEAN**
 
-**CLEAN.** C1 does exactly what plan §3 C1 specifies — deletes the 16 client
-agent files, creates the `optiquity-agents` Antigravity plugin bundle (18
-files; 16 names preserved exactly; FORWARD-LOOKING markers in place; no
-hard-coded schema/model guesses), and converts `agent-run.sh`'s Gemini leg
-to an `agy` leg (targeted in-place edits; Claude + Codex legs and the
-8-verb destructive-git `--disallowedTools` set intact). The validate-pack
-red is EXPECTED-BY-DESIGN and is a strict SUBSET of the expected set: all 35
-FAIL lines trace to the deleted `project-template/.gemini/agents/` dir
-({Check 5, Check 55, Check 57}); NO unexpected check broke (Check 41/39/27/
-17/20/11 all green). The client bundle carries zero pack-self concept. Scope
-is exclusively `project-template/` (plus the allowed IMPL-REPORT). No
-BLOCKER / MUST / SHOULD findings. Two NITs below are informational only and
-require no action at C1.
+C1 implements the OQ-D `.example` MCP-config pattern exactly as the plan/design
+specify, introduces NO new validate-pack fail-line (net 70 unchanged vs the C1
+base), carries no secrets, is BD-ref-free, and is boundary-clean. No
+BLOCKER / MUST / SHOULD / NIT findings.
 
 ---
 
-## 2. FINDINGS
+## Working-tree change set (verified at runtime)
 
-| # | Severity | File | Evidence | Recommended action |
-|---|----------|------|----------|--------------------|
-| — | (none) | — | No BLOCKER, MUST, or SHOULD finding. C1 is clean against plan §3 C1, the §5 forward-looking register, and the frozen decisions. | — |
-| N1 | NIT | `project-template/.agents-plugin/optiquity-agents/agents/auditor-ops.md` (L35), `auditor-architecture.md` (L41) | These two templates retain the cross-ref `project-template/skills/audit-methodology/SKILL.md` verbatim. Verified BYTE-IDENTICAL to the sibling `.claude` agent at HEAD (`git show HEAD:project-template/.claude/agents/auditor-architecture.md` → L37 carries the same path). This is the established cross-CLI convention; the IMPL-REPORT discloses it as intentional faithfulness (deviation #2). | NONE for C1. Path-normalization (if ever desired) is a separate cross-roster concern, out of C1 scope — do not "fix" it here (it would break parity with the unconverted `.claude`/`.codex` roster). |
-| N2 | NIT | `scripts/validate-pack.py` Check 27 (`check_agent_canonical_phrases`) | The C1 prompt + IMPL-REPORT PREFLIGHT predicted Check 27 would `fail("directory missing")`. It stayed GREEN: `rm *.md` removed the files but left the empty `project-template/.gemini/agents/` directory on disk (`ls -la` → `total 0`), so `agent_dir.is_dir()` is True and the per-file glob iterates zero files. Fewer breaks than predicted ⇒ still a strict SUBSET of the expected set ⇒ still expected-break-only. | NONE. Benign-subset deviation; the IMPL-REPORT discloses it accurately (deviation #1). The empty dir disappears at C2 (deletes the rest of `.gemini/`); Check 27 is re-expressed at C8 regardless. |
-
----
-
-## 3. EXPECTED-RED CONFIRMATION
-
-`python3 scripts/validate-pack.py` → **EXIT 1; `FAILED — 35 issue(s)
-found`.** RED-by-design (C1 is an intermediate-red cluster commit).
-
-**Failing-check set (quoted banners):**
 ```
-── Check 5:  Agent file count consistency ──
-── Check 55: BD-197 project RW/RO two-class consistency (Guard-B project) ──
-── Check 57: BD-197 PROJECT destructive-git-verb enumeration parity (Guard-C project) ──
+ D project-template/.agents/mcp_config.json
+ M project-template/.gitignore
+?? project-template/.agents/mcp_config.json.example
 ```
 
-**FAIL-line accounting (all 35 traced):**
-| Source | FAIL lines |
-|---|---|
-| Check 5 (`No Gemini agent files` + `Agent count mismatch — Claude:16, Codex:16, Gemini:0` + `Agents in Claude but not Gemini: [...]`) | 3 |
-| Check 55 (`agent file project-template/.gemini/agents/<name>.md not found`, ×16) | 16 |
-| Check 57 (`verb-parity surface project-template/.gemini/agents/<name>.md not found`, ×16) | 16 |
-| **Total** | **35** |
+Git renders the rename as a delete (`D`) of the committed JSON + an untracked
+(`??`) add of the `.example`. Diffstat: `+6 / -17`. Exactly the plan's C1 file
+set, minus the manifest regen (correctly deferred — see Checklist #6).
 
-A `grep '^FAIL:'` excluding the lines that mention `.gemini/agents` /
-`No Gemini agent files` / `Agent count mismatch` / `Agents in Claude but not
-Gemini` returns ZERO lines: **every one of the 35 FAIL lines traces to the
-deleted `project-template/.gemini/agents/` contents.**
+---
 
-**Subset check vs the expected set {Check 5, Check 27, dir-dependent checks
-(55, 57)}:**
-- **Check 5** — `check_agent_count`: `gemini_count == 0`. NAMED in the
-  prompt. EXPECTED.
-- **Check 55** — `check_project_rw_ro_two_class` reads the 16
-  `.gemini/agents/` files. Dir-dependent; NAMED in the prompt as the
-  example. EXPECTED.
-- **Check 57** — `check_destructive_git_verb_parity` (project) reads the
-  same 16 files. Dir-dependent (within "checks that read the deleted dir").
-  EXPECTED.
-- **Check 27** — predicted to fail; stayed GREEN (empty-dir survives the
-  `rm`). Fewer breaks ⇒ still a strict subset. EXPECTED-OR-BENIGNER.
+## Checklist results (evidence per item)
 
-**No unexpected break (positive controls — quoted OK banners):**
+### 1. File set matches plan C1 exactly; nothing out of scope — **PASS**
+Working tree contains exactly three changed paths: the `.agents/mcp_config.json`
+→ `.example` rename and `project-template/.gitignore`. Confirmed NO
+`init-project.sh`, NO install-map (`_CLIENT_INSTALLED_FILES`/`cmd_update`), NO
+validator edits — all of those are C2/C4 per the plan. `git status --short`
+(above) is the complete change set.
+
+### 2. `.example` content — no secrets, hedged global path, BD-ref-free marker, no narration — **PASS**
+- **No secrets.** `grep -niE 'token|api[_-]?key|secret|password|bearer|ghp_|sk-|AKIA|private[_-]?key|-----BEGIN'` on the file → **no match**. Only placeholders present: `BASE_DIR: "/absolute/path/to/your-project"`, `DB_PATH: "./.agents/rag-index"`, `CACHE_DIR: "./.agents/rag-cache"`.
+- **Pure rename, no drift.** `diff <(git show HEAD:project-template/.agents/mcp_config.json) project-template/.agents/mcp_config.json.example` → IDENTICAL. The `.example` inherits the already-clean no-secrets template that the C2 commit created; no content was re-authored, so no new secret could have been introduced.
+- **Global MCP-path hedge (OQ-8).** Line 3 `_global_alternative` leads with the workspace path as primary and documents `~/.gemini/config/mcp_config.json` as a secondary hedge behind a `<!-- RE-VERIFY at impl: global CLI MCP path doc conflict, antigravity.google/docs/{cli-plugins,mcp} -->` marker. This matches DESIGN §5.6 ("global hedged") + OQ-8 (workspace-primary, global behind a RE-VERIFY marker). The `~/.gemini/config/mcp_config.json` token is an **Antigravity-own global path**, explicitly classified KEEP-LEGITIMATE in DESIGN lines 365/433 — NOT gemini residue.
+- **RE-VERIFY marker is BD-ref-free.** `grep -nE 'BD-[0-9]+'` on the file → **no match**. Compliant with the client-shipped-marker rule (no `BD-NNN` in client `project-template/` content).
+- **No historical narration.** Word-boundary scan for `previously|formerly|used to|changed from|renamed|migrated|deprecated|legacy` → **no match**. (An earlier substring hit on "commit" was the forward-looking instruction "never **commit** it" — present-state guidance, not narration.)
+- **Valid JSON.** `json.load()` succeeds. Note: the plan/design phrase the marker as `# RE-VERIFY at impl`, but JSON has no `#`-comment syntax; the coder correctly carries the marker as an `<!-- ... -->` fragment INSIDE the `_global_alternative` JSON string value. This is the only viable JSON-safe placement, keeps the file valid, and preserves the marker semantics. Correct adaptation, not a defect.
+
+### 3. `.gitignore` edit — ignores live, keeps `.example` tracked, correctly scoped — **PASS**
+Added block (lines 7–11):
 ```
-OK: Check 39 — ... 34 `cmd_update` entries reverse-checked; 34 resolve to existing files at HEAD ...
-OK: Check 41 — 36 `_CLIENT_INSTALLED_FILES` entr(y/ies) checked; 36 resolve to existing files at HEAD ... 0 drift(s) ...
+# ─── Antigravity MCP config ────────────────────────────────────────────────
+# The live workspace MCP config holds your filled-in paths/values; never commit
+# it. The committed template is .agents/mcp_config.json.example (no secrets).
+.agents/mcp_config.json
+!.agents/mcp_config.json.example
 ```
-Check 41 (install-map), Check 39 (cmd_update), Check 27, Check 17, Check 20,
-and Check 11 all carry NO FAIL line. This is correct: the install-map axis
-(Check 41/39) breaks only when C2 deletes the row-referenced `.gemini/`
-SOURCE files (settings.json / .env.example / the 2 .toml) — those files are
-still present in the tree at C1 (`find project-template/.gemini -type f`
-confirms all 4 remain), so the install-map rows still resolve. The new
-`.agents-plugin/` bundle is admitted cleanly by Check 41's recursive walk
-(no FAIL line, no new explicit rows needed) — consistent with OQ-3.
+Verified in a **simulated client-install context** (scratch git repo where
+`project-template/.gitignore` becomes the project-root `.gitignore`, which is how
+it operates in production):
+- `git check-ignore -v .agents/mcp_config.json` → matched `.gitignore:10` → **LIVE correctly ignored**.
+- `.example` → **not** ignored (the `!` negation works).
+- `git add -A` in that context stages ONLY `.gitignore` + `.example`, NOT the live (secret-filled) file.
 
-**Conclusion: the validate-pack red is EXPECTED-ONLY. The failing set
-{Check 5, Check 55, Check 57} is a strict subset of {Check 5, Check 27,
-dir-dependent checks}. No unexpected check (no install-map Check 41/39, no
-fixture check, nothing outside the deleted-dir blast radius) broke.**
+The rule is tightly scoped to the two exact paths (no glob over-reach); it does
+NOT over-ignore. This fixes the EB-4 gap (file present but ungitignored). The
+comment block follows the file's existing section-divider style and mirrors the
+`.env` / `!.env.example` precedent already in the file (lines 18–22).
 
----
+> Note for the record: `git check-ignore` run against the **pack-repo root**
+> reports the live path as "not ignored" — a false alarm, because the pack-repo
+> root `.gitignore` is a different file that lacks this rule. The rule lives in
+> `project-template/.gitignore`, which only governs files relative to itself at
+> the client install root. The simulated-install test above confirms correct
+> behavior on the surface where the rule actually operates.
 
-## 4. INDEPENDENT VERIFICATION EVIDENCE
+### 4. Boundary + scope — project-side only; no pack-self/BD/maintenance-docs leak — **PASS**
+- Both changed paths are under `project-template/` → project-side, matching the `(project-only)` scope keyword. Check 36 will see only `project-template/` paths.
+- `.gitignore` diff scanned for `BD-[0-9]+|maintenance-docs|pack-ops|pack-chat|PACK-AGENTS|pack-coder|pack-reviewer|pack-architect|validate-pack` → **no match**.
+- `.example` scanned for the same pack-self token set → **no match**.
 
-### 4.1 The 16 agent deletions + 16 created names (1:1, exact)
-- `git status --short` shows exactly 16 ` D project-template/.gemini/agents/*.md`
-  rows; `ls project-template/.gemini/agents/*.md` → no matches (all gone).
-- `git ls-tree HEAD project-template/.gemini/agents/` → 16 originals.
-- The bundle `agents/` stems and the deleted-original stems are an EXACT
-  set match (sorted, both lists identical):
-  `architect, auditor, auditor-architecture, auditor-code, auditor-docs,
-  auditor-ops, auditor-security, auditor-tests, auditor-ui, coder,
-  docs-researcher, grpc-schema, planner, repo-ops, reviewer, tester`.
+### 5. Independent validate-pack confirmation — net **70, UNCHANGED** — **PASS**
+`python3 scripts/validate-pack.py` (this working tree) → exit 1, **70 FAIL
+lines** (`grep -cE '^FAIL:'` = 70).
+- **Zero** fail-lines reference the new C1 surface: `grep '^FAIL:' | grep '\.agents/mcp_config'` → **NONE**.
+- The only `.example`-substring fail-lines are the PRE-EXISTING gemini/mcp stale rows (`.gemini/.env.example` ×3, `.mcp.json.example` ×2 across Checks 11/39/41) — unrelated to the new file.
+- C1's surfaces (the `.agents/mcp_config.json` → `.example` rename + the `.gitignore` rule) feed Check 39/41 only once init-project adds the install-map rows in **C2**; at C1 there is nothing for those checks to consume, so the count cannot move. This is exactly the plan's C1 prediction: "C1 introduces **NO new validate fail-line** … net 70 unchanged" (PLAN line 118; running-total table line 434 shows C1 → 70).
 
-### 4.2 Bundle shape (18 files at the OQ-3 path)
-`find project-template/.agents-plugin -type f` →
-`project-template/.agents-plugin/optiquity-agents/` containing:
-- `plugin.json` — **valid JSON** (`python3 -c json.load` OK; keys
-  `name, version, description, comment-RE-VERIFY, agents`). `name` =
-  `optiquity-agents`; `agents` = `./agents`. The `comment-RE-VERIFY` key
-  carries the FORWARD-LOOKING field-schema marker (gemini-cli #27305 +
-  antigravity.google/docs/cli-plugins) — schema is NOT hard-coded beyond
-  the confirmed-stable name/version/description layout.
-- `agents/` — 16 templates (count verified 16).
-- `RUNTIME-SUBAGENT-PATTERN.md` — the A3 hedge.
+**Conclusion:** no new red, none cleared — matches plan C1 exactly.
 
-### 4.3 Template faithfulness (full diff, all 16 vs HEAD originals)
-A line-level diff of every new template against its deleted HEAD original
-shows:
-- **15 of 16 templates:** the ONLY changes are (a) the model frontmatter
-  line `model: gemini-2.5-pro` / `gemini-2.5-flash` → `model: default`, and
-  (b) two prepended RE-VERIFY markers (inner-schema HTML comment at L1 +
-  model-IDs marker at L5). The entire body — permission profile, output
-  policy, hard rules, the `coder` merge-back-emit-a-patch contract, the
-  `repo-ops` script-write contract, per-agent scope/skill text — is
-  byte-identical. Spot-confirmed in full for `coder.md` (the RW/patch-emit
-  contract is preserved verbatim).
-- **`auditor.md` (the only template with CLI-specific orchestration prose):**
-  faithfully converted — `Gemini CLI subagents cannot call other subagents`
-  → `On the Antigravity CLI subagents are conversation-scoped ... a subagent
-  does not delegate to a sibling subagent`; `@auditor` / `@auditor-security`
-  activation → subagent-direct language; `./agent-run.sh gemini --agent
-  auditor` → `./agent-run.sh agy --agent auditor`; `Gemini session` → `agy
-  session`; a `<!-- RE-VERIFY at impl: subagent invocation ... -->` marker
-  added. The consolidation logic (audit-methodology rules 44–55, skip rules,
-  severity reconciliation, `## Next steps`) is preserved verbatim. "PM chat"
-  terminology kept (project-side SSOT) — no "Pack Chat" / pack-self concept
-  introduced.
-
-### 4.4 FORWARD-LOOKING / RE-VERIFY markers (no hard-coded guesses)
-- All 16 templates carry exactly 2 RE-VERIFY markers (auditor.md carries 3,
-  the extra for subagent invocation). All 16 set `model: default` (not a
-  pinned Gemini string).
-- `RUNTIME-SUBAGENT-PATTERN.md` carries RE-VERIFY markers for the runtime
-  `define_subagent`/`invoke_subagent` verb shapes and `--print` semantics,
-  and frames the plugin bundle as PRIMARY with the runtime pattern as the
-  hedge. References only client-side paths (`agents/`, `agent-run.sh`,
-  `docs/pack/OPTIONAL-FEATURES.md`) — no pack-self leak.
-
-### 4.5 `agent-run.sh` conversion (targeted in-place; legs + verbs intact)
-- `bash -n project-template/agent-run.sh` → SYNTAX OK.
-- `KNOWN_CLIS=(claude codex agy)` (gemini removed; claude/codex retained).
-- `AGY_READONLY_FLAGS=("--sandbox")`,
-  `AGY_WRITE_FLAGS=("--sandbox" "--dangerously-skip-permissions")` — matches
-  plan §3 C1; `--model` referenced only in a RE-VERIFY marker (not
-  hard-coded); all `GEMINI_*_FLAGS` removed.
-- `run_gemini_auditor()` → `run_agy_auditor()`; headless leg uses
-  `agy "${AGY_READONLY_FLAGS[@]}" -p ...` (`-p` / `--print`).
-- The interactive launch dispatch is `if [[ "$CLI" == "agy" ]]` (was
-  `gemini`); `exec agy ... "$activation_msg"` names the role file
-  (`.agents-plugin/optiquity-agents/agents/${AGENT}.md`) — the `@agent-name`
-  translation is genuinely replaced (no `@`, no `-i`). The `codex` `elif`
-  branch follows intact.
-- **Claude + Codex legs intact:** the `git diff` shows `claude)` / `codex)`
-  dispatch lines and `CLAUDE_READONLY_FLAGS=` / `CODEX_READONLY_FLAGS=`
-  array declarations appear only as CONTEXT lines (no `+`/`-` on their
-  bodies). The conversion is a targeted Gemini→agy substitution, not a full
-  rewrite (88 insertions / 64 deletions, all in the Gemini/agy region +
-  shebang/usage prose).
-- **Destructive-git-verb `--disallowedTools` set preserved:** each of the 8
-  canonical verbs appears exactly once in `CLAUDE_READONLY_FLAGS`
-  (`Bash(git checkout`, `clean`, `merge`, `rebase`, `reset`, `restore`,
-  `stash`, `worktree` — each count = 1). The Check 57 leg is untouched.
-- Only residual "gemini" token in the script is the intentional explanatory
-  prose comment (L367: "Antigravity has no @agent-name; the script names the
-  role file") — no `gemini` binary call, no `.gemini/agents/` activation, no
-  `--approval-mode`.
-
-### 4.6 No pack-self leak in the client bundle (bd-pack-only-operational-rule)
-`grep -rnE 'BD-[0-9]|pack-ops|maintenance-docs|Pack Chat|pack-architect|
-pack-coder|pack-reviewer|pack-planner|pack-docs-researcher|PACK-AGENTS|
-PACK-CHAT|pack-self' project-template/.agents-plugin/` → **CLEAN (zero
-hits).** A broad `grep -rnE 'pack-' project-template/.agents-plugin/` → no
-`pack-` substring at all. The bundle carries NO pack-self concept.
-(Residual `GEMINI.md` tokens in the templates' Trinity-rule bullet are the
-project trinity FILE NAME — STABLE-now per §5 register "trinity survives";
-the `gemini-cli #27305` / "Gemini model string" tokens are inside RE-VERIFY
-markers — both legitimate, neither a leak.)
-
-### 4.7 Scope (exclusively project-template/; no out-of-scope edits)
-- `git status --short` filtered to exclude `project-template/` and the
-  allowed `maintenance-docs/.../IMPL-REPORT-BD-221-C1.md` → EMPTY. Every
-  change is under `project-template/` (plus the IMPL-REPORT).
-- `test-fixtures/manifest.txt` NOT modified (correct — C10-only).
-- `scripts/validate-pack.py` + `scripts/init-project.sh` NOT modified
-  (correct — those are C8 / C9).
-- `backlog/` clean in the working tree (BD-185 already committed; unrelated
-  to C1).
-- The C2-owned `.gemini/` config sources (`settings.json`, `.env.example`,
-  `commands/pack-help.toml`, `commands/pm-startup.toml`) remain present —
-  correctly untouched at C1.
+### 6. Manifest NOT regenerated — correctly deferred to C2 — **NOT FLAGGED (correct)**
+`git status --short test-fixtures/manifest.txt` → not modified. Per the review
+brief, `build.sh` is blocked at HEAD by the absent `project-template/.gemini/agents`
+that init-project still expects (C2 fixes the install engine); the manifest regen
+is therefore deferred to C2. This is EXPECTED and CORRECT and is not flagged —
+consistent with the brief's instruction, even though PLAN line 116 lists the
+regen in C1's nominal file set.
 
 ---
 
-## 5. RULES-APPLIED VERIFICATION BLOCK
+## Rules-Applied Verification Block
 
-| # | Rule (as named in prompt) | Verification evidence (quoted/measured) | Conclusion |
-|---|---|---|---|
-| 1 | agents-never-commit | Git verbs this review were read-only ONLY: `git rev-parse HEAD` (→ `e73ab3f0bce201d2d9f39074b4cd52d54b0be3a5`), `git rev-parse --abbrev-ref HEAD` (→ `v11-dev`), `git status --short`, `git diff`/`git diff --stat`/`git diff --name-only`, `git show HEAD:<path>`, `git ls-tree`. NO add/commit/push/checkout/restore/stash/mv/rm/reset/merge/apply/worktree. No source edit. The single write is this report at the prompted path. | COMPLIANT |
-| 2 | scope-deliverables-to-the-ask | Reviewed EXACTLY C1 (plan §3 C1): the 16 deletions, the bundle, agent-run.sh, the no-leak grep, the expected-red set, the scope guard. Led the report with the verdict (§1). Out-of-scope edits checked (`git status` filter → none). No padding; only 2 informational NITs (no invented findings). | COMPLIANT |
-| 3 | bd-pack-only-operational-rule | `grep -rnE 'BD-[0-9]\|pack-ops\|maintenance-docs\|Pack Chat\|pack-architect\|pack-coder\|pack-reviewer\|pack-planner\|pack-docs-researcher\|PACK-AGENTS\|PACK-CHAT\|pack-self' project-template/.agents-plugin/` → ZERO hits; broad `grep -rnE 'pack-' ...` → none. The client bundle carries no pack-self concept (§4.6). | COMPLIANT |
-| 4 | verify-full-ci-suite | Ran `python3 scripts/validate-pack.py` (EXIT 1; `FAILED — 35`). Did NOT declare "green" (impossible at C1). Verified the expected-break-only condition: all 35 FAIL: lines trace to the deleted dir; failing set {Check 5, 55, 57} ⊆ {Check 5, Check 27, dir-dependent}; positive controls Check 41/39/27/17/20/11 carry NO FAIL (OK banners quoted §3). No unexpected break. | COMPLIANT |
-| 5 | edit-in-place-not-full-rewrite | `git diff project-template/agent-run.sh` → 88 ins / 64 del, confined to the Gemini→agy region (flag arrays, `run_*_auditor`, dispatch, launch block) + shebang/usage prose; `claude)` / `codex)` dispatch and `CLAUDE_READONLY_FLAGS=` / `CODEX_READONLY_FLAGS=` arrays appear only as unchanged CONTEXT lines (§4.5). The 18 bundle files are NEW (full Write correct for new files). Not a full rewrite. | COMPLIANT |
-| 6 | agents-read-rule-docs-in-full | Read IN FULL by direct Read-tool (not derived): the C1 IMPL-REPORT (`maintenance-docs/v11-implementation/IMPL-REPORT-BD-221-C1.md`, 456 ln); the plan (`/tmp/handoff-bd221-planner/PLAN-BD-221-ANTIGRAVITY-CONVERSION-FINAL-v2.md`, 452 ln — incl. §3 C1, §5 forward-looking register, §4 cluster-push, §9 EB blocks); the frozen decisions (`/tmp/handoff-bd221-decisions/DECISIONS-BD-221-FROZEN.md`, 46 ln); CLAUDE.md `## Pack memory` (full content via system-reminder). No prior `PACK-REVIEW-*` report read. | COMPLIANT |
-| 7 | rules-applied-verification-block | This table; every prompt rule has quoted/measured evidence + a non-empty terminal conclusion (no AMBIGUOUS; no empty evidence). | COMPLIANT |
+| Rule | Verification evidence | Conclusion |
+|---|---|---|
+| pack-project-separation-of-concerns | Both changed paths under `project-template/`; no cross-side substitution; `.example` is a project-side client template, `.gitignore` is project-side. No pack-internal source consumed. | COMPLIANT |
+| bd-pack-only-operational-rule | `grep -nE 'BD-[0-9]+'` on `.example` → no match; `.gitignore` diff scanned for `BD-/maintenance-docs/pack-ops/pack-* ` → no match. Client RE-VERIFY marker is BD-ref-free. | COMPLIANT |
+| P-missed-7 (boundary-investigation-precedes-pack-defaults) | Change reuses the project-side `.env`/`!.env.example` gitignore idiom already in the file (lines 18–22); no pack-style mechanism imported into `project-template/`. | COMPLIANT |
+| no-historical-narration | Word-boundary scan `previously\|formerly\|used to\|changed from\|renamed\|migrated\|deprecated\|legacy` on `.example` → no match; content is present-state instruction only. | COMPLIANT |
+| scope-deliverables-to-the-ask | Change set = exactly 3 paths (rename + gitignore); no init-project/install-map/validator edits (those are C2/C4); no out-of-scope sprawl. `git status --short` is complete. | COMPLIANT |
+| verification = fail-LINE comm vs C1 base; net-unchanged at 70 | `validate-pack.py` → 70 FAIL lines; zero reference `.agents/mcp_config`; matches PLAN line 118/434 (C1 → 70 unchanged). | COMPLIANT |
+| secrets-hygiene | Secret-shape grep → no match; `.example` is a byte-identical rename of the already-clean committed template; only placeholders present; valid JSON. | COMPLIANT |
+| agents-never-commit / read-only | No Write/Edit/Bash mutation of repo files; only this report written to `/tmp`; no git state-change verb run (status/diff/show/check-ignore are read-only; scratch git repo created under `/tmp` and removed). | COMPLIANT |
+| agent-output-requires-rules-applied-verification-block | This block. | COMPLIANT |
+
+## Files read in full (attestation)
+
+- `/Users/david/Developer/optiquity-ai-agent-config-pack-v11-dev/CLAUDE.md` — entire `## Pack memory` section (604 lines; first line `# CLAUDE.md — AI Agent Config Pack (Pack Repo)`, last line `testing (use /tmp clones or scratch fixtures, never write to real OT).`).
+- `feedback_pack_project_separation_of_concerns.md` — 33 lines; first `---`, last line cross-refs `[[bd-pack-only-operational-rule]]`.
+- `feedback_bd_pack_only_operational_rule.md` — 35 lines; ends "the ENCODING-surface enumeration rule … is in trinity § Repo conventions."
+- `feedback_scope_deliverables_to_the_ask.md` — 35 lines; ends "Sharpens feedback_no_solutions_in_agent_prompts and the user's standing preference for terse, exactly-scoped work."
+- `feedback_agent_output_rules_applied_block.md` — 15 lines; ends "Related: [[agent-prompt-enumerates-rules]], [[architect-planner-empirical-evidence]]."
+- `feedback_agents_read_rule_docs_in_full.md` — 133 lines; ends with the BD-203 Commit-1 no-cache-substitution incident.
+
+Also read directly: PLAN FINAL2 §C1 (lines 110–131) + supporting tables (lines
+60, 257, 434); DESIGN v2 §5.6 / OQ-8 / EB-4 / EB-22 (lines 289–296, 365, 433,
+501, 515); `project-template/.agents/mcp_config.json.example`;
+`project-template/.gitignore`; `project-template/CLAUDE.md` (system-provided).
+Per the review brief, no prior IMPL-REPORT or prior PACK-REVIEW was read.
 
 ---
-*End of PACK-REVIEW-BD-221-C1.md — IN-PLACE review, read-only on the
-codebase, live HEAD `e73ab3f`, 2026-06-15. Verdict: CLEAN. C1 is an
-intermediate-red cluster commit; validate-pack red on {Check 5, Check 55,
-Check 57} ⊆ {Check 5, Check 27, dir-dependent checks} is EXPECTED-BY-DESIGN
-(content axis restores at C8; install-map axis at C9). No BLOCKER/MUST/SHOULD
-findings; 2 informational NITs requiring no C1 action. Pack Chat applies its
-triage + stages/commits with user approval; agents never commit.*
+
+**VERDICT: CLEAN** — C1 is ready to commit. validate-pack net 70 unchanged (no
+new red, none cleared); `.example` carries no secrets and a BD-ref-free RE-VERIFY
+marker; gitignore correctly ignores the live config and keeps the `.example`
+tracked; manifest deferral to C2 is correct and not flagged.
