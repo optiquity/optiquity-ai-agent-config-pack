@@ -149,6 +149,16 @@ assert_contains "2.1 S6 ran" "$out" "S6 — render truthful migration report"
 [[ -f "$T/.agents/skills/pack-help/SKILL.md" ]] \
     && t_pass "2.4 .agents pack-help skill installed (Antigravity loose)" \
     || t_fail "2.4 .agents pack-help missing"
+# BD-221: the v10→v11 migrator additively installs the Antigravity agent
+# plugin bundle (.agents-plugin/optiquity-agents/ —
+# _v10_to_v11_install_v11_artifacts). Pin a known bundle agent + plugin.json
+# against regression (symmetry with the pack-help-skill assertions above).
+[[ -f "$T/.agents-plugin/optiquity-agents/agents/coder.md" ]] \
+    && t_pass "2.4 .agents-plugin bundle agent (coder.md) installed (Antigravity bundle)" \
+    || t_fail "2.4 .agents-plugin bundle agent coder.md missing"
+[[ -f "$T/.agents-plugin/optiquity-agents/plugin.json" ]] \
+    && t_pass "2.4 .agents-plugin/optiquity-agents/plugin.json installed" \
+    || t_fail "2.4 .agents-plugin/optiquity-agents/plugin.json missing"
 
 # BD-193 F4/F5 + BD-194: migrate-v10-to-v11.sh S5 install source for the client
 # tracker fragment is the project-template-side file (separate-artifact, separate-

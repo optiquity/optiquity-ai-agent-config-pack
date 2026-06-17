@@ -14,7 +14,8 @@
 #      below — verified by checking the original content remains as a
 #      prefix of the post-install file).
 #   3. Pack files now exist at expected locations (trinity, .claude/.codex/
-#      .gemini/ directories, scripts/, agent-run.sh, docs/pack/).
+#      agent dirs, the Antigravity .agents/skills/ + plugin bundle,
+#      scripts/, agent-run.sh, docs/pack/).
 #   4. No `.pack-template` sidecars created for files the user did not
 #      previously own (pack-only files install cleanly via plain `cp`;
 #      the existing-classifier sidecar is reserved for genuine collisions).
@@ -177,8 +178,8 @@ for f in CLAUDE.md AGENTS.md GEMINI.md; do
         t_fail "pack ${f} MISSING"
     fi
 done
-# Per-CLI directories.
-for tool in claude codex gemini; do
+# Per-CLI directories. Claude/Codex keep loose agents/ + skills/ dirs.
+for tool in claude codex; do
     if [[ -d "$SANDBOX/.${tool}/agents" ]]; then
         t_pass ".${tool}/agents/ created"
     else
@@ -190,6 +191,19 @@ for tool in claude codex gemini; do
         t_fail ".${tool}/skills/ MISSING"
     fi
 done
+# Antigravity: workspace skills land at .agents/skills/ (no loose
+# .agents/agents/ dir — Antigravity agents ship as the plugin bundle
+# .agents-plugin/optiquity-agents/agents/).
+if [[ -d "$SANDBOX/.agents/skills" ]]; then
+    t_pass ".agents/skills/ created"
+else
+    t_fail ".agents/skills/ MISSING"
+fi
+if [[ -d "$SANDBOX/.agents-plugin/optiquity-agents/agents" ]]; then
+    t_pass ".agents-plugin/optiquity-agents/agents/ created (Antigravity plugin bundle)"
+else
+    t_fail ".agents-plugin/optiquity-agents/agents/ MISSING (Antigravity plugin bundle)"
+fi
 # Scripts + agent-run.
 if [[ -x "$SANDBOX/agent-run.sh" ]]; then
     t_pass "agent-run.sh installed and executable"

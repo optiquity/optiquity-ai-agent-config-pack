@@ -12,21 +12,27 @@
 # Derivation logic (per BD-116):
 #   1. For every `project-template/skills/<name>/SKILL.md`, assert
 #      `.claude/skills/<name>/SKILL.md`, `.codex/skills/<name>/SKILL.md`,
-#      and `.gemini/skills/<name>/SKILL.md` are present in the install.
-#      (init-project.sh stage S4 distributes one SKILL.md per CLI.)
+#      and `.agents/skills/<name>/SKILL.md` are present in the install.
+#      (init-project.sh stage S4 distributes one SKILL.md per CLI;
+#      Antigravity reads workspace skills at `.agents/skills/`.)
 #   2. For every `project-template/.claude/agents/*.md`, assert a copy
 #      under the install's `.claude/agents/`. Same shape for
-#      `project-template/.codex/agents/*.toml` → `.codex/agents/` and
-#      `project-template/.gemini/agents/*.md` → `.gemini/agents/`.
-#      (Stage S2.)
+#      `project-template/.codex/agents/*.toml` → `.codex/agents/`.
+#      Antigravity agents ship as a plugin BUNDLE (not a loose per-CLI
+#      dir), so the third CLI's agents are asserted against the client
+#      bundle `.agents-plugin/optiquity-agents/agents/`. (Stage S2.)
 #   3. Trinity files (CLAUDE.md, AGENTS.md, GEMINI.md) byte-identical to
 #      `project-template/` originals (greenfield path uses `cp`, not the
 #      existing-classifier fork). Stage S7.
 #   4. Stage S11 client artifacts present:
 #      docs/pack/HELP-FRAGMENT.md, docs/pack/HELP-FRAGMENT-TRACKER.md,
 #      tracker.toml.example, scripts/pack-help.sh (executable),
-#      scripts/lib/detect.sh, .claude/skills/pack-help/SKILL.md,
-#      .codex/skills/pack-help/SKILL.md, .gemini/commands/pack-help.toml.
+#      scripts/lib/detect.sh. pack-help is now an ordinary pool skill
+#      (project-template/skills/pack-help/SKILL.md) distributed by S4 to
+#      all three CLIs — so it lands at .claude/skills/pack-help/SKILL.md,
+#      .codex/skills/pack-help/SKILL.md, .agents/skills/pack-help/SKILL.md
+#      (Antigravity has no `.toml` command format; the skill IS the
+#      command).
 #   5. agent-run.sh present and executable (stage S5).
 #
 # Exit 0 = contract holds. Non-zero = at least one assertion failed; each
@@ -85,7 +91,7 @@ for d in "${skill_dirs[@]}"; do
     [[ -d "$d" ]] || continue
     expected_skill_count=$((expected_skill_count + 1))
     name=$(basename "$d")
-    for tool in claude codex gemini; do
+    for tool in claude codex agents; do
         target="$SANDBOX/.${tool}/skills/$name/SKILL.md"
         if [[ -f "$target" ]]; then
             t_pass "skill ${tool}/${name}/SKILL.md present"
@@ -95,15 +101,15 @@ for d in "${skill_dirs[@]}"; do
     done
 done
 # Sanity: every CLI's skill dir count matches expected. Per-CLI extras are
-# derived from project-template/.${tool}/skills/ (pack-help + pm-startup
-# under claude/codex; gemini ships pack-help as a command, not a skill —
-# see project-template/.gemini/commands/pack-help.toml). pm-startup is
-# also in the shared `project-template/skills/` tree (S4 distributes it
-# to all three CLIs); skills that appear in BOTH the per-CLI extras dir
+# derived from project-template/.${tool}/skills/ when present. pack-help and
+# pm-startup are now ordinary pool skills in the shared
+# `project-template/skills/` tree (S4 distributes them to all three CLIs —
+# claude/codex/agents; Antigravity has no `.toml` command format, so the
+# skill IS the command). Skills that appear in BOTH a per-CLI extras dir
 # AND the shared skills tree count once (the per-CLI copy overwrites or
 # is overwritten by S4 — same name == same slot). Expected count is
 # therefore the union: shared + CLI-specific minus overlap.
-for tool in claude codex gemini; do
+for tool in claude codex agents; do
     actual=$(find "$SANDBOX/.${tool}/skills" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
     cli_extras_dir="$PACK_ROOT/project-template/.${tool}/skills"
     expected_unique="$expected_skill_count"
@@ -130,7 +136,10 @@ for tool in claude codex gemini; do
 done
 
 # Assertion 2: every project-template agent present per CLI.
-for tool in claude codex gemini; do
+# Claude/Codex keep loose per-CLI agent dirs (.claude/agents/*.md,
+# .codex/agents/*.toml). Antigravity agents ship as a plugin BUNDLE
+# (.agents-plugin/optiquity-agents/agents/*.md) — verified separately below.
+for tool in claude codex; do
     case "$tool" in codex) ext="toml" ;; *) ext="md" ;; esac
     pack_agents="$PACK_ROOT/project-template/.${tool}/agents"
     [[ -d "$pack_agents" ]] || { t_fail "pack template missing .${tool}/agents/"; continue; }
@@ -145,6 +154,24 @@ for tool in claude codex gemini; do
         fi
     done
 done
+# Antigravity third-CLI agents: the install copies the whole client plugin
+# bundle (init-project.sh stage S2 — cp -R the optiquity-agents bundle).
+# Assert every pack bundle agent landed in the installed client bundle.
+bundle_src="$PACK_ROOT/project-template/.agents-plugin/optiquity-agents/agents"
+bundle_dst="$SANDBOX/.agents-plugin/optiquity-agents/agents"
+if [[ -d "$bundle_src" ]]; then
+    for src in "$bundle_src"/*.md; do
+        [[ -e "$src" ]] || continue
+        name=$(basename "$src")
+        if [[ -f "$bundle_dst/$name" ]]; then
+            t_pass "agent bundle optiquity-agents/${name} present"
+        else
+            t_fail "agent bundle optiquity-agents/${name} MISSING"
+        fi
+    done
+else
+    t_fail "pack template missing .agents-plugin/optiquity-agents/agents/"
+fi
 
 # Assertion 3: trinity files byte-identical to project-template/.
 for f in CLAUDE.md AGENTS.md GEMINI.md; do
@@ -173,9 +200,13 @@ done
 #                                  mirrors the migration contract's pattern;
 #                                  pre-fix this surface was unverified by
 #                                  greenfield, only by migration).
-#   4. per-CLI pack-help         → .claude/skills/pack-help/SKILL.md,
+#   4. pack-help pool skill      → .claude/skills/pack-help/SKILL.md,
 #                                  .codex/skills/pack-help/SKILL.md,
-#                                  .gemini/commands/pack-help.toml
+#                                  .agents/skills/pack-help/SKILL.md
+#                                  (pack-help is now an ordinary pool skill
+#                                  distributed by S4 to all three CLIs;
+#                                  Antigravity has no `.toml` command
+#                                  format, so the skill IS the command)
 #   5. scripts/pack-help.sh + lib → scripts/pack-help.sh, scripts/lib/detect.sh
 #   6. per-entry tree templates  → docs/project/{backlog,implementation-plan,
 #                                  changelog}/_rules.md + _intro.md
@@ -195,7 +226,7 @@ s11_files=(
     "scripts/lib/detect.sh"
     ".claude/skills/pack-help/SKILL.md"
     ".codex/skills/pack-help/SKILL.md"
-    ".gemini/commands/pack-help.toml"
+    ".agents/skills/pack-help/SKILL.md"
     # Sub-stage 6: per-entry canonical templates (BD-166). Project-side
     # asymmetry: changelog HAS _format.md, backlog + implementation-plan
     # do NOT (per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §9.7).

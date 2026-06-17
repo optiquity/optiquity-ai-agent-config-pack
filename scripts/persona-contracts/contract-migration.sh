@@ -155,7 +155,13 @@ done
 
 # Per-CLI pack-shipped agents: every project-template agent should be
 # present post-migrate (newly added agents in v11 land via migrator).
-for tool in claude codex gemini; do
+# Scoped to the loose per-CLI dirs the v10→v11 migrator installs —
+# .claude/agents/ + .codex/agents/ (migrator_directory_sweeps in
+# scripts/migrate-v10-to-v11.sh). Antigravity agents ship as a plugin
+# BUNDLE (.agents-plugin/optiquity-agents/); the v10→v11 migrator installs
+# it additively (additive, non-clobber — see
+# _v10_to_v11_install_v11_artifacts), asserted in the bundle block below.
+for tool in claude codex; do
     case "$tool" in codex) ext="toml" ;; *) ext="md" ;; esac
     pack_agents="$PACK_ROOT/project-template/.${tool}/agents"
     [[ -d "$pack_agents" ]] || continue
@@ -174,6 +180,41 @@ for tool in claude codex gemini; do
     fi
 done
 
+# Antigravity third-CLI agents: the migrator installs the whole client
+# plugin bundle additively (.agents-plugin/optiquity-agents/ —
+# _v10_to_v11_install_v11_artifacts; net-new v11 surface, BD-221). Assert
+# every pack bundle agent landed in the migrated client bundle
+# (superset-tolerant — the migrator is non-clobber, so project extras are
+# allowed; the contract is "no pack agent missing"). Also assert
+# plugin.json + RUNTIME-SUBAGENT-PATTERN.md are present.
+bundle_src="$PACK_ROOT/project-template/.agents-plugin/optiquity-agents/agents"
+bundle_dst="$SANDBOX/.agents-plugin/optiquity-agents/agents"
+if [[ -d "$bundle_src" ]]; then
+    bundle_missing=0
+    for src in "$bundle_src"/*.md; do
+        [[ -e "$src" ]] || continue
+        name=$(basename "$src")
+        if [[ ! -f "$bundle_dst/$name" ]]; then
+            bundle_missing=$((bundle_missing + 1))
+        fi
+    done
+    if [[ "$bundle_missing" -eq 0 ]]; then
+        t_pass "all .agents-plugin/optiquity-agents/agents/ present post-migrate"
+    else
+        t_fail ".agents-plugin/optiquity-agents/agents/ has $bundle_missing missing pack agents post-migrate" \
+            "BD-221: the v10→v11 migrator must additively install the Antigravity bundle"
+    fi
+else
+    t_fail "pack template missing .agents-plugin/optiquity-agents/agents/"
+fi
+for meta in plugin.json RUNTIME-SUBAGENT-PATTERN.md; do
+    if [[ -f "$SANDBOX/.agents-plugin/optiquity-agents/$meta" ]]; then
+        t_pass ".agents-plugin/optiquity-agents/${meta} present post-migrate"
+    else
+        t_fail ".agents-plugin/optiquity-agents/${meta} MISSING post-migrate"
+    fi
+done
+
 # Skills: scoped per the v10→v11 migrator's documented skill responsibilities.
 #   - BD-147 content-level rename: trinity files + PLATFORM-SKILLS.md
 #     references must use the v11 split skill names (`python-server-
@@ -183,8 +224,11 @@ done
 #     reference-level, not filesystem-level — see migrator-skills.sh
 #     §header). The on-disk-skill assertion is therefore against the
 #     references in canonical files, not the directory inventory.
-#   - BD-080 migrator install: pack-help skill must land for claude + codex
-#     (gemini ships pack-help as a command — verified in assertion 4).
+#   - BD-080 migrator install: pack-help is now an ordinary pool skill
+#     fanned out by the migrator to all three CLI skill homes
+#     (.claude/skills/, .codex/skills/, .agents/skills/ — Antigravity
+#     reads `.agents/skills/`; there is no `.toml` command form).
+#     Asserted below for all three.
 #
 # Other v11-only skills (e.g. `apple-swiftdata-patterns`,
 # `swift-concurrency-patterns`, `protobuf-patterns`,
@@ -211,8 +255,9 @@ for f in CLAUDE.md AGENTS.md GEMINI.md; do
         t_fail "skill-rename: ${f} still references bare 'python-architecture' ($bare occurrences)"
     fi
 done
-# pack-help skill installed for claude + codex.
-for tool in claude codex; do
+# pack-help pool skill installed for all three CLI skill homes (Antigravity
+# reads .agents/skills/).
+for tool in claude codex agents; do
     if [[ -f "$SANDBOX/.${tool}/skills/pack-help/SKILL.md" ]]; then
         t_pass "skill ${tool}/pack-help installed by migrator"
     else
@@ -257,8 +302,10 @@ for f in CLAUDE.md AGENTS.md GEMINI.md; do
     fi
 done
 
-# 3b: x-fakeot-domain custom agents preserved on all 3 CLIs.
-for tool in claude codex gemini; do
+# 3b: x-fakeot-domain custom agents preserved on all three CLIs.
+# Claude/Codex keep their loose agent dirs, so the custom agent stays
+# in place there.
+for tool in claude codex; do
     case "$tool" in codex) ext="toml" ;; *) ext="md" ;; esac
     target="$SANDBOX/.${tool}/agents/x-fakeot-domain.${ext}"
     if [[ -f "$target" ]]; then
@@ -268,6 +315,23 @@ for tool in claude codex gemini; do
             "BD-088 / BD-119 must never delete x-prefixed project-owned agents"
     fi
 done
+# 3b (third CLI): the v10 source carried the custom agent under the
+# departing `.gemini/agents/` tree (carve-out i). The v10→v11 migrator
+# retires the whole departing `.gemini/` tree into `gemini-retired-docs/`
+# rather than deleting it (BD-221, decision 8) — so the project-owned
+# x-agent is PRESERVED there, not lost. BD-088 / BD-119 forbid DELETION,
+# not relocation into the preservation holding dir.
+retired_xagent=""
+while IFS= read -r cand; do
+    retired_xagent="$cand"
+    break
+done < <(find "$SANDBOX/gemini-retired-docs" -name "x-fakeot-domain.md" -type f 2>/dev/null)
+if [[ -n "$retired_xagent" ]]; then
+    t_pass "3b: third-CLI x-fakeot-domain preserved in gemini-retired-docs/ (${retired_xagent#"$SANDBOX/"})"
+else
+    t_fail "3b: third-CLI x-fakeot-domain LOST" \
+        "BD-088 / BD-119 must preserve the project-owned x-agent (expected in gemini-retired-docs/)"
+fi
 
 # 3c: ollama removal in .codex/config.toml preserved (or surfaced via
 # sidecar). The BD-120 fixture deletes the `[model_providers.ollama]`
@@ -332,9 +396,13 @@ fi
 #   1. HELP-FRAGMENT*.md          → docs/pack/HELP-FRAGMENT.md, HELP-FRAGMENT-TRACKER.md
 #   2. tracker.toml.example       → NO LONGER installed (tracker deferred, BD-214)
 #   3. .github/ISSUE_TEMPLATE/*   → handled by glob block below
-#   4. per-CLI pack-help          → .claude/skills/pack-help/SKILL.md,
+#   4. pack-help pool skill       → .claude/skills/pack-help/SKILL.md,
 #                                   .codex/skills/pack-help/SKILL.md,
-#                                   .gemini/commands/pack-help.toml
+#                                   .agents/skills/pack-help/SKILL.md
+#                                   (pack-help is now an ordinary pool skill
+#                                   fanned out to all three CLIs; Antigravity
+#                                   reads `.agents/skills/`, no `.toml`
+#                                   command form)
 #   5. scripts/pack-help.sh + lib → scripts/pack-help.sh, scripts/lib/detect.sh
 #   6. per-entry tree templates   → docs/project/{backlog,implementation-plan,
 #                                   changelog}/_rules.md + _intro.md
@@ -370,7 +438,7 @@ v11_artifacts=(
     "scripts/lib/detect.sh"
     ".claude/skills/pack-help/SKILL.md"
     ".codex/skills/pack-help/SKILL.md"
-    ".gemini/commands/pack-help.toml"
+    ".agents/skills/pack-help/SKILL.md"
     # Sub-stage 6: per-entry canonical templates (BD-166). Project-side
     # asymmetry: changelog HAS _format.md, backlog + implementation-plan
     # do NOT (per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §9.7).

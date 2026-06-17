@@ -137,7 +137,7 @@ migrator_post_dispatch_hook() {
     # invariant (single-shot only) made this gate unnecessary; with
     # BD-095 the gate is required.
     if _migrator_is_dryrun; then
-        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install + Gemini→Antigravity retirement + python-architecture skill rename + BD-144 capability-token translation + BD-165 per-entry decompose"
+        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install (incl. Antigravity agent bundle) + Gemini→Antigravity retirement + python-architecture skill rename + BD-144 capability-token translation + BD-165 per-entry decompose"
         return 0
     fi
     _v10_to_v11_rename_implementation_plan
@@ -346,6 +346,48 @@ _v10_to_v11_install_v11_artifacts() {
         cp "$PACK/scripts/lib/detect.sh" "$_MIGRATOR_TARGET/scripts/lib/detect.sh"
     fi
 
+    # Antigravity agent plugin BUNDLE — net-new v11 surface (BD-221). v11
+    # ships the third-CLI agents as a plugin bundle at
+    # project-template/.agents-plugin/optiquity-agents/ (16 agents/*.md +
+    # plugin.json + RUNTIME-SUBAGENT-PATTERN.md). This realizes for the
+    # migration path the same bundle install that init-project.sh's
+    # stage_s2_agents lays down on a fresh install — re-expressed in the
+    # migrator's additive idiom: per-file copy IFF the destination is
+    # absent, so a pre-existing or project-customized .agents-plugin/ is
+    # NEVER overwritten (matches the BD-088 add-semantics every other
+    # install in this function uses). Idempotent: a re-run finds every
+    # bundle file present and is a no-op. Runs before _v10_to_v11_retire_gemini
+    # (the departing .gemini/ tree and this new .agents-plugin/ surface are
+    # disjoint paths), so the Antigravity surface lands first.
+    local bundle_src="$PACK/project-template/.agents-plugin/optiquity-agents"
+    if [[ -d "$bundle_src" ]]; then
+        local bundle_file rel bundle_dest
+        while IFS= read -r bundle_file; do
+            rel="${bundle_file#"$bundle_src/"}"
+            bundle_dest="$_MIGRATOR_TARGET/.agents-plugin/optiquity-agents/$rel"
+            if [[ ! -f "$bundle_dest" ]]; then
+                mkdir -p "$(dirname "$bundle_dest")"
+                cp "$bundle_file" "$bundle_dest"
+            fi
+        done < <(find "$bundle_src" -type f)
+        # Superset-tolerant count guard (NOT init's strict ==): the
+        # non-clobber copy means a project that customized its
+        # .agents-plugin/agents/ (deleted/added an agent) legitimately
+        # diverges from the pack count. Assert every PACK bundle agent is
+        # PRESENT at the target (no pack agent silently skipped); project
+        # extras are allowed.
+        local pack_agent agent_name missing_bundle=0
+        for pack_agent in "$bundle_src"/agents/*.md; do
+            [[ -e "$pack_agent" ]] || continue
+            agent_name=$(basename "$pack_agent")
+            if [[ ! -f "$_MIGRATOR_TARGET/.agents-plugin/optiquity-agents/agents/$agent_name" ]]; then
+                missing_bundle=$((missing_bundle + 1))
+            fi
+        done
+        (( missing_bundle == 0 )) || \
+            fail_stage S5 "Antigravity bundle install incomplete: $missing_bundle pack agent(s) missing under .agents-plugin/optiquity-agents/agents"
+    fi
+
     # BD-167 (per-entry split, mandatory v11.0): canonical project-side
     # per-entry tree skeletons.
     #
@@ -426,9 +468,11 @@ _v10_to_v11_install_v11_artifacts() {
 # (BD-221, decision 8).
 #
 # The pack-standard v11 Antigravity surfaces (`.agents/skills/` distributed
-# loose, the agent plugin bundle, `.agents/mcp_config.json`) are installed
-# additively by the steps above. This step handles a DEPARTING `.gemini/`
-# tree in the client project:
+# loose, the agent plugin bundle `.agents-plugin/optiquity-agents/`,
+# `.agents/mcp_config.json`) are installed additively by
+# `_v10_to_v11_install_v11_artifacts` (which runs immediately before this
+# step). This step handles a DEPARTING `.gemini/` tree in the client
+# project:
 #
 #   - pack-STANDARD `.gemini/` skills (mirrors of pool skills) are
 #     superseded by the loose `.agents/skills/` install above; the legacy
