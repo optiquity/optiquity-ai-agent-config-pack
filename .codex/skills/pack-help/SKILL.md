@@ -4,12 +4,7 @@ description: Show all pack commands and colloquial mappings. Run when you need a
 allowed-tools: Bash
 ---
 
-## Help fragment
-
-!`bash scripts/pack-help.sh`
-
-## Notes
-
-For full documentation, see `QUICKSTART.md`, `README.md`,
-`PACK-CHAT.md`, and `OPTIONAL-FEATURES.md`. The shell verb
+Run `scripts/pack-help.sh` (it lives at the repo root) and present its
+output to the user verbatim. For full docs see `QUICKSTART.md`,
+`README.md`, `PACK-CHAT.md`, and `OPTIONAL-FEATURES.md`. The shell verb
 `pack help` (LCD floor) prints the same content as this skill.
