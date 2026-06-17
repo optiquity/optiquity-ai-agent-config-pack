@@ -180,13 +180,15 @@ for tool in claude codex; do
     fi
 done
 
-# Antigravity third-CLI agents: the migrator installs the whole client
-# plugin bundle additively (.agents-plugin/optiquity-agents/ —
-# _v10_to_v11_install_v11_artifacts; net-new v11 surface, BD-221). Assert
+# Antigravity third-CLI agents: the migrator installs the client plugin
+# bundle through the BD-088 customization-preserve engine
+# (.agents-plugin/optiquity-agents/ — _v10_to_v11_install_v11_artifacts;
+# net-new v11 surface, BD-221 corrected agent-migration model). Pack bundle
+# agents are replace-if-different; client x- customs are preserved. Assert
 # every pack bundle agent landed in the migrated client bundle
-# (superset-tolerant — the migrator is non-clobber, so project extras are
-# allowed; the contract is "no pack agent missing"). Also assert
-# plugin.json + RUNTIME-SUBAGENT-PATTERN.md are present.
+# (superset-tolerant — the bundle may carry lifted x- customs too, so
+# project extras are allowed; the contract is "no pack agent missing").
+# Also assert plugin.json + RUNTIME-SUBAGENT-PATTERN.md are present.
 bundle_src="$PACK_ROOT/project-template/.agents-plugin/optiquity-agents/agents"
 bundle_dst="$SANDBOX/.agents-plugin/optiquity-agents/agents"
 if [[ -d "$bundle_src" ]]; then
@@ -315,22 +317,33 @@ for tool in claude codex; do
             "BD-088 / BD-119 must never delete x-prefixed project-owned agents"
     fi
 done
-# 3b (third CLI): the v10 source carried the custom agent under the
-# departing `.gemini/agents/` tree (carve-out i). The v10→v11 migrator
-# retires the whole departing `.gemini/` tree into `gemini-retired-docs/`
-# rather than deleting it (BD-221, decision 8) — so the project-owned
-# x-agent is PRESERVED there, not lost. BD-088 / BD-119 forbid DELETION,
-# not relocation into the preservation holding dir.
+# 3b (third CLI — BD-221 corrected agent-migration model): the v10 source
+# carried the custom agent under the departing `.gemini/agents/` tree
+# (carve-out i). On v11 the migrator LIFTS that x- custom INTO the
+# Antigravity plugin bundle (.agents-plugin/optiquity-agents/agents/) — it
+# becomes a live Antigravity agent, not a manual-re-creation TODO — AND
+# moves the whole departing `.gemini/` tree into `gemini-retired-docs/` as a
+# BACKUP. Both must hold: the custom is LIVE in the bundle, and the backup
+# copy survives. BD-088 / BD-119 forbid DELETION; here the custom is both
+# preserved (backup) and promoted (bundle).
+if [[ -f "$SANDBOX/.agents-plugin/optiquity-agents/agents/x-fakeot-domain.md" ]]; then
+    t_pass "3b: third-CLI x-fakeot-domain LIFTED into Antigravity bundle (.agents-plugin/optiquity-agents/agents/)"
+else
+    t_fail "3b: third-CLI x-fakeot-domain NOT lifted into the Antigravity bundle" \
+        "BD-221: the v10→v11 migrator must lift the departing Gemini x- custom into .agents-plugin/optiquity-agents/agents/"
+fi
+# Backup copy: the whole departing .gemini/ (incl. the x- custom) is also
+# retired to gemini-retired-docs/ (move-not-delete).
 retired_xagent=""
 while IFS= read -r cand; do
     retired_xagent="$cand"
     break
 done < <(find "$SANDBOX/gemini-retired-docs" -name "x-fakeot-domain.md" -type f 2>/dev/null)
 if [[ -n "$retired_xagent" ]]; then
-    t_pass "3b: third-CLI x-fakeot-domain preserved in gemini-retired-docs/ (${retired_xagent#"$SANDBOX/"})"
+    t_pass "3b: third-CLI x-fakeot-domain backed up in gemini-retired-docs/ (${retired_xagent#"$SANDBOX/"})"
 else
-    t_fail "3b: third-CLI x-fakeot-domain LOST" \
-        "BD-088 / BD-119 must preserve the project-owned x-agent (expected in gemini-retired-docs/)"
+    t_fail "3b: third-CLI x-fakeot-domain backup LOST" \
+        "BD-221: the departing .gemini/ tree (incl. the x- custom) must be retired to gemini-retired-docs/ as a backup"
 fi
 
 # 3c: ollama removal in .codex/config.toml preserved (or surfaced via

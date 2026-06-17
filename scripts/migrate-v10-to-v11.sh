@@ -23,12 +23,15 @@
 # The v10→v11 transition's post-dispatch work (BD-042 legacy-doc
 # relocation; additive install of v11 artifacts like HELP-FRAGMENT,
 # ISSUE_TEMPLATE forms, the pool-distributed pack-help skill, the
-# Gemini→Antigravity client-tree retirement, and the
-# bare scripts/pack-help.sh + scripts/lib/detect.sh files) is performed
-# (tracker.toml.example is NO LONGER installed — tracker deferred, BD-214)
-# inside `migrator_post_dispatch_hook` rather than via the framework's
-# declarative `migrator_relocations` / `migrator_artifact_installs`
-# hooks. Two reasons:
+# bare scripts/pack-help.sh + scripts/lib/detect.sh files; the Antigravity
+# agent plugin bundle installed REPLACE-IF-DIFFERENT through the BD-088
+# customization-preserve engine — BD-221 corrected agent-migration model;
+# the lift of departing Gemini x- custom agents INTO that bundle; and the
+# Gemini→Antigravity client-tree retirement to gemini-retired-docs/) is
+# performed (tracker.toml.example is NO LONGER installed — tracker deferred,
+# BD-214) inside `migrator_post_dispatch_hook` rather than via the
+# framework's declarative `migrator_relocations` /
+# `migrator_artifact_installs` hooks. Two reasons:
 #   1. The pre-BD-119 monolith printed v10→v11-specific banners
 #      ("── S4 — BD-042 relocation of legacy root docs (if any) ──",
 #      "── S5 — install v11 client artifacts ──") and never recorded
@@ -137,12 +140,17 @@ migrator_post_dispatch_hook() {
     # invariant (single-shot only) made this gate unnecessary; with
     # BD-095 the gate is required.
     if _migrator_is_dryrun; then
-        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install (incl. Antigravity agent bundle) + Gemini→Antigravity retirement + python-architecture skill rename + BD-144 capability-token translation + BD-165 per-entry decompose"
+        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install (incl. Antigravity agent bundle, replace-if-different) + lift Gemini x- customs into the Antigravity bundle + Gemini→Antigravity retirement + python-architecture skill rename + BD-144 capability-token translation + BD-165 per-entry decompose"
         return 0
     fi
     _v10_to_v11_rename_implementation_plan
     _v10_to_v11_relocate_legacy_docs
     _v10_to_v11_install_v11_artifacts
+    # BD-221 corrected agent-migration model: lift the departing Gemini x-
+    # custom agents INTO the Antigravity bundle BEFORE the .gemini/ tree is
+    # retired (so the customs become live Antigravity agents, not holding-dir
+    # backups requiring manual re-creation).
+    _v10_to_v11_lift_gemini_customs_to_bundle
     _v10_to_v11_retire_gemini
     _v10_to_v11_rename_python_architecture_refs
     _v10_to_v11_translate_capability_tokens
@@ -349,33 +357,59 @@ _v10_to_v11_install_v11_artifacts() {
     # Antigravity agent plugin BUNDLE — net-new v11 surface (BD-221). v11
     # ships the third-CLI agents as a plugin bundle at
     # project-template/.agents-plugin/optiquity-agents/ (16 agents/*.md +
-    # plugin.json + RUNTIME-SUBAGENT-PATTERN.md). This realizes for the
-    # migration path the same bundle install that init-project.sh's
-    # stage_s2_agents lays down on a fresh install — re-expressed in the
-    # migrator's additive idiom: per-file copy IFF the destination is
-    # absent, so a pre-existing or project-customized .agents-plugin/ is
-    # NEVER overwritten (matches the BD-088 add-semantics every other
-    # install in this function uses). Idempotent: a re-run finds every
-    # bundle file present and is a no-op. Runs before _v10_to_v11_retire_gemini
-    # (the departing .gemini/ tree and this new .agents-plugin/ surface are
-    # disjoint paths), so the Antigravity surface lands first.
+    # plugin.json + RUNTIME-SUBAGENT-PATTERN.md).
+    #
+    # CORRECTED agent-migration model (BD-221, supersedes C7): the bundle
+    # installs through the SAME BD-088 customization-preserve engine the
+    # loose .claude/.codex/agents/ surfaces use, NOT a hand-rolled
+    # non-clobber cp. The engine gives the frozen contract:
+    #   - a pack bundle agent is REPLACE-IF-DIFFERENT (a config-pack bump
+    #     CAN update pack agents — so an older client copy is replaced when
+    #     the v11 pack version differs, cmp -s byte-identity);
+    #   - a client x- custom agent already in the bundle is PRESERVED
+    #     (never overwritten), via the .agents-plugin/*/agents/x-* →
+    #     custom-agent classifier leg added in customization-preserve.sh.
+    # Self-classify (NO forced class arg) so each bundle file gets the
+    # right class per the corrected classifier legs. Base is "" — the
+    # bundle is a net-new v11 surface with no v10 baseline (the v10 tag has
+    # no .agents-plugin/ path); on a v10→v11 migration `ours` is absent so
+    # three_way_classify yields new-file-in-pack → clean add. The departing
+    # Gemini x- customs are lifted INTO this bundle by the separate
+    # _v10_to_v11_lift_gemini_customs_to_bundle step (runs after this, before
+    # the .gemini/ retire). Re-run disposition: on a second pass `ours` is now
+    # present (installed on the first pass) while base stays "", so
+    # three_way_classify yields project-shadows-new-pack (NOT unchanged-pack —
+    # that branch needs all three inputs present; with base="" the classifier
+    # is presence-based and never reaches the cmp-driven no-op). That routes
+    # through the conservative sidecar gate (needs-reconciliation). This is the
+    # benign, never-reached case on a real single-shot net-new v10→v11
+    # migration (which only ever sees the first pass = new-file-in-pack); it
+    # belongs to the --update path's pre-existing-accepted domain. Runs before
+    # _v10_to_v11_retire_gemini (the departing .gemini/ tree and this
+    # .agents-plugin/ surface are disjoint).
     local bundle_src="$PACK/project-template/.agents-plugin/optiquity-agents"
     if [[ -d "$bundle_src" ]]; then
-        local bundle_file rel bundle_dest
+        local bundle_file rel proj_rel bundle_dest bundle_ours
         while IFS= read -r bundle_file; do
             rel="${bundle_file#"$bundle_src/"}"
-            bundle_dest="$_MIGRATOR_TARGET/.agents-plugin/optiquity-agents/$rel"
-            if [[ ! -f "$bundle_dest" ]]; then
-                mkdir -p "$(dirname "$bundle_dest")"
-                cp "$bundle_file" "$bundle_dest"
-            fi
+            proj_rel=".agents-plugin/optiquity-agents/$rel"
+            bundle_dest="$_MIGRATOR_TARGET/$proj_rel"
+            bundle_ours="$bundle_dest"
+            [[ -f "$bundle_ours" ]] || bundle_ours=""
+            mkdir -p "$(dirname "$bundle_dest")"
+            # Engine-routed, self-classify (no forced class): bundle pack
+            # agents → replace-if-different; bundle x- customs → preserved.
+            # Base "" — net-new surface, no v10 baseline (NEW design §3.1).
+            customization_preserve \
+                "" "$bundle_ours" "$bundle_file" "$proj_rel" "$bundle_dest" \
+                >/dev/null
         done < <(find "$bundle_src" -type f)
         # Superset-tolerant count guard (NOT init's strict ==): the
-        # non-clobber copy means a project that customized its
-        # .agents-plugin/agents/ (deleted/added an agent) legitimately
-        # diverges from the pack count. Assert every PACK bundle agent is
-        # PRESENT at the target (no pack agent silently skipped); project
-        # extras are allowed.
+        # replace-if-different + preserve-x- semantics mean a project that
+        # customized its .agents-plugin/agents/ (kept an x- custom, removed
+        # a pack agent) legitimately diverges from the pack count. Assert
+        # every PACK bundle agent is PRESENT at the target (no pack agent
+        # silently skipped); project extras (x- customs) are allowed.
         local pack_agent agent_name missing_bundle=0
         for pack_agent in "$bundle_src"/agents/*.md; do
             [[ -e "$pack_agent" ]] || continue
@@ -464,15 +498,114 @@ _v10_to_v11_install_v11_artifacts() {
     done
 }
 
+# Internal: lift departing Gemini x- custom agents INTO the Antigravity
+# plugin bundle (BD-221 corrected agent-migration model). Runs AFTER
+# _v10_to_v11_install_v11_artifacts (which lays down the pack bundle agents
+# via the customization-preserve engine) and BEFORE
+# _v10_to_v11_retire_gemini (which moves the whole departing `.gemini/` tree
+# into the gemini-retired-docs/ backup holding dir).
+#
+# Frozen model #2/#3: the client's custom (`x-`) agents are KEPT — placed
+# INTO the Antigravity bundle so they become live Antigravity agents,
+# rather than retired into the holding dir requiring manual re-creation.
+# The Gemini→Antigravity conversion is literally "lift the Gemini customs
+# into the new surface."
+#
+# Source selection (BD-221 OQ-1): the custom agent exists in up to three
+# places in a v10 project — `.gemini/agents/x-*.md`, `.claude/agents/x-*.md`
+# (both `.md`, the bundle's format), and `.codex/agents/x-*.toml` (a
+# different format, not a bundle source). Prefer the `.gemini/agents/x-*.md`
+# copy (the literal departing-Gemini source), falling back to
+# `.claude/agents/x-*.md` when the Gemini copy is absent. If BOTH exist and
+# their content DIVERGED, the Gemini copy WINS and the divergence is FLAGGED
+# in the migrator output (the client should reconcile by hand).
+#
+# C-2 (BD-221 reconciliation): the lift is a DIRECT `cp`, NOT engine-routed.
+# The customization-preserve `custom-agent` branch returns
+# `removed-everywhere` with NO copy when `ours` is absent — which it always
+# is for a net-new bundle custom on the first migration. So a direct cp is
+# the correct primitive here. Non-clobber: never overwrite a same-named
+# custom already present in the bundle (a re-run, or a client who already
+# placed it). The loose `.claude`/`.codex` x- copies remain preserved in
+# place (Claude/Codex still read their loose dirs — they are NOT retired).
+#
+# Idempotent: a second run finds the bundle custom already present → skip.
+_v10_to_v11_lift_gemini_customs_to_bundle() {
+    say "── S5a — lift departing Gemini x- custom agents into the Antigravity bundle (BD-221) ──"
+
+    local bundle_agents="$_MIGRATOR_TARGET/.agents-plugin/optiquity-agents/agents"
+    local gemini_agents="$_MIGRATOR_TARGET/.gemini/agents"
+    local claude_agents="$_MIGRATOR_TARGET/.claude/agents"
+
+    # Build the candidate set: every x-*.md custom that exists in the
+    # departing .gemini/agents/ OR the loose .claude/agents/. Use basenames
+    # so a custom present in both surfaces is considered once (Gemini-first).
+    local names="" f name
+    if [[ -d "$gemini_agents" ]]; then
+        for f in "$gemini_agents"/x-*.md; do
+            [[ -e "$f" ]] || continue
+            names="$names $(basename "$f")"
+        done
+    fi
+    if [[ -d "$claude_agents" ]]; then
+        for f in "$claude_agents"/x-*.md; do
+            [[ -e "$f" ]] || continue
+            name=$(basename "$f")
+            case " $names " in *" $name "*) : ;; *) names="$names $name" ;; esac
+        done
+    fi
+
+    [[ -n "${names// }" ]] || { info "no Gemini/Claude x- custom agents to lift"; return 0; }
+
+    mkdir -p "$bundle_agents"
+    local gemini_src claude_src src dest lifted=0
+    for name in $names; do
+        gemini_src="$gemini_agents/$name"
+        claude_src="$claude_agents/$name"
+        dest="$bundle_agents/$name"
+
+        # OQ-1 source selection: Gemini preferred, Claude fallback.
+        if [[ -f "$gemini_src" ]]; then
+            src="$gemini_src"
+            # Divergence flag: both copies exist but differ → Gemini wins,
+            # surface the conflict for hand reconciliation.
+            if [[ -f "$claude_src" ]] && ! cmp -s "$gemini_src" "$claude_src"; then
+                say "  note: custom agent '$name' differs between .gemini/agents/ and"
+                say "        .claude/agents/. The .gemini/ copy was lifted into the"
+                say "        Antigravity bundle; reconcile by hand if the .claude/ copy"
+                say "        was the one you intended to keep."
+            fi
+        elif [[ -f "$claude_src" ]]; then
+            src="$claude_src"
+        else
+            continue
+        fi
+
+        # Non-clobber: never overwrite a same-named custom already in the
+        # bundle (re-run / pre-placed). Direct cp (C-2 — not engine-routed).
+        if [[ -f "$dest" ]]; then
+            info "bundle custom '$name' already present — left untouched"
+            continue
+        fi
+        cp "$src" "$dest"
+        lifted=$((lifted + 1))
+        info "lifted custom agent '$name' → .agents-plugin/optiquity-agents/agents/ (source: ${src#"$_MIGRATOR_TARGET/"})"
+    done
+
+    info "lifted $lifted Gemini/Claude x- custom agent(s) into the Antigravity bundle"
+}
+
 # Internal: retire a departing `.gemini/` tree on the v10→v11 migration
 # (BD-221, decision 8).
 #
 # The pack-standard v11 Antigravity surfaces (`.agents/skills/` distributed
 # loose, the agent plugin bundle `.agents-plugin/optiquity-agents/`,
-# `.agents/mcp_config.json`) are installed additively by
-# `_v10_to_v11_install_v11_artifacts` (which runs immediately before this
-# step). This step handles a DEPARTING `.gemini/` tree in the client
-# project:
+# `.agents/mcp_config.json`) are installed by
+# `_v10_to_v11_install_v11_artifacts` (the bundle through the
+# customization-preserve engine, replace-if-different — see that function).
+# The departing Gemini x- custom agents are already lifted INTO the bundle
+# by `_v10_to_v11_lift_gemini_customs_to_bundle` (runs immediately before
+# this step). This step then handles the DEPARTING `.gemini/` tree:
 #
 #   - pack-STANDARD `.gemini/` skills (mirrors of pool skills) are
 #     superseded by the loose `.agents/skills/` install above; the legacy
@@ -480,9 +613,11 @@ _v10_to_v11_install_v11_artifacts() {
 #     the pool already shipped the v11 form to `.agents/skills/`).
 #   - client-CUSTOMIZED `.gemini/` files (x- customs + project-edited
 #     config that has no Antigravity target) are MOVED, NEVER deleted,
-#     into a root-level `gemini-retired-docs/` holding dir so the client
-#     keeps a recoverable copy. Originals also remain in the project's git
-#     history.
+#     into a root-level `gemini-retired-docs/` holding dir as a BACKUP. The
+#     x- customs were ALREADY lifted into the Antigravity bundle by the lift
+#     step above (so they are live, not lost); this whole-tree move is the
+#     recoverable safety copy of the entire departing `.gemini/`. Originals
+#     also remain in the project's git history.
 #   - the holding-dir move is whole-tree: the entire departing `.gemini/`
 #     is relocated under `gemini-retired-docs/` preserving its internal
 #     structure, then the empty `.gemini/` is removed.
@@ -490,9 +625,9 @@ _v10_to_v11_install_v11_artifacts() {
 # Idempotent across "EITHER Gemini OR Antigravity already present":
 #   - no `.gemini/` present → nothing to retire (a fresh-Antigravity or
 #     already-migrated project); no-op.
-#   - `.agents/` already present → respect it; the additive installs above
-#     never clobber existing Antigravity state, and this step only moves
-#     the legacy `.gemini/` aside.
+#   - `.agents/` already present → respect it; the engine-routed install
+#     above never clobbers a client-customized Antigravity bundle, and this
+#     step only moves the legacy `.gemini/` aside.
 #
 # If `gemini-retired-docs/` trips the client's CI, the client gitignores
 # it (documented in the setup/migration docs); the holding dir is a
@@ -525,13 +660,16 @@ _v10_to_v11_retire_gemini() {
     # User-facing note. No `agy plugin import gemini` recommendation (that
     # targets the user's global ~/.gemini and skips project agents). No
     # BD-NNN reference (this prose ships into client-facing migrator
-    # output). Antigravity docs pointer kept for orientation.
+    # output). Antigravity docs pointer kept for orientation. Customs are
+    # AUTO-LIFTED into the Antigravity bundle by the lift step above — the
+    # holding dir is a BACKUP, not a manual-re-creation TODO.
     say ""
-    say "v11 uses Antigravity. Your .gemini/ tree was moved to"
-    say "gemini-retired-docs/ (preserved, not deleted). Review it for any"
-    say "customizations you want to re-create as Antigravity skills under"
-    say ".agents/skills/. If gemini-retired-docs/ trips your CI, add it to"
-    say "your .gitignore. See https://antigravity.google/docs for the"
+    say "v11 uses Antigravity. Your custom (x-) agents were copied into the"
+    say "Antigravity bundle at .agents-plugin/optiquity-agents/agents/ — they"
+    say "are live Antigravity agents now, nothing to re-create by hand. Your"
+    say "full .gemini/ tree was moved to gemini-retired-docs/ as a backup"
+    say "(preserved, not deleted). If gemini-retired-docs/ trips your CI, add"
+    say "it to your .gitignore. See https://antigravity.google/docs for the"
     say "Antigravity skill/agent model."
 }
 

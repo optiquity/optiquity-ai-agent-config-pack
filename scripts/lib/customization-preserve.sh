@@ -20,6 +20,10 @@
 #       Echo one of: trinity, claude-settings, claude-mcp-example,
 #       codex-config, codex-config-example, pm-chat,
 #       custom-agent, pack-agent, custom-script, pack-script, generic.
+#       The custom-agent / pack-agent classes cover BOTH the loose per-CLI
+#       agent dirs (.claude/.codex/.gemini/agents/) AND the Antigravity
+#       plugin bundle (.agents-plugin/*/agents/) — see the classifier legs
+#       below (BD-221 corrected agent-migration model).
 #   customization_preserve BASE OURS THEIRS REL DEST [CLASS]
 #       Apply the rule for CLASS (auto-detected from REL if omitted).
 #       Writes DEST. Records a finding via record_disposition.
@@ -167,6 +171,25 @@ customization_classify() {
         .claude/agents/x-*|.codex/agents/x-*|.gemini/agents/x-*)
             printf 'custom-agent\n' ;;
         .claude/agents/*.md|.codex/agents/*.md|.gemini/agents/*.md)
+            printf 'pack-agent\n' ;;
+        # Antigravity agent plugin BUNDLE (BD-221 corrected agent-migration
+        # model). Route the bundle through the SAME custom-agent / pack-agent
+        # classes the loose dirs use, so a bundle pack agent is
+        # replace-if-different and a bundle x- custom agent is preserved on a
+        # pack bump. The `*` after .agents-plugin/ matches the plugin
+        # namespace dir (e.g. optiquity-agents) without hard-coding it.
+        #
+        # INVARIANT (BD-221 OQ-2): the bundle namespace dir is SHARED — it
+        # holds both pack-owned agents and client-owned customs. They are
+        # told apart purely by the `x-` filename prefix, which the `x-` leg
+        # below tests FIRST. Pack agents are NEVER named `x-` (the `x-`
+        # prefix is reserved for client customs by convention), so a pack
+        # agent can never be mis-classified as custom, and a client custom
+        # can never be mis-classified as pack — the customs are protected
+        # from replace-if-different.
+        .agents-plugin/*/agents/x-*)
+            printf 'custom-agent\n' ;;
+        .agents-plugin/*/agents/*.md)
             printf 'pack-agent\n' ;;
         # Scripts: default is `pack-script` (3-way text dispatch). Callers
         # that know a script is project-added should pass class=custom-script

@@ -70,6 +70,24 @@ assert_eq "1.13 scripts/foo.sh"  "pack-script" \
     "$(customization_classify scripts/foo.sh)"
 assert_eq "1.14 unknown"  "generic" \
     "$(customization_classify some/random/path.md)"
+# BD-221 corrected agent-migration model: the Antigravity plugin bundle is
+# classified through the SAME custom-agent / pack-agent classes the loose
+# dirs use (x- prefix wins over the general *.md leg). The `*` after
+# .agents-plugin/ matches the plugin namespace dir without hard-coding it.
+assert_eq "1.15 .agents-plugin/optiquity-agents/agents/x-foo.md → custom-agent" \
+    "custom-agent" \
+    "$(customization_classify .agents-plugin/optiquity-agents/agents/x-foo.md)"
+assert_eq "1.16 .agents-plugin/optiquity-agents/agents/coder.md → pack-agent" \
+    "pack-agent" \
+    "$(customization_classify .agents-plugin/optiquity-agents/agents/coder.md)"
+# Robust to a different plugin namespace dir (not hard-coded to optiquity).
+assert_eq "1.17 .agents-plugin/other-ns/agents/x-bar.md → custom-agent" \
+    "custom-agent" \
+    "$(customization_classify .agents-plugin/other-ns/agents/x-bar.md)"
+# Bundle meta files (plugin.json, not under agents/) fall to generic.
+assert_eq "1.18 .agents-plugin/optiquity-agents/plugin.json → generic" \
+    "generic" \
+    "$(customization_classify .agents-plugin/optiquity-agents/plugin.json)"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Group 2: text-strategy dispositions
@@ -329,6 +347,60 @@ customization_preserve "" "$T6/proj/scripts/x-tool.sh" "" \
     "scripts/x-tool.sh" "$T6/proj/scripts/x-tool.sh" custom-script >/dev/null
 last=$(tail -1 "$state/dispositions.tsv")
 assert_contains "6.2 custom-script → project-only-file" "$last" "project-only-file"
+
+# 6.3 BD-221: a bundle x- custom agent SELF-CLASSIFIES to custom-agent and
+# is PRESERVED (never overwritten) on a pack event — proving the new
+# classifier leg routes the bundle through the custom-agent branch even
+# without a forced class.
+mkdir -p "$T6/proj/.agents-plugin/optiquity-agents/agents"
+echo "client x-custom body" \
+    > "$T6/proj/.agents-plugin/optiquity-agents/agents/x-mine.md"
+customization_preserve "" \
+    "$T6/proj/.agents-plugin/optiquity-agents/agents/x-mine.md" "" \
+    ".agents-plugin/optiquity-agents/agents/x-mine.md" \
+    "$T6/proj/.agents-plugin/optiquity-agents/agents/x-mine.md" >/dev/null  # no forced class → self-classify
+last=$(tail -1 "$state/dispositions.tsv")
+assert_contains "6.3 bundle x- custom → project-only-file (self-classified)" \
+    "$last" "project-only-file"
+assert_eq "6.3 bundle x- custom class = custom-agent" \
+    "custom-agent" "$(tsv_col 2 "$last")"
+if [[ -f "$T6/proj/.agents-plugin/optiquity-agents/agents/x-mine.md" ]] && \
+   grep -q "client x-custom body" \
+        "$T6/proj/.agents-plugin/optiquity-agents/agents/x-mine.md"; then
+    t_pass "6.3 bundle x- custom preserved untouched"
+else
+    t_fail "6.3 bundle x- custom modified/lost"
+fi
+
+# 6.4 BD-221: a bundle PACK agent SELF-CLASSIFIES to pack-agent. Base "" +
+# ours present + theirs differs → project-shadows-new-pack on the net-new
+# bundle surface (the classifier is presence-based when base="" — ours is
+# present, so NOT new-file-in-pack, which requires ours absent). The
+# project-shadows-new-pack leg routes through the conservative sidecar gate:
+# dest receives theirs (the v11 pack content) and ours is preserved in a
+# .pre-update sidecar; the recorded canonical disposition is
+# customization-detected-needs-reconciliation.
+echo "v11 pack coder body" > "$T6/theirs-coder.md"
+echo "stale v10 client coder body" \
+    > "$T6/proj/.agents-plugin/optiquity-agents/agents/coder.md"
+# Assert the raw classify result directly (dispositions.tsv col 1 records the
+# mapped canonical token, not the classifier token).
+assert_eq "6.4 classify = project-shadows-new-pack" \
+    "project-shadows-new-pack" \
+    "$(three_way_classify "" \
+        "$T6/proj/.agents-plugin/optiquity-agents/agents/coder.md" \
+        "$T6/theirs-coder.md")"
+customization_preserve "" \
+    "$T6/proj/.agents-plugin/optiquity-agents/agents/coder.md" \
+    "$T6/theirs-coder.md" \
+    ".agents-plugin/optiquity-agents/agents/coder.md" \
+    "$T6/proj/.agents-plugin/optiquity-agents/agents/coder.md" >/dev/null  # no forced class → self-classify
+last=$(tail -1 "$state/dispositions.tsv")
+assert_eq "6.4 bundle pack agent class = pack-agent" \
+    "pack-agent" "$(tsv_col 2 "$last")"
+assert_eq "6.4 bundle pack agent replaced with v11 content" \
+    "v11 pack coder body" \
+    "$(cat "$T6/proj/.agents-plugin/optiquity-agents/agents/coder.md")"
 
 rm -rf "$T6"
 

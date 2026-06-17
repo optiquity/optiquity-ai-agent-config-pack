@@ -1147,7 +1147,7 @@ stage_s11_v11_artifacts() {
 # of stage S3's _stage_s3_iter_dir in migrate-v10-to-v11.sh so --update
 # and the migrator share parity (PACK-REVIEW-BD-080-BD-085 M2).
 _cmd_update_iter_dir() {
-    local pack_dir="$1" proj_dir="$2" cls="$3"
+    local pack_dir="$1" proj_dir="$2" cls="${3:-}"
     [[ -d "$PACK/$pack_dir" ]] || return 0
     local f rel proj_rel theirs ours dest
     while IFS= read -r f; do
@@ -1158,7 +1158,17 @@ _cmd_update_iter_dir() {
         ours="$TARGET/$proj_rel"
         dest="$TARGET/$proj_rel"
         [[ -f "$ours" ]] || ours=""
-        customization_preserve "" "$ours" "$theirs" "$proj_rel" "$dest" "$cls" >/dev/null
+        # An EMPTY cls means "self-classify per the customization_classify
+        # legs" — used by the Antigravity bundle leg (BD-221 corrected
+        # agent-migration model), whose dir mixes pack agents (→ pack-agent,
+        # replace-if-different) and client x- customs (→ custom-agent,
+        # preserved). A NON-empty cls forces the class for whole-dir
+        # single-class sweeps (the loose .claude/.codex/agents/ + scripts/).
+        if [[ -n "$cls" ]]; then
+            customization_preserve "" "$ours" "$theirs" "$proj_rel" "$dest" "$cls" >/dev/null
+        else
+            customization_preserve "" "$ours" "$theirs" "$proj_rel" "$dest" >/dev/null
+        fi
     done < <(find "$PACK/$pack_dir" -type f -print 2>/dev/null)
 }
 
@@ -1313,8 +1323,14 @@ cmd_update() {
         _cmd_update_iter_dir "project-template/.${tool}/agents" \
             ".${tool}/agents" pack-agent
     done
+    # BD-221 corrected agent-migration model: the bundle dir mixes pack
+    # agents AND client x- customs, so it must SELF-CLASSIFY per file (NO
+    # forced class). With the .agents-plugin/*/agents/{x-*,*.md} classifier
+    # legs, a bundle pack agent is replace-if-different and a bundle x-
+    # custom is PRESERVED on a `--update` bump (a forced `pack-agent` would
+    # 3-way the custom and risk sidecaring it). Empty 3rd arg = self-classify.
     _cmd_update_iter_dir "project-template/.agents-plugin/optiquity-agents/agents" \
-        ".agents-plugin/optiquity-agents/agents" pack-agent
+        ".agents-plugin/optiquity-agents/agents"
 
     # Render truthful report.
     local report="$state_dir/report.md"

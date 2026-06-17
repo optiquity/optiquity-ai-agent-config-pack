@@ -408,74 +408,116 @@ rm -f "$co_out" "$co_err"
 rm -rf "$T"
 
 # ─────────────────────────────────────────────────────────────────────────
-# Group 6: BD-221 Gemini→Antigravity retirement — move-not-delete guarantee
+# Group 6: BD-221 corrected agent-migration model — lift Gemini x- customs
+# INTO the Antigravity bundle, then retire `.gemini/` to a backup holding
+# dir (move-not-delete).
 # ─────────────────────────────────────────────────────────────────────────
 #
 # A client-customized departing `.gemini/` tree (x- custom agent +
-# project-edited config with no Antigravity target) MUST be MOVED to a
-# root-level `gemini-retired-docs/` holding dir, NEVER deleted. This unit
-# exercises `_v10_to_v11_retire_gemini` directly (sourcing the migrator
-# under the source-guard) so it is independent of the full-migration Phase-A
-# validate-pack gate.
+# project-edited config with no Antigravity target) must be handled in two
+# steps, in order:
+#   1. `_v10_to_v11_lift_gemini_customs_to_bundle` copies each x- custom
+#      INTO `.agents-plugin/optiquity-agents/agents/` (it becomes a live
+#      Antigravity agent — frozen model #2/#3).
+#   2. `_v10_to_v11_retire_gemini` MOVES the whole departing `.gemini/` tree
+#      to a root-level `gemini-retired-docs/` holding dir as a BACKUP,
+#      NEVER deleting it.
+#
+# This unit exercises BOTH helpers directly (sourcing the migrator under the
+# source-guard) in the SAME production order, so the "custom landed in the
+# bundle" assertion runs against a state where the lift actually happened
+# (C-1 reconciliation: a bundle-custom assertion against the retire helper
+# in isolation would fail — the lift is a SEPARATE step that must run
+# first). It is independent of the full-migration Phase-A validate-pack gate.
 
-printf "\n=== Group 6: BD-221 gemini-retired-docs move-not-delete ===\n"
+printf "\n=== Group 6: BD-221 lift-into-bundle + gemini-retired-docs backup ===\n"
 
 G6=$(mktemp -d -t mig-retire.XXXXXX)
 G6T="$G6/proj"
 # Customized departing .gemini tree: an x- custom agent, a project-edited
-# env, and a legacy command. None has a v11 Antigravity target.
+# env, and a legacy command. None has a v11 Antigravity target. Pre-create
+# the Antigravity bundle agents dir (laid down by the install step in a real
+# migration; the lift target must exist) with the 16 pack agents seeded.
 mkdir -p "$G6T/.gemini/agents" "$G6T/.gemini/commands"
+mkdir -p "$G6T/.agents-plugin/optiquity-agents/agents"
 echo "x-custom agent body" > "$G6T/.gemini/agents/x-ot-domain.md"
 echo "AGENT_CAPABILITIES=swift,python" > "$G6T/.gemini/.env"
 echo "[meta]" > "$G6T/.gemini/commands/pack-help.toml"
+# Seed one pre-existing pack bundle agent (so the lift's non-clobber +
+# the bundle landscape is realistic — the lift only touches x- customs).
+echo "pack coder body" > "$G6T/.agents-plugin/optiquity-agents/agents/coder.md"
 
-# Run the retirement in a subshell that sources the migrator (source-guard
+# Run lift THEN retire in a subshell that sources the migrator (source-guard
 # skips the executable dispatch) and sets the minimal runtime state the
-# helper needs.
+# helpers need. Production order: lift first, retire second.
 (
     export PACK="$REPO_ROOT"
     # shellcheck disable=SC1090
     source "$MIGRATE_SH"
     _MIGRATOR_TARGET="$G6T"
+    _v10_to_v11_lift_gemini_customs_to_bundle
     _v10_to_v11_retire_gemini
 ) >/dev/null 2>&1
 
-# (a) holding dir created + populated.
+# (a) the x- custom was LIFTED into the Antigravity bundle (live agent).
+[[ -f "$G6T/.agents-plugin/optiquity-agents/agents/x-ot-domain.md" ]] \
+    && t_pass "6.1 x- custom lifted into Antigravity bundle (.agents-plugin/optiquity-agents/agents/)" \
+    || t_fail "6.1 x- custom NOT lifted into the Antigravity bundle"
+# (a-ii) the lift did NOT clobber the pre-existing pack bundle agent.
+if [[ -f "$G6T/.agents-plugin/optiquity-agents/agents/coder.md" ]] && \
+   grep -q "pack coder body" \
+        "$G6T/.agents-plugin/optiquity-agents/agents/coder.md"; then
+    t_pass "6.2 lift left the pre-existing pack bundle agent untouched"
+else
+    t_fail "6.2 lift clobbered the pre-existing pack bundle agent"
+fi
+# (b) holding dir created + populated (the BACKUP copy).
 [[ -d "$G6T/gemini-retired-docs" ]] \
-    && t_pass "6.1 gemini-retired-docs/ holding dir created" \
-    || t_fail "6.1 gemini-retired-docs/ not created"
+    && t_pass "6.3 gemini-retired-docs/ backup holding dir created" \
+    || t_fail "6.3 gemini-retired-docs/ not created"
 [[ -f "$G6T/gemini-retired-docs/.gemini/agents/x-ot-domain.md" ]] \
-    && t_pass "6.2 customized x- agent preserved in holding dir" \
-    || t_fail "6.2 customized x- agent NOT preserved"
+    && t_pass "6.4 customized x- agent backed up in holding dir" \
+    || t_fail "6.4 customized x- agent NOT backed up"
 [[ -f "$G6T/gemini-retired-docs/.gemini/.env" ]] \
-    && t_pass "6.3 project-edited .env preserved in holding dir" \
-    || t_fail "6.3 project-edited .env NOT preserved"
-# (b) never-delete: content faithful.
+    && t_pass "6.5 project-edited .env backed up in holding dir" \
+    || t_fail "6.5 project-edited .env NOT backed up"
+# (c) never-delete: content faithful.
 if [[ -f "$G6T/gemini-retired-docs/.gemini/.env" ]] && \
    grep -q "AGENT_CAPABILITIES=swift,python" \
         "$G6T/gemini-retired-docs/.gemini/.env"; then
-    t_pass "6.4 retired .env content faithful (never-delete guarantee)"
+    t_pass "6.6 retired .env content faithful (never-delete guarantee)"
 else
-    t_fail "6.4 retired .env content lost"
+    t_fail "6.6 retired .env content lost"
 fi
-# (c) original departing .gemini removed from its original location (moved,
+# (d) original departing .gemini removed from its original location (moved,
 #     not copied) — but the content survives in the holding dir (above).
 [[ ! -d "$G6T/.gemini" ]] \
-    && t_pass "6.5 original .gemini/ relocated (no stray legacy tree)" \
-    || t_fail "6.5 original .gemini/ still present after retirement"
+    && t_pass "6.7 original .gemini/ relocated (no stray legacy tree)" \
+    || t_fail "6.7 original .gemini/ still present after retirement"
 
-# Idempotency: a second run with NO .gemini present is a clean no-op.
+# Idempotency: a second lift+retire run with NO .gemini present is a clean
+# no-op (the lift finds the custom already in the bundle; the retire finds
+# no .gemini/).
 (
     export PACK="$REPO_ROOT"
     # shellcheck disable=SC1090
     source "$MIGRATE_SH"
     _MIGRATOR_TARGET="$G6T"
+    _v10_to_v11_lift_gemini_customs_to_bundle
     _v10_to_v11_retire_gemini
 ) >/dev/null 2>&1
 g6_rc=$?
 [[ "$g6_rc" -eq 0 ]] \
-    && t_pass "6.6 idempotent no-op when no .gemini present (rc=0)" \
-    || t_fail "6.6 second run not a clean no-op (rc=$g6_rc)"
+    && t_pass "6.8 idempotent no-op when no .gemini present (rc=0)" \
+    || t_fail "6.8 second run not a clean no-op (rc=$g6_rc)"
+# Idempotent lift did not duplicate or corrupt the bundle custom.
+if [[ -f "$G6T/.agents-plugin/optiquity-agents/agents/x-ot-domain.md" ]] && \
+   grep -q "x-custom agent body" \
+        "$G6T/.agents-plugin/optiquity-agents/agents/x-ot-domain.md"; then
+    t_pass "6.9 idempotent: bundle custom intact after second run"
+else
+    t_fail "6.9 idempotent: bundle custom corrupted/lost after second run"
+fi
 
 rm -rf "$G6"
 
