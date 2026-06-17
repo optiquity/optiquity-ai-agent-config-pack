@@ -4,6 +4,12 @@
 .claude/rag-index/
 .claude/rag-cache/
 
+# ─── Antigravity MCP config ────────────────────────────────────────────────
+# The live workspace MCP config holds your filled-in paths/values; never commit
+# it. The committed template is .agents/mcp_config.json.example (no secrets).
+.agents/mcp_config.json
+!.agents/mcp_config.json.example
+
 # ─── Tracker-mode local state ─────────────────────────────────────────────
 # Mapping file, migration checkpoints, and reverse-migration sidecars.
 # Never committed: contains local paths and is regenerable from the tracker.
