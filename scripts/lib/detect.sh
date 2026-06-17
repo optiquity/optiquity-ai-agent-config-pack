@@ -148,6 +148,9 @@ detect_ai_config() {
     local markers=()
     [[ -d "$target/.claude" ]]   && markers+=(".claude/")
     [[ -d "$target/.codex" ]]    && markers+=(".codex/")
+    [[ -d "$target/.agents" ]]   && markers+=(".agents/")
+    # Legacy-READ carve-out: a departing v10 `.gemini/` tree is still
+    # detected so the migrator can find + relocate it (carve-out ii).
     [[ -d "$target/.gemini" ]]   && markers+=(".gemini/")
     [[ -f "$target/CLAUDE.md" ]] && markers+=("CLAUDE.md")
     [[ -f "$target/AGENTS.md" ]] && markers+=("AGENTS.md")
@@ -162,7 +165,7 @@ detect_ai_config() {
 }
 
 # x-files: <loc>/<name> lines (one per match) | x-files: (none)
-# Scans the seven pack scan locations for `x-`-prefixed entries.
+# Scans the six pack scan locations for `x-`-prefixed entries.
 detect_x_files() {
     local target="${1:-.}"
     local found=0
@@ -170,10 +173,9 @@ detect_x_files() {
     for loc in \
         ".claude/agents" \
         ".codex/agents" \
-        ".gemini/agents" \
         ".claude/skills" \
         ".codex/skills" \
-        ".gemini/skills" \
+        ".agents/skills" \
         "docs/pack/prompts"
     do
         [[ -d "$target/$loc" ]] || continue
@@ -188,7 +190,7 @@ detect_x_files() {
 }
 
 # improperly-added: <loc>/<name> lines | improperly-added: (none)
-# Entries in the seven scan locations that are NOT pack-supplied (by
+# Entries in the six scan locations that are NOT pack-supplied (by
 # roster lookup against $PACK/project-template/) and NOT `x-` prefixed.
 # Requires $PACK to be set and to point at a valid pack repo.
 detect_improperly_added_files() {
@@ -218,7 +220,9 @@ detect_improperly_added_files() {
     local loc entry name stem
 
     # Agent dirs: top-level .md or .toml files; stem must be in agent_roster.
-    for loc in ".claude/agents" ".codex/agents" ".gemini/agents"; do
+    # Antigravity agents ship as a plugin bundle (.agents-plugin/), not a
+    # loose per-CLI dir, so only the Claude/Codex loose dirs are scanned.
+    for loc in ".claude/agents" ".codex/agents"; do
         [[ -d "$target/$loc" ]] || continue
         for entry in "$target/$loc"/*.md "$target/$loc"/*.toml; do
             [[ -e "$entry" ]] || continue
@@ -234,7 +238,7 @@ detect_improperly_added_files() {
     done
 
     # Skills dirs: top-level subdirectories; name must be in skill_roster.
-    for loc in ".claude/skills" ".codex/skills" ".gemini/skills"; do
+    for loc in ".claude/skills" ".codex/skills" ".agents/skills"; do
         [[ -d "$target/$loc" ]] || continue
         for entry in "$target/$loc"/*/; do
             [[ -d "$entry" ]] || continue
@@ -264,6 +268,48 @@ detect_improperly_added_files() {
     fi
 
     (( found == 0 )) && echo "improperly-added: (none)"
+}
+
+# antigravity-skills-layout: loose | bundled | none
+#
+# Classifies how an EXISTING Antigravity project lays out its skills, so a
+# first-time pack install into that project preserves the project's choice
+# rather than forcing one (frozen decision 2 / OQ-E; see
+# DESIGN-BD-221 §2.1). The pack itself distributes skills LOOSE to
+# `.agents/skills/<name>/SKILL.md`; this helper only governs the
+# existing-install path.
+#
+# Deterministic classification (order matters):
+#   1. A loose `.agents/skills/` layout present → `loose`. If BOTH a loose
+#      `.agents/skills/` AND a plugin `skills/` layout exist, LOOSE wins
+#      (deterministic tie-break, per decision 2). New installs → loose.
+#   2. Else, a plugin that bundles skills (`.agents-plugin/<plugin>/skills/`)
+#      AND no loose `.agents/skills/` → `bundled` ONLY when the plugin is
+#      the pack's own `optiquity-agents` bundle. A foreign / non-standard
+#      plugin is NOT respected as a bundled-skills host → falls through to
+#      `loose` (the pack distributes loose alongside it).
+#   3. Else → `none` (no Antigravity skills layout present; a new install
+#      will create the loose layout).
+detect_antigravity_skills_layout() {
+    local target="${1:-.}"
+
+    # (1) Loose layout wins whenever present (also the BOTH-present tie-break).
+    if [[ -d "$target/.agents/skills" ]]; then
+        echo "antigravity-skills-layout: loose"
+        return 0
+    fi
+
+    # (2) Bundled skills are respected ONLY for the pack's own bundle.
+    if [[ -d "$target/.agents-plugin/optiquity-agents/skills" ]]; then
+        echo "antigravity-skills-layout: bundled"
+        return 0
+    fi
+
+    # A foreign plugin's bundled skills are NOT respected — the pack
+    # distributes loose alongside it. Any other `.agents-plugin/*/skills`
+    # falls through here to `none` so the install creates the loose layout.
+    echo "antigravity-skills-layout: none"
+    return 0
 }
 
 # capabilities: <dim>:<val>, <dim>:<val>, ... | (none) | (placeholder) | (no CLAUDE.md) | (no Active skills line)

@@ -2211,10 +2211,8 @@ def check_customization_detection_regression_guard() -> None:
       1. Every customized file produces exactly one finding row.
       2. A trinity file edited by the project surfaces as
          `customization-detected-needs-reconciliation` (not silently merged).
-      3. A `.gemini/.env` with project-set keys is preserved
-         (BD-059 scenario).
-      4. An `x-`-prefixed custom agent surfaces as `project-only-file`.
-      5. The truthful-report contract holds — every fixture file appears
+      3. An `x-`-prefixed custom agent surfaces as `project-only-file`.
+      4. The truthful-report contract holds — every fixture file appears
          in the rendered report.md.
 
     Without this Check, a BD-088 regression (silently dropping a
@@ -2244,8 +2242,8 @@ def check_customization_detection_regression_guard() -> None:
         state_dir = Path(tmpdir) / "state"
         # Build a tiny driver script that sources the BD-088 libs and
         # dispatches a fixture set covering: trinity-with-customization,
-        # gemini-env with project-set key, x-prefixed custom agent,
-        # unchanged-pack file. Capture the dispositions TSV for assertion.
+        # x-prefixed custom agent, unchanged-pack file. Capture the
+        # dispositions TSV for assertion.
         driver = Path(tmpdir) / "driver.sh"
         driver.write_text(f"""#!/usr/bin/env bash
 set -euo pipefail
@@ -2265,20 +2263,12 @@ customization_preserve "{tmpdir}/files/trinity-base.md" \\
     "{tmpdir}/files/trinity-ours.md" "{tmpdir}/files/trinity-theirs.md" \\
     "CLAUDE.md" "{tmpdir}/files/trinity-dest.md" trinity >/dev/null
 
-# Fixture 2: gemini-env with project-set key (BD-059 scenario).
-echo "AGENT_CAPABILITIES=swift,python" > "{tmpdir}/files/env-ours"
-echo "AGENT_CAPABILITIES=swift" > "{tmpdir}/files/env-theirs"
-cp "{tmpdir}/files/env-ours" "{tmpdir}/files/env-dest"
-customization_preserve "" "{tmpdir}/files/env-ours" \\
-    "{tmpdir}/files/env-theirs" \\
-    ".gemini/.env" "{tmpdir}/files/env-dest" gemini-env >/dev/null
-
-# Fixture 3: x-prefixed custom agent (project-only-file).
+# Fixture 2: x-prefixed custom agent (project-only-file).
 echo "x-agent body" > "{tmpdir}/files/x-mine.md"
 customization_preserve "" "{tmpdir}/files/x-mine.md" "" \\
     ".claude/agents/x-mine.md" "{tmpdir}/files/x-mine.md" custom-agent >/dev/null
 
-# Fixture 4: unchanged-pack file.
+# Fixture 3: unchanged-pack file.
 echo "same" > "{tmpdir}/files/unchanged.md"
 customization_preserve "{tmpdir}/files/unchanged.md" \\
     "{tmpdir}/files/unchanged.md" "{tmpdir}/files/unchanged.md" \\
@@ -2305,8 +2295,8 @@ customization_report "{state_dir}/dispositions.tsv" "{state_dir}/report.md" \\
             for line in tsv.read_text().splitlines()
             if line and not line.startswith("#")
         ]
-        if len(rows) != 4:
-            fail(f"expected 4 dispositions for 4-fixture set; got {len(rows)}")
+        if len(rows) != 3:
+            fail(f"expected 3 dispositions for 3-fixture set; got {len(rows)}")
             for r in rows:
                 fail(f"  row: {r}")
             return
@@ -2315,7 +2305,6 @@ customization_report "{state_dir}/dispositions.tsv" "{state_dir}/report.md" \\
         by_rel = {r[2]: r for r in rows}
         expected = {
             "CLAUDE.md": ("customization-detected-needs-reconciliation", "trinity"),
-            ".gemini/.env": ("customization-detected-needs-reconciliation", "gemini-env"),
             ".claude/agents/x-mine.md": ("project-only-file", "custom-agent"),
             "docs/pack/PM-CHAT.md": ("unchanged-pack", "pm-chat"),
         }
@@ -2342,7 +2331,7 @@ customization_report "{state_dir}/dispositions.tsv" "{state_dir}/report.md" \\
 
         if any_failed:
             return
-        ok("4/4 fixture rows recorded with expected disposition + class")
+        ok("3/3 fixture rows recorded with expected disposition + class")
         ok("truthful-report contract: every fixture file appears in report.md")
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)

@@ -58,9 +58,7 @@ assert_eq "1.6 .codex/config.toml"  "codex-config" \
     "$(customization_classify .codex/config.toml)"
 assert_eq "1.7 .codex/config.toml.example"  "codex-config-example" \
     "$(customization_classify .codex/config.toml.example)"
-assert_eq "1.8 .gemini/.env"  "gemini-env" \
-    "$(customization_classify .gemini/.env)"
-assert_eq "1.9 docs/pack/PM-CHAT.md"  "pm-chat" \
+assert_eq "1.8 docs/pack/PM-CHAT.md"  "pm-chat" \
     "$(customization_classify docs/pack/PM-CHAT.md)"
 assert_eq "1.10 .claude/agents/x-foo.md"  "custom-agent" \
     "$(customization_classify .claude/agents/x-foo.md)"
@@ -286,83 +284,23 @@ assert_contains "4.1 lmstudio adopted" "$merged" "lmstudio"
 rm -rf "$T4"
 
 # ─────────────────────────────────────────────────────────────────────────
-# Group 5: gemini-env (KEY=VALUE preservation)
+# Group 5: legacy `.gemini/` custom-agent classification (legacy-READ
+# carve-out ii) — a departing v10 client's `.gemini/agents/x-*` custom
+# agent is still classified so the migrator can preserve it. The
+# `gemini-env` strategy was removed in v11 (BD-221, decision b: no
+# shipped env/permissions file); its dedicated scenario is retired.
 # ─────────────────────────────────────────────────────────────────────────
 
-printf "\n=== Group 5: gemini-env preservation ===\n"
+printf "\n=== Group 5: legacy .gemini custom-agent classify (carve-out ii) ===\n"
 
-T5=$(mktemp -d -t cp-env.XXXXXX)
-state="$T5/state"
-setup_state "$state"
-
-cat > "$T5/ours.env" <<'EOF'
-AGENT_CAPABILITIES=swift,python
-PROJECT_VAR=keep-me
-EOF
-cat > "$T5/theirs.env" <<'EOF'
-AGENT_CAPABILITIES=swift
-NEW_PACK_VAR=v11-default
-EOF
-cp "$T5/ours.env" "$T5/dest.env"
-customization_preserve "" "$T5/ours.env" "$T5/theirs.env" \
-    ".gemini/.env" "$T5/dest.env" gemini-env >/dev/null
-merged=$(cat "$T5/dest.env")
-# Project value of AGENT_CAPABILITIES wins.
-assert_contains "5.1 AGENT_CAPABILITIES preserves project value" "$merged" "swift,python"
-assert_contains "5.1 PROJECT_VAR preserved" "$merged" "PROJECT_VAR=keep-me"
-# Pack-new key adopted.
-assert_contains "5.1 NEW_PACK_VAR adopted"  "$merged" "NEW_PACK_VAR=v11-default"
-# M1: project-shadows-new-pack (no base + both present + differ) now
-# routes through the merge branch and records needs-reconciliation with
-# sidecar (so the conflict is visible in the report).
-last=$(tail -1 "$state/dispositions.tsv")
-assert_eq "5.1 disposition = needs-reconciliation" \
-    "customization-detected-needs-reconciliation" "$(tsv_col 1 "$last")"
-[[ -f "$T5/dest.env.pre-update" ]] \
-    && t_pass "5.1 sidecar written" \
-    || t_fail "5.1 sidecar missing"
-
-# 5.2 M2 + M3: dup-keys + leading whitespace. Use BASE + OURS edited from
-# BASE + THEIRS edited from BASE so we hit real-merge-required.
-setup_state "$state"
-cat > "$T5/base2.env" <<'EOF'
-A=base
-B=base
-EOF
-# OURS has a duplicate KEY (later wins by env-file convention) and a
-# leading-whitespace KEY=. Both must round-trip correctly.
-cat > "$T5/ours2.env" <<'EOF'
-A=1
-A=2
-  B=indented
-PROJECT_ONLY=keep
-EOF
-cat > "$T5/theirs2.env" <<'EOF'
-A=pack-new
-B=pack-new
-NEW_PACK_VAR=adopted
-EOF
-cp "$T5/ours2.env" "$T5/dest2.env"
-customization_preserve "$T5/base2.env" "$T5/ours2.env" "$T5/theirs2.env" \
-    ".gemini/.env" "$T5/dest2.env" gemini-env >/dev/null
-merged=$(cat "$T5/dest2.env")
-# M2: duplicate A= must NOT be doubled in output.
-a_count=$(printf '%s\n' "$merged" | grep -c '^A=' || true)
-assert_eq "5.2 dup-key A= appears once" "1" "$a_count"
-# M2: last-wins semantics — ours value of A is "A=2" (last in ours).
-assert_contains "5.2 dup-key last-wins (A=2)" "$merged" "A=2"
-# M3: leading-whitespace B=indented must survive (project value wins,
-# leading whitespace acceptably stripped).
-assert_contains "5.2 leading-whitespace B preserved" "$merged" "B=indented"
-# PROJECT_ONLY preserved.
-assert_contains "5.2 project-only key preserved" "$merged" "PROJECT_ONLY=keep"
-# Pack-new key adopted.
-assert_contains "5.2 NEW_PACK_VAR adopted"      "$merged" "NEW_PACK_VAR=adopted"
-last=$(tail -1 "$state/dispositions.tsv")
-assert_eq "5.2 disposition = needs-reconciliation" \
-    "customization-detected-needs-reconciliation" "$(tsv_col 1 "$last")"
-
-rm -rf "$T5"
+assert_eq "5.1 .gemini/agents/x-mine.md → custom-agent (legacy-READ)" \
+    "custom-agent" "$(customization_classify .gemini/agents/x-mine.md)"
+assert_eq "5.2 .gemini/agents/pack-coder.md → pack-agent (legacy-READ)" \
+    "pack-agent" "$(customization_classify .gemini/agents/pack-coder.md)"
+# `.gemini/.env` no longer has a dedicated class (gemini-env removed);
+# it falls back to the generic 3-way text strategy.
+assert_eq "5.3 .gemini/.env → generic (gemini-env retired)" \
+    "generic" "$(customization_classify .gemini/.env)"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Group 6: custom-agent + custom-script preserved untouched
@@ -429,13 +367,13 @@ rm -rf "$T6B"
 #
 # Strategy coverage note (per PACK-REVIEW-BD-112 F3, 2026-05-15 retro):
 # 6c covers helper-level (6c.1-6c.3) + end-to-end via the text strategy
-# (6c.4). The structured and gemini-env strategies also write three-way
-# diffs via the same `_cp_write_diff` helper, so they inherit the BD-112
-# fix automatically — explicit end-to-end coverage for those two
-# strategies would close the matrix but is not load-bearing because the
-# collision-safety property lives in the shared helper. Adding 6c.5
-# (structured) + 6c.6 (gemini-env) end-to-end witnesses is acceptable
-# follow-up if a future audit demands strategy-by-strategy coverage.
+# (6c.4). The structured strategy also writes three-way diffs via the
+# same `_cp_write_diff` helper, so it inherits the BD-112 fix
+# automatically — explicit end-to-end coverage would close the matrix
+# but is not load-bearing because the collision-safety property lives in
+# the shared helper. Adding a 6c.5 (structured) end-to-end witness is
+# acceptable follow-up if a future audit demands strategy-by-strategy
+# coverage.
 
 printf "\n=== Group 6c: BD-112 collision-safe flat naming ===\n"
 

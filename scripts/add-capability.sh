@@ -8,7 +8,7 @@
 # │  This script is currently add-only — it copies conditional pack      │
 # │  files; it never removes files. If a future revision introduces a    │
 # │  deletion site in any pack-controlled directory                      │
-# │  (.{claude,codex,gemini}/agents/, .{claude,codex,gemini}/skills/,    │
+# │  (.{claude,codex}/agents/, .{claude,codex,agents}/skills/,           │
 # │  scripts/, docs/pack/prompts/), that deletion MUST skip files whose  │
 # │  basename begins with `x-`. Project-added files use the `x-` prefix  │
 # │  (see supporting-docs/INSTALL-PROCEDURES.md § "Project file          │

@@ -146,9 +146,9 @@ assert_contains "2.1 S6 ran" "$out" "S6 — render truthful migration report"
 [[ -f "$T/.codex/skills/pack-help/SKILL.md" ]] \
     && t_pass "2.4 .codex pack-help skill installed" \
     || t_fail "2.4 .codex pack-help missing"
-[[ -f "$T/.gemini/commands/pack-help.toml" ]] \
-    && t_pass "2.4 .gemini pack-help command installed" \
-    || t_fail "2.4 .gemini pack-help missing"
+[[ -f "$T/.agents/skills/pack-help/SKILL.md" ]] \
+    && t_pass "2.4 .agents pack-help skill installed (Antigravity loose)" \
+    || t_fail "2.4 .agents pack-help missing"
 
 # BD-193 F4/F5 + BD-194: migrate-v10-to-v11.sh S5 install source for the client
 # tracker fragment is the project-template-side file (separate-artifact, separate-
@@ -396,6 +396,78 @@ collision_ok=1
     || t_fail "5.4 BD-104 collision contract failed (rc=$rc)"
 rm -f "$co_out" "$co_err"
 rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 6: BD-221 Gemini→Antigravity retirement — move-not-delete guarantee
+# ─────────────────────────────────────────────────────────────────────────
+#
+# A client-customized departing `.gemini/` tree (x- custom agent +
+# project-edited config with no Antigravity target) MUST be MOVED to a
+# root-level `gemini-retired-docs/` holding dir, NEVER deleted. This unit
+# exercises `_v10_to_v11_retire_gemini` directly (sourcing the migrator
+# under the source-guard) so it is independent of the full-migration Phase-A
+# validate-pack gate.
+
+printf "\n=== Group 6: BD-221 gemini-retired-docs move-not-delete ===\n"
+
+G6=$(mktemp -d -t mig-retire.XXXXXX)
+G6T="$G6/proj"
+# Customized departing .gemini tree: an x- custom agent, a project-edited
+# env, and a legacy command. None has a v11 Antigravity target.
+mkdir -p "$G6T/.gemini/agents" "$G6T/.gemini/commands"
+echo "x-custom agent body" > "$G6T/.gemini/agents/x-ot-domain.md"
+echo "AGENT_CAPABILITIES=swift,python" > "$G6T/.gemini/.env"
+echo "[meta]" > "$G6T/.gemini/commands/pack-help.toml"
+
+# Run the retirement in a subshell that sources the migrator (source-guard
+# skips the executable dispatch) and sets the minimal runtime state the
+# helper needs.
+(
+    export PACK="$REPO_ROOT"
+    # shellcheck disable=SC1090
+    source "$MIGRATE_SH"
+    _MIGRATOR_TARGET="$G6T"
+    _v10_to_v11_retire_gemini
+) >/dev/null 2>&1
+
+# (a) holding dir created + populated.
+[[ -d "$G6T/gemini-retired-docs" ]] \
+    && t_pass "6.1 gemini-retired-docs/ holding dir created" \
+    || t_fail "6.1 gemini-retired-docs/ not created"
+[[ -f "$G6T/gemini-retired-docs/.gemini/agents/x-ot-domain.md" ]] \
+    && t_pass "6.2 customized x- agent preserved in holding dir" \
+    || t_fail "6.2 customized x- agent NOT preserved"
+[[ -f "$G6T/gemini-retired-docs/.gemini/.env" ]] \
+    && t_pass "6.3 project-edited .env preserved in holding dir" \
+    || t_fail "6.3 project-edited .env NOT preserved"
+# (b) never-delete: content faithful.
+if [[ -f "$G6T/gemini-retired-docs/.gemini/.env" ]] && \
+   grep -q "AGENT_CAPABILITIES=swift,python" \
+        "$G6T/gemini-retired-docs/.gemini/.env"; then
+    t_pass "6.4 retired .env content faithful (never-delete guarantee)"
+else
+    t_fail "6.4 retired .env content lost"
+fi
+# (c) original departing .gemini removed from its original location (moved,
+#     not copied) — but the content survives in the holding dir (above).
+[[ ! -d "$G6T/.gemini" ]] \
+    && t_pass "6.5 original .gemini/ relocated (no stray legacy tree)" \
+    || t_fail "6.5 original .gemini/ still present after retirement"
+
+# Idempotency: a second run with NO .gemini present is a clean no-op.
+(
+    export PACK="$REPO_ROOT"
+    # shellcheck disable=SC1090
+    source "$MIGRATE_SH"
+    _MIGRATOR_TARGET="$G6T"
+    _v10_to_v11_retire_gemini
+) >/dev/null 2>&1
+g6_rc=$?
+[[ "$g6_rc" -eq 0 ]] \
+    && t_pass "6.6 idempotent no-op when no .gemini present (rc=0)" \
+    || t_fail "6.6 second run not a clean no-op (rc=$g6_rc)"
+
+rm -rf "$G6"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Summary

@@ -384,20 +384,26 @@ out=$(_core_subshell '
     migrator_target_surface_for_version v11
 ' 2>&1)
 rc=$?
-# v11 inherits v10's surface and adds the v11-only additions.
+# v11 inherits v10's trinity/config/BACKLOG surface and adds the v11-only
+# Antigravity additions: the agent plugin bundle, the loose
+# `.agents/skills/pack-help/SKILL.md`, and the per-CLI loose pack-help
+# skills. The legacy `.gemini/agents` dir + `.gemini/commands/pack-help.toml`
+# command are gone (BD-221).
 if [[ $rc -eq 0 \
    && "$out" == *"CLAUDE.md"* \
    && "$out" == *"AGENTS.md"* \
    && "$out" == *"GEMINI.md"* \
    && "$out" == *"docs/pack/HELP-FRAGMENT.md"* \
    && "$out" != *"tracker.toml.example"* \
+   && "$out" != *".gemini/"* \
    && "$out" == *".github/ISSUE_TEMPLATE/work-item.yml"* \
+   && "$out" == *".agents-plugin/optiquity-agents/agents"* \
    && "$out" == *".claude/skills/pack-help/SKILL.md"* \
    && "$out" == *".codex/skills/pack-help/SKILL.md"* \
-   && "$out" == *".gemini/commands/pack-help.toml"* ]]; then
-    pass "v11 surface inherits v10 + adds HELP-FRAGMENT/ISSUE_TEMPLATE/per-CLI pack-help; excludes deferred tracker.toml.example"
+   && "$out" == *".agents/skills/pack-help/SKILL.md"* ]]; then
+    pass "v11 surface inherits v10 trinity/config + adds agent bundle + loose pack-help skills (.claude/.codex/.agents); excludes legacy .gemini/ + deferred tracker.toml.example"
 else
-    fail "target_surface_v11" "v10 entries + v11 additions" "rc=$rc out=$out"
+    fail "target_surface_v11" "v10 entries + v11 Antigravity additions; no .gemini/" "rc=$rc out=$out"
 fi
 
 # ── 16. migrator_target_surface_for_version v99 → unknown / rc=1 ──────

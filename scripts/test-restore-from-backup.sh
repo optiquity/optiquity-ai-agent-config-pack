@@ -156,7 +156,8 @@ echo "── restore-from-backup.sh ──"
 # Build a synthetic backup directory mirroring the real flat layout.
 SRC="$FIXTURE_BASE/synthetic-backup"
 mkdir -p "$SRC"
-mkdir -p "$SRC/.claude/agents" "$SRC/.codex/agents" "$SRC/.gemini/agents"
+mkdir -p "$SRC/.claude/agents" "$SRC/.codex/agents" \
+         "$SRC/.agents-plugin/optiquity-agents/agents"
 mkdir -p "$SRC/docs/pack" "$SRC/scripts"
 
 # Trinity at root.

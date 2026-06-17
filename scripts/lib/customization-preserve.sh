@@ -18,7 +18,7 @@
 #       inside. SIDECAR_SUFFIX defaults to ".pre-update".
 #   customization_classify REL_PATH
 #       Echo one of: trinity, claude-settings, claude-mcp-example,
-#       codex-config, codex-config-example, gemini-env, pm-chat,
+#       codex-config, codex-config-example, pm-chat,
 #       custom-agent, pack-agent, custom-script, pack-script, generic.
 #   customization_preserve BASE OURS THEIRS REL DEST [CLASS]
 #       Apply the rule for CLASS (auto-detected from REL if omitted).
@@ -158,12 +158,12 @@ customization_classify() {
             printf 'codex-config-example\n' ;;
         .codex/config.toml|.codex/requirements.toml)
             printf 'codex-config\n' ;;
-        .gemini/.env|.gemini/.env.example)
-            printf 'gemini-env\n' ;;
         # PM-CHAT (post-relocation and legacy paths)
         docs/pack/PM-CHAT.md|project-template/docs/pack/PM-CHAT.md|PM-CHAT.md|project-template/PM-CHAT.md)
             printf 'pm-chat\n' ;;
-        # Per-CLI agents
+        # Per-CLI agents. The `.gemini/agents/` legs are a legacy-READ
+        # carve-out (ii): the migrator must classify the departing v10
+        # `.gemini` shape so it can relocate it (mirrors detect.sh).
         .claude/agents/x-*|.codex/agents/x-*|.gemini/agents/x-*)
             printf 'custom-agent\n' ;;
         .claude/agents/*.md|.codex/agents/*.md|.gemini/agents/*.md)
@@ -395,121 +395,6 @@ _cp_strategy_structured() {
     esac
 }
 
-# Strategy: gemini-env (KEY=VALUE line preservation). Per BD-088, preserve
-# AGENT_CAPABILITIES and any project-set keys; adopt new pack-shipped keys.
-#
-# Routes the absent / unchanged / one-sided-edit cases through
-# three_way_classify (parallel to _cp_strategy_text and _cp_strategy_structured)
-# and only invokes the awk key-merger on real-merge-required /
-# project-shadows-new-pack — where it always writes a sidecar and records
-# customization-detected-needs-reconciliation, since both sides edited and
-# the user must audit the result.
-_cp_strategy_gemini_env() {
-    local class="$1" base="$2" ours="$3" theirs="$4" rel="$5" dest="$6"
-    local classification disp
-    classification=$(three_way_classify "$base" "$ours" "$theirs")
-    disp=$(_cp_disposition_for "$classification")
-
-    case "$classification" in
-        unchanged-pack)
-            _cp_record "$disp" "$class" "$rel" "none" "-" "-" "-"
-            return 0
-            ;;
-        pack-update-applied|new-file-in-pack)
-            mkdir -p "$(dirname "$dest")"
-            cp "$theirs" "$dest"
-            _cp_record "$disp" "$class" "$rel" "copied" "-" "-" "-"
-            return 0
-            ;;
-        merged-with-customization)
-            _cp_record "$disp" "$class" "$rel" "preserved" "-" "-" \
-                "no pack update; project edits kept"
-            return 0
-            ;;
-        project-only-file)
-            _cp_record "$disp" "$class" "$rel" "preserved" "-" "-" \
-                "project-only env file"
-            return 0
-            ;;
-        removed-everywhere)
-            _cp_record "$disp" "$class" "$rel" "none" "-" "-" "-"
-            return 0
-            ;;
-        project-deleted-pack-kept)
-            _cp_record "$disp" "$class" "$rel" "none" "-" "-" \
-                "honoring project deletion (pack still ships)"
-            return 0
-            ;;
-        removed-by-pack-clean)
-            [[ -f "$dest" ]] && rm "$dest"
-            _cp_record "$disp" "$class" "$rel" "removed" "-" "-" \
-                "pack retired (no project edits)"
-            return 0
-            ;;
-        removed-by-pack-customized)
-            local sidecar="${dest}${_CP_SIDECAR_SUFFIX}"
-            cp "$ours" "$sidecar"
-            [[ -f "$dest" ]] && rm "$dest"
-            _cp_record "$disp" "$class" "$rel" "removed" "$sidecar" "-" \
-                "pack retired; project edits preserved in sidecar"
-            return 0
-            ;;
-    esac
-
-    # real-merge-required | project-shadows-new-pack — both sides edited.
-    # Run key-union merger (project wins on conflict per BD-059), write
-    # sidecar of ours, write merged result to dest, record needs-reconciliation.
-    local merged_tmp
-    merged_tmp=$(mktemp)
-    awk -v ours_file="$ours" '
-        function strip_lead(s,    t) { t = s; sub(/^[[:space:]]+/, "", t); return t }
-        BEGIN {
-            while ((getline line < ours_file) > 0) {
-                stripped = strip_lead(line)
-                if (stripped ~ /^(#|$)/) { ours_lines[++on] = line; continue }
-                if (match(stripped, /^[A-Za-z_][A-Za-z0-9_]*=/)) {
-                    key = substr(stripped, 1, RLENGTH - 1)
-                    if (!(key in ours_kv)) ours_order[++ok] = key
-                    ours_kv[key] = stripped
-                } else { ours_lines[++on] = line }
-            }
-            close(ours_file)
-        }
-        # Now iterate THEIRS (current input) to add pack-only keys.
-        {
-            stripped = strip_lead($0)
-            if (stripped ~ /^(#|$)/) next
-            if (match(stripped, /^[A-Za-z_][A-Za-z0-9_]*=/)) {
-                key = substr(stripped, 1, RLENGTH - 1)
-                if (!(key in ours_kv) && !(key in pack_only_kv)) {
-                    pack_only_kv[key] = stripped
-                    pack_only_order[++po] = key
-                }
-            }
-        }
-        END {
-            # Print ours preserved order first (deduped), then pack-only.
-            for (i = 1; i <= ok; i++) print ours_kv[ours_order[i]]
-            if (po > 0) {
-                print ""
-                print "# Added by v11 pack update"
-                for (i = 1; i <= po; i++) print pack_only_kv[pack_only_order[i]]
-            }
-        }
-    ' "$theirs" > "$merged_tmp"
-
-    mkdir -p "$(dirname "$dest")"
-    local sidecar="${dest}${_CP_SIDECAR_SUFFIX}"
-    local diff_path
-    diff_path=$(_cp_write_diff "$base" "$ours" "$theirs" "$rel")
-    cp "$ours" "$sidecar"
-    cp "$merged_tmp" "$dest"
-    _cp_record "$_CP_DISP_NEEDS_RECONCILIATION" "$class" "$rel" "merged" \
-        "$sidecar" "$diff_path" \
-        "env-file key-union; project values preserved on conflict"
-    rm -f "$merged_tmp"
-}
-
 # ── Public dispatch ───────────────────────────────────────────────────────
 
 customization_preserve() {
@@ -546,9 +431,6 @@ customization_preserve() {
             ;;
         codex-config|codex-config-example)
             _cp_strategy_structured "$class" "$base" "$ours" "$theirs" "$rel" "$dest" toml
-            ;;
-        gemini-env)
-            _cp_strategy_gemini_env "$class" "$base" "$ours" "$theirs" "$rel" "$dest"
             ;;
         *)
             # Unknown class: fall back to generic 3-way text.

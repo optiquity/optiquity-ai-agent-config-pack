@@ -22,7 +22,8 @@
 #
 # The v10→v11 transition's post-dispatch work (BD-042 legacy-doc
 # relocation; additive install of v11 artifacts like HELP-FRAGMENT,
-# ISSUE_TEMPLATE forms, per-CLI pack-help, and the
+# ISSUE_TEMPLATE forms, the pool-distributed pack-help skill, the
+# Gemini→Antigravity client-tree retirement, and the
 # bare scripts/pack-help.sh + scripts/lib/detect.sh files) is performed
 # (tracker.toml.example is NO LONGER installed — tracker deferred, BD-214)
 # inside `migrator_post_dispatch_hook` rather than via the framework's
@@ -91,12 +92,10 @@ project-template/CLAUDE.md	CLAUDE.md	trinity	transform
 project-template/AGENTS.md	AGENTS.md	trinity	transform
 project-template/GEMINI.md	GEMINI.md	trinity	transform
 project-template/.claude/settings.json	.claude/settings.json	claude-settings	transform
-project-template/.mcp.json.example	.mcp.json.example	claude-mcp-example	transform
 project-template/.codex/config.toml	.codex/config.toml	codex-config	transform
 project-template/.codex/config.toml.example	.codex/config.toml.example	codex-config-example	transform
 project-template/.codex/requirements.toml	.codex/requirements.toml	codex-config	transform
-project-template/.gemini/.env.example	.gemini/.env	gemini-env	transform
-project-template/.gemini/settings.json	.gemini/settings.json	claude-settings	transform
+project-template/.agents/mcp_config.json.example	.agents/mcp_config.json	claude-mcp-example	transform
 project-template/docs/pack/PM-CHAT.md	docs/pack/PM-CHAT.md	pm-chat	transform
 project-template/docs/pack/PLATFORM-SKILLS.md	docs/pack/PLATFORM-SKILLS.md	generic	transform
 project-template/docs/pack/PACK-FEEDBACK.md	docs/pack/PACK-FEEDBACK.md	generic	transform
@@ -106,13 +105,14 @@ EOF
 
 # migrator_directory_sweeps — `<pack-dir> <class>` rows for whole-directory
 # iteration. Mirrors the monolith's S3 _stage_s3_iter_dir invocations at
-# lines 226–231 (one for `scripts/`, three for the per-CLI agents/ dirs).
+# lines 226–231 (one for `scripts/`, two for the Claude/Codex loose
+# agents/ dirs — Antigravity agents ship as a plugin bundle, not a
+# loose per-CLI dir, so they are not directory-swept here).
 migrator_directory_sweeps() {
     cat <<'EOF'
 project-template/scripts pack-script
 project-template/.claude/agents pack-agent
 project-template/.codex/agents pack-agent
-project-template/.gemini/agents pack-agent
 EOF
 }
 
@@ -137,12 +137,13 @@ migrator_post_dispatch_hook() {
     # invariant (single-shot only) made this gate unnecessary; with
     # BD-095 the gate is required.
     if _migrator_is_dryrun; then
-        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install + python-architecture skill rename + BD-144 capability-token translation + BD-165 per-entry decompose"
+        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install + Gemini→Antigravity retirement + python-architecture skill rename + BD-144 capability-token translation + BD-165 per-entry decompose"
         return 0
     fi
     _v10_to_v11_rename_implementation_plan
     _v10_to_v11_relocate_legacy_docs
     _v10_to_v11_install_v11_artifacts
+    _v10_to_v11_retire_gemini
     _v10_to_v11_rename_python_architecture_refs
     _v10_to_v11_translate_capability_tokens
     # BD-165 (per-entry split, mandatory v11.0): 6th sub-op decomposes
@@ -314,24 +315,21 @@ _v10_to_v11_install_v11_artifacts() {
         done
     fi
 
-    # Per-CLI pack-help surfaces.
-    if [[ -d "$PACK/project-template/.claude/skills/pack-help" \
-       && ! -f "$_MIGRATOR_TARGET/.claude/skills/pack-help/SKILL.md" ]]; then
-        mkdir -p "$_MIGRATOR_TARGET/.claude/skills/pack-help"
-        cp "$PACK/project-template/.claude/skills/pack-help/SKILL.md" \
-            "$_MIGRATOR_TARGET/.claude/skills/pack-help/SKILL.md"
-    fi
-    if [[ -d "$PACK/project-template/.codex/skills/pack-help" \
-       && ! -f "$_MIGRATOR_TARGET/.codex/skills/pack-help/SKILL.md" ]]; then
-        mkdir -p "$_MIGRATOR_TARGET/.codex/skills/pack-help"
-        cp "$PACK/project-template/.codex/skills/pack-help/SKILL.md" \
-            "$_MIGRATOR_TARGET/.codex/skills/pack-help/SKILL.md"
-    fi
-    if [[ -f "$PACK/project-template/.gemini/commands/pack-help.toml" \
-       && ! -f "$_MIGRATOR_TARGET/.gemini/commands/pack-help.toml" ]]; then
-        mkdir -p "$_MIGRATOR_TARGET/.gemini/commands"
-        cp "$PACK/project-template/.gemini/commands/pack-help.toml" \
-            "$_MIGRATOR_TARGET/.gemini/commands/pack-help.toml"
+    # pack-help is a pooled SSOT skill distributed LOOSE to each CLI's
+    # workspace skill dir (.claude/.codex/.agents — Antigravity reads
+    # `.agents/skills/`). The committed per-CLI copies and the legacy
+    # `.gemini/commands/pack-help.toml` command no longer exist; the pool
+    # `project-template/skills/pack-help/SKILL.md` is fanned out here, iff
+    # the destination is absent (additive, no overwrite of project edits).
+    if [[ -f "$PACK/project-template/skills/pack-help/SKILL.md" ]]; then
+        local ph_cli
+        for ph_cli in .claude .codex .agents; do
+            if [[ ! -f "$_MIGRATOR_TARGET/$ph_cli/skills/pack-help/SKILL.md" ]]; then
+                mkdir -p "$_MIGRATOR_TARGET/$ph_cli/skills/pack-help"
+                cp "$PACK/project-template/skills/pack-help/SKILL.md" \
+                    "$_MIGRATOR_TARGET/$ph_cli/skills/pack-help/SKILL.md"
+            fi
+        done
     fi
 
     # The pack-help shell script + its single dep (lib/detect.sh) — BD-097
@@ -403,17 +401,18 @@ _v10_to_v11_install_v11_artifacts() {
     #
     # Each ships from project-template/skills/<name>/SKILL.md; the
     # migrator copies it into all three per-CLI skill homes
-    # (.claude/skills/, .codex/skills/, .gemini/skills/) iff the
-    # destination is absent (additive, no overwrite of client-
-    # customized skill files; the BD-088 truthful-report mechanism
-    # handles divergence on later pack version-bumps).
+    # (.claude/skills/, .codex/skills/, .agents/skills/ — Antigravity
+    # reads `.agents/skills/`) iff the destination is absent (additive,
+    # no overwrite of client-customized skill files; the BD-088
+    # truthful-report mechanism handles divergence on later pack
+    # version-bumps).
     local skill_name skill_src cli skill_dest
     for skill_name in swift-concurrency-patterns apple-swiftdata-patterns \
                       protobuf-patterns python-server-architecture \
                       python-data-architecture python-observability-patterns; do
         skill_src="$PACK/project-template/skills/$skill_name/SKILL.md"
         [[ -f "$skill_src" ]] || continue
-        for cli in .claude .codex .gemini; do
+        for cli in .claude .codex .agents; do
             skill_dest="$_MIGRATOR_TARGET/$cli/skills/$skill_name/SKILL.md"
             if [[ ! -f "$skill_dest" ]]; then
                 mkdir -p "$_MIGRATOR_TARGET/$cli/skills/$skill_name"
@@ -421,6 +420,75 @@ _v10_to_v11_install_v11_artifacts() {
             fi
         done
     done
+}
+
+# Internal: retire a departing `.gemini/` tree on the v10→v11 migration
+# (BD-221, decision 8).
+#
+# The pack-standard v11 Antigravity surfaces (`.agents/skills/` distributed
+# loose, the agent plugin bundle, `.agents/mcp_config.json`) are installed
+# additively by the steps above. This step handles a DEPARTING `.gemini/`
+# tree in the client project:
+#
+#   - pack-STANDARD `.gemini/` skills (mirrors of pool skills) are
+#     superseded by the loose `.agents/skills/` install above; the legacy
+#     `.gemini/` copies are moved into the holding dir (not re-converted —
+#     the pool already shipped the v11 form to `.agents/skills/`).
+#   - client-CUSTOMIZED `.gemini/` files (x- customs + project-edited
+#     config that has no Antigravity target) are MOVED, NEVER deleted,
+#     into a root-level `gemini-retired-docs/` holding dir so the client
+#     keeps a recoverable copy. Originals also remain in the project's git
+#     history.
+#   - the holding-dir move is whole-tree: the entire departing `.gemini/`
+#     is relocated under `gemini-retired-docs/` preserving its internal
+#     structure, then the empty `.gemini/` is removed.
+#
+# Idempotent across "EITHER Gemini OR Antigravity already present":
+#   - no `.gemini/` present → nothing to retire (a fresh-Antigravity or
+#     already-migrated project); no-op.
+#   - `.agents/` already present → respect it; the additive installs above
+#     never clobber existing Antigravity state, and this step only moves
+#     the legacy `.gemini/` aside.
+#
+# If `gemini-retired-docs/` trips the client's CI, the client gitignores
+# it (documented in the setup/migration docs); the holding dir is a
+# recovery convenience, not a tracked deliverable.
+_v10_to_v11_retire_gemini() {
+    say "── S5b — retire departing Gemini tree → gemini-retired-docs/ (BD-221) ──"
+
+    local legacy="$_MIGRATOR_TARGET/.gemini"
+    if [[ ! -d "$legacy" ]]; then
+        info "no departing .gemini/ tree at target — nothing to retire"
+        return 0
+    fi
+
+    local holding="$_MIGRATOR_TARGET/gemini-retired-docs"
+    mkdir -p "$holding"
+
+    # Move the entire departing .gemini/ tree (customizations + legacy
+    # pack copies alike) into the holding dir, preserving structure. Use a
+    # timestamp-free `.gemini` subdir so the original layout is obvious and
+    # recoverable. Never delete client content.
+    local dest="$holding/.gemini"
+    if [[ -e "$dest" ]]; then
+        # A prior retirement already populated the holding dir — sidecar
+        # this run's tree so nothing is overwritten (never delete).
+        dest="$holding/.gemini.$(date +%Y%m%d%H%M%S)"
+    fi
+    mv "$legacy" "$dest"
+    info "retired: .gemini/ → gemini-retired-docs/$(basename "$dest") (preserved, not deleted)"
+
+    # User-facing note. No `agy plugin import gemini` recommendation (that
+    # targets the user's global ~/.gemini and skips project agents). No
+    # BD-NNN reference (this prose ships into client-facing migrator
+    # output). Antigravity docs pointer kept for orientation.
+    say ""
+    say "v11 uses Antigravity. Your .gemini/ tree was moved to"
+    say "gemini-retired-docs/ (preserved, not deleted). Review it for any"
+    say "customizations you want to re-create as Antigravity skills under"
+    say ".agents/skills/. If gemini-retired-docs/ trips your CI, add it to"
+    say "your .gitignore. See https://antigravity.google/docs for the"
+    say "Antigravity skill/agent model."
 }
 
 # Internal: BD-035-split client-side rename of `python-architecture`
@@ -779,6 +847,13 @@ migrator_post_report_hook() {
 # modes honor the flag uniformly. The flag is left in `_passthru` so the
 # apply / dry-run paths' framework-level parser still sees it (setting
 # the var twice is idempotent).
+#
+# Source-guard: when this file is SOURCED (e.g. a unit test sourcing it to
+# exercise an internal helper like `_v10_to_v11_retire_gemini` in
+# isolation) rather than executed, skip the arg-parse + mode dispatch
+# below. Executed-as-script is the normal path. `${BASH_SOURCE[0]}` equals
+# `${0}` only when the file is run directly.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 _mode=""
 _passthru=()
 for _a in "$@"; do
@@ -921,3 +996,4 @@ case "$_mode" in
         migrate_v10_to_v11_apply_run "${_passthru[@]:-}"
         ;;
 esac
+fi  # end source-guard (executed-as-script dispatch)

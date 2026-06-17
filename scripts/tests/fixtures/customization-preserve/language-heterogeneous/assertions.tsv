@@ -1,6 +1,5 @@
 # rel_path	side	required_substring	notes
-.gemini/.env	dest	AGENT_CAPABILITIES=swift,python,grpc	project value wins
-.gemini/.env	dest	PROJECT_VAR	project-set key preserved
-.gemini/.env	dest	NEW_PACK_VAR	pack-new key adopted
-.gemini/.env	sidecar	AGENT_CAPABILITIES=swift,python,grpc	pre-update copy retains project values
+.gemini/.env	dest	NEW_PACK_VAR	generic text: dest takes pack (theirs) content
+.gemini/.env	sidecar	AGENT_CAPABILITIES=swift,python,grpc	generic text: project values preserved in sidecar
+.gemini/.env	sidecar	PROJECT_VAR	generic text: project-set key preserved in sidecar
 scripts/format-swift.sh	sidecar	project-swift-format-step	project script edits preserved

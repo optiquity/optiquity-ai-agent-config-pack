@@ -1,5 +1,5 @@
 # rel_path	class	expected_disposition	notes
-.gemini/.env	gemini-env	customization-detected-needs-reconciliation	project-shadows-new-pack: no base + both differ → key-union merge
+.gemini/.env	generic	customization-detected-needs-reconciliation	legacy v10 env input; gemini-env strategy retired (BD-221) so generic 3-way text applies (ours preserved in sidecar)
 scripts/test-swift.sh	pack-script	pack-update-applied	unchanged in project; pack updated
 scripts/test-python.sh	pack-script	pack-update-applied	unchanged in project; pack updated
 scripts/format-swift.sh	pack-script	customization-detected-needs-reconciliation	project + pack edits → sidecar

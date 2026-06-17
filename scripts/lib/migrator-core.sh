@@ -537,27 +537,31 @@ BACKLOG.md
 EOF
             ;;
         v11)
-            # v11 inherits the v10 customization surface and adds the v11-
-            # specific surfaces (HELP-FRAGMENT, ISSUE_TEMPLATE, per-CLI
-            # pack-help). Only customization-relevant surfaces are listed —
-            # every shipped vN file does not necessarily appear.
-            # tracker.toml.example is NOT listed: a v11 install no longer
-            # creates it (tracker integration is deferred; flat-file is the
-            # sole supported mode).
+            # v11 inherits the v10 customization surface (trinity,
+            # .codex/config.toml, BACKLOG.md) and adds the v11-specific
+            # Antigravity surfaces. Agents are a plugin bundle
+            # (.agents-plugin/optiquity-agents/agents), skills are loose
+            # under .agents/skills/, and pack-help is a pool skill
+            # distributed loose to all three CLIs. The legacy `.gemini/`
+            # agent dir + `.gemini/commands/pack-help.toml` command are
+            # gone (BD-221). Only customization-relevant surfaces are
+            # listed. tracker.toml.example is NOT listed: a v11 install no
+            # longer creates it (tracker integration is deferred;
+            # flat-file is the sole supported mode).
             cat <<'EOF'
 CLAUDE.md
 AGENTS.md
 GEMINI.md
 .claude/agents
 .codex/agents
-.gemini/agents
+.agents-plugin/optiquity-agents/agents
 .codex/config.toml
 BACKLOG.md
 docs/pack/HELP-FRAGMENT.md
 .github/ISSUE_TEMPLATE/work-item.yml
 .claude/skills/pack-help/SKILL.md
 .codex/skills/pack-help/SKILL.md
-.gemini/commands/pack-help.toml
+.agents/skills/pack-help/SKILL.md
 EOF
             ;;
         *)

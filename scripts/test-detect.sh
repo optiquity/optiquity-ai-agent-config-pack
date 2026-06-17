@@ -142,10 +142,19 @@ assert_eq ".claude/ + CLAUDE.md → both listed" \
     "ai-config-markers: .claude/,CLAUDE.md" "$(detect_ai_config "$fx")"
 
 fx=$(mkfixture ai-all-six)
-mkdir -p "$fx/.claude" "$fx/.codex" "$fx/.gemini"
+mkdir -p "$fx/.claude" "$fx/.codex" "$fx/.agents"
 touch "$fx/CLAUDE.md" "$fx/AGENTS.md" "$fx/GEMINI.md"
 assert_eq "all six markers → comma-joined in scan order" \
-    "ai-config-markers: .claude/,.codex/,.gemini/,CLAUDE.md,AGENTS.md,GEMINI.md" \
+    "ai-config-markers: .claude/,.codex/,.agents/,CLAUDE.md,AGENTS.md,GEMINI.md" \
+    "$(detect_ai_config "$fx")"
+
+# Legacy-READ carve-out (ii): a departing v10 `.gemini/` dir is still
+# detected so the migrator can find + relocate it.
+fx=$(mkfixture ai-legacy-gemini)
+mkdir -p "$fx/.claude" "$fx/.gemini"
+touch "$fx/CLAUDE.md" "$fx/GEMINI.md"
+assert_eq "legacy .gemini/ still detected (carve-out ii)" \
+    "ai-config-markers: .claude/,.gemini/,CLAUDE.md,GEMINI.md" \
     "$(detect_ai_config "$fx")"
 
 # ── detect_x_files ─────────────────────────────────────────────────────
@@ -236,6 +245,33 @@ expected="improperly-added: (error — PACK not set or pack invalid)"
 assert_eq "PACK unset → error sentinel; non-zero exit" \
     "$expected" "$(detect_improperly_added_files "$fx" 2>/dev/null)"
 export PACK="$PACK_ROOT"  # restore for any later tests
+
+# ── detect_antigravity_skills_layout (BD-221 existing-install / OQ-E) ──
+echo "== detect_antigravity_skills_layout =="
+
+fx=$(mkfixture agl-none)
+assert_eq "no Antigravity skills layout → none" \
+    "antigravity-skills-layout: none" "$(detect_antigravity_skills_layout "$fx")"
+
+fx=$(mkfixture agl-loose)
+mkdir -p "$fx/.agents/skills"
+assert_eq "loose .agents/skills/ present → loose" \
+    "antigravity-skills-layout: loose" "$(detect_antigravity_skills_layout "$fx")"
+
+fx=$(mkfixture agl-bundled-own)
+mkdir -p "$fx/.agents-plugin/optiquity-agents/skills"
+assert_eq "pack's own optiquity-agents bundle skills → bundled" \
+    "antigravity-skills-layout: bundled" "$(detect_antigravity_skills_layout "$fx")"
+
+fx=$(mkfixture agl-bundled-foreign)
+mkdir -p "$fx/.agents-plugin/some-other-plugin/skills"
+assert_eq "foreign plugin bundled skills NOT respected → none" \
+    "antigravity-skills-layout: none" "$(detect_antigravity_skills_layout "$fx")"
+
+fx=$(mkfixture agl-both)
+mkdir -p "$fx/.agents/skills" "$fx/.agents-plugin/optiquity-agents/skills"
+assert_eq "BOTH loose + bundled → loose (deterministic tie-break)" \
+    "antigravity-skills-layout: loose" "$(detect_antigravity_skills_layout "$fx")"
 
 # ── detect_installed_capabilities ──────────────────────────────────────
 echo "== detect_installed_capabilities =="
