@@ -298,6 +298,23 @@ PY
     fi
 
     # Customization 3: x-prefixed custom agent on all 3 CLIs.
+    #
+    # The Claude/Codex loose per-CLI agent dirs are version-agnostic — both
+    # v10 and v11 carry `.claude/agents/` + `.codex/agents/`, so the custom
+    # agent always lands there. The THIRD-CLI surface is version-branched
+    # (BD-221 EB-21 fix):
+    #   v10 → `.gemini/agents/x-fakeot-domain.md` (carve-out i — v10 source
+    #         fixtures stay Gemini-shaped as migration inputs).
+    #   v11 → the Antigravity client plugin bundle
+    #         `.agents-plugin/optiquity-agents/agents/x-fakeot-domain.md`.
+    #         In v11 Antigravity agents ship as a plugin BUNDLE (not a loose
+    #         per-CLI dir) per scripts/init-project.sh stage_s2_agents; the
+    #         install stages `.agents-plugin/optiquity-agents/`, and a
+    #         project-owned `x-` custom agent for the third CLI lives in that
+    #         bundle's `agents/` roster (the only v11 Antigravity agent
+    #         surface — detect.sh:detect_improperly_added_files documents that
+    #         only the Claude/Codex loose dirs are scanned; there is no loose
+    #         `.agents/agents/`).
     cat > "$target/.claude/agents/x-fakeot-domain.md" <<'EOF'
 ---
 description: Project-specific FakeOT domain expert. Read-only review of domain models against the OT product spec.
@@ -312,8 +329,19 @@ changes against the OT v0 product spec at `docs/project/SPEC.md`.
 This is a custom agent — `x-` prefix means project-owned, not pack-shipped.
 The pack will never overwrite this file.
 EOF
-    cp "$target/.claude/agents/x-fakeot-domain.md" \
-        "$target/.gemini/agents/x-fakeot-domain.md"
+    case "$ver" in
+        v10)
+            # carve-out (i): v10 third-CLI custom agent stays Gemini-shaped.
+            cp "$target/.claude/agents/x-fakeot-domain.md" \
+                "$target/.gemini/agents/x-fakeot-domain.md"
+            ;;
+        v11)
+            # v11 Antigravity third-CLI custom agent → client plugin bundle.
+            mkdir -p "$target/.agents-plugin/optiquity-agents/agents"
+            cp "$target/.claude/agents/x-fakeot-domain.md" \
+                "$target/.agents-plugin/optiquity-agents/agents/x-fakeot-domain.md"
+            ;;
+    esac
     cat > "$target/.codex/agents/x-fakeot-domain.toml" <<'EOF'
 [agents.x-fakeot-domain]
 description = "Project-specific FakeOT domain expert. Read-only."
@@ -614,7 +642,7 @@ EOF
 # Used as input for the BD-116 "init --update on top of existing project"
 # persona test. The fixture must look like a genuine project that the
 # user has been working on for a while, with multiple commits of history,
-# but with zero pack-shipped files (no .claude/, .codex/, .gemini/,
+# but with zero pack-shipped files (no .claude/, .codex/, .agents/,
 # CLAUDE.md / AGENTS.md / GEMINI.md, no pack scripts).
 #
 # Stack rationale: pack targets Swift / Python / gRPC. We include a

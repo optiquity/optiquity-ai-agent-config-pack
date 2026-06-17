@@ -44,10 +44,14 @@ assert_eq() {
 }
 
 # Build a minimal pack-shape directory under $FIXTURE_BASE/<scenario>/project-template/
+# The third leg is the Antigravity client plugin bundle roster
+# `.agents-plugin/optiquity-agents/agents/` (BD-221: Antigravity ships agents
+# as a plugin BUNDLE, not a loose per-CLI dir).
 mkpack() {
     local scenario="$1"
     local d="$FIXTURE_BASE/$scenario/project-template"
-    mkdir -p "$d/.claude/agents" "$d/.codex/agents" "$d/.gemini/agents"
+    mkdir -p "$d/.claude/agents" "$d/.codex/agents" \
+             "$d/.agents-plugin/optiquity-agents/agents"
     echo "$FIXTURE_BASE/$scenario"
 }
 
@@ -76,13 +80,18 @@ $body
 EOF
 }
 
-write_gemini_agent() {
+# Third-leg writer: the Antigravity client plugin-bundle agent
+# (BD-221). Markdown with YAML frontmatter, same as the Claude leg;
+# the Antigravity bundle templates pin no model string (a forward-looking
+# `#27305` model hedge), so the synthetic fixtures here omit the model
+# field entirely — the comparator ignores tool-specific frontmatter
+# (model, etc.) per "What is NOT compared".
+write_agents_agent() {
     local pack="$1" name="$2" body="$3"
-    cat > "$pack/project-template/.gemini/agents/$name.md" <<EOF
+    cat > "$pack/project-template/.agents-plugin/optiquity-agents/agents/$name.md" <<EOF
 ---
 name: $name
 description: Test agent for $name
-model: gemini-2.5-pro
 ---
 
 $body
@@ -103,7 +112,7 @@ BODY
 )
 write_claude_agent "$pack" "test1" "$body"
 write_codex_agent "$pack" "test1" "$body"
-write_gemini_agent "$pack" "test1" "$body"
+write_agents_agent "$pack" "test1" "$body"
 out=$(python3 "$COMPARE" test1 --pack "$pack" 2>&1); rc=$?
 assert_eq "identical → exit 0" "0" "$rc"
 case "$out" in
@@ -129,7 +138,7 @@ BODY
 )
 write_claude_agent "$pack" "test2" "$body_with_ticks"
 write_codex_agent "$pack" "test2" "$body_without_ticks"
-write_gemini_agent "$pack" "test2" "$body_with_ticks"
+write_agents_agent "$pack" "test2" "$body_with_ticks"
 
 python3 "$COMPARE" test2 --pack "$pack" >/dev/null 2>&1; rc=$?
 assert_eq "backtick-only (lenient default) → exit 0" "0" "$rc"
@@ -143,7 +152,7 @@ echo "── substantive body divergence ──"
 pack=$(mkpack "diverged")
 write_claude_agent "$pack" "test3" "First version with feature A and rule X."
 write_codex_agent "$pack" "test3" "Different version without rule X."
-write_gemini_agent "$pack" "test3" "First version with feature A and rule X."
+write_agents_agent "$pack" "test3" "First version with feature A and rule X."
 python3 "$COMPARE" test3 --pack "$pack" >/dev/null 2>&1; rc=$?
 assert_eq "substantive divergence → exit 2" "2" "$rc"
 
@@ -155,7 +164,7 @@ body_a=$(printf 'Line one.\nLine two.\n\nLine three.\n')
 body_b=$(printf 'Line one.    Line two.   Line three.\n')
 write_claude_agent "$pack" "test4" "$body_a"
 write_codex_agent "$pack" "test4" "$body_b"
-write_gemini_agent "$pack" "test4" "$body_a"
+write_agents_agent "$pack" "test4" "$body_a"
 python3 "$COMPARE" test4 --pack "$pack" >/dev/null 2>&1; rc=$?
 assert_eq "whitespace-only divergence → exit 0" "0" "$rc"
 
@@ -166,7 +175,7 @@ pack=$(mkpack "missing")
 body="Test body."
 write_claude_agent "$pack" "test5" "$body"
 write_codex_agent "$pack" "test5" "$body"
-# (no gemini variant)
+# (no Antigravity bundle variant)
 python3 "$COMPARE" test5 --pack "$pack" >/dev/null 2>&1; rc=$?
 assert_eq "missing tool variant → exit 1" "1" "$rc"
 
@@ -176,11 +185,11 @@ echo "── --all mode ──"
 pack=$(mkpack "all-mode")
 write_claude_agent "$pack" "agent_a" "Same body."
 write_codex_agent "$pack" "agent_a" "Same body."
-write_gemini_agent "$pack" "agent_a" "Same body."
+write_agents_agent "$pack" "agent_a" "Same body."
 
 write_claude_agent "$pack" "agent_b" "Body A."
 write_codex_agent "$pack" "agent_b" "Body B."
-write_gemini_agent "$pack" "agent_b" "Body A."
+write_agents_agent "$pack" "agent_b" "Body A."
 
 out=$(python3 "$COMPARE" --all --pack "$pack" --summary-only 2>&1); rc=$?
 assert_eq "--all with one divergent → exit 2" "2" "$rc"
@@ -194,7 +203,7 @@ esac
 echo "── name field mismatch ──"
 pack=$(mkpack "name-mismatch")
 write_claude_agent "$pack" "test7" "Same body."
-write_gemini_agent "$pack" "test7" "Same body."
+write_agents_agent "$pack" "test7" "Same body."
 # Codex with a different name field in TOML
 cat > "$pack/project-template/.codex/agents/test7.toml" <<'EOF'
 name = "wrong-name"

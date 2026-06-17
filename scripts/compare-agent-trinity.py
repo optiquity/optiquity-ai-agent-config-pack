@@ -7,9 +7,14 @@ tool variants of a pack-roster agent file.
 Per BD-059 success criterion #7 (trinity rule compliance), every
 pack-roster agent ships in three formats parallel across the three tools:
 
-  .claude/agents/<name>.md       (Markdown with YAML frontmatter)
-  .codex/agents/<name>.toml      (TOML; body in `developer_instructions`)
-  .gemini/agents/<name>.md       (Markdown with YAML frontmatter)
+  .claude/agents/<name>.md                          (Markdown with YAML frontmatter)
+  .codex/agents/<name>.toml                         (TOML; body in `developer_instructions`)
+  .agents-plugin/optiquity-agents/agents/<name>.md  (Antigravity plugin-bundle agent; Markdown with YAML frontmatter)
+
+(BD-221: the third tool is Antigravity, which ships agents as a plugin
+BUNDLE rather than a loose per-CLI dir, so the third tool's variant lives
+in the client bundle roster `project-template/.agents-plugin/
+optiquity-agents/agents/`. The comparison LOGIC is unchanged.)
 
 The trinity rule says: when one tool's variant is edited, the parallel
 edits must land in the other two unless the change is provably
@@ -43,7 +48,9 @@ Exit codes:
     1  argument or read error
     2  one or more agents have body divergence (output to stdout)
 
-The script reads `<pack>/project-template/.{claude,codex,gemini}/agents/`.
+The script reads `<pack>/project-template/.claude/agents/`,
+`<pack>/project-template/.codex/agents/`, and the Antigravity client
+plugin bundle `<pack>/project-template/.agents-plugin/optiquity-agents/agents/`.
 """
 
 import argparse
@@ -109,8 +116,18 @@ def normalize_body(body: str, strict: bool = False) -> str:
 
 
 def read_agent(pack: Path, tool: str, ext: str, name: str, strict: bool = False) -> dict | None:
-    """Read one tool's agent file. Return None if missing."""
-    path = pack / "project-template" / f".{tool}" / "agents" / f"{name}.{ext}"
+    """Read one tool's agent file. Return None if missing.
+
+    The Claude/Codex legs read the loose per-CLI dir `.{tool}/agents/`. The
+    Antigravity leg (`tool == "agents"`, BD-221) reads the client plugin
+    bundle roster `.agents-plugin/optiquity-agents/agents/` — Antigravity
+    agents ship as a plugin BUNDLE, not a loose per-CLI dir.
+    """
+    if tool == "agents":
+        path = (pack / "project-template" / ".agents-plugin"
+                / "optiquity-agents" / "agents" / f"{name}.{ext}")
+    else:
+        path = pack / "project-template" / f".{tool}" / "agents" / f"{name}.{ext}"
     if not path.is_file():
         return None
     text = path.read_text()
@@ -148,41 +165,46 @@ def show_body_diff(label_a: str, body_a: str, label_b: str, body_b: str, max_lin
 
 
 def compare_one(pack: Path, name: str, verbose: bool = True, strict: bool = False) -> int:
-    """Compare the three tool variants of agent <name>. Return 0 / 2."""
+    """Compare the three tool variants of agent <name>. Return 0 / 2.
+
+    The third leg ("agents", BD-221) is the Antigravity plugin-bundle agent
+    `.agents-plugin/optiquity-agents/agents/<name>.md`. Comparison logic is
+    unchanged.
+    """
     claude = read_agent(pack, "claude", "md", name, strict=strict)
     codex = read_agent(pack, "codex", "toml", name, strict=strict)
-    gemini = read_agent(pack, "gemini", "md", name, strict=strict)
+    agents = read_agent(pack, "agents", "md", name, strict=strict)
 
-    missing = [t for t, v in (("claude", claude), ("codex", codex), ("gemini", gemini)) if v is None]
+    missing = [t for t, v in (("claude", claude), ("codex", codex), ("agents", agents)) if v is None]
     if missing:
         print(f"error: agent '{name}' missing in: {', '.join(missing)}", file=sys.stderr)
         return 1
 
-    name_values = [claude["name_field"], codex["name_field"], gemini["name_field"]]
+    name_values = [claude["name_field"], codex["name_field"], agents["name_field"]]
     name_field_match = all(v == name for v in name_values)
-    bodies_match = claude["norm"] == codex["norm"] == gemini["norm"]
+    bodies_match = claude["norm"] == codex["norm"] == agents["norm"]
 
     symmetric = name_field_match and bodies_match
 
     if verbose:
         status = "PASS" if symmetric else "DIVERGENT"
         print(f"=== {name}: {status} ===")
-        print(f"  name field:       claude={claude['name_field']!r} codex={codex['name_field']!r} gemini={gemini['name_field']!r}")
+        print(f"  name field:       claude={claude['name_field']!r} codex={codex['name_field']!r} agents={agents['name_field']!r}")
         if not name_field_match:
             print(f"  WARNING: name field mismatch (expected {name!r} in all three)")
-        print(f"  body length norm: claude={len(claude['norm'])} codex={len(codex['norm'])} gemini={len(gemini['norm'])}")
+        print(f"  body length norm: claude={len(claude['norm'])} codex={len(codex['norm'])} agents={len(agents['norm'])}")
         print(f"  body match:       {'YES' if bodies_match else 'NO'}")
         if not bodies_match:
             if claude["norm"] != codex["norm"]:
                 show_body_diff("claude", claude["norm"], "codex", codex["norm"])
-            if claude["norm"] != gemini["norm"]:
-                show_body_diff("claude", claude["norm"], "gemini", gemini["norm"])
-            if codex["norm"] != gemini["norm"] and claude["norm"] == codex["norm"]:
-                # claude/codex agree but gemini differs
-                show_body_diff("codex", codex["norm"], "gemini", gemini["norm"])
+            if claude["norm"] != agents["norm"]:
+                show_body_diff("claude", claude["norm"], "agents", agents["norm"])
+            if codex["norm"] != agents["norm"] and claude["norm"] == codex["norm"]:
+                # claude/codex agree but the Antigravity bundle agent differs
+                show_body_diff("codex", codex["norm"], "agents", agents["norm"])
         # Description (informational; not enforced)
         print(f"  descriptions (informational, not enforced for equality):")
-        for v, lbl in ((claude, "claude"), (codex, "codex"), (gemini, "gemini")):
+        for v, lbl in ((claude, "claude"), (codex, "codex"), (agents, "agents")):
             d = v["meta"].get("description", "<no description>")
             d_short = d[:100] + ("..." if len(d) > 100 else "")
             print(f"    {lbl}: {d_short}")
