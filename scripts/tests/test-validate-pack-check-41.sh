@@ -103,9 +103,9 @@ required_subset = {
     "project-template/docs/pack/PM-CHAT.md",
     "supporting-docs/METHODOLOGY.md",
     "supporting-docs/INSTALL-PROCEDURES.md",
-    # BD-221: the Antigravity workspace MCP config example replaces the
-    # retired `.gemini/commands/pm-startup.toml` as the canonical spot-check
-    # row (pm-startup is now a pool skill distributed LOOSE by stage S4).
+    # BD-221: the Antigravity workspace MCP config example is the canonical
+    # spot-check row (pm-startup is now a pool skill distributed LOOSE by
+    # stage S4, not a per-CLI install-map row).
     "project-template/.agents/mcp_config.json.example",
 }
 missing = required_subset - set(entries)

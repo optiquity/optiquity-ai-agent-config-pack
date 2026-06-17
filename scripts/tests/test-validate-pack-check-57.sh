@@ -135,8 +135,8 @@ def trinity_body(verbs=None, include_phrase=True):
     return "\n".join(lines) + "\n"
 
 def agent_prose_body(verbs=None):
-    """A well-formed agent Hard rule (Claude/Gemini .md prose form). No
-    backticks (unquoted heredoc)."""
+    """A well-formed agent Hard rule (Claude + Antigravity bundle .md prose
+    form). No backticks (unquoted heredoc)."""
     vs = VERBS if verbs is None else verbs
     lst = ", ".join(f"git {v}" for v in vs)
     return ("- No state-changing git operations, ever. Read-only git verbs "
@@ -209,7 +209,7 @@ if n < 1 or "principle phrase" not in cap or "AGENTS.md" not in cap:
     failures.append(f"T3 (dropped trinity phrase) expected FAIL, got {n}: {cap}")
 
 # T4: FAIL — one surface absent.
-n, cap = run(drop_surface="project-template/.gemini/agents/coder.md")
+n, cap = run(drop_surface="project-template/.agents-plugin/optiquity-agents/agents/coder.md")
 if n < 1 or "not found" not in cap:
     failures.append(f"T4 (absent surface) expected FAIL, got {n}: {cap}")
 

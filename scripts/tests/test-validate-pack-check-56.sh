@@ -150,7 +150,7 @@ if n < 1 or "principle phrase" not in cap:
     failures.append(f"T3 (dropped principle phrase) expected FAIL, got {n}: {cap}")
 
 # T4: FAIL — one surface absent.
-n, cap = run(drop_surface=".gemini/agents/pack-coder.md")
+n, cap = run(drop_surface=".agents-plugin/pack-agents/agents/pack-coder.md")
 if n < 1 or "not found" not in cap:
     failures.append(f"T4 (absent surface) expected FAIL, got {n}: {cap}")
 

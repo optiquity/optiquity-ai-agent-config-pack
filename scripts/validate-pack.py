@@ -7,13 +7,13 @@ Checks:
   2. Codex TOML files: all parse correctly
   3. TD-TBD sentinels: none in committed files (excluding docs that show the format)
   4. README version table: latest row matches latest git tag
-  5. Agent file count: Claude, Codex, and Gemini agent dirs have the same count
+  5. Agent file count: Claude, Codex loose dirs + the Antigravity agent bundle have the same count
   6. Prompts-directory format: per-agent frontmatter, variant→H2 consistency
      (PROMPT-AUTHORING.md was removed in v10.0; directory guidance lives in
      supporting-docs/METHODOLOGY.md § Prompt Authoring Principles)
   7. Pack agent roster: PM-CHAT.md ## Pack agent roster list matches
      .claude/agents/*.md stems
-  8. Reserved x- prefix: no file or directory in the seven pack scan
+  8. Reserved x- prefix: no file or directory in the pack scan
      locations begins with `x-`
   9. Init-project structure: scripts/init-project.sh executable,
      scripts/lib/detect.sh defines the required v10 detection
@@ -31,15 +31,16 @@ Checks:
       file-based completion-report indicator (`REPORT FILE:` or
       `**Completion report:**`).
   11. Pack agent trinity-rule symmetry (informational): pack-roster
-      agent file content stays in lockstep across .claude/.codex/.gemini
-      (BD-082-era informational guard).
+      agent file content stays in lockstep across .claude/.codex + the
+      Antigravity pack-agents plugin bundle (BD-082-era informational
+      guard).
   16. Trinity ## Project addenda H2 (BD-059): v10 trinity templates
       carry the `## Project addenda` H2 anchor required by Procedure
       5-S Task B.
   17. Tool-config AGENT_CAPABILITIES parity (BD-059): the
-      AGENT_CAPABILITIES table is expressed identically in
-      `agent-run.sh`, `.codex/config.toml.example`, and
-      `.gemini/settings.json`.
+      AGENT_CAPABILITIES table is expressed identically across the
+      Claude and Codex tool-config surfaces
+      (`.claude/settings.json`, `.codex/config.toml`).
   18. Trinity H2 structure parity (BD-059): CLAUDE.md, AGENTS.md, and
       GEMINI.md (project-template) share the same `##` heading
       sequence, modulo provably tool-specific sections.
@@ -49,9 +50,11 @@ Checks:
   20. Pack .gitignore !.env.example exception (BD-059): pack-template
       .gitignore retains the `!.env.example` re-include after the
       `*.env*` ignore pattern.
-  21. Pack-help per-CLI parity (BD-082): all three CLI surfaces
-      (.claude/skills, .codex/skills, .gemini/skills) ship a
-      `pack-help` skill that delegates to scripts/pack-help.sh.
+  21. [RETIRED in BD-221 — Antigravity conversion] Pack-help per-CLI
+      parity (BD-082). pack-help is now an ordinary pooled skill
+      distributed loose to all CLIs; the "references scripts/pack-help.sh"
+      assertion folded into Check 1 (SKILL.md frontmatter). The check
+      number is intentionally NOT renumbered.
   22. Help-fragment freshness (BD-082): every verb that pack prose
       references is present in the HELP-FRAGMENT shared content,
       pack-side and project-template-side.
@@ -75,17 +78,16 @@ Checks:
       public-API function names + exit-code constants per
       ARCHITECTURE-BD-119.md §3.2 / PLAN-BD-119.md §3.
   27. Agent canonical-phrase compliance (v10.1): every project-template
-      agent definition (.claude/.codex/.gemini × 16 agents) contains the
+      agent definition (.claude/.codex loose dirs + the Antigravity
+      optiquity-agents plugin bundle × 16 agents) contains the
       canonical phrases for Permission profile, Output policy, and
       Hard rules — codified per profile (Read-only / Write-capable
       scoped / Write-capable script).
-  28. PM-startup per-CLI parity (v10.1, BD-126): the canonical
-      `project-template/skills/pm-startup/SKILL.md` and the three
-      per-CLI surfaces (`.claude/skills/`, `.codex/skills/`,
-      `.gemini/commands/pm-startup.toml`) agree on Step 4 substance
-      (RAG reconciliation procedure) and the Step 6 `RAG:` summary
-      template. Prevents v10.1-style backports landing only on the
-      canonical SKILL while leaving live per-CLI surfaces stale.
+  28. [RETIRED in BD-221 — Antigravity conversion] PM-startup per-CLI
+      parity (v10.1, BD-126). pm-startup collapsed to a single pooled
+      `project-template/skills/pm-startup/SKILL.md` SSOT distributed
+      loose to all CLIs; the per-CLI byte-parity surfaces no longer
+      exist. The check number is intentionally NOT renumbered.
   29. Tracker-config schema (BD-078): the pack-side
       `tracker.toml.pack-example` and the client-side
       `project-template/tracker.toml.project-example` parse as TOML
@@ -354,7 +356,13 @@ PER_ENTRY_LIB = REPO_ROOT / "scripts" / "lib" / "per-entry"
 CODEX_DIR = REPO_ROOT / "project-template" / ".codex"
 CLAUDE_AGENTS_DIR = REPO_ROOT / "project-template" / ".claude" / "agents"
 CODEX_AGENTS_DIR = REPO_ROOT / "project-template" / ".codex" / "agents"
-GEMINI_AGENTS_DIR = REPO_ROOT / "project-template" / ".gemini" / "agents"
+# BD-221: the third agent surface is the Antigravity client plugin bundle
+# (the 16-agent optiquity-agents roster). Checks 5 (count parity) and 27
+# (canonical phrases) scan this bundle so the Antigravity agents are covered
+# with no silent loss.
+OPTIQUITY_BUNDLE_AGENTS_DIR = (
+    REPO_ROOT / "project-template" / ".agents-plugin" / "optiquity-agents" / "agents"
+)
 README = REPO_ROOT / "README.md"
 
 REQUIRED_SKILL_FIELDS = {"name", "description", "allowed-tools"}
@@ -364,13 +372,17 @@ REQUIRED_PROMPT_FRONTMATTER = {"agent", "variants"}
 RESERVED_PROMPT_FRONTMATTER = {"description", "deprecated-by", "notes"}
 
 PM_CHAT = REPO_ROOT / "project-template" / "docs" / "pack" / "PM-CHAT.md"
+# BD-221 (Antigravity conversion): the pack-template agent/skill surfaces a
+# reserved-`x-` file could legitimately live in. The Antigravity end-state
+# surfaces are the loose Claude/Codex agent dirs, the client agent bundle
+# (optiquity-agents), and the shared skills POOL (`project-template/skills`,
+# distributed loose to all CLIs by init-project), plus the prompts dir.
+# Non-existent dirs are skipped (Check 8 `loc.is_dir()`).
 PACK_SCAN_LOCATIONS = [
     REPO_ROOT / "project-template" / ".claude" / "agents",
     REPO_ROOT / "project-template" / ".codex" / "agents",
-    REPO_ROOT / "project-template" / ".gemini" / "agents",
-    REPO_ROOT / "project-template" / ".claude" / "skills",
-    REPO_ROOT / "project-template" / ".codex" / "skills",
-    REPO_ROOT / "project-template" / ".gemini" / "skills",
+    OPTIQUITY_BUNDLE_AGENTS_DIR,
+    REPO_ROOT / "project-template" / "skills",
     REPO_ROOT / "project-template" / "docs" / "pack" / "prompts",
 ]
 
@@ -462,17 +474,20 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # main()" property that `--only-check` (BD-219 C1) would otherwise drop.
 # UPDATE IN LOCK-STEP whenever a check is added/removed (a one-line edit, like
 # the agent-count check). At the BD-219 dynamic-autoregen redesign the registry
-# holds 61 entries:
+# held 61 entries; BD-221 (Antigravity conversion) RETIRED Checks 21 + 28
+# (−2), so the registry now holds 59 entries:
 #   57 entries at C1's CHECK_REGISTRY introduction (§EE-P5)
 # + 3 net-new C3 checks (58 validate-no-flag, 59 registry-completeness,
 #                        60 shard-coverage mirror)
-# + 1 net-new BD-219-redesign check (61 fixture-location backstop).
+# + 1 net-new BD-219-redesign check (61 fixture-location backstop)
+# − 2 retired in BD-221 (21 pack-help per-CLI parity, 28 pm-startup per-CLI
+#                        parity — both obsoleted by the pooled-skill model).
 # (Re-scoped Check 42 keeps its slot; numbers ≠ entry count — Checks
 # 16/18/19 each register TWICE and 2 checks carry number=None.) This constant
 # is the explicit invariant; the actual count is COMPUTED from
 # len(_build_check_registry()) and asserted equal by Check 59 — never
 # hard-coded anywhere else.
-CHECK_REGISTRY_EXPECTED_COUNT = 61
+CHECK_REGISTRY_EXPECTED_COUNT = 59
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
@@ -536,8 +551,20 @@ def check_skill_frontmatter() -> None:
         if missing:
             for field in sorted(missing):
                 fail(f"skills/{skill_dir.name}/SKILL.md — missing required field: {field}")
-        else:
-            ok(f"skills/{skill_dir.name}/SKILL.md")
+            continue
+
+        # BD-221 (folded from retired Check 21, OQ-C): the pooled `pack-help`
+        # skill body MUST reference `scripts/pack-help.sh` so the skill actually
+        # invokes the pack-help shell when an agent runs it.
+        if skill_dir.name == "pack-help" and "pack-help.sh" not in content:
+            fail(
+                f"skills/{skill_dir.name}/SKILL.md — pack-help skill does not "
+                f"reference `scripts/pack-help.sh` (the body must invoke the "
+                f"pack-help shell; folded from retired Check 21 per BD-221)"
+            )
+            continue
+
+        ok(f"skills/{skill_dir.name}/SKILL.md")
 
 
 # ── Check 2: Codex TOML files ──────────────────────────────────────────────
@@ -647,46 +674,59 @@ def check_readme_version() -> None:
 # ── Check 5: Agent file count consistency ───────────────────────────────────
 
 def check_agent_count() -> None:
+    # BD-221 (Antigravity conversion): the third leg is the Antigravity client
+    # plugin bundle (optiquity-agents). The check is Claude↔Codex loose-agent
+    # 2-way parity PLUS plugin-roster count parity (the bundle ships the same
+    # named roster).
     print("\n── Check 5: Agent file count consistency ──")
     claude_agents = sorted(CLAUDE_AGENTS_DIR.glob("*.md")) if CLAUDE_AGENTS_DIR.is_dir() else []
     codex_agents = sorted(CODEX_AGENTS_DIR.glob("*.toml")) if CODEX_AGENTS_DIR.is_dir() else []
-    gemini_agents = sorted(GEMINI_AGENTS_DIR.glob("*.md")) if GEMINI_AGENTS_DIR.is_dir() else []
+    bundle_agents = (
+        sorted(OPTIQUITY_BUNDLE_AGENTS_DIR.glob("*.md"))
+        if OPTIQUITY_BUNDLE_AGENTS_DIR.is_dir() else []
+    )
 
     claude_count = len(claude_agents)
     codex_count = len(codex_agents)
-    gemini_count = len(gemini_agents)
+    bundle_count = len(bundle_agents)
 
     if claude_count == 0:
         fail("No Claude agent files found in project-template/.claude/agents/")
     if codex_count == 0:
         fail("No Codex agent files found in project-template/.codex/agents/")
-    if gemini_count == 0:
-        fail("No Gemini agent files found in project-template/.gemini/agents/")
+    if bundle_count == 0:
+        fail(
+            "No agent files found in the Antigravity client plugin bundle "
+            "project-template/.agents-plugin/optiquity-agents/agents/"
+        )
 
-    if claude_count == codex_count == gemini_count:
-        ok(f"Claude agents: {claude_count}, Codex agents: {codex_count}, Gemini agents: {gemini_count} — match")
+    if claude_count == codex_count == bundle_count:
+        ok(f"Claude agents: {claude_count}, Codex agents: {codex_count}, "
+           f"Antigravity bundle agents: {bundle_count} — match")
     else:
-        fail(f"Agent count mismatch — Claude: {claude_count}, Codex: {codex_count}, Gemini: {gemini_count}")
+        fail(f"Agent count mismatch — Claude: {claude_count}, "
+             f"Codex: {codex_count}, Antigravity bundle: {bundle_count}")
 
-    # Also check name correspondence
+    # Also check name correspondence. The bundle roster must carry the same
+    # 16 agent names as the loose Claude/Codex surfaces (plugin-roster parity).
     claude_names = {p.stem for p in claude_agents}
     codex_names = {p.stem for p in codex_agents}
-    gemini_names = {p.stem for p in gemini_agents}
-    only_claude = claude_names - codex_names - gemini_names
-    only_codex = codex_names - claude_names - gemini_names
-    only_gemini = gemini_names - claude_names - codex_names
+    bundle_names = {p.stem for p in bundle_agents}
+    only_claude = claude_names - codex_names - bundle_names
+    only_codex = codex_names - claude_names - bundle_names
+    only_bundle = bundle_names - claude_names - codex_names
     missing_from_codex = claude_names - codex_names
-    missing_from_gemini = claude_names - gemini_names
+    missing_from_bundle = claude_names - bundle_names
     if only_claude:
         fail(f"Agents only in Claude: {sorted(only_claude)}")
     if only_codex:
         fail(f"Agents only in Codex: {sorted(only_codex)}")
-    if only_gemini:
-        fail(f"Agents only in Gemini: {sorted(only_gemini)}")
+    if only_bundle:
+        fail(f"Agents only in the Antigravity bundle: {sorted(only_bundle)}")
     if missing_from_codex:
         fail(f"Agents in Claude but not Codex: {sorted(missing_from_codex)}")
-    if missing_from_gemini:
-        fail(f"Agents in Claude but not Gemini: {sorted(missing_from_gemini)}")
+    if missing_from_bundle:
+        fail(f"Agents in Claude but not the Antigravity bundle: {sorted(missing_from_bundle)}")
 
 
 # ── Check 6: Prompts-directory format ───────────────────────────────────────
@@ -1026,10 +1066,11 @@ def check_prompt_triad_compliance() -> None:
 def check_pack_agent_trinity() -> None:
     """Check 11 — pack-roster agent trinity-rule symmetry (informational).
 
-    Per BD-059 success criterion #7, every pack-roster agent ships in three
-    formats parallel across the three tools (.claude/.md, .codex/.toml,
-    .gemini/.md). The trinity rule says behavioral content must match unless
-    a divergence is provably tool-specific.
+    Per BD-059 success criterion #7, every pack-roster agent ships in
+    parallel across the tools (.claude/.md, .codex/.toml, and the
+    Antigravity pack-agents plugin bundle .md). The trinity rule says
+    behavioral content must match unless a divergence is provably
+    tool-specific.
 
     This check runs scripts/compare-agent-trinity.py --all in lenient mode
     (whitespace + Markdown formatting normalized) and reports the count of
@@ -1118,18 +1159,21 @@ def check_pack_agent_trinity() -> None:
 
 def check_tool_config_capability_parity() -> None:
     """Check 17 — AGENT_CAPABILITIES expressed identically across the
-    three tools' config files (architect Part 6 / OQ-7 / BD-059).
+    tool config files (architect Part 6 / OQ-7 / BD-059).
 
     The trinity rule applies to per-tool tool-level configuration: every
     capability one tool expresses in its config-file surface must be
-    expressed by the other two via their own conventions. AGENT_CAPABILITIES
+    expressed by the other via its own convention. AGENT_CAPABILITIES
     is the v10 capabilities-pattern roster — shipped in:
 
       Claude  .claude/settings.json env.AGENT_CAPABILITIES (comma-list)
       Codex   .codex/config.toml [agent_capabilities] enabled (TOML list)
-      Gemini  .gemini/.env AGENT_CAPABILITIES (comma-list)
 
-    All three must contain identical capability sets.
+    Both must contain identical capability sets. (BD-221: the third
+    capability leg is retired with the Antigravity conversion —
+    Antigravity carries no AGENT_CAPABILITIES env surface; its
+    permissions are an EXAMPLE-only `permissions{allow,deny,ask}`
+    block that is never shipped.)
     """
     print("\n── Check 17: Tool-config AGENT_CAPABILITIES parity (BD-059) ──")
     pt = REPO_ROOT / "project-template"
@@ -1165,56 +1209,20 @@ def check_tool_config_capability_parity() -> None:
         fail(f".codex/config.toml — parse failed: {e}")
         any_failed = True
 
-    # Gemini — .env.example AGENT_CAPABILITIES line. The pack ships
-    # the template at `.env.example` (the project-template's .gitignore
-    # blocks plain .env to protect against secrets in projects;
-    # `.env.example` is committable). init-project.sh creates the live
-    # `.gemini/.env` from this template at fresh-install time. The
-    # migration scripts (historically migrate-v9-to-v10.sh; today
-    # migrate-v10-to-v11.sh) do NOT touch a project's
-    # existing `.env` — only `.env.example` is migrated, so the project
-    # can manually pick up new pack capabilities by diffing the example.
-    gemini_caps: set[str] | None = None
-    gemini_path = pt / ".gemini" / ".env.example"
-    if not gemini_path.is_file():
-        fail(".gemini/.env.example — missing")
-        return
-    try:
-        for line in gemini_path.read_text().splitlines():
-            line = line.strip()
-            if line.startswith("AGENT_CAPABILITIES="):
-                value = line.split("=", 1)[1].strip()
-                gemini_caps = {c.strip() for c in value.split(",") if c.strip()}
-                break
-        if gemini_caps is None:
-            fail(".gemini/.env.example — missing AGENT_CAPABILITIES line")
-            any_failed = True
-    except Exception as e:
-        fail(f".gemini/.env.example — parse failed: {e}")
-        any_failed = True
-
-    if any_failed or claude_caps is None or codex_caps is None or gemini_caps is None:
+    if any_failed or claude_caps is None or codex_caps is None:
         return
 
-    if claude_caps == codex_caps == gemini_caps:
-        ok(f"All three tools agree on AGENT_CAPABILITIES ({len(claude_caps)} capabilities)")
+    if claude_caps == codex_caps:
+        ok(f"Claude and Codex agree on AGENT_CAPABILITIES ({len(claude_caps)} capabilities)")
         return
 
     # Surface the divergence.
-    if claude_caps != codex_caps:
-        only_claude = sorted(claude_caps - codex_caps)
-        only_codex = sorted(codex_caps - claude_caps)
-        fail(
-            f"Claude vs Codex divergent: "
-            f"only-Claude={only_claude} only-Codex={only_codex}"
-        )
-    if claude_caps != gemini_caps:
-        only_claude = sorted(claude_caps - gemini_caps)
-        only_gemini = sorted(gemini_caps - claude_caps)
-        fail(
-            f"Claude vs Gemini divergent: "
-            f"only-Claude={only_claude} only-Gemini={only_gemini}"
-        )
+    only_claude = sorted(claude_caps - codex_caps)
+    only_codex = sorted(codex_caps - claude_caps)
+    fail(
+        f"Claude vs Codex divergent: "
+        f"only-Claude={only_claude} only-Codex={only_codex}"
+    )
 
 
 def check_issue_template_forms() -> None:
@@ -1433,13 +1441,16 @@ def check_template_archive_v11() -> None:
 def check_gitignore_env_example_exception() -> None:
     """Check 20 — pack-template .gitignore keeps the !.env.example exception.
 
-    The pack ships `.gemini/.env.example` (and other `.example` files)
-    as committable pack templates. The pack-template `.gitignore` must
+    The pack ships committable `.example` templates (e.g. config
+    examples) as pack templates. The pack-template `.gitignore` must
     contain `!.env.example` after `.env.*` so fresh installs do not
     silently exclude the pack template. (Historically the v9->v10
     migrator's S0 step also injected this exception into existing
     project .gitignore files; that migrator was retired in v11
-    per BD-121.) This check guards the pack-side template against drift.
+    per BD-121. BD-221: the env-template that previously drove this
+    exception is retired with the Antigravity conversion; the generic
+    `.env.*` + `!.env.example` exception is unchanged.) This check
+    guards the pack-side template against drift.
     """
     print("\n── Check 20: Pack .gitignore !.env.example exception (BD-059) ──")
     path = REPO_ROOT / "project-template" / ".gitignore"
@@ -1483,7 +1494,7 @@ def check_trinity_no_scaffolding_comments(
         the migration tooling can reliably locate the addenda
         landing point.
       - GEMINI.md only: the `<!-- Trinity-rule exception ... -->`
-        comment documenting the Gemini-intrinsic H2s.
+        comment documenting the GEMINI.md-intrinsic H2s.
 
     Any other `<!-- ... -->` block in a trinity file is fresh-install
     scaffolding ("Fill in the platform-specific defaults...", "Add
@@ -1563,7 +1574,7 @@ def check_trinity_h2_parity(
     WITHIN their trinity location. The trinity rule applies — symmetry
     is the default. The only allowed asymmetry is tool-intrinsic
     content. GEMINI.md is permitted to add these specific H2s (and only
-    these): `## Agent roster`, `## Gemini CLI operating notes`. Any
+    these): `## Agent roster`, `## Antigravity CLI operating notes`. Any
     other divergence is a defect.
 
     Without this check, drift like the v10.0 OT migration discovered
@@ -1596,7 +1607,7 @@ def check_trinity_h2_parity(
     if trinity_root is None:
         trinity_root = REPO_ROOT / "project-template"
     print(f"\n── Check 18 [{label}]: Trinity H2 structure parity (BD-059, BD-181) ──")
-    GEMINI_INTRINSIC_H2S = {"## Agent roster", "## Gemini CLI operating notes"}
+    GEMINI_INTRINSIC_H2S = {"## Agent roster", "## Antigravity CLI operating notes"}
     files = {
         name: trinity_root / name
         for name in ("CLAUDE.md", "AGENTS.md", "GEMINI.md")
@@ -1631,12 +1642,12 @@ def check_trinity_h2_parity(
             fail(f"  in {label}/AGENTS.md only: {h}")
         return
 
-    # GEMINI must equal CLAUDE *modulo* the allowed Gemini-intrinsic H2s.
+    # GEMINI.md must equal CLAUDE *modulo* the allowed GEMINI.md-intrinsic H2s.
     gemini_filtered = [h for h in gemini if h not in GEMINI_INTRINSIC_H2S]
     if gemini_filtered != claude:
         fail(
             f"[{label}] GEMINI.md H2 structure diverges from CLAUDE.md/AGENTS.md "
-            "beyond the allowed Gemini-intrinsic H2s "
+            "beyond the allowed GEMINI.md-intrinsic H2s "
             f"({sorted(GEMINI_INTRINSIC_H2S)}):"
         )
         in_claude = [h for h in claude if h not in gemini_filtered]
@@ -1647,9 +1658,10 @@ def check_trinity_h2_parity(
             fail(f"  in {label}/GEMINI.md only (and not in allowed-intrinsic set): {h}")
         return
 
-    # Check that the Gemini-intrinsic H2s, if present, are positioned
+    # Check that the GEMINI.md-intrinsic H2s, if present, are positioned
     # at the documented insertion points (after Phase routing for
-    # `Agent roster`; after Agent behavior for `Gemini CLI operating notes`).
+    # `Agent roster`; after Agent behavior for
+    # `Antigravity CLI operating notes`).
     # Position drift is acceptable as long as parity-modulo-intrinsic holds,
     # but log positions for telemetry.
     ok(f"[{label}] CLAUDE.md ↔ AGENTS.md H2 structures match ({len(claude)} sections)")
@@ -1739,10 +1751,14 @@ def check_agent_canonical_phrases() -> None:
     """
     print("\n── Check 27: Agent canonical-phrase compliance (v10.1) ──")
     any_failed = False
+    # BD-221 (Antigravity conversion, MUST-1): the third leg is the
+    # Antigravity client plugin bundle (optiquity-agents) — so the Antigravity
+    # bundle agents are scanned for the canonical permission-profile phrases
+    # with no silent coverage loss.
     agent_dirs = [
         (CLAUDE_AGENTS_DIR, "*.md"),
         (CODEX_AGENTS_DIR, "*.toml"),
-        (GEMINI_AGENTS_DIR, "*.md"),
+        (OPTIQUITY_BUNDLE_AGENTS_DIR, "*.md"),
     ]
     for agent_dir, pattern in agent_dirs:
         if not agent_dir.is_dir():
@@ -1970,54 +1986,14 @@ def check_trinity_addenda_h2(
         return
 
 
-def check_pack_help_per_cli_parity() -> None:
-    """Check 21 — per-CLI pack-help surface parity (BD-082).
-
-    Per V3 §28.2.5 + DELTA L1, the pack-help verb is exposed via three
-    per-CLI surfaces in lockstep:
-      - .claude/skills/pack-help/SKILL.md   (Claude skill)
-      - .codex/skills/pack-help/SKILL.md    (Codex skill)
-      - .gemini/commands/pack-help.toml     (Gemini command)
-
-    Per surface (pack-root + project-template/), all three must exist or
-    all three must be absent. All three must reference scripts/pack-help.sh
-    so the command actually invokes the pack-help shell.
-    """
-    print("\n── Check 21: Pack-help per-CLI parity (BD-082) ──")
-    surfaces = {
-        "pack-root":         REPO_ROOT,
-        "project-template":  REPO_ROOT / "project-template",
-    }
-    triplets = {
-        "claude": (".claude/skills/pack-help/SKILL.md",          "skill"),
-        "codex":  (".codex/skills/pack-help/SKILL.md",           "skill"),
-        "gemini": (".gemini/commands/pack-help.toml",            "command"),
-    }
-    any_failed = False
-    for surface, root in surfaces.items():
-        present, absent = [], []
-        for cli, (rel, _kind) in triplets.items():
-            (present if (root / rel).is_file() else absent).append(cli)
-        if present and absent:
-            fail(f"{surface}: pack-help parity violated — present in {sorted(present)}, missing in {sorted(absent)}")
-            any_failed = True
-            continue
-        if not present:
-            ok(f"{surface}: pack-help absent on all 3 CLIs (consistent — feature not installed)")
-            continue
-        # All three present — verify each references scripts/pack-help.sh.
-        bad = []
-        for cli, (rel, _kind) in triplets.items():
-            text = (root / rel).read_text()
-            if "scripts/pack-help.sh" not in text and "pack-help.sh" not in text:
-                bad.append(cli)
-        if bad:
-            fail(f"{surface}: pack-help present but does not reference scripts/pack-help.sh on {sorted(bad)}")
-            any_failed = True
-            continue
-        ok(f"{surface}: all 3 CLIs present and reference scripts/pack-help.sh")
-    if any_failed:
-        return
+# ── Check 21 RETIRED in BD-221 (Antigravity conversion) ──────────────────────
+# `check_pack_help_per_cli_parity` is removed. pack-help is now an ordinary
+# pooled skill (`project-template/skills/pack-help/SKILL.md`) distributed loose
+# to all CLIs by init-project — there is no per-CLI parity triplet to enforce.
+# The one load-bearing assertion ("the pack-help SKILL.md body references
+# `scripts/pack-help.sh`") is FOLDED into Check 1 (SKILL.md frontmatter walk).
+# The registry entry + the `CHECK_REGISTRY_EXPECTED_COUNT` were decremented in
+# lock-step (61 → 59 with Check 28). No per-check test existed for Check 21.
 
 
 _VERB_RE = re.compile(
@@ -2479,131 +2455,14 @@ def check_migrator_framework_inventory() -> None:
     ok("migrator-core.sh sources migrator-skills.sh")
 
 
-def _extract_pm_startup_sections(text: str) -> tuple[str, str]:
-    """Extract (step4_block, step6_rag_line) from a pm-startup prompt body.
-
-    `step4_block` is the prose under the `## Step 4` H2 up to but not
-    including the next `## Step` heading (whitespace-trimmed).
-    `step6_rag_line` is the line beginning with `**RAG:**` inside Step 6
-    (whitespace-trimmed). Returns ("", "") for the line if absent — the
-    caller decides whether absence is a failure.
-    """
-    step4_match = re.search(
-        r"^##\s+Step\s+4\b[^\n]*\n(.*?)(?=^##\s+Step\s+\d)",
-        text, flags=re.DOTALL | re.MULTILINE,
-    )
-    step4_block = step4_match.group(1).strip() if step4_match else ""
-
-    rag_match = re.search(r"^\*\*RAG:\*\*[^\n]*", text, flags=re.MULTILINE)
-    rag_line = rag_match.group(0).strip() if rag_match else ""
-
-    return step4_block, rag_line
-
-
-def check_pm_startup_per_cli_parity() -> None:
-    """Check 28 — PM-startup per-CLI surface parity (v10.1, BD-126).
-
-    The canonical `project-template/skills/pm-startup/SKILL.md` is the
-    source of truth for the Step 4 RAG-reconciliation procedure and the
-    Step 6 `RAG:` summary line. Three per-CLI surfaces ship with every
-    pack install and must stay byte-substantively aligned with the
-    canonical:
-
-      - project-template/.claude/skills/pm-startup/SKILL.md  (Claude skill)
-      - project-template/.codex/skills/pm-startup/SKILL.md   (Codex skill)
-      - project-template/.gemini/commands/pm-startup.toml    (Gemini command)
-
-    Without this check, v10.1-style RAG backports update the canonical
-    only and leave the live surfaces stale (the F-8 BLOCKER pattern
-    diagnosed in PACK-REVIEW-V10.1-BACKPORT.md). Gemini is especially
-    vulnerable because `init-project.sh` regenerates `.claude` /
-    `.codex` SKILL.md from the canonical at install time but never
-    touches `.gemini/commands/pm-startup.toml`.
-
-    Comparison rule: extracted Step 4 block AND Step 6 `RAG:` line
-    must match the canonical exactly (whitespace-trimmed). For the
-    Gemini surface, Step 4 / Step 6 are extracted from the
-    triple-quoted `prompt` TOML string before comparison.
-    """
-    print("\n── Check 28: PM-startup per-CLI parity (v10.1, BD-126) ──")
-    canonical = REPO_ROOT / "project-template" / "skills" / "pm-startup" / "SKILL.md"
-    surfaces = [
-        ("claude",
-         REPO_ROOT / "project-template" / ".claude" / "skills" / "pm-startup" / "SKILL.md",
-         "skill-md"),
-        ("codex",
-         REPO_ROOT / "project-template" / ".codex" / "skills" / "pm-startup" / "SKILL.md",
-         "skill-md"),
-        ("gemini",
-         REPO_ROOT / "project-template" / ".gemini" / "commands" / "pm-startup.toml",
-         "gemini-toml"),
-    ]
-
-    if not canonical.is_file():
-        fail(f"canonical pm-startup SKILL missing: "
-             f"{canonical.relative_to(REPO_ROOT)}")
-        return
-
-    canon_text = canonical.read_text()
-    canon_step4, canon_rag = _extract_pm_startup_sections(canon_text)
-    if not canon_step4:
-        fail(f"canonical {canonical.relative_to(REPO_ROOT)} — "
-             "Step 4 H2 block not found")
-        return
-    if not canon_rag:
-        fail(f"canonical {canonical.relative_to(REPO_ROOT)} — "
-             "Step 6 `**RAG:**` summary line not found")
-        return
-
-    any_failed = False
-    for cli, path, kind in surfaces:
-        if not path.is_file():
-            fail(f"{cli}: pm-startup surface missing: "
-                 f"{path.relative_to(REPO_ROOT)}")
-            any_failed = True
-            continue
-
-        if kind == "skill-md":
-            body = path.read_text()
-        elif kind == "gemini-toml":
-            try:
-                with open(path, "rb") as f:
-                    data = tomllib.load(f)
-            except Exception as e:
-                fail(f"{cli}: TOML parse error in "
-                     f"{path.relative_to(REPO_ROOT)}: {e}")
-                any_failed = True
-                continue
-            body = data.get("prompt", "")
-            if not body:
-                fail(f"{cli}: {path.relative_to(REPO_ROOT)} has no "
-                     f"`prompt` key")
-                any_failed = True
-                continue
-        else:
-            fail(f"{cli}: unknown surface kind {kind!r}")
-            any_failed = True
-            continue
-
-        step4, rag = _extract_pm_startup_sections(body)
-        if step4 != canon_step4:
-            fail(f"{cli}: {path.relative_to(REPO_ROOT)} — Step 4 "
-                 "diverges from canonical "
-                 f"{canonical.relative_to(REPO_ROOT)} "
-                 "(RAG reconciliation procedure must match exactly)")
-            any_failed = True
-            continue
-        if rag != canon_rag:
-            fail(f"{cli}: {path.relative_to(REPO_ROOT)} — Step 6 "
-                 "`**RAG:**` summary line diverges from canonical "
-                 f"{canonical.relative_to(REPO_ROOT)}")
-            any_failed = True
-            continue
-        ok(f"{cli}: {path.relative_to(REPO_ROOT)} — Step 4 + Step 6 "
-           "RAG line match canonical")
-
-    if any_failed:
-        return
+# ── Check 28 RETIRED in BD-221 (Antigravity conversion) ──────────────────────
+# `check_pm_startup_per_cli_parity` (and its `_extract_pm_startup_sections`
+# helper, which had no other consumer) are removed. pm-startup is now a single
+# pooled SSOT (`project-template/skills/pm-startup/SKILL.md`) distributed loose
+# to all CLIs by init-project — the per-CLI byte-parity surfaces this check
+# guarded no longer exist, so there is nothing to keep in sync. The registry
+# entry + the `CHECK_REGISTRY_EXPECTED_COUNT` were decremented in lock-step
+# (61 → 59 with Check 21). No per-check test existed for Check 28.
 
 
 # ── Check 29: Tracker-config schema (BD-078) ────────────────────────────────
@@ -5642,15 +5501,18 @@ _CHECK_43_ALLOWLIST: dict[str, str] = {
     "SKILL.md": "Per-skill filename; ambiguous-by-design at the meta-reference level (~70 skills collide)",
     "config.toml": "Generic config basename; ambiguous (multiple candidate locations across CLIs)",
     "settings.json": "Generic config basename; ambiguous (xcode/vscode/CLI companion templates)",
-    # ── Agent prompt meta-references (ambiguous-by-design; resolve to 3 candidates per agent: claude/gemini/docs-pack-prompts).
-    "coder.md": "Agent prompt meta-reference; ambiguous (3 candidates: claude/gemini/docs-pack-prompts)",
-    "architect.md": "Agent prompt meta-reference; ambiguous (3 candidates: claude/gemini/docs-pack-prompts)",
-    "reviewer.md": "Agent prompt meta-reference; ambiguous (3 candidates: claude/gemini/docs-pack-prompts)",
-    "planner.md": "Agent prompt meta-reference; ambiguous (3 candidates: claude/gemini/docs-pack-prompts)",
-    "tester.md": "Agent prompt meta-reference; ambiguous (3 candidates: claude/gemini/docs-pack-prompts)",
-    "auditor.md": "Agent prompt meta-reference; ambiguous (3 candidates: claude/gemini/docs-pack-prompts)",
-    "docs-researcher.md": "Agent prompt meta-reference; ambiguous (3 candidates: claude/gemini/docs-pack-prompts)",
-    "auditor-architecture.md": "Agent prompt meta-reference; ambiguous (3 candidates: claude/gemini/docs-pack-prompts)",
+    # ── Agent prompt meta-references (ambiguous-by-design; the basename exists
+    #    in ≥2 candidate dirs: .claude/agents, .codex/agents, the Antigravity
+    #    agent plugin bundle .agents-plugin/optiquity-agents/agents, and
+    #    docs/pack/prompts). Basename-keyed; the value is documentation only.
+    "coder.md": "Agent-prompt meta-reference; ambiguous-by-design (the basename exists in ≥2 candidate dirs: .claude/agents, .codex/agents, the Antigravity agent plugin bundle .agents-plugin/optiquity-agents/agents, docs/pack/prompts)",
+    "architect.md": "Agent-prompt meta-reference; ambiguous-by-design (the basename exists in ≥2 candidate dirs: .claude/agents, .codex/agents, the Antigravity agent plugin bundle .agents-plugin/optiquity-agents/agents, docs/pack/prompts)",
+    "reviewer.md": "Agent-prompt meta-reference; ambiguous-by-design (the basename exists in ≥2 candidate dirs: .claude/agents, .codex/agents, the Antigravity agent plugin bundle .agents-plugin/optiquity-agents/agents, docs/pack/prompts)",
+    "planner.md": "Agent-prompt meta-reference; ambiguous-by-design (the basename exists in ≥2 candidate dirs: .claude/agents, .codex/agents, the Antigravity agent plugin bundle .agents-plugin/optiquity-agents/agents, docs/pack/prompts)",
+    "tester.md": "Agent-prompt meta-reference; ambiguous-by-design (the basename exists in ≥2 candidate dirs: .claude/agents, .codex/agents, the Antigravity agent plugin bundle .agents-plugin/optiquity-agents/agents, docs/pack/prompts)",
+    "auditor.md": "Agent-prompt meta-reference; ambiguous-by-design (the basename exists in ≥2 candidate dirs: .claude/agents, .codex/agents, the Antigravity agent plugin bundle .agents-plugin/optiquity-agents/agents, docs/pack/prompts)",
+    "docs-researcher.md": "Agent-prompt meta-reference; ambiguous-by-design (the basename exists in ≥2 candidate dirs: .claude/agents, .codex/agents, the Antigravity agent plugin bundle .agents-plugin/optiquity-agents/agents, docs/pack/prompts)",
+    "auditor-architecture.md": "Agent-prompt meta-reference; ambiguous-by-design (the basename exists in ≥2 candidate dirs: .claude/agents, .codex/agents, the Antigravity agent plugin bundle .agents-plugin/optiquity-agents/agents, docs/pack/prompts)",
     # ── Per-entry skeleton variants (similar to phase-N.md / BD-NNN.md already allowlisted).
     "phase-N.M.md": "Per-entry implementation-plan filename pattern variant (sub-phase placeholder)",
     "phase-0.md": "Per-entry implementation-plan filename pattern variant (phase-zero placeholder)",
@@ -5722,7 +5584,8 @@ _CHECK_43_PACK_OPS_CLIENT_INSTALLED = ("pack-ops/HELP-FRAGMENT-TRACKER.md",)
 #       double-extension files like `config.toml.example` /
 #       `.env.example`, and `.proto`) so the leak scanner inspects
 #       `.codex/config.toml.example`, `.mcp.json.example`,
-#       `.gemini/.env.example`, and the proto tree. Kept Check-43-local
+#       `.agents/mcp_config.json.example`, and the proto tree. Kept
+#       Check-43-local
 #       (NOT folded into `_CHECK_40_FILE_EXTS`) so Check 40's pack-ops/
 #       walk + the shared bare-ref regexes are unchanged.
 _CHECK_43_EXTRA_WALK_SUFFIXES = ("example", "proto")
@@ -7273,7 +7136,7 @@ def check_pack_memory_rationale_bijection() -> None:
 
 # The anti-restate scan targets: the spawn-rule reference surfaces +
 # the spawn-relevant skills (the 4 the design names). Skills live under
-# `.claude/skills/`; the trinity skill mirrors (.codex / .gemini) carry
+# `.claude/skills/`; the trinity skill mirrors (.codex / .agents) carry
 # identical content (parity-checked elsewhere) — scanning the .claude
 # copy is sufficient for the anti-restate teeth.
 _CHECK_46_ANTI_RESTATE_SURFACES = (
@@ -8388,16 +8251,19 @@ _CHECK_51_RECOMMEND_TOKEN = "recommendation_should_recommend"
 # directory) MUST be ADDED here — otherwise leg 3 develops a blind spot
 # and a re-armed recommendation invoker on the new surface would pass the
 # guard undetected. Keep this set in lock-step with the per-CLI startup
-# skill/command surface (currently pack-startup ×3 + pm-startup ×4 per
-# design §6.3 / EE-7).
+# skill/command surface. BD-221 (Antigravity conversion): Antigravity reads
+# workspace skills at `.agents/skills/<name>/SKILL.md`, so the Antigravity
+# skill dirs (pack-root `.agents/skills` + the client
+# `project-template/.agents/skills` install target) are the third legs.
+# Non-existent dirs are skipped.
 _CHECK_51_RECOMMEND_SKILL_DIRS = (
     ".claude/skills",
     ".codex/skills",
-    ".gemini/commands",
+    ".agents/skills",
     "project-template/.claude/skills",
     "project-template/.codex/skills",
     "project-template/skills",
-    "project-template/.gemini/commands",
+    "project-template/.agents/skills",
 )
 # Leg 4 line-anchored entry-content artifact patterns (empty allowlist).
 _CHECK_51_ENTRY_TREES = ("backlog", "changelog")
@@ -8612,12 +8478,14 @@ _CHECK_52_PACK_AGENTS = (
     "pack-planner",
     "pack-reviewer",
 )
-# The three CLI agent dirs + the per-CLI file extension. Bounded — adding a
-# CLI surface requires extending this map (enumerate-encoding-surfaces).
+# The three CLI agent surfaces + the per-CLI file extension. Bounded — adding
+# a CLI surface requires extending this map (enumerate-encoding-surfaces).
+# BD-221 (Antigravity conversion): the third leg is the Antigravity pack-agents
+# plugin bundle (.agents-plugin/pack-agents/agents).
 _CHECK_52_AGENT_DIRS = (
     (".claude/agents", "md"),
     (".codex/agents", "toml"),
-    (".gemini/agents", "md"),
+    (".agents-plugin/pack-agents/agents", "md"),
 )
 # Prose mandate-header signatures (the class discriminator — NEVER `tools:`).
 _CHECK_52_RW_HEADER = "**Source-write within scope.**"
@@ -9083,6 +8951,12 @@ def check_optional_features_presence() -> None:
 # RUNTIME (ci-check-runtime-compounding): 10 single-file reads + bounded
 # substring/regex tests; NO subprocess, NO whole-tree scan. Trivial across the
 # battery's ~202 validate-pack invocations.
+# BD-221 (Antigravity conversion): the third commit-discipline skill mirror is
+# `.agents/skills/commit-discipline/SKILL.md` (Antigravity reads workspace
+# skills at `.agents/skills/<name>/SKILL.md`) and the third pack-coder agent
+# surface is the Antigravity pack-agents plugin bundle
+# (`.agents-plugin/pack-agents/agents/pack-coder.md`). The trinity `GEMINI.md`
+# FILE stays. The enumeration set is still 10 surfaces.
 _CHECK_56_VERB_PARITY_SURFACES = (
     "CLAUDE.md",
     "AGENTS.md",
@@ -9090,10 +8964,10 @@ _CHECK_56_VERB_PARITY_SURFACES = (
     "pack-ops/PACK-MEMORY-RATIONALE.md",
     ".claude/skills/commit-discipline/SKILL.md",
     ".codex/skills/commit-discipline/SKILL.md",
-    ".gemini/skills/commit-discipline/SKILL.md",
+    ".agents/skills/commit-discipline/SKILL.md",
     ".claude/agents/pack-coder.md",
     ".codex/agents/pack-coder.toml",
-    ".gemini/agents/pack-coder.md",
+    ".agents-plugin/pack-agents/agents/pack-coder.md",
 )
 # The CANONICAL §5.1 verb set — the FULL §5.1 destructive-git-verb denylist,
 # the complete 28-verb set with NO exceptions, measured present in ALL 10
@@ -9119,8 +8993,20 @@ _CHECK_56_CANONICAL_VERBS = (
     "am",
 )
 # The catch-all principle phrase — the load-bearing closing of the denylist
-# (design §5.2). Measured present in all 10 surfaces.
+# (design §5.2). Measured present in all 10 surfaces. BD-221: the phrase is
+# matched WHITESPACE-NORMALIZED (runs of whitespace collapsed to one space)
+# so a markdown LINE-WRAP between words ("including but not\nlimited to") still
+# counts — the Antigravity pack-agents bundle pack-coder.md wraps the phrase
+# across a line; a brittle byte-exact substring would miss it.
 _CHECK_56_PRINCIPLE_PHRASE = "including but not limited to"
+
+
+def _check_56_phrase_present(text: str, phrase: str) -> bool:
+    """True iff `phrase` appears in `text` modulo whitespace runs (a
+    markdown line-wrap inside the phrase still counts). Bounded string ops."""
+    norm_text = " ".join(text.split())
+    norm_phrase = " ".join(phrase.split())
+    return norm_phrase in norm_text
 
 
 def _check_56_verb_present(text: str, verb: str) -> bool:
@@ -9176,7 +9062,7 @@ def check_destructive_git_verb_parity() -> None:
                 f"MUST carry the full canonical verb set (enumerate-encoding-"
                 f"surfaces; the C4 verb-folding must stay in parity)."
             )
-        if _CHECK_56_PRINCIPLE_PHRASE not in text:
+        if not _check_56_phrase_present(text, _CHECK_56_PRINCIPLE_PHRASE):
             any_fail = True
             fail(
                 f"Check 56 (Guard-C) — {surface} is MISSING the catch-all "
@@ -9210,9 +9096,9 @@ def check_destructive_git_verb_parity() -> None:
 # BINDS TO THE PROSE HEADER, NEVER `tools:` (design §13.2). Several RO
 # project agents (`reviewer`, `architect`, `auditor`, …) carry
 # `Write, Edit` in their Claude `tools:` line yet are RO — keying on
-# `tools:` would misclassify them. The Gemini agent files carry NO `tools:`
-# field at all (measured 0/16), so a `tools:`-keyed guard is impossible
-# there anyway. The discriminator is the prose mandate header
+# `tools:` would misclassify them. The Antigravity bundle agent files carry
+# NO `tools:` field at all (measured 0/16), so a `tools:`-keyed guard is
+# impossible there anyway. The discriminator is the prose mandate header
 # (`**Read-only.**` = RO / `**Write-capable (scoped).**` /
 # `**Write-capable (script).**` = RW), the PM-CHAT profile table, and the
 # `READONLY_AGENTS` runtime array — never the tool list.
@@ -9253,13 +9139,15 @@ _CHECK_55_PROJECT_AGENTS = (
 # Everything else in `_CHECK_55_PROJECT_AGENTS` is RO. This tuple is the
 # bound the guard asserts the three legs agree on.
 _CHECK_55_RW_AGENTS = ("coder", "repo-ops")
-# The three CLI agent dirs + the per-CLI file extension (project-template/).
+# The three CLI agent surfaces + the per-CLI file extension (project-template/).
 # Bounded — adding a CLI surface requires extending this map
-# (enumerate-encoding-surfaces).
+# (enumerate-encoding-surfaces). BD-221 (Antigravity conversion): the third leg
+# is the Antigravity client plugin bundle (.agents-plugin/optiquity-agents/
+# agents).
 _CHECK_55_AGENT_DIRS = (
     ("project-template/.claude/agents", "md"),
     ("project-template/.codex/agents", "toml"),
-    ("project-template/.gemini/agents", "md"),
+    ("project-template/.agents-plugin/optiquity-agents/agents", "md"),
 )
 # Prose mandate-header signatures (the class discriminator — NEVER `tools:`).
 # RW has two flavors on the project side: `coder` is scoped, `repo-ops` is
@@ -9339,8 +9227,8 @@ def check_project_rw_ro_two_class() -> None:
     READONLY_AGENTS array, and the per-agent-file PROSE mandate headers —
     and that the RW set = exactly {`coder`, `repo-ops`}, for the 16 project
     agents × 3 CLIs. Binds to the prose header, NEVER `tools:` (project RO
-    agents carry Write/Edit; Gemini files carry no `tools:`). Sized to the
-    measured 16-agent set (2 RW + 14 RO).
+    agents carry Write/Edit; Antigravity bundle files carry no `tools:`).
+    Sized to the measured 16-agent set (2 RW + 14 RO).
     """
     print("\n── Check 55: BD-197 project RW/RO two-class consistency "
           "(Guard-B project) ──")
@@ -9540,18 +9428,20 @@ _CHECK_57_TRINITY_SURFACES = (
 # The 16 project agents × 3 CLIs (the same exhaustive set Check 55 binds to;
 # kept as a local tuple so a NEW project agent or CLI surface must be added
 # here in lock-step — enumerate-encoding-surfaces — else the guard develops a
-# blind spot). The per-CLI extension differs (.md for Claude/Gemini, .toml
-# for Codex).
+# blind spot). The per-CLI extension differs (.md for Claude + the Antigravity
+# bundle, .toml for Codex).
 _CHECK_57_PROJECT_AGENTS = (
     "architect", "planner", "reviewer", "tester", "docs-researcher",
     "grpc-schema", "auditor", "auditor-architecture", "auditor-code",
     "auditor-docs", "auditor-ops", "auditor-security", "auditor-tests",
     "auditor-ui", "coder", "repo-ops",
 )
+# BD-221 (Antigravity conversion): the third leg is the Antigravity client
+# plugin bundle (.agents-plugin/optiquity-agents/agents).
 _CHECK_57_AGENT_DIRS = (
     ("project-template/.claude/agents", "md"),
     ("project-template/.codex/agents", "toml"),
-    ("project-template/.gemini/agents", "md"),
+    ("project-template/.agents-plugin/optiquity-agents/agents", "md"),
 )
 _CHECK_57_LAUNCHER_SURFACE = "project-template/agent-run.sh"
 # The CANONICAL project-consistent verb set — the 8-verb INTERSECTION
@@ -9767,7 +9657,8 @@ def _build_check_registry():
         # they carry `number=None` — selectable by label only, never by integer.
         (None, "check_issue_template_forms", check_issue_template_forms, W),
         (None, "check_template_archive_v11", check_template_archive_v11, W),
-        (21, "check_pack_help_per_cli_parity", check_pack_help_per_cli_parity, W),
+        # ── Check 21 RETIRED in BD-221 (Antigravity conversion): pack-help is a
+        # pooled skill; the script-ref assertion folded into Check 1. ──
         (22, "check_help_fragment_freshness", check_help_fragment_freshness, W),
         (23, "check_help_fragment_completeness", check_help_fragment_completeness, W),
         # ── Check 24 callsite removed in BD-194 (Candidate 6). See
@@ -9776,7 +9667,8 @@ def _build_check_registry():
         (25, "check_customization_detection_regression_guard", check_customization_detection_regression_guard, W),
         (26, "check_migrator_framework_inventory", check_migrator_framework_inventory, W),
         (27, "check_agent_canonical_phrases", check_agent_canonical_phrases, W),
-        (28, "check_pm_startup_per_cli_parity", check_pm_startup_per_cli_parity, W),
+        # ── Check 28 RETIRED in BD-221 (Antigravity conversion): pm-startup is a
+        # single pooled SSOT; the per-CLI byte-parity surfaces no longer exist. ──
         (29, "check_tracker_config", check_tracker_config, W),
         (30, "check_recommendation_state_schema", check_recommendation_state_schema, W),
         (31, "check_skill_cell_consistency", check_skill_cell_consistency, W),
@@ -9941,8 +9833,8 @@ def _build_check_registry():
         # PM-CHAT `## Permission profiles` Read-only rows, the agent-run.sh
         # READONLY_AGENTS array, and the per-agent-file PROSE mandate headers
         # (16 agents × 3 CLIs); binds to the prose header, never `tools:` (project
-        # RO agents carry Write/Edit; Gemini files carry no `tools:`). The PROJECT
-        # analog of Guard-B(pack) (Check 52). Per ARCHITECTURE-BD-197-WORKTREE-
+        # RO agents carry Write/Edit; Antigravity bundle files carry no `tools:`).
+        # The PROJECT analog of Guard-B(pack) (Check 52). Per ARCHITECTURE-BD-197-WORKTREE-
         # ISOLATION-RECONCILED.md §13.2 + §4.3. Check number 55 (a non-contiguous
         # gap relative to commit order is expected and tolerated; numbers ≠
         # commit order).

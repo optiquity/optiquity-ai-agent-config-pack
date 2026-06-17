@@ -9,7 +9,7 @@
 # and that the RW set = exactly {`coder`, `repo-ops`}, for the 16 project
 # agents × 3 CLIs. It BINDS TO THE PROSE HEADER, NEVER `tools:` (project RO
 # agents like `reviewer`/`architect`/`auditor` carry `Write, Edit` yet are
-# RO; the Gemini files carry NO `tools:` field at all). This test proves the
+# RO; the Antigravity bundle files carry NO `tools:` field at all). This test proves the
 # guard PASSes on the well-formed tree and FAILs on injected mismatches in
 # each of the three legs, in a synthetic tree (the real tree is never
 # mutated).
@@ -30,8 +30,8 @@
 #                      `tools:`: an RO agent given a write-capable
 #                      `tools:` line but keeping its RO header stays RO
 #            T7 PASS — proves the guard works when the agent file has NO
-#                      `tools:` field at all (the Gemini case): RO header
-#                      alone classifies it RO
+#                      `tools:` field at all (the Antigravity bundle case):
+#                      RO header alone classifies it RO
 #            T8 FAIL — READONLY_AGENTS lists a stray unknown agent token
 #   Group 2: end-to-end validate-pack.py exit-status on HEAD (Check 55 clean)
 #
@@ -139,7 +139,7 @@ def agent_run_text(ro_list=None, extra_token=None):
     body += ")\n"
     return "#!/usr/bin/env bash\n" + body
 
-# Per-agent body. tools_line optional (the Gemini files have none).
+# Per-agent body. tools_line optional (the Antigravity bundle files have none).
 def agent_body(header, tools_line=None):
     out = ""
     if tools_line is not None:
@@ -231,11 +231,11 @@ fc, cap = run(dict(extra_tools_for="reviewer"))
 if fc != 0:
     failures.append(f"T6 (RO-despite-write-tools binds to prose header) expected 0 failures, got {fc}: {cap}")
 
-# T7: PASS — the Gemini case: agent files with NO tools: field at all. The RO
-# header alone classifies them RO; the guard never needs tools:.
+# T7: PASS — the Antigravity bundle case: agent files with NO tools: field at
+# all. The RO header alone classifies them RO; the guard never needs tools:.
 fc, cap = run(dict(no_tools=True))
 if fc != 0:
-    failures.append(f"T7 (no tools: field at all, Gemini case) expected 0 failures, got {fc}: {cap}")
+    failures.append(f"T7 (no tools: field at all, Antigravity bundle case) expected 0 failures, got {fc}: {cap}")
 
 # T8: FAIL — READONLY_AGENTS lists a stray unknown agent token.
 fc, cap = run(dict(run_text=agent_run_text(extra_token="x-bogus")))

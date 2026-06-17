@@ -14,7 +14,7 @@
 # different audiences and different rules by design. This test
 # exercises both PASS and FAIL paths for each conceptual location
 # (project-template-style + pack-root-style trees) plus FAIL paths
-# for missing files and forbidden Gemini extras.
+# for missing files and forbidden extra H2s.
 #
 # Usage: bash scripts/tests/test-validate-pack-check-18.sh
 
@@ -121,7 +121,7 @@ if "H2 structures match" not in out:
 # T2: PASS — GEMINI adds the allowed intrinsic H2s; CLAUDE/AGENTS match.
 claude = "## A\n\nx\n\n## B\n\ny\n"
 agents = "## A\n\nx\n\n## B\n\ny\n"
-gemini = "## A\n\nx\n\n## Agent roster\n\nz\n\n## B\n\ny\n\n## Gemini CLI operating notes\n\nw\n"
+gemini = "## A\n\nx\n\n## Agent roster\n\nz\n\n## B\n\ny\n\n## Antigravity CLI operating notes\n\nw\n"
 fc, out = run_check_with_synthetic_trinity(claude, agents, gemini, label='synth-pt2')
 if fc != 0:
     failures.append(f"T2 (GEMINI intrinsic PASS) expected 0 failures, got {fc}: {out}")
