@@ -44,7 +44,7 @@ make_target() {
 make_configured_target() {
     local d
     d=$(make_target)
-    mkdir -p "$d/.claude" "$d/docs/pack" "$d/.codex" "$d/.gemini"
+    mkdir -p "$d/.claude" "$d/docs/pack" "$d/.codex" "$d/.agents"
     printf '# CLAUDE.md (project)\n' > "$d/CLAUDE.md"
     printf '# AGENTS.md (project)\n' > "$d/AGENTS.md"
     printf '# GEMINI.md (project)\n' > "$d/GEMINI.md"
@@ -176,9 +176,16 @@ assert_contains "3.1 S11 stage ran" "$out" \
 [[ -f "$T/.codex/skills/pack-help/SKILL.md" ]] \
     && t_pass "3.2 .codex/skills/pack-help/SKILL.md present" \
     || t_fail "3.2 .codex/skills/pack-help missing"
-[[ -f "$T/.gemini/commands/pack-help.toml" ]] \
-    && t_pass "3.2 .gemini/commands/pack-help.toml present" \
-    || t_fail "3.2 .gemini/commands/pack-help.toml missing"
+# BD-221: pack-help is a pool skill distributed LOOSE to the Antigravity
+# workspace at .agents/skills/pack-help/SKILL.md (the former `.toml`
+# command surface is retired).
+[[ -f "$T/.agents/skills/pack-help/SKILL.md" ]] \
+    && t_pass "3.2 .agents/skills/pack-help/SKILL.md present" \
+    || t_fail "3.2 .agents/skills/pack-help missing"
+# BD-221: the Antigravity workspace skills dir is populated by stage S4.
+[[ -d "$T/.agents/skills" ]] \
+    && t_pass "3.2 .agents/skills/ present (Antigravity workspace skills)" \
+    || t_fail "3.2 .agents/skills/ missing"
 
 # BD-193 F4/F5 + BD-194: client HELP-FRAGMENT-TRACKER.md install source is the
 # project-template-side file (separate-artifact, separate-audience per pack memory

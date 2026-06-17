@@ -393,7 +393,7 @@ Developer transition notice
 ---------------------------
 After this run, the project will use the pack's file names and
 locations as the standard going forward:
-  - Agent config: .claude/, .codex/, .gemini/
+  - Agent config: .claude/, .codex/, .agents/
   - Context: CLAUDE.md, AGENTS.md, GEMINI.md at the project root
   - Methodology & templates: docs/pack/
   - Scripts: scripts/
@@ -419,21 +419,22 @@ confirm_proceed() {
 
 stage_s1_skeleton() {
     say "── S1 — directory skeleton ──"
-    mkdir -p "$TARGET/.claude/agents" "$TARGET/.codex/agents" "$TARGET/.gemini/agents" \
-             "$TARGET/.claude/skills" "$TARGET/.codex/skills" "$TARGET/.gemini/skills" \
+    mkdir -p "$TARGET/.claude/agents" "$TARGET/.codex/agents" \
+             "$TARGET/.claude/skills" "$TARGET/.codex/skills" "$TARGET/.agents/skills" \
              "$TARGET/docs/pack" "$TARGET/docs/project" "$TARGET/docs/reference" \
              "$TARGET/scripts"
     # Verification
     local d
-    for d in .claude/agents .codex/agents .gemini/agents docs/pack scripts; do
+    for d in .claude/agents .codex/agents docs/pack scripts; do
         [[ -d "$TARGET/$d" ]] || fail_stage S1 "missing directory $d after creation"
     done
 }
 
 stage_s2_agents() {
-    say "── S2 — copy pack agent files (three tools) ──"
+    say "── S2 — copy pack agent files (Claude/Codex loose + Antigravity bundle) ──"
     local tool ext pack_src dst
-    for tool in claude codex gemini; do
+    # Claude/Codex keep the loose per-CLI agent dirs.
+    for tool in claude codex; do
         case "$tool" in codex) ext="toml" ;; *) ext="md" ;; esac
         pack_src="$PACK/project-template/.${tool}/agents"
         dst="$TARGET/.${tool}/agents"
@@ -444,32 +445,44 @@ stage_s2_agents() {
             cp "$f" "$dst/"
         done
     done
+    # Antigravity agents ship as a plugin BUNDLE (not loose) — stage the
+    # whole client bundle dir.
+    local bundle_src="$PACK/project-template/.agents-plugin/optiquity-agents"
+    local bundle_dst="$TARGET/.agents-plugin/optiquity-agents"
+    [[ -d "$bundle_src" ]] || fail_stage S2 "pack source missing: $bundle_src"
+    mkdir -p "$TARGET/.agents-plugin"
+    cp -R "$bundle_src" "$TARGET/.agents-plugin/"
     # Verify agent counts match pack
     local pack_count dst_count
     pack_count=$(find "$PACK/project-template/.claude/agents" -maxdepth 1 -name "*.md" | wc -l | tr -d ' ')
-    for tool in claude codex gemini; do
+    for tool in claude codex; do
         case "$tool" in codex) ext="toml" ;; *) ext="md" ;; esac
         dst_count=$(find "$TARGET/.${tool}/agents" -maxdepth 1 -name "*.${ext}" | wc -l | tr -d ' ')
         (( dst_count == pack_count )) || \
             fail_stage S2 "agent count mismatch: .${tool}/agents has $dst_count, expected $pack_count"
     done
+    local bundle_count
+    bundle_count=$(find "$bundle_dst/agents" -maxdepth 1 -name "*.md" | wc -l | tr -d ' ')
+    (( bundle_count == pack_count )) || \
+        fail_stage S2 "agent count mismatch: .agents-plugin/optiquity-agents/agents has $bundle_count, expected $pack_count"
 }
 
 stage_s3_configs() {
     say "── S3 — copy pack configs ──"
 
     # proj-path → pack-path map for K-class files where the pack-side
-    # template lives under a different name. `.gemini/.env` is read by
-    # Gemini at the project level; the pack ships its template at
-    # `.gemini/.env.example` (project-template/.gitignore blocks plain
-    # `.env` to protect against secrets; `.env.example` is committable).
-    # init-project writes the live `.env` from the example so Gemini picks
-    # it up immediately. Implemented as a function (not associative array)
-    # for bash 3.2 compatibility (macOS default bash).
+    # template lives under a different name. `.agents/mcp_config.json` is
+    # Antigravity's workspace MCP config; the pack ships its template at
+    # `.agents/mcp_config.json.example` (project-template/.gitignore blocks
+    # the live `.agents/mcp_config.json` to protect against secrets; the
+    # `.example` is committable). init-project writes the live
+    # `mcp_config.json` from the example so Antigravity picks it up
+    # immediately. Implemented as a function (not associative array) for
+    # bash 3.2 compatibility (macOS default bash).
     pack_template_for_proj_path() {
         case "$1" in
-            .gemini/.env) echo ".gemini/.env.example" ;;
-            *)            echo "$1" ;;
+            .agents/mcp_config.json) echo ".agents/mcp_config.json.example" ;;
+            *)                       echo "$1" ;;
         esac
     }
 
@@ -479,9 +492,7 @@ stage_s3_configs() {
         .codex/config.toml.example \
         .codex/requirements.toml \
         .claude/settings.json \
-        .mcp.json.example \
-        .gemini/settings.json \
-        .gemini/.env \
+        .agents/mcp_config.json \
     ; do
         local src_relpath
         src_relpath=$(pack_template_for_proj_path "$f")
@@ -497,19 +508,28 @@ stage_s3_configs() {
     done
     [[ -f "$TARGET/.codex/config.toml" ]] || fail_stage S3 ".codex/config.toml missing after copy"
     [[ -s "$TARGET/.claude/settings.json" ]] || fail_stage S3 ".claude/settings.json empty or missing"
-    [[ -f "$TARGET/.gemini/.env" ]] || fail_stage S3 ".gemini/.env missing after copy (BD-059 trinity-rule parity)"
-    [[ -f "$TARGET/.gemini/settings.json" ]] || fail_stage S3 ".gemini/settings.json missing after copy (BD-059 trinity-rule parity)"
+    [[ -f "$TARGET/.agents/mcp_config.json" ]] || fail_stage S3 ".agents/mcp_config.json missing after copy (Antigravity workspace MCP config)"
 }
 
 stage_s4_skills() {
     say "── S4 — distribute skills (SKILL.md only) ──"
-    local skill_dir name tool
+    # Antigravity reads workspace skills at `.agents/skills/<name>/SKILL.md`.
+    # The 3-way distribution is now claude/codex/agents.
+    local skill_dir name tool dst_tool_dir
     for skill_dir in "$PACK/project-template/skills"/*/; do
         [[ -d "$skill_dir" ]] || continue
         name=$(basename "$skill_dir")
-        for tool in claude codex gemini; do
-            mkdir -p "$TARGET/.${tool}/skills/$name"
-            cp "$skill_dir/SKILL.md" "$TARGET/.${tool}/skills/$name/SKILL.md"
+        for tool in claude codex agents; do
+            dst_tool_dir=".${tool}/skills/$name"
+            mkdir -p "$TARGET/$dst_tool_dir"
+            # For existing installs, route through the classifier-aware copy
+            # so a project's pre-existing Antigravity skill layout is
+            # preserved rather than overwritten (detect.sh classify path).
+            if [[ "$CLASS" == existing-* ]]; then
+                existing_classifier_copy "$skill_dir/SKILL.md" "$TARGET/$dst_tool_dir/SKILL.md"
+            else
+                cp "$skill_dir/SKILL.md" "$TARGET/$dst_tool_dir/SKILL.md"
+            fi
         done
     done
     # Verify: every pack skill has three destination SKILL.md files
@@ -517,7 +537,7 @@ stage_s4_skills() {
     for skill_dir in "$PACK/project-template/skills"/*/; do
         [[ -d "$skill_dir" ]] || continue
         name=$(basename "$skill_dir")
-        for tool in claude codex gemini; do
+        for tool in claude codex agents; do
             if [[ ! -f "$TARGET/.${tool}/skills/$name/SKILL.md" ]]; then
                 warn "missing .${tool}/skills/$name/SKILL.md"
                 missing=1
@@ -957,39 +977,16 @@ stage_s11_v11_artifacts() {
         done
     fi
 
-    # 4. Per-CLI pack-help surfaces (BD-077). Source files live under each
-    #    CLI's directory in the pack template; targets mirror that layout.
-    if [[ -d "$PACK/project-template/.claude/skills/pack-help" ]]; then
-        mkdir -p "$TARGET/.claude/skills/pack-help"
-        "$copy_fn" "$PACK/project-template/.claude/skills/pack-help/SKILL.md" \
-            "$TARGET/.claude/skills/pack-help/SKILL.md"
-    fi
-    if [[ -d "$PACK/project-template/.codex/skills/pack-help" ]]; then
-        mkdir -p "$TARGET/.codex/skills/pack-help"
-        "$copy_fn" "$PACK/project-template/.codex/skills/pack-help/SKILL.md" \
-            "$TARGET/.codex/skills/pack-help/SKILL.md"
-    fi
-    if [[ -f "$PACK/project-template/.gemini/commands/pack-help.toml" ]]; then
-        mkdir -p "$TARGET/.gemini/commands"
-        "$copy_fn" "$PACK/project-template/.gemini/commands/pack-help.toml" \
-            "$TARGET/.gemini/commands/pack-help.toml"
-    fi
-    # BD-180 observation A: pm-startup.toml is the Gemini surface for the
-    # /pm-startup command (parallel to pack-help.toml). The Claude and Codex
-    # surfaces live as `.claude/skills/pm-startup/SKILL.md` +
-    # `.codex/skills/pm-startup/SKILL.md` distributed by stage S4 from the
-    # canonical pool. Without this explicit copy, Gemini clients would lack
-    # the pm-startup command at fresh install.
-    if [[ -f "$PACK/project-template/.gemini/commands/pm-startup.toml" ]]; then
-        mkdir -p "$TARGET/.gemini/commands"
-        "$copy_fn" "$PACK/project-template/.gemini/commands/pm-startup.toml" \
-            "$TARGET/.gemini/commands/pm-startup.toml"
-    fi
+    # 4. pack-help + pm-startup are ordinary pool skills (project-template/
+    #    skills/{pack-help,pm-startup}/SKILL.md) distributed LOOSE to all
+    #    three CLIs by stage S4 (claude/codex/agents). No explicit per-CLI
+    #    copy block is needed here — Antigravity has no `.toml` command
+    #    format, so the skill IS the command.
 
     # 5. The pack-help shell script + its single dep (lib/detect.sh).
-    #    The per-CLI skills/commands above invoke `bash scripts/pack-help.sh`
+    #    The pool skills above invoke `bash scripts/pack-help.sh`
     #    relative to the project — without these copies the slash-command
-    #    surfaces (`/pack-help` on Claude/Codex/Gemini) fail at first
+    #    surfaces (`/pack-help` on Claude/Codex/Antigravity) fail at first
     #    invocation in a freshly-installed project (BD-097 audit B-1).
     mkdir -p "$TARGET/scripts/lib"
     if [[ -f "$PACK/scripts/pack-help.sh" ]]; then
@@ -1233,12 +1230,10 @@ cmd_update() {
         "project-template/AGENTS.md:AGENTS.md:trinity"
         "project-template/GEMINI.md:GEMINI.md:trinity"
         "project-template/.claude/settings.json:.claude/settings.json:claude-settings"
-        "project-template/.mcp.json.example:.mcp.json.example:claude-mcp-example"
         "project-template/.codex/config.toml:.codex/config.toml:codex-config"
         "project-template/.codex/config.toml.example:.codex/config.toml.example:codex-config-example"
         "project-template/.codex/requirements.toml:.codex/requirements.toml:codex-config"
-        "project-template/.gemini/.env.example:.gemini/.env:gemini-env"
-        "project-template/.gemini/settings.json:.gemini/settings.json:claude-settings"
+        "project-template/.agents/mcp_config.json.example:.agents/mcp_config.json:generic"
         "project-template/docs/pack/PM-CHAT.md:docs/pack/PM-CHAT.md:pm-chat"
         "project-template/docs/pack/PLATFORM-SKILLS.md:docs/pack/PLATFORM-SKILLS.md:generic"
         "project-template/docs/pack/PACK-FEEDBACK.md:docs/pack/PACK-FEEDBACK.md:generic"
@@ -1258,21 +1253,13 @@ cmd_update() {
         "project-template/.github/ISSUE_TEMPLATE/work-item.yml:.github/ISSUE_TEMPLATE/work-item.yml:generic"
         "project-template/.github/ISSUE_TEMPLATE/inbound.yml:.github/ISSUE_TEMPLATE/inbound.yml:generic"
         "project-template/.github/ISSUE_TEMPLATE/config.yml:.github/ISSUE_TEMPLATE/config.yml:generic"
-        "project-template/.claude/skills/pack-help/SKILL.md:.claude/skills/pack-help/SKILL.md:generic"
-        "project-template/.codex/skills/pack-help/SKILL.md:.codex/skills/pack-help/SKILL.md:generic"
-        "project-template/.gemini/commands/pack-help.toml:.gemini/commands/pack-help.toml:generic"
-        # BD-180 observation B (2026-05-20): pm-startup per-CLI skills
-        # parallel to pack-help. Canonical source at
-        # project-template/skills/pm-startup/SKILL.md is distributed by S4
-        # to all three CLIs at fresh install; without these entries,
-        # existing clients running `pack update` would silently NOT receive
-        # pm-startup skill content updates.
-        "project-template/.claude/skills/pm-startup/SKILL.md:.claude/skills/pm-startup/SKILL.md:generic"
-        "project-template/.codex/skills/pm-startup/SKILL.md:.codex/skills/pm-startup/SKILL.md:generic"
-        # BD-180 observation A (2026-05-20): Gemini surface for /pm-startup
-        # command. S11 explicit-copy block above mirrors the pack-help.toml
-        # treatment; this entry propagates updates to existing clients.
-        "project-template/.gemini/commands/pm-startup.toml:.gemini/commands/pm-startup.toml:generic"
+        # BD-221 (2026-06-16): pack-help + pm-startup are ordinary pool
+        # skills (project-template/skills/{pack-help,pm-startup}/SKILL.md)
+        # distributed LOOSE to claude/codex/agents by stage S4. The former
+        # per-CLI explicit-copy rows (.claude/.codex SKILL.md + the retired
+        # `.toml` command surfaces) are gone — the S4 fresh-install loop
+        # propagates pool-skill updates to existing clients (the BD-180
+        # bulk-copy pattern), and Antigravity has no `.toml` command format.
         # BD-180 observation D (2026-05-20): per-entry skeleton templates
         # (BD-166/BD-167). Installed at fresh init by S11 step 6 (lines
         # 891-947 — explicit `"$copy_fn"` calls for each); without these
@@ -1320,10 +1307,14 @@ cmd_update() {
     # / agent updates would silently NOT be picked up by --update.
     _cmd_update_iter_dir "project-template/scripts" "scripts" pack-script
     local tool
-    for tool in claude codex gemini; do
+    # Claude/Codex keep loose per-CLI agent dirs. Antigravity agents ship
+    # as a plugin BUNDLE — the bundle updates via its own dir leg below.
+    for tool in claude codex; do
         _cmd_update_iter_dir "project-template/.${tool}/agents" \
             ".${tool}/agents" pack-agent
     done
+    _cmd_update_iter_dir "project-template/.agents-plugin/optiquity-agents/agents" \
+        ".agents-plugin/optiquity-agents/agents" pack-agent
 
     # Render truthful report.
     local report="$state_dir/report.md"
@@ -1362,10 +1353,14 @@ cmd_update() {
 # Bulk-copied directories (mass-installed by stage loops; not enumerated
 # file-by-file in the START/END block below):
 #   * project-template/skills/*/SKILL.md
-#       -> .{claude,codex,gemini}/skills/*/SKILL.md   [S4 canonical-pool loop]
-#   * project-template/.{claude,codex,gemini}/agents/*.md
-#       -> .{claude,codex,gemini}/agents/*.md
-#       [S5-adjacent per-CLI agent install + _cmd_update_iter_dir]
+#       -> .{claude,codex,agents}/skills/*/SKILL.md   [S4 canonical-pool loop]
+#   * project-template/.{claude,codex}/agents/*.md
+#       -> .{claude,codex}/agents/*.md                (loose per-CLI agents)
+#       [S2 per-CLI agent install + _cmd_update_iter_dir]
+#   * project-template/.agents-plugin/optiquity-agents/   (Antigravity plugin BUNDLE)
+#       -> .agents-plugin/optiquity-agents/          [S2 bundle stage + _cmd_update_iter_dir]
+#       (recursive-walk-covered by the project-template/ inventory; no
+#        per-file START/END rows)
 #   * project-template/scripts/*
 #       -> scripts/*                                  [S5 + _cmd_update_iter_dir]
 #   * <conditional masters: project-template/{pyproject.toml,pyrightconfig.json,
@@ -1395,12 +1390,10 @@ cmd_update() {
 #   project-template/AGENTS.md  ->  AGENTS.md  [stage:S7,cmd_update]
 #   project-template/GEMINI.md  ->  GEMINI.md  [stage:S7,cmd_update]
 #   project-template/.claude/settings.json  ->  .claude/settings.json  [stage:S3,cmd_update]
-#   project-template/.mcp.json.example  ->  .mcp.json.example  [stage:S3,cmd_update]
 #   project-template/.codex/config.toml  ->  .codex/config.toml  [stage:S3,cmd_update]
 #   project-template/.codex/config.toml.example  ->  .codex/config.toml.example  [stage:S3,cmd_update]
 #   project-template/.codex/requirements.toml  ->  .codex/requirements.toml  [stage:S3,cmd_update]
-#   project-template/.gemini/.env.example  ->  .gemini/.env  [stage:S3,cmd_update]
-#   project-template/.gemini/settings.json  ->  .gemini/settings.json  [stage:S3,cmd_update]
+#   project-template/.agents/mcp_config.json.example  ->  .agents/mcp_config.json  [stage:S3,cmd_update]
 #   project-template/.github/ISSUE_TEMPLATE/work-item.yml  ->  .github/ISSUE_TEMPLATE/work-item.yml  [stage:S11,cmd_update]
 #   project-template/.github/ISSUE_TEMPLATE/inbound.yml  ->  .github/ISSUE_TEMPLATE/inbound.yml  [stage:S11,cmd_update]
 #   project-template/.github/ISSUE_TEMPLATE/config.yml  ->  .github/ISSUE_TEMPLATE/config.yml  [stage:S11,cmd_update]
@@ -1409,12 +1402,10 @@ cmd_update() {
 #   project-template/docs/pack/PACK-FEEDBACK.md  ->  docs/pack/PACK-FEEDBACK.md  [stage:S6,cmd_update]
 #   project-template/docs/pack/PLATFORM-SKILLS.md  ->  docs/pack/PLATFORM-SKILLS.md  [stage:S6,cmd_update]
 #   project-template/docs/pack/PM-CHAT.md  ->  docs/pack/PM-CHAT.md  [stage:S6,cmd_update]
-#   project-template/.claude/skills/pack-help/SKILL.md  ->  .claude/skills/pack-help/SKILL.md  [stage:S11,cmd_update]
-#   project-template/.codex/skills/pack-help/SKILL.md  ->  .codex/skills/pack-help/SKILL.md  [stage:S11,cmd_update]
-#   project-template/.gemini/commands/pack-help.toml  ->  .gemini/commands/pack-help.toml  [stage:S11,cmd_update]
-#   project-template/.claude/skills/pm-startup/SKILL.md  ->  .claude/skills/pm-startup/SKILL.md  [stage:S4,cmd_update]
-#   project-template/.codex/skills/pm-startup/SKILL.md  ->  .codex/skills/pm-startup/SKILL.md  [stage:S4,cmd_update]
-#   project-template/.gemini/commands/pm-startup.toml  ->  .gemini/commands/pm-startup.toml  [stage:S11,cmd_update]
+#   (BD-221: pack-help + pm-startup are pool skills distributed LOOSE to
+#    .{claude,codex,agents}/skills/* by the S4 canonical-pool loop — see the
+#    bulk-copied-directories block above; no per-CLI START/END rows. The
+#    former `.toml` command surfaces are retired.)
 #   project-template/docs/project/backlog/_rules.md  ->  docs/project/backlog/_rules.md  [stage:S11,cmd_update]
 #   project-template/docs/project/backlog/_intro.md  ->  docs/project/backlog/_intro.md  [stage:S11,cmd_update]
 #   project-template/docs/project/implementation-plan/_rules.md  ->  docs/project/implementation-plan/_rules.md  [stage:S11,cmd_update]
@@ -1432,7 +1423,7 @@ cmd_update() {
 # Blast-radius sweep — §7.7
 blast_radius_sweep() {
     # PROMPT-TEMPLATES must not appear in installed pack-owned files.
-    local scope_dirs=(.claude .codex .gemini docs/pack scripts)
+    local scope_dirs=(.claude .codex .agents .agents-plugin docs/pack scripts)
     local scope_files=(CLAUDE.md AGENTS.md GEMINI.md agent-run.sh)
     local matches=0
     local d f
