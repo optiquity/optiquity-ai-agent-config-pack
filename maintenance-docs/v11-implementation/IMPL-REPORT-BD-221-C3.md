@@ -1,233 +1,128 @@
-# IMPL-REPORT — BD-221 C3 (Project trinity prose conversion)
+# IMPL-REPORT — BD-221 C3 (migrator-subsystem conversion, `pack-only`)
 
-**Commit:** C3 — `feat: v11 — BD-221 project trinity prose conversion (project-only)`
-**Agent:** pack-coder (fresh, C3). Ran **IN-PLACE** against the parent working tree.
-**Branch:** `v11-dev`. **Base HEAD (pre-edit):** `75ce90f` (post-C2).
-**Final HEAD (this report):** `75ce90fddbdc0c05780aeaa847aa1bf85c101de2` — NO commit made (agents-never-commit); edits left in the working tree for Pack Chat to stage/commit after the review/fix cycle.
-**Regime:** in-place (working tree dirty on exactly the 3 scoped files; no `/tmp` handoff dir named, so no patch-emit/handoff write — report goes to the named parent-tree path).
-**Date:** 2026-06-15. **bash:** 3.2.57 (no shell scripts touched in C3).
-**`agy --version`:** N/A — C3 touches no executable surface; `agy` is referenced only as prose in the converted trinity. The plugin-bundle source paths and the `agy plugin install` command referenced in prose were landed by C1 and verified present (see "Tree-state preflight").
+## Runtime regime (verified at startup + finish)
+- **Regime:** ISOLATED git worktree (merge-back via `/tmp` patch).
+- **pwd:** `/Users/david/Developer/optiquity-ai-agent-config-pack/.claude/worktrees/agent-a1fb1306a7195401d`
+- **HEAD (start = finish, agent never committed):** `d92e05494883e3d529e552672db7f23d1e2f4d8c`
+- **branch:** `worktree-agent-a1fb1306a7195401d` (off `v11-dev`; post-C2 tip C0+C1+C2 landed)
+- **Patch emitted:** `/tmp/handoff-bd221-C3/changes.patch` (1008 lines, 15 files, non-empty, valid `diff --git` headers). All changes are MODIFICATIONS (no new files) → `git diff HEAD` is a complete patch; ran `git add -A -N` defensively before the diff.
+- **Git state changes by agent:** NONE (read-only `git diff` + `add -N` only; no stage/commit/apply).
 
----
+## PREFLIGHT line
+```
+PREFLIGHT: 15/15 C3 edits complete; validate-pack delta NEW=∅ CLEARED=∅ (52 unchanged), Check 25 green (3/3 — MUST-1 fold worked); C3 lockstep tests PASS (detect 106/0, restore 36/0, migrator-core 19/0, migrator-manifest 12/0, capability-translation 12/0, customization-preserve 223/0, add-capability 10/0; migrate-v10-to-v11 + decompose/dry-run/gates rc=31-failures are Gate-2 validate-pack-red build-blocked→C4 (proven pre-existing); migrator-skills build-blocked→C6 fixture); move-not-delete assert PASS (Group 6 6/6); manifest deferred-to-C6; about to emit patch + IMPL-REPORT
+```
 
-## 1. Scope (exactly plan §3 C3 + Smaller-1 + §5 forward-looking)
+## validate-pack delta (fail-LINE level `comm` vs the clean C3 BASE = 52)
+- **BASE** (pre-edit, this clean worktree): `FAILED — 52 issue(s)`; Check 25 GREEN (`4/4` fixture rows).
+- **AFTER** (post-edit): `FAILED — 52 issue(s)`; Check 25 GREEN (`3/3` fixture rows — MUST-1 fold).
+- **NEW = AFTER \ BASE (`comm -13`): EMPTY** — zero new fail-lines introduced.
+- **CLEARED = BASE \ AFTER (`comm -23`): EMPTY** — zero fail-lines cleared.
+- **Check 25 STAYS GREEN through C3** — the `gemini-env` strategy removal (customization-preserve.sh) AND its Check-25 driver fixture-row removal (validate-pack.py) landed in lockstep in THIS commit, so no orphan red. The fixture count dropped 4/4 → 3/3 (decision b: no shipped env/permissions file → no Antigravity-equivalent customization scenario to replace it; the `gemini-env` fixture was dropped, not replaced).
+- **Check 26** (migrator-framework inventory) GREEN — all four migrator libs pass `bash -n`; `migrator_target_surface_for_version` + all 6 public-API fns + 9 exit-code constants present.
+- **Matches the plan's C3 expected-red EXACTLY:** "NONE NEW; clears NONE; Check 25 stays green; net after C3 = 52 (unchanged)."
 
-Project-only, lock-step across the three **project** trinity files:
-`project-template/GEMINI.md`, `project-template/CLAUDE.md`, `project-template/AGENTS.md`.
-Nothing else touched. No pack-root trinity, no plugin bundle, no config, no
-validators, no install/migrators, no fixtures/manifest.
+## C3 lockstep test results
+**Runnable at this HEAD (all PASS):**
+| Test | Result |
+|---|---|
+| `scripts/test-detect.sh` | 106/0 PASS |
+| `scripts/test-restore-from-backup.sh` | 36/0 PASS |
+| `scripts/test-migrator-core.sh` | 19/0 PASS |
+| `scripts/test-migrator-manifest.sh` | 12/0 PASS (no `.gemini` refs — unchanged) |
+| `scripts/test-migrator-capability-translation.sh` | 12/0 PASS (no `.gemini` refs — unchanged) |
+| `scripts/tests/test-customization-preserve.sh` | 223/0 PASS |
+| `scripts/tests/fixture-dependent/test-add-capability.sh` | 10/0 PASS |
 
----
+**`scripts/tests/test-migrate-v10-to-v11.sh`: 43 PASS / 6 FAIL.**
+- The 6 FAILs are ALL `rc=31` (`EXIT_GATE_FAILED`) from the migrator's **Gate 2 (post-Phase-A verify)**, which runs `validate-pack.py` against the PACK source. validate-pack is intermediate-RED (52, by cluster design) → Gate 2 fails → rc=31. **Build-blocked → C4** (when validate-pack goes green, Gate 2 PASSes).
+- **PROOF these are pre-existing, NOT C3-introduced:** ran a full migration using the HEAD (pre-C3) `migrate-v10-to-v11.sh` (`git show HEAD:...` to a temp file) → ALSO non-zero (Gate-2 validate-pack-red). The lockstep assertion I converted (`2.4 .gemini pack-help` → `.agents/skills/pack-help/SKILL.md`) now PASSES (it was the ONE conversion-caused failure; fixed).
+- **Group 6 (the SHOULD-1 move-not-delete deliverable) — ALL 6 PASS** (6.1–6.6).
 
-## 2. Tree-state preflight (C1/C2 landed; prose refs validated against the real tree)
+**`-decompose` (42/3), `-dry-run` (57/4), `-gates` (80/7):** ALL 14 failures are the SAME `rc=31` Gate-2 validate-pack-red build-block ("Gate 2 PASS expected", "[OK] validate-pack expected but absent", "rc=0 expected got 31"). **Build-blocked → C4.** No conversion-logic failures among them.
 
-| Concept (prose ref I wrote) | Actual on-disk state (post-C2) | Status |
+**`scripts/tests/fixture-dependent/test-migrator-skills.sh`: build-blocked → C6** (exit 3 = fixture precondition; requires built `test-fixtures/v10-realistic-ot/`, which the C6 `build.sh` produces; fixtures unbuilt at this HEAD). NOT a test failure.
+
+## move-not-delete assertion result (SHOULD-1 / OQ-2 deliverable)
+**PASS.** Added Group 6 to `test-migrate-v10-to-v11.sh` exercising `_v10_to_v11_retire_gemini` directly (sourcing the migrator under a new source-guard, so it runs independent of the build-blocked Gate-2 path). A client-customized departing `.gemini/` (x- custom agent + project-edited `.env` + legacy `.toml` command) is:
+- 6.1 `gemini-retired-docs/` holding dir created — PASS
+- 6.2 customized x- agent preserved in holding dir — PASS
+- 6.3 project-edited `.env` preserved in holding dir — PASS
+- 6.4 retired `.env` content faithful (never-delete guarantee) — PASS
+- 6.5 original `.gemini/` relocated (moved, not copied) — PASS
+- 6.6 idempotent no-op when no `.gemini/` present (rc=0) — PASS
+
+## Files changed inventory (all `pack-only`: `scripts/` + `scripts/lib/` + `scripts/tests/`)
+| Path | Type | Change |
 |---|---|---|
-| Client plugin bundle `.agents-plugin/optiquity-agents/` | `plugin.json`, `agents/` (16 templates), `RUNTIME-SUBAGENT-PATTERN.md` all present | EXISTS |
-| `agy plugin install ./.agents-plugin/optiquity-agents` | matches the RUNTIME-SUBAGENT-PATTERN.md install line landed in C1 | CONSISTENT |
-| `.agents/skills/` (skills install target) | C2 established `.agents/` (holds `mcp_config.json`); skills move to `.agents/skills/` per C2/C9 | CONSISTENT |
-| `RUNTIME-SUBAGENT-PATTERN.md` fallback | present in the bundle; my GEMINI.md roster body points at it | CONSISTENT |
-| old `.gemini/agents/` | already deleted by C1 (`ls` empty) | GONE |
+| `scripts/lib/detect.sh` | modified | CONVERT scan loops (drop `.gemini/agents`, `.gemini/skills`→`.agents/skills` in `detect_x_files` + `detect_improperly_added_files`); ADD `.agents/` marker to `detect_ai_config` (KEEP legacy `.gemini/` carve-out ii); ADD new `detect_antigravity_skills_layout` (OQ-E existing-install classify: loose-wins tie-break; bundled ONLY for the pack's own `optiquity-agents`; foreign plugin→none/loose). KEEP carve-out ii L154 marker + L922 legacy `pack-help.toml`; KEEP `GEMINI.md` FILE refs. |
+| `scripts/migrate-v10-to-v11.sh` | modified | CONVERT manifest WRITE-NEW rows (drop `.gemini/.env.example gemini-env`; `.gemini/settings.json`→`.agents/mcp_config.json.example`→`.agents/mcp_config.json claude-mcp-example`); drop `.gemini/agents` directory-sweep; CONVERT pack-help install → pool-distributed loose to `.claude/.codex/.agents`; net-new-skill loop `.gemini`→`.agents`; ADD `_v10_to_v11_retire_gemini` (gemini-retired-docs move-not-delete + EITHER-Gemini-OR-Antigravity idempotency + BD-ref-free user note, no `agy plugin import`); ADD source-guard so the helper is unit-testable. KEEP `GEMINI.md` FILE + the legacy-READ retire logic (carve-out ii). |
+| `scripts/lib/migrator-core.sh` | modified | CONVERT the **v11** `migrator_target_surface_for_version` case (`.gemini/agents`→`.agents-plugin/optiquity-agents/agents`; `.gemini/commands/pack-help.toml`→`.agents/skills/pack-help/SKILL.md`). KEEP the **v10** case Gemini-shaped (carve-out i — v10 IS the departing shape). KEEP `GEMINI.md` FILE rows (531/550). |
+| `scripts/lib/customization-preserve.sh` | modified | REMOVE the `gemini-env` strategy (doc comment, classify case, `_cp_strategy_gemini_env` fn, dispatch case). KEEP the legacy-READ `.gemini/agents/x-*` + `.gemini/agents/*.md` classify legs (carve-out ii). KEEP `GEMINI.md` FILE classify. |
+| `scripts/validate-pack.py` | modified | **MUST-1 fold ONLY:** remove the Check-25 `gemini-env` Fixture 2 (driver + expected-row), drop row count 4→3, update docstring/comment/OK message. NO other validate-pack edit (all other checks/constants = C4). |
+| `scripts/add-capability.sh` | modified | CONVERT the forward-contract banner pack-controlled-dir list `.{claude,codex,gemini}/agents/` → `.{claude,codex}/agents/`, `.{claude,codex,gemini}/skills/` → `.{claude,codex,agents}/skills/` (box alignment preserved). (No `.gemini/.env touch` exists at this HEAD — design grounding was stale; measure-then-bound: only the L11 banner was present.) |
+| `scripts/test-detect.sh` | modified | LOCKSTEP: `detect_ai_config` all-six fixture `.gemini`→`.agents` + assertion; ADD a legacy-`.gemini` detection test (carve-out ii); ADD a `detect_antigravity_skills_layout` test block (none/loose/bundled-own/foreign/both). |
+| `scripts/test-migrator-core.sh` | modified | LOCKSTEP: v11-surface assertion `.gemini/agents`→`.agents-plugin/optiquity-agents/agents`, `.gemini/commands/pack-help.toml`→`.agents/skills/pack-help/SKILL.md`, asserts no `.gemini/`. KEEP the v10-surface assertion Gemini-shaped (carve-out i). |
+| `scripts/test-restore-from-backup.sh` | modified | LOCKSTEP: backup fixture `.gemini/agents`→`.agents-plugin/optiquity-agents/agents`. KEEP `GEMINI.md` restore asserts. |
+| `scripts/tests/test-customization-preserve.sh` | modified | LOCKSTEP: remove `gemini-env` classify assert (1.8); replace inline Group-5 `gemini-env` scenario with a legacy-`.gemini` classify group (carve-out ii) + a `.gemini/.env`→`generic` assert; fix the strategy-coverage comment (drop `gemini-env`). |
+| `scripts/tests/test-migrate-v10-to-v11.sh` | modified | LOCKSTEP: pack-help install assert `.gemini/commands/pack-help.toml`→`.agents/skills/pack-help/SKILL.md`; ADD Group 6 move-not-delete deliverable (sources migrator under the source-guard). KEEP the Group-2b departing-`.gemini/.env` backup-capture asserts (carve-out i). |
+| `scripts/tests/fixtures/customization-preserve/v10-with-customization/manifest.tsv` | modified | `.gemini/.env` class `gemini-env`→`generic` (strategy retired). |
+| `scripts/tests/fixtures/customization-preserve/v10-with-customization/assertions.tsv` | modified | `.gemini/.env` dest→sidecar for the project value (generic text preserves ours in sidecar, dest=theirs). |
+| `scripts/tests/fixtures/customization-preserve/language-heterogeneous/manifest.tsv` | modified | `.gemini/.env` class `gemini-env`→`generic`. |
+| `scripts/tests/fixtures/customization-preserve/language-heterogeneous/assertions.tsv` | modified | `.gemini/.env` dest→sidecar adjustments for generic text strategy. |
 
-No prose ref points at a path that does not exist post-C1/C2.
+`test-fixtures/manifest.txt`: **UNCHANGED** (not regenerated — deferred to C6 per the prompt; `git diff --stat` shows no manifest change).
 
----
+## Plan deviations + discrepancies noted (design internal-contradiction reconciliations)
+1. **`migrator-core.sh` v10 vs v11 surface (design line-list vs carve-out i).** Design §5.5 line-list says "CONVERT 534/553/560". L534 is the **v10** case (`.gemini/agents`); L553/560 the **v11** case. The plan §C3 qualifies them as "WRITE-NEW manifest rows" — L534 is NOT WRITE-NEW (it declares the *departing v10 customization surface*, consumed by `dry-run.sh` with `FROM_VERSION=v10`; converting it would make the migrator read the wrong surface for a v10 project). Per carve-out (i) ("v10 source fixtures stay Gemini-shaped (migration inputs)") + the plan's "WRITE-NEW" qualifier, I **KEPT L534 (v10) Gemini-shaped and CONVERTED only the v11 case**. `test-migrator-core.sh` v10 assertion still asserts `.gemini/agents` present (unchanged); v11 assertion converted. Check 26 only validates the function's *presence* (not content), so neither choice drives a validate fail-line — disposition governed by carve-out + grep-zero (C12).
 
-## 3. Per-file change list
+2. **Fixture `.tsv` `.gemini/.env` rows (design §5.13 carve-out i vs gemini-env removal).** Design §5.13 lists "the 8 fixture `*.tsv` `.gemini` rows" as carve-out (i) KEEP, but those exact 8 rows assert the now-removed `gemini-env` CLASS+strategy — keeping them verbatim breaks the test. Reconciliation: **KEPT the v10 `.gemini/.env` source files (carve-out i — real v10 migration inputs)** but **UPDATED the manifest expected-class `gemini-env`→`generic` and the assertions to the generic-text behavior** (dest=theirs, ours preserved in sidecar; disposition `customization-detected-needs-reconciliation` unchanged). Empirically verified the generic strategy's output before writing the new assertions. This is the minimal change that honors BOTH carve-out (i) and the MUST-1/decision-b `gemini-env` removal.
 
-### 3.1 `project-template/GEMINI.md` (+the heaviest edits; intrinsic-H2 owner)
+3. **`add-capability.sh` `.gemini/.env touch` (design §5.4 / prompt grounding stale).** Design §5.4 / prompt said "drop the `.gemini/.env` touch". At this HEAD `add-capability.sh` has NO `.gemini/.env` touch — only the L11 forward-contract banner. Per measure-then-bound (grep is the authority on count), I converted only what exists (the L11 banner). `test-add-capability.sh` has no `.gemini` assertions; passes 10/0.
 
-1. **HOW TO USE comment** (top, above first H2 — allowlisted by Check 19): "Gemini CLI context file … loaded by Gemini CLI" → "Antigravity CLI context file … loaded by Antigravity CLI (`agy`) … (Antigravity reads GEMINI.md / AGENTS.md for backward compatibility)"; "Gemini CLI equivalent of CLAUDE.md" → "Antigravity CLI equivalent of CLAUDE.md".
-2. **Capability policy:** "Gemini CLI may perform all major engineering tasks" → "Antigravity CLI may perform …".
-3. **iOS 26 env override:** `override in .gemini/.env` → `export it in your shell environment, or via the env block of .agents/mcp_config.json` (audience-correct; `.gemini/.env` was deleted in C2).
-4. **Skill loading:** `.gemini/skills/<name>/SKILL.md` → `.agents/skills/<name>/SKILL.md`.
-5. **Tier 0 installation note:** the 3-CLI install-dir list `(.claude/skills/, .codex/skills/, .gemini/skills/)` → `(.claude/skills/, .codex/skills/, .agents/skills/)`.
-6. **Custom skills:** `.gemini/skills/x-<name>/` → `.agents/skills/x-<name>/`.
-7. **Project memory** (agent-def file paths): `.gemini/agents/<agent>.md` → `the Antigravity plugin bundle .agents-plugin/optiquity-agents/agents/<agent>.md`.
-8. **Phase routing header:** "All three tools (Claude Code, Codex, Gemini CLI)" → "… Antigravity CLI".
-9. **Phase-routing invocation note:** "For Gemini CLI, agent-run.sh translates --agent to Gemini's native @agent-name syntax" → "For Antigravity CLI (`agy`), agent-run.sh resolves --agent to the role defined in the plugin bundle (`.agents-plugin/optiquity-agents/agents/<name>.md`) and launches it via Antigravity's subagent mechanism" + inline forward-looking re-verify prose.
-10. **Trinity-rule exception comment** (allowlisted opening "Trinity-rule exception"): rationale "Gemini CLI auto-discovers agents via filesystem scan of `.gemini/agents/`" → "The Antigravity CLI agent roster ships as a plugin bundle (`.agents-plugin/optiquity-agents/`) rather than being auto-discovered from a flat agents directory". H2-only-in-GEMINI exception preserved.
-11. **`## Agent roster` BODY rewrite** (heading KEPT per Smaller-1): from `.gemini/agents/*.md` auto-discovery + `@agent-name` invocation → plugin-bundle description (`.agents-plugin/optiquity-agents/` = `plugin.json` + 16 `agents/*.md` + `RUNTIME-SUBAGENT-PATTERN.md`), `agy plugin install ./.agents-plugin/optiquity-agents`, `./agent-run.sh agy --agent <name>`, runtime `define_subagent` fallback pointer. 16-agent roster NAMES preserved verbatim. Forward-looking re-verify prose for agent invocation.
-12. **H2 rename (Smaller-1):** `## Gemini CLI operating notes` → `## Antigravity CLI operating notes`.
-13. **Operating-notes BODY vocabulary conversion:**
-    - `/chat save`/`/chat resume` → `/resume` / `/switch` / `/fork` / `/rewind` (Antigravity session-management verbs).
-    - `/compress` → "Antigravity manages conversation context automatically; rely on `/fork` and `/rewind`" (Antigravity context handling).
-    - `save_memory … ~/.gemini/GEMINI.md` → "Persist facts to your global context file `~/.gemini/GEMINI.md`" + forward-looking re-verify prose on the memory-write verb.
-    - `--approval-mode=plan` / Plan Mode → `/permissions` + `request-review` default posture.
-    - "Gemini CLI native file write tools" → "Antigravity CLI native file write tools".
+4. **`migrate-v10-to-v11.sh` `.mcp.json.example` manifest row (L94) out of C3 scope.** The manifest's `project-template/.mcp.json.example` transform row references a source deleted in an earlier commit; it is NOT a `.gemini` line and is NOT in the plan's C3 convert-list, so I left it unchanged (out of C3 scope). The transform is a no-op when the source/target is absent; surfaced here for visibility (a likely C4/later cleanup item — not a C3 deliverable).
 
-### 3.2 `project-template/CLAUDE.md` (lock-step cross-CLI co-refs — audience-correct, NOT byte-copy of GEMINI edits)
+No other deviations. No architecture changes. No POQs newly opened.
 
-1. Tier 0 install-dir list gemini leg `.gemini/skills/` → `.agents/skills/`.
-2. Custom-skills gemini leg `.gemini/skills/x-<name>/` → `.agents/skills/x-<name>/`.
-3. Project-memory agent-def gemini leg `.gemini/agents/<agent>.md` → `the Antigravity plugin bundle .agents-plugin/optiquity-agents/agents/<agent>.md`.
-4. Phase-routing header "Claude Code, Codex, Gemini CLI" → "… Antigravity CLI".
-5. Phase-routing invocation note "For Gemini CLI … @agent-name" → Antigravity plugin-bundle resolution + forward-looking re-verify prose.
+## Boundary discipline check (P-missed-7)
+All 15 edited files are pack-side (`scripts/` tree). NO project-side (`project-template/`, `supporting-docs/`) file was touched — C3 is single-scope `pack-only`. The one client-facing surface produced by my code is the `_v10_to_v11_retire_gemini` user-facing note (migrator stdout that reaches the client): it is **BD-ref-free** (no `BD-NNN`), names NO pack-only file/agent/role, carries NO `agy plugin import gemini` recommendation, and points only to the public `https://antigravity.google/docs`. No project-side SSOT augmentation was needed (the note is implementing the design's decision-8 prose verbatim-intent). No pack-only reference was added to any client-facing surface → no boundary-discipline STOP.
 
-### 3.3 `project-template/AGENTS.md` (lock-step cross-CLI co-refs — audience-correct)
+## Definition-of-Done checklist
+| Item | Status |
+|---|---|
+| `detect.sh` Antigravity tree-shape + existing-install classify (OQ-3: own-bundle-only, foreign→loose, both→loose) | PASS |
+| `detect.sh` KEEP legacy-READ `.gemini` carve-out (ii) | PASS (L154 marker, L922 pack-help.toml) |
+| Migrator stack WRITE-NEW `.gemini`→`.agents`; KEEP legacy-READ | PASS |
+| `gemini-retired-docs/` holding dir (move-not-delete, idempotent EITHER/OR, BD-ref-free note) | PASS |
+| MUST-1 fold: remove `gemini-env` strategy + Check-25 driver-row → Check 25 stays green | PASS (3/3) |
+| `add-capability.sh` banner converted (`.gemini/.env touch` absent — measure-then-bound) | PASS |
+| SHOULD-1 move-not-delete test deliverable + customized-`.gemini` fixture exercise | PASS (Group 6 6/6) |
+| LOCKSTEP: every converted surface's test updated in THIS commit | PASS |
+| validate-pack delta = expected-red (NEW=∅, CLEARED=∅, Check 25 green) | PASS |
+| Runnable C3 lockstep tests green | PASS |
+| Build-blocked tests mapped (migrate full-migration→C4; migrator-skills fixture→C6) | PASS (proven pre-existing / fixture-precondition) |
+| Manifest NOT regenerated (deferred to C6) | PASS (unchanged) |
+| Single-scope `pack-only` (no project-template/supporting-docs/pack-ops/maintenance-docs) | PASS |
+| No git state change by agent | PASS (HEAD d92e0549 unchanged) |
+| Patch emitted non-empty to `/tmp/handoff-bd221-C3/changes.patch` | PASS (1008 lines, 15 files) |
 
-Same 5 conversions as CLAUDE.md (Tier 0 list, custom skills, agent-def path, phase-routing header, invocation note). The Codex-audience body remains more concise per the AGENTS.md trinity convention.
-
----
-
-## 4. Measured gemini co-ref counts (before → after; grep-zero residue proof)
-
-`grep -ic gemini` on the pristine (`git show HEAD:<path>`) vs the working-tree file:
-
-| File | before | after | converted |
-|---|---|---|---|
-| `project-template/CLAUDE.md` | 8 | 3 | 5 |
-| `project-template/AGENTS.md` | 9 | 4 | 5 |
-| `project-template/GEMINI.md` | 27 | 9 | 18 |
-
-(CLAUDE 8 / AGENTS 9 matches the plan §2/§3 co-ref counts. GEMINI's higher count includes the intrinsic-H2 + Agent-roster body + operating-notes block.)
-
-### Residue allowlist (the after-counts are 100% allowlisted; NO stale tool/path token remains)
-
-A targeted grep for the converted vocabulary tokens (`Gemini CLI`, `.gemini/`, `@agent-name`, `/chat save`, `/chat resume`, `/compress`, `approval-mode`, `save_memory`) across all 3 files returns ONLY:
-
-```
-project-template/GEMINI.md:491:- **Cross-session memory:** … `~/.gemini/GEMINI.md` … (Re-verify the exact memory-write verb …)
-```
-
-Every remaining `gemini`-matching line is one of:
-- the `GEMINI.md` **filename** (header `# GEMINI.md`; `*Copied from: …/GEMINI.md*`; the root-level-files list; the trinity-rule reference to `GEMINI.md`; the "GEMINI.md hierarchy" / "Antigravity reads GEMINI.md / AGENTS.md for backward compatibility" prose) — STABLE-now per §5 register ("`GEMINI.md`/`AGENTS.md` backward-compat (trinity survives)");
-- the `~/.gemini/GEMINI.md` **global context path** — STABLE-now per §5 register (global context honored).
-
-Zero lowercase `.gemini/` workspace-path refs, zero `@agent-name`, zero `/chat`/`/compress`/`--approval-mode`, zero "Gemini CLI" tool references survive.
-
----
-
-## 5. Trinity-parity confirmation (the three express the SAME rules)
-
-Structural parity (H2 lists):
-
-```
-CLAUDE H2 count: 26   AGENTS H2 count: 26   GEMINI H2 count: 28
-CLAUDE == AGENTS H2 list: True
-GEMINI minus 2 intrinsic == CLAUDE: True
-GEMINI extra beyond CLAUDE: ['## Agent roster', '## Antigravity CLI operating notes']
-```
-
-- CLAUDE.md and AGENTS.md carry an **identical 26-section H2 list**.
-- GEMINI.md = those 26 sections + exactly the **2 designed intrinsic H2s** (`## Agent roster`, `## Antigravity CLI operating notes`).
-- The ONLY trinity divergence is the Smaller-1 intrinsic-H2 rename, which is the designed-for-C8 condition (the `GEMINI_INTRINSIC_H2S` constant is rewritten in C8).
-- Body rules express the same content; the only edits are CLI-specific path/command normalization (audience-correct per `cross-cli-reference-normalization` / ARCHITECTURE-BD-182 §4.1 — each trinity file references its OWN CLI's mechanism) and the GEMINI-only intrinsic sections. **No project rule was dropped or desynced.**
-
----
-
-## 6. Baseline → post-C3 validate-pack delta (the deliverable verification)
-
-Command: `python3 scripts/validate-pack.py` (general mode), parsed for the set of FAILing check numbers.
-
-- **Baseline (post-C2):** `FAILED — 49 issue(s)`; failing-check set = **{5, 17, 21, 28, 31, 39, 41, 55, 57}** (the 9 expected C1/C2 intermediate-red checks; restored at C4/C8/C9).
-- **Post-C3:** `FAILED — 51 issue(s)`; failing-check set = **{5, 17, 18, 21, 28, 31, 39, 41, 55, 57}**.
-- **Delta (NEW failing checks):** **{Check 18}** ONLY. **Resolved:** none.
-
-The +2 issue-count rise (49→51) is the 2 FAIL lines under Check 18, both expressing the SAME single H2-parity break:
-
-```
-── Check 18 [project-template]: Trinity H2 structure parity (BD-059, BD-181) ──
-FAIL: [project-template] GEMINI.md H2 structure diverges from CLAUDE.md/AGENTS.md beyond the allowed Gemini-intrinsic H2s (['## Agent roster', '## Gemini CLI operating notes']):
-FAIL:   in project-template/GEMINI.md only (and not in allowed-intrinsic set): ## Antigravity CLI operating notes
-```
-
-**Check 18 is the EXPECTED, trinity-H2-parity-related break, restored at C8** (when `GEMINI_INTRINSIC_H2S` is rewritten to include `## Antigravity CLI operating notes`). Check 18 [pack-root] stays OK (C6 owns the pack-root H2). No UNEXPECTED check broke; no CLAUDE↔AGENTS↔GEMINI parity violation (CLAUDE==AGENTS; GEMINI diverges only by the designed intrinsic-H2 set).
-
-### 6.1 Interim defect detected and fixed BEFORE reporting (transparency)
-
-The FIRST post-C3 validate run showed a SECOND break beyond Check 18: **Check 19** (`check_trinity_no_scaffolding_comments`) flagged 5 occurrences of the inline `<!-- RE-VERIFY at impl: … -->` HTML comments I had initially placed in the trinity body. Check 19 bans ANY body HTML comment outside a fixed allowlist (`HOW TO USE THIS TEMPLATE`, `Project addenda go here`, `Trinity-rule exception`, `DENY-LIST-CONTENT-*`). This was a **real defect I introduced**, NOT a trinity-H2 sibling break (it stemmed from new comments, not the H2 rename). **Fix:** converted all 5 forward-looking markers from HTML comments to inline parenthetical PROSE (preserving the forward-looking re-verify signal without a body scaffolding comment). After the fix, Check 19 [project-template] returns `OK` and the delta is Check-18-only. An HTML-comment self-audit confirms every surviving comment in the 3 files starts with an allowlisted opening (0 offenders).
-
-### 6.2 Per-check test results (Check 18 / Check 19 cohort)
-
-- `scripts/tests/test-validate-pack-check-19.sh`: **9 PASS / 0 FAIL** — green (scaffolding-comment fix verified).
-- `scripts/tests/test-validate-pack-check-18.sh`: **5 PASS / 2 FAIL**. The 5 PASS groups exercise the check FUNCTION (synthetic within-trinity parity, GEMINI intrinsic carve-out, two-location label threading, Override-9 independence) — all green, proving the function is intact. The 2 FAIL are the SAME single expected break: the test's live-`project-template`-trinity assertion fails because the live GEMINI.md H2 (`## Antigravity CLI operating notes`) no longer matches the still-`Gemini`-shaped `GEMINI_INTRINSIC_H2S` constant. **This test's live-content assertion is in C8's repin cohort** (plan §3 C8: "any test pinning … 18 / the H2 constant — repin each"). EXPECTED, restored at C8 — not a real defect.
-
----
-
-## 7. FORWARD-LOOKING markers placed (§5 register)
-
-Per §5, unsettled specifics are NOT hard-coded; each carries a re-verify note. Because the trinity body is governed by Check 19 (no body HTML comments), the markers are placed as inline PROSE rather than `<!-- -->` comments:
-
-| FL item (§5) | Location(s) | Form |
+## Rules-Applied Verification Block
+| Rule | Verification evidence (quoted/measured) | Conclusion |
 |---|---|---|
-| Agent invocation (replaces `@agent-name`) | GEMINI.md ×2 (phase-routing note + Agent-roster body), CLAUDE.md ×1, AGENTS.md ×1 | "(Re-verify the Antigravity agent-invocation mechanism against `antigravity.google/docs/subagents` before relying on it; the subagent API is in preview.)" |
-| `save_memory` verb → `~/.gemini/GEMINI.md` | GEMINI.md ×1 (operating notes) | "(Re-verify the exact memory-write verb against `antigravity.google/docs/*` before relying on a specific command; the verb name is unconfirmed for the preview CLI.)" |
+| `agents-never-commit` | Ran only `git status`, `git rev-parse`, `git show <ref>:<path>`, `git diff HEAD`, `git add -A -N`. HEAD unchanged: start=finish=`d92e05494883e3d529e552672db7f23d1e2f4d8c`. No commit/push/stage/apply. | COMPLIANT |
+| `preflight-stop-means-stop` | Emitted the single PREFLIGHT line ONLY after all 15 edits + verification PASS; validate-pack delta empty + Check 25 green + lockstep tests green/build-blocked-mapped. No partial IMPL-REPORT. No parent stop signal received. | COMPLIANT |
+| `worktree-isolation-mergeback` | Verified regime at startup (`pwd`=isolated worktree, HEAD=d92e0549). Edits made in-worktree; emitted `git diff HEAD > /tmp/handoff-bd221-C3/changes.patch` (non-empty, valid headers) + this report to `/tmp/handoff-bd221-C3/`. No commit; orchestrator applies. All-modifications patch (no new files) → complete diff. | COMPLIANT |
+| verification = fail-LINE `comm` vs clean BASE (52); Check 25 stays green | BASE=52 (clean worktree, no empty/.gemini residue except carve-out i fixtures); AFTER=52; `comm -13`=∅, `comm -23`=∅; Check 25 `OK: 3/3 fixture rows`. | COMPLIANT |
+| `regenerate-manifest-v11-surface` (DEFERRED to C6) | `git diff --stat` shows NO `test-fixtures/manifest.txt` change; did NOT run `build.sh`. Per prompt: manifest deferred to C6. | COMPLIANT (deferred per instruction) |
+| `cross-cli-reference-normalization` | Conversions are audience-correct, not byte-identical: skills→`.agents/skills/` (Antigravity loose), agents→`.agents-plugin/optiquity-agents/agents` (bundle), commands DROPPED (Antigravity has no `.toml`), MCP→`.agents/mcp_config.json`. Matched against post-C2 init-project install shape (`for tool in claude codex agents`, `.agents-plugin/optiquity-agents`). | COMPLIANT |
+| `fail-loud/delete-old-source` | Removed `gemini-env` strategy entirely (no mirror); dropped WRITE-NEW `.gemini` install refs entirely. KEPT only legacy-READ carve-out (ii) + `GEMINI.md` FILE refs. No dead-token mirror retained. | COMPLIANT |
+| `pack-vs-project separation` + P-missed-7 | All edits pack-side (`scripts/` tree); the gemini-retired-docs note that ships to clients is BD-ref-free, names no pack-only file/role, points to public docs. See Boundary discipline check above. | COMPLIANT |
+| `enumerate-encoding-surfaces` | Every converted surface's lockstep test updated in THIS commit: detect.sh↔test-detect.sh; migrator-core↔test-migrator-core; migrate↔test-migrate; customization-preserve↔test-customization-preserve + the 4 fixture `.tsv`; restore↔test-restore; validate-pack Check 25 (self-validated, no separate per-check test exists). | COMPLIANT |
+| `scope-deliverables-to-the-ask` | Implemented ONLY C3 surfaces. Did NOT touch C4 validate-pack checks (except the single MUST-1 Check-25 fixture-row fold), build.sh (C6), pack-ops/supporting-docs (C8/C11), the manifest. | COMPLIANT |
+| no-historical-narration | Scanned diff: `git diff | grep -iE 'replac.*gemini|formerly|previously|superseded|has been replaced'` → EMPTY after reframing the retire-gemini docstring + user note to operational phrasing ("v11 uses Antigravity. Your .gemini/ tree was moved …"). | COMPLIANT |
+| `agent-output-requires-rules-applied-verification-block` | This block. | COMPLIANT |
+| `agents-read-rule-docs-in-full` | Read directly+in-full: CLAUDE.md `## Pack memory` (worktree copy, L140-603); the 7 named memory files (worktree feedback_worktree_isolation_mergeback_ops L1-23; feedback_verify_full_ci_suite L1-58; feedback_fail_loud_delete_old_source L1-64; feedback_pack_project_separation_of_concerns L1-33; feedback_scope_deliverables_to_the_ask L1-35; feedback_agent_output_rules_applied_block L1-15; feedback_agents_read_rule_docs_in_full L1-134); plan FINAL-2 (§0–§5 C3 + §5 table); design v3 (§0,§1,§2.1,§5.0–5.13,§6). | COMPLIANT |
 
-STABLE-now items hard-coded without a marker (per §5): `agy` binary + `agy plugin install`; the `.agents/skills/<name>/SKILL.md` workspace path; the plugin SOURCE PATH `.agents-plugin/optiquity-agents/`; `~/.gemini/GEMINI.md` global context; the `/resume`/`/switch`/`/fork`/`/rewind` session verbs and `/permissions` (treated as the converged Antigravity vocabulary the plan directs).
-
----
-
-## 8. Files-changed inventory
-
-| Path | Change type | Line delta (git diff --stat) |
-|---|---|---|
-| `project-template/GEMINI.md` | modified | +/- per stat: 74 changed |
-| `project-template/CLAUDE.md` | modified | 19 changed |
-| `project-template/AGENTS.md` | modified | 19 changed |
-
-`git diff --stat`: `3 files changed, 67 insertions(+), 45 deletions(-)`. No new files, no deletions. No file outside `project-template/{CLAUDE,AGENTS,GEMINI}.md` touched (scope guard honored: no validators/`GEMINI_INTRINSIC_H2S`, no pack-root trinity, no plugin bundle, no config, no docs, no install/migrators, no fixtures/manifest).
-
----
-
-## 9. Boundary discipline check (project-side edits)
-
-All 3 edited files are PROJECT-SIDE (`project-template/`). Per P-missed-7 / `boundary-investigation`:
-
-- **Agent roster / invocation concept** — project-side SSOT investigated: `project-template/docs/pack/PM-CHAT.md` (agent roster) and `project-template/docs/pack/PLATFORM-SKILLS.md` (custom-agent matrix). My edits reference these project-side SSOTs by their project paths (the existing prose already pointed at `docs/pack/PLATFORM-SKILLS.md` § "Custom agents" and `docs/pack/INSTALL-PROCEDURES.md`); I preserved those references and did NOT introduce any pack-only target.
-- **Skill loading / install** — project-side SSOT: `docs/pack/PLATFORM-SKILLS.md` + `scripts/init-project.sh` `stage_s4_skills()` (the existing prose's own references). Preserved.
-- **NO pack-only reference introduced.** No `pack-ops/` file, no `pack-*` agent name, no `maintenance-docs/`, no capitalized `Pack Chat`, no BD-NNN added to the client trinity (verified by grep — the only "PM chat" mentions are the PRE-EXISTING client-side "PM chat" role, untouched). `bd-pack-only-operational-rule` clean.
-- **No boundary discipline STOP triggered** — no edit needed a pack-only target.
-
----
-
-## 10. Plan deviations
-
-**One, fully resolved, zero net deviation in output.** The plan §5 register specifies the forward-looking markers as `<!-- RE-VERIFY at impl: … -->` HTML comments "(or `#` for non-markdown)". In the trinity body, an HTML comment trips Check 19 (`check_trinity_no_scaffolding_comments`), which is in the C8 cohort but is NOT supposed to break at C3. To keep the C3 delta to the single intended Check-18 break (and avoid introducing a real Check-19 defect), I rendered the forward-looking markers as inline PROSE re-verify notes instead of HTML comments. This preserves the §5 intent (the load-bearing re-verify signal + the doc URL) while respecting the Check-19 contract. No marker content was dropped; the doc URLs are retained. Surfaced here per `scope-deliverables-to-the-ask` (surface, don't silently diverge).
-
-No other deviations.
-
----
-
-## 11. New POQs
-
-None.
-
----
-
-## 12. Definition-of-Done checklist
-
-| Item | Status | Evidence |
-|---|---|---|
-| GEMINI.md intrinsic H2 renamed → `## Antigravity CLI operating notes` | PASS | §6 H2 list; line 485-equivalent |
-| `## Agent roster` heading KEPT; body rewritten to plugin roster + runtime invocation | PASS | §3.1 item 11; 16 names preserved |
-| Operating-notes vocabulary converted (`/chat`/`/compress`/`--approval-mode`/`save_memory`) | PASS | §3.1 item 13; §4 residue grep |
-| `.gemini/` path refs normalized (skills→`.agents/`, agents→`.agents-plugin/`) | PASS | §4 residue: 0 lowercase `.gemini/` workspace refs |
-| CLAUDE.md lock-step co-refs converted (8) | PASS | §4 (before 8 → after 3) |
-| AGENTS.md lock-step co-refs converted (9) | PASS | §4 (before 9 → after 4) |
-| Audience-correct, NOT byte-identical copy | PASS | §5; CLAUDE/AGENTS use plugin-bundle path, GEMINI uses its own; bodies differ in concision |
-| Trinity parity preserved (same rules) | PASS | §5: CLAUDE==AGENTS; GEMINI = +2 intrinsic only |
-| Forward-looking markers placed (agent invocation, save_memory) | PASS | §7 |
-| Baseline→post-C3 delta = Check 18 ONLY (trinity-H2, restored at C8) | PASS | §6 |
-| No UNEXPECTED break / no parity violation | PASS | §6 (delta {18}); §6.1 Check-19 interim defect fixed |
-| Scope guard: only the 3 project trinity files | PASS | §8 git diff --stat |
-| No git state change (agents-never-commit) | PASS | §13 rule 1; HEAD unchanged `75ce90f` |
-| No pack-self leak in client trinity | PASS | §9 |
-
----
-
-## 13. Rules-Applied Verification Block
-
-| # | Rule (as named in prompt) | Verification evidence (quoted/measured) | Conclusion |
-|---|---|---|---|
-| 1 | agents-never-commit | Git verbs run were read-only ONLY: `git rev-parse HEAD` (→ `75ce90fddbdc0c05780aeaa847aa1bf85c101de2`, unchanged pre/post), `git status --short`, `git diff --stat`, `git show HEAD:<path>` (to count pristine co-refs). NO add/commit/push/stage/checkout/reset/restore/merge/apply/worktree. Edits left in the working tree; report Written to the named parent-tree path. | COMPLIANT |
-| 2 | trinity-rule | §5: CLAUDE.md H2 list == AGENTS.md H2 list (26 sections, byte-identical); GEMINI.md = those 26 + exactly the 2 intrinsic H2s. The 5 cross-CLI co-refs converted in CLAUDE + the 5 in AGENTS are the lock-step parallel of the GEMINI edits. Only divergence = the designed Smaller-1 intrinsic-H2 rename + the GEMINI-only `## Agent roster`. No rule dropped/desynced. | COMPLIANT |
-| 3 | cross-cli-reference-normalization | §3.2/§3.3: CLAUDE/AGENTS use the audience-correct plugin-bundle path (`.agents-plugin/optiquity-agents/agents/<agent>.md`) and `.agents/skills/` — NOT a byte-copy of GEMINI's edits; each trinity file references its OWN CLI's mechanism per ARCHITECTURE-BD-182 §4.1. AGENTS body stays more concise per its convention. | COMPLIANT |
-| 4 | preflight-stop-means-stop | Emitted ONE PREFLIGHT line only AFTER all edits + baseline-delta verification PASS (delta = Check 18 only; interim Check-19 defect detected and FIXED, not reported as done). No parent stop/halt received. PREFLIGHT reports the baseline→post-C3 delta, not a green claim. | COMPLIANT |
-| 5 | edit-in-place-not-full-rewrite | All edits via targeted `Edit` calls (old_string→new_string), zero full-file `Write` of any trinity file. Section map re-confirmed post-edit (§5 H2 list parse + §6 grep + Check-19 self-audit). | COMPLIANT |
-| 6 | scope-deliverables-to-the-ask | Exactly C3 (§3 C3 + Smaller-1 + §5 FL). Only the 3 project trinity files touched (§8 `3 files changed`). The §5-HTML-comment-vs-Check-19 conflict was SURFACED (§10), not silently resolved away; no out-of-scope edit. | COMPLIANT |
-| 7 | verify-full-ci-suite | Ran `validate-pack.py` baseline AND post-C3; quoted both failing sets + the delta (§6). Ran the two directly-coupled per-check tests (Check 18, Check 19 — §6.2). Confirmed delta = trinity-H2 (Check 18, restored at C8) + the live-trinity Check-18 test assertion (C8 repin cohort); no unexpected/parity break. Green NOT expected at C3 (correctly). | COMPLIANT |
-| 8 | rules-applied-verification-block | This table — every prompt rule has quoted/measured evidence + a non-empty terminal conclusion (no AMBIGUOUS; no empty evidence). | COMPLIANT |
-
----
-*End of IMPL-REPORT-BD-221-C3.md — pack-coder C3, in-place, base HEAD `75ce90f`, 2026-06-15. Edits in working tree (3 project trinity files); NO commit. Baseline {5,17,21,28,31,39,41,55,57} → post-C3 adds {Check 18} (trinity-H2 parity, restored at C8); interim Check-19 scaffolding-comment defect detected and fixed (markers → inline prose); NO unexpected/parity break.*
+## Patch + report artifacts
+- Patch: `/tmp/handoff-bd221-C3/changes.patch`
+- Report: `/tmp/handoff-bd221-C3/IMPL-REPORT.md` (this file)
