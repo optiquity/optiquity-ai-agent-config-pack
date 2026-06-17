@@ -117,8 +117,8 @@ Procedure (use the `local-rag` MCP tool channel — the MCP server is
 already wired up via `.mcp.json` for Claude Code, via
 `.codex/config.toml` for Codex (the wiring is shipped commented-out
 in `.codex/config.toml.example` and must be uncommented or copied
-into `.codex/config.toml` to take effect), and `.gemini/settings.json`
-for Gemini):
+into `.codex/config.toml` to take effect), and `.agents/mcp_config.json`
+for Antigravity):
 
 1. **List current ingest.** Call the `local-rag` `list` tool. This
    returns the set of currently-ingested paths.
@@ -153,7 +153,7 @@ for Gemini):
    (or `RAG: N ingested, 0 stale, 0 orphans` for the clean case).
 
 **If `local-rag` is not available in this CLI surface** (Codex
-without the optional MCP block, Gemini without `local-rag` configured,
+without the optional MCP block, Antigravity without `local-rag` configured,
 or first-time-on-this-machine before the embedding model is
 downloaded), skip this step and report `RAG: not available — skipped`
 in the Step 6 summary. Do not block startup on RAG availability.
