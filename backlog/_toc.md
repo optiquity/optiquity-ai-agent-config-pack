@@ -28,6 +28,9 @@
 - [BD-224](./BD-224.md) — Expand the `/pack-*` slash-command set + improve `/pack-help` coverage (brainstorm-gated)
 - [BD-225](./BD-225.md) — Add Graphify knowledge-graph support for Pack Chat + pack agents' own work (PACK-OPS; not shipped to clients)
 - [BD-226](./BD-226.md) — Sub-agent worktree-isolation overhaul: RW agents in per-commit isolated worktrees, RO agents in the work's tree, in-worktree review/fix cycle, patch-only-after-review-clean — generalized to pack-ops + project ops docs (Claude-only)
+- [BD-229](./BD-229.md) — README Repository-Layout pack-agent count is stale: `(4)` → `(5)` on all three agent-surface rows
+- [BD-230](./BD-230.md) — Pack-self `BD-NNN` references leak into client-shipped `supporting-docs/` (boundary violation; strip-scope is a user decision)
+- [BD-231](./BD-231.md) — Dangling `.mcp.json.example` references: the file is absent from `project-template/` (add-file vs. repoint is a user decision)
 
 ## Deferred
 
