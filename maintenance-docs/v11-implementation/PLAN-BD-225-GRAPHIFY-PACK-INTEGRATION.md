@@ -182,6 +182,11 @@ reviewer runs once on the full 5-commit set after all per-commit cycles complete
   design EE-8). Load-bearing facts the coder preserves in the header: graphify uses Python `fnmatch`
   (NOT git pathspec) so `*` crosses `/`, `**` is not special, `[Aa]` bracket classes work; when
   `.graphifyignore` is present graphify uses ONLY it and ignores `.gitignore` for indexing.
+  - **Post-plan note (BD-225 fix-follow):** §4.3's content was EXTENDED after this plan landed by the
+    test-fixtures fix-follow — a `test-fixtures/` exclusion block (mirroring `test-fixtures/.gitignore`,
+    fnmatch-validated, future-forward) was appended to the shipped `.graphifyignore`. See the design
+    addendum "Post-design extension: `test-fixtures/` exclusion block (BD-225 fix-follow)" in
+    `DESIGN-BD-225-GRAPHIFY-PACK-INTEGRATION.md` §4.
 - `.gitignore` (**append, in-place — do NOT rewrite**) — append the design §5.1 block (3 comment lines
   + `graphify-out/`) at the file TAIL, after the current last entry
   (`scripts/.bd119-pre-refactor-monolith.sh.snapshot`, EB-3).

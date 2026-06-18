@@ -46,3 +46,19 @@ shared-docs/ios26/
 
 # ── Working-tree-only snapshot ──
 scripts/.bd119-pre-refactor-monolith.sh.snapshot
+
+# ── build.sh-generated fixture trees under test-fixtures/ (BD-225) ──
+# Mirrors test-fixtures/.gitignore: ignore EVERYTHING under test-fixtures/
+# except the committed recipe/manifest files and the static-snapshot dir.
+# Future-forward — any NEW generated dir not in the keep-list below is excluded
+# automatically (no edit needed). fnmatch-validated against detect.py: `*`
+# crosses `/` (so `test-fixtures/*` excludes every depth); the bare keep-dir
+# line re-includes the directory ITSELF so its contents survive gitignore's
+# parent-exclusion rule; last-match-wins ⇒ the negations MUST follow the broad
+# exclude (and the whole block sits after the archive glob so it wins).
+test-fixtures/*
+!test-fixtures/README.md
+!test-fixtures/build.sh
+!test-fixtures/manifest.txt
+!test-fixtures/v11-trinity-marker-prepped
+!test-fixtures/v11-trinity-marker-prepped/*

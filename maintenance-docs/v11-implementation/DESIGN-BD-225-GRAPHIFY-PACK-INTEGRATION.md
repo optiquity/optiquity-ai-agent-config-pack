@@ -223,6 +223,25 @@ filename match also excludes the archive-named FILE from the GRAPH — not from 
 Read it directly. This follows the D1 lock, which the prior design's "index the archive-named file"
 recommendation was overridden by.)
 
+### 4.5 Post-design extension: `test-fixtures/` exclusion block (BD-225 fix-follow)
+
+The shipped `.graphifyignore` was EXTENDED after this design landed by the BD-225 `.graphifyignore`
+fix-follow. The §4.3 verbatim block above ENDS at the BD-119 snapshot line
+(`scripts/.bd119-pre-refactor-monolith.sh.snapshot`) and carries NO `test-fixtures/` content; the
+realized file (`.graphifyignore`, the block headed `── build.sh-generated fixture trees under
+test-fixtures/ (BD-225) ──`) appends a `test-fixtures/` exclusion block. It MIRRORS
+`test-fixtures/.gitignore` (ignore-everything-except: a broad `test-fixtures/*` exclude followed by `!`
+negations re-including the committed recipe/manifest files and the static-snapshot dir), is
+fnmatch-validated against `detect.py` (same matcher as §4.2/§4.4), and is future-forward (any NEW
+build.sh-generated dir not in the keep-list is excluded automatically). It keeps the build.sh-generated
+fixture trees out of the graph while preserving the committed `test-fixtures/` content.
+
+Realized consumer: `.graphifyignore` (repo root), block headed `── build.sh-generated fixture trees
+under test-fixtures/ (BD-225) ──`. Provenance: the fix-follow IMPL-REPORT at
+`/tmp/handoff-bd225-graphifyignore/IMPL-REPORT.md` (initial extension) and the NIT-1/SHOULD-1 fix pass
+`/tmp/handoff-bd225-graphifyignore/FIX-IMPL-REPORT.md` (which authored this §4.5 addendum and the
+companion note in `PLAN-BD-225-GRAPHIFY-PACK-INTEGRATION.md` §C1).
+
 ---
 
 ## 5. Git hygiene: `.gitignore` entry + Check 63 never-tracked guard (D8)
