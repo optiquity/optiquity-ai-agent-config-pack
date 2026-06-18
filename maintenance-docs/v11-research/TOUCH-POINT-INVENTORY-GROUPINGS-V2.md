@@ -125,7 +125,7 @@ These are NOT design proposals to evaluate; they are framing the architect must 
 
 ### §1.5 — Scope NOT in V11.1 (per §6 + §17)
 
-- Graphify is explicitly deferred to v12 per `RESEARCH-GRAPHIFY-SYNTHESIS.md` (cited in V11.1 §17). Graphify and groupings are different timelines.
+- Graphify landed pack-side in v11.0 per BD-225 / `DESIGN-BD-225-GRAPHIFY-PACK-INTEGRATION.md` (it is no longer deferred to v12). Graphify and groupings remain different timelines and orthogonal scopes.
 - BD-185 (phase parts hierarchy + tracker-mode execution ordering) is a sibling concern at the phase level — not the grouping level. BD-185 lives at Batch 19d per `pack-ops/BACKLOG.md:1744-1789`. Groupings (this BD's scope) sit one level ABOVE phase parts; the architect must ensure the two compose cleanly (see §6 + §7 below).
 
 ---
