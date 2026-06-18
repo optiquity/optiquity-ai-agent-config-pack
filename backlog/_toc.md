@@ -28,7 +28,6 @@
 - [BD-224](./BD-224.md) — Expand the `/pack-*` slash-command set + improve `/pack-help` coverage (brainstorm-gated)
 - [BD-225](./BD-225.md) — Add Graphify knowledge-graph support for Pack Chat + pack agents' own work (PACK-OPS; not shipped to clients)
 - [BD-226](./BD-226.md) — Sub-agent worktree-isolation overhaul: RW agents in per-commit isolated worktrees, RO agents in the work's tree, in-worktree review/fix cycle, patch-only-after-review-clean — generalized to pack-ops + project ops docs (Claude-only)
-- [BD-228](./BD-228.md) — Push-time manifest regeneration method + enforcing check (retire the per-commit RC9 prose obligation)
 
 ## Deferred
 
@@ -230,6 +229,7 @@
 - [BD-214](./BD-214.md) — Tracker-deferral cleanup: strip tracker artifacts, block the mode flip (pack + project)
 - [BD-219](./BD-219.md) — CI runtime optimization: tests-job matrix-sharding + `validate-pack --only-check` (effectiveness-preserving)
 - [BD-221](./BD-221.md) — Convert Gemini CLI support to Antigravity (full Gemini → Antigravity transition)
+- [BD-228](./BD-228.md) — Push-time manifest regeneration method + enforcing check (retire the per-commit RC9 prose obligation)
 
 ## Deprecated
 
