@@ -32,6 +32,14 @@ project — there is no shared state between projects.
 
 **Forced (Phase A):**
 
+- Gemini CLI support is replaced by **Antigravity CLI** (`agy`). The
+  16 pack agents install as an Antigravity plugin bundle at
+  `.agents-plugin/optiquity-agents/`; loose skills install at
+  `.agents/skills/`; the Antigravity MCP surface is
+  `.agents/mcp_config.json`. Your custom (`x-`) agents are auto-lifted
+  into the bundle and your old `.gemini/` tree is retired to a
+  `gemini-retired-docs/` backup. See "Gemini → Antigravity transition"
+  below for the full narrative.
 - New help-verb system: `pack help` (LCD shell verb) and `/pack-help`
   (per-CLI command). Both invoke `scripts/pack-help.sh` which renders
   `HELP-FRAGMENT-PACK.md` (pack repo) or `docs/pack/HELP-FRAGMENT.md`
@@ -80,6 +88,64 @@ is reachable in v11.0 — flat-file per-entry is the sole supported mode.
   auto-runs `--dry-run` first if no fresh dry-run output exists, so
   the single-shot UX is preserved. See `MERGE-STRATEGY.md` §A1 for
   full mode semantics.
+
+---
+
+## Gemini → Antigravity transition
+
+v11 replaces the pack's Gemini CLI leg with **Antigravity CLI**
+(`agy`). The migrator handles the transition automatically — you do
+not re-create anything by hand. What changes on disk:
+
+- **Pack agents become the Antigravity bundle.** The 16 pack agents
+  install as an Antigravity plugin bundle at
+  `.agents-plugin/optiquity-agents/` (a `plugin.json` manifest plus
+  `agents/*.md` role templates and a `RUNTIME-SUBAGENT-PATTERN.md`
+  fallback). Bundle agents install **replace-if-different**: a pack
+  agent that changed between versions is refreshed; a bundle agent you
+  customized in place is preserved (or sidecared if both you and the
+  pack changed it).
+- **Your custom (`x-`) agents are auto-lifted into the bundle (S5a).**
+  Each custom agent under your old `.gemini/agents/x-*.md` is copied
+  into `.agents-plugin/optiquity-agents/agents/` and becomes a live
+  Antigravity agent. A same-named bundle custom is never overwritten.
+- **The departing `.gemini/` tree is retired as a backup (S5b).** Your
+  whole `.gemini/` directory is moved (never deleted) into a
+  root-level `gemini-retired-docs/` holding directory as a recovery
+  copy. The originals also remain in your project's git history. If
+  `gemini-retired-docs/` trips your CI, add it to your `.gitignore`.
+- **Skills land at `.agents/skills/`.** Antigravity reads loose skills
+  from `.agents/skills/<name>/SKILL.md`; the pack distributes them
+  there alongside the `.claude/` and `.codex/` copies.
+- **MCP config moves to `.agents/mcp_config.json`.** The Antigravity
+  MCP surface ships as `.agents/mcp_config.json.example`; copy it to
+  the live `.agents/mcp_config.json` (gitignored) if you use MCP
+  servers under Antigravity.
+
+### Post-migration surface — Antigravity
+
+After migration, a v11 project carries these Antigravity surfaces:
+
+- `.agents-plugin/optiquity-agents/` — the agent plugin bundle
+  (`plugin.json` + `agents/*.md` + `RUNTIME-SUBAGENT-PATTERN.md`),
+  including any custom (`x-`) agents lifted from your old `.gemini/`.
+- `.agents/skills/<name>/SKILL.md` — loose Antigravity skills.
+- `.agents/mcp_config.json` (from `.agents/mcp_config.json.example`) —
+  the Antigravity MCP surface.
+- `gemini-retired-docs/` — the backup copy of your departing `.gemini/`
+  tree (recovery convenience, not a tracked deliverable).
+
+Install the Antigravity agent bundle once so the roster is available
+to every session:
+
+```sh
+agy plugin install ./.agents-plugin/optiquity-agents
+```
+
+<!-- RE-VERIFY at impl: agy plugin install runtime re-read semantics (does Antigravity re-read the bundle after the migrator updates agents/*.md in place, or require a re-install?), antigravity.google/docs -->
+
+Invoke any agent via `./agent-run.sh agy --agent <name>` — the same
+command format used for Claude and Codex.
 
 ---
 
@@ -385,9 +451,10 @@ Default target is the current directory; pass an explicit path as the
 last argument if needed.
 
 The script runs 7 framework stages (S0..S6). Stage S4 is split into two
-sub-banners (`S4a` and `S4b`) for operator clarity — both run inside the
-framework's single S4 stage and share the same sentinel
-(`stage-S4.done`) and the framework exit code (`24` on failure).
+sub-banners (`S4a` and `S4b`) and stage S5 into three (`S5`, `S5a`,
+`S5b`) for operator clarity — each split pair runs inside the
+framework's single parent stage and shares that stage's sentinel and
+framework exit code (`24` for S4; `25` for S5).
 
 | Stage | What it does |
 |---|---|
@@ -397,7 +464,9 @@ framework's single S4 stage and share the same sentinel
 | S3 | Dispatch v10 → v11 changes via BD-088 (trinity / configs / scripts / agents / docs) |
 | S4a | BD-104 rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md` at project root. History-preserving via `git mv` for tracked source; plain `mv` fallback for untracked. No-op if the source is absent. Halts with the typed error `migration-rename-collision` if both names already exist (the user inspects, resolves, re-runs). |
 | S4b | BD-042 relocation tail (legacy root docs → `docs/pack/`) |
-| S5 | Install v11 client artifacts (HELP-FRAGMENT*.md, issue forms, per-CLI pack-help). `tracker.toml.example` is NO LONGER installed — tracker integration is deferred (BD-214); the dormant config record stays committed pack-side at `project-template/tracker.toml.project-example`. |
+| S5 | Install v11 client artifacts (HELP-FRAGMENT*.md, issue forms, per-CLI pack-help to `.claude`/`.codex`/`.agents`, the Antigravity agent plugin bundle at `.agents-plugin/optiquity-agents/` installed replace-if-different). `tracker.toml.example` is NO LONGER installed — tracker integration is deferred (BD-214); the dormant config record stays committed pack-side at `project-template/tracker.toml.project-example`. |
+| S5a | Lift each departing Gemini custom (`x-`) agent into the Antigravity bundle (`.agents-plugin/optiquity-agents/agents/`) so it becomes a live Antigravity agent — never overwriting a same-named bundle custom. |
+| S5b | Retire the departing `.gemini/` tree by moving it (never deleting) into a root-level `gemini-retired-docs/` backup holding directory. |
 | S6 | Render truthful migration report at `.pack-migrate-v10-to-v11/report.md` |
 
 **Exit codes:**
@@ -503,10 +572,10 @@ bash scripts/pack-help.sh
 grep "Quick reference" CLAUDE.md AGENTS.md GEMINI.md
 # Should show the "## Quick reference" block in all three files.
 
-# If you have a Claude Code / Codex / Gemini install:
+# If you have a Claude Code / Codex / Antigravity install:
 ls .claude/skills/pack-help/SKILL.md \
    .codex/skills/pack-help/SKILL.md \
-   .gemini/commands/pack-help.toml
+   .agents/skills/pack-help/SKILL.md
 # All three should exist.
 ```
 
@@ -562,10 +631,10 @@ library:
 
 1. **Truthful report.** Every file the migrator touches appears in
    exactly one section of `report.md`. No silent drops.
-2. **Per-class strategies.** 12 classes covering trinity (3-way merge),
-   structured configs (JSON/TOML allowlist), env files (KEY-union),
-   per-CLI agents (`x-` reserved-prefix preservation), pack-shipped
-   scripts (3-way text), and so on. See `MERGE-STRATEGY.md`.
+2. **Per-class strategies.** 11 classes covering trinity (3-way merge),
+   structured configs (JSON/TOML allowlist), per-CLI agents (`x-`
+   reserved-prefix preservation), pack-shipped scripts (3-way text),
+   and so on. See `MERGE-STRATEGY.md`.
 3. **Single-slot sidecars.** `<file>.v10-customized` for the migrator,
    `<file>.pre-update` for `init-project.sh --update`. The migrator
    refuses to run when its backup directory already exists; `--update`

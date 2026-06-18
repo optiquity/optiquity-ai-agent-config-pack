@@ -6,7 +6,7 @@ no prior AI agent configuration.
 
 **Use this guide when:**
 - The project has existing source, docs, or both.
-- There is **no existing** `.claude/`, `.codex/`, `.gemini/` directory
+- There is **no existing** `.claude/`, `.codex/`, `.agents/` directory
   or `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` file at the project root.
   (If any AI config is present, `init-project.sh` stops with exit
   code 20 and routes you to `MIGRATION-v10-to-v11.md` or asks you to
@@ -76,9 +76,10 @@ carefully before typing `y`:
   TypeScript in v11.0). Installation still works — skill gaps are
   handled in Step 11 below.
 - **Planned operations — ADD.** Lists every new directory and file
-  the script will create (`.claude/agents/`, `.codex/agents/`,
-  `.gemini/agents/`, skills, `docs/pack/`, `scripts/` entries,
-  context files).
+  the script will create (`.claude/agents/`, `.codex/agents/`, the
+  Antigravity agent bundle `.agents-plugin/optiquity-agents/`, skills
+  (`.claude/skills/`, `.codex/skills/`, `.agents/skills/`), `docs/pack/`,
+  `scripts/` entries, context files).
 - **Planned operations — MERGE.** `.gitignore` entries that will
   append under a `# --- AI Agent Config Pack additions (v11.0) ---`
   header. Existing patterns are preserved.
@@ -187,7 +188,7 @@ kickoff if you're satisfied.
 > first (the PM chat consumes briefs, it does not author them).
 
 Pick one PM chat surface (Desktop, Claude Code CLI, Codex CLI, or
-Gemini CLI) per `SETUP-NEW.md` Step 10 setup instructions. When the
+Antigravity CLI) per `SETUP-NEW.md` Step 10 setup instructions. When the
 session is ready, paste the kickoff prompt that `init-project.sh`
 generated at the end of Step 3.
 
@@ -326,8 +327,50 @@ Your per-phase cycle is now:
   after a later upgrade).
 
 Commit everything else: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`,
-`agent-run.sh`, `.claude/`, `.codex/`, `.gemini/`, `scripts/`,
-`docs/pack/`.
+`agent-run.sh`, `.claude/`, `.codex/`, `.agents/`, `.agents-plugin/`,
+`scripts/`, `docs/pack/`.
+
+---
+
+## Migrating a Gemini-configured project to Antigravity
+
+If your existing project was previously configured with the pack's
+**Gemini CLI** support (a v10-pack project with a `.gemini/` tree at
+the project root), this is a **migration**, not a fresh install — run
+`MIGRATION-v10-to-v11.md` instead of this guide. v11 replaces the
+Gemini CLI leg with **Antigravity CLI** (`agy`), and the v10 → v11
+migrator handles the transition automatically. What the migrator does
+with your Gemini config:
+
+- **Pack agents become the Antigravity bundle.** The 16 pack agents
+  install as an Antigravity plugin bundle at
+  `.agents-plugin/optiquity-agents/` (agents installed
+  replace-if-different — a pack agent that changed between versions is
+  refreshed; one you customized in place is preserved or sidecared).
+- **Your custom (`x-`) agents are auto-lifted into the bundle.** Any
+  custom agent under your old `.gemini/agents/x-*.md` is copied into
+  `.agents-plugin/optiquity-agents/agents/` and becomes a live
+  Antigravity agent. There is nothing to re-create by hand.
+- **The departing `.gemini/` tree is retired as a backup.** Your whole
+  `.gemini/` directory is moved (never deleted) into a root-level
+  `gemini-retired-docs/` holding directory as a recovery copy. The
+  originals also remain in your project's git history. If
+  `gemini-retired-docs/` trips your CI, add it to your `.gitignore`.
+- **Skills land at `.agents/skills/`.** Antigravity reads loose skills
+  from `.agents/skills/<name>/SKILL.md`; the pack distributes them there
+  alongside the `.claude/` and `.codex/` copies.
+
+After migration, install the Antigravity agent bundle once so the
+roster is available to every session:
+
+```bash
+agy plugin install ./.agents-plugin/optiquity-agents
+```
+
+<!-- RE-VERIFY at impl: agy plugin install runtime re-read semantics (does Antigravity re-read the bundle after the migrator updates agents/*.md in place, or require a re-install?), antigravity.google/docs -->
+
+See `MIGRATION-v10-to-v11.md` for the full migration narrative,
+including the post-migration surface list and reconciliation workflow.
 
 ---
 

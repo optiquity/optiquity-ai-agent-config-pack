@@ -156,7 +156,7 @@ first:
 this Step 5. Step numbering is preserved for cross-doc reference
 stability; Steps 9–12 below retain their original numbers.*
 
-On shell-capable surfaces (Claude Code CLI, Codex CLI, Gemini CLI,
+On shell-capable surfaces (Claude Code CLI, Codex CLI, Antigravity CLI,
 Claude Desktop with Desktop Commander), the PM chat runs kickoff
 auto-discovery (INSTALL-PROCEDURES.md Procedure 7) after you paste the
 kickoff prompt in Step 10. It fills in Apple Xcode scheme variables,
@@ -276,8 +276,8 @@ The `.gitignore` automatically excludes `.claude/settings.local.json`,
 > need a design brief covering at minimum: target platform(s), primary
 > language(s), any known external APIs or services, and the project's
 > definition of done for MVP. If you don't have one, produce it in a
-> separate conversation first (a Claude Web side chat, a Gemini CLI
-> session, or any other workspace). The PM chat consumes a design
+> separate conversation first (a Claude Web side chat, an Antigravity
+> CLI session, or any other workspace). The PM chat consumes a design
 > brief — it does not author one. See `docs/pack/PM-CHAT.md`
 > § "Before starting a new project."
 
@@ -336,18 +336,18 @@ kickoff) with all `[PLACEHOLDERS]` filled in.
 
 Daily sessions: `codex --resume`.
 
-### Option D — Gemini CLI
+### Option D — Antigravity CLI
 
 ```bash
 cd /path/to/your-project
-gemini
+agy
 ```
 
-Gemini CLI loads `GEMINI.md` automatically. Paste the kickoff prompt
-from `docs/pack/prompts/pm-chat.md` (Variant: kickoff).
+Antigravity CLI (`agy`) loads `GEMINI.md` automatically. Paste the kickoff
+prompt from `docs/pack/prompts/pm-chat.md` (Variant: kickoff).
 
-Save the session: `/chat save yourproject-pm`. Resume: `gemini` then
-`/chat resume yourproject-pm`.
+Resume a session: `agy` then `/resume yourproject-pm`. Move between saved
+conversations with `/switch`.
 
 ---
 
@@ -415,7 +415,7 @@ agents; full pass-through for write agents). Run `./agent-run.sh
 | Run all validation | `./scripts/validate.sh` |
 
 **Claude** executes inline prompts immediately. **Codex** and
-**Gemini** start interactive — the agent activates, loads its
+**Antigravity** start interactive — the agent activates, loads its
 definition, acknowledges, and waits for you to paste the full task
 prompt.
 
@@ -453,7 +453,8 @@ prompt.
 
 Commit everything else, including `CLAUDE.md`, `AGENTS.md`,
 `GEMINI.md`, `agent-run.sh`, `.claude/` (excluding the gitignored
-local files), `.codex/`, `.gemini/`, `scripts/`, `proto/`.
+local files), `.codex/`, `.agents/`, `.agents-plugin/`, `scripts/`,
+`proto/`.
 
 ---
 

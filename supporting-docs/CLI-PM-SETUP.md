@@ -1,9 +1,9 @@
 # CLI-PM-SETUP.md — CLI PM Chat Reference
 
 This document covers daily usage, cross-machine workflow, and troubleshooting
-for the CLI PM chat on all three tools: Claude Code, Codex CLI, and Gemini CLI.
+for the CLI PM chat on all three tools: Claude Code, Codex CLI, and Antigravity CLI.
 **Setup is in `supporting-docs/SETUP-NEW.md` Step 10 Option B (Claude Code CLI)
-or Option D (Gemini CLI).** Start there if you haven't completed setup yet.
+or Option D (Antigravity CLI).** Start there if you haven't completed setup yet.
 
 For startup procedures, file access strategy, and behavioral rules, see
 `docs/pack/PM-CHAT.md` (the authoritative PM chat instructions).
@@ -126,41 +126,45 @@ app is available any time for focused side investigations and research:
 
 ---
 
-## Gemini CLI daily workflow
+## Antigravity CLI daily workflow
 
 **Normal resume:**
 ```bash
 cd /path/to/your-project
 git pull
-gemini
-/chat resume [project-short-name]-pm
+agy
+/resume [project-short-name]-pm
 ```
 
 **After a long gap or on a new machine:**
 ```bash
 cd /path/to/your-project
 git pull
-gemini
-/chat resume [project-short-name]-pm    # or start fresh if no saved session
+agy
+/resume [project-short-name]-pm    # or start fresh if no saved session
 ```
 Read BACKLOG.md, STATUS.md, PLATFORM-SKILLS.md, and the current phase from
-IMPLEMENTATION-PLAN.md to verify state is current. Gemini loads GEMINI.md
+IMPLEMENTATION-PLAN.md to verify state is current. Antigravity loads GEMINI.md
 automatically via the GEMINI.md hierarchy.
 
-**Save before ending:**
-```bash
-/chat save [project-short-name]-pm
-```
+**Switching and branching conversations:**
+Use `/switch` to move between saved conversations, `/fork` to branch the
+current conversation, and `/rewind` to step a conversation back to an earlier
+point.
 
-**Context compression:**
-Use `/compress` when context grows large. After compression, re-read state
-files (BACKLOG.md, STATUS.md, PLATFORM-SKILLS.md) to restore accuracy.
+**Context handling:**
+Antigravity manages conversation context automatically. Use `/fork` and
+`/rewind` to prune or branch context rather than a manual compaction command;
+after branching, re-read state files (BACKLOG.md, STATUS.md, PLATFORM-SKILLS.md)
+to restore accuracy.
 
 **Cross-session memory:**
-Use `save_memory` to persist important cross-session facts to
-`~/.gemini/GEMINI.md`. Reserve this for facts that must survive session loss
-— project decisions, conventions, recurring context. Do not store state that
-belongs in project files.
+Persist important cross-session facts to your global context file
+`~/.gemini/GEMINI.md` so they load in every session. Reserve this for facts
+that must survive session loss — project decisions, conventions, recurring
+context. Do not store state that belongs in project files. (Re-verify the exact
+memory-write verb against `antigravity.google/docs/*` before relying on a
+specific command; the verb name is unconfirmed for the preview CLI.)
 
 ---
 
@@ -192,7 +196,7 @@ manual application, or delegate writes to Codex CLI.
 4. Run the appropriate startup procedure after `git pull` on any machine where
    the session is stale
 5. Never copy or sync tool-specific session files between machines (`.claude/`,
-   Gemini session files, ChatGPT threads)
+   Antigravity session files, ChatGPT threads)
 
 ---
 

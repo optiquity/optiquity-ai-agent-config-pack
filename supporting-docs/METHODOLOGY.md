@@ -1,11 +1,11 @@
 # METHODOLOGY.md — AI-Assisted Project Development Methodology
 
 Version: 2.1 (v11.0, May 2026)
-Applies to: All projects using Claude Code CLI, Codex CLI, or Gemini CLI with AI Agent Config Pack v11
+Applies to: All projects using Claude Code CLI, Codex CLI, or Antigravity CLI with AI Agent Config Pack v11
 
 > **Applicability note:** This document is platform-agnostic and applies to all project
 > types (Apple, Python server, monorepo) and all three CLI tools (Claude Code, Codex,
-> Gemini). Agents that don't apply to your project type can be ignored. The PM chat
+> Antigravity). Agents that don't apply to your project type can be ignored. The PM chat
 > selects agents and skills per project using `PLATFORM-SKILLS.md`.
 
 > **Single source of truth:** One copy of this file lives at
@@ -52,7 +52,7 @@ that depends on that content.
 > **Four PM chat options:** The PM chat can run as a Claude Desktop app project
 > (setup steps are in the pack repo at `supporting-docs/SETUP-NEW.md` Step 10,
 > Option A), a resumable Claude Code CLI session (Step 10, Option B), a Codex
-> CLI session (Step 10, Option C), or a Gemini CLI session (Step 10, Option D).
+> CLI session (Step 10, Option C), or an Antigravity CLI session (Step 10, Option D).
 > Daily CLI usage reference in `supporting-docs/CLI-PM-SETUP.md`.
 > The methodology, rules, and procedures are identical in both modes. `PM-CHAT.md`
 > in the project root provides startup instructions and is read by both modes —
@@ -94,10 +94,11 @@ that depends on that content.
 > the same stage. This convention is Claude-Code-specific:
 > Codex CLI's `/agent` slash command provides similar
 > long-lived-thread behavior but no peer-messaging analog;
-> Gemini CLI's `@agent` invocation is one-shot per delegation
-> (no parent-controlled keep-alive across multiple parent
-> turns). Codex / Gemini project teams: this convention does
-> not apply to your CLI's runtime behavior.
+> Antigravity CLI's subagent mechanism is hub-and-spoke
+> (a parent dispatches subagents; no parent-controlled
+> keep-alive or peer-messaging across multiple parent
+> turns). Codex / Antigravity project teams: this convention
+> does not apply to your CLI's runtime behavior.
 
 ### Xcode Coding Agent
 
@@ -165,7 +166,7 @@ placement for the full taxonomy):
   Trinity is read by every agent at session start regardless
   of prompt content; this is the strongest available delivery.
 - **Cross-CLI parity ergonomics.** Where the pack ships content
-  to all three CLI tools (Claude Code, Codex CLI, Gemini CLI)
+  to all three CLI tools (Claude Code, Codex CLI, Antigravity CLI)
   and per-CLI prompt-injection logic does not yet exist, the
   shipped content may carry the rule directly to reduce
   per-CLI implementation overhead. This exception narrows as
@@ -459,7 +460,7 @@ been explicitly split into multiple sequential parts by a planning agent.
 4. Commit all template and doc files before writing any code
 5. Set up the PM chat — setup steps are in the pack repo at
    `supporting-docs/SETUP-NEW.md` Step 10 (choose Claude Desktop,
-   Claude Code CLI, Codex CLI, or Gemini CLI)
+   Claude Code CLI, Codex CLI, or Antigravity CLI)
 6. Planning conversation with PM chat → establishes architecture, phase plan
 7. PM chat generates: `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`; fills in
    remaining `[PLACEHOLDER]` sections in context files using `PLATFORM-SKILLS.md`;
@@ -707,9 +708,9 @@ file scopes, severity scale, pass/fail thresholds, and report format.
    in `docs/pack/prompts/auditor.md` (`## Variant: standard`), listing the
    skip set explicitly as prose
 4. Developer runs the auditor:
-   - Claude:  ./agent-run.sh claude --agent auditor
-   - Codex:   ./agent-run.sh codex  --agent auditor
-   - Gemini:  ./agent-run.sh gemini --agent auditor [--skip auditor-ui[,auditor-tests]]
+   - Claude:      ./agent-run.sh claude --agent auditor
+   - Codex:       ./agent-run.sh codex  --agent auditor
+   - Antigravity: ./agent-run.sh agy    --agent auditor [--skip auditor-ui[,auditor-tests]]
 5. Developer pastes the consolidated audit report into the PM chat
 6. PM chat processes the report per Part 6 (BACKLOG intake rules below)
 7. Standard coder → reviewer cycle for each fix prompt the audit generates
@@ -722,7 +723,7 @@ without paying for a full audit (per `audit-methodology` rule 70):
 ```
 ./agent-run.sh claude  --agent auditor-security
 ./agent-run.sh codex   --agent auditor-security
-./agent-run.sh gemini  --agent auditor-security  (runs as a single default-mode session)
+./agent-run.sh agy     --agent auditor-security  (runs as a single default-mode session)
 ```
 
 The single-subagent path is the same script entry point — no special flag.
@@ -1125,7 +1126,7 @@ This is most common when verifying a single fix:
 # Full audit
 ./agent-run.sh claude --agent auditor
 ./agent-run.sh codex  --agent auditor
-./agent-run.sh gemini --agent auditor [--skip auditor-ui[,auditor-tests]]
+./agent-run.sh agy    --agent auditor [--skip auditor-ui[,auditor-tests]]
 
 # Single subagent (verify a fix without paying for the full audit)
 ./agent-run.sh <cli> --agent auditor-security
@@ -1698,7 +1699,7 @@ reference.
 - [ ] **Choose PM chat mode** — Option A (Claude Desktop app, see
       `SETUP-NEW.md` Step 10 Option A), Option B (Claude Code CLI,
       Step 10 Option B), Option C (Codex CLI, Step 10 Option C), or
-      Option D (Gemini CLI, Step 10 Option D)
+      Option D (Antigravity CLI, Step 10 Option D)
 - [ ] Commit all docs. If using Desktop app: sync GitHub connector.
 
 ### Before each phase

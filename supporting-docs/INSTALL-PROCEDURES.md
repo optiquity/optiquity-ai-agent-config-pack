@@ -41,10 +41,10 @@ Locations governed by this convention:
 |---|---|---|
 | `.claude/agents/` | `architect.md`, `coder.md`, `reviewer.md`, … (16 pack agents) | `x-<name>.md` |
 | `.codex/agents/` | `architect.toml`, `coder.toml`, … | `x-<name>.toml` |
-| `.gemini/agents/` | `architect.md`, `coder.md`, … | `x-<name>.md` |
+| `.agents-plugin/optiquity-agents/agents/` | `architect.md`, `coder.md`, … | `x-<name>.md` |
 | `.claude/skills/<dir>/` | `SKILL.md` (canonical pack skill) | `x-<file>` siblings inside the skill dir |
 | `.codex/skills/<dir>/` | `SKILL.md` | `x-<file>` siblings |
-| `.gemini/skills/<dir>/` | `SKILL.md` | `x-<file>` siblings |
+| `.agents/skills/<dir>/` | `SKILL.md` | `x-<file>` siblings |
 | `.{tool}/skills/` (top level) | pack skill directories named per the roster | `x-<name>/` directories for project-added skills |
 | `scripts/` | `bootstrap.sh`, `validate.sh`, `format.sh`, `agent-run.sh`, … | `x-<name>.sh` |
 | `docs/pack/prompts/` | `coder.md`, `reviewer.md`, …, `pm-chat.md` (pack-roster) | `x-<name>.md` |
@@ -100,9 +100,9 @@ below (Procedure 5-R from prior pack versions is folded into Procedure
 Triggered when the developer asks for a custom agent.
 
 1. **Pre-check (G-design).** Verify no existing files for the proposed
-   name (`.claude/agents/x-<name>.md`, the Codex and Gemini equivalents,
-   and `docs/pack/prompts/x-<name>.md`). If any exist, route to
-   Procedure 5.3 (completing a partial registration).
+   name (`.claude/agents/x-<name>.md`, the Codex and Antigravity
+   equivalents, and `docs/pack/prompts/x-<name>.md`). If any exist,
+   route to Procedure 5.3 (completing a partial registration).
 2. **Clarifying questions.** Purpose; which PLATFORM-SKILLS.md dimension
    this agent extends (Platform Targets, Languages, Component Roles, or
    Communication Protocols); primary phase served; read-only or write;
@@ -110,14 +110,14 @@ Triggered when the developer asks for a custom agent.
    pack skills loaded vs. new custom skill; which pack agent the PM chat
    would have routed to absent this custom (for the routing-table row).
 3. **Drafts (G-files).** PM chat drafts all four files (Claude agent,
-   Codex agent, Gemini agent, per-agent prompt). Presents side-by-side;
-   iterate until approved.
+   Codex agent, Antigravity bundle agent, per-agent prompt). Presents
+   side-by-side; iterate until approved.
 4. **Registration drafts (G-registration).** PLATFORM-SKILLS.md
    `## Custom agents` row; trinity Phase routing rows in CLAUDE.md,
    AGENTS.md, and GEMINI.md (TRIO — byte-identical row content); if the
    new agent needs a custom skill, also draft a `## Custom skills` row
    plus three `SKILL.md` files (`.claude/skills/x-<name>/SKILL.md` and
-   the Codex/Gemini equivalents).
+   the Codex/Antigravity equivalents).
 
    **Column convention for the `## Custom agents` row (v11+).** The
    table columns are `Agent | Purpose | Dimension | Phase routed to |
@@ -204,7 +204,7 @@ Custom-agent registration artifacts:
 |---|---|---|
 | Claude agent file | `.claude/agents/x-<name>.md` | Yes |
 | Codex agent file | `.codex/agents/x-<name>.toml` | Yes |
-| Gemini agent file | `.gemini/agents/x-<name>.md` | Yes |
+| Antigravity bundle agent file | `.agents-plugin/optiquity-agents/agents/x-<name>.md` | Yes |
 | Per-agent prompt file | `docs/pack/prompts/x-<name>.md` | Yes |
 | PLATFORM-SKILLS.md `## Custom agents` row | `docs/pack/PLATFORM-SKILLS.md` | Yes |
 | Trinity routing-table row | `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` (TRIO, byte-identical) | Yes |
@@ -215,7 +215,7 @@ Custom-skill registration artifacts:
 |---|---|---|
 | Claude skill | `.claude/skills/x-<name>/SKILL.md` | Yes |
 | Codex skill | `.codex/skills/x-<name>/SKILL.md` | Yes |
-| Gemini skill | `.gemini/skills/x-<name>/SKILL.md` | Yes |
+| Antigravity skill | `.agents/skills/x-<name>/SKILL.md` | Yes |
 | PLATFORM-SKILLS.md `## Custom skills` row | `docs/pack/PLATFORM-SKILLS.md` | Yes |
 
 A developer can answer "is my custom agent / skill properly
@@ -404,7 +404,7 @@ The trinity rule applies throughout: every reconciliation decision is
 made once and applied to all three files (CLAUDE.md / AGENTS.md /
 GEMINI.md) with byte-identical content under each H2 the trinity rule
 covers. The only allowed asymmetry is tool-intrinsic content (Claude
-Task tool syntax, Codex profile names, Gemini agent invocation
+Task tool syntax, Codex profile names, Antigravity agent invocation
 syntax) — and only inside H2 sections that are themselves marked as
 tool-specific.
 
@@ -509,8 +509,8 @@ tool-specific.
    diff <(grep '^## ' CLAUDE.md) <(grep '^## ' GEMINI.md)
    ```
    The first diff must be empty. The second may show only the
-   documented Gemini-intrinsic exceptions (`## Agent roster`,
-   `## Gemini CLI operating notes`). Any other divergence — even a
+   documented Antigravity-intrinsic exceptions (`## Agent roster`,
+   `## Antigravity CLI operating notes`). Any other divergence — even a
    single H2 — is a trinity-rule violation. **Do not proceed past
    this step until both diffs are clean. If a diff is non-empty,
    return to the offending section and apply the same decision
@@ -665,19 +665,20 @@ listing each unresolved key.
    `python3 -c "import tomllib; tomllib.load(open('<file>','rb'))"`.
 4. **Apply trinity rule for tool-config parity.** If the reconciled file affects an
    `AGENT_CAPABILITIES`-class key (env in `.claude/settings.json`,
-   `[agent_capabilities]` table in `.codex/config.toml`,
-   `.gemini/.env`), confirm the same value is expressed in all three
-   tools' configs. The migration's parity check warns if not;
-   resolve before proceeding.
+   `[agent_capabilities]` table in `.codex/config.toml`), confirm the
+   same value is expressed in both tools' configs. The migration's
+   parity check warns if not; resolve before proceeding.
 5. **Delete the sidecar.** `rm <file>.v9-customized`.
 
 ### Procedure 5-C.6 — Pack agents (A1–A3) and pack skills (L1–L3)
 
-Files: `.{claude,codex,gemini}/agents/<roster>.{md,toml}` (sidecar:
-sibling `<file>.v9-customized`);
-`.{claude,codex,gemini}/skills/<roster>/SKILL.md` (sidecar:
-`SKILL.md.v9-customized` inside the skill dir). Pattern: P
-(intermixed pack content with project additions).
+Files: `.claude/agents/<roster>.md`, `.codex/agents/<roster>.toml`, and
+the Antigravity bundle `.agents-plugin/optiquity-agents/agents/<roster>.md`
+(sidecar: sibling `<file>.v9-customized`);
+`.claude/skills/<roster>/SKILL.md`, `.codex/skills/<roster>/SKILL.md`,
+`.agents/skills/<roster>/SKILL.md` (sidecar: `SKILL.md.v9-customized`
+inside the skill dir). Pattern: P (intermixed pack content with project
+additions).
 
 Project-edited pack agents and pack skills are uncommon but legitimate
 (e.g., a project that hand-tuned `auditor-architecture.md` with a
@@ -699,16 +700,17 @@ project edits; the live file has the v10 pack version.
      for a reason that obsoletes the project's customization).
 3. **Trinity-symmetry check for agents.** The same edit applied to
    one tool's variant (e.g., `.claude/agents/coder.md`) must be
-   applied to the Codex `.codex/agents/coder.toml` and Gemini
-   `.gemini/agents/coder.md` equivalents — UNLESS the change is
-   tool-intrinsic (Claude Task tool reference, Codex profile name,
-   Gemini YAML frontmatter shape). The trinity rule applies to pack
-   agent files identically to the trinity prose files.
+   applied to the Codex `.codex/agents/coder.toml` and Antigravity
+   bundle `.agents-plugin/optiquity-agents/agents/coder.md` equivalents
+   — UNLESS the change is tool-intrinsic (Claude Task tool reference,
+   Codex profile name, Antigravity bundle frontmatter shape). The
+   trinity rule applies to pack agent files identically to the trinity
+   prose files.
 
    Use `scripts/compare-agent-trinity.py <agent-name>` to verify
    parity after porting an edit forward. The comparator parses each
    tool's agent file (Claude Markdown + frontmatter, Codex TOML
-   `developer_instructions`, Gemini Markdown + frontmatter),
+   `developer_instructions`, Antigravity bundle Markdown + frontmatter),
    normalizes whitespace and Markdown formatting, and reports body
    divergence. Run with `--strict` to flag stylistic differences too.
    Resolve any unintended divergence before deleting the sidecars.
@@ -786,13 +788,14 @@ After every sidecar has been reconciled and removed:
 4. **Working-tree review.** `git status` and `git diff` on the
    migration branch. Confirm the working tree contains no
    `*.v9-customized` files and matches developer intent.
-5. **Pack `.example` files trackable check.** v10 ships several
-   `.example` files (`.gemini/.env.example`, `.codex/config.toml.example`,
-   `.mcp.json.example`) that the pack expects to be committed.
-   Confirm none of them are silently ignored by `.gitignore`:
+5. **Pack `.example` files trackable check.** The pack ships several
+   `.example` files (`.agents/mcp_config.json.example`,
+   `.codex/config.toml.example`, `.mcp.json.example`) that the pack
+   expects to be committed. Confirm none of them are silently ignored
+   by `.gitignore`:
 
    ```bash
-   for f in .gemini/.env.example .codex/config.toml.example .mcp.json.example; do
+   for f in .agents/mcp_config.json.example .codex/config.toml.example .mcp.json.example; do
        if [[ -f "$f" ]] && git check-ignore -q "$f"; then
            echo "FAIL: $f is gitignored — pack expects it tracked"
            git check-ignore -v "$f"
@@ -816,7 +819,7 @@ After every sidecar has been reconciled and removed:
    migration branch. `git add -A` to stage all migrated files,
    reconciled content, new pack files (e.g.,
    `docs/pack/INSTALL-PROCEDURES.md`, `docs/pack/prompts/`,
-   `.codex/config.toml.example`, `.gemini/settings.json`), any new
+   `.codex/config.toml.example`, `.agents/mcp_config.json.example`), any new
    `## Project addenda` sections, `x-*.md` prompts, and
    `PACK-FEEDBACK.md` additions. Verify `git status` shows no
    `*.v9-customized` files staged or untracked, and no
@@ -939,7 +942,7 @@ the sentinel and re-runs at next `/pm-startup`.
 
 Triggered when the developer pastes the `Variant: kickoff` prompt
 from `docs/pack/prompts/pm-chat.md` on a shell-capable surface
-(Claude Code CLI, Codex CLI, Gemini CLI, Claude Desktop with Desktop
+(Claude Code CLI, Codex CLI, Antigravity CLI, Claude Desktop with Desktop
 Commander) and declares `shell` at the surface-declaration gate.
 
 Procedure 7 is the PM-chat-side companion to the kickoff-variant
@@ -963,7 +966,7 @@ to `skip` except G7-discovery, which is read-only and defaults to
 The PM chat enters Procedure 7 once the assistant has (a) declared
 its surface and (b) given the developer a one-message exit ramp
 before any non-read-only action. On a shell-capable surface (Claude
-Code CLI, Codex CLI, Gemini CLI, Claude Desktop with Desktop
+Code CLI, Codex CLI, Antigravity CLI, Claude Desktop with Desktop
 Commander), the assistant typically declares `shell` by inference
 from its environment — this is sanctioned and not a deviation; it
 MUST NOT begin Form R discovery in the same message as the surface
@@ -1272,7 +1275,7 @@ non-SPM layout), `.claude/settings.json` (env block), and
 **Artifacts never touched by Procedure 7:** `BACKLOG.md`; `STATUS.md`;
 `CHANGELOG.md`; `ARCHITECTURE.md`; `IMPLEMENTATION-PLAN.md`; the
 trinity files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`); `.codex/`,
-`.gemini/`, `.claude/agents/` subtrees; any file under `docs/project/`
+`.agents/`, `.agents-plugin/`, `.claude/agents/` subtrees; any file under `docs/project/`
 other than the ones the PM chat ordinarily writes; any `x-` custom
 agent / skill / prompt file.
 

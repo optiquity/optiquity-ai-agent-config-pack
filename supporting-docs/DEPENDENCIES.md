@@ -18,16 +18,17 @@ Agent runner and PM chat host for Codex workflows. Configured via `.codex/`.
 - Install: https://github.com/openai/codex
 - Verify: `codex --version`
 
-### Gemini CLI (required for Gemini workflows)
-Agent runner and PM chat host for Gemini CLI workflows. Agent definitions
-in `.gemini/agents/*.md` (native subagents with YAML frontmatter). Uses
-`agent-run.sh` for invocation.
+### Antigravity CLI (required for Antigravity workflows)
+Agent runner and PM chat host for Antigravity CLI (`agy`) workflows. Agent
+definitions ship as a plugin bundle at
+`.agents-plugin/optiquity-agents/agents/*.md` (16 role templates installed
+once with `agy plugin install`). Uses `agent-run.sh` for invocation.
 - Requires: Node.js 18+
-- Install: `npm install -g @anthropic-ai/gemini-cli` (or see Gemini CLI docs)
-- Verify: `gemini --version`
+- Install: see the Antigravity CLI docs at https://antigravity.google/docs
+- Verify: `agy --version`
 
 ### Node.js 18+ (required)
-Shared dependency for Claude Code CLI, Gemini CLI, and mcp-local-rag.
+Shared dependency for Claude Code CLI, Antigravity CLI, and mcp-local-rag.
 - Install: https://nodejs.org/ or `brew install node`
 - Verify: `node --version`
 
@@ -113,8 +114,8 @@ Swift gRPC plugin. Used by `proto-gen.sh`.
 |---|---|---|
 | Claude Code CLI | Claude workflows | https://docs.anthropic.com/en/docs/claude-code |
 | Codex CLI | Codex workflows | https://github.com/openai/codex |
-| Gemini CLI | Gemini workflows | See Gemini CLI docs |
-| Node.js 18+ | Claude CLI, Gemini CLI, mcp-local-rag | https://nodejs.org/ |
+| Antigravity CLI | Antigravity workflows | https://antigravity.google/docs |
+| Node.js 18+ | Claude CLI, Antigravity CLI, mcp-local-rag | https://nodejs.org/ |
 | Homebrew | All (macOS) | https://brew.sh |
 | Xcode 26.3+ | Apple projects | Mac App Store |
 | swift-format | Apple (optional) | `brew install swift-format` |
