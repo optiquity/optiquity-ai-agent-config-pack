@@ -7,7 +7,7 @@
 # the .example sibling, the developer copies/symlinks when ready.
 #
 # This .example sibling matches the .mcp.json.example pattern Claude uses
-# and the .gemini/settings.json MCP block (per trinity-rule
+# and the .agents/mcp_config.json MCP block (per trinity-rule
 # parity for MCP server configuration).
 #
 # Codex supports MCP via [mcp_servers.<name>] tables in config.toml, both

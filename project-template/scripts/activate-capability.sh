@@ -207,7 +207,7 @@ stage_p1_resolve() {
         for skill in "$@"; do
             [[ -z "$skill" ]] && continue
             local present=0 tool
-            for tool in claude codex gemini; do
+            for tool in claude codex agents; do
                 if [[ -f "$TARGET/.$tool/skills/$skill/SKILL.md" ]]; then
                     present=1; break
                 fi

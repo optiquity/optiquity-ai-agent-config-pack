@@ -12,12 +12,12 @@ This skill applies to any session whose scope includes a change to:
 
 - `project-template/` (any file — agent prompts, skills, configs, trinity, docs)
 - `supporting-docs/` (pack-internal content that may flag mis-location)
-- Any pack-shipped client-installable directory (e.g., `project-template/.claude/`, `.codex/`, `.gemini/` parallels)
+- Any pack-shipped client-installable directory (e.g., `project-template/.claude/`, `.codex/`, `.agents/` parallels)
 
 It does NOT apply to changes scoped entirely to pack-only files:
 pack-repo root trinity (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` at repo
 root), `pack-ops/` (any file there), `maintenance-docs/`, `scripts/`,
-`test-fixtures/`, or the pack-repo `.claude/` / `.codex/` / `.gemini/`
+`test-fixtures/`, or the pack-repo `.claude/` / `.codex/` / `.agents/`
 dotted dirs at the pack repo root.
 
 ## Why this skill exists
@@ -71,7 +71,7 @@ project-side SSOTs:
 | Project-to-pack feedback channel | `docs/pack/PACK-FEEDBACK.md` |
 | Universal project rules (trinity) | `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (project root) |
 | Per-agent prompt templates | `docs/pack/prompts/<agent>.md` |
-| Project-side skills (methodology) | `.claude/skills/<name>/SKILL.md` (and `.codex/`/`.gemini/` copies) |
+| Project-side skills (methodology) | `.claude/skills/<name>/SKILL.md` (and `.codex/`/`.agents/` copies) |
 | Install + setup procedures | `docs/pack/INSTALL-PROCEDURES.md` |
 | Methodology + procedures | `docs/pack/METHODOLOGY.md` (when applicable) |
 
