@@ -23,7 +23,6 @@
 - [BD-205](./BD-205.md) — v11.0 final repo readiness audit + full test/audit/fix cycle (the last gate before launch)
 - [BD-206](./BD-206.md) — Project-side per-entry no-mirror application (apply the corrected standard to client assets)
 - [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
-- [BD-221](./BD-221.md) — Convert Gemini CLI support to Antigravity (full Gemini → Antigravity transition)
 - [BD-222](./BD-222.md) — Standing CI guard against CI-environment-fragile wired tests (hardcoded dev paths / un-shimmed live-`gh` / double-zero antipattern)
 - [BD-223](./BD-223.md) — Ship a committed (public) test-fixtures suite + a separate private gitignored suite
 - [BD-224](./BD-224.md) — Expand the `/pack-*` slash-command set + improve `/pack-help` coverage (brainstorm-gated)
@@ -45,7 +44,6 @@
 - [BD-155](./BD-155.md) — Naming-convention enforcement migration (deferred to v12)
 - [BD-185](./BD-185.md) — Phase-parts hierarchy + flat-file execution ordering
 - [BD-188](./BD-188.md) — Phase-Iteration sprint view (single all-phases tracker Project sliced by Iteration field)
-- [BD-201](./BD-201.md) — Antigravity (Gemini CLI successor) MCP config relocation: settings.json → mcp_config.json
 - [BD-204](./BD-204.md) — Pack self-migration Phase 2: per-entry backlog → GH Issues (tracker Mode 2 → Mode 3)
 - [BD-207](./BD-207.md) — Project-side per-entry ↔ GH-Issues reversible tracker (apply the tracker standard to client assets)
 - [BD-212](./BD-212.md) — `pack tracker reset` verb + 3-level recovery (pack side; supersedes BD-103 with BD-213)
@@ -224,12 +222,14 @@
 - [BD-198](./BD-198.md) — Formalize `pack-ops/PACK-MEMORY-RATIONALE.md` as a PM-only surface (close BD-196 classification gap)
 - [BD-199](./BD-199.md) — Optimize validate-pack.py runtime regression (Check 43 per-iteration regex recompilation)
 - [BD-200](./BD-200.md) — Project-side capability ACTIVATION (no pack-clone dependency): project-side `activate-capability.sh` + tracked conditional-file pool + single-source capability tables + Procedure 6 redesign
+- [BD-201](./BD-201.md) — Antigravity (Gemini CLI successor) MCP config relocation: settings.json → mcp_config.json
 - [BD-203](./BD-203.md) — Pack self-migration Phase 1: monolithic flat files → per-entry directory trees (Mode 1 → Mode 2)
 - [BD-208](./BD-208.md) — Pack Chat editing-scope rule: coder does all MAJOR edits (incl. PM-only files, scoped in) under the standard review/fix cycle; Pack Chat does only MINOR edits to the small PM-only set + commits + irreducible destructive ops
 - [BD-209](./BD-209.md) — Rename the `PM-only` commit-scope keyword → `pack-chat-only` (overloaded name; misleads agents)
 - [BD-211](./BD-211.md) — Canonicalize the per-entry header grammar: eliminate suffix sub-entry forms + normalize title parentheticals; validator-enforced (BD-204 prerequisite)
 - [BD-214](./BD-214.md) — Tracker-deferral cleanup: strip tracker artifacts, block the mode flip (pack + project)
 - [BD-219](./BD-219.md) — CI runtime optimization: tests-job matrix-sharding + `validate-pack --only-check` (effectiveness-preserving)
+- [BD-221](./BD-221.md) — Convert Gemini CLI support to Antigravity (full Gemini → Antigravity transition)
 
 ## Deprecated
 
