@@ -475,21 +475,23 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # UPDATE IN LOCK-STEP whenever a check is added/removed (a one-line edit, like
 # the agent-count check). At the BD-219 dynamic-autoregen redesign the registry
 # held 61 entries; BD-221 (Antigravity conversion) RETIRED Checks 21 + 28
-# (−2), then BD-228 (push-time manifest method) ADDED Check 62 (+1), so the
-# registry now holds 60 entries:
+# (−2), then BD-228 (push-time manifest method) ADDED Check 62 (+1), and BD-225
+# (Graphify pack integration) ADDED Check 63 (+1), so the registry now holds
+# 61 entries:
 #   57 entries at C1's CHECK_REGISTRY introduction (§EE-P5)
 # + 3 net-new C3 checks (58 validate-no-flag, 59 registry-completeness,
 #                        60 shard-coverage mirror)
 # + 1 net-new BD-219-redesign check (61 fixture-location backstop)
 # − 2 retired in BD-221 (21 pack-help per-CLI parity, 28 pm-startup per-CLI
 #                        parity — both obsoleted by the pooled-skill model)
-# + 1 net-new BD-228 check (62 manifest structural well-formedness screen).
+# + 1 net-new BD-228 check (62 manifest structural well-formedness screen)
+# + 1 net-new BD-225 check (63 graphify-out-never-tracked guard).
 # (Re-scoped Check 42 keeps its slot; numbers ≠ entry count — Checks
 # 16/18/19 each register TWICE and 2 checks carry number=None.) This constant
 # is the explicit invariant; the actual count is COMPUTED from
 # len(_build_check_registry()) and asserted equal by Check 59 — never
 # hard-coded anywhere else.
-CHECK_REGISTRY_EXPECTED_COUNT = 60
+CHECK_REGISTRY_EXPECTED_COUNT = 61
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
@@ -6931,6 +6933,61 @@ def check_manifest_structural() -> None:
         )
 
 
+def check_graphify_out_never_tracked() -> None:
+    """Check 63 — graphify-out/ is never tracked (BD-225).
+
+    BD-225 git-hygiene guard (design §5.2). `graphify-out/` is the Graphify
+    knowledge-graph build artifact — a per-clone, regenerated directory that
+    must NEVER be committed (it is gitignored by the `.gitignore` entry C1
+    declares). This check is the CI enforcement that pairs with that
+    `.gitignore` entry: it FAILs loud the moment any `graphify-out/` path is
+    tracked, so a stray `git add` of the build artifact can never slip in.
+
+    Measure-then-bound (ci-guard-measure-then-bound): the guard's matching
+    logic — `git ls-files graphify-out/` — returns 0 rows at HEAD, so the
+    legitimate tracked-graph-artifact set is EMPTY. There is nothing to
+    allowlist; the guard runs CLEAN against current AND projected-post-C1
+    state, and the allowlist is sized to exactly zero.
+
+    O(1) cost (ci-check-runtime-compounding): a SINGLE `git ls-files
+    graphify-out/` subprocess — NO tree scan, NO per-entry subprocess storm.
+    The cost is ~0 regardless of the battery's per-invocation multiplier.
+    Routes through `run_check`.
+
+    Resolves the git root via `cwd=REPO_ROOT` (the module-level constant) so
+    the per-check test can monkeypatch `mod.REPO_ROOT` to a /tmp repo (N-4 —
+    mirrors the Check 62 test's technique).
+
+    Lenient ONLY if `git` itself is unavailable (mirrors Check 62's
+    lenient-skip); never swallows a real "tracked path found" failure.
+    """
+    print("\n── Check 63: graphify-out/ is never tracked (BD-225) ──")
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "graphify-out/"],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+    except FileNotFoundError:
+        ok("git not available — skipping (lenient)")
+        return
+    if result.returncode != 0:
+        ok("git ls-files unavailable (not a git work tree) — skipping (lenient)")
+        return
+
+    tracked = [line for line in result.stdout.splitlines() if line.strip()]
+    if tracked:
+        fail(
+            f"graphify-out/ has {len(tracked)} tracked path(s): "
+            f"{', '.join(tracked)}. graphify-out/ is the Graphify knowledge-graph "
+            f"build artifact — a per-clone, regenerated directory that must NEVER "
+            f"be committed. Remediation: `git rm -r --cached graphify-out/` and "
+            f"confirm `.gitignore` carries `graphify-out/`."
+        )
+        return
+    ok("Check 63 — graphify-out/ is not tracked (gitignored build artifact; "
+       "0 tracked paths).")
+
+
 def check_validate_job_carries_no_only_check() -> None:
     """Check 58 — the authoritative `validate` job carries NO `--only-check`.
 
@@ -9991,6 +10048,14 @@ def _build_check_registry():
         # registry tail alongside the adjacent CI-infra guards (58/59/60/61).
         (62, "check_manifest_structural",
               check_manifest_structural, W),
+        # Check 63 — graphify-out/ never-tracked guard (BD-225): a cheap O(1)
+        # `git ls-files graphify-out/` screen that FAILs loud if the Graphify
+        # knowledge-graph build artifact (per-clone, gitignored) is ever
+        # tracked. Pairs with the C1 `.gitignore` entry (enforces what it
+        # declares). Lands at the registry tail alongside the adjacent CI-infra
+        # guards (58/59/60/61/62).
+        (63, "check_graphify_out_never_tracked",
+              check_graphify_out_never_tracked, W),
     ]
 
 
