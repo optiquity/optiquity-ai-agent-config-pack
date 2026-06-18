@@ -1,14 +1,15 @@
 # PACK-AGENTS.md — AI Agent Config Pack (Pack Repo)
 
 Platform-agnostic agent routing for work on the pack repo itself.
-Read by Claude Code, Codex, and Gemini when operating on this repo.
+Read by Claude Code, Codex, and Antigravity when operating on this repo.
 
 ---
 
 ## Pack agents
 
 Five dedicated agents exist for structured pack development work.
-Agent files are in `.claude/agents/`, `.codex/agents/`, and `.gemini/agents/`.
+Agent files are in `.claude/agents/` (Claude), `.codex/agents/` (Codex),
+and the Antigravity plugin bundle `.agents-plugin/pack-agents/agents/`.
 
 | Agent | Class | Role | Mode |
 |---|---|---|---|
@@ -25,7 +26,7 @@ Check 52 (set-equality; binds to the prose header, never `tools:`).
 
 ### Skills loaded by pack agents
 
-Skills are in `.claude/skills/`, `.codex/skills/`, `.gemini/skills/`
+Skills are in `.claude/skills/`, `.codex/skills/`, `.agents/skills/`
 (copied from `project-template/skills/` — not read from there at runtime).
 
 | Skill | Used by |
@@ -49,7 +50,7 @@ Skills are in `.claude/skills/`, `.codex/skills/`, `.gemini/skills/`
 The pack chat uses the Task tool to spawn pack agents for focused,
 bounded questions within the current conversation:
 
-- "Verify this Gemini CLI flag exists" → spawn `pack-docs-researcher`
+- "Verify this Antigravity CLI flag exists" → spawn `pack-docs-researcher`
 - "Review these changes before commit" → spawn `pack-reviewer`
 - "Plan the commit sequence for these files" → spawn `pack-planner`
 - "Implement the C-2 commit per PLAN-BD-NNN.md" → spawn `pack-coder`
@@ -75,8 +76,11 @@ codex --agent pack-architect
 codex --agent pack-planner
 codex --agent pack-coder
 
-# Gemini CLI (from pack repo root)
-gemini    # then type: @pack-architect (or @pack-planner, @pack-coder, ...)
+# Antigravity (from pack repo root)
+# Install the pack agent bundle once, then invoke a pack agent via
+# Antigravity's subagent mechanism (the bundled pack-<name> role).
+agy plugin install ./.agents-plugin/pack-agents
+agy        # then invoke the pack-architect (or pack-planner, pack-coder, ...) subagent
 ```
 
 Use this mode for:
@@ -217,7 +221,7 @@ live SSOT; there is no longer any monolithic file to read or regenerate.
   for the canonical imperative (PREFLIGHT line format, the
   `scripts/validate-pack.py` + Check 43 verification gate, the report-failure-
   instead-of-IMPL-REPORT behavior, the STOP-MEANS-STOP halt rule, and
-  the cross-CLI scope notes for Codex / Gemini).
+  the cross-CLI scope notes for Codex / Antigravity).
 
 - **Skill and agent maintenance.** Additions and modifications follow
   the maintainability principle in pack-repo trinity `## Pack memory`
@@ -232,7 +236,7 @@ live SSOT; there is no longer any monolithic file to read or regenerate.
 
 Every agent session on this repo:
 1. Reads its tool-native context file before starting:
-   Claude Code → CLAUDE.md · Codex → AGENTS.md · Gemini → GEMINI.md
+   Claude Code → CLAUDE.md · Codex → AGENTS.md · Antigravity → GEMINI.md
    The "Pack memory" section in that file is authoritative — treat it as
    standing rules. All three should also read PACK-AGENTS.md for the
    agent routing table and permission rules above.
@@ -249,9 +253,9 @@ Every agent session on this repo:
 
 - Commit format: `feat: vN — BD-NNN description` / `fix: description` (N = current major version)
 - BD-NNN numbering: read the `/backlog/` tree (e.g. `/backlog/_toc.md`) to find next available number
-- Skills live in `.claude/skills/` (Claude), `.codex/skills/` (Codex), `.gemini/skills/` (Gemini)
-- Agent files: `.claude/agents/` (markdown), `.codex/agents/` (TOML), `.gemini/agents/` (markdown with YAML frontmatter)
-- Pack repo context files: CLAUDE.md (Claude), AGENTS.md (Codex), GEMINI.md (Gemini), PACK-AGENTS.md (this file)
+- Skills live in `.claude/skills/` (Claude), `.codex/skills/` (Codex), `.agents/skills/` (Antigravity)
+- Agent files: `.claude/agents/` (Claude, markdown), `.codex/agents/` (Codex, TOML), `.agents-plugin/pack-agents/agents/` (Antigravity plugin bundle, markdown)
+- Pack repo context files: CLAUDE.md (Claude), AGENTS.md (Codex), GEMINI.md (Antigravity), PACK-AGENTS.md (this file)
 
 **No commit or push without explicit user approval.**
 Always run `git add -A && git status` and confirm staged files before any commit.

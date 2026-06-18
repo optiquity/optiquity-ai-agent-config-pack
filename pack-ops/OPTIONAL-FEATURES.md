@@ -4,7 +4,7 @@ This file documents tool-specific features and settings that the Config Pack
 can opt into but does not require. Each entry is independent — turning one
 on does not affect the rest of the pack, and the standard
 PM-Chat-coordinated workflow continues to work identically across Claude
-Code, Codex CLI, and Gemini CLI.
+Code, Codex CLI, and Antigravity.
 
 These features tend to be:
 - **Tool-specific** (only available in one CLI)
@@ -19,7 +19,7 @@ benefit outweighs the asymmetry.
 ## Claude Code — Agent Teams
 
 **Status:** Experimental in Claude Code v2.1.32+, gated by an environment
-variable. Claude Code only — no Codex or Gemini CLI equivalent.
+variable. Claude Code only — no Codex or Antigravity equivalent.
 
 **What it is.** A native Claude Code feature that coordinates multiple Claude
 Code instances working in parallel. One session acts as the team lead;
@@ -80,7 +80,7 @@ would. The PM Chat is not involved in this branch — Agent Teams is its own
 coordination model.
 
 **Caveats.**
-- **Claude Code only.** A team session does not exist in Codex or Gemini.
+- **Claude Code only.** A team session does not exist in Codex or Antigravity.
   If your team or project requires cross-CLI parity, do not adopt Agent
   Teams as a primary mode — use it as a per-task acceleration on Claude
   Code only.
@@ -110,7 +110,7 @@ coordination model.
 
 ## Claude Code — Isolated parallel agents (worktree isolation)
 
-**Status:** Claude Code only — no Codex or Gemini CLI equivalent yet (the
+**Status:** Claude Code only — no Codex or Antigravity equivalent yet (the
 cross-CLI story is tracked separately and is out of scope here). The
 subagent-isolation trigger is a per-spawn Agent-tool parameter; the base
 posture is a `settings.json` key the developer sets manually. The pack ships
@@ -255,7 +255,7 @@ these keys; it never writes a settings file into the repo.
 
 **Trinity-exempt note (Claude-only).** This feature is specific to Claude
 Code's Agent-tool `isolation` parameter and `worktree` settings. Codex CLI
-and Gemini CLI have no equivalent at this time; their worktree story is
+and Antigravity have no equivalent at this time; their worktree story is
 tracked under BD-217 (v11.1). There is no cross-CLI parity claim here.
 
 **Manual worktree (no pack mechanism needed).** If you simply want to work
@@ -273,9 +273,9 @@ here once they ship and prove useful.*
 
 ---
 
-## Gemini CLI — Optional features
+## Antigravity — Optional features
 
-*Placeholder. The Config Pack documents Gemini-specific opt-in features
+*Placeholder. The Config Pack documents Antigravity-specific opt-in features
 here once they ship and prove useful.*
 
 ---

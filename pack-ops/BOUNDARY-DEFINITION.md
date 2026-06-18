@@ -41,10 +41,10 @@ The cross-product gives **six valid combinations**:
 |---|---|---|
 | C1 | PACK × PRODUCT | Pack repo's landing-page docs read by GitHub visitors evaluating the pack: `README.md`, `LICENSE.md`. |
 | C2 | PACK × OPERATIONS | Pack-only operating docs and design records: `PACK-CHAT.md`, `PACK-AGENTS.md`, `HELP-FRAGMENT-PACK.md`, `pack-ops/HELP-FRAGMENT-TRACKER.md`, `pack-ops/OPTIONAL-FEATURES.md`, `/backlog/`, `/changelog/`, `maintenance-docs/**`, `.claude/agents/pack-*.md`, `scripts/validate-pack.py`, `scripts/pack-help.sh`, etc. |
-| C3 | PACK × TOOL-CONFIG | Pack-trinity (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md` at pack root), pack-side `.claude/`, `.codex/`, `.gemini/`, `.github/` directories at pack root, root `.gitignore`. |
+| C3 | PACK × TOOL-CONFIG | Pack-trinity (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md` at pack root), pack-side `.claude/`, `.codex/`, `.agents/`, `.agents-plugin/`, `.github/` directories at pack root, root `.gitignore`. |
 | C4 | PROJECT × PRODUCT | Installed-to-client content: everything under `project-template/` that ships verbatim or templated to client repos via `scripts/init-project.sh`. |
 | C5 | PROJECT × OPERATIONS | Project-side operating docs that the pack provides as installable artifacts: `project-template/docs/pack/PM-CHAT.md`, `project-template/docs/pack/PACK-FEEDBACK.md`, `project-template/docs/pack/PLATFORM-SKILLS.md`, project-side agent files in `project-template/.claude/agents/*.md` (architect / coder / reviewer / ...). These are PROJECT audience because client repos read them; they are OPERATIONS because the client uses them to do work, not as the deliverable itself. |
-| C6 | PROJECT × TOOL-CONFIG | Project-side trinity (`project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), project-side `.claude/` / `.codex/` / `.gemini/` / `.github/` directories under `project-template/`. These exist at fixed paths so the trinity → installed-trinity path is mechanical for `scripts/init-project.sh`. |
+| C6 | PROJECT × TOOL-CONFIG | Project-side trinity (`project-template/CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), project-side `.claude/` / `.codex/` / `.agents/` / `.agents-plugin/` / `.github/` directories under `project-template/`. These exist at fixed paths so the trinity → installed-trinity path is mechanical for `scripts/init-project.sh`. |
 
 A file or directory MUST fall into exactly one of C1–C6. Files that appear to fall into more than one (the "shared" pattern) are anti-patterns and MUST be split.
 

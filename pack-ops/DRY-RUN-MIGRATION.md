@@ -21,8 +21,10 @@ The harness produces meaningful output only if the target satisfies:
 
 - **Pack version detectable.** Trinity context file (`CLAUDE.md` /
   `AGENTS.md` / `GEMINI.md`) and at least one of `.claude/`,
-  `.codex/`, `.gemini/` at the target root, so detection returns a
-  concrete version (`v10`, ...) rather than `unknown`.
+  `.codex/`, `.agents/` at the target root, so detection returns a
+  concrete version (`v10`, ...) rather than `unknown`. (A departing v10
+  target's `.gemini/` tree is still recognized as a legacy-READ
+  detection marker, so a v10 project migrates cleanly.)
 - **Clean working tree.** No uncommitted changes. URL mode is clean by
   construction; for local-path mode, `git status` first.
 - **No in-flight prior migration.** No `.pack-migrate-vN-to-vM/` state

@@ -22,7 +22,7 @@ and `scripts/migrate-v10-to-v11.sh`. The contract is symmetric.
 
 ## How to read this document
 
-Every file the migrator touches belongs to one of 12 classes. For each
+Every file the migrator touches belongs to one of 11 classes. For each
 class:
 
 - **Strategy** — the preservation algorithm
@@ -47,7 +47,7 @@ listed in `report.md` under one of:
 
 ---
 
-## The 12 file classes
+## The 11 file classes
 
 ### 1. `trinity` — `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`
 
@@ -74,15 +74,15 @@ content into the new template, delete the sidecar, and `git add`.
 
 ---
 
-### 2. `claude-settings` — `.claude/settings.json`, `.claude/settings.json.example`, `.gemini/settings.json`
+### 2. `claude-settings` — `.claude/settings.json`, `.claude/settings.json.example`
 
 **Strategy:** allowlist-based JSON key-merge via `scripts/merge-json.py`.
 
-The `.gemini/settings.json` file is routed through this same class by
-the migrator (BD-085 stage S3) — same algorithm, different file path.
 The classifier auto-emits `claude-settings` for paths matching
-`.claude/settings.json`; for `.gemini/settings.json` the migrator passes
-the class explicitly.
+`.claude/settings.json`. (The departing v10 `.gemini/settings.json` is
+NOT routed through this class on a v10→v11 migration — Gemini is retired
+to `gemini-retired-docs/`; Antigravity reads MCP config from
+`.agents/mcp_config.json`, not a per-CLI settings file.)
 
 Recursive key-union over BASE / OURS / THEIRS, with set-difference logic
 for arrays. Pack-managed top-level keys adopt new pack values; project-
@@ -138,31 +138,7 @@ Same strategy as `codex-config`.
 
 ---
 
-### 6. `gemini-env` — `.gemini/.env`, `.gemini/.env.example`
-
-**Strategy:** KEY=VALUE line preservation with project-wins-on-conflict.
-
-Routed through the canonical 4-case classifier (BD-088 review M1) so
-real-merge-required cases surface as `customization-detected-needs-reconciliation`
-with sidecar — the user is told when a true 3-way conflict occurred and
-their value silently won.
-
-**What's preserved:** every project-set KEY=VALUE, including
-`AGENT_CAPABILITIES` (the canonical BD-059 case). Duplicate keys
-deduped; leading whitespace stripped before key match.
-
-**What gets updated:** pack-new keys appended at the bottom under a
-`# Added by v11 pack update` comment.
-
-**On `customization-detected-needs-reconciliation`:** project value
-won the merge. Inspect the new pack values in
-`<file>.pre-update` (or `.v10-customized`); decide whether to keep
-the project value or adopt the pack value. Edit `.env`, remove the
-sidecar.
-
----
-
-### 7. `pm-chat` — `docs/pack/PM-CHAT.md`
+### 6. `pm-chat` — `docs/pack/PM-CHAT.md`
 
 **Strategy:** 3-way text dispatch (same as `trinity`).
 
@@ -179,29 +155,58 @@ correctly when the project keeps marker headers intact.
 
 ---
 
-### 8. `custom-agent` — `.claude/agents/x-*.md`, `.codex/agents/x-*.md`, `.gemini/agents/x-*.md`
+### 7. `custom-agent` — `.claude/agents/x-*.md`, `.codex/agents/x-*.md`, `.agents-plugin/*/agents/x-*.md` (and legacy-READ `.gemini/agents/x-*.md`)
 
 **Strategy:** unconditional preservation. Project-owned by reserved-prefix
 contract (V3 §I.4); the pack never ships an `x-`-prefixed agent and the
 migrator never overwrites one.
 
-**Disposition:** always `project-only-file`.
+**Surfaces.** The class covers BOTH the loose per-CLI agent dirs
+(`.claude/agents/`, `.codex/agents/`) AND the Antigravity plugin bundle
+(`.agents-plugin/*/agents/`, e.g. `.agents-plugin/optiquity-agents/agents/`).
+The classifier tests the `x-` filename prefix FIRST so a client custom in
+the SHARED bundle namespace is told apart from a pack bundle agent and is
+protected from replace-if-different (BD-221 corrected agent-migration
+model). The departing v10 `.gemini/agents/x-*.md` leg is a legacy-READ
+carve-out: the migrator classifies the departing Gemini custom so it can
+LIFT it into the Antigravity bundle (next paragraph).
+
+**Gemini→Antigravity lift (v10→v11 migration).** On a v10→v11 migration
+the client's custom (`x-`) agents are KEPT — the migrator copies each
+departing `.gemini/agents/x-*.md` (falling back to `.claude/agents/x-*.md`)
+INTO the Antigravity bundle at `.agents-plugin/optiquity-agents/agents/`
+so it becomes a live Antigravity agent (it does NOT require manual
+re-creation). The whole departing `.gemini/` tree is then moved to
+`gemini-retired-docs/` as a BACKUP. The loose `.claude`/`.codex` `x-`
+copies stay preserved in place (Claude/Codex still read their loose dirs).
+
+**Disposition:** always `project-only-file` (preservation on bump; the
+one-time Gemini→bundle lift is a direct copy, never a clobber of a
+same-named bundle custom).
 
 ---
 
-### 9. `pack-agent` — `.{claude,codex,gemini}/agents/<non-x>.md`
+### 8. `pack-agent` — `.claude/agents/<non-x>.md`, `.codex/agents/<non-x>.md`, `.agents-plugin/*/agents/<non-x>.md` (and legacy-READ `.gemini/agents/<non-x>.md`)
 
-**Strategy:** 3-way text dispatch.
+**Strategy:** 3-way text dispatch — replace-if-different on a pack
+version bump.
 
 Pack-shipped agent files (e.g., the pack-architect / pack-reviewer set of
-agents at `.claude/agents/`). Trinity rule applies — refreshes are
-delivered in lockstep across the three CLI variants. The
+agents at `.claude/agents/` and the Antigravity bundle at
+`.agents-plugin/optiquity-agents/agents/`). Pack agents are not
+client-modifiable, but a config-pack version bump CAN update them: on a
+bump/migrate the new pack agent REPLACES the client's copy when it
+DIFFERS (`cmp -s` byte-comparison), ADDs it when the client lacks it, and
+preserves a client-edited copy via sidecar when the pack ALSO changed —
+identical treatment across the loose surfaces AND the Antigravity bundle
+(BD-221 corrected agent-migration model). Trinity rule applies —
+refreshes are delivered in lockstep across the CLI variants. The
 `auditor-issue-tracking` agent (BD-109 / BD-110) is on the v11.x
 roadmap and routes through the same class once it ships.
 
 ---
 
-### 10. `custom-script` — `scripts/x-*.sh`, `scripts/<project-added>.{sh,py}`
+### 9. `custom-script` — `scripts/x-*.sh`, `scripts/<project-added>.{sh,py}`
 
 **Strategy:** unconditional preservation when reached.
 
@@ -224,14 +229,16 @@ will route through `pack-script` 3-way text dispatch:
 
 The reserved `x-` prefix contract guarantees collisions cannot occur:
 the pack never ships `x-`-prefixed scripts (validate-pack Check 8
-enforces). Per-CLI agents under `.{claude,codex,gemini}/agents/x-*.md`
+enforces). Per-CLI agents under `.claude/agents/x-*.md` /
+`.codex/agents/x-*.md` and bundle agents under
+`.agents-plugin/*/agents/x-*.md` (plus the legacy-READ `.gemini/agents/x-*.md`)
 ARE classified directly to `custom-agent` by name; scripts use the
 prefix-by-convention but rely on three-way's project-only-file
 classification rather than a dedicated classifier branch.
 
 ---
 
-### 11. `pack-script` — `scripts/<pack-shipped>.{sh,py}`
+### 10. `pack-script` — `scripts/<pack-shipped>.{sh,py}`
 
 **Strategy:** 3-way text dispatch.
 
@@ -242,7 +249,7 @@ with sidecar.
 
 ---
 
-### 12. `generic` — everything else
+### 11. `generic` — everything else
 
 **Strategy:** 3-way text dispatch (default).
 

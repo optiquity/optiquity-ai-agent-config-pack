@@ -190,9 +190,13 @@ Every pack-coder agent prompt MUST include both halves of this pattern:
   - Codex CLI: No SendMessage equivalent (confirmed absent per issue #12462).
     Parent stop mechanism is `/agent` command or natural-language ("ask Codex to
     stop the subagent"). Reliability caveats per research §2.6.
-  - Gemini CLI: No SendMessage equivalent (hub-and-spoke per docs). Parent stop
-    mechanism is natural-language or `Ctrl+C` (terminates whole session per
-    issue #3385). Reliability caveats per research §3.6.
+  - Antigravity: parent-control stop is native — the parent agent can interrupt
+    a running subagent by sending it a message, or kill it entirely (the killed
+    subagent's temporary git worktree is auto-cleaned). A subagent can also be
+    cancelled directly via the Stop Subagent control. Re-verify the subagent
+    lifecycle against `antigravity.google/docs/subagents` (preview); see
+    `maintenance-docs/v11-implementation/RESEARCH-BD-221-ANTIGRAVITY-DOCS-CAPTURE.md`
+    § "Subagent lifecycle".
 
 Worked-example anchor: `feedback-pack-coder-preflight-pattern` memory pointer;
 original incident BD-169 19g-pack, 2026-05-16.
@@ -387,7 +391,7 @@ against itself); `pack-ops/` files referencing project-side TD entries
 operationally (pack-ops uses BDs in `/backlog/` and batch labels in
 `maintenance-docs/v11-implementation/EXECUTION-PLAN-V11.0.md`); pack-root
 configs (`.claude/`, `.codex/`,
-`.gemini/` at pack-root) using project-side concepts for pack-self-management.
+`.agents/` / `.agents-plugin/` at pack-root) using project-side concepts for pack-self-management.
 
 **The test:** "Is this pack-side surface being used to CONSTRUCT a project-side
 deliverable, or is it part of pack-self-management?" If the surface IS the
