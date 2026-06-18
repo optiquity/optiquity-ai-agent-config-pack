@@ -629,3 +629,51 @@ coder deliverable (no IMPL-REPORT, no fresh-context diff to review) — the
 clean structural fix is to route major edits through the coder that already
 produces the reviewable artifact. This composes `bounded-review-fix-cycle`
 rather than bolting a second review path onto Pack Chat.
+
+---
+
+## graph-first-context
+
+**Why.** User-authorized (BD-225). The pack is doc/reference/agent-heavy;
+agents and Pack Chat re-read the file tree for orientation, which is
+token-expensive. A compact knowledge subgraph (built by `graphify` and
+gitignored at `graphify-out/`) answers orientation / relationship /
+blast-radius / "what relates to X" / "where does Y live" questions at ~0
+tokens — a deterministic local CLI query, no LLM call. Graph-first is the
+token-efficiency win BD-225 buys. The graph is a per-clone, gitignored,
+manual opt-in: a clone with no graph is the DEFAULT, so the rule must degrade
+gracefully (G1 existence guard) and never block on a failed query (G2
+fallback). It is NOT a hard dependency of any task — a best-effort
+accelerator only.
+
+**How to apply.** When `$(git rev-parse --show-toplevel)/graphify-out/graph.json`
+exists, query the graph FIRST for "what relates to X / where does Y live /
+blast radius of Z" before broad tree reads; fall through to grep/Read for the
+exceptions (exact-string/token search → grep; authoritative SSOT fields — a BD
+`Status`, the README version table, a `_rules.md` contract → Read the source;
+freshly-changed/uncommitted files → `git diff`/Read; whole-file exact content
+→ Read; archive-dir / excluded-category content → Read/grep, deliberately not
+in the graph). If the graph is absent or a query fails or returns nothing
+useful, use normal tools (G1 + G2). `--graph` is ALWAYS absolute; `--budget`
+tiers are 2000 human / 1500 spawned agent / 1000 Pack-Chat prompt-construction;
+the backend is ALWAYS `--backend claude-cli` (no-key subscription — never
+`claude`, which demands `ANTHROPIC_API_KEY`). Agents QUERY, never BUILD
+(building is a main-session/orchestrator job and the only step that costs
+subscription). Worked example: to scope which files a coder needs, Pack Chat
+runs `graphify query`/`affected` and names those exact files in the prompt
+instead of "read the tree." The rule lives in the pack-root trinity
+(`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), normalized per CLI audience
+(`cross-cli-reference-normalization`); cross-CLI EFFECTIVENESS on
+Codex/Antigravity is BD-233. Boundary: the graph MAY index the whole repo
+incl. `project-template/`, but the rule + every setup artifact stay pack-side
+(`bd-pack-only`).
+
+**Rejected alternatives.** (a) An untagged convention bullet — rejected: the
+rule is spawn-relevant `[roles: universal]`, and the tagged form gives it a
+discoverable rationale pointer (this section) under the Check 45 bijection.
+(b) `graphify claude install`'s auto-written `CLAUDE.md` section — rejected:
+it writes only `CLAUDE.md` (breaking trinity symmetry) AND a surprise
+PreToolUse hook the pack does not want. (c) Per-agent-frontmatter enablement
+(a `skills:`/`tools:` change) — unnecessary: querying needs `Bash` only, which
+all 5 pack agents already carry, and preloading the ~32KB build-oriented
+graphify skill is wasteful for a read-only query.

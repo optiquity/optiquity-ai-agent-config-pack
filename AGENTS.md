@@ -552,6 +552,36 @@ PACK-AGENTS.md current".
   requires architect+user sign-off). Current sanctioned set: exactly
   `{scripts/lib/detect.sh, scripts/pack-help.sh}`. `[roles: architect coder]
   [rationale: dependency-direction-placement]`
+- **Graph-first context when the knowledge graph exists (BD-225).** If
+  `$(git rev-parse --show-toplevel)/graphify-out/graph.json` exists, prefer
+  the graph for orientation / relationship / blast-radius / "what relates to
+  X" / "where does Y live" questions (a `graphify query` is read-only,
+  deterministic, ~0 tokens) BEFORE broad tree reads; otherwise use normal
+  grep/Read (the G1 existence guard — a fresh clone has no graph by default,
+  so the rule degrades with zero friction). If a graph query errors or
+  returns nothing useful, fall back to file reads — never block on the graph
+  (the G2 fallback). Fall through to grep/Read for: exact-string / token
+  search (use grep — exact + complete); authoritative SSOT fields (a BD
+  `Status`, the README version table, a `_rules.md` contract — Read the
+  source); freshly-changed / uncommitted files (`git diff`/Read); whole-file
+  exact content (Read); archive-dir / excluded-category content (Read/grep —
+  deliberately not in the graph). The `--graph` path is ALWAYS absolute
+  (`$(git rev-parse --show-toplevel)/graphify-out/graph.json`) since a
+  sub-agent may start in a different cwd; `--budget` tiers are 2000
+  human/interactive, 1500 spawned agent, 1000 Pack-Chat prompt-construction;
+  the backend is ALWAYS `--backend claude-cli` (the no-key subscription path
+  — NEVER `claude`, which demands `ANTHROPIC_API_KEY`). NEVER preload the
+  graphify skill via `skills:` frontmatter (~32KB, build-oriented) — querying
+  needs `Bash` only, which all 5 pack agents already carry. Agents QUERY the
+  graph; they never BUILD/refresh it (only building costs subscription;
+  building is a main-session/orchestrator job). In Codex this rule applies
+  the same way; pack agents are invoked via `codex --agent pack-<name>`.
+  Whether a Codex agent actually consumes this `AGENTS.md` rule at spawn —
+  cross-CLI EFFECTIVENESS — is verified separately under BD-233; the rule
+  ships here for trinity parity and is inert text where unconsumed. Boundary
+  note: the graph MAY index the whole repo incl. `project-template/`;
+  consuming it to answer a deliverable question is fine — the rule + setup
+  stay pack-side. `[roles: universal] [rationale: graph-first-context]`
 
 ### Project goals (v11)
 
