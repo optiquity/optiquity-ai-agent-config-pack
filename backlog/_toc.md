@@ -57,6 +57,7 @@
 - [BD-218](./BD-218.md) — Background-session isolation (`worktree.bgIsolation` + EnterWorktree/ExitWorktree); the background-job half of BD-197
 - [BD-220](./BD-220.md) — Refactor the CI long-pole tests internally to lower the shard floor (effectiveness-preserving)
 - [BD-227](./BD-227.md) — Tracker-only groupings support (the tracker-mode projection of groupings)
+- [BD-233](./BD-233.md) — Codex + Antigravity Graphify graph-first parity: verify + enable cross-CLI pack-dev agent graph-querying (the cross-CLI half of BD-225)
 
 ## Resolved
 
