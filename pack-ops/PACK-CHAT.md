@@ -430,7 +430,7 @@ This procedure also owns the ordered surfaces to touch when a spawn-relevant `##
 | 3 | Thin memory-cache pointer (out-of-repo) | Pack-Chat upkeep; trinity-wins (no validator gate, no pack generator) |
 | 4 | Any reference surface (`PACK-AGENTS.md` / `PACK-CHAT.md` one-line refs) | anti-restate scan + reference-resolution |
 | 5 | `pack-ops/.spawn-rule-manifest.txt` slug→canonical+references | reference-resolution |
-| 6 | `test-fixtures/manifest.txt` regen if a v11-surface path changed | existing manifest CI gate |
+| 6 | `test-fixtures/manifest.txt` — NOT a propagation step; the orchestrator runs `scripts/manifest-sync.sh` at push (regen iff a fixture input changed) | CI `build.sh --verify` + validate-pack Check 62 |
 
-- **Order:** corpus (1) → rationale (2) → references (4) + manifest (5) in the SAME commit (so C3 bijection + anti-restate never see a half-applied state) → cache (3) as Pack-Chat upkeep → manifest regen (6) last. Removing a rule reverses: drop references first, then rationale, then corpus.
+- **Order:** corpus (1) → rationale (2) → references (4) + spawn-rule manifest (5) in the SAME commit (so C3 bijection + anti-restate never see a half-applied state) → cache (3) as Pack-Chat upkeep. The `test-fixtures/manifest.txt` (6) is NOT a propagation-order step — it is reconciled by `scripts/manifest-sync.sh` at push (BD-228), not per-commit. Removing a rule reverses: drop references first, then rationale, then corpus.
 - **Order is documented, not gate-sequenced:** a commit is atomic; the propagation order is verified by END-STATE checks (bijection / anti-restate / trinity-parity / manifest), not a hard-enforced step sequence.

@@ -501,13 +501,12 @@ PACK-AGENTS.md current".
   addendum cross-referencing the realized consumer, (c) IMPL-REPORT
   cross-reference linking both. `[roles: architect coder]
   [rationale: architect-doc-reality-reconciliation]`
-- **Regenerate test-fixtures/manifest.txt on every v11-surface commit.**
-  v11-surface = files under `project-template/`, `scripts/`,
-  `pack-ops/`, or `supporting-docs/`. Any commit whose diff includes
-  a file under any of these four directories MUST also regenerate
-  `test-fixtures/manifest.txt` (run `bash test-fixtures/build.sh
-  --all --clean`) and stage it alongside the scope edits in the SAME
-  commit when the manifest diff is non-empty. `[roles: coder]
+- **Manifest is push-time, tool-enforced — not a per-commit chore.**
+  `test-fixtures/manifest.txt` is regenerated only at push, only when a
+  fixture input changed, by `scripts/manifest-sync.sh` (run by the
+  orchestrator before `git push`). Correctness is enforced by CI
+  `build.sh --verify` + validate-pack Check 62 — do NOT regenerate the
+  manifest per-commit. `[roles: universal]
   [rationale: regenerate-manifest-v11-surface]`
 - **Cross-CLI reference normalization in `project-template/` trinity.**
   When editing references to per-CLI paths or commands in

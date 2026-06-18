@@ -514,15 +514,17 @@ The trigger is intentionally inclusive — false positives (e.g., a
 not copied to clients) cost ~30-90s of unnecessary rebuild but produce no
 incorrect manifest change; false negatives within v11-surface are impossible
 because every fixture-affecting file lives under one of these four directories.
-Fixture-affecting paths today: all of `project-template/**` and `scripts/**`
-(mass-copied by `scripts/init-project.sh` stages S1-S11);
-`pack-ops/HELP-FRAGMENT-TRACKER.md` (`scripts/init-project.sh` stage S11 copies
-to client `docs/pack/`); `supporting-docs/METHODOLOGY.md` and
+Fixture-affecting paths today: all of `project-template/**` (the source
+`project-template/docs/pack/HELP-FRAGMENT-TRACKER.md` ships to clients here — the
+`pack-ops/HELP-FRAGMENT-TRACKER.md` copy is NOT a fixture input) and `scripts/**`
+minus the test set (`scripts/test*.sh`, `scripts/tests/**`) and the manifest
+tooling itself (`scripts/manifest-sync.sh`, `scripts/lib/manifest-inputs.sh`);
+`test-fixtures/build.sh`; `supporting-docs/METHODOLOGY.md` and
 `supporting-docs/INSTALL-PROCEDURES.md` (`scripts/init-project.sh` stage S6
-copies to client `docs/pack/`). Other files under `pack-ops/` and
-`supporting-docs/` are not fixture-affecting today, but the directory-wide
-trigger defends against future copy-site additions to `scripts/init-project.sh` or new
-fixture-build readers. v11-* fixture row SHAs drift naturally with any
+copies to client `docs/pack/`). The fixture-input predicate is the single source
+of truth in `scripts/lib/manifest-inputs.sh`, shared by `scripts/manifest-sync.sh`
+and validate-pack Check 62, so the input set cannot drift between the tool and
+the check. v11-* fixture row SHAs drift naturally with any
 v11-surface change (per `test-fixtures/README.md` § Determinism and the
 `_update_manifest` comment at `test-fixtures/build.sh:903-912`); a stale
 manifest fails CI's `fixture manifest verify` step (BD-115, RELEASE-GATE item 5)
@@ -540,27 +542,25 @@ the manifest under the prior strict trigger (which excluded `supporting-docs/`),
 CI failed identically, and recovery commit `6c48f88` had to land as a separate
 `fix:` commit. BD-176 expanded the trigger from 2 directories to 4 to close both
 classes of false negative (pack-ops/ defensively; supporting-docs/
-empirically). **How to apply:** before staging a commit whose diff includes any
-file under `project-template/`, `scripts/`, `pack-ops/`, or `supporting-docs/`,
-run `bash test-fixtures/build.sh --all --clean` from the pack root. Then check
-`git diff test-fixtures/manifest.txt`: if non-empty, `git add
-test-fixtures/manifest.txt` and stage it alongside the scope edits in the same
-commit; if empty, your edit wasn't v11-surface (no staging needed). The manifest
-diff after rebuild is the canonical authority — the trigger globs are a screen
-for WHEN to run the rebuild. `--all --clean` is the canonical default (rebuilds
-all six fixtures deterministically; v10-* rows are tag-pinned and only drift if
-the v10 tag moves). Actors confident about which v11-* fixture is affected may
-substitute `--name <fixture> --clean` per affected fixture, then `bash
-test-fixtures/build.sh --verify` to confirm the remaining rows are unchanged
-before staging. Base case: the 3 pack-root trinity files
-(`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` at repo root) are NOT under any of the
-four trigger directories, so a commit touching only them is never v11-surface
-and needs no manifest regen; only their `pack-ops/` counterparts trigger (and
-even then, the empty-diff-→-not-v11-surface rule above is the final authority).
-Cross-reference: the "Test infra is self-provisioned" bullet
-above governs *test provisioning*; this bullet governs *manifest maintenance*
-and is load-bearing for the `fixture manifest verify` CI gate (BD-115,
-RELEASE-GATE item 5).
+empirically). **How to apply (BD-228 — push-time, tool-enforced):** the manifest
+is NO LONGER a per-commit chore. Do NOT run `build.sh --all --clean` and stage
+`test-fixtures/manifest.txt` per commit. Instead, the orchestrator runs
+`scripts/manifest-sync.sh` ONCE before `git push`: the tool checks the unpushed
+range against the fixture-input predicate (`scripts/lib/manifest-inputs.sh`) and
+regenerates the manifest only when a fixture input changed (rebuilds once via
+`bash test-fixtures/build.sh --all --clean`, then commits the output iff the
+manifest differs on disk). Correctness is enforced by two gates, not by prose:
+CI `bash test-fixtures/build.sh --verify` (the authoritative SHA gate — fails RED
+on any stale manifest at the pushed HEAD) and validate-pack Check 62 (a cheap
+structural screen on the manifest's shape — row count, fixture names, SHA
+format). Coders and other agents NEVER hand-edit or per-commit-regenerate the
+manifest; the tool reconciles it at push and the two gates catch any miss. This
+is the regime BD-228 installed (design
+`maintenance-docs/v11-implementation/DESIGN-MANIFEST-PUSH-METHOD.md`),
+superseding the BD-176 per-commit trigger. Cross-reference: the "Test infra is
+self-provisioned" bullet above governs *test provisioning*; this bullet governs
+*manifest maintenance* and is load-bearing for the `fixture manifest verify` CI
+gate (BD-115, RELEASE-GATE item 5).
 
 ---
 
