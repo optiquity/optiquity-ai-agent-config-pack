@@ -69,3 +69,8 @@ DerivedData/
 # behavior-preservation harness. Lives only on the implementer's working
 # tree. Never committed; recreate from a pre-refactor commit if needed.
 scripts/.bd119-pre-refactor-monolith.sh.snapshot
+
+# ── Graphify knowledge-graph build artifact (BD-225) ─────────────────────────
+# Per-clone, regenerated; never committed (CI Check 63 enforces). Includes
+# graph.json, GRAPH_REPORT.md, graph.html, cache/, cost.json, memory/, needs_update.
+graphify-out/

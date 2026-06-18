@@ -1,0 +1,48 @@
+# .graphifyignore — graphify-only exclusion list for the pack repo (BD-225).
+# MATCHER: graphify uses Python fnmatch (detect.py), last-match-wins — NOT git's
+# pathspec. So `*` crosses `/`, `**` is NOT special (just two `*`), and bracket
+# classes `[Aa]` work. Patterns below were validated against fnmatch.
+# ONE-FILE-OR-THE-OTHER: when this file is present, graphify uses ONLY this list
+# and does NOT read .gitignore for indexing. graphify's built-in always-pruned
+# set (graphify-out, node_modules, .git, .venv, build, dist, .next, target,
+# caches) applies on top of this and is NOT re-listed.
+# Index scope = WHOLE REPO minus the exclusions below (BD-225 D6 "start big";
+# revisit via BD-234 after burn-in).
+
+# ── Archive dirs AND archive-named files (D1: case-insensitive, any depth) ──
+*[Aa][Rr][Cc][Hh][Ii][Vv][Ee]*
+
+# ── Secrets / secrets-adjacent (D2 + privacy posture §8) ──
+.env
+.env.*
+**/.env
+**/.env.*
+.mcp.json
+.claude/settings.local.json
+
+# ── Local tracker state (regenerable; no graph value) ──
+.pack-tracker/
+/tracker.toml
+
+# ── Derived / generated output (pollutes graph with generated symbols) ──
+generated/
+**/generated/swift/
+**/generated/python/
+
+# ── External / not-present reference dir ──
+shared-docs/ios26/
+
+# ── OS / editor noise ──
+.DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+._*
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Working-tree-only snapshot ──
+scripts/.bd119-pre-refactor-monolith.sh.snapshot
