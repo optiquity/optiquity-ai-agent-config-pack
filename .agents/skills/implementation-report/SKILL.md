@@ -71,7 +71,7 @@ landed:
 - The relevant `bash scripts/test-*.sh` runs for any test suites the
   changes touch — must show `=== Results: N passed, 0 failed ===`.
 - `python3 scripts/validate-pack.py` final tally line whenever any file
-  under `project-template/`, `.claude/`, `.codex/`, `.gemini/`,
+  under `project-template/`, `.claude/`, `.codex/`, `.agents/`,
   the `/backlog/` tree, `README.md`, or agent definitions changed.
 
 "Looks right" is not verification. If a command was not run, say so and

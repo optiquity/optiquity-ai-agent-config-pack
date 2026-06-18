@@ -12,12 +12,12 @@ This skill applies to any session whose scope includes a change to:
 
 - `project-template/` (any file — agent prompts, skills, configs, trinity, docs)
 - `supporting-docs/` (pack-internal content that may flag mis-location)
-- Any pack-shipped client-installable directory (e.g., `project-template/.claude/`, `.codex/`, `.gemini/` parallels)
+- Any pack-shipped client-installable directory (e.g., `project-template/.claude/`, `.codex/`, `.agents/` parallels)
 
 It does NOT apply to changes scoped entirely to pack-only files:
 pack-repo root trinity (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` at repo
 root), `pack-ops/` (any file there), `maintenance-docs/`, `scripts/`,
-`test-fixtures/`, or the pack-repo `.claude/` / `.codex/` / `.gemini/`
+`test-fixtures/`, or the pack-repo `.claude/` / `.codex/` / `.agents/` / `.agents-plugin/`
 dotted dirs at the pack repo root.
 
 ## Why this skill exists

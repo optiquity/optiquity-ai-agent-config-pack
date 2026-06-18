@@ -1,7 +1,7 @@
 # Optiquity AI Agent Config Pack
 
 The Config Pack is a versioned **multi-agent project workflow system** for
-Claude Code, Codex CLI, and Gemini CLI. A persistent **PM Chat** session
+Claude Code, Codex CLI, and Antigravity. A persistent **PM Chat** session
 orchestrates role-shaped agents (architect, coder, reviewer, tester, planner,
 auditor, docs-researcher, grpc-schema, repo-ops) using shared context files,
 skill libraries, and validation scripts — the same configuration works
@@ -12,7 +12,7 @@ type. Maintained by [Optiquity, Inc.](https://optiquity.com)
 ## What is this?
 
 Per-project and machine-level configuration files that give Claude Code, Codex
-CLI, Gemini CLI, and IDEs such as Xcode's built-in AI a shared, consistent
+CLI, Antigravity, and IDEs such as Xcode's built-in AI a shared, consistent
 understanding of your projects — architecture rules, coding standards, agent
 roles, skills, and shell scripts that validate agent output. The PM Chat is
 the human-coordinated coordination layer; agents are invoked via
@@ -29,7 +29,7 @@ deterministic, auditable, and identical across CLIs.
 | **Config Pack** | This multi-agent project workflow system. |
 | **PM Chat** | The persistent chat session for running and tracking the workflow of any project that uses the Config Pack. Technically the **Project Manager Chat** or, if you prefer, the **Product Manager Chat** — since you are the ultimate decision maker, this is a distinction without a difference. |
 | **Pack Chat** | The persistent chat session for contributing to and maintaining the Config Pack itself. |
-| **Agent** | A role-shaped CLI invocation (architect, coder, reviewer, tester, planner, auditor, docs-researcher, grpc-schema, repo-ops). The same agent definitions ship for Claude Code, Codex CLI, and Gemini CLI; the PM Chat invokes them via `agent-run.sh`. |
+| **Agent** | A role-shaped CLI invocation (architect, coder, reviewer, tester, planner, auditor, docs-researcher, grpc-schema, repo-ops). The same agent definitions ship for Claude Code, Codex CLI, and Antigravity; the PM Chat invokes them via `agent-run.sh`. |
 
 ### With Your Projects
 
@@ -37,7 +37,7 @@ See [`QUICKSTART.md`](QUICKSTART.md) for full setup instructions.
 
 ### Contributing to the Config Pack
 
-After checking out the Config Pack repo, `cd` into the repo directory and launch the **Pack Chat** by starting a fresh session in Claude Code, Codex CLI, or Gemini CLI. Run `/pack-startup` first; from there, customize your session and workspace however you want.
+After checking out the Config Pack repo, `cd` into the repo directory and launch the **Pack Chat** by starting a fresh session in Claude Code, Codex CLI, or Antigravity. Run `/pack-startup` first; from there, customize your session and workspace however you want.
 
 ## Optional features and settings
 
@@ -45,7 +45,7 @@ Each CLI ships its own optional or experimental features that the Config Pack
 can plug into. See [`pack-ops/OPTIONAL-FEATURES.md`](pack-ops/OPTIONAL-FEATURES.md) for the
 current list — including Claude Code's Agent Teams (parallel teammates that
 share a task list and message each other) and equivalents for Codex CLI and
-Gemini CLI as they ship.
+Antigravity as they ship.
 
 ## Version History
 
@@ -88,10 +88,10 @@ always points to the latest minor of that major version.
 project-template/                           Unified project template (v11)
 ├── .claude/agents/                         Claude agent files (16 agents)
 ├── .codex/agents/                          Codex agent files (16 agents)
-├── .gemini/agents/                         Gemini agent files (16 agents)
+├── .agents-plugin/optiquity-agents/agents/ Antigravity agent bundle (16 agents)
 ├── .claude/skills/pack-help/               Claude pack-help skill (v11; invokes pack-help.sh)
 ├── .codex/skills/pack-help/                Codex pack-help skill (v11)
-├── .gemini/commands/pack-help.toml         Gemini pack-help command (v11)
+├── .agents/skills/pack-help/               Antigravity pack-help skill (v11)
 ├── .codex/config.toml                      Codex config (agent registry, profiles)
 ├── .claude/settings.json                   Claude Code settings (permissions, hooks)
 ├── .github/ISSUE_TEMPLATE/                 Issue template forms (v11; BD / TD / inbound)
@@ -99,7 +99,7 @@ project-template/                           Unified project template (v11)
 │   ├── inbound.yml                         External-input entry form
 │   └── config.yml                          Disables blank issues
 ├── skills/                                 Canonical skill library (36 skills — 14 Tier 0 base + 20 dimensional/intersection + 1 trigger-loaded + 1 PM chat operational; per `docs/pack/PLATFORM-SKILLS.md` Full skill inventory) — distributed
-│                                           to .claude/skills/, .codex/skills/, .gemini/skills/
+│                                           to .claude/skills/, .codex/skills/, .agents/skills/
 │                                           at project creation by init-project.sh; not
 │                                           present as a sub-directory in projects
 ├── docs/pack/                              Pack product docs shipped into each project
@@ -149,8 +149,7 @@ supporting-docs/                            Pack product docs (copied to or cons
 ├── SETUP-NEW.md                            Guide for setting up a new project (v11)
 ├── SETUP-EXISTING.md                       Guide for adding the pack to an existing project (v11)
 ├── AGENT_KICKOFF_TEMPLATE.md               Architecture kickoff template
-├── MIGRATION-v10-to-v11.md                 Upgrade guide (v10.0 → v11.0)
-└── MIGRATION-v8-to-v9.md                   Upgrade guide (historical; v8.x → v9.0)
+└── MIGRATION-v10-to-v11.md                 Upgrade guide (v10.0 → v11.0)
                                             (v9->v10 migrator + guide were sunset in v11 per BD-121;
                                             recover from history with `git checkout v10 -- ...`)
 
@@ -178,9 +177,9 @@ vscode-companion-templates/                 Machine-level VS Code config (per pr
 
 .claude/agents/                             Pack-specific Claude agents (4)
 .codex/agents/                              Pack-specific Codex agents (4)
-.gemini/agents/                             Pack-specific Gemini agents (4)
+.agents-plugin/pack-agents/agents/          Pack-specific Antigravity agent bundle (4)
 .claude/skills/, .codex/skills/,            Pack agent skills (copied from project-template/skills/)
-  .gemini/skills/
+  .agents/skills/
 
 /backlog/                                   Pack-self per-entry backlog tree (BD-203; sole SSOT + readable form, committed state — no monolithic mirror);
                                             supporting files: _rules.md, _intro.md, _toc.md

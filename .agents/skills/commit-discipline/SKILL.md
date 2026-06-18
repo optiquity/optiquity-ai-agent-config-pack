@@ -199,21 +199,21 @@ When modifying any of:
 
 …the agent MUST modify all three with byte-identical wording, modulo
 provably tool-specific tweaks (Claude's Task tool syntax, Codex's
-`agent-run.sh` references, Gemini's `@<agent>` invocation). Symmetry
+`agent-run.sh` references, Antigravity's `agy` subagent invocation). Symmetry
 is the default; asymmetry requires justification in the implementation
 report.
 
 The same rule applies to any pack-template trinity files (e.g., when
 a skill is added under `project-template/skills/<name>/`, the
 `project-template/.claude/skills/<name>/`, `project-template/.codex/skills/<name>/`,
-and `project-template/.gemini/skills/<name>/` mirrors must also be
+and `project-template/.agents/skills/<name>/` mirrors must also be
 updated — that's a quad, not a trinity, but the discipline is the
 same).
 
 For pack-repo agent files (`.claude/agents/`, `.codex/agents/`,
-`.gemini/agents/`), the same trinity discipline applies. Each agent's
+`.agents-plugin/pack-agents/agents/`), the same trinity discipline applies. Each agent's
 content is mirrored across the three tools with tool-specific format
-differences (Claude markdown frontmatter, Codex TOML, Gemini markdown
+differences (Claude markdown frontmatter, Codex TOML, Antigravity markdown
 frontmatter) but identical prose.
 
 ## 6. Anti-patterns the discipline catches

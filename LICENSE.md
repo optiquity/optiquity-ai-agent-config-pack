@@ -29,7 +29,7 @@ copies, modifies, or distributes the Pack.
 **1.3 "Modification."** Any change to a Pack-controlled file (including
 but not limited to files at the root of the repository, files under
 `project-template/`, `supporting-docs/`, `scripts/`, agent files in
-`.claude/`, `.codex/`, `.gemini/`, and skill files), or any fork of the
+`.claude/`, `.codex/`, `.agents/`, and skill files), or any fork of the
 Pack as a whole.
 
 **1.4 "Permitted Customization" — not a Modification.** The Pack ships

@@ -1,6 +1,6 @@
 # AI Agent Config Pack — Quick Start
 
-This pack configures Claude Code, Codex CLI, Gemini CLI, and Xcode to
+This pack configures Claude Code, Codex CLI, Antigravity, and Xcode to
 follow your project's architecture rules, coding standards, and
 conventions automatically — without repeated prompting.
 
