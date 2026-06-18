@@ -31,6 +31,7 @@
 - [BD-229](./BD-229.md) — README Repository-Layout pack-agent count is stale: `(4)` → `(5)` on all three agent-surface rows
 - [BD-230](./BD-230.md) — Pack-self `BD-NNN` references leak into client-shipped `supporting-docs/` (boundary violation; strip-scope is a user decision)
 - [BD-231](./BD-231.md) — Dangling `.mcp.json.example` references: the file is absent from `project-template/` (add-file vs. repoint is a user decision)
+- [BD-232](./BD-232.md) — Reorganize + reduce Pack Chat's out-of-repo memory cache (architect-designed reorg, coder-rewritten content; Pack Chat installs only)
 
 ## Deferred
 
