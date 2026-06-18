@@ -322,3 +322,208 @@ Teams entry above:
 - **How to use the pack's pieces with it** — concrete example(s)
 - **Caveats** — known limitations, scope boundaries, cost considerations
 - **When to skip** — counter-cases where the feature does not help
+
+---
+
+## Graphify — knowledge-graph context (pack-dev)
+
+**Status:** Pack-development only — NOT a client feature. Target binary
+`graphify 0.8.39`. The graph, the post-commit hook, and the initial build are
+a per-clone, gitignored, MANUAL opt-in: a maintainer who does nothing gets
+exactly today's behavior, and clients are entirely unaffected (nothing
+graphify ships in the config pack; no `project-template/` file is touched).
+The only committed scaffolding is the repo-root `.graphifyignore`, the
+`.gitignore` entry for `graphify-out/`, the pack-root-trinity graph-first rule
+(plus its `graph-first-context` rationale section), CI Check 63, and this
+runbook (BD-225).
+
+**What it is.** Graphify builds a compact knowledge graph of the repo
+(structural code relationships + a semantic layer over docs/comments) that
+agents and Pack Chat can QUERY for orientation / relationship / blast-radius
+questions at roughly zero tokens, instead of broad tree reads. The graph-first
+rule in the pack-root trinity (`### Repo conventions`, tagged
+`[rationale: graph-first-context]`) governs WHEN to prefer the graph and when
+to fall through to grep/Read; this section is the SETUP + PRIVACY + MAINTENANCE
+runbook for the per-clone build.
+
+**When it matters for the pack.** The pack repo is doc-, reference-, and
+agent-heavy; agents repeatedly re-read the file tree for context, which is
+token-expensive. A compact subgraph answers "what relates to X / where does Y
+live / blast radius of Z" deterministically and locally. Querying is
+read-only, deterministic, and ~0 tokens — only BUILDING or refreshing the
+semantic doc layer costs the Claude subscription. Agents QUERY; they never
+BUILD (build is a one-time main-session / orchestrator job).
+
+### Privacy / secrets (read before you build — D3)
+
+- **What leaves the machine.** The AST / code pass is 100% local and never
+  leaves the machine. The SEMANTIC pass sends NON-CODE text (docs, PDFs,
+  comments) to the model — code is not sent. Know this before the first build.
+- **A classifier refusal is a CORRECT SAFETY STOP, not a bug.** Graphify's
+  auto-mode classifier may REFUSE to run the semantic pass on a
+  secrets-adjacent repo. Treat a refusal as the safety feature working:
+  INVESTIGATE what tripped it; do NOT blindly override. This repo is less
+  secrets-adjacent than dotfiles (only synthetic fixtures plus `.example`
+  files), and the `.graphifyignore` (repo root) excludes all `.env` files,
+  `.mcp.json`, and `.claude/settings.local.json`, which removes the
+  secrets-shaped inputs from the semantic pass.
+- **Backend = Claude subscription ONLY.** Pin `--backend claude-cli` on every
+  `extract` invocation. THE STALE-ENUM CAVEAT (load-bearing): the top-level
+  `graphify --help` `--backend` enum OMITS `claude-cli`, but `claude-cli` IS
+  valid (it is surfaced by the invalid-backend error) and is the NO-KEY
+  subscription path. Do NOT "fix" `claude-cli` → `claude` to match the help:
+  `--backend claude` requires `ANTHROPIC_API_KEY` and is NOT the subscription
+  path. Substituting `claude` for `claude-cli` is the single
+  highest-consequence error in this integration.
+- **The paid-API auto-route foot-gun.** If `GEMINI_API_KEY`, `GOOGLE_API_KEY`,
+  or `OPENAI_API_KEY` is set in the environment, graphify routes the semantic
+  pass to that PAID API. Defense-in-depth: the post-commit hook unsets all
+  three in its own subshell AND every `extract` line pins `--backend
+  claude-cli` explicitly. Keep no API key anywhere in pack config.
+- **Ignore the SKILL.md "set `GEMINI_API_KEY`" tip** — it conflicts with the
+  subscription-only policy. NO Ollama (a working no-key path, `claude-cli`,
+  already exists). NO neo4j / falkordb / video extras — they are absent on the
+  build machine and any such export would `ModuleNotFoundError`; out of scope.
+
+### How to enable — one-time initial build (interactive, main session)
+
+The first build is a one-time interactive main-session job; it produces NO
+committed artifact (the graph is gitignored and per-clone) and cannot be fully
+automated, because the corpus trips BOTH narrow-gates (1,373 indexable files >
+500; ~2.65M `.md` words > 2,000,000). The irreducible MANUAL / permission
+points:
+
+1. **Narrow-gate decision.** Run the interactive `/graphify .` build; it warns
+   and asks which subfolder to narrow to — answer **"proceed whole-repo"**
+   (start big), with `--no-viz` ON and clustering ON. (`--no-viz` is a
+   build/skill flag of the initial `/graphify .` build ONLY — see the §1.1
+   caveat below; never pass it to `extract`.)
+2. **First headless `claude -p` permission prompt.** The first time the
+   semantic path runs headless, Claude Code may prompt for permission —
+   confirm once per machine.
+3. **Classifier refusal = correct safety stop.** If the classifier refuses,
+   investigate; do NOT auto-override (see Privacy above).
+4. **Per-clone / per-machine install.** `graphify-out/`, the post-commit hook,
+   and the global graph do NOT sync across clones or machines — each machine
+   builds its own (they cannot be committed: gitignored plus `.git/hooks` is
+   per-clone).
+5. **Env-key hygiene.** One-time confirm that `GEMINI_API_KEY`,
+   `GOOGLE_API_KEY`, and `OPENAI_API_KEY` are unset.
+
+The initial build produces `graphify-out/cost.json` (the measured token-cost
+tracker). That file is the input **BD-234** consumes to confirm or re-tune
+cadence, knobs, and scope after burn-in. Cadence direction is LOCKED for now;
+do NOT change cadence here — BD-234 re-tunes with measured numbers.
+
+### How to keep it fresh — the post-commit hook (per-clone, manual, D4/D5)
+
+The maintenance mechanism is a GUARDED, NON-BLOCKING, doc-gated post-commit
+refresh, hand-installed at `.git/hooks/post-commit` (`chmod +x`). It is NOT a
+committed file — git does not version `.git/hooks` — so each clone installs it
+manually. Its LOAD-BEARING shape is: a G3 guard (silent no-op unless graphify
+is executable AND the graph already exists) → a key-clean subshell (unset the
+three paid-API keys) → a doc-gate split (a doc-layer change runs the semantic
+`extract`; otherwise the free code-only `update`) → background → an
+unconditional `exit 0` so a refresh problem NEVER breaks the commit.
+
+```bash
+#!/usr/bin/env bash
+# graphify post-commit refresh (BD-225) — GUARDED + NON-BLOCKING. Never blocks a commit.
+GFX="$(command -v graphify)"
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+GRAPH="$ROOT/graphify-out/graph.json"
+# G3 guard: silent no-op if graphify is missing or the graph was never built.
+[ -x "$GFX" ] && [ -f "$GRAPH" ] || exit 0
+# Key-assert: refuse the paid auto-route; run the refresh in a key-clean subshell.
+(
+  unset GEMINI_API_KEY GOOGLE_API_KEY OPENAI_API_KEY
+  # Doc-gate: did this commit change a doc-layer file (.md/.pdf)?
+  if git diff --name-only HEAD~1 HEAD | grep -Eq '\.(md|pdf)$'; then
+    # Semantic branch (subscription, serial). NO --no-viz (extract has no such flag).
+    GRAPHIFY_CLAUDE_CLI_PARALLEL=0 graphify extract . --backend claude-cli >/dev/null 2>&1 &
+  else
+    # Free code-only branch. Force-on-removal binds HERE (update only): GRAPHIFY_FORCE on a removal commit.
+    if git diff --name-only --diff-filter=D HEAD~1 HEAD | grep -q .; then
+      GRAPHIFY_FORCE=1 graphify update . >/dev/null 2>&1 &
+    else
+      graphify update . >/dev/null 2>&1 &
+    fi
+  fi
+) >/dev/null 2>&1
+exit 0   # always succeed — a refresh problem must never break the commit (G3)
+```
+
+Notes on the template:
+
+- The `extract` (semantic) line pins `--backend claude-cli` and carries NO
+  `--no-viz` (`extract` has no such flag; passing it is an unknown-option
+  error). The doc-gate predicate is a minimal illustrative form — you may
+  refine the doc-layer detection (e.g. comment-bearing code).
+- **`GRAPHIFY_FORCE=1` binds to the `update` branch ONLY** (source-verified):
+  `update` reads `GRAPHIFY_FORCE` and feeds it to its shrink-rejection guard,
+  whereas `extract` does NOT read it and prunes removals natively
+  (`prune_sources`). On a removal commit `GRAPHIFY_FORCE=1` on the `update`
+  branch is a belt-and-suspenders safety net; on the `extract` branch it would
+  be a no-op and falsely imply `extract` honors a flag it ignores — so it is
+  never set there.
+- A `graphify check-update .` run is a cron-safe safety net ("is a semantic
+  re-extraction pending?") if a backgrounded refresh was ever missed.
+- **Install + VERIFY before relying.** Two items remain to verify empirically
+  on YOUR setup before trusting the automated hook (until then, the manual
+  doc-gated refresh is the safe fallback):
+  - **(a) Does the hook fire under worktree isolation?** Under the
+    worktree-isolation flow (see the "Claude Code — Isolated parallel agents
+    (worktree isolation)" section above) the orchestrator applies the agent's
+    patch and commits in the MAIN (parent) tree. A git worktree shares the
+    parent's `.git` common dir, so `.git/hooks/post-commit` SHOULD fire from
+    the common dir on the main-tree commit — VERIFY this empirically, and
+    confirm the doc-gate's `git diff --name-only HEAD~1 HEAD` resolves against
+    the committed ref.
+  - **(b) Is a backgrounded refresh overlapping an in-flight agent query
+    safe?** Graphify keeps an auto-backup (backups are on by default) and
+    writes via a tmp-then-replace path (a `graph_tmp` written then swapped), so
+    a concurrent reader sees either the old or the new graph, not a torn file.
+    Confirm the atomic-swap on the installed 0.8.39 write path before declaring
+    the hook safe.
+
+### §1.1 backend caveat (do NOT "correct" it)
+
+Pin `--backend claude-cli` on every `extract`. The top-level `--help` enum
+OMITS `claude-cli`, but it is valid (verified via the invalid-backend error)
+and is the no-key subscription path — do NOT substitute `claude`, which
+demands `ANTHROPIC_API_KEY`. NEVER pass `--no-viz` to `extract`: `--no-viz` is
+a flag of the initial interactive `/graphify .` build ONLY (it skips the HTML
+render), and `extract` emits no HTML, so passing it there is an unknown-option
+error.
+
+**How to use the pack's pieces with it.** Agents and Pack Chat consume the
+graph by querying it (read-only, ~0 tokens) per the graph-first rule in the
+pack-root trinity (`### Repo conventions`). The rule + rationale live pack-side
+(`maintenance-docs/v11-implementation/DESIGN-BD-225-GRAPHIFY-PACK-INTEGRATION.md`
+is the design of record); the graph itself may index the WHOLE repo (including
+`project-template/`) for context — consuming it to answer a deliverable
+question is fine, because the RULE and the SETUP stay pack-side and nothing
+ships to clients.
+
+**Caveats.**
+- **Pack-dev only; boundary-bound.** This is a pack-development accelerator,
+  not a client deliverable. No `project-template/` file is touched; the
+  graph-first rule lives ONLY in the pack-root trinity; nothing ships to
+  clients.
+- **Per-clone, manual, gitignored.** The graph, the hook, and the initial
+  build do not sync. CI Check 63 enforces that `graphify-out/` is never
+  tracked.
+- **Subscription-only; no API keys.** Use `--backend claude-cli`; keep
+  `GEMINI_API_KEY` / `GOOGLE_API_KEY` / `OPENAI_API_KEY` unset.
+- **Best-effort accelerator.** If a query errors or returns nothing useful,
+  fall back to file reads — never block on the graph.
+
+**When to skip Graphify.**
+- You are doing a one-off task and do not want to run the one-time build.
+- The task is an exact-string / token search, an authoritative SSOT-field read
+  (a BD `Status`, the README version table, a `_rules.md` contract), a
+  freshly-changed / uncommitted file, or whole-file verbatim content — those
+  fall through to grep / Read / `git diff` per the graph-first rule's
+  exceptions, not the graph.
+- You are on a fresh clone with no graph built — the graph-first rule degrades
+  to ordinary grep/Read with zero friction.
