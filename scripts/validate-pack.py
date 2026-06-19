@@ -476,8 +476,8 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # the agent-count check). At the BD-219 dynamic-autoregen redesign the registry
 # held 61 entries; BD-221 (Antigravity conversion) RETIRED Checks 21 + 28
 # (−2), then BD-228 (push-time manifest method) ADDED Check 62 (+1), and BD-225
-# (Graphify pack integration) ADDED Check 63 (+1), so the registry now holds
-# 61 entries:
+# (Graphify pack integration) ADDED Check 63 (+1), and BD-231 (cross-CLI MCP
+# config example) ADDED Check 64 (+1), so the registry now holds 62 entries:
 #   57 entries at C1's CHECK_REGISTRY introduction (§EE-P5)
 # + 3 net-new C3 checks (58 validate-no-flag, 59 registry-completeness,
 #                        60 shard-coverage mirror)
@@ -485,13 +485,19 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # − 2 retired in BD-221 (21 pack-help per-CLI parity, 28 pm-startup per-CLI
 #                        parity — both obsoleted by the pooled-skill model)
 # + 1 net-new BD-228 check (62 manifest structural well-formedness screen)
-# + 1 net-new BD-225 check (63 graphify-out-never-tracked guard).
+# + 1 net-new BD-225 check (63 graphify-out-never-tracked guard)
+# + 1 net-new BD-231 check (64 dangling-.example deliverable gate).
+# CAUTION (BD-231): the new check's NUMBER is 64 (the next free integer; the
+# highest existing check number was 63) but this constant is the registry
+# ENTRY COUNT — bump it 61 -> 62, NOT to 64. Numbers != entry count (Checks
+# 16/18/19 each register TWICE and 2 checks carry number=None), so the count
+# always lags the max number; setting it to 64 makes Check 59 FAIL.
 # (Re-scoped Check 42 keeps its slot; numbers ≠ entry count — Checks
 # 16/18/19 each register TWICE and 2 checks carry number=None.) This constant
 # is the explicit invariant; the actual count is COMPUTED from
 # len(_build_check_registry()) and asserted equal by Check 59 — never
 # hard-coded anywhere else.
-CHECK_REGISTRY_EXPECTED_COUNT = 61
+CHECK_REGISTRY_EXPECTED_COUNT = 62
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
@@ -6988,6 +6994,158 @@ def check_graphify_out_never_tracked() -> None:
        "0 tracked paths).")
 
 
+# ── Check 64 (BD-231): dangling-.example deliverable referential-integrity gate.
+# The MCP/config `.example` family the BD cares about. Each member is a
+# `project-template/`-rooted dotfile-`.example` whose BASENAME is cited across
+# the deliverable surface (README layout block + project-template/** +
+# supporting-docs/**). The matcher is BOUNDED to exactly this family
+# (ci-guard-measure-then-bound): a single compiled alternation over the three
+# basenames, NOT an over-broad `\b\S+\.example\b` sweep that would re-classify
+# unrelated `.example` cites. Closes the Check-43 leading-dot-dotfile blind spot
+# (DESIGN-BD-231 §4.1: `_CHECK_40_BARE_REF_PATTERN` requires `[A-Za-z]` first,
+# so a leading-dot `.mcp.json.example` token is NEVER matched by Check 43).
+_CHECK_64_EXAMPLE_FAMILY = (
+    ".mcp.json.example",
+    ".agents/mcp_config.json.example",
+    ".codex/config.toml.example",
+)
+# Match either the full relative path or the bare basename for each family
+# member (docs cite both forms — e.g. `.mcp.json.example` and
+# `.agents/mcp_config.json.example`).
+_CHECK_64_REF_PATTERN = re.compile(
+    r"(?:\.agents/mcp_config\.json\.example"
+    r"|\.codex/config\.toml\.example"
+    r"|\.mcp\.json\.example"
+    r"|\bmcp_config\.json\.example"
+    r"|\bconfig\.toml\.example)"
+)
+# EXCLUDE path-prefixes (DESIGN-BD-231 §4.3): history is immutable, pack-only
+# surfaces are not client deliverables, and the fixture trees are synthetic.
+# Relative-to-REPO_ROOT POSIX prefixes.
+_CHECK_64_EXCLUDE_PREFIXES = (
+    "changelog/",
+    "backlog/",
+    "pack-ops/",
+    "maintenance-docs/",
+    "test-fixtures/",
+    "scripts/tests/fixtures/",
+    ".git/",
+)
+# The deliverable surface walked (DESIGN-BD-231 §4.3 INCLUDE): pack-root
+# README.md (its project-template/ layout block), project-template/**,
+# supporting-docs/**. README is included as a single file (only its layout
+# block cites the family); the two trees are walked recursively.
+_CHECK_64_INCLUDE_TREES = ("project-template", "supporting-docs")
+
+
+def _check_64_basename_for(token: str) -> str:
+    """Map a matched ref token to the family member basename it denotes."""
+    if token.endswith("mcp_config.json.example"):
+        return ".agents/mcp_config.json.example"
+    if token.endswith("config.toml.example"):
+        return ".codex/config.toml.example"
+    return ".mcp.json.example"
+
+
+def check_dangling_example_deliverable_refs() -> None:
+    """Check 64 — no dangling MCP/config `.example` reference in deliverable docs (BD-231).
+
+    Referential-integrity gate (DESIGN-BD-231 §4). For the MCP/config
+    `.example` family — `.mcp.json.example` (Claude), `.agents/mcp_config.json
+    .example` (Antigravity), `.codex/config.toml.example` (Codex) — every cite
+    on the DELIVERABLE surface (pack-root `README.md` layout block,
+    `project-template/**`, `supporting-docs/**`) MUST resolve to an existing
+    file under `project-template/`. A cite of a family member whose target file
+    is ABSENT is a dangling reference -> FAIL with `file:line` + the dangling
+    token + a restore-or-drop remediation.
+
+    Why a NEW check, not Check 43 (DESIGN-BD-231 §4.1): Check 43's
+    `_CHECK_40_BARE_REF_PATTERN` requires the first char to be `[A-Za-z]`, so a
+    leading-dot dotfile like `.mcp.json.example` is NEVER matched, and
+    `.example` is not in `_CHECK_40_FILE_EXTS`. Check 43's green status is
+    therefore NOT evidence these refs resolve — it is blind to them. This check
+    is the targeted matcher that closes that blind spot.
+
+    measure-then-bound (ci-guard-measure-then-bound): the matcher is bounded to
+    exactly the three-member MCP/config family (`_CHECK_64_REF_PATTERN`), NOT an
+    over-broad `.example` sweep; the surface is bounded to the deliverable
+    INCLUDE trees minus the EXCLUDE path-prefixes (history / pack-only /
+    fixtures). Every KEEP cite auto-passes once its target exists — there is no
+    basename allowlist that could silently admit a real dangling ref; the only
+    bound is the EXCLUDE list.
+
+    Cheap (ci-check-runtime-compounding): a single bounded walk over README +
+    project-template/** + supporting-docs/** with ONE compiled-regex scan per
+    line — no whole-tree scan, no per-entry subprocess. Routes through
+    `run_check`.
+
+    Resolves all paths via `REPO_ROOT` (the module-level constant) so the
+    per-check test can monkeypatch `mod.REPO_ROOT` to a /tmp fixture root and
+    exercise the dangling-ref FAIL path without touching the real tree.
+    """
+    print("\n── Check 64: no dangling MCP/config .example deliverable refs (BD-231) ──")
+
+    # The legitimate target set: family members that actually exist under
+    # project-template/. A cite resolves iff its basename is present here.
+    present_targets = set()
+    for rel in _CHECK_64_EXAMPLE_FAMILY:
+        if (REPO_ROOT / "project-template" / rel).is_file():
+            present_targets.add(rel)
+
+    def _excluded(rel_posix: str) -> bool:
+        return any(rel_posix.startswith(p) for p in _CHECK_64_EXCLUDE_PREFIXES)
+
+    # Build the bounded deliverable file set.
+    walked: list[Path] = []
+    readme = REPO_ROOT / "README.md"
+    if readme.is_file():
+        walked.append(readme)
+    for tree in _CHECK_64_INCLUDE_TREES:
+        root = REPO_ROOT / tree
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*")):
+            if not path.is_file():
+                continue
+            rel_posix = path.relative_to(REPO_ROOT).as_posix()
+            if _excluded(rel_posix):
+                continue
+            walked.append(path)
+
+    dangling = []          # (file:line, token, basename)
+    refs_checked = 0
+    for path in walked:
+        rel_posix = path.relative_to(REPO_ROOT).as_posix()
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue       # binary / unreadable file — nothing to cite
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            for m in _CHECK_64_REF_PATTERN.finditer(line):
+                token = m.group(0)
+                basename = _check_64_basename_for(token)
+                refs_checked += 1
+                if basename not in present_targets:
+                    dangling.append((f"{rel_posix}:{lineno}", token, basename))
+
+    if dangling:
+        for loc, token, basename in dangling:
+            fail(
+                f"{loc} — dangling MCP/config .example reference `{token}`: "
+                f"the cited deliverable template `project-template/{basename}` "
+                f"does NOT exist. Remediation: restore "
+                f"`project-template/{basename}` OR drop the cite. (BD-231 Check 64)"
+            )
+        return
+
+    ok(
+        f"Check 64 — {len(walked)} deliverable file(s) walked; {refs_checked} "
+        f"MCP/config .example reference(s) checked; every cite resolves to an "
+        f"existing project-template/ template ({len(present_targets)} family "
+        f"target(s) present)."
+    )
+
+
 def check_validate_job_carries_no_only_check() -> None:
     """Check 58 — the authoritative `validate` job carries NO `--only-check`.
 
@@ -10056,6 +10214,14 @@ def _build_check_registry():
         # guards (58/59/60/61/62).
         (63, "check_graphify_out_never_tracked",
               check_graphify_out_never_tracked, W),
+        # Check 64 — dangling-.example deliverable gate (BD-231): a cheap bounded
+        # walk over README + project-template/** + supporting-docs/** asserting
+        # every MCP/config `.example` family cite resolves to an existing
+        # project-template/ template. Closes the Check-43 leading-dot-dotfile
+        # blind spot (DESIGN-BD-231 §4.1). Lands at the registry tail alongside
+        # the adjacent CI-infra guards (58/59/60/61/62/63).
+        (64, "check_dangling_example_deliverable_refs",
+              check_dangling_example_deliverable_refs, W),
     ]
 
 
