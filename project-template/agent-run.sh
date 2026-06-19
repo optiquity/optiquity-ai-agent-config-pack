@@ -272,8 +272,10 @@ die() {
 #   git worktree add --detach ../wt-<task> HEAD
 #   (cd ../wt-<task> && claude --agent <name>)
 #   # then review + merge the worktree's changes back with ordinary git.
-# Either way the agent still never stages or commits — you bring its work back
-# (the PM-chat merge-back applies the patch the agent leaves; see
+# Either way the agent never stages or commits. The PM chat runs the review/fix
+# cycle in the worktree and brings back the reviewed-clean patch — same merge-back
+# model as the in-session spawn path; only the LAUNCH mechanism (separate terminal
+# vs in-session Agent tool) differs, with no special-casing (see
 # docs/pack/PM-CHAT.md "In-session agent spawning" and
 # docs/pack/OPTIONAL-FEATURES.md).
 run_in_worktree() {
@@ -303,8 +305,9 @@ run_in_worktree() {
     echo "[worktree] Launching: claude --agent $agent  (cwd=$wt_path)"
     echo "[worktree] Reminder: confirm the main checkout is unchanged after"
     echo "[worktree] this returns (cwd-scoping caveat — see this script's"
-    echo "[worktree] run_in_worktree comment). The agent never commits; bring"
-    echo "[worktree] its work back via the PM-chat patch merge-back."
+    echo "[worktree] run_in_worktree comment). The agent never commits; the PM"
+    echo "[worktree] chat runs the review/fix cycle in the worktree and applies"
+    echo "[worktree] the reviewed-clean patch."
     ( cd "$wt_path" && claude --agent "$agent" "${extra[@]+"${extra[@]}"}" )
 }
 

@@ -34,28 +34,32 @@ allowed-tools: Read, Grep, Glob, Edit, Write, MultiEdit, Bash
 ## Reporting the change set (regime-aware)
 
 A write-capable agent never stages or commits — the PM chat brings the
-edits back. How the change set is handed off depends on the regime the
-agent is running in. Detect it from where the agent is working, not from
-any setting:
+edits back. Verify the tree you are running in from your own runtime
+pwd/HEAD, not from any setting. Two facts are separate; do not conflate
+them: WHICH TREE you write in (where you run), and WHETHER YOU EMIT A
+PATCH (only a read-write agent ever does, and only after review-clean).
 
-- **In-place (default).** The agent edits the main working tree. The
-  completion report records the change set as the working-tree diff
-  against the base HEAD it started from (`git diff` is read-only). The
-  PM chat reads the report and the working-tree diff, then stages and
-  commits with developer approval.
-- **Isolated (opt-in worktree).** The agent edits its own checkout and
-  the calling prompt names a `/tmp` handoff directory. The agent emits
-  the change set as a patch with read-only git
-  (`git diff > <handoff>/changes.patch`) and writes its report into the
-  same handoff directory, then returns. The patch — not the worktree —
-  is the persisted artifact, so the change set survives even after the
-  isolated worktree is cleaned up. The PM chat applies the patch
-  (`git apply --check` then `git apply`) and commits with developer
-  approval.
+- **Your report ALWAYS goes to the named `/tmp` handoff directory the
+  calling prompt supplies** — whether you ran in the main tree or in an
+  isolated worktree. The completion report records what changed, which
+  files were created or modified, and the verification path. If the
+  `/tmp` handoff write fails because the directory is not writable, fall
+  back to the report path the prompt named and note the degradation — do
+  not hard-error on a failed handoff write.
+- **A read-WRITE agent (the `coder`/`repo-ops`) does NOT emit a patch up
+  front.** Write your edits, run verification, write your report to the
+  handoff directory, and return — the work may still be wrong, so it is
+  not handed back as a patch yet. The patch is produced ONLY after a
+  read-only reviewer confirms the work clean: the PM chat re-engages you
+  to run the read-only patch-emit at that point
+  (`git diff > <handoff>/changes.patch`). The PM chat then applies that
+  reviewed-clean patch (`git apply --check` then `git apply`) and commits
+  with developer approval.
+- **A read-ONLY agent (the `reviewer`/`architect`/`planner`) running in a
+  live worktree writes ONLY its report and emits NO patch.** It reads the
+  uncommitted work in the worktree it cd'd into (verifying pwd/HEAD) and
+  reports its findings; it never produces a change set.
 
-Either way the agent runs only read-only git verbs (`git diff`, never
-`git apply` or any state-changing verb); applying and committing belong
-to the PM chat alone. If the `/tmp` handoff write fails because the
-directory is not writable, fall back to the report path the prompt
-named and note the degradation — do not hard-error on a failed handoff
-write.
+Every agent runs only read-only git verbs (`git diff`, never `git apply`
+or any state-changing verb); applying and committing belong to the PM
+chat alone.

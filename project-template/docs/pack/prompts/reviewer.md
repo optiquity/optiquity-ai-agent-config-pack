@@ -44,6 +44,12 @@ markers per finding.
 
 **Constraints:**
 - Read-only review pass. Do not modify any files.
+- **Read the work in the tree it lives in.** When the coder's work is
+  still uncommitted in an isolated worktree, `cd` into that worktree and
+  VERIFY your pwd/HEAD at runtime before reviewing — read the in-progress
+  work there, not the main checkout. When the work is already on
+  HEAD/committed, review it in the main tree. Emit no patch; your output
+  is the report only.
 - **Nine review dimensions (do not skip any):**
 
 Review for all nine of the following — do not skip any:

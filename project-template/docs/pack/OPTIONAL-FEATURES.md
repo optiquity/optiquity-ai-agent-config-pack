@@ -103,37 +103,52 @@ file — you add the keys to your OWN settings (see below).
 
 **What it is.** When the PM chat spawns a read-write agent (your `coder`, or
 `repo-ops` for scripted writes) in the background to make edits in parallel, it
-can isolate that agent in its own git worktree so the agent's edits never touch
-your main working tree directly. The agent edits in the worktree, emits a `git
-diff` patch to a named handoff directory, and returns; the PM chat reads the
-patch, runs the review/fix cycle, applies it onto your branch, and commits — the
-agent itself never stages or commits (the no-state-changing-git contract is
+isolates that agent in its own git worktree so the agent's edits never touch
+your main working tree directly. The first coder of a commit creates the
+worktree; the ENTIRE review/fix cycle for that commit runs inside it — the
+read-only reviewer reads the work there and a fix-coder REUSES that same
+worktree (never a new one). The read-write agent does NOT emit a patch up front
+(the work may still be wrong); the patch is produced ONLY after the reviewer
+confirms the work clean, by re-engaging the most-recent read-write agent (in
+Claude Code, via the Agent-team peer-message path; if your CLI offers no
+peer-messaging, re-spawn a fresh coder against the worktree to produce it). The
+PM chat then applies that reviewed-clean patch onto your branch and commits —
+the agent itself never stages or commits (the no-state-changing-git contract is
 preserved end-to-end). Read-only agents (your `architect`, `reviewer`,
-`planner`, the `auditor` family, and the other report-only profiles) need NO
-isolation — they emit a report and write nothing to the tree. The in-session
+`planner`, the `auditor` family, and the other report-only profiles) run in the
+tree the work lives in — your main tree when the work is committed, the live
+worktree when the work is still uncommitted there (they cd in and verify
+pwd/HEAD at runtime). They write a report and emit no patch. The in-session
 spawn + merge-back procedure lives in `docs/pack/PM-CHAT.md` ("In-session agent
 spawning").
 
-**When this matters for your project.** Isolation matters when the PM chat
-spawns SEVERAL read-write agents in parallel and you do not want their edits to
-collide in one shared working tree, or when you want a clean patch-handoff
-boundary for each coder. For a single sequential coder it is optional; the
-in-place (non-isolated) regime is the default floor and works without any
-settings.
+**When this matters for your project.** Read-write agents run isolated by class,
+so isolation always applies to your `coder`/`repo-ops` work; it especially
+matters when the PM chat spawns SEVERAL read-write agents in parallel and you do
+not want their edits to collide in one shared working tree, or when you want a
+clean patch-handoff boundary for each coder. If isolation is unavailable (an
+environment without worktree support), the in-place (non-isolated) regime is the
+DEGRADED fallback — it still works without any settings, but it exposes
+in-progress work to your main tree, which is exactly what the isolated default
+avoids.
 
 **How to enable isolated parallel subagents — TWO INDEPENDENT mechanisms.**
 The feature is governed by two orthogonal knobs. Do not conflate them.
 
 1. **TRIGGER (per task) — the per-spawn Agent-tool `isolation` parameter.**
-   The PM chat decides per spawn whether an agent runs isolated, by passing the
-   Agent-tool `isolation:"worktree"` parameter when it spawns a read-write
-   agent. `"worktree"` is the ONLY valid value for this parameter — `head` and
-   `none` are SETTINGS values (see `baseRef`/`bgIsolation` below), NOT parameter
-   values. Omitting the parameter runs the agent in-place (the default). This is
-   a per-spawn decision the PM chat makes; it is not a `settings.json` key, and
-   the PM chat does NOT isolate by writing settings (that would conflict with
-   the no-write-settings posture and could surprise another session sharing the
-   same checkout).
+   The PM chat passes the Agent-tool `isolation:"worktree"` parameter PER SPAWN
+   when it isolates a read-write agent. `"worktree"` is the ONLY valid value for
+   this parameter — `head` and `none` are SETTINGS values (see
+   `baseRef`/`bgIsolation` below), NOT parameter values. This is a per-spawn
+   decision the PM chat makes; it is not a `settings.json` key, and the PM chat
+   does NOT isolate by writing settings (that would conflict with the
+   no-write-settings posture and could surprise another session sharing the same
+   checkout). Do NOT pin `isolation:"worktree"` in any read-write agent's
+   definition frontmatter: because the parameter has only the single value
+   `"worktree"`, a frontmatter pin forces a NEW worktree on EVERY spawn — so a
+   fresh fix-coder could not cd into and REUSE the first coder's worktree, which
+   breaks the reuse / in-worktree-cycle / lifecycle rules. Isolation is the
+   PM chat's per-spawn choice, not a definition-level pin.
 
 2. **BASE (REQUIRED setting) — `worktree.baseRef`.** Set
    `worktree.baseRef: "head"` in your `settings.json` so an isolated worktree
@@ -233,22 +248,27 @@ relying on it — run `./agent-run.sh claude --agent coder --worktree`, then in
 your main checkout run `git status` and confirm the main working tree is
 unchanged. If the probe shows the agent's git leaked into the parent repo, do
 NOT use `--worktree`; fall back to the manual procedure (below). Either way the
-agent still never stages or commits — you bring its work back via the PM-chat
-patch merge-back (`docs/pack/PM-CHAT.md`). See the `run_in_worktree` comment in
-`agent-run.sh` for the full caveat.
+agent still never stages or commits — the PM chat runs the review/fix cycle in
+the worktree and brings back the reviewed-clean patch, same merge-back model as
+the in-session spawn path (`docs/pack/PM-CHAT.md`). See the `run_in_worktree`
+comment in `agent-run.sh` for the full caveat.
 
 **Caveats.**
 - **Version-sensitive.** Worktree isolation behavior has shifted across Claude
   Code releases; confirm your version's behavior before relying on it.
 - **Auto-removal can delete unmerged branches.** When an isolated subagent exits
-  cleanly, Claude Code auto-removes its worktree and branch. A branch with
-  unmerged commits can be silently deleted — which is why the merge-back model
-  captures the agent's work as a patch in the handoff directory BEFORE return
-  (the patch survives auto-removal), and why agents never commit.
+  cleanly, Claude Code can auto-remove its worktree and branch — a branch with
+  unmerged commits can be silently deleted. That mechanism is exactly why the PM
+  chat does NOT rely on auto-removal: it HOLDS the commit's worktree through the
+  whole review/fix cycle and removes it explicitly only AFTER the commit lands (a
+  failed commit KEEPS the worktree). The patch is produced post-review-clean and
+  applied at commit time, never captured pre-return, so reviewed-clean work
+  reaches your branch and nothing in-progress is lost to a teardown.
 - **Best-effort isolation / silent fall-to-main.** Isolation can silently fall
-  back to editing the main checkout. The PM chat therefore detects the ACTUAL
-  regime from what the agent reports (a patch handoff ⇒ isolated; in-place edits
-  ⇒ in-place), never from an assumed settings value.
+  back to editing the main checkout. Each agent therefore VERIFIES its actual
+  regime from its own runtime pwd/HEAD ground-truth (where it is actually
+  running, what its HEAD actually is), never from an assumed settings value or a
+  patch-handoff signal.
 - **`baseRef` unset/`fresh` wrong-base.** As above, an unset/`fresh` `baseRef`
   bases isolated work at `origin/main` rather than your branch — a documented
   degradation, surfaced by the PM chat, never silent.
