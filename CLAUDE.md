@@ -336,20 +336,47 @@ PACK-AGENTS.md current".
 
 ### Sub-agent behavior (Claude-only)
 
-- **Sub-agents run in-place by default; isolation is opt-in.** Sub-agents
-  run IN-PLACE against the parent chat's working tree by default (no
-  isolation). A chat MAY opt a sub-agent into isolated parallel execution
-  by passing the per-spawn Agent-tool `isolation:"worktree"` parameter
-  (the TRIGGER; `"worktree"` is the only valid value); the developer
-  should set `worktree.baseRef:"head"` in settings so the worktree bases
-  at local HEAD (unset/`fresh` bases at origin/main — a documented
-  wrong-base degradation) — see OPTIONAL-FEATURES. When isolation is
-  active, read-write agents emit a patch to the named `/tmp` handoff dir
-  and the orchestrator applies it; agents never commit. The agent
-  VERIFIES its actual regime at runtime (pwd/HEAD ground-truth), never
-  trusting settings. `worktree.bgIsolation` governs background SESSIONS
-  only (not sub-agents) — BD-218. Trinity-exempt (Claude-only;
-  Codex/Antigravity = BD-217).
+- **Sub-agent isolation is keyed by agent class (RW → isolated worktree;
+  RO → the work's tree).** Read-WRITE sub-agents (coders, fix-coders —
+  anything that writes/mutates) run in an ISOLATED worktree by class. The
+  FIRST coder of a commit CREATES the worktree (per-spawn Agent-tool
+  `isolation:"worktree"` — the TRIGGER; `"worktree"` is the only valid
+  value); every subsequent read-write agent in that commit's cycle —
+  fix-coders included — REUSES that same worktree, NEVER a new one for a
+  fix-coder. Read-ONLY sub-agents (reviewers, architects, planners,
+  auditors, docs-researchers) run in the tree the work lives in: the
+  main checkout when the work is committed/on HEAD; the commit's live
+  worktree when the work is still uncommitted there (cd in + verify
+  pwd/HEAD). RO is NOT "always in-place" — it goes where the work is.
+  The developer should set `worktree.baseRef:"head"` in settings so the
+  worktree bases at local HEAD (unset/`fresh` bases at origin/main — a
+  documented wrong-base degradation) — see OPTIONAL-FEATURES. **No
+  up-front patch.** Read-write agents produce NO patch on return; the
+  ENTIRE review/fix cycle for a commit runs INSIDE that one worktree and
+  nothing reaches the canonical tree mid-cycle. The patch is produced
+  ONLY after a read-only reviewer confirms the work CLEAN — Pack Chat
+  SendMessage-s the most-recent read-write agent to produce it
+  (`git diff > <handoff>/changes.patch` at THAT point), then applies that
+  reviewed-clean patch and commits (with user approval); agents never
+  commit. The agent VERIFIES its actual regime at runtime (pwd/HEAD
+  ground-truth), never trusting settings. **Worktree lifecycle (with the
+  teardown gate).** Fresh worktree per commit's first coder; remove a
+  worktree ONLY after its commit is CONFIRMED landed (commit exit 0) —
+  after the commit (safe by then), NOT right-after-use (it may be needed
+  again mid-cycle); a FAILED/aborted commit KEEPS the worktree as the
+  recovery fallback; NEVER tear down on a failed/attempted commit and
+  NEVER rely on auto-removal. **Live-worktree ASK gate (rule 9).** A
+  commit's own reviewer/fix-coder is RULE-FIXED to the commit's worktree
+  (no ask). Any OTHER agent spawned while a live worktree with
+  uncommitted work exists ⇒ Pack Chat ASKS the user BOTH placement (which
+  tree the agent runs in) AND disposition (reuse vs abandon that
+  worktree); it NEVER self-decides either. **Parallelization map (rule
+  10).** For any multi-commit effort the architect + planner produce a
+  parallel-vs-dependent map in its OWN section of the design/plan; Pack
+  Chat consumes the map to schedule parallel worktree waves vs serial
+  commits (same-file commits serialize). `worktree.bgIsolation` governs
+  background SESSIONS only (not sub-agents) — BD-218. Trinity-exempt
+  (Claude-only; Codex/Antigravity = BD-217).
 - **Default sub-agent spawns to background.** Every Agent-tool
   invocation from Pack Chat uses `run_in_background: true` so the chat
   stays interactive while the sub runs. User has auto-mode on; the
@@ -365,7 +392,10 @@ PACK-AGENTS.md current".
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` enabled, sub-agents spawned
   for a stage (architect → planner → coder → reviewer) stay alive
   within the stage; Pack Chat uses SendMessage for follow-ups against
-  the same instance. After the stage's commit lands, close ALL stage
+  the same instance — including the sanctioned rule-4 post-review-clean
+  patch step (SendMessage-ing the most-recent read-write agent to
+  produce its `git diff` patch only after the review is clean). After
+  the stage's commit lands, close ALL stage
   sub-agents and respawn fresh for the next stage. Additionally: each
   pack-coder commit gets a FRESH coder instance — never reuse a coder
   across commits, even within a stage. Per-BD review/fix cycle = fresh

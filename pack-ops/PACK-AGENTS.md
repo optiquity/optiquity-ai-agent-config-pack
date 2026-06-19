@@ -141,19 +141,26 @@ Pack Chat CAN edit directly" for the canonical write-authority split.
 Every pack agent is one of exactly two classes. The class is the
 load-bearing safety classification — the platform provides **no safety
 net for subagents** (a non-isolated background subagent can write the
-parent working tree freely), so RW agents MUST be spawned with worktree
-isolation, and the class is what makes that enforceable.
+parent working tree freely), so RW agents run in an isolated worktree
+by class-default (not opt-in), and the class is what makes that
+enforceable. RO agents run in the tree the work lives in.
 
 - **RW (read-write) — `pack-coder`.** Writes/edits source files within
-  the caller-scoped file set, runs verification, and emits a patch plus
-  its report. NEVER runs a state-changing git verb. When isolation is
-  opted-in, an RW agent emits its `git diff` patch to the named `/tmp`
-  handoff dir and the orchestrator applies it.
+  the caller-scoped file set, runs verification, and writes its report.
+  NEVER runs a state-changing git verb. RW agents run in an isolated
+  worktree (class-default); the patch is NOT emitted up front. The patch
+  is produced only after review-clean — the orchestrator SendMessage-s
+  the most-recent RW agent to produce its `git diff` patch into the named
+  `/tmp` handoff dir; only the orchestrator applies it.
 - **RO (read-only) — `pack-architect`, `pack-planner`, `pack-reviewer`,
   `pack-docs-researcher`.** Write ONLY their single caller-specified
-  report; read-only on the codebase otherwise. (`pack-reviewer` carries
-  `Write, Edit` in its `tools:` to emit that one report — it is still
-  RO; the class is keyed off the prose mandate header, never `tools:`.)
+  report; read-only on the codebase otherwise. RO agents run in the tree
+  the work lives in — the main checkout when the work is committed; the
+  commit's live worktree when the work is still uncommitted there (cd in
+  + verify pwd/HEAD); RO is NOT "always in-place". (`pack-reviewer`
+  carries `Write, Edit` in its `tools:` to emit that one report — it is
+  still RO; the class is keyed off the prose mandate header, never
+  `tools:`.)
 
 Both classes obey `agents-never-commit` + the full destructive-git-verb
 ban identically (trinity `## Pack memory` `[rationale: agents-never-commit]`).

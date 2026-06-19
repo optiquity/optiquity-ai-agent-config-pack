@@ -31,10 +31,13 @@ set (Check 45, wired in commit C3).
 Read-only git verbs (`status`, `diff` — incl. `diff > file`, the agent's
 patch-emit — `log`, `rev-parse`, `show`, `ls-files`, `blame`) are allowed.
 Only Pack Chat may stage and commit, and only with explicit user approval.
-The agent's output is its report file plus working-tree edits (or, in the
-isolated regime, a `git diff` patch emitted to the named `/tmp` handoff
-dir); Pack Chat reads the report, verifies / applies the patch, then
-commits.
+The agent's on-return deliverable is its report file plus its worktree
+edits (held in the commit's isolated worktree). The `git diff` patch is
+NOT emitted up front — it is the POST-review-clean artifact: only after a
+read-only reviewer confirms the work clean does Pack Chat re-engage the
+most-recent read-write agent (SendMessage) to produce the patch into the
+named `/tmp` handoff dir; Pack Chat then reads the report, applies that
+reviewed-clean patch, and commits.
 
 **The denied set (RW and RO agents alike — "including but not limited
 to").** No agent may run any state-changing git verb at any point:
