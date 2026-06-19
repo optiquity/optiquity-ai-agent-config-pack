@@ -1027,7 +1027,7 @@ stage_s11_v11_artifacts() {
     pe_src="$PACK/project-template/docs/project"
     pe_dst="$TARGET/docs/project"
     [[ -d "$pe_src/backlog" && -d "$pe_src/implementation-plan" && -d "$pe_src/changelog" ]] \
-        || fail_stage S11 "canonical per-entry templates missing under project-template/docs/project/ (BD-167 install incomplete)"
+        || fail_stage S11 "canonical per-entry templates missing under project-template/docs/project/ (install incomplete)"
 
     mkdir -p "$pe_dst/backlog" "$pe_dst/implementation-plan" "$pe_dst/changelog"
 
@@ -1087,7 +1087,7 @@ stage_s11_v11_artifacts() {
         # scripts/lib/migrate-v10-to-v11/decompose.sh:85-100).
         local _pe_lib_dir="$PACK/scripts/lib/per-entry"
         [[ -d "$_pe_lib_dir" ]] \
-            || fail_stage S11 "per-entry helpers missing at $_pe_lib_dir (BD-164 install incomplete)"
+            || fail_stage S11 "per-entry helpers missing at $_pe_lib_dir (install incomplete)"
         if ! type pe_die >/dev/null 2>&1; then
             # shellcheck disable=SC1091
             . "$_pe_lib_dir/_lib.sh"
@@ -1173,7 +1173,7 @@ _cmd_update_iter_dir() {
 }
 
 cmd_update() {
-    say "── --update — refresh v11 artifacts via BD-088 customization-preserve ──"
+    say "── --update — refresh v11 artifacts via customization-preserve ──"
 
     # Pre-check: target must be currently pack-configured (else this is a
     # fresh install, not an update).
@@ -1187,7 +1187,7 @@ cmd_update() {
     if [[ ! -f "$lib_dir/three-way.sh" \
        || ! -f "$lib_dir/customization-preserve.sh" \
        || ! -f "$lib_dir/customization-report.sh" ]]; then
-        die "BD-088 customization library missing under $lib_dir; cannot --update" \
+        die "customization library missing under $lib_dir; cannot --update" \
             "$EXIT_UPDATE_LIB_MISSING"
     fi
 
@@ -1535,7 +1535,7 @@ main() {
         say "  (a) already using this pack — run the migrator for your"
         say "      current → target version (e.g. scripts/migrate-v10-to-v11.sh"
         say "      and supporting-docs/MIGRATION-v10-to-v11.md). v9.x is"
-        say "      no longer supported (sunset in v11 per BD-121)."
+        say "      no longer supported (sunset in v11)."
         say "  (b) using other AI tooling — remove or archive those files before"
         say "      running init-project.sh"
         exit "$EXIT_AI_CONFIG"
