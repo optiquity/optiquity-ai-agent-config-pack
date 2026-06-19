@@ -18,7 +18,7 @@
 #       inside. SIDECAR_SUFFIX defaults to ".pre-update".
 #   customization_classify REL_PATH
 #       Echo one of: trinity, claude-settings, claude-mcp-example,
-#       codex-config, codex-config-example, pm-chat,
+#       mcp-config-json, codex-config, codex-config-example, pm-chat,
 #       custom-agent, pack-agent, custom-script, pack-script, generic.
 #       The custom-agent / pack-agent classes cover BOTH the loose per-CLI
 #       agent dirs (.claude/.codex/.gemini/agents/) AND the Antigravity
@@ -158,6 +158,14 @@ customization_classify() {
             printf 'claude-settings\n' ;;
         .mcp.json.example|.mcp.json)
             printf 'claude-mcp-example\n' ;;
+        # Antigravity workspace MCP config — mcpServers-shaped JSON, routed
+        # through the SAME structured JSON key-merge as the Claude MCP example
+        # (CLI-neutral class name: the file is portable mcpServers JSON, not
+        # Antigravity-proprietary). BD-231 §8 (replaces the prior `generic`
+        # text-merge fallthrough). Both the live workspace file and its
+        # committed .example sibling route here.
+        .agents/mcp_config.json|.agents/mcp_config.json.example)
+            printf 'mcp-config-json\n' ;;
         .codex/config.toml.example)
             printf 'codex-config-example\n' ;;
         .codex/config.toml|.codex/requirements.toml)
@@ -449,7 +457,7 @@ customization_preserve() {
                 _cp_record "removed-everywhere" "$class" "$rel" "none" "-" "-" "-"
             fi
             ;;
-        claude-settings|claude-mcp-example)
+        claude-settings|claude-mcp-example|mcp-config-json)
             _cp_strategy_structured "$class" "$base" "$ours" "$theirs" "$rel" "$dest" json
             ;;
         codex-config|codex-config-example)

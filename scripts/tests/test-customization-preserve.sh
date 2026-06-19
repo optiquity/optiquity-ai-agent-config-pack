@@ -54,6 +54,12 @@ assert_eq "1.4 .claude/settings.json"  "claude-settings" \
     "$(customization_classify .claude/settings.json)"
 assert_eq "1.5 .mcp.json.example"  "claude-mcp-example" \
     "$(customization_classify .mcp.json.example)"
+assert_eq "1.5b .agents/mcp_config.json.example → mcp-config-json" \
+    "mcp-config-json" \
+    "$(customization_classify .agents/mcp_config.json.example)"
+assert_eq "1.5c .agents/mcp_config.json → mcp-config-json" \
+    "mcp-config-json" \
+    "$(customization_classify .agents/mcp_config.json)"
 assert_eq "1.6 .codex/config.toml"  "codex-config" \
     "$(customization_classify .codex/config.toml)"
 assert_eq "1.7 .codex/config.toml.example"  "codex-config-example" \

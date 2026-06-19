@@ -98,7 +98,8 @@ project-template/.claude/settings.json	.claude/settings.json	claude-settings	tra
 project-template/.codex/config.toml	.codex/config.toml	codex-config	transform
 project-template/.codex/config.toml.example	.codex/config.toml.example	codex-config-example	transform
 project-template/.codex/requirements.toml	.codex/requirements.toml	codex-config	transform
-project-template/.agents/mcp_config.json.example	.agents/mcp_config.json	claude-mcp-example	transform
+project-template/.mcp.json.example	.mcp.json	claude-mcp-example	transform
+project-template/.agents/mcp_config.json.example	.agents/mcp_config.json	mcp-config-json	transform
 project-template/docs/pack/PM-CHAT.md	docs/pack/PM-CHAT.md	pm-chat	transform
 project-template/docs/pack/PLATFORM-SKILLS.md	docs/pack/PLATFORM-SKILLS.md	generic	transform
 project-template/docs/pack/PACK-FEEDBACK.md	docs/pack/PACK-FEEDBACK.md	generic	transform

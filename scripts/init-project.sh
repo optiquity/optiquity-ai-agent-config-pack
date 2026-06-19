@@ -481,6 +481,7 @@ stage_s3_configs() {
     # bash 3.2 compatibility (macOS default bash).
     pack_template_for_proj_path() {
         case "$1" in
+            .mcp.json)               echo ".mcp.json.example" ;;
             .agents/mcp_config.json) echo ".agents/mcp_config.json.example" ;;
             *)                       echo "$1" ;;
         esac
@@ -492,6 +493,7 @@ stage_s3_configs() {
         .codex/config.toml.example \
         .codex/requirements.toml \
         .claude/settings.json \
+        .mcp.json \
         .agents/mcp_config.json \
     ; do
         local src_relpath
@@ -508,6 +510,7 @@ stage_s3_configs() {
     done
     [[ -f "$TARGET/.codex/config.toml" ]] || fail_stage S3 ".codex/config.toml missing after copy"
     [[ -s "$TARGET/.claude/settings.json" ]] || fail_stage S3 ".claude/settings.json empty or missing"
+    [[ -f "$TARGET/.mcp.json" ]] || fail_stage S3 ".mcp.json missing after copy (Claude Code project MCP config)"
     [[ -f "$TARGET/.agents/mcp_config.json" ]] || fail_stage S3 ".agents/mcp_config.json missing after copy (Antigravity workspace MCP config)"
 }
 
@@ -1243,7 +1246,8 @@ cmd_update() {
         "project-template/.codex/config.toml:.codex/config.toml:codex-config"
         "project-template/.codex/config.toml.example:.codex/config.toml.example:codex-config-example"
         "project-template/.codex/requirements.toml:.codex/requirements.toml:codex-config"
-        "project-template/.agents/mcp_config.json.example:.agents/mcp_config.json:generic"
+        "project-template/.mcp.json.example:.mcp.json:claude-mcp-example"
+        "project-template/.agents/mcp_config.json.example:.agents/mcp_config.json:mcp-config-json"
         "project-template/docs/pack/PM-CHAT.md:docs/pack/PM-CHAT.md:pm-chat"
         "project-template/docs/pack/PLATFORM-SKILLS.md:docs/pack/PLATFORM-SKILLS.md:generic"
         "project-template/docs/pack/PACK-FEEDBACK.md:docs/pack/PACK-FEEDBACK.md:generic"
@@ -1409,6 +1413,7 @@ cmd_update() {
 #   project-template/.codex/config.toml  ->  .codex/config.toml  [stage:S3,cmd_update]
 #   project-template/.codex/config.toml.example  ->  .codex/config.toml.example  [stage:S3,cmd_update]
 #   project-template/.codex/requirements.toml  ->  .codex/requirements.toml  [stage:S3,cmd_update]
+#   project-template/.mcp.json.example  ->  .mcp.json  [stage:S3,cmd_update]
 #   project-template/.agents/mcp_config.json.example  ->  .agents/mcp_config.json  [stage:S3,cmd_update]
 #   project-template/.github/ISSUE_TEMPLATE/work-item.yml  ->  .github/ISSUE_TEMPLATE/work-item.yml  [stage:S11,cmd_update]
 #   project-template/.github/ISSUE_TEMPLATE/inbound.yml  ->  .github/ISSUE_TEMPLATE/inbound.yml  [stage:S11,cmd_update]

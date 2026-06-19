@@ -112,6 +112,20 @@ servers (e.g., a dev/stage GraphQL endpoint) are preserved.
 
 ---
 
+### 3a. `mcp-config-json` — `.agents/mcp_config.json`, `.agents/mcp_config.json.example`
+
+**Strategy:** same as `claude-mcp-example` (JSON allowlist via
+`scripts/merge-json.py`).
+
+The Antigravity workspace MCP config is `mcpServers`-shaped JSON, portable
+across MCP clients; the class name is CLI-neutral by design. Project edits
+to add custom MCP servers, or to tune `BASE_DIR` / `DB_PATH`, are preserved
+via key-level union. (Before BD-231 §8 this file routed through `generic`
+text-merge, which clobbered the live file on a both-edited update; the
+structured class preserves project edits in place.)
+
+---
+
 ### 4. `codex-config` — `.codex/config.toml`, `.codex/requirements.toml`
 
 **Strategy:** allowlist-based TOML key-merge via `scripts/merge-toml.py`.
