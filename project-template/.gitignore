@@ -1,6 +1,9 @@
 # ─── Agent local overrides ─────────────────────────────────────────────────
 .claude/settings.local.json
 .mcp.json
+# The live .mcp.json holds your filled-in paths/values; never commit it. The
+# committed template is .mcp.json.example (no secrets); always tracked.
+!.mcp.json.example
 .claude/rag-index/
 .claude/rag-cache/
 
