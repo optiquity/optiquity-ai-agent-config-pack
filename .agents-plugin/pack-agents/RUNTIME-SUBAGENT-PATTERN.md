@@ -85,7 +85,11 @@ classes (see `pack-ops/PACK-AGENTS.md` § "Two agent classes"):
   pack-planner, pack-reviewer. Their single permitted file write is the
   one caller-specified report; the codebase is read-only otherwise.
 - **Read-write within scope (RW)** — pack-coder. May write/edit source
-  files within the caller-scoped file set, then emit a patch + report.
+  files within the caller-scoped file set inside its isolated worktree,
+  then write its report and return. It produces NO patch on return — the
+  patch is produced ONLY after an RO reviewer confirms the work clean and
+  the orchestrator re-engages the most-recent RW agent (SendMessage) to
+  cut it.
 
 When defining a subagent at runtime, preserve that permission-profile
 prose verbatim — it is what makes a read-only agent read-only. Every

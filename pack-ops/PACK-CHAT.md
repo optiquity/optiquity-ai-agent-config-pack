@@ -237,71 +237,126 @@ secondary path). This section is the orchestrator's spawn-and-merge-back
 procedure. It is keyed off the two-agent-class SSOT — the `Class` column
 in the `## Pack agents` roster of `pack-ops/PACK-AGENTS.md` (RW =
 `pack-coder`; RO = `pack-architect` / `pack-planner` / `pack-reviewer` /
-`pack-docs-researcher`). Worktree isolation is an opt-in accelerator for
-SAFE PARALLELISM; the default is in-place. See
-`pack-ops/OPTIONAL-FEATURES.md` for how a developer enables it (the
-`isolation:"worktree"` parameter + the `worktree.baseRef:"head"` setting)
-and the documented-optional `permissions.deny` mechanical backstop.
+`pack-docs-researcher`). The placement model is keyed by class: RW agents
+run in an isolated worktree by class; RO agents run in the tree the work
+lives in (main when the work is committed; the commit's live worktree when
+the work is still uncommitted). See `pack-ops/OPTIONAL-FEATURES.md` for the
+worktree mechanics (the `isolation:"worktree"` parameter + the
+`worktree.baseRef:"head"` setting) and the documented-optional
+`permissions.deny` mechanical backstop.
 
 ### How Pack Chat spawns
 
-- **RW agent (`pack-coder`) → spawn ISOLATED when enabled.** Pass the
+- **RW agent (`pack-coder`) → isolated worktree, always, by class.** Pass the
   per-spawn Agent-tool `isolation:"worktree"` parameter (the subagent
-  trigger; the only valid value). The isolated worktree gives the RW
-  agent its own checkout so parallel RW agents on disjoint scopes never
-  trample one another. If the developer has not set `worktree.baseRef:
-  "head"`, the worktree bases at `origin/main` (a documented wrong-base
-  degradation, surfaced not silent) — see OPTIONAL-FEATURES.
-- **RO agents → spawn IN-PLACE (no isolation).** RO agents write only one
-  report; they do not edit the tree, so they need no worktree. Omit the
-  `isolation` parameter.
+  trigger; the only valid value). The **first coder of a commit CREATES**
+  the worktree; **every later RW agent in that commit's cycle (fix-coders)
+  REUSES the same worktree — never a new worktree for a fix-coder** (the
+  fix-coder `cd`s in + verifies pwd/HEAD per rule 8). The isolated worktree
+  gives RW agents their own checkout so parallel RW agents on disjoint
+  scopes never trample one another. If the developer has not set
+  `worktree.baseRef:"head"`, the worktree bases at `origin/main` (a
+  documented wrong-base degradation, surfaced not silent) — see
+  OPTIONAL-FEATURES. Do NOT pin `isolation` in agent-def frontmatter — the
+  parameter has a single value (`"worktree"`), so a pin forces a NEW
+  worktree on every spawn and a fresh fix-coder could not cd-REUSE the
+  first coder's worktree.
+- **RO agents → spawn in the tree the work lives in.** RO agents
+  (`pack-architect` / `pack-planner` / `pack-reviewer` /
+  `pack-docs-researcher`) run where the target work is: the main checkout
+  when the work is committed; the commit's live worktree when the work is
+  still uncommitted there (the RO agent `cd`s into that worktree and
+  VERIFIES pwd/HEAD at runtime, rule 8). RO agents produce no patch — their
+  one write is their report. The standard cycle's own reviewer/fix-coder is
+  RULE-FIXED to the commit's worktree (no ASK). For ANY OTHER agent spawned
+  while a live uncommitted worktree exists (an architect, a cross-cutting
+  fix, a new task), Pack Chat does NOT self-judge — it ASKS the human BOTH
+  placement (which tree) AND disposition (reuse vs abandon the worktree)
+  per rule 9.
 - **Background.** Spawn every sub-agent in the background
   (`run_in_background: true`) so the chat stays interactive (the existing
   pack default-background rule — see trinity `## Pack memory`
   `### Sub-agent behavior (Claude-only)`).
 - **Name the handoff dir in the prompt.** Every spawn prompt names a
   per-spawn ABSOLUTE `/tmp` handoff dir (e.g.
-  `/tmp/pack-handoff-<bd>-<ts>/`), the IMPL/report path
-  (`<handoff>/IMPL-REPORT.md`), and — for an RW agent — the patch path
-  (`<handoff>/changes.patch`). In the in-place regime the report path may
-  instead be a parent-tree path; the prompt always names an absolute
-  report path.
+  `/tmp/pack-handoff-<bd>-<ts>/`) and the IMPL/report path
+  (`<handoff>/IMPL-REPORT.md`). EVERY agent report (RW and RO alike) goes
+  to the named `/tmp` handoff dir ALWAYS — there is no regime conditional
+  on the report path. The patch path (`<handoff>/changes.patch`) is named
+  too, but for an RW agent it is written only at the post-review-clean step
+  (see Merge-back), never up front.
 - **The verb-ban is load-bearing, not advisory.** The platform provides
   no safety net for subagents — a non-isolated background subagent can
-  write the parent tree freely. RW agents MUST be spawned isolated when
-  isolation is enabled, and the `agents-never-commit` + full
-  destructive-git-verb ban (trinity `## Pack memory`
-  `[rationale: agents-never-commit]`) is what keeps the merge-back safe.
+  write the parent tree freely. RW agents are ALWAYS spawned isolated (by
+  class), and the `agents-never-commit` + full destructive-git-verb ban
+  (trinity `## Pack memory` `[rationale: agents-never-commit]`) is what
+  keeps the merge-back safe.
 
 ### Merge-back (orchestrator-only; agents never apply or commit)
 
-The RW agent does its edits, runs in-scope verification, emits the patch
-with read-only git only (`git diff > <handoff>/changes.patch`), Writes its
-IMPL-REPORT to the handoff dir, and returns. The agent runs ZERO
-git-state changes. The worktree may auto-remove on return — irrelevant:
-the patch + report live in `/tmp`, outside it. Then Pack Chat:
+There is NO up-front patch. The whole review/fix cycle runs IN the
+commit's worktree — the work may be wrong, so nothing reaches the
+canonical tree mid-cycle (the governing bias). The RW agent does its
+edits, runs in-scope verification, Writes its IMPL-REPORT to the handoff
+dir, and returns — it produces no patch on return. The agent runs
+ZERO git-state changes. Then Pack Chat:
 
 1. Reads `<handoff>/IMPL-REPORT.md` and runs the bounded review/fix cycle
-   (the reviewer reads the patch + report) per trinity `## Pack memory`
+   INSIDE the worktree (the reviewer reads the work in the worktree; the
+   fix-coder REUSES that same worktree) per trinity `## Pack memory`
    `[rationale: bounded-review-fix-cycle]`.
-2. Applies the patch — dry-run first, then for real, ONLY after review:
+2. **Patch only after review-clean.** ONLY after a review pass confirms
+   the work CLEAN, Pack Chat re-engages (SendMessage) the most-recent RW
+   agent in that cycle to produce the patch
+   (`git diff > <handoff>/changes.patch`) — the deliberate
+   re-engage-an-existing-agent exception (rule 4/6). The patch is the
+   reviewed-clean artifact, never a pre-return one.
+3. Applies the reviewed-clean patch — dry-run first, then for real:
    `git apply --check <handoff>/changes.patch` then
    `git apply <handoff>/changes.patch`.
-3. Stages + commits with explicit user approval. The ORCHESTRATOR
+4. Stages + commits with explicit user approval. The ORCHESTRATOR
    performs the only git-state change — agents never stage, apply, or
-   commit.
+   commit. → the canonical tree only ever receives reviewed-clean work,
+   at commit time.
+5. **Worktree teardown (rule 7 + Constraint 1).** Remove the commit's
+   worktree ONLY after that commit is CONFIRMED landed (commit exit 0) —
+   not right-after-use (it may be needed again mid-cycle), and NEVER by
+   relying on auto-removal. A FAILED/aborted commit KEEPS the worktree as
+   the recovery fallback; never tear down on a failed/attempted commit.
 
 All agents (RW and every RO) land their reports back via the named
 handoff path; Pack Chat reads them from there after each returns.
 
+**Parallelization map (rule 10).** For any multi-commit effort, the
+architect + planner produce the parallel-vs-dependent map in its OWN
+dedicated section; Pack Chat consumes that map to schedule parallel
+worktree waves vs serial commits (same-file ⇒ serialize; `baseRef:head`;
+teardown gated on commit-landed; rule-9 ASK for non-cycle spawns).
+
+**Report preservation (Constraint 3).** Agent reports live in `/tmp`,
+which is lost to cleanup and worktree teardown. So AFTER the work's commit
+lands, Pack Chat MOVES every agent report (architect / planner / coder /
+reviewer / fix-coder outputs) from its `/tmp` handoff dir into the tree
+and commits them in a PAIRED commit immediately after the work commit
+(this keeps the work commit single-purpose + Check-36-clean; the report
+commit is `pack-only`, mixed-BD-report content allowed). The destination
+is DERIVED at runtime, not baked: the active-version work area
+`maintenance-docs/v<major>-implementation/`, where `<major>` is the
+current major version read from the README version table (top row). Read
+the derivation, not a literal path.
+
 ### Conflict protocol (atomic per patch; STOP + re-spawn fresh, no hand-merge)
 
-Conflicts arise when two parallel RW patches touch the same hunks, or a
-patch was cut against a base the main tree has moved past.
+Apply-time hygiene at the POST-review-clean patch step (rule 4), not an
+up-front-patch step. Conflicts arise when two parallel reviewed-clean RW
+patches touch the same hunks, or a patch was cut against a base the main
+tree has moved past. Serialized same-file commits avoid conflicts by
+ORDERING, not 3-way merge — see the parallelization map's same-file ⇒
+serialize rule.
 
-- **Atomic per patch.** Apply patches SEQUENTIALLY, never concurrently.
-  For EACH patch run the FULL unit before touching the next:
-  `git apply --check` → (clean) `git apply` → review → commit with user
+- **Atomic per patch.** Apply the reviewed-clean patches SEQUENTIALLY,
+  never concurrently. For EACH patch run the FULL unit before touching the
+  next: `git apply --check` → (clean) `git apply` → commit with user
   approval. The tree is never left half-applied across a multi-patch set;
   earlier-committed patches are safe.
 - **On `--check` failure (drift or collision):** try `git apply --3way

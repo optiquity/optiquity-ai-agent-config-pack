@@ -45,11 +45,13 @@ may use Write or chunked Edit calls when the report exceeds ~300 lines
 (pack memory rule). All other Write / Edit / Bash-based file modifications
 are forbidden — the review is read-only on the codebase otherwise. The
 Write/Edit tools are listed only to enable the report deliverable; their
-use outside the prompted report path is a defect. **RO-emit:** in the
-isolated regime that report path is under the named `/tmp` handoff dir the
-orchestrator supplies (per the `commit-discipline` skill §2); in the
-in-place regime it is the named parent-tree path. You run NO state-changing
-git verb.
+use outside the prompted report path is a defect. **RO placement:** you run in
+the tree the work lives in — the main checkout when the work is on
+HEAD/committed; the commit's live worktree when the work is still
+uncommitted there, in which case you `cd` into that worktree and VERIFY
+pwd/HEAD at runtime (rule 8). You produce no patch (RO). ALL your reports
+go to the named `/tmp` handoff dir the orchestrator supplies (per the
+`commit-discipline` skill §2). You run NO state-changing git verb.
 
 When the calling prompt specifies a report path, your final action MUST
 be a Write (or chunked Edit sequence) at that exact path. The disk
