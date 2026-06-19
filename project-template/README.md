@@ -17,5 +17,5 @@ model, read `docs/pack/METHODOLOGY.md`.
 | Context files | `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` | One per tool, at the project root. Fill in `[PLACEHOLDER]` sections per project type. |
 | PM chat docs | `docs/pack/PM-CHAT.md`, `docs/pack/PLATFORM-SKILLS.md`, `docs/pack/PACK-FEEDBACK.md` | PM chat operational docs. |
 | Pack docs | `docs/pack/METHODOLOGY.md`, `docs/pack/INSTALL-PROCEDURES.md`, `docs/pack/prompts/` | Methodology and reference docs. |
-| Config | `.claude/settings.json`, `.codex/config.toml`, `.mcp.json.example` | Tool-specific configuration. |
+| Config | `.claude/settings.json`, `.codex/config.toml`, `.codex/config.toml.example`, `.mcp.json.example`, `.agents/mcp_config.json.example` | Tool-specific configuration. |
 | Conditional | `proto/`, `pyproject.toml`, `pyrightconfig.json`, `server/` | Present only for projects that use gRPC / Python. |

@@ -137,6 +137,7 @@ project-template/                           Unified project template (v11)
 ├── agent-run.sh                            Agent launcher with per-tool flags
 ├── tracker.toml.project-example            Tracker opt-in config template (v11; dormant, deferred per BD-214)
 ├── .mcp.json.example                       MCP config template
+├── .agents/mcp_config.json.example         Antigravity workspace MCP config template
 ├── .gitignore                              Gitignore for projects
 └── (conditional: proto/, server/, pyproject.toml, pyrightconfig.json)
 

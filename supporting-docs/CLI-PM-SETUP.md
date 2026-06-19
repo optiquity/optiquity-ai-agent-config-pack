@@ -209,6 +209,10 @@ cat .mcp.json    # verify BASE_DIR is correct absolute path
 Then restart the CLI session. The embedding model downloads automatically on
 first ingest — if that never completed, re-run the ingest command in the session.
 
+On Codex CLI specifically: Codex loads project `.codex/config.toml` only for
+TRUSTED projects — mark the project trusted at the trust prompt, then uncomment
+the `[mcp_servers.local-rag]` block.
+
 **To update mcp-local-rag to the latest version:**
 ```bash
 npx --prefer-online -y mcp-local-rag --help

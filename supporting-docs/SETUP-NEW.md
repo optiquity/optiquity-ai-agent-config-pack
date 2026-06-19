@@ -336,6 +336,10 @@ kickoff) with all `[PLACEHOLDERS]` filled in.
 
 Daily sessions: `codex --resume`.
 
+To enable MCP (e.g. `local-rag`) in Codex: Codex loads project
+`.codex/config.toml` only for TRUSTED projects — mark the project trusted
+at the trust prompt, then uncomment the `[mcp_servers.local-rag]` block.
+
 ### Option D — Antigravity CLI
 
 ```bash
