@@ -7,14 +7,17 @@ allowed-tools: Read, Write, Edit, Bash
 # Implementation report
 
 Every pack-coder run produces one report markdown file at the path the
-caller's prompt specifies. The report is the agent's primary deliverable —
-Pack Chat reads it, verifies the edits against it (or applies the patch),
-and only then stages and commits. Treat the report as a self-contained
-artifact: Pack Chat must be able to re-derive every change from the report
-alone — in the in-place regime the edits live in the parent working tree;
-in the isolated regime the change set is captured as the `git diff` patch
-persisted to the `/tmp` handoff dir (so it survives the worktree's
-auto-removal on agent return).
+caller's prompt specifies. The report is the agent's primary deliverable on
+return — Pack Chat reads it, runs the review/fix cycle in the worktree, and
+(after review-clean) applies the patch and commits. Treat the report as a
+self-contained artifact: Pack Chat must be able to re-derive every change
+from the report alone. The agent's edits live in its worktree, which is HELD
+through the whole review/fix cycle and removed only after the commit lands;
+the `git diff` patch is the post-review-clean artifact (produced when Pack
+Chat re-engages the most-recent read-write agent to emit it), NOT something
+the agent leaves on return. So the report must carry the full change set in
+its own right — that is what makes it self-contained, independent of the
+worktree's eventual teardown.
 
 ## Required sections (all of them, in this order)
 
@@ -50,11 +53,12 @@ section 4.
 - **New files:** paste full contents verbatim inside a fenced block.
 - **Modified files:** paste a unified diff against the base recorded in
   section 1, produced via `diff -u <(git show <base-SHA>:<path>) <path>`.
-  - In the IN-PLACE regime this is the diff against the parent branch base.
-  - In the ISOLATED regime the canonical change set is the `git diff`
-    patch you emitted to the `/tmp` handoff dir; paste that patch here (and
-    name its handoff path) so the report is self-contained even after the
-    worktree auto-removes.
+  This is the diff of your in-worktree edits against the worktree's base.
+  Paste it in the report itself — the report must carry the full change set
+  so Pack Chat can re-derive it from the report alone, independent of the
+  worktree. (You do NOT emit a `git diff` patch on return; that patch is the
+  post-review-clean artifact Pack Chat re-engages you to produce after the
+  reviewer confirms the work clean.)
 
 This is the section Pack Chat reads to re-apply changes from the report
 alone (or to `git apply` the patch) if needed. Do not abbreviate; do not

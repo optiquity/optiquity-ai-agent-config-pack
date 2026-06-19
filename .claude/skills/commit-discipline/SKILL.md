@@ -27,20 +27,35 @@ ls <every dir the agent will touch>    # Verify expected files exist
 grep -c "<marker>" <authoritative-doc> # Optional: confirm authoritative content present
 ```
 
-**Detect your regime, then branch your write-target + handoff on it
-(see section 2). Neither regime is an error:**
+**The DEFAULT is set by your agent class, but you VERIFY the regime you
+actually got from ground truth (see section 2). The default:**
+
+- **Read-WRITE agents (coders, fix-coders) default to an ISOLATED
+  worktree** — a `worktree-agent-*` checkout the orchestrator created (the
+  first coder of a commit) or you are reusing (a fix-coder; never a new
+  worktree). Your code Writes go under `pwd`; the report goes to the named
+  `/tmp` handoff dir.
+- **Read-ONLY agents (reviewers, architects, planners, auditors,
+  researchers) run in the tree the work lives in** — the main checkout when
+  the work is committed, the commit's live worktree when the work is still
+  uncommitted there (you cd into it and verify pwd/HEAD). You write only
+  your report (to the named `/tmp` handoff dir) and emit NO patch.
+
+**IN-PLACE is the DEGRADED fallback, not the default.** If you are a
+read-write agent but `pwd` / HEAD show you are NOT in a `worktree-agent-*`
+checkout, isolation did not take effect (a platform fall-to-main, or a CLI
+without worktree support) — you self-detect that degraded in-place regime
+and write under the parent working tree, reporting the degradation.
+
+Key the detection on GROUND TRUTH (the actual `pwd` / HEAD), never on a
+settings value or your class assumption — settings can lie (platform bugs
+can silently disagree with `settings.json`), so the runtime self-detect is
+the only deterministic signal:
 
 - `pwd` / HEAD indicate a `worktree-agent-*` worktree ⇒ you are
-  **ISOLATED**: code Writes go under `pwd`; the IMPL report + the
-  `git diff` patch go to the named `/tmp` handoff dir the prompt supplies.
-- Otherwise ⇒ you are **IN-PLACE** (the default; no `isolation` param was
-  passed): code Writes go under the parent working tree (today's
-  deliverable); the report goes to the named parent path.
-
-Key the branch on GROUND TRUTH (the actual `pwd` / HEAD), never on a
-settings value — settings can lie (platform bugs can silently disagree
-with `settings.json`), so the runtime self-detect is the only
-deterministic signal.
+  **ISOLATED** (the class default for a read-write agent took effect).
+- Otherwise ⇒ you are **IN-PLACE** (the degraded fallback): code Writes go
+  under the parent working tree; report the degradation.
 
 Paste this output verbatim into section 2 of the implementation report
 (see the `implementation-report` skill). The pre-flight is the evidence
@@ -54,22 +69,40 @@ Common failure modes the pre-flight catches:
   a typo in the path, or the prompt was written against a different
   branch.
 
-## 2. Write-target rule (regime-aware)
+## 2. Write-target rule (two independent questions)
 
-Your write-targets follow the regime you detected in section 1:
+Two questions, NOT one. The regime answers "which TREE do I write code in";
+your class answers "do I EMIT a patch at all". Do not collapse them — the
+old binary ("isolated ⇒ patch + report; in-place ⇒ report") cannot express
+a read-only agent in a live worktree.
 
-- **IN-PLACE regime (default):** code Writes/Edits go to paths under the
-  parent working tree (the caller-scoped file set). The IMPL report goes
-  to the named parent-tree report path. This is today's behavior.
-- **ISOLATED regime (opt-in, `isolation:"worktree"` was passed):** code
-  Writes/Edits go to paths under `pwd` (your `worktree-agent-*` checkout).
-  The IMPL report + the `git diff` patch go to the named `/tmp` handoff
-  dir the prompt supplies — under the isolated regime, parent-tree writes
-  are rejected by the sandbox and `/tmp` ("Additional working
-  directories") is the reliable cross-boundary write target. If a `/tmp`
-  handoff Write FAILS (the handoff dir is not writable), fall back to the
-  in-place report path and report the degradation — never hard-error on a
-  failed handoff Write.
+**Question A — which tree do my code Writes/Edits go to (the regime)?**
+
+- **ISOLATED (the class default for a read-write agent):** code
+  Writes/Edits go to paths under `pwd` (your `worktree-agent-*` checkout) —
+  parent-tree writes are rejected by the sandbox, and `/tmp` ("Additional
+  working directories") is the reliable cross-boundary target for the
+  report.
+- **IN-PLACE (the degraded fallback):** code Writes/Edits go to paths under
+  the parent working tree (the caller-scoped file set), and you report the
+  degradation.
+
+**Question B — do I emit a patch (am I read-write), and WHEN?**
+
+- **Read-WRITE agent:** you DO produce a patch — but NOT up front. You do
+  your edits + verification, write your report, and return. The patch is
+  produced ONLY after a read-only reviewer confirms the work clean, when the
+  orchestrator re-engages you (SendMessage) to emit it (`git diff >
+  <handoff>/changes.patch` at THAT point). Never emit a patch on return.
+- **Read-ONLY agent:** you emit NO patch — ever. Your single write is your
+  report. This is the THIRD state the old binary could not express: a
+  read-only agent operating IN a live worktree (because the work it reviews
+  is uncommitted there) still writes only its report and produces no patch.
+
+**Report location (both classes):** the report goes to the named `/tmp`
+handoff dir the orchestrator supplies. If a `/tmp` handoff Write FAILS (the
+handoff dir is not writable), fall back to the named parent-tree report path
+and report the degradation — never hard-error on a failed handoff Write.
 
 **Absolute prohibition (both regimes): NEVER retarget another agent's
 main checkout.** When `pwd` is a `worktree-agent-*` checkout, writing to
@@ -88,9 +121,10 @@ the IN-PLACE regime the correct target IS the parent tree.
 
 The "Additional working directories" note in the harness environment
 (e.g., `/tmp/...`, `/private/tmp/...`) lists paths the agent may also
-write to. In the ISOLATED regime that `/tmp` handoff dir is exactly where
-the patch + report land; in the IN-PLACE regime it is scratch only and
-final deliverables go to the parent tree.
+write to. The named `/tmp` handoff dir is where your report lands (and, for
+a read-write agent, the post-review-clean patch once the orchestrator
+re-engages you to emit it). In the degraded in-place fallback the `/tmp`
+dir is scratch only and the report goes to the named parent path.
 
 ## 3. Git-state-change ban (absolute)
 
@@ -149,10 +183,12 @@ verbs enumerated above. If a verb is not on the allowed read-only list
 and you are unsure, treat it as forbidden. This principle closes the
 "the list never told me" gap for any unlisted verb.
 
-The agent's deliverable is the report file plus its edits (in-place
-working-tree edits, or — in the isolated regime — the `git diff` patch
-emitted to the `/tmp` handoff dir). Pack Chat reads the report, verifies
-the edits / applies the patch, runs tests if needed, and ONLY THEN stages
+The agent's deliverable on return is the report file (its edits live in the
+worktree). A read-write agent does NOT emit a patch on return; the patch is
+produced ONLY after a read-only reviewer confirms the work clean, when Pack
+Chat re-engages the most-recent read-write agent (SendMessage) to emit it.
+Pack Chat reads the report, runs the review/fix cycle in the worktree,
+applies the reviewed-clean patch, runs tests if needed, and ONLY THEN stages
 and commits with explicit user approval. An agent that stages or commits
 has bypassed the user-approval gate — that is the entire reason the ban
 exists.
@@ -220,13 +256,16 @@ frontmatter) but identical prose.
 
 - Running `git add` to "tidy up" before reporting → forbidden by
   section 3.
-- Targeting the wrong write-path for your regime → IN-PLACE writes go to
-  the parent tree; ISOLATED writes go under `pwd` (code) and the `/tmp`
-  handoff dir (patch + report). Writing the report to `/tmp` is CORRECT
-  when you are isolated and the prompt named a `/tmp` handoff dir — it is
-  NOT a "wrong path." The defect is mismatching the target to the
+- Targeting the wrong write-path for your regime → isolated writes go under
+  `pwd` (code); the degraded in-place fallback writes under the parent tree;
+  the report always goes to the named `/tmp` handoff dir. Writing the report
+  to `/tmp` is CORRECT when the prompt named a `/tmp` handoff dir — it is
+  NOT a "wrong path." The defect is mismatching the code-write target to the
   regime, or (in any regime) retargeting another agent's main checkout
   (section 2).
+- Emitting a patch on return → a read-write agent never emits a patch up
+  front; the patch is the post-review-clean step (section 2, Question B). A
+  read-only agent emits no patch at all.
 - Updating `/backlog/BD-NNN.md` to flip a Status field after a successful test
   run → pack-chat-only, forbidden by section 4. Pack Chat does the flip after
   review.

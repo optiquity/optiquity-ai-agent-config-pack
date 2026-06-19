@@ -191,7 +191,7 @@ Cite the rule by file + section/line for every (d) finding. No "violates pack co
 - No prior reviews to reviewer
 - No solutions in agent prompts
 - Filename uniqueness heuristic
-- Spawn sub-agents in background; sub-agents run in-place by default, with opt-in worktree isolation (BD-197)
+- Spawn sub-agents in background; default by agent class — RW agents (coders/fix-coders) run in an isolated worktree, RO agents (reviewers/architects/planners/auditors/researchers) run in the tree the work lives in (BD-226)
 
 **From the now-archived `ARCHITECTURE-V1.md` and `V3.3-DELTA.md`:**
 - Path 3 forbidden (V3.3 §1, §3 line 27)

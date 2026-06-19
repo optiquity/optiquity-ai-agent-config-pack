@@ -117,21 +117,43 @@ posture is a `settings.json` key the developer sets manually. The pack ships
 NO settings file — you add the keys to your OWN settings (see below).
 
 **What it is.** When Pack Chat spawns a read-write agent (a coder) in the
-background to make edits in parallel, it can isolate that agent in its own
-git worktree so the agent's edits never touch the parent working tree
-directly. The agent edits in the worktree, emits a `git diff` patch to a
-named handoff directory, and returns; Pack Chat reads the patch, runs the
-review/fix cycle, applies it onto the parent branch, and commits — the agent
-itself never stages or commits (the `agents-never-commit` contract is
-preserved end-to-end). Read-only agents (reviewers, architects, planners,
-researchers) need NO isolation — they emit a report and write nothing to the
-tree.
+background to make edits, it isolates that agent in its own git worktree so
+the agent's edits never touch the parent working tree directly. The agent
+edits in the worktree, runs its verification, writes its report, and
+returns — it does NOT emit a patch up front. The ENTIRE review/fix cycle for
+that commit runs inside that one worktree (the reviewer reads the work
+there; the fix-coder REUSES the same worktree). The patch is produced ONLY
+after the reviewer confirms the work clean: Pack Chat SendMessage-s the
+most-recent read-write agent to emit it, then `git apply`s the
+reviewed-clean patch onto the parent branch and commits — the agent itself
+never stages or commits (the `agents-never-commit` contract is preserved
+end-to-end). Read-only agents (reviewers, architects, planners, researchers)
+run in the tree the work lives in — the main checkout when the work is
+committed, the commit's live worktree when the work is still uncommitted
+there (they cd in + verify pwd/HEAD); they emit a report and no patch.
 
-**When this matters for the Config Pack.** Isolation matters when you spawn
-SEVERAL read-write agents in parallel and do not want their edits to collide
-in one shared working tree, or when you want a clean patch-handoff boundary
-for each coder. For a single sequential coder it is optional; the in-place
-(non-isolated) regime is the default floor and works without any settings.
+This isolation is the **default by agent class**, not an opt-in accelerator:
+read-WRITE agents are isolated by class, read-ONLY agents run in the work's
+tree. A read-write subagent must NOT pin `isolation:"worktree"` in its
+definition frontmatter — the `isolation` parameter has only the value
+`"worktree"` (there is no `"off"`; see below), so a frontmatter pin would
+force a NEW worktree on EVERY spawn, and a fresh fix-coder could then not
+cd-REUSE the first coder's worktree (breaking the per-commit-worktree reuse
+that keeps the whole review/fix cycle in one tree). Isolation is decided
+per-spawn by the orchestrator, never pinned in a definition.
+
+**When this matters for the Config Pack.** Isolation is the class-keyed
+default — every read-write agent runs in its own worktree so its
+not-yet-reviewed edits never reach the canonical tree, and several
+read-write agents can run in parallel without their edits colliding in one
+shared working tree. The in-place (non-isolated) regime is NOT the default:
+it is the DEGRADED fallback the agent self-detects at runtime (pwd/HEAD
+ground-truth) when, despite the class default, isolation did not actually
+take effect (a platform fall-to-main, or a CLI without worktree support).
+When in-place is in force, the agent still keeps work out of the canonical
+tree only through the prose deny-list + behavioral contract, not the
+worktree boundary — which is why class-keyed isolation, not in-place, is the
+intended posture.
 
 **How to enable isolated parallel subagents — TWO INDEPENDENT mechanisms.**
 The feature is governed by two orthogonal knobs. Do not conflate them.
@@ -236,14 +258,18 @@ mechanically enforced).
   Claude Code releases; confirm your version's behavior before relying on it.
 - **Auto-removal can delete unmerged branches.** When an isolated subagent
   exits cleanly, Claude Code auto-removes its worktree and branch. A branch
-  with unmerged commits can be silently deleted — which is why the pack's
-  merge-back model captures the agent's work as a patch in the handoff
-  directory BEFORE return (the patch survives auto-removal), and why agents
-  never commit.
+  with unmerged commits can be silently deleted — which is why the worktree
+  is HELD through the whole review/fix cycle and explicitly removed only
+  AFTER the commit lands (the lifecycle rule: tear down a worktree only once
+  its commit is confirmed landed; a failed commit KEEPS it), and the patch
+  is produced post-review-clean, never pre-return. Pack Chat never relies on
+  auto-removal, and agents never commit.
 - **Best-effort isolation / silent fall-to-main.** Isolation can silently
-  fall back to editing the main checkout. The orchestrator therefore detects
-  the ACTUAL regime from what the agent reports (a patch handoff ⇒ isolated;
-  in-place edits ⇒ in-place), never from an assumed settings value.
+  fall back to editing the main checkout. The agent therefore detects its
+  ACTUAL regime from its own runtime pwd/HEAD ground-truth (a
+  `worktree-agent-*` pwd/HEAD ⇒ isolated; otherwise the degraded in-place
+  fallback), never from an assumed settings value — settings can lie, so the
+  runtime self-detect is the only deterministic signal.
 - **`baseRef` unset/`fresh` wrong-base.** As above, an unset/`fresh`
   `baseRef` bases isolated work at `origin/main` rather than your branch —
   documented degradation, surfaced by the orchestrator, never silent.
