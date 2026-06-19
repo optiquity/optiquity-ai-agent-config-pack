@@ -104,7 +104,7 @@ _MIGRATOR_SKILLS_DEFAULT_DATA_SIGNAL='repository|N\+1|Pydantic|data ?/ ?I/O|data
 # NOT need to override this; the default IS the BD-035 preamble.
 _migrator_skills_default_advisory_intro() {
     cat <<EOF
-# python-architecture skill-rename advisory (BD-035 split)
+# python-architecture skill-rename advisory (split)
 #
 # The v10.x \`python-architecture\` skill was split in v11 into
 # \`python-server-architecture\` and \`python-data-architecture\`.
@@ -124,7 +124,7 @@ _migrator_skills_generic_advisory_intro() {
     local old="$1" new_server="$2" new_data="$3" new_simple="$4"
     if [[ -n "$new_simple" ]]; then
         cat <<EOF
-# ${old} skill-rename advisory (BD-147 migrator-skills.sh)
+# ${old} skill-rename advisory
 #
 # The \`${old}\` skill was renamed to \`${new_simple}\`.
 # The migrator could not unambiguously rewrite the references
@@ -135,7 +135,7 @@ _migrator_skills_generic_advisory_intro() {
 EOF
     else
         cat <<EOF
-# ${old} skill-rename advisory (BD-147 migrator-skills.sh)
+# ${old} skill-rename advisory
 #
 # The \`${old}\` skill was split into \`${new_server}\` and
 # \`${new_data}\`. The migrator could not unambiguously rewrite
@@ -345,12 +345,12 @@ migrator_skill_rename() {
 
     if declare -F info >/dev/null; then
         if (( rewrites > 0 )); then
-            info "BD-035 rename: $rewrites unambiguous reference(s) rewritten in place"
+            info "skill-rename: $rewrites unambiguous reference(s) rewritten in place"
         else
-            info "BD-035 rename: no unambiguous references found to rewrite"
+            info "skill-rename: no unambiguous references found to rewrite"
         fi
         if (( ambiguous > 0 )); then
-            info "BD-035 rename: $ambiguous ambiguous reference(s) recorded in $advisory"
+            info "skill-rename: $ambiguous ambiguous reference(s) recorded in $advisory"
             info "review the advisory and rename by hand before treating the migration as complete"
         fi
     fi

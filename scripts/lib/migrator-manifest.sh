@@ -215,7 +215,7 @@ _manifest_validate_trinity() {
 
 _manifest_iterate() {
     if (( _MIGRATOR_MANIFEST_COUNT == 0 )); then
-        info "BD-088 dispatch: 0 file(s) — manifest empty"
+        info "dispatch: 0 file(s) — manifest empty"
         return 0
     fi
 
@@ -249,7 +249,7 @@ _manifest_iterate() {
         processed=$((processed + 1))
     done
 
-    info "BD-088 dispatch: $processed file(s) processed"
+    info "dispatch: $processed file(s) processed"
 }
 
 # ── Action handlers ──────────────────────────────────────────────────────

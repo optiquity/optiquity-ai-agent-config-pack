@@ -140,7 +140,7 @@ migrator_post_dispatch_hook() {
     # invariant (single-shot only) made this gate unnecessary; with
     # BD-095 the gate is required.
     if _migrator_is_dryrun; then
-        info "[dry-run] would run BD-104 rename + BD-042 relocation + v11 artifact install (incl. Antigravity agent bundle, replace-if-different) + lift Gemini x- customs into the Antigravity bundle + Gemini→Antigravity retirement + python-architecture skill rename + BD-144 capability-token translation + BD-165 per-entry decompose"
+        info "[dry-run] would run rename + relocation + v11 artifact install (incl. Antigravity agent bundle, replace-if-different) + lift Gemini x- customs into the Antigravity bundle + Gemini→Antigravity retirement + python-architecture skill rename + capability-token translation + per-entry decompose"
         return 0
     fi
     _v10_to_v11_rename_implementation_plan
@@ -196,7 +196,7 @@ _v10_to_v11_rename_implementation_plan() {
     # remain stable; the failure-message prefix carries the sub-stage tag
     # ("S4a-rename: ...") so operators can tell rename vs. relocate apart
     # in a fail_stage report.
-    say "── S4a (rename) — BD-104 rename IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md ──"
+    say "── S4a (rename) — rename IMPLEMENTATION_PLAN.md → IMPLEMENTATION-PLAN.md ──"
     local src="$_MIGRATOR_TARGET/IMPLEMENTATION_PLAN.md"
     local dst="$_MIGRATOR_TARGET/IMPLEMENTATION-PLAN.md"
     if [[ ! -f "$src" ]]; then
@@ -251,7 +251,7 @@ _v10_to_v11_relocate_legacy_docs() {
     # BD-139 F-3: sub-banner "S4b (relocate)" disambiguates from the
     # BD-104 rename above. fail_stage call still uses "S4" so the
     # BD-095 sentinel filename and exit-code formula stay stable.
-    say "── S4b (relocate) — BD-042 relocation of legacy root docs (if any) ──"
+    say "── S4b (relocate) — relocation of legacy root docs (if any) ──"
     local moved=0
     local f
     for f in METHODOLOGY.md PROMPT-TEMPLATES.md PM-CHAT.md \
@@ -284,7 +284,7 @@ _v10_to_v11_relocate_legacy_docs() {
             moved=$((moved + 1))
         fi
     done
-    info "BD-042 relocation: $moved legacy doc(s) moved"
+    info "relocation: $moved legacy doc(s) moved"
 }
 
 # Internal: v11 artifact install. Mirrors monolith stage_s5_v11_artifacts
@@ -531,7 +531,7 @@ _v10_to_v11_install_v11_artifacts() {
 #
 # Idempotent: a second run finds the bundle custom already present → skip.
 _v10_to_v11_lift_gemini_customs_to_bundle() {
-    say "── S5a — lift departing Gemini x- custom agents into the Antigravity bundle (BD-221) ──"
+    say "── S5a — lift departing Gemini x- custom agents into the Antigravity bundle ──"
 
     local bundle_agents="$_MIGRATOR_TARGET/.agents-plugin/optiquity-agents/agents"
     local gemini_agents="$_MIGRATOR_TARGET/.gemini/agents"
@@ -633,7 +633,7 @@ _v10_to_v11_lift_gemini_customs_to_bundle() {
 # it (documented in the setup/migration docs); the holding dir is a
 # recovery convenience, not a tracked deliverable.
 _v10_to_v11_retire_gemini() {
-    say "── S5b — retire departing Gemini tree → gemini-retired-docs/ (BD-221) ──"
+    say "── S5b — retire departing Gemini tree → gemini-retired-docs/ ──"
 
     local legacy="$_MIGRATOR_TARGET/.gemini"
     if [[ ! -d "$legacy" ]]; then
@@ -716,7 +716,7 @@ _v10_to_v11_retire_gemini() {
 # v10→v11 transform pipeline has already replaced their pack-managed
 # content). The advisory file is the canonical user-facing surface.
 _v10_to_v11_rename_python_architecture_refs() {
-    say "── S5b — BD-035 split: rename stale python-architecture refs ──"
+    say "── S5b — split: rename stale python-architecture refs ──"
 
     # Dispatch into the shared library. Split mode is selected by the two
     # MIGRATOR_SKILLS_SPLIT_TO_* env vars; the library reads them, applies
@@ -768,7 +768,7 @@ _v10_to_v11_rename_python_architecture_refs() {
 # BD-035 S5b advisory: comment header + per-touch entries with
 # file:line: before / after / rationale.
 _v10_to_v11_translate_capability_tokens() {
-    say "── S5c — BD-144 capability-token translation (role:apple-app → deployment:apple; deployment:linux-container append) ──"
+    say "── S5c — capability-token translation (role:apple-app → deployment:apple; deployment:linux-container append) ──"
 
     local advisory="$_MIGRATOR_STATE_DIR/capability-rename.advisory"
     local touches=0
@@ -822,7 +822,7 @@ _v10_to_v11_translate_capability_tokens() {
                 if [[ "$new_line" != "$before_apple" ]]; then
                     if (( touches == 0 )); then
                         {
-                            printf '# capability-token translation advisory (BD-144)\n'
+                            printf '# capability-token translation advisory\n'
                             printf '#\n'
                             printf '# v11 renames `role:apple-app` to `deployment:apple` (D5 deployment\n'
                             printf '# surface, not a D3 architectural role per\n'
@@ -873,7 +873,7 @@ _v10_to_v11_translate_capability_tokens() {
                 if [[ "$new_line" != "$before_lxc" ]]; then
                     if (( touches == 0 )); then
                         {
-                            printf '# capability-token translation advisory (BD-144)\n'
+                            printf '# capability-token translation advisory\n'
                             printf '#\n'
                             printf '# v11 renames `role:apple-app` to `deployment:apple` (D5 deployment\n'
                             printf '# surface, not a D3 architectural role per\n'
@@ -916,9 +916,9 @@ _v10_to_v11_translate_capability_tokens() {
     done
 
     if (( touches > 0 )); then
-        info "BD-144 translation: $touches capability-token edit(s) recorded in $advisory"
+        info "capability-token translation: $touches capability-token edit(s) recorded in $advisory"
     else
-        info "BD-144 translation: no v10.x capability tokens found (no-op)"
+        info "capability-token translation: no v10.x capability tokens found (no-op)"
     fi
 }
 
@@ -955,7 +955,7 @@ migrator_post_report_hook() {
     say "(or, if you committed the v10 state, \`git reset --hard <pre-migration-commit>\`)."
     say "After restore, re-running this migrator will re-decompose."
     say ""
-    say "Issue-tracker integration is DEFERRED (BD-214): flat-file per-entry is"
+    say "Issue-tracker integration is DEFERRED: flat-file per-entry is"
     say "the sole supported mode in v11. The tracker code is retained dormant for"
     say "a future resumption; there is no tracker opt-in to run at this time."
 }
@@ -1167,7 +1167,7 @@ case "$_mode" in
             fi
         fi
         if (( _need_dry_run == 1 )); then
-            say "── BD-095 backwards-compat: no fresh dry-run found ──"
+            say "── backwards-compat: no fresh dry-run found ──"
             say "Auto-running --dry-run first; --apply will follow on success."
             say ""
             migrate_v10_to_v11_dry_run_run "${_passthru[@]:-}" || exit $?

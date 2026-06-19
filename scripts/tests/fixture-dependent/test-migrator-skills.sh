@@ -185,13 +185,18 @@ _v10_to_v11_rename_python_architecture_refs >"$G1_DIR/stdout.log" 2>&1 \
 # change the fixture content (or the helper's transformations), follow
 # the regeneration recipe in IMPLEMENTATION-REPORT-BD-147.md.
 #
+# advisory golden regenerated 2026-06-18: the advisory preamble was
+# de-leaked of its pack-internal BD-NNN token (client-facing output);
+# the trinity + PLATFORM-SKILLS goldens are unaffected (no BD token in
+# those transformed files).
+#
 # macOS bash 3.2 has no associative arrays — encode goldens as a
 # newline-separated `<sha>  <relpath>` table and look up via grep.
 G1_GOLDEN_TABLE='2372280f9674727cdd205103299d1dd0e2303a4dc899e190da2c3df4720a339a  CLAUDE.md
 25341e813f44de7c674c77615d6acf27f967108535c3478fab205fb7161958bc  AGENTS.md
 34a71464b16faadaa7a1b97356728b5506e9ec73275b03c092f3e2e0afb138f4  GEMINI.md
 8809830faed34a213347a3cda1c49d1cfe14b09972d6dc9eee69e885f0bec182  docs/pack/PLATFORM-SKILLS.md
-80b5018cba33f5dd2349d1ca3dad35162ae2780ecb95d81755dc46c5bca7f011  .pack-migrate-v10-to-v11/python-architecture-rename.advisory'
+ef6a025af220070bc182a9db7542db3e0fdb508c612500e2caa2c83b24343cd6  .pack-migrate-v10-to-v11/python-architecture-rename.advisory'
 
 for rel in "CLAUDE.md" "AGENTS.md" "GEMINI.md" \
            "docs/pack/PLATFORM-SKILLS.md" \
@@ -357,12 +362,12 @@ if grep -q '^- Ambiguous: standalone python-architecture mention with no other t
 else
     fail "G3.e R5 ambiguous line was incorrectly rewritten"
 fi
-# G3.f — advisory exists with the BD-035 preamble + 1 entry
+# G3.f — advisory exists with the expected preamble + 1 entry
 if [[ -f "$ADV" ]]; then
-    if head -1 "$ADV" | grep -q '^# python-architecture skill-rename advisory (BD-035 split)$'; then
-        pass "G3.f advisory uses BD-035-byte-equivalent preamble"
+    if head -1 "$ADV" | grep -q '^# python-architecture skill-rename advisory (split)$'; then
+        pass "G3.f advisory uses byte-equivalent preamble"
     else
-        fail "G3.f advisory preamble drifted from BD-035"
+        fail "G3.f advisory preamble drifted"
     fi
     entry_count=$(grep -cE '^docs/pack/PLATFORM-SKILLS\.md:[0-9]+:' "$ADV" || true)
     assert_eq "G3.f advisory records exactly 1 ambiguous entry" "1" "$entry_count"

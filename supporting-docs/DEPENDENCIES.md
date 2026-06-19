@@ -127,8 +127,8 @@ Swift gRPC plugin. Used by `proto-gen.sh`.
 | swift-protobuf | Swift gRPC | `brew install swift-protobuf` |
 | grpc-swift-2 | Swift gRPC | https://github.com/grpc/grpc-swift-2 |
 | mcp-local-rag | CLI PM chat (optional) | Auto via `npx -y mcp-local-rag` |
-| gh CLI | Deferred tracker feature only (dormant, BD-214) | `brew install gh` |
-| gh-sub-issue | Deferred tracker feature only (dormant, BD-214) | `gh extension install yahsan2/gh-sub-issue` |
+| gh CLI | Deferred tracker feature only (dormant) | `brew install gh` |
+| gh-sub-issue | Deferred tracker feature only (dormant) | `gh extension install yahsan2/gh-sub-issue` |
 
 ---
 
@@ -139,7 +139,7 @@ Swift gRPC plugin. Used by `proto-gen.sh`.
 GitHub's official command-line tool. Used by the tracker abstraction
 (`scripts/lib/tracker-provider-gh.sh`) to read and write GitHub Issues
 when a project is in tracker mode. Tracker integration is DEFERRED
-indefinitely (BD-214) and flat-file per-entry is the sole supported
+indefinitely and flat-file per-entry is the sole supported
 mode, so `gh` is not needed for normal operation — flat-file
 (`BACKLOG.md`) tracking requires no GitHub CLI. (The tracker code that
 uses `gh` is retained dormant and test-covered for a future
@@ -155,7 +155,7 @@ resumption.)
 
 `gh` extension that adds first-class sub-issue commands. The dormant
 tracker code uses sub-issues to link phase-tasks to their parent BD.
-Tracker integration is deferred (BD-214); this extension is not needed
+Tracker integration is deferred; this extension is not needed
 for flat-file operation.
 
 - Install: `gh extension install yahsan2/gh-sub-issue`

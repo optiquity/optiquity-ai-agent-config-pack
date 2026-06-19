@@ -191,7 +191,7 @@ tracker_mode() {
     # dormant tracker code testable; it must NEVER be set in a live run.
     # Recorded in BD-214 / BD-204.
     if [[ "${PACK_TRACKER_DEFERRAL_OVERRIDE:-0}" != "1" ]]; then
-        echo "tracker mode is deferred; operating flat-file (BD-214)" >&2
+        echo "tracker mode is deferred; operating flat-file" >&2
         echo "flat-file"
         return 0
     fi

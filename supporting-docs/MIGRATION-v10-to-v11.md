@@ -6,18 +6,18 @@ Phase A; Phase B (tracker opt-in) is DEFERRED.
 
 1. **Phase A — forced v10→v11 changes.** Everyone runs this. Trinity
    refresh, HELP-FRAGMENT install, per-CLI `pack-help` surfaces, issue
-   templates, BD-042 doc relocation tail. Driven by
-   `scripts/migrate-v10-to-v11.sh` (BD-085). (`tracker.toml.example` is
+   templates, legacy doc relocation tail. Driven by
+   `scripts/migrate-v10-to-v11.sh`. (`tracker.toml.example` is
    NO LONGER installed — see Phase B.)
 2. **Phase B (tracker opt-in) — DEFERRED.** Tracker integration is
-   deferred indefinitely (no release version, BD-214); flat-file
+   deferred indefinitely (no release version); flat-file
    per-entry is the sole supported mode. The ability to flip to tracker
    mode is blocked and the tracker code is retained dormant for a future
    resumption — there is no `pack tracker init` opt-in to run. Migration
    is Phase-A complete without it.
 
 If you're on **v9.x or earlier**, the v9->v10 migrator was sunset
-in v11 (BD-121); v9 is no longer supported. Reach out to the pack
+in v11; v9 is no longer supported. Reach out to the pack
 maintainer for migration guidance, or recover the legacy migrator
 from history with
 `git -C "$PACK" checkout v10 -- scripts/migrate-v9-to-v10.sh
@@ -48,21 +48,21 @@ project — there is no shared state between projects.
   trinity file (pack-root + client) — one line for `pack help` /
   `/pack-help`, one line for `pack-startup` / `pm-startup` recommended
   first action.
-- BD-088 customization-preservation contract: `init-project.sh --update`
+- Customization-preservation contract: `init-project.sh --update`
   and `migrate-v10-to-v11.sh` share one library and one truthful
   report format. See `MERGE-STRATEGY.md` for the per-file class matrix.
-- BD-042 relocation tail: any v9-era reference docs still at project
+- Legacy doc relocation tail: any v9-era reference docs still at project
   root (`METHODOLOGY.md`, `PROMPT-TEMPLATES.md`, etc.) are moved to
   `docs/pack/` (with `git mv` when tracked, sidecared otherwise).
 - Issue template forms (`.github/ISSUE_TEMPLATE/work-item.yml`,
   `inbound.yml`, `config.yml`) installed (the `inbound.yml` flat-file
   feedback channel is live; the work-item form is a dormant baseline).
 - `tracker.toml.example` is NO LONGER installed at project root —
-  tracker integration is deferred (BD-214). The dormant config record
+  tracker integration is deferred. The dormant config record
   stays committed pack-side at
   `project-template/tracker.toml.project-example`.
 
-**Phase B (DEFERRED — BD-214):**
+**Phase B (DEFERRED):**
 
 The tracker feature below is deferred indefinitely and its code is
 retained DORMANT and test-covered for a future resumption. None of it
@@ -212,13 +212,14 @@ either. **What client projects must do:**
    five-dimension tables; the row order, column structure, and
    section organization differ. The migrator writes the new template
    and saves your pre-migration copy as
-   `docs/pack/PLATFORM-SKILLS.md.v10-customized` (per the BD-088
-   sidecar contract documented in `MERGE-STRATEGY.md`); reconcile
+   `docs/pack/PLATFORM-SKILLS.md.v10-customized` (per the
+   customization-preserve sidecar contract documented in
+   `MERGE-STRATEGY.md`); reconcile
    manually as Step 2 above directs.
 3. **`## Custom agents` and `## Custom skills` sections are
    preserved byte-identical.** These two H2 sections at the bottom
    of `docs/pack/PLATFORM-SKILLS.md` are project-owned and
-   preserved by the BD-088 customization-preserve sidecar mechanism
+   preserved by the customization-preserve sidecar mechanism
    regardless of the reframe (see `MERGE-STRATEGY.md` per-file
    matrix entry for PLATFORM-SKILLS.md). The reframe does not
    touch their content.
@@ -228,8 +229,9 @@ either. **What client projects must do:**
    `Base skills | Dimensional skills` in v11 (semantics unchanged
    — Tier 1 → Base, Tier 2 → Dimensional). For client projects
    that already populated real custom-agent rows under the
-   deprecated headers, the BD-088 sidecar mechanism preserves the
-   project's section verbatim (including the deprecated headers)
+   deprecated headers, the customization-preserve sidecar mechanism
+   preserves the project's section verbatim (including the deprecated
+   headers)
    — the migrator does NOT rewrite the headers automatically. To
    adopt the v11 convention, manually rename the two columns in
    your live `docs/pack/PLATFORM-SKILLS.md` after migration:
@@ -243,8 +245,9 @@ either. **What client projects must do:**
 
 The dimension reframe itself requires no migrator-script work
 because the reshape is doc-only at the pack level — the migrator
-ships the v11 PLATFORM-SKILLS.md template and the BD-088 mechanism
-preserves project customizations under the per-class strategy in
+ships the v11 PLATFORM-SKILLS.md template and the
+customization-preserve mechanism preserves project customizations
+under the per-class strategy in
 `MERGE-STRATEGY.md`.
 
 The one skill *rename* in v11 — the Python split
@@ -458,13 +461,13 @@ framework exit code (`24` for S4; `25` for S5).
 
 | Stage | What it does |
 |---|---|
-| S0 | Pre-flight (pack valid, BD-088 lib present, target git, clean tree, v10-shaped, v10 tag resolves) |
+| S0 | Pre-flight (pack valid, customization-preserve lib present, target git, clean tree, v10-shaped, v10 tag resolves) |
 | S1 | Backup — full working tree (excludes `.git/` + state dirs) into `.pack-migrate-v10-to-v11-backup/` |
-| S2 | Initialize BD-088 customization-preserve state |
-| S3 | Dispatch v10 → v11 changes via BD-088 (trinity / configs / scripts / agents / docs) |
-| S4a | BD-104 rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md` at project root. History-preserving via `git mv` for tracked source; plain `mv` fallback for untracked. No-op if the source is absent. Halts with the typed error `migration-rename-collision` if both names already exist (the user inspects, resolves, re-runs). |
-| S4b | BD-042 relocation tail (legacy root docs → `docs/pack/`) |
-| S5 | Install v11 client artifacts (HELP-FRAGMENT*.md, issue forms, per-CLI pack-help to `.claude`/`.codex`/`.agents`, the Antigravity agent plugin bundle at `.agents-plugin/optiquity-agents/` installed replace-if-different). `tracker.toml.example` is NO LONGER installed — tracker integration is deferred (BD-214); the dormant config record stays committed pack-side at `project-template/tracker.toml.project-example`. |
+| S2 | Initialize customization-preserve state |
+| S3 | Dispatch v10 → v11 changes via the customization-preserve engine (trinity / configs / scripts / agents / docs) |
+| S4a | rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md` at project root. History-preserving via `git mv` for tracked source; plain `mv` fallback for untracked. No-op if the source is absent. Halts with the typed error `migration-rename-collision` if both names already exist (the user inspects, resolves, re-runs). |
+| S4b | relocation tail (legacy root docs → `docs/pack/`) |
+| S5 | Install v11 client artifacts (HELP-FRAGMENT*.md, issue forms, per-CLI pack-help to `.claude`/`.codex`/`.agents`, the Antigravity agent plugin bundle at `.agents-plugin/optiquity-agents/` installed replace-if-different). `tracker.toml.example` is NO LONGER installed — tracker integration is deferred; the dormant config record stays committed pack-side at `project-template/tracker.toml.project-example`. |
 | S5a | Lift each departing Gemini custom (`x-`) agent into the Antigravity bundle (`.agents-plugin/optiquity-agents/agents/`) so it becomes a live Antigravity agent — never overwriting a same-named bundle custom. |
 | S5b | Retire the departing `.gemini/` tree by moving it (never deleting) into a root-level `gemini-retired-docs/` backup holding directory. |
 | S6 | Render truthful migration report at `.pack-migrate-v10-to-v11/report.md` |
@@ -479,11 +482,11 @@ framework exit code (`24` for S4; `25` for S5).
 | 12 | Working tree dirty | `git stash` or commit. |
 | 13 | Target does not appear to be a pack-configured project (no `CLAUDE.md` or no `.claude/`) | For a fresh install use `init-project.sh`. (v9.x is no longer supported — the v9->v10 migrator was sunset in v11; reach out for migration guidance.) |
 | 14 | v10 baseline tag missing in pack repo | `git -C "$PACK" fetch --tags` then retry. |
-| 15 | BD-088 library missing under pack | The pack repo is corrupt or incomplete; re-clone. |
+| 15 | Customization-preserve library missing under pack | The pack repo is corrupt or incomplete; re-clone. |
 | 21–30 | Stage `S<n>` failure | Read the printed error message; address; retry. |
-| 31 | `EXIT_GATE_FAILED` — BD-101 verification gate (Gate 1, 2, or 3) reported a defect | Read the printed `[FAIL]` lines and the gate's printed recovery banner. Gate 1 (during `--dry-run`) is read-only — fix the underlying defect and re-run `--dry-run`. Gate 2 (post-Phase-A) requires restoring the working tree from `.pack-migrate-v10-to-v11-backup/` via the rsync recipe in §Rollback below + re-run of `--dry-run` + `--apply`; fix-and-continue is NOT supported because S4/S5/S6 sentinels are already marked `.done`. (The legacy `scripts/restore-from-backup.sh` is for v9.3→v10 backups and does NOT apply to v10→v11.) Gate 3 (post-Phase-B, tracker-mode only) is recoverable without restoring from backup — run `pack tracker doctor` and follow the printed verbs. See `MERGE-STRATEGY.md` §A1 for full gate semantics. |
+| 31 | `EXIT_GATE_FAILED` — verification gate (Gate 1, 2, or 3) reported a defect | Read the printed `[FAIL]` lines and the gate's printed recovery banner. Gate 1 (during `--dry-run`) is read-only — fix the underlying defect and re-run `--dry-run`. Gate 2 (post-Phase-A) requires restoring the working tree from `.pack-migrate-v10-to-v11-backup/` via the rsync recipe in §Rollback below + re-run of `--dry-run` + `--apply`; fix-and-continue is NOT supported because S4/S5/S6 sentinels are already marked `.done`. (The legacy `scripts/restore-from-backup.sh` is for v9.3→v10 backups and does NOT apply to v10→v11.) Gate 3 (post-Phase-B, tracker-mode only) is recoverable without restoring from backup — run `pack tracker doctor` and follow the printed verbs. See `MERGE-STRATEGY.md` §A1 for full gate semantics. |
 
-**BD-101 verification gates.** During `--dry-run` and `--apply` the
+**Verification gates.** During `--dry-run` and `--apply` the
 migrator emits one or more `── Gate N — ... ──` banners. There are
 three gates:
 
@@ -595,8 +598,8 @@ git diff --staged | less
 #     block (or a fresh template if you had no customizations).
 #   - .gitignore may have been merged with new pack additions.
 #   - docs/pack/HELP-FRAGMENT.md and docs/pack/HELP-FRAGMENT-TRACKER.md
-#     are new (HELP-FRAGMENT-TRACKER.md is a deferred stub — BD-214).
-#   - tracker.toml.example is NOT installed (tracker deferred — BD-214).
+#     are new (HELP-FRAGMENT-TRACKER.md is a deferred stub).
+#   - tracker.toml.example is NOT installed (tracker deferred).
 #   - .github/ISSUE_TEMPLATE/{work-item,inbound,config}.yml are new.
 #   - per-CLI pack-help skill / command are new.
 #   - Any reconciliation files you edited.
@@ -608,8 +611,8 @@ git commit -m "chore: migrate to AI Agent Config Pack v11"
 
 ## Step 5 — Phase B (tracker opt-in) — DEFERRED
 
-Tracker integration is DEFERRED indefinitely (no release version,
-BD-214). Flat-file per-entry is the sole supported mode; the ability to
+Tracker integration is DEFERRED indefinitely (no release version).
+Flat-file per-entry is the sole supported mode; the ability to
 flip to tracker mode is blocked and `pack tracker init` refuses with a
 deferred message. There is no opt-in flow to run — migration is
 Phase-A complete without it.
@@ -778,8 +781,8 @@ loss defects can re-emerge.
 1. **Read the `## Quick reference` block** at the top of each trinity
    file. The pack-startup / pm-startup recommendation is the documented
    first action for new sessions.
-2. **Phase B is deferred.** Tracker integration is deferred indefinitely
-   (BD-214); flat-file per-entry is the sole supported mode and there is
+2. **Phase B is deferred.** Tracker integration is deferred
+   indefinitely; flat-file per-entry is the sole supported mode and there is
    no opt-in to decide on. Continue with flat-file `BACKLOG.md` /
    per-entry tracking — startup surfaces no tracker recommendation.
 3. **Commit early after each reconciliation.** Don't accumulate a

@@ -233,8 +233,8 @@ printf "\n=== Group 1: 6th sub-op presence + sequencing ===\n"
 T=$(make_v10_target_with_project_docs)
 out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" 2>&1) ; rc=$?
 assert_eq "1.0 setup --dry-run rc=0" "0" "$rc"
-assert_contains "1.1 --dry-run banner names BD-165 per-entry decompose" \
-    "$out" "BD-165 per-entry decompose"
+assert_contains "1.1 --dry-run banner names per-entry decompose" \
+    "$out" "per-entry decompose"
 
 # 1.2 — post-report advisory paragraph has the corrected M1 wording
 # (BLOCK + EXIT_GATE_FAILED=31 + force-overwrite-mirror). This is the

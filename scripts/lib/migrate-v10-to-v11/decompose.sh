@@ -110,7 +110,7 @@ _v10_to_v11_decompose_streams() {
     # sub-stage tag ("S5d-decompose: ...") so operators can tell this
     # sub-op apart from S5 (artifact install), S5b (python-architecture
     # rename), and S5c (capability-token translation).
-    say "── S5d (decompose) — BD-165 per-entry decomposition + mirror+TOC regenerate ──"
+    say "── S5d (decompose) — per-entry decomposition + mirror+TOC regenerate ──"
 
     # Bridge the BD-095 mode flag to the BD-164 helpers' divergence
     # routing (Addendum #2 §4). The mirror generator reads
@@ -164,7 +164,7 @@ _v10_to_v11_decompose_streams() {
             continue
         fi
         if [[ ! -d "$stream_dir" ]]; then
-            info "$stream_key: stream dir $stream_dir_rel not present (BD-167 templates not installed?) — skip"
+            info "$stream_key: stream dir $stream_dir_rel not present (templates not installed?) — skip"
             skipped_count=$((skipped_count + 1))
             continue
         fi
@@ -208,5 +208,5 @@ _v10_to_v11_decompose_streams() {
         decomposed_count=$((decomposed_count + 1))
     done
 
-    info "BD-165 per-entry decomposition: $decomposed_count stream(s) decomposed, $skipped_count skipped"
+    info "per-entry decomposition: $decomposed_count stream(s) decomposed, $skipped_count skipped"
 }

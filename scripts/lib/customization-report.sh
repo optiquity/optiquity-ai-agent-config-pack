@@ -35,7 +35,7 @@ customization_report() {
         printf 'Total files processed: **%s**\n\n' "$total"
         printf 'This report lists every file the migration touched. Files\n'
         printf 'with project customizations are explicitly named so you can\n'
-        printf 'audit what was preserved (BD-059 truthfulness contract).\n\n'
+        printf 'audit what was preserved.\n\n'
 
         # Sections in stable order. Each section names every file in that
         # disposition; absent dispositions are omitted (cleaner output).

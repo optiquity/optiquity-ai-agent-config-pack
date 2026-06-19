@@ -70,10 +70,10 @@ _stage_preflight() {
     [[ -f "$PACK/scripts/lib/three-way.sh" ]] \
         || die "PACK missing three-way.sh" "$EXIT_PACK_INVALID"
     [[ -f "$PACK/scripts/lib/customization-preserve.sh" ]] \
-        || die "PACK missing BD-088 customization-preserve library" \
+        || die "PACK missing customization-preserve library" \
                "$EXIT_LIB_MISSING"
     [[ -f "$PACK/scripts/lib/customization-report.sh" ]] \
-        || die "PACK missing BD-088 customization-report library" \
+        || die "PACK missing customization-report library" \
                "$EXIT_LIB_MISSING"
 
     # Target must be a git repo with a clean working tree.
@@ -193,7 +193,7 @@ EOF
 # adapter-declared (`MIGRATOR_OWN_SIDECAR_SUFFIX`).
 
 _stage_libs() {
-    say "── S2 — initialize BD-088 customization-preserve state ──"
+    say "── S2 — initialize customization-preserve state ──"
 
     export _CP_PACK_ROOT="$PACK"
     # shellcheck source=three-way.sh disable=SC1091
@@ -226,7 +226,7 @@ _stage_libs() {
 # dispatch contract (architecture §6 M4 / I3).
 
 _stage_dispatch() {
-    say "── S3 — dispatch ${MIGRATOR_FROM_VERSION} → ${MIGRATOR_TO_VERSION} file changes via BD-088 ──"
+    say "── S3 — dispatch ${MIGRATOR_FROM_VERSION} → ${MIGRATOR_TO_VERSION} file changes ──"
 
     # Parse adapter-declared manifest into the parallel-array storage
     # owned by `migrator-manifest.sh`. Errors before any mutation if the
@@ -445,7 +445,7 @@ _stage_report() {
     count=$(customization_findings_count 2>/dev/null || printf '0')
 
     say ""
-    say "Migration complete. $count files processed by BD-088 dispatch."
+    say "Migration complete. $count files processed by the dispatch engine."
     say "Backup: $_MIGRATOR_BACKUP_DIR (faithful working-tree snapshot)"
     say "Report: $report"
     say ""

@@ -1242,7 +1242,7 @@ No phase prompt is generated until this check is complete.
    - Phase N blocker: has that phase been committed and marked ✅ in STATUS.md?
    - Phase N.M blocker (v11.0 additive): read the `✅` marker on the
      `#### N.M` heading in the per-entry tree. (Flat-file per-entry is the
-     sole supported mode; tracker integration is deferred — BD-214.)
+     sole supported mode; tracker integration is deferred.)
    - Phase task A blocked by phase task B (Dependencies field):
      same resolution as Phase N.M — read the target task's status; mode-agnostic.
    - TD-NNN blocker: does that item have Status: Resolved?
