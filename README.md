@@ -175,9 +175,9 @@ maintenance-docs/                           Pack maintainer docs (design records
 xcode-companion-templates/                  Machine-level Xcode AI config (per Mac)
 vscode-companion-templates/                 Machine-level VS Code config (per project)
 
-.claude/agents/                             Pack-specific Claude agents (4)
-.codex/agents/                              Pack-specific Codex agents (4)
-.agents-plugin/pack-agents/agents/          Pack-specific Antigravity agent bundle (4)
+.claude/agents/                             Pack-specific Claude agents (5)
+.codex/agents/                              Pack-specific Codex agents (5)
+.agents-plugin/pack-agents/agents/          Pack-specific Antigravity agent bundle (5)
 .claude/skills/, .codex/skills/,            Pack agent skills (copied from project-template/skills/)
   .agents/skills/
 
