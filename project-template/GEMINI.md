@@ -404,6 +404,16 @@ of agent role.
   files — the pack repo is not present at this client install. See
   the `boundary-investigation` skill for the SSOT-investigation
   methodology.
+- **Reconciliation-instance independence.** A reconciliation pass
+  (resolving an adversarial review before the work advances) uses a
+  FRESH instance — never the original author nor the adversarial
+  reviewer. Applies to every project agent role (architect, planner,
+  coder, reviewer, auditor, repo-ops, tester, grpc-schema, and the
+  rest) EXCEPT `docs-researcher` (factual inventory — reuse OK).
+  Carve-outs: the developer explicitly asks to re-engage an existing
+  agent (on Antigravity via the platform's known-ID re-engage /
+  idle-rewake path; on Claude Code / Codex via the platform re-engage
+  path), or a per-case architect-challenge reason.
 
 ## Phase routing — default agent assignments
 

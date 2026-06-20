@@ -509,6 +509,17 @@ developer and queuing the next step instead of blocking on the agent.
 The exact way to background a spawn is CLI-specific; use whatever your
 CLI offers for asynchronous agent execution.
 
+**Name every spawn uniquely + descriptively.** Give each spawned agent a unique,
+descriptive name of the shape `<role>-<workitem>-<facet>` (lowercase kebab) so the
+orchestrator can re-find a still-alive agent by name. (On Claude Code this is the
+Agent-tool `name`; on Codex / Antigravity use the platform's agent-name field.)
+
+**Reconciliation passes use a fresh instance.** A reconciliation pass (resolving an
+adversarial review before the work advances) is a FRESH spawn — never the original
+author or the adversarial reviewer — for every agent except `docs-researcher`.
+Re-engage an existing agent only on the developer's explicit ask or a per-case
+architect-challenge reason.
+
 **Merge-back — the patch comes only after review-clean.** A read-write
 agent never stages or commits, and it does **not** emit a patch up front
 (its work has not been reviewed yet — it may be wrong). The whole
@@ -545,6 +556,12 @@ edits back:
    chat performs the only git-state change — agents never stage, apply,
    or commit. The canonical tree only ever receives reviewed-clean work,
    at commit time.
+
+> **Spawn registry + name→id re-find (Claude-only).** On Claude Code, the
+> orchestrator records each spawn (name, id, purpose, status) in a gitignored
+> per-clone ledger and re-finds a still-alive agent by name → id — only AFTER the
+> fresh-agent-default decision authorizes a re-engage (this is HOW to re-find, not
+> WHEN to reuse). Codex / Antigravity equivalents are a future pack version.
 
 **Remove the worktree only AFTER the commit lands.** Each commit's first
 coder gets a fresh worktree; once that commit has landed (exit 0),

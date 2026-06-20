@@ -91,13 +91,13 @@ that depends on that content.
 > all stage sub-agents and respawn fresh for the next stage.
 > Additionally, each coder commit should use a FRESH coder
 > instance — never reuse a coder across commits, even within
-> the same stage. This convention is Claude-Code-specific:
-> Codex CLI's `/agent` slash command provides similar
-> long-lived-thread behavior but no peer-messaging analog;
-> Antigravity CLI's subagent mechanism is hub-and-spoke
-> (a parent dispatches subagents; no parent-controlled
-> keep-alive or peer-messaging across multiple parent
-> turns). Codex / Antigravity project teams: this convention
+> the same stage. This convention is Claude-Code-specific.
+> Codex CLI and Antigravity CLI now ship
+> their own inter-agent-messaging analogs (Codex's multi-agent messaging; Antigravity's
+> inter-agent ID-addressing with idle auto-rewake), but these are newer, opt-in /
+> partly-preview capabilities — so this Agent-Teams stage-lifecycle convention is
+> documented for Claude Code only; on Codex / Antigravity, follow your CLI's own
+> subagent guidance. Codex / Antigravity project teams: this convention
 > does not apply to your CLI's runtime behavior.
 
 ### Xcode Coding Agent
