@@ -59,6 +59,17 @@ The pack chat stays in control, receives the result, and continues.
 Use this mode for questions that need a focused answer, not extended
 back-and-forth.
 
+**Inject the graph path into every spawn prompt (BD-226, Claude-only).**
+Under worktree isolation a spawned agent's `$(git rev-parse
+--show-toplevel)` resolves to the empty worktree root, where the gitignored
+`graphify-out/` is not materialized. So the orchestrator MUST derive the
+real graph path AT RUNTIME in its canonical checkout (the derivation formula
+`$(git rev-parse --show-toplevel)/graphify-out/graph.json`) and INJECT the
+resolved absolute literal into every spawn prompt — only when that canonical
+`graphify-out/graph.json` exists (else inject no path). The agent uses the
+injected `--graph <path>`, NEVER its own toplevel. See trinity `## Pack
+memory` § "Graph-first context (BD-225)" for the full contract.
+
 ### Separate terminal session (developer-initiated)
 
 For substantial work that benefits from a dedicated conversation:

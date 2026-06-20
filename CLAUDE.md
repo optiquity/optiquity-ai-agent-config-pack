@@ -246,6 +246,17 @@ PACK-AGENTS.md current".
   `subagent_type=pack-<name>` (sub-agent within Pack Chat). The pack repo
   has no `agent-run.sh` — that's a project template helper, not a pack
   invocation method.
+- **Inject the graph path into every spawn prompt (BD-226, Claude-only).**
+  Under worktree isolation a spawned agent's `$(git rev-parse
+  --show-toplevel)` resolves to the empty worktree root where gitignored
+  `graphify-out/` is absent, so the orchestrator MUST derive the real graph
+  path AT RUNTIME in its canonical checkout (the derivation formula
+  `$(git rev-parse --show-toplevel)/graphify-out/graph.json`) and INJECT the
+  resulting absolute literal into every spawn prompt — only when that
+  canonical `graphify-out/graph.json` exists (else inject no path). The agent
+  queries with `graphify <verb> … --graph <injected>`, NEVER its own
+  toplevel. See § "Graph-first context (BD-225)" for the full contract + the
+  Claude-only Trinity-exempt note.
 - **Agent prompt requirements.** Every agent prompt must include: context
   (what the codebase is, what the task is), output file path, read-only
   flags where applicable, markdown-only directive for outputs, problem /
@@ -623,8 +634,8 @@ PACK-AGENTS.md current".
   requires architect+user sign-off). Current sanctioned set: exactly
   `{scripts/lib/detect.sh, scripts/pack-help.sh}`. `[roles: architect coder]
   [rationale: dependency-direction-placement]`
-- **Graph-first context when the knowledge graph exists (BD-225).** If
-  `$(git rev-parse --show-toplevel)/graphify-out/graph.json` exists, prefer
+- **Graph-first context when the knowledge graph exists (BD-225).** When a
+  knowledge graph exists, prefer
   the graph for orientation / relationship / blast-radius / "what relates to
   X" / "where does Y live" questions (a `graphify query` is read-only,
   deterministic, ~0 tokens) BEFORE broad tree reads; otherwise use normal
@@ -636,9 +647,28 @@ PACK-AGENTS.md current".
   `Status`, the README version table, a `_rules.md` contract — Read the
   source); freshly-changed / uncommitted files (`git diff`/Read); whole-file
   exact content (Read); archive-dir / excluded-category content (Read/grep —
-  deliberately not in the graph). The `--graph` path is ALWAYS absolute
-  (`$(git rev-parse --show-toplevel)/graphify-out/graph.json`) since a
-  sub-agent may start in a different cwd; `--budget` tiers are 2000
+  deliberately not in the graph). **Path-injection under worktree isolation
+  (BD-226):** the absolute graph path is NEVER recomputed by a spawned agent
+  from its own toplevel. The ORCHESTRATOR evaluates the derivation formula
+  `$(git rev-parse --show-toplevel)/graphify-out/graph.json` AT RUNTIME in
+  its canonical checkout and INJECTS the resulting absolute literal into
+  every spawn prompt; the agent uses THAT injected `--graph <path>` verbatim
+  and NEVER recomputes from its own `$(git rev-parse --show-toplevel)` —
+  under worktree isolation an agent's toplevel resolves to the empty worktree
+  root where gitignored `graphify-out/` is NOT materialized, so a self-derived
+  path mis-resolves. The orchestrator injects the literal ONLY when its
+  canonical `graphify-out/graph.json` exists; when it is absent (fresh clone /
+  graphify not installed / feature off) the orchestrator injects NO path (or
+  an explicit "no graph available" token) and the agent proceeds with
+  grep/Read. The agent runs the G1 existence check against the INJECTED path
+  (never its own toplevel); the G2 fallback (query errors/empties ⇒ fall back
+  to grep/Read, never block) is unchanged. **Worktree path-injection is
+  Claude-only (only Claude runs worktrees); the `AGENTS.md`/`GEMINI.md`
+  graph-first path-resolution intentionally stays as-is — correct for their
+  in-place execution — and their worktree story is a future pack version. Do
+  NOT "restore parity" by porting this injection contract to them.** The
+  `--graph` path the orchestrator injects is ALWAYS absolute (a
+  sub-agent may start in a different cwd); `--budget` tiers are 2000
   human/interactive, 1500 spawned agent, 1000 Pack-Chat prompt-construction;
   the backend is ALWAYS `--backend claude-cli` (the no-key subscription path
   — NEVER `claude`, which demands `ANTHROPIC_API_KEY`). NEVER preload the

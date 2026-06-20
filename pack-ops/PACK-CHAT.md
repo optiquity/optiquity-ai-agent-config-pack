@@ -285,6 +285,17 @@ worktree mechanics (the `isolation:"worktree"` parameter + the
   on the report path. The patch path (`<handoff>/changes.patch`) is named
   too, but for an RW agent it is written only at the post-review-clean step
   (see Merge-back), never up front.
+- **Inject the graph path into the prompt (BD-226, Claude-only).** Every
+  spawn prompt injects the orchestrator-derived ABSOLUTE graph literal —
+  Pack Chat evaluates the derivation formula
+  `$(git rev-parse --show-toplevel)/graphify-out/graph.json` AT RUNTIME in
+  its canonical checkout and writes that resolved absolute path into the
+  prompt, ONLY when that canonical `graphify-out/graph.json` exists (else
+  inject no path / a "no graph available" token). The agent queries with
+  `graphify <verb> … --graph <injected>` and NEVER recomputes from its own
+  `$(git rev-parse --show-toplevel)` — under worktree isolation the agent's
+  toplevel is the empty worktree root where gitignored `graphify-out/` is
+  absent. See trinity `## Pack memory` § "Graph-first context (BD-225)".
 - **The verb-ban is load-bearing, not advisory.** The platform provides
   no safety net for subagents — a non-isolated background subagent can
   write the parent tree freely. RW agents are ALWAYS spawned isolated (by
