@@ -29,6 +29,8 @@
 - [BD-232](./BD-232.md) — Reorganize + reduce Pack Chat's out-of-repo memory cache (architect-designed reorg, coder-rewritten content; Pack Chat installs only)
 - [BD-234](./BD-234.md) — Assess Graphify real usage + cost stats after burn-in; revisit the graph's cadence / knobs / index scope
 - [BD-236](./BD-236.md) — Project-side agent-def discipline-parity guards are incomplete (Check 57 covers 8 of the 13 enumerated git verbs; Check 11 cross-surface symmetry is informational-only) — investigate + design a coherent project-side parity-enforcement strategy
+- [BD-238](./BD-238.md) — Codify the PACK-SIDE large-BD development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)
+- [BD-239](./BD-239.md) — Codify the PROJECT-SIDE large-phase development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)
 
 ## Deferred
 
