@@ -29,6 +29,7 @@
 - [BD-232](./BD-232.md) — Reorganize + reduce Pack Chat's out-of-repo memory cache (architect-designed reorg, coder-rewritten content; Pack Chat installs only)
 - [BD-234](./BD-234.md) — Assess Graphify real usage + cost stats after burn-in; revisit the graph's cadence / knobs / index scope
 - [BD-235](./BD-235.md) — Project side has no shared universal-discipline skill (pack has `commit-discipline`); evaluate a project equivalent vs the current `PM-CHAT.md` + agent-def home
+- [BD-236](./BD-236.md) — Project-side agent-def discipline-parity guards are incomplete (Check 57 covers 8 of the 13 enumerated git verbs; Check 11 cross-surface symmetry is informational-only) — investigate + design a coherent project-side parity-enforcement strategy
 
 ## Deferred
 
