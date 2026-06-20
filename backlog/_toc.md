@@ -26,7 +26,6 @@
 - [BD-222](./BD-222.md) — Standing CI guard against CI-environment-fragile wired tests (hardcoded dev paths / un-shimmed live-`gh` / double-zero antipattern)
 - [BD-223](./BD-223.md) — Ship a committed (public) test-fixtures suite + a separate private gitignored suite
 - [BD-224](./BD-224.md) — Expand the `/pack-*` slash-command set + improve `/pack-help` coverage (brainstorm-gated)
-- [BD-226](./BD-226.md) — Sub-agent worktree-isolation overhaul: RW agents in per-commit isolated worktrees, RO agents in the work's tree, in-worktree review/fix cycle, patch-only-after-review-clean — generalized to pack-ops + project ops docs (Claude-only)
 - [BD-232](./BD-232.md) — Reorganize + reduce Pack Chat's out-of-repo memory cache (architect-designed reorg, coder-rewritten content; Pack Chat installs only)
 - [BD-234](./BD-234.md) — Assess Graphify real usage + cost stats after burn-in; revisit the graph's cadence / knobs / index scope
 - [BD-235](./BD-235.md) — Project side has no shared universal-discipline skill (pack has `commit-discipline`); evaluate a project equivalent vs the current `PM-CHAT.md` + agent-def home
@@ -233,6 +232,7 @@
 - [BD-219](./BD-219.md) — CI runtime optimization: tests-job matrix-sharding + `validate-pack --only-check` (effectiveness-preserving)
 - [BD-221](./BD-221.md) — Convert Gemini CLI support to Antigravity (full Gemini → Antigravity transition)
 - [BD-225](./BD-225.md) — Add Graphify knowledge-graph support for Pack Chat + pack agents' own work (PACK-OPS; not shipped to clients)
+- [BD-226](./BD-226.md) — Sub-agent worktree-isolation overhaul: RW agents in per-commit isolated worktrees, RO agents in the work's tree, in-worktree review/fix cycle, patch-only-after-review-clean — generalized to pack-ops + project ops docs (Claude-only)
 - [BD-228](./BD-228.md) — Push-time manifest regeneration method + enforcing check (retire the per-commit RC9 prose obligation)
 - [BD-229](./BD-229.md) — README Repository-Layout pack-agent count is stale: `(4)` → `(5)` on all three agent-surface rows
 - [BD-230](./BD-230.md) — Pack-self `BD-NNN` references leak into client-shipped `supporting-docs/` (boundary violation; strip-scope is a user decision)
