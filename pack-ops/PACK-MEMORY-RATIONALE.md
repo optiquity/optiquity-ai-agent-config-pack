@@ -190,7 +190,10 @@ Every pack-coder agent prompt MUST include both halves of this pattern:
     subagent defiance at handoff. This is the enforced path the BD-169 incident
     exposed (see worked example in `feedback-pack-coder-preflight-pattern`
     memory pointer).
-  - Codex CLI: No SendMessage equivalent (confirmed absent per issue #12462).
+  - Codex CLI: a MAv2 `send_message` analog exists (issue #12462 CLOSED-COMPLETED
+    2026-05-02; flag-gated `multi_agent_v2`, not-yet-GA-documented), so the parent stop
+    mechanism MAY use it where enabled; otherwise `/agent` or natural-language.
+    Cross-CLI coordination = BD-217.
     Parent stop mechanism is `/agent` command or natural-language ("ask Codex to
     stop the subagent"). Reliability caveats per research §2.6.
   - Antigravity: parent-control stop is native — the parent agent can interrupt
@@ -632,6 +635,83 @@ coder deliverable (no IMPL-REPORT, no fresh-context diff to review) — the
 clean structural fix is to route major edits through the coder that already
 produces the reviewable artifact. This composes `bounded-review-fix-cycle`
 rather than bolting a second review path onto Pack Chat.
+
+---
+
+## spawn-unique-naming
+
+**Why.** Re-finding a still-alive spawn — the BD-206 case where a docs-researcher
+had to be re-engaged — required digging the `agentId` out of session JSONL by hand
+(transcript archaeology). A unique, descriptive `name` is the stable key the
+discovery mechanism records and re-finds by, eliminating that dig. The discipline is
+CROSS-CLI because all three platforms (Claude Code, Codex, Antigravity) spawn named
+agents, and the naming convention must be uniform wherever an orchestrator later
+needs to re-find a spawn.
+
+**How.** Every spawn carries a `name` of the shape `<role>-<bd>-<facet>[-<seq>]`
+(lowercase kebab, `^[a-z0-9][a-z0-9-]{2,47}$`): the role token (`subagent_type`
+minus the `pack-` prefix), the work anchor (`bdNNN`/`batchNN`), a short scope facet,
+and a `-2`/`-3`… uniquifier to keep a repeated triple unique within a live cycle.
+Uniqueness is enforced by DISCIPLINE — no platform guarantees it. The per-CLI
+name-field reference is audience-correct in each trinity file (Claude Agent-tool
+`name`; Codex agent `name`; Antigravity known agent ID / named-role type).
+
+**Rejected alternative.** Free-form / non-descriptive names (the orchestrator cannot
+tell two spawns apart, defeating re-find); UUID-suffixed names (machine-unique but
+human-opaque, so a human re-find still requires archaeology — the exact failure the
+rule closes).
+
+---
+
+## spawn-registry-find
+
+**Why.** A unique name is only useful if there is a DURABLE place that maps it to a
+re-engageable handle and survives a parent context compaction. A gitignored on-disk
+ledger gives the orchestrator a re-readable record of every spawn, so a still-alive
+agent is re-found from disk with NO transcript archaeology — even after the parent's
+context has been compacted and the in-memory spawn list is gone.
+
+**How.** The orchestrator records each Agent-tool spawn as one JSON object per line
+(`{name, agentId, purpose, status}`) in the gitignored per-clone ledger
+`graphify-out/.pack-spawn-registry.jsonl` (modeled on the existing
+`graphify-out/.pack-refresh-status` precedent — NEVER committed, per
+`agents-never-commit`). Lookup precedence is by NAME → by agentId (both work as
+`SendMessage.to`). The registry is consulted ONLY after the `fresh-agent-default`
+gate authorizes a re-engage — it fixes HOW-to-find, not WHEN-to-reengage. This
+MECHANISM is Claude-only; Codex MAv2 (`list_agents`/`resume_agent`) and Antigravity
+`agy` analogs exist but need their own verification + mapping (BD-217).
+
+**Rejected alternative.** A committed manifest (`agents-never-commit` forbids the
+mid-task commit and it churns the tree); the Agent-Teams `members` list (teams-only,
+not durable across compaction); a message-id addressing tier (no such primitive
+exists — do not invent one).
+
+---
+
+## reconciliation-instance-independence
+
+**Why.** A reconciliation pass exists to resolve an adversarial review's findings
+cleanly. The original author is contaminated and design-biased toward its own design
+(it will defend it); the adversarial reviewer is biased toward its own findings (it
+will over-fix to vindicate them). A FRESH instance reading both the design AND the
+review as inputs is the only party with no stake in either — the same independence
+rationale as `fresh-agent-default`, "No prior reviews to pack-reviewer", and the
+per-commit fresh-coder rule, applied to the reconciliation step specifically.
+
+**How.** The reconciliation pass spawns a NEW instance of the relevant discipline (a
+fresh architect to reconcile an architect design; a fresh planner for a plan; etc.),
+handed the design + the adversarial review as SUBJECTS to reconcile. `docs-researcher`
+is exempt — its work is factual inventory, accumulated context helps, and it carries
+no design bias. Carve-out (1): the user EXPLICITLY asks to re-engage an existing agent
+(Claude `SendMessage`, found via the spawn registry; Codex/Antigravity per-platform
+re-engage). Carve-out (2): an architect-challenge per-case evidence/logic argument.
+
+**Rejected alternative.** (i) Reuse the original author "because it has the context" —
+that context IS the contamination. (ii) Reuse the adversarial reviewer "because it
+knows the findings" — that knowledge IS the bias. (iii) A blanket "any agent may be
+reused if the user said so once" — the carve-out is per-instance/explicit, not
+standing. (iv) Exempt MORE roles than `docs-researcher` — only factual-inventory work
+qualifies for the no-design-bias exemption.
 
 ---
 

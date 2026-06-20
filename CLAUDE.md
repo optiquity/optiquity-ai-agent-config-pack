@@ -269,6 +269,23 @@ PACK-AGENTS.md current".
 - **No prior reviews to pack-reviewer.** Reviewer prompts reference
   ARCHITECTURE / PLAN docs only — never prior `PACK-REVIEW-*.md` reports.
   Including a prior review biases the new review.
+- **Reconciliation-instance independence.** A reconciliation pass (the round that
+  resolves an adversarial review's findings before the work advances) uses a FRESH,
+  independent instance — NEVER the original author (contaminated + design-biased toward
+  its own design) NOR the adversarial reviewer (biased toward its own findings). This
+  applies to EVERY agent role — architect, planner, coder, reviewer, auditor, repo-ops,
+  tester, grpc-schema, and any other — with ONE exception: `docs-researcher`, which MAY
+  be re-engaged/reused (its work is factual inventory, accumulated context helps, and it
+  carries no design bias). Two carve-outs override the fresh-instance default: (1) **user
+  override** — the user EXPLICITLY asks to re-engage an existing agent (in Claude Code
+  via `SendMessage` to that instance — the BD-241 discoverability mechanism then
+  re-finds it; on Codex / Antigravity via the platform's re-engage path); and (2)
+  **architect challenge** — a good, evidence- and logic-based reason argued per case (not
+  a blanket exemption). This rule REINFORCES `fresh-agent-default` (it is that
+  independence principle applied to the reconciliation step) and SUBORDINATES the
+  Agent-team "SendMessage for follow-ups" convenience: a reconciliation pass is a fresh
+  spawn unless a carve-out fires. `[roles: universal]
+  [rationale: reconciliation-instance-independence]`
 - **Researcher-first pipeline for substantive content.** When agent
   work depends on domain knowledge verified against authoritative
   external sources (CLI docs, tool semantics, framework behavior),
@@ -345,6 +362,19 @@ PACK-AGENTS.md current".
   default — which defeats the guard's purpose. `[roles: architect]
   [rationale: ci-guard-measure-then-bound]`
 
+- **Uniquely + descriptively name every spawn.** Every spawned agent carries a
+  unique, descriptive `name` of the shape `<role>-<bd>-<facet>[-<seq>]` (lowercase
+  kebab, `^[a-z0-9][a-z0-9-]{2,47}$`): `<role>` the agent role token
+  (`coder`/`fixcoder`/`reviewer`/`architect`/`planner`/`docsresearcher` — the
+  `subagent_type` minus the `pack-` prefix); `<bd>` the work anchor (`bdNNN` or
+  `batchNN`); `<facet>` a short scope tag (`cdocs`/`worktree`/`external`); append
+  `-2`/`-3`… to keep a repeated `<role>-<bd>-<facet>` triple unique within a live
+  cycle (uniqueness is a DISCIPLINE — no platform guarantees it). In Claude Code the
+  `name` is the Agent-tool `name` parameter (addressable via `SendMessage({to:
+  name})`); on Codex / Antigravity use the platform's agent-name field. A
+  unique name is the key the discovery mechanism records and re-finds by. `[roles:
+  universal] [rationale: spawn-unique-naming]`
+
 ### Sub-agent behavior (Claude-only)
 
 - **Sub-agent isolation is keyed by agent class (RW → isolated worktree;
@@ -412,14 +442,39 @@ PACK-AGENTS.md current".
   across commits, even within a stage. Per-BD review/fix cycle = fresh
   coder for the implementation, fresh coder for the fix. Trinity
   exemption: Agent Teams + SendMessage are Claude-Code-specific
-  (Codex / Antigravity have no peer-messaging equivalent — confirmed
-  absent per Codex issue #12462 and Antigravity's hub-and-spoke
-  subagent model).
+  (Codex MAv2 `send_message` (flag-gated `multi_agent_v2`; issue #12462
+  CLOSED-COMPLETED) and Antigravity `agy` (inter-agent ID-addressing +
+  idle auto-rewake) now ship peer-messaging ANALOGS — but they are
+  flag-gated / not-yet-GA-documented (Codex) and partly-unverified
+  (Antigravity), so this MECHANISM stays Claude-only here; the
+  cross-CLI mapping is BD-217.)
+- **Record every spawn in the durable registry; re-find by name→agentId
+  (Claude-only mechanism).** The orchestrator records each Agent-tool spawn — its
+  unique `name` (see `### Agent invocation rules` `[rationale: spawn-unique-naming]`),
+  `agentId` (from the spawn tool_result), `purpose`, `status` — into the gitignored
+  per-clone ledger `graphify-out/.pack-spawn-registry.jsonl` (NEVER committed —
+  `agents-never-commit`; modeled on `graphify-out/.pack-refresh-status`) and CONSULTS
+  it to re-find a still-alive spawn with NO transcript archaeology (the registry is
+  re-read from disk, so it survives a parent context compaction). Lookup precedence:
+  **by NAME → by agentId** (both work as `SendMessage.to`, measured; there is NO
+  message-id addressing primitive — do not invent one; terminal fallback is a fresh
+  re-spawn). Consult the registry ONLY after the `fresh-agent-default` gate authorizes
+  a re-engage — this fixes HOW-to-find, not WHEN-to-reengage. The find/registry
+  MECHANISM is Claude-only here; Codex MAv2 (`list_agents`/`resume_agent`) and
+  Antigravity `agy` analogs exist but need their own verification + mapping (BD-217).
+  `[roles: universal] [rationale: spawn-registry-find]`
 - **Trinity exemption.** This sub-section is Claude-specific (not
-  mirrored in `AGENTS.md` / `GEMINI.md`) because it concerns Claude
-  Code's Agent tool, `run_in_background` parameter, and Agent Teams /
-  SendMessage features — none of which have equivalents in Codex CLI
-  or Antigravity CLI per research §2.5 / §2.7 / §3.5 / §3.7.
+  mirrored in `AGENTS.md` / `GEMINI.md`) because its rules are built
+  against Claude Code's Agent-tool mechanism — the Agent tool's spawn
+  schema, the `run_in_background` parameter (Codex/Antigravity async
+  spawning is implicit/platform-native, not a named parameter), and the
+  Agent Teams / SendMessage peer-messaging primitives. Codex MAv2
+  `send_message` (flag-gated `multi_agent_v2`; issue #12462
+  CLOSED-COMPLETED) and Antigravity `agy` (inter-agent ID-addressing +
+  idle auto-rewake) now ship peer-messaging ANALOGS, but they are
+  flag-gated / not-yet-GA-documented (Codex) and partly-unverified
+  (Antigravity) — so this mechanism stays Claude-only here; the
+  cross-CLI mapping is BD-217.
 
 ### Pack Chat scope
 
