@@ -31,7 +31,6 @@
 - [BD-236](./BD-236.md) — Project-side agent-def discipline-parity guards are incomplete (Check 57 covers 8 of the 13 enumerated git verbs; Check 11 cross-surface symmetry is informational-only) — investigate + design a coherent project-side parity-enforcement strategy
 - [BD-238](./BD-238.md) — Codify the PACK-SIDE large-BD development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)
 - [BD-239](./BD-239.md) — Codify the PROJECT-SIDE large-phase development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)
-- [BD-240](./BD-240.md) — Re-frame the `graph-first-context` rule so it is genuinely graph-first for DISCOVERY/RECALL (not grep-first): the grep/Read fall-throughs swallow recall-critical enumeration
 - [BD-241](./BD-241.md) — Make previously-spawned still-alive agents discoverable: unique spawn NAMES + a durable spawn REGISTRY + a name→agentId→message-id lookup precedence (Claude-only mechanism; pack + project)
 
 ## Deferred
@@ -242,6 +241,7 @@
 - [BD-230](./BD-230.md) — Pack-self `BD-NNN` references leak into client-shipped `supporting-docs/` (boundary violation; strip-scope is a user decision)
 - [BD-231](./BD-231.md) — Dangling `.mcp.json.example` references: the file is absent from `project-template/` (add-file vs. repoint is a user decision)
 - [BD-237](./BD-237.md) — Graphify graph-freshness mechanism is broken in production: redesign the auto-refresh + add verification checks (BD-225 shipped an un-verified, hand-installed, fragile hook that never ran)
+- [BD-240](./BD-240.md) — Re-frame the `graph-first-context` rule so it is genuinely graph-first for DISCOVERY/RECALL (not grep-first): the grep/Read fall-throughs swallow recall-critical enumeration
 
 ## Deprecated
 
