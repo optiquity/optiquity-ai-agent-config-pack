@@ -564,10 +564,13 @@ ships to clients.
 
 **When to skip Graphify.**
 - You are doing a one-off task and do not want to run the one-time build.
-- The task is an exact-string / token search, an authoritative SSOT-field read
-  (a BD `Status`, the README version table, a `_rules.md` contract), a
-  freshly-changed / uncommitted file, or whole-file verbatim content — those
-  fall through to grep / Read / `git diff` per the graph-first rule's
-  exceptions, not the graph.
+- The work is purely a VERIFICATION read at a surface you have already
+  identified — exact bytes/counts, an authoritative SSOT-field VALUE (a BD
+  `Status`, the README version table, a `_rules.md` contract), a
+  freshly-changed/uncommitted file, whole-file content of a named file, or
+  content the graph does not index — which falls through to grep / Read /
+  `git diff`. (This is precision AFTER discovery, not a reason to skip
+  graph-first DISCOVERY when the graph exists — see the graph-first rule's
+  two-phase model.)
 - You are on a fresh clone with no graph built — the graph-first rule degrades
   to ordinary grep/Read with zero friction.

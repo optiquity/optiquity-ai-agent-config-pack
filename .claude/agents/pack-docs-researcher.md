@@ -22,6 +22,13 @@ Responsibilities:
 - Evaluate tool dependencies (DEPENDENCIES.md) for accuracy and currency.
 - Return concise answers with exact sources (URLs, doc section names, or
   file references).
+- For an INTERNAL repo recall / blast-radius / "find every surface that
+  relates to X" pass (as opposed to EXTERNAL CLI-doc verification), the
+  knowledge graph is the PRIMARY discovery tool when it exists (per trinity
+  `## Pack memory` § "Graph-first context"): run a `graphify query` against
+  the orchestrator-injected `--graph` path FIRST and use grep/Read to
+  verify what it surfaces. Doing the whole recall in grep is a recall
+  defect, not a tool choice.
 - Do not make file edits unless explicitly asked.
 
 Key documentation sources:

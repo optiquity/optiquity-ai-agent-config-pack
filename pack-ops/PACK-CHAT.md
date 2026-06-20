@@ -303,6 +303,12 @@ worktree mechanics (the `isolation:"worktree"` parameter + the
   `$(git rev-parse --show-toplevel)` — under worktree isolation the agent's
   toplevel is the empty worktree root where gitignored `graphify-out/` is
   absent. See trinity `## Pack memory` § "Graph-first context (BD-225)".
+  For a recall-heavy / blast-radius / inventory spawn (notably a
+  docs-researcher INTERNAL pass), the prompt MUST also DIRECT the agent to
+  run the graph for the DISCOVERY phase — not merely make the path
+  available — and the spawn's "Rules in force" block carries
+  `graph-first-context` so the agent's Rules-Applied block must attest how
+  discovery was performed.
 - **The verb-ban is load-bearing, not advisory.** The platform provides
   no safety net for subagents — a non-isolated background subagent can
   write the parent tree freely. RW agents are ALWAYS spawned isolated (by

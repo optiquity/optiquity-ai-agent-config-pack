@@ -68,7 +68,12 @@ real graph path AT RUNTIME in its canonical checkout (the derivation formula
 resolved absolute literal into every spawn prompt — only when that canonical
 `graphify-out/graph.json` exists (else inject no path). The agent uses the
 injected `--graph <path>`, NEVER its own toplevel. See trinity `## Pack
-memory` § "Graph-first context (BD-225)" for the full contract.
+memory` § "Graph-first context (BD-225)" for the full contract. For a
+recall-heavy / blast-radius / inventory spawn (notably a docs-researcher
+INTERNAL pass), the prompt MUST also DIRECT the agent to run the graph for
+the DISCOVERY phase — not merely make the path available — and the spawn's
+"Rules in force" block carries `graph-first-context` so the agent's
+Rules-Applied block must attest how discovery was performed.
 
 ### Separate terminal session (developer-initiated)
 

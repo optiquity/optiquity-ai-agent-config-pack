@@ -649,14 +649,16 @@ gracefully (G1 existence guard) and never block on a failed query (G2
 fallback). It is NOT a hard dependency of any task — a best-effort
 accelerator only.
 
-**How to apply.** When `$(git rev-parse --show-toplevel)/graphify-out/graph.json`
-exists, query the graph FIRST for "what relates to X / where does Y live /
-blast radius of Z" before broad tree reads; fall through to grep/Read for the
-exceptions (exact-string/token search → grep; authoritative SSOT fields — a BD
-`Status`, the README version table, a `_rules.md` contract → Read the source;
-freshly-changed/uncommitted files → `git diff`/Read; whole-file exact content
-→ Read; archive-dir / excluded-category content → Read/grep, deliberately not
-in the graph). If the graph is absent or a query fails or returns nothing
+**How to apply.** When the graph exists, DISCOVERY/RECALL ("what relates to X /
+where does Y live / blast radius of Z") is graph-FIRST and mandatory: query the
+graph to establish the candidate surface set before broad tree reads. grep/Read
+is the VERIFICATION layer — exact bytes/counts at a named surface, an
+authoritative SSOT field VALUE (a BD `Status`, the README version table, a
+`_rules.md` contract), freshly-changed/uncommitted files (`git diff`/Read),
+whole-file content of a named file, and content the graph does not index
+(archive/excluded) — none of which licenses skipping graph-first discovery; a
+literal-occurrence census runs the graph FIRST to find candidates, THEN greps
+each to grep-zero. If the graph is absent or a query fails or returns nothing
 useful, use normal tools (G1 + G2). `--graph` is ALWAYS absolute; `--budget`
 tiers are 2000 human / 1500 spawned agent / 1000 Pack-Chat prompt-construction;
 the backend is ALWAYS `--backend claude-cli` (no-key subscription — never

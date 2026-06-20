@@ -560,12 +560,34 @@ PACK-AGENTS.md current".
   grep/Read (the G1 existence guard — a fresh clone has no graph by default,
   so the rule degrades with zero friction). If a graph query errors or
   returns nothing useful, fall back to file reads — never block on the graph
-  (the G2 fallback). Fall through to grep/Read for: exact-string / token
-  search (use grep — exact + complete); authoritative SSOT fields (a BD
-  `Status`, the README version table, a `_rules.md` contract — Read the
-  source); freshly-changed / uncommitted files (`git diff`/Read); whole-file
-  exact content (Read); archive-dir / excluded-category content (Read/grep —
-  deliberately not in the graph). The `--graph` path is ALWAYS absolute
+  (the G2 fallback). **Two phases — the second never vetoes the first.**
+  **(1) DISCOVERY / RECALL** — "what are ALL the surfaces related to X /
+  where does Y live / blast radius of Z / what depends on W" — is
+  **graph-FIRST and mandatory when the graph exists**: run a `graphify
+  query`/`path`/`affected` to establish the candidate surface set BEFORE
+  broad tree reads. grep/Read is NOT a substitute for the graph in this
+  phase — an a-priori grep pattern bounds recall to what you already
+  thought to search for, which is exactly the recall the graph exists to
+  widen. **(2) VERIFICATION / PRECISION** — the exact bytes, line counts,
+  or authoritative SSOT VALUE at an ALREADY-IDENTIFIED surface — is
+  grep/Read's job; use it to confirm what discovery surfaced. Fall through
+  to grep/Read (skipping the graph) ONLY for these — each a P2 or
+  out-of-graph need, none a license to skip P1: **(i)** a VERIFICATION read
+  of a named surface (exact bytes/counts — Read/grep AFTER discovery named
+  it); **(ii)** an authoritative SSOT field VALUE (a BD `Status`, the
+  README version table, a `_rules.md` contract — Read the source);
+  **(iii)** freshly-changed / uncommitted files (`git diff`/Read — not yet
+  in the graph); **(iv)** whole-file exact content of a named file (Read —
+  after discovery named it); **(v)** content the graph deliberately does
+  NOT index (archive-dir / excluded-category — Read/grep). A completeness
+  census that must enumerate every literal occurrence (e.g. a rename
+  completeness gate that greps every literal hit to grep-zero) RUNS the
+  grep as its VERIFICATION gate but does NOT replace discovery: when the
+  graph exists, the census runs the graph FIRST to find the candidate
+  surfaces, THEN greps each to grep-zero — "my task is exhaustive
+  enumeration, so I'll grep the whole tree" is the prohibited move, because
+  the graph exists precisely to widen enumeration beyond your a-priori
+  pattern. The `--graph` path is ALWAYS absolute
   (`$(git rev-parse --show-toplevel)/graphify-out/graph.json`) since a
   sub-agent may start in a different cwd; `--budget` tiers are 2000
   human/interactive, 1500 spawned agent, 1000 Pack-Chat prompt-construction;
