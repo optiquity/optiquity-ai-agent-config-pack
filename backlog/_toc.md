@@ -29,6 +29,7 @@
 - [BD-226](./BD-226.md) — Sub-agent worktree-isolation overhaul: RW agents in per-commit isolated worktrees, RO agents in the work's tree, in-worktree review/fix cycle, patch-only-after-review-clean — generalized to pack-ops + project ops docs (Claude-only)
 - [BD-232](./BD-232.md) — Reorganize + reduce Pack Chat's out-of-repo memory cache (architect-designed reorg, coder-rewritten content; Pack Chat installs only)
 - [BD-234](./BD-234.md) — Assess Graphify real usage + cost stats after burn-in; revisit the graph's cadence / knobs / index scope
+- [BD-235](./BD-235.md) — Project side has no shared universal-discipline skill (pack has `commit-discipline`); evaluate a project equivalent vs the current `PM-CHAT.md` + agent-def home
 
 ## Deferred
 
