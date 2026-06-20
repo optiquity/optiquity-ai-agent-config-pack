@@ -210,6 +210,13 @@ These rules are non-negotiable and always apply:
   run `gh run list --workflow=validate-pack.yml -L 1`). If CI fails,
   read the error, fix the file, and re-push before continuing. CI failures
   are fix-immediately items — never defer them to BACKLOG.
+- **The pre-push hook auto-refreshes the Graphify graph on every push.** Once
+  `scripts/install-graphify-hook.sh` is installed in a clone, every `git push`
+  fires the tracked `pre-push` hook (`scripts/hooks/graphify-pre-push.sh`),
+  which refreshes the gitignored graph IN THE BACKGROUND (non-blocking, BD-237).
+  Do NOT duplicate a manual graph refresh around a push — the hook handles it.
+  `pack-startup` reports graph freshness + whether the hook is installed; the
+  graph is pack-ops-only and never ships to clients.
 - **No commit-staging beyond mechanical-edit threshold without
   architect justification.** Pack Chat does not stage commits for
   batches whose footprint exceeds the mechanical-edit threshold

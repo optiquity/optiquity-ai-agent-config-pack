@@ -65,17 +65,57 @@ Output a summary in exactly this format:
 **Last BD number:** BD-NNN (or "none" if empty)
 **Last commit:** [date] — [summary from git log -1 --oneline]
 **CI tooling:** [GitHub MCP available / not configured — manual check needed]
+**Graph:** [the Step-5 readiness line — e.g. `fresh | pre-push hook: installed`, or `STALE — built at <sha8>, HEAD <sha8> | pre-push hook: NOT installed — run scripts/install-graphify-hook.sh`, or `not built (optional pack-dev accelerator)`]
 
 **Awaiting instructions.**
 ---
 
+## Step 5 — Graph freshness + hook-install readiness (LOCAL, never fails startup)
+
+Compute the readiness line reported on the Step-4 `**Graph:**` line. This is a
+LOCAL check only — no CI gate, no committed artifact; it NEVER fails the
+session (it reports STALE / NOT installed; it does not error out).
+
+```bash
+ROOT="$(git rev-parse --show-toplevel)"
+GRAPH="$ROOT/graphify-out/graph.json"
+HOOK="$(git rev-parse --git-path hooks)/pre-push"
+if [ ! -f "$GRAPH" ]; then
+  echo "graph: not built (graphify is an optional pack-dev accelerator)"
+else
+  # built_at_commit is the LAST JSON field — a bounded tail recovers it O(1).
+  built="$(tail -c 200 "$GRAPH" | grep -o '"built_at_commit": *"[0-9a-f]*"' | grep -o '[0-9a-f]\{7,\}')"
+  head="$(git -C "$ROOT" rev-parse HEAD)"
+  if [ -n "$built" ] && [ "$built" = "$head" ]; then
+    fresh="graph: fresh"
+  else
+    fresh="graph: STALE — built at ${built:-unknown}, HEAD ${head} (run: git push, or bash scripts/install-graphify-hook.sh then push)"
+  fi
+  if [ -f "$HOOK" ]; then
+    echo "$fresh | pre-push hook: installed"
+  else
+    echo "$fresh | pre-push hook: NOT installed — run scripts/install-graphify-hook.sh"
+  fi
+fi
+```
+
+Report the resulting one line on the Step-4 `**Graph:**` line. (You MAY use
+`python3 -c "import json; print(json.load(open('$GRAPH'))['built_at_commit'])"`
+instead of the `tail`+`grep` if it is more robust on your platform — note the
+OUTER double quotes so the shell expands `$GRAPH` and the INNER single quotes
+stay literal Python; both are O(1)-cheap for a once-per-startup read.) Honors
+the BD-237 "no CI gate, no
+committed sentinel" constraint: the freshness criterion (`built_at_commit` vs
+HEAD) lives on this LOCAL human-facing surface, not in CI.
+
 <!--
-Steps 5–7 are reserved. Step 7 is the V1 §10.2 tracker-mode triage
+Steps 6–7 are reserved. Step 7 is the V1 §10.2 tracker-mode triage
 queue (provider.list filter=label:'needs-triage'); a later BD adds it
-when tracker mode lands in pack-startup. Steps 5 and 6 are open for
-future surface additions. The Step 8 numbering is fixed by V3 §28.1.9
-to keep the recommendation check at the documented insertion point
-regardless of when the intermediate steps land.
+when tracker mode lands in pack-startup. Step 6 is open for future
+surface additions. (Step 5 is now the BD-237 graph-freshness +
+hook-install readiness check.) The Step 8 numbering is fixed by V3
+§28.1.9 to keep the recommendation check at the documented insertion
+point regardless of when the intermediate steps land.
 -->
 
 ## Step 8 — Inflection-point recommendation check (deferred)
