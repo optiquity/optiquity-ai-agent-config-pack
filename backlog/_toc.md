@@ -29,7 +29,6 @@
 - [BD-232](./BD-232.md) — Reorganize + reduce Pack Chat's out-of-repo memory cache (architect-designed reorg, coder-rewritten content; Pack Chat installs only)
 - [BD-234](./BD-234.md) — Assess Graphify real usage + cost stats after burn-in; revisit the graph's cadence / knobs / index scope
 - [BD-236](./BD-236.md) — Project-side agent-def discipline-parity guards are incomplete (Check 57 covers 8 of the 13 enumerated git verbs; Check 11 cross-surface symmetry is informational-only) — investigate + design a coherent project-side parity-enforcement strategy
-- [BD-237](./BD-237.md) — Graphify graph-freshness mechanism is broken in production: redesign the auto-refresh + add verification checks (BD-225 shipped an un-verified, hand-installed, fragile hook that never ran)
 
 ## Deferred
 
@@ -238,6 +237,7 @@
 - [BD-229](./BD-229.md) — README Repository-Layout pack-agent count is stale: `(4)` → `(5)` on all three agent-surface rows
 - [BD-230](./BD-230.md) — Pack-self `BD-NNN` references leak into client-shipped `supporting-docs/` (boundary violation; strip-scope is a user decision)
 - [BD-231](./BD-231.md) — Dangling `.mcp.json.example` references: the file is absent from `project-template/` (add-file vs. repoint is a user decision)
+- [BD-237](./BD-237.md) — Graphify graph-freshness mechanism is broken in production: redesign the auto-refresh + add verification checks (BD-225 shipped an un-verified, hand-installed, fragile hook that never ran)
 
 ## Deprecated
 
