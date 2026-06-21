@@ -27,9 +27,9 @@
 #       addenda H2 sections that Phase-A is supposed to install.
 #
 #   checkpoint_check_help_fragments <target> <pack>
-#       Verify HELP-FRAGMENT.md and HELP-FRAGMENT-TRACKER.md were
-#       installed at <target>/docs/pack/ AND that their contents match
-#       the pack-side mirrors at <pack>/project-template/docs/pack/.
+#       Verify HELP-FRAGMENT.md was installed at <target>/docs/pack/ AND
+#       that its contents match the pack-side mirror at
+#       <pack>/project-template/docs/pack/.
 #
 #   checkpoint_check_relocated_docs <target>
 #       Verify BD-042 / BD-091 legacy docs are no longer at the project
@@ -159,10 +159,10 @@ checkpoint_check_trinity_addenda() {
 
 # ── checkpoint_check_help_fragments ──────────────────────────────────────
 #
-# v11 ships HELP-FRAGMENT.md and HELP-FRAGMENT-TRACKER.md under
-# docs/pack/. Phase-A's S5 artifact-install copies these to the target;
-# this check verifies they exist AND match the pack-side mirror byte-for-
-# byte (the install is a plain `cp` so identity is the expected relation).
+# v11 ships HELP-FRAGMENT.md under docs/pack/. Phase-A's S5 artifact-
+# install copies it to the target; this check verifies it exists AND
+# matches the pack-side mirror byte-for-byte (the install is a plain
+# `cp` so identity is the expected relation).
 
 checkpoint_check_help_fragments() {
     local target="${1:-}" pack="${2:-}"
@@ -175,7 +175,7 @@ checkpoint_check_help_fragments() {
         return 1
     fi
     local missing=0 mismatch=0 f
-    for f in HELP-FRAGMENT.md HELP-FRAGMENT-TRACKER.md; do
+    for f in HELP-FRAGMENT.md; do
         local proj="$target/docs/pack/$f"
         local src="$pack/project-template/docs/pack/$f"
         if [[ ! -f "$proj" ]]; then

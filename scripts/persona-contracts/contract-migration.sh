@@ -25,7 +25,7 @@
 #         ship a BACKLOG.md, so the project's BACKLOG must remain
 #         byte-identical (sha256 unchanged).
 #   4. v11-only client artifacts now installed in the migrated project
-#      (HELP-FRAGMENT-TRACKER.md, tracker.toml.example, scripts/pack-help.sh,
+#      (HELP-FRAGMENT.md, scripts/pack-help.sh,
 #      pack-help skill/command per CLI, .github/ISSUE_TEMPLATE/* forms).
 #
 # Derivation: items (1), (2), (4) enumerate from project-template/ + the
@@ -406,7 +406,7 @@ fi
 # when adding/removing v11 client artifacts. (BD-116 PACK-REVIEW NIT N1.)
 #
 # Mapping to stage_s11_v11_artifacts() sub-stages:
-#   1. HELP-FRAGMENT*.md          → docs/pack/HELP-FRAGMENT.md, HELP-FRAGMENT-TRACKER.md
+#   1. HELP-FRAGMENT.md           → docs/pack/HELP-FRAGMENT.md
 #   2. tracker.toml.example       → NO LONGER installed (tracker deferred, BD-214)
 #   3. .github/ISSUE_TEMPLATE/*   → handled by glob block below
 #   4. pack-help pool skill       → .claude/skills/pack-help/SKILL.md,
@@ -443,7 +443,9 @@ fi
 
 v11_artifacts=(
     "docs/pack/HELP-FRAGMENT.md"
-    "docs/pack/HELP-FRAGMENT-TRACKER.md"
+    # BD-243 NUCLEAR: HELP-FRAGMENT-TRACKER.md is deleted (deferred-tracker
+    # advertising removed); the migrator no longer copies it. Absence is
+    # asserted below.
     # BD-214: tracker.toml.example is NO LONGER installed by the migrator
     # (tracker deferred; flat-file is the sole supported mode). Absence is
     # asserted below.
@@ -489,6 +491,13 @@ for f in "${v11_artifacts[@]}"; do
         t_fail "v11 artifact ${f} MISSING post-migrate"
     fi
 done
+# BD-243 NUCLEAR: the deferred-tracker help fragment must NOT be installed
+# by the migrator (deleted; deferred-tracker advertising removed).
+if [[ ! -f "$SANDBOX/docs/pack/HELP-FRAGMENT-TRACKER.md" ]]; then
+    t_pass "v11 artifact HELP-FRAGMENT-TRACKER.md NOT installed (deleted, BD-243)"
+else
+    t_fail "v11 artifact HELP-FRAGMENT-TRACKER.md unexpectedly installed (should be deleted, BD-243)"
+fi
 # BD-214: tracker.toml.example must NOT be installed by the migrator.
 if [[ ! -f "$SANDBOX/tracker.toml.example" ]]; then
     t_pass "v11 artifact tracker.toml.example NOT installed (tracker deferred, BD-214)"

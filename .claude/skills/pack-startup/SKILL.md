@@ -107,21 +107,3 @@ stay literal Python; both are O(1)-cheap for a once-per-startup read.) Honors
 the BD-237 "no CI gate, no
 committed sentinel" constraint: the freshness criterion (`built_at_commit` vs
 HEAD) lives on this LOCAL human-facing surface, not in CI.
-
-<!--
-Steps 6–7 are reserved. Step 7 is the V1 §10.2 tracker-mode triage
-queue (provider.list filter=label:'needs-triage'); a later BD adds it
-when tracker mode lands in pack-startup. Step 6 is open for future
-surface additions. (Step 5 is now the BD-237 graph-freshness +
-hook-install readiness check.) The Step 8 numbering is fixed by V3
-§28.1.9 to keep the recommendation check at the documented insertion
-point regardless of when the intermediate steps land.
--->
-
-## Step 8 — Inflection-point recommendation check (deferred)
-
-The D-19 tracker opt-in recommendation is DEFERRED (BD-214): tracker
-integration is deferred indefinitely and flat-file per-entry is the sole
-supported mode, so this step surfaces nothing. The recommendation system
-(`scripts/lib/recommendation.sh`) is retained dormant and test-covered
-for a future resumption; the step number is reserved.

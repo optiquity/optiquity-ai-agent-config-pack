@@ -129,9 +129,11 @@ assert_contains "2.1 S6 ran" "$out" "S6 — render truthful migration report"
 [[ -f "$T/docs/pack/HELP-FRAGMENT.md" ]] \
     && t_pass "2.4 HELP-FRAGMENT.md installed" \
     || t_fail "2.4 HELP-FRAGMENT.md missing"
-[[ -f "$T/docs/pack/HELP-FRAGMENT-TRACKER.md" ]] \
-    && t_pass "2.4 HELP-FRAGMENT-TRACKER.md installed" \
-    || t_fail "2.4 HELP-FRAGMENT-TRACKER.md missing"
+# BD-243 NUCLEAR: the v10→v11 migrator NO LONGER copies the deferred-tracker
+# HELP-FRAGMENT-TRACKER.md (deleted). Assert ABSENT.
+[[ ! -f "$T/docs/pack/HELP-FRAGMENT-TRACKER.md" ]] \
+    && t_pass "2.4 HELP-FRAGMENT-TRACKER.md NOT installed (deleted, BD-243)" \
+    || t_fail "2.4 HELP-FRAGMENT-TRACKER.md unexpectedly installed (should be deleted, BD-243)"
 # BD-214: the v10→v11 migrator NO LONGER installs tracker.toml.example
 # (tracker deferred; flat-file is the sole supported mode). Assert ABSENT.
 [[ ! -f "$T/tracker.toml.example" ]] \
@@ -160,15 +162,13 @@ assert_contains "2.1 S6 ran" "$out" "S6 — render truthful migration report"
     && t_pass "2.4 .agents-plugin/optiquity-agents/plugin.json installed" \
     || t_fail "2.4 .agents-plugin/optiquity-agents/plugin.json missing"
 
-# BD-193 F4/F5 + BD-194: migrate-v10-to-v11.sh S5 install source for the client
-# tracker fragment is the project-template-side file (separate-artifact, separate-
-# audience per pack memory feedback_pack_project_separation_of_concerns).
-# Test asserts the install copy matches the project-template-side source
-# (migrator S5 contract per BD-193 F4/F5).
-if cmp -s "$REPO_ROOT/project-template/docs/pack/HELP-FRAGMENT-TRACKER.md" "$T/docs/pack/HELP-FRAGMENT-TRACKER.md"; then
-    t_pass "2.5 HELP-FRAGMENT-TRACKER.md matches project-template-side install source (BD-193 F4/F5)"
+# migrate-v10-to-v11.sh S5 install source for the client help fragment is
+# the project-template-side file. Test asserts the install copy matches
+# the project-template-side source (migrator S5 contract).
+if cmp -s "$REPO_ROOT/project-template/docs/pack/HELP-FRAGMENT.md" "$T/docs/pack/HELP-FRAGMENT.md"; then
+    t_pass "2.5 HELP-FRAGMENT.md matches project-template-side install source"
 else
-    t_fail "2.5 install-source mismatch (expected: project-template/docs/pack/HELP-FRAGMENT-TRACKER.md)"
+    t_fail "2.5 install-source mismatch (expected: project-template/docs/pack/HELP-FRAGMENT.md)"
 fi
 
 # 2.5b (BD-097 audit B-1) pack-help.sh + lib/detect.sh installed by

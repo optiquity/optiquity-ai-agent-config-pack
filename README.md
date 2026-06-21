@@ -104,7 +104,6 @@ project-template/                           Unified project template (v11)
 │                                           present as a sub-directory in projects
 ├── docs/pack/                              Pack product docs shipped into each project
 │   ├── HELP-FRAGMENT.md                    Per-project verb reference (v11; rendered by pack-help.sh)
-│   ├── HELP-FRAGMENT-TRACKER.md            Shared tracker section (v11; project-side authoritative per BD-193 F4/F5; dormant, deferred per BD-214)
 │   ├── PM-CHAT.md                          PM chat startup and operating instructions
 │   ├── PLATFORM-SKILLS.md                  Skill-selection matrix by project type
 │   ├── PACK-FEEDBACK.md                    Upstream feedback log to Pack Chat
@@ -263,7 +262,6 @@ pack-ops/                                   Pack-internal operational files (v11
 ├── PACK-AGENTS.md                          Pack agent routing (includes invocation guide)
 ├── OPTIONAL-FEATURES.md                    Tool settings for features and settings used with non-pack related functionality
 ├── HELP-FRAGMENT-PACK.md                   Pack-side verb reference (v11; rendered by pack-help.sh)
-├── HELP-FRAGMENT-TRACKER.md                Shared tracker section (v11; pack-side authoritative; project-template/docs/pack/ is the separate project-side authoritative copy per BD-193 F4/F5; dormant, deferred per BD-214)
 ├── MERGE-STRATEGY.md                       Per-file customization-preservation matrix (v11)
 └── DRY-RUN-MIGRATION.md                    Companion guide for scripts/dry-run-migration.sh (v11; BD-114 / BD-125)
 

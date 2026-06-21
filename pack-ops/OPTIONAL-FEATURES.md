@@ -322,8 +322,8 @@ shipped as DORMANT code (`scripts/lib/tracker-*.sh`,
 future resumption.
 
 **Why it is deferred** — the ability to flip to tracker mode is BLOCKED
-on both surfaces (`tracker_mode()` clamps to flat-file; the
-`pack tracker` flip verbs refuse with a deferred message). Resumption is gated
+on both surfaces (`tracker_mode()` clamps to flat-file; the tracker flip
+verbs refuse with a deferred message). Resumption is gated
 on the entry-format redesign (BD-215) landing first.
 
 **What ships today** — the dormant code and the committed example

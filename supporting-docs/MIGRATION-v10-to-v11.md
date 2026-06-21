@@ -43,7 +43,7 @@ project — there is no shared state between projects.
 - New help-verb system: `pack help` (LCD shell verb) and `/pack-help`
   (per-CLI command). Both invoke `scripts/pack-help.sh` which renders
   `HELP-FRAGMENT-PACK.md` (pack repo) or `docs/pack/HELP-FRAGMENT.md`
-  (client repo) with the shared `HELP-FRAGMENT-TRACKER.md` inlined.
+  (client repo).
 - New trinity addenda: `## Quick reference` block at the top of every
   trinity file (pack-root + client) — one line for `pack help` /
   `/pack-help`, one line for `pack-startup` / `pm-startup` recommended
@@ -597,8 +597,7 @@ git diff --staged | less
 #   - CLAUDE.md / AGENTS.md / GEMINI.md gained a "## Quick reference"
 #     block (or a fresh template if you had no customizations).
 #   - .gitignore may have been merged with new pack additions.
-#   - docs/pack/HELP-FRAGMENT.md and docs/pack/HELP-FRAGMENT-TRACKER.md
-#     are new (HELP-FRAGMENT-TRACKER.md is a deferred stub).
+#   - docs/pack/HELP-FRAGMENT.md is new.
 #   - tracker.toml.example is NOT installed (tracker deferred).
 #   - .github/ISSUE_TEMPLATE/{work-item,inbound,config}.yml are new.
 #   - per-CLI pack-help skill / command are new.

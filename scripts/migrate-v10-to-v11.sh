@@ -295,10 +295,10 @@ _v10_to_v11_relocate_legacy_docs() {
 _v10_to_v11_install_v11_artifacts() {
     say "── S5 — install v11 client artifacts ──"
 
-    # HELP-FRAGMENT*.md
+    # HELP-FRAGMENT.md
     mkdir -p "$_MIGRATOR_TARGET/docs/pack"
     local help_src
-    for help_src in HELP-FRAGMENT.md HELP-FRAGMENT-TRACKER.md; do
+    for help_src in HELP-FRAGMENT.md; do
         local pack_file="$PACK/project-template/docs/pack/$help_src"
         if [[ -f "$pack_file" && ! -f "$_MIGRATOR_TARGET/docs/pack/$help_src" ]]; then
             cp "$pack_file" "$_MIGRATOR_TARGET/docs/pack/$help_src"

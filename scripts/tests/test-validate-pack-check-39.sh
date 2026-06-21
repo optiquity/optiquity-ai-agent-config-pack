@@ -78,15 +78,14 @@ failures = []
 # Parse real init-project.sh.
 entries = mod._parse_cmd_update_entries()
 
-# Must find at least the 6 known docs/pack entries (HELP-FRAGMENT,
-# HELP-FRAGMENT-TRACKER, OPTIONAL-FEATURES, PACK-FEEDBACK, PLATFORM-SKILLS,
-# PM-CHAT) plus the trinity and the config files.
+# Must find at least the 5 known docs/pack entries (HELP-FRAGMENT,
+# OPTIONAL-FEATURES, PACK-FEEDBACK, PLATFORM-SKILLS, PM-CHAT) plus the
+# trinity and the config files.
 required_subset = {
     "project-template/docs/pack/PM-CHAT.md",
     "project-template/docs/pack/PLATFORM-SKILLS.md",
     "project-template/docs/pack/PACK-FEEDBACK.md",
     "project-template/docs/pack/HELP-FRAGMENT.md",
-    "project-template/docs/pack/HELP-FRAGMENT-TRACKER.md",
     "project-template/docs/pack/OPTIONAL-FEATURES.md",
     "project-template/CLAUDE.md",
     "project-template/AGENTS.md",

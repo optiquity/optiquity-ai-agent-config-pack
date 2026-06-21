@@ -16,9 +16,9 @@ in your CLI for this content. Full docs in `QUICKSTART.md`, `README.md`,
 | `claude --agent pack-docs-researcher` | CLI / format / dependency verification against official docs. |
 | `python3 scripts/validate-pack.py` | Pack structural validation. Required green before every commit. |
 | `bash scripts/tests/<name>-test.sh` | Run an individual test suite. CI runs all. |
-| `pack help` | Print this fragment (LCD shell verb). |
+| `pack help` | Print this fragment (LCD shell verb; runs `scripts/pack-help.sh`). |
 
-## Pack scripts (install / migrate / tracker)
+## Pack scripts (install / migrate)
 
 | Script | What it does |
 |---|---|
@@ -27,13 +27,20 @@ in your CLI for this content. Full docs in `QUICKSTART.md`, `README.md`,
 | `scripts/dry-run-migration.sh` | Read-only migration dry-run harness. Clones target into `/tmp`, runs the appropriate per-version migrator with `--dry-run`, captures the full diff. Three modes: synthetic fixture / git URL / local-path. Used as the v11+ release-gate harness; safe for any v10 client. |
 | `scripts/restore-from-backup.sh` | Restore a v9.3 → v10 pre-migration tree (use the v11 migrator's printed `rsync` recipe for v11 backups). |
 | `scripts/add-capability.sh` | Extend an existing project with an additional language/platform capability. |
-| `scripts/pack-tracker.sh <subcmd>` | Tracker mode (DEFERRED — BD-214; verbs refuse) — `init`, `status`, `tree-rebuild`, `edit`, `new-entry`, `mirror-rebuild`, `disable`, `doctor`, `update-templates`, `enable-recommendations`. |
 | `scripts/pack-td.sh <subcmd>` | TD orchestration — `promote --to=phase-N` (Path 1), `promote --to=phase-N.M` (Path 2), `resolve` (direct close per V3.3 §3.2). |
-| `scripts/tracker-migrate.sh <subcmd>` | Tracker forward / reverse / status / doctor (lower-level wrapper; DEFERRED — BD-214). |
 
-## Tracker commands (deferred)
+## TD promotion
 
-[Included from `pack-ops/HELP-FRAGMENT-TRACKER.md` via `scripts/pack-help.sh`.]
+`pack td <verb>` orchestrates the two-path TD promotion plus the
+direct-close shape.
+
+| Verb | What it does |
+|---|---|
+| `pack td promote --to=phase-N <td-id>` | Path 1 — promote TD to a new phase epic. PM Chat invokes architect by default. |
+| `pack td promote --to=phase-N.M <td-id>` | Path 2 — promote TD to a new phase task under phase N. Wires `Dependencies` bullets to cross-entity `blocked-by` edges. |
+| `pack td resolve <td-id> [--note "..."]` | Direct close. No promotion label; no new entity. |
+
+There is no Path 3 and no `--fold-into` flag.
 
 ## See also
 

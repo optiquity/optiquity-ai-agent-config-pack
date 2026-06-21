@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
+# pack-internal: true
 # scripts/pack-tracker.sh — `pack tracker` verb dispatcher (V2 §22.1).
+#
+# Tracker mode is deferred indefinitely (BD-214); flat-file per-entry is
+# the sole supported mode. This dispatcher is retained dormant and
+# test-covered, but is NOT advertised in `pack help` — hence
+# `pack-internal: true`.
 #
 # Verb surface:
 #   init                    Opt-in to tracker mode: write tracker.toml,

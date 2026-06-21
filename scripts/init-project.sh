@@ -11,7 +11,7 @@
 # for stale cross-references.
 #
 # v11 additions (BD-080): stage S11 installs v11 client-side artifacts
-# (HELP-FRAGMENT.md + HELP-FRAGMENT-TRACKER.md,
+# (HELP-FRAGMENT.md,
 # .github/ISSUE_TEMPLATE/* issue forms, per-CLI pack-help skills /
 # command). NOTE (BD-214, 2026-06-13): tracker.toml.example is NO LONGER
 # installed — tracker integration is deferred and flat-file is the sole
@@ -936,29 +936,15 @@ stage_s11_v11_artifacts() {
     local copy_fn="cp"
     [[ "$CLASS" == existing-* ]] && copy_fn="existing_classifier_copy"
 
-    # 1. HELP-FRAGMENT*.md → docs/pack/. HELP-FRAGMENT.md per the usual
-    #    classifier-copy rule (developer-customizable). HELP-FRAGMENT-
-    #    TRACKER.md install path: see the comment block below for the
-    #    project-template-side source-of-truth contract (post-BD-193
-    #    F4/F5; pack-side substitution is forbidden).
+    # 1. HELP-FRAGMENT.md → docs/pack/, per the usual classifier-copy
+    #    rule (developer-customizable).
     mkdir -p "$TARGET/docs/pack"
     if [[ -f "$PACK/project-template/docs/pack/HELP-FRAGMENT.md" ]]; then
         "$copy_fn" "$PACK/project-template/docs/pack/HELP-FRAGMENT.md" \
             "$TARGET/docs/pack/HELP-FRAGMENT.md"
     fi
-    # HELP-FRAGMENT-TRACKER.md client-shipped source is project-template/
-    # docs/pack/HELP-FRAGMENT-TRACKER.md. The pack-side and project-side
-    # versions are separate artifacts with separate audiences (pack/project
-    # separation of concerns); the project-side file is the source of truth
-    # for client install, and pack-side substitution is forbidden.
-    if [[ -f "$PACK/project-template/docs/pack/HELP-FRAGMENT-TRACKER.md" ]]; then
-        cp -f "$PACK/project-template/docs/pack/HELP-FRAGMENT-TRACKER.md" \
-            "$TARGET/docs/pack/HELP-FRAGMENT-TRACKER.md"
-    fi
     [[ -f "$TARGET/docs/pack/HELP-FRAGMENT.md" ]] \
         || fail_stage S11 "docs/pack/HELP-FRAGMENT.md missing after copy"
-    [[ -f "$TARGET/docs/pack/HELP-FRAGMENT-TRACKER.md" ]] \
-        || fail_stage S11 "docs/pack/HELP-FRAGMENT-TRACKER.md missing after copy"
 
     # 2. tracker.toml.example — NO LONGER INSTALLED (BD-214, 2026-06-13).
     #    Tracker integration is deferred indefinitely and flat-file
@@ -1257,7 +1243,6 @@ cmd_update() {
         # source file to copy from. Reverse-direction Check 39 now flags
         # such drift bidirectionally.
         "project-template/docs/pack/HELP-FRAGMENT.md:docs/pack/HELP-FRAGMENT.md:generic"
-        "project-template/docs/pack/HELP-FRAGMENT-TRACKER.md:docs/pack/HELP-FRAGMENT-TRACKER.md:generic"
         "project-template/docs/pack/OPTIONAL-FEATURES.md:docs/pack/OPTIONAL-FEATURES.md:generic"
         # BD-214 (2026-06-13): tracker.toml.example entry REMOVED — tracker
         # integration is deferred indefinitely and flat-file is the sole
@@ -1434,7 +1419,6 @@ cmd_update() {
 #   project-template/docs/project/changelog/_rules.md  ->  docs/project/changelog/_rules.md  [stage:S11,cmd_update]
 #   project-template/docs/project/changelog/_intro.md  ->  docs/project/changelog/_intro.md  [stage:S11,cmd_update]
 #   project-template/docs/project/changelog/_format.md  ->  docs/project/changelog/_format.md  [stage:S11,cmd_update]
-#   project-template/docs/pack/HELP-FRAGMENT-TRACKER.md  ->  docs/pack/HELP-FRAGMENT-TRACKER.md  [stage:S6,S11,cmd_update]
 #   supporting-docs/METHODOLOGY.md  ->  docs/pack/METHODOLOGY.md  [stage:S6,cmd_update]
 #   supporting-docs/INSTALL-PROCEDURES.md  ->  docs/pack/INSTALL-PROCEDURES.md  [stage:S6,cmd_update]
 #   scripts/pack-help.sh  ->  scripts/pack-help.sh  [stage:S11]

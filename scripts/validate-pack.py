@@ -62,13 +62,9 @@ Checks:
       executable under `scripts/` is listed in
       `HELP-FRAGMENT-PACK.md` (and pack-internal scripts are marked
       `pack-internal: true`).
-  24. [RETIRED in BD-194 — see ARCHITECTURE-BD-194.md]
-      HELP-FRAGMENT-TRACKER byte-identity (BD-082, DELTA L1; superseded
-      by Check 22 + Check 23 + Check 41 per-surface coverage). Per
-      pack memory feedback_pack_project_separation_of_concerns
-      (user-locked 2026-05-26), the pack-side and project-side
-      HELP-FRAGMENT-TRACKER.md files are SEPARATE artifacts with
-      SEPARATE audiences; byte-identity is coincidence, not contract.
+  24. [RETIRED in BD-194 — see ARCHITECTURE-BD-194.md] Help-fragment
+      cross-surface byte-identity; superseded by Check 22 + Check 23 +
+      Check 41 per-surface coverage.
   25. Customization-detection regression guard (BD-089): the
       customization-preserve fixture set produces the expected
       disposition + class for every fixture row, and the truthful
@@ -2043,14 +2039,10 @@ def check_help_fragment_freshness() -> None:
     absent from the fragment. Editorial mentions of unrelated commands
     are not flagged.
 
-    Per BD-194: each surface authors its own HELP-FRAGMENT-TRACKER.md.
-    Per-surface tracker fragment lookup via the surfaces dictionary; no
-    cross-surface concatenation. Each surface's verbs are compared
-    against the surface's own tracker fragment. See
-    ARCHITECTURE-BD-194.md Candidate 6.
+    Per surface: verbs are compared against that surface's own help
+    fragment (no cross-surface concatenation).
     """
     print("\n── Check 22: Help-fragment freshness (BD-082) ──")
-    # Per BD-194: each surface authors its own HELP-FRAGMENT-TRACKER.md.
     # Per-surface fragment lookup per the surface dictionary; no
     # cross-surface concatenation.
     surfaces = {
@@ -2063,7 +2055,6 @@ def check_help_fragment_freshness() -> None:
                 REPO_ROOT / "supporting-docs" / "INSTALL-PROCEDURES.md",
             ],
             "fragment": REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-PACK.md",
-            "tracker_fragment": REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-TRACKER.md",
         },
         "project-template": {
             "root": REPO_ROOT / "project-template",
@@ -2071,23 +2062,17 @@ def check_help_fragment_freshness() -> None:
                 REPO_ROOT / "project-template" / "docs" / "pack" / "PM-CHAT.md",
             ],
             "fragment": REPO_ROOT / "project-template" / "docs" / "pack" / "HELP-FRAGMENT.md",
-            "tracker_fragment": REPO_ROOT / "project-template" / "docs" / "pack" / "HELP-FRAGMENT-TRACKER.md",
         },
     }
 
     any_failed = False
     for surface, cfg in surfaces.items():
         frag = cfg["fragment"]
-        tracker_frag = cfg["tracker_fragment"]
         if not frag.is_file():
             fail(f"{surface}: help fragment missing: {frag.relative_to(REPO_ROOT)}")
             any_failed = True
             continue
-        if not tracker_frag.is_file():
-            fail(f"{surface}: tracker fragment missing: {tracker_frag.relative_to(REPO_ROOT)}")
-            any_failed = True
-            continue
-        frag_text = frag.read_text() + "\n" + tracker_frag.read_text()
+        frag_text = frag.read_text()
         surface_root = cfg["root"]
         verbs_referenced = set()
         for doc in cfg["docs"]:
@@ -2140,23 +2125,13 @@ def check_help_fragment_completeness() -> None:
     Every top-level executable script in scripts/ must appear in
     HELP-FRAGMENT-PACK.md unless the script declares `# pack-internal: true`
     near the top. Prevents the fragment going stale as new scripts ship.
-
-    Per BD-194: pack-side tracker fragment (pack-ops/HELP-FRAGMENT-TRACKER.md)
-    is REQUIRED — fail-loud if missing (no silent fallback). Pack-side
-    existence is the surface-local invariant this check enforces;
-    project-side existence is enforced independently by Check 41
-    (_CLIENT_INSTALLED_FILES). See ARCHITECTURE-BD-194.md Candidate 6.
     """
     print("\n── Check 23: Help-fragment completeness (BD-082) ──")
     fragment = REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-PACK.md"
-    tracker_fragment = REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-TRACKER.md"
     if not fragment.is_file():
         fail(f"pack-root help fragment missing: {fragment.name}")
         return
-    if not tracker_fragment.is_file():
-        fail(f"pack-root tracker fragment missing: pack-ops/{tracker_fragment.name}")
-        return
-    text = fragment.read_text() + "\n" + tracker_fragment.read_text()
+    text = fragment.read_text()
 
     scripts_dir = REPO_ROOT / "scripts"
     missing = []
@@ -2324,13 +2299,9 @@ customization_report "{state_dir}/dispositions.tsv" "{state_dir}/report.md" \\
 
 
 # ── Check 24 RETIRED in BD-194 (per ARCHITECTURE-BD-194.md Candidate 6).
-# The pack-side HELP-FRAGMENT-TRACKER.md and project-template-side
-# HELP-FRAGMENT-TRACKER.md are SEPARATE artifacts with SEPARATE audiences
-# per pack memory feedback_pack_project_separation_of_concerns (user-
-# locked 2026-05-26). Pack-side existence is asserted by Check 23
-# (fail-loud); project-side existence is asserted by Check 41
-# (_CLIENT_INSTALLED_FILES self-doc list integrity). No cross-surface
-# content invariant is required or asserted.
+# Pack-side help-fragment existence is asserted by Check 23; project-side
+# existence is asserted by Check 41 (_CLIENT_INSTALLED_FILES self-doc list
+# integrity). No cross-surface content invariant is required or asserted.
 
 
 # ── Check 26: BD-119 migrator-framework inventory ──────────────────────────
@@ -4258,10 +4229,10 @@ def check_commit_scope_honesty() -> None:
 
 # Check 37 deny-list — pack-only patterns that MUST NOT appear in
 # project-side files (per Architect C §8.2 deny-list, with §16.1
-# `pack-ops/` path-prefix addition and §16a HELP-FRAGMENT-TRACKER row
-# clarification). Each entry: (literal-pattern, why) — the literal
-# pattern is a substring grep target. The exception is by anchor-phrase
-# in the surrounding context window (see _DENY_LIST_ANCHOR_PHRASES).
+# `pack-ops/` path-prefix addition). Each entry: (literal-pattern, why)
+# — the literal pattern is a substring grep target. The exception is by
+# anchor-phrase in the surrounding context window (see
+# _DENY_LIST_ANCHOR_PHRASES).
 _DENY_LIST_FILENAMES = (
     ("PACK-AGENTS.md", "Pack-repo only"),
     ("PACK-CHAT.md", "Pack-repo only"),
@@ -4294,7 +4265,7 @@ _DENY_LIST_ROLE_NAME = "Pack Chat"
 # LEGITIMATE per audit §D-4 (feedback-flow / escalation-path context, or
 # pack-vs-project disambiguation context — the latter per BD-175 Commit
 # 12 anchor-phrase extension to handle pack-repo disambiguation patterns
-# like "in the pack repo" on HELP-FRAGMENT-TRACKER.md:49).
+# like "in the pack repo" on a pack-only filename callout).
 _DENY_LIST_ANCHOR_PHRASES = (
     "feedback",
     "report back",
@@ -4618,9 +4589,10 @@ def check_project_side_deny_list() -> None:
         `METHODOLOGY.md` / `SETUP-EXISTING.md` LEGITIMATE designation)
       - `in the pack repo`, `at the pack repo`, `pack-repo`,
         `pack repo only` (pack-vs-project disambiguation context per
-        BD-175 Commit 12 anchor-phrase extension — covers patterns like
-        the `tracker.toml.pack-example` callout on
-        `project-template/docs/pack/HELP-FRAGMENT-TRACKER.md:49`)
+        BD-175 Commit 12 anchor-phrase extension — covers a pack-only
+        filename callout that names a pack-repo location to disambiguate
+        it from a client-side equivalent, e.g. a `tracker.toml.pack-example`
+        callout marked "in the pack repo")
     """
     print("\n── Check 37: Project-side pack-only deny-list (BD-175, M5b) ──")
     any_failed = False
@@ -5094,15 +5066,9 @@ _CHECK_40_ALLOWLIST: dict[str, str] = {
     # Claude-Code memory-cache feedback file (OQ-S3 Option A,
     # user-approved 2026-05-20). Same class as MEMORY.md.
     "feedback_review_fix_one_cycle.md": "Claude-Code memory cache feedback file (external to pack repo)",
-    # Project-side HELP-FRAGMENT companion (referenced from
-    # pack-ops/HELP-FRAGMENT-TRACKER.md and from project-template/docs/
-    # pack/HELP-FRAGMENT-TRACKER.md). Per BD-194 the pack-side and
-    # project-side HELP-FRAGMENT-TRACKER.md files are SEPARATE artifacts
-    # with SEPARATE audiences (feedback_pack_project_separation_of_concerns,
-    # user-locked 2026-05-26); the previous "byte-identical mirror"
-    # rationale is retired with Check 24. The bare ref is correct at the
-    # client-installed location (resolves to docs/pack/HELP-FRAGMENT.md
-    # in the client repo as a same-dir sibling). Resolves via Check 41
+    # Project-side help fragment. A bare ref resolves at the
+    # client-installed location (docs/pack/HELP-FRAGMENT.md in the client
+    # repo as a same-dir sibling). Resolves via Check 41
     # _CLIENT_INSTALLED_FILES.
     "HELP-FRAGMENT.md": "Project-side mirror exception; resolves at client-installed location (see Check 41 _CLIENT_INSTALLED_FILES)",
 }
@@ -5472,7 +5438,6 @@ _CHECK_43_ALLOWLIST: dict[str, str] = {
     "PLATFORM-SKILLS.md": "Project-side docs/pack/PLATFORM-SKILLS.md (client-installed)",
     "OPTIONAL-FEATURES.md": "Project-side docs/pack/OPTIONAL-FEATURES.md (client-installed)",
     "HELP-FRAGMENT.md": "Project-side docs/pack/HELP-FRAGMENT.md (client-installed)",
-    "HELP-FRAGMENT-TRACKER.md": "Project-side docs/pack/HELP-FRAGMENT-TRACKER.md (client-installed; per-surface authoritative per BD-193 F4/F5 + BD-194)",
     "SETUP-EXISTING.md": "Project-side docs/pack/SETUP-EXISTING.md (client-installed install doc)",
     # Per-entry skeleton filename PATTERNS (template placeholders, not real files).
     "BD-NNN.md": "Per-entry backlog filename pattern (template)",
@@ -5581,7 +5546,8 @@ _CHECK_43_PACK_INTERNAL_PREFIXES = ("maintenance-docs/", "pack-ops/")
 
 # pack-ops/ files that ARE client-installed (excluded from the pack-
 # internal-target FAIL because they resolve at client install time).
-_CHECK_43_PACK_OPS_CLIENT_INSTALLED = ("pack-ops/HELP-FRAGMENT-TRACKER.md",)
+# Currently empty — no pack-ops/ file is a client-install source.
+_CHECK_43_PACK_OPS_CLIENT_INSTALLED: tuple[str, ...] = ()
 
 # ── JC-2 broadening (BD-195 C2 §2.2) ──────────────────────────────────────
 # Four-axis broadening of the client-surface leak guard. See
@@ -5602,10 +5568,10 @@ _CHECK_43_EXTRA_WALK_SUFFIXES = ("example", "proto")
 
 # (i) Bare-prose pack-doc-basename inventory: basenames whose EVERY
 #     repo location is under a pack-only top-level tree (`maintenance-docs/`
-#     or `pack-ops/`), minus the regenerated mirrors, the client-installed
-#     `HELP-FRAGMENT-TRACKER.md`, and any basename on `_CHECK_43_ALLOWLIST`
-#     (the curated client-resolvable set). Built from the tree (NOT a
-#     hand-typed list) per `ci-guard-measure-then-bound`. The "every
+#     or `pack-ops/`), minus the regenerated mirrors and any basename on
+#     `_CHECK_43_ALLOWLIST` (the curated client-resolvable set). Built
+#     from the tree (NOT a hand-typed list) per
+#     `ci-guard-measure-then-bound`. The "every
 #     location pack-only" bound is the over-fire guard: a basename that
 #     ALSO has a project-side / client-installed instance (e.g.
 #     `ARCHITECTURE.md`, `README.md`, `IMPLEMENTATION-PLAN.md`) is NOT a
@@ -5670,17 +5636,16 @@ def _build_pack_only_doc_basenames() -> set[str]:
 
     A basename is a target iff EVERY repo file with that basename lives
     under a pack-only top-level tree (`_CHECK_43_PACK_ONLY_DOC_TREES`),
-    minus: the regenerated mirrors (`BACKLOG.md` / `CHANGELOG.md`), the
-    client-installed `HELP-FRAGMENT-TRACKER.md`, and any basename on
-    `_CHECK_43_ALLOWLIST` (the curated client-resolvable set). The
-    "every-location-pack-only" rule is the over-fire bound: basenames
+    minus: the regenerated mirrors (`BACKLOG.md` / `CHANGELOG.md`) and any
+    basename on `_CHECK_43_ALLOWLIST` (the curated client-resolvable set).
+    The "every-location-pack-only" rule is the over-fire bound: basenames
     with a project-side / client-installed instance (`ARCHITECTURE.md`,
     `README.md`, `IMPLEMENTATION-PLAN.md`, …) are excluded; only
     exclusively-pack-only docs (`V10-DESIGN.md`,
     `V10-CODEX-MCP-RESEARCH.md`, `MERGE-STRATEGY.md`) remain. `.git/` is
     skipped; the basename index's archive-exclusion does NOT apply here
     (archive docs ARE pack-only and must be catchable)."""
-    mirror_skip = {"BACKLOG.md", "CHANGELOG.md", "HELP-FRAGMENT-TRACKER.md"}
+    mirror_skip = {"BACKLOG.md", "CHANGELOG.md"}
     # Map basename -> set of top-level dirs it appears under.
     tops_by_basename: dict[str, set[str]] = {}
     for path in REPO_ROOT.rglob("*"):
@@ -5776,8 +5741,8 @@ def check_project_side_bare_internal_refs() -> None:
 
     Failure modes:
       - FAIL (pack-internal target): basename resolves into
-        `maintenance-docs/` OR `pack-ops/` (excluding client-installed
-        `pack-ops/HELP-FRAGMENT-TRACKER.md`)
+        `maintenance-docs/` OR `pack-ops/` (excluding any pack-ops/ file
+        on `_CHECK_43_PACK_OPS_CLIENT_INSTALLED`, currently empty)
       - FAIL (pre-install-only `supporting-docs/`): basename resolves
         into `supporting-docs/<X>` AND `<X>` not in client-install set
       - FAIL (broken): 0 candidates AND not on allowlist AND no anchor
@@ -7744,7 +7709,7 @@ def check_boundary_and_spawn_pointer_manifests() -> None:
 
 
 # ── Check 44: M4 durable-doc concision gate (BD-196 C10) ───────────────────
-# The M4 concision gate over the 7 durable pack-ops/ non-mirror rule docs
+# The M4 concision gate over the 6 durable pack-ops/ non-mirror rule docs
 # (the M4 class per ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §6 +
 # PLAN-DOC-CONCISION-GUARDRAILS.md EE-P1). Two parts:
 #
@@ -7781,20 +7746,18 @@ _CHECK_44_FORBIDDEN_PATTERNS = (
     ("will", re.compile(r"\bwill ")),
 )
 
-# The 7 durable pack-ops/ non-mirror rule docs (M4 class) + each doc's
-# per-doc ADVISORY line ceiling, DERIVED from its measured post-C4/C9
-# cleaned content as ceil(measured * 1.15). These are NOT round numbers:
-# each is anchored to the doc's actual cleaned size at HEAD 60ec0db
-# (BOUNDARY 135, CONCEPTUAL-REVIEW 298, DRY-RUN 199, HELP-PACK 42,
-# HELP-TRACKER 49, MERGE 484, OPTIONAL 235) with a uniform 15% growth
-# headroom. BACKLOG.md / CHANGELOG.md are regenerated MIRRORS, NOT in
-# the M4 class (EE-P1). The ceiling is advisory only (never fails).
+# The 6 durable pack-ops/ non-mirror rule docs (M4 class) + each doc's
+# per-doc ADVISORY line ceiling, DERIVED from its measured cleaned content
+# as ceil(measured * 1.15). These are NOT round numbers: each is anchored
+# to the doc's actual cleaned size (BOUNDARY 135, CONCEPTUAL-REVIEW 298,
+# DRY-RUN 199, HELP-PACK 48, MERGE 484, OPTIONAL 235) with a uniform 15%
+# growth headroom. BACKLOG.md / CHANGELOG.md are regenerated MIRRORS, NOT
+# in the M4 class. The ceiling is advisory only (never fails).
 _CHECK_44_DURABLE_DOCS = (
     ("pack-ops/BOUNDARY-DEFINITION.md", 156),
     ("pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md", 343),
     ("pack-ops/DRY-RUN-MIGRATION.md", 229),
-    ("pack-ops/HELP-FRAGMENT-PACK.md", 49),
-    ("pack-ops/HELP-FRAGMENT-TRACKER.md", 57),
+    ("pack-ops/HELP-FRAGMENT-PACK.md", 56),
     ("pack-ops/MERGE-STRATEGY.md", 557),
     ("pack-ops/OPTIONAL-FEATURES.md", 271),
 )
@@ -7824,7 +7787,7 @@ def _check_44_load_allowlist() -> dict:
 def check_durable_doc_concision() -> None:
     """Check 44 — M4 durable-doc concision gate (BD-196 C10).
 
-    Scans the 7 durable pack-ops/ non-mirror rule docs (the M4 class) for
+    Scans the 6 durable pack-ops/ non-mirror rule docs (the M4 class) for
     the temporal `will ` pattern. THE TEETH: any matched line NOT covered
     by a pack-ops/.concision-allowlist.txt record (doc match AND an
     allowlisted snippet is a substring of the line) FAILs — temporal

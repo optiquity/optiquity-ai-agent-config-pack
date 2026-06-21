@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # scripts/tests/pack-help-test.sh — BD-075 pack-help.sh + surface-detection
 # tests. Covers detect_pack_surface (V3 §28.2.3) and pack-help.sh's
-# fragment inlining (V3 §28.2.4 / DELTA L1).
+# single-fragment emit. BD-243 NUCLEAR: the deferred-tracker fragment is
+# deleted and `pack help` no longer advertises tracker mode — these tests
+# assert the tracker section is ABSENT on both surfaces and the live
+# `pack td` rows are PRESENT.
 
 set -uo pipefail
 
@@ -96,8 +99,8 @@ rm -rf "$TR_NB"
 printf "\n=== Group 2: pack-help.sh end-to-end ===\n"
 
 # 2.1 pack repo (use the actual pack-repo root): output contains the
-# pack-side header, the tracker section (inlined), and the colloquial
-# mappings table.
+# pack-side header + pack commands, the live `pack td` rows, and NO
+# deferred-tracker advertising (BD-243 NUCLEAR).
 output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" 2>/dev/null)
 [[ "$output" == *"# Pack v11 — verb reference (pack repo)"* ]] \
     && t_pass "2.1 pack-side header present" \
@@ -105,29 +108,23 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" 2>/dev/null)
 [[ "$output" == *"## Pack commands"* ]] \
     && t_pass "2.1 pack commands section present" \
     || t_fail "2.1 pack commands section"
-[[ "$output" == *"# Tracker commands (deferred)"* ]] \
-    && t_pass "2.1 tracker section inlined" \
-    || t_fail "2.1 tracker section inlined"
-[[ "$output" == *"set up the tracker"* ]] \
-    && t_pass "2.1 colloquial mapping inlined" \
-    || t_fail "2.1 colloquial mapping inlined"
-# Placeholder line should NOT appear in output (it must have been replaced).
-[[ "$output" != *"[Included from \`pack-ops/HELP-FRAGMENT-TRACKER.md\`"* ]] \
-    && t_pass "2.1 placeholder line replaced" \
-    || t_fail "2.1 placeholder line still present"
+# 2.1 tracker advertising ABSENT (deferred fragment deleted).
+[[ "$output" != *"Tracker commands"* && "$output" != *"pack tracker"* ]] \
+    && t_pass "2.1 tracker advertising absent (pack surface)" \
+    || t_fail "2.1 tracker advertising leaked" "got: ${output:0:400}"
+# 2.1 live `pack td` rows present (relocated into HELP-FRAGMENT-PACK).
+[[ "$output" == *"pack td promote"* && "$output" == *"pack td resolve"* ]] \
+    && t_pass "2.1 pack td rows present" \
+    || t_fail "2.1 pack td rows missing"
+# 2.1 no leftover sibling-include placeholder line.
+[[ "$output" != *"[Included from"* ]] \
+    && t_pass "2.1 no include-placeholder leak" \
+    || t_fail "2.1 include placeholder still present"
 
-# 2.2 client surface from a fixture tree.
-# BD-177 fix-pass: dual-surface coverage. The original assertion
-# "output contains '# Tracker commands (v11+)'" was a false positive
-# because the parent H2 header `## Tracker commands (v11+)` lives in
-# the client-side HELP-FRAGMENT.md unconditionally — present even when
-# the include sentinel is NOT substituted (regression mode). Strengthen
-# by asserting (a) the literal sentinel line does NOT leak into rendered
-# output, AND (b) tracker-fragment body content (from HELP-FRAGMENT-
-# TRACKER.md) DOES appear post-substitution. Either assertion alone
-# detects the BD-177 regression; together they're robust to either
-# direction of breakage (regex too narrow OR regex matches but body
-# read fails).
+# 2.2 client surface from a fixture tree. BD-243 NUCLEAR: only
+# HELP-FRAGMENT.md ships now (the deferred-tracker fragment is deleted).
+# Assert the client header + client-only verb are present, tracker
+# advertising is absent, and the live `pack td` rows are present.
 TR_CLI2=$(mktemp -d -t ph-cli2.XXXXXX)
 mkdir -p "$TR_CLI2/docs/project" "$TR_CLI2/docs/pack"
 cat > "$TR_CLI2/docs/project/BACKLOG.md" <<'EOF'
@@ -135,66 +132,41 @@ cat > "$TR_CLI2/docs/project/BACKLOG.md" <<'EOF'
 Status: Open
 EOF
 cp "$REPO_ROOT/project-template/docs/pack/HELP-FRAGMENT.md" "$TR_CLI2/docs/pack/"
-cp "$REPO_ROOT/project-template/docs/pack/HELP-FRAGMENT-TRACKER.md" "$TR_CLI2/docs/pack/"
 output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$TR_CLI2" 2>/dev/null)
 [[ "$output" == *"# Pack v11 — verb reference (this project)"* ]] \
     && t_pass "2.2 client-side header present" \
     || t_fail "2.2 client-side header" "got: ${output:0:200}"
-[[ "$output" == *"# Tracker commands (deferred)"* ]] \
-    && t_pass "2.2 client tracker section inlined" \
-    || t_fail "2.2 client tracker section inlined"
+[[ "$output" != *"Tracker commands"* && "$output" != *"pack tracker"* ]] \
+    && t_pass "2.2 tracker advertising absent (client surface)" \
+    || t_fail "2.2 tracker advertising leaked" "got: ${output:0:400}"
+[[ "$output" == *"pack td promote"* && "$output" == *"pack td resolve"* ]] \
+    && t_pass "2.2 client pack td rows present" \
+    || t_fail "2.2 client pack td rows missing"
 [[ "$output" == *"agent-run.sh"* ]] \
     && t_pass "2.2 client-only verb (agent-run) listed" \
     || t_fail "2.2 client-only verb"
-# 2.2.a NEW: literal sentinel must NOT leak into rendered output (BD-177 regression guard).
-# Match the canonical client-side sentinel form (bare-filename) AND the pack-side form
-# (pack-ops/-prefixed); neither should appear in user-visible output.
-[[ "$output" != *'[Included from `HELP-FRAGMENT-TRACKER.md`'* \
-   && "$output" != *'[Included from `pack-ops/HELP-FRAGMENT-TRACKER.md`'* ]] \
-    && t_pass "2.2.a no sentinel leak in rendered client-side output" \
-    || t_fail "2.2.a sentinel leaked" "sentinel string survived substitution"
-# 2.2.b NEW: tracker-fragment body content appears post-substitution (positive assertion).
-# Pulls a stable marker from HELP-FRAGMENT-TRACKER.md content — the
-# colloquial-mappings prose ("set up the tracker") that is unique to the
-# tracker fragment body and absent from the parent fragment.
-[[ "$output" == *"set up the tracker"* ]] \
-    && t_pass "2.2.b client tracker-fragment body content inlined" \
-    || t_fail "2.2.b client tracker body" "tracker-fragment body content missing post-substitution"
+# 2.2.a no leftover sibling-include placeholder line.
+[[ "$output" != *"[Included from"* ]] \
+    && t_pass "2.2.a no include-placeholder leak in client output" \
+    || t_fail "2.2.a include placeholder still present"
 rm -rf "$TR_CLI2"
 
-# 2.2.c NEW (BD-177 fix-pass — dual-surface regression guard via the
-# source-of-truth client sentinel fragments). Render pack-help.sh
-# against project-template/docs/pack/ — the in-tree source-of-truth
-# files that the install pipeline copies verbatim into client trees
-# (HELP-FRAGMENT*.md are plain markdown; no install transform touches
-# them, so source-of-truth content is byte-identical to as-installed
-# client content for the regression class this test guards). Asserts
-# no sentinel leak on the as-shipped client-side fragment files.
-# This complements 2.2/2.2.a/2.2.b (which use a synthetic temp tree
-# from the same source files); 2.2.c locks in the regression by
-# invoking pack-help.sh directly against the source-of-truth tree —
-# zero fixture-build dependency, zero temp-dir setup. BD-177 fix-pass-2
-# replaced the prior dependency on a built v11-flat-file fixture (under
-# test-fixtures/), which failed on CI runners where the fixture wasn't
-# pre-built. This test is NOT fixture-dependent (no built fixture is read).
+# 2.2.c source-of-truth client fragment: render pack-help.sh against
+# project-template/docs/pack/ (the in-tree source the install pipeline
+# copies verbatim). No tracker advertising; no include-placeholder leak.
 output=$(bash "$REPO_ROOT/scripts/pack-help.sh" \
               --root "$REPO_ROOT/project-template" --surface client 2>/dev/null)
-[[ "$output" != *'[Included from `HELP-FRAGMENT-TRACKER.md`'* \
-   && "$output" != *'[Included from `pack-ops/HELP-FRAGMENT-TRACKER.md`'* ]] \
-    && t_pass "2.2.c no sentinel leak on source-of-truth client fragments" \
-    || t_fail "2.2.c sentinel leaked on source-of-truth client fragments" \
-              "BD-177 regression — client-side substitution silently failed"
+[[ "$output" != *"Tracker commands"* && "$output" != *"pack tracker"* \
+   && "$output" != *"[Included from"* ]] \
+    && t_pass "2.2.c no tracker advertising / placeholder on source-of-truth client fragment" \
+    || t_fail "2.2.c tracker advertising or placeholder leaked on client fragment"
 
-# 2.2.d NEW (BD-177 fix-pass — pack-side regression guard).
-# Symmetric assertion on the pack-side surface using the real pack-ops
-# fragments. Locks in that no future regex change can drop the pack-side
-# substitution either.
+# 2.2.d pack-side source-of-truth: same assertion on the pack surface.
 output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" --surface pack 2>/dev/null)
-[[ "$output" != *'[Included from `HELP-FRAGMENT-TRACKER.md`'* \
-   && "$output" != *'[Included from `pack-ops/HELP-FRAGMENT-TRACKER.md`'* ]] \
-    && t_pass "2.2.d no sentinel leak on pack-repo pack-side surface" \
-    || t_fail "2.2.d sentinel leaked on pack-side surface" \
-              "BD-177 regression — pack-side substitution silently failed"
+[[ "$output" != *"Tracker commands"* && "$output" != *"pack tracker"* \
+   && "$output" != *"[Included from"* ]] \
+    && t_pass "2.2.d no tracker advertising / placeholder on pack-side fragment" \
+    || t_fail "2.2.d tracker advertising or placeholder leaked on pack-side fragment"
 
 # 2.3 explicit --surface override on a tree without BACKLOG.md.
 # BD-175: pack-side fragments live at pack-ops/ — mirror the canonical
@@ -203,7 +175,6 @@ output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$REPO_ROOT" --surface pa
 TR_OV=$(mktemp -d -t ph-ov.XXXXXX)
 mkdir -p "$TR_OV/pack-ops"
 cp "$REPO_ROOT/pack-ops/HELP-FRAGMENT-PACK.md" "$TR_OV/pack-ops/"
-cp "$REPO_ROOT/pack-ops/HELP-FRAGMENT-TRACKER.md" "$TR_OV/pack-ops/"
 output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$TR_OV" --surface pack 2>/dev/null)
 [[ "$output" == *"# Pack v11 — verb reference (pack repo)"* ]] \
     && t_pass "2.3 --surface pack override prints pack fragment" \
@@ -219,20 +190,18 @@ rc=$?
     || t_fail "2.4 missing fragments stderr" "got: $err"
 rm -rf "$TR_NONE"
 
-# 2.5 fragment placeholder line is replaced verbatim by the tracker fragment.
+# 2.5 fragment is emitted verbatim (single-fragment cat; BD-243 NUCLEAR
+# removed the sibling-include inlining path).
 TR_VER=$(mktemp -d -t ph-ver.XXXXXX)
 cat > "$TR_VER/HELP-FRAGMENT-PACK.md" <<'EOF'
 # header
-[Included from `pack-ops/HELP-FRAGMENT-TRACKER.md` via `pack-help.sh`.]
+FRAGMENT-CONTENT-MARKER
 # footer
 EOF
-cat > "$TR_VER/HELP-FRAGMENT-TRACKER.md" <<'EOF'
-TRACKER-CONTENT-MARKER
-EOF
 output=$(bash "$REPO_ROOT/scripts/pack-help.sh" --root "$TR_VER" --surface pack 2>/dev/null)
-[[ "$output" == *"# header"*"TRACKER-CONTENT-MARKER"*"# footer"* ]] \
-    && t_pass "2.5 inline preserves surrounding lines + replaces placeholder" \
-    || t_fail "2.5 inline order" "got: $output"
+[[ "$output" == *"# header"*"FRAGMENT-CONTENT-MARKER"*"# footer"* ]] \
+    && t_pass "2.5 fragment emitted verbatim (order preserved)" \
+    || t_fail "2.5 fragment emit order" "got: $output"
 rm -rf "$TR_VER"
 
 # 2.6 unknown flag → non-zero + usage on stderr.

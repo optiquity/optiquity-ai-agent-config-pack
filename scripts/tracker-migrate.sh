@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
+# pack-internal: true
 # scripts/tracker-migrate.sh — tracker-mode migration verbs.
+#
+# Tracker mode is deferred indefinitely (BD-214); flat-file per-entry is
+# the sole supported mode. This lower-level wrapper is retained dormant
+# and test-covered, but is NOT advertised in `pack help` — hence
+# `pack-internal: true`.
 #
 # Subcommand surface (V1 §6.1):
 #   forward   flat-file → tracker

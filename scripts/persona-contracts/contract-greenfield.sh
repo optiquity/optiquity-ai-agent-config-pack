@@ -25,8 +25,7 @@
 #      `project-template/` originals (greenfield path uses `cp`, not the
 #      existing-classifier fork). Stage S7.
 #   4. Stage S11 client artifacts present:
-#      docs/pack/HELP-FRAGMENT.md, docs/pack/HELP-FRAGMENT-TRACKER.md,
-#      tracker.toml.example, scripts/pack-help.sh (executable),
+#      docs/pack/HELP-FRAGMENT.md, scripts/pack-help.sh (executable),
 #      scripts/lib/detect.sh. pack-help is now an ordinary pool skill
 #      (project-template/skills/pack-help/SKILL.md) distributed by S4 to
 #      all three CLIs — so it lands at .claude/skills/pack-help/SKILL.md,
@@ -194,7 +193,7 @@ done
 # when adding/removing v11 client artifacts. (BD-116 PACK-REVIEW NIT N1.)
 #
 # Mapping to stage_s11_v11_artifacts() sub-stages:
-#   1. HELP-FRAGMENT*.md         → docs/pack/HELP-FRAGMENT.md, HELP-FRAGMENT-TRACKER.md
+#   1. HELP-FRAGMENT.md          → docs/pack/HELP-FRAGMENT.md
 #   2. tracker.toml.example      → NO LONGER installed (tracker deferred, BD-214)
 #   3. .github/ISSUE_TEMPLATE/*  → handled by glob block below (F1 fix —
 #                                  mirrors the migration contract's pattern;
@@ -219,7 +218,8 @@ done
 #                                  PACK-REVIEW-BD-166-RETRO MUST finding 2.
 s11_files=(
     "docs/pack/HELP-FRAGMENT.md"
-    "docs/pack/HELP-FRAGMENT-TRACKER.md"
+    # BD-243 NUCLEAR: HELP-FRAGMENT-TRACKER.md is deleted (deferred-tracker
+    # advertising removed). Absence is asserted below.
     # BD-214: tracker.toml.example is NO LONGER installed (tracker deferred;
     # flat-file is the sole supported mode). Absence is asserted below.
     "scripts/pack-help.sh"
@@ -255,6 +255,13 @@ for f in "${s11_files[@]}"; do
         t_fail "S11 artifact ${f} MISSING"
     fi
 done
+# BD-243 NUCLEAR: the deferred-tracker help fragment must NOT be installed
+# (deleted; deferred-tracker advertising removed).
+if [[ ! -f "$SANDBOX/docs/pack/HELP-FRAGMENT-TRACKER.md" ]]; then
+    t_pass "S11 artifact HELP-FRAGMENT-TRACKER.md NOT installed (deleted, BD-243)"
+else
+    t_fail "S11 artifact HELP-FRAGMENT-TRACKER.md unexpectedly installed (should be deleted, BD-243)"
+fi
 # BD-214: tracker.toml.example must NOT be installed (tracker deferred).
 if [[ ! -f "$SANDBOX/tracker.toml.example" ]]; then
     t_pass "S11 artifact tracker.toml.example NOT installed (tracker deferred, BD-214)"

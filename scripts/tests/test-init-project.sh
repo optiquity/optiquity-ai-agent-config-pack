@@ -114,9 +114,6 @@ assert_contains "2.3 trinity surfaced as needs-reconciliation" "$report" \
 [[ -f "$T/docs/pack/HELP-FRAGMENT.md" ]] \
     && t_pass "2.5 HELP-FRAGMENT.md installed by --update" \
     || t_fail "2.5 HELP-FRAGMENT.md missing"
-[[ -f "$T/docs/pack/HELP-FRAGMENT-TRACKER.md" ]] \
-    && t_pass "2.5 HELP-FRAGMENT-TRACKER.md installed by --update" \
-    || t_fail "2.5 HELP-FRAGMENT-TRACKER.md missing"
 
 # 2.6 truthful contract: every entry in dispositions.tsv corresponds to a
 # real file, and the count is non-zero.
@@ -153,9 +150,11 @@ assert_contains "3.1 S11 stage ran" "$out" \
 [[ -f "$T/docs/pack/HELP-FRAGMENT.md" ]] \
     && t_pass "3.2 HELP-FRAGMENT.md present" \
     || t_fail "3.2 HELP-FRAGMENT.md missing"
-[[ -f "$T/docs/pack/HELP-FRAGMENT-TRACKER.md" ]] \
-    && t_pass "3.2 HELP-FRAGMENT-TRACKER.md present" \
-    || t_fail "3.2 HELP-FRAGMENT-TRACKER.md missing"
+# BD-243 NUCLEAR: the deferred-tracker HELP-FRAGMENT-TRACKER.md is deleted
+# and no longer installed. Assert it is ABSENT.
+[[ ! -f "$T/docs/pack/HELP-FRAGMENT-TRACKER.md" ]] \
+    && t_pass "3.2 HELP-FRAGMENT-TRACKER.md NOT installed (deleted, BD-243)" \
+    || t_fail "3.2 HELP-FRAGMENT-TRACKER.md unexpectedly installed (should be deleted, BD-243)"
 # BD-214: tracker.toml.example is NO LONGER installed (tracker deferred;
 # flat-file is the sole supported mode). Assert it is ABSENT.
 [[ ! -f "$T/tracker.toml.example" ]] \
@@ -187,16 +186,13 @@ assert_contains "3.1 S11 stage ran" "$out" \
     && t_pass "3.2 .agents/skills/ present (Antigravity workspace skills)" \
     || t_fail "3.2 .agents/skills/ missing"
 
-# BD-193 F4/F5 + BD-194: client HELP-FRAGMENT-TRACKER.md install source is the
-# project-template-side file (separate-artifact, separate-audience per pack memory
-# feedback_pack_project_separation_of_concerns). The pack-side
-# pack-ops/HELP-FRAGMENT-TRACKER.md is a SEPARATE artifact with a SEPARATE
-# audience and is NOT the install source. Test asserts the install copy matches
-# the project-template-side source (init-project.sh S11 contract per BD-193 F4/F5).
-if cmp -s "$REPO_ROOT/project-template/docs/pack/HELP-FRAGMENT-TRACKER.md" "$T/docs/pack/HELP-FRAGMENT-TRACKER.md"; then
-    t_pass "3.3 client HELP-FRAGMENT-TRACKER.md matches project-template-side install source (BD-193 F4/F5)"
+# 3.3 client HELP-FRAGMENT.md install source is the project-template-side
+# file. Assert the install copy matches the project-template-side source
+# (init-project.sh S11 contract).
+if cmp -s "$REPO_ROOT/project-template/docs/pack/HELP-FRAGMENT.md" "$T/docs/pack/HELP-FRAGMENT.md"; then
+    t_pass "3.3 client HELP-FRAGMENT.md matches project-template-side install source"
 else
-    t_fail "3.3 install-source mismatch (expected: project-template/docs/pack/HELP-FRAGMENT-TRACKER.md)"
+    t_fail "3.3 install-source mismatch (expected: project-template/docs/pack/HELP-FRAGMENT.md)"
 fi
 
 # 3.4 (BD-097 audit B-1) pack-help.sh + lib/detect.sh installed in client,
