@@ -1,0 +1,161 @@
+# .operating-doc-history-allowlist.txt — Check-65 KEEP allowlist (BD-243)
+#
+# The operating-doc no-history gate (Check 65, scripts/validate-pack.py
+# check_operating_doc_no_history) scans the operating-doc IN set for
+# history / audit-trail patterns (dates / 7-40-hex SHAs / Commit-N /
+# Override-N / post-Commit / BD past-action / per-BD provenance / pre-date
+# / User-locked / incident / carry-over / bare BD-NNN tag). These belong in
+# IMPL reports + reference docs, NOT in a forward-only operating doc.
+#
+# THE TEETH: history-pattern count = 0 OUTSIDE this allowlist. A hit on any
+# line NOT listed here FAILS the gate. ANCHOR-EXEMPT FIRST (an allowlisted
+# snippet on the line clears it) THEN residue FAILs. This allowlist is sized
+# to the KEEP set EXACTLY (measure-then-bound, ARCHITECTURE §6 SC1 +
+# CLAUDE.md "CI guard design — measure-then-bound"): every entry is a live
+# doc-ref, a live transitional pointer, or a format/grammar example — NOT a
+# contamination hit widened in to make the gate pass.
+#
+# KEEP basis — two tests gate every entry: (T-live) the token points at LIVE
+# PENDING work the agent must act on, AND (T-def) keeping it does NOT require
+# describing a deferred/unimplemented feature. A KEEP passes T-live AND fails
+# T-def (a live pointer that is not itself a deferred-feature description).
+# A reviewer re-verifies each `reason:` still names LIVE-and-CURRENT work.
+#
+# K-set (BD-243 DESIGN §B.1): K1 live transitional pointer; K2-K6 live doc
+# cross-refs; K7 filename/grammar examples; K9-K11 date format examples.
+#
+# FORMAT: one allowlisted occurrence per record, blank-line separated.
+#   doc:      <path relative to repo root>
+#   pattern:  the forbidden-pattern class this occurrence matches
+#   snippet:  a stable substring of the allowlisted line (content-anchored,
+#             so a line that MOVES is still matched and a line whose content
+#             CHANGES stops matching — line numbers are NOT the key)
+#   reason:   why this occurrence is legitimate (live pointer / doc-ref /
+#             format example), not provenance
+#
+# The check matches an occurrence to a record when the doc matches AND the
+# record's `snippet` is a substring of the offending line.
+
+# ── K1: live transitional pointer (BD-206 Open — the per-entry no-mirror
+#        conversion currently in flight) ×3 trinity sites ──
+doc: CLAUDE.md
+pattern: bd-tag
+snippet: until BD-206 retires
+reason: live transitional pointer to the in-flight per-entry no-mirror conversion (BD-206 Open) — a current migration, not a deferred feature.
+
+doc: AGENTS.md
+pattern: bd-tag
+snippet: until BD-206 retires
+reason: live transitional pointer to the in-flight per-entry no-mirror conversion (BD-206 Open) — a current migration, not a deferred feature.
+
+doc: GEMINI.md
+pattern: bd-tag
+snippet: until BD-206 retires
+reason: live transitional pointer to the in-flight per-entry no-mirror conversion (BD-206 Open) — a current migration, not a deferred feature.
+
+# ── K2: live doc cross-ref ARCHITECTURE-BD-119.md (migrator framework) ──
+doc: CLAUDE.md
+pattern: bd-tag
+snippet: ARCHITECTURE-BD-119.md
+reason: live doc cross-ref (the migrator-framework doc exists + is read at task time).
+
+doc: AGENTS.md
+pattern: bd-tag
+snippet: ARCHITECTURE-BD-119.md
+reason: live doc cross-ref (the migrator-framework doc exists + is read at task time).
+
+doc: GEMINI.md
+pattern: bd-tag
+snippet: ARCHITECTURE-BD-119.md
+reason: live doc cross-ref (the migrator-framework doc exists + is read at task time).
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+pattern: bd-tag
+snippet: ARCHITECTURE-BD-119.md
+reason: live doc cross-ref (the migrator-framework doc exists + is read at task time).
+
+# ── K3: live doc cross-ref ARCHITECTURE-BD-182.md (cross-CLI canonical
+#        reference table) ──
+doc: CLAUDE.md
+pattern: bd-tag
+snippet: ARCHITECTURE-BD-182.md
+reason: live doc cross-ref (the cross-CLI canonical-reference-table doc exists + is read at task time).
+
+doc: AGENTS.md
+pattern: bd-tag
+snippet: ARCHITECTURE-BD-182.md
+reason: live doc cross-ref (the cross-CLI canonical-reference-table doc exists + is read at task time).
+
+doc: GEMINI.md
+pattern: bd-tag
+snippet: ARCHITECTURE-BD-182.md
+reason: live doc cross-ref (the cross-CLI canonical-reference-table doc exists + is read at task time).
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+pattern: bd-tag
+snippet: ARCHITECTURE-BD-182.md
+reason: live doc cross-ref (the cross-CLI canonical-reference-table doc exists + is read at task time).
+
+# ── K4: live doc cross-ref ARCHITECTURE-BD-208.md (rationale doc) ──
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+pattern: bd-tag
+snippet: ARCHITECTURE-BD-208.md
+reason: live doc cross-ref (the rationale doc exists + is read at task time).
+
+# ── K5: live doc cross-ref ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md ──
+doc: pack-ops/PACK-CHAT.md
+pattern: bd-tag
+snippet: ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md
+reason: live doc cross-ref (the skill/agent maintainability doc exists + is read at task time).
+
+doc: pack-ops/PACK-AGENTS.md
+pattern: bd-tag
+snippet: ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md
+reason: live doc cross-ref (the skill/agent maintainability doc exists + is read at task time).
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+pattern: bd-tag
+snippet: ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md
+reason: live doc cross-ref (the skill/agent maintainability doc exists + is read at task time).
+
+# ── K6: live doc cross-ref ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md ──
+doc: pack-ops/PACK-CHAT.md
+pattern: bd-tag
+snippet: ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md
+reason: live doc cross-ref (the per-entry split-integration doc exists + is read at task time).
+
+# ── K7: filename-grammar examples the backlog write-contract acts on ──
+doc: backlog/_rules.md
+pattern: bd-tag
+snippet: BD-167.md
+reason: filename-grammar example the write-contract acts on (illustrative, not provenance).
+
+doc: backlog/_rules.md
+pattern: bd-tag
+snippet: ^BD-\d+\.md$
+reason: filename-grammar regex the write-contract acts on (illustrative, not provenance).
+
+# ── K9: changelog filename/heading date FORMAT spec (project changelog
+#        _format.md — the write-contract emits these) ──
+doc: project-template/docs/project/changelog/_format.md
+pattern: date
+snippet: 2026-04-20
+reason: changelog filename/heading date FORMAT spec the write-contract emits (illustrative format example, not provenance).
+
+doc: project-template/docs/project/changelog/_format.md
+pattern: date
+snippet: 2026-03-20
+reason: changelog filename/heading date FORMAT spec the write-contract emits (illustrative format example, not provenance).
+
+# ── K10: changelog filename-grammar date example (project changelog
+#         _rules.md) ──
+doc: project-template/docs/project/changelog/_rules.md
+pattern: date
+snippet: 2026-04-20
+reason: changelog filename-grammar date example the write-contract acts on (illustrative, not provenance).
+
+# ── K11: status-line date FORMAT example (project PACK-FEEDBACK.md) ──
+doc: project-template/docs/pack/PACK-FEEDBACK.md
+pattern: date
+snippet: Status: Ready (2026-06-15)
+reason: status-line date FORMAT example (illustrative format, not provenance).

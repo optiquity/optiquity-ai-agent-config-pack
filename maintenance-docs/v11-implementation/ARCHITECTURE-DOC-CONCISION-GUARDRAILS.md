@@ -409,3 +409,21 @@ The standing workflow for add / change / remove a spawn-relevant rule, composed 
 | Researcher-first pipeline | The §4.2 researcher spike (`RESEARCH-SEPARATED-NOT-COMBINED-FEASIBILITY.md`) ran BEFORE this §4.2 design; the design folds its measured facts (12 docs, 0 conflations, storm) — not assumption | COMPLIANT |
 
 **End of ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md (v9).**
+
+---
+
+## Addendum (BD-243) — history axis MOVED from §6/Check 44 to Check 65
+
+The history axis — dates / 7-40-hex SHAs / Commit-N / Override-N /
+post-Commit — **MOVED** out of §6's M4 gate (Check 44) to a dedicated
+operating-doc gate. This is a MOVE, not an extension: Check 44 no longer
+owns those patterns.
+
+- **Realized consumer:** `scripts/validate-pack.py`
+  `check_operating_doc_no_history` (Check 65). It owns the full history axis
+  (the 5 moved patterns + the BD past-action / per-BD provenance / incident /
+  carry-over / bare BD-NNN axis Check 44 never had) over the operating-doc IN
+  set, with the KEEP set in `pack-ops/.operating-doc-history-allowlist.txt`.
+- **Check 44 retained role:** §6 M4's temporal `will ` teeth + advisory
+  length only; its KEEP set stays in `pack-ops/.concision-allowlist.txt`
+  (`will `-only).

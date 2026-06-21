@@ -2,36 +2,29 @@
 #
 # The M4 concision gate (Check 44, scripts/validate-pack.py
 # check_durable_doc_concision) scans the 7 durable pack-ops/ non-mirror
-# rule docs for FORBIDDEN PATTERNS that belong in agent reports, NOT in
-# forward-only durable rule docs (per ARCHITECTURE-DOC-CONCISION-
-# GUARDRAILS.md §6 M4 + the C2 surface-separation rule):
+# rule docs for the temporal `will ` pattern — a roadmap promise that
+# belongs in agent reports, NOT in a forward-only durable rule doc (per
+# ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §6 M4 + the C2 surface-
+# separation rule):
 #
-#   - dates           20[0-9]{2}-[0-9]{2}-[0-9]{2}
-#   - 7-40-hex SHAs    \b[0-9a-f]{7,40}\b
-#   - Commit N         Commit [0-9]
-#   - Override N       Override [0-9]
-#   - post-Commit      post-Commit
 #   - temporal 'will'  \bwill (the C4/C9 canonical probe form `\bwill `)
 #
-# THE TEETH: forbidden-pattern count = 0 OUTSIDE this allowlist. A hit on
-# any line NOT listed here FAILS the gate. This allowlist is sized to the
-# KEEP set EXACTLY (measure-then-bound, ARCHITECTURE §6 SC1 + CLAUDE.md
-# "CI guard design — measure-then-bound"): every entry is a MEASURED,
-# legitimate operational-behavioral occurrence — NOT a contamination hit
-# widened in to make the gate pass.
+# THE TEETH: temporal-`will ` count = 0 OUTSIDE this allowlist. A `will `
+# hit on any line NOT listed here FAILS the gate. This allowlist is sized
+# to the KEEP set EXACTLY (measure-then-bound, ARCHITECTURE §6 SC1 +
+# CLAUDE.md "CI guard design — measure-then-bound"): every entry is a
+# MEASURED, legitimate operational-behavioral `will ` — NOT a
+# contamination hit widened in to make the gate pass.
 #
 # KEEP basis (the only legitimate residue): operational-behavioral 'will'
 # — a 'will' that describes what a shipped pack mechanism DOES (migrator
 # routing, recommendation-system behavior, dry-run harness output), NOT a
-# temporal/roadmap 'will' (which is STRIP-class and was cleaned in C4/C9).
-# STRIP-class patterns (dates / SHAs / Commit N / Override N / post-Commit)
-# have ZERO legitimate KEEP residue across all 7 docs — none are
-# allowlisted; any future appearance is contamination by definition.
+# temporal/roadmap 'will' (which is STRIP-class).
 #
-# Re-measured at HEAD 60ec0db (BD-196 C10) against the post-C4/C9 tree:
-# 6 KEEP entries; STRIP-class = 0 outside the allowlist. See
-# maintenance-docs/v11-implementation/IMPLEMENTATION-REPORT-BD-196-C10.md
-# for the full measure→categorize table.
+# The history axis (dates / 7-40-hex SHAs / Commit-N / Override-N /
+# post-Commit) MOVED to Check 65 (check_operating_doc_no_history); its
+# KEEP set lives in pack-ops/.operating-doc-history-allowlist.txt. This
+# file allowlists ONLY `will `.
 #
 # FORMAT: one allowlisted occurrence per record, blank-line separated.
 #   doc:      pack-ops/<file>.md         (path relative to repo root)

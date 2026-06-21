@@ -486,18 +486,18 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 #                        parity — both obsoleted by the pooled-skill model)
 # + 1 net-new BD-228 check (62 manifest structural well-formedness screen)
 # + 1 net-new BD-225 check (63 graphify-out-never-tracked guard)
-# + 1 net-new BD-231 check (64 dangling-.example deliverable gate).
-# CAUTION (BD-231): the new check's NUMBER is 64 (the next free integer; the
-# highest existing check number was 63) but this constant is the registry
-# ENTRY COUNT — bump it 61 -> 62, NOT to 64. Numbers != entry count (Checks
-# 16/18/19 each register TWICE and 2 checks carry number=None), so the count
-# always lags the max number; setting it to 64 makes Check 59 FAIL.
-# (Re-scoped Check 42 keeps its slot; numbers ≠ entry count — Checks
-# 16/18/19 each register TWICE and 2 checks carry number=None.) This constant
+# + 1 net-new BD-231 check (64 dangling-.example deliverable gate)
+# + 1 net-new BD-243 check (65 operating-doc no-history gate).
+# CAUTION: a new check's NUMBER is the next free integer (65 for BD-243) but
+# this constant is the registry ENTRY COUNT — bump it +1 per net-new entry,
+# NOT to the new number. Numbers != entry count (Checks 16/18/19 each register
+# TWICE and 2 checks carry number=None), so the count always lags the max
+# number; setting it to the max number makes Check 59 FAIL. The Check-44
+# pattern-tuple reduction (BD-243) changes NO entry count (+0). This constant
 # is the explicit invariant; the actual count is COMPUTED from
 # len(_build_check_registry()) and asserted equal by Check 59 — never
 # hard-coded anywhere else.
-CHECK_REGISTRY_EXPECTED_COUNT = 62
+CHECK_REGISTRY_EXPECTED_COUNT = 63
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
@@ -7748,41 +7748,36 @@ def check_boundary_and_spawn_pointer_manifests() -> None:
 # (the M4 class per ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §6 +
 # PLAN-DOC-CONCISION-GUARDRAILS.md EE-P1). Two parts:
 #
-#   (a) THE TEETH (hard-fail) — forbidden-pattern count = 0 OUTSIDE the
-#       allowlist. The forbidden patterns are report-only artifacts that
-#       MUST NOT appear in forward-only durable rule docs (the C2 surface-
-#       separation rule: SHAs/dates/Commit-N/Override-N/post-Commit/temporal
-#       'will' belong in agent reports, not durable docs). Any matched line
+#   (a) THE TEETH (hard-fail) — temporal `will ` count = 0 OUTSIDE the
+#       allowlist. A temporal/roadmap `will ` is a report-only artifact that
+#       MUST NOT appear in a forward-only durable rule doc. Any matched line
 #       NOT covered by a pack-ops/.concision-allowlist.txt record FAILs.
 #       The allowlist is sized to the KEEP set EXACTLY (measure-then-bound):
-#       only legitimate operational-behavioral occurrences are admitted; it
-#       is NOT widened to swallow contamination.
+#       only legitimate operational-behavioral `will ` occurrences are
+#       admitted; it is NOT widened to swallow contamination.
 #
 #   (b) ADVISORY length (soft, never fails) — each doc carries a per-doc
-#       advisory ceiling DERIVED from its measured legitimate (post-C4/C9
-#       cleaned) content (ceil(measured * 1.15) — a 15% growth headroom,
-#       per-doc, NOT a uniform round cap). Exceeding it emits an advisory
-#       OK-notice, never a failure (length is a smell, not a hard rule;
-#       the forbidden-pattern count is the enforcing teeth — ARCHITECTURE
-#       §6 "SC1 limits": enforcing limit = 0-outside-allowlist; length is
-#       per-doc advisory).
+#       advisory ceiling DERIVED from its measured legitimate content
+#       (ceil(measured * 1.15) — a 15% growth headroom, per-doc, NOT a
+#       uniform round cap). Exceeding it emits an advisory OK-notice, never a
+#       failure (length is a smell, not a hard rule; the `will ` count is the
+#       enforcing teeth — ARCHITECTURE §6 "SC1 limits": enforcing limit =
+#       0-outside-allowlist; length is per-doc advisory).
+#
+# The history axis (dates / 7-40-hex SHAs / Commit-N / Override-N /
+# post-Commit) MOVED out of this check to Check 65
+# (check_operating_doc_no_history), which owns the full history axis over
+# the operating-doc IN set. Check 44 retains ONLY the `will ` teeth +
+# advisory length.
 #
 # Pattern: a fresh scan + the existing _parse_manifest_records() allowlist-
 # file read pattern (shared with Check 46). Per ARCHITECTURE-DOC-CONCISION-
 # GUARDRAILS.md §6 (M1-M4) + §7; PLAN-DOC-CONCISION-GUARDRAILS.md §3 C10.
 
-# The M4 forbidden-pattern set — IDENTICAL to the C4/C9 canonical reshape
-# probe (so the gate enforces exactly the contract those commits cleaned to):
-#   dates / 7-40-hex SHAs / Commit N / Override N / post-Commit / temporal
-#   'will '. The hex pattern is word-boundary-anchored (\b…\b) so ordinary
-#   lowercase-hex-only English words do not false-match; the 'will' pattern
-#   carries a trailing space (the canonical `\bwill ` probe form).
+# The M4 forbidden-pattern set — the temporal `will ` probe (the C4/C9
+# canonical probe form `\bwill `, trailing space). The history axis lives in
+# Check 65.
 _CHECK_44_FORBIDDEN_PATTERNS = (
-    ("date", re.compile(r"20[0-9]{2}-[0-9]{2}-[0-9]{2}")),
-    ("sha", re.compile(r"\b[0-9a-f]{7,40}\b")),
-    ("commit-N", re.compile(r"Commit [0-9]")),
-    ("override-N", re.compile(r"Override [0-9]")),
-    ("post-Commit", re.compile(r"post-Commit")),
     ("will", re.compile(r"\bwill ")),
 )
 
@@ -7830,16 +7825,19 @@ def check_durable_doc_concision() -> None:
     """Check 44 — M4 durable-doc concision gate (BD-196 C10).
 
     Scans the 7 durable pack-ops/ non-mirror rule docs (the M4 class) for
-    forbidden report-only patterns (dates / 7-40-hex SHAs / Commit N /
-    Override N / post-Commit / temporal 'will '). THE TEETH: any matched
-    line NOT covered by a pack-ops/.concision-allowlist.txt record
-    (doc match AND an allowlisted snippet is a substring of the line)
-    FAILs — forbidden-pattern count must be 0 OUTSIDE the allowlist.
+    the temporal `will ` pattern. THE TEETH: any matched line NOT covered
+    by a pack-ops/.concision-allowlist.txt record (doc match AND an
+    allowlisted snippet is a substring of the line) FAILs — temporal
+    `will ` count must be 0 OUTSIDE the allowlist.
 
     ADVISORY: each doc also carries a per-doc advisory line ceiling
     (derived from measured cleaned content); exceeding it emits an
     OK-advisory notice, NEVER a failure (length is a smell, the
-    forbidden-pattern teeth are the enforcement).
+    `will ` teeth are the enforcement).
+
+    The history axis (dates / SHAs / Commit-N / Override-N / post-Commit)
+    MOVED to Check 65 (check_operating_doc_no_history). Check 44 owns only
+    the `will ` teeth + advisory length.
 
     Per ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §6 (M1-M4) + §7;
     PLAN-DOC-CONCISION-GUARDRAILS.md §3 C10. The allowlist is sized to
@@ -7848,8 +7846,8 @@ def check_durable_doc_concision() -> None:
 
     Lenient mode: a durable doc absent at HEAD SKIPs that doc with a
     notice (an init/state problem, not a concision violation); a missing
-    allowlist file means an empty allowlist (every forbidden hit then
-    FAILs — fail-loud, never silently-pass).
+    allowlist file means an empty allowlist (every `will ` hit then FAILs
+    — fail-loud, never silently-pass).
     """
     print("\n── Check 44: M4 durable-doc concision gate (BD-196) ──")
 
@@ -7885,18 +7883,17 @@ def check_durable_doc_concision() -> None:
                 continue
             total_forbidden_outside += 1
             fail(
-                f"{doc_rel}:{lineno} — M4 concision-gate forbidden pattern "
+                f"{doc_rel}:{lineno} — M4 concision-gate temporal `will ` "
                 f"{matched_patterns} OUTSIDE the allowlist: "
                 f"`{line.strip()[:90]}`. Per BD-196 / ARCHITECTURE-DOC-"
                 f"CONCISION-GUARDRAILS.md §6 (M4), durable pack-ops/ rule "
-                f"docs are forward-only: dates / SHAs / Commit-N / "
-                f"Override-N / post-Commit / temporal 'will' are report-only "
-                f"artifacts (C2 surface-separation). Remediation: STRIP the "
-                f"pattern from the durable doc (move provenance to the agent "
-                f"report). The allowlist is sized to the legitimate KEEP set "
-                f"EXACTLY and MUST NOT be widened to admit this hit — a "
-                f"residual STRIP-class occurrence is a reshape gap, not an "
-                f"allowlist entry."
+                f"docs are forward-only: a temporal/roadmap `will ` is a "
+                f"report-only artifact (C2 surface-separation). Remediation: "
+                f"STRIP it from the durable doc (an operational-behavioral "
+                f"`will ` goes in the allowlist). The allowlist is sized to "
+                f"the legitimate KEEP set EXACTLY and MUST NOT be widened to "
+                f"admit this hit. (The history axis — dates / SHAs / "
+                f"Commit-N / Override-N / post-Commit — moved to Check 65.)"
             )
             any_fail = True
 
@@ -7916,6 +7913,163 @@ def check_durable_doc_concision() -> None:
             f"{total_forbidden_outside} forbidden pattern(s) outside the "
             f"allowlist (0 = clean); {total_allowlisted} allowlisted "
             f"operational occurrence(s) admitted (KEEP set)."
+        )
+
+
+# ── Check 65: operating-doc no-history gate (BD-243) ───────────────────────
+# The history axis over the operating-doc IN set. An operating doc issues
+# system-wide operating instructions to chat sessions / agents; it must be
+# forward-only — historical / audit-trail text (dates, SHAs, Commit-N,
+# Override-N, post-Commit, BD past-action / provenance, incident / carry-over
+# narration) belongs in IMPL reports + reference docs, never in an operating
+# doc. THE TEETH: any history-pattern hit on a scanned IN doc, NOT covered by
+# a pack-ops/.operating-doc-history-allowlist.txt snippet, FAILs. The
+# allowlist is sized to the KEEP set EXACTLY (measure-then-bound) — the live
+# doc-refs, the live transitional pointer, the format examples — never widened
+# to admit contamination.
+#
+# Scope is the FROZEN constant _CHECK_65_OPERATING_DOCS (auditable; matches
+# the Check-44 _CHECK_44_DURABLE_DOCS precedent). It is populated at gate
+# ACTIVATION; an empty scope scans nothing (vacuous pass).
+#
+# This check owns the date / SHA / Commit-N / Override-N / post-Commit axis
+# moved from Check 44, PLUS the BD/TD provenance axis Check 44 never had.
+
+_CHECK_65_FORBIDDEN_PATTERNS = (
+    ("date", re.compile(r"20[0-9]{2}-[0-9]{2}-[0-9]{2}")),
+    ("sha", re.compile(r"\b[0-9a-f]{7,40}\b")),
+    ("commit-N", re.compile(r"Commit [0-9]")),
+    ("override-N", re.compile(r"Override [0-9]")),
+    ("post-Commit", re.compile(r"post-Commit")),
+    ("bd-past-action", re.compile(
+        r"BD-\d+\s+(deleted|added|renamed|introduced|removed|created|"
+        r"retired|broadened|did)"
+    )),
+    ("per-BD", re.compile(r"per\s+BD-\d+")),
+    ("pre-date", re.compile(r"pre-20[0-9]{2}-[0-9]{2}-[0-9]{2}")),
+    ("user-locked", re.compile(r"User-locked")),
+    ("incident", re.compile(r"incident")),
+    ("carry-over", re.compile(r"carried from|carry-over")),
+    ("bd-tag", re.compile(r"BD-\d+")),
+)
+
+# The operating-doc IN set scanned by Check 65 (the measured operating-doc
+# families; EXEMPT docs — _intro / HELP-FRAGMENT / history-store / reference
+# / scripts — are NOT scanned). FROZEN constant, sized to the corrected IN
+# set. EMPTY at gate registration (Option A: register-early / activate-last);
+# populated at gate ACTIVATION, the first point Check 65 enforces against the
+# live tree.
+_CHECK_65_OPERATING_DOCS = ()
+
+
+def _check_65_load_allowlist() -> dict:
+    """Parse pack-ops/.operating-doc-history-allowlist.txt into
+    {doc: [snippet, ...]}.
+
+    Each record carries `doc:`, `pattern:`, `snippet:`, `reason:`. The
+    matching key is (doc, snippet-substring) — line numbers are NOT used
+    (they drift). Returns a dict mapping each doc path to its list of
+    allowlisted snippet substrings. Reuses _parse_manifest_records()
+    (the same pattern as Check 44's allowlist read).
+    """
+    allowlist_path = (
+        REPO_ROOT / "pack-ops" / ".operating-doc-history-allowlist.txt"
+    )
+    if not allowlist_path.is_file():
+        return {}
+    records = _parse_manifest_records(allowlist_path.read_text())
+    by_doc: dict = {}
+    for rec in records:
+        doc = rec.get("doc")
+        snippet = rec.get("snippet")
+        if doc and snippet:
+            by_doc.setdefault(doc, []).append(snippet)
+    return by_doc
+
+
+def check_operating_doc_no_history() -> None:
+    """Check 65 — operating-doc no-history gate (BD-243).
+
+    Scans the operating-doc IN set (_CHECK_65_OPERATING_DOCS) for history /
+    audit-trail patterns (dates / 7-40-hex SHAs / Commit-N / Override-N /
+    post-Commit / BD past-action / per-BD provenance / pre-date /
+    User-locked / incident / carry-over / bare BD-NNN tag). THE TEETH: any
+    matched line NOT covered by a
+    pack-ops/.operating-doc-history-allowlist.txt record (doc match AND an
+    allowlisted snippet is a substring of the line) FAILs — history-pattern
+    count must be 0 OUTSIDE the allowlist.
+
+    The allowlist is ANCHOR-EXEMPT FIRST (an allowlisted snippet on the line
+    clears it) THEN residue FAILs — the bare BD-NNN tag overlaps the live
+    doc-refs, the live transitional pointer, and the format examples, all of
+    which are KEEP snippets in the allowlist.
+
+    Per BD-243 / DESIGN-BD-243-FINAL.md §E + ARCHITECTURE-DOC-CONCISION-
+    GUARDRAILS.md (the MOVE addendum). The allowlist is sized to the KEEP
+    set EXACTLY (measure-then-bound) — never widened to admit a
+    contamination hit. A reviewer re-verifies each `reason:` still names
+    LIVE-and-CURRENT work.
+
+    Lenient mode: an IN doc absent at HEAD SKIPs that doc (an init/state
+    problem, not a history violation); a missing allowlist file means an
+    empty allowlist (every history hit then FAILs — fail-loud, matching
+    Check 44, never silently-pass).
+    """
+    print("\n── Check 65: operating-doc no-history gate (BD-243) ──")
+
+    allowlist = _check_65_load_allowlist()
+
+    any_fail = False
+    scanned_docs = 0
+    total_forbidden_outside = 0
+    total_allowlisted = 0
+
+    for doc_rel in _CHECK_65_OPERATING_DOCS:
+        doc_path = REPO_ROOT / doc_rel
+        if not doc_path.is_file():
+            ok(f"{doc_rel} absent — skipping that doc (lenient)")
+            continue
+        scanned_docs += 1
+        snippets = allowlist.get(doc_rel, [])
+        lines = doc_path.read_text().splitlines()
+
+        for lineno, line in enumerate(lines, start=1):
+            matched_patterns = [
+                name for name, rx in _CHECK_65_FORBIDDEN_PATTERNS
+                if rx.search(line)
+            ]
+            if not matched_patterns:
+                continue
+            # ANCHOR-EXEMPT FIRST: a line is allowlisted iff one of the
+            # doc's allowlist snippets is a substring of the line
+            # (content-anchored, not line-number-anchored — lines drift).
+            covered = any(snip in line for snip in snippets)
+            if covered:
+                total_allowlisted += 1
+                continue
+            total_forbidden_outside += 1
+            fail(
+                f"{doc_rel}:{lineno} — operating-doc history pattern "
+                f"{matched_patterns} OUTSIDE the allowlist: "
+                f"`{line.strip()[:90]}`. Per BD-243, operating docs are "
+                f"forward-only: history / audit-trail text (dates / SHAs / "
+                f"Commit-N / Override-N / post-Commit / BD past-action / "
+                f"per-BD provenance / incident / carry-over / bare BD-NNN "
+                f"tag) is a report-only artifact and belongs in IMPL reports "
+                f"+ reference docs, never in an operating doc. Remediation: "
+                f"STRIP it (a live doc-ref / transitional pointer / format "
+                f"example goes in the allowlist). The allowlist is sized to "
+                f"the legitimate KEEP set EXACTLY and MUST NOT be widened to "
+                f"admit this hit."
+            )
+            any_fail = True
+
+    if not any_fail:
+        ok(
+            f"Check 65 — {scanned_docs} operating doc(s) scanned; "
+            f"{total_forbidden_outside} history pattern(s) outside the "
+            f"allowlist (0 = clean); {total_allowlisted} allowlisted KEEP "
+            f"occurrence(s) admitted."
         )
 
 
@@ -10222,6 +10376,15 @@ def _build_check_registry():
         # the adjacent CI-infra guards (58/59/60/61/62/63).
         (64, "check_dangling_example_deliverable_refs",
               check_dangling_example_deliverable_refs, W),
+        # Check 65 — operating-doc no-history gate (BD-243): scans the
+        # operating-doc IN set (_CHECK_65_OPERATING_DOCS) for history /
+        # audit-trail patterns outside the K1-K11 KEEP allowlist. Owns the
+        # date/SHA/Commit-N/Override-N/post-Commit axis moved from Check 44
+        # plus the BD-provenance axis Check 44 never had. Scope is EMPTY at
+        # registration (Option A: register-early / activate-last) → vacuous
+        # pass until gate activation populates the constant.
+        (65, "check_operating_doc_no_history",
+              check_operating_doc_no_history, W),
     ]
 
 

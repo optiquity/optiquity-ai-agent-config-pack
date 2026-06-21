@@ -1,0 +1,286 @@
+#!/usr/bin/env bash
+# scripts/tests/test-validate-pack-check-65.sh — synthetic fixture
+# tests for BD-243 Check 65 (operating-doc no-history gate;
+# DESIGN-BD-243-FINAL.md §E + ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md
+# the MOVE addendum).
+#
+# These tests exercise the operating-doc no-history gate — history-pattern
+# count 0 OUTSIDE the pack-ops/.operating-doc-history-allowlist.txt
+# allowlist (the teeth) — without mutating any real operating doc. Each
+# test stages a synthetic operating-doc tree + a synthetic allowlist inside
+# a tmp REPO_ROOT, monkeypatches the IN scope (_CHECK_65_OPERATING_DOCS) to
+# the synthetic doc, invokes Check 65 against the tmp tree, and asserts
+# PASS / FAIL as expected. The check's live scope is EMPTY at this work-unit
+# (Option A: register-early / activate-last) — these fixture tests verify the
+# check FUNCTION independently of the empty live scope. Cleanup runs on every
+# exit path.
+#
+# Coverage:
+#   Group 0: Module import + Check 65 symbol registration
+#   Group 1: Synthetic-tree end-to-end —
+#            T1 clean tree (no history pattern) PASSES
+#            T2 injected date hit OUTSIDE allowlist FAILS (the teeth;
+#               MOVED from the Check-44 test)
+#            T3 injected SHA hit OUTSIDE allowlist FAILS (the teeth;
+#               MOVED from the Check-44 test)
+#            T4 allowlisted KEEP occurrences (K1 doc-ref, K9 date example)
+#               snippet-covered PASS
+#            T5 allowlist sized to KEEP-only — a DIFFERENT history hit on an
+#               allowlisted doc still FAILS (allowlist is not a blanket;
+#               MOVED-intent from the Check-44 test's T5)
+#            T6 missing allowlist file => empty allowlist => every history
+#               hit FAILS (fail-loud)
+#   Group 2: End-to-end validate-pack.py exit-status on HEAD (Check 65
+#            runs clean: empty live scope => vacuous pass)
+#
+# Usage: bash scripts/tests/test-validate-pack-check-65.sh
+
+set -u
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+VALIDATE="$REPO_ROOT/scripts/validate-pack.py"
+
+PASS=0
+FAIL=0
+
+t_pass() { PASS=$((PASS + 1)); printf "  \033[32mPASS\033[0m %s\n" "$1"; }
+t_fail() {
+    FAIL=$((FAIL + 1))
+    printf "  \033[31mFAIL\033[0m %s\n" "$1"
+    [[ -n "${2:-}" ]] && printf "       %s\n" "$2"
+}
+
+# ─────────────────────────────────────────────────────────────────
+# Group 0: Module import + new symbol reachable
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 0: Module import + Check 65 symbol registration ===\n"
+
+python3 -c "
+import sys
+sys.path.insert(0, '$REPO_ROOT/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+required = ['check_operating_doc_no_history', '_check_65_load_allowlist',
+            '_CHECK_65_FORBIDDEN_PATTERNS', '_CHECK_65_OPERATING_DOCS']
+missing = [n for n in required if not hasattr(mod, n)]
+if missing:
+    print('FAIL_MISSING ' + ' '.join(missing))
+    sys.exit(1)
+print('OK')
+" > /tmp/vp-check65-import.out 2>&1
+
+if grep -q "^OK$" /tmp/vp-check65-import.out; then
+    t_pass "validate-pack.py imports + Check 65 symbols registered"
+else
+    t_fail "validate-pack.py import or Check 65 symbol registration failed" \
+        "$(cat /tmp/vp-check65-import.out)"
+fi
+
+# ─────────────────────────────────────────────────────────────────
+# Group 1: Synthetic-tree end-to-end (PASS + injected-FAIL cases)
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 1: End-to-end synthetic-tree tests (PASS + injected fails) ===\n"
+
+python3 <<EOF
+import sys, tempfile, pathlib, shutil, io, contextlib
+sys.path.insert(0, '$REPO_ROOT/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+failures = []
+
+# The synthetic operating-doc IN set — ONE doc.
+SYNTH_DOC = "pack-ops/SYNTH-OPERATING.md"
+
+def run_check_with_synthetic(doc_body, allowlist_text):
+    """Run check_operating_doc_no_history against a synthetic tree.
+
+    doc_body:        full text of the synthetic operating doc.
+    allowlist_text:  full text of a synthetic allowlist
+                     (empty string => no allowlist file written => empty).
+
+    Returns (failures_count, pass_msg_present, captured).
+    """
+    tmpdir = tempfile.mkdtemp(prefix="vp-check65-")
+    root = pathlib.Path(tmpdir)
+    (root / "pack-ops").mkdir()
+    (root / SYNTH_DOC).write_text(doc_body)
+    if allowlist_text:
+        (root / "pack-ops" / ".operating-doc-history-allowlist.txt").write_text(
+            allowlist_text)
+
+    saved_root = mod.REPO_ROOT
+    saved_scope = mod._CHECK_65_OPERATING_DOCS
+    saved_failures = list(mod.failures)
+    mod.failures.clear()
+    mod.REPO_ROOT = root
+    # Monkeypatch the IN scope to the single synthetic doc (the live scope is
+    # empty at this work-unit — the function is exercised via this fixture).
+    mod._CHECK_65_OPERATING_DOCS = (SYNTH_DOC,)
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            mod.check_operating_doc_no_history()
+        new_failures = list(mod.failures)
+        captured = buf.getvalue()
+    finally:
+        mod.REPO_ROOT = saved_root
+        mod._CHECK_65_OPERATING_DOCS = saved_scope
+        mod.failures.clear()
+        mod.failures.extend(saved_failures)
+        shutil.rmtree(tmpdir, ignore_errors=True)
+    pass_msg = "0 = clean" in captured
+    return (len(new_failures), pass_msg, captured)
+
+# An allowlist admitting a K1-style live doc-ref AND a K9-style date example
+# by snippet (content-anchored, not line-number-anchored).
+ALLOWLIST_KEEP = (
+    "doc: %s\n"
+    "pattern: bd-tag\n"
+    "snippet: ARCHITECTURE-BD-119.md\n"
+    "reason: live doc cross-ref (synthetic K2).\n"
+    "\n"
+    "doc: %s\n"
+    "pattern: date\n"
+    "snippet: 2026-04-20\n"
+    "reason: changelog filename date FORMAT example (synthetic K9).\n"
+) % (SYNTH_DOC, SYNTH_DOC)
+
+# T1: PASS — clean tree, no history pattern at all.
+body = (
+    "# SYNTH-OPERATING.md\n"
+    "\n"
+    "A forward-only operating doc with no history or audit-trail text.\n"
+    "It issues imperatives without provenance, dates, or SHAs.\n"
+)
+fc, pm, cap = run_check_with_synthetic(body, "")
+if fc != 0:
+    failures.append("T1 (clean tree PASS) expected 0 failures, got %d: %s" % (fc, cap))
+if not pm:
+    failures.append("T1 (clean tree PASS) expected the '0 = clean' OK message: %s" % cap)
+
+# T2: FAIL — injected date hit OUTSIDE the allowlist (MOVED from Check-44).
+body = (
+    "# SYNTH-OPERATING.md\n"
+    "\n"
+    "This rule was locked on 2026-05-30 during the recovery.\n"
+)
+fc, pm, cap = run_check_with_synthetic(body, "")
+if fc < 1:
+    failures.append("T2 (injected date FAIL) expected >=1 failure, got %d: %s" % (fc, cap))
+if "OUTSIDE the allowlist" not in cap:
+    failures.append("T2 (injected date FAIL) expected 'OUTSIDE the allowlist' in output: %s" % cap)
+if "2026-05-30" not in cap:
+    failures.append("T2 (injected date FAIL) expected the offending line snippet in output: %s" % cap)
+
+# T3: FAIL — injected SHA hit OUTSIDE the allowlist (MOVED from Check-44).
+body = (
+    "# SYNTH-OPERATING.md\n"
+    "\n"
+    "The rule was introduced in commit deadbeef1234 (a SHA).\n"
+)
+fc, pm, cap = run_check_with_synthetic(body, "")
+if fc < 1:
+    failures.append("T3 (injected SHA FAIL) expected >=1 failure, got %d: %s" % (fc, cap))
+if "deadbeef1234" not in cap:
+    failures.append("T3 (injected SHA FAIL) expected the SHA hit in output: %s" % cap)
+
+# T4: PASS — allowlisted KEEP occurrences (a doc-ref line + a date-example
+#     line), each snippet-covered, admitted and not failed.
+body = (
+    "# SYNTH-OPERATING.md\n"
+    "\n"
+    "See ARCHITECTURE-BD-119.md for the migrator framework.\n"
+    "Changelog files are named like 2026-04-20-phase-35.md.\n"
+)
+fc, pm, cap = run_check_with_synthetic(body, ALLOWLIST_KEEP)
+if fc != 0:
+    failures.append("T4 (allowlisted KEEP PASS) expected 0 failures, got %d: %s" % (fc, cap))
+if not pm:
+    failures.append("T4 (allowlisted KEEP PASS) expected the '0 = clean' OK message: %s" % cap)
+if "2 allowlisted" not in cap:
+    failures.append("T4 (allowlisted KEEP PASS) expected '2 allowlisted' occurrence count: %s" % cap)
+
+# T5: FAIL — allowlist sized to KEEP-only is NOT a blanket: a DIFFERENT
+#     history hit (a non-allowlisted date) on the same allowlisted doc still
+#     FAILS (MOVED-intent from the Check-44 T5).
+body = (
+    "# SYNTH-OPERATING.md\n"
+    "\n"
+    "See ARCHITECTURE-BD-119.md for the migrator framework.\n"
+    "But this incident on 2026-05-17 is provenance and must FAIL.\n"
+)
+fc, pm, cap = run_check_with_synthetic(body, ALLOWLIST_KEEP)
+if fc < 1:
+    failures.append("T5 (KEEP-only allowlist not a blanket FAIL) expected >=1 failure, got %d: %s" % (fc, cap))
+if "2026-05-17" not in cap:
+    failures.append("T5 (KEEP-only allowlist not a blanket FAIL) expected the non-allowlisted hit in output: %s" % cap)
+
+# T6: FAIL — missing allowlist file => empty allowlist => the otherwise-KEEP
+#     doc-ref line now FAILS (fail-loud, matches Check 44).
+body = (
+    "# SYNTH-OPERATING.md\n"
+    "\n"
+    "See ARCHITECTURE-BD-119.md for the migrator framework.\n"
+)
+fc, pm, cap = run_check_with_synthetic(body, "")
+if fc < 1:
+    failures.append("T6 (missing allowlist fail-loud) expected >=1 failure, got %d: %s" % (fc, cap))
+
+if failures:
+    print("FAILURES")
+    for f in failures:
+        print(" ", f)
+    sys.exit(1)
+print("OK")
+EOF
+case $? in
+    0) t_pass "End-to-end synthetic-tree tests T1-T6 (clean / date-FAIL / SHA-FAIL / allowlisted-KEEP / KEEP-only-not-blanket / fail-loud)" ;;
+    *) t_fail "End-to-end check_operating_doc_no_history tests failed (see Python output)" ;;
+esac
+
+# ─────────────────────────────────────────────────────────────────
+# Group 2: End-to-end validate-pack.py exit-status on HEAD
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 2: End-to-end validate-pack.py exit-status on HEAD ===\n"
+
+if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 65 > /tmp/vp-check65-e2e.out 2>&1; then
+    if grep -q "Check 65: operating-doc no-history gate" /tmp/vp-check65-e2e.out \
+       && grep -q "Check 65 — .* operating doc(s) scanned" /tmp/vp-check65-e2e.out; then
+        t_pass "validate-pack.py exits 0; Check 65 runs clean (empty live scope => vacuous pass) at HEAD"
+    else
+        t_fail "validate-pack.py exits 0 but Check 65 clean-output not detected" \
+            "Tail: $(tail -10 /tmp/vp-check65-e2e.out)"
+    fi
+else
+    if grep -q "Check 65: operating-doc no-history gate" /tmp/vp-check65-e2e.out; then
+        t_fail "validate-pack.py exits non-zero on HEAD (Check 65 ran but found a history pattern outside the allowlist)" \
+            "Tail: $(tail -40 /tmp/vp-check65-e2e.out)"
+    else
+        t_fail "validate-pack.py exits non-zero on HEAD (Check 65 did not run)" \
+            "Tail: $(tail -40 /tmp/vp-check65-e2e.out)"
+    fi
+fi
+
+# ─────────────────────────────────────────────────────────────────
+# Summary
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Summary ===\n"
+printf "  PASS: %d\n" "$PASS"
+printf "  FAIL: %d\n" "$FAIL"
+
+if (( FAIL == 0 )); then
+    printf "\n\033[32mAll tests passed.\033[0m\n"
+    exit 0
+else
+    printf "\n\033[31m%d test(s) failed.\033[0m\n" "$FAIL"
+    exit 1
+fi

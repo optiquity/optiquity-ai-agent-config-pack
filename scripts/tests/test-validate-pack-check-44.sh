@@ -3,25 +3,26 @@
 # tests for BD-196 (C10) Check 44 (M4 durable-doc concision gate;
 # ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §6 M4 + §7).
 #
-# These tests exercise the M4 concision gate — forbidden-pattern count
-# 0 OUTSIDE the pack-ops/.concision-allowlist.txt allowlist (the teeth)
-# + per-doc advisory length — without mutating any real pack-ops doc.
-# Each end-to-end test stages a synthetic durable-doc tree + a synthetic
+# These tests exercise the M4 concision gate — temporal `will ` count 0
+# OUTSIDE the pack-ops/.concision-allowlist.txt allowlist (the teeth) +
+# per-doc advisory length — without mutating any real pack-ops doc. Each
+# end-to-end test stages a synthetic durable-doc tree + a synthetic
 # allowlist inside a tmp REPO_ROOT, monkeypatches the M4 doc-class to the
 # synthetic doc, invokes Check 44 against the tmp tree, and asserts
 # PASS / FAIL as expected. Cleanup runs on every exit path.
 #
+# The history axis (dates / SHAs / Commit-N / Override-N / post-Commit)
+# MOVED to Check 65 — its FAIL cases live in
+# scripts/tests/test-validate-pack-check-65.sh.
+#
 # Coverage:
 #   Group 0: Module import + Check 44 symbol registration
 #   Group 1: Synthetic-tree end-to-end —
-#            T1 clean tree (no forbidden pattern) PASSES
-#            T2 injected STRIP hit OUTSIDE allowlist FAILS (the teeth)
-#            T3 allowlisted occurrence (snippet-covered) PASSES
+#            T1 clean tree (no `will `) PASSES
+#            T3 allowlisted `will ` occurrence (snippet-covered) PASSES
 #            T4 over-ceiling doc emits ADVISORY but does NOT fail (soft)
-#            T5 allowlist sized to KEEP-only — a DIFFERENT forbidden hit
-#               on the same doc still FAILS (allowlist is not a blanket)
 #   Group 2: End-to-end validate-pack.py exit-status on HEAD (Check 44
-#            runs clean: 0 forbidden outside allowlist)
+#            runs clean: 0 `will ` outside allowlist)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-44.sh
 
@@ -139,32 +140,18 @@ ALLOWLIST_WILL = (
     "reason: operational behavioral will (synthetic).\n"
 ) % SYNTH_DOC
 
-# T1: PASS — clean tree, no forbidden pattern at all.
+# T1: PASS — clean tree, no temporal 'will' pattern at all.
 body = (
     "# SYNTH-DURABLE.md\n"
     "\n"
     "A forward-only rule doc with no report-only artifacts.\n"
-    "It states imperatives without dates, SHAs, or temporal promises.\n"
+    "It states imperatives without temporal promises.\n"
 )
 fc, pm, adv, cap = run_check_with_synthetic(body, "")
 if fc != 0:
     failures.append(f"T1 (clean tree PASS) expected 0 failures, got {fc}: {cap}")
 if not pm:
     failures.append(f"T1 (clean tree PASS) expected the '0 = clean' OK message: {cap}")
-
-# T2: FAIL — injected STRIP hit (a date) OUTSIDE the allowlist.
-body = (
-    "# SYNTH-DURABLE.md\n"
-    "\n"
-    "This rule was locked on 2026-05-30 during the recovery.\n"
-)
-fc, pm, adv, cap = run_check_with_synthetic(body, "")
-if fc < 1:
-    failures.append(f"T2 (injected date STRIP FAIL) expected >=1 failure, got {fc}: {cap}")
-if "OUTSIDE the allowlist" not in cap:
-    failures.append(f"T2 (injected date STRIP FAIL) expected 'OUTSIDE the allowlist' in output: {cap}")
-if "2026-05-30" not in cap:
-    failures.append(f"T2 (injected date STRIP FAIL) expected the offending line snippet in output: {cap}")
 
 # T3: PASS — an allowlisted operational 'will' occurrence (snippet-covered).
 body = (
@@ -182,28 +169,13 @@ if "1 allowlisted" not in cap:
     failures.append(f"T3 (allowlisted will PASS) expected '1 allowlisted' occurrence count: {cap}")
 
 # T4: ADVISORY (soft) — doc exceeds a tight per-doc ceiling but carries NO
-#     forbidden pattern: emits an ADVISORY notice and does NOT fail.
+#     temporal 'will' pattern: emits an ADVISORY notice and does NOT fail.
 body = "# SYNTH-DURABLE.md\n" + ("clean prose line\n" * 20)
 fc, pm, adv, cap = run_check_with_synthetic(body, "", advisory_ceiling=5)
 if fc != 0:
     failures.append(f"T4 (over-ceiling ADVISORY soft) expected 0 failures, got {fc}: {cap}")
 if not adv:
     failures.append(f"T4 (over-ceiling ADVISORY soft) expected an 'ADVISORY:' notice: {cap}")
-
-# T5: FAIL — allowlist sized to KEEP-only is NOT a blanket: a DIFFERENT
-#     forbidden hit (a SHA) on the same doc, not covered by the 'will'
-#     snippet, still FAILS.
-body = (
-    "# SYNTH-DURABLE.md\n"
-    "\n"
-    "When a project adds a script the migrator will route the script\n"
-    "through dispatch. Introduced in commit deadbeef1234 (a SHA).\n"
-)
-fc, pm, adv, cap = run_check_with_synthetic(body, ALLOWLIST_WILL)
-if fc < 1:
-    failures.append(f"T5 (KEEP-only allowlist not a blanket FAIL) expected >=1 failure, got {fc}: {cap}")
-if "deadbeef1234" not in cap:
-    failures.append(f"T5 (KEEP-only allowlist not a blanket FAIL) expected the SHA hit in output: {cap}")
 
 if failures:
     print("FAILURES")
@@ -213,7 +185,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "End-to-end synthetic-tree tests T1-T5 (clean / injected-STRIP / allowlisted / advisory-soft / KEEP-only-not-blanket)" ;;
+    0) t_pass "End-to-end synthetic-tree tests T1/T3/T4 (clean / allowlisted-will / advisory-soft)" ;;
     *) t_fail "End-to-end check_durable_doc_concision tests failed (see Python output)" ;;
 esac
 
