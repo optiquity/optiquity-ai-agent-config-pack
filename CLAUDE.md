@@ -759,6 +759,21 @@ PACK-AGENTS.md current".
   note: the graph MAY index the whole repo incl. `project-template/`;
   consuming it to answer a deliverable question is fine — the rule + setup
   stay pack-side. `[roles: universal] [rationale: graph-first-context]`
+- **Operating docs carry NO history, NO deferred-feature mentions; stay
+  terse + structured.** An operating doc (a doc an agent/chat EXECUTES as
+  live instruction — rules, agent/skill defs, prompts, write-contracts)
+  carries (a) ZERO historical/audit-trail text (dated notes,
+  `User-locked YYYY-MM-DD`, "BD-NNN did X" past-action narration,
+  "per BD-NNN" / "carried from" provenance, incident/SHA refs); (b) ZERO
+  description of a DEFERRED / unimplemented / off-by-default feature — even
+  to say it is deferred (state only what currently exists and operates; the
+  mention is re-added when the feature ships); and (c) is kept terse +
+  structured (no mega-bullet run-ons, prose-that-should-be-a-table, or
+  padding). LIVE forward-pointers to CURRENT in-flight work KEEP
+  (`until BD-NNN`, an `ARCHITECTURE-*.md` path). History + roadmap belong in
+  changelog/backlog entries, maintenance-docs, and IMPL reports (reference
+  docs) — never copied into an operating doc.
+  `[roles: universal] [rationale: operating-docs-no-history-no-bloat]`
 
 ### Project goals (v11)
 

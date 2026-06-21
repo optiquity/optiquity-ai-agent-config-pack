@@ -242,6 +242,21 @@ Flat-file per-entry is the sole supported mode; tracker integration is
 deferred indefinitely (no release version) with the tracker code
 retained dormant for a future resumption.
 
+**Operating docs carry NO history, NO deferred-feature mentions; stay
+terse + structured.** An operating doc (a doc an agent or chat EXECUTES as
+live instruction — these rules, agent/skill definitions, prompts,
+write-contracts) carries (a) ZERO historical/audit-trail text (dated
+notes, "X did Y" past-action narration, provenance/"carried from" notes,
+incident or commit-SHA refs); (b) ZERO description of a DEFERRED,
+unimplemented, or off-by-default feature — even to say it is deferred
+(state only what currently exists and operates; the mention is re-added
+when the feature ships); and (c) is kept terse + structured (no
+mega-bullet run-ons, prose-that-should-be-a-table, or padding). LIVE
+forward-pointers to CURRENT in-flight work KEEP. History and roadmap
+belong in the project streams (`docs/project/backlog/` and
+`docs/project/changelog/`) and in IMPL reports — never copied into an
+operating doc.
+
 ## Scripts
 
 `agent-run.sh` lives in the **project root** and is the standard way to launch any agent.

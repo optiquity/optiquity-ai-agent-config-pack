@@ -22,7 +22,9 @@
 # A reviewer re-verifies each `reason:` still names LIVE-and-CURRENT work.
 #
 # K-set (BD-243 DESIGN §B.1): K1 live transitional pointer; K2-K6 live doc
-# cross-refs; K7 filename/grammar examples; K9-K11 date format examples.
+# cross-refs; K7 filename/grammar examples; K9-K11 date format examples;
+# K12 the new no-history rule's own self-defining lines (the rule quotes the
+# forbidden shapes verbatim — the rule defining itself, not provenance).
 #
 # FORMAT: one allowlisted occurrence per record, blank-line separated.
 #   doc:      <path relative to repo root>
@@ -159,3 +161,79 @@ doc: project-template/docs/pack/PACK-FEEDBACK.md
 pattern: date
 snippet: Status: Ready (2026-06-15)
 reason: status-line date FORMAT example (illustrative format, not provenance).
+
+# ── K12: the operating-docs-no-history-no-bloat rule's own self-defining
+#        lines — the new no-history rule defines itself by quoting the
+#        forbidden history shapes verbatim, so those literal example strings
+#        trip Check 65 on the rule's OWN bullet. Legitimate KEEP (the rule
+#        defining itself): passes T-live (the rule operates today) and fails
+#        T-def (it describes no deferred feature). Sized EXACTLY to the 12
+#        self-referential lines (pack-root trinity ×3 ×2 lines + project
+#        trinity ×3 ×2 lines); the RATIONALE section is clean (0 hits → no
+#        record). Each snippet is unique to its intended line in its doc and
+#        clears no other (incl. no contamination line a strip wave must still
+#        catch). One record per tripping line. ──
+
+# pack-root trinity — the rule bullet's line (a) [user-locked] ×3
+doc: CLAUDE.md
+pattern: user-locked
+snippet: `User-locked YYYY-MM-DD`, "BD-NNN did X" past-action narration,
+reason: the operating-docs-no-history-no-bloat rule's own definition quotes the forbidden shapes verbatim — legitimate KEEP (the rule defining itself), not provenance.
+
+doc: AGENTS.md
+pattern: user-locked
+snippet: `User-locked YYYY-MM-DD`, "BD-NNN did X" past-action narration,
+reason: the operating-docs-no-history-no-bloat rule's own definition quotes the forbidden shapes verbatim — legitimate KEEP (the rule defining itself), not provenance.
+
+doc: GEMINI.md
+pattern: user-locked
+snippet: `User-locked YYYY-MM-DD`, "BD-NNN did X" past-action narration,
+reason: the operating-docs-no-history-no-bloat rule's own definition quotes the forbidden shapes verbatim — legitimate KEEP (the rule defining itself), not provenance.
+
+# pack-root trinity — the rule bullet's line (b) [carry-over + incident] ×3
+doc: CLAUDE.md
+pattern: carry-over incident
+snippet: "per BD-NNN" / "carried from" provenance, incident/SHA refs); (b) ZERO
+reason: the operating-docs-no-history-no-bloat rule's own definition quotes the forbidden shapes verbatim — legitimate KEEP (the rule defining itself), not provenance.
+
+doc: AGENTS.md
+pattern: carry-over incident
+snippet: "per BD-NNN" / "carried from" provenance, incident/SHA refs); (b) ZERO
+reason: the operating-docs-no-history-no-bloat rule's own definition quotes the forbidden shapes verbatim — legitimate KEEP (the rule defining itself), not provenance.
+
+doc: GEMINI.md
+pattern: carry-over incident
+snippet: "per BD-NNN" / "carried from" provenance, incident/SHA refs); (b) ZERO
+reason: the operating-docs-no-history-no-bloat rule's own definition quotes the forbidden shapes verbatim — legitimate KEEP (the rule defining itself), not provenance.
+
+# project-template trinity — the rule paragraph's line (c) [carry-over] ×3
+doc: project-template/CLAUDE.md
+pattern: carry-over
+snippet: past-action narration, provenance/"carried from" notes,
+reason: the operating-docs-no-history-no-bloat rule's own definition quotes the forbidden shapes verbatim — legitimate KEEP (the rule defining itself), not provenance.
+
+doc: project-template/AGENTS.md
+pattern: carry-over
+snippet: past-action narration, provenance/"carried from" notes,
+reason: the operating-docs-no-history-no-bloat rule's own definition quotes the forbidden shapes verbatim — legitimate KEEP (the rule defining itself), not provenance.
+
+doc: project-template/GEMINI.md
+pattern: carry-over
+snippet: past-action narration, provenance/"carried from" notes,
+reason: the operating-docs-no-history-no-bloat rule's own definition quotes the forbidden shapes verbatim — legitimate KEEP (the rule defining itself), not provenance.
+
+# project-template trinity — the rule paragraph's line (d) [incident] ×3
+doc: project-template/CLAUDE.md
+pattern: incident
+snippet: incident or commit-SHA refs); (b) ZERO description of a DEFERRED,
+reason: the operating-docs-no-history-no-bloat rule's own definition quotes the forbidden shapes verbatim — legitimate KEEP (the rule defining itself), not provenance.
+
+doc: project-template/AGENTS.md
+pattern: incident
+snippet: incident or commit-SHA refs); (b) ZERO description of a DEFERRED,
+reason: the operating-docs-no-history-no-bloat rule's own definition quotes the forbidden shapes verbatim — legitimate KEEP (the rule defining itself), not provenance.
+
+doc: project-template/GEMINI.md
+pattern: incident
+snippet: incident or commit-SHA refs); (b) ZERO description of a DEFERRED,
+reason: the operating-docs-no-history-no-bloat rule's own definition quotes the forbidden shapes verbatim — legitimate KEEP (the rule defining itself), not provenance.

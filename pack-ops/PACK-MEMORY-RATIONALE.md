@@ -762,3 +762,56 @@ PreToolUse hook the pack does not want. (c) Per-agent-frontmatter enablement
 (a `skills:`/`tools:` change) — unnecessary: querying needs `Bash` only, which
 all 5 pack agents already carry, and preloading the ~32KB build-oriented
 graphify skill is wasteful for a read-only query.
+
+---
+
+## operating-docs-no-history-no-bloat
+
+**Why.** An operating doc is re-read on essentially every agent and chat
+invocation (the standing battery is ~155 per cycle). History and roadmap
+text in such a doc costs context tokens on every one of those reads, buries
+the live rule under provenance prose, and serves no operational purpose — an
+agent acting on the doc never needs to know which past change introduced a
+rule or that some not-yet-built feature exists. The Why and the future live
+in the right homes (entry stores, maintenance docs, IMPL reports); the
+operating doc states only what currently operates.
+
+**How to apply.** Three bans, applied when authoring or editing any
+operating doc:
+
+- *No history.* Strip every historical / audit-trail shape: dated notes and
+  lock-stamps (the `YYYY-MM-DD` form), past-action narration that says a
+  `BD-NNN` entry did something, `per BD-NNN`-style provenance justification,
+  bare `(BD-NNN)` origin tags on a rule, commit-hash and prior-event
+  references, and "carried-from" provenance. Strip the provenance WITHOUT
+  losing the operative meaning — restate the rule as a standalone directive
+  (e.g. turn "BD-NNN added these gates" into "These gates ensure …"), so the
+  instruction survives intact and only the origin tag is removed.
+- *No deferred-feature mentions.* Remove any prose that describes a deferred,
+  unimplemented, or off-by-default feature — even prose whose only purpose is
+  to say the feature is deferred. State only what currently exists and
+  operates; the mention is re-added when the feature actually ships.
+- *Terse + structured.* Convert mega-bullet run-ons and
+  prose-that-should-be-a-table into clauses or tables, and delete padding —
+  while preserving every directive, trigger, and exception (a clause-set
+  before/after the edit must be equal modulo deleted padding).
+
+**KEEP.** A LIVE forward-pointer to CURRENT in-flight work stays: a pointer
+to an open entry the agent must still act on (the `until BD-NNN` form for a
+migration in flight) and a cross-reference to a live `ARCHITECTURE-*.md`
+companion doc that exists and is read at task time. Two tests gate a KEEP:
+the token must point at live pending work AND keeping it must NOT require
+describing a deferred feature. Format and grammar examples (an illustrative
+filename or date pattern a write-contract emits) also KEEP — they are
+examples the doc acts on, not provenance.
+
+**Carve-out.** The rule binds operating docs ONLY. Reference docs —
+changelog and backlog entry stores, maintenance docs, and IMPL reports —
+are the correct homes for history and roadmap and are unrestricted; the rule
+never strips them.
+
+**Rejected alternatives.** (a) Keeping provenance "for traceability" —
+rejected: traceability lives in the entry stores and version control, not in
+the doc an agent executes. (b) Keeping a deferred-feature note "so readers
+know it is coming" — rejected: an agent never operates a deferred feature, so
+the note is pure context cost; it returns when the feature ships.
