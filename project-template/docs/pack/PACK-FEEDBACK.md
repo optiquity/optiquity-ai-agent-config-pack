@@ -72,7 +72,7 @@ record what's missing. This includes:
   guidance or hook integration is missing.
 - **Platform gaps:** iOS and macOS have dedicated architecture skills,
   deployment skills, and prohibited-pattern lists. Android, Windows,
-  embedded, and web platforms have deferred skills (not yet created). If
+  embedded, and web platforms have no dedicated skills. If
   the project targets a platform without dedicated skills, note what rules
   or patterns were missing from the context files and which skills the
   agents would have benefited from.
