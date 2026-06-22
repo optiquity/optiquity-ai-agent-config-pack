@@ -66,20 +66,20 @@ spec.loader.exec_module(mod)
 if not hasattr(mod, 'check_dangling_example_deliverable_refs'):
     print('FAIL_MISSING check_dangling_example_deliverable_refs'); sys.exit(1)
 # Check 64 must be registered AND the expected-count constant must equal the
-# computed registry length (Check 59's invariant — proves the count bump is
-# consistent: 61 -> 62, NOT to 64).
+# computed registry length (Check 59's invariant — proves the count is
+# consistent with the registered set; the constant tracks every check add).
 nums = [t[0] for t in mod._build_check_registry()]
 if 64 not in nums:
     print('FAIL_NOT_REGISTERED'); sys.exit(1)
-if mod.CHECK_REGISTRY_EXPECTED_COUNT != 62:
-    print('FAIL_COUNT_NOT_62 got', mod.CHECK_REGISTRY_EXPECTED_COUNT); sys.exit(1)
+if mod.CHECK_REGISTRY_EXPECTED_COUNT != 63:
+    print('FAIL_COUNT_NOT_63 got', mod.CHECK_REGISTRY_EXPECTED_COUNT); sys.exit(1)
 if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
     print('FAIL_COUNT_MISMATCH'); sys.exit(1)
 print('OK')
 " > /tmp/vp-check64-import.out 2>&1
 
 if grep -q "^OK$" /tmp/vp-check64-import.out; then
-    t_pass "validate-pack.py imports + Check 64 symbol registered + count invariant holds (== 62)"
+    t_pass "validate-pack.py imports + Check 64 symbol registered + count invariant holds (== 63)"
 else
     t_fail "validate-pack.py import / Check 64 registration / count invariant failed" \
         "$(cat /tmp/vp-check64-import.out)"
