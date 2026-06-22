@@ -37,7 +37,7 @@ Each ENCODING surface must update in lock-step with the audited surface. Asymmet
 
 **Verdict sub-class.** LEAK (operational, test-encoded) — pack-self-management state encoded in a test file's assertions, where the assertion's truth value depends on whether the audited surface admits a forbidden concept. Treat the same as a LEAK in the audited surface itself.
 
-**Worked example.** The BD-185 reconciliation pack-side audit walked the form file (F1) + the validator's per-surface dict (F2) but missed `scripts/tests/test-issue-forms.sh` Group 2 + Group 5 assertions (F3'). The test's hardcoded pack-root assertions encoded the pre-cleanup state and required lock-step update with F1 + F2. Caught post-fact by the PREFLIGHT per-check-test-runs gate, not by the audit itself. Reference: trinity Pack memory § Repo conventions § "Enumerate ENCODING surfaces in pack-side audits".
+**Worked example.** A pack-side surface audit walks the form file (F1) + the validator's per-surface dict (F2) but misses a test file's (e.g. `scripts/tests/test-issue-forms.sh`) Group-level assertions (F3'). The test's hardcoded pack-root assertions encode the pre-cleanup state and require lock-step update with F1 + F2. An asymmetric walk leaves the test asserting a stale invariant. Reference: trinity Pack memory § Repo conventions § "Enumerate ENCODING surfaces in pack-side audits".
 
 **Note:** This methodology is specifically for surface-rule audits (compliance with pack memory rules like deliverable-only or pack/project separation). For standard per-commit code review, the test-coverage check at item 9 above is the relevant principle.
 

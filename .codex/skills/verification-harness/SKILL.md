@@ -81,9 +81,9 @@ assert_eq() {
 }
 ```
 
-Inline these helpers in each test script. (Considered factoring into
-`scripts/lib/test-helpers.sh` and sourcing — DECLINED for now per BD-119
-convention. Keeping helpers inline makes each script self-contained and
+Inline these helpers in each test script. (Factoring into
+`scripts/lib/test-helpers.sh` and sourcing is DECLINED for now.
+Keeping helpers inline makes each script self-contained and
 diff-friendly; a single shared lib is a future optimization, not a
 current requirement.)
 
@@ -209,7 +209,7 @@ Allowed and recommended:
 `scripts/tests/` (or, for the legacy top-level set, `scripts/test*.sh`).
 CI **auto-discovers and shards** it — the `Validate Pack` workflow's
 `tests` job is a DYNAMIC matrix derived at CI time from disk by
-`scripts/lib/ci-shard-plan.py --emit-matrix` (BD-219). There is **no
+`scripts/lib/ci-shard-plan.py --emit-matrix`. There is **no
 manual wiring step**: write the test, commit it, and it runs (sharded)
 on the next push. (A test that genuinely cannot run offline-
 deterministically in CI — a live-network/manual-only utility — is the
@@ -234,7 +234,7 @@ depth — see the relocated examples there.)
   new `scripts/test-<name>.sh`.
 - A new BD that needs to verify multi-step behavior → consider a
   behavior-preservation harness (see `test-migrator-core.sh` for the
-  adapter-test pattern that gated the BD-119 refactor).
+  adapter-test pattern).
 
 Do not duplicate fixture macros across scripts; if two scripts need the
 same fixture, that's the signal to factor — but per "DECLINED for now"

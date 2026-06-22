@@ -1,6 +1,6 @@
 ---
 name: pack-help
-description: Show all pack commands and colloquial mappings. Run when you need a quick reference for `pack-startup`, `pack tracker *`, `validate-pack.py`, or any other top-level pack verb.
+description: Show all pack commands and colloquial mappings. Run when you need a quick reference for `pack-startup`, `validate-pack.py`, or any other top-level pack verb.
 allowed-tools: Bash
 ---
 

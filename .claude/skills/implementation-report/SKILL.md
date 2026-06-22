@@ -11,13 +11,12 @@ caller's prompt specifies. The report is the agent's primary deliverable on
 return — Pack Chat reads it, runs the review/fix cycle in the worktree, and
 (after review-clean) applies the patch and commits. Treat the report as a
 self-contained artifact: Pack Chat must be able to re-derive every change
-from the report alone. The agent's edits live in its worktree, which is HELD
-through the whole review/fix cycle and removed only after the commit lands;
-the `git diff` patch is the post-review-clean artifact (produced when Pack
-Chat re-engages the most-recent read-write agent to emit it), NOT something
-the agent leaves on return. So the report must carry the full change set in
-its own right — that is what makes it self-contained, independent of the
-worktree's eventual teardown.
+from the report alone, independent of the worktree's eventual teardown. The
+agent's edits live in its worktree, which is HELD through the whole
+review/fix cycle and removed only after the commit lands; the `git diff`
+patch is the post-review-clean artifact (produced when Pack Chat re-engages
+the most-recent read-write agent to emit it), NOT something the agent leaves
+on return.
 
 ## Required sections (all of them, in this order)
 

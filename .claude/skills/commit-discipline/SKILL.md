@@ -50,12 +50,8 @@ and write under the parent working tree, reporting the degradation.
 Key the detection on GROUND TRUTH (the actual `pwd` / HEAD), never on a
 settings value or your class assumption — settings can lie (platform bugs
 can silently disagree with `settings.json`), so the runtime self-detect is
-the only deterministic signal:
-
-- `pwd` / HEAD indicate a `worktree-agent-*` worktree ⇒ you are
-  **ISOLATED** (the class default for a read-write agent took effect).
-- Otherwise ⇒ you are **IN-PLACE** (the degraded fallback): code Writes go
-  under the parent working tree; report the degradation.
+the only deterministic signal: a `worktree-agent-*` `pwd`/HEAD ⇒ ISOLATED;
+otherwise ⇒ IN-PLACE (the degraded fallback).
 
 Paste this output verbatim into section 2 of the implementation report
 (see the `implementation-report` skill). The pre-flight is the evidence
@@ -120,11 +116,11 @@ cautionary guard, NOT a blanket "every Write must be under `pwd`" — in
 the IN-PLACE regime the correct target IS the parent tree.
 
 The "Additional working directories" note in the harness environment
-(e.g., `/tmp/...`, `/private/tmp/...`) lists paths the agent may also
-write to. The named `/tmp` handoff dir is where your report lands (and, for
-a read-write agent, the post-review-clean patch once the orchestrator
-re-engages you to emit it). In the degraded in-place fallback the `/tmp`
-dir is scratch only and the report goes to the named parent path.
+(e.g., `/tmp/...`, `/private/tmp/...`) lists paths the agent may also write
+to — including the named `/tmp` handoff dir for the report (and, for a
+read-write agent, the post-review-clean patch). In the degraded in-place
+fallback the `/tmp` dir is scratch only and the report goes to the named
+parent path.
 
 ## 3. Git-state-change ban (absolute)
 

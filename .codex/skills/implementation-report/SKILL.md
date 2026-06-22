@@ -11,13 +11,12 @@ caller's prompt specifies. The report is the agent's primary deliverable on
 return — Pack Chat reads it, runs the review/fix cycle in the worktree, and
 (after review-clean) applies the patch and commits. Treat the report as a
 self-contained artifact: Pack Chat must be able to re-derive every change
-from the report alone. The agent's edits live in its worktree, which is HELD
-through the whole review/fix cycle and removed only after the commit lands;
-the `git diff` patch is the post-review-clean artifact (produced when Pack
-Chat re-engages the most-recent read-write agent to emit it), NOT something
-the agent leaves on return. So the report must carry the full change set in
-its own right — that is what makes it self-contained, independent of the
-worktree's eventual teardown.
+from the report alone, independent of the worktree's eventual teardown. The
+agent's edits live in its worktree, which is HELD through the whole
+review/fix cycle and removed only after the commit lands; the `git diff`
+patch is the post-review-clean artifact (produced when Pack Chat re-engages
+the most-recent read-write agent to emit it), NOT something the agent leaves
+on return.
 
 ## Required sections (all of them, in this order)
 
@@ -92,7 +91,7 @@ revert, or escalate.
 
 Questions that surfaced during implementation. For each: a one-line
 problem statement, disposition (resolved / deferred / escalated), and the
-recommended default if deferred. The C-4 → C-4b POQ-6 pattern: when a
+recommended default if deferred. The fast-follow pattern: when a
 prompt scopes a task narrower than the plan would have, surface the gap
 as a POQ and propose a fast-follow Cnb commit. Do not silently expand
 scope. Do not silently shrink scope without flagging.
@@ -129,19 +128,18 @@ Apply the same rule when generating any other long markdown artifact
 
 ## Deferred-work-becomes-Cnb-commit pattern
 
-When the prompt's scope is narrower than the plan's intent (e.g., "C-4
-adds the migrator engine" but the plan also expected unit tests in C-4),
-do NOT silently include the extra work — that violates the prompt scope
-and inflates the commit. Instead:
+When the prompt's scope is narrower than the plan's intent (e.g., the
+prompt scopes a commit to one component but the plan also expected its
+unit tests in that commit), do NOT silently include the extra work —
+that violates the prompt scope and inflates the commit. Instead:
 
 1. Land the prompt-scoped work as the named commit (C-N).
 2. Surface the gap as a POQ in section 7 of the report.
 3. Recommend a fast-follow Cnb commit (C-Nb) with a one-paragraph
    description of what it should land.
 
-This pattern was established by BD-119 C-4 → C-4b POQ-6 (the test runner
-that should have been in C-4 became C-4b on the next pass). Pack Chat
-decides whether to take the Cnb fast-follow or close the gap differently.
+Pack Chat decides whether to take the Cnb fast-follow or close the gap
+differently.
 
 ## Anti-patterns (do not do these)
 
