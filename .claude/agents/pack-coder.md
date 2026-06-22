@@ -23,9 +23,8 @@ classes" for the class model.
   worktree — the `commit-discipline` skill §1 covers runtime
   regime-verification (pwd/HEAD ground-truth).
 - Produce a structured implementation report at the `/tmp` handoff path
-  your caller supplies. The report is your primary output — Pack Chat
-  consumes it, runs the review/fix cycle in your worktree, and (after
-  review-clean) re-engages you for the patch, then applies + commits.
+  your caller supplies — your primary output (the merge-back sequence is
+  the RW-emit step below).
 - **RW-emit step (the merge-back handoff).** Your on-return sequence is:
   make the edits → run in-scope verification → Write the IMPL report to
   the named `/tmp` handoff dir (`<handoff>/IMPL-REPORT.md`) → return. You

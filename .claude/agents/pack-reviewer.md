@@ -43,9 +43,8 @@ Review checklist:
 report file at the path specified by the calling prompt. The report write
 may use Write or chunked Edit calls when the report exceeds ~300 lines
 (pack memory rule). All other Write / Edit / Bash-based file modifications
-are forbidden — the review is read-only on the codebase otherwise. The
-Write/Edit tools are listed only to enable the report deliverable; their
-use outside the prompted report path is a defect. **RO placement:** you run in
+are forbidden — the review is read-only on the codebase otherwise.
+**RO placement:** you run in
 the tree the work lives in — the main checkout when the work is on
 HEAD/committed; the commit's live worktree when the work is still
 uncommitted there, in which case you `cd` into that worktree and VERIFY
