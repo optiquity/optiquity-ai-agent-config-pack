@@ -96,16 +96,14 @@ Consolidate per rules 48–55:
    in priority order, cross-referencing this PM chat's BACKLOG processing
    workflow (METHODOLOGY.md Part 6).
 
-## Templates 10–12 — Superseded
+## Single-dimension audits
 
-Templates 10 (Documentation Audit), 11 (Architecture / LSP Audit), and 12
-(UI Audit) have been consolidated into the `standard` variant above. The
-auditor's seven-cluster architecture covers all three audit dimensions
-(plus four additional ones) in a single coordinated run with deduplicated
-findings and a unified severity scale.
+The seven-cluster `standard` variant above covers every audit dimension
+(documentation, architecture / LSP, UI, plus four more) in one coordinated
+run with deduplicated findings and a unified severity scale.
 
-If you need to audit only one dimension — for example, to verify a fix — run
-the corresponding subagent directly per `audit-methodology` rule 70:
+To audit only one dimension — for example, to verify a fix — run the
+corresponding subagent directly per `audit-methodology` rule 70:
 
 ```
 ./agent-run.sh <cli> --agent auditor-docs        # documentation drift

@@ -60,10 +60,10 @@ Log observations in four categories as they occur during normal work:
 4. **User friction** — where the human got confused, asked twice, encountered unexpected behavior, or found documented behavior that didn't match tool behavior.
 
 **Coverage gap awareness:** The pack has deep coverage for Apple/Swift/Xcode
-and Python/uv/ruff. Other platforms, IDEs, and languages have thinner or
+and Python/uv/ruff; other platforms, IDEs, and languages have thinner or
 absent coverage. When this project uses a platform, IDE, editor, or language
-where the pack's skills and context files feel thin or absent, observe and
-record what's missing. This includes:
+where the pack's skills and context files feel thin or absent, record what's
+missing — including:
 
 - **IDE and editor gaps:** Xcode has companion templates, post-edit hooks,
   and scheme configuration guidance. VS Code has basic companion templates
@@ -83,10 +83,9 @@ record what's missing. This includes:
   advice? skill referenced deprecated API? context file had stale
   availability guards?), and how quickly the gap was noticed.
 
-These observations flow into the normal observation categories above —
-log them under Workflow, Prompt, Agent Performance, or User Friction as
-appropriate. The Pack Chat uses this data to prioritize new skills and
-platform coverage.
+Log these under the normal categories above (Workflow, Prompt, Agent
+Performance, or User Friction); the Pack Chat uses the data to prioritize
+new skills and platform coverage.
 
 ### Reporting cadence
 
@@ -110,7 +109,7 @@ This check is the PM chat's responsibility. The user should not have to ask for 
 
 ### How delivery works
 
-**Regular:** At a workflow-complete boundary, collect entries since the last delivery. Generate a Markdown batch with: pack version, project name, delivery date, the four observation categories (new entries only), updated answers to Open Questions. Output this for the user to forward to Pack Chat (email, GitHub issue on the pack repo, or pasted into a Pack Chat session). After delivery, mark delivered entries with a delivered-date and update the `## Delivery Log`.
+**Regular:** At a workflow-complete boundary, collect entries since the last delivery into a Markdown batch (pack version, project name, delivery date, the four observation categories — new entries only — and updated Open Question answers). Output it for the user to forward to Pack Chat (email, GitHub issue on the pack repo, or pasted into a Pack Chat session). After delivery, mark delivered entries with a delivered-date and update the `## Delivery Log`.
 
 **Emergency:** Output a minimal escalation message immediately: pack version, what happened, what was expected vs. observed, why it's severe. Log in both `## Emergency Escalation` and `## Delivery Log`.
 

@@ -158,18 +158,15 @@ summary. See `METHODOLOGY.md § RAG index hygiene` for the
 underlying principle (orphans are not benign — they actively
 mislead retrievals).
 
-**Custom project documents.** If your project ships project-specific
-files that should be RAG-ingested (a domain ontology, large
-reference docs), add them under `## Additional project documents`
-near the bottom of this file. **The discriminator is the
-access-method column:** rows whose access-method begins with
-`RAG query` (matching the canonical `METHODOLOGY.md` row's pattern)
-join the manifest as RAG-eligible; rows whose access-method begins
-with `Direct read` are direct-read only and never RAG-ingested. The
-reconciliation logic in `/pm-startup` Step 4 reads this file, takes
-the union of `docs/pack/METHODOLOGY.md` plus every
-`## Additional project documents` row whose access-method starts
-with `RAG`, and treats that union as the authoritative manifest.
+**Custom project documents.** To RAG-ingest project-specific files (a
+domain ontology, large reference docs), add them under `## Additional
+project documents` near the bottom of this file. **The discriminator is
+the access-method column:** rows whose access-method begins with
+`RAG query` (matching the `METHODOLOGY.md` row's pattern) join the
+manifest as RAG-eligible; rows beginning with `Direct read` are never
+RAG-ingested. `/pm-startup` Step 4 treats the union of
+`docs/pack/METHODOLOGY.md` plus every `RAG`-access `## Additional
+project documents` row as the authoritative manifest.
 
 ---
 
@@ -189,10 +186,8 @@ These rules are non-negotiable and always apply on all tools:
   feels mechanical — multi-phase decisions compound, and a
   unilateral default that "works for the next step" can lock the
   project into a path the user would have steered away from.
-  Surface, wait, decide together.
-  This is a specific application of the decision presentation protocol
-  (see the "Decision presentation protocol" bullet in this `## Behavioral
-  rules` section) to the open-questions decision class.
+  This applies the decision presentation protocol (below) to the
+  open-questions decision class.
 - **Decision presentation protocol.** When the PM chat surfaces any
   decision to the developer — architect output review, planner output
   review, open question, agent triage outcome, multi-option fork — the
@@ -225,11 +220,10 @@ These rules are non-negotiable and always apply on all tools:
   auditor, docs-researcher, repo-ops, grpc-schema, or any custom
   x-* agent), re-read the full per-agent prompt file from
   `docs/pack/prompts/<agent>.md`. Do this every single time, even
-  if the file seems familiar or was recently read. "I remember
-  the format" is not a substitute — the pack ships prompt-file
-  updates between pack versions (new variants, new constraints,
-  new completion-report sections), and a PM chat operating from
-  memory misses them. Before handing the generated prompt to the
+  if the file seems familiar or was recently read — the pack ships
+  prompt-file updates between pack versions (new variants, new
+  constraints, new completion-report sections) that a PM chat
+  operating from memory misses. Before handing the generated prompt to the
   developer, VERIFY the prompt includes the REPORT FILE line
   (per `## Permission profiles` requirements) — agents that do
   not receive a REPORT FILE line return findings inline instead
@@ -245,10 +239,9 @@ These rules are non-negotiable and always apply on all tools:
   "ready to commit" until the user has signaled they have read
   the architect's output. The architect-to-next-step gate is the
   user's last cheap window to redirect before downstream work
-  consumes hours of agent time and chat context.
-  This is a specific application of the decision presentation protocol
-  (see the "Decision presentation protocol" bullet in this `## Behavioral
-  rules` section) to the architect-output decision class.
+  consumes hours of agent time and chat context. This applies the
+  decision presentation protocol (above) to the architect-output
+  decision class.
 - **Select skills using PLATFORM-SKILLS.md.** Every agent prompt must include
   the correct skills for the agent and project type. Do not guess — read the
   matrix.
@@ -496,12 +489,10 @@ re-engage every later read-write agent into that existing worktree.
 There is **no platform safety net** that stops a non-isolated read-write
 agent from writing the main working tree, and nothing at the platform
 level commits on the PM chat's behalf or blocks a stray git verb. So two
-guarantees are **load-bearing, not advisory**: by class, every read-write
-agent runs in an isolated worktree (the first coder of a commit creates
-it; later read-write agents reuse it), and the no-state-changing-git rule
-above (agents never stage, commit, or run any other working-tree- or
-ref-mutating git verb) is what keeps an isolated agent's work safe to
-merge back. Hold both.
+guarantees are **load-bearing, not advisory** — hold both: by class,
+every read-write agent runs in an isolated worktree, and the
+no-state-changing-git rule above keeps an isolated agent's work safe to
+merge back.
 
 **Spawn in the background.** Spawn agents in the background so the PM
 chat stays interactive while the agent runs — you keep answering the
@@ -804,8 +795,8 @@ PM Chat invokes the **planner** if and only if the architect's call
 requests planning — typically when the phase has more than ~3 tasks
 or non-trivial sequencing. The architect's output explicitly states
 "planner pass needed" or "no planner pass needed; tasks are
-self-evident from the TD content." The planner-invocation trigger
-for Path 1 is therefore explicit: **the architect's call decides**.
+self-evident from the TD content." For Path 1, **the architect's call
+decides** the planner-invocation trigger.
 
 ### Verb shape
 

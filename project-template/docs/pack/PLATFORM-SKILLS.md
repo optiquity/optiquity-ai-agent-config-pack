@@ -65,17 +65,12 @@ targets, and deployment platforms — be inclusive.
 |---|---|
 | `ios` | apple-architecture-core, ios-architecture, swift-best-practices, swift-concurrency-patterns, dependency-swift |
 | `macos` | apple-architecture-core, macos-architecture, swift-best-practices, swift-concurrency-patterns, dependency-swift |
-| `android` *(deferred)* | android-architecture, kotlin-best-practices, dependency-kotlin |
-| `web-browser` *(deferred)* | web-architecture, typescript-best-practices, dependency-node |
-| `linux-server` | (no D1 skill — Python or Rust language skills cover via D2; see also intersections) |
-| `embedded-mcu` *(deferred)* | embedded-mcu-architecture, c-language, cpp-language |
-| `embedded-linux` *(deferred)* | embedded-linux-architecture |
-| `windows` *(deferred)* | windows-architecture |
+| `linux-server` | (no D1 skill — Python language skills cover via D2; see also intersections) |
 
 **D1-implied language skills.** Languages bound to a single D1 family
-(Swift⇐Apple, future Kotlin⇐Android, future TypeScript/JavaScript⇐web,
-C/C++⇐embedded-MCU) load via D1 — they are listed in the rows above and
-are not separately selected via D2. The `objc-language` skill loads
+(Swift⇐Apple, C/C++⇐embedded-Python-via-C-API) load via D1 — they are
+listed in the rows above and are not separately selected via D2. The
+`objc-language` skill loads
 under D1 ∈ {ios, macos} *conditional on Objective-C source files being
 present in the project*.
 
@@ -98,8 +93,6 @@ that can appear in *any* D1.
 | D2 value | Skills added |
 |---|---|
 | `python` | python-best-practices, dependency-python *(plus python-data-architecture via the intersection table when `python_data_marker_detected()` is true; plus python-server-architecture via the intersection table when D3=server)* |
-| `rust` *(deferred)* | rust-best-practices, dependency-rust |
-| `go` *(deferred)* | go-best-practices, dependency-go |
 
 Select all D2 languages present. Each adds its own skills independently.
 The Apple-family languages (Swift, Objective-C, C, C++) are NOT selected
@@ -134,9 +127,6 @@ Multiple values per project are normal.
 |---|---|
 | `grpc` | grpc-patterns |
 | `rest` | rest-patterns |
-| `graphql` *(deferred)* | graphql-patterns |
-| `realtime` *(deferred)* | realtime-patterns *(WebSocket / SSE)* |
-| `messaging` *(deferred)* | messaging-patterns *(Webhooks / AMQP)* |
 | `none` | (none) |
 
 Select all protocols in use. A project using both gRPC (internal) and
@@ -152,11 +142,6 @@ plus a Linux container backend selects two D5 values.
 |---|---|
 | `apple-distribution` | deployment-apple |
 | `linux-container` | deployment-python *(when D2=python; intersection-loaded — see §"Intersection table")* |
-| `apple-enterprise` *(deferred)* | (TestFlight / ad-hoc; reuses deployment-apple today, may split later) |
-| `android-distribution` *(deferred)* | deployment-android |
-| `web-static-cdn` *(deferred)* | deployment-web-static |
-| `web-edge` *(deferred)* | deployment-web-edge |
-| `embedded-firmware` *(deferred)* | deployment-embedded |
 
 D5 absorbs the deployment skills that previously had no clean home in
 the four-dimension model (`deployment-apple` was implicitly carried by
@@ -169,16 +154,14 @@ concern explicit and separates it from D1 (runtime substrate) and D3
 
 A monorepo with an Apple app + Linux container backend has D5 =
 {`apple-distribution`, `linux-container`} and loads BOTH
-`deployment-apple` AND `deployment-python` globally. These skills then
-apply *to the right component* via per-component scoping in the agent
-prompt — `deployment-apple` is not relevant to the backend's
+`deployment-apple` AND `deployment-python` globally; the loader trusts
+the agent prompt (constructed by the PM chat) to scope each *to the
+right component* — `deployment-apple` is not relevant to the backend's
 containerization, and `deployment-python` is not relevant to the Apple
-app's notarization. The current loader model loads both skills globally
-and trusts the agent prompt (constructed by the PM chat) to scope
-correctly. This is the documented v11 behavior; per-component
-fine-grained loading is not in scope for v11. Agents auditing or
-modifying a specific component should confine their reading of the
-loaded deployment skills to the component(s) the prompt scopes them to.
+app's notarization. Per-component fine-grained loading is not in scope
+for v11. Agents auditing or modifying a specific component should confine
+their reading of the loaded deployment skills to the component(s) the
+prompt scopes them to.
 
 ### Tier 0 — Base skills (load for every project, every agent)
 
@@ -224,8 +207,6 @@ This table is the authoritative source for those sparse cells:
 | `python-observability-patterns` | D2=python ∩ (D3=server ∨ observability-marker present) | `scripts/lib/detect.sh::python_observability_marker_detected()` is the canonical predicate; checks for OpenTelemetry / Prometheus client / structured-logging dependencies in `requirements.txt` / `pyproject.toml` / `setup.py` / `setup.cfg` / `uv.lock` and for source-file imports of `opentelemetry` / `prometheus_client` / `structlog`. Server projects (D3=server) load unconditionally even without the marker so observability rules apply during new-code review. |
 | `apple-swiftdata-patterns` | D1 ∈ {ios, macos} ∩ swiftdata-marker present | `scripts/lib/detect.sh::swiftdata_marker_detected()` is the canonical predicate; checks for any `.swift` file containing `import SwiftData` OR an `@Model` macro attribute, OR a dependency manifest (`Package.swift`, `Package.resolved`, `Podfile`, `Podfile.lock`) listing SwiftData explicitly. SwiftData is first-party Apple (iOS 17+ / macOS 14+) so the manifest marker rarely fires; the source-file markers are primary. Loads alongside `apple-architecture-core` + the per-OS architecture skill |
 | `deployment-python` | D2=python ∩ D5=linux-container | PM chat reads D2 + D5 selections |
-| *(future)* `swift-server-architecture` | D1 ∈ {macos, linux-server-with-Swift} ∩ D3=server | Deferred; placeholder for Vapor / Hummingbird |
-| *(future)* `node-server-architecture` | D1=linux-server ∩ D2=typescript ∩ D3=server | Deferred; placeholder for Node servers |
 
 The PM chat (or a future loader script) walks D1–D5 selectors plus this
 intersection table; each skill's predicate is evaluated against the
@@ -387,7 +368,7 @@ what the agent's role requires.
 
 **auditor-ui** (skipped for server-only projects)
 - Trigger: audit-methodology
-- Dimensional (filtered): apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices *(for view code idioms)*; future android-architecture, web-architecture, embedded-mcu-architecture as D1 expands
+- Dimensional (filtered): apple-architecture-core, ios-architecture, macos-architecture, swift-best-practices *(for view code idioms)*
 - Platform filtering: only loaded for projects with a UI layer (UI-presence precondition). The platform architecture skills supply the accessibility, view-thickness, and UI-state rules — no separate accessibility skill.
 
 **auditor-ops** (always runs)
@@ -500,32 +481,6 @@ operational, not agent role guidance.
 
 **Total skills: 37** (14 Tier 0 base + 20 dimensional / intersection + 1 trigger-loaded + 2 PM chat operational).
 
-### Deferred skills (create when project need arises)
-
-Deferred skill values are also enumerated inline in the D1 / D2 / D5
-tables above (rows tagged *(deferred)*); this section provides a flat
-roll-up.
-
-**D1 — Runtime / OS substrate:** android-architecture, web-architecture,
-embedded-mcu-architecture, embedded-linux-architecture, windows-architecture.
-
-**D2 — Cross-platform languages:** rust-best-practices, dependency-rust,
-go-best-practices, dependency-go.
-
-**D1-implied languages (deferred with their D1 value):** kotlin-best-practices,
-dependency-kotlin (with android-architecture); typescript-best-practices,
-dependency-node (with web-architecture); csharp-best-practices,
-dependency-dotnet (with windows-architecture).
-
-**D5 — Deployment surface:** deployment-android, deployment-web-static,
-deployment-web-edge, deployment-embedded.
-
-**Intersection (deferred sibling servers):** swift-server-architecture
-(Vapor / Hummingbird), node-server-architecture.
-
-**D4 — Communication protocols:** graphql-patterns, realtime-patterns
-(WebSocket / SSE), messaging-patterns (Webhooks / AMQP), soap-patterns.
-
 ---
 
 ## Custom agents
@@ -581,8 +536,7 @@ that govern each dimension and the governance checklist for new skills.
 The skill catalog uses four suffixes, each tied to a different kind of
 content. **New skills must follow this convention.** Existing skills are
 not renamed in v11.0 — the cost of breaking external references
-outweighs the consistency benefit at this point; a future v12
-enforcement migration is tracked in future pack work.
+outweighs the consistency benefit.
 
 - **`*-best-practices`** — languages with idiomatic-style rules
   (formatting, dead-code policy, type-system idioms, error-handling

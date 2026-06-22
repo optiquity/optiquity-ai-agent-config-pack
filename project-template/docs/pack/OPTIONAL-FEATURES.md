@@ -101,35 +101,30 @@ posture is a `settings.json` key you set manually. The pack ships NO settings
 file — you add the keys to your OWN settings (see below).
 
 **What it is.** When the PM chat spawns a read-write agent (your `coder`, or
-`repo-ops` for scripted writes) in the background to make edits in parallel, it
-isolates that agent in its own git worktree so the agent's edits never touch
-your main working tree directly. The first coder of a commit creates the
-worktree; the ENTIRE review/fix cycle for that commit runs inside it — the
-read-only reviewer reads the work there and a fix-coder REUSES that same
-worktree (never a new one). The read-write agent does NOT emit a patch up front
-(the work may still be wrong); the patch is produced ONLY after the reviewer
-confirms the work clean, by re-engaging the most-recent read-write agent (in
-Claude Code, via the Agent-team peer-message path; if your CLI offers no
-peer-messaging, re-spawn a fresh coder against the worktree to produce it). The
-PM chat then applies that reviewed-clean patch onto your branch and commits —
-the agent itself never stages or commits (the no-state-changing-git contract is
-preserved end-to-end). Read-only agents (your `architect`, `reviewer`,
-`planner`, the `auditor` family, and the other report-only profiles) run in the
-tree the work lives in — your main tree when the work is committed, the live
-worktree when the work is still uncommitted there (they cd in and verify
-pwd/HEAD at runtime). They write a report and emit no patch. The in-session
-spawn + merge-back procedure lives in `docs/pack/PM-CHAT.md` ("In-session agent
-spawning").
+`repo-ops` for scripted writes) in the background, it isolates that agent in its
+own git worktree so its edits never touch your main working tree directly. The
+first coder of a commit creates the worktree; the ENTIRE review/fix cycle for
+that commit runs inside it — the read-only reviewer reads the work there and a
+fix-coder REUSES that same worktree (never a new one). The read-write agent does
+NOT emit a patch up front (the work may still be wrong); the patch is produced
+ONLY after the reviewer confirms the work clean, by re-engaging the most-recent
+read-write agent (in Claude Code, via the Agent-team peer-message path; else
+re-spawn a fresh coder against the worktree). The PM chat then applies that
+reviewed-clean patch onto your branch and commits — the agent itself never
+stages or commits. Read-only agents (`architect`, `reviewer`, `planner`, the
+`auditor` family, and the other report-only profiles) run in the tree the work
+lives in — your main tree when the work is committed, the live worktree when it
+is still uncommitted there (they cd in and verify pwd/HEAD at runtime) — and
+emit a report, no patch. The full spawn + merge-back procedure lives in
+`docs/pack/PM-CHAT.md` ("In-session agent spawning").
 
 **When this matters for your project.** Read-write agents run isolated by class,
 so isolation always applies to your `coder`/`repo-ops` work; it especially
 matters when the PM chat spawns SEVERAL read-write agents in parallel and you do
-not want their edits to collide in one shared working tree, or when you want a
-clean patch-handoff boundary for each coder. If isolation is unavailable (an
-environment without worktree support), the in-place (non-isolated) regime is the
-DEGRADED fallback — it still works without any settings, but it exposes
-in-progress work to your main tree, which is exactly what the isolated default
-avoids.
+not want their edits to collide in one shared working tree. If isolation is
+unavailable (an environment without worktree support), the in-place
+(non-isolated) regime is the DEGRADED fallback — it still works without any
+settings, but it exposes in-progress work to your main tree.
 
 **How to enable isolated parallel subagents — TWO INDEPENDENT mechanisms.**
 The feature is governed by two orthogonal knobs. Do not conflate them.
@@ -288,20 +283,6 @@ inside a manual worktree.
 
 ---
 
-## Codex CLI — Optional features
-
-*Placeholder. The Config Pack will document Codex-specific opt-in
-features here as they ship and prove useful.*
-
----
-
-## Antigravity CLI — Optional features
-
-*Placeholder. The Config Pack will document Antigravity-specific opt-in
-features here as they ship and prove useful.*
-
----
-
 ## CI test parallelization (GitHub Actions matrix)
 
 **Status:** Standard GitHub Actions — available on all plan tiers (Free,
@@ -383,9 +364,9 @@ regardless of how many suites you add or remove.
 
 **No pack-specific setup needed.** Your project's existing test scripts
 (`scripts/test.sh`, `scripts/test-swift.sh`, `scripts/test-python.sh`,
-etc.) run inside the matrix exactly as they would in any shell step — no
-changes to the scripts themselves. The matrix controls orchestration; the
-scripts remain standalone and human-runnable locally without change.
+etc.) run inside the matrix exactly as they would in any shell step. The
+matrix controls orchestration; the scripts remain standalone and
+human-runnable locally without change.
 
 **Caveats.**
 - **Suite independence is required.** Each matrix combination runs on a
