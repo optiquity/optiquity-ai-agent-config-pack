@@ -29,12 +29,11 @@ per-entry tree, sole SSOT (committed state) — `/backlog/_toc.md` index), `/cha
 (version history; per-entry tree, sole SSOT (committed state) — `/changelog/_toc.md` index),
 `pack-ops/PACK-CHAT.md` (PM chat rules), `pack-ops/PACK-AGENTS.md` (agent routing for pack
 work). Per-entry trees are the SOLE SSOT + readable form (committed state; there is no
-monolithic mirror — BD-203 deleted `pack-ops/BACKLOG.md` +
-`pack-ops/CHANGELOG.md`): read `/backlog/_rules.md` and
+monolithic mirror): read `/backlog/_rules.md` and
 `/changelog/_rules.md` for the per-stream contract before any per-entry
 edit.
 
-**Migrator framework (BD-119).** When authoring a new
+**Migrator framework.** When authoring a new
 `scripts/migrate-vN-to-vM.sh`, source `scripts/lib/migrator-core.sh` and
 supply the adapter contract (`MIGRATOR_*` vars + the hook functions). See
 `maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md` for the
@@ -179,15 +178,13 @@ PACK-AGENTS.md current".
   → triage → fix-coder → commit → NEXT BD's coder). End-of-batch
   reviewer runs once on the full batch after all per-BD cycles
   complete. Single-BD batches: only one cycle needed. Never delay
-  per-BD reviews to end-of-batch retroactive recovery (Batch-21c-
-  style); that is an exception for pre-2026-05-15 batches only.
+  per-BD reviews to end-of-batch retroactive recovery.
 - **Pack Chat presents triage to user before fix-coder spawns.** After
   every reviewer pass, Pack Chat reads the report, triages each
   finding (FIX vs SKIP, with rationale for SKIPs — default FIX-ALL per
   `feedback-fix-all-review-findings`), and surfaces the triage to the
   user. User can override per finding before fix-coder spawns. User
-  approves the resulting fix commit (not per-finding approval — that
-  was the pre-2026-05-16 pattern and produced too much friction). The
+  approves the resulting fix commit, not per-finding. The
   triage gate is between reviewer and fix-coder; the commit gate is
   between fix-coder IMPL-REPORT and the `git commit`.
 - **Triage all reviewer findings; default fix-all; nits become tech
@@ -455,18 +452,14 @@ PACK-AGENTS.md current".
 - **Per-entry trees — sole SSOT (pack: no mirror).**
   The pack `/backlog/` and `/changelog/` per-entry trees (each with a
   generated `_toc.md` index) are the **SOLE source of truth and readable
-  form** for pack entries. **There is no monolithic mirror** — BD-203
-  deleted `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md`; do not
-  recreate them. The project streams (`docs/project/backlog/` /
+  form** for pack entries. **There is no monolithic mirror**; do not
+  recreate `pack-ops/BACKLOG.md` / `pack-ops/CHANGELOG.md`. The project streams (`docs/project/backlog/` /
   `implementation-plan/` / `changelog/`) are per-entry source of truth in
   flat-file mode; their monolithic `BACKLOG.md` /
   `IMPLEMENTATION-PLAN.md` / `CHANGELOG.md` files remain regenerated
   mirrors (read-stable but never source of truth) until BD-206 retires
   the project-side mirror. **Flat-file per-entry is the SOLE supported
-  mode on both surfaces.** Tracker (GH Issues) integration is DEFERRED
-  indefinitely with no release version (BD-214); the ability to flip to
-  tracker mode is BLOCKED on both surfaces and the tracker code is
-  retained DORMANT and test-covered for a future resumption. Write
+  mode on both surfaces.** Write
   procedure per `<stream>/_rules.md`.
   STATUS.md and any other convenience view carry an explicit
   "never source of truth" disclaimer; if a convenience view drifts, the
@@ -476,7 +469,7 @@ PACK-AGENTS.md current".
   flipping `Status: Open` to `Status: Resolved` and filling the `Resolved:`
   line. Do not propose moving entries to a separate section. Flip in the
   per-entry file (`/backlog/BD-NNN.md`) and regenerate `_toc.md` (flat-file
-  is the sole supported mode; tracker mode is deferred — BD-214).
+  is the sole supported mode).
   `[roles: universal]`
 - **Separate pack ops from pack product.** Pack ops files (CLAUDE.md,
   AGENTS.md, GEMINI.md, PACK-CHAT.md, PACK-AGENTS.md, the `/backlog/` + `/changelog/` trees, etc.)
@@ -558,7 +551,7 @@ PACK-AGENTS.md current".
   requires architect+user sign-off). Current sanctioned set: exactly
   `{scripts/lib/detect.sh, scripts/pack-help.sh}`. `[roles: architect coder]
   [rationale: dependency-direction-placement]`
-- **Graph-first context when the knowledge graph exists (BD-225).** If
+- **Graph-first context when the knowledge graph exists.** If
   `$(git rev-parse --show-toplevel)/graphify-out/graph.json` exists, prefer
   the graph for orientation / relationship / blast-radius / "what relates to
   X" / "where does Y live" questions (a `graphify query` is read-only,
@@ -604,10 +597,9 @@ PACK-AGENTS.md current".
   graph; they never BUILD/refresh it (only building costs subscription;
   building is a main-session/orchestrator job). In Antigravity this rule
   applies the same way; pack agents are invoked via Antigravity's subagent
-  mechanism (`agy` plus the bundled `pack-<name>` plugin/subagent). Whether
-  an Antigravity agent actually consumes this `GEMINI.md` rule at spawn —
-  cross-CLI EFFECTIVENESS — is verified separately under BD-233; the rule
-  ships here for trinity parity and is inert text where unconsumed. Boundary
+  mechanism (`agy` plus the bundled `pack-<name>` plugin/subagent). The rule
+  ships here for trinity parity and is inert text where an Antigravity agent
+  does not consume this `GEMINI.md` rule at spawn. Boundary
   note: the graph MAY index the whole repo incl. `project-template/`;
   consuming it to answer a deliverable question is fine — the rule + setup
   stay pack-side. `[roles: universal] [rationale: graph-first-context]`
@@ -629,8 +621,7 @@ PACK-AGENTS.md current".
 
 ### Project goals (v11)
 
-- Flat-file per-entry is the sole supported mode; tracker integration is
-  deferred (no version) with code retained dormant — BD-214.
+- Flat-file per-entry is the sole supported mode.
 - OT-style v10→v11 migration is automated; OT itself is read-only for
   testing (use `/tmp` clones or scratch fixtures, never write to real OT).
 

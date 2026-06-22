@@ -31,9 +31,9 @@ Key files to read before working on the pack:
 - `/changelog/` — version history details (per-entry tree; sole SSOT (committed state) — read `/changelog/_toc.md` for an index, `/changelog/_rules.md` for the contract)
 - `pack-ops/PACK-CHAT.md` — PM chat operating rules
 - `pack-ops/PACK-AGENTS.md` — agent routing table for pack development work
-- `/backlog/`, `/changelog/` — per-entry source-of-truth trees + readable form; the SOLE SSOT (committed state; read `/backlog/_rules.md` and `/changelog/_rules.md` for the per-stream contract). There is no monolithic mirror — BD-203 deleted `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md`.
+- `/backlog/`, `/changelog/` — per-entry source-of-truth trees + readable form; the SOLE SSOT (committed state; read `/backlog/_rules.md` and `/changelog/_rules.md` for the per-stream contract). There is no monolithic mirror.
 
-**Migrator framework (BD-119).** When authoring a new
+**Migrator framework.** When authoring a new
 `scripts/migrate-vN-to-vM.sh`, source `scripts/lib/migrator-core.sh` and
 supply the adapter contract (`MIGRATOR_*` vars + the hook functions). See
 `maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md` for the
@@ -210,15 +210,13 @@ PACK-AGENTS.md current".
   → triage → fix-coder → commit → NEXT BD's coder). End-of-batch
   reviewer runs once on the full batch after all per-BD cycles
   complete. Single-BD batches: only one cycle needed. Never delay
-  per-BD reviews to end-of-batch retroactive recovery (Batch-21c-
-  style); that is an exception for pre-2026-05-15 batches only.
+  per-BD reviews to end-of-batch retroactive recovery.
 - **Pack Chat presents triage to user before fix-coder spawns.** After
   every reviewer pass, Pack Chat reads the report, triages each
   finding (FIX vs SKIP, with rationale for SKIPs — default FIX-ALL per
   `feedback-fix-all-review-findings`), and surfaces the triage to the
   user. User can override per finding before fix-coder spawns. User
-  approves the resulting fix commit (not per-finding approval — that
-  was the pre-2026-05-16 pattern and produced too much friction). The
+  approves the resulting fix commit, not per-finding. The
   triage gate is between reviewer and fix-coder; the commit gate is
   between fix-coder IMPL-REPORT and the `git commit`.
 - **Triage all reviewer findings; default fix-all; nits become tech
@@ -246,7 +244,7 @@ PACK-AGENTS.md current".
   `subagent_type=pack-<name>` (sub-agent within Pack Chat). The pack repo
   has no `agent-run.sh` — that's a project template helper, not a pack
   invocation method.
-- **Inject the graph path into every spawn prompt (BD-226, Claude-only).**
+- **Inject the graph path into every spawn prompt (Claude-only).**
   Under worktree isolation a spawned agent's `$(git rev-parse
   --show-toplevel)` resolves to the empty worktree root where gitignored
   `graphify-out/` is absent, so the orchestrator MUST derive the real graph
@@ -255,7 +253,7 @@ PACK-AGENTS.md current".
   resulting absolute literal into every spawn prompt — only when that
   canonical `graphify-out/graph.json` exists (else inject no path). The agent
   queries with `graphify <verb> … --graph <injected>`, NEVER its own
-  toplevel. See § "Graph-first context (BD-225)" for the full contract + the
+  toplevel. See § "Graph-first context" for the full contract + the
   Claude-only Trinity-exempt note.
 - **Agent prompt requirements.** Every agent prompt must include: context
   (what the codebase is, what the task is), output file path, read-only
@@ -278,7 +276,7 @@ PACK-AGENTS.md current".
   be re-engaged/reused (its work is factual inventory, accumulated context helps, and it
   carries no design bias). Two carve-outs override the fresh-instance default: (1) **user
   override** — the user EXPLICITLY asks to re-engage an existing agent (in Claude Code
-  via `SendMessage` to that instance — the BD-241 discoverability mechanism then
+  via `SendMessage` to that instance — the discoverability mechanism then
   re-finds it; on Codex / Antigravity via the platform's re-engage path); and (2)
   **architect challenge** — a good, evidence- and logic-based reason argued per case (not
   a blanket exemption). This rule REINFORCES `fresh-agent-default` (it is that
@@ -416,8 +414,7 @@ PACK-AGENTS.md current".
   parallel-vs-dependent map in its OWN section of the design/plan; Pack
   Chat consumes the map to schedule parallel worktree waves vs serial
   commits (same-file commits serialize). `worktree.bgIsolation` governs
-  background SESSIONS only (not sub-agents) — BD-218. Trinity-exempt
-  (Claude-only; Codex/Antigravity = BD-217).
+  background SESSIONS only (not sub-agents). Trinity-exempt (Claude-only).
 - **Default sub-agent spawns to background.** Every Agent-tool
   invocation from Pack Chat uses `run_in_background: true` so the chat
   stays interactive while the sub runs. User has auto-mode on; the
@@ -426,7 +423,7 @@ PACK-AGENTS.md current".
   Codex parallel-spawn behavior is implicit (parallel-by-default, capped
   by `agents.max_threads`); Antigravity parallel-spawn is implicit via its
   dynamic-subagent mechanism (the `define_subagent` / plugin-roster
-  subagent invocation; preview — coordinate BD-217). No cross-CLI parity
+  subagent invocation; preview). No cross-CLI parity
   edit needed — each platform's parallel-or-async behavior is
   platform-native.
 - **Agent-team stage lifecycle + per-commit fresh-coder.** With
@@ -446,8 +443,7 @@ PACK-AGENTS.md current".
   CLOSED-COMPLETED) and Antigravity `agy` (inter-agent ID-addressing +
   idle auto-rewake) now ship peer-messaging ANALOGS — but they are
   flag-gated / not-yet-GA-documented (Codex) and partly-unverified
-  (Antigravity), so this MECHANISM stays Claude-only here; the
-  cross-CLI mapping is BD-217.)
+  (Antigravity), so this MECHANISM stays Claude-only here.)
 - **Record every spawn in the durable registry; re-find by name→agentId
   (Claude-only mechanism).** The orchestrator records each Agent-tool spawn — its
   unique `name` (see `### Agent invocation rules` `[rationale: spawn-unique-naming]`),
@@ -461,7 +457,7 @@ PACK-AGENTS.md current".
   re-spawn). Consult the registry ONLY after the `fresh-agent-default` gate authorizes
   a re-engage — this fixes HOW-to-find, not WHEN-to-reengage. The find/registry
   MECHANISM is Claude-only here; Codex MAv2 (`list_agents`/`resume_agent`) and
-  Antigravity `agy` analogs exist but need their own verification + mapping (BD-217).
+  Antigravity `agy` analogs exist but need their own verification + mapping.
   `[roles: universal] [rationale: spawn-registry-find]`
 - **Trinity exemption.** This sub-section is Claude-specific (not
   mirrored in `AGENTS.md` / `GEMINI.md`) because its rules are built
@@ -473,8 +469,7 @@ PACK-AGENTS.md current".
   CLOSED-COMPLETED) and Antigravity `agy` (inter-agent ID-addressing +
   idle auto-rewake) now ship peer-messaging ANALOGS, but they are
   flag-gated / not-yet-GA-documented (Codex) and partly-unverified
-  (Antigravity) — so this mechanism stays Claude-only here; the
-  cross-CLI mapping is BD-217.
+  (Antigravity) — so this mechanism stays Claude-only here.
 
 ### Pack Chat scope
 
@@ -586,18 +581,14 @@ PACK-AGENTS.md current".
 - **Per-entry trees — sole SSOT (pack: no mirror).**
   The pack `/backlog/` and `/changelog/` per-entry trees (each with a
   generated `_toc.md` index) are the **SOLE source of truth and readable
-  form** for pack entries. **There is no monolithic mirror** — BD-203
-  deleted `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md`; do not
-  recreate them. The project streams (`docs/project/backlog/` /
+  form** for pack entries. **There is no monolithic mirror**; do not
+  recreate `pack-ops/BACKLOG.md` / `pack-ops/CHANGELOG.md`. The project streams (`docs/project/backlog/` /
   `implementation-plan/` / `changelog/`) are per-entry source of truth in
   flat-file mode; their monolithic `BACKLOG.md` /
   `IMPLEMENTATION-PLAN.md` / `CHANGELOG.md` files remain regenerated
   mirrors (read-stable but never source of truth) until BD-206 retires
   the project-side mirror. **Flat-file per-entry is the SOLE supported
-  mode on both surfaces.** Tracker (GH Issues) integration is DEFERRED
-  indefinitely with no release version (BD-214); the ability to flip to
-  tracker mode is BLOCKED on both surfaces and the tracker code is
-  retained DORMANT and test-covered for a future resumption. Write
+  mode on both surfaces.** Write
   procedure per `<stream>/_rules.md`.
   STATUS.md and any other convenience view carry an explicit
   "never source of truth" disclaimer; if a convenience view drifts, the
@@ -607,7 +598,7 @@ PACK-AGENTS.md current".
   flipping `Status: Open` to `Status: Resolved` and filling the `Resolved:`
   line. Do not propose moving entries to a separate section. Flip in the
   per-entry file (`/backlog/BD-NNN.md`) and regenerate `_toc.md` (flat-file
-  is the sole supported mode; tracker mode is deferred — BD-214).
+  is the sole supported mode).
   `[roles: universal]`
 - **Separate pack ops from pack product.** Pack ops files (CLAUDE.md,
   AGENTS.md, GEMINI.md, PACK-CHAT.md, PACK-AGENTS.md, the `/backlog/` + `/changelog/` trees, etc.)
@@ -689,7 +680,7 @@ PACK-AGENTS.md current".
   requires architect+user sign-off). Current sanctioned set: exactly
   `{scripts/lib/detect.sh, scripts/pack-help.sh}`. `[roles: architect coder]
   [rationale: dependency-direction-placement]`
-- **Graph-first context when the knowledge graph exists (BD-225).** When a
+- **Graph-first context when the knowledge graph exists.** When a
   knowledge graph exists, prefer
   the graph for orientation / relationship / blast-radius / "what relates to
   X" / "where does Y live" questions (a `graphify query` is read-only,
@@ -724,8 +715,8 @@ PACK-AGENTS.md current".
   surfaces, THEN greps each to grep-zero — "my task is exhaustive
   enumeration, so I'll grep the whole tree" is the prohibited move, because
   the graph exists precisely to widen enumeration beyond your a-priori
-  pattern. **Path-injection under worktree isolation
-  (BD-226):** the absolute graph path is NEVER recomputed by a spawned agent
+  pattern. **Path-injection under worktree isolation:**
+  the absolute graph path is NEVER recomputed by a spawned agent
   from its own toplevel. The ORCHESTRATOR evaluates the derivation formula
   `$(git rev-parse --show-toplevel)/graphify-out/graph.json` AT RUNTIME in
   its canonical checkout and INJECTS the resulting absolute literal into
@@ -777,7 +768,6 @@ PACK-AGENTS.md current".
 
 ### Project goals (v11)
 
-- Flat-file per-entry is the sole supported mode; tracker integration is
-  deferred (no version) with code retained dormant — BD-214.
+- Flat-file per-entry is the sole supported mode.
 - OT-style v10→v11 migration is automated; OT itself is read-only for
   testing (use `/tmp` clones or scratch fixtures, never write to real OT).
