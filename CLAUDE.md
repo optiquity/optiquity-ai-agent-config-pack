@@ -267,22 +267,23 @@ PACK-AGENTS.md current".
 - **No prior reviews to pack-reviewer.** Reviewer prompts reference
   ARCHITECTURE / PLAN docs only — never prior `PACK-REVIEW-*.md` reports.
   Including a prior review biases the new review.
-- **Reconciliation-instance independence.** A reconciliation pass (the round that
-  resolves an adversarial review's findings before the work advances) uses a FRESH,
-  independent instance — NEVER the original author (contaminated + design-biased toward
-  its own design) NOR the adversarial reviewer (biased toward its own findings). This
-  applies to EVERY agent role — architect, planner, coder, reviewer, auditor, repo-ops,
-  tester, grpc-schema, and any other — with ONE exception: `docs-researcher`, which MAY
-  be re-engaged/reused (its work is factual inventory, accumulated context helps, and it
-  carries no design bias). Two carve-outs override the fresh-instance default: (1) **user
-  override** — the user EXPLICITLY asks to re-engage an existing agent (in Claude Code
-  via `SendMessage` to that instance — the discoverability mechanism then
-  re-finds it; on Codex / Antigravity via the platform's re-engage path); and (2)
-  **architect challenge** — a good, evidence- and logic-based reason argued per case (not
-  a blanket exemption). This rule REINFORCES `fresh-agent-default` (it is that
-  independence principle applied to the reconciliation step) and SUBORDINATES the
-  Agent-team "SendMessage for follow-ups" convenience: a reconciliation pass is a fresh
-  spawn unless a carve-out fires. `[roles: universal]
+- **Reconciliation-instance independence.** A reconciliation pass (the round
+  resolving an adversarial review's findings before the work advances) uses a
+  FRESH, independent instance — NEVER the original author (contaminated +
+  design-biased toward its own design) NOR the adversarial reviewer (biased
+  toward its own findings). Applies to EVERY role — architect, planner, coder,
+  reviewer, auditor, repo-ops, tester, grpc-schema, any other — with ONE
+  exception: `docs-researcher`, which MAY be re-engaged/reused (factual
+  inventory; accumulated context helps; no design bias). Two carve-outs
+  override the default: (1) **user override** — the user EXPLICITLY asks to
+  re-engage an existing agent (in Claude Code via `SendMessage` to that
+  instance — the discoverability mechanism then re-finds it; on Codex /
+  Antigravity via the platform's re-engage path); (2) **architect challenge** —
+  a good, evidence- and logic-based reason argued per case (not a blanket
+  exemption). REINFORCES `fresh-agent-default` (the independence principle
+  applied to reconciliation) and SUBORDINATES the Agent-team "SendMessage for
+  follow-ups" convenience: a reconciliation pass is a fresh spawn unless a
+  carve-out fires. `[roles: universal]
   [rationale: reconciliation-instance-independence]`
 - **Researcher-first pipeline for substantive content.** When agent
   work depends on domain knowledge verified against authoritative
@@ -376,45 +377,44 @@ PACK-AGENTS.md current".
 ### Sub-agent behavior (Claude-only)
 
 - **Sub-agent isolation is keyed by agent class (RW → isolated worktree;
-  RO → the work's tree).** Read-WRITE sub-agents (coders, fix-coders —
-  anything that writes/mutates) run in an ISOLATED worktree by class. The
-  FIRST coder of a commit CREATES the worktree (per-spawn Agent-tool
-  `isolation:"worktree"` — the TRIGGER; `"worktree"` is the only valid
-  value); every subsequent read-write agent in that commit's cycle —
-  fix-coders included — REUSES that same worktree, NEVER a new one for a
-  fix-coder. Read-ONLY sub-agents (reviewers, architects, planners,
-  auditors, docs-researchers) run in the tree the work lives in: the
-  main checkout when the work is committed/on HEAD; the commit's live
-  worktree when the work is still uncommitted there (cd in + verify
-  pwd/HEAD). RO is NOT "always in-place" — it goes where the work is.
-  The developer should set `worktree.baseRef:"head"` in settings so the
-  worktree bases at local HEAD (unset/`fresh` bases at origin/main — a
-  documented wrong-base degradation) — see OPTIONAL-FEATURES. **No
-  up-front patch.** Read-write agents produce NO patch on return; the
-  ENTIRE review/fix cycle for a commit runs INSIDE that one worktree and
-  nothing reaches the canonical tree mid-cycle. The patch is produced
-  ONLY after a read-only reviewer confirms the work CLEAN — Pack Chat
-  SendMessage-s the most-recent read-write agent to produce it
-  (`git diff > <handoff>/changes.patch` at THAT point), then applies that
-  reviewed-clean patch and commits (with user approval); agents never
-  commit. The agent VERIFIES its actual regime at runtime (pwd/HEAD
-  ground-truth), never trusting settings. **Worktree lifecycle (with the
-  teardown gate).** Fresh worktree per commit's first coder; remove a
-  worktree ONLY after its commit is CONFIRMED landed (commit exit 0) —
-  after the commit (safe by then), NOT right-after-use (it may be needed
-  again mid-cycle); a FAILED/aborted commit KEEPS the worktree as the
-  recovery fallback; NEVER tear down on a failed/attempted commit and
-  NEVER rely on auto-removal. **Live-worktree ASK gate (rule 9).** A
-  commit's own reviewer/fix-coder is RULE-FIXED to the commit's worktree
-  (no ask). Any OTHER agent spawned while a live worktree with
-  uncommitted work exists ⇒ Pack Chat ASKS the user BOTH placement (which
-  tree the agent runs in) AND disposition (reuse vs abandon that
-  worktree); it NEVER self-decides either. **Parallelization map (rule
-  10).** For any multi-commit effort the architect + planner produce a
-  parallel-vs-dependent map in its OWN section of the design/plan; Pack
-  Chat consumes the map to schedule parallel worktree waves vs serial
-  commits (same-file commits serialize). `worktree.bgIsolation` governs
-  background SESSIONS only (not sub-agents). Trinity-exempt (Claude-only).
+  RO → the work's tree).**
+  - **RW class.** Read-WRITE sub-agents (coders, fix-coders — anything that
+    mutates) run in an ISOLATED worktree. The FIRST coder of a commit CREATES
+    it (per-spawn Agent-tool `isolation:"worktree"` — the TRIGGER, the only
+    valid value); every subsequent RW agent in that cycle — fix-coders
+    included — REUSES that worktree, NEVER a new one.
+  - **RO class.** Read-ONLY sub-agents (reviewers, architects, planners,
+    auditors, docs-researchers) run in the tree the work lives in: the main
+    checkout when committed/on HEAD; the commit's live worktree when still
+    uncommitted there (cd in + verify pwd/HEAD). RO is NOT "always in-place" —
+    it goes where the work is.
+  - **Base.** The developer should set `worktree.baseRef:"head"` so the
+    worktree bases at local HEAD (unset/`fresh` bases at origin/main — a
+    documented wrong-base degradation); see OPTIONAL-FEATURES.
+  - **No up-front patch.** RW agents produce NO patch on return; the ENTIRE
+    review/fix cycle runs INSIDE that one worktree, nothing reaching the
+    canonical tree mid-cycle. The patch is produced ONLY after a RO reviewer
+    confirms the work CLEAN — Pack Chat SendMessage-s the most-recent RW agent
+    (`git diff > <handoff>/changes.patch`), then applies + commits (user
+    approval); agents never commit.
+  - **Runtime regime.** The agent VERIFIES its actual regime at runtime
+    (pwd/HEAD ground-truth), never trusting settings.
+  - **Lifecycle (teardown gate).** Fresh worktree per commit's first coder;
+    remove ONLY after the commit is CONFIRMED landed (exit 0) — NOT
+    right-after-use (it may be needed mid-cycle); a FAILED/aborted commit
+    KEEPS the worktree as recovery fallback; NEVER tear down on a failed
+    commit, NEVER rely on auto-removal.
+  - **Live-worktree ASK gate (rule 9).** A commit's own reviewer/fix-coder is
+    RULE-FIXED to that worktree (no ask). Any OTHER agent spawned while a live
+    worktree with uncommitted work exists ⇒ Pack Chat ASKS the user BOTH
+    placement (which tree) AND disposition (reuse vs abandon); it NEVER
+    self-decides either.
+  - **Parallelization map (rule 10).** For any multi-commit effort the
+    architect + planner produce a parallel-vs-dependent map in its OWN
+    section; Pack Chat schedules parallel worktree waves vs serial commits
+    (same-file commits serialize).
+  - `worktree.bgIsolation` governs background SESSIONS only (not sub-agents).
+    Trinity-exempt (Claude-only).
 - **Default sub-agent spawns to background.** Every Agent-tool
   invocation from Pack Chat uses `run_in_background: true` so the chat
   stays interactive while the sub runs. User has auto-mode on; the
@@ -445,20 +445,22 @@ PACK-AGENTS.md current".
   flag-gated / not-yet-GA-documented (Codex) and partly-unverified
   (Antigravity), so this MECHANISM stays Claude-only here.)
 - **Record every spawn in the durable registry; re-find by name→agentId
-  (Claude-only mechanism).** The orchestrator records each Agent-tool spawn — its
-  unique `name` (see `### Agent invocation rules` `[rationale: spawn-unique-naming]`),
-  `agentId` (from the spawn tool_result), `purpose`, `status` — into the gitignored
-  per-clone ledger `graphify-out/.pack-spawn-registry.jsonl` (NEVER committed —
-  `agents-never-commit`; modeled on `graphify-out/.pack-refresh-status`) and CONSULTS
-  it to re-find a still-alive spawn with NO transcript archaeology (the registry is
-  re-read from disk, so it survives a parent context compaction). Lookup precedence:
-  **by NAME → by agentId** (both work as `SendMessage.to`, measured; there is NO
-  message-id addressing primitive — do not invent one; terminal fallback is a fresh
-  re-spawn). Consult the registry ONLY after the `fresh-agent-default` gate authorizes
-  a re-engage — this fixes HOW-to-find, not WHEN-to-reengage. The find/registry
-  MECHANISM is Claude-only here; Codex MAv2 (`list_agents`/`resume_agent`) and
-  Antigravity `agy` analogs exist but need their own verification + mapping.
-  `[roles: universal] [rationale: spawn-registry-find]`
+  (Claude-only mechanism).** The orchestrator records each Agent-tool spawn —
+  its unique `name` (see `### Agent invocation rules`
+  `[rationale: spawn-unique-naming]`), `agentId` (from the spawn tool_result),
+  `purpose`, `status` — into the gitignored per-clone ledger
+  `graphify-out/.pack-spawn-registry.jsonl` (NEVER committed —
+  `agents-never-commit`; modeled on `graphify-out/.pack-refresh-status`) and
+  CONSULTS it to re-find a still-alive spawn with NO transcript archaeology
+  (re-read from disk, so it survives a parent context compaction). Lookup
+  precedence: **by NAME → by agentId** (both work as `SendMessage.to`,
+  measured; there is NO message-id addressing primitive — do not invent one;
+  terminal fallback is a fresh re-spawn). Consult ONLY after the
+  `fresh-agent-default` gate authorizes a re-engage — this fixes HOW-to-find,
+  not WHEN-to-reengage. The MECHANISM is Claude-only here; Codex MAv2
+  (`list_agents`/`resume_agent`) and Antigravity `agy` analogs exist but need
+  their own verification + mapping. `[roles: universal]
+  [rationale: spawn-registry-find]`
 - **Trinity exemption.** This sub-section is Claude-specific (not
   mirrored in `AGENTS.md` / `GEMINI.md`) because its rules are built
   against Claude Code's Agent-tool mechanism — the Agent tool's spawn
@@ -498,36 +500,40 @@ PACK-AGENTS.md current".
     maintenance-docs / scripts / fixtures / agent definitions —
     those go to pack-coder.
 - **Pack Chat does MINOR edits only; coder does every MAJOR edit and
-  everything outside the small set.** On the small pack-chat-only set — the
-  `/backlog/` + `/changelog/` trees, the `README.md` version table, `PACK-CHAT.md`,
-  `PACK-AGENTS.md`, the trinity `CLAUDE/AGENTS/GEMINI.md` (pack root +
-  `project-template/`), `PACK-MEMORY-RATIONALE.md`, and the per-entry tree
-  directories (`/backlog/`, `/changelog/`, `project-template/docs/project/
-  {backlog,implementation-plan,changelog}/`) — Pack Chat may apply directly:
-  (a) bookkeeping tokens (a `Status:`/`Resolved:` state flip, a version bump, a
-  dated note, a README version-table row, a CHANGELOG release-block append); and
-  (b) AUTHORING A NEW ENTRY — opening a substantive BD entry or authoring a NEW
-  version-boundary CHANGELOG entry — because a new entry is already user-reviewed
-  governance (the user approves BD-opens and version-boundary CHANGELOG content).
-  Every MAJOR edit goes to a `pack-coder` scoped in by Pack Chat's prompt, under
-  the bounded review/fix cycle. An edit is MAJOR if it makes a SUBSTANTIVE edit
-  to ALREADY-LANDED content (re-scoping an existing entry; a multi-field rewrite
-  of a landed entry; a bulk hand-rewrite of a monolith), OR alters a
-  rule/contract, OR touches any file OUTSIDE the small set. Deleting-and-
-  reauthoring an existing entry-ID is a substantive edit of landed content (=
-  MAJOR), NOT a new authoring — the new-entry carve-out covers genuinely new IDs
-  only. When in doubt between a new-entry author and an existing-content edit, it
-  is MAJOR (route to coder). Pack Chat scoping a pack-chat-only file INTO a coder prompt
-  is the supported path for major pack-chat-only work — it is NOT a boundary violation.
-  Pack Chat retains only:
-  commits (`agents-never-commit`), irreducible user-approved destructive ops
-  (deletions), and its own out-of-repo memory files. A Pack-Chat-direct edit is
-  still an IMPLEMENTATION: Pack Chat's `validate-pack`/parity/grep sanity pass is
-  the bounded check on it; a NEW-ENTRY author rides on the user's own governance
-  review of the open/changelog content (the user approves it), not a coder
-  reviewer. The moment an edit instead touches ALREADY-LANDED content
-  substantively — or any out-of-small-set file — it is MAJOR and the independent
-  reviewer applies via the coder cycle.
+  everything outside the small set.**
+  - **The small pack-chat-only set:** the `/backlog/` + `/changelog/` trees,
+    the `README.md` version table, `PACK-CHAT.md`, `PACK-AGENTS.md`, the
+    trinity `CLAUDE/AGENTS/GEMINI.md` (pack root + `project-template/`),
+    `PACK-MEMORY-RATIONALE.md`, and the per-entry tree directories
+    (`/backlog/`, `/changelog/`, `project-template/docs/project/
+    {backlog,implementation-plan,changelog}/`).
+  - **Pack Chat may apply directly:** (a) bookkeeping tokens (a
+    `Status:`/`Resolved:` state flip, a version bump, a dated note, a README
+    version-table row, a CHANGELOG release-block append); (b) AUTHORING A NEW
+    ENTRY — opening a substantive BD entry or a NEW version-boundary CHANGELOG
+    entry — because a new entry is already user-reviewed governance (the user
+    approves BD-opens and version-boundary CHANGELOG content).
+  - **Every MAJOR edit goes to a `pack-coder`** scoped in by Pack Chat's
+    prompt, under the bounded review/fix cycle. An edit is MAJOR if it
+    SUBSTANTIVELY edits ALREADY-LANDED content (re-scoping an existing entry; a
+    multi-field rewrite of a landed entry; a bulk hand-rewrite of a monolith),
+    OR alters a rule/contract, OR touches any file OUTSIDE the small set.
+    Deleting-and-reauthoring an existing entry-ID is a substantive edit of
+    landed content (= MAJOR), NOT a new authoring — the new-entry carve-out
+    covers genuinely new IDs only. When in doubt between a new-entry author and
+    an existing-content edit, it is MAJOR (route to coder).
+  - Pack Chat scoping a pack-chat-only file INTO a coder prompt is the
+    supported path for major pack-chat-only work — NOT a boundary violation.
+  - **Pack Chat retains only:** commits (`agents-never-commit`), irreducible
+    user-approved destructive ops (deletions), and its own out-of-repo memory
+    files.
+  - A Pack-Chat-direct edit is still an IMPLEMENTATION: Pack Chat's
+    `validate-pack`/parity/grep sanity pass is the bounded check on it; a
+    NEW-ENTRY author rides on the user's own governance review of the
+    open/changelog content (the user approves it), not a coder reviewer. The
+    moment an edit instead touches ALREADY-LANDED content substantively — or
+    any out-of-small-set file — it is MAJOR and the independent reviewer
+    applies via the coder cycle.
   `[roles: universal] [rationale: pack-chat-minor-edits-only]`
 - **Commit-approval requests include next-steps plan.** Every
   "Approve commit?" prompt to the user MUST include a numbered or
@@ -680,76 +686,69 @@ PACK-AGENTS.md current".
   requires architect+user sign-off). Current sanctioned set: exactly
   `{scripts/lib/detect.sh, scripts/pack-help.sh}`. `[roles: architect coder]
   [rationale: dependency-direction-placement]`
-- **Graph-first context when the knowledge graph exists.** When a
-  knowledge graph exists, prefer
-  the graph for orientation / relationship / blast-radius / "what relates to
-  X" / "where does Y live" questions (a `graphify query` is read-only,
-  deterministic, ~0 tokens) BEFORE broad tree reads; otherwise use normal
-  grep/Read (the G1 existence guard — a fresh clone has no graph by default,
-  so the rule degrades with zero friction). If a graph query errors or
-  returns nothing useful, fall back to file reads — never block on the graph
-  (the G2 fallback). **Two phases — the second never vetoes the first.**
-  **(1) DISCOVERY / RECALL** — "what are ALL the surfaces related to X /
-  where does Y live / blast radius of Z / what depends on W" — is
-  **graph-FIRST and mandatory when the graph exists**: run a `graphify
-  query`/`path`/`affected` to establish the candidate surface set BEFORE
-  broad tree reads. grep/Read is NOT a substitute for the graph in this
-  phase — an a-priori grep pattern bounds recall to what you already
-  thought to search for, which is exactly the recall the graph exists to
-  widen. **(2) VERIFICATION / PRECISION** — the exact bytes, line counts,
-  or authoritative SSOT VALUE at an ALREADY-IDENTIFIED surface — is
-  grep/Read's job; use it to confirm what discovery surfaced. Fall through
-  to grep/Read (skipping the graph) ONLY for these — each a P2 or
-  out-of-graph need, none a license to skip P1: **(i)** a VERIFICATION read
-  of a named surface (exact bytes/counts — Read/grep AFTER discovery named
-  it); **(ii)** an authoritative SSOT field VALUE (a BD `Status`, the
-  README version table, a `_rules.md` contract — Read the source);
-  **(iii)** freshly-changed / uncommitted files (`git diff`/Read — not yet
-  in the graph); **(iv)** whole-file exact content of a named file (Read —
-  after discovery named it); **(v)** content the graph deliberately does
-  NOT index (archive-dir / excluded-category — Read/grep). A completeness
-  census that must enumerate every literal occurrence (e.g. a rename
-  completeness gate that greps every literal hit to grep-zero) RUNS the
-  grep as its VERIFICATION gate but does NOT replace discovery: when the
-  graph exists, the census runs the graph FIRST to find the candidate
-  surfaces, THEN greps each to grep-zero — "my task is exhaustive
-  enumeration, so I'll grep the whole tree" is the prohibited move, because
-  the graph exists precisely to widen enumeration beyond your a-priori
-  pattern. **Path-injection under worktree isolation:**
-  the absolute graph path is NEVER recomputed by a spawned agent
-  from its own toplevel. The ORCHESTRATOR evaluates the derivation formula
-  `$(git rev-parse --show-toplevel)/graphify-out/graph.json` AT RUNTIME in
-  its canonical checkout and INJECTS the resulting absolute literal into
-  every spawn prompt; the agent uses THAT injected `--graph <path>` verbatim
-  and NEVER recomputes from its own `$(git rev-parse --show-toplevel)` —
-  under worktree isolation an agent's toplevel resolves to the empty worktree
-  root where gitignored `graphify-out/` is NOT materialized, so a self-derived
-  path mis-resolves. The orchestrator injects the literal ONLY when its
-  canonical `graphify-out/graph.json` exists; when it is absent (fresh clone /
-  graphify not installed / feature off) the orchestrator injects NO path (or
-  an explicit "no graph available" token) and the agent proceeds with
-  grep/Read. The agent runs the G1 existence check against the INJECTED path
-  (never its own toplevel); the G2 fallback (query errors/empties ⇒ fall back
-  to grep/Read, never block) is unchanged. **Worktree path-injection is
-  Claude-only (only Claude runs worktrees); the `AGENTS.md`/`GEMINI.md`
-  graph-first path-resolution intentionally stays as-is — correct for their
-  in-place execution — and their worktree story is a future pack version. Do
-  NOT "restore parity" by porting this injection contract to them.** The
-  `--graph` path the orchestrator injects is ALWAYS absolute (a
-  sub-agent may start in a different cwd); `--budget` tiers are 2000
-  human/interactive, 1500 spawned agent, 1000 Pack-Chat prompt-construction;
-  the backend is ALWAYS `--backend claude-cli` (the no-key subscription path
-  — NEVER `claude`, which demands `ANTHROPIC_API_KEY`). NEVER preload the
-  graphify skill via `skills:` frontmatter (~32KB, build-oriented) — querying
-  needs `Bash` only, which all 5 pack agents already carry. Agents QUERY the
-  graph; they never BUILD/refresh it (only building costs subscription;
-  building is a main-session/orchestrator job). In Claude Code the
-  session/skill auto-routes a `graphify` query and Claude subagents inherit
-  this pack-root `CLAUDE.md`; pack agents are invoked via `claude --agent
-  pack-<name>` or the Agent tool (`subagent_type=pack-<name>`). Boundary
-  note: the graph MAY index the whole repo incl. `project-template/`;
-  consuming it to answer a deliverable question is fine — the rule + setup
-  stay pack-side. `[roles: universal] [rationale: graph-first-context]`
+- **Graph-first context when the knowledge graph exists.**
+  - **G1 existence guard.** When a graph exists, prefer it for orientation /
+    relationship / blast-radius / "what relates to X" / "where does Y live"
+    questions (a `graphify query` is read-only, deterministic, ~0 tokens)
+    BEFORE broad tree reads; else use grep/Read (a fresh clone has no graph,
+    so the rule degrades with zero friction).
+  - **G2 fallback.** If a query errors or returns nothing useful, fall back
+    to file reads — never block on the graph.
+  - **Two phases — the second never vetoes the first.**
+    - **(1) DISCOVERY / RECALL** ("ALL surfaces related to X / where Y lives /
+      blast radius of Z / what depends on W") is **graph-FIRST and mandatory
+      when the graph exists**: run `graphify query`/`path`/`affected` to
+      establish the candidate set BEFORE broad reads. grep/Read is NOT a
+      substitute here — an a-priori grep bounds recall to what you already
+      thought to search for, the exact recall the graph exists to widen.
+    - **(2) VERIFICATION / PRECISION** (exact bytes, line counts, or SSOT
+      VALUE at an ALREADY-IDENTIFIED surface) is grep/Read's job — to confirm
+      what discovery surfaced.
+  - **Fall through to grep/Read (skipping the graph) ONLY for these** — each
+    a P2 or out-of-graph need, never a license to skip P1: **(i)** a
+    verification read of a named surface (exact bytes/counts, AFTER discovery
+    named it); **(ii)** an authoritative SSOT field VALUE (a BD `Status`, the
+    README version table, a `_rules.md` contract); **(iii)** freshly-changed /
+    uncommitted files (`git diff`/Read — not yet in the graph); **(iv)**
+    whole-file exact content of a named file; **(v)** content the graph does
+    NOT index (archive-dir / excluded-category).
+  - **Completeness census.** A census that enumerates every literal
+    occurrence (e.g. a rename gate grepping every hit to grep-zero) runs the
+    grep as its VERIFICATION gate but does NOT replace discovery: when the
+    graph exists, run it FIRST to find candidate surfaces, THEN grep each to
+    grep-zero — "exhaustive enumeration, so grep the whole tree" is prohibited
+    (the graph exists to widen enumeration beyond your a-priori pattern).
+  - **Path-injection under worktree isolation.** The agent NEVER recomputes
+    the graph path from its own toplevel (under worktree isolation it resolves
+    to the empty worktree root where gitignored `graphify-out/` is not
+    materialized). The ORCHESTRATOR evaluates the formula
+    `$(git rev-parse --show-toplevel)/graphify-out/graph.json` AT RUNTIME in
+    its canonical checkout and INJECTS the absolute literal into every spawn
+    prompt; the agent uses THAT injected `--graph <path>` verbatim. The
+    orchestrator injects ONLY when its canonical `graphify-out/graph.json`
+    exists; if absent (fresh clone / graphify not installed / feature off) it
+    injects NO path (or a "no graph available" token) and the agent proceeds
+    with grep/Read. The agent runs the G1 check against the INJECTED path
+    (never its own toplevel); G2 is unchanged.
+  - **Worktree path-injection is Claude-only** (only Claude runs worktrees);
+    the `AGENTS.md`/`GEMINI.md` graph-first path-resolution stays as-is
+    (correct for their in-place execution; their worktree story is a future
+    pack version). Do NOT "restore parity" by porting this injection contract.
+  - **Invocation params.** `--graph` is ALWAYS absolute (a sub-agent may start
+    in a different cwd); `--budget` tiers are 2000 human/interactive, 1500
+    spawned agent, 1000 Pack-Chat prompt-construction; the backend is ALWAYS
+    `--backend claude-cli` (the no-key subscription path — NEVER `claude`,
+    which demands `ANTHROPIC_API_KEY`).
+  - **Never preload the graphify skill** via `skills:` frontmatter (~32KB,
+    build-oriented) — querying needs `Bash` only, which all 5 pack agents
+    carry. Agents QUERY the graph; they never BUILD/refresh it (building costs
+    subscription; it is a main-session/orchestrator job).
+  - In Claude Code the session/skill auto-routes a `graphify` query and Claude
+    subagents inherit this pack-root `CLAUDE.md`; pack agents are invoked via
+    `claude --agent pack-<name>` or the Agent tool (`subagent_type=pack-<name>`).
+  - **Boundary note.** The graph MAY index the whole repo incl.
+    `project-template/`; consuming it for a deliverable question is fine — the
+    rule + setup stay pack-side. `[roles: universal] [rationale: graph-first-context]`
 - **Operating docs carry NO history, NO deferred-feature mentions; stay
   terse + structured.** An operating doc (a doc an agent/chat EXECUTES as
   live instruction — rules, agent/skill defs, prompts, write-contracts)

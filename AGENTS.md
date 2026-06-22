@@ -257,22 +257,22 @@ PACK-AGENTS.md current".
 - **No prior reviews to pack-reviewer.** Reviewer prompts reference
   ARCHITECTURE / PLAN docs only — never prior `PACK-REVIEW-*.md` reports.
   Including a prior review biases the new review.
-- **Reconciliation-instance independence.** A reconciliation pass (the round that
-  resolves an adversarial review's findings before the work advances) uses a FRESH,
-  independent instance — NEVER the original author (contaminated + design-biased toward
-  its own design) NOR the adversarial reviewer (biased toward its own findings). This
-  applies to EVERY agent role — architect, planner, coder, reviewer, auditor, repo-ops,
-  tester, grpc-schema, and any other — with ONE exception: `docs-researcher`, which MAY
-  be re-engaged/reused (its work is factual inventory, accumulated context helps, and it
-  carries no design bias). Two carve-outs override the fresh-instance default: (1) **user
-  override** — the user EXPLICITLY asks to re-engage an existing agent (in Codex via the
-  platform's agent re-engage / `resume_agent` path (where its multi-agent messaging is
-  enabled)); and (2)
-  **architect challenge** — a good, evidence- and logic-based reason argued per case (not
-  a blanket exemption). This rule REINFORCES `fresh-agent-default` (it is that
-  independence principle applied to the reconciliation step) and SUBORDINATES the
-  Agent-team "SendMessage for follow-ups" convenience: a reconciliation pass is a fresh
-  spawn unless a carve-out fires. `[roles: universal]
+- **Reconciliation-instance independence.** A reconciliation pass (the round
+  resolving an adversarial review's findings before the work advances) uses a
+  FRESH, independent instance — NEVER the original author (contaminated +
+  design-biased toward its own design) NOR the adversarial reviewer (biased
+  toward its own findings). Applies to EVERY role — architect, planner, coder,
+  reviewer, auditor, repo-ops, tester, grpc-schema, any other — with ONE
+  exception: `docs-researcher`, which MAY be re-engaged/reused (factual
+  inventory; accumulated context helps; no design bias). Two carve-outs
+  override the default: (1) **user override** — the user EXPLICITLY asks to
+  re-engage an existing agent (in Codex via the platform's agent re-engage /
+  `resume_agent` path (where its multi-agent messaging is enabled)); (2)
+  **architect challenge** — a good, evidence- and logic-based reason argued per
+  case (not a blanket exemption). REINFORCES `fresh-agent-default` (the
+  independence principle applied to reconciliation) and SUBORDINATES the
+  Agent-team "SendMessage for follow-ups" convenience: a reconciliation pass is
+  a fresh spawn unless a carve-out fires. `[roles: universal]
   [rationale: reconciliation-instance-independence]`
 - **Researcher-first pipeline for substantive content.** When agent
   work depends on domain knowledge verified against authoritative
@@ -394,36 +394,40 @@ PACK-AGENTS.md current".
     maintenance-docs / scripts / fixtures / agent definitions —
     those go to pack-coder.
 - **Pack Chat does MINOR edits only; coder does every MAJOR edit and
-  everything outside the small set.** On the small pack-chat-only set — the
-  `/backlog/` + `/changelog/` trees, the `README.md` version table, `PACK-CHAT.md`,
-  `PACK-AGENTS.md`, the trinity `CLAUDE/AGENTS/GEMINI.md` (pack root +
-  `project-template/`), `PACK-MEMORY-RATIONALE.md`, and the per-entry tree
-  directories (`/backlog/`, `/changelog/`, `project-template/docs/project/
-  {backlog,implementation-plan,changelog}/`) — Pack Chat may apply directly:
-  (a) bookkeeping tokens (a `Status:`/`Resolved:` state flip, a version bump, a
-  dated note, a README version-table row, a CHANGELOG release-block append); and
-  (b) AUTHORING A NEW ENTRY — opening a substantive BD entry or authoring a NEW
-  version-boundary CHANGELOG entry — because a new entry is already user-reviewed
-  governance (the user approves BD-opens and version-boundary CHANGELOG content).
-  Every MAJOR edit goes to a `pack-coder` scoped in by Pack Chat's prompt, under
-  the bounded review/fix cycle. An edit is MAJOR if it makes a SUBSTANTIVE edit
-  to ALREADY-LANDED content (re-scoping an existing entry; a multi-field rewrite
-  of a landed entry; a bulk hand-rewrite of a monolith), OR alters a
-  rule/contract, OR touches any file OUTSIDE the small set. Deleting-and-
-  reauthoring an existing entry-ID is a substantive edit of landed content (=
-  MAJOR), NOT a new authoring — the new-entry carve-out covers genuinely new IDs
-  only. When in doubt between a new-entry author and an existing-content edit, it
-  is MAJOR (route to coder). Pack Chat scoping a pack-chat-only file INTO a coder prompt
-  is the supported path for major pack-chat-only work — it is NOT a boundary violation.
-  Pack Chat retains only:
-  commits (`agents-never-commit`), irreducible user-approved destructive ops
-  (deletions), and its own out-of-repo memory files. A Pack-Chat-direct edit is
-  still an IMPLEMENTATION: Pack Chat's `validate-pack`/parity/grep sanity pass is
-  the bounded check on it; a NEW-ENTRY author rides on the user's own governance
-  review of the open/changelog content (the user approves it), not a coder
-  reviewer. The moment an edit instead touches ALREADY-LANDED content
-  substantively — or any out-of-small-set file — it is MAJOR and the independent
-  reviewer applies via the coder cycle.
+  everything outside the small set.**
+  - **The small pack-chat-only set:** the `/backlog/` + `/changelog/` trees,
+    the `README.md` version table, `PACK-CHAT.md`, `PACK-AGENTS.md`, the
+    trinity `CLAUDE/AGENTS/GEMINI.md` (pack root + `project-template/`),
+    `PACK-MEMORY-RATIONALE.md`, and the per-entry tree directories
+    (`/backlog/`, `/changelog/`, `project-template/docs/project/
+    {backlog,implementation-plan,changelog}/`).
+  - **Pack Chat may apply directly:** (a) bookkeeping tokens (a
+    `Status:`/`Resolved:` state flip, a version bump, a dated note, a README
+    version-table row, a CHANGELOG release-block append); (b) AUTHORING A NEW
+    ENTRY — opening a substantive BD entry or a NEW version-boundary CHANGELOG
+    entry — because a new entry is already user-reviewed governance (the user
+    approves BD-opens and version-boundary CHANGELOG content).
+  - **Every MAJOR edit goes to a `pack-coder`** scoped in by Pack Chat's
+    prompt, under the bounded review/fix cycle. An edit is MAJOR if it
+    SUBSTANTIVELY edits ALREADY-LANDED content (re-scoping an existing entry; a
+    multi-field rewrite of a landed entry; a bulk hand-rewrite of a monolith),
+    OR alters a rule/contract, OR touches any file OUTSIDE the small set.
+    Deleting-and-reauthoring an existing entry-ID is a substantive edit of
+    landed content (= MAJOR), NOT a new authoring — the new-entry carve-out
+    covers genuinely new IDs only. When in doubt between a new-entry author and
+    an existing-content edit, it is MAJOR (route to coder).
+  - Pack Chat scoping a pack-chat-only file INTO a coder prompt is the
+    supported path for major pack-chat-only work — NOT a boundary violation.
+  - **Pack Chat retains only:** commits (`agents-never-commit`), irreducible
+    user-approved destructive ops (deletions), and its own out-of-repo memory
+    files.
+  - A Pack-Chat-direct edit is still an IMPLEMENTATION: Pack Chat's
+    `validate-pack`/parity/grep sanity pass is the bounded check on it; a
+    NEW-ENTRY author rides on the user's own governance review of the
+    open/changelog content (the user approves it), not a coder reviewer. The
+    moment an edit instead touches ALREADY-LANDED content substantively — or
+    any out-of-small-set file — it is MAJOR and the independent reviewer
+    applies via the coder cycle.
   `[roles: universal] [rationale: pack-chat-minor-edits-only]`
 - **Commit-approval requests include next-steps plan.** Every
   "Approve commit?" prompt to the user MUST include a numbered or
