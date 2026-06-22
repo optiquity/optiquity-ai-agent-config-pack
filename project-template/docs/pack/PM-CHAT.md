@@ -561,7 +561,7 @@ edits back:
 > orchestrator records each spawn (name, id, purpose, status) in a gitignored
 > per-clone ledger and re-finds a still-alive agent by name → id — only AFTER the
 > fresh-agent-default decision authorizes a re-engage (this is HOW to re-find, not
-> WHEN to reuse). Codex / Antigravity equivalents are a future pack version.
+> WHEN to reuse).
 
 **Remove the worktree only AFTER the commit lands.** Each commit's first
 coder gets a fresh worktree; once that commit has landed (exit 0),
@@ -709,19 +709,6 @@ Every prompt to repo-ops must include:
 
 ---
 
-## Recommendation routing (deferred)
-
-The D-19 tracker opt-in recommendation is DEFERRED to a future release: tracker
-integration is deferred indefinitely and flat-file per-entry is the
-sole supported mode, so `/pm-startup` surfaces no opt-in recommendation
-and PM chat has nothing to route. The recommendation system
-(`scripts/lib/recommendation.sh`) is retained dormant and test-covered
-for a future resumption. PM chat continues to operate the project in
-flat-file mode (the BACKLOG / CHANGELOG approval rule still applies —
-state-changing operations need a yes).
-
----
-
 ## TD resolution orchestration (v11+)
 
 When a TD-NNN becomes Unblocked (per METHODOLOGY § Part 7 Procedure 1
@@ -789,11 +776,9 @@ planner or architect by default. PM Chat:
 4. Drafts any `Dependencies` bullet entries the user named (sourced
    from the TD's blockers field by default).
 5. Presents the drafted task to the user for review.
-6. On user approval, writes IMPLEMENTATION-PLAN.md (flat-file is the
-   sole supported mode; tracker integration is deferred to a future release).
+6. On user approval, writes IMPLEMENTATION-PLAN.md.
    Re-keys the TD. Dependency edges between entries are recorded in the
-   flat-file entry bodies. (The tracker-entity / `tracker_links_create_blocked_by`
-   orchestration is retained dormant for a future tracker resumption.)
+   flat-file entry bodies.
 
 PM Chat invokes the **planner** (project-side `planner.md` agent)
 only if the user explicitly requests planning ("plan this out") or

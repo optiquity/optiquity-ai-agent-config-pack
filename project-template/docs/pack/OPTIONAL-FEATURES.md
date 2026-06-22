@@ -95,8 +95,7 @@ wall-clock time.
 
 ## Claude Code — Isolated parallel agents (worktree isolation)
 
-**Status:** Claude Code only — no Codex or Antigravity CLI equivalent yet (the
-cross-CLI worktree story is tracked separately and is out of scope here). The
+**Status:** Claude Code only — no Codex or Antigravity CLI equivalent. The
 subagent-isolation trigger is a per-spawn Agent-tool parameter; the base
 posture is a `settings.json` key you set manually. The pack ships NO settings
 file — you add the keys to your OWN settings (see below).
@@ -180,9 +179,8 @@ governs TOP-LEVEL background `claude` sessions via the
 checkout until `EnterWorktree` is called; `"none"` lets background jobs edit the
 working copy directly. `bgIsolation` does NOT control Agent-tool subagents — it
 is not the subagent-isolation trigger, and it is not a boolean
-(`bgIsolation: true` is invalid). The background-session isolation story is a
-separate concern slated for a future pack version; do not set `bgIsolation`
-expecting it to isolate the agents the PM chat spawns.
+(`bgIsolation: true` is invalid). It does not isolate the agents the PM chat
+spawns.
 
 **In-session destructive-git-verb backstop — the documented-optional
 `permissions.deny` recipe.** The default protection for in-session sub-agents is
@@ -280,8 +278,7 @@ keys; it never writes a settings file into your repo.
 
 **Claude-only note.** This feature is specific to Claude Code's Agent-tool
 `isolation` parameter and `worktree` settings. Codex CLI and Antigravity CLI
-have no equivalent at this time; their worktree story is tracked separately and
-is out of scope here. There is no cross-CLI parity claim for this feature.
+have no equivalent. There is no cross-CLI parity claim for this feature.
 
 **Manual worktree (no pack mechanism needed).** If you simply want to work on
 parallel branches yourself, run `git worktree add ../my-worktree <branch>` by
@@ -300,41 +297,8 @@ features here as they ship and prove useful.*
 
 ## Antigravity CLI — Optional features
 
-<!-- RE-VERIFY at impl: Antigravity worktree feature, antigravity.google/docs/getting-started -->
-
-**Status:** Forward-looking — no opt-in steps to run today.
-
-**Worktree-based parallel agents.** Antigravity CLI is expected to offer a
-worktree mode for running isolated parallel agents (analogous to the Claude
-Code "Isolated parallel agents" entry above), with automatic worktree
-cleanup. The cross-CLI worktree story — bringing Codex and Antigravity into
-parity with the Claude Code isolation model — is tracked separately and is
-out of scope for the base pack. There are no Antigravity-specific opt-in
-settings to configure at this time; this section will document them once the
-Antigravity worktree feature stabilizes (the feature and its CLI surface are
-in preview and have open data-loss reports, so the pack ships nothing that
-depends on it yet). Re-verify the worktree behavior against
-`antigravity.google/docs/getting-started` before relying on it.
-
----
-
-## Tracker integration (deferred)
-
-**Status** — DEFERRED indefinitely (no release version).
-
-**What it was** — an opt-in per-project mode that would move issue
-tracking out of `docs/project/BACKLOG.md` flat-file format into a
-tracker backend (default `gh` / GitHub Issues), with a forward
-migration and an idempotent reverse, plus a recommendation system that
-suggested opting in based on project signals.
-
-**Current state** — tracker integration is deferred and flat-file
-per-entry is the sole supported mode. The ability to flip to tracker
-mode is blocked, and the recommendation system surfaces nothing. The
-tracker code (the TrackerProvider abstraction, migrators, and verbs) is
-retained dormant and test-covered for a possible future resumption;
-there are no opt-in steps to run at this time. Continue to use the
-flat-file per-entry trees under `docs/project/`.
+*Placeholder. The Config Pack will document Antigravity-specific opt-in
+features here as they ship and prove useful.*
 
 ---
 

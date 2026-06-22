@@ -50,9 +50,5 @@ files at `docs/project/implementation-plan/` are source of truth
 for phase content. This file is the regenerated mirror — never
 source of truth.
 
-Tracker mode is deferred indefinitely (no release version);
-the ability to flip to a tracker (e.g., GH Issues) is blocked and the
-tracker code is retained dormant for a future resumption.
-
 For the per-stream contract, read
 `docs/project/implementation-plan/_rules.md`.

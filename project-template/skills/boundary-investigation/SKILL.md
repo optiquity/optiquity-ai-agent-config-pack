@@ -103,15 +103,13 @@ canonical list):
 
 <!-- DENY-LIST-CONTENT-START -->
 - **File names:** `PACK-AGENTS.md`, `PACK-CHAT.md`, `HELP-FRAGMENT-PACK.md`,
-  `HELP-FRAGMENT-TRACKER.md` (bare-filename refs from project-side; the
-  pack-ops copy lives at `pack-ops/HELP-FRAGMENT-TRACKER.md`),
   `OPTIONAL-FEATURES.md` (bare-filename refs; project-side has its own
   `project-template/docs/pack/OPTIONAL-FEATURES.md`)
 - **Path prefixes:** `maintenance-docs/`, `pack-ops/` (any file there —
   PACK × OPERATIONS files including `pack-ops/BOUNDARY-DEFINITION.md`,
   `pack-ops/BACKLOG.md`, `pack-ops/CHANGELOG.md`, `pack-ops/PACK-AGENTS.md`,
   `pack-ops/PACK-CHAT.md`, `pack-ops/HELP-FRAGMENT-PACK.md`,
-  `pack-ops/HELP-FRAGMENT-TRACKER.md`, `pack-ops/OPTIONAL-FEATURES.md`,
+  `pack-ops/OPTIONAL-FEATURES.md`,
   `pack-ops/MERGE-STRATEGY.md`, `pack-ops/DRY-RUN-MIGRATION.md`,
   `pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md`,
   `pack-ops/.boundary-exempt-root.txt`), `scripts/` (pack-repo only;

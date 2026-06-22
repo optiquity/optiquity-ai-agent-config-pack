@@ -82,8 +82,6 @@ Read the first 5 lines of `METHODOLOGY.md` to get the version number.
 Resolve every BACKLOG / STATUS / IMPLEMENTATION-PLAN / CHANGELOG read through
 the trinity `## Document locations` table in the project context file.
 The table points at the named files in `docs/project/` (the per-entry tree).
-Flat-file per-entry is the sole supported mode; tracker integration is
-deferred to a future release.
 
 Project streams under `docs/project/backlog/`, `docs/project/implementation-plan/`,
 and `docs/project/changelog/` are per-entry trees; read each
@@ -205,20 +203,4 @@ Output a summary in exactly this format:
 
 **Awaiting instructions.**
 ---
-
-<!--
-Step 7 is reserved. The tracker-mode triage queue
-(provider.list filter=label:'needs-triage') would land here if tracker
-integration resumes (it is DEFERRED to a future release). The Step 8 numbering
-is fixed to keep the recommendation check at the documented
-insertion point regardless of when Step 7 lands.
--->
-
-## Step 8 — Inflection-point recommendation check (deferred)
-
-The D-19 tracker opt-in recommendation is DEFERRED to a future release: tracker
-integration is deferred indefinitely and flat-file per-entry is the sole
-supported mode, so this step surfaces nothing. The recommendation system
-(`scripts/lib/recommendation.sh`) is retained dormant and test-covered
-for a future resumption; the step number is reserved.
 
