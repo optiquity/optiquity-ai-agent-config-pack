@@ -92,7 +92,7 @@ revert, or escalate.
 
 Questions that surfaced during implementation. For each: a one-line
 problem statement, disposition (resolved / deferred / escalated), and the
-recommended default if deferred. The C-4 → C-4b POQ-6 pattern: when a
+recommended default if deferred. The fast-follow pattern: when a
 prompt scopes a task narrower than the plan would have, surface the gap
 as a POQ and propose a fast-follow Cnb commit. Do not silently expand
 scope. Do not silently shrink scope without flagging.
@@ -129,19 +129,18 @@ Apply the same rule when generating any other long markdown artifact
 
 ## Deferred-work-becomes-Cnb-commit pattern
 
-When the prompt's scope is narrower than the plan's intent (e.g., "C-4
-adds the migrator engine" but the plan also expected unit tests in C-4),
-do NOT silently include the extra work — that violates the prompt scope
-and inflates the commit. Instead:
+When the prompt's scope is narrower than the plan's intent (e.g., the
+prompt scopes a commit to one component but the plan also expected its
+unit tests in that commit), do NOT silently include the extra work —
+that violates the prompt scope and inflates the commit. Instead:
 
 1. Land the prompt-scoped work as the named commit (C-N).
 2. Surface the gap as a POQ in section 7 of the report.
 3. Recommend a fast-follow Cnb commit (C-Nb) with a one-paragraph
    description of what it should land.
 
-This pattern was established by BD-119 C-4 → C-4b POQ-6 (the test runner
-that should have been in C-4 became C-4b on the next pass). Pack Chat
-decides whether to take the Cnb fast-follow or close the gap differently.
+Pack Chat decides whether to take the Cnb fast-follow or close the gap
+differently.
 
 ## Anti-patterns (do not do these)
 

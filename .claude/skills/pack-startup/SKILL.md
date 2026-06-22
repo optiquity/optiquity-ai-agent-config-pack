@@ -32,11 +32,9 @@ for this session.
 Pack streams under `/backlog/` and `/changelog/` are per-entry trees —
 the SOLE source of truth and readable form of the committed state
 (each with a generated `_toc.md` index; the committed repo is always
-flat-file — a local tracker opt-in changes the write channel). Read
+flat-file). Read
 `/backlog/_rules.md` and `/changelog/_rules.md` for the per-stream
-contract before any per-entry edit. There is no
-monolithic mirror — BD-203 deleted `pack-ops/BACKLOG.md` +
-`pack-ops/CHANGELOG.md`.
+contract before any per-entry edit. There is no monolithic mirror.
 
 ## Step 3 — Check CI tooling
 
@@ -104,6 +102,5 @@ Report the resulting one line on the Step-4 `**Graph:**` line. (You MAY use
 instead of the `tail`+`grep` if it is more robust on your platform — note the
 OUTER double quotes so the shell expands `$GRAPH` and the INNER single quotes
 stay literal Python; both are O(1)-cheap for a once-per-startup read.) Honors
-the BD-237 "no CI gate, no
-committed sentinel" constraint: the freshness criterion (`built_at_commit` vs
-HEAD) lives on this LOCAL human-facing surface, not in CI.
+the "no CI gate, no committed sentinel" constraint: the freshness criterion
+(`built_at_commit` vs HEAD) lives on this LOCAL human-facing surface, not in CI.

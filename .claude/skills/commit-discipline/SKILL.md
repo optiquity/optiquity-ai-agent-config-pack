@@ -109,9 +109,9 @@ main checkout.** When `pwd` is a `worktree-agent-*` checkout, writing to
 the user's main checkout path (e.g.
 `/Users/<user>/Developer/<repo>/<file>`) is FORBIDDEN even when the file
 path "looks right" — the main checkout belongs to the user's interactive
-shell and the orchestrator, not to the agent. The BD-119 C-2 incident was
-exactly this failure mode: a Write rejected under the worktree path was
-retried against the main checkout, which silently bypassed the workspace
+shell and the orchestrator, not to the agent. The failure mode this guards
+against: a Write rejected under the worktree path is
+retried against the main checkout, which silently bypasses the workspace
 boundary. If a `Write` returns "permission denied" or "file outside
 workspace," the path is wrong for your regime — re-issue under the
 correct target (parent tree IN-PLACE; `pwd` for code + `/tmp` for the
