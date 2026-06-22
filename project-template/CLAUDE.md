@@ -219,9 +219,8 @@ All filenames are unique — reference them by name; use these paths to locate t
 
 The Source column indicates that files in each directory are flat-file
 (source of truth in the working tree). Flat-file per-entry is the sole
-supported mode; tracker mode is deferred indefinitely (no release
-version — tracker code is retained dormant for a future resumption),
-so all rows read `flat`. `pm-startup` Step 2 reads this column.
+supported mode, so all rows read `flat`. `pm-startup` Step 2 reads this
+column.
 
 | Directory | Contents | Updated by | Source |
 |---|---|---|---|
@@ -238,9 +237,7 @@ flat-file mode; read each `<stream>/_rules.md` for the per-stream
 contract before any per-entry edit. The monolithic `BACKLOG.md`,
 `IMPLEMENTATION-PLAN.md`, and `CHANGELOG.md` files in `docs/project/`
 are regenerated mirrors — read-stable but never source of truth.
-Flat-file per-entry is the sole supported mode; tracker integration is
-deferred indefinitely (no release version) with the tracker code
-retained dormant for a future resumption.
+Flat-file per-entry is the sole supported mode.
 
 **Operating docs carry NO history, NO deferred-feature mentions; stay
 terse + structured.** An operating doc (a doc an agent or chat EXECUTES as
