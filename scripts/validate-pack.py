@@ -7751,7 +7751,7 @@ _CHECK_44_FORBIDDEN_PATTERNS = (
 # per-doc ADVISORY line ceiling, DERIVED from its measured cleaned content
 # as ceil(measured * 1.15). These are NOT round numbers: each is anchored
 # to the doc's actual cleaned size (BOUNDARY 135, CONCEPTUAL-REVIEW 298,
-# DRY-RUN 199, HELP-PACK 48, MERGE 484, OPTIONAL 235) with a uniform 15%
+# DRY-RUN 199, HELP-PACK 48, MERGE 484, OPTIONAL 538) with a uniform 15%
 # growth headroom. BACKLOG.md / CHANGELOG.md are regenerated MIRRORS, NOT
 # in the M4 class. The ceiling is advisory only (never fails).
 _CHECK_44_DURABLE_DOCS = (
@@ -7760,7 +7760,7 @@ _CHECK_44_DURABLE_DOCS = (
     ("pack-ops/DRY-RUN-MIGRATION.md", 229),
     ("pack-ops/HELP-FRAGMENT-PACK.md", 56),
     ("pack-ops/MERGE-STRATEGY.md", 557),
-    ("pack-ops/OPTIONAL-FEATURES.md", 271),
+    ("pack-ops/OPTIONAL-FEATURES.md", 619),
 )
 
 

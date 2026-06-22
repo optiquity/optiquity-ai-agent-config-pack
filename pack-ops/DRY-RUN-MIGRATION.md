@@ -37,9 +37,9 @@ The harness produces meaningful output only if the target satisfies:
   clone time. URL mode clones the default branch; for a non-default
   branch, prepare a local clone on that branch and use local-path mode.
 
-A target outside this contract is not refused outright — the harness
-still runs and renders a report — but the diff may not predict what a
-real migration would do.
+A target outside this contract is not refused — the harness still runs
+and renders a report — but the diff may not predict what a real
+migration would do.
 
 ---
 

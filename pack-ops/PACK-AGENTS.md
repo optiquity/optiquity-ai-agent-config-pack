@@ -55,8 +55,8 @@ bounded questions within the current conversation:
 - "Plan the commit sequence for these files" → spawn `pack-planner`
 - "Implement the C-2 commit per PLAN-BD-NNN.md" → spawn `pack-coder`
 
-The pack chat stays in control, receives the result, and continues.
-Use this mode for questions that need a focused answer, not extended
+The pack chat stays in control, receives the result, and continues —
+this mode is for questions that need a focused answer, not extended
 back-and-forth.
 
 **Inject the graph path into every spawn prompt (Claude-only).**

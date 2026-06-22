@@ -13,10 +13,8 @@ is dispatched to a per-class preservation strategy implemented in
 `scripts/lib/customization-preserve.sh`. This document is the
 **user-readable matrix** of those rules — what each class does, what kind
 of customization it preserves, and what to do when the migrator reports a
-file as needing manual reconciliation.
-
-The same matrix applies to both upgrade paths: `init-project.sh --update`
-and `scripts/migrate-v10-to-v11.sh`. The contract is symmetric.
+file as needing manual reconciliation. The same matrix applies symmetrically
+to both upgrade paths.
 
 ---
 
@@ -120,8 +118,8 @@ servers (e.g., a dev/stage GraphQL endpoint) are preserved.
 The Antigravity workspace MCP config is `mcpServers`-shaped JSON, portable
 across MCP clients; the class name is CLI-neutral by design. Project edits
 to add custom MCP servers, or to tune `BASE_DIR` / `DB_PATH`, are preserved
-via key-level union — the structured class preserves project edits in
-place rather than clobbering the live file on a both-edited update.
+via key-level union rather than clobbering the live file on a both-edited
+update.
 
 ---
 
@@ -240,9 +238,9 @@ the pack never ships `x-`-prefixed scripts (validate-pack Check 8
 enforces). Per-CLI agents under `.claude/agents/x-*.md` /
 `.codex/agents/x-*.md` and bundle agents under
 `.agents-plugin/*/agents/x-*.md` (plus the legacy-READ `.gemini/agents/x-*.md`)
-ARE classified directly to `custom-agent` by name; scripts use the
-prefix-by-convention but rely on three-way's project-only-file
-classification rather than a dedicated classifier branch.
+ARE classified directly to `custom-agent` by name; scripts rely on
+three-way's project-only-file classification rather than a dedicated
+classifier branch.
 
 ---
 

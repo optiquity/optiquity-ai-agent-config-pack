@@ -12,7 +12,7 @@ This document is the canonical rule for placing any file in the AI Agent Config 
 
 The pack repo houses two distinct audiences whose files MUST remain separated: **PACK files** (read or executed by actors operating ON the pack repo — Pack Chat, pack-* agents, pack maintainers, pack CI) and **PROJECT files** (read or executed by actors operating IN client repos that have installed the pack — project PM chat, project agents, client developers, client CI).
 
-The boundary is not a matter of taste; it is a deterministic rule expressed as a two-axis matrix (§2) and a four-step placement procedure (§3). Every artifact has exactly one valid placement.
+The boundary is a deterministic rule expressed as a two-axis matrix (§2) and a four-step placement procedure (§3). Every artifact has exactly one valid placement.
 
 ---
 
@@ -107,7 +107,7 @@ pack-ops/.boundary-exempt-root.txt
 
 | # | Filename | Reason exempt |
 |---|---|---|
-| 1 | `tracker.toml.pack-example` | Per user-curation direction in `maintenance-docs/v11-implementation/AUDIT-USER-CURATION.md` §1 — sufficient authority. |
+| 1 | `tracker.toml.pack-example` | User-approved root exemption. |
 
 **Adding to this list requires explicit user approval.** Adding an entry is a rule change, not a routine BD. The prevention CI gate consumes this file as its allow-list — any new C2 file appearing loose at root that is not in the list fails the gate. (The history of why the list is 1 entry rather than 3 lives in `maintenance-docs/archive/v11/BOUNDARY-DEFINITION-HISTORY.md`.)
 

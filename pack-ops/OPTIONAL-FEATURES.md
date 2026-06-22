@@ -31,11 +31,10 @@ teammate types with no changes**.
 Official documentation: <https://code.claude.com/docs/en/agent-teams>
 
 **When this matters for the Config Pack.** Most pack workflows are
-sequential and human-coordinated through the PM Chat: generate a prompt,
-run an agent, paste output back, decide next step. That's deterministic and
-identical across all three CLIs.
-
-Agent Teams adds value when work is parallel and independent — for example:
+sequential and human-coordinated through the PM Chat (generate a prompt,
+run an agent, paste output back, decide next step) — deterministic and
+identical across all three CLIs. Agent Teams adds value when work is
+parallel and independent — for example:
 - Multi-aspect code review (security + performance + test coverage in
   parallel)
 - Cross-layer feature work (frontend + backend + tests, each owned by a
@@ -43,9 +42,9 @@ Agent Teams adds value when work is parallel and independent — for example:
 - Investigation with competing hypotheses (parallel teammates challenge each
   other's theories)
 
-For these cases, a Claude Code user can opt into Agent Teams without giving
-up the pack's role definitions or skill library — the pack agents serve
-double duty as Claude Code subagents and as Agent Teams teammate types.
+In these cases a Claude Code user can opt in without giving up the pack's
+role definitions or skill library — the pack agents serve double duty as
+Claude Code subagents and as Agent Teams teammate types.
 
 **How to enable.** Add to `~/.claude/settings.json`:
 
@@ -110,11 +109,10 @@ coordination model.
 
 ## Claude Code — Isolated parallel agents (worktree isolation)
 
-**Status:** Claude Code only — no Codex or Antigravity equivalent yet (the
-cross-CLI story is tracked separately and is out of scope here). The
-subagent-isolation trigger is a per-spawn Agent-tool parameter; the base
-posture is a `settings.json` key the developer sets manually. The pack ships
-NO settings file — you add the keys to your OWN settings (see below).
+**Status:** Claude Code only. The subagent-isolation trigger is a per-spawn
+Agent-tool parameter; the base posture is a `settings.json` key the developer
+sets manually. The pack ships NO settings file — you add the keys to your OWN
+settings (see below).
 
 **What it is.** When Pack Chat spawns a read-write agent (a coder) in the
 background to make edits, it isolates that agent in its own git worktree so
@@ -126,8 +124,7 @@ there; the fix-coder REUSES the same worktree). The patch is produced ONLY
 after the reviewer confirms the work clean: Pack Chat SendMessage-s the
 most-recent read-write agent to emit it, then `git apply`s the
 reviewed-clean patch onto the parent branch and commits — the agent itself
-never stages or commits (the `agents-never-commit` contract is preserved
-end-to-end). Read-only agents (reviewers, architects, planners, researchers)
+never stages or commits. Read-only agents (reviewers, architects, planners, researchers)
 run in the tree the work lives in — the main checkout when the work is
 committed, the commit's live worktree when the work is still uncommitted
 there (they cd in + verify pwd/HEAD); they emit a report and no patch.
@@ -142,18 +139,16 @@ cd-REUSE the first coder's worktree (breaking the per-commit-worktree reuse
 that keeps the whole review/fix cycle in one tree). Isolation is decided
 per-spawn by the orchestrator, never pinned in a definition.
 
-**When this matters for the Config Pack.** Isolation is the class-keyed
-default — every read-write agent runs in its own worktree so its
-not-yet-reviewed edits never reach the canonical tree, and several
-read-write agents can run in parallel without their edits colliding in one
-shared working tree. The in-place (non-isolated) regime is NOT the default:
-it is the DEGRADED fallback the agent self-detects at runtime (pwd/HEAD
-ground-truth) when, despite the class default, isolation did not actually
-take effect (a platform fall-to-main, or a CLI without worktree support).
-When in-place is in force, the agent still keeps work out of the canonical
-tree only through the prose deny-list + behavioral contract, not the
-worktree boundary — which is why class-keyed isolation, not in-place, is the
-intended posture.
+**When this matters for the Config Pack.** Class-keyed isolation lets
+several read-write agents run in parallel without their edits colliding in
+one shared working tree. The in-place (non-isolated) regime is NOT the
+default: it is the DEGRADED fallback the agent self-detects at runtime
+(pwd/HEAD ground-truth) when, despite the class default, isolation did not
+actually take effect (a platform fall-to-main, or a CLI without worktree
+support). When in-place is in force, the agent keeps work out of the
+canonical tree only through the prose deny-list + behavioral contract, not
+the worktree boundary — which is why class-keyed isolation, not in-place, is
+the intended posture.
 
 **How to enable isolated parallel subagents — TWO INDEPENDENT mechanisms.**
 The feature is governed by two orthogonal knobs. Do not conflate them.
@@ -346,26 +341,25 @@ to fall through to grep/Read; this section is the SETUP + PRIVACY + MAINTENANCE
 runbook for the per-clone build.
 
 **When it matters for the pack.** The pack repo is doc-, reference-, and
-agent-heavy; agents repeatedly re-read the file tree for context, which is
-token-expensive. A compact subgraph answers "what relates to X / where does Y
-live / blast radius of Z" deterministically and locally. Querying is
-read-only, deterministic, and ~0 tokens — only BUILDING or refreshing the
-semantic doc layer costs the Claude subscription. Agents QUERY; they never
-BUILD (build is a one-time main-session / orchestrator job).
+agent-heavy, and re-reading the file tree for context is token-expensive. A
+compact subgraph answers "what relates to X / where does Y live / blast
+radius of Z" deterministically and locally. Querying is read-only and ~0
+tokens — only BUILDING or refreshing the semantic doc layer costs the Claude
+subscription. Agents QUERY; they never BUILD (build is a one-time
+main-session / orchestrator job).
 
 ### Privacy / secrets (read before you build — D3)
 
 - **What leaves the machine.** The AST / code pass is 100% local and never
   leaves the machine. The SEMANTIC pass sends NON-CODE text (docs, PDFs,
-  comments) to the model — code is not sent. Know this before the first build.
+  comments) to the model — code is not sent.
 - **A classifier refusal is a CORRECT SAFETY STOP, not a bug.** Graphify's
   auto-mode classifier may REFUSE to run the semantic pass on a
   secrets-adjacent repo. Treat a refusal as the safety feature working:
-  INVESTIGATE what tripped it; do NOT blindly override. This repo is less
-  secrets-adjacent than dotfiles (only synthetic fixtures plus `.example`
-  files), and the `.graphifyignore` (repo root) excludes all `.env` files,
-  `.mcp.json`, and `.claude/settings.local.json`, which removes the
-  secrets-shaped inputs from the semantic pass.
+  INVESTIGATE what tripped it; do NOT blindly override. The `.graphifyignore`
+  (repo root) excludes all `.env` files, `.mcp.json`, and
+  `.claude/settings.local.json`, which removes the secrets-shaped inputs from
+  the semantic pass.
 - **Backend = Claude subscription ONLY.** Pin `--backend claude-cli` on every
   `extract` invocation. THE STALE-ENUM CAVEAT (load-bearing): the top-level
   `graphify --help` `--backend` enum OMITS `claude-cli`, but `claude-cli` IS

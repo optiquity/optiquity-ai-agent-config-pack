@@ -90,7 +90,7 @@ In this pack, "race" is procedural, not OS-level concurrency. The detection rule
 
 Concrete patterns:
 - Migration ordering: when one step writes customization markers and another overlays templates, init order matters — the markers must be written BEFORE the template overlay, or the overlay clobbers them.
-- CI workflow + new test scripts: test scripts exist on disk but workflow doesn't invoke them — CI green doesn't mean tests ran. When reviewing any commit that adds new `*-test.sh` files, mandatory check: grep `.github/workflows/` for the new test path; if absent, MUST. (Empirically re-confirmed across multiple retro reviews — see HISTORY.)
+- CI workflow + new test scripts: test scripts exist on disk but workflow doesn't invoke them — CI green doesn't mean tests ran. When reviewing any commit that adds new `*-test.sh` files, mandatory check: grep `.github/workflows/` for the new test path; if absent, MUST.
 
 Reviewer template for race findings:
 ```
@@ -106,8 +106,6 @@ When reviewing any commit that adds or modifies CI workflow steps, apply the "wo
 
 > For each new or modified workflow step, identify a specific change to the underlying script, fixture, or configuration that SHOULD make this step fail. Then trace the wiring: would that change actually surface as a CI red? If not, the step is wired but tautological.
 
-This interrogation has retroactively caught a MUST the original end-of-batch review missed (a manifest-verify step that passed by construction). Provenance in HISTORY.
-
 Reviewer prompt template for CI work MUST include the "would this turn red?" requirement.
 
 **Must-include-in-prompt rule.** When the BD touches CI workflows (`.github/workflows/*.yml` or any other CI configuration), the agent prompt that generates the implementation OR the review MUST explicitly require the agent to identify, for every new or modified CI step, a concrete change that would turn it red AND confirm the wiring would surface that change. Prompts that omit this requirement have empirically missed CI gaps.
@@ -120,8 +118,6 @@ When reviewing convention documents (naming conventions, fixture conventions, fi
 2. **Column ↔ text consistency.** If the convention document includes a table column (e.g., "Versioning: v10-pinned / v11-pinned / version-agnostic"), does the prose convention text enumerate the same value space, or does it leave the column-value pattern unstated?
 3. **Forward-compatibility for vN+1.** Does the convention scale to the next major version's surfaces without amendment? Convention text codified for one set of surfaces must admit new classes introduced by later surfaces.
 4. **Examples ↔ rule alignment.** Do the worked examples instantiate the rule, or contradict it via edge-case inclusion?
-
-A retro reviewer flagged findings in the procedure-rule-column triplet that the original end-of-batch review missed, which is what motivated codifying this checklist. Provenance in HISTORY.
 
 ## Rat-hole limits (operational discipline)
 
@@ -236,19 +232,13 @@ The reviewer's "BD scope anchor" section MUST source File/Symbol from:
 
 NEVER from the parent chat's prose recollection of what files the BD touched. Recollection drifts and corrupts the reviewer's scope.
 
-A retro trial prompt once cited the wrong surface from prose recall; sourcing from BACKLOG + `git --stat` corrected it. Provenance in HISTORY.
-
 ### Filename hygiene in reference-doc citations
 
-Reference-doc paths in reviewer prompts MUST be verified against the live filesystem before sending. Do not cite docs by remembered/conventional name.
-
-Reviewer prompts have cited `IMPLEMENTATION-PLAN-V11.0.md` (does not exist) when the canonical filename is `EXECUTION-PLAN-V11.0.md`. Lesson: every reference-doc path in a reviewer prompt should be a recent `ls` confirmation, not a name recalled from training-pattern context. Provenance in HISTORY.
+Reference-doc paths in reviewer prompts MUST be verified against the live filesystem before sending. Do not cite docs by remembered/conventional name — every reference-doc path should be a recent `ls` confirmation, not a name recalled from context.
 
 ### Long output chunking
 
-Coder and reviewer prompts MUST instruct the agent to chunk Write calls for outputs over ~300 lines: initial Write of the first portion, then Edit appends for the rest. A single 500+ line Write risks token-limit truncation and harder-to-review reports.
-
-Coders have blown through the threshold despite prompt guidance; single Writes can succeed but the chunking discipline is the safer default and agents that miss this guidance need explicit reminder. Pack Chat prompts MUST surface this rule prominently AND include a chunking pattern (initial Write + Edit append) as the worked example. Provenance in HISTORY.
+Coder and reviewer prompts MUST instruct the agent to chunk Write calls for outputs over ~300 lines: initial Write of the first portion, then Edit appends for the rest. A single 500+ line Write risks token-limit truncation and harder-to-review reports. Pack Chat prompts MUST surface this rule prominently AND include a chunking pattern (initial Write + Edit append) as the worked example.
 
 ## Concept-scope doc requirement
 
@@ -286,4 +276,4 @@ A new conceptual area review approach must be empirically validated before insti
 
 The trial requirement applies on first introduction (v11.0) and may apply on substantial methodology revisions in later versions.
 
-The per-BD-AND-per-batch review cycle was empirically validated retroactively across prior multi-BD batches: multiple MUSTs were caught at the per-BD review layer that the original end-of-batch reviews missed, and the "test-not-in-CI" heuristic was independently flagged by several reviewers (now codified in the race-condition section + CI-step interrogation section above). Decision: per-BD review IS institutionalized for v11.0+ as the default for multi-BD batches, with end-of-batch review remaining the cross-cut catch. Aggregate findings + per-BD provenance in HISTORY.
+Per-BD review IS institutionalized for v11.0+ as the default for multi-BD batches, with end-of-batch review remaining the cross-cut catch.
