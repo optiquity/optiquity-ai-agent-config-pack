@@ -200,9 +200,8 @@ governs TOP-LEVEL background `claude` sessions via the
 main checkout until `EnterWorktree` is called; `"none"` lets background jobs
 edit the working copy directly. `bgIsolation` does NOT control Agent-tool
 subagents — it is not the subagent-isolation trigger, and it is not a
-boolean (`bgIsolation: true` is invalid). The background-session isolation
-story is tracked under BD-218 (v11.1); do not set `bgIsolation` expecting it
-to isolate subagents.
+boolean (`bgIsolation: true` is invalid). Do not set `bgIsolation`
+expecting it to isolate subagents.
 
 **In-session destructive-git-verb backstop — the documented-optional
 `permissions.deny` recipe.** The pack's load-bearing default protection for
@@ -281,8 +280,8 @@ these keys; it never writes a settings file into the repo.
 
 **Trinity-exempt note (Claude-only).** This feature is specific to Claude
 Code's Agent-tool `isolation` parameter and `worktree` settings. Codex CLI
-and Antigravity have no equivalent at this time; their worktree story is
-tracked under BD-217 (v11.1). There is no cross-CLI parity claim here.
+and Antigravity have no equivalent at this time. There is no cross-CLI
+parity claim here.
 
 **Manual worktree (no pack mechanism needed).** If you simply want to work
 on parallel branches yourself, run `git worktree add ../my-worktree
@@ -303,35 +302,6 @@ here once they ship and prove useful.*
 
 *Placeholder. The Config Pack documents Antigravity-specific opt-in features
 here once they ship and prove useful.*
-
----
-
-## Tracker integration (deferred)
-
-**Status** — DEFERRED indefinitely, with no release version (BD-214).
-**Flat-file per-entry is the sole supported mode.** There are no opt-in
-steps.
-
-**What it was** — a planned, opt-in mode that would move issue tracking
-out of the `/backlog/` flat-file format into GitHub Issues (or another
-tracker via the TrackerProvider abstraction), with forward / reverse
-migration and an inflection-point recommendation system. The design
-shipped as DORMANT code (`scripts/lib/tracker-*.sh`,
-`scripts/pack-tracker.sh`, `scripts/lib/recommendation.sh`,
-`scripts/tracker-migrate.sh`) and is retained, test-covered, for a
-future resumption.
-
-**Why it is deferred** — the ability to flip to tracker mode is BLOCKED
-on both surfaces (`tracker_mode()` clamps to flat-file; the tracker flip
-verbs refuse with a deferred message). Resumption is gated
-on the entry-format redesign (BD-215) landing first.
-
-**What ships today** — the dormant code and the committed example
-templates (`tracker.toml.pack-example`,
-`project-template/tracker.toml.project-example`) remain in the tree as a
-record of the dormant feature. No surface opts any repo into tracker
-mode, and even a hand-copied `tracker.toml` is inert under the
-flat-file clamp.
 
 ---
 
@@ -360,11 +330,11 @@ behavior, and clients are entirely unaffected (nothing graphify ships in the
 config pack; no `project-template/` file is touched). The refresh hook is a
 TRACKED hook body (`scripts/hooks/graphify-pre-push.sh`) with a one-time
 per-clone install (`bash scripts/install-graphify-hook.sh`) — only the
-installed `.git/hooks/pre-push` copy is per-clone (BD-237). The committed
+installed `.git/hooks/pre-push` copy is per-clone. The committed
 scaffolding is the repo-root `.graphifyignore`, the `.gitignore` entry for
 `graphify-out/`, the pack-root-trinity graph-first rule (plus its
 `graph-first-context` rationale section), CI Check 63, the tracked pre-push
-hook body + installer (BD-237), and this runbook (BD-225/BD-237).
+hook body + installer, and this runbook.
 
 **What it is.** Graphify builds a compact knowledge graph of the repo
 (structural code relationships + a semantic layer over docs/comments) that
@@ -437,16 +407,14 @@ points:
    graph is gitignored). The refresh hook BODY *is* committed
    (`scripts/hooks/graphify-pre-push.sh`); only the INSTALLED
    `.git/hooks/pre-push` copy is per-clone — run `bash
-   scripts/install-graphify-hook.sh` once per clone to wire it in (BD-237).
+   scripts/install-graphify-hook.sh` once per clone to wire it in.
 5. **Env-key hygiene.** One-time confirm that `GEMINI_API_KEY`,
    `GOOGLE_API_KEY`, and `OPENAI_API_KEY` are unset.
 
 The initial build produces `graphify-out/cost.json` (the measured token-cost
-tracker). That file is the input **BD-234** consumes to confirm or re-tune
-cadence, knobs, and scope after burn-in. Cadence direction is LOCKED for now;
-do NOT change cadence here — BD-234 re-tunes with measured numbers.
+tracker). Cadence direction is LOCKED for now; do NOT change cadence here.
 
-### How to keep it fresh — the pre-push hook (tracked body + one-time install, BD-237)
+### How to keep it fresh — the pre-push hook (tracked body + one-time install)
 
 The maintenance mechanism is a TRACKED, self-installed, GUARDED, NON-BLOCKING,
 doc-gated `pre-push` hook that auto-refreshes the graph IN THE BACKGROUND on

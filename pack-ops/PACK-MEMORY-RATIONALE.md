@@ -124,12 +124,11 @@ install, they do not govern project behavior, and importing them into
 project-side files is a regression that breaks at client install or pollutes
 project-design intent. The default instinct "reach for the pack mechanism I
 know" is bias, not a starting point. Investigate the project-side SSOT FIRST.
-Worked examples of the failure mode this rule prevents: BD-175 audit V1
-(project trinity acquired `PACK-AGENTS.md` reference via a review-fix commit
-when the project-side SSOT was `docs/pack/PM-CHAT.md`), V3 (project-side
-`project-template/docs/pack/PLATFORM-SKILLS.md` acquired `PACK-AGENTS.md`
-reference instead of pointing at `project-template/docs/pack/PM-CHAT.md`), V4
-(project-side methodology doc became pack-internal by drift).
+The failure mode this rule prevents: a project-side surface (the project
+trinity, `project-template/docs/pack/PLATFORM-SKILLS.md`, a project-side
+methodology doc) acquires a pack-internal reference (`PACK-AGENTS.md`, a
+pack-* mechanism) when the correct project-side SSOT was
+`project-template/docs/pack/PM-CHAT.md`.
 See the `boundary-investigation` skill (loaded by all pack agents) for the
 SSOT-investigation methodology.
 
@@ -169,14 +168,11 @@ Every pack-coder agent prompt MUST include both halves of this pattern:
   "Relevant" = (a) the test file matching the check ID being modified, AND (b)
   any test file that exercises the same `_iter_*` helper or shared logic
   surface; when in doubt, run ALL per-check test files (cost: ~5-15s total).
-  Worked example: BD-193 + BD-194 incident — BD-193 commit `85196d4` removed
-  `pack-ops/HELP-FRAGMENT-TRACKER.md` from the inventory but didn't update
-  `scripts/tests/test-validate-pack-check-43.sh` G2.T3 or
-  `scripts/tests/test-validate-pack-checks-36-37-38.sh` G7.T3 expected_extras;
-  both BD-193 and BD-194 PREFLIGHTs passed because `scripts/validate-pack.py`
-  itself ran clean, but the
-  per-check tests would have FAILed on push. Caught at BD-194 reviewer pass;
-  resolved in `6c76582`.
+  An inventory edit that updates `scripts/validate-pack.py` but not the
+  per-check test fixtures (e.g. `scripts/tests/test-validate-pack-check-43.sh`
+  or `scripts/tests/test-validate-pack-checks-36-37-38.sh` expected_extras)
+  passes the validate-pack run yet FAILs the per-check tests on push — which
+  is why the per-check test runs are mandatory before the PREFLIGHT line.
 
 - **STOP-MEANS-STOP preamble (CLAUDE-CODE-SPECIFIC ENFORCEMENT, REQUIRED for
   all CLIs as content).** The coder prompt opens with an explicit instruction:
@@ -187,15 +183,12 @@ Every pack-coder agent prompt MUST include both halves of this pattern:
   platform-neutral; the in-band ENFORCEMENT mechanism is platform-conditional:
   - Claude Code: SendMessage tool (Agent Teams,
     `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`); SECURITY WARNING classifier flags
-    subagent defiance at handoff. This is the enforced path the BD-169 incident
-    exposed (see worked example in `feedback-pack-coder-preflight-pattern`
-    memory pointer).
-  - Codex CLI: a MAv2 `send_message` analog exists (issue #12462 CLOSED-COMPLETED
-    2026-05-02; flag-gated `multi_agent_v2`, not-yet-GA-documented), so the parent stop
-    mechanism MAY use it where enabled; otherwise `/agent` or natural-language.
-    Cross-CLI coordination = BD-217.
-    Parent stop mechanism is `/agent` command or natural-language ("ask Codex to
-    stop the subagent"). Reliability caveats per research §2.6.
+    subagent defiance at handoff. This is the enforced path for parent-stop.
+  - Codex CLI: a MAv2 `send_message` analog exists (flag-gated
+    `multi_agent_v2`, not-yet-GA-documented), so the parent stop mechanism MAY
+    use it where enabled; otherwise the parent stop mechanism is the `/agent`
+    command or natural-language ("ask Codex to stop the subagent").
+    Reliability caveats per research §2.6.
   - Antigravity: parent-control stop is native — the parent agent can interrupt
     a running subagent by sending it a message, or kill it entirely (the killed
     subagent's temporary git worktree is auto-cleaned). A subagent can also be
@@ -204,21 +197,17 @@ Every pack-coder agent prompt MUST include both halves of this pattern:
     `maintenance-docs/v11-implementation/RESEARCH-BD-221-ANTIGRAVITY-DOCS-CAPTURE.md`
     § "Subagent lifecycle".
 
-Worked-example anchor: `feedback-pack-coder-preflight-pattern` memory pointer;
-original incident BD-169 19g-pack, 2026-05-16.
-
 ---
 
 ## enumerate-rules-inline
 
-**Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery. Both BD-195
-design failures (C6 pack-chat-only allowlist gap; C7 Check 44 working-state proof
-failed by 1213 hits in 114 files) had the same shape: the relevant rule was
-knowable from pack memory but the architect did not enumerate it as something
-to verify before declaring complete. Design defects shipped past architect →
-planner → Pack Chat → coder gates, caught only at coder runtime. Token cost
-rises (architect prompt grows from ~500 lines to ~2000+ lines); rule compliance
-becomes auditable because the agent's task and rules are co-located.
+**Why:** When the relevant rule is knowable from pack memory but the agent
+does not enumerate it as something to verify before declaring complete,
+design defects ship past the architect → planner → Pack Chat → coder gates
+and are caught only at coder runtime. Pasting the literal rule text into the
+prompt makes the rule a thing the agent must verify, not discover. Token cost
+rises (the prompt grows), but rule compliance becomes auditable because the
+agent's task and rules are co-located.
 
 The imperative requires that the LITERAL rule text — name + Why + How-to-apply
 paragraphs — is pasted into the agent prompt (not by reference such as "see
@@ -241,16 +230,13 @@ requirement. Pack Chat NEVER spawns an agent without the rules-in-force block.
 
 ## rules-applied-verification-block
 
-**Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery. Without this
-block, agents cite rules they've followed but skip rules they didn't verify.
-Verification evidence is the only mechanism that distinguishes "rule cited"
-from "rule applied." Failure mode in BD-195 AC1 §6.2: architect cited prison
-rule, manifest-regen rule, trinity rule — sound. But no verification evidence
-for the empirical claim "the seed-corrected tree has NO `v11.1`-string
-occurrences outside the allowlist." The claim was rule-shaped (a state-claim)
-but had no verification block. The coder later proved it false (1213 hits in
-114 files). Required Rules-Applied Verification Block with grep output would
-have failed the claim at design time, not coder time.
+**Why:** Without this block, agents cite rules they've followed but skip
+rules they didn't verify. Verification evidence is the only mechanism that
+distinguishes "rule cited" from "rule applied." A sound-sounding citation of
+a state-claim ("the tree has NO X outside the allowlist") with no grep output
+behind it can be flatly wrong; a Rules-Applied Verification Block with the
+actual command output would have failed the claim at design time rather than
+at coder runtime.
 
 **How to apply:** Format: per-rule table `Rule | Verification evidence |
 Conclusion`. Pack Chat verifies the block exists, every row has non-empty
@@ -272,14 +258,12 @@ Format (the literal block an agent appends as the final section of its output):
 
 ## empirical-evidence-blocks
 
-**Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery. BD-195 AC1 §6.2
-claimed "after F-AC1-04 strips the v11.1 strings from validate-pack.py +
-test-issue-forms.sh, and F-AC1-02 retires templates-archive/v11.1/, the working
-tree has NO `v11.1`-string occurrences outside the allowlist." State-claim. No
-grep run. No count captured. The claim was empirically wrong by three orders of
-magnitude (1213 hits in 114 files). The architect could have grepped at design
-time — they had the regex (they wrote it as part of Check 44's pattern).
-Nothing required them to verify.
+**Why:** A design's state-claim ("the tree has NO X outside the allowlist")
+is worthless without the verification that backs it. An architect who has
+the matching regex but is not required to run it can ship a claim that is
+wrong by orders of magnitude — and a downstream coder discovers the gap only
+after the design has already advanced. Requiring the evidence at design time
+catches the false claim before it propagates.
 
 **How to apply:** Every architect or planner prompt requires (a) enumeration of
 the state-claims the design makes (in advance) and (b) instruction that the
@@ -305,16 +289,13 @@ Format (one entry per state-claim; the design output embeds this block):
 
 ## ci-guard-measure-then-bound
 
-**Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery. BD-195 AC1 §6.2
-designed Check 44 with an allowlist of 2 architect docs + 7 anchor phrases. The
-architect assumed (without measurement) that C1-C6 fix-recipes would leave only
-the allowlist-covered occurrences in the tree. The actual measurement at HEAD
-`b547524a` (after C1-C6 landed) revealed 1213 occurrences across 114 files. The
-allowlist was undersized; the fix-recipes were under-scoped to match the actual
-contamination. The Pack Chat triage temptation was to "widen the allowlist" to
-make the guard pass — which would have defeated Check 44's purpose (catching
-contamination LIKE the BD-193 propagation it was designed to prevent). The
-right fix was to redo the design with the actual measurement in hand.
+**Why:** An allowlist sized by assumption rather than measurement is
+undersized: the fix-recipes under-scope the actual contamination, and the
+guard fails on the unmeasured residue. The triage temptation is then to
+"widen the allowlist" to make the guard pass — which defeats the guard's
+whole purpose (it exists to catch exactly that contamination). The right fix
+is to redo the design with the actual tree measurement in hand, not to widen
+the allowlist to admit the hits.
 
 **How to apply:** Any architect spawn that includes a CI-guard / validator /
 allowlist deliverable: the prompt requires the architect to execute (a)
@@ -329,10 +310,9 @@ the design to planner if any of these steps are skipped.
 
 ## bounded-review-fix-cycle
 
-**Why:** User-locked 2026-05-30 during BD-195 Step-7 recovery. Pack Chat's
-judgment is compromised when it doubles as reviewer (BD-195 evidence: missed
-the C2 staging defect that required `--amend`; missed the C7 working-state-proof
-claim that failed by 1213 hits). Independent reviewer-agent verification is the
+**Why:** Pack Chat's judgment is compromised when it doubles as reviewer —
+it misses staging defects and false working-state-proof claims in work it
+authored or shepherded. Independent reviewer-agent verification is the
 structural fix. Bounding the cycle (max 2 review/fix pairs + 1 final review)
 prevents the infinite-loop race-condition shape (where fix A breaks B, fix B
 re-breaks A) and surfaces design defects via architect escalation rather than
@@ -405,14 +385,15 @@ deliverable's source-of-truth (templates, scripts that emit, validators that
 check), project-side references are allowed. If the surface is
 pack-self-management, project-side references are forbidden.
 
-**Why:** User-locked 2026-05-27 during BD-185 reconciliation. The rule was
-implicit in `feedback_pack_project_separation_of_concerns` +
-`feedback_bd_pack_only_operational_rule` but not explicit. BD-193 applied the
-asymmetric counterpart (removed BD from project-side forms) but did not
-symmetrically clean up TD/phase from pack-side self-management surfaces. Worked
-example: pack-root `.github/ISSUE_TEMPLATE/work-item.yml` admits `td`,
-`phase-epic-skeleton`, `phase-task-skeleton` — these are stale pre-BD-193
-inheritance and should be removed.
+**Why:** The rule is implicit in
+`feedback_pack_project_separation_of_concerns` +
+`feedback_bd_pack_only_operational_rule`, made explicit here. Removing BD
+admissions from project-side forms has an asymmetric counterpart that is easy
+to miss: symmetrically cleaning up TD/phase from pack-side self-management
+surfaces. Worked example of the forbidden shape: a pack-root
+`.github/ISSUE_TEMPLATE/work-item.yml` that admits `td`,
+`phase-epic-skeleton`, `phase-task-skeleton` — pack does not file those
+against itself, so they should be removed.
 
 ---
 
@@ -436,17 +417,15 @@ state encoded in a test file's assertions, where the assertion's truth value
 depends on whether the audited surface admits a forbidden concept. Treat the
 same as a LEAK in the audited surface itself.
 
-**Why:** User-locked 2026-05-27 post-BD-185-reconciliation pack-side re-audit
-(methodology gap MF1). The original BD-185 reconciliation pack-side audit
-walked the form file (F1) + the validator's per-surface dict (F2) but missed
-`scripts/tests/test-issue-forms.sh` Group 2 + Group 5 assertions (F3'). The
-test's hardcoded pack-root assertions encoded the pre-cleanup state and
-required lock-step update with F1 + F2. Caught post-fact by the PREFLIGHT
-per-check-test-runs gate (`ba9e09d`), NOT by the audit itself. The methodology
-gap was treating `scripts/tests/*` as "constructor context" wholesale when the
-correct granularity is per-assertion (constructor portions assert project-side
-emission; self-management portions assert pack-side state). The `review` skill
-at `.claude/skills/review/SKILL.md` + trinity mirrors carries the operational
+**Why:** An audit that walks the surface file + the validator's per-surface
+dict but misses the TEST file's hardcoded assertions leaves the test
+encoding the pre-cleanup state — and a per-check-test gate (not the audit)
+catches the gap after the fact. The methodology trap is treating
+`scripts/tests/*` as "constructor context" wholesale, when the correct
+granularity is per-assertion: constructor portions assert project-side
+emission, self-management portions assert pack-side state, and both must
+update in lock-step with the surface. The `review` skill at
+`.claude/skills/review/SKILL.md` + trinity mirrors carries the operational
 checklist.
 
 ---
@@ -495,20 +474,19 @@ resolve, and the version shorthand is ambiguous (a `V3.3` reference could mean
 any v3.3-versioned doc). Audit vocabulary scans that look
 only for `*.md` patterns will MISS these; reviewers should treat bare-version
 shorthand for pack-internal docs as the same leak class as explicit `*.md`
-cites. Worked examples: BD-135 renamed the colliding `tracker.toml.example`
-pair; BD-173 Batch 19c.H.9 NIT-1 fix expanded from L1207 doc-cite to 11
-bare-V3.3 refs in `supporting-docs/METHODOLOGY.md` (audit-vocabulary-gap
-pattern).
+cites (the audit-vocabulary-gap pattern — a bare `V3.3` ref in a doc like
+`supporting-docs/METHODOLOGY.md` is as much a leak as an explicit `.md`
+cite).
 
 ---
 
 ## architect-doc-reality-reconciliation
 
-Worked example: BD-119 §9.2 addendum in
-`maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md` names BD-160 as the
-first realized consumer; the consumer carries the matching docstring; the
-BD-160 IMPL-REPORT links both. This pattern is load-bearing for any future
-shipped surface that pre-existed in an architect doc.
+Worked example: the §9.2 addendum in
+`maintenance-docs/v11-implementation/ARCHITECTURE-BD-119.md` names the first
+realized consumer; the consumer carries the matching docstring; the
+IMPL-REPORT links both. This pattern is load-bearing for any future shipped
+surface that pre-existed in an architect doc.
 
 ---
 
@@ -520,9 +498,8 @@ The trigger is intentionally inclusive — false positives (e.g., a
 not copied to clients) cost ~30-90s of unnecessary rebuild but produce no
 incorrect manifest change; false negatives within v11-surface are impossible
 because every fixture-affecting file lives under one of these four directories.
-Fixture-affecting paths today: all of `project-template/**` (the source
-`project-template/docs/pack/HELP-FRAGMENT-TRACKER.md` ships to clients here — the
-`pack-ops/HELP-FRAGMENT-TRACKER.md` copy is NOT a fixture input) and `scripts/**`
+Fixture-affecting paths today: all of `project-template/**` (the client-shipped
+content under it is a fixture input; the pack-ops copies are NOT) and `scripts/**`
 minus the test set (`scripts/test*.sh`, `scripts/tests/**`) and the manifest
 tooling itself (`scripts/manifest-sync.sh`, `scripts/lib/manifest-inputs.sh`);
 `test-fixtures/build.sh`; `supporting-docs/METHODOLOGY.md` and
@@ -532,53 +509,44 @@ of truth in `scripts/lib/manifest-inputs.sh`, shared by `scripts/manifest-sync.s
 and validate-pack Check 62, so the input set cannot drift between the tool and
 the check. v11-* fixture row SHAs drift naturally with any
 v11-surface change (per `test-fixtures/README.md` § Determinism and the
-`_update_manifest` comment at `test-fixtures/build.sh:903-912`); a stale
-manifest fails CI's `fixture manifest verify` step (BD-115, RELEASE-GATE item 5)
-even when every functional test passes. **Why:** two incidents drove this rule:
-(1) the 2026-05-17 incident where commit `667d2dd` shipped v11-surface
-`project-template/` trinity edits without regenerating the manifest, CI failed
-on the manifest-comparison step alone (all 40+ functional steps PASSED), and
-recovery commit `ef9e5c7` had to land as a separate `fix:` commit; the drift was
-the cumulative effect of three intentional v11-surface commits (`cf67a96`
-BD-169 pack-product wording, `62f9eec` BD-169 review/fix, `479fef5` Batch 19
-broad review/fix) since the last manifest regen at `a57dd04` (BD-160); (2) the
-2026-05-19 incident where BD-175 Phase 5 Commit 8 `4120d19` modified
-`supporting-docs/METHODOLOGY.md` (a client-installed file) without regenerating
-the manifest under the prior strict trigger (which excluded `supporting-docs/`),
-CI failed identically, and recovery commit `6c48f88` had to land as a separate
-`fix:` commit. BD-176 expanded the trigger from 2 directories to 4 to close both
-classes of false negative (pack-ops/ defensively; supporting-docs/
-empirically). **How to apply (BD-228 — push-time, tool-enforced):** the manifest
-is NO LONGER a per-commit chore. Do NOT run `build.sh --all --clean` and stage
-`test-fixtures/manifest.txt` per commit. Instead, the orchestrator runs
-`scripts/manifest-sync.sh` ONCE before `git push`: the tool checks the unpushed
-range against the fixture-input predicate (`scripts/lib/manifest-inputs.sh`) and
-regenerates the manifest only when a fixture input changed (rebuilds once via
+`_update_manifest` comment in `test-fixtures/build.sh`); a stale
+manifest fails CI's `fixture manifest verify` step even when every functional
+test passes. **Why:** a manifest left stale after a v11-surface edit fails CI
+on the manifest-comparison step alone, even when every functional step passes
+— and the drift accumulates silently across multiple intentional v11-surface
+commits, so each miss costs a separate recovery `fix:` commit. The trigger is
+deliberately inclusive (all four client-installed directories) so a
+fixture-affecting edit in any of them cannot escape the predicate.
+**How to apply:** the manifest is NOT a per-commit chore. Do NOT run
+`build.sh --all --clean` and stage `test-fixtures/manifest.txt` per commit.
+Instead, the orchestrator runs `scripts/manifest-sync.sh` ONCE before
+`git push`: the tool checks the unpushed range against the fixture-input
+predicate (`scripts/lib/manifest-inputs.sh`) and regenerates the manifest only
+when a fixture input changed (rebuilds once via
 `bash test-fixtures/build.sh --all --clean`, then commits the output iff the
 manifest differs on disk). Correctness is enforced by two gates, not by prose:
 CI `bash test-fixtures/build.sh --verify` (the authoritative SHA gate — fails RED
 on any stale manifest at the pushed HEAD) and validate-pack Check 62 (a cheap
 structural screen on the manifest's shape — row count, fixture names, SHA
 format). Coders and other agents NEVER hand-edit or per-commit-regenerate the
-manifest; the tool reconciles it at push and the two gates catch any miss. This
-is the regime BD-228 installed (design
-`maintenance-docs/v11-implementation/DESIGN-MANIFEST-PUSH-METHOD.md`),
-superseding the BD-176 per-commit trigger. Cross-reference: the "Test infra is
-self-provisioned" bullet above governs *test provisioning*; this bullet governs
-*manifest maintenance* and is load-bearing for the `fixture manifest verify` CI
-gate (BD-115, RELEASE-GATE item 5).
+manifest; the tool reconciles it at push and the two gates catch any miss. The
+design of record is
+`maintenance-docs/v11-implementation/DESIGN-MANIFEST-PUSH-METHOD.md`.
+Cross-reference: the "Test infra is self-provisioned" bullet above governs
+*test provisioning*; this bullet governs *manifest maintenance* and is
+load-bearing for the `fixture manifest verify` CI gate.
 
 ---
 
 ## cross-cli-reference-normalization
 
-Per Override 9, byte-identical cross-trinity adoption of CLI-specific paths is
+Byte-identical cross-trinity adoption of CLI-specific paths is
 WRONG even when it visually closes drift — body-text drift and cross-CLI
 references are different classes (see
 `maintenance-docs/v11-implementation/ARCHITECTURE-BD-182.md` §1 table). Worked
-example: BD-178 SHOULD-1 byte-identically aligned `GEMINI.md`'s
-`.claude/settings.json` reference (correct for CLAUDE form, wrong for
-Gemini-audience); BD-182 corrected to `.gemini/.env` per §4.1.
+example: byte-identically copying `GEMINI.md`'s `.claude/settings.json`
+reference is correct for the CLAUDE form but wrong for the Gemini audience,
+which resolves to `.gemini/.env` per §4.1.
 
 ---
 
@@ -588,7 +556,7 @@ Ship-status and dependency-direction are orthogonal; placement follows the
 latter. A deliverable normally lives project-side, and a new client-shipped
 script defaults to `project-template/scripts/`. But a file a PACK OPERATION
 depends on at runtime cannot live project-side without making a project
-deliverable a dependency of a pack op — forbidden. Worked example (BD-195):
+deliverable a dependency of a pack op — forbidden. Worked example:
 `scripts/lib/detect.sh` is `source`d by `init-project.sh:79` /
 `scripts/add-capability.sh` / the migrator (all pack operations), so it stays
 pack-side even though it ships (it is the dependency of the shipped
@@ -598,20 +566,20 @@ that inversion (`maintenance-docs/v11-implementation/ARCHITECTURE-BD-195-DUAL-US
 §8.0). The pack-side-ship exception is frozen to `_SANCTIONED_PACK_SIDE_SHIPPED`;
 CI Check 47 holds the install-map's pack-side subset == that constant, so the
 lazy "ship from `scripts/` too" path fails by default — growth is a deliberate,
-sign-off-gated constant edit, never an incidental map add.
+sign-off-gated constant edit, never a stray map add.
 
 ## pack-chat-minor-edits-only
 
-**Why.** User-authorized 2026-06-04 (BD-208). The pre-BD-208 convention let
-Pack Chat edit pack-chat-only files directly at ANY depth. Coder edits flow through
-the bounded review/fix cycle; Pack-Chat-direct edits did not (Pack Chat cannot
-review itself — see `bounded-review-fix-cycle`). On a large structural BD
-(BD-203) this forced a split: Pack Chat hand-edited substantial pack-chat-only content
-with NO independent review while the coder's edits got the cycle. The asymmetry
-let un-reviewed substantive edits of LANDED content land. BD-208 (Option B)
-makes the review uniform per CLASS: substantive edits of already-landed content
-+ rule edits + out-of-small-set edits run through a coder + reviewer; NEW-entry
-authoring stays Pack-Chat-direct under the user's governance approval.
+**Why.** Letting Pack Chat edit pack-chat-only files directly at ANY depth
+creates an asymmetry: coder edits flow through the bounded review/fix cycle,
+but Pack-Chat-direct edits do not (Pack Chat cannot review itself — see
+`bounded-review-fix-cycle`). On a large structural change this forces a split
+where Pack Chat hand-edits substantial pack-chat-only content with NO
+independent review while the coder's edits get the cycle, letting un-reviewed
+substantive edits of LANDED content land. The fix makes the review uniform per
+CLASS: substantive edits of already-landed content + rule edits +
+out-of-small-set edits run through a coder + reviewer; NEW-entry authoring
+stays Pack-Chat-direct under the user's governance approval.
 
 **How to apply.** Classify every pack-chat-only edit by the §2 boundary in
 ARCHITECTURE-BD-208.md (Option B): MINOR (Pack-Chat-direct) = (a) a bookkeeping
@@ -640,9 +608,9 @@ rather than bolting a second review path onto Pack Chat.
 
 ## spawn-unique-naming
 
-**Why.** Re-finding a still-alive spawn — the BD-206 case where a docs-researcher
-had to be re-engaged — required digging the `agentId` out of session JSONL by hand
-(transcript archaeology). A unique, descriptive `name` is the stable key the
+**Why.** Re-finding a still-alive spawn — e.g. a docs-researcher that has to
+be re-engaged — otherwise requires digging the `agentId` out of session JSONL
+by hand (transcript archaeology). A unique, descriptive `name` is the stable key the
 discovery mechanism records and re-finds by, eliminating that dig. The discipline is
 CROSS-CLI because all three platforms (Claude Code, Codex, Antigravity) spawn named
 agents, and the naming convention must be uniform wherever an orchestrator later
@@ -679,7 +647,7 @@ context has been compacted and the in-memory spawn list is gone.
 `SendMessage.to`). The registry is consulted ONLY after the `fresh-agent-default`
 gate authorizes a re-engage — it fixes HOW-to-find, not WHEN-to-reengage. This
 MECHANISM is Claude-only; Codex MAv2 (`list_agents`/`resume_agent`) and Antigravity
-`agy` analogs exist but need their own verification + mapping (BD-217).
+`agy` analogs exist but need their own verification + mapping.
 
 **Rejected alternative.** A committed manifest (`agents-never-commit` forbids the
 mid-task commit and it churns the tree); the Agent-Teams `members` list (teams-only,
@@ -717,13 +685,13 @@ qualifies for the no-design-bias exemption.
 
 ## graph-first-context
 
-**Why.** User-authorized (BD-225). The pack is doc/reference/agent-heavy;
+**Why.** The pack is doc/reference/agent-heavy;
 agents and Pack Chat re-read the file tree for orientation, which is
 token-expensive. A compact knowledge subgraph (built by `graphify` and
 gitignored at `graphify-out/`) answers orientation / relationship /
 blast-radius / "what relates to X" / "where does Y live" questions at ~0
-tokens — a deterministic local CLI query, no LLM call. Graph-first is the
-token-efficiency win BD-225 buys. The graph is a per-clone, gitignored,
+tokens — a deterministic local CLI query, no LLM call. That is the
+token-efficiency win graph-first buys. The graph is a per-clone, gitignored,
 manual opt-in: a clone with no graph is the DEFAULT, so the rule must degrade
 gracefully (G1 existence guard) and never block on a failed query (G2
 fallback). It is NOT a hard dependency of any task — a best-effort
@@ -748,10 +716,9 @@ subscription). Worked example: to scope which files a coder needs, Pack Chat
 runs `graphify query`/`affected` and names those exact files in the prompt
 instead of "read the tree." The rule lives in the pack-root trinity
 (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), normalized per CLI audience
-(`cross-cli-reference-normalization`); cross-CLI EFFECTIVENESS on
-Codex/Antigravity is BD-233. Boundary: the graph MAY index the whole repo
-incl. `project-template/`, but the rule + every setup artifact stay pack-side
-(`bd-pack-only`).
+(`cross-cli-reference-normalization`). Boundary: the graph MAY index the whole
+repo incl. `project-template/`, but the rule + every setup artifact stay
+pack-side (`bd-pack-only`).
 
 **Rejected alternatives.** (a) An untagged convention bullet — rejected: the
 rule is spawn-relevant `[roles: universal]`, and the tagged form gives it a

@@ -24,7 +24,10 @@
 # K-set (BD-243 DESIGN §B.1): K1 live transitional pointer; K2-K6 live doc
 # cross-refs; K7 filename/grammar examples; K9-K11 date format examples;
 # K12 the new no-history rule's own self-defining lines (the rule quotes the
-# forbidden shapes verbatim — the rule defining itself, not provenance).
+# forbidden shapes verbatim — the rule defining itself, not provenance);
+# K13 live maintenance-doc cross-refs whose filename embeds a BD number (the
+# BD digits are in the path, not provenance — the doc exists + is read at
+# task time, the same class as K2-K6 but the BD is carried by the filename).
 #
 # FORMAT: one allowlisted occurrence per record, blank-line separated.
 #   doc:      <path relative to repo root>
@@ -237,3 +240,27 @@ doc: project-template/GEMINI.md
 pattern: incident
 snippet: incident or commit-SHA refs); (b) ZERO description of a DEFERRED,
 reason: the operating-docs-no-history-no-bloat rule's own definition quotes the forbidden shapes verbatim — legitimate KEEP (the rule defining itself), not provenance.
+
+# ── K13: live maintenance-doc cross-refs whose FILENAME embeds a BD number.
+#        The `bd-tag` (BD-\d+) pattern trips on the BD digits carried in the
+#        path — but the digits are part of the filename of an EXISTING doc
+#        that is read at task time, not provenance. Same KEEP class as K2-K6
+#        (live doc cross-ref); the BD is in the path, not a `(BD-NNN)` tag.
+#        Each snippet is the full filename — unique to its one intended line
+#        in its one doc; clears no other line and no contamination a strip
+#        wave must still catch. One record per tripping line. ──
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+pattern: bd-tag
+snippet: ARCHITECTURE-BD-195-DUAL-USE-SHIPPED-LIBS.md
+reason: live maintenance-doc cross-ref (the dual-use-shipped-libs design-of-record exists + is read at task time); the BD is carried by the filename, not provenance.
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+pattern: bd-tag
+snippet: RESEARCH-BD-221-ANTIGRAVITY-DOCS-CAPTURE.md
+reason: live maintenance-doc cross-ref (the Antigravity docs-capture research doc exists + is read at task time); the BD is carried by the filename, not provenance.
+
+doc: pack-ops/OPTIONAL-FEATURES.md
+pattern: bd-tag
+snippet: DESIGN-BD-225-GRAPHIFY-PACK-INTEGRATION.md
+reason: live maintenance-doc cross-ref (the graphify-integration design-of-record exists + is read at task time); the BD is carried by the filename, not provenance.

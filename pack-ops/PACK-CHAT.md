@@ -50,7 +50,7 @@ is sufficient.
 | `README.md` | Direct read (version table section) | Pack version history at a glance |
 | `supporting-docs/METHODOLOGY.md` | Direct read (on demand) | Author of this file — read directly when needed |
 | `project-template/docs/pack/prompts/*.md` | Direct read (on demand) | Author of this set of files — read directly when needed |
-| `/backlog/<ID>.md`, `/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is the SOLE source of truth + readable form (flat-file is the sole supported mode; tracker is deferred — BD-214); no monolithic mirror (per CLAUDE.md pack-memory + `<stream>/_rules.md`); read one entry file for one-entry edits per § "Backlog write paths" |
+| `/backlog/<ID>.md`, `/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is the SOLE source of truth + readable form (flat-file is the sole supported mode); no monolithic mirror (per CLAUDE.md pack-memory + `<stream>/_rules.md`); read one entry file for one-entry edits per § "Backlog write paths" |
 | `/backlog/_rules.md`, `/changelog/_rules.md` (per-stream contracts) | Direct read at session start (or on per-entry-tree-aware operation) | Per-stream contract authority — filename regex, lifecycle states admitted, supporting-file basenames admitted, write-authority pointer |
 
 **Rule-SSOT routing (one hop to the authority — no index, query the SSOT directly):**
@@ -66,10 +66,7 @@ this section points, never restates); the one-line imperative lives in
 trinity `## Pack memory` § "Repo conventions" (the per-entry-trees
 bullet).
 
-Flat-file is the sole supported mode. Tracker (GH Issues) integration
-is DEFERRED indefinitely (BD-214) — the flip ability is blocked on both
-surfaces and the tracker code is retained dormant for a future
-resumption.
+Flat-file is the sole supported mode.
 
 1. **Write channel.** Edit the per-entry file directly, then
    regenerate `_toc.md` per `/backlog/_rules.md`. There is no
@@ -147,17 +144,15 @@ These rules are non-negotiable and always apply:
   evaluating evidence; do NOT pad responses with affirming language
   ("Great question," "You're absolutely right," etc.). When you
   disagree with the user, say so explicitly with the reasoning. The
-  user has flagged sycophancy as a recurring failure mode (verbatim
-  2026-05-16: "Don't just be complementary. Base your analysis on
-  evidence and logic. Tell me what you think."). This rule applies to
+  user has flagged sycophancy as a recurring failure mode ("Don't just
+  be complementary. Base your analysis on evidence and logic. Tell me
+  what you think."). This rule applies to
   Pack Chat surface (chat replies); agent prompts already enforce a
   related but distinct "no solutions / no biased framing" rule under
   `### Agent invocation rules`.
 - **Push to v11-dev only during the v11-dev phase.** Never push to
-  `main` from this chat. v11.0 ships via deliberate handoff at Batch
-  24 (the release-pin batch). This rule is short-lived (it resolves
-  when v11.0 ships and v11.0 merges to `main`) but load-bearing right
-  now. EXECUTION-PLAN-V11.0.md §A.4 carries the same rule for
+  `main` from this chat; v11.0 ships via a deliberate release handoff.
+  EXECUTION-PLAN-V11.0.md §A.4 carries the same rule for
   agent / planner contexts; PACK-CHAT.md carries it here so Pack Chat
   sees it at every session.
 - **Batch close commit shapes.** Single-BD batches: combine the fix
@@ -213,7 +208,7 @@ These rules are non-negotiable and always apply:
 - **The pre-push hook auto-refreshes the Graphify graph on every push.** Once
   `scripts/install-graphify-hook.sh` is installed in a clone, every `git push`
   fires the tracked `pre-push` hook (`scripts/hooks/graphify-pre-push.sh`),
-  which refreshes the gitignored graph IN THE BACKGROUND (non-blocking, BD-237).
+  which refreshes the gitignored graph IN THE BACKGROUND (non-blocking).
   Do NOT duplicate a manual graph refresh around a push — the hook handles it.
   `pack-startup` reports graph freshness + whether the hook is installed; the
   graph is pack-ops-only and never ships to clients.
@@ -292,7 +287,7 @@ worktree mechanics (the `isolation:"worktree"` parameter + the
   on the report path. The patch path (`<handoff>/changes.patch`) is named
   too, but for an RW agent it is written only at the post-review-clean step
   (see Merge-back), never up front.
-- **Inject the graph path into the prompt (BD-226, Claude-only).** Every
+- **Inject the graph path into the prompt (Claude-only).** Every
   spawn prompt injects the orchestrator-derived ABSOLUTE graph literal —
   Pack Chat evaluates the derivation formula
   `$(git rev-parse --show-toplevel)/graphify-out/graph.json` AT RUNTIME in
@@ -302,7 +297,7 @@ worktree mechanics (the `isolation:"worktree"` parameter + the
   `graphify <verb> … --graph <injected>` and NEVER recomputes from its own
   `$(git rev-parse --show-toplevel)` — under worktree isolation the agent's
   toplevel is the empty worktree root where gitignored `graphify-out/` is
-  absent. See trinity `## Pack memory` § "Graph-first context (BD-225)".
+  absent. See trinity `## Pack memory` § "Graph-first context".
   For a recall-heavy / blast-radius / inventory spawn (notably a
   docs-researcher INTERNAL pass), the prompt MUST also DIRECT the agent to
   run the graph for the DISCOVERY phase — not merely make the path
@@ -410,29 +405,14 @@ contains timeless standing rules) — items here have an expected
 resolution and should be closed out via a follow-up commit or
 user-discussion decision.
 
-- **L.2 action item (architect-doc reconciliation, PM-owned).** The
-  STATUS.md disclaimer wording at `maintenance-docs/v11-implementation/
+- **Architect-doc reconciliation (PM-owned).** The STATUS.md disclaimer
+  wording at `maintenance-docs/v11-implementation/
   ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md` §5.3 diverges from the
-  Option A canonical wording (PLAN-PER-ENTRY-SPLIT-BATCH-19.md §5.8,
-  followed at BD-169). Per Batch 19b cleanup L.2 decision: this batch
-  does NOT edit the per-entry-split architect docs (PM-owned). Pack
-  Chat is to surface this divergence to the user at PM-discussion time
-  to pick the canonical wording and edit ARCHITECTURE-PER-ENTRY-SPLIT-
-  INTEGRATION.md §5.3 to match. Tracked as a Pack-Chat-side coordination
-  item; not a code defect.
-
----
-
-## Recommendation routing (deferred)
-
-The D-19 inflection-point recommendation system
-(`scripts/lib/recommendation.sh`) surfaced a tracker opt-in
-recommendation during `/pack-startup`. Tracker (GH Issues) integration
-is now DEFERRED indefinitely (BD-214): the recommendation is no longer
-surfaced (pack-startup Step 8 carries a deferred note), the flip ability
-is blocked on both surfaces, and `scripts/lib/recommendation.sh` is
-retained dormant and test-covered for a future resumption. Pack Chat takes no
-recommendation action while the feature is deferred.
+  canonical wording. The per-entry-split architect docs are PM-owned.
+  Pack Chat is to surface this divergence to the user at PM-discussion
+  time to pick the canonical wording and edit
+  ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §5.3 to match. Tracked as
+  a Pack-Chat-side coordination item; not a code defect.
 
 ---
 
@@ -511,5 +491,5 @@ This procedure also owns the ordered surfaces to touch when a spawn-relevant `##
 | 5 | `pack-ops/.spawn-rule-manifest.txt` slug→canonical+references | reference-resolution |
 | 6 | `test-fixtures/manifest.txt` — NOT a propagation step; the orchestrator runs `scripts/manifest-sync.sh` at push (regen iff a fixture input changed) | CI `build.sh --verify` + validate-pack Check 62 |
 
-- **Order:** corpus (1) → rationale (2) → references (4) + spawn-rule manifest (5) in the SAME commit (so C3 bijection + anti-restate never see a half-applied state) → cache (3) as Pack-Chat upkeep. The `test-fixtures/manifest.txt` (6) is NOT a propagation-order step — it is reconciled by `scripts/manifest-sync.sh` at push (BD-228), not per-commit. Removing a rule reverses: drop references first, then rationale, then corpus.
+- **Order:** corpus (1) → rationale (2) → references (4) + spawn-rule manifest (5) in the SAME commit (so C3 bijection + anti-restate never see a half-applied state) → cache (3) as Pack-Chat upkeep. The `test-fixtures/manifest.txt` (6) is NOT a propagation-order step — it is reconciled by `scripts/manifest-sync.sh` at push, not per-commit. Removing a rule reverses: drop references first, then rationale, then corpus.
 - **Order is documented, not gate-sequenced:** a commit is atomic; the propagation order is verified by END-STATE checks (bijection / anti-restate / trinity-parity / manifest), not a hard-enforced step sequence.

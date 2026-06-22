@@ -2,7 +2,7 @@
 
 **Purpose:** structured methodology for reviewing a CONCEPT — a cross-cutting subject-matter area that spans multiple BDs and batches — to catch integration concerns, doc-set composition issues, and architectural drift that per-BD reviews and per-batch reviews structurally cannot see.
 
-**Status:** v11.0 working methodology. Folds into the `audit-methodology` SKILL when BD-110 lands. Until then, this doc is the canonical source.
+**Status:** the canonical working methodology for conceptual review.
 
 **Empirical basis:** broader-scope reviews catch findings narrower-scope reviews miss (and vice versa); concept-level scope catches a third class of findings beyond per-BD and per-batch review. Provenance for this and every other empirical-basis claim in this doc is preserved in `maintenance-docs/archive/v11/CONCEPTUAL-REVIEW-METHODOLOGY-HISTORY.md`.
 
@@ -35,7 +35,7 @@ Edge cases reachable from documented user paths in PM-CHAT.md / SETUP procedures
 Files, configs, scripts, docs, or other artifacts that mention the concept or participate in its execution. This is the highest-value dimension and the main reason conceptual review exists. See "Touch-point classification" below.
 
 ### (d) Pack rule adherence
-Does the implementation violate any strategic or tactical established pack rule? Reference: `CLAUDE.md`, `PACK-CHAT.md`, pack memory `MEMORY.md` index + linked feedback files, `ARCHITECTURE-V*.md` family. Cite the rule by file + section/line for every finding. Boundary-discipline note: when reviewing changes that touch project-side surfaces (any file under `project-template/`, `pack-ops/HELP-FRAGMENT-TRACKER.md`, `supporting-docs/METHODOLOGY.md`, `supporting-docs/INSTALL-PROCEDURES.md`, `scripts/pack-help.sh`, or `scripts/lib/detect.sh`), the reviewer MUST verify Check 43 (`scripts/validate-pack.py check_project_side_bare_internal_refs`) passes against the working tree; any new bare cross-reference to pack-internal targets (`maintenance-docs/`, pack-only `pack-ops/`, pre-install `supporting-docs/`) is a boundary leak per `maintenance-docs/v11-implementation/ARCHITECTURE-V11-LEAK-SWEEP-STRATEGY.md` §4.1. Flag as a (d) finding with file:line + matched basename.
+Does the implementation violate any strategic or tactical established pack rule? Reference: `CLAUDE.md`, `PACK-CHAT.md`, pack memory `MEMORY.md` index + linked feedback files, `ARCHITECTURE-V*.md` family. Cite the rule by file + section/line for every finding. Boundary-discipline note: when reviewing changes that touch project-side surfaces (any file under `project-template/`, `supporting-docs/METHODOLOGY.md`, `supporting-docs/INSTALL-PROCEDURES.md`, `scripts/pack-help.sh`, or `scripts/lib/detect.sh`), the reviewer MUST verify Check 43 (`scripts/validate-pack.py check_project_side_bare_internal_refs`) passes against the working tree; any new bare cross-reference to pack-internal targets (`maintenance-docs/`, pack-only `pack-ops/`, pre-install `supporting-docs/`) is a boundary leak per `maintenance-docs/v11-implementation/ARCHITECTURE-V11-LEAK-SWEEP-STRATEGY.md` §4.1. Flag as a (d) finding with file:line + matched basename.
 
 ### (e) Design best practice adherence
 Reference: see "Design best practices" section below for the 7 universal principles.
@@ -72,7 +72,7 @@ Standard pack severity scheme extended with one new tier:
 
 Three triggers — any one is sufficient:
 
-1. **Fix would change a CONTRACT touch point.** Example: changing the `derived-from:TD-NNN` label format breaks BD-106 + BD-107 + future BD-110 auditor.
+1. **Fix would change a CONTRACT touch point.** Example: changing the `derived-from:TD-NNN` label format breaks every consumer that parses the label.
 2. **Fix requires changing procedure ordering between ≥2 concepts.** Example: "Forward migrate must run cycle-check store population BEFORE step 7" is a re-architecting of the migration phase order.
 3. **Fix to this finding would create a new finding in another concept.** Example: fixing customization-preserve to detect Shape A markers might require Path 3 forbidden invariant to admit a new label class — net new POQ.
 
@@ -88,9 +88,8 @@ In this pack, "race" is procedural, not OS-level concurrency. The detection rule
 
 > For every artifact (file, label, id-mapping, sidecar field, config key) the concept references, ask: "What other concept reads or writes this artifact, and at what point in their procedure?" If another concept writes the artifact AFTER this concept reads it (or vice versa, depending on the dependency direction), that is a procedural race.
 
-Concrete patterns from prior v11 work:
-- Tracker init + customization preserve: init order matters — customization markers must be written BEFORE template overlay.
-- Forward migrate + cycle-check store: cycle store written by `tracker_links_create_blocked_by`; if forward migrate bypasses it (Batch 17 F1), the store is empty and cycle detection is silently disabled.
+Concrete patterns:
+- Migration ordering: when one step writes customization markers and another overlays templates, init order matters — the markers must be written BEFORE the template overlay, or the overlay clobbers them.
 - CI workflow + new test scripts: test scripts exist on disk but workflow doesn't invoke them — CI green doesn't mean tests ran. When reviewing any commit that adds new `*-test.sh` files, mandatory check: grep `.github/workflows/` for the new test path; if absent, MUST. (Empirically re-confirmed across multiple retro reviews — see HISTORY.)
 
 Reviewer template for race findings:
@@ -111,7 +110,7 @@ This interrogation has retroactively caught a MUST the original end-of-batch rev
 
 Reviewer prompt template for CI work MUST include the "would this turn red?" requirement.
 
-**Must-include-in-prompt rule.** When the BD touches CI workflows (`.github/workflows/*.yml` or any other CI configuration), the agent prompt that generates the implementation OR the review MUST explicitly require the agent to identify, for every new or modified CI step, a concrete change that would turn it red AND confirm the wiring would surface that change. Prompts that omit this requirement have empirically missed CI gaps (BD-118 retro).
+**Must-include-in-prompt rule.** When the BD touches CI workflows (`.github/workflows/*.yml` or any other CI configuration), the agent prompt that generates the implementation OR the review MUST explicitly require the agent to identify, for every new or modified CI step, a concrete change that would turn it red AND confirm the wiring would surface that change. Prompts that omit this requirement have empirically missed CI gaps.
 
 ## Convention/naming docs review checklist
 
@@ -119,7 +118,7 @@ When reviewing convention documents (naming conventions, fixture conventions, fi
 
 1. **Procedure ↔ rule consistency.** Does the "how to add a new <thing>" procedure cite the convention rules at the moment a contributor would need them?
 2. **Column ↔ text consistency.** If the convention document includes a table column (e.g., "Versioning: v10-pinned / v11-pinned / version-agnostic"), does the prose convention text enumerate the same value space, or does it leave the column-value pattern unstated?
-3. **Forward-compatibility for vN+1.** Does the convention scale to the next major version's surfaces without amendment? (Convention text codified in BD-N+0 must admit new classes introduced in BD-N+1 — see Batch 21c BD-122 ↔ BD-136 M-8 carry-forward in BD-136 File/Symbol.)
+3. **Forward-compatibility for vN+1.** Does the convention scale to the next major version's surfaces without amendment? Convention text codified for one set of surfaces must admit new classes introduced by later surfaces.
 4. **Examples ↔ rule alignment.** Do the worked examples instantiate the rule, or contradict it via edge-case inclusion?
 
 A retro reviewer flagged findings in the procedure-rule-column triplet that the original end-of-batch review missed, which is what motivated codifying this checklist. Provenance in HISTORY.
@@ -191,7 +190,7 @@ Cite the rule by file + section/line for every (d) finding. No "violates pack co
 - No prior reviews to reviewer
 - No solutions in agent prompts
 - Filename uniqueness heuristic
-- Spawn sub-agents in background; default by agent class — RW agents (coders/fix-coders) run in an isolated worktree, RO agents (reviewers/architects/planners/auditors/researchers) run in the tree the work lives in (BD-226)
+- Spawn sub-agents in background; default by agent class — RW agents (coders/fix-coders) run in an isolated worktree, RO agents (reviewers/architects/planners/auditors/researchers) run in the tree the work lives in
 
 **From the now-archived `ARCHITECTURE-V1.md` and `V3.3-DELTA.md`:**
 - Path 3 forbidden (V3.3 §1, §3 line 27)
@@ -210,20 +209,18 @@ Seven universal principles. Violations have empirically caused real bugs in v11.
 | # | Principle | Source / example |
 |---|---|---|
 | 1 | **Single source of truth** for content / rules / config | Trinity files; HELP-FRAGMENT pack-root vs project-template; spec sections vs implementation comments |
-| 2 | **Bidirectionality / round-trip safety** — forward → reverse → forward is no-op | V1 §6.0; every tracker forward must have a reverse that produces byte-identical (or whitespace-tolerant) flat-file |
-| 3 | **Typed errors with named recovery verb** | V1 §9 + V3 §27.1 Layer 2; uniform `tracker_error_emit` envelope; never bare `printf 'ERROR:'` |
+| 2 | **Bidirectionality / round-trip safety** — forward → reverse → forward is no-op | V1 §6.0; a forward transform must have a reverse that produces byte-identical (or whitespace-tolerant) output |
+| 3 | **Typed errors with named recovery verb** | V1 §9 + V3 §27.1 Layer 2; a uniform typed-error envelope; never bare `printf 'ERROR:'` |
 | 4 | **Composition over special cases** — uniform mechanism for many uses | V1 §5.3 `link.kind` open-string family; avoid new ops per use case |
-| 5 | **Mode-agnostic operational logic** — flat-file and tracker mode share the same logic; only the resolver differs | V1 §8.5 / D-6 trinity Document-locations resolver |
-| 6 | **Idempotency for orchestration verbs** — re-running on already-applied state is no-op or replay-safe | V1 §6.4 checkpoint; `pack tracker init`, `pack td promote` |
+| 5 | **Mode-agnostic operational logic** — logic is independent of the storage backend; only the resolver differs | V1 §8.5 / D-6 trinity Document-locations resolver |
+| 6 | **Idempotency for orchestration verbs** — re-running on already-applied state is no-op or replay-safe | V1 §6.4 checkpoint; `pack td promote` |
 | 7 | **Additive grammar extensions** — new forms admitted, existing forms continue to parse | V3.3 §5.3 (Blockers gain `phase-N.M`); V1 §6.7 whitespace tolerance |
 
 If a finding violates a principle not on this list, document it as concept-specific (f) and note for inclusion in v(N+1) methodology revision.
 
 ## Reviewer agent / invocation
 
-**Preferred (when available):** `pack-auditor` agent (BD-110, lands in Batch 21). Designed for "ongoing-state audit of pack repo" per V3.3 §8. Conceptual review is a natural extension of its scope.
-
-**Fallback before BD-110 lands:** `pack-architect` invoked with explicit conceptual-review prompt template (cite this methodology doc + the concept-scope doc). The architect agent has the right cross-BD mental model but is not its primary mode.
+**Use:** `pack-architect` invoked with explicit conceptual-review prompt template (cite this methodology doc + the concept-scope doc). The architect agent has the right cross-BD mental model for a surface-as-it-currently-exists review.
 
 **Wrong tool:** `pack-reviewer`. Its scope is pre-commit changes; conceptual review is about the surface as it currently exists, not about recent diffs.
 
@@ -268,13 +265,7 @@ Every conceptual review requires a per-concept scope doc that pre-declares:
 
 These docs live at `maintenance-docs/v{N}-implementation/CONCEPTUAL-AREA-{NAME}.md`. They are version-specific (concepts evolve across versions); the methodology itself is timeless.
 
-## Future integration
-
-When BD-110 (Batch 21) lands the `pack-auditor` agent + `audit-methodology` SKILL:
-1. Fold this methodology doc's structural content into the SKILL (skill body cites this doc as the design source).
-2. The standalone doc remains as canonical methodology reference.
-3. The SKILL is the agent-invoked execution surface (`pack-auditor` reads it on every conceptual-review invocation).
-4. Trinity rule applies to the SKILL (per-CLI replication); doesn't apply to this doc (single-file pack methodology).
+## Version evolution
 
 For v12.0+ and beyond:
 - Keep this methodology doc; revise based on empirical learnings from v11 trial reviews.

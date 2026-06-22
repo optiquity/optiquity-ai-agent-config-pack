@@ -59,7 +59,7 @@ The pack chat stays in control, receives the result, and continues.
 Use this mode for questions that need a focused answer, not extended
 back-and-forth.
 
-**Inject the graph path into every spawn prompt (BD-226, Claude-only).**
+**Inject the graph path into every spawn prompt (Claude-only).**
 Under worktree isolation a spawned agent's `$(git rev-parse
 --show-toplevel)` resolves to the empty worktree root, where the gitignored
 `graphify-out/` is not materialized. So the orchestrator MUST derive the
@@ -68,7 +68,7 @@ real graph path AT RUNTIME in its canonical checkout (the derivation formula
 resolved absolute literal into every spawn prompt — only when that canonical
 `graphify-out/graph.json` exists (else inject no path). The agent uses the
 injected `--graph <path>`, NEVER its own toplevel. See trinity `## Pack
-memory` § "Graph-first context (BD-225)" for the full contract. For a
+memory` § "Graph-first context" for the full contract. For a
 recall-heavy / blast-radius / inventory spawn (notably a docs-researcher
 INTERNAL pass), the prompt MUST also DIRECT the agent to run the graph for
 the DISCOVERY phase — not merely make the path available — and the spawn's
@@ -196,7 +196,7 @@ Files:
 - `PACK-CHAT.md`
 - `PACK-AGENTS.md`
 - `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (root and `project-template/`)
-- `PACK-MEMORY-RATIONALE.md` (rule↔rationale bijection partner for `## Pack memory`; edited only in lockstep with rule changes — BD-198)
+- `PACK-MEMORY-RATIONALE.md` (rule↔rationale bijection partner for `## Pack memory`; edited only in lockstep with rule changes)
 
 Directories:
 - `/backlog/` — pack per-entry tree (entries; supporting files
@@ -232,10 +232,8 @@ Signal 9 trip per
 the Signal 9 justification.
 
 The pack-self per-entry trees `/backlog/` and `/changelog/` enumerated
-above were created by BD-203 (pack self-migration Phase 1), which
-converted the monolithic `pack-ops/BACKLOG.md` + `pack-ops/CHANGELOG.md`
-into the trees and DELETED the monoliths (no mirror). The trees are the
-live SSOT; there is no longer any monolithic file to read or regenerate.
+above are the live SSOT; there is no monolithic `pack-ops/BACKLOG.md` or
+`pack-ops/CHANGELOG.md` mirror to read or regenerate.
 
 - **Pack-coder PREFLIGHT + STOP-MEANS-STOP obligation.** Every pack-coder
   (or coder-style fix-coder) agent emits the PREFLIGHT trust-signal line

@@ -7,10 +7,10 @@
 > other pack-internal docs (e.g., `HELP-FRAGMENT-PACK.md`) and
 > pack-shipped agent files are appropriate at this pack-only path.
 
-When `init-project.sh --update` (BD-080) or `scripts/migrate-v10-to-v11.sh` (BD-085)
+When `init-project.sh --update` or `scripts/migrate-v10-to-v11.sh`
 refresh a project to a newer pack version, every file the migrator touches
 is dispatched to a per-class preservation strategy implemented in
-`scripts/lib/customization-preserve.sh` (BD-088). This document is the
+`scripts/lib/customization-preserve.sh`. This document is the
 **user-readable matrix** of those rules — what each class does, what kind
 of customization it preserves, and what to do when the migrator reports a
 file as needing manual reconciliation.
@@ -32,7 +32,7 @@ class:
 - **What to do on `customization-detected-needs-reconciliation`** — the
   action you take when the migrator flags a file for review
 
-Disposition tokens are the BD-088 truthful-report contract — every file
+Disposition tokens are the truthful-report contract — every file
 the migrator processes produces exactly one row in `dispositions.tsv`,
 listed in `report.md` under one of:
 
@@ -120,9 +120,8 @@ servers (e.g., a dev/stage GraphQL endpoint) are preserved.
 The Antigravity workspace MCP config is `mcpServers`-shaped JSON, portable
 across MCP clients; the class name is CLI-neutral by design. Project edits
 to add custom MCP servers, or to tune `BASE_DIR` / `DB_PATH`, are preserved
-via key-level union. (Before BD-231 §8 this file routed through `generic`
-text-merge, which clobbered the live file on a both-edited update; the
-structured class preserves project edits in place.)
+via key-level union — the structured class preserves project edits in
+place rather than clobbering the live file on a both-edited update.
 
 ---
 
@@ -162,10 +161,8 @@ substitution, project-specific role definitions). Both layers must
 survive a refresh.
 
 The current implementation routes through the generic 3-way text
-dispatcher — same algorithm as `trinity`. Future BDs may add explicit
-marker-section + diff-recognition fallback (per BD-088 spec) for finer-
-grained preservation; today the single dispatcher handles both surfaces
-correctly when the project keeps marker headers intact.
+dispatcher — same algorithm as `trinity`. The single dispatcher handles
+both surfaces correctly when the project keeps marker headers intact.
 
 ---
 
@@ -180,8 +177,7 @@ migrator never overwrites one.
 (`.agents-plugin/*/agents/`, e.g. `.agents-plugin/optiquity-agents/agents/`).
 The classifier tests the `x-` filename prefix FIRST so a client custom in
 the SHARED bundle namespace is told apart from a pack bundle agent and is
-protected from replace-if-different (BD-221 corrected agent-migration
-model). The departing v10 `.gemini/agents/x-*.md` leg is a legacy-READ
+protected from replace-if-different. The departing v10 `.gemini/agents/x-*.md` leg is a legacy-READ
 carve-out: the migrator classifies the departing Gemini custom so it can
 LIFT it into the Antigravity bundle (next paragraph).
 
@@ -212,11 +208,9 @@ client-modifiable, but a config-pack version bump CAN update them: on a
 bump/migrate the new pack agent REPLACES the client's copy when it
 DIFFERS (`cmp -s` byte-comparison), ADDs it when the client lacks it, and
 preserves a client-edited copy via sidecar when the pack ALSO changed —
-identical treatment across the loose surfaces AND the Antigravity bundle
-(BD-221 corrected agent-migration model). Trinity rule applies —
-refreshes are delivered in lockstep across the CLI variants. The
-`auditor-issue-tracking` agent (BD-109 / BD-110) is on the v11.x
-roadmap and routes through the same class once it ships.
+identical treatment across the loose surfaces AND the Antigravity bundle.
+Trinity rule applies — refreshes are delivered in lockstep across the CLI
+variants.
 
 ---
 
@@ -268,11 +262,9 @@ with sidecar.
 **Strategy:** 3-way text dispatch (default).
 
 Catch-all for files the classifier doesn't recognize. HELP-FRAGMENT
-files, the client-installed tracker.toml.example (sourced from
-`project-template/tracker.toml.project-example`), and issue-template
-forms route through this class. The classifier is conservative: when
-unsure, fall back to text 3-way which preserves project edits via
-sidecar.
+files and issue-template forms route through this class. The classifier
+is conservative: when unsure, fall back to text 3-way which preserves
+project edits via sidecar.
 
 **v11.0 per-entry trees — source vs regenerated mirror.** Per-entry
 tree files under `docs/project/backlog/`,
@@ -298,14 +290,13 @@ case where a hand-edited mirror must be force-overwritten.
 
 ## Per-file notes
 
-### `docs/pack/PLATFORM-SKILLS.md` (BD-148, v11 reframe)
+### `docs/pack/PLATFORM-SKILLS.md` (v11 reframe)
 
 **Class:** routes through `generic` (3-way text dispatch with
 sidecar) for the body. Two `## Custom *` H2 sections at the bottom
-are project-owned and preserved verbatim by the BD-088 sidecar
-mechanism.
+are project-owned and preserved verbatim by the sidecar mechanism.
 
-**v11 reframe note (BD-142, BD-148).** v11 reshapes the file from
+**v11 reframe note.** v11 reshapes the file from
 the four-dimension model (Platform Targets, Languages, Component
 Roles, Communication Protocols) to a five-dimension model (D1
 runtime / OS substrate, D2 cross-platform languages, D3 component
@@ -324,7 +315,7 @@ reconciliation pass).
 
 **`## Custom agents` and `## Custom skills` are user-owned.** These
 two H2 sections at the bottom of the file are preserved
-**byte-identical** by the BD-088 customization-preserve sidecar
+**byte-identical** by the customization-preserve sidecar
 mechanism — the migrator does NOT rewrite them, even when the
 column headers inside them are stale. The v11 illustrative-row
 column headers are `Base skills | Dimensional skills` (replacing
@@ -367,8 +358,8 @@ load changes.
 When the migrator writes a sidecar (`customization-detected-needs-reconciliation`
 or `removed-by-pack-customized` paths), the suffix is:
 
-- `scripts/migrate-v10-to-v11.sh` (BD-085): `<file>.v10-customized`
-- `init-project.sh --update` (BD-080): `<file>.pre-update`
+- `scripts/migrate-v10-to-v11.sh`: `<file>.v10-customized`
+- `init-project.sh --update`: `<file>.pre-update`
 
 Sidecars are **single-slot**. If `--update` finds prior `.pre-update`
 sidecars in the working tree it refuses to run — the user must
@@ -398,7 +389,7 @@ The current migrator runs in single-shot mode: pre-flight → backup →
 dispatch → install → report. A re-run requires removing the prior
 backup directory.
 
-**BD-095 extended `scripts/migrate-v10-to-v11.sh` with three modes:**
+**`scripts/migrate-v10-to-v11.sh` has three modes:**
 
 - `--dry-run` — emit the dispositions TSV and report without writing
   any project files. Useful for previewing changes before commit.
@@ -416,9 +407,9 @@ backup directory.
   sidecar AND extension removal as conflict-resolution signals
   (ARCHITECTURE §6.H).
 
-**BD-101 added three verification gates** that
-fire inside the `--dry-run` and `--apply` modes above. Gates do not
-mutate the working tree — they observe and either pass or fail.
+**Three verification gates** fire inside the `--dry-run` and `--apply`
+modes above. Gates do not mutate the working tree — they observe and
+either pass or fail.
 
 - **Gate 1 — pre-migration dry-run summary** fires inside `--dry-run`
   after `_stage_report` writes the dispositions TSV + report.md. It
@@ -429,15 +420,11 @@ mutate the working tree — they observe and either pass or fail.
   S6 (post_report_hook). It checks: trinity addenda landed
   (CLAUDE / AGENTS / GEMINI carry the v11 H2 markers), HELP-FRAGMENT
   files match pack mirrors byte-for-byte, dispositions.tsv has no
-  unknown rows, BD-042 / BD-091 relocated docs are in their new
+  unknown rows, relocated docs are in their new
   positions, and `scripts/validate-pack.py` passes against the pack source.
 - **Gate 3 — post-Phase-B verification** fires inside `--apply` after
-  Gate 2 passes, **conditionally** on tracker mode being active at
-  the target (`tracker.toml` present with `mode.state = "tracker"`
-  and `migration.forward_complete = true`). In flat-file mode it
-  prints `[INFO] tracker: skipped` and returns 0. When tracker mode is
-  active it checks: `id-map.json` integrity, BACKLOG.md mirror
-  freshness, and `pack tracker doctor` exit-status.
+  Gate 2 passes and runs only in tracker mode; in flat-file mode it
+  prints `[INFO] tracker: skipped` and returns 0.
 
 **Gate-failure exit code.** A failing gate returns
 `EXIT_GATE_FAILED = 31` from the migrator. This slot is intentionally
@@ -462,15 +449,10 @@ internal failure. The exit code is also documented in
   `scripts/restore-from-backup.sh` is for v9.3→v10 backups and does
   NOT apply to v10→v11; the v10→v11 backup is a faithful working-tree
   mirror with no path flattening.)
-- **Gate 3 FAIL** — Phase-A (working tree) is intact, so
-  restore-from-backup is the wrong recovery and would discard
-  Phase-A work. Run `pack tracker doctor` for a per-check diagnosis
-  and follow its printed recovery verbs; if tracker setup is
-  unrecoverable, `pack tracker reset` + `pack tracker init` from a
-  clean state.
+- **Gate 3 FAIL** — does not occur in flat-file mode: Gate 3 runs
+  only in tracker mode and is skipped otherwise.
 
-Pre-BD-095 single-shot recipe (still works as the bare invocation
-default behavior):
+Single-shot recipe (the bare invocation default behavior):
 
 1. Confirm clean working tree.
 2. Run `scripts/migrate-v10-to-v11.sh`.
@@ -486,13 +468,12 @@ default behavior):
 
 ## Cross-references
 
-These are the pack-internal touch points for the customization-preservation contract; the `docs/pack/OPTIONAL-FEATURES.md` entry below intentionally points at the post-install project-side path because the surrounding install-time migration content resolves at client repos post-install.
+These are the pack-internal touch points for the customization-preservation contract.
 
-- `scripts/lib/customization-preserve.sh` — the BD-088 implementation
+- `scripts/lib/customization-preserve.sh` — the implementation
 - `scripts/lib/customization-report.sh` — the report renderer
 - `scripts/tests/test-customization-preserve.sh` — class-coverage tests
 - `supporting-docs/MIGRATION-v10-to-v11.md` — the user-facing migration narrative
-- `docs/pack/OPTIONAL-FEATURES.md` — tracker opt-in walkthrough (post-install client path; see preamble above)
 - `QUICKSTART.md` — where to start
 - `scripts/validate-pack.py` Check 25 — CI regression guard for the truthful-report contract
 

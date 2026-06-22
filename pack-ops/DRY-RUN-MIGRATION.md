@@ -93,16 +93,16 @@ A **safe** dry-run:
 - Adapter exit `0`.
 - Diff file-list contains only the v11 forced additions (per
   `supporting-docs/MIGRATION-v10-to-v11.md` § What changed in v11): trinity `## Quick
-  reference` blocks, `HELP-FRAGMENT*.md`, `tracker.toml.example`,
+  reference` blocks, `HELP-FRAGMENT*.md`,
   `.github/ISSUE_TEMPLATE/*.yml`, per-CLI `pack-help` skill/command,
-  `.pack-migrate-v10-to-v11/` state dir, BD-042 relocation moves.
+  `.pack-migrate-v10-to-v11/` state dir, the relocation moves.
 - Stderr tail empty or only `[dry-run] would ...` lines.
 
 A **would-break-customizations** dry-run:
 
 - Adapter exit `0`, but the diff overwrites files you have customized,
   AND the stdout tail shows `customization-detected-needs-reconciliation`
-  rows from the BD-088 customization-preservation report. Each such
+  rows from the customization-preservation report. Each such
   row means the real migration would write a `<file>.v10-customized`
   sidecar that you would manually merge per `supporting-docs/MIGRATION-v10-to-v11.md`
   § Step 2. Recoverable, but real work — plan accordingly.
@@ -158,8 +158,6 @@ The harness does NOT verify:
 - **Customization semantics.** It will say a sidecar *would* be
   written; it cannot say whether the three-way merge result is
   semantically what you want.
-- **Tracker opt-in (Phase B).** Not part of the v10->v11 migrator;
-  not exercised by the dry-run.
 - **Anything outside the file-tree diff.** Permissions, symlinks,
   submodule state, encoding edge cases.
 
@@ -198,4 +196,3 @@ that is a migrator defect — file a BD with both reports attached.
 - `supporting-docs/MIGRATION-v10-to-v11.md` — the actual migration narrative.
 - `MERGE-STRATEGY.md` — per-file customization-preservation matrix.
 - `scripts/dry-run-migration.sh --help` — canonical flag listing.
-- `/backlog/` — BD-114 (harness implementation), BD-125 (this doc).
