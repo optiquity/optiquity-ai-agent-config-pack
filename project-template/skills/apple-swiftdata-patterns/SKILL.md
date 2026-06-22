@@ -18,8 +18,7 @@ of SQLite, introduced at WWDC 2023 (iOS 17 / macOS 14). It supersedes
 CoreData for new projects on supported OS versions. The rules in
 this skill are SwiftData-specific; companion rules for CoreData
 (predecessor) and direct SQLite (GRDB / sqlite3) are out of scope
-for this skill and may ship as separate `apple-coredata-patterns` /
-`apple-sqlite-patterns` skills in a future release.
+for this skill.
 
 These rules apply at the persistence boundary only. Domain types
 (business logic, value objects) must remain free of `@Model` and
