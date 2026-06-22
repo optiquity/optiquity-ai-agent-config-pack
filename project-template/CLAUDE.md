@@ -129,21 +129,19 @@ The pattern takes two complementary forms:
   unconditional throws.
 
 Both forms share the same intent: make supported behaviors explicit
-and queryable, eliminating the need for callers to discover
-limitations through runtime surprises. The specific language mechanism
-varies (compile-time or runtime conformance checks, structural
-subtyping, flag values, enum sets, etc.), but the design intent is
-consistent across any typed system.
+and queryable. The specific language mechanism varies (compile-time or
+runtime conformance checks, structural subtyping, flag values, enum
+sets, etc.), but the design intent is consistent across any typed
+system.
 
 **Relationship to LSP.** LSP is a required coding practice — every
 method declared in an interface must have a meaningful implementation
 in every conforming type. The capabilities pattern is a recommended
 best practice — an architectural tool for making supported behaviors
-explicit and queryable. Neither is a prerequisite for the other, and
-neither is the motivation for the other. They work well together when
-both are present, but this is a benefit of using both — not a
-dependency between them. If the capabilities pattern does not fit the
-project's architecture or the developer opts out, that is valid.
+explicit and queryable. Neither is a prerequisite nor the motivation
+for the other; they work well together when both are present. If the
+capabilities pattern does not fit the project's architecture or the
+developer opts out, that is valid.
 
 ## Dependency intake policy
 
@@ -385,12 +383,9 @@ of agent role.
   guiding principle: read-only git verbs are allowed; any git verb
   that changes working-tree, index, ref, or config state is
   destructive and needs approval, including but not limited to the
-  ones enumerated here. `git checkout` and `git restore` are
-  destructive because they discard working-tree changes
-  irreversibly; never run them on files that contain coder-written
-  changes without per-action user approval. (Agents go further — an
-  agent runs NO state-changing git verb at all; see the agent's own
-  definition file.)
+  ones enumerated here. (Agents go further — an agent runs NO
+  state-changing git verb at all; see the agent's own definition
+  file.)
 - **PM chat does not architect.** Architecture, planning,
   implementation, and review work goes to the corresponding agent.
   The full pack agent roster is at `docs/pack/PM-CHAT.md` §

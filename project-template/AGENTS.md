@@ -362,12 +362,9 @@ of agent role.
   guiding principle: read-only git verbs are allowed; any git verb
   that changes working-tree, index, ref, or config state is
   destructive and needs approval, including but not limited to the
-  ones enumerated here. `git checkout` and `git restore` are
-  destructive because they discard working-tree changes
-  irreversibly; never run them on files that contain coder-written
-  changes without per-action user approval. (Agents go further — an
-  agent runs NO state-changing git verb at all; see the agent's own
-  definition file.)
+  ones enumerated here. (Agents go further — an agent runs NO
+  state-changing git verb at all; see the agent's own definition
+  file.)
 - **PM chat does not architect.** Architecture, planning,
   implementation, and review work goes to the corresponding agent.
   The full pack agent roster is at `docs/pack/PM-CHAT.md` §
