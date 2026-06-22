@@ -19,15 +19,12 @@ pack changes the per-entry contract.
 
 The per-entry tree at `/changelog/` (plus its generated
 `/changelog/_toc.md` index) is the **SOLE source of truth and readable
-form** for the pack changelog. **There is no monolithic mirror.** The
-former `pack-ops/CHANGELOG.md` monolith was deleted at BD-203; do not
-recreate it.
+form** for the pack changelog. **There is no monolithic mirror;** do not
+recreate one.
 
 **Mode invariance.** The pack-changelog stream is FLAT-FILE
-unconditionally: tracker (GH Issues) integration is deferred (BD-214),
-and even its design applied to the pack-backlog stream only — the
-tracker migration never reads or writes `/changelog/`. The write
-procedure in § "Write authority" below is the sole write procedure.
+unconditionally. The write procedure in § "Write authority" below is the
+sole write procedure.
 
 ## Filename convention
 

@@ -186,10 +186,10 @@ build_green_pack_backlog() {
     mkdir -p "$backlog_dir"
 
     # _rules.md (declares supporting files). Carries the BD-204 Mode-3
-    # ops-contract mode markers ("Flat-file mode" / "Tracker mode")
-    # that the Check 32′ marker assertion requires on the pack-backlog
-    # stream (marker presence only — see _RULES_MODE_MARKERS in
-    # scripts/validate-pack.py).
+    # ops-contract mode marker ("Flat-file mode") that the Check 32′
+    # marker assertion requires on the pack-backlog stream (flat-file
+    # per-entry is the sole supported mode; marker presence only — see
+    # _RULES_MODE_MARKERS in scripts/validate-pack.py).
     cat >"$backlog_dir/_rules.md" <<'EOF'
 # Per-stream contract — pack-backlog (test fixture)
 
@@ -197,12 +197,10 @@ Stream identity: pack-backlog
 Filename convention: ^BD-\d+\.md$
 Lifecycle states: Open, Resolved
 
-## Source of truth — mode-dependent (test fixture)
+## Source of truth — flat-file (test fixture)
 
-**Flat-file mode (default).** The per-entry tree is the SSOT.
-
-**Tracker mode.** The tracker is the SSOT; the tree is a regenerated
-mirror.
+**Flat-file mode (the sole supported mode).** The per-entry tree is the
+SSOT.
 
 ## Supporting files
 
@@ -480,48 +478,47 @@ assert_eq "A6.1 canonical entry conforms → check rc=0" "0" "$A6_RC"
 assert_not_contains "A6.2 canonical entry conforms → BD-700.md NOT flagged non-conforming" "$A6_OUT" "BD-700.md"
 
 # A7: BD-204 Mode-3 ops contract — Check 32′ mode-marker assertions
-# (PLAN-BD-204-MODE3-OPS-CONTRACT.md §5 leg 11). Markers PRESENT →
+# (PLAN-BD-204-MODE3-OPS-CONTRACT.md §5 leg 11). Marker PRESENT →
 # PASS (A1/A6 already prove this with the marker-carrying fixture);
-# markers ABSENT → FAIL with the marker-naming banner. pack-backlog
-# requires BOTH "Flat-file mode" and "Tracker mode".
+# marker ABSENT → FAIL with the marker-naming banner. Flat-file
+# per-entry is the sole supported mode, so pack-backlog requires only
+# the "Flat-file mode" marker (BD-243 dropped the obsolete "Tracker
+# mode" marker when the tracker-mode doc mention was stripped).
 A7_REPO="$SCRATCH_ROOT/A7"
 mkdir -p "$A7_REPO"
 build_green_pack_backlog "$A7_REPO"
 rm -f "$A7_REPO/BACKLOG.md"
-# Strip BOTH mode markers from the fixture's _rules.md.
+# Strip the required mode marker from the fixture's _rules.md.
 python3 - "$A7_REPO/backlog/_rules.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 text = open(p).read()
-text = text.replace("Flat-file mode", "First mode").replace("Tracker mode", "Second mode")
+text = text.replace("Flat-file mode", "First mode")
 open(p, "w").write(text)
 PYEOF
 A7_OUT=$(run_check check_mirror_in_sync "$A7_REPO" 2>&1)
 A7_RC=$?
-assert_eq "A7.1 mode markers absent → Check 32′ rc=1" "1" "$A7_RC"
-assert_contains "A7.2 marker FAIL names missing markers" "$A7_OUT" "missing required mode marker"
+assert_eq "A7.1 mode marker absent → Check 32′ rc=1" "1" "$A7_RC"
+assert_contains "A7.2 marker FAIL names missing marker" "$A7_OUT" "missing required mode marker"
 assert_contains "A7.3 marker FAIL names Flat-file mode" "$A7_OUT" "Flat-file mode"
-assert_contains "A7.4 marker FAIL names Tracker mode"   "$A7_OUT" "Tracker mode"
-assert_contains "A7.5 marker FAIL cites the Mode-3 ops contract (BD-204)" "$A7_OUT" "BD-204"
+assert_contains "A7.4 marker FAIL cites the Mode-3 ops contract (BD-204)" "$A7_OUT" "BD-204"
 
-# A7b: ONE marker absent (Tracker mode only) → still FAIL, names
-# exactly the missing one.
+# A7b: the green fixture carries only the single required "Flat-file
+# mode" marker (no "Tracker mode" heading — BD-243 made it obsolete);
+# the marker check PASSES on the single-marker contract. Also proves a
+# stray non-required heading (here, an extra "Tracker mode" line) does
+# NOT trip the check — marker presence only, never prose-pinning.
 A7B_REPO="$SCRATCH_ROOT/A7B"
 mkdir -p "$A7B_REPO"
 build_green_pack_backlog "$A7B_REPO"
 rm -f "$A7B_REPO/BACKLOG.md"
-python3 - "$A7B_REPO/backlog/_rules.md" <<'PYEOF'
-import sys
-p = sys.argv[1]
-text = open(p).read()
-text = text.replace("Tracker mode", "Second mode")
-open(p, "w").write(text)
-PYEOF
+# Append a stray (non-required) "Tracker mode" heading — must be ignored.
+printf '\n**Tracker mode.** (stray non-required heading — must be ignored)\n' \
+    >>"$A7B_REPO/backlog/_rules.md"
 A7B_OUT=$(run_check check_mirror_in_sync "$A7B_REPO" 2>&1)
 A7B_RC=$?
-assert_eq "A7b.1 one marker absent → Check 32′ rc=1" "1" "$A7B_RC"
-assert_contains "A7b.2 FAIL names the missing Tracker mode marker" "$A7B_OUT" "Tracker mode"
-assert_not_contains "A7b.3 FAIL does NOT name the present Flat-file marker as missing" "$A7B_OUT" "'Flat-file mode'"
+assert_eq "A7b.1 single required marker present → Check 32′ rc=0" "0" "$A7B_RC"
+assert_not_contains "A7b.2 PASS does not flag a missing mode marker" "$A7B_OUT" "missing required mode marker"
 
 # ─────────────────────────────────────────────────────────────────
 # Group B: Check 33 (TOC-in-sync) — green + red

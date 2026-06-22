@@ -16,8 +16,6 @@ Flat-file is the sole supported mode, and always the repo's committed
 state: this directory is the **sole source of truth and readable form**
 for pack backlog entries — one `BD-NNN.md` file per entry, plus a
 generated `_toc.md` index. There is no monolithic `BACKLOG.md` mirror.
-Tracker (GH Issues) integration is deferred (BD-214); see `_rules.md`
-§ "Source of truth — flat-file (no monolith)".
 
 ## Reading entries
 

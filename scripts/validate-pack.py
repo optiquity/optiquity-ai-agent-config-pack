@@ -136,8 +136,8 @@ Checks:
       regenerated mirror. Also assert `_rules.md` + `_toc.md` are present
       and per-entry filenames conform, and (BD-204 Mode-3 ops contract)
       that each pack stream's `_rules.md` carries its required mode
-      markers ("Flat-file mode" + "Tracker mode" for `backlog/`;
-      "Mode invariance" for `changelog/`) — marker presence only.
+      marker ("Flat-file mode" for `backlog/`; "Mode invariance" for
+      `changelog/`) — marker presence only.
       SKIPs when the per-entry tree is
       absent (pre-BD-102 dog-food pack-self / pre-v11.0 client per §10.5).
       Pack-side scope only per §10.6 (project-side trees are validated
@@ -3165,13 +3165,14 @@ def _list_unknown_files(stream_dir: Path, entry_regex: str,
 _CANON_HEADER_RE = re.compile(r"^\*\*(?:BD|TD)-\d+ — .+\*\*$")
 
 # BD-204 Mode-3 ops contract (ARCHITECTURE-BD-204-MODE3-OPS-CONTRACT.md
-# §4.2): per-stream required mode markers in `_rules.md`. Check 32′
+# §4.2): per-stream required mode marker in `_rules.md`. Check 32′
 # asserts marker/heading PRESENCE only — never prose-pinning
 # (anti-fragility). Allowlist sized to exactly the two pack streams
-# (measure-then-bound: the markers landed in the Mode-3 ops Commit 1;
-# project streams gain theirs at BD-206/207 and are NOT asserted here).
+# (measure-then-bound; project streams gain theirs at BD-206/207 and are
+# NOT asserted here). Flat-file per-entry is the sole supported mode, so
+# `pack-backlog` declares only the "Flat-file mode" marker.
 _RULES_MODE_MARKERS = {
-    "pack-backlog":   ("Flat-file mode", "Tracker mode"),
+    "pack-backlog":   ("Flat-file mode",),
     "pack-changelog": ("Mode invariance",),
 }
 
@@ -3205,7 +3206,7 @@ def check_mirror_in_sync() -> None:
 
       - Assert `_rules.md` is present (the per-entry contract SSOT).
 
-      - Assert `_rules.md` carries the stream's required mode markers
+      - Assert `_rules.md` carries the stream's required mode marker(s)
         (BD-204 Mode-3 ops contract; `_RULES_MODE_MARKERS` — marker
         presence only, never prose-pinning).
 
@@ -3259,11 +3260,11 @@ def check_mirror_in_sync() -> None:
             )
             continue
 
-        # BD-204 Mode-3 ops contract: required mode markers in _rules.md
+        # BD-204 Mode-3 ops contract: required mode marker(s) in _rules.md
         # (marker presence only — see _RULES_MODE_MARKERS above). The
-        # pack-backlog contract must carry both mode headings
-        # ("Flat-file mode" / "Tracker mode"); the pack-changelog
-        # contract must carry the "Mode invariance" marker.
+        # pack-backlog contract must carry the "Flat-file mode" heading
+        # (flat-file per-entry is the sole supported mode); the
+        # pack-changelog contract must carry the "Mode invariance" marker.
         required_markers = _RULES_MODE_MARKERS.get(stream_key, ())
         if required_markers:
             try:
