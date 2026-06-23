@@ -132,7 +132,7 @@ Multiple values per project are normal.
 Select all protocols in use. A project using both gRPC (internal) and
 REST (third-party) selects both values and loads both skills.
 
-### Dimension 5 — Deployment surface (NEW in v11)
+### Dimension 5 — Deployment surface
 
 Where and how is this component distributed and operated in production?
 Multiple values per project are normal — a monorepo with an Apple app
@@ -143,12 +143,10 @@ plus a Linux container backend selects two D5 values.
 | `apple-distribution` | deployment-apple |
 | `linux-container` | deployment-python *(when D2=python; intersection-loaded — see §"Intersection table")* |
 
-D5 absorbs the deployment skills that previously had no clean home in
-the four-dimension model (`deployment-apple` was implicitly carried by
-D1=Apple, `deployment-python` was implicitly carried by D3=Python
-server). The new D5 axis makes the *distribution / operations*
-concern explicit and separates it from D1 (runtime substrate) and D3
-(app-layer role).
+D5 is the deployment-surface axis. It carries `deployment-apple` and
+`deployment-python`, making the *distribution / operations* concern
+explicit and separate from D1 (runtime substrate) and D3 (app-layer
+role).
 
 #### Monorepo D5 scoping note
 
@@ -158,10 +156,9 @@ A monorepo with an Apple app + Linux container backend has D5 =
 the agent prompt (constructed by the PM chat) to scope each *to the
 right component* — `deployment-apple` is not relevant to the backend's
 containerization, and `deployment-python` is not relevant to the Apple
-app's notarization. Per-component fine-grained loading is not in scope
-for v11. Agents auditing or modifying a specific component should confine
-their reading of the loaded deployment skills to the component(s) the
-prompt scopes them to.
+app's notarization. Agents auditing or modifying a specific component
+should confine their reading of the loaded deployment skills to the
+component(s) the prompt scopes them to.
 
 ### Tier 0 — Base skills (load for every project, every agent)
 
@@ -188,11 +185,9 @@ Step 2 below filter which Tier 0 skills each agent actually loads
 | testing | Universal test pyramid, design, organization, coverage |
 | ui-test-strategy | Universal UI/E2E tool selection, test design, snapshot testing *(loaded only when a UI is present — UI-presence precondition)* |
 
-**14 Tier 0 base skills.** Several of these were classified as "Tier 1
-role skills" in the pre-v11 model (notably `security-patterns`,
-`api-design`, `debugging`, and `ui-test-strategy`); they are
-universal-methodology skills and belong in Tier 0. The reclassification
-is documentation-only — no SKILL.md content changed.
+**14 Tier 0 base skills.** `security-patterns`, `api-design`,
+`debugging`, and `ui-test-strategy` are universal-methodology skills and
+load as Tier 0.
 
 ### Intersection table (sparse cells)
 
@@ -535,7 +530,7 @@ that govern each dimension and the governance checklist for new skills.
 
 The skill catalog uses four suffixes, each tied to a different kind of
 content. **New skills must follow this convention.** Existing skills are
-not renamed in v11.0 — the cost of breaking external references
+not renamed — the cost of breaking external references
 outweighs the consistency benefit.
 
 - **`*-best-practices`** — languages with idiomatic-style rules
@@ -552,11 +547,10 @@ outweighs the consistency benefit.
   `python-server-architecture`, `python-data-architecture`.
 - **`*-patterns`** — cross-cutting concerns and recurring design rules
   not bound to a single platform or language. Examples:
-  `grpc-patterns`, `rest-patterns`, `security-patterns`, plus the three
-  v11.0 additions: `protobuf-patterns` (Proto3 schema design
-  standalone of gRPC), `apple-swiftdata-patterns` (SwiftData
-  object-store rules), and `swift-concurrency-patterns` (modern
-  Swift Concurrency + GCD).
+  `grpc-patterns`, `rest-patterns`, `security-patterns`, plus
+  `protobuf-patterns` (Proto3 schema design standalone of gRPC),
+  `apple-swiftdata-patterns` (SwiftData object-store rules), and
+  `swift-concurrency-patterns` (modern Swift Concurrency + GCD).
 
 When the suffix is genuinely ambiguous (e.g., a new skill could plausibly
 be `*-best-practices` or `*-architecture`), choose the suffix that

@@ -45,7 +45,7 @@ run the standard startup sequence yet. Resume Procedure 5-C from
 the breach case, partially committed) working tree. The procedure walks
 each remaining sidecar, then ends with a single migration commit (or a
 second commit, in the breach case). Sub-procedure 5-C.1 handles the
-legacy `_v9-backup.md` filename for pre-C7 v10.0 installs.
+older `_v9-backup.md` filename when present.
 
 If POSTRUN-PENDING is emitted (and RECON-PENDING is not), reconciliation
 already completed — run Procedure 5-S (post-migration housekeeping).

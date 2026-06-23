@@ -11,7 +11,7 @@ your CLI for this content. Full docs in `docs/pack/PM-CHAT.md`,
 | `/pm-startup` | Bootstrap a PM Chat session — sync repo, read state, run TD-TBD check, report. Run first in new sessions. |
 | `/pack-help` | Print this fragment in your CLI. `pack help` shell verb is identical. |
 | `bash scripts/init-project.sh` | One-time setup. `--update` refreshes pack files non-destructively. |
-| `bash scripts/migrate-v10-to-v11.sh` | One-time per upgrade. The v9→v10 migrator is sunset. |
+| `bash scripts/migrate-v10-to-v11.sh` | One-time per upgrade. |
 | `bash scripts/activate-capability.sh` | Activate a supported capability on this project — re-materializes its conditional files from `pack-capability-pool/`. |
 | `./agent-run.sh <cli> --agent <name>` | Spawn a project agent. `./agent-run.sh --help` for flags. |
 | `pack td promote --to=phase-N` | Promote a TD-NNN to a new phase epic (Path 1). |

@@ -138,18 +138,17 @@ This project's RAG index (`mcp-local-rag`) ingests exactly **one**
 file: `docs/pack/METHODOLOGY.md`. All other project files are
 direct-read.
 
-**Forbidden in the index** — retired paths from prior pack versions
-or files that have moved. If `local-rag.list` returns any of these,
-they are **orphans**: the retriever will surface stale chunks when
-queried, citing dead paths. Each must be removed via
-`local-rag.delete <path>`.
+**Forbidden in the index** — orphan paths (no live file backs them).
+If `local-rag.list` returns any of these, they are **orphans**: the
+retriever will surface stale chunks when queried, citing dead paths.
+Each must be removed via `local-rag.delete <path>`.
 
-| Retired path | Why orphaned |
+| Orphan path | Why orphaned |
 |---|---|
-| `PROMPT-TEMPLATES.md` (root) | Retired before v10; per-agent prompt files in `docs/pack/prompts/` replaced it |
-| `docs/pack/PROMPT-TEMPLATES.md` | Retired in v10.0 — replaced by per-agent files in `docs/pack/prompts/` |
-| `METHODOLOGY.md` (root) | Moved to `docs/pack/METHODOLOGY.md` in v10.0 |
-| `ARCHITECTURE.md` (root) | Moved to `docs/project/ARCHITECTURE.md` in v10.0 |
+| `PROMPT-TEMPLATES.md` (root) | Orphan path — no per-agent prompt file backs it; the per-agent files in `docs/pack/prompts/` are the live form |
+| `docs/pack/PROMPT-TEMPLATES.md` | Orphan — per-agent files in `docs/pack/prompts/` are the live form |
+| `METHODOLOGY.md` (root) | Orphan root path — the live file is `docs/pack/METHODOLOGY.md` |
+| `ARCHITECTURE.md` (root) | Orphan root path — the live file is `docs/project/ARCHITECTURE.md` |
 
 `/pm-startup` Step 4 reconciles the manifest against the index on
 every startup: orphans are auto-deleted, the manifest path is
@@ -700,7 +699,7 @@ Every prompt to repo-ops must include:
 
 ---
 
-## TD resolution orchestration (v11+)
+## TD resolution orchestration
 
 When a TD-NNN becomes Unblocked (per METHODOLOGY § Part 7 Procedure 1
 step 3), the PM Chat advises one of three outcomes:

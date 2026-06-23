@@ -228,7 +228,7 @@ column.
 
 Root-level files: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `README.md`, `agent-run.sh`.
 
-**Per-entry source-of-truth trees (v11.0).** Project streams under
+**Per-entry source-of-truth trees.** Project streams under
 `docs/project/backlog/`, `docs/project/implementation-plan/`, and
 `docs/project/changelog/` are per-entry source-of-truth trees in
 flat-file mode; read each `<stream>/_rules.md` for the per-stream

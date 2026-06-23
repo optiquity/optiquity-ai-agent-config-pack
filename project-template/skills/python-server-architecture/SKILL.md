@@ -12,15 +12,12 @@ the project serves requests over gRPC, REST, or another protocol from a
 Python process (per `docs/pack/PLATFORM-SKILLS.md` Dimension 3 "Python
 server" row).
 
-This skill is the *server-specific* half of the v10.x `python-architecture`
-skill, split in v11.0 (the `python_data_marker_detected()` load
-predicate and the trinity SKILL.md split into
-`python-server-architecture` + `python-data-architecture`). Data and I/O rules
+This skill covers server-specific Python architecture. Data and I/O rules
 (repository pattern, N+1 prevention, Pydantic placement, ML isolation)
-moved to `python-data-architecture` and load independently for both
-server and non-server multi-file Python projects. Both skills should
-load together for any Python server project; load
-`python-data-architecture` alone for non-server multi-file Python.
+live in `python-data-architecture` and load independently for both
+server and non-server multi-file Python projects. Both skills load
+together for any Python server project; `python-data-architecture` loads
+alone for non-server multi-file Python.
 
 Foundational dependency-injection / statelessness rules (constructor
 DI for services, stateless-by-default service objects) appear in both

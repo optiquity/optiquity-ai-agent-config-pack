@@ -23,10 +23,10 @@ This skill is loaded for `auditor-code`, `auditor-architecture`, and
    `python-server-architecture` do NOT apply and that skill is not
    loaded.
 
-This skill is the *data and I/O* half of the v10.x `python-architecture`
-skill, split in v11.0 (the `python_data_marker_detected()` load
-predicate and the trinity SKILL.md split into
-`python-server-architecture` + `python-data-architecture`).
+This skill covers data and I/O Python architecture (repository pattern,
+N+1 prevention, Pydantic placement, ML isolation); it pairs with
+`python-server-architecture` for server projects and loads alone for
+non-server multi-file Python.
 
 Foundational dependency-injection / statelessness rules (constructor
 DI for services, stateless-by-default service objects) appear in both
