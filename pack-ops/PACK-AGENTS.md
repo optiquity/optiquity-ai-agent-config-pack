@@ -24,6 +24,9 @@ two-class agent model (see "Two agent classes" below). It is checked
 against each agent file's prose mandate header by `scripts/validate-pack.py`
 Check 52 (set-equality; binds to the prose header, never `tools:`).
 
+The order these agents run in is the large-BD pipeline standard — see
+trinity `## Pack memory` `[rationale: large-bd-pipeline-standard]`.
+
 ### Skills loaded by pack agents
 
 Skills are in `.claude/skills/`, `.codex/skills/`, `.agents/skills/`

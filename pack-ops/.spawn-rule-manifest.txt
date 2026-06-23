@@ -55,3 +55,8 @@ slug:       pack-chat-minor-edits-only
 canonical:  ## Pack memory
 corpus:     ### Pack Chat scope — "Pack Chat does MINOR edits only; coder does every MAJOR edit and everything outside the small set"
 references: PACK-AGENTS.md § "Agent permission rules" (pack-chat-only scope-in = default major-edit path); PACK-CHAT.md § "Behavioral rules" ("Pack Chat does MINOR edits only; coder does MAJOR"); PACK-CHAT.md § "Role" (minor-direct / major-to-coder split)
+
+slug:       large-bd-pipeline-standard
+canonical:  ## Pack memory
+corpus:     ### Agent invocation rules — "Large-BD pipeline standard (size-tiered)"
+references: PACK-AGENTS.md § "Pack agents" (the roster order is the pipeline standard); PACK-CHAT.md § "In-session sub-agent spawn + merge-back (worktree isolation)" (the execution half of the standard)

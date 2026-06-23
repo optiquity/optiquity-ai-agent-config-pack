@@ -684,6 +684,80 @@ qualifies for the no-design-bias exemption.
 
 ---
 
+## large-bd-pipeline-standard
+
+**Why.** The rigorous large-BD development flow — optional researcher(s), an
+architect, an adversarial architect review, reconciliation, a planner, an
+adversarial planner review, reconciliation, the user gates, and parallel
+worktree coder waves — has run in practice (it is the worked precedent the
+recent launch-gate BDs followed), but it was scatter-documented: the chain
+lived implicitly across separate `## Pack memory` rules and the adversarial
+passes were captured only in out-of-repo Pack-Chat memory. A fresh session or
+spawned agent could not rely on a single in-repo statement of WHEN the heavy
+pipeline is mandatory versus optional. Codifying ONE size-tiered standard in
+the SSOT gives every actor a deterministic, audit-clear test instead of
+folklore — and prevents both under-rigor (skipping an adversarial pass on a
+launch-gate BD) and over-rigor (spending the adversarial budget on a routine
+one-clause rule tweak).
+
+**How.** The official pipeline is: optional researcher(s) (internal census
+and/or external docs verification, per-need) → architect → adversarial
+architect review → [reconciliation if NEEDS-REWORK] → user design review →
+planner → adversarial planner review → [reconciliation if NEEDS-REWORK] → user
+planner-to-coder gate → parallel worktree coder waves (off the rule-10 map;
+each commit's bounded review/fix cycle in its worktree; patches applied
+sequentially under the conflict protocol; superseded docs deleted; the audit
+set preserved). The size-tiering test runs four yes/no signals against repo
+state or the BD entry — never a vibe:
+
+- **L1 launch-gate** — the BD is a launch blocker for the current major
+  (its `Target:`/`Position:` marks it so, or the user names it launch-gating).
+- **L2 cross-surface** — the edit-set spans ≥2 families of: trinity
+  `## Pack memory` · `pack-ops/` operating docs · `scripts/`+validators ·
+  `project-template/` product · agent/skill definitions.
+- **L3 blast-radius** — the BD changes a rule/contract/validator that ≥3
+  surfaces ENCODE (per `enumerate-encoding-surfaces`), OR a researcher
+  blast-radius census is REQUIRED before design.
+- **L4 structural** — the BD adds a NEW convention, a NEW or changed CI check,
+  a file-tree-shape change, a migration path, or a NEW rule. (Tightening:
+  amending a CLAUSE of an EXISTING rule, with no new check/convention/tree
+  change, does NOT fire L4.)
+
+The CONSEQUENCE is decoupled from any single signal: a BD is LARGE — the two
+adversarial reviews + reconciliation are the MINIMUM — iff L1 (launch-gate)
+fires alone, OR ≥2 of the four signals fire. Otherwise it runs the base flow
+(optional researcher → architect → planner → coder + the bounded review/fix
+cycle); the two adversarial passes are OPTIONAL at user election. A single
+non-launch signal alone (e.g. a one-clause amend to an existing rule) does NOT
+mandate them. Tie-break: when genuinely in doubt between base-flow and
+mandatory-adversarial, treat as LARGE (the rigor is the conservative error,
+mirroring the "when in doubt … it is MAJOR" disposition in
+`pack-chat-minor-edits-only`). Launch-gate stands alone because a launch
+blocker is the one axis where a missed adversarial pass is irrecoverable (it
+ships into the cut); every other signal alone is recoverable at base-flow
+rigor. The escalation detail the terse trinity body omits lives here: a LARGE
+BD takes the two adversarial reviews as the MINIMUM, and a larger or
+higher-stakes gap may take ADDITIONAL adversarial rounds beyond the minimum
+two, at architect/planner judgment. Each stage continues to obey its own
+`## Pack memory` rule — the umbrella NAMES and ORDERS the stages; it does not
+override any of them.
+
+**Boundary (vs `reconciliation-instance-independence`).** The umbrella NAMES
+the adversarial stages; `reconciliation-instance-independence` governs the
+fresh-instance reconciliation that follows a NEEDS-REWORK verdict —
+complementary, not overlapping.
+
+**Rejected alternative.** Re-tagging the three existing untagged pipeline
+rules (`Researcher-first pipeline`, `Pack-architect spawn protocol`,
+`Planner output → user review → coder spawn`) so the umbrella could enumerate
+their slugs inline — rejected as scope creep: it would force new bijection
+rows and rationale sections for rules that already work untagged, for no
+behavior change. The umbrella REFERENCES them by category ("Each stage obeys
+its own `## Pack memory` rule") instead, requiring exactly one new slug and
+one new rationale section.
+
+---
+
 ## graph-first-context
 
 **Why.** The pack is doc/reference/agent-heavy; agents and Pack Chat re-read the

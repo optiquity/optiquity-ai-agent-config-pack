@@ -282,6 +282,24 @@ PACK-AGENTS.md current".
   not before, not skipped. The same-architect-vs-fresh-architect
   decision for the second architect pass is per-case user
   discussion at the second-pass decision point.
+- **Large-BD pipeline standard (size-tiered).** Pack-side BD development
+  runs ONE official pipeline: optional researcher(s) (internal census and/or
+  external docs verification, per-need) → architect → adversarial architect
+  review → [reconciliation if NEEDS-REWORK] → user design review → planner →
+  adversarial planner review → [reconciliation if NEEDS-REWORK] → user
+  planner-to-coder gate → parallel worktree coder waves (off the rule-10 map;
+  each commit's bounded review/fix cycle in its worktree; patches applied
+  sequentially under the conflict protocol; superseded docs deleted; audit set
+  preserved). Size signals: launch-gate / cross-surface (≥2 families) /
+  blast-radius (≥3 encoding surfaces or a required census) / structural (a NEW
+  convention, NEW/changed CI check, tree shape, migration, or a NEW rule). A BD
+  is LARGE — the two adversarial reviews + reconciliation the MINIMUM — if
+  launch-gate fires OR ≥2 signals fire; else the base flow (researcher →
+  architect → planner → coder + the bounded cycle), adversarial passes OPTIONAL
+  at user election (one non-launch signal alone — e.g. a single-clause amend to
+  an existing rule — does NOT mandate them). When in doubt, LARGE. Each stage
+  obeys its own `## Pack memory` rule.
+  `[roles: universal] [rationale: large-bd-pipeline-standard]`
 - **Planner output → user review → coder spawn.** Pack-planner output
   is NEVER auto-approved into a pack-coder spawn. Pack Chat surfaces
   the plan to the user for thorough review (the user may comment, add

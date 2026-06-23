@@ -227,6 +227,12 @@ These rules are non-negotiable and always apply:
 
 ## In-session sub-agent spawn + merge-back (worktree isolation)
 
+This section is the EXECUTION half of the large-BD pipeline standard
+(trinity `## Pack memory` `[rationale: large-bd-pipeline-standard]`): it is
+the orchestration the standard's step 8 (parallel worktree coder waves)
+runs. The DESIGN half (researcher → architect → adversarial → reconciliation
+→ planner → adversarial → user gates) is the trinity rule chain.
+
 Pack Chat spawns pack sub-agents IN-SESSION via the Agent tool (the
 primary path; a separate-terminal `claude --agent` session is the
 secondary path). This section is the orchestrator's spawn-and-merge-back
