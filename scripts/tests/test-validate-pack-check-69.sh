@@ -27,13 +27,23 @@
 #   Group 0: Module import + Check 69 symbols + dynamic count-invariant +
 #            Check 69 NOT yet registered (authored-unregistered; count == the
 #            DYNAMIC CHECK_REGISTRY_EXPECTED_COUNT, no literal)
-#   Group 1: Synthetic-tree end-to-end (in-process body invocation) —
+#   Group 1: Synthetic-tree end-to-end (in-process body invocation; each
+#            synthetic tree is git-init-ed + its files staged because the scan
+#            is git-TRACKED-only) —
 #            T1 a tree whose only file is family-globbed PASSES (complete)
 #            T2 an EXEMPT file (_intro.md) is covered, not failed
 #            T3 an OUT-OF-FAMILY data file is covered, not failed
 #            T4 an UNCOVERED stray doc FAILS (the teeth)
+#            T5 JUNK-INJECTION ROBUSTNESS (DESIGN-BD-243-CHECK69-ENV-
+#               ROBUSTNESS.md §4.2 — the executable guard): T5a an untracked
+#               gitignored `.DS_Store` injected under a scanned tree → STAYS
+#               CLEAN; T5b an untracked editor temp → STAYS CLEAN; T5c the SAME
+#               stray file but TRACKED → still FAILS (control: the check is not
+#               blind; T5a/b pass because the junk is UNTRACKED, not blind).
 #   Group 2: Live-tree in-process body invocation PASSES (the real tree is
 #            complete) — NOT `--only-check 69` (unregistered)
+#   Group 3: git-unavailable / not-a-work-tree → lenient SKIP (the tracked-only
+#            scan never hard-fails on a non-git environment; mirrors Check 63)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-69.sh
 
@@ -112,12 +122,33 @@ spec.loader.exec_module(mod)
 
 failures = []
 
-def run_check_in_tree(builder, scanned_trees, families, exempt, out_of_family):
-    """Build a synthetic /tmp REPO_ROOT, monkeypatch the Gate-4 surfaces, run
-    check_operating_doc_scope_completeness, restore, return (fails, captured)."""
+import subprocess
+
+def _git_init_and_add(root):
+    """Make the synthetic /tmp tree a git repo and TRACK its built files.
+
+    Check 69 scans the git-TRACKED set (git ls-files) — not a raw rglob — so a
+    synthetic tree MUST be a git work tree with its operating-doc files staged,
+    or the check lenient-SKIPs (git ls-files non-zero). Junk files the test
+    injects are deliberately NOT added (they stay untracked), which is exactly
+    how the tracked-only scan ignores gitignored OS junk."""
+    env = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null",
+           "HOME": str(root), "PATH": __import__("os").environ.get("PATH", "")}
+    subprocess.run(["git", "init", "-q"], cwd=root, env=env, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, env=env, check=True)
+
+def run_check_in_tree(builder, scanned_trees, families, exempt, out_of_family,
+                      post_add=None):
+    """Build a synthetic /tmp REPO_ROOT, git-init + track its files, monkeypatch
+    the Gate-4 surfaces, run check_operating_doc_scope_completeness, restore,
+    return (fails, captured). post_add (optional) runs AFTER 'git add' so a
+    test can inject UNtracked junk that the tracked-only scan must ignore."""
     tmpdir = tempfile.mkdtemp(prefix="vp-check69-")
     root = pathlib.Path(tmpdir)
     builder(root)
+    _git_init_and_add(root)
+    if post_add is not None:
+        post_add(root)
 
     saved_root = mod.REPO_ROOT
     saved_trees = mod._CHECK_OPERATING_DOC_SCANNED_TREES
@@ -203,6 +234,56 @@ if "NEITHER family-globbed NOR EXEMPT NOR" not in cap:
 if "docs/STRAY.txt" not in cap:
     failures.append("T4 (uncovered stray FAIL) expected the offending path in output: %s" % cap)
 
+# ── JUNK-INJECTION ROBUSTNESS (DESIGN-BD-243-CHECK69-ENV-ROBUSTNESS.md §4.2) ──
+# The single highest-leverage prevention: assert robustness, do NOT inherit it
+# from a clean env. The tracked-only scan must IGNORE an UNTRACKED/gitignored
+# junk file under a scanned tree. T5 builds the SAME complete tree as T1
+# (family-globbed only — should be CLEAN), then injects an UNtracked .DS_Store
+# (and a .gitignore ignoring it) AFTER git add, and asserts Check 69 STAYS
+# CLEAN. Under the OLD raw-rglob scan this would FAIL (the junk is an uncovered
+# stray); under tracked-only it is invisible. This Group is Check 69's executable
+# guard against the green-CI / red-local env trap.
+
+# T5a: a gitignored .DS_Store injected AFTER git add (untracked) — Check 69
+#      must stay CLEAN (the junk is never in the tracked set).
+def b5(root):
+    (root / "docs").mkdir()
+    (root / "docs" / "stream_rules.md").write_text("# a family-globbed operating doc\n")
+def inject_dsstore(root):
+    (root / ".gitignore").write_text(".DS_Store\n")  # untracked too (added after git add)
+    (root / "docs" / ".DS_Store").write_bytes(b"\x00\x01junk")  # binary OS junk, untracked
+fc, cap = run_check_in_tree(b5, TREES, FAMS, EXEMPT, (), post_add=inject_dsstore)
+if fc != 0:
+    failures.append("T5a (junk-injection robustness) expected 0 failures with an UNtracked .DS_Store injected, got %d: %s" % (fc, cap))
+if "0 uncovered" not in cap:
+    failures.append("T5a (junk-injection robustness) expected '0 uncovered' (clean) with junk present: %s" % cap)
+if ".DS_Store" in cap:
+    failures.append("T5a (junk-injection robustness) the untracked .DS_Store leaked into the scan output (tracked-only scan must never see it): %s" % cap)
+
+# T5b: an untracked editor temp file (STRAY.txt~) injected AFTER git add —
+#      ALSO must be ignored (the guard is not .DS_Store-specific; it is the
+#      tracked-only property that excludes ALL untracked junk).
+def inject_tmp(root):
+    (root / "docs" / "STRAY.txt~").write_text("editor temp, untracked\n")
+fc, cap = run_check_in_tree(b5, TREES, FAMS, EXEMPT, (), post_add=inject_tmp)
+if fc != 0:
+    failures.append("T5b (junk-injection: untracked editor temp) expected 0 failures, got %d: %s" % (fc, cap))
+if "0 uncovered" not in cap:
+    failures.append("T5b (junk-injection: untracked editor temp) expected '0 uncovered' (clean): %s" % cap)
+
+# T5c (CONTROL): the SAME stray file, but TRACKED (git add-ed), MUST still FAIL —
+#      proving T5a/T5b pass because the junk is UNTRACKED, not because the check
+#      went blind. A tracked uncovered file is a real completeness violation.
+def b5c(root):
+    (root / "docs").mkdir()
+    (root / "docs" / "stream_rules.md").write_text("# family\n")
+    (root / "docs" / "STRAY.txt").write_text("a TRACKED uncovered stray file\n")
+fc, cap = run_check_in_tree(b5c, TREES, FAMS, EXEMPT, ())  # no post_add → STRAY is tracked
+if fc < 1:
+    failures.append("T5c (CONTROL: TRACKED uncovered stray) expected >=1 failure (the check is not blind), got %d: %s" % (fc, cap))
+if "docs/STRAY.txt" not in cap:
+    failures.append("T5c (CONTROL) expected the tracked stray path in the FAIL output: %s" % cap)
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -211,7 +292,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "Synthetic-tree body tests T1-T4 (family-globbed / EXEMPT / OUT-OF-FAMILY / uncovered-stray-FAIL)" ;;
+    0) t_pass "Synthetic-tree body tests T1-T5 (family-globbed / EXEMPT / OUT-OF-FAMILY / uncovered-stray-FAIL / junk-injection robustness T5a-c)" ;;
     *) t_fail "Synthetic-tree check_operating_doc_scope_completeness tests failed (see Python output)" ;;
 esac
 
@@ -251,6 +332,56 @@ else
     t_fail "Check 69 body found uncovered file(s) on the live tree OR no clean message" \
         "$(tail -20 /tmp/vp-check69-live.out)"
 fi
+
+# ─────────────────────────────────────────────────────────────────
+# Group 3: git-unavailable / not-a-work-tree → lenient SKIP
+#          (the tracked-only scan never hard-fails on a non-git env)
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 3: git-unavailable / not-a-work-tree → lenient SKIP ===\n"
+
+python3 <<EOF
+import sys, tempfile, pathlib, shutil, io, contextlib
+sys.path.insert(0, '$REPO_ROOT/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+# A /tmp REPO_ROOT that is NOT a git work tree (no git init). The tracked-only
+# scan's git ls-files returns non-zero → lenient SKIP, never a FAIL.
+tmpdir = tempfile.mkdtemp(prefix="vp-check69-nogit-")
+root = pathlib.Path(tmpdir)
+(root / "docs").mkdir()
+(root / "docs" / "STRAY.txt").write_text("uncovered, but no git → lenient skip\n")
+
+saved_root = mod.REPO_ROOT
+saved_trees = mod._CHECK_OPERATING_DOC_SCANNED_TREES
+saved_failures = list(mod.failures); mod.failures.clear()
+mod.REPO_ROOT = root
+mod._CHECK_OPERATING_DOC_SCANNED_TREES = ("docs",)
+buf = io.StringIO()
+try:
+    with contextlib.redirect_stdout(buf):
+        mod.check_operating_doc_scope_completeness()
+    fails = list(mod.failures)
+    cap = buf.getvalue()
+finally:
+    mod.REPO_ROOT = saved_root
+    mod._CHECK_OPERATING_DOC_SCANNED_TREES = saved_trees
+    mod.failures.clear(); mod.failures.extend(saved_failures)
+    shutil.rmtree(tmpdir, ignore_errors=True)
+
+if fails:
+    print("FAIL_NOT_LENIENT — git-unavailable env produced a failure:", fails); sys.exit(1)
+if "lenient" not in cap:
+    print("FAIL_NO_LENIENT_MSG — expected a lenient-skip message:", cap); sys.exit(1)
+print("OK")
+EOF
+case $? in
+    0) t_pass "git-unavailable / not-a-work-tree → lenient SKIP (no hard-fail; mirrors Check 63)" ;;
+    *) t_fail "Check 69 lenient-mode (git-unavailable) test failed (see Python output)" ;;
+esac
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

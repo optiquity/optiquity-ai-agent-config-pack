@@ -179,7 +179,7 @@ Cite the rule by file + section/line for every (d) finding. No "violates pack co
 - Project-side boundary discipline (Check 43; per ARCHITECTURE-V11-LEAK-SWEEP-STRATEGY.md §4.1)
 
 **From `PACK-CHAT.md` and pack memory `MEMORY.md` index:**
-- Review/fix cycles per BD AND per batch (per `feedback_review_fix_one_cycle.md`)
+- Review/fix cycles per BD AND per batch (per `feedback_review_fix_cycle.md`)
 - Fix all review findings (incl. nits)
 - Implicit BD status flip on batch completion
 - Agents never commit

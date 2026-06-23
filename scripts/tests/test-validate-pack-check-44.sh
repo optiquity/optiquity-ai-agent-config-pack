@@ -20,7 +20,9 @@
 #   Group 1: Synthetic-tree end-to-end —
 #            T1 clean tree (no `will `) PASSES
 #            T3 allowlisted `will ` occurrence (snippet-covered) PASSES
-#            T4 over-ceiling doc emits ADVISORY but does NOT fail (soft)
+#            T4 over-ceiling doc FAILS (BD-243 Gate 1a — HARDENED advisory→FAIL;
+#               value-agnostic mock sets a tight ceiling)
+#            T5 under-ceiling doc PASSES (regression gate, not a blanket cap)
 #   Group 2: End-to-end validate-pack.py exit-status on HEAD (Check 44
 #            runs clean: 0 `will ` outside allowlist)
 #
@@ -98,7 +100,12 @@ def run_check_with_synthetic(doc_body: str, allowlist_text: str,
     doc_body:        full text of the synthetic durable doc.
     allowlist_text:  full text of a synthetic .concision-allowlist.txt
                      (empty string => no allowlist file written).
-    advisory_ceiling: per-doc advisory ceiling for the synthetic doc.
+    advisory_ceiling: per-doc line ceiling for the synthetic doc (the tuple's
+                     second slot). Named for the historical advisory; BD-243
+                     Gate 1a HARDENED it to a FAIL ceiling. The mock is
+                     value-agnostic — the ceiling VALUE is the test's input, so
+                     the real _CHECK_44_DURABLE_DOCS ceiling values need no test
+                     edit when they are re-derived.
 
     Returns (failures_count, pass_msg_present, advisory_present, captured).
     """
@@ -168,14 +175,26 @@ if not pm:
 if "1 allowlisted" not in cap:
     failures.append(f"T3 (allowlisted will PASS) expected '1 allowlisted' occurrence count: {cap}")
 
-# T4: ADVISORY (soft) — doc exceeds a tight per-doc ceiling but carries NO
-#     temporal 'will' pattern: emits an ADVISORY notice and does NOT fail.
+# T4: FAIL (BD-243 Gate 1a — HARDENED advisory→FAIL) — a doc OVER its per-doc
+#     ceiling now FAILS the build (the length axis is a hard gate; the value-
+#     agnostic mock sets a tight ceiling so the doc-line count exceeds it).
 body = "# SYNTH-DURABLE.md\n" + ("clean prose line\n" * 20)
 fc, pm, adv, cap = run_check_with_synthetic(body, "", advisory_ceiling=5)
+if fc < 1:
+    failures.append(f"T4 (over-ceiling FAIL, Gate 1a) expected >=1 failure, got {fc}: {cap}")
+if "Gate 1a length ceiling" not in cap:
+    failures.append(f"T4 (over-ceiling FAIL, Gate 1a) expected the Gate-1a FAIL message: {cap}")
+if "FAIL ceiling 5" not in cap:
+    failures.append(f"T4 (over-ceiling FAIL, Gate 1a) expected the per-doc ceiling in the message: {cap}")
+
+# T5: PASS — a doc UNDER its ceiling does NOT fail (the gate is a regression
+#     gate, not a blanket cap; legitimate under-ceiling content passes).
+body = "# SYNTH-DURABLE.md\n" + ("clean prose line\n" * 3)
+fc, pm, adv, cap = run_check_with_synthetic(body, "", advisory_ceiling=100)
 if fc != 0:
-    failures.append(f"T4 (over-ceiling ADVISORY soft) expected 0 failures, got {fc}: {cap}")
-if not adv:
-    failures.append(f"T4 (over-ceiling ADVISORY soft) expected an 'ADVISORY:' notice: {cap}")
+    failures.append(f"T5 (under-ceiling PASS) expected 0 failures, got {fc}: {cap}")
+if not pm:
+    failures.append(f"T5 (under-ceiling PASS) expected the '0 = clean' OK message: {cap}")
 
 if failures:
     print("FAILURES")
@@ -185,7 +204,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "End-to-end synthetic-tree tests T1/T3/T4 (clean / allowlisted-will / advisory-soft)" ;;
+    0) t_pass "End-to-end synthetic-tree tests T1/T3/T4/T5 (clean / allowlisted-will / over-ceiling-FAIL Gate-1a / under-ceiling-PASS)" ;;
     *) t_fail "End-to-end check_durable_doc_concision tests failed (see Python output)" ;;
 esac
 

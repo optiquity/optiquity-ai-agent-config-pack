@@ -1,0 +1,191 @@
+# .dangling-ref-allowlist.txt — Check-68 KEEP allowlist (BD-243)
+#
+# The dangling-reference gate (Check 68, scripts/validate-pack.py
+# check_dangling_file_refs) is BD-243 Gate 3: it extracts file/path references
+# (backtick bare-ref `FILE.ext`, markdown hyperlink, and the NEW qualified-path
+# backtick `dir/.../FILE.ext`) from the operating-doc IN set + the Check-64
+# deliverable surface (README layout + project-template/** + supporting-docs/**)
+# and FAILs on any reference whose target does not exist — a dead pointer. It
+# generalizes Check 64's existence-gate pattern, reusing Check 40's extraction
+# (`_strip_code_blocks`, the bare-ref/hyperlink regex, the `_CHECK_40_ANCHOR_
+# PHRASES` self-flagging-non-existence window, and the basename index).
+#
+# THE TEETH: a reference that resolves to NO file (qualified-path direct +
+# basename-index fallback) AND is NOT cleared by the anchor-phrase window AND
+# is NOT on this allowlist FAILs. measure-then-bound (CLAUDE.md "CI guard
+# design — measure-then-bound"): this allowlist is sized EXACTLY to the
+# measured intentional-non-existence KEEP set — filename/path grammar patterns,
+# regenerated-mirror references, runtime-generated outputs, template
+# placeholders, out-of-repo memory files, and teaching/example client paths.
+# Every token here is a reference that is dangling BY DESIGN. A new dangling
+# ref must be EITHER fixed (restore/correct the target) OR, if it is
+# intentionally non-existent, added here WITH a reason; it is NEVER auto-
+# allowlisted. Any unclassified dangling ref is a BLOCKER.
+#
+# Record format (parsed by _parse_manifest_records; ONE blank line BETWEEN
+# records; matched by exact token):
+#   token:  the exact dangling reference as cited (a bare basename like
+#           `BD-NNN.md` OR a qualified path like `docs/project/STATUS.md`).
+#           A reference whose extracted token == this value is cleared.
+#   reason: why this reference is dangling by design (KEEP).
+
+
+# ─────────────────────────────────────────────────────────────────
+# G1 — filename / path GRAMMAR patterns (NNN/N/vN/x- placeholders)
+# ─────────────────────────────────────────────────────────────────
+
+token: BD-NNN.md
+reason: G1 — BACKLOG per-entry filename-grammar placeholder (no literal file).
+
+token: TD-NNN.md
+reason: G1 — project BACKLOG per-entry filename-grammar placeholder.
+
+token: TD-001.md
+reason: G1 — illustrative TD per-entry grammar example in backlog/_rules.md.
+
+token: phase-N.md
+reason: G1 — implementation-plan per-entry filename-grammar placeholder.
+
+token: phase-0.md
+reason: G1 — illustrative phase-file grammar example in implementation-plan/_rules.md.
+
+token: phase-35.md
+reason: G1 — illustrative phase-file grammar example in implementation-plan/_rules.md.
+
+token: phase-N.M.md
+reason: G1 — phase-split filename-grammar placeholder (phase parts).
+
+token: vN.md
+reason: G1 — changelog per-release filename-grammar placeholder.
+
+token: MIGRATION-vN-to-vM.md
+reason: G1 — migration-guide filename naming-convention placeholder (README).
+
+token: migrate-vN-to-vM.sh
+reason: G1 — the BD-119 migrator-framework filename pattern (no literal file).
+
+token: scripts/migrate-vN-to-vM.sh
+reason: G1 — the BD-119 migrator-framework qualified-path pattern.
+
+token: docs/project/backlog/TD-NNN.md
+reason: G1 — project BACKLOG per-entry qualified-path grammar placeholder.
+
+token: docs/project/implementation-plan/phase-N.md
+reason: G1 — implementation-plan per-entry qualified-path grammar placeholder.
+
+token: x-foo.md
+reason: G1 — the x- custom-prefix grammar example (an illustrative client-added roster file name).
+
+# ─────────────────────────────────────────────────────────────────
+# G2 — regenerated-MIRROR references (flat-file per-entry is SSOT)
+# ─────────────────────────────────────────────────────────────────
+
+token: BACKLOG.md
+reason: G2 — the regenerated monolithic BACKLOG mirror (flat-file per-entry is SSOT; the name is referenced where the rule describes the mirror).
+
+token: CHANGELOG.md
+reason: G2 — the regenerated monolithic CHANGELOG mirror.
+
+token: IMPLEMENTATION_PLAN.md
+reason: G2 — the pre-rename plan filename cited in the v10->v11 migration rename step (historical naming).
+
+token: STATUS.md
+reason: G2 — the regenerated STATUS convenience view (never SSOT; referenced by name).
+
+token: pack-ops/BACKLOG.md
+reason: G2 — the retired pack monolith name, cited in the rule that says NOT to recreate it.
+
+token: pack-ops/CHANGELOG.md
+reason: G2 — the retired pack monolith name, cited in the rule that says NOT to recreate it.
+
+token: docs/project/BACKLOG.md
+reason: G2 — the regenerated project BACKLOG mirror (qualified path).
+
+token: docs/project/CHANGELOG.md
+reason: G2 — the regenerated project CHANGELOG mirror (qualified path).
+
+token: docs/STATUS.md
+reason: G2 — a STATUS search-location reference in the install procedure (regenerated view).
+
+token: docs/project/STATUS.md
+reason: G2 — a STATUS search-location reference in the install procedure (regenerated view).
+
+# ─────────────────────────────────────────────────────────────────
+# G3 — self-flagged RETIRED / DECLINED / ORPHAN / HISTORICAL references
+# ─────────────────────────────────────────────────────────────────
+
+token: PROMPT-TEMPLATES.md
+reason: G3 — orphan path (no per-agent prompt file backs it); cited to record the orphan.
+
+token: docs/pack/PROMPT-TEMPLATES.md
+reason: G3 — orphan qualified path; cited to record the orphan.
+
+token: MIGRATION-v9-to-v10.md
+reason: G3 — the v9->v10 guide removed in v11; cited to record its removal.
+
+token: migrate-v9-to-v10.sh
+reason: G3 — the historical v9->v10 migrator; cited as historical.
+
+token: docs/pack/prompts/_v9-backup.md
+reason: G3 — a v9 backup path referenced in the historical install procedure.
+
+token: scripts/lib/test-helpers.sh
+reason: G3 — a shared test-helper lib whose creation is self-flagged DECLINED for now.
+
+# ─────────────────────────────────────────────────────────────────
+# G4 — runtime-GENERATED gitignored outputs
+# ─────────────────────────────────────────────────────────────────
+
+token: graphify-out/cost.json
+reason: G4 — the Graphify build's runtime token-cost output (gitignored; produced at build time).
+
+token: graphify-out/graph.json
+reason: G4 — the Graphify knowledge-graph build artifact (gitignored; per-clone, regenerated).
+
+token: report.md
+reason: G4 — the per-class disposition report produced at merge/reconciliation time (runtime output).
+
+# ─────────────────────────────────────────────────────────────────
+# G5 — TEMPLATE placeholders (PM-chat self-prompt generated)
+# ─────────────────────────────────────────────────────────────────
+
+token: AGENT_KICKOFF.md
+reason: G5 — a PM-chat self-prompt-generated kickoff doc (composed into a live project).
+
+token: FEATURES.md
+reason: G5 — a PM-chat-generated feature-inventory doc (composed into a live project).
+
+token: SETUP.md
+reason: G5 — a PM-chat-generated project-specific setup doc.
+
+# ─────────────────────────────────────────────────────────────────
+# G6 — out-of-repo MEMORY-FILE family + tracker config (R-4)
+# ─────────────────────────────────────────────────────────────────
+
+token: feedback_review_fix_cycle.md
+reason: G6 — a curated out-of-repo pack-memory file (the memory index lives outside the repo tree); the corrected name (was the dangling feedback_review_fix_one_cycle.md, fixed at CG-14-prep-b).
+
+token: MEMORY.md
+reason: G6 — the curated out-of-repo memory index, referenced by name.
+
+token: tracker.toml
+reason: G6 — the tracker config file (created on demand at the target; not in the pack tree).
+
+token: docs/pack/tracker.toml
+reason: G6 — the tracker config DESTINATION path (the example file is copied here at install).
+
+# ─────────────────────────────────────────────────────────────────
+# G7 — TEACHING / EXAMPLE client paths (not in the pack repo by design)
+# ─────────────────────────────────────────────────────────────────
+
+token: server/src/observability/setup.py
+reason: G7 — an illustrative client server-source path in an audit-methodology teaching example.
+
+token: user_repository.py
+reason: G7 — an illustrative client repository-class filename in an audit teaching scenario.
+
+token: order_repository.py
+reason: G7 — an illustrative client repository-class filename in an audit teaching scenario.
+
+token: inventory_repository.py
+reason: G7 — an illustrative client repository-class filename in an audit teaching scenario.

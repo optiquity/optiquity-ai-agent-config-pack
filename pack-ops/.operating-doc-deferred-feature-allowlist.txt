@@ -1,0 +1,437 @@
+# .operating-doc-deferred-feature-allowlist.txt — Check-67 KEEP allowlist (BD-243)
+#
+# The operating-doc deferred-feature RECALL gate (Check 67, scripts/validate-
+# pack.py check_operating_doc_no_deferred_feature) is BD-243 Gate 2: it scans
+# the operating-doc IN set (_iter_operating_docs) for lines that ADVERTISE a
+# deferred / unimplemented / future-version FEATURE (markers: deferred /
+# future version / coming soon / not-yet-created / once X lands|ships /
+# roadmap / planned post / will ship / v11.1|v11.x / slated / expected to
+# offer). It is a RECALL gate, NOT precision: it flags every marker-bearing
+# line, and this allowlist clears the genuine operative KEEPs; anything else
+# FAILS.
+#
+# THE TEETH: marker-pattern count = 0 OUTSIDE this allowlist. A hit on any
+# line NOT cleared by a (doc, snippet-substring) record FAILS. The allowlist is
+# sized to the KEEP set EXACTLY (measure-then-bound, CLAUDE.md "CI guard design
+# — measure-then-bound"): every record is one of the four measured KEEP
+# categories below — NOT a contamination hit widened in to make the gate pass.
+# A new marker hit must be EITHER stripped (it advertises a deferred pack
+# feature) OR, if it is a live workflow / generic advice / the rule itself,
+# added here WITH a reason a reviewer re-verifies. It is NEVER auto-allowlisted;
+# any unclassified hit is a BLOCKER.
+#
+# NOTE (D-1, BD-243): the CB-08 strip already cleaned PLATFORM-SKILLS.md's
+# deferred-skills catalog to current-state-only, so there is NO catalog block
+# here — PLATFORM-SKILLS contributes ZERO records. Any future PLATFORM-SKILLS
+# marker hit is therefore a regression, caught loudly.
+#
+# THE FOUR MEASURED KEEP CATEGORIES (DESIGN-BD-243-DURABLE-GATES.md §3 Gate 2):
+#   C1 — the deferral/operating-doc RULES describing what they forbid + the
+#        deferral-discipline rules (trinity + RATIONALE). The rule naming
+#        "deferred-feature mentions" / "No deferral to v11.1+" is the rule
+#        describing its own scope, not a deferred-feature advertisement.
+#   C2 — generic client-PRODUCT advice (the client's own API/feature evolution,
+#        not a pack feature): api-design "remove in a future version";
+#        ios/swift platform-pattern deferral.
+#   C3 — operative current-state caveats (a generic extension caveat, not a
+#        specific feature promise): OPTIONAL-FEATURES "added here once they
+#        ship and prove useful".
+#   C4 — the LIVE TD-deferral WORKFLOW feature (the coder "Deferred items"
+#        report section, the BLOCKED-triage "not-yet-landed artifact" rubric,
+#        the deferral-discipline rules, the BACKLOG `Deferred` status). These
+#        document a LIVE workflow, not a deferred pack feature.
+#
+# Record format (parsed by _parse_manifest_records; matched (doc, snippet)):
+#   doc:     repo-relative path of the operating doc
+#   snippet: a stable substring of the KEEP line (content-anchored; survives
+#            a line move; if the content changes the snippet stops matching and
+#            the gate re-fires, forcing re-adjudication)
+#   reason:  the KEEP category + why this is not a deferred-pack-feature mention
+
+# ─────────────────────────────────────────────────────────────────
+# C1 — deferral/operating-doc RULES (trinity ×3 + RATIONALE)
+# ─────────────────────────────────────────────────────────────────
+
+doc: CLAUDE.md
+snippet: Deferred work needs a tracked anchor
+reason: C1 — the deferred-work-tracked-anchor RULE (a deferral-discipline rule, not a deferred-feature advertisement).
+
+doc: CLAUDE.md
+snippet: deferred (user-authorized; survives
+reason: C1 — wrapped body of the deferred-work-tracked-anchor rule.
+
+doc: CLAUDE.md
+snippet: deferred-work-tracked-anchor
+reason: C1 — the rule's [rationale:] tag.
+
+doc: CLAUDE.md
+snippet: No deferral to v11.1+ without explicit user direction
+reason: C1 — the no-deferral-without-user-direction RULE (names v11.1 to forbid defaulting to it).
+
+doc: CLAUDE.md
+snippet: NITs that are deferred
+reason: C1 — the triage-all-findings rule describing deferred-nit handling.
+
+doc: CLAUDE.md
+snippet: feedback-deferred-work-tracking
+reason: C1 — a memory-cache pointer the rule references.
+
+doc: CLAUDE.md
+snippet: Operating docs carry NO history, NO deferred-feature mentions
+reason: C1 — the operating-docs-no-history-no-bloat RULE naming what it forbids.
+
+doc: CLAUDE.md
+snippet: description of a DEFERRED
+reason: C1 — the same rule's body (forbids describing a deferred feature).
+
+doc: CLAUDE.md
+snippet: to say it is deferred
+reason: C1 — the same rule's body.
+
+doc: CLAUDE.md
+snippet: roadmap belong in
+reason: C1 — the same rule directing history/roadmap to reference docs.
+
+doc: AGENTS.md
+snippet: Deferred work needs a tracked anchor
+reason: C1 — deferred-work-tracked-anchor rule (AGENTS trinity copy).
+
+doc: AGENTS.md
+snippet: deferred (user-authorized; survives
+reason: C1 — wrapped body of the deferred-work-tracked-anchor rule (AGENTS).
+
+doc: AGENTS.md
+snippet: deferred-work-tracked-anchor
+reason: C1 — rule rationale tag (AGENTS).
+
+doc: AGENTS.md
+snippet: No deferral to v11.1+ without explicit user direction
+reason: C1 — no-deferral-without-user-direction rule (AGENTS).
+
+doc: AGENTS.md
+snippet: NITs that are deferred
+reason: C1 — triage-all-findings rule (AGENTS).
+
+doc: AGENTS.md
+snippet: feedback-deferred-work-tracking
+reason: C1 — memory-cache pointer (AGENTS).
+
+doc: AGENTS.md
+snippet: Operating docs carry NO history, NO deferred-feature mentions
+reason: C1 — operating-docs-no-history-no-bloat rule (AGENTS).
+
+doc: AGENTS.md
+snippet: description of a DEFERRED
+reason: C1 — same rule body (AGENTS).
+
+doc: AGENTS.md
+snippet: to say it is deferred
+reason: C1 — same rule body (AGENTS).
+
+doc: AGENTS.md
+snippet: roadmap belong in
+reason: C1 — same rule (AGENTS).
+
+doc: GEMINI.md
+snippet: Deferred work needs a tracked anchor
+reason: C1 — deferred-work-tracked-anchor rule (GEMINI trinity copy).
+
+doc: GEMINI.md
+snippet: deferred (user-authorized; survives
+reason: C1 — wrapped body of the deferred-work-tracked-anchor rule (GEMINI).
+
+doc: GEMINI.md
+snippet: deferred-work-tracked-anchor
+reason: C1 — rule rationale tag (GEMINI).
+
+doc: GEMINI.md
+snippet: No deferral to v11.1+ without explicit user direction
+reason: C1 — no-deferral-without-user-direction rule (GEMINI).
+
+doc: GEMINI.md
+snippet: NITs that are deferred
+reason: C1 — triage-all-findings rule (GEMINI).
+
+doc: GEMINI.md
+snippet: feedback-deferred-work-tracking
+reason: C1 — memory-cache pointer (GEMINI).
+
+doc: GEMINI.md
+snippet: Operating docs carry NO history, NO deferred-feature mentions
+reason: C1 — operating-docs-no-history-no-bloat rule (GEMINI).
+
+doc: GEMINI.md
+snippet: description of a DEFERRED
+reason: C1 — same rule body (GEMINI).
+
+doc: GEMINI.md
+snippet: to say it is deferred
+reason: C1 — same rule body (GEMINI).
+
+doc: GEMINI.md
+snippet: roadmap belong in
+reason: C1 — same rule (GEMINI).
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+snippet: ## deferred-work-tracked-anchor
+reason: C1 — the RATIONALE entry header for the deferred-work-tracked-anchor rule.
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+snippet: defer to v11.1
+reason: C1 — the no-deferral-without-user-direction rationale (names v11.1 to forbid defaulting to it).
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+snippet: v11.1+ deferral
+reason: C1 — same rationale.
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+snippet: this is v11.1 work
+reason: C1 — same rationale (quoting the user-authorization phrasing).
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+snippet: History and roadmap text
+reason: C1 — the operating-docs-no-history-no-bloat rationale.
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+snippet: No deferred-feature mentions
+reason: C1 — the operating-docs-no-history-no-bloat rationale naming the forbidden axis.
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+snippet: say the feature is deferred
+reason: C1 — same rationale body.
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+snippet: describing a deferred feature
+reason: C1 — same rationale body.
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+snippet: Keeping a deferred-feature note
+reason: C1 — the rationale's rejected-alternative discussion.
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+snippet: operates a deferred feature
+reason: C1 — same rationale body.
+
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+snippet: history and roadmap
+reason: C1 — same rationale directing history/roadmap to reference docs.
+
+# ─────────────────────────────────────────────────────────────────
+# C2 — generic client-PRODUCT advice (the client's own evolution)
+# ─────────────────────────────────────────────────────────────────
+
+doc: project-template/skills/api-design/SKILL.md
+snippet: remove in a future version
+reason: C2 — the CLIENT's own API evolution advice (deprecate-then-remove), not a pack feature.
+
+doc: project-template/skills/ios-architecture/SKILL.md
+snippet: for deferred background work
+reason: C2 — iOS BGTask platform-pattern guidance (client product), not a pack feature.
+
+doc: project-template/skills/swift-concurrency-patterns/SKILL.md
+snippet: backpressure) are deferred
+reason: C2 — Swift concurrency guidance (advanced topics deferred to other refs), not a pack feature.
+
+# ─────────────────────────────────────────────────────────────────
+# C3 — operative current-state caveat
+# ─────────────────────────────────────────────────────────────────
+
+doc: pack-ops/OPTIONAL-FEATURES.md
+snippet: here once they ship and prove useful
+reason: C3 — a generic extension caveat (the doc invites future optional features generically), not a specific deferred-feature promise.
+
+# ─────────────────────────────────────────────────────────────────
+# C4 — the LIVE TD-deferral WORKFLOW feature
+# ─────────────────────────────────────────────────────────────────
+
+doc: .claude/skills/implementation-report/SKILL.md
+snippet: Use when writing the structured report
+reason: C4 — the report skill's frontmatter (mentions deferral handling in the live report workflow).
+
+doc: .claude/skills/implementation-report/SKILL.md
+snippet: resolved / deferred / escalated
+reason: C4 — the live IMPL-report disposition vocabulary.
+
+doc: .claude/skills/implementation-report/SKILL.md
+snippet: recommended default if deferred
+reason: C4 — the live IMPL-report fast-follow pattern.
+
+doc: .claude/skills/implementation-report/SKILL.md
+snippet: Deferred-work-becomes
+reason: C4 — the live deferred-work-becomes-commit report pattern header.
+
+doc: .claude/skills/review/SKILL.md
+snippet: Check for deferred work
+reason: C4 — the live review-checklist deferral-comment check.
+
+doc: .claude/skills/review/SKILL.md
+snippet: not-yet-landed artifact
+reason: C4 — the live BLOCKED-triage rubric (a real dependency, not a deferred pack feature).
+
+doc: .claude/skills/review/SKILL.md
+snippet: Default: FIX NOW
+reason: C4 — the live triage default (deferral is the exception, not advertised feature).
+
+doc: project-template/skills/review/SKILL.md
+snippet: Check for deferred work
+reason: C4 — live review-checklist deferral check (project skill copy).
+
+doc: project-template/skills/review/SKILL.md
+snippet: not-yet-landed artifact
+reason: C4 — live BLOCKED-triage rubric (project skill copy).
+
+doc: project-template/skills/review/SKILL.md
+snippet: Default: FIX NOW
+reason: C4 — live triage default (project skill copy).
+
+doc: project-template/.agents-plugin/optiquity-agents/agents/coder.md
+snippet: "Deferred items" section
+reason: C4 — the coder agent-def's live "Deferred items" report section (Antigravity family).
+
+doc: project-template/.agents-plugin/optiquity-agents/agents/coder.md
+snippet: reports of deferred
+reason: C4 — the coder report-deferral directive (Antigravity family).
+
+doc: project-template/.agents-plugin/optiquity-agents/agents/coder.md
+snippet: items go in the report
+reason: C4 — the coder deferral-report directive (Antigravity family).
+
+doc: project-template/.claude/agents/coder.md
+snippet: "Deferred items" section
+reason: C4 — coder agent-def live "Deferred items" report section (Claude family).
+
+doc: project-template/.claude/agents/coder.md
+snippet: reports of deferred
+reason: C4 — coder report-deferral directive (Claude family).
+
+doc: project-template/.claude/agents/coder.md
+snippet: items go in the report
+reason: C4 — coder deferral-report directive (Claude family).
+
+doc: project-template/.codex/agents/coder.toml
+snippet: "Deferred items" section
+reason: C4 — coder agent-def live "Deferred items" report section (Codex family).
+
+doc: project-template/.codex/agents/coder.toml
+snippet: PM-only file edits
+reason: C4 — a coder boundary rule whose enumeration line happens to contain "deferred" prose; live workflow, not a deferred feature.
+
+doc: project-template/AGENTS.md
+snippet: Operating docs carry NO history, NO deferred-feature mentions
+reason: C1/C4 — project operating-docs rule (project trinity copy).
+
+doc: project-template/AGENTS.md
+snippet: ZERO description of a DEFERRED
+reason: C1 — project operating-docs rule body (project trinity copy).
+
+doc: project-template/AGENTS.md
+snippet: even to say it is deferred
+reason: C1 — project operating-docs rule body (project trinity copy).
+
+doc: project-template/AGENTS.md
+snippet: History and roadmap
+reason: C1 — project operating-docs rule (project trinity copy).
+
+doc: project-template/CLAUDE.md
+snippet: Operating docs carry NO history, NO deferred-feature mentions
+reason: C1 — project operating-docs rule (project trinity copy).
+
+doc: project-template/CLAUDE.md
+snippet: ZERO description of a DEFERRED
+reason: C1 — project operating-docs rule body (project trinity copy).
+
+doc: project-template/CLAUDE.md
+snippet: even to say it is deferred
+reason: C1 — project operating-docs rule body (project trinity copy).
+
+doc: project-template/CLAUDE.md
+snippet: History and roadmap
+reason: C1 — project operating-docs rule (project trinity copy).
+
+doc: project-template/CLAUDE.md
+snippet: Report every deferral comment added
+reason: C4 — the live deferral-comment reporting directive (project trinity copy).
+
+doc: project-template/GEMINI.md
+snippet: Operating docs carry NO history, NO deferred-feature mentions
+reason: C1 — project operating-docs rule (project trinity copy).
+
+doc: project-template/GEMINI.md
+snippet: ZERO description of a DEFERRED
+reason: C1 — project operating-docs rule body (project trinity copy).
+
+doc: project-template/GEMINI.md
+snippet: even to say it is deferred
+reason: C1 — project operating-docs rule body (project trinity copy).
+
+doc: project-template/GEMINI.md
+snippet: History and roadmap
+reason: C1 — project operating-docs rule (project trinity copy).
+
+doc: project-template/GEMINI.md
+snippet: Report every deferral comment added
+reason: C4 — live deferral-comment reporting directive (project trinity copy).
+
+doc: project-template/docs/pack/PACK-FEEDBACK.md
+snippet: is deferred until the JWT library ships
+reason: C4 — an illustrative routing EXAMPLE of a deferral note (teaches where deferral debt goes), not a pack feature.
+
+doc: project-template/docs/pack/PACK-FEEDBACK.md
+snippet: deferred because the pack repo has no real application code
+reason: C4 — a current-state caveat about the feedback channel, not a deferred feature advertisement.
+
+doc: project-template/docs/pack/PM-CHAT.md
+snippet: coder reports deferred items
+reason: C4 — the live PM-chat deferral-processing workflow.
+
+doc: project-template/docs/pack/PM-CHAT.md
+snippet: Deferred items
+reason: C4 — the live PM-chat report-section reference.
+
+doc: project-template/docs/pack/prompts/coder.md
+snippet: not yet implemented
+reason: C4 — the coder kickoff describing the CURRENT phase's un-built tasks (the live work the coder is about to do), not a deferred pack feature.
+
+doc: project-template/docs/pack/prompts/coder.md
+snippet: Deferred items
+reason: C4 — the coder prompt's live "Deferred items" report section.
+
+doc: project-template/docs/pack/prompts/coder.md
+snippet: nothing was deferred
+reason: C4 — the coder prompt's report-section instruction.
+
+doc: project-template/docs/pack/prompts/coder.md
+snippet: comment you add in the
+reason: C4 — the coder prompt's deferral-comment reporting directive.
+
+doc: project-template/docs/pack/prompts/pm-chat.md
+snippet: why it was deferred
+reason: C4 — the PM-chat prompt's BACKLOG-entry deferral-reason field.
+
+doc: project-template/docs/pack/prompts/reviewer.md
+snippet: not yet processed the coder
+reason: C4 — the reviewer prompt describing the live deferred-items processing handoff.
+
+doc: project-template/docs/pack/prompts/reviewer.md
+snippet: deferred design question
+reason: C4 — the reviewer prompt's live deferred-design-question handling.
+
+doc: project-template/docs/project/changelog/_format.md
+snippet: investigated and deferred with logging
+reason: C4 — a changelog disposition vocabulary example (live workflow), not a deferred feature.
+
+doc: project-template/docs/project/implementation-plan/_rules.md
+snippet: done / deferred / merged-into
+reason: C4 — the implementation-plan status vocabulary (live workflow).
+
+doc: project-template/skills/audit-methodology/SKILL.md
+snippet: one BACKLOG entry per Critical finding
+reason: C4 — the audit workflow describing deferral-to-BACKLOG (live workflow); marker is "deferred" in adjacent prose.
+
+doc: backlog/_rules.md
+snippet: pending-decision state between Open and Deferred
+reason: C4 — the BACKLOG `Unblocked` status definition (names the `Deferred` status — live workflow vocabulary).
+
+doc: backlog/_rules.md
+snippet: deliberately postponed (user-authorized)
+reason: C4 — the BACKLOG `Deferred` status definition (live workflow vocabulary).

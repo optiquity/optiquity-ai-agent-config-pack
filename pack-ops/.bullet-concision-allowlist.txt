@@ -1,0 +1,76 @@
+# .bullet-concision-allowlist.txt — Check-66 over-cap KEEP allowlist (BD-243)
+#
+# The operating-doc bullet-concision gate (Check 66, scripts/validate-pack.py
+# check_operating_doc_bullet_concision) is BD-243 Gate 1b: it caps per-rule /
+# per-bullet CHARACTER length over the bullet surface (the pack + project
+# trinity memory-section bullets + the PACK-MEMORY-RATIONALE.md `## <slug>`
+# rule bullets). A whole-DOC ceiling (Check 44 Gate 1a) cannot catch a single
+# mega-bullet inside an otherwise-reasonable doc; this per-bullet cap does.
+#
+# THE TEETH: a bullet whose char length exceeds _CHECK_66_BULLET_CHAR_CAP and
+# is NOT covered by a record here FAILS. The cap is a VOLUME measure only — it
+# asserts nothing about meaning. A bullet under the cap passes regardless of
+# content; an over-cap bullet is either reducible (fix) or irreducibly load-
+# bearing (allowlisted here, with a reason a reviewer re-verifies).
+#
+# measure-then-bound (CLAUDE.md "CI guard design — measure-then-bound"): the
+# cap (1300) sits ABOVE the post-reduction dense-rule cluster (the legitimate
+# rule bullets max ~1260 chars: agents-never-commit, reconciliation-instance-
+# independence) and BELOW the irreducible mega-bullet floor (1457). This
+# allowlist is sized EXACTLY to the measured over-cap KEEP set — every record
+# is an irreducibly load-bearing bullet (a dense multi-clause operating rule
+# the bloat wave already reduced to its floor: a denied-verb enumeration, a
+# multi-platform isolation contract, a multi-axis discovery rule), NOT a
+# contamination hit widened in to make the gate pass. A new over-cap bullet
+# must be EITHER reduced OR added here WITH a reason (a reviewed governance
+# act); it is NEVER auto-allowlisted.
+#
+# Record format (parsed by _parse_manifest_records; matched (doc, snippet)):
+#   doc:     repo-relative path of the bullet-bearing file
+#   snippet: a stable substring of the OVER-CAP bullet's first line (the
+#            bolded rule name — content-anchored, so the bullet still matches
+#            if it MOVES; if its rule NAME changes the snippet stops matching
+#            and the gate re-fires, forcing re-adjudication)
+#   reason:  why this bullet is irreducibly over-cap (load-bearing)
+
+# ── graph-first-context — the multi-axis graph discovery/verification rule
+#    (P1/P2 phases, path-injection contract, per-CLI trinity variants). The
+#    single largest bullet; bloat-reduced (5024→4275 pack) to its floor.
+doc: CLAUDE.md
+snippet: - **Graph-first context when the knowledge graph exists.**
+reason: Irreducible multi-axis discovery/verification rule (P1/P2 phases + path-injection contract + G1/G2 fallbacks); bloat-reduced to floor.
+
+doc: AGENTS.md
+snippet: - **Graph-first context when the knowledge graph exists.**
+reason: Irreducible multi-axis discovery/verification rule (AGENTS trinity variant); bloat-reduced to floor.
+
+doc: GEMINI.md
+snippet: - **Graph-first context when the knowledge graph exists.**
+reason: Irreducible multi-axis discovery/verification rule (GEMINI trinity variant); bloat-reduced to floor.
+
+# ── sub-agent isolation by agent class — the per-commit worktree lifecycle
+#    contract (RW→isolated/RO→work-tree, teardown gate, ASK gate, parallel
+#    map). Pack CLAUDE.md only (Claude-specific Sub-agent behavior section).
+doc: CLAUDE.md
+snippet: - **Sub-agent isolation is keyed by agent class
+reason: Irreducible per-commit worktree lifecycle contract (RW/RO placement + teardown gate + live-worktree ASK gate + parallelization map).
+
+# ── pack-chat-minor-edits-only — the MINOR-vs-MAJOR edit boundary with its
+#    small-set enumeration + new-entry carve-out. Trinity ×3 (parity rule).
+doc: CLAUDE.md
+snippet: - **Pack Chat does MINOR edits only; coder does every MAJOR
+reason: Irreducible MINOR-vs-MAJOR edit boundary (the small pack-chat-only set enumeration + new-entry carve-out + delete-and-reauthor exception).
+
+doc: AGENTS.md
+snippet: - **Pack Chat does MINOR edits only; coder does every MAJOR
+reason: Irreducible MINOR-vs-MAJOR edit boundary (AGENTS trinity parity copy).
+
+doc: GEMINI.md
+snippet: - **Pack Chat does MINOR edits only; coder does every MAJOR
+reason: Irreducible MINOR-vs-MAJOR edit boundary (GEMINI trinity parity copy).
+
+# ── STOP-MEANS-STOP preamble rationale — the RATIONALE.md memory-cache entry
+#    that records the full preflight + stop-means-stop enforcement detail.
+doc: pack-ops/PACK-MEMORY-RATIONALE.md
+snippet: - **STOP-MEANS-STOP preamble
+reason: Irreducible memory-cache rationale entry (the full preflight-line contract + stop-means-stop enforcement detail the trinity bullet points to).

@@ -5065,8 +5065,10 @@ _CHECK_40_ALLOWLIST: dict[str, str] = {
     "TD-NNN.md": "Per-entry tech-debt filename pattern (template)",
     "phase-N.md": "Per-entry implementation-plan filename pattern (template)",
     # Claude-Code memory-cache feedback file (OQ-S3 Option A,
-    # user-approved 2026-05-20). Same class as MEMORY.md.
-    "feedback_review_fix_one_cycle.md": "Claude-Code memory cache feedback file (external to pack repo)",
+    # user-approved 2026-05-20). Same class as MEMORY.md. (BD-243: the cited
+    # name corrected feedback_review_fix_one_cycle.md → feedback_review_fix_cycle.md
+    # at CG-14-prep-b; the allowlist entry tracks the corrected name in lock-step.)
+    "feedback_review_fix_cycle.md": "Claude-Code memory cache feedback file (external to pack repo)",
     # Project-side help fragment. A bare ref resolves at the
     # client-installed location (docs/pack/HELP-FRAGMENT.md in the client
     # repo as a same-dir sibling). Resolves via Check 41
@@ -7722,13 +7724,16 @@ def check_boundary_and_spawn_pointer_manifests() -> None:
 #       only legitimate operational-behavioral `will ` occurrences are
 #       admitted; it is NOT widened to swallow contamination.
 #
-#   (b) ADVISORY length (soft, never fails) — each doc carries a per-doc
-#       advisory ceiling DERIVED from its measured legitimate content
-#       (ceil(measured * 1.15) — a 15% growth headroom, per-doc, NOT a
-#       uniform round cap). Exceeding it emits an advisory OK-notice, never a
-#       failure (length is a smell, not a hard rule; the `will ` count is the
-#       enforcing teeth — ARCHITECTURE §6 "SC1 limits": enforcing limit =
-#       0-outside-allowlist; length is per-doc advisory).
+#   (b) LENGTH CEILING (BD-243 Gate 1a — HARDENED advisory→FAIL) — each doc
+#       carries a per-doc ceiling DERIVED from its measured (bloat-reduced)
+#       content (ceil(measured * 1.15) — a 15% growth headroom, per-doc, NOT a
+#       uniform round cap). A doc OVER its ceiling FAILs the build: per the
+#       user's BD-243 ruling the cleanup must not silently rot, and an advisory
+#       that "never fails the build" was exactly the silent-rot mechanism.
+#       Volume is now a hard gate at parity with the `will ` teeth. The ceiling
+#       is a VOLUME measure only — it asserts nothing about meaning (legitimate
+#       content is below it by construction; only a regression past the headroom
+#       FAILs). DESIGN-BD-243-DURABLE-GATES.md §3 Gate 1.
 #
 # The history axis (dates / 7-40-hex SHAs / Commit-N / Override-N /
 # post-Commit) MOVED out of this check to Check 65
@@ -7748,16 +7753,28 @@ _CHECK_44_FORBIDDEN_PATTERNS = (
 )
 
 # The 6 durable pack-ops/ non-mirror rule docs (M4 class) + each doc's
-# per-doc ADVISORY line ceiling, DERIVED from its measured cleaned content
-# as ceil(measured * 1.15). These are NOT round numbers: each is anchored
-# to the doc's actual cleaned size (BOUNDARY 135, CONCEPTUAL-REVIEW 298,
-# DRY-RUN 199, HELP-PACK 48, MERGE 484, OPTIONAL 538) with a uniform 15%
-# growth headroom. BACKLOG.md / CHANGELOG.md are regenerated MIRRORS, NOT
-# in the M4 class. The ceiling is advisory only (never fails).
+# per-doc line ceiling, DERIVED from its measured (BD-243 bloat-reduced)
+# content as ceil(measured * 1.15). These are NOT round numbers: each is
+# anchored to the doc's actual reduced size (BOUNDARY 135, CONCEPTUAL-REVIEW
+# 279, DRY-RUN 198, HELP-PACK 48, MERGE 484, OPTIONAL 538) with a uniform 15%
+# growth headroom. BACKLOG.md / CHANGELOG.md are regenerated MIRRORS, NOT in
+# the M4 class.
+#
+# BD-243 Gate 1a (DESIGN-BD-243-DURABLE-GATES.md §3 Gate 1): the length branch
+# is HARDENED advisory→FAIL — a doc OVER its ceiling now FAILS the build, not a
+# soft advisory. Volume is a hard gate so the cleanup cannot silently rot. The
+# ceilings are sized measure-then-bound to the bloat-reduced reality + 15%
+# headroom (so legitimate content is below the ceiling BY CONSTRUCTION; only a
+# regression past the headroom FAILs — the gate is VOLUME-only, never a
+# meaning judgment). The measured-reduced inputs are from IMPL-CB-01's
+# recorded measured_reduced_lines (no re-measure of a drifted tree). Two
+# ceilings change vs the prior advisory values (CONCEPTUAL 343→321 from
+# measured 279; DRY-RUN 229→228 from measured 198); the other four were already
+# ceil(measured*1.15) and stand. All 6 docs are UNDER their new FAIL ceilings.
 _CHECK_44_DURABLE_DOCS = (
     ("pack-ops/BOUNDARY-DEFINITION.md", 156),
-    ("pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md", 343),
-    ("pack-ops/DRY-RUN-MIGRATION.md", 229),
+    ("pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md", 321),
+    ("pack-ops/DRY-RUN-MIGRATION.md", 228),
     ("pack-ops/HELP-FRAGMENT-PACK.md", 56),
     ("pack-ops/MERGE-STRATEGY.md", 557),
     ("pack-ops/OPTIONAL-FEATURES.md", 619),
@@ -7794,14 +7811,17 @@ def check_durable_doc_concision() -> None:
     allowlisted snippet is a substring of the line) FAILs — temporal
     `will ` count must be 0 OUTSIDE the allowlist.
 
-    ADVISORY: each doc also carries a per-doc advisory line ceiling
-    (derived from measured cleaned content); exceeding it emits an
-    OK-advisory notice, NEVER a failure (length is a smell, the
-    `will ` teeth are the enforcement).
+    LENGTH CEILING (BD-243 Gate 1a — HARDENED advisory→FAIL): each doc
+    carries a per-doc line ceiling = ceil(measured_reduced * 1.15) (the
+    bloat-reduced size + 15% headroom). A doc OVER its ceiling now FAILs —
+    volume is a HARD gate so the BD-243 bloat reduction cannot silently
+    rot. The ceiling is a VOLUME measure only; it asserts nothing about
+    meaning (legitimate content is below the ceiling by construction;
+    only a regression past the headroom FAILs).
 
     The history axis (dates / SHAs / Commit-N / Override-N / post-Commit)
     MOVED to Check 65 (check_operating_doc_no_history). Check 44 owns only
-    the `will ` teeth + advisory length.
+    the `will ` teeth + the BD-243 Gate-1a length ceiling (FAIL).
 
     Per ARCHITECTURE-DOC-CONCISION-GUARDRAILS.md §6 (M1-M4) + §7;
     PLAN-DOC-CONCISION-GUARDRAILS.md §3 C10. The allowlist is sized to
@@ -7822,7 +7842,7 @@ def check_durable_doc_concision() -> None:
     total_forbidden_outside = 0
     total_allowlisted = 0
 
-    for doc_rel, advisory_ceiling in _CHECK_44_DURABLE_DOCS:
+    for doc_rel, ceiling in _CHECK_44_DURABLE_DOCS:
         doc_path = REPO_ROOT / doc_rel
         if not doc_path.is_file():
             ok(f"{doc_rel} absent — skipping that doc (lenient)")
@@ -7861,15 +7881,27 @@ def check_durable_doc_concision() -> None:
             )
             any_fail = True
 
-        # Advisory length (soft — never fails).
+        # Length ceiling — HARDENED advisory→FAIL (BD-243 Gate 1a). A doc OVER
+        # its measure-then-bound ceiling (ceil(measured_reduced * 1.15)) FAILs:
+        # volume is a hard gate so the bloat reduction cannot silently rot. The
+        # ceiling is sized to the reduced reality + 15% headroom, so legitimate
+        # content is below it by construction — only a regression past the
+        # headroom FAILs (VOLUME-only; never a meaning judgment).
         n_lines = len(lines)
-        if n_lines > advisory_ceiling:
-            ok(
-                f"{doc_rel} — ADVISORY: {n_lines} lines exceeds the per-doc "
-                f"advisory ceiling {advisory_ceiling} (derived from measured "
-                f"cleaned content). Advisory only — not a failure; consider "
-                f"whether new content belongs in a report/rationale surface."
+        if n_lines > ceiling:
+            fail(
+                f"{doc_rel} — BD-243 Gate 1a length ceiling: {n_lines} lines "
+                f"exceeds the per-doc FAIL ceiling {ceiling} "
+                f"(ceil(measured_reduced * 1.15) — the bloat-reduced size + 15% "
+                f"headroom). Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 1, doc "
+                f"volume is a HARD gate (the cleanup must not silently rot). "
+                f"This is a VOLUME measure only — it asserts nothing about "
+                f"meaning. Remediation: reduce the doc's text amount (move new "
+                f"content to a report/rationale surface) OR, if the growth is "
+                f"genuinely load-bearing, re-derive the ceiling from the new "
+                f"measured baseline (a reviewed governance act, NOT a default)."
             )
+            any_fail = True
 
     if not any_fail:
         ok(
@@ -7877,6 +7909,199 @@ def check_durable_doc_concision() -> None:
             f"{total_forbidden_outside} forbidden pattern(s) outside the "
             f"allowlist (0 = clean); {total_allowlisted} allowlisted "
             f"operational occurrence(s) admitted (KEEP set)."
+        )
+
+
+# ── Check 66 (Gate 1b): operating-doc bullet-concision gate (BD-243) ───────
+# AUTHORED-UNREGISTERED at CG-14-prep-b — its body + constant + allowlist ship
+# now but it is NOT in CHECK_REGISTRY (count stays 63); CG-14 registers it.
+# Exercised meanwhile via its per-check test's in-process body invocation (NOT
+# `--only-check 66`, which resolves against the registry and so cannot reach an
+# unregistered check).
+#
+# WHAT IT CATCHES (DESIGN-BD-243-DURABLE-GATES.md §3 Gate 1b): a single rule /
+# bullet whose char length exceeds a per-bullet cap (the B1 mega-bullet pattern
+# — e.g. the graph-first-context rule). A whole-DOC ceiling (Check 44 Gate 1a)
+# cannot catch a mega-bullet inside an otherwise-reasonable doc; a per-bullet
+# cap does. VOLUME only — the cap is a CHARACTER count; it asserts nothing
+# about meaning (a bullet under the cap passes regardless of content).
+#
+# SCOPE (auto-discovered bullet surface): the pack + project trinity memory-
+# section bullets (`## Pack memory` / `## Project memory`) + the
+# PACK-MEMORY-RATIONALE.md rule bullets. These are the files that carry the
+# `- **<rule>** ...` bullet structure where the B1 mega-bullet bloat lives.
+#
+# measure-then-bound: the cap (_CHECK_66_BULLET_CHAR_CAP = 1300) sits ABOVE the
+# post-reduction dense-rule cluster (legitimate rule bullets max ~1260 chars)
+# and BELOW the irreducible mega-bullet floor (1457). Over-cap bullets that are
+# irreducibly load-bearing are admitted by pack-ops/.bullet-concision-
+# allowlist.txt, sized EXACTLY to the measured over-cap KEEP set (8 records).
+#
+# RUNTIME COST (ci-check-runtime-compounding): reads the ~5 bullet-bearing
+# files once, splits on bullet markers, measures each bullet's length —
+# O(lines), no subprocess, no whole-tree scan. Cheap.
+
+# The single per-bullet character cap (Gate 1b). A bullet over this and not
+# allowlisted FAILs. measure-then-bound to the post-reduction tree (above the
+# ~1260-char legitimate rule cluster, below the 1457 mega-bullet floor).
+_CHECK_66_BULLET_CHAR_CAP = 1300
+
+# The bullet-bearing files + the memory-section header that opens the bullet
+# region (None = scan the whole file's top-level bullets, for RATIONALE).
+_CHECK_66_BULLET_SURFACE = (
+    ("CLAUDE.md", "## Pack memory"),
+    ("AGENTS.md", "## Pack memory"),
+    ("GEMINI.md", "## Pack memory"),
+    ("project-template/CLAUDE.md", "## Project memory"),
+    ("project-template/AGENTS.md", "## Project memory"),
+    ("project-template/GEMINI.md", "## Project memory"),
+    ("pack-ops/PACK-MEMORY-RATIONALE.md", None),
+)
+
+
+def _check_66_iter_bullets(path: Path, section_marker):
+    """Yield (first_lineno, char_len, first_line) for each top-level `- `
+    bullet in `path`. If `section_marker` is given, scanning starts after the
+    first line whose stripped form starts with it (the memory-section header);
+    otherwise the whole file is scanned. A bullet spans its `- ` line plus any
+    2-space-indented continuation lines, ending at a blank line, a header, or
+    the next top-level bullet. char_len is the whitespace-collapsed length of
+    the joined bullet text (the VOLUME measure)."""
+    lines = path.read_text().splitlines()
+    start = 0
+    if section_marker:
+        start = len(lines)  # if the marker is absent, scan nothing
+        for i, line in enumerate(lines):
+            if line.strip().startswith(section_marker):
+                start = i + 1
+                break
+    cur = None
+    cur_start = None
+    i = start
+    out = []
+
+    def flush():
+        nonlocal cur, cur_start
+        if cur is not None:
+            joined = " ".join(s.strip() for s in cur)
+            out.append((cur_start, len(joined), cur[0]))
+        cur, cur_start = None, None
+
+    while i < len(lines):
+        line = lines[i]
+        if re.match(r"^- ", line):
+            flush()
+            cur = [line]
+            cur_start = i + 1
+        elif cur is not None and line.strip() == "":
+            flush()
+        elif cur is not None and line.startswith("  "):
+            cur.append(line)
+        elif line.startswith("#"):
+            flush()
+        else:
+            flush()
+        i += 1
+    flush()
+    return out
+
+
+def _check_66_load_allowlist() -> dict:
+    """Parse pack-ops/.bullet-concision-allowlist.txt into {doc: [snippet,...]}.
+
+    Each record carries `doc:`, `snippet:`, `reason:`. The matching key is
+    (doc, snippet-substring of the over-cap bullet's first line) — line numbers
+    are NOT used (they drift). Reuses _parse_manifest_records()."""
+    allowlist_path = (
+        REPO_ROOT / "pack-ops" / ".bullet-concision-allowlist.txt"
+    )
+    if not allowlist_path.is_file():
+        return {}
+    records = _parse_manifest_records(allowlist_path.read_text())
+    by_doc: dict = {}
+    for rec in records:
+        doc = rec.get("doc")
+        snippet = rec.get("snippet")
+        if doc and snippet:
+            by_doc.setdefault(doc, []).append(snippet)
+    return by_doc
+
+
+def check_operating_doc_bullet_concision() -> None:
+    """Check 66 (Gate 1b) — operating-doc bullet-concision gate (BD-243).
+
+    Caps per-rule / per-bullet CHARACTER length over the bullet surface (the
+    pack + project trinity memory-section bullets + PACK-MEMORY-RATIONALE.md
+    rule bullets). THE TEETH: a bullet whose char length exceeds
+    _CHECK_66_BULLET_CHAR_CAP and is NOT covered by a
+    pack-ops/.bullet-concision-allowlist.txt record (doc match AND an
+    allowlisted snippet is a substring of the bullet's first line) FAILs.
+
+    This is the per-bullet companion to Check 44's per-DOC ceiling (Gate 1a):
+    a whole-doc ceiling cannot catch a single mega-bullet inside an otherwise-
+    reasonable doc. VOLUME only — the cap is a character count; it asserts
+    nothing about meaning.
+
+    AUTHORED-UNREGISTERED at CG-14-prep-b (not in CHECK_REGISTRY; count stays
+    63). CG-14 registers it. Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 1b.
+
+    measure-then-bound: the allowlist is sized to the measured over-cap KEEP
+    set EXACTLY — never widened to admit a reducible bullet. A reviewer
+    re-verifies each `reason:` still names an irreducibly load-bearing bullet.
+
+    Lenient mode: a bullet-surface file absent at HEAD SKIPs that file (an
+    init/state problem, not a concision violation); a missing allowlist file
+    means an empty allowlist (every over-cap bullet then FAILs — fail-loud).
+    """
+    print("\n── Check 66: operating-doc bullet-concision gate (BD-243) ──")
+
+    allowlist = _check_66_load_allowlist()
+
+    any_fail = False
+    scanned_files = 0
+    bullets_scanned = 0
+    over_cap_outside = 0
+    over_cap_allowlisted = 0
+
+    for doc_rel, marker in _CHECK_66_BULLET_SURFACE:
+        doc_path = REPO_ROOT / doc_rel
+        if not doc_path.is_file():
+            ok(f"{doc_rel} absent — skipping that file (lenient)")
+            continue
+        scanned_files += 1
+        snippets = allowlist.get(doc_rel, [])
+        for lineno, char_len, first_line in _check_66_iter_bullets(doc_path, marker):
+            bullets_scanned += 1
+            if char_len <= _CHECK_66_BULLET_CHAR_CAP:
+                continue
+            covered = any(snip in first_line for snip in snippets)
+            if covered:
+                over_cap_allowlisted += 1
+                continue
+            over_cap_outside += 1
+            any_fail = True
+            fail(
+                f"{doc_rel}:{lineno} — BD-243 Gate 1b bullet over the "
+                f"{_CHECK_66_BULLET_CHAR_CAP}-char cap ({char_len} chars): "
+                f"`{first_line.strip()[:80]}`. Per DESIGN-BD-243-DURABLE-"
+                f"GATES.md §3 Gate 1, a single rule/bullet must not balloon "
+                f"(the B1 mega-bullet pattern). This is a VOLUME measure only — "
+                f"it asserts nothing about meaning. Remediation: reduce the "
+                f"bullet's text amount (move detail to PACK-MEMORY-RATIONALE.md "
+                f"/ a reference doc) OR, if it is irreducibly load-bearing, add "
+                f"a pack-ops/.bullet-concision-allowlist.txt record (doc + a "
+                f"snippet of the bullet's first line + a reason a reviewer "
+                f"re-verifies). The allowlist is sized to the KEEP set EXACTLY "
+                f"and MUST NOT be widened to admit a reducible bullet."
+            )
+
+    if not any_fail:
+        ok(
+            f"Check 66 — {scanned_files} bullet-surface file(s) scanned; "
+            f"{bullets_scanned} bullet(s) measured; {over_cap_outside} over the "
+            f"{_CHECK_66_BULLET_CHAR_CAP}-char cap outside the allowlist "
+            f"(0 = clean); {over_cap_allowlisted} over-cap KEEP bullet(s) "
+            f"admitted (irreducibly load-bearing)."
         )
 
 
@@ -8033,8 +8258,39 @@ def _iter_operating_docs() -> list:
 # entries (the history-home — explicitly NOT operating docs). So Gate 4 scans
 # only the dirs that hold operating docs and would hide a stray un-globbed doc.
 #
-# RUNTIME COST: one rglob per scanned tree + set arithmetic. Gate 4 reads NO
-# file bodies — it enumerates PATHS only. The cheapest gate.
+# GIT-TRACKED-ONLY SCAN (DESIGN-BD-243-CHECK69-ENV-ROBUSTNESS.md §3, fix A).
+# The completeness assertion below is a CLOSED-WORLD cover: every scanned path
+# must be family-globbed OR EXEMPT OR OUT-OF-FAMILY, else FAIL. The candidate
+# file set is therefore the git-TRACKED files under each scanned tree
+# (`git ls-files <tree>`), NOT a raw `tree.rglob("*")` filesystem walk. Check 69
+# asserts a fact about the COMMITTED pack surface, and the committed surface IS
+# the tracked set — so tracked-only is the property-fit, not a workaround (the
+# prior art is Check 63, which uses `git ls-files` for exactly this "assert over
+# the tracked surface" class, with the same lenient git-unavailable SKIP). This
+# makes the env irrelevant by construction: gitignored/untracked OS junk
+# (`.DS_Store`, editor temp files, `.venv`, build artifacts) is never in the
+# tracked set, so it can never trip the closed-world assertion on ANY checkout —
+# closing the green-CI / red-local trap where a dev's `.DS_Store` failed local
+# verify while a fresh worktree/CI clone (tracked content only) passed. An
+# untracked-but-legitimate brand-new operating doc not yet `git add`-ed is
+# invisible to this scan — acceptable and correct: CI runs on committed state
+# where it IS tracked, so the scan asserts exactly what ships.
+#
+# META-PRINCIPLE GUARD (DESIGN §6): any validate-pack check (or shipped client
+# check) that ENUMERATES THE FILESYSTEM and asserts a CLOSED-WORLD completeness /
+# coverage property over an operating-doc tree MUST (a) scan the git-tracked
+# surface only (pack-side; lenient git-unavailable SKIP per Check 63), or use a
+# glob/extension-bounded enumeration that cannot admit OS junk; AND (b) carry a
+# junk-injection test proving it ignores gitignored/untracked artifacts (see
+# scripts/tests/test-validate-pack-check-69.sh — the junk-injection Group is
+# Check 69's executable teeth). A closed-world assertion over a raw
+# `rglob("*")` / `os.walk` of the live filesystem is PROHIBITED — it makes the
+# check env-sensitive. REVIEWER PROTOCOL: when reviewing a new closed-world
+# filesystem-completeness check, confirm the junk-injection assertion EXISTS,
+# not merely that the live tree happens to pass.
+#
+# RUNTIME COST: one `git ls-files <tree>` subprocess per scanned tree + set
+# arithmetic. Gate 4 reads NO file bodies — it enumerates PATHS only. Cheap.
 
 # The operating-doc-only top-level trees Gate 4 walks (repo-relative). NOT the
 # repo root, NOT the backlog/ + changelog/ per-entry stores.
@@ -8060,7 +8316,10 @@ _CHECK_OPERATING_DOC_OUT_OF_FAMILY = (
     # pack-ops/ data files (allowlists + manifests consumed by other checks)
     "pack-ops/.boundary-exempt-root.txt",
     "pack-ops/.boundary-pointer-manifest.txt",
+    "pack-ops/.bullet-concision-allowlist.txt",
     "pack-ops/.concision-allowlist.txt",
+    "pack-ops/.dangling-ref-allowlist.txt",
+    "pack-ops/.operating-doc-deferred-feature-allowlist.txt",
     "pack-ops/.operating-doc-history-allowlist.txt",
     "pack-ops/.spawn-rule-manifest.txt",
     # the Antigravity plugin manifest (machine config, not an operating doc)
@@ -8083,11 +8342,21 @@ def check_operating_doc_scope_completeness() -> None:
     trustworthy: the glob's coverage becomes an ASSERTED invariant, not an
     implicit one. Reads NO file bodies (path enumeration + set arithmetic).
 
-    AUTHORED-UNREGISTERED at CG-14-prep-a (not in CHECK_REGISTRY; count stays
-    63). CG-14 registers it. Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 4 + §5.
+    GIT-TRACKED-ONLY scan (DESIGN-BD-243-CHECK69-ENV-ROBUSTNESS.md §3, fix A):
+    the candidate file set is the git-TRACKED files under each scanned tree
+    (`git ls-files <tree>`), NOT a raw `tree.rglob("*")` filesystem walk, so
+    gitignored/untracked OS junk (`.DS_Store`, editor temp files) can NEVER trip
+    the closed-world assertion — the env is irrelevant by construction. See the
+    header comment for the META-PRINCIPLE GUARD + reviewer protocol.
 
-    Lenient mode: a scanned tree absent at HEAD is SKIPped (an init/layout
-    issue, not a completeness violation).
+    AUTHORED-UNREGISTERED at CG-14-prep-a (not in CHECK_REGISTRY; count stays
+    63). CG-14 registers it. Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 4 + §5
+    and DESIGN-BD-243-CHECK69-ENV-ROBUSTNESS.md.
+
+    Lenient mode: `git` unavailable or the cwd is not a git work tree
+    (`git ls-files` raises FileNotFoundError / returns non-zero) → SKIP the
+    whole check (mirrors Check 63's lenient posture — never hard-fail on a
+    non-git environment).
     """
     print(
         "\n── Check 69: operating-doc scope-completeness meta-check (BD-243) ──"
@@ -8096,45 +8365,64 @@ def check_operating_doc_scope_completeness() -> None:
     family_members = set(_operating_doc_families())
     out_of_family = set(_CHECK_OPERATING_DOC_OUT_OF_FAMILY)
 
+    # Candidate file set = git-TRACKED files under the scanned trees (NOT a raw
+    # rglob filesystem walk). One `git ls-files <tree>...` over all scanned
+    # trees; lenient SKIP if git is unavailable / not a work tree (mirrors
+    # Check 63). gitignored/untracked OS junk is never in the tracked set, so it
+    # can never trip the closed-world completeness assertion.
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "-z", "--", *_CHECK_OPERATING_DOC_SCANNED_TREES],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+    except FileNotFoundError:
+        ok("git not available — skipping (lenient)")
+        return
+    if result.returncode != 0:
+        ok("git ls-files unavailable (not a git work tree) — skipping (lenient)")
+        return
+
+    tracked_rels = sorted(
+        rel for rel in result.stdout.split("\0") if rel.strip()
+    )
+
     any_fail = False
     scanned_files = 0
     family_count = 0
     exempt_count = 0
     out_count = 0
 
-    for tree_rel in _CHECK_OPERATING_DOC_SCANNED_TREES:
-        tree = REPO_ROOT / tree_rel
-        if not tree.is_dir():
-            ok(f"{tree_rel} absent — skipping that tree (lenient)")
+    for rel in tracked_rels:
+        path = REPO_ROOT / rel
+        if not path.is_file():
+            # tracked-but-absent (e.g. a deleted-not-committed path) — nothing
+            # to classify; skip silently (the completeness assertion is over
+            # files that EXIST on the committed surface).
             continue
-        for path in sorted(tree.rglob("*")):
-            if not path.is_file():
-                continue
-            rel = path.relative_to(REPO_ROOT).as_posix()
-            scanned_files += 1
-            if rel in family_members:
-                family_count += 1
-                continue
-            if _operating_doc_is_exempt(path):
-                exempt_count += 1
-                continue
-            if rel in out_of_family:
-                out_count += 1
-                continue
-            any_fail = True
-            fail(
-                f"{rel} — file under an operating-doc tree is NEITHER family-"
-                f"globbed NOR EXEMPT NOR on _CHECK_OPERATING_DOC_OUT_OF_FAMILY. "
-                f"Per BD-243 Gate 4, every file under the operating-doc trees "
-                f"must be covered so a new doc cannot silently escape the "
-                f"content gates (Check 65 history + the CG-14-prep-b gates). "
-                f"Remediation: if it is an operating doc, add its location to a "
-                f"family glob in _CHECK_OPERATING_DOC_FAMILIES; if it is "
-                f"orientation/index/help output, add it to "
-                f"_CHECK_OPERATING_DOC_EXEMPT; if it is a non-doc data file, "
-                f"add it to _CHECK_OPERATING_DOC_OUT_OF_FAMILY — each WITH a "
-                f"rationale a reviewer re-verifies."
-            )
+        scanned_files += 1
+        if rel in family_members:
+            family_count += 1
+            continue
+        if _operating_doc_is_exempt(path):
+            exempt_count += 1
+            continue
+        if rel in out_of_family:
+            out_count += 1
+            continue
+        any_fail = True
+        fail(
+            f"{rel} — file under an operating-doc tree is NEITHER family-"
+            f"globbed NOR EXEMPT NOR on _CHECK_OPERATING_DOC_OUT_OF_FAMILY. "
+            f"Per BD-243 Gate 4, every file under the operating-doc trees "
+            f"must be covered so a new doc cannot silently escape the "
+            f"content gates (Check 65 history + the CG-14-prep-b gates). "
+            f"Remediation: if it is an operating doc, add its location to a "
+            f"family glob in _CHECK_OPERATING_DOC_FAMILIES; if it is "
+            f"orientation/index/help output, add it to "
+            f"_CHECK_OPERATING_DOC_EXEMPT; if it is a non-doc data file, "
+            f"add it to _CHECK_OPERATING_DOC_OUT_OF_FAMILY — each WITH a "
+            f"rationale a reviewer re-verifies."
+        )
 
     if not any_fail:
         ok(
@@ -8306,6 +8594,372 @@ def check_operating_doc_no_history() -> None:
             f"{total_forbidden_outside} history pattern(s) outside the "
             f"allowlist (0 = clean); {total_allowlisted} allowlisted KEEP "
             f"occurrence(s) admitted."
+        )
+
+
+# ── Check 67 (Gate 2): operating-doc deferred-feature recall gate (BD-243) ─
+# AUTHORED-UNREGISTERED at CG-14-prep-b — body + patterns + allowlist ship now
+# but Check 67 is NOT in CHECK_REGISTRY (count stays 63); CG-14 registers it.
+# Exercised meanwhile via its per-check test's in-process body invocation (NOT
+# `--only-check 67`, which resolves against the registry).
+#
+# WHAT IT CATCHES (DESIGN-BD-243-DURABLE-GATES.md §3 Gate 2): an operating-doc
+# line that ADVERTISES a deferred / unimplemented / future-version FEATURE
+# ("tracker integration is deferred", "deferred to a future release", "once
+# those skills land", "v11.1 work"). A RECALL gate, NOT precision: no regex
+# decides "is this feature shipped?"; it flags every marker-bearing line, and
+# the allowlist (sized to the genuine operative KEEPs) clears the legitimate
+# ones — anything else FAILs.
+#
+# SCOPE (auto-discovered): _iter_operating_docs() — the family-globbed-minus-
+# EXEMPT IN set. A NEW operating doc that advertises a deferred feature is
+# exactly the silent-rot case this gate exists to catch.
+#
+# measure-then-bound: the allowlist (pack-ops/.operating-doc-deferred-feature-
+# allowlist.txt) is sized EXACTLY to the measured KEEP set across four
+# categories (C1 the deferral/operating-docs RULES; C2 generic client-product
+# advice; C3 operative current-state caveats; C4 the LIVE TD-deferral
+# workflow). PLATFORM-SKILLS.md contributes ZERO records (the CB-08 D-1 strip
+# cleaned its deferred-skills catalog) — any future PLATFORM-SKILLS hit is a
+# regression caught loudly.
+#
+# RUNTIME COST (ci-check-runtime-compounding): one compiled-alternation scan
+# per IN line (shares the IN-set read shape with Check 65), plus one small
+# allowlist parse. No subprocess, no whole-tree scan. Bounded to the IN set.
+
+_CHECK_67_DEFERRED_PATTERNS = (
+    ("deferred",        re.compile(r"\bdeferred\b", re.I)),
+    ("future-version",  re.compile(r"future (pack )?version|future release|in a future", re.I)),
+    ("coming",          re.compile(r"\bcoming soon\b", re.I)),
+    ("not-yet",         re.compile(r"\bnot yet (created|implemented|built|shipped)\b", re.I)),
+    ("lands-ships",     re.compile(r"once .{0,40}\b(land|lands|ship|ships)\b", re.I)),
+    ("roadmap",         re.compile(r"\broadmap\b", re.I)),
+    ("planned-post",    re.compile(r"\bplanned post\b|currently planned post", re.I)),
+    ("will-ship",       re.compile(r"\bwill ship\b", re.I)),
+    ("vnext",           re.compile(r"v11\.1|v11\.x")),
+    ("slated",          re.compile(r"\bslated\b", re.I)),
+    ("expected-offer",  re.compile(r"\bexpected to offer\b", re.I)),
+)
+
+
+def _check_67_load_allowlist() -> dict:
+    """Parse pack-ops/.operating-doc-deferred-feature-allowlist.txt into
+    {doc: [snippet, ...]}.
+
+    Each record carries `doc:`, `snippet:`, `reason:`. The matching key is
+    (doc, snippet-substring) — line numbers are NOT used (they drift). Clone of
+    _check_65_load_allowlist; reuses _parse_manifest_records()."""
+    allowlist_path = (
+        REPO_ROOT / "pack-ops"
+        / ".operating-doc-deferred-feature-allowlist.txt"
+    )
+    if not allowlist_path.is_file():
+        return {}
+    records = _parse_manifest_records(allowlist_path.read_text())
+    by_doc: dict = {}
+    for rec in records:
+        doc = rec.get("doc")
+        snippet = rec.get("snippet")
+        if doc and snippet:
+            by_doc.setdefault(doc, []).append(snippet)
+    return by_doc
+
+
+def check_operating_doc_no_deferred_feature() -> None:
+    """Check 67 (Gate 2) — operating-doc deferred-feature recall gate (BD-243).
+
+    Scans the operating-doc IN set (_iter_operating_docs) for deferred-feature
+    markers (deferred / future version / coming soon / not-yet-created / once X
+    lands|ships / roadmap / planned post / will ship / v11.1|v11.x / slated /
+    expected to offer). THE TEETH: any matched line NOT cleared by a
+    pack-ops/.operating-doc-deferred-feature-allowlist.txt record (doc match
+    AND an allowlisted snippet is a substring of the line) FAILs — deferred-
+    feature marker count must be 0 OUTSIDE the allowlist.
+
+    A RECALL gate, not precision (no regex decides "is this feature shipped?").
+    The human adjudicates each hit: STRIP it (it advertises a deferred pack
+    feature) OR add an allowlist record (a live workflow / generic advice / the
+    rule itself). The allowlist is sized to the measured KEEP set EXACTLY
+    (measure-then-bound) — never widened to admit a contamination hit.
+
+    AUTHORED-UNREGISTERED at CG-14-prep-b (not in CHECK_REGISTRY; count stays
+    63). CG-14 registers it. Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 2.
+
+    Lenient mode: an IN doc absent at HEAD SKIPs that doc; a missing allowlist
+    file means an empty allowlist (every marker hit then FAILs — fail-loud).
+    """
+    print(
+        "\n── Check 67: operating-doc deferred-feature recall gate (BD-243) ──"
+    )
+
+    allowlist = _check_67_load_allowlist()
+
+    any_fail = False
+    scanned_docs = 0
+    total_outside = 0
+    total_allowlisted = 0
+
+    for doc_rel in _iter_operating_docs():
+        doc_path = REPO_ROOT / doc_rel
+        if not doc_path.is_file():
+            ok(f"{doc_rel} absent — skipping that doc (lenient)")
+            continue
+        scanned_docs += 1
+        snippets = allowlist.get(doc_rel, [])
+        lines = doc_path.read_text().splitlines()
+
+        for lineno, line in enumerate(lines, start=1):
+            matched = [
+                name for name, rx in _CHECK_67_DEFERRED_PATTERNS
+                if rx.search(line)
+            ]
+            if not matched:
+                continue
+            covered = any(snip in line for snip in snippets)
+            if covered:
+                total_allowlisted += 1
+                continue
+            total_outside += 1
+            any_fail = True
+            fail(
+                f"{doc_rel}:{lineno} — operating-doc deferred-feature marker "
+                f"{matched} OUTSIDE the allowlist: `{line.strip()[:90]}`. Per "
+                f"BD-243 Gate 2, an operating doc must not ADVERTISE a deferred "
+                f"/ unimplemented / future-version FEATURE (state only what "
+                f"currently exists and operates; the mention is re-added when "
+                f"the feature ships). Remediation: STRIP the deferred-feature "
+                f"mention OR, if this documents a LIVE workflow / generic "
+                f"client-product advice / the rule itself, add a pack-ops/"
+                f".operating-doc-deferred-feature-allowlist.txt record (doc + a "
+                f"snippet + a reason a reviewer re-verifies). The allowlist is "
+                f"sized to the KEEP set EXACTLY and MUST NOT be widened to "
+                f"admit this hit."
+            )
+
+    if not any_fail:
+        ok(
+            f"Check 67 — {scanned_docs} operating doc(s) scanned; "
+            f"{total_outside} deferred-feature marker(s) outside the allowlist "
+            f"(0 = clean); {total_allowlisted} allowlisted KEEP occurrence(s) "
+            f"admitted."
+        )
+
+
+# ── Check 68 (Gate 3): dangling-reference gate (BD-243) ────────────────────
+# AUTHORED-UNREGISTERED at CG-14-prep-b — body + pattern + allowlist ship now
+# but Check 68 is NOT in CHECK_REGISTRY (count stays 63); CG-14 registers it.
+# Exercised meanwhile via its per-check test's in-process body invocation (NOT
+# `--only-check 68`, which resolves against the registry).
+#
+# WHAT IT CATCHES (DESIGN-BD-243-DURABLE-GATES.md §3 Gate 3): a file/path
+# reference in an operating doc (and the deliverable surface) whose target does
+# NOT exist — a dead pointer. Generalizes Check 64's existence-precedent from
+# the 3-member `.example` family to the full file-reference surface. This is the
+# axis that let deleted-doc refs (HELP-FRAGMENT-TRACKER, the
+# feedback_review_fix_one_cycle.md ref) slip past CI.
+#
+# REF EXTRACTION (reuse Check 40's machinery, no new regex risk): (1) backtick
+# bare-ref via _CHECK_40_BARE_REF_PATTERN; (2) markdown hyperlink via
+# _CHECK_40_HYPERLINK_PATTERN; (3) the ONE new bounded qualified-path pattern
+# _CHECK_68_QUALIFIED_PATH_PATTERN (`dir/.../FILE.ext`, >=1 slash — the shape
+# Check 40's `/`-exclusion DELIBERATELY misses, exactly where deleted-doc refs
+# hid). All run AFTER _strip_code_blocks() (fenced/indented code is not a prose
+# citation).
+#
+# EXISTENCE CHECK: a qualified-path ref resolves if REPO_ROOT/<path> exists OR
+# (fallback) its basename is in the once-built basename index. A bare-ref
+# resolves if its basename is in the index. A ref within the _CHECK_40_ANCHOR_
+# PHRASES window ("archived"/"does not exist"/"post-install") is intentional
+# non-existence, auto-cleared. A ref that resolves to NO file AND is not
+# anchor-cleared AND is not on pack-ops/.dangling-ref-allowlist.txt FAILs.
+#
+# measure-then-bound: the allowlist is sized EXACTLY to the measured
+# intentional-non-existence KEEP set (grammar patterns, regenerated mirrors,
+# self-flagged retired/declined/orphan, runtime outputs, template placeholders,
+# out-of-repo memory files, teaching/example client paths). The genuine
+# residual dangling ref (feedback_review_fix_one_cycle.md) is FIXED at
+# CG-14-prep-b, not allowlisted.
+#
+# RUNTIME COST (ci-check-runtime-compounding): one pass over the IN set + the
+# Check-64 deliverable trees, extracting refs (3 compiled patterns) and
+# resolving each against a basename index BUILT ONCE (_build_basename_index,
+# the same builder Check 40 uses). No per-ref subprocess, no per-entry storm.
+
+# The ONE new bounded pattern: a backtick qualified-path ref (>=1 slash), first
+# char [A-Za-z] (so a `.dotfile` qualified ref is out of scope — Check 64 owns
+# the leading-dot `.example` family). Same extension class as Check 40.
+_CHECK_68_QUALIFIED_PATH_PATTERN = re.compile(
+    r"`([A-Za-z][\w./-]*/[\w.-]+\.(?:" + _CHECK_40_FILE_EXTS + r"))`"
+)
+
+# The operating-doc IN set is auto-discovered (_iter_operating_docs); the
+# deliverable surface mirrors Check 64's INCLUDE. EXCLUDE: history-home +
+# pack-only stores + fixtures (the per-entry BD/changelog bodies are history,
+# not a citation surface).
+_CHECK_68_INCLUDE_TREES = ("project-template", "supporting-docs")
+_CHECK_68_EXCLUDE_PREFIXES = (
+    "changelog/",
+    "backlog/BD-",
+    "maintenance-docs/",
+    "test-fixtures/",
+    "scripts/tests/fixtures/",
+    ".git/",
+)
+
+
+def _check_68_load_allowlist() -> set:
+    """Parse pack-ops/.dangling-ref-allowlist.txt into a set of allowlisted
+    tokens (the exact dangling references that are non-existent BY DESIGN).
+
+    Each record carries `token:` + `reason:`. Returns the set of tokens.
+    Reuses _parse_manifest_records()."""
+    allowlist_path = REPO_ROOT / "pack-ops" / ".dangling-ref-allowlist.txt"
+    if not allowlist_path.is_file():
+        return set()
+    records = _parse_manifest_records(allowlist_path.read_text())
+    return {rec["token"] for rec in records if rec.get("token")}
+
+
+def check_dangling_file_refs() -> None:
+    """Check 68 (Gate 3) — dangling-reference gate (BD-243).
+
+    Extracts file/path references (backtick bare-ref, markdown hyperlink, and
+    the new qualified-path backtick) from the operating-doc IN set + the
+    Check-64 deliverable surface (README + project-template/** +
+    supporting-docs/**, minus EXCLUDE), and FAILs on any reference whose target
+    does not exist — a dead pointer. Generalizes Check 64's existence gate.
+
+    Reuses Check 40's extraction (_strip_code_blocks, the bare-ref/hyperlink
+    regex, the _CHECK_40_ANCHOR_PHRASES self-flagging-non-existence window, the
+    _build_basename_index index). A ref resolves via direct path existence
+    (qualified) or basename-index membership; an anchor-windowed ref is
+    intentional non-existence (auto-cleared); else the allowlist
+    (pack-ops/.dangling-ref-allowlist.txt, token-keyed) must clear it.
+
+    AUTHORED-UNREGISTERED at CG-14-prep-b (not in CHECK_REGISTRY; count stays
+    63). CG-14 registers it. Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 3.
+
+    measure-then-bound: the allowlist is sized to the measured intentional-non-
+    existence KEEP set EXACTLY — never widened to admit a real dead pointer. A
+    reviewer re-verifies each token's `reason:`.
+
+    Lenient mode: a file unreadable (binary/decode error) is skipped silently;
+    a missing allowlist means an empty allowlist (every unresolved ref then
+    FAILs — fail-loud).
+    """
+    print("\n── Check 68: dangling-reference gate (BD-243) ──")
+
+    allowlist = _check_68_load_allowlist()
+    index = _build_basename_index()
+    anchor_window = _CHECK_40_ANCHOR_WINDOW
+
+    def _excluded(rel_posix: str) -> bool:
+        return any(rel_posix.startswith(p) for p in _CHECK_68_EXCLUDE_PREFIXES)
+
+    def _has_anchor(lines: list, lineno: int) -> bool:
+        start = max(0, lineno - 1 - anchor_window)
+        end = min(len(lines), lineno - 1 + anchor_window + 1)
+        for i in range(start, end):
+            for anchor in _CHECK_40_ANCHOR_PHRASES:
+                if anchor in lines[i]:
+                    return True
+        return False
+
+    # Build the scope file set: operating-doc IN set ∪ deliverable surface.
+    scope: set = set()
+    for rel in _iter_operating_docs():
+        if not _excluded(rel):
+            scope.add(rel)
+    readme = REPO_ROOT / "README.md"
+    if readme.is_file():
+        scope.add("README.md")
+    for tree in _CHECK_68_INCLUDE_TREES:
+        root = REPO_ROOT / tree
+        if not root.is_dir():
+            continue
+        for path in root.rglob("*"):
+            if not path.is_file():
+                continue
+            rel_posix = path.relative_to(REPO_ROOT).as_posix()
+            if _excluded(rel_posix):
+                continue
+            scope.add(rel_posix)
+
+    any_fail = False
+    files_scanned = 0
+    refs_checked = 0
+    resolved = 0
+    anchor_cleared = 0
+    allowlisted = 0
+
+    for rel in sorted(scope):
+        path = REPO_ROOT / rel
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        files_scanned += 1
+        stripped = _strip_code_blocks(text)
+        for lineno, line in enumerate(stripped, start=1):
+            # collect (token, is_qualified) per line
+            tokens = []
+            for m in _CHECK_68_QUALIFIED_PATH_PATTERN.finditer(line):
+                tokens.append((m.group(1), True))
+            for m in _CHECK_40_BARE_REF_PATTERN.finditer(line):
+                tokens.append((m.group(1), False))
+            for m in _CHECK_40_HYPERLINK_PATTERN.finditer(line):
+                tokens.append((m.group(1), False))
+            if not tokens:
+                continue
+            for token, is_qualified in tokens:
+                refs_checked += 1
+                # existence resolution
+                if is_qualified:
+                    if (REPO_ROOT / token).exists():
+                        resolved += 1
+                        continue
+                    if Path(token).name in index:
+                        resolved += 1
+                        continue
+                else:
+                    if token in index:
+                        resolved += 1
+                        continue
+                # intentional-non-existence anchor window
+                if _has_anchor(stripped, lineno):
+                    anchor_cleared += 1
+                    continue
+                # explicit allowlist
+                if token in allowlist:
+                    allowlisted += 1
+                    continue
+                any_fail = True
+                fail(
+                    f"{rel}:{lineno} — dangling reference `{token}`: the cited "
+                    f"target does NOT exist (no direct path, no basename match, "
+                    f"no self-flagging anchor). Per BD-243 Gate 3, a file/path "
+                    f"reference in an operating doc / deliverable must resolve "
+                    f"to an existing target. Remediation: restore/correct the "
+                    f"target OR drop the cite OR, if it is non-existent BY "
+                    f"DESIGN (a filename/path grammar pattern, a regenerated "
+                    f"mirror, a self-flagged retired/declined ref, a runtime-"
+                    f"generated output, a template placeholder, an out-of-repo "
+                    f"memory file, or a teaching example path), add a "
+                    f"pack-ops/.dangling-ref-allowlist.txt record (token + a "
+                    f"reason a reviewer re-verifies). The allowlist is sized to "
+                    f"the KEEP set EXACTLY and MUST NOT be widened to admit a "
+                    f"real dead pointer."
+                )
+
+    if not any_fail:
+        ok(
+            f"Check 68 — {files_scanned} file(s) scanned; {refs_checked} "
+            f"file/path reference(s) checked; {resolved} resolved, "
+            f"{anchor_cleared} self-flagged-non-existent (anchor-cleared), "
+            f"{allowlisted} allowlisted (non-existent by design); 0 dangling "
+            f"outside the allowlist (complete)."
         )
 
 
