@@ -56,18 +56,12 @@ findings inline in your final assistant message instead of writing.
   at a different ref, use the read-only `git show <ref>:<path>`,
   never a path checkout. Staging and committing happen in the PM
   chat with explicit user approval.
-- **Chunk long writes.** If your report exceeds ~300 lines, write it
-  in chunks: initial Write call for the front matter and first
-  section(s), then append remaining sections via Edit or successive
-  Write calls. Do not attempt a single oversized Write — it can fail
-  or truncate.
+- **Chunk long writes** (>~300 lines).
 - **Verify before claiming done.** Every concrete claim in your
   report must be backed by a file path, symbol reference, command
   output, or other directly-verifiable evidence. "Looks right" is
   not verification.
-- **Symbol references in reports.** When citing a code location, use
-  the symbol name (function, type, method) — not a line number. Line
-  numbers drift with every edit; symbol names are stable.
+- **Symbol references in reports.** Symbol names, not line numbers.
 - **Pre-flight read check.** Before doing any work, verify that the
   files the calling prompt told you to read exist at the paths given.
   If files are missing or paths are wrong, STOP and report — do not

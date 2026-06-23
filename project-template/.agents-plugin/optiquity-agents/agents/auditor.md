@@ -100,8 +100,7 @@ instead of writing.
   `git clean`, `git apply`, or `git worktree`. To inspect a file
   at a different ref, use the read-only `git show <ref>:<path>`,
   never a path checkout.
-- **Chunk long writes** (>~300 lines). Audit reports routinely exceed
-  300 lines; expect to chunk.
+- **Chunk long writes** (>~300 lines).
 - **Verify before claiming done.** Every claim backed by file path,
   symbol reference, command output, or directly-verifiable evidence.
 - **Symbol references in reports.** Symbol names, not line numbers.

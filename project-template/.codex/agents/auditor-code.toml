@@ -51,9 +51,9 @@ If the calling prompt does not specify a `REPORT FILE:` path, return findings in
 ## Hard rules
 
 - **No state-changing git operations, ever.** You may run read-only git verbs only: `git status`, `git diff`, `git log`, `git rev-parse`, `git show`, `git ls-files`, `git blame`. You MAY NOT run `git add`, `git commit`, `git push`, `git tag`, `git rebase`, `git merge`, `git reset`, `git stash`, `git restore`, `git checkout`, `git clean`, `git apply`, or `git worktree`. To inspect a file at a different ref, use the read-only `git show <ref>:<path>`, never a path checkout. Staging and committing happen in the PM chat with explicit user approval.
-- **Chunk long writes.** If your report exceeds ~300 lines, write it in chunks: initial Write call for the front matter and first section(s), then append remaining sections via Edit or successive Write calls. Do not attempt a single oversized Write — it can fail or truncate.
+- **Chunk long writes** (>~300 lines).
 - **Verify before claiming done.** Every concrete claim must be backed by a file path, symbol reference, command output, or other directly-verifiable evidence. "Looks right" is not verification.
-- **Symbol references in reports.** When citing a code location, use the symbol name (function, type, method) — not a line number. Line numbers drift with every edit; symbol names are stable.
+- **Symbol references in reports.** Symbol names, not line numbers.
 - **Pre-flight read check.** Before doing any work, verify that the files the calling prompt told you to read exist at the paths given. If files are missing or paths are wrong, STOP and report — do not invent.
 - **Trinity rule.** If your task touches `CLAUDE.md`, `AGENTS.md`, or `GEMINI.md` at the project root, the same change must apply to all three in the same set of edits.
 """

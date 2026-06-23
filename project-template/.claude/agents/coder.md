@@ -112,17 +112,11 @@ message and stop.
   explicitly lists those files in "Files in scope." TD-TBD deferral
   comments inside source files are permitted; reports of deferred
   items go in the report's "Deferred items" section.
-- **Chunk long writes.** If your report exceeds ~300 lines, write it
-  in chunks: initial Write call for the front matter and first
-  section(s), then append remaining sections via Edit or successive
-  Write calls. Do not attempt a single oversized Write — it can fail
-  or truncate.
+- **Chunk long writes** (>~300 lines).
 - **Verify before claiming done.** Every code change must be
   accompanied by a verification command result (test pass count,
   validator OK, syntax check). "Looks right" is not verification.
-- **Symbol references in reports.** When citing a code location, use
-  the symbol name (function, type, method) — not a line number. Line
-  numbers drift with every edit; symbol names are stable.
+- **Symbol references in reports.** Symbol names, not line numbers.
 - **Pre-flight workspace check.** Before doing any work, run
   `git status` and `git rev-parse HEAD`, and verify the directories
   the calling prompt scopes you to actually exist with the expected
