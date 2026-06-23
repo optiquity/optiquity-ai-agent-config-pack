@@ -32,6 +32,7 @@
 - [BD-238](./BD-238.md) — Codify the PACK-SIDE large-BD development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)
 - [BD-239](./BD-239.md) — Codify the PROJECT-SIDE large-phase development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)
 - [BD-242](./BD-242.md) — Adopt semantic versioning + Apple-style release qualifiers for the pack: `vMAJOR.MINOR.PATCH (RCn | GA[n])` (replace the two-level `vN.M` scheme)
+- [BD-244](./BD-244.md) — CI guards enumerate git-tracked files, not the raw filesystem (strengthen `ci-guard-design-measure-then-bound`)
 
 ## Deferred
 
