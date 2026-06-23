@@ -110,7 +110,7 @@ import subprocess
 
 def _git_init_and_add(root):
     """Make the synthetic /tmp tree a git repo and TRACK its built files.
-    Check 68 resolves refs against `_build_basename_index()`, which since
+    Check 68 resolves refs against \`_build_basename_index()\`, which since
     BD-244 enumerates git ls-files (tracked-only) — so a synthetic tree MUST
     be a git work tree with its files staged, else the builder returns None
     and the check lenient-SKIPs (no resolution)."""
