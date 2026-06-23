@@ -8963,6 +8963,312 @@ def check_dangling_file_refs() -> None:
         )
 
 
+# ── Check 70 (parity): shipped client doc-gate structural parity (BD-243) ──
+# DESIGN-BD-243-CLIENT-GATE.md §C.3 (the parity check that polices the shipped
+# client gate). The pack ships a CLIENT-side operating-doc enforcement gate
+# `project-template/scripts/validate-docs.sh` (the dual-surface mirror of the
+# pack's own validate-pack gates). validate-pack.py never ships, so without a
+# pack-side guard the shipped gate could silently vanish or lose an axis over
+# pack versions. Check 70 asserts STRUCTURAL parity (presence / executable /
+# axis-coverage / wiring), NOT behavioral parity — behavioral parity would be a
+# maintenance trap. This is the legitimate dependency direction: a PACK
+# operation READS a client deliverable to police it (it never EDITS the gate,
+# never makes the gate a runtime dependency of a pack op). The 4 client axes
+# the gate must declare (axis-marker comments it carries):
+#   # AXIS: history   # AXIS: deferred   # AXIS: bloat   # AXIS: dangling
+_CHECK_70_CLIENT_GATE = "project-template/scripts/validate-docs.sh"
+_CHECK_70_AXIS_MARKERS = (
+    "# AXIS: history",
+    "# AXIS: deferred",
+    "# AXIS: bloat",
+    "# AXIS: dangling",
+)
+_CHECK_70_WIRING_FILES = (
+    "project-template/scripts/validate.sh",
+    "project-template/scripts/agent-post-edit-check.sh",
+)
+
+
+def check_client_doc_gate_parity() -> None:
+    """Check 70 (parity) — shipped client doc-gate structural parity (BD-243).
+
+    Asserts the shipped client operating-doc enforcement gate
+    `project-template/scripts/validate-docs.sh` (a) EXISTS, (b) is executable,
+    (c) declares all 4 axis-markers (`# AXIS: history|deferred|bloat|dangling`),
+    and (d) is wired into the shipped `validate.sh` + `agent-post-edit-check.sh`.
+    STRUCTURAL parity only (presence / executable / axis-coverage / wiring) —
+    NOT behavioral (the two gates re-implement the same logic per DC-1; drift is
+    mitigated by the shared trinity rule-text anchor + THIS presence guard, not
+    a behavioral comparison that would be a maintenance trap).
+
+    Dependency direction (dependency-direction-placement): this is a PACK check
+    that READS the project-template client deliverable to police it — the
+    legitimate direction (a pack op reads a client deliverable for
+    verification). It NEVER edits the gate and NEVER makes the gate a runtime
+    dependency of a pack operation.
+
+    AUTHORED-UNREGISTERED at CG-14-prep-b (not in CHECK_REGISTRY; count stays
+    63). CG-14 registers it. Per DESIGN-BD-243-CLIENT-GATE.md §C.3 +
+    PLAN-BD-243-FINAL-V4.md §3.3. Because CG-CLIENT already landed the real
+    gate, this passes against the live deliverable now (no lenient mode).
+
+    Lenient mode: the gate file WHOLLY ABSENT SKIPs (an init/state problem, not
+    a parity violation — mirrors the lenient-absent posture of the other gates);
+    a PRESENT-but-incomplete gate (not executable / missing an axis / not wired)
+    FAILs (the teeth).
+    """
+    print(
+        "\n── Check 70: shipped client doc-gate structural parity (BD-243) ──"
+    )
+
+    gate_path = REPO_ROOT / _CHECK_70_CLIENT_GATE
+    if not gate_path.is_file():
+        ok(
+            f"{_CHECK_70_CLIENT_GATE} absent — skipping (lenient; the shipped "
+            f"client gate is an init/state artifact when absent, not a parity "
+            f"violation). When present it must be executable, declare all 4 "
+            f"axis-markers, and be wired into validate.sh + "
+            f"agent-post-edit-check.sh."
+        )
+        return
+
+    any_fail = False
+
+    # (b) executable
+    if not os.access(gate_path, os.X_OK):
+        any_fail = True
+        fail(
+            f"{_CHECK_70_CLIENT_GATE} — the shipped client doc-gate exists but "
+            f"is NOT executable. Per BD-243 the gate must ship executable "
+            f"(install runs `chmod +x scripts/*.sh`, but the committed source "
+            f"must carry the executable bit). Remediation: `chmod +x "
+            f"{_CHECK_70_CLIENT_GATE}`."
+        )
+
+    gate_text = gate_path.read_text(encoding="utf-8", errors="replace")
+
+    # (c) all 4 axis-markers declared
+    missing_axes = [m for m in _CHECK_70_AXIS_MARKERS if m not in gate_text]
+    if missing_axes:
+        any_fail = True
+        fail(
+            f"{_CHECK_70_CLIENT_GATE} — the shipped client doc-gate is missing "
+            f"axis-marker(s): {missing_axes}. Per DESIGN-BD-243-CLIENT-GATE.md "
+            f"§C.3 the gate must declare ALL 4 axes "
+            f"({list(_CHECK_70_AXIS_MARKERS)}) as `# AXIS: <axis>` marker "
+            f"comments so this parity check can confirm axis-coverage "
+            f"structurally. Remediation: restore the dropped axis (its matcher "
+            f"+ its `# AXIS:` marker) in the gate; a future pack version that "
+            f"adds/removes a client axis updates BOTH the gate and "
+            f"_CHECK_70_AXIS_MARKERS in the same change."
+        )
+
+    # (d) wired into validate.sh + agent-post-edit-check.sh
+    gate_basename = Path(_CHECK_70_CLIENT_GATE).name
+    for wiring_rel in _CHECK_70_WIRING_FILES:
+        wiring_path = REPO_ROOT / wiring_rel
+        if not wiring_path.is_file():
+            any_fail = True
+            fail(
+                f"{wiring_rel} — the shipped client wiring host is MISSING, so "
+                f"the doc-gate cannot be wired into it. Per BD-243 "
+                f"{gate_basename} must be invoked from both validate.sh (the "
+                f"full-run path) and agent-post-edit-check.sh (the per-`.md`-"
+                f"edit fast path)."
+            )
+            continue
+        wiring_text = wiring_path.read_text(encoding="utf-8", errors="replace")
+        if gate_basename not in wiring_text:
+            any_fail = True
+            fail(
+                f"{wiring_rel} — the shipped client doc-gate {gate_basename} is "
+                f"NOT wired into this host (no reference found). Per "
+                f"DESIGN-BD-243-CLIENT-GATE.md §C.2 the gate runs via two hooks: "
+                f"validate.sh (always-run full path) + agent-post-edit-check.sh "
+                f"(per-`.md`-edit fast path). Remediation: re-add the "
+                f"{gate_basename} invocation to {wiring_rel}."
+            )
+
+    if not any_fail:
+        ok(
+            f"Check 70 — {_CHECK_70_CLIENT_GATE} exists, is executable, "
+            f"declares all {len(_CHECK_70_AXIS_MARKERS)} axis-markers "
+            f"({', '.join(m.split(': ', 1)[1] for m in _CHECK_70_AXIS_MARKERS)}"
+            f"), and is wired into "
+            f"{', '.join(Path(w).name for w in _CHECK_70_WIRING_FILES)} "
+            f"(structural parity complete)."
+        )
+
+
+# ── Check 71: pack-root skill-mirror byte-identity (BD-243) ────────────────
+# DESIGN-BD-243-SKILL-MIRROR-UNIFICATION.md §5.3. The user's binding ruling is
+# that the pack skills MUST be byte-identical across all 3 CLIs. The canonical
+# is `.claude/skills` (index 0); CB-04 reduces the canonical and byte-copies it
+# to the `.codex`/`.agents` mirrors. This gate makes that invariant durable: a
+# mirror that byte-diverges from the canonical FAILs. It composes with Check 65
+# by the gate-the-canonical-once + assert-identity model — Check 65 scans the
+# `.claude` canonical for history; Check 71 asserts the 2 mirrors are byte-equal
+# to it, so the mirrors inherit cleanliness transitively (no triple-scan). NO
+# allowlist: byte-identity is absolute (any divergence is a defect by the
+# user's ruling). The dir set REUSES the pack-root subset Check 51 lists.
+_CHECK_71_SKILL_MIRROR_DIRS = (
+    ".claude/skills",
+    ".codex/skills",
+    ".agents/skills",
+)
+
+
+def check_pack_skill_mirror_identity() -> None:
+    """Check 71 — pack-root skill-mirror byte-identity (BD-243).
+
+    For each skill `<s>` in the canonical `.claude/skills`, compares the BYTES
+    of `.codex/skills/<s>/SKILL.md` and `.agents/skills/<s>/SKILL.md` to
+    `.claude/skills/<s>/SKILL.md`. THE TEETH: any byte-difference (or a missing
+    mirror file, or an extra mirror skill the canonical lacks) FAILs with the
+    skill name + which mirror + a "re-propagate the reduced canonical"
+    remediation.
+
+    Why byte-identity (pattern-matching-out-of-context): pack SKILLS share ONE
+    format (`SKILL.md` Markdown) across all 3 CLIs and the user ruled them
+    identical, so byte-equality is the achievable, strongest, cheapest
+    invariant. This is the WRONG property for AGENTS (3 different formats —
+    md/toml/md — can never byte-equal), which keep Check 11 lenient parity +
+    Check 56 semantic-verb-presence instead. Do not reuse this mechanism for
+    agents.
+
+    AUTHORED-UNREGISTERED at CG-14-prep-b (not in CHECK_REGISTRY; count stays
+    63). CG-14 registers it. Because CB-04 unified the skill mirrors
+    (byte-identical), this passes against the live tree now.
+
+    measure-then-bound: the gate is sized EXACTLY to the 3 pack-root mirror
+    trees × the canonical skill set — no allowlist (byte-identity is absolute),
+    no project mirrors (out of scope for this pack-root gate).
+
+    Runtime cost (ci-check-runtime-compounding): reads the canonical once per
+    skill + byte-compares the 2 mirror files — O(skill bytes), no regex, no
+    subprocess, no whole-tree scan. Far cheaper than re-running Check 65's
+    history regexes over 22 more files.
+
+    Lenient mode: a WHOLLY-ABSENT mirror tree (a fresh-clone / init artifact)
+    SKIPs that mirror with a note (mirrors Check 65's lenient-absent posture);
+    a PRESENT mirror tree with a divergent/missing file FAILs (the teeth).
+    """
+    print("\n── Check 71: pack-root skill-mirror byte-identity (BD-243) ──")
+
+    canonical_dir_rel = _CHECK_71_SKILL_MIRROR_DIRS[0]
+    mirror_dirs_rel = _CHECK_71_SKILL_MIRROR_DIRS[1:]
+    canonical_root = REPO_ROOT / canonical_dir_rel
+
+    if not canonical_root.is_dir():
+        ok(
+            f"{canonical_dir_rel} absent — skipping (lenient; the canonical "
+            f"skill tree is a fresh-clone/init artifact when absent, not an "
+            f"identity violation)."
+        )
+        return
+
+    # Canonical skill set: every <s> with a SKILL.md under .claude/skills.
+    canonical_skills = sorted(
+        p.parent.name
+        for p in canonical_root.glob("*/SKILL.md")
+        if p.is_file()
+    )
+
+    any_fail = False
+    skills_checked = 0
+    pairs_compared = 0
+    mirrors_skipped = []
+
+    for mirror_dir_rel in mirror_dirs_rel:
+        mirror_root = REPO_ROOT / mirror_dir_rel
+        if not mirror_root.is_dir():
+            mirrors_skipped.append(mirror_dir_rel)
+            ok(
+                f"{mirror_dir_rel} tree absent — skipping that mirror (lenient; "
+                f"a wholly-absent mirror tree is a fresh-clone/init artifact, "
+                f"not a divergence)."
+            )
+
+    for skill in canonical_skills:
+        canonical_file = canonical_root / skill / "SKILL.md"
+        try:
+            canonical_bytes = canonical_file.read_bytes()
+        except OSError:
+            continue
+        skills_checked += 1
+        for mirror_dir_rel in mirror_dirs_rel:
+            mirror_root = REPO_ROOT / mirror_dir_rel
+            if not mirror_root.is_dir():
+                continue  # wholly-absent tree already reported lenient above
+            mirror_file = mirror_root / skill / "SKILL.md"
+            if not mirror_file.is_file():
+                any_fail = True
+                fail(
+                    f"{mirror_dir_rel}/{skill}/SKILL.md — MISSING mirror file: "
+                    f"the canonical {canonical_dir_rel}/{skill}/SKILL.md has no "
+                    f"counterpart in this mirror. Per BD-243 the pack skills "
+                    f"must be byte-identical across all 3 CLI mirrors. "
+                    f"Remediation: re-propagate the reduced canonical "
+                    f"(`cp {canonical_dir_rel}/{skill}/SKILL.md "
+                    f"{mirror_dir_rel}/{skill}/SKILL.md`)."
+                )
+                continue
+            pairs_compared += 1
+            try:
+                mirror_bytes = mirror_file.read_bytes()
+            except OSError:
+                continue
+            if mirror_bytes != canonical_bytes:
+                any_fail = True
+                fail(
+                    f"{mirror_dir_rel}/{skill}/SKILL.md — byte-DIVERGES from "
+                    f"the canonical {canonical_dir_rel}/{skill}/SKILL.md "
+                    f"({len(mirror_bytes)} vs {len(canonical_bytes)} bytes). "
+                    f"Per DESIGN-BD-243-SKILL-MIRROR-UNIFICATION.md §5.3 the "
+                    f"pack skills MUST be byte-identical across all 3 CLI "
+                    f"mirrors (no allowlist — byte-identity is absolute). "
+                    f"Remediation: re-propagate the reduced canonical "
+                    f"(`cp {canonical_dir_rel}/{skill}/SKILL.md "
+                    f"{mirror_dir_rel}/{skill}/SKILL.md`); NEVER hand-edit a "
+                    f"mirror — reduce the canonical once and copy it."
+                )
+
+    # Extra-skill detection: a mirror skill the canonical lacks (the canonical
+    # set is authoritative; an orphan mirror skill is a divergence too).
+    canonical_set = set(canonical_skills)
+    for mirror_dir_rel in mirror_dirs_rel:
+        mirror_root = REPO_ROOT / mirror_dir_rel
+        if not mirror_root.is_dir():
+            continue
+        mirror_skills = {
+            p.parent.name
+            for p in mirror_root.glob("*/SKILL.md")
+            if p.is_file()
+        }
+        for orphan in sorted(mirror_skills - canonical_set):
+            any_fail = True
+            fail(
+                f"{mirror_dir_rel}/{orphan}/SKILL.md — EXTRA mirror skill not "
+                f"present in the canonical {canonical_dir_rel}. The canonical "
+                f"skill set is authoritative; an orphan mirror skill is a "
+                f"divergence. Remediation: drop the orphan mirror skill OR add "
+                f"it to the canonical and re-propagate."
+            )
+
+    if not any_fail:
+        skip_note = (
+            f" ({len(mirrors_skipped)} mirror tree(s) absent — lenient SKIP)"
+            if mirrors_skipped
+            else ""
+        )
+        ok(
+            f"Check 71 — {skills_checked} canonical skill(s) × "
+            f"{len(mirror_dirs_rel)} mirror(s); {pairs_compared} mirror file(s) "
+            f"byte-identical to the {canonical_dir_rel} canonical; 0 divergent "
+            f"(complete){skip_note}."
+        )
+
+
 # ── Check 47: sanctioned pack-side-shipped freeze (BD-195 C3d) ─────────────
 # Freezes the bounded exception that lets `scripts/lib/detect.sh` +
 # `scripts/pack-help.sh` ship to clients from their pack-side location.
