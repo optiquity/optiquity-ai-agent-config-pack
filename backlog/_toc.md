@@ -32,7 +32,6 @@
 - [BD-238](./BD-238.md) — Codify the PACK-SIDE large-BD development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)
 - [BD-239](./BD-239.md) — Codify the PROJECT-SIDE large-phase development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)
 - [BD-242](./BD-242.md) — Adopt semantic versioning + Apple-style release qualifiers for the pack: `vMAJOR.MINOR.PATCH (RCn | GA[n])` (replace the two-level `vN.M` scheme)
-- [BD-244](./BD-244.md) — CI guards enumerate git-tracked files, not the raw filesystem (strengthen `ci-guard-design-measure-then-bound`)
 
 ## Deferred
 
@@ -245,6 +244,7 @@
 - [BD-240](./BD-240.md) — Re-frame the `graph-first-context` rule so it is genuinely graph-first for DISCOVERY/RECALL (not grep-first): the grep/Read fall-throughs swallow recall-critical enumeration
 - [BD-241](./BD-241.md) — Make previously-spawned still-alive agents discoverable: unique spawn NAMES + a durable spawn REGISTRY + a name→agentId→message-id lookup precedence (Claude-only mechanism; pack + project)
 - [BD-243](./BD-243.md) — Strip historical/audit-trail text + bloat from operational docs (pack + project); add anti-bloat governance rule
+- [BD-244](./BD-244.md) — CI guards enumerate git-tracked files, not the raw filesystem (strengthen `ci-guard-measure-then-bound`)
 
 ## Deprecated
 
