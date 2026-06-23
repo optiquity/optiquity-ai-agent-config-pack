@@ -10,10 +10,11 @@
 # test stages a synthetic operating-doc tree + a synthetic allowlist inside
 # a tmp REPO_ROOT, monkeypatches the IN scope (_CHECK_65_OPERATING_DOCS) to
 # the synthetic doc, invokes Check 65 against the tmp tree, and asserts
-# PASS / FAIL as expected. The check's live scope is EMPTY at this work-unit
-# (Option A: register-early / activate-last) — these fixture tests verify the
-# check FUNCTION independently of the empty live scope. Cleanup runs on every
-# exit path.
+# PASS / FAIL as expected. Check 65 is ACTIVATED over the auto-discovered
+# operating-doc IN set (BD-243 CG-14-prep-a repoint, model B) — these fixture
+# tests verify the check FUNCTION in isolation by substituting a synthetic doc
+# for the live IN set, so they pass regardless of the live tree's content.
+# Cleanup runs on every exit path.
 #
 # Coverage:
 #   Group 0: Module import + Check 65 symbol registration
@@ -30,8 +31,12 @@
 #               MOVED-intent from the Check-44 test's T5)
 #            T6 missing allowlist file => empty allowlist => every history
 #               hit FAILS (fail-loud)
-#   Group 2: End-to-end validate-pack.py exit-status on HEAD (Check 65
-#            runs clean: empty live scope => vacuous pass)
+#            T7 R2 incident-regex tightening (BD-243 CG-14-prep-a): the
+#               whole-word r"\bincident\b" pattern — T7a "incidents" /
+#               "coincidental" do NOT match (clean); T7b standalone "incident"
+#               DOES match (FAIL)
+#   Group 2: End-to-end validate-pack.py exit-status on HEAD (Check 65 runs
+#            over the auto-discovered operating-doc IN set; clean => exit 0)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-65.sh
 
@@ -120,8 +125,9 @@ def run_check_with_synthetic(doc_body, allowlist_text):
     saved_failures = list(mod.failures)
     mod.failures.clear()
     mod.REPO_ROOT = root
-    # Monkeypatch the IN scope to the single synthetic doc (the live scope is
-    # empty at this work-unit — the function is exercised via this fixture).
+    # Monkeypatch the IN scope to the single synthetic doc, substituting it for
+    # the live auto-discovered IN set so the check FUNCTION is exercised in
+    # isolation via this fixture (saved/restored around the call).
     mod._CHECK_65_OPERATING_DOCS = (SYNTH_DOC,)
     buf = io.StringIO()
     try:
@@ -233,6 +239,35 @@ fc, pm, cap = run_check_with_synthetic(body, "")
 if fc < 1:
     failures.append("T6 (missing allowlist fail-loud) expected >=1 failure, got %d: %s" % (fc, cap))
 
+# T7: R2 incident-regex tightening (BD-243 CG-14-prep-a). The forbidden
+#     pattern is r"\bincident\b" (whole word), NOT a bare substring. The
+#     substring forms "incidents" / "coincidental" must NOT trip the gate
+#     (they are not history-narrative), while a STANDALONE "incident" still
+#     DOES. T7a = the two false-positive forms PASS clean; T7b = a standalone
+#     "incident" FAILS.
+body = (
+    "# SYNTH-OPERATING.md\n"
+    "\n"
+    "We surface individual incidents in the feedback channel, which is not\n"
+    "coincidental — both are routine forward-looking workflow prose.\n"
+)
+fc, pm, cap = run_check_with_synthetic(body, "")
+if fc != 0:
+    failures.append("T7a (incidents/coincidental do NOT match \\bincident\\b) expected 0 failures, got %d: %s" % (fc, cap))
+if not pm:
+    failures.append("T7a (incidents/coincidental clean) expected the '0 = clean' OK message: %s" % cap)
+
+body = (
+    "# SYNTH-OPERATING.md\n"
+    "\n"
+    "The audit incident is provenance narration and must FAIL the gate.\n"
+)
+fc, pm, cap = run_check_with_synthetic(body, "")
+if fc < 1:
+    failures.append("T7b (standalone 'incident' DOES match \\bincident\\b) expected >=1 failure, got %d: %s" % (fc, cap))
+if "incident" not in cap:
+    failures.append("T7b (standalone 'incident' FAIL) expected the offending line in output: %s" % cap)
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -241,7 +276,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "End-to-end synthetic-tree tests T1-T6 (clean / date-FAIL / SHA-FAIL / allowlisted-KEEP / KEEP-only-not-blanket / fail-loud)" ;;
+    0) t_pass "End-to-end synthetic-tree tests T1-T7 (clean / date-FAIL / SHA-FAIL / allowlisted-KEEP / KEEP-only-not-blanket / fail-loud / R2 incident whole-word)" ;;
     *) t_fail "End-to-end check_operating_doc_no_history tests failed (see Python output)" ;;
 esac
 
@@ -254,7 +289,7 @@ printf "\n=== Group 2: End-to-end validate-pack.py exit-status on HEAD ===\n"
 if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 65 > /tmp/vp-check65-e2e.out 2>&1; then
     if grep -q "Check 65: operating-doc no-history gate" /tmp/vp-check65-e2e.out \
        && grep -q "Check 65 — .* operating doc(s) scanned" /tmp/vp-check65-e2e.out; then
-        t_pass "validate-pack.py exits 0; Check 65 runs clean (empty live scope => vacuous pass) at HEAD"
+        t_pass "validate-pack.py exits 0; Check 65 runs clean over the live operating-doc IN set at HEAD"
     else
         t_fail "validate-pack.py exits 0 but Check 65 clean-output not detected" \
             "Tail: $(tail -10 /tmp/vp-check65-e2e.out)"

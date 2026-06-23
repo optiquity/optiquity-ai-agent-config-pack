@@ -264,3 +264,27 @@ doc: pack-ops/OPTIONAL-FEATURES.md
 pattern: bd-tag
 snippet: DESIGN-BD-225-GRAPHIFY-PACK-INTEGRATION.md
 reason: live maintenance-doc cross-ref (the graphify-integration design-of-record exists + is read at task time); the BD is carried by the filename, not provenance.
+
+# ── GC-3: live operative reference to the P-missed-7 boundary regression
+#        (the boundary-investigation skill teaches it). The `\bincident\b`
+#        whole-word pattern (R2-tightened) trips on "The audit incident
+#        (P-missed-7)" — but this is the skill's OWN rationale for the rule it
+#        teaches, not history provenance. Passes T-live (the skill operates
+#        today) and fails T-def (it describes no deferred feature). The PROJECT
+#        copy only — the pack copy .claude/skills/boundary-investigation/SKILL.md
+#        has NO whole-word "incident" hit (measured). One record. ──
+doc: project-template/skills/boundary-investigation/SKILL.md
+pattern: incident
+snippet: The audit incident (P-missed-7)
+reason: live operative reference to the P-missed-7 boundary regression the skill teaches, not history provenance.
+
+# ── GC-4: filename/header-grammar example the backlog write-contract acts on
+#        — a K7-extension. The existing K7 snippet `BD-167.md` does NOT
+#        substring-match the header-form line (which carries `BD-167 —`, not
+#        `BD-167.md`), so the `bd-tag` (BD-\d+) pattern trips uncovered on the
+#        header grammar. This record covers the header-form example. Illustrative
+#        grammar the agent acts on, not provenance. One record. ──
+doc: backlog/_rules.md
+pattern: bd-tag
+snippet: **BD-167 — <Title>**
+reason: filename/header-grammar example the write-contract acts on (illustrative, not provenance).

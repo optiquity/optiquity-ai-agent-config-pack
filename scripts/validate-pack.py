@@ -7880,6 +7880,272 @@ def check_durable_doc_concision() -> None:
         )
 
 
+# ── Shared operating-doc auto-discovery infrastructure (BD-243) ────────────
+# The operating-doc IN set, discovered by GLOBBING the operating-doc families
+# then SUBTRACTING the frozen EXEMPT set. This is the SINGLE source of truth
+# for the operating-doc content gates (Check 65 history; Checks 67/68 land at
+# CG-14-prep-b). Auto-discovery — NOT a frozen IN list — is the durable fix
+# for the silent-rot hole: a NEW operating doc in a globbed family is scanned
+# automatically; the only way to EXCLUDE a new doc is to add it to EXEMPT or
+# OUT-OF-FAMILY WITH A RATIONALE (a reviewable governance act). Gate 4
+# (Check 69, below) asserts the glob's own completeness.
+#
+# DESIGN: DESIGN-BD-243-DURABLE-GATES.md §2 (families + EXEMPT + the discovery
+# function) + §5 (auto-discover − EXEMPT + meta-check is the adopted scope
+# model). The frozen auditable surface is the small EXEMPT + OUT-OF-FAMILY +
+# family-pattern lists, NOT the ~136-member IN set.
+#
+# NOTE: pack skills are .claude/skills/*/SKILL.md ONLY — the .codex / .agents
+# skill MIRRORS are governed by their own byte-identity check, NOT scanned
+# here (scanning them would double-count identical content).
+
+# The operating-doc families. Each entry is either a LITERAL repo-relative
+# path (trinity + the two pack stream-meta _rules + the project changelog
+# _format + RUNTIME-SUBAGENT-PATTERN) or a Path.glob() pattern (relative to
+# REPO_ROOT). _iter_operating_docs() expands the globs, collects the literals,
+# subtracts EXEMPT, and returns a sorted unique list. (§2.1)
+_CHECK_OPERATING_DOC_FAMILIES = (
+    # pack trinity
+    "CLAUDE.md",
+    "AGENTS.md",
+    "GEMINI.md",
+    # pack-ops operating docs (HELP-FRAGMENT-PACK is EXEMPT)
+    "pack-ops/*.md",
+    # pack skills (the .claude mirror only; .codex/.agents mirrors are
+    # byte-identity-checked, not scanned here)
+    ".claude/skills/*/SKILL.md",
+    # pack agents
+    ".claude/agents/pack-*.md",
+    # pack stream-meta write-contracts
+    "backlog/_rules.md",
+    "changelog/_rules.md",
+    # project trinity
+    "project-template/CLAUDE.md",
+    "project-template/AGENTS.md",
+    "project-template/GEMINI.md",
+    # project docs/pack operating docs (HELP-FRAGMENT is EXEMPT)
+    "project-template/docs/pack/*.md",
+    # the runtime-subagent pattern doc (lives beside the Antigravity plugin,
+    # not under docs/pack — an explicit family member, not a tree glob)
+    "project-template/.agents-plugin/optiquity-agents/RUNTIME-SUBAGENT-PATTERN.md",
+    # project per-agent prompt templates
+    "project-template/docs/pack/prompts/*.md",
+    # project skills
+    "project-template/skills/*/SKILL.md",
+    # project agent-defs — the three platform families
+    "project-template/.claude/agents/*.md",
+    "project-template/.agents-plugin/optiquity-agents/agents/*.md",
+    "project-template/.codex/agents/*.toml",
+    # project stream-meta write-contracts + the changelog format spec
+    "project-template/docs/project/*/_rules.md",
+    "project-template/docs/project/changelog/_format.md",
+)
+
+# Globbed-but-EXEMPT: a family glob picks these up but they are NOT operating
+# docs (human orientation / generated index / help OUTPUT). The frozen,
+# small, rationale'd auditable surface that REPLACES freezing the whole IN
+# set. (§2.2) Matched by exact basename (`_intro.md` / `_toc.md`) or basename
+# prefix (`HELP-FRAGMENT*`).
+#   _intro.md         — human orientation, ZERO rules
+#   _toc.md           — generated index
+#   HELP-FRAGMENT*.md — help OUTPUT (HELP-FRAGMENT-PACK / HELP-FRAGMENT), not
+#                       executed as instruction
+_CHECK_OPERATING_DOC_EXEMPT = (
+    "_intro.md",
+    "_toc.md",
+    "HELP-FRAGMENT",  # prefix match: HELP-FRAGMENT-PACK.md, HELP-FRAGMENT.md
+)
+
+
+def _operating_doc_is_exempt(path: Path) -> bool:
+    """True iff a family-globbed path is EXEMPT (orientation / index / help
+    output). Exact-basename match for `_intro.md`/`_toc.md`; prefix match for
+    `HELP-FRAGMENT*`."""
+    name = path.name
+    for ex in _CHECK_OPERATING_DOC_EXEMPT:
+        if ex.startswith("HELP-FRAGMENT"):
+            if name.startswith("HELP-FRAGMENT"):
+                return True
+        elif name == ex:
+            return True
+    return False
+
+
+def _operating_doc_families() -> list:
+    """Expand _CHECK_OPERATING_DOC_FAMILIES into a flat list of repo-relative
+    POSIX path strings (globs expanded against REPO_ROOT, literals kept if the
+    file exists). Does NOT subtract EXEMPT — that is _iter_operating_docs()'s
+    job. (§2.1)"""
+    out = []
+    for entry in _CHECK_OPERATING_DOC_FAMILIES:
+        if any(ch in entry for ch in "*?[") :
+            out.extend(
+                p.relative_to(REPO_ROOT).as_posix()
+                for p in REPO_ROOT.glob(entry)
+                if p.is_file()
+            )
+        else:
+            if (REPO_ROOT / entry).is_file():
+                out.append(entry)
+    return out
+
+
+def _iter_operating_docs() -> list:
+    """The operating-doc IN set, auto-discovered by family glob minus EXEMPT.
+
+    Single source of truth for Check 65 (history) and the CG-14-prep-b content
+    gates (67 deferred-feature, 68 dangling-ref). Gate 4's meta-check
+    (Check 69) asserts every file under the operating-doc trees is family-
+    globbed OR EXEMPT OR OUT-OF-FAMILY, so this discovery cannot silently miss
+    a doc. Returns a sorted, de-duplicated list of repo-relative POSIX path
+    strings. (§2.3)"""
+    seen = set()
+    for rel in _operating_doc_families():
+        if rel in seen:
+            continue
+        if _operating_doc_is_exempt(REPO_ROOT / rel):
+            continue
+        seen.add(rel)
+    return sorted(seen)
+
+
+# ── Check 69 (Gate 4): operating-doc scope-completeness meta-check (BD-243) ─
+# AUTHORED-UNREGISTERED at CG-14-prep-a — its body + constants ship now but it
+# is NOT in CHECK_REGISTRY (count stays 63); CG-14 registers it (count 63→68
+# with the other four gates). Exercised meanwhile via its per-check test's
+# in-process body invocation (NOT `--only-check 69`, which resolves against
+# the registry and so cannot reach an unregistered check).
+#
+# THE HOLE IT CLOSES: auto-discovery (_iter_operating_docs) is only as good as
+# its family patterns + EXEMPT list. A doc added in an un-globbed LOCATION (a
+# family the glob does not cover) would still escape the content gates. Gate 4
+# asserts: every file under the operating-doc top-level trees is (i) matched by
+# a family glob, (ii) EXEMPT, or (iii) on the frozen OUT-OF-FAMILY list. A file
+# that is none of these FAILs with "add it to a family glob / EXEMPT it / mark
+# it OUT-OF-FAMILY with a rationale" — converting "silently escapes" into a
+# loud build failure. (DESIGN §3 Gate 4 + §5.)
+#
+# SCOPE NOTE: the SCANNED trees are the operating-doc-ONLY directories. The
+# pack/project trinity (repo root + project-template root) and the
+# backlog/changelog stream-meta _rules are point family-members, NOT tree-
+# scanned: scanning the repo root or the backlog/ + changelog/ PER-ENTRY
+# STORES would pull in the entire repo and the 243 BD + 11 changelog HISTORY
+# entries (the history-home — explicitly NOT operating docs). So Gate 4 scans
+# only the dirs that hold operating docs and would hide a stray un-globbed doc.
+#
+# RUNTIME COST: one rglob per scanned tree + set arithmetic. Gate 4 reads NO
+# file bodies — it enumerates PATHS only. The cheapest gate.
+
+# The operating-doc-only top-level trees Gate 4 walks (repo-relative). NOT the
+# repo root, NOT the backlog/ + changelog/ per-entry stores.
+_CHECK_OPERATING_DOC_SCANNED_TREES = (
+    "pack-ops",
+    ".claude/skills",
+    ".claude/agents",
+    "project-template/docs/pack",
+    "project-template/skills",
+    "project-template/.claude/agents",
+    "project-template/.agents-plugin/optiquity-agents",
+    "project-template/.codex/agents",
+    "project-template/docs/project",
+)
+
+# FROZEN: files under the scanned trees that are legitimately NOT operating
+# docs and NOT EXEMPT — data files consumed by checks + a plugin manifest.
+# Sized EXACTLY by measuring the trees (measure-then-bound); a new entry here
+# is a reviewable governance act. Adding an operating doc does NOT touch this
+# list (it is family-globbed); adding a NON-doc data file under a scanned tree
+# DOES (or Gate 4 FAILs loudly). (DESIGN §3 Gate 4 ENCODING SURFACES.)
+_CHECK_OPERATING_DOC_OUT_OF_FAMILY = (
+    # pack-ops/ data files (allowlists + manifests consumed by other checks)
+    "pack-ops/.boundary-exempt-root.txt",
+    "pack-ops/.boundary-pointer-manifest.txt",
+    "pack-ops/.concision-allowlist.txt",
+    "pack-ops/.operating-doc-history-allowlist.txt",
+    "pack-ops/.spawn-rule-manifest.txt",
+    # the Antigravity plugin manifest (machine config, not an operating doc)
+    "project-template/.agents-plugin/optiquity-agents/plugin.json",
+)
+
+
+def check_operating_doc_scope_completeness() -> None:
+    """Check 69 (Gate 4) — operating-doc scope-completeness meta-check (BD-243).
+
+    Walks the operating-doc-only trees (_CHECK_OPERATING_DOC_SCANNED_TREES) and
+    asserts EVERY file is (i) family-globbed (in _iter_operating_docs's
+    pre-EXEMPT family expansion), (ii) EXEMPT (_CHECK_OPERATING_DOC_EXEMPT), or
+    (iii) on the frozen _CHECK_OPERATING_DOC_OUT_OF_FAMILY list. A file that is
+    none of these FAILs — a new operating doc (or a new data file) under a
+    scanned tree that escaped the family globs / EXEMPT / OUT-OF-FAMILY surface
+    is caught LOUDLY instead of silently escaping the content gates.
+
+    This is the backstop that makes auto-discovery (_iter_operating_docs)
+    trustworthy: the glob's coverage becomes an ASSERTED invariant, not an
+    implicit one. Reads NO file bodies (path enumeration + set arithmetic).
+
+    AUTHORED-UNREGISTERED at CG-14-prep-a (not in CHECK_REGISTRY; count stays
+    63). CG-14 registers it. Per DESIGN-BD-243-DURABLE-GATES.md §3 Gate 4 + §5.
+
+    Lenient mode: a scanned tree absent at HEAD is SKIPped (an init/layout
+    issue, not a completeness violation).
+    """
+    print(
+        "\n── Check 69: operating-doc scope-completeness meta-check (BD-243) ──"
+    )
+
+    family_members = set(_operating_doc_families())
+    out_of_family = set(_CHECK_OPERATING_DOC_OUT_OF_FAMILY)
+
+    any_fail = False
+    scanned_files = 0
+    family_count = 0
+    exempt_count = 0
+    out_count = 0
+
+    for tree_rel in _CHECK_OPERATING_DOC_SCANNED_TREES:
+        tree = REPO_ROOT / tree_rel
+        if not tree.is_dir():
+            ok(f"{tree_rel} absent — skipping that tree (lenient)")
+            continue
+        for path in sorted(tree.rglob("*")):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(REPO_ROOT).as_posix()
+            scanned_files += 1
+            if rel in family_members:
+                family_count += 1
+                continue
+            if _operating_doc_is_exempt(path):
+                exempt_count += 1
+                continue
+            if rel in out_of_family:
+                out_count += 1
+                continue
+            any_fail = True
+            fail(
+                f"{rel} — file under an operating-doc tree is NEITHER family-"
+                f"globbed NOR EXEMPT NOR on _CHECK_OPERATING_DOC_OUT_OF_FAMILY. "
+                f"Per BD-243 Gate 4, every file under the operating-doc trees "
+                f"must be covered so a new doc cannot silently escape the "
+                f"content gates (Check 65 history + the CG-14-prep-b gates). "
+                f"Remediation: if it is an operating doc, add its location to a "
+                f"family glob in _CHECK_OPERATING_DOC_FAMILIES; if it is "
+                f"orientation/index/help output, add it to "
+                f"_CHECK_OPERATING_DOC_EXEMPT; if it is a non-doc data file, "
+                f"add it to _CHECK_OPERATING_DOC_OUT_OF_FAMILY — each WITH a "
+                f"rationale a reviewer re-verifies."
+            )
+
+    if not any_fail:
+        ok(
+            f"Check 69 — {scanned_files} file(s) under "
+            f"{len(_CHECK_OPERATING_DOC_SCANNED_TREES)} operating-doc tree(s) "
+            f"scanned; all covered ({family_count} family-globbed, "
+            f"{exempt_count} EXEMPT, {out_count} out-of-family); 0 uncovered "
+            f"(complete). IN set = {len(_iter_operating_docs())} operating doc(s)."
+        )
+
+
 # ── Check 65: operating-doc no-history gate (BD-243) ───────────────────────
 # The history axis over the operating-doc IN set. An operating doc issues
 # system-wide operating instructions to chat sessions / agents; it must be
@@ -7892,9 +8158,12 @@ def check_durable_doc_concision() -> None:
 # doc-refs, the live transitional pointer, the format examples — never widened
 # to admit contamination.
 #
-# Scope is the FROZEN constant _CHECK_65_OPERATING_DOCS (auditable; matches
-# the Check-44 _CHECK_44_DURABLE_DOCS precedent). It is populated at gate
-# ACTIVATION; an empty scope scans nothing (vacuous pass).
+# Scope is the auto-discovered operating-doc IN set: _CHECK_65_OPERATING_DOCS
+# is repointed (model B) to tuple(_iter_operating_docs()) at module load
+# (BD-243 CG-14-prep-a), so a NEW operating doc is scanned automatically and
+# the silent-rot hole of a frozen IN list is closed. The constant NAME is
+# preserved so the per-check test's monkeypatch seam (save/restore +
+# substitute a synthetic doc) is unchanged.
 #
 # This check owns the date / SHA / Commit-N / Override-N / post-Commit axis
 # moved from Check 44, PLUS the BD/TD provenance axis Check 44 never had.
@@ -7912,18 +8181,21 @@ _CHECK_65_FORBIDDEN_PATTERNS = (
     ("per-BD", re.compile(r"per\s+BD-\d+")),
     ("pre-date", re.compile(r"pre-20[0-9]{2}-[0-9]{2}-[0-9]{2}")),
     ("user-locked", re.compile(r"User-locked")),
-    ("incident", re.compile(r"incident")),
+    ("incident", re.compile(r"\bincident\b")),
     ("carry-over", re.compile(r"carried from|carry-over")),
     ("bd-tag", re.compile(r"BD-\d+")),
 )
 
-# The operating-doc IN set scanned by Check 65 (the measured operating-doc
-# families; EXEMPT docs — _intro / HELP-FRAGMENT / history-store / reference
-# / scripts — are NOT scanned). FROZEN constant, sized to the corrected IN
-# set. EMPTY at gate registration (Option A: register-early / activate-last);
-# populated at gate ACTIVATION, the first point Check 65 enforces against the
-# live tree.
-_CHECK_65_OPERATING_DOCS = ()
+# The operating-doc IN set scanned by Check 65. REPOINTED (BD-243 CG-14-prep-a,
+# model B) from a frozen empty tuple to the AUTO-DISCOVERED IN set
+# (tuple(_iter_operating_docs()) — the family globs minus EXEMPT) evaluated at
+# module load. This ACTIVATES Check 65 over the full pack+project operating-doc
+# IN set and closes the frozen-IN silent-rot hole (a NEW operating doc is
+# scanned automatically; Gate 4 / Check 69 asserts the discovery is complete).
+# The constant NAME is preserved (not inlined into the loop) so the per-check
+# test's monkeypatch seam — test-validate-pack-check-65.sh saves/restores
+# mod._CHECK_65_OPERATING_DOCS and substitutes a synthetic doc — stays intact.
+_CHECK_65_OPERATING_DOCS = tuple(_iter_operating_docs())
 
 
 def _check_65_load_allowlist() -> dict:
@@ -10342,11 +10614,12 @@ def _build_check_registry():
               check_dangling_example_deliverable_refs, W),
         # Check 65 — operating-doc no-history gate (BD-243): scans the
         # operating-doc IN set (_CHECK_65_OPERATING_DOCS) for history /
-        # audit-trail patterns outside the K1-K11 KEEP allowlist. Owns the
+        # audit-trail patterns outside the K1-K13 KEEP allowlist. Owns the
         # date/SHA/Commit-N/Override-N/post-Commit axis moved from Check 44
-        # plus the BD-provenance axis Check 44 never had. Scope is EMPTY at
-        # registration (Option A: register-early / activate-last) → vacuous
-        # pass until gate activation populates the constant.
+        # plus the BD-provenance axis Check 44 never had. ACTIVATED at
+        # BD-243 CG-14-prep-a: the scope is repointed (model B) to the
+        # auto-discovered operating-doc IN set (tuple(_iter_operating_docs())),
+        # so the check enforces over the full pack+project IN set.
         (65, "check_operating_doc_no_history",
               check_operating_doc_no_history, W),
     ]
