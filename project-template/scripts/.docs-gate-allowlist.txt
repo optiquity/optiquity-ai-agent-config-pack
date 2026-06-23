@@ -1,0 +1,412 @@
+# .docs-gate-allowlist.txt — KEEP allowlist for the operating-doc gate
+# (scripts/validate-docs.sh).
+#
+# The gate scans the project operating docs on four axes (history /
+# deferred / bloat / dangling). A hit on any line that is NOT covered here
+# FAILS the gate. This allowlist is sized EXACTLY to the legitimate KEEP
+# set — every record is a rule self-reference, a live TD-deferral workflow
+# line, generic product advice, a format example, an irreducible
+# enumeration, or a will-exist-at-install file cross-reference. It is NOT
+# widened to admit a borderline hit: if a new hit is not clearly one of
+# those, fix the doc instead of adding a record.
+#
+# History stores (the per-entry streams under
+# docs/project/{backlog,implementation-plan,changelog}/, the regenerated
+# monolith mirrors, docs/reference/, completion reports) are EXCLUDED from
+# the scan entirely — they legitimately carry dates and deferral narrative,
+# so they are never line-allowlisted here.
+#
+# FORMAT: one record per blank-line-separated block; '#'-comment lines
+# ignored. Two record shapes:
+#
+#   Snippet record (history / deferred / bloat axes):
+#     doc:      <path relative to the project root>
+#     pattern:  the axis / pattern class the hit belongs to
+#     snippet:  a stable substring of the allowlisted line (content-anchored
+#               — a line that moves is still matched; a line whose content
+#               changes stops matching, so the gate re-bites a reworded hit)
+#     reason:   why this occurrence is legitimate
+#
+#   Target record (dangling axis):
+#     target:   <path that resolves only after install / project use>
+#     reason:   why a reference to that target is legitimate
+#
+# The developer may add x-<concept> records the same way for project-custom
+# skills / agents. Re-verify each reason: still names live-and-current work
+# when an operating doc is reworked.
+
+# ===========================================================================
+# HISTORY axis — KEEP
+# ===========================================================================
+
+# --- Rule self-reference: the operating-docs-no-history rule quotes the
+#     forbidden shapes verbatim to define what it forbids (×3 trinity). The
+#     "carried from" and "incident" tokens are the rule naming the patterns,
+#     not provenance. ---
+doc: CLAUDE.md
+pattern: carry-over
+snippet: provenance/"carried from" notes
+reason: rule self-reference — the no-history rule quotes the forbidden provenance shapes to define them; not an actual provenance note.
+
+doc: CLAUDE.md
+pattern: incident
+snippet: incident or commit-SHA refs
+reason: rule self-reference — the no-history rule names "incident or commit-SHA refs" as a forbidden shape; not an audit-trail record.
+
+doc: AGENTS.md
+pattern: carry-over
+snippet: provenance/"carried from" notes
+reason: rule self-reference — the no-history rule quotes the forbidden provenance shapes to define them; not an actual provenance note.
+
+doc: AGENTS.md
+pattern: incident
+snippet: incident or commit-SHA refs
+reason: rule self-reference — the no-history rule names "incident or commit-SHA refs" as a forbidden shape; not an audit-trail record.
+
+doc: GEMINI.md
+pattern: carry-over
+snippet: provenance/"carried from" notes
+reason: rule self-reference — the no-history rule quotes the forbidden provenance shapes to define them; not an actual provenance note.
+
+doc: GEMINI.md
+pattern: incident
+snippet: incident or commit-SHA refs
+reason: rule self-reference — the no-history rule names "incident or commit-SHA refs" as a forbidden shape; not an audit-trail record.
+
+# --- Methodology rationale: the boundary-investigation skill names the
+#     regression CLASS (an "audit incident") it prevents — conceptual
+#     framing, not a dated audit-trail entry. ---
+doc: skills/boundary-investigation/SKILL.md
+pattern: incident
+snippet: The audit incident (P-missed-7) documented the regression mechanism
+reason: methodology rationale — the skill names the regression class it prevents (the P-missed-7 audit incident), not an audit-trail record.
+
+# --- Format / status-example dates: a doc that SHOWS the entry date grammar
+#     (the changelog format example + the Status-line date example) must
+#     carry an illustrative date. ---
+doc: docs/pack/PACK-FEEDBACK.md
+pattern: date
+snippet: Status: Ready (2026-06-15)
+reason: format example — illustrates the Status-line date grammar; not an audit-trail date.
+
+doc: docs/project/changelog/_rules.md
+pattern: date
+snippet: bare `2026-04-20.md`
+reason: format example — illustrates the changelog per-entry filename date grammar; not an audit-trail date.
+
+doc: docs/project/changelog/_format.md
+pattern: date
+snippet: 2026-04-20 — Phase 35
+reason: format example — the changelog entry-heading date grammar; not an audit-trail date.
+
+doc: docs/project/changelog/_format.md
+pattern: date
+snippet: 2026-04-20-phase-35.md
+reason: format example — the changelog per-entry filename date grammar; not an audit-trail date.
+
+doc: docs/project/changelog/_format.md
+pattern: date
+snippet: 2026-03-20 — Architecture Iteration
+reason: format example — a second changelog entry-heading date grammar example; not an audit-trail date.
+
+doc: docs/project/changelog/_format.md
+pattern: date
+snippet: 2026-03-20-architecture-iteration.md
+reason: format example — the changelog per-entry filename date grammar; not an audit-trail date.
+
+# ===========================================================================
+# DEFERRED axis — KEEP
+# ===========================================================================
+
+# --- Rule self-reference: the operating-docs-no-history rule names
+#     "deferred-feature" as forbidden and quotes "even to say it is
+#     deferred" (×3 trinity, 4 lines each). ---
+doc: CLAUDE.md
+pattern: deferred
+snippet: NO deferred-feature mentions
+reason: rule self-reference — the rule names the deferred-feature shape it forbids.
+
+doc: CLAUDE.md
+pattern: deferred
+snippet: ZERO description of a DEFERRED
+reason: rule self-reference — the rule quoting what it forbids.
+
+doc: CLAUDE.md
+pattern: deferred
+snippet: even to say it is deferred
+reason: rule self-reference — the rule quoting what it forbids.
+
+doc: CLAUDE.md
+pattern: deferred
+snippet: forward-pointers to CURRENT in-flight work KEEP
+reason: rule self-reference — the rule's KEEP carve-out clause (roadmap/history goes to streams).
+
+doc: AGENTS.md
+pattern: deferred
+snippet: NO deferred-feature mentions
+reason: rule self-reference — the rule names the deferred-feature shape it forbids.
+
+doc: AGENTS.md
+pattern: deferred
+snippet: ZERO description of a DEFERRED
+reason: rule self-reference — the rule quoting what it forbids.
+
+doc: AGENTS.md
+pattern: deferred
+snippet: even to say it is deferred
+reason: rule self-reference — the rule quoting what it forbids.
+
+doc: AGENTS.md
+pattern: deferred
+snippet: forward-pointers to CURRENT in-flight work KEEP
+reason: rule self-reference — the rule's KEEP carve-out clause.
+
+doc: GEMINI.md
+pattern: deferred
+snippet: NO deferred-feature mentions
+reason: rule self-reference — the rule names the deferred-feature shape it forbids.
+
+doc: GEMINI.md
+pattern: deferred
+snippet: ZERO description of a DEFERRED
+reason: rule self-reference — the rule quoting what it forbids.
+
+doc: GEMINI.md
+pattern: deferred
+snippet: even to say it is deferred
+reason: rule self-reference — the rule quoting what it forbids.
+
+doc: GEMINI.md
+pattern: deferred
+snippet: forward-pointers to CURRENT in-flight work KEEP
+reason: rule self-reference — the rule's KEEP carve-out clause.
+
+# --- Live TD-deferral workflow: the "Deferred items" completion-report
+#     section + the deferral-comment processing flow. This documents a LIVE
+#     workflow (how to REPORT deferred work), not a deferred feature. ---
+doc: CLAUDE.md
+pattern: deferred
+snippet: "Deferred items" section of the completion report
+reason: live TD-deferral workflow — the coder reports deferrals in this report section.
+
+doc: GEMINI.md
+pattern: deferred
+snippet: "Deferred items" section of the completion report
+reason: live TD-deferral workflow — the coder reports deferrals in this report section.
+
+doc: docs/pack/PM-CHAT.md
+pattern: deferred
+snippet: The coder reports deferred items
+reason: live TD-deferral workflow — the PM chat processes the coder's reported deferred items.
+
+doc: docs/pack/PM-CHAT.md
+pattern: deferred
+snippet: "Deferred items" section
+reason: live TD-deferral workflow — names the completion-report section.
+
+doc: docs/pack/prompts/coder.md
+pattern: deferred
+snippet: Deferred items section
+reason: live TD-deferral workflow — the coder report's required section.
+
+doc: docs/pack/prompts/coder.md
+pattern: deferred
+snippet: "Deferred items" section of your completion report
+reason: live TD-deferral workflow — the coder report's required section.
+
+doc: docs/pack/prompts/coder.md
+pattern: deferred
+snippet: **Deferred items**
+reason: live TD-deferral workflow — the coder report's required section heading.
+
+doc: docs/pack/prompts/coder.md
+pattern: deferred
+snippet: Deferred items reported via the typed-comment
+reason: live TD-deferral workflow — the deferral-comment + report-section mechanism.
+
+doc: docs/pack/prompts/coder.md
+pattern: deferred
+snippet: "Deferred items" sections present
+reason: live TD-deferral workflow — the completion-report acceptance criterion naming the required sections.
+
+doc: docs/pack/prompts/coder.md
+pattern: deferred
+snippet: tasks below are not yet implemented
+reason: live workflow — the coder prompt describing the task state it must implement, not a deferred feature.
+
+doc: docs/pack/prompts/coder.md
+pattern: deferred
+snippet: tasks are not yet implemented
+reason: live workflow — the coder prompt describing the task state it must implement, not a deferred feature.
+
+doc: docs/pack/prompts/reviewer.md
+pattern: deferred
+snippet: has not yet processed the coder's deferred items report
+reason: live TD-deferral workflow — the reviewer checking the deferred-items processing state.
+
+doc: docs/pack/prompts/reviewer.md
+pattern: deferred
+snippet: deferred design question rather than importing an external mechanism
+reason: live review workflow — the reviewer flags a deferred design question (boundary-investigation), not a deferred feature.
+
+doc: .claude/agents/coder.md
+pattern: deferred
+snippet: "Deferred items" section (write "None"
+reason: live TD-deferral workflow — the coder report's required section.
+
+doc: .claude/agents/coder.md
+pattern: deferred
+snippet: reports of deferred
+reason: live TD-deferral workflow — deferral reporting goes in the report's Deferred-items section.
+
+doc: .claude/agents/coder.md
+pattern: deferred
+snippet: items go in the report's "Deferred items" section
+reason: live TD-deferral workflow — the coder report's required section.
+
+doc: .codex/agents/coder.toml
+pattern: deferred
+snippet: "Deferred items" section (write "None"
+reason: live TD-deferral workflow — the coder report's required section.
+
+doc: .codex/agents/coder.toml
+pattern: deferred
+snippet: Do not modify BACKLOG.md
+reason: live workflow — the PM-only-file rule; "deferred" appears only incidentally in the wrapped rule text (recall-gate false positive on adjacent text).
+
+doc: .agents-plugin/optiquity-agents/agents/coder.md
+pattern: deferred
+snippet: "Deferred items" section (write "None"
+reason: live TD-deferral workflow — the coder report's required section.
+
+doc: .agents-plugin/optiquity-agents/agents/coder.md
+pattern: deferred
+snippet: reports of deferred
+reason: live TD-deferral workflow — deferral reporting goes in the report's Deferred-items section.
+
+doc: .agents-plugin/optiquity-agents/agents/coder.md
+pattern: deferred
+snippet: items go in the report's "Deferred items" section
+reason: live TD-deferral workflow — the coder report's required section.
+
+# --- Live review-workflow deferral tests (the BLOCKED / FIX-NOW carry-
+#     forward rules in the review skill). ---
+doc: skills/review/SKILL.md
+pattern: deferred
+snippet: Check for deferred work
+reason: live review workflow — the reviewer checks deferral comments use the typed format.
+
+doc: skills/review/SKILL.md
+pattern: deferred
+snippet: Real dependency on a not-yet-landed artifact
+reason: live review workflow — the BLOCKED carry-forward test, not a deferred feature.
+
+doc: skills/review/SKILL.md
+pattern: deferred
+snippet: Default: FIX NOW
+reason: live review workflow — the default-fix-now carry-forward rule, not a deferred feature.
+
+# --- Live audit-workflow processing of the consolidated report. ---
+doc: skills/audit-methodology/SKILL.md
+pattern: deferred
+snippet: processes the consolidated report
+reason: live audit workflow — the PM chat creates BACKLOG entries per finding; recall-gate false positive on "slated"/adjacent wording.
+
+# --- Generic client-product advice: deferral/deprecation guidance about the
+#     CLIENT's own API / app code evolution, not a pack feature. ---
+doc: skills/api-design/SKILL.md
+pattern: deferred
+snippet: remove in a future ver
+reason: generic product advice — API-evolution guidance about the client's own API, not a deferred pack feature.
+
+doc: skills/ios-architecture/SKILL.md
+pattern: deferred
+snippet: deferred background work
+reason: generic product advice — iOS BGTask guidance about the client's own app, not a deferred pack feature.
+
+doc: skills/swift-concurrency-patterns/SKILL.md
+pattern: deferred
+snippet: are deferred
+reason: generic product advice — Swift concurrency guidance about the client's own code, not a deferred pack feature.
+
+# --- Workflow examples / status vocabulary that legitimately use the word. ---
+doc: docs/pack/PACK-FEEDBACK.md
+pattern: deferred
+snippet: is deferred until the JWT library ships
+reason: routing example — illustrates where a deferred-work note belongs (BACKLOG), not an operating-doc feature advert.
+
+doc: docs/pack/PACK-FEEDBACK.md
+pattern: deferred
+snippet: deferred because the pack repo has no real application code
+reason: routing rationale example — explains why a feedback item is routed, not a feature advert.
+
+doc: docs/project/implementation-plan/_rules.md
+pattern: deferred
+snippet: pending / in-progress / done / deferred
+reason: status vocabulary — the plan-entry lifecycle states, one of which is "deferred"; a contract enumeration, not a feature advert.
+
+# ===========================================================================
+# BLOAT axis — KEEP (irreducible enumerations, ×3 trinity)
+# ===========================================================================
+
+doc: CLAUDE.md
+pattern: bloat
+snippet: **No destructive operations without explicit approval.**
+reason: irreducible enumeration — the denied / approval-gated git-verb list cannot be compressed without losing the exhaustive deny set.
+
+doc: CLAUDE.md
+pattern: bloat
+snippet: **Project SSOT-first.**
+reason: irreducible enumeration — the pack-deny-list (the explicit pack-only file set agents must not reference) is an exhaustive list, not compressible prose.
+
+doc: AGENTS.md
+pattern: bloat
+snippet: **No destructive operations without explicit approval.**
+reason: irreducible enumeration — the denied / approval-gated git-verb list cannot be compressed without losing the exhaustive deny set.
+
+doc: AGENTS.md
+pattern: bloat
+snippet: **Project SSOT-first.**
+reason: irreducible enumeration — the pack-deny-list is an exhaustive list, not compressible prose.
+
+doc: GEMINI.md
+pattern: bloat
+snippet: **No destructive operations without explicit approval.**
+reason: irreducible enumeration — the denied / approval-gated git-verb list cannot be compressed without losing the exhaustive deny set.
+
+doc: GEMINI.md
+pattern: bloat
+snippet: **Project SSOT-first.**
+reason: irreducible enumeration — the pack-deny-list is an exhaustive list, not compressible prose.
+
+# ===========================================================================
+# DANGLING axis — KEEP (will-exist-at-install cross-references; target
+# records, legitimate from any operating doc)
+# ===========================================================================
+
+target: docs/pack/INSTALL-PROCEDURES.md
+reason: pack-shipped reference doc installed into docs/pack/ at project init; present in a real install, absent from the bare template.
+
+target: docs/pack/METHODOLOGY.md
+reason: pack-shipped reference doc installed into docs/pack/ at project init; present in a real install, absent from the bare template.
+
+target: docs/project/BACKLOG.md
+reason: regenerated monolith mirror of the backlog stream; present after the project is used, absent from the bare template.
+
+target: docs/project/IMPLEMENTATION-PLAN.md
+reason: regenerated monolith mirror of the implementation-plan stream; present after the project is used, absent from the bare template.
+
+target: scripts/init-project.sh
+reason: the installer script that provisions the project; referenced for provenance — present in the working tree the project was created from.
+
+target: scripts/pack-help.sh
+reason: project help script invoked by the pack-help skill; present after install, absent from the bare template.
+
+target: scripts/pack-td.sh
+reason: project TD-tracker verb dispatcher; present after install, absent from the bare template.
+
+target: scripts/lib/tracker-promote.sh
+reason: project tracker-orchestration library; present after install, absent from the bare template.
+
+target: .agents/mcp_config.json
+reason: optional MCP config created during install/setup; present when the MCP feature is enabled, absent from the bare template.

@@ -271,6 +271,7 @@ pack template and make executable before first use** (`chmod +x agent-run.sh scr
 | `validate-swift.sh` | `scripts/` | Build and test Swift side | `validate.sh` wrapper |
 | `validate-python.sh` | `scripts/` | Lint, type-check, and test Python side | `validate.sh` wrapper |
 | `validate-proto.sh` | `scripts/` | Lint proto files and detect breaking changes | `validate.sh` wrapper |
+| `validate-docs.sh` | `scripts/` | Operating-doc enforcement — keeps operating docs forward-only, terse, and referentially sound; always runs language-independently. `--self-test` self-checks; one file arg gates that file | `validate.sh` + `agent-post-edit-check.sh` (auto) |
 | `test.sh` | `scripts/` | After implementing — runs test suite only; calls test-\<lang\>.sh | Human or `repo-ops` agent |
 | `test-swift.sh` | `scripts/` | Run Swift test suite | `test.sh` wrapper |
 | `test-python.sh` | `scripts/` | Run Python test suite via pytest | `test.sh` wrapper |

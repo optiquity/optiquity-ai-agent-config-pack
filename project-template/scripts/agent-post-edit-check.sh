@@ -79,7 +79,11 @@ if [[ -n "$EDITED_FILE" ]]; then
     *.proto)
       run_proto_check
       ;;
-    *.md|*.txt|*.json|*.yaml|*.yml|*.toml)
+    *.md)
+      echo "[agent-post-edit-check] markdown edit ($EDITED_FILE) — running validate-docs.sh on it"
+      "$ROOT_DIR/scripts/validate-docs.sh" "$EDITED_FILE" || status=$?
+      ;;
+    *.txt|*.json|*.yaml|*.yml|*.toml)
       echo "[agent-post-edit-check] non-code file ($EDITED_FILE) — skipping build/lint"
       ;;
     *)
