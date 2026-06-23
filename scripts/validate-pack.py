@@ -473,7 +473,9 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # held 61 entries; BD-221 (Antigravity conversion) RETIRED Checks 21 + 28
 # (−2), then BD-228 (push-time manifest method) ADDED Check 62 (+1), and BD-225
 # (Graphify pack integration) ADDED Check 63 (+1), and BD-231 (cross-CLI MCP
-# config example) ADDED Check 64 (+1), so the registry now holds 62 entries:
+# config example) ADDED Check 64 (+1), and BD-243 (durable doc-hygiene gates +
+# skill-mirror identity) ADDED Checks 65–71 (+7), so the registry now holds 69
+# entries:
 #   57 entries at C1's CHECK_REGISTRY introduction (§EE-P5)
 # + 3 net-new C3 checks (58 validate-no-flag, 59 registry-completeness,
 #                        60 shard-coverage mirror)
@@ -483,17 +485,23 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # + 1 net-new BD-228 check (62 manifest structural well-formedness screen)
 # + 1 net-new BD-225 check (63 graphify-out-never-tracked guard)
 # + 1 net-new BD-231 check (64 dangling-.example deliverable gate)
-# + 1 net-new BD-243 check (65 operating-doc no-history gate).
-# CAUTION: a new check's NUMBER is the next free integer (65 for BD-243) but
-# this constant is the registry ENTRY COUNT — bump it +1 per net-new entry,
-# NOT to the new number. Numbers != entry count (Checks 16/18/19 each register
-# TWICE and 2 checks carry number=None), so the count always lags the max
-# number; setting it to the max number makes Check 59 FAIL. The Check-44
-# pattern-tuple reduction (BD-243) changes NO entry count (+0). This constant
-# is the explicit invariant; the actual count is COMPUTED from
+# + 1 net-new BD-243 check (65 operating-doc no-history gate)
+# + 1 net-new BD-243 check (66 operating-doc bullet-concision gate)
+# + 1 net-new BD-243 check (67 operating-doc deferred-feature recall gate)
+# + 1 net-new BD-243 check (68 dangling-file-reference gate)
+# + 1 net-new BD-243 check (69 operating-doc scope-completeness meta-check)
+# + 1 net-new BD-243 check (70 client doc-gate structural parity)
+# + 1 net-new BD-243 check (71 pack-root skill-mirror byte-identity).
+# CAUTION: a new check's NUMBER is the next free integer (66–71 for the BD-243
+# gate wave) but this constant is the registry ENTRY COUNT — bump it +1 per
+# net-new entry, NOT to the new number. Numbers != entry count (Checks 16/18/19
+# each register TWICE and 2 checks carry number=None), so the count always lags
+# the max number; setting it to the max number makes Check 59 FAIL. The
+# Check-44 pattern-tuple reduction (BD-243) changes NO entry count (+0). This
+# constant is the explicit invariant; the actual count is COMPUTED from
 # len(_build_check_registry()) and asserted equal by Check 59 — never
 # hard-coded anywhere else.
-CHECK_REGISTRY_EXPECTED_COUNT = 63
+CHECK_REGISTRY_EXPECTED_COUNT = 69
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
@@ -11582,6 +11590,38 @@ def _build_check_registry():
         # so the check enforces over the full pack+project IN set.
         (65, "check_operating_doc_no_history",
               check_operating_doc_no_history, W),
+        # Check 66 — operating-doc bullet-concision gate (BD-243, Gate 1b):
+        # FAILs a bullet over the per-family character cap outside the
+        # allowlist. Activated at CG-14 alongside the other BD-243 durable
+        # gates.
+        (66, "check_operating_doc_bullet_concision",
+              check_operating_doc_bullet_concision, W),
+        # Check 67 — operating-doc deferred-feature recall gate (BD-243,
+        # Gate 2): FAILs a deferred/unimplemented-feature mention in an
+        # operating doc outside the allowlist.
+        (67, "check_operating_doc_no_deferred_feature",
+              check_operating_doc_no_deferred_feature, W),
+        # Check 68 — dangling-reference gate (BD-243, Gate 3): FAILs a file
+        # reference in an operating doc whose target does not resolve, outside
+        # the allowlist.
+        (68, "check_dangling_file_refs",
+              check_dangling_file_refs, W),
+        # Check 69 — operating-doc scope-completeness meta-check (BD-243,
+        # Gate 4): asserts every tracked operating-doc family member is
+        # globbed-or-EXEMPT (env-robust, tracked-only).
+        (69, "check_operating_doc_scope_completeness",
+              check_operating_doc_scope_completeness, W),
+        # Check 70 — shipped client doc-gate structural parity (BD-243, DC-2):
+        # asserts the client-side doc gate (CG-CLIENT) is present + structurally
+        # parallel to the pack-side operating-doc gate.
+        (70, "check_client_doc_gate_parity",
+              check_client_doc_gate_parity, W),
+        # Check 71 — pack-root skill-mirror byte-identity (BD-243): for each
+        # skill, asserts .codex/skills and .agents/skills SKILL.md are
+        # byte-identical to the .claude/skills canonical (CB-04 unified them).
+        # Reads 33 small files + byte-compares (no regex, no subprocess).
+        (71, "check_pack_skill_mirror_identity",
+              check_pack_skill_mirror_identity, W),
     ]
 
 

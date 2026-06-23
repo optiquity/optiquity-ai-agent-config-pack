@@ -11,24 +11,20 @@
 # behavioral. It is a PACK check that READS the project-template deliverable to
 # police it (the legitimate dependency direction).
 #
-# AUTHORED-UNREGISTERED at CG-14-prep-b: the check BODY + constants ship now,
-# but Check 70 is NOT in CHECK_REGISTRY (the count stays 63); CG-14 registers
-# it. Because `--only-check` resolves the selector against CHECK_REGISTRY,
-# `--only-check 70` CANNOT reach an unregistered check (it returns a LOUD
-# "unknown selector" FAIL). So — unlike the registered checks' tests — this
-# test exercises Check 70's BODY by calling the function IN-PROCESS against
-# (a) synthetic /tmp trees and (b) the live tree, and asserts that 70 is NOT
-# yet in the registry while the count invariant holds DYNAMICALLY (never a
-# hardcoded literal). CG-14 will flip the `70 not in nums` assertion to the
-# positive form when it registers the check.
+# REGISTERED at CG-14: the check BODY + constants plus the CHECK_REGISTRY entry
+# are all live, so Check 70 IS in CHECK_REGISTRY (the count is 69). This test
+# exercises Check 70's BODY by calling the function IN-PROCESS against
+# (a) synthetic /tmp trees and (b) the live tree, and asserts that 70 IS in the
+# registry while the count invariant holds DYNAMICALLY (never a hardcoded
+# literal). The Group-0 `70 in nums` assertion verifies the registration landed.
 #
 # Test infra is self-provisioned: every synthetic tree is built under a /tmp
 # REPO_ROOT; no real client gate is mutated. Cleanup runs on every exit path.
 #
 # Coverage:
 #   Group 0: Module import + Check 70 symbols + dynamic count-invariant +
-#            Check 70 NOT yet registered (authored-unregistered; count == the
-#            DYNAMIC CHECK_REGISTRY_EXPECTED_COUNT, no literal)
+#            Check 70 REGISTERED (count == the DYNAMIC
+#            CHECK_REGISTRY_EXPECTED_COUNT, no literal)
 #   Group 1: Synthetic-tree end-to-end (in-process body invocation) —
 #            T1 a complete gate (executable + 4 axes + wired ×2) PASSES
 #            T2 a gate MISSING an axis-marker FAILS (the injected-FAIL teeth)
@@ -36,8 +32,9 @@
 #            T4 a gate NOT wired into a host FAILS
 #            T5 a WHOLLY-ABSENT gate file → lenient SKIP (init artifact)
 #   Group 2: Live-tree in-process body invocation PASSES (CG-CLIENT's real gate
-#            exists + executable + 4 axes + wired) — NOT `--only-check 70`
-#            (unregistered)
+#            exists + executable + 4 axes + wired) — exercised via the
+#            in-process body call (Check 70's clean live-tree run is also
+#            covered by the full no-flag validate-pack now that it is registered)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-70.sh
 
@@ -58,10 +55,10 @@ t_fail() {
 
 # ─────────────────────────────────────────────────────────────────
 # Group 0: Module import + symbols + dynamic count-invariant +
-#          Check 70 authored-UNREGISTERED
+#          Check 70 REGISTERED
 # ─────────────────────────────────────────────────────────────────
 
-printf "\n=== Group 0: Module import + Check 70 symbols + authored-unregistered ===\n"
+printf "\n=== Group 0: Module import + Check 70 symbols + registered ===\n"
 
 python3 -c "
 import sys
@@ -82,20 +79,19 @@ if len(mod._CHECK_70_AXIS_MARKERS) != 4:
 if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
     print('FAIL_COUNT_MISMATCH', len(mod._build_check_registry()),
           mod.CHECK_REGISTRY_EXPECTED_COUNT); sys.exit(1)
-# Check 70 is AUTHORED-UNREGISTERED at CG-14-prep-b: 70 must NOT be in the
-# registry yet (count stays 63). CG-14 flips this to '70 in nums'.
+# Check 70 is REGISTERED at CG-14: 70 must be in the registry (count 69).
 nums = [t[0] for t in mod._build_check_registry()]
-if 70 in nums:
-    print('FAIL_70_REGISTERED_TOO_EARLY — CG-14-prep-b keeps Check 70 '
-          'authored-unregistered (count stays 63); registration is CG-14');
+if 70 not in nums:
+    print('FAIL_70_NOT_REGISTERED — CG-14 registers Check 70 in '
+          'CHECK_REGISTRY (count 63 -> 69)');
     sys.exit(1)
 print('OK')
 " > /tmp/vp-check70-import.out 2>&1
 
 if grep -q "^OK$" /tmp/vp-check70-import.out; then
-    t_pass "imports + Check 70 symbols present + 4 axis-markers + count invariant holds (dynamic) + Check 70 authored-UNREGISTERED (70 not in registry)"
+    t_pass "imports + Check 70 symbols present + 4 axis-markers + count invariant holds (dynamic) + Check 70 REGISTERED (70 in registry)"
 else
-    t_fail "Check 70 import / symbol / count / unregistered-state check failed" \
+    t_fail "Check 70 import / symbol / count / registered-state check failed" \
         "$(cat /tmp/vp-check70-import.out)"
 fi
 
@@ -219,8 +215,8 @@ case $? in
 esac
 
 # ─────────────────────────────────────────────────────────────────
-# Group 2: Live-tree in-process body invocation (NOT --only-check 70,
-#          which is unreachable while Check 70 is unregistered)
+# Group 2: Live-tree in-process body invocation (via the body call, not
+#          --only-check 70)
 # ─────────────────────────────────────────────────────────────────
 
 printf "\n=== Group 2: Live-tree in-process body invocation ===\n"

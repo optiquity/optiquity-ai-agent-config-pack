@@ -11,19 +11,18 @@
 # existence (auto-cleared); else the pack-ops/.dangling-ref-allowlist.txt
 # (token-keyed) must clear it.
 #
-# AUTHORED-UNREGISTERED at CG-14-prep-b: the check BODY + pattern + allowlist
-# ship now, but Check 68 is NOT in CHECK_REGISTRY (the count stays 63); CG-14
-# registers it. `--only-check 68` CANNOT reach an unregistered check, so this
-# test exercises Check 68's BODY IN-PROCESS against (a) synthetic /tmp trees and
-# (b) the live tree, and asserts that 68 is NOT yet in the registry while the
-# count invariant holds DYNAMICALLY (never a hardcoded literal).
+# REGISTERED at CG-14: the check BODY + pattern + allowlist plus the
+# CHECK_REGISTRY entry are all live, so Check 68 IS in CHECK_REGISTRY (the count
+# is 69). This test exercises Check 68's BODY IN-PROCESS against (a) synthetic
+# /tmp trees and (b) the live tree, and asserts that 68 IS in the registry while
+# the count invariant holds DYNAMICALLY (never a hardcoded literal).
 #
 # Test infra is self-provisioned (synthetic /tmp REPO_ROOT). Cleanup on every
 # exit path.
 #
 # Coverage:
 #   Group 0: Module import + Check 68 symbols + dynamic count-invariant +
-#            Check 68 NOT yet registered
+#            Check 68 REGISTERED
 #   Group 1: Synthetic-tree end-to-end (in-process body invocation) —
 #            T1 a ref that resolves (target exists) PASSES
 #            T2 a dangling ref cleared by an anchor phrase ("archived") PASSES
@@ -31,7 +30,9 @@
 #            T4 a dangling ref NOT cleared FAILS (the teeth)
 #            T5 a qualified-path dangling ref NOT cleared FAILS (the new axis)
 #   Group 2: Live-tree in-process body invocation PASSES (0 dangling outside
-#            the allowlist; the dangling-ref fix landed) — NOT `--only-check 68`
+#            the allowlist; the dangling-ref fix landed) — exercised via the
+#            in-process body call (Check 68's clean live-tree run is also
+#            covered by the full no-flag validate-pack now that it is registered)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-68.sh
 
@@ -52,10 +53,10 @@ t_fail() {
 
 # ─────────────────────────────────────────────────────────────────
 # Group 0: Module import + symbols + dynamic count-invariant +
-#          Check 68 authored-UNREGISTERED
+#          Check 68 REGISTERED
 # ─────────────────────────────────────────────────────────────────
 
-printf "\n=== Group 0: Module import + Check 68 symbols + authored-unregistered ===\n"
+printf "\n=== Group 0: Module import + Check 68 symbols + registered ===\n"
 
 python3 -c "
 import sys
@@ -75,17 +76,17 @@ if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
     print('FAIL_COUNT_MISMATCH', len(mod._build_check_registry()),
           mod.CHECK_REGISTRY_EXPECTED_COUNT); sys.exit(1)
 nums = [t[0] for t in mod._build_check_registry()]
-if 68 in nums:
-    print('FAIL_68_REGISTERED_TOO_EARLY — CG-14-prep-b keeps Check 68 '
-          'authored-unregistered (count stays 63); registration is CG-14');
+if 68 not in nums:
+    print('FAIL_68_NOT_REGISTERED — CG-14 registers Check 68 in '
+          'CHECK_REGISTRY (count 63 -> 69)');
     sys.exit(1)
 print('OK')
 " > /tmp/vp-check68-import.out 2>&1
 
 if grep -q "^OK$" /tmp/vp-check68-import.out; then
-    t_pass "imports + Check 68 symbols present + count invariant holds (dynamic) + Check 68 authored-UNREGISTERED (68 not in registry)"
+    t_pass "imports + Check 68 symbols present + count invariant holds (dynamic) + Check 68 REGISTERED (68 in registry)"
 else
-    t_fail "Check 68 import / symbol / count / unregistered-state check failed" \
+    t_fail "Check 68 import / symbol / count / registered-state check failed" \
         "$(cat /tmp/vp-check68-import.out)"
 fi
 
@@ -208,7 +209,7 @@ case $? in
 esac
 
 # ─────────────────────────────────────────────────────────────────
-# Group 2: Live-tree in-process body invocation (NOT --only-check 68)
+# Group 2: Live-tree in-process body invocation (via the body call, not --only-check 68)
 # ─────────────────────────────────────────────────────────────────
 
 printf "\n=== Group 2: Live-tree in-process body invocation ===\n"

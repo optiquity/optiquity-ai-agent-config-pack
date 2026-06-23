@@ -8,16 +8,12 @@
 # so a NEW operating doc cannot silently escape the content gates. It reads NO
 # file bodies (path enumeration + set arithmetic).
 #
-# AUTHORED-UNREGISTERED at CG-14-prep-a: the check BODY + constants ship now,
-# but Check 69 is NOT in CHECK_REGISTRY (the count stays 63); CG-14 registers
-# it. Because `--only-check` resolves the selector against CHECK_REGISTRY,
-# `--only-check 69` CANNOT reach an unregistered check (it returns a LOUD
-# "unknown selector" FAIL). So — unlike the registered checks' tests — this
-# test exercises Check 69's BODY by calling the function IN-PROCESS against
-# (a) synthetic /tmp trees and (b) the live tree, and asserts that 69 is NOT
-# yet in the registry while the count invariant holds DYNAMICALLY (never a
-# hardcoded literal). CG-14 will flip the `69 not in nums` assertion to the
-# positive form when it registers the check.
+# REGISTERED at CG-14: the check BODY + constants plus the CHECK_REGISTRY entry
+# are all live, so Check 69 IS in CHECK_REGISTRY (the count is 69). This test
+# exercises Check 69's BODY by calling the function IN-PROCESS against
+# (a) synthetic /tmp trees and (b) the live tree, and asserts that 69 IS in the
+# registry while the count invariant holds DYNAMICALLY (never a hardcoded
+# literal). The Group-0 `69 in nums` assertion verifies the registration landed.
 #
 # Test infra is self-provisioned: every synthetic tree is built under a /tmp
 # REPO_ROOT; no real operating-doc tree is mutated. Cleanup runs on every exit
@@ -25,8 +21,8 @@
 #
 # Coverage:
 #   Group 0: Module import + Check 69 symbols + dynamic count-invariant +
-#            Check 69 NOT yet registered (authored-unregistered; count == the
-#            DYNAMIC CHECK_REGISTRY_EXPECTED_COUNT, no literal)
+#            Check 69 REGISTERED (count == the DYNAMIC
+#            CHECK_REGISTRY_EXPECTED_COUNT, no literal)
 #   Group 1: Synthetic-tree end-to-end (in-process body invocation; each
 #            synthetic tree is git-init-ed + its files staged because the scan
 #            is git-TRACKED-only) —
@@ -41,7 +37,9 @@
 #               stray file but TRACKED → still FAILS (control: the check is not
 #               blind; T5a/b pass because the junk is UNTRACKED, not blind).
 #   Group 2: Live-tree in-process body invocation PASSES (the real tree is
-#            complete) — NOT `--only-check 69` (unregistered)
+#            complete) — exercised via the in-process body call (Check 69's
+#            clean live-tree run is also covered by the full no-flag
+#            validate-pack now that it is registered)
 #   Group 3: git-unavailable / not-a-work-tree → lenient SKIP (the tracked-only
 #            scan never hard-fails on a non-git environment; mirrors Check 63)
 #
@@ -64,10 +62,10 @@ t_fail() {
 
 # ─────────────────────────────────────────────────────────────────
 # Group 0: Module import + symbols + dynamic count-invariant +
-#          Check 69 authored-UNREGISTERED
+#          Check 69 REGISTERED
 # ─────────────────────────────────────────────────────────────────
 
-printf "\n=== Group 0: Module import + Check 69 symbols + authored-unregistered ===\n"
+printf "\n=== Group 0: Module import + Check 69 symbols + registered ===\n"
 
 python3 -c "
 import sys
@@ -89,20 +87,19 @@ if missing:
 if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
     print('FAIL_COUNT_MISMATCH', len(mod._build_check_registry()),
           mod.CHECK_REGISTRY_EXPECTED_COUNT); sys.exit(1)
-# Check 69 is AUTHORED-UNREGISTERED at CG-14-prep-a: 69 must NOT be in the
-# registry yet (count stays 63). CG-14 flips this to '69 in nums'.
+# Check 69 is REGISTERED at CG-14: 69 must be in the registry (count 69).
 nums = [t[0] for t in mod._build_check_registry()]
-if 69 in nums:
-    print('FAIL_69_REGISTERED_TOO_EARLY — CG-14-prep-a keeps Check 69 '
-          'authored-unregistered (count stays 63); registration is CG-14');
+if 69 not in nums:
+    print('FAIL_69_NOT_REGISTERED — CG-14 registers Check 69 in '
+          'CHECK_REGISTRY (count 63 -> 69)');
     sys.exit(1)
 print('OK')
 " > /tmp/vp-check69-import.out 2>&1
 
 if grep -q "^OK$" /tmp/vp-check69-import.out; then
-    t_pass "imports + Check 69 symbols present + count invariant holds (dynamic) + Check 69 authored-UNREGISTERED (69 not in registry)"
+    t_pass "imports + Check 69 symbols present + count invariant holds (dynamic) + Check 69 REGISTERED (69 in registry)"
 else
-    t_fail "Check 69 import / symbol / count / unregistered-state check failed" \
+    t_fail "Check 69 import / symbol / count / registered-state check failed" \
         "$(cat /tmp/vp-check69-import.out)"
 fi
 
@@ -297,8 +294,8 @@ case $? in
 esac
 
 # ─────────────────────────────────────────────────────────────────
-# Group 2: Live-tree in-process body invocation (NOT --only-check 69,
-#          which is unreachable while Check 69 is unregistered)
+# Group 2: Live-tree in-process body invocation (via the body call, not
+#          --only-check 69)
 # ─────────────────────────────────────────────────────────────────
 
 printf "\n=== Group 2: Live-tree in-process body invocation ===\n"

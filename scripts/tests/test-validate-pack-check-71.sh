@@ -11,22 +11,19 @@
 # property is byte-identity because pack SKILLS share ONE format across all 3
 # CLIs (the WRONG property for agents — 3 formats — which use Check 11/56).
 #
-# AUTHORED-UNREGISTERED at CG-14-prep-b: the check BODY + constant ship now, but
-# Check 71 is NOT in CHECK_REGISTRY (the count stays 63); CG-14 registers it.
-# Because `--only-check` resolves the selector against CHECK_REGISTRY,
-# `--only-check 71` CANNOT reach an unregistered check (it returns a LOUD
-# "unknown selector" FAIL). So this test exercises Check 71's BODY by calling
-# the function IN-PROCESS against (a) synthetic /tmp trees and (b) the live
-# tree, and asserts that 71 is NOT yet in the registry while the count invariant
-# holds DYNAMICALLY (never a hardcoded literal). CG-14 will flip the
-# `71 not in nums` assertion to the positive form when it registers it.
+# REGISTERED at CG-14: the check BODY + constant plus the CHECK_REGISTRY entry
+# are all live, so Check 71 IS in CHECK_REGISTRY (the count is 69). This test
+# exercises Check 71's BODY by calling the function IN-PROCESS against
+# (a) synthetic /tmp trees and (b) the live tree, and asserts that 71 IS in the
+# registry while the count invariant holds DYNAMICALLY (never a hardcoded
+# literal). The Group-0 `71 in nums` assertion verifies the registration landed.
 #
 # Test infra is self-provisioned: every synthetic tree is built under a /tmp
 # REPO_ROOT; no real skill mirror is mutated. Cleanup runs on every exit path.
 #
 # Coverage:
 #   Group 0: Module import + Check 71 symbols + canonical[0]==.claude/skills +
-#            dynamic count-invariant + Check 71 NOT yet registered
+#            dynamic count-invariant + Check 71 REGISTERED
 #   Group 1: Synthetic-tree end-to-end (in-process body invocation) —
 #            T1 three byte-identical mirrors PASS
 #            T2 a mirror byte-DIFFERS from the canonical → FAIL (the byte-differ
@@ -35,8 +32,9 @@
 #            T4 an EXTRA orphan mirror skill (canonical lacks it) → FAIL
 #            T5 a WHOLLY-ABSENT mirror tree → lenient SKIP (init artifact)
 #   Group 2: Live-tree in-process body invocation PASSES (CB-04 unified the 3
-#            pack-root skill mirrors byte-identical) — NOT `--only-check 71`
-#            (unregistered)
+#            pack-root skill mirrors byte-identical) — exercised via the
+#            in-process body call (Check 71's clean live-tree run is also
+#            covered by the full no-flag validate-pack now that it is registered)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-71.sh
 
@@ -57,10 +55,10 @@ t_fail() {
 
 # ─────────────────────────────────────────────────────────────────
 # Group 0: Module import + symbols + canonical + dynamic count-invariant +
-#          Check 71 authored-UNREGISTERED
+#          Check 71 REGISTERED
 # ─────────────────────────────────────────────────────────────────
 
-printf "\n=== Group 0: Module import + Check 71 symbols + authored-unregistered ===\n"
+printf "\n=== Group 0: Module import + Check 71 symbols + registered ===\n"
 
 python3 -c "
 import sys
@@ -83,20 +81,19 @@ if tuple(dirs) != ('.claude/skills', '.codex/skills', '.agents/skills'):
 if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
     print('FAIL_COUNT_MISMATCH', len(mod._build_check_registry()),
           mod.CHECK_REGISTRY_EXPECTED_COUNT); sys.exit(1)
-# Check 71 is AUTHORED-UNREGISTERED at CG-14-prep-b: 71 must NOT be in the
-# registry yet (count stays 63). CG-14 flips this to '71 in nums'.
+# Check 71 is REGISTERED at CG-14: 71 must be in the registry (count 69).
 nums = [t[0] for t in mod._build_check_registry()]
-if 71 in nums:
-    print('FAIL_71_REGISTERED_TOO_EARLY — CG-14-prep-b keeps Check 71 '
-          'authored-unregistered (count stays 63); registration is CG-14');
+if 71 not in nums:
+    print('FAIL_71_NOT_REGISTERED — CG-14 registers Check 71 in '
+          'CHECK_REGISTRY (count 63 -> 69)');
     sys.exit(1)
 print('OK')
 " > /tmp/vp-check71-import.out 2>&1
 
 if grep -q "^OK$" /tmp/vp-check71-import.out; then
-    t_pass "imports + Check 71 symbols present + canonical[0]==.claude/skills + count invariant holds (dynamic) + Check 71 authored-UNREGISTERED (71 not in registry)"
+    t_pass "imports + Check 71 symbols present + canonical[0]==.claude/skills + count invariant holds (dynamic) + Check 71 REGISTERED (71 in registry)"
 else
-    t_fail "Check 71 import / symbol / dirs / count / unregistered-state check failed" \
+    t_fail "Check 71 import / symbol / dirs / count / registered-state check failed" \
         "$(cat /tmp/vp-check71-import.out)"
 fi
 
@@ -224,8 +221,8 @@ case $? in
 esac
 
 # ─────────────────────────────────────────────────────────────────
-# Group 2: Live-tree in-process body invocation (NOT --only-check 71,
-#          which is unreachable while Check 71 is unregistered)
+# Group 2: Live-tree in-process body invocation (via the body call, not
+#          --only-check 71)
 # ─────────────────────────────────────────────────────────────────
 
 printf "\n=== Group 2: Live-tree in-process body invocation ===\n"
