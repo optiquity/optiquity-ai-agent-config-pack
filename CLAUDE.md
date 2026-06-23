@@ -358,7 +358,11 @@ PACK-AGENTS.md current".
   that declares an allowlist without measuring the tree first is
   INCOMPLETE. A design that widens the allowlist to admit borderline
   / unclassified hits is treating contamination as legitimate by
-  default — which defeats the guard's purpose. `[roles: architect]
+  default — which defeats the guard's purpose. A guard that
+  ENUMERATES repo files draws its candidate set from git-TRACKED
+  files (`git ls-files`), NEVER a raw filesystem walk (`rglob` /
+  `os.walk` / `glob` / `find`); if git is unavailable / not a work
+  tree, SKIP the check (lenient). `[roles: architect]
   [rationale: ci-guard-measure-then-bound]`
 
 - **Uniquely + descriptively name every spawn.** Every spawned agent carries a

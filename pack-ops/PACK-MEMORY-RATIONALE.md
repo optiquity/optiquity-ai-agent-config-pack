@@ -302,6 +302,12 @@ STRIP, (d) allowlist sized to KEEP only, (e) projected post-fix verification.
 The design output includes the measurement evidence + per-occurrence
 categorization + the projected-clean verification. Pack Chat does NOT advance
 the design to planner if any of these steps are skipped.
+Additionally, any step that ENUMERATES repo files derives its candidate
+set from git-tracked files (`git ls-files`), never a raw filesystem walk
+(`rglob`/`os.walk`/`glob`/`find`), with a lenient SKIP when git is
+unavailable — so untracked OS/editor junk cannot mask a true hit or
+raise a false one (the failure mode is invisible in clean checkouts and
+fresh worktrees, visible only in long-lived local checkouts).
 
 ---
 

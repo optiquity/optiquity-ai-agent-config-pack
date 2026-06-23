@@ -451,7 +451,7 @@ if "validate-pack.py" not in index:
 #     fixture roots must be EXCLUDED while a root-level copy must be
 #     INDEXED — pinning that the EXCLUDE is effective AND not
 #     over-broad, independent of the live tree's tracker mode.
-import tempfile, shutil, pathlib
+import tempfile, shutil, pathlib, os, subprocess
 t3_tmp = tempfile.mkdtemp(prefix="vp-check40-t3-")
 t3_root = pathlib.Path(t3_tmp)
 (t3_root / "test-fixtures" / "ft").mkdir(parents=True)
@@ -459,6 +459,12 @@ t3_root = pathlib.Path(t3_tmp)
 (t3_root / "scripts" / "tests" / "fixtures" / "rt").mkdir(parents=True)
 (t3_root / "scripts" / "tests" / "fixtures" / "rt" / "tracker.toml").write_text("fixture copy")
 (t3_root / "tracker.toml").write_text("root runtime analog")
+# BD-244: _build_basename_index() enumerates git ls-files (tracked-only), so the
+# synthetic tree MUST be a git work tree with its files staged.
+_t3_env = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null",
+           "HOME": str(t3_root), "PATH": os.environ.get("PATH", "")}
+subprocess.run(["git", "init", "-q"], cwd=t3_root, env=_t3_env, check=True)
+subprocess.run(["git", "add", "-A"], cwd=t3_root, env=_t3_env, check=True)
 saved_root_t3 = mod.REPO_ROOT
 try:
     mod.REPO_ROOT = t3_root
@@ -500,7 +506,7 @@ esac
 printf "\n=== Group 5: End-to-end check_bare_pack_ops_refs() with synthetic tree ===\n"
 
 python3 <<EOF
-import sys, tempfile, os, pathlib, shutil
+import sys, tempfile, os, pathlib, shutil, subprocess
 sys.path.insert(0, '$REPO_ROOT/scripts')
 import importlib.util
 spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
@@ -528,6 +534,13 @@ def run_check_with_synthetic(pack_ops_files: dict, extra_files: dict = None) -> 
             p = root / rel
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(content)
+
+    # BD-244: _build_basename_index() enumerates git ls-files (tracked-only), so
+    # the synthetic tree MUST be a git work tree with its files staged.
+    _env = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null",
+            "HOME": str(root), "PATH": os.environ.get("PATH", "")}
+    subprocess.run(["git", "init", "-q"], cwd=root, env=_env, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, env=_env, check=True)
 
     import io, contextlib
     saved_root = mod.REPO_ROOT

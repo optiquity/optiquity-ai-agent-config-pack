@@ -4350,6 +4350,9 @@ def _iter_client_installed_files() -> list[Path]:
     # (a) project-template/ recursive walk (existing behavior).
     root = REPO_ROOT / "project-template"
     if root.is_dir():
+        # ci-guard-measure-then-bound: content-bound + extension-filtered downstream
+        # (Check 37/41/43 decode-skip + _CHECK_40_FILE_EXTS) → untracked junk is
+        # junk-immune here; raw walk OK (not a verdict-bearing presence set).
         for path in sorted(root.rglob("*")):
             if not path.is_file():
                 continue
@@ -4421,6 +4424,8 @@ def _iter_project_side_files() -> list[Path]:
         root = REPO_ROOT / dirname
         if not root.is_dir():
             continue
+        # ci-guard-measure-then-bound: content-bound (Check 37 decode-skip) →
+        # junk-immune; raw walk OK (not a verdict-bearing presence set).
         for path in sorted(root.rglob("*")):
             if not path.is_file():
                 continue
@@ -5226,8 +5231,30 @@ _CHECK_40_EXCLUDE_PARTS = (
 )
 
 
-def _build_basename_index() -> dict[str, list[Path]]:
-    """Walk the pack repo and build a basename → [relative-paths] index.
+def _git_tracked_relpaths(*trees: str) -> list[str] | None:
+    """git-tracked repo-relative POSIX paths under the given trees (whole
+    repo if none). Returns None if git is unavailable / not a work tree —
+    the caller then SKIPs leniently (mirrors Check 63 / Check 69). Per
+    `ci-guard-measure-then-bound`: enumerate git-TRACKED files, never a raw
+    filesystem walk, so untracked OS/editor junk cannot mask or trip a hit."""
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "-z", "--", *trees],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+    except FileNotFoundError:
+        return None
+    if result.returncode != 0:
+        return None
+    return [rel for rel in result.stdout.split("\0") if rel.strip()]
+
+
+def _build_basename_index() -> dict[str, list[Path]] | None:
+    """Build a basename → [relative-paths] index from git-TRACKED files
+    (`git ls-files`), NOT a raw `REPO_ROOT.rglob("*")` walk
+    (`ci-guard-measure-then-bound`: an untracked artifact must not mask a
+    dangling ref). Returns None if git is unavailable / not a work tree —
+    the caller then SKIPs leniently (mirrors Check 63 / Check 69).
     Used for the §5.1 D4 candidate-path lookup.
 
     Per §5.1 EXCLUDE list (with OQ-S1 expansion 2026-05-20):
@@ -5237,15 +5264,11 @@ def _build_basename_index() -> dict[str, list[Path]]:
       - `scripts/tests/fixtures/` (per-script synthetic fixture trees)
       - `node_modules`-like dirs (defensive; not present at HEAD)
     """
+    rels = _git_tracked_relpaths()
+    if rels is None:
+        return None
     index: dict[str, list[Path]] = {}
-    for path in REPO_ROOT.rglob("*"):
-        if not path.is_file():
-            continue
-        try:
-            rel = path.relative_to(REPO_ROOT)
-        except ValueError:
-            continue
-        rel_str = str(rel).replace(os.sep, "/")
+    for rel_str in rels:
         # Skip excluded paths.
         skip = False
         for excl in _CHECK_40_EXCLUDE_PARTS:
@@ -5254,8 +5277,8 @@ def _build_basename_index() -> dict[str, list[Path]]:
                 break
         if skip:
             continue
-        basename = path.name
-        index.setdefault(basename, []).append(rel)
+        rel = Path(rel_str)
+        index.setdefault(rel.name, []).append(rel)
     return index
 
 
@@ -5309,6 +5332,9 @@ def check_bare_pack_ops_refs() -> None:
 
     # Build basename index ONCE per Check 40 invocation per §5.3.
     index = _build_basename_index()
+    if index is None:
+        ok("git unavailable (not a git work tree) — skipping (lenient)")
+        return
 
     # Excluded basenames. BD-203 no-mirror model: BACKLOG.md /
     # CHANGELOG.md are the deleted monoliths (the `/backlog/` +
@@ -5641,9 +5667,13 @@ def _check_43_proto_resolves_in_tree(basename: str) -> bool:
     return False
 
 
-def _build_pack_only_doc_basenames() -> set[str]:
+def _build_pack_only_doc_basenames() -> set[str] | None:
     """Return the set of pack-only-doc basenames for the JC-2 bare-prose
-    axis (i), measured from the tree (`ci-guard-measure-then-bound`).
+    axis (i), measured from the git-TRACKED tree (`git ls-files`,
+    `ci-guard-measure-then-bound`: never a raw `REPO_ROOT.rglob("*")` walk,
+    so an untracked artifact under a pack-only tree cannot false-fire the
+    bare-prose detector). Returns None if git is unavailable / not a work
+    tree — the caller then SKIPs leniently (mirrors Check 63 / Check 69).
 
     A basename is a target iff EVERY repo file with that basename lives
     under a pack-only top-level tree (`_CHECK_43_PACK_ONLY_DOC_TREES`),
@@ -5656,20 +5686,18 @@ def _build_pack_only_doc_basenames() -> set[str]:
     `V10-CODEX-MCP-RESEARCH.md`, `MERGE-STRATEGY.md`) remain. `.git/` is
     skipped; the basename index's archive-exclusion does NOT apply here
     (archive docs ARE pack-only and must be catchable)."""
+    rels = _git_tracked_relpaths()
+    if rels is None:
+        return None
     mirror_skip = {"BACKLOG.md", "CHANGELOG.md"}
     # Map basename -> set of top-level dirs it appears under.
     tops_by_basename: dict[str, set[str]] = {}
-    for path in REPO_ROOT.rglob("*"):
-        if not path.is_file():
-            continue
-        try:
-            rel = path.relative_to(REPO_ROOT)
-        except ValueError:
-            continue
+    for rel_str in rels:
+        rel = Path(rel_str)
         parts = rel.parts
         if not parts or parts[0] == ".git":
             continue
-        tops_by_basename.setdefault(path.name, set()).add(parts[0])
+        tops_by_basename.setdefault(rel.name, set()).add(parts[0])
     pack_only_trees = set(_CHECK_43_PACK_ONLY_DOC_TREES)
     out: set[str] = set()
     for basename, tops in tops_by_basename.items():
@@ -5774,10 +5802,16 @@ def check_project_side_bare_internal_refs() -> None:
     # Build basename index ONCE per Check 43 invocation per §1.3
     # (same pattern as Check 40 §5.3). Reuses Check 40's _build_basename_index.
     index = _build_basename_index()
+    if index is None:
+        ok("git unavailable (not a git work tree) — skipping (lenient)")
+        return
 
     # JC-2 axis (i): pack-only-doc basename set (built from the tree, not
     # a hand-list) for the bare-prose detector. BD-195 C2 §2.2 Step-3 (b).
     pack_only_doc_basenames = _build_pack_only_doc_basenames()
+    if pack_only_doc_basenames is None:
+        ok("git unavailable (not a git work tree) — skipping (lenient)")
+        return
     # BD-199: collapse the 586 per-basename patterns into ONE precompiled
     # descending-length-sorted alternation, built ONCE per invocation (was
     # rebuilt+searched per line × basename → 9.4M re.compile cache-misses).
@@ -8859,6 +8893,9 @@ def check_dangling_file_refs() -> None:
 
     allowlist = _check_68_load_allowlist()
     index = _build_basename_index()
+    if index is None:
+        ok("git unavailable (not a git work tree) — skipping (lenient)")
+        return
     anchor_window = _CHECK_40_ANCHOR_WINDOW
 
     def _excluded(rel_posix: str) -> bool:

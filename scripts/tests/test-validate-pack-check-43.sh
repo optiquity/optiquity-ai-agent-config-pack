@@ -278,7 +278,7 @@ esac
 printf "\n=== Group 4: End-to-end synthetic-tree tests (T1-T9 per §1.10) ===\n"
 
 python3 <<EOF
-import sys, tempfile, os, pathlib, shutil, io, contextlib
+import sys, tempfile, os, pathlib, shutil, io, contextlib, subprocess
 sys.path.insert(0, '$REPO_ROOT/scripts')
 import importlib.util
 spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
@@ -333,6 +333,14 @@ def run_check_with_synthetic(project_files: dict, extra_files: dict = None,
             inventory_lines.append(f"#   {entry}  ->  {entry}  [stage:S1]")
     inventory_lines.append("# _CLIENT_INSTALLED_FILES_END")
     init_path.write_text("\n".join(inventory_lines) + "\n")
+
+    # BD-244: _build_basename_index() / _build_pack_only_doc_basenames()
+    # enumerate git ls-files (tracked-only), so the synthetic tree MUST be a
+    # git work tree with its files staged.
+    _env = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null",
+            "HOME": str(root), "PATH": os.environ.get("PATH", "")}
+    subprocess.run(["git", "init", "-q"], cwd=root, env=_env, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, env=_env, check=True)
 
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures)
@@ -623,7 +631,7 @@ fi
 printf "\n=== Group 7: JC-2 broadening (C2 §2.2 Step-5) ===\n"
 
 python3 <<EOF
-import sys, tempfile, os, pathlib, shutil, io, contextlib
+import sys, tempfile, os, pathlib, shutil, io, contextlib, subprocess
 sys.path.insert(0, '$REPO_ROOT/scripts')
 import importlib.util
 spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
@@ -670,6 +678,14 @@ def run_check_with_synthetic(project_files: dict, extra_files: dict = None,
             inventory_lines.append(f"#   {entry}  ->  {entry}  [stage:S1]")
     inventory_lines.append("# _CLIENT_INSTALLED_FILES_END")
     init_path.write_text("\n".join(inventory_lines) + "\n")
+
+    # BD-244: _build_basename_index() / _build_pack_only_doc_basenames()
+    # enumerate git ls-files (tracked-only), so the synthetic tree MUST be a
+    # git work tree with its files staged.
+    _env = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null",
+            "HOME": str(root), "PATH": os.environ.get("PATH", "")}
+    subprocess.run(["git", "init", "-q"], cwd=root, env=_env, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, env=_env, check=True)
 
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures)
@@ -843,7 +859,7 @@ esac
 printf "\n=== Group 8: BD-195 C3d sanctioned-set freeze + re-contamination regression ===\n"
 
 python3 <<EOF
-import sys, tempfile, pathlib, shutil, io, contextlib
+import sys, tempfile, pathlib, shutil, io, contextlib, os, subprocess
 sys.path.insert(0, '$REPO_ROOT/scripts')
 import importlib.util
 spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
@@ -882,6 +898,13 @@ def build_tree(detect_content: str, extra_map_entries: list = None,
     ip = root / "scripts" / "init-project.sh"
     ip.parent.mkdir(parents=True, exist_ok=True)
     ip.write_text("\n".join(inv) + "\n")
+    # BD-244: _build_basename_index() / _build_pack_only_doc_basenames()
+    # enumerate git ls-files (tracked-only), so the synthetic tree MUST be a
+    # git work tree with its files staged.
+    _env = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null",
+            "HOME": str(root), "PATH": os.environ.get("PATH", "")}
+    subprocess.run(["git", "init", "-q"], cwd=root, env=_env, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, env=_env, check=True)
     return root
 
 def run(check_fn_name: str, root: pathlib.Path) -> tuple:

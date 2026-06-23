@@ -106,6 +106,19 @@ spec.loader.exec_module(mod)
 
 failures = []
 
+import subprocess
+
+def _git_init_and_add(root):
+    """Make the synthetic /tmp tree a git repo and TRACK its built files.
+    Check 68 resolves refs against `_build_basename_index()`, which since
+    BD-244 enumerates git ls-files (tracked-only) — so a synthetic tree MUST
+    be a git work tree with its files staged, else the builder returns None
+    and the check lenient-SKIPs (no resolution)."""
+    env = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null",
+           "HOME": str(root), "PATH": __import__("os").environ.get("PATH", "")}
+    subprocess.run(["git", "init", "-q"], cwd=root, env=env, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, env=env, check=True)
+
 def run_check_in_tree(builder, allowlist_text):
     """Build a synthetic /tmp REPO_ROOT, monkeypatch the scope to ONE include
     tree 'docs' (and the operating-doc families to nothing), run the body,
@@ -116,6 +129,7 @@ def run_check_in_tree(builder, allowlist_text):
     builder(root)
     if allowlist_text:
         (root / "pack-ops" / ".dangling-ref-allowlist.txt").write_text(allowlist_text)
+    _git_init_and_add(root)
 
     saved_root = mod.REPO_ROOT
     saved_inc = mod._CHECK_68_INCLUDE_TREES
