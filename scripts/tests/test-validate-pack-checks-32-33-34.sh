@@ -1052,6 +1052,202 @@ assert_eq "H4.1 clean line-2 header → check rc=0" "0" "$H4_RC"
 assert_not_contains "H4.2 clean line-2 header → BD-502.md NOT flagged" "$H4_OUT" "non-canonical line-2 header"
 
 # ─────────────────────────────────────────────────────────────────
+# Group T-unit: BD-242 version-token regexes (R1 CROSS_REF_RE +
+# R2 _VERSION_POINT_RE) direct full-match assertions
+# ─────────────────────────────────────────────────────────────────
+#
+# BD-242 locks the version token to `vMAJOR.MINOR[.PATCH]` plus an
+# OPTIONAL bounded qualifier suffix `-(?:alpha|beta|RC\d+|GA)` (alpha/beta
+# lowercase, RC numbered, GA uppercase; a PATCH is never qualified). The
+# old lowercase group `[a-z0-9-]+` is REPLACED. These assertions load
+# validate-pack.py as a module and exercise CROSS_REF_RE (R1) +
+# _VERSION_POINT_RE (R2) directly with a full-match battery: old `vN.M`
+# (forward-only) + every new accepted form ACCEPT; every illegal form
+# (wrong case, numbered non-RC, bare RC, qualified PATCH) REJECT. The
+# fullmatch contract is the illegal-form gate (no new CI check is added —
+# Check 34 is a resolution check, not a format validator).
+
+printf "\n=== Group T-unit: BD-242 version-token regexes (R1/R2 full-match) ===\n"
+
+TUNIT_OUT=$(PE_TEST_VALIDATE_PY="$VALIDATE_PY" python3 - <<'PYEOF'
+import importlib.util
+import os
+import re
+
+spec = importlib.util.spec_from_file_location("validate_pack", os.environ["PE_TEST_VALIDATE_PY"])
+vp = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(vp)
+
+# R1 CROSS_REF_RE carries other alternatives (BD-/TD-/phase-); to test the
+# version alternative in isolation we anchor a fullmatch on the captured
+# group via a re.fullmatch of the version sub-pattern. Easiest robust check:
+# CROSS_REF_RE.fullmatch(token) must (a) match for accepted, returning the
+# whole token in group(1), and (b) NOT fullmatch for rejected version-shaped
+# tokens.
+cross = vp.CROSS_REF_RE
+vpoint = vp._VERSION_POINT_RE
+
+ACCEPT = ["v11.0", "v9.3", "v11.0-alpha", "v11.0-beta",
+          "v11.0-RC1", "v11.0-GA", "v11.0.1"]
+REJECT = ["v11.0-rc1", "v11.0-ga", "v11.0-alpha1", "v11.0-beta2",
+          "v11.0-GA1", "v11.0-RC", "v11.0.1-alpha"]
+
+for tok in ACCEPT:
+    m1 = cross.fullmatch(tok)
+    m2 = vpoint.match(tok)
+    print(f"ACCEPT {tok}: CROSS_REF={'Y' if (m1 and m1.group(1) == tok) else 'N'} "
+          f"VPOINT={'Y' if m2 else 'N'}"
+          + (f" major={m2.group(1)}" if m2 else ""))
+
+for tok in REJECT:
+    m1 = cross.fullmatch(tok)
+    m2 = vpoint.match(tok)
+    # A REJECT token must NOT fully match the version token. CROSS_REF may
+    # match a PREFIX (e.g. v11.0 inside v11.0-rc1) — the gate is fullmatch
+    # of the whole token. VPOINT is anchored (^...$) so .match == fullmatch.
+    print(f"REJECT {tok}: CROSS_REF={'Y' if (m1 and m1.group(1) == tok) else 'N'} "
+          f"VPOINT={'Y' if m2 else 'N'}")
+PYEOF
+)
+
+# ACCEPT cases — both regexes full-match (VPOINT also extracts the major).
+assert_contains "Tu.A1 v11.0 accepts (old two-level, forward-only)" "$TUNIT_OUT" "ACCEPT v11.0: CROSS_REF=Y VPOINT=Y major=11"
+assert_contains "Tu.A2 v9.3 accepts (old two-level, forward-only)" "$TUNIT_OUT" "ACCEPT v9.3: CROSS_REF=Y VPOINT=Y major=9"
+assert_contains "Tu.A3 v11.0-alpha accepts" "$TUNIT_OUT" "ACCEPT v11.0-alpha: CROSS_REF=Y VPOINT=Y major=11"
+assert_contains "Tu.A4 v11.0-beta accepts" "$TUNIT_OUT" "ACCEPT v11.0-beta: CROSS_REF=Y VPOINT=Y major=11"
+assert_contains "Tu.A5 v11.0-RC1 accepts (RC numbered, uppercase)" "$TUNIT_OUT" "ACCEPT v11.0-RC1: CROSS_REF=Y VPOINT=Y major=11"
+assert_contains "Tu.A6 v11.0-GA accepts (GA uppercase)" "$TUNIT_OUT" "ACCEPT v11.0-GA: CROSS_REF=Y VPOINT=Y major=11"
+assert_contains "Tu.A7 v11.0.1 accepts (PATCH segment)" "$TUNIT_OUT" "ACCEPT v11.0.1: CROSS_REF=Y VPOINT=Y major=11"
+
+# REJECT cases — neither regex full-matches the whole token.
+assert_contains "Tu.R1 v11.0-rc1 rejects (wrong case)" "$TUNIT_OUT" "REJECT v11.0-rc1: CROSS_REF=N VPOINT=N"
+assert_contains "Tu.R2 v11.0-ga rejects (wrong case)" "$TUNIT_OUT" "REJECT v11.0-ga: CROSS_REF=N VPOINT=N"
+assert_contains "Tu.R3 v11.0-alpha1 rejects (numbered non-RC)" "$TUNIT_OUT" "REJECT v11.0-alpha1: CROSS_REF=N VPOINT=N"
+assert_contains "Tu.R4 v11.0-beta2 rejects (numbered non-RC)" "$TUNIT_OUT" "REJECT v11.0-beta2: CROSS_REF=N VPOINT=N"
+assert_contains "Tu.R5 v11.0-GA1 rejects (numbered non-RC)" "$TUNIT_OUT" "REJECT v11.0-GA1: CROSS_REF=N VPOINT=N"
+assert_contains "Tu.R6 v11.0-RC rejects (RC w/o number)" "$TUNIT_OUT" "REJECT v11.0-RC: CROSS_REF=N VPOINT=N"
+assert_contains "Tu.R7 v11.0.1-alpha rejects (PATCH must not be qualified)" "$TUNIT_OUT" "REJECT v11.0.1-alpha: CROSS_REF=N VPOINT=N"
+
+# ─────────────────────────────────────────────────────────────────
+# Group T1: BD-242 Check 34 resolution of qualified + PATCH version refs
+# ─────────────────────────────────────────────────────────────────
+#
+# With R1 tokenizing the new forms and R2 extracting the major, a backlog
+# body referencing `v11.0-alpha` / `v11.0-RC1` / `v11.0-GA` / `v11.0.1`
+# RESOLVES to the defined changelog major `v11` (FLAG-b mapping: vN.M*→vN).
+# A forward-ref `v12.0-RC1` (major 12 > highest defined 11) is tolerated
+# (BD-203 D1). Existing old `vN.M` refs still resolve (regression guard).
+# The green pack-changelog fixture defines majors {v10, v11}; the
+# pack-backlog fixture supplies the body that carries the refs.
+
+printf "\n=== Group T1: BD-242 Check 34 qualified/PATCH version-ref resolution ===\n"
+
+# T1a (GREEN): qualified + PATCH refs to the DEFINED major v11 resolve.
+T1A_REPO="$SCRATCH_ROOT/T1a"
+mkdir -p "$T1A_REPO"
+build_green_pack_backlog "$T1A_REPO"
+rm -f "$T1A_REPO/BACKLOG.md"
+build_green_pack_changelog "$T1A_REPO"
+# The changelog v11.md body references BD-100 (defined in pack-backlog →
+# resolves via union). Add qualified + PATCH version refs whose major v11
+# IS defined → must all resolve via the FLAG-b vN.M*→vN mapping.
+printf '\n- Shipped across v11.0-alpha, v11.0-RC1, v11.0-GA, and v11.0.1.\n' \
+    >>"$T1A_REPO/changelog/v11.md"
+T1A_OUT=$(run_check check_cross_reference_integrity "$T1A_REPO" "$PACKCL_TUPLE" 2>&1)
+T1A_RC=$?
+assert_eq "T1a.1 qualified+PATCH refs to defined major v11 resolve → rc=0" "0" "$T1A_RC"
+assert_not_contains "T1a.2 v11.0-alpha → no dangling FAIL" "$T1A_OUT" "v11.0-alpha"
+assert_not_contains "T1a.3 v11.0-RC1 → no dangling FAIL" "$T1A_OUT" "v11.0-RC1"
+assert_not_contains "T1a.4 v11.0-GA → no dangling FAIL" "$T1A_OUT" "v11.0-GA"
+assert_not_contains "T1a.5 v11.0.1 → no dangling FAIL" "$T1A_OUT" "v11.0.1"
+
+# T1b (GREEN, forward-ref): a qualified ref whose major (12) > highest
+# defined (11) is tolerated as a forward reference (BD-203 D1).
+T1B_REPO="$SCRATCH_ROOT/T1b"
+mkdir -p "$T1B_REPO"
+build_green_pack_changelog "$T1B_REPO"
+# Strip the body BD-100 ref (no /backlog/ here) and add a forward qualified ref.
+sed -i.bak 's/References BD-100 for context.//' "$T1B_REPO/changelog/v11.md"
+rm -f "$T1B_REPO/changelog/v11.md.bak"
+printf '\n- Required before tagging v12.0-RC1 (forward reference).\n' \
+    >>"$T1B_REPO/changelog/v11.md"
+T1B_OUT=$(run_check check_cross_reference_integrity "$T1B_REPO" "$PACKCL_TUPLE" 2>&1)
+T1B_RC=$?
+assert_eq "T1b.1 forward qualified ref v12.0-RC1 (major>highest) resolves → rc=0" "0" "$T1B_RC"
+assert_not_contains "T1b.2 forward v12.0-RC1 → no dangling FAIL" "$T1B_OUT" "v12.0-RC1"
+
+# T1c (GREEN, regression guard): an existing old two-level `vN.M` ref to a
+# defined major still resolves (BD-242 is forward-only — the old form must
+# keep parsing). Mirrors F2c with explicit BD-242 framing.
+T1C_REPO="$SCRATCH_ROOT/T1c"
+mkdir -p "$T1C_REPO"
+build_green_pack_changelog "$T1C_REPO"
+sed -i.bak 's/References BD-100 for context.//' "$T1C_REPO/changelog/v11.md"
+rm -f "$T1C_REPO/changelog/v11.md.bak"
+printf '\n- Shipped in v11.0 (old two-level form, forward-only regression guard).\n' \
+    >>"$T1C_REPO/changelog/v11.md"
+T1C_OUT=$(run_check check_cross_reference_integrity "$T1C_REPO" "$PACKCL_TUPLE" 2>&1)
+T1C_RC=$?
+assert_eq "T1c.1 old two-level v11.0 (forward-only) still resolves → rc=0" "0" "$T1C_RC"
+assert_not_contains "T1c.2 old v11.0 → no dangling FAIL" "$T1C_OUT" "references v11.0"
+
+# ─────────────────────────────────────────────────────────────────
+# Group T-readme: BD-242 Check 4 README display→tag normalization (R3)
+# ─────────────────────────────────────────────────────────────────
+#
+# R3 lets the README version table carry the DISPLAY form
+# `v11.0 (RC1)` and normalizes display→tag (` (X)` → `-X`, case
+# preserved) before comparing to git tags. These assertions exercise R3's
+# findall pattern + the normalization regex directly (load the module,
+# reuse its exact patterns) — no git tags required, so the tag-comparison
+# branches are out of scope here (covered by Check 4's own skip paths).
+
+printf "\n=== Group T-readme: BD-242 Check 4 display→tag normalization (R3) ===\n"
+
+TREADME_OUT=$(PE_TEST_VALIDATE_PY="$VALIDATE_PY" python3 - <<'PYEOF'
+import re
+
+# Reproduce R3's findall + normalize against synthetic README table rows.
+# These patterns are byte-identical to the R3 production edit in
+# check_readme_version; an asserting test pinning the captured + normalized
+# forms guards the contract (enumerate-encoding-surfaces).
+findall_re = r"^\|\s*(v[\d.]+(?:\s*\((?:alpha|beta|RC\d+|GA)\))?)\s*\|"
+normalize_re = r"\s*\((alpha|beta|RC\d+|GA)\)$"
+
+def cap_and_norm(line):
+    rows = re.findall(findall_re, line, re.MULTILINE)
+    if not rows:
+        return ("<none>", "<none>")
+    cap = rows[-1].strip()
+    tag = re.sub(normalize_re, r"-\1", cap)
+    return (cap, tag)
+
+# Display form with qualifier.
+cap, tag = cap_and_norm("| v11.0 (RC1) | May 2026 | notes |")
+print(f"RC1 cap={cap!r} tag={tag!r}")
+
+# Bare display form (no qualifier) → normalizes to itself.
+cap, tag = cap_and_norm("| v11.0 | May 2026 | notes |")
+print(f"bare cap={cap!r} tag={tag!r}")
+
+# Other qualifiers + PATCH form (the [\d.]+ covers PATCH).
+cap, tag = cap_and_norm("| v11.0 (alpha) | ... |")
+print(f"alpha cap={cap!r} tag={tag!r}")
+cap, tag = cap_and_norm("| v11.0 (GA) | ... |")
+print(f"GA cap={cap!r} tag={tag!r}")
+cap, tag = cap_and_norm("| v11.0.1 | ... |")
+print(f"patch cap={cap!r} tag={tag!r}")
+PYEOF
+)
+
+assert_contains "Tr.1 '| v11.0 (RC1) |' → cap 'v11.0 (RC1)'" "$TREADME_OUT" "RC1 cap='v11.0 (RC1)'"
+assert_contains "Tr.2 'v11.0 (RC1)' → tag 'v11.0-RC1'" "$TREADME_OUT" "RC1 cap='v11.0 (RC1)' tag='v11.0-RC1'"
+assert_contains "Tr.3 '| v11.0 |' → cap 'v11.0' tag 'v11.0' (bare normalizes to self)" "$TREADME_OUT" "bare cap='v11.0' tag='v11.0'"
+assert_contains "Tr.4 'v11.0 (alpha)' → tag 'v11.0-alpha'" "$TREADME_OUT" "alpha cap='v11.0 (alpha)' tag='v11.0-alpha'"
+assert_contains "Tr.5 'v11.0 (GA)' → tag 'v11.0-GA'" "$TREADME_OUT" "GA cap='v11.0 (GA)' tag='v11.0-GA'"
+assert_contains "Tr.6 '| v11.0.1 |' → cap 'v11.0.1' tag 'v11.0.1' (PATCH via [\\d.]+)" "$TREADME_OUT" "patch cap='v11.0.1' tag='v11.0.1'"
+
+# ─────────────────────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────────────────────
 

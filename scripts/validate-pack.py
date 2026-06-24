@@ -642,13 +642,24 @@ def check_readme_version() -> None:
         fail("README.md not found")
         return
 
-    # Find the last table row with a version
+    # Find the last table row with a version. The DISPLAY form may carry a
+    # parenthetical release-state qualifier — `v11.0 (RC1)` — with the
+    # bounded allowlist (alpha/beta lowercase, RC numbered, GA uppercase).
+    # `[\d.]+` already covers the optional `.PATCH` segment.
     content = README.read_text()
-    version_rows = re.findall(r"^\|\s*(v[\d.]+)\s*\|", content, re.MULTILINE)
+    version_rows = re.findall(
+        r"^\|\s*(v[\d.]+(?:\s*\((?:alpha|beta|RC\d+|GA)\))?)\s*\|",
+        content, re.MULTILINE,
+    )
     if not version_rows:
         fail("README.md — no version table rows found")
         return
     readme_version = version_rows[-1].strip()
+    # Normalize the DISPLAY form to the git-TAG form before comparing to
+    # tags: ` (X)` → `-X`, case preserved (git refs cannot carry spaces or
+    # parentheses). A bare `v11.0` (no qualifier) normalizes to itself.
+    readme_version_tag = re.sub(
+        r"\s*\((alpha|beta|RC\d+|GA)\)$", r"-\1", readme_version)
 
     # Get latest git tag (most recent reachable tag)
     try:
@@ -665,8 +676,9 @@ def check_readme_version() -> None:
             ok(f"README.md latest version: {readme_version} (no version tags — skipping)")
             return
 
-        # Check if README version matches any tag (handles bare major tags like v8)
-        if readme_version in tags:
+        # Check if README version matches any tag (handles bare major tags
+        # like v8). Compare the display→tag-normalized form against tags.
+        if readme_version_tag in tags:
             ok(f"README.md version {readme_version} matches git tag")
         else:
             # Check if the README version is ahead of the latest tag (dev branch)
@@ -3510,14 +3522,18 @@ def check_toc_in_sync() -> None:
 # BD-211: the cross-ref TOKEN for BD/TD is canonical `BD-NNN` / `TD-NNN`
 # — NO letter suffix (the former suffix sub-entries were folded into
 # their base entries; no suffix ID exists). CROSS-SURFACE: the `TD-\d+`
-# token serves the project stream. The `vN.M` version token keeps its
-# `-suffix` group (version-shaped, not ID-shaped).
+# token serves the project stream. The version token after `vMAJOR.MINOR`
+# carries EITHER an optional `.PATCH` segment OR a bounded release-state
+# qualifier `-(?:alpha|beta|RC\d+|GA)` (alpha/beta lowercase, RC numbered,
+# GA uppercase) — never both, because a PATCH is NEVER qualified. Old
+# two-level `vN.M` still tokenizes (both the patch and the qualifier are
+# optional).
 CROSS_REF_RE = re.compile(
     r"\b("
     r"BD-\d+"
     r"|TD-\d+"
     r"|phase-\d+(?:\.\d+)?"
-    r"|v\d+\.\d+(?:-[a-z0-9-]+)?"
+    r"|v\d+\.\d+(?:\.\d+|(?:-(?:alpha|beta|RC\d+|GA))?)"
     r")\b"
 )
 
@@ -3531,7 +3547,8 @@ CROSS_REF_RE = re.compile(
 # sized EXACTLY to the per-release granularity decision (resolve `vN.M`
 # to `vN`); it does NOT widen the allowlist to admit unclassified hits —
 # a `vN.M` whose major `vN` is undefined still FAILs.
-_VERSION_POINT_RE = re.compile(r"^v(\d+)\.\d+(?:-[a-z0-9-]+)?$")
+_VERSION_POINT_RE = re.compile(
+    r"^v(\d+)\.\d+(?:\.\d+|(?:-(?:alpha|beta|RC\d+|GA))?)$")
 
 
 def _resolves_to_defined_id(ref: str, defined_all: set,
