@@ -690,6 +690,127 @@ trigger first (architect resolves the design problem; planner
 then re-shapes tasks under the corrected design). Never run
 P-A in parallel with an architect trigger — sequencing matters.
 
+### Workflow 4.5 — Large-phase development pipeline (size-tiered)
+
+This is the project's one official, size-tiered standard for developing a
+phase. It names a single development pipeline and a mechanical test for how
+much of that pipeline a given phase must run. The pipeline consolidates and
+orders pieces that already exist elsewhere in this methodology (the agent
+roster and its triggers, the fix cycle, the audit checkpoints) plus the
+execution-half worktree orchestration documented in `docs/pack/PM-CHAT.md`;
+it adds the named adversarial-review spine and the up-front size tier.
+
+#### The pipeline (full chain, in order)
+
+1. **Optional researcher set — first, before the first architect.** Zero,
+   one, or both of: an INTERNAL `docs-researcher` (the project codebase and
+   docs inventory plus the blast-radius census across the phase's surfaces)
+   and an EXTERNAL `docs-researcher` (CLI, tool, framework, or API
+   documentation verified against authoritative sources). Invoked per-need
+   at any phase size. `docs-researcher` is the only role that may be reused
+   for a reconciliation pass (it does factual inventory, not design).
+2. **Architect** → the phase design, including the REQUIRED
+   parallel/dependency map (which phase tasks run in parallel isolated
+   worktrees versus serial) and the rejected-alternative documentation (the
+   architect rule in Part 3). The architect refines the large/small
+   classification for this phase (the PM chat makes the up-front call at the
+   phase gate; see "Who classifies" below).
+3. **Adversarial architect review** — a fresh, clean-context `architect`
+   instance that loads the `architecture-review` skill → PM-chat triage of
+   the findings → [reconciliation architect — a FRESH instance, only if the
+   review returns NEEDS-REWORK]; loop until READY. Governed by the
+   Reconciliation-instance independence rule (a fresh instance, never the
+   original author nor the adversary).
+4. **User design review** — the design gate; present the proposed design and
+   wait for the developer to read and approve.
+5. **Planner** → the implementation-ready plan (the IMPLEMENTATION-PLAN.md
+   Phase-N task block, or a multi-part phase split), including its OWN
+   parallel/dependency map.
+6. **Adversarial planner review** — a fresh `planner` instance that loads
+   the `planning` skill → triage → [reconciliation planner — FRESH, only if
+   NEEDS-REWORK].
+7. **User planner-to-coder gate** — the approval gate before any coder
+   prompt.
+8. **Parallel worktree coder waves** — scheduled off the parallel/dependency
+   map: disjoint-file phase tasks run as concurrent `coder` agents, each in
+   its own isolated worktree; same-file tasks serialize. Each commit's
+   bounded review/fix cycle (the Workflow 4 fix cycle above — the Trigger
+   A/B architect and Trigger P-A/P-C planner mid-cycle escalations plus the
+   cycle-termination invariant) runs inside its worktree; the patch is
+   produced only after the review is clean; patches apply to the canonical
+   tree sequentially (atomic per patch) with the conflict protocol (STOP and
+   re-spawn fresh, never hand-merge). Superseded design and plan docs are
+   deleted as the pipeline iterates; the audit set is preserved into the
+   implementation-record area. The execution-half mechanics (worktree
+   isolation, merge-back, parallel waves, the conflict protocol, report
+   preservation, the live-worktree ask gate) live single-source in
+   `docs/pack/PM-CHAT.md` — this stage references them rather than
+   restating them.
+9. **Optional post-implementation audit** (large phase, developer-elective)
+   — the `auditor` parent and its read-only cluster subagents (Workflow 5 /
+   Part 6), run after a large multi-task phase lands, to catch systemic gaps
+   the per-commit reviewer does not.
+
+The two adversarial passes (stages 3 and 6) are the MINIMUM for a large
+phase; additional architect or planner rounds are added when larger gaps are
+found (the escalation detail in Part 3).
+
+#### The size criterion (signals, then consequence)
+
+Five phase-size signals, each a yes/no test against the phase plan or the
+project tree (not a vibe):
+
+- **P1 — launch / release-gate.** The phase is a release blocker for the
+  current milestone, or the developer names it release-gating.
+- **P2 — cross-surface.** The phase's edit-set spans two or more of: app or
+  source modules; gRPC or proto schema; a public API or contract; build, CI,
+  or deploy configuration; test infrastructure; architecture docs. (Measured
+  from the phase plan's files-created/modified list.)
+- **P3 — blast-radius.** The phase changes a contract, schema, or interface
+  that three or more surfaces depend on — the load-bearing test. (A required
+  `docs-researcher` blast-radius census is a tie-break hint that nudges a
+  borderline call toward large, not a co-equal test.)
+- **P4 — structural.** The phase introduces a new architectural pattern or
+  boundary, a schema migration, a new external integration, or a new module
+  or subsystem — not a localized change inside an existing module.
+- **P5 — task-count / non-linear deps.** The phase has more than ~5 tasks,
+  or non-linear intra-phase dependencies (the planner trigger threshold in
+  "Planner trigger rule", reused here as a size signal).
+
+The consequence: a phase is a **LARGE PHASE — the two adversarial reviews
+and reconciliation are the MINIMUM** — if P1 (launch/release-gate) fires
+alone, OR if two or more of the five signals fire. Otherwise the phase is a
+**SMALL PHASE** and runs the **base flow** (optional researcher → architect
+→ planner per the existing planner trigger → parallel coder waves with the
+bounded review/fix cycle); the two adversarial passes and reconciliation are
+OPTIONAL at developer election. A single non-launch signal alone (for
+example, one new pattern inside one module) does not mandate them.
+**Tie-break: when genuinely in doubt, treat the phase as LARGE** — the
+rigor is the conservative error.
+
+Why launch/release-gate stands alone: a release blocker is the one axis
+where a missed adversarial pass ships into the release irrecoverably. Every
+other signal alone is recoverable at base-flow rigor (the Trigger A/B
+architect escalation and the cycle-termination invariant catch a mid-cycle
+design failure). The mandatory-adversarial trigger is sized to the cost of
+being wrong, not to the mere presence of a structural touch.
+
+#### Who classifies the phase
+
+The PM chat applies the size criterion at the PHASE GATE — the same place
+the planner-trigger check already runs (Procedure 1) — using the five
+mechanical yes/no signals. If an architect is spawned, it REFINES the
+classification (it may surface a signal the up-front read missed, escalating
+small → large; the tie-break-to-large rule governs ambiguity).
+
+#### Complementarity with the existing triggers
+
+The up-front size tier and the existing mid-cycle situational triggers (the
+Trigger A/B architect, Trigger P-A/P-C planner, and tester triggers above)
+COEXIST. The size tier classifies the phase up front; the mid-cycle triggers
+still fire inside the cycle regardless of tier. The standard ADDS the
+up-front tier — it does not replace the mid-cycle triggers.
+
 ### Workflow 5 — Full-codebase audit (auditor agent)
 
 Full-codebase audits run the `auditor` parent agent, which spawns up to seven

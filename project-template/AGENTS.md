@@ -404,6 +404,16 @@ of agent role.
   agent (in Codex via the platform's agent re-engage / `resume_agent`
   path; on Claude Code / Antigravity via the platform re-engage path),
   or a per-case architect-challenge reason.
+- **Large-phase pipeline standard (size-tiered).** Large phases run the
+  full development pipeline (optional researcher(s) → architect →
+  adversarial architect review → reconciliation → design review → planner
+  → adversarial planner review → reconciliation → planner-to-coder gate →
+  parallel worktree coder waves) as the default; the two adversarial
+  reviews + reconciliation are the MINIMUM for a large phase and OPTIONAL
+  at developer election for a small phase. A phase is LARGE if it is
+  release-gating, or if ≥2 of {cross-surface, blast-radius, structural,
+  >5-tasks/non-linear} hold; else small. When in doubt, large. The full
+  chain, the size criterion, and the stages live in METHODOLOGY.
 
 ## Phase routing — default agent assignments
 

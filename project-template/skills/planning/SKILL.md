@@ -4,6 +4,8 @@ description: Use when scoping non-trivial work, sequencing implementation, or de
 allowed-tools: Read, Grep, Glob, Bash
 ---
 
+This skill is loaded by the adversarial planner-review stage of the large-phase development pipeline standard (METHODOLOGY Workflow 4.5).
+
 ## Scoping
 
 1. Restate the goal in repo-specific terms — name the files, modules, and interfaces involved.

@@ -173,6 +173,12 @@ project documents` row as the authoritative manifest.
 
 These rules are non-negotiable and always apply on all tools:
 
+- **Route phases through the large-phase pipeline standard.** Classify
+  every phase against the size criterion at the phase gate and run the
+  size-tiered development pipeline accordingly. The full chain, the size
+  criterion, and the stages live in `docs/pack/METHODOLOGY.md`
+  (Workflow 4.5); its execution half is the worktree / merge-back section
+  below.
 - **Plan before executing.** For any change beyond reading files, present a plan
   and wait for explicit approval before doing anything.
 - **Open questions surface to user, never decided unilaterally.**
@@ -509,6 +515,15 @@ adversarial review before the work advances) is a FRESH spawn — never the orig
 author or the adversarial reviewer — for every agent except `docs-researcher`.
 Re-engage an existing agent only on the developer's explicit ask or a per-case
 architect-challenge reason.
+
+**The execution half of the large-phase pipeline standard.** The
+worktree, merge-back, parallel-wave, conflict, report-preservation, and
+ask-gate rules in this section are the EXECUTION half of the large-phase
+development pipeline standard. The full chain, the size criterion, and the
+design-half stages (researcher → architect → adversarial review →
+reconciliation → planner → adversarial review → reconciliation → coder
+waves) live in `docs/pack/METHODOLOGY.md` (Workflow 4.5); the parallel
+coder-wave stage of that standard references the rules below.
 
 **Merge-back — the patch comes only after review-clean.** A read-write
 agent never stages or commits, and it does **not** emit a patch up front

@@ -6,6 +6,8 @@ allowed-tools: Read, Grep, Glob, Bash
 
 This skill defines the universal methodology for architecture review. Platform-specific rules come from the platform skills loaded alongside this one (apple-architecture-core, python-server-architecture, python-data-architecture, grpc-patterns, etc.) (plus future web-architecture / android-architecture / embedded-mcu-architecture when loaded — predicate per PLATFORM-SKILLS.md intersection table). Apply this methodology using the rules from those skills.
 
+This skill is loaded by the adversarial architect-review stage of the large-phase development pipeline standard (METHODOLOGY Workflow 4.5).
+
 ## Before starting the review
 
 1. Read `ARCHITECTURE.md` to understand the project's documented architecture pattern, layer map, and rationale. If it does not exist, flag this as a blocking issue — architecture reviews require a documented baseline.
