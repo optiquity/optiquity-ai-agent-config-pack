@@ -29,7 +29,6 @@
 - [BD-232](./BD-232.md) — Reorganize + reduce Pack Chat's out-of-repo memory cache (architect-designed reorg, coder-rewritten content; Pack Chat installs only)
 - [BD-234](./BD-234.md) — Assess Graphify real usage + cost stats after burn-in; revisit the graph's cadence / knobs / index scope
 - [BD-236](./BD-236.md) — Project-side agent-def discipline-parity guards are incomplete (Check 57 covers 8 of the 13 enumerated git verbs; Check 11 cross-surface symmetry is informational-only) — investigate + design a coherent project-side parity-enforcement strategy
-- [BD-239](./BD-239.md) — Codify the PROJECT-SIDE large-phase development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)
 - [BD-242](./BD-242.md) — Adopt semantic versioning + Apple-style release qualifiers for the pack: `vMAJOR.MINOR.PATCH (RCn | GA[n])` (replace the two-level `vN.M` scheme)
 - [BD-245](./BD-245.md) — Strip per-CLI project memory from project deliverables (all 3 trinity CLIs); rename `## Project memory` → `## Project rules`; codify a CLI-symmetric no-project-memory prohibition (sibling of BD-232)
 
@@ -242,6 +241,7 @@
 - [BD-231](./BD-231.md) — Dangling `.mcp.json.example` references: the file is absent from `project-template/` (add-file vs. repoint is a user decision)
 - [BD-237](./BD-237.md) — Graphify graph-freshness mechanism is broken in production: redesign the auto-refresh + add verification checks (BD-225 shipped an un-verified, hand-installed, fragile hook that never ran)
 - [BD-238](./BD-238.md) — Codify the PACK-SIDE large-BD development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)
+- [BD-239](./BD-239.md) — Codify the PROJECT-SIDE large-phase development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)
 - [BD-240](./BD-240.md) — Re-frame the `graph-first-context` rule so it is genuinely graph-first for DISCOVERY/RECALL (not grep-first): the grep/Read fall-throughs swallow recall-critical enumeration
 - [BD-241](./BD-241.md) — Make previously-spawned still-alive agents discoverable: unique spawn NAMES + a durable spawn REGISTRY + a name→agentId→message-id lookup precedence (Claude-only mechanism; pack + project)
 - [BD-243](./BD-243.md) — Strip historical/audit-trail text + bloat from operational docs (pack + project); add anti-bloat governance rule
