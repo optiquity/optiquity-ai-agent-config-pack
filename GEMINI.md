@@ -63,9 +63,25 @@ matches the claim; mismatches fail the gate with a file-path callout.
 
 Use no keyword for mixed-surface commits — keyword opt-in.
 
-**Versioning:** Minor tags (vN.M, vN.M+1) for incremental changes. Major tags for
-breaking changes or large additions. Bare major tag always floats to latest minor.
-Tag move sequence: delete local + remote, recreate, push.
+**Versioning:** A version number is `vMAJOR.MINOR[.PATCH]` with unpadded
+integers — MAJOR and MINOR are always present, PATCH is omitted when zero
+(`v11.0`, never `v11.0.0`). A release-state qualifier is one of `alpha`,
+`beta`, `RC1`…`RCn`, or `GA`; only `RC` is numbered (unpadded, from 1).
+`alpha`/`beta` are lowercase, `RC`/`GA` are uppercase, and the casing is
+identical in display and in tags. A qualifier applies only to a
+`MAJOR.MINOR` version; a patch is never qualified. The display form shows
+the qualifier parenthetically (`vMAJOR.MINOR (X)`); the git tag rewrites
+` (X)` to `-X` with case preserved (`v11.0-alpha`, `v11.0-RC1`,
+`v11.0-GA`), since git refs cannot contain spaces or parentheses. `(GA)`
+shows only briefly pre-launch; at launch the qualifier is dropped and the
+released steady state is the bare number (`v11.0`). The user decides every
+tag and every state transition — there is no heuristic and no automation;
+tooling only reads, displays, and validates the version string that exists.
+Versioning is forward-only: v1–v10 and existing v11 references are locked
+(not renamed) and the old two-level `vN.M` form stays valid. Major tags
+mark breaking changes or large additions; minor tags mark incremental
+changes; the bare major tag always floats to the latest minor. Tag move
+sequence: delete local + remote, recreate, push.
 
 **BD numbering:** Always read the `/backlog/` tree (e.g. `/backlog/_toc.md`) to find the highest existing BD
 number, then increment by 1. Never assign a BD number from memory or

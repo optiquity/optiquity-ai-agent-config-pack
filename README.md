@@ -50,10 +50,33 @@ Antigravity as they ship.
 ## Version History
 
 ### Versioning convention
-Major versions (v9, v10, …) mark large additions or breaking changes.
-Minor versions (v9.0, v9.1, …) mark incremental improvements — doc updates,
-new templates, prompt and workflow refinements. The bare major tag (e.g. `v9`)
-always points to the latest minor of that major version.
+A version number is `vMAJOR.MINOR[.PATCH]` with unpadded integers: MAJOR and
+MINOR are always present, and PATCH is omitted when zero (`v11.0`, never
+`v11.0.0`). Major versions (v9, v10, …) mark large additions or breaking
+changes; minor versions (v9.0, v9.1, …) mark incremental improvements — doc
+updates, new templates, prompt and workflow refinements; a patch level marks
+a bugfix-only release.
+
+A release-state qualifier is one of `alpha`, `beta`, `RC1`…`RCn`, or `GA`.
+Only `RC` is numbered (unpadded, from 1); `alpha`, `beta`, and `GA` are never
+numbered. `alpha`/`beta` are lowercase and `RC`/`GA` are uppercase, with the
+same casing in display and in tags. A qualifier applies only to a
+`MAJOR.MINOR` version — a patch is never qualified. The display form shows the
+qualifier parenthetically (`vMAJOR.MINOR (X)`); the git tag rewrites ` (X)`
+to `-X` with case preserved (`v11.0-alpha`, `v11.0-RC1`, `v11.0-GA`), because
+git refs cannot contain spaces or parentheses. `(GA)` is shown only briefly
+pre-launch; at launch the qualifier is dropped and the released steady state
+is the bare number (`v11.0`).
+
+The user decides every tag and every state transition — there is no heuristic
+and no automation; the tooling only reads, displays, and validates the version
+string that exists. Versioning is forward-only: v1–v10 and existing v11
+references are locked (not renamed) and the old two-level `vN.M` form stays
+valid. The bare major tag (e.g. `v9`) always points to the latest minor of
+that major version.
+
+Going forward, a release row's Version cell MAY carry a qualifier in display
+form `vMAJOR.MINOR (X)`; the bare number is the launched steady state.
 
 | Version | Date         | Key Additions |
 |---------|--------------|---------------|

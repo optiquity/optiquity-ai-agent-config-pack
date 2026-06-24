@@ -85,9 +85,28 @@ commits — keyword opt-in means actors who don't want the gate don't carry
 it, but actors who claim a scope are held to it.
 
 **Versioning:**
-- Minor versions (vN.0, vN.1, ...) for incremental changes
-- Major versions for large additions or breaking changes
-- Bare major tag always floats to the latest minor (e.g. v9 → v9.0, then → v9.1)
+- **Number:** `vMAJOR.MINOR[.PATCH]` — unpadded integers. MAJOR and MINOR
+  are always present; PATCH is omitted when zero (`v11.0`, never `v11.0.0`).
+- **Qualifier (release state):** one of `alpha`, `beta`, `RC1`…`RCn`, `GA`.
+  Only `RC` is numbered (unpadded, from 1). Casing: `alpha`/`beta`
+  lowercase; `RC`/`GA` uppercase — identical casing in display and tag (no
+  lowercased tag variant). A qualifier applies only to a `MAJOR.MINOR`; a
+  PATCH is never qualified.
+- **Display ↔ tag:** display shows the qualifier parenthetically —
+  `vMAJOR.MINOR (X)`. The git tag rewrites ` (X)` to `-X`, case preserved
+  (`v11.0-alpha`, `v11.0-RC1`, `v11.0-GA`) — the `-X` form exists only
+  because git refs cannot contain spaces or parentheses.
+- **GA is transient:** `(GA)` shows only briefly pre-launch; at launch the
+  qualifier is dropped → the released steady state is the bare number
+  (`v11.0`).
+- **User decides every tag and every state transition** — no heuristic, no
+  automation. Tooling only reads / displays / validates the version string
+  that exists.
+- **Forward-only:** v1–v10 and existing v11 references are locked (not
+  renamed); the old two-level `vN.M` form stays valid. Major versions for
+  large additions or breaking changes; minor versions for incremental
+  changes. Bare major tag always floats to the latest minor (e.g. v9 →
+  v9.0, then → v9.1).
 - Tag move sequence: delete local + remote, recreate, push
 
 **BD-NNN numbering:**

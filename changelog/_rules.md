@@ -30,8 +30,12 @@ write procedure.
 
 Per-entry files match `^v\d+\.md$` (e.g., `v11.md`, `v7.md`) — one file
 per major release. Granularity is per-RELEASE (one `vN.md` per
-`## vN — <date>` H2): any nested `### vN.M` / `### New/Updated`
-subsections live INSIDE their release file, preserved verbatim.
+`## vN — <date>` H2): any nested `### vN.M` / `### vMAJOR.MINOR (X)` (a
+going-forward H3 MAY carry a release-state qualifier label) /
+`### New/Updated` subsections live INSIDE their major `vN.md` file,
+preserved verbatim. The filename regex `^v\d+\.md$` and the ID-extraction
+rule below are UNCHANGED — per-major granularity stays; a qualifier appears
+only in an H3 subsection label, never in a filename.
 
 ## ID-extraction rule
 
