@@ -32,6 +32,7 @@
 - [BD-245](./BD-245.md) — Strip per-CLI project memory from project deliverables (all 3 trinity CLIs); rename `## Project memory` → `## Project rules`; codify a CLI-symmetric no-project-memory prohibition (sibling of BD-232)
 - [BD-246](./BD-246.md) — Non-mutation integrity check for pack-shipped immutable files (per-version content checksums + CI-red verify)
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
+- [BD-248](./BD-248.md) — Persistent portable agent-handoff directory + pack-side write-fail fallback (reliability hardening, both surfaces)
 
 ## Deferred
 
