@@ -33,6 +33,7 @@
 - [BD-246](./BD-246.md) — Non-mutation integrity check for pack-shipped immutable files (per-version content checksums + CI-red verify)
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-248](./BD-248.md) — Persistent portable agent-handoff directory + pack-side write-fail fallback (reliability hardening, both surfaces)
+- [BD-249](./BD-249.md) — Pack-side dead-mirror-subsystem removal (mirror-generate.sh + mirror constants + accessor)
 
 ## Deferred
 
