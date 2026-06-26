@@ -491,3 +491,45 @@ The architect (reconciled design) surfaced 10 evidence-backed gates; the user de
     hook; force-overridable, but the checksum keeps failing). LAUNCH-BLOCKING (v11.0). NEEDS a
     tracked anchor (a new BD). Architect consulted (acceptable? recommended changes?) before the
     BD is opened.
+
+---
+
+## 15. Binding implementation requirements (user, 2026-06-26)
+
+- **Sidecars done correctly.** The rebuilt project-side sidecars (`_rules.md` reauthored to the
+  corrected model + the form-family schema; `_intro.md`; generated `_toc.md`; impl-plan
+  `_index.md`; NO `_format.md`) must be correct per the design — not rushed for speed.
+- **CI green ASAP — minimize the red window.** The foundational commit (Wave A / "Commit 0";
+  Deliverable O8 / O8b / O8c) MUST be ATOMIC: rebuild the sidecars + update `init-project.sh`'s
+  `_CLIENT_INSTALLED_FILES` (Check 41) + `cmd_update` (Check 39) + the S11 install/mirror-regen +
+  eliminate `_format.md` — ALL in ONE commit — so the tree goes (and stays) GREEN at the first
+  wave; the current 14 Check 39/41 failures clear at Wave A, never lingering red on a push. Do
+  NOT push a bare sidecar-deletion (it would be red); the deletions land WITH their rebuild + fix
+  in Wave A. Binding on the planner + the coder waves. (The remote is currently GREEN — nothing
+  red is pushed; the local working-tree red is the uncommitted deletions only.)
+
+---
+
+## 16. Foundational requirements — standing evaluation lens (user, 2026-06-26)
+
+The user reviewed the FINAL design ("seems ok"; NOT certain it is COMPLETE — completeness is
+ITERATIVE: additional architect designs are added as needed as gaps surface, pass by pass).
+These foundational requirements are the BINDING lens; EVERY agent pass (planner, coder,
+reviewer, …) is checked against them, and a gap is grounds for an additional architect design:
+
+1. **Guardrail-maintenance mechanisms** — the enforcement that keeps the form-family /
+   no-mirror / sidecar-vocabulary guardrails in place AND prevents drift (rules + tests + CI,
+   both repos).
+2. **Freshness + accuracy mechanisms** — the trees + files stay fresh + accurate as they are
+   updated/expanded (e.g. `_toc.md` regeneration; the `_index.md` validation; generated/derived
+   views regenerate correctly and SSOT-derived artifacts stay in sync).
+3. **File structure** — the per-entry tree shape + the 4-sidecar model, correct + consistent.
+4. **Operational mechanics** — how PM Chat + agents create / maintain / use the entries works.
+5. **Testing + integrity** — the test coverage + the integrity checks (incl. the BD-246
+   non-mutation check) are present + sound.
+6. **Ease of future tracker integration** — every choice keeps the eventual tracker migration
+   easy (form-family mappability; the bold-pair carrier; the structured changelog; etc.).
+
+ALL of (1)–(6) must be present. Handoff files now live at `~/Developer/_tmp/` (iCloud-synced,
+not `/tmp`, not in the repo); the FINAL design is
+`~/Developer/_tmp/pack-handoff-bd206-restart/ARCHITECTURE-BD-206-RESTART-FINAL.md`.
