@@ -210,15 +210,13 @@ EOF
 
 printf "\n=== Group 1: stream-shape lookups ===\n"
 
-# BD-203: pack-stream mirror-filename asserts removed — under the
-# no-mirror model the pack monoliths are deleted; the per-entry tree +
-# `_toc.md` is the SOLE SSOT. The `mirror` attribute is retained only as
-# a constant (deletion-target reference); it is no longer a live mirror
-# path, so asserting it as a pack deliverable is wrong-model. Project
-# streams DO still use mirror-generate (pending BD-206) — keep 1.3–1.5.
-assert_eq "1.3 project-backlog mirror filename" "docs/project/BACKLOG.md" "$(pe_canonical_mirror_for_stream project-backlog)"
-assert_eq "1.4 project-implementation-plan mirror filename" "docs/project/IMPLEMENTATION-PLAN.md" "$(pe_canonical_mirror_for_stream project-implementation-plan)"
-assert_eq "1.5 project-changelog mirror filename" "docs/project/CHANGELOG.md" "$(pe_canonical_mirror_for_stream project-changelog)"
+# BD-203/BD-206: mirror-filename asserts removed — under the no-mirror
+# model neither the pack nor the project monoliths exist; the per-entry
+# tree + `_toc.md` is the SOLE SSOT. The pack `mirror` constants + the
+# `pe_canonical_mirror_for_stream` accessor are retired pack-side by
+# BD-249; BD-206 (O22-proj) removes the three project `mirror)` constants
+# (`_lib.sh` project-backlog/implementation-plan/changelog) along with
+# these project mirror-filename asserts (former 1.3–1.5).
 # BD-211: pack-backlog entry regex is canonical `BD-NNN.md` (no suffix).
 assert_eq "1.6 pack-backlog entry regex"  "^BD-[0-9]+\.md$" "$(pe_entry_regex_for_stream pack-backlog)"
 assert_eq "1.7 project-backlog entry regex" "^TD-[0-9]+\.md$" "$(pe_entry_regex_for_stream project-backlog)"

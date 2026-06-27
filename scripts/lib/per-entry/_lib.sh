@@ -106,7 +106,6 @@ pe__stream_attr() {
             ;;
         project-backlog)
             case "$2" in
-                mirror) printf 'docs/project/BACKLOG.md' ;;
                 entry-regex) printf '^TD-[0-9]+\.md$' ;;
                 support) printf '_rules.md _intro.md _toc.md' ;;
                 dir-suffix) printf 'docs/project/backlog' ;;
@@ -118,7 +117,6 @@ pe__stream_attr() {
             # of sidecar §3.4: tasks live INLINE in the phase file. See
             # `decompose.sh:125` for the parallel parser-side comment.
             case "$2" in
-                mirror) printf 'docs/project/IMPLEMENTATION-PLAN.md' ;;
                 entry-regex) printf '^phase-[0-9]+\.md$' ;;
                 # `_index.md` is the generated+validated dependency-derived
                 # serial order (impl-plan only); it is ADMITTED here as a
@@ -130,7 +128,6 @@ pe__stream_attr() {
             ;;
         project-changelog)
             case "$2" in
-                mirror) printf 'docs/project/CHANGELOG.md' ;;
                 # Slug is OPTIONAL per sidecar §3.5 (OT convention typically
                 # carries a slug, but the design does not lock it). The
                 # decompose `id_extract` bare-date fall-back returns
