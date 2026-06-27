@@ -657,6 +657,179 @@ _CONF_ENTRY_CHECKERS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# `_index.md` MANDATORY validation (BD-206 O11 / G-3), client populated-tree
+# leg. The impl-plan stream carries `_index.md` (the dependency-derived
+# serial ordering); the backlog is unordered → no index. This leg enforces
+# the TWO hard properties against the POPULATED client tree:
+#   (1) hard-dependency-order consistency — the `_index.md` serial order is a
+#       VALID topological order of the rule-based deps (from each phase's
+#       Blockers / Unblocks / Dependencies SSOT — the deps stay SSOT in the
+#       entry files; `_index.md` is not a competing source);
+#   (2) per-entry ↔ `_index.md` membership sync — the `_index.md` membership
+#       matches the tree's phase-*.md files EXACTLY (no missing / extra —
+#       analogous to the `_toc.md`-sync Check 33).
+# The pack-side empty-template leg is validate-pack.py Check 73; the
+# generator + shared validator are scripts/lib/per-entry/index-generate.sh.
+# All three implement the same two properties (the deps parsed with the same
+# form-family-bullet grammar). Cheap: deps already read from the populated
+# entries; one extra small read of `_index.md`; no subprocess.
+# ---------------------------------------------------------------------------
+_CONF_INDEX_PHASE_RE = re.compile(r"^phase-(\d+)\.md$")
+_CONF_INDEX_BULLET_RE = re.compile(r"^- \[phase-(\d+)\]")
+
+
+def _conf_index_phase_refs(value):
+    """Every phase-N number referenced in a field value (tolerates none /
+    comma- / space- / and-separated lists)."""
+    return set(re.findall(r"phase-(\d+)", value))
+
+
+def _conf_index_edges(entries):
+    """entries: {phase-num: body}. Returns (present, edges) — the set of
+    (prereq, dependent) ordering constraints: Blockers/Dependencies/
+    Prerequisite give prereq edges (prereq before this), Unblocks gives
+    dependent edges (this before dependent). Self-edges + edges to absent
+    phases dropped (membership-sync flags missing files separately)."""
+    present = set(entries)
+    edges = set()
+    for num, body in entries.items():
+        prereq = set()
+        for fld in ("Blockers", "Dependencies", "Prerequisite"):
+            prereq |= _conf_index_phase_refs(_conf_field_value(body, fld))
+        dep = _conf_index_phase_refs(_conf_field_value(body, "Unblocks"))
+        for b in prereq:
+            if b in present and b != num:
+                edges.add((b, num))
+        for u in dep:
+            if u in present and u != num:
+                edges.add((num, u))
+    return present, edges
+
+
+def _conf_index_toposort(present, edges):
+    """Deterministic Kahn sort (ties by ascending phase number). Returns
+    (order, acyclic)."""
+    indeg = dict((p, 0) for p in present)
+    adj = dict((p, []) for p in present)
+    for (a, b) in edges:
+        adj[a].append(b)
+        indeg[b] += 1
+    ready = sorted((p for p in present if indeg[p] == 0), key=int)
+    order = []
+    while ready:
+        n = ready.pop(0)
+        order.append(n)
+        for m in sorted(adj[n], key=int):
+            indeg[m] -= 1
+            if indeg[m] == 0:
+                ready.append(m)
+        ready.sort(key=int)
+    if len(order) < len(present):
+        order.extend(sorted((p for p in present if p not in set(order)),
+                            key=int))
+        return order, False
+    return order, True
+
+
+def _conf_index_parse_order(text):
+    """Ordered phase-number list from an `_index.md` `## Serial order`
+    block, in file order ([] if absent)."""
+    order = []
+    in_section = False
+    for line in text.splitlines():
+        if line.startswith("## Serial order"):
+            in_section = True
+            continue
+        if in_section and line.startswith("## "):
+            break
+        if in_section:
+            m = _CONF_INDEX_BULLET_RE.match(line)
+            if m:
+                order.append(m.group(1))
+    return order
+
+
+def _conf_check_index(rel_dir, stream_dir, names):
+    """The two-property `_index.md` validator for the populated impl-plan
+    tree. rel_dir is the stream's repo-relative dir; stream_dir its abspath;
+    names the file basenames in it. Returns a list of failure strings."""
+    fails = []
+    entries = {}
+    for name in names:
+        m = _CONF_INDEX_PHASE_RE.match(name)
+        if not m:
+            continue
+        try:
+            entries[m.group(1)] = open(
+                os.path.join(stream_dir, name), encoding="utf-8").read()
+        except OSError:
+            entries[m.group(1)] = ""
+    present, edges = _conf_index_edges(entries)
+    index_path = os.path.join(stream_dir, "_index.md")
+    index_text = None
+    if os.path.isfile(index_path):
+        try:
+            index_text = open(index_path, encoding="utf-8").read()
+        except OSError as e:
+            fails.append(f"{rel_dir}/_index.md [conformance] unreadable ({e})")
+            return fails
+
+    if not present:
+        # No phase entries — an `_index.md`, if present, must list nothing.
+        if index_text is not None:
+            listed = _conf_index_parse_order(index_text)
+            if listed:
+                fails.append(
+                    f"{rel_dir}/_index.md [conformance] lists phases "
+                    f"{['phase-' + n for n in sorted(set(listed), key=int)]} "
+                    f"but the tree has no phase-*.md entries (membership drift)"
+                    f"\n    {REMEDIATION_CONFORMANCE}")
+        return fails
+
+    if index_text is None:
+        fails.append(
+            f"{rel_dir}/_index.md [conformance] missing — the impl-plan "
+            f"stream has {len(present)} phase entry/entries but no _index.md "
+            f"ordering (regenerate via scripts/lib/per-entry/index-generate.sh)"
+            f"\n    {REMEDIATION_CONFORMANCE}")
+        return fails
+
+    listed = _conf_index_parse_order(index_text)
+    listed_set = set(listed)
+    # (2) membership sync.
+    missing = sorted(present - listed_set, key=int)
+    extra = sorted(listed_set - present, key=int)
+    if missing:
+        fails.append(
+            f"{rel_dir}/_index.md [conformance] missing phase(s) "
+            f"{['phase-' + n for n in missing]} (membership drift)"
+            f"\n    {REMEDIATION_CONFORMANCE}")
+    if extra:
+        fails.append(
+            f"{rel_dir}/_index.md [conformance] lists phase(s) "
+            f"{['phase-' + n for n in extra]} with no phase-*.md file "
+            f"(membership drift)\n    {REMEDIATION_CONFORMANCE}")
+    if len(listed) != len(listed_set):
+        fails.append(
+            f"{rel_dir}/_index.md [conformance] duplicate phase listing"
+            f"\n    {REMEDIATION_CONFORMANCE}")
+    # (1) hard-dependency-order consistency.
+    pos = dict((n, i) for i, n in enumerate(listed))
+    for (a, b) in sorted(edges):
+        if a in pos and b in pos and pos[a] >= pos[b]:
+            fails.append(
+                f"{rel_dir}/_index.md [conformance] hard-dependency "
+                f"violated: phase-{a} must precede phase-{b} but _index.md "
+                f"lists phase-{b} first\n    {REMEDIATION_CONFORMANCE}")
+    _order, acyclic = _conf_index_toposort(present, edges)
+    if not acyclic:
+        fails.append(
+            f"{rel_dir}/_index.md [conformance] dependency cycle — no valid "
+            f"topological order exists\n    {REMEDIATION_CONFORMANCE}")
+    return fails
+
+
 def run_conformance(root):
     """Validate the POPULATED per-entry streams against their _rules.md schema.
 
@@ -755,6 +928,13 @@ def run_conformance(root):
                 # Attach the shared remediation if the checker did not.
                 fails.append(f if "\n" in f
                              else f + f"\n    {REMEDIATION_CONFORMANCE}")
+
+        # (4) `_index.md` MANDATORY validation (BD-206 O11) — impl-plan only
+        #     (the backlog is unordered → no index). The two hard properties:
+        #     topological-order consistency + per-entry↔_index.md membership
+        #     sync. The deps are parsed from the populated phase entries (SSOT).
+        if subdir == "implementation-plan":
+            fails.extend(_conf_check_index(rel_dir, stream_dir, names))
     return fails
 
 
@@ -904,6 +1084,30 @@ def run_selftest():
         "### 2026-04-20 — Phase 35 — Sample\n\n"
         "**Summary**: did things.\n"
     )
+    # A second impl-plan phase + a conforming `_index.md` ordering, for the
+    # _index.md two-property self-test (BD-206 O11).
+    good_phase1 = (
+        "<!-- back -->\n"
+        "## Phase 1 — Middle\n\n"
+        "- **Entry-Type**: phase-epic\n"
+        "- **ID**: phase-1\n"
+        "- **Status**: not-started\n"
+        "- **Blockers**: phase-0\n"
+        "- **Unblocks**: none\n"
+        "- **Goal**: middle\n"
+        "- **Prerequisite**: none\n"
+    )
+    good_index_single = (
+        "# Index — ordering — project-implementation-plan\n\n"
+        "## Serial order\n\n"
+        "- [phase-0](./phase-0.md) — Bootstrap\n"
+    )
+    good_index_two = (
+        "# Index — ordering — project-implementation-plan\n\n"
+        "## Serial order\n\n"
+        "- [phase-0](./phase-0.md) — Bootstrap\n"
+        "- [phase-1](./phase-1.md) — Middle\n"
+    )
 
     def conf_gate(files, expect_fail, label):
         """files: {relpath_under_docs_project: content}. Always seeds each
@@ -934,9 +1138,11 @@ def run_selftest():
                     f"{'FAIL' if got_fail else 'PASS'} ({len(fails)} hit(s))")
 
     if conformance_self_test:
-        # Conforming populated tree → PASS.
+        # Conforming populated tree → PASS (impl-plan carries a conforming
+        # `_index.md` listing its single phase).
         conf_gate({"backlog/TD-001.md": good_td,
                    "implementation-plan/phase-0.md": good_phase,
+                   "implementation-plan/_index.md": good_index_single,
                    "changelog/2026-04-20-phase-35.md": good_cl},
                   False, "conformance-clean")
         # Empty (sidecar-only) tree → PASS (greenfield).
@@ -963,6 +1169,38 @@ def run_selftest():
         conf_gate({"changelog/2026-05-01-x.md": good_cl
                    + "- **Entry-Type**: td\n"}, True,
                   "conformance-changelog-formfamily")
+
+        # --- _index.md MANDATORY validation (BD-206 O11) two-property leg ---
+        # Two conforming phases + a valid topological `_index.md` → PASS.
+        conf_gate({"implementation-plan/phase-0.md": good_phase,
+                   "implementation-plan/phase-1.md": good_phase1,
+                   "implementation-plan/_index.md": good_index_two},
+                  False, "conformance-index-clean")
+        # Phases present but NO _index.md → FAIL (mandatory ordering missing).
+        conf_gate({"implementation-plan/phase-0.md": good_phase,
+                   "implementation-plan/phase-1.md": good_phase1},
+                  True, "conformance-index-missing")
+        # _index.md ORDER violates the hard dep (phase-1 blocked by phase-0
+        # but listed first) → FAIL.
+        bad_order = (
+            "## Serial order\n\n"
+            "- [phase-1](./phase-1.md) — Middle\n"
+            "- [phase-0](./phase-0.md) — Bootstrap\n")
+        conf_gate({"implementation-plan/phase-0.md": good_phase,
+                   "implementation-plan/phase-1.md": good_phase1,
+                   "implementation-plan/_index.md": bad_order},
+                  True, "conformance-index-order-violation")
+        # _index.md MEMBERSHIP missing (phase-1 not listed) → FAIL.
+        conf_gate({"implementation-plan/phase-0.md": good_phase,
+                   "implementation-plan/phase-1.md": good_phase1,
+                   "implementation-plan/_index.md": good_index_single},
+                  True, "conformance-index-membership-missing")
+        # _index.md MEMBERSHIP extra (lists a phase with no file) → FAIL.
+        extra_idx = good_index_two + "- [phase-9](./phase-9.md) — Ghost\n"
+        conf_gate({"implementation-plan/phase-0.md": good_phase,
+                   "implementation-plan/phase-1.md": good_phase1,
+                   "implementation-plan/_index.md": extra_idx},
+                  True, "conformance-index-membership-extra")
 
     if failures:
         print("[validate-docs --self-test] FAIL:")

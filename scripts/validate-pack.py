@@ -491,17 +491,19 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # + 1 net-new BD-243 check (68 dangling-file-reference gate)
 # + 1 net-new BD-243 check (69 operating-doc scope-completeness meta-check)
 # + 1 net-new BD-243 check (70 client doc-gate structural parity)
-# + 1 net-new BD-243 check (71 pack-root skill-mirror byte-identity).
-# CAUTION: a new check's NUMBER is the next free integer (66–71 for the BD-243
-# gate wave) but this constant is the registry ENTRY COUNT — bump it +1 per
-# net-new entry, NOT to the new number. Numbers != entry count (Checks 16/18/19
-# each register TWICE and 2 checks carry number=None), so the count always lags
-# the max number; setting it to the max number makes Check 59 FAIL. The
-# Check-44 pattern-tuple reduction (BD-243) changes NO entry count (+0). This
-# constant is the explicit invariant; the actual count is COMPUTED from
-# len(_build_check_registry()) and asserted equal by Check 59 — never
+# + 1 net-new BD-243 check (71 pack-root skill-mirror byte-identity)
+# + 1 net-new BD-206 check (72 project empty-template shape, A1)
+# + 1 net-new BD-206 check (73 project impl-plan _index.md consistency, C3).
+# CAUTION: a new check's NUMBER is the next free integer (66–73 for the BD-243
+# gate wave + the BD-206 legs) but this constant is the registry ENTRY COUNT —
+# bump it +1 per net-new entry, NOT to the new number. Numbers != entry count
+# (Checks 16/18/19 each register TWICE and 2 checks carry number=None), so the
+# count always lags the max number; setting it to the max number makes Check 59
+# FAIL. The Check-44 pattern-tuple reduction (BD-243) changes NO entry count
+# (+0). This constant is the explicit invariant; the actual count is COMPUTED
+# from len(_build_check_registry()) and asserted equal by Check 59 — never
 # hard-coded anywhere else.
-CHECK_REGISTRY_EXPECTED_COUNT = 70
+CHECK_REGISTRY_EXPECTED_COUNT = 71
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
@@ -11457,6 +11459,307 @@ def check_project_template_empty_shape() -> None:
            "each _rules.md declares a well-formed schema block.")
 
 
+# ── Check 73: project impl-plan `_index.md` consistency (BD-206 O11) ─────────
+#
+# The MANDATORY `_index.md` validation (G-3), pack-side leg. The shipped
+# `project-template/docs/project/implementation-plan/` stream is EMPTY
+# during pack development (no `phase-*.md`), so this leg validates the
+# MECHANISM / empty-state: (a) the impl-plan stream parses; (b) any
+# `_index.md` present is membership-synced with the (empty) phase set;
+# (c) the two hard properties' Python implementation BITES (a built-in
+# synthetic self-check on a populated tree confirms the matcher still has
+# teeth even though the shipped template has no entries to exercise it).
+#
+# The two hard properties (DECISIONS-BD-206-RESTART.md G-3):
+#   (1) hard-dependency-order consistency — the `_index.md` serial order
+#       is a VALID topological order of the rule-based deps (from each
+#       phase's `Blockers` / `Unblocks` / `Dependencies` SSOT);
+#   (2) per-entry ↔ `_index.md` membership sync — the `_index.md`
+#       membership matches the tree's `phase-*.md` files EXACTLY
+#       (analogous to the `_toc.md`-sync Check 33).
+#
+# The CLIENT-side leg (populated-tree validation, "both repos" per Item-7)
+# lives in `project-template/scripts/validate-docs.sh` `run_conformance`;
+# the dependency-derived GENERATOR + the shared validator live in
+# `scripts/lib/per-entry/index-generate.sh` (the realized consumer named
+# in that file's docstring, rule-8 chain). All three implement the same
+# two properties; the Python here parses the phase deps with the same
+# form-family-bullet grammar the bash lib + the client leg use (Item-8
+# single-schema-SSOT spirit: one grammar, three implementations, one
+# property set).
+#
+# Cheap (ci-check-runtime-compounding): a bounded os.scandir on one stream
+# dir + at most ~N small reads; no subprocess, no whole-tree walk; the
+# self-check builds its synthetic tree in-memory (no disk).
+
+_CHECK_73_IMPLPLAN_DIR = (
+    "project-template/docs/project/implementation-plan"
+)
+_CHECK_73_PHASE_RE = re.compile(r"^phase-(\d+)\.md$")
+_CHECK_73_INDEX_BULLET_RE = re.compile(r"^- \[phase-(\d+)\]")
+
+
+def _check_73_field_value(body: str, field: str) -> str:
+    """Trimmed value of a `- **Field**:` / `Field:` form-family bullet, or
+    ''. Mirrors the bash lib `field_value` + the client-leg grammar."""
+    esc = re.escape(field)
+    rx = re.compile(
+        r"^\s*(?:[-*]\s*)?\*{0,2}" + esc + r"\*{0,2}\s*:(.*)$",
+        re.MULTILINE)
+    m = rx.search(body)
+    return m.group(1).strip().strip("*").strip() if m else ""
+
+
+def _check_73_phase_refs(value: str) -> set:
+    """Every `phase-N` number referenced in a field value (tolerates
+    `none` / comma- / space- / `and`-separated lists)."""
+    return set(re.findall(r"phase-(\d+)", value))
+
+
+def _check_73_collect(entries: dict):
+    """entries: {phase-num: body}. Returns (present, titles, edges) where
+    edges is the set of (prereq, dependent) ordering constraints derived
+    from `Blockers`/`Dependencies`/`Prerequisite` (prereq edges) +
+    `Unblocks` (dependent edges). Self-edges + edges to absent phases are
+    dropped (membership-sync flags missing files separately)."""
+    present = set(entries)
+    titles = {}
+    edges = set()
+    for num, body in entries.items():
+        tm = re.search(r"(?m)^## Phase %s — (.+)$" % re.escape(num), body)
+        titles[num] = tm.group(1).strip() if tm else "phase-%s" % num
+        prereq = set()
+        for fld in ("Blockers", "Dependencies", "Prerequisite"):
+            prereq |= _check_73_phase_refs(_check_73_field_value(body, fld))
+        dep = _check_73_phase_refs(_check_73_field_value(body, "Unblocks"))
+        for b in prereq:
+            if b in present and b != num:
+                edges.add((b, num))
+        for u in dep:
+            if u in present and u != num:
+                edges.add((num, u))
+    return present, titles, edges
+
+
+def _check_73_toposort(present: set, edges: set):
+    """Deterministic Kahn sort (ties by ascending phase number). Returns
+    (order, acyclic)."""
+    indeg = {p: 0 for p in present}
+    adj = {p: [] for p in present}
+    for (a, b) in edges:
+        adj[a].append(b)
+        indeg[b] += 1
+    ready = sorted((p for p in present if indeg[p] == 0), key=int)
+    order = []
+    while ready:
+        n = ready.pop(0)
+        order.append(n)
+        for m in sorted(adj[n], key=int):
+            indeg[m] -= 1
+            if indeg[m] == 0:
+                ready.append(m)
+        ready.sort(key=int)
+    if len(order) < len(present):
+        order.extend(sorted((p for p in present if p not in set(order)),
+                            key=int))
+        return order, False
+    return order, True
+
+
+def _check_73_parse_index_order(text: str) -> list:
+    """Ordered phase-number list from an `_index.md` `## Serial order`
+    block, in file order ([] if absent)."""
+    order = []
+    in_section = False
+    for line in text.splitlines():
+        if line.startswith("## Serial order"):
+            in_section = True
+            continue
+        if in_section and line.startswith("## "):
+            break
+        if in_section:
+            m = _CHECK_73_INDEX_BULLET_RE.match(line)
+            if m:
+                order.append(m.group(1))
+    return order
+
+
+def _check_73_validate(entries: dict, index_text) -> list:
+    """The two-property validator, in-memory. entries: {num: body};
+    index_text: the `_index.md` content (or None if absent). Returns a
+    list of failure strings ([] = conformant)."""
+    fails = []
+    present, _titles, edges = _check_73_collect(entries)
+
+    if not present:
+        # No phase entries — an `_index.md`, if present, must list nothing.
+        if index_text is not None:
+            listed = _check_73_parse_index_order(index_text)
+            if listed:
+                fails.append(
+                    "_index.md lists phases %s but the tree has no "
+                    "phase-*.md entries (membership drift)"
+                    % ["phase-%s" % n for n in sorted(set(listed), key=int)])
+        return fails
+
+    if index_text is None:
+        fails.append(
+            "_index.md missing — the impl-plan stream has %d phase "
+            "entry/entries but no _index.md ordering" % len(present))
+        return fails
+
+    listed = _check_73_parse_index_order(index_text)
+    listed_set = set(listed)
+
+    # (2) membership sync.
+    missing = sorted(present - listed_set, key=int)
+    extra = sorted(listed_set - present, key=int)
+    if missing:
+        fails.append("missing from _index.md: %s"
+                     % ["phase-%s" % n for n in missing])
+    if extra:
+        fails.append("extra in _index.md (no such phase-*.md): %s"
+                     % ["phase-%s" % n for n in extra])
+    if len(listed) != len(listed_set):
+        fails.append("duplicate listing in _index.md")
+
+    # (1) hard-dependency-order consistency.
+    pos = {n: i for i, n in enumerate(listed)}
+    for (a, b) in sorted(edges):
+        if a in pos and b in pos and pos[a] >= pos[b]:
+            fails.append(
+                "hard-dependency violated: phase-%s must precede phase-%s "
+                "but _index.md lists phase-%s first" % (a, b, b))
+
+    _order, acyclic = _check_73_toposort(present, edges)
+    if not acyclic:
+        fails.append("dependency cycle — no valid topological order exists")
+    return fails
+
+
+def _check_73_self_check() -> list:
+    """In-memory synthetic self-check: confirm the two-property matcher
+    PASSES a conforming tree and BITES each violation class. Returns a
+    list of self-check failure strings ([] = the matcher has teeth)."""
+    sc_fails = []
+    p0 = ("## Phase 0 — Bootstrap\n- **Blockers**: none\n"
+          "- **Unblocks**: phase-1\n")
+    p1 = ("## Phase 1 — Middle\n- **Blockers**: phase-0\n"
+          "- **Unblocks**: phase-2\n")
+    p2 = ("## Phase 2 — Final\n- **Blockers**: phase-1\n"
+          "- **Unblocks**: none\n")
+    entries = {"0": p0, "1": p1, "2": p2}
+    good_idx = ("## Serial order\n\n"
+                "- [phase-0](./phase-0.md) — Bootstrap\n"
+                "- [phase-1](./phase-1.md) — Middle\n"
+                "- [phase-2](./phase-2.md) — Final\n")
+
+    def expect(label, entries_, idx, want_fail):
+        got = bool(_check_73_validate(entries_, idx))
+        if got != want_fail:
+            sc_fails.append(
+                "self-check %s: expected %s, got %s"
+                % (label, "FAIL" if want_fail else "PASS",
+                   "FAIL" if got else "PASS"))
+
+    expect("clean", entries, good_idx, False)                 # conforming
+    expect("empty-clean", {}, None, False)                    # greenfield
+    # ORDER violation — reversed order.
+    bad_order = ("## Serial order\n\n"
+                 "- [phase-2](./phase-2.md) — Final\n"
+                 "- [phase-1](./phase-1.md) — Middle\n"
+                 "- [phase-0](./phase-0.md) — Bootstrap\n")
+    expect("order-violation", entries, bad_order, True)
+    # MEMBERSHIP missing — drop phase-2 from the index.
+    miss_idx = ("## Serial order\n\n"
+                "- [phase-0](./phase-0.md) — Bootstrap\n"
+                "- [phase-1](./phase-1.md) — Middle\n")
+    expect("membership-missing", entries, miss_idx, True)
+    # MEMBERSHIP extra — index lists a phase not on disk.
+    extra_idx = good_idx + "- [phase-9](./phase-9.md) — Ghost\n"
+    expect("membership-extra", entries, extra_idx, True)
+    # MISSING index entirely with phases present.
+    expect("missing-index", entries, None, True)
+    # CYCLE.
+    cyc = {"0": "## Phase 0 — A\n- **Blockers**: phase-1\n",
+           "1": "## Phase 1 — B\n- **Blockers**: phase-0\n"}
+    cyc_idx = ("## Serial order\n\n"
+               "- [phase-0](./phase-0.md) — A\n"
+               "- [phase-1](./phase-1.md) — B\n")
+    expect("cycle", cyc, cyc_idx, True)
+    return sc_fails
+
+
+def check_project_index_consistency() -> None:
+    """Check 73 — project impl-plan `_index.md` consistency (BD-206 O11).
+
+    Validates the MANDATORY `_index.md` property set (G-3) against the
+    shipped `project-template/docs/project/implementation-plan/` stream.
+    The shipped template is EMPTY (no `phase-*.md`), so this leg validates
+    the MECHANISM / empty-state PLUS a synthetic self-check that the
+    two-property matcher still bites. The client-side populated-tree leg
+    lives in `validate-docs.sh`; the generator + shared validator live in
+    `scripts/lib/per-entry/index-generate.sh`.
+
+    SKIPs (lenient) if the impl-plan stream directory is absent.
+    Cheap (ci-check-runtime-compounding): one bounded scandir + small
+    reads + an in-memory self-check.
+    """
+    print("\n── Check 73: project impl-plan _index.md consistency (BD-206) ──")
+    stream_dir = REPO_ROOT / _CHECK_73_IMPLPLAN_DIR
+    if not stream_dir.is_dir():
+        ok(f"{_CHECK_73_IMPLPLAN_DIR}/ absent — skipping (lenient)")
+        return
+
+    any_fail = False
+
+    # Self-check the matcher has teeth (the empty shipped template cannot
+    # exercise the order/membership legs otherwise).
+    for sc in _check_73_self_check():
+        fail(f"Check 73 self-check — {sc}")
+        any_fail = True
+
+    # Validate the live (empty) impl-plan stream.
+    entries = {}
+    try:
+        names = [p.name for p in stream_dir.iterdir() if p.is_file()]
+    except OSError as exc:
+        fail(f"{_CHECK_73_IMPLPLAN_DIR}/ — cannot scan: {exc}")
+        return
+    for name in names:
+        m = _CHECK_73_PHASE_RE.match(name)
+        if not m:
+            continue
+        try:
+            entries[m.group(1)] = (stream_dir / name).read_text()
+        except (UnicodeDecodeError, OSError) as exc:
+            fail(f"{_CHECK_73_IMPLPLAN_DIR}/{name} — unreadable: {exc}")
+            any_fail = True
+
+    index_path = stream_dir / "_index.md"
+    index_text = None
+    if index_path.is_file():
+        try:
+            index_text = index_path.read_text()
+        except (UnicodeDecodeError, OSError) as exc:
+            fail(f"{_CHECK_73_IMPLPLAN_DIR}/_index.md — unreadable: {exc}")
+            any_fail = True
+
+    for violation in _check_73_validate(entries, index_text):
+        fail(f"{_CHECK_73_IMPLPLAN_DIR}/_index.md — {violation}")
+        any_fail = True
+
+    if not any_fail:
+        n = len(entries)
+        shape = ("empty template (no phase entries, no stray _index.md)"
+                 if n == 0 else
+                 f"{n} phase entry/entries, _index.md order + membership "
+                 f"consistent")
+        ok(f"Check 73 — impl-plan _index.md consistency holds: {shape}; "
+           f"the two-property matcher (topological-order + membership-sync) "
+           f"self-checks with teeth.")
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def _build_check_registry():
@@ -11840,6 +12143,15 @@ def _build_check_registry():
         # well-formed schema block. Reads ~6 small files; no subprocess.
         (72, "check_project_template_empty_shape",
               check_project_template_empty_shape, W),
+        # Check 73 — project impl-plan `_index.md` consistency (BD-206 O11):
+        # the MANDATORY `_index.md` validation (G-3), pack-side empty-template
+        # leg. Validates the two hard properties (topological-order
+        # consistency + per-entry↔_index.md membership sync) against the
+        # shipped (empty) impl-plan stream + a synthetic self-check that the
+        # matcher bites. Reads one stream dir (scandir + small reads); the
+        # self-check is in-memory; no subprocess.
+        (73, "check_project_index_consistency",
+              check_project_index_consistency, W),
     ]
 
 
