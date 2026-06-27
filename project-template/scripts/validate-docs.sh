@@ -588,14 +588,51 @@ def _conf_check_backlog_entry(rel, body, schema):
     return fails
 
 
+# BD-206 O13 — the §3.5 GRACEFUL phase/part/task naming guard (a FORMAT check,
+# not a structural migration). Phase-prefixed heading detectors (the trigger
+# set) + the conforming templates they MUST match. Fixed inline-convention
+# format (the same two regexes the pack-side validate-pack.py Check 75 applies —
+# one rule, two parsers).
+_CONF_IP_H3_PHASE_RE = re.compile(r"^### Phase-")
+_CONF_IP_H4_PHASE_RE = re.compile(r"^#### Phase-")
+_CONF_IP_H3_PART_OK_RE = re.compile(r"^### Phase-\d+\.Part-[a-z] — ")
+_CONF_IP_H4_TASK_OK_RE = re.compile(r"^#### Phase-\d+\.Part-[a-z]\.Task-\d+ — ")
+
+
+def _conf_ip_naming_violations(body):
+    """Return the Phase-prefixed headings in `body` that VIOLATE the §3.5
+    naming template (BD-206 O13). GRACEFUL: only Phase-prefixed
+    (`### Phase-` / `#### Phase-`) headings are checked; epic-task
+    `#### N.M — ` anchors + inline parts that are well-formed are tolerated
+    (no fire). BD-185 (per-part-file migration) is OUT of scope."""
+    bad = []
+    for line in body.splitlines():
+        if _CONF_IP_H3_PHASE_RE.match(line):
+            if not _CONF_IP_H3_PART_OK_RE.match(line):
+                bad.append(line.rstrip())
+        elif _CONF_IP_H4_PHASE_RE.match(line):
+            if not _CONF_IP_H4_TASK_OK_RE.match(line):
+                bad.append(line.rstrip())
+    return bad
+
+
 def _conf_check_implplan_entry(rel, body, schema):
     """Form-family conformance for one impl-plan phase entry (schema-driven).
 
     phase-epic carries the declared epic field set; phase-part is lightweight
     (Entry-Type only) and is tolerated gracefully (BD-206; per-part richness
-    is BD-185).
+    is BD-185). PLUS the BD-206 O13 §3.5 GRACEFUL naming guard: any Phase-
+    prefixed heading (`### Phase-…` / `#### Phase-…`) MUST match the part /
+    part-task template; epic-task `#### N.M — ` anchors + inline parts are
+    tolerated; no forced refactor (FORMAT check, not a structural migration).
     """
     fails = []
+    # O13 naming guard runs for EVERY impl-plan entry (epic or part) — it
+    # scans the body's Phase-prefixed headings regardless of Entry-Type.
+    for heading in _conf_ip_naming_violations(body):
+        fails.append(
+            f"{rel} [conformance] phase heading violates the §3.5 naming "
+            f"template: {heading!r}")
     entry_types = [_conf_clean_token(t)
                    for t in _conf_schema_tokens(schema, "entry-types")]
     if not _conf_entry_field_present(body, "Entry-Type"):
@@ -1217,6 +1254,44 @@ def run_selftest():
         conf_gate({"implementation-plan/phase-1.md": good_phase.replace(
                       "- **Goal**: bootstrap\n", "")}, True,
                   "conformance-implplan-missing-field")
+
+        # --- impl-plan §3.5 GRACEFUL naming guard (BD-206 O13) ---
+        # A phase-epic with well-formed inline parts + tasks + tolerated
+        # epic-task `#### N.M — ` anchors → PASS (the gold heading shapes).
+        good_phase_named = (good_phase
+            + "\n### Tasks\n\n"
+              "#### 0.1 — An epic task (tolerated; not Phase-prefixed)\n\n"
+              "### Phase-0.Part-a — A well-formed part\n\n"
+              "#### Phase-0.Part-a.Task-1 — A well-formed part task\n")
+        conf_gate({"implementation-plan/phase-0.md": good_phase_named,
+                   "implementation-plan/_index.md": good_index_single},
+                  False, "conformance-implplan-naming-clean")
+        # A parts-free epic (epic tasks only) → PASS (parts not required).
+        conf_gate({"implementation-plan/phase-0.md": good_phase
+                   + "\n### Tasks\n\n#### 0.1 — Only epic tasks here\n",
+                   "implementation-plan/_index.md": good_index_single},
+                  False, "conformance-implplan-naming-parts-free")
+        # A lightweight phase-part entry (Entry-Type only, no headings) → PASS
+        # (the naming guard does not fire; `_index.md` lists the entry).
+        conf_gate({"implementation-plan/phase-0.md":
+                   "<!-- back -->\n## Phase 0 — Epic\n\n"
+                   "- **Entry-Type**: phase-part\n",
+                   "implementation-plan/_index.md": good_index_single},
+                  False, "conformance-implplan-naming-lightweight-part")
+        # Malformed part H3 (capital part letter) → FAIL (R1 fires).
+        conf_gate({"implementation-plan/phase-0.md": good_phase
+                   + "\n### Phase-0.Part-A — Capital part letter is malformed\n"},
+                  True, "conformance-implplan-naming-bad-part-h3")
+        # Malformed part H3 (no em-dash separator) → FAIL.
+        conf_gate({"implementation-plan/phase-0.md": good_phase
+                   + "\n### Phase-0.Part-a No em-dash separator\n"},
+                  True, "conformance-implplan-naming-bad-part-h3-nodash")
+        # Malformed part-task H4 (non-numeric task index) → FAIL (R2 fires).
+        conf_gate({"implementation-plan/phase-0.md": good_phase
+                   + "\n### Phase-0.Part-a — OK part\n\n"
+                     "#### Phase-0.Part-a.Task-x — Non-numeric index malformed\n"},
+                  True, "conformance-implplan-naming-bad-part-task-h4")
+
         # changelog entry carrying a form-family Entry-Type → FAIL.
         conf_gate({"changelog/2026-05-01-x.md": good_cl
                    + "- **Entry-Type**: td\n"}, True,

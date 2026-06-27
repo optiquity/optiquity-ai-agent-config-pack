@@ -494,8 +494,9 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # + 1 net-new BD-243 check (71 pack-root skill-mirror byte-identity)
 # + 1 net-new BD-206 check (72 project empty-template shape, A1)
 # + 1 net-new BD-206 check (73 project impl-plan _index.md consistency, C3)
-# + 1 net-new BD-206 check (74 project changelog conformance, C4).
-# CAUTION: a new check's NUMBER is the next free integer (66–74 for the BD-243
+# + 1 net-new BD-206 check (74 project changelog conformance, C4)
+# + 1 net-new BD-206 check (75 project impl-plan phase/part/task naming, C5).
+# CAUTION: a new check's NUMBER is the next free integer (66–75 for the BD-243
 # gate wave + the BD-206 legs) but this constant is the registry ENTRY COUNT —
 # bump it +1 per net-new entry, NOT to the new number. Numbers != entry count
 # (Checks 16/18/19 each register TWICE and 2 checks carry number=None), so the
@@ -504,7 +505,7 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # (+0). This constant is the explicit invariant; the actual count is COMPUTED
 # from len(_build_check_registry()) and asserted equal by Check 59 — never
 # hard-coded anywhere else.
-CHECK_REGISTRY_EXPECTED_COUNT = 72
+CHECK_REGISTRY_EXPECTED_COUNT = 73
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
@@ -12015,6 +12016,207 @@ def check_project_changelog_conformance() -> None:
            f"self-checks with teeth.")
 
 
+# ── Check 75: project impl-plan phase/part/task naming conformance (BD-206 O13) ─
+#
+# The §3.5 GRACEFUL phase/part/task naming-conformance guard — a FORMAT check,
+# NOT a structural migration. It codifies the EXISTING inline naming convention
+# (the OT gold already conforms, EE-2) as a deterministic template-shape check on
+# the Phase-prefixed headings inside each `phase-N.md` entry. The shipped
+# `project-template/docs/project/implementation-plan/` stream is EMPTY during
+# pack development (no `phase-N.md` entries), so this leg validates the
+# MECHANISM / empty-state PLUS a synthetic self-check that the matcher BITES.
+#
+# The rule (design §3.5, the fixed inline-convention format — NOT a tunable
+# schema field, like the changelog H3 anchor regex):
+#   - any H3 starting `### Phase-` MUST match `^### Phase-\d+\.Part-[a-z] — `;
+#   - any H4 starting `#### Phase-` MUST match
+#     `^#### Phase-\d+\.Part-[a-z]\.Task-\d+ — `.
+# The guard is GRACEFUL: it FIRES ONLY on a Phase-prefixed heading that violates
+# the template. It does NOT require parts to exist, does NOT force a refactor,
+# does NOT store an execution-order marker, and tolerates inline parts +
+# epic-task `#### N.M — ` anchors (NOT Phase-prefixed) gracefully. The deeper
+# per-part-file migration + part-membership/serializability enforcement is
+# BD-185 (deferred out of v11.0) — explicitly OUT of scope here.
+#
+# The CLIENT-side leg (populated-tree validation, "both repos" per Item-7) lives
+# in `project-template/scripts/validate-docs.sh` `_conf_check_implplan_entry`;
+# both legs apply the SAME two template regexes (one rule, two parsers).
+#
+# Cheap (ci-check-runtime-compounding): a bounded os.iterdir over ONE stream dir
+# (candidate set = that dir's files regex-filtered by the entry regex) + at most
+# ~N small reads + per-entry regex line scans; no subprocess, no whole-tree walk;
+# the self-check builds its synthetic entries in-memory. SKIP-lenient when the
+# stream dir is absent (fresh clone / feature off).
+
+_CHECK_75_IMPLPLAN_DIR = (
+    "project-template/docs/project/implementation-plan"
+)
+_CHECK_75_ENTRY_RE = re.compile(r"^phase-\d+\.md$")
+# Phase-prefixed heading detectors (the guard's trigger set).
+_CHECK_75_H3_PHASE_RE = re.compile(r"^### Phase-")
+_CHECK_75_H4_PHASE_RE = re.compile(r"^#### Phase-")
+# The conforming templates the Phase-prefixed headings MUST match.
+_CHECK_75_H3_PART_OK_RE = re.compile(r"^### Phase-\d+\.Part-[a-z] — ")
+_CHECK_75_H4_TASK_OK_RE = re.compile(r"^#### Phase-\d+\.Part-[a-z]\.Task-\d+ — ")
+
+
+def _check_75_violations(body: str) -> list:
+    """Return the list of Phase-prefixed headings in `body` that VIOLATE the
+    §3.5 naming template. GRACEFUL: only Phase-prefixed (`### Phase-` /
+    `#### Phase-`) headings are checked; epic-task `#### N.M — ` anchors and
+    inline parts that are well-formed are tolerated (no fire)."""
+    bad = []
+    for line in body.splitlines():
+        if _CHECK_75_H3_PHASE_RE.match(line):
+            if not _CHECK_75_H3_PART_OK_RE.match(line):
+                bad.append(line.rstrip())
+        elif _CHECK_75_H4_PHASE_RE.match(line):
+            if not _CHECK_75_H4_TASK_OK_RE.match(line):
+                bad.append(line.rstrip())
+    return bad
+
+
+def _check_75_validate(entries: dict) -> list:
+    """The naming-conformance validator, in-memory. entries: {filename: body}.
+    Returns a flat list of `<name>: <message>` failure strings."""
+    fails = []
+    for name in sorted(entries):
+        for heading in _check_75_violations(entries[name]):
+            fails.append(
+                "%s: phase heading violates the §3.5 naming template: %r"
+                % (name, heading))
+    return fails
+
+
+def _check_75_self_check() -> list:
+    """In-memory synthetic self-check: confirm the matcher PASSES a conforming
+    set (well-formed parts/tasks + tolerated epic-task `#### N.M — ` + a
+    parts-free epic) and BITES each violation class (malformed part H3 /
+    malformed part-task H4). Returns a list of self-check failure strings
+    ([] = the matcher has teeth)."""
+    sc_fails = []
+    conforming = (
+        "<!-- back -->\n"
+        "## Phase 3 — Sample epic\n\n"
+        "- **Entry-Type**: phase-epic\n\n"
+        "### Tasks\n\n"
+        "#### 3.1 — An epic task (tolerated; not Phase-prefixed)\n"
+        "#### 3.2 — Another epic task\n\n"
+        "### Phase-3.Part-a — A well-formed part\n\n"
+        "#### Phase-3.Part-a.Task-1 — A well-formed part task\n"
+        "#### Phase-3.Part-a.Task-2 — Another part task\n\n"
+        "### Phase-3.Part-b — A second part\n")
+    parts_free = (
+        "<!-- back -->\n"
+        "## Phase 4 — Parts-free epic\n\n"
+        "- **Entry-Type**: phase-epic\n\n"
+        "### Tasks\n\n"
+        "#### 4.1 — Only epic tasks here\n")
+    part_lightweight = (
+        "<!-- back -->\n"
+        "## Phase 5 — Epic\n\n"
+        "- **Entry-Type**: phase-part\n")  # lightweight part-entry, no headings
+    bad_h3 = (
+        "<!-- back -->\n"
+        "## Phase 6 — Epic\n\n"
+        "### Phase-6.Part-A — Capital part letter is malformed\n")
+    bad_h3_nodash = (
+        "<!-- back -->\n"
+        "## Phase 7 — Epic\n\n"
+        "### Phase-7.Part-a No em-dash separator\n")
+    bad_h4 = (
+        "<!-- back -->\n"
+        "## Phase 8 — Epic\n\n"
+        "### Phase-8.Part-a — OK part\n\n"
+        "#### Phase-8.Part-a.Task-x — Non-numeric task index malformed\n")
+
+    def expect(label, entries, want_fail):
+        got = bool(_check_75_validate(entries))
+        if got != want_fail:
+            sc_fails.append(
+                "self-check %s: expected %s, got %s"
+                % (label, "FAIL" if want_fail else "PASS",
+                   "FAIL" if got else "PASS"))
+
+    expect("conforming-clean", {"phase-3.md": conforming}, False)
+    expect("parts-free-clean", {"phase-4.md": parts_free}, False)
+    expect("lightweight-part-clean", {"phase-5.md": part_lightweight}, False)
+    expect("empty-clean", {}, False)
+    expect("bad-part-h3", {"phase-6.md": bad_h3}, True)
+    expect("bad-part-h3-nodash", {"phase-7.md": bad_h3_nodash}, True)
+    expect("bad-part-task-h4", {"phase-8.md": bad_h4}, True)
+    return sc_fails
+
+
+def check_project_implplan_naming() -> None:
+    """Check 75 — project impl-plan phase/part/task naming conformance (BD-206 O13).
+
+    Validates the §3.5 GRACEFUL phase/part/task naming convention (a FORMAT
+    check, not a structural migration) against the shipped
+    `project-template/docs/project/implementation-plan/` stream. The shipped
+    template is EMPTY (no `phase-N.md` entries), so this leg validates the
+    MECHANISM / empty-state PLUS a synthetic self-check that the matcher bites.
+    The client-side populated-tree leg lives in `validate-docs.sh`
+    `_conf_check_implplan_entry`; both apply the SAME two template regexes.
+
+    The rule (the fixed inline-convention format):
+      - any H3 `### Phase-…` MUST match `### Phase-N.Part-x — `;
+      - any H4 `#### Phase-…` MUST match `#### Phase-N.Part-x.Task-k — `.
+    GRACEFUL: fires ONLY on a Phase-prefixed heading that violates the template;
+    epic-task `#### N.M — ` anchors + inline parts are tolerated; no forced
+    refactor; no stored execution-order marker. BD-185 (per-part-file migration
+    + serializability enforcement) is OUT of scope.
+
+    SKIPs (lenient) if the impl-plan stream directory is absent.
+    Cheap (ci-check-runtime-compounding): one bounded iterdir + small reads +
+    deterministic per-line regex scans + an in-memory self-check.
+    """
+    print("\n── Check 75: project impl-plan phase/part/task naming (BD-206) ──")
+    stream_dir = REPO_ROOT / _CHECK_75_IMPLPLAN_DIR
+    if not stream_dir.is_dir():
+        ok(f"{_CHECK_75_IMPLPLAN_DIR}/ absent — skipping (lenient)")
+        return
+
+    any_fail = False
+
+    # Self-check the matcher has teeth (the empty shipped template cannot
+    # exercise the rule otherwise).
+    for sc in _check_75_self_check():
+        fail(f"Check 75 self-check — {sc}")
+        any_fail = True
+
+    # Validate the live (empty) impl-plan stream's entry files. The candidate
+    # set is a filesystem iterdir bounded to ONE stream dir, regex-filtered to
+    # the `phase-N.md` shape (the sanctioned per-stream pattern shared with
+    # Checks 73/74) — never a whole-tree walk.
+    entries = {}
+    try:
+        names = [p.name for p in stream_dir.iterdir() if p.is_file()]
+    except OSError as exc:
+        fail(f"{_CHECK_75_IMPLPLAN_DIR}/ — cannot scan: {exc}")
+        return
+    for name in names:
+        if not _CHECK_75_ENTRY_RE.match(name):
+            continue
+        try:
+            entries[name] = (stream_dir / name).read_text()
+        except (UnicodeDecodeError, OSError) as exc:
+            fail(f"{_CHECK_75_IMPLPLAN_DIR}/{name} — unreadable: {exc}")
+            any_fail = True
+
+    for violation in _check_75_validate(entries):
+        fail(f"{_CHECK_75_IMPLPLAN_DIR}/{violation}")
+        any_fail = True
+
+    if not any_fail:
+        n = len(entries)
+        shape = ("empty template (no phase entries)" if n == 0 else
+                 f"{n} phase entry/entries conform (graceful naming template)")
+        ok(f"Check 75 — impl-plan naming conformance holds: {shape}; the §3.5 "
+           f"graceful guard (fires only on a malformed Phase-prefixed heading; "
+           f"tolerates inline parts + epic-task anchors) self-checks with teeth.")
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def _build_check_registry():
@@ -12418,6 +12620,19 @@ def _build_check_registry():
         # line/word counts; self-check in-memory; no subprocess.
         (74, "check_project_changelog_conformance",
               check_project_changelog_conformance, W),
+        # Check 75 — project impl-plan phase/part/task naming conformance
+        # (BD-206 O13): the §3.5 GRACEFUL naming guard (a FORMAT check, not a
+        # structural migration). Codifies the existing inline convention —
+        # `### Phase-N.Part-x — ` / `#### Phase-N.Part-x.Task-k — ` — as a
+        # deterministic template-shape check that FIRES ONLY on a malformed
+        # Phase-prefixed heading; epic-task `#### N.M — ` anchors + inline
+        # parts are tolerated (no forced refactor; no execution-order marker;
+        # BD-185 per-part-file migration is OUT of scope). Validated against
+        # the shipped (empty) impl-plan stream + a synthetic self-check that
+        # the matcher bites. Reads one stream dir (iterdir + small reads) +
+        # per-line regex scans; self-check in-memory; no subprocess.
+        (75, "check_project_implplan_naming",
+              check_project_implplan_naming, W),
     ]
 
 
