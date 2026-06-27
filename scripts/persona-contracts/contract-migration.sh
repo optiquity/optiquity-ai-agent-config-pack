@@ -424,13 +424,14 @@ fi
 #                                   via the BD-167 templates step (independent
 #                                   of monolithic source content). PACK-
 #                                   REVIEW-BD-166-RETRO MUST finding 2.
-#   7. greenfield empty mirrors + → docs/project/{BACKLOG.md,
-#      empty seed _toc.md          IMPLEMENTATION-PLAN.md, CHANGELOG.md}
-#                                   + docs/project/{backlog,implementation-plan,
-#                                   changelog}/_toc.md. NOT asserted in the
-#                                   migration v11_artifacts array because
-#                                   the BD-165 decompose sub-op skips
-#                                   streams whose monolithic input mirror
+#   7. empty seed _toc.md         → docs/project/{backlog,implementation-plan,
+#                                   changelog}/_toc.md. NO monolithic mirror
+#                                   is regenerated (BD-206 no-mirror model);
+#                                   the per-entry tree + generated _toc.md is
+#                                   the sole source of truth + readable form.
+#                                   NOT asserted in the migration v11_artifacts
+#                                   array because the BD-165 decompose sub-op
+#                                   skips streams whose v10 monolithic INPUT
 #                                   is absent (the v10-realistic-ot fixture
 #                                   case). See the v11_artifacts comment
 #                                   block below for the full asymmetry
@@ -467,20 +468,21 @@ v11_artifacts=(
     "docs/project/implementation-plan/_intro.md"
     "docs/project/changelog/_rules.md"
     "docs/project/changelog/_intro.md"
-    # Sub-stage 7 (mirrors + _toc.md) are NOT in this list because the
-    # BD-165 decompose sub-op SKIPS streams when the monolithic input
-    # mirror is absent (scripts/lib/migrate-v10-to-v11/decompose.sh:
-    # 161-170 — "no monolithic mirror at <path> — skip"). The current
-    # v10-realistic-ot fixture has no docs/project/{BACKLOG,
-    # IMPLEMENTATION-PLAN,CHANGELOG}.md files, so the migrator
-    # legitimately produces no mirrors and no _toc.md files for that
-    # fixture. Adding the mirrors + _toc.md surface here would force
-    # the contract to fail on the canonical fixture even though the
-    # migrator behavior is correct. The greenfield contract (which
-    # always starts empty + always regenerates) is the canonical CI
-    # gate for sub-stage 7 surface; the BD-165 decompose-with-content
-    # path is covered by scripts/tests/test-migrate-v10-to-v11-decompose.sh
-    # Group 2 (which synthesizes a fixture with monolithic content).
+    # Sub-stage 7 (_toc.md) is NOT in this list because the BD-165
+    # decompose sub-op SKIPS streams when the v10 monolithic INPUT is
+    # absent (scripts/lib/migrate-v10-to-v11/decompose.sh: "no monolithic
+    # mirror at <path> — skip"). NO monolithic mirror is regenerated
+    # (BD-206 no-mirror model) — the per-entry tree + generated _toc.md
+    # is the sole source of truth. The current v10-realistic-ot fixture
+    # has no docs/project/{BACKLOG,IMPLEMENTATION-PLAN,CHANGELOG}.md input
+    # files, so the migrator legitimately produces no _toc.md files for
+    # that fixture. Adding the _toc.md surface here would force the
+    # contract to fail on the canonical fixture even though the migrator
+    # behavior is correct. The greenfield contract (which always starts
+    # empty + always regenerates) is the canonical CI gate for sub-stage
+    # 7 surface; the BD-165 decompose-with-content path is covered by
+    # scripts/tests/test-migrate-v10-to-v11-decompose.sh Group 2 (which
+    # synthesizes a fixture with monolithic input content).
 )
 for f in "${v11_artifacts[@]}"; do
     if [[ -f "$SANDBOX/$f" ]]; then

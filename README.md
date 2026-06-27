@@ -239,7 +239,7 @@ scripts/                                    Pack-level scripts
     └── migrate-v10-to-v11/                 v10→v11 adapter-private libs (v11; BD-095 + BD-101 + BD-165)
         ├── dry-run.sh, apply.sh, resume.sh    Two-phase mode dispatchers (BD-095)
         ├── checkpoint.sh                       BD-101 verification helpers
-        ├── decompose.sh                        BD-165 — 6th post-dispatch sub-op + --force-overwrite-mirror bridge
+        ├── decompose.sh                        BD-165 — 6th post-dispatch sub-op; decomposes monolith → per-entry trees (BD-206 no-mirror model)
         └── gate-{1,2,3}-*.sh                   Pre/post Phase-A/Phase-B gates (BD-101)
 
 scripts/test-migrator-core.sh               BD-119 unit tests — public API surface (v11)

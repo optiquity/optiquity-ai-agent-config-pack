@@ -119,17 +119,6 @@ fail_stage() {
 #                                     failure guarantee so a failed run still
 #                                     attempts to render the report exactly
 #                                     once.
-#   _MIGRATOR_FORCE_OVERWRITE_MIRROR  "1" if --force-overwrite-mirror was
-#                                     passed (BD-165 / Addendum #2 §4.5);
-#                                     bridges the BD-095 two-phase contract
-#                                     to the BD-164 per-entry helpers'
-#                                     divergence-detection routing. Default
-#                                     "0" — divergence on --apply blocks
-#                                     with EXIT_GATE_FAILED=31; "1" admits
-#                                     the overwrite with a stderr audit-
-#                                     trail warning. No effect in --dry-run
-#                                     mode (dry-run reports informationally,
-#                                     never overwrites).
 
 _migrator_reset_state() {
     _MIGRATOR_TARGET=""
@@ -138,7 +127,6 @@ _migrator_reset_state() {
     _MIGRATOR_STATE_DIR=""
     _MIGRATOR_BACKUP_DIR=""
     _MIGRATOR_REPORT_DONE="0"
-    _MIGRATOR_FORCE_OVERWRITE_MIRROR="0"
 }
 _migrator_reset_state
 
@@ -263,15 +251,6 @@ _migrator_usage() {
     say "  --resume      Continue a paused migration after sidecar reconciliation."
     say "                Forward-only; per-adapter (the v10→v11 adapter implements it;"
     say "                future adapters may opt out)."
-    say "  --force-overwrite-mirror"
-    say "                Explicit acknowledgement that an --apply / --resume run may"
-    say "                overwrite hand-edited regenerated mirrors (BACKLOG.md,"
-    say "                CHANGELOG.md, IMPLEMENTATION-PLAN.md) when the per-entry"
-    say "                tree's regenerator output diverges from the on-disk file."
-    say "                Default off — divergence blocks with EXIT_GATE_FAILED=31."
-    say "                No effect in --dry-run (dry-run reports divergence; never"
-    say "                writes). See ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-"
-    say "                ADDENDUM-2.md §4.5."
     say ""
     # bash 3.2 has no `${var^^}` upper-casing — use `tr` for portability.
     local from_upper
@@ -309,23 +288,6 @@ _migrator_parse_args() {
                 # sentinels and recovery semantics are version-specific.
                 die "--resume is per-adapter; this framework call path was not intercepted by the adapter (see scripts/lib/migrate-v10-to-v11/resume.sh for the v10→v11 reference implementation)" \
                     "$EXIT_INTERNAL"
-                ;;
-            --force-overwrite-mirror)
-                # BD-165 (per-entry split) — explicit acknowledgement that
-                # the per-entry mirror generator may overwrite a hand-edited
-                # mirror during --apply / --resume. Bridges the BD-095 two-
-                # phase contract to the BD-164 per-entry helpers' divergence-
-                # detection routing per Addendum #2 §4.5. No effect in
-                # --dry-run mode (dry-run reports divergence informationally,
-                # never writes). Default off — divergence on --apply blocks
-                # with EXIT_GATE_FAILED=31; passing this flag admits the
-                # overwrite with a stderr audit-trail warning emitted by the
-                # mirror generator (per scripts/lib/per-entry/mirror-
-                # generate.sh divergence-routing block). Adapters propagate
-                # the flag value into the per-entry helpers via the
-                # PE_FORCE_OVERWRITE_MIRROR env var (see
-                # scripts/lib/migrate-v10-to-v11/decompose.sh).
-                _MIGRATOR_FORCE_OVERWRITE_MIRROR="1"
                 ;;
             --)
                 shift

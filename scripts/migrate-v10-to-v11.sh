@@ -925,25 +925,24 @@ _v10_to_v11_translate_capability_tokens() {
 #
 # Also surfaces the BD-165 v11.0 per-entry decomposition advisory per
 # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §8.18 / §9.4. v11.0
-# decomposition is non-reversible (the monolithic files are now
-# regenerated mirrors, not source); the backup directory created by
-# `_stage_backup` (scripts/lib/migrator-stages.sh:146) is the rollback
-# path. Surface the advisory here so the user reviews it alongside the
-# customization-preserve report.
+# decomposition is non-reversible (the per-entry trees are now the sole
+# source of truth — no monolithic mirror is regenerated, BD-206); the
+# backup directory created by `_stage_backup`
+# (scripts/lib/migrator-stages.sh:146) is the rollback path. Surface the
+# advisory here so the user reviews it alongside the customization-
+# preserve report.
 migrator_post_report_hook() {
     say ""
     say "v11.0 introduces per-entry decomposition of BACKLOG / CHANGELOG /"
     say "IMPLEMENTATION-PLAN. The per-entry trees under"
     say "  docs/project/backlog/, docs/project/implementation-plan/,"
     say "  docs/project/changelog/"
-    say "are now the source of truth. The monolithic"
+    say "are now the sole source of truth + readable form. Each stream's"
+    say "generated _toc.md is the index. The v10 monolithic"
     say "  docs/project/BACKLOG.md, docs/project/IMPLEMENTATION-PLAN.md,"
     say "  docs/project/CHANGELOG.md"
-    say "files are regenerated mirrors — read-stable but not source-of-truth."
-    say "Hand-edits to the mirrors that diverge from the per-entry tree will BLOCK"
-    say "the next regeneration with exit code 31 (EXIT_GATE_FAILED). Re-run with"
-    say "--force-overwrite-mirror to acknowledge and overwrite the hand-edits, or"
-    say "reconcile the per-entry tree with the mirror by hand first."
+    say "files were read as decomposition INPUT and are NOT regenerated as"
+    say "mirrors — there is no monolithic mirror under the v11 model."
     say ""
     say "This decomposition is non-reversible by design. To revert to the v10"
     say "monolithic-as-source shape, restore from the backup directory at"
@@ -1015,17 +1014,6 @@ migrator_post_report_hook() {
 # matched flag from the forwarded args because each mode dispatcher
 # re-supplies its own canonical mode flag to `migrator_run`.
 #
-# BD-165 / Addendum #2 §4.5: `--force-overwrite-mirror` is admissible
-# alongside any mode flag. The dry-run / apply paths funnel through
-# `migrator_run`, whose `_migrator_parse_args` will set
-# `_MIGRATOR_FORCE_OVERWRITE_MIRROR=1` when it sees the flag. The
-# resume path, however, sets `_MIGRATOR_MODE="resume"` directly inside
-# `migrate_v10_to_v11_resume_run` and never invokes `_migrator_parse_args`
-# — so we ALSO export the state var here at the dispatcher so all three
-# modes honor the flag uniformly. The flag is left in `_passthru` so the
-# apply / dry-run paths' framework-level parser still sees it (setting
-# the var twice is idempotent).
-#
 # Source-guard: when this file is SOURCED (e.g. a unit test sourcing it to
 # exercise an internal helper like `_v10_to_v11_retire_gemini` in
 # isolation) rather than executed, skip the arg-parse + mode dispatch
@@ -1054,13 +1042,6 @@ for _a in "$@"; do
                     "$_mode" "$_a"
             } >&2
             exit "${EXIT_INTERNAL:-99}"
-            ;;
-        --force-overwrite-mirror)
-            # Set the framework state var here AND pass through, so
-            # the resume path (which never calls _migrator_parse_args)
-            # honors the flag too.
-            _MIGRATOR_FORCE_OVERWRITE_MIRROR="1"
-            _passthru+=("$_a")
             ;;
         *)
             _passthru+=("$_a")

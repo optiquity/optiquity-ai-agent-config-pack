@@ -8,24 +8,32 @@
 #
 #   Group 1 — 6th sub-op presence + sequencing
 #     1.1 --dry-run dry-run banner names the new BD-165 decompose step
-#     1.2 --dry-run emits the corrected post-report advisory paragraph
-#         (M1 wording — BLOCK + exit code 31 + recovery instruction)
+#     1.2 --dry-run emits the BD-206 no-mirror post-report advisory
+#         paragraph (per-entry tree + _toc.md is the sole source of
+#         truth; no monolithic mirror is regenerated)
 #
 #   Group 2 — --apply happy path against a transient v10-shape fixture
 #             with seeded docs/project/{BACKLOG,IMPLEMENTATION-PLAN,
-#             CHANGELOG}.md monolithic files
+#             CHANGELOG}.md monolithic INPUT files
 #     2.1 --apply produces per-entry trees under
 #         docs/project/{backlog,implementation-plan,changelog}/
-#     2.2 --apply produces / preserves regenerated mirrors at
+#     2.2 --apply produces NO regenerated monolithic mirror at
 #         docs/project/{BACKLOG.md,IMPLEMENTATION-PLAN.md,CHANGELOG.md}
-#     2.3 --apply emits the corrected post-report advisory paragraph
-#         (same M1 assertions as 1.2)
+#         (BD-206 no-mirror model — the v10 monolith was read as INPUT
+#         and is NOT re-emitted; only the per-entry tree + _toc.md remain)
+#     2.3 --apply emits the BD-206 no-mirror post-report advisory
+#         paragraph (same assertions as 1.2)
 #     2.4 --apply Gate 2 PASSES
 #     2.5 --apply HEAD unchanged before/after (migrator does NOT commit)
 #
 #   Group 3 — Mode-aware divergence routing
 #             (per_entry_regenerate_mirror invoked directly with
-#             _MIGRATOR_MODE values)
+#             _MIGRATOR_MODE values). The BD-165 mirror generator
+#             (scripts/lib/per-entry/mirror-generate.sh) is still
+#             present at this point — it is deleted by BD-249 along
+#             with this coverage. These cases exercise the library
+#             function directly (NOT via the migrator flag, which is
+#             removed in BD-206).
 #     3.1 _MIGRATOR_MODE=dry-run: rc=0, stdout names "divergence
 #         detected", on-disk mirror UNCHANGED
 #     3.2 _MIGRATOR_MODE=apply: rc=31, stderr names "force-overwrite-
@@ -36,18 +44,8 @@
 #         stderr names "WARNING: PE_FORCE_OVERWRITE_MIRROR=1" audit-
 #         trail, on-disk mirror OVERWRITTEN
 #
-#   Group 4 — Dispatcher --force-overwrite-mirror intercept on resume
-#             path (resume.sh never calls _migrator_parse_args; the
-#             dispatcher intercept in migrate-v10-to-v11.sh is the
-#             only seam that wires the flag into resume mode)
-#     4.1 --resume --force-overwrite-mirror against a fixture with a
-#         pre-seeded divergence: rc=0, mirror overwritten, audit-trail
-#         warning emitted
-#     4.2 --resume WITHOUT --force-overwrite-mirror against the same
-#         pre-seeded divergence: rc=31 (blocked). Confirms the
-#         dispatcher intercept is the difference.
-#
-#   Group 5 — Backward compatibility
+#   Group 5 — Backward compatibility (library function; BD-249 deletes
+#             this coverage with mirror-generate.sh)
 #     5.1 per_entry_regenerate_mirror invoked WITHOUT _MIGRATOR_MODE
 #         set preserves pre-BD-165 behavior (rc=2 + stderr warning
 #         naming "force-overwrite-mirror"). Same contract that
@@ -236,20 +234,21 @@ assert_eq "1.0 setup --dry-run rc=0" "0" "$rc"
 assert_contains "1.1 --dry-run banner names per-entry decompose" \
     "$out" "per-entry decompose"
 
-# 1.2 — post-report advisory paragraph has the corrected M1 wording
-# (BLOCK + EXIT_GATE_FAILED=31 + force-overwrite-mirror). This is the
-# regression-guard for the M1 fix; the pre-fix wording was "silently
-# overwritten ... unless --force-overwrite-mirror is acknowledged",
-# which inverted the safety contract.
-assert_contains "1.2a --dry-run advisory says 'will BLOCK'" \
-    "$out" "will BLOCK"
-assert_contains "1.2b --dry-run advisory names exit code 31 (EXIT_GATE_FAILED)" \
-    "$out" "EXIT_GATE_FAILED"
-assert_contains "1.2c --dry-run advisory names --force-overwrite-mirror" \
+# 1.2 — post-report advisory paragraph has the BD-206 no-mirror wording
+# (per-entry tree + _toc.md is the sole source of truth; the v10 monolith
+# is read as decomposition INPUT and is NOT regenerated as a mirror).
+# The pre-BD-206 advisory described a regenerated mirror with a
+# divergence-block (BLOCK + EXIT_GATE_FAILED=31 + --force-overwrite-mirror
+# recovery); under the no-mirror model that entire narrative is gone.
+assert_contains "1.2a --dry-run advisory says 'sole source of truth'" \
+    "$out" "sole source of truth"
+assert_contains "1.2b --dry-run advisory states no monolithic mirror" \
+    "$out" "no monolithic mirror under the v11 model"
+# Negative: the removed mirror divergence-gate narrative must NOT be present.
+assert_not_contains "1.2c --dry-run advisory does NOT name --force-overwrite-mirror (removed, BD-206)" \
     "$out" "force-overwrite-mirror"
-# Negative: the pre-M1 inverted wording must NOT be present.
-assert_not_contains "1.2d --dry-run advisory does NOT have pre-M1 inverted 'silently overwritten' wording" \
-    "$out" "silently overwritten"
+assert_not_contains "1.2d --dry-run advisory does NOT have mirror divergence-block 'will BLOCK' wording (removed, BD-206)" \
+    "$out" "will BLOCK"
 
 rm -rf "$T"
 
@@ -266,14 +265,13 @@ HEAD_BEFORE=$(git -C "$T" rev-parse HEAD)
 PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1 ; rc=$?
 assert_eq "2.0a setup --dry-run rc=0" "0" "$rc"
 
-# --apply: pass --force-overwrite-mirror because first-migration users
-# with pre-existing docs/project/*.md (the fixture seeds them) will
-# correctly see divergence on first regenerate; the safety contract
-# requires explicit acknowledgement to overwrite the v10-format mirror
-# with the v11 regenerated mirror (per IMPL-REPORT-BD-165 §7.3 + Pack
-# Chat's S3 test specification).
-out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply --force-overwrite-mirror "$T" 2>&1) ; rc=$?
-assert_eq "2.0b --apply rc=0 (with --force-overwrite-mirror)" "0" "$rc"
+# --apply: plain (no --force-overwrite-mirror flag — removed in BD-206).
+# Under the no-mirror model the decompose sub-op reads the v10 monolith
+# as INPUT and regenerates only the per-entry tree + _toc.md; it never
+# regenerates a mirror, so there is no divergence to block and no flag
+# to acknowledge.
+out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply "$T" 2>&1) ; rc=$?
+assert_eq "2.0b --apply rc=0 (no-mirror model; no flag)" "0" "$rc"
 
 # 2.1 — per-entry trees produced under docs/project/<stream>/.
 [[ -f "$T/docs/project/backlog/TD-001.md" ]] \
@@ -295,26 +293,41 @@ assert_eq "2.0b --apply rc=0 (with --force-overwrite-mirror)" "0" "$rc"
     && t_pass "2.1f per-entry changelog 2026-04-15-phase-1-milestone.md exists" \
     || t_fail "2.1f per-entry changelog 2026-04-15-phase-1-milestone.md missing"
 
-# 2.2 — regenerated mirrors present at docs/project/{BACKLOG,IMPL-PLAN,CHANGELOG}.md
-[[ -f "$T/docs/project/BACKLOG.md" ]] \
-    && t_pass "2.2a regenerated mirror BACKLOG.md present" \
-    || t_fail "2.2a regenerated mirror BACKLOG.md missing"
-[[ -f "$T/docs/project/IMPLEMENTATION-PLAN.md" ]] \
-    && t_pass "2.2b regenerated mirror IMPLEMENTATION-PLAN.md present" \
-    || t_fail "2.2b regenerated mirror IMPLEMENTATION-PLAN.md missing"
-[[ -f "$T/docs/project/CHANGELOG.md" ]] \
-    && t_pass "2.2c regenerated mirror CHANGELOG.md present" \
-    || t_fail "2.2c regenerated mirror CHANGELOG.md missing"
+# 2.2 — NO regenerated monolithic mirror (BD-206 no-mirror model). The
+# per-entry tree + generated _toc.md is the sole source of truth +
+# readable form; the decompose sub-op regenerates only the _toc.md index
+# and never re-emits a mirror. The v10 monolith INPUT files persist on
+# disk untouched (the migrator reads them as decompose input and does not
+# remove them) — but they are NOT regenerated, so they still carry the
+# raw v10 input content rather than a tool-regenerated mirror.
+[[ -f "$T/docs/project/backlog/_toc.md" ]] \
+    && t_pass "2.2a backlog/_toc.md regenerated (no-mirror readable form)" \
+    || t_fail "2.2a backlog/_toc.md missing"
+[[ -f "$T/docs/project/implementation-plan/_toc.md" ]] \
+    && t_pass "2.2b implementation-plan/_toc.md regenerated (no-mirror readable form)" \
+    || t_fail "2.2b implementation-plan/_toc.md missing"
+[[ -f "$T/docs/project/changelog/_toc.md" ]] \
+    && t_pass "2.2c changelog/_toc.md regenerated (no-mirror readable form)" \
+    || t_fail "2.2c changelog/_toc.md missing"
+# 2.2d — the v10 monolith INPUT was NOT regenerated as a mirror: it still
+# carries the raw fixture-authored v10 content (proving the decompose
+# sub-op did not re-emit a regenerated mirror over it).
+if [[ -f "$T/docs/project/BACKLOG.md" ]] \
+    && grep -q "Sample first project entry" "$T/docs/project/BACKLOG.md"; then
+    t_pass "2.2d v10 BACKLOG.md input UNTOUCHED (no regenerated mirror written over it)"
+else
+    t_fail "2.2d v10 BACKLOG.md input not in expected untouched state"
+fi
 
-# 2.3 — post-report advisory paragraph has corrected M1 wording.
-assert_contains "2.3a --apply advisory says 'will BLOCK'" \
-    "$out" "will BLOCK"
-assert_contains "2.3b --apply advisory names exit code 31 (EXIT_GATE_FAILED)" \
-    "$out" "EXIT_GATE_FAILED"
-assert_contains "2.3c --apply advisory names --force-overwrite-mirror" \
+# 2.3 — post-report advisory paragraph has the BD-206 no-mirror wording.
+assert_contains "2.3a --apply advisory says 'sole source of truth'" \
+    "$out" "sole source of truth"
+assert_contains "2.3b --apply advisory states no monolithic mirror" \
+    "$out" "no monolithic mirror under the v11 model"
+assert_not_contains "2.3c --apply advisory does NOT name --force-overwrite-mirror (removed, BD-206)" \
     "$out" "force-overwrite-mirror"
-assert_not_contains "2.3d --apply advisory does NOT have pre-M1 inverted wording" \
-    "$out" "silently overwritten"
+assert_not_contains "2.3d --apply advisory does NOT have mirror divergence-block 'will BLOCK' wording (removed, BD-206)" \
+    "$out" "will BLOCK"
 
 # 2.4 — Gate 2 PASS appears in the run output.
 assert_contains "2.4 --apply Gate 2 PASS in output" "$out" "Gate 2 PASS"
@@ -500,129 +513,15 @@ probe_mirror_routing "3.4 apply force" "apply" "1" "0" "stderr" \
 
 rm -rf "$DV_ROOT"
 
-# ─────────────────────────────────────────────────────────────────────────
-# Group 4: Dispatcher --force-overwrite-mirror intercept on resume path
-# ─────────────────────────────────────────────────────────────────────────
-
-printf "\n=== Group 4: dispatcher --force-overwrite-mirror intercept (resume path) ===\n"
-
-# The resume path in scripts/lib/migrate-v10-to-v11/resume.sh sets
-# _MIGRATOR_MODE="resume" DIRECTLY and never invokes
-# _migrator_parse_args. Without the dispatcher intercept in
-# scripts/migrate-v10-to-v11.sh (lines 804-810), --resume
-# --force-overwrite-mirror would silently ignore the flag.
-#
-# Strategy: prepare a paused migration (so --resume has something to
-# resume), then BEFORE running --resume hand-edit one of the
-# regenerated mirrors that the BD-165 sub-op will subsequently
-# regenerate. Without the dispatcher intercept the flag is dropped
-# and the BD-165 mirror-regen step blocks with rc=31. With the
-# dispatcher intercept the flag is honored and the regen overwrites
-# the hand-edit (rc=0).
-
-prepare_paused() {
-    # Build target with docs/project/*.md AND a project-customization
-    # line that forces sidecar creation at S3 dispatch (so --apply
-    # pauses cleanly before S4).
-    local d
-    d=$(make_v10_target_with_project_docs)
-    printf '\n## Project customization line\n' >> "$d/CLAUDE.md"
-    git -C "$d" add -A >/dev/null
-    git -C "$d" commit -q -m "project customization" 2>/dev/null
-    PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$d" >/dev/null 2>&1
-    # First --apply: pauses at S3 with sidecars to resolve. Exit code 0
-    # (clean pause).
-    PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply "$d" >/dev/null 2>&1
-    printf '%s\n' "$d"
-}
-
-resolve_sidecars() {
-    # Resolve every paused-sidecar by touching its .resolved flag.
-    local d="$1"
-    local paused="$d/.pack-migrate-v10-to-v11/sentinels/stage-S3.paused"
-    [[ -s "$paused" ]] || return 0
-    while IFS= read -r s; do
-        [[ -z "$s" ]] && continue
-        touch "${s}.resolved"
-    done <"$paused"
-}
-
-# 4.2 first (negative case — without --force-overwrite-mirror).
-# Building from scratch each case ensures a clean pause state.
-T=$(prepare_paused)
-paused="$T/.pack-migrate-v10-to-v11/sentinels/stage-S3.paused"
-if [[ ! -s "$paused" ]]; then
-    t_fail "4.0 prepare_paused did not produce sidecars (cannot run Group 4)"
-else
-    t_pass "4.0 prepare_paused produced sidecars to reconcile"
-    resolve_sidecars "$T"
-    # Pre-seed divergence on docs/project/BACKLOG.md — the resume run
-    # will reach the BD-165 sub-op which calls per_entry_regenerate_mirror,
-    # which will detect the divergence and block in apply|resume mode.
-    if [[ -f "$T/docs/project/BACKLOG.md" ]]; then
-        printf '\n<!-- divergence to test resume + --force-overwrite-mirror intercept -->\n' \
-            >> "$T/docs/project/BACKLOG.md"
-        sha_pre=$(mirror_sha "$T/docs/project/BACKLOG.md")
-
-        # 4.2 — --resume WITHOUT --force-overwrite-mirror: expect rc=25
-        # (blocked at S5d). The mirror generator's apply|resume block
-        # path returns EXIT_GATE_FAILED=31, but the BD-165 decompose
-        # helper wraps that failure in `fail_stage S5` which exits with
-        # the framework's stage-failure formula (20 + stage number) =
-        # 25 for S5. Both indicate "the regenerator blocked on
-        # divergence"; the migrator-level rc is the wrapped fail_stage
-        # code (25), not the raw EXIT_GATE_FAILED code (31).
-        out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --resume "$T" 2>&1) ; rc=$?
-        if [[ "$rc" -eq 25 ]]; then
-            t_pass "4.2a --resume WITHOUT --force-overwrite-mirror: rc=25 (blocked at S5d via fail_stage)"
-        else
-            t_fail "4.2a --resume WITHOUT --force-overwrite-mirror: rc=$rc; expected 25"
-        fi
-        sha_post=$(mirror_sha "$T/docs/project/BACKLOG.md")
-        assert_eq "4.2b --resume WITHOUT --force-overwrite-mirror: on-disk mirror UNCHANGED" \
-            "$sha_pre" "$sha_post"
-    else
-        t_fail "4.2 docs/project/BACKLOG.md missing after paused --apply (test fixture broken)"
-    fi
-fi
-rm -rf "$T"
-
-# 4.1 — --resume --force-overwrite-mirror: expect rc=0 and mirror
-# OVERWRITTEN; the dispatcher intercept sets _MIGRATOR_FORCE_OVERWRITE_MIRROR=1
-# before dispatching to the resume handler so the BD-165 mirror-regen
-# step overwrites instead of blocking.
-T=$(prepare_paused)
-paused="$T/.pack-migrate-v10-to-v11/sentinels/stage-S3.paused"
-if [[ ! -s "$paused" ]]; then
-    t_fail "4.1a (skip) prepare_paused did not produce sidecars"
-else
-    resolve_sidecars "$T"
-    if [[ -f "$T/docs/project/BACKLOG.md" ]]; then
-        printf '\n<!-- divergence to test resume + --force-overwrite-mirror intercept (4.1) -->\n' \
-            >> "$T/docs/project/BACKLOG.md"
-        sha_pre=$(mirror_sha "$T/docs/project/BACKLOG.md")
-
-        out=$(PACK="$REPO_ROOT" bash "$MIGRATE_SH" --resume --force-overwrite-mirror "$T" 2>&1) ; rc=$?
-        if [[ "$rc" -eq 0 ]]; then
-            t_pass "4.1a --resume --force-overwrite-mirror: rc=0"
-        else
-            t_fail "4.1a --resume --force-overwrite-mirror: rc=$rc; expected 0"
-        fi
-        sha_post=$(mirror_sha "$T/docs/project/BACKLOG.md")
-        if [[ "$sha_pre" != "$sha_post" ]]; then
-            t_pass "4.1b --resume --force-overwrite-mirror: on-disk mirror OVERWRITTEN"
-        else
-            t_fail "4.1b --resume --force-overwrite-mirror: mirror SHA unchanged"
-        fi
-        # The audit-trail warning is emitted to stderr (captured in $out
-        # via 2>&1) when force-overwrite is applied.
-        assert_contains "4.1c --resume --force-overwrite-mirror emits audit-trail warning" \
-            "$out" "PE_FORCE_OVERWRITE_MIRROR=1"
-    else
-        t_fail "4.1 docs/project/BACKLOG.md missing after paused --apply"
-    fi
-fi
-rm -rf "$T"
+# Group 4 (DELETED, BD-206): the dispatcher --force-overwrite-mirror
+# intercept on the resume path tested a flag that no longer exists.
+# BD-206 removes the --force-overwrite-mirror flag (DR-1 divergence-gate
+# removal) AND removes the decompose sub-op's mirror regeneration, so the
+# entire premise of Group 4 (resume → mirror-regen → divergence-block →
+# flag intercept) is gone: there is no flag to intercept and no mirror to
+# regenerate. The remaining force-overwrite coverage (Groups 3/5)
+# exercises the mirror-generate.sh library function directly and is
+# deleted by BD-249 along with that file.
 
 # ─────────────────────────────────────────────────────────────────────────
 # Group 5: Backward compatibility (fall-through path; _MIGRATOR_MODE unset)
