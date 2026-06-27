@@ -10,10 +10,9 @@
 #   3. Templates verification — missing template files surface
 #      not-found typed code.
 #   4. tracker.toml emission — written shape matches V1 §3.1; opted_in_at
-#      preservation across re-runs; default values. Surface-aware
-#      [mirror] emission (BD-204): pack configs omit the table (no
-#      monolith post-BD-203); client configs keep the bare-name keys
-#      (until BD-206).
+#      preservation across re-runs; default values. No [mirror] table on
+#      either surface (BD-206): no surface keeps a monolith mirror — both
+#      pack and client configs omit the table.
 #   5. Label canonical set — tracker_labels_canonical_set emits the
 #      expected count + every required family member.
 #
@@ -277,10 +276,10 @@ export PATH="$PATH_SAVED"
 new_opted_in=$(tracker_config_get "$cfg" mode.opted_in_at)
 assert_eq "3.4 opted_in_at preserved across re-runs" "$prior_opted_in" "$new_opted_in"
 
-# 3.5 BD-204: client-surface init KEEPS the [mirror] table with the
-# bare-name keys (the client model still has monolith mirrors until
-# BD-206; bare names resolve via the project trinity ## Document
-# locations — see project-template/tracker.toml.project-example).
+# 3.5 BD-206: client-surface init writes NO [mirror] table either — no
+# surface keeps a monolith mirror (the per-entry tree + `_toc.md` is the
+# sole SSOT and readable form). The client config matches the pack
+# config's no-[mirror] shape.
 TR_CLIOK=$(mktemp -d -t tinit-cliok.XXXXXX)
 mkdir -p "$TR_CLIOK/docs/pack"  # client surface marker
 mkdir -p "$TR_CLIOK/.github/ISSUE_TEMPLATE"
@@ -295,11 +294,16 @@ export PATH="$PATH_SAVED"
 assert_eq "3.5 client happy-path rc=0" "0" "$rc"
 cfg_cli="$TR_CLIOK/docs/pack/tracker.toml"
 [[ -f "$cfg_cli" ]] || t_fail "3.5 client tracker.toml exists at docs/pack/" "missing $cfg_cli"
-assert_eq "3.5 mirror.enabled=true"      "true"         "$(tracker_config_get "$cfg_cli" mirror.enabled)"
-assert_eq "3.5 mirror.location_backlog"  "BACKLOG.md"   "$(tracker_config_get "$cfg_cli" mirror.location_backlog)"
-assert_eq "3.5 mirror.location_status"   "STATUS.md"    "$(tracker_config_get "$cfg_cli" mirror.location_status)"
-assert_eq "3.5 mirror.location_changelog" "CHANGELOG.md" "$(tracker_config_get "$cfg_cli" mirror.location_changelog)"
-assert_eq "3.5 mirror.regenerate_on_write=true" "true"  "$(tracker_config_get "$cfg_cli" mirror.regenerate_on_write)"
+if grep -q '^\[mirror\]' "$cfg_cli"; then
+    t_fail "3.5 client-surface config omits [mirror] table" "found [mirror] in $cfg_cli"
+else
+    t_pass "3.5 client-surface config omits [mirror] table"
+fi
+if grep -qE 'location_backlog|location_status|location_changelog|regenerate_on_write' "$cfg_cli"; then
+    t_fail "3.5 client-surface config omits mirror location keys" "found mirror key in $cfg_cli"
+else
+    t_pass "3.5 client-surface config omits mirror location keys"
+fi
 assert_eq "3.5 id_namespace.prefix=TD"   "TD"           "$(tracker_config_get "$cfg_cli" id_namespace.prefix)"
 rm -rf "$TR_CLIOK"
 

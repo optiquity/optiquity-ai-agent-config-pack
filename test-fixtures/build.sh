@@ -450,138 +450,102 @@ EOF
             } > "$target/BACKLOG.md"
             ;;
         v11)
-            # v11 per-entry-split pattern: append entries after the
-            # intro-only mirror left by BD-166's empty-seed regenerate.
-            # The `\n---\n\n` separator is the integration parent §12.1
-            # inter-section separator the mirror generator emits between
-            # _intro.md and the first entry; matching it here is what
-            # makes the BD-170 round-trip check below byte-identical.
-            local v11_project_backlog="$target/docs/project/BACKLOG.md"
-            [[ -f "$v11_project_backlog" ]] \
-                || die "v11-realistic-ot: $v11_project_backlog absent after init (BD-166 greenfield empty-seed mirror not produced — init-project.sh S11 sub-step 7 regression)" 4
+            # v11 per-entry-split pattern (no-mirror, BD-206): build a
+            # transient v10-shape monolith INPUT carrying the TD entries
+            # and stash it for the per-entry decompose step below. The
+            # init greenfield path ships an empty per-entry tree (no
+            # monolithic mirror under the no-mirror model); the decompose
+            # populates the tree from this INPUT.
+            local v11_backlog_input="$target/docs/project/backlog/.bd206-fixture-input.md"
+            [[ -d "$target/docs/project/backlog" ]] \
+                || die "v11-realistic-ot: docs/project/backlog/ absent after init (init-project.sh S11 sub-step 6 regression?)" 4
             {
-                cat "$v11_project_backlog"
-                printf '\n---\n\n'
+                printf '# FakeOT Backlog\n\n'
+                printf 'Internal task backlog for FakeOT.\n\n---\n\n'
                 printf '%s\n' "$td_entries"
-            } > "$v11_project_backlog.tmp"
-            mv "$v11_project_backlog.tmp" "$v11_project_backlog"
+            } > "$v11_backlog_input"
             ;;
     esac
 
     _fixture_commit_all "$target" \
         "FakeOT customizations: project-name, ollama removed, x-agent, BACKLOG"
 
-    # ── BD-170: per-entry tree extension (v11 only) ──────────────────────
+    # ── BD-206: per-entry tree integrity (v11 only, no-mirror) ───────────
     #
-    # Decompose the just-customized v11 monolithic mirror(s) into the per-
-    # entry tree (initialized as empty-seed by BD-166's S11 sub-step 7 of
-    # init-project.sh), then regenerate the mirror from the per-entry tree
-    # and verify byte-identity round-trip per integration parent §12.1 +
-    # §8.7.
+    # Decompose the transient v10-shape monolith INPUT (the backlog INPUT
+    # the v11 C4 step stashed) into the per-entry tree, then regenerate
+    # `_toc.md`, and assert the per-entry tree + `_toc.md` are present and
+    # well-formed. Under the no-mirror model there is NO monolithic mirror
+    # to regenerate or byte-compare — the per-entry tree + `_toc.md` is the
+    # sole SSOT and readable form (BD-206 abolishes the round-trip subject).
     #
-    # Helper reuse pattern: this fixture builder is the third call site
-    # of the BD-164 per-entry helpers, joining (a) the v10→v11 migrator's
+    # Helper reuse pattern: this fixture builder shares the BD-164
+    # per-entry helpers with (a) the v10→v11 migrator's
     # `_v10_to_v11_decompose_streams` adapter and (b) init-project.sh's
-    # S11 sub-step 7 greenfield-install path. All three sites source the
-    # same `scripts/lib/per-entry/*.sh` helpers — no duplicated decompose
-    # / regenerate logic.
-    #
-    # Stream coverage: all three project-side streams (backlog,
-    # implementation-plan, changelog). C4 only adds monolithic TD-* content
-    # to project-backlog; for the other two streams the mirror is intro-
-    # only (the empty-seed from BD-166) and the decompose step is a zero-
-    # entry no-op — the round-trip check still fires and confirms the
-    # intro-only mirror is byte-stable across decompose+regen.
-    #
-    # PE_FORCE_OVERWRITE_MIRROR=1 is set because the regen will replace
-    # the on-disk mirror that C4 just wrote; absent the force flag, the
-    # regenerator's default non-interactive divergence branch returns rc=2
-    # (per scripts/lib/per-entry/mirror-generate.sh non-interactive
-    # routing). Force is correct here: the fixture builder OWNS the
-    # round-trip; the divergence is expected (C4 wrote the input shape).
+    # S11 greenfield-install path — no duplicated decompose / TOC logic.
     if [[ "$ver" == "v11" ]]; then
-        info "  BD-170: per-entry decompose + regenerate + byte-identity round-trip"
+        info "  BD-206: per-entry decompose + TOC regenerate + tree integrity (no-mirror)"
         local _pe_lib_dir="$PACK_ROOT/scripts/lib/per-entry"
         [[ -d "$_pe_lib_dir" ]] \
-            || die "BD-170: per-entry helpers missing at $_pe_lib_dir (BD-164 install incomplete)" 4
+            || die "BD-206: per-entry helpers missing at $_pe_lib_dir (BD-164 install incomplete)" 4
         # Source guard mirrors scripts/init-project.sh and
         # scripts/lib/migrate-v10-to-v11/decompose.sh's source-then-verify
         # pattern; re-sourcing is a no-op via the `type` checks inside
-        # each helper file.
+        # each helper file. No mirror-generate.sh sourcing (no mirror).
         # shellcheck disable=SC1091
         . "$_pe_lib_dir/_lib.sh"
         # shellcheck disable=SC1091
         . "$_pe_lib_dir/decompose.sh"
         # shellcheck disable=SC1091
-        . "$_pe_lib_dir/mirror-generate.sh"
-        # shellcheck disable=SC1091
         . "$_pe_lib_dir/toc-regenerate.sh"
 
-        # Three project-side streams. Same spec shape as the v10→v11
-        # migrator's `_v10_to_v11_decompose_streams` loop and init-
-        # project.sh's S11 sub-step 7 loop — keep the three call sites
-        # tuple-aligned so future stream additions are mechanical.
-        local _pe_spec _pe_key _pe_rest _pe_mirror_rel _pe_dir_rel
-        local _pe_mirror _pe_dir _pe_mirror_orig
+        # Decompose the transient backlog INPUT (stashed by the v11 C4
+        # step) into the per-entry tree, then drop the INPUT so it is not
+        # left in the fixture.
+        local _pe_backlog_dir="$target/docs/project/backlog"
+        local _pe_backlog_input="$_pe_backlog_dir/.bd206-fixture-input.md"
+        [[ -d "$_pe_backlog_dir" ]] \
+            || die "BD-206: per-entry stream dir missing at docs/project/backlog (init S11 regression?)" 4
+        if [[ -f "$_pe_backlog_input" ]]; then
+            per_entry_decompose "project-backlog" "$_pe_backlog_input" "$_pe_backlog_dir" \
+                || die "BD-206: per_entry_decompose failed for project-backlog" 4
+            rm -f "$_pe_backlog_input"
+        fi
+
+        # Regenerate `_toc.md` for each project-side stream and assert the
+        # tree + `_toc.md` are present (the no-mirror integrity property:
+        # tree + TOC present + well-formed, NO mirror to diff).
+        local _pe_spec _pe_key _pe_dir_rel _pe_dir
         for _pe_spec in \
-            "project-backlog|docs/project/BACKLOG.md|docs/project/backlog" \
-            "project-implementation-plan|docs/project/IMPLEMENTATION-PLAN.md|docs/project/implementation-plan" \
-            "project-changelog|docs/project/CHANGELOG.md|docs/project/changelog"; do
+            "project-backlog|docs/project/backlog" \
+            "project-implementation-plan|docs/project/implementation-plan" \
+            "project-changelog|docs/project/changelog"; do
             _pe_key="${_pe_spec%%|*}"
-            _pe_rest="${_pe_spec#*|}"
-            _pe_mirror_rel="${_pe_rest%%|*}"
-            _pe_dir_rel="${_pe_rest##*|}"
-            _pe_mirror="$target/$_pe_mirror_rel"
+            _pe_dir_rel="${_pe_spec##*|}"
             _pe_dir="$target/$_pe_dir_rel"
 
-            [[ -f "$_pe_mirror" ]] \
-                || die "BD-170: monolithic mirror missing at $_pe_mirror_rel (init S11 sub-step 7 regression?)" 4
             [[ -d "$_pe_dir" ]] \
-                || die "BD-170: per-entry stream dir missing at $_pe_dir_rel (init S11 sub-step 6 regression?)" 4
+                || die "BD-206: per-entry stream dir missing at $_pe_dir_rel (init S11 regression?)" 4
 
-            # Snapshot the pre-decompose mirror for the round-trip diff.
-            _pe_mirror_orig="$_pe_mirror.orig"
-            cp "$_pe_mirror" "$_pe_mirror_orig"
-
-            # Decompose: per_entry_decompose writes per-entry files under
-            # $_pe_dir/<id>.md with line-1 back-pointers. Zero-entry input
-            # is a clean no-op (writes nothing).
-            per_entry_decompose "$_pe_key" "$_pe_mirror" "$_pe_dir" \
-                || die "BD-170: per_entry_decompose failed for $_pe_key" 4
-
-            # Regenerate the mirror. PE_FORCE_OVERWRITE_MIRROR=1 because
-            # C4 just wrote the input shape; the regenerator should
-            # overwrite without prompting/blocking.
-            PE_FORCE_OVERWRITE_MIRROR=1 per_entry_regenerate_mirror \
-                "$_pe_key" "$_pe_dir" "$_pe_mirror" </dev/null \
-                || die "BD-170: per_entry_regenerate_mirror failed for $_pe_key" 4
-
-            # Regenerate the TOC. Always-emit; deterministic.
             per_entry_regenerate_toc "$_pe_key" "$_pe_dir" \
-                || die "BD-170: per_entry_regenerate_toc failed for $_pe_key" 4
+                || die "BD-206: per_entry_regenerate_toc failed for $_pe_key" 4
 
-            # Byte-identity round-trip verification per integration parent
-            # §12.1 + §8.7: the regenerated mirror MUST match the original
-            # C4-written shape byte-for-byte. Fail loud on divergence
-            # (this is the load-bearing fixture invariant).
-            if ! cmp -s "$_pe_mirror_orig" "$_pe_mirror"; then
-                # Capture a short diff for the operator (best-effort —
-                # `diff` may not be available on bare systems, but it is
-                # on macOS BSD + every CI runner the pack targets).
-                local _pe_diff
-                _pe_diff=$(diff "$_pe_mirror_orig" "$_pe_mirror" 2>&1 | head -30 || true)
-                die "BD-170: round-trip byte-identity FAILED for $_pe_key (mirror=$_pe_mirror_rel, dir=$_pe_dir_rel). Diff (truncated):
-$_pe_diff" 4
-            fi
+            [[ -f "$_pe_dir/_toc.md" ]] \
+                || die "BD-206: _toc.md missing at $_pe_dir_rel after regenerate (no-mirror tree integrity)" 4
 
-            # Clean up the snapshot (don't leave .orig files in the fixture).
-            rm -f "$_pe_mirror_orig"
+            info "    $_pe_key: decomposed + _toc.md present (no-mirror)"
+        done
 
-            info "    $_pe_key: decomposed + round-trip byte-identical"
+        # No-mirror invariant: the three monolithic mirrors MUST be ABSENT
+        # at docs/project/ (BD-206 inversion of the BD-170 round-trip).
+        local _pe_mono
+        for _pe_mono in BACKLOG.md IMPLEMENTATION-PLAN.md CHANGELOG.md; do
+            [[ ! -f "$target/docs/project/$_pe_mono" ]] \
+                || die "BD-206: monolithic mirror docs/project/$_pe_mono present (no-mirror model forbids it)" 4
         done
 
         _fixture_commit_all "$target" \
-            "BD-170 per-entry decomposition + round-trip verified (project-side x3 streams)"
+            "BD-206 per-entry decomposition + TOC regenerate verified (no-mirror; project-side x3 streams)"
     fi
 }
 

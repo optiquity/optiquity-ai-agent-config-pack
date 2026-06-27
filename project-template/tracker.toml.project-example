@@ -27,21 +27,15 @@ repo = "your-org/your-project"
 # instance = ""                    # set for jira: full URL
 
 [mode]
-# "tracker"   = use tracker as source-of-truth; mirrors regenerated.
+# "tracker"   = use tracker as source-of-truth.
 # "flat-file" = pre-v11 behavior; tracker.toml present but disabled.
 state = "flat-file"
 # Set when first switching to tracker mode (ISO 8601 UTC).
 # opted_in_at = "2026-05-15T12:00:00Z"
 # opted_in_by = "you@example.com"
 
-[mirror]
-# Whether write paths regenerate the markdown mirror automatically.
-enabled = true
-# Bare names; trinity ## Document locations resolves to actual paths.
-location_backlog   = "BACKLOG.md"
-location_status    = "STATUS.md"
-location_changelog = "CHANGELOG.md"
-regenerate_on_write = true
+# No [mirror] table: the per-entry tree + `_toc.md` is the sole source of
+# truth and readable form (no regenerated monolithic mirror).
 
 [id_namespace]
 # "TD" is the client-project default (project-side TODO items).

@@ -120,7 +120,11 @@ pe__stream_attr() {
             case "$2" in
                 mirror) printf 'docs/project/IMPLEMENTATION-PLAN.md' ;;
                 entry-regex) printf '^phase-[0-9]+\.md$' ;;
-                support) printf '_rules.md _intro.md _toc.md' ;;
+                # `_index.md` is the generated+validated dependency-derived
+                # serial order (impl-plan only); it is ADMITTED here as a
+                # KNOWN-supporting sidecar exactly as `_toc.md` is, so the
+                # "no stray sidecar" validator legs do not flag it.
+                support) printf '_rules.md _intro.md _toc.md _index.md' ;;
                 dir-suffix) printf 'docs/project/implementation-plan' ;;
             esac
             ;;
@@ -133,7 +137,7 @@ pe__stream_attr() {
                 # `YYYY-MM-DD.md` for unannotated H3 anchors; this regex
                 # admits both shapes. Mirrored in toc-regenerate.sh:88.
                 entry-regex) printf '^[0-9]{4}-[0-9]{2}-[0-9]{2}(-.+)?\.md$' ;;
-                support) printf '_rules.md _intro.md _toc.md _format.md' ;;
+                support) printf '_rules.md _intro.md _toc.md' ;;
                 dir-suffix) printf 'docs/project/changelog' ;;
             esac
             ;;

@@ -99,10 +99,10 @@ token: pack-ops/CHANGELOG.md
 reason: G2 — the retired pack monolith name, cited in the rule that says NOT to recreate it.
 
 token: docs/project/BACKLOG.md
-reason: G2 — the regenerated project BACKLOG mirror (qualified path).
+reason: G2 — the project BACKLOG path cited by Wave-D/C-pending operating-doc prose BD-206 repoints to the per-entry tree (no regenerated mirror under no-mirror); sized to the live ref set until those repoints land.
 
 token: docs/project/CHANGELOG.md
-reason: G2 — the regenerated project CHANGELOG mirror (qualified path).
+reason: G2 — the project CHANGELOG path cited by Wave-D/C-pending operating-doc prose BD-206 repoints to the per-entry tree (no regenerated mirror under no-mirror); sized to the live ref set until those repoints land.
 
 token: docs/STATUS.md
 reason: G2 — a STATUS search-location reference in the install procedure (regenerated view).

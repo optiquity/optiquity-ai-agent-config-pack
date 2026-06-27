@@ -59,7 +59,6 @@ required = [
     '_CHECK_43_ALLOWLIST',
     '_CHECK_43_ANCHOR_PHRASES',
     '_CHECK_43_ANCHOR_WINDOW',
-    '_CHECK_43_MIRROR_SKIP_BASENAMES',
     '_CHECK_43_PACK_INTERNAL_PREFIXES',
     '_CHECK_43_PACK_OPS_CLIENT_INSTALLED',
     '_check_43_context_has_anchor',
@@ -132,7 +131,13 @@ required_entries = {
     "phase-N.md",
     "_rules.md",
     "_intro.md",
-    "_format.md",
+    # BD-206: `_format.md` is FORBIDDEN (removed from the allowlist); the
+    # generated `_index.md` ordering sidecar is admitted in its place.
+    "_index.md",
+    # The 3 project monolith basenames stay allowlisted at A1: they are
+    # the v10→v11 conversion-INPUT and the bare-ref subject of
+    # Wave-D-pending agent prompts / skills / trinity (BD-206 repoints
+    # those to the per-entry streams in later waves).
     "BACKLOG.md",
     "CHANGELOG.md",
     "IMPLEMENTATION-PLAN.md",
@@ -476,17 +481,17 @@ if fail_count < 1:
         f"got {fail_count}: {captured}"
     )
 
-# T9: PASS same-dir + allowlist — _intro.md is on the allowlist
-#     (per-entry tree sibling).
+# T9: PASS same-dir + allowlist — `_intro.md`/`_rules.md` are SANCTIONED
+#     per-entry tree siblings (BD-206: `_format.md` is FORBIDDEN, so the
+#     PASS fixture references only sanctioned siblings).
 content = (
     "# Per-stream rules\n"
-    "See \`_intro.md\` for the intro template and \`_format.md\` for\n"
-    "the per-entry format.\n"
+    "See \`_intro.md\` for the intro template and \`_rules.md\` for\n"
+    "the per-entry contract.\n"
 )
 fail_count, pass_msg, captured = run_check_with_synthetic(
     {"docs/project/backlog/_rules.md": content,
-     "docs/project/backlog/_intro.md": "stub",
-     "docs/project/backlog/_format.md": "stub"},
+     "docs/project/backlog/_intro.md": "stub"},
 )
 if fail_count != 0:
     failures.append(

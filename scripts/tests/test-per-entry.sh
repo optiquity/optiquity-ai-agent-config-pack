@@ -228,8 +228,14 @@ assert_eq "1.7 project-backlog entry regex" "^TD-[0-9]+\.md$" "$(pe_entry_regex_
 # archive supporting file is retired from the pack-backlog support set.
 assert_eq "1.8 pack-backlog known supporting EXCLUDES _v8-resolved-archive.md (BD-203 B8)" \
     "no" "$(pe_supporting_files_known_for_stream pack-backlog | grep -q '_v8-resolved-archive.md' && echo yes || echo no)"
-assert_eq "1.9 project-changelog known supporting includes _format.md" \
-    "yes" "$(pe_supporting_files_known_for_stream project-changelog | grep -q '_format.md' && echo yes || echo no)"
+# BD-206: `_format.md` is FORBIDDEN — its content folds into the changelog
+# `_rules.md` schema section, so it is no longer a supporting file.
+assert_eq "1.9 project-changelog known supporting EXCLUDES _format.md (BD-206)" \
+    "no" "$(pe_supporting_files_known_for_stream project-changelog | grep -q '_format.md' && echo yes || echo no)"
+# BD-206: `_index.md` (the generated ordering sidecar) is ADMITTED for the
+# project-implementation-plan stream (MUST-4).
+assert_eq "1.9b project-implementation-plan known supporting INCLUDES _index.md (BD-206)" \
+    "yes" "$(pe_supporting_files_known_for_stream project-implementation-plan | grep -q '_index.md' && echo yes || echo no)"
 
 # pe_stream_for_path walks the trailing path suffix.
 TMP_DIR1=$(mktemp -d -t pe-pathlookup.XXXXXX)

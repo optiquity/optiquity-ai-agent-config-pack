@@ -187,9 +187,9 @@ EOF
         return 0
     fi
 
-    # Step 1: write tracker.toml. Surface-aware (BD-204): the pack
-    # surface omits the [mirror] table (no monolith mirrors exist
-    # post-BD-203); the client surface keeps it until BD-206.
+    # Step 1: write tracker.toml. Neither surface emits a [mirror]
+    # table — no surface keeps a monolith mirror (the per-entry tree +
+    # `_toc.md` is the sole SSOT and readable form).
     if ! _tracker_init_write_config "$cfg_path" "$backend" "$repo" "$id_prefix" "$surface"; then
         return 1
     fi
@@ -317,20 +317,13 @@ _tracker_init_prompt() {
 # Idempotent: re-running init re-writes the file; opted_in_at is
 # preserved if the file already exists in tracker mode.
 #
-# Surface-aware [mirror] emission (BD-204, completing the BD-203
-# no-monolith repoint):
-#   - surface=pack   → OMIT the [mirror] table entirely. The pack
-#     surface deleted its monolith mirrors at BD-203 — the /backlog/
-#     and /changelog/ per-entry trees (+ regenerated _toc.md) are the
-#     sole flat representation, and _toc.md regeneration is not a
-#     "mirror file" in the Check 29 sense. validate-pack.py's
-#     _check_mirror_staleness treats the absent table as a no-mirror
-#     surface (staleness N/A soft-pass).
-#   - surface=client → KEEP the bare-name mirror keys. The client
-#     model still has monolith mirrors until BD-206 lands; bare names
-#     are intentional (the project trinity ## Document locations
-#     resolves them to actual paths — see
-#     project-template/tracker.toml.project-example).
+# No [mirror] table on EITHER surface (BD-206, completing the BD-203/
+# BD-204 no-monolith repoint): no surface keeps a monolith mirror — the
+# per-entry trees (+ regenerated _toc.md) are the sole flat
+# representation, and _toc.md regeneration is not a "mirror file" in the
+# Check 29 sense. validate-pack.py's _check_mirror_staleness treats the
+# absent table as a no-mirror surface (staleness N/A soft-pass). The
+# `surface` arg is retained for other surface-conditional behavior.
 _tracker_init_write_config() {
     local path="$1" backend="$2" repo="$3" id_prefix="$4" surface="$5"
     local dir
@@ -356,27 +349,11 @@ _tracker_init_write_config() {
         fi
     fi
 
-    # Build the surface-conditional [mirror] block (see function
-    # docstring). The heredoc's two leading empty lines carry the
-    # newline after the opted_in_by line plus the blank line before
-    # [mirror]; command substitution strips the trailing newline, so
-    # the template's own blank line before [id_namespace] closes the
-    # block. Pack surface: mirror_block stays empty and the config
-    # flows straight from [mode] to [id_namespace].
-    local mirror_block=""
-    if [[ "$surface" == "client" ]]; then
-        mirror_block=$(cat <<'MIRROR_EOF'
-
-
-[mirror]
-enabled = true
-location_backlog   = "BACKLOG.md"
-location_status    = "STATUS.md"
-location_changelog = "CHANGELOG.md"
-regenerate_on_write = true
-MIRROR_EOF
-)
-    fi
+    # No [mirror] table is emitted on any surface (see function
+    # docstring): the config flows straight from [mode] to
+    # [id_namespace]. `surface` is retained as a positional arg for
+    # other surface-conditional behavior.
+    : "$surface"
 
     cat > "$path" <<EOF
 # tracker.toml — written by \`pack tracker init\` on $now_iso
@@ -389,7 +366,7 @@ repo = "$repo"
 [mode]
 state = "tracker"
 opted_in_at = "$opted_in_at"
-opted_in_by = "$opted_in_by"$mirror_block
+opted_in_by = "$opted_in_by"
 
 [id_namespace]
 prefix = "$id_prefix"

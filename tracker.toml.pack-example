@@ -54,8 +54,8 @@ state = "flat-file"
 # regeneration is not a "mirror file" in the Check 29 sense.
 # validate-pack.py treats the absent table as a no-mirror surface
 # (mirror-staleness N/A). The client-side example
-# (project-template/tracker.toml.project-example) keeps its [mirror]
-# table until BD-206 retires the project-side monolith mirrors.
+# (project-template/tracker.toml.project-example) likewise omits the
+# [mirror] table — no surface keeps a monolith mirror.
 
 [id_namespace]
 # "BD" for the pack repo; "TD" for client projects.

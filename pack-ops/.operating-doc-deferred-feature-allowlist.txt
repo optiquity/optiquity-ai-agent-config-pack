@@ -416,13 +416,25 @@ doc: project-template/docs/pack/prompts/reviewer.md
 snippet: deferred design question
 reason: C4 — the reviewer prompt's live deferred-design-question handling.
 
-doc: project-template/docs/project/changelog/_format.md
-snippet: investigated and deferred with logging
-reason: C4 — a changelog disposition vocabulary example (live workflow), not a deferred feature.
+doc: project-template/docs/project/implementation-plan/_rules.md
+snippet: done in-progress not-started blocked deferred superseded
+reason: C4 — the implementation-plan phase status-enum vocabulary (live workflow), not a deferred feature.
 
 doc: project-template/docs/project/implementation-plan/_rules.md
-snippet: done / deferred / merged-into
-reason: C4 — the implementation-plan status vocabulary (live workflow).
+snippet: in-progress / done / deferred / merged-into
+reason: C4 — the implementation-plan phase-state lifecycle vocabulary prose (live workflow), not a deferred feature.
+
+doc: project-template/docs/project/backlog/_rules.md
+snippet: Open Unblocked Deferred Resolved Deprecated Cancelled
+reason: C4 — the backlog status-enum vocabulary (live workflow lifecycle states), not a deferred feature.
+
+doc: project-template/docs/project/backlog/_rules.md
+snippet: a pending-decision state between Open and Deferred
+reason: C4 — the backlog `Unblocked` status definition (names the `Deferred` state — live workflow vocabulary).
+
+doc: project-template/docs/project/backlog/_rules.md
+snippet: deliberately postponed (user-authorized)
+reason: C4 — the backlog `Deferred` status definition (live workflow vocabulary).
 
 doc: project-template/skills/audit-methodology/SKILL.md
 snippet: one BACKLOG entry per Critical finding

@@ -11,5 +11,5 @@ The per-entry skeleton format is documented in
 → pack-only).
 
 Remediation: drop the cite OR replace with a project-side SSOT
-(e.g., `docs/project/backlog/_format.md` for the per-entry skeleton
-template).
+(e.g., `docs/project/backlog/_rules.md` for the per-entry skeleton
+contract).

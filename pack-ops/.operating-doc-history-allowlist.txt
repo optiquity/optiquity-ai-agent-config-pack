@@ -140,24 +140,19 @@ pattern: bd-tag
 snippet: ^BD-\d+\.md$
 reason: filename-grammar regex the write-contract acts on (illustrative, not provenance).
 
-# ── K9: changelog filename/heading date FORMAT spec (project changelog
-#        _format.md — the write-contract emits these) ──
-doc: project-template/docs/project/changelog/_format.md
-pattern: date
-snippet: 2026-04-20
-reason: changelog filename/heading date FORMAT spec the write-contract emits (illustrative format example, not provenance).
-
-doc: project-template/docs/project/changelog/_format.md
-pattern: date
-snippet: 2026-03-20
-reason: changelog filename/heading date FORMAT spec the write-contract emits (illustrative format example, not provenance).
-
-# ── K10: changelog filename-grammar date example (project changelog
-#         _rules.md) ──
+# ── K10: changelog filename-grammar / heading date FORMAT examples
+#         (project changelog _rules.md — the `_format.md` content folds
+#         into this file's `## Entry structure` + `## Filename mapping`
+#         sections at BD-206) ──
 doc: project-template/docs/project/changelog/_rules.md
 pattern: date
 snippet: 2026-04-20
-reason: changelog filename-grammar date example the write-contract acts on (illustrative, not provenance).
+reason: changelog filename-grammar / heading date FORMAT example the write-contract acts on (illustrative, not provenance).
+
+doc: project-template/docs/project/changelog/_rules.md
+pattern: date
+snippet: 2026-03-20
+reason: changelog architecture-iteration date FORMAT example the write-contract acts on (illustrative, not provenance).
 
 # ── K11: status-line date FORMAT example (project PACK-FEEDBACK.md) ──
 doc: project-template/docs/pack/PACK-FEEDBACK.md

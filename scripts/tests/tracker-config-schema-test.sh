@@ -14,10 +14,9 @@
 #   4.  Wrong id_namespace.prefix on client-example → FAIL on that key
 #   5.  Mode value not in the supported set        → FAIL on mode.state
 #   6.  cli_acceleration.prefer not in supported set → FAIL on that key
-#   7.  Missing [mirror] table on CLIENT example   → FAIL on mirror
-#       (BD-204: [mirror] is per-surface — required on the client
-#       example until BD-206; the PACK example omits it post-BD-203,
-#       which Test 1's no-[mirror] GOOD_PACK pins as PASS)
+#   7.  No [mirror] table on CLIENT example         → PASS
+#       (BD-206: no surface keeps a monolith mirror — [mirror] is
+#       optional on BOTH surfaces; mirror_required=False everywhere)
 #   8.  Missing migration.mapping_file             → FAIL on that key
 #   9.  TOML parse error                           → FAIL on parse
 #   10. schema_version = true (bool-as-int trap)   → FAIL on bool (F3)
@@ -123,13 +122,6 @@ repo = "your-org/your-project"
 [mode]
 state = "flat-file"
 
-[mirror]
-enabled = true
-location_backlog   = "BACKLOG.md"
-location_status    = "STATUS.md"
-location_changelog = "CHANGELOG.md"
-regenerate_on_write = true
-
 [id_namespace]
 prefix = "TD"
 
@@ -220,26 +212,21 @@ else
 fi
 rm -rf "$fix"
 
-# ── Test 7: Missing [mirror] table on the CLIENT example ────────────
-# BD-204: [mirror] is per-surface. The CLIENT example still requires
-# it (until BD-206); the PACK example legitimately omits it (Test 1's
-# GOOD_PACK has no [mirror] and passes). Strip the table from the
-# client body and pin the FAIL.
-printf "\n=== Test 7: missing [mirror] table on client example ===\n"
-# Strip the entire [mirror] block (table header + 5 keys).
-bad=$(printf '%s\n' "$GOOD_CLIENT" | awk '
-  /^\[mirror\]$/ { skip=1; next }
-  skip && /^\[/ { skip=0 }
-  !skip { print }
-')
-fix=$(build_fixture "$GOOD_PACK" "$bad")
+# ── Test 7: No [mirror] table on the CLIENT example → PASS (BD-206) ──
+# BD-206: no surface keeps a monolith mirror (the per-entry tree +
+# `_toc.md` is the sole SSOT). The client example, like the pack
+# example, omits [mirror] — Check 29 must accept the no-[mirror] shape
+# on BOTH surfaces (mirror_required=False everywhere). GOOD_CLIENT now
+# carries no [mirror] block, so this pins the no-mirror client PASS.
+printf "\n=== Test 7: no [mirror] table on client example → PASS ===\n"
+fix=$(build_fixture "$GOOD_PACK" "$GOOD_CLIENT")
 out=$(run_check29_at "$fix" 2>&1); rc=$?
-if [[ $rc -ne 0 ]]; then t_pass "7.1 missing mirror on client → exit nonzero"
-else t_fail "7.1 missing mirror on client → exit nonzero" "rc=$rc"; fi
-if echo "$out" | grep -q "project-example — missing required key: mirror"; then
-    t_pass "7.2 message names mirror as missing on the client example"
+if [[ $rc -eq 0 ]]; then t_pass "7.1 no [mirror] on client → exit 0 (no-mirror PASS)"
+else t_fail "7.1 no [mirror] on client → exit 0 (no-mirror PASS)" "rc=$rc out=${out:0:400}"; fi
+if echo "$out" | grep -q "missing required key: mirror"; then
+    t_fail "7.2 Check 29 must NOT require [mirror] on the client example" "out=${out:0:400}"
 else
-    t_fail "7.2 message names mirror as missing on the client example" "out=${out:0:400}"
+    t_pass "7.2 Check 29 does not require [mirror] on the client example"
 fi
 rm -rf "$fix"
 

@@ -418,11 +418,10 @@ fi
 #                                   command form)
 #   5. scripts/pack-help.sh + lib → scripts/pack-help.sh, scripts/lib/detect.sh
 #   6. per-entry tree templates   → docs/project/{backlog,implementation-plan,
-#                                   changelog}/_rules.md + _intro.md
-#                                   (+ _format.md for changelog only —
-#                                   project-side asymmetry). BD-166. The
-#                                   migrator ships these unconditionally via
-#                                   the BD-167 templates step (independent
+#                                   changelog}/_rules.md + _intro.md.
+#                                   BD-166 (BD-206: no _format.md anywhere).
+#                                   The migrator ships these unconditionally
+#                                   via the BD-167 templates step (independent
 #                                   of monolithic source content). PACK-
 #                                   REVIEW-BD-166-RETRO MUST finding 2.
 #   7. greenfield empty mirrors + → docs/project/{BACKLOG.md,
@@ -454,11 +453,11 @@ v11_artifacts=(
     ".claude/skills/pack-help/SKILL.md"
     ".codex/skills/pack-help/SKILL.md"
     ".agents/skills/pack-help/SKILL.md"
-    # Sub-stage 6: per-entry canonical templates (BD-166). Project-side
-    # asymmetry: changelog HAS _format.md, backlog + implementation-plan
-    # do NOT (per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §9.7).
+    # Sub-stage 6: per-entry canonical templates (BD-166). Each stream
+    # gets _rules.md + _intro.md (BD-206: _format.md is FORBIDDEN
+    # everywhere — its content folds into changelog/_rules.md).
     # These ship UNCONDITIONALLY via the BD-167 templates step in the
-    # migrator (scripts/migrate-v10-to-v11.sh:355-374 — verified by
+    # migrator (scripts/migrate-v10-to-v11.sh — verified by
     # scripts/lib/migrate-v10-to-v11/decompose.sh:136-141 comment) —
     # independent of whether the v10 source has monolithic docs/project
     # content to decompose.
@@ -468,7 +467,6 @@ v11_artifacts=(
     "docs/project/implementation-plan/_intro.md"
     "docs/project/changelog/_rules.md"
     "docs/project/changelog/_intro.md"
-    "docs/project/changelog/_format.md"
     # Sub-stage 7 (mirrors + _toc.md) are NOT in this list because the
     # BD-165 decompose sub-op SKIPS streams when the monolithic input
     # mirror is absent (scripts/lib/migrate-v10-to-v11/decompose.sh:

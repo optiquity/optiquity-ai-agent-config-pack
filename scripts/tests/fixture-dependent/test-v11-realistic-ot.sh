@@ -6,24 +6,19 @@
 #
 # Background:
 #   The v11-realistic-ot fixture is built by `test-fixtures/build.sh`,
-#   which runs the BD-164 per-entry helpers (decompose + regenerate-mirror
-#   + regenerate-TOC) against C4-written project-side monolithic mirrors
-#   and asserts a byte-identical round-trip at build time
-#   (`build.sh:539` cmp -s check). The build-time round-trip catches
-#   helper regressions that BREAK the byte-identity invariant — but a
-#   bug that makes the regenerated mirror byte-identical for the WRONG
-#   reason (e.g., both sides emit the same wrong shape) would no-op-pass
-#   build.sh's check.
+#   which runs the BD-164 per-entry helpers (decompose + regenerate-TOC)
+#   against the C4-stashed v10-shape backlog INPUT and asserts the
+#   per-entry tree + `_toc.md` materialize (BD-206 no-mirror: there is no
+#   monolithic mirror to regenerate or byte-compare).
 #
 #   This runner is the post-build consumer: it walks the built fixture
-#   and re-asserts the integration boundary from outside build.sh's
-#   own round-trip helper. Three assertion families:
+#   and re-asserts the integration boundary from outside build.sh.
+#   Three assertion families:
 #
 #     A. Per-entry trees materialize with the expected supporting files
 #        + at least the entries C4 wrote.
-#     B. Regenerated mirrors are byte-identical to a fresh regeneration
-#        run against the on-disk per-entry tree (round-trip from the
-#        outside).
+#     B. No-mirror invariant: the three project monoliths are ABSENT at
+#        docs/project/ (no regenerated mirror under the no-mirror model).
 #     C. validate-pack.py Check 32′/33/34 run cleanly when invoked in
 #        this environment. NOTE: validate-pack.py's REPO_ROOT is
 #        derived from `__file__` not cwd, so it always validates the
@@ -38,7 +33,7 @@
 #
 # Wired in CI by validate-pack.yml AFTER the "build test fixtures" +
 # "fixture manifest verify" steps and BEFORE the migrator/per-entry
-# tests (so a regression in build.sh's round-trip helper surfaces
+# tests (so a regression in build.sh's decompose/TOC helpers surfaces
 # before the downstream consumer suites attribute the failure
 # elsewhere).
 #
@@ -90,15 +85,6 @@ assert_contains() {
     else t_fail "$1" "needle='$3' missing from: ${2:0:200}"; fi
 }
 
-assert_byte_identical() {
-    # $1=label $2=path A $3=path B
-    if cmp -s "$2" "$3"; then t_pass "$1"
-    else
-        t_fail "$1" "files differ: $2 vs $3"
-        diff "$2" "$3" 2>&1 | head -20 | sed 's/^/         /' >&2 || true
-    fi
-}
-
 # ── Precondition: fixture must exist + be a built git repo ────────────────
 #
 # Mirrors the `require_fixture` pattern from scripts/test-migrator-skills.sh
@@ -129,8 +115,7 @@ trap 'rm -rf "$SCRATCH"' EXIT INT TERM
 . "$PE_LIB_DIR/_lib.sh"
 # shellcheck disable=SC1091
 . "$PE_LIB_DIR/decompose.sh"
-# shellcheck disable=SC1091
-. "$PE_LIB_DIR/mirror-generate.sh"
+# BD-206 (no-mirror): no mirror-generate.sh sourcing (no monolithic mirror).
 # shellcheck disable=SC1091
 . "$PE_LIB_DIR/toc-regenerate.sh"
 
@@ -139,9 +124,9 @@ trap 'rm -rf "$SCRATCH"' EXIT INT TERM
 # ─────────────────────────────────────────────────────────────────────────
 #
 # The fixture's three project-side streams (backlog, implementation-plan,
-# changelog) each ship `_rules.md` + `_intro.md` + `_toc.md`. The
-# changelog stream additionally ships `_format.md` per integration
-# parent §3.2 + §9.7 (changelog-only). Project-side trees do NOT carry
+# changelog) each ship `_rules.md` + `_intro.md` + `_toc.md`. BD-206:
+# `_format.md` is FORBIDDEN on every stream (its content folds into the
+# changelog `_rules.md`). Project-side trees do NOT carry
 # `_v8-resolved-archive.md` — that's pack-/backlog/ scope per §11.2.
 #
 # Backlog has entries (5 TD-NNN files per BD-170 IMPL-REPORT C4 spec);
@@ -169,7 +154,13 @@ assert_dir   "A.9  changelog/ dir present"                 "$PE_CHANGELOG"
 assert_file  "A.10 changelog/_rules.md present"            "$PE_CHANGELOG/_rules.md"
 assert_file  "A.11 changelog/_intro.md present"            "$PE_CHANGELOG/_intro.md"
 assert_file  "A.12 changelog/_toc.md present"              "$PE_CHANGELOG/_toc.md"
-assert_file  "A.13 changelog/_format.md present"           "$PE_CHANGELOG/_format.md"
+# BD-206: _format.md is FORBIDDEN on the changelog stream.
+if [[ ! -f "$PE_CHANGELOG/_format.md" ]]; then
+    t_pass "A.13 changelog/_format.md ABSENT (BD-206 forbidden)"
+else
+    t_fail "A.13 changelog/_format.md ABSENT (BD-206 forbidden)" \
+        "found at $PE_CHANGELOG/_format.md — _format.md is forbidden"
+fi
 
 # Project-side streams must NOT carry _v8-resolved-archive.md (pack-
 # /backlog/ scope only per integration parent §11.2 + §2.6).
@@ -180,12 +171,12 @@ else
         "found at $PE_BACKLOG/_v8-resolved-archive.md — project-side leak"
 fi
 
-# Implementation-plan must NOT carry _format.md (changelog-only).
+# BD-206: _format.md is FORBIDDEN on every stream (not just changelog).
 if [[ ! -f "$PE_PLAN/_format.md" ]]; then
-    t_pass "A.15 implementation-plan/_format.md absent (changelog-only)"
+    t_pass "A.15 implementation-plan/_format.md absent (BD-206 forbidden)"
 else
-    t_fail "A.15 implementation-plan/_format.md absent (changelog-only)" \
-        "found at $PE_PLAN/_format.md — implementation-plan stream leak"
+    t_fail "A.15 implementation-plan/_format.md absent (BD-206 forbidden)" \
+        "found at $PE_PLAN/_format.md — _format.md is forbidden"
 fi
 
 # Backlog stream has TD-NNN entries (BD-170 IMPL-REPORT C4 wrote 5).
@@ -217,79 +208,41 @@ if [[ -n "$FIRST_TD" ]]; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────────
-# Group B — Regenerated mirrors byte-identical to fresh regeneration
+# Group B — No-mirror invariant (BD-206)
 # ─────────────────────────────────────────────────────────────────────────
 #
-# For each of the three project-side streams, copy the on-disk mirror
-# aside, then run the BD-164 mirror generator against the on-disk per-
-# entry tree with output redirected to a scratch path. The scratch
-# mirror MUST be byte-identical to the saved on-disk mirror — this is
-# the integration-boundary verification mirroring the BD-164 round-trip
-# pattern used by build.sh:539 and by test-per-entry.sh Group 1.
-#
-# PE_FORCE_OVERWRITE_MIRROR=1 because we're running against a freshly-
-# built fixture where the on-disk mirror is, by construction, in sync
-# (build.sh's round-trip check already passed); we just need to bypass
-# the divergence-prompt path so the helper runs non-interactively.
+# BD-206 abolishes the monolithic mirror: the per-entry tree + `_toc.md`
+# is the sole SSOT and readable form. The former Group-B regenerated-
+# mirror byte-identity round-trip is deleted (there is no mirror to
+# regenerate or byte-compare). Instead, assert the no-mirror invariant:
+# the three project monoliths are ABSENT at docs/project/ (and not stray
+# inside a stream subdir). `_toc.md` in-sync is verified by Check 33
+# (Group C below).
 
 echo
-echo "=== Group B: regenerated mirrors byte-identical to fresh regen ==="
+echo "=== Group B: no-mirror invariant (monoliths absent) ==="
 
 for spec in \
-    "project-backlog|docs/project/BACKLOG.md|docs/project/backlog|B.1|B.2" \
-    "project-implementation-plan|docs/project/IMPLEMENTATION-PLAN.md|docs/project/implementation-plan|B.3|B.4" \
-    "project-changelog|docs/project/CHANGELOG.md|docs/project/changelog|B.5|B.6"; do
-    stream_key="${spec%%|*}"
+    "BACKLOG.md|docs/project/backlog|B.1" \
+    "IMPLEMENTATION-PLAN.md|docs/project/implementation-plan|B.2" \
+    "CHANGELOG.md|docs/project/changelog|B.3"; do
+    mono="${spec%%|*}"
     rest="${spec#*|}"
-    mirror_rel="${rest%%|*}"
-    rest="${rest#*|}"
     stream_dir_rel="${rest%%|*}"
-    rest="${rest#*|}"
-    label_present="${rest%%|*}"
-    label_match="${rest##*|}"
+    label="${rest##*|}"
 
-    mirror_path="$FIXTURE_DIR/$mirror_rel"
-    stream_dir="$FIXTURE_DIR/$stream_dir_rel"
-
-    # B.N — on-disk mirror present (pre-flight; build.sh would have died
-    # earlier if it weren't).
-    if [[ -f "$mirror_path" ]]; then
-        t_pass "$label_present $stream_key on-disk mirror present at $mirror_rel"
+    if [[ ! -f "$FIXTURE_DIR/docs/project/$mono" ]]; then
+        t_pass "$label docs/project/$mono ABSENT (no-mirror)"
     else
-        t_fail "$label_present $stream_key on-disk mirror present at $mirror_rel" \
-            "missing: $mirror_path"
-        continue
+        t_fail "$label docs/project/$mono ABSENT (no-mirror)" \
+            "found at $FIXTURE_DIR/docs/project/$mono — no-mirror forbids it"
     fi
-
-    # Snapshot the on-disk mirror. The helper writes to <mirror_path>
-    # (the actual on-disk location), so we save the original first and
-    # restore after the comparison to leave the fixture untouched.
-    snap="$SCRATCH/${stream_key}.mirror.snap"
-    cp "$mirror_path" "$snap"
-
-    # Regenerate in place (PE_FORCE_OVERWRITE=1 bypasses divergence
-    # routing; the on-disk mirror is, by construction, in sync). Run
-    # under a subshell so the env-var doesn't leak between iterations.
-    (
-        export PE_FORCE_OVERWRITE_MIRROR=1
-        per_entry_regenerate_mirror "$stream_key" "$stream_dir" "$mirror_path" </dev/null
-    )
-    regen_rc=$?
-
-    if [[ "$regen_rc" -ne 0 ]]; then
-        t_fail "$label_match $stream_key regen rc=0 (got $regen_rc)" \
-            "per_entry_regenerate_mirror returned non-zero"
-        # Restore the snapshot before continuing.
-        cp "$snap" "$mirror_path"
-        continue
+    if [[ ! -f "$FIXTURE_DIR/$stream_dir_rel/$mono" ]]; then
+        t_pass "$label no stray $mono inside $stream_dir_rel"
+    else
+        t_fail "$label no stray $mono inside $stream_dir_rel" \
+            "found at $FIXTURE_DIR/$stream_dir_rel/$mono"
     fi
-
-    assert_byte_identical "$label_match $stream_key regenerated mirror byte-identical to on-disk" \
-        "$snap" "$mirror_path"
-
-    # Restore the snapshot — leave the fixture untouched for any
-    # downstream test step that reads the fixture.
-    cp "$snap" "$mirror_path"
 done
 
 # ─────────────────────────────────────────────────────────────────────────

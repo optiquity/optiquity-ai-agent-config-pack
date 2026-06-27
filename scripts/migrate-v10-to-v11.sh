@@ -427,7 +427,7 @@ _v10_to_v11_install_v11_artifacts() {
     # per-entry tree skeletons.
     #
     # Source: project-template/docs/project/<stream>/{_rules.md,
-    # _intro.md, _format.md (changelog only)}. Three streams: backlog,
+    # _intro.md}. Three streams: backlog,
     # implementation-plan, changelog. Pack-shipped immutable per
     # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §3.3 — the
     # supporting-file installation creates the directory if absent and
@@ -446,13 +446,8 @@ _v10_to_v11_install_v11_artifacts() {
         local target_stream_dir="$_MIGRATOR_TARGET/docs/project/$stream_dir"
         [[ -d "$pack_stream_dir" ]] || continue
         mkdir -p "$target_stream_dir"
-        # backlog + implementation-plan ship _rules.md + _intro.md;
-        # changelog additionally ships _format.md (project-side
-        # asymmetry per ARCHITECTURE-PER-ENTRY-SPLIT.md §3.5).
-        case "$stream_dir" in
-            changelog) support_basenames="_rules.md _intro.md _format.md" ;;
-            *)         support_basenames="_rules.md _intro.md" ;;
-        esac
+        # All three streams ship _rules.md + _intro.md.
+        support_basenames="_rules.md _intro.md"
         for base in $support_basenames; do
             if [[ -f "$pack_stream_dir/$base" \
                && ! -f "$target_stream_dir/$base" ]]; then

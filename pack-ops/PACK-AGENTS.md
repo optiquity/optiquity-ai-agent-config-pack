@@ -210,11 +210,11 @@ Directories:
 - `project-template/docs/project/implementation-plan/`
 - `project-template/docs/project/changelog/`
 
-Within these directories, `_rules.md`, `_intro.md`, and `_format.md` are
-pack-shipped immutable (updated on pack version bump only); `_toc.md` is
-derived (regenerator output); per-entry files (e.g.,
-`BD-NNN.md`, `TD-NNN.md`, `phase-N.md`, `YYYY-MM-DD-*.md`) are pack-chat-only
-writes.
+Within these directories, `_rules.md` and `_intro.md` are
+pack-shipped immutable (updated on pack version bump only); `_toc.md`
+(and the impl-plan `_index.md`) is derived (regenerator output);
+per-entry files (e.g., `BD-NNN.md`, `TD-NNN.md`, `phase-N.md`,
+`YYYY-MM-DD-*.md`) are pack-chat-only writes.
 
 `pack-coder` MAY scope a per-entry directory in for an explicit BD when
 Pack Chat's prompt scopes it — the same exception clause that applies to
