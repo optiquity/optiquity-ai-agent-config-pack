@@ -29,9 +29,11 @@ usage() {
 Usage: pack-help.sh [--surface pack|client] [--root <path>]
 
 Prints the pack verb manifest for the active surface. With no flags,
-auto-detects surface from the working directory (BACKLOG.md with
-`^**BD-` entries → pack; with `^**TD-` entries → client; ambiguous
-trees print both fragments).
+auto-detects surface from the working directory (a `backlog/` per-entry
+tree with `BD-NNN.md` entries → pack; a `docs/project/backlog/`
+per-entry tree with `TD-NNN.md` entries → client; a legacy `BACKLOG.md`
+monolith with `^**BD-`/`^**TD-` entries is the pre-v11 fallback;
+ambiguous trees print both fragments).
 
 Reads the appropriate HELP-FRAGMENT-*.md. The pack-side fragment lives
 at pack-ops/HELP-FRAGMENT-PACK.md.

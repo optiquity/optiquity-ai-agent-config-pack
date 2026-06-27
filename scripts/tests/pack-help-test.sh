@@ -52,14 +52,36 @@ assert_eq "1.1 pack repo (/backlog/ tree) → pack-surface: pack" \
     "pack-surface: pack" "$(detect_pack_surface "$TR_PACK")"
 rm -rf "$TR_PACK"
 
-# 1.2 client repo: docs/project/BACKLOG.md with TD-NNN entries.
+# 1.1b client repo: BD-206 O5 — the canonical client signal is the
+# `docs/project/backlog/` per-entry tree carrying `TD-NNN.md` entry files
+# (the no-mirror SSOT), PARALLEL to the pack-surface `/backlog/` tree
+# probe. No legacy monolith present.
+TR_CLI_TREE=$(mktemp -d -t ph-clitree.XXXXXX)
+mkdir -p "$TR_CLI_TREE/docs/project/backlog"
+cat > "$TR_CLI_TREE/docs/project/backlog/TD-001.md" <<'EOF'
+<!-- per-entry source: docs/project/backlog/TD-001.md -->
+**TD-001 — A**
+Status: Open
+EOF
+cat > "$TR_CLI_TREE/docs/project/backlog/TD-042.md" <<'EOF'
+<!-- per-entry source: docs/project/backlog/TD-042.md -->
+**TD-042 — B**
+Status: Resolved
+EOF
+assert_eq "1.1b client repo (docs/project/backlog/ per-entry tree) → client" \
+    "pack-surface: client" "$(detect_pack_surface "$TR_CLI_TREE")"
+rm -rf "$TR_CLI_TREE"
+
+# 1.2 client repo: docs/project/BACKLOG.md monolith with TD-NNN entries
+# (pre-v11 fallback — a client mid-migration may still carry the monolith
+# INPUT; the legacy probe stays inside the DENY-LIST-CONTENT markers).
 TR_CLI=$(mktemp -d -t ph-cli.XXXXXX)
 mkdir -p "$TR_CLI/docs/project"
 cat > "$TR_CLI/docs/project/BACKLOG.md" <<'EOF'
 **TD-001 — A**
 Status: Open
 EOF
-assert_eq "1.2 client repo (docs/project/) → pack-surface: client" \
+assert_eq "1.2 client repo (docs/project/ monolith fallback) → client" \
     "pack-surface: client" "$(detect_pack_surface "$TR_CLI")"
 rm -rf "$TR_CLI"
 
@@ -85,6 +107,23 @@ EOF
 assert_eq "1.4 mixed BD + TD → ambiguous" \
     "pack-surface: ambiguous" "$(detect_pack_surface "$TR_AMB")"
 rm -rf "$TR_AMB"
+
+# 1.4b ambiguous: both the pack `/backlog/` per-entry tree AND the client
+# `docs/project/backlog/` per-entry tree present (BD-206 O5 — the two
+# per-entry probes both fire → ambiguous, caller decides).
+TR_AMB2=$(mktemp -d -t ph-amb2.XXXXXX)
+mkdir -p "$TR_AMB2/backlog" "$TR_AMB2/docs/project/backlog"
+cat > "$TR_AMB2/backlog/BD-001.md" <<'EOF'
+**BD-001 — A**
+Status: Open
+EOF
+cat > "$TR_AMB2/docs/project/backlog/TD-001.md" <<'EOF'
+**TD-001 — B**
+Status: Open
+EOF
+assert_eq "1.4b both per-entry trees (pack + client) → ambiguous" \
+    "pack-surface: ambiguous" "$(detect_pack_surface "$TR_AMB2")"
+rm -rf "$TR_AMB2"
 
 # 1.5 ambiguous: no BACKLOG.md at all.
 TR_NB=$(mktemp -d -t ph-nb.XXXXXX)

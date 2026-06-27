@@ -24,19 +24,25 @@
 #   - Pack repo:    the `/backlog/` per-entry tree at <target>/backlog/
 #                   with `BD-NNN[suffix].md` entry files (BD-203 no-mirror
 #                   SSOT; there is no monolithic pack-ops/BACKLOG.md).
-#   - Client repo:  BACKLOG.md at <target>/docs/project/ (canonical) OR
-#                   <target>/ (legacy layout fallback) with `^\*\*TD-`
-#                   entries.
+#   - Client repo:  the `docs/project/backlog/` per-entry tree at
+#                   <target>/docs/project/backlog/ with `TD-NNN.md` entry
+#                   files (BD-206 no-mirror SSOT). Pre-v11 fallback: a
+#                   BACKLOG.md monolith at <target>/docs/project/ OR
+#                   <target>/ (legacy layout) with `^\*\*TD-` entries.
 #   - Both present: ambiguous (caller decides — pack-help prints both).
 #   - Neither:      ambiguous (no signal to disambiguate).
 #
 # Candidate scan order: pack-side `/backlog/` per-entry tree (pack-side
-# canonical), then docs/project/ (client-side canonical), root
-# (legacy-layout fallback; retained for test-fixture and back-compat
-# coverage — see scripts/tests/pack-help-test.sh fixture 1.3 "client
-# repo (root BACKLOG.md, TD entries)" which still writes the legacy
-# shape). BD-203 repoints ONLY the pack-side branch to the tree; the
-# client branches still detect a client monolith until BD-206.
+# canonical), then client-side `docs/project/backlog/` per-entry tree
+# (client-side canonical, BD-206 no-mirror), then the legacy monolith
+# probe (docs/project/BACKLOG.md canonical, root BACKLOG.md legacy-layout
+# fallback) — retained as a pre-v11 fallback for test-fixture and
+# back-compat coverage (see scripts/tests/pack-help-test.sh fixtures 1.2
+# "docs/project/BACKLOG.md" + 1.3 "root BACKLOG.md, TD entries" which
+# still write the legacy shape). BD-203 repointed the pack-side branch to
+# the tree; BD-206 repoints the client-side branch to the
+# `docs/project/backlog/` per-entry tree (this probe lives OUTSIDE the
+# DENY-LIST-CONTENT markers; the legacy monolith probe stays inside).
 # <!-- DENY-LIST-CONTENT-END -->
 #
 # Used by scripts/pack-help.sh and any future verb that needs to
@@ -47,11 +53,12 @@ detect_pack_surface() {
     local backlog
     # BD-203 A14b — PACK-SURFACE branch (repointed to the no-mirror tree):
     # the pack signal is a `/backlog/` per-entry tree carrying at least
-    # one `BD-NNN[suffix].md` entry file. The CLIENT-surface branches
-    # below are UNTOUCHED (they still detect a client monolith until
-    # BD-206). detect.sh is in `_SANCTIONED_PACK_SIDE_SHIPPED` (CI Check
-    # 47); this pack-surface-only conditional leaves the install
-    # map↔constant equality unaffected.
+    # one `BD-NNN[suffix].md` entry file. The CLIENT-surface per-entry
+    # probe below (BD-206 O5) is its parallel; the legacy monolith probe
+    # remains as a pre-v11 fallback inside the DENY-LIST-CONTENT markers.
+    # detect.sh is in `_SANCTIONED_PACK_SIDE_SHIPPED` (CI Check 47); these
+    # within-file conditionals leave the install map↔constant equality
+    # unaffected.
     if [[ -d "$target/backlog" ]]; then
         local ent
         for ent in "$target/backlog"/BD-*.md; do
@@ -62,7 +69,32 @@ detect_pack_surface() {
             fi
         done
     fi
+    # BD-206 O5 — CLIENT-SURFACE branch (repointed to the no-mirror tree,
+    # PARALLEL to the pack-surface branch above): the client signal is a
+    # `docs/project/backlog/` per-entry tree carrying at least one
+    # `TD-NNN.md` entry file (the no-mirror SSOT). This probe lives OUTSIDE
+    # the `DENY-LIST-CONTENT` markers (pack-surface style) so Check 40 is
+    # unaffected; the legacy-monolith probe stays inside the markers below
+    # as a pre-v11 fallback (a client mid-migration may still carry the
+    # monolith INPUT). detect.sh is in `_SANCTIONED_PACK_SIDE_SHIPPED` (CI
+    # Check 47); this within-file conditional adds no install entry and
+    # leaves the install map↔constant equality unaffected.
+    if [[ -d "$target/docs/project/backlog" ]]; then
+        local cli_ent
+        for cli_ent in "$target/docs/project/backlog"/TD-*.md; do
+            [[ -f "$cli_ent" ]] || continue
+            if printf '%s\n' "$(basename "$cli_ent")" | grep -qE '^TD-[0-9]+\.md$'; then
+                td_seen=1
+                break
+            fi
+        done
+    fi
     # <!-- DENY-LIST-CONTENT-START -->
+    # Legacy pre-v11 monolith fallback: a client mid-migration (or a v9
+    # legacy-layout tree) may still carry a `BACKLOG.md` monolith INPUT
+    # rather than the per-entry tree. Retained for back-compat + the
+    # test-fixture coverage (pack-help-test.sh fixtures 1.2/1.3 still write
+    # the legacy shape).
     for backlog in "$target/docs/project/BACKLOG.md" "$target/BACKLOG.md"; do
     # <!-- DENY-LIST-CONTENT-END -->
         [[ -f "$backlog" ]] || continue

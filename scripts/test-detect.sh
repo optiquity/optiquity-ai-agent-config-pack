@@ -60,6 +60,58 @@ mkgitrepo() {
     printf '%s' "$dir"
 }
 
+# ── detect_pack_surface ────────────────────────────────────────────────
+# BD-206 O5: the dual-use surface probe. The pack signal is a `/backlog/`
+# per-entry tree (BD-NNN.md); the client signal is a
+# `docs/project/backlog/` per-entry tree (TD-NNN.md), repointed off the
+# pre-v11 monolith. Both per-entry probes live OUTSIDE the
+# DENY-LIST-CONTENT markers; the legacy monolith probe stays inside as a
+# pre-v11 fallback. (The end-to-end surface-routing suite lives in
+# scripts/tests/pack-help-test.sh Group 1; this section unit-covers the
+# new client-tree probe per the O5b deliverable.)
+echo "== detect_pack_surface =="
+
+fx=$(mkfixture surface-pack-tree)
+mkdir -p "$fx/backlog"
+printf '**BD-001 — A**\nStatus: Open\n' > "$fx/backlog/BD-001.md"
+assert_eq "pack /backlog/ per-entry tree (BD-NNN.md) → pack" \
+    "pack-surface: pack" "$(detect_pack_surface "$fx")"
+
+fx=$(mkfixture surface-client-tree)
+mkdir -p "$fx/docs/project/backlog"
+printf '**TD-001 — A**\nStatus: Open\n' > "$fx/docs/project/backlog/TD-001.md"
+printf '**TD-042 — B**\nStatus: Resolved\n' > "$fx/docs/project/backlog/TD-042.md"
+assert_eq "client docs/project/backlog/ per-entry tree (TD-NNN.md) → client" \
+    "pack-surface: client" "$(detect_pack_surface "$fx")"
+
+# Legacy pre-v11 monolith fallback still resolves (mid-migration client).
+fx=$(mkfixture surface-client-monolith-fallback)
+mkdir -p "$fx/docs/project"
+printf '**TD-001 — A**\nStatus: Open\n' > "$fx/docs/project/BACKLOG.md"
+assert_eq "client docs/project/BACKLOG.md monolith (pre-v11 fallback) → client" \
+    "pack-surface: client" "$(detect_pack_surface "$fx")"
+
+# Client per-entry tree present but a non-matching basename (TD-abc.md)
+# must NOT fire the probe (anchored `^TD-[0-9]+\.md$` regex).
+fx=$(mkfixture surface-client-tree-nonmatch)
+mkdir -p "$fx/docs/project/backlog"
+printf '**TD-abc — A**\nStatus: Open\n' > "$fx/docs/project/backlog/TD-abc.md"
+assert_eq "client backlog/ dir with non-TD-NNN file only → ambiguous (no signal)" \
+    "pack-surface: ambiguous" "$(detect_pack_surface "$fx")"
+
+# Both per-entry trees present → ambiguous (caller decides).
+fx=$(mkfixture surface-both-trees)
+mkdir -p "$fx/backlog" "$fx/docs/project/backlog"
+printf '**BD-001 — A**\nStatus: Open\n' > "$fx/backlog/BD-001.md"
+printf '**TD-001 — B**\nStatus: Open\n' > "$fx/docs/project/backlog/TD-001.md"
+assert_eq "both per-entry trees (pack + client) → ambiguous" \
+    "pack-surface: ambiguous" "$(detect_pack_surface "$fx")"
+
+# Neither signal → ambiguous.
+fx=$(mkfixture surface-neither)
+assert_eq "no backlog tree / no monolith → ambiguous" \
+    "pack-surface: ambiguous" "$(detect_pack_surface "$fx")"
+
 # ── detect_clean_working_tree ──────────────────────────────────────────
 echo "== detect_clean_working_tree =="
 fx=$(mkfixture clean-not-git)
