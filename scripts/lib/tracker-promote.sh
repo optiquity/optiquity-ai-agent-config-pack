@@ -248,34 +248,29 @@ _tpr_classify_target() {
 }
 
 # _tpr_read_td_entry <td-id> <repo-root>
-# Look up a TD by id in BACKLOG.md. Emits the parsed entry JSON on
-# stdout (the same shape tmf_parse_backlog produces). rc=1 with typed
-# error if the TD is not present.
+# Look up a TD by id. Emits the parsed entry JSON on stdout (the same
+# shape tmf_parse_backlog produces). rc=1 with typed error if the TD is
+# not present.
 #
-# In flat-file mode the BACKLOG.md is canonical. In tracker mode the
-# mirror is canonical to PM Chat (the tracker-mirror header marks it
-# read-only); either way the parser reads the file in the working tree.
+# Source resolution (BD-206 no-mirror repoint): the project per-entry
+# tree under docs/project/backlog/ is the no-mirror SSOT (the
+# docs/project/BACKLOG.md monolith is abolished). A client-root
+# $repo_root/BACKLOG.md v10-shape entry-stream is still honored as the
+# primary read (flat-file root / tracker→file read-only mirror — the
+# tracker-mirror header marks it read-only); when absent, the project
+# per-entry tree is enumerated into the same entries-JSON shape via
+# tmf_parse_backlog_tree.
 _tpr_read_td_entry() {
     local td="$1"
     local repo_root="$2"
     local backlog_path="$repo_root/BACKLOG.md"
+    local project_tree="$repo_root/docs/project/backlog"
 
-    if [[ ! -f "$backlog_path" ]]; then
-        # Many client repos place BACKLOG.md under docs/project/. Try
-        # that path before giving up.
-        backlog_path="$repo_root/docs/project/BACKLOG.md"
-    fi
-    if [[ ! -f "$backlog_path" ]]; then
-        tracker_error_emit "not-found" \
-            "promote: BACKLOG.md not found under $repo_root" \
-            "(checked $repo_root/BACKLOG.md and $repo_root/docs/project/BACKLOG.md)"
-        return 1
-    fi
-
-    # tmf_parse_backlog must be sourced by the dispatcher before
-    # invoking this orchestrator. We do not source it ourselves to
-    # avoid pulling in the full forward-migration surface (which has
-    # its own initialization side effects via tracker-mirror.sh).
+    # tmf_parse_backlog / tmf_parse_backlog_tree must be sourced by the
+    # dispatcher before invoking this orchestrator. We do not source
+    # them ourselves to avoid pulling in the full forward-migration
+    # surface (which has its own initialization side effects via
+    # tracker-mirror.sh).
     if ! declare -f tmf_parse_backlog >/dev/null 2>&1; then
         tracker_error_emit "validation" \
             "promote: tmf_parse_backlog not loaded" \
@@ -284,18 +279,90 @@ _tpr_read_td_entry() {
     fi
 
     local entries
-    entries=$(tmf_parse_backlog "$backlog_path") || return 1
+    if [[ -f "$backlog_path" ]]; then
+        entries=$(tmf_parse_backlog "$backlog_path") || return 1
+    elif [[ -d "$project_tree" ]] && declare -f tmf_parse_backlog_tree >/dev/null 2>&1; then
+        # BD-206 no-mirror: read the project per-entry tree directly.
+        entries=$(tmf_parse_backlog_tree "project-backlog" "$project_tree") || return 1
+    else
+        tracker_error_emit "not-found" \
+            "promote: no backlog source under $repo_root" \
+            "(checked $repo_root/BACKLOG.md and the per-entry tree $project_tree/)"
+        return 1
+    fi
 
     local entry
     entry=$(printf '%s' "$entries" | jq -c --arg k "$td" \
         '.[] | select(.pack_id == $k)')
     if [[ -z "$entry" ]]; then
         tracker_error_emit "not-found" \
-            "promote: $td not in BACKLOG.md" \
-            "(checked $backlog_path)"
+            "promote: $td not found in the backlog source" \
+            "(read $repo_root/BACKLOG.md or the per-entry tree $project_tree/)"
         return 1
     fi
     printf '%s\n' "$entry"
+}
+
+# _tpr_resolve_plan_read_path <repo-root>
+# Resolve a READ-ONLY implementation-plan source path. Echoes a path on
+# stdout the phase-task parser can consume:
+#   - the client-root $repo_root/IMPLEMENTATION-PLAN.md flat-file (or the
+#     tracker→file read-only mirror) when present — KEEP; OR
+#   - a temp file concatenating the project per-entry implementation-plan
+#     tree (docs/project/implementation-plan/phase-N.md, back-pointers
+#     stripped) when the per-entry tree exists (BD-206 no-mirror repoint
+#     of the abolished docs/project/IMPLEMENTATION-PLAN.md monolith).
+# Echoes nothing (rc=1) when no plan source exists. The caller owns the
+# returned temp file: it is created in the system temp dir via
+# `mktemp -t tpr-plan-tree.XXXXXX`, so a resumed caller cleans it
+# deterministically by the tpr-plan-tree.* basename glob; tree
+# concatenation is a pure read (the per-entry tree is never mutated).
+_tpr_resolve_plan_read_path() {
+    local repo_root="$1"
+    local root_plan="$repo_root/IMPLEMENTATION-PLAN.md"
+    if [[ -f "$root_plan" ]]; then
+        printf '%s\n' "$root_plan"
+        return 0
+    fi
+    local plan_tree="$repo_root/docs/project/implementation-plan"
+    if [[ -d "$plan_tree" ]] \
+       && declare -f pe_list_entry_files >/dev/null 2>&1 \
+       && declare -f pe_strip_backpointer_stdin >/dev/null 2>&1; then
+        local stream_file f
+        stream_file=$(mktemp -t tpr-plan-tree.XXXXXX) || return 1
+        while IFS= read -r f; do
+            [[ -n "$f" ]] || continue
+            pe_strip_backpointer_stdin < "$f" >> "$stream_file"
+            printf '\n' >> "$stream_file"
+        done < <(pe_list_entry_files "project-implementation-plan" "$plan_tree")
+        printf '%s\n' "$stream_file"
+        return 0
+    fi
+    return 1
+}
+
+# _tpr_read_backlog_entries <repo-root>
+# Echo the backlog entries-JSON array (the same shape tmf_parse_backlog
+# produces) for a READ-ONLY scan. Reads the client-root
+# $repo_root/BACKLOG.md flat-file (or tracker→file read-only mirror) when
+# present — KEEP; else enumerates the project per-entry tree
+# docs/project/backlog/ via tmf_parse_backlog_tree (BD-206 no-mirror
+# repoint of the abolished docs/project/BACKLOG.md monolith). Echoes `[]`
+# when no source / no parser is available (the caller treats `[]` as
+# "no match", preserving the prior best-effort semantics).
+_tpr_read_backlog_entries() {
+    local repo_root="$1"
+    local root_backlog="$repo_root/BACKLOG.md"
+    local project_tree="$repo_root/docs/project/backlog"
+    if [[ -f "$root_backlog" ]] && declare -f tmf_parse_backlog >/dev/null 2>&1; then
+        tmf_parse_backlog "$root_backlog" 2>/dev/null || printf '[]\n'
+        return 0
+    fi
+    if [[ -d "$project_tree" ]] && declare -f tmf_parse_backlog_tree >/dev/null 2>&1; then
+        tmf_parse_backlog_tree "project-backlog" "$project_tree" 2>/dev/null || printf '[]\n'
+        return 0
+    fi
+    printf '[]\n'
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -460,9 +527,10 @@ PYEOF
 
 # tracker_promote_next_phase_task_M <repo-root> <phase-N>
 #
-# Read IMPLEMENTATION-PLAN.md (or docs/project/IMPLEMENTATION-PLAN.md)
-# and return max(existing M) + 1 for phase N. If phase N has no
-# existing tasks (sparse phase), return 1.
+# Read the implementation-plan source (the client-root flat-file or the
+# project per-entry implementation-plan tree, BD-206 no-mirror — see
+# _tpr_resolve_plan_read_path) and return max(existing M) + 1 for phase
+# N. If phase N has no existing tasks (sparse phase), return 1.
 #
 # Pure read; no side effects. Used by Path 2 when the user does not
 # specify a particular M (or to verify a requested M is free).
@@ -476,15 +544,15 @@ tracker_promote_next_phase_task_M() {
     fi
     local phase_n="${BASH_REMATCH[1]}"
 
-    local plan_path="$repo_root/IMPLEMENTATION-PLAN.md"
-    [[ ! -f "$plan_path" ]] && plan_path="$repo_root/docs/project/IMPLEMENTATION-PLAN.md"
-    if [[ ! -f "$plan_path" ]]; then
-        # No plan file → fresh phase → start at 1.
+    local plan_path
+    plan_path=$(_tpr_resolve_plan_read_path "$repo_root") || {
+        # No plan source → fresh phase → start at 1.
         printf '1\n'
         return 0
-    fi
+    }
 
     if ! declare -f tracker_phase_task_parse >/dev/null 2>&1; then
+        [[ "$plan_path" == /*/tpr-plan-tree.* ]] && rm -f "$plan_path"
         tracker_error_emit "validation" \
             "next_phase_task_M: tracker_phase_task_parse not loaded"
         return 1
@@ -493,9 +561,11 @@ tracker_promote_next_phase_task_M() {
     local parsed
     parsed=$(tracker_phase_task_parse "$plan_path" 2>/dev/null) || {
         # Parser failure → conservative: start at 1.
+        [[ "$plan_path" == /*/tpr-plan-tree.* ]] && rm -f "$plan_path"
         printf '1\n'
         return 0
     }
+    [[ "$plan_path" == /*/tpr-plan-tree.* ]] && rm -f "$plan_path"
 
     local max_m
     max_m=$(printf '%s' "$parsed" | jq -r --arg n "$phase_n" \
@@ -507,12 +577,14 @@ tracker_promote_next_phase_task_M() {
 }
 
 # tracker_promote_phase_task_M_in_use <repo-root> <phase-N.M>
-# rc=0 if phase-N.M already exists in IMPLEMENTATION-PLAN.md.
+# rc=0 if phase-N.M already exists in the implementation-plan source.
 # rc=1 if free / not in use.
 # rc=2 if input is invalid (target shape not phase-N.M, plan unreadable,
 #      parser unavailable). F10 (BD-107 review): disambiguates "M is
 #      free" (rc=1) from "invalid input" (rc=2) so future callers don't
 #      accidentally treat a malformed target as a free slot.
+# Reads the client-root flat-file or the project per-entry plan tree
+# (BD-206 no-mirror — see _tpr_resolve_plan_read_path).
 tracker_promote_phase_task_M_in_use() {
     local repo_root="$1"
     local target="$2"
@@ -522,13 +594,19 @@ tracker_promote_phase_task_M_in_use() {
     local phase_n="${BASH_REMATCH[1]}"
     local task_m="${BASH_REMATCH[2]}"
 
-    local plan_path="$repo_root/IMPLEMENTATION-PLAN.md"
-    [[ ! -f "$plan_path" ]] && plan_path="$repo_root/docs/project/IMPLEMENTATION-PLAN.md"
-    [[ ! -f "$plan_path" ]] && return 1
+    local plan_path
+    plan_path=$(_tpr_resolve_plan_read_path "$repo_root") || return 1
 
-    declare -f tracker_phase_task_parse >/dev/null 2>&1 || return 2
+    declare -f tracker_phase_task_parse >/dev/null 2>&1 || {
+        [[ "$plan_path" == /*/tpr-plan-tree.* ]] && rm -f "$plan_path"
+        return 2
+    }
     local parsed
-    parsed=$(tracker_phase_task_parse "$plan_path" 2>/dev/null) || return 2
+    parsed=$(tracker_phase_task_parse "$plan_path" 2>/dev/null) || {
+        [[ "$plan_path" == /*/tpr-plan-tree.* ]] && rm -f "$plan_path"
+        return 2
+    }
+    [[ "$plan_path" == /*/tpr-plan-tree.* ]] && rm -f "$plan_path"
     local hit
     hit=$(printf '%s' "$parsed" | jq -r --arg n "$phase_n" --arg m "$task_m" \
         '[.phases[] | select(.phase_number == $n) | .tasks[] | select(.task_number == $m)] | length')
@@ -588,24 +666,28 @@ tracker_promote_path1() {
 
     # Idempotency / round-trip-safety check (V3.3 §3.3 round-trip
     # contract): if the TD already has a Resolution naming phase-N AND
-    # IMPLEMENTATION-PLAN.md already carries the phase block, the
+    # the implementation-plan source already carries the phase block, the
     # promotion has already happened. Refuse with a typed error so the
     # user notices and can decide whether to undo / replay / proceed
-    # with a different target.
+    # with a different target. The CHECK reads the existing plan source
+    # (client-root flat-file or the project per-entry plan tree, BD-206
+    # no-mirror — see _tpr_resolve_plan_read_path).
     local existing_resolution
     existing_resolution=$(printf '%s' "$td_entry" | jq -r '.resolution // ""')
-    local plan_path="$repo_root/IMPLEMENTATION-PLAN.md"
-    [[ ! -f "$plan_path" ]] && plan_path="$repo_root/docs/project/IMPLEMENTATION-PLAN.md"
+    local check_plan="" already_has_block=0
+    if check_plan=$(_tpr_resolve_plan_read_path "$repo_root"); then
+        grep -qE "^## Phase $phase_n " "$check_plan" 2>/dev/null && already_has_block=1
+        [[ "$check_plan" == /*/tpr-plan-tree.* ]] && rm -f "$check_plan"
+    fi
     # F2 (BD-107 review): tighten substring match to the canonical
     # Resolution emit shape `[YYYY-MM-DD, completed, promoted to phase-N]`
     # so phase-7 does not false-positive against a prior phase-72/phase-70
     # Resolution. Match on `to <target>]` (right-anchor on the closing
     # bracket of the canonical Resolution token).
-    if [[ "$existing_resolution" == *"to $target]"* ]] && [[ -f "$plan_path" ]] \
-       && grep -qE "^## Phase $phase_n " "$plan_path" 2>/dev/null; then
+    if [[ "$existing_resolution" == *"to $target]"* ]] && [[ "$already_has_block" == "1" ]]; then
         tracker_error_emit "validation" \
             "promote_path1: $td already promoted to $target; refusing duplicate run" \
-            "(BACKLOG entry has Resolution naming $target and IMPLEMENTATION-PLAN.md already carries ## Phase $phase_n)" \
+            "(BACKLOG entry has Resolution naming $target and the implementation-plan already carries ## Phase $phase_n)" \
             "→ Run: pack tracker doctor to inspect; or choose a different --to target"
         return 1
     fi
@@ -613,15 +695,19 @@ tracker_promote_path1() {
     local td_title
     td_title=$(printf '%s' "$td_entry" | jq -r '.title')
 
-    # Step 4: append phase block to IMPLEMENTATION-PLAN.md.
+    # Step 4: append phase block to the implementation-plan flat-file.
+    # BD-206 no-mirror: the abolished docs/project/IMPLEMENTATION-PLAN.md
+    # monolith is never written; the dormant flat-file append targets the
+    # client-root IMPLEMENTATION-PLAN.md. (The project per-entry tree EMIT
+    # — writing one phase-N.md per phase — is BD-207's client-tree
+    # materialization, gated OFF per BD-214, NOT activated here.)
     # F9 (BD-107 review): snapshot the pre-write plan so a downstream
     # tracker-mode failure can roll back the file mutation. The
     # snapshot is removed on success at the end of the function. If a
     # caller crashes between write + restore the snapshot remains as a
     # diagnostic artifact (intentional — visibility wins).
+    local plan_path="$repo_root/IMPLEMENTATION-PLAN.md"
     if [[ ! -f "$plan_path" ]]; then
-        # Default location for client projects per docs/project/ convention.
-        plan_path="$repo_root/IMPLEMENTATION-PLAN.md"
         printf '# Implementation Plan\n\n' > "$plan_path"
     fi
     local plan_snapshot=""
@@ -911,16 +997,20 @@ tracker_promote_path2() {
     local td_title
     td_title=$(printf '%s' "$td_entry" | jq -r '.title')
 
-    # Step 4: append task block to phase N's ### Tasks zone in
-    # IMPLEMENTATION-PLAN.md. We do this via a python rewriter to
+    # Step 4: append task block to phase N's ### Tasks zone in the
+    # implementation-plan flat-file. We do this via a python rewriter to
     # locate the correct insertion point (within phase N's ### Tasks
     # block; preserving any subsequent ### Verification / ### Agent /
     # ### Risks subsections).
+    # BD-206 no-mirror: the abolished docs/project/IMPLEMENTATION-PLAN.md
+    # monolith is never written; the dormant in-place rewrite targets the
+    # client-root IMPLEMENTATION-PLAN.md flat-file. (The project per-entry
+    # tree EMIT — rewriting the phase's phase-N.md per-entry file — is
+    # BD-207's client-tree materialization, gated OFF per BD-214.)
     local plan_path="$repo_root/IMPLEMENTATION-PLAN.md"
-    [[ ! -f "$plan_path" ]] && plan_path="$repo_root/docs/project/IMPLEMENTATION-PLAN.md"
     if [[ ! -f "$plan_path" ]]; then
         tracker_error_emit "not-found" \
-            "promote_path2: IMPLEMENTATION-PLAN.md not found under $repo_root" \
+            "promote_path2: IMPLEMENTATION-PLAN.md not found at $plan_path" \
             "(use Path 1 to create a new phase first, then promote into it)"
         return 1
     fi
@@ -1317,15 +1407,16 @@ tracker_promote_reverse_path1() {
     fi
     local phase_n="${BASH_REMATCH[1]}"
 
-    # Flat-file path: scan BACKLOG.md for a TD whose Resolution names
-    # the target phase. This is the round-trip-safety read per V3.3 §3.3.
-    local backlog_path="$repo_root/BACKLOG.md"
-    [[ ! -f "$backlog_path" ]] && backlog_path="$repo_root/docs/project/BACKLOG.md"
+    # Flat-file path: scan the backlog source for a TD whose Resolution
+    # names the target phase (round-trip-safety read per V3.3 §3.3). The
+    # source is the client-root $repo_root/BACKLOG.md flat-file or the
+    # project per-entry tree docs/project/backlog/ (BD-206 no-mirror —
+    # the docs/project/BACKLOG.md monolith is abolished).
+    local entries=""
+    entries=$(_tpr_read_backlog_entries "$repo_root")
     local derived_from=""
     local resolution_text=""
-    if [[ -f "$backlog_path" ]] && declare -f tmf_parse_backlog >/dev/null 2>&1; then
-        local entries
-        entries=$(tmf_parse_backlog "$backlog_path" 2>/dev/null) || entries="[]"
+    if [[ -n "$entries" ]]; then
         # Walk entries; find first TD whose resolution names the target.
         local hit
         hit=$(printf '%s' "$entries" | jq -c --arg tg "$target" \
@@ -1356,13 +1447,14 @@ tracker_promote_reverse_path2() {
         return 1
     fi
 
-    local backlog_path="$repo_root/BACKLOG.md"
-    [[ ! -f "$backlog_path" ]] && backlog_path="$repo_root/docs/project/BACKLOG.md"
+    # BD-206 no-mirror: read the backlog source (client-root flat-file or
+    # the project per-entry tree); the docs/project/BACKLOG.md monolith
+    # is abolished.
+    local entries=""
+    entries=$(_tpr_read_backlog_entries "$repo_root")
     local derived_from=""
     local resolution_text=""
-    if [[ -f "$backlog_path" ]] && declare -f tmf_parse_backlog >/dev/null 2>&1; then
-        local entries
-        entries=$(tmf_parse_backlog "$backlog_path" 2>/dev/null) || entries="[]"
+    if [[ -n "$entries" ]]; then
         local hit
         hit=$(printf '%s' "$entries" | jq -c --arg tg "$target" \
             'first(.[] | select((.pack_id // "") | startswith("TD-")) | select((.resolution // "") | contains($tg)))')

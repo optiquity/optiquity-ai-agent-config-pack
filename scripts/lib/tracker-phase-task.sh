@@ -3,8 +3,9 @@
 #
 # Phase tasks are first-class L2 entities under their phase-epic
 # parent (V3.3 §2 D-21). Identifier scheme: `phase-N.M` (lowercase,
-# dash-separated; M is the integer task number from
-# IMPLEMENTATION-PLAN.md).
+# dash-separated; M is the integer task number from the phase's
+# implementation-plan content — the per-entry phase-N.md file in the
+# no-mirror tree, or a v10 IMPLEMENTATION-PLAN.md INPUT).
 #
 # This library lands the parser + emitter for `### Tasks` blocks and
 # the helpers that downstream BDs (BD-107 promotion, BD-108 cross-
@@ -21,8 +22,11 @@
 #
 # Public API:
 #   - tracker_phase_task_parse <path>
-#       Parse IMPLEMENTATION-PLAN.md and emit a JSON document on
-#       stdout shaped:
+#       Parse implementation-plan phase content at <path> (a per-entry
+#       phase-N.md file, a concatenated per-entry-tree stream, or a v10
+#       IMPLEMENTATION-PLAN.md INPUT — the function is path-agnostic and
+#       consumes the `## Phase N` grammar wherever it is fed from) and
+#       emit a JSON document on stdout shaped:
 #         {
 #           "phases": [
 #             {
@@ -137,7 +141,7 @@ tracker_phase_task_dependency_re() {
 }
 
 # ─────────────────────────────────────────────────────────────────
-# Public: parser — IMPLEMENTATION-PLAN.md → JSON
+# Public: parser — implementation-plan phase content → JSON
 # ─────────────────────────────────────────────────────────────────
 
 # tracker_phase_task_parse <path>
@@ -484,7 +488,7 @@ PYEOF
 }
 
 # ─────────────────────────────────────────────────────────────────
-# Public: emitter — JSON → IMPLEMENTATION-PLAN.md fragment
+# Public: emitter — JSON → implementation-plan phase fragment
 # ─────────────────────────────────────────────────────────────────
 
 # tracker_phase_task_emit <parsed-json>

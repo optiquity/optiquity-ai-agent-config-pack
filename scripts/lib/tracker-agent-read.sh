@@ -155,10 +155,10 @@ _tar_read_entry_flat() {
     local repo_root="$2"
 
     # BD-167 (per-entry split, mandatory v11.0): prefer the per-entry
-    # file when the per-entry tree exists for the stream this pack-id
-    # belongs to. Fall back to the regenerated mirror for backward
-    # compatibility with pre-v11.0 clients (which have no per-entry
-    # tree; the mirror IS source of truth there).
+    # file for the stream this pack-id belongs to. The per-entry tree
+    # IS the no-mirror source of truth on BOTH the pack and project
+    # surfaces — there is no regenerated monolith mirror to fall back
+    # to (BD-203 pack-side, BD-206 project-side).
     #
     # Mode-awareness per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-
     # ADDENDUM.md §3.2: the prefer-then-fall-back logic is independent
@@ -171,8 +171,6 @@ _tar_read_entry_flat() {
     #
     # Per ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §6.3 + §18.1 #10:
     # extend the existing function rather than add a sibling.
-    # Per §18.2 #2: backward-compatibility for pre-v11.0 clients via
-    # mirror fallback when no per-entry tree present.
     #
     # Stream resolution from pack-id prefix:
     #   BD-NNN     → pack backlog tree at $repo_root/backlog/
@@ -245,72 +243,45 @@ PYEOF
     fi
 
     # Fall through: per-entry tree absent OR per-entry file missing.
-    # Per-stream-aware fallback selection mirroring the prefer-branch's
-    # stream resolution above:
-    #   BD-*     → pack per-entry tree IS the SSOT; NO monolith fallback
-    #   TD-*     → project mirror docs/project/BACKLOG.md
-    #   phase-*  → project mirror docs/project/IMPLEMENTATION-PLAN.md
-    #   *        → pack surface (unknown prefix); NO monolith fallback
+    # The per-entry tree is the no-mirror SSOT on EVERY surface, so
+    # there is NO monolith to fall back to for any prefix:
+    #   BD-*     → pack per-entry tree at $repo_root/backlog/
+    #   TD-*     → project per-entry tree at $repo_root/docs/project/backlog/
+    #   phase-*  → project per-entry tree at
+    #              $repo_root/docs/project/implementation-plan/
+    #   *        → pack surface (unknown prefix)
     #
-    # BD-204 C-6 (C4 REPOINT): the pack monolith `pack-ops/BACKLOG.md`
-    # is DELETED (BD-203 no-mirror SSOT). The pack-surface read path is
-    # the per-entry tree handled by the prefer-branch above — when that
-    # branch did not resolve the entry there is NO monolith to fall
-    # back to, so the pack-surface fall-through (BD-* and the `*)`
-    # unknown-prefix default) fails loud with a typed not-found error
-    # rather than reading a deleted file. The project-side TD-* /
-    # phase-* mirror fallback is UNTOUCHED (BD-207 owns the project
-    # tree repoint): clients still ship those monolith mirrors.
-    # Single-pass dispatch: the two pack-surface fall-through arms
-    # (BD-* and the `*)` unknown-prefix default) fail loud with a typed
-    # not-found (no monolith fallback); only TD-*/phase- proceed to the
-    # project mirror block below. (BD-204 C-6-FIX1 / NIT-1: previously a
-    # no-op `case` arm followed by a separate `if BD-*` error block —
-    # consolidated to one `case` for clarity; behavior unchanged.)
-    local mirror_path=""
+    # BD-203 deleted the pack monolith `pack-ops/BACKLOG.md`; BD-206
+    # abolished the project monoliths `docs/project/{BACKLOG,
+    # IMPLEMENTATION-PLAN}.md` (per-entry, no-mirror standard). The
+    # prefer-branch above is the ONLY read path on both surfaces; when
+    # it did not resolve the entry there is no monolith to consult, so
+    # the fall-through fails loud with a typed not-found rather than
+    # reading a deleted file (fail-loud-delete-old-source). The
+    # per-stream not-found message names the per-entry file the
+    # prefer-branch looked for so a resumed caller can self-diagnose.
     case "$pack_id" in
         BD-*)
             tracker_error_emit "not-found" \
                 "agent_read: $pack_id not found in pack per-entry tree at $repo_root/backlog/$pack_id.md (no monolith fallback — BD-203 no-mirror SSOT)"
             return 1
             ;;
-        TD-*)    mirror_path="$repo_root/docs/project/BACKLOG.md" ;;
-        phase-*) mirror_path="$repo_root/docs/project/IMPLEMENTATION-PLAN.md" ;;
+        TD-*)
+            tracker_error_emit "not-found" \
+                "agent_read: $pack_id not found in project per-entry tree at $repo_root/docs/project/backlog/$pack_id.md (no monolith fallback — BD-206 no-mirror SSOT)"
+            return 1
+            ;;
+        phase-*)
+            tracker_error_emit "not-found" \
+                "agent_read: $pack_id not found in project per-entry tree at $repo_root/docs/project/implementation-plan/$per_entry_id.md (no monolith fallback — BD-206 no-mirror SSOT)"
+            return 1
+            ;;
         *)
             tracker_error_emit "not-found" \
                 "agent_read: $pack_id not found in pack per-entry tree at $repo_root/backlog (no monolith fallback — BD-203 no-mirror SSOT)"
             return 1
             ;;
     esac
-    if [[ ! -f "$mirror_path" ]]; then
-        tracker_error_emit "not-found" \
-            "agent_read: mirror not found at $mirror_path for $pack_id"
-        return 1
-    fi
-    python3 - "$mirror_path" "$pack_id" <<'PYEOF' || return 1
-import os, re, sys
-path, pack_id = sys.argv[1], sys.argv[2]
-try:
-    with open(path) as f:
-        text = f.read()
-except OSError as e:
-    sys.stderr.write("ERROR: not-found\nMESSAGE: %s\n→ Run: verify the issue id and re-run\n" % e)
-    sys.exit(1)
-# Match the entry header: **PACK_ID — Title**
-pat = re.compile(r'^\*\*' + re.escape(pack_id) + r'\s*[—-]\s*.+?\*\*\s*$', re.M)
-m = pat.search(text)
-if not m:
-    sys.stderr.write("ERROR: not-found\nMESSAGE: %s not found in %s\n→ Run: verify the issue id and re-run\n" % (pack_id, os.path.basename(path)))
-    sys.exit(1)
-start = m.start()
-# End is the next `---` separator or next `**X-NNN —` header, whichever first.
-nxt_sep = re.search(r'^---\s*$', text[m.end():], re.M)
-nxt_hdr = re.search(r'^\*\*[A-Z]+-[0-9]+', text[m.end():], re.M)
-candidates = [c.start() for c in (nxt_sep, nxt_hdr) if c]
-end = m.end() + (min(candidates) if candidates else len(text) - m.end())
-print("Source: flat-file (%s)\n" % os.path.basename(path))
-print(text[start:end].rstrip())
-PYEOF
 }
 
 # ─────────────────────────────────────────────────────────────────

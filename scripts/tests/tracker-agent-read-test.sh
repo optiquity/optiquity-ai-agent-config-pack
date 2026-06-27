@@ -6,7 +6,8 @@
 #   1. Mode detection — flat-file vs tracker
 #   2. Flat-file read — pack BD-* from the /backlog per-entry tree
 #      (BD-204 C-6: pack monolith DELETED; tree is the SSOT) + TD-*
-#      project-mirror fallback (UNTOUCHED by C-6)
+#      from the docs/project/backlog/ per-entry tree (BD-206: the
+#      project monolith is abolished; the per-entry tree is the SSOT)
 #   3. Tracker-mode read — mapping-resolution + provider_get
 #   4. Direct-execution entrypoint — `bash tracker-agent-read.sh PACK-ID`
 
@@ -36,9 +37,10 @@ PATH_SAVED="$PATH"
 # Build a small flat-mode test repo. Pack BD-* live in the per-entry
 # tree under /backlog/ (BD-204 C-6: the pack monolith pack-ops/BACKLOG.md
 # is DELETED — BD-203 no-mirror SSOT; the per-entry tree is the SSOT and
-# the ONLY pack-surface read source). TD-* live in docs/project/BACKLOG.md
-# (project mirror — UNTOUCHED by C-6; BD-207 owns the client tree
-# repoint).
+# the ONLY pack-surface read source). TD-* live in the per-entry tree
+# under docs/project/backlog/ (BD-206: the docs/project/BACKLOG.md
+# monolith is abolished — the per-entry tree is the project-side SSOT
+# and the ONLY project-surface read source).
 _setup_flat_repo() {
     local repo
     repo=$(mktemp -d -t tar-flat.XXXXXX)
@@ -64,18 +66,18 @@ Blockers: BD-001
 Description: Refactor bar.
 Resolved: n/a
 EOF
-    # Project-side mirror — TD-* fallback (BD-167 retro M2 fix:
-    # TD-* now reads from docs/project/BACKLOG.md when no per-entry
-    # tree is present).
-    mkdir -p "$repo/docs/project"
-    cat > "$repo/docs/project/BACKLOG.md" <<'EOF'
+    # Project-side TD-* SSOT is the per-entry tree at
+    # docs/project/backlog/ (BD-206 no-mirror standard — the
+    # docs/project/BACKLOG.md monolith is abolished). Each file IS the
+    # entry, with a line-1 back-pointer stripped on agent-read output.
+    mkdir -p "$repo/docs/project/backlog"
+    cat > "$repo/docs/project/backlog/TD-010.md" <<'EOF'
+<!-- per-entry source: docs/project/backlog/TD-010.md; contract: docs/project/backlog/_rules.md -->
 **TD-010 — Document quux**
 Type: TODO(scope)
 Status: Open
 Description: Doc gap.
 Resolved: n/a
-
----
 EOF
     echo "$repo"
 }
@@ -187,10 +189,20 @@ out=$(tracker_agent_read_entry "BD-002" "$REPO_F")
 assert_contains "2.2 BD-002 entry header"   "$out" "**BD-002 — Refactor bar**"
 assert_contains "2.2 BD-002 blockers"       "$out" "Blockers: BD-001"
 
-# 2.3 Read TD-010
+# 2.3 Read TD-010 — project per-entry tree SSOT (BD-206: the
+# docs/project/BACKLOG.md monolith is abolished; the per-entry tree
+# at docs/project/backlog/ is the project-side SSOT).
 out=$(tracker_agent_read_entry "TD-010" "$REPO_F")
+assert_contains "2.3 TD-010 source line (per-entry tree)" "$out" "Source: flat-file (per-entry:"
+assert_contains "2.3 TD-010 names per-entry file" "$out" "docs/project/backlog/TD-010.md"
 assert_contains "2.3 TD-010 entry header"   "$out" "**TD-010 — Document quux**"
 assert_contains "2.3 TD-010 description"    "$out" "Doc gap."
+# Back-pointer line-1 comment is stripped on agent-read output.
+if [[ "$out" == *"<!-- per-entry source:"* ]]; then
+    t_fail "2.3 TD-010 back-pointer stripped" "back-pointer leaked into output"
+else
+    t_pass "2.3 TD-010 back-pointer stripped"
+fi
 
 # 2.4 Missing entry → not-found typed error
 err=$(tracker_agent_read_entry "BD-999" "$REPO_F" 2>&1 1>/dev/null) || true
@@ -316,29 +328,32 @@ assert_contains "4.3 direct exec missing → not-found" "$err" "ERROR: not-found
 rm -rf "$REPO_D"
 
 # ─────────────────────────────────────────────────────────────────
-# Group 5: per-stream fallback (M2 fix) + prefer-branch coverage
+# Group 5: no-monolith fall-through (BD-206) + prefer-branch coverage
 # ─────────────────────────────────────────────────────────────────
 #
-# BD-167 retro M2 added per-stream-aware mirror selection in
-# _tar_read_entry_flat's fall-through branch. This group exercises
-# both (a) per-stream fallback to project-side mirrors (M2a) when
-# no per-entry tree exists, and (b) the prefer-branch path when
-# per-entry files ARE present (originally added in BD-167 with no
-# CI fixtures per PACK-REVIEW-BD-167-RETRO §4 Observation 2).
+# BD-206 repoint: the project-side per-entry tree is the no-mirror
+# SSOT, so when no per-entry file resolves there is NO project
+# monolith to fall back to — the fall-through fails loud with a typed
+# not-found naming the per-entry file (fail-loud-delete-old-source).
+# This group exercises both (a) the no-monolith fall-through when the
+# per-entry tree is absent, and (b) the prefer-branch read path when
+# per-entry files ARE present (originally added in BD-167 with no CI
+# fixtures per PACK-REVIEW-BD-167-RETRO §4 Observation 2).
 
-printf "\n=== Group 5: per-stream fallback + prefer-branch ===\n"
+printf "\n=== Group 5: no-monolith fall-through + prefer-branch ===\n"
 
-# Build a synthetic project-side repo with TD-* and phase-* in mirror
-# files (per-entry tree ABSENT — greenfield mid-migration shape).
+# Build a synthetic project-side repo with stale monoliths present but
+# NO per-entry tree (defensive: the deleted-monolith model must never
+# read them; the fall-through must fail loud).
 _setup_project_fallback_repo() {
     local repo
     repo=$(mktemp -d -t tar-projfb.XXXXXX)
     mkdir -p "$repo/docs/project"
     cat > "$repo/docs/project/BACKLOG.md" <<'EOF'
-**TD-005 — Document log rotation**
+**TD-005 — STALE MONOLITH (must never be read)**
 Type: TODO(scope)
 Status: Open
-Description: Log rotation undocumented.
+Description: deleted-monolith sentinel.
 Resolved: n/a
 
 ---
@@ -441,39 +456,38 @@ EOF
     echo "$repo"
 }
 
-# 5.1 TD-* fallback to project mirror (per-entry tree absent).
+# 5.1 TD-* no per-entry tree → not-found (BD-206: the project monolith
+# docs/project/BACKLOG.md is abolished; NO monolith fallback).
 REPO_PFB=$(_setup_project_fallback_repo)
-out=$(tracker_agent_read_entry "TD-005" "$REPO_PFB" 2>/dev/null)
-rc=$?
-assert_eq       "5.1 TD-005 fallback rc=0"             "0" "$rc"
-assert_contains "5.1 TD-005 source attribution"        "$out" "Source: flat-file (BACKLOG.md)"
-assert_contains "5.1 TD-005 entry header"              "$out" "**TD-005 — Document log rotation**"
-assert_contains "5.1 TD-005 description"               "$out" "Log rotation undocumented."
-
-# 5.2 phase-* fallback routes to project IMPLEMENTATION-PLAN mirror.
-# Note: the BACKLOG-style bold-header parser (**X-NNN — Title**) does
-# not match H2-style phase entries (## Phase N — Title) — so the
-# Python parser reports not-found, but the routing target IS the
-# project IMPLEMENTATION-PLAN.md (the M2 fix). The not-found
-# message names IMPLEMENTATION-PLAN.md by basename, proving correct
-# per-stream-aware routing. (Real-world v11.0 clients almost always
-# have the per-entry tree present per BD-167 install step; the
-# prefer-branch handles H2-style phase entries via per-entry file
-# read. Mirror fallback for phase-* is best-effort.)
-err=$(tracker_agent_read_entry "phase-3" "$REPO_PFB" 2>&1 1>/dev/null) || true
-assert_contains "5.2 phase-3 routes to plan mirror"   "$err" "IMPLEMENTATION-PLAN.md"
-# Also confirm BACKLOG.md is NOT in the message (would indicate
-# wrong-stream routing — the pre-M2 bug).
-if [[ "$err" == *"BACKLOG.md"* ]]; then
-    t_fail "5.2 phase-3 NOT routed to BACKLOG.md" "wrong-stream routing detected"
+err=$(tracker_agent_read_entry "TD-005" "$REPO_PFB" 2>&1 1>/dev/null) || true
+assert_contains "5.1 TD-005 no tree → not-found"       "$err" "ERROR: not-found"
+assert_contains "5.1 TD-005 fail-loud names per-entry tree (no monolith)" \
+    "$err" "no monolith fallback"
+# Defensive: the stale docs/project/BACKLOG.md monolith must NOT be read.
+out_stale=$(tracker_agent_read_entry "TD-005" "$REPO_PFB" 2>&1) || true
+if [[ "$out_stale" == *"STALE MONOLITH"* ]]; then
+    t_fail "5.1 TD-* never reads the project monolith" "deleted monolith was read"
 else
-    t_pass "5.2 phase-3 NOT routed to BACKLOG.md"
+    t_pass "5.1 TD-* never reads the project monolith"
 fi
 
-# 5.3 phase-N.M fallback resolves to phase-N (per Addendum #1 §6.4
-# tasks-inline contract). Same parser-limitation caveat as 5.2.
+# 5.2 phase-* no per-entry tree → not-found (BD-206: the project monolith
+# docs/project/IMPLEMENTATION-PLAN.md is abolished; NO monolith fallback).
+err=$(tracker_agent_read_entry "phase-3" "$REPO_PFB" 2>&1 1>/dev/null) || true
+assert_contains "5.2 phase-3 no tree → not-found"      "$err" "ERROR: not-found"
+assert_contains "5.2 phase-3 fail-loud names per-entry tree (no monolith)" \
+    "$err" "no monolith fallback"
+# The message names the per-entry implementation-plan path, not the
+# abolished monolith — and confirms no wrong-stream routing.
+assert_contains "5.2 phase-3 names per-entry plan tree" \
+    "$err" "docs/project/implementation-plan/phase-3.md"
+
+# 5.3 phase-N.M no per-entry tree → not-found, resolving to phase-N
+# (per Addendum #1 §6.4 tasks-inline contract).
 err=$(tracker_agent_read_entry "phase-3.2" "$REPO_PFB" 2>&1 1>/dev/null) || true
-assert_contains "5.3 phase-3.2 routes to plan mirror" "$err" "IMPLEMENTATION-PLAN.md"
+assert_contains "5.3 phase-3.2 no tree → not-found"    "$err" "ERROR: not-found"
+assert_contains "5.3 phase-3.2 resolves to phase-3 per-entry file" \
+    "$err" "docs/project/implementation-plan/phase-3.md"
 
 # 5.7 Unknown pack-id prefix → pack-surface default. BD-204 C-6: the
 # `*)` default fails loud with a typed not-found (NO pack monolith

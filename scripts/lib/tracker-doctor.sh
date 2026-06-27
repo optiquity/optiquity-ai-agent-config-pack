@@ -123,9 +123,13 @@ tracker_doctor_run() {
     # the regenerated mirror of tracker state (tracker mode); the
     # "mirror header / mtime" freshness concept maps to the tree's
     # regen-state via the generated `_toc.md` index (DP-4 regen cadence
-    # marker). The PROJECT surface (`*)` branch) is UNTOUCHED (BD-207
-    # owns the client tree repoint): clients still ship the
-    # docs/project/BACKLOG.md monolith mirror.
+    # marker). BD-206 abolished the project monolith
+    # `docs/project/BACKLOG.md` (per-entry, no-mirror standard); the
+    # PROJECT surface (`*)` branch) maps the same freshness concept to
+    # its per-entry tree's `docs/project/backlog/_toc.md` index. (The
+    # tracker→file read-only mirror EMIT on the project surface is a
+    # SEPARATE feature owned by BD-207, gated OFF per BD-214 — not the
+    # per-entry→monolith assumption reconciled here.)
     case "$surface" in
         pack)
             # Pack-surface (BD-204 Mode-3 ops contract §4.1 — leg (d)
@@ -169,36 +173,19 @@ tracker_doctor_run() {
             fi
             ;;
         *)
-            local backlog_path=""
-            if [[ -f "$repo_root/docs/project/BACKLOG.md" ]]; then
-                backlog_path="$repo_root/docs/project/BACKLOG.md"
-            elif [[ -f "$repo_root/BACKLOG.md" ]]; then
-                backlog_path="$repo_root/BACKLOG.md"
-            fi
-            if [[ -n "$backlog_path" && -f "$backlog_path" ]]; then
-                local first_line
-                first_line=$(head -n 1 "$backlog_path")
-                if [[ "$first_line" == "<!--" ]]; then
-                    local mirror_mtime last_forward
-                    # macOS BSD stat differs from GNU stat; use date -r as the
-                    # portable reader.
-                    mirror_mtime=$(date -r "$backlog_path" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "")
-                    if [[ -f "$cfg_path" ]]; then
-                        last_forward=$(tracker_config_get "$cfg_path" "migration.last_forward_run" 2>/dev/null || echo "")
-                    fi
-                    if [[ -n "$mirror_mtime" && -n "$last_forward" ]]; then
-                        if [[ "$mirror_mtime" > "$last_forward" || "$mirror_mtime" == "$last_forward" ]]; then
-                            echo "  [OK]   BACKLOG.md mirror is current (mtime=$mirror_mtime, last_forward=$last_forward)"
-                        else
-                            echo "  [WARN] BACKLOG.md mirror is older than last_forward_run  → Run: pack tracker mirror-rebuild"
-                            n_warn=$((n_warn + 1))
-                        fi
-                    else
-                        echo "  [OK]   BACKLOG.md has read-only mirror header"
-                    fi
-                else
-                    echo "  [INFO] BACKLOG.md has no mirror header (flat-file mode or post-reverse state)"
-                fi
+            # Project surface (BD-206 no-mirror repoint): the per-entry
+            # tree under docs/project/backlog/ IS the SSOT; the "mirror
+            # freshness" concept maps to the tree's regen-state via the
+            # generated docs/project/backlog/_toc.md index, the no-mirror
+            # analogue of the old monolith-header mtime (mirroring the
+            # pack-surface C7b repoint above). The docs/project/BACKLOG.md
+            # monolith is abolished (BD-206) and is never probed.
+            local proj_toc
+            proj_toc="$repo_root/docs/project/backlog/_toc.md"
+            if [[ -f "$proj_toc" ]]; then
+                echo "  [OK]   docs/project/backlog per-entry tree present (_toc.md index)"
+            else
+                echo "  [INFO] docs/project/backlog/_toc.md absent (flat-file pre-regen or no project tree)"
             fi
             ;;
     esac
