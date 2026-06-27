@@ -447,7 +447,7 @@ _CONF_FORBIDDEN_SIDECARS = ("_format.md", "_scaffolding.md")
 _CONF_ENTRY_REGEX = {
     "backlog":             re.compile(r"^TD-\d+\.md$"),
     "implementation-plan": re.compile(r"^phase-\d+\.md$"),
-    "changelog":           re.compile(r"^\d{4}-\d{2}-\d{2}(-.+)?\.md$"),
+    "changelog":           re.compile(r"^\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md$"),
 }
 _CONF_SIDECAR_RX = re.compile(r"^_.*\.md$")
 
@@ -626,14 +626,40 @@ def _conf_check_implplan_entry(rel, body, schema):
     return fails
 
 
+_CONF_CL_NARRATIVE_RE = re.compile(
+    r"^\s*(?:[-*]\s*)?\*{0,2}(?:Summary|Scope)\*{0,2}\s*:(.*)$", re.MULTILINE)
+
+
+def _conf_cl_caps(schema):
+    """Read the integer caps (entry-max-lines, summary-max-words) from the
+    parsed `## Entry structure` schema (NOT literals — the _rules.md SSOT
+    governs). A cap absent / unparseable is None (that rule does not fire)."""
+    def _int(key):
+        tok = _conf_schema_tokens(schema, key)
+        if not tok:
+            return None
+        try:
+            return int(_conf_clean_token(tok[0]))
+        except ValueError:
+            return None
+    return _int("entry-max-lines"), _int("summary-max-words")
+
+
 def _conf_check_changelog_entry(rel, body, schema):
     """Structured (not form-family) conformance for one changelog entry.
 
-    BD-206/O10 scope: recognize the structured entry shape — the H3 anchor
-    heading (`### YYYY-MM-DD — …`). The deeper changelog conformance (core
-    {Summary + Test count + Files} required-when-code-bearing + the size
-    caps) is the separate BD-206/O12 leg; this leg confirms the entry is a
-    structured changelog entry, not a form-family entry mis-filed here.
+    Reads the rule set FROM the `## Entry structure` schema SSOT (the SAME
+    block the pack-side validate-pack.py Check 74 parses — one schema, two
+    parsers, one rule set):
+      (1) a NARRATIVE field is required for EVERY entry — `**Summary**:` OR
+          `**Scope**:` (`narrative-fields`); it is the sole required field;
+      (2) `entry-max-lines` cap; (3) `summary-max-words` cap (the word cap
+          reads whichever narrative field is present).
+    `Test count` and `Files` (any `**Files <verb>**:` label) are ADVISORY /
+    admitted, not required. The H3 anchor + not-form-family guard remain.
+    The caps are read from the schema, so a _rules.md cap edit reaches this
+    leg without a code change. Deterministic line/word counts
+    (ci-check-runtime-compounding aware).
     """
     fails = []
     has_h3 = re.search(r"(?m)^###\s+\d{4}-\d{2}-\d{2}\b", body) is not None
@@ -647,6 +673,32 @@ def _conf_check_changelog_entry(rel, body, schema):
         fails.append(
             f"{rel} [conformance] changelog entry carries a form-family "
             f"Entry-Type field (changelog is structured, not form-family)")
+
+    # O12 reconciled conformance — narrative required; Test count + Files advisory.
+    narrative_labels = [_conf_clean_token(t)
+                        for t in _conf_schema_tokens(schema, "narrative-fields")] \
+                       or ["Summary", "Scope"]
+    if not any(_conf_entry_field_present(body, lbl) for lbl in narrative_labels):
+        fails.append(
+            f"{rel} [conformance] missing narrative field "
+            f"({' or '.join(narrative_labels)})")
+
+    entry_max_lines, summary_max_words = _conf_cl_caps(schema)
+    # (2) entry-max-lines.
+    if entry_max_lines is not None:
+        nl = len(body.splitlines())
+        if nl > entry_max_lines:
+            fails.append(
+                f"{rel} [conformance] entry has {nl} lines > "
+                f"entry-max-lines {entry_max_lines}")
+    # (3) summary-max-words — measured on the narrative field (Summary or Scope).
+    if summary_max_words is not None:
+        m = _CONF_CL_NARRATIVE_RE.search(body)
+        sw = len(m.group(1).split()) if m else 0
+        if sw > summary_max_words:
+            fails.append(
+                f"{rel} [conformance] narrative has {sw} words > "
+                f"summary-max-words {summary_max_words}")
     return fails
 
 
@@ -1169,6 +1221,69 @@ def run_selftest():
         conf_gate({"changelog/2026-05-01-x.md": good_cl
                    + "- **Entry-Type**: td\n"}, True,
                   "conformance-changelog-formfamily")
+
+        # --- changelog deep conformance (BD-206 O12; reconciled) ---
+        # A code-bearing changelog entry carries a Summary + advisory fields.
+        good_cl_code = (
+            "<!-- back -->\n"
+            "### 2026-04-20 — Phase 9 — Sample\n\n"
+            "**Summary**: did the code thing.\n"
+            "**Test count**: 12 passing\n"
+            "**Files modified (3)**: a.swift, b.swift, c.swift\n")
+        # Code-bearing entry with Summary + advisory fields → PASS.
+        conf_gate({"changelog/2026-04-20-phase-9.md": good_cl_code},
+                  False, "conformance-changelog-core-clean")
+        # Narrative-only entry (Summary, no advisory fields) → PASS.
+        conf_gate({"changelog/2026-03-30-migration.md": good_cl},
+                  False, "conformance-changelog-narrative-only-clean")
+        # Scope-only narrative (no Summary, no advisory fields) → PASS.
+        conf_gate({"changelog/2026-03-27-phase-14.md":
+                   "<!-- back -->\n"
+                   "### 2026-03-27 — Phase 14 — Test Audit\n\n"
+                   "**Scope**: 24-item audit adding test coverage.\n"},
+                  False, "conformance-changelog-scope-only")
+        # Missing Files (Summary + Test) → PASS (Files advisory).
+        conf_gate({"changelog/2026-04-20-no-files.md":
+                   "### 2026-04-20 — Phase 9 — X\n\n"
+                   "**Summary**: did it.\n**Test count**: 4 passing\n"},
+                  False, "conformance-changelog-no-files")
+        # Missing Test count (Summary + Files) → PASS (Test advisory).
+        conf_gate({"changelog/2026-04-20-no-test.md":
+                   "### 2026-04-20 — Phase 9 — X\n\n"
+                   "**Summary**: did it.\n**Files modified**: a.swift\n"},
+                  False, "conformance-changelog-no-test")
+        # Missing narrative (Files + Test, no Summary/Scope) → FAIL (R1).
+        conf_gate({"changelog/2026-04-20-no-summary.md":
+                   "### 2026-04-20 — Phase 9 — X\n\n"
+                   "**Test count**: 4 passing\n"
+                   "**Files modified**: a.swift\n"},
+                  True, "conformance-changelog-no-summary")
+        # No narrative at all (prose only) → FAIL (R1).
+        conf_gate({"changelog/2026-03-30-no-narrative.md":
+                   "### 2026-03-30 — Migration — Y\n\nSome prose.\n"},
+                  True, "conformance-changelog-no-narrative")
+        # entry-max-lines violation (>180) → FAIL.
+        conf_gate({"changelog/2026-04-20-too-long.md":
+                   good_cl_code + ("\nline\n" * 200)},
+                  True, "conformance-changelog-entry-too-long")
+        # summary-max-words violation (>250) → FAIL.
+        conf_gate({"changelog/2026-04-20-summary-too-long.md":
+                   "### 2026-04-20 — Phase 9 — X\n\n"
+                   "**Summary**: " + ("word " * 260) + "\n"
+                   "**Test count**: 4 passing\n"
+                   "**Files modified**: a.swift\n"},
+                  True, "conformance-changelog-summary-too-long")
+        # narrative word-cap also bites a Scope-expressed over-words entry → FAIL.
+        conf_gate({"changelog/2026-03-27-scope-too-long.md":
+                   "### 2026-03-27 — Phase 14 — Audit\n\n"
+                   "**Scope**: " + ("word " * 260) + "\n"},
+                  True, "conformance-changelog-scope-too-long")
+        # NIT-1: strict filename (mandatory kebab slug). A bare-date file
+        # no longer matches the entry regex → SKIPped (not an entry), so a
+        # tree with only a bare-date file + a conforming kebab entry PASSes.
+        conf_gate({"changelog/2026-04-20.md": good_cl_code,
+                   "changelog/2026-04-20-phase-9.md": good_cl_code},
+                  False, "conformance-changelog-strict-filename")
 
         # --- _index.md MANDATORY validation (BD-206 O11) two-property leg ---
         # Two conforming phases + a valid topological `_index.md` → PASS.

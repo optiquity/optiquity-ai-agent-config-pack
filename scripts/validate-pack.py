@@ -493,8 +493,9 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # + 1 net-new BD-243 check (70 client doc-gate structural parity)
 # + 1 net-new BD-243 check (71 pack-root skill-mirror byte-identity)
 # + 1 net-new BD-206 check (72 project empty-template shape, A1)
-# + 1 net-new BD-206 check (73 project impl-plan _index.md consistency, C3).
-# CAUTION: a new check's NUMBER is the next free integer (66–73 for the BD-243
+# + 1 net-new BD-206 check (73 project impl-plan _index.md consistency, C3)
+# + 1 net-new BD-206 check (74 project changelog conformance, C4).
+# CAUTION: a new check's NUMBER is the next free integer (66–74 for the BD-243
 # gate wave + the BD-206 legs) but this constant is the registry ENTRY COUNT —
 # bump it +1 per net-new entry, NOT to the new number. Numbers != entry count
 # (Checks 16/18/19 each register TWICE and 2 checks carry number=None), so the
@@ -503,7 +504,7 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # (+0). This constant is the explicit invariant; the actual count is COMPUTED
 # from len(_build_check_registry()) and asserted equal by Check 59 — never
 # hard-coded anywhere else.
-CHECK_REGISTRY_EXPECTED_COUNT = 71
+CHECK_REGISTRY_EXPECTED_COUNT = 72
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
@@ -11760,6 +11761,260 @@ def check_project_index_consistency() -> None:
            f"self-checks with teeth.")
 
 
+# ── Check 74: project changelog conformance (BD-206 O12) ────────────────────
+#
+# The structured changelog conformance check (G-2/G-2b), pack-side leg. The
+# shipped `project-template/docs/project/changelog/` stream is EMPTY during
+# pack development (no `YYYY-MM-DD-*.md` entries), so this leg validates the
+# MECHANISM / empty-state: (a) the changelog `_rules.md` `## Entry structure`
+# block parses + declares the enforced keys; (b) any entry present is
+# conformant; (c) a synthetic self-check confirms the matcher still BITES (the
+# empty shipped template has no entries to exercise it).
+#
+# The reconciled rule (design §3.4, parsed from the changelog `_rules.md`
+# `## Entry structure` schema SSOT — never hard-coded):
+#   (1) a NARRATIVE field is required for EVERY entry — `**Summary**:` OR
+#       `**Scope**:` (`narrative-fields`); it is the sole required field;
+#   (2) `entry-max-lines` cap (≤ 180; gold max 130);
+#   (3) `summary-max-words` cap (≤ 250; gold max 243; reads Summary OR Scope).
+# `Test count` and `Files` (any `**Files <verb>**:` label) are ADVISORY /
+# admitted, not required.
+#
+# The CLIENT-side leg (populated-tree validation, "both repos" per Item-7)
+# lives in `project-template/scripts/validate-docs.sh` `_conf_check_changelog_entry`;
+# both legs parse the SAME `## Entry structure` schema block with the same
+# grammar (Item-8 single-schema-SSOT: one schema in `_rules.md`, two parsers,
+# one rule set). The caps are read FROM the schema (not literals here), so a
+# `_rules.md` cap edit reaches both legs without a code change.
+#
+# Cheap (ci-check-runtime-compounding): a bounded os.scandir on one stream dir
+# + at most ~N small reads + deterministic line/word counts; no subprocess, no
+# whole-tree walk; the self-check builds its synthetic entries in-memory.
+
+_CHECK_74_CHANGELOG_DIR = (
+    "project-template/docs/project/changelog"
+)
+_CHECK_74_ENTRY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md$")
+_CHECK_74_NARRATIVE_RE = re.compile(
+    r"^\s*(?:[-*]\s*)?\*{0,2}(?:Summary|Scope)\*{0,2}\s*:(.*)$", re.MULTILINE)
+
+
+def _check_74_field_present(body: str, field: str) -> bool:
+    """True iff the entry carries a `**Field**:` / `Field:` / `- Field:`
+    labeled line. Mirrors the client-leg `_conf_entry_field_present`."""
+    esc = re.escape(field)
+    rx = re.compile(
+        r"^\s*(?:[-*]\s*)?\*{0,2}" + esc + r"\*{0,2}\s*:", re.MULTILINE)
+    return rx.search(body) is not None
+
+
+def _check_74_summary_words(body: str) -> int:
+    """Word count of the narrative field value (Summary or Scope, first line),
+    or 0 if absent."""
+    m = _CHECK_74_NARRATIVE_RE.search(body)
+    return len(m.group(1).split()) if m else 0
+
+
+def _check_74_caps(schema: dict):
+    """Read the integer caps from the parsed `## Entry structure` schema
+    (NOT literals). Returns (entry_max_lines, summary_max_words); a cap
+    that is absent / unparseable is None (that rule then does not fire —
+    the SSOT governs)."""
+    def _int(key):
+        tok = (schema.get(key, "") or "").split()
+        if not tok:
+            return None
+        try:
+            return int(tok[0])
+        except ValueError:
+            return None
+    return _int("entry-max-lines"), _int("summary-max-words")
+
+
+def _check_74_validate(entries: dict, schema: dict) -> list:
+    """The reconciled changelog conformance validator, in-memory.
+    Rule: a NARRATIVE field (Summary OR Scope) is required for every entry
+    (the sole required field); Test count and Files are advisory. Plus the
+    two schema-driven size caps. entries: {filename: body}."""
+    fails = []
+    narrative_labels = [t.strip().strip('"') for t in
+                        re.findall(r'"[^"]+"|\S+',
+                                   schema.get("narrative-fields", "Summary Scope"))]
+    entry_max_lines, summary_max_words = _check_74_caps(schema)
+
+    for name in sorted(entries):
+        body = entries[name]
+        # R1 — narrative required (Summary OR Scope).
+        if not any(_check_74_field_present(body, lbl) for lbl in narrative_labels):
+            fails.append(
+                "%s: missing narrative field (%s)"
+                % (name, " or ".join(narrative_labels)))
+        # R2 — entry-max-lines cap.
+        if entry_max_lines is not None:
+            nl = len(body.splitlines())
+            if nl > entry_max_lines:
+                fails.append(
+                    "%s: entry has %d lines > entry-max-lines %d"
+                    % (name, nl, entry_max_lines))
+        # R3 — narrative-max-words cap.
+        if summary_max_words is not None:
+            sw = _check_74_summary_words(body)
+            if sw > summary_max_words:
+                fails.append(
+                    "%s: narrative has %d words > summary-max-words %d"
+                    % (name, sw, summary_max_words))
+    return fails
+
+
+def _check_74_self_check() -> list:
+    """In-memory synthetic self-check: confirm the reconciled matcher PASSES
+    a conforming set (narrative required; Test count + Files advisory) and
+    BITES each violation class (no narrative / over-lines / over-words).
+    Returns a list of self-check failure strings ([] = the matcher has teeth)."""
+    sc_fails = []
+    schema = {
+        "core-fields": "narrative",
+        "narrative-fields": "Summary Scope",
+        "advisory-fields": '"Test count" Files',
+        "entry-max-lines": "180",
+        "summary-max-words": "250",
+    }
+    code_ok = ("### 2026-04-20 — Phase 35 — Sample\n\n"
+               "**Summary**: did the thing.\n"
+               "**Test count**: 12 passing\n"
+               "**Files modified (3)**: a.swift, b.swift, c.swift\n")
+    narrative_ok = ("### 2026-03-30 — v8 Migration — Pack\n\n"
+                    "**Summary**: narrative-only entry, no code changed.\n")
+    scope_ok = ("### 2026-03-27 — Phase 14 — Test Audit\n\n"
+                "**Scope**: 24-item audit adding test coverage.\n")
+
+    def expect(label, entries, want_fail):
+        got = bool(_check_74_validate(entries, schema))
+        if got != want_fail:
+            sc_fails.append(
+                "self-check %s: expected %s, got %s"
+                % (label, "FAIL" if want_fail else "PASS",
+                   "FAIL" if got else "PASS"))
+
+    expect("code-clean", {"a.md": code_ok}, False)
+    expect("narrative-only-clean", {"b.md": narrative_ok}, False)
+    expect("scope-only-clean", {"s.md": scope_ok}, False)
+    expect("empty-clean", {}, False)
+    # Missing Files (Summary + Test) → PASS (Files advisory).
+    no_files = ("### 2026-04-20 — Phase 9 — X\n\n"
+                "**Summary**: did it.\n**Test count**: 4 passing\n")
+    expect("missing-files", {"c.md": no_files}, False)
+    # Missing Test count (Summary + Files) → PASS (Test advisory).
+    no_test = ("### 2026-04-20 — Phase 9 — X\n\n"
+               "**Summary**: did it.\n**Files modified**: a.swift\n")
+    expect("missing-testcount", {"e.md": no_test}, False)
+    # Missing narrative (Files + Test, no Summary/Scope) → FAIL (R1).
+    no_sum = ("### 2026-04-20 — Phase 9 — X\n\n"
+              "**Files modified**: a.swift\n**Test count**: 4 passing\n")
+    expect("missing-summary", {"d.md": no_sum}, True)
+    # No narrative at all (prose only) → FAIL (R1).
+    no_narrative = "### 2026-03-30 — Migration — Y\n\nSome prose, no narrative.\n"
+    expect("no-narrative", {"f.md": no_narrative}, True)
+    # entry-max-lines violation → FAIL.
+    long_entry = code_ok + ("\nline\n" * 200)
+    expect("entry-too-long", {"g.md": long_entry}, True)
+    # summary-max-words violation → FAIL.
+    long_sum = ("### 2026-04-20 — Phase 9 — X\n\n"
+                "**Summary**: " + ("word " * 260) + "\n"
+                "**Test count**: 4 passing\n"
+                "**Files modified**: a.swift\n")
+    expect("summary-too-long", {"h.md": long_sum}, True)
+    # Scope narrative over the word cap → FAIL (R3 reads Scope now).
+    scope_over = ("### 2026-03-27 — Phase 14 — Test Audit\n\n"
+                  "**Scope**: " + ("word " * 260) + "\n")
+    expect("scope-over-words", {"i.md": scope_over}, True)
+    return sc_fails
+
+
+def check_project_changelog_conformance() -> None:
+    """Check 74 — project changelog conformance (BD-206 O12).
+
+    Validates the structured changelog conformance rule set (G-2/G-2b)
+    against the shipped `project-template/docs/project/changelog/` stream.
+    The shipped template is EMPTY (no entries), so this leg validates the
+    MECHANISM / empty-state PLUS a synthetic self-check that the reconciled
+    matcher still bites. The client-side populated-tree leg lives in
+    `validate-docs.sh` `_conf_check_changelog_entry`; both parse the SAME
+    `## Entry structure` schema block (Item-8 single-schema-SSOT).
+
+    The reconciled rule (read FROM the `_rules.md` schema, never hard-coded):
+    a NARRATIVE field (`Summary` OR `Scope`, `narrative-fields`) required for
+    EVERY entry — the sole required field; `entry-max-lines`; `summary-max-words`
+    (reads whichever narrative field is present). `Test count` and `Files` are
+    advisory/admitted.
+
+    SKIPs (lenient) if the changelog stream directory is absent.
+    Cheap (ci-check-runtime-compounding): one bounded scandir + small reads
+    + deterministic line/word counts + an in-memory self-check.
+    """
+    print("\n── Check 74: project changelog conformance (BD-206) ──")
+    stream_dir = REPO_ROOT / _CHECK_74_CHANGELOG_DIR
+    if not stream_dir.is_dir():
+        ok(f"{_CHECK_74_CHANGELOG_DIR}/ absent — skipping (lenient)")
+        return
+
+    any_fail = False
+
+    # Parse the `## Entry structure` schema SSOT (one parse, Item-8). The
+    # caps + narrative-fields drive the matcher; a missing schema is a FAIL.
+    rules_path = stream_dir / "_rules.md"
+    schema = {}
+    if not rules_path.is_file():
+        fail(f"{_CHECK_74_CHANGELOG_DIR}/_rules.md — missing (no schema to "
+             f"parse)")
+        return
+    try:
+        schema = _check_72_parse_rules_section(
+            rules_path.read_text(), "## Entry structure")
+    except (UnicodeDecodeError, OSError) as exc:
+        fail(f"{_CHECK_74_CHANGELOG_DIR}/_rules.md — unreadable: {exc}")
+        return
+    if not schema:
+        fail(f"{_CHECK_74_CHANGELOG_DIR}/_rules.md — missing or empty "
+             f"`## Entry structure` schema block")
+        any_fail = True
+
+    # Self-check the matcher has teeth (the empty shipped template cannot
+    # exercise the rule otherwise).
+    for sc in _check_74_self_check():
+        fail(f"Check 74 self-check — {sc}")
+        any_fail = True
+
+    # Validate the live (empty) changelog stream's entry files.
+    entries = {}
+    try:
+        names = [p.name for p in stream_dir.iterdir() if p.is_file()]
+    except OSError as exc:
+        fail(f"{_CHECK_74_CHANGELOG_DIR}/ — cannot scan: {exc}")
+        return
+    for name in names:
+        if not _CHECK_74_ENTRY_RE.match(name):
+            continue
+        try:
+            entries[name] = (stream_dir / name).read_text()
+        except (UnicodeDecodeError, OSError) as exc:
+            fail(f"{_CHECK_74_CHANGELOG_DIR}/{name} — unreadable: {exc}")
+            any_fail = True
+
+    if schema:
+        for violation in _check_74_validate(entries, schema):
+            fail(f"{_CHECK_74_CHANGELOG_DIR}/{violation}")
+            any_fail = True
+
+    if not any_fail:
+        n = len(entries)
+        shape = ("empty template (no changelog entries)" if n == 0 else
+                 f"{n} changelog entry/entries conform (narrative / size caps)")
+        ok(f"Check 74 — changelog conformance holds: {shape}; the reconciled "
+           f"matcher (narrative-fields / entry-max-lines / summary-max-words) "
+           f"self-checks with teeth.")
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def _build_check_registry():
@@ -12152,6 +12407,17 @@ def _build_check_registry():
         # self-check is in-memory; no subprocess.
         (73, "check_project_index_consistency",
               check_project_index_consistency, W),
+        # Check 74 — project changelog conformance (BD-206 O12): the
+        # structured changelog conformance rule set (G-2/G-2b), pack-side
+        # empty-template leg. Validates the reconciled rule (a NARRATIVE field
+        # — Summary OR Scope — required for every entry; entry-max-lines;
+        # summary-max-words; Test count + Files advisory) parsed from the
+        # changelog `_rules.md` `## Entry structure` SSOT, against the shipped
+        # (empty) changelog stream + a synthetic self-check that the matcher
+        # bites. Reads one stream dir (scandir + small reads) + deterministic
+        # line/word counts; self-check in-memory; no subprocess.
+        (74, "check_project_changelog_conformance",
+              check_project_changelog_conformance, W),
     ]
 
 

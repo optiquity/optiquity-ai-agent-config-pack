@@ -24,10 +24,9 @@ mirror; do not recreate one. Validation runs against the tree.
 
 ## Filename convention
 
-Per-entry files match `^\d{4}-\d{2}-\d{2}(-.+)?\.md$` (e.g.,
-`2026-04-20-phase-35.md` or bare `2026-04-20.md` when the H3 anchor has
-no slug suffix). Date-first for lexical sorting; the trailing slug is
-optional for human readability.
+Per-entry files match `^\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md$` (e.g.,
+`2026-04-20-phase-35.md`). Date-first for lexical sorting; the
+lowercase-kebab slug is mandatory.
 
 ## Entry contract
 
@@ -38,20 +37,18 @@ heading (`### YYYY-MM-DD — Phase N — <title>` or
 
 ## Entry structure (structured, not form-family)
 
-- core-fields: Summary "Test count" Files
-- core-required-when: code-bearing
-- doc-only-exemption: zero-test-and-zero-files OR heading-class=doc
+- core-fields: narrative
+- narrative-fields: Summary Scope
+- advisory-fields: "Test count" Files
 - extras: admitted
 - entry-max-lines: 180
 - summary-max-words: 250
 
-Notes: `Files` is satisfied by ANY `**Files <verb>**:` label
-(`Files modified` / `Files created` / `Files deleted` / `Files renamed`,
-with an optional `(N)` count suffix). A code-bearing entry carries the
-core set; a doc-only entry (zero `Test count` AND zero `Files`) is
-Summary-only-valid. `extras` (e.g. `Sections updated`, `Build warnings`,
-`Tasks completed`, `Backlog items addressed`) are admitted. Size caps
-are cheap deterministic line / word counts.
+Notes: the sole required field is a NARRATIVE — `**Summary**:` OR `**Scope**:` (either
+label). `Files` (any `**Files <verb>**:` label — modified/created/deleted/renamed, optional
+`(N)` suffix), `Test count`, and `extras` (`Sections updated`, `Build warnings`,
+`Tasks completed`, …) are admitted, not required. Size caps are cheap deterministic line /
+word counts; the word cap measures whichever narrative field is present.
 
 ## Filename mapping
 
