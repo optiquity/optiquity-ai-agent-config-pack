@@ -17,8 +17,9 @@ Previous pass ([N-1]) had the following open ❌/⚠️ issues that the coder
 was asked to fix: [PM chat inserts the open issue list from the prior
 reviewer report here]
 
-**Required reading:** `ARCHITECTURE.md` in full. `CHANGELOG.md` (Phase
-[X] entry). `CLAUDE.md`. `IMPLEMENTATION-PLAN.md` Phase [X] in full.
+**Required reading:** `ARCHITECTURE.md` in full. The latest
+`docs/project/changelog/` entry (Phase [X]). `CLAUDE.md`. The Phase [X]
+entry `docs/project/implementation-plan/phase-N.md` in full.
 BACKLOG entries (resolve via the trinity `## Document locations`
 table; reads the per-entry tree) — needed for the BACKLOG hygiene
 check (review dimension 7). Plus all files modified in Phase [X]:

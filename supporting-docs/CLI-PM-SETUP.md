@@ -143,9 +143,9 @@ git pull
 agy
 /resume [project-short-name]-pm    # or start fresh if no saved session
 ```
-Read BACKLOG.md, STATUS.md, PLATFORM-SKILLS.md, and the current phase from
-IMPLEMENTATION-PLAN.md to verify state is current. Antigravity loads GEMINI.md
-automatically via the GEMINI.md hierarchy.
+Read the `docs/project/backlog/` tree, STATUS.md, PLATFORM-SKILLS.md, and the
+current phase from its `docs/project/implementation-plan/phase-N.md` entry to verify state
+is current. Antigravity loads GEMINI.md automatically via the GEMINI.md hierarchy.
 
 **Switching and branching conversations:**
 Use `/switch` to move between saved conversations, `/fork` to branch the
@@ -155,8 +155,8 @@ point.
 **Context handling:**
 Antigravity manages conversation context automatically. Use `/fork` and
 `/rewind` to prune or branch context rather than a manual compaction command;
-after branching, re-read state files (BACKLOG.md, STATUS.md, PLATFORM-SKILLS.md)
-to restore accuracy.
+after branching, re-read state files (the `docs/project/backlog/` tree,
+STATUS.md, PLATFORM-SKILLS.md) to restore accuracy.
 
 **Cross-session memory:**
 Persist important cross-session facts to your global context file
@@ -179,9 +179,10 @@ codex --resume
 
 **ChatGPT Web resume:** Continue the existing dedicated PM chat thread.
 
-**After a long gap (ChatGPT Web):** Re-paste BACKLOG.md, STATUS.md, and the
-current phase from IMPLEMENTATION-PLAN.md to refresh context. Long threads
-degrade — start a new thread if the old one becomes unwieldy.
+**After a long gap (ChatGPT Web):** Re-paste the relevant `docs/project/backlog/`
+entries, STATUS.md, and the current phase from its `docs/project/implementation-plan/phase-N.md`
+entry to refresh context. Long threads degrade — start a new thread if the old
+one becomes unwieldy.
 
 **File writes:** ChatGPT Web has no native file write. Output content for
 manual application, or delegate writes to Codex CLI.
@@ -245,8 +246,8 @@ See `supporting-docs/METHODOLOGY.md § RAG index hygiene` for the
 underlying principle (orphans are confidently-wrong retrievals).
 
 **Compaction happened mid-session:**
-Run `/pm-startup` — it re-reads BACKLOG.md, STATUS.md, and other key files
-from disk to restore accurate context.
+Run `/pm-startup` — it re-reads the `docs/project/backlog/` tree, STATUS.md,
+and other key files from disk to restore accurate context.
 
 **PM-CHAT.md still shows `[PROJECT_NAME]`:**
 The PM chat fills this in during the kickoff conversation (`docs/pack/prompts/pm-chat.md` Variant: kickoff). If it

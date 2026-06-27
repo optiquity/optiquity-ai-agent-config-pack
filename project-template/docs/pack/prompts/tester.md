@@ -14,7 +14,8 @@ variants:
 implementation-bound test gaps that must be characterized before
 implementation begins.]
 
-**Required reading:** `ARCHITECTURE.md` in full. `CHANGELOG.md`.
+**Required reading:** `ARCHITECTURE.md` in full. The latest
+`docs/project/changelog/` entry.
 `BACKLOG` entries (resolve via the trinity `## Document locations`
 table; reads the per-entry tree). Use Glob to list every source file.
 Read them all.

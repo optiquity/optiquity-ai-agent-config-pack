@@ -67,15 +67,15 @@ Note what was fetched, or confirm "already up to date."
 
 Read these in full:
 - BACKLOG entries (resolve via the trinity `## Document locations` table;
-  reads `BACKLOG.md`, the per-entry tree)
-- STATUS entries (same resolver as above; reads `STATUS.md`, the per-entry tree)
+  reads the per-entry tree under `docs/project/backlog/`)
+- STATUS entries (same resolver as above; reads `STATUS.md`)
 - `PM-CHAT.md`
 - `PLATFORM-SKILLS.md`
 
-Read only the most recent dated section from `CHANGELOG.md`.
+Read only the most recent entry in the `docs/project/changelog/` tree.
 
-Identify the current phase from STATUS, then read only that phase's section
-from `IMPLEMENTATION-PLAN.md`.
+Identify the current phase from STATUS, then read only that phase's entry
+(`docs/project/implementation-plan/phase-N.md`).
 
 Read the first 5 lines of `METHODOLOGY.md` to get the version number.
 
@@ -85,10 +85,9 @@ The table points at the named files in `docs/project/` (the per-entry tree).
 
 Project streams under `docs/project/backlog/`, `docs/project/implementation-plan/`,
 and `docs/project/changelog/` are per-entry trees; read each
-`<stream>/_rules.md` for the per-stream contract before any per-entry edit. The
-`docs/project/BACKLOG.md`, `docs/project/IMPLEMENTATION-PLAN.md`, and
-`docs/project/CHANGELOG.md` files are regenerated mirrors of those per-entry
-trees, not source of truth.
+`<stream>/_rules.md` for the per-stream contract before any per-entry edit. Each
+stream's generated `_toc.md` is the readable index of its tree. The per-entry
+tree is the sole source of truth — there is no monolithic mirror.
 
 ## Step 3 — Read active skills
 

@@ -45,9 +45,9 @@ ownership precedence.
 only.
 
 **Constraints:**
-- Read-only audit. Do not write to BACKLOG.md, STATUS.md, or any other project
-  file. The per-entry BACKLOG/STATUS trees are PM-chat exclusive — the
-  read-only posture holds.
+- Read-only audit. Do not write to STATUS.md, the `docs/project/backlog/`
+  tree, or any other project file. The per-entry backlog tree and STATUS.md
+  are PM-chat exclusive — the read-only posture holds.
 - **Skip rules for this project:** [PM CHAT FILLS THIS IN — for example: "Skip
   auditor-ui (server-only project, no UI layer). Run the six remaining
   clusters." Or: "Run all seven clusters." Or: "Skip auditor-tests (first audit

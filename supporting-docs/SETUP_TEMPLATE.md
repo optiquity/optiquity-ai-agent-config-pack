@@ -217,7 +217,7 @@ For daily session management after setup, see `supporting-docs/CLI-PM-SETUP.md`.
 Once setup is confirmed, the PM chat will guide you through:
 - Architecture kickoff (run `./agent-run.sh claude --agent [ARCHITECT_AGENT]` with AGENT_KICKOFF.md)
 - Creating ARCHITECTURE.md and stub class hierarchy
-- Creating IMPLEMENTATION-PLAN.md
+- Creating the per-entry implementation plan (`docs/project/implementation-plan/`)
 - Beginning Phase 1
 
 Do not begin implementation until ARCHITECTURE.md is reviewed and approved.

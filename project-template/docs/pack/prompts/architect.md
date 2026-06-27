@@ -22,8 +22,9 @@ run, and the pattern of reviewer findings that indicates a design problem]
 **Reviewer findings that this pass must address:**
 [PM chat inserts the full ❌ and ⚠️ list from the most recent reviewer report]
 
-**Required reading:** `ARCHITECTURE.md` in full. `IMPLEMENTATION-PLAN.md` Phase [N] in full.
-`CLAUDE.md` in full. `AGENTS.md` in full. Plus these specific files that the reviewer
+**Required reading:** `ARCHITECTURE.md` in full. The Phase [N] entry
+`docs/project/implementation-plan/phase-N.md` in full. `CLAUDE.md` in full.
+`AGENTS.md` in full. Plus these specific files that the reviewer
 flagged: [LIST FILES FROM REVIEWER REPORT].
 
 **Problem:** The recurring or worsening reviewer-finding pattern indicates that the
@@ -32,8 +33,8 @@ making mistakes. Identify the root cause(s) in the design layer.
 
 **Goal:** Produce a list of named root causes (one per identified design defect),
 each tied to the specific section of the specific document that contains the problem,
-with proposed exact text changes to `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`,
-`CLAUDE.md`, or `AGENTS.md`.
+with proposed exact text changes to `ARCHITECTURE.md`, the relevant
+`docs/project/implementation-plan/phase-N.md` entry, `CLAUDE.md`, or `AGENTS.md`.
 
 **Success criteria:**
 - Every reviewer finding listed in `**Reviewer findings…**` is traced to one or more
@@ -53,7 +54,8 @@ REPORT FILE: `[PM chat supplies path; e.g., docs/project/architect-mid-phase-N.m
 For each root cause you identify:
 1. Name it precisely — which section of which document contains the problem
 2. Explain why it causes the reviewer findings
-3. Propose the exact text change to `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`,
+3. Propose the exact text change to `ARCHITECTURE.md`, the relevant
+   `docs/project/implementation-plan/phase-N.md` entry,
    or (only if no other doc can address it) `CLAUDE.md` or `AGENTS.md`
 
 Format each proposed change as:

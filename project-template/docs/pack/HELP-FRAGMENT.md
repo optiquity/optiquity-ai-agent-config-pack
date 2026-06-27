@@ -36,4 +36,4 @@ There is no Path 3 and no `--fold-into` flag.
 
 `docs/pack/PM-CHAT.md`, `docs/pack/METHODOLOGY.md`,
 `docs/pack/PLATFORM-SKILLS.md`, `docs/pack/OPTIONAL-FEATURES.md`,
-`docs/project/BACKLOG.md`.
+`docs/project/backlog/` (per-entry tree; `_toc.md` is the readable index).

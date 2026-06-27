@@ -491,8 +491,8 @@ tool-specific.
    Default action is **adopt** — the v10 template is already in place.
    If the project explicitly does not want the section (e.g., it
    conflicts with project policy), delete the section from all three
-   trinity files and record the rejection in `BACKLOG.md` so a future
-   migration does not silently re-introduce it.
+   trinity files and record the rejection in the `docs/project/backlog/`
+   tree so a future migration does not silently re-introduce it.
 5. **Strip `[CONDITIONAL]` prefix from retained sections.** The v10
    pack templates use `[CONDITIONAL]` in H2 names to signal "decide
    whether to keep this section." Once you have decided to keep a
@@ -1272,10 +1272,10 @@ non-SPM layout), `.claude/settings.json` (env block), and
 `~/Library/Developer/Xcode/CodingAssistant/{ClaudeAgentConfig,codex}/*`
 (machine-level; not in the project tree).
 
-**Artifacts never touched by Procedure 7:** `BACKLOG.md`; `STATUS.md`;
-`CHANGELOG.md`; `ARCHITECTURE.md`; `IMPLEMENTATION-PLAN.md`; the
-trinity files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`); `.codex/`,
+**Artifacts never touched by Procedure 7:** `STATUS.md`; `ARCHITECTURE.md`;
+the trinity files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`); `.codex/`,
 `.agents/`, `.agents-plugin/`, `.claude/agents/` subtrees; any file under `docs/project/`
+(including the per-entry backlog, implementation-plan, and changelog trees)
 other than the ones the PM chat ordinarily writes; any `x-` custom
 agent / skill / prompt file.
 

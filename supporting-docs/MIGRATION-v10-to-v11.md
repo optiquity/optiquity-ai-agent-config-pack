@@ -317,8 +317,9 @@ high-churn project documents: `BACKLOG.md`, `IMPLEMENTATION-PLAN.md`,
 and `CHANGELOG.md`. Each becomes a per-entry tree under
 `docs/project/backlog/`, `docs/project/implementation-plan/`, and
 `docs/project/changelog/` respectively. The pre-existing monolithic
-files become regenerated mirrors of the per-entry trees, not the
-source of truth.
+files are DELETED; the per-entry tree plus its generated `_toc.md` is
+the sole source of truth and readable form — there is no regenerated
+mirror.
 
 ### What changes
 
@@ -330,28 +331,26 @@ source of truth.
     `docs/project/changelog/YYYY-MM-DD-<slug>.md`) — authored source
     of truth.
   - `_rules.md` — the per-stream contract (what an entry contains,
-    how it's named, when it's regenerated). Read this before any
-    per-entry edit.
+    how it's named). Read this before any per-entry edit.
   - `_intro.md` — the preamble extracted from the v10 monolithic
-    file (lines 1–20 of the source on first migration); re-emitted at
-    the top of the regenerated mirror.
-  - `_format.md` (changelog only) — the changelog entry shape contract.
-  - `_toc.md` — a derived table of contents for the stream.
-- **Monolithic files become regenerated mirrors.** `docs/project/BACKLOG.md`,
+    file (lines 1–20 of the source on first migration); human
+    orientation for the stream.
+  - `_toc.md` — the generated readable index of the stream (the
+    monolith-replacement readable form).
+- **Monolithic files are deleted.** `docs/project/BACKLOG.md`,
   `docs/project/IMPLEMENTATION-PLAN.md`, and `docs/project/CHANGELOG.md`
-  remain on disk for read convenience and for tools that have not
-  yet been updated to read the per-entry tree directly. They are
-  rewritten from the per-entry tree on every regeneration; hand
-  edits to the mirror are not preserved across regeneration.
-- **CI gates the invariant.** `validate-pack.py` Check 32 (mirror-in-sync)
-  and Check 33 (TOC-in-sync) FAIL in CI on any committed divergence
-  between the per-entry tree and its mirror or TOC.
+  no longer exist after migration. The per-entry tree is the sole
+  source of truth; read it directly, and use `_toc.md` for a readable
+  index of the stream.
+- **CI gates the invariant.** `validate-pack.py` Check 33 (TOC-in-sync)
+  FAILS in CI on any committed divergence between the per-entry tree
+  and its generated `_toc.md`.
 
 ### Why mandatory and non-reversible
 
 Per-entry decomposition is mandatory under the v10 → v11 migration
-and is non-reversible — once the per-entry tree exists, the
-monolithic file is a derived artifact. There is no `--skip-decompose`
+and is non-reversible — once the per-entry tree exists, the v10
+monolithic file is deleted. There is no `--skip-decompose`
 option and no rollback verb that re-collapses the per-entry tree
 into a monolithic source-of-truth file. Per-version monolithic
 sources are a v10-era pattern; v11 retires it.
@@ -361,10 +360,11 @@ sources are a v10-era pattern; v11 retires it.
 Nothing. The v10 → v11 migrator handles decomposition automatically.
 A new sub-operation (`_v10_to_v11_decompose_streams`) inside the
 migrator's post-dispatch hook reads each v11-shape monolithic file
-and emits the per-entry tree plus the regenerated mirror. The
-sub-operation runs after all monolithic-content mutations have
-settled (rename, relocation, install, capability-token translation)
-so the source content is final before decomposition.
+and emits the per-entry tree plus its generated `_toc.md`, then
+deletes the source monolith. The sub-operation runs after all
+monolithic-content mutations have settled (rename, relocation, install,
+capability-token translation) so the source content is final before
+decomposition.
 
 ### Backup and rollback
 
@@ -381,36 +381,15 @@ losing post-migration work, `git revert HEAD` reverts the
 migration commit including the per-entry-tree introduction;
 post-migration commits can then be cherry-picked back as needed.
 
-### `--force-overwrite-mirror` flag (advanced)
+### Editing entries after migration
 
-If you hand-edit `docs/project/BACKLOG.md` (or any other mirror)
-after migration and then run the migrator or regenerator again,
-the apply-phase blocks with a non-zero exit and tells you the
-mirror diverges from the per-entry tree. Two recovery paths:
-
-- **Recommended:** re-apply your hand edit to the corresponding
-  per-entry file under `docs/project/backlog/<ID>.md`, then
-  re-run the migrator. The regenerator will emit a mirror that
-  matches the per-entry tree and contains your edit.
-- **Advanced override:** pass `--force-overwrite-mirror` to
-  acknowledge that the hand-edited mirror will be overwritten.
-  Sample:
-  ```sh
-  bash scripts/migrate-v10-to-v11.sh --apply --force-overwrite-mirror
-  ```
-  Use this only when you have already captured your hand edit
-  elsewhere (e.g., applied it to the per-entry tree).
-
-A future opt-in client-side pre-commit hook (deferred to v11.x per
-`ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-ADDENDUM.md` §5.6) is
-planned to inherit these same block-and-flag semantics; that work is
-tracked separately and is not part of the v11.0 ship surface. Until
-then, divergence is caught at CI time via `validate-pack.py` Check 32
-(mirror-in-sync) and Check 33 (TOC-in-sync), and the
-`--force-overwrite-mirror` recovery flag described above is available
-for advanced users to acknowledge intentional overwrites. See
+To change an entry, edit its per-entry file directly under
+`docs/project/backlog/<ID>.md` (or the corresponding
+implementation-plan / changelog stream); the stream's `_toc.md`
+regenerates from the tree. CI gates per-entry↔`_toc.md` consistency
+via `validate-pack.py` Check 33 (TOC-in-sync). See
 `MERGE-STRATEGY.md` § "12. `generic` — everything else" for the
-mirror-vs-source treatment in the customization-preserve pipeline.
+per-entry-tree treatment in the customization-preserve pipeline.
 
 ---
 
@@ -782,8 +761,9 @@ loss defects can re-emerge.
    first action for new sessions.
 2. **Phase B is deferred.** Tracker integration is deferred
    indefinitely; flat-file per-entry is the sole supported mode and there is
-   no opt-in to decide on. Continue with flat-file `BACKLOG.md` /
-   per-entry tracking — startup surfaces no tracker recommendation.
+   no opt-in to decide on. Continue with flat-file per-entry tracking
+   (the per-entry trees under `docs/project/`) — startup surfaces no
+   tracker recommendation.
 3. **Commit early after each reconciliation.** Don't accumulate a
    100-line reconciliation diff. Commit each `<file>.v10-customized`
    resolution as a separate small commit.

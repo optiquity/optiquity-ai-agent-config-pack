@@ -185,9 +185,9 @@ Every project should have all of these. Create them before writing any code.
 | Document | Purpose | Who writes | Who updates |
 |---|---|---|---|
 | `ARCHITECTURE.md` | Architectural decisions, layer map, patterns, data models | Architect agent (kickoff) | Any phase that changes architecture |
-| `IMPLEMENTATION-PLAN.md` | All phases with tasks, DoD, agent, risks | PM chat + planner agent | Each phase adds entries; never delete old phases |
-| `CHANGELOG.md` | Permanent dated history of what was built | PM chat | One entry per phase, after reviewer approval; coder proposes entry in completion report |
-| `BACKLOG.md` | Technical debt, deferred items, known gaps | PM chat | Add/resolve; never delete items |
+| `docs/project/implementation-plan/` (per-entry `phase-N.md` tree + generated `_index.md`) | All phases with tasks, DoD, agent, risks — one `phase-N.md` per phase; `_index.md` is the generated serial order | PM chat + planner agent | Each phase adds a `phase-N.md` entry; never delete old phases |
+| `docs/project/changelog/` (per-entry tree + generated `_toc.md`) | Permanent dated history of what was built — one `<ID>.md` per release; `_toc.md` is the generated readable index | PM chat | One entry per phase, after reviewer approval; coder proposes entry in completion report |
+| `docs/project/backlog/` (per-entry tree + generated `_toc.md`) | Technical debt, deferred items, known gaps — one `<ID>.md` per item; `_toc.md` is the generated readable index | PM chat | Add/resolve; never delete items |
 | `STATUS.md` | Current phase, phase table, next actions, key metrics | PM chat or developer | After every phase completion |
 | `CLAUDE.md` | Project-specific rules for all CLI agents | PM chat | When new rules are established |
 | `AGENTS.md` | Agent roster and routing table | PM chat | When agents are added or changed |
@@ -197,21 +197,22 @@ Every project should have all of these. Create them before writing any code.
 
 ### Document hygiene rules (inviolable)
 
-1. ARCHITECTURE.md and IMPLEMENTATION-PLAN.md are source of truth — they must reflect reality.
-2. CHANGELOG.md is append-only — never edit old entries.
-3. BACKLOG.md items are never deleted — mark resolved with a note.
+1. ARCHITECTURE.md and the per-entry implementation-plan tree (`docs/project/implementation-plan/`) are source of truth — they must reflect reality.
+2. The changelog tree (`docs/project/changelog/`) is append-only — never edit old entries.
+3. Backlog-tree (`docs/project/backlog/`) items are never deleted — mark resolved with a note.
 4. STATUS.md is updated after every phase — stale status is worse than no status.
-5. Agents must not modify `ARCHITECTURE.md` or `IMPLEMENTATION-PLAN.md` unless
-   explicitly instructed in the prompt. `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`,
-   `PACK-FEEDBACK.md`, and all other root `.md` files are exclusively the PM chat's
-   responsibility — no agent should write them, and no agent prompt should instruct
-   them to. Include root `.md` file constraints in every coder prompt.
+5. Agents must not modify `ARCHITECTURE.md` or the `docs/project/implementation-plan/`
+   tree unless explicitly instructed in the prompt. `STATUS.md`, `PACK-FEEDBACK.md`,
+   the per-entry backlog and changelog trees, and all other root `.md` files are
+   exclusively the PM chat's responsibility — no agent should write them, and no
+   agent prompt should instruct them to. Include root `.md` file constraints in every coder prompt.
    `PACK-FEEDBACK.md` in particular is never written by any agent — it is the PM
    chat's feedback log to the upstream pack (see Part 10).
 6. Every deferral comment (`// TODO(scope):`, `// KNOWN GAP(severity):`, `// VERIFY(source):`,
-   or language-equivalent) must have a corresponding BACKLOG.md entry. `TD-TBD` in any
+   or language-equivalent) must have a corresponding entry in the backlog tree
+   (`docs/project/backlog/`). `TD-TBD` in any
    committed file is a defect — it means the PM chat has not yet processed the coder's
-   deferred items report. See Part 7 for the full comment format and BACKLOG procedures.
+   deferred items report. See Part 7 for the full comment format and backlog procedures.
 
 ### RAG index hygiene
 
@@ -366,7 +367,7 @@ recommended alternatives are insufficient for this specific case.
 
 ## Part 4 — Phase Structure
 
-Every phase in IMPLEMENTATION-PLAN.md should follow this format:
+Each phase entry (`docs/project/implementation-plan/phase-N.md`) should follow this format:
 
 ```markdown
 ## Phase N — [Title]
@@ -409,7 +410,7 @@ Which agent(s) to use for which tasks.
 
 - Never renumber phases — phase numbers are referenced in code comments, CHANGELOG, and BACKLOG.
 - To reorder execution, use execution notes (`> **Execution note**:`), not renumbering.
-- Insert new phases at the end of the plan.
+- Add a new phase as a new `phase-N.md` entry; the generated `_index.md` records its serial order.
 - Fractional phases (2.1, 2.2) only during early architecture work — use whole numbers after that.
 
 ### Multi-part phases
@@ -418,7 +419,7 @@ When a planning agent recommends splitting a phase into sequential implementatio
 chunks, use **Part** as the term for each chunk — never "pass." "Pass" is a reserved
 term for the coder/reviewer cycle counter within a single coder or fix-cycle prompt.
 
-**In IMPLEMENTATION-PLAN.md:** Label each chunk as a sub-section within the phase:
+**In the `phase-N.md` entry:** Label each chunk as a sub-section within the phase:
 
 ```markdown
 ### Part 1 — [Subtitle]
@@ -456,13 +457,14 @@ been explicitly split into multiple sequential parts by a planning agent.
    copy `project-template/` (which includes `docs/pack/prompts/`), copy
    `METHODOLOGY.md` from `supporting-docs/`, remove conditional files, fill
    in context file placeholders, run `./scripts/bootstrap.sh`
-3. Create `BACKLOG.md`, `STATUS.md`, `CHANGELOG.md` (initially sparse)
+3. Create the backlog and changelog trees (`docs/project/backlog/`, `docs/project/changelog/`) and `STATUS.md` (initially sparse)
 4. Commit all template and doc files before writing any code
 5. Set up the PM chat — setup steps are in the pack repo at
    `supporting-docs/SETUP-NEW.md` Step 10 (choose Claude Desktop,
    Claude Code CLI, Codex CLI, or Antigravity CLI)
 6. Planning conversation with PM chat → establishes architecture, phase plan
-7. PM chat generates: `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`; fills in
+7. PM chat generates: `ARCHITECTURE.md`, the per-entry implementation plan
+   (`docs/project/implementation-plan/`); fills in
    remaining `[PLACEHOLDER]` sections in context files using `PLATFORM-SKILLS.md`;
    writes the **Active skills** line in the Skill loading section of `CLAUDE.md`,
    `AGENTS.md`, and `GEMINI.md` — listing the skills derived from
@@ -514,7 +516,7 @@ For phases integrating external APIs or making architectural decisions:
 ```
 1. docs-researcher agent reads official API docs (prompt from PM chat)
 2. Developer pastes research report into PM chat
-3. PM chat identifies discrepancies, generates IMPLEMENTATION-PLAN.md correction prompt
+3. PM chat identifies discrepancies, generates a `phase-N.md` correction prompt
 4. Developer runs correction in standard claude CLI, commits
 5. (Optional) tester agent generates test specification → PM chat incorporates into coder prompt
 6. Standard coder → reviewer cycle
@@ -536,12 +538,12 @@ For phases integrating external APIs or making architectural decisions:
    "Planner trigger conditions (mid-phase)" below). If a planner trigger
    fires: PM chat surfaces the trigger and a candidate planner pass plan
    → developer approves → planner agent runs (`planner.md` Variant: standard)
-   producing an updated IMPLEMENTATION-PLAN.md Phase N task block
+   producing an updated `phase-N.md` task block
    → PM chat presents the proposed task-block change → developer approves
    → PM chat applies the change → PM chat presents coder fix plan against
    the revised task block → developer approves → coder fix pass → reviewer (step 1)
-7. Items that pass the deferral test (see triage protocol): PM chat generates BACKLOG.md
-   addition with explicit named blocker → developer runs in standard claude
+7. Items that pass the deferral test (see triage protocol): PM chat generates a backlog-tree
+   addition (`docs/project/backlog/`) with explicit named blocker → developer runs in standard claude
 ```
 
 > **Cycle termination.** The fix cycle terminates when the
@@ -584,7 +586,7 @@ reviewer's perspective. It is not the PM chat's bar. The PM chat evaluates every
 1. Is there a concrete, named external blocker? Valid examples:
    - An external system or API not yet accessible because integration is planned for a later phase
    - A design decision that requires a docs-researcher or architect agent run to resolve
-   - A later phase in `IMPLEMENTATION-PLAN.md` explicitly designated for this work
+   - A later phase entry (`docs/project/implementation-plan/phase-N.md`) explicitly designated for this work
 2. Would fixing it require scope large enough to justify its own phase — one that would
    need its own docs-researcher or architect run?
 
@@ -640,7 +642,7 @@ The reviewer report shows either:
 2. **Propose an architect pass** — describe what the architect agent will read and what
    doc changes are expected. Get explicit user approval before proceeding.
 3. **Run the architect agent** — read-only pass using `architect.md` Variant: mid-phase. The agent reads
-   `ARCHITECTURE.md`, `IMPLEMENTATION-PLAN.md`, `CLAUDE.md`, `AGENTS.md`, and the
+   `ARCHITECTURE.md`, the relevant `docs/project/implementation-plan/phase-N.md` entry, `CLAUDE.md`, `AGENTS.md`, and the
    specific reviewer findings. It proposes corrections to those docs as text output —
    it does not write files.
 4. **Present proposed doc changes** — show the user exactly what the architect proposes
@@ -653,7 +655,7 @@ The reviewer report shows either:
 
 > **CLAUDE.md and AGENTS.md changes:** The architect agent may propose changes to
 > `CLAUDE.md` or `AGENTS.md` only if the root cause cannot be addressed by fixing
-> `ARCHITECTURE.md` or `IMPLEMENTATION-PLAN.md` alone. These require an additional
+> `ARCHITECTURE.md` or the `docs/project/implementation-plan/` tree alone. These require an additional
 > explicit user approval beyond the general architect pass approval.
 
 #### Planner trigger conditions (mid-phase)
@@ -678,7 +680,7 @@ mid-phase planner triggers cover task-level revision needs:
   a candidate planner pass to re-sequence.
 
 For each trigger, the planner pass produces an updated
-IMPLEMENTATION-PLAN.md Phase N task block; PM chat presents to
+`phase-N.md` task block; PM chat presents to
 user for approval before re-running the coder.
 
 **Planner-vs-architect demarcation:** A "task-definition
@@ -723,8 +725,8 @@ it adds the named adversarial-review spine and the up-front size tier.
    original author nor the adversary).
 4. **User design review** — the design gate; present the proposed design and
    wait for the developer to read and approve.
-5. **Planner** → the implementation-ready plan (the IMPLEMENTATION-PLAN.md
-   Phase-N task block, or a multi-part phase split), including its OWN
+5. **Planner** → the implementation-ready plan (the `phase-N.md`
+   task block, or a multi-part phase split), including its OWN
    parallel/dependency map.
 6. **Adversarial planner review** — a fresh `planner` instance that loads
    the `planning` skill → triage → [reconciliation planner — FRESH, only if
@@ -854,7 +856,7 @@ The auditor parent is bypassed; the subagent reports directly.
 
 ```
 1. PM chat: describe feature → discussion to scope and document it
-2. PM chat generates updates to ARCHITECTURE.md and IMPLEMENTATION-PLAN.md (new phases)
+2. PM chat generates updates to ARCHITECTURE.md and the per-entry implementation-plan tree (new `phase-N.md` entries)
 3. Developer runs update prompts in standard claude, commits doc changes, syncs
 4. Run Workflow 2 for each new phase
 ```
@@ -876,14 +878,14 @@ phase before pasting.
 | Workflow 3 — External API research | `docs-researcher.md` Variant: standard; (optional) `tester.md` Variant: standard; then Workflow 2 prompts for the implementation cycle |
 | Workflow 4 — Fix cycle | `coder.md` Variant: fix-cycle (main); `architect.md` Variant: mid-phase (when Trigger A or B fires); `planner.md` Variant: standard (when Trigger P-A, P-B, or P-C fires); `reviewer.md` Variant: standard (re-runs the cycle after each fix); `pm-chat.md` Variant: backlog-status-update (for items deferred to BACKLOG) |
 | Workflow 5 — Full-codebase audit | `auditor.md` Variant: standard — a single auditor prompt that spawns the right subagents, replacing the legacy per-dimension audit prompts; `pm-chat.md` Variant: backlog-status-update (for BACKLOG intake from findings); Workflow 2 prompts for each fix prompt the audit generates |
-| Workflow 6 — New feature | PM chat updates `ARCHITECTURE.md` and `IMPLEMENTATION-PLAN.md` directly (no pack variant); `pm-chat.md` Variant: backlog-status-update (if the feature adds BACKLOG entries); then Workflow 2 prompts for each new phase |
+| Workflow 6 — New feature | PM chat updates `ARCHITECTURE.md` and the `docs/project/implementation-plan/` tree directly (no pack variant); `pm-chat.md` Variant: backlog-status-update (if the feature adds BACKLOG entries); then Workflow 2 prompts for each new phase |
 
 ---
 
 ## Prompt Authoring Principles
 
 These principles apply to every prompt the PM chat generates and to
-every task entry written in IMPLEMENTATION-PLAN.md. They are not style
+every task entry written in a `phase-N.md` plan entry. They are not style
 guidance. They govern what information belongs in a prompt and what
 does not.
 
@@ -913,7 +915,7 @@ Every prompt must answer:
    steps.
 3. **Success criteria** — the observable, verifiable state that
    confirms the goal is achieved. What can be checked to know the
-   prompt's work is complete? At the IMPLEMENTATION-PLAN.md task
+   prompt's work is complete? At the `phase-N.md` task
    level this maps to the task's "Definition of done."
 
 Plus the surrounding sections: Context, Required reading, Files in
@@ -1078,7 +1080,7 @@ agent's output is written to. Two sub-cases:
   into chat.
 - **Sub-case B — PM-chat self-prompt produces a target-file edit.**
   When the PM chat runs a self-prompt that edits or creates a
-  project file (BACKLOG.md, STATUS.md, SETUP.md,
+  project file (a `docs/project/backlog/` entry, STATUS.md, SETUP.md,
   AGENT_KICKOFF.md), the artifact **is** the target file edit. No
   separate report file is required. The Completion-report section
   names the target file and the change summary.
@@ -1128,7 +1130,7 @@ The data-dependency-trace requirement (see PM chat self-check item 3
 below) ensures this escape valve is invoked rarely — incomplete file
 lists are the most common reason agents hit it.
 
-### When generating prompts from IMPLEMENTATION-PLAN.md task entries
+### When generating prompts from `phase-N.md` task entries
 
 If a task entry contains prescriptive implementation instructions rather than a
 problem/goal/success-criteria description, reframe it before including it in the prompt —
@@ -1350,7 +1352,7 @@ Inactive statuses: Resolved, Cancelled, Deprecated — no further action require
 Items are never deleted. Items with no blockers start as Unblocked.
 
 **TD counter:** The PM chat tracks the next available TD number. At the start of every
-session, read BACKLOG.md, find the highest existing TD number, set counter to that value + 1.
+session, read the backlog tree (`docs/project/backlog/`), find the highest existing TD number, set counter to that value + 1.
 Increment by 1 for each approved item. Report the updated counter at session end.
 
 ### Procedure 1 — Phase gate check (runs before every phase prompt)
@@ -1358,7 +1360,7 @@ Increment by 1 for each approved item. Report the updated counter at session end
 No phase prompt is generated until this check is complete.
 
 ```
-1. Read BACKLOG.md in full
+1. Read the backlog tree (`docs/project/backlog/`) in full
 2. For every Open item, check each Blocker:
    - Phase N blocker: has that phase been committed and marked ✅ in STATUS.md?
    - Phase N.M blocker (v11.0 additive): read the `✅` marker on the
@@ -1384,7 +1386,7 @@ No phase prompt is generated until this check is complete.
 5. Run orphan audit (Procedure 3)
 6. Skill gap check:
    Read the Active skills line from the Skill loading section of CLAUDE.md.
-   Read the upcoming phase's tasks from IMPLEMENTATION-PLAN.md.
+   Read the upcoming phase's tasks from its `docs/project/implementation-plan/phase-N.md` entry.
    Scan the task descriptions for technology references not covered by the
    active skills (e.g., Python imports in a Swift-only skill set, proto files
    without grpc-patterns, C interop without c-language).
@@ -1485,7 +1487,7 @@ absorbing task to express ordering without merging entities. The
    - Addendum task: add to current phase prompt as additional numbered task
    - Separate pass: standalone coder prompt for this item only
    - Cleanup phase: accumulate multiple items into a dedicated phase with its own
-     IMPLEMENTATION-PLAN.md entry and reviewer pass
+     `phase-N.md` entry and reviewer pass
 3. When coder completes the work:
    - Reviewer confirms work is done (reviewer checklist item 4 — implementation plan compliance)
    - Reviewer confirms deferral comment has been removed from code
@@ -1569,9 +1571,9 @@ spliced into `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` in one commit.
 `**Active skills:**` line + applicable `[PLACEHOLDER]` sections).
 
 **Artifacts never touched by Procedure 6:** any `x-` agent / skill /
-prompt file; any `SKILL.md` (already on disk); `BACKLOG.md`;
-`STATUS.md`; `ARCHITECTURE.md`; `IMPLEMENTATION-PLAN.md`;
-`CHANGELOG.md`; PLATFORM-SKILLS.md `## Custom agents` and
+prompt file; any `SKILL.md` (already on disk); `STATUS.md`;
+`ARCHITECTURE.md`; the per-entry backlog, implementation-plan, and
+changelog trees under `docs/project/`; PLATFORM-SKILLS.md `## Custom agents` and
 `## Custom skills` project-owned regions.
 
 **Symmetry with Procedure 7 (kickoff).** Step 6.5's per-tool Form I
@@ -1607,11 +1609,11 @@ When you instruct the PM chat to cancel or deprecate an item, it will:
 
 | Agent | May do | May not do |
 |---|---|---|
-| `coder` | Write TD-TBD deferral comments in code; report deferred items in completion report | Write to BACKLOG.md; resolve or modify existing entries |
+| `coder` | Write TD-TBD deferral comments in code; report deferred items in completion report | Write to the backlog tree (`docs/project/backlog/`); resolve or modify existing entries |
 | `reviewer` | Read only | Write anything |
 | `docs-researcher` | Read only | Write anything |
 | `repo-ops` | Read only | Write anything |
-| PM chat | Write and update BACKLOG.md after user approval; replace TD-TBD with TD-NNN or remove rejected comments in source files | Any other source code changes |
+| PM chat | Write and update the backlog tree (`docs/project/backlog/`) after user approval; replace TD-TBD with TD-NNN or remove rejected comments in source files | Any other source code changes |
 
 > **PM chat comment edit carve-out:** The PM chat may edit source files solely to add,
 > modify, or remove deferral comments (`// TODO(`, `// KNOWN GAP(`, `// VERIFY(`, and
@@ -1637,9 +1639,9 @@ Stop and reassess when you see these patterns.
 
 - **ARCHITECTURE.md and code describe different patterns.** Either the architecture changed
   without updating the doc, or the coder drifted. Run a docs audit immediately.
-- **CHANGELOG.md entry doesn't match git diff.** The PM chat may have applied the
+- **Changelog-tree entry doesn't match git diff.** The PM chat may have applied the
   coder's proposed entry before the phase was complete, or the proposed entry was not
-  updated to reflect late changes. Always verify CHANGELOG entries against `git diff`
+  updated to reflect late changes. Always verify changelog entries (`docs/project/changelog/`) against `git diff`
   before committing.
 
 ### In agent behavior
@@ -1672,9 +1674,9 @@ Stop and reassess when you see these patterns.
 | Document | Coder | Reviewer | PM chat | Notes |
 |---|---|---|---|---|
 | `ARCHITECTURE.md` | Only if task explicitly says so | Never | Approves changes | Source of truth |
-| `IMPLEMENTATION-PLAN.md` | Only if task explicitly says so | Never | Authors and approves | Never delete phases |
-| `CHANGELOG.md` | No — proposes entry in report only | Never | Yes — after reviewer approval | One entry per phase |
-| `BACKLOG.md` | Never — reports only | Never — reports only | Yes — after user approval | Never delete items |
+| `docs/project/implementation-plan/` (per-entry tree) | Only if task explicitly says so | Never | Authors and approves | Never delete phases; one `phase-N.md` per phase |
+| `docs/project/changelog/` (per-entry tree) | No — proposes entry in report only | Never | Yes — after reviewer approval | One `<ID>.md` per phase |
+| `docs/project/backlog/` (per-entry tree) | Never — reports only | Never — reports only | Yes — after user approval | Never delete items |
 | `STATUS.md` | Never | Never | Yes — after phase completion | Update after every phase |
 | `CLAUDE.md` / `AGENTS.md` | Never | Never | Authors changes | CLI agents read, don't write |
 | Production source files | Yes | Never | Never | Core job |
@@ -1695,8 +1697,8 @@ Stop and reassess when you see these patterns.
 
 The PM chat may use Desktop Commander for:
 - Updating STATUS.md after a phase completes
-- Adding items to BACKLOG.md (after user approval)
-- Appending CHANGELOG entries
+- Adding items to the backlog tree (`docs/project/backlog/`) (after user approval)
+- Appending changelog-tree entries (`docs/project/changelog/`)
 - Fixing typos or stale references in doc files
 - Adding, modifying, or removing deferral comments in source files (TD-TBD → TD-NNN,
   or removing rejected comments) — this is the only permitted source file edit
@@ -1704,7 +1706,7 @@ The PM chat may use Desktop Commander for:
 The PM chat must NOT use Desktop Commander for:
 - Writing or modifying any source code
 - Sweeping multi-file changes without explaining and getting explicit approval
-- Modifying ARCHITECTURE.md or IMPLEMENTATION-PLAN.md without approval
+- Modifying ARCHITECTURE.md or the `docs/project/implementation-plan/` tree without approval
 
 When Desktop Commander is unavailable, the PM chat outputs file content and
 git commands for the human to run manually. Both paths must always be available.
@@ -1790,8 +1792,8 @@ At every workflow-complete boundary, **before** saying "ready for next phase," t
 ### The running doc
 
 `PACK-FEEDBACK.md` lives at `docs/pack/PACK-FEEDBACK.md` in the project
-(post-relocation), with `BACKLOG.md` and `STATUS.md` remaining
-at project root. PM-chat-owned, append-only. Agents never write to it.
+(post-relocation), with the backlog tree (`docs/project/backlog/`) and
+`STATUS.md` (project root) alongside it. PM-chat-owned, append-only. Agents never write to it.
 The template ships at `project-template/docs/pack/PACK-FEEDBACK.md`.
 
 **All operational instructions** — the status state machine, delivery
@@ -1808,7 +1810,7 @@ reference.
 
 ### Day 1 — Setup
 - [ ] Create GitHub repo; clone locally
-- [ ] Planning conversation → ARCHITECTURE.md, IMPLEMENTATION-PLAN.md, CLAUDE.md, AGENTS.md
+- [ ] Planning conversation → ARCHITECTURE.md, the per-entry implementation plan (`docs/project/implementation-plan/`), CLAUDE.md, AGENTS.md
 - [ ] Run `"$PACK/scripts/init-project.sh" .` from the project root.
       The script previews every operation, asks for explicit
       confirmation, and on `y` executes eleven stages (S0..S10) that
@@ -1816,7 +1818,7 @@ reference.
       bootstrap, and emit the PM chat kickoff prompt. The full
       procedure is documented in the pack repo at
       `supporting-docs/SETUP-NEW.md` Step 3.
-- [ ] Create BACKLOG.md, STATUS.md, CHANGELOG.md (empty with structure)
+- [ ] Create the backlog and changelog trees (`docs/project/backlog/`, `docs/project/changelog/`) and `STATUS.md` (empty with structure)
 - [ ] **Choose PM chat mode** — Option A (Claude Desktop app, see
       `SETUP-NEW.md` Step 10 Option A), Option B (Claude Code CLI,
       Step 10 Option B), Option C (Codex CLI, Step 10 Option C), or
@@ -1826,7 +1828,7 @@ reference.
 ### Before each phase
 - [ ] Re-read the **Prompt Authoring Principles** section before generating any prompt
       for this phase — refresh the non-prescriptive authoring standard
-- [ ] Run phase gate check (Part 7 Procedure 1): read BACKLOG.md for newly unblocked
+- [ ] Run phase gate check (Part 7 Procedure 1): read the backlog tree (`docs/project/backlog/`) for newly unblocked
       items, run TD-TBD grep, run orphan audit, run skill gap check — resolve all
       findings before proceeding
 - [ ] Sync GitHub connector in PM chat

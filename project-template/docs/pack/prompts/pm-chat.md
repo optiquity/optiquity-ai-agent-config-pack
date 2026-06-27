@@ -49,11 +49,11 @@ Form R discovery, `manual` to override mid-kickoff, or per the
 INSTALL-PROCEDURES.md § 7.5 reply grammar (`no` / `skip` / `abort` / `edit`).
 
 **Project documents the PM chat needs in context:** ARCHITECTURE.md,
-IMPLEMENTATION-PLAN.md (current phase), STATUS entries, BACKLOG
-entries. Resolve the location of STATUS and BACKLOG entries via the
-trinity `## Document locations` table (the Source column says `flat` —
-flat-file per-entry is the sole supported mode; read the per-entry
-tree). Locate and read these by whatever means your
+the current phase entry (`docs/project/implementation-plan/phase-N.md`),
+STATUS entries, BACKLOG entries. Resolve the location of STATUS and BACKLOG
+entries via the trinity `## Document locations` table (the Source column
+says `flat` — flat-file per-entry is the sole supported mode; read the
+per-entry tree). Locate and read these by whatever means your
 surface provides — local repo read on shell-capable surfaces;
 project-knowledge or GitHub-connector search on Web with a Project +
 connector; equivalent retrieval on other surfaces. If you cannot
@@ -64,7 +64,7 @@ access them, report what you can reach and I will adapt.
 - Analyze reviewer output and categorize findings
 - Make architectural and planning decisions
 - Never write code or make large file changes directly
-- For small doc updates (STATUS.md, BACKLOG.md): use Desktop Commander if available,
+- For small doc updates (STATUS.md, the `docs/project/backlog/` tree): use Desktop Commander if available,
   otherwise output content and git commands for me to run
 
 Confirm you can see the project documents, then tell me the current state and what
@@ -158,11 +158,11 @@ files touched.
 - Phase-title links in STATUS.md validate (anchor format per the rule
   under Constraints).
 - Cancelled/Deprecated items have flag-for-review applied to dependents.
-- Artifact (BACKLOG.md and/or STATUS.md edits) is the target file edit
-  itself; no separate report file is needed (sub-case B).
+- Artifact (`docs/project/backlog/` tree and/or STATUS.md edits) is the
+  target file edit itself; no separate report file is needed (sub-case B).
 
-**Files in scope:** `BACKLOG.md` and/or `STATUS.md` only. No other file
-is modified.
+**Files in scope:** the `docs/project/backlog/` tree and/or `STATUS.md` only.
+No other file is modified.
 
 **Constraints:** PM chat self-prompt. Requires explicit user approval
 before executing. Do not modify any other file.
@@ -170,7 +170,7 @@ before executing. Do not modify any other file.
 [DESCRIBE EXACT CHANGE — e.g.:]
 
 **To add a new BACKLOG item:**
-Add the following entry to BACKLOG.md:
+Add a new per-entry file (`docs/project/backlog/TD-[NNN].md`) with the following content:
 
 ```
 **TD-[NNN] — [Short title]**
@@ -203,12 +203,12 @@ Do not automatically unblock any of them.
 - Update "Current Phase" to: Phase [N+1] — [Title] (not started)
 - Update "Next Actions" to: [list]
 - Update "Key Metrics" test count to: [N] passing, 0 failing
-- Link every phase Title in the phase table to its heading in
-  `IMPLEMENTATION-PLAN.md` using `[Title](IMPLEMENTATION-PLAN.md#anchor)` format.
+- Link every phase Title in the phase table to its phase entry using
+  `[Title](implementation-plan/phase-N.md#anchor)` format.
   GitHub anchor: lowercase, spaces → hyphens, em-dash `—` removed (leaves `--`),
   special characters (backticks, colons, parentheses, periods, asterisks, slashes) stripped.
   Example: `## Phase 35 — Live Broker Sandbox Verification` →
-  `[Live Broker Sandbox Verification](IMPLEMENTATION-PLAN.md#phase-35--live-broker-sandbox-verification)`.
+  `[Live Broker Sandbox Verification](implementation-plan/phase-35.md#phase-35--live-broker-sandbox-verification)`.
 
 **Completion report:** The artifact is the target-file edit itself
 (sub-case B). Confirm what was changed by naming the file(s) edited
@@ -330,8 +330,9 @@ section presence and contents per project):**
     message into a new PM chat session is the `kickoff` variant
     from `docs/pack/prompts/pm-chat.md`.
 
-13. **What comes next.** Architecture kickoff, ARCHITECTURE.md,
-    IMPLEMENTATION-PLAN.md, then Phase 1. Do not begin
+13. **What comes next.** Architecture kickoff, ARCHITECTURE.md, the
+    per-entry implementation plan (`docs/project/implementation-plan/`),
+    then Phase 1. Do not begin
     implementation until ARCHITECTURE.md is reviewed and approved.
 
 14. *(Optional)* **Second machine setup.** `git clone`, `cd

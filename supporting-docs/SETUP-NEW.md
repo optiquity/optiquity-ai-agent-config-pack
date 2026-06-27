@@ -392,9 +392,9 @@ The architect agent is platform-agnostic — it loads the correct
 platform skills via the skill-loading instructions the PM chat
 generated from `docs/pack/PLATFORM-SKILLS.md`.
 
-After the architect run, commit `ARCHITECTURE.md` and
-`IMPLEMENTATION-PLAN.md` (the architect writes these files as its
-output deliverables).
+After the architect run, commit `ARCHITECTURE.md` and the per-entry
+implementation plan under `docs/project/implementation-plan/` (the
+architect writes these as its output deliverables).
 
 ---
 

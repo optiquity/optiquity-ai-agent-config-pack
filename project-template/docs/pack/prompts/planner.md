@@ -13,8 +13,9 @@ variants:
 **Context:** Phase [N] is too complex to send to the coder without an
 ordered task breakdown.
 
-**Required reading:** `ARCHITECTURE.md` in full. `IMPLEMENTATION-PLAN.md`
-Phase [N]. Plus the files listed under **Files in scope** below.
+**Required reading:** `ARCHITECTURE.md` in full. The Phase [N] entry
+`docs/project/implementation-plan/phase-N.md`. Plus the files listed under
+**Files in scope** below.
 
 **Problem:** Phase [N] is too complex to send to the coder without a task
 breakdown — the implementation order, the dependencies between tasks, and
