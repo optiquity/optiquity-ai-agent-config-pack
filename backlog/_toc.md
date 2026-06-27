@@ -34,6 +34,7 @@
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-248](./BD-248.md) — Persistent portable agent-handoff directory + pack-side write-fail fallback (reliability hardening, both surfaces)
 - [BD-249](./BD-249.md) — Pack-side dead-mirror-subsystem removal (mirror-generate.sh + mirror constants + accessor)
+- [BD-250](./BD-250.md) — Extend the anti-history/bloat durable guards (Check 65/66/67) to `supporting-docs/` operating docs + strip residual violations (measure-then-bound)
 
 ## Deferred
 
