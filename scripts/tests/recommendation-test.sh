@@ -82,50 +82,78 @@ assert_eq "1.1 backlog_growth_30d=0 (no git)" "0" \
     "$(printf '%s' "$sigs" | jq -r '.backlog_growth_30d')"
 
 # 1.2 client-side signals.
+# BD-206: the client BACKLOG / IMPLEMENTATION-PLAN are per-entry flat-file
+# trees (the no-mirror SSOT) under docs/project/{backlog,implementation-plan}/.
+# The signal counts canonical entry files (`TD-NNN.md` / `phase-N.md`),
+# Open/Unblocked = active. 3 TD entries: 2 active (Open/Open) + Resolved;
+# 3 phase files; supporting files (leading underscore) excluded.
 TR_CLI=$(mktemp -d -t rec-cli.XXXXXX)
-cat > "$TR_CLI/BACKLOG.md" <<'EOF'
+mkdir -p "$TR_CLI/docs/project/backlog" "$TR_CLI/docs/project/implementation-plan"
+cat > "$TR_CLI/docs/project/backlog/TD-001.md" <<'EOF'
 **TD-001 — Doc**
 Status: Open
-
+EOF
+cat > "$TR_CLI/docs/project/backlog/TD-002.md" <<'EOF'
 **TD-002 — Refactor**
 Status: Open
 EOF
-cat > "$TR_CLI/IMPLEMENTATION-PLAN.md" <<'EOF'
-## Phase 1 — Setup
-## Phase 2 — Core
-## Phase 3 — Polish
+cat > "$TR_CLI/docs/project/backlog/TD-003.md" <<'EOF'
+**TD-003 — Done**
+Status: Resolved
+EOF
+# Supporting file (leading underscore) must NOT be counted as an entry.
+cat > "$TR_CLI/docs/project/backlog/_rules.md" <<'EOF'
+# Per-stream contract — client backlog (test fixture)
+EOF
+cat > "$TR_CLI/docs/project/implementation-plan/phase-1.md" <<'EOF'
+# Phase 1 — Setup
+EOF
+cat > "$TR_CLI/docs/project/implementation-plan/phase-2.md" <<'EOF'
+# Phase 2 — Core
+EOF
+cat > "$TR_CLI/docs/project/implementation-plan/phase-3.md" <<'EOF'
+# Phase 3 — Polish
+EOF
+# Supporting file (leading underscore) must NOT be counted as a phase.
+cat > "$TR_CLI/docs/project/implementation-plan/_rules.md" <<'EOF'
+# Per-stream contract — client implementation-plan (test fixture)
 EOF
 sigs=$(recommendation_compute_signals "client" "$TR_CLI")
-assert_eq "1.2 td_count_active=2"   "2" "$(printf '%s' "$sigs" | jq -r '.td_count_active')"
-assert_eq "1.2 td_count_total=2"    "2" "$(printf '%s' "$sigs" | jq -r '.td_count_total')"
-assert_eq "1.2 phase_count=3"       "3" "$(printf '%s' "$sigs" | jq -r '.phase_count')"
+assert_eq "1.2 td_count_active=2 (Open entries; Resolved + _rules.md excluded)" "2" \
+    "$(printf '%s' "$sigs" | jq -r '.td_count_active')"
+assert_eq "1.2 td_count_total=3 (entry files; _rules.md excluded)" "3" \
+    "$(printf '%s' "$sigs" | jq -r '.td_count_total')"
+assert_eq "1.2 phase_count=3 (phase-N.md files; _rules.md excluded)" "3" \
+    "$(printf '%s' "$sigs" | jq -r '.phase_count')"
 
-# 1.2b — F-1 closure: client BACKLOG.md + IMPLEMENTATION-PLAN.md at the
-# trinity-mandated docs/project/ path. The lib must fall back from the
-# repo-root location (legacy v9 layout) to docs/project/ (v10/v11
-# trinity layout) per project-template/CLAUDE.md Document locations.
+# 1.2b — per-entry-tree active-status counting: Open + Unblocked are
+# active; the active count tracks Status in each canonical entry file.
 TR_CLI_DOCS=$(mktemp -d -t rec-cli-docs.XXXXXX)
-mkdir -p "$TR_CLI_DOCS/docs/project"
-cat > "$TR_CLI_DOCS/docs/project/BACKLOG.md" <<'EOF'
+mkdir -p "$TR_CLI_DOCS/docs/project/backlog" "$TR_CLI_DOCS/docs/project/implementation-plan"
+cat > "$TR_CLI_DOCS/docs/project/backlog/TD-001.md" <<'EOF'
 **TD-001 — A**
 Status: Open
-
+EOF
+cat > "$TR_CLI_DOCS/docs/project/backlog/TD-002.md" <<'EOF'
 **TD-002 — B**
 Status: Unblocked
-
+EOF
+cat > "$TR_CLI_DOCS/docs/project/backlog/TD-003.md" <<'EOF'
 **TD-003 — C**
 Status: Open
 EOF
-cat > "$TR_CLI_DOCS/docs/project/IMPLEMENTATION-PLAN.md" <<'EOF'
-## Phase 1 — One
-## Phase 2 — Two
+cat > "$TR_CLI_DOCS/docs/project/implementation-plan/phase-1.md" <<'EOF'
+# Phase 1 — One
+EOF
+cat > "$TR_CLI_DOCS/docs/project/implementation-plan/phase-2.md" <<'EOF'
+# Phase 2 — Two
 EOF
 sigs=$(recommendation_compute_signals "client" "$TR_CLI_DOCS")
-assert_eq "1.2b client BACKLOG fallback resolves docs/project/ td_count_active" "3" \
+assert_eq "1.2b per-entry tree td_count_active (Open + Unblocked)" "3" \
     "$(printf '%s' "$sigs" | jq -r '.td_count_active')"
-assert_eq "1.2b client BACKLOG fallback resolves docs/project/ td_count_total"  "3" \
+assert_eq "1.2b per-entry tree td_count_total"  "3" \
     "$(printf '%s' "$sigs" | jq -r '.td_count_total')"
-assert_eq "1.2b client plan fallback resolves docs/project/ phase_count" "2" \
+assert_eq "1.2b per-entry tree phase_count" "2" \
     "$(printf '%s' "$sigs" | jq -r '.phase_count')"
 rm -rf "$TR_CLI_DOCS"
 

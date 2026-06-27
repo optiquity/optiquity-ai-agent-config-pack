@@ -163,56 +163,63 @@ _rec_compute_pack_signals() {
 
 _rec_compute_client_signals() {
     local repo_root="$1"
-    # Per the project-template trinity `## Document locations` table,
-    # client BACKLOG / STATUS / IMPLEMENTATION-PLAN live under
-    # `docs/project/`. Fall back to the trinity-mandated path when the
-    # repo-root copy is absent (legacy v9 layout fallback).
-    local backlog="$repo_root/BACKLOG.md"
-    [[ ! -f "$backlog" ]] && backlog="$repo_root/docs/project/BACKLOG.md"
-    local plan="$repo_root/IMPLEMENTATION-PLAN.md"
-    [[ ! -f "$plan" ]] && plan="$repo_root/docs/project/IMPLEMENTATION-PLAN.md"
+    # BD-206: the client BACKLOG / IMPLEMENTATION-PLAN are per-entry
+    # flat-file trees (the no-mirror SSOT) — there is no monolithic
+    # docs/project/{BACKLOG,IMPLEMENTATION-PLAN}.md. Per the
+    # project-template trinity `## Document locations` table the trees
+    # live under `docs/project/{backlog,implementation-plan}/`. Count
+    # canonical entry files, sum their byte size for the tree-size
+    # signals, and count Open/Unblocked entries for the active signal.
+    # Tree-absent → all-zero signals.
+    local backlog_dir="$repo_root/docs/project/backlog"
+    local plan_dir="$repo_root/docs/project/implementation-plan"
 
     local td_active=0 td_total=0 backlog_kb=0 phase_count=0 plan_kb=0
     local td_tbd_count=0 deferral_count=0
-    if [[ -f "$backlog" ]]; then
-        td_total=$(grep -cE '^\*\*TD-[0-9]+ ' "$backlog" 2>/dev/null || echo 0)
-        td_active=$(_rec_count_active_entries "$backlog" "TD")
-        local bytes
-        bytes=$(wc -c < "$backlog" | tr -d ' ')
-        backlog_kb=$(( bytes / 1024 ))
+    if [[ -d "$backlog_dir" ]]; then
+        local f base bytes backlog_bytes=0
+        for f in "$backlog_dir"/*.md; do
+            [[ -f "$f" ]] || continue
+            base=$(basename "$f")
+            # Skip supporting files (leading underscore); count only
+            # canonical `TD-NNN.md` entry files (project backlog/_rules.md
+            # filename convention `^TD-\d+\.md$`).
+            case "$base" in
+                _*) continue ;;
+            esac
+            printf '%s\n' "$base" | grep -qE '^TD-[0-9]+\.md$' || continue
+            td_total=$(( td_total + 1 ))
+            bytes=$(wc -c < "$f" | tr -d ' ')
+            backlog_bytes=$(( backlog_bytes + bytes ))
+            # Active = Status: Open or Status: Unblocked in the entry body.
+            if grep -qE '^Status:[[:space:]]*(Open|Unblocked)[[:space:]]*$' "$f" 2>/dev/null; then
+                td_active=$(( td_active + 1 ))
+            fi
+        done
+        backlog_kb=$(( backlog_bytes / 1024 ))
     fi
-    if [[ -f "$plan" ]]; then
-        phase_count=$(grep -cE '^## Phase' "$plan" 2>/dev/null || echo 0)
-        local pbytes
-        pbytes=$(wc -c < "$plan" | tr -d ' ')
-        plan_kb=$(( pbytes / 1024 ))
+    if [[ -d "$plan_dir" ]]; then
+        local pf pbase pbytes plan_bytes=0
+        for pf in "$plan_dir"/*.md; do
+            [[ -f "$pf" ]] || continue
+            pbase=$(basename "$pf")
+            # Skip supporting files; count only canonical `phase-N.md`
+            # entry files (project implementation-plan/_rules.md filename
+            # convention `^phase-\d+\.md$`).
+            case "$pbase" in
+                _*) continue ;;
+            esac
+            printf '%s\n' "$pbase" | grep -qE '^phase-[0-9]+\.md$' || continue
+            phase_count=$(( phase_count + 1 ))
+            pbytes=$(wc -c < "$pf" | tr -d ' ')
+            plan_bytes=$(( plan_bytes + pbytes ))
+        done
+        plan_kb=$(( plan_bytes / 1024 ))
     fi
     td_tbd_count=$(_rec_grep_count_in_sources "$repo_root" 'TD-TBD')
     deferral_count=$(_rec_grep_count_in_sources "$repo_root" 'KNOWN GAP\|TODO\|FIXME')
     printf '{"td_count_active":%d,"td_count_total":%d,"backlog_kb":%d,"phase_count":%d,"implementation_plan_kb":%d,"td_tbd_comment_count":%d,"typed_deferral_count":%d}\n' \
         "$td_active" "$td_total" "$backlog_kb" "$phase_count" "$plan_kb" "$td_tbd_count" "$deferral_count"
-}
-
-# Count entries with Status: Open or Status: Unblocked under a given prefix.
-_rec_count_active_entries() {
-    local backlog="$1"
-    local prefix="$2"
-    python3 - "$backlog" "$prefix" <<'PYEOF'
-import re, sys
-path, prefix = sys.argv[1], sys.argv[2]
-with open(path) as f:
-    text = f.read()
-header = re.compile(r'^\*\*' + re.escape(prefix) + r'-\d+\s', re.M)
-status = re.compile(r'^Status:\s*(\S+)', re.M)
-sep = re.compile(r'^---\s*$|^\*\*' + re.escape(prefix) + r'-\d+\s', re.M)
-count = 0
-for m in header.finditer(text):
-    block = text[m.start(): m.start() + 2000]
-    sm = status.search(block)
-    if sm and sm.group(1) in ("Open", "Unblocked"):
-        count += 1
-print(count)
-PYEOF
 }
 
 # Approximate 30-day BACKLOG.md growth via git log commit count (each
@@ -412,7 +419,7 @@ _rec_signal_label() {
         backlog_kb)             echo "BACKLOG.md size (KB)" ;;
         backlog_growth_30d)     echo "BACKLOG growth (30 days)" ;;
         phase_count)            echo "phase count" ;;
-        implementation_plan_kb) echo "IMPLEMENTATION-PLAN.md size (KB)" ;;
+        implementation_plan_kb) echo "implementation-plan size (KB)" ;;
         td_tbd_comment_count)   echo "TD-TBD comments" ;;
         typed_deferral_count)   echo "typed deferral comments" ;;
         *)                      echo "$1" ;;
