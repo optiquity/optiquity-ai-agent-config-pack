@@ -34,6 +34,7 @@
 - [BD-248](./BD-248.md) — Persistent portable agent-handoff directory + pack-side write-fail fallback (reliability hardening, both surfaces)
 - [BD-249](./BD-249.md) — Pack-side dead-mirror-subsystem removal (mirror-generate.sh + mirror constants + accessor)
 - [BD-250](./BD-250.md) — Extend the anti-history/bloat durable guards (Check 65/66/67) to `supporting-docs/` operating docs + strip residual violations (measure-then-bound)
+- [BD-251](./BD-251.md) — Remove born-dead BD-164 per-entry back-pointer helpers (`pe_first_line_is_backpointer` + `pe_ensure_backpointer`)
 
 ## Deferred
 
