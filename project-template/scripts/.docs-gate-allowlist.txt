@@ -11,10 +11,11 @@
 # those, fix the doc instead of adding a record.
 #
 # History stores (the per-entry streams under
-# docs/project/{backlog,implementation-plan,changelog}/, the regenerated
-# monolith mirrors, docs/reference/, completion reports) are EXCLUDED from
-# the scan entirely — they legitimately carry dates and deferral narrative,
-# so they are never line-allowlisted here.
+# docs/project/{backlog,implementation-plan,changelog}/, docs/reference/,
+# completion reports) are EXCLUDED from the operating-doc scan entirely —
+# they legitimately carry dates and deferral narrative, so they are never
+# line-allowlisted here. (Under the no-mirror flat-file model there is no
+# regenerated monolith mirror to exclude.)
 #
 # FORMAT: one record per blank-line-separated block; '#'-comment lines
 # ignored. Two record shapes:
@@ -94,25 +95,25 @@ pattern: date
 snippet: bare `2026-04-20.md`
 reason: format example — illustrates the changelog per-entry filename date grammar; not an audit-trail date.
 
-doc: docs/project/changelog/_format.md
+doc: docs/project/changelog/_rules.md
 pattern: date
 snippet: 2026-04-20 — Phase 35
-reason: format example — the changelog entry-heading date grammar; not an audit-trail date.
+reason: format example — the changelog entry-heading date grammar (folded into _rules.md under the no-mirror model); not an audit-trail date.
 
-doc: docs/project/changelog/_format.md
+doc: docs/project/changelog/_rules.md
 pattern: date
 snippet: 2026-04-20-phase-35.md
-reason: format example — the changelog per-entry filename date grammar; not an audit-trail date.
+reason: format example — the changelog per-entry filename date grammar (folded into _rules.md); not an audit-trail date.
 
-doc: docs/project/changelog/_format.md
+doc: docs/project/changelog/_rules.md
 pattern: date
 snippet: 2026-03-20 — Architecture Iteration
-reason: format example — a second changelog entry-heading date grammar example; not an audit-trail date.
+reason: format example — a second changelog entry-heading date grammar example (folded into _rules.md); not an audit-trail date.
 
-doc: docs/project/changelog/_format.md
+doc: docs/project/changelog/_rules.md
 pattern: date
 snippet: 2026-03-20-architecture-iteration.md
-reason: format example — the changelog per-entry filename date grammar; not an audit-trail date.
+reason: format example — the changelog per-entry filename date grammar (folded into _rules.md); not an audit-trail date.
 
 # ===========================================================================
 # DEFERRED axis — KEEP
@@ -389,12 +390,6 @@ reason: pack-shipped reference doc installed into docs/pack/ at project init; pr
 
 target: docs/pack/METHODOLOGY.md
 reason: pack-shipped reference doc installed into docs/pack/ at project init; present in a real install, absent from the bare template.
-
-target: docs/project/BACKLOG.md
-reason: regenerated monolith mirror of the backlog stream; present after the project is used, absent from the bare template.
-
-target: docs/project/IMPLEMENTATION-PLAN.md
-reason: regenerated monolith mirror of the implementation-plan stream; present after the project is used, absent from the bare template.
 
 target: scripts/init-project.sh
 reason: the installer script that provisions the project; referenced for provenance — present in the working tree the project was created from.

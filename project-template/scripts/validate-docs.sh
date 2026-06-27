@@ -2,13 +2,14 @@
 # validate-docs.sh — Operating-doc enforcement gate.
 #
 # Keeps the project's operating docs forward-only, terse, and
-# referentially sound. Operating docs are the live instruction surface
-# the agents and the PM chat execute: the project trinity
-# (CLAUDE.md / AGENTS.md / GEMINI.md), the docs/pack/ reference docs,
-# the per-agent prompts, the skills, the agent definitions, and the
-# stream contract files (docs/project/*/_rules.md, changelog/_format.md).
+# referentially sound, AND the project's per-entry streams schema-
+# conformant. Operating docs are the live instruction surface the agents
+# and the PM chat execute: the project trinity (CLAUDE.md / AGENTS.md /
+# GEMINI.md), the docs/pack/ reference docs, the per-agent prompts, the
+# skills, the agent definitions, and the stream contract files
+# (docs/project/*/_rules.md).
 #
-# Four axes:
+# Four operating-doc axes + a per-entry conformance leg:
 #   - HISTORY   — dates / SHAs / past-action narration / provenance
 #                 belong in BACKLOG / CHANGELOG entries and completion
 #                 reports, never in a forward-only operating doc.
@@ -18,16 +19,28 @@
 #                 "## Project memory" bullets (the mega-bullet axis).
 #   - DANGLING  — a backtick / hyperlink / qualified-path file reference
 #                 whose target does not resolve in the project tree.
+#   - CONFORMANCE — the populated per-entry streams conform to the
+#                 no-mirror form-family / structured schema declared in
+#                 each stream's _rules.md (the same SSOT schema block the
+#                 pack-side validate-pack.py leg parses; the two parsers
+#                 cannot diverge). Validates: sanctioned sidecar
+#                 vocabulary (no _format.md / _scaffolding.md), NO
+#                 reintroduced monolith mirror, and per-entry field /
+#                 structure conformance (form-family for backlog +
+#                 implementation-plan, structured for changelog).
 #
-# History stores are EXCLUDED (never scanned): the per-entry streams
-# under docs/project/{backlog,implementation-plan,changelog}/, the
-# regenerated monolith mirrors (BACKLOG.md / IMPLEMENTATION-PLAN.md /
-# CHANGELOG.md / STATUS.md), docs/reference/, completion reports,
-# _intro.md / _toc.md / HELP-FRAGMENT*.md, and scripts/ + proto/ +
-# source code. Those legitimately carry dates and deferral narrative.
+# History stores are EXCLUDED from the operating-doc scan (never scanned
+# on the 4 axes): the per-entry streams under
+# docs/project/{backlog,implementation-plan,changelog}/, STATUS.md,
+# docs/reference/, completion reports, _intro.md / _toc.md /
+# HELP-FRAGMENT*.md, and scripts/ + proto/ + source code. Those
+# legitimately carry dates and deferral narrative. (The per-entry
+# streams are NOT scanned on the 4 operating-doc axes, but ARE checked
+# by the separate CONFORMANCE leg below.)
 #
 # Usage:
-#   validate-docs.sh            scan the full operating-doc set
+#   validate-docs.sh            scan the full operating-doc set +
+#                               per-entry conformance
 #   validate-docs.sh <file.md>  gate one file only (per-edit fast path)
 #   validate-docs.sh --self-test  run the built-in synthetic checks
 #
@@ -85,7 +98,6 @@ IN_GLOBS = [
     "docs/project/backlog/_rules.md",
     "docs/project/implementation-plan/_rules.md",
     "docs/project/changelog/_rules.md",
-    "docs/project/changelog/_format.md",
 ]
 
 # Files matched by a glob above but EXCLUDED (help output / orientation are
@@ -316,7 +328,7 @@ REMEDIATION_DANGLING = (
     "This file reference does not resolve in the project tree. "
     "Remediation: fix or remove the dead pointer, OR — if it points at "
     "a file that exists only after install / project use (a pack-shipped "
-    "reference doc, a regenerated mirror, a project script) — add a "
+    "reference doc, a generated index, a project script) — add a "
     "scripts/.docs-gate-allowlist.txt `target:` record with a reason:."
 )
 
@@ -400,6 +412,352 @@ def run_scan(targets, root, by_doc, dangling_targets):
     return all_fails
 
 
+# ---------------------------------------------------------------------------
+# AXIS: conformance — populated per-entry stream schema conformance (BD-206)
+#
+# The no-mirror flat-file model: docs/project/{backlog,implementation-plan,
+# changelog}/ are per-entry trees (the SOLE source of truth), NOT regenerated
+# from a monolith. This leg validates a POPULATED client project against the
+# schema each stream declares in its own _rules.md — the SAME SSOT schema
+# block the pack-side validate-pack.py Check 72 leg parses (Item-8: the schema
+# is written once in _rules.md, the parser twice; the two validators cannot
+# diverge on the schema, only the parser is re-implemented).
+#
+# Per stream this checks: (1) sanctioned sidecar vocabulary — no FORBIDDEN
+# _format.md / _scaffolding.md sidecar, and the impl-plan stream admits
+# _index.md; (2) NO reintroduced monolith mirror (BACKLOG.md /
+# IMPLEMENTATION-PLAN.md / CHANGELOG.md); (3) per-entry conformance —
+# form-family field grammar for backlog + implementation-plan, structured
+# entry shape for changelog.
+#
+# Cheap (ci-check-runtime-compounding aware): parse each _rules.md schema
+# ONCE per stream; a bounded os.scandir per stream; deterministic per-entry
+# field scans — no subprocess, no whole-tree walk.
+# ---------------------------------------------------------------------------
+
+# Stream subdir -> (schema H2 header, monolith-mirror basename, admitted
+# optional sidecars). FORBIDDEN sidecars + monoliths are global.
+_CONF_PROJECT_DIR = "docs/project"
+_CONF_STREAMS = (
+    ("backlog",             "## Entry schema",    "BACKLOG.md",             ()),
+    ("implementation-plan", "## Entry schema",    "IMPLEMENTATION-PLAN.md", ("_index.md",)),
+    ("changelog",           "## Entry structure", "CHANGELOG.md",           ()),
+)
+_CONF_FORBIDDEN_SIDECARS = ("_format.md", "_scaffolding.md")
+_CONF_ENTRY_REGEX = {
+    "backlog":             re.compile(r"^TD-\d+\.md$"),
+    "implementation-plan": re.compile(r"^phase-\d+\.md$"),
+    "changelog":           re.compile(r"^\d{4}-\d{2}-\d{2}(-.+)?\.md$"),
+}
+_CONF_SIDECAR_RX = re.compile(r"^_.*\.md$")
+
+REMEDIATION_CONFORMANCE = (
+    "The per-entry stream must conform to the no-mirror flat-file schema "
+    "declared in its _rules.md (the SOLE source of truth — no monolith "
+    "mirror). Remediation: fix the offending entry / sidecar to match the "
+    "stream's _rules.md schema block, OR — if the stream's contract has "
+    "legitimately changed — update _rules.md (the SSOT) so both this gate "
+    "and the pack-side validate-pack.py leg parse the new schema."
+)
+
+
+def _conf_parse_rules_section(text, header):
+    """Parse a _rules.md schema block into a {key: tokens} map.
+
+    Same grammar as the bash pe_supporting_files_admitted helper
+    (scripts/lib/per-entry/_lib.sh) and the pack-side
+    _check_72_parse_rules_section (scripts/validate-pack.py): inside the
+    named `## <Section>` H2 block, each `- key: tokens` bullet contributes
+    one entry; the block ends at the next `## ` line. Returns {} if the
+    section is absent.
+    """
+    result = {}
+    in_section = False
+    for line in text.splitlines():
+        if line.startswith(header):
+            in_section = True
+            continue
+        if in_section and line.startswith("## "):
+            break
+        if in_section and line.startswith("- ") and ":" in line:
+            body = line[2:].strip()
+            key, _, tokens = body.partition(":")
+            result[key.strip()] = tokens.strip()
+    return result
+
+
+def _conf_parse_supporting(text):
+    """Parse the `## Supporting files` section into a set of basenames.
+
+    Bare `- basename` bullets (backticks optional), block ends at the next
+    `## ` line. Mirrors the pack-side support-set parse + the bash
+    pe_supporting_files_admitted grammar.
+    """
+    names = set()
+    in_section = False
+    for line in text.splitlines():
+        if line.startswith("## Supporting files"):
+            in_section = True
+            continue
+        if in_section and line.startswith("## "):
+            break
+        if in_section and line.startswith("- "):
+            names.add(line[2:].strip().strip("`"))
+    return names
+
+
+def _conf_schema_tokens(schema, key):
+    """Whitespace-split a schema value's tokens, honoring "double-quoted"
+    multi-word tokens (e.g. `marker-enum: TODO "KNOWN GAP" VERIFY`)."""
+    raw = schema.get(key, "")
+    return re.findall(r'"[^"]+"|\S+', raw)
+
+
+def _conf_clean_token(tok):
+    return tok.strip().strip('"')
+
+
+def _conf_entry_field_present(body, field):
+    """A form-family field is present if the entry carries a `**Field**:` or
+    `Field:` labeled line, or an `- Field:` bullet (the gold uses bold
+    labels; we tolerate the plain and bullet forms)."""
+    # `Entry-Type` <-> `Entry Type`, `File/Symbol` etc. matched literally.
+    esc = re.escape(field)
+    rx = re.compile(
+        r"^\s*(?:[-*]\s*)?\*{0,2}" + esc + r"\*{0,2}\s*:",
+        re.MULTILINE)
+    return rx.search(body) is not None
+
+
+def _conf_field_value(body, field):
+    """Return the trimmed value text of a `**Field**:`/`Field:` line, or ''."""
+    esc = re.escape(field)
+    rx = re.compile(
+        r"^\s*(?:[-*]\s*)?\*{0,2}" + esc + r"\*{0,2}\s*:(.*)$",
+        re.MULTILINE)
+    m = rx.search(body)
+    if not m:
+        return ""
+    return m.group(1).strip().strip("*").strip()
+
+
+def _conf_check_backlog_entry(rel, body, schema):
+    """Form-family conformance for one backlog TD entry (schema-driven)."""
+    fails = []
+    # Entry-Type present + == declared entry-type.
+    want_type = (_conf_schema_tokens(schema, "entry-type") or [""])[0]
+    want_type = _conf_clean_token(want_type)
+    if not _conf_entry_field_present(body, "Entry-Type"):
+        fails.append(f"{rel} [conformance] missing Entry-Type field")
+    elif want_type:
+        got = _conf_field_value(body, "Entry-Type").lower()
+        if got and got != want_type.lower():
+            fails.append(
+                f"{rel} [conformance] Entry-Type '{got}' != schema "
+                f"entry-type '{want_type}'")
+    # Core fields present.
+    for field in _conf_schema_tokens(schema, "core-fields"):
+        field = _conf_clean_token(field)
+        if field and not _conf_entry_field_present(body, field):
+            fails.append(
+                f"{rel} [conformance] missing core field '{field}'")
+    # Marker ∈ marker-enum.
+    marker_enum = [_conf_clean_token(t)
+                   for t in _conf_schema_tokens(schema, "marker-enum")]
+    marker_val = _conf_field_value(body, "Marker")
+    if marker_enum and marker_val and marker_val not in marker_enum:
+        fails.append(
+            f"{rel} [conformance] Marker '{marker_val}' not in "
+            f"marker-enum {marker_enum}")
+    # Status ∈ status-enum.
+    status_enum = [_conf_clean_token(t)
+                   for t in _conf_schema_tokens(schema, "status-enum")]
+    status_val = _conf_field_value(body, "Status")
+    if status_enum and status_val and status_val not in status_enum:
+        fails.append(
+            f"{rel} [conformance] Status '{status_val}' not in "
+            f"status-enum {status_enum}")
+    # resolved-requires: Resolution present iff Status == Resolved.
+    req = _conf_schema_tokens(schema, "resolved-requires")
+    if req and status_val == "Resolved":
+        req_field = _conf_clean_token(req[0])
+        if req_field and not _conf_entry_field_present(body, req_field):
+            fails.append(
+                f"{rel} [conformance] Status=Resolved but '{req_field}' "
+                f"field missing (resolved-requires)")
+    return fails
+
+
+def _conf_check_implplan_entry(rel, body, schema):
+    """Form-family conformance for one impl-plan phase entry (schema-driven).
+
+    phase-epic carries the declared epic field set; phase-part is lightweight
+    (Entry-Type only) and is tolerated gracefully (BD-206; per-part richness
+    is BD-185).
+    """
+    fails = []
+    entry_types = [_conf_clean_token(t)
+                   for t in _conf_schema_tokens(schema, "entry-types")]
+    if not _conf_entry_field_present(body, "Entry-Type"):
+        fails.append(f"{rel} [conformance] missing Entry-Type field")
+        return fails
+    got_type = _conf_field_value(body, "Entry-Type").lower()
+    if entry_types and got_type and got_type not in [t.lower()
+                                                     for t in entry_types]:
+        fails.append(
+            f"{rel} [conformance] Entry-Type '{got_type}' not in "
+            f"entry-types {entry_types}")
+    # phase-part is lightweight — Entry-Type only; nothing more to check.
+    if got_type == "phase-part":
+        return fails
+    # phase-epic: the declared epic field set.
+    for field in _conf_schema_tokens(schema, "phase-epic-fields"):
+        field = _conf_clean_token(field)
+        if field and not _conf_entry_field_present(body, field):
+            fails.append(
+                f"{rel} [conformance] phase-epic missing field '{field}'")
+    status_enum = [_conf_clean_token(t)
+                   for t in _conf_schema_tokens(schema, "status-enum")]
+    status_val = _conf_field_value(body, "Status")
+    if status_enum and status_val and status_val not in status_enum:
+        fails.append(
+            f"{rel} [conformance] Status '{status_val}' not in "
+            f"status-enum {status_enum}")
+    return fails
+
+
+def _conf_check_changelog_entry(rel, body, schema):
+    """Structured (not form-family) conformance for one changelog entry.
+
+    BD-206/O10 scope: recognize the structured entry shape — the H3 anchor
+    heading (`### YYYY-MM-DD — …`). The deeper changelog conformance (core
+    {Summary + Test count + Files} required-when-code-bearing + the size
+    caps) is the separate BD-206/O12 leg; this leg confirms the entry is a
+    structured changelog entry, not a form-family entry mis-filed here.
+    """
+    fails = []
+    has_h3 = re.search(r"(?m)^###\s+\d{4}-\d{2}-\d{2}\b", body) is not None
+    if not has_h3:
+        fails.append(
+            f"{rel} [conformance] missing structured changelog H3 anchor "
+            f"(### YYYY-MM-DD — …)")
+    # A changelog entry is structured, NOT form-family: it must not carry an
+    # Entry-Type/Marker form-family field (would mean a mis-filed entry).
+    if _conf_entry_field_present(body, "Entry-Type"):
+        fails.append(
+            f"{rel} [conformance] changelog entry carries a form-family "
+            f"Entry-Type field (changelog is structured, not form-family)")
+    return fails
+
+
+_CONF_ENTRY_CHECKERS = {
+    "backlog":             _conf_check_backlog_entry,
+    "implementation-plan": _conf_check_implplan_entry,
+    "changelog":           _conf_check_changelog_entry,
+}
+
+
+def run_conformance(root):
+    """Validate the POPULATED per-entry streams against their _rules.md schema.
+
+    Returns a list of failure strings. Lenient when a stream directory is
+    absent (a bare template / partial install is not a conformance violation)
+    and when a stream has no _rules.md (pre-v11 client — nothing to parse).
+    """
+    fails = []
+    base = os.path.join(root, _CONF_PROJECT_DIR)
+    if not os.path.isdir(base):
+        return fails  # no project tree — nothing to validate (lenient)
+
+    for subdir, schema_header, monolith, admitted in _CONF_STREAMS:
+        stream_dir = os.path.join(base, subdir)
+        rel_dir = f"{_CONF_PROJECT_DIR}/{subdir}"
+        if not os.path.isdir(stream_dir):
+            continue  # stream absent — lenient
+
+        try:
+            names = [e.name for e in os.scandir(stream_dir) if e.is_file()]
+        except OSError as e:
+            fails.append(f"{rel_dir} [conformance] cannot scan ({e})")
+            continue
+
+        # (1) No reintroduced monolith mirror (at the stream dir or parent).
+        for cand in (os.path.join(base, monolith),
+                     os.path.join(stream_dir, monolith)):
+            if os.path.isfile(cand):
+                relm = os.path.relpath(cand, root)
+                fails.append(
+                    f"{relm} [conformance] FORBIDDEN monolith mirror present "
+                    f"(no-mirror flat-file model — the per-entry tree is the "
+                    f"SOLE source of truth)\n    {REMEDIATION_CONFORMANCE}")
+
+        # (2) Sanctioned sidecar vocabulary — no forbidden sidecar present.
+        for forbidden in _CONF_FORBIDDEN_SIDECARS:
+            if forbidden in names:
+                fails.append(
+                    f"{rel_dir}/{forbidden} [conformance] FORBIDDEN sidecar "
+                    f"present (sanctioned vocabulary: _rules.md / _intro.md / "
+                    f"_toc.md" + (" / _index.md" if admitted else "") + ")\n"
+                    f"    {REMEDIATION_CONFORMANCE}")
+
+        # Parse the stream's _rules.md schema ONCE (Item-8 SSOT).
+        rules_path = os.path.join(stream_dir, "_rules.md")
+        if not os.path.isfile(rules_path):
+            continue  # pre-v11 / no contract — lenient
+        try:
+            rules_text = open(rules_path, encoding="utf-8").read()
+        except OSError as e:
+            fails.append(f"{rel_dir}/_rules.md [conformance] unreadable ({e})")
+            continue
+
+        # _rules.md Supporting-files must not list a forbidden sidecar AND
+        # must admit the stream's optional sidecars (e.g. impl-plan _index.md).
+        support = _conf_parse_supporting(rules_text)
+        for forbidden in _CONF_FORBIDDEN_SIDECARS:
+            if forbidden in support:
+                fails.append(
+                    f"{rel_dir}/_rules.md [conformance] Supporting files lists "
+                    f"FORBIDDEN sidecar {forbidden}\n"
+                    f"    {REMEDIATION_CONFORMANCE}")
+        for sidecar in admitted:
+            if sidecar not in support:
+                fails.append(
+                    f"{rel_dir}/_rules.md [conformance] Supporting files must "
+                    f"admit {sidecar} for this stream\n"
+                    f"    {REMEDIATION_CONFORMANCE}")
+
+        schema = _conf_parse_rules_section(rules_text, schema_header)
+        if not schema:
+            fails.append(
+                f"{rel_dir}/_rules.md [conformance] missing or empty schema "
+                f"block ({schema_header})\n    {REMEDIATION_CONFORMANCE}")
+            # Without a schema we cannot field-check entries; report + move on.
+            continue
+
+        # (3) Per-entry conformance — only files matching the entry regex.
+        entry_rx = _CONF_ENTRY_REGEX[subdir]
+        checker = _CONF_ENTRY_CHECKERS[subdir]
+        for name in sorted(names):
+            # Skip sidecars (anything _-prefixed) and non-entry files.
+            if _CONF_SIDECAR_RX.match(name):
+                continue
+            if not entry_rx.match(name):
+                continue  # SKIP: not-entry, not-sidecar → out of scope
+            entry_path = os.path.join(stream_dir, name)
+            rel_entry = f"{rel_dir}/{name}"
+            try:
+                body = open(entry_path, encoding="utf-8").read()
+            except OSError as e:
+                fails.append(
+                    f"{rel_entry} [conformance] unreadable ({e})")
+                continue
+            for f in checker(rel_entry, body, schema):
+                # Attach the shared remediation if the checker did not.
+                fails.append(f if "\n" in f
+                             else f + f"\n    {REMEDIATION_CONFORMANCE}")
+    return fails
+
+
 def main():
     by_doc, dangling_targets = load_allowlist()
 
@@ -424,20 +782,25 @@ def main():
             print(f"[validate-docs] {rel} is not an operating doc "
                   f"(history store / report / reference) — skipping.")
             return 0
+        # File mode is the per-edit operating-doc fast path; the conformance
+        # leg is a whole-stream check (run in the full scan), not per-file.
         fails = run_scan([rel], ROOT, by_doc, dangling_targets)
     else:
         targets = iter_in_set()
         print(f"[validate-docs] scanning {len(targets)} operating docs "
-              f"(4 axes: history / deferred / bloat / dangling)")
+              f"(4 axes: history / deferred / bloat / dangling) + per-entry "
+              f"stream conformance")
         fails = run_scan(targets, ROOT, by_doc, dangling_targets)
+        fails += run_conformance(ROOT)
 
     if fails:
-        print(f"[validate-docs] FAIL — {len(fails)} operating-doc "
-              f"violation(s):")
+        print(f"[validate-docs] FAIL — {len(fails)} violation(s) "
+              f"(operating-doc + per-entry conformance):")
         for f in fails:
             print(f"  - {f}")
         return 1
-    print("[validate-docs] PASS — operating docs clean.")
+    print("[validate-docs] PASS — operating docs clean + per-entry streams "
+          "schema-conformant.")
     return 0
 
 
@@ -487,13 +850,131 @@ def run_selftest():
     gate(dirty_dangling, True, "dangling")
     gate(dirty_bloat, True, "bloat")
 
+    # --- CONFORMANCE leg self-test: build a synthetic populated project tree
+    #     and confirm the conformance matchers PASS on a conforming tree and
+    #     BITE on each violation class (sidecar vocabulary / monolith mirror /
+    #     form-family field / status-enum / changelog structure). The schema
+    #     is the live shipped _rules.md (the SSOT) for each stream, so the
+    #     self-test also confirms the parser reads the shipped schema. SKIPs
+    #     the conformance legs (with a note) if the shipped _rules.md set is
+    #     absent (a partial checkout) — the 4 operating-doc axes still run. ---
+    rules_root = os.path.join(ROOT, "docs", "project")
+    rules_paths = {
+        "backlog": os.path.join(rules_root, "backlog", "_rules.md"),
+        "implementation-plan": os.path.join(
+            rules_root, "implementation-plan", "_rules.md"),
+        "changelog": os.path.join(rules_root, "changelog", "_rules.md"),
+    }
+    conformance_self_test = all(os.path.isfile(p)
+                                for p in rules_paths.values())
+
+    if conformance_self_test:
+        bl_rules = open(rules_paths["backlog"], encoding="utf-8").read()
+        ip_rules = open(rules_paths["implementation-plan"],
+                        encoding="utf-8").read()
+        cl_rules = open(rules_paths["changelog"], encoding="utf-8").read()
+
+    good_td = (
+        "<!-- back -->\n"
+        "**TD-001 — Sample**\n\n"
+        "- **Entry-Type**: td\n"
+        "- **ID**: TD-001\n"
+        "- **Marker**: TODO\n"
+        "- **Status**: Open\n"
+        "- **Blockers**: none\n"
+        "- **Unblocks**: none\n"
+        "- **File/Symbol**: foo.swift\n"
+        "- **Description**: a thing\n"
+        "- **Context**: because\n"
+        "- **Scope**: feature\n"
+    )
+    good_phase = (
+        "<!-- back -->\n"
+        "## Phase 0 — Bootstrap\n\n"
+        "- **Entry-Type**: phase-epic\n"
+        "- **ID**: phase-0\n"
+        "- **Status**: not-started\n"
+        "- **Blockers**: none\n"
+        "- **Unblocks**: phase-1\n"
+        "- **Goal**: bootstrap\n"
+        "- **Prerequisite**: none\n"
+    )
+    good_cl = (
+        "<!-- back -->\n"
+        "### 2026-04-20 — Phase 35 — Sample\n\n"
+        "**Summary**: did things.\n"
+    )
+
+    def conf_gate(files, expect_fail, label):
+        """files: {relpath_under_docs_project: content}. Always seeds each
+        stream's shipped _rules.md so the parser has the SSOT schema."""
+        with tempfile.TemporaryDirectory() as td:
+            for sub, rules in (("backlog", bl_rules),
+                               ("implementation-plan", ip_rules),
+                               ("changelog", cl_rules)):
+                d = os.path.join(td, "docs", "project", sub)
+                os.makedirs(d, exist_ok=True)
+                with open(os.path.join(d, "_rules.md"), "w",
+                          encoding="utf-8") as fh:
+                    fh.write(rules)
+                with open(os.path.join(d, "_intro.md"), "w",
+                          encoding="utf-8") as fh:
+                    fh.write("# intro\n")
+            for relp, content in files.items():
+                p = os.path.join(td, "docs", "project", relp)
+                os.makedirs(os.path.dirname(p), exist_ok=True)
+                with open(p, "w", encoding="utf-8") as fh:
+                    fh.write(content)
+            fails = run_conformance(td)
+            got_fail = bool(fails)
+            if got_fail != expect_fail:
+                failures.append(
+                    f"{label}: expected "
+                    f"{'FAIL' if expect_fail else 'PASS'}, got "
+                    f"{'FAIL' if got_fail else 'PASS'} ({len(fails)} hit(s))")
+
+    if conformance_self_test:
+        # Conforming populated tree → PASS.
+        conf_gate({"backlog/TD-001.md": good_td,
+                   "implementation-plan/phase-0.md": good_phase,
+                   "changelog/2026-04-20-phase-35.md": good_cl},
+                  False, "conformance-clean")
+        # Empty (sidecar-only) tree → PASS (greenfield).
+        conf_gate({}, False, "conformance-empty")
+        # FORBIDDEN sidecar present → FAIL.
+        conf_gate({"backlog/_format.md": "x\n"}, True,
+                  "conformance-forbidden-sidecar")
+        # Monolith mirror reintroduced → FAIL.
+        conf_gate({"BACKLOG.md": "# mono\n"}, True,
+                  "conformance-monolith-mirror")
+        # backlog entry missing a core field (no Status) → FAIL.
+        conf_gate({"backlog/TD-002.md": good_td.replace(
+                      "- **Status**: Open\n", "")}, True,
+                  "conformance-missing-core-field")
+        # backlog entry with an out-of-enum Status → FAIL.
+        conf_gate({"backlog/TD-003.md": good_td.replace(
+                      "- **Status**: Open\n", "- **Status**: Bogus\n")}, True,
+                  "conformance-bad-status-enum")
+        # impl-plan phase-epic missing the Goal field → FAIL.
+        conf_gate({"implementation-plan/phase-1.md": good_phase.replace(
+                      "- **Goal**: bootstrap\n", "")}, True,
+                  "conformance-implplan-missing-field")
+        # changelog entry carrying a form-family Entry-Type → FAIL.
+        conf_gate({"changelog/2026-05-01-x.md": good_cl
+                   + "- **Entry-Type**: td\n"}, True,
+                  "conformance-changelog-formfamily")
+
     if failures:
         print("[validate-docs --self-test] FAIL:")
         for f in failures:
             print(f"  - {f}")
         return 1
-    print("[validate-docs --self-test] PASS — all 4 axes "
-          "(history / deferred / bloat / dangling) bite correctly.")
+    conf_note = ("+ the per-entry conformance leg" if conformance_self_test
+                 else "(conformance self-test SKIPPED — shipped _rules.md "
+                      "set absent)")
+    print("[validate-docs --self-test] PASS — all 4 operating-doc axes "
+          "(history / deferred / bloat / dangling) " + conf_note
+          + " bite correctly.")
     return 0
 
 
