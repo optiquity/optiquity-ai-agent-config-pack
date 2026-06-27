@@ -119,7 +119,7 @@ directory map.
 | `STATUS.md` | Direct read | Small, changes every phase, must always be current |
 | `PACK-FEEDBACK.md` | Direct read + append writes | PM-chat-owned feedback log for the pack itself (see METHODOLOGY.md Part 10) |
 | `docs/project/implementation-plan/phase-N.md` (per-entry plan source) | Direct read of the relevant phase entry; `_index.md` for ordering | Per-entry tree is the source of truth (no monolith); read only the phase you need |
-| `docs/project/backlog/<ID>.md`, `docs/project/implementation-plan/<ID>.md`, `docs/project/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is source of truth in flat-file mode (per project-template trinity Document locations + `<stream>/_rules.md`); smaller token footprint than mirror for one-entry edits |
+| `docs/project/backlog/<ID>.md`, `docs/project/implementation-plan/<ID>.md`, `docs/project/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is source of truth in flat-file mode (per project-template trinity Document locations + `<stream>/_rules.md`); reading one entry file is cheaper than reading the whole stream for one-entry edits |
 | `docs/project/backlog/_rules.md`, `docs/project/implementation-plan/_rules.md`, `docs/project/changelog/_rules.md` (per-stream contracts) | Direct read at session start (or on per-entry-tree-aware operation) | Per-stream contract authority |
 | `PLATFORM-SKILLS.md` | Direct read (full) | Referenced when generating every agent prompt |
 | `METHODOLOGY.md` | RAG query (Claude CLI) or direct read (other tools) | Large, stable |
