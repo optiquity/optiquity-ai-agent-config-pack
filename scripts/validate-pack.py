@@ -8400,6 +8400,8 @@ _CHECK_OPERATING_DOC_OUT_OF_FAMILY = (
     "pack-ops/.spawn-rule-manifest.txt",
     # the Antigravity plugin manifest (machine config, not an operating doc)
     "project-template/.agents-plugin/optiquity-agents/plugin.json",
+    # the BD-246 immutable-manifest: a sha256 content-checksum DATA file, not an operating doc
+    "project-template/docs/project/immutable-manifest.txt",
 )
 
 
