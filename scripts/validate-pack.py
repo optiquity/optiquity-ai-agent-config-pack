@@ -283,6 +283,7 @@ Exit 0 if all pass, exit 1 if any fail. Each failure prints the exact
 file, line (where applicable), and problem.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -505,7 +506,7 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # (+0). This constant is the explicit invariant; the actual count is COMPUTED
 # from len(_build_check_registry()) and asserted equal by Check 59 — never
 # hard-coded anywhere else.
-CHECK_REGISTRY_EXPECTED_COUNT = 73
+CHECK_REGISTRY_EXPECTED_COUNT = 74
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
@@ -4352,6 +4353,26 @@ _IMMUTABLE_SHIPPED = (
     "project-template/docs/project/backlog/_rules.md",
     "project-template/docs/project/implementation-plan/_rules.md",
     "project-template/docs/project/changelog/_rules.md",
+)
+
+# The pack-shipped content-checksum manifest (sha256 of each _IMMUTABLE_SHIPPED
+# file) + the client integrity twin that Check 76 polices. The manifest stores
+# CLIENT-INSTALLED project-relative rows (`docs/project/.../_rules.md`); the
+# pack-side leg maps `docs/project/X` -> `project-template/docs/project/X` to
+# hash its own copy. The client verify leg (verify-immutable.sh) must SHIP,
+# be executable, and be WIRED into the client validate flow.
+_IMMUTABLE_MANIFEST = "project-template/docs/project/immutable-manifest.txt"
+_IMMUTABLE_MANIFEST_PROJECT_PREFIX = "docs/project/"
+_IMMUTABLE_PACK_PREFIX = "project-template/"
+_CHECK_76_CLIENT_VERIFY = "project-template/scripts/verify-immutable.sh"
+# ONE-host wiring set: the client integrity check is an inherently WHOLE-SET
+# check (no per-file mode), so its natural home is the whole-run host
+# (validate.sh) ONLY — NOT the per-edit agent-post-edit-check.sh (a deliberate,
+# principled asymmetry with validate-docs.sh, which is two-host because it is
+# per-file). See DESIGN-WIRING-ADDENDUM Q2/Q3 (WD-2 ratified). Mirrors the
+# Check-70 `_CHECK_70_WIRING_FILES` idiom with a one-element set.
+_CHECK_76_WIRING_FILES = (
+    "project-template/scripts/validate.sh",
 )
 
 
@@ -12235,6 +12256,225 @@ def check_project_implplan_naming() -> None:
            f"tolerates inline parts + epic-task anchors) self-checks with teeth.")
 
 
+_IMMUTABLE_HASH_RE = re.compile(r"^[0-9a-f]{64}$")
+_IMMUTABLE_VERSION_RE = re.compile(r"^#\s*pack-version:\s*(\S+)\s*$")
+_README_VERSION_ROW_RE = re.compile(r"^\|\s*(v[0-9]+\.[0-9]+(?:\.[0-9]+)?)")
+
+
+def _immutable_readme_version() -> str:
+    """The pack version from the README version table — the FIRST `| vN.M`
+    data row (newest-first), bare token (any ` (qualifier)` stripped). Mirrors
+    immutable-manifest.sh `_pack_version_from_readme` so the manifest header and
+    Check 76's gate read the SAME source. Returns "" when no row is found."""
+    if not README.exists():
+        return ""
+    for line in README.read_text(encoding="utf-8", errors="replace").splitlines():
+        m = _README_VERSION_ROW_RE.match(line)
+        if m:
+            return m.group(1)
+    return ""
+
+
+def check_immutable_manifest() -> None:
+    """Check 76 — pack-shipped immutable-file content-integrity (BD-246 U4).
+
+    Verifies the pack's OWN copy of the immutable set against the shipped
+    content-checksum manifest (the ROBUST guarantee — the manifest lives in the
+    pack repo, non-defeatable client-side). Five legs:
+      (1) SKIP-lenient when the manifest is absent (fresh clone / pre-feature
+          HEAD never fails — the Check-47 init_sh.is_file() idiom).
+      (2) Parse the `# pack-version:` header + `<path>  <64-hex>` rows
+          (whitespace-split; each hash validated against `^[0-9a-f]{64}$`,
+          paralleling Check 62's 40-hex git-SHA regex).
+      (3) Set-equality (folds in U1/OD-2): the manifest row paths, mapped
+          project-relative -> pack-relative, must equal `_IMMUTABLE_SHIPPED`
+          exactly (the measure-then-bound enforcement; a two-sided diff like
+          Check 47's missing/extra).
+      (4) Content verify: in-process hashlib.sha256 of each pack-side file vs.
+          the manifest hash; a mismatch is the LOUD signal. PACK-SIDE version-
+          gated (F-3) — run hard only when the manifest `# pack-version:`
+          matches the README version table; on mismatch (mid-dev between a
+          version bump and a regen) the byte-hash compare is ADVISORY, not a
+          fail. Set-equality (3) + the structural assertion (5) are version-
+          INDEPENDENT and always run hard.
+      (5) Structural assertion (OD-4 + wiring addendum WD-2/WD-3): the client
+          twin `verify-immutable.sh` SHIPS, is executable, and is WIRED into the
+          one-host wiring set `_CHECK_76_WIRING_FILES` (validate.sh only —
+          NOT agent-post-edit-check.sh; the integrity check is whole-set, so the
+          whole-run host is its natural home). Reuses the Check-70
+          `basename in wiring_text` idiom. SKIP-lenient on an absent host file.
+
+    Dependency direction (dependency-direction-placement): a PACK check that
+    READS the project-template deliverables to police them — the legitimate
+    direction. It NEVER edits a shipped file and NEVER makes one a runtime
+    dependency of a pack op.
+
+    Cheap (ci-check-runtime-compounding): in-process hashlib.sha256 of 3 small
+    files + a `read_text` of the manifest + validate.sh; NO subprocess, NO
+    whole-tree scan; SKIP-lenient when the manifest is absent.
+    """
+    print("\n── Check 76: pack-shipped immutable-file integrity (BD-246) ──")
+
+    # (1) SKIP-lenient — manifest absent.
+    manifest_path = REPO_ROOT / _IMMUTABLE_MANIFEST
+    if not manifest_path.is_file():
+        ok(
+            f"{_IMMUTABLE_MANIFEST} absent — skipping (lenient; the content-"
+            f"checksum manifest is a release artifact, absent on a fresh clone "
+            f"/ pre-feature HEAD). When present, Check 76 asserts set-equality "
+            f"to _IMMUTABLE_SHIPPED, content-hash integrity (version-gated), "
+            f"and that verify-immutable.sh ships + is executable + is wired."
+        )
+        return
+
+    any_fail = False
+
+    # (2) Parse header + rows.
+    manifest_version = ""
+    rows = {}  # project-relative path -> manifest sha256
+    malformed = []
+    for raw in manifest_path.read_text(
+        encoding="utf-8", errors="replace"
+    ).splitlines():
+        vm = _IMMUTABLE_VERSION_RE.match(raw)
+        if vm:
+            manifest_version = vm.group(1)
+            continue
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        if len(parts) != 2 or not _IMMUTABLE_HASH_RE.match(parts[1]):
+            malformed.append(raw)
+            continue
+        rows[parts[0]] = parts[1]
+    if malformed:
+        any_fail = True
+        for raw in malformed:
+            fail(
+                f"{_IMMUTABLE_MANIFEST} — malformed row (expected "
+                f"`<project-relative-path>  <64-hex sha256>`): {raw!r}"
+            )
+
+    # (3) Set-equality vs _IMMUTABLE_SHIPPED (version-INDEPENDENT — always hard).
+    mapped = {
+        _IMMUTABLE_PACK_PREFIX + p
+        if p.startswith(_IMMUTABLE_MANIFEST_PROJECT_PREFIX)
+        else p
+        for p in rows
+    }
+    frozen = set(_IMMUTABLE_SHIPPED)
+    if mapped != frozen:
+        any_fail = True
+        extra = sorted(mapped - frozen)
+        missing = sorted(frozen - mapped)
+        if extra:
+            fail(
+                f"{_IMMUTABLE_MANIFEST} lists path(s) NOT in _IMMUTABLE_SHIPPED "
+                f"(mapped pack-relative): {extra}. The manifest must cover "
+                f"EXACTLY the frozen immutable set; regenerate with "
+                f"`scripts/immutable-manifest.sh --regen` or, to grow the set, "
+                f"update _IMMUTABLE_SHIPPED (architect + user sign-off)."
+            )
+        if missing:
+            fail(
+                f"_IMMUTABLE_SHIPPED entr(ies) absent from {_IMMUTABLE_MANIFEST}: "
+                f"{missing}. The manifest must cover the full frozen set; "
+                f"regenerate with `scripts/immutable-manifest.sh --regen`."
+            )
+
+    # (4) Content verify — version-gated (PACK-SIDE F-3 accommodation).
+    readme_version = _immutable_readme_version()
+    version_ok = bool(readme_version) and manifest_version == readme_version
+    for rel, want_hash in sorted(rows.items()):
+        if rel.startswith(_IMMUTABLE_MANIFEST_PROJECT_PREFIX):
+            pack_rel = _IMMUTABLE_PACK_PREFIX + rel
+        else:
+            pack_rel = rel
+        pack_path = REPO_ROOT / pack_rel
+        if not pack_path.is_file():
+            any_fail = True
+            fail(
+                f"{pack_rel} — manifest row references a pack file that does "
+                f"NOT exist. Regenerate the manifest or restore the file."
+            )
+            continue
+        got_hash = hashlib.sha256(pack_path.read_bytes()).hexdigest()
+        if got_hash == want_hash:
+            continue
+        if version_ok:
+            any_fail = True
+            fail(
+                f"{pack_rel} — CONTENT INTEGRITY MISMATCH. The pack's immutable "
+                f"file differs from the shipped manifest baseline.\n"
+                f"       manifest: {want_hash}\n"
+                f"       actual:   {got_hash}\n"
+                f"       Remediation: if the change is intentional, regenerate "
+                f"with `scripts/immutable-manifest.sh --regen` (release "
+                f"cadence); otherwise revert the unauthorized edit."
+            )
+        else:
+            warn(
+                f"{pack_rel} — content hash differs from the manifest, but the "
+                f"manifest `# pack-version: {manifest_version or '(none)'}` does "
+                f"NOT match the README version `{readme_version or '(none)'}` — "
+                f"treating the byte-hash compare as ADVISORY (mid-dev cadence; "
+                f"regen the manifest in the same change as the version bump). "
+                f"Set-equality + structural assertions still ran hard."
+            )
+
+    # (5) Structural assertion — verify-immutable.sh ships + executable + wired.
+    verify_path = REPO_ROOT / _CHECK_76_CLIENT_VERIFY
+    verify_basename = Path(_CHECK_76_CLIENT_VERIFY).name
+    if not verify_path.is_file():
+        any_fail = True
+        fail(
+            f"{_CHECK_76_CLIENT_VERIFY} — the shipped client integrity check is "
+            f"MISSING. Per BD-246 OD-4 it must ship to clients (it verifies the "
+            f"INSTALLED immutable files against the shipped manifest)."
+        )
+    else:
+        if not os.access(verify_path, os.X_OK):
+            any_fail = True
+            fail(
+                f"{_CHECK_76_CLIENT_VERIFY} — the shipped client integrity check "
+                f"exists but is NOT executable. The committed source must carry "
+                f"the executable bit. Remediation: `chmod +x "
+                f"{_CHECK_76_CLIENT_VERIFY}`."
+            )
+        for wiring_rel in _CHECK_76_WIRING_FILES:
+            wiring_path = REPO_ROOT / wiring_rel
+            if not wiring_path.is_file():
+                # Lenient on an absent host (init/state artifact, like Check 70).
+                continue
+            wiring_text = wiring_path.read_text(
+                encoding="utf-8", errors="replace"
+            )
+            if verify_basename not in wiring_text:
+                any_fail = True
+                fail(
+                    f"{wiring_rel} — the shipped client integrity check "
+                    f"{verify_basename} is NOT wired into this host (no "
+                    f"reference found). Per BD-246 OD-4 it must be invoked from "
+                    f"validate.sh (the full-run path), the way validate-docs.sh "
+                    f"is wired. Remediation: add "
+                    f'`"$SCRIPT_DIR/{verify_basename}" || EXIT_CODE=1`.'
+                )
+
+    if not any_fail:
+        gate = (
+            "content-hash verified (version-matched)"
+            if version_ok
+            else "content-hash ADVISORY (manifest/README version mismatch)"
+        )
+        ok(
+            f"Check 76 — {_IMMUTABLE_MANIFEST}: row-paths == _IMMUTABLE_SHIPPED "
+            f"({len(frozen)} file(s)); {gate}; {verify_basename} ships + is "
+            f"executable + is wired into "
+            f"{', '.join(Path(w).name for w in _CHECK_76_WIRING_FILES)}."
+        )
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def _build_check_registry():
@@ -12651,6 +12891,16 @@ def _build_check_registry():
         # per-line regex scans; self-check in-memory; no subprocess.
         (75, "check_project_implplan_naming",
               check_project_implplan_naming, W),
+        # Check 76 — pack-shipped immutable-file content-integrity (BD-246 U4):
+        # verifies the pack's OWN immutable set (_IMMUTABLE_SHIPPED, the 3
+        # _rules.md) against the shipped content-checksum manifest. Asserts
+        # set-equality (folds in _IMMUTABLE_SHIPPED), version-gated content
+        # hashes (in-process hashlib.sha256), and that verify-immutable.sh
+        # ships + is executable + is wired into validate.sh (one-host wiring;
+        # the integrity check is whole-set). SKIP-lenient when the manifest is
+        # absent. Cheap: 3 small in-process digests + a couple of small reads;
+        # no subprocess, no whole-tree scan.
+        (76, "check_immutable_manifest", check_immutable_manifest, W),
     ]
 
 
