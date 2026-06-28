@@ -266,18 +266,6 @@ pe_backpointer_line() {
     printf '<!-- per-entry source: %s; contract: %s -->' "$source_path" "$contract_path"
 }
 
-# Recognize ANY per-entry back-pointer line (regex shape, used for
-# stripping during mirror generation). Returns 0 if stdin first line
-# matches, 1 otherwise. Tolerates trailing whitespace on the line
-# (editor auto-trim hazard); the back-pointer text proper is anchored
-# at line start and ends with `-->`.
-pe_first_line_is_backpointer() {
-    local first
-    IFS= read -r first || return 1
-    printf '%s' "$first" \
-        | grep -E -q '^<!-- per-entry source: .*; contract: .* -->[[:space:]]*$'
-}
-
 # Filter: emit stdin to stdout, dropping the first line iff it matches
 # the per-entry back-pointer pattern. Idempotent (a file with no
 # back-pointer passes through unchanged). Tolerates trailing whitespace
@@ -291,35 +279,6 @@ pe_strip_backpointer_stdin() {
         }
         { print }
     '
-}
-
-# Idempotent: prepend back-pointer to file IFF first line is not already
-# a back-pointer. Writes the result back atomically. Tolerates trailing
-# whitespace on the existing back-pointer line (editor auto-trim hazard).
-# $1 = file path, $2 = stream key, $3 = id
-pe_ensure_backpointer() {
-    local path="$1"
-    local key="$2"
-    local id="$3"
-    local first
-    first=$(head -n 1 "$path" 2>/dev/null || true)
-    if printf '%s' "$first" \
-        | grep -E -q '^<!-- per-entry source: .*; contract: .* -->[[:space:]]*$'; then
-        return 0
-    fi
-    local bp
-    bp=$(pe_backpointer_line "$key" "$id")
-    local tmp
-    # Same-directory mktemp so the final `mv` is an atomic rename within
-    # the same filesystem. `mktemp -t` lands under $TMPDIR which is
-    # typically a different filesystem from $path — cross-FS `mv` is
-    # implemented as `copy + unlink` and is NOT atomic.
-    local dir
-    dir=$(dirname "$path")
-    tmp=$(mktemp "$dir/.per-entry-bp.XXXXXX") || return 1
-    printf '%s\n' "$bp" >"$tmp"
-    cat "$path" >>"$tmp"
-    mv "$tmp" "$path"
 }
 
 # ─────────────────────────────────────────────────────────────────
