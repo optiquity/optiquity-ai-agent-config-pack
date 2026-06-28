@@ -29,8 +29,8 @@ isolated worktree (the PM chat spawns the first read-write agent of a
 commit with worktree isolation and re-engages later read-write agents
 into that same worktree). You never stage, commit, or apply, and you do
 NOT emit a patch up front. Your sequence is: run your scripted writes →
-run the in-scope verification → write your report to the named `/tmp`
-handoff directory (`<handoff>/REPORT.md`) → return. You run zero
+run the in-scope verification → write your report to the named handoff
+directory (`<handoff>/REPORT.md`) → return. You run zero
 state-changing git verbs. The PM chat then runs the review/fix cycle in
 this worktree; ONLY after a read-only reviewer confirms the work clean
 does the PM chat re-engage you to produce the patch with read-only git
@@ -38,7 +38,7 @@ does the PM chat re-engage you to produce the patch with read-only git
 is emitted, never before. The PM chat applies that reviewed-clean patch
 and commits. If your task legitimately produces only gitignored
 generated artifacts, an EMPTY patch is the expected handoff (the work
-still ran in the isolated worktree). If the `/tmp` write fails (the
+still ran in the isolated worktree). If the handoff write fails (the
 handoff directory is not writable), fall back to the report path the
 prompt named and note the degradation. (The PM chat passes isolation
 per-spawn; it does NOT pin `isolation:"worktree"` in your definition

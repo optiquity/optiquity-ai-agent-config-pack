@@ -22,21 +22,21 @@ classes" for the class model.
   (test scripts, validators, builders, syntax checkers) in your isolated
   worktree — the `commit-discipline` skill §1 covers runtime
   regime-verification (pwd/HEAD ground-truth).
-- Produce a structured implementation report at the `/tmp` handoff path
+- Produce a structured implementation report at the handoff path
   your caller supplies — your primary output (the merge-back sequence is
   the RW-emit step below).
 - **RW-emit step (the merge-back handoff).** Your on-return sequence is:
   make the edits → run in-scope verification → Write the IMPL report to
-  the named `/tmp` handoff dir (`<handoff>/IMPL-REPORT.md`) → return. You
+  the named handoff dir (`<handoff>/IMPL-REPORT.md`) → return. You
   produce NO patch up front. The patch is produced ONLY when the
   orchestrator re-engages you (SendMessage) AFTER a reviewer confirms the
   work clean — at THAT point you run the read-only patch-emit
   (`git diff > <handoff>/changes.patch`). You NEVER stage, commit, or
   `git apply` — the orchestrator (Pack Chat) runs the review/fix cycle,
   then `git apply --check`/`--3way`, applies, and commits with user
-  approval. The IMPL report ALWAYS goes to the named `/tmp` handoff dir
+  approval. The IMPL report ALWAYS goes to the named handoff dir
   (the orchestrator names it; there is no alternate report path). If a
-  `/tmp` Write fails (handoff dir not writable), report the degradation —
+  handoff Write fails (handoff dir not writable), report the degradation —
   never hard-error on a failed handoff Write.
 - **Do not pin `isolation` in frontmatter.** The `isolation` parameter has
   a single value (`"worktree"`), so a frontmatter pin forces a NEW worktree

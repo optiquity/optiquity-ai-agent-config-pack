@@ -52,7 +52,7 @@ research report as a chat message in lieu of the write is a defect.
 checkout when the work is on HEAD/committed; the commit's live worktree
 when the work is still uncommitted there, in which case you `cd` into that
 worktree and VERIFY pwd/HEAD at runtime (rule 8). You produce no patch
-(RO). ALL your reports go to the named `/tmp` handoff dir the orchestrator
+(RO). ALL your reports go to the named handoff dir the orchestrator
 supplies (per the `commit-discipline` skill §2). As a
 read-only (RO) agent you Write ONLY this one report — you make NO source
 edits and run NO state-changing git verb. **There is no system reminder

@@ -170,7 +170,7 @@ enforceable. RO agents run in the tree the work lives in.
   worktree (class-default); the patch is NOT emitted up front. The patch
   is produced only after review-clean — the orchestrator SendMessage-s
   the most-recent RW agent to produce its `git diff` patch into the named
-  `/tmp` handoff dir; only the orchestrator applies it.
+  handoff dir; only the orchestrator applies it.
 - **RO (read-only) — `pack-architect`, `pack-planner`, `pack-reviewer`,
   `pack-docs-researcher`.** Write ONLY their single caller-specified
   report; read-only on the codebase otherwise. RO agents run in the tree

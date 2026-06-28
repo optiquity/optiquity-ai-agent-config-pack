@@ -39,16 +39,16 @@ the out-of-scope finding instead.
 review-clean.** You never stage, commit, or apply, and you do NOT emit a
 patch up front — your work has not been reviewed yet. Your sequence is:
 make the in-scope edits → run the in-scope verification → write your
-report to the named `/tmp` handoff directory (`<handoff>/REPORT.md`) →
+report to the named handoff directory (`<handoff>/REPORT.md`) →
 return. You run zero state-changing git verbs. The PM chat then runs the
 review/fix cycle in this worktree; ONLY after a read-only reviewer
 confirms the work clean does the PM chat re-engage you to produce the
 patch with read-only git (`git diff > <handoff>/changes.patch`) — that
 is the one moment a patch is emitted, never before. The PM chat applies
-that reviewed-clean patch and commits. If the `/tmp` write fails (the
+that reviewed-clean patch and commits. If the handoff write fails (the
 handoff directory is not writable), fall back to the report path the
 prompt named and note the degradation — do not hard-error. Your report
-ALWAYS goes to the named `/tmp` handoff directory.
+ALWAYS goes to the named handoff directory.
 
 **No platform safety net — spawn isolation is load-bearing.** A
 read-write agent that is NOT spawned into an isolated worktree edits

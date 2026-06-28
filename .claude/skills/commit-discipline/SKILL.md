@@ -34,12 +34,12 @@ actually got from ground truth (see section 2). The default:**
   worktree** — a `worktree-agent-*` checkout the orchestrator created (the
   first coder of a commit) or you are reusing (a fix-coder; never a new
   worktree). Your code Writes go under `pwd`; the report goes to the named
-  `/tmp` handoff dir.
+  handoff dir.
 - **Read-ONLY agents (reviewers, architects, planners, auditors,
   researchers) run in the tree the work lives in** — the main checkout when
   the work is committed, the commit's live worktree when the work is still
   uncommitted there (you cd into it and verify pwd/HEAD). You write only
-  your report (to the named `/tmp` handoff dir) and emit NO patch.
+  your report (to the named handoff dir) and emit NO patch.
 
 **IN-PLACE is the DEGRADED fallback, not the default.** If you are a
 read-write agent but `pwd` / HEAD show you are NOT in a `worktree-agent-*`
@@ -77,8 +77,8 @@ a read-only agent in a live worktree.
 - **ISOLATED (the class default for a read-write agent):** code
   Writes/Edits go to paths under `pwd` (your `worktree-agent-*` checkout) —
   parent-tree writes are rejected by the sandbox, and `/tmp` ("Additional
-  working directories") is the reliable cross-boundary target for the
-  report.
+  working directories") is the reliable cross-boundary writable set the
+  handoff dir lives in.
 - **IN-PLACE (the degraded fallback):** code Writes/Edits go to paths under
   the parent working tree (the caller-scoped file set), and you report the
   degradation.
@@ -95,10 +95,10 @@ a read-only agent in a live worktree.
   read-only agent operating IN a live worktree (because the work it reviews
   is uncommitted there) still writes only its report and produces no patch.
 
-**Report location (both classes):** the report goes to the named `/tmp`
-handoff dir the orchestrator supplies. If a `/tmp` handoff Write FAILS (the
-handoff dir is not writable), fall back to the named parent-tree report path
-and report the degradation — never hard-error on a failed handoff Write.
+**Report location (both classes):** the report goes to the named handoff
+dir the orchestrator supplies. If a handoff Write FAILS (the handoff dir is
+not writable), fall back to the named parent-tree report path and report the
+degradation — never hard-error on a failed handoff Write.
 
 **Absolute prohibition (both regimes): NEVER retarget another agent's
 main checkout.** When `pwd` is a `worktree-agent-*` checkout, writing to
@@ -110,17 +110,18 @@ against: a Write rejected under the worktree path is
 retried against the main checkout, which silently bypasses the workspace
 boundary. If a `Write` returns "permission denied" or "file outside
 workspace," the path is wrong for your regime — re-issue under the
-correct target (parent tree IN-PLACE; `pwd` for code + `/tmp` for the
-handoff ISOLATED), never against another agent's main checkout. This is a
+correct target (parent tree IN-PLACE; `pwd` for code + the named handoff
+dir for the report ISOLATED), never against another agent's main checkout.
+This is a
 cautionary guard, NOT a blanket "every Write must be under `pwd`" — in
 the IN-PLACE regime the correct target IS the parent tree.
 
 The "Additional working directories" note in the harness environment
 (e.g., `/tmp/...`, `/private/tmp/...`) lists paths the agent may also write
-to — including the named `/tmp` handoff dir for the report (and, for a
+to — including the named handoff dir for the report (and, for a
 read-write agent, the post-review-clean patch). In the degraded in-place
-fallback the `/tmp` dir is scratch only and the report goes to the named
-parent path.
+fallback the harness `/tmp` scratch dir is scratch only and the report goes
+to the named parent path.
 
 ## 3. Git-state-change ban (absolute)
 
@@ -254,8 +255,8 @@ frontmatter) but identical prose.
   section 3.
 - Targeting the wrong write-path for your regime → isolated writes go under
   `pwd` (code); the degraded in-place fallback writes under the parent tree;
-  the report always goes to the named `/tmp` handoff dir. Writing the report
-  to `/tmp` is CORRECT when the prompt named a `/tmp` handoff dir — it is
+  the report always goes to the named handoff dir. Writing the report there
+  is CORRECT when the prompt named a handoff dir — it is
   NOT a "wrong path." The defect is mismatching the code-write target to the
   regime, or (in any regime) retargeting another agent's main checkout
   (section 2).

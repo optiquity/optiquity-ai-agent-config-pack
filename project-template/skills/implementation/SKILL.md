@@ -39,11 +39,11 @@ pwd/HEAD, not from any setting. Two facts are separate; do not conflate
 them: WHICH TREE you write in (where you run), and WHETHER YOU EMIT A
 PATCH (only a read-write agent ever does, and only after review-clean).
 
-- **Your report ALWAYS goes to the named `/tmp` handoff directory the
+- **Your report ALWAYS goes to the named handoff directory the
   calling prompt supplies** — whether you ran in the main tree or in an
   isolated worktree. The completion report records what changed, which
   files were created or modified, and the verification path. If the
-  `/tmp` handoff write fails because the directory is not writable, fall
+  handoff write fails because the directory is not writable, fall
   back to the report path the prompt named and note the degradation — do
   not hard-error on a failed handoff write.
 - **A read-WRITE agent (the `coder`/`repo-ops`) does NOT emit a patch up

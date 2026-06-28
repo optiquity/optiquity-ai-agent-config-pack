@@ -34,8 +34,8 @@ The agent's on-return deliverable is its report file plus its worktree
 edits (held in the commit's isolated worktree). The `git diff` patch is NOT
 emitted up front — it is the POST-review-clean artifact: only after a read-only
 reviewer confirms the work clean does Pack Chat re-engage the most-recent
-read-write agent (SendMessage) to produce the patch into the named `/tmp`
-handoff dir, then read the report, apply that reviewed-clean patch, and commit.
+read-write agent (SendMessage) to produce the patch into the named handoff
+dir, then read the report, apply that reviewed-clean patch, and commit.
 
 **The denied set (RW and RO agents alike — "including but not limited
 to").** No agent may run any state-changing git verb at any point:

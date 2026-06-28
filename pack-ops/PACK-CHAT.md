@@ -280,13 +280,17 @@ worktree mechanics (the `isolation:"worktree"` parameter + the
   pack default-background rule — see trinity `## Pack memory`
   `### Sub-agent behavior (Claude-only)`).
 - **Name the handoff dir in the prompt.** Every spawn prompt names a
-  per-spawn ABSOLUTE `/tmp` handoff dir (e.g.
-  `/tmp/pack-handoff-<bd>-<ts>/`) and the IMPL/report path
-  (`<handoff>/IMPL-REPORT.md`). EVERY agent report (RW and RO alike) goes
-  to the named `/tmp` handoff dir ALWAYS — there is no regime conditional
-  on the report path. The patch path (`<handoff>/changes.patch`) is named
-  too, but for an RW agent it is written only at the post-review-clean step
-  (see Merge-back), never up front.
+  per-spawn ABSOLUTE handoff dir the orchestrator derives at runtime under
+  a persistent location —
+  `${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pack-handoff/<bd>-<ts>/`
+  — and injects the resolved absolute literal as `<handoff>` (injected,
+  not recomputed by the agent — same reason as the graph-path injection
+  below). The IMPL/report path is `<handoff>/IMPL-REPORT.md`. EVERY agent
+  report (RW and RO alike) goes to the named handoff dir ALWAYS — there is
+  no regime conditional on the report path. The patch path
+  (`<handoff>/changes.patch`) is named too, but for an RW agent it is
+  written only at the post-review-clean step (see Merge-back), never up
+  front.
 - **Inject the graph path into the prompt (Claude-only).** Every
   spawn prompt injects the orchestrator-derived ABSOLUTE graph literal —
   Pack Chat evaluates the derivation formula
@@ -317,7 +321,10 @@ There is NO up-front patch. The whole review/fix cycle runs IN the
 commit's worktree — the work may be wrong, so nothing reaches the
 canonical tree mid-cycle. The RW agent does its edits, runs in-scope
 verification, Writes its IMPL-REPORT to the handoff dir, and returns —
-it produces no patch on return and runs ZERO git-state changes. Then
+it produces no patch on return and runs ZERO git-state changes. (If the
+handoff write fails because the handoff directory is not writable, the
+agent falls back to the report path the prompt named and reports the
+degradation — it never hard-errors on a failed handoff write.) Then
 Pack Chat:
 
 1. Reads `<handoff>/IMPL-REPORT.md` and runs the bounded review/fix cycle
@@ -352,11 +359,12 @@ dedicated section; Pack Chat consumes that map to schedule parallel
 worktree waves vs serial commits (same-file ⇒ serialize; `baseRef:head`;
 teardown gated on commit-landed; rule-9 ASK for non-cycle spawns).
 
-**Report preservation (Constraint 3).** Agent reports live in `/tmp`,
-which is lost to cleanup and worktree teardown. So AFTER the work's commit
-lands, Pack Chat MOVES every agent report (architect / planner / coder /
-reviewer / fix-coder outputs) from its `/tmp` handoff dir into the tree
-and commits them in a PAIRED commit immediately after the work commit
+**Report preservation (Constraint 3).** Agent reports live in the
+out-of-repo handoff dir, so they are not part of the committed project
+history. So AFTER the work's commit lands, Pack Chat MOVES every agent
+report (architect / planner / coder / reviewer / fix-coder outputs) from
+the handoff dir into the tree and commits them in a PAIRED commit
+immediately after the work commit
 (this keeps the work commit single-purpose + Check-36-clean; the report
 commit is `pack-only`, mixed-BD-report content allowed). The destination
 is DERIVED at runtime, not baked: the active-version work area

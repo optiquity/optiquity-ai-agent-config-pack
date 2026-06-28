@@ -530,13 +530,15 @@ review/fix cycle runs INSIDE the commit's worktree; only after a
 read-only reviewer confirms the work clean does the PM chat bring the
 edits back:
 
-1. **The PM chat names a per-spawn handoff directory under `/tmp` in the
-   spawn prompt** (e.g. `/tmp/proj-handoff-<task>-<timestamp>/`) plus the
+1. **The PM chat names a per-spawn handoff directory the orchestrator
+   derives at runtime under a persistent location —
+   `${XDG_STATE_HOME:-$HOME/.local/state}/optiquity-pack-handoff/<task>-<timestamp>/`
+   — and injects the resolved absolute literal as `<handoff>`** plus the
    report path inside it (`<handoff>/REPORT.md`).
 2. **The read-write agent does its edits, runs the in-scope verification,
    writes its report to the handoff directory, and returns** — it emits
    **no** patch at this point and runs **zero** state-changing git verbs.
-   (If the `/tmp` write fails because the handoff directory is not
+   (If the handoff write fails because the handoff directory is not
    writable, the agent falls back to the report path the prompt named and
    reports the degradation — it never hard-errors on a failed handoff
    write.)
@@ -575,9 +577,9 @@ commit KEEPS its worktree (the work is not yet safely captured). Removal
 is the PM chat's deliberate post-commit step, not a side effect.
 
 **Preserve the reports.** After a commit lands, the PM chat MOVES every
-agent report for that commit from its `/tmp` handoff directory into the
+agent report for that commit from its handoff directory into the
 tree and commits it in a paired commit right after the work's commit, so
-nothing is lost to `/tmp` cleanup or worktree teardown. The destination
+the audit trail lives with the committed work. The destination
 is DERIVED at runtime, not baked: reports live under a dedicated
 `docs/impl-reports/**` subtree (kept out of the `docs/` content that
 installs into the project), organized by the current phase — read the
