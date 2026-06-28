@@ -1,16 +1,11 @@
 # scripts/lib/per-entry/_lib.sh — shared parser + stream-shape constants
 # for the per-entry split helpers (BD-164).
 #
-# BD-203 no-mirror model (PACK streams): the per-entry tree + `_toc.md`
-# is the SOLE source of truth and readable form for the pack-backlog /
-# pack-changelog streams. There is NO regenerated monolithic mirror.
-# The `mirror` stream-attribute below is retained as a CONSTANT only
-# (deletion-target reference + historical contract); mirror-generate.sh
-# is deprecated-for-pack and is retained physically ONLY because the
-# project streams still call it, pending BD-206's project-side retirement.
+# No-mirror model (all streams): the per-entry tree + `_toc.md` is the
+# SOLE source of truth and readable form for the backlog / changelog
+# streams. There is NO regenerated monolithic mirror.
 #
-# Sourced by per-entry/decompose.sh, per-entry/mirror-generate.sh,
-# per-entry/toc-regenerate.sh. Holds:
+# Sourced by per-entry/decompose.sh, per-entry/toc-regenerate.sh. Holds:
 #   - Hard-coded stream-shape table (5 streams; entry regex + state
 #     vocabulary + grammar field labels are hard-coded per integration
 #     parent §7.5 — only the supporting-file basename list is read at
@@ -27,13 +22,12 @@
 #     §13.3 (signal-6 carve-out — helpers in scripts/lib/)
 #   maintenance-docs/v11-research/ARCHITECTURE-PER-ENTRY-SPLIT.md
 #     §3 (per-entry directory shape, 5 streams)
-#     §6.2 (mirror generator contract — deterministic + idempotent)
+#     §6.2 (per-entry parsing contract)
 #   maintenance-docs/v11-implementation/ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION-ADDENDUM-2.md
 #     §2 (line-1 HTML-comment ONLY back-pointer)
 #
 # Public API (consumed by sibling helpers):
 #   - pe_stream_for_path <abs_dir>            -> echoes stream key
-#   - pe_canonical_mirror_for_stream <key>    -> echoes mirror filename
 #   - pe_entry_regex_for_stream <key>         -> echoes entry-file regex
 #   - pe_supporting_files_known_for_stream <k> -> echoes space-separated list
 #   - pe_supporting_files_admitted <stream_dir> -> echoes admitted list (from _rules.md)
@@ -50,21 +44,21 @@
 # Constants — the five stream tuples
 # ─────────────────────────────────────────────────────────────────
 #
-# Each stream has 4 attributes. Bash 3.2 has no associative arrays;
-# we use parallel arrays indexed by position. Lookups walk the array
-# (5 entries — O(1) effectively).
+# Each stream has a key plus 3 attributes. Bash 3.2 has no associative
+# arrays; `pe__stream_attr` resolves an attribute by string key per
+# stream. Lookups walk the 5-stream `case` (O(1) effectively).
 #
-# Position 0: stream key (matches the directory basename in the canonical
-#   path; for pack streams pack-self uses this key).
-# Position 1: canonical mirror filename (relative to repo root for pack
-#   streams, relative to docs/project/ for project streams).
-# Position 2: entry-file regex (portable extended-regex subset accepted
+# Stream key: matches the directory basename in the canonical path; for
+#   pack streams pack-self uses this key.
+# entry-regex: entry-file regex (portable extended-regex subset accepted
 #   by both BSD `grep -E` and Python `re.compile`; see
 #   `pe_list_entry_files` for the BSD-grep use site and
 #   decompose.sh / toc-regenerate.sh for the Python use sites).
-# Position 3: known supporting-file basenames the helpers can emit
+# support: known supporting-file basenames the helpers can emit
 #   (space-separated). Anything not in this list is SKIP per integration
 #   parent §7.5 final paragraph.
+# dir-suffix: the trailing path segment used to resolve a stream from a
+#   directory path (see `pe_stream_for_path`).
 #
 # Stream ordering: pack/backlog, pack/changelog, project/backlog,
 # project/implementation-plan, project/changelog. (Ordering is not
@@ -72,17 +66,10 @@
 PE_STREAM_KEYS="pack-backlog pack-changelog project-backlog project-implementation-plan project-changelog"
 
 pe__stream_attr() {
-    # $1 = stream key, $2 = attr index (1..4: mirror, entry-regex, support, dir-suffix)
+    # $1 = stream key, $2 = attr key (entry-regex, support, dir-suffix)
     case "$1" in
         pack-backlog)
             case "$2" in
-                # BD-203: `mirror` is RETAINED as a constant only as the
-                # deletion-target reference + historical contract — for the
-                # PACK the per-entry tree + `_toc.md` is the SOLE SSOT;
-                # there is no regenerated monolithic mirror. The pack-stream
-                # branches of mirror-generate are dead-for-pack (the file is
-                # kept only for project streams pending BD-206).
-                mirror) printf 'pack-ops/BACKLOG.md' ;;
                 # BD-211: canonical filename is `BD-NNN.md` — NO letter
                 # suffix (a sub-part is an in-body section, not a suffixed
                 # entry). The former suffix sub-entries were folded into
@@ -94,9 +81,6 @@ pe__stream_attr() {
             ;;
         pack-changelog)
             case "$2" in
-                # BD-203: `mirror` retained as a constant only (no live
-                # pack mirror — see the pack-backlog note above).
-                mirror) printf 'pack-ops/CHANGELOG.md' ;;
                 # BD-203 A3/CHANGE 2: per-release granularity — one `vN.md`
                 # file per major release (`v11.md`, `v7.md`).
                 entry-regex) printf '^v[0-9]+\.md$' ;;
@@ -147,10 +131,6 @@ pe__stream_attr() {
 # ─────────────────────────────────────────────────────────────────
 # Public lookup helpers
 # ─────────────────────────────────────────────────────────────────
-
-pe_canonical_mirror_for_stream() {
-    pe__stream_attr "$1" mirror
-}
 
 pe_entry_regex_for_stream() {
     pe__stream_attr "$1" entry-regex
@@ -246,39 +226,6 @@ pe_supporting_files_admitted() {
         }
         END { if (out != "") print out }
     ' "$rules_file"
-}
-
-# Compute the EFFECTIVE supporting-file list a helper should emit for a
-# stream: intersection of (admitted-by-_rules.md) and (known-to-helpers).
-# Unknown admitted basenames are SKIP per integration parent §7.5.
-# When `_rules.md` is absent or has no Supporting-files section, fall
-# back to the hard-coded known list (pack-shipped contract default).
-#
-# $1 = stream key
-# $2 = stream directory
-pe_supporting_files_effective() {
-    local key="$1"
-    local stream_dir="$2"
-    local known declared
-    known=$(pe_supporting_files_known_for_stream "$key")
-    declared=$(pe_supporting_files_admitted "$stream_dir")
-    if [[ -z "$declared" ]]; then
-        printf '%s' "$known"
-        return 0
-    fi
-    # Intersection: emit each declared item iff it appears in the known list.
-    local item out=""
-    for item in $declared; do
-        case " $known " in
-            *" $item "*)
-                if [[ -z "$out" ]]; then out="$item"; else out="$out $item"; fi
-                ;;
-            *)
-                # Unknown — SKIP silently per §7.5.
-                ;;
-        esac
-    done
-    printf '%s' "$out"
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -385,11 +332,6 @@ pe_die() {
     exit 1
 }
 
-# Stderr warning (non-fatal).
-pe_warn() {
-    printf 'per-entry: WARNING: %s\n' "$*" >&2
-}
-
 # Atomic write: write stdin to <path> via temp file + mv. Idempotent
 # under POSIX rename semantics.
 # $1 = destination path
@@ -402,13 +344,6 @@ pe_write_atomic() {
     tmp=$(mktemp "$dir/.per-entry.XXXXXX") || pe_die "mktemp failed for $dir"
     cat >"$tmp"
     mv "$tmp" "$dest"
-}
-
-# True iff stdin is a TTY (interactive context detection per Addendum
-# #1 §5.3 — interactive prompts the user; non-interactive returns
-# non-zero exit so the BD-095-mode wiring in 19c can interpret).
-pe_is_interactive() {
-    [[ -t 0 ]] && [[ -t 1 ]]
 }
 
 # Sort entry filenames deterministically. Pack-changelog and

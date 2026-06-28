@@ -11,8 +11,8 @@
 #           project-implementation-plan  grouped by phase number
 #           project-changelog            grouped by year-month, descending
 #       Deterministic + idempotent (re-running on the same input yields
-#       byte-identical _toc.md). Same parsing logic shared with
-#       mirror-generate via _lib.sh per sidecar §6.2.
+#       byte-identical _toc.md). Shared parsing logic in _lib.sh per
+#       sidecar §6.2.
 #
 # Architecture:
 #   maintenance-docs/v11-research/ARCHITECTURE-PER-ENTRY-SPLIT.md

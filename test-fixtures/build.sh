@@ -491,7 +491,7 @@ EOF
         # Source guard mirrors scripts/init-project.sh and
         # scripts/lib/migrate-v10-to-v11/decompose.sh's source-then-verify
         # pattern; re-sourcing is a no-op via the `type` checks inside
-        # each helper file. No mirror-generate.sh sourcing (no mirror).
+        # each helper file. No monolith-mirror generator sourcing (no mirror).
         # shellcheck disable=SC1091
         . "$_pe_lib_dir/_lib.sh"
         # shellcheck disable=SC1091

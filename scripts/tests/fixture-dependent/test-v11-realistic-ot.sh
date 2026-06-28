@@ -115,7 +115,7 @@ trap 'rm -rf "$SCRATCH"' EXIT INT TERM
 . "$PE_LIB_DIR/_lib.sh"
 # shellcheck disable=SC1091
 . "$PE_LIB_DIR/decompose.sh"
-# BD-206 (no-mirror): no mirror-generate.sh sourcing (no monolithic mirror).
+# BD-206 (no-mirror): no monolith-mirror generator sourcing (no monolithic mirror).
 # shellcheck disable=SC1091
 . "$PE_LIB_DIR/toc-regenerate.sh"
 

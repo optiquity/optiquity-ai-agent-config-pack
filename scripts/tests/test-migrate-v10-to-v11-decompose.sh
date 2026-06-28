@@ -26,31 +26,6 @@
 #     2.4 --apply Gate 2 PASSES
 #     2.5 --apply HEAD unchanged before/after (migrator does NOT commit)
 #
-#   Group 3 — Mode-aware divergence routing
-#             (per_entry_regenerate_mirror invoked directly with
-#             _MIGRATOR_MODE values). The BD-165 mirror generator
-#             (scripts/lib/per-entry/mirror-generate.sh) is still
-#             present at this point — it is deleted by BD-249 along
-#             with this coverage. These cases exercise the library
-#             function directly (NOT via the migrator flag, which is
-#             removed in BD-206).
-#     3.1 _MIGRATOR_MODE=dry-run: rc=0, stdout names "divergence
-#         detected", on-disk mirror UNCHANGED
-#     3.2 _MIGRATOR_MODE=apply: rc=31, stderr names "force-overwrite-
-#         mirror" + "ERROR", on-disk mirror UNCHANGED
-#     3.3 _MIGRATOR_MODE=resume: rc=31 (block path identical to apply),
-#         on-disk mirror UNCHANGED
-#     3.4 _MIGRATOR_MODE=apply + PE_FORCE_OVERWRITE_MIRROR=1: rc=0,
-#         stderr names "WARNING: PE_FORCE_OVERWRITE_MIRROR=1" audit-
-#         trail, on-disk mirror OVERWRITTEN
-#
-#   Group 5 — Backward compatibility (library function; BD-249 deletes
-#             this coverage with mirror-generate.sh)
-#     5.1 per_entry_regenerate_mirror invoked WITHOUT _MIGRATOR_MODE
-#         set preserves pre-BD-165 behavior (rc=2 + stderr warning
-#         naming "force-overwrite-mirror"). Same contract that
-#         test-per-entry.sh Group 8 relies on.
-#
 # Build-your-own fixture: the in-tree v10-realistic-ot build artifact
 # (under test-fixtures/) does not have docs/project/*.md files (per
 # IMPL-REPORT-BD-165 §7.2); this runner synthesizes the minimum v10-shape
@@ -216,12 +191,6 @@ EOF
     printf '%s\n' "$d"
 }
 
-# Snapshot mirror-file SHA — used to detect divergence-block protected
-# the on-disk file from mutation.
-mirror_sha() {
-    shasum -a 256 "$1" 2>/dev/null | awk '{print $1}'
-}
-
 # ─────────────────────────────────────────────────────────────────────────
 # Group 1: 6th sub-op presence + sequencing (dry-run surface)
 # ─────────────────────────────────────────────────────────────────────────
@@ -238,8 +207,9 @@ assert_contains "1.1 --dry-run banner names per-entry decompose" \
 # (per-entry tree + _toc.md is the sole source of truth; the v10 monolith
 # is read as decomposition INPUT and is NOT regenerated as a mirror).
 # The pre-BD-206 advisory described a regenerated mirror with a
-# divergence-block (BLOCK + EXIT_GATE_FAILED=31 + --force-overwrite-mirror
-# recovery); under the no-mirror model that entire narrative is gone.
+# divergence-block (BLOCK + a non-zero gate exit + a flag-based override
+# recovery); under the no-mirror model that entire narrative is gone, so
+# the negative needles below assert the dead flag/wording are absent.
 assert_contains "1.2a --dry-run advisory says 'sole source of truth'" \
     "$out" "sole source of truth"
 assert_contains "1.2b --dry-run advisory states no monolithic mirror" \
@@ -265,7 +235,7 @@ HEAD_BEFORE=$(git -C "$T" rev-parse HEAD)
 PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1 ; rc=$?
 assert_eq "2.0a setup --dry-run rc=0" "0" "$rc"
 
-# --apply: plain (no --force-overwrite-mirror flag — removed in BD-206).
+# --apply: plain (no divergence-override flag — removed in BD-206).
 # Under the no-mirror model the decompose sub-op reads the v10 monolith
 # as INPUT and regenerates only the per-entry tree + _toc.md; it never
 # regenerates a mirror, so there is no divergence to block and no flag
@@ -338,269 +308,6 @@ assert_eq "2.5 HEAD unchanged after --apply (migrator never commits)" \
     "$HEAD_BEFORE" "$HEAD_AFTER"
 
 rm -rf "$T"
-
-# ─────────────────────────────────────────────────────────────────────────
-# Group 3: Mode-aware divergence routing (per_entry_regenerate_mirror)
-# ─────────────────────────────────────────────────────────────────────────
-
-printf "\n=== Group 3: mode-aware divergence routing ===\n"
-
-# Setup: build a clean per-entry tree + regenerated mirror first, then
-# hand-edit the mirror to create divergence, then probe the routing.
-DV_ROOT=$(mktemp -d -t bd165-dv.XXXXXX)
-DV_DIR="$DV_ROOT/docs/project/backlog"
-mkdir -p "$DV_DIR"
-
-# Minimal _rules.md + _intro.md so the mirror generator has supporting
-# files admitted.
-cat > "$DV_DIR/_rules.md" <<'EOF'
-# Per-stream contract — project-backlog
-
-Stream identity: project-backlog
-Filename convention: ^TD-\d+\.md$
-
-## Supporting files
-
-- `_rules.md`
-- `_intro.md`
-- `_toc.md`
-EOF
-cat > "$DV_DIR/_intro.md" <<'EOF'
-# Project backlog
-
-Synthetic intro for divergence routing test.
-
----
-
-## Active
-EOF
-
-# A single per-entry file so the mirror generator emits something.
-cat > "$DV_DIR/TD-001.md" <<'EOF'
-<!-- per-entry source: docs/project/backlog/TD-001.md; contract: docs/project/backlog/_rules.md -->
-**TD-001 — Divergence routing test entry**
-Type: TODO(version)
-Status: Open
-Description: Single entry for divergence routing tests.
-EOF
-
-# Source the per-entry helpers into a subshell-able function so each
-# Group 3 case can probe a different routing path.
-probe_mirror_routing() {
-    # $1 = label; $2 = _MIGRATOR_MODE value (may be ""); $3 = force flag
-    #   ("1" or "0"); $4 = expected rc; $5 = expected stream
-    #   ("stdout" / "stderr") for the divergence message; $6 = needle
-    #   to find in the captured stream; $7 = "unchanged" / "overwritten"
-    #   for the on-disk mirror assertion.
-    local label="$1" mode="$2" force="$3" exp_rc="$4" stream="$5" needle="$6" disk="$7"
-    local mirror_path="$DV_ROOT/docs/project/BACKLOG.md"
-    # Regenerate the mirror cleanly first (no divergence). Subshell
-    # so _MIGRATOR_MODE / PE_FORCE_OVERWRITE_MIRROR don't leak.
-    (
-        unset _MIGRATOR_MODE
-        unset PE_FORCE_OVERWRITE_MIRROR
-        # shellcheck disable=SC1091
-        . "$PE_LIB_DIR/_lib.sh"
-        # shellcheck disable=SC1091
-        . "$PE_LIB_DIR/mirror-generate.sh"
-        per_entry_regenerate_mirror project-backlog "$DV_DIR" "$mirror_path" </dev/null
-    ) >/dev/null 2>&1
-    # Introduce divergence by appending a hand-edit to the mirror.
-    {
-        cat "$mirror_path"
-        echo "<!-- divergence-routing test hand-edit ($label) -->"
-    } > "$mirror_path.edited"
-    mv "$mirror_path.edited" "$mirror_path"
-    local sha_before
-    sha_before=$(mirror_sha "$mirror_path")
-
-    # Probe with the requested mode + force.
-    local out err rc=0
-    local tmp_stdout tmp_stderr
-    tmp_stdout=$(mktemp -t bd165-stdout.XXXXXX)
-    tmp_stderr=$(mktemp -t bd165-stderr.XXXXXX)
-    (
-        if [[ -n "$mode" ]]; then
-            export _MIGRATOR_MODE="$mode"
-        else
-            unset _MIGRATOR_MODE
-        fi
-        if [[ "$force" == "1" ]]; then
-            export PE_FORCE_OVERWRITE_MIRROR=1
-        else
-            unset PE_FORCE_OVERWRITE_MIRROR
-        fi
-        # EXIT_GATE_FAILED must be in env for the block-path return code
-        # to land at 31 (matches the migrator-core.sh:74 constant).
-        export EXIT_GATE_FAILED=31
-        # shellcheck disable=SC1091
-        . "$PE_LIB_DIR/_lib.sh"
-        # shellcheck disable=SC1091
-        . "$PE_LIB_DIR/mirror-generate.sh"
-        per_entry_regenerate_mirror project-backlog "$DV_DIR" "$mirror_path" </dev/null
-    ) >"$tmp_stdout" 2>"$tmp_stderr" || rc=$?
-    out=$(cat "$tmp_stdout")
-    err=$(cat "$tmp_stderr")
-    rm -f "$tmp_stdout" "$tmp_stderr"
-
-    assert_eq "${label}-rc" "$exp_rc" "$rc"
-    if [[ "$stream" == "stdout" ]]; then
-        assert_contains "${label}-stdout" "$out" "$needle"
-    elif [[ "$stream" == "stderr" ]]; then
-        assert_contains "${label}-stderr" "$err" "$needle"
-    fi
-    local sha_after
-    sha_after=$(mirror_sha "$mirror_path")
-    if [[ "$disk" == "unchanged" ]]; then
-        if [[ "$sha_before" == "$sha_after" ]]; then
-            t_pass "${label}-disk on-disk mirror UNCHANGED"
-        else
-            t_fail "${label}-disk expected unchanged; SHA differs ($sha_before → $sha_after)"
-        fi
-    elif [[ "$disk" == "overwritten" ]]; then
-        if [[ "$sha_before" != "$sha_after" ]]; then
-            t_pass "${label}-disk on-disk mirror OVERWRITTEN"
-        else
-            t_fail "${label}-disk expected overwritten; SHA unchanged"
-        fi
-    fi
-}
-
-# 3.1 — dry-run: rc=0, stdout has "divergence detected", mirror UNCHANGED.
-probe_mirror_routing "3.1 dry-run" "dry-run" "0" "0" "stdout" \
-    "divergence detected" "unchanged"
-
-# 3.2 — apply: rc=31, stderr has "force-overwrite-mirror" + "ERROR", mirror UNCHANGED.
-probe_mirror_routing "3.2 apply (block)" "apply" "0" "31" "stderr" \
-    "force-overwrite-mirror" "unchanged"
-# Additional 3.2 check: stderr also includes "ERROR" (the block-path
-# capitalization signaling failure).
-(
-    unset _MIGRATOR_MODE PE_FORCE_OVERWRITE_MIRROR
-    # shellcheck disable=SC1091
-    . "$PE_LIB_DIR/_lib.sh"
-    # shellcheck disable=SC1091
-    . "$PE_LIB_DIR/mirror-generate.sh"
-    per_entry_regenerate_mirror project-backlog "$DV_DIR" "$DV_ROOT/docs/project/BACKLOG.md" </dev/null
-) >/dev/null 2>&1
-# Reintroduce divergence for the secondary ERROR-string check.
-{
-    cat "$DV_ROOT/docs/project/BACKLOG.md"
-    echo "<!-- 3.2 secondary ERROR-string check -->"
-} > "$DV_ROOT/docs/project/BACKLOG.md.edited"
-mv "$DV_ROOT/docs/project/BACKLOG.md.edited" "$DV_ROOT/docs/project/BACKLOG.md"
-err_apply=$(
-    export _MIGRATOR_MODE=apply
-    unset PE_FORCE_OVERWRITE_MIRROR
-    export EXIT_GATE_FAILED=31
-    # shellcheck disable=SC1091
-    . "$PE_LIB_DIR/_lib.sh"
-    # shellcheck disable=SC1091
-    . "$PE_LIB_DIR/mirror-generate.sh"
-    per_entry_regenerate_mirror project-backlog "$DV_DIR" "$DV_ROOT/docs/project/BACKLOG.md" </dev/null 2>&1 1>/dev/null
-) || true
-assert_contains "3.2x apply stderr contains 'ERROR'" "$err_apply" "ERROR"
-
-# 3.3 — resume: rc=31, mirror UNCHANGED (block path identical to apply).
-probe_mirror_routing "3.3 resume (block)" "resume" "0" "31" "stderr" \
-    "force-overwrite-mirror" "unchanged"
-
-# 3.4 — apply + PE_FORCE_OVERWRITE_MIRROR=1: rc=0, stderr has the
-# audit-trail "WARNING: PE_FORCE_OVERWRITE_MIRROR=1" line, mirror
-# OVERWRITTEN.
-probe_mirror_routing "3.4 apply force" "apply" "1" "0" "stderr" \
-    "PE_FORCE_OVERWRITE_MIRROR=1" "overwritten"
-
-rm -rf "$DV_ROOT"
-
-# Group 4 (DELETED, BD-206): the dispatcher --force-overwrite-mirror
-# intercept on the resume path tested a flag that no longer exists.
-# BD-206 removes the --force-overwrite-mirror flag (DR-1 divergence-gate
-# removal) AND removes the decompose sub-op's mirror regeneration, so the
-# entire premise of Group 4 (resume → mirror-regen → divergence-block →
-# flag intercept) is gone: there is no flag to intercept and no mirror to
-# regenerate. The remaining force-overwrite coverage (Groups 3/5)
-# exercises the mirror-generate.sh library function directly and is
-# deleted by BD-249 along with that file.
-
-# ─────────────────────────────────────────────────────────────────────────
-# Group 5: Backward compatibility (fall-through path; _MIGRATOR_MODE unset)
-# ─────────────────────────────────────────────────────────────────────────
-
-printf "\n=== Group 5: backward compatibility (fall-through) ===\n"
-
-# Setup a fresh per-entry tree + regenerated mirror, then hand-edit
-# the mirror and invoke per_entry_regenerate_mirror WITHOUT setting
-# _MIGRATOR_MODE. Expected behavior is the pre-BD-165 contract:
-# rc=2 + stderr warning naming "force-overwrite-mirror". This is the
-# same contract test-per-entry.sh Group 8 relies on.
-
-BC_ROOT=$(mktemp -d -t bd165-bc.XXXXXX)
-BC_DIR="$BC_ROOT/docs/project/backlog"
-mkdir -p "$BC_DIR"
-cat > "$BC_DIR/_rules.md" <<'EOF'
-# Per-stream contract — project-backlog
-
-## Supporting files
-
-- `_rules.md`
-- `_intro.md`
-- `_toc.md`
-EOF
-cat > "$BC_DIR/_intro.md" <<'EOF'
-# Project backlog
-
-Synthetic intro for backward-compat test.
-
----
-
-## Active
-EOF
-cat > "$BC_DIR/TD-001.md" <<'EOF'
-<!-- per-entry source: docs/project/backlog/TD-001.md; contract: docs/project/backlog/_rules.md -->
-**TD-001 — Backward-compat test entry**
-Type: TODO(version)
-Status: Open
-Description: Single entry for backward-compat test.
-EOF
-
-(
-    unset _MIGRATOR_MODE
-    unset PE_FORCE_OVERWRITE_MIRROR
-    # shellcheck disable=SC1091
-    . "$PE_LIB_DIR/_lib.sh"
-    # shellcheck disable=SC1091
-    . "$PE_LIB_DIR/mirror-generate.sh"
-    per_entry_regenerate_mirror project-backlog "$BC_DIR" "$BC_ROOT/docs/project/BACKLOG.md" </dev/null
-) >/dev/null 2>&1
-{
-    cat "$BC_ROOT/docs/project/BACKLOG.md"
-    echo "<!-- backward-compat divergence test hand-edit -->"
-} > "$BC_ROOT/docs/project/BACKLOG.md.edited"
-mv "$BC_ROOT/docs/project/BACKLOG.md.edited" "$BC_ROOT/docs/project/BACKLOG.md"
-
-sha_pre=$(mirror_sha "$BC_ROOT/docs/project/BACKLOG.md")
-tmp_bc_stderr=$(mktemp -t bd165-bc-stderr.XXXXXX)
-rc_bc=0
-(
-    unset _MIGRATOR_MODE
-    unset PE_FORCE_OVERWRITE_MIRROR
-    # shellcheck disable=SC1091
-    . "$PE_LIB_DIR/_lib.sh"
-    # shellcheck disable=SC1091
-    . "$PE_LIB_DIR/mirror-generate.sh"
-    per_entry_regenerate_mirror project-backlog "$BC_DIR" "$BC_ROOT/docs/project/BACKLOG.md" </dev/null
-) >/dev/null 2>"$tmp_bc_stderr" || rc_bc=$?
-err_bc=$(cat "$tmp_bc_stderr")
-rm -f "$tmp_bc_stderr"
-sha_post=$(mirror_sha "$BC_ROOT/docs/project/BACKLOG.md")
-
-assert_eq "5.1a fall-through (no _MIGRATOR_MODE) returns rc=2 (pre-BD-165)" "2" "$rc_bc"
-assert_contains "5.1b fall-through stderr names 'force-overwrite-mirror'" \
-    "$err_bc" "force-overwrite-mirror"
-assert_eq "5.1c fall-through does NOT modify on-disk mirror" "$sha_pre" "$sha_post"
-
-rm -rf "$BC_ROOT"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Summary

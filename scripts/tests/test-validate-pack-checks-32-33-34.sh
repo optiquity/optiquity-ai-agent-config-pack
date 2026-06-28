@@ -270,12 +270,23 @@ File/Symbol: n/a
 Description: Canonical entry; self-reference BD-700 in body resolves.
 EOF
 
-    # Generate the canonical BACKLOG.md mirror via the BD-164 helper.
-    bash -c "
-        . '$PER_ENTRY_LIB/_lib.sh'
-        . '$PER_ENTRY_LIB/mirror-generate.sh'
-        per_entry_regenerate_mirror pack-backlog '$backlog_dir' '$scratch_repo/BACKLOG.md'
-    " >/dev/null 2>&1
+    # Materialize a present BACKLOG.md monolith so the A2 presence-trigger
+    # case fails Check 32' (the inverted no-mirror guard fires on a present
+    # monolith). Under the no-mirror model nothing regenerates a mirror;
+    # the check tests file PRESENCE only (never content), so a static stub
+    # suffices.
+    cat >"$scratch_repo/BACKLOG.md" <<'EOF'
+# Backlog
+
+Static stub monolith (no-mirror model: this file should NOT exist; its
+PRESENCE is what the Check 32' presence-trigger case asserts FAILS).
+
+**BD-100 — Stub entry**
+Status: Open
+
+**BD-101 — Stub entry**
+Status: Resolved
+EOF
 
     # Generate the canonical _toc.md via the BD-164 helper.
     bash -c "

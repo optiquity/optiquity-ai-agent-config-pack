@@ -78,10 +78,8 @@ with open(mono_path, "r", encoding="utf-8", newline="") as f:
 
 # Normalize: ensure trailing newline so the last entry's tail is
 # captured cleanly. (BD-203: decompose is the one-time monolith→tree
-# CONVERSION verb; for the PACK the per-entry tree + `_toc.md` is the
-# SOLE source of truth after conversion — there is NO regenerated
-# monolithic mirror. mirror-generate is retained for project streams
-# only, pending BD-206.)
+# CONVERSION verb; the per-entry tree + `_toc.md` is the SOLE source of
+# truth after conversion — there is NO regenerated monolithic mirror.)
 if not text.endswith("\n"):
     text += "\n"
 
