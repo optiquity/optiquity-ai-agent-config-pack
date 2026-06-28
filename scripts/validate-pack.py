@@ -4339,6 +4339,22 @@ _SANCTIONED_PACK_SIDE_SHIPPED = (
 )
 
 
+# The frozen pack-shipped IMMUTABLE set: the 3 per-stream `_rules.md`
+# contracts. FROZEN by set-equality (the same discipline as
+# _SANCTIONED_PACK_SIDE_SHIPPED above) — Check 76 asserts the content
+# manifest's row paths map exactly onto this set; growing it requires
+# architect+user sign-off. Sized to the measured 3 `_rules.md`
+# (ci-guard-measure-then-bound). EXCLUDES `_intro.md` (modifiable —
+# self-declares "edit freely"), `_toc.md`/`_index.md` (derived
+# regenerator output) and the trinity (designed to drift). Candidate
+# enumeration derives from THIS constant, never a filesystem walk.
+_IMMUTABLE_SHIPPED = (
+    "project-template/docs/project/backlog/_rules.md",
+    "project-template/docs/project/implementation-plan/_rules.md",
+    "project-template/docs/project/changelog/_rules.md",
+)
+
+
 def _iter_client_installed_files() -> list[Path]:
     """Return the union of:
       (a) all regular files under project-template/ (recursive), and
