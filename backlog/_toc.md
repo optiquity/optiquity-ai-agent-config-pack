@@ -32,6 +32,8 @@
 - [BD-246](./BD-246.md) — Non-mutation integrity check for pack-shipped immutable files (per-version content checksums + CI-red verify)
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-250](./BD-250.md) — Extend the anti-history/bloat durable guards (Check 65/66/67) to `supporting-docs/` operating docs + strip residual violations (measure-then-bound)
+- [BD-252](./BD-252.md) — Pack-side resumable session-state mechanism (repo-committed, CLI-agnostic, current-snapshot-only, /pack-startup-wired, CI-enforced)
+- [BD-253](./BD-253.md) — Project-side resumable session-state mechanism (PM-Chat; reconcile with existing `_index.md` / `STATUS.md` state; same transferability + no-CLI-memory rules as BD-252)
 
 ## Deferred
 
