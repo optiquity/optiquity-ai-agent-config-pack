@@ -1239,6 +1239,7 @@ cmd_update() {
         "project-template/docs/project/implementation-plan/_intro.md:docs/project/implementation-plan/_intro.md:generic"
         "project-template/docs/project/changelog/_rules.md:docs/project/changelog/_rules.md:generic"
         "project-template/docs/project/changelog/_intro.md:docs/project/changelog/_intro.md:generic"
+        "project-template/docs/project/immutable-manifest.txt:docs/project/immutable-manifest.txt:generic"
         # BD-180 observation F (2026-05-20): supporting-docs/* installed
         # to docs/pack/ by S6 (lines 565-583 — separate copy blocks below
         # the docs/pack/*.md glob loop since these source files live under
@@ -1385,6 +1386,7 @@ cmd_update() {
 #   project-template/docs/project/implementation-plan/_intro.md  ->  docs/project/implementation-plan/_intro.md  [stage:S11,cmd_update]
 #   project-template/docs/project/changelog/_rules.md  ->  docs/project/changelog/_rules.md  [stage:S11,cmd_update]
 #   project-template/docs/project/changelog/_intro.md  ->  docs/project/changelog/_intro.md  [stage:S11,cmd_update]
+#   project-template/docs/project/immutable-manifest.txt  ->  docs/project/immutable-manifest.txt  [stage:S11,cmd_update]
 #   supporting-docs/METHODOLOGY.md  ->  docs/pack/METHODOLOGY.md  [stage:S6,cmd_update]
 #   supporting-docs/INSTALL-PROCEDURES.md  ->  docs/pack/INSTALL-PROCEDURES.md  [stage:S6,cmd_update]
 #   scripts/pack-help.sh  ->  scripts/pack-help.sh  [stage:S11]
