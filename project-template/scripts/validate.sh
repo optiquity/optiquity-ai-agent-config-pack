@@ -44,6 +44,10 @@ RAN_SOMETHING=1
 echo "[validate] running validate-docs.sh (operating-doc enforcement)"
 "$SCRIPT_DIR/validate-docs.sh" || EXIT_CODE=1
 
+# Always run (language-independent): pack-shipped immutable-file integrity.
+echo "[validate] running verify-immutable.sh (pack-shipped immutable-file integrity)"
+"$SCRIPT_DIR/verify-immutable.sh" || EXIT_CODE=1
+
 if has_swift; then
   RAN_SOMETHING=1
   echo "[validate] Swift detected — running validate-swift.sh"
