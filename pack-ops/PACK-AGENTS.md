@@ -210,8 +210,9 @@ Directories:
 - `project-template/docs/project/implementation-plan/`
 - `project-template/docs/project/changelog/`
 
-Within these directories, `_rules.md` and `_intro.md` are
-pack-shipped immutable (updated on pack version bump only); `_toc.md`
+Within these directories, `_rules.md` is pack-shipped immutable
+(updated on pack version bump only); `_intro.md` is freely modifiable
+(the pack never overwrites it after install); `_toc.md`
 (and the impl-plan `_index.md`) is derived (regenerator output);
 per-entry files (e.g., `BD-NNN.md`, `TD-NNN.md`, `phase-N.md`,
 `YYYY-MM-DD-*.md`) are pack-chat-only writes.
