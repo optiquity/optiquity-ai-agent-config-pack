@@ -1,12 +1,26 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "a9c707b",
-  "checkpoint": "2026-06-29T13:53:46Z",
-  "active": [],
+  "boundary_commit": "9d29174",
+  "checkpoint": "2026-06-29T17:50:24Z",
+  "active": [
+    {
+      "bd": "BD-255",
+      "sub_step": "A1 landed; serial pacing; next = B1 (declare-verify-backing rule, trinity+rationale+PACK-CHAT lane)"
+    }
+  ],
   "in_flight_agents": [],
-  "queue": ["BD-253", "BD-222", "BD-232", "BD-245", "BD-224", "BD-210", "BD-205", "BD-093"],
+  "queue": [
+    "BD-253",
+    "BD-222",
+    "BD-232",
+    "BD-245",
+    "BD-224",
+    "BD-210",
+    "BD-205",
+    "BD-093"
+  ],
   "parallelization": "serial",
-  "wave": null,
+  "wave": "W1: A1 done; B1 next (serial)",
   "pending_decisions": [],
   "cycle_position": null
 }
