@@ -1038,6 +1038,16 @@ stage_s11_v11_artifacts() {
     "$copy_fn" "$pe_src/changelog/_rules.md" "$pe_dst/changelog/_rules.md"
     "$copy_fn" "$pe_src/changelog/_intro.md" "$pe_dst/changelog/_intro.md"
 
+    # 6b. Integrity manifest. Pure pack-shipped immutable — the baseline
+    #     verify-immutable.sh checks the 3 immutable _rules.md against.
+    #     ALWAYS overwrite (cp -f, never $copy_fn): a client must not
+    #     silently diverge the integrity baseline. Ships for every class.
+    [[ -f "$pe_src/immutable-manifest.txt" ]] \
+        || fail_stage S11 "canonical template missing: project-template/docs/project/immutable-manifest.txt"
+    cp -f "$pe_src/immutable-manifest.txt" "$pe_dst/immutable-manifest.txt"
+    [[ -f "$pe_dst/immutable-manifest.txt" ]] \
+        || fail_stage S11 "docs/project/immutable-manifest.txt missing after copy"
+
     # 7. Empty-seed TOC regenerate (greenfield path only).
     #    For greenfield (CLASS=new-*) the project starts empty — no
     #    entry files exist — so the TOC regenerator produces the empty

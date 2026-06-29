@@ -264,6 +264,24 @@ assert_eq "4.1 fresh install rc=0" "0" "$rc"
     && t_pass "4.2 docs/project/changelog/_format.md ABSENT (BD-206 forbidden)" \
     || t_fail "4.2 docs/project/changelog/_format.md unexpectedly present (BD-206 forbidden)"
 
+# 4.2 — integrity manifest ships on fresh install. The client
+# verify-immutable.sh hashes the immutable _rules.md against this baseline;
+# without it the client errors `manifest not found` on the first install.
+[[ -f "$T/docs/project/immutable-manifest.txt" ]] \
+    && t_pass "4.2 docs/project/immutable-manifest.txt present (ships on fresh install)" \
+    || t_fail "4.2 docs/project/immutable-manifest.txt missing (fresh-install integrity baseline)"
+
+# 4.2 — end-to-end: the installed verify-immutable.sh runs clean (rc=0)
+# against the just-shipped manifest. This is the realized client check.
+if [[ -f "$T/scripts/verify-immutable.sh" ]]; then
+    ( cd "$T" && bash scripts/verify-immutable.sh ) >/dev/null 2>&1 ; vi_rc=$?
+    [[ "$vi_rc" -eq 0 ]] \
+        && t_pass "4.2 verify-immutable.sh rc=0 on fresh install (manifest baseline matches)" \
+        || t_fail "4.2 verify-immutable.sh rc=$vi_rc on fresh install (expected 0)"
+else
+    t_fail "4.2 scripts/verify-immutable.sh missing on fresh install (expected from S5 ship)"
+fi
+
 # 4.3 — BD-206 no-mirror: the three monoliths are ABSENT at the parent
 # docs/project/ (no regenerated mirror under the no-mirror model).
 [[ ! -f "$T/docs/project/BACKLOG.md" ]] \

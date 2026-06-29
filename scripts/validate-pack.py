@@ -6291,6 +6291,43 @@ _CHECK_41_EXEMPTIONS: dict[str, str] = {
     # a path that intentionally does not exist at HEAD.
 }
 
+# Inventory rows that ship via a runtime-basename directory GLOB inside their
+# stage function (name=$(basename "$f")/"$form"), so the literal filename is
+# computed at runtime and legitimately does NOT appear as a per-file copy
+# literal. Sized to EXACTLY the 7 measured glob-shipped rows (3 S11 issue forms
+# + 4 S6 docs/pack/*.md). A per-file omission is structurally impossible for a
+# directory glob.
+_CHECK_41_GLOB_LIST_EXEMPT: frozenset[str] = frozenset({
+    "project-template/.github/ISSUE_TEMPLATE/work-item.yml",
+    "project-template/.github/ISSUE_TEMPLATE/inbound.yml",
+    "project-template/.github/ISSUE_TEMPLATE/config.yml",
+    "project-template/docs/pack/OPTIONAL-FEATURES.md",
+    "project-template/docs/pack/PACK-FEEDBACK.md",
+    "project-template/docs/pack/PLATFORM-SKILLS.md",
+    "project-template/docs/pack/PM-CHAT.md",
+})
+# Stages whose copy mechanism is a FIXED-LIST loop (loop var is the relpath/dest;
+# S3 config list, S7 trinity list). A row tagged ONLY with these stages ships
+# via a literal list element, not a hand-enumerated per-file copy that could be
+# silently dropped — exempt from the per-file copy-site assertion.
+_CHECK_41_LIST_LOOP_STAGES: frozenset[str] = frozenset({"S3", "S7"})
+# Per-stage (function name, END sentinel) for the stages that host a guarded
+# hand-enumerated KEEP row. The sentinel lives AFTER the last copy site; if the
+# body-capture regex truncates (a future col-0 `}` inside the function), the
+# sentinel is absent from the captured body -> clause (e) emits a diagnostic
+# FAIL instead of a silent short body. Extend when a NEW stage hosts a KEEP row.
+_CHECK_41_STAGE_SENTINELS: dict[str, tuple[str, str]] = {
+    "S6":  ("stage_s6_docs_pack",        "blast_radius_sweep"),
+    "S11": ("stage_s11_v11_artifacts",   "per_entry_regenerate_toc"),
+}
+# Copy-verb matcher: a non-comment stage line that performs a real copy. The
+# basename signal keys on THIS (not bare basename presence) so a deletion of the
+# copy line is caught even when the basename survives on an `if [[ -f ]]` guard
+# or a warn/fail_stage message line.
+_CHECK_41_COPY_VERB = re.compile(
+    r'(^|\s)(cp\b|existing_classifier_copy\b)|"\$copy_fn"|\$copy_fn\b'
+)
+
 
 def _parse_client_installed_files() -> tuple[list[str], int, int, bool, bool]:
     """Parse `_CLIENT_INSTALLED_FILES` block from `scripts/init-project.sh`.
@@ -6387,6 +6424,49 @@ def _parse_client_installed_files() -> tuple[list[str], int, int, bool, bool]:
         if pack_rel:
             entries.append(pack_rel)
     return (entries, start_count, end_count, True, body_has_content)
+
+
+def _parse_client_installed_file_stages() -> dict[str, set[str]]:
+    """Map each `_CLIENT_INSTALLED_FILES` pack_relpath -> its `[stage:...]` set.
+
+    Sibling of `_parse_client_installed_files()` (whose 5-tuple arity is
+    UNCHANGED and whose unpack sites stay intact). Check 41 clause (e)
+    consumes this map to verify each hand-enumerated row has a copy site.
+    Returns {} if init-project.sh is absent or markers are not exactly-once
+    (lenient — clause (e) skips when empty).
+    """
+    init_sh = REPO_ROOT / "scripts" / "init-project.sh"
+    if not init_sh.is_file():
+        return {}
+    text = init_sh.read_text()
+    start_marker = "_CLIENT_INSTALLED_FILES_START"
+    end_marker = "_CLIENT_INSTALLED_FILES_END"
+    if text.count(start_marker) != 1 or text.count(end_marker) != 1:
+        return {}
+    m = re.search(
+        rf"{re.escape(start_marker)}\s*\n(.+?)\n[^\n]*{re.escape(end_marker)}",
+        text, re.DOTALL,
+    )
+    if not m:
+        return {}
+    out: dict[str, set[str]] = {}
+    for line in m.group(1).splitlines():
+        s = line.strip()
+        if not s.startswith("#"):
+            continue
+        content = s.lstrip("#").strip()
+        if "->" not in content:
+            continue
+        pack_rel = content.split("->", 1)[0].strip()
+        if not pack_rel:
+            continue
+        sm = re.search(r"\[stage:([^\]]*)\]", content)
+        stages = (
+            {t.strip() for t in sm.group(1).split(",") if t.strip()}
+            if sm else set()
+        )
+        out[pack_rel] = stages
+    return out
 
 
 def check_client_installed_files() -> None:
@@ -6583,6 +6663,96 @@ def check_client_installed_files() -> None:
         inventory_drift += 1
         any_failed = True
 
+    # (e) Every HAND-ENUMERATED per-file inventory row has a fresh-install copy
+    #     site: its source basename appears on a copy-verb line in the body of a
+    #     stage named by its [stage:] tag. Glob/list-loop rows are exempt
+    #     (per-file omission is structurally impossible). Catches the
+    #     ships-on-update / missing-on-fresh-install split-brain class.
+    #
+    #     LAZY: only the sentinel-registered stages actually referenced by a
+    #     surviving non-exempt KEEP row are extracted. GRACEFUL-ABSENCE: when a
+    #     referenced stage function is absent from the init-project.sh under
+    #     check (a synthetic test scaffold legitimately omits it), that stage is
+    #     skipped and rows with no available modelled stage body are skipped —
+    #     the guard never emits a "could not locate" failure for a fixture that
+    #     does not model the production stages. On the REAL tree both functions
+    #     are present, so the guard runs at full strength.
+    stage_map = _parse_client_installed_file_stages()
+
+    # Restrict each row to its real-stage tokens (drop cmd_update / extern).
+    def _row_stages(pack_rel: str) -> set[str]:
+        return {t for t in stage_map.get(pack_rel, set()) if re.fullmatch(r"S\d+", t)}
+
+    def _is_keep(pack_rel: str, sx: set[str]) -> bool:
+        if not sx:
+            return False  # cmd_update-only / extern — no fresh-install copy site expected
+        if pack_rel in _CHECK_41_GLOB_LIST_EXEMPT:
+            return False  # runtime-basename glob — basename absent by design
+        if sx <= _CHECK_41_LIST_LOOP_STAGES:
+            return False  # fixed-list loop — not a hand-enumerated per-file copy
+        return True
+
+    # LAZY: which sentinel-registered stages do surviving KEEP rows reference?
+    needed_stages: set[str] = set()
+    for pack_rel in entries:
+        sx = _row_stages(pack_rel)
+        if _is_keep(pack_rel, sx):
+            needed_stages |= (sx & _CHECK_41_STAGE_SENTINELS.keys())
+
+    init_text = init_sh.read_text()
+    # Extract + validate the copy-verb body for each NEEDED stage. A stage whose
+    # function is ABSENT is skipped (graceful-absence); a stage whose captured
+    # body is TRUNCATED (sentinel missing) is a loud diagnostic FAIL.
+    stage_copy_bodies: dict[str, str] = {}
+    for sid in sorted(needed_stages):
+        fnname, sentinel = _CHECK_41_STAGE_SENTINELS[sid]
+        bm = re.search(
+            r"\n" + re.escape(fnname) + r"\(\)\s*\{\n(.*?)\n^\}$",
+            init_text, re.DOTALL | re.MULTILINE,
+        )
+        if bm is None:
+            continue  # graceful-absence: function not modelled in this init-project.sh
+        body = bm.group(1)
+        if sentinel not in body:
+            fail(
+                f"Check 41 clause (e): captured body of `{fnname}()` is missing "
+                f"the END sentinel `{sentinel}` — the body-extraction regex "
+                f"likely truncated at a line-initial `}}` inside the function. "
+                f"Fix the function shape or update _CHECK_41_STAGE_SENTINELS."
+            )
+            any_failed = True
+            continue
+        stage_copy_bodies[sid] = "\n".join(
+            ln for ln in body.splitlines()
+            if not ln.lstrip().startswith("#") and _CHECK_41_COPY_VERB.search(ln)
+        )
+
+    copy_sites_checked = 0
+    for pack_rel in entries:
+        sx = _row_stages(pack_rel)
+        if not _is_keep(pack_rel, sx):
+            continue
+        # Only the row's stages whose bodies were actually extracted are usable.
+        usable = [s for s in sx if s in stage_copy_bodies]
+        if not usable:
+            continue  # graceful-absence: no modelled stage body for this row
+        copy_sites_checked += 1
+        bn = Path(pack_rel).name
+        present = any(bn in stage_copy_bodies[s] for s in usable)
+        if not present:
+            fail(
+                f"{pack_rel} — `_CLIENT_INSTALLED_FILES` inventory row tagged "
+                f"{sorted(sx)} has NO fresh-install copy site: source basename "
+                f"`{bn}` does not appear on a copy-verb line "
+                f"(cp / existing_classifier_copy / $copy_fn) in the body of "
+                f"{[_CHECK_41_STAGE_SENTINELS[s][0] for s in usable]}. "
+                f"Add the per-file copy step to the stage function, OR — if the "
+                f"row genuinely ships via a directory glob — add it to "
+                f"`_CHECK_41_GLOB_LIST_EXEMPT` with a one-line rationale. (This "
+                f"is the ships-on-update/missing-on-fresh-install class.)"
+            )
+            any_failed = True
+
     if not any_failed:
         ok(
             f"Check 41 — {files_checked} `_CLIENT_INSTALLED_FILES` entry "
@@ -6590,6 +6760,8 @@ def check_client_installed_files() -> None:
             f"existing files at HEAD, {exempted} on exemption allowlist. "
             f"{len(cmd_update_paths)} cmd_update path(s) cross-checked "
             f"against inventory; {inventory_drift} drift(s) (must be 0). "
+            f"{copy_sites_checked} hand-enumerated row(s) verified to have a "
+            f"fresh-install copy site. "
             f"Self-documenting list is consistent with copy-site state."
         )
 

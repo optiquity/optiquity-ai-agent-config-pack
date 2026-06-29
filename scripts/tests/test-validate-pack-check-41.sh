@@ -42,6 +42,10 @@ required = [
     'check_client_installed_files',
     '_parse_client_installed_files',
     '_CHECK_41_EXEMPTIONS',
+    '_parse_client_installed_file_stages',
+    '_CHECK_41_GLOB_LIST_EXEMPT',
+    '_CHECK_41_LIST_LOOP_STAGES',
+    '_CHECK_41_STAGE_SENTINELS',
 ]
 missing = [n for n in required if not hasattr(mod, n)]
 if missing:
@@ -629,6 +633,190 @@ EOF
 case $? in
     0) t_pass "Synthetic PASS/FAIL tests (T1-T14 including T7/T7b SHOULD-2 disambiguation, T8-T10 SHOULD-1 duplicate-marker, and T14 FIX-2 placeholder-loop regression guard)" ;;
     *) t_fail "Synthetic Check 41 tests failed (see Python output above)" ;;
+esac
+
+# ─────────────────────────────────────────────────────────────────
+# Group 2b: clause (e) copy-site guard — RED + GREEN legs
+# ─────────────────────────────────────────────────────────────────
+#
+# Clause (e) asserts every HAND-ENUMERATED per-file inventory row has a
+# fresh-install copy site (its source basename on a copy-verb line in the
+# body of a stage named by its [stage:] tag). These legs build synthetic
+# init-project.sh scaffolds that DO define the stage function (with the
+# END sentinel) so the lazy+graceful-absence loop runs at full strength
+# (graceful-absence does NOT fire). Proves: copy-verb specificity (a
+# comment-only / if-guard+warn-only mention FAILs), a real copy line PASSes,
+# and the guard reaches S6 (not S11-only).
+
+printf "\n=== Group 2b: clause (e) copy-site guard (RED + GREEN) ===\n"
+
+REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 <<'EOF'
+import os, sys, tempfile, pathlib
+REPO_ROOT_PY = os.environ['REPO_ROOT']
+VALIDATE_PY = os.environ['VALIDATE']
+sys.path.insert(0, REPO_ROOT_PY + '/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', VALIDATE_PY)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+failures = []
+
+# Run Check 41 over a synthetic root whose scripts/init-project.sh is
+# `raw_init_sh` verbatim. Returns (failures_count, captured_stdout).
+def run_raw(raw_init_sh: str, extant_paths: list) -> tuple:
+    tmpdir = tempfile.mkdtemp(prefix="vp-check41e-")
+    root = pathlib.Path(tmpdir)
+    (root / "scripts").mkdir()
+    for ep in extant_paths:
+        target = root / ep
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("# stub\n")
+    (root / "scripts" / "init-project.sh").write_text(raw_init_sh)
+    import io, contextlib
+    saved_root = mod.REPO_ROOT
+    saved_failures = list(mod.failures)
+    mod.failures.clear()
+    mod.REPO_ROOT = root
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            mod.check_client_installed_files()
+        n = len(mod.failures)
+        captured = buf.getvalue()
+    finally:
+        mod.REPO_ROOT = saved_root
+        mod.failures.clear()
+        mod.failures.extend(saved_failures)
+    return (n, captured)
+
+# Scaffold builder: an S11 stage function whose copy body is `s11_copy_lines`
+# (verbatim), terminated by the S11 END sentinel `per_entry_regenerate_toc`
+# AFTER the copy lines, plus a single [stage:S11] inventory row for foo.txt.
+def s11_scaffold(s11_copy_lines: str) -> str:
+    return '''#!/usr/bin/env bash
+cmd_update() {
+    local entries=(
+        "project-template/x/foo.txt:docs/x/foo.txt:generic"
+    )
+    echo "stub"
+}
+
+stage_s11_v11_artifacts() {
+    local copy_fn="cp"
+    local pe_src="$PACK/project-template/docs/project"
+    local pe_dst="$TARGET/docs/project"
+%s
+    # end sentinel below (after all copy sites):
+    per_entry_regenerate_toc "x" "$pe_dst"
+}
+
+# _CLIENT_INSTALLED_FILES_START
+#   project-template/x/foo.txt  ->  docs/x/foo.txt  [stage:S11,cmd_update]
+# _CLIENT_INSTALLED_FILES_END
+''' % (s11_copy_lines,)
+
+# RED-1: foo.txt appears ONLY in a comment — no copy-verb line. clause (e)
+# must FAIL (the bare-basename signal would PASS; copy-verb signal FAILs).
+n, cap = run_raw(s11_scaffold('    # foo.txt is mentioned but not copied'),
+                 extant_paths=["project-template/x/foo.txt"])
+if n < 1:
+    failures.append(f"RED-1 (comment-only foo.txt) expected >=1 failure, got {n}: {cap}")
+if "project-template/x/foo.txt" not in cap or "NO fresh-install copy site" not in cap:
+    failures.append(f"RED-1 must name foo.txt + 'NO fresh-install copy site': {cap}")
+
+# RED-2: foo.txt on an `if [[ -f ]]` guard + a `warn` line, but NO cp line.
+# Proves the copy-verb signal (not non-comment-presence) is what bites.
+n, cap = run_raw(s11_scaffold(
+    '    if [[ -f "$pe_src/foo.txt" ]]; then\n'
+    '        warn "stale foo.txt present"\n'
+    '    fi'),
+    extant_paths=["project-template/x/foo.txt"])
+if n < 1:
+    failures.append(f"RED-2 (if-guard+warn only, no cp) expected >=1 failure, got {n}: {cap}")
+if "project-template/x/foo.txt" not in cap or "copy-verb line" not in cap:
+    failures.append(f"RED-2 must name foo.txt + 'copy-verb line': {cap}")
+
+# GREEN: a real `cp` copy line for foo.txt → clause (e) PASSes.
+n, cap = run_raw(s11_scaffold('    cp -f "$pe_src/foo.txt" "$pe_dst/foo.txt"'),
+                 extant_paths=["project-template/x/foo.txt"])
+if n != 0:
+    failures.append(f"GREEN (cp present) expected 0 failures, got {n}: {cap}")
+if "consistent with copy-site state" not in cap:
+    failures.append(f"GREEN (cp present) missing PASS-message: {cap}")
+
+# S6 scaffold: an S6 stage function whose copy body is `s6_copy_lines`,
+# terminated by the S6 END sentinel `blast_radius_sweep`, plus a single
+# [stage:S6] inventory row for supporting-docs/BAR.md.
+def s6_scaffold(s6_copy_lines: str) -> str:
+    return '''#!/usr/bin/env bash
+cmd_update() {
+    local entries=(
+        "supporting-docs/BAR.md:docs/pack/BAR.md:generic"
+    )
+    echo "stub"
+}
+
+stage_s6_docs_pack() {
+%s
+    # end sentinel below (after all copy sites):
+    blast_radius_sweep
+}
+
+# _CLIENT_INSTALLED_FILES_START
+#   supporting-docs/BAR.md  ->  docs/pack/BAR.md  [stage:S6,cmd_update]
+# _CLIENT_INSTALLED_FILES_END
+''' % (s6_copy_lines,)
+
+# S6 RED: BAR.md not on a copy-verb line in stage_s6_docs_pack() → FAIL.
+# Proves the guard is NOT S11-only (reaches S6 hand-enumerated rows).
+n, cap = run_raw(s6_scaffold('    # BAR.md mentioned, not copied'),
+                 extant_paths=["supporting-docs/BAR.md"])
+if n < 1:
+    failures.append(f"S6 RED (BAR.md not copied) expected >=1 failure, got {n}: {cap}")
+if "supporting-docs/BAR.md" not in cap or "stage_s6_docs_pack" not in cap:
+    failures.append(f"S6 RED must name BAR.md + stage_s6_docs_pack: {cap}")
+
+# S6 GREEN: BAR.md on a real copy line → PASS.
+n, cap = run_raw(s6_scaffold('    cp "$PACK/supporting-docs/BAR.md" "$TARGET/docs/pack/BAR.md"'),
+                 extant_paths=["supporting-docs/BAR.md"])
+if n != 0:
+    failures.append(f"S6 GREEN (BAR.md copied) expected 0 failures, got {n}: {cap}")
+
+# Sentinel-truncation diagnostic: S11 function present but MISSING the
+# per_entry_regenerate_toc sentinel → clause (e) emits the truncation FAIL.
+raw_no_sentinel = '''#!/usr/bin/env bash
+cmd_update() {
+    local entries=(
+        "project-template/x/foo.txt:docs/x/foo.txt:generic"
+    )
+    echo "stub"
+}
+
+stage_s11_v11_artifacts() {
+    cp -f "$pe_src/foo.txt" "$pe_dst/foo.txt"
+}
+
+# _CLIENT_INSTALLED_FILES_START
+#   project-template/x/foo.txt  ->  docs/x/foo.txt  [stage:S11,cmd_update]
+# _CLIENT_INSTALLED_FILES_END
+'''
+n, cap = run_raw(raw_no_sentinel, extant_paths=["project-template/x/foo.txt"])
+if n < 1:
+    failures.append(f"sentinel-truncation (no per_entry_regenerate_toc) expected >=1 failure, got {n}: {cap}")
+if "END sentinel" not in cap or "per_entry_regenerate_toc" not in cap:
+    failures.append(f"sentinel-truncation must surface the END-sentinel diagnostic: {cap}")
+
+if failures:
+    print("FAILURES")
+    for f in failures:
+        print(" ", f)
+    sys.exit(1)
+print("OK")
+EOF
+case $? in
+    0) t_pass "clause (e) copy-site guard (RED comment-only / RED if-guard+warn / GREEN cp / S6 RED+GREEN / sentinel-truncation)" ;;
+    *) t_fail "clause (e) copy-site guard tests failed (see Python output above)" ;;
 esac
 
 # ─────────────────────────────────────────────────────────────────
