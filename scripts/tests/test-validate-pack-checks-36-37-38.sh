@@ -141,6 +141,14 @@ assert_pm("CLAUDE.md", True, "T6i")  # pack-root trinity
 #   passes Check 36. Mirrors the PACK-AGENTS.md § "pack-chat-only files and
 #   directories" Files-list SSOT.
 assert_pm("pack-ops/PACK-MEMORY-RATIONALE.md", True, "T6j")
+# T6l: BD-255 Part A (A1) — pack-ops/session-state.json IS pack-chat-only-permitted
+#   (committed live-session snapshot, Pack-Chat-overwritten on every state
+#   transition; the BD-252 overwrite protocol depends on Pack Chat writing it).
+#   Positive case: a pack-chat-only commit touching session-state.json passes
+#   Check 36. Mirrors the A1-COLLAPSE generated PACK-AGENTS.md § "pack-chat-only
+#   files and directories" Files-list SSOT. T6j is the precedent for a positive
+#   assertion when the constant gains a path.
+assert_pm("pack-ops/session-state.json", True, "T6l")
 # T6k: BD-198 negative control — a non-permitted pack-ops/ file is NOT
 #   pack-chat-only-permitted, so a pack-chat-only commit touching it is still flagged as
 #   an offender by Check 36. Confirms the rationale-doc addition is exact

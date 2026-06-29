@@ -3977,6 +3977,12 @@ _PACK_CHAT_ONLY_PERMITTED_PATHS = {
     "project-template/CLAUDE.md",
     "project-template/AGENTS.md",
     "project-template/GEMINI.md",
+    # `pack-ops/session-state.json` is a legitimate pack-chat-only target: the
+    # committed live-session snapshot, Pack-Chat-overwritten on every state
+    # transition (trinity `## Pack memory` `[rationale: session-state-snapshot]`;
+    # `_SESSION_STATE_REQUIRED_KEYS` schema below). Membership here lets a future
+    # `pack-chat-only` commit that touches it pass Check 36.
+    "pack-ops/session-state.json",
 }
 
 # pack-chat-only PERMITTED-PATH PREFIXES — the per-entry tree directories per
@@ -3988,6 +3994,106 @@ _PACK_CHAT_ONLY_PERMITTED_PREFIXES = (
     "project-template/docs/project/implementation-plan/",
     "project-template/docs/project/changelog/",
 )
+
+# ─────────────────────────────────────────────────────────────────────────
+# A1 COLLAPSE (BD-255 Part A, design §3.1 Layer 1): the pack-chat-only twin.
+#
+# `_PACK_CHAT_ONLY_PERMITTED_PATHS` + `_PACK_CHAT_ONLY_PERMITTED_PREFIXES`
+# above are the SOLE SSOT for the pack-chat-only permitted set. The
+# `pack-ops/PACK-AGENTS.md` § "pack-chat-only files and directories" Files +
+# Directories bullets are DERIVED from them via the annotation map +
+# `render_pack_chat_only_doc_section()` below — the doc is generated output,
+# never a hand-maintained second surface (the `fail-loud: delete-the-old-
+# source` idiom applied to representation). The ordered annotation map fixes
+# BOTH the rendering order AND the friendly parenthetical for each entry;
+# its keys are asserted set-equal to the membership constants so the constant
+# stays the membership authority and the map is the presentation layer in the
+# same logical unit.
+#
+# The narrower `README.md version table` constraint is a Pack Chat DISCIPLINE
+# (the constant holds bare `README.md`; the "version table" scope lives as the
+# annotation, not as a separate constant member).
+_PACK_CHAT_ONLY_PATH_ANNOTATIONS = (
+    ("README.md", "version table"),
+    ("pack-ops/PACK-CHAT.md", "PM chat operating rules"),
+    ("pack-ops/PACK-AGENTS.md", "agent routing + permission rules"),
+    (
+        "pack-ops/PACK-MEMORY-RATIONALE.md",
+        "rule↔rationale bijection partner for `## Pack memory`; "
+        "edited only in lockstep with rule changes",
+    ),
+    ("CLAUDE.md", "pack-root trinity"),
+    ("AGENTS.md", "pack-root trinity"),
+    ("GEMINI.md", "pack-root trinity"),
+    ("project-template/CLAUDE.md", "project-template trinity"),
+    ("project-template/AGENTS.md", "project-template trinity"),
+    ("project-template/GEMINI.md", "project-template trinity"),
+    (
+        "pack-ops/session-state.json",
+        "live-session snapshot; Pack-Chat-overwritten on every state transition",
+    ),
+)
+
+_PACK_CHAT_ONLY_PREFIX_ANNOTATIONS = (
+    ("backlog/", "pack per-entry tree (entries)"),
+    ("changelog/", "pack changelog per-entry tree"),
+    (
+        "project-template/docs/project/backlog/",
+        "project per-entry tree canonical templates (ship into client projects)",
+    ),
+    ("project-template/docs/project/implementation-plan/", "project per-entry tree"),
+    ("project-template/docs/project/changelog/", "project per-entry tree"),
+)
+
+# Markers delimiting the GENERATED bullet block inside the PACK-AGENTS.md
+# § "pack-chat-only files and directories" section. The text between (and
+# including) these markers is `render_pack_chat_only_doc_section()` output.
+_PACK_CHAT_ONLY_DOC_BEGIN = (
+    "<!-- GENERATED:pack-chat-only-permitted-set — do not hand-edit; "
+    "`_PACK_CHAT_ONLY_PERMITTED_PATHS`/`_PREFIXES` in scripts/validate-pack.py "
+    "govern (never source of truth here) -->"
+)
+_PACK_CHAT_ONLY_DOC_END = "<!-- /GENERATED:pack-chat-only-permitted-set -->"
+
+
+def render_pack_chat_only_doc_section() -> str:
+    """Render the GENERATED pack-chat-only Files + Directories bullet block
+    for `pack-ops/PACK-AGENTS.md` § "pack-chat-only files and directories".
+
+    The constant `_PACK_CHAT_ONLY_PERMITTED_PATHS` /
+    `_PACK_CHAT_ONLY_PERMITTED_PREFIXES` are the membership SSOT; the ordered
+    annotation maps supply the rendering order + the friendly parenthetical.
+    Raises ValueError if the annotation-map key sets diverge from the
+    membership constants (the collapse invariant — neither surface may drift
+    from the other because both derive from this single render).
+    """
+    path_keys = [p for p, _ in _PACK_CHAT_ONLY_PATH_ANNOTATIONS]
+    prefix_keys = [p for p, _ in _PACK_CHAT_ONLY_PREFIX_ANNOTATIONS]
+    if set(path_keys) != _PACK_CHAT_ONLY_PERMITTED_PATHS:
+        raise ValueError(
+            "pack-chat-only path annotation map diverges from "
+            "_PACK_CHAT_ONLY_PERMITTED_PATHS: "
+            f"only-in-map={sorted(set(path_keys) - _PACK_CHAT_ONLY_PERMITTED_PATHS)} "
+            f"only-in-constant={sorted(_PACK_CHAT_ONLY_PERMITTED_PATHS - set(path_keys))}"
+        )
+    if set(prefix_keys) != set(_PACK_CHAT_ONLY_PERMITTED_PREFIXES):
+        raise ValueError(
+            "pack-chat-only prefix annotation map diverges from "
+            "_PACK_CHAT_ONLY_PERMITTED_PREFIXES: "
+            f"only-in-map={sorted(set(prefix_keys) - set(_PACK_CHAT_ONLY_PERMITTED_PREFIXES))} "
+            f"only-in-constant={sorted(set(_PACK_CHAT_ONLY_PERMITTED_PREFIXES) - set(prefix_keys))}"
+        )
+    lines: list[str] = [_PACK_CHAT_ONLY_DOC_BEGIN, ""]
+    lines.append("Files:")
+    for path, annotation in _PACK_CHAT_ONLY_PATH_ANNOTATIONS:
+        lines.append(f"- `{path}` ({annotation})")
+    lines.append("")
+    lines.append("Directories:")
+    for prefix, annotation in _PACK_CHAT_ONLY_PREFIX_ANNOTATIONS:
+        lines.append(f"- `{prefix}` — {annotation}")
+    lines.append("")
+    lines.append(_PACK_CHAT_ONLY_DOC_END)
+    return "\n".join(lines)
 
 # `_PROJECT_SIDE_ROOTS` is REPLACED by `_iter_client_installed_files()`.
 # See ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md §3 for the contract.

@@ -194,22 +194,29 @@ between (1) and (2) — it reads the prose header, NEVER `tools:`.
 **pack-chat-only files and directories** are off-limits to all agents unless the
 caller's prompt explicitly scopes them in.
 
+<!-- GENERATED:pack-chat-only-permitted-set — do not hand-edit; `_PACK_CHAT_ONLY_PERMITTED_PATHS`/`_PREFIXES` in scripts/validate-pack.py govern (never source of truth here) -->
+
 Files:
-- `README.md` version table
-- `PACK-CHAT.md`
-- `PACK-AGENTS.md`
-- `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (root and `project-template/`)
-- `PACK-MEMORY-RATIONALE.md` (rule↔rationale bijection partner for `## Pack memory`; edited only in lockstep with rule changes)
-- `session-state.json` (`pack-ops/` live-session snapshot; Pack-Chat-overwritten on every state transition)
+- `README.md` (version table)
+- `pack-ops/PACK-CHAT.md` (PM chat operating rules)
+- `pack-ops/PACK-AGENTS.md` (agent routing + permission rules)
+- `pack-ops/PACK-MEMORY-RATIONALE.md` (rule↔rationale bijection partner for `## Pack memory`; edited only in lockstep with rule changes)
+- `CLAUDE.md` (pack-root trinity)
+- `AGENTS.md` (pack-root trinity)
+- `GEMINI.md` (pack-root trinity)
+- `project-template/CLAUDE.md` (project-template trinity)
+- `project-template/AGENTS.md` (project-template trinity)
+- `project-template/GEMINI.md` (project-template trinity)
+- `pack-ops/session-state.json` (live-session snapshot; Pack-Chat-overwritten on every state transition)
 
 Directories:
-- `/backlog/` — pack per-entry tree (entries; supporting files
-  pack-shipped via version-bump only).
-- `/changelog/` — pack changelog per-entry tree.
-- `project-template/docs/project/backlog/` — project per-entry tree
-  canonical templates (ship into client projects).
-- `project-template/docs/project/implementation-plan/`
-- `project-template/docs/project/changelog/`
+- `backlog/` — pack per-entry tree (entries)
+- `changelog/` — pack changelog per-entry tree
+- `project-template/docs/project/backlog/` — project per-entry tree canonical templates (ship into client projects)
+- `project-template/docs/project/implementation-plan/` — project per-entry tree
+- `project-template/docs/project/changelog/` — project per-entry tree
+
+<!-- /GENERATED:pack-chat-only-permitted-set -->
 
 Within these directories, `_rules.md` is pack-shipped immutable
 (updated on pack version bump only); `_intro.md` is freely modifiable
