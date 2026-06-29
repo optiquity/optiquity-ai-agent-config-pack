@@ -382,13 +382,13 @@ PACK-AGENTS.md current".
   legitimate-set** — no broader; (5) **Verify post-design** the
   guard runs clean against the projected post-fix state. A design
   that declares an allowlist without measuring the tree first is
-  INCOMPLETE. A design that widens the allowlist to admit borderline
-  / unclassified hits is treating contamination as legitimate by
-  default — which defeats the guard's purpose. A guard that
-  ENUMERATES repo files draws its candidate set from git-TRACKED
+  INCOMPLETE. A guard that ENUMERATES repo files draws its
+  candidate set from git-TRACKED
   files (`git ls-files`), NEVER a raw filesystem walk (`rglob` /
   `os.walk` / `glob` / `find`); if git is unavailable / not a work
-  tree, SKIP the check (lenient). `[roles: architect]
+  tree, SKIP the check (lenient). Also verify the guard catches the
+  ABSENCE-of-backing instance (a declared mapping with NO backing), not
+  only the target-exists instance. `[roles: architect]
   [rationale: ci-guard-measure-then-bound]`
 
 - **Uniquely + descriptively name every spawn.** Every spawned agent carries a
@@ -570,6 +570,12 @@ PACK-AGENTS.md current".
   asymmetric coverage (validators but not tests, or vice versa) creates
   audit gaps. `[roles: reviewer coder]
   [rationale: enumerate-encoding-surfaces]`
+- **Records-style checks verify load-bearing backing.** Any check that
+  RECORDS a mapping (install row, wiring claim, surface↔surface link)
+  MUST verify the LOAD-BEARING reality (the target ships / the wire is
+  reachable / the matcher BITES), not merely a necessary-but-insufficient
+  property (the target exists). `[roles: architect coder]
+  [rationale: declare-verify-backing]`
 - **Test infra is self-provisioned.** Tests that need GitHub repos
   provision them via `gh` CLI with per-step approval and clean up after;
   never touch an existing real repo as a test target — use a scratch repo

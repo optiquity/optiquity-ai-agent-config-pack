@@ -903,3 +903,36 @@ history allowlist — its BD-lines change on every overwrite, so the allowlist
 goes stale instantly; a non-`.md` data file plus a bespoke grammar check is the
 clean fit. (d) Commit the spawn registry instead — it is ~95% append-only
 history, violates `agents-never-commit` (agents write it), and bloats the tree.
+
+---
+
+## declare-verify-backing
+
+**Why.** A check that RECORDS a mapping can pass while the mapping is hollow.
+Verifying a necessary-but-insufficient property — the target merely EXISTS, the
+gate is merely PRESENT, the token merely APPEARS — leaves the load-bearing
+reality unchecked: an install row whose pack file ships but is never copied at
+fresh-install; a wiring claim where the wire is unreachable; a surface↔surface
+link whose matcher never BITES. The check then certifies a declaration the
+runtime does not honor, which is the exact silent-drift failure the gate was
+built to catch. The fix is to verify the reality the declaration ASSERTS, not a
+proxy that happens to be true.
+
+**How to apply.** Any architect or coder authoring (or extending) a
+record-style check — one that mirrors a declared mapping, install row, wiring
+claim, or surface↔surface link — must identify the load-bearing reality the
+record asserts and verify THAT: the target ships AND is copied at install; the
+wire is reachable from its caller; the matcher fires against a synthetic
+violation (it BITES). Existence of the target is necessary but never
+sufficient. Pair this with `ci-guard-measure-then-bound`: the guard must catch
+the ABSENCE-of-backing instance (a declared mapping with NO backing), not only
+the target-exists instance.
+
+**Rejected alternative.** A generic runtime "backing exists" meta-check across
+all record-style checks — rejected: there is no uniform signal for "backing
+exists" across heterogeneous declarations (a copy site, a reachable wire, a
+biting matcher are structurally different), so a generic check is either trivial
+(re-verifying target-exists, the insufficient property) or impossibly broad.
+The discipline lands as a TAGGED design-time rule the spawn-prompt assembler
+selects (`enumerate-rules-inline`) and the Rules-Applied block verifies, not as
+a new validator check.
