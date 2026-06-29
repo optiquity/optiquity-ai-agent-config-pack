@@ -1288,3 +1288,14 @@ under §7.3.2 runs iff Python is also detected.
 The kickoff-variant continuation pointer in
 `project-template/docs/pack/prompts/pm-chat.md` Variant: kickoff is
 the invocation point for Procedure 7.
+
+## Optional — refuse local commits that drift an immutable file
+
+The project ships an integrity check, `scripts/verify-immutable.sh`,
+already run by `scripts/validate.sh` and in CI. To ALSO block local
+commits that drift an immutable file, run `bash
+scripts/install-immutable-hook.sh` once per clone; it installs a
+`pre-commit` hook that runs the same check and refuses the commit on a
+mismatch. The hook is advisory and bypassable for a single commit with
+`git commit --no-verify`. If a `pre-commit` hook already exists, the
+installer refuses to overwrite it and asks you to merge manually.
