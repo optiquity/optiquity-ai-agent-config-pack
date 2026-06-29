@@ -23,6 +23,9 @@
 #            T4 FAIL — one surface absent
 #            T5 PASS — a benign substring is NOT a false verb match
 #                      (word-boundary: `command`/`stream` ≠ `am`-class)
+#            T6 FAIL — forward leg (constant→surface): a surface with `fetch`
+#                      removed FAILS (the content↔surface floor bites the
+#                      `fetch` content add; enumerate-encoding-surfaces)
 #   Group 2: end-to-end validate-pack.py exit-status on HEAD (Check 56 clean)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-56.sh
@@ -162,6 +165,14 @@ n, cap = run(overrides={"AGENTS.md": full_body(
 if n != 0:
     failures.append(f"T5 (word-boundary safety) expected PASS, got {n}: {cap}")
 
+# T6: FAIL — forward leg (constant to surface): drop fetch from one surface.
+# The fetch content add makes the constant carry fetch; the presence floor
+# must then BITE any surface that omits it (enumerate-encoding-surfaces).
+short_fetch = [v for v in VERBS if v != "fetch"]
+n, cap = run(overrides={"GEMINI.md": full_body(verbs=short_fetch)})
+if n < 1 or "fetch" not in cap or "GEMINI.md" not in cap:
+    failures.append(f"T6 (dropped fetch) expected FAIL naming fetch+GEMINI.md, got {n}: {cap}")
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -170,7 +181,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "End-to-end synthetic-tree tests T1-T5 (parity PASS + dropped-verb/dropped-phrase/absent-surface FAIL + word-boundary safety)" ;;
+    0) t_pass "End-to-end synthetic-tree tests T1-T6 (parity PASS + dropped-verb/dropped-phrase/absent-surface FAIL + word-boundary safety + forward-leg dropped-fetch FAIL)" ;;
     *) t_fail "End-to-end check_destructive_git_verb_parity tests failed (see Python output)" ;;
 esac
 

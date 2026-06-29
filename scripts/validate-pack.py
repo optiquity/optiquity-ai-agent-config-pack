@@ -11067,31 +11067,26 @@ def check_optional_features_presence() -> None:
 #   a second, structurally-different unit — over-complication. So Guard-C is
 #   a STANDALONE Check 56 (decision 8 escape hatch).
 #
-# MEASURE-THEN-BOUND (ci-guard-design-measure-then-bound), live at the N-2
-# fix (HEAD 9b7c74c, 2026-06-14): all 28 verbs of the FULL §5.1 set asserted
-# below + the catch-all principle phrase `including but not limited to` were
-# measured present in ALL 10 surfaces (C4 landed the folded enumeration; S-1
-# widened the asserted tuple from the 19-verb representative subset toward the
-# full §5.1 set by adding `add`/`rm`/`mv`/`config`/`remote`/`gc`/`tag`/
-# `notes`; N-2 added the last verb `am`). The asserted CANONICAL set is the
-# FULL §5.1 set with NO exceptions, sized to the measured-consistent set.
-# `am` is matched word-bounded by `_check_56_verb_present` as
-# `(?<![\w-])am(?![\w-])`, which does NOT false-match inside "stream" /
-# "command" / "spam" / "amend" (review-2 proved the old "substring-unsafe"
-# rationale false; `am` is present-and-consistent across all 10 surfaces and
-# asserts cleanly at 28/28). Each verb is matched as `git <verb>` (the
-# phrasing all surfaces share) OR the bare token in a context-bounded way via
-# word boundaries.
+# MEASURE-THEN-BOUND (ci-guard-design-measure-then-bound): all 29 verbs of the
+# FULL §5.1 set asserted below + the catch-all principle phrase `including but
+# not limited to` are measured present in ALL 10 surfaces. The asserted
+# CANONICAL set is the FULL §5.1 set with NO exceptions, sized to the
+# measured-consistent set. `am` is matched word-bounded by
+# `_check_56_verb_present` as `(?<![\w-])am(?![\w-])`, which does NOT
+# false-match inside "stream" / "command" / "spam" / "amend"; it is
+# present-and-consistent across all 10 surfaces and asserts cleanly at 29/29.
+# Each verb is matched as `git <verb>` (the phrasing all surfaces share) OR the
+# bare token in a context-bounded way via word boundaries.
 #
 # RUNTIME (ci-check-runtime-compounding): 10 single-file reads + bounded
 # substring/regex tests; NO subprocess, NO whole-tree scan. Trivial across the
 # battery's ~202 validate-pack invocations.
-# BD-221 (Antigravity conversion): the third commit-discipline skill mirror is
+# The Antigravity surfaces are the third commit-discipline skill mirror
 # `.agents/skills/commit-discipline/SKILL.md` (Antigravity reads workspace
 # skills at `.agents/skills/<name>/SKILL.md`) and the third pack-coder agent
-# surface is the Antigravity pack-agents plugin bundle
-# (`.agents-plugin/pack-agents/agents/pack-coder.md`). The trinity `GEMINI.md`
-# FILE stays. The enumeration set is still 10 surfaces.
+# surface, the Antigravity pack-agents plugin bundle
+# (`.agents-plugin/pack-agents/agents/pack-coder.md`). The enumeration set is
+# 10 surfaces.
 _CHECK_56_VERB_PARITY_SURFACES = (
     "CLAUDE.md",
     "AGENTS.md",
@@ -11105,26 +11100,26 @@ _CHECK_56_VERB_PARITY_SURFACES = (
     ".agents-plugin/pack-agents/agents/pack-coder.md",
 )
 # The CANONICAL §5.1 verb set — the FULL §5.1 destructive-git-verb denylist,
-# the complete 28-verb set with NO exceptions, measured present in ALL 10
-# surfaces (S-1 widened to 27; N-2 added the last verb `am`, HEAD 9b7c74c,
-# 2026-06-14). `apply` is INCLUDED (the verb-precise deny; design §5.1 G-4 —
-# denied for agents while `git diff` stays allowed). The 8 short/long verbs
-# `add`/`rm`/`mv`/`config`/`remote`/`gc`/`tag`/`notes` were added at S-1 and
-# `am` at N-2, each after measuring it present-and-consistent across all 10
-# surfaces with the actual `_check_56_verb_present` matcher (no false-positive:
-# each is genuinely enumerated in every surface's denylist). `am` matches
-# word-bounded via `(?<![\w-])am(?![\w-])`, which does NOT false-match inside
-# "stream" / "command" / "spam" / "amend" (review-2 disproved the prior
-# "substring-unsafe" rationale). Sized to the measured-consistent set, which
-# IS the full §5.1 set. Each is matched word-bounded.
+# the complete 29-verb set with NO exceptions, measured present in ALL 10
+# surfaces. `apply` is INCLUDED (the verb-precise deny; design §5.1 G-4 —
+# denied for agents while `git diff` stays allowed). `fetch` is INCLUDED —
+# `git fetch` writes remote-tracking refs / FETCH_HEAD / new objects (a ref +
+# repository state change), and `pull` (= fetch+merge) is already denied, so
+# denying the composite while permitting its fetching half would be incoherent.
+# The 8 short/long verbs `add`/`rm`/`mv`/`config`/`remote`/`gc`/`tag`/`notes`
+# and `am` were each added after measuring them present-and-consistent across
+# all 10 surfaces with the actual `_check_56_verb_present` matcher (no
+# false-positive: each is genuinely enumerated in every surface's denylist).
+# `am` matches word-bounded via `(?<![\w-])am(?![\w-])`, which does NOT
+# false-match inside "stream" / "command" / "spam" / "amend". Sized to the
+# measured-consistent set, which IS the full §5.1 set. Each is matched
+# word-bounded.
 _CHECK_56_CANONICAL_VERBS = (
     "commit", "push", "stash", "reset", "restore", "checkout",
     "clean", "merge", "rebase", "cherry-pick", "revert", "apply",
-    "switch", "worktree", "update-ref", "update-index", "pull",
+    "switch", "worktree", "update-ref", "update-index", "pull", "fetch",
     "filter-branch", "replace",
-    # S-1 additions (toward full §5.1 set; all measured present-and-consistent):
     "add", "rm", "mv", "config", "remote", "gc", "tag", "notes",
-    # N-2 addition (completes the full §5.1 set — 28 verbs, no exceptions):
     "am",
 )
 # The catch-all principle phrase — the load-bearing closing of the denylist
@@ -11164,6 +11159,14 @@ def check_destructive_git_verb_parity() -> None:
     ban (trinity ×3, PACK-MEMORY-RATIONALE, commit-discipline ×3, pack-coder
     ×3). Standalone (decision 8 — folding over-complicates). Sized to the
     measured-consistent verb set. 10 single-file reads; no subprocess.
+
+    ONE-WAY presence floor (constant→surface only): the 10 surfaces are three
+    heterogeneous grammars (trinity backtick-comma prose with parentheticals +
+    ALLOWED `git diff`/`git apply`, commit-discipline SKILL bullets, and TOML
+    body with BARE `git <verb>` and no backticks) with no delimited enumeration
+    region, so a reverse leg would be the rejected prose-parse; the
+    constant↔doc pair is backstopped by the Layer-3 mechanism + the Part B
+    meta-audit record.
     """
     print("\n── Check 56: BD-197 destructive-git-verb enumeration parity (Guard-C) ──")
     any_fail = False
@@ -11481,14 +11484,14 @@ def check_project_rw_ro_two_class() -> None:
 #
 # FOLD-vs-NEW-CHECK (decision 8 / §J3, the C7b coder's call): a NEW
 # STANDALONE Check 57 — NOT folded into Check 56 (Guard-C pack). Rationale:
-#   - Check 56 is sized to the FULL §5.1 28-verb set across 10 PACK surfaces
+#   - Check 56 is sized to the FULL §5.1 29-verb set across 10 PACK surfaces
 #     that all carry the AGENT ABSOLUTE ban (a closed enumeration). The
 #     PROJECT surfaces are heterogeneous: the project trinity carries the
 #     PM/human "No destructive operations — needs approval" rule (a SUBSET:
 #     working-tree/ref mutators only, with the `including but not limited to`
 #     catch-all), while the 48 agent files + the launcher carry the agent
 #     ban. So the project-consistent verb set is a measured INTERSECTION of
-#     8 verbs (below), NOT the 28-verb pack set, and the catch-all principle
+#     8 verbs (below), NOT the 29-verb pack set, and the catch-all principle
 #     phrase is TRINITY-ONLY (the agent files use a closed "Forbidden: …"
 #     enumeration with no catch-all). Folding two different canonical verb
 #     sets + a surface-conditional principle-phrase assertion into Check 56
