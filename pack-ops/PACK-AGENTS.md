@@ -200,6 +200,7 @@ Files:
 - `PACK-AGENTS.md`
 - `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (root and `project-template/`)
 - `PACK-MEMORY-RATIONALE.md` (rule↔rationale bijection partner for `## Pack memory`; edited only in lockstep with rule changes)
+- `session-state.json` (`pack-ops/` live-session snapshot; Pack-Chat-overwritten on every state transition)
 
 Directories:
 - `/backlog/` — pack per-entry tree (entries; supporting files

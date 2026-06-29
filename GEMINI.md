@@ -507,6 +507,16 @@ PACK-AGENTS.md current".
   "never source of truth" disclaimer; if a convenience view drifts, the
   per-entry tree wins. Read more at
   `<stream>/_rules.md`. `[roles: universal]`
+- **Live session state lives in the committed snapshot, never CLI memory.**
+  `pack-ops/session-state.json` is the committed, CLI-agnostic
+  current-frontier snapshot — the SSOT for resumable in-flight state
+  (active BDs + sub-step, in-flight agents to re-spawn, queue order,
+  parallelization mode, pending decisions, in-commit cycle position, and
+  the boundary commit). Pack Chat REPLACES its fields on every state
+  transition; it is never appended-to with a dated note or a history line.
+  CLI memory is FORBIDDEN for state. History goes to
+  BD / changelog / commit / handoff, never the snapshot. `/pack-startup`
+  reads it to resume. `[roles: universal] [rationale: session-state-snapshot]`
 - **The `/backlog/` tree has no Resolved section.** Entries resolve in place by
   flipping `Status: Open` to `Status: Resolved` and filling the `Resolved:`
   line. Do not propose moving entries to a separate section. Flip in the

@@ -463,6 +463,18 @@ claude
 /pack-startup
 ```
 
+**Where the resume frontier lives.** Pack Chat records the resumable frontier in
+`pack-ops/session-state.json` (a committed JSON file under `pack-ops/`). Edit it
+in place as a Pack-Chat-direct bookkeeping write — replace the relevant fields at
+each transition (a spawn, a completion, a landed commit, a queue reorder, a
+parallel↔serial switch, a captured/applied decision, a review/fix advance). Do
+not stack a second checkpoint or a notes line; the file holds one frontier, not a
+log. Anything past the frontier — finished cycles, landed-commit events, lessons
+— belongs in the backlog/changelog/commit/handoff, not here. Drift is caught at
+the validate-pack gate (CI + per-commit), not blocked at write time. This is the
+operational form of the trinity `## Pack memory` rule
+`[rationale: session-state-snapshot]`.
+
 ---
 
 ## Cross-machine instructions
@@ -473,6 +485,9 @@ The repo is the memory — not the session history. When moving between machines
 2. If the session exists on this machine, resume it and run `/pack-startup`
 3. If no session exists, start fresh, rename it `pack-chat`, and run `/pack-startup`
 4. Never sync session files between machines
+5. The live-session snapshot (`pack-ops/session-state.json`) travels with the
+   repo; `/pack-startup` reads it so a fresh CLI resumes the frontier without any
+   per-CLI memory
 
 ---
 

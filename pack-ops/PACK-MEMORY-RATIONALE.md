@@ -649,6 +649,15 @@ gate authorizes a re-engage — it fixes HOW-to-find, not WHEN-to-reengage. This
 MECHANISM is Claude-only; Codex MAv2 (`list_agents`/`resume_agent`) and Antigravity
 `agy` analogs exist but need their own verification + mapping.
 
+The registry is a same-clone history + re-find accelerator, NOT a transfer
+mechanism: because it is gitignored it never reaches a fresh clone / another
+machine / another CLI. The committed `pack-ops/session-state.json` snapshot
+(`session-state-snapshot`) is the SOLE authority for the resumable in-flight
+frontier; the registry is never read to answer "what is the current in-flight
+frontier." This is a construction boundary, not a discipline: the resume path
+(`/pack-startup`) reads only the snapshot, so a stale registry tail can never
+mislead a resume — the two surfaces are not both authorities.
+
 **Rejected alternative.** A committed manifest (`agents-never-commit` forbids the
 mid-task commit and it churns the tree); the Agent-Teams `members` list (teams-only,
 not durable across compaction); a message-id addressing tier (no such primitive
@@ -856,3 +865,41 @@ rejected: traceability lives in the entry stores and version control, not in
 the doc an agent executes. (b) Keeping a deferred-feature note "so readers
 know it is coming" — rejected: an agent never operates a deferred feature, so
 the note is pure context cost; it returns when the feature ships.
+
+---
+
+## session-state-snapshot
+
+**Why.** Resumable live state — which BDs are active, which agents are mid-flight,
+the user-decided queue order, the parallelization mode, the in-commit cycle
+position — used to live ONLY in CLI native memory (a per-CLI store) and the
+gitignored spawn registry. Neither travels: a fresh clone, a different machine,
+or a different CLI cannot read either, so a resume lost the frontier and a
+hand-maintained running note drifted stale (it accreted stacked entries and
+lessons until it no longer matched the committed tree). A single committed,
+CLI-agnostic snapshot fixes both failures at once: it travels with `git pull`,
+any CLI reads it identically, and CI can enforce its shape.
+
+**How.** Pack Chat keeps `pack-ops/session-state.json` — a committed JSON data
+file (outside every operating-doc `.md` family glob; one OUT-OF-FAMILY literal
+for the Check 69 closed-world meta-check) — as the SOLE authority for the
+current resumable frontier. It is OVERWRITTEN field-by-field on every state
+transition (a spawn, a completion, a commit landing, a queue reorder, a
+parallel↔serial change, a pending-decision capture/resolution, a review/fix
+advance), never appended-to. CLI memory is forbidden for state. The committed
+boundary commit is the durable resume anchor; `/pack-startup` reads the snapshot
+to report the resume frontier. Three bespoke checks (struct / freshness / no-
+history grammar) enforce well-formedness, boundary-reachability, and the never-
+history rule at the validate-pack gate (CI + per-commit) — bare `BD-NNN` tags are
+legitimate state, but a second date, an off-field SHA, narration, or growth past
+the size cap fails the build.
+
+**Rejected alternative.** (a) Keep state in CLI memory or the gitignored spawn
+registry — neither travels across machine/CLI/fresh-clone, the exact gap that
+loses the frontier on resume. (b) Append a stacked running note — append
+behavior is the root cause: it merges history+state into one blob that drifts
+stale. (c) Make the snapshot an `.md` operating doc with a content-anchored
+history allowlist — its BD-lines change on every overwrite, so the allowlist
+goes stale instantly; a non-`.md` data file plus a bespoke grammar check is the
+clean fit. (d) Commit the spawn registry instead — it is ~95% append-only
+history, violates `agents-never-commit` (agents write it), and bloats the tree.

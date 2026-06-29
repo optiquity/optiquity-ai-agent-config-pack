@@ -498,7 +498,10 @@ PACK-AGENTS.md current".
   measured; there is NO message-id addressing primitive — do not invent one;
   terminal fallback is a fresh re-spawn). Consult ONLY after the
   `fresh-agent-default` gate authorizes a re-engage — this fixes HOW-to-find,
-  not WHEN-to-reengage. The MECHANISM is Claude-only here; Codex MAv2
+  not WHEN-to-reengage. The registry is a same-clone re-find aid, NOT a
+  state-transfer mechanism: the committed snapshot (`session-state-snapshot`) is
+  the SOLE in-flight-state authority. The MECHANISM is Claude-only
+  here; Codex MAv2
   (`list_agents`/`resume_agent`) and Antigravity `agy` analogs exist but need
   their own verification + mapping. `[roles: universal]
   [rationale: spawn-registry-find]`
@@ -641,6 +644,16 @@ PACK-AGENTS.md current".
   "never source of truth" disclaimer; if a convenience view drifts, the
   per-entry tree wins. Read more at
   `<stream>/_rules.md`. `[roles: universal]`
+- **Live session state lives in the committed snapshot, never CLI memory.**
+  `pack-ops/session-state.json` is the committed, CLI-agnostic
+  current-frontier snapshot — the SSOT for resumable in-flight state
+  (active BDs + sub-step, in-flight agents to re-spawn, queue order,
+  parallelization mode, pending decisions, in-commit cycle position, and
+  the boundary commit). Pack Chat REPLACES its fields on every state
+  transition; it is never appended-to with a dated note or a history line.
+  CLI memory is FORBIDDEN for state. History goes to
+  BD / changelog / commit / handoff, never the snapshot. `/pack-startup`
+  reads it to resume. `[roles: universal] [rationale: session-state-snapshot]`
 - **The `/backlog/` tree has no Resolved section.** Entries resolve in place by
   flipping `Status: Open` to `Status: Resolved` and filling the `Resolved:`
   line. Do not propose moving entries to a separate section. Flip in the
