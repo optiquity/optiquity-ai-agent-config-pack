@@ -30,7 +30,6 @@
 - [BD-236](./BD-236.md) — Project-side agent-def discipline-parity guards are incomplete (Check 57 covers 8 of the 13 enumerated git verbs; Check 11 cross-surface symmetry is informational-only) — investigate + design a coherent project-side parity-enforcement strategy
 - [BD-245](./BD-245.md) — Strip per-CLI project memory from project deliverables (all 3 trinity CLIs); rename `## Project memory` → `## Project rules`; codify a CLI-symmetric no-project-memory prohibition (sibling of BD-232)
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
-- [BD-250](./BD-250.md) — Extend the anti-history/bloat durable guards (Check 65/66/67) to `supporting-docs/` operating docs + strip residual violations (measure-then-bound)
 - [BD-252](./BD-252.md) — Pack-side resumable session-state mechanism (repo-committed, CLI-agnostic, current-snapshot-only, /pack-startup-wired, CI-enforced)
 - [BD-253](./BD-253.md) — Project-side resumable session-state mechanism (PM-Chat; reconcile with existing `_index.md` / `STATUS.md` state; same transferability + no-CLI-memory rules as BD-252)
 
@@ -253,6 +252,7 @@
 - [BD-246](./BD-246.md) — Non-mutation integrity check for pack-shipped immutable files (per-version content checksums + CI-red verify)
 - [BD-248](./BD-248.md) — Persistent portable agent-handoff directory + pack-side write-fail fallback (reliability hardening, both surfaces)
 - [BD-249](./BD-249.md) — Pack-side dead-mirror-subsystem removal (mirror-generate.sh + mirror constants + accessor)
+- [BD-250](./BD-250.md) — Extend the anti-history/bloat durable guards (Check 65/66/67) to `supporting-docs/` operating docs + strip residual violations (measure-then-bound)
 - [BD-251](./BD-251.md) — Remove born-dead BD-164 per-entry back-pointer helpers (`pe_first_line_is_backpointer` + `pe_ensure_backpointer`)
 
 ## Deprecated
