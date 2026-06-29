@@ -5,11 +5,17 @@
 #
 # Check 70 asserts the SHIPPED client operating-doc enforcement gate
 # `project-template/scripts/validate-docs.sh` (a) EXISTS, (b) is executable,
-# (c) declares all 4 axis-markers (`# AXIS: history|deferred|bloat|dangling`),
-# and (d) is wired into the shipped `validate.sh` + `agent-post-edit-check.sh`.
+# (c) declares EXACTLY the constant's axis-markers
+# (`# AXIS: history|deferred|bloat|dangling|conformance`) as a BIDIRECTIONAL
+# set-equality bijection (forward: a constant marker absent from the gate FAILs;
+# reverse: a gate `# AXIS:` marker absent from the constant FAILs), and (d) is
+# wired into the shipped `validate.sh` + `agent-post-edit-check.sh`.
 # STRUCTURAL parity only (presence / executable / axis-coverage / wiring), NOT
 # behavioral. It is a PACK check that READS the project-template deliverable to
 # police it (the legitimate dependency direction).
+#
+# Bidirectional set-equality: forward (a constant marker absent from the gate
+# FAILs) + reverse (a gate `# AXIS:` marker absent from the constant FAILs).
 #
 # REGISTERED at CG-14: the check BODY + constants plus the CHECK_REGISTRY entry
 # are all live, so Check 70 IS in CHECK_REGISTRY (the count is 69). This test
@@ -26,13 +32,17 @@
 #            Check 70 REGISTERED (count == the DYNAMIC
 #            CHECK_REGISTRY_EXPECTED_COUNT, no literal)
 #   Group 1: Synthetic-tree end-to-end (in-process body invocation) —
-#            T1 a complete gate (executable + 4 axes + wired ×2) PASSES
-#            T2 a gate MISSING an axis-marker FAILS (the injected-FAIL teeth)
+#            T1 a complete gate (executable + 5 axes + wired ×2) PASSES
+#            T2 a gate MISSING an axis-marker FAILS (the forward-leg teeth)
 #            T3 a NON-executable gate FAILS
 #            T4 a gate NOT wired into a host FAILS
 #            T5 a WHOLLY-ABSENT gate file → lenient SKIP (init artifact)
+#            T6 a gate with an EXTRA `# AXIS:` marker not in the constant FAILS
+#               (the reverse-leg teeth — bidirectional set-equality)
+#            T7 a gate MISSING a constant marker FAILS naming that marker
+#               (the forward-leg teeth, asserting the direction explicitly)
 #   Group 2: Live-tree in-process body invocation PASSES (CG-CLIENT's real gate
-#            exists + executable + 4 axes + wired) — exercised via the
+#            exists + executable + 5 axes + wired) — exercised via the
 #            in-process body call (Check 70's clean live-tree run is also
 #            covered by the full no-flag validate-pack now that it is registered)
 #
@@ -72,9 +82,12 @@ required = ['check_client_doc_gate_parity', '_CHECK_70_CLIENT_GATE',
 missing = [n for n in required if not hasattr(mod, n)]
 if missing:
     print('FAIL_MISSING ' + ' '.join(missing)); sys.exit(1)
-# 4 axis-markers exactly (the 4 client axes).
-if len(mod._CHECK_70_AXIS_MARKERS) != 4:
+# 5 axis-markers exactly (history/deferred/bloat/dangling/conformance).
+if len(mod._CHECK_70_AXIS_MARKERS) != 5:
     print('FAIL_AXIS_COUNT', mod._CHECK_70_AXIS_MARKERS); sys.exit(1)
+# conformance (BD-206) must be tracked by the constant after the A3 content fix.
+if '# AXIS: conformance' not in mod._CHECK_70_AXIS_MARKERS:
+    print('FAIL_CONFORMANCE_ABSENT', mod._CHECK_70_AXIS_MARKERS); sys.exit(1)
 # DYNAMIC count invariant — never a hardcoded literal (matches check-62/63).
 if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
     print('FAIL_COUNT_MISMATCH', len(mod._build_check_registry()),
@@ -89,7 +102,7 @@ print('OK')
 " > /tmp/vp-check70-import.out 2>&1
 
 if grep -q "^OK$" /tmp/vp-check70-import.out; then
-    t_pass "imports + Check 70 symbols present + 4 axis-markers + count invariant holds (dynamic) + Check 70 REGISTERED (70 in registry)"
+    t_pass "imports + Check 70 symbols present + 5 axis-markers (incl. conformance) + count invariant holds (dynamic) + Check 70 REGISTERED (70 in registry)"
 else
     t_fail "Check 70 import / symbol / count / registered-state check failed" \
         "$(cat /tmp/vp-check70-import.out)"
@@ -111,14 +124,17 @@ spec.loader.exec_module(mod)
 
 failures = []
 
-# A complete synthetic gate carrying all 4 axis-markers + the two wiring hosts
+# A complete synthetic gate carrying all 5 axis-markers + the two wiring hosts
 # referencing the gate by basename. The synthetic scope mirrors the real
 # constants (validate-docs.sh + validate.sh + agent-post-edit-check.sh) so the
-# body's existence/executable/axis/wiring legs all exercise.
+# body's existence/executable/axis/wiring legs all exercise. ALL_AXES is derived
+# from _CHECK_70_AXIS_MARKERS so the synthetic "complete gate" stays in lockstep
+# with the constant (a future axis add lands here automatically) and exactly
+# satisfies the bidirectional set-equality (no missing, no extra).
 GATE_REL = "project-template/scripts/validate-docs.sh"
 WIRING = ("project-template/scripts/validate.sh",
           "project-template/scripts/agent-post-edit-check.sh")
-ALL_AXES = "# AXIS: history\n# AXIS: deferred\n# AXIS: bloat\n# AXIS: dangling\n"
+ALL_AXES = "".join(m + "\n" for m in mod._CHECK_70_AXIS_MARKERS)
 
 def run_check_in_tree(gate_body, executable, wiring_bodies):
     """Build a synthetic /tmp REPO_ROOT with a validate-docs.sh gate (optional)
@@ -159,7 +175,7 @@ def run_check_in_tree(gate_body, executable, wiring_bodies):
 
 WIRED_OK = {w: "run validate-docs.sh here\n" for w in WIRING}
 
-# T1: PASS — a complete gate (executable + 4 axes + wired ×2).
+# T1: PASS — a complete gate (executable + 5 axes + wired ×2).
 fc, cap = run_check_in_tree("#!/usr/bin/env bash\n" + ALL_AXES, True, WIRED_OK)
 if fc != 0:
     failures.append("T1 (complete gate PASS) expected 0 failures, got %d: %s" % (fc, cap))
@@ -202,6 +218,32 @@ if fc != 0:
 if "absent — skipping (lenient" not in cap:
     failures.append("T5 (absent-gate lenient SKIP) expected the lenient-skip message: %s" % cap)
 
+# T6: FAIL (the REVERSE-leg teeth) — a gate carrying ALL the constant's markers
+#     PLUS a synthetic 6th "# AXIS: foo" NOT in the constant. The bidirectional
+#     set-equality must FAIL naming foo as an extra (reverse divergence).
+extra_marker_gate = "#!/usr/bin/env bash\n" + ALL_AXES + "# AXIS: foo\n"
+fc, cap = run_check_in_tree(extra_marker_gate, True, WIRED_OK)
+if fc < 1:
+    failures.append("T6 (extra-marker reverse FAIL) expected >=1 failure, got %d: %s" % (fc, cap))
+if "NOT tracked by _CHECK_70_AXIS_MARKERS" not in cap:
+    failures.append("T6 (extra-marker reverse FAIL) expected the reverse-leg FAIL message: %s" % cap)
+if "# AXIS: foo" not in cap:
+    failures.append("T6 (extra-marker reverse FAIL) expected the offending marker foo named in output: %s" % cap)
+
+# T7: FAIL (the FORWARD-leg teeth, asserting direction) — a gate MISSING the
+#     first constant marker (present in the constant, absent from the gate). The
+#     bidirectional set-equality must FAIL naming that marker as missing.
+first_marker = mod._CHECK_70_AXIS_MARKERS[0]              # e.g. "# AXIS: history"
+gate_missing_first = "#!/usr/bin/env bash\n" + "".join(
+    m + "\n" for m in mod._CHECK_70_AXIS_MARKERS if m != first_marker)
+fc, cap = run_check_in_tree(gate_missing_first, True, WIRED_OK)
+if fc < 1:
+    failures.append("T7 (missing-constant-marker forward FAIL) expected >=1 failure, got %d: %s" % (fc, cap))
+if "missing axis-marker" not in cap:
+    failures.append("T7 (missing-constant-marker forward FAIL) expected the forward-leg FAIL message: %s" % cap)
+if first_marker not in cap:
+    failures.append("T7 (missing-constant-marker forward FAIL) expected the missing marker %r named in output: %s" % (first_marker, cap))
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -210,7 +252,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "Synthetic-tree body tests T1-T5 (complete-PASS / missing-axis-FAIL / non-executable-FAIL / not-wired-FAIL / absent-lenient-SKIP)" ;;
+    0) t_pass "Synthetic-tree body tests T1-T7 (complete-PASS / missing-axis-FAIL / non-executable-FAIL / not-wired-FAIL / absent-lenient-SKIP / extra-marker-reverse-FAIL / missing-constant-marker-forward-FAIL)" ;;
     *) t_fail "Synthetic-tree check_client_doc_gate_parity tests failed (see Python output)" ;;
 esac
 
@@ -245,7 +287,7 @@ print(cap.strip())
 " > /tmp/vp-check70-live.out 2>&1
 
 if grep -q "^OK$" /tmp/vp-check70-live.out; then
-    t_pass "Check 70 body runs clean on the live tree (CG-CLIENT's validate-docs.sh exists + executable + 4 axes + wired)"
+    t_pass "Check 70 body runs clean on the live tree (CG-CLIENT's validate-docs.sh exists + executable + 5 axes (bidirectional set-equality) + wired)"
 else
     t_fail "Check 70 body found a parity gap on the live tree OR no clean message" \
         "$(tail -20 /tmp/vp-check70-live.out)"

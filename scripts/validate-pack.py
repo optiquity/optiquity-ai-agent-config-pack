@@ -9450,6 +9450,7 @@ _CHECK_70_AXIS_MARKERS = (
     "# AXIS: deferred",
     "# AXIS: bloat",
     "# AXIS: dangling",
+    "# AXIS: conformance",
 )
 _CHECK_70_WIRING_FILES = (
     "project-template/scripts/validate.sh",
@@ -9462,12 +9463,22 @@ def check_client_doc_gate_parity() -> None:
 
     Asserts the shipped client operating-doc enforcement gate
     `project-template/scripts/validate-docs.sh` (a) EXISTS, (b) is executable,
-    (c) declares all 4 axis-markers (`# AXIS: history|deferred|bloat|dangling`),
-    and (d) is wired into the shipped `validate.sh` + `agent-post-edit-check.sh`.
+    (c) declares EXACTLY the constant's axis-markers
+    (`# AXIS: history|deferred|bloat|dangling|conformance`), and (d) is wired
+    into the shipped `validate.sh` + `agent-post-edit-check.sh`.
     STRUCTURAL parity only (presence / executable / axis-coverage / wiring) —
     NOT behavioral (the two gates re-implement the same logic per DC-1; drift is
     mitigated by the shared trinity rule-text anchor + THIS presence guard, not
     a behavioral comparison that would be a maintenance trap).
+
+    Axis-coverage is a BIDIRECTIONAL set-equality bijection between
+    `_CHECK_70_AXIS_MARKERS` and the gate's `# AXIS: <marker>` declarations:
+    forward — a constant marker absent from the gate FAILs; reverse — a gate
+    `# AXIS:` marker absent from the constant FAILs. The gate's `# AXIS:`
+    grammar is a clean delimited extraction (one marker per line,
+    `# AXIS: <marker>` regex-extractable), so the reverse leg is non-brittle.
+    A future pack version that adds/removes a client axis updates BOTH the gate
+    and `_CHECK_70_AXIS_MARKERS` in the same change.
 
     Dependency direction (dependency-direction-placement): this is a PACK check
     that READS the project-template client deliverable to police it — the
@@ -9494,8 +9505,9 @@ def check_client_doc_gate_parity() -> None:
         ok(
             f"{_CHECK_70_CLIENT_GATE} absent — skipping (lenient; the shipped "
             f"client gate is an init/state artifact when absent, not a parity "
-            f"violation). When present it must be executable, declare all 4 "
-            f"axis-markers, and be wired into validate.sh + "
+            f"violation). When present it must be executable, declare exactly "
+            f"the {len(_CHECK_70_AXIS_MARKERS)} axis-markers (bidirectional "
+            f"set-equality), and be wired into validate.sh + "
             f"agent-post-edit-check.sh."
         )
         return
@@ -9515,20 +9527,45 @@ def check_client_doc_gate_parity() -> None:
 
     gate_text = gate_path.read_text(encoding="utf-8", errors="replace")
 
-    # (c) all 4 axis-markers declared
-    missing_axes = [m for m in _CHECK_70_AXIS_MARKERS if m not in gate_text]
+    # (c) axis-coverage — BIDIRECTIONAL set-equality bijection between the
+    # constant and the gate's `# AXIS: <marker>` declarations.
+    constant_axes = {m.split(": ", 1)[1] for m in _CHECK_70_AXIS_MARKERS}
+    gate_axes = set(re.findall(r"# AXIS: ([a-z-]+)", gate_text))
+
+    # (c-forward) a constant marker absent from the gate FAILs (the gate
+    # dropped/renamed an axis the constant still expects).
+    missing_axes = sorted(constant_axes - gate_axes)
     if missing_axes:
         any_fail = True
         fail(
             f"{_CHECK_70_CLIENT_GATE} — the shipped client doc-gate is missing "
-            f"axis-marker(s): {missing_axes}. Per DESIGN-BD-243-CLIENT-GATE.md "
-            f"§C.3 the gate must declare ALL 4 axes "
-            f"({list(_CHECK_70_AXIS_MARKERS)}) as `# AXIS: <axis>` marker "
+            f"axis-marker(s): {['# AXIS: ' + a for a in missing_axes]}. Per "
+            f"DESIGN-BD-243-CLIENT-GATE.md §C.3 the gate must declare exactly "
+            f"the {len(constant_axes)} axes "
+            f"({sorted(constant_axes)}) as `# AXIS: <axis>` marker "
             f"comments so this parity check can confirm axis-coverage "
             f"structurally. Remediation: restore the dropped axis (its matcher "
             f"+ its `# AXIS:` marker) in the gate; a future pack version that "
             f"adds/removes a client axis updates BOTH the gate and "
             f"_CHECK_70_AXIS_MARKERS in the same change."
+        )
+
+    # (c-reverse) a gate `# AXIS:` marker absent from the constant FAILs (the
+    # gate added an axis the constant has not tracked — the reverse-drift the
+    # one-way floor used to miss). The gate's `# AXIS:` grammar is a clean
+    # delimited extraction, so this leg is non-brittle.
+    extra_axes = sorted(gate_axes - constant_axes)
+    if extra_axes:
+        any_fail = True
+        fail(
+            f"{_CHECK_70_CLIENT_GATE} — the shipped client doc-gate declares "
+            f"`# AXIS:` marker(s) NOT tracked by _CHECK_70_AXIS_MARKERS: "
+            f"{['# AXIS: ' + a for a in extra_axes]}. Axis-coverage is a "
+            f"BIDIRECTIONAL set-equality bijection: a gate axis the constant "
+            f"does not list is a reverse divergence. Remediation: add the new "
+            f"axis ({['# AXIS: ' + a for a in extra_axes]}) to "
+            f"_CHECK_70_AXIS_MARKERS, or remove it from the gate; the gate and "
+            f"_CHECK_70_AXIS_MARKERS must change in the same commit."
         )
 
     # (d) wired into validate.sh + agent-post-edit-check.sh
@@ -9560,9 +9597,10 @@ def check_client_doc_gate_parity() -> None:
     if not any_fail:
         ok(
             f"Check 70 — {_CHECK_70_CLIENT_GATE} exists, is executable, "
-            f"declares all {len(_CHECK_70_AXIS_MARKERS)} axis-markers "
-            f"({', '.join(m.split(': ', 1)[1] for m in _CHECK_70_AXIS_MARKERS)}"
-            f"), and is wired into "
+            f"declares EXACTLY the {len(_CHECK_70_AXIS_MARKERS)} axis-markers "
+            f"({', '.join(sorted(constant_axes))}) — bidirectional set-equality "
+            f"with _CHECK_70_AXIS_MARKERS (no missing, no extra) — and is wired "
+            f"into "
             f"{', '.join(Path(w).name for w in _CHECK_70_WIRING_FILES)} "
             f"(structural parity complete)."
         )
@@ -10996,6 +11034,14 @@ def check_optional_features_presence() -> None:
     Measure-then-bound: sized to exactly the 3 authored tokens × 2 files. Two
     single-file reads + bounded substring tests; no subprocess, no whole-tree
     scan.
+
+    Directionality (accepted one-way residual): this is a ONE-WAY presence
+    floor — each mandated token must appear in each surface; there is no reverse
+    leg. The 2 surfaces are PROSE OPTIONAL-FEATURES docs with no delimited
+    enumeration region, so a reverse leg (a token in the surface not in the
+    constant FAILs) would require parsing free prose — the rejected prose-parse.
+    The constant↔doc pair is backstopped by the Layer-3 doc-constant-twin
+    registry mechanism + the BD-255 Part B meta-audit record.
     """
     print("\n── Check 54: BD-197 OPTIONAL-FEATURES presence-check (Guard-A′) ──")
     any_fail = False
