@@ -693,8 +693,8 @@ project edits; the live file has the v10 pack version.
      file (the addition is project-specific and should remain in
      the project's copy of the pack file).
    - **Upstream.** File a `PACK-FEEDBACK.md` entry proposing the
-     addition. After upstreaming, the addition lands in a future
-     pack version and the project's local edit can be removed at
+     addition. After upstreaming, the addition becomes part of the
+     pack and the project's local edit can be removed at
      the next migration.
    - **Drop.** v10 supersedes the project edit (the pack changed
      for a reason that obsoletes the project's customization).

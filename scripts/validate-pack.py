@@ -8433,6 +8433,15 @@ _CHECK_OPERATING_DOC_FAMILIES = (
     # project stream-meta write-contracts (the changelog format spec folds
     # into changelog/_rules.md's `## Entry structure` section)
     "project-template/docs/project/*/_rules.md",
+    # newly-operating supporting-docs (BD-250 targeted reversal of BD-243's
+    # EXEMPT ruling for exactly these 2 — they issue live instruction the PM
+    # chat / agents EXECUTE; the other supporting-docs/*.md stay reference).
+    # POINT LITERALS, never a supporting-docs/*.md glob (a glob would wrongly
+    # pull in the reference files BD-243 measured EXEMPT). Reached by Check 69
+    # as point family-members (NOT tree-scanned) — same posture as the trinity
+    # + _rules.md literals; _CHECK_OPERATING_DOC_SCANNED_TREES is UNCHANGED.
+    "supporting-docs/METHODOLOGY.md",
+    "supporting-docs/INSTALL-PROCEDURES.md",
 )
 
 # Globbed-but-EXEMPT: a family glob picks these up but they are NOT operating

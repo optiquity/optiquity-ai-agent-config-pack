@@ -1365,7 +1365,7 @@ No phase prompt is generated until this check is complete.
    - Phase N blocker: has that phase been committed and marked ✅ in STATUS.md?
    - Phase N.M blocker (v11.0 additive): read the `✅` marker on the
      `#### N.M` heading in the per-entry tree. (Flat-file per-entry is the
-     sole supported mode; tracker integration is deferred.)
+     sole supported mode.)
    - Phase task A blocked by phase task B (Dependencies field):
      same resolution as Phase N.M — read the target task's status; mode-agnostic.
    - TD-NNN blocker: does that item have Status: Resolved?
@@ -1746,7 +1746,7 @@ This placement rule guides cleanup batches and pack-version
 upgrades; it does not retroactively renumber existing rules.
 Where a pre-existing duplicated rule still satisfies the
 defense-in-depth conditions, leave it; where it does not,
-schedule a single-source consolidation in a future cleanup batch.
+consolidate it to a single source.
 
 
 ---

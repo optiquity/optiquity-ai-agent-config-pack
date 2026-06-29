@@ -346,6 +346,67 @@ pattern: deferred
 snippet: pending / in-progress / done / deferred
 reason: status vocabulary — the plan-entry lifecycle states, one of which is "deferred"; a contract enumeration, not a feature advert.
 
+# --- Pack-shipped operating docs installed into docs/pack/ (METHODOLOGY.md +
+#     INSTALL-PROCEDURES.md). The pack re-classified these REFERENCE→OPERATING,
+#     so the client gate now scans their installed copies on the DEFERRED axis.
+#     Every hit is the live TD-deferral workflow (the coder/PM "Deferred items"
+#     report flow, the TODO-scope vocabulary, the backlog-entry template), not a
+#     deferred feature. Sized to EXACTLY the 11 fence-stripped KEEP (9 + 2). ---
+doc: docs/pack/METHODOLOGY.md
+pattern: deferred
+snippet: deferred items report. See Part 7
+reason: live TD-deferral workflow — the coder "Deferred items" report.
+
+doc: docs/pack/METHODOLOGY.md
+pattern: deferred
+snippet: items are never deferred to BACKLOG
+reason: live TD-deferral workflow — a rule about deferral handling, not a deferred feature.
+
+doc: docs/pack/METHODOLOGY.md
+pattern: deferred
+snippet: Variant: backlog-status-update (for items deferred to BACKLOG)
+reason: live TD-deferral workflow — the fix-cycle workflow-table row (distinguishing :879 substring).
+
+doc: docs/pack/METHODOLOGY.md
+pattern: deferred
+snippet: completion-report shape (Unplanned-file-modifications
+reason: live TD-deferral workflow — the completion-report "Deferred items" section.
+
+doc: docs/pack/METHODOLOGY.md
+pattern: deferred
+snippet: the full system for tracking deferred work
+reason: live TD-deferral workflow — defines the TD-deferral system.
+
+doc: docs/pack/METHODOLOGY.md
+pattern: deferred
+snippet: `phase-N` (deferred to a named phase)
+reason: live TD-deferral workflow — the TODO-scope deferral vocabulary, not a deferred feature.
+
+doc: docs/pack/METHODOLOGY.md
+pattern: deferred
+snippet: optimization deferred until profiling shows need
+reason: live TD-deferral workflow — same TODO-scope vocabulary.
+
+doc: docs/pack/METHODOLOGY.md
+pattern: deferred
+snippet: report deferred items in completion report
+reason: live TD-deferral workflow — the coder report directive.
+
+doc: docs/pack/METHODOLOGY.md
+pattern: deferred
+snippet: Add the deferred items explicitly to the
+reason: live TD-deferral workflow — a rule about handling deferral.
+
+doc: docs/pack/INSTALL-PROCEDURES.md
+pattern: deferred
+snippet: no deferred items remain
+reason: live TD-deferral workflow — a procedure step in the install/handoff flow.
+
+doc: docs/pack/INSTALL-PROCEDURES.md
+pattern: deferred
+snippet: If either task has deferred items, leave
+reason: live TD-deferral workflow — same procedure flow.
+
 # ===========================================================================
 # BLOAT axis — KEEP (irreducible enumerations, ×3 trinity)
 # ===========================================================================

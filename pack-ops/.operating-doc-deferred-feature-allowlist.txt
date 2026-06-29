@@ -447,3 +447,68 @@ reason: C4 — the BACKLOG `Unblocked` status definition (names the `Deferred` s
 doc: backlog/_rules.md
 snippet: deliberately postponed (user-authorized)
 reason: C4 — the BACKLOG `Deferred` status definition (live workflow vocabulary).
+
+# ─────────────────────────────────────────────────────────────────
+# C4 — the 2 newly-operating supporting-docs (BD-250). METHODOLOGY.md +
+# INSTALL-PROCEDURES.md were re-classified REFERENCE→OPERATING; every hit
+# below is the LIVE TD-deferral WORKFLOW (the coder/PM "Deferred items"
+# report flow, the TODO-scope vocabulary, the backlog-entry template), NOT a
+# deferred pack feature. Sized to EXACTLY the 14 measured KEEP (12 + 2); the
+# 3 STRIP hits were removed (no record for them).
+# ─────────────────────────────────────────────────────────────────
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: Technical debt, deferred items, known gaps
+reason: C4 — names the backlog tree's CONTENTS (live TD-deferral workflow), not a deferred pack feature.
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: deferred items report. See Part 7
+reason: C4 — the live coder "Deferred items" report workflow.
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: items are never deferred to BACKLOG
+reason: C4 — a workflow RULE about deferral, not a feature promise.
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: Variant: backlog-status-update (for items deferred to BACKLOG)
+reason: C4 — the live fix-cycle workflow-table row (distinguishing :879 substring, not the bare "Workflow 4 — Fix cycle" which collides with the no-marker :525 heading).
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: completion-report shape (Unplanned-file-modifications
+reason: C4 — the completion-report "Deferred items" section (live workflow).
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: the full system for tracking deferred work
+reason: C4 — defines the live TD-deferral SYSTEM.
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: `phase-N` (deferred to a named phase)
+reason: C4 — TODO-scope VOCABULARY (the deferral scopes), not a deferred feature.
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: optimization deferred until profiling shows need
+reason: C4 — same TODO-scope vocabulary.
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: What the work is and why it was deferred
+reason: C4 — a backlog-entry TEMPLATE field (live workflow).
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: Read the "Deferred items" section of the coder
+reason: C4 — live workflow step.
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: report deferred items in completion report
+reason: C4 — live workflow.
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: Add the deferred items explicitly to the
+reason: C4 — a workflow RULE about handling deferral.
+
+doc: supporting-docs/INSTALL-PROCEDURES.md
+snippet: no deferred items remain
+reason: C4 — the live TD-deferral workflow (procedure step).
+
+doc: supporting-docs/INSTALL-PROCEDURES.md
+snippet: If either task has deferred items, leave
+reason: C4 — same live workflow.
