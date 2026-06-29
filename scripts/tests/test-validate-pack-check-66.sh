@@ -34,6 +34,12 @@
 #            via the in-process body call (Check 66's clean run over the live
 #            tree is also covered by the full no-flag validate-pack now that it
 #            is registered)
+#   Group 3: A5-collapse two-heading + project-rename-safe (BD-255 Part A) —
+#            the two per-location H2 constants exist; _CHECK_66_BULLET_SURFACE
+#            reads `## Pack memory` for pack-root rows + `## Project memory`
+#            for project-template rows; a SYNTHETIC project rename to
+#            `## Project rules` (with _TRINITY_MEMORY_H2_PROJECT flipped) keeps
+#            Check 66 GREEN while the pack-root heading is untouched.
 #
 # Usage: bash scripts/tests/test-validate-pack-check-66.sh
 
@@ -228,6 +234,131 @@ else
     t_fail "Check 66 body found an over-cap bullet on the live tree OR no clean message" \
         "$(tail -20 /tmp/vp-check66-live.out)"
 fi
+
+# ─────────────────────────────────────────────────────────────────
+# Group 3: A5-collapse two-heading + project-rename-safe (BD-255 Part A)
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 3: A5-collapse two-heading + project-rename-safe ===\n"
+
+python3 <<EOF
+import sys, io, contextlib, tempfile, pathlib, shutil
+sys.path.insert(0, '$REPO_ROOT/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+failures = []
+
+# T1: the two per-location H2 constants exist + carry the expected current text.
+for name, expected in (
+    ("_TRINITY_MEMORY_H2_PACK", "## Pack memory"),
+    ("_TRINITY_MEMORY_H2_PROJECT", "## Project memory"),
+):
+    if not hasattr(mod, name):
+        failures.append("T1 missing constant %s" % name)
+    elif getattr(mod, name) != expected:
+        failures.append("T1 %s == %r, expected %r" % (name, getattr(mod, name), expected))
+
+# T2: _CHECK_66_BULLET_SURFACE reads the per-location constant — pack-root rows
+# use _TRINITY_MEMORY_H2_PACK; project-template rows use _TRINITY_MEMORY_H2_PROJECT.
+surface = dict(mod._CHECK_66_BULLET_SURFACE)
+pack_rows = ["CLAUDE.md", "AGENTS.md", "GEMINI.md"]
+proj_rows = ["project-template/CLAUDE.md", "project-template/AGENTS.md",
+             "project-template/GEMINI.md"]
+for r in pack_rows:
+    if surface.get(r) is not mod._TRINITY_MEMORY_H2_PACK:
+        failures.append("T2 pack-root row %s heading is not _TRINITY_MEMORY_H2_PACK (got %r)" % (r, surface.get(r)))
+for r in proj_rows:
+    if surface.get(r) is not mod._TRINITY_MEMORY_H2_PROJECT:
+        failures.append("T2 project-template row %s heading is not _TRINITY_MEMORY_H2_PROJECT (got %r)" % (r, surface.get(r)))
+
+def run66_in_tree(files, surface, allowlist_text=""):
+    """Build a /tmp REPO_ROOT with the given {rel: text} files + an optional
+    allowlist; run Check 66 with the given surface tuple; restore; return
+    (fails, captured)."""
+    tmpdir = tempfile.mkdtemp(prefix="vp-check66-g3-")
+    root = pathlib.Path(tmpdir)
+    for rel, text in files.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text)
+    if allowlist_text:
+        (root / "pack-ops").mkdir(parents=True, exist_ok=True)
+        (root / "pack-ops" / ".bullet-concision-allowlist.txt").write_text(allowlist_text)
+    saved_root = mod.REPO_ROOT
+    saved_surface = mod._CHECK_66_BULLET_SURFACE
+    saved_failures = list(mod.failures)
+    mod.failures.clear()
+    mod.REPO_ROOT = root
+    mod._CHECK_66_BULLET_SURFACE = surface
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            mod.check_operating_doc_bullet_concision()
+        fails = list(mod.failures)
+        captured = buf.getvalue()
+    finally:
+        mod.REPO_ROOT = saved_root
+        mod._CHECK_66_BULLET_SURFACE = saved_surface
+        mod.failures.clear()
+        mod.failures.extend(saved_failures)
+        shutil.rmtree(tmpdir, ignore_errors=True)
+    return fails, captured
+
+SHORT = "- **short rule.** a short bullet under any cap.\n"
+
+# T3: with the CURRENT headings, both locations resolve + scan (PASS). A
+# pack-root file with `## Pack memory` + a project file with `## Project memory`.
+pack_doc = "# C\n\n## Pack memory\n\n" + SHORT
+proj_doc = "# C\n\n## Project memory\n\n" + SHORT
+surface = (
+    ("CLAUDE.md", mod._TRINITY_MEMORY_H2_PACK),
+    ("project-template/CLAUDE.md", mod._TRINITY_MEMORY_H2_PROJECT),
+)
+fails, cap = run66_in_tree({"CLAUDE.md": pack_doc,
+                            "project-template/CLAUDE.md": proj_doc}, surface)
+if fails:
+    failures.append("T3 (current headings) expected PASS, got fails: %s" % cap)
+if "2 bullet-surface file(s) scanned" not in cap:
+    failures.append("T3 (current headings) expected both files scanned: %s" % cap)
+
+# T4: SYNTHETIC project rename to `## Project rules` (BD-245), with
+# _TRINITY_MEMORY_H2_PROJECT flipped in lockstep — Check 66 stays GREEN, the
+# project bullets are still found under the new heading, and the pack-root
+# heading is UNTOUCHED (still `## Pack memory`). Simulate by passing a surface
+# tuple that uses the renamed project heading constant value.
+renamed_project_heading = "## Project rules"
+proj_doc_renamed = "# C\n\n## Project rules\n\n" + SHORT
+surface_renamed = (
+    # pack-root UNTOUCHED — still _TRINITY_MEMORY_H2_PACK / `## Pack memory`.
+    ("CLAUDE.md", mod._TRINITY_MEMORY_H2_PACK),
+    # project-template uses the RENAMED heading (the BD-245 one-constant flip).
+    ("project-template/CLAUDE.md", renamed_project_heading),
+)
+fails, cap = run66_in_tree({"CLAUDE.md": pack_doc,
+                            "project-template/CLAUDE.md": proj_doc_renamed},
+                           surface_renamed)
+if fails:
+    failures.append("T4 (synthetic project rename) expected PASS, got fails: %s" % cap)
+if "2 bullet-surface file(s) scanned" not in cap:
+    failures.append("T4 (synthetic project rename) expected both files scanned (project bullets found under the renamed heading): %s" % cap)
+# Assert the pack-root constant is STILL `## Pack memory` (rename did not touch it).
+if mod._TRINITY_MEMORY_H2_PACK != "## Pack memory":
+    failures.append("T4 pack-root heading was changed by the project rename (regression)")
+
+if failures:
+    print("FAILURES")
+    for f in failures:
+        print(" ", f)
+    sys.exit(1)
+print("OK")
+EOF
+case $? in
+    0) t_pass "A5-collapse two-heading + project-rename-safe (T1-T4: constants exist; per-location surface; current headings PASS; synthetic project rename stays GREEN with pack-root untouched)" ;;
+    *) t_fail "A5-collapse two-heading / project-rename-safe tests failed (see Python output)" ;;
+esac
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

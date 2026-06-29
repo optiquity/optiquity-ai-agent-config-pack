@@ -505,8 +505,9 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # FAIL. The Check-44 pattern-tuple reduction (BD-243) changes NO entry count
 # (+0). This constant is the explicit invariant; the actual count is COMPUTED
 # from len(_build_check_registry()) and asserted equal by Check 59 — never
-# hard-coded anywhere else.
-CHECK_REGISTRY_EXPECTED_COUNT = 77
+# hard-coded anywhere else. BD-255 Part A adds Check 80 (the generic doc↔
+# constant twin-bijection check): 77 → 78.
+CHECK_REGISTRY_EXPECTED_COUNT = 78
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
@@ -4094,6 +4095,325 @@ def render_pack_chat_only_doc_section() -> str:
     lines.append("")
     lines.append(_PACK_CHAT_ONLY_DOC_END)
     return "\n".join(lines)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# DOC↔CONSTANT TWIN REGISTRY (BD-255 Part A, design §3.1 Layer 3) + Check 80.
+#
+# A `_DOC_CONSTANT_TWINS` row enrolls a hand-authored doc↔constant twin (a
+# prose set a doc maintains as its audience SSOT, restated by an enforcement
+# constant, with nothing structurally forcing co-variance). Each row is tagged
+# by GUARD-KIND:
+#   - "bijection": the doc region's set is cleanly extractable, so Check 80
+#     asserts doc-set == constant-set (the Check-45/52 idiom). Drift-proof.
+#   - "recorded": the doc surface is a PROSE FLOOR — a clean set extraction is
+#     infeasible (the rejected prose-parse the design forbids for Check 54/56).
+#     Check 80 asserts only that the constant SYMBOL RESOLVES (the MUST-2
+#     backstop record); the bespoke check (54/56) keeps its one-way guard.
+#
+# The F2 defeater — opt-in enrollment — is answered NOT by auto-discovery
+# (infeasible; no syntactic twin-signal exists, design §2.5) but by the
+# Check-59-style COMPLETENESS LEG in Check 80: len(...) == EXPECTED_COUNT +
+# every symbol resolves. Enrollment is a count-gated, reviewable governance act.
+#
+# Row shape: (label, doc_paths, region/anchor, constant_symbol_name, guard_kind)
+#   - label: a short human tag for messages.
+#   - doc_paths: tuple of REPO_ROOT-relative doc files carrying the region.
+#   - region: a human description of the region/anchor (for messages).
+#   - constant_symbol_name: the module-attribute NAME (resolved via getattr at
+#     check time — also the completeness-leg "symbol resolves" target).
+#   - guard_kind: "bijection" | "recorded".
+_DOC_CONSTANT_TWINS = (
+    # A1 (BIJECTION) — LOCKS the A1 collapse: the generated PACK-AGENTS.md
+    # pack-chat-only region (between the GENERATED markers) must EQUAL
+    # render_pack_chat_only_doc_section() output (the constant-derived render).
+    # This activates the A1 divergence guard that was dormant pending #80.
+    (
+        "A1 pack-chat-only permitted set",
+        ("pack-ops/PACK-AGENTS.md",),
+        "the GENERATED:pack-chat-only-permitted-set region",
+        "_PACK_CHAT_ONLY_PERMITTED_PATHS",
+        "bijection",
+    ),
+    # TRACKER (BIJECTION) — the "Supported at v11.0: ... reserved" backend
+    # comment block in BOTH example files ↔ _TRACKER_BACKENDS. The comment is a
+    # single delimited line (quoted first-class + a comma-delimited reserved
+    # parenthetical), regex-clean, identical in both files → a real bijection.
+    # (_TRACKER_MODES / _TRACKER_PREFER are NOT separate clean comment-block
+    # twins — their tokens are scattered prose definitions across TOML tables,
+    # not a single "supported set" comment; the backend line is the only clean
+    # one, per the BD-255 census.)
+    (
+        "tracker supported backends",
+        ("tracker.toml.pack-example", "project-template/tracker.toml.project-example"),
+        'the "Supported at vN: ... reserved" backend comment line',
+        "_TRACKER_BACKENDS",
+        "bijection",
+    ),
+    # Check 54 (RECORDED residual) — OPTIONAL-FEATURES surfaces ↔
+    # _CHECK_54_REQUIRED_TOKENS. The surface is rich human prose (a prose
+    # floor); a set-equality bijection is the rejected prose-parse. Check 54
+    # keeps its presence-only one-way guard; this row is the MUST-2 backstop
+    # record (symbol-resolve only).
+    (
+        "OPTIONAL-FEATURES required tokens",
+        (
+            "pack-ops/OPTIONAL-FEATURES.md",
+            "project-template/docs/pack/OPTIONAL-FEATURES.md",
+        ),
+        "OPTIONAL-FEATURES prose (presence-only; prose floor)",
+        "_CHECK_54_REQUIRED_TOKENS",
+        "recorded",
+    ),
+    # Check 56 (RECORDED residual) — trinity destructive-git-verb enumeration ↔
+    # _CHECK_56_CANONICAL_VERBS. The surface is rich human prose with sub-form
+    # parentheticals; a clean set extraction is infeasible (the prose-parse the
+    # design rejects). Check 56 keeps its bespoke one-way guard; this row is the
+    # MUST-2 backstop record (symbol-resolve only).
+    (
+        "destructive-git-verb canonical set",
+        ("CLAUDE.md", "AGENTS.md", "GEMINI.md"),
+        "the agents-never-commit destructive-verb enumeration across the "
+        "_CHECK_56_VERB_PARITY_SURFACES set (prose floor; sub-form "
+        "parentheticals make a clean extraction infeasible)",
+        "_CHECK_56_CANONICAL_VERBS",
+        "recorded",
+    ),
+)
+
+# The count-gate (the CHECK_REGISTRY_EXPECTED_COUNT idiom). Check 80's
+# completeness leg asserts len(_DOC_CONSTANT_TWINS) == this. Adding/removing a
+# twin row is a deliberate, count-gated, reviewable edit.
+_DOC_CONSTANT_TWINS_EXPECTED_COUNT = 4
+
+
+def _doc_constant_twin_doc_set(label, doc_paths, region, symbol_name):
+    """Extract the doc-region SET for a BIJECTION twin row, per its label.
+
+    Returns a `set[str]` of the tokens the doc region enumerates, or raises
+    ValueError if the region/markers are absent (a structural break the check
+    surfaces as a FAIL). Dispatches on the row label because each bijection
+    twin has its own (small, bespoke) region grammar — exactly the Check-45/52
+    pattern, scoped to the measured surfaces (measure-then-bound).
+    """
+    if symbol_name == "_PACK_CHAT_ONLY_PERMITTED_PATHS":
+        # A1: the doc set IS the membership the rendered region encodes. The
+        # rendered block is the constant-derived SSOT; the bijection is the
+        # doc's region == render_pack_chat_only_doc_section() output. We compare
+        # the extracted path/prefix backtick tokens, not the whole block, so a
+        # cosmetic whitespace edit is not a false RED.
+        doc_path = REPO_ROOT / doc_paths[0]
+        text = doc_path.read_text()
+        begin = _PACK_CHAT_ONLY_DOC_BEGIN
+        end = _PACK_CHAT_ONLY_DOC_END
+        if begin not in text or end not in text:
+            raise ValueError(
+                f"{doc_paths[0]} is missing the GENERATED pack-chat-only "
+                f"region markers"
+            )
+        region_text = text.split(begin, 1)[1].split(end, 1)[0]
+        # Each rendered bullet is `- `<path-or-prefix>` (...)` / `- `<...>` — ...`.
+        return set(re.findall(r"^- `([^`]+)`", region_text, re.MULTILINE))
+    if symbol_name == "_TRACKER_BACKENDS":
+        # Backend comment line: # Supported at <ver>: "<first>". Others
+        # (<a>, <b>, <c>) reserved. The full set = first-class ∪ reserved.
+        line_re = re.compile(
+            r'#\s*Supported at [^:]+:\s*"([^"]+)"\.\s*Others\s*'
+            r'\(([^)]+)\)\s*reserved\.'
+        )
+        sets_per_file = []
+        for rel in doc_paths:
+            doc_path = REPO_ROOT / rel
+            text = doc_path.read_text()
+            m = None
+            for line in text.splitlines():
+                mm = line_re.search(line)
+                if mm:
+                    m = mm
+                    break
+            if m is None:
+                raise ValueError(
+                    f"{rel} is missing the 'Supported at ...: ... reserved' "
+                    f"backend comment line"
+                )
+            first_class = m.group(1).strip()
+            reserved = [t.strip() for t in m.group(2).split(",") if t.strip()]
+            sets_per_file.append(frozenset([first_class] + reserved))
+        # All example files must agree (the shipped comment is identical).
+        if len(set(sets_per_file)) != 1:
+            raise ValueError(
+                f"tracker backend comment sets diverge across {list(doc_paths)}: "
+                f"{[sorted(s) for s in sets_per_file]}"
+            )
+        return set(sets_per_file[0])
+    raise ValueError(
+        f"no bijection doc-set extractor for twin '{label}' "
+        f"(symbol {symbol_name})"
+    )
+
+
+def _doc_constant_twin_const_set(module_ns, symbol_name):
+    """Return the CONSTANT-side SET for a BIJECTION twin row.
+
+    `module_ns` is this module's globals() (robust under either import path).
+    The row names ONE representative symbol; the A1 twin's membership SSOT is
+    actually TWO constants (paths + prefixes) whose UNION the rendered doc
+    region encodes — so the A1 const set is that union. Other bijection twins
+    are a single set-like constant.
+    """
+    if symbol_name == "_PACK_CHAT_ONLY_PERMITTED_PATHS":
+        return set(module_ns["_PACK_CHAT_ONLY_PERMITTED_PATHS"]) | set(
+            module_ns["_PACK_CHAT_ONLY_PERMITTED_PREFIXES"]
+        )
+    return set(module_ns[symbol_name])
+
+
+def check_doc_constant_twin_bijection() -> None:
+    """Check 80 — generic doc↔constant twin-bijection + completeness leg (BD-255).
+
+    The generic A-mechanism (design §3.1 Layer 3). For each enrolled
+    `_DOC_CONSTANT_TWINS` row:
+      - guard_kind "bijection": assert the doc-region SET equals the constant
+        SET (the Check-45/52 set-equality idiom — missing/extra two-sided). This
+        LOCKS the A1 collapse + guards the tracker backend twin.
+      - guard_kind "recorded": assert only that the constant SYMBOL RESOLVES to
+        a real module attribute (the MUST-2 backstop record; the surface is a
+        prose floor — its bespoke check keeps the one-way guard).
+
+    PLUS the Check-59-style COMPLETENESS LEG:
+      - len(_DOC_CONSTANT_TWINS) == _DOC_CONSTANT_TWINS_EXPECTED_COUNT
+        (enrollment is count-gated — adding/removing a twin without the count
+        bump FAILs), AND
+      - every registered constant symbol resolves to a real module attribute.
+
+    This does NOT auto-discover unregistered twins (infeasible, design §2.5 — no
+    syntactic twin-signal exists), but makes enrollment a deliberate, reviewable,
+    count-gated governance act + makes each enrolled bijection drift-proof.
+
+    Cheap (ci-check-runtime-compounding): per row = one small doc read + a
+    region extract + a set compare; the completeness leg is in-memory set
+    arithmetic. Same cost class as Check 45/52/59 — no subprocess, no tree walk.
+
+    Lenient: a doc-surface file absent at HEAD SKIPs that row's bijection leg
+    (an init/state problem, not a drift); the completeness leg always runs.
+    """
+    print("\n── Check 80: doc↔constant twin-bijection + completeness (BD-255) ──")
+
+    # Resolve registered symbols against THIS module's globals (robust whether
+    # the module is imported by name or loaded via spec_from_file_location).
+    module_ns = globals()
+
+    # ── Completeness leg (count-gate) ──
+    n = len(_DOC_CONSTANT_TWINS)
+    if n != _DOC_CONSTANT_TWINS_EXPECTED_COUNT:
+        fail(
+            f"_DOC_CONSTANT_TWINS has {n} row(s) but "
+            f"_DOC_CONSTANT_TWINS_EXPECTED_COUNT == "
+            f"{_DOC_CONSTANT_TWINS_EXPECTED_COUNT}. A twin was enrolled or "
+            f"removed without the count bump (the count-gate, like "
+            f"CHECK_REGISTRY_EXPECTED_COUNT). Set the constant to {n} if the "
+            f"change is intentional, or restore the missing row. Per BD-255 "
+            f"design §3.1 Layer 3 the completeness leg makes enrollment loud."
+        )
+        return
+
+    # ── Completeness leg (every symbol resolves) ──
+    unresolved = [
+        sym for (_l, _d, _r, sym, _k) in _DOC_CONSTANT_TWINS
+        if sym not in module_ns
+    ]
+    if unresolved:
+        fail(
+            f"_DOC_CONSTANT_TWINS registers {len(unresolved)} constant "
+            f"symbol(s) that do NOT resolve to a module attribute: "
+            f"{unresolved}. Per BD-255 design §3.1 Layer 3 every registered "
+            f"twin symbol must name a real constant. Remediation: fix the "
+            f"symbol name in the row, or remove the row + bump the count."
+        )
+        return
+
+    any_fail = False
+    bijection_rows = 0
+    recorded_rows = 0
+    skipped_rows = 0
+
+    for label, doc_paths, region, sym, kind in _DOC_CONSTANT_TWINS:
+        if kind == "recorded":
+            # Symbol-resolve already verified above; record-only row.
+            recorded_rows += 1
+            continue
+        if kind != "bijection":
+            any_fail = True
+            fail(
+                f"twin '{label}' has unknown guard_kind {kind!r} "
+                f"(expected 'bijection' | 'recorded')."
+            )
+            continue
+        # Lenient: skip the bijection leg if any doc surface is absent at HEAD.
+        missing_files = [p for p in doc_paths if not (REPO_ROOT / p).is_file()]
+        if missing_files:
+            ok(
+                f"twin '{label}' — doc surface(s) {missing_files} absent; "
+                f"skipping bijection (lenient)"
+            )
+            skipped_rows += 1
+            continue
+        try:
+            doc_set = _doc_constant_twin_doc_set(label, doc_paths, region, sym)
+            const_set = _doc_constant_twin_const_set(module_ns, sym)
+        except ValueError as exc:
+            any_fail = True
+            fail(
+                f"twin '{label}' — could not extract the doc-region set from "
+                f"{region} ({list(doc_paths)}): {exc}. The region/markers may "
+                f"have drifted. Per BD-255 design §3.1 Layer 3."
+            )
+            continue
+        except KeyError as exc:
+            # A constant the const-set builder resolves did NOT exist in
+            # module_ns. The completeness leg already covers every DIRECTLY
+            # named row symbol, but a bijection builder may read a SECONDARY
+            # un-named constant (e.g. the A1 row's union reads both
+            # `_PACK_CHAT_ONLY_PERMITTED_PATHS` and
+            # `_PACK_CHAT_ONLY_PERMITTED_PREFIXES`). A missing such constant
+            # must FAIL loud-but-clean (naming the symbol), never crash with an
+            # uncaught traceback (a guard fails gracefully — design §3.1
+            # Layer 3 / ci-guard-measure-then-bound).
+            any_fail = True
+            fail(
+                f"twin '{label}' — could not resolve a constant the bijection "
+                f"const-set builder reads (row symbol `{sym}`): missing "
+                f"module attribute {exc}. A required SSOT constant was "
+                f"deleted/renamed. Remediation: restore the named constant or "
+                f"update the builder + row. Per BD-255 design §3.1 Layer 3."
+            )
+            continue
+        only_doc = sorted(doc_set - const_set)
+        only_const = sorted(const_set - doc_set)
+        if only_doc or only_const:
+            any_fail = True
+            fail(
+                f"twin '{label}' — doc↔constant DRIFT (bijection broken). "
+                f"In {region} ({list(doc_paths)}) but NOT in `{sym}`: "
+                f"{only_doc}. In `{sym}` but NOT in the doc region: "
+                f"{only_const}. Per BD-255 design §3.1 Layer 3 the enrolled "
+                f"twin must be a set-equality bijection. Remediation: edit the "
+                f"SSOT then regenerate/sync the derived surface in the SAME "
+                f"change (for A1 the constant is the SSOT; re-render the "
+                f"PACK-AGENTS.md region via render_pack_chat_only_doc_section())."
+            )
+            continue
+        bijection_rows += 1
+
+    if not any_fail:
+        ok(
+            f"Check 80 — {n} twin(s) enrolled (== "
+            f"_DOC_CONSTANT_TWINS_EXPECTED_COUNT); every symbol resolves; "
+            f"{bijection_rows} bijection row(s) hold set-equality, "
+            f"{recorded_rows} recorded-residual row(s) resolve, "
+            f"{skipped_rows} bijection leg(s) skipped (surface absent)."
+        )
+
 
 # `_PROJECT_SIDE_ROOTS` is REPLACED by `_iter_client_installed_files()`.
 # See ARCHITECTURE-V11-GUARDRAILS-CONTRACT.md §3 for the contract.
@@ -8394,15 +8714,30 @@ def check_durable_doc_concision() -> None:
 # ~1260-char legitimate rule cluster, below the 1457 mega-bullet floor).
 _CHECK_66_BULLET_CHAR_CAP = 1300
 
+# A5 COLLAPSE (BD-255 Part A, design §3.1 Layer 1): the trinity memory-section
+# H2 heading is a per-LOCATION constant, not a literal repeated inline. The two
+# trinity locations carry DIFFERENT headings by design (EEB-5; Check 18 already
+# runs H2 parity per-location): pack-root keeps `## Pack memory`; project-
+# template's `## Project memory` is the ONLY one BD-245 renames (→`## Project
+# rules`). The two-constant pair makes that rename a ONE-constant edit (flip
+# `_TRINITY_MEMORY_H2_PROJECT`) + the 3 project-template files; Check 66 follows
+# automatically, the pack-root heading untouched. A single shared constant is
+# NOT used — it would conflate the two locations or break the project auto-
+# propagation.
+_TRINITY_MEMORY_H2_PACK = "## Pack memory"
+_TRINITY_MEMORY_H2_PROJECT = "## Project memory"
+
 # The bullet-bearing files + the memory-section header that opens the bullet
-# region (None = scan the whole file's top-level bullets, for RATIONALE).
+# region (None = scan the whole file's top-level bullets, for RATIONALE). The
+# per-location heading reads the A5-collapse constants above so a future rename
+# touches the constant, not this table.
 _CHECK_66_BULLET_SURFACE = (
-    ("CLAUDE.md", "## Pack memory"),
-    ("AGENTS.md", "## Pack memory"),
-    ("GEMINI.md", "## Pack memory"),
-    ("project-template/CLAUDE.md", "## Project memory"),
-    ("project-template/AGENTS.md", "## Project memory"),
-    ("project-template/GEMINI.md", "## Project memory"),
+    ("CLAUDE.md", _TRINITY_MEMORY_H2_PACK),
+    ("AGENTS.md", _TRINITY_MEMORY_H2_PACK),
+    ("GEMINI.md", _TRINITY_MEMORY_H2_PACK),
+    ("project-template/CLAUDE.md", _TRINITY_MEMORY_H2_PROJECT),
+    ("project-template/AGENTS.md", _TRINITY_MEMORY_H2_PROJECT),
+    ("project-template/GEMINI.md", _TRINITY_MEMORY_H2_PROJECT),
     ("pack-ops/PACK-MEMORY-RATIONALE.md", None),
 )
 
@@ -13727,6 +14062,16 @@ def _build_check_registry():
         # anti-growth BACKSTOP, checked last). SKIP-lenient when absent /
         # unparseable. One small read + regex scans over a byte-capped object.
         (79, "check_session_state_grammar", check_session_state_grammar, W),
+        # Check 80 — doc↔constant twin-bijection + completeness leg (BD-255
+        # Part A, design §3.1 Layer 3): the generic A-mechanism. For each
+        # enrolled _DOC_CONSTANT_TWINS row, "bijection" rows assert doc-set ==
+        # constant-set (Check-45/52 idiom; LOCKS the A1 collapse + guards the
+        # tracker backend twin); "recorded" rows assert symbol-resolve only
+        # (prose floors — their bespoke checks keep the one-way guard). PLUS the
+        # Check-59-style completeness leg (len == _DOC_CONSTANT_TWINS_EXPECTED_
+        # COUNT + every symbol resolves). Cheap: per-row read + set compare; no
+        # subprocess, no tree walk.
+        (80, "check_doc_constant_twin_bijection", check_doc_constant_twin_bijection, W),
     ]
 
 
