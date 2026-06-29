@@ -36,6 +36,14 @@ flat-file). Read
 `/backlog/_rules.md` and `/changelog/_rules.md` for the per-stream
 contract before any per-entry edit. There is no monolithic mirror.
 
+Read `pack-ops/session-state.json` — the committed live-session snapshot.
+If absent: no live session in progress. If present: note the active BD(s)
+and per-BD sub-step, the in-flight agents to re-spawn, the queue order,
+the parallelization mode, the pending decisions, the in-commit
+review/fix-cycle position, and the boundary commit SHA. Report these on
+the Step-4 `**Resume:**` line and surface the re-spawn list so the
+in-flight agents can be re-launched from the boundary commit.
+
 ## Step 3 — Check CI tooling
 
 Check whether the GitHub MCP server is available by looking for GitHub-related
@@ -64,6 +72,7 @@ Output a summary in exactly this format:
 **Last commit:** [date] — [summary from git log -1 --oneline]
 **CI tooling:** [GitHub MCP available / not configured — manual check needed]
 **Graph:** [the Step-5 readiness line — e.g. `fresh | pre-push hook: installed`, or `STALE — built at <sha8>, HEAD <sha8> | pre-push hook: NOT installed — run scripts/install-graphify-hook.sh`, or `not built (optional pack-dev accelerator)`]
+**Resume:** [from `pack-ops/session-state.json` — `no live session — clean start` if absent/idle, else `active: BD-NNN @ <sub-step>; in-flight: <agents to re-spawn>; queue: <order>; mode: <serial|parallel>; pending: <decisions>; cycle: <position>; boundary <sha8> (= HEAD | N behind)`]
 
 **Awaiting instructions.**
 ---
