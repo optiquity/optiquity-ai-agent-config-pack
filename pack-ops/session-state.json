@@ -1,7 +1,7 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "56165d1",
-  "checkpoint": "2026-06-29T12:38:55Z",
+  "boundary_commit": "a9c707b",
+  "checkpoint": "2026-06-29T13:53:46Z",
   "active": [],
   "in_flight_agents": [],
   "queue": ["BD-253", "BD-222", "BD-232", "BD-245", "BD-224", "BD-210", "BD-205", "BD-093"],
