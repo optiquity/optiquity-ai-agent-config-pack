@@ -31,7 +31,7 @@
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-253](./BD-253.md) — Project-side resumable session-state mechanism (PM-Chat; reconcile with existing `_index.md` / `STATUS.md` state; same transferability + no-CLI-memory rules as BD-252)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
-- [BD-255](./BD-255.md) — Systemic multi-surface-consistency defect-class fix: doc↔constant drift prevention + declare-verify hardening + cross-BD collision detection + memory/session-state quartet seamlessness verification; resolves the live Check-36 RED (single pack + project BD)
+- [BD-255](./BD-255.md) — Systemic multi-surface-consistency defect-class fix: doc↔constant drift prevention + declare-verify hardening + cross-BD collision detection + memory/session-state quartet verification (single pack+project BD)
 
 ## Deferred
 
