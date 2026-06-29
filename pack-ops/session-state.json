@@ -1,0 +1,12 @@
+{
+  "schema": "pack-session-state/1",
+  "boundary_commit": "56165d1",
+  "checkpoint": "2026-06-29T12:38:55Z",
+  "active": [],
+  "in_flight_agents": [],
+  "queue": ["BD-253", "BD-222", "BD-232", "BD-245", "BD-224", "BD-210", "BD-205", "BD-093"],
+  "parallelization": "serial",
+  "wave": null,
+  "pending_decisions": [],
+  "cycle_position": null
+}
