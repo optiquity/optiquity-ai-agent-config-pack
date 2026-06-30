@@ -392,6 +392,20 @@ _CHECK_56_CANONICAL_VERBS = (
 )
 
 
+# ── Cross-module seam: OPTIQUITY_BUNDLE_AGENTS_DIR (BD-256 W14) ──────────────
+# Promoted to core because its consumers span ≥2 modules (the MUST-4 seam-
+# promotion rule, mirroring the W2 `_parse_manifest_records` promotion):
+# agents_skills's Checks 5 (count parity) + 27 (canonical phrases) scan this
+# bundle, AND singletons's Check 8 reads it via the load-time
+# `PACK_SCAN_LOCATIONS` list. A single SSOT here keeps both consumers reading
+# one copy (no fork). Load-time-derived from `REPO_ROOT`; no monkeypatch.
+# BD-221 (Antigravity conversion): the third agent surface is the Antigravity
+# client plugin bundle (the 16-agent optiquity-agents roster).
+OPTIQUITY_BUNDLE_AGENTS_DIR = (
+    REPO_ROOT / "project-template" / ".agents-plugin" / "optiquity-agents" / "agents"
+)
+
+
 # ── Cross-MODULE helper: _parse_manifest_records (BD-256 W2) ────────────────
 # A blank-line-separated `key: value` manifest parser. Promoted to core in
 # BD-256 W2 because its consumers span ≥2 modules (the MUST-4 seam-promotion
@@ -476,6 +490,8 @@ __all__ = [
     "_TRACKER_BACKENDS",
     "_CHECK_54_REQUIRED_TOKENS",
     "_CHECK_56_CANONICAL_VERBS",
+    # ── cross-module seam (BD-256 W14) ──
+    "OPTIQUITY_BUNDLE_AGENTS_DIR",
     # ── cross-MODULE helper (BD-256 W2) ──
     "_parse_manifest_records",
 ]

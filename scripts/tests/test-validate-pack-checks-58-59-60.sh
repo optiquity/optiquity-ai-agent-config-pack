@@ -67,16 +67,27 @@ spec = importlib.util.spec_from_file_location('vp', os.environ['VALIDATE'])
 mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
 failures = []
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W14 wave-invariant). Check 58's body now lives in
+    validate_checks.singletons and reads singletons.REPO_ROOT; a facade-only
+    patch would NOT bite. Reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == 'validate_checks' or _name.startswith('validate_checks.'):
+            if hasattr(_m, 'REPO_ROOT'):
+                _m.REPO_ROOT = root
+
 def run58(root):
     saved_root, saved_f = mod.REPO_ROOT, list(mod.failures)
-    mod.failures.clear(); mod.REPO_ROOT = pathlib.Path(root)
+    mod.failures.clear(); _patch_root(mod, pathlib.Path(root))
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
             mod.check_validate_job_carries_no_only_check()
         n = len(mod.failures); cap = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root; mod.failures.clear(); mod.failures.extend(saved_f)
+        _patch_root(mod, saved_root); mod.failures.clear(); mod.failures.extend(saved_f)
     return n, cap
 
 def make_yml(root, invocation):
@@ -130,6 +141,19 @@ spec = importlib.util.spec_from_file_location('vp', os.environ['VALIDATE'])
 mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
 failures = []
 
+def _patch_attr(mod, name, value):
+    """Set attribute `name` on the facade alias AND every loaded
+    validate_checks.* submodule that already binds it (BD-256 W14
+    wave-invariant). Check 59's body now lives in validate_checks.singletons
+    and reads its own `from .core`-bound CHECK_REGISTRY_EXPECTED_COUNT; a
+    facade-only patch would NOT bite. This reaches the owning module's binding
+    wherever the body resolves it (singletons + core both carry it)."""
+    setattr(mod, name, value)
+    for _name, _m in list(sys.modules.items()):
+        if _name == 'validate_checks' or _name.startswith('validate_checks.'):
+            if hasattr(_m, name):
+                setattr(_m, name, value)
+
 def run59():
     saved_f = list(mod.failures); mod.failures.clear()
     buf = io.StringIO()
@@ -155,9 +179,9 @@ if "== CHECK_REGISTRY_EXPECTED_COUNT" not in cap:
 
 # RED: mutate the expected count → mismatch.
 saved = mod.CHECK_REGISTRY_EXPECTED_COUNT
-mod.CHECK_REGISTRY_EXPECTED_COUNT = saved + 7
+_patch_attr(mod, 'CHECK_REGISTRY_EXPECTED_COUNT', saved + 7)
 n, cap = run59()
-mod.CHECK_REGISTRY_EXPECTED_COUNT = saved
+_patch_attr(mod, 'CHECK_REGISTRY_EXPECTED_COUNT', saved)
 if n != 1:
     failures.append(f"RED (count mismatch) expected 1 failure, got {n}: {cap}")
 if "without updating the expected-count" not in cap:
@@ -186,16 +210,27 @@ spec = importlib.util.spec_from_file_location('vp', os.environ['VALIDATE'])
 mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
 failures = []
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W14 wave-invariant). Check 60's body now lives in
+    validate_checks.singletons and reads singletons.REPO_ROOT; a facade-only
+    patch would NOT bite. Reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == 'validate_checks' or _name.startswith('validate_checks.'):
+            if hasattr(_m, 'REPO_ROOT'):
+                _m.REPO_ROOT = root
+
 def run60(root):
     saved_root, saved_f = mod.REPO_ROOT, list(mod.failures)
-    mod.failures.clear(); mod.REPO_ROOT = pathlib.Path(root)
+    mod.failures.clear(); _patch_root(mod, pathlib.Path(root))
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
             mod.check_ci_shard_coverage()
         n = len(mod.failures); cap = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root; mod.failures.clear(); mod.failures.extend(saved_f)
+        _patch_root(mod, saved_root); mod.failures.clear(); mod.failures.extend(saved_f)
     return n, cap
 
 # GREEN: real state (the real ci-shard-plan.py --assert-coverage passes).

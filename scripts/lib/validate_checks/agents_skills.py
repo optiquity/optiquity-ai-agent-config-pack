@@ -65,6 +65,7 @@ from .core import (
     ok,
     failures,
     _TRACKER_BACKENDS,
+    OPTIQUITY_BUNDLE_AGENTS_DIR,
 )
 
 
@@ -75,10 +76,12 @@ CODEX_AGENTS_DIR = REPO_ROOT / "project-template" / ".codex" / "agents"
 # BD-221: the third agent surface is the Antigravity client plugin bundle
 # (the 16-agent optiquity-agents roster). Checks 5 (count parity) and 27
 # (canonical phrases) scan this bundle so the Antigravity agents are covered
-# with no silent loss.
-OPTIQUITY_BUNDLE_AGENTS_DIR = (
-    REPO_ROOT / "project-template" / ".agents-plugin" / "optiquity-agents" / "agents"
-)
+# with no silent loss. BD-256 W14: `OPTIQUITY_BUNDLE_AGENTS_DIR` is now a
+# ≥2-module seam (this cluster's Checks 5/27 + singletons's Check 8 via
+# PACK_SCAN_LOCATIONS), so it is PROMOTED to `core` (MUST-4) and imported
+# `from .core` above; it is kept in this module's `__all__` below so the
+# facade's existing re-export surface is byte-stable (no test that reaches
+# `mod.OPTIQUITY_BUNDLE_AGENTS_DIR` regresses).
 
 REQUIRED_SKILL_FIELDS = {"name", "description", "allowed-tools"}
 

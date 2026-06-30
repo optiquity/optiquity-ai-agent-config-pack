@@ -204,6 +204,19 @@ failures = []
 #                  is not glob-shaped (e.g. scripts/lib/x.sh), so the malformed-
 #                  shape FAIL fires WITHOUT the stale FAIL.
 # `omit_all_tests`: when True, create NO test scripts at all (lenient skip).
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W14 wave-invariant). Check 42's body now lives in
+    validate_checks.singletons and reads singletons.REPO_ROOT; a facade-only
+    patch would NOT bite. Setting it on every loaded validate_checks.* reaches
+    the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == 'validate_checks' or _name.startswith('validate_checks.'):
+            if hasattr(_m, 'REPO_ROOT'):
+                _m.REPO_ROOT = root
+
+
 def run_check(root_scripts=None, tests_scripts=None, fxdep_scripts=None,
               allowlist=None, extra_files=None, omit_all_tests=False):
     root_scripts = root_scripts or []
@@ -242,7 +255,7 @@ def run_check(root_scripts=None, tests_scripts=None, fxdep_scripts=None,
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures)
     mod.failures.clear()
-    mod.REPO_ROOT = root
+    _patch_root(mod, root)
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -250,7 +263,7 @@ def run_check(root_scripts=None, tests_scripts=None, fxdep_scripts=None,
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
+        _patch_root(mod, saved_root)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         shutil.rmtree(tmpdir, ignore_errors=True)
