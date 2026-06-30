@@ -506,8 +506,10 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # (+0). This constant is the explicit invariant; the actual count is COMPUTED
 # from len(_build_check_registry()) and asserted equal by Check 59 — never
 # hard-coded anywhere else. BD-255 Part A adds Check 80 (the generic doc↔
-# constant twin-bijection check): 77 → 78.
-CHECK_REGISTRY_EXPECTED_COUNT = 78
+# constant twin-bijection check): 77 → 78. BD-255 Part C adds Check 81
+# (structured File/Symbol prereq for active-design BDs) + Check 82 (cross-BD
+# shared-edit-surface advisory): 78 → 79 → 80.
+CHECK_REGISTRY_EXPECTED_COUNT = 80
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
@@ -4413,6 +4415,282 @@ def check_doc_constant_twin_bijection() -> None:
             f"{recorded_rows} recorded-residual row(s) resolve, "
             f"{skipped_rows} bijection leg(s) skipped (surface absent)."
         )
+
+
+# ── Checks 81 + 82: cross-BD shared-edit-surface collision detection
+# (BD-255 Part C, sub-type C; design §3.3 C-i prereq + C-ii backstop) ──────────
+#
+# Open-backlog states whose entries are subject to the surface checks. The
+# lifecycle enum (`backlog/_rules.md` § "Lifecycle states admitted") is
+# Open / Unblocked / Deferred / Resolved / Deprecated / Cancelled. Only the
+# ACTIVE (not-postponed, not-closed) entries matter for collision detection:
+# Open + Unblocked. Deferred/Resolved/Deprecated/Cancelled are excluded
+# (sized EXACTLY to the active-design population — measure-then-bound).
+_CHECK_81_OPEN_BD_STATES = ("Open", "Unblocked")
+
+# The bare/TBD/placeholder markers that disqualify a `File/Symbol` field from
+# being a STRUCTURED repo-relative path list (the F4 enabler — design §3.3).
+# A field carrying any of these (case-insensitive) is a placeholder, NOT a
+# parseable surface set, even if it also names a concrete backtick path
+# (e.g. BD-020 "n/a — new file `...` to be created"; BD-253 "TBD by
+# architect. Likely surfaces: `...`"; BD-245/254 "candidate surfaces"). The
+# set is sized EXACTLY to the design's enumerated reject-list (measure-then-
+# bound — DESIGN-RECONCILED §3.3 C-i / the FAIL-leg spec), no broader.
+_CHECK_81_TBD_MARKERS = (
+    "tbd",
+    "to be determined",
+    "to be created",
+    "architect to detail",
+    "candidate surfaces",
+    "n/a",
+)
+
+# A backtick-quoted repo-relative path token inside a `File/Symbol` field — a
+# backtick span whose first segment is followed by EITHER another `/<segment>`
+# (a multi-segment path), OR a `.<ext>` suffix (a repo-root file like
+# `CLAUDE.md` / `validate-pack.py`), OR a single trailing `/` (a repo-relative
+# directory like `project-template/` / `backlog/` — including a single-segment
+# directory the multi-segment alternative would otherwise miss). This is the
+# structured-surface signal the collision scan keys on (design §3.3: the
+# researcher blast-radius / structured surface set, NOT free-text prose). The
+# trailing-slash directory case keeps the matcher sized to the real structured
+# File/Symbol population (ci-guard-measure-then-bound) — a bare backtick word
+# with NO slash and NO extension is still NOT a path token (no false
+# positives). Used by BOTH Check 81 (≥1 token ⇒ structured) and Check 82 (the
+# surface→BDs map keys). Bounded to the field VALUE (no tree walk, no
+# subprocess).
+_CHECK_81_PATH_TOKEN_RE = re.compile(
+    r"`([A-Za-z0-9_][A-Za-z0-9_./-]*"
+    r"(?:/[A-Za-z0-9_./-]+|\.[A-Za-z0-9_]+|/))`"
+)
+
+
+def _check_81_iter_open_bds():
+    """Yield `(rel_path, bd_id, status, file_symbol_value)` for every
+    git-tracked-shape `backlog/BD-*.md` entry in an active-design state
+    (`_CHECK_81_OPEN_BD_STATES`).
+
+    The candidate set is the per-entry `backlog/BD-*.md` files (the tree IS
+    the SSOT — `ci-guard-measure-then-bound`: the enumeration is the tracked
+    per-entry entry set, NOT a filesystem walk of the whole repo). Entries
+    whose `Status:` is not active (Deferred/Resolved/Deprecated/Cancelled) or
+    whose name is a supporting `_`-prefixed file are SKIPPED.
+
+    `file_symbol_value` is the `File/Symbol:` field VALUE — the colon-tail of
+    the field header line PLUS any subsequent indented/bulleted continuation
+    lines, up to the next top-level field line (`^<Field>:` or `^**`). `None`
+    when the entry carries no `File/Symbol` field. Cheap: one small read +
+    line scan per entry; no subprocess, no tree walk.
+    """
+    backlog_dir = REPO_ROOT / "backlog"
+    if not backlog_dir.is_dir():
+        return
+    field_line_re = re.compile(r"^[A-Z][A-Za-z0-9/ _-]*:")
+    for entry in sorted(backlog_dir.glob("BD-*.md")):
+        if entry.name.startswith("_"):
+            continue
+        try:
+            text = entry.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        rel = entry.relative_to(REPO_ROOT)
+        m_id = re.match(r"(BD-\d+)\.md$", entry.name)
+        bd_id = m_id.group(1) if m_id else entry.stem
+        m_st = re.search(r"^Status:\s*(\S+)", text, re.MULTILINE)
+        status = m_st.group(1) if m_st else None
+        if status not in _CHECK_81_OPEN_BD_STATES:
+            continue
+        # Extract the File/Symbol field VALUE (header colon-tail + bulleted
+        # continuation up to the next top-level field).
+        lines = text.splitlines()
+        fs_value = None
+        for i, line in enumerate(lines):
+            if re.match(r"^File/Symbol\b", line):
+                head = line.split(":", 1)
+                value_lines = [head[1] if len(head) > 1 else ""]
+                for cont in lines[i + 1:]:
+                    if field_line_re.match(cont) or cont.startswith("**"):
+                        break
+                    value_lines.append(cont)
+                fs_value = "\n".join(value_lines)
+                break
+        yield (rel, bd_id, status, fs_value)
+
+
+def _check_81_field_is_structured(fs_value):
+    """True iff `fs_value` is a STRUCTURED repo-relative path list (the F4
+    enabler): it carries ≥1 backtick repo-relative path token AND no bare/TBD
+    placeholder marker. A `None`/empty field, a bare-TBD field, or a
+    "candidate surfaces"/placeholder field (even one that also names a path)
+    is NOT structured. design §3.3 C-i FAIL-leg spec."""
+    if not fs_value:
+        return False
+    low = fs_value.lower()
+    if any(marker in low for marker in _CHECK_81_TBD_MARKERS):
+        return False
+    return bool(_CHECK_81_PATH_TOKEN_RE.search(fs_value))
+
+
+def _check_81_active_bd_ids():
+    """Return the set of BD-IDs in the committed session-state `active[]`
+    list (the in-design trigger — BD-252's mechanism, NOT a new backlog Status
+    token; design DECISION C2-a). Reads `pack-ops/session-state.json` via the
+    shared `_session_state_load()`; returns an EMPTY set (SKIP-lenient) when
+    the snapshot is absent, unparseable, or carries no usable `active[]` (a
+    fresh clone / pre-feature HEAD must not crash the check)."""
+    loaded = _session_state_load()
+    if loaded is None or loaded[0] == "PARSE_ERROR":
+        return set()
+    data = loaded[0]
+    if not isinstance(data, dict):
+        return set()
+    active = data.get("active")
+    if not isinstance(active, list):
+        return set()
+    ids = set()
+    for member in active:
+        if isinstance(member, dict):
+            bd = member.get("bd")
+            if isinstance(bd, str) and re.match(r"^BD-\d+$", bd):
+                ids.add(bd)
+    return ids
+
+
+def check_open_bd_structured_surface_field() -> None:
+    """Check 81 — structured `File/Symbol` prerequisite for active-design BDs
+    (BD-255 Part C, design §3.3 C-i; TWO-MODE).
+
+    The F4 enabler: the cross-BD collision scan keys on a STRUCTURED surface
+    set, so at least ONE side of any pair must be parseable. This check
+    GUARANTEES that for every BD in active design.
+
+    - FAIL leg (gate): for every open `backlog/BD-*.md` whose BD-ID is in the
+      committed session-state `active[]` list (the in-design trigger —
+      DECISION C2-a; BD-252's existing mechanism, NOT a new backlog Status
+      token), its `File/Symbol` field MUST be a structured repo-relative path
+      list (≥1 backtick path token + no bare/TBD placeholder). A bare/TBD or
+      missing field for an active BD FAILs.
+    - WARN leg (advisory, NEVER fail): for every OTHER active-state open BD
+      with a bare/TBD/missing `File/Symbol`, WARN (visibility without
+      false-blocking legitimately-early entries — the Check-48 warn idiom).
+
+    SKIP-lenient: if `pack-ops/session-state.json` is absent/unparseable the
+    `active[]` set is empty (no FAIL leg fires), so the check degrades to the
+    WARN leg only — a fresh clone / pre-feature HEAD never crashes or
+    false-fails.
+
+    GREEN over the live backlog (re-derived): session-state `active[]`
+    currently holds ONLY BD-255; BD-255's `File/Symbol` is a structured
+    backtick repo-relative path list → FAIL leg PASSES; the bare/TBD open BDs
+    (BD-020/245/253/254) are NOT in `active[]` → WARN leg → exit 0.
+
+    Cheap (ci-check-runtime-compounding): one small JSON read + a line scan of
+    each small open entry (~28 entries today). No subprocess, no tree walk.
+    """
+    print(
+        "\n── Check 81: structured File/Symbol prereq for active-design BDs "
+        "(BD-255) ──"
+    )
+
+    active_ids = _check_81_active_bd_ids()
+    failed = 0
+    warned = 0
+    active_ok = 0
+    for rel, bd_id, _status, fs_value in _check_81_iter_open_bds():
+        structured = _check_81_field_is_structured(fs_value)
+        if bd_id in active_ids:
+            if not structured:
+                failed += 1
+                detail = "missing" if not fs_value else "bare/TBD/placeholder"
+                fail(
+                    f"{rel} — {bd_id} is in active design (session-state "
+                    f"`active[]`) but its `File/Symbol` field is {detail} (no "
+                    f"structured repo-relative path list). The cross-BD "
+                    f"collision scan (Check 82 / the design-time blast-radius "
+                    f"intersection) needs ≥1 parseable surface side. "
+                    f"Remediation: replace the placeholder with a structured "
+                    f"backtick repo-relative path list. Per BD-255 design "
+                    f"§3.3 C-i (the F4 structured-surface prerequisite)."
+                )
+            else:
+                active_ok += 1
+        else:
+            if not structured:
+                warned += 1
+                warn(
+                    f"{rel} — {bd_id} (open, not yet in active design) has a "
+                    f"bare/TBD/missing `File/Symbol` field; structure it into a "
+                    f"repo-relative path list before the architect stage so "
+                    f"the cross-BD collision scan can key on it (advisory only "
+                    f"— NOT a gate failure; Check-48 warn idiom). Per BD-255 "
+                    f"design §3.3 C-i."
+                )
+
+    if failed == 0:
+        ok(
+            f"Check 81 — every active-design BD ({len(active_ids)} in "
+            f"session-state `active[]`; {active_ok} with a structured "
+            f"File/Symbol) carries a structured repo-relative path list; "
+            f"{warned} not-yet-active open BD(s) with a bare/TBD field WARNed "
+            f"(advisory, exit code unaffected)."
+        )
+
+
+def check_cross_bd_surface_advisory() -> None:
+    """Check 82 — cross-BD shared-edit-surface advisory (BD-255 Part C,
+    design §3.3 C-ii; ADVISORY backstop).
+
+    Parses every active-state open `backlog/BD-*.md` `File/Symbol` field for
+    its backtick repo-relative path tokens, builds a `surface → [BD-IDs]` map,
+    and WARNs (advisory, NEVER `fail()` — the Check-48 precedent; two open BDs
+    legitimately co-editing a surface is NORMAL, the signal is "coordinate,"
+    not "forbidden") when ≥2 open BDs name the SAME surface. The design-time
+    blast-radius intersection scan (the C-i pipeline rule, landed separately)
+    is the load-bearing prevention; this CI backstop is defense-in-depth.
+
+    C2-PROOF (re-derived): #82 WARNs on the BD-245↔BD-253 collision — both name
+    `project-template/scripts/validate-docs.sh` in their structured/likely
+    surface fields. The shared surface + the BD pair are named in the WARN.
+
+    Cheap (ci-check-runtime-compounding): one line scan + regex over each
+    small open entry's File/Symbol field (~28 entries today) + an in-memory
+    map build. No subprocess, no tree walk.
+    """
+    print(
+        "\n── Check 82: cross-BD shared-edit-surface advisory (BD-255) ──"
+    )
+
+    surface_to_bds = {}
+    for _rel, bd_id, _status, fs_value in _check_81_iter_open_bds():
+        if not fs_value:
+            continue
+        seen = set()  # de-dup repeated paths within one entry's field
+        for m in _CHECK_81_PATH_TOKEN_RE.finditer(fs_value):
+            surface = m.group(1)
+            if surface in seen:
+                continue
+            seen.add(surface)
+            surface_to_bds.setdefault(surface, []).append(bd_id)
+
+    overlaps = 0
+    for surface in sorted(surface_to_bds):
+        bds = sorted(set(surface_to_bds[surface]))
+        if len(bds) >= 2:
+            overlaps += 1
+            warn(
+                f"shared edit surface `{surface}` is claimed by {len(bds)} "
+                f"open BDs: {', '.join(bds)} — coordinate/sequence these "
+                f"(advisory only, NOT a gate failure; the load-bearing "
+                f"prevention is the design-time blast-radius intersection "
+                f"scan). Per BD-255 design §3.3 C-ii."
+            )
+
+    ok(
+        f"Check 82 — cross-BD surface advisory: {overlaps} shared "
+        f"surface(s) WARNed across {len(surface_to_bds)} distinct surface(s) "
+        f"named by active-state open BDs; advisory only (exit code "
+        f"unaffected)."
+    )
 
 
 # `_PROJECT_SIDE_ROOTS` is REPLACED by `_iter_client_installed_files()`.
@@ -14072,6 +14350,22 @@ def _build_check_registry():
         # COUNT + every symbol resolves). Cheap: per-row read + set compare; no
         # subprocess, no tree walk.
         (80, "check_doc_constant_twin_bijection", check_doc_constant_twin_bijection, W),
+        # Check 81 — structured File/Symbol prereq for active-design BDs
+        # (BD-255 Part C, design §3.3 C-i; TWO-MODE). FAIL leg: every open BD
+        # in the committed session-state `active[]` (the in-design trigger,
+        # DECISION C2-a) MUST carry a structured repo-relative path list.
+        # WARN leg: other open BDs with a bare/TBD field WARN (advisory). One
+        # small JSON read + a line scan per small open entry; no subprocess,
+        # no tree walk. SKIP-lenient when session-state.json is absent.
+        (81, "check_open_bd_structured_surface_field", check_open_bd_structured_surface_field, W),
+        # Check 82 — cross-BD shared-edit-surface advisory (BD-255 Part C,
+        # design §3.3 C-ii). Parses each active-state open BD's File/Symbol
+        # backtick path tokens, builds a surface→BDs map, and WARNs (advisory,
+        # NEVER fail — the Check-48 precedent) when ≥2 open BDs claim the same
+        # surface (e.g. BD-245↔BD-253 on validate-docs.sh). Cheap: a line scan
+        # + regex per small entry + an in-memory map; no subprocess, no tree
+        # walk.
+        (82, "check_cross_bd_surface_advisory", check_cross_bd_surface_advisory, W),
     ]
 
 

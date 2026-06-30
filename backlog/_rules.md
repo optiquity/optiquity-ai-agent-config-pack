@@ -53,6 +53,11 @@ Part 7 (the template SSOT) enumerates the COMMON fields (`Type:` /
 (`Target:`, `Position:`, etc.) are ADMITTED and PRESERVED. A future BD
 adding a field needs no contract change here.
 
+A `File/Symbol` field for a BD in active design — i.e. listed in
+`pack-ops/session-state.json` `active[]` — is a structured repo-relative
+path list (≥1 backtick repo-relative path token; no bare/TBD placeholder),
+so the cross-BD shared-surface scan can key on it.
+
 ## Lifecycle states admitted
 
 - `Open` — entry is active / not yet started.
