@@ -233,6 +233,15 @@ the orchestration the standard's step 8 (parallel worktree coder waves)
 runs. The DESIGN half (researcher → architect → adversarial → reconciliation
 → planner → adversarial → user gates) is the trinity rule chain.
 
+**Design-gate collision-scan handoff.** The mandatory cross-BD collision scan
+(trinity rule, `[rationale: cross-bd-collision-scan]`) is the architect's job,
+not Pack Chat's: the architect runs the blast-radius intersection and emits its
+verdict as an Empirical-Evidence Block. At the user design review, Pack Chat
+reads that block and surfaces the verdict; on a flagged collision it presents
+the sequencing choice for the two BDs rather than treating it as a blocker.
+Pack Chat never performs the scan itself — it routes the architect output to
+the user.
+
 Pack Chat spawns pack sub-agents IN-SESSION via the Agent tool (the
 primary path; a separate-terminal `claude --agent` session is the
 secondary path). This section is the orchestrator's spawn-and-merge-back

@@ -751,6 +751,10 @@ two, at architect/planner judgment. Each stage continues to obey its own
 `## Pack memory` rule — the umbrella NAMES and ORDERS the stages; it does not
 override any of them.
 
+The umbrella NAMES and ORDERS the stages; the design-time cross-BD shared-
+surface scan it points to at the architect stage is its own tagged rule
+(`cross-bd-collision-scan`), keeping this umbrella at its concision floor.
+
 **Boundary (vs `reconciliation-instance-independence`).** The umbrella NAMES
 the adversarial stages; `reconciliation-instance-independence` governs the
 fresh-instance reconciliation that follows a NEEDS-REWORK verdict —
@@ -764,6 +768,40 @@ rows and rationale sections for rules that already work untagged, for no
 behavior change. The umbrella REFERENCES them by category ("Each stage obeys
 its own `## Pack memory` rule") instead, requiring exactly one new slug and
 one new rationale section.
+
+---
+
+## cross-bd-collision-scan
+
+**Why.** Two open BDs that edit the SAME surface — the same rule bullet, the
+same validator check, the same template file — can be designed in isolation and
+then collide at integration, where one BD's patch silently undoes or conflicts
+with the other's. The collision is cheap to catch at design time (intersect the
+two blast-radius sets) and expensive to catch at merge time (a conflicted
+patch, a regressed rule, a re-review). The recurring failure mode was that no
+stage owned the cross-BD check: the researcher maps THIS BD's blast radius, the
+architect designs against it, but neither looked sideways at the OTHER open BDs'
+surfaces. Pinning the scan to the architect stage — after the researcher set
+exists, before the design hardens — makes the collision a design input, not a
+merge surprise.
+
+**How.** At the architect stage, once the researcher's blast-radius set exists,
+the architect intersects THIS BD's set with every open BD's blast-radius /
+structured-surface set and records collision-or-none in an Empirical-Evidence
+Block. Keying on the researcher blast-radius set (not the free-text
+`File/Symbol` line) is the load-bearing design choice — the field that ACTUALLY
+catches a missed collision is the structured surface set, whereas a prose/TBD
+`File/Symbol` gives the scan zero recall. The scan is a COORDINATE signal
+(sequence two co-editing BDs), never a hard gate: legitimate concurrent edits
+are normal and the sequencing protocol handles them. It runs over the pack
+backlog and the project backlog template alike; the client-side counterpart
+ships as a documented workflow deliverable, not this pack rule.
+
+**Boundary (vs `large-bd-pipeline-standard`).** The umbrella NAMES and ORDERS
+the pipeline stages and points to this scan at the architect position; this
+rule carries the scan's mechanics (what to intersect, what to key on, that it
+is a coordinate signal not a gate). The umbrella stays at its concision floor;
+the scan lives here.
 
 ---
 

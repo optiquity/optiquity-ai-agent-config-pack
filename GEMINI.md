@@ -275,19 +275,26 @@ PACK-AGENTS.md current".
   external docs verification, per-need) → architect → adversarial architect
   review → [reconciliation if NEEDS-REWORK] → user design review → planner →
   adversarial planner review → [reconciliation if NEEDS-REWORK] → user
-  planner-to-coder gate → parallel worktree coder waves (off the rule-10 map;
-  each commit's bounded review/fix cycle in its worktree; patches applied
-  sequentially under the conflict protocol; superseded docs deleted; audit set
-  preserved). Size signals: launch-gate / cross-surface (≥2 families) /
-  blast-radius (≥3 encoding surfaces or a required census) / structural (a NEW
-  convention, NEW/changed CI check, tree shape, migration, or a NEW rule). A BD
-  is LARGE — the two adversarial reviews + reconciliation the MINIMUM — if
-  launch-gate fires OR ≥2 signals fire; else the base flow (researcher →
-  architect → planner → coder + the bounded cycle), adversarial passes OPTIONAL
-  at user election (one non-launch signal alone — e.g. a single-clause amend to
-  an existing rule — does NOT mandate them). When in doubt, LARGE. Each stage
-  obeys its own `## Pack memory` rule.
+  planner-to-coder gate → parallel worktree coder waves (off the rule-10 map).
+  Size signals: launch-gate / cross-surface (≥2 families) / blast-radius (≥3
+  encoding surfaces or a required census) / structural (a NEW convention,
+  NEW/changed CI check, tree shape, migration, or a NEW rule). A BD is LARGE —
+  the two adversarial reviews + reconciliation the MINIMUM — if launch-gate
+  fires OR ≥2 signals fire; else the base flow (researcher → architect →
+  planner → coder + the bounded cycle), adversarial passes OPTIONAL at user
+  election (one non-launch signal alone — e.g. a single-clause amend to an
+  existing rule — does NOT mandate them). When in doubt, LARGE. Each stage
+  obeys its own `## Pack memory` rule; the design-time cross-BD shared-surface
+  scan runs per `cross-bd-collision-scan`.
   `[roles: universal] [rationale: large-bd-pipeline-standard]`
+- **Cross-BD design-time collision scan.** At the architect stage,
+  after the researcher produces the blast-radius set, the architect MUST
+  intersect THIS BD's set with every open BD's blast-radius / structured-surface
+  set and record collision-or-none in an Empirical-Evidence Block. It keys on
+  the structured BLAST-RADIUS paths, NOT the free-text `File/Symbol` line (a
+  TBD/prose field has zero recall); covers the pack AND project backlogs; a
+  non-empty intersection is a COORDINATE signal (sequence the two co-editing
+  BDs), not a gate. `[roles: architect] [rationale: cross-bd-collision-scan]`
 - **Planner output → user review → coder spawn.** Pack-planner output
   is NEVER auto-approved into a pack-coder spawn. Pack Chat surfaces
   the plan to the user for thorough review (the user may comment, add
