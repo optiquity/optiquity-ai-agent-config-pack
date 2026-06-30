@@ -267,10 +267,24 @@ import sys, io, tempfile, os, shutil, pathlib, contextlib, importlib.util
 repo_root, validate = sys.argv[1], sys.argv[2]
 sys.path.insert(0, repo_root + "/scripts")
 
+# BD-256 W3: Check 50's body moved from the facade to
+# validate_checks.discipline_parity (POQ-W3-1), and the body now scans
+# `REPO_ROOT / "scripts" / "validate-pack.py"` (NOT `Path(__file__)`, which
+# post-relocation would resolve to the module's own source). So the teeth test
+# builds a SYNTHETIC REPO_ROOT whose `scripts/validate-pack.py` carries the
+# injected codec, patches REPO_ROOT across every loaded validate_checks.*
+# module (form-B, the BD-256 wave-invariant idiom), and calls the real check —
+# which scans the synthetic facade and FAILs.
+def _patch_root(mod, root):
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
 # Build a COPY of validate-pack.py with a reproduced codec injected OUTSIDE
 # the seam (a bare, unquoted gzip/base64 transform) — the exact OQ-4
-# violation that got C-4.6 #2 reverted. Check 50 scans `__file__`, so the
-# copy's own path is scanned.
+# violation that got C-4.6 #2 reverted.
 src = pathlib.Path(validate).read_text()
 injection = (
     "\n\ndef _injected_reproduced_codec(data):\n"
@@ -283,21 +297,22 @@ marker = "# ── Main ──"
 idx = src.index(marker)
 dirty = src[:idx] + injection + "\n" + src[idx:]
 
-# BD-256 W1: the facade now does an UNGUARDED `from validate_checks.core import
-# *`, so the copy must land BESIDE a real `lib/` (the package is reachable from
-# the copied facade). Write the dirty copy to a temp DIR with a `lib` symlink to
-# the real `scripts/lib`, named `validate-pack.py` so its
-# `Path(__file__).resolve().parent / "lib"` glue resolves to the real package.
+# Synthetic REPO_ROOT: <tmp>/scripts/validate-pack.py = the dirty copy. Check
+# 50's POQ-W3-1 body reads REPO_ROOT/scripts/validate-pack.py, so this is the
+# scanned target once REPO_ROOT is patched to <tmp>.
 tmpdir = tempfile.mkdtemp(prefix="vp-check50-dirty-")
-os.symlink(os.path.join(repo_root, "scripts", "lib"),
-           os.path.join(tmpdir, "lib"))
-tmp_name = os.path.join(tmpdir, "validate-pack.py")
-with open(tmp_name, "w") as _f:
+os.makedirs(os.path.join(tmpdir, "scripts"))
+dirty_facade = os.path.join(tmpdir, "scripts", "validate-pack.py")
+with open(dirty_facade, "w") as _f:
     _f.write(dirty)
+# Load the REAL facade (its check_validate_pack_no_reproduced_codec lives in
+# the real discipline_parity module) and point REPO_ROOT at the synthetic tree.
+spec = importlib.util.spec_from_file_location("vp", validate)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+saved_root = mod.REPO_ROOT
 try:
-    spec = importlib.util.spec_from_file_location("vp_dirty", tmp_name)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    _patch_root(mod, pathlib.Path(tmpdir))
     mod.failures.clear()
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
@@ -311,20 +326,20 @@ try:
         print("FAIL: Check 50 message did not name the reproduced codec:", cap); ok = False
 
     # Reverse direction: the REAL (clean) validate-pack.py PASSES Check 50.
-    spec2 = importlib.util.spec_from_file_location("vp_clean", validate)
-    mod2 = importlib.util.module_from_spec(spec2)
-    spec2.loader.exec_module(mod2)
-    mod2.failures.clear()
+    _patch_root(mod, saved_root)
+    mod.failures.clear()
     buf2 = io.StringIO()
     with contextlib.redirect_stdout(buf2):
-        mod2.check_validate_pack_no_reproduced_codec()
-    if len(mod2.failures) != 0:
+        mod.check_validate_pack_no_reproduced_codec()
+    if len(mod.failures) != 0:
         print("FAIL: clean validate-pack.py expected Check 50 PASS, got",
-              len(mod2.failures), ":", buf2.getvalue()); ok = False
+              len(mod.failures), ":", buf2.getvalue()); ok = False
 
     print("OK" if ok else "NOT_OK")
     sys.exit(0 if ok else 1)
 finally:
+    _patch_root(mod, saved_root)
+    mod.failures.clear()
     shutil.rmtree(tmpdir, ignore_errors=True)
 PY
 case $? in
@@ -349,6 +364,17 @@ import sys, io, tempfile, os, shutil, pathlib, contextlib, importlib.util
 repo_root, validate = sys.argv[1], sys.argv[2]
 sys.path.insert(0, repo_root + "/scripts")
 
+# BD-256 W3: as Group 3 — Check 50's POQ-W3-1 body scans
+# REPO_ROOT/scripts/validate-pack.py, so the teeth test patches REPO_ROOT to a
+# synthetic tree whose facade carries the injected codec (form-B wave-invariant
+# REPO_ROOT patch).
+def _patch_root(mod, root):
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
 # Build a COPY of validate-pack.py with a FULLY FUNCTIONAL reproduced gz64/
 # base64 codec injected OUTSIDE the seam, where EVERY codec line self-quotes
 # its own forbidden token in a trailing comment — the exact reviewer exploit
@@ -371,28 +397,33 @@ marker = "# ── Main ──"
 idx = src.index(marker)
 dirty = src[:idx] + injection + "\n" + src[idx:]
 
-# BD-256 W1: the facade now does an UNGUARDED `from validate_checks.core import
-# *`, so the copy must land BESIDE a real `lib/` (the package is reachable from
-# the copied facade). Write the dirty copy to a temp DIR with a `lib` symlink to
-# the real `scripts/lib`, named `validate-pack.py` so its
-# `Path(__file__).resolve().parent / "lib"` glue resolves to the real package.
+# Synthetic REPO_ROOT: <tmp>/scripts/validate-pack.py = the dirty copy (scanned
+# by Check 50). A `lib` symlink lets the dirty copy import the real package so
+# the round-trip proof of the injected functions can exec it as a module.
 tmpdir = tempfile.mkdtemp(prefix="vp-check50-evasion-")
+os.makedirs(os.path.join(tmpdir, "scripts"))
 os.symlink(os.path.join(repo_root, "scripts", "lib"),
-           os.path.join(tmpdir, "lib"))
-tmp_name = os.path.join(tmpdir, "validate-pack.py")
-with open(tmp_name, "w") as _f:
+           os.path.join(tmpdir, "scripts", "lib"))
+dirty_facade = os.path.join(tmpdir, "scripts", "validate-pack.py")
+with open(dirty_facade, "w") as _f:
     _f.write(dirty)
+# Load the REAL facade for the Check 50 scan; REPO_ROOT will point at <tmp>.
+spec = importlib.util.spec_from_file_location("vp", validate)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+saved_root = mod.REPO_ROOT
 try:
     # Prove the injected codec is REAL (round-trips) — not a dead string.
-    spec = importlib.util.spec_from_file_location("vp_evasion", tmp_name)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    spec_d = importlib.util.spec_from_file_location("vp_evasion", dirty_facade)
+    mod_d = importlib.util.module_from_spec(spec_d)
+    spec_d.loader.exec_module(mod_d)
     sample = b"hello\x00\r world \xe2\x80\x94"
-    rt = mod._evasion_reproduced_ungz64(mod._evasion_reproduced_gz64(sample))
+    rt = mod_d._evasion_reproduced_ungz64(mod_d._evasion_reproduced_gz64(sample))
     ok = True
     if rt != sample:
         print("FAIL: injected codec did not round-trip (not a real exploit):", rt); ok = False
 
+    _patch_root(mod, pathlib.Path(tmpdir))
     mod.failures.clear()
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
@@ -408,20 +439,20 @@ try:
 
     # Reverse direction: the REAL (clean) validate-pack.py still PASSES — its
     # denylist literals (bare `"gzip.compress"`) have no unquoted occurrence.
-    spec2 = importlib.util.spec_from_file_location("vp_clean2", validate)
-    mod2 = importlib.util.module_from_spec(spec2)
-    spec2.loader.exec_module(mod2)
-    mod2.failures.clear()
+    _patch_root(mod, saved_root)
+    mod.failures.clear()
     buf2 = io.StringIO()
     with contextlib.redirect_stdout(buf2):
-        mod2.check_validate_pack_no_reproduced_codec()
-    if len(mod2.failures) != 0:
+        mod.check_validate_pack_no_reproduced_codec()
+    if len(mod.failures) != 0:
         print("FAIL: clean validate-pack.py expected Check 50 PASS (no false-FAIL), got",
-              len(mod2.failures), ":", buf2.getvalue()); ok = False
+              len(mod.failures), ":", buf2.getvalue()); ok = False
 
     print("OK" if ok else "NOT_OK")
     sys.exit(0 if ok else 1)
 finally:
+    _patch_root(mod, saved_root)
+    mod.failures.clear()
     shutil.rmtree(tmpdir, ignore_errors=True)
 PY
 case $? in

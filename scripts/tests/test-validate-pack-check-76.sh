@@ -122,6 +122,33 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W3 wave-invariant). The check body now lives in
+    validate_checks.discipline_parity and reads discipline_parity.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
+def _patch_attr(mod, name, value):
+    """Set attribute \`name\` on the facade alias AND every loaded
+    validate_checks.* submodule that already binds it (BD-256 W3
+    wave-invariant). \`README\` is a core seam (\`README = REPO_ROOT /
+    "README.md"\`) read by _immutable_readme_version, whose body now lives in
+    validate_checks.discipline_parity; a facade-only patch would NOT bite. This
+    reaches the owning module's binding wherever the body resolves it."""
+    setattr(mod, name, value)
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, name):
+                setattr(_m, name, value)
+
+
 failures = []
 
 # Project-relative immutable paths (the manifest stores these client-relative
@@ -209,8 +236,8 @@ def run_in_tree(tmpdir):
     saved_readme = mod.README
     saved_failures = list(mod.failures)
     mod.failures.clear()
-    mod.REPO_ROOT = tmpdir
-    mod.README = tmpdir / "README.md"
+    _patch_root(mod, tmpdir)
+    _patch_attr(mod, "README", tmpdir / "README.md")
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -218,8 +245,8 @@ def run_in_tree(tmpdir):
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
-        mod.README = saved_readme
+        _patch_root(mod, saved_root)
+        _patch_attr(mod, "README", saved_readme)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         shutil.rmtree(tmpdir, ignore_errors=True)
