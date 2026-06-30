@@ -145,6 +145,56 @@ spec.loader.exec_module(mod)
 
 failures = []
 
+
+def _patch_attr(mod, name, value):
+    """Set attribute \`name\` on the facade alias AND every loaded
+    validate_checks.* submodule (BD-256 W8 wave-invariant). Check 80's body +
+    its by-name \`module_ns = globals()\` resolution read \`_DOC_CONSTANT_TWINS\` /
+    \`_DOC_CONSTANT_TWINS_EXPECTED_COUNT\` / \`_PACK_CHAT_ONLY_PERMITTED_PREFIXES\`
+    from whatever module the body lives in (the facade pre-move; cross_bd
+    post-move). A facade-only \`mod.X = v\` does NOT reach cross_bd's binding, so
+    set the value on every loaded validate_checks.* module that carries it."""
+    setattr(mod, name, value)
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, name):
+                setattr(_m, name, value)
+
+
+def _patch_root(mod, root):
+    """REPO_ROOT specialization of _patch_attr (BD-256 W8 wave-invariant).
+    \`root\` is a pathlib.Path (Check 80's bijection extractor does
+    \`REPO_ROOT / "x"\`)."""
+    _patch_attr(mod, "REPO_ROOT", root)
+
+
+def _del_attr(mod, name):
+    """Delete attribute \`name\` from the facade alias AND every loaded
+    validate_checks.* submodule that carries it (BD-256 W8). BITE 4 deletes the
+    A1 SECONDARY constant (_PACK_CHAT_ONLY_PERMITTED_PREFIXES); Check 80's
+    by-name lookup reads it from cross_bd's globals(), so the delete must reach
+    cross_bd (not just the facade alias) for the graceful-KeyError leg to fire.
+    Returns the list of (module, name, value) it removed so the caller can
+    restore on EVERY submodule whose attribute vanished (a plain _patch_attr
+    would skip them — its hasattr guard is False after the delete)."""
+    removed = []
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, name):
+                removed.append((_m, name, getattr(_m, name)))
+                delattr(_m, name)
+    if hasattr(mod, name):
+        removed.append((mod, name, getattr(mod, name)))
+        delattr(mod, name)
+    return removed
+
+
+def _restore_attr(removed):
+    """Restore the (module, name, value) triples _del_attr removed (BD-256 W8)."""
+    for _m, _n, _v in removed:
+        setattr(_m, _n, _v)
+
+
 def run_body():
     saved = list(mod.failures); mod.failures.clear()
     buf = io.StringIO()
@@ -171,10 +221,10 @@ drifted = region.replace(
 )
 saved_root = mod.REPO_ROOT
 saved_twins = mod._DOC_CONSTANT_TWINS
-mod.REPO_ROOT = root
+_patch_root(mod, root)
 # A single bijection row pointing at the synthetic PACK-AGENTS.md; count-gate
 # matched so the bijection leg (not the completeness leg) is the one that bites.
-mod._DOC_CONSTANT_TWINS = (
+_patch_attr(mod, "_DOC_CONSTANT_TWINS", (
     (
         "A1 pack-chat-only permitted set",
         ("pack-ops/PACK-AGENTS.md",),
@@ -182,15 +232,15 @@ mod._DOC_CONSTANT_TWINS = (
         "_PACK_CHAT_ONLY_PERMITTED_PATHS",
         "bijection",
     ),
-)
+))
 saved_expected = mod._DOC_CONSTANT_TWINS_EXPECTED_COUNT
-mod._DOC_CONSTANT_TWINS_EXPECTED_COUNT = 1
+_patch_attr(mod, "_DOC_CONSTANT_TWINS_EXPECTED_COUNT", 1)
 try:
     fails, cap = run_body()
 finally:
-    mod.REPO_ROOT = saved_root
-    mod._DOC_CONSTANT_TWINS = saved_twins
-    mod._DOC_CONSTANT_TWINS_EXPECTED_COUNT = saved_expected
+    _patch_root(mod, saved_root)
+    _patch_attr(mod, "_DOC_CONSTANT_TWINS", saved_twins)
+    _patch_attr(mod, "_DOC_CONSTANT_TWINS_EXPECTED_COUNT", saved_expected)
     shutil.rmtree(tmpdir, ignore_errors=True)
 if not fails:
     failures.append("BITE 1 (bijection) expected a FAIL on the synthetic drift, got none: %s" % cap)
@@ -200,11 +250,11 @@ elif "bijection broken" not in cap or "bogus/extra-path.md" not in cap:
 # ── BITE 2: completeness-bite — remove a row WITHOUT the count bump → the
 # completeness leg FAILS.
 saved_twins = mod._DOC_CONSTANT_TWINS
-mod._DOC_CONSTANT_TWINS = mod._DOC_CONSTANT_TWINS[:-1]  # drop one; count unchanged
+_patch_attr(mod, "_DOC_CONSTANT_TWINS", mod._DOC_CONSTANT_TWINS[:-1])  # drop one; count unchanged
 try:
     fails, cap = run_body()
 finally:
-    mod._DOC_CONSTANT_TWINS = saved_twins
+    _patch_attr(mod, "_DOC_CONSTANT_TWINS", saved_twins)
 if not fails:
     failures.append("BITE 2 (completeness) expected a FAIL on count mismatch, got none: %s" % cap)
 elif "_DOC_CONSTANT_TWINS_EXPECTED_COUNT" not in cap:
@@ -214,7 +264,7 @@ elif "_DOC_CONSTANT_TWINS_EXPECTED_COUNT" not in cap:
 # matched) → the symbol-resolve leg FAILS.
 saved_twins = mod._DOC_CONSTANT_TWINS
 saved_expected = mod._DOC_CONSTANT_TWINS_EXPECTED_COUNT
-mod._DOC_CONSTANT_TWINS = (
+_patch_attr(mod, "_DOC_CONSTANT_TWINS", (
     (
         "bogus row",
         ("CLAUDE.md",),
@@ -222,13 +272,13 @@ mod._DOC_CONSTANT_TWINS = (
         "_THIS_SYMBOL_DOES_NOT_EXIST_XYZZY",
         "recorded",
     ),
-)
-mod._DOC_CONSTANT_TWINS_EXPECTED_COUNT = 1
+))
+_patch_attr(mod, "_DOC_CONSTANT_TWINS_EXPECTED_COUNT", 1)
 try:
     fails, cap = run_body()
 finally:
-    mod._DOC_CONSTANT_TWINS = saved_twins
-    mod._DOC_CONSTANT_TWINS_EXPECTED_COUNT = saved_expected
+    _patch_attr(mod, "_DOC_CONSTANT_TWINS", saved_twins)
+    _patch_attr(mod, "_DOC_CONSTANT_TWINS_EXPECTED_COUNT", saved_expected)
 if not fails:
     failures.append("BITE 3 (symbol-resolve) expected a FAIL on the bogus symbol, got none: %s" % cap)
 elif "_THIS_SYMBOL_DOES_NOT_EXIST_XYZZY" not in cap or "do NOT resolve" not in cap:
@@ -243,16 +293,19 @@ elif "_THIS_SYMBOL_DOES_NOT_EXIST_XYZZY" not in cap or "do NOT resolve" not in c
 # bijection leg (not the completeness leg) is the one that hits the lookup.
 saved_twins = mod._DOC_CONSTANT_TWINS
 saved_expected = mod._DOC_CONSTANT_TWINS_EXPECTED_COUNT
-saved_prefixes = mod._PACK_CHAT_ONLY_PERMITTED_PREFIXES
 # Keep ONLY the real A1 bijection row (live tree → bijection leg runs, reads
 # the secondary constant from globals()).
 a1_row = next(
     r for r in mod._DOC_CONSTANT_TWINS
     if r[3] == "_PACK_CHAT_ONLY_PERMITTED_PATHS" and r[4] == "bijection"
 )
-mod._DOC_CONSTANT_TWINS = (a1_row,)
-mod._DOC_CONSTANT_TWINS_EXPECTED_COUNT = 1
-del mod._PACK_CHAT_ONLY_PERMITTED_PREFIXES  # the secondary constant vanishes
+_patch_attr(mod, "_DOC_CONSTANT_TWINS", (a1_row,))
+_patch_attr(mod, "_DOC_CONSTANT_TWINS_EXPECTED_COUNT", 1)
+# Delete the secondary constant from the facade alias AND cross_bd (where Check
+# 80's by-name lookup reads it from globals()) — a facade-only del would leave
+# cross_bd.globals() intact, so the graceful-KeyError leg would not fire (W8:
+# the const lives in core, re-exported into cross_bd; both copies must vanish).
+removed_prefixes = _del_attr(mod, "_PACK_CHAT_ONLY_PERMITTED_PREFIXES")
 crashed = False
 try:
     fails, cap = run_body()
@@ -261,9 +314,9 @@ except Exception as exc:  # any uncaught exception == the guard CRASHED
     cap = "UNCAUGHT %s: %s" % (type(exc).__name__, exc)
     fails = []
 finally:
-    mod._DOC_CONSTANT_TWINS = saved_twins
-    mod._DOC_CONSTANT_TWINS_EXPECTED_COUNT = saved_expected
-    mod._PACK_CHAT_ONLY_PERMITTED_PREFIXES = saved_prefixes
+    _patch_attr(mod, "_DOC_CONSTANT_TWINS", saved_twins)
+    _patch_attr(mod, "_DOC_CONSTANT_TWINS_EXPECTED_COUNT", saved_expected)
+    _restore_attr(removed_prefixes)
 if crashed:
     failures.append("BITE 4 (graceful KeyError) the guard CRASHED instead of failing gracefully: %s" % cap)
 elif not fails:

@@ -88,6 +88,26 @@ spec.loader.exec_module(mod)
 failures = []
 BT = chr(96)  # literal backtick
 
+
+def _patch_attr(mod, name, value):
+    """Set attribute \`name\` on the facade alias AND every loaded
+    validate_checks.* submodule (BD-256 W8 wave-invariant). Check 82's body
+    (check_cross_bd_surface_advisory → _check_81_iter_open_bds) reads REPO_ROOT
+    from whatever module it lives in (the facade pre-move; cross_bd post-move),
+    so a facade-only \`mod.REPO_ROOT = v\` does NOT reach cross_bd's binding —
+    set it on every loaded validate_checks.* module that carries it."""
+    setattr(mod, name, value)
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, name):
+                setattr(_m, name, value)
+
+
+def _patch_root(mod, root):
+    """REPO_ROOT specialization of _patch_attr (BD-256 W8 wave-invariant).
+    \`root\` is a pathlib.Path."""
+    _patch_attr(mod, "REPO_ROOT", root)
+
 def bd_entry(bd_id, status, file_symbol):
     lines = [
         f"<!-- per-entry source: /backlog/{bd_id}.md -->",
@@ -115,7 +135,7 @@ def run(entries):
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures)
     mod.failures.clear()
-    mod.REPO_ROOT = root
+    _patch_root(mod, root)
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -123,7 +143,7 @@ def run(entries):
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
+        _patch_root(mod, saved_root)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         shutil.rmtree(tmpdir, ignore_errors=True)
