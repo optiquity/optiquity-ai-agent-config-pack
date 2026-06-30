@@ -86,6 +86,32 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W5 wave-invariant). The check body now lives in
+    validate_checks.doc_concision and reads doc_concision.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
+def _patch_attr(mod, name, value):
+    """Set attribute `name` on the facade alias AND every loaded
+    validate_checks.* submodule that already binds it (BD-256 W5
+    wave-invariant). The check body's intra-cluster constant now lives in
+    validate_checks.doc_concision; a facade-only patch would NOT bite. This
+    reaches the owning module's binding wherever the body resolves it."""
+    setattr(mod, name, value)
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, name):
+                setattr(_m, name, value)
+
+
 failures = []
 
 # The synthetic M4 doc class — ONE doc with a generous advisory ceiling
@@ -120,9 +146,9 @@ def run_check_with_synthetic(doc_body: str, allowlist_text: str,
     saved_docs = mod._CHECK_44_DURABLE_DOCS
     saved_failures = list(mod.failures)
     mod.failures.clear()
-    mod.REPO_ROOT = root
+    _patch_root(mod, root)
     # Monkeypatch the M4 doc class to the single synthetic doc.
-    mod._CHECK_44_DURABLE_DOCS = ((SYNTH_DOC, advisory_ceiling),)
+    _patch_attr(mod, "_CHECK_44_DURABLE_DOCS", ((SYNTH_DOC, advisory_ceiling),))
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -130,8 +156,8 @@ def run_check_with_synthetic(doc_body: str, allowlist_text: str,
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
-        mod._CHECK_44_DURABLE_DOCS = saved_docs
+        _patch_root(mod, saved_root)
+        _patch_attr(mod, "_CHECK_44_DURABLE_DOCS", saved_docs)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         shutil.rmtree(tmpdir, ignore_errors=True)
