@@ -97,6 +97,21 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W1 wave-invariant). check_session_state_fresh is a
+    DUAL-READ check: it reaches REPO_ROOT via the moved core seam
+    (_session_state_load reads core.REPO_ROOT) AND in-body (cwd=REPO_ROOT for
+    the git probe). Setting it on every loaded validate_checks.* covers BOTH
+    bindings — a facade-only OR single-owning-module patch would miss one."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
 failures = []
 SNAP_REL = "pack-ops/session-state.json"
 THRESH = mod._SESSION_STATE_FRESH_WARN_THRESHOLD
@@ -141,7 +156,7 @@ def run_in_tree(repo):
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures)
     mod.failures.clear()
-    mod.REPO_ROOT = repo
+    _patch_root(mod, repo)
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -149,7 +164,7 @@ def run_in_tree(repo):
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
+        _patch_root(mod, saved_root)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
     return (len(new_failures), captured)
@@ -258,6 +273,19 @@ import importlib.util
 spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
+
+
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W1 wave-invariant; check_session_state_fresh is a
+    dual-read check — core seam + in-body cwd)."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
 SNAP_REL = "pack-ops/session-state.json"
 tmpdir = pathlib.Path(tempfile.mkdtemp(prefix="vp-check78-nongit2-"))
 p = tmpdir / SNAP_REL; p.parent.mkdir(parents=True, exist_ok=True)
@@ -267,14 +295,14 @@ p.write_text(json.dumps({
     "queue": ["BD-252"], "parallelization": "serial", "wave": None,
     "pending_decisions": [], "cycle_position": None}) + "\n")
 saved_root = mod.REPO_ROOT; saved_failures = list(mod.failures)
-mod.failures.clear(); mod.REPO_ROOT = tmpdir
+mod.failures.clear(); _patch_root(mod, tmpdir)
 buf = io.StringIO()
 try:
     with contextlib.redirect_stdout(buf):
         mod.check_session_state_fresh()
     fc = len(mod.failures); cap = buf.getvalue()
 finally:
-    mod.REPO_ROOT = saved_root; mod.failures.clear()
+    _patch_root(mod, saved_root); mod.failures.clear()
     mod.failures.extend(saved_failures); shutil.rmtree(tmpdir, ignore_errors=True)
 print("PASS" if (fc == 0 and "not a git work tree — skipping" in cap) else ("FAIL " + cap))
 EOF

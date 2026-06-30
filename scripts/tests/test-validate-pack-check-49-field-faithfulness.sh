@@ -263,7 +263,7 @@ esac
 printf "\n=== Group 3: §4.5 single-source TEETH — reproduced codec FAILS Check 50 ===\n"
 
 python3 - "$REPO_ROOT" "$VALIDATE" <<'PY'
-import sys, io, tempfile, os, pathlib, contextlib, importlib.util
+import sys, io, tempfile, os, shutil, pathlib, contextlib, importlib.util
 repo_root, validate = sys.argv[1], sys.argv[2]
 sys.path.insert(0, repo_root + "/scripts")
 
@@ -283,11 +283,19 @@ marker = "# ── Main ──"
 idx = src.index(marker)
 dirty = src[:idx] + injection + "\n" + src[idx:]
 
-tmp = tempfile.NamedTemporaryFile(prefix="vp-check50-dirty-", suffix=".py",
-                                  delete=False, mode="w")
-tmp.write(dirty); tmp.close()
+# BD-256 W1: the facade now does an UNGUARDED `from validate_checks.core import
+# *`, so the copy must land BESIDE a real `lib/` (the package is reachable from
+# the copied facade). Write the dirty copy to a temp DIR with a `lib` symlink to
+# the real `scripts/lib`, named `validate-pack.py` so its
+# `Path(__file__).resolve().parent / "lib"` glue resolves to the real package.
+tmpdir = tempfile.mkdtemp(prefix="vp-check50-dirty-")
+os.symlink(os.path.join(repo_root, "scripts", "lib"),
+           os.path.join(tmpdir, "lib"))
+tmp_name = os.path.join(tmpdir, "validate-pack.py")
+with open(tmp_name, "w") as _f:
+    _f.write(dirty)
 try:
-    spec = importlib.util.spec_from_file_location("vp_dirty", tmp.name)
+    spec = importlib.util.spec_from_file_location("vp_dirty", tmp_name)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     mod.failures.clear()
@@ -317,7 +325,7 @@ try:
     print("OK" if ok else "NOT_OK")
     sys.exit(0 if ok else 1)
 finally:
-    os.unlink(tmp.name)
+    shutil.rmtree(tmpdir, ignore_errors=True)
 PY
 case $? in
     0) t_pass "§4.5 single-source: reproduced codec FAILS Check 50; clean source PASSES" ;;
@@ -337,7 +345,7 @@ esac
 printf "\n=== Group 3b: §4.5 self-quoting-comment EVASION FAILS Check 50 (review F-1) ===\n"
 
 python3 - "$REPO_ROOT" "$VALIDATE" <<'PY'
-import sys, io, tempfile, os, pathlib, contextlib, importlib.util
+import sys, io, tempfile, os, shutil, pathlib, contextlib, importlib.util
 repo_root, validate = sys.argv[1], sys.argv[2]
 sys.path.insert(0, repo_root + "/scripts")
 
@@ -363,12 +371,20 @@ marker = "# ── Main ──"
 idx = src.index(marker)
 dirty = src[:idx] + injection + "\n" + src[idx:]
 
-tmp = tempfile.NamedTemporaryFile(prefix="vp-check50-evasion-", suffix=".py",
-                                  delete=False, mode="w")
-tmp.write(dirty); tmp.close()
+# BD-256 W1: the facade now does an UNGUARDED `from validate_checks.core import
+# *`, so the copy must land BESIDE a real `lib/` (the package is reachable from
+# the copied facade). Write the dirty copy to a temp DIR with a `lib` symlink to
+# the real `scripts/lib`, named `validate-pack.py` so its
+# `Path(__file__).resolve().parent / "lib"` glue resolves to the real package.
+tmpdir = tempfile.mkdtemp(prefix="vp-check50-evasion-")
+os.symlink(os.path.join(repo_root, "scripts", "lib"),
+           os.path.join(tmpdir, "lib"))
+tmp_name = os.path.join(tmpdir, "validate-pack.py")
+with open(tmp_name, "w") as _f:
+    _f.write(dirty)
 try:
     # Prove the injected codec is REAL (round-trips) — not a dead string.
-    spec = importlib.util.spec_from_file_location("vp_evasion", tmp.name)
+    spec = importlib.util.spec_from_file_location("vp_evasion", tmp_name)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     sample = b"hello\x00\r world \xe2\x80\x94"
@@ -406,7 +422,7 @@ try:
     print("OK" if ok else "NOT_OK")
     sys.exit(0 if ok else 1)
 finally:
-    os.unlink(tmp.name)
+    shutil.rmtree(tmpdir, ignore_errors=True)
 PY
 case $? in
     0) t_pass "§4.5 self-quoting evasion: a self-quoting reproduced codec FAILS Check 50; clean source still PASSES" ;;

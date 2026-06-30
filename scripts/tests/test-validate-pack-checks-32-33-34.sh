@@ -142,10 +142,30 @@ vp = importlib.util.module_from_spec(spec)
 sys.modules["validate_pack"] = vp
 spec.loader.exec_module(vp)
 
+
+def _patch_attr(mod, name, value):
+    """Set attribute `name` on the facade alias AND every loaded
+    validate_checks.* submodule (BD-256 W1 wave-invariant). A check body reads
+    a seam (REPO_ROOT / STREAMS / …) from whatever module it lives in (the
+    facade pre-move; a category module post-move). Setting it on every loaded
+    validate_checks.* reaches the read wherever it resolves."""
+    setattr(mod, name, value)
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, name):
+                setattr(_m, name, value)
+
+
+def _patch_root(mod, root):
+    """REPO_ROOT specialization of _patch_attr (BD-256 W1 wave-invariant).
+    `root` is a pathlib.Path."""
+    _patch_attr(mod, "REPO_ROOT", root)
+
+
 # Monkey-patch: REPO_ROOT → scratch_repo; STREAMS → pack-backlog only
 # (or with extras parsed from the env var). BD-211: the pack-backlog
 # entry regex is canonical `BD-NNN.md` (no letter suffix).
-vp.REPO_ROOT = scratch_repo
+_patch_root(vp, scratch_repo)
 streams = [
     ("pack-backlog", "backlog", "BACKLOG.md", r"^BD-\d+\.md$"),
 ]
@@ -154,8 +174,8 @@ if extra_str:
         parts = tup.split("|")
         if len(parts) == 4:
             streams.append((parts[0], parts[1], parts[2], parts[3]))
-vp.STREAMS = streams
-vp.failures = []
+_patch_attr(vp, "STREAMS", streams)
+vp.failures.clear()
 
 check_fn = getattr(vp, check_name)
 check_fn()

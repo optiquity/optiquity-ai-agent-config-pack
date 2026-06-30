@@ -106,6 +106,20 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W1 wave-invariant). check_session_state_struct reads
+    REPO_ROOT via the moved core seam (_session_state_load reads
+    core.REPO_ROOT), so a facade-only patch would NOT bite. Setting it on every
+    loaded validate_checks.* reaches the read wherever it resolves."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
 failures = []
 SNAP_REL = "pack-ops/session-state.json"
 
@@ -144,7 +158,7 @@ def run_in_tree(tmpdir):
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures)
     mod.failures.clear()
-    mod.REPO_ROOT = tmpdir
+    _patch_root(mod, tmpdir)
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -152,7 +166,7 @@ def run_in_tree(tmpdir):
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
+        _patch_root(mod, saved_root)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         shutil.rmtree(tmpdir, ignore_errors=True)

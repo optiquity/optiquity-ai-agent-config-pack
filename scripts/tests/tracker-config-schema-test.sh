@@ -59,9 +59,24 @@ spec = importlib.util.spec_from_file_location(
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W1 wave-invariant). A check body reads REPO_ROOT from
+    whatever module it lives in (the facade pre-move; a category module
+    post-move) AND via the moved core seams (_session_state_load reads
+    core.REPO_ROOT). Setting it on every loaded validate_checks.* reaches the
+    read wherever it resolves. `root` is a pathlib.Path."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
 # Re-point the module's REPO_ROOT at the fixture and clear failures.
-mod.REPO_ROOT = fixture
-mod.failures = []
+_patch_root(mod, fixture)
+mod.failures.clear()
 mod.check_tracker_config()
 print("---FAILURES---")
 for f in mod.failures:
