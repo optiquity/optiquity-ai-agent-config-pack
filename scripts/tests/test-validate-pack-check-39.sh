@@ -130,6 +130,19 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W2 wave-invariant). The check body now lives in
+    validate_checks.boundary_refs and reads boundary_refs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
 failures = []
 
 # Helper: build a synthetic REPO_ROOT with custom scripts/init-project.sh
@@ -159,7 +172,7 @@ cmd_update() {
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures)
     mod.failures.clear()
-    mod.REPO_ROOT = root
+    _patch_root(mod, root)
     saved_exemptions = dict(mod._CHECK_39_EXEMPTIONS)
     if exemptions is not None:
         mod._CHECK_39_EXEMPTIONS.clear()
@@ -171,7 +184,7 @@ cmd_update() {
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
+        _patch_root(mod, saved_root)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         mod._CHECK_39_EXEMPTIONS.clear()
@@ -266,6 +279,19 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W2 wave-invariant). The check body now lives in
+    validate_checks.boundary_refs and reads boundary_refs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
 failures = []
 
 # Reverse-direction helper. Like run_check_with_synthetic but pack_relpaths
@@ -301,7 +327,7 @@ cmd_update() {
     saved_fwd = dict(mod._CHECK_39_EXEMPTIONS)
     saved_rev = dict(mod._CHECK_39_REVERSE_EXEMPTIONS)
     mod.failures.clear()
-    mod.REPO_ROOT = root
+    _patch_root(mod, root)
     if forward_exemptions is not None:
         mod._CHECK_39_EXEMPTIONS.clear()
         mod._CHECK_39_EXEMPTIONS.update(forward_exemptions)
@@ -315,7 +341,7 @@ cmd_update() {
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
+        _patch_root(mod, saved_root)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         mod._CHECK_39_EXEMPTIONS.clear()

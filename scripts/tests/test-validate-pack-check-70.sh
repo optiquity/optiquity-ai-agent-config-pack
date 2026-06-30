@@ -122,6 +122,19 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W2 wave-invariant). The check body now lives in
+    validate_checks.boundary_refs and reads boundary_refs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
 failures = []
 
 # A complete synthetic gate carrying all 5 axis-markers + the two wiring hosts
@@ -159,7 +172,7 @@ def run_check_in_tree(gate_body, executable, wiring_bodies):
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures)
     mod.failures.clear()
-    mod.REPO_ROOT = root
+    _patch_root(mod, root)
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -167,7 +180,7 @@ def run_check_in_tree(gate_body, executable, wiring_bodies):
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
+        _patch_root(mod, saved_root)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         shutil.rmtree(tmpdir, ignore_errors=True)

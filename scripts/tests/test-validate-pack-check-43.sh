@@ -290,6 +290,19 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W2 wave-invariant). The check body now lives in
+    validate_checks.boundary_refs and reads boundary_refs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
 failures = []
 
 def run_check_with_synthetic(project_files: dict, extra_files: dict = None,
@@ -350,7 +363,7 @@ def run_check_with_synthetic(project_files: dict, extra_files: dict = None,
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures)
     mod.failures.clear()
-    mod.REPO_ROOT = root
+    _patch_root(mod, root)
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -358,7 +371,7 @@ def run_check_with_synthetic(project_files: dict, extra_files: dict = None,
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
+        _patch_root(mod, saved_root)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         shutil.rmtree(tmpdir, ignore_errors=True)
@@ -643,6 +656,32 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W2 wave-invariant). The check body now lives in
+    validate_checks.boundary_refs and reads boundary_refs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
+def _patch_attr(mod, name, value):
+    """Set attribute `name` on the facade alias AND every loaded
+    validate_checks.* submodule that already binds it (BD-256 W2
+    wave-invariant). The check body's intra-cluster constant now lives in
+    validate_checks.boundary_refs; a facade-only patch would NOT bite. This
+    reaches the owning module's binding wherever the body resolves it."""
+    setattr(mod, name, value)
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, name):
+                setattr(_m, name, value)
+
+
 failures = []
 
 def run_check_with_synthetic(project_files: dict, extra_files: dict = None,
@@ -696,9 +735,9 @@ def run_check_with_synthetic(project_files: dict, extra_files: dict = None,
     saved_failures = list(mod.failures)
     saved_fence = mod._CHECK_37_PER_LINE_FENCE_FILES
     mod.failures.clear()
-    mod.REPO_ROOT = root
+    _patch_root(mod, root)
     if fence_files is not None:
-        mod._CHECK_37_PER_LINE_FENCE_FILES = tuple(fence_files)
+        _patch_attr(mod, "_CHECK_37_PER_LINE_FENCE_FILES", tuple(fence_files))
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -706,8 +745,8 @@ def run_check_with_synthetic(project_files: dict, extra_files: dict = None,
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
-        mod._CHECK_37_PER_LINE_FENCE_FILES = saved_fence
+        _patch_root(mod, saved_root)
+        _patch_attr(mod, "_CHECK_37_PER_LINE_FENCE_FILES", saved_fence)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         shutil.rmtree(tmpdir, ignore_errors=True)
@@ -744,7 +783,7 @@ proto_root_path = pathlib.Path(proto_root_tmp)
 (proto_root_path / "project-template" / "proto" / "example" / "v1"
  / "example_service.proto").write_text('syntax = "proto3";\nimport "common/v1/common.proto";\n')
 _saved_root = mod.REPO_ROOT
-mod.REPO_ROOT = proto_root_path
+_patch_root(mod, proto_root_path)
 try:
     # Direction (i): a proto basename that RESOLVES within the proto tree
     # is treated as VALID (admitted).
@@ -763,7 +802,7 @@ try:
     if mod._check_43_proto_resolves_in_tree("MERGE-STRATEGY.md"):
         failures.append("(b-ii) pack-doc basename 'MERGE-STRATEGY.md' must NOT be admitted")
 finally:
-    mod.REPO_ROOT = _saved_root
+    _patch_root(mod, _saved_root)
     shutil.rmtree(proto_root_tmp, ignore_errors=True)
 
 # (c) A commit-SHA provenance FAILs.
@@ -871,6 +910,19 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W2 wave-invariant). The check body now lives in
+    validate_checks.boundary_refs and reads boundary_refs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
 failures = []
 
 def build_tree(detect_content: str, extra_map_entries: list = None,
@@ -916,7 +968,7 @@ def run(check_fn_name: str, root: pathlib.Path) -> tuple:
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures)
     mod.failures.clear()
-    mod.REPO_ROOT = root
+    _patch_root(mod, root)
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -924,7 +976,7 @@ def run(check_fn_name: str, root: pathlib.Path) -> tuple:
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
+        _patch_root(mod, saved_root)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         shutil.rmtree(root, ignore_errors=True)
@@ -947,11 +999,11 @@ DIRTY_DETECT = (
 #     without touching the membership gate. (architect §8.1 (ii) / PLAN R-9.)
 membership_root = build_tree(CLEAN_DETECT)
 saved_root_m = mod.REPO_ROOT
-mod.REPO_ROOT = membership_root
+_patch_root(mod, membership_root)
 try:
     walked = {str(p).replace("\\\\", "/") for p in mod._iter_client_installed_files()}
 finally:
-    mod.REPO_ROOT = saved_root_m
+    _patch_root(mod, saved_root_m)
     shutil.rmtree(membership_root, ignore_errors=True)
 if "scripts/lib/detect.sh" not in walked:
     failures.append(

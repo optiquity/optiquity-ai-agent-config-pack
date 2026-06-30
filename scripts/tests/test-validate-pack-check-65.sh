@@ -98,6 +98,32 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W2 wave-invariant). The check body now lives in
+    validate_checks.boundary_refs and reads boundary_refs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
+def _patch_attr(mod, name, value):
+    """Set attribute `name` on the facade alias AND every loaded
+    validate_checks.* submodule that already binds it (BD-256 W2
+    wave-invariant). The check body's intra-cluster constant now lives in
+    validate_checks.boundary_refs; a facade-only patch would NOT bite. This
+    reaches the owning module's binding wherever the body resolves it."""
+    setattr(mod, name, value)
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, name):
+                setattr(_m, name, value)
+
+
 failures = []
 
 # The synthetic operating-doc IN set — ONE doc.
@@ -124,11 +150,11 @@ def run_check_with_synthetic(doc_body, allowlist_text):
     saved_scope = mod._CHECK_65_OPERATING_DOCS
     saved_failures = list(mod.failures)
     mod.failures.clear()
-    mod.REPO_ROOT = root
+    _patch_root(mod, root)
     # Monkeypatch the IN scope to the single synthetic doc, substituting it for
     # the live auto-discovered IN set so the check FUNCTION is exercised in
     # isolation via this fixture (saved/restored around the call).
-    mod._CHECK_65_OPERATING_DOCS = (SYNTH_DOC,)
+    _patch_attr(mod, "_CHECK_65_OPERATING_DOCS", (SYNTH_DOC,))
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -136,8 +162,8 @@ def run_check_with_synthetic(doc_body, allowlist_text):
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
-        mod._CHECK_65_OPERATING_DOCS = saved_scope
+        _patch_root(mod, saved_root)
+        _patch_attr(mod, "_CHECK_65_OPERATING_DOCS", saved_scope)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         shutil.rmtree(tmpdir, ignore_errors=True)

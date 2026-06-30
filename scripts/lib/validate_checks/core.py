@@ -392,6 +392,48 @@ _CHECK_56_CANONICAL_VERBS = (
 )
 
 
+# ── Cross-MODULE helper: _parse_manifest_records (BD-256 W2) ────────────────
+# A blank-line-separated `key: value` manifest parser. Promoted to core in
+# BD-256 W2 because its consumers span ≥2 modules (the MUST-4 seam-promotion
+# rule): the Check 65/67/68 allowlist loaders (`_check_65/67/68_load_allowlist`)
+# in boundary_refs (A), the Check 44/66 allowlist loaders in doc_concision (D),
+# and Check 46 (`check_boundary_and_spawn_pointer_manifests`) in its own cluster.
+# A single SSOT here keeps every consumer reading one copy (no fork). Pure
+# function — depends only on `re` (imported above); no load-order constraint.
+def _parse_manifest_records(text: str) -> list:
+    """Parse a blank-line-separated `key: value` manifest into records.
+
+    Lines beginning with `#` are comments. A blank line ends a record.
+    Repeated keys within a record are joined with a space (wrapped
+    `references:` continuation lines). Returns a list of dicts.
+    """
+    records = []
+    cur = {}
+    for raw in text.splitlines():
+        if raw.lstrip().startswith("#"):
+            continue
+        if not raw.strip():
+            if cur:
+                records.append(cur)
+                cur = {}
+            continue
+        m = re.match(r"(\w+):\s*(.*)", raw)
+        if m:
+            key, val = m.group(1), m.group(2).strip()
+            if key in cur:
+                cur[key] = (cur[key] + " " + val).strip()
+            else:
+                cur[key] = val
+        elif cur:
+            # A continuation line with no `key:` prefix (indented wrap of
+            # the previous value). Append to the last key seen.
+            last_key = list(cur.keys())[-1]
+            cur[last_key] = (cur[last_key] + " " + raw.strip()).strip()
+    if cur:
+        records.append(cur)
+    return records
+
+
 # ── __all__ — EVERY moved symbol, incl. the underscore seams ────────────────
 # `from validate_checks.core import *` skips underscore names UNLESS they are
 # listed in `__all__`; the underscore seams (`_session_state_load`,
@@ -434,4 +476,6 @@ __all__ = [
     "_TRACKER_BACKENDS",
     "_CHECK_54_REQUIRED_TOKENS",
     "_CHECK_56_CANONICAL_VERBS",
+    # ── cross-MODULE helper (BD-256 W2) ──
+    "_parse_manifest_records",
 ]

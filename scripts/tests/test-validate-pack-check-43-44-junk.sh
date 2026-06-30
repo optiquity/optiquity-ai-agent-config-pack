@@ -112,6 +112,32 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W2 wave-invariant). The check body now lives in
+    validate_checks.boundary_refs and reads boundary_refs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
+def _patch_attr(mod, name, value):
+    """Set attribute `name` on the facade alias AND every loaded
+    validate_checks.* submodule that already binds it (BD-256 W2
+    wave-invariant). The check body's intra-cluster constant now lives in
+    validate_checks.boundary_refs; a facade-only patch would NOT bite. This
+    reaches the owning module's binding wherever the body resolves it."""
+    setattr(mod, name, value)
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, name):
+                setattr(_m, name, value)
+
+
 import subprocess
 
 failures = []
@@ -142,16 +168,16 @@ def build_in_tree(builder, post_add=None):
     saved_root = mod.REPO_ROOT
     saved_trees = mod._CHECK_43_PACK_ONLY_DOC_TREES
     saved_allow = mod._CHECK_43_ALLOWLIST
-    mod.REPO_ROOT = root
-    mod._CHECK_43_PACK_ONLY_DOC_TREES = ("maintenance-docs",)
-    mod._CHECK_43_ALLOWLIST = {}
+    _patch_root(mod, root)
+    _patch_attr(mod, "_CHECK_43_PACK_ONLY_DOC_TREES", ("maintenance-docs",))
+    _patch_attr(mod, "_CHECK_43_ALLOWLIST", {})
     try:
         index = mod._build_basename_index()
         pack_only = mod._build_pack_only_doc_basenames()
     finally:
-        mod.REPO_ROOT = saved_root
-        mod._CHECK_43_PACK_ONLY_DOC_TREES = saved_trees
-        mod._CHECK_43_ALLOWLIST = saved_allow
+        _patch_root(mod, saved_root)
+        _patch_attr(mod, "_CHECK_43_PACK_ONLY_DOC_TREES", saved_trees)
+        _patch_attr(mod, "_CHECK_43_ALLOWLIST", saved_allow)
         shutil.rmtree(tmpdir, ignore_errors=True)
     return (index, pack_only)
 
@@ -242,6 +268,19 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W2 wave-invariant). The check body now lives in
+    validate_checks.boundary_refs and reads boundary_refs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
 failures = []
 
 # A /tmp REPO_ROOT that is NOT a git work tree (no git init). It carries the
@@ -259,7 +298,7 @@ root = pathlib.Path(tmpdir)
 def run_with_root(fn):
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures); mod.failures.clear()
-    mod.REPO_ROOT = root
+    _patch_root(mod, root)
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -267,7 +306,7 @@ def run_with_root(fn):
         new_failures = list(mod.failures)
         cap = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
+        _patch_root(mod, saved_root)
         mod.failures.clear(); mod.failures.extend(saved_failures)
     return result, new_failures, cap
 

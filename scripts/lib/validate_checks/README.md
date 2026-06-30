@@ -13,7 +13,7 @@ design rationale lives in
 
 | File | Owns |
 |---|---|
-| `core.py` | The shared SPINE + the 8 cross-module SEAM symbols (below). |
+| `core.py` | The shared SPINE + the 8 cross-module SEAM symbols + the `_parse_manifest_records` cross-module helper (below). |
 | `<category>.py` (13 modules) | The check bodies of one connected component (a cluster of checks that share a non-`core` symbol), plus that cluster's private helpers + constants. |
 | `singletons.py` | The 17 genuinely-isolated checks that share no non-`core` symbol with any other check (the FROZEN split-time set — see the convention). |
 | `__init__.py` | Package marker (docstring only). |
@@ -29,6 +29,12 @@ design rationale lives in
   the `_SESSION_STATE_*` constants, `_PACK_CHAT_ONLY_PERMITTED_PATHS`,
   `_PACK_CHAT_ONLY_PERMITTED_PREFIXES`, `_TRACKER_BACKENDS`,
   `_CHECK_54_REQUIRED_TOKENS`, `_CHECK_56_CANONICAL_VERBS`.
+- **Cross-module helper** (promoted BD-256 W2 — its consumers span ≥2 modules,
+  the same ≥2-module promotion rule the 8 seams obey): `_parse_manifest_records`
+  — the `key: value` manifest parser the Check 65/67/68 allowlist loaders
+  (`boundary_refs`), the Check 44/66 loaders (`doc_concision`), and Check 46
+  (its owning cluster) all reuse. A single SSOT in `core` keeps every consumer
+  reading one copy.
 
 The facade imports the spine + seams with `from validate_checks.core import *`
 placed ABOVE the first use, so a bare reference to `REPO_ROOT`/`failures`/

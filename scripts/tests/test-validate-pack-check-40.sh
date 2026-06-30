@@ -426,6 +426,19 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W2 wave-invariant). The check body now lives in
+    validate_checks.boundary_refs and reads boundary_refs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
 failures = []
 
 # Build the live index.
@@ -467,10 +480,10 @@ subprocess.run(["git", "init", "-q"], cwd=t3_root, env=_t3_env, check=True)
 subprocess.run(["git", "add", "-A"], cwd=t3_root, env=_t3_env, check=True)
 saved_root_t3 = mod.REPO_ROOT
 try:
-    mod.REPO_ROOT = t3_root
+    _patch_root(mod, t3_root)
     t3_index = mod._build_basename_index()
 finally:
-    mod.REPO_ROOT = saved_root_t3
+    _patch_root(mod, saved_root_t3)
     shutil.rmtree(t3_tmp, ignore_errors=True)
 t3_cands = sorted(str(p) for p in t3_index.get("tracker.toml", []))
 if t3_cands != ["tracker.toml"]:
@@ -513,6 +526,19 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W2 wave-invariant). The check body now lives in
+    validate_checks.boundary_refs and reads boundary_refs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
 failures = []
 
 def run_check_with_synthetic(pack_ops_files: dict, extra_files: dict = None) -> tuple:
@@ -546,7 +572,7 @@ def run_check_with_synthetic(pack_ops_files: dict, extra_files: dict = None) -> 
     saved_root = mod.REPO_ROOT
     saved_failures = list(mod.failures)
     mod.failures.clear()
-    mod.REPO_ROOT = root
+    _patch_root(mod, root)
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -554,7 +580,7 @@ def run_check_with_synthetic(pack_ops_files: dict, extra_files: dict = None) -> 
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
+        _patch_root(mod, saved_root)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         shutil.rmtree(tmpdir, ignore_errors=True)

@@ -117,6 +117,32 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W2 wave-invariant). The check body now lives in
+    validate_checks.boundary_refs and reads boundary_refs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
+def _patch_attr(mod, name, value):
+    """Set attribute `name` on the facade alias AND every loaded
+    validate_checks.* submodule that already binds it (BD-256 W2
+    wave-invariant). The check body's intra-cluster constant now lives in
+    validate_checks.boundary_refs; a facade-only patch would NOT bite. This
+    reaches the owning module's binding wherever the body resolves it."""
+    setattr(mod, name, value)
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, name):
+                setattr(_m, name, value)
+
+
 failures = []
 
 import subprocess
@@ -154,11 +180,11 @@ def run_check_in_tree(builder, scanned_trees, families, exempt, out_of_family,
     saved_oof = mod._CHECK_OPERATING_DOC_OUT_OF_FAMILY
     saved_failures = list(mod.failures)
     mod.failures.clear()
-    mod.REPO_ROOT = root
-    mod._CHECK_OPERATING_DOC_SCANNED_TREES = scanned_trees
-    mod._CHECK_OPERATING_DOC_FAMILIES = families
-    mod._CHECK_OPERATING_DOC_EXEMPT = exempt
-    mod._CHECK_OPERATING_DOC_OUT_OF_FAMILY = out_of_family
+    _patch_root(mod, root)
+    _patch_attr(mod, "_CHECK_OPERATING_DOC_SCANNED_TREES", scanned_trees)
+    _patch_attr(mod, "_CHECK_OPERATING_DOC_FAMILIES", families)
+    _patch_attr(mod, "_CHECK_OPERATING_DOC_EXEMPT", exempt)
+    _patch_attr(mod, "_CHECK_OPERATING_DOC_OUT_OF_FAMILY", out_of_family)
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -166,11 +192,11 @@ def run_check_in_tree(builder, scanned_trees, families, exempt, out_of_family,
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
-        mod.REPO_ROOT = saved_root
-        mod._CHECK_OPERATING_DOC_SCANNED_TREES = saved_trees
-        mod._CHECK_OPERATING_DOC_FAMILIES = saved_fams
-        mod._CHECK_OPERATING_DOC_EXEMPT = saved_exempt
-        mod._CHECK_OPERATING_DOC_OUT_OF_FAMILY = saved_oof
+        _patch_root(mod, saved_root)
+        _patch_attr(mod, "_CHECK_OPERATING_DOC_SCANNED_TREES", saved_trees)
+        _patch_attr(mod, "_CHECK_OPERATING_DOC_FAMILIES", saved_fams)
+        _patch_attr(mod, "_CHECK_OPERATING_DOC_EXEMPT", saved_exempt)
+        _patch_attr(mod, "_CHECK_OPERATING_DOC_OUT_OF_FAMILY", saved_oof)
         mod.failures.clear()
         mod.failures.extend(saved_failures)
         shutil.rmtree(tmpdir, ignore_errors=True)
@@ -345,6 +371,32 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W2 wave-invariant). The check body now lives in
+    validate_checks.boundary_refs and reads boundary_refs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
+def _patch_attr(mod, name, value):
+    """Set attribute `name` on the facade alias AND every loaded
+    validate_checks.* submodule that already binds it (BD-256 W2
+    wave-invariant). The check body's intra-cluster constant now lives in
+    validate_checks.boundary_refs; a facade-only patch would NOT bite. This
+    reaches the owning module's binding wherever the body resolves it."""
+    setattr(mod, name, value)
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, name):
+                setattr(_m, name, value)
+
+
 # A /tmp REPO_ROOT that is NOT a git work tree (no git init). The tracked-only
 # scan's git ls-files returns non-zero → lenient SKIP, never a FAIL.
 tmpdir = tempfile.mkdtemp(prefix="vp-check69-nogit-")
@@ -355,8 +407,8 @@ root = pathlib.Path(tmpdir)
 saved_root = mod.REPO_ROOT
 saved_trees = mod._CHECK_OPERATING_DOC_SCANNED_TREES
 saved_failures = list(mod.failures); mod.failures.clear()
-mod.REPO_ROOT = root
-mod._CHECK_OPERATING_DOC_SCANNED_TREES = ("docs",)
+_patch_root(mod, root)
+_patch_attr(mod, "_CHECK_OPERATING_DOC_SCANNED_TREES", ("docs",))
 buf = io.StringIO()
 try:
     with contextlib.redirect_stdout(buf):
@@ -364,8 +416,8 @@ try:
     fails = list(mod.failures)
     cap = buf.getvalue()
 finally:
-    mod.REPO_ROOT = saved_root
-    mod._CHECK_OPERATING_DOC_SCANNED_TREES = saved_trees
+    _patch_root(mod, saved_root)
+    _patch_attr(mod, "_CHECK_OPERATING_DOC_SCANNED_TREES", saved_trees)
     mod.failures.clear(); mod.failures.extend(saved_failures)
     shutil.rmtree(tmpdir, ignore_errors=True)
 
