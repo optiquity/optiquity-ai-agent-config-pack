@@ -427,6 +427,18 @@ from validate_checks.cross_bd import *  # noqa: E402,F403  (Cluster G; single SS
 # live only in session_state.py; the facade carries no forked copy.
 from validate_checks.session_state import *  # noqa: E402,F403  (Cluster H; single SSOT)
 
+# W10 (BD-256): the facade re-exports Cluster I (the per-agent prompt-directory
+# family — Checks 6,10) now extracted to validate_checks.prompts. Placed ABOVE
+# _build_check_registry() so the registry's bare `check_*` references
+# (`check_prompts_directory` / `check_prompt_triad_compliance`) resolve. The 2
+# checks read the spine (`REPO_ROOT` / `fail` / `ok`) `from .core`; the
+# Cluster-I-exclusive `PROMPTS_DIR` + `REQUIRED_PROMPT_FRONTMATTER` +
+# `RESERVED_PROMPT_FRONTMATTER` constants travel there too (Cluster-I-owned, in
+# prompts's `__all__` — re-exported here so the facade's public surface stays
+# byte-stable). Single SSOT — the bodies + constants live only in prompts.py;
+# the facade carries no forked copy.
+from validate_checks.prompts import *  # noqa: E402,F403  (Cluster I; single SSOT)
+
 # ── Check 48 (BD-195 C6): JC-5 soft-advisory removed-doc guard ─────────────
 # Frozen measure-then-bound set (PLAN-BD-195-REMEDIATION.md §2.3 Step-1):
 # basenames of docs REMOVED from the repo that are still cited (as accurate
@@ -467,9 +479,10 @@ CODEX_DIR = REPO_ROOT / "project-template" / ".codex"
 # README moved to validate_checks.core (BD-256 W1 seam) — re-imported via the
 # facade's `from validate_checks.core import *` above (derives from REPO_ROOT).
 
-PROMPTS_DIR = REPO_ROOT / "project-template" / "docs" / "pack" / "prompts"
-REQUIRED_PROMPT_FRONTMATTER = {"agent", "variants"}
-RESERVED_PROMPT_FRONTMATTER = {"description", "deprecated-by", "notes"}
+# PROMPTS_DIR / REQUIRED_PROMPT_FRONTMATTER / RESERVED_PROMPT_FRONTMATTER moved
+# to validate_checks.prompts (BD-256 W10 — Cluster I intra-cluster) — re-imported
+# via the facade's `from validate_checks.prompts import *` above (single SSOT, no
+# forked copy). Read only by Checks 6 and 10.
 
 # BD-221 (Antigravity conversion): the pack-template agent/skill surfaces a
 # reserved-`x-` file could legitimately live in. The Antigravity end-state
@@ -647,116 +660,11 @@ def check_readme_version() -> None:
 # validate_checks.agents_skills import *` above (single SSOT, no forked copy). ──
 
 
-# ── Check 6: Prompts-directory format ───────────────────────────────────────
-
-def check_prompts_directory() -> None:
-    print("\n── Check 6: Prompts-directory format ──")
-    if not PROMPTS_DIR.is_dir():
-        fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — directory missing")
-        return
-
-    agent_files = sorted(PROMPTS_DIR.glob("*.md"))
-    if not agent_files:
-        fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — no per-agent prompt files found")
-        return
-
-    for f in agent_files:
-        rel = f.relative_to(REPO_ROOT)
-        content = f.read_text()
-
-        # Rule 1: frontmatter opener + closer
-        if not content.startswith("---\n"):
-            fail(f"{rel} — no frontmatter (missing opening ---)")
-            continue
-        fm_match = re.match(r"---\n(.*?)\n---\n", content, re.DOTALL)
-        if not fm_match:
-            fail(f"{rel} — malformed frontmatter (no closing ---)")
-            continue
-        fm = fm_match.group(1)
-
-        # Parse frontmatter: simple line-based.
-        # Supports `key: value` on one line and a `variants:` list in either
-        # block style (indented `  - slug` lines) or inline `[a, b]` / `[]`.
-        agent_value = None
-        variants_slugs: list[str] = []
-        seen_keys: list[str] = []
-        current_list_key = None
-        for line in fm.split("\n"):
-            if not line.strip():
-                current_list_key = None
-                continue
-            if line.startswith("  - "):
-                if current_list_key == "variants":
-                    variants_slugs.append(line[4:].strip())
-                continue
-            if line.startswith(" ") or line.startswith("\t"):
-                # unrecognized indented content
-                continue
-            # top-level key line
-            current_list_key = None
-            if ":" in line:
-                key, _, val = line.partition(":")
-                key = key.strip()
-                val = val.strip()
-                seen_keys.append(key)
-                if key == "agent":
-                    agent_value = val
-                elif key == "variants":
-                    if val.startswith("["):
-                        inner = val.strip("[]").strip()
-                        if inner:
-                            variants_slugs = [
-                                s.strip().strip('"').strip("'") for s in inner.split(",")
-                            ]
-                        else:
-                            variants_slugs = []
-                    else:
-                        # block-style list follows on subsequent indented lines
-                        current_list_key = "variants"
-
-        # Rule 2: required keys present
-        missing = REQUIRED_PROMPT_FRONTMATTER - set(seen_keys)
-        if missing:
-            for m in sorted(missing):
-                fail(f"{rel} — missing required frontmatter key: {m}")
-            continue
-
-        # Rule 3: no unknown top-level keys
-        allowed = REQUIRED_PROMPT_FRONTMATTER | RESERVED_PROMPT_FRONTMATTER
-        unknown = set(seen_keys) - allowed
-        if unknown:
-            for k in sorted(unknown):
-                fail(f"{rel} — unknown frontmatter key: {k}")
-            continue
-
-        # Rule 4: stem matches agent: value
-        if f.stem != agent_value:
-            fail(f"{rel} — file stem '{f.stem}' does not match agent: '{agent_value}'")
-            continue
-
-        # Rule 5: variant slug ↔ H2 consistency
-        body = content[fm_match.end():]
-        h2_slugs = re.findall(r"^## Variant: (\S+)\s*$", body, re.MULTILINE)
-        listed = set(variants_slugs)
-
-        orphans = [s for s in h2_slugs if s not in listed]
-        if orphans:
-            fail(f"{rel} — orphan `## Variant:` H2 not listed in variants: {sorted(set(orphans))}")
-            continue
-
-        bad_slug = False
-        for s in variants_slugs:
-            count = h2_slugs.count(s)
-            if count == 0:
-                fail(f"{rel} — variant slug '{s}' listed but no matching `## Variant: {s}` H2")
-                bad_slug = True
-            elif count > 1:
-                fail(f"{rel} — variant slug '{s}' has {count} `## Variant: {s}` H2s (expected 1)")
-                bad_slug = True
-        if bad_slug:
-            continue
-
-        ok(f"{rel} — {len(variants_slugs)} variant(s)")
+# ── Check 6 (check_prompts_directory) moved to validate_checks.prompts
+# (BD-256 W10 — Cluster I) — re-imported via the facade's `from
+# validate_checks.prompts import *` above (single SSOT, no forked copy). The
+# Cluster-I-exclusive `PROMPTS_DIR` / `REQUIRED_PROMPT_FRONTMATTER` /
+# `RESERVED_PROMPT_FRONTMATTER` constants moved with it. ──
 
 
 # ── Check 7 (check_pack_agent_roster) moved to validate_checks.agents_skills
@@ -858,79 +766,10 @@ def check_init_project_structure() -> None:
             ok("README.md — Repository Layout mentions detect.sh and migration naming convention")
 
 
-# ── Check 10: Prompt template triad compliance ────────────────────────────
-
-def check_prompt_triad_compliance() -> None:
-    print("\n── Check 10: Prompt template triad compliance ──")
-    if not PROMPTS_DIR.is_dir():
-        fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — directory missing")
-        return
-
-    agent_files = sorted(PROMPTS_DIR.glob("*.md"))
-    if not agent_files:
-        fail(f"{PROMPTS_DIR.relative_to(REPO_ROOT)} — no per-agent prompt files found")
-        return
-
-    required_labels = ("**Problem:**", "**Goal:**", "**Success criteria:**")
-    completion_indicators = ("REPORT FILE:", "**Completion report:**")
-    exception_marker = "**Convention exception:**"
-    variant_h2 = re.compile(r"^## Variant: (\S+)\s*$", re.MULTILINE)
-
-    for f in agent_files:
-        rel = f.relative_to(REPO_ROOT)
-        content = f.read_text()
-
-        # Body = text after the closing --- of YAML frontmatter, if present.
-        if content.startswith("---\n"):
-            fm_match = re.match(r"---\n(.*?)\n---\n", content, re.DOTALL)
-            body = content[fm_match.end():] if fm_match else content
-        else:
-            body = content
-
-        matches = list(variant_h2.finditer(body))
-        if not matches:
-            ok(f"{rel} — 0 variant(s) (placeholder file)")
-            continue
-
-        in_scope_pass = 0
-        exempt: list[str] = []
-        file_failed = False
-
-        for i, m in enumerate(matches):
-            slug = m.group(1)
-            start = m.end()
-            end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
-            variant_body = body[start:end]
-
-            # Rule N.1 — Kickoff exception detection
-            if exception_marker in variant_body:
-                exempt.append(slug)
-                continue
-
-            # Rule N.2 — Triad presence
-            missing_labels = [lbl for lbl in required_labels if lbl not in variant_body]
-
-            # Rule N.3 — File-based completion-report indicator
-            has_report_indicator = any(ind in variant_body for ind in completion_indicators)
-
-            if missing_labels or not has_report_indicator:
-                missing = list(missing_labels)
-                if not has_report_indicator:
-                    missing.append("REPORT FILE: or **Completion report:**")
-                fail(f"{rel} — Variant: {slug} — missing labeled section(s): {missing}")
-                file_failed = True
-                continue
-
-            in_scope_pass += 1
-
-        if not file_failed:
-            if exempt:
-                ok(
-                    f"{rel} — {in_scope_pass} variant(s) pass triad+report-file rule "
-                    f"({len(exempt)} exempt: {', '.join(exempt)})"
-                )
-            else:
-                ok(f"{rel} — {in_scope_pass} variant(s) pass triad+report-file rule")
+# ── Check 10 (check_prompt_triad_compliance) moved to validate_checks.prompts
+# (BD-256 W10 — Cluster I) — re-imported via the facade's `from
+# validate_checks.prompts import *` above (single SSOT, no forked copy). Reads
+# the same Cluster-I-exclusive `PROMPTS_DIR` constant as Check 6. ──
 
 
 def check_pack_agent_trinity() -> None:
