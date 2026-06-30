@@ -294,6 +294,36 @@ import time
 import tomllib
 from pathlib import Path
 
+# ── BD-256 facade import glue ───────────────────────────────────────────────
+#
+# scripts/validate-pack.py is the frozen CI entrypoint and is becoming a thin
+# facade over the scripts/lib/validate_checks package. Make the directory that
+# holds the package (the sibling `lib/` of this file) importable regardless of
+# cwd, so BOTH `python3 scripts/validate-pack.py` from any directory AND the
+# tests' spec_from_file_location()+exec_module() import path resolve
+# `import validate_checks`. resolve() makes this robust to a relative __file__.
+#
+# Tolerance: the check-49/50 single-source teeth (and any future test) exec a
+# COPY of this facade from a standalone temp path that has no sibling `lib/`.
+# In that case the package is legitimately unreachable; the import is guarded so
+# such a copy still loads. The package dir is added to sys.path only when it
+# actually exists, and the import is best-effort — the facade must not hard-fail
+# merely because the package is absent. At W0 the package is a scaffold (empty
+# core) and the facade does not yet consume any moved symbol, so this glue is
+# INERT: it changes no check behavior. Check bodies move here in later BD-256
+# waves, at which point the package is co-located with the real facade and
+# resolves on every real invocation path.
+_VALIDATE_CHECKS_LIB = Path(__file__).resolve().parent / "lib"
+if _VALIDATE_CHECKS_LIB.is_dir() and str(_VALIDATE_CHECKS_LIB) not in sys.path:
+    sys.path.insert(0, str(_VALIDATE_CHECKS_LIB))
+try:
+    import validate_checks  # noqa: E402,F401  (package scaffold; bodies land later)
+    from validate_checks import core  # noqa: E402,F401  (empty at W0; spine in W1)
+except ModuleNotFoundError:
+    # A standalone copy of this facade (no sibling validate_checks package) — the
+    # package is legitimately absent. Tolerated so copied-facade test idioms load.
+    pass
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / "project-template" / "skills"
 
