@@ -219,11 +219,22 @@ DEFERRED_PATTERN = re.compile(
 )
 
 # AXIS: bloat
-# A single per-bullet character cap over the trinity "## Project memory"
+# A single per-bullet character cap over the trinity memory heading
 # bullets — the mega-bullet axis. Irreducible enumerations (e.g. the
 # denied-git-verb list) are allowlisted by snippet.
 BLOAT_BULLET_CHAR_CAP = 700
 TRINITY = {"CLAUDE.md", "AGENTS.md", "GEMINI.md"}
+
+# Client-local doc<->constant twin (the bijection leg target). The trinity
+# memory-section heading the bloat matcher keys on lives here as the SINGLE
+# source of truth, referenced by BOTH the bloat matcher (the load-bearing
+# scan surface) AND the --self-test synthetic trinity docs (the verification
+# surface). If the project renames this heading, both surfaces move together
+# from this one constant; the --self-test bijection leg asserts the two
+# surfaces never drift apart (a renamed matcher with a stale self-test doc,
+# or vice versa, would silently break the bloat scan). Client-local: this
+# gate polices its own twin; it imports nothing from the platform side.
+TRINITY_MEMORY_HEADING = "## Project memory"
 
 # AXIS: dangling
 # Backtick / hyperlink qualified-path file refs (containing a '/') resolved
@@ -264,11 +275,13 @@ def covered(line, snippets):
 
 def project_memory_bullets(lines):
     """Yield (start_lineno, char_count, preview) for each top-level bullet in
-    the '## Project memory' section. A bullet runs from a '- ' line until the
-    next '- ' line, a blank line, or the next '## ' header."""
+    the trinity memory section. A bullet runs from a '- ' line until the next
+    '- ' line, a blank line, or the next '## ' header. The section heading is
+    the single-source-of-truth TRINITY_MEMORY_HEADING constant (the
+    bijection-leg twin)."""
     start = None
     for i, l in enumerate(lines):
-        if l.strip() == "## Project memory":
+        if l.strip() == TRINITY_MEMORY_HEADING:
             start = i
             break
     if start is None:
@@ -1082,7 +1095,7 @@ def run_selftest():
     import tempfile
 
     clean = (
-        "## Project memory\n\n"
+        TRINITY_MEMORY_HEADING + "\n\n"
         "- **Trinity rule.** Keep CLAUDE.md, AGENTS.md, GEMINI.md in "
         "sync.\n\n"
         "See the roster doc (an orphan path `docs/pack/PM-CHAT.md` is "
@@ -1092,7 +1105,7 @@ def run_selftest():
     dirty_deferred = "This feature is deferred to a future release.\n"
     dirty_dangling = "See `docs/nonexistent/missing-file.md` for details.\n"
     dirty_bloat = (
-        "## Project memory\n\n"
+        TRINITY_MEMORY_HEADING + "\n\n"
         "- **Big rule.** " + ("word " * 200) + "\n"
     )
 
@@ -1118,6 +1131,45 @@ def run_selftest():
     gate(dirty_deferred, True, "deferred")
     gate(dirty_dangling, True, "dangling")
     gate(dirty_bloat, True, "bloat")
+
+    # --- BLOAT-HEADING BIJECTION leg: assert the bloat matcher's heading and
+    #     the synthetic self-test docs' heading are the SAME literal. Both
+    #     read TRINITY_MEMORY_HEADING (the single source of truth), so the
+    #     two surfaces co-vary: a rename of one without the other cannot
+    #     reach the live tree. The leg PROVES the co-variance by feeding the
+    #     matcher a trinity doc built from the gate's own heading constant and
+    #     confirming it finds the bullet (heads agree); the BITE leg feeds a
+    #     DIVERGENT heading and confirms the matcher does NOT find it (a
+    #     heading drift IS detectable, so the bloat scan cannot silently
+    #     scan-nothing after a one-sided rename). Client-local: no platform
+    #     import. ---
+    matcher_heading = TRINITY_MEMORY_HEADING
+    # (agree) self-test doc built from the same constant -> matcher finds it.
+    agree_doc = (matcher_heading + "\n\n"
+                 + "- **Sized rule.** " + ("word " * 200) + "\n")
+    agree_bullets = list(
+        project_memory_bullets(agree_doc.splitlines()))
+    if not agree_bullets:
+        failures.append(
+            "bloat-heading-bijection: the bloat matcher did NOT find a "
+            "bullet under a doc built from TRINITY_MEMORY_HEADING — the "
+            "matcher heading and the self-test doc heading have drifted "
+            "apart (one was renamed without the other).")
+    # (bite) self-test doc built from a DIVERGENT heading -> matcher must
+    # find nothing, proving a one-sided rename is detectable. The divergence
+    # is a value-AGNOSTIC sentinel suffix (not a substring mutation of a
+    # specific word), so the BITE leg keeps biting across ANY future rename
+    # of the heading -- the appended sentinel guarantees the divergent
+    # heading never equals the matcher's literal regardless of its words.
+    divergent_heading = matcher_heading + " ZZ-DIVERGENCE-ZZ"
+    bite_doc = (divergent_heading + "\n\n"
+                + "- **Sized rule.** " + ("word " * 200) + "\n")
+    bite_bullets = list(project_memory_bullets(bite_doc.splitlines()))
+    if bite_bullets:
+        failures.append(
+            "bloat-heading-bijection BITE: the matcher matched a DIVERGENT "
+            "heading — a heading rename would go undetected (the bijection "
+            "leg cannot prove the matcher/self-test surfaces co-vary).")
 
     # --- CONFORMANCE leg self-test: build a synthetic populated project tree
     #     and confirm the conformance matchers PASS on a conforming tree and

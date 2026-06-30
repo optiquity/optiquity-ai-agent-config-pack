@@ -716,7 +716,23 @@ it adds the named adversarial-review spine and the up-front size tier.
    worktrees versus serial) and the rejected-alternative documentation (the
    architect rule in Part 3). The architect refines the large/small
    classification for this phase (the PM chat makes the up-front call at the
-   phase gate; see "Who classifies" below).
+   phase gate; see "Who classifies" below). The architect also runs the
+   **cross-entry collision scan** (below) before the design closes.
+
+   **Cross-entry collision scan (design-time).** After the researcher
+   produces the phase's blast-radius set (the enumerated repo-relative
+   surfaces the phase will touch — a researcher output for any
+   reference-heavy structural change), the architect intersects THIS
+   phase's blast-radius set against the `File/Symbol` surfaces of every
+   OPEN TD and every other not-started/in-progress phase, and records the
+   result (collision / none) with the surfaces compared. The scan keys on
+   the STRUCTURED surface fields (repo-relative paths), not free-text
+   prose, so at least one side of any pair is parseable. A shared surface
+   is a "coordinate" signal, not a "forbidden" one: two entries may
+   legitimately co-edit a file (sequencing handles it). Where a collision
+   is found, the architect names the colliding entries and the shared
+   surface so the PM chat can sequence them; an unresolved collision is a
+   redirect signal at the design gate, before any coder runs.
 3. **Adversarial architect review** — a fresh, clean-context `architect`
    instance that loads the `architecture-review` skill → PM-chat triage of
    the findings → [reconciliation architect — a FRESH instance, only if the
