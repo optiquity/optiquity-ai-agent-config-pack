@@ -562,7 +562,10 @@ printf "\n=== Group 5: §4.6 (T) no 'tree_dir or REPO_ROOT/backlog' fallback ===
 # `REPO_ROOT/"backlog"` fallback INSIDE the check body. Comment/docstring lines
 # (which describe the banned pattern) are stripped before the scan — only
 # executable code is gated. The impl-reviewer applies the same gate.
-python3 - "$VALIDATE" <<'PY'
+# BD-256 W13: Check 49's body moved verbatim from the facade to
+# validate_checks.migrator_docs (single SSOT), so the body source is read from
+# the owning module rather than the facade.
+python3 - "$REPO_ROOT/scripts/lib/validate_checks/migrator_docs.py" <<'PY'
 import sys, re
 src = open(sys.argv[1]).read()
 m = re.search(

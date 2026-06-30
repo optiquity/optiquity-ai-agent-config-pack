@@ -100,11 +100,40 @@ spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+def _patch_root(mod, root):
+    \"\"\"Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule (BD-256 W13 wave-invariant). Check 48's body now lives in
+    validate_checks.migrator_docs and reads migrator_docs.REPO_ROOT; a
+    facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it.\"\"\"
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == 'validate_checks' or _name.startswith('validate_checks.'):
+            if hasattr(_m, 'REPO_ROOT'):
+                _m.REPO_ROOT = root
+
+
+def _patch_attr(mod, name, value):
+    \"\"\"Set attribute \`name\` on the facade alias AND every loaded
+    validate_checks.* submodule that already binds it (BD-256 W13
+    wave-invariant). Check 48's intra-cluster constant _REMOVED_DOC_SCAN_DIRS
+    now lives in validate_checks.migrator_docs; a facade-only patch would NOT
+    bite. This reaches the owning module's binding wherever the body resolves
+    it.\"\"\"
+    setattr(mod, name, value)
+    for _name, _m in list(sys.modules.items()):
+        if _name == 'validate_checks' or _name.startswith('validate_checks.'):
+            if hasattr(_m, name):
+                setattr(_m, name, value)
+
 # Repoint the guard at the synthetic tmp tree; scan only the synthetic
-# changelog per-entry tree dir.
+# changelog per-entry tree dir. Check 48's body now lives in
+# validate_checks.migrator_docs (BD-256 W13), so the patches go through the
+# wave-invariant _patch_root / _patch_attr helpers (a facade-only reassign
+# would no longer reach migrator_docs.REPO_ROOT / migrator_docs._REMOVED_DOC_SCAN_DIRS).
 from pathlib import Path
-mod.REPO_ROOT = Path('$TMP_UNIT')
-mod._REMOVED_DOC_SCAN_DIRS = ('changelog',)
+_patch_root(mod, Path('$TMP_UNIT'))
+_patch_attr(mod, '_REMOVED_DOC_SCAN_DIRS', ('changelog',))
 
 failures_before = len(mod.failures)
 buf = io.StringIO()
