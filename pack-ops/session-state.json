@@ -1,6 +1,6 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "c0bb64e",
+  "boundary_commit": "3dc6a27",
   "checkpoint": "2026-06-30T00:00:00Z",
   "active": [
     {
@@ -8,15 +8,8 @@
       "sub_step": "Parts A/B/C COMPLETE+pushed (local-verified; C3 CI Actions-minutes-capped); D1 GATED on BD-232/245/253"
     }
   ],
-  "in_flight_agents": [
-    {
-      "name": "planner-bd222-v2-reconcile",
-      "role": "pack-planner",
-      "purpose": "BD-222 plan reconciliation (fold NIT-1 96/97 shorthand) -> user planner-to-coder gate"
-    }
-  ],
+  "in_flight_agents": [],
   "queue": [
-    "BD-222",
     "BD-232",
     "BD-245",
     "BD-253",
@@ -30,11 +23,10 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "BD-258 RESOLVED (deterministic pipeline reword landed, 3 commits: project + pack + this bookkeeping). BD-222: plan-v2 adversarial SOUND -> reconciliation (NIT-1) in flight -> user planner-to-coder gate next.",
+  "wave": "BD-222 RESOLVED (Check 83 landed: feat + bookkeeping). No BD mid-flight. Only open item: PUSH (pending user checkpoint). BD-256/257/258/222 all local+unpushed.",
   "pending_decisions": [
-    "BD-222 planner-to-coder gate PENDING once its reconciliation (NIT-1) completes.",
-    "PUSH pending user checkpoint: local unpushed commits since origin (BD-256 waves + doc-cleanup + BD-256-Resolved + manifest + BD-257 + BD-258 A/B/C) - outward-facing, needs explicit user go.",
-    "restore GitHub Actions minutes at monthly reset, then re-run CI on latest pushed HEAD to confirm BD-255 green"
+    "PUSH pending user checkpoint: local unpushed commits since the last push = BD-257 open + BD-258 A/B/C + BD-222 feat + BD-222 Resolved bookkeeping. Outward-facing; needs explicit user go. On go: run scripts/manifest-sync.sh first (may MANIFEST-CHANGED for v11 fixtures like BD-256; new validate_checks/wired_test_fragility.py is a scripts/* input), commit any manifest change, then git push, then watch CI.",
+    "restore GitHub Actions minutes at monthly reset, then re-run CI on latest pushed HEAD"
   ],
-  "cycle_position": "BD-258 COMPLETE + RESOLVED (local; unpushed). BD-222 active: plan reconciliation folding NIT-1 (96/97 shorthand) -> user planner-to-coder gate -> coder (Check 83, live count/number, 96-set candidate). Push (BD-256..BD-258 + BD-222-to-come) is a pending user checkpoint."
+  "cycle_position": "All in-flight BD work complete (BD-256 Resolved+pushed; BD-257 open+queued; BD-258 Resolved local; BD-222 Resolved local). NEXT: PUSH pending user checkpoint (run manifest-sync first, then git push, then watch CI). Then queue front = BD-232."
 }
