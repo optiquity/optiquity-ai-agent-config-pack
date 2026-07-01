@@ -412,6 +412,31 @@ PACK-AGENTS.md current".
   unique name is the key the discovery mechanism records and re-finds by. `[roles:
   universal] [rationale: spawn-unique-naming]`
 
+- **Edit in place, not full rewrites.** Agents edit docs/files via
+  targeted in-place edits; a full rewrite happens only on explicit user
+  request; after any edit re-read and confirm the section map. `[roles: coder]
+  [rationale: edit-in-place-not-full-rewrite]`
+
+- **Design-time challenge discipline.** Adopting a structural pattern for a
+  new use-case requires verified property-fit (intentional, evidence-based,
+  goal-aligned, constraint-bounded — never pattern-match out of context);
+  every triage decision is PRELIMINARY and the architect challenges each at
+  design time on a tiered bar (internal LOW / pack-boundary HIGH / user-goals
+  HIGH-but-challengeable). `[roles: architect]
+  [rationale: design-discipline-challenge]`
+
+- **Verify availability, not just existence.** When a design depends on an
+  external capability, verify it is USABLE on the actual target (account type
+  / plan / GA-vs-preview / installed variant), not merely that it EXISTS;
+  capture the availability check as evidence. `[roles: architect]
+  [rationale: verify-availability-not-existence]`
+
+- **Verify the full CI battery, not just validate-pack.** Per-commit
+  verification (coder + reviewer) runs every wired test in the validate
+  workflow (both jobs) plus PACK_VALIDATE_DEEP=1, not validate-pack alone;
+  enumerate-encoding-surfaces includes the integration tests. `[roles: coder
+  reviewer] [rationale: verify-full-ci-suite]`
+
 ### Pack Chat scope
 
 - **Pack Chat does NO fixes.** Pack Chat's role in any review/fix
@@ -724,6 +749,20 @@ PACK-AGENTS.md current".
   changelog/backlog entries, maintenance-docs, and IMPL reports (reference
   docs) — never copied into an operating doc.
   `[roles: universal] [rationale: operating-docs-no-history-no-bloat]`
+- **CI-check runtime compounding.** A validate-pack check runs many times
+  per battery cycle, so author every check cheap-per-invocation — O(lines),
+  no whole-tree filesystem walk, no subprocess-per-entry — and scope it to
+  the caller's target tree (cost = per-run x invocation-count). `[roles:
+  architect coder] [rationale: ci-check-runtime-compounding]`
+- **Fail loud — delete the old source on migration.** On an SSOT migration
+  DELETE the old source (no mirror) so dangling refs break loudly and get
+  fixed; DELETE superseded docs entirely (no archive); the sole exception is
+  an active doc with one stale element, reconciled in place. `[roles:
+  architect coder] [rationale: fail-loud-delete-old-source]`
+- **Pack entry-type data-structure semantics.** Phases are never created
+  with parts (parts are evolution-only); tasks are phase components;
+  groupings contain phases only; the component hierarchy is fixed. `[roles:
+  universal] [rationale: pack-entry-type-semantics]`
 
 ### Project goals (v11)
 

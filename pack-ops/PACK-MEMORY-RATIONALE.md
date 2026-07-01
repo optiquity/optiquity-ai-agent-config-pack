@@ -132,6 +132,11 @@ when the correct project-side SSOT was `project-template/docs/pack/PM-CHAT.md`.
 See the `boundary-investigation` skill (loaded by all pack agents) for the
 SSOT-investigation methodology.
 
+**Corollary — a client-shipped reference to a pack-repo path.** Classify the
+target first: DELETE the reference if the target is genuinely pack-only;
+FORWARD-LOOK it to the landed client path if the target is a genuine project
+asset the client will have.
+
 ---
 
 ## preflight-stop-means-stop
@@ -224,6 +229,14 @@ with a Rules-Applied Verification Block (see `rules-applied-verification-block`)
 (5) PREFLIGHT obligation where applicable; (6) IMPL-REPORT / output-file
 requirement. Pack Chat NEVER spawns an agent without the rules-in-force block.
 
+The receiving agent READS IN FULL the named rule docs (CLAUDE.md incl. `## Pack
+memory`, PACK-AGENTS/PACK-CHAT, project-template/CLAUDE.md when touching code)
+plus the curated task-relevant memory files; it derives no unread rule and
+substitutes no cached copy for a direct read.
+
+Ground every prompt directive in a user decision or an agent report; inject no
+Pack-Chat opinion, no proposed solution, no biased framing.
+
 ---
 
 ## rules-applied-verification-block
@@ -309,6 +322,11 @@ unavailable — so untracked OS/editor junk cannot mask a true hit or
 raise a false one (the failure mode is invisible in clean checkouts and
 fresh worktrees, visible only in long-lived local checkouts).
 
+The same measure-then-bound spirit governs a rename, mass-find-replace, or
+keyword-migration: rename EVERY occurrence and gate on a grep-ZERO completeness
+census (coder PREFLIGHT + reviewer), never a hand-enumerated anchor list — the
+grep-zero gate is the measurement that bounds the change to complete.
+
 ---
 
 ## bounded-review-fix-cycle
@@ -364,6 +382,10 @@ pass 2 closed the prior cycle's findings. It does NOT trigger a new fix round.
 New findings at pass 3 + any unresolved prior findings together trigger
 architect escalation.
 
+**Position checkpoint:** restate the bounded-cycle position at every coder/fix
+completion; a fix is never terminal (a post-fix reviewer ALWAYS runs); never
+self-review.
+
 ---
 
 ## pack-side-project-concepts-deliverable-only
@@ -397,6 +419,12 @@ Worked example of the forbidden shape: a pack-root
 `.github/ISSUE_TEMPLATE/work-item.yml` admitting `td`, `phase-epic-skeleton`,
 `phase-task-skeleton` — pack does not file those against itself, so they should
 be removed.
+
+**Inverse direction (equally categorical):** project-related territory carries
+NO reference to pack self-management — BD IDs, `pack-ops/`, `maintenance-docs/`,
+pack-* agent names, validate-pack, the Pack Chat orchestrator role. Apply the
+operational-vs-explanatory test to each candidate reference; surgical removal is
+the default disposition.
 
 ---
 
@@ -691,6 +719,11 @@ reused if the user said so once" — the carve-out is per-instance/explicit, not
 standing. (iv) Exempt MORE roles than `docs-researcher` — only factual-inventory work
 qualifies for the no-design-bias exemption.
 
+**The general fresh-agent default.** Every agent task is a FRESH spawn;
+re-engaging an existing or in-flight agent (SendMessage) is the exception that
+requires an explicit user decision. Reconciliation independence is this same
+default applied to the reconciliation pass.
+
 ---
 
 ## large-bd-pipeline-standard
@@ -772,6 +805,12 @@ rows and rationale sections for rules that already work untagged, for no
 behavior change. The umbrella REFERENCES them by category ("Each stage obeys
 its own `## Pack memory` rule") instead, requiring exactly one new slug and
 one new rationale section.
+
+**Researcher blast-radius mapping (reference-heavy change).** For a
+reference-heavy structural change the researcher exhaustively maps the blast
+radius — every reference categorized and dispositioned, counts reconciled —
+before the architect designs, so the architect works from a complete surface
+census rather than an a-priori guess.
 
 ---
 
@@ -1013,3 +1052,173 @@ biting matcher are structurally different), so a generic check is either trivial
 The discipline lands as a TAGGED design-time rule the spawn-prompt assembler
 selects (`enumerate-rules-inline`) and the Rules-Applied block verifies, not as
 a new validator check.
+
+---
+
+## ci-check-runtime-compounding
+
+**Why.** `scripts/validate-pack.py` is not run once — the CI battery and the
+local verification loop invoke it many times over, so a check's true cost is its
+single-run cost multiplied by that invocation count. A check that reads the
+whole tree, shells a subprocess per entry, or scales with total file count
+looks cheap in isolation but silently taxes every future battery run; the
+compounding is invisible until the suite is slow enough to discourage running
+it. Bounding per-invocation cost keeps the full suite cheap enough to run on
+every commit, which is what `verify-full-ci-suite` depends on.
+
+**How to apply.** Author each check to scale with the caller's target set, not
+the repo — O(lines-touched), reading only the files in scope. Avoid a
+whole-tree filesystem walk, a per-entry subprocess storm, and re-reading the
+same file across checks. Draw any enumerated candidate set from git-tracked
+files, and skip cleanly when the input is out of scope. Treat the cost as
+per-run times the battery invocation count, and prefer an in-process,
+single-pass shape over anything that fans out.
+
+**Rejected alternative.** "Optimize later if the suite gets slow" — rejected:
+the compounding is baked in at authoring time and a slow suite erodes the
+run-it-every-commit discipline before anyone profiles it; cheap-per-invocation
+is a design constraint, not a tuning pass.
+
+---
+
+## edit-in-place-not-full-rewrite
+
+**Why.** A full-file rewrite of an operating doc or source file discards the
+surrounding structure the author did not intend to touch — cross-references,
+ordering, adjacent rules, formatting conventions — and makes the diff
+unreviewable (every line appears changed even where nothing did). Targeted
+in-place edits keep the diff proportional to the actual change, so a reviewer
+can see exactly what moved, and they preserve the parts of the file that were
+already correct. A rewrite also risks silently dropping content the editor
+never read.
+
+**How to apply.** Edit the specific lines or sections the task requires, using
+the smallest surgical change that lands the intent. Reserve a full rewrite for
+when the user explicitly asks for one. After any edit, re-read the file and
+confirm the section map is intact — that no adjacent rule, heading, or
+cross-reference was disturbed and the change sits where it belongs.
+
+**Rejected alternative.** "Rewrite the whole file for consistency" as a default
+— rejected: consistency is achieved by targeted edits plus a post-edit re-read,
+not by regenerating content the change never needed to touch; a rewrite trades
+a reviewable diff for an unreviewable one.
+
+---
+
+## fail-loud-delete-old-source
+
+**Why.** When an SSOT moves, keeping the old source alive as a mirror invites
+silent drift: two copies diverge and a reader cannot tell which is
+authoritative. Deleting the old source instead makes every stale reference
+break at once — a loud, locatable failure that gets fixed — rather than a quiet
+divergence that ships. The same logic applies to a superseded doc: archiving it
+leaves a plausible-looking wrong source in the tree, while deleting it forces
+consumers onto the live one. Loud breakage is cheaper than quiet wrongness.
+
+**How to apply.** On an SSOT migration, DELETE the old source outright — do not
+leave a regenerated mirror behind. When a doc is superseded, remove it entirely
+rather than moving it to an archive. Then fix the dangling references the
+deletion exposes; each break points at a consumer that must be repointed. The
+sole exception is a still-active doc that carries a single stale element:
+reconcile that element in place rather than deleting the whole doc.
+
+**Rejected alternative.** Keep the old artifact "for reference" or as a
+read-only mirror — rejected: a second copy is a second source of truth in
+practice, and it drifts; the value of deletion is precisely the loud break that
+a mirror suppresses.
+
+---
+
+## design-discipline-challenge
+
+**Why.** A structural pattern that fits one use-case is not automatically right
+for another: adopting it by resemblance rather than by verified property-fit
+imports assumptions that may not hold, and the mismatch surfaces later as
+rework. Likewise, an early triage verdict is a first read, not a ruling — it was
+reached before the design was worked through. Treating both as provisional, and
+having the architect actively challenge them at design time, catches the wrong
+pattern and the wrong triage before they harden into a plan.
+
+**How to apply.** Before adopting a pattern for a new use-case, verify it is a
+deliberate, evidence-based choice whose properties actually fit the goal and
+respect the boundaries — never a match on surface resemblance. Treat every
+triage decision as PRELIMINARY and challenge each during design on a tiered
+bar: an internal, easily-reversible choice gets a LOW bar; a pack-boundary or
+client-facing choice gets a HIGH bar; a user-goals choice gets a HIGH bar but
+remains open to a reasoned challenge. Record the challenge and its outcome.
+
+**Rejected alternative.** Accept the preliminary triage as settled to save a
+design pass — rejected: the triage was formed with less information than the
+design has, so skipping the challenge locks in an under-informed call; the
+challenge is where cheap redirection happens.
+
+---
+
+## verify-availability-not-existence
+
+**Why.** A capability existing somewhere is not the same as it being usable on
+the target the design will actually run against. An API, plan feature, or tool
+can exist in general yet be unavailable on this account tier, this plan, this
+GA-vs-preview state, or this installed variant — so a design that assumes "it
+exists, therefore we can use it" fails at runtime on the real target. Checking
+usability on the concrete target closes the gap between "documented" and
+"works here."
+
+**How to apply.** When a design leans on an external capability, verify it is
+USABLE on the actual target — the specific account type, plan, GA-vs-preview
+status, and installed variant that will run it — not merely that the capability
+exists in the abstract. Capture the availability check as evidence (the command
+run and its result), so the reviewer can confirm the dependency is real on the
+target rather than assumed.
+
+**Rejected alternative.** Treat vendor docs listing a feature as proof it is
+usable — rejected: documentation describes the general capability, not this
+target's entitlement; only a check against the real account/plan/variant proves
+availability.
+
+---
+
+## verify-full-ci-suite
+
+**Why.** `scripts/validate-pack.py` is one job among the wired checks; passing
+it alone does not prove the change is green, because integration tests and the
+deep-mode pass exercise behavior the standard validator does not. A commit
+verified on the narrow check can still break a wired test that only runs in the
+full battery, so the narrow pass gives false confidence. Running the complete
+suite is the only measurement that matches what CI will actually assert.
+
+**How to apply.** For per-commit verification — coder and reviewer alike — run
+every wired test in the validate workflow across both jobs, plus
+`PACK_VALIDATE_DEEP=1`, not `scripts/validate-pack.py` in isolation. Treat the
+integration tests as part of the encoding-surface set (`enumerate-encoding-
+surfaces`): a change to a surface they cover is not verified until they run
+green. Confirm the full battery is green before declaring the work done.
+
+**Rejected alternative.** Run only `scripts/validate-pack.py` for speed and let
+CI catch the rest — rejected: deferring the full battery to CI moves the failure past the
+cheap local window and breaks the run-it-every-commit contract; the suite is
+kept cheap (`ci-check-runtime-compounding`) precisely so it can run every time.
+
+---
+
+## pack-entry-type-semantics
+
+**Why.** The pack's entry types form a fixed component hierarchy, and treating
+that shape as flexible produces malformed entries that downstream tooling and
+readers cannot interpret. A phase is not a container for parts at creation; a
+part exists only as an evolution of an existing entry; a task is a component of
+a phase; a grouping holds phases. Encoding these relationships as a stable rule
+keeps every entry well-formed and keeps deliverable-emitting scripts and
+validators reasoning about one consistent structure.
+
+**How to apply.** When creating or reasoning about pack entry types, honor the
+fixed hierarchy: never create a phase already carrying parts (parts arise only
+by evolution); treat tasks as components of a phase; let groupings contain
+phases only. Preserve the component hierarchy as given rather than inventing a
+new nesting. This is a definitional rule for constructing project-side
+deliverables, not a pack self-management concept.
+
+**Rejected alternative.** Allow ad-hoc nesting (a phase authored with parts, a
+grouping holding tasks) when convenient — rejected: the hierarchy is what makes
+entries machine-interpretable and cross-referenceable, so a convenience
+exception breaks the tooling that assumes the fixed shape.
