@@ -5,7 +5,7 @@
   "active": [
     {
       "bd": "BD-232",
-      "sub_step": "BD-232 coder waves. C1 + C2 + C3 ALL LANDED (local unpushed) - the 27 keepers + memory-not-an-ssot meta-rule are now codified in-repo (bijection 39/39). W3: C4a coder IN FLIGHT (fresh worktree; rewrite backlog/BD-232.md entry boundary/acceptance recording dispositions, Status stays Open, _toc untouched; pack-chat-only; -> /Users/david/Developer/_tmp/pack-handoff-bd232/IMPL-C4a.md). Remaining: C4b Pack-Chat-direct (Status->Resolved + _toc regen); then out-of-repo INSTALL last (delete 49/keep 4/write 3/regen MEMORY.md -> 8) - user-approved, destructive."
+      "sub_step": "BD-232 coder waves. C1+C2+C3+C4a ALL LANDED (local unpushed): 27 keepers + meta-rule codified in-repo (bijection 39/39); BD-232 entry records dispositions + expanded boundary (Status still Open). ENDGAME: staging coder IN FLIGHT (authoring the 3 meta pointer memories + regenerated MEMORY.md into out-of-repo staging /Users/david/Developer/_tmp/pack-handoff-bd232/memory-staging/; -> IMPL-STAGING.md). Then: staging reviewer -> out-of-repo INSTALL (Pack Chat, destructive, user-approved: delete 49/keep 4/write 3/regen MEMORY.md -> 8) -> C4b Pack-Chat (Status->Resolved + _toc regen) LAST."
     },
     {
       "bd": "BD-255",
@@ -14,11 +14,11 @@
   ],
   "in_flight_agents": [
     {
-      "name": "coder-bd232-c4a",
+      "name": "coder-bd232-staging",
       "role": "pack-coder",
-      "stage": "BD-232 commit C4a (BD-232 entry boundary/acceptance rewrite) in fresh worktree",
+      "stage": "BD-232 out-of-repo staging-set authoring (3 meta memories + regen MEMORY.md)",
       "status": "in_flight",
-      "respawn": "re-find by name via the out-of-repo spawn registry; C4a edits backlog/BD-232.md in the coder-bd232-c4a worktree (path in registry once reported); if terminal before IMPL-REPORT, spawn a fresh C4a coder (new worktree post-C3) same charge (design §6 items 1-4; Status stays Open); -> /Users/david/Developer/_tmp/pack-handoff-bd232/IMPL-C4a.md"
+      "respawn": "re-find by name via the out-of-repo spawn registry; writes ONLY to /Users/david/Developer/_tmp/pack-handoff-bd232/memory-staging/ (live cache + repo read-only); if terminal, spawn a fresh staging coder same charge (design §5.2/§5.3); -> IMPL-STAGING.md"
     }
   ],
   "queue": [
@@ -34,10 +34,10 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "BD-232 C1+C2+C3 LANDED (all rule migration done). W3 C4a coder IN FLIGHT (BD entry rewrite, pack-chat-only). Then review -> commit C4a -> C4b Pack-Chat (Status flip) -> out-of-repo INSTALL.",
+  "wave": "BD-232 C1-C4a LANDED. ENDGAME: staging coder IN FLIGHT (3 meta + regen MEMORY.md to staging). Then reviewer -> INSTALL (destructive, user-approved) -> C4b Status flip LAST.",
   "pending_decisions": [
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
   ],
-  "cycle_position": "BD-232 W3 C4a coder in flight. On IMPL-REPORT: reviewer (RO, in C4a worktree) -> triage to user -> on CLEAN: extract patch -> Pack Chat commits C4a (user approval, pack-chat-only) -> teardown worktree. Then SEQUENCING DECISION to surface: C4b Status->Resolved flip either before or AFTER the out-of-repo INSTALL (recommend AFTER, so Resolved reflects true completion). Out-of-repo INSTALL (Pack Chat, destructive, user-approved): delete 49/keep 4/write 3/regen MEMORY.md -> 8. Check-adders (BD-136/236/255-D) serialize on registry/count."
+  "cycle_position": "BD-232 staging coder in flight. On IMPL-STAGING: staging reviewer (verify 3 meta frontmatter/pointers + MEMORY.md 7-pointer index resolves + live cache untouched) -> on CLEAN present the destructive INSTALL for user approval (delete 49 migrated/deleted topic files; keep the 4 env facts; install the 3 staged meta; overwrite MEMORY.md -> 8 files) -> then C4b Pack-Chat-direct (Status Open->Resolved + regen backlog/_toc.md) LAST so Resolved reflects true completion. Then final: push is the user checkpoint. Check-adders (BD-136/236/255-D) serialize on registry/count."
 }
