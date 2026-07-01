@@ -1,6 +1,6 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "3dc6a27",
+  "boundary_commit": "e85aa63",
   "checkpoint": "2026-06-30T00:00:00Z",
   "active": [
     {
@@ -23,10 +23,10 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "BD-222 RESOLVED (Check 83 landed: feat + bookkeeping). No BD mid-flight. Only open item: PUSH (pending user checkpoint). BD-256/257/258/222 all local+unpushed.",
+  "wave": "All session BD work COMPLETE + PUSHED + CI GREEN (BD-256 Resolved; BD-257 open+queued; BD-258 Resolved; BD-222 Resolved; manifest regen). No BD mid-flight. Queue front = BD-232 whenever the user starts it.",
   "pending_decisions": [
-    "PUSH pending user checkpoint: local unpushed commits since the last push = BD-257 open + BD-258 A/B/C + BD-222 feat + BD-222 Resolved bookkeeping. Outward-facing; needs explicit user go. On go: run scripts/manifest-sync.sh first (may MANIFEST-CHANGED for v11 fixtures like BD-256; new validate_checks/wired_test_fragility.py is a scripts/* input), commit any manifest change, then git push, then watch CI.",
-    "restore GitHub Actions minutes at monthly reset, then re-run CI on latest pushed HEAD"
+    "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor \u2014 like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
+    "restore GitHub Actions minutes at monthly reset if capped (not currently) \u2014 re-run CI as needed"
   ],
-  "cycle_position": "All in-flight BD work complete (BD-256 Resolved+pushed; BD-257 open+queued; BD-258 Resolved local; BD-222 Resolved local). NEXT: PUSH pending user checkpoint (run manifest-sync first, then git push, then watch CI). Then queue front = BD-232."
+  "cycle_position": "IDLE \u2014 clean stopping point. origin/v11-dev == local (pushed, CI green). No agents in flight. Next: user starts BD-232 (queue front) or another BD. Check-adders (BD-136/236/255-D) serialize on registry/count; BD-253 pre-BD-256 design needs re-validation before it proceeds."
 }
