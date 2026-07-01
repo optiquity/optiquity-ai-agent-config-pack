@@ -5,7 +5,7 @@
   "active": [
     {
       "bd": "BD-232",
-      "sub_step": "LARGE pipeline STARTED (deterministic flow); stage 1 docs-researcher internal memory census in flight (background); Process-text reconciled to the LARGE flow; next = pack-architect design after the census returns + user design gate"
+      "sub_step": "BD-232 LARGE pipeline: DESIGN APPROVED by user as-is (discipline-level guardrails accepted; revisit on drift). Approved spec = DESIGN-BD232-PLACEMENT.md + RECONCILE-BD232-PLACEMENT.md. Net: 27 keepers homed = 8 new trinity slugs + 8 rationale-prose consolidations + 11 PACK-CHAT bullets (0 skill/0 mirror) + memory-not-an-ssot rule + 3 meta-triad + regen MEMORY.md; DELETE 22, LEAVE 4 env; end-state 8 files. Stage 7 pack-planner (impl/commit-sequencing) IN FLIGHT (background; -> /Users/david/Developer/_tmp/pack-handoff-bd232/PLAN-BD232.md)."
     },
     {
       "bd": "BD-255",
@@ -14,11 +14,11 @@
   ],
   "in_flight_agents": [
     {
-      "name": "docsresearcher-bd232-memorycensus",
-      "role": "pack-docs-researcher",
-      "stage": "BD-232 stage-1 internal memory census",
+      "name": "planner-bd232-impl",
+      "role": "pack-planner",
+      "stage": "BD-232 stage-7 implementation/commit-sequencing plan",
       "status": "in_flight",
-      "respawn": "re-find by name via the out-of-repo spawn registry; if terminal, spawn a fresh docs-researcher with the same census prompt; census report at /Users/david/Developer/_tmp/pack-handoff-bd232/CENSUS-BD232-MEMORY.md"
+      "respawn": "re-find by name via the out-of-repo spawn registry; if terminal, spawn a fresh pack-planner with the same charge (input = approved DESIGN-BD232-PLACEMENT.md + RECONCILE-BD232-PLACEMENT.md); -> /Users/david/Developer/_tmp/pack-handoff-bd232/PLAN-BD232.md"
     }
   ],
   "queue": [
@@ -34,10 +34,10 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "BD-232 LARGE pipeline STARTED (deterministic: docs-researcher-first + adversarial-always + reconcile-if-findings). Stage 1 census in flight (background). Governance-refresh (BD-232/245 governance edits + frontier->idle) committed local + unpushed.",
+  "wave": "BD-232 design APPROVED (as-is). Stage 7 pack-planner (impl plan) IN FLIGHT (background). Then adversarial planner -> reconcile-if-findings -> planner-to-coder gate.",
   "pending_decisions": [
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
   ],
-  "cycle_position": "BD-232 stage 1 (docs-researcher census) in flight. On census return: Pack Chat presents it to the user, then spawns pack-architect (design) -> adversarial architect -> reconcile-if-findings -> user design gate. No coder until the planner-to-coder gate. Check-adders (BD-136/236/255-D) serialize on registry/count; BD-253 pre-BD-256 design needs re-validation."
+  "cycle_position": "BD-232 planner IN FLIGHT. On return: adversarial planner (fresh) -> reconcile-if-findings (fresh) -> user planner-to-coder gate -> coder waves (isolated worktree; in-repo commits C1-C4 + write out-of-repo staging set) + bounded review/fix per commit -> Pack Chat commits each + installs the out-of-repo cache LAST. Check-adders (BD-136/236/255-D) serialize on registry/count."
 }
