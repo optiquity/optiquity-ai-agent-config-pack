@@ -256,6 +256,7 @@
 - [BD-250](./BD-250.md) — Extend the anti-history/bloat durable guards (Check 65/66/67) to `supporting-docs/` operating docs + strip residual violations (measure-then-bound)
 - [BD-251](./BD-251.md) — Remove born-dead BD-164 per-entry back-pointer helpers (`pe_first_line_is_backpointer` + `pe_ensure_backpointer`)
 - [BD-252](./BD-252.md) — Pack-side resumable session-state mechanism (repo-committed, CLI-agnostic, current-snapshot-only, /pack-startup-wired, CI-enforced)
+- [BD-256](./BD-256.md) — Modularize validate-pack.py — split the 80-check monolith into per-category modules so isolated check-BDs stop colliding on one file and can parallelize
 
 ## Deprecated
 

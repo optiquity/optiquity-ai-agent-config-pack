@@ -1,26 +1,29 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "9d29174",
-  "checkpoint": "2026-06-29T17:50:24Z",
+  "boundary_commit": "d76e4fc",
+  "checkpoint": "2026-06-30T00:00:00Z",
   "active": [
     {
       "bd": "BD-255",
-      "sub_step": "A1 landed; serial pacing; next = B1 (declare-verify-backing rule, trinity+rationale+PACK-CHAT lane)"
+      "sub_step": "Parts A/B/C COMPLETE+pushed (local-verified; C3 CI Actions-minutes-capped); D1 GATED on BD-232/245/253"
     }
   ],
   "in_flight_agents": [],
   "queue": [
-    "BD-253",
     "BD-222",
     "BD-232",
     "BD-245",
+    "BD-253",
     "BD-224",
     "BD-210",
     "BD-205",
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "W1: A1 done; B1 next (serial)",
-  "pending_decisions": [],
-  "cycle_position": null
+  "wave": "BD-256 RESOLVED (16/16 split + capstone CLEAN + doc-cleanup CLEAN, all committed local). AWAITING USER: push decision (outward-facing) + BD-222 resume. BD-222 next in queue. CI Actions-minutes-capped.",
+  "pending_decisions": [
+    "BD-222/BD-253 moved from active[] to queue at batch-close (they are HELD, not in active design; Check-81 requires active[] BDs carry a structured File/Symbol). Held-reasons live in their BD entries. On BD-222 resume: move it back to active[] AND structure its File/Symbol (re-targets Check 83 to a validate_checks module: scripts/validate-pack.py facade registry-count invariant + the owning module). User may reorder the queue.",
+    "restore GitHub Actions minutes at monthly reset, then re-run CI on latest pushed HEAD to confirm BD-255 green"
+  ],
+  "cycle_position": "BD-256 COMPLETE + RESOLVED. Doc-cleanup committed (boundary_commit); Resolved bookkeeping (BD-256.md + _toc + this snapshot) is the current commit. PAUSED for user: (a) push decision (local commits since last push: the BD-256 wave commits + doc-cleanup + this bookkeeping — all pack-only); (b) BD-222 resume (next in queue; re-targets Check 83 to a validate_checks module). No agent in flight."
 }
