@@ -1,16 +1,27 @@
 {
   "schema": "pack-session-state/1",
   "boundary_commit": "e85aa63",
-  "checkpoint": "2026-06-30T00:00:00Z",
+  "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
+    {
+      "bd": "BD-232",
+      "sub_step": "LARGE pipeline STARTED (deterministic flow); stage 1 docs-researcher internal memory census in flight (background); Process-text reconciled to the LARGE flow; next = pack-architect design after the census returns + user design gate"
+    },
     {
       "bd": "BD-255",
       "sub_step": "Parts A/B/C COMPLETE+pushed (local-verified; C3 CI Actions-minutes-capped); D1 GATED on BD-232/245/253"
     }
   ],
-  "in_flight_agents": [],
+  "in_flight_agents": [
+    {
+      "name": "docsresearcher-bd232-memorycensus",
+      "role": "pack-docs-researcher",
+      "stage": "BD-232 stage-1 internal memory census",
+      "status": "in_flight",
+      "respawn": "re-find by name via the out-of-repo spawn registry; if terminal, spawn a fresh docs-researcher with the same census prompt; census report at /Users/david/Developer/_tmp/pack-handoff-bd232/CENSUS-BD232-MEMORY.md"
+    }
+  ],
   "queue": [
-    "BD-232",
     "BD-245",
     "BD-253",
     "BD-189",
@@ -23,10 +34,10 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "All session BD work COMPLETE + PUSHED + CI GREEN (BD-256 Resolved; BD-257 open+queued; BD-258 Resolved; BD-222 Resolved; manifest regen). No BD mid-flight. Queue front = BD-232 whenever the user starts it.",
+  "wave": "BD-232 LARGE pipeline STARTED (deterministic: docs-researcher-first + adversarial-always + reconcile-if-findings). Stage 1 census in flight (background). Governance-refresh (BD-232/245 governance edits + frontier->idle) committed local + unpushed.",
   "pending_decisions": [
-    "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor \u2014 like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
-    "restore GitHub Actions minutes at monthly reset if capped (not currently) \u2014 re-run CI as needed"
+    "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
+    "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
   ],
-  "cycle_position": "IDLE \u2014 clean stopping point. origin/v11-dev == local (pushed, CI green). No agents in flight. Next: user starts BD-232 (queue front) or another BD. Check-adders (BD-136/236/255-D) serialize on registry/count; BD-253 pre-BD-256 design needs re-validation before it proceeds."
+  "cycle_position": "BD-232 stage 1 (docs-researcher census) in flight. On census return: Pack Chat presents it to the user, then spawns pack-architect (design) -> adversarial architect -> reconcile-if-findings -> user design gate. No coder until the planner-to-coder gate. Check-adders (BD-136/236/255-D) serialize on registry/count; BD-253 pre-BD-256 design needs re-validation."
 }
