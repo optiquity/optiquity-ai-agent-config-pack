@@ -24,7 +24,6 @@
 - [BD-210](./BD-210.md) — v11.0 pre-launch maintenance-docs cleanup: delete superseded design/research docs
 - [BD-223](./BD-223.md) — Ship a committed (public) test-fixtures suite + a separate private gitignored suite
 - [BD-224](./BD-224.md) — Expand the `/pack-*` slash-command set + improve `/pack-help` coverage (brainstorm-gated)
-- [BD-232](./BD-232.md) — Reorganize + reduce Pack Chat's out-of-repo memory cache (architect-designed reorg, coder-rewritten content; Pack Chat installs only)
 - [BD-236](./BD-236.md) — Project-side agent-def discipline-parity guards are incomplete (Check 57 covers 8 of the 13 enumerated git verbs; Check 11 cross-surface symmetry is informational-only) — investigate + design a coherent project-side parity-enforcement strategy
 - [BD-245](./BD-245.md) — Strip per-CLI project memory from project deliverables (all 3 trinity CLIs); rename `## Project memory` → `## Project rules`; codify a CLI-symmetric no-project-memory prohibition (sibling of BD-232)
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
@@ -242,6 +241,7 @@
 - [BD-229](./BD-229.md) — README Repository-Layout pack-agent count is stale: `(4)` → `(5)` on all three agent-surface rows
 - [BD-230](./BD-230.md) — Pack-self `BD-NNN` references leak into client-shipped `supporting-docs/` (boundary violation; strip-scope is a user decision)
 - [BD-231](./BD-231.md) — Dangling `.mcp.json.example` references: the file is absent from `project-template/` (add-file vs. repoint is a user decision)
+- [BD-232](./BD-232.md) — Reorganize + reduce Pack Chat's out-of-repo memory cache (architect-designed reorg, coder-rewritten content; Pack Chat installs only)
 - [BD-234](./BD-234.md) — Assess Graphify real usage + cost stats after burn-in; revisit the graph's cadence / knobs / index scope
 - [BD-237](./BD-237.md) — Graphify graph-freshness mechanism is broken in production: redesign the auto-refresh + add verification checks (BD-225 shipped an un-verified, hand-installed, fragile hook that never ran)
 - [BD-238](./BD-238.md) — Codify the PACK-SIDE large-BD development pipeline as an official, size-tiered standard (optional researchers → architect → adversarial architect → planner → adversarial planner, + reconciliation rounds + parallel worktree coder waves)

@@ -4,23 +4,11 @@
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
     {
-      "bd": "BD-232",
-      "sub_step": "BD-232 coder waves. C1+C2+C3+C4a ALL LANDED (local unpushed): 27 keepers + meta-rule codified in-repo (bijection 39/39); BD-232 entry records dispositions + expanded boundary (Status still Open). ENDGAME: staging coder IN FLIGHT (authoring the 3 meta pointer memories + regenerated MEMORY.md into out-of-repo staging /Users/david/Developer/_tmp/pack-handoff-bd232/memory-staging/; -> IMPL-STAGING.md). Then: staging reviewer -> out-of-repo INSTALL (Pack Chat, destructive, user-approved: delete 49/keep 4/write 3/regen MEMORY.md -> 8) -> C4b Pack-Chat (Status->Resolved + _toc regen) LAST."
-    },
-    {
       "bd": "BD-255",
-      "sub_step": "Parts A/B/C COMPLETE+pushed (local-verified; C3 CI Actions-minutes-capped); D1 GATED on BD-232/245/253"
+      "sub_step": "Parts A/B/C COMPLETE+pushed (local-verified; C3 CI Actions-minutes-capped); D1 GATED on BD-245/253 — BD-232 now Resolved so 1 of 3 gates cleared"
     }
   ],
-  "in_flight_agents": [
-    {
-      "name": "coder-bd232-staging",
-      "role": "pack-coder",
-      "stage": "BD-232 out-of-repo staging-set authoring (3 meta memories + regen MEMORY.md)",
-      "status": "in_flight",
-      "respawn": "re-find by name via the out-of-repo spawn registry; writes ONLY to /Users/david/Developer/_tmp/pack-handoff-bd232/memory-staging/ (live cache + repo read-only); if terminal, spawn a fresh staging coder same charge (design §5.2/§5.3); -> IMPL-STAGING.md"
-    }
-  ],
+  "in_flight_agents": [],
   "queue": [
     "BD-245",
     "BD-253",
@@ -34,10 +22,10 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "BD-232 C1-C4a LANDED. ENDGAME: staging coder IN FLIGHT (3 meta + regen MEMORY.md to staging). Then reviewer -> INSTALL (destructive, user-approved) -> C4b Status flip LAST.",
+  "wave": "BD-232 RESOLVED (all in-repo commits landed + out-of-repo cache installed 54->8). No agent in flight. Next queue front = BD-245 (project-side sibling, now unblocked). Awaiting user push.",
   "pending_decisions": [
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
   ],
-  "cycle_position": "BD-232 staging coder in flight. On IMPL-STAGING: staging reviewer (verify 3 meta frontmatter/pointers + MEMORY.md 7-pointer index resolves + live cache untouched) -> on CLEAN present the destructive INSTALL for user approval (delete 49 migrated/deleted topic files; keep the 4 env facts; install the 3 staged meta; overwrite MEMORY.md -> 8 files) -> then C4b Pack-Chat-direct (Status Open->Resolved + regen backlog/_toc.md) LAST so Resolved reflects true completion. Then final: push is the user checkpoint. Check-adders (BD-136/236/255-D) serialize on registry/count."
+  "cycle_position": "BD-232 COMPLETE + Resolved: C1 (memory-not-an-ssot meta-rule) + C2 (11 PACK-CHAT bullets) + C3 (7 trinity slugs + 8 consolidations, bijection 39/39) + C4a (entry dispositions) landed; C4b (Status->Resolved + _toc) staged in this commit; out-of-repo INSTALL done (cache 8 files: 4 env + 3 meta + MEMORY.md; 0 rule/project memories). PUSH pending user checkpoint (many local unpushed commits). Next BD = BD-245. Check-adders (BD-136/236/255-D) serialize on registry/count; BD-253 needs pre-BD-256 design re-validation before it proceeds."
 }
