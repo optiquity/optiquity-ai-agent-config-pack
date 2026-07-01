@@ -60,3 +60,8 @@ slug:       large-bd-pipeline-standard
 canonical:  ## Pack memory
 corpus:     ### Agent invocation rules — "Large-BD pipeline standard (size-tiered)"
 references: PACK-AGENTS.md § "Pack agents" (the roster order is the pipeline standard); PACK-CHAT.md § "In-session sub-agent spawn + merge-back (worktree isolation)" (the execution half of the standard)
+
+slug:       memory-not-an-ssot
+canonical:  ## Pack memory
+corpus:     ### Repo conventions — "Memory is not an SSOT; the in-repo repo is"
+references: PACK-CHAT.md § "Behavioral rules" ("Source rules from the in-repo SSOT")

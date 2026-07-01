@@ -553,6 +553,19 @@ PACK-AGENTS.md current".
   CLI memory is FORBIDDEN for state. History goes to
   BD / changelog / commit / handoff, never the snapshot. `/pack-startup`
   reads it to resume. `[roles: universal] [rationale: session-state-snapshot]`
+- **Memory is not an SSOT; the in-repo repo is.** NEVER put a pack- or
+  project-related RULE in an out-of-repo CLI memory — the pack cannot version
+  or control out-of-repo memory, so a cached rule copy goes stale silently and
+  an actor acts on the wrong version with no traceable audit trail. Pack Chat
+  and every agent SOURCE the pack + project rules from the live in-repo SSOT
+  (trinity `## Pack memory` + `[rationale: <slug>]` bodies, `pack-ops/PACK-CHAT.md`,
+  `pack-ops/PACK-AGENTS.md`, the `/backlog/` + `/changelog/` trees + `_rules.md`,
+  `README.md`) and RE-READ the applicable rules from that SSOT at the START of
+  every commit — never from a memory cache. Unsaved state or notes go to a BD, a
+  doc, or `pack-ops/session-state.json` (`session-state-snapshot`), never a
+  memory. The only memories about pack/project rules that may exist are the three
+  meta-governance memories that encode THIS rule. `[roles: universal]
+  [rationale: memory-not-an-ssot]`
 - **The `/backlog/` tree has no Resolved section.** Entries resolve in place by
   flipping `Status: Open` to `Status: Resolved` and filling the `Resolved:`
   line. Do not propose moving entries to a separate section. Flip in the

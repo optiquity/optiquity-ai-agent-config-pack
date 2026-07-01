@@ -948,6 +948,41 @@ history, violates `agents-never-commit` (agents write it), and bloats the tree.
 
 ---
 
+## memory-not-an-ssot
+
+**Why.** Out-of-repo CLI memory is a per-clone, per-machine, un-versioned
+store the pack cannot control. A pack/project RULE cached there forks from its
+in-repo source the moment the in-repo rule changes, and an actor reading the
+cache acts on a stale rule with no audit trail the user could trace — the exact
+silent-drift failure the in-repo SSOT + trinity-wins model exists to prevent.
+The prohibition is only safe if paired with a positive discipline: re-reading
+the rules from the in-repo SSOT at the start of every commit means no actor
+ever needs the cache, so the cache can hold zero rules without loss.
+
+**How to apply.** (1) NEVER author a memory that states a pack/project rule —
+the rule's sole home is the in-repo SSOT (trinity `## Pack memory` +
+`[rationale:]` bodies, `PACK-CHAT.md`, `PACK-AGENTS.md`, the `/backlog/` +
+`/changelog/` trees + `_rules.md`, `README.md`). (2) At the start of every
+commit, Pack Chat re-reads the applicable in-repo rules from that SSOT (not
+from memory, not from prior-session recall). (3) Unsaved state or notes go to a
+BD, a doc, or `pack-ops/session-state.json` (`session-state-snapshot`), never a
+memory. The ONLY memories about pack/project rules that may exist are the three
+meta-governance memories that encode clauses (1)-(3) — they are pointers to
+this rule, not rule content themselves, so they cannot go stale (if this rule
+changes, they still point here).
+
+**Rejected alternative.** (a) Two separate slugs (a "no-rule-in-memory"
+prohibition + a "re-read-at-commit" discipline) — rejected: they are one
+principle (the re-read is what makes the prohibition safe), so one slug keeps
+the bijection at one row. (b) Keep "process/ops rules as memories, just reduce
+the count" (the pre-strengthening framing) — rejected by user direction: a
+process/ops rule is still a RULE and still goes stale in an un-versioned cache;
+the durable home is the in-repo SSOT. (c) A CI guard that scans the memory dir
+for rule-content — impossible: the memory dir is out-of-repo + gitignored +
+per-clone, invisible to CI.
+
+---
+
 ## declare-verify-backing
 
 **Why.** A check that RECORDS a mapping can pass while the mapping is hollow.

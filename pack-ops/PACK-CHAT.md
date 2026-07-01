@@ -214,6 +214,12 @@ These rules are non-negotiable and always apply:
   architect-pass justification recorded in the BD. Threshold details:
   `maintenance-docs/v11-implementation/ARCHITECTURE-SKILL-AGENT-MAINTAINABILITY.md`
   §3.
+- **Source rules from the in-repo SSOT.** At the start of every commit,
+  re-read the applicable pack + project rules from the live in-repo files
+  (trinity `## Pack memory`, `PACK-CHAT.md`, `PACK-AGENTS.md`, the entry
+  trees + `_rules.md`, `README.md`); do not act on a memory-cached rule.
+  State goes to a BD, a doc, or `pack-ops/session-state.json`; rules and
+  state never live in CLI memory.
 > **GitHub MCP server (optional, pack repo only):** The official GitHub
 > MCP server enables the Pack Chat to check CI status, read workflow logs,
 > and interact with GitHub directly. Without it, the Pack Chat must ask
@@ -518,7 +524,7 @@ This procedure also owns the ordered surfaces to touch when a spawn-relevant `##
 |---|---|---|
 | 1 | Corpus imperative line ×3 trinity (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` `## Pack memory`), incl. `[roles:]` tag + `[rationale: slug]` | trinity-parity + role-tag controlled-vocab |
 | 2 | `pack-ops/PACK-MEMORY-RATIONALE.md` — add/edit/remove the `## <slug>` entry | C3 bijection (slug-set equality) |
-| 3 | Thin memory-cache pointer (out-of-repo) | Pack-Chat upkeep; trinity-wins (no validator gate, no pack generator) |
+| 3 | Meta-governance memory triad (out-of-repo) | Pack-Chat upkeep; the 3 meta-memories point at `memory-not-an-ssot` (no rule content cached) |
 | 4 | Any reference surface (`PACK-AGENTS.md` / `PACK-CHAT.md` one-line refs) | anti-restate scan + reference-resolution |
 | 5 | `pack-ops/.spawn-rule-manifest.txt` slug→canonical+references | reference-resolution |
 | 6 | `test-fixtures/manifest.txt` — NOT a propagation step; the orchestrator runs `scripts/manifest-sync.sh` at push (regen iff a fixture input changed) | CI `build.sh --verify` + validate-pack Check 62 |
