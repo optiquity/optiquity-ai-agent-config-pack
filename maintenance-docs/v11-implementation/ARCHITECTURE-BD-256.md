@@ -158,10 +158,15 @@ This design is realized by the `validate_checks` package
   `_PACK_CHAT_ONLY_PERMITTED_PATHS`/`_PREFIXES`, `_TRACKER_BACKENDS`,
   `_CHECK_54_REQUIRED_TOKENS`, `_CHECK_56_CANONICAL_VERBS`), with a declared
   `__all__` exporting every moved symbol including the underscore seams.
-- **`scripts/validate-pack.py`** — the realized facade: `from
-  validate_checks.core import *` re-export glue (the facade's first unguarded
-  package consumer), with `_build_check_registry()`, `main()`, and the still-inline
-  check bodies resolving the spine + seams from `core`.
+- **`scripts/validate-pack.py`** — the realized facade: re-export glue only —
+  `from validate_checks.core import *` (the facade's first unguarded package
+  consumer) plus the 12 cluster `import *` lines and the `singletons import *`
+  line — with `_build_check_registry()`, the singletons `_build_check_registry`
+  injection (`validate_checks.singletons._build_check_registry =
+  _build_check_registry`, the Check-59 circular-import break), `_resolve_only_check()`,
+  `main()`, and `__main__`. **Zero inline check bodies remain**: every `check_*`
+  body was extracted to a module across W2–W14 (verify: `grep -nE '^def check_'
+  scripts/validate-pack.py` is empty).
 - **`scripts/lib/validate_checks/README.md`** — the package layout + FIRM
   CONVENTION + `__all__` rule + MUST-3 contract.
 - **`scripts/lib/validate_checks/__init__.py`** — the package marker.
@@ -169,3 +174,22 @@ This design is realized by the `validate_checks` package
   realized SHOULD-1 fix: its standalone-copy idiom (Group 3 / 3b) now writes the
   copied facade beside a real `lib/` so the facade's unguarded
   `from validate_checks.core import *` resolves.
+- **The 7 W1 test-rework files** — the realized W1 symbol-move re-partition:
+  after the check bodies moved to their owning modules, these tests' monkeypatch
+  sites now patch the OWNING module (via the `_patch_root` helper) rather than
+  the facade:
+  - `scripts/tests/recommendation-state-schema-test.sh`
+  - `scripts/tests/tracker-config-schema-test.sh`
+  - `scripts/tests/test-validate-pack-check-77.sh`
+  - `scripts/tests/test-validate-pack-check-78.sh`
+  - `scripts/tests/test-validate-pack-check-79.sh`
+  - `scripts/tests/test-validate-pack-check-81.sh`
+  - `scripts/tests/test-validate-pack-checks-32-33-34.sh`
+- **The 12 cluster modules + `scripts/lib/validate_checks/singletons.py`** — the
+  realized extracted check bodies. The `check_*` bodies (extracted across
+  W2–W14) live in the 12 cluster modules (`boundary_refs`, `discipline_parity`,
+  `agents_skills`, `doc_concision`, `help_fragments`, `per_entry_sync`,
+  `cross_bd`, `session_state`, `prompts`, `fixtures`, `examples`,
+  `migrator_docs`) plus `singletons.py`. See
+  `scripts/lib/validate_checks/README.md` for the authoritative cluster→check
+  map (do not re-enumerate per-check here — the README is the SSOT).

@@ -20,7 +20,7 @@ re-exported into. Single SSOT — no forked copy.
 
 Intra-cluster symbols moved with the bodies (read only by Cluster C checks):
 the agent/skill directory constants `SKILLS_DIR` / `CLAUDE_AGENTS_DIR` /
-`CODEX_AGENTS_DIR` / `OPTIQUITY_BUNDLE_AGENTS_DIR`, `PM_CHAT`,
+`CODEX_AGENTS_DIR`, `PM_CHAT`,
 `REQUIRED_SKILL_FIELDS`, the profile rosters `READ_ONLY_AGENTS` /
 `WRITE_SCOPED_AGENTS` / `WRITE_SCRIPT_AGENTS` + `COMMON_CANONICAL_PHRASES` /
 `PROFILE_PHRASES` + the `_agent_profile` / `_extract_skills_to_load_section`
@@ -32,14 +32,15 @@ helpers, the tracker-config constants/helpers (`_TRACKER_MODES` /
 the skill-inventory constants/helper (`_INVENTORY_SUBSECTIONS` /
 `_parse_inventory_subsection`).
 
-Cross-module note (re-exported back to the facade): `SKILLS_DIR` /
-`CLAUDE_AGENTS_DIR` / `OPTIQUITY_BUNDLE_AGENTS_DIR` are also read by the
-facade-local load-time `PACK_SCAN_LOCATIONS` list (which Check 8 consumes;
-Check 8 lands in `singletons` at W14). The facade's `from
-validate_checks.agents_skills import *` is placed ABOVE that list so the bare
-names resolve at facade load time — the same late-binding the registry relies
-on. No core promotion is needed (these dirs are Cluster-C-owned, not a ≥2-module
-seam).
+Cross-module note: `OPTIQUITY_BUNDLE_AGENTS_DIR` is a ≥2-module seam —
+consumed by this cluster's Checks 5/27 AND by `singletons.py`'s
+`PACK_SCAN_LOCATIONS` (which Check 8 uses) — so at W14 it was PROMOTED to
+`core` (see the promotion note below) and this module imports it `from .core`.
+`PACK_SCAN_LOCATIONS` names `OPTIQUITY_BUNDLE_AGENTS_DIR` as its sole
+dir-const; its other four entries are computed inline from `REPO_ROOT`. By
+contrast `SKILLS_DIR` / `CLAUDE_AGENTS_DIR` stay Cluster-C-owned (defined
+below) and are NOT read by `PACK_SCAN_LOCATIONS` — no core promotion for
+those.
 
 Spine + seams: the spine symbols (`fail`, `ok`, `failures`) and the cross-module
 seam this cluster reads (`REPO_ROOT`, `_TRACKER_BACKENDS`) are imported `from
