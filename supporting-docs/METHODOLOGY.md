@@ -704,13 +704,14 @@ it adds the named adversarial-review spine and the up-front size tier.
 
 #### The pipeline (full chain, in order)
 
-1. **Optional researcher set — first, before the first architect.** Zero,
-   one, or both of: an INTERNAL `docs-researcher` (the project codebase and
-   docs inventory plus the blast-radius census across the phase's surfaces)
-   and an EXTERNAL `docs-researcher` (CLI, tool, framework, or API
-   documentation verified against authoritative sources). Invoked per-need
-   at any phase size. `docs-researcher` is the only role that may be reused
-   for a reconciliation pass (it does factual inventory, not design).
+1. **Researcher — first, before the first architect (ALWAYS for a large
+   phase).** For a large phase the INTERNAL `docs-researcher` (the project
+   codebase and docs inventory plus the blast-radius census across the phase's
+   surfaces) ALWAYS runs first; the EXTERNAL `docs-researcher` (CLI, tool,
+   framework, or API documentation verified against authoritative sources)
+   runs per-need. For a small phase the researcher set is elective. In both
+   sizes `docs-researcher` is the only role that may be reused for a
+   reconciliation pass (it does factual inventory, not design).
 2. **Architect** → the phase design, including the REQUIRED
    parallel/dependency map (which phase tasks run in parallel isolated
    worktrees versus serial) and the rejected-alternative documentation (the
@@ -735,8 +736,8 @@ it adds the named adversarial-review spine and the up-front size tier.
    redirect signal at the design gate, before any coder runs.
 3. **Adversarial architect review** — a fresh, clean-context `architect`
    instance that loads the `architecture-review` skill → PM-chat triage of
-   the findings → [reconciliation architect — a FRESH instance, only if the
-   review returns NEEDS-REWORK]; loop until READY. Governed by the
+   the findings → reconciliation architect (a FRESH instance, only if the
+   review returns NEEDS-REWORK); loop until READY. Governed by the
    Reconciliation-instance independence rule (a fresh instance, never the
    original author nor the adversary).
 4. **User design review** — the design gate; present the proposed design and
@@ -745,8 +746,8 @@ it adds the named adversarial-review spine and the up-front size tier.
    task block, or a multi-part phase split), including its OWN
    parallel/dependency map.
 6. **Adversarial planner review** — a fresh `planner` instance that loads
-   the `planning` skill → triage → [reconciliation planner — FRESH, only if
-   NEEDS-REWORK].
+   the `planning` skill → triage → reconciliation planner (FRESH, only if
+   NEEDS-REWORK).
 7. **User planner-to-coder gate** — the approval gate before any coder
    prompt.
 8. **Parallel worktree coder waves** — scheduled off the parallel/dependency
@@ -769,9 +770,12 @@ it adds the named adversarial-review spine and the up-front size tier.
    Part 6), run after a large multi-task phase lands, to catch systemic gaps
    the per-commit reviewer does not.
 
-The two adversarial passes (stages 3 and 6) are the MINIMUM for a large
-phase; additional architect or planner rounds are added when larger gaps are
-found (the escalation detail in Part 3).
+For a large phase the two adversarial passes (stages 3 and 6) are MANDATORY —
+they are the MINIMUM (at least two; additional architect or planner rounds are
+added when larger gaps are found, the escalation detail in Part 3), never
+elective. The reconciliation after each (stages 3 and 6) runs ONLY when that
+adversarial pass returned NEEDS-REWORK — a logical consequence (no findings ⇒
+nothing to reconcile), not a discretionary skip.
 
 #### The size criterion (signals, then consequence)
 
@@ -795,14 +799,14 @@ project tree (not a vibe):
   or non-linear intra-phase dependencies (the planner trigger threshold in
   "Planner trigger rule", reused here as a size signal).
 
-The consequence: a phase is a **LARGE PHASE — the two adversarial reviews
-and reconciliation are the MINIMUM** — if P1 (launch/release-gate) fires
+The consequence: a phase is a **LARGE PHASE — the deterministic flow above,
+both adversarial reviews mandatory** — if P1 (launch/release-gate) fires
 alone, OR if two or more of the five signals fire. Otherwise the phase is a
 **SMALL PHASE** and runs the **base flow** (optional researcher → architect
 → planner per the existing planner trigger → parallel coder waves with the
-bounded review/fix cycle); the two adversarial passes and reconciliation are
-OPTIONAL at developer election. A single non-launch signal alone (for
-example, one new pattern inside one module) does not mandate them.
+bounded review/fix cycle); there the two adversarial passes are elective (at
+developer election). A single non-launch signal alone (for example, one new
+pattern inside one module) does not make the phase large.
 **Tie-break: when genuinely in doubt, treat the phase as LARGE** — the
 rigor is the conservative error.
 

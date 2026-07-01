@@ -425,16 +425,20 @@ of agent role.
   agent (on Claude Code via `SendMessage`; on Codex / Antigravity via
   the platform re-engage path), or a per-case architect-challenge
   reason.
-- **Large-phase pipeline standard (size-tiered).** Large phases run the
-  full development pipeline (optional researcher(s) → architect →
-  adversarial architect review → reconciliation → design review → planner
-  → adversarial planner review → reconciliation → planner-to-coder gate →
-  parallel worktree coder waves) as the default; the two adversarial
-  reviews + reconciliation are the MINIMUM for a large phase and OPTIONAL
-  at developer election for a small phase. A phase is LARGE if it is
-  release-gating, or if ≥2 of {cross-surface, blast-radius, structural,
-  >5-tasks/non-linear} hold; else small. When in doubt, large. The full
-  chain, the size criterion, and the stages live in METHODOLOGY.
+- **Large-phase pipeline standard (size-tiered).** The size test picks WHICH
+  flow (deterministic, never a choice). A LARGE phase runs the DETERMINISTIC
+  pipeline — every stage mandatory except reconciliation, which runs ONLY when
+  the preceding adversarial review returned findings (no findings ⇒ nothing to
+  reconcile, a consequence not a choice): docs-researcher (ALWAYS first;
+  internal census always, external-docs per-need) → architect → adversarial
+  architect → reconciliation architect (if findings) → design review → planner
+  → adversarial planner → reconciliation planner (if findings) →
+  planner-to-coder gate → parallel worktree coder waves. A phase is LARGE if
+  it is release-gating, or if ≥2 of {cross-surface, blast-radius, structural,
+  >5-tasks/non-linear} hold; else small (the base flow — optional researcher →
+  architect → planner → coder waves — with adversarial reviews elective). When
+  in doubt, large. The full chain, the size criterion, and the stages live in
+  METHODOLOGY.
 
 ## Phase routing — default agent assignments
 
