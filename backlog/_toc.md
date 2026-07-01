@@ -33,6 +33,7 @@
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 - [BD-255](./BD-255.md) — Systemic multi-surface-consistency defect-class fix: doc↔constant drift prevention + declare-verify hardening + cross-BD collision detection + memory/session-state quartet verification (single pack+project BD)
 - [BD-257](./BD-257.md) — Add net-new + review/refresh existing client (project-side) slash commands + their execution foundation (brainstorm-gated; project-side analog of BD-224)
+- [BD-258](./BD-258.md) — Deterministic large-BD/large-phase pipeline: researcher-always-first + mandatory adversarial passes + reconciliation-only-if-findings; strip "optional/discretionary" wording (pack + project symmetric)
 
 ## Deferred
 
