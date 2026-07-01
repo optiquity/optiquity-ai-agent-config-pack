@@ -709,15 +709,19 @@ folklore — and prevents both under-rigor (skipping an adversarial pass on a
 launch-gate BD) and over-rigor (spending the adversarial budget on a routine
 one-clause rule tweak).
 
-**How.** The official pipeline is: optional researcher(s) (internal census
-and/or external docs verification, per-need) → architect → adversarial
-architect review → [reconciliation if NEEDS-REWORK] → user design review →
-planner → adversarial planner review → [reconciliation if NEEDS-REWORK] → user
-planner-to-coder gate → parallel worktree coder waves (off the rule-10 map;
-each commit's bounded review/fix cycle in its worktree; patches applied
-sequentially under the conflict protocol; superseded docs deleted; the audit
-set preserved). The size-tiering test runs four yes/no signals against repo
-state or the BD entry — never a vibe:
+**How.** For a LARGE BD the official pipeline is DETERMINISTIC — every stage
+mandatory except reconciliation, which runs ONLY when the preceding adversarial
+pass returned findings (no findings ⇒ nothing to reconcile, a logical
+consequence, never a discretionary skip): docs-researcher (ALWAYS first —
+internal census always; external-docs verification per-need) → architect →
+adversarial architect review → reconciliation architect (if findings) → user
+design review → planner → adversarial planner review → reconciliation planner
+(if findings) → user planner-to-coder gate → parallel worktree coder waves (off
+the rule-10 map; each commit's bounded review/fix cycle in its worktree;
+patches applied sequentially under the conflict protocol; superseded docs
+deleted; the audit set preserved). The docs-researcher and both adversarial
+passes are UNCONDITIONAL for a LARGE BD. The size-tiering test runs four yes/no
+signals against repo state or the BD entry — never a vibe:
 
 - **L1 launch-gate** — the BD is a launch blocker for the current major
   (its `Target:`/`Position:` marks it so, or the user names it launch-gating).
@@ -732,13 +736,13 @@ state or the BD entry — never a vibe:
   amending a CLAUSE of an EXISTING rule, with no new check/convention/tree
   change, does NOT fire L4.)
 
-The CONSEQUENCE is decoupled from any single signal: a BD is LARGE — the two
-adversarial reviews + reconciliation are the MINIMUM — iff L1 (launch-gate)
-fires alone, OR ≥2 of the four signals fire. Otherwise it runs the base flow
-(optional researcher → architect → planner → coder + the bounded review/fix
-cycle); the two adversarial passes are OPTIONAL at user election. A single
-non-launch signal alone (e.g. a one-clause amend to an existing rule) does NOT
-mandate them. Tie-break: when genuinely in doubt between base-flow and
+The CONSEQUENCE is decoupled from any single signal: a BD is LARGE — running
+the deterministic flow above (both adversarial reviews mandatory) — iff L1
+(launch-gate) fires alone, OR ≥2 of the four signals fire. Otherwise it runs
+the base flow (optional researcher → architect → planner → coder + the bounded
+review/fix cycle); there the two adversarial passes are elective (at user
+election). A single non-launch signal alone (e.g. a one-clause amend to an
+existing rule) does NOT make the BD large. Tie-break: when genuinely in doubt between base-flow and
 mandatory-adversarial, treat as LARGE (the rigor is the conservative error,
 mirroring the "when in doubt … it is MAJOR" disposition in
 `pack-chat-minor-edits-only`). Launch-gate stands alone because a launch

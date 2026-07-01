@@ -270,22 +270,23 @@ PACK-AGENTS.md current".
   not before, not skipped. The same-architect-vs-fresh-architect
   decision for the second architect pass is per-case user
   discussion at the second-pass decision point.
-- **Large-BD pipeline standard (size-tiered).** Pack-side BD development
-  runs ONE official pipeline: optional researcher(s) (internal census and/or
-  external docs verification, per-need) → architect → adversarial architect
-  review → [reconciliation if NEEDS-REWORK] → user design review → planner →
-  adversarial planner review → [reconciliation if NEEDS-REWORK] → user
-  planner-to-coder gate → parallel worktree coder waves (off the rule-10 map).
-  Size signals: launch-gate / cross-surface (≥2 families) / blast-radius (≥3
-  encoding surfaces or a required census) / structural (a NEW convention,
-  NEW/changed CI check, tree shape, migration, or a NEW rule). A BD is LARGE —
-  the two adversarial reviews + reconciliation the MINIMUM — if launch-gate
-  fires OR ≥2 signals fire; else the base flow (researcher → architect →
-  planner → coder + the bounded cycle), adversarial passes OPTIONAL at user
-  election (one non-launch signal alone — e.g. a single-clause amend to an
-  existing rule — does NOT mandate them). When in doubt, LARGE. Each stage
-  obeys its own `## Pack memory` rule; the design-time cross-BD shared-surface
-  scan runs per `cross-bd-collision-scan`.
+- **Large-BD pipeline standard (size-tiered).** Pack-side BD development runs
+  ONE official pipeline; the size test picks WHICH flow (deterministic, never a
+  choice). A LARGE BD runs the DETERMINISTIC flow — every stage mandatory
+  except reconciliation, which runs ONLY when the preceding adversarial pass
+  returned findings (no findings ⇒ nothing to reconcile, a consequence not a
+  choice): docs-researcher (ALWAYS first; internal census always, external-docs
+  per-need) → architect → adversarial architect → reconciliation architect (if
+  findings) → user design review → planner → adversarial planner →
+  reconciliation planner (if findings) → user planner-to-coder gate → parallel
+  worktree coder waves (rule-10 map). Size signals: launch-gate / cross-surface
+  (≥2 families) / blast-radius (≥3 encoding surfaces or a required census) /
+  structural (a NEW convention, NEW/changed CI check, tree shape, migration, or
+  a NEW rule). A BD is LARGE if launch-gate fires OR ≥2 signals fire; else the
+  base flow (optional researcher → architect → planner → coder + the bounded
+  cycle), adversarial passes elective. When in doubt, LARGE. Each stage obeys
+  its own `## Pack memory` rule; the cross-BD shared-surface scan runs per
+  `cross-bd-collision-scan`.
   `[roles: universal] [rationale: large-bd-pipeline-standard]`
 - **Cross-BD design-time collision scan.** At the architect stage,
   after the researcher produces the blast-radius set, the architect MUST
