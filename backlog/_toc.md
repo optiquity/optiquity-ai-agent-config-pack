@@ -33,7 +33,6 @@
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 - [BD-255](./BD-255.md) — Systemic multi-surface-consistency defect-class fix: doc↔constant drift prevention + declare-verify hardening + cross-BD collision detection + memory/session-state quartet verification (single pack+project BD)
 - [BD-257](./BD-257.md) — Add net-new + review/refresh existing client (project-side) slash commands + their execution foundation (brainstorm-gated; project-side analog of BD-224)
-- [BD-258](./BD-258.md) — Deterministic large-BD/large-phase pipeline: researcher-always-first + mandatory adversarial passes + reconciliation-only-if-findings; strip "optional/discretionary" wording (pack + project symmetric)
 
 ## Deferred
 
@@ -259,6 +258,7 @@
 - [BD-251](./BD-251.md) — Remove born-dead BD-164 per-entry back-pointer helpers (`pe_first_line_is_backpointer` + `pe_ensure_backpointer`)
 - [BD-252](./BD-252.md) — Pack-side resumable session-state mechanism (repo-committed, CLI-agnostic, current-snapshot-only, /pack-startup-wired, CI-enforced)
 - [BD-256](./BD-256.md) — Modularize validate-pack.py — split the 80-check monolith into per-category modules so isolated check-BDs stop colliding on one file and can parallelize
+- [BD-258](./BD-258.md) — Deterministic large-BD/large-phase pipeline: researcher-always-first + mandatory adversarial passes + reconciliation-only-if-findings; strip "optional/discretionary" wording (pack + project symmetric)
 
 ## Deprecated
 
