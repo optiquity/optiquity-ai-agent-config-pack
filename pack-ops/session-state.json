@@ -5,7 +5,7 @@
   "active": [
     {
       "bd": "BD-232",
-      "sub_step": "BD-232 planner-to-coder GATE APPROVED. Executing coder waves. W1 C1 coder IN FLIGHT (isolated worktree): memory-not-an-ssot meta-rule (trinity x3 bullet + rationale body + PACK-CHAT op-leg/row-3 + manifest record; pack-only; bijection 31->32). Executable spec = DESIGN + RECONCILE placement + PLAN + RECONCILE-PLAN. Remaining: W2 C2 (PACK-CHAT bullets) + C3 (trinity slugs + consolidations); W3 C4a coder (BD entry rewrite) + C4b Pack-Chat (Status flip + _toc); then out-of-repo INSTALL last (delete 49/keep 4/write 3/regen -> 8)."
+      "sub_step": "BD-232 executing coder waves. C1 LANDED (feat, pack-only, local unpushed): memory-not-an-ssot meta-rule across trinity x3 + rationale + PACK-CHAT + manifest; bijection 32/32; worktree torn down. W2 in progress: C2 coder IN FLIGHT (fresh worktree; 11 PACK-CHAT behavioral-rule bullets, pack-chat-only; -> /Users/david/Developer/_tmp/pack-handoff-bd232/IMPL-C2.md). Remaining: C3 (7 trinity slugs + 8 rationale consolidations, pack-chat-only, serializes on trinity+rationale); W3 C4a coder (BD entry rewrite) + C4b Pack-Chat (Status flip + _toc); then out-of-repo INSTALL last (delete 49/keep 4/write 3/regen -> 8)."
     },
     {
       "bd": "BD-255",
@@ -14,11 +14,11 @@
   ],
   "in_flight_agents": [
     {
-      "name": "coder-bd232-c1",
+      "name": "coder-bd232-c2",
       "role": "pack-coder",
-      "stage": "BD-232 commit C1 (memory-not-an-ssot meta-rule) in isolated worktree",
+      "stage": "BD-232 commit C2 (11 PACK-CHAT behavioral-rule bullets) in fresh worktree",
       "status": "in_flight",
-      "respawn": "re-find by name via the out-of-repo spawn registry; the C1 edits live in the coder's worktree (not the canonical tree); if terminal before IMPL-REPORT, spawn a fresh C1 coder (new worktree) with the same C1 charge; IMPL-REPORT -> /Users/david/Developer/_tmp/pack-handoff-bd232/IMPL-C1.md"
+      "respawn": "re-find by name via the out-of-repo spawn registry; C2 edits live in the coder-bd232-c2 worktree (path in registry once it reports); if terminal before IMPL-REPORT, spawn a fresh C2 coder (new worktree, bases post-C1) with the same charge; -> /Users/david/Developer/_tmp/pack-handoff-bd232/IMPL-C2.md"
     }
   ],
   "queue": [
@@ -34,10 +34,10 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "BD-232 gate approved. W1 C1 coder IN FLIGHT (isolated worktree, pack-only meta-rule). Then review cycle -> commit -> W2 C2/C3 -> W3 C4 -> INSTALL.",
+  "wave": "BD-232 C1 LANDED (pack-only, local unpushed). W2 C2 coder IN FLIGHT (PACK-CHAT bullets). Then review -> commit -> C3 -> W3 C4 -> INSTALL.",
   "pending_decisions": [
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
   ],
-  "cycle_position": "BD-232 W1 C1 coder in flight. On IMPL-REPORT: spawn reviewer (RO, cd into C1 worktree) -> triage to user -> fix-coder if needed (REUSE worktree) -> on CLEAN: SendMessage coder for inclusive patch (git add -A; git diff --cached HEAD; git reset) -> Pack Chat applies + commits C1 (user approval, pack-only) -> teardown worktree AFTER commit lands. Then W2 (C2 + C3), W3 (C4a coder + C4b Pack-Chat), INSTALL last. Check-adders (BD-136/236/255-D) serialize on registry/count."
+  "cycle_position": "BD-232 W2 C2 coder in flight. On IMPL-REPORT: reviewer (RO, in the C2 worktree) -> triage to user -> fix-coder if needed (reuse worktree) -> on CLEAN: extract patch -> Pack Chat applies + commits C2 (user approval, pack-chat-only) -> teardown worktree. Then C3 (trinity slugs + consolidations; fresh worktree bases post-C1/C2), W3 C4 (C4a coder entry rewrite + C4b Pack-Chat Status flip/_toc), out-of-repo INSTALL last. Check-adders (BD-136/236/255-D) serialize on registry/count."
 }
