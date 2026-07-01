@@ -178,8 +178,9 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # hard-coded anywhere else. BD-255 Part A adds Check 80 (the generic doc↔
 # constant twin-bijection check): 77 → 78. BD-255 Part C adds Check 81
 # (structured File/Symbol prereq for active-design BDs) + Check 82 (cross-BD
-# shared-edit-surface advisory): 78 → 79 → 80.
-CHECK_REGISTRY_EXPECTED_COUNT = 80
+# shared-edit-surface advisory): 78 → 79 → 80. BD-222 adds Check 83 (wired-test
+# CI-environment fragility guard): 80 → 81.
+CHECK_REGISTRY_EXPECTED_COUNT = 81
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []

@@ -193,3 +193,14 @@ This design is realized by the `validate_checks` package
   `migrator_docs`) plus `singletons.py`. See
   `scripts/lib/validate_checks/README.md` for the authoritative cluster→check
   map (do not re-enumerate per-check here — the README is the SSOT).
+- **`scripts/lib/validate_checks/wired_test_fragility.py`** (BD-222) — the first
+  post-split realized consumer of the FIRM own-module-per-new-isolated-check
+  convention this design established (`scripts/lib/validate_checks/README.md`
+  § "The FIRM CONVENTION"). Its `check_wired_test_ci_fragility` (Check 83, the
+  BD-222 wired-test CI-environment fragility guard) is a NEW genuinely-isolated
+  check — it binds no non-`core` module-level symbol shared with any other check
+  (its candidate set, the CI-wired `.sh` set, differs from every cluster's set),
+  so it gets its OWN module rather than joining `singletons.py` (the frozen
+  split-time home). This closes the reconciliation chain: the module docstring
+  names the convention it realizes, and this bullet cross-references the realized
+  consumer.

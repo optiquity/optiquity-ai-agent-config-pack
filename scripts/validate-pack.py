@@ -501,6 +501,14 @@ from validate_checks.migrator_docs import *  # noqa: E402,F403  (Cluster L; sing
 # carries no forked copy.
 from validate_checks.singletons import *  # noqa: E402,F403  (singletons; single SSOT)
 
+# BD-222: Check 83 (check_wired_test_ci_fragility) lives in its own module
+# (validate_checks.wired_test_fragility) per the FIRM own-module-per-new-isolated-
+# check convention — it shares no non-core symbol with any cluster. Placed ABOVE
+# _build_check_registry() so the registry's bare `check_wired_test_ci_fragility`
+# reference resolves at assembly. Single SSOT — the body + leg patterns live only
+# in wired_test_fragility.py; the facade carries no forked copy.
+from validate_checks.wired_test_fragility import *  # noqa: E402,F403  (BD-222 Check 83; single SSOT)
+
 # PER_ENTRY_LIB moved to validate_checks.per_entry_sync (BD-256 W7 — Cluster F
 # intra-cluster; sole source-consumer is Check 33's TOC-regenerator invocation)
 # — re-imported via the facade's `from validate_checks.per_entry_sync import *`
@@ -1244,6 +1252,16 @@ def _build_check_registry():
         # + regex per small entry + an in-memory map; no subprocess, no tree
         # walk.
         (82, "check_cross_bd_surface_advisory", check_cross_bd_surface_advisory, W),
+        # Check 83 — wired-test CI-environment fragility guard (BD-222): the
+        # standing anti-drift guard that took BD-219's first sharded CI run red.
+        # Statically scans the CI-WIRED test set (raw three-glob −
+        # ci-test-wiring-allowlist.txt, a Check-42 mirror) for three
+        # CI-environment-fragile bug classes — (a) hardcoded dev/home paths,
+        # (b) direct un-shimmed live-`gh` calls, (c) the `grep -c … || echo 0`
+        # double-zero idiom — so the class is caught at validate-pack/PR time,
+        # before push. Cheap: three dir globs + one allowlist parse + a read-once
+        # regex pass over the small wired set; no subprocess.
+        (83, "check_wired_test_ci_fragility", check_wired_test_ci_fragility, W),
     ]
 
 
