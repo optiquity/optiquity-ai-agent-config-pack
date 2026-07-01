@@ -5,7 +5,7 @@
   "active": [
     {
       "bd": "BD-232",
-      "sub_step": "BD-232 executing coder waves. C1 LANDED (feat, pack-only, local unpushed): memory-not-an-ssot meta-rule across trinity x3 + rationale + PACK-CHAT + manifest; bijection 32/32; worktree torn down. W2 in progress: C2 coder IN FLIGHT (fresh worktree; 11 PACK-CHAT behavioral-rule bullets, pack-chat-only; -> /Users/david/Developer/_tmp/pack-handoff-bd232/IMPL-C2.md). Remaining: C3 (7 trinity slugs + 8 rationale consolidations, pack-chat-only, serializes on trinity+rationale); W3 C4a coder (BD entry rewrite) + C4b Pack-Chat (Status flip + _toc); then out-of-repo INSTALL last (delete 49/keep 4/write 3/regen -> 8)."
+      "sub_step": "BD-232 coder waves. C1 LANDED (memory-not-an-ssot; pack-only). C2 LANDED (11 PACK-CHAT behavioral-rule bullets; pack-chat-only). Both local unpushed. W2->C3: C3 coder IN FLIGHT (fresh worktree post-C2; the biggest wave = 7 new trinity slugs [bullet x3 + rationale body each] + 8 rationale-prose consolidations; bijection 32->39; pack-chat-only; -> /Users/david/Developer/_tmp/pack-handoff-bd232/IMPL-C3.md). Remaining: W3 C4a coder (BD entry rewrite) + C4b Pack-Chat (Status flip + _toc); then out-of-repo INSTALL last (delete 49/keep 4/write 3/regen -> 8)."
     },
     {
       "bd": "BD-255",
@@ -14,11 +14,11 @@
   ],
   "in_flight_agents": [
     {
-      "name": "coder-bd232-c2",
+      "name": "coder-bd232-c3",
       "role": "pack-coder",
-      "stage": "BD-232 commit C2 (11 PACK-CHAT behavioral-rule bullets) in fresh worktree",
+      "stage": "BD-232 commit C3 (7 trinity slugs + 8 rationale consolidations) in fresh worktree",
       "status": "in_flight",
-      "respawn": "re-find by name via the out-of-repo spawn registry; C2 edits live in the coder-bd232-c2 worktree (path in registry once it reports); if terminal before IMPL-REPORT, spawn a fresh C2 coder (new worktree, bases post-C1) with the same charge; -> /Users/david/Developer/_tmp/pack-handoff-bd232/IMPL-C2.md"
+      "respawn": "re-find by name via the out-of-repo spawn registry; C3 edits live in the coder-bd232-c3 worktree (path in registry once it reports); if terminal before IMPL-REPORT, spawn a fresh C3 coder (new worktree, bases post-C2) with the same charge; -> /Users/david/Developer/_tmp/pack-handoff-bd232/IMPL-C3.md"
     }
   ],
   "queue": [
@@ -34,10 +34,10 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "BD-232 C1 LANDED (pack-only, local unpushed). W2 C2 coder IN FLIGHT (PACK-CHAT bullets). Then review -> commit -> C3 -> W3 C4 -> INSTALL.",
+  "wave": "BD-232 C1 + C2 LANDED (local unpushed). C3 coder IN FLIGHT (7 trinity slugs + 8 rationale consolidations, pack-chat-only). Then review -> commit -> W3 C4 -> INSTALL.",
   "pending_decisions": [
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
   ],
-  "cycle_position": "BD-232 W2 C2 coder in flight. On IMPL-REPORT: reviewer (RO, in the C2 worktree) -> triage to user -> fix-coder if needed (reuse worktree) -> on CLEAN: extract patch -> Pack Chat applies + commits C2 (user approval, pack-chat-only) -> teardown worktree. Then C3 (trinity slugs + consolidations; fresh worktree bases post-C1/C2), W3 C4 (C4a coder entry rewrite + C4b Pack-Chat Status flip/_toc), out-of-repo INSTALL last. Check-adders (BD-136/236/255-D) serialize on registry/count."
+  "cycle_position": "BD-232 C3 coder in flight. On IMPL-REPORT: reviewer (RO, in C3 worktree) -> triage to user -> fix-coder if needed (reuse worktree) -> on CLEAN: extract patch -> Pack Chat applies + commits C3 (user approval, pack-chat-only) -> teardown worktree. Then W3: C4a coder (BD-232 entry boundary/acceptance rewrite = MAJOR) then C4b Pack-Chat-direct (Status->Resolved flip + _toc regen); then out-of-repo INSTALL (Pack Chat, LAST, user-approved). Check-adders (BD-136/236/255-D) serialize on registry/count."
 }
