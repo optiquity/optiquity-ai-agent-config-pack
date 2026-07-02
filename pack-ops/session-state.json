@@ -1,11 +1,11 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "995da88",
+  "boundary_commit": "bb0844e",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
     {
       "bd": "BD-253",
-      "sub_step": "Implementation Wave 1: pre-wave entry edits DONE (File/Symbol structured per plan, Process refreshed). Next = C1 coder (schema cross-ref + .docs-gate-allowlist.txt session-state target record) in isolated worktree under bounded review/fix. Plan PLAN-BD253-FINAL.md; commits C1->C2->C3+C4(atomic)->C5->C6; D6=ii, D11=7-ii."
+      "sub_step": "BD-253 gate fix (discipline_parity.py + test-76) is blocked on BD-260 (the work qualifier) for an honest unfreeze; the gate-fix code can be authored work-aware in parallel. After BD-260: README v11.0 (work) + pm-session-state.json rename + resume the C1..C6 waves. Blocker A decided (rename -> pm-session-state.json)."
     },
     {
       "bd": "BD-255",
@@ -14,6 +14,7 @@
   ],
   "in_flight_agents": [],
   "queue": [
+    "BD-260",
     "BD-253",
     "BD-245",
     "BD-259",
@@ -27,10 +28,11 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "BD-253 implementation in progress. Pre-wave pack-chat-only entry edits complete (NEW-1 File/Symbol structured, NEW-3 Process refresh); BD-253 in active[]. Frontier commit pending (the BD-259 entry + BD-253 pre-wave edits + session-state; pack-chat-only), then the C1 coder. R7 shipped-gate baseline debt tracked as BD-259 (queued after BD-245).",
+  "wave": "New BD-260 (the work earliest pre-launch qualifier; a BD-242 successor), queued before BD-253 in the queue. Awaiting user review of the entry, then the pipeline decision (lean planner -> coder per BD-242 settled-scheme process; adversarial elective). BD-253 immutability gate fix depends on BD-260 for an honest unfreeze (README v11.0 (work)); the gate-fix code can be authored work-aware in parallel. Blocker A decided (rename -> pm-session-state.json).",
   "pending_decisions": [
+    "BD-260 (work qualifier) entry is written + queued before BD-253; pending (a) user review of the entry, (b) the BD-260 pipeline decision (lean planner -> coder per BD-242 settled-scheme process, adversarial at the user election). Then BD-253 gate fix + README v11.0 (work) + rename resume. Blocker A decided (rename -> pm-session-state.json).",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
   ],
-  "cycle_position": "BD-253 Wave 1 kickoff. State: NEW-1/NEW-3 applied to backlog/BD-253.md; BD-253 in active[] with structured File/Symbol. IMMEDIATE next: (1) frontier commit (pack-chat-only) covering the BD-259 entry + BD-253 pre-wave edits + session-state; (2) spawn the C1 coder (implementation-plan/_rules.md cross-ref + .docs-gate-allowlist.txt session-state target record) in an isolated worktree; bounded review/fix; then C2 -> C3+C4(atomic) -> C5 -> C6."
+  "cycle_position": "BD-260 at user entry-review. Next: user reviews the BD-260 entry, then BD-260 pipeline (user ratifies the extended vocabulary; lean planner -> coder across the ~12 version surfaces), then BD-253 gate fix + README v11.0 (work) + the pm-session-state.json rename + resume the coder waves. BD-260 is the prerequisite for the BD-253 honest unfreeze. Parked C1 coder worktree recoverable via git worktree list."
 }
