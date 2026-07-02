@@ -264,15 +264,15 @@ assert_eq "4.1 fresh install rc=0" "0" "$rc"
     && t_pass "4.2 docs/project/changelog/_format.md ABSENT (BD-206 forbidden)" \
     || t_fail "4.2 docs/project/changelog/_format.md unexpectedly present (BD-206 forbidden)"
 
-# 4.2 — integrity manifest ships on fresh install. The client
+# 4.2 — integrity manifest generated at install by init-project.sh. The client
 # verify-immutable.sh hashes the immutable _rules.md against this baseline;
 # without it the client errors `manifest not found` on the first install.
 [[ -f "$T/docs/project/immutable-manifest.txt" ]] \
-    && t_pass "4.2 docs/project/immutable-manifest.txt present (ships on fresh install)" \
+    && t_pass "4.2 docs/project/immutable-manifest.txt present (generated at install)" \
     || t_fail "4.2 docs/project/immutable-manifest.txt missing (fresh-install integrity baseline)"
 
 # 4.2 — end-to-end: the installed verify-immutable.sh runs clean (rc=0)
-# against the just-shipped manifest. This is the realized client check.
+# against the just-generated manifest. This is the realized client check.
 if [[ -f "$T/scripts/verify-immutable.sh" ]]; then
     ( cd "$T" && bash scripts/verify-immutable.sh ) >/dev/null 2>&1 ; vi_rc=$?
     [[ "$vi_rc" -eq 0 ]] \

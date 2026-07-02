@@ -428,7 +428,7 @@ _v10_to_v11_install_v11_artifacts() {
     #
     # Source: project-template/docs/project/<stream>/{_rules.md,
     # _intro.md}. Three streams: backlog,
-    # implementation-plan, changelog. Pack-shipped immutable per
+    # implementation-plan, changelog. Client-immutable per
     # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §3.3 — the
     # supporting-file installation creates the directory if absent and
     # copies each support file iff the destination is absent (additive,
@@ -455,6 +455,12 @@ _v10_to_v11_install_v11_artifacts() {
             fi
         done
     done
+
+    # Integrity manifest — generate at migration by hashing the installed
+    # _rules.md; the shipped verify-immutable.sh checks the client tree
+    # against this install-time baseline (client-immutable set).
+    bash "$PACK/scripts/immutable-manifest.sh" --client-tree "$_MIGRATOR_TARGET" \
+        || fail_stage S5 "immutable-manifest generation failed against $_MIGRATOR_TARGET"
 
     # BD-161 (absorbed into BD-167 per
     # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §17.2 + §8.14):

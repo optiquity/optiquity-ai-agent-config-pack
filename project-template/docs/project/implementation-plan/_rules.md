@@ -6,8 +6,9 @@
 > fragmented across `_intro.md` / `_toc.md` / `_index.md` / any other
 > doc. `_intro.md` is human-only orientation and carries zero rules.
 
-Per-stream contract. Pointer-heavy by design. Pack-shipped immutable
-(updates only on pack version bump).
+Per-stream contract. Pointer-heavy by design. Client-immutable: do not
+edit this file in a client project — updates arrive only on a pack
+version bump; the client's `verify-immutable.sh` enforces this.
 
 ## Stream identity
 

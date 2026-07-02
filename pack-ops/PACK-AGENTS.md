@@ -218,9 +218,12 @@ Directories:
 
 <!-- /GENERATED:pack-chat-only-permitted-set -->
 
-Within these directories, `_rules.md` is pack-shipped immutable
-(updated on pack version bump only); `_intro.md` is freely modifiable
-(the pack never overwrites it after install); `_toc.md`
+Within these directories, `_rules.md` ships immutable to CLIENT projects
+(client edits are blocked by the shipped
+`project-template/scripts/verify-immutable.sh`; updates arrive only on a
+pack version bump) — pack-side it is pack-chat-only / coder-scopable like
+the other per-entry contract files; `_intro.md` is
+freely modifiable (the pack never overwrites it after install); `_toc.md`
 (and the impl-plan `_index.md`) is derived (regenerator output);
 per-entry files (e.g., `BD-NNN.md`, `TD-NNN.md`, `phase-N.md`,
 `YYYY-MM-DD-*.md`) are pack-chat-only writes.

@@ -343,7 +343,7 @@ from validate_checks import core  # noqa: E402,F401  (V3 failures-identity handl
 from validate_checks.boundary_refs import *  # noqa: E402,F403  (Cluster A; single SSOT)
 
 # W3 (BD-256): the facade re-exports Cluster B (the RW/RO + git-verb-parity +
-# project-template-shape + immutable-integrity family — Checks 50-57,72-76) now
+# project-template-shape family — Checks 50-57,72-75) now
 # extracted to validate_checks.discipline_parity. Placed ABOVE
 # _build_check_registry() so the registry's bare `check_*` references resolve.
 # Single SSOT — the bodies live only in discipline_parity.py; the facade carries
@@ -1195,16 +1195,6 @@ def _build_check_registry():
         # per-line regex scans; self-check in-memory; no subprocess.
         (75, "check_project_implplan_naming",
               check_project_implplan_naming, W),
-        # Check 76 — pack-shipped immutable-file content-integrity (BD-246 U4):
-        # verifies the pack's OWN immutable set (_IMMUTABLE_SHIPPED, the 3
-        # _rules.md) against the shipped content-checksum manifest. Asserts
-        # set-equality (folds in _IMMUTABLE_SHIPPED), version-gated content
-        # hashes (in-process hashlib.sha256), and that verify-immutable.sh
-        # ships + is executable + is wired into validate.sh (one-host wiring;
-        # the integrity check is whole-set). SKIP-lenient when the manifest is
-        # absent. Cheap: 3 small in-process digests + a couple of small reads;
-        # no subprocess, no whole-tree scan.
-        (76, "check_immutable_manifest", check_immutable_manifest, W),
         # Check 77 — session-state snapshot structural well-formedness
         # (BD-252): json.load `pack-ops/session-state.json` + assert the
         # required P1-P9 key set + `boundary_commit` 7-40 hex + `checkpoint`

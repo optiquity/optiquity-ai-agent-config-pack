@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# verify-immutable.sh — client-side integrity check for pack-shipped immutable files.
+# verify-immutable.sh — client-side integrity check for client-immutable files.
 #
 # Hashes each INSTALLED docs/project/.../_rules.md against the sha256 content
-# checksum the pack shipped in docs/project/immutable-manifest.txt. A mismatch
+# checksum generated at install in docs/project/immutable-manifest.txt. A mismatch
 # means an immutable contract file drifted from the pack baseline after install
 # (an agent edit, a stray sed) — verify-immutable.sh fails LOUD, naming the file.
 #
-# This is the client twin of pack-side Check 76 (scripts/validate-pack.py). It
-# is UNCONDITIONAL: it hashes-and-compares with NO version gate. The client
-# received exactly ONE manifest + _rules.md baseline at install and has no pack
-# README to gate against. The manifest's `# pack-version:` header is echoed as
-# informational output only; it is NOT used to skip or relax any check.
+# This is a STANDALONE client-side check against the install-time-generated
+# manifest. It is UNCONDITIONAL: it hashes-and-compares with NO version gate. The
+# client received exactly ONE manifest + _rules.md baseline at install and has no
+# pack README to gate against. The manifest's `# pack-version:` header is echoed
+# as informational output only; it is NOT used to skip or relax any check.
 #
 # Threat model: this is tamper-EVIDENT for accidental drift (the common,
 # honest-CI case), not tamper-PROOF — a client editing BOTH an installed
@@ -57,7 +57,7 @@ _sha256_hex() {
 main() {
     if [[ ! -f "$MANIFEST" ]]; then
         err "manifest not found: $MANIFEST"
-        err "expected the pack-shipped docs/project/immutable-manifest.txt; run the pack installer/updater to restore it."
+        err "expected the install-time-generated docs/project/immutable-manifest.txt; re-run the pack installer/updater to regenerate it."
         exit 1
     fi
 

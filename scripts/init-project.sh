@@ -1000,7 +1000,7 @@ stage_s11_v11_artifacts() {
     #    written directly — the TOC regenerator (step 7 below for
     #    greenfield) produces it as the empty seed.
     #
-    #    Canonical templates are pack-shipped immutable per integration
+    #    Canonical templates are client-immutable per integration
     #    parent §3.3 + §9.7. We use `$copy_fn` so existing-* re-runs
     #    go through the `existing_classifier_copy` path (a
     #    customized `_rules.md` is preserved with the pack version
@@ -1038,15 +1038,15 @@ stage_s11_v11_artifacts() {
     "$copy_fn" "$pe_src/changelog/_rules.md" "$pe_dst/changelog/_rules.md"
     "$copy_fn" "$pe_src/changelog/_intro.md" "$pe_dst/changelog/_intro.md"
 
-    # 6b. Integrity manifest. Pure pack-shipped immutable — the baseline
-    #     verify-immutable.sh checks the 3 immutable _rules.md against.
-    #     ALWAYS overwrite (cp -f, never $copy_fn): a client must not
-    #     silently diverge the integrity baseline. Ships for every class.
-    [[ -f "$pe_src/immutable-manifest.txt" ]] \
-        || fail_stage S11 "canonical template missing: project-template/docs/project/immutable-manifest.txt"
-    cp -f "$pe_src/immutable-manifest.txt" "$pe_dst/immutable-manifest.txt"
+    # 6b. Integrity manifest — generate at install (hash the installed
+    #     _rules.md). The baseline verify-immutable.sh checks the 3
+    #     client-immutable _rules.md against; generating AFTER the
+    #     _rules.md placement above makes the manifest reflect the
+    #     actually-installed files. Generated for every class.
+    bash "$PACK/scripts/immutable-manifest.sh" --client-tree "$TARGET" \
+        || fail_stage S11 "immutable-manifest generation failed"
     [[ -f "$pe_dst/immutable-manifest.txt" ]] \
-        || fail_stage S11 "docs/project/immutable-manifest.txt missing after copy"
+        || fail_stage S11 "docs/project/immutable-manifest.txt missing after generation"
 
     # 7. Empty-seed TOC regenerate (greenfield path only).
     #    For greenfield (CLASS=new-*) the project starts empty — no
@@ -1249,7 +1249,6 @@ cmd_update() {
         "project-template/docs/project/implementation-plan/_intro.md:docs/project/implementation-plan/_intro.md:generic"
         "project-template/docs/project/changelog/_rules.md:docs/project/changelog/_rules.md:generic"
         "project-template/docs/project/changelog/_intro.md:docs/project/changelog/_intro.md:generic"
-        "project-template/docs/project/immutable-manifest.txt:docs/project/immutable-manifest.txt:generic"
         # BD-180 observation F (2026-05-20): supporting-docs/* installed
         # to docs/pack/ by S6 (lines 565-583 — separate copy blocks below
         # the docs/pack/*.md glob loop since these source files live under
@@ -1298,6 +1297,13 @@ cmd_update() {
     # 3-way the custom and risk sidecaring it). Empty 3rd arg = self-classify.
     _cmd_update_iter_dir "project-template/.agents-plugin/optiquity-agents/agents" \
         ".agents-plugin/optiquity-agents/agents"
+
+    # Integrity manifest — regenerate against the UPDATED installed
+    # _rules.md (there is no tracked manifest to copy; hashing the
+    # post-update installed files keeps the manifest reflecting actual
+    # installed state).
+    bash "$PACK/scripts/immutable-manifest.sh" --client-tree "$TARGET" \
+        || die "immutable-manifest generation failed against $TARGET"
 
     # Render truthful report.
     local report="$state_dir/report.md"
@@ -1396,7 +1402,6 @@ cmd_update() {
 #   project-template/docs/project/implementation-plan/_intro.md  ->  docs/project/implementation-plan/_intro.md  [stage:S11,cmd_update]
 #   project-template/docs/project/changelog/_rules.md  ->  docs/project/changelog/_rules.md  [stage:S11,cmd_update]
 #   project-template/docs/project/changelog/_intro.md  ->  docs/project/changelog/_intro.md  [stage:S11,cmd_update]
-#   project-template/docs/project/immutable-manifest.txt  ->  docs/project/immutable-manifest.txt  [stage:S11,cmd_update]
 #   supporting-docs/METHODOLOGY.md  ->  docs/pack/METHODOLOGY.md  [stage:S6,cmd_update]
 #   supporting-docs/INSTALL-PROCEDURES.md  ->  docs/pack/INSTALL-PROCEDURES.md  [stage:S6,cmd_update]
 #   scripts/pack-help.sh  ->  scripts/pack-help.sh  [stage:S11]

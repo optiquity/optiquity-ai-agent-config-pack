@@ -1,41 +1,40 @@
 #!/usr/bin/env bash
-# pack-internal: true  (release-cadence authoring tool; not a user-facing verb)
-# scripts/immutable-manifest.sh — regenerate the pack-shipped immutable-file
-# content-checksum manifest (project-template/docs/project/immutable-manifest.txt).
+# pack-internal: true  (install-time generation tool; not a user-facing verb)
+# scripts/immutable-manifest.sh — generate a client tree's immutable-file
+# content-checksum manifest (docs/project/immutable-manifest.txt) at install.
 #
-# Generated per the BD-246 immutable-manifest design; see backlog/BD-246.md.
-# The manifest is a per-VERSION integrity baseline: a sha256 content
-# checksum for each pack-shipped immutable file (the 3 per-stream `_rules.md`).
-# Run at RELEASE cadence (alongside the README version bump), NOT per-push.
-# Check 76 in scripts/validate-pack.py verifies the pack's own copies against
-# this manifest; the shipped client leg project-template/scripts/verify-immutable.sh
-# verifies a client's installed copies against the shipped manifest.
+# Invoked by scripts/init-project.sh (fresh install AND --update) and by
+# scripts/migrate-v10-to-v11.sh against their target tree AFTER the
+# per-stream `_rules.md` are placed: it hashes the files ACTUALLY INSTALLED
+# in the client tree and writes the manifest beside them. The shipped client
+# leg project-template/scripts/verify-immutable.sh verifies the client's
+# installed copies against this install-time manifest (client-immutable:
+# clients must not edit the `_rules.md` set; pack-side editing is free).
 #
-# The immutable set MUST stay consistent with `_IMMUTABLE_SHIPPED` in
-# scripts/validate-pack.py (the frozen declaration). The two surfaces list
-# the same 3 paths; Check 76's set-equality guard catches any drift between
-# them. Growing the set requires architect+user sign-off (set-equality freeze).
+# The immutable set is the frozen IMMUTABLE_PROJECT_RELS below (the 3
+# per-stream `_rules.md`), mirrored with verify-immutable.sh for parser
+# symmetry. Growing the set requires architect+user sign-off.
 #
 # This tool NEVER stages, commits, or pushes (CLAUDE.md "agents-never-commit" —
 # tools do not commit; only the orchestrator commits, with user approval). It
-# regenerates the manifest file on disk only.
+# writes the manifest file into the given client tree only.
 #
 # Dependency direction (CLAUDE.md "dependency-direction-placement"): pack-internal
-# authoring tool. NEVER a runtime dependency of a project deliverable; no client
+# install-time tool. NEVER a runtime dependency of a project deliverable; no client
 # surface invokes it; it does NOT ship (absent from the install-map and from
-# _SANCTIONED_PACK_SIDE_SHIPPED). The MANIFEST it emits ships as data; the verify
-# leg (verify-immutable.sh) is the separate shipped client artifact.
+# _SANCTIONED_PACK_SIDE_SHIPPED). The MANIFEST it emits is client-tree data; the
+# verify leg (verify-immutable.sh) is the separate shipped client artifact.
 #
 # Version-header source: the README version table (the first `| vMAJOR.MINOR `
 # data row → e.g. `v11.0`), NOT detect_pack_version (which yields the branch
 # name on an untagged dev HEAD). Override with --pack-version vN.M.
 #
 # Usage:
-#   bash scripts/immutable-manifest.sh --regen                 # regenerate from README version
-#   bash scripts/immutable-manifest.sh --regen --pack-version v11.0   # explicit version
+#   bash scripts/immutable-manifest.sh --client-tree <root>          # version from README
+#   bash scripts/immutable-manifest.sh --client-tree <root> --pack-version v11.0
 #
-# Idempotent: re-running --regen on an unchanged tree reproduces a byte-identical
-# manifest (deterministic hashing + stable row order).
+# Idempotent: re-running against an unchanged client tree reproduces a
+# byte-identical manifest (deterministic hashing + stable row order).
 # Exit 0 on success; exit 1 on error.
 
 set -u
@@ -44,14 +43,15 @@ set -u
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$THIS_DIR/.." && pwd)"
 README="$REPO_ROOT/README.md"
-MANIFEST="$REPO_ROOT/project-template/docs/project/immutable-manifest.txt"
 
 say()  { printf '%s\n' "$*"; }
 err()  { printf 'immutable-manifest: error: %s\n' "$*" >&2; }
 
 # ── The frozen immutable set (project-relative client-installed paths) ────────
-# Keep consistent with `_IMMUTABLE_SHIPPED` in scripts/validate-pack.py. Rows
-# store the CLIENT-INSTALLED project-relative path; the pack-side copy is at
+# Mirrored with the client verify leg
+# project-template/scripts/verify-immutable.sh for parser symmetry: it checks
+# the installed copies against the manifest this list generates. Rows store the
+# CLIENT-INSTALLED project-relative path; the pack-side copy is at
 # project-template/<project-rel>.
 IMMUTABLE_PROJECT_RELS="
 docs/project/backlog/_rules.md
@@ -97,9 +97,13 @@ _pack_version_from_readme() {
     printf '%s\n' "$ver"
 }
 
-# ── Regenerate the manifest ──────────────────────────────────────────────────
-_regen() {
-    local pack_version="$1" rel pack_path hash tmp
+# ── Generate the client-tree manifest ────────────────────────────────────────
+_generate() {
+    local root="$1" pack_version="$2" rel file_path hash tmp manifest
+    if [[ ! -d "$root" ]]; then
+        err "client tree not found: $root"
+        return 1
+    fi
     if [[ -z "$pack_version" ]]; then
         pack_version="$(_pack_version_from_readme)" || return 1
     fi
@@ -108,11 +112,12 @@ _regen() {
         return 1
     fi
 
+    manifest="$root/docs/project/immutable-manifest.txt"
     tmp="$(mktemp -t immutable-manifest.XXXXXX)" || { err "mktemp failed"; return 1; }
 
     {
-        printf '%s\n' '# immutable-manifest.txt — sha256 content checksums for pack-shipped immutable files'
-        printf '%s\n' '# Generated by scripts/immutable-manifest.sh; do not hand-edit.'
+        printf '%s\n' '# immutable-manifest.txt — sha256 content checksums for client-immutable files'
+        printf '%s\n' '# Generated at install time by the pack installer/updater; do not hand-edit.'
         printf '%s\n' "# pack-version: $pack_version"
         printf '%s\n' '# Format: <project-relative-path>  <sha256>'
         printf '%s\n' '#'
@@ -120,15 +125,15 @@ _regen() {
 
     while IFS= read -r rel; do
         [[ -n "$rel" ]] || continue
-        pack_path="$REPO_ROOT/project-template/$rel"
-        if [[ ! -f "$pack_path" ]]; then
-            err "immutable file missing: $pack_path"
+        file_path="$root/$rel"
+        if [[ ! -f "$file_path" ]]; then
+            err "installed immutable file missing: $file_path"
             rm -f "$tmp"
             return 1
         fi
-        hash="$(_sha256_hex "$pack_path")" || { err "hashing failed: $pack_path"; rm -f "$tmp"; return 1; }
+        hash="$(_sha256_hex "$file_path")" || { err "hashing failed: $file_path"; rm -f "$tmp"; return 1; }
         if [[ -z "$hash" ]]; then
-            err "empty hash for: $pack_path"
+            err "empty hash for: $file_path"
             rm -f "$tmp"
             return 1
         fi
@@ -137,21 +142,22 @@ _regen() {
 $IMMUTABLE_PROJECT_RELS
 EOF
 
-    mkdir -p "$(dirname "$MANIFEST")"
-    mv "$tmp" "$MANIFEST"
-    say "immutable-manifest: regenerated $MANIFEST (pack-version: $pack_version)"
+    mkdir -p "$(dirname "$manifest")"
+    mv "$tmp" "$manifest"
+    say "immutable-manifest: generated $manifest (pack-version: $pack_version)"
     return 0
 }
 
 main() {
-    local mode="" pack_version=""
+    local client_tree="" pack_version=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --regen) mode="regen"; shift ;;
+            --client-tree) client_tree="${2:-}"; shift 2 ;;
+            --client-tree=*) client_tree="${1#*=}"; shift ;;
             --pack-version) pack_version="${2:-}"; shift 2 ;;
             --pack-version=*) pack_version="${1#*=}"; shift ;;
             -h|--help)
-                say "Usage: bash scripts/immutable-manifest.sh --regen [--pack-version vN.M]"
+                say "Usage: bash scripts/immutable-manifest.sh --client-tree <root> [--pack-version vN.M]"
                 exit 0
                 ;;
             *)
@@ -161,12 +167,12 @@ main() {
         esac
     done
 
-    if [[ "$mode" != "regen" ]]; then
-        err "no mode given (expected --regen)"
+    if [[ -z "$client_tree" ]]; then
+        err "no client tree given (expected --client-tree <root>)"
         exit 1
     fi
 
-    _regen "$pack_version"
+    _generate "$client_tree" "$pack_version"
     exit $?
 }
 
