@@ -1,11 +1,11 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "a8faaf8",
+  "boundary_commit": "07861d7",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
     {
       "bd": "BD-253",
-      "sub_step": "BD-253 is now unblocked (the work qualifier from BD-260 is in place). Continuation: re-plan to fold the immutability gate fix (DESIGN-BD253-IMMUTABILITY-FINAL.md) + the pm-session-state.json rename + the README v11.0 (work) unfreeze, user-gate, then resume the C1..C6 waves. The parked BD-253 C1 worktree (old edits) will be abandoned; a fresh coder used."
+      "sub_step": "FULL RESTART (user-directed): the prior design/plan is retired; the tree is reset to the pushed frontier (the three local attempt commits reverted; their patches + all attempt docs archived out-of-repo in pack-handoff-bd253/archive-attempt-1/). Fresh pipeline from the beginning: docs-researcher (exhaustive enforcement-surface census) -> architect -> adversarial -> reconcile -> user design gate -> planner -> adversarial -> reconcile -> user gate -> coder waves. Scope expanded per the entry: the immutability model (pack Check 76 + shipped verify-immutable.sh + manifest cadence + Check 68 carve + README qualifier) is IN scope. Priority: the project-side deliverable is primary; pack-side guards are subordinate enablers."
     },
     {
       "bd": "BD-255",
@@ -27,11 +27,11 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "BD-260 (work qualifier) is committed and flipped to Resolved (added across the versioning scheme; full battery green). Frontier bookkeeping (BD-260 status flip + toc + state) pending a pack-chat-only commit. Next: BD-253 continuation — re-plan to fold the immutability gate fix + pm-session-state.json rename + the README v11.0 (work) unfreeze, then resume the C1..C6 waves.",
+  "wave": "BD-253 full restart approved (user, with requirements): other-BD work preserved (the BD-260 frontier is the reset target; the BD-093 release-cut regen governance re-applied); both prior blockers folded INTO BD-253 scope; the fresh agents get the entire picture. Entry updates applied pack-chat-direct. Restart frontier commit pending user approval; then spawn the fresh docs-researcher.",
   "pending_decisions": [
-    "BD-260 (work qualifier) committed + flipped to Resolved; frontier commit pending. Next phase: BD-253 continuation — re-plan to fold the immutability gate fix + pm-session-state.json rename + README v11.0 (work) unfreeze, user-gate, then resume the C1..C6 waves. Both BD-253 blockers resolved (rename decided; the immutability prerequisite is BD-260).",
+    "BD-253 restart frontier awaiting commit approval (entry scope expansion + artifact-name standing decision + BD-093 regen governance). Then: fresh docs-researcher -> fresh first architect -> adversarial -> reconcile -> user design gate -> planner pipeline. Attempt-1 evidence archived out-of-repo (pack-handoff-bd253/archive-attempt-1/).",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
   ],
-  "cycle_position": "BD-260 frontier bookkeeping pending a pack-chat-only commit (BD-260 status flip to Resolved + toc regen + state; boundary advanced). Next: BD-253 continuation — re-plan (fold the immutability gate fix from DESIGN-BD253-IMMUTABILITY-FINAL.md + the pm-session-state.json rename + the README v11.0 (work) unfreeze), user-gate, then resume the C1..C6 coder waves. The stale BD-253 parked worktree (old C1 edits) will be abandoned at continuation. Parked worktree recoverable via git worktree list."
+  "cycle_position": "At the restart frontier: entry edits applied (BD-253 scope expansion + standing artifact name pm-session-state.json + BD-093 release-cut regen governance) + validated; staging for a pack-chat-only commit (user approval). On commit: spawn the fresh docs-researcher (docsresearcher-bd253-restart) with the full-picture mandate — both discovered blockers (the pack Check 68 dangling gate scans project-template; the shipped verify-immutable.sh is unconditional and breaks on an un-regenerated manifest), the enforcement-surface census charge, the standing decisions (artifact name; work qualifier available per BD-260; version-state flips user-owned; project-side-primary priority). On its return: the fresh first architect (user pre-approved in the restart direction), then the full deterministic pipeline."
 }
