@@ -1,18 +1,25 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "07861d7",
+  "boundary_commit": "7bdce98",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
     {
       "bd": "BD-253",
-      "sub_step": "FULL RESTART (user-directed): the prior design/plan is retired; the tree is reset to the pushed frontier (the three local attempt commits reverted; their patches + all attempt docs archived out-of-repo in pack-handoff-bd253/archive-attempt-1/). Fresh pipeline from the beginning: docs-researcher (exhaustive enforcement-surface census) -> architect -> adversarial -> reconcile -> user design gate -> planner -> adversarial -> reconcile -> user gate -> coder waves. Scope expanded per the entry: the immutability model (pack Check 76 + shipped verify-immutable.sh + manifest cadence + Check 68 carve + README qualifier) is IN scope. Priority: the project-side deliverable is primary; pack-side guards are subordinate enablers."
+      "sub_step": "Immutability model RULED by the user (final): client-side-only protection; install-time manifest generation (init fresh + --update + migrator); pack side carries ZERO immutability machinery (Check 76 + its test + the tracked manifest go away, fail-loud); pack chats/agents can always modify the immutable set. OQ-1 ruled (a) struct+grammar; reconciliation prose goes in implementation-plan/_rules.md (with the files it relates to). M3 amendment architect in flight enumerating the complete edit list; then planner -> coder waves."
     },
     {
       "bd": "BD-255",
       "sub_step": "D1 GATED on BD-245 + BD-253; BD-253 now in implementation (gate 2 progressing)."
     }
   ],
-  "in_flight_agents": [],
+  "in_flight_agents": [
+    {
+      "name": "architect-bd253-m3",
+      "role": "pack-architect",
+      "purpose": "BD-253 M3 amendment (enumerate the install-time-manifest edit list)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd253/DESIGN-BD253-M3-AMENDMENT.md"
+    }
+  ],
   "queue": [
     "BD-253",
     "BD-245",
@@ -27,11 +34,11 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "BD-253 full restart approved (user, with requirements): other-BD work preserved (the BD-260 frontier is the reset target; the BD-093 release-cut regen governance re-applied); both prior blockers folded INTO BD-253 scope; the fresh agents get the entire picture. Entry updates applied pack-chat-direct. Restart frontier commit pending user approval; then spawn the fresh docs-researcher.",
+  "wave": "User RULED the immutability model (install-time manifest; client-side-only; zero pack-side machinery — the design-flaw root cause fixed, not patched). Entries updated pack-chat-direct (BD-253 ruling + BD-093 regen step withdrawn). M3 amendment architect in flight. Ruling frontier commit pending user approval.",
   "pending_decisions": [
-    "BD-253 restart frontier awaiting commit approval (entry scope expansion + artifact-name standing decision + BD-093 regen governance). Then: fresh docs-researcher -> fresh first architect -> adversarial -> reconcile -> user design gate -> planner pipeline. Attempt-1 evidence archived out-of-repo (pack-handoff-bd253/archive-attempt-1/).",
+    "Ruling frontier commit awaiting approval (BD-253 RULED immutability model + BD-093 regen-step withdrawal + state). M3 amendment architect in flight; on return present the edit list -> planner pipeline. Still open: OQ-3 (README work flip, cosmetic, user-owned) + OQ-5 (cross-BD sequencing).",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
   ],
-  "cycle_position": "At the restart frontier: entry edits applied (BD-253 scope expansion + standing artifact name pm-session-state.json + BD-093 release-cut regen governance) + validated; staging for a pack-chat-only commit (user approval). On commit: spawn the fresh docs-researcher (docsresearcher-bd253-restart) with the full-picture mandate — both discovered blockers (the pack Check 68 dangling gate scans project-template; the shipped verify-immutable.sh is unconditional and breaks on an un-regenerated manifest), the enforcement-surface census charge, the standing decisions (artifact name; work qualifier available per BD-260; version-state flips user-owned; project-side-primary priority). On its return: the fresh first architect (user pre-approved in the restart direction), then the full deterministic pipeline."
+  "cycle_position": "M3 amendment in flight: architect-bd253-m3 enumerating the complete edit list (install-time generation in init fresh + --update + migrator; Check 76 + test + tracked-manifest deletion blast radius; immutable-grep sweep dispositions; once-and-for-all grep-provable invariant; FINAL-design deltas; commit shape). In parallel: the ruling frontier (BD-253 + BD-093 entries + session-state, pack-chat-only) staged for user commit approval. On the amendment return: present the edit list, then planner -> user planner-to-coder gate -> coder waves. OQ-3 (optional README work flip — now purely cosmetic) and OQ-5 (cross-BD sequencing) still open with the user."
 }
