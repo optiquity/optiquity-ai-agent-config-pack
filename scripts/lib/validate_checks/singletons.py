@@ -233,11 +233,11 @@ def check_readme_version() -> None:
 
     # Find the last table row with a version. The DISPLAY form may carry a
     # parenthetical release-state qualifier — `v11.0 (RC1)` — with the
-    # bounded allowlist (alpha/beta lowercase, RC numbered, GA uppercase).
+    # bounded allowlist (work/alpha/beta lowercase, RC numbered, GA uppercase).
     # `[\d.]+` already covers the optional `.PATCH` segment.
     content = README.read_text()
     version_rows = re.findall(
-        r"^\|\s*(v[\d.]+(?:\s*\((?:alpha|beta|RC\d+|GA)\))?)\s*\|",
+        r"^\|\s*(v[\d.]+(?:\s*\((?:work|alpha|beta|RC\d+|GA)\))?)\s*\|",
         content, re.MULTILINE,
     )
     if not version_rows:
@@ -248,7 +248,7 @@ def check_readme_version() -> None:
     # tags: ` (X)` → `-X`, case preserved (git refs cannot carry spaces or
     # parentheses). A bare `v11.0` (no qualifier) normalizes to itself.
     readme_version_tag = re.sub(
-        r"\s*\((alpha|beta|RC\d+|GA)\)$", r"-\1", readme_version)
+        r"\s*\((work|alpha|beta|RC\d+|GA)\)$", r"-\1", readme_version)
 
     # Get latest git tag (most recent reachable tag)
     try:

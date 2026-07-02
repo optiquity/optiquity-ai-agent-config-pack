@@ -1088,7 +1088,7 @@ assert_not_contains "H4.2 clean line-2 header → BD-502.md NOT flagged" "$H4_OU
 # ─────────────────────────────────────────────────────────────────
 #
 # BD-242 locks the version token to `vMAJOR.MINOR[.PATCH]` plus an
-# OPTIONAL bounded qualifier suffix `-(?:alpha|beta|RC\d+|GA)` (alpha/beta
+# OPTIONAL bounded qualifier suffix `-(?:work|alpha|beta|RC\d+|GA)` (work/alpha/beta
 # lowercase, RC numbered, GA uppercase; a PATCH is never qualified). The
 # old lowercase group `[a-z0-9-]+` is REPLACED. These assertions load
 # validate-pack.py as a module and exercise CROSS_REF_RE (R1) +
@@ -1118,10 +1118,11 @@ spec.loader.exec_module(vp)
 cross = vp.CROSS_REF_RE
 vpoint = vp._VERSION_POINT_RE
 
-ACCEPT = ["v11.0", "v9.3", "v11.0-alpha", "v11.0-beta",
+ACCEPT = ["v11.0", "v9.3", "v11.0-work", "v11.0-alpha", "v11.0-beta",
           "v11.0-RC1", "v11.0-GA", "v11.0.1"]
 REJECT = ["v11.0-rc1", "v11.0-ga", "v11.0-alpha1", "v11.0-beta2",
-          "v11.0-GA1", "v11.0-RC", "v11.0.1-alpha"]
+          "v11.0-GA1", "v11.0-RC", "v11.0.1-alpha",
+          "v11.0-Work", "v11.0-work1", "v11.0.1-work"]
 
 for tok in ACCEPT:
     m1 = cross.fullmatch(tok)
@@ -1158,6 +1159,10 @@ assert_contains "Tu.R4 v11.0-beta2 rejects (numbered non-RC)" "$TUNIT_OUT" "REJE
 assert_contains "Tu.R5 v11.0-GA1 rejects (numbered non-RC)" "$TUNIT_OUT" "REJECT v11.0-GA1: CROSS_REF=N VPOINT=N"
 assert_contains "Tu.R6 v11.0-RC rejects (RC w/o number)" "$TUNIT_OUT" "REJECT v11.0-RC: CROSS_REF=N VPOINT=N"
 assert_contains "Tu.R7 v11.0.1-alpha rejects (PATCH must not be qualified)" "$TUNIT_OUT" "REJECT v11.0.1-alpha: CROSS_REF=N VPOINT=N"
+assert_contains "Tu.A8 v11.0-work accepts" "$TUNIT_OUT" "ACCEPT v11.0-work: CROSS_REF=Y VPOINT=Y major=11"
+assert_contains "Tu.R8 v11.0-Work rejects (wrong case)" "$TUNIT_OUT" "REJECT v11.0-Work: CROSS_REF=N VPOINT=N"
+assert_contains "Tu.R9 v11.0-work1 rejects (numbered non-RC)" "$TUNIT_OUT" "REJECT v11.0-work1: CROSS_REF=N VPOINT=N"
+assert_contains "Tu.R10 v11.0.1-work rejects (PATCH must not be qualified)" "$TUNIT_OUT" "REJECT v11.0.1-work: CROSS_REF=N VPOINT=N"
 
 # ─────────────────────────────────────────────────────────────────
 # Group T1: BD-242 Check 34 resolution of qualified + PATCH version refs
@@ -1242,8 +1247,8 @@ import re
 # These patterns are byte-identical to the R3 production edit in
 # check_readme_version; an asserting test pinning the captured + normalized
 # forms guards the contract (enumerate-encoding-surfaces).
-findall_re = r"^\|\s*(v[\d.]+(?:\s*\((?:alpha|beta|RC\d+|GA)\))?)\s*\|"
-normalize_re = r"\s*\((alpha|beta|RC\d+|GA)\)$"
+findall_re = r"^\|\s*(v[\d.]+(?:\s*\((?:work|alpha|beta|RC\d+|GA)\))?)\s*\|"
+normalize_re = r"\s*\((work|alpha|beta|RC\d+|GA)\)$"
 
 def cap_and_norm(line):
     rows = re.findall(findall_re, line, re.MULTILINE)
@@ -1266,6 +1271,8 @@ cap, tag = cap_and_norm("| v11.0 (alpha) | ... |")
 print(f"alpha cap={cap!r} tag={tag!r}")
 cap, tag = cap_and_norm("| v11.0 (GA) | ... |")
 print(f"GA cap={cap!r} tag={tag!r}")
+cap, tag = cap_and_norm("| v11.0 (work) | ... |")
+print(f"work cap={cap!r} tag={tag!r}")
 cap, tag = cap_and_norm("| v11.0.1 | ... |")
 print(f"patch cap={cap!r} tag={tag!r}")
 PYEOF
@@ -1277,6 +1284,7 @@ assert_contains "Tr.3 '| v11.0 |' → cap 'v11.0' tag 'v11.0' (bare normalizes t
 assert_contains "Tr.4 'v11.0 (alpha)' → tag 'v11.0-alpha'" "$TREADME_OUT" "alpha cap='v11.0 (alpha)' tag='v11.0-alpha'"
 assert_contains "Tr.5 'v11.0 (GA)' → tag 'v11.0-GA'" "$TREADME_OUT" "GA cap='v11.0 (GA)' tag='v11.0-GA'"
 assert_contains "Tr.6 '| v11.0.1 |' → cap 'v11.0.1' tag 'v11.0.1' (PATCH via [\\d.]+)" "$TREADME_OUT" "patch cap='v11.0.1' tag='v11.0.1'"
+assert_contains "Tr.7 'v11.0 (work)' → tag 'v11.0-work'" "$TREADME_OUT" "work cap='v11.0 (work)' tag='v11.0-work'"
 
 # ─────────────────────────────────────────────────────────────────
 # Summary

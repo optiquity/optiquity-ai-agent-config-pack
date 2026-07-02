@@ -65,9 +65,9 @@ Use no keyword for mixed-surface commits — keyword opt-in.
 
 **Versioning:** A version number is `vMAJOR.MINOR[.PATCH]` with unpadded
 integers — MAJOR and MINOR are always present, PATCH is omitted when zero
-(`v11.0`, never `v11.0.0`). A release-state qualifier is one of `alpha`,
+(`v11.0`, never `v11.0.0`). A release-state qualifier is one of `work`, `alpha`,
 `beta`, `RC1`…`RCn`, or `GA`; only `RC` is numbered (unpadded, from 1).
-`alpha`/`beta` are lowercase, `RC`/`GA` are uppercase, and the casing is
+`work`/`alpha`/`beta` are lowercase, `RC`/`GA` are uppercase, and the casing is
 identical in display and in tags. A qualifier applies only to a
 `MAJOR.MINOR` version; a patch is never qualified. The display form shows
 the qualifier parenthetically (`vMAJOR.MINOR (X)`); the git tag rewrites

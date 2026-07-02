@@ -57,9 +57,9 @@ changes; minor versions (v9.0, v9.1, …) mark incremental improvements — doc
 updates, new templates, prompt and workflow refinements; a patch level marks
 a bugfix-only release.
 
-A release-state qualifier is one of `alpha`, `beta`, `RC1`…`RCn`, or `GA`.
+A release-state qualifier is one of `work`, `alpha`, `beta`, `RC1`…`RCn`, or `GA`.
 Only `RC` is numbered (unpadded, from 1); `alpha`, `beta`, and `GA` are never
-numbered. `alpha`/`beta` are lowercase and `RC`/`GA` are uppercase, with the
+numbered. `work`/`alpha`/`beta` are lowercase and `RC`/`GA` are uppercase, with the
 same casing in display and in tags. A qualifier applies only to a
 `MAJOR.MINOR` version — a patch is never qualified. The display form shows the
 qualifier parenthetically (`vMAJOR.MINOR (X)`); the git tag rewrites ` (X)`

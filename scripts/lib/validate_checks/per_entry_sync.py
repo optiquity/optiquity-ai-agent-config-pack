@@ -457,7 +457,7 @@ def check_toc_in_sync() -> None:
 # their base entries; no suffix ID exists). CROSS-SURFACE: the `TD-\d+`
 # token serves the project stream. The version token after `vMAJOR.MINOR`
 # carries EITHER an optional `.PATCH` segment OR a bounded release-state
-# qualifier `-(?:alpha|beta|RC\d+|GA)` (alpha/beta lowercase, RC numbered,
+# qualifier `-(?:work|alpha|beta|RC\d+|GA)` (work/alpha/beta lowercase, RC numbered,
 # GA uppercase) — never both, because a PATCH is NEVER qualified. Old
 # two-level `vN.M` still tokenizes (both the patch and the qualifier are
 # optional).
@@ -466,7 +466,7 @@ CROSS_REF_RE = re.compile(
     r"BD-\d+"
     r"|TD-\d+"
     r"|phase-\d+(?:\.\d+)?"
-    r"|v\d+\.\d+(?:\.\d+|(?:-(?:alpha|beta|RC\d+|GA))?)"
+    r"|v\d+\.\d+(?:\.\d+|(?:-(?:work|alpha|beta|RC\d+|GA))?)"
     r")\b"
 )
 
@@ -481,7 +481,7 @@ CROSS_REF_RE = re.compile(
 # to `vN`); it does NOT widen the allowlist to admit unclassified hits —
 # a `vN.M` whose major `vN` is undefined still FAILs.
 _VERSION_POINT_RE = re.compile(
-    r"^v(\d+)\.\d+(?:\.\d+|(?:-(?:alpha|beta|RC\d+|GA))?)$")
+    r"^v(\d+)\.\d+(?:\.\d+|(?:-(?:work|alpha|beta|RC\d+|GA))?)$")
 
 
 def _resolves_to_defined_id(ref: str, defined_all: set,
