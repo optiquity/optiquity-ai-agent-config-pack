@@ -1,11 +1,11 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "bb0844e",
+  "boundary_commit": "a8faaf8",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
     {
       "bd": "BD-253",
-      "sub_step": "BD-253 gate fix (discipline_parity.py + test-76) is blocked on BD-260 (the work qualifier) for an honest unfreeze; the gate-fix code can be authored work-aware in parallel. After BD-260: README v11.0 (work) + pm-session-state.json rename + resume the C1..C6 waves. Blocker A decided (rename -> pm-session-state.json)."
+      "sub_step": "BD-253 is now unblocked (the work qualifier from BD-260 is in place). Continuation: re-plan to fold the immutability gate fix (DESIGN-BD253-IMMUTABILITY-FINAL.md) + the pm-session-state.json rename + the README v11.0 (work) unfreeze, user-gate, then resume the C1..C6 waves. The parked BD-253 C1 worktree (old edits) will be abandoned; a fresh coder used."
     },
     {
       "bd": "BD-255",
@@ -14,7 +14,6 @@
   ],
   "in_flight_agents": [],
   "queue": [
-    "BD-260",
     "BD-253",
     "BD-245",
     "BD-259",
@@ -28,11 +27,11 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "New BD-260 (the work earliest pre-launch qualifier; a BD-242 successor), queued before BD-253 in the queue. Awaiting user review of the entry, then the pipeline decision (lean planner -> coder per BD-242 settled-scheme process; adversarial elective). BD-253 immutability gate fix depends on BD-260 for an honest unfreeze (README v11.0 (work)); the gate-fix code can be authored work-aware in parallel. Blocker A decided (rename -> pm-session-state.json).",
+  "wave": "BD-260 (work qualifier) is committed and flipped to Resolved (added across the versioning scheme; full battery green). Frontier bookkeeping (BD-260 status flip + toc + state) pending a pack-chat-only commit. Next: BD-253 continuation — re-plan to fold the immutability gate fix + pm-session-state.json rename + the README v11.0 (work) unfreeze, then resume the C1..C6 waves.",
   "pending_decisions": [
-    "BD-260 (work qualifier) entry is written + queued before BD-253; pending (a) user review of the entry, (b) the BD-260 pipeline decision (lean planner -> coder per BD-242 settled-scheme process, adversarial at the user election). Then BD-253 gate fix + README v11.0 (work) + rename resume. Blocker A decided (rename -> pm-session-state.json).",
+    "BD-260 (work qualifier) committed + flipped to Resolved; frontier commit pending. Next phase: BD-253 continuation — re-plan to fold the immutability gate fix + pm-session-state.json rename + README v11.0 (work) unfreeze, user-gate, then resume the C1..C6 waves. Both BD-253 blockers resolved (rename decided; the immutability prerequisite is BD-260).",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
   ],
-  "cycle_position": "BD-260 at user entry-review. Next: user reviews the BD-260 entry, then BD-260 pipeline (user ratifies the extended vocabulary; lean planner -> coder across the ~12 version surfaces), then BD-253 gate fix + README v11.0 (work) + the pm-session-state.json rename + resume the coder waves. BD-260 is the prerequisite for the BD-253 honest unfreeze. Parked C1 coder worktree recoverable via git worktree list."
+  "cycle_position": "BD-260 frontier bookkeeping pending a pack-chat-only commit (BD-260 status flip to Resolved + toc regen + state; boundary advanced). Next: BD-253 continuation — re-plan (fold the immutability gate fix from DESIGN-BD253-IMMUTABILITY-FINAL.md + the pm-session-state.json rename + the README v11.0 (work) unfreeze), user-gate, then resume the C1..C6 coder waves. The stale BD-253 parked worktree (old C1 edits) will be abandoned at continuation. Parked worktree recoverable via git worktree list."
 }
