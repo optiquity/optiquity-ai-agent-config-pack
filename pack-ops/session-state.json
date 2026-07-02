@@ -1,18 +1,25 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "236ab3f",
+  "boundary_commit": "21a44ec",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
     {
       "bd": "BD-253",
-      "sub_step": "Immutability model RULED by the user (final): client-side-only protection; install-time manifest generation (init fresh + --update + migrator); pack side carries ZERO immutability machinery (Check 76 + its test + the tracked manifest go away, fail-loud); pack chats/agents can always modify the immutable set. OQ-1 ruled (a) struct+grammar; reconciliation prose goes in implementation-plan/_rules.md (with the files it relates to). M3 amendment architect in flight enumerating the complete edit list; then planner -> coder waves."
+      "sub_step": "M3 landed (install-time manifest live; zero pack-side immutability machinery; invariant grep-zero). Commit-A coder in flight (axis foundation). Remaining after A: the parallel C/D/E/F doc wave, the tracked BD-260 entry reconciliation (coder), then Resolved."
     },
     {
       "bd": "BD-255",
       "sub_step": "D1 GATED on BD-245 + BD-253; BD-253 now in implementation (gate 2 progressing)."
     }
   ],
-  "in_flight_agents": [],
+  "in_flight_agents": [
+    {
+      "name": "coder-bd253-awave1",
+      "role": "pack-coder",
+      "purpose": "BD-253 commit-A axis foundation (isolated worktree)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd253/IMPL-BD253-A.md"
+    }
+  ],
   "queue": [
     "BD-253",
     "BD-245",
@@ -27,11 +34,11 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "All six design-gate rulings locked: immutability = install-time manifest (zero pack-side machinery); OQ-1(a) struct+grammar; OQ-2 placement principle (single-tree rule -> that _rules.md only; all-trees rule -> every _rules.md; generic rule -> project ops doc) + codified as a standing project-side rule; OQ-3(a) README v11.0 (work) applied; OQ-4 closed (pm-startup Step-2 fold + Resume line); OQ-5(i) BD-253 fully first then BD-245. Rulings frontier staged for user commit approval; then the planner (FINAL + M3 amendment + rulings).",
+  "wave": "M3 landed — the ruled immutability model is fully in effect. Commit-A coder in flight (coder-bd253-awave1: the session-state axis + Check-70 lockstep + both carve records). Frontier bookkeeping (F4 anchor note + state) staged for user approval. After A lands: the parallel C/D/E/F worktree wave.",
   "pending_decisions": [
-    "Rulings frontier awaiting commit approval. Then: planner -> adversarial planner -> reconcile -> user planner-to-coder gate. All design OQs closed.",
+    "Frontier commit awaiting approval (F4 anchor + state). Commit-A coder in flight. Two unpushed local commits; push at any user checkpoint.",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
   ],
-  "cycle_position": "Rulings frontier (BD-253 entry + README work flip + state; pack-chat-only) staged for user commit approval. On commit: spawn the fresh planner consuming DESIGN-BD253-RESTART-FINAL.md + DESIGN-BD253-M3-AMENDMENT.md + the six rulings -> adversarial planner -> reconcile if findings -> user planner-to-coder gate -> coder waves (M3 atomic commit Wave 0, then A, then parallel C/D/E + the _rules.md prose + the codified placement principle)."
+  "cycle_position": "Commit-A coder implementing (coder-bd253-awave1; isolated worktree base HEAD). Next in-cycle: fresh RO reviewer in the worktree -> triage -> fix-coder if needed (bounded) -> patch -> the A commit (no scope keyword, user approval) -> teardown. In parallel: the pack-chat-only frontier (BD-253 entry F4 anchor + session-state) awaiting user commit approval. After A: the parallel C/D/E/F wave (4 coders, disjoint files), then the BD-260 entry reconciliation (coder), then the Resolved flip."
 }
