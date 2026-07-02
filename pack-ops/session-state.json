@@ -1,6 +1,6 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "7bdce98",
+  "boundary_commit": "236ab3f",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
     {
@@ -12,14 +12,7 @@
       "sub_step": "D1 GATED on BD-245 + BD-253; BD-253 now in implementation (gate 2 progressing)."
     }
   ],
-  "in_flight_agents": [
-    {
-      "name": "architect-bd253-m3",
-      "role": "pack-architect",
-      "purpose": "BD-253 M3 amendment (enumerate the install-time-manifest edit list)",
-      "output": "/Users/david/Developer/_tmp/pack-handoff-bd253/DESIGN-BD253-M3-AMENDMENT.md"
-    }
-  ],
+  "in_flight_agents": [],
   "queue": [
     "BD-253",
     "BD-245",
@@ -34,11 +27,11 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "User RULED the immutability model (install-time manifest; client-side-only; zero pack-side machinery — the design-flaw root cause fixed, not patched). Entries updated pack-chat-direct (BD-253 ruling + BD-093 regen step withdrawn). M3 amendment architect in flight. Ruling frontier commit pending user approval.",
+  "wave": "All six design-gate rulings locked: immutability = install-time manifest (zero pack-side machinery); OQ-1(a) struct+grammar; OQ-2 placement principle (single-tree rule -> that _rules.md only; all-trees rule -> every _rules.md; generic rule -> project ops doc) + codified as a standing project-side rule; OQ-3(a) README v11.0 (work) applied; OQ-4 closed (pm-startup Step-2 fold + Resume line); OQ-5(i) BD-253 fully first then BD-245. Rulings frontier staged for user commit approval; then the planner (FINAL + M3 amendment + rulings).",
   "pending_decisions": [
-    "Ruling frontier commit awaiting approval (BD-253 RULED immutability model + BD-093 regen-step withdrawal + state). M3 amendment architect in flight; on return present the edit list -> planner pipeline. Still open: OQ-3 (README work flip, cosmetic, user-owned) + OQ-5 (cross-BD sequencing).",
+    "Rulings frontier awaiting commit approval. Then: planner -> adversarial planner -> reconcile -> user planner-to-coder gate. All design OQs closed.",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
   ],
-  "cycle_position": "M3 amendment in flight: architect-bd253-m3 enumerating the complete edit list (install-time generation in init fresh + --update + migrator; Check 76 + test + tracked-manifest deletion blast radius; immutable-grep sweep dispositions; once-and-for-all grep-provable invariant; FINAL-design deltas; commit shape). In parallel: the ruling frontier (BD-253 + BD-093 entries + session-state, pack-chat-only) staged for user commit approval. On the amendment return: present the edit list, then planner -> user planner-to-coder gate -> coder waves. OQ-3 (optional README work flip — now purely cosmetic) and OQ-5 (cross-BD sequencing) still open with the user."
+  "cycle_position": "Rulings frontier (BD-253 entry + README work flip + state; pack-chat-only) staged for user commit approval. On commit: spawn the fresh planner consuming DESIGN-BD253-RESTART-FINAL.md + DESIGN-BD253-M3-AMENDMENT.md + the six rulings -> adversarial planner -> reconcile if findings -> user planner-to-coder gate -> coder waves (M3 atomic commit Wave 0, then A, then parallel C/D/E + the _rules.md prose + the codified placement principle)."
 }
