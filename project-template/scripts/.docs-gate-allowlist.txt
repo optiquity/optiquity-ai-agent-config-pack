@@ -466,3 +466,6 @@ reason: project tracker-orchestration library; present after install, absent fro
 
 target: .agents/mcp_config.json
 reason: optional MCP config created during install/setup; present when the MCP feature is enabled, absent from the bare template.
+
+target: docs/project/pm-session-state.json
+reason: runtime-authored client PM-Chat resume snapshot; committed after the first PM-Chat session, absent from the bare template.

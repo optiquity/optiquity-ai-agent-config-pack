@@ -6,7 +6,7 @@
 # Check 70 asserts the SHIPPED client operating-doc enforcement gate
 # `project-template/scripts/validate-docs.sh` (a) EXISTS, (b) is executable,
 # (c) declares EXACTLY the constant's axis-markers
-# (`# AXIS: history|deferred|bloat|dangling|conformance`) as a BIDIRECTIONAL
+# (`# AXIS: history|deferred|bloat|dangling|conformance|session-state`) as a BIDIRECTIONAL
 # set-equality bijection (forward: a constant marker absent from the gate FAILs;
 # reverse: a gate `# AXIS:` marker absent from the constant FAILs), and (d) is
 # wired into the shipped `validate.sh` + `agent-post-edit-check.sh`.
@@ -32,7 +32,7 @@
 #            Check 70 REGISTERED (count == the DYNAMIC
 #            CHECK_REGISTRY_EXPECTED_COUNT, no literal)
 #   Group 1: Synthetic-tree end-to-end (in-process body invocation) —
-#            T1 a complete gate (executable + 5 axes + wired ×2) PASSES
+#            T1 a complete gate (executable + 6 axes + wired ×2) PASSES
 #            T2 a gate MISSING an axis-marker FAILS (the forward-leg teeth)
 #            T3 a NON-executable gate FAILS
 #            T4 a gate NOT wired into a host FAILS
@@ -42,7 +42,7 @@
 #            T7 a gate MISSING a constant marker FAILS naming that marker
 #               (the forward-leg teeth, asserting the direction explicitly)
 #   Group 2: Live-tree in-process body invocation PASSES (CG-CLIENT's real gate
-#            exists + executable + 5 axes + wired) — exercised via the
+#            exists + executable + 6 axes + wired) — exercised via the
 #            in-process body call (Check 70's clean live-tree run is also
 #            covered by the full no-flag validate-pack now that it is registered)
 #
@@ -82,8 +82,8 @@ required = ['check_client_doc_gate_parity', '_CHECK_70_CLIENT_GATE',
 missing = [n for n in required if not hasattr(mod, n)]
 if missing:
     print('FAIL_MISSING ' + ' '.join(missing)); sys.exit(1)
-# 5 axis-markers exactly (history/deferred/bloat/dangling/conformance).
-if len(mod._CHECK_70_AXIS_MARKERS) != 5:
+# 6 axis-markers exactly (history/deferred/bloat/dangling/conformance/session-state).
+if len(mod._CHECK_70_AXIS_MARKERS) != 6:
     print('FAIL_AXIS_COUNT', mod._CHECK_70_AXIS_MARKERS); sys.exit(1)
 # conformance (BD-206) must be tracked by the constant after the A3 content fix.
 if '# AXIS: conformance' not in mod._CHECK_70_AXIS_MARKERS:
@@ -102,7 +102,7 @@ print('OK')
 " > /tmp/vp-check70-import.out 2>&1
 
 if grep -q "^OK$" /tmp/vp-check70-import.out; then
-    t_pass "imports + Check 70 symbols present + 5 axis-markers (incl. conformance) + count invariant holds (dynamic) + Check 70 REGISTERED (70 in registry)"
+    t_pass "imports + Check 70 symbols present + 6 axis-markers (incl. conformance + session-state) + count invariant holds (dynamic) + Check 70 REGISTERED (70 in registry)"
 else
     t_fail "Check 70 import / symbol / count / registered-state check failed" \
         "$(cat /tmp/vp-check70-import.out)"
@@ -137,7 +137,7 @@ def _patch_root(mod, root):
 
 failures = []
 
-# A complete synthetic gate carrying all 5 axis-markers + the two wiring hosts
+# A complete synthetic gate carrying all 6 axis-markers + the two wiring hosts
 # referencing the gate by basename. The synthetic scope mirrors the real
 # constants (validate-docs.sh + validate.sh + agent-post-edit-check.sh) so the
 # body's existence/executable/axis/wiring legs all exercise. ALL_AXES is derived
@@ -188,7 +188,7 @@ def run_check_in_tree(gate_body, executable, wiring_bodies):
 
 WIRED_OK = {w: "run validate-docs.sh here\n" for w in WIRING}
 
-# T1: PASS — a complete gate (executable + 5 axes + wired ×2).
+# T1: PASS — a complete gate (executable + 6 axes + wired ×2).
 fc, cap = run_check_in_tree("#!/usr/bin/env bash\n" + ALL_AXES, True, WIRED_OK)
 if fc != 0:
     failures.append("T1 (complete gate PASS) expected 0 failures, got %d: %s" % (fc, cap))
@@ -300,7 +300,7 @@ print(cap.strip())
 " > /tmp/vp-check70-live.out 2>&1
 
 if grep -q "^OK$" /tmp/vp-check70-live.out; then
-    t_pass "Check 70 body runs clean on the live tree (CG-CLIENT's validate-docs.sh exists + executable + 5 axes (bidirectional set-equality) + wired)"
+    t_pass "Check 70 body runs clean on the live tree (CG-CLIENT's validate-docs.sh exists + executable + 6 axes (bidirectional set-equality) + wired)"
 else
     t_fail "Check 70 body found a parity gap on the live tree OR no clean message" \
         "$(tail -20 /tmp/vp-check70-live.out)"

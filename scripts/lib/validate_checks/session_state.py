@@ -396,8 +396,10 @@ def check_session_state_grammar() -> None:
     for v in all_values:
         stripped = _SESSION_STATE_BD_TAG_RE.sub("BD", v)
         for name, pat in _SESSION_STATE_NARRATION_PATTERNS:
-            # bd-past-action must scan the ORIGINAL value (it needs the BD-\d+).
-            scan_target = v if name == "bd-past-action" else stripped
+            # bd-past-action and per-bd must scan the ORIGINAL value (they need
+            # the BD-\d+); the strip protects bare BD-tags from every other
+            # pattern.
+            scan_target = v if name in ("bd-past-action", "per-bd") else stripped
             if pat.search(scan_target):
                 any_fail = True
                 fail(

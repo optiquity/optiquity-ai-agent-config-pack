@@ -4016,9 +4016,10 @@ def check_dangling_file_refs() -> None:
 # axis-coverage / wiring), NOT behavioral parity — behavioral parity would be a
 # maintenance trap. This is the legitimate dependency direction: a PACK
 # operation READS a client deliverable to police it (it never EDITS the gate,
-# never makes the gate a runtime dependency of a pack op). The 4 client axes
+# never makes the gate a runtime dependency of a pack op). The 6 client axes
 # the gate must declare (axis-marker comments it carries):
 #   # AXIS: history   # AXIS: deferred   # AXIS: bloat   # AXIS: dangling
+#   # AXIS: conformance   # AXIS: session-state
 _CHECK_70_CLIENT_GATE = "project-template/scripts/validate-docs.sh"
 
 
@@ -4028,6 +4029,7 @@ _CHECK_70_AXIS_MARKERS = (
     "# AXIS: bloat",
     "# AXIS: dangling",
     "# AXIS: conformance",
+    "# AXIS: session-state",
 )
 
 
@@ -4045,8 +4047,9 @@ def check_client_doc_gate_parity() -> None:
     Asserts the shipped client operating-doc enforcement gate
     `project-template/scripts/validate-docs.sh` (a) EXISTS, (b) is executable,
     (c) declares EXACTLY the constant's axis-markers
-    (`# AXIS: history|deferred|bloat|dangling|conformance`), and (d) is wired
-    into the shipped `validate.sh` + `agent-post-edit-check.sh`.
+    (`# AXIS: history|deferred|bloat|dangling|conformance|session-state`),
+    and (d) is wired into the shipped `validate.sh` +
+    `agent-post-edit-check.sh`.
     STRUCTURAL parity only (presence / executable / axis-coverage / wiring) —
     NOT behavioral (the two gates re-implement the same logic per DC-1; drift is
     mitigated by the shared trinity rule-text anchor + THIS presence guard, not

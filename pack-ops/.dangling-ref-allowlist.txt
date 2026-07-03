@@ -110,6 +110,9 @@ reason: G2 — a STATUS search-location reference in the install procedure (rege
 token: docs/project/STATUS.md
 reason: G2 — a STATUS search-location reference in the install procedure (regenerated view).
 
+token: docs/project/pm-session-state.json
+reason: the runtime-authored client PM-Chat resume snapshot (committed after the first PM-Chat session; absent from the bare template); cited by name from the client trinity / PM-CHAT / pm-startup / impl-plan _rules.md. Distinct basename vs the pack-internal pack-ops/session-state.json.
+
 # ─────────────────────────────────────────────────────────────────
 # G3 — self-flagged RETIRED / DECLINED / ORPHAN / HISTORICAL references
 # ─────────────────────────────────────────────────────────────────

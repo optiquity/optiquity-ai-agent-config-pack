@@ -34,6 +34,8 @@
 #            T6  size over the byte cap FAILS (anti-growth BACKSTOP)
 #            T7  bare BD-tags are PERMITTED (a queue of many BD-tags PASSES)
 #            T8  ABSENT snapshot → lenient SKIP
+#            T9  per-bd narration bites the ORIGINAL value (dead-pattern
+#                regression: "per BD-42" FAILS; a bare "BD-42" still PASSES)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-79.sh
 # Exit 0 on all pass; exit 1 on any failure.
@@ -256,6 +258,24 @@ if fc != 0:
 if "absent — skipping (lenient" not in cap:
     failures.append("T8 (absent SKIP) expected the lenient-skip message: %s" % cap)
 
+# T9: per-bd narration bites the ORIGINAL value (dead-pattern regression guard).
+#     A strip-order bug once ran the per-bd pattern against the BD-tag-STRIPPED
+#     value ("per BD"), so it could never match — dead code. A "per BD-42"
+#     narration must FAIL (T9a); a bare "BD-42" value must still PASS (T9b) —
+#     the strip protects the bare tag while per-bd scans the original.
+d = clean_snapshot(); d["pending_decisions"] = ["queued per BD-42 as agreed"]
+fc, cap = run_in_tree(build_tree(data=d))
+if fc < 1:
+    failures.append("T9a (per-bd narration FAIL) expected >=1 failure, got %d: %s" % (fc, cap))
+if "history/narration pattern" not in cap:
+    failures.append("T9a (per-bd narration FAIL) expected the narration message: %s" % cap)
+d = clean_snapshot(); d["active"] = ["BD-42"]
+fc, cap = run_in_tree(build_tree(data=d))
+if fc != 0:
+    failures.append("T9b (bare-BD-tag PERMITTED) expected 0 failures, got %d: %s" % (fc, cap))
+if "no-history grammar OK" not in cap:
+    failures.append("T9b (bare-BD-tag PERMITTED) expected the clean grammar message: %s" % cap)
+
 if failures:
     print("FAILURES")
     for f in failures:
@@ -264,7 +284,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "Synthetic-tree body tests T1-T8 (clean-PASS / ACCRETION-carry-over-FAIL[>=2 grounds] / 2nd-date-FAIL / off-field-SHA-FAIL / narration-FAIL / over-cap-FAIL / bare-BD-tags-PERMITTED / absent-SKIP)" ;;
+    0) t_pass "Synthetic-tree body tests T1-T9 (clean-PASS / ACCRETION-carry-over-FAIL[>=2 grounds] / 2nd-date-FAIL / off-field-SHA-FAIL / narration-FAIL / over-cap-FAIL / bare-BD-tags-PERMITTED / absent-SKIP / per-bd-bites-original+bare-tag-PERMITTED)" ;;
     *) t_fail "Synthetic-tree check_session_state_grammar tests failed (see Python output)" ;;
 esac
 

@@ -9,7 +9,8 @@
 # skills, the agent definitions, and the stream contract files
 # (docs/project/*/_rules.md).
 #
-# Four operating-doc axes + a per-entry conformance leg:
+# Four operating-doc axes + a per-entry conformance leg + a session-state
+# snapshot leg:
 #   - HISTORY   — dates / SHAs / past-action narration / provenance
 #                 belong in BACKLOG / CHANGELOG entries and completion
 #                 reports, never in a forward-only operating doc.
@@ -28,6 +29,12 @@
 #                 reintroduced monolith mirror, and per-entry field /
 #                 structure conformance (form-family for backlog +
 #                 implementation-plan, structured for changelog).
+#   - SESSION-STATE — when the committed PM-Chat resume snapshot
+#                 docs/project/pm-session-state.json is present it is
+#                 validated (struct: required keys, one boundary SHA, one
+#                 ISO-8601 checkpoint; grammar: anti-accretion bounds).
+#                 Absent → skipped (runtime-authored; not in the bare
+#                 template).
 #
 # History stores are EXCLUDED from the operating-doc scan (never scanned
 # on the 4 axes): the per-entry streams under
@@ -40,7 +47,8 @@
 #
 # Usage:
 #   validate-docs.sh            scan the full operating-doc set +
-#                               per-entry conformance
+#                               per-entry conformance + the session-state
+#                               snapshot (when present)
 #   validate-docs.sh <file.md>  gate one file only (per-edit fast path)
 #   validate-docs.sh --self-test  run the built-in synthetic checks
 #
@@ -74,6 +82,7 @@ esac
 # and ARG_FILE are passed via the environment.
 ROOT_DIR="$ROOT_DIR" ALLOWLIST="$ALLOWLIST" GATE_MODE="$MODE" \
 ARG_FILE="$ARG_FILE" python3 - <<'PYEOF'
+import json
 import os
 import re
 import sys
@@ -1040,6 +1049,222 @@ def run_conformance(root):
     return fails
 
 
+# ---------------------------------------------------------------------------
+# AXIS: session-state — PM-Chat resume-snapshot struct + grammar
+#
+# docs/project/pm-session-state.json is the committed, runtime-authored
+# PM-Chat resume snapshot: the current live-orchestration frontier (active
+# phase/TD work + sub-step, in-flight agents, queue order, parallelization
+# mode, wave, pending decisions, cycle position, boundary commit,
+# checkpoint), overwritten on every state transition — current-snapshot-
+# ONLY, never appended. It does not ship in the bare template (no live
+# session at install), so this leg SKIPs leniently when the file is absent
+# and validates it when present:
+#   - struct  — parses as a JSON object; the required key set is present;
+#               boundary_commit is a 7-40-char lowercase-hex commit SHA;
+#               checkpoint is an ISO-8601 timestamp.
+#   - grammar — anti-accretion: PERMITS bare TD-N tags + exactly one date
+#               (only in checkpoint) + exactly one SHA (only in
+#               boundary_commit); FORBIDS a 2nd date/SHA, any off-field
+#               date/SHA, history/narration shapes, and serialized size
+#               over the byte cap (a snapshot that grows is accreting).
+#
+# Cheap (one bounded file): one isfile + one read + one json parse + regex
+# scans over a byte-capped object — no tree walk, no subprocess.
+# ---------------------------------------------------------------------------
+_SS_FILE = "docs/project/pm-session-state.json"
+_SS_REQUIRED_KEYS = (
+    "schema",            # "pm-session-state/1"
+    "boundary_commit",   # last commit SHA — the durable resume boundary
+    "checkpoint",        # ISO-8601 timestamp — the ONE permitted date
+    "active",            # in-flight phase/TD work + sub-step
+    "in_flight_agents",  # agents to re-spawn on resume
+    "queue",             # queued work + user-decided order
+    "parallelization",   # "serial" | "parallel"
+    "wave",              # current parallel wave
+    "pending_decisions", # decisions needed to resume
+    "cycle_position",    # in-commit review/fix cycle position
+)
+_SS_SHA_KEY = "boundary_commit"
+_SS_DATE_KEY = "checkpoint"
+_SS_SHA_RE = re.compile(r"\b[0-9a-f]{7,40}\b")
+_SS_SHA_FULL_RE = re.compile(r"^[0-9a-f]{7,40}$")
+_SS_DATE_RE = re.compile(r"20\d\d-\d\d-\d\d")
+_SS_ISO_RE = re.compile(
+    r"^20\d\d-\d\d-\d\d([T ]\d\d:\d\d(:\d\d)?(\.\d+)?(Z|[+-]\d\d:?\d\d)?)?$")
+# Bare TD-N tags are PERMITTED (legitimate state — the point of the
+# snapshot). Stripped before the narration scan so a legal "TD-42" value
+# never trips a narration pattern on its own.
+_SS_TD_TAG_RE = re.compile(r"TD-\d+")
+# The accretion / narration FAIL set (history shapes in project vocabulary
+# — TD-, phases). Matched against the snapshot's string values after bare
+# TD-tags are stripped (td-past-action and per-td scan the ORIGINAL value —
+# they need the TD-N; the strip protects bare TD-tags from every other
+# pattern).
+_SS_NARRATION_PATTERNS = (
+    ("td-past-action", re.compile(
+        r"TD-\d+\s+(deleted|added|renamed|introduced|removed|created|"
+        r"retired|broadened|landed|did)")),
+    ("per-td", re.compile(r"per TD-\d+")),
+    ("carry-over", re.compile(r"carried from|carry-over|carryover", re.I)),
+    ("user-locked", re.compile(r"User-locked", re.I)),
+    ("incident", re.compile(r"\bincident\b", re.I)),
+    ("commit-n", re.compile(r"Commit [0-9]")),
+    ("override-n", re.compile(r"Override [0-9]")),
+    ("post-commit", re.compile(r"post-Commit", re.I)),
+    ("pre-date", re.compile(r"pre-20\d\d")),
+    ("lessons-marker", re.compile(r"\b(LESSONS|lessons)\b")),
+    ("update-marker", re.compile(r"\bUPDATE-\d")),
+)
+# Anti-growth backstop byte cap: a true current-frontier snapshot is small
+# + bounded; growth over time is accretion.
+_SS_BYTE_CAP = 4096
+
+REMEDIATION_SESSION_STATE = (
+    "docs/project/pm-session-state.json is the PM-Chat resume snapshot: "
+    "current STATE only (bare TD-tags OK), one checkpoint date, one "
+    "boundary SHA, overwritten on every state transition. Remediation: "
+    "fix the named field, and move history (dated notes, lessons, "
+    "past-action narration) to a backlog / changelog entry — never the "
+    "snapshot."
+)
+
+
+def _ss_iter_string_values(obj):
+    """Yield every STRING value nested in the parsed snapshot (dict values
+    + list items; keys are structure, not state)."""
+    if isinstance(obj, str):
+        yield obj
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            yield from _ss_iter_string_values(v)
+    elif isinstance(obj, (list, tuple)):
+        for v in obj:
+            yield from _ss_iter_string_values(v)
+
+
+def run_session_state(root):
+    """Validate the PM-Chat resume snapshot when present (struct + grammar).
+
+    Returns a list of failure strings. SKIP-lenient when the snapshot is
+    absent — the bare template and every fresh install lack it (it is
+    runtime-authored by the PM chat), so absence is never a violation.
+    """
+    fails = []
+    path = os.path.join(root, _SS_FILE)
+    if not os.path.isfile(path):
+        return fails  # absent — lenient (runtime-authored artifact)
+    try:
+        raw = open(path, encoding="utf-8").read()
+    except OSError as e:
+        fails.append(f"{_SS_FILE} [session-state] cannot read ({e})\n"
+                     f"    {REMEDIATION_SESSION_STATE}")
+        return fails
+
+    # -- struct: valid JSON object.
+    try:
+        data = json.loads(raw)
+    except ValueError as e:
+        fails.append(
+            f"{_SS_FILE} [session-state] INVALID JSON ({e}) — the snapshot "
+            f"must parse deterministically for the PM chat to resume from "
+            f"it\n    {REMEDIATION_SESSION_STATE}")
+        return fails
+    if not isinstance(data, dict):
+        fails.append(
+            f"{_SS_FILE} [session-state] top-level JSON must be an OBJECT "
+            f"(got {type(data).__name__})\n    {REMEDIATION_SESSION_STATE}")
+        return fails
+
+    # -- struct: required key set + the two structural field shapes.
+    missing = sorted(set(_SS_REQUIRED_KEYS) - set(data.keys()))
+    if missing:
+        fails.append(
+            f"{_SS_FILE} [session-state] missing required key(s): {missing} "
+            f"(required set: {list(_SS_REQUIRED_KEYS)})\n"
+            f"    {REMEDIATION_SESSION_STATE}")
+    bc = data.get(_SS_SHA_KEY)
+    if _SS_SHA_KEY in data and (
+            not isinstance(bc, str) or not _SS_SHA_FULL_RE.match(bc)):
+        fails.append(
+            f"{_SS_FILE} [session-state] {_SS_SHA_KEY} must be a 7-40-char "
+            f"lowercase-hex commit SHA (got {bc!r}) — the single durable "
+            f"resume boundary\n    {REMEDIATION_SESSION_STATE}")
+    cp = data.get(_SS_DATE_KEY)
+    if _SS_DATE_KEY in data and (
+            not isinstance(cp, str) or not _SS_ISO_RE.match(cp)):
+        fails.append(
+            f"{_SS_FILE} [session-state] {_SS_DATE_KEY} must be an ISO-8601 "
+            f"timestamp (got {cp!r}) — the single permitted date\n"
+            f"    {REMEDIATION_SESSION_STATE}")
+
+    # -- grammar: anti-accretion bounds over the snapshot's string values.
+    sha_field_values = list(_ss_iter_string_values(data.get(_SS_SHA_KEY)))
+    date_field_values = list(_ss_iter_string_values(data.get(_SS_DATE_KEY)))
+    all_values = list(_ss_iter_string_values(data))
+
+    # Dates: at most one, only in checkpoint.
+    total_dates = sum(len(_SS_DATE_RE.findall(v)) for v in all_values)
+    in_field_dates = sum(
+        len(_SS_DATE_RE.findall(v)) for v in date_field_values)
+    off_field_dates = total_dates - in_field_dates
+    if total_dates > 1:
+        fails.append(
+            f"{_SS_FILE} [session-state] ACCRETION: {total_dates} date(s) "
+            f"(20YY-MM-DD) — the snapshot permits exactly ONE, only in "
+            f"{_SS_DATE_KEY} (a 2nd dated note is a history stack)\n"
+            f"    {REMEDIATION_SESSION_STATE}")
+    if off_field_dates > 0:
+        fails.append(
+            f"{_SS_FILE} [session-state] ACCRETION: a date appears OUTSIDE "
+            f"{_SS_DATE_KEY} ({off_field_dates} off-field) — the single "
+            f"checkpoint date lives ONLY in {_SS_DATE_KEY}\n"
+            f"    {REMEDIATION_SESSION_STATE}")
+
+    # SHAs: at most one, only in boundary_commit.
+    total_shas = sum(len(_SS_SHA_RE.findall(v)) for v in all_values)
+    in_field_shas = sum(
+        len(_SS_SHA_RE.findall(v)) for v in sha_field_values)
+    off_field_shas = total_shas - in_field_shas
+    if total_shas > 1:
+        fails.append(
+            f"{_SS_FILE} [session-state] ACCRETION: {total_shas} commit "
+            f"SHA(s) (7-40 hex) — the snapshot permits exactly ONE, only "
+            f"in {_SS_SHA_KEY} (stacked SHAs are a history stack)\n"
+            f"    {REMEDIATION_SESSION_STATE}")
+    if off_field_shas > 0:
+        fails.append(
+            f"{_SS_FILE} [session-state] ACCRETION: a commit SHA appears "
+            f"OUTSIDE {_SS_SHA_KEY} ({off_field_shas} off-field) — the "
+            f"single boundary SHA lives ONLY in {_SS_SHA_KEY}\n"
+            f"    {REMEDIATION_SESSION_STATE}")
+
+    # Narration: zero history shapes (bare TD-tags stripped first).
+    for v in all_values:
+        stripped_v = _SS_TD_TAG_RE.sub("TD", v)
+        for name, pat in _SS_NARRATION_PATTERNS:
+            scan_target = (
+                v if name in ("td-past-action", "per-td") else stripped_v)
+            if pat.search(scan_target):
+                fails.append(
+                    f"{_SS_FILE} [session-state] ACCRETION: history/"
+                    f"narration pattern '{name}' matched value {v[:80]!r} "
+                    f"— the snapshot is current state only\n"
+                    f"    {REMEDIATION_SESSION_STATE}")
+                break
+
+    # Byte-cap backstop (checked last — the precise bounds above catch the
+    # SHAPE of accretion; the cap catches its GROWTH).
+    size = len(raw.encode("utf-8"))
+    if size > _SS_BYTE_CAP:
+        fails.append(
+            f"{_SS_FILE} [session-state] ANTI-GROWTH: {size} bytes exceeds "
+            f"the {_SS_BYTE_CAP}-byte cap — a true current-frontier "
+            f"snapshot is small + bounded\n"
+            f"    {REMEDIATION_SESSION_STATE}")
+    return fails
+
+
 def main():
     by_doc, dangling_targets = load_allowlist()
 
@@ -1074,6 +1299,7 @@ def main():
               f"stream conformance")
         fails = run_scan(targets, ROOT, by_doc, dangling_targets)
         fails += run_conformance(ROOT)
+        fails += run_session_state(ROOT)
 
     if fails:
         print(f"[validate-docs] FAIL — {len(fails)} violation(s) "
