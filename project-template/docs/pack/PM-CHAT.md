@@ -330,6 +330,17 @@ These rules are non-negotiable and always apply on all tools:
   disagrees with the per-entry tree, the per-entry tree wins. Recommended
   disclaimer text:
   `<!-- Working snapshot. Source-of-truth lives in docs/project/backlog/ (per-entry tree; _toc.md is the generated readable index). Edits to STATUS.md must not contradict the per-entry tree. -->`
+- **Session-state snapshot upkeep.** The PM chat keeps the committed
+  `docs/project/pm-session-state.json` snapshot current: on every state
+  transition, overwrite the affected fields with the new frontier —
+  never append a history line, a dated note, or a superseded value. The
+  snapshot describes current state only; durable history belongs in the
+  backlog and changelog streams, never the snapshot. On pause/resume,
+  re-spawn from the recorded `boundary_commit` field (the last commit is
+  the durable resume boundary) — never from CLI memory, which is
+  forbidden for state. The snapshot's schema and anti-accretion grammar
+  are enforced by the session-state axis of the operating-doc gate
+  (the docs-validation script in `scripts/`).
 - **Pack feedback loop.** You own `PACK-FEEDBACK.md` (same permissions as
   the backlog tree). Follow METHODOLOGY.md Part 10: observe agent performance,
   workflow issues, prompt template gaps, and user friction continuously;
