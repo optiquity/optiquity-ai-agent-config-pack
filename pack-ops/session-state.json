@@ -4,15 +4,22 @@
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
     {
-      "bd": "BD-245",
-      "sub_step": "Design gate CLOSED with rulings recorded in the entry (Q1 cadence revision; Q2 stands evidence-closed; Q3/Q4/Q5 confirmed; sequencing ruled). Pipeline PAUSES here by the sequencing ruling: the planner runs AFTER BD-255 Parts A/B/C and BD-259. Design docs ready in pack-handoff-bd245."
+      "bd": "BD-259",
+      "sub_step": "Plan approved (L4 kept on corrected grounds). C1 coder in flight (the bullet tighten x3 + the allowlist resize; the bare-template milestone flips green). Then C2 (install-tree), then C3 (the 7-leg guard). Each commit: fresh coder, bounded cycle, user commit gate. The rulings entry edit rides the frontier commit now staged."
     },
     {
       "bd": "BD-255",
       "sub_step": "Parts A/B/C are LANDED (nine commits; Checks 80/81/82 live). Only Part D (quartet seamlessness audit) remains — gated on BD-245 (BD-232/252/253 prerequisites all Resolved). At Part D kickoff: fold the entry reconciliations (the B2 record gains a Check-76 supersession note; Part D adopts the pm-session-state.json name)."
     }
   ],
-  "in_flight_agents": [],
+  "in_flight_agents": [
+    {
+      "name": "coder-bd259-c1",
+      "role": "pack-coder",
+      "purpose": "BD-259 C1 (bullet + allowlist; isolated worktree)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd259/IMPL-BD259-C1.md"
+    }
+  ],
   "queue": [
     "BD-259",
     "BD-245",
@@ -26,11 +33,12 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "Sequence corrected: BD-255 A/B/C already landed earlier in the tail — the ruled order collapses to BD-259 next -> BD-245 -> BD-255 Part D. Awaiting the user go on the BD-259 kickoff.",
+  "wave": "BD-259 execution: C1 in flight; the rulings frontier staged for user approval.",
   "pending_decisions": [
-    "BD-259 kickoff: next user decision (the ruled sequence, step 1 already satisfied by history).",
+    "The BD-259 rulings frontier commit awaiting approval; C1 in flight.",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
-    "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
+    "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed",
+    "SESSION DIRECTIVE (user, until revoked; not a rule change — no memory/BD): spawn ALL read-only agents (docs-researcher / architect / planner / auditor) with isolation:worktree (async-task channel), like the docsresearcher-bd259-census experiment. RW coders unchanged (already isolated). Reviewers + fix-coders keep their existing placement rules (reviewer goes where the work lives incl. a live coder worktree; fix-coder reuses the commit worktree)."
   ],
-  "cycle_position": "Idle at the post-fix boundary. Next: the BD-259 kickoff proposal (read its entry; pipeline shape per the size test)."
+  "cycle_position": "C1 coder in flight -> reviewer -> triage -> patch -> the C1 commit (user approval). In parallel: the pack-chat-only rulings frontier awaiting user commit approval."
 }
