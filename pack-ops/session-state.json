@@ -1,20 +1,22 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "4e6838a",
+  "boundary_commit": "ec51e68",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
     {
-      "bd": "BD-245",
-      "sub_step": "NEXT per the ruled order (BD-259 done). Design + all six user rulings ready (pack-handoff-bd245; the rulings committed in the entry). Next stage: the planner — folding the BD-259 deltas (trinity anchors shifted by the bullet tighten; the allowlist at 91; the L6 guard now enforces the lock-step heading flip in ONE commit; the guard test itself is rename-neutral). Then adversarial planner -> reconcile -> the user planner-to-coder gate -> the three commits (strip / rename / prohibition)."
-    },
-    {
       "bd": "BD-255",
-      "sub_step": "Part D gated on BD-245 only (BD-232/252/253 Resolved). At Part D kickoff: the entry reconciliations (Check-76 supersession note in the B2 record; the artifact-name adoption)."
+      "sub_step": "Part D is UNGATED (all four quartet prerequisites Resolved). Next actionable per the entry Position: the Part D cross-family seamlessness audit (slots before the BD-205 final audit). At kickoff: the entry reconciliations (the B2 record gains a Check-76 supersession note; Part D adopts the renamed ## Project rules section + the pm-session-state.json artifact name)."
     }
   ],
-  "in_flight_agents": [],
+  "in_flight_agents": [
+    {
+      "name": "reviewer-bd245-obs1",
+      "role": "pack-reviewer",
+      "purpose": "OBS-1 review (launch-pad; in the OBS-1 worktree)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd245/REVIEW-BD245-OBS1.md"
+    }
+  ],
   "queue": [
-    "BD-245",
     "BD-189",
     "BD-224",
     "BD-257",
@@ -25,12 +27,12 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "BD-259 flipped to Resolved (closing frontier staged for the pre-approved commit+push). BD-245 planning next.",
+  "wave": "BD-245 complete pending the closing commits (OBS-1 staged; the Resolved flip prepared). On approval: OBS-1 commit -> flip commit -> manifest-sync commit (expected: the BD-245 template inputs) -> push. Then the BD-255 Part D kickoff proposal.",
   "pending_decisions": [
-    "BD-245 planner pipeline running next (pre-approved continuation); its planner-to-coder gate is the next user decision.",
+    "The BD-245 closing package (OBS-1 commit + Resolved flip + push) awaiting approval.",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed",
     "SESSION DIRECTIVE (user, until revoked; not a rule change — no memory/BD): ALL spawns use isolation:worktree (the async-task channel). RO agents work in their own worktree. Reviewers + fix-coders get a LAUNCH-PAD worktree they must ABANDON: first instruction = cd into the target live worktree (the commit under review/fix) + verify pwd/HEAD/dirty-set before any work; the unused launch worktree auto-cleans. The substantive placement rules are unchanged (review/fix happens IN the commit worktree); re-engagement via SendMessage-to-agentId (transcript resume)."
   ],
-  "cycle_position": "Committing + pushing the BD-259 Resolved frontier (pre-approved), then spawning the BD-245 planner (RO, isolated worktree per the directive)."
+  "cycle_position": "At the BD-245 closing package gate (OBS-1 + flip + push). Then: the BD-255 Part D kickoff proposal to the user."
 }
