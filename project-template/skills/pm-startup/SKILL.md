@@ -71,6 +71,15 @@ Read these in full:
 - STATUS entries (same resolver as above; reads `STATUS.md`)
 - `PM-CHAT.md`
 - `PLATFORM-SKILLS.md`
+- `docs/project/pm-session-state.json` when present — the committed
+  live-orchestration resume frontier (runtime-authored; absent on a fresh
+  install — if absent, note "no resume frontier — fresh session" and
+  continue). When present, note the active work + sub-step, the in-flight
+  agents to re-spawn, the queue order + parallelization mode, the pending
+  decisions, the review/fix-cycle position, and the boundary commit, and
+  surface them on the Step 6 `**Resume:**` line. The PM chat primes from
+  the frontier only — it never auto-spawns; re-spawning in-flight agents
+  waits for the developer's approval.
 
 Read only the most recent entry in the `docs/project/changelog/` tree.
 
@@ -199,6 +208,7 @@ Output a summary in exactly this format:
 **Skills profile:** [project type from PLATFORM-SKILLS.md — e.g., "iOS Swift app" or "Python gRPC server"]
 **Active skills:** [list from project context file, or "not set — populate during kickoff"]
 **RAG:** [diff from Step 4 — one of: "N ingested, N stale, N orphans" / "N ingested, N stale, N orphans removed: [<paths>]" / "N ingested, stale=N/A (timestamp unavailable; re-ingested unconditionally), N orphans" / "not available — skipped" / "manifest not found — skipped" (defect — surface to developer) / "manifest target missing — run install/migration" (manifest path not on disk; surface to developer)]
+**Resume:** [from `docs/project/pm-session-state.json` — `no resume frontier — fresh session` if absent, else `active: <work item> @ <sub-step>; in-flight: <agents to re-spawn>; queue: <order>; mode: <serial|parallel>; pending: <decisions>; cycle: <position>; boundary <sha8>`]
 
 **Awaiting instructions.**
 ---
