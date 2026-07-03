@@ -1,27 +1,19 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "b63ac66",
+  "boundary_commit": "4e6838a",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
     {
-      "bd": "BD-259",
-      "sub_step": "Plan approved (L4 kept on corrected grounds). C1 coder in flight (the bullet tighten x3 + the allowlist resize; the bare-template milestone flips green). Then C2 (install-tree), then C3 (the 7-leg guard). Each commit: fresh coder, bounded cycle, user commit gate. The rulings entry edit rides the frontier commit now staged."
+      "bd": "BD-245",
+      "sub_step": "NEXT per the ruled order (BD-259 done). Design + all six user rulings ready (pack-handoff-bd245; the rulings committed in the entry). Next stage: the planner — folding the BD-259 deltas (trinity anchors shifted by the bullet tighten; the allowlist at 91; the L6 guard now enforces the lock-step heading flip in ONE commit; the guard test itself is rename-neutral). Then adversarial planner -> reconcile -> the user planner-to-coder gate -> the three commits (strip / rename / prohibition)."
     },
     {
       "bd": "BD-255",
-      "sub_step": "Parts A/B/C are LANDED (nine commits; Checks 80/81/82 live). Only Part D (quartet seamlessness audit) remains — gated on BD-245 (BD-232/252/253 prerequisites all Resolved). At Part D kickoff: fold the entry reconciliations (the B2 record gains a Check-76 supersession note; Part D adopts the pm-session-state.json name)."
+      "sub_step": "Part D gated on BD-245 only (BD-232/252/253 Resolved). At Part D kickoff: the entry reconciliations (Check-76 supersession note in the B2 record; the artifact-name adoption)."
     }
   ],
-  "in_flight_agents": [
-    {
-      "name": "coder-bd259-c1",
-      "role": "pack-coder",
-      "purpose": "BD-259 C1 (bullet + allowlist; isolated worktree)",
-      "output": "/Users/david/Developer/_tmp/pack-handoff-bd259/IMPL-BD259-C1.md"
-    }
-  ],
+  "in_flight_agents": [],
   "queue": [
-    "BD-259",
     "BD-245",
     "BD-189",
     "BD-224",
@@ -33,12 +25,12 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "BD-259 execution: C1 in flight; the rulings frontier staged for user approval.",
+  "wave": "BD-259 flipped to Resolved (closing frontier staged for the pre-approved commit+push). BD-245 planning next.",
   "pending_decisions": [
-    "The BD-259 rulings frontier commit awaiting approval; C1 in flight.",
+    "BD-245 planner pipeline running next (pre-approved continuation); its planner-to-coder gate is the next user decision.",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed",
-    "SESSION DIRECTIVE (user, until revoked; not a rule change — no memory/BD): spawn ALL read-only agents (docs-researcher / architect / planner / auditor) with isolation:worktree (async-task channel), like the docsresearcher-bd259-census experiment. RW coders unchanged (already isolated). Reviewers + fix-coders keep their existing placement rules (reviewer goes where the work lives incl. a live coder worktree; fix-coder reuses the commit worktree)."
+    "SESSION DIRECTIVE (user, until revoked; not a rule change — no memory/BD): ALL spawns use isolation:worktree (the async-task channel). RO agents work in their own worktree. Reviewers + fix-coders get a LAUNCH-PAD worktree they must ABANDON: first instruction = cd into the target live worktree (the commit under review/fix) + verify pwd/HEAD/dirty-set before any work; the unused launch worktree auto-cleans. The substantive placement rules are unchanged (review/fix happens IN the commit worktree); re-engagement via SendMessage-to-agentId (transcript resume)."
   ],
-  "cycle_position": "C1 coder in flight -> reviewer -> triage -> patch -> the C1 commit (user approval). In parallel: the pack-chat-only rulings frontier awaiting user commit approval."
+  "cycle_position": "Committing + pushing the BD-259 Resolved frontier (pre-approved), then spawning the BD-245 planner (RO, isolated worktree per the directive)."
 }
