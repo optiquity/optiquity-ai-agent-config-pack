@@ -749,7 +749,7 @@ PACK-AGENTS.md current".
 
 - **Session management:** Use `/resume` to continue a previous conversation, `/switch` to move between conversations, `/fork` to branch a conversation, and `/rewind` to step a conversation back to an earlier point.
 - **Context handling:** Antigravity manages conversation context automatically; rely on `/fork` and `/rewind` to prune or branch context rather than a manual compaction command.
-- **Cross-session memory:** Persist facts to your global context file `~/.gemini/GEMINI.md` so they load in every session. (Re-verify the exact memory-write verb against `antigravity.google/docs/*` before relying on a specific command; the verb name is unconfirmed for the preview CLI.)
+- **Cross-session memory:** Do not persist pack rules, facts, or state to the global context file `~/.gemini/GEMINI.md` — they live in the in-repo SSOT (this `GEMINI.md` trinity surface + `pack-ops/session-state.json`) and are re-read from it at the start of every commit.
 - **Permissions:** Read-only agents (pack-reviewer, pack-docs-researcher) run under a permission profile that still allows build and test tools; configure via `/permissions` and keep the `request-review` posture as the default so writes surface for approval rather than running unattended. Invoke pack agents via Antigravity's subagent mechanism from the installed `.agents-plugin/pack-agents/` bundle — the pack repo does not have agent-run.sh.
 - **File writes:** Antigravity CLI native file write tools replace Desktop Commander — both achieve the same result.
 - **Checkpointing:** Automatic snapshots are available for recovery.
