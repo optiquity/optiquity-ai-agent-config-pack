@@ -50,10 +50,10 @@ that depends on that content.
 - Makes all architectural and planning decisions
 
 > **Four PM chat options:** The PM chat can run as a Claude Desktop app project
-> (setup steps are in the pack repo at `supporting-docs/SETUP-NEW.md` Step 10,
+> (setup steps are in the pack repo at `<pack-clone>/supporting-docs/SETUP-NEW.md` Step 10,
 > Option A), a resumable Claude Code CLI session (Step 10, Option B), a Codex
 > CLI session (Step 10, Option C), or an Antigravity CLI session (Step 10, Option D).
-> Daily CLI usage reference in `supporting-docs/CLI-PM-SETUP.md`.
+> Daily CLI usage reference in `<pack-clone>/supporting-docs/CLI-PM-SETUP.md`.
 > The methodology, rules, and procedures are identical in both modes. `PM-CHAT.md`
 > in the project root provides startup instructions and is read by both modes —
 > directly from disk by the CLI PM chat, and via the GitHub connector by the
@@ -460,7 +460,7 @@ been explicitly split into multiple sequential parts by a planning agent.
 3. Create the backlog and changelog trees (`docs/project/backlog/`, `docs/project/changelog/`) and `STATUS.md` (initially sparse)
 4. Commit all template and doc files before writing any code
 5. Set up the PM chat — setup steps are in the pack repo at
-   `supporting-docs/SETUP-NEW.md` Step 10 (choose Claude Desktop,
+   `<pack-clone>/supporting-docs/SETUP-NEW.md` Step 10 (choose Claude Desktop,
    Claude Code CLI, Codex CLI, or Antigravity CLI)
 6. Planning conversation with PM chat → establishes architecture, phase plan
 7. PM chat generates: `ARCHITECTURE.md`, the per-entry implementation plan
@@ -1080,7 +1080,7 @@ version; the **Why** line names the leakage category.
 - **Why:** The negative names a polling rate and a lifecycle mechanism. The positive names the observable requirements (freshness, idle behavior); the coder chooses polling vs. observation, rate, and visibility hook.
 
 **Example 5 — Files-in-scope is NOT solution leakage (clarifying)**
-- **This is scope, not solution:** *"Files in scope: `Data/Logging/FileLogSink.swift` (new), `Data/Logging/LogRotation.swift` (new)."* Paths come from the implementation plan and enforce existing layer discipline (logging belongs in `Data/`). They are location guardrails.
+- **This is scope, not solution:** For example: *"Files in scope: `Data/Logging/FileLogSink.swift` (new), `Data/Logging/LogRotation.swift` (new)."* Paths come from the implementation plan and enforce existing layer discipline (logging belongs in `Data/`). They are location guardrails.
 - **This crosses into solution:** *"Use `FileManager.default.url(for:in:)` to resolve the log directory."* This names an API choice the coder should make.
 - **Why:** Files-in-scope lists relay scope from the architect / planner / plan. They tell the coder where the work lives and where it does not. They do not specify how the work is done. API and data-structure choices made *inside* those files are the coder's.
 
@@ -1837,7 +1837,7 @@ reference.
       copy template files, distribute skills, set permissions, run
       bootstrap, and emit the PM chat kickoff prompt. The full
       procedure is documented in the pack repo at
-      `supporting-docs/SETUP-NEW.md` Step 3.
+      `<pack-clone>/supporting-docs/SETUP-NEW.md` Step 3.
 - [ ] Create the backlog and changelog trees (`docs/project/backlog/`, `docs/project/changelog/`) and `STATUS.md` (empty with structure)
 - [ ] **Choose PM chat mode** — Option A (Claude Desktop app, see
       `SETUP-NEW.md` Step 10 Option A), Option B (Claude Code CLI,

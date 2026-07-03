@@ -20,7 +20,7 @@ procedure so legacy cross-references resolve.
 
 This file is shipped to every project alongside `METHODOLOGY.md` by
 `scripts/init-project.sh` and the active migrator
-(`scripts/migrate-v10-to-v11.sh` in v11; the v9->v10 migrator was
+(`<pack-clone>/scripts/migrate-v10-to-v11.sh` in v11; the v9->v10 migrator was
 retired in v11). The project-side canonical location is
 `docs/pack/INSTALL-PROCEDURES.md`.
 
@@ -228,7 +228,7 @@ registered?" by checking the rows above for their `x-<name>` entry.
 > **HISTORICAL — sunset in v11.** The v9->v10 migrator and
 > its `MIGRATION-v9-to-v10.md` guide were removed in v11; this
 > procedure no longer fires for new migrations. The v11 N->N+1
-> migrator framework (`scripts/lib/migrator-core.sh` +
+> migrator framework (`<pack-clone>/scripts/lib/migrator-core.sh` +
 > the customization-preservation library) handles
 > customization reconciliation differently — see
 > `MIGRATION-v10-to-v11.md`. Procedure 5-C is retained here as

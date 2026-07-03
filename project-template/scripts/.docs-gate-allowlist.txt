@@ -493,3 +493,18 @@ reason: runtime-generated per-entry index (regenerated after every entry edit pe
 
 target: docs/project/changelog/_toc.md
 reason: runtime-generated per-entry index (regenerated after every entry edit per this stream's _rules.md); absent from the bare template by design.
+
+target: docs/pack/PROMPT-TEMPLATES.md
+reason: legacy v9-era artifact — present only in projects migrated from v9.x; the migration procedure text guards on its existence.
+
+target: docs/pack/prompts/_v9-backup.md
+reason: legacy v9-era backup — created by the v9->v10 migration only; the procedure text guards on its existence.
+
+target: .pack-migration-backup/v9.3-to-v10.0/reconcile-checklist.md
+reason: migration-generated backup artifact — exists only in projects that ran the v9.3->v10 migrator; referenced by the reconcile procedure that consumes it.
+
+target: docs/project/STATUS.md
+reason: conditional search candidate — the reconcile task text searches candidate STATUS.md locations and explicitly handles absence ("first existing wins" / "nothing to do").
+
+target: docs/STATUS.md
+reason: conditional search candidate — same reconcile task line; absence is handled by the task text.
