@@ -418,6 +418,17 @@ of agent role.
   architect → planner → coder waves — with adversarial reviews elective). When
   in doubt, large. The full chain, the size criterion, and the stages live in
   METHODOLOGY.
+- **Live orchestration state lives in the committed snapshot.** The client PM-Chat's live
+  orchestration state (active work + sub-step, in-flight agents, queue + order, parallelization
+  mode, wave, pending decisions, cycle position, boundary commit) lives in the committed
+  `docs/project/pm-session-state.json` snapshot — current-snapshot-only,
+  overwrite-never-append. CLI memory is FORBIDDEN for state (it is per-machine/per-CLI and does not
+  travel with the repo). `/pm-startup` reads it to resume.
+- **Rule-placement principle.** Where a project rule lives is governed by its scope:
+  - A rule specific to ONE per-entry tree lives in that tree's `_rules.md` ONLY.
+  - A rule specific to ALL per-entry trees and nothing else lives in every tree's `_rules.md`.
+  - A generic rule that merely also applies to per-entry trees lives in a project operations doc
+    (trinity / PM-CHAT), NEVER in a `_rules.md`.
 
 ## Phase routing — default agent assignments
 
