@@ -669,7 +669,7 @@ def check_durable_doc_concision() -> None:
 # about meaning (a bullet under the cap passes regardless of content).
 #
 # SCOPE (auto-discovered bullet surface): the pack + project trinity memory-
-# section bullets (`## Pack memory` / `## Project memory`) + the
+# section bullets (`## Pack memory` / `## Project rules`) + the
 # PACK-MEMORY-RATIONALE.md rule bullets. These are the files that carry the
 # `- **<rule>** ...` bullet structure where the B1 mega-bullet bloat lives.
 #
@@ -688,18 +688,15 @@ def check_durable_doc_concision() -> None:
 # ~1260-char legitimate rule cluster, below the 1457 mega-bullet floor).
 _CHECK_66_BULLET_CHAR_CAP = 1300
 
-# A5 COLLAPSE (BD-255 Part A, design §3.1 Layer 1): the trinity memory-section
-# H2 heading is a per-LOCATION constant, not a literal repeated inline. The two
-# trinity locations carry DIFFERENT headings by design (EEB-5; Check 18 already
-# runs H2 parity per-location): pack-root keeps `## Pack memory`; project-
-# template's `## Project memory` is the ONLY one BD-245 renames (→`## Project
-# rules`). The two-constant pair makes that rename a ONE-constant edit (flip
-# `_TRINITY_MEMORY_H2_PROJECT`) + the 3 project-template files; Check 66 follows
-# automatically, the pack-root heading untouched. A single shared constant is
-# NOT used — it would conflate the two locations or break the project auto-
-# propagation.
+# The trinity memory-section H2 heading is a per-LOCATION constant, not a
+# literal repeated inline. The two trinity locations carry DIFFERENT headings
+# by design (Check 18 runs H2 parity per-location): pack-root keys on
+# `## Pack memory`; the project-template rows key on `## Project rules`.
+# Per-location constants make any future heading change a ONE-constant flip
+# + the 3 template files; Check 66 follows automatically. A single shared
+# constant is NOT used — it would conflate the two locations.
 _TRINITY_MEMORY_H2_PACK = "## Pack memory"
-_TRINITY_MEMORY_H2_PROJECT = "## Project memory"
+_TRINITY_MEMORY_H2_PROJECT = "## Project rules"
 
 # The bullet-bearing files + the memory-section header that opens the bullet
 # region (None = scan the whole file's top-level bullets, for RATIONALE). The

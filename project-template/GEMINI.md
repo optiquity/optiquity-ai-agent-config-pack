@@ -354,7 +354,7 @@ language you are writing (`//` for Swift/C/C++/Objective-C, `#` for Python):
 
 [PLATFORM_ANTIPATTERNS — fill in from loaded skills]
 
-## Project memory
+## Project rules
 
 These rules govern every agent invocation in this project. Each
 agent's full operating rules (Permission profile, Output policy,

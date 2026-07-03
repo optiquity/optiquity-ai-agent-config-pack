@@ -138,13 +138,14 @@ checkpoint_check_trinity_addenda() {
             missing=$((missing + 1))
             continue
         fi
-        # Trinity addenda H2 marker — `## Project memory` and / or
-        # `## Project addenda` are the v11 canonical addenda H2s
+        # Trinity addenda H2 marker — `## Project rules` and / or
+        # `## Project addenda` are the v11 canonical markers
         # (validate-pack.py Check 16/17 enforce the shape pack-side).
-        # Either presence is evidence the file is at v11 shape and not
-        # left at v10 baseline.
-        if ! grep -q -E '^## (Project memory|Project addenda)' "$target/$f" 2>/dev/null; then
-            printf '  [FAIL] trinity: %s lacks v11 H2 marker (## Project memory / ## Project addenda)\n' "$f"
+        # A migrated project passes via `## Project addenda` (Phase A
+        # installs it); `## Project rules` is the fresh-init template
+        # heading.
+        if ! grep -q -E '^## (Project rules|Project addenda)' "$target/$f" 2>/dev/null; then
+            printf '  [FAIL] trinity: %s lacks v11 H2 marker (## Project rules / ## Project addenda)\n' "$f"
             missing=$((missing + 1))
         fi
     done

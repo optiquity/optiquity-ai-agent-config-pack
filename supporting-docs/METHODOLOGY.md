@@ -142,7 +142,7 @@ agent work it may not know about. This includes:
 
 - Citing the project-side rules the agent must respect (from
   `docs/pack/PM-CHAT.md` § Behavioral rules, the project trinity
-  § Project memory, and this methodology document).
+  § Project rules, and this methodology document).
 - Naming the specific files the agent reads, writes, or must
   avoid (per the per-prompt File-in-scope / Out-of-scope lists
   in § Prompt Authoring Principles).
@@ -161,8 +161,8 @@ placement for the full taxonomy):
 - **Defense-in-depth duplication for high-blast-radius rules.**
   When a rule is agent-affecting AND prompt-corruption risk is
   non-trivial (e.g., destructive git verbs that ALL agents must
-  respect), the rule lives in the project trinity § Project
-  memory in addition to wherever else it might be invoked.
+  respect), the rule lives in the project trinity § Project rules
+  in addition to wherever else it might be invoked.
   Trinity is read by every agent at session start regardless
   of prompt content; this is the strongest available delivery.
 - **Cross-CLI parity ergonomics.** Where the pack ships content
@@ -1751,11 +1751,11 @@ categories based on audience:
   carry these rules.
 - **Agent-affecting rules** (no destructive operations, trinity
   rule, agent file authority, file scope) → trinity `CLAUDE.md`
-  / `AGENTS.md` / `GEMINI.md` § Project memory (authoritative
+  / `AGENTS.md` / `GEMINI.md` § Project rules (authoritative
   for agents). These rules apply to every agent invocation
   regardless of whether the PM chat is in the loop.
 - **Both-audience rules requiring duplication** → trinity
-  § Project memory + PM-CHAT.md § Behavioral rules. Use this
+  § Project rules + PM-CHAT.md § Behavioral rules. Use this
   duplication pattern ONLY when the rule meets one of the
   documented defense-in-depth conditions in Part 1 — Tool Roles
   (prompt-corruption resilience for high-risk rules; cross-CLI

@@ -237,7 +237,7 @@ PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
 PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply   "$T" >/dev/null 2>&1
 SD="$T/.pack-migrate-v10-to-v11"
 # Strip the addenda H2 from CLAUDE.md.
-grep -v -E '^## (Project memory|Project addenda)' "$T/CLAUDE.md" > "$T/CLAUDE.md.tmp"
+grep -v -E '^## (Project rules|Project addenda)' "$T/CLAUDE.md" > "$T/CLAUDE.md.tmp"
 mv "$T/CLAUDE.md.tmp" "$T/CLAUDE.md"
 out=$(PACK="$REPO_ROOT" \
     migrate_v10_to_v11_gate2_run "$T" "$SD" "$REPO_ROOT" 2>&1) ; rc=$?
@@ -424,7 +424,7 @@ T=$(make_v10_target)
 PACK="$REPO_ROOT" bash "$MIGRATE_SH" --dry-run "$T" >/dev/null 2>&1
 PACK="$REPO_ROOT" bash "$MIGRATE_SH" --apply   "$T" >/dev/null 2>&1
 SD="$T/.pack-migrate-v10-to-v11"
-grep -v -E '^## (Project memory|Project addenda)' "$T/CLAUDE.md" > "$T/CLAUDE.md.tmp"
+grep -v -E '^## (Project rules|Project addenda)' "$T/CLAUDE.md" > "$T/CLAUDE.md.tmp"
 mv "$T/CLAUDE.md.tmp" "$T/CLAUDE.md"
 out=$(PACK="$REPO_ROOT" \
     migrate_v10_to_v11_gate2_run "$T" "$SD" "$REPO_ROOT" 2>&1) ; rc=$?

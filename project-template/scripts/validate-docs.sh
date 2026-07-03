@@ -17,7 +17,7 @@
 #   - DEFERRED  — an operating doc must not advertise a deferred /
 #                 unimplemented / off-by-default feature.
 #   - BLOAT     — a single per-bullet character cap over the trinity
-#                 "## Project memory" bullets (the mega-bullet axis).
+#                 "## Project rules" bullets (the mega-bullet axis).
 #   - DANGLING  — a backtick / hyperlink / qualified-path file reference
 #                 whose target does not resolve in the project tree.
 #   - CONFORMANCE — the populated per-entry streams conform to the
@@ -243,7 +243,7 @@ TRINITY = {"CLAUDE.md", "AGENTS.md", "GEMINI.md"}
 # surfaces never drift apart (a renamed matcher with a stale self-test doc,
 # or vice versa, would silently break the bloat scan). Client-local: this
 # gate polices its own twin; it imports nothing from the platform side.
-TRINITY_MEMORY_HEADING = "## Project memory"
+TRINITY_MEMORY_HEADING = "## Project rules"
 
 # AXIS: dangling
 # Backtick / hyperlink qualified-path file refs (containing a '/') resolved
@@ -340,7 +340,7 @@ REMEDIATION_DEFERRED = (
     "record with a reason:."
 )
 REMEDIATION_BLOAT = (
-    "Operating-doc bullets stay terse. This '## Project memory' bullet "
+    "Operating-doc bullets stay terse. This '## Project rules' bullet "
     "exceeds the {cap}-character cap. Remediation: split or tighten it, "
     "OR — if it is an irreducible enumeration (e.g. a denied-git-verb "
     "list) — add a scripts/.docs-gate-allowlist.txt record with a "
@@ -387,7 +387,7 @@ def scan_doc(rel, root, by_doc, dangling_targets, basenames, relpaths):
             f"{rel}:{lineno} [deferred] {line.strip()[:90]}\n"
             f"    {REMEDIATION_DEFERRED}")
 
-    # AXIS: bloat (trinity Project-memory bullets only)
+    # AXIS: bloat (trinity Project-rules bullets only)
     if rel in TRINITY:
         for lineno, count, preview in project_memory_bullets(raw.splitlines()):
             if count <= BLOAT_BULLET_CHAR_CAP:

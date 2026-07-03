@@ -336,7 +336,7 @@ When citing a code location in a report, use the symbol name not the line number
 
 [PLATFORM_ANTIPATTERNS — fill in from loaded skills]
 
-## Project memory
+## Project rules
 
 These rules govern every agent invocation in this project. Each
 agent's full operating rules (Permission profile, Output policy,

@@ -36,7 +36,7 @@
 #            is registered)
 #   Group 3: A5-collapse two-heading + project-rename-safe (BD-255 Part A) —
 #            the two per-location H2 constants exist; _CHECK_66_BULLET_SURFACE
-#            reads `## Pack memory` for pack-root rows + `## Project memory`
+#            reads `## Pack memory` for pack-root rows + `## Project rules`
 #            for project-template rows; a SYNTHETIC project rename to
 #            `## Project rules` (with _TRINITY_MEMORY_H2_PROJECT flipped) keeps
 #            Check 66 GREEN while the pack-root heading is untouched.
@@ -306,7 +306,7 @@ failures = []
 # T1: the two per-location H2 constants exist + carry the expected current text.
 for name, expected in (
     ("_TRINITY_MEMORY_H2_PACK", "## Pack memory"),
-    ("_TRINITY_MEMORY_H2_PROJECT", "## Project memory"),
+    ("_TRINITY_MEMORY_H2_PROJECT", "## Project rules"),
 ):
     if not hasattr(mod, name):
         failures.append("T1 missing constant %s" % name)
@@ -362,9 +362,9 @@ def run66_in_tree(files, surface, allowlist_text=""):
 SHORT = "- **short rule.** a short bullet under any cap.\n"
 
 # T3: with the CURRENT headings, both locations resolve + scan (PASS). A
-# pack-root file with `## Pack memory` + a project file with `## Project memory`.
+# pack-root file with `## Pack memory` + a project file with `## Project rules`.
 pack_doc = "# C\n\n## Pack memory\n\n" + SHORT
-proj_doc = "# C\n\n## Project memory\n\n" + SHORT
+proj_doc = "# C\n\n## Project rules\n\n" + SHORT
 surface = (
     ("CLAUDE.md", mod._TRINITY_MEMORY_H2_PACK),
     ("project-template/CLAUDE.md", mod._TRINITY_MEMORY_H2_PROJECT),
