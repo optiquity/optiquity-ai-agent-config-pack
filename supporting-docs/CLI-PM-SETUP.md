@@ -158,14 +158,6 @@ Antigravity manages conversation context automatically. Use `/fork` and
 after branching, re-read state files (the `docs/project/backlog/` tree,
 STATUS.md, PLATFORM-SKILLS.md) to restore accuracy.
 
-**Cross-session memory:**
-Persist important cross-session facts to your global context file
-`~/.gemini/GEMINI.md` so they load in every session. Reserve this for facts
-that must survive session loss — project decisions, conventions, recurring
-context. Do not store state that belongs in project files. (Re-verify the exact
-memory-write verb against `antigravity.google/docs/*` before relying on a
-specific command; the verb name is unconfirmed for the preview CLI.)
-
 ---
 
 ## Codex CLI / ChatGPT Web daily workflow

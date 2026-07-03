@@ -913,20 +913,6 @@ See `.mcp.json.example` for configuration.
 Claude Code auto-compacts at 95% context capacity. After compaction, run
 `/pm-startup` to re-read state files from disk.
 
-> **Per-project Claude memory cache (Claude-only).** Claude Code
-> projects may use per-project memory at
-> `~/.claude/projects/<slug>/memory/` as a convenience pointer
-> index to project rules. Treat the directory as pure pointers
-> — short one-line bullets that cite anchors in
-> `docs/pack/PM-CHAT.md`, `docs/pack/METHODOLOGY.md`, or the
-> project trinity (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` at
-> project root). No body text in the cache; trinity / PM-CHAT.md
-> / METHODOLOGY.md remain authoritative. If a cache pointer
-> disagrees with the authoritative source, the source wins.
-> Codex CLI and Antigravity CLI have no equivalent per-project memory
-> mechanism; PM chat sessions running under those CLIs read
-> trinity / PM-CHAT.md / METHODOLOGY.md directly each session.
-
 ---
 
 ## Tool-specific: Claude Web Projects
@@ -1005,15 +991,6 @@ Antigravity manages conversation context automatically; rely on `/fork` and
 After branching, re-read state (BACKLOG / STATUS entries via the trinity
 resolver — see Step 2 of `/pm-startup` — and PLATFORM-SKILLS.md) to restore
 accuracy.
-
-### Cross-session memory
-
-Persist important cross-session facts to your global context file
-`~/.gemini/GEMINI.md` so they load in every session. This is for facts that
-must survive session loss — project decisions, conventions, recurring context.
-Do not store state that belongs in project files. (Re-verify the exact
-memory-write verb against `antigravity.google/docs/*` before relying on a
-specific command; the verb name is unconfirmed for the preview CLI.)
 
 ---
 

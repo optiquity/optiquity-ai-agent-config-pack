@@ -518,7 +518,6 @@ When acting in this repo:
 
 - **Session management:** Use `/resume` to continue a previous conversation, `/switch` to move between conversations, `/fork` to branch a conversation, and `/rewind` to step a conversation back to an earlier point.
 - **Context handling:** Antigravity manages conversation context automatically; rely on `/fork` and `/rewind` to prune or branch context rather than a manual compaction command.
-- **Cross-session memory:** Persist facts to your global context file `~/.gemini/GEMINI.md` so they load in every session. (Re-verify the exact memory-write verb against `antigravity.google/docs/*` before relying on a specific command; the verb name is unconfirmed for the preview CLI.)
 - **Permissions:** Read-only and review agents run under a permission profile that still allows build and test tools like xcodebuild (configure via `/permissions`); keep the `request-review` posture as the default so writes surface for approval rather than running unattended. `agent-run.sh` sets the correct profile automatically.
 - **File writes:** Antigravity CLI native file write tools. No Desktop Commander needed.
 - **Checkpointing:** Automatic snapshots are available for recovery.
