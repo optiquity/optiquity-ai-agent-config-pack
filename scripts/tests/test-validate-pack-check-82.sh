@@ -28,8 +28,13 @@
 #                           surface (`project-template/`) ⇒ a WARN line naming
 #                           the dir surface + both BDs, exit 0 (the S1 dir-
 #                           collision case that the old regex was blind to)
-#   Group 2: end-to-end validate-pack.py exit-status on HEAD + the C2-PROOF
-#            (the BD-245↔BD-253 collision on validate-docs.sh WARNs; exit 0)
+#   Group 2: end-to-end validate-pack.py exit-status on HEAD, shape-only +
+#            live-state-INDEPENDENT: Check 82 runs in the battery, exit 0;
+#            IF any shared-surface WARN is present it matches the canonical
+#            shape and the OK-summary count agrees. NO specific live BD pair
+#            is asserted and NO collision is required to exist (the live
+#            open-BD collision set legitimately converges to zero as BDs
+#            resolve; the mechanism-bite is proven synthetically in Group 1)
 #
 # Usage: bash scripts/tests/test-validate-pack-check-82.sh
 
@@ -216,21 +221,34 @@ case $? in
 esac
 
 # ─────────────────────────────────────────────────────────────────
-# Group 2: end-to-end validate-pack.py exit-status on HEAD + C2-PROOF
+# Group 2: end-to-end validate-pack.py exit-status on HEAD (shape-only;
+# live-state-INDEPENDENT — asserts NO specific BD pair, requires NO collision)
 # ─────────────────────────────────────────────────────────────────
-printf "\n=== Group 2: End-to-end validate-pack.py exit-status on HEAD (C2-PROOF) ===\n"
+printf "\n=== Group 2: End-to-end validate-pack.py exit-status on HEAD (shape-only) ===\n"
 
 if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 82 > /tmp/vp-check82-e2e.out 2>&1; then
     if grep -q "Check 82: cross-BD shared-edit-surface advisory" /tmp/vp-check82-e2e.out \
        && grep -q "Check 82 — cross-BD surface advisory" /tmp/vp-check82-e2e.out; then
-        # C2-PROOF: the BD-245↔BD-253 collision on validate-docs.sh WARNs.
-        if grep -q "project-template/scripts/validate-docs.sh" /tmp/vp-check82-e2e.out \
-           && grep "project-template/scripts/validate-docs.sh" /tmp/vp-check82-e2e.out | grep -q "BD-245" \
-           && grep "project-template/scripts/validate-docs.sh" /tmp/vp-check82-e2e.out | grep -q "BD-253"; then
-            t_pass "validate-pack.py exits 0; Check 82 runs + C2-PROOF: BD-245↔BD-253 collision on validate-docs.sh WARNs"
+        # Shape-only WARN assertions (live-state-INDEPENDENT): the live tree's
+        # open-BD collision set legitimately converges to zero as BDs resolve,
+        # so this leg asserts NO specific BD pair and requires NO collision to
+        # exist. What it DOES assert: (a) IF any shared-surface WARN is
+        # present, every such line carries the canonical shape (backticked
+        # surface + "is claimed by N open BDs:" + >=2 BD-NNN IDs); (b) the
+        # OK-summary WARNed-surface count equals the emitted WARN line count.
+        # The mechanism-bite (a WARN naming the surface + the BD set) is
+        # proven live-state-independently on the Group 1 synthetic tree
+        # (T1/T3/T4) — never against the live backlog.
+        WARN_TOTAL=$(grep -c '^WARN: shared edit surface ' /tmp/vp-check82-e2e.out || true)
+        WARN_SHAPED=$(grep -Ec '^WARN: shared edit surface `[^`]+` is claimed by [0-9]+ open BDs: BD-[0-9]+(, BD-[0-9]+)+ — coordinate/sequence these ' /tmp/vp-check82-e2e.out || true)
+        if [[ "$WARN_TOTAL" -ne "$WARN_SHAPED" ]]; then
+            t_fail "Check 82 ran + exits 0 but $((WARN_TOTAL - WARN_SHAPED)) of $WARN_TOTAL shared-surface WARN line(s) deviate from the canonical shape" \
+                "Lines: $(grep '^WARN: shared edit surface' /tmp/vp-check82-e2e.out | head -5)"
+        elif ! grep -q "cross-BD surface advisory: $WARN_TOTAL shared surface(s) WARNed" /tmp/vp-check82-e2e.out; then
+            t_fail "Check 82 OK-summary count disagrees with the $WARN_TOTAL emitted shared-surface WARN line(s)" \
+                "Summary: $(grep 'Check 82 — cross-BD surface advisory' /tmp/vp-check82-e2e.out)"
         else
-            t_fail "Check 82 ran + exits 0 but the C2-PROOF (BD-245↔BD-253 on validate-docs.sh) WARN not detected" \
-                "validate-docs.sh line: $(grep 'project-template/scripts/validate-docs.sh' /tmp/vp-check82-e2e.out)"
+            t_pass "validate-pack.py exits 0; Check 82 runs; $WARN_TOTAL shared-surface WARN line(s), all canonical-shape, OK-summary count consistent (zero collisions is a legitimate pass)"
         fi
     else
         t_fail "validate-pack.py exits 0 but Check 82 output not detected" \

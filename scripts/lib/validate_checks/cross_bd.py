@@ -512,8 +512,8 @@ _CHECK_81_OPEN_BD_STATES = ("Open", "Unblocked")
 # being a STRUCTURED repo-relative path list (the F4 enabler — design §3.3).
 # A field carrying any of these (case-insensitive) is a placeholder, NOT a
 # parseable surface set, even if it also names a concrete backtick path
-# (e.g. BD-020 "n/a — new file `...` to be created"; BD-253 "TBD by
-# architect. Likely surfaces: `...`"; BD-245/254 "candidate surfaces"). The
+# (e.g. a field reading "n/a — new file `...` to be created", "TBD by
+# architect. Likely surfaces: `...`", or "candidate surfaces"). The
 # set is sized EXACTLY to the design's enumerated reject-list (measure-then-
 # bound — DESIGN-RECONCILED §3.3 C-i / the FAIL-leg spec), no broader.
 _CHECK_81_TBD_MARKERS = (
@@ -659,10 +659,10 @@ def check_open_bd_structured_surface_field() -> None:
     WARN leg only — a fresh clone / pre-feature HEAD never crashes or
     false-fails.
 
-    GREEN over the live backlog (re-derived): session-state `active[]`
-    currently holds ONLY BD-255; BD-255's `File/Symbol` is a structured
-    backtick repo-relative path list → FAIL leg PASSES; the bare/TBD open BDs
-    (BD-020/245/253/254) are NOT in `active[]` → WARN leg → exit 0.
+    Net exit semantics: the check exits non-zero ONLY when the FAIL leg
+    fires (an `active[]` BD carries a bare/TBD/missing `File/Symbol`); a
+    bare/TBD field on any NON-active open BD takes the WARN leg and never
+    affects the exit code.
 
     Cheap (ci-check-runtime-compounding): one small JSON read + a line scan of
     each small open entry (~28 entries today). No subprocess, no tree walk.
@@ -728,9 +728,10 @@ def check_cross_bd_surface_advisory() -> None:
     blast-radius intersection scan (the C-i pipeline rule, landed separately)
     is the load-bearing prevention; this CI backstop is defense-in-depth.
 
-    C2-PROOF (re-derived): #82 WARNs on the BD-245↔BD-253 collision — both name
-    `project-template/scripts/validate-docs.sh` in their structured/likely
-    surface fields. The shared surface + the BD pair are named in the WARN.
+    WARN shape: when ≥2 open BDs name the SAME repo-relative surface in their
+    structured File/Symbol fields, the single WARN names BOTH that shared
+    surface AND the co-editing BD IDs — the "coordinate" signal points at the
+    exact set of open BDs claiming it.
 
     Cheap (ci-check-runtime-compounding): one line scan + regex over each
     small open entry's File/Symbol field (~28 entries today) + an in-memory

@@ -1238,7 +1238,7 @@ def _build_check_registry():
         # design §3.3 C-ii). Parses each active-state open BD's File/Symbol
         # backtick path tokens, builds a surface→BDs map, and WARNs (advisory,
         # NEVER fail — the Check-48 precedent) when ≥2 open BDs claim the same
-        # surface (e.g. BD-245↔BD-253 on validate-docs.sh). Cheap: a line scan
+        # surface. Cheap: a line scan
         # + regex per small entry + an in-memory map; no subprocess, no tree
         # walk.
         (82, "check_cross_bd_surface_advisory", check_cross_bd_surface_advisory, W),
