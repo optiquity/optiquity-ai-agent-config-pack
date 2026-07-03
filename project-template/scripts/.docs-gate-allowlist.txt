@@ -92,11 +92,6 @@ reason: format example — illustrates the Status-line date grammar; not an audi
 
 doc: docs/project/changelog/_rules.md
 pattern: date
-snippet: bare `2026-04-20.md`
-reason: format example — illustrates the changelog per-entry filename date grammar; not an audit-trail date.
-
-doc: docs/project/changelog/_rules.md
-pattern: date
 snippet: 2026-04-20 — Phase 35
 reason: format example — the changelog entry-heading date grammar (folded into _rules.md under the no-mirror model); not an audit-trail date.
 
@@ -341,11 +336,6 @@ pattern: deferred
 snippet: deferred because the pack repo has no real application code
 reason: routing rationale example — explains why a feedback item is routed, not a feature advert.
 
-doc: docs/project/implementation-plan/_rules.md
-pattern: deferred
-snippet: pending / in-progress / done / deferred
-reason: status vocabulary — the plan-entry lifecycle states, one of which is "deferred"; a contract enumeration, not a feature advert.
-
 # --- Pack-shipped operating docs installed into docs/pack/ (METHODOLOGY.md +
 #     INSTALL-PROCEDURES.md). The pack re-classified these REFERENCE→OPERATING,
 #     so the client gate now scans their installed copies on the DEFERRED axis.
@@ -406,6 +396,34 @@ doc: docs/pack/INSTALL-PROCEDURES.md
 pattern: deferred
 snippet: If either task has deferred items, leave
 reason: live TD-deferral workflow — same procedure flow.
+
+# --- Stream-contract status vocabulary: the _rules.md Entry-schema enum
+#     lines + state definitions (the same SSOT block the gate's own
+#     conformance leg parses).
+doc: docs/project/backlog/_rules.md
+pattern: deferred
+snippet: status-enum: Open Unblocked Deferred Resolved Deprecated Cancelled
+reason: rule self-reference — the machine-parsed Entry-schema status vocabulary (the same SSOT block the gate's conformance leg parses); defines the states, does not advertise a deferred feature.
+
+doc: docs/project/backlog/_rules.md
+pattern: deferred
+snippet: `Unblocked` — a pending-decision state between Open and Deferred.
+reason: rule self-reference — the status-vocabulary definition of the Unblocked state; names Deferred as an adjacent state, not a feature advert.
+
+doc: docs/project/backlog/_rules.md
+pattern: deferred
+snippet: `Deferred` — deliberately postponed (user-authorized).
+reason: rule self-reference — the status-vocabulary definition of the Deferred state itself.
+
+doc: docs/project/implementation-plan/_rules.md
+pattern: deferred
+snippet: status-enum: done in-progress not-started blocked deferred superseded
+reason: rule self-reference — the machine-parsed Entry-schema status vocabulary (conformance-leg input); defines the states, does not advertise a deferred feature.
+
+doc: docs/project/implementation-plan/_rules.md
+pattern: deferred
+snippet: not-started / in-progress / done / deferred / merged-into /
+reason: rule self-reference — the phase-state vocabulary enumeration (the H2-annotation states); a contract enumeration, not a feature advert.
 
 # ===========================================================================
 # BLOAT axis — KEEP (irreducible enumerations, ×3 trinity)
@@ -469,3 +487,9 @@ reason: optional MCP config created during install/setup; present when the MCP f
 
 target: docs/project/pm-session-state.json
 reason: runtime-authored client PM-Chat resume snapshot; committed after the first PM-Chat session, absent from the bare template.
+
+target: docs/project/backlog/_toc.md
+reason: runtime-generated per-entry index (regenerated after every entry edit per this stream's _rules.md); absent from the bare template by design.
+
+target: docs/project/changelog/_toc.md
+reason: runtime-generated per-entry index (regenerated after every entry edit per this stream's _rules.md); absent from the bare template by design.

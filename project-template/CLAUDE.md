@@ -425,20 +425,7 @@ of agent role.
   agent (on Claude Code via `SendMessage`; on Codex / Antigravity via
   the platform re-engage path), or a per-case architect-challenge
   reason.
-- **Large-phase pipeline standard (size-tiered).** The size test picks WHICH
-  flow (deterministic, never a choice). A LARGE phase runs the DETERMINISTIC
-  pipeline — every stage mandatory except reconciliation, which runs ONLY when
-  the preceding adversarial review returned findings (no findings ⇒ nothing to
-  reconcile, a consequence not a choice): docs-researcher (ALWAYS first;
-  internal census always, external-docs per-need) → architect → adversarial
-  architect → reconciliation architect (if findings) → design review → planner
-  → adversarial planner → reconciliation planner (if findings) →
-  planner-to-coder gate → parallel worktree coder waves. A phase is LARGE if
-  it is release-gating, or if ≥2 of {cross-surface, blast-radius, structural,
-  >5-tasks/non-linear} hold; else small (the base flow — optional researcher →
-  architect → planner → coder waves — with adversarial reviews elective). When
-  in doubt, large. The full chain, the size criterion, and the stages live in
-  METHODOLOGY.
+- **Large-phase pipeline standard (size-tiered).** The size test picks WHICH flow — deterministic, never a choice. A phase is LARGE if release-gating or ≥2 of {cross-surface, blast-radius, structural, >5-tasks/non-linear} hold; when in doubt, large. A LARGE phase runs every stage of the deterministic pipeline — reconciliation only on adversarial findings: docs-researcher first → architect → adversarial → reconcile → design review → planner → adversarial → reconcile → planner-to-coder gate → parallel worktree coder waves. Else the base flow (optional researcher → architect → planner → coder waves; adversarial reviews elective). The full chain and stages live in METHODOLOGY.
 - **Live orchestration state lives in the committed snapshot.** The client PM-Chat's live
   orchestration state (active work + sub-step, in-flight agents, queue + order, parallelization
   mode, wave, pending decisions, cycle position, boundary commit) lives in the committed
