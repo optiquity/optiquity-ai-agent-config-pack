@@ -1,27 +1,15 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "21a44ec",
+  "boundary_commit": "a3b5a23",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
     {
-      "bd": "BD-253",
-      "sub_step": "M3 landed (install-time manifest live; zero pack-side immutability machinery; invariant grep-zero). Commit-A coder in flight (axis foundation). Remaining after A: the parallel C/D/E/F doc wave, the tracked BD-260 entry reconciliation (coder), then Resolved."
-    },
-    {
       "bd": "BD-255",
-      "sub_step": "D1 GATED on BD-245 + BD-253; BD-253 now in implementation (gate 2 progressing)."
+      "sub_step": "D1 gated on BD-245 + BD-253; the BD-253 gate is now satisfied — awaiting BD-245 only. Note for BD-255 Part B at its start: drop Check 76 from the audit-target list (deleted under the BD-253 ruled model)."
     }
   ],
-  "in_flight_agents": [
-    {
-      "name": "coder-bd253-awave1",
-      "role": "pack-coder",
-      "purpose": "BD-253 commit-A axis foundation (isolated worktree)",
-      "output": "/Users/david/Developer/_tmp/pack-handoff-bd253/IMPL-BD253-A.md"
-    }
-  ],
+  "in_flight_agents": [],
   "queue": [
-    "BD-253",
     "BD-245",
     "BD-259",
     "BD-189",
@@ -34,11 +22,11 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "M3 landed — the ruled immutability model is fully in effect. Commit-A coder in flight (coder-bd253-awave1: the session-state axis + Check-70 lockstep + both carve records). Frontier bookkeeping (F4 anchor note + state) staged for user approval. After A lands: the parallel C/D/E/F worktree wave.",
+  "wave": "BD-253 complete: Status flipped to Resolved (all six plan commits + the BD-260 reconciliation landed; every review cycle clean; CI green through the pushed stack). Closing frontier (flip + _toc regen + state) staged for user approval; then the final push. Next in queue per the user order: BD-245 (trinity rename; carries the two new trinity bullets through; adopts the pm-session-state.json name in its prose).",
   "pending_decisions": [
-    "Frontier commit awaiting approval (F4 anchor + state). Commit-A coder in flight. Two unpushed local commits; push at any user checkpoint.",
+    "Closing frontier commit (BD-253 Resolved) awaiting approval; then the final push. Then BD-245 kickoff (user-ruled next).",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed"
   ],
-  "cycle_position": "Commit-A coder implementing (coder-bd253-awave1; isolated worktree base HEAD). Next in-cycle: fresh RO reviewer in the worktree -> triage -> fix-coder if needed (bounded) -> patch -> the A commit (no scope keyword, user approval) -> teardown. In parallel: the pack-chat-only frontier (BD-253 entry F4 anchor + session-state) awaiting user commit approval. After A: the parallel C/D/E/F wave (4 coders, disjoint files), then the BD-260 entry reconciliation (coder), then the Resolved flip."
+  "cycle_position": "At the closing frontier commit gate (BD-253 Resolved flip + _toc + state; pack-chat-only). On commit + push: BD-253 is done. Next: BD-245 kickoff per the user-ruled order (its own pipeline; size test per the large-BD standard). Forward notes in force: BD-245 trinity carry-through + artifact-name adoption; BD-255 Part B drops Check 76; BD-259 serializes on the shared allowlist."
 }
