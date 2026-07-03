@@ -61,6 +61,17 @@ per-entry↔`_index.md` membership sync). Dependencies stay SSOT in the
 entry files; `_index.md` is not a competing source. Parallelization is
 a runtime decision, never stored.
 
+"Never stored" is scoped to `_index.md`: the runtime decision IS
+recorded — in the client-authored, committed
+`docs/project/pm-session-state.json` snapshot, the live-orchestration
+layer, whose schema is defined and enforced by the shipped
+`validate-docs.sh` session-state axis. Parallelization mode, wave, and
+runtime queue order live there, never in `_index.md`, which keeps only
+the dependency-derived topological order (the constraint); the
+snapshot's `queue` is the user-decided runtime sequence within that
+constraint. The two may legitimately differ — a difference is not
+drift to fix.
+
 ## Lifecycle states admitted
 
 Phase-state vocabulary:
