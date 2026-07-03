@@ -426,6 +426,14 @@ of agent role.
   the platform re-engage path), or a per-case architect-challenge
   reason.
 - **Large-phase pipeline standard (size-tiered).** The size test picks WHICH flow — deterministic, never a choice. A phase is LARGE if release-gating or ≥2 of {cross-surface, blast-radius, structural, >5-tasks/non-linear} hold; when in doubt, large. A LARGE phase runs every stage of the deterministic pipeline — reconciliation only on adversarial findings: docs-researcher first → architect → adversarial → reconcile → design review → planner → adversarial → reconcile → planner-to-coder gate → parallel worktree coder waves. Else the base flow (optional researcher → architect → planner → coder waves; adversarial reviews elective). The full chain and stages live in METHODOLOGY.
+- **No per-CLI project or session memory — the repo is the authoritative SSOT.** Project tasks
+  never use a CLI's project/session memory feature — not Claude Code's
+  `~/.claude/projects/<slug>/memory/`, not Codex's `~/.codex/memories/`, not Gemini/Antigravity's
+  `~/.gemini/GEMINI.md` cross-session memory. A CLI memory is per-machine and per-CLI, is not
+  versioned by the repo, and goes stale silently. Every rule, decision, convention, and fact lives
+  in the repo (the trinity, `docs/pack/`, and the project streams) and is re-read from the repo at
+  the start of every commit — never from a cached copy; live orchestration state follows the same
+  rule via the committed session-state snapshot.
 - **Live orchestration state lives in the committed snapshot.** The client PM-Chat's live
   orchestration state (active work + sub-step, in-flight agents, queue + order, parallelization
   mode, wave, pending decisions, cycle position, boundary commit) lives in the committed

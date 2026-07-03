@@ -341,6 +341,17 @@ These rules are non-negotiable and always apply on all tools:
   forbidden for state. The snapshot's schema and anti-accretion grammar
   are enforced by the session-state axis of the operating-doc gate
   (the docs-validation script in `scripts/`).
+- **No per-CLI project or session memory (any CLI).** Never store
+  project rules, decisions, conventions, facts, or state in a CLI memory
+  feature — not Claude Code's `~/.claude/projects/<slug>/memory/`, not
+  Codex's `~/.codex/memories/`, not Gemini/Antigravity's
+  `~/.gemini/GEMINI.md` cross-session memory. CLI memory is per-machine
+  and per-CLI, unversioned by the repo, and goes stale silently. The
+  repo is the authoritative SSOT: rules live in the trinity,
+  `docs/pack/`, and the project streams; live orchestration state lives
+  in the committed `docs/project/pm-session-state.json` snapshot (see
+  "Session-state snapshot upkeep" above); re-read the applicable rules
+  from the repo at the start of every commit — never from a cached copy.
 - **Pack feedback loop.** You own `PACK-FEEDBACK.md` (same permissions as
   the backlog tree). Follow METHODOLOGY.md Part 10: observe agent performance,
   workflow issues, prompt template gaps, and user friction continuously;
