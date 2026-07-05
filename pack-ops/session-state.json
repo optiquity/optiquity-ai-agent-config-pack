@@ -2,12 +2,7 @@
   "schema": "pack-session-state/1",
   "boundary_commit": "a846efc",
   "checkpoint": "2026-07-01T00:00:00Z",
-  "active": [
-    {
-      "bd": "BD-265",
-      "sub_step": "Wave-2 coder spawning. File/Symbol: `project-template/scripts/groupings.sh` (NEW; see the entry)."
-    }
-  ],
+  "active": [],
   "in_flight_agents": [
     {
       "name": "reviewer-bd265",
@@ -57,12 +52,12 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "Wave 2 LAUNCHING: five parallel coders (BD-263..267) on proven-disjoint file sets. Landings serial, first-clean-first. G1 governance after BD-266 lands. Then Wave 3 (BD-268).",
+  "wave": "Wave 2 COMPLETE (all five children Resolved). The batch push next; then Wave 3: BD-268 (the closing child, 4 riders) -> the feature user-complete.",
   "pending_decisions": [
-    "The BD-263 landing gate (patch banked) + the per-child gates as fix cycles clean; the none-(superseded) byte RULED; the BD-268 fold notes carry the fourth-state naming rider + the BD-264 IN_GLOBS fold decision at its triage.",
+    "The batch push is within the approved package; the BD-268 commit gate is the next user decision after its cycle.",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed",
     "SESSION DIRECTIVE (user, until revoked; not a rule change — no memory/BD): ALL spawns use isolation:worktree (the async-task channel). RO agents work in their own worktree. Reviewers + fix-coders get a LAUNCH-PAD worktree they must ABANDON: first instruction = cd into the target live worktree (the commit under review/fix) + verify pwd/HEAD/dirty-set before any work; the unused launch worktree auto-cleans. The substantive placement rules are unchanged (review/fix happens IN the commit worktree); re-engagement via SendMessage-to-agentId (transcript resume)."
   ],
-  "cycle_position": "Awaiting the BD-265 micro-fix + final check -> its landing (the last Wave-2 child) -> manifest-sync + the batch push -> Wave 3 (BD-268)."
+  "cycle_position": "Pushing the Wave-1+2 stack (manifest-sync first); then the BD-268 coder (Wave 3)."
 }

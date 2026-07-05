@@ -26,7 +26,6 @@
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 - [BD-257](./BD-257.md) — Add net-new + review/refresh existing client (project-side) slash commands + their execution foundation (brainstorm-gated; project-side analog of BD-224)
-- [BD-265](./BD-265.md) — groupings.sh query CLI: the five locked verbs over groupings-lib.sh + derived-status/target columns + deps --deferral cascade view (BD-189 CBD-4)
 - [BD-268](./BD-268.md) — Groupings workflow integration: METHODOLOGY Workflow 7 + PM-CHAT + trinity + prompts + pm-startup + agent defs + HELP-FRAGMENT rows + changelog Write-authority clarify + allowlist records (BD-189 CBD-7)
 
 ## Deferred
@@ -267,6 +266,7 @@
 - [BD-262](./BD-262.md) — Groupings stream foundation: format contract + per-entry tuple + toc axis + groupings-lib.sh (BD-189 CBD-1)
 - [BD-263](./BD-263.md) — Groupings provisioning on every v11.0+ path: S11 fourth block, cmd_update rows, migrator skeleton+toc seed, immutable manifest 3→4 (BD-189 CBD-2)
 - [BD-264](./BD-264.md) — Groupings validation: Check 72 extension + new focused Check 84 + validate-docs conformance leg incl. GRP-000 reserved branch + exclusivity + toc-sync + empty-Status close + part-member close (BD-189 CBD-3)
+- [BD-265](./BD-265.md) — groupings.sh query CLI: the five locked verbs over groupings-lib.sh + derived-status/target columns + deps --deferral cascade view (BD-189 CBD-4)
 - [BD-266](./BD-266.md) — status-generate.sh: marker-delimited never-SSOT dashboard generator + --check wiring + BD-105 title-link fold + target columns (BD-189 CBD-5)
 - [BD-267](./BD-267.md) — Impl-plan ordering + lifecycle contract: grouping-affinity placement, deferral-deprioritization ordering, four-field dependency sentence, terminal-supersession sentence, groupings-contract pointer (BD-189 CBD-6)
 
