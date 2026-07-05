@@ -17,7 +17,6 @@
 - [BD-171](./BD-171.md) — Real-OT scratch-clone FLAT-FILE v10→v11 migration test harness
 - [BD-172](./BD-172.md) — Extend Gate 2 (Phase A verify) to cover post-dispatch operations (BD-104 rename + BD-035 advisory + BD-144 advisory)
 - [BD-187](./BD-187.md) — Standalone entry-type instruction doc for external-tool consumption
-- [BD-189](./BD-189.md) — Flat-file groupings implementation (architect/planner/coder cycle)
 - [BD-192](./BD-192.md) — v11.1+ Product Specialist (PS) implementation (architect/planner/coder cycle)
 - [BD-202](./BD-202.md) — Universal `pack update` propagation engine (delete + clean-modify correctness across asset classes; `x-`-safe, customization-preserving)
 - [BD-205](./BD-205.md) — v11.0 final repo readiness audit + full test/audit/fix cycle (the last gate before launch)
@@ -28,6 +27,13 @@
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 - [BD-257](./BD-257.md) — Add net-new + review/refresh existing client (project-side) slash commands + their execution foundation (brainstorm-gated; project-side analog of BD-224)
+- [BD-262](./BD-262.md) — Groupings stream foundation: format contract + per-entry tuple + toc axis + groupings-lib.sh (BD-189 CBD-1)
+- [BD-263](./BD-263.md) — Groupings provisioning on every v11.0+ path: S11 fourth block, cmd_update rows, migrator skeleton+toc seed, immutable manifest 3→4 (BD-189 CBD-2)
+- [BD-264](./BD-264.md) — Groupings validation: Check 72 extension + new focused Check 84 + validate-docs conformance leg incl. GRP-000 reserved branch + exclusivity + toc-sync + empty-Status close + part-member close (BD-189 CBD-3)
+- [BD-265](./BD-265.md) — groupings.sh query CLI: the five locked verbs over groupings-lib.sh + derived-status/target columns + deps --deferral cascade view (BD-189 CBD-4)
+- [BD-266](./BD-266.md) — status-generate.sh: marker-delimited never-SSOT dashboard generator + --check wiring + BD-105 title-link fold + target columns (BD-189 CBD-5)
+- [BD-267](./BD-267.md) — Impl-plan ordering + lifecycle contract: grouping-affinity placement, deferral-deprioritization ordering, four-field dependency sentence, terminal-supersession sentence, groupings-contract pointer (BD-189 CBD-6)
+- [BD-268](./BD-268.md) — Groupings workflow integration: METHODOLOGY Workflow 7 + PM-CHAT + trinity + prompts + pm-startup + agent defs + HELP-FRAGMENT rows + changelog Write-authority clarify + allowlist records (BD-189 CBD-7)
 
 ## Deferred
 
@@ -212,6 +218,7 @@
 - [BD-183](./BD-183.md) — Extend `scripts/validate-pack.py` Check 16 + Check 19 to cover pack-root trinity (parity guard, mirroring BD-181) + BD-181 NIT-1 fold-in
 - [BD-184](./BD-184.md) — Add Check 42 — CI workflow wires all per-check test files (prevention check for "test silently dead in CI" gap class)
 - [BD-186](./BD-186.md) — Groupings requirements + v11.0/v11.1 scope decision
+- [BD-189](./BD-189.md) — Flat-file groupings implementation (architect/planner/coder cycle)
 - [BD-190](./BD-190.md) — Comprehensive audit-vocabulary-gap sweep across pack-shipped files (post-H.9/H.10 cascade)
 - [BD-191](./BD-191.md) — Product Specialist (PS) requirements + v11.0/v11.1+ scope decision
 - [BD-193](./BD-193.md) — Code Red 2: BD/TD/Path scope contamination cleanup (Batch 19d-prep)
