@@ -25,8 +25,8 @@
 #       order produces (>= 1 such line exists for any listing order of a
 #       cyclic edge set);
 #   plus per-geometry side asserts (the poison source's own enum/status
-#   FAIL present; ES asserts ZERO Status-FAIL lines — the Status leg
-#   tolerates a present-but-empty value by construction).
+#   FAIL present; ES asserts the A2 empty-Status FAIL line — a
+#   present-but-empty Status is Status-leg red AND stays bound-excluded).
 #
 # At the BD-189 fold, C1 EXTENDS this same script with the
 # grp_implied_target_map row-set golden derived from the same normative
@@ -192,8 +192,8 @@ assert_lines() {
 #       | 4(ns,current)                                 |   (done-broken cycle)           |          |   the absorbing cut; no spurious suppression)|
 # GS    | 1(ns,next-major) 2(wip!,current)              | 1->2 1->3                       | 1 2 3    | 1: bound next-release via 3 (the garbled-   | none
 #       | 3(ns,next-release)                            |                                 |          |   status atom neither radiates nor conduits)|
-# ES    | 1(ns,next-major) 2(EMPTY-status,current)      | 1->2 1->3                       | 1 2 3    | 1: bound next-release via 3; PLUS zero      | none
-#       | 3(ns,next-release)                            |                                 |          |   Status-FAIL lines (empty tolerated)       |
+# ES    | 1(ns,next-major) 2(EMPTY-status,current)      | 1->2 1->3                       | 1 2 3    | 1: bound next-release via 3; PLUS the       | none
+#       | 3(ns,next-release)                            |                                 |          |   A2 empty-Status FAIL line (leg red)       |
 # SE    | 1(ns,next-major) 2(ns,next-minor) 3(ns,-)     | 1->2 1->3 3->4                  | 1 2 3 4  | 1: bound current via 3 -> 4 (arg-min picks  | none
 #       | 4(ns,current)                                 |                                 |          |   the TRANSITIVE branch over the direct atom)|
 # JCT   | 1(ns,next-minor) 2(ns,next-release)           | 1->2 1->3                       | 1 2 3    | 1: bound next-release via 2 (junction MIN,  | none
@@ -329,9 +329,9 @@ else
         "$out"
 fi
 
-# ── ES — present-but-EMPTY Status: validation-green on the Status leg by
-#         construction (the honest carve-out), yet excluded from the
-#         provable bound; the sibling clean-branch conflict fires ────────
+# ── ES — present-but-EMPTY Status: Status-leg RED (the A2 empty-Status
+#         close) AND excluded from the provable bound; the sibling
+#         clean-branch conflict fires alongside ──────────────────────────
 R="$FIXTURE_BASE/es"; stage_tree "$R"
 write_phase "$R" 1 not-started next-major none "phase-2 phase-3"
 write_phase "$R" 2 "" current phase-1 none
@@ -342,13 +342,12 @@ assert_lines "ES F1: bound next-release via the clean branch (the empty-status c
     "$(conflict_family "$out")" \
     "$(conflict_line 1 next-major next-release phase-3)"
 assert_lines "ES F2: no cycle-family lines" "$(cycle_family "$out")" ""
-es_status_fails="$(printf '%s\n' "$out" \
-    | grep -c "Status '\|field 'Status'")" || true
-if [[ "$es_status_fails" -eq 0 ]]; then
-    pass "ES side: ZERO Status-FAIL lines (present-but-empty is tolerated by the Status leg)"
+es_a2_line="$RD/phase-2.md [conformance] Status present but empty"
+if printf '%s\n' "$out" | grep -qF "$es_a2_line"; then
+    pass "ES side: the A2 empty-Status FAIL line fires (present-but-empty is Status-leg red; still bound-excluded)"
 else
-    fail "ES side: expected zero Status-FAIL lines for the empty-Status phase" \
-        "$(printf '%s\n' "$out" | grep "Status '\|field 'Status'")"
+    fail "ES side: expected the A2 empty-Status FAIL line for phase-2" \
+        "$out"
 fi
 
 # ── SE — mixed dependents: the arg-min witness picks the TRANSITIVE
@@ -564,7 +563,7 @@ assert_lines "E2 RIDER F1: the conflict line fires WITHOUT an _index.md (the coh
     "$(conflict_line 1 next-major current phase-2)"
 assert_lines "E2 RIDER F3: the missing-_index.md FAIL rides alongside (both lines, one run)" \
     "$(missing_index_family "$out")" \
-    "docs/project/implementation-plan/_index.md [conformance] missing — the impl-plan stream has 2 phase entry/entries but no _index.md ordering (regenerate via scripts/lib/per-entry/index-generate.sh)"
+    "docs/project/implementation-plan/_index.md [conformance] missing — the impl-plan stream has 2 phase entry/entries but no _index.md ordering (regenerate _index.md per the docs/project/implementation-plan/_rules.md Ordering section)"
 assert_lines "E2 RIDER lib rows: the lib reader agrees on the same tree" \
     "$(grp_implied_target_map "$(impl_dir "$R")")" \
     "phase-1 current phase-2

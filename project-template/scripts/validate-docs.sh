@@ -28,8 +28,12 @@
 #                 vocabulary (no _format.md / _scaffolding.md), NO
 #                 reintroduced monolith mirror, per-entry field /
 #                 structure conformance (form-family for backlog +
-#                 implementation-plan, structured for changelog), the
-#                 impl-plan `_index.md` ordering properties, the optional
+#                 implementation-plan, structured for changelog, the
+#                 closed byte-canonical grouping grammar for groupings
+#                 incl. the reserved-GRP-000 branch), the impl-plan
+#                 `_index.md` ordering properties, the groupings
+#                 stream-level legs (member resolution, exclusivity,
+#                 toc-sync), the optional
 #                 `Target:` release-window vocabulary (schema
 #                 `target-enum`), and target-coherence over dependency
 #                 edges (a declared target must not exceed the provable
@@ -469,12 +473,18 @@ _CONF_STREAMS = (
     ("backlog",             "## Entry schema",    "BACKLOG.md",             ()),
     ("implementation-plan", "## Entry schema",    "IMPLEMENTATION-PLAN.md", ("_index.md",)),
     ("changelog",           "## Entry structure", "CHANGELOG.md",           ()),
+    ("groupings",           "## Entry schema",    "GROUPINGS.md",           ()),
 )
 _CONF_FORBIDDEN_SIDECARS = ("_format.md", "_scaffolding.md")
 _CONF_ENTRY_REGEX = {
     "backlog":             re.compile(r"^TD-\d+\.md$"),
     "implementation-plan": re.compile(r"^phase-\d+\.md$"),
     "changelog":           re.compile(r"^\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md$"),
+    # TIGHTENED per the stream contract's filename convention
+    # (docs/project/groupings/_rules.md): exactly three digits zero-padded
+    # through GRP-999, unpadded four-plus digits from GRP-1000 — GRP-0000
+    # never matches (a mis-named entry, flagged stream-level).
+    "groupings":           re.compile(r"^GRP-(\d{3}|[1-9]\d{3,})\.md$"),
 }
 _CONF_SIDECAR_RX = re.compile(r"^_.*\.md$")
 
@@ -683,6 +693,17 @@ def _conf_check_implplan_entry(rel, body, schema):
     status_enum = [_conf_clean_token(t)
                    for t in _conf_schema_tokens(schema, "status-enum")]
     status_val = _conf_field_value(body, "Status")
+    # Present-but-EMPTY Status on a phase-epic FAILs (the empty-Status
+    # close): the enum guard below skips empty values and the
+    # missing-field guard fires only on absence, so without this
+    # predicate an empty value would be validation-green while every
+    # derived reader (status rollups, target coherence) treats the phase
+    # as unreadable. Schema-driven — fires only when the schema declares
+    # a status-enum; epic-only by the phase-part early-return above.
+    if (status_enum and not status_val
+            and _conf_entry_field_present(body, "Status")):
+        fails.append(
+            f"{rel} [conformance] Status present but empty")
     if status_enum and status_val and status_val not in status_enum:
         fails.append(
             f"{rel} [conformance] Status '{status_val}' not in "
@@ -706,6 +727,212 @@ def _conf_check_implplan_entry(rel, body, schema):
             fails.append(
                 f"{rel} [conformance] Target '{target_val}' not in "
                 f"target-enum {target_enum}")
+    return fails
+
+
+# ---------------------------------------------------------------------------
+# Groupings conformance (the populated-tree leg): the CLOSED byte-canonical
+# entry grammar the stream contract (docs/project/groupings/_rules.md)
+# declares — one grouping per file, fixed field order, exact-byte line
+# grammar (exactly one space after each field colon; no trailing whitespace;
+# no blank lines between fields; exact ", " member separator; single
+# trailing newline), plus the reserved-GRP-000 branch (min-members and
+# zero-members-FAIL exempt; EMPTY Member-phases value admitted; the
+# exception field FORBIDDEN at any member count; Kind and title pinned).
+# Schema-driven: entry-type / core-fields / kind-enum / exception-field /
+# min-members / field-order / reserved-id come from the `## Entry schema`
+# block — the same SSOT the pack-side validate-pack.py Check 84 leg asserts.
+# Member resolution (dangling / part-typed), GRP-000 exclusivity, and
+# toc-sync are STREAM-level (_conf_check_groupings_stream below).
+# ---------------------------------------------------------------------------
+_CONF_GRP_HEADER_RE = re.compile(r"^\*\*(GRP-\d+) — (.+)\*\*$")
+_CONF_GRP_MEMBER_RE = re.compile(r"^phase-(\d+)$")
+_CONF_GRP_FILE_RE = re.compile(r"^GRP-.*\.md$")
+_CONF_GRP_TOC_ROW_RE = re.compile(r"(?m)^- (GRP-\d+) — ")
+_CONF_GRP_RESERVED_TITLE = "Ungrouped (declared)"
+_CONF_GRP_RESERVED_KIND = "unassigned"
+
+
+def _conf_grp_members(value):
+    """Member tokens from a Member-phases value under the EXACT ", "
+    separator (no tolerant split — the byte grammar is closed). Returns
+    (tokens, first-bad-token-or-None); an empty value returns ([], None)
+    (legality of the empty value is the caller's reserved-branch call)."""
+    if value == "":
+        return [], None
+    toks = value.split(", ")
+    for tok in toks:
+        if not _CONF_GRP_MEMBER_RE.match(tok):
+            return toks, tok
+    return toks, None
+
+
+def _conf_check_grouping_entry(rel, body, schema):
+    """Closed-grammar conformance for one grouping entry (schema-driven).
+
+    Line-walk validation: line 1 the exact back-pointer comment, line 2
+    the bold-pair header `**GRP-NNN — <Title>**`, then ONLY
+    `Field: value` lines in the declared field-order — nothing else is
+    admitted (no free prose, no blank lines, no duplicate fields).
+    Reserved branch: the schema's reserved-id entry is exempt from
+    min-members and zero-members-FAIL, admits an EMPTY Member-phases
+    value, FORBIDS the exception field at any member count, and pins
+    Kind + the header title.
+    """
+    fails = []
+
+    def bad(msg):
+        fails.append(f"{rel} [conformance] {msg}")
+
+    name = rel.rsplit("/", 1)[-1]
+    file_id = name[:-3]
+    rel_dir = rel.rsplit("/", 1)[0]
+    reserved = _conf_clean_token(
+        (_conf_schema_tokens(schema, "reserved-id") or [""])[0])
+    is_reserved = bool(reserved) and file_id == reserved
+
+    # Whole-file byte discipline.
+    if not body.endswith("\n"):
+        bad("file must end with a single trailing newline")
+    elif body.endswith("\n\n"):
+        bad("file must end with a SINGLE trailing newline "
+            "(trailing blank line present)")
+    lines = body.splitlines()
+    for i, line in enumerate(lines, start=1):
+        if line != line.rstrip():
+            bad(f"trailing whitespace on line {i}")
+
+    # Line 1 — the exact back-pointer.
+    want_back = (f"<!-- per-entry source: {rel}; "
+                 f"contract: {rel_dir}/_rules.md -->")
+    if not lines or lines[0].rstrip() != want_back:
+        bad(f"line 1 must be the back-pointer comment '{want_back}'")
+
+    # Line 2 — the bold-pair header.
+    if len(lines) < 2:
+        bad("line 2 must be the bold-pair header **GRP-NNN — <Title>**")
+        return fails
+    m = _CONF_GRP_HEADER_RE.match(lines[1])
+    if not m:
+        bad("line 2 must be the bold-pair header **GRP-NNN — <Title>** "
+            "(exactly one space each side of the em-dash; no trailing "
+            "whitespace)")
+    else:
+        head_id, title = m.group(1), m.group(2)
+        if head_id != file_id:
+            bad(f"header ID {head_id} != filename ID {file_id}")
+        if not title.strip() or title != title.strip():
+            bad("header title spacing non-canonical (exactly one space "
+                "each side of the em-dash; the title carries no leading/"
+                "trailing whitespace)")
+        elif is_reserved and title != _CONF_GRP_RESERVED_TITLE:
+            bad(f"{reserved} title is pinned — the header must read "
+                f"'**{reserved} — {_CONF_GRP_RESERVED_TITLE}**'")
+
+    # Field lines — the closed serialization walk.
+    field_order = [_conf_clean_token(t)
+                   for t in _conf_schema_tokens(schema, "field-order")]
+    optional = set(_conf_clean_token(t)
+                   for t in _conf_schema_tokens(schema, "optional-fields"))
+    exception_field = _conf_clean_token(
+        (_conf_schema_tokens(schema, "exception-field") or [""])[0])
+    core = [_conf_clean_token(t)
+            for t in _conf_schema_tokens(schema, "core-fields")]
+    # ID lives in the filename/header; the other core fields plus
+    # Entry-Type are required field LINES.
+    required = ["Entry-Type"] + [f for f in core if f and f != "ID"]
+    admitted = field_order or (required + sorted(optional))
+
+    seen = []
+    values = {}
+    for i, line in enumerate(lines[2:], start=3):
+        if line == "":
+            bad(f"blank line at line {i} — no blank lines inside the "
+                f"closed entry serialization")
+            continue
+        fname, sep, rest = line.partition(":")
+        if not sep or fname not in admitted:
+            bad(f"line {i} is not an admitted 'Field: value' line — no "
+                f"free-floating prose (admitted fields: "
+                f"{', '.join(admitted)})")
+            continue
+        if fname in seen:
+            bad(f"duplicate field '{fname}'")
+            continue
+        seen.append(fname)
+        if rest == "":
+            value = ""
+        elif rest.startswith(" ") and not rest.startswith("  "):
+            value = rest[1:]
+        else:
+            bad(f"'{fname}:' must be followed by exactly one space "
+                f"(line {i})")
+            value = rest.strip()
+        if value == "" and fname != "Member-phases":
+            bad(f"field '{fname}' present but empty")
+        values[fname] = value
+
+    if field_order:
+        pos = dict((f, i) for i, f in enumerate(field_order))
+        idxs = [pos[f] for f in seen if f in pos]
+        if idxs != sorted(idxs):
+            bad("field order violates the declared field-order ("
+                + " ".join(field_order) + ")")
+    for f in required:
+        if f and f not in seen:
+            bad(f"missing core field '{f}'")
+
+    # Entry-Type == the declared entry-type (byte-exact — the closed
+    # serialization admits one spelling).
+    want_type = _conf_clean_token(
+        (_conf_schema_tokens(schema, "entry-type") or [""])[0])
+    got_type = values.get("Entry-Type", "")
+    if want_type and got_type and got_type != want_type:
+        bad(f"Entry-Type '{got_type}' != schema entry-type '{want_type}'")
+
+    # Kind ∈ kind-enum; pinned on the reserved entry.
+    kind_enum = [_conf_clean_token(t)
+                 for t in _conf_schema_tokens(schema, "kind-enum")]
+    kind_val = values.get("Kind", "")
+    if kind_enum and kind_val and kind_val not in kind_enum:
+        bad(f"Kind '{kind_val}' not in kind-enum {kind_enum}")
+    if is_reserved and kind_val and kind_val != _CONF_GRP_RESERVED_KIND:
+        bad(f"{reserved} Kind is pinned to '{_CONF_GRP_RESERVED_KIND}'")
+
+    # Member-phases grammar + the membership rules / reserved branch.
+    if "Member-phases" in values:
+        toks, badtok = _conf_grp_members(values["Member-phases"])
+        if badtok is not None:
+            bad(f"Member-phases token '{badtok}' is not a phase-N member "
+                f"(members are PHASES only, exact ', ' separator — "
+                f"parts / tasks / other entry IDs are not admitted)")
+        else:
+            nums = [int(t[6:]) for t in toks]
+            if len(set(nums)) != len(nums):
+                bad("duplicate member in Member-phases")
+            elif nums != sorted(nums):
+                bad("Member-phases must list members in canonical "
+                    "ascending phase-number order")
+            count = len(toks)
+            has_exc = bool(exception_field) and exception_field in seen
+            if is_reserved:
+                if has_exc:
+                    bad(f"'{exception_field}' is FORBIDDEN on {reserved} "
+                        f"at any member count (the reserved "
+                        f"declared-ungrouped ledger is not an "
+                        f"exceptional grouping)")
+            else:
+                if count == 0:
+                    bad("zero members — never valid on a real grouping "
+                        "(dissolution = delete the file)")
+                elif count == 1 and not has_exc:
+                    bad(f"1 member without '{exception_field}' — the "
+                        f"exception field is required if and only if "
+                        f"the member count is 1")
+                elif count >= 2 and has_exc:
+                    bad(f"stale '{exception_field}' — present with "
+                        f"{count} members (the field is admitted if "
+                        f"and only if the member count is 1)")
     return fails
 
 
@@ -789,6 +1016,7 @@ _CONF_ENTRY_CHECKERS = {
     "backlog":             _conf_check_backlog_entry,
     "implementation-plan": _conf_check_implplan_entry,
     "changelog":           _conf_check_changelog_entry,
+    "groupings":           _conf_check_grouping_entry,
 }
 
 
@@ -799,8 +1027,8 @@ _CONF_ENTRY_CHECKERS = {
 # the TWO hard properties against the POPULATED client tree:
 #   (1) hard-dependency-order consistency — the `_index.md` serial order is a
 #       VALID topological order of the rule-based deps (from each phase's
-#       Blockers / Unblocks / Dependencies SSOT — the deps stay SSOT in the
-#       entry files; `_index.md` is not a competing source);
+#       Blockers / Unblocks / Dependencies / Prerequisite SSOT — the deps
+#       stay SSOT in the entry files; `_index.md` is not a competing source);
 #   (2) per-entry ↔ `_index.md` membership sync — the `_index.md` membership
 #       matches the tree's phase-*.md files EXACTLY (no missing / extra —
 #       analogous to the `_toc.md`-sync Check 33).
@@ -951,13 +1179,11 @@ def _conf_check_target_coherence(rel_dir, entries, present, edges, schema):
         An unreadable Status (a garbled value, an empty value, or an
         unreadable entry file) is a poison source: its declared atom and
         every path through it are excluded from the provable bound (it may
-        resolve to an absorbing state, which would evaporate both). Honest
-        carve-out: a present-but-EMPTY `Status:` is tolerated by the Status
-        leg by construction (the enum guard skips empty values; the
-        missing-field guard fires only on absence), so an empty-Status
-        phase is validation-green on the Status leg YET still excluded from
-        the provable bound here; the coherence leg does not widen the
-        Status leg.
+        resolve to an absorbing state, which would evaporate both). A
+        present-but-EMPTY `Status:` is itself a Status-leg FAIL (the
+        empty-Status predicate in _conf_check_implplan_entry) AND stays a
+        poison source here — its exclusion from the provable bound is
+        independent of that red.
       - A present-but-illegal `Target:` is a poison source with NO atom,
         but the phase still transmits (a target garble never deletes an
         edge; its own enum FAIL is already red).
@@ -1117,7 +1343,8 @@ def _conf_check_index(rel_dir, stream_dir, names, schema):
         fails.append(
             f"{rel_dir}/_index.md [conformance] missing — the impl-plan "
             f"stream has {len(present)} phase entry/entries but no _index.md "
-            f"ordering (regenerate via scripts/lib/per-entry/index-generate.sh)"
+            f"ordering (regenerate _index.md per the "
+            f"docs/project/implementation-plan/_rules.md Ordering section)"
             f"\n    {REMEDIATION_CONFORMANCE}")
         return fails
 
@@ -1153,6 +1380,138 @@ def _conf_check_index(rel_dir, stream_dir, names, schema):
         fails.append(
             f"{rel_dir}/_index.md [conformance] dependency cycle — no valid "
             f"topological order exists\n    {REMEDIATION_CONFORMANCE}")
+    return fails
+
+
+def _conf_check_groupings_stream(rel_dir, stream_dir, names, schema, base):
+    """Stream-level groupings legs (data one entry alone cannot see):
+
+      - mis-named GRP-* files: under the tightened numbering a
+        GRP-prefixed file that fails the entry regex (e.g. GRP-0000.md)
+        is a mis-named ENTRY, not an out-of-scope file — FAIL, not SKIP;
+      - member resolution: every well-formed member token resolves to a
+        docs/project/implementation-plan/phase-N.md entry (dangling
+        FAILs) that is NOT phase-part-typed (parts inherit membership by
+        containment — the member must be the parent phase);
+      - reserved-entry exclusivity: a phase declared ungrouped (a member
+        of the schema's reserved-id entry) that is also a member of any
+        real grouping is a contradiction — FAIL naming the phase + both
+        files;
+      - toc-sync (ID-set equality, the groupings stream only): every
+        entry appears in _toc.md and every _toc.md row resolves to an
+        entry. NOT byte-exact (row format is the contract's Write
+        authority spec); the stream's _toc.md is its SOLE readable index
+        — strict from birth.
+
+    Cheap (ci-check-runtime-compounding): rides the file list already
+    scanned; one bounded read per entry + one per UNIQUE referenced
+    phase + one _toc.md read; no subprocess, no tree walk.
+    """
+    fails = []
+    entry_rx = _CONF_ENTRY_REGEX["groupings"]
+    reserved = _conf_clean_token(
+        (_conf_schema_tokens(schema, "reserved-id") or [""])[0])
+
+    members = {}   # grouping id -> [phase-num, ...] (well-formed tokens)
+    for name in sorted(names):
+        if _CONF_SIDECAR_RX.match(name):
+            continue
+        if not entry_rx.match(name):
+            if _CONF_GRP_FILE_RE.match(name):
+                fails.append(
+                    f"{rel_dir}/{name} [conformance] mis-named grouping "
+                    f"entry — filenames are GRP-NNN.md: exactly three "
+                    f"digits zero-padded through GRP-999, unpadded from "
+                    f"GRP-1000 (no extra zeros, no re-padding)"
+                    f"\n    {REMEDIATION_CONFORMANCE}")
+            continue
+        gid = name[:-3]
+        try:
+            body = open(os.path.join(stream_dir, name),
+                        encoding="utf-8").read()
+        except OSError:
+            continue  # unreadable — already FAILed in the per-entry loop
+        toks, _bad = _conf_grp_members(
+            _conf_field_value(body, "Member-phases"))
+        members[gid] = [t[6:] for t in toks
+                        if _CONF_GRP_MEMBER_RE.match(t)]
+
+    # Member resolution — dangling + part-typed (containment). One read
+    # per UNIQUE referenced phase, cached across groupings.
+    ip_dir = os.path.join(base, "implementation-plan")
+    ip_rel = f"{_CONF_PROJECT_DIR}/implementation-plan"
+    resolution = {}
+    for gid in sorted(members):
+        for num in members[gid]:
+            if num not in resolution:
+                p = os.path.join(ip_dir, f"phase-{num}.md")
+                if not os.path.isfile(p):
+                    resolution[num] = "dangling"
+                else:
+                    try:
+                        pb = open(p, encoding="utf-8").read()
+                    except OSError:
+                        pb = ""
+                    et = _conf_field_value(pb, "Entry-Type").lower()
+                    resolution[num] = ("part" if et == "phase-part"
+                                       else "ok")
+            state = resolution[num]
+            if state == "dangling":
+                fails.append(
+                    f"{rel_dir}/{gid}.md [conformance] dangling member "
+                    f"ref phase-{num} — no {ip_rel}/phase-{num}.md entry"
+                    f"\n    {REMEDIATION_CONFORMANCE}")
+            elif state == "part":
+                fails.append(
+                    f"{rel_dir}/{gid}.md [conformance] member phase-{num} "
+                    f"resolves to a phase-part entry "
+                    f"({ip_rel}/phase-{num}.md) — parts inherit "
+                    f"membership by containment; list the parent phase "
+                    f"instead\n    {REMEDIATION_CONFORMANCE}")
+
+    # Reserved-entry exclusivity: members(reserved) ∩ members(any real
+    # grouping) must be empty.
+    if reserved and reserved in members:
+        res_set = set(members[reserved])
+        for gid in sorted(g for g in members if g != reserved):
+            for num in members[gid]:
+                if num in res_set:
+                    fails.append(
+                        f"{rel_dir}/{reserved}.md [conformance] "
+                        f"exclusivity violation — phase-{num} is "
+                        f"declared ungrouped in {rel_dir}/{reserved}.md "
+                        f"AND is a member of {rel_dir}/{gid}.md "
+                        f"({reserved} membership asserts membership in "
+                        f"nothing)\n    {REMEDIATION_CONFORMANCE}")
+
+    # toc-sync — ID-set equality between the tree and _toc.md.
+    toc_path = os.path.join(stream_dir, "_toc.md")
+    tree_ids = set(members)
+    if not os.path.isfile(toc_path):
+        if tree_ids:
+            fails.append(
+                f"{rel_dir}/_toc.md [conformance] missing — the "
+                f"groupings stream has {len(tree_ids)} entry/entries "
+                f"but no _toc.md index (regenerate _toc.md per the "
+                f"{rel_dir}/_rules.md Write authority section)"
+                f"\n    {REMEDIATION_CONFORMANCE}")
+        return fails
+    try:
+        toc_text = open(toc_path, encoding="utf-8").read()
+    except OSError as e:
+        fails.append(f"{rel_dir}/_toc.md [conformance] unreadable ({e})")
+        return fails
+    toc_ids = set(_CONF_GRP_TOC_ROW_RE.findall(toc_text))
+    for gid in sorted(tree_ids - toc_ids):
+        fails.append(
+            f"{rel_dir}/_toc.md [conformance] missing entry {gid} "
+            f"(toc-sync: every {rel_dir}/GRP-NNN.md appears in _toc.md)"
+            f"\n    {REMEDIATION_CONFORMANCE}")
+    for gid in sorted(toc_ids - tree_ids):
+        fails.append(
+            f"{rel_dir}/_toc.md [conformance] lists {gid} with no "
+            f"{gid}.md entry file (toc-sync)"
+            f"\n    {REMEDIATION_CONFORMANCE}")
     return fails
 
 
@@ -1196,7 +1555,8 @@ def run_conformance(root):
                 fails.append(
                     f"{rel_dir}/{forbidden} [conformance] FORBIDDEN sidecar "
                     f"present (sanctioned vocabulary: _rules.md / _intro.md / "
-                    f"_toc.md" + (" / _index.md" if admitted else "") + ")\n"
+                    f"_toc.md"
+                    + "".join(f" / {s}" for s in admitted) + ")\n"
                     f"    {REMEDIATION_CONFORMANCE}")
 
         # Parse the stream's _rules.md schema ONCE (Item-8 SSOT).
@@ -1262,6 +1622,13 @@ def run_conformance(root):
         if subdir == "implementation-plan":
             fails.extend(_conf_check_index(rel_dir, stream_dir, names,
                                            schema))
+
+        # (5) Groupings stream-level legs (mis-named GRP files, member
+        #     resolution incl. the part-typed close, reserved-entry
+        #     exclusivity, toc-sync) — groupings only.
+        if subdir == "groupings":
+            fails.extend(_conf_check_groupings_stream(
+                rel_dir, stream_dir, names, schema, base))
     return fails
 
 
@@ -1627,6 +1994,7 @@ def run_selftest():
         "implementation-plan": os.path.join(
             rules_root, "implementation-plan", "_rules.md"),
         "changelog": os.path.join(rules_root, "changelog", "_rules.md"),
+        "groupings": os.path.join(rules_root, "groupings", "_rules.md"),
     }
     conformance_self_test = all(os.path.isfile(p)
                                 for p in rules_paths.values())
@@ -1636,6 +2004,7 @@ def run_selftest():
         ip_rules = open(rules_paths["implementation-plan"],
                         encoding="utf-8").read()
         cl_rules = open(rules_paths["changelog"], encoding="utf-8").read()
+        gr_rules = open(rules_paths["groupings"], encoding="utf-8").read()
 
     good_td = (
         "<!-- back -->\n"
@@ -1698,7 +2067,8 @@ def run_selftest():
         with tempfile.TemporaryDirectory() as td:
             for sub, rules in (("backlog", bl_rules),
                                ("implementation-plan", ip_rules),
-                               ("changelog", cl_rules)):
+                               ("changelog", cl_rules),
+                               ("groupings", gr_rules)):
                 d = os.path.join(td, "docs", "project", sub)
                 os.makedirs(d, exist_ok=True)
                 with open(os.path.join(d, "_rules.md"), "w",
@@ -2012,6 +2382,122 @@ def run_selftest():
                        t_phase(2, blockers="phase-0"),
                    "implementation-plan/_index.md": t_index(0, 1, 2)},
                   True, "coherence-mixed-dependents-conflict")
+
+        # --- Groupings conformance (BD-189): the closed byte-canonical
+        #     grammar + reserved-GRP-000 branch + stream-level legs +
+        #     the empty-Status / part-member closes. Fixture builders
+        #     emit the closed serialization byte-exactly: ---
+        def g_entry(gid, kind, members, exception=None, title=None):
+            t = title if title is not None else f"Sample {gid}"
+            body = (
+                f"<!-- per-entry source: docs/project/groupings/{gid}.md;"
+                f" contract: docs/project/groupings/_rules.md -->\n"
+                f"**{gid} — {t}**\n"
+                f"Entry-Type: grouping\n"
+                f"Kind: {kind}\n"
+                "Member-phases:"
+                + (" " + ", ".join(members) if members else "") + "\n")
+            if exception is not None:
+                body += f"Single-member exception: {exception}\n"
+            return body
+
+        def g_toc(*rows):
+            return ("# Table of contents — project-groupings\n\n"
+                    "## unassigned\n\n"
+                    + "".join(f"- {gid} — x (phases: {n})\n"
+                              for gid, n in rows))
+
+        grp_base = {
+            "implementation-plan/phase-0.md": t_phase(0,
+                                                      unblocks="phase-1"),
+            "implementation-plan/phase-1.md": t_phase(1,
+                                                      blockers="phase-0"),
+            "implementation-plan/_index.md": t_index(0, 1),
+        }
+        # Conforming populated groupings tree (2 members + toc) → PASS.
+        conf_gate(dict(grp_base, **{
+            "groupings/GRP-001.md": g_entry(
+                "GRP-001", "user-journey", ["phase-0", "phase-1"]),
+            "groupings/_toc.md": g_toc(("GRP-001", 2))}),
+            False, "conformance-groupings-clean")
+        # Reserved GRP-000: single member, NO exception field → PASS.
+        conf_gate(dict(grp_base, **{
+            "groupings/GRP-000.md": g_entry(
+                "GRP-000", "unassigned", ["phase-0"],
+                title="Ungrouped (declared)"),
+            "groupings/_toc.md": g_toc(("GRP-000", 1))}),
+            False, "conformance-groupings-grp000-single-clean")
+        # Reserved GRP-000: EMPTY member value → PASS (legal-empty).
+        conf_gate(dict(grp_base, **{
+            "groupings/GRP-000.md": g_entry(
+                "GRP-000", "unassigned", [],
+                title="Ungrouped (declared)"),
+            "groupings/_toc.md": g_toc(("GRP-000", 0))}),
+            False, "conformance-groupings-grp000-empty-clean")
+        # Out-of-enum Kind → FAIL.
+        conf_gate(dict(grp_base, **{
+            "groupings/GRP-001.md": g_entry(
+                "GRP-001", "made-up", ["phase-0", "phase-1"]),
+            "groupings/_toc.md": g_toc(("GRP-001", 2))}),
+            True, "conformance-groupings-bad-kind")
+        # Zero members on a REAL grouping → FAIL (GRP-000 alone is
+        # empty-legal — the contrast pair to grp000-empty-clean).
+        conf_gate(dict(grp_base, **{
+            "groupings/GRP-001.md": g_entry(
+                "GRP-001", "user-journey", []),
+            "groupings/_toc.md": g_toc(("GRP-001", 0))}),
+            True, "conformance-groupings-zero-members")
+        # Exception field on GRP-000 (any count) → FAIL (forbidden).
+        conf_gate(dict(grp_base, **{
+            "groupings/GRP-000.md": g_entry(
+                "GRP-000", "unassigned", ["phase-0"],
+                exception="never legal here",
+                title="Ungrouped (declared)"),
+            "groupings/_toc.md": g_toc(("GRP-000", 1))}),
+            True, "conformance-groupings-grp000-exception-forbidden")
+        # Exclusivity: a phase in GRP-000 AND a real grouping → FAIL.
+        conf_gate(dict(grp_base, **{
+            "groupings/GRP-000.md": g_entry(
+                "GRP-000", "unassigned", ["phase-0"],
+                title="Ungrouped (declared)"),
+            "groupings/GRP-001.md": g_entry(
+                "GRP-001", "user-journey", ["phase-0", "phase-1"]),
+            "groupings/_toc.md": g_toc(("GRP-000", 1),
+                                       ("GRP-001", 2))}),
+            True, "conformance-groupings-exclusivity")
+        # Mis-named GRP-0000.md (tightened numbering) → FAIL.
+        conf_gate(dict(grp_base, **{
+            "groupings/GRP-0000.md": g_entry(
+                "GRP-0000", "user-journey", ["phase-0", "phase-1"])}),
+            True, "conformance-groupings-misnamed-grp0000")
+        # Reintroduced GROUPINGS.md monolith → FAIL.
+        conf_gate(dict(grp_base, **{
+            "GROUPINGS.md": "# mono\n",
+            "groupings/GRP-001.md": g_entry(
+                "GRP-001", "user-journey", ["phase-0", "phase-1"]),
+            "groupings/_toc.md": g_toc(("GRP-001", 2))}),
+            True, "conformance-groupings-monolith-mirror")
+        # toc-sync drift (entry present, no _toc.md row) → FAIL.
+        conf_gate(dict(grp_base, **{
+            "groupings/GRP-001.md": g_entry(
+                "GRP-001", "user-journey", ["phase-0", "phase-1"]),
+            "groupings/_toc.md": g_toc()}),
+            True, "conformance-groupings-toc-drift")
+        # Empty-Status close: present-but-EMPTY Status on a phase-epic
+        # → FAIL (the A2 predicate; no groupings entry needed).
+        conf_gate({"implementation-plan/phase-0.md": t_phase(0, status=""),
+                   "implementation-plan/_index.md": t_index(0)},
+                  True, "conformance-empty-status")
+        # Part-member close: a member token resolving to a phase-part
+        # entry → FAIL (parts inherit membership by containment).
+        conf_gate(dict(grp_base, **{
+            "implementation-plan/phase-1.md":
+                "<!-- back -->\n## Phase 1 — Part\n\n"
+                "- **Entry-Type**: phase-part\n",
+            "groupings/GRP-001.md": g_entry(
+                "GRP-001", "user-journey", ["phase-0", "phase-1"]),
+            "groupings/_toc.md": g_toc(("GRP-001", 2))}),
+            True, "conformance-groupings-part-member")
 
     if failures:
         print("[validate-docs --self-test] FAIL:")

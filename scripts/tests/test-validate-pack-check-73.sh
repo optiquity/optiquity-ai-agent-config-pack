@@ -8,7 +8,7 @@
 # stream + a synthetic self-check that the matcher BITES:
 #   (1) hard-dependency-order consistency — the `_index.md` serial order is a
 #       VALID topological order of the rule-based deps (Blockers/Unblocks/
-#       Dependencies SSOT);
+#       Dependencies/Prerequisite SSOT);
 #   (2) per-entry↔`_index.md` membership sync — exact (no missing/extra),
 #       analogous to the `_toc.md`-sync Check 33.
 # The shipped template is EMPTY (no phase-*.md), so the live leg validates the

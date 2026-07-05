@@ -5,7 +5,7 @@
 #
 # The module derives a topological SEED for the impl-plan `_index.md`
 # ordering from each phase file's `Blockers` / `Unblocks` / `Dependencies`
-# SSOT (the deps stay SSOT in the entry files; `_index.md` is not a
+# / `Prerequisite` SSOT (the deps stay SSOT in the entry files; `_index.md` is not a
 # competing source — G-3 (A) derive-seed-then-hand-maintain), and the
 # MANDATORY validator enforces the TWO hard properties:
 #   (1) hard-dependency-order consistency (the serial order is a valid

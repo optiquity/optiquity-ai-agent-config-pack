@@ -8,7 +8,7 @@
 #       stream carries `_index.md` (the backlog is unordered → no index,
 #       DECISIONS-BD-206-RESTART.md §3 tripwire). Generation derives a
 #       topological SEED from each phase file's `Blockers` / `Unblocks` /
-#       `Dependencies` SSOT (the deps stay SSOT in the entry files —
+#       `Dependencies` / `Prerequisite` SSOT (the deps stay SSOT in the entry files —
 #       `_index.md` is NOT a competing source; G-3 (A) derive-seed-then-
 #       hand-maintain). Deterministic + idempotent (re-running on the same
 #       input yields a byte-identical `_index.md`).

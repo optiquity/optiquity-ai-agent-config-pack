@@ -1252,6 +1252,18 @@ def _build_check_registry():
         # before push. Cheap: three dir globs + one allowlist parse + a read-once
         # regex pass over the small wired set; no subprocess.
         (83, "check_wired_test_ci_fragility", check_wired_test_ci_fragility, W),
+        # Check 84 — project groupings contract schema specifics (BD-189):
+        # the Check-74 analog for the groupings stream. Asserts the shipped
+        # groupings `_rules.md` `## Entry schema` SPECIFICS (entry-type /
+        # core-fields / kind-enum 10 unique lowercase-kebab slugs incl.
+        # `unassigned` / exception-field / member-ref-pattern phase-N /
+        # min-members 2 / field-order / reserved-id GRP-000) PLUS the
+        # schema↔lib cross-agreement line (groupings-lib.sh RESERVED_ID
+        # carries the schema-declared reserved ID; missing lib/line FAILs —
+        # absence-of-backing) + a synthetic self-check that the matcher
+        # bites. Two small file reads; self-check in-memory; no subprocess.
+        (84, "check_project_groupings_contract",
+              check_project_groupings_contract, W),
     ]
 
 

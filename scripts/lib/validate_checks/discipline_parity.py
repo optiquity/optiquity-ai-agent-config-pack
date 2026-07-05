@@ -1,13 +1,13 @@
 """validate_checks.discipline_parity — Cluster B: the RW/RO + git-verb-parity +
 project-template-shape check family (BD-256 W3).
 
-This module owns Cluster B's 12 check bodies (Checks 50, 51, 52, 53, 54, 55, 56,
-57, 72, 73, 74, 75) plus their intra-cluster helpers and constants — the
+This module owns Cluster B's 13 check bodies (Checks 50, 51, 52, 53, 54, 55, 56,
+57, 72, 73, 74, 75, 84) plus their intra-cluster helpers and constants — the
 single-source codec guard (50, BD-204), the tracker-deferral flip-block (51,
 BD-214), the BD-197 RW/RO two-class + worktree-isolation + OPTIONAL-FEATURES +
 destructive-git-verb parity guards (52/53/54/55/56/57), the BD-206 project-side
 empty-template / index / changelog / impl-plan-naming conformance gates
-(72/73/74/75).
+(72/73/74/75), and the BD-189 groupings contract schema-specifics gate (84).
 
 Bodies are MOVED VERBATIM from the facade (`scripts/validate-pack.py`); the
 facade re-exports every symbol here via `from validate_checks.discipline_parity
@@ -1577,14 +1577,17 @@ def check_project_destructive_git_verb_parity() -> None:
 
 # Sanctioned sidecar vocabulary per ARCHITECTURE-BD-206.md §3.1. `_format.md`
 # and `_scaffolding.md` are FORBIDDEN in every stream; the project monoliths
-# (BACKLOG.md / IMPLEMENTATION-PLAN.md / CHANGELOG.md) are FORBIDDEN under the
-# no-mirror model. `_index.md` is admitted for the impl-plan stream only.
+# (BACKLOG.md / IMPLEMENTATION-PLAN.md / CHANGELOG.md / GROUPINGS.md) are
+# FORBIDDEN under the no-mirror model. `_index.md` is admitted for the
+# impl-plan stream only (groupings are orderless — no `_index.md`, and the
+# fixed Kind enum means no extension sidecar).
 _CHECK_72_PROJECT_TEMPLATE_DIR = "project-template/docs/project"
 _CHECK_72_STREAMS = (
     # (stream subdir, schema-section header, admitted-optional sidecars)
     ("backlog",             "## Entry schema",    ()),
     ("implementation-plan", "## Entry schema",    ("_index.md",)),
     ("changelog",           "## Entry structure", ()),
+    ("groupings",           "## Entry schema",    ()),
 )
 # Required + forbidden sidecar basenames (the EMPTY shipped template carries
 # `_rules.md` + `_intro.md`; `_toc.md`/`_index.md` are generated at install,
@@ -1592,7 +1595,7 @@ _CHECK_72_STREAMS = (
 _CHECK_72_REQUIRED_SIDECARS = ("_rules.md", "_intro.md")
 _CHECK_72_FORBIDDEN_SIDECARS = ("_format.md", "_scaffolding.md")
 _CHECK_72_FORBIDDEN_MONOLITHS = (
-    "BACKLOG.md", "IMPLEMENTATION-PLAN.md", "CHANGELOG.md",
+    "BACKLOG.md", "IMPLEMENTATION-PLAN.md", "CHANGELOG.md", "GROUPINGS.md",
 )
 
 
@@ -1746,7 +1749,8 @@ def check_project_template_empty_shape() -> None:
 # The two hard properties (DECISIONS-BD-206-RESTART.md G-3):
 #   (1) hard-dependency-order consistency — the `_index.md` serial order
 #       is a VALID topological order of the rule-based deps (from each
-#       phase's `Blockers` / `Unblocks` / `Dependencies` SSOT);
+#       phase's `Blockers` / `Unblocks` / `Dependencies` / `Prerequisite`
+#       SSOT);
 #   (2) per-entry ↔ `_index.md` membership sync — the `_index.md`
 #       membership matches the tree's `phase-*.md` files EXACTLY
 #       (analogous to the `_toc.md`-sync Check 33).
@@ -2488,6 +2492,259 @@ def check_project_implplan_naming() -> None:
            f"tolerates inline parts + epic-task anchors) self-checks with teeth.")
 
 
+# ── Check 84: project groupings contract schema specifics (BD-189) ──────────
+#
+# The Check-74 analog for the groupings stream, pack-side leg. Check 72
+# asserts schema-block PRESENCE + well-formedness for every stream; this
+# focused check asserts the shipped groupings `_rules.md` `## Entry schema`
+# block's SPECIFICS — the values the twin parsers (the client validate-docs.sh
+# `_conf_check_grouping_entry` leg + the client groupings-lib.sh derivations)
+# are built against:
+#   - entry-type: grouping; core-fields: ID Kind Member-phases;
+#   - kind-enum: exactly 10 UNIQUE lowercase-kebab slugs incl. `unassigned`
+#     (the FIXED enum — no extension sidecar);
+#   - exception-field declared; member-ref-pattern: phase-N; min-members: 2;
+#   - field-order declared, carrying Entry-Type + the non-ID core fields +
+#     the exception field;
+#   - reserved-id: GRP-000, PLUS the schema↔lib CROSS-AGREEMENT line: the
+#     shipped groupings-lib.sh `RESERVED_ID` constant carries the SAME ID
+#     (the lib hardcodes the reserved refusal; a drifted pair would refuse
+#     one ID while validation reserved another). A missing lib file or a
+#     missing RESERVED_ID line FAILs (absence-of-backing).
+#
+# Cheap (ci-check-runtime-compounding): TWO small file reads (the contract +
+# the lib), no tree walk, no subprocess; the self-check is in-memory.
+
+_CHECK_84_GROUPINGS_RULES = (
+    "project-template/docs/project/groupings/_rules.md"
+)
+_CHECK_84_GROUPINGS_LIB = "project-template/scripts/groupings-lib.sh"
+_CHECK_84_KIND_ENUM_COUNT = 10
+_CHECK_84_SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+_CHECK_84_LIB_RESERVED_RE = re.compile(r'(?m)^RESERVED_ID = "([^"]*)"$')
+
+
+def _check_84_tokens(schema: dict, key: str) -> list:
+    """Whitespace-split schema tokens honoring "double-quoted" multi-word
+    tokens (the client `_conf_schema_tokens` twin)."""
+    return [t.strip().strip('"')
+            for t in re.findall(r'"[^"]+"|\S+', schema.get(key, ""))]
+
+
+def _check_84_validate(schema: dict, lib_text) -> list:
+    """The groupings schema-specifics matcher, in-memory.
+
+    schema: the parsed `## Entry schema` {key: tokens} map; lib_text: the
+    groupings-lib.sh text, or None when the lib file is missing (the
+    cross-agreement line then FAILs on absence-of-backing). Returns a list
+    of failure strings ([] = conformant)."""
+    fails = []
+    et = _check_84_tokens(schema, "entry-type")
+    if not et or et[0] != "grouping":
+        fails.append("entry-type must be 'grouping' (got %r)"
+                     % schema.get("entry-type", ""))
+    core = _check_84_tokens(schema, "core-fields")
+    if core != ["ID", "Kind", "Member-phases"]:
+        fails.append("core-fields must be 'ID Kind Member-phases' (got %r)"
+                     % schema.get("core-fields", ""))
+    kinds = _check_84_tokens(schema, "kind-enum")
+    if len(kinds) != _CHECK_84_KIND_ENUM_COUNT:
+        fails.append("kind-enum must carry exactly %d slugs (got %d)"
+                     % (_CHECK_84_KIND_ENUM_COUNT, len(kinds)))
+    if len(set(kinds)) != len(kinds):
+        fails.append("kind-enum carries duplicate slugs")
+    for k in kinds:
+        if not _CHECK_84_SLUG_RE.match(k):
+            fails.append("kind-enum slug %r is not lowercase-kebab" % k)
+    if kinds and "unassigned" not in kinds:
+        fails.append("kind-enum must include 'unassigned' (the catch-all + "
+                     "the reserved GRP-000 pinned Kind)")
+    exc = _check_84_tokens(schema, "exception-field")
+    if not exc:
+        fails.append("exception-field must be declared")
+    mrp = _check_84_tokens(schema, "member-ref-pattern")
+    if mrp != ["phase-N"]:
+        fails.append("member-ref-pattern must be 'phase-N' (got %r)"
+                     % schema.get("member-ref-pattern", ""))
+    mm = _check_84_tokens(schema, "min-members")
+    if mm != ["2"]:
+        fails.append("min-members must be '2' (got %r)"
+                     % schema.get("min-members", ""))
+    order = _check_84_tokens(schema, "field-order")
+    if not order:
+        fails.append("field-order must be declared")
+    else:
+        need = ["Entry-Type"] + [f for f in core if f != "ID"] + exc[:1]
+        for f in need:
+            if f and f not in order:
+                fails.append("field-order must carry %r" % f)
+    rid = _check_84_tokens(schema, "reserved-id")
+    if len(rid) != 1 or rid[0] != "GRP-000":
+        fails.append("reserved-id must be 'GRP-000' (got %r)"
+                     % schema.get("reserved-id", ""))
+    else:
+        # CROSS-AGREEMENT: the shipped lib's hardcoded reserved-refusal
+        # constant must carry the schema-declared reserved ID.
+        if lib_text is None:
+            fails.append("groupings-lib.sh missing — the reserved-id "
+                         "cross-agreement line has no lib to agree with")
+        else:
+            lm = _CHECK_84_LIB_RESERVED_RE.search(lib_text)
+            if not lm:
+                fails.append(
+                    'groupings-lib.sh carries no RESERVED_ID = "..." line '
+                    "(the schema-declared reserved ID has no lib backing)")
+            elif lm.group(1) != rid[0]:
+                fails.append(
+                    "reserved-id cross-agreement broken: the schema "
+                    "declares %r but groupings-lib.sh RESERVED_ID is %r"
+                    % (rid[0], lm.group(1)))
+    return fails
+
+
+def _check_84_self_check() -> list:
+    """In-memory synthetic self-check: the matcher PASSES a conforming
+    schema/lib pair and BITES each violation class. Returns self-check
+    failure strings ([] = the matcher has teeth)."""
+    sc_fails = []
+    good_schema = {
+        "entry-type": "grouping",
+        "core-fields": "ID Kind Member-phases",
+        "kind-enum": ("user-journey ambient-feature foundational-batch "
+                      "refactor-cluster release-package shared-feature "
+                      "architectural-pattern tech-debt-removal bug-fix "
+                      "unassigned"),
+        "optional-fields": '"Single-member exception" Doc-links Comment',
+        "exception-field": '"Single-member exception"',
+        "member-ref-pattern": "phase-N",
+        "min-members": "2",
+        "field-order": ('Entry-Type Kind Member-phases '
+                        '"Single-member exception" Doc-links Comment'),
+        "reserved-id": "GRP-000",
+    }
+    good_lib = 'x\nRESERVED_ID = "GRP-000"\ny\n'
+
+    def expect(label, schema, lib_text, want_fail):
+        got = bool(_check_84_validate(schema, lib_text))
+        if got != want_fail:
+            sc_fails.append("self-check %s: expected %s, got %s"
+                            % (label, "FAIL" if want_fail else "PASS",
+                               "FAIL" if got else "PASS"))
+
+    def mutated(**kv):
+        s = dict(good_schema)
+        for k, v in kv.items():
+            if v is None:
+                s.pop(k, None)
+            else:
+                s[k] = v
+        return s
+
+    expect("conforming", good_schema, good_lib, False)
+    # 9-slug enum (unassigned dropped) → FAIL.
+    expect("nine-slug-enum", mutated(
+        **{"kind-enum": good_schema["kind-enum"].replace(" unassigned", "")}),
+        good_lib, True)
+    # Missing reserved-id → FAIL.
+    expect("missing-reserved-id", mutated(**{"reserved-id": None}),
+           good_lib, True)
+    # min-members: 3 → FAIL.
+    expect("min-members-3", mutated(**{"min-members": "3"}), good_lib, True)
+    # Missing field-order → FAIL.
+    expect("missing-field-order", mutated(**{"field-order": None}),
+           good_lib, True)
+    # Duplicate slug (count preserved) → FAIL.
+    expect("dup-slug", mutated(
+        **{"kind-enum": good_schema["kind-enum"].replace(
+            "unassigned", "bug-fix")}), good_lib, True)
+    # Non-kebab slug → FAIL.
+    expect("non-kebab-slug", mutated(
+        **{"kind-enum": good_schema["kind-enum"].replace(
+            "unassigned", "Bad_Slug")}), good_lib, True)
+    # Wrong member-ref-pattern → FAIL.
+    expect("wrong-member-ref", mutated(
+        **{"member-ref-pattern": "phase-N.Part-x"}), good_lib, True)
+    # Wrong entry-type → FAIL.
+    expect("wrong-entry-type", mutated(**{"entry-type": "td"}),
+           good_lib, True)
+    # Missing exception-field → FAIL.
+    expect("missing-exception-field", mutated(**{"exception-field": None}),
+           good_lib, True)
+    # Lib disagreement (schema GRP-000, lib GRP-111) → FAIL.
+    expect("lib-disagreement", good_schema,
+           'RESERVED_ID = "GRP-111"\n', True)
+    # Lib line ABSENT (absence-of-backing) → FAIL.
+    expect("lib-line-absent", good_schema, "no constant here\n", True)
+    # Lib file missing entirely → FAIL.
+    expect("lib-file-missing", good_schema, None, True)
+    return sc_fails
+
+
+def check_project_groupings_contract() -> None:
+    """Check 84 — project groupings contract schema specifics (BD-189).
+
+    Validates the shipped groupings `_rules.md` `## Entry schema` block's
+    SPECIFICS (the Check-74 analog: Check 72 asserts presence +
+    well-formedness; this check asserts values): entry-type / core-fields /
+    kind-enum (exactly 10 unique lowercase-kebab slugs incl. `unassigned`) /
+    exception-field / member-ref-pattern phase-N / min-members 2 /
+    field-order / reserved-id GRP-000, PLUS the schema↔lib cross-agreement
+    line (the shipped groupings-lib.sh RESERVED_ID constant carries the
+    schema-declared reserved ID; a missing lib or missing line FAILs —
+    absence-of-backing). A synthetic self-check proves the matcher bites.
+
+    SKIPs (lenient) if the groupings stream directory is absent.
+    Cheap (ci-check-runtime-compounding): two small file reads + an
+    in-memory self-check; no subprocess, no tree walk.
+    """
+    print("\n── Check 84: project groupings contract schema specifics (BD-189) ──")
+    rules_path = REPO_ROOT / _CHECK_84_GROUPINGS_RULES
+    stream_dir = rules_path.parent
+    if not stream_dir.is_dir():
+        ok(f"{_CHECK_84_GROUPINGS_RULES} stream absent — skipping (lenient)")
+        return
+
+    any_fail = False
+    for sc in _check_84_self_check():
+        fail(f"Check 84 self-check — {sc}")
+        any_fail = True
+
+    if not rules_path.is_file():
+        fail(f"{_CHECK_84_GROUPINGS_RULES} — missing (no schema to assert)")
+        return
+    try:
+        schema = _check_72_parse_rules_section(
+            rules_path.read_text(), "## Entry schema")
+    except (UnicodeDecodeError, OSError) as exc:
+        fail(f"{_CHECK_84_GROUPINGS_RULES} — unreadable: {exc}")
+        return
+    if not schema:
+        fail(f"{_CHECK_84_GROUPINGS_RULES} — missing or empty "
+             f"`## Entry schema` block")
+        return
+
+    lib_path = REPO_ROOT / _CHECK_84_GROUPINGS_LIB
+    lib_text = None
+    if lib_path.is_file():
+        try:
+            lib_text = lib_path.read_text()
+        except (UnicodeDecodeError, OSError) as exc:
+            fail(f"{_CHECK_84_GROUPINGS_LIB} — unreadable: {exc}")
+            any_fail = True
+
+    for violation in _check_84_validate(schema, lib_text):
+        fail(f"{_CHECK_84_GROUPINGS_RULES} — {violation}")
+        any_fail = True
+
+    if not any_fail:
+        ok("Check 84 — groupings contract schema specifics hold: "
+           "entry-type / core-fields / kind-enum (10 unique lowercase-kebab "
+           "slugs incl. unassigned) / exception-field / member-ref-pattern / "
+           "min-members / field-order asserted; reserved-id GRP-000 "
+           "cross-agrees with the shipped groupings-lib.sh RESERVED_ID; the "
+           "matcher self-checks with teeth.")
+
+
 # ── __all__ — every Cluster B symbol (the facade re-exports via `import *`) ──
 # Three-source union: owned `check_*` + every tested/cross-referenced private
 # helper/constant + the intra-cluster symbols, so the facade `from
@@ -2588,4 +2845,13 @@ __all__ = [
     "_check_75_validate",
     "_check_75_self_check",
     "check_project_implplan_naming",
+    "_CHECK_84_GROUPINGS_RULES",
+    "_CHECK_84_GROUPINGS_LIB",
+    "_CHECK_84_KIND_ENUM_COUNT",
+    "_CHECK_84_SLUG_RE",
+    "_CHECK_84_LIB_RESERVED_RE",
+    "_check_84_tokens",
+    "_check_84_validate",
+    "_check_84_self_check",
+    "check_project_groupings_contract",
 ]
