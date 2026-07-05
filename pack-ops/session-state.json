@@ -1,11 +1,28 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "46ed5e8",
+  "boundary_commit": "4200f90",
   "checkpoint": "2026-07-01T00:00:00Z",
-  "active": [],
-  "in_flight_agents": [],
+  "active": [
+    {
+      "bd": "BD-262",
+      "sub_step": "Wave-1 foundation coder in flight (the contract + the lib + the API-freezing tests). Then: launch-pad review -> the commit gate -> the Wave-2 five-way parallel spawn (BD-263..267)."
+    }
+  ],
+  "in_flight_agents": [
+    {
+      "name": "coder-bd262-foundation",
+      "role": "pack-coder",
+      "purpose": "BD-262 foundation (isolated worktree)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/IMPL-BD262.md"
+    },
+    {
+      "name": "reviewer-bd189-c0",
+      "role": "pack-reviewer",
+      "purpose": "C0 transcription-fidelity review (RO; parallel to the BD-262 coder)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/REVIEW-BD189-C0.md"
+    }
+  ],
   "queue": [
-    "BD-262",
     "BD-263",
     "BD-264",
     "BD-265",
@@ -23,10 +40,10 @@
   "parallelization": "serial",
   "wave": "C0 prepared: the 7 groupings children authored (BD-262..268); the umbrella Resolved; BD-192/BD-227 re-pointed. On the C0 commit: Wave 1 = the BD-262 foundation coder; then Wave 2 five-way parallel (BD-263..267); Wave 3 = BD-268. G1 governance after BD-266.",
   "pending_decisions": [
-    "The C0 commit awaiting approval; then Wave 1.",
+    "The BD-262 commit gate is the next user decision.",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed",
     "SESSION DIRECTIVE (user, until revoked; not a rule change — no memory/BD): ALL spawns use isolation:worktree (the async-task channel). RO agents work in their own worktree. Reviewers + fix-coders get a LAUNCH-PAD worktree they must ABANDON: first instruction = cd into the target live worktree (the commit under review/fix) + verify pwd/HEAD/dirty-set before any work; the unused launch worktree auto-cleans. The substantive placement rules are unchanged (review/fix happens IN the commit worktree); re-engagement via SendMessage-to-agentId (transcript resume)."
   ],
-  "cycle_position": "At the C0 commit gate. Then the BD-262 coder spawns (Wave 1)."
+  "cycle_position": "BD-262 coder in flight. The groupings build is underway."
 }
