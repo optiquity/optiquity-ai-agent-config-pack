@@ -1,12 +1,8 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "94aac44",
+  "boundary_commit": "a846efc",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
-    {
-      "bd": "BD-263",
-      "sub_step": "Wave-2 coder spawning. File/Symbol: `scripts/init-project.sh` + `scripts/migrate-v10-to-v11.sh` + fixtures (see the entry)."
-    },
     {
       "bd": "BD-264",
       "sub_step": "Wave-2 coder spawning. File/Symbol: `scripts/lib/validate_checks/discipline_parity.py` + `project-template/scripts/validate-docs.sh` (see the entry)."
@@ -46,10 +42,16 @@
       "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/REVIEW-BD264.md"
     },
     {
-      "name": "reviewer-bd267-2",
-      "role": "pack-reviewer",
-      "purpose": "BD-267 re-review (light; in the BD-267 worktree)",
-      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/REVIEW-BD267-2.md"
+      "name": "fixcoder-bd265",
+      "role": "pack-coder",
+      "purpose": "BD-265 fixes (reused worktree)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/FIX-BD265.md"
+    },
+    {
+      "name": "fixcoder-bd266",
+      "role": "pack-coder",
+      "purpose": "BD-266 fixes (reused worktree)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/FIX-BD266.md"
     }
   ],
   "queue": [
@@ -65,10 +67,10 @@
   "parallelization": "serial",
   "wave": "Wave 2 LAUNCHING: five parallel coders (BD-263..267) on proven-disjoint file sets. Landings serial, first-clean-first. G1 governance after BD-266 lands. Then Wave 3 (BD-268).",
   "pending_decisions": [
-    "Per-child commit gates as Wave-2 cycles complete.",
+    "The BD-263 landing gate (patch banked) + the per-child gates as fix cycles clean; the none-(superseded) byte RULED; the BD-268 fold notes carry the fourth-state naming rider + the BD-264 IN_GLOBS fold decision at its triage.",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed",
     "SESSION DIRECTIVE (user, until revoked; not a rule change — no memory/BD): ALL spawns use isolation:worktree (the async-task channel). RO agents work in their own worktree. Reviewers + fix-coders get a LAUNCH-PAD worktree they must ABANDON: first instruction = cd into the target live worktree (the commit under review/fix) + verify pwd/HEAD/dirty-set before any work; the unused launch worktree auto-cleans. The substantive placement rules are unchanged (review/fix happens IN the commit worktree); re-engagement via SendMessage-to-agentId (transcript resume)."
   ],
-  "cycle_position": "BD-267 at HEAD; the BD-265 fix pass next; BD-263 patch banked for its slot; the BD-266 triage + the none-(superseded) confirm awaiting the user; the BD-264 review running."
+  "cycle_position": "The landing procession: BD-266 next (patch banked, clean); BD-265 awaiting its light re-verdict; BD-264 last (patch banked). Then G1 -> the batch push -> Wave 3 (BD-268 with 4 riders)."
 }
