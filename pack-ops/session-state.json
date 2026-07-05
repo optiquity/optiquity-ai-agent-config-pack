@@ -1,6 +1,6 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "4980a6f",
+  "boundary_commit": "a7f2aef",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [],
   "in_flight_agents": [],
@@ -18,10 +18,10 @@
   "parallelization": "serial",
   "wave": "The (b) gate CLOSED (all 8 ruled; BD-261 authored — the target-version prerequisite). BD-189 plan HELD for BD-261. Next: the BD-261 pipeline (researcher first), then the BD-189 final plan fold -> plan approval -> C0 + waves.",
   "pending_decisions": [
-    "The (b)-rulings + BD-261-open commit awaiting approval confirmation; then the BD-261 researcher spawn.",
+    "The BD-261 rulings commit + push approved; the coherence micro-design spawns next; the BD-261 plan gate is the next user decision after.",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed",
     "SESSION DIRECTIVE (user, until revoked; not a rule change — no memory/BD): ALL spawns use isolation:worktree (the async-task channel). RO agents work in their own worktree. Reviewers + fix-coders get a LAUNCH-PAD worktree they must ABANDON: first instruction = cd into the target live worktree (the commit under review/fix) + verify pwd/HEAD/dirty-set before any work; the unused launch worktree auto-cleans. The substantive placement rules are unchanged (review/fix happens IN the commit worktree); re-engagement via SendMessage-to-agentId (transcript resume)."
   ],
-  "cycle_position": "BD-261 pipeline kickoff next (researcher census). BD-189 holds."
+  "cycle_position": "BD-261 design gate CLOSED (17/17 ruled). Next: the coherence micro-design (design->adversarial->recon), then the BD-261 planner stages, then implementation, then the BD-189 fold + plan approval + C0."
 }
