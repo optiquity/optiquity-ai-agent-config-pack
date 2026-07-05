@@ -1,11 +1,17 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "ba27059",
+  "boundary_commit": "bd07ee0",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [],
-  "in_flight_agents": [],
+  "in_flight_agents": [
+    {
+      "name": "reviewer-bd261-cm2-2",
+      "role": "pack-reviewer",
+      "purpose": "CM2 review, fresh instance (launch-pad; in the CM2 worktree)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd261/REVIEW-BD261-CM2.md"
+    }
+  ],
   "queue": [
-    "BD-261",
     "BD-189",
     "BD-224",
     "BD-257",
@@ -16,12 +22,12 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "The (b) gate CLOSED (all 8 ruled; BD-261 authored — the target-version prerequisite). BD-189 plan HELD for BD-261. Next: the BD-261 pipeline (researcher first), then the BD-189 final plan fold -> plan approval -> C0 + waves.",
+  "wave": "BD-261 complete pending the CM4 commit + the batch push. On landing: the BD-189 fold pass (the P2 spec + the two routed riders + all the held-plan folds) -> the BD-189 plan re-approval -> C0 opens the groupings children.",
   "pending_decisions": [
-    "CM1 in flight after this commit; its commit gate is the next user decision.",
+    "The CM4 closing package (flip commit + batch push) awaiting approval.",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed",
     "SESSION DIRECTIVE (user, until revoked; not a rule change — no memory/BD): ALL spawns use isolation:worktree (the async-task channel). RO agents work in their own worktree. Reviewers + fix-coders get a LAUNCH-PAD worktree they must ABANDON: first instruction = cd into the target live worktree (the commit under review/fix) + verify pwd/HEAD/dirty-set before any work; the unused launch worktree auto-cleans. The substantive placement rules are unchanged (review/fix happens IN the commit worktree); re-engagement via SendMessage-to-agentId (transcript resume)."
   ],
-  "cycle_position": "BD-261 plan APPROVED (Q1-Q7 ruled). CM1 (the contract lock-step) coder next; then CM2-parallel-CM3; then CM4 flip; then the BD-189 fold."
+  "cycle_position": "At the CM4 gate (the flip commit + the batch push with manifest-sync). Then the BD-189 fold pass."
 }

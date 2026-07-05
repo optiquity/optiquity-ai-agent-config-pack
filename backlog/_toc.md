@@ -28,7 +28,6 @@
 - [BD-247](./BD-247.md) — Pack-side backlog form-family compliance + drift-prevention workflows (real pack/project symmetry)
 - [BD-254](./BD-254.md) — Implement the Graphify cost/benefit improvement recommendations (vocab-expansion query flow, save-result feedback loop, freshness tightening, cost ledger, stale-report regen)
 - [BD-257](./BD-257.md) — Add net-new + review/refresh existing client (project-side) slash commands + their execution foundation (brainstorm-gated; project-side analog of BD-224)
-- [BD-261](./BD-261.md) — Client phase target-version system: the relative release-cycle vocabulary (`Target:` field, derivation, release-boundary lifecycle) — prerequisite for BD-189 groupings implementation
 
 ## Deferred
 
@@ -262,6 +261,7 @@
 - [BD-258](./BD-258.md) — Deterministic large-BD/large-phase pipeline: researcher-always-first + mandatory adversarial passes + reconciliation-only-if-findings; strip "optional/discretionary" wording (pack + project symmetric)
 - [BD-259](./BD-259.md) — Bring shipped `project-template/` operating docs into compliance with the shipped client doc-gate (`validate-docs.sh` full-scan is RED at baseline)
 - [BD-260](./BD-260.md) — Add the `work` earliest pre-launch release-state qualifier (before `alpha`) to the versioning scheme (BD-242 successor)
+- [BD-261](./BD-261.md) — Client phase target-version system: the relative release-cycle vocabulary (`Target:` field, derivation, release-boundary lifecycle) — prerequisite for BD-189 groupings implementation
 
 ## Deprecated
 
