@@ -26,9 +26,14 @@
 #                 pack-side validate-pack.py leg parses; the two parsers
 #                 cannot diverge). Validates: sanctioned sidecar
 #                 vocabulary (no _format.md / _scaffolding.md), NO
-#                 reintroduced monolith mirror, and per-entry field /
+#                 reintroduced monolith mirror, per-entry field /
 #                 structure conformance (form-family for backlog +
-#                 implementation-plan, structured for changelog).
+#                 implementation-plan, structured for changelog), the
+#                 impl-plan `_index.md` ordering properties, the optional
+#                 `Target:` release-window vocabulary (schema
+#                 `target-enum`), and target-coherence over dependency
+#                 edges (a declared target must not exceed the provable
+#                 dependency bound).
 #   - SESSION-STATE — when the committed PM-Chat resume snapshot
 #                 docs/project/pm-session-state.json is present it is
 #                 validated (struct: required keys, one boundary SHA, one
@@ -682,6 +687,25 @@ def _conf_check_implplan_entry(rel, body, schema):
         fails.append(
             f"{rel} [conformance] Status '{status_val}' not in "
             f"status-enum {status_enum}")
+    # Target ∈ target-enum. OPTIONAL on phase-epics: absent = no claim (no
+    # check). Present ⇒ exactly ONE enum token, non-empty: present-but-empty
+    # FAILs; an out-of-enum value (including a token with a trailing
+    # comment) FAILs. Schema-driven — the tokens come from the contract's
+    # `target-enum:` line (declaration order IS the ordinal scale); a schema
+    # without a `target-enum:` key skips the check (lenient, the marker-enum
+    # precedent). Epic-only by construction: the phase-part early-return
+    # above precedes this guard.
+    target_enum = [_conf_clean_token(t)
+                   for t in _conf_schema_tokens(schema, "target-enum")]
+    if target_enum and _conf_entry_field_present(body, "Target"):
+        target_val = _conf_field_value(body, "Target")
+        if not target_val:
+            fails.append(
+                f"{rel} [conformance] Target present but empty")
+        elif target_val not in target_enum:
+            fails.append(
+                f"{rel} [conformance] Target '{target_val}' not in "
+                f"target-enum {target_enum}")
     return fails
 
 
@@ -861,10 +885,196 @@ def _conf_index_parse_order(text):
     return order
 
 
-def _conf_check_index(rel_dir, stream_dir, names):
+def _conf_scc_ids(nodes, edge_set):
+    """Kosaraju strongly-connected-component ids over (nodes, edge_set):
+    returns {node: component-id}. Iterative (no recursion), O(V+E)."""
+    adj = dict((n, []) for n in nodes)
+    radj = dict((n, []) for n in nodes)
+    for (a, b) in edge_set:
+        adj[a].append(b)
+        radj[b].append(a)
+    order = []
+    seen = set()
+    for root in sorted(nodes, key=int):
+        if root in seen:
+            continue
+        seen.add(root)
+        stack = [(root, iter(adj[root]))]
+        while stack:
+            node, it = stack[-1]
+            advanced = False
+            for s in it:
+                if s not in seen:
+                    seen.add(s)
+                    stack.append((s, iter(adj[s])))
+                    advanced = True
+                    break
+            if not advanced:
+                order.append(node)
+                stack.pop()
+    comp = {}
+    cid = 0
+    for node in reversed(order):
+        if node in comp:
+            continue
+        comp[node] = cid
+        queue = [node]
+        while queue:
+            n = queue.pop()
+            for s in radj[n]:
+                if s not in comp:
+                    comp[s] = cid
+                    queue.append(s)
+        cid += 1
+    return comp
+
+
+def _conf_check_target_coherence(rel_dir, entries, present, edges, schema):
+    """Target-coherence gate (FAIL, not WARN): a declared `Target:` must not
+    exceed the bound provable from dependency edges and other phases'
+    declared targets — the impl-plan `_rules.md` `## Target semantics`
+    contract. Rides the structures `_conf_check_index` already collected;
+    runs whenever phase entries exist and the schema declares `target-enum`
+    (else lenient no-op), even when `_index.md` is missing or unreadable.
+
+    Closed form (the pair semantics — a poisoned/garbled region NEVER
+    silences an independently provable conflict; the suppressed bounds are
+    exactly the UNPROVABLE ones):
+      - Ordinals: the schema's `target-enum` declaration order IS the scale.
+        The literal token `future-unassigned` is non-constraining: it
+        contributes no bound as a dependent but transmits bounds and
+        conflicts as a declarer.
+      - ABSORBING = Status in {done, superseded} (spent claims: they neither
+        contribute, transmit, nor receive bounds). LIVE = non-absorbing;
+        the live subgraph = the LIVE-induced edge set.
+      - LEGIBLE = live phases whose Status parses to the schema status-enum.
+        An unreadable Status (a garbled value, an empty value, or an
+        unreadable entry file) is a poison source: its declared atom and
+        every path through it are excluded from the provable bound (it may
+        resolve to an absorbing state, which would evaporate both). Honest
+        carve-out: a present-but-EMPTY `Status:` is tolerated by the Status
+        leg by construction (the enum guard skips empty values; the
+        missing-field guard fires only on absence), so an empty-Status
+        phase is validation-green on the Status leg YET still excluded from
+        the provable bound here; the coherence leg does not widen the
+        Status leg.
+      - A present-but-illegal `Target:` is a poison source with NO atom,
+        but the phase still transmits (a target garble never deletes an
+        edge; its own enum FAIL is already red).
+      - ROBUST graph R = the LEGIBLE-induced live subgraph MINUS its
+        intra-SCC edges (any live-cycle edge may be the one a cycle fix
+        deletes — a bound witnessed only through one is not provable).
+        R is a DAG.
+      - atom(D) = ordinal(declared(D)) iff `Target:` is present + legal +
+        constraining (ordinal below `future-unassigned`); else UNDEFINED.
+      - known(P) = min over direct R-successors D of contrib(D), where
+        contrib(D) = min(atom(D), known(D)) over the DEFINED operands only:
+        an undefined operand contributes NO constraint, and a D with
+        neither defined drops out of the min entirely. known(P) is defined
+        iff >= 1 direct R-successor contributes. Edge orientation:
+        (a, b) = a-must-precede-b, so P's R-successors are its DEPENDENTS —
+        bounds flow dependents -> blockers.
+      - CONFLICT(P), for every LIVE LEGIBLE P with a present LEGAL declared
+        target: known(P) defined AND ordinal(declared(P)) > known(P).
+        Both classes FAIL identically; the class is a witness-chain
+        property: DIRECT iff the chain has length 1 and the bound equals
+        the witness's own declared atom, else TRANSITIVE (the full chain
+        rides in the message). Witness = the arg-min direct R-successor,
+        ties -> lowest phase number.
+    Phase-part entries carry no independent target (containment
+    inheritance): their `Target:` is ignored here. Runtime: set passes +
+    one SCC pass + one Kahn toposort of R — O(V+E), once per gate run,
+    inside the existing conformance pass; no re-read, no subprocess."""
+    target_enum = [_conf_clean_token(t)
+                   for t in _conf_schema_tokens(schema, "target-enum")]
+    if not entries or not target_enum:
+        return []
+    status_enum = set(_conf_clean_token(t)
+                      for t in _conf_schema_tokens(schema, "status-enum"))
+    ordinal = dict((tok, i) for i, tok in enumerate(target_enum))
+    fu_ord = ordinal.get("future-unassigned", len(target_enum))
+
+    status = {}
+    declared = {}   # phase -> legal declared token (epics only)
+    for num, body in entries.items():
+        status[num] = _conf_field_value(body, "Status")
+        if _conf_field_value(body, "Entry-Type").lower() == "phase-part":
+            continue  # parts inherit by containment — no independent target
+        if _conf_entry_field_present(body, "Target"):
+            val = _conf_field_value(body, "Target")
+            if val in ordinal:
+                declared[num] = val
+            # illegal / empty -> no atom (the enum leg already FAILs it)
+
+    absorbing = set(n for n in present
+                    if status.get(n, "") in ("done", "superseded"))
+    live = present - absorbing
+    legible = set(n for n in live if status.get(n, "") in status_enum)
+    r0 = set((a, b) for (a, b) in edges
+             if a in legible and b in legible)
+    comp = _conf_scc_ids(legible, r0)
+    r = set((a, b) for (a, b) in r0 if comp[a] != comp[b])
+
+    atom = {}
+    for n, tok in declared.items():
+        if ordinal[tok] < fu_ord:
+            atom[n] = ordinal[tok]
+
+    adj_r = dict((n, []) for n in legible)
+    for (a, b) in r:
+        adj_r[a].append(b)
+    order, _acyclic = _conf_index_toposort(legible, r)
+    known = {}
+    witness = {}
+    for node in reversed(order):
+        best = None
+        best_w = None
+        for d in sorted(adj_r[node], key=int):
+            a_d = atom.get(d)
+            k_d = known.get(d)
+            if a_d is not None and (k_d is None or a_d <= k_d):
+                c = a_d
+            elif k_d is not None:
+                c = k_d
+            else:
+                continue  # neither defined — drops out of the min
+            if best is None or c < best:
+                best = c
+                best_w = d
+        if best is not None:
+            known[node] = best
+            witness[node] = best_w
+
+    fails = []
+    for p in sorted(legible & set(declared), key=int):
+        kp = known.get(p)
+        if kp is None or ordinal[declared[p]] <= kp:
+            continue
+        # Reconstruct the witness chain down to the atom realizing the bound.
+        chain = []
+        node = p
+        while True:
+            d = witness[node]
+            chain.append(d)
+            if atom.get(d) == kp:
+                break  # the witness's own declared atom IS the bound
+            node = d
+        bound_tok = target_enum[kp]
+        via = " → ".join("phase-" + c for c in chain)
+        fails.append(
+            f"{rel_dir}/phase-{p}.md [conformance] target conflict — "
+            f"declared {declared[p]} exceeds provable dependency bound "
+            f"{bound_tok} (via {via}, declared {bound_tok})"
+            f"\n    {REMEDIATION_CONFORMANCE}")
+    return fails
+
+
+def _conf_check_index(rel_dir, stream_dir, names, schema):
     """The two-property `_index.md` validator for the populated impl-plan
-    tree. rel_dir is the stream's repo-relative dir; stream_dir its abspath;
-    names the file basenames in it. Returns a list of failure strings."""
+    tree, plus the target-coherence gate over the same collected entries.
+    rel_dir is the stream's repo-relative dir; stream_dir its abspath;
+    names the file basenames in it; schema the parsed `## Entry schema`
+    block. Returns a list of failure strings."""
     fails = []
     entries = {}
     for name in names:
@@ -877,6 +1087,11 @@ def _conf_check_index(rel_dir, stream_dir, names):
         except OSError:
             entries[m.group(1)] = ""
     present, edges = _conf_index_edges(entries)
+    # Target coherence runs off the collected entries/edges BEFORE the
+    # `_index.md` early-returns — a populated tree with a missing or
+    # unreadable `_index.md` still gets coherence-checked.
+    fails.extend(_conf_check_target_coherence(
+        rel_dir, entries, present, edges, schema))
     index_path = os.path.join(stream_dir, "_index.md")
     index_text = None
     if os.path.isfile(index_path):
@@ -1045,7 +1260,8 @@ def run_conformance(root):
         #     topological-order consistency + per-entry↔_index.md membership
         #     sync. The deps are parsed from the populated phase entries (SSOT).
         if subdir == "implementation-plan":
-            fails.extend(_conf_check_index(rel_dir, stream_dir, names))
+            fails.extend(_conf_check_index(rel_dir, stream_dir, names,
+                                           schema))
     return fails
 
 
@@ -1669,6 +1885,133 @@ def run_selftest():
                    "implementation-plan/phase-1.md": good_phase1,
                    "implementation-plan/_index.md": extra_idx},
                   True, "conformance-index-membership-extra")
+
+        # --- Target legs (BD-261): the target-enum guard + the coherence
+        #     gate. Every coherence tree carries a CONFORMING `_index.md`
+        #     in a legal order so the boolean verdict isolates the leg
+        #     under test (a missing index would FAIL for the wrong
+        #     reason). Fixture builders: ---
+        def t_phase(num, status="not-started", target=None,
+                    blockers="none", unblocks="none"):
+            body = (
+                "<!-- back -->\n"
+                f"## Phase {num} — T{num}\n\n"
+                "- **Entry-Type**: phase-epic\n"
+                f"- **ID**: phase-{num}\n"
+                f"- **Status**: {status}\n"
+                f"- **Blockers**: {blockers}\n"
+                f"- **Unblocks**: {unblocks}\n"
+                "- **Goal**: g\n"
+                "- **Prerequisite**: none\n")
+            if target is not None:
+                body += f"- **Target**: {target}\n"
+            return body
+
+        def t_index(*nums):
+            return ("# Index — ordering — project-implementation-plan\n\n"
+                    "## Serial order\n\n"
+                    + "".join(f"- [phase-{n}](./phase-{n}.md) — T{n}\n"
+                              for n in nums))
+
+        # Legal token → PASS.
+        conf_gate({"implementation-plan/phase-0.md":
+                       t_phase(0, target="current"),
+                   "implementation-plan/_index.md": t_index(0)},
+                  False, "conformance-target-valid")
+        # Out-of-enum token → FAIL.
+        conf_gate({"implementation-plan/phase-0.md":
+                       t_phase(0, target="v2.0"),
+                   "implementation-plan/_index.md": t_index(0)},
+                  True, "conformance-bad-target-enum")
+        # Present-but-empty → FAIL.
+        conf_gate({"implementation-plan/phase-0.md":
+                       t_phase(0, target=""),
+                   "implementation-plan/_index.md": t_index(0)},
+                  True, "conformance-empty-target")
+        # Absent = no claim → PASS.
+        conf_gate({"implementation-plan/phase-0.md": t_phase(0),
+                   "implementation-plan/_index.md": t_index(0)},
+                  False, "conformance-target-absent")
+        # A phase-part carrying a (even illegal) Target is tolerated —
+        # epic-only posture (parts inherit by containment) → PASS.
+        conf_gate({"implementation-plan/phase-0.md":
+                       "<!-- back -->\n## Phase 0 — Part\n\n"
+                       "- **Entry-Type**: phase-part\n"
+                       "- **Target**: v9.9\n",
+                   "implementation-plan/_index.md": t_index(0)},
+                  False, "conformance-part-target-tolerated")
+        # One-token grammar: a trailing comment is not a token → FAIL.
+        conf_gate({"implementation-plan/phase-0.md":
+                       t_phase(0, target="current — see note"),
+                   "implementation-plan/_index.md": t_index(0)},
+                  True, "conformance-target-trailing-comment")
+        # Coherence: declared blocker later than its declared dependent
+        # (direct edge conflict) → FAIL.
+        conf_gate({"implementation-plan/phase-0.md":
+                       t_phase(0, target="next-major", unblocks="phase-1"),
+                   "implementation-plan/phase-1.md":
+                       t_phase(1, target="current", blockers="phase-0"),
+                   "implementation-plan/_index.md": t_index(0, 1)},
+                  True, "coherence-conflict-direct")
+        # Coherence: the bound proves TRANSITIVELY through an untargeted
+        # intermediate → FAIL (same class semantics: still a gate FAIL).
+        conf_gate({"implementation-plan/phase-0.md":
+                       t_phase(0, target="next-major", unblocks="phase-1"),
+                   "implementation-plan/phase-1.md":
+                       t_phase(1, blockers="phase-0", unblocks="phase-2"),
+                   "implementation-plan/phase-2.md":
+                       t_phase(2, target="current", blockers="phase-1"),
+                   "implementation-plan/_index.md": t_index(0, 1, 2)},
+                  True, "coherence-conflict-transitive")
+        # Coherence: an UNTARGETED blocker of targeted work carries only an
+        # implied bound — merely-implied bounds are never gate lines → PASS.
+        conf_gate({"implementation-plan/phase-0.md":
+                       t_phase(0, unblocks="phase-1"),
+                   "implementation-plan/phase-1.md":
+                       t_phase(1, target="current", blockers="phase-0"),
+                   "implementation-plan/_index.md": t_index(0, 1)},
+                  False, "coherence-implied-clean")
+        # Coherence: a DONE blocker's late claim is spent (absorbing —
+        # neither contributes, transmits, nor receives) → PASS.
+        conf_gate({"implementation-plan/phase-0.md":
+                       t_phase(0, status="done", target="next-major",
+                               unblocks="phase-1"),
+                   "implementation-plan/phase-1.md":
+                       t_phase(1, target="current", blockers="phase-0"),
+                   "implementation-plan/_index.md": t_index(0, 1)},
+                  False, "coherence-done-blocker-exempt")
+        # Coherence: a future-unassigned DEPENDENT imposes no bound (the
+        # non-constraining token) → PASS.
+        conf_gate({"implementation-plan/phase-0.md":
+                       t_phase(0, target="next-major", unblocks="phase-1"),
+                   "implementation-plan/phase-1.md":
+                       t_phase(1, target="future-unassigned",
+                               blockers="phase-0"),
+                   "implementation-plan/_index.md": t_index(0, 1)},
+                  False, "coherence-fu-dependent-unbounded")
+        # Coherence: an untargeted DEFERRED blocker of targeted work emits
+        # no gate line (the state tension is advisory, not a gate FAIL —
+        # deferred is non-absorbing but carries no declared claim) → PASS.
+        conf_gate({"implementation-plan/phase-0.md":
+                       t_phase(0, status="deferred", unblocks="phase-1"),
+                   "implementation-plan/phase-1.md":
+                       t_phase(1, target="current", blockers="phase-0"),
+                   "implementation-plan/_index.md": t_index(0, 1)},
+                  False, "coherence-deferred-blocker-no-line")
+        # Coherence: MIXED dependents — one declares current (contributes
+        # the bound), one is untargeted (UNDEFINED — drops out of the min
+        # entirely; it never poisons the min). The conflict fires on the
+        # blocker → FAIL. (Bites the undefined-poisons-the-min misread,
+        # which would leave this tree green.)
+        conf_gate({"implementation-plan/phase-0.md":
+                       t_phase(0, target="next-major",
+                               unblocks="phase-1 phase-2"),
+                   "implementation-plan/phase-1.md":
+                       t_phase(1, target="current", blockers="phase-0"),
+                   "implementation-plan/phase-2.md":
+                       t_phase(2, blockers="phase-0"),
+                   "implementation-plan/_index.md": t_index(0, 1, 2)},
+                  True, "coherence-mixed-dependents-conflict")
 
     if failures:
         print("[validate-docs --self-test] FAIL:")
