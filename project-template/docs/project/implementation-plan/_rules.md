@@ -77,7 +77,9 @@ that distinguish those release kinds; projects without that
 distinction use `current` / `next-release` / `future-unassigned`.
 
 The `target-enum` declaration order is the ordinal scale. A grouping's
-target derives as the maximum over its declaring members' targets.
+target derives as the maximum over its non-done and non-superseded
+declaring members' targets (see `docs/project/groupings/_rules.md`
+`## Derived status and target`).
 
 Any phase may carry version prose in its description text; tooling
 never interprets it.
@@ -98,10 +100,10 @@ alter dependency mechanics or ordering.
 
 `_index.md` stores the dependency-derived serial order of phase entries.
 It is GENERATED (a topological seed from each phase's `Blockers` /
-`Unblocks` SSOT) and VALIDATED (hard-dependency-order consistency +
-per-entry↔`_index.md` membership sync). Dependencies stay SSOT in the
-entry files; `_index.md` is not a competing source. Parallelization is
-a runtime decision, never stored.
+`Unblocks` / `Dependencies` / `Prerequisite` SSOT) and VALIDATED
+(hard-dependency-order consistency + per-entry↔`_index.md` membership
+sync). Dependencies stay SSOT in the entry files; `_index.md` is not a
+competing source. Parallelization is a runtime decision, never stored.
 
 "Never stored" is scoped to `_index.md`: the runtime decision IS
 recorded — in the client-authored, committed
@@ -114,6 +116,17 @@ snapshot's `queue` is the user-decided runtime sequence within that
 constraint. The two may legitimately differ — a difference is not
 drift to fix.
 
+Grouping membership is an input to the order derivation: grouping-mates
+(phases sharing a real grouping — GRP-000 excluded) are placed
+contiguously wherever the declared dependency edges (`Blockers` /
+`Unblocks` / `Dependencies` / `Prerequisite`) permit, interleaved only
+where cross-group blockers force it. The affinity is a tie-break among
+topologically valid orders and never constrains parallelization —
+groupings still declare no order. Completable groupings' phases order
+ahead of phases whose every grouping membership is deferral-poisoned,
+wherever the declared dependency edges permit — a deterministic
+tie-break of the same mechanism class.
+
 ## Lifecycle states admitted
 
 Phase-state vocabulary:
@@ -124,6 +137,9 @@ State is annotated in the H2 heading via `🚧` (in-progress) /
 accompany terminal supersession: a merged phase's `Status:` is
 `superseded` with `Merged-Into` set. `merged-into` / `superseded-by`
 are not state tokens.
+
+Supersession is terminal: a superseded phase is frozen, never
+revertible to any open state — revival is a NEW phase.
 
 ## Supporting files
 
