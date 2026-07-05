@@ -45,12 +45,54 @@ begins at the H2 phase heading (`## Phase N — <title>`).
 - status-enum: done in-progress not-started blocked deferred superseded
 - body-sections: Tasks Verification Agent Risks
 - extension-fields-admitted: "Execution order" Superseded-By Merged-Into "Critical distinction"
+- target-enum: current next-release next-minor next-major future-unassigned
 
 Notes: `body-sections` are recognized, not mandated (the gold varies).
 `phase-part` is lightweight (Entry-Type only); the validator tolerates
 inline parts gracefully. Phase / part / task headings follow the
 graceful naming convention: `### Phase-N.Part-x — `, `#### Phase-N.Part-x.Task-k — `,
 and epic-task `#### N.M — ` directly under `### Tasks`.
+
+## Target semantics
+
+`Target:` is optional on phase-epics. Absent = no claim — NOT
+`future-unassigned`. Present ⇒ exactly one `target-enum` token,
+non-empty (present-but-empty FAILs; an unknown value FAILs). Each
+token is a release-cycle deadline window, stated as an UPPER bound
+only (landing earlier than the window opens violates nothing):
+
+- `current` — due before the version now being built is released.
+- `next-release` — due before the release AFTER the one now being
+  built (the next release of ANY kind).
+- `next-minor` — due before the next minor-or-major release; may slip
+  past patch releases.
+- `next-major` — due before the next major release; may slip past
+  patch and minor releases.
+- `future-unassigned` — unconstrained; never release-blocking; a
+  specific version intent, when one exists, goes in the phase
+  description as prose.
+
+`next-minor` / `next-major` are meaningful only for release schemes
+that distinguish those release kinds; projects without that
+distinction use `current` / `next-release` / `future-unassigned`.
+
+The `target-enum` declaration order is the ordinal scale. A grouping's
+target derives as the maximum over its declaring members' targets.
+
+Any phase may carry version prose in its description text; tooling
+never interprets it.
+
+Targets are claims maintained by the release-boundary procedure
+(`docs/pack/PM-CHAT.md`); validation checks vocabulary, not currency.
+
+An untargeted blocker of targeted work carries an implied bound,
+computed from dependency edges, never stored. A declared target that
+exceeds the bound provable from dependency edges and other phases'
+declared targets is a validation FAIL. Where a garbled field or
+dependency cycle makes a bound unprovable, validation reports that
+defect itself and the conflict check speaks only to provable bounds.
+The coherence check reads dependency edges read-only — targets never
+alter dependency mechanics or ordering.
 
 ## Ordering — `_index.md`
 
@@ -75,9 +117,13 @@ drift to fix.
 ## Lifecycle states admitted
 
 Phase-state vocabulary:
-not-started / in-progress / done / deferred / merged-into /
-superseded-by. State is annotated in the H2 heading via `🚧`
-(in-progress) / `✅` (done) / `➡` (merged / superseded).
+not-started / in-progress / done / blocked / deferred / superseded.
+State is annotated in the H2 heading via `🚧` (in-progress) /
+`✅` (done) / `➡` (merged / superseded).
+`Merged-Into` / `Superseded-By` are the extension fields that
+accompany terminal supersession: a merged phase's `Status:` is
+`superseded` with `Merged-Into` set. `merged-into` / `superseded-by`
+are not state tokens.
 
 ## Supporting files
 

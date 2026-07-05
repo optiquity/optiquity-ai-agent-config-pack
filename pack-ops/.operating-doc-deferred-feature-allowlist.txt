@@ -421,7 +421,7 @@ snippet: done in-progress not-started blocked deferred superseded
 reason: C4 — the implementation-plan phase status-enum vocabulary (live workflow), not a deferred feature.
 
 doc: project-template/docs/project/implementation-plan/_rules.md
-snippet: in-progress / done / deferred / merged-into
+snippet: in-progress / done / blocked / deferred / superseded
 reason: C4 — the implementation-plan phase-state lifecycle vocabulary prose (live workflow), not a deferred feature.
 
 doc: project-template/docs/project/backlog/_rules.md

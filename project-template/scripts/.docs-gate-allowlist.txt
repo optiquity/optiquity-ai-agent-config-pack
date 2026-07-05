@@ -422,7 +422,7 @@ reason: rule self-reference — the machine-parsed Entry-schema status vocabular
 
 doc: docs/project/implementation-plan/_rules.md
 pattern: deferred
-snippet: not-started / in-progress / done / deferred / merged-into /
+snippet: not-started / in-progress / done / blocked / deferred / superseded
 reason: rule self-reference — the phase-state vocabulary enumeration (the H2-annotation states); a contract enumeration, not a feature advert.
 
 # ===========================================================================
