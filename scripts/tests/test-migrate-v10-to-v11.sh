@@ -184,6 +184,41 @@ assert_eq "2.5b pack-help.sh from project root rc=0" "0" "$help_rc"
 assert_contains "2.5b pack-help.sh emits client-side header" "$help_out" \
     "Pack v11 — verb reference (this project)"
 
+# 2.5c (BD-263): the v10→v11 migrator installs the groupings per-entry
+# stream skeleton (fourth stream in the BD-167 skeleton loop) AND seeds
+# the empty groupings `_toc.md` (the F10 fold — the decompose sub-op
+# covers the three v10-monolith streams only; v10 has no groupings
+# monolith, so without the seed the stream's sole readable index would
+# be missing on the migrator path).
+[[ -f "$T/docs/project/groupings/_rules.md" ]] \
+    && t_pass "2.5c groupings/_rules.md installed by migrator skeleton loop" \
+    || t_fail "2.5c groupings/_rules.md missing after migration"
+[[ -f "$T/docs/project/groupings/_intro.md" ]] \
+    && t_pass "2.5c groupings/_intro.md installed by migrator skeleton loop" \
+    || t_fail "2.5c groupings/_intro.md missing after migration"
+if cmp -s "$REPO_ROOT/project-template/docs/project/groupings/_rules.md" \
+        "$T/docs/project/groupings/_rules.md"; then
+    t_pass "2.5c installed groupings/_rules.md matches the pack template source"
+else
+    t_fail "2.5c installed groupings/_rules.md differs from the pack template source"
+fi
+if [[ -f "$T/docs/project/groupings/_toc.md" ]] \
+   && grep -q -F '(empty — no entries)' "$T/docs/project/groupings/_toc.md"; then
+    t_pass "2.5c groupings/_toc.md seeded with '(empty — no entries)' payload (F10 fold)"
+else
+    t_fail "2.5c groupings/_toc.md missing or missing empty-seed payload after migration"
+fi
+# Manifest regenerated with the 4th immutable row; the shipped
+# verify-immutable.sh runs clean against the migrated tree.
+[[ -f "$T/docs/project/immutable-manifest.txt" ]] \
+    && grep -q '^docs/project/groupings/_rules.md ' "$T/docs/project/immutable-manifest.txt" \
+    && t_pass "2.5c immutable-manifest carries the groupings/_rules.md row (4-row set)" \
+    || t_fail "2.5c immutable-manifest missing the groupings/_rules.md row"
+mig_manifest_rows=$(grep -c -v -e '^#' -e '^$' "$T/docs/project/immutable-manifest.txt" 2>/dev/null | tr -d ' ')
+assert_eq "2.5c immutable-manifest has 4 data rows (BD-263 3→4)" "4" "$mig_manifest_rows"
+( cd "$T" && bash scripts/verify-immutable.sh ) >/dev/null 2>&1 ; mig_vi_rc=$?
+assert_eq "2.5c installed verify-immutable.sh rc=0 on migrated tree" "0" "$mig_vi_rc"
+
 # Truthful report content.
 report=$(cat "$T/.pack-migrate-v10-to-v11/report.md")
 assert_contains "2.6 report has H1" "$report" \

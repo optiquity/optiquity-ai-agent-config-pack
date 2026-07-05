@@ -219,11 +219,14 @@ rm -rf "$T"
 # BD-206 (no-mirror): no monolithic mirror is generated; the per-entry
 # tree + `_toc.md` is the sole SSOT and readable form. `_format.md` is
 # FORBIDDEN on every stream (its content folds into changelog/_rules.md).
+# BD-263: groupings is the fourth per-entry stream (BD-262 contract) —
+# provisioned on every fresh install alongside the original three.
 # What CI covers:
-#   - 6 canonical templates present after greenfield init (each stream
-#     gets _rules.md + _intro.md; no _format.md anywhere)
+#   - 8 canonical templates present after greenfield init (each of the
+#     four streams gets _rules.md + _intro.md; no _format.md anywhere)
 #   - the 3 monoliths ABSENT (no regenerated mirror at parent or in subdir)
-#   - 3 empty seed _toc.md files with `(empty — no entries)` payload
+#   - 4 empty seed _toc.md files with `(empty — no entries)` payload
+#   - immutable manifest carries 4 rows (incl. groupings/_rules.md)
 # ─────────────────────────────────────────────────────────────────────────
 
 printf "\n=== Group 4: BD-166 per-entry tree skeleton (sub-steps 6+7) ===\n"
@@ -264,12 +267,33 @@ assert_eq "4.1 fresh install rc=0" "0" "$rc"
     && t_pass "4.2 docs/project/changelog/_format.md ABSENT (BD-206 forbidden)" \
     || t_fail "4.2 docs/project/changelog/_format.md unexpectedly present (BD-206 forbidden)"
 
+# BD-263: groupings — the fourth per-entry stream (BD-262 contract).
+[[ -f "$T/docs/project/groupings/_rules.md" ]] \
+    && t_pass "4.2 docs/project/groupings/_rules.md present" \
+    || t_fail "4.2 docs/project/groupings/_rules.md missing"
+[[ -f "$T/docs/project/groupings/_intro.md" ]] \
+    && t_pass "4.2 docs/project/groupings/_intro.md present" \
+    || t_fail "4.2 docs/project/groupings/_intro.md missing"
+[[ ! -f "$T/docs/project/groupings/_format.md" ]] \
+    && t_pass "4.2 docs/project/groupings/_format.md ABSENT (BD-206 forbidden)" \
+    || t_fail "4.2 docs/project/groupings/_format.md unexpectedly present (BD-206 forbidden)"
+
 # 4.2 — integrity manifest generated at install by init-project.sh. The client
 # verify-immutable.sh hashes the immutable _rules.md against this baseline;
 # without it the client errors `manifest not found` on the first install.
 [[ -f "$T/docs/project/immutable-manifest.txt" ]] \
     && t_pass "4.2 docs/project/immutable-manifest.txt present (generated at install)" \
     || t_fail "4.2 docs/project/immutable-manifest.txt missing (fresh-install integrity baseline)"
+
+# 4.2 — BD-263 (OQ-9 ACK): the manifest carries exactly 4 rows — the four
+# per-stream _rules.md incl. the groupings row (IMMUTABLE_PROJECT_RELS 3→4).
+if [[ -f "$T/docs/project/immutable-manifest.txt" ]]; then
+    manifest_rows=$(grep -c -v -e '^#' -e '^$' "$T/docs/project/immutable-manifest.txt" | tr -d ' ')
+    assert_eq "4.2 immutable-manifest has 4 data rows (BD-263 3→4)" "4" "$manifest_rows"
+    grep -q '^docs/project/groupings/_rules.md ' "$T/docs/project/immutable-manifest.txt" \
+        && t_pass "4.2 immutable-manifest carries the groupings/_rules.md row" \
+        || t_fail "4.2 immutable-manifest missing the groupings/_rules.md row"
+fi
 
 # 4.2 — end-to-end: the installed verify-immutable.sh runs clean (rc=0)
 # against the just-generated manifest. This is the realized client check.
@@ -308,11 +332,12 @@ fi
 # (BD-206: the former 4.4/4.5 mirror byte-identity asserts are deleted —
 # there is no monolithic mirror to byte-compare under the no-mirror model.)
 
-# 4.6 — three empty seed _toc.md files with the canonical empty-state
+# 4.6 — four empty seed _toc.md files with the canonical empty-state
 # payload `(empty — no entries)` (verified upstream against the actual
-# toc-regenerate.sh output; uses em-dash U+2014).
+# toc-regenerate.sh output; uses em-dash U+2014). BD-263: groupings is
+# the fourth stream in the greenfield empty-seed loop (S11 step 7).
 toc_empty_needle='(empty — no entries)'
-for stream in backlog implementation-plan changelog; do
+for stream in backlog implementation-plan changelog groupings; do
     toc_path="$T/docs/project/$stream/_toc.md"
     if [[ -f "$toc_path" ]]; then
         t_pass "4.6 $stream/_toc.md present"
@@ -329,10 +354,10 @@ done
 
 # 4.7 — no entry files seeded (greenfield starts empty per
 # IMPL-REPORT-BD-166 §3 design note). Negative assertion.
-strays=$(find "$T/docs/project/backlog" "$T/docs/project/implementation-plan" "$T/docs/project/changelog" \
+strays=$(find "$T/docs/project/backlog" "$T/docs/project/implementation-plan" "$T/docs/project/changelog" "$T/docs/project/groupings" \
     -maxdepth 1 -type f -not -name "_*" 2>/dev/null | wc -l | tr -d ' ')
 if [[ "$strays" -eq 0 ]]; then
-    t_pass "4.7 no entry files seeded (TD-NNN.md / phase-N.md / YYYY-MM-DD-*.md absent on greenfield)"
+    t_pass "4.7 no entry files seeded (TD-NNN.md / phase-N.md / GRP-NNN.md / YYYY-MM-DD-*.md absent on greenfield)"
 else
     t_fail "4.7 unexpected entry files in stream subdirs (count=$strays)"
 fi
@@ -363,7 +388,8 @@ pre_snap_dir=$(mktemp -d -t bd166-snap.XXXXXX)
 for rel in \
     "docs/project/backlog/_toc.md" \
     "docs/project/implementation-plan/_toc.md" \
-    "docs/project/changelog/_toc.md"; do
+    "docs/project/changelog/_toc.md" \
+    "docs/project/groupings/_toc.md"; do
     src="$T/$rel"
     if [[ -f "$src" ]]; then
         # Flatten path → safe snapshot filename.
@@ -386,7 +412,8 @@ done
     for pe_spec in \
         "project-backlog|docs/project/backlog" \
         "project-implementation-plan|docs/project/implementation-plan" \
-        "project-changelog|docs/project/changelog"; do
+        "project-changelog|docs/project/changelog" \
+        "project-groupings|docs/project/groupings"; do
         pe_key="${pe_spec%%|*}"
         pe_dir_rel="${pe_spec##*|}"
         per_entry_regenerate_toc "$pe_key" "$T/$pe_dir_rel" \
@@ -402,7 +429,8 @@ assert_eq "5.1 helper-level re-invocation rc=0" "0" "$regen_rc"
 for rel in \
     "docs/project/backlog/_toc.md" \
     "docs/project/implementation-plan/_toc.md" \
-    "docs/project/changelog/_toc.md"; do
+    "docs/project/changelog/_toc.md" \
+    "docs/project/groupings/_toc.md"; do
     safe_name=$(printf '%s' "$rel" | tr '/' '_')
     pre="$pre_snap_dir/$safe_name"
     post="$T/$rel"
@@ -423,6 +451,185 @@ done
 
 rm -rf "$pre_snap_dir"
 rm -rf "$T"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 6: BD-263 groupings provisioning via --update (D6.3 fold).
+#
+# The upgrade leg for already-installed v11.0 trees is the cmd_update
+# fold (no standalone v11.0→v11.x migrator by design): the groupings
+# sidecar entries install the stream, the post-copy toc-seed produces the
+# empty `_toc.md` iff absent, and the manifest regen picks up the 4th
+# immutable row. Legs map to the BD-189 #16 fixture set: (b) vanilla
+# upgrade on a groupings-less v11.0 tree; (c) customization-preserving
+# upgrade (client-authored entry files untouched — user `GRP-*.md` never
+# overwritten); (e) idempotency (double-run no-op). Plus the §P5 C2 bite
+# probe: hand-edited installed groupings `_rules.md` → installed
+# verify-immutable.sh rc≠0.
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 6: BD-263 groupings provisioning via --update (D6.3) ===\n"
+
+T6=$(make_target)
+PACK="$REPO_ROOT" bash "$INIT_SH" "$T6" <<<"y" >/dev/null 2>&1 ; rc=$?
+assert_eq "6.0 fresh install rc=0 (Group 6 base tree)" "0" "$rc"
+
+# Simulate the groupings-less v11.0 state (a pre-groupings dev install):
+# remove the stream and strip the groupings manifest row.
+rm -rf "$T6/docs/project/groupings"
+grep -v '^docs/project/groupings/_rules.md ' \
+    "$T6/docs/project/immutable-manifest.txt" \
+    > "$T6/docs/project/immutable-manifest.txt.tmp"
+mv "$T6/docs/project/immutable-manifest.txt.tmp" \
+    "$T6/docs/project/immutable-manifest.txt"
+git -C "$T6" add -A >/dev/null
+git -C "$T6" commit -q -m "simulate pre-groupings v11.0 install" 2>/dev/null
+[[ ! -d "$T6/docs/project/groupings" ]] \
+    && t_pass "6.1 baseline: groupings stream ABSENT (groupings-less v11.0 tree)" \
+    || t_fail "6.1 baseline: groupings stream unexpectedly present"
+
+# (b) vanilla upgrade: --update seeds the groupings stream.
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T6" 2>&1) ; rc=$?
+assert_eq "6.2 --update on groupings-less tree rc=0" "0" "$rc"
+[[ -f "$T6/docs/project/groupings/_rules.md" ]] \
+    && t_pass "6.2 groupings/_rules.md installed by --update" \
+    || t_fail "6.2 groupings/_rules.md missing after --update"
+[[ -f "$T6/docs/project/groupings/_intro.md" ]] \
+    && t_pass "6.2 groupings/_intro.md installed by --update" \
+    || t_fail "6.2 groupings/_intro.md missing after --update"
+if cmp -s "$REPO_ROOT/project-template/docs/project/groupings/_rules.md" \
+        "$T6/docs/project/groupings/_rules.md"; then
+    t_pass "6.2 installed groupings/_rules.md matches the pack template source"
+else
+    t_fail "6.2 installed groupings/_rules.md differs from the pack template source"
+fi
+# Empty-seed _toc.md produced by the post-copy toc-seed (absent → seeded).
+if [[ -f "$T6/docs/project/groupings/_toc.md" ]] \
+   && grep -q -F '(empty — no entries)' "$T6/docs/project/groupings/_toc.md"; then
+    t_pass "6.3 groupings/_toc.md seeded with '(empty — no entries)' payload"
+else
+    t_fail "6.3 groupings/_toc.md missing or missing empty-seed payload after --update"
+fi
+# Manifest regenerated to 4 rows incl. the groupings row.
+manifest_rows=$(grep -c -v -e '^#' -e '^$' "$T6/docs/project/immutable-manifest.txt" | tr -d ' ')
+assert_eq "6.4 immutable-manifest regenerated with 4 data rows" "4" "$manifest_rows"
+grep -q '^docs/project/groupings/_rules.md ' "$T6/docs/project/immutable-manifest.txt" \
+    && t_pass "6.4 immutable-manifest carries the groupings/_rules.md row" \
+    || t_fail "6.4 immutable-manifest missing the groupings/_rules.md row"
+# Installed verify-immutable.sh runs clean against the regenerated manifest.
+( cd "$T6" && bash scripts/verify-immutable.sh ) >/dev/null 2>&1 ; vi_rc=$?
+assert_eq "6.5 installed verify-immutable.sh rc=0 after --update" "0" "$vi_rc"
+
+# (c) customization-preserving upgrade: client-authored entry files —
+# a user grouping (GRP-001.md) and an existing-stream entry (TD-001.md) —
+# are OUTSIDE the update dispatch set and must never be touched.
+printf '# GRP-001 — user-authored grouping (must never be overwritten)\n' \
+    > "$T6/docs/project/groupings/GRP-001.md"
+printf '# TD-001 — user-authored backlog entry (must stay untouched)\n' \
+    > "$T6/docs/project/backlog/TD-001.md"
+git -C "$T6" add -A >/dev/null
+git -C "$T6" commit -q -m "user-authored entries" 2>/dev/null
+
+# (e) idempotency: snapshot the groupings surface + user files, re-run
+# --update, assert a byte-level no-op (SC16.12).
+#
+# Reconcile-first: run 1 wrote *.pre-update sidecars (the base-less
+# BD-088 classifier is conservative — ours+theirs present without a
+# baseline classifies project-shadows-new-pack even when byte-identical,
+# so every pre-existing installed file gets a sidecar). The single-slot
+# sidecar contract refuses a re-run while sidecars exist (pinned by test
+# 2.7 above); the user's reconcile step for an unchanged tree is
+# removal. Remove them so run 2 actually executes (a refusal would make
+# the byte-compare below pass vacuously).
+find "$T6" -type f -name "*.pre-update" \
+    -not -path "*/.pack-update/*" -not -path "*/.git/*" -delete
+snap6=$(mktemp -d -t bd263-snap.XXXXXX)
+for rel in \
+    "docs/project/groupings/_rules.md" \
+    "docs/project/groupings/_intro.md" \
+    "docs/project/groupings/_toc.md" \
+    "docs/project/groupings/GRP-001.md" \
+    "docs/project/backlog/TD-001.md" \
+    "docs/project/immutable-manifest.txt"; do
+    safe_name=$(printf '%s' "$rel" | tr '/' '_')
+    cp "$T6/$rel" "$snap6/$safe_name"
+done
+out=$(PACK="$REPO_ROOT" bash "$INIT_SH" --update "$T6" 2>&1) ; rc=$?
+assert_eq "6.6 second --update rc=0 (after sidecar reconcile)" "0" "$rc"
+for rel in \
+    "docs/project/groupings/_rules.md" \
+    "docs/project/groupings/_intro.md" \
+    "docs/project/groupings/_toc.md" \
+    "docs/project/groupings/GRP-001.md" \
+    "docs/project/backlog/TD-001.md" \
+    "docs/project/immutable-manifest.txt"; do
+    safe_name=$(printf '%s' "$rel" | tr '/' '_')
+    if cmp -s "$snap6/$safe_name" "$T6/$rel"; then
+        t_pass "6.7 $rel byte-identical after --update re-run (no-op)"
+    else
+        t_fail "6.7 $rel changed on --update re-run (idempotency broken)"
+    fi
+done
+rm -rf "$snap6"
+
+# §P5 C2 bite probe: hand-edit the installed groupings _rules.md →
+# installed verify-immutable.sh fails naming the file; restore → clean.
+vi_orig=$(mktemp -t bd263-rules.XXXXXX)
+cp "$T6/docs/project/groupings/_rules.md" "$vi_orig"
+printf '\nhand-edit: client must not do this\n' \
+    >> "$T6/docs/project/groupings/_rules.md"
+vi_out=$( cd "$T6" && bash scripts/verify-immutable.sh 2>&1 ) ; vi_rc=$?
+[[ "$vi_rc" -ne 0 ]] \
+    && t_pass "6.8 verify-immutable.sh rc!=0 on hand-edited groupings/_rules.md (bite)" \
+    || t_fail "6.8 verify-immutable.sh unexpectedly clean on hand-edited groupings/_rules.md"
+assert_contains "6.8 failure names the groupings file" "$vi_out" \
+    "docs/project/groupings/_rules.md"
+cp "$vi_orig" "$T6/docs/project/groupings/_rules.md"
+rm -f "$vi_orig"
+( cd "$T6" && bash scripts/verify-immutable.sh ) >/dev/null 2>&1 ; vi_rc=$?
+assert_eq "6.9 verify-immutable.sh rc=0 after restore" "0" "$vi_rc"
+
+rm -rf "$T6"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Group 7: BD-263 fail_stage bite probe — staged pack copy missing one
+# groupings template (§P5 C2 FAIL-side proof for the S11 template guard).
+#
+# Stages a tracked-files-only copy of the pack (git ls-files → tar; no
+# .git, no runtime-built fixture dirs), removes ONE groupings template,
+# and asserts a fresh install fails loud at the S11 guard naming the
+# missing canonical template.
+# ─────────────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 7: BD-263 S11 template guard (staged copy, FAIL side) ===\n"
+
+STAGED=$(mktemp -d -t bd263-staged.XXXXXX)
+( cd "$REPO_ROOT" && git ls-files -z | tar --null -T - -cf - ) \
+    | tar -C "$STAGED" -xf -
+if [[ -f "$STAGED/scripts/init-project.sh" \
+   && -f "$STAGED/project-template/docs/project/groupings/_rules.md" ]]; then
+    t_pass "7.0 staged pack copy materialized (tracked files)"
+else
+    t_fail "7.0 staged pack copy incomplete (git ls-files → tar staging failed)"
+fi
+rm -f "$STAGED/project-template/docs/project/groupings/_rules.md"
+# The pack pre-flight (detect_pack_path) requires $PACK to be a git work
+# tree; make the staged scratch copy one (test-infra scratch repo — the
+# real pack repo is never touched).
+git init -q "$STAGED" >/dev/null
+git -C "$STAGED" config user.email "test@example.com"
+git -C "$STAGED" config user.name  "Test"
+git -C "$STAGED" add -A >/dev/null
+git -C "$STAGED" commit -q -m "staged pack copy (groupings template removed)" 2>/dev/null
+
+T7=$(make_target)
+out=$(PACK="$STAGED" bash "$STAGED/scripts/init-project.sh" "$T7" <<<"y" 2>&1) ; rc=$?
+[[ "$rc" -ne 0 ]] \
+    && t_pass "7.1 fresh install FAILS when groupings/_rules.md is missing from the pack (rc=$rc)" \
+    || t_fail "7.1 install unexpectedly succeeded with groupings/_rules.md removed from the staged pack"
+assert_contains "7.1 failure names the missing canonical template" "$out" \
+    "canonical template missing: project-template/docs/project/groupings/_rules.md"
+
+rm -rf "$STAGED" "$T7"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Summary

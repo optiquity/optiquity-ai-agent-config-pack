@@ -427,8 +427,9 @@ _v10_to_v11_install_v11_artifacts() {
     # per-entry tree skeletons.
     #
     # Source: project-template/docs/project/<stream>/{_rules.md,
-    # _intro.md}. Three streams: backlog,
-    # implementation-plan, changelog. Client-immutable per
+    # _intro.md}. Four streams: backlog,
+    # implementation-plan, changelog, groupings (the fourth stream per
+    # BD-262/BD-263). Client-immutable per
     # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §3.3 — the
     # supporting-file installation creates the directory if absent and
     # copies each support file iff the destination is absent (additive,
@@ -439,14 +440,15 @@ _v10_to_v11_install_v11_artifacts() {
     # Per-entry decompose of the project's existing monolithic
     # BACKLOG.md / IMPLEMENTATION-PLAN.md / CHANGELOG.md is BD-165's
     # job (6th sub-op in this hook; lands in commit 19c). BD-167
-    # installs the contract templates ONLY.
+    # installs the contract templates ONLY. Groupings has no decompose
+    # sub-op — v10 has no groupings monolith.
     local stream_dir support_basenames base
-    for stream_dir in backlog implementation-plan changelog; do
+    for stream_dir in backlog implementation-plan changelog groupings; do
         local pack_stream_dir="$PACK/project-template/docs/project/$stream_dir"
         local target_stream_dir="$_MIGRATOR_TARGET/docs/project/$stream_dir"
         [[ -d "$pack_stream_dir" ]] || continue
         mkdir -p "$target_stream_dir"
-        # All three streams ship _rules.md + _intro.md.
+        # All four streams ship _rules.md + _intro.md.
         support_basenames="_rules.md _intro.md"
         for base in $support_basenames; do
             if [[ -f "$pack_stream_dir/$base" \
@@ -461,6 +463,23 @@ _v10_to_v11_install_v11_artifacts() {
     # against this install-time baseline (client-immutable set).
     bash "$PACK/scripts/immutable-manifest.sh" --client-tree "$_MIGRATOR_TARGET" \
         || fail_stage S5 "immutable-manifest generation failed against $_MIGRATOR_TARGET"
+
+    # BD-263 (F10 fold): seed the empty groupings `_toc.md` iff absent.
+    # The skeleton loop above ships docs/project/groupings/{_rules.md,
+    # _intro.md}; without this seed the migrator path would yield a
+    # groupings stream whose SOLE readable index is missing — the
+    # BD-165 decompose sub-op regenerates TOCs for the three v10-monolith
+    # streams only (v10 has no groupings monolith to decompose). Guarded
+    # by absence so a re-entrant run (or a tree with a populated
+    # groupings stream) keeps its existing `_toc.md` untouched. Parity
+    # with init-project.sh stage S11 step 7. `per_entry_regenerate_toc`
+    # is already sourced at adapter load
+    # (scripts/lib/migrate-v10-to-v11/decompose.sh, type-guarded).
+    local groupings_dir="$_MIGRATOR_TARGET/docs/project/groupings"
+    if [[ -d "$groupings_dir" && ! -f "$groupings_dir/_toc.md" ]]; then
+        per_entry_regenerate_toc "project-groupings" "$groupings_dir" \
+            || fail_stage S5 "per_entry_regenerate_toc failed for project-groupings (groupings _toc.md seed)"
+    fi
 
     # BD-161 (absorbed into BD-167 per
     # ARCHITECTURE-PER-ENTRY-SPLIT-INTEGRATION.md §17.2 + §8.14):

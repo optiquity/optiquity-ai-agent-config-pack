@@ -993,12 +993,13 @@ stage_s11_v11_artifacts() {
     # 6. Per-entry tree skeleton install (BD-166).
     #    Ships the project-side per-entry source-of-truth surface so
     #    a greenfield v11 client has the v11.0-shape skeleton from
-    #    the first init. Three streams (backlog, implementation-plan,
-    #    changelog) each get `_rules.md` + `_intro.md`. No entry files
-    #    (`TD-NNN.md`, `phase-N.md`, `YYYY-MM-DD-*.md`) — greenfield
-    #    starts empty; entries are authored client-side. No `_toc.md`
-    #    written directly — the TOC regenerator (step 7 below for
-    #    greenfield) produces it as the empty seed.
+    #    the first init. Four streams (backlog, implementation-plan,
+    #    changelog, groupings — the fourth per BD-262/BD-263) each get
+    #    `_rules.md` + `_intro.md`. No entry files
+    #    (`TD-NNN.md`, `phase-N.md`, `GRP-NNN.md`, `YYYY-MM-DD-*.md`) —
+    #    greenfield starts empty; entries are authored client-side. No
+    #    `_toc.md` written directly — the TOC regenerator (step 7 below
+    #    for greenfield) produces it as the empty seed.
     #
     #    Canonical templates are client-immutable per integration
     #    parent §3.3 + §9.7. We use `$copy_fn` so existing-* re-runs
@@ -1009,10 +1010,10 @@ stage_s11_v11_artifacts() {
     local pe_src pe_dst
     pe_src="$PACK/project-template/docs/project"
     pe_dst="$TARGET/docs/project"
-    [[ -d "$pe_src/backlog" && -d "$pe_src/implementation-plan" && -d "$pe_src/changelog" ]] \
+    [[ -d "$pe_src/backlog" && -d "$pe_src/implementation-plan" && -d "$pe_src/changelog" && -d "$pe_src/groupings" ]] \
         || fail_stage S11 "canonical per-entry templates missing under project-template/docs/project/ (install incomplete)"
 
-    mkdir -p "$pe_dst/backlog" "$pe_dst/implementation-plan" "$pe_dst/changelog"
+    mkdir -p "$pe_dst/backlog" "$pe_dst/implementation-plan" "$pe_dst/changelog" "$pe_dst/groupings"
 
     # backlog: _rules.md + _intro.md.
     [[ -f "$pe_src/backlog/_rules.md" ]] \
@@ -1038,8 +1039,18 @@ stage_s11_v11_artifacts() {
     "$copy_fn" "$pe_src/changelog/_rules.md" "$pe_dst/changelog/_rules.md"
     "$copy_fn" "$pe_src/changelog/_intro.md" "$pe_dst/changelog/_intro.md"
 
+    # groupings: _rules.md + _intro.md (BD-262 fourth stream; BD-263
+    # provisioning). `GRP-NNN.md` entries are never shipped, never
+    # overwritten; `_kinds.md` is never shipped (client-authored).
+    [[ -f "$pe_src/groupings/_rules.md" ]] \
+        || fail_stage S11 "canonical template missing: project-template/docs/project/groupings/_rules.md"
+    [[ -f "$pe_src/groupings/_intro.md" ]] \
+        || fail_stage S11 "canonical template missing: project-template/docs/project/groupings/_intro.md"
+    "$copy_fn" "$pe_src/groupings/_rules.md" "$pe_dst/groupings/_rules.md"
+    "$copy_fn" "$pe_src/groupings/_intro.md" "$pe_dst/groupings/_intro.md"
+
     # 6b. Integrity manifest — generate at install (hash the installed
-    #     _rules.md). The baseline verify-immutable.sh checks the 3
+    #     _rules.md). The baseline verify-immutable.sh checks the 4
     #     client-immutable _rules.md against; generating AFTER the
     #     _rules.md placement above makes the manifest reflect the
     #     actually-installed files. Generated for every class.
@@ -1080,13 +1091,14 @@ stage_s11_v11_artifacts() {
             . "$_pe_lib_dir/toc-regenerate.sh"
         fi
 
-        # Three project-side streams. Each tuple: stream_key + relative
+        # Four project-side streams. Each tuple: stream_key + relative
         # stream directory.
         local pe_spec pe_key pe_dir_rel pe_dir
         for pe_spec in \
             "project-backlog|docs/project/backlog" \
             "project-implementation-plan|docs/project/implementation-plan" \
-            "project-changelog|docs/project/changelog"; do
+            "project-changelog|docs/project/changelog" \
+            "project-groupings|docs/project/groupings"; do
             pe_key="${pe_spec%%|*}"
             pe_dir_rel="${pe_spec##*|}"
             pe_dir="$TARGET/$pe_dir_rel"
@@ -1096,7 +1108,7 @@ stage_s11_v11_artifacts() {
                 || fail_stage S11 "per_entry_regenerate_toc failed for $pe_key (greenfield empty TOC)"
         done
 
-        info "per-entry skeleton installed under docs/project/{backlog,implementation-plan,changelog}/ (per-entry tree + _toc.md; no monolithic mirror)"
+        info "per-entry skeleton installed under docs/project/{backlog,implementation-plan,changelog,groupings}/ (per-entry tree + _toc.md; no monolithic mirror)"
     fi
 }
 
@@ -1249,6 +1261,15 @@ cmd_update() {
         "project-template/docs/project/implementation-plan/_intro.md:docs/project/implementation-plan/_intro.md:generic"
         "project-template/docs/project/changelog/_rules.md:docs/project/changelog/_rules.md:generic"
         "project-template/docs/project/changelog/_intro.md:docs/project/changelog/_intro.md:generic"
+        # BD-263 (groupings provisioning): fourth per-entry stream sidecars
+        # (BD-262 contract). Without these rows an already-installed v11.0
+        # tree (pre-groupings dev install) would never gain the groupings
+        # stream via `pack update` — cmd_update is the live same-version
+        # propagation surface (no v11.0→v11.x migrator exists by design).
+        # Post-copy, cmd_update seeds the empty groupings `_toc.md` iff
+        # absent (see the toc-seed block below the iter-dir legs).
+        "project-template/docs/project/groupings/_rules.md:docs/project/groupings/_rules.md:generic"
+        "project-template/docs/project/groupings/_intro.md:docs/project/groupings/_intro.md:generic"
         # BD-180 observation F (2026-05-20): supporting-docs/* installed
         # to docs/pack/ by S6 (lines 565-583 — separate copy blocks below
         # the docs/pack/*.md glob loop since these source files live under
@@ -1297,6 +1318,31 @@ cmd_update() {
     # 3-way the custom and risk sidecaring it). Empty 3rd arg = self-classify.
     _cmd_update_iter_dir "project-template/.agents-plugin/optiquity-agents/agents" \
         ".agents-plugin/optiquity-agents/agents"
+
+    # BD-263 (groupings provisioning): seed the empty groupings `_toc.md`
+    # iff absent. A groupings-less v11.0 tree gains docs/project/groupings/
+    # {_rules.md,_intro.md} from the entries above; without this seed the
+    # stream's SOLE readable index would be missing until the client's
+    # first TOC regenerate. Guarded by absence — a tree with a populated
+    # groupings stream keeps its regenerated `_toc.md` untouched, and a
+    # re-run of --update is a no-op (SC16.12). Helpers are type-guard
+    # sourced (same convention as stage S11 step 7).
+    if [[ -d "$TARGET/docs/project/groupings" \
+       && ! -f "$TARGET/docs/project/groupings/_toc.md" ]]; then
+        local _pe_lib_dir="$PACK/scripts/lib/per-entry"
+        [[ -d "$_pe_lib_dir" ]] \
+            || die "per-entry helpers missing at $_pe_lib_dir (cannot seed groupings _toc.md)"
+        if ! type pe_die >/dev/null 2>&1; then
+            # shellcheck disable=SC1091
+            . "$_pe_lib_dir/_lib.sh"
+        fi
+        if ! type per_entry_regenerate_toc >/dev/null 2>&1; then
+            # shellcheck disable=SC1091
+            . "$_pe_lib_dir/toc-regenerate.sh"
+        fi
+        per_entry_regenerate_toc "project-groupings" "$TARGET/docs/project/groupings" \
+            || die "per_entry_regenerate_toc failed for project-groupings (--update toc seed)"
+    fi
 
     # Integrity manifest — regenerate against the UPDATED installed
     # _rules.md (there is no tracked manifest to copy; hashing the
@@ -1402,6 +1448,8 @@ cmd_update() {
 #   project-template/docs/project/implementation-plan/_intro.md  ->  docs/project/implementation-plan/_intro.md  [stage:S11,cmd_update]
 #   project-template/docs/project/changelog/_rules.md  ->  docs/project/changelog/_rules.md  [stage:S11,cmd_update]
 #   project-template/docs/project/changelog/_intro.md  ->  docs/project/changelog/_intro.md  [stage:S11,cmd_update]
+#   project-template/docs/project/groupings/_rules.md  ->  docs/project/groupings/_rules.md  [stage:S11,cmd_update]
+#   project-template/docs/project/groupings/_intro.md  ->  docs/project/groupings/_intro.md  [stage:S11,cmd_update]
 #   supporting-docs/METHODOLOGY.md  ->  docs/pack/METHODOLOGY.md  [stage:S6,cmd_update]
 #   supporting-docs/INSTALL-PROCEDURES.md  ->  docs/pack/INSTALL-PROCEDURES.md  [stage:S6,cmd_update]
 #   scripts/pack-help.sh  ->  scripts/pack-help.sh  [stage:S11]

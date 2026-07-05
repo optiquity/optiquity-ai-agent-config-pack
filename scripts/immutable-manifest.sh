@@ -11,9 +11,10 @@
 # installed copies against this install-time manifest (client-immutable:
 # clients must not edit the `_rules.md` set; pack-side editing is free).
 #
-# The immutable set is the frozen IMMUTABLE_PROJECT_RELS below (the 3
+# The immutable set is the frozen IMMUTABLE_PROJECT_RELS below (the 4
 # per-stream `_rules.md`), mirrored with verify-immutable.sh for parser
-# symmetry. Growing the set requires architect+user sign-off.
+# symmetry. Growing the set requires architect+user sign-off (the
+# groupings row landed under the BD-189/BD-263 OQ-9 sign-off).
 #
 # This tool NEVER stages, commits, or pushes (CLAUDE.md "agents-never-commit" —
 # tools do not commit; only the orchestrator commits, with user approval). It
@@ -57,6 +58,7 @@ IMMUTABLE_PROJECT_RELS="
 docs/project/backlog/_rules.md
 docs/project/implementation-plan/_rules.md
 docs/project/changelog/_rules.md
+docs/project/groupings/_rules.md
 "
 
 # ── Portable sha256 of a file → 64-hex, no filename ──────────────────────────

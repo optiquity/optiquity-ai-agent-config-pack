@@ -509,7 +509,10 @@ EOF
             # gone (BD-221). Only customization-relevant surfaces are
             # listed. tracker.toml.example is NOT listed: a v11 install no
             # longer creates it (tracker integration is deferred;
-            # flat-file is the sole supported mode).
+            # flat-file is the sole supported mode). The groupings stream
+            # templates (BD-262 fourth per-entry stream; installed on
+            # every v11.0+ path per BD-263) are customization-relevant:
+            # a client may hand-edit the shipped sidecars.
             cat <<'EOF'
 CLAUDE.md
 AGENTS.md
@@ -524,6 +527,8 @@ docs/pack/HELP-FRAGMENT.md
 .claude/skills/pack-help/SKILL.md
 .codex/skills/pack-help/SKILL.md
 .agents/skills/pack-help/SKILL.md
+docs/project/groupings/_rules.md
+docs/project/groupings/_intro.md
 EOF
             ;;
         *)
