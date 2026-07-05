@@ -13,6 +13,7 @@ your CLI for this content. Full docs in `docs/pack/PM-CHAT.md`,
 | `bash scripts/init-project.sh` | One-time setup. `--update` refreshes pack files non-destructively. |
 | `bash scripts/migrate-v10-to-v11.sh` | One-time per upgrade. |
 | `bash scripts/activate-capability.sh` | Activate a supported capability on this project — re-materializes its conditional files from `pack-capability-pool/`. |
+| `bash scripts/target-sweep.sh <verb>` | Release-boundary target enumerations: enumerate / overdue / re-encode-set / kind-set (see docs/pack/PM-CHAT.md). |
 | `./agent-run.sh <cli> --agent <name>` | Spawn a project agent. `./agent-run.sh --help` for flags. |
 | `pack td promote --to=phase-N` | Promote a TD-NNN to a new phase epic (Path 1). |
 | `pack td promote --to=phase-N.M` | Promote a TD-NNN to a new phase task under phase N (Path 2). |

@@ -154,6 +154,11 @@ pattern: date
 snippet: 2026-03-20
 reason: changelog architecture-iteration date FORMAT example the write-contract acts on (illustrative, not provenance).
 
+doc: project-template/docs/project/changelog/_rules.md
+pattern: date
+snippet: 2026-07-04
+reason: changelog release-boundary filename-grammar / heading date FORMAT example the write-contract acts on (illustrative, not provenance).
+
 # ── K11: status-line date FORMAT example (project PACK-FEEDBACK.md) ──
 doc: project-template/docs/pack/PACK-FEEDBACK.md
 pattern: date

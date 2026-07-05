@@ -186,7 +186,7 @@ Every project should have all of these. Create them before writing any code.
 |---|---|---|---|
 | `ARCHITECTURE.md` | Architectural decisions, layer map, patterns, data models | Architect agent (kickoff) | Any phase that changes architecture |
 | `docs/project/implementation-plan/` (per-entry `phase-N.md` tree + generated `_index.md`) | All phases with tasks, DoD, agent, risks — one `phase-N.md` per phase; `_index.md` is the generated serial order | PM chat + planner agent | Each phase adds a `phase-N.md` entry; never delete old phases |
-| `docs/project/changelog/` (per-entry tree + generated `_toc.md`) | Permanent dated history of what was built — one `<ID>.md` per release; `_toc.md` is the generated readable index | PM chat | One entry per phase, after reviewer approval; coder proposes entry in completion report |
+| `docs/project/changelog/` (per-entry tree + generated `_toc.md`) | Permanent dated history of what was built — one `<ID>.md` per phase at phase completion plus one per release boundary; `_toc.md` is the generated readable index | PM chat | One entry per phase, after reviewer approval; coder proposes entry in completion report |
 | `docs/project/backlog/` (per-entry tree + generated `_toc.md`) | Technical debt, deferred items, known gaps — one `<ID>.md` per item; `_toc.md` is the generated readable index | PM chat | Add/resolve; never delete items |
 | `STATUS.md` | Current phase, phase table, next actions, key metrics | PM chat or developer | After every phase completion |
 | `CLAUDE.md` | Project-specific rules for all CLI agents | PM chat | When new rules are established |
@@ -405,6 +405,9 @@ Which agent(s) to use for which tasks.
 ### Risks
 | Risk | Severity | Mitigation |
 ```
+
+`Target:` is optional; a release-cycle claim, when one exists, is set
+per the impl-plan contract's `## Target semantics`.
 
 ### Phase numbering rules
 

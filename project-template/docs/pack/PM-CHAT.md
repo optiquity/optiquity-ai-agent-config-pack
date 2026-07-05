@@ -856,6 +856,68 @@ provider operation or capability flag is added.
 
 ---
 
+## Release-boundary target sweep
+
+The sweep's enumerations come from `scripts/target-sweep.sh`
+(read-only — it never edits a phase file). Phase `Target:` claims are
+relative release-cycle windows (the impl-plan `_rules.md` `## Target
+semantics`), so each release boundary re-baselines them; dispositions
+are per-phase user decisions, and every phase-file edit is a PM-session
+act with per-edit approval.
+
+**Trigger and authority.** The PM/user declares the release in PM chat
+as a session act. A never-released project is well-defined: `current`
+means due before the FIRST release.
+
+**Scope.** Steps 2–4 scope to non-done, non-superseded phases — spent
+claims (by completion or supersession) are never re-encoded.
+
+**Atomicity.** The sweep is single-session-atomic; the only sanctioned
+partial state is the step-4 pending record. A resumed or partial sweep
+re-consults the step-1 enumeration, never a fresh scan.
+
+1. **Enumerate.** Run `bash scripts/target-sweep.sh enumerate` — every
+   phase-epic carrying `Target:`, all statuses. That output is the
+   sweep's working set.
+2. **Overdue set.** Run `bash scripts/target-sweep.sh overdue` — the
+   in-scope `current` claims. Per-phase USER decision: keep `current`,
+   loosen to a `next-*` window, set `future-unassigned`, remove the
+   field, or defer the phase (a Status-channel act, separate from the
+   target edit).
+3. **Re-encode.** Run `bash scripts/target-sweep.sh re-encode-set` —
+   the in-scope `next-release` claims. Every listed phase re-encodes
+   `next-release` → `current`; the PM applies the edits with per-edit
+   approval (the tool never writes).
+4. **Kind question.** Run `bash scripts/target-sweep.sh kind-set` —
+   the in-scope `next-minor` / `next-major` claims. Ask once, in the
+   client's own terms, whether the release was a patch, a minor, or a
+   major; then re-encode each listed phase per the answer. When the
+   answer is still pending at the boundary:
+   - The pending record is the enumerated `phase-ID = recorded-value`
+     pairs — never a rule.
+   - The live anchor is `pending_decisions` in the committed
+     `docs/project/pm-session-state.json` snapshot.
+     Vocabulary pin: phase-IDs + enum tokens + the fixed phrase only —
+     no dates, no client version literals, no free prose. The boundary
+     changelog entry carries the same enumeration as the durable
+     record; the snapshot record may compress to class + count + a
+     pointer to the boundary entry's slug when the full list presses
+     the snapshot's byte posture.
+   - The postponed execution edits exactly the enumerated pairs: when
+     the kind is decided, each enumerated phase whose current value
+     still equals the recorded value re-encodes mechanically; any
+     value mismatch → a per-phase user decision instead. The execution
+     is recorded in a NEW dated changelog entry (append-only — the
+     boundary entry itself is never edited) and `pending_decisions` is
+     cleared (the snapshot's replace-on-transition lifecycle).
+5. **Record.** Write the release-boundary changelog entry — the third
+   H3 form in the changelog stream's `_rules.md` entry contract: what
+   shipped (version text as narrative prose, never parsed) and the
+   sweep's re-target decisions, terse within the entry caps. A large
+   sweep splits follow-up entries (same date, distinct slugs).
+
+---
+
 ## Custom agent and skill workflow
 
 Projects may create project-specific agents and skills beyond what the

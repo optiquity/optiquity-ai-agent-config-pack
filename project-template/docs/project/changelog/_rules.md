@@ -33,8 +33,15 @@ lowercase-kebab slug is mandatory.
 
 One CHANGELOG entry per file. The first line is an HTML-comment
 back-pointer ABOVE the H3 heading; the content span begins at the H3
-heading (`### YYYY-MM-DD — Phase N — <title>` or
-`### YYYY-MM-DD — Architecture Iteration — <title>`).
+heading (`### YYYY-MM-DD — Phase N — <title>`,
+`### YYYY-MM-DD — Architecture Iteration — <title>`, or
+`### YYYY-MM-DD — Release boundary — <client version, prose>`).
+
+A release-boundary entry records what shipped (version text as
+narrative prose, never parsed) and the sweep's re-target decisions;
+when the kind answer is still pending at the boundary, the entry
+carries the enumerated pending pairs. A large sweep splits follow-up
+entries (same date, distinct slugs).
 
 ## Entry structure (structured, not form-family)
 
@@ -57,7 +64,9 @@ The per-entry filename is `YYYY-MM-DD-<slug>.md` where `<slug>` mirrors
 the heading suffix (e.g. `### 2026-04-20 — Phase 35 — Live Broker Sandbox`
 → `2026-04-20-phase-35.md`;
 `### 2026-03-20 — Architecture Iteration — Strategy Event Model`
-→ `2026-03-20-architecture-iteration.md`). Entries read in
+→ `2026-03-20-architecture-iteration.md`;
+`### 2026-07-04 — Release boundary — v2.3 shipped`
+→ `2026-07-04-release-boundary.md`). Entries read in
 date-descending order (newest first).
 
 ## Lifecycle states admitted
