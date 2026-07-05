@@ -4,10 +4,6 @@
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
     {
-      "bd": "BD-264",
-      "sub_step": "Wave-2 coder spawning. File/Symbol: `scripts/lib/validate_checks/discipline_parity.py` + `project-template/scripts/validate-docs.sh` (see the entry)."
-    },
-    {
       "bd": "BD-265",
       "sub_step": "Wave-2 coder spawning. File/Symbol: `project-template/scripts/groupings.sh` (NEW; see the entry)."
     }
@@ -68,5 +64,5 @@
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed",
     "SESSION DIRECTIVE (user, until revoked; not a rule change — no memory/BD): ALL spawns use isolation:worktree (the async-task channel). RO agents work in their own worktree. Reviewers + fix-coders get a LAUNCH-PAD worktree they must ABANDON: first instruction = cd into the target live worktree (the commit under review/fix) + verify pwd/HEAD/dirty-set before any work; the unused launch worktree auto-cleans. The substantive placement rules are unchanged (review/fix happens IN the commit worktree); re-engagement via SendMessage-to-agentId (transcript resume)."
   ],
-  "cycle_position": "BD-265 micro-fix running -> its final check -> land; then BD-264 lands; then manifest-sync + the batch push."
+  "cycle_position": "Awaiting the BD-265 micro-fix + final check -> its landing (the last Wave-2 child) -> manifest-sync + the batch push -> Wave 3 (BD-268)."
 }
