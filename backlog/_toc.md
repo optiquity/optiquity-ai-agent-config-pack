@@ -10,7 +10,6 @@
 - [BD-039](./BD-039.md) — Prototype / speed mode
 - [BD-040](./BD-040.md) — Fully autonomous execution mode
 - [BD-093](./BD-093.md) — v11.0 release pin (tag, README, CHANGELOG, MIGRATION cross-link)
-- [BD-105](./BD-105.md) — STATUS.md phase-row link rendering (flat-file; tracker dual-link half deferred)
 - [BD-109](./BD-109.md) — Project-side `auditor-issue-tracking` sub-agent
 - [BD-110](./BD-110.md) — Pack-side `pack-auditor` agent
 - [BD-136](./BD-136.md) — Trinity marker-section preservation pattern (Shape A + Shape B) + PM-chat authoring procedure
@@ -29,7 +28,6 @@
 - [BD-257](./BD-257.md) — Add net-new + review/refresh existing client (project-side) slash commands + their execution foundation (brainstorm-gated; project-side analog of BD-224)
 - [BD-264](./BD-264.md) — Groupings validation: Check 72 extension + new focused Check 84 + validate-docs conformance leg incl. GRP-000 reserved branch + exclusivity + toc-sync + empty-Status close + part-member close (BD-189 CBD-3)
 - [BD-265](./BD-265.md) — groupings.sh query CLI: the five locked verbs over groupings-lib.sh + derived-status/target columns + deps --deferral cascade view (BD-189 CBD-4)
-- [BD-266](./BD-266.md) — status-generate.sh: marker-delimited never-SSOT dashboard generator + --check wiring + BD-105 title-link fold + target columns (BD-189 CBD-5)
 - [BD-268](./BD-268.md) — Groupings workflow integration: METHODOLOGY Workflow 7 + PM-CHAT + trinity + prompts + pm-startup + agent defs + HELP-FRAGMENT rows + changelog Write-authority clarify + allowlist records (BD-189 CBD-7)
 
 ## Deferred
@@ -147,6 +145,7 @@
 - [BD-099](./BD-099.md) — `DEPENDENCIES.md` `gh` optional-dep pointer
 - [BD-101](./BD-101.md) — Client-migration validation gates (3 in-script gates with pass/fail)
 - [BD-104](./BD-104.md) — Cross-pack rename `IMPLEMENTATION_PLAN.md` → `IMPLEMENTATION-PLAN.md`
+- [BD-105](./BD-105.md) — STATUS.md phase-row link rendering (flat-file; tracker dual-link half deferred)
 - [BD-106](./BD-106.md) — Phase task entity model + identifier scheme + parser/emitter
 - [BD-107](./BD-107.md) — TD-NNN promotion-path tooling (Path 1 + Path 2 + direct close)
 - [BD-108](./BD-108.md) — Cross-entity dependency link orchestration + cycle check + gate-check extension
@@ -268,6 +267,7 @@
 - [BD-261](./BD-261.md) — Client phase target-version system: the relative release-cycle vocabulary (`Target:` field, derivation, release-boundary lifecycle) — prerequisite for BD-189 groupings implementation
 - [BD-262](./BD-262.md) — Groupings stream foundation: format contract + per-entry tuple + toc axis + groupings-lib.sh (BD-189 CBD-1)
 - [BD-263](./BD-263.md) — Groupings provisioning on every v11.0+ path: S11 fourth block, cmd_update rows, migrator skeleton+toc seed, immutable manifest 3→4 (BD-189 CBD-2)
+- [BD-266](./BD-266.md) — status-generate.sh: marker-delimited never-SSOT dashboard generator + --check wiring + BD-105 title-link fold + target columns (BD-189 CBD-5)
 - [BD-267](./BD-267.md) — Impl-plan ordering + lifecycle contract: grouping-affinity placement, deferral-deprioritization ordering, four-field dependency sentence, terminal-supersession sentence, groupings-contract pointer (BD-189 CBD-6)
 
 ## Deprecated
