@@ -32,6 +32,29 @@
 # grp_implied_target_map row-set golden derived from the same normative
 # table (the gate golden is never re-authored).
 #
+# ── The C1 extension (BD-262; appended legs — every landed assert above
+#    and below is byte-untouched) ──────────────────────────────────────
+#   E1  the groupings-lib.sh grp_implied_target_map row-set golden per
+#       geometry, derived from the SAME normative table (lib display
+#       values: poisoned/unreadable -> unknown with via=-; provable
+#       bound token + arg-min witness; else '-');
+#   E2  rider geometry RIDER — a conflict pair with NO _index.md: the
+#       golden asserts BOTH the conflict line AND the missing-_index.md
+#       FAIL (the coherence call runs BEFORE the index early-returns);
+#   E3  the third reader — target-sweep.sh enumerates the same fixture
+#       trees: tool rows == the lib target map's declared rows, beside
+#       the gate's own family asserts (tool vs gate vs lib — the
+#       cross-reader triangle).
+#   Extension fixture pins: every fixture phase entry carries an
+#   explicit Entry-Type (the landed write_phase emits phase-epic).
+#   Documented reader divergence: on UNTYPED entries the sweep skips
+#   (epic-only enumeration) while the gate FAILs the missing Entry-Type
+#   — so cross-reader agreement claims are scoped to GATE-GREEN trees
+#   (every tree here is typed; triangle asserts run on
+#   conflict/cycle-clean trees). The ES geometry (present-but-empty
+#   Status) is landed above; the extension authors NO new empty-Status
+#   entries.
+#
 # Usage:    bash scripts/tests/test-validate-docs-target-coherence.sh
 # Exit 0 on all pass; exit 1 on any failure.
 
@@ -429,6 +452,155 @@ else
     fail "remediation: expected the indented REMEDIATION_CONFORMANCE line after the conflict FAIL" \
         "$out"
 fi
+
+# ═════════════════════════════════════════════════════════════════════════
+# The C1 extension (BD-262) — E1 lib goldens + E2 rider geometry + E3 the
+# third reader. Consumes the SAME staged trees and the SAME normative
+# table; adds asserts only (no landed golden re-authored).
+# ═════════════════════════════════════════════════════════════════════════
+
+GRP_LIB="$PACK_ROOT/project-template/scripts/groupings-lib.sh"
+SWEEP="$PACK_ROOT/project-template/scripts/target-sweep.sh"
+if [[ ! -f "$GRP_LIB" || ! -f "$SWEEP" ]]; then
+    fail "extension inputs present" "missing: $GRP_LIB or $SWEEP"
+else
+    # shellcheck disable=SC1090
+    . "$GRP_LIB"
+fi
+
+impl_dir() { printf '%s/docs/project/implementation-plan' "$1"; }
+
+echo
+echo "== E1: grp_implied_target_map row-set goldens (the lib reader over the SAME trees) =="
+
+assert_lines "E1 SB: adjacent poison — upstream unknown; the source and the clean branch render '-'" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/sb")")" \
+    "phase-1 unknown -
+phase-2 - -
+phase-3 - -"
+assert_lines "E1 SC: live-cycle residue — cycle members + upstream unknown; off-cycle receivers '-'" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/sc")")" \
+    "phase-1 unknown -
+phase-2 unknown -
+phase-3 unknown -
+phase-4 - -
+phase-5 - -"
+assert_lines "E1 CYCW: atom inside the cycle — nothing displays a bound" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/cycw")")" \
+    "phase-1 unknown -
+phase-2 unknown -
+phase-3 unknown -"
+assert_lines "E1 SN: poison past the dependent — both upstream phases unknown; the source '-'" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/sn")")" \
+    "phase-1 unknown -
+phase-2 unknown -
+phase-3 - -"
+assert_lines "E1 SD: done-broken cycle — zero poison, zero bounds (nothing declared)" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/sd")")" \
+    "phase-1 - -
+phase-2 - -
+phase-3 - -"
+assert_lines "E1 SD2: the absorbing cut — bounds flow through the done-broken region with the arg-min witness (via = the DIRECT witness)" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/sd2")")" \
+    "phase-1 current phase-2
+phase-2 current phase-4
+phase-3 - -
+phase-4 - -"
+assert_lines "E1 GS: garbled status — the unreadable phase itself AND its upstream render unknown; the clean branch '-'" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/gs")")" \
+    "phase-1 unknown -
+phase-2 unknown -
+phase-3 - -"
+assert_lines "E1 ES: present-but-empty Status — same poison frame as GS (the landed empty-Status entry consumed, not re-authored)" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/es")")" \
+    "phase-1 unknown -
+phase-2 unknown -
+phase-3 - -"
+assert_lines "E1 SE: the arg-min witness picks the transitive branch (display shows the DIRECT witness phase-3)" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/se")")" \
+    "phase-1 current phase-3
+phase-2 - -
+phase-3 current phase-4
+phase-4 - -"
+assert_lines "E1 JCT: junction MIN via the lowest-ordinal dependent" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/jct")")" \
+    "phase-1 next-release phase-2
+phase-2 - -
+phase-3 - -"
+assert_lines "E1 EQ: equal bound still displays (the conflict predicate is strictly greater-than; display is bound, not verdict)" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/eq")")" \
+    "phase-1 current phase-2
+phase-2 - -"
+assert_lines "E1 DT: deferred phases are non-absorbing — they receive bounds" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/dt")")" \
+    "phase-1 current phase-2
+phase-2 - -
+phase-3 current phase-4
+phase-4 - -"
+assert_lines "E1 FU: future-unassigned transmits a bound and receives one" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/fu")")" \
+    "phase-1 current phase-2
+phase-2 current phase-3
+phase-3 - -"
+assert_lines "E1 RESCH: the lib is schema-driven — the reordered synthetic enum flips the lib's ordinals too (lib-ordinal == contract declaration order)" \
+    "$(grp_implied_target_map "$(impl_dir "$FIXTURE_BASE/resch")")" \
+    "phase-1 next-major phase-2
+phase-2 - -"
+
+echo
+echo "== E2: rider geometry — conflict pair + NO _index.md (both lines) =="
+
+missing_index_family() {
+    printf '%s\n' "$1" | grep -F '_index.md [conformance] missing' \
+        | sed 's/^  - //'
+}
+R="$FIXTURE_BASE/rider"; stage_tree "$R"
+write_phase "$R" 1 not-started next-major none phase-2
+write_phase "$R" 2 not-started current phase-1 none
+# NO write_index — the tree has entries but no _index.md.
+out="$(run_gate "$R")"
+assert_lines "E2 RIDER F1: the conflict line fires WITHOUT an _index.md (the coherence call precedes the index early-returns)" \
+    "$(conflict_family "$out")" \
+    "$(conflict_line 1 next-major current phase-2)"
+assert_lines "E2 RIDER F3: the missing-_index.md FAIL rides alongside (both lines, one run)" \
+    "$(missing_index_family "$out")" \
+    "docs/project/implementation-plan/_index.md [conformance] missing — the impl-plan stream has 2 phase entry/entries but no _index.md ordering (regenerate via scripts/lib/per-entry/index-generate.sh)"
+assert_lines "E2 RIDER lib rows: the lib reader agrees on the same tree" \
+    "$(grp_implied_target_map "$(impl_dir "$R")")" \
+    "phase-1 current phase-2
+phase-2 - -"
+
+echo
+echo "== E3: the third reader — target-sweep.sh over the same trees (triangle) =="
+
+# EQ is conflict/cycle-clean (gate-green on the target families): the
+# tool's enumeration must equal the lib target map's declared rows.
+sweep_eq="$(bash "$SWEEP" enumerate "$(impl_dir "$FIXTURE_BASE/eq")")"
+lib_declared_eq="$(grp_phase_target_map "$(impl_dir "$FIXTURE_BASE/eq")" \
+    | awk '$2 != "-" && $2 != "unknown"')"
+assert_lines "E3.1 EQ triangle: tool enumeration == lib declared rows (gate-green tree)" \
+    "$sweep_eq" "$lib_declared_eq"
+
+# A dedicated typed, gate-green tree with mixed statuses: enumerate is
+# all-statuses; the sweep-scope verbs drop spent claims (done).
+R="$FIXTURE_BASE/tri"; stage_tree "$R"
+write_phase "$R" 1 done current none phase-2
+write_phase "$R" 2 not-started current phase-1 none
+write_phase "$R" 3 deferred next-release none none
+write_phase "$R" 4 not-started - none none
+write_index "$R" 1 2 3 4
+out="$(run_gate "$R")"
+assert_lines "E3.2 TRI gate: zero conflict-family lines (green on the target family)" \
+    "$(conflict_family "$out")" ""
+assert_lines "E3.3 TRI gate: zero cycle-family lines" "$(cycle_family "$out")" ""
+sweep_tri="$(bash "$SWEEP" enumerate "$(impl_dir "$R")")"
+lib_declared_tri="$(grp_phase_target_map "$(impl_dir "$R")" \
+    | awk '$2 != "-" && $2 != "unknown"')"
+assert_lines "E3.4 TRI triangle: tool enumeration == lib declared rows" \
+    "$sweep_tri" "$lib_declared_tri"
+assert_lines "E3.5 TRI sweep scope: overdue drops the done phase's spent claim (deferred stays in scope)" \
+    "$(bash "$SWEEP" overdue "$(impl_dir "$R")")" \
+    "phase-2 current"
 
 # ── Summary ──────────────────────────────────────────────────────────────
 echo

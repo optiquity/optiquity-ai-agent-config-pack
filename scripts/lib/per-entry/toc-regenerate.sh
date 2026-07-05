@@ -4,12 +4,16 @@
 # Public API:
 #   per_entry_regenerate_toc <stream_key> <stream_dir>
 #       Regenerate `<stream_dir>/_toc.md` from the entry files in the
-#       directory. Per-stream axis per sidecar §5.1:
+#       directory. Per-stream axis per sidecar §5.1 (+ BD-262 groupings):
 #           pack-backlog                 grouped by Status: value
 #           pack-changelog               grouped by major version
 #           project-backlog              grouped by Status: value
 #           project-implementation-plan  grouped by phase number
 #           project-changelog            grouped by year-month, descending
+#           project-groupings            grouped by Kind (alphabetical by
+#                                        slug), IDs ascending within group;
+#                                        row grammar
+#                                        `- GRP-NNN — <Title> (phases: N)`
 #       Deterministic + idempotent (re-running on the same input yields
 #       byte-identical _toc.md). Shared parsing logic in _lib.sh per
 #       sidecar §6.2.
@@ -70,6 +74,7 @@ axis_for_stream = {
     "project-backlog":             "Status",
     "project-implementation-plan": "phase",
     "project-changelog":           "year-month",
+    "project-groupings":           "Kind",
 }
 display_name_for_stream = {
     "pack-backlog":                "pack-backlog",
@@ -77,6 +82,7 @@ display_name_for_stream = {
     "project-backlog":             "project-backlog",
     "project-implementation-plan": "project-implementation-plan",
     "project-changelog":           "project-changelog",
+    "project-groupings":           "project-groupings",
 }
 
 # Entry-file regex per stream (must mirror _lib.sh hard-coded values).
@@ -90,7 +96,14 @@ entry_regex_for_stream = {
     "project-implementation-plan": re.compile(r"^phase-\d+\.md$"),
     # Slug is optional per sidecar §3.5; mirrors _lib.sh:101.
     "project-changelog":           re.compile(r"^\d{4}-\d{2}-\d{2}(-.+)?\.md$"),
+    # BD-262: TIGHTENED — exactly 3 digits zero-padded through GRP-999,
+    # unpadded 4+ digits from GRP-1000 (kills GRP-0000; mirrors _lib.sh).
+    "project-groupings":           re.compile(r"^GRP-(\d{3}|[1-9]\d{3,})\.md$"),
 }
+
+# BD-262: per-entry member counts for the groupings row grammar
+# `- GRP-NNN — <Title> (phases: N)` (populated by the collection branch).
+member_counts = {}
 
 axis = axis_for_stream[key]
 display = display_name_for_stream[key]
@@ -186,6 +199,37 @@ for name in sorted(os.listdir(stream_dir)):
         else:
             group = entry_id[:7] if len(entry_id) >= 7 else entry_id
 
+    elif key == "project-groupings":
+        # BD-262. Title from the bold-pair `**GRP-NNN — <Title>**` line
+        # (the ID-keyed-entry anchor; title byte-preserved after the
+        # em-dash).
+        for ln in body_lines:
+            m = re.match(r"^\*\*GRP-\d+ — (.+?)\*\*", ln)
+            if m:
+                title = m.group(1).strip()
+                break
+        # Group: the `Kind:` field — the stream's classification axis
+        # (plain `Field: value` form per the closed groupings grammar).
+        # Kind encodes no execution order; groups render alphabetically.
+        for ln in body_lines:
+            m = re.match(r"^Kind:\s*(\S+)", ln)
+            if m:
+                group = m.group(1).strip()
+                break
+        if not group:
+            # Display fallback only (a missing Kind is a validation
+            # matter, not the regenerator's); deterministic group label.
+            group = "(no kind)"
+        # Member count for the pinned row grammar
+        # `- GRP-NNN — <Title> (phases: N)`.
+        mp_value = ""
+        for ln in body_lines:
+            m = re.match(r"^Member-phases:\s*(.*)$", ln)
+            if m:
+                mp_value = m.group(1)
+                break
+        member_counts[entry_id] = len(re.findall(r"phase-\d+", mp_value))
+
     if not title:
         title = entry_id  # fallback so the TOC is never blank
 
@@ -231,6 +275,10 @@ def order_groups(key, group_order):
     if key == "project-changelog":
         # Year-month descending.
         return sorted(group_order, reverse=True)
+    if key == "project-groupings":
+        # Kind slugs alphabetical (BD-262; the Kind axis encodes no
+        # execution order — alphabetical is pure presentation).
+        return sorted(group_order)
     return sorted(group_order)
 
 ordered_groups = order_groups(key, group_order)
@@ -262,6 +310,10 @@ def entry_sort_key(key, entry_tuple):
         # comparison is lexicographic; negating per-char ord values
         # inverts the ordering so newer dates sort first.
         return tuple(-ord(c) for c in filename)
+    if key == "project-groupings":
+        # IDs ascending by numeric part within each Kind group (BD-262).
+        m = re.match(r"^GRP-(\d+)$", entry_id)
+        return int(m.group(1)) if m else 0
     return entry_id
 
 # ─── Emit the TOC ────────────────────────────────────────────
@@ -286,7 +338,14 @@ else:
         items = grouped[group]
         items.sort(key=lambda e: entry_sort_key(key, e))
         for (filename, entry_id, title) in items:
-            out.append(f"- [{entry_id}](./{filename}) — {title}")
+            if key == "project-groupings":
+                # BD-262 pinned row grammar (documented in the shipped
+                # stream contract's Write-authority section — the
+                # client-side format SSOT the PM regenerates against).
+                count = member_counts.get(entry_id, 0)
+                out.append(f"- {entry_id} — {title} (phases: {count})")
+            else:
+                out.append(f"- [{entry_id}](./{filename}) — {title}")
         out.append("")
 
 # Trim trailing blank lines, ensure single trailing newline.

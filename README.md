@@ -151,6 +151,7 @@ project-template/                           Unified project template (v11)
 │                                           form (no monolithic mirror; no _format.md).
 │   ├── backlog/_rules.md, _intro.md        per-stream contract + human-only intro
 │   ├── implementation-plan/_rules.md, _intro.md   same shape (ordering via generated _index.md)
+│   ├── groupings/_rules.md, _intro.md      same shape (phase-membership groupings; orderless, no _index.md)
 │   └── changelog/_rules.md, _intro.md      changelog schema folds into _rules.md
 ├── scripts/                                Build, test, validation scripts (15)
 ├── CLAUDE.md                               Claude context file (unified template; "Quick reference" addendum v11)

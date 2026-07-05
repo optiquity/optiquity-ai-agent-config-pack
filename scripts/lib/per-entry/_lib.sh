@@ -6,7 +6,7 @@
 # streams. There is NO regenerated monolithic mirror.
 #
 # Sourced by per-entry/decompose.sh, per-entry/toc-regenerate.sh. Holds:
-#   - Hard-coded stream-shape table (5 streams; entry regex + state
+#   - Hard-coded stream-shape table (6 streams; entry regex + state
 #     vocabulary + grammar field labels are hard-coded per integration
 #     parent §7.5 — only the supporting-file basename list is read at
 #     runtime from `_rules.md`).
@@ -41,12 +41,12 @@
 # Do NOT add a shebang — this file is sourced, not executed.
 
 # ─────────────────────────────────────────────────────────────────
-# Constants — the five stream tuples
+# Constants — the six stream tuples
 # ─────────────────────────────────────────────────────────────────
 #
 # Each stream has a key plus 3 attributes. Bash 3.2 has no associative
 # arrays; `pe__stream_attr` resolves an attribute by string key per
-# stream. Lookups walk the 5-stream `case` (O(1) effectively).
+# stream. Lookups walk the 6-stream `case` (O(1) effectively).
 #
 # Stream key: matches the directory basename in the canonical path; for
 #   pack streams pack-self uses this key.
@@ -61,9 +61,9 @@
 #   directory path (see `pe_stream_for_path`).
 #
 # Stream ordering: pack/backlog, pack/changelog, project/backlog,
-# project/implementation-plan, project/changelog. (Ordering is not
-# load-bearing; it just needs to be deterministic.)
-PE_STREAM_KEYS="pack-backlog pack-changelog project-backlog project-implementation-plan project-changelog"
+# project/implementation-plan, project/changelog, project/groupings.
+# (Ordering is not load-bearing; it just needs to be deterministic.)
+PE_STREAM_KEYS="pack-backlog pack-changelog project-backlog project-implementation-plan project-changelog project-groupings"
 
 pe__stream_attr() {
     # $1 = stream key, $2 = attr key (entry-regex, support, dir-suffix)
@@ -120,6 +120,22 @@ pe__stream_attr() {
                 entry-regex) printf '^[0-9]{4}-[0-9]{2}-[0-9]{2}(-.+)?\.md$' ;;
                 support) printf '_rules.md _intro.md _toc.md' ;;
                 dir-suffix) printf 'docs/project/changelog' ;;
+            esac
+            ;;
+        project-groupings)
+            # BD-262: the fourth project-side stream (groupings of phases).
+            # TIGHTENED entry regex: exactly three digits zero-padded through
+            # GRP-999, then unpadded four-plus digits from GRP-1000 — kills
+            # the `GRP-0000` masquerade while admitting `GRP-1000` (enforces
+            # the contract's exactly-3-digits-until-999 numbering sentence).
+            # Mirrored in toc-regenerate.sh and in the shipped stream
+            # contract project-template/docs/project/groupings/_rules.md.
+            # No `_index.md` (groupings are orderless) and no `_kinds.md`
+            # (the Kind enum is fixed in the immutable `_rules.md`).
+            case "$2" in
+                entry-regex) printf '^GRP-([0-9]{3}|[1-9][0-9]{3,})\.md$' ;;
+                support) printf '_rules.md _intro.md _toc.md' ;;
+                dir-suffix) printf 'docs/project/groupings' ;;
             esac
             ;;
         *)
@@ -308,9 +324,12 @@ pe_write_atomic() {
 # Sort entry filenames deterministically. Pack-changelog and
 # project-changelog have version- or date-prefixed names that sort
 # correctly under standard `LC_ALL=C sort`. BD-NNN / TD-NNN /
-# phase-N also sort correctly under `LC_ALL=C sort` because they
-# share a fixed prefix and a numeric tail (with consistent zero-
-# padding for BD/TD per sidecar §3.1).
+# phase-N / GRP-NNN also sort correctly under `LC_ALL=C sort` because
+# they share a fixed prefix and a numeric tail (with consistent zero-
+# padding for BD/TD per sidecar §3.1 and for GRP through GRP-999 per
+# the groupings stream contract; the TOC regenerator orders entries by
+# NUMERIC id within groups, so its output is numeric-correct past any
+# padding boundary).
 #
 # Stdin: one filename per line. Stdout: deterministically sorted lines.
 pe_sort_entries() {
