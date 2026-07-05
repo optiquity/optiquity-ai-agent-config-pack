@@ -48,6 +48,10 @@ echo "[validate] running validate-docs.sh (operating-doc enforcement)"
 echo "[validate] running verify-immutable.sh (pack-shipped immutable-file integrity)"
 "$SCRIPT_DIR/verify-immutable.sh" || EXIT_CODE=1
 
+# Always run (language-independent): STATUS.md class-1 drift gate (SKIP-lenient when STATUS.md is absent or marker-less).
+echo "[validate] running status-generate.sh --check (STATUS.md class-1 drift gate)"
+"$SCRIPT_DIR/status-generate.sh" --check || EXIT_CODE=1
+
 if has_swift; then
   RAN_SOMETHING=1
   echo "[validate] Swift detected — running validate-swift.sh"
