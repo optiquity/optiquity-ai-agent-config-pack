@@ -31,7 +31,6 @@
 - [BD-264](./BD-264.md) — Groupings validation: Check 72 extension + new focused Check 84 + validate-docs conformance leg incl. GRP-000 reserved branch + exclusivity + toc-sync + empty-Status close + part-member close (BD-189 CBD-3)
 - [BD-265](./BD-265.md) — groupings.sh query CLI: the five locked verbs over groupings-lib.sh + derived-status/target columns + deps --deferral cascade view (BD-189 CBD-4)
 - [BD-266](./BD-266.md) — status-generate.sh: marker-delimited never-SSOT dashboard generator + --check wiring + BD-105 title-link fold + target columns (BD-189 CBD-5)
-- [BD-267](./BD-267.md) — Impl-plan ordering + lifecycle contract: grouping-affinity placement, deferral-deprioritization ordering, four-field dependency sentence, terminal-supersession sentence, groupings-contract pointer (BD-189 CBD-6)
 - [BD-268](./BD-268.md) — Groupings workflow integration: METHODOLOGY Workflow 7 + PM-CHAT + trinity + prompts + pm-startup + agent defs + HELP-FRAGMENT rows + changelog Write-authority clarify + allowlist records (BD-189 CBD-7)
 
 ## Deferred
@@ -269,6 +268,7 @@
 - [BD-260](./BD-260.md) — Add the `work` earliest pre-launch release-state qualifier (before `alpha`) to the versioning scheme (BD-242 successor)
 - [BD-261](./BD-261.md) — Client phase target-version system: the relative release-cycle vocabulary (`Target:` field, derivation, release-boundary lifecycle) — prerequisite for BD-189 groupings implementation
 - [BD-262](./BD-262.md) — Groupings stream foundation: format contract + per-entry tuple + toc axis + groupings-lib.sh (BD-189 CBD-1)
+- [BD-267](./BD-267.md) — Impl-plan ordering + lifecycle contract: grouping-affinity placement, deferral-deprioritization ordering, four-field dependency sentence, terminal-supersession sentence, groupings-contract pointer (BD-189 CBD-6)
 
 ## Deprecated
 

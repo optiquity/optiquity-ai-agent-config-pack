@@ -1,6 +1,6 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "3611602",
+  "boundary_commit": "94aac44",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [
     {
@@ -18,18 +18,38 @@
     {
       "bd": "BD-266",
       "sub_step": "Wave-2 coder spawning. File/Symbol: `project-template/scripts/status-generate.sh` (NEW; see the entry)."
-    },
-    {
-      "bd": "BD-267",
-      "sub_step": "Wave-2 coder spawning. File/Symbol: `project-template/docs/project/implementation-plan/_rules.md` (see the entry)."
     }
   ],
   "in_flight_agents": [
     {
-      "name": "reviewer-bd262-2",
+      "name": "reviewer-bd265",
       "role": "pack-reviewer",
-      "purpose": "BD-262 re-review (light; in the BD-262 worktree)",
-      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/REVIEW-BD262-2.md"
+      "purpose": "BD-265 review (in the BD-265 worktree)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/REVIEW-BD265.md"
+    },
+    {
+      "name": "reviewer-bd263",
+      "role": "pack-reviewer",
+      "purpose": "BD-263 review (in the BD-263 worktree)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/REVIEW-BD263.md"
+    },
+    {
+      "name": "reviewer-bd266",
+      "role": "pack-reviewer",
+      "purpose": "BD-266 review (in the BD-266 worktree)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/REVIEW-BD266.md"
+    },
+    {
+      "name": "reviewer-bd264",
+      "role": "pack-reviewer",
+      "purpose": "BD-264 review (in the BD-264 worktree)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/REVIEW-BD264.md"
+    },
+    {
+      "name": "reviewer-bd267-2",
+      "role": "pack-reviewer",
+      "purpose": "BD-267 re-review (light; in the BD-267 worktree)",
+      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/REVIEW-BD267-2.md"
     }
   ],
   "queue": [
@@ -50,5 +70,5 @@
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed",
     "SESSION DIRECTIVE (user, until revoked; not a rule change — no memory/BD): ALL spawns use isolation:worktree (the async-task channel). RO agents work in their own worktree. Reviewers + fix-coders get a LAUNCH-PAD worktree they must ABANDON: first instruction = cd into the target live worktree (the commit under review/fix) + verify pwd/HEAD/dirty-set before any work; the unused launch worktree auto-cleans. The substantive placement rules are unchanged (review/fix happens IN the commit worktree); re-engagement via SendMessage-to-agentId (transcript resume)."
   ],
-  "cycle_position": "Spawning the five Wave-2 coders (the foundation is at HEAD; the API frozen)."
+  "cycle_position": "BD-267 at HEAD; the BD-265 fix pass next; BD-263 patch banked for its slot; the BD-266 triage + the none-(superseded) confirm awaiting the user; the BD-264 review running."
 }
