@@ -4,8 +4,11 @@
 # Five verbs over the shared derivation library `groupings-lib.sh`
 # (sourced sibling). This script is PRESENTATION ONLY: every derivation
 # (scan, reverse lookup, derived status, derived target, dependency
-# edges, order, cascade, implied bounds, counts) comes from the library;
-# nothing is re-derived here. There is no write path.
+# edges, order, cascade, implied bounds, counts) comes from the library,
+# except the target-enum ordinal scale — re-parsed here as a faithful
+# mirror of the library's parser, solely for the poisoned-max
+# presentation join (the frozen library API exports no ordinal
+# accessor). There is no write path.
 #
 # Verbs:
 #   list
