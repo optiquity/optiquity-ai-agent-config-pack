@@ -87,6 +87,8 @@ Files not matching the entry regex AND not in this list are SKIP.
 Writes are PM-Chat authority. Read more at `docs/pack/PM-CHAT.md` +
 `docs/pack/METHODOLOGY.md` Part 7. Write procedure: write a new
 per-entry file at `docs/project/changelog/<YYYY-MM-DD-slug>.md`
-(append-only; one entry per phase at phase completion; date = the date
+(append-only; one entry per phase at phase completion, plus
+release-boundary and sweep-execution entries per the entry contract;
+date = the date of the recorded event — for a phase entry, the date
 the phase was committed to `main`). After any entry add, regenerate
 `_toc.md` before staging. Never hand-edit `_toc.md` (derived index).

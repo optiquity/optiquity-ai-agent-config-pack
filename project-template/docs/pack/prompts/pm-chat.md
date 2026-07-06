@@ -155,14 +155,17 @@ files touched.
 **Success criteria:**
 - Exact entries exist with the prescribed BACKLOG-entry shape (per the
   schema block under Constraints).
-- Phase-title links in STATUS.md validate (anchor format per the rule
-  under Constraints).
+- STATUS.md generated sections are regenerated (not hand-edited) and
+  `bash scripts/status-generate.sh --check` passes.
 - Cancelled/Deprecated items have flag-for-review applied to dependents.
 - Artifact (`docs/project/backlog/` tree and/or STATUS.md edits) is the
   target file edit itself; no separate report file is needed (sub-case B).
 
 **Files in scope:** the `docs/project/backlog/` tree and/or `STATUS.md` only.
-No other file is modified.
+No other file is modified. STATUS.md hand edits are legal ONLY inside
+the `STATUS-HAND` marker section; table and link updates route through
+`bash scripts/status-generate.sh` (regenerate, never hand-edit a
+generated section).
 
 **Constraints:** PM chat self-prompt. Requires explicit user approval
 before executing. Do not modify any other file.
@@ -199,16 +202,15 @@ items whose Blockers list names this TD-NNN for user review before proceeding.
 Do not automatically unblock any of them.
 
 **To update STATUS.md:**
-- Mark Phase [N] as ✅ Complete in the phase table
-- Update "Current Phase" to: Phase [N+1] — [Title] (not started)
-- Update "Next Actions" to: [list]
-- Update "Key Metrics" test count to: [N] passing, 0 failing
-- Link every phase Title in the phase table to its phase entry using
-  `[Title](implementation-plan/phase-N.md#anchor)` format.
-  GitHub anchor: lowercase, spaces → hyphens, em-dash `—` removed (leaves `--`),
-  special characters (backticks, colons, parentheses, periods, asterisks, slashes) stripped.
-  Example: `## Phase 35 — Live Broker Sandbox Verification` →
-  `[Live Broker Sandbox Verification](implementation-plan/phase-35.md#phase-35--live-broker-sandbox-verification)`.
+- Set the phase's `Status:` in its `phase-N.md` entry (the phase table
+  derives from the phase files), then regenerate the generated sections:
+  `bash scripts/status-generate.sh`. The phase table, groupings table,
+  and title links are generator output — never hand-edit them.
+- Update "Next Actions" / "Key Metrics" prose inside the `STATUS-HAND`
+  marker section only.
+- Phase-title link format (hand-authored links outside the generated
+  sections): per the STATUS.md rules in `docs/pack/PM-CHAT.md`
+  § Behavioral rules — the generator encodes the same rule.
 
 **Completion report:** The artifact is the target-file edit itself
 (sub-case B). Confirm what was changed by naming the file(s) edited

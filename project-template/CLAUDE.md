@@ -223,14 +223,15 @@ column.
 | Directory | Contents | Updated by | Source |
 |---|---|---|---|
 | `docs/pack/` | `METHODOLOGY.md`, `INSTALL-PROCEDURES.md`, `prompts/`, `PM-CHAT.md`, `PLATFORM-SKILLS.md`, `PACK-FEEDBACK.md` | Pack version updates only (except PACK-FEEDBACK.md — PM chat appends during project) | flat |
-| `docs/project/` | `ARCHITECTURE.md`, `STATUS.md`, and the per-entry stream subdirs `backlog/`, `implementation-plan/`, `changelog/` (each its own source-of-truth tree plus a generated `_toc.md`; no monolithic mirror) | PM chat and developer during active development | flat |
+| `docs/project/` | `ARCHITECTURE.md`, `STATUS.md`, and the per-entry stream subdirs `backlog/`, `implementation-plan/`, `changelog/`, `groupings/` (each its own source-of-truth tree plus a generated `_toc.md`; no monolithic mirror) | PM chat and developer during active development | flat |
 | `docs/reference/` | Project-specific user-facing documentation (how-to guides, API references) | Developer as needed | flat |
 
 Root-level files: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `README.md`, `agent-run.sh`.
 
 **Per-entry source-of-truth trees.** Project streams under
-`docs/project/backlog/`, `docs/project/implementation-plan/`, and
-`docs/project/changelog/` are per-entry source-of-truth trees in
+`docs/project/backlog/`, `docs/project/implementation-plan/`,
+`docs/project/changelog/`, and `docs/project/groupings/` are per-entry
+source-of-truth trees in
 flat-file mode; read each `<stream>/_rules.md` for the per-stream
 contract before any per-entry edit. Each tree plus its generated
 `_toc.md` index is the SOLE source of truth and readable form for that

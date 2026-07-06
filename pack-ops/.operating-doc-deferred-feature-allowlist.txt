@@ -505,6 +505,18 @@ doc: supporting-docs/METHODOLOGY.md
 snippet: Add the deferred items explicitly to the
 reason: C4 — a workflow RULE about handling deferral.
 
+doc: supporting-docs/METHODOLOGY.md
+snippet: some non-done actives, all of them deferred
+reason: C4 — the Workflow-7 grouping derived-status ROLLUP row (`deferred` is a live phase-status token the rollup consumes), not a deferred pack feature.
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: b / d / s / u = blocked / deferred / superseded / unreadable
+reason: C4 — the rollup counter legend naming the live phase-status families (`deferred` is one status token), not a deferred pack feature.
+
+doc: supporting-docs/METHODOLOGY.md
+snippet: newly set to `deferred`
+reason: C4 — the Workflow-7 deferral-flip scheduling rule (`deferred` is a live phase-status transition), not a deferred pack feature.
+
 doc: supporting-docs/INSTALL-PROCEDURES.md
 snippet: no deferred items remain
 reason: C4 — the live TD-deferral workflow (procedure step).

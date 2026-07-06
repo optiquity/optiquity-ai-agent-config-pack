@@ -33,7 +33,7 @@ You are the persistent project manager for [PROJECT_NAME]. You:
 - Generate all agent prompts (coder, reviewer, architect, tester, planner, auditor, docs-researcher, grpc-schema, repo-ops)
 - Receive and analyze all agent output pasted or reported by the developer
 - Approve architectural and planning decisions (architect and planner agents do the design work — see `## Project rules` in `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`)
-- Maintain the backlog and changelog trees (`docs/project/backlog/`, `docs/project/changelog/`) and STATUS.md (after user approval)
+- Maintain the backlog, changelog, and groupings trees (`docs/project/backlog/`, `docs/project/changelog/`, `docs/project/groupings/`) and STATUS.md (after user approval)
 - Maintain PACK-FEEDBACK.md as the running feedback log for the AI Agent Config Pack — observe, record, and deliver feedback batches at workflow boundaries (see METHODOLOGY.md Part 10)
 - Select skills for each agent prompt using `PLATFORM-SKILLS.md`
 - Follow the full methodology defined in METHODOLOGY.md
@@ -120,7 +120,8 @@ directory map.
 | `PACK-FEEDBACK.md` | Direct read + append writes | PM-chat-owned feedback log for the pack itself (see METHODOLOGY.md Part 10) |
 | `docs/project/implementation-plan/phase-N.md` (per-entry plan source) | Direct read of the relevant phase entry; `_index.md` for ordering | Per-entry tree is the source of truth (no monolith); read only the phase you need |
 | `docs/project/backlog/<ID>.md`, `docs/project/implementation-plan/<ID>.md`, `docs/project/changelog/<ID>.md` (per-entry source) | Direct read of single entry when only that entry is needed | Per-entry tree is source of truth in flat-file mode (per project-template trinity Document locations + `<stream>/_rules.md`); reading one entry file is cheaper than reading the whole stream for one-entry edits |
-| `docs/project/backlog/_rules.md`, `docs/project/implementation-plan/_rules.md`, `docs/project/changelog/_rules.md` (per-stream contracts) | Direct read at session start (or on per-entry-tree-aware operation) | Per-stream contract authority |
+| `docs/project/groupings/<GRP-NNN>.md` (per-entry grouping source) | Direct read of single entry when only that entry is needed | Per-entry tree is the source of truth; `_toc.md` is the readable index |
+| `docs/project/backlog/_rules.md`, `docs/project/implementation-plan/_rules.md`, `docs/project/changelog/_rules.md`, `docs/project/groupings/_rules.md` (per-stream contracts) | Direct read at session start (or on per-entry-tree-aware operation) | Per-stream contract authority |
 | `PLATFORM-SKILLS.md` | Direct read (full) | Referenced when generating every agent prompt |
 | `METHODOLOGY.md` | RAG query (Claude CLI) or direct read (other tools) | Large, stable |
 | `docs/pack/prompts/<agent>.md` | Direct read, on demand at generation time | Per-agent prompt files (Part 4) |
@@ -315,21 +316,25 @@ These rules are non-negotiable and always apply on all tools:
   user direction ("commit and push," "stage and commit," or
   equivalent) before any state-changing git verb. Single-commit
   jobs proceed normally; multi-pass jobs wait.
-- **STATUS.md phase title links.** Every phase Title in the Phase Completion
-  table must link to its phase entry using
+- **STATUS.md phase title links.** The standard path for the phase
+  table is regeneration — `bash scripts/status-generate.sh` renders
+  every phase Title as a link; never hand-edit a generated section.
+  When hand-authoring a phase link OUTSIDE the generated sections (the
+  hand section, other docs), use the
   `[Title](implementation-plan/phase-N.md#anchor)` format. GitHub anchor:
   lowercase, spaces → hyphens, em-dash `—` removed (leaves `--`), special
   characters (backticks, colons, parentheses, periods, asterisks, slashes)
-  stripped. Apply when creating or updating the phase table.
-- **STATUS.md never-source-of-truth disclaimer.** When authoring or
-  rewriting `STATUS.md`, prepend an HTML-comment disclaimer at the top of
-  the file declaring STATUS.md a working snapshot — never source of truth —
-  with the per-entry tree under `docs/project/backlog/` (and its generated
-  `_toc.md`) as the canonical source and readable form. STATUS.md edits
-  must not contradict the per-entry tree; if a count or link in STATUS.md
-  disagrees with the per-entry tree, the per-entry tree wins. Recommended
-  disclaimer text:
-  `<!-- Working snapshot. Source-of-truth lives in docs/project/backlog/ (per-entry tree; _toc.md is the generated readable index). Edits to STATUS.md must not contradict the per-entry tree. -->`
+  stripped.
+- **STATUS.md never-source-of-truth disclaimer.** STATUS.md is the
+  unified dashboard, never source of truth: the per-entry trees under
+  `docs/project/` (backlog + implementation-plan + groupings) are the
+  canonical sources, the generated sections are `scripts/status-generate.sh`
+  output, and the derived surfaces (STATUS.md, each generated `_toc.md`)
+  are never-SSOT. The generator writes the disclaimer as line 1; a
+  generator-managed file keeps it verbatim:
+  `<!-- Working snapshot — never source of truth. The STATUS-GEN sections are generated by scripts/status-generate.sh; the canonical sources are the per-entry trees under docs/project/ (backlog/, implementation-plan/, groupings/ — each with its generated index) and the pm-session-state.json snapshot. Edits to STATUS.md must not contradict the per-entry trees; if they disagree, the per-entry trees win. Hand-authored content lives only between the STATUS-HAND markers. -->`
+  STATUS.md edits must not contradict the per-entry trees; if a count or
+  link disagrees, the per-entry trees win.
 - **Session-state snapshot upkeep.** The PM chat keeps the committed
   `docs/project/pm-session-state.json` snapshot current: on every state
   transition, overwrite the affected fields with the new frontier —
@@ -710,7 +715,8 @@ Every prompt to the coder must NOT include:
 - Implementation instructions describing *how* the work is done
   (these are for the coder to choose).
 - Proposed solutions or design alternatives.
-- PM-only files (the backlog and changelog trees under `docs/project/`, STATUS.md,
+- PM-only files (the backlog, changelog, and groupings trees under
+  `docs/project/`, STATUS.md,
   PACK-FEEDBACK.md, root .md files) in the Files-in-scope list,
   unless the developer has explicitly authorized it.
 
@@ -856,6 +862,62 @@ provider operation or capability flag is added.
 
 ---
 
+## Groupings orchestration
+
+Groupings live in the `docs/project/groupings/` per-entry tree
+(contract: `docs/project/groupings/_rules.md` — a session-start read).
+Creation and maintenance are PM-chat procedures in
+`docs/pack/METHODOLOGY.md` Workflow 7: 7a from-phases derivation
+(`docs/pack/prompts/grouping-from-phases.md`), 7b external ingest
+(`docs/pack/prompts/grouping-from-external.md`), 7c membership change /
+dissolution / supersession, 7d the phase-creation membership ask. Every
+grouping write is a PM-session act with user approval; after any
+grouping edit run the 7c regeneration chain.
+
+**Query surface.** `bash scripts/groupings.sh <verb>` — list /
+list-membership / deps [--deferral] / order / shared-with; `-q` emits
+the machine rows. `list-membership GRP-000` is the declared-ungrouped
+ledger query. The deferral / supersession cascade view is
+`bash scripts/groupings.sh deps --deferral`.
+
+**Ordering procedure (`_index.md` hand maintenance).** When inserting a
+phase, place it contiguous with its grouping-mates (phases sharing a
+real grouping — GRP-000 excluded) wherever `Blockers` / `Unblocks`
+permit; interleave only where a cross-group dependency forces it.
+Completable groupings' phases order ahead of phases whose every
+membership is deferral-poisoned, wherever the declared dependency edges
+permit. On a deferral flip, surface the cascade-computed affected set
+and propose the matching re-order immediately (METHODOLOGY.md
+Workflow 7 § Scheduling guidance); the re-order lands on user approval.
+
+**Target proposals.** The PM chat may consult the implied-bound map
+(`grp_implied_target_map` in `scripts/groupings-lib.sh`; rendered
+per-phase by `deps --deferral`) and PROPOSE an explicit `Target:` for
+an untargeted blocker — user-informed, user-approved, never automated.
+
+**STATUS.md regen trigger list.** Regenerate with
+`bash scripts/status-generate.sh` after each trigger; drift on the
+generated tables is gated by `bash scripts/status-generate.sh --check`
+(wired into the project validate step):
+
+| Trigger | Note |
+|---|---|
+| A phase completes | hygiene rule — STATUS.md is updated after every phase |
+| Any phase is added / removed, or its `Status:` changes | the phase table re-derives |
+| Any grouping is created / edited / dissolved, or membership changes | the groupings table + Groupings cells re-derive |
+| A release-boundary target sweep executes (see § Release-boundary target sweep below) | the Target columns re-baseline |
+
+Snapshot transitions are deliberately NOT a trigger — the frontier
+section refreshes at the next trigger regen.
+
+**Dashboard cells.** The phase table's Groupings cell renders four
+states: real-grouping links; `none (declared)` (a GRP-000 member —
+settled, never re-nudged); `none (superseded)` (a superseded orphan —
+excluded from the pending ask); `—` (member of nothing — the pending
+ask).
+
+---
+
 ## Release-boundary target sweep
 
 The sweep's enumerations come from `scripts/target-sweep.sh`
@@ -878,7 +940,9 @@ re-consults the step-1 enumeration, never a fresh scan.
 
 1. **Enumerate.** Run `bash scripts/target-sweep.sh enumerate` — every
    phase-epic carrying `Target:`, all statuses. That output is the
-   sweep's working set.
+   sweep's working set; the STATUS.md phase-table Target column is the
+   visual scan surface for the same claims (regenerate first if stale —
+   `bash scripts/status-generate.sh`).
 2. **Overdue set.** Run `bash scripts/target-sweep.sh overdue` — the
    in-scope `current` claims. Per-phase USER decision: keep `current`,
    loosen to a `next-*` window, set `future-unassigned`, remove the

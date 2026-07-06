@@ -86,6 +86,19 @@ Read only the most recent entry in the `docs/project/changelog/` tree.
 Identify the current phase from STATUS, then read only that phase's entry
 (`docs/project/implementation-plan/phase-N.md`).
 
+Read the groupings contract (`docs/project/groupings/_rules.md`) and list the
+`docs/project/groupings/` tree, then compute the groupings counts for Step 6:
+
+```bash
+. scripts/groupings-lib.sh && \
+    grp_nudge_counts docs/project/groupings docs/project/implementation-plan
+```
+
+The output is one `N=<n> M=<m> K=<k>` row — N = real groupings declared,
+M = living phases in no grouping, K = declared stays-ungrouped living
+phases (superseded phases are excluded from M and K). If the library or
+the tree is missing, note "Groupings: not provisioned" for Step 6.
+
 Read the first 5 lines of `METHODOLOGY.md` to get the version number.
 
 Resolve every BACKLOG / STATUS / IMPLEMENTATION-PLAN / CHANGELOG read through
@@ -93,10 +106,10 @@ the trinity `## Document locations` table in the project context file.
 The table points at the named files in `docs/project/` (the per-entry tree).
 
 Project streams under `docs/project/backlog/`, `docs/project/implementation-plan/`,
-and `docs/project/changelog/` are per-entry trees; read each
-`<stream>/_rules.md` for the per-stream contract before any per-entry edit. Each
-stream's generated `_toc.md` is the readable index of its tree. The per-entry
-tree is the sole source of truth — there is no monolithic mirror.
+`docs/project/changelog/`, and `docs/project/groupings/` are per-entry trees;
+read each `<stream>/_rules.md` for the per-stream contract before any per-entry
+edit. Each stream's generated `_toc.md` is the readable index of its tree. The
+per-entry tree is the sole source of truth — there is no monolithic mirror.
 
 ## Step 3 — Read active skills
 
@@ -202,6 +215,7 @@ Output a summary in exactly this format:
 **Current phase:** Phase N — [title] ([not started / in progress / complete])
 **Open BACKLOG items:** [count of Status: Open + Status: Unblocked]
 **Last TD number:** TD-NNN (or "none yet" if BACKLOG is empty)
+**Groupings:** [from the Step 2 counts — `N declared; M phases ungrouped (K declared stays-ungrouped)`, or "not provisioned"]
 **TD-TBD check:** [Clean / N instances found — [files]]
 **Last commit:** [date] — [commit summary from git log -1 --oneline]
 **Pack version:** [read from the version header line in METHODOLOGY.md]

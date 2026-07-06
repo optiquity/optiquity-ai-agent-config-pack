@@ -116,6 +116,7 @@ IN_GLOBS = [
     "docs/project/backlog/_rules.md",
     "docs/project/implementation-plan/_rules.md",
     "docs/project/changelog/_rules.md",
+    "docs/project/groupings/_rules.md",
 ]
 
 # Files matched by a glob above but EXCLUDED (help output / orientation are

@@ -14,6 +14,8 @@ your CLI for this content. Full docs in `docs/pack/PM-CHAT.md`,
 | `bash scripts/migrate-v10-to-v11.sh` | One-time per upgrade. |
 | `bash scripts/activate-capability.sh` | Activate a supported capability on this project — re-materializes its conditional files from `pack-capability-pool/`. |
 | `bash scripts/target-sweep.sh <verb>` | Release-boundary target enumerations: enumerate / overdue / re-encode-set / kind-set (see docs/pack/PM-CHAT.md). |
+| `bash scripts/groupings.sh <verb>` | Groupings queries: list / list-membership / deps [--deferral] / order / shared-with (see docs/pack/PM-CHAT.md). |
+| `bash scripts/status-generate.sh` | Regenerate the STATUS.md dashboard's generated sections; `--check` gates drift. |
 | `./agent-run.sh <cli> --agent <name>` | Spawn a project agent. `./agent-run.sh --help` for flags. |
 | `pack td promote --to=phase-N` | Promote a TD-NNN to a new phase epic (Path 1). |
 | `pack td promote --to=phase-N.M` | Promote a TD-NNN to a new phase task under phase N (Path 2). |

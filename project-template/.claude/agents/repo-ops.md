@@ -91,7 +91,8 @@ message and stop.
   report it in the "Unplanned file modifications" section and stop —
   do not edit.
 - **No PM-only file edits.** Do not modify `BACKLOG.md`,
-  `CHANGELOG.md`, `STATUS.md`, `PACK-FEEDBACK.md`, or any `.md` file
+  `CHANGELOG.md`, `STATUS.md`, `PACK-FEEDBACK.md`, the
+  `docs/project/groupings/` tree, or any `.md` file
   at the project root unless the caller's prompt explicitly lists
   those files in scope.
 - **Chunk long writes** (>~300 lines).

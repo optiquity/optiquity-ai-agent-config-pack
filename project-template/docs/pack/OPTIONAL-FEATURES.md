@@ -396,6 +396,32 @@ Actions.
 
 ---
 
+## Adopting groupings
+
+**Status:** Provisioned on every project at pack v11.0+ — cross-CLI, no
+feature flag, no setup step. The opt-in is USAGE: authoring the first
+grouping via METHODOLOGY.md Workflow 7.
+
+**What it is.** A per-entry stream (`docs/project/groupings/`) that
+declares pure-structure groupings of phases — one GRP-NNN.md entry
+per grouping, membership only, no status stored. Derived status and
+target, the query CLI (`bash scripts/groupings.sh`), and the STATUS.md
+dashboard tables (`bash scripts/status-generate.sh`) all activate the
+moment the first entry exists; an empty tree is valid and silent.
+
+**How to start.** Run Workflow 7a (derive candidates from the existing
+phase plan — `docs/pack/prompts/grouping-from-phases.md`) or Workflow 7b
+(translate an external planning source —
+`docs/pack/prompts/grouping-from-external.md`). The stream contract is
+`docs/project/groupings/_rules.md`; the PM-chat operating rules are in
+`docs/pack/PM-CHAT.md` § Groupings orchestration.
+
+**When to skip.** Small plans whose phase list is already legible at a
+glance gain little from membership structure — the stream stays empty
+at zero cost, and validation does not require any grouping to exist.
+
+---
+
 ## Adding new entries
 
 If your project adopts a CLI-specific opt-in feature the pack does not

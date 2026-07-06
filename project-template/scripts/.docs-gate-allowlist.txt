@@ -397,6 +397,21 @@ pattern: deferred
 snippet: Add the deferred items explicitly to the
 reason: live TD-deferral workflow — a rule about handling deferral.
 
+doc: docs/pack/METHODOLOGY.md
+pattern: deferred
+snippet: some non-done actives, all of them deferred
+reason: the Workflow-7 grouping derived-status rollup row — `deferred` is a live phase-status token the rollup consumes, not a deferred feature.
+
+doc: docs/pack/METHODOLOGY.md
+pattern: deferred
+snippet: b / d / s / u = blocked / deferred / superseded / unreadable
+reason: the rollup counter legend naming the live phase-status families — `deferred` is one status token, not a deferred feature.
+
+doc: docs/pack/METHODOLOGY.md
+pattern: deferred
+snippet: newly set to `deferred`
+reason: the Workflow-7 deferral-flip scheduling rule — `deferred` is a live phase-status transition, not a deferred feature.
+
 doc: docs/pack/INSTALL-PROCEDURES.md
 pattern: deferred
 snippet: no deferred items remain
@@ -502,6 +517,9 @@ target: docs/project/backlog/_toc.md
 reason: runtime-generated per-entry index (regenerated after every entry edit per this stream's _rules.md); absent from the bare template by design.
 
 target: docs/project/changelog/_toc.md
+reason: runtime-generated per-entry index (regenerated after every entry edit per this stream's _rules.md); absent from the bare template by design.
+
+target: docs/project/groupings/_toc.md
 reason: runtime-generated per-entry index (regenerated after every entry edit per this stream's _rules.md); absent from the bare template by design.
 
 target: docs/pack/PROMPT-TEMPLATES.md

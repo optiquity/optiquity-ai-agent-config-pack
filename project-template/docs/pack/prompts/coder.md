@@ -63,8 +63,8 @@ under Constraints.]
   `ARCHITECTURE.md`, `CLAUDE.md`, `AGENTS.md`, `README.md`, or any other
   `.md` file in the project root. Writing root `.md` files is exclusively
   the PM chat's responsibility. The per-entry backlog, implementation-plan,
-  and changelog trees under `docs/project/` are likewise PM-chat-owned —
-  only the PM chat may modify those entries.
+  changelog, and groupings trees under `docs/project/` are likewise
+  PM-chat-owned — only the PM chat may modify those entries.
 - **Boundary discipline (Project SSOT-first / P-missed-7):** If any task
   in your scope would modify a file that ships as part of this project
   (project trinity at root, `docs/pack/` content, `docs/project/`,
@@ -192,8 +192,8 @@ Success criteria: [what the reviewer will check to confirm this fix is complete]
 - **Root .md file prohibition:** Do not write to `STATUS.md`,
   `ARCHITECTURE.md`, `CLAUDE.md`, `AGENTS.md`, `README.md`, or any other
   `.md` file in the project root, nor to the per-entry backlog,
-  implementation-plan, and changelog trees under `docs/project/`.
-  These are exclusively the PM chat's responsibility.
+  implementation-plan, changelog, and groupings trees under
+  `docs/project/`. These are exclusively the PM chat's responsibility.
 - **Scope:** Do not make changes beyond what is required to resolve the
   listed issues.
 - **Boundary discipline (Project SSOT-first / P-missed-7):** Same rule

@@ -13,9 +13,9 @@
 #       template doc is scanned exactly as a client install would scan it (a
 #       `git ls-files` staging would silently exclude it).
 #   L2  IN-set collapse floor: the gate's banner count must stay >= 90
-#       (measured 105 = 37 skills + 16x3 agents + 10 prompts + 4 docs/pack +
-#       3 trinity + 3 _rules.md; any >=16-doc family loss lands <= 89 and
-#       trips). RESIDUAL (honest): a <= 10-doc family collapse ALONE stays
+#       (measured 108 = 37 skills + 16x3 agents + 12 prompts + 4 docs/pack +
+#       3 trinity + 4 _rules.md; any >=19-doc family loss lands <= 89 and
+#       trips). RESIDUAL (honest): a <= 18-doc family collapse ALONE stays
 #       >= 90 and escapes this floor; L1 still polices the surviving docs.
 #   L3  Allowlist liveness, BOTH directions: every doc:+snippet: record must
 #       still match >= 1 live line of its resolved doc (declared mapping with
@@ -73,7 +73,7 @@ INIT_SCRIPT="$PACK_ROOT/scripts/init-project.sh"
 SRC_METH="$PACK_ROOT/supporting-docs/METHODOLOGY.md"
 SRC_INST="$PACK_ROOT/supporting-docs/INSTALL-PROCEDURES.md"
 
-# L2 floor: measured IN-set is 105 docs; any >=16-doc family loss trips.
+# L2 floor: measured IN-set is 108 docs; any >=19-doc family loss trips.
 IN_SET_FLOOR=90
 
 FIXTURE_BASE="$(mktemp -d -t test-vdocs-fullscan.XXXXXX)"
@@ -129,8 +129,8 @@ PACK_ROOT = sys.argv[1]
 ROOT = os.path.join(PACK_ROOT, "project-template")
 ALLOWLIST = os.path.join(ROOT, "scripts", ".docs-gate-allowlist.txt")
 
-# Corpus mirror of the gate's IN set: validate-docs.sh IN_GLOBS (:99-110)
-# minus EXCLUDE_BASENAMES (:114), rooted at project-template/ — plus the two
+# Corpus mirror of the gate's IN set: validate-docs.sh IN_GLOBS (:108-123)
+# minus EXCLUDE_BASENAMES (:124), rooted at project-template/ — plus the two
 # install-overlay SOURCES (the L3 corpus amendment; kept honest against S6
 # drift by L7).
 IN_GLOBS = [
@@ -144,6 +144,7 @@ IN_GLOBS = [
     "docs/project/backlog/_rules.md",
     "docs/project/implementation-plan/_rules.md",
     "docs/project/changelog/_rules.md",
+    "docs/project/groupings/_rules.md",
 ]
 EXCLUDE_BASENAMES = {"HELP-FRAGMENT.md", "_intro.md", "_toc.md"}
 

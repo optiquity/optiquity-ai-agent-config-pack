@@ -110,7 +110,8 @@ message and stop.
   chat with explicit user approval.
 - **No PM-only file edits without explicit caller scoping.** Do not
   modify `BACKLOG.md`, `CHANGELOG.md`, `STATUS.md`, `PACK-FEEDBACK.md`,
-  or any `.md` file at the project root unless the caller's prompt
+  the `docs/project/groupings/` tree, or any `.md` file at the project
+  root unless the caller's prompt
   explicitly lists those files in "Files in scope." TD-TBD deferral
   comments inside source files are permitted; reports of deferred
   items go in the report's "Deferred items" section.

@@ -919,6 +919,13 @@ the sentinel and re-runs at next `/pm-startup`.
 | **A** | STATUS.md pack-version markers (F-E) | Search `docs/project/STATUS.md`, then `docs/STATUS.md`, then `STATUS.md` (first existing wins). Grep case-insensitively for lines containing both `AI Agent Config Pack` (or `Pack version`) and a `v9` token. For each match, propose updating the version to the current pack version (read from `docs/pack/METHODOLOGY.md` first 5 lines, matching pm-startup Step 6). Developer approves / edits / skips per match. If no STATUS.md found or no v9 markers found: report "Task A — nothing to do." |
 | **B** | Trinity placeholder reconciliation (F-F) | Grep `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` for occurrences of the closed-form whitelist: `[PROJECT_NAME]`, `[PLATFORM_TARGETS]`, `[TRANSPORT]`, `[PLATFORM_DEFAULTS]`, `[PLATFORM_ARCHITECTURE]`, `[LANGUAGE_RULES]`, `[GRPC_RULES]`, `[PLATFORM_SECURITY]`, `[PLATFORM_TESTING]`, `[PLATFORM_ANTIPATTERNS]`. Also grep for the literal Active-skills placeholder line (`Active skills: [PM chat writes`). For project-identifier placeholders, ask the developer for the values (project name, platform targets, transport) and offer to fill them consistently across all three trinity files (TRIO — byte-identical content). For section placeholders, reference the loaded skills' content. For the Active-skills line, run a simpler standalone Q&A (NOT the full Procedure 7 kickoff flow): "What skills are active for this project? Read `docs/pack/PLATFORM-SKILLS.md` to see options. PM chat proposes the set based on project type; developer approves." If no whitelist matches found and Active-skills line is filled: report "Task B — nothing to do." |
 
+> **Task A note.** The canonical STATUS.md location is
+> `docs/project/STATUS.md` (the search-precedence first hit), and its
+> generated sections are `scripts/status-generate.sh` output — apply a
+> version-marker edit inside the `STATUS-HAND` section, or re-run the
+> generator after the source values change; never hand-edit a
+> generated section.
+
 1. Detect sentinel; read `docs/pack/METHODOLOGY.md` first 5 lines for
    current pack version (Task A reference value).
 2. Run Task A. Surface findings (or "nothing to do"); apply
@@ -1275,9 +1282,9 @@ non-SPM layout), `.claude/settings.json` (env block), and
 **Artifacts never touched by Procedure 7:** `STATUS.md`; `ARCHITECTURE.md`;
 the trinity files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`); `.codex/`,
 `.agents/`, `.agents-plugin/`, `.claude/agents/` subtrees; any file under `docs/project/`
-(including the per-entry backlog, implementation-plan, and changelog trees)
-other than the ones the PM chat ordinarily writes; any `x-` custom
-agent / skill / prompt file.
+(including the per-entry backlog, implementation-plan, changelog, and
+groupings trees) other than the ones the PM chat ordinarily writes; any
+`x-` custom agent / skill / prompt file.
 
 **Sub-flow conditions:** the Apple sub-flow runs iff `[PLATFORM_TARGETS]`
 includes any of iOS, iPadOS, macOS, tvOS, watchOS, or visionOS; the

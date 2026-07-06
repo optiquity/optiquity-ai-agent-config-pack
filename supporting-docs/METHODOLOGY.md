@@ -188,7 +188,8 @@ Every project should have all of these. Create them before writing any code.
 | `docs/project/implementation-plan/` (per-entry `phase-N.md` tree + generated `_index.md`) | All phases with tasks, DoD, agent, risks — one `phase-N.md` per phase; `_index.md` is the generated serial order | PM chat + planner agent | Each phase adds a `phase-N.md` entry; never delete old phases |
 | `docs/project/changelog/` (per-entry tree + generated `_toc.md`) | Permanent dated history of what was built — one `<ID>.md` per phase at phase completion plus one per release boundary; `_toc.md` is the generated readable index | PM chat | One entry per phase, after reviewer approval; coder proposes entry in completion report |
 | `docs/project/backlog/` (per-entry tree + generated `_toc.md`) | Technical debt, deferred items, known gaps — one `<ID>.md` per item; `_toc.md` is the generated readable index | PM chat | Add/resolve; never delete items |
-| `STATUS.md` | Current phase, phase table, next actions, key metrics | PM chat or developer | After every phase completion |
+| `docs/project/groupings/` (per-entry tree + generated `_toc.md`) | Groupings of phases — pure-structure membership; one GRP-NNN.md per grouping; `_toc.md` is the generated readable index | PM chat | On grouping creation / membership change |
+| `STATUS.md` | Current phase, phase table, groupings table, next actions — generated sections are `scripts/status-generate.sh` output; a marker-preserved hand section carries PM prose | PM chat or developer (hand section; generated sections regenerate only) | After every phase completion + per the regen trigger list in `docs/pack/PM-CHAT.md` § Groupings orchestration |
 | `CLAUDE.md` | Project-specific rules for all CLI agents | PM chat | When new rules are established |
 | `AGENTS.md` | Agent roster and routing table | PM chat | When agents are added or changed |
 | `PACK-FEEDBACK.md` | Upstream feedback log to Pack Chat — observations, not solutions | PM chat | Continuously (append-only); delivered at workflow boundaries (Part 10) |
@@ -203,9 +204,9 @@ Every project should have all of these. Create them before writing any code.
 4. STATUS.md is updated after every phase — stale status is worse than no status.
 5. Agents must not modify `ARCHITECTURE.md` or the `docs/project/implementation-plan/`
    tree unless explicitly instructed in the prompt. `STATUS.md`, `PACK-FEEDBACK.md`,
-   the per-entry backlog and changelog trees, and all other root `.md` files are
-   exclusively the PM chat's responsibility — no agent should write them, and no
-   agent prompt should instruct them to. Include root `.md` file constraints in every coder prompt.
+   the per-entry backlog, changelog, and groupings trees, and all other root `.md`
+   files are exclusively the PM chat's responsibility — no agent should write them,
+   and no agent prompt should instruct them to. Include root `.md` file constraints in every coder prompt.
    `PACK-FEEDBACK.md` in particular is never written by any agent — it is the PM
    chat's feedback log to the upstream pack (see Part 10).
 6. Every deferral comment (`// TODO(scope):`, `// KNOWN GAP(severity):`, `// VERIFY(source):`,
@@ -409,6 +410,15 @@ Which agent(s) to use for which tasks.
 `Target:` is optional; a release-cycle claim, when one exists, is set
 per the impl-plan contract's `## Target semantics`.
 
+When authoring a new phase entry, the PM chat asks two authoring
+questions in the same step:
+
+- The Workflow 7d membership ask — add the phase to an existing
+  grouping, create a new grouping (Workflow 7), or leave it ungrouped
+  (a deliberate "stays ungrouped" ruling records the phase in GRP-000).
+- Whether the phase carries an optional `Target:` release-cycle claim
+  (per the impl-plan contract's `## Target semantics`).
+
 ### Phase numbering rules
 
 - Never renumber phases — phase numbers are referenced in code comments, CHANGELOG, and BACKLOG.
@@ -460,7 +470,7 @@ been explicitly split into multiple sequential parts by a planning agent.
    copy `project-template/` (which includes `docs/pack/prompts/`), copy
    `METHODOLOGY.md` from `supporting-docs/`, remove conditional files, fill
    in context file placeholders, run `./scripts/bootstrap.sh`
-3. Create the backlog and changelog trees (`docs/project/backlog/`, `docs/project/changelog/`) and `STATUS.md` (initially sparse)
+3. Create the per-entry stream trees (`docs/project/backlog/`, `docs/project/changelog/`, `docs/project/groupings/`) and seed `STATUS.md` with `bash scripts/status-generate.sh` (creates it with the generated sections and the hand-section placeholder)
 4. Commit all template and doc files before writing any code
 5. Set up the PM chat — setup steps are in the pack repo at
    `<pack-clone>/supporting-docs/SETUP-NEW.md` Step 10 (choose Claude Desktop,
@@ -884,6 +894,159 @@ The auditor parent is bypassed; the subagent reports directly.
 4. Run Workflow 2 for each new phase
 ```
 
+### Workflow 7 — Grouping creation and maintenance
+
+Groupings are pure-structure membership lists over phases — one
+GRP-NNN.md entry per grouping in the `docs/project/groupings/`
+per-entry tree (contract: `docs/project/groupings/_rules.md`). A
+grouping stores no status and no target; every display derives both at
+read time from the member phases' `Status:` / `Target:` fields. Queries
+run through `bash scripts/groupings.sh` (list / list-membership /
+deps [--deferral] / order / shared-with); the dashboard regenerates
+through `bash scripts/status-generate.sh`.
+
+#### 7a — Derive groupings from the phase plan
+
+```
+1. PM chat reads the implementation-plan tree and drafts CANDIDATE
+   groupings using docs/pack/prompts/grouping-from-phases.md
+   (Variant: from-phases — carries the per-Kind recognition table)
+2. User reviews the drafts — edits, merges, rejects; the user finalizes
+   every candidate; nothing is auto-written
+3. PM chat writes the approved GRP-NNN.md entries in the contract's
+   closed serialization, then runs the 7c regeneration chain
+```
+
+#### 7b — Ingest an external grouping source
+
+```
+1. Developer pastes or attaches the external content — any format; the
+   pack never parses external formats mechanically
+2. PM chat translates: it asks clarifying questions where the source
+   names a grouping without identifying member phases; task-level
+   references roll up to their parent phases; duplicates collapse;
+   the two-member minimum holds at the phase level after rollup
+3. Draft GRP-NNN.md bodies in the closed serialization -> user approves
+   -> PM chat writes the entries + runs the 7c regeneration chain
+```
+
+The prompt template is `docs/pack/prompts/grouping-from-external.md`
+(Variant: from-external). Planning-session deliverables (narrative
+PRDs, journey docs, feature inventories) and project-provided planning
+docs arrive through this same path.
+
+#### 7c — Membership change, dissolution, supersession
+
+The regeneration chain after ANY grouping edit: edit the entry →
+regenerate `_toc.md` → regenerate STATUS.md
+(`bash scripts/status-generate.sh`) → re-check grouping-affinity
+placement in the implementation-plan `_index.md` (ordering rules: the
+impl-plan contract Ordering section + `docs/pack/PM-CHAT.md`
+§ Groupings orchestration).
+
+Dissolution = delete the entry file. Dropping below two members without
+the exception field fails validation; nothing auto-edits membership.
+
+**Supersession procedure** — runs in the same session that flips a
+phase `Status:` to `superseded` (supersession is terminal per the
+impl-plan contract); every edit lands with per-edit user approval:
+
+```
+1. Run bash scripts/groupings.sh list-membership phase-N — present
+   every membership before touching anything
+2. Surface the phase's outgoing dependency edges (deps --deferral
+   carries the attribution) and OFFER re-pointing each dependent's
+   Blockers / Dependencies / Prerequisite at the Superseded-By target
+   — per-edit user approval
+3. OFFER removing the phase's member rows; record every removed
+   membership in the session's changelog entry (docs/project/changelog/)
+4. Name the consequences before writing: removal to one member requires
+   Single-member exception: (or dissolve); removal to zero dissolves
+   (delete the file); declining either arm leaves the row in place — a
+   legal steady state (the rollup excludes superseded members; s=N and
+   the [N superseded] flag keep the row honest)
+5. Judge on the POST-flip state. A grouping the flip itself completed
+   (complete with s >= 1) is a finished snapshot — default to KEEPING
+   its rows, so the snapshot's constitution stays visible
+6. GRP-000 rows follow the same offer; removal is the recommended arm
+   there (the ledger has no dissolution consequence, and its counts
+   stay clean)
+```
+
+#### 7d — The phase-creation membership ask
+
+When authoring a new `phase-N.md` (Part 4), ask exactly one membership
+question: add the phase to an existing grouping, create a new grouping
+(this workflow), or leave it ungrouped. A deliberate "stays ungrouped"
+ruling records the phase as a member of GRP-000 — the reserved
+declared-ungrouped ledger. GRP-000 is created on its first ruling,
+never pre-created (absence means zero rulings). Skip the ask when the
+phase is already a GRP-000 member — a declared ruling is never
+re-asked. The same authoring step asks whether the phase carries an
+optional `Target:` release-cycle claim (impl-plan contract `## Target
+semantics`).
+
+#### Derived status — the rollup every surface computes
+
+Superseded members are excluded from the ACTIVE set; every other
+member — including one whose `Status:` is unreadable — is active.
+D = done actives; A = active count; percent = floor(100 × D / A); an
+unreadable member never renders a clean fraction. The first matching
+row wins:
+
+| Member set | Derived status |
+|---|---|
+| no members at all | `unknown` |
+| any member unreadable — dangling ref, part-typed file, missing / empty / out-of-enum `Status:` | `unknown` |
+| every member superseded | `superseded` |
+| every active member done | `complete` |
+| some non-done actives, all of them deferred | `deferred` |
+| a deferral alongside other unfinished active work | `blocked` |
+| every non-done active member blocked | `blocked` |
+| nothing done; every active member not-started or blocked | `not-started` |
+| any other mix | `in-progress` |
+
+Every machine rollup row carries four counters over the full member
+set — b / d / s / u = blocked / deferred / superseded / unreadable
+members. A display flag `[N <family>]` renders exactly when its counter
+is positive, in the fixed order b, d, s, u. GRP-000 is exempt — the
+ledger derives no status and no target.
+
+A grouping's derived target is the maximum of its declaring members'
+`Target:` claims on the contract's ordinal scale — the declarer set and
+the poison rules live in `docs/project/groupings/_rules.md` `## Derived
+status and target`. The target renders in the `list` Target column, the
+`list-membership` detail-header suffix, and the STATUS.md groupings
+table.
+
+#### Scheduling guidance
+
+- **Work-halt advisory.** When every grouping containing phase P
+  derives `blocked` via deferral, P is scheduled only if the
+  cross-grouping-unblock predicate holds — P has an outgoing dependency
+  edge into a phase whose membership includes a healthy grouping — or
+  the user directs otherwise; at that decision moment surface the
+  cascade view (`bash scripts/groupings.sh deps --deferral`). A phase
+  with any healthy membership is never advised against. Advisory only —
+  no validator enforces scheduling.
+- **Deferral flip.** On any deferral flip —
+  a phase `Status:` newly set to `deferred` —
+  the PM chat surfaces the cascade-computed affected set and
+  immediately proposes the matching `_index.md` re-order (completable
+  groupings' phases ahead of phases whose every membership is
+  deferral-poisoned, wherever the declared dependency edges permit);
+  the re-order lands on user approval.
+- **Declared edges only.** The cascade and the unblock predicate read
+  the declared dependency fields (`Blockers` / `Unblocks` /
+  `Dependencies` / `Prerequisite`); a dependency stated only in prose
+  is invisible to them.
+- **Superseded silence.** Superseded phases are excluded from every
+  ungrouped count (the pm-startup M and K counts, the STATUS.md pending
+  cell); a deferral never silences a phase — that work is still owed.
+
+STATUS.md regeneration triggers: the trigger list in
+`docs/pack/PM-CHAT.md` § Groupings orchestration.
+
 ### Workflow → template cross-reference
 
 Each workflow uses one or more pack-shipped prompt variants from
@@ -902,6 +1065,7 @@ phase before pasting.
 | Workflow 4 — Fix cycle | `coder.md` Variant: fix-cycle (main); `architect.md` Variant: mid-phase (when Trigger A or B fires); `planner.md` Variant: standard (when Trigger P-A, P-B, or P-C fires); `reviewer.md` Variant: standard (re-runs the cycle after each fix); `pm-chat.md` Variant: backlog-status-update (for items deferred to BACKLOG) |
 | Workflow 5 — Full-codebase audit | `auditor.md` Variant: standard — a single auditor prompt that spawns the right subagents, replacing the legacy per-dimension audit prompts; `pm-chat.md` Variant: backlog-status-update (for BACKLOG intake from findings); Workflow 2 prompts for each fix prompt the audit generates |
 | Workflow 6 — New feature | PM chat updates `ARCHITECTURE.md` and the `docs/project/implementation-plan/` tree directly (no pack variant); `pm-chat.md` Variant: backlog-status-update (if the feature adds BACKLOG entries); then Workflow 2 prompts for each new phase |
+| Workflow 7 — Groupings | `grouping-from-phases.md` Variant: from-phases (7a); `grouping-from-external.md` Variant: from-external (7b); both are PM-chat-mediated drafting templates — the user finalizes every candidate before the PM chat writes an entry |
 
 ---
 
@@ -1595,9 +1759,9 @@ spliced into `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` in one commit.
 
 **Artifacts never touched by Procedure 6:** any `x-` agent / skill /
 prompt file; any `SKILL.md` (already on disk); `STATUS.md`;
-`ARCHITECTURE.md`; the per-entry backlog, implementation-plan, and
-changelog trees under `docs/project/`; PLATFORM-SKILLS.md `## Custom agents` and
-`## Custom skills` project-owned regions.
+`ARCHITECTURE.md`; the per-entry backlog, implementation-plan,
+changelog, and groupings trees under `docs/project/`; PLATFORM-SKILLS.md
+`## Custom agents` and `## Custom skills` project-owned regions.
 
 **Symmetry with Procedure 7 (kickoff).** Step 6.5's per-tool Form I
 mirrors INSTALL-PROCEDURES.md § 7.2.3 (kickoff swift-format install)
@@ -1841,7 +2005,7 @@ reference.
       bootstrap, and emit the PM chat kickoff prompt. The full
       procedure is documented in the pack repo at
       `<pack-clone>/supporting-docs/SETUP-NEW.md` Step 3.
-- [ ] Create the backlog and changelog trees (`docs/project/backlog/`, `docs/project/changelog/`) and `STATUS.md` (empty with structure)
+- [ ] Create the per-entry stream trees (`docs/project/backlog/`, `docs/project/changelog/`, `docs/project/groupings/`) and seed `STATUS.md` with `bash scripts/status-generate.sh`
 - [ ] **Choose PM chat mode** — Option A (Claude Desktop app, see
       `SETUP-NEW.md` Step 10 Option A), Option B (Claude Code CLI,
       Step 10 Option B), Option C (Codex CLI, Step 10 Option C), or
