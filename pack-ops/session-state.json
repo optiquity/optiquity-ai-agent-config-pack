@@ -1,48 +1,10 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "a846efc",
+  "boundary_commit": "a840c4a",
   "checkpoint": "2026-07-01T00:00:00Z",
   "active": [],
-  "in_flight_agents": [
-    {
-      "name": "reviewer-bd265",
-      "role": "pack-reviewer",
-      "purpose": "BD-265 review (in the BD-265 worktree)",
-      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/REVIEW-BD265.md"
-    },
-    {
-      "name": "reviewer-bd263",
-      "role": "pack-reviewer",
-      "purpose": "BD-263 review (in the BD-263 worktree)",
-      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/REVIEW-BD263.md"
-    },
-    {
-      "name": "reviewer-bd266",
-      "role": "pack-reviewer",
-      "purpose": "BD-266 review (in the BD-266 worktree)",
-      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/REVIEW-BD266.md"
-    },
-    {
-      "name": "reviewer-bd264",
-      "role": "pack-reviewer",
-      "purpose": "BD-264 review (in the BD-264 worktree)",
-      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/REVIEW-BD264.md"
-    },
-    {
-      "name": "fixcoder-bd265",
-      "role": "pack-coder",
-      "purpose": "BD-265 fixes (reused worktree)",
-      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/FIX-BD265.md"
-    },
-    {
-      "name": "fixcoder-bd266",
-      "role": "pack-coder",
-      "purpose": "BD-266 fixes (reused worktree)",
-      "output": "/Users/david/Developer/_tmp/pack-handoff-bd189/FIX-BD266.md"
-    }
-  ],
+  "in_flight_agents": [],
   "queue": [
-    "BD-268",
     "BD-224",
     "BD-257",
     "BD-136",
@@ -52,12 +14,12 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "Wave 2 COMPLETE (all five children Resolved). The batch push next; then Wave 3: BD-268 (the closing child, 4 riders) -> the feature user-complete.",
+  "wave": "Groupings feature CODE-COMPLETE — all 7 children (BD-262..268) Resolved; BD-105 Resolved (G1). The end-of-batch reviewer next (the one closing sweep over the full batch), then fixes-if-any + the closing push, then the ruled PAUSE.",
   "pending_decisions": [
-    "The batch push is within the approved package; the BD-268 commit gate is the next user decision after its cycle.",
+    "USER DIRECTIVE (standing): after the end-of-batch reviewer + fixes + the BD-268 flip + push, PAUSE — do NOT start BD-224 or any next-queue BD until the user directs.",
     "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
     "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed",
     "SESSION DIRECTIVE (user, until revoked; not a rule change — no memory/BD): ALL spawns use isolation:worktree (the async-task channel). RO agents work in their own worktree. Reviewers + fix-coders get a LAUNCH-PAD worktree they must ABANDON: first instruction = cd into the target live worktree (the commit under review/fix) + verify pwd/HEAD/dirty-set before any work; the unused launch worktree auto-cleans. The substantive placement rules are unchanged (review/fix happens IN the commit worktree); re-engagement via SendMessage-to-agentId (transcript resume)."
   ],
-  "cycle_position": "Pushing the Wave-1+2 stack (manifest-sync first); then the BD-268 coder (Wave 3)."
+  "cycle_position": "Spawning the end-of-batch reviewer over the seven groupings children (the one closing sweep)."
 }
