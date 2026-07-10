@@ -1,19 +1,37 @@
 """validate_checks.session_state — Cluster H: the BD-252 session-state
-snapshot family (BD-256 W9).
+snapshot family (BD-256 W9) + the BD-271 narration-twin content-parity guard
+(Check 85).
 
-This module owns Cluster H's 3 check bodies (Checks 77, 78, 79) — the committed,
-CLI-agnostic resumable session-state snapshot (`pack-ops/session-state.json`)
-guards: structural well-formedness (77, struct), boundary freshness (78, fresh),
-and the bespoke no-history anti-accretion grammar (79, grammar). The three are
-co-located because they all key on the single session-state surface
+This module owns Cluster H's 3 session-state-snapshot check bodies (Checks 77,
+78, 79) plus the Check 85 narration-twin content-parity guard (BD-271) — the
+committed, CLI-agnostic resumable session-state snapshot
+(`pack-ops/session-state.json`) guards: structural well-formedness (77,
+struct), boundary freshness (78, fresh), and the bespoke no-history
+anti-accretion grammar (79, grammar). Checks 77/78/79 are co-located because
+they all key on the single session-state surface
 (`pack-ops/session-state.json`) and share the `_session_state_load()` seam +
 the `_SESSION_STATE_*` schema/grammar constants.
 
-Bodies are MOVED VERBATIM from the facade (`scripts/validate-pack.py`); the
-facade re-exports every symbol here via
+Check 85 (`check_narration_twin_content_parity`) SHARES the
+`_SESSION_STATE_NARRATION_PATTERNS` constant Check 79 consumes but is a
+cross-substrate PARITY guard, not a snapshot check: it does NOT key on the
+JSON snapshot and does NOT use `_session_state_load()`. It reads Twin A
+(`core.py :: _SESSION_STATE_NARRATION_PATTERNS`) as TEXT — for extraction
+symmetry with the client twin, which cannot be imported — and compares it
+against the client gate's embedded Twin B
+(`project-template/scripts/validate-docs.sh :: _SS_NARRATION_PATTERNS`). It
+therefore shares the narration constant with Cluster H but NOT the snapshot
+surface or the `_session_state_load()` seam. See
+`maintenance-docs/v11-implementation/DESIGN-BD-243-CLIENT-GATE.md` §C.3
+addendum (BD-271) for why this narrow DATA parity is distinct from the
+whole-gate BEHAVIORAL parity §C.3 rejected as a maintenance trap.
+
+Checks 77/78/79 bodies are MOVED VERBATIM from the facade
+(`scripts/validate-pack.py`); Check 85 is authored directly in this module
+(BD-271 — not a move). The facade re-exports every symbol here via
 `from validate_checks.session_state import *`, so the registry assembled in the
 facade (`_build_check_registry()`) keeps resolving each `check_*` name
-(77/78/79). Single SSOT — no forked copy.
+(77/78/79/85). Single SSOT — no forked copy.
 
 Intra-cluster helper moved with the bodies (read only by Cluster H checks):
 `_session_state_iter_string_values` — the recursive string-value yielder Check 79
@@ -27,10 +45,14 @@ single SSOT for the spine + W1 seams. (`failures` is imported for the V3
 failures-identity invariant — `core.failures is session_state.failures` —
 matching the W2–W8 module convention; the Cluster H bodies append via `fail()`,
 never rebind `failures`.) Standard-library `subprocess` is imported directly at
-module top (Check 78's git-probe calls), mirroring the established per-module
-convention (the spine `import *` does not re-export stdlib names).
+module top (Check 78's git-probe calls); `ast` and `re` are also imported
+directly (Check 85's text-AST twin extraction + the bd/td token fold),
+mirroring the established per-module convention (the spine `import *` does not
+re-export stdlib names).
 """
 
+import ast
+import re
 import subprocess
 
 from .core import (
@@ -433,17 +455,483 @@ def check_session_state_grammar() -> None:
         )
 
 
+# ── Check 85 — narration-twin regex-CONTENT parity (BD-271) ────────────────
+# DESIGN-BD271-check85 FINAL (authority). Twin A (pack):
+# `_SESSION_STATE_NARRATION_PATTERNS` above. Twin B (client-shipped,
+# READ-ONLY input): `_SS_NARRATION_PATTERNS` embedded in the
+# `python3 - <<'PYEOF'` heredoc in
+# `project-template/scripts/validate-docs.sh`.
+
+# The two twin (repo-relative path, symbol) pairs. Resolved against
+# REPO_ROOT (imported above) so a test can monkeypatch REPO_ROOT at a `/tmp`
+# fixture tree (the Check-80 BITE-1 idiom).
+_CHECK_85_TWIN_A = (
+    "scripts/lib/validate_checks/core.py",
+    "_SESSION_STATE_NARRATION_PATTERNS",
+)
+_CHECK_85_TWIN_B = (
+    "project-template/scripts/validate-docs.sh",
+    "_SS_NARRATION_PATTERNS",
+)
+
+# Token-boundary bd/td audience fold (FINAL §5) — applied to name AND source.
+_CHECK_85_BD_TD_FOLD = re.compile(r"(?i)(?<![A-Za-z0-9])(bd|td)(?![A-Za-z0-9])")
+
+# The measured sanctioned divergent set (EE-N2), sized EXACTLY to the
+# measurement — patterns #1/#2 only (`bd-past-action`/`td-past-action` and
+# `per-bd`/`per-td`). Keyed by the FOLDED (audience-neutral) name.
+_CHECK_85_SANCTIONED_FOLDED_NAMES = frozenset({"XX-past-action", "per-XX"})
+
+# Restricted `re`-flag namespace (FINAL §2) — the ONLY flag references the
+# canonicalizer recognizes; built once from the real `re` module so the
+# integer values are authoritative (never a hand-copied literal table).
+_CHECK_85_RE_FLAG_MAP = {
+    name: int(getattr(re, name))
+    for name in (
+        "A", "ASCII", "I", "IGNORECASE", "L", "LOCALE", "M", "MULTILINE",
+        "S", "DOTALL", "U", "UNICODE", "X", "VERBOSE",
+    )
+}
+
+# Directionality guard tokens (FINAL §5.2) — token-boundary BD/TD (not the
+# lowercase bd/td the fold matches; these check the RAW, unfolded source).
+_CHECK_85_BD_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9])BD(?![A-Za-z0-9])")
+_CHECK_85_TD_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9])TD(?![A-Za-z0-9])")
+
+
+class _Check85ExtractError(Exception):
+    """Internal signal for `check_narration_twin_content_parity()`: any
+    extraction / canonicalization failure that must FAIL LOUD. Raised by the
+    private helpers below; caught by the check body and converted to a
+    single `fail()` call there — the uniform mechanism that keeps `fail()`
+    calls out of the pure helpers (PLAN §4/§9 note 2)."""
+
+
+def _check_85_eval_flag_node(node):
+    """Evaluate ONE flag AST node to an int against the restricted `re`-flag
+    namespace (FINAL §2). Never `eval()`s source, imports the file, or calls
+    `re.compile` — the restricted-namespace AST walk is the only sanctioned
+    path. Raises `_Check85ExtractError` on any node shape it does not
+    recognize."""
+    if isinstance(node, ast.Attribute):
+        if (
+            isinstance(node.value, ast.Name)
+            and node.value.id == "re"
+            and node.attr in _CHECK_85_RE_FLAG_MAP
+        ):
+            return _CHECK_85_RE_FLAG_MAP[node.attr]
+        raise _Check85ExtractError(
+            f"unrecognized flag reference `{ast.dump(node)}` (not a known "
+            f"`re.<FLAG>` attribute)"
+        )
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+        return _check_85_eval_flag_node(node.left) | _check_85_eval_flag_node(
+            node.right
+        )
+    if isinstance(node, ast.Constant) and isinstance(node.value, int):
+        return node.value
+    if isinstance(node, ast.Name) and node.id in _CHECK_85_RE_FLAG_MAP:
+        return _CHECK_85_RE_FLAG_MAP[node.id]
+    raise _Check85ExtractError(
+        f"unrecognized flag construct `{ast.dump(node)}` — the restricted "
+        f"flag evaluator only accepts `re.<FLAG>`, `<FLAG>|<FLAG>` (BitOr), "
+        f"a bare int, or a from-import bare name"
+    )
+
+
+def _check_85_canon_flags(compile_call):
+    """Canonicalize a `re.compile(...)` `Call` node's flags to a single
+    INTEGER (FINAL §2 — the load-bearing fix; compare integers, NEVER
+    attribute-name strings: `re.I == re.IGNORECASE == 2`). Collects every
+    positional flag arg (`call.args[1:]`) plus the `flags=` keyword value (if
+    any) and OR-s their canonicalized integer values. No flag nodes -> `0`
+    (an EXPLICIT-AST no-flags pattern canonicalizes to `0`, never the
+    implicit `re.UNICODE` a live `re.compile(...).flags` read would carry —
+    see FINAL §1's rejected-alternative)."""
+    nodes = list(compile_call.args[1:])
+    for kw in compile_call.keywords:
+        if kw.arg == "flags":
+            nodes.append(kw.value)
+    if not nodes:
+        return 0
+    acc = 0
+    for node in nodes:
+        acc |= _check_85_eval_flag_node(node)
+    return acc
+
+
+def _check_85_extract_twin(text, path_rel, symbol):
+    """Extract an ORDERED list of `(name, source, flags_int)` from `text`
+    (a twin's full module source, or Twin B's sliced heredoc body) by
+    locating the `symbol = (...)` tuple assignment and AST-parsing each
+    element as `(name_literal, re.compile(source_literal, *flags))`.
+
+    Raises `_Check85ExtractError` naming `path_rel` + what could not be
+    located on ANY parse / locate / shape failure (FINAL §7 — symmetric
+    fail-loud for BOTH twins; never a silent skip on a present-but-
+    unextractable twin)."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError as exc:
+        raise _Check85ExtractError(
+            f"{path_rel} — could not ast.parse the extracted text for "
+            f"`{symbol}`: {exc}"
+        )
+
+    assign = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            tgt = node.targets[0]
+            if isinstance(tgt, ast.Name) and tgt.id == symbol:
+                assign = node
+                break
+    if assign is None:
+        raise _Check85ExtractError(
+            f"{path_rel} — could not locate the `{symbol} = (...)` "
+            f"assignment"
+        )
+    if not isinstance(assign.value, ast.Tuple):
+        raise _Check85ExtractError(
+            f"{path_rel} — `{symbol}` is not a tuple literal (got "
+            f"{type(assign.value).__name__})"
+        )
+
+    result = []
+    for elt in assign.value.elts:
+        if not isinstance(elt, ast.Tuple) or len(elt.elts) != 2:
+            raise _Check85ExtractError(
+                f"{path_rel} — `{symbol}` has an element that is not a "
+                f"2-tuple `(name, re.compile(...))`: {ast.dump(elt)}"
+            )
+        name_node, call_node = elt.elts
+        try:
+            name = ast.literal_eval(name_node)
+        except Exception as exc:
+            raise _Check85ExtractError(
+                f"{path_rel} — `{symbol}` element name is not a literal: "
+                f"{exc}"
+            )
+        if (
+            not isinstance(call_node, ast.Call)
+            or not isinstance(call_node.func, ast.Attribute)
+            or call_node.func.attr != "compile"
+            or not isinstance(call_node.func.value, ast.Name)
+            or call_node.func.value.id != "re"
+        ):
+            raise _Check85ExtractError(
+                f"{path_rel} — `{symbol}` axis {name!r} value is not a "
+                f"`re.compile(...)` call"
+            )
+        if not call_node.args:
+            raise _Check85ExtractError(
+                f"{path_rel} — `{symbol}` axis {name!r} `re.compile(...)` "
+                f"call has no source argument"
+            )
+        try:
+            source = ast.literal_eval(call_node.args[0])
+        except Exception as exc:
+            raise _Check85ExtractError(
+                f"{path_rel} — `{symbol}` axis {name!r} regex source is "
+                f"not a literal: {exc}"
+            )
+        try:
+            flags_int = _check_85_canon_flags(call_node)
+        except _Check85ExtractError as exc:
+            raise _Check85ExtractError(
+                f"{path_rel} — `{symbol}` axis {name!r}: {exc}"
+            )
+        result.append((name, source, flags_int))
+    return result
+
+
+def _check_85_slice_twin_b_heredoc(text, path_rel, symbol):
+    """FINAL §8 — select the `python3 ... <<DELIM` heredoc whose BODY
+    contains `symbol`'s assignment (never a naive first-heredoc match), strip
+    the delimiter's surrounding quotes, and slice to the line that EQUALS
+    the bare delimiter (never the quoted form; never slice to EOF).
+
+    Raises `_Check85ExtractError` naming `path_rel` on any opener /
+    selection / close-line failure."""
+    lines = text.splitlines()
+    opener_re = re.compile(r"\bpython3\b.*<<-?\s*(['\"]?)(\w+)\1\s*$")
+
+    candidates = []
+    for i, line in enumerate(lines):
+        m = opener_re.search(line)
+        if m:
+            candidates.append((i, m.group(2)))
+    if not candidates:
+        raise _Check85ExtractError(
+            f"{path_rel} — no `python3 ... <<DELIM` heredoc opener found"
+        )
+
+    selected = None
+    for opener_idx, delim in candidates:
+        close_idx = None
+        for j in range(opener_idx + 1, len(lines)):
+            if lines[j] == delim:
+                close_idx = j
+                break
+        if close_idx is None:
+            continue  # this heredoc never closes with a bare-delimiter line
+        body = "\n".join(lines[opener_idx + 1 : close_idx])
+        if symbol in body:
+            selected = body
+            break
+    if selected is None:
+        raise _Check85ExtractError(
+            f"{path_rel} — no `python3` heredoc body (that closes with a "
+            f"bare-delimiter line) contains the `{symbol}` assignment "
+            f"(delimiter munged, assignment renamed, or the heredoc never "
+            f"closes)"
+        )
+    return selected
+
+
+def check_narration_twin_content_parity() -> None:
+    """Check 85 — narration-twin regex-CONTENT parity guard (BD-271).
+
+    Enforces regex-CONTENT parity (source bytes + INTEGER-value flags,
+    load-bearing) between the two session-state narration-pattern twins:
+      - Twin A (pack): `_SESSION_STATE_NARRATION_PATTERNS` in
+        `scripts/lib/validate_checks/core.py` (this package).
+      - Twin B (client-shipped, READ-ONLY input): `_SS_NARRATION_PATTERNS`
+        embedded in the `python3 - <<'PYEOF'` heredoc in
+        `project-template/scripts/validate-docs.sh`.
+
+    This is a NARROW DATA-parity guard on ONE co-maintained shared literal —
+    NOT the whole-gate BEHAVIORAL parity
+    `maintenance-docs/v11-implementation/DESIGN-BD-243-CLIENT-GATE.md` §C.3
+    rejected as a maintenance trap (see the §C.3 addendum, BD-271). Check 70
+    (`check_client_doc_gate_parity`) guards the client gate's STRUCTURE
+    (presence/axes/wiring); Check 85 guards this ONE shared DATA literal's
+    content. Neither compares whole-gate behavior.
+
+    Algorithm (DESIGN-BD271-check85 FINAL §9): Twin-B-FILE-absent lenient
+    SKIP -> extract Twin A (AST from `core.py` TEXT) -> extract Twin B
+    (select + slice the `python3` heredoc containing the assignment) ->
+    count-parity assert -> per-twin dict-build with duplicate-folded-name
+    FAIL-loud -> fold-reach guard (only the measured `bd`/`td` axes may
+    diverge) -> directionality guard (Twin A carries BD, Twin B carries TD
+    on the sanctioned axes) -> bidirectional map compare on
+    `(FOLD(source), flags_int)` -> clean pass.
+
+    SKIP-lenient ONLY when the Twin B FILE is wholly absent (a fresh-clone /
+    pre-install artifact). Twin A absent, or either twin present-but-
+    unextractable, is a structural FAIL (never a silent skip).
+
+    Cheap (ci-check-runtime-compounding): reads exactly TWO named files; two
+    `ast.parse` calls; in-memory fold/int/set work. No subprocess, no `git`,
+    no filesystem walk.
+    """
+    print("\n── Check 85: narration-twin regex-CONTENT parity (BD-271) ──")
+
+    twin_a_path = REPO_ROOT / _CHECK_85_TWIN_A[0]
+    twin_b_path = REPO_ROOT / _CHECK_85_TWIN_B[0]
+
+    if not twin_b_path.is_file():
+        ok(
+            f"Check 85 — {_CHECK_85_TWIN_B[0]} absent — skipping (lenient; "
+            f"the client doc gate is a pre-install / not-yet-shipped "
+            f"artifact). When present, Check 85 asserts regex-CONTENT "
+            f"parity (source + integer-value flags) between "
+            f"`{_CHECK_85_TWIN_A[0]}::{_CHECK_85_TWIN_A[1]}` (pack) and "
+            f"`{_CHECK_85_TWIN_B[0]}::{_CHECK_85_TWIN_B[1]}` (client)."
+        )
+        return
+
+    try:
+        a_text = twin_a_path.read_text()
+    except OSError as exc:
+        fail(
+            f"Check 85 — could not read {_CHECK_85_TWIN_A[0]}: {exc}. This "
+            f"is the check's OWN package (not a lenient-absent case)."
+        )
+        return
+
+    try:
+        twin_a = _check_85_extract_twin(
+            a_text, _CHECK_85_TWIN_A[0], _CHECK_85_TWIN_A[1]
+        )
+    except _Check85ExtractError as exc:
+        fail(f"Check 85 — Twin A extraction failed: {exc}")
+        return
+
+    try:
+        b_text = twin_b_path.read_text()
+    except OSError as exc:
+        fail(f"Check 85 — could not read {_CHECK_85_TWIN_B[0]}: {exc}.")
+        return
+
+    try:
+        b_body = _check_85_slice_twin_b_heredoc(
+            b_text, _CHECK_85_TWIN_B[0], _CHECK_85_TWIN_B[1]
+        )
+        twin_b = _check_85_extract_twin(
+            b_body, _CHECK_85_TWIN_B[0], _CHECK_85_TWIN_B[1]
+        )
+    except _Check85ExtractError as exc:
+        fail(f"Check 85 — Twin B extraction failed: {exc}")
+        return
+
+    # ── Count parity (FINAL §6.1) ──
+    if len(twin_a) != len(twin_b):
+        fail(
+            f"Check 85 — narration twins differ in pattern COUNT "
+            f"(pack={len(twin_a)}, client={len(twin_b)}) — a pattern was "
+            f"added/removed on one side only. pack="
+            f"{_CHECK_85_TWIN_A[0]}::{_CHECK_85_TWIN_A[1]} client="
+            f"{_CHECK_85_TWIN_B[0]}::{_CHECK_85_TWIN_B[1]}."
+        )
+        return
+
+    def _fold(s):
+        return _CHECK_85_BD_TD_FOLD.sub("XX", s)
+
+    def _build_map(twin_list, twin_label):
+        built = {}
+        for name, source, flags_int in twin_list:
+            key = _fold(name)
+            if key in built:
+                raise _Check85ExtractError(
+                    f"narration twin {twin_label} has a DUPLICATE axis "
+                    f"'{key}' — a duplicate collapses last-wins and can "
+                    f"hide a wrong-body copy; each axis name must be "
+                    f"unique."
+                )
+            built[key] = (name, source, _fold(source), flags_int)
+        return built
+
+    # ── Per-twin dict-build with duplicate-folded-name FAIL-loud (§6.2) ──
+    try:
+        map_a = _build_map(twin_a, "A (pack)")
+        map_b = _build_map(twin_b, "B (client)")
+    except _Check85ExtractError as exc:
+        fail(f"Check 85 — {exc}")
+        return
+
+    any_fail = False
+
+    # ── Fold-reach guard (§5.1) — a bd/td token is PERMITTED only on the
+    # measured sanctioned axes; any other axis carrying one FAILs loud.
+    for twin_list, twin_label in (
+        (twin_a, "A (pack)"),
+        (twin_b, "B (client)"),
+    ):
+        for name, source, _flags in twin_list:
+            key = _fold(name)
+            if key in _CHECK_85_SANCTIONED_FOLDED_NAMES:
+                continue
+            if _CHECK_85_BD_TD_FOLD.search(name) or _CHECK_85_BD_TD_FOLD.search(
+                source
+            ):
+                any_fail = True
+                fail(
+                    f"Check 85 — narration axis '{name}' (twin "
+                    f"{twin_label}) carries a bd/td token but is not in "
+                    f"the sanctioned divergent set "
+                    f"{sorted(_CHECK_85_SANCTIONED_FOLDED_NAMES)}; the fold "
+                    f"would collapse it unguarded — extend the "
+                    f"directionality guard or reconsider the fold."
+                )
+    if any_fail:
+        return
+
+    # ── Directionality guard (§5.2) — Twin A carries BD (not TD); Twin B
+    # carries TD (not BD) on the sanctioned axes (catches a wrong-audience
+    # copy the fold alone would collapse to 'XX-').
+    for key in sorted(_CHECK_85_SANCTIONED_FOLDED_NAMES):
+        a_entry = map_a.get(key)
+        b_entry = map_b.get(key)
+        if a_entry is None or b_entry is None:
+            continue  # absence is caught by the bidirectional compare below
+        a_name, a_source = a_entry[0], a_entry[1]
+        b_name, b_source = b_entry[0], b_entry[1]
+        if not (
+            _CHECK_85_BD_TOKEN_RE.search(a_source)
+            and not _CHECK_85_TD_TOKEN_RE.search(a_source)
+        ):
+            any_fail = True
+            fail(
+                f"Check 85 — directionality: pack twin axis '{a_name}' "
+                f"(sanctioned axis '{key}') does not carry the expected "
+                f"BD (not TD) vocabulary: {a_source!r}."
+            )
+        if not (
+            _CHECK_85_TD_TOKEN_RE.search(b_source)
+            and not _CHECK_85_BD_TOKEN_RE.search(b_source)
+        ):
+            any_fail = True
+            fail(
+                f"Check 85 — directionality: client twin axis '{b_name}' "
+                f"(sanctioned axis '{key}') does not carry the expected TD "
+                f"(not BD) vocabulary — likely a wrong-audience copy: "
+                f"{b_source!r}."
+            )
+    if any_fail:
+        return
+
+    # ── Bidirectional map compare (§8) — FAIL on missing/extra axes and on
+    # any shared axis whose (folded source, flags_int) differs.
+    keys_a = set(map_a)
+    keys_b = set(map_b)
+    for key in sorted(keys_a - keys_b):
+        any_fail = True
+        fail(
+            f"Check 85 — axis '{map_a[key][0]}' present in the pack twin "
+            f"({_CHECK_85_TWIN_A[0]}) but MISSING in the client twin "
+            f"({_CHECK_85_TWIN_B[0]}). Add/remove the pattern on both "
+            f"sides in lock-step."
+        )
+    for key in sorted(keys_b - keys_a):
+        any_fail = True
+        fail(
+            f"Check 85 — axis '{map_b[key][0]}' present in the client "
+            f"twin ({_CHECK_85_TWIN_B[0]}) but MISSING in the pack twin "
+            f"({_CHECK_85_TWIN_A[0]}). Add/remove the pattern on both "
+            f"sides in lock-step."
+        )
+    for key in sorted(keys_a & keys_b):
+        a_name, a_source, a_fold_source, a_flags = map_a[key]
+        b_name, b_source, b_fold_source, b_flags = map_b[key]
+        if (a_fold_source, a_flags) != (b_fold_source, b_flags):
+            any_fail = True
+            fail(
+                f"Check 85 — narration-twin CONTENT drift on axis '{key}': "
+                f"pack ({_CHECK_85_TWIN_A[0]}::{_CHECK_85_TWIN_A[1]}) axis "
+                f"'{a_name}'=(source={a_source!r}, flags={a_flags}) client "
+                f"({_CHECK_85_TWIN_B[0]}::{_CHECK_85_TWIN_B[1]}) axis "
+                f"'{b_name}'=(source={b_source!r}, flags={b_flags}). The "
+                f"twins must carry byte-identical regex source + "
+                f"integer-equal flags (only the sanctioned bd<->td "
+                f"vocabulary on "
+                f"{sorted(_CHECK_85_SANCTIONED_FOLDED_NAMES)} may differ). "
+                f"Align both twins in the same change."
+            )
+
+    if any_fail:
+        return
+
+    ok(
+        f"Check 85 — {len(twin_a)} patterns per twin; folded-parity holds "
+        f"(no missing/extra, no source/flag drift); fold-reach bounded to "
+        f"{sorted(_CHECK_85_SANCTIONED_FOLDED_NAMES)}; directionality OK."
+    )
+
+
 # ── __all__ — every Cluster-H-OWNED symbol the facade / the tests reach ─────
 # `from validate_checks.session_state import *` skips underscore names UNLESS
 # they are listed here; and once `__all__` is declared it ALSO gates the
-# non-underscore names — so the three `check_*` (resolved by bare name in the
+# non-underscore names — so the four `check_*` (resolved by bare name in the
 # facade's `_build_check_registry()`) MUST be enumerated. The Cluster-H-exclusive
 # helper `_session_state_iter_string_values` is enumerated so the facade
 # re-exports it (it is reached by test-validate-pack-check-79.sh's grammar
 # legs). The `from .core` seams (`_session_state_load`, `_SESSION_STATE_*`) are
 # NOT re-listed — they are core-owned (the facade re-exports them via
 # `from validate_checks.core import *`); `__all__` enumerates only session_state's
-# OWN symbols.
+# OWN symbols. The `_CHECK_85_*` constants + `_check_85_canon_flags` are
+# enumerated so test-validate-pack-check-85.sh reaches them by name via the
+# facade (FINAL §11 surface 2).
 __all__ = [
     # ── Cluster-H-exclusive helper (read by Check 79) ──
     "_session_state_iter_string_values",
@@ -451,4 +939,11 @@ __all__ = [
     "check_session_state_struct",
     "check_session_state_fresh",
     "check_session_state_grammar",
+    # ── Cluster H parity guard (85, BD-271) ──
+    "check_narration_twin_content_parity",
+    "_check_85_canon_flags",
+    "_CHECK_85_TWIN_A",
+    "_CHECK_85_TWIN_B",
+    "_CHECK_85_SANCTIONED_FOLDED_NAMES",
+    "_CHECK_85_BD_TD_FOLD",
 ]

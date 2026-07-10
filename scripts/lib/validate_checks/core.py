@@ -182,8 +182,9 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # CI-environment fragility guard): 80 → 81. BD-253 deletes Check 76 (the
 # immutable-manifest content-integrity check): 81 → 80. BD-264 adds Check 84
 # (groupings contract schema specifics + the reserved-id schema↔lib
-# cross-agreement): 80 → 81.
-CHECK_REGISTRY_EXPECTED_COUNT = 81
+# cross-agreement): 80 → 81. BD-271 adds Check 85 (narration-twin content
+# parity): 81 → 82.
+CHECK_REGISTRY_EXPECTED_COUNT = 82
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []

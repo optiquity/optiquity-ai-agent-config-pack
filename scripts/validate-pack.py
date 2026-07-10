@@ -1264,6 +1264,20 @@ def _build_check_registry():
         # bites. Two small file reads; self-check in-memory; no subprocess.
         (84, "check_project_groupings_contract",
               check_project_groupings_contract, W),
+        # Check 85 — narration-twin regex-CONTENT parity guard (BD-271): a
+        # NARROW DATA-parity check (source bytes + INTEGER-value flags,
+        # load-bearing) between the two session-state narration-pattern
+        # twins — `_SESSION_STATE_NARRATION_PATTERNS` (core.py, pack) and
+        # `_SS_NARRATION_PATTERNS` (validate-docs.sh, client-shipped,
+        # READ-ONLY input). AST-extracts both twins as TEXT, folds the
+        # sanctioned bd<->td audience vocabulary (bounded to the measured
+        # 2-axis set), and asserts count/duplicate/fold-reach/directionality
+        # + a bidirectional (source, flags) compare. Complements Check 70's
+        # STRUCTURAL client-gate parity (see DESIGN-BD-243-CLIENT-GATE.md
+        # §C.3 addendum) — neither compares whole-gate behavior. Cheap:
+        # reads exactly two named files; no subprocess, no tree walk.
+        (85, "check_narration_twin_content_parity",
+              check_narration_twin_content_parity, W),
     ]
 
 
