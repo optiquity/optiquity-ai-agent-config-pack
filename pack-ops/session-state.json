@@ -1,6 +1,6 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "196c220",
+  "boundary_commit": "a349220",
   "checkpoint": "2026-07-13T12:00:00Z",
   "active": [],
   "in_flight_agents": [],
@@ -18,7 +18,6 @@
   "pending_decisions": [
     "Dashboard is DEAD per user direction — do not revive, rebuild, or propose any dashboard/board work.",
     "Do NOT start the next-queue BD (BD-224) or any queued item without explicit user direction.",
-    "Local v11-dev is ahead of origin (BD-271 recreated + the deprecation commit); the user pushes manually if and when they choose.",
     "SESSION-SETTINGS JSON (user heads-up for BD-224 + BD-257): a separate settings JSON governing chat/agent session behavior, per-side, readable by any actor; user introduces the mechanism when those BDs start.",
     "Standing spawn directive (until revoked): all agent spawns use isolation:worktree (async channel); RO agents cd into the target tree; re-engage via SendMessage-to-agentId.",
     "Restore GitHub Actions minutes at monthly reset if capped — re-run CI as needed."
