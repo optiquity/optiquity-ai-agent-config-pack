@@ -269,6 +269,7 @@
 - [BD-266](./BD-266.md) — status-generate.sh: marker-delimited never-SSOT dashboard generator + --check wiring + BD-105 title-link fold + target columns (BD-189 CBD-5)
 - [BD-267](./BD-267.md) — Impl-plan ordering + lifecycle contract: grouping-affinity placement, deferral-deprioritization ordering, four-field dependency sentence, terminal-supersession sentence, groupings-contract pointer (BD-189 CBD-6)
 - [BD-268](./BD-268.md) — Groupings workflow integration: METHODOLOGY Workflow 7 + PM-CHAT + trinity + prompts + pm-startup + agent defs + HELP-FRAGMENT rows + changelog Write-authority clarify + allowlist records (BD-189 CBD-7)
+- [BD-271](./BD-271.md) — Narration-twin hardening: client-gate session-state behavioral coverage + a new Check 85 regex-CONTENT parity guard (BD-252 / BD-253 / BD-269 follow-on)
 
 ## Deprecated
 
@@ -280,6 +281,8 @@
 - [BD-103](./BD-103.md) — `pack tracker reset` verb + 3-level recovery documentation
 - [BD-174](./BD-174.md) — Scratch-pack-clone migration + multi-toggle test harness
 - [BD-235](./BD-235.md) — Project side has no shared universal-discipline skill (pack has `commit-discipline`); evaluate a project equivalent vs the current `PM-CHAT.md` + agent-def home
+- [BD-269](./BD-269.md) — Claude Artifacts dashboard subsystem (pack-side)
+- [BD-270](./BD-270.md) — Claude Artifacts dashboard subsystem (project-side companion to BD-269)
 
 ## Cancelled
 
