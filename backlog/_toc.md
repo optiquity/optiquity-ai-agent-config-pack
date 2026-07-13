@@ -8,7 +8,6 @@
 - [BD-036](./BD-036.md) — IDE and editor coverage gaps
 - [BD-037](./BD-037.md) — Platform update cycle observability
 - [BD-039](./BD-039.md) — Prototype / speed mode
-- [BD-040](./BD-040.md) — Fully autonomous execution mode
 - [BD-093](./BD-093.md) — v11.0 release pin (tag, README, CHANGELOG, MIGRATION cross-link)
 - [BD-109](./BD-109.md) — Project-side `auditor-issue-tracking` sub-agent
 - [BD-110](./BD-110.md) — Pack-side `pack-auditor` agent
@@ -276,6 +275,7 @@
 - [BD-021](./BD-021.md) — Redesign Apple platform architecture skills (three-tier)
 - [BD-022](./BD-022.md) — C project template and c-language skill
 - [BD-023](./BD-023.md) — Mixed-language skills for Apple projects (Objective-C, C, C++, graphics)
+- [BD-040](./BD-040.md) — Fully autonomous execution mode
 - [BD-100](./BD-100.md) — Pack-implementation milestone checkpoints (3 strategic audits during v11)
 - [BD-102](./BD-102.md) — Pack-repo dog-food migration (final v11 validation)
 - [BD-103](./BD-103.md) — `pack tracker reset` verb + 3-level recovery documentation
