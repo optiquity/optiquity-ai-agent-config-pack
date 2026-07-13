@@ -321,7 +321,7 @@ _SESSION_STATE_NARRATION_PATTERNS = (
     ("incident", re.compile(r"\bincident\b", re.I)),
     ("commit-n", re.compile(r"Commit [0-9]")),
     ("override-n", re.compile(r"Override [0-9]")),
-    ("post-commit", re.compile(r"post-Commit", re.I)),
+    ("post-commit", re.compile(r"post-Commit")),
     ("pre-date", re.compile(r"pre-20\d\d")),
     ("lessons-marker", re.compile(r"\b(LESSONS|lessons)\b")),
     ("update-marker", re.compile(r"\bUPDATE-\d")),
