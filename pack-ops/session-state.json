@@ -1,7 +1,7 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "a840c4a",
-  "checkpoint": "2026-07-01T00:00:00Z",
+  "boundary_commit": "196c220",
+  "checkpoint": "2026-07-13T12:00:00Z",
   "active": [],
   "in_flight_agents": [],
   "queue": [
@@ -14,12 +14,14 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "Groupings feature CODE-COMPLETE — all 7 children (BD-262..268) Resolved; BD-105 Resolved (G1). The end-of-batch reviewer next (the one closing sweep over the full batch), then fixes-if-any + the closing push, then the ruled PAUSE.",
+  "wave": "Idle — no active work. The dashboard subsystem (BD-269 pack-side + BD-270 project-side) is DEAD: reverted out of the repo and marked Deprecated. BD-271 (Check 85 narration-twin parity + client-gate tests) preserved and Resolved. Repo sits at the pre-dashboard baseline plus BD-271; validate-pack clean.",
   "pending_decisions": [
-    "USER DIRECTIVE (standing): after the end-of-batch reviewer + fixes + the BD-268 flip + push, PAUSE — do NOT start BD-224 or any next-queue BD until the user directs.",
-    "SESSION-SETTINGS JSON (user heads-up, for BD-224 pack + BD-257 project slash-command BDs): user will introduce a separate settings JSON (distinct from session-state.json) governing chat/agent session behavior, per-side, readable by any agent/actor — like Claude's settings. Track as a design input for BD-224/BD-257; user introduces the mechanism when those BDs start.",
-    "restore GitHub Actions minutes at monthly reset if capped (not currently) — re-run CI as needed",
-    "SESSION DIRECTIVE (user, until revoked; not a rule change — no memory/BD): ALL spawns use isolation:worktree (the async-task channel). RO agents work in their own worktree. Reviewers + fix-coders get a LAUNCH-PAD worktree they must ABANDON: first instruction = cd into the target live worktree (the commit under review/fix) + verify pwd/HEAD/dirty-set before any work; the unused launch worktree auto-cleans. The substantive placement rules are unchanged (review/fix happens IN the commit worktree); re-engagement via SendMessage-to-agentId (transcript resume)."
+    "Dashboard is DEAD per user direction — do not revive, rebuild, or propose any dashboard/board work.",
+    "Do NOT start the next-queue BD (BD-224) or any queued item without explicit user direction.",
+    "Local v11-dev is ahead of origin (BD-271 recreated + the deprecation commit); the user pushes manually if and when they choose.",
+    "SESSION-SETTINGS JSON (user heads-up for BD-224 + BD-257): a separate settings JSON governing chat/agent session behavior, per-side, readable by any actor; user introduces the mechanism when those BDs start.",
+    "Standing spawn directive (until revoked): all agent spawns use isolation:worktree (async channel); RO agents cd into the target tree; re-engage via SendMessage-to-agentId.",
+    "Restore GitHub Actions minutes at monthly reset if capped — re-run CI as needed."
   ],
-  "cycle_position": "Spawning the end-of-batch reviewer over the seven groupings children (the one closing sweep)."
+  "cycle_position": "Idle at a clean stopping point. Next in the queue is BD-224 (expand the /pack-* slash-command set; brainstorm-gated). Awaiting user direction before starting anything."
 }
