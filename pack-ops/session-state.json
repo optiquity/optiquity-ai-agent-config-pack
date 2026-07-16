@@ -1,11 +1,12 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "a349220",
-  "checkpoint": "2026-07-13T12:00:00Z",
-  "active": [],
+  "boundary_commit": "34bb742",
+  "checkpoint": "2026-07-16T00:00:00Z",
+  "active": [
+    "BD-224 @ design pass — docs-researcher census complete; architect pass pending user approval; pack-lead (BD-257 follows, project-side)"
+  ],
   "in_flight_agents": [],
   "queue": [
-    "BD-224",
     "BD-257",
     "BD-136",
     "BD-236",
@@ -14,13 +15,16 @@
     "BD-093"
   ],
   "parallelization": "serial",
-  "wave": "Idle — no active work. The dashboard subsystem (BD-269 pack-side + BD-270 project-side) is DEAD: reverted out of the repo and marked Deprecated. BD-271 (Check 85 narration-twin parity + client-gate tests) preserved and Resolved. Repo sits at the pre-dashboard baseline plus BD-271; validate-pack clean.",
+  "wave": "BD-224 design pass (pack-lead). Design input: the consolidated seed for BD-224/BD-257 plus the pack dashboard build spec. Census report: ~/Developer/_tmp/pack-bd224-design/RESEARCH-BD224-census.md. Pipeline: census (done) -> architect (user gate) -> planner -> coder waves. BD-257 (project-side analog) follows once BD-224 lands elegantly.",
   "pending_decisions": [
-    "Dashboard is DEAD per user direction — do not revive, rebuild, or propose any dashboard/board work.",
-    "Do NOT start the next-queue BD (BD-224) or any queued item without explicit user direction.",
-    "SESSION-SETTINGS JSON (user heads-up for BD-224 + BD-257): a separate settings JSON governing chat/agent session behavior, per-side, readable by any actor; user introduces the mechanism when those BDs start.",
-    "Standing spawn directive (until revoked): all agent spawns use isolation:worktree (async channel); RO agents cd into the target tree; re-engage via SendMessage-to-agentId.",
-    "Restore GitHub Actions minutes at monthly reset if capped — re-run CI as needed."
+    "Locked design input for BD-224 (pack) and BD-257 (project): the consolidated seed at ~/Developer/_tmp/pack-handoff-bd224-bd257/SEED-BD224-BD257-commands-modes-dashboard.md. Design agents are scoped to it plus the pack dashboard build spec ONLY.",
+    "NOT inputs: the iCloud V1 seed and the ~/Developer/_tmp/pack-dash* experiment dirs (superseded/experiment). The user holds their cleanup until further notice; agents must never read them.",
+    "Sequencing: pack-lead. BD-224 to an elegant result FIRST; then BD-257 (project-side, similar requirements, different docs) informed by the learnings.",
+    "BD-224 full scope LOCKED (user): the seed's new subsystem PLUS existing /pack-* command refresh PLUS full /pack-help coverage of the pack CLI verb surface, with all stale/incomplete command docs brought current.",
+    "The overdesigned dashboard subsystem stays DEAD (no revive/rebuild). The MINIMAL dashboard is in-scope for BD-224 per the seed: one shared spec-driven rendering skill, an approvals dir of exactly two files (URL record + HTML), stateless cache-free render, foreground publish.",
+    "Mode-config (session-config JSON) per the seed: gitignored, per-clone, orchestrator-read-only, missing resolves to defaults; the reused dashboard URL is committed in the approvals dir, not in session-state.",
+    "Standing spawn directive (until revoked): all agent spawns use isolation:worktree; RO agents cd into the target tree; re-find via the spawn registry by name.",
+    "Restore GitHub Actions minutes at monthly reset if capped."
   ],
-  "cycle_position": "Idle at a clean stopping point. Next in the queue is BD-224 (expand the /pack-* slash-command set; brainstorm-gated). Awaiting user direction before starting anything."
+  "cycle_position": "BD-224 design pass — docs-researcher census complete; awaiting user approval to spawn the architect."
 }
