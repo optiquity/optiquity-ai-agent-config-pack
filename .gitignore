@@ -16,6 +16,11 @@
 # (scripts/tests/fixtures/**/tracker.toml) must stay tracked.
 /tracker.toml
 
+# ── Pack operating-mode config (BD-224) ───────────────────────────────────
+# Per-clone runtime mode selections; orchestrator-read-only. Never committed
+# (session-state.json stays committed; only this sibling config is local).
+pack-ops/session-config.json
+
 # ── Generated Protobuf output ─────────────────────────────────────────────────
 # Regenerate with scripts/proto-gen.sh
 generated/

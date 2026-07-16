@@ -694,6 +694,35 @@ if fail_count != 1:
 if "qualify to one of" not in captured:
     failures.append(f"T8 (2+ FAIL) FAIL message must say 'qualify to one of': {captured}")
 
+# T9: EXCLUDED basename — the verbatim dashboard build spec. BD-224:
+#     DASHBOARD-SPEC-PACK.md is a USER-OWNED byte-faithful source committed
+#     verbatim; its bare \`pack-help.sh\` reference cannot be qualified without
+#     violating byte-faithfulness, so the Check 40 walk excludes the basename
+#     (excluded_basenames). Even a synthetic pack-ops/DASHBOARD-SPEC-PACK.md
+#     carrying that bare ref is SKIPPED. This is the Check-40 surface's OWN
+#     exclusion — SEPARATE from the _CHECK_OPERATING_DOC_EXEMPT entry that
+#     exempts the spec from Checks 65/67/68/69 (Check 40 walks pack-ops/*.md on
+#     its own glob and never consults _iter_operating_docs).
+fail_count, pass_msg, captured = run_check_with_synthetic(
+    {"DASHBOARD-SPEC-PACK.md": "The help table names \`pack-help.sh\` + command set.\n"},
+    {"scripts/pack-help.sh": "stub"},
+)
+if fail_count != 0:
+    failures.append(f"T9 (spec-basename SKIP) expected 0 failures, got {fail_count}: {captured}")
+
+# T9b: CONTROL — the SAME bare ref in a NON-excluded pack-ops doc DOES fail,
+#      proving the exclusion (not a harmless ref) is what clears T9. The bare
+#      \`pack-help.sh\` has one candidate scripts/pack-help.sh in a different dir
+#      than pack-ops/ (and is not on _CHECK_40_ALLOWLIST) → qualify FAIL.
+fail_count, pass_msg, captured = run_check_with_synthetic(
+    {"FOO.md": "The help table names \`pack-help.sh\` + command set.\n"},
+    {"scripts/pack-help.sh": "stub"},
+)
+if fail_count != 1:
+    failures.append(f"T9b (spec-exclusion control) expected 1 failure, got {fail_count}: {captured}")
+if "scripts/pack-help.sh" not in captured:
+    failures.append(f"T9b (spec-exclusion control) FAIL message must suggest scripts/pack-help.sh: {captured}")
+
 if failures:
     print("FAILURES")
     for f in failures:

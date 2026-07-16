@@ -1675,7 +1675,15 @@ def check_bare_pack_ops_refs() -> None:
     # never matches, and during conversion it keeps the scan off the
     # conversion-input monoliths. NOT "regenerated mirrors" — there is
     # no mirror.
-    excluded_basenames = {"BACKLOG.md", "CHANGELOG.md"}
+    # DASHBOARD-SPEC-PACK.md is a verbatim USER-OWNED build spec committed
+    # byte-faithfully; its bare `pack-help.sh` reference cannot be qualified
+    # without violating byte-faithfulness (unlike a pack-authored doc the pack
+    # keeps Check-40-clean itself), so the whole file is walk-excluded — sized
+    # to EXACTLY the one un-remediable verbatim source. This walk does NOT
+    # consult _iter_operating_docs()/_CHECK_OPERATING_DOC_EXEMPT, so the spec's
+    # content-gate exemption (Checks 65/67/68/69) does NOT cover Check 40 — this
+    # is the separate, parallel exclusion for the Check-40 surface.
+    excluded_basenames = {"BACKLOG.md", "CHANGELOG.md", "DASHBOARD-SPEC-PACK.md"}
 
     any_failed = False
     files_walked = 0
@@ -3175,6 +3183,15 @@ _CHECK_OPERATING_DOC_EXEMPT = (
     "_intro.md",
     "_toc.md",
     "HELP-FRAGMENT",  # prefix match: HELP-FRAGMENT-PACK.md, HELP-FRAGMENT.md
+    # EXACT-basename entry (matched by the `elif name == ex` branch below, NOT
+    # the HELP-FRAGMENT prefix branch — the bare token "DASHBOARD-SPEC" would be
+    # a silent no-op). The dashboard build spec is a verbatim USER-OWNED
+    # reference SOURCE (read fresh every render), not a terse operating doc the
+    # chat executes — its length + verbatim bare refs are fine there. This
+    # exempts it from the content gates Checks 65/67/68/69. Check 40 walks
+    # pack-ops/*.md on its OWN glob (see `excluded_basenames` in
+    # check_bare_pack_ops_refs) and needs its own separate exclusion.
+    "DASHBOARD-SPEC-PACK.md",
 )
 
 
