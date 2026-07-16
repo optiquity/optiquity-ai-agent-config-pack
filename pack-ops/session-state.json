@@ -1,30 +1,20 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "34bb742",
+  "boundary_commit": "3b5b63d",
   "checkpoint": "2026-07-16T00:00:00Z",
   "active": [
-    "BD-224 @ design pass — docs-researcher census complete; architect pass pending user approval; pack-lead (BD-257 follows, project-side)"
+    "BD-224 implementation. W-1 LANDED (C_F foundation + C3 skill-refresh committed, pack-only). Next: W-2 {C1, C2, C6} parallel coder waves basing at the new HEAD. pack-lead; BD-257 (project-side) follows once BD-224 lands."
   ],
   "in_flight_agents": [],
-  "queue": [
-    "BD-257",
-    "BD-136",
-    "BD-236",
-    "BD-210",
-    "BD-205",
-    "BD-093"
-  ],
-  "parallelization": "serial",
-  "wave": "BD-224 design pass (pack-lead). Design input: the consolidated seed for BD-224/BD-257 plus the pack dashboard build spec. Census report: ~/Developer/_tmp/pack-bd224-design/RESEARCH-BD224-census.md. Pipeline: census (done) -> architect (user gate) -> planner -> coder waves. BD-257 (project-side analog) follows once BD-224 lands elegantly.",
+  "queue": ["BD-257", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
+  "parallelization": "parallel worktree waves (W-2 next: C1, C2, C6)",
+  "wave": "BD-224 coder waves per PLAN-BD224.md (8 commits C_F/C1-C7, 4 waves; C_F + C3 done). Artifacts under ~/Developer/_tmp/pack-bd224-design/ (ARCHITECTURE, PLAN, DECISIONS, RECONCILIATION-PLAN, per-commit IMPL/REVIEW). Remaining: W-2{C1,C2,C6} -> W-3{C4,C7} -> W-4{C5}; each bases at post-prior-wave HEAD.",
   "pending_decisions": [
-    "Locked design input for BD-224 (pack) and BD-257 (project): the consolidated seed at ~/Developer/_tmp/pack-handoff-bd224-bd257/SEED-BD224-BD257-commands-modes-dashboard.md. Design agents are scoped to it plus the pack dashboard build spec ONLY.",
-    "NOT inputs: the iCloud V1 seed and the ~/Developer/_tmp/pack-dash* experiment dirs (superseded/experiment). The user holds their cleanup until further notice; agents must never read them.",
-    "Sequencing: pack-lead. BD-224 to an elegant result FIRST; then BD-257 (project-side, similar requirements, different docs) informed by the learnings.",
-    "BD-224 full scope LOCKED (user): the seed's new subsystem PLUS existing /pack-* command refresh PLUS full /pack-help coverage of the pack CLI verb surface, with all stale/incomplete command docs brought current.",
-    "The overdesigned dashboard subsystem stays DEAD (no revive/rebuild). The MINIMAL dashboard is in-scope for BD-224 per the seed: one shared spec-driven rendering skill, an approvals dir of exactly two files (URL record + HTML), stateless cache-free render, foreground publish.",
-    "Mode-config (session-config JSON) per the seed: gitignored, per-clone, orchestrator-read-only, missing resolves to defaults; the reused dashboard URL is committed in the approvals dir, not in session-state.",
-    "Standing spawn directive (until revoked): all agent spawns use isolation:worktree; RO agents cd into the target tree; re-find via the spawn registry by name.",
-    "Restore GitHub Actions minutes at monthly reset if capped."
+    "Design LOCKED + 11 decisions adjudicated (DECISIONS-BD224.md). BD-224 pack-only; BD-257 project-side follows.",
+    "C3 SHOULD folds into C5: stale list_workflow_runs at pack-ops/PACK-CHAT.md line 197 (same section C5 edits).",
+    "C_F NIT N1: OPERATING-MODES.md [rationale open-item-surfacing] forward-pointer becomes backed when C1 authors that rule (C1 coordination note).",
+    "Standing: all spawns isolation:worktree; RO agents cd to the work tree; re-find via the spawn registry by name. Push is user-manual.",
+    "Keep session-state COMPACT: one SHA (boundary_commit only), no hex agent IDs, under 4096 bytes."
   ],
-  "cycle_position": "BD-224 design pass — docs-researcher census complete; awaiting user approval to spawn the architect."
+  "cycle_position": "BD-224 W-1 committed (C_F, C3). Next: spawn W-2 coders parallel — C1 (hardened open-item rule, 19 files + S4 mode-aware isolation), C2 (6 net-new skills x3 mirrors), C6 (guard Checks A/B + registry 82->84) — each basing at post-W-1 HEAD. Per commit: coder -> reviewer -> triage -> fix if needed -> merge-back + user-approved commit."
 }
