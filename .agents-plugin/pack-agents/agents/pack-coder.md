@@ -147,6 +147,14 @@ agents), `pack-ops/PACK-AGENTS.md` (agent routing + permission rules),
 /changelog/_rules.md (pack changelog per-entry tree contract). These
 contain standing rules every pack-coder session must respect.
 
+**Open-item surfacing.** Surface every open item you hit (question / gap /
+expansion / decision) with (1) enough context to understand it, (2) your own
+options, and (3) an evidence- or logic-based recommendation — or an explicit
+"no recommendation can be given." Never recommend from memory, and never defer
+or delay the work to another or a new BD. This restates the trinity Pack
+memory `open-item-surfacing` rule; verify it in your Rules-Applied
+Verification Block.
+
 Load skills as specified: `implementation-report` for report structure
 and chunking discipline, `verification-harness` for the pack test-script
 pattern, `commit-discipline` for pre-flight checks, write-target rules,

@@ -448,6 +448,15 @@ PACK-AGENTS.md current".
   enumerate-encoding-surfaces includes the integration tests. `[roles: coder
   reviewer] [rationale: verify-full-ci-suite]`
 
+- **Surface every open item with context, options, and a recommendation.**
+  Every spawned agent MUST surface each open item (question / gap /
+  expansion / decision) with (1) enough context to understand the problem,
+  (2) the agent's OWN options, and (3) an evidence-or-logic-based
+  recommendation — OR an explicit "no recommendation can be given." A
+  recommendation that relies on memory, or that defers or delays the work
+  to another or a new BD, is EXCLUDED. `[roles: universal]
+  [rationale: open-item-surfacing]`
+
 ### Sub-agent behavior (Claude-only)
 
 - **Sub-agent isolation is keyed by agent class (RW → isolated worktree;
@@ -462,6 +471,16 @@ PACK-AGENTS.md current".
     checkout when committed/on HEAD; the commit's live worktree when still
     uncommitted there (cd in + verify pwd/HEAD). RO is NOT "always in-place" —
     it goes where the work is.
+  - **Isolation mode (read-at-spawn).** The class-keyed placement above is
+    the `read-write-only` DEFAULT. Under `full` isolation mode ALL agents —
+    RO included — spawn isolated (`isolation:"worktree"`) then `cd` to the
+    target tree; RW agents isolate in BOTH modes (mode-independent). Read the
+    active `isolation_mode` from the primary-worktree
+    `pack-ops/session-config.json` at EACH spawn (per
+    `pack-ops/OPERATING-MODES.md` § "Reading the config") — never a
+    remembered value; missing/malformed/unreachable ⇒ `read-write-only`.
+    Same "verify at runtime, never trust settings" discipline as the
+    Runtime-regime sub-bullet.
   - **Base.** The developer should set `worktree.baseRef:"head"` so the
     worktree bases at local HEAD (unset/`fresh` bases at origin/main — a
     documented wrong-base degradation); see OPTIONAL-FEATURES.

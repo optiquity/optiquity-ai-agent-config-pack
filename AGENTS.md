@@ -437,6 +437,15 @@ PACK-AGENTS.md current".
   enumerate-encoding-surfaces includes the integration tests. `[roles: coder
   reviewer] [rationale: verify-full-ci-suite]`
 
+- **Surface every open item with context, options, and a recommendation.**
+  Every spawned agent MUST surface each open item (question / gap /
+  expansion / decision) with (1) enough context to understand the problem,
+  (2) the agent's OWN options, and (3) an evidence-or-logic-based
+  recommendation — OR an explicit "no recommendation can be given." A
+  recommendation that relies on memory, or that defers or delays the work
+  to another or a new BD, is EXCLUDED. `[roles: universal]
+  [rationale: open-item-surfacing]`
+
 ### Pack Chat scope
 
 - **Pack Chat does NO fixes.** Pack Chat's role in any review/fix

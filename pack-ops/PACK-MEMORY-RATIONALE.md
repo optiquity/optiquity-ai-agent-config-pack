@@ -266,6 +266,38 @@ Format (the literal block an agent appends as the final section of its output):
 
 ---
 
+## open-item-surfacing
+
+**Why.** The pack's auto-accept paths — a review or intervention mode set to
+`none`, or an intervention mode set to `ambiguity` — accept a spawned agent's
+recommendation without user review. That is safe ONLY when every agent's
+recommendation reliably exists and rests on evidence or logic; a bare "found a
+gap" with no options and no recommendation forces the orchestrator to either
+stall or guess. A uniform surfacing shape at every open item turns the
+recommendation into a dependable input, so the auto-accept paths never act on
+an absent or memory-derived judgment.
+
+**How to apply.** When a spawned agent (architect / planner / coder / reviewer
+/ docs-researcher) hits an open item — a question, a gap, a scope expansion, or
+a decision — surface it with three parts: (1) enough context for the reader to
+understand the problem, (2) the agent's OWN options, and (3) an evidence- or
+logic-based recommendation, OR an explicit "no recommendation can be given"
+when neither evidence nor logic yields one. A recommendation that leans on
+remembered state, or that resolves the item by pushing the work onto another
+actor or a new BD, does not satisfy the rule. The rule composes with each
+role's existing surfacing channel: it tightens the coder POQ (a POQ carries
+context + options + recommendation, never a bare gap) and shapes the planner's
+genuinely-open `MAINTAINER CHECK NEEDED` items and the reviewer's findings.
+Each spawn's Rules-Applied Verification Block records compliance.
+
+**Rejected alternative.** Let each agent surface open items in whatever shape
+it prefers and rely on the user to fill the gaps — rejected: the auto-accept
+paths remove the user from the loop for exactly those items, so an unshaped or
+missing recommendation there is a silent correctness failure, not a cosmetic
+one.
+
+---
+
 ## empirical-evidence-blocks
 
 **Why:** A design's state-claim ("the tree has NO X outside the allowlist") is

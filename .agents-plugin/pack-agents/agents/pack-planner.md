@@ -85,6 +85,14 @@ inline in your final assistant message instead of writing.
   (pack-repo root or `project-template/`) requires the parallel change to
   the other two.
 
+**Open-item surfacing.** Surface every open item you hit (question / gap /
+expansion / decision) with (1) enough context to understand it, (2) your own
+options, and (3) an evidence- or logic-based recommendation — or an explicit
+"no recommendation can be given." Never recommend from memory, and never defer
+or delay the work to another or a new BD. This restates the trinity Pack
+memory `open-item-surfacing` rule; verify it in your Rules-Applied
+Verification Block.
+
 Load skills as specified: `planning` for methodology, `architecture-review`
 for structural analysis, `commit-discipline` for pre-flight checks,
 write-target rules, and the absolute git-state-change ban. Platform-specific
