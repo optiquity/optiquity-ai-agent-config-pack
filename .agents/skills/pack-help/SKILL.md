@@ -6,5 +6,5 @@ allowed-tools: Bash
 
 Run `scripts/pack-help.sh` (it lives at the repo root) and present its
 output to the user verbatim. For full docs see `QUICKSTART.md`,
-`README.md`, `PACK-CHAT.md`, and `OPTIONAL-FEATURES.md`. The shell verb
+`README.md`, `pack-ops/PACK-CHAT.md`, and `pack-ops/OPTIONAL-FEATURES.md`. The shell verb
 `pack help` (LCD floor) prints the same content as this skill.

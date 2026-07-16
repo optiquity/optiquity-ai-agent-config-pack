@@ -47,11 +47,11 @@ in-flight agents can be re-launched from the boundary commit.
 ## Step 3 — Check CI tooling
 
 Check whether the GitHub MCP server is available by looking for GitHub-related
-MCP tools (e.g., `list_workflow_runs`). This is a detection step — do not
+MCP tools (e.g., `get_me`). This is a detection step — do not
 fail if it is absent.
 
-- If available: note "GitHub MCP server: available — CI status checks will
-  be automatic after pushes."
+- If available: note "GitHub MCP server: available — GitHub queries run
+  directly; CI workflow status is read via `gh run list` after each push."
 - If not available: note "GitHub MCP server: not configured — after each
   push, I will remind you to check the Validate Pack workflow in the GitHub
   Actions tab. To enable direct CI checking, see the GitHub MCP server note
