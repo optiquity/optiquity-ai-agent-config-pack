@@ -509,6 +509,16 @@ from validate_checks.singletons import *  # noqa: E402,F403  (singletons; single
 # in wired_test_fragility.py; the facade carries no forked copy.
 from validate_checks.wired_test_fragility import *  # noqa: E402,F403  (BD-222 Check 83; single SSOT)
 
+# BD-224: Checks 86 (check_dashboard_approvals_two_file_cap) + 87
+# (check_session_config_not_committed) live in their own module
+# (validate_checks.pack_ops_hygiene) per the FIRM own-module-per-new-check
+# convention — they share only their module-private `_git_ls_files()` helper (with
+# each other) and no symbol with any cluster. Placed ABOVE _build_check_registry()
+# so the registry's bare `check_*` references resolve at assembly. Single SSOT —
+# the bodies + the shared helper live only in pack_ops_hygiene.py; the facade
+# carries no forked copy.
+from validate_checks.pack_ops_hygiene import *  # noqa: E402,F403  (BD-224 Checks 86/87; single SSOT)
+
 # PER_ENTRY_LIB moved to validate_checks.per_entry_sync (BD-256 W7 — Cluster F
 # intra-cluster; sole source-consumer is Check 33's TOC-regenerator invocation)
 # — re-imported via the facade's `from validate_checks.per_entry_sync import *`
@@ -1278,6 +1288,24 @@ def _build_check_registry():
         # reads exactly two named files; no subprocess, no tree walk.
         (85, "check_narration_twin_content_parity",
               check_narration_twin_content_parity, W),
+        # ── BD-224 (C6): /pack-dashboard runtime-surface git-hygiene guards.
+        # Check 86 caps the git-TRACKED pack-ops/dashboard-approvals/ set at
+        # EXACTLY {dashboard.html, dashboard-url.txt} (both-or-neither first-
+        # commit atomicity — design §11.2 Check A / F12). Check 87 asserts the
+        # per-clone runtime pack-ops/session-config.json is never git-tracked
+        # (design §11.2 Check B). Both live in their own module
+        # (validate_checks.pack_ops_hygiene) per the FIRM own-module-per-new-check
+        # convention — they share only their module-private `_git_ls_files()`
+        # helper (with each other) and no cluster symbol, and stay OUT of
+        # boundary_refs.py (PLAN-BD224.md R7). Both git-TRACKED-enumerated
+        # (git ls-files), O(one dir), SKIP-lenient off a work tree / absent
+        # surface. Land at the registry tail alongside the adjacent CI-infra +
+        # git-hygiene guards (63/83/84/85). Numbers 86/87 are the next contiguous
+        # integers after the highest wired check (85).
+        (86, "check_dashboard_approvals_two_file_cap",
+              check_dashboard_approvals_two_file_cap, W),
+        (87, "check_session_config_not_committed",
+              check_session_config_not_committed, W),
     ]
 
 

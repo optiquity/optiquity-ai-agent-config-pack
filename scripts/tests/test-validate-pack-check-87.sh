@@ -1,0 +1,284 @@
+#!/usr/bin/env bash
+# scripts/tests/test-validate-pack-check-87.sh — synthetic tests for Check 87
+# (pack-ops/session-config.json is never committed — BD-224).
+#
+# Check 87 is the BD-224 git-hygiene guard (design §11.2 Check B): a cheap O(1)
+# `git ls-files pack-ops/session-config.json` screen that FAILs loud the moment
+# the per-clone runtime session-config (gitignored) is tracked. It verifies the
+# LOAD-BEARING reality (actually not tracked), not merely that `.gitignore`
+# carries a line (declare-verify-backing). Passes on an empty result.
+#
+# This test is NOT fixture-dependent (it never reads a built test-fixtures/<NAME>
+# directory — it `git init`s a throwaway repo in a /tmp REPO_ROOT). It lives
+# under scripts/tests/ and auto-wires into CI via the disk glob (Check 42 /
+# BD-219). Per "Test infra is self-provisioned": every tracked-state case is built
+# in a /tmp scratch git repo; the REAL tree is NEVER mutated.
+#
+# Coverage:
+#   Group 0: Module import + Check 87 symbol registration + count invariant
+#   Group 1: Real-state-at-HEAD PASS (the real tree does not track session-config)
+#   Group 2: Synthetic PASS/FAIL against a /tmp git repo (monkeypatch REPO_ROOT):
+#            - PASS: no session-config.json tracked → 0 failures + "is not tracked"
+#            - FAIL: a tracked pack-ops/session-config.json → >=1 failure naming it
+#            - SKIP: REPO_ROOT at a NON-git dir (no git init) → git-unavailable
+#                    → SKIP-lenient (the git-absent / non-worktree branch)
+#   Group 3: End-to-end validate-pack.py --only-check 87 on HEAD.
+#
+# Usage: bash scripts/tests/test-validate-pack-check-87.sh
+
+set -u
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+VALIDATE="$REPO_ROOT/scripts/validate-pack.py"
+
+PASS=0
+FAIL=0
+
+t_pass() { PASS=$((PASS + 1)); printf "  \033[32mPASS\033[0m %s\n" "$1"; }
+t_fail() {
+    FAIL=$((FAIL + 1))
+    printf "  \033[31mFAIL\033[0m %s\n" "$1"
+    [[ -n "${2:-}" ]] && printf "       %s\n" "$2"
+}
+
+# ─────────────────────────────────────────────────────────────────
+# Group 0: Module import + Check 87 symbol registration + count invariant
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 0: Module import + Check 87 symbol registration ===\n"
+
+python3 -c "
+import sys
+sys.path.insert(0, '$REPO_ROOT/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+if not hasattr(mod, 'check_session_config_not_committed'):
+    print('FAIL_MISSING check_session_config_not_committed'); sys.exit(1)
+# Check 87 must be registered AND the expected-count constant must equal the
+# computed registry length (Check 59's invariant — proves the count bump is
+# consistent).
+nums = [t[0] for t in mod._build_check_registry()]
+if 87 not in nums:
+    print('FAIL_NOT_REGISTERED'); sys.exit(1)
+if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
+    print('FAIL_COUNT_MISMATCH'); sys.exit(1)
+print('OK')
+" > /tmp/vp-check87-import.out 2>&1
+
+if grep -q "^OK$" /tmp/vp-check87-import.out; then
+    t_pass "validate-pack.py imports + Check 87 symbol registered + count invariant holds"
+else
+    t_fail "validate-pack.py import / Check 87 registration / count invariant failed" \
+        "$(cat /tmp/vp-check87-import.out)"
+fi
+
+# ─────────────────────────────────────────────────────────────────
+# Group 1: Real-state-at-HEAD PASS (real tree does not track session-config)
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 1: Real-state-at-HEAD PASS ===\n"
+
+REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 <<'EOF'
+import os, sys, io, contextlib
+REPO_ROOT_PY = os.environ['REPO_ROOT']
+VALIDATE_PY = os.environ['VALIDATE']
+sys.path.insert(0, REPO_ROOT_PY + '/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', VALIDATE_PY)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+failures = []
+saved = list(mod.failures); mod.failures.clear()
+buf = io.StringIO()
+try:
+    with contextlib.redirect_stdout(buf):
+        mod.check_session_config_not_committed()
+    new = list(mod.failures); cap = buf.getvalue()
+finally:
+    mod.failures.clear(); mod.failures.extend(saved)
+
+if len(new) != 0:
+    failures.append(f"real-state Check 87 expected 0 failures, got {len(new)}: {cap}")
+if "is not tracked" not in cap:
+    failures.append(f"real-state PASS message missing 'is not tracked': {cap}")
+
+if failures:
+    print("FAILURES"); [print(" ", f) for f in failures]; sys.exit(1)
+print("OK")
+EOF
+case $? in
+    0) t_pass "real-state-at-HEAD Check 87 PASSes (the real tree does not track session-config.json)" ;;
+    *) t_fail "real-state Check 87 failed" ;;
+esac
+
+# ─────────────────────────────────────────────────────────────────
+# Group 2: Synthetic /tmp git-repo PASS/FAIL tests (monkeypatch REPO_ROOT)
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 2: Synthetic /tmp git-repo PASS/FAIL tests ===\n"
+
+REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 <<'EOF'
+import os, sys, tempfile, pathlib, shutil, subprocess, io, contextlib
+REPO_ROOT_PY = os.environ['REPO_ROOT']
+VALIDATE_PY = os.environ['VALIDATE']
+sys.path.insert(0, REPO_ROOT_PY + '/scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('vp', VALIDATE_PY)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+def _patch_root(mod, root):
+    """Set REPO_ROOT on the facade alias AND every loaded validate_checks.*
+    submodule. Check 87's body lives in validate_checks.pack_ops_hygiene and
+    resolves its git root via pack_ops_hygiene.REPO_ROOT (through _git_ls_files);
+    a facade-only patch would NOT bite. Setting it on every loaded
+    validate_checks.* reaches the read wherever the body resolves it (BD-256 W12
+    wave-invariant technique)."""
+    mod.REPO_ROOT = root
+    for _name, _m in list(sys.modules.items()):
+        if _name == "validate_checks" or _name.startswith("validate_checks."):
+            if hasattr(_m, "REPO_ROOT"):
+                _m.REPO_ROOT = root
+
+
+failures = []
+
+# Helper: `git init` a throwaway repo in a /tmp REPO_ROOT, optionally TRACK a
+# pack-ops/session-config.json, then run Check 87 against it by monkeypatching
+# mod.REPO_ROOT. Returns (failures_count, captured_output). Never touches the
+# real tree.
+def run_check(track_session_config):
+    tmpdir = tempfile.mkdtemp(prefix="vp-check87-")
+    root = pathlib.Path(tmpdir)
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t.t"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=root, check=True)
+    # A baseline tracked file so the index is non-empty either way.
+    (root / "README.md").write_text("scratch\n")
+    subprocess.run(["git", "add", "README.md"], cwd=root, check=True)
+
+    if track_session_config:
+        pdir = root / "pack-ops"
+        pdir.mkdir()
+        (pdir / "session-config.json").write_text("{}\n")
+        subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+
+    saved_root = mod.REPO_ROOT
+    saved_failures = list(mod.failures)
+    mod.failures.clear()
+    _patch_root(mod, root)
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            mod.check_session_config_not_committed()
+        new_failures = list(mod.failures)
+        captured = buf.getvalue()
+    finally:
+        _patch_root(mod, saved_root)
+        mod.failures.clear()
+        mod.failures.extend(saved_failures)
+        shutil.rmtree(tmpdir, ignore_errors=True)
+    return (len(new_failures), captured)
+
+# Helper: create a NON-git /tmp REPO_ROOT (NO `git init`), then run Check 87
+# against it by monkeypatching mod.REPO_ROOT. `git ls-files` from a non-git
+# directory returns non-zero → `_git_ls_files` reports available=False → the check
+# SKIPs (git-unavailable / non-worktree → lenient). Returns (failures_count,
+# captured_output). Never touches the real tree.
+def run_check_nongit():
+    tmpdir = tempfile.mkdtemp(prefix="vp-check87-nongit-")
+    root = pathlib.Path(tmpdir)
+    saved_root = mod.REPO_ROOT
+    saved_failures = list(mod.failures)
+    mod.failures.clear()
+    _patch_root(mod, root)
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            mod.check_session_config_not_committed()
+        new_failures = list(mod.failures)
+        captured = buf.getvalue()
+    finally:
+        _patch_root(mod, saved_root)
+        mod.failures.clear()
+        mod.failures.extend(saved_failures)
+        shutil.rmtree(tmpdir, ignore_errors=True)
+    return (len(new_failures), captured)
+
+# T1: PASS — no session-config.json tracked → 0 failures + "is not tracked".
+fail_count, captured = run_check(track_session_config=False)
+if fail_count != 0:
+    failures.append(f"T1 (PASS — no session-config) expected 0 failures, got {fail_count}: {captured}")
+if "is not tracked" not in captured:
+    failures.append(f"T1 PASS message missing 'is not tracked': {captured}")
+
+# T2: FAIL — a TRACKED pack-ops/session-config.json → >=1 failure naming the path.
+fail_count, captured = run_check(track_session_config=True)
+if fail_count < 1:
+    failures.append(f"T2 (FAIL — tracked session-config) expected >=1 failure, got {fail_count}: {captured}")
+if "pack-ops/session-config.json" not in captured or "git-TRACKED" not in captured:
+    failures.append(f"T2 FAIL must name the tracked path + 'git-TRACKED': {captured}")
+if "git rm --cached pack-ops/session-config.json" not in captured:
+    failures.append(f"T2 FAIL must carry the remediation: {captured}")
+
+# T3: SKIP — REPO_ROOT points at a NON-git directory (no `git init`) → git
+# ls-files unavailable (not a git work tree) → SKIP-lenient. Exercises the
+# `available=False` (git-absent / non-worktree) branch (design §11.2 stated
+# SKIP-lenience invariant), which the git-init'd cases above never reach.
+fail_count, captured = run_check_nongit()
+if fail_count != 0:
+    failures.append(f"T3 (SKIP — non-git dir) expected 0 failures, got {fail_count}: {captured}")
+if "skipping (lenient)" not in captured:
+    failures.append(f"T3 SKIP message missing 'skipping (lenient)': {captured}")
+if "git ls-files unavailable" not in captured:
+    failures.append(f"T3 SKIP must report git-unavailable (git absent / not a git work tree): {captured}")
+
+if failures:
+    print("FAILURES")
+    for f in failures:
+        print(" ", f)
+    sys.exit(1)
+print("OK")
+EOF
+case $? in
+    0) t_pass "Synthetic PASS/FAIL tests (T1: clean repo PASS; T2: tracked session-config.json FAILs naming the path + remediation; T3: non-git dir SKIPs lenient)" ;;
+    *) t_fail "Synthetic Check 87 tests failed (see Python output above)" ;;
+esac
+
+# ─────────────────────────────────────────────────────────────────
+# Group 3: End-to-end validate-pack.py exit-status on HEAD
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Group 3: End-to-end validate-pack.py exit-status on HEAD ===\n"
+
+if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 87 > /tmp/vp-check87-e2e.out 2>&1; then
+    if grep -q "Check 87: pack-ops/session-config.json is never committed" /tmp/vp-check87-e2e.out \
+       && grep -q "is not tracked" /tmp/vp-check87-e2e.out; then
+        t_pass "validate-pack.py --only-check 87 exits 0; Check 87 runs and reports clean"
+    else
+        t_fail "validate-pack.py exits 0 but Check 87 output not detected" \
+            "Tail: $(tail -10 /tmp/vp-check87-e2e.out)"
+    fi
+else
+    t_fail "validate-pack.py exits non-zero on HEAD" \
+        "Tail: $(tail -40 /tmp/vp-check87-e2e.out)"
+fi
+
+# ─────────────────────────────────────────────────────────────────
+# Summary
+# ─────────────────────────────────────────────────────────────────
+
+printf "\n=== Summary ===\n"
+printf "  PASS: %d\n" "$PASS"
+printf "  FAIL: %d\n" "$FAIL"
+
+if (( FAIL == 0 )); then
+    printf "\n\033[32mAll tests passed.\033[0m\n"
+    exit 0
+else
+    printf "\n\033[31m%d test(s) failed.\033[0m\n" "$FAIL"
+    exit 1
+fi
