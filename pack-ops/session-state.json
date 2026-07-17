@@ -1,21 +1,21 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "5418d37",
+  "boundary_commit": "d4d24c3",
   "checkpoint": "2026-07-17T00:00:00Z",
   "active": [
-    "BD-224 implementation. W-3 LANDED (C4 HELP-FRAGMENT coverage rows + Check-44 ceiling re-derive 56->66; C7 README check-count 56->84 + drop stale suite-count; test-44 heredoc shell-expansion fix). Next: W-4 = C5, the LAST BD-224 commit. pack-lead; BD-257 (project-side) follows once BD-224 lands."
+    "BD-224: ALL implementation landed (C_F,C1-C7 + test-44 heredoc fix + GitHub-MCP recommendation correction across PACK-CHAT.md + pack-startup x3). NOT yet Resolved — user GATES Resolve on TESTING the net-new commands/skills first. pack-lead; BD-257 (project-side) follows once BD-224 resolves."
   ],
   "in_flight_agents": [
-    "none live. W-4 to spawn (bases at HEAD, isolation:worktree, run_in_background): coder-bd224-c5-packchat = pack-ops/PACK-CHAT.md S3 read-at-point-of-use mode pointer + S2 spawn-preflight isolation read for RO spawns; MUST also fold in the C3-deferred stale list_workflow_runs at PACK-CHAT.md line 197 (same section)."
+    "none live. NEXT (not spawned): design + run a functional test of the BD-224 commands — the 6 net-new /pack-* skills (pack-refresh, pack-status, pack-dashboard, pack-review-mode, pack-intervention-mode, pack-isolation-mode trigger-only), the operating-mode selectors + session-config.json read-at-point-of-use, and the dashboard pipeline (dashboard-collect|render|freshness|publish). Report results -> user decides Resolve."
   ],
   "queue": ["BD-257", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "W-4 is a single serial commit (C5, last). No parallel wave.",
-  "wave": "BD-224 waves per PLAN-BD224.md (8 planned commits + 1 incidental test fix). Done: C_F,C3 (W-1); C1,C2,C6 (W-2); C4,C7,test-44 fix (W-3). Remaining: W-4 {C5} = last. Artifacts under ~/Developer/_tmp/pack-bd224-design/.",
+  "parallelization": "none — BD-224 in the command-testing gate before Resolve.",
+  "wave": "BD-224 all waves DONE (C_F,C3 W-1; C1,C2,C6 W-2; C4,C7,test-44 W-3; C5 W-4) + GitHub-MCP recommendation correction. Remaining before Resolve: functional command testing (user gate). Artifacts under ~/Developer/_tmp/pack-bd224-design/.",
   "pending_decisions": [
-    "C5 MUST fold in the C3-deferred stale list_workflow_runs at pack-ops/PACK-CHAT.md line 197 (same section C5 edits).",
-    "OI-1 (DESIGN-BD-243 'help output' vs Check-44 durable-set membership) concluded NON-DEFECT: volume-ceiling set (doc_concision _CHECK_44_DURABLE_DOCS) and content-gate exempt set are orthogonal by design; no edit. Test-44 NIT (Group-0 -c block) left per user (safe today, not a defect).",
-    "After C5 lands clean+green: flip BD-224 -> Resolved (pack-chat bookkeeping) + regenerate backlog/_toc.md.",
+    "BD-224 Resolve is GATED on functional testing of the net-new commands (user requirement) — do NOT flip Status: Resolved until tests pass + user approves.",
+    "GitHub MCP: user runs the official public github-mcp-server (stdio, PAT repo+workflow, user scope), NOT Anthropic's; actions toolset was off -> list_workflow_runs absent. Fixed ~/.claude.json (--toolsets=default,actions, effective on reconnect). Pack recommendation rewritten to that server; tool-name refs softened to actions-toolset phrasing.",
+    "OI-1 (Check-44 durable-set vs content-gate exempt) = NON-DEFECT (orthogonal). test-44 Group-0 -c NIT left (safe today).",
     "Standing: all spawns isolation:worktree; RO agents cd to work tree; re-find via spawn registry by name. Push is user-manual. Keep session-state COMPACT (one SHA, no hex agent IDs, <4096 bytes). Pack deferred work anchors to a pack BD, never a project-side TD."
   ],
-  "cycle_position": "W-3 fully LANDED (C4, C7, test-44 fix committed; boundary = HEAD). Batteries green (plain + DEEP). W-3 worktrees (C4, C7, test-44) to be torn down. Next: spawn W-4 = C5 (last BD-224 commit) at HEAD -> per-commit review/fix cycle -> merge-back + user commit approval -> flip BD-224 Resolved + regen backlog/_toc.md. Worktrees findable via git worktree list."
+  "cycle_position": "BD-224 fully implemented + committed (boundary = HEAD). Batteries green (plain + DEEP). C5 worktree to be torn down. NEXT: investigate each BD-224 command's mechanism, then test (run the dashboard + config-idiom scripts; invoke the /pack-* skills as Pack Chat; exercise a mode selector) and report -> user Resolve decision. Do NOT flip BD-224 Resolved until tested + approved."
 }
