@@ -193,12 +193,13 @@ These rules are non-negotiable and always apply:
   agents for PM-level decisions (BACKLOG entries, CHANGELOG entries, version
   management) — those remain pack chat responsibilities.
 - **Check CI after every push.** After every commit and push, check the
-  `Validate Pack` workflow status. If the GitHub MCP server is configured
-  for this repo (see note below), use `list_workflow_runs` to check
-  directly. If not, remind the user to check the GitHub Actions tab (or
-  run `gh run list --workflow=validate-pack.yml -L 1`). If CI fails,
-  read the error, fix the file, and re-push before continuing. CI failures
-  are fix-immediately items — never defer them to BACKLOG.
+  `Validate Pack` workflow status. Default (no MCP needed):
+  `gh run list --workflow=validate-pack.yml -L 1` via the `gh` CLI. If the
+  recommended GitHub MCP server is configured with the `actions` toolset
+  (see note below), read status directly through that toolset. Otherwise
+  check the GitHub Actions tab. If CI fails, read the error, fix the file,
+  and re-push before continuing — CI failures are fix-immediately items,
+  never defer them to BACKLOG.
 - **The pre-push hook auto-refreshes the Graphify graph on every push.** Once
   `scripts/install-graphify-hook.sh` is installed in a clone, every `git push`
   fires the tracked `pre-push` hook (`scripts/hooks/graphify-pre-push.sh`),
@@ -220,6 +221,16 @@ These rules are non-negotiable and always apply:
   trees + `_rules.md`, `README.md`); do not act on a memory-cached rule.
   State goes to a BD, a doc, or `pack-ops/session-state.json`; rules and
   state never live in CLI memory.
+- **Operating modes.** Apply the active review / intervention / isolation
+  modes per `pack-ops/OPERATING-MODES.md` by re-reading
+  `pack-ops/session-config.json` at each point a mode governs a decision —
+  every RO sub-agent spawn (isolation) and every pause/surface gate
+  (intervention/review) — never a session-start-cached value.
+  `/pack-startup` and `/pack-refresh` warm the value but are NOT the
+  authority; the on-disk config is. Read via the primary-worktree path
+  (OPERATING-MODES.md § "Reading the config").
+  Missing/malformed/unreachable ⇒ defaults (= current behavior). The config
+  is orchestrator-read-only; spawned agents never read it.
 - **Decision-presentation protocol.** Present user decisions one at a time, each with full inline context and an evidence-based recommendation (never a guess); discuss before deciding; self-check for false binaries.
 - **User prescriptive authority + default-accept.** Default-accept agent recommendations unless the user redirects; the user remains architect / lead / decision-maker and may be prescriptive; an approved decision becomes a standing constraint.
 - **Scope deliverables to the ask.** Deliver exactly what was asked, lead with it, keep it minimal; over-built output reads as noise.
@@ -231,14 +242,17 @@ These rules are non-negotiable and always apply:
 - **Post-mv restage pattern.** After a pre-coder `git mv` plus a coder edit of the moved file, re-`git add` that path; an `RM` in `git status --short` is the tell.
 - **Commit-subject keyword-token trap.** A scope-keyword token anywhere in a commit subject (including prose) is a Check-36 claim, and a denying token wins; keep keyword tokens out of prose and match the keyword to the whole file set.
 - **Background long external waits.** Never foreground-block the chat on a long EXTERNAL wait (CI, deploys, remote queues); run the watch in the background and surface the verdict when it lands.
-> **GitHub MCP server (optional, pack repo only):** The official GitHub
-> MCP server enables the Pack Chat to check CI status, read workflow logs,
-> and interact with GitHub directly. Without it, the Pack Chat must ask
-> the user to check CI manually. To configure: add the GitHub MCP server
-> to the pack repo's `.mcp.json` (not the project template's
-> `.mcp.json.example` — that is for downstream projects). See
-> https://github.com/github/github-mcp-server for setup. This is a pack
-> repo operational tool, not a project dependency.
+> **GitHub MCP server (recommended, pack repo only):** Use the official
+> GitHub MCP server — github/github-mcp-server (stdio binary or Docker) —
+> authenticated with a GitHub PAT (classic: `repo` + `workflow` scopes;
+> fine-grained: Actions read). Enable the `actions` toolset so Pack Chat
+> reads CI/workflow status directly (workflow-run status and logs):
+> the server's default toolsets omit `actions`, so pass
+> `--toolsets=default,actions` (or `GITHUB_TOOLSETS=default,actions`).
+> Register at user scope or in the pack repo's own MCP config — never the
+> project template's `.mcp.json.example` (that is for downstream projects).
+> Pack-repo operational tool, not a project dependency. See
+> https://github.com/github/github-mcp-server.
 
 ---
 
@@ -301,6 +315,14 @@ worktree mechanics (the `isolation:"worktree"` parameter + the
   fix, a new task), Pack Chat does NOT self-judge — it ASKS the human BOTH
   placement (which tree) AND disposition (reuse vs abandon the worktree)
   per rule 9.
+- **Isolation-mode spawn preflight (Claude-only).** Before constructing an
+  RO-agent spawn, re-read `isolation_mode` (per `pack-ops/OPERATING-MODES.md`
+  § "Reading the config"): `full` ⇒ pass `isolation:"worktree"` and the RO
+  agent `cd`s to the work's tree; otherwise spawn in the work's tree (the
+  class-keyed default above). RW agents (coders, fix-coders) pass
+  `isolation:"worktree"` unconditionally — isolated in BOTH modes — so this
+  read is load-bearing only at RO spawns (plus the intervention / review
+  gates). Never use a remembered value.
 - **Background.** Spawn every sub-agent in the background
   (`run_in_background: true`) so the chat stays interactive (the existing
   pack default-background rule — see trinity `## Pack memory`
