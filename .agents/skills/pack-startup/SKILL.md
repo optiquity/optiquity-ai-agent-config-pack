@@ -46,16 +46,17 @@ in-flight agents can be re-launched from the boundary commit.
 
 ## Step 3 — Check CI tooling
 
-Check whether the GitHub MCP server is available by looking for GitHub-related
-MCP tools (e.g., `get_me`). This is a detection step — do not
-fail if it is absent.
+Check whether the recommended GitHub MCP server is available by looking for
+GitHub-related MCP tools (e.g., `get_me`). This is a detection step — do not
+fail if it is absent. CI workflow status is read via `gh run list` after each
+push regardless of MCP; the server adds direct workflow-run status checks
+when its `actions` toolset is enabled.
 
 - If available: note "GitHub MCP server: available — GitHub queries run
-  directly; CI workflow status is read via `gh run list` after each push."
-- If not available: note "GitHub MCP server: not configured — after each
-  push, I will remind you to check the Validate Pack workflow in the GitHub
-  Actions tab. To enable direct CI checking, see the GitHub MCP server note
-  in `pack-ops/PACK-CHAT.md`."
+  directly; with the `actions` toolset, CI status read directly."
+- If not available: note "GitHub MCP server: not configured — CI status still
+  checked via `gh run list` after each push. To enable direct CI checking, see
+  the GitHub MCP server note in `pack-ops/PACK-CHAT.md`."
 
 ## Step 4 — Report current state
 
@@ -70,7 +71,7 @@ Output a summary in exactly this format:
 **Open backlog items (BD):** [count of Status: Open + Status: Unblocked]
 **Last BD number:** BD-NNN (or "none" if empty)
 **Last commit:** [date] — [summary from git log -1 --oneline]
-**CI tooling:** [GitHub MCP available / not configured — manual check needed]
+**CI tooling:** [GitHub MCP available / not configured — CI via `gh run list`]
 **Graph:** [the Step-5 readiness line — e.g. `fresh | pre-push hook: installed`, or `STALE — built at <sha8>, HEAD <sha8> | pre-push hook: NOT installed — run scripts/install-graphify-hook.sh`, or `not built (optional pack-dev accelerator)`]
 **Resume:** [from `pack-ops/session-state.json` — `no live session — clean start` if absent/idle, else `active: BD-NNN @ <sub-step>; in-flight: <agents to re-spawn>; queue: <order>; mode: <serial|parallel>; pending: <decisions>; cycle: <position>; boundary <sha8> (= HEAD | N behind)`]
 
