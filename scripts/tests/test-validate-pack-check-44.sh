@@ -78,11 +78,17 @@ fi
 
 printf "\n=== Group 1: End-to-end synthetic-tree tests (PASS + injected fails) ===\n"
 
-python3 <<EOF
-import sys, tempfile, pathlib, shutil, io, contextlib
-sys.path.insert(0, '$REPO_ROOT/scripts')
+# Quoted delimiter (<<'EOF') => the shell performs ZERO expansion on the
+# heredoc body: backticks, $(...), $name, ${...} in the Python (docstrings,
+# f-strings) pass through literally. The two repo paths the Python needs are
+# injected via the ENVIRONMENT (one-shot VAR=VAL prefix), not shell-splicing.
+REPO_ROOT="$REPO_ROOT" VALIDATE="$VALIDATE" python3 <<'EOF'
+import os, sys, tempfile, pathlib, shutil, io, contextlib
+REPO_ROOT = os.environ["REPO_ROOT"]
+VALIDATE = os.environ["VALIDATE"]
+sys.path.insert(0, REPO_ROOT + '/scripts')
 import importlib.util
-spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
+spec = importlib.util.spec_from_file_location('vp', VALIDATE)
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
