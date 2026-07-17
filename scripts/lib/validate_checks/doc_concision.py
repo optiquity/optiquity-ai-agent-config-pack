@@ -495,29 +495,30 @@ _CHECK_44_FORBIDDEN_PATTERNS = (
 )
 
 # The 6 durable pack-ops/ non-mirror rule docs (M4 class) + each doc's
-# per-doc line ceiling, DERIVED from its measured (BD-243 bloat-reduced)
-# content as ceil(measured * 1.15). These are NOT round numbers: each is
-# anchored to the doc's actual reduced size (BOUNDARY 135, CONCEPTUAL-REVIEW
-# 279, DRY-RUN 198, HELP-PACK 48, MERGE 484, OPTIONAL 538) with a uniform 15%
-# growth headroom. BACKLOG.md / CHANGELOG.md are regenerated MIRRORS, NOT in
-# the M4 class.
+# per-doc line ceiling, DERIVED from its measured baseline as
+# ceil(measured * 1.15). These are NOT round numbers: each is anchored to
+# that measured baseline (BOUNDARY 135, CONCEPTUAL-REVIEW 279, DRY-RUN 198,
+# HELP-PACK 57, MERGE 484, OPTIONAL 538) with a uniform 15% growth headroom.
+# BACKLOG.md / CHANGELOG.md are regenerated MIRRORS, NOT in the M4 class.
 #
 # BD-243 Gate 1a (DESIGN-BD-243-DURABLE-GATES.md §3 Gate 1): the length branch
 # is HARDENED advisory→FAIL — a doc OVER its ceiling now FAILS the build, not a
 # soft advisory. Volume is a hard gate so the cleanup cannot silently rot. The
-# ceilings are sized measure-then-bound to the bloat-reduced reality + 15%
+# ceilings are sized measure-then-bound to each measured baseline + 15%
 # headroom (so legitimate content is below the ceiling BY CONSTRUCTION; only a
 # regression past the headroom FAILs — the gate is VOLUME-only, never a
-# meaning judgment). The measured-reduced inputs are from IMPL-CB-01's
-# recorded measured_reduced_lines (no re-measure of a drifted tree). Two
-# ceilings change vs the prior advisory values (CONCEPTUAL 343→321 from
-# measured 279; DRY-RUN 229→228 from measured 198); the other four were already
-# ceil(measured*1.15) and stand. All 6 docs are UNDER their new FAIL ceilings.
+# meaning judgment). At BD-243 the measured baselines came from IMPL-CB-01's
+# recorded measured_reduced_lines (no re-measure of a drifted tree): two
+# ceilings changed vs the prior advisory values (CONCEPTUAL 343→321 from
+# measured 279; DRY-RUN 229→228 from measured 198) and the other four stood
+# at ceil(measured*1.15). HELP-PACK has since been re-derived from its own
+# measured baseline (48→57, ceiling 56→66). All 6 docs are UNDER their FAIL
+# ceilings.
 _CHECK_44_DURABLE_DOCS = (
     ("pack-ops/BOUNDARY-DEFINITION.md", 156),
     ("pack-ops/CONCEPTUAL-REVIEW-METHODOLOGY.md", 321),
     ("pack-ops/DRY-RUN-MIGRATION.md", 228),
-    ("pack-ops/HELP-FRAGMENT-PACK.md", 56),
+    ("pack-ops/HELP-FRAGMENT-PACK.md", 66),
     ("pack-ops/MERGE-STRATEGY.md", 557),
     ("pack-ops/OPTIONAL-FEATURES.md", 619),
 )

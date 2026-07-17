@@ -9,9 +9,16 @@ in your CLI for this content. Full docs in `QUICKSTART.md`, `README.md`,
 | Verb | What it does |
 |---|---|
 | `/pack-startup` | Bootstrap a Pack Chat session — sync repo, read state, report. Run first in new sessions. |
+| `/pack-refresh` | Reload the pack's live rules + session state to the front of context mid-session. No git pull, no history reset (distinct from `/pack-startup`). |
+| `/pack-status` | Quick status snapshot — repo state, session frontier, current backlog item, next queued. Reads state files directly; no sync. |
 | `/pack-help` | Print this fragment in your CLI. `pack help` shell verb is identical. |
+| `/pack-dashboard` | Render and publish the pack frontier dashboard — a single-page HTML snapshot of live pack work and each item's pipeline. |
+| `/pack-review-mode` | Set the review mode — how surfaced open items are presented (itemized / full / hybrid / none). |
+| `/pack-intervention-mode` | Set the intervention mode — how much Pack Chat pauses at its gates (full / pre-coder / ambiguity / none). |
+| `/pack-isolation-mode` | Set the isolation mode — which agent classes spawn into an isolated worktree (read-write-only / full). Claude-only selector; behavior in `pack-ops/OPERATING-MODES.md`. |
 | `claude --agent pack-architect` | Architecture / design pass on the pack. Read-only. |
 | `claude --agent pack-planner` | Implementation planning — task breakdown, sequencing. |
+| `claude --agent pack-coder` | Implementation execution — writes/edits source per an approved plan, runs verification, produces a report. Never commits. |
 | `claude --agent pack-reviewer` | Pre-commit review — trinity rule, doc consistency, validate-pack alignment. |
 | `claude --agent pack-docs-researcher` | CLI / format / dependency verification against official docs. |
 | `python3 scripts/validate-pack.py` | Pack structural validation. Required green before every commit. |
@@ -28,6 +35,8 @@ in your CLI for this content. Full docs in `QUICKSTART.md`, `README.md`,
 | `scripts/restore-from-backup.sh` | Restore a v9.3 → v10 pre-migration tree (use the v11 migrator's printed `rsync` recipe for v11 backups). |
 | `scripts/add-capability.sh` | Extend an existing project with an additional language/platform capability. |
 | `scripts/pack-td.sh <subcmd>` | TD orchestration — `promote --to=phase-N` (Path 1), `promote --to=phase-N.M` (Path 2), `resolve` (direct close per V3.3 §3.2). |
+| `scripts/pack-tracker.sh <verb>` | Tracker entry-management dispatcher — `init` / `status` / `edit` / `new-entry` / `tree-rebuild` / `mirror-rebuild` / `doctor` / `disable` / `update-templates` / `enable-recommendations`. |
+| `scripts/install-graphify-hook.sh` | Install the Graphify pre-push graph-refresh hook into this clone's git hooks dir. One-time, per-clone, idempotent. |
 
 ## TD promotion
 
