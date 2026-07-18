@@ -1,7 +1,7 @@
 # Pack Frontier Dashboard — Build Specification
 
 Instructions for generating the dashboard fresh, from live project state, on every request.
-Produce a single HTML page each time; save nothing between runs. This document is the spec a
+Produce a single HTML page each time; persist no STATE between runs (the spec-derived shell is persisted and reused per R2). This document is the spec a
 slash command or a plain text request executes — each invocation reruns the whole recipe in §2.
 
 ---
@@ -21,8 +21,11 @@ Invariants. They govern all pages and outrank any page-specific detail below.
 
 - **R1 — The repo is the source of truth.** The dashboard is a presentational mirror and states so.
   It never claims authority over the data.
-- **R2 — Fresh every time, no cache.** Each build collects the entire state payload from the current
-  project and renders from scratch. Persist nothing between builds.
+- **R2 — Fresh state every build.** Each build collects the entire state payload from the current
+  project and renders it from scratch; persist no STATE between builds. The state-INDEPENDENT shell
+  (skeleton + CSS + render JS + router) is a deterministic, spec-derived artifact: it is persisted as a
+  git-tracked file and regenerated only when this spec changes (detected by content hash), never on a
+  schedule and never carrying state.
 - **R3 — Include committed and uncommitted work.** Assemble state from committed repo files **and** a
   live git working-tree read taken at build time, so in-flight work that is not yet committed still
   appears. This live read drives every "editing now" / "in progress" / worktree signal.
@@ -68,21 +71,29 @@ Run this whole sequence on every invocation:
 1. **Collect state.** Read the committed sources and take the live git read (see §3), and assemble a
    single state object matching the state → source map in §3. The live git read is what pulls in
    uncommitted work.
-2. **Emit one self-contained HTML file.** Structure:
+2. **Obtain the shell (reuse or regenerate).** The **shell** is the state-INDEPENDENT part of the page
+   — the `<head>` + `<body>` skeleton, inline CSS, the per-view render functions, and the hash router —
+   persisted as the git-tracked file `pack-ops/dashboard-approvals/dashboard-shell.html` carrying an
+   embedded spec fingerprint (this spec's `git hash-object` at the time the shell was generated).
+   **Reuse** the persisted shell when its embedded fingerprint matches this doc's current
+   `git hash-object`; **regenerate** it from this spec — re-embedding the new fingerprint — when they
+   differ or the shell is absent. A regenerated shell has this structure:
    - `<head>`: title, viewport, and **inline CSS** implementing the palette in both themes (§4), the
      layout constants (§4), and the component styles (pills, cards, rows, tracks, step boxes, bars).
-   - `<body>`: the shell — a sidebar (`aside`) with the brand + three nav groups, and a single `main`
-     container into which all views mount.
-   - Inline `<script>`: the **embedded state object**, the per-view render functions, and the hash
-     router. All views read only from the embedded state object. No external `<script>`/`<link>`/
-     font/image references.
+   - `<body>`: a sidebar (`aside`) with the brand + three nav groups, and a single `main` container
+     into which all views mount.
+   - Inline `<script>`: the per-view render functions and the hash router, plus a state element the
+     payload fills at step 3. All views read only from that embedded state object. No external
+     `<script>`/`<link>`/font/image references.
 3. **Stay deterministic.** Serialize the state with sorted keys; emit no timestamps and no random
    values (R4). Embed the payload as `<script type="application/json" id="state">…</script>` and read
    it with `JSON.parse(el.textContent)`; escape `<`, `>`, `&` so it cannot break out of the element.
    (If you instead inline `var STATE = {…}` in a plain script, also escape U+2028 and U+2029 — they
    terminate JS string/JSON literals.)
-4. **Publish fresh, persist nothing.** Output the file (or publish it as an artifact) as the
-   deliverable for this invocation. Do not cache it or a prior state between runs (R2).
+4. **Persist the shell, fresh state each run.** Persist the spec-derived shell as a git-tracked file,
+   rewritten only on a spec-hash change (step 2); the state is fresh each run — never cached, never
+   carried between runs (R2). Output the injected page (or publish it as an artifact) as the
+   deliverable for this invocation.
 
 The result need not be byte-identical across runs or to any prior build — only faithful to this spec
 and to the current project state.
@@ -210,6 +221,26 @@ plan doc's records; a field the doc does not carry is simply absent and its chip
 (presence-driven, R11), never invented. Execution figures come from the plan's own recorded evidence
 (a step's `done` state and its `evidence.sha`), so the BD masthead's **Commits landed** / **Reviews
 clean** tiles (§7.4) degrade to 0 or omit when the plan holds no execution evidence yet.
+
+### Payload thinning (in-window full / out-of-window minimal)
+
+The `bds{}` payload is scoped by window so the state stays small without dropping any item. Every
+backlog item is represented; only the DETAIL depth varies.
+
+- **In-window set** — `motion[]` (the running window, `active[]` ++ (`queue[]` minus `active[]`)) plus
+  any BD carrying a live `plans{}` record. These get **full** `bds{}` records — every field the deep BD
+  page (§7.4) and its spotlights need — and their full `plans{}` deep plan, at unchanged fidelity.
+- **Out-of-window set** — every other backlog item (archived / resolved / deferred / not-in-window).
+  These get **minimal** `bds{}` records: exactly `id`, `title`, `status`, a snippet line, and
+  `Type` / `Target` / `Blockers` / `Unblocks` — the fields the Archive rows (§7.5) and the
+  summary-depth BD page (§7.4) consume. They carry no deep plan and no deep-only fields.
+
+Every invariant holds. **R7** — a minimal record is exactly enough to render §7.4 **summary depth**,
+which is already where a plan-less BD lands, so every item keeps its deep-linkable `#bd-nnn` page.
+**R4** — the in-window set is a deterministic function of `active[]` / `queue[]` / `plans{}`. **R2** —
+the payload stays complete in that every item is present; a minimal record is representation, not
+omission. **R11** — a BD with no in-window detail renders its summary-depth page, never a fabricated
+deep one.
 
 ---
 
