@@ -14,17 +14,23 @@ orchestrator-only step.
 
 Spawn a BACKGROUND read-write render coder with `isolation:"worktree"`. Prompt it
 to run the `dashboard-render` skill against `pack-ops/DASHBOARD-SPEC-PACK.md` and
-the live repo, and to write the page to
-`pack-ops/dashboard-approvals/dashboard.html` in its worktree. It writes its
-implementation report to the handoff dir and returns with NO patch (the pack
-read-write contract).
+the live repo, naming the shell path
+`pack-ops/dashboard-approvals/dashboard-shell.html` (reused or regenerated per
+the spec fingerprint) and the output path
+`pack-ops/dashboard-approvals/dashboard.html`, both written in its worktree. It
+writes its implementation report to the handoff dir and returns with NO patch
+(the pack read-write contract).
 
 ## Step 2 — Sanity + merge-back
 
 Run the render's lightweight artifact-sanity check inside that worktree (the
-render is a deterministic, spec-conformant generation). On clean, SendMessage
-the render coder to emit the patch (`git diff > <handoff>/changes.patch`), then
-apply it to the main tree (`git apply --check`, then `git apply`) so
+render is a deterministic, spec-conformant generation). Verify shell-sync — the
+shell's embedded `spec-sha` equals `git hash-object` of
+`pack-ops/DASHBOARD-SPEC-PACK.md` — and that the injected state is populated (the
+`dashboard.html` state element carries the payload, with no leftover
+`__PACK_DASHBOARD_STATE__` sentinel). On clean, SendMessage the render coder to
+emit the patch (`git diff > <handoff>/changes.patch`), then apply it to the main
+tree (`git apply --check`, then `git apply`) so
 `pack-ops/dashboard-approvals/dashboard.html` exists in the main checkout.
 
 ## Step 3 — Foreground publish (main tree)
@@ -48,5 +54,11 @@ locally; there is no URL record to write.
 
 Stage and commit the approvals-dir files (user approval; automatic only under
 `none` intervention per `pack-ops/OPERATING-MODES.md`). The first render commits
-both approvals-dir files together; later renders commit only the updated render
-(the URL record is unchanged). Pack Chat never auto-pushes; agents never commit.
+all three approvals-dir files together —
+`pack-ops/dashboard-approvals/dashboard-shell.html`,
+`pack-ops/dashboard-approvals/dashboard.html`, and
+`pack-ops/dashboard-approvals/dashboard-url.txt`. Later renders commit
+`pack-ops/dashboard-approvals/dashboard.html` always, plus
+`pack-ops/dashboard-approvals/dashboard-shell.html` only when the spec changed
+(the shell was regenerated); the URL record is unchanged. Pack Chat never
+auto-pushes; agents never commit.

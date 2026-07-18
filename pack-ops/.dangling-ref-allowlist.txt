@@ -119,6 +119,9 @@ reason: the runtime-authored latest dashboard render — written into the tracke
 token: pack-ops/dashboard-approvals/dashboard-url.txt
 reason: the runtime-authored one-line reused claude.ai artifact URL — written by the foreground publish step after the first render, absent from the bare tree. Runtime-authored-but-TRACKED (committed after first use), matching the pm-session-state.json precedent — NOT gitignored.
 
+token: pack-ops/dashboard-approvals/dashboard-shell.html
+reason: the runtime-authored spec-fingerprinted dashboard shell — written into the tracked pack-ops/dashboard-approvals/ dir by the /pack-dashboard render->merge-back flow, regenerated only when the build spec changes and reused otherwise, absent from the bare tree. Runtime-authored-but-TRACKED (committed after first use), matching the pm-session-state.json precedent — NOT gitignored.
+
 # ─────────────────────────────────────────────────────────────────
 # G3 — self-flagged RETIRED / DECLINED / ORPHAN / HISTORICAL references
 # ─────────────────────────────────────────────────────────────────
