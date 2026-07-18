@@ -1,21 +1,19 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "d4d24c3",
-  "checkpoint": "2026-07-17T00:00:00Z",
+  "boundary_commit": "93943a6",
+  "checkpoint": "2026-07-18T00:00:00Z",
   "active": [
-    "BD-224: ALL implementation landed (C_F,C1-C7 + test-44 heredoc fix + GitHub-MCP recommendation correction across PACK-CHAT.md + pack-startup x3). NOT yet Resolved — user GATES Resolve on TESTING the net-new commands/skills first. pack-lead; BD-257 (project-side) follows once BD-224 resolves."
+    "BD-224 render-cache wave LANDED — four commits (C1 spec R2/§2/§3 reword; C2 Check 86 three-file cap + new Check 88 spec<->shell sync + count 84->85; C3 skills x3 reuse-shell/thin/inject/defensive-boot + allowlist token; C4 BD-224 refinement section + BD-257 OI1a rescope). End-of-batch battery green (B-GEN + B-DEEP + 105/0 wired). BD-224 stays Open: Resolve gated on (1) remaining command tests and (2) the user's live dashboard cold/warm test. BD-257 stays Open (rescoped to the full project-side slash-command suite + client dashboard on the render-cache foundation, TD/phases analog, framework-only)."
   ],
-  "in_flight_agents": [
-    "none live. NEXT (not spawned): design + run a functional test of the BD-224 commands — the 6 net-new /pack-* skills (pack-refresh, pack-status, pack-dashboard, pack-review-mode, pack-intervention-mode, pack-isolation-mode trigger-only), the operating-mode selectors + session-config.json read-at-point-of-use, and the dashboard pipeline (dashboard-collect|render|freshness|publish). Report results -> user decides Resolve."
-  ],
+  "in_flight_agents": [],
   "queue": ["BD-257", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "none — BD-224 in the command-testing gate before Resolve.",
-  "wave": "BD-224 all waves DONE (C_F,C3 W-1; C1,C2,C6 W-2; C4,C7,test-44 W-3; C5 W-4) + GitHub-MCP recommendation correction. Remaining before Resolve: functional command testing (user gate). Artifacts under ~/Developer/_tmp/pack-bd224-design/.",
+  "parallelization": "none — render-cache wave complete; BD-224 back at the command-testing + live-dashboard-test gate before Resolve.",
+  "wave": "BD-224 render-cache: implementation wave COMPLETE + committed + battery-green. NEXT: (a) run the remaining BD-224 command tests (pack-refresh, mode selectors /pack-review-mode + /pack-intervention-mode, /pack-isolation-mode); (b) run the dashboard cold/warm tests FOR REAL against the built foundation (not manufactured). Then the user engages the other chat to change the real spec doc, triggering an in-the-wild cold-start shell rebuild. On all-green + user approval, flip BD-224 -> Resolved (Pack-Chat-direct bookkeeping).",
   "pending_decisions": [
-    "BD-224 Resolve is GATED on functional testing of the net-new commands (user requirement) — do NOT flip Status: Resolved until tests pass + user approves.",
-    "GitHub MCP: user runs the official public github-mcp-server (stdio, PAT repo+workflow, user scope), NOT Anthropic's; actions toolset was off -> list_workflow_runs absent. Fixed ~/.claude.json (--toolsets=default,actions, effective on reconnect). Pack recommendation rewritten to that server; tool-name refs softened to actions-toolset phrasing.",
-    "OI-1 (Check-44 durable-set vs content-gate exempt) = NON-DEFECT (orthogonal). test-44 Group-0 -c NIT left (safe today).",
-    "Standing: all spawns isolation:worktree; RO agents cd to work tree; re-find via spawn registry by name. Push is user-manual. Keep session-state COMPACT (one SHA, no hex agent IDs, <4096 bytes). Pack deferred work anchors to a pack BD, never a project-side TD."
+    "BD-224 Resolve GATED on: (1) remaining functional command tests; (2) the user's live dashboard cold/warm test against the new render-cache foundation; (3) the in-the-wild cold-start shell rebuild after the other chat edits the real spec doc. Only then the implicit-flip Open->Resolved applies.",
+    "Runtime artifacts NOT committed (intentional, per plan): pack-ops/dashboard-approvals/ (the earlier published dashboard.html render) stays untracked in v11-dev pending the user's keep/discard call. The tracked shell (dashboard-shell.html) + dashboard.html are produced by the FIRST real /pack-dashboard render (a runtime event); Checks 86/88 SKIP-lenient until the dir exists.",
+    "Other-chat coordination: C1 landed the payload-thinning rule in the spec §3; DASHBOARD-SPEC-FIXES.md notes thinning for AWARENESS only (do-not-re-add) + carries structure fixes 1-4 + active-BD notes for the other chat to apply to the real spec. Plan-doc note: the plan's B-COV `--assert-coverage` flag does not exist; coverage is Check 60 inside B-GEN (green).",
+    "Standing: all spawns isolation:worktree + run_in_background; RO reviewers cd into the target worktree; re-find via spawn registry by name. Push is user-manual. Keep session-state COMPACT (one SHA, no hex agent IDs, <4096 bytes). Pack deferred work anchors to a pack BD, never a project-side TD."
   ],
-  "cycle_position": "BD-224 fully implemented + committed (boundary = HEAD). Batteries green (plain + DEEP). C5 worktree to be torn down. NEXT: investigate each BD-224 command's mechanism, then test (run the dashboard + config-idiom scripts; invoke the /pack-* skills as Pack Chat; exercise a mode selector) and report -> user Resolve decision. Do NOT flip BD-224 Resolved until tested + approved."
+  "cycle_position": "BD-224 render-cache wave committed (C1..C4 at the boundary commit) + end-of-batch battery green + worktrees torn down. NEXT: resume the remaining BD-224 command tests, then the real dashboard cold/warm tests; on all-green + user approval, flip BD-224 -> Resolved. BD-257 next in queue for its own pipeline."
 }
