@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # scripts/tests/test-validate-pack-check-86.sh — synthetic tests for Check 86
-# (pack-ops/dashboard-approvals/ holds exactly two files — BD-224).
+# (pack-ops/dashboard-approvals/ holds exactly three files — BD-224).
 #
 # Check 86 is the BD-224 /pack-dashboard git-hygiene guard (design §11.2 Check A):
 # it caps the git-TRACKED pack-ops/dashboard-approvals/ set at EXACTLY
-# {dashboard.html, dashboard-url.txt}. An EXTRA tracked file (registry creep)
-# FAILs; a MISSING file (only one of the pair tracked) FAILs — the missing-file
-# teeth enforce the both-or-neither first-commit atomicity (F12). At HEAD the dir
-# is absent (0 tracked) so the guard SKIPs (lenient).
+# {dashboard.html, dashboard-url.txt, dashboard-shell.html}. An EXTRA tracked file
+# (registry creep) FAILs; a MISSING file (any strict subset of the trio tracked)
+# FAILs — the missing-file teeth enforce the all-three-or-none first-commit
+# atomicity (F12). At HEAD the dir is absent (0 tracked) so the guard SKIPs
+# (lenient).
 #
 # This test is NOT fixture-dependent (it never reads a built test-fixtures/<NAME>
 # directory — it `git init`s a throwaway repo in a /tmp REPO_ROOT). It lives
@@ -21,10 +22,11 @@
 #   Group 2: Synthetic SKIP/PASS/FAIL against a /tmp git repo (monkeypatch
 #            REPO_ROOT):
 #            - SKIP: no dashboard-approvals/ tracked → 0 failures (lenient)
-#            - PASS: exactly {dashboard.html, dashboard-url.txt} tracked → 0
-#            - FAIL: an EXTRA tracked file → >=1 failure naming extra=
-#            - FAIL: only dashboard.html tracked (missing url) → >=1 failure
-#                    naming missing= (both-or-neither atomicity)
+#            - PASS: exactly {dashboard.html, dashboard-url.txt,
+#                    dashboard-shell.html} tracked → 0
+#            - FAIL: a 4th EXTRA tracked file → >=1 failure naming extra=
+#            - FAIL: only two of three tracked (missing shell) → >=1 failure
+#                    naming missing= (all-three-or-none atomicity)
 #            - SKIP: REPO_ROOT at a NON-git dir (no git init) → git-unavailable
 #                    → SKIP-lenient (the git-absent / non-worktree branch)
 #   Group 3: End-to-end validate-pack.py --only-check 86 on HEAD.
@@ -59,8 +61,8 @@ import importlib.util
 spec = importlib.util.spec_from_file_location('vp', '$VALIDATE')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
-if not hasattr(mod, 'check_dashboard_approvals_two_file_cap'):
-    print('FAIL_MISSING check_dashboard_approvals_two_file_cap'); sys.exit(1)
+if not hasattr(mod, 'check_dashboard_approvals_file_cap'):
+    print('FAIL_MISSING check_dashboard_approvals_file_cap'); sys.exit(1)
 # Check 86 must be registered AND the expected-count constant must equal the
 # computed registry length (Check 59's invariant — proves the count bump is
 # consistent).
@@ -100,7 +102,7 @@ saved = list(mod.failures); mod.failures.clear()
 buf = io.StringIO()
 try:
     with contextlib.redirect_stdout(buf):
-        mod.check_dashboard_approvals_two_file_cap()
+        mod.check_dashboard_approvals_file_cap()
     new = list(mod.failures); cap = buf.getvalue()
 finally:
     mod.failures.clear(); mod.failures.extend(saved)
@@ -179,7 +181,7 @@ def run_check(approval_basenames):
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
-            mod.check_dashboard_approvals_two_file_cap()
+            mod.check_dashboard_approvals_file_cap()
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
@@ -204,7 +206,7 @@ def run_check_nongit():
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
-            mod.check_dashboard_approvals_two_file_cap()
+            mod.check_dashboard_approvals_file_cap()
         new_failures = list(mod.failures)
         captured = buf.getvalue()
     finally:
@@ -221,27 +223,31 @@ if fail_count != 0:
 if "skipping (lenient)" not in captured:
     failures.append(f"T1 SKIP message missing 'skipping (lenient)': {captured}")
 
-# T2: PASS — exactly {dashboard.html, dashboard-url.txt} tracked → 0 failures.
-fail_count, captured = run_check(["dashboard.html", "dashboard-url.txt"])
+# T2: PASS — exactly {dashboard.html, dashboard-url.txt, dashboard-shell.html}
+# tracked → 0 failures.
+fail_count, captured = run_check(["dashboard.html", "dashboard-url.txt", "dashboard-shell.html"])
 if fail_count != 0:
-    failures.append(f"T2 (PASS — exactly two files) expected 0 failures, got {fail_count}: {captured}")
-if "two-file cap intact" not in captured:
-    failures.append(f"T2 PASS message missing 'two-file cap intact': {captured}")
+    failures.append(f"T2 (PASS — exactly three files) expected 0 failures, got {fail_count}: {captured}")
+if "three-file cap intact" not in captured:
+    failures.append(f"T2 PASS message missing 'three-file cap intact': {captured}")
+if "dashboard-shell.html" not in captured:
+    failures.append(f"T2 PASS message must name the shell file (dashboard-shell.html): {captured}")
 
-# T3: FAIL — an EXTRA tracked file → >=1 failure naming extra=.
-fail_count, captured = run_check(["dashboard.html", "dashboard-url.txt", "rogue.txt"])
+# T3: FAIL — a 4th EXTRA tracked file (all three valid names + a rogue) → >=1
+# failure naming extra=.
+fail_count, captured = run_check(["dashboard.html", "dashboard-url.txt", "dashboard-shell.html", "rogue.txt"])
 if fail_count < 1:
     failures.append(f"T3 (FAIL — extra file) expected >=1 failure, got {fail_count}: {captured}")
 if "extra=" not in captured or "rogue.txt" not in captured:
     failures.append(f"T3 FAIL must name the extra tracked path (extra=... rogue.txt): {captured}")
 
-# T4: FAIL — only dashboard.html tracked (missing url) → >=1 failure naming
-# missing= (both-or-neither first-commit atomicity teeth).
-fail_count, captured = run_check(["dashboard.html"])
+# T4: FAIL — only two of three tracked (missing dashboard-shell.html) → >=1
+# failure naming missing= (all-three-or-none first-commit atomicity teeth).
+fail_count, captured = run_check(["dashboard.html", "dashboard-url.txt"])
 if fail_count < 1:
-    failures.append(f"T4 (FAIL — missing url) expected >=1 failure, got {fail_count}: {captured}")
-if "missing=" not in captured or "dashboard-url.txt" not in captured:
-    failures.append(f"T4 FAIL must name the missing member (missing=... dashboard-url.txt): {captured}")
+    failures.append(f"T4 (FAIL — missing shell) expected >=1 failure, got {fail_count}: {captured}")
+if "missing=" not in captured or "dashboard-shell.html" not in captured:
+    failures.append(f"T4 FAIL must name the missing member (missing=... dashboard-shell.html): {captured}")
 
 # T5: SKIP — REPO_ROOT points at a NON-git directory (no `git init`) → git
 # ls-files unavailable (not a git work tree) → SKIP-lenient. Exercises the
@@ -263,7 +269,7 @@ if failures:
 print("OK")
 EOF
 case $? in
-    0) t_pass "Synthetic SKIP/PASS/FAIL tests (T1 SKIP empty; T2 PASS exactly-two; T3 FAIL extra; T4 FAIL missing/both-or-neither; T5 SKIP non-git dir)" ;;
+    0) t_pass "Synthetic SKIP/PASS/FAIL tests (T1 SKIP empty; T2 PASS exactly-three; T3 FAIL 4th-extra; T4 FAIL missing-shell/all-three-or-none; T5 SKIP non-git dir)" ;;
     *) t_fail "Synthetic Check 86 tests failed (see Python output above)" ;;
 esac
 
@@ -274,7 +280,7 @@ esac
 printf "\n=== Group 3: End-to-end validate-pack.py exit-status on HEAD ===\n"
 
 if python3 "$REPO_ROOT/scripts/validate-pack.py" --only-check 86 > /tmp/vp-check86-e2e.out 2>&1; then
-    if grep -q "Check 86: pack-ops/dashboard-approvals/ holds exactly two files" /tmp/vp-check86-e2e.out \
+    if grep -q "Check 86: pack-ops/dashboard-approvals/ holds exactly three files" /tmp/vp-check86-e2e.out \
        && grep -q "skipping (lenient)" /tmp/vp-check86-e2e.out; then
         t_pass "validate-pack.py --only-check 86 exits 0; Check 86 runs and SKIPs lenient on HEAD"
     else
