@@ -520,6 +520,17 @@ from validate_checks.wired_test_fragility import *  # noqa: E402,F403  (BD-222 C
 # pack_ops_hygiene.py; the facade carries no forked copy.
 from validate_checks.pack_ops_hygiene import *  # noqa: E402,F403  (BD-224 Checks 86/87/88; single SSOT)
 
+# BD-224 (OPTION-2 reconciled render-cache): Check 89
+# (check_dashboard_committed_floor) — the mechanical, agent-INDEPENDENT CI content
+# floor over the COMMITTED dashboard.html #state — lives in its OWN module
+# (validate_checks.dashboard_floor) per the FIRM own-module-per-new-check
+# convention. It shares NO code with scripts/dashboard-build.py (the genuine-
+# independence property: two independent derivations that must agree). DEEP-gated
+# (PACK_VALIDATE_DEEP=1, mirroring Check 49). Placed ABOVE _build_check_registry()
+# so the registry's bare `check_dashboard_committed_floor` reference resolves at
+# assembly. Single SSOT — the body + helpers live only in dashboard_floor.py.
+from validate_checks.dashboard_floor import *  # noqa: E402,F403  (BD-224 Check 89; single SSOT)
+
 # PER_ENTRY_LIB moved to validate_checks.per_entry_sync (BD-256 W7 — Cluster F
 # intra-cluster; sole source-consumer is Check 33's TOC-regenerator invocation)
 # — re-imported via the facade's `from validate_checks.per_entry_sync import *`
@@ -1300,19 +1311,36 @@ def _build_check_registry():
         # (render-cache sync-guard; architecture §9). The three live in their own
         # module (validate_checks.pack_ops_hygiene) per the FIRM
         # own-module-per-new-check convention — they share their module-private
-        # `_git_ls_files()` helper (Check 88 also `_git_hash_object()`) with each
-        # other and no cluster symbol, and stay OUT of boundary_refs.py
-        # (PLAN-BD224.md R7). All git-TRACKED-enumerated (git ls-files), O(one dir)
-        # / O(1), SKIP-lenient off a work tree / absent surface. Land at the
-        # registry tail alongside the adjacent CI-infra + git-hygiene guards
-        # (63/83/84/85). Numbers 86/87/88 are the next contiguous integers after
-        # the highest wired check (85).
+        # `_git_ls_files()` helper (Check 88 also `_git_hash_object()` +
+        # `_structure_sha()`) with each other and no cluster symbol, and stay OUT
+        # of boundary_refs.py (PLAN-BD224.md R7). All git-TRACKED-enumerated (git
+        # ls-files), O(one dir) / O(1), SKIP-lenient off a work tree / absent
+        # surface. Check 88 (OPTION-2 reconciled) is the DUAL-fingerprint /
+        # three-way sync-guard: script-arm (always-on) + shell-arm (SKIP-lenient) +
+        # pairing-arm over {spec-sha, structure-sha}. Numbers 86/87/88 are
+        # contiguous after the highest wired check.
         (86, "check_dashboard_approvals_file_cap",
               check_dashboard_approvals_file_cap, W),
         (87, "check_session_config_not_committed",
               check_session_config_not_committed, W),
         (88, "check_dashboard_approvals_spec_shell_sync",
               check_dashboard_approvals_spec_shell_sync, W),
+        # ── BD-224 (OPTION-2 reconciled render-cache): Check 89 — the mechanical,
+        # agent-INDEPENDENT CI content floor over the COMMITTED dashboard.html
+        # #state (ARCHITECTURE-DASHBOARD-OPTION2-RECONCILED.md §3.4/§6.2). It
+        # re-derives E_full INDEPENDENTLY of scripts/dashboard-build.py (its own
+        # module, NO shared code — the genuine-independence backstop) and HARD-
+        # FLOORS the render: total accountability + parse-coverage, vocab-closure,
+        # the E_full full-set floor + source-anchored bodies, the committed-history
+        # plans floor, and the read-fresh section floors. DEEP-gated inside the body
+        # (PACK_VALIDATE_DEEP=1, mirroring Check 49) — a ~0 ms SKIP on the light
+        # battery; O(entries) on the DEEP path, so it keeps the larger deep per-check
+        # WARN budget. SKIP-lenient off a work tree / when no render is committed
+        # (the approvals dir is untracked until the first render lands). Number 89 is
+        # the next contiguous integer after 88.
+        (89, "check_dashboard_committed_floor",
+              check_dashboard_committed_floor,
+              RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S),
     ]
 
 
