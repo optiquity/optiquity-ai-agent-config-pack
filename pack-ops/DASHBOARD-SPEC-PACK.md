@@ -1,7 +1,7 @@
 # Pack Frontier Dashboard — Build Specification
 
 Instructions for generating the dashboard fresh, from live project state, on every request.
-Produce a single HTML page each time; persist no STATE between runs (the spec-derived shell is persisted and reused per R2). This document is the spec a
+Produce a single HTML page each time; save nothing between runs. This document is the spec a
 slash command or a plain text request executes — each invocation reruns the whole recipe in §2.
 
 ---
@@ -21,17 +21,21 @@ Invariants. They govern all pages and outrank any page-specific detail below.
 
 - **R1 — The repo is the source of truth.** The dashboard is a presentational mirror and states so.
   It never claims authority over the data.
-- **R2 — Fresh state every build.** Each build collects the entire state payload from the current
-  project and renders it from scratch; persist no STATE between builds. The state-INDEPENDENT shell
-  (skeleton + CSS + render JS + router) is a deterministic, spec-derived artifact: it is persisted as a
-  git-tracked file and regenerated only when this spec changes (detected by content hash), never on a
-  schedule and never carrying state.
+- **R2 — Fresh state every build; never stale.** The STATE payload is collected fresh from the current
+  project on every build and never cached. The page's *data-free* SHELL (spec-derived CSS / JS /
+  structure, carrying no project data) MAY be reused across builds as a spec-fingerprinted cache and
+  regenerated only when the spec changes — reuse is safe precisely because the shell holds no state.
+  Freshness is a property of the state, not the shell; no state persists between builds.
 - **R3 — Include committed and uncommitted work.** Assemble state from committed repo files **and** a
   live git working-tree read taken at build time, so in-flight work that is not yet committed still
   appears. This live read drives every "editing now" / "in progress" / worktree signal.
 - **R4 — Deterministic render.** No timestamps, no clock, no randomness. Every signal derives from the
   collected state; identical state produces identical output. When the live git read is unavailable,
-  all live surfaces fall back to a defined idle form.
+  all live surfaces fall back to a defined idle form. **Scoped exception — the best-effort deep tier
+  (§3):** deep-detail discovery may read uncommitted / machine-local sources (scratch docs, volatile
+  `session-state.json` prose, git history), so the deep tier is explicitly best-effort and MAY vary by
+  machine and drift as work progresses. Determinism is guaranteed for the committed-state surfaces; the
+  deep tier trades strict R4 for richness, by owner directive (§3).
 - **R5 — Self-contained.** Inline CSS + JS only; images as data-URIs; zero external references
   (CSP-safe).
 - **R6 — One label and one color per state, used identically on every page.** The state vocabulary in
@@ -39,7 +43,9 @@ Invariants. They govern all pages and outrank any page-specific detail below.
   pill, section header, breadcrumb, spotlight, BD page, Grand plan, Archive. No page renames or
   recolors a state.
 - **R7 — Every backlog item has its own deep-linkable page.** Active, queued, and archived items each
-  mount a page reachable at `#bd-nnn`. All navigation is client-side hash routing; no reloads.
+  mount a page reachable at `#bd-nnn`. All navigation is client-side hash routing; no reloads. "Mounts
+  a page" guarantees reachability, not up-front construction — a build MAY lazily build each per-BD page
+  on first route (and cache it), so a 271-item board need not materialize all 271 pages eagerly (O12).
 - **R8 — Project-side content is structurally isolated.** Project-scoped content goes in its own
   bordered "Project-side" block, never mixed into or merely tagged within pack-side content.
 - **R9 — Pages are separate views that may cross-reference.** Each page is an independent view;
@@ -71,29 +77,32 @@ Run this whole sequence on every invocation:
 1. **Collect state.** Read the committed sources and take the live git read (see §3), and assemble a
    single state object matching the state → source map in §3. The live git read is what pulls in
    uncommitted work.
-2. **Obtain the shell (reuse or regenerate).** The **shell** is the state-INDEPENDENT part of the page
-   — the `<head>` + `<body>` skeleton, inline CSS, the per-view render functions, and the hash router —
-   persisted as the git-tracked file `pack-ops/dashboard-approvals/dashboard-shell.html` carrying an
-   embedded spec fingerprint (this spec's `git hash-object` at the time the shell was generated).
-   **Reuse** the persisted shell when its embedded fingerprint matches this doc's current
-   `git hash-object`; **regenerate** it from this spec — re-embedding the new fingerprint — when they
-   differ or the shell is absent. A regenerated shell has this structure:
+2. **Emit one self-contained HTML file.** Structure:
    - `<head>`: title, viewport, and **inline CSS** implementing the palette in both themes (§4), the
      layout constants (§4), and the component styles (pills, cards, rows, tracks, step boxes, bars).
-   - `<body>`: a sidebar (`aside`) with the brand + three nav groups, and a single `main` container
-     into which all views mount.
-   - Inline `<script>`: the per-view render functions and the hash router, plus a state element the
-     payload fills at step 3. All views read only from that embedded state object. No external
-     `<script>`/`<link>`/font/image references.
+   - `<body>`: the shell — a sidebar (`aside`) with the brand + three nav groups, and a single `main`
+     container into which all views mount.
+   - Inline `<script>`: the **embedded state object**, the per-view render functions, and the hash
+     router. All views read only from the embedded state object. No external `<script>`/`<link>`/
+     font/image references.
 3. **Stay deterministic.** Serialize the state with sorted keys; emit no timestamps and no random
-   values (R4). Embed the payload as `<script type="application/json" id="state">…</script>` and read
-   it with `JSON.parse(el.textContent)`; escape `<`, `>`, `&` so it cannot break out of the element.
-   (If you instead inline `var STATE = {…}` in a plain script, also escape U+2028 and U+2029 — they
-   terminate JS string/JSON literals.)
-4. **Persist the shell, fresh state each run.** Persist the spec-derived shell as a git-tracked file,
-   rewritten only on a spec-hash change (step 2); the state is fresh each run — never cached, never
-   carried between runs (R2). Output the injected page (or publish it as an artifact) as the
-   deliverable for this invocation.
+   values (R4). The escape set is **path-dependent** (O9): for the recommended
+   `<script type="application/json" id="state">…</script>` + `JSON.parse(el.textContent)` path, only
+   `<` (specifically the `</script` sequence, which could close the element early) can break out, so escaping `<` is
+   sufficient (escaping `>` / `&` is harmless but not required). Only if you instead inline
+   `var STATE = {…}` in a plain executable script must you also escape `&`, `>`, U+2028 and U+2029
+   (which terminate JS string/JSON literals). Prefer the JSON-script path.
+4. **Publish fresh, persist nothing.** Output the file (or publish it as an artifact) as the
+   deliverable for this invocation. Do not cache the state or a prior render between runs (R2 — the
+   data-free shell MAY be reused). **If the build reuses a spec-fingerprinted shell (R2), pin the
+   provenance/fingerprint comment to a fixed position** — line 2, immediately after `<!DOCTYPE html>` —
+   so the reuse check reads it with a stable, cheap regex (O10). Its shape is
+   `<!-- <renderer> shell · spec: <path> · spec-sha: <40-hex> -->`; the `spec:` field is the
+   **caller-named spec doc path** (the render is generic and is reused for other dashboards with
+   different specs), never a hardcoded path (R2-H). Use a **repo-relative** path when the spec lives
+   inside the repo and the **verbatim `~`/absolute** path when it is external; an out-of-repo spec
+   yields a non-portable provenance line by construction — the `spec-sha` remains the reproducible key
+   (OBS-6).
 
 The result need not be byte-identical across runs or to any prior build — only faithful to this spec
 and to the current project state.
@@ -120,7 +129,25 @@ removed state per R11 — the spec never assumes a given source is populated.
   `dirty` (uncommitted work in the current tree), changed `files[]`, `worktrees[]`, and
   `boundaryFresh` (see the freshness rule below). **Worktree filter:** include only linked worktrees
   on the current branch that belong to this work; exclude the primary checkout and any other-branch
-  checkout, and count a worktree as active only when it is itself dirty.
+  checkout, and count a worktree as active only when it is itself dirty. **Exclude the render's own
+  footprint** (O1): drop `pack-ops/dashboard-approvals/` and any render output/scratch artifacts from
+  the read, so a board never reports *itself* as "editing now" and successive renders stay
+  deterministic despite the render writing files. The read is a **pre-write snapshot** (G4): it runs
+  before the render writes its HTML, so the output file's own dirtying never appears as `dirty` — that
+  is correct, not a bug.
+
+**Prose-tolerant session-state consumption (FIX 4 — the umbrella principle).** Pack Chat authors
+several `session-state.json` fields as free-text **prose**, not the idealized structured shape:
+`in_flight_agents[]` may hold a status note ("none live. NEXT: …"), `parallelization` may hold
+`"none — <reason>"`, and `active[]` / `pending_decisions[]` may hold long descriptive strings. Every
+field this spec consumes from `session-state.json` MUST define its behavior when the value is
+descriptive prose rather than the structured value, via one of: **(a) sentinel detection** — recognize
+`none` / `no agents` / negations and render the empty/idle state; **(b) leading-token parsing** — take
+the first token as the value, the remainder as an inline note; or **(c) graceful raw display** — show
+the prose verbatim, length-bounded (see thinning O4). Each §7 consumer names which it uses; the
+default when unspecified is (c). This umbrella governs the Running-agents sentinel (§7.2), the
+`parallelization` fallback (§5.6 / §7.3), and the prose-sourced deep-page synthesis — `gaps` /
+`youAreHere` / `next` (§7.4).
 
 **Boundary freshness (ancestor-within-N).** `boundary_commit` records the last work commit; the
 session-state bookkeeping commit that updates it is normally one ahead, so a clean idle repo has
@@ -132,11 +159,13 @@ chip is omitted.
 
 **Per-active cursor is optional (presence-driven).** The "current wave / step / status" for an active
 item is a cursor: `{bd, wave?, step?, status?}` per active BD, sourced from the session-state snapshot
-or the in-scope planning doc — wherever the current state records it. When present, the
-cursor-authoritative surfaces render **full**. When it is light (say, only a wave), they render
-**degraded** with what exists. When absent, they are **removed**: active BDs render id-only,
-`youAreHere.current` falls back to the first not-yet-landed step, and `current.inProgress` is driven
-solely by the dirty-tree read.
+or the in-scope planning doc — wherever the current state records it. **When no structured cursor
+exists, the prose `session-state.wave` / `cycle_position` MAY drive `youAreHere` and the deep page's
+`next`** (interpreted per the prose-tolerance principle above) — this is the blessed source for the
+"you are here" and "what's next" surfaces (G2 / G3). When present, the cursor-authoritative surfaces
+render **full**. When it is light (say, only a wave), they render **degraded** with what exists. When
+absent, they are **removed**: active BDs render id-only, `youAreHere.current` falls back to the first
+not-yet-landed step, and `current.inProgress` is driven solely by the dirty-tree read.
 
 ### State → source map
 
@@ -152,24 +181,28 @@ solely by the dirty-tree read.
 | `motion[]` *(derived, not stored)* | Frontier, sidebar | computed = `active[]` ++ (`queue[]` minus `active[]`) |
 | `inflight{}` | live "editing now" signals | **live git read (uncommitted)** |
 | `bds{}` | every BD page, Archive, spotlights | `/backlog/` tree (`BD-NNN.md`) |
-| `plans{}` *(optional)* | deep BD pages, Grand plan | the current plan for in-scope work (planner doc / backlog detail) — see note |
-| `help{}` | Help & commands | `pack-help.sh` + command set |
+| `plans{}` *(optional)* | deep BD pages, Grand plan | assembled best-effort from any reachable source, committed or not — see "Discovering the plan" |
+| `help{}` | Help & commands | `pack-help.sh` + command set; `features[]` from the README pack-overview section, however titled (O8 / OBS-5) |
 | `methodology{}` | Methodology, BD pipeline spine | `CLAUDE.md` pipeline rules |
 | `rules[]` | Pack rules, Methodology | `CLAUDE.md` § Pack memory |
 | `agents[]` | Methodology roster | `PACK-AGENTS.md` § Pack agents |
 | `changelog[]` | Recently landed | `/changelog/` tree (one file per major version) |
-| `deps[]` | Dependencies | backlog `Blockers:` lines |
+| `deps[]` | Dependencies | structured blocked-by field if present, else prose `Blockers:` lines (best-effort — §7.8) |
 | `metrics{}` | Metrics | backlog tally + per-version |
-| `rulings[]` *(optional)* | Rulings | design decisions in the in-scope plan (`decisions[]`) / dedicated ruling notes — NOT `pending_decisions` (§7.10) |
-| `repo{branch}` | Metrics repo-context | current repo |
+| `rulings[]` *(optional)* | Rulings | plan `decisions[]` / a dedicated decisions doc (committed or uncommitted-scratch, §3) — NOT `pending_decisions` (§7.10) |
+| `repo{branch}` | Metrics repo-context | current repo — resolved base/upstream branch, worktree-isolation names sanitized (O6) |
 
 **Backlog Status → status token.** Map each backlog `Status:` value (the canonical set is defined in
 `backlog/_rules.md`) to the §5.1 tokens: `Open → pending`, `Unblocked → unblocked`,
-`Deferred → deferred`, `Resolved → done`, `Deprecated → deprecated`, `Cancelled → cancelled`. `active`
-is not a backlog status — it is derived from `active[]` membership (§5.1). Extend the map the same way
-only if the canonical vocabulary grows. `active` is not a backlog status — it is derived from membership in
-`active[]`. `blocker`/Blocked is not a backlog status either; it arises only from a blocked plan step
-(§5.2), so it appears only when a plan carrying such a step is present (R11).
+`Deferred → deferred`, `Resolved → done`, `Deprecated → deprecated`, `Cancelled → cancelled`. Extend
+the map the same way only if the canonical vocabulary grows. `active` is not a backlog status — it is
+derived from `active[]` membership (§5.1); `blocker`/Blocked is not one either — it arises only from a
+blocked plan step (§5.2), so it appears only when a plan carrying such a step is present (R11).
+
+**Counts vs. the Active overlay (O11).** `counts` are computed from backlog `Status:` values, so a BD
+that is derived-active but still `Status: Open` is counted under **Open** in the tally; the board's
+`active` grouping/pill is a presentation overlay, **not** a separate count bucket — it never
+double-counts. State this on the Open/Resolved tiles (§7.1, §7.11) so the overlap isn't misread.
 
 **Populating `plans{}` (presence-driven).** `plans{}` drives the deep BD page, the Grand-plan
 "Planned" cards, the pipeline "you are here", and the progress bars. Build one record per in-scope BD
@@ -219,28 +252,89 @@ rendered struck-through.
 `deferral`, `evidence.sha` / `verify`, and the wave/step text — is read straight from the recognized
 plan doc's records; a field the doc does not carry is simply absent and its chip omitted
 (presence-driven, R11), never invented. Execution figures come from the plan's own recorded evidence
-(a step's `done` state and its `evidence.sha`), so the BD masthead's **Commits landed** / **Reviews
-clean** tiles (§7.4) degrade to 0 or omit when the plan holds no execution evidence yet.
+(a step's `done` state and its `evidence.sha`), so the BD masthead's **Commits landed** / **Gates
+cleared** tiles (§7.4) degrade to 0 or omit when the plan holds no execution evidence yet.
 
-### Payload thinning (in-window full / out-of-window minimal)
+### Payload thinning — the deep-detail set (owner directive)
 
-The `bds{}` payload is scoped by window so the state stays small without dropping any item. Every
-backlog item is represented; only the DETAIL depth varies.
+`bds{}` is **presence-tiered** so the embedded state stays small without dropping any item — every
+backlog item is represented; only DETAIL DEPTH varies.
 
-- **In-window set** — `motion[]` (the running window, `active[]` ++ (`queue[]` minus `active[]`)) plus
-  any BD carrying a live `plans{}` record. These get **full** `bds{}` records — every field the deep BD
-  page (§7.4) and its spotlights need — and their full `plans{}` deep plan, at unchanged fidelity.
-- **Out-of-window set** — every other backlog item (archived / resolved / deferred / not-in-window).
-  These get **minimal** `bds{}` records: exactly `id`, `title`, `status`, a snippet line, and
-  `Type` / `Target` / `Blockers` / `Unblocks` — the fields the Archive rows (§7.5) and the
-  summary-depth BD page (§7.4) consume. They carry no deep plan and no deep-only fields.
+- **Full / deep set** = **(every BD not yet `Resolved`, except the two terminal-dead states
+  `Deprecated` / `Cancelled`)** ∪ **(the 10 most-recently-`Resolved` BDs — selected `Resolved:`-date
+  descending, then id descending, OBS-8)**. Concretely: all `Open`,
+  `Unblocked`, `Deferred`, and derived-`active` BDs, plus the 10 newest `Resolved`. These carry a
+  **full** `bds{}` record (every field the §7.4 deep page + spotlights need) **and** a full assembled
+  `plans{}` deep record. The set is sized by the rule — typically a few dozen items, not the whole
+  tree. *(`Deferred` is included — it is unresolved and revivable; `Deprecated` / `Cancelled` are
+  terminal-dead and treated like `Resolved`, per owner decision.)*
+- **Minimal set** = everything else — older `Resolved`, plus `Deprecated` / `Cancelled`. A **minimal**
+  record is exactly `id`, `num`, `title`, `status`, and short `snippet` / `Type` / `Target` /
+  `Blockers` / `Unblocks` — the fields the Archive rows (§7.5) and the summary-depth BD page (§7.4)
+  consume. No deep plan, no deep-only fields.
+- **Bound the minimal fields (O4).** Minimality caps DEPTH; also cap WIDTH — `snippet` ≤ ~160 chars,
+  and each of `Type` / `Target` / `Blockers` / `Unblocks` to its first line / first sentence — so 240+
+  minimal records don't re-inflate the payload with uncapped prose.
 
-Every invariant holds. **R7** — a minimal record is exactly enough to render §7.4 **summary depth**,
-which is already where a plan-less BD lands, so every item keeps its deep-linkable `#bd-nnn` page.
-**R4** — the in-window set is a deterministic function of `active[]` / `queue[]` / `plans{}`. **R2** —
-the payload stays complete in that every item is present; a minimal record is representation, not
-omission. **R11** — a BD with no in-window detail renders its summary-depth page, never a fabricated
-deep one.
+Every invariant holds — **R7** (a minimal record still mounts its summary-depth `#bd-nnn` page; never
+*removed*), **R2** (every item present; minimal is representation, not omission), **R11** (a BD with no
+deep detail renders summary depth, never a fabricated deep page). A BD that re-enters the full set
+lights back up to full automatically. Tiering keeps the payload small — full detail only where anyone
+reads it, minimal elsewhere — a large token saving with no fidelity loss, without pinning a volatile
+byte or count figure.
+
+### Discovering the plan / deep detail (multi-source, best-effort — owner directive)
+
+The deep detail for each **full-set** BD is assembled **best-effort from wherever it exists, committed
+or not** — because a plan mid-flight often lives in an uncommitted or prose source, and requiring a
+committed marker-match blanks the deep page for visibly-active work (the regression this fixes: O3).
+**Sweep** these sources for **every** in-scope BD — resolved BDs included, not only the active one
+(R3-LEAD / OBS-9):
+  1. a **committed** plan/design doc — the backlog entry body, `docs/project/implementation-plan/`,
+     `maintenance-docs/`, or an architecture/plan doc (identified per "Recognizing the plan doc" above);
+  2. an **uncommitted** plan/design doc — glob **every** per-BD scratch plan / handoff dir across the
+     scratch tree for that BD's `PLAN-*.md` / `ARCHITECTURE-*.md` / impl-report / review (e.g.
+     `~/Developer/_tmp/pack-handoff-bd261/PLAN-BD261-FINAL.md`), same recognition test. The sweep is
+     per-in-scope-BD, not active-BD-only — a resolved BD's rich handoff doc must be found, not skipped;
+  3. **`session-state.json` prose** — `wave`, `cycle_position`, `pending_decisions`, active notes (per
+     the prose-tolerance principle);
+  4. **git history of the BD's OWN implementation work** — `git log --grep=BD-NNN` restricted to the
+     commits that actually implemented / landed this BD (their messages + evidence SHAs); exclude
+     bookkeeping-only commits **and, critically, incidental cross-reference mentions** from other BDs'
+     work.
+
+**Merge rule — richest doc wins, git supplies evidence (R2-C / R2-G / OBS-9).** Take the **structure**
+(waves and steps) from the **structurally-richest doc** — the one with the most waves / steps / detail
+— **regardless of commit status**: a richer uncommitted scratch plan beats the thinner committed
+backlog skeleton (choosing the skeleton is exactly what under-populated the resolved pages). Fall to
+session-state prose (source 3) only when no doc exists. **Layer `evidence.sha` from git history
+(source 4) on top** wherever present — the doc supplies structure, git supplies the landed SHAs; they
+are complementary, and the merge is deterministic given the same sources. When the winning structure
+came from an uncommitted scratch doc (or prose), the page carries the machine-local chip (§5.5); a
+committed-doc structure does not.
+
+**Umbrella / delegating BDs (R3-LEAD / OBS-3).** A BD that delegated its implementation to children
+(its own `git log` is design-gate rulings + "delegated to BD-NNN…", not code) must not read
+near-empty. Bless its **design-gate + delegation commits** as its legitimate own record, **and**
+surface the children's landed work — rolled up, or explicitly linked ("delivered via BD-262–268 →") —
+so the page reflects the feature it drove. Do **not** re-count child evidence as the umbrella's own
+authored code steps (no double-counting).
+
+**Fabrication guard — the R11 boundary (R2-B / OBS-2).** Git history *alone* (no doc, no plan prose)
+may drive a deep plan **only** for a BD that is `Resolved` **or derived-`active`** — i.e. work actually
+happened. The guard keys on **membership, not backlog `Status:`**: "queued" means **neither `Resolved`
+nor derived-`active`**; an `Open`-status BD that is derived-active (e.g. BD-224, whose `Status:` is
+`Open` while it sits in `active[]`) is **not** "queued" and keeps its deep page. A truly queued BD
+(neither resolved nor active) with only cross-reference mentions and no real plan source has genuinely
+**found nothing** in the plan sense: it must **summary-degrade**, never synthesize `done` steps from
+incidental mentions (that fabricates progress, violating R11).
+
+If no source yields a genuine plan, degrade to summary depth **for that one BD only** — never blank the
+page. This is the **best-effort deep tier** of the R4 exception: a page whose structure came from an
+**uncommitted scratch doc or volatile session-state prose** can differ by machine and drift as work
+progresses (surfaced by the machine-local chip, §5.5 / R2-D). **Git history does not count as a
+machine-local source** — it is committed and reproduces on any clone (OBS-1). This tier also makes the
+prose→structure synthesis (`gaps` / `youAreHere` / `next`, §7.4) **required and named**, not improvised.
 
 ---
 
@@ -354,13 +448,26 @@ surfaces are removed for this render (R11) and return when a cursor is recorded 
   ancestor within N trailing bookkeeping commits, §3); grey **↺ behind** when false; nothing when the
   live read is unavailable
 - live-dot (uncommitted work indicator) — amber (`--active`)
+- best-effort deep-tier marker — a neutral **"best-effort · machine-local"** chip on a deep page whose
+  **structure/detail** came (even partly) from an **uncommitted scratch doc or volatile session-state
+  prose**, signaling it may not reproduce on another machine (§3, R4 exception, R2-D). **Git history
+  does not trigger the chip** — it is committed and reproduces on any clone (OBS-1). A deep page sourced
+  entirely from committed data (committed doc + git evidence) is strictly deterministic and carries
+  **no** chip.
 
 ### 5.6 Other fixed value sets
 
-- `parallelization`: `serial` | `parallel` | `interleaved`
-- `sizeTier`: `large` | `small`
-- These, the statuses (5.1), step states (5.2), scopes (5.3), and cursor statuses (5.4) are the
-  complete controlled vocabularies. Nothing outside them is rendered as a state.
+- `parallelization`: `serial` | `parallel` | `interleaved` | `none` | `idle`. This value is often
+  **prose** (`"none — BD-224 in the command-testing gate"`); when it is not an exact enum member,
+  degrade per §3's prose-tolerance rule — render the **leading token** as the mode and the remainder as
+  an inline note (FIX 3). Never render a raw prose blob as if it were the whole mode.
+- `sizeTier`: `large` | `small`.
+- **Gap severity** (§7.4.6 `gaps[].severity`): `gate` | `blocker` | `note`. `gate` uses the §5.5 gate
+  purple; `blocker` the §5.1 red; `note` the neutral faint. A synthesized gap that borrows a color
+  names one of these — never an ad-hoc value (G1).
+- These, the statuses (5.1), step states (5.2), scopes (5.3), cursor statuses (5.4), and the gap
+  severities above are the complete controlled vocabularies. An out-of-enum value degrades per §3's
+  prose-tolerance rule; it is never invented into a new token.
 
 ---
 
@@ -421,8 +528,11 @@ Eyebrow "In motion · N", H1 **Frontier**. The merged running-window + in-flight
   dirty): `N active` / `N linked` counts, a main-tree clean/dirty line, and one row per **in-scope**
   linked worktree (current-branch, this work; the primary and other-branch checkouts are excluded per
   §3) marked `active`/`idle` (only a dirty worktree counts as active).
-- **Running agents** panel — always shown; lists `in_flight_agents[]` with a role chip parsed from
-  each name's leading token; empty → "No agents running."
+- **Running agents** panel — always shown; prose-tolerant (§3). Render a row only for an entry that
+  parses as a real spawn name (`<role>-<bd>-<facet>`), taking the leading token as the role chip. An
+  entry that is a **no-agents sentinel** — begins `none` / `no agents`, or does not parse as a spawn
+  name (e.g. a status note like "none live. NEXT: …") — is **not** a row; when no entry parses as an
+  agent, render **"No agents running."** (FIX 2).
 - **Decisions & directives** panel — the live `pending_decisions[]` from the snapshot: the session's
   standing directives (already-decided constraints) and any genuinely open decisions alike. This is
   operational session state and lives **only here** — distinct from the design **Rulings** page
@@ -432,8 +542,9 @@ Eyebrow "In motion · N", H1 **Frontier**. The merged running-window + in-flight
 
 ### 7.3 Grand plan — `#grand-plan`
 Eyebrow "Everything in play · `<mode>`", H1 **Grand plan**. The running window as one view.
-- **Sequencing** panel — the parallelization mode (`serial` / `parallel` / `interleaved`) with an
-  explanatory note.
+- **Sequencing** panel — the parallelization mode (`serial` / `parallel` / `interleaved` / `none` /
+  `idle`) with an explanatory note. When `parallelization` is prose, show the leading token as the mode
+  and the remainder as the note (§5.6 / §3 prose-tolerance) — never a raw prose blob as the mode.
 - **"Planned" (count)** — one rich card per BD that has a plan block: a deep-linked header (id +
   title + "you are here" + size-tier + current wave·step + status pill), a mini progress bar
   (`done / total · %`), then waves → steps. Each step shows its box glyph, tag + title, a "you are
@@ -451,14 +562,18 @@ Type / Target / Blockers / Unblocks) + **What's next** + **Decisions on record**
 touching this BD — a BD-scoped context view, not the global Frontier panel).
 
 **Deep depth** (whenever a `plans{}` record with waves is present for this BD; §3, R11) — eight
-sections:
+sections. When this BD's structure came from an **uncommitted scratch doc or session-state prose** (§3
+discovery), the page carries the **best-effort · machine-local** chip (§5.5, R2-D); a page sourced from
+committed data (committed doc + git evidence) carries none — git history is committed (OBS-1).
 1. **Masthead** — title, dek, progress bar (`done / total steps landed (%)`), and a stat band: Waves
-   (`done of total`) · Commits landed · Reviews clean · Current wave (cursor-authoritative, with
-   `in progress` when dirty). **Commits landed** = steps bearing an `evidence.sha`; **Reviews clean** =
-   `done` steps that carry a `gate` (a landed step's gate is cleared by definition — the `plans{}` step
-   shape has no separate gate-state flag, so `done` + `gate` present *is* the cleared signal) — both
-   derived from evidence in the plan, presence-driven (§3): they read 0, or the tile is omitted, when
-   the plan carries no execution evidence yet. **Waves (`done of total`)**: `total` counts every wave;
+   (`done of total`) · Commits landed · Gates cleared · Current wave (cursor-authoritative, with
+   `in progress` when dirty). **Commits landed** = steps bearing an `evidence.sha`; **Gates cleared** =
+   `done` steps that carry a plan-authored `gate` (a landed step's gate is cleared by definition — the
+   `plans{}` step shape has no separate gate-state flag, so `done` + `gate` present *is* the cleared
+   signal). The tile measures *plan-authored gates that landed* (R2-F): **omit** it when the plan has
+   **no `gate` field at all** (e.g. a git-history-sourced plan) — that is not "no reviews," just nothing
+   to count; show an explicit **"0"** when the plan **does** author gates but none have landed (OBS-4). Both tiles derive from evidence in the plan, presence-driven
+   (§3): they read 0, or the tile is omitted, when the plan carries no execution evidence yet. **Waves (`done of total`)**: `total` counts every wave;
    a wave is **done** when it has at least one non-dropped step and *all* its non-dropped steps are
    `done` (an all-dropped wave never counts as done, though it still counts in `total`). `wave.current`
    is only the current-wave marker — never a completion signal.
@@ -475,11 +590,16 @@ sections:
 5. **Waves & commits** — one panel per wave; each step shows box glyph, tag + title, `in progress`,
    detail, evidence (`sha · verify`), deferral note, and scope / point-size / gate chips.
 6. **Gaps & blockers** — gaps (title + severity + detail) + a blocked/deferred step summary +
-   open-decision count.
+   open-decision count. Gaps come from the plan's `gaps[]` when present; when the plan has none, a gap
+   MAY be **synthesized from `session-state.json` prose** (e.g. a `pending_decisions[]` gate item →
+   `{severity: gate, …}`) per §3's prose-tolerance — this source is blessed (G1). `severity` must be
+   one of the §5.6 gap-severity set (`gate` / `blocker` / `note`); `gate` borrows the §5.5 gate color.
 7. **Decisions** — the plan's recorded design decisions (✓) plus any `pending_decisions[]` touching
    this BD (BD-scoped).
-8. **What's next** — the next step (tag + title + gate + detail), or "All planned steps have landed.
-   Next: closeout (resolve + changelog)."
+8. **What's next** — the next step (tag + title + gate + detail). When the plan carries no explicit
+   next, it MAY be sourced from `session-state.json` prose (`cycle_position` / `pending_decisions`)
+   per §3's prose-tolerance (G3), else fall back to "All planned steps have landed. Next: closeout
+   (resolve + changelog)."
 
 ### 7.5 Archive · All BDs — `#archive`
 Eyebrow "Permanent index · N items", H1 **Archive · All BDs**.
@@ -514,21 +634,33 @@ panel with that stable anchor id: title + optional `rule N` chip + body. **"Foun
 that counts a trinity file only when it **defines** the rule, not when it merely references it: in each
 of the three pack-root trinity files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`), require the rule's
 `[rationale: <slug>]` to appear on a *rule-defining* `- **Title.**` bullet within that file's
-Pack-memory section — a bare slug mention in prose (a cross-reference or pointer) does not count. List
-the files that define it, with a `Claude-only` pill when only one does.
+Pack-memory section — a bare slug mention in prose (a cross-reference or pointer) does not count.
+**When a rule carries no `[rationale:]` tag at all** (many pack-memory rules don't), fall back to
+matching its bold `- **Title.**` on a rule-defining bullet in each file — the same title fallback used
+for the anchor — otherwise every rationale-less rule falsely reports as defined in **no** trinity file
+(FIX 1). List the files that define it, with a `Claude-only` pill when only one does.
 
 ### 7.8 Dependencies — `#deps`
-Eyebrow "Sequencing", H1 **Dependencies**. Edges come from each BD's prose `Blockers:` line in the
-backlog. One panel per needing-BD (`from`): its verb + every prerequisite (`to`). The `why` is the
-BD's single `Blockers:` prose line, shown **once** per panel (not repeated per prerequisite). Panels
-are grouped by the needing-BD's own status into fixed sections — Open & queued → Deferred → Resolved →
-Deprecated & superseded (empty sections omitted) — and deterministically sorted (by `from`, then
-`to`). A needing-BD that is `Open`, `Unblocked`, or derived-active all sort into the first section
-(**Open & queued**); `Cancelled` joins **Deprecated & superseded**.
+Eyebrow "Sequencing", H1 **Dependencies**. Edges are **best-effort from prose** (R4 deep-tier caveat):
+prefer a structured blocked-by field if the backlog provides one; otherwise parse each BD's `Blockers:`
+line. **Extract a `to` only for a genuine prerequisite** — a `BD-NNN` the prose frames as blocking /
+waiting-on / gated-on — and **exclude** incidental mentions: explicit negations ("no blockers"),
+sequencing-only notes, and coordination pointers (O5). One panel per needing-BD (`from`): its verb +
+every prerequisite (`to`). The `why` is the BD's `Blockers:` prose shown **once** per panel (not per
+prerequisite); when it is a long multi-sentence paragraph, **truncate to its first sentence / ~200
+chars with an expand affordance**, the full text living on the BD page (G5). Panels are grouped by the
+needing-BD's own status into fixed sections — Open & queued → Deferred → Resolved → Deprecated &
+superseded (empty sections omitted) — deterministically sorted (by `from`, then `to`). A needing-BD
+that is `Open`, `Unblocked`, or derived-active sorts into **Open & queued**; `Cancelled` joins
+**Deprecated & superseded**.
 
 ### 7.9 Recently landed — `#changelog`
 Eyebrow "Newest first", H1 **Recently landed**. The changelog is one file per major version; render one
-panel per major-version file, newest first: version + date chip + a ✓ list of that version's items.
+panel per major-version file, newest first: version + date chip + a ✓ list of that version's
+**shipped** items. **Scope the ✓ list (O7):** take the top-level shipped bullets only; **exclude**
+"Carried over" / dormant / not-yet-shipped sections. **Join wrapped bullets:** a bullet whose text
+wraps across source lines is one item — join the continuation lines, never emit a mid-sentence
+fragment.
 
 ### 7.10 Rulings — `#rulings`
 Eyebrow "Decisions on record", H1 **Rulings**. Design decisions (the *why* behind the current work) so
@@ -536,16 +668,23 @@ they are not re-litigated — sourced by content from the in-scope plan's record
 `decisions[]`) or dedicated ruling notes (§3). **Not** the session's operational `pending_decisions` —
 those are live session state shown only on Frontier (§7.2); Rulings never re-surfaces them, so no item
 appears on both pages. Grouped by focus (with a Scope · Order line); each ruling: title + optional id +
-detail + context + source pills. Presence-driven (R11): **full** when design decisions are recorded,
-**degraded** when few or thinly-detailed, **removed** (page and nav item omitted) when none are on
+detail + context + source pills. The decisions doc may be **committed or an uncommitted/scratch doc**
+reachable by the deep-tier discovery (§3); extract each ruling's `detail` (the rationale text) when
+present. Presence-driven (R11): **full** when decisions are recorded with detail, **degraded**
+(title-only) when detail is thin/absent, **removed** (page and nav item omitted) when none are on
 record right now.
 
 ### 7.11 Metrics — `#metrics`
 Eyebrow "Toward launch", H1 **Metrics**. Three panels: Resolution progress (bar + `resolved / total
 (%)`, Open/unblocked, Running window queued) · Closeout shape (prose from counts) · Repo context
-(Total items, Running window, Branch).
+(Total items, Running window, Branch). **Branch (O6):** show the resolved base / upstream work branch,
+not a worktree-isolation branch — omit or substitute when it matches a worktree name (e.g.
+`worktree-agent-*`). Counts follow the §3 O11 rule (status-based; the Active overlay never
+double-counts an active-but-`Open` BD).
 
 ### 7.12 Help & commands — `#help`
 Eyebrow "Pack-side commands", H1 **Help & commands**. Overview lede + a **"What the pack does"** ✓
-feature list + pack commands grouped by source section (rows of name + description). Project-side
-commands go in the isolated bordered **"Project-side — not pack commands"** block, per R8.
+feature list (**sourced from the README pack-overview section, however titled** — e.g. "What is this?";
+O8 / OBS-5; omit the list when that source is absent, per R11) + pack commands grouped by source
+section (rows of name + description).
+Project-side commands go in the isolated bordered **"Project-side — not pack commands"** block, per R8.
