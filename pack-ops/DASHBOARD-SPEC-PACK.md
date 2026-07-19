@@ -107,6 +107,19 @@ Run this whole sequence on every invocation:
 The result need not be byte-identical across runs or to any prior build — only faithful to this spec
 and to the current project state.
 
+**Provenance — dual fingerprint.** The sanctioned build script (`scripts/dashboard-build.py`) and the
+runtime shell (`pack-ops/dashboard-approvals/dashboard-shell.html`) each carry a provenance line with TWO
+fingerprints: `spec-sha` = `git hash-object` of THIS spec (the LOGIC contract), and `structure-sha` = a
+sha256 fold of the FORMAT contract (the two per-entry `_rules.md` hashes + the session-state `schema` token
++ the session-state required-keys tuple value). A spec OR format-contract change flips a fingerprint and
+forces a reviewed script edit + a shell regenerate (Check 88); the script is committed source, regenerated
+only on such a change, reused every render otherwise.
+
+**Status vocabulary shape (oracle input).** The oracle reads the canonical Status set from the live
+`backlog/_rules.md` `## Lifecycle states admitted` section, parsing ONLY the `` - `X` — <gloss> `` bullet
+shape (dash + single backticked word + em-dash), section-scoped; a new canonical status the tier-map cannot
+place is a fail-closed condition.
+
 ---
 
 ## 3. Data sources (satisfies R2–R5)
@@ -276,6 +289,22 @@ backlog item is represented; only DETAIL DEPTH varies.
   and each of `Type` / `Target` / `Blockers` / `Unblocks` to its first line / first sentence — so 240+
   minimal records don't re-inflate the payload with uncapped prose.
 
+**Per-record tier field (named).** Every `bds{}` record carries a `tier` field with value `"full"` or
+`"minimal"` — `"full"` for a full/deep-set record, `"minimal"` for everything else. `tier` is the single
+authoritative discriminator the render, the `verify` oracle, and CI Check 89 read; it is not inferred
+from field-presence heuristics. (`tier` — not `depth` — deliberately: `depth` names the §7.4 summary/deep
+PAGE depth; `tier` names the full/minimal RECORD tier, matching the "full/minimal record" wording already
+used here.)
+
+**Conformance floor (deterministic — HARD-FAIL).** The full set is DETERMINISTIC, not best-effort: the
+render MUST carry exactly `|E_full|` records with `tier:"full"`, where `E_full` = (every non-terminal BD)
+∪ (the 10 most-recently-`Resolved`, selected `Resolved:`-date descending then id descending — **OBS-8** is
+the tie-break selection key for the newest-10 arm). Every `tier:"full"` record MUST carry a source-anchored
+body (≥40 normalized chars, not a title/snippet echo, sharing content with the live `backlog/BD-NNN.md`
+Description/Context). A shortfall means deterministic work was skipped: `dashboard-build.py verify`
+(render-time) AND the mechanical CI floor (Check 89) BOTH HARD-FAIL — the render is regenerated, never
+committed short.
+
 Every invariant holds — **R7** (a minimal record still mounts its summary-depth `#bd-nnn` page; never
 *removed*), **R2** (every item present; minimal is representation, not omission), **R11** (a BD with no
 deep detail renders summary depth, never a fabricated deep page). A BD that re-enters the full set
@@ -284,6 +313,16 @@ reads it, minimal elsewhere — a large token saving with no fidelity loss, with
 byte or count figure.
 
 ### Discovering the plan / deep detail (multi-source, best-effort — owner directive)
+
+**Best-effort applies to plan/deep-detail SOURCE discovery ONLY — not to full-set membership or bodies.**
+The SWEEP that assembles a full-set BD's deep PLAN structure is best-effort: a plan may live in an
+uncommitted or prose source, or not exist yet, in which case that ONE BD summary-degrades (§7.4). What is
+NOT best-effort: (a) full-set MEMBERSHIP (the deterministic `E_full` rule above), and (b) each full-set
+record's source-anchored BODY (drawn from the BD's own live backlog entry, which always exists). The SWEEP
+is mandatory (every in-scope BD is swept); the full-BODY set is deterministic and floored. The
+committed-history plans floor (each derived-active / newest-Resolved BD with real `git log --grep=BD-NNN`
+landings MUST appear in `plans{}`) keys on committed data only and is likewise HARD-floored; the
+richest-doc-wins merge remains best-effort above that floor.
 
 The deep detail for each **full-set** BD is assembled **best-effort from wherever it exists, committed
 or not** — because a plan mid-flight often lives in an uncommitted or prose source, and requiring a
