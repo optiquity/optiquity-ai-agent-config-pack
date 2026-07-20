@@ -1,8 +1,9 @@
 # Pack Frontier Dashboard — Build Specification
 
 Instructions for generating the dashboard fresh, from live project state, on every request.
-Produce a single HTML page each time; save nothing between runs. This document is the spec a
-slash command or a plain text request executes — each invocation reruns the whole recipe in §2.
+Produce a single HTML page each time. This document is the LOGIC contract the committed renderer
+`scripts/dashboard-render.py` executes (`build` mode); `/pack-dashboard` invokes it. State is
+collected fresh and never cached between builds (R2).
 
 ---
 
@@ -72,7 +73,7 @@ Invariants. They govern all pages and outrank any page-specific detail below.
 
 ## 2. How to generate (the build recipe)
 
-Run this whole sequence on every invocation:
+The renderer runs this whole sequence on every `build`:
 
 1. **Collect state.** Read the committed sources and take the live git read (see §3), and assemble a
    single state object matching the state → source map in §3. The live git read is what pulls in
@@ -92,9 +93,25 @@ Run this whole sequence on every invocation:
    sufficient (escaping `>` / `&` is harmless but not required). Only if you instead inline
    `var STATE = {…}` in a plain executable script must you also escape `&`, `>`, U+2028 and U+2029
    (which terminate JS string/JSON literals). Prefer the JSON-script path.
-4. **Publish fresh, persist nothing.** Output the file (or publish it as an artifact) as the
-   deliverable for this invocation. Do not cache the state or a prior render between runs (R2 — the
-   data-free shell MAY be reused). **If the build reuses a spec-fingerprinted shell (R2), pin the
+
+   **Targeted state injection (gap 1).** Inject the serialized state ONLY into the state element — a
+   single-count replace of the `<script id="state">…</script>` content. The shell carries the
+   `__PACK_DASHBOARD_STATE__` sentinel in TWO places (the inert state element AND the router's
+   defensive boot-guard); a global token-replace clobbers the guard and blanks the board. After
+   injection the produced page MUST still carry the sentinel exactly once (in the JS guard) and MUST
+   NOT carry it in the state element.
+
+   **ASCII-safe output (gap 3).** Emit pure-ASCII HTML: serialize JSON with `ensure_ascii` and write
+   static glyphs as HTML numeric entities. The `/pack-dashboard` publish derives the claude.ai Artifact
+   body from this page on the fly, and the Artifact tool supplies its own charset, so an ASCII-safe body
+   publishes cleanly regardless of the wrapper. The produced page carries zero bytes outside
+   `0x09,0x0A,0x0D,0x20–0x7E`.
+4. **Write the board, atomically.** The renderer writes the state-injected page to
+   `pack-ops/dashboard-approvals/dashboard.html` — rendered into a temp path, `verify`'d, and renamed
+   into place ONLY on a PASS (a shortfall deletes the temp and exits non-zero, leaving no board on
+   disk). The `/pack-dashboard` publish step derives the claude.ai Artifact body from that page on the
+   fly and records the URL; no separate body file is written. Do not cache the state or a prior render
+   between builds (R2 — the data-free shell MAY be reused). **If the build reuses a spec-fingerprinted shell (R2), pin the
    provenance/fingerprint comment to a fixed position** — line 2, immediately after `<!DOCTYPE html>` —
    so the reuse check reads it with a stable, cheap regex (O10). Its shape is
    `<!-- <renderer> shell · spec: <path> · spec-sha: <40-hex> -->`; the `spec:` field is the
@@ -104,19 +121,21 @@ Run this whole sequence on every invocation:
    yields a non-portable provenance line by construction — the `spec-sha` remains the reproducible key
    (OBS-6).
 
-The result need not be byte-identical across runs or to any prior build — only faithful to this spec
-and to the current project state.
+The rendered page reflects this spec and the current project state; the data-free shell is
+deterministic — byte-identical across no-op builds, which the reuse-cache and its byte-identity guard
+(§ Rendering surface) depend on — while the injected `#state` tracks live state.
 
-**Provenance — shell fingerprint.** The runtime shell
-(`pack-ops/dashboard-approvals/dashboard-shell.html`) carries the §2-step-4 provenance line stamping
-`spec-sha` = `git hash-object` of THIS spec (the LOGIC contract). A spec change flips the fingerprint and
-regenerates the shell; a matching fingerprint reuses it. CI Check 88 verifies a committed shell's embedded
-`spec-sha` against the live spec and fails loud on a stale committed shell.
+**Provenance — shell fingerprint.** The renderer authors the shell
+(`pack-ops/dashboard-approvals/dashboard-shell.html`) from its committed CSS/JS constants and stamps the
+§2-step-4 provenance line with `spec-sha` = `git hash-object` of THIS spec (the LOGIC contract). A spec
+change flips the fingerprint and regenerates the shell; a matching fingerprint reuses it byte-unchanged.
+CI Check 88 verifies a committed shell's embedded `spec-sha` against the live spec and fails loud on a
+stale committed shell.
 
 **Status vocabulary shape.** The render reads the canonical Status set from the live
 `backlog/_rules.md` `## Lifecycle states admitted` section, parsing ONLY the `` - `X` — <gloss> `` bullet
 shape (dash + single backticked word + em-dash), section-scoped; a new canonical status the tier-map cannot
-place is a fail-closed condition — Pack Chat's render-time completeness self-check aborts rather than render
+place is a fail-closed condition — the renderer's `verify` fail-closes rather than render
 an unmapped status.
 
 ---
@@ -211,8 +230,9 @@ the map the same way only if the canonical vocabulary grows. `active` is not a b
 derived from `active[]` membership (§5.1); `blocker`/Blocked is not one either — it arises only from a
 blocked plan step (§5.2), so it appears only when a plan carrying such a step is present (R11).
 
-**Counts vs. the Active overlay (O11).** `counts` are computed from backlog `Status:` values, so a BD
-that is derived-active but still `Status: Open` is counted under **Open** in the tally; the board's
+**Counts vs. the Active overlay (O11 / gap 2).** Every display bucket derives from the backlog `Status:`
+TOKENS (via the §3 Status → token map), never re-bucketed by the derived-`active` overlay: a BD that is
+derived-active but still `Status: Open` is counted under **Open** in the tally. The board's
 `active` grouping/pill is a presentation overlay, **not** a separate count bucket — it never
 double-counts. State this on the Open/Resolved tiles (§7.1, §7.11) so the overlap isn't misread.
 
@@ -290,7 +310,7 @@ backlog item is represented; only DETAIL DEPTH varies.
 
 **Per-record tier field (named).** Every `bds{}` record carries a `tier` field with value `"full"` or
 `"minimal"` — `"full"` for a full/deep-set record, `"minimal"` for everything else. `tier` is the single
-authoritative discriminator the render and Pack Chat's render-time completeness self-check read; it is not
+authoritative discriminator the render and the renderer's `verify` read; it is not
 inferred from field-presence heuristics. (`tier` — not `depth` — deliberately: `depth` names the §7.4
 summary/deep PAGE depth; `tier` names the full/minimal RECORD tier, matching the "full/minimal record"
 wording already used here.)
@@ -300,8 +320,24 @@ render MUST carry exactly `|E_full|` records with `tier:"full"`, where `E_full` 
 ∪ (the 10 most-recently-`Resolved`, selected `Resolved:`-date descending then id descending — **OBS-8** is
 the tie-break selection key for the newest-10 arm). Every `tier:"full"` record MUST carry a source-anchored
 body (≥40 normalized chars, not a title/snippet echo, sharing content with the live `backlog/BD-NNN.md`
-Description/Context). A shortfall means deterministic work was skipped: Pack Chat's render-time
-completeness self-check HARD-FAILS — the render is regenerated, never published short.
+Description/Context). A shortfall means deterministic work was skipped: the renderer's `verify` HARD-FAILS
+on a dropped session-layer field or backed section — the board is regenerated, never published short.
+
+**What `verify` covers (the honest boundary).** The complete DATA floor covers three layers. **(1) The
+session-state layer — 9 fields:** `boundary_commit`, `active[]`, `in_flight_agents[]`, `queue[]`,
+`parallelization`, `wave`, `cycle_position`, `pending_decisions[]` — the 8 sourced fields, each
+presence-conditional, populated when its `session-state.json` source carries content — plus the derived
+`motion[]` (asserted unconditionally). **(2) Every §7
+backed section:** `bds{}` total-accountability + `tier:"full"` source-anchored bodies, `plans{}`,
+`rules[]`, `changelog[]`, `agents[]`, `metrics{}`, `help{}`, and `inflight{}` structure, plus the
+README-version-table-backed `version` / `qualifier` / `date` floor (presence-conditional). **(3) The
+parse/encoding invariants:** targeted state injection and ASCII-safe output (§2 step 3), status-token
+counts (§7.1 / §7.11 O11), and changelog dormancy-per-section (§7.9). The RENDER layer — the CSS, the
+hash router, and the per-view render functions — is guarded by committed-source diff-review, the
+boot-guard, and a render-token smoke (§ Rendering surface), NOT by `verify` (which parses `#state` and
+never executes JS); a subtly-broken-but-present render function is human-reviewed. `deps` / `methodology`
+/ `rulings` are a Level-1-only carve-out: their upstream data is floored, and `rulings` is unimplemented
+in the render layer (§7.10).
 
 Every invariant holds — **R7** (a minimal record still mounts its summary-depth `#bd-nnn` page; never
 *removed*), **R2** (every item present; minimal is representation, not omission), **R11** (a BD with no
@@ -372,6 +408,17 @@ page. This is the **best-effort deep tier** of the R4 exception: a page whose st
 progresses (surfaced by the machine-local chip, §5.5 / R2-D). **Git history does not count as a
 machine-local source** — it is committed and reproduces on any clone (OBS-1). This tier also makes the
 prose→structure synthesis (`gaps` / `youAreHere` / `next`, §7.4) **required and named**, not improvised.
+
+### Rendering surface — the committed renderer and its floor
+
+The renderer and its DATA floor are `scripts/dashboard-render.py` (pack-side, generic via `--repo-root`
+/ `--spec` so the same engine renders other specs). `build` collects state, authors or reuses the shell,
+injects the complete `#state`, and runs `verify` inline — atomically: it renders into a temp path,
+`verify`s that, and renames it into `dashboard.html` only on a PASS. `verify` re-derives the expected
+board independently from the live tree and fail-closes on any dropped DATA component. The one test
+`scripts/tests/test-dashboard-render.sh` proves the floor BITES on every droppable component and
+smoke-checks the render tokens (the nav routes, the per-view render functions, the state boot, and the
+escape helper).
 
 ---
 
@@ -543,7 +590,8 @@ view (toggling `hidden`) and marks the matching sidebar item active. No reloads.
 ### 7.1 Landing — `#landing`
 Eyebrow "Optiquity AI Agent Config Pack", H1 **Landing**, lede.
 - **Status strip** (four tiles): Version · Open items (`open of total`) · Resolved (`resolved` + %) ·
-  Boundary (short-SHA).
+  Boundary (short-SHA). Open/Resolved tiles count by backlog status token (§3 O11 / gap 2); the Active
+  overlay never double-counts an active-but-`Open` BD.
 - **Card grid** linking to Frontier, Grand plan, Archive, Methodology, Pack rules, Help & commands,
   Metrics.
 - **"Where we are now"** → the Live session-state band (§7.2) + an **"In flight now"** active-BD
@@ -695,9 +743,14 @@ that is `Open`, `Unblocked`, or derived-active sorts into **Open & queued**; `Ca
 Eyebrow "Newest first", H1 **Recently landed**. The changelog is one file per major version; render one
 panel per major-version file, newest first: version + date chip + a ✓ list of that version's
 **shipped** items. **Scope the ✓ list (O7):** take the top-level shipped bullets only; **exclude**
-"Carried over" / dormant / not-yet-shipped sections. **Join wrapped bullets:** a bullet whose text
-wraps across source lines is one item — join the continuation lines, never emit a mid-sentence
-fragment.
+"Carried over" / dormant / not-yet-shipped sections. **Section boundaries + dormancy (gap 4):** treat
+BOTH a fully-bold marker line (`^\*\*.+\*\*$`) AND a `###` heading as a section boundary, and
+re-evaluate the dormant/shipped flag at EACH boundary — a dormancy latch set on one scope must never
+carry past the next boundary and blank later shipped scopes. **Exclude non-feature sub-sections (N3):**
+drop `**Audit artifacts …**` and `**Carried over to future work …**` markers from the shipped ✓ list —
+scope shipped bullets to BD-id-bearing bullets. The floor asserts each shipped panel has `items > 0`, a
+**presence** floor, not a correctness floor. **Join wrapped bullets:** a bullet whose text wraps across
+source lines is one item — join the continuation lines, never emit a mid-sentence fragment.
 
 ### 7.10 Rulings — `#rulings`
 Eyebrow "Decisions on record", H1 **Rulings**. Design decisions (the *why* behind the current work) so
@@ -709,7 +762,9 @@ detail + context + source pills. The decisions doc may be **committed or an unco
 reachable by the deep-tier discovery (§3); extract each ruling's `detail` (the rationale text) when
 present. Presence-driven (R11): **full** when decisions are recorded with detail, **degraded**
 (title-only) when detail is thin/absent, **removed** (page and nav item omitted) when none are on
-record right now.
+record right now. Currently UNIMPLEMENTED in the render layer (R11 presence-driven): the renderer emits
+no `rulings` route or render function, so `verify` asserts no `rulings` field and the render-token smoke
+(§ Rendering surface) carries no `rulings` token; the surface lights up when the render layer adds it.
 
 ### 7.11 Metrics — `#metrics`
 Eyebrow "Toward launch", H1 **Metrics**. Three panels: Resolution progress (bar + `resolved / total

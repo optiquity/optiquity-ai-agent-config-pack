@@ -114,13 +114,13 @@ token: docs/project/pm-session-state.json
 reason: the runtime-authored client PM-Chat resume snapshot (committed after the first PM-Chat session; absent from the bare template); cited by name from the client trinity / PM-CHAT / pm-startup / impl-plan _rules.md. Distinct basename vs the pack-internal pack-ops/session-state.json.
 
 token: pack-ops/dashboard-approvals/dashboard.html
-reason: the runtime-authored latest dashboard render — written into the tracked pack-ops/dashboard-approvals/ dir by the /pack-dashboard direct-render flow, overwritten each render, absent from the bare tree. Runtime-authored-but-TRACKED (committed after first use), matching the pm-session-state.json precedent — NOT gitignored.
+reason: the runtime-authored latest dashboard render — written into the tracked pack-ops/dashboard-approvals/ dir by the /pack-dashboard committed-renderer flow (scripts/dashboard-render.py build), overwritten each render, absent from the bare tree. Runtime-authored-but-TRACKED (committed after first use), matching the pm-session-state.json precedent — NOT gitignored.
 
 token: pack-ops/dashboard-approvals/dashboard-url.txt
 reason: the runtime-authored one-line reused claude.ai artifact URL — written by the foreground publish step after the first render, absent from the bare tree. Runtime-authored-but-TRACKED (committed after first use), matching the pm-session-state.json precedent — NOT gitignored.
 
 token: pack-ops/dashboard-approvals/dashboard-shell.html
-reason: the runtime-authored spec-fingerprinted dashboard shell — written into the tracked pack-ops/dashboard-approvals/ dir by the /pack-dashboard direct-render flow, regenerated only when the build spec changes and reused otherwise, absent from the bare tree. Runtime-authored-but-TRACKED (committed after first use), matching the pm-session-state.json precedent — NOT gitignored.
+reason: the runtime-authored spec-fingerprinted dashboard shell — written into the tracked pack-ops/dashboard-approvals/ dir by the /pack-dashboard committed-renderer flow (scripts/dashboard-render.py build), regenerated only when the build spec changes and reused otherwise, absent from the bare tree. Runtime-authored-but-TRACKED (committed after first use), matching the pm-session-state.json precedent — NOT gitignored.
 
 # ─────────────────────────────────────────────────────────────────
 # G3 — self-flagged RETIRED / DECLINED / ORPHAN / HISTORICAL references
