@@ -107,18 +107,17 @@ Run this whole sequence on every invocation:
 The result need not be byte-identical across runs or to any prior build — only faithful to this spec
 and to the current project state.
 
-**Provenance — dual fingerprint.** The sanctioned build script (`scripts/dashboard-build.py`) and the
-runtime shell (`pack-ops/dashboard-approvals/dashboard-shell.html`) each carry a provenance line with TWO
-fingerprints: `spec-sha` = `git hash-object` of THIS spec (the LOGIC contract), and `structure-sha` = a
-sha256 fold of the FORMAT contract (the two per-entry `_rules.md` hashes + the session-state `schema` token
-+ the session-state required-keys tuple value). A spec OR format-contract change flips a fingerprint and
-forces a reviewed script edit + a shell regenerate (Check 88); the script is committed source, regenerated
-only on such a change, reused every render otherwise.
+**Provenance — shell fingerprint.** The runtime shell
+(`pack-ops/dashboard-approvals/dashboard-shell.html`) carries the §2-step-4 provenance line stamping
+`spec-sha` = `git hash-object` of THIS spec (the LOGIC contract). A spec change flips the fingerprint and
+regenerates the shell; a matching fingerprint reuses it. CI Check 88 verifies a committed shell's embedded
+`spec-sha` against the live spec and fails loud on a stale committed shell.
 
-**Status vocabulary shape (oracle input).** The oracle reads the canonical Status set from the live
+**Status vocabulary shape.** The render reads the canonical Status set from the live
 `backlog/_rules.md` `## Lifecycle states admitted` section, parsing ONLY the `` - `X` — <gloss> `` bullet
 shape (dash + single backticked word + em-dash), section-scoped; a new canonical status the tier-map cannot
-place is a fail-closed condition.
+place is a fail-closed condition — Pack Chat's render-time completeness self-check aborts rather than render
+an unmapped status.
 
 ---
 
@@ -291,19 +290,18 @@ backlog item is represented; only DETAIL DEPTH varies.
 
 **Per-record tier field (named).** Every `bds{}` record carries a `tier` field with value `"full"` or
 `"minimal"` — `"full"` for a full/deep-set record, `"minimal"` for everything else. `tier` is the single
-authoritative discriminator the render, the `verify` oracle, and CI Check 89 read; it is not inferred
-from field-presence heuristics. (`tier` — not `depth` — deliberately: `depth` names the §7.4 summary/deep
-PAGE depth; `tier` names the full/minimal RECORD tier, matching the "full/minimal record" wording already
-used here.)
+authoritative discriminator the render and Pack Chat's render-time completeness self-check read; it is not
+inferred from field-presence heuristics. (`tier` — not `depth` — deliberately: `depth` names the §7.4
+summary/deep PAGE depth; `tier` names the full/minimal RECORD tier, matching the "full/minimal record"
+wording already used here.)
 
 **Conformance floor (deterministic — HARD-FAIL).** The full set is DETERMINISTIC, not best-effort: the
 render MUST carry exactly `|E_full|` records with `tier:"full"`, where `E_full` = (every non-terminal BD)
 ∪ (the 10 most-recently-`Resolved`, selected `Resolved:`-date descending then id descending — **OBS-8** is
 the tie-break selection key for the newest-10 arm). Every `tier:"full"` record MUST carry a source-anchored
 body (≥40 normalized chars, not a title/snippet echo, sharing content with the live `backlog/BD-NNN.md`
-Description/Context). A shortfall means deterministic work was skipped: `dashboard-build.py verify`
-(render-time) AND the mechanical CI floor (Check 89) BOTH HARD-FAIL — the render is regenerated, never
-committed short.
+Description/Context). A shortfall means deterministic work was skipped: Pack Chat's render-time
+completeness self-check HARD-FAILS — the render is regenerated, never published short.
 
 Every invariant holds — **R7** (a minimal record still mounts its summary-depth `#bd-nnn` page; never
 *removed*), **R2** (every item present; minimal is representation, not omission), **R11** (a BD with no

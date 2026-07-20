@@ -1,93 +1,89 @@
 ---
 name: dashboard-render
-description: Render a self-contained single-page HTML dashboard by running the committed build/verify script that produces the deterministic state, injected into a spec-fingerprinted HTML shell. The build selects each record's full-or-minimal tier deterministically, anchors every full-tier body to its own live backlog source, floors the plans and section sets, and stamps a dual {spec-sha, structure-sha} provenance fingerprint; the candidate render is not valid until the script's verify mode passes fail-closed. The shell is reused across renders and regenerated only on a spec or format-contract change.
+description: Render a self-contained single-page HTML dashboard directly from its build spec, in the main tree. Read the spec, collect fresh state (committed sources + a live git working-tree read + the session-state snapshot, including the complete session-state layer), select each record's full-or-minimal tier, inject the state into a spec-fingerprinted HTML shell (reused when its spec-sha matches the live spec, regenerated otherwise), write the page, and run a render-time completeness self-check before the page is accepted. The render happens in place, fresh on every request.
 allowed-tools: Read, Bash, Write, Grep
 ---
 
-Render one self-contained HTML dashboard page for the pack frontier. The
-load-bearing state is NOT hand-authored: it is produced by the ONE committed,
-coder-authored build script, `scripts/dashboard-build.py`, which selects the
-record set deterministically and floors it with its own fail-closed `verify`
-oracle. This skill drives that committed script and authors only the
-presentation shell the script injects state into. It reads two inputs fresh on
-every render — the build-spec doc the caller names (for the pack frontier
-dashboard, `pack-ops/DASHBOARD-SPEC-PACK.md`) and live repo state — and emits
-one HTML page.
+Render one self-contained HTML dashboard page for the pack frontier, directly in
+the main tree: the actor holding this skill reads the build-spec and renders the
+page itself, fresh on every request. Read two inputs fresh every render — the
+build-spec doc the caller names (for the pack frontier dashboard,
+`pack-ops/DASHBOARD-SPEC-PACK.md`) and live repo state — and emit one HTML page.
 
-## Step 1 — Reuse or regenerate the fingerprinted shell
+The spec is the authority. Do not restate its substance here; execute its §2
+recipe in full. This skill names the procedure, the output, and the render-time
+self-check only.
 
-The shell is the state-independent HTML — skeleton, design system, render JS, and
-hash router — persisted as a git-tracked file the caller names; for the pack
-frontier dashboard, `pack-ops/dashboard-approvals/dashboard-shell.html`. It
-carries a provenance comment stamping BOTH fingerprints and one inert state
-element the build injects into:
+## Step 1 — Read the spec and collect fresh state (§2 step 1, §3)
+
+Read the spec, then assemble the state object per its §3 state → source map, all
+read fresh:
+
+- **Committed / canonical:** the `/backlog/` tree, the `/changelog/` tree,
+  `README.md`, `CLAUDE.md` § Pack memory, `PACK-AGENTS.md`.
+- **Live git working-tree read** (`git status` + `git worktree list` at render
+  time) for the `inflight` block — this is what pulls in uncommitted work.
+- **`pack-ops/session-state.json`**, read for the COMPLETE session-state layer:
+  `boundary_commit`, `active[]`, `in_flight_agents[]`, `queue[]`,
+  `parallelization`, `wave`, `cycle_position`, `pending_decisions[]`, and the
+  derived `motion[]`, honoring the spec's prose-tolerance rule for free-text
+  fields.
+
+Never cache state between renders (R2); collect the entire payload fresh.
+
+## Step 2 — Select the tier and build the payload (§3 payload thinning)
+
+Select the deterministic full set and emit every `bds{}` record with its
+`tier:"full"|"minimal"` field per the spec: the full set is every non-terminal BD
+plus the 10 most-recently-`Resolved`, each carrying a source-anchored body drawn
+from its own live backlog entry; everything else is minimal. Populate the plans
+and section floors the same way. Selection is a deterministic recompute
+every render — never a reuse of a prior payload, never a hand-authored count.
+
+## Step 3 — Reuse or regenerate the fingerprinted shell (§2 step 4)
+
+The shell is the state-independent HTML (skeleton, design system, render JS, hash
+router), persisted as the git-tracked file the caller names — for the pack
+frontier dashboard, `pack-ops/dashboard-approvals/dashboard-shell.html`. It pins a
+provenance comment at line 2 and one inert state element:
 
 ```html
-<!-- pack-dashboard shell · spec: pack-ops/DASHBOARD-SPEC-PACK.md · spec-sha: <40-hex> · structure-sha: <64-hex> -->
+<!-- pack-dashboard shell · spec: pack-ops/DASHBOARD-SPEC-PACK.md · spec-sha: <40-hex> -->
 <script type="application/json" id="state">__PACK_DASHBOARD_STATE__</script>
 ```
 
-- `spec-sha` = `git hash-object` of the build-spec doc (the LOGIC contract).
-  `structure-sha` = the FORMAT-contract fold (the two per-entry `_rules.md`
-  object ids, the session-state schema token, and the session-state
-  required-keys value). The `{spec-sha, structure-sha}` PAIR is the
-  reuse-or-regenerate key.
-- Read the shell's embedded pair. If the shell is absent, or either fingerprint
-  differs from the live value: **regenerate**. Otherwise: **reuse**.
-- **Regenerate** — author the state-independent shell per the spec (head/body
-  skeleton, design system, render functions, and hash router, all reading only
-  from the injected state), embed the `__PACK_DASHBOARD_STATE__` sentinel at the
-  state element, stamp the provenance comment with the live `{spec-sha,
-  structure-sha}` pair, and Write it to the shell path. A spec or format-contract
-  change flips a fingerprint and regenerates the shell; the committed build
-  script is edited in the same reviewed change (script and shell stay paired on
-  the same pair).
-- **Reuse** — Read the persisted shell as-is; do not rewrite it (a reuse render
-  leaves the shell file byte-unchanged).
+- `spec-sha` = `git hash-object` of the build-spec doc. Read the shell's embedded
+  `spec-sha`. If the shell is absent, or its `spec-sha` differs from the live
+  value: **regenerate** — author the state-independent skeleton + CSS + render JS
+  + router per the spec, embed the `__PACK_DASHBOARD_STATE__` sentinel at the
+  state element, stamp the provenance comment with the live `spec-sha`, and Write
+  it to the shell path. Otherwise: **reuse** it byte-unchanged.
+- Make the router boot defensive: treat the `__PACK_DASHBOARD_STATE__` sentinel —
+  or any `JSON.parse` failure on the state element — as EMPTY state and render an
+  idle page, so the persisted shell opens cleanly on its own.
 
-Make the shell's router boot defensive: it MUST treat the
-`__PACK_DASHBOARD_STATE__` sentinel — or any `JSON.parse` failure on the state
-element — as EMPTY state and render an idle page, so the persisted shell opens
-cleanly on its own.
+Inject the fresh state into the fingerprint-matching shell (or a minimal fail-safe
+shell when none matches) and Write `pack-ops/dashboard-approvals/dashboard.html`.
+Serialize with sorted keys and escape only `<` on the JSON-in-`<script>` path
+(§2 step 3).
 
-## Step 2 — Build the deterministic state
+## Step 4 — Render-time completeness self-check (before the page is accepted)
 
-Run the committed build:
+This is your own check on your own render, run BEFORE the board is accepted or
+published:
 
-```bash
-python3 scripts/dashboard-build.py build
-```
+- **Session-state layer — never silently short.** Confirm the rendered `#state`
+  represents EVERY session-state-layer field the snapshot carries content for:
+  `boundary_commit`, `active[]`, `in_flight_agents[]`, `queue[]`,
+  `parallelization`, `wave`, `cycle_position`, `pending_decisions[]`, and derived
+  `motion[]`. Each renders full / degraded / removed per R11 presence — but a
+  field whose `pack-ops/session-state.json` source HAS content must NEVER be
+  silently dropped. A missing session-layer field when the snapshot carries it is
+  a fail-loud abort.
+- **Conformance floor.** Confirm the payload carries exactly `|E_full|` records
+  with `tier:"full"`, each with a source-anchored body; the plans and section
+  floors hold; the status vocabulary is closed; parse coverage is 100%.
 
-It reads all data fresh (the git-tracked backlog, each entry's Status /
-Resolved-date / body, session-state, the rules / changelog / metrics / help
-sources, and live git history), selects the deterministic full set, and emits
-every record with a `tier:"full"|"minimal"` field. Each full-tier record carries
-a source-anchored body drawn from that entry's own live Description/Context; the
-committed-history plans floor and the read-fresh section floors are populated the
-same way. The build injects this state into the fingerprint-matching shell (or a
-minimal fail-safe shell when none matches) and writes
-`pack-ops/dashboard-approvals/dashboard.html`. Selection is a deterministic
-recompute every render — never a reuse of a prior render's payload and never a
-hand-authored count. The serialized state escapes only `<` (the `</script`
-breakout) for the JSON-in-`<script>` path.
-
-## Step 3 — Verify (the fail-closed gate)
-
-The candidate render is NOT valid until the script's oracle passes:
-
-```bash
-python3 scripts/dashboard-build.py verify
-```
-
-`verify` re-derives the full set FRESH and parses the produced `dashboard.html`
-state as a black box, independent of the build's in-memory objects. It
-HARD-FAILS (non-zero exit) on any shortfall: a full-set member not marked
-`tier:"full"`, a full-tier body that is not source-anchored to its live source,
-a plans-floor or section-floor gap, a `{spec-sha, structure-sha}` mismatch, a
-status outside the live vocabulary, or less than 100% parse coverage. A non-zero
-exit means the render is regenerated, never accepted short. The same floor is
-re-checked independently at CI by the mechanical DEEP floor (Check 89), which
-shares no code with the build script.
-
-The spec's own requirements outrank any general guidance here. Identical (spec,
-state) yields identical output.
+On any shortfall, ABORT and regenerate — never accept or publish a short or
+half-rendered board. The spec's own requirements outrank any general guidance
+here; identical (spec, state) yields identical output.

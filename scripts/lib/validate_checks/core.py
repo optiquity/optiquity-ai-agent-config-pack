@@ -185,12 +185,8 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # cross-agreement): 80 → 81. BD-271 adds Check 85 (narration-twin content
 # parity): 81 → 82. BD-224 adds Check 86 (dashboard-approvals file cap) +
 # Check 87 (session-config not-committed): 82 → 83 → 84; and the render-cache
-# refinement adds Check 88 (dashboard shell↔spec sync-guard): 84 → 85. BD-224
-# OPTION-2 reconciled render-cache adds Check 89 (the mechanical, agent-independent
-# committed-dashboard content floor, DEEP-gated): 85 → 86. (Check 88 is EXTENDED in
-# place to the dual {spec-sha, structure-sha} three-way sync-guard — no net-new
-# entry, so no count bump for that extension.)
-CHECK_REGISTRY_EXPECTED_COUNT = 86
+# refinement adds Check 88 (dashboard shell↔spec sync-guard): 84 → 85.
+CHECK_REGISTRY_EXPECTED_COUNT = 85
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []
