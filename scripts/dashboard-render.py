@@ -137,7 +137,7 @@ h1{font-size:1.9rem;margin:.1em 0 .3em}
 h2{font-size:1.15rem;margin:1.6em 0 .5em}
 .lede{color:var(--ink-mid);margin:0 0 4px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin:12px 0}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
 .tile .k{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint)}
 .tile .v{font-size:1.5rem;font-weight:700;margin-top:3px}
@@ -375,13 +375,21 @@ function pRules(){
 }
 
 function pDeps(){
- const all=Object.values(S.bds||{});const edges=[];
- all.forEach(r=>{if(!r.blockers)return;const low=r.blockers.toLowerCase();
+ const act=new Set(S.active||[]);const edges=[];
+ (Object.values(S.bds||{})).forEach(r=>{if(!r.blockers)return;const low=r.blockers.toLowerCase();
   if(/no blocker|none|n\/a/.test(low))return;
   const tos=(r.blockers.match(/BD-\d+/g)||[]).filter(t=>t!==r.id);
-  if(tos.length)edges.push({from:r.id,to:[...new Set(tos)],why:r.blockers,status:r.status});});
+  if(tos.length)edges.push({from:r.id,num:r.num,to:[...new Set(tos)],why:r.blockers,st:act.has(r.id)?'active':r.status});});
  let h=`<div class="eyebrow">Sequencing</div><h1>Dependencies</h1><p class="lede">Best-effort from each BD's Blockers: prose.</p>`;
- h+=edges.length?edges.map(e=>`<div class="card"><a class="ttl" href="${idHash(e.from)}">${E(e.from)}</a> ${pill(e.status)} <span class="muted">waits on</span> ${e.to.map(t=>`<a href="${idHash(t)}">${E(t)}</a>`).join(', ')}<div class="note">${E(e.why.slice(0,200))}</div></div>`).join(''):'<div class="card muted">No prerequisite edges parsed from Blockers prose.</div>';
+ if(!edges.length)return h+'<div class="card muted">No prerequisite edges parsed from Blockers prose.</div>';
+ const SECTIONS=[['Open &amp; queued',['pending','unblocked','deferred','active']],
+  ['Resolved',['done']],
+  ['Deprecated &amp; superseded',['deprecated','cancelled']]];
+ SECTIONS.forEach(sec=>{const label=sec[0],toks=sec[1];
+  const rows=edges.filter(e=>toks.indexOf(e.st)>-1).sort((a,b)=>a.num-b.num||(a.from<b.from?-1:a.from>b.from?1:0));
+  if(!rows.length)return;
+  h+=`<h2>${label} &#183; ${rows.length}</h2>`;
+  h+=rows.map(e=>`<div class="card"><a class="ttl" href="${idHash(e.from)}">${E(e.from)}</a> ${pill(e.st)} <span class="muted">waits on</span> ${e.to.map(t=>`<a href="${idHash(t)}">${E(t)}</a>`).join(', ')}<div class="note">${E(e.why.slice(0,200))}</div></div>`).join('');});
  return h;
 }
 

@@ -734,10 +734,10 @@ sequencing-only notes, and coordination pointers (O5). One panel per needing-BD 
 every prerequisite (`to`). The `why` is the BD's `Blockers:` prose shown **once** per panel (not per
 prerequisite); when it is a long multi-sentence paragraph, **truncate to its first sentence / ~200
 chars with an expand affordance**, the full text living on the BD page (G5). Panels are grouped by the
-needing-BD's own status into fixed sections — Open & queued → Deferred → Resolved → Deprecated &
-superseded (empty sections omitted) — deterministically sorted (by `from`, then `to`). A needing-BD
-that is `Open`, `Unblocked`, or derived-active sorts into **Open & queued**; `Cancelled` joins
-**Deprecated & superseded**.
+needing-BD's own status into three fixed sections — Open & queued → Resolved → Deprecated &
+superseded (empty sections omitted) — deterministically sorted (by `from`, then `to`). **Open & queued**
+holds `Open`, `Unblocked`, `Deferred`, and derived-active needing-BDs; **Resolved** holds `Resolved`;
+**Deprecated & superseded** holds `Deprecated` and `Cancelled`.
 
 ### 7.9 Recently landed — `#changelog`
 Eyebrow "Newest first", H1 **Recently landed**. The changelog is one file per major version; render one
