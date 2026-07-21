@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# pack-internal: true
 # scripts/pack-td.sh — `pack td` verb dispatcher (BD-107; V3.3 §7.3).
 #
 # Verb surface for the `pack td` namespace per the existing

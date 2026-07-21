@@ -218,7 +218,7 @@ scripts/                                    Pack-level scripts
 ├── add-capability.sh                       Add a pack-supported capability to an existing project (v10)
 ├── pack-help.sh                            LCD shell help-verb (v11; renders HELP-FRAGMENT)
 ├── pack-tracker.sh                         Tracker — init / status / tree-rebuild / edit / new-entry / mirror-rebuild / disable / doctor / update-templates / enable-recommendations (v11; dormant, deferred per BD-214 — verbs refuse)
-├── pack-td.sh                              TD orchestration — promote (Path 1/2) / resolve (direct close per V3.3 §3) (v11)
+├── pack-td.sh                              TD orchestration — promote (Path 1/2) / resolve (direct close per V3.3 §3) (v11; project-side tool, pack-internal — not advertised in pack help)
 ├── tracker-migrate.sh                      Lower-level tracker forward/reverse wrapper (v11; dormant, deferred per BD-214)
 ├── restore-from-backup.sh                  v9.3 → v10 backup restore (v10; legacy)
 ├── merge-{json,toml,trinity,platform-skills}.py   Migrator-only merge helpers (pack-internal)

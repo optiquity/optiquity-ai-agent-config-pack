@@ -34,22 +34,7 @@ in your CLI for this content. Full docs in `QUICKSTART.md`, `README.md`,
 | `scripts/dry-run-migration.sh` | Read-only migration dry-run harness. Clones target into `/tmp`, runs the appropriate per-version migrator with `--dry-run`, captures the full diff. Three modes: synthetic fixture / git URL / local-path. Used as the v11+ release-gate harness; safe for any v10 client. |
 | `scripts/restore-from-backup.sh` | Restore a v9.3 → v10 pre-migration tree (use the v11 migrator's printed `rsync` recipe for v11 backups). |
 | `scripts/add-capability.sh` | Extend an existing project with an additional language/platform capability. |
-| `scripts/pack-td.sh <subcmd>` | TD orchestration — `promote --to=phase-N` (Path 1), `promote --to=phase-N.M` (Path 2), `resolve` (direct close per V3.3 §3.2). |
-| `scripts/pack-tracker.sh <verb>` | Tracker entry-management dispatcher — `init` / `status` / `edit` / `new-entry` / `tree-rebuild` / `mirror-rebuild` / `doctor` / `disable` / `update-templates` / `enable-recommendations`. |
 | `scripts/install-graphify-hook.sh` | Install the Graphify pre-push graph-refresh hook into this clone's git hooks dir. One-time, per-clone, idempotent. |
-
-## TD promotion
-
-`pack td <verb>` orchestrates the two-path TD promotion plus the
-direct-close shape.
-
-| Verb | What it does |
-|---|---|
-| `pack td promote --to=phase-N <td-id>` | Path 1 — promote TD to a new phase epic. PM Chat invokes architect by default. |
-| `pack td promote --to=phase-N.M <td-id>` | Path 2 — promote TD to a new phase task under phase N. Wires `Dependencies` bullets to cross-entity `blocked-by` edges. |
-| `pack td resolve <td-id> [--note "..."]` | Direct close. No promotion label; no new entity. |
-
-There is no Path 3 and no `--fold-into` flag.
 
 ## See also
 
