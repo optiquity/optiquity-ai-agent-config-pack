@@ -286,6 +286,51 @@ it ships breaks inside a manual worktree.
 
 ---
 
+## Claude Code — isolation_mode enforcement hook (opt-in)
+
+**Status:** Claude Code only, opt-in. A `PreToolUse` hook (matcher `Agent`) that
+DENIES a sub-agent spawn whose `isolation` parameter contradicts the active
+`isolation_mode` (must-isolate direction only). The pack ships NO settings file;
+you wire it into your OWN gitignored `.claude/settings.local.json` with the
+one-command installer.
+
+**What it is / what it enforces.** At the instant of every sub-agent spawn the
+hook re-reads `pack-ops/session-config.json`, maps `subagent_type` to its
+read-write / read-only class, and DENIES only a spawn that OMITS
+`isolation:"worktree"` when the active mode REQUIRES it (a read-write spawn
+under either mode; a read-only spawn under `full`). It never denies an
+over-isolated spawn, so it stays compatible with an all-isolated posture. It
+enforces INTENT (the correct spawn parameter) — NOT OUTCOME (whether isolation
+actually took effect, which remains the agent's runtime pwd/HEAD self-detect).
+Any uncertainty (config absent, malformed, or unreadable; an unknown agent
+class) fails OPEN — the spawn is allowed; the hook body never blocks on its own
+failure.
+
+**Install / uninstall / status (one command each, per clone):**
+
+```bash
+bash scripts/install-modes-hook.sh              # deep-merges the hook entry, idempotent
+bash scripts/install-modes-hook.sh --uninstall  # removes only the modes entry
+bash scripts/install-modes-hook.sh --status     # installed | not-installed
+```
+
+The installer deep-merges the hook entry into `.claude/settings.local.json`,
+preserving your existing keys (for example `permissions.allow`); a byte-equal
+re-install is a no-op. Because it mutates the live settings file, the
+orchestrator runs it with user approval — never an agent.
+
+**Honest bounds.** It enforces the PARAMETER, not the OUTCOME — the runtime
+pwd/HEAD self-detect remains the outcome signal. It has nothing to deny while
+every spawn already isolates under the all-isolated workaround, and begins
+biting real slips when class-keyed spawning resumes. `/pack-startup` runs a
+function self-test of the hook body on every startup (a dry-run canary that
+confirms the deny actually fires), reported on its `**Modes enforce:**` line.
+After you wire it in, enforcement trusts the hook stays wired — that Step-6
+canary is the periodic function re-check that catches a silently-unwired or
+broken hook.
+
+---
+
 ## Codex CLI — Optional features
 
 *Placeholder. The Config Pack documents Codex-specific opt-in features

@@ -73,6 +73,7 @@ Output a summary in exactly this format:
 **Last commit:** [date] — [summary from git log -1 --oneline]
 **CI tooling:** [GitHub MCP available / not configured — CI via `gh run list`]
 **Graph:** [the Step-5 readiness line — e.g. `fresh | pre-push hook: installed`, or `STALE — built at <sha8>, HEAD <sha8> | pre-push hook: NOT installed — run scripts/install-graphify-hook.sh`, or `not built (optional pack-dev accelerator)`]
+**Modes enforce:** [the Step-6 readiness line — e.g. `installed (body self-test PASS) — Claude-only, latent under all-isolated workaround`, or `NOT installed — run scripts/install-modes-hook.sh`, or `n/a (non-Claude CLI)`]
 **Resume:** [from `pack-ops/session-state.json` — `no live session — clean start` if absent/idle, else `active: BD-NNN @ <sub-step>; in-flight: <agents to re-spawn>; queue: <order>; mode: <serial|parallel>; pending: <decisions>; cycle: <position>; boundary <sha8> (= HEAD | N behind)`]
 
 **Awaiting instructions.**
@@ -114,3 +115,37 @@ OUTER double quotes so the shell expands `$GRAPH` and the INNER single quotes
 stay literal Python; both are O(1)-cheap for a once-per-startup read.) Honors
 the "no CI gate, no committed sentinel" constraint: the freshness criterion
 (`built_at_commit` vs HEAD) lives on this LOCAL human-facing surface, not in CI.
+
+## Step 6 — Modes-enforce hook readiness (Claude-only; LOCAL, never fails startup)
+
+Compute the line reported on the Step-4 `**Modes enforce:**` line. LOCAL only —
+no CI gate, no committed artifact; it NEVER fails the session (reports absent /
+NOT installed / self-test FAIL; it does not error). It combines a FUNCTION probe
+(a dry-run canary piped into the hook body — the direct analog of the graph's
+did-it-run signal) with a WIRING probe (the installer `--status`), branched at
+runtime on `CLAUDECODE` (the readiness text is byte-identical across the three
+mirrors; only the runtime output differs by CLI).
+
+```bash
+ROOT="$(git rev-parse --show-toplevel)"
+if [ "${CLAUDECODE:-}" = "1" ]; then
+  BODY="$ROOT/scripts/hooks/modes-enforce.py"
+  if [ ! -f "$BODY" ]; then
+    echo "modes enforce: hook body absent (feature not built in this clone)"
+  else
+    wire="$(bash "$ROOT/scripts/install-modes-hook.sh" --status 2>/dev/null || echo unknown)"
+    canary='{"tool_name":"Agent","cwd":"'"$ROOT"'","tool_input":{"subagent_type":"pack-coder","name":"pack-startup-readiness-canary"}}'
+    probe="$(printf '%s' "$canary" | python3 "$BODY" 2>/dev/null)"
+    case "$probe" in *'"permissionDecision":"deny"'*) fn="body self-test PASS" ;; *) fn="body self-test FAIL — reinstall/inspect" ;; esac
+    case "$wire" in
+      installed)     echo "modes enforce: installed ($fn) — Claude-only, latent under all-isolated workaround" ;;
+      not-installed) echo "modes enforce: NOT installed ($fn) — run scripts/install-modes-hook.sh" ;;
+      *)             echo "modes enforce: wiring unknown ($fn)" ;;
+    esac
+  fi
+else
+  echo "modes enforce: n/a (non-Claude CLI — isolation_mode + hooks are Claude-only; modes honored by orchestrator discipline)"
+fi
+```
+
+Report the resulting one line on the Step-4 `**Modes enforce:**` line.
