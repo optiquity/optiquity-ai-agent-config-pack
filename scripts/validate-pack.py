@@ -1313,6 +1313,17 @@ def _build_check_registry():
               check_session_config_not_committed, W),
         (88, "check_dashboard_approvals_spec_shell_sync",
               check_dashboard_approvals_spec_shell_sync, W),
+        # Check 89 — HELP-FRAGMENT /pack-* command ↔ backing-skill parity
+        # (BD-224): bidirectional gate — every advertised `/pack-<name>` slash
+        # row in pack-ops/HELP-FRAGMENT-PACK.md is backed by a git-TRACKED
+        # pack-<name>/SKILL.md in all three CLI roots, and every pack-*-named
+        # command skill is advertised. Lives in the help-fragment-family module
+        # (validate_checks.help_fragments) alongside Checks 16/22/23; shares the
+        # promoted `_HELP_FRAGMENT_PACK` path constant with 22/23. git-TRACKED
+        # enumeration (git ls-files, 3 roots), O(rows), SKIP-lenient off a work
+        # tree. Number 89 is the next free integer (highest wired was 88).
+        (89, "check_help_fragment_command_skill_parity",
+              check_help_fragment_command_skill_parity, W),
     ]
 
 

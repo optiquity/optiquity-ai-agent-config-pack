@@ -186,7 +186,8 @@ RUN_CHECK_DEEP_FAITHFULNESS_BUDGET_S = 30.0
 # parity): 81 → 82. BD-224 adds Check 86 (dashboard-approvals file cap) +
 # Check 87 (session-config not-committed): 82 → 83 → 84; and the render-cache
 # refinement adds Check 88 (dashboard shell↔spec sync-guard): 84 → 85.
-CHECK_REGISTRY_EXPECTED_COUNT = 85
+# BD-224's HELP-FRAGMENT command↔skill parity adds Check 89: 85 → 86.
+CHECK_REGISTRY_EXPECTED_COUNT = 86
 
 # Accumulated per-check timings (name, elapsed_s) for the total-run guard.
 _check_timings = []

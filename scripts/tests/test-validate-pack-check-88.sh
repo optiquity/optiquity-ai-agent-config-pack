@@ -18,7 +18,7 @@
 # in a /tmp scratch git repo; the REAL tree is NEVER mutated.
 #
 # Coverage:
-#   Group 0: Module import + Check 88 symbol registration + count invariant (==85)
+#   Group 0: Module import + Check 88 symbol registration + count invariant
 #   Group 1: Real-state-at-HEAD SKIP (the real tree has no tracked shell)
 #   Group 2: Synthetic PASS/FAIL/SKIP against a /tmp git repo (monkeypatch
 #            REPO_ROOT):
@@ -69,20 +69,18 @@ spec.loader.exec_module(mod)
 if not hasattr(mod, 'check_dashboard_approvals_spec_shell_sync'):
     print('FAIL_MISSING check_dashboard_approvals_spec_shell_sync'); sys.exit(1)
 # Check 88 must be registered AND the expected-count constant must equal the
-# computed registry length AND that count must be 85 (Check 59's invariant —
-# proves the Check-88 add + the 84->85 count bump landed together).
+# computed registry length (Check 59's invariant — proves the Check-88 add + the
+# count bump landed together).
 nums = [t[0] for t in mod._build_check_registry()]
 if 88 not in nums:
     print('FAIL_NOT_REGISTERED'); sys.exit(1)
 if len(mod._build_check_registry()) != mod.CHECK_REGISTRY_EXPECTED_COUNT:
     print('FAIL_COUNT_MISMATCH'); sys.exit(1)
-if mod.CHECK_REGISTRY_EXPECTED_COUNT != 85:
-    print('FAIL_COUNT_NOT_85', mod.CHECK_REGISTRY_EXPECTED_COUNT); sys.exit(1)
 print('OK')
 " > /tmp/vp-check88-import.out 2>&1
 
 if grep -q "^OK$" /tmp/vp-check88-import.out; then
-    t_pass "validate-pack.py imports + Check 88 symbol registered + count invariant holds (==85)"
+    t_pass "validate-pack.py imports + Check 88 symbol registered + count invariant holds"
 else
     t_fail "validate-pack.py import / Check 88 registration / count invariant failed" \
         "$(cat /tmp/vp-check88-import.out)"

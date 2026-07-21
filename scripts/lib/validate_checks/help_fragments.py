@@ -45,6 +45,7 @@ See `scripts/lib/validate_checks/README.md` and
 
 import os
 import re
+import subprocess
 from pathlib import Path
 
 from .core import (
@@ -155,6 +156,14 @@ def check_trinity_addenda_h2(
 # lock-step (61 → 59 with Check 28). No per-check test existed for Check 21.
 
 
+# Shared pack-root help-fragment path (relative to REPO_ROOT), read by
+# Checks 22, 23, and 89. RELATIVE on purpose: each reader resolves it as
+# `REPO_ROOT / _HELP_FRAGMENT_PACK` at CALL time, so a per-check test that
+# monkeypatches REPO_ROOT to a /tmp scratch repo still bites (an absolute
+# `REPO_ROOT / "..."` bound here at import would freeze the real path).
+_HELP_FRAGMENT_PACK = "pack-ops/HELP-FRAGMENT-PACK.md"
+
+
 _VERB_RE = re.compile(
     # Match verb invocation shapes; existence-filter applied below to
     # filter project-template-only references and editorial mentions.
@@ -207,7 +216,7 @@ def check_help_fragment_freshness() -> None:
                 REPO_ROOT / "pack-ops" / "OPTIONAL-FEATURES.md",
                 REPO_ROOT / "supporting-docs" / "INSTALL-PROCEDURES.md",
             ],
-            "fragment": REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-PACK.md",
+            "fragment": REPO_ROOT / _HELP_FRAGMENT_PACK,
         },
         "project-template": {
             "root": REPO_ROOT / "project-template",
@@ -280,7 +289,7 @@ def check_help_fragment_completeness() -> None:
     near the top. Prevents the fragment going stale as new scripts ship.
     """
     print("\n── Check 23: Help-fragment completeness (BD-082) ──")
-    fragment = REPO_ROOT / "pack-ops" / "HELP-FRAGMENT-PACK.md"
+    fragment = REPO_ROOT / _HELP_FRAGMENT_PACK
     if not fragment.is_file():
         fail(f"pack-root help fragment missing: {fragment.name}")
         return
@@ -317,6 +326,155 @@ def check_help_fragment_completeness() -> None:
        f"({len(flagged_internal)} marked pack-internal)")
 
 
+# Check 89 — HELP-FRAGMENT /pack-* command ↔ backing-skill parity (BD-224).
+# Anchored slash-row regex: a COMPLETE backtick span `/pack-<name>`. Does NOT
+# reuse _VERB_RE — _VERB_RE's `/pack-\w+` arm uses \w (no hyphen) and would
+# truncate `/pack-isolation-mode` -> `isolation` (a guaranteed false FAIL).
+# The closing-backtick anchor also excludes `scripts/pack-td.sh`-shape spans
+# (they start `scripts/`, never a bare `/pack-`), so no allowlist is needed.
+# NOTE (raw-vs-set): findall over the current fragment returns 10 raw matches
+# (`/pack-help` and `/pack-startup` each appear twice in HELP-FRAGMENT-PACK.md);
+# the SET comprehension below dedups them to the 8 distinct advertised names.
+# Every count/membership decision is on the SET `advertised`, NEVER on
+# len(_PACK_SLASH_ROW_RE.findall(...)) (which is 10, not 8).
+_PACK_SLASH_ROW_RE = re.compile(r"`/pack-([a-z0-9][a-z0-9-]*)`")
+
+# Command-skill roots (all three CLI roots must back every advertised command).
+_PACK_SKILL_ROOTS = (".claude", ".codex", ".agents")
+
+
+def _git_ls_files_multi(pathspecs):
+    """Return (available, tracked_paths) for `git ls-files <pathspec>...`.
+
+    `available` is False when git is absent (FileNotFoundError) OR the tree is
+    not a git work tree (non-zero exit) — both ⇒ the caller SKIPs lenient.
+    Resolves the git root via cwd=REPO_ROOT (the module global), so a per-check
+    test can monkeypatch help_fragments.REPO_ROOT to a /tmp scratch repo. ONE
+    bounded subprocess over the given pathspecs; never a whole-tree walk, never
+    a subprocess-per-row. Mirrors pack_ops_hygiene._git_ls_files but takes
+    MULTIPLE pathspecs (the 3 CLI roots); kept inline per §6.2 (do not refactor
+    shared infra for one addition).
+    """
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", *pathspecs],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+    except FileNotFoundError:
+        return (False, [])
+    if result.returncode != 0:
+        return (False, [])
+    return (True, [ln for ln in result.stdout.splitlines() if ln.strip()])
+
+
+def check_help_fragment_command_skill_parity() -> None:
+    """Check 89 — HELP-FRAGMENT /pack-* ↔ backing-skill parity (BD-224).
+
+    Bidirectional gate closing the advertised-but-unimplemented hole that let
+    /pack-isolation-mode ship with no skill:
+      - FORWARD (help → skill): every backticked `/pack-<name>` slash row in
+        pack-ops/HELP-FRAGMENT-PACK.md must have a git-TRACKED skill at
+        <root>/skills/pack-<name>/SKILL.md in ALL THREE CLI roots
+        (.claude, .codex, .agents). Absence from ANY one root FAILs (partial
+        -root bite).
+      - REVERSE (skill → help): every git-TRACKED pack-*-named command skill
+        must be advertised as a `/pack-<name>` row. The reverse candidate set is
+        restricted to pack-*-named dirs, which cleanly excludes the non-command
+        engine/pooled skills (e.g. dashboard-render, the shipped render engine
+        invoked by /pack-dashboard, which correctly has no help row).
+
+    declare-verify-backing: uses git-TRACKED membership (git ls-files), never
+    Path.is_file() — an untracked on-disk dir would not ship, so tracked
+    membership is the correct backing signal. Bites the absence-of-backing
+    instance, including partial-root absence (stronger than Check 71, which
+    only fires once .claude already has the skill and is blind to total
+    absence).
+
+    measure-then-bound / O(rows): one `git ls-files` (3 pathspecs) + one
+    fragment read + set algebra over <=8 elements. No allowlist (the category
+    split is clean by token shape). SKIP-lenient off a git work tree; a missing
+    fragment FAILs (a committed pack surface, not an env artifact).
+
+    EXTENSION POINT (no exemption is wired today — none is measured-necessary
+    against the current 8<->8 bijection): if a future non-command skill must
+    carry the `pack-` prefix, mark its SKILL.md `# pack-internal: true` and add
+    an `_is_pack_internal` filter to the reverse candidate set in the SAME
+    commit that introduces it, so Check 89 stops treating it as an unadvertised
+    command. That reuses the existing _is_pack_internal idiom already in this
+    module.
+    """
+    print("\n── Check 89: HELP-FRAGMENT /pack-* command ↔ backing-skill parity (BD-224) ──")
+
+    # Enumerate the git-TRACKED command-skill set across all 3 roots (one call).
+    pathspecs = [f"{root}/skills/pack-*/SKILL.md" for root in _PACK_SKILL_ROOTS]
+    available, tracked = _git_ls_files_multi(pathspecs)
+    if not available:
+        ok("git ls-files unavailable (git absent / not a git work tree) — skipping (lenient)")
+        return
+
+    # Read the advertised /pack-* set from the fragment (FAIL if absent — a
+    # committed pack surface, mirroring Check 23's fragment-missing FAIL).
+    frag_path = REPO_ROOT / _HELP_FRAGMENT_PACK
+    if not frag_path.is_file():
+        fail(f"pack-root help fragment missing: {_HELP_FRAGMENT_PACK}")
+        return
+    frag_text = frag_path.read_text()
+    # SET comprehension: dedups the raw findall (10 on the current fragment) to
+    # the DISTINCT advertised names (8). All downstream logic is on this set.
+    advertised = {f"pack-{m}" for m in _PACK_SLASH_ROW_RE.findall(frag_text)}
+
+    # Partition the tracked skills into per-root dir-name sets. Each tracked
+    # path is `<root>/skills/pack-<name>/SKILL.md`.
+    root_sets = {root: set() for root in _PACK_SKILL_ROOTS}
+    for path in tracked:
+        parts = path.split("/")
+        # parts = [<root>, "skills", "pack-<name>", "SKILL.md"]
+        if len(parts) >= 4 and parts[1] == "skills" and parts[-1] == "SKILL.md":
+            root = parts[0]
+            if root in root_sets:
+                root_sets[root].add(parts[-2])
+
+    any_failed = False
+
+    # ── FORWARD leg: every advertised command backed in ALL THREE roots. ──
+    for name in sorted(advertised):
+        missing_roots = [
+            f"{root}/skills/{name}/"
+            for root in _PACK_SKILL_ROOTS
+            if name not in root_sets[root]
+        ]
+        if missing_roots:
+            any_failed = True
+            fail(
+                f"/{name} advertised in HELP-FRAGMENT-PACK.md but no backing "
+                f"skill in: {', '.join(missing_roots)}. Every advertised "
+                f"`/pack-<name>` slash command needs a git-TRACKED "
+                f"pack-<name>/SKILL.md in all three CLI roots "
+                f"(.claude/.codex/.agents)."
+            )
+
+    # ── REVERSE leg: every pack-*-named command skill is advertised. Candidate
+    # set = the .claude pack-* dirs (Check 71 guarantees mirror parity). ──
+    for name in sorted(root_sets[".claude"]):
+        if name not in advertised:
+            any_failed = True
+            fail(
+                f"{name} command skill exists (.claude/skills/{name}/) but is "
+                f"not advertised in HELP-FRAGMENT-PACK.md — add a `/{name}` row "
+                f"(or, if it is a non-command engine skill, it must not carry "
+                f"the `pack-` prefix / must be marked `# pack-internal: true`)."
+            )
+
+    if any_failed:
+        return
+    ok(
+        f"Check 89 — HELP-FRAGMENT /pack-* commands ({len(advertised)}) <-> "
+        f"backing command skills bijective across all three CLI roots "
+        f"(forward: all advertised commands backed; reverse: all pack-* command "
+        f"skills advertised)."
+    )
+
+
 __all__ = [
     "_CHECK_16_EXEMPT_SURFACES",
     "check_trinity_addenda_h2",
@@ -325,4 +483,7 @@ __all__ = [
     "_is_pack_internal",
     "check_help_fragment_freshness",
     "check_help_fragment_completeness",
+    "_HELP_FRAGMENT_PACK",
+    "_PACK_SLASH_ROW_RE",
+    "check_help_fragment_command_skill_parity",
 ]
