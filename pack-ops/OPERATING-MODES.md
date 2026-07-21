@@ -57,8 +57,9 @@ agents NEVER commit, in every mode — that boundary is absolute
 
 ## The config — `pack-ops/session-config.json`
 
-A gitignored, per-clone, orchestrator-read-only sibling of
-`pack-ops/session-state.json`. Schema `pack-session-config/1`; three string
+A gitignored, per-clone (per-worktree when a clone has multiple working trees),
+orchestrator-read-only sibling of `pack-ops/session-state.json`. Schema
+`pack-session-config/1`; three string
 fields, each with a default:
 
 ```json
@@ -88,16 +89,14 @@ session, or a background-session worktree, spawning agents under the wrong mode
 and decision, so nothing can drift. It extends the "verify at runtime, never
 trust settings" discipline to the orchestrator's config read.
 
-Resolve the config at the PRIMARY worktree (works from the main checkout OR a
-linked worktree — a background session under `worktree.bgIsolation` runs in its
-own worktree where the gitignored config is not materialized; see
-`pack-ops/OPTIONAL-FEATURES.md`). Derive the primary path at runtime from
-`git rev-parse --git-common-dir` (whose parent is the primary worktree); read
-one field, folding absent / malformed / unreachable to the family default:
+Resolve the config at the CURRENT worktree — the checkout Pack Chat runs in
+(the main checkout in a single-worktree clone, or the active linked dev
+worktree). Derive the path at runtime from `git rev-parse --show-toplevel`;
+read one field, folding absent / malformed / unreachable to the family default:
 
 ```bash
-# Resolve the primary-worktree config path (works from main OR a linked worktree)
-cfg="$(cd "$(git rev-parse --git-common-dir)/.." && pwd)/pack-ops/session-config.json"
+# Resolve the current-worktree config path
+cfg="$(git rev-parse --show-toplevel)/pack-ops/session-config.json"
 # Read one field, folding absent / malformed / unreachable -> the family default
 isolation_mode="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("isolation_mode","read-write-only"))' "$cfg" 2>/dev/null || echo read-write-only)"
 ```

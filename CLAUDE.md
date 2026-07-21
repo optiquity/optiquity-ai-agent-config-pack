@@ -475,8 +475,8 @@ PACK-AGENTS.md current".
     the `read-write-only` DEFAULT. Under `full` isolation mode ALL agents —
     RO included — spawn isolated (`isolation:"worktree"`) then `cd` to the
     target tree; RW agents isolate in BOTH modes (mode-independent). Read the
-    active `isolation_mode` from the primary-worktree
-    `pack-ops/session-config.json` at EACH spawn (per
+    active `isolation_mode` from `pack-ops/session-config.json` in the
+    current worktree (the checkout Pack Chat runs in) at EACH spawn (per
     `pack-ops/OPERATING-MODES.md` § "Reading the config") — never a
     remembered value; missing/malformed/unreachable ⇒ `read-write-only`.
     Same "verify at runtime, never trust settings" discipline as the

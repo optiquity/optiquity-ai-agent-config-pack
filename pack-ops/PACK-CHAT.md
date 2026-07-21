@@ -227,7 +227,7 @@ These rules are non-negotiable and always apply:
   every RO sub-agent spawn (isolation) and every pause/surface gate
   (intervention/review) — never a session-start-cached value.
   `/pack-startup` and `/pack-refresh` warm the value but are NOT the
-  authority; the on-disk config is. Read via the primary-worktree path
+  authority; the on-disk config is. Read via the current-worktree path
   (OPERATING-MODES.md § "Reading the config").
   Missing/malformed/unreachable ⇒ defaults (= current behavior). The config
   is orchestrator-read-only; spawned agents never read it.

@@ -25,7 +25,7 @@ Re-read, in this order, so the current rules sit at the front of context:
 - `pack-ops/session-state.json` — the committed live-session snapshot (active
   work, in-flight agents, queue order, cycle position, boundary commit).
 - The active operating modes from `pack-ops/session-config.json`, read per
-  `pack-ops/OPERATING-MODES.md` § "Reading the config" (primary-worktree path;
+  `pack-ops/OPERATING-MODES.md` § "Reading the config" (current-worktree path;
   missing / malformed / unreachable fold to the family defaults). This re-warm
   is a convenience, not the authority — the on-disk config stays the authority,
   re-read at each point of use.

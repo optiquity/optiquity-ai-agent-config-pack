@@ -27,14 +27,16 @@ text menu and read the reply.
 
 ## Step 2 — Write the config
 
-Write the chosen value into `pack-ops/session-config.json`, resolved at the
-primary worktree; a missing file is created with the defaults plus the change:
+Write the chosen value into `pack-ops/session-config.json` in the current
+worktree (the checkout Pack Chat runs in); a missing file is created with the
+defaults plus the change:
 
 ```bash
-cfg="$(cd "$(git rev-parse --git-common-dir)/.." && pwd)/pack-ops/session-config.json"
+top="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "pack mode selector: not inside a git working tree — cannot locate pack-ops/session-config.json" >&2; exit 1; }
+cfg="$top/pack-ops/session-config.json"
 CHOICE="read-write-only"   # read-write-only | full — the user's selection
 python3 - "$cfg" "$CHOICE" <<'PY'
-import json, sys
+import json, os, sys
 path, choice = sys.argv[1], sys.argv[2]
 try:
     cfg = json.load(open(path))
@@ -47,6 +49,7 @@ cfg.setdefault("review_mode", "itemized")
 cfg.setdefault("intervention_mode", "full")
 cfg.setdefault("isolation_mode", "read-write-only")
 cfg["isolation_mode"] = choice
+os.makedirs(os.path.dirname(path), exist_ok=True)
 json.dump(cfg, open(path, "w"), indent=2, sort_keys=False)
 print("isolation_mode ->", choice)
 PY
