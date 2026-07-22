@@ -303,7 +303,9 @@ backlog item is represented; only DETAIL DEPTH varies.
 - **Minimal set** = everything else — older `Resolved`, plus `Deprecated` / `Cancelled`. A **minimal**
   record is exactly `id`, `num`, `title`, `status`, and short `snippet` / `Type` / `Target` /
   `Blockers` / `Unblocks` — the fields the Archive rows (§7.5) and the summary-depth BD page (§7.4)
-  consume. No deep plan, no deep-only fields.
+  consume, plus `resolved_date` on `Resolved` records (the committed `Resolved:` date, `YYYY-MM-DD`
+  or empty when the entry carries none) — the sort key the §7.1 / §7.5 recency ordering reads. No
+  deep plan, no deep-only fields.
 - **Bound the minimal fields (O4).** Minimality caps DEPTH; also cap WIDTH — `snippet` ≤ ~160 chars,
   and each of `Type` / `Target` / `Blockers` / `Unblocks` to its first line / first sentence — so 240+
   minimal records don't re-inflate the payload with uncapped prose.
@@ -328,7 +330,8 @@ session-state layer — 9 fields:** `boundary_commit`, `active[]`, `in_flight_ag
 `parallelization`, `wave`, `cycle_position`, `pending_decisions[]` — the 8 sourced fields, each
 presence-conditional, populated when its `session-state.json` source carries content — plus the derived
 `motion[]` (asserted unconditionally). **(2) Every §7
-backed section:** `bds{}` total-accountability + `tier:"full"` source-anchored bodies, `plans{}`,
+backed section:** `bds{}` total-accountability + `tier:"full"` source-anchored bodies + `resolved_date`
+on every `Resolved` record (feeds the §7.1 / §7.5 recency ordering), `plans{}`,
 `rules[]`, `changelog[]`, `agents[]`, `metrics{}`, `help{}`, and `inflight{}` structure, plus the
 README-version-table-backed `version` / `qualifier` / `date` floor (presence-conditional). **(3) The
 parse/encoding invariants:** targeted state injection and ASCII-safe output (§2 step 3), status-token

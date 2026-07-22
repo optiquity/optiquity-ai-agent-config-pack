@@ -297,7 +297,7 @@ def v11(st):
 NONFEATURE = ("audit-901", "BD-999", "BD-800", "BD-801", "Audit artifacts", "Carried over")
 STATE_KINDS = {"A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9",
                "B1", "B2", "B2F", "B3", "B4", "B5", "B6", "B7", "B8", "B9",
-               "B11", "C2", "C4"}
+               "B11", "B12", "C2", "C4"}
 
 if mode == "probe":
     _, st = load_state()
@@ -335,6 +335,17 @@ if mode == "probe":
         n += 1 if st.get("pendingDecisions") else 0
         n += 1 if st.get("motion") else 0
         print(n)
+    elif kind == "resolved_dates":
+        # resolved_date is EMITTED on Resolved records (BD-904/905), ABSENT on
+        # non-resolved (BD-901 Open+active, BD-903 Deferred). BD-904 (lower num)
+        # carries the NEWER date than BD-905 (higher num) - the exact num/date
+        # inversion the recency comparator must resolve date-desc.
+        b = st.get("bds", {})
+        def rd(bid):
+            r = b.get(bid, {})
+            return r["resolved_date"] if "resolved_date" in r else "<absent>"
+        print("904=%s 905=%s 901=%s 903=%s"
+              % (rd("BD-904"), rd("BD-905"), rd("BD-901"), rd("BD-903")))
     elif kind == "backed":
         full = sum(1 for r in st.get("bds", {}).values() if r.get("tier") == "full")
         print("bds=%d full=%d rules=%d changelog=%d agents=%d help=%d plans=%d" % (
@@ -371,6 +382,8 @@ if mode == "baseline":
             "B8": bool(st.get("help", {}).get("commands")),
             "B9": isinstance(st.get("inflight"), dict),
             "B11": bool(st.get("version")),
+            "B12": any(r.get("status") == "done" and "resolved_date" in r
+                       for r in st.get("bds", {}).values()),
             "C2": bool(st.get("counts")),
             "C4": bool(c11 and c11.get("items")),
         }[kind]
@@ -439,6 +452,14 @@ if kind in STATE_KINDS:
     elif kind == "B11":
         # SHOULD-1: null the README-backed version -> the B11 version floor bites.
         st["version"] = None
+    elif kind == "B12":
+        # Drop resolved_date from one Resolved record (sorted keys -> BD-904, the
+        # newest-dated) -> the B12 recency-sort-key floor bites.
+        for k in sorted(st["bds"]):
+            r = st["bds"][k]
+            if r.get("status") == "done" and "resolved_date" in r:
+                del r["resolved_date"]
+                break
     elif kind == "C2":
         st["counts"]["open"] = st["counts"]["open"] - 1
     elif kind == "C4":
@@ -476,6 +497,12 @@ assert_eq "T-GOOD all 9 session-layer fields populated" "9" "$(probe session9)"
 echo "  info: backed sections -> $(probe backed)"
 assert_eq "T-GOOD bds total-accountability (5 fixture BDs)" \
     "bds=5 full=5 rules=3 changelog=2 agents=3 help=3 plans=1" "$(probe backed)"
+# resolved_date emit (data plumbing): present on Resolved records with the
+# committed date, ABSENT on non-resolved. BD-904 (lower num) carries the NEWER
+# date than BD-905 (higher num) - the num/date inversion the recency comparators
+# resolve date-desc (mirrors the real BD-224 case).
+assert_eq "T-GOOD resolved_date emitted on Resolved (904 newer than 905), absent on non-resolved" \
+    "904=2026-07-12 905=2026-07-05 901=<absent> 903=<absent>" "$(probe resolved_dates)"
 
 # ── The 4 render gaps (positive) ───────────────────────────────────────────
 echo "== the 4 render gaps (positive) =="
@@ -528,6 +555,7 @@ tamper_row B7 "T-B7 metrics mis-tallied -> verify FAIL"
 tamper_row B8 "T-B8 help emptied despite a live source -> verify FAIL"
 tamper_row B9 "T-B9 inflight{} structure absent -> verify FAIL"
 tamper_row B11 "T-B11 README-backed version nulled -> verify FAIL"
+tamper_row B12 "T-B12 resolved_date dropped from a Resolved record -> verify FAIL"
 tamper_row C1 "T-C1 </script breakout (unescaped) -> verify FAIL"
 tamper_row C2 "T-C2 status-token counts mutated -> verify FAIL"
 tamper_row C3 "T-C3 non-ASCII byte injected -> verify FAIL"
@@ -621,6 +649,11 @@ done
 grep -q "getElementById('state')" "$SHELL_F" || { echo "    missing boot"; smoke_missing=$((smoke_missing + 1)); }
 grep -q "replace(/\[&<>" "$SHELL_F" || { echo "    missing escape helper"; smoke_missing=$((smoke_missing + 1)); }
 assert_eq "shell carries all 10 nav + 11 p* tokens + boot + escape helper" "0" "$smoke_missing"
+# Resolved-comparator smoke (OI-4): the two resolved surfaces (recentResolved +
+# the pArchive Resolved group) sort by resolved_date (date-desc), not pure
+# num-desc. Expect exactly 2 occurrences of the localeCompare comparator token.
+rescmp=$(grep -Fo "localeCompare(a.resolved_date" "$SHELL_F" | wc -l | tr -d ' ')
+assert_eq "shell resolved comparators reference resolved_date (recentResolved + pArchive)" "2" "$rescmp"
 
 # ── Summary ────────────────────────────────────────────────────────────────
 echo

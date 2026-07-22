@@ -315,7 +315,10 @@ function pArchive(){
  <input class="filter" id="flt" placeholder="Filter by id or title&#8230;" oninput="ARCH_FILTER(this.value)">
  <div id="arch">`;
  for(const[st,lab] of GROUPS){
-  const rows=all.filter(r=>r.status===st).sort((a,b)=>b.num-a.num);
+  const rows=all.filter(r=>r.status===st).sort(
+   st==='done'
+    ? (a,b)=>(b.resolved_date||'').localeCompare(a.resolved_date||'')||b.num-a.num
+    : (a,b)=>b.num-a.num);
   if(!rows.length)continue;
   h+=`<h2>${lab} &#183; ${rows.length}</h2><div class="card">`+rows.map(r=>
    `<div class="row af" data-f="${E((r.id+' '+r.title).toLowerCase())}"><div class="main">
@@ -327,7 +330,7 @@ function pArchive(){
 window.ARCH_FILTER=v=>{v=(v||'').toLowerCase();document.querySelectorAll('#arch .af').forEach(el=>{el.style.display=el.dataset.f.indexOf(v)>-1?'':'none';});};
 
 function recentResolved(n){
- const rs=Object.values(S.bds||{}).filter(r=>r.status==='done').sort((a,b)=>b.num-a.num).slice(0,n);
+ const rs=Object.values(S.bds||{}).filter(r=>r.status==='done').sort((a,b)=>(b.resolved_date||'').localeCompare(a.resolved_date||'')||b.num-a.num).slice(0,n);
  return rs.length?rs.map(r=>`<div class="row"><div class="main"><a href="${idHash(r.id)}">${E(r.id)} &#8212; ${E(r.title)}</a></div><div>${pill('done')}</div></div>`).join(''):'<div class="muted">None.</div>';
 }
 
@@ -944,6 +947,14 @@ def assemble_state(root, spec_rel):
                "blockers": r["blockers"], "unblocks": r["unblocks"]}
         if tier == "full":
             rec["body"] = collapse_ws(r["src"])[:600]
+        # Emit the (already-parsed) resolution date on Resolved records ONLY, on
+        # BOTH tiers - the Archive Resolved group spans every resolved BD. It is
+        # the sort key the recentResolved + pArchive Resolved-group comparators
+        # read for recency ordering (spec 7.1 Landing + 7.5 Archive). Normalize
+        # None -> "" so the client sort key is always a string, mirroring the
+        # server key `r["resolved_date"] or ""` used by compute_e_full.
+        if r["status"] == "Resolved":
+            rec["resolved_date"] = r["resolved_date"] or ""
         bds[bd_id] = rec
 
     # plans{} - committed-history floor: every derived-active / newest-10 BD
@@ -1319,6 +1330,23 @@ def verify_floor(root, spec_rel, html_path=None):
                 errs.append("B11 %s: produced=%r expected=%r (README version-table backed)"
                             % (vk, g(produced, vk), expected.get(vk)))
 
+    # B12 resolved_date on every Resolved record - feeds the recency ordering
+    # (spec 7.1 Landing "Recently resolved" + 7.5 Archive Resolved group/spotlight).
+    # Bites when the sort key is dropped or mis-emitted - the exact datum whose
+    # absence buried a just-resolved BD deep in the Archive. Keys on the
+    # re-derived `records` and the produced `pbds`; O(resolved count), dict
+    # lookups only, no subprocess/tree walk (ci-check-runtime-compounding);
+    # break on the first shortfall (one representative, matching the B1/B2 style).
+    for bd_id, r in records.items():
+        if r["status"] != "Resolved":
+            continue
+        got = (pbds.get(bd_id) or {}).get("resolved_date")
+        if got != (r["resolved_date"] or ""):
+            errs.append("B12 %s: resolved_date produced=%r expected=%r "
+                        "(recency sort key dropped/mismatched)"
+                        % (bd_id, got, r["resolved_date"] or ""))
+            break
+
     # B10 Level-1-only carve-out (design SS3.2 B10), made EXPLICIT here (SHOULD-3)
     # so a future reader cannot mistake it for an accidental omission: `deps`,
     # `methodology`, and `rulings` are DELIBERATELY not floored at Level 2.
@@ -1354,6 +1382,20 @@ def verify_floor(root, spec_rel, html_path=None):
         errs.append("SMOKE: getElementById('state') boot missing")
     if "replace(/[&<>\"']/g" not in raw:
         errs.append("SMOKE: E= escape helper missing")
+    # Resolved-comparator smoke (OI-4): the two resolved surfaces (recentResolved
+    # + the pArchive Resolved group) MUST sort by resolved_date (date-desc then
+    # num-desc), NOT pure num-desc. String-presence only (NO JS engine): catches
+    # a WHOLESALE revert to num-sort (the exact regression this floor closes); it
+    # CANNOT catch a subtle mis-key (present but wrong) - that stays diff-review
+    # per the verify-boundary. Expect exactly 2 occurrences (one per resolved
+    # comparator); < 2 means a surface reverted.
+    resolved_cmp = "(b.resolved_date||'').localeCompare(a.resolved_date||'')"
+    n_cmp = raw.count(resolved_cmp)
+    if n_cmp < 2:
+        errs.append("SMOKE: resolved comparator (date-desc localeCompare on "
+                    "resolved_date) appears %d time(s) in the produced shell "
+                    "(expected 2: recentResolved + pArchive Resolved group; a "
+                    "surface reverted to pure num-sort?)" % n_cmp)
 
     return errs
 
