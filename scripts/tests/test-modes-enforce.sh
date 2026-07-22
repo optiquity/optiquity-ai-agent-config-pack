@@ -177,10 +177,12 @@ cmp -s "$SCRATCH" "$WORK/after-install.json" \
   && pass "re-run install left the file byte-unchanged (idempotent)" \
   || fail "re-run install left the file byte-unchanged (idempotent)"
 
-# --status -> installed.
+# --status -> per-hook merged reality; the isolation entry is wired locally (no
+# committed seam here) -> `isolation: local`.
 st="$(MODES_HOOK_SETTINGS_FILE="$SCRATCH" bash "$INSTALLER" --status 2>/dev/null)"
-[ "$st" = "installed" ] && pass "--status reports installed" \
-  || fail "--status reports installed (got: $st)"
+printf '%s\n' "$st" | grep -q '^isolation: local$' \
+  && pass "--status reports isolation: local" \
+  || fail "--status reports isolation: local (got: $st)"
 
 # --uninstall -> modes entry gone, permissions intact.
 MODES_HOOK_SETTINGS_FILE="$SCRATCH" bash "$INSTALLER" --uninstall >/dev/null 2>&1
@@ -197,14 +199,14 @@ else
   fail "re-run --uninstall is a no-op (rc $rc, out: $out)"
 fi
 
-# --status on a malformed settings file -> not-installed, exit 0.
+# --status on a malformed settings file -> lenient (no local entries), exit 0.
 MAL="$WORK/mal-settings.json"
 printf '%s\n' 'not json {{{' > "$MAL"
 st="$(MODES_HOOK_SETTINGS_FILE="$MAL" bash "$INSTALLER" --status 2>/dev/null)"; rc=$?
-if [ "$rc" -eq 0 ] && [ "$st" = "not-installed" ]; then
-  pass "--status on malformed settings -> not-installed (rc 0)"
+if [ "$rc" -eq 0 ] && printf '%s\n' "$st" | grep -q '^isolation: none$'; then
+  pass "--status on malformed settings -> isolation: none (rc 0)"
 else
-  fail "--status on malformed settings -> not-installed (rc $rc, got: $st)"
+  fail "--status on malformed settings -> isolation: none (rc $rc, got: $st)"
 fi
 
 # install on a malformed settings file -> non-zero exit AND file byte-unchanged.

@@ -239,6 +239,22 @@ These rules are non-negotiable and always apply:
 - **Gate direct commits on validate green.** Before a Pack-Chat-direct commit, confirm validate-pack exits 0 (chain with && — never fall through); a BD Status flip regenerates `_toc.md` in the same commit.
 - **No hands-on ops execution.** Live-state operational execution (migrations, link/unlink mutations, runtime-cache surgery, raw gh api calls) is NOT exempt from Pack-Chat-does-NO-fixes — route it to pack-coder + the bounded cycle; if a packaged verb is missing, the coder documents the gap rather than Pack Chat improvising raw API calls.
 - **No pre-staging until commit approval.** Never `git add` / stage until the user approves the commit (a concurrent session can sweep pre-staged files); preview via working-tree inspection; commit named paths via pathspec at approval time.
+- **Write the commit-approval token before committing (Claude-only).** When the
+  active `intervention_mode` is not `none`, the LAST step of processing the
+  user's commit approval — after they say yes, immediately before the pathspec
+  `git commit` — is to write the single-use approval token the commit-gate hook
+  consumes:
+
+  ```bash
+  python3 -c 'import json,time,sys; open(sys.argv[1],"w").write(json.dumps({"approved_at":int(time.time())}))' "$(git rev-parse --show-toplevel)/pack-ops/.commit-approval-token"
+  ```
+
+  The hook denies a `git commit` under a non-`none` intervention mode that lacks
+  a fresh token, so a commit that skipped the approval ritual fails loudly. The
+  token is transient per-clone state (gitignored, single-use); under
+  `intervention_mode: none` (auto-commit) no token is written. See
+  `pack-ops/OPTIONAL-FEATURES.md` for the hook's honest bounds (it enforces the
+  ritual, not the semantics of a genuine approval).
 - **Post-mv restage pattern.** After a pre-coder `git mv` plus a coder edit of the moved file, re-`git add` that path; an `RM` in `git status --short` is the tell.
 - **Commit-subject keyword-token trap.** A scope-keyword token anywhere in a commit subject (including prose) is a Check-36 claim, and a denying token wins; keep keyword tokens out of prose and match the keyword to the whole file set.
 - **Background long external waits.** Never foreground-block the chat on a long EXTERNAL wait (CI, deploys, remote queues); run the watch in the background and surface the verdict when it lands.

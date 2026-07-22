@@ -20,6 +20,9 @@
 # Per-clone runtime mode selections; orchestrator-read-only. Never committed
 # (session-state.json stays committed; only this sibling config is local).
 pack-ops/session-config.json
+# Single-use commit-approval token the intervention_mode commit-gate consumes.
+# Per-clone, orchestrator-written at the approval gate; transient. Never committed.
+pack-ops/.commit-approval-token
 
 # ── Generated Protobuf output ─────────────────────────────────────────────────
 # Regenerate with scripts/proto-gen.sh

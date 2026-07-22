@@ -55,6 +55,10 @@ override of the per-commit approval gate. Pack Chat NEVER auto-pushes. Spawned
 agents NEVER commit, in every mode — that boundary is absolute
 (`[rationale: agents-never-commit]`).
 
+`isolation_mode` and the `intervention_mode` commit-approval gate are
+mechanically backstopped by Claude-only hooks — see
+`pack-ops/OPTIONAL-FEATURES.md`.
+
 ## The config — `pack-ops/session-config.json`
 
 A gitignored, per-clone (per-worktree when a clone has multiple working trees),

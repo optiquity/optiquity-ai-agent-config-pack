@@ -286,48 +286,84 @@ it ships breaks inside a manual worktree.
 
 ---
 
-## Claude Code — isolation_mode enforcement hook (opt-in)
+## Claude Code — modes-enforcement hooks (auto-wired)
 
-**Status:** Claude Code only, opt-in. A `PreToolUse` hook (matcher `Agent`) that
-DENIES a sub-agent spawn whose `isolation` parameter contradicts the active
-`isolation_mode` (must-isolate direction only). The pack ships NO settings file;
-you wire it into your OWN gitignored `.claude/settings.local.json` with the
-one-command installer.
+**Status:** Claude Code only. TWO `PreToolUse` hooks that mechanically backstop
+the operating modes, AUTO-WIRED by the tracked pack-root `.claude/settings.json`
+(both bodies live in `scripts/hooks/`). Claude Code applies project
+`settings.json` hooks natively at session start, so there is NO install step and
+NO run-mechanism that can silently rot; the user's gitignored
+`.claude/settings.local.json` is NEVER auto-written. On a fresh clone's first
+session Claude Code shows its one-time native project-hooks trust prompt — a
+conscious per-clone opt-in; until accepted the `/pack-startup` canary reports the
+hooks not active (native safe behavior, not a defect).
 
-**What it is / what it enforces.** At the instant of every sub-agent spawn the
-hook re-reads `pack-ops/session-config.json`, maps `subagent_type` to its
-read-write / read-only class, and DENIES only a spawn that OMITS
-`isolation:"worktree"` when the active mode REQUIRES it (a read-write spawn
-under either mode; a read-only spawn under `full`). It never denies an
-over-isolated spawn, so it stays compatible with an all-isolated posture. It
-enforces INTENT (the correct spawn parameter) — NOT OUTCOME (whether isolation
-actually took effect, which remains the agent's runtime pwd/HEAD self-detect).
-Any uncertainty (config absent, malformed, or unreadable; an unknown agent
-class) fails OPEN — the spawn is allowed; the hook body never blocks on its own
+**Hook 1 — isolation (`PreToolUse[Agent]` → `scripts/hooks/modes-enforce.py`).**
+At every sub-agent spawn it re-reads `pack-ops/session-config.json`, maps
+`subagent_type` to its read-write / read-only class, and DENIES only a spawn that
+OMITS `isolation:"worktree"` when the active `isolation_mode` REQUIRES it (a
+read-write spawn under either mode; a read-only spawn under `full`). It never
+denies an over-isolated spawn, so it stays compatible with an all-isolated
+posture. It enforces INTENT (the correct spawn parameter) — NOT OUTCOME (whether
+isolation actually took effect, which remains the agent's runtime pwd/HEAD
+self-detect). Any uncertainty (config absent / malformed / unreadable; an unknown
+class) fails OPEN — the spawn is allowed; the body never blocks on its own
 failure.
 
-**Install / uninstall / status (one command each, per clone):**
+**Hook 2 — commit-gate (`PreToolUse[Bash]` → `scripts/hooks/modes-commit-gate.py`).**
+On a `git commit` Bash call it re-reads `intervention_mode`. Under `none` it
+allows (auto-commit is authorized). Under any non-`none` value (`full`,
+`pre-coder`, `ambiguity`) it allows the commit ONLY if a FRESH single-use
+approval token exists (`pack-ops/.commit-approval-token`, a gitignored per-clone
+file Pack Chat writes at the approval gate; freshness bound 120 s; consumed on
+the allow path so one approval authorizes one commit), else it DENIES. It
+FAILS OPEN HARDER than the isolation hook: config absent / malformed / unknown,
+git unavailable, an ambiguous command parse, a token PARSE error, or any
+exception all ALLOW — a wrongful deny would wedge the human's own commits in
+every clone, so the deny fires ONLY on a fully-resolved {Bash + git commit +
+cleanly-parsed non-`none` mode + absent-or-stale token}.
+
+**Honest bounds (read before you rely on it).**
+- **Isolation** enforces the PARAMETER, not the OUTCOME — the runtime pwd/HEAD
+  self-detect remains the outcome signal. It has nothing to deny while every
+  spawn already isolates under the all-isolated workaround (latent); it bites
+  real slips once class-keyed spawning is in force.
+- **Commit-gate** enforces the RITUAL (a fresh token must exist per commit), NOT
+  the SEMANTICS. The token is a self-attested proxy Pack Chat writes — the hook
+  cannot verify the user truly approved. So it is genuine DRIFT protection (a
+  commit that skipped the "present approval → user says yes → write token" ritual
+  also lacks the token → the omission fails loudly), but it is NOT proof against
+  an orchestrator that writes the token without asking, and it is strictly weaker
+  than the isolation hook (which checks intrinsic config-vs-param data needing no
+  self-attestation). It closes ONE of intervention's gates (commit-approval) at
+  the ritual level; it does NOTHING for `review_mode` or intervention's
+  conversational gates (triage / planner-to-coder / design-review / ambiguity),
+  which have no tool call to intercept. A commit consumed in `PreToolUse` that
+  then FAILS (nothing staged) has spent its token → re-approve (the fail-safe
+  direction).
+
+**Installer — heal / opt-out / status stopgap (`scripts/install-modes-hook.sh`).**
+The committed wiring is primary; the installer is the secondary local-override /
+status convenience:
 
 ```bash
-bash scripts/install-modes-hook.sh              # deep-merges the hook entry, idempotent
-bash scripts/install-modes-hook.sh --uninstall  # removes only the modes entry
-bash scripts/install-modes-hook.sh --status     # installed | not-installed
+bash scripts/install-modes-hook.sh            # deep-merge BOTH hooks into settings.local.json (heal stopgap), idempotent
+bash scripts/install-modes-hook.sh --dedup    # drop a now-duplicate LOCAL entry the committed file already wires
+bash scripts/install-modes-hook.sh --uninstall # remove BOTH modes entries from settings.local.json
+bash scripts/install-modes-hook.sh --status   # per-hook merged reality (committed+local | committed | local | none)
 ```
 
-The installer deep-merges the hook entry into `.claude/settings.local.json`,
-preserving your existing keys (for example `permissions.allow`); a byte-equal
-re-install is a no-op. Because it mutates the live settings file, the
-orchestrator runs it with user approval — never an agent.
+A clone that installed the isolation hook locally BEFORE the committed
+`.claude/settings.json` landed carries that Agent entry twice (harmless
+double-fire); `--dedup` drops the local duplicate once. Because install / dedup /
+uninstall mutate the live settings file, the orchestrator runs them with user
+approval — never an agent; `--status` is read-only.
 
-**Honest bounds.** It enforces the PARAMETER, not the OUTCOME — the runtime
-pwd/HEAD self-detect remains the outcome signal. It has nothing to deny while
-every spawn already isolates under the all-isolated workaround, and begins
-biting real slips when class-keyed spawning resumes. `/pack-startup` runs a
-function self-test of the hook body on every startup (a dry-run canary that
-confirms the deny actually fires), reported on its `**Modes enforce:**` line.
-After you wire it in, enforcement trusts the hook stays wired — that Step-6
-canary is the periodic function re-check that catches a silently-unwired or
-broken hook.
+**Verification (LOCAL, not CI).** `/pack-startup` Step 6 and `/pack-refresh`
+Step 2b run a function canary per body (a dry-run payload that confirms each deny
+actually fires) plus a grep of the tracked `.claude/settings.json` (both bodies
+wired), reported on the `**Modes enforce:**` line — the did-it-actually-fire
+signal, kept local (no CI sentinel) exactly as the graph freshness check is.
 
 ---
 

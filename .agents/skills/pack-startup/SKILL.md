@@ -73,7 +73,7 @@ Output a summary in exactly this format:
 **Last commit:** [date] — [summary from git log -1 --oneline]
 **CI tooling:** [GitHub MCP available / not configured — CI via `gh run list`]
 **Graph:** [the Step-5 readiness line — e.g. `fresh | pre-push hook: installed`, or `STALE — built at <sha8>, HEAD <sha8> | pre-push hook: NOT installed — run scripts/install-graphify-hook.sh`, or `not built (optional pack-dev accelerator)`]
-**Modes enforce:** [the Step-6 readiness line — e.g. `installed (body self-test PASS) — Claude-only, latent under all-isolated workaround`, or `NOT installed — run scripts/install-modes-hook.sh`, or `n/a (non-Claude CLI)`]
+**Modes enforce:** [the Step-6 readiness line — e.g. `wired (isolation self-test PASS, commit-gate self-test PASS) — Claude-only`, or `wired (isolation self-test PASS, commit-gate self-test FAIL — inspect) — Claude-only`, or `wiring MISSING — restore .claude/settings.json`, or `n/a (non-Claude CLI)`]
 **Resume:** [from `pack-ops/session-state.json` — `no live session — clean start` if absent/idle, else `active: BD-NNN @ <sub-step>; in-flight: <agents to re-spawn>; queue: <order>; mode: <serial|parallel>; pending: <decisions>; cycle: <position>; boundary <sha8> (= HEAD | N behind)`]
 
 **Awaiting instructions.**
@@ -119,33 +119,50 @@ the "no CI gate, no committed sentinel" constraint: the freshness criterion
 ## Step 6 — Modes-enforce hook readiness (Claude-only; LOCAL, never fails startup)
 
 Compute the line reported on the Step-4 `**Modes enforce:**` line. LOCAL only —
-no CI gate, no committed artifact; it NEVER fails the session (reports absent /
-NOT installed / self-test FAIL; it does not error). It combines a FUNCTION probe
-(a dry-run canary piped into the hook body — the direct analog of the graph's
-did-it-run signal) with a WIRING probe (the installer `--status`), branched at
-runtime on `CLAUDECODE` (the readiness text is byte-identical across the three
-mirrors; only the runtime output differs by CLI).
+no CI gate, no committed sentinel; it NEVER fails the session (reports absent /
+wiring MISSING / self-test FAIL; it does not error). Both hooks are auto-wired by
+the tracked pack-root `.claude/settings.json`, so this step VERIFIES rather than
+installs: a WIRING probe (grep the tracked `.claude/settings.json` for both hook
+bodies — deterministic, O(1)) plus a FUNCTION canary per body (a dry-run payload
+piped into the hook — the did-it-actually-fire signal). Branched at runtime on
+`CLAUDECODE` (the text is byte-identical across the three mirrors; only the
+runtime output differs by CLI). The commit-gate canary drives the body through
+its `MODES_GATE_*` scratch seams, so it touches NO live config or token.
 
 ```bash
 ROOT="$(git rev-parse --show-toplevel)"
 if [ "${CLAUDECODE:-}" = "1" ]; then
-  BODY="$ROOT/scripts/hooks/modes-enforce.py"
-  if [ ! -f "$BODY" ]; then
+  ISO="$ROOT/scripts/hooks/modes-enforce.py"
+  GATE="$ROOT/scripts/hooks/modes-commit-gate.py"
+  SETTINGS="$ROOT/.claude/settings.json"
+  if [ ! -f "$ISO" ] || [ ! -f "$GATE" ]; then
     echo "modes enforce: hook body absent (feature not built in this clone)"
   else
-    wire="$(bash "$ROOT/scripts/install-modes-hook.sh" --status 2>/dev/null || echo unknown)"
-    canary='{"tool_name":"Agent","cwd":"'"$ROOT"'","tool_input":{"subagent_type":"pack-coder","name":"pack-startup-readiness-canary"}}'
-    probe="$(printf '%s' "$canary" | python3 "$BODY" 2>/dev/null)"
-    case "$probe" in *'"permissionDecision":"deny"'*) fn="body self-test PASS" ;; *) fn="body self-test FAIL — reinstall/inspect" ;; esac
-    case "$wire" in
-      installed)     echo "modes enforce: installed ($fn) — Claude-only, latent under all-isolated workaround" ;;
-      not-installed) echo "modes enforce: NOT installed ($fn) — run scripts/install-modes-hook.sh" ;;
-      *)             echo "modes enforce: wiring unknown ($fn)" ;;
-    esac
+    if [ -f "$SETTINGS" ] && grep -q 'modes-enforce.py' "$SETTINGS" && grep -q 'modes-commit-gate.py' "$SETTINGS"; then
+      wired="wired"
+    else
+      wired="wiring MISSING — restore .claude/settings.json"
+    fi
+    ic='{"tool_name":"Agent","cwd":"'"$ROOT"'","tool_input":{"subagent_type":"pack-coder","name":"pack-startup-iso-canary"}}'
+    ip="$(printf '%s' "$ic" | python3 "$ISO" 2>/dev/null)"
+    case "$ip" in *'"permissionDecision":"deny"'*) iso="isolation self-test PASS" ;; *) iso="isolation self-test FAIL — inspect" ;; esac
+    cfg="$(mktemp)"; printf '%s\n' '{"schema":"pack-session-config/1","intervention_mode":"full"}' > "$cfg"
+    gc='{"tool_name":"Bash","cwd":"'"$ROOT"'","tool_input":{"command":"git commit -m canary"}}'
+    gp="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
+    rm -f "$cfg"
+    case "$gp" in *'"permissionDecision":"deny"'*) gate="commit-gate self-test PASS" ;; *) gate="commit-gate self-test FAIL — inspect" ;; esac
+    if [ "$wired" = "wired" ]; then
+      echo "modes enforce: wired ($iso, $gate) — Claude-only"
+    else
+      echo "modes enforce: $wired ($iso, $gate) — Claude-only"
+    fi
   fi
 else
   echo "modes enforce: n/a (non-Claude CLI — isolation_mode + hooks are Claude-only; modes honored by orchestrator discipline)"
 fi
 ```
 
-Report the resulting one line on the Step-4 `**Modes enforce:**` line.
+Report the resulting one line on the Step-4 `**Modes enforce:**` line. If wiring
+is MISSING, restore the tracked `.claude/settings.json`; a local heal stopgap is
+`bash scripts/install-modes-hook.sh` (and `--dedup` drops a now-duplicate local
+entry once the committed file is present).

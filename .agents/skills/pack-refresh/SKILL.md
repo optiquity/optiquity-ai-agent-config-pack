@@ -30,8 +30,60 @@ Re-read, in this order, so the current rules sit at the front of context:
   is a convenience, not the authority — the on-disk config stays the authority,
   re-read at each point of use.
 
+## Step 2b — Re-verify + offer-to-heal the modes hooks (Claude-only; report-only)
+
+Re-warm the active mode behaviors and confirm both Claude-only enforcement hooks
+still fire. This step NEVER fails, blocks, or writes settings; on a fault it
+REPORTS and OFFERS to heal (a settings/body fix is a user action — never a git
+verb, never a silent settings mutation).
+
+1. Re-echo the three active modes' behavior text from
+   `pack-ops/OPERATING-MODES.md` (the values read in Step 2), putting the live
+   mode semantics back at the front of context.
+2. Re-run the function canary for BOTH hooks and confirm the committed wiring —
+   the same probe `/pack-startup` Step 6 uses (the commit-gate canary drives the
+   body through its `MODES_GATE_*` scratch seams, touching NO live config or
+   token):
+
+```bash
+ROOT="$(git rev-parse --show-toplevel)"
+if [ "${CLAUDECODE:-}" = "1" ]; then
+  ISO="$ROOT/scripts/hooks/modes-enforce.py"
+  GATE="$ROOT/scripts/hooks/modes-commit-gate.py"
+  SETTINGS="$ROOT/.claude/settings.json"
+  if [ ! -f "$ISO" ] || [ ! -f "$GATE" ]; then
+    echo "modes re-heal: hook body absent (feature not built in this clone)"
+  else
+    if [ -f "$SETTINGS" ] && grep -q 'modes-enforce.py' "$SETTINGS" && grep -q 'modes-commit-gate.py' "$SETTINGS"; then
+      wired="wired"
+    else
+      wired="wiring MISSING — restore .claude/settings.json"
+    fi
+    ic='{"tool_name":"Agent","cwd":"'"$ROOT"'","tool_input":{"subagent_type":"pack-coder","name":"pack-refresh-iso-canary"}}'
+    ip="$(printf '%s' "$ic" | python3 "$ISO" 2>/dev/null)"
+    case "$ip" in *'"permissionDecision":"deny"'*) iso="isolation self-test PASS" ;; *) iso="isolation self-test FAIL — inspect scripts/hooks/" ;; esac
+    cfg="$(mktemp)"; printf '%s\n' '{"schema":"pack-session-config/1","intervention_mode":"full"}' > "$cfg"
+    gc='{"tool_name":"Bash","cwd":"'"$ROOT"'","tool_input":{"command":"git commit -m canary"}}'
+    gp="$(printf '%s' "$gc" | MODES_GATE_CONFIG_FILE="$cfg" MODES_GATE_TOKEN_FILE="$cfg.no-token" python3 "$GATE" 2>/dev/null)"
+    rm -f "$cfg"
+    case "$gp" in *'"permissionDecision":"deny"'*) gate="commit-gate self-test PASS" ;; *) gate="commit-gate self-test FAIL — inspect scripts/hooks/" ;; esac
+    echo "modes re-heal: $wired ($iso, $gate) — Claude-only"
+  fi
+else
+  echo "modes re-heal: n/a (non-Claude CLI — isolation_mode + hooks are Claude-only)"
+fi
+```
+
+3. On a fault, REPORT + OFFER (never auto-mutate): a canary FAIL means a broken
+   tracked body — the true fix is a git-level restore, a user action; report it,
+   do not run a git verb. Wiring MISSING means the tracked `.claude/settings.json`
+   was edited away — report it and point to restoring that file; you MAY offer
+   `bash scripts/install-modes-hook.sh` as a LOCAL stopgap, run only on explicit
+   user OK (it mutates `.claude/`; `--dedup` later drops the duplicate). Green =
+   note it on the Step-3 confirm line.
+
 ## Step 3 — Confirm
 
 Report ONE line, e.g. `Reloaded: rules + session-state + modes
-(review=<r>, intervention=<i>, isolation=<s>).` Do not restart the session and
-do not re-sync.
+(review=<r>, intervention=<i>, isolation=<s>); modes hooks: <the Step-2b re-heal
+result>.` Do not restart the session and do not re-sync.
