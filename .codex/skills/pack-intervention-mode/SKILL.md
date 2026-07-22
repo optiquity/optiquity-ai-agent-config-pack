@@ -69,5 +69,7 @@ PY
 
 ## Step 4 — Confirm
 
-Confirm the new active mode to the user and point to `/pack-help` for the
-per-mode detail.
+Confirm the new active mode to the user, then read the `### Intervention mode`
+section of `pack-ops/OPERATING-MODES.md` and present the Behavior entry for
+the selected `intervention_mode` value so its active behavior is explicit in
+context. Point to `/pack-help` for the per-mode detail.
