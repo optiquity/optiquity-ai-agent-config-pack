@@ -21,9 +21,8 @@
 #
 # Dependency direction (CLAUDE.md "dependency-direction-placement"): a PACK-OPS
 # tool — it NEVER ships to clients and is NOT in any install map. The
-# orchestrator wires it into the gitignored per-clone .claude/settings.local.json
-# with scripts/install-modes-hook.sh (that installer mutates the live settings
-# file, so the orchestrator runs it with user approval — never a coder/sub-agent).
+# orchestrator wires it (with modes-commit-gate.py) via the tracked pack-root
+# .claude/settings.json.
 
 import json
 import os
