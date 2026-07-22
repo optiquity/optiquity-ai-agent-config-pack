@@ -1,18 +1,15 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "d9b6b29",
-  "checkpoint": "2026-07-19T00:00:00Z",
-  "active": [
-    "BD-224 /pack-dashboard reliability. The committed OPTION-2 build apparatus is LANDED (three commits after the render-cache boundary) but BROKEN and is to be RIPPED OUT: scripts/dashboard-build.py (build+verify), scripts/tests/test-dashboard-build.sh, the Check 88 three-way {spec-sha,structure-sha} fingerprint, the new DEEP Check 89 (scripts/lib/validate_checks/dashboard_floor.py + independent floor), CHECK_REGISTRY_EXPECTED_COUNT 86, and the pack-dashboard + dashboard-render skills x3 (OPTION-2 coder-render model). It rendered a dashboard whose #state DROPPED the entire session-state layer (no active BD, no queue, no motion window) because the script emitted only BD content and verify/Check 89 floored only that content. KEEP pack-ops/DASHBOARD-SPEC-PACK.md (the spec)."
-  ],
+  "boundary_commit": "5bb5779",
+  "checkpoint": "2026-07-22T00:00:00Z",
+  "active": [],
   "in_flight_agents": [],
   "queue": ["BD-257", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
-  "parallelization": "none — BD-224 dashboard rebuild pending.",
-  "wave": "NEXT on resume, in order: (1) RIP OUT the broken OPTION-2 dashboard apparatus via the coder/review cycle — delete dashboard-build.py + test-dashboard-build.sh + dashboard_floor.py (Check 89); revert the Check 88 three-way extension, core.py count 86->85, the validate-pack Check-89 registry tuple, test-88, the README counts; and revert the pack-dashboard + dashboard-render skills x3 to the direct-render model; KEEP DASHBOARD-SPEC-PACK.md. (2) REBUILD to the direct-render model per the BD-224 directive in pending_decisions. (3) Then the remaining BD-224 command tests before Resolve.",
+  "parallelization": "none.",
+  "wave": "BD-224 RESOLVED at the boundary commit (Status: Resolved, as-landed record written, _toc regenerated). No active or in-flight work — clean frontier. NEXT: kick off BD-257 (the project-side slash-command sibling of BD-224) on user direction. Push is user-manual (held).",
   "pending_decisions": [
-    "BD-224 directive (user direction) — FINAL part of the dashboard work: Pack Chat generates the dashboard DIRECTLY from pack-ops/DASHBOARD-SPEC-PACK.md, itself, EVERY time /pack-dashboard or a plain-text 'generate the dashboard' request is used. NO coder agent, NO committed build/render script — the spec doc is the sole instruction source and must be followed in full, incl. the mandatory §3 SWEEP + plans{} discovery AND the complete session-state layer (active/motion/queue/boundary/in-flight agents/pending decisions/cycle/parallelization/wave). Ephemeral untracked one-off collection scripts are OK; committed build/render scripts are not.",
-    "Untracked in v11-dev: pack-ops/dashboard-approvals/ render artifacts (from the broken OPTION-2 render) — not committed; user to decide keep/discard.",
-    "Standing: pack-chat-only trees are Pack-Chat-direct; MAJOR edits route to pack-coder; push is user-manual; keep session-state COMPACT (one SHA, no hex agent IDs, <4096 bytes)."
+    "OPEN (user): keep vs remove the untracked pack-ops/dashboard-approvals/ (the committed dashboard-shell reuse-cache + its Check 86/88 apparatus). Undecided; the dir stays untracked until the user decides.",
+    "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; MAJOR edits route to pack-coder; push is user-manual; the intervention commit-gate is live (write a fresh pack-ops/.commit-approval-token before each approved commit); session-state COMPACT — one SHA in boundary_commit only, no other SHAs, no hex agent IDs, <4096 bytes."
   ],
-  "cycle_position": "BD-224: OPTION-2 build apparatus landed (three commits, HEAD at the boundary) but broken (drops the session layer). NEXT on resume: rip it out (coder/review cycle) + rebuild to Pack-Chat direct-render from the spec (no coder), then the remaining BD-224 command tests before Resolve."
+  "cycle_position": "Idle — BD-224 fully resolved at the boundary commit; no commit cycle in progress. NEXT: BD-257 kickoff on user direction."
 }
