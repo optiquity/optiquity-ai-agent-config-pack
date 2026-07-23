@@ -1,15 +1,15 @@
 {
   "schema": "pack-session-state/1",
-  "boundary_commit": "fd9f60d",
+  "boundary_commit": "cd90d9f",
   "checkpoint": "2026-07-23T00:00:00Z",
   "active": [],
   "in_flight_agents": [],
   "queue": ["BD-257", "BD-136", "BD-236", "BD-210", "BD-205", "BD-093"],
   "parallelization": "none.",
-  "wave": "BD-272 (pack td eradication) FULLY LANDED — machinery deleted, client surface stripped, README residue cleared, and the dormant-tracker BD-107 promote-orchestration comment cites stripped; CI green; clean frontier, no in-flight work. BD-272 Status remains Open PENDING the user's explicit resolve approval per its resolution gate. The post-eradication audit is materially clean: grep-zero for live pack td / BD-107 promote-orchestration references; the only surviving BD-107 mentions are CLASS-3 changelog history, which the resolution gate preserves. NEXT once resolved: BD-257 (project-side slash-command sibling of BD-224) — Stage-1 brainstorm as a project-side MIRROR of the pack-side command set, presented for review, then pause to decide the rest.",
+  "wave": "BD-272 RESOLVED — pack td boundary violation fully eradicated (machinery deleted, client surface stripped, README + dormant-tracker BD-107 cites cleared); the separate independent resolution-gate audit returned CLEAN with explicit user sign-off; and the design chain (research/architect/adversarial/reconciliation/audit) is preserved in maintenance-docs/v11-implementation/. CI green. Clean frontier, no in-flight work. NEXT: BD-257 (project-side slash-command sibling of BD-224) — Stage-1 brainstorm as a project-side MIRROR of the pack-side command set, presented for review, then pause to decide the rest.",
   "pending_decisions": [
-    "BD-272 awaiting the user's explicit resolve sign-off — do NOT auto-flip to Resolved. Audit materially clean (grep-zero live pack td / BD-107 promote-orchestration; only changelog CLASS-3 history remains, which the gate keeps).",
+    "Awaiting user direction on ordering three ready items: (a) fresh /pack-dashboard render (shows BD-272 Resolved + clears the stale pack-td.sh snippet in the generated board), (b) prune 8 stale prior-cycle agent worktrees (local, overdue teardowns holding redundant copies of already-landed work), (c) BD-257 Stage-1 kickoff.",
     "Standing: NO new BDs without explicit user ask; pack-chat-only trees are Pack-Chat-direct; MAJOR edits route to pack-coder; push is user-manual (v11-dev in sync with origin); the intervention commit-gate is live (write a fresh pack-ops/.commit-approval-token before each approved commit) EXCEPT routine session-state refreshes, which the user authorized Pack Chat to perform autonomously; session-state COMPACT — one SHA in boundary_commit only, no other SHAs, no hex agent IDs, <4096 bytes."
   ],
-  "cycle_position": "Idle — BD-272 fully landed + CI green; holding for the user's BD-272 resolve signal, then BD-257 Stage-1 (project-side mirror) kickoff."
+  "cycle_position": "Idle — BD-272 fully resolved + CI green. Awaiting the user's go on (a) dashboard render / (b) worktree prune / (c) BD-257 Stage-1."
 }
